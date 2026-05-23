@@ -1,4 +1,5 @@
 """Service layer for airfoil profile management."""
+
 from __future__ import annotations
 
 import logging
@@ -29,9 +30,7 @@ def get_airfoil(db: Session, name: str) -> AirfoilRead:
     """Get airfoil by name (case-insensitive)."""
     try:
         airfoil = (
-            db.query(AirfoilModel)
-            .filter(func.lower(AirfoilModel.name) == name.lower())
-            .first()
+            db.query(AirfoilModel).filter(func.lower(AirfoilModel.name) == name.lower()).first()
         )
         if airfoil is None:
             raise NotFoundError(entity="Airfoil", resource_id=name)
@@ -49,11 +48,7 @@ def get_airfoil_coordinates(db: Session, name: str) -> list[tuple[float, float]]
     Used by the CadQuery airfoil plugin as a DB-backed alternative
     to reading .dat files from the filesystem.
     """
-    airfoil = (
-        db.query(AirfoilModel)
-        .filter(func.lower(AirfoilModel.name) == name.lower())
-        .first()
-    )
+    airfoil = db.query(AirfoilModel).filter(func.lower(AirfoilModel.name) == name.lower()).first()
     if airfoil is None:
         return None
     return [(p[0], p[1]) for p in airfoil.coordinates]
@@ -107,16 +102,14 @@ def import_directory(db: Session, directory: str) -> AirfoilImportResult:
         dir_path.relative_to(allowed_base)
     except ValueError:
         from app.core.exceptions import ValidationError as VE
+
         raise VE(message=f"Import directory must be within {allowed_base}")
     if not dir_path.is_dir():
         raise NotFoundError(entity="Directory", resource_id=directory)
 
     # Load existing names for dedup (lowercase)
     try:
-        existing_names = {
-            name.lower()
-            for (name,) in db.query(AirfoilModel.name).all()
-        }
+        existing_names = {name.lower() for (name,) in db.query(AirfoilModel.name).all()}
     except SQLAlchemyError as e:
         raise InternalError(message=f"Database error: {e}") from e
 
@@ -153,6 +146,8 @@ def import_directory(db: Session, directory: str) -> AirfoilImportResult:
 
     logger.info(
         "Airfoil import: %d imported, %d skipped, %d errors",
-        result.imported, result.skipped, result.errors,
+        result.imported,
+        result.skipped,
+        result.errors,
     )
     return result

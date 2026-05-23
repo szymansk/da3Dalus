@@ -29,6 +29,7 @@ Sources
 - Anderson (2016): §6.1.2 drag polar, §6.7.2 (L/D)_max
 - gh-493 spec: Amendments 2–4, 6–7, 11
 """
+
 from __future__ import annotations
 
 import logging
@@ -135,7 +136,10 @@ def lookup_cd0_at_v(
             logger.warning(
                 "cd0 lookup: Re=%.0f (V=%.1f m/s) is below table minimum Re=%.0f — "
                 "clamping to lowest Re endpoint (cd0=%.5f).",
-                re_query, v_mps, re_values[0], cd0_values[0],
+                re_query,
+                v_mps,
+                re_values[0],
+                cd0_values[0],
             )
         return float(cd0_values[0])
 
@@ -144,7 +148,10 @@ def lookup_cd0_at_v(
             logger.warning(
                 "cd0 lookup: Re=%.0f (V=%.1f m/s) is above table maximum Re=%.0f — "
                 "clamping to highest Re endpoint (cd0=%.5f).",
-                re_query, v_mps, re_values[-1], cd0_values[-1],
+                re_query,
+                v_mps,
+                re_values[-1],
+                cd0_values[-1],
             )
         return float(cd0_values[-1])
 
@@ -207,9 +214,7 @@ def lookup_e_oswald_at_v(
 # ---------------------------------------------------------------------------
 
 
-def _band_boundaries(
-    v_center: float, v_anchors: list[float]
-) -> tuple[float, float]:
+def _band_boundaries(v_center: float, v_anchors: list[float]) -> tuple[float, float]:
     """Compute the lower and upper velocity bounds for a V-band.
 
     For interior anchors: midpoints to adjacent anchors.
@@ -276,7 +281,8 @@ def _fit_band_with_ar(
             logger.warning(
                 "Re table band V=%.1f m/s: e_oswald=%.4f outside (0.4, 1.0] — "
                 "setting fallback_used=True for this row.",
-                v_center, e_oswald,
+                v_center,
+                e_oswald,
             )
             return _fallback_row(v_center, mac_m, rho, cl_max)
     else:
@@ -293,9 +299,7 @@ def _fit_band_with_ar(
     }
 
 
-def _fallback_row(
-    v_center: float, mac_m: float, rho: float, cl_max: float
-) -> dict[str, Any]:
+def _fallback_row(v_center: float, mac_m: float, rho: float, cl_max: float) -> dict[str, Any]:
     """Build a fallback row for a V-band with insufficient data."""
     re = _reynolds_number_from_v(v_center, mac_m, rho)
     return {
@@ -339,11 +343,14 @@ def _fit_polar_ols(
     if len(cl_win) < _MIN_SAMPLES_PER_BAND:
         logger.debug(
             "polar OLS: only %d points in window [%.3f, %.3f] (need ≥ %d)",
-            len(cl_win), cl_lo, cl_hi, _MIN_SAMPLES_PER_BAND,
+            len(cl_win),
+            cl_lo,
+            cl_hi,
+            _MIN_SAMPLES_PER_BAND,
         )
         return None, None, None
 
-    cl2_win = cl_win ** 2
+    cl2_win = cl_win**2
 
     # Monotonicity guard: dCD/dCL² must be non-negative
     sort_idx = np.argsort(cl2_win)
@@ -432,7 +439,8 @@ def build_re_table(
             logger.warning(
                 "Re table: top anchor V=%.1f m/s exceeds sweep max V=%.1f m/s — "
                 "clamping to sweep max to avoid sparse top band.",
-                top_anchor, v_sweep_max,
+                top_anchor,
+                v_sweep_max,
             )
             v_anchors[-1] = clamped_top
 
@@ -447,9 +455,16 @@ def build_re_table(
             re_max / re_min if re_min > 0 else float("inf"),
             _RE_DEGENERACY_RATIO,
         )
-        row = _fit_band_with_ar(v_array, cl_array, cd_array,
-                                v_center=v_anchors[len(v_anchors) // 2],
-                                mac_m=mac_m, rho=rho, cl_max=cl_max, ar=ar)
+        row = _fit_band_with_ar(
+            v_array,
+            cl_array,
+            cd_array,
+            v_center=v_anchors[len(v_anchors) // 2],
+            mac_m=mac_m,
+            rho=rho,
+            cl_max=cl_max,
+            ar=ar,
+        )
         row["fallback_used"] = True
         return [row], True
 
@@ -463,7 +478,9 @@ def build_re_table(
         if n_samples < _MIN_SAMPLES_PER_BAND:
             logger.warning(
                 "Re table band V=%.1f m/s: only %d samples (need ≥ %d) — fallback.",
-                v_center, n_samples, _MIN_SAMPLES_PER_BAND,
+                v_center,
+                n_samples,
+                _MIN_SAMPLES_PER_BAND,
             )
             fallback = _fallback_row(v_center, mac_m, rho, cl_max)
             table.append(fallback)

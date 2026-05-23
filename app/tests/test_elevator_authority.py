@@ -784,9 +784,7 @@ class TestScholzB2FlapAlpha:
 
         mock_asb = MagicMock()
         mock_asb.AeroBuildup = FakeAbu
-        mock_asb.OperatingPoint = lambda velocity, alpha: MagicMock(
-            velocity=velocity, alpha=alpha
-        )
+        mock_asb.OperatingPoint = lambda velocity, alpha: MagicMock(velocity=velocity, alpha=alpha)
 
         mock_asb_airplane = MagicMock()
         mock_asb_airplane.with_control_deflections.return_value = mock_asb_airplane

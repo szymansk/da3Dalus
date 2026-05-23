@@ -3,6 +3,7 @@
 Uses the wingconfig API to seed a wing with one segment + one spar + one TED,
 then exercises the new CRUD endpoints.
 """
+
 from __future__ import annotations
 
 from pathlib import Path
@@ -80,9 +81,7 @@ def _seed_wing(client: TestClient, name: str = "crud_test", *, db=None) -> str:
 
     # Flip design_model to 'asb' so ASB CRUD endpoints accept the wing
     if db is not None:
-        plane = db.query(AeroplaneModel).filter(
-            AeroplaneModel.uuid == aeroplane_id
-        ).first()
+        plane = db.query(AeroplaneModel).filter(AeroplaneModel.uuid == aeroplane_id).first()
         wing = next(w for w in plane.wings if w.name == "w")
         wing.design_model = "asb"
         db.commit()
@@ -217,10 +216,17 @@ class TestTedDirectAccess:
         aid = _seed_wing(client, "servo_patch", db=db)
         servo_payload = {
             "servo": {
-                "length": 23, "width": 12.5, "height": 31.5,
-                "leading_length": 6, "latch_z": 14.5, "latch_x": 7.25,
-                "latch_thickness": 2.6, "latch_length": 6, "cable_z": 26,
-                "screw_hole_lx": 0, "screw_hole_d": 0,
+                "length": 23,
+                "width": 12.5,
+                "height": 31.5,
+                "leading_length": 6,
+                "latch_z": 14.5,
+                "latch_x": 7.25,
+                "latch_thickness": 2.6,
+                "latch_length": 6,
+                "cable_z": 26,
+                "screw_hole_lx": 0,
+                "screw_hole_d": 0,
             }
         }
         resp = client.patch(
@@ -235,10 +241,17 @@ class TestTedDirectAccess:
         aid = _seed_wing(client, "servo_get", db=db)
         servo_payload = {
             "servo": {
-                "length": 20, "width": 10, "height": 25,
-                "leading_length": 5, "latch_z": 10, "latch_x": 5,
-                "latch_thickness": 2, "latch_length": 5, "cable_z": 20,
-                "screw_hole_lx": 0, "screw_hole_d": 0,
+                "length": 20,
+                "width": 10,
+                "height": 25,
+                "leading_length": 5,
+                "latch_z": 10,
+                "latch_x": 5,
+                "latch_thickness": 2,
+                "latch_length": 5,
+                "cable_z": 20,
+                "screw_hole_lx": 0,
+                "screw_hole_d": 0,
             }
         }
         client.patch(
@@ -256,10 +269,17 @@ class TestTedDirectAccess:
         # First assign a servo
         servo_payload = {
             "servo": {
-                "length": 20, "width": 10, "height": 25,
-                "leading_length": 5, "latch_z": 10, "latch_x": 5,
-                "latch_thickness": 2, "latch_length": 5, "cable_z": 20,
-                "screw_hole_lx": 0, "screw_hole_d": 0,
+                "length": 20,
+                "width": 10,
+                "height": 25,
+                "leading_length": 5,
+                "latch_z": 10,
+                "latch_x": 5,
+                "latch_thickness": 2,
+                "latch_length": 5,
+                "cable_z": 20,
+                "screw_hole_lx": 0,
+                "screw_hole_d": 0,
             }
         }
         client.patch(

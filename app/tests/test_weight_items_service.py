@@ -18,6 +18,7 @@ from app.tests.conftest import make_aeroplane
 # Helpers
 # ---------------------------------------------------------------------------
 
+
 def _make_item(
     name: str = "battery",
     mass_kg: float = 0.5,
@@ -42,6 +43,7 @@ def _make_item(
 # _get_aeroplane
 # ---------------------------------------------------------------------------
 
+
 class TestGetAeroplane:
     def test_raises_not_found(self, client_and_db):
         _, SessionLocal = client_and_db
@@ -53,6 +55,7 @@ class TestGetAeroplane:
 # ---------------------------------------------------------------------------
 # list_weight_items
 # ---------------------------------------------------------------------------
+
 
 class TestListWeightItems:
     def test_empty_list_for_new_aeroplane(self, client_and_db):
@@ -97,6 +100,7 @@ class TestListWeightItems:
 # create_weight_item
 # ---------------------------------------------------------------------------
 
+
 class TestCreateWeightItem:
     def test_create_minimal(self, client_and_db):
         _, SessionLocal = client_and_db
@@ -113,7 +117,8 @@ class TestCreateWeightItem:
         with SessionLocal() as db:
             aeroplane = make_aeroplane(db)
             item = svc.create_weight_item(
-                db, aeroplane.uuid,
+                db,
+                aeroplane.uuid,
                 _make_item(
                     name="motor",
                     mass_kg=0.3,
@@ -150,6 +155,7 @@ class TestCreateWeightItem:
 # get_weight_item
 # ---------------------------------------------------------------------------
 
+
 class TestGetWeightItem:
     def test_get_existing_item(self, client_and_db):
         _, SessionLocal = client_and_db
@@ -178,6 +184,7 @@ class TestGetWeightItem:
 # update_weight_item
 # ---------------------------------------------------------------------------
 
+
 class TestUpdateWeightItem:
     def test_update_all_fields(self, client_and_db):
         _, SessionLocal = client_and_db
@@ -185,7 +192,9 @@ class TestUpdateWeightItem:
             aeroplane = make_aeroplane(db)
             created = svc.create_weight_item(db, aeroplane.uuid, _make_item())
             updated = svc.update_weight_item(
-                db, aeroplane.uuid, created.id,
+                db,
+                aeroplane.uuid,
+                created.id,
                 _make_item(
                     name="updated-batt",
                     mass_kg=0.8,
@@ -230,6 +239,7 @@ class TestUpdateWeightItem:
 # ---------------------------------------------------------------------------
 # delete_weight_item
 # ---------------------------------------------------------------------------
+
 
 class TestDeleteWeightItem:
     def test_delete_existing_item(self, client_and_db):

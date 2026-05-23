@@ -1,4 +1,5 @@
 """Tests for intelligent AVL spacing optimisation."""
+
 from __future__ import annotations
 
 from app.avl.geometry import AvlControl, AvlSection, AvlSurface

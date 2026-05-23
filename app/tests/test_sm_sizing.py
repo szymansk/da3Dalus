@@ -19,6 +19,7 @@ Edge cases (spec-gate A6):
   x_np_m is None       → not_applicable
   canard/tailless      → not_applicable
 """
+
 from __future__ import annotations
 
 import uuid
@@ -31,6 +32,7 @@ import pytest
 # ---------------------------------------------------------------------------
 # Minimal context factories (pure-unit helpers)
 # ---------------------------------------------------------------------------
+
 
 def _ctx(
     *,
@@ -72,17 +74,20 @@ def _ctx(
 
 def _import_service():
     from app.services.sm_sizing_service import suggest_corrections
+
     return suggest_corrections
 
 
 def _import_module():
     import app.services.sm_sizing_service as svc
+
     return svc
 
 
 # ===========================================================================
 # Class 1: suggest_corrections — pure service, no DB
 # ===========================================================================
+
 
 class TestSuggestCorrections:
     """Unit tests for suggest_corrections() pure function."""
@@ -277,7 +282,8 @@ class TestSuggestCorrections:
         wing_shift_opts = [o for o in result["options"] if o["lever"] == "wing_shift"]
         if wing_shift_opts:
             assert "mass_coupling_warning" in result or any(
-                "mass" in o.get("narrative", "").lower() or "wingbox" in o.get("narrative", "").lower()
+                "mass" in o.get("narrative", "").lower()
+                or "wingbox" in o.get("narrative", "").lower()
                 for o in wing_shift_opts
             ), "Mass-coupling warning must be present for wing_shift option"
 
@@ -285,6 +291,7 @@ class TestSuggestCorrections:
 # ===========================================================================
 # Class 2: Analytic sensitivity validation
 # ===========================================================================
+
 
 class TestAnalyticSensitivities:
     """Validate analytic ∂SM/∂lever formulas."""
@@ -367,8 +374,8 @@ class TestAnalyticSensitivities:
         target_sm = 0.10
         sm_at_aft = 0.02
         dsm_dsh = svc._dsm_dsh(ctx)
-        delta_sh = (target_sm - sm_at_aft) / dsm_dsh      # m²
-        delta_pct = delta_sh / s_h_m2                      # fraction of current S_H
+        delta_sh = (target_sm - sm_at_aft) / dsm_dsh  # m²
+        delta_pct = delta_sh / s_h_m2  # fraction of current S_H
         predicted = sm_at_aft + dsm_dsh * delta_pct * s_h_m2
         assert predicted == pytest.approx(target_sm, abs=1e-6)
 
@@ -377,12 +384,14 @@ class TestAnalyticSensitivities:
 # Class 3: Endpoint unit tests (FastAPI TestClient, no real ASB/DB ops)
 # ===========================================================================
 
+
 class TestSmSuggestEndpoint:
     """Integration-level endpoint tests using in-memory DB."""
 
     def _setup_aeroplane(self, db_session, ctx_override: dict | None = None) -> str:
         """Create a minimal aeroplane with computation context, return UUID."""
         from app.models.aeroplanemodel import AeroplaneModel
+
         aeroplane_uuid = str(uuid.uuid4())
         ctx = {
             "mac_m": 0.30,
@@ -451,12 +460,14 @@ class TestSmSuggestEndpoint:
 # Class 4: Apply endpoint — dry_run and real apply
 # ===========================================================================
 
+
 class TestApplyEndpoint:
     """Tests for POST /aeroplanes/{uuid}/sm-suggestions/apply."""
 
     def _setup_plane_with_wings(self, db_session) -> tuple[str, int, int]:
         """Create aeroplane with main_wing + htail, return (uuid, main_wing_id, htail_id)."""
         from app.models.aeroplanemodel import AeroplaneModel, WingModel, WingXSecModel
+
         aeroplane_uuid = str(uuid.uuid4())
         ctx = {
             "mac_m": 0.30,
@@ -485,20 +496,44 @@ class TestApplyEndpoint:
         main_wing = WingModel(name="main_wing", symmetric=True, aeroplane_id=aeroplane.id)
         db_session.add(main_wing)
         db_session.flush()
-        xs0 = WingXSecModel(wing_id=main_wing.id, xyz_le=[0.0, 0.0, 0.0], chord=0.30, twist=0.0,
-                            airfoil="naca2412", sort_index=0)
-        xs1 = WingXSecModel(wing_id=main_wing.id, xyz_le=[0.0, 0.5, 0.0], chord=0.20, twist=0.0,
-                            airfoil="naca2412", sort_index=1)
+        xs0 = WingXSecModel(
+            wing_id=main_wing.id,
+            xyz_le=[0.0, 0.0, 0.0],
+            chord=0.30,
+            twist=0.0,
+            airfoil="naca2412",
+            sort_index=0,
+        )
+        xs1 = WingXSecModel(
+            wing_id=main_wing.id,
+            xyz_le=[0.0, 0.5, 0.0],
+            chord=0.20,
+            twist=0.0,
+            airfoil="naca2412",
+            sort_index=1,
+        )
         db_session.add_all([xs0, xs1])
 
         # Horizontal tail
         htail = WingModel(name="horizontal_tail", symmetric=True, aeroplane_id=aeroplane.id)
         db_session.add(htail)
         db_session.flush()
-        hxs0 = WingXSecModel(wing_id=htail.id, xyz_le=[0.60, 0.0, 0.0], chord=0.12, twist=0.0,
-                              airfoil="naca0012", sort_index=0)
-        hxs1 = WingXSecModel(wing_id=htail.id, xyz_le=[0.60, 0.25, 0.0], chord=0.10, twist=0.0,
-                              airfoil="naca0012", sort_index=1)
+        hxs0 = WingXSecModel(
+            wing_id=htail.id,
+            xyz_le=[0.60, 0.0, 0.0],
+            chord=0.12,
+            twist=0.0,
+            airfoil="naca0012",
+            sort_index=0,
+        )
+        hxs1 = WingXSecModel(
+            wing_id=htail.id,
+            xyz_le=[0.60, 0.25, 0.0],
+            chord=0.10,
+            twist=0.0,
+            airfoil="naca0012",
+            sort_index=1,
+        )
         db_session.add_all([hxs0, hxs1])
         db_session.commit()
         return aeroplane_uuid, main_wing.id, htail.id
@@ -521,6 +556,7 @@ class TestApplyEndpoint:
         # Verify no DB change
         with SessionLocal() as db:
             from app.models.aeroplanemodel import WingXSecModel
+
             xs = db.query(WingXSecModel).filter(WingXSecModel.wing_id == wing_id).first()
             # xyz_le[0] should still be 0.0 (no commit)
             assert xs.xyz_le[0] == pytest.approx(0.0, abs=1e-9)
@@ -541,6 +577,7 @@ class TestApplyEndpoint:
         # Verify ALL xsecs shifted
         with SessionLocal() as db:
             from app.models.aeroplanemodel import WingXSecModel
+
             xsecs = db.query(WingXSecModel).filter(WingXSecModel.wing_id == wing_id).all()
             for xs in xsecs:
                 assert xs.xyz_le[0] == pytest.approx(delta_m, abs=1e-6), (
@@ -565,6 +602,7 @@ class TestApplyEndpoint:
         # Verify no DB change
         with SessionLocal() as db:
             from app.models.aeroplanemodel import WingXSecModel
+
             xs = db.query(WingXSecModel).filter(WingXSecModel.wing_id == htail_id).first()
             assert xs.chord == pytest.approx(0.12, abs=1e-9)  # unchanged
 
@@ -583,9 +621,12 @@ class TestApplyEndpoint:
 
         with SessionLocal() as db:
             from app.models.aeroplanemodel import WingXSecModel
+
             xsecs = db.query(WingXSecModel).filter(WingXSecModel.wing_id == htail_id).all()
             original_chords = [0.12, 0.10]
-            for xs, orig in zip(sorted(xsecs, key=lambda x: x.sort_index), original_chords, strict=True):
+            for xs, orig in zip(
+                sorted(xsecs, key=lambda x: x.sort_index), original_chords, strict=True
+            ):
                 assert xs.chord == pytest.approx(orig * (1 + delta_pct), rel=1e-4), (
                     f"htail xsec sort_index={xs.sort_index}: chord={xs.chord}, "
                     f"expected {orig * (1 + delta_pct):.4f}"
@@ -608,14 +649,26 @@ class TestApplyEndpoint:
         client, SessionLocal = client_and_db
         with SessionLocal() as db:
             from app.models.aeroplanemodel import AeroplaneModel
+
             uid_str = str(uuid.uuid4())
             ctx = {
-                "mac_m": 0.30, "s_ref_m2": 0.60, "x_np_m": 0.12,
-                "cg_aft_m": 0.105, "sm_at_aft": 0.05, "target_static_margin": 0.10,
-                "cl_alpha_per_rad": 5.5, "s_h_m2": 0.08, "l_h_m": 0.55,
-                "is_canard": True, "is_tailless": False, "is_boxwing": False, "is_tandem": False,
+                "mac_m": 0.30,
+                "s_ref_m2": 0.60,
+                "x_np_m": 0.12,
+                "cg_aft_m": 0.105,
+                "sm_at_aft": 0.05,
+                "target_static_margin": 0.10,
+                "cl_alpha_per_rad": 5.5,
+                "s_h_m2": 0.08,
+                "l_h_m": 0.55,
+                "is_canard": True,
+                "is_tailless": False,
+                "is_boxwing": False,
+                "is_tandem": False,
             }
-            ap = AeroplaneModel(name="canard-plane", uuid=uid_str, assumption_computation_context=ctx)
+            ap = AeroplaneModel(
+                name="canard-plane", uuid=uid_str, assumption_computation_context=ctx
+            )
             db.add(ap)
             db.commit()
         resp = client.post(
@@ -638,6 +691,7 @@ class TestApplyEndpoint:
 # Class 5: Service-layer apply helpers (unit tests with mock DB)
 # ===========================================================================
 
+
 class TestApplyWingShiftService:
     """Unit tests for apply_wing_shift service function."""
 
@@ -651,16 +705,26 @@ class TestApplyWingShiftService:
     def test_dry_run_returns_predicted_sm_no_flush(self):
         """apply_wing_shift dry_run=True returns predicted_sm, does NOT call db.flush()."""
         from app.services.sm_sizing_service import apply_wing_shift
+
         db = MagicMock()
         db.flush = MagicMock()
 
         # Mock query chain: db.query(...).filter(...).first() → plane with context
         plane_mock = MagicMock()
         plane_mock.assumption_computation_context = {
-            "mac_m": 0.30, "s_ref_m2": 0.60, "x_np_m": 0.12,
-            "cg_aft_m": 0.105, "sm_at_aft": 0.05, "target_static_margin": 0.10,
-            "cl_alpha_per_rad": 5.5, "s_h_m2": 0.08, "l_h_m": 0.55,
-            "is_canard": False, "is_tailless": False, "is_boxwing": False, "is_tandem": False,
+            "mac_m": 0.30,
+            "s_ref_m2": 0.60,
+            "x_np_m": 0.12,
+            "cg_aft_m": 0.105,
+            "sm_at_aft": 0.05,
+            "target_static_margin": 0.10,
+            "cl_alpha_per_rad": 5.5,
+            "s_h_m2": 0.08,
+            "l_h_m": 0.55,
+            "is_canard": False,
+            "is_tailless": False,
+            "is_boxwing": False,
+            "is_tandem": False,
         }
         plane_mock.id = 1
         plane_mock.wings = []
@@ -675,6 +739,7 @@ class TestApplyWingShiftService:
     def test_real_apply_shifts_xsecs_and_flushes(self):
         """apply_wing_shift dry_run=False updates xyz_le[0] for all main_wing xsecs."""
         from app.services.sm_sizing_service import apply_wing_shift
+
         db = MagicMock()
 
         xsec0 = self._make_wing_xsec(0.0, 0)
@@ -686,10 +751,19 @@ class TestApplyWingShiftService:
 
         plane_mock = MagicMock()
         plane_mock.assumption_computation_context = {
-            "mac_m": 0.30, "s_ref_m2": 0.60, "x_np_m": 0.12,
-            "cg_aft_m": 0.105, "sm_at_aft": 0.05, "target_static_margin": 0.10,
-            "cl_alpha_per_rad": 5.5, "s_h_m2": 0.08, "l_h_m": 0.55,
-            "is_canard": False, "is_tailless": False, "is_boxwing": False, "is_tandem": False,
+            "mac_m": 0.30,
+            "s_ref_m2": 0.60,
+            "x_np_m": 0.12,
+            "cg_aft_m": 0.105,
+            "sm_at_aft": 0.05,
+            "target_static_margin": 0.10,
+            "cl_alpha_per_rad": 5.5,
+            "s_h_m2": 0.08,
+            "l_h_m": 0.55,
+            "is_canard": False,
+            "is_tailless": False,
+            "is_boxwing": False,
+            "is_tandem": False,
         }
         plane_mock.id = 1
         plane_mock.wings = [wing_mock]
@@ -711,15 +785,25 @@ class TestApplyHtailScaleService:
     def test_dry_run_returns_predicted_sm_no_flush(self):
         """apply_htail_scale dry_run=True returns predicted_sm, does NOT call db.flush()."""
         from app.services.sm_sizing_service import apply_htail_scale
+
         db = MagicMock()
         db.flush = MagicMock()
 
         plane_mock = MagicMock()
         plane_mock.assumption_computation_context = {
-            "mac_m": 0.30, "s_ref_m2": 0.60, "x_np_m": 0.12,
-            "cg_aft_m": 0.105, "sm_at_aft": 0.05, "target_static_margin": 0.10,
-            "cl_alpha_per_rad": 5.5, "s_h_m2": 0.08, "l_h_m": 0.55,
-            "is_canard": False, "is_tailless": False, "is_boxwing": False, "is_tandem": False,
+            "mac_m": 0.30,
+            "s_ref_m2": 0.60,
+            "x_np_m": 0.12,
+            "cg_aft_m": 0.105,
+            "sm_at_aft": 0.05,
+            "target_static_margin": 0.10,
+            "cl_alpha_per_rad": 5.5,
+            "s_h_m2": 0.08,
+            "l_h_m": 0.55,
+            "is_canard": False,
+            "is_tailless": False,
+            "is_boxwing": False,
+            "is_tandem": False,
         }
         plane_mock.id = 1
         plane_mock.wings = []
@@ -734,6 +818,7 @@ class TestApplyHtailScaleService:
     def test_real_apply_chord_scales_htail_xsecs(self):
         """apply_htail_scale dry_run=False chord-scales all htail xsecs."""
         from app.services.sm_sizing_service import apply_htail_scale
+
         db = MagicMock()
 
         hxsec0 = MagicMock()
@@ -749,10 +834,19 @@ class TestApplyHtailScaleService:
 
         plane_mock = MagicMock()
         plane_mock.assumption_computation_context = {
-            "mac_m": 0.30, "s_ref_m2": 0.60, "x_np_m": 0.12,
-            "cg_aft_m": 0.105, "sm_at_aft": 0.05, "target_static_margin": 0.10,
-            "cl_alpha_per_rad": 5.5, "s_h_m2": 0.08, "l_h_m": 0.55,
-            "is_canard": False, "is_tailless": False, "is_boxwing": False, "is_tandem": False,
+            "mac_m": 0.30,
+            "s_ref_m2": 0.60,
+            "x_np_m": 0.12,
+            "cg_aft_m": 0.105,
+            "sm_at_aft": 0.05,
+            "target_static_margin": 0.10,
+            "cl_alpha_per_rad": 5.5,
+            "s_h_m2": 0.08,
+            "l_h_m": 0.55,
+            "is_canard": False,
+            "is_tailless": False,
+            "is_boxwing": False,
+            "is_tandem": False,
         }
         plane_mock.id = 1
         plane_mock.wings = [htail_mock]
@@ -771,6 +865,7 @@ class TestApplyHtailScaleService:
 # Class 6: gh-494 fix — B2/B3/B4 and physics-reviewer findings
 # ===========================================================================
 
+
 class TestAlphaVhDimensionlessFix:
     """P1 (Scholz): α_VH must be dimensionless — no /mac_m in formula."""
 
@@ -784,9 +879,7 @@ class TestAlphaVhDimensionlessFix:
         }
         a_vh = svc._alpha_vh(ctx)
         # (0.6 * 0.08 / 0.60) = 0.08 — within 0.01–0.20 clamp
-        assert 0.07 < a_vh < 0.09, (
-            f"α_VH = {a_vh:.4f} — expected ~0.08, old bug gave ~0.27 (1/m)"
-        )
+        assert 0.07 < a_vh < 0.09, f"α_VH = {a_vh:.4f} — expected ~0.08, old bug gave ~0.27 (1/m)"
 
     def test_alpha_vh_independent_of_mac(self):
         """α_VH must not change when MAC changes (it is dimensionless)."""
@@ -868,17 +961,27 @@ class TestHtailScaleNegativeDelta:
         client, SessionLocal = client_and_db
         # Create a plane with wings
         from app.models.aeroplanemodel import AeroplaneModel, WingModel, WingXSecModel
+
         with SessionLocal() as db:
             uid_str = str(uuid.uuid4())
             ctx = {
-                "mac_m": 0.30, "s_ref_m2": 0.60, "x_np_m": 0.12,
-                "cg_aft_m": 0.105, "sm_at_aft": 0.05, "target_static_margin": 0.10,
-                "cl_alpha_per_rad": 5.5, "s_h_m2": 0.08, "l_h_m": 0.55,
-                "is_canard": False, "is_tailless": False,
-                "is_boxwing": False, "is_tandem": False,
+                "mac_m": 0.30,
+                "s_ref_m2": 0.60,
+                "x_np_m": 0.12,
+                "cg_aft_m": 0.105,
+                "sm_at_aft": 0.05,
+                "target_static_margin": 0.10,
+                "cl_alpha_per_rad": 5.5,
+                "s_h_m2": 0.08,
+                "l_h_m": 0.55,
+                "is_canard": False,
+                "is_tailless": False,
+                "is_boxwing": False,
+                "is_tandem": False,
             }
             ap = AeroplaneModel(
-                name="b4-test-plane", uuid=uid_str,
+                name="b4-test-plane",
+                uuid=uid_str,
                 assumption_computation_context=ctx,
             )
             db.add(ap)
@@ -887,8 +990,12 @@ class TestHtailScaleNegativeDelta:
             db.add(htail)
             db.flush()
             hxs = WingXSecModel(
-                wing_id=htail.id, xyz_le=[0.6, 0.0, 0.0], chord=0.12,
-                twist=0.0, airfoil="naca0012", sort_index=0,
+                wing_id=htail.id,
+                xyz_le=[0.6, 0.0, 0.0],
+                chord=0.12,
+                twist=0.0,
+                airfoil="naca0012",
+                sort_index=0,
             )
             db.add(hxs)
             db.commit()
@@ -905,6 +1012,7 @@ class TestHtailScaleNegativeDelta:
     def test_htail_scale_service_raises_for_scale_near_zero(self):
         """apply_htail_scale service-level check: scale ≤ 0.1 raises ValueError."""
         from app.services.sm_sizing_service import apply_htail_scale
+
         db = MagicMock()
 
         hxsec = MagicMock()
@@ -915,11 +1023,19 @@ class TestHtailScaleNegativeDelta:
 
         plane_mock = MagicMock()
         plane_mock.assumption_computation_context = {
-            "mac_m": 0.30, "s_ref_m2": 0.60, "x_np_m": 0.12,
-            "cg_aft_m": 0.105, "sm_at_aft": 0.05, "target_static_margin": 0.10,
-            "cl_alpha_per_rad": 5.5, "s_h_m2": 0.08, "l_h_m": 0.55,
-            "is_canard": False, "is_tailless": False,
-            "is_boxwing": False, "is_tandem": False,
+            "mac_m": 0.30,
+            "s_ref_m2": 0.60,
+            "x_np_m": 0.12,
+            "cg_aft_m": 0.105,
+            "sm_at_aft": 0.05,
+            "target_static_margin": 0.10,
+            "cl_alpha_per_rad": 5.5,
+            "s_h_m2": 0.08,
+            "l_h_m": 0.55,
+            "is_canard": False,
+            "is_tailless": False,
+            "is_boxwing": False,
+            "is_tandem": False,
         }
         plane_mock.id = 1
         plane_mock.wings = [htail_mock]
@@ -966,13 +1082,16 @@ class TestHtailScaleNarrativePreservesSpan:
 # Class 7: gh-509 — Apply-loop convergence guard (Scholz A6, 3-iter stop)
 # ===========================================================================
 
+
 class TestConvergenceGuardService:
     """Unit tests for the 3-iteration convergence guard in apply_wing_shift and apply_htail_scale.
 
     Scholz A6: refuse 4th apply call when |Δ(predicted_sm)| < 0.5% over 3 prior applies.
     """
 
-    def _make_plane_mock(self, sm_apply_count: int = 0, sm_apply_last_delta_sm: float | None = None):
+    def _make_plane_mock(
+        self, sm_apply_count: int = 0, sm_apply_last_delta_sm: float | None = None
+    ):
         """Create a mock aeroplane with a given convergence counter state."""
         ctx = {
             "mac_m": 0.30,
@@ -1014,6 +1133,7 @@ class TestConvergenceGuardService:
     def test_counter_increments_on_apply(self):
         """Each real apply increments sm_apply_count by 1."""
         from app.services.sm_sizing_service import apply_wing_shift
+
         db = MagicMock()
         plane = self._make_plane_mock(sm_apply_count=0)
         db.query.return_value.filter.return_value.first.return_value = plane
@@ -1025,6 +1145,7 @@ class TestConvergenceGuardService:
     def test_counter_not_incremented_on_dry_run(self):
         """Dry-run calls do NOT increment sm_apply_count."""
         from app.services.sm_sizing_service import apply_wing_shift
+
         db = MagicMock()
         plane = self._make_plane_mock(sm_apply_count=1)
         db.query.return_value.filter.return_value.first.return_value = plane
@@ -1036,6 +1157,7 @@ class TestConvergenceGuardService:
     def test_last_delta_sm_stored_on_apply(self):
         """Real apply stores sm_apply_last_delta_sm = predicted_sm − sm_at_aft (unrounded)."""
         from app.services.sm_sizing_service import apply_wing_shift
+
         db = MagicMock()
         plane = self._make_plane_mock(sm_apply_count=0)
         db.query.return_value.filter.return_value.first.return_value = plane
@@ -1095,6 +1217,7 @@ class TestConvergenceGuardService:
     def test_counter_below_3_allows_apply(self):
         """sm_apply_count=2 with last_delta_sm near zero still allows 3rd apply."""
         from app.services.sm_sizing_service import apply_wing_shift
+
         db = MagicMock()
         # count=2, last=0.001 → below threshold of 3 → should proceed normally
         plane = self._make_plane_mock(sm_apply_count=2, sm_apply_last_delta_sm=0.001)
@@ -1108,6 +1231,7 @@ class TestConvergenceGuardService:
     def test_fourth_apply_large_delta_sm_diff_not_blocked(self):
         """If |delta_sm_new - delta_sm_last| >= 0.005, allow apply even at count >= 3."""
         from app.services.sm_sizing_service import apply_wing_shift
+
         db = MagicMock()
         # count=3, last_delta_sm=0.05, new apply will give delta_sm ≈ -0.06
         # → diff = |-0.06 - 0.05| = 0.11 ≥ 0.005 → allowed
@@ -1135,6 +1259,7 @@ class TestConvergenceGuardEndpoint:
     def _setup_plane_with_wings(self, db_session, sm_apply_count: int = 0) -> tuple[str, int, int]:
         """Create aeroplane with context including convergence counter."""
         from app.models.aeroplanemodel import AeroplaneModel, WingModel, WingXSecModel
+
         aeroplane_uuid = str(uuid.uuid4())
         ctx = {
             "mac_m": 0.30,
@@ -1166,19 +1291,43 @@ class TestConvergenceGuardEndpoint:
         main_wing = WingModel(name="main_wing", symmetric=True, aeroplane_id=aeroplane.id)
         db_session.add(main_wing)
         db_session.flush()
-        xs0 = WingXSecModel(wing_id=main_wing.id, xyz_le=[0.0, 0.0, 0.0], chord=0.30, twist=0.0,
-                            airfoil="naca2412", sort_index=0)
-        xs1 = WingXSecModel(wing_id=main_wing.id, xyz_le=[0.0, 0.5, 0.0], chord=0.20, twist=0.0,
-                            airfoil="naca2412", sort_index=1)
+        xs0 = WingXSecModel(
+            wing_id=main_wing.id,
+            xyz_le=[0.0, 0.0, 0.0],
+            chord=0.30,
+            twist=0.0,
+            airfoil="naca2412",
+            sort_index=0,
+        )
+        xs1 = WingXSecModel(
+            wing_id=main_wing.id,
+            xyz_le=[0.0, 0.5, 0.0],
+            chord=0.20,
+            twist=0.0,
+            airfoil="naca2412",
+            sort_index=1,
+        )
         db_session.add_all([xs0, xs1])
 
         htail = WingModel(name="horizontal_tail", symmetric=True, aeroplane_id=aeroplane.id)
         db_session.add(htail)
         db_session.flush()
-        hxs0 = WingXSecModel(wing_id=htail.id, xyz_le=[0.60, 0.0, 0.0], chord=0.12, twist=0.0,
-                              airfoil="naca0012", sort_index=0)
-        hxs1 = WingXSecModel(wing_id=htail.id, xyz_le=[0.60, 0.25, 0.0], chord=0.10, twist=0.0,
-                              airfoil="naca0012", sort_index=1)
+        hxs0 = WingXSecModel(
+            wing_id=htail.id,
+            xyz_le=[0.60, 0.0, 0.0],
+            chord=0.12,
+            twist=0.0,
+            airfoil="naca0012",
+            sort_index=0,
+        )
+        hxs1 = WingXSecModel(
+            wing_id=htail.id,
+            xyz_le=[0.60, 0.25, 0.0],
+            chord=0.10,
+            twist=0.0,
+            airfoil="naca0012",
+            sort_index=1,
+        )
         db_session.add_all([hxs0, hxs1])
         db_session.commit()
         return aeroplane_uuid, main_wing.id, htail.id
@@ -1191,6 +1340,7 @@ class TestConvergenceGuardEndpoint:
             uid, _, _ = self._setup_plane_with_wings(db, sm_apply_count=3)
             # Manually set sm_apply_last_delta_sm to something close to what next apply gives
             from app.models.aeroplanemodel import AeroplaneModel
+
             plane = db.query(AeroplaneModel).filter(AeroplaneModel.uuid == uid).first()
             ctx = dict(plane.assumption_computation_context)
             # dsm_dx ≈ 3.07, delta_m=-0.005 → delta_sm_new ≈ -0.0154
@@ -1222,6 +1372,7 @@ class TestConvergenceGuardEndpoint:
             uid, _, _ = self._setup_plane_with_wings(db, sm_apply_count=2)
             # Set last delta close to what next apply would produce (to verify reset matters)
             from app.models.aeroplanemodel import AeroplaneModel
+
             plane = db.query(AeroplaneModel).filter(AeroplaneModel.uuid == uid).first()
             ctx = dict(plane.assumption_computation_context)
             ctx["sm_apply_last_delta_sm"] = -0.0154
@@ -1245,6 +1396,7 @@ class TestConvergenceGuardEndpoint:
 # ===========================================================================
 # Class 8: gh-515 — bi-directional SM sizing (at_cg='fwd')
 # ===========================================================================
+
 
 def _ctx_fwd(
     *,
@@ -1276,7 +1428,7 @@ def _ctx_fwd(
         "cg_aft_m": cg_aft_m,
         "sm_at_aft": sm_at_aft,
         # fwd CG data (gh-488/500)
-        "cg_forward_m": cg_fwd_actual,     # actual furthest-fwd CG from loading scenarios
+        "cg_forward_m": cg_fwd_actual,  # actual furthest-fwd CG from loading scenarios
         "sm_at_fwd": sm_at_fwd,
         "cg_stability_fwd_m": cg_stability_fwd_m,  # elevator authority limit (gh-500)
         # tail
@@ -1306,11 +1458,11 @@ class TestSuggestCorrectionsFwd:
         """
         suggest = _import_service()
         # SM_fwd = (0.12-0.06)/0.30 = 0.20, sm_max_fwd = (0.12-0.075)/0.30 = 0.15
-        ctx = _ctx_fwd(
-            x_np_m=0.12, cg_fwd_actual=0.06, cg_stability_fwd_m=0.075, mac_m=0.30
-        )
+        ctx = _ctx_fwd(x_np_m=0.12, cg_fwd_actual=0.06, cg_stability_fwd_m=0.075, mac_m=0.30)
         result = suggest(ctx, target_sm=0.10, at_cg="fwd")
-        assert result["status"] in ("suggestion", "error"), f"Expected suggestion/error, got: {result}"
+        assert result["status"] in ("suggestion", "error"), (
+            f"Expected suggestion/error, got: {result}"
+        )
         wing_opts = [o for o in result.get("options", []) if o["lever"] == "wing_shift"]
         assert wing_opts, f"Expected wing_shift option, options={result.get('options')}"
         # SM_fwd too large → bring NP forward → delta < 0
@@ -1328,9 +1480,7 @@ class TestSuggestCorrectionsFwd:
         """
         suggest = _import_service()
         # SM_fwd = (0.12-0.115)/0.30 = 0.017 < sm_min=0.02
-        ctx = _ctx_fwd(
-            x_np_m=0.12, cg_fwd_actual=0.115, cg_stability_fwd_m=0.075, mac_m=0.30
-        )
+        ctx = _ctx_fwd(x_np_m=0.12, cg_fwd_actual=0.115, cg_stability_fwd_m=0.075, mac_m=0.30)
         result = suggest(ctx, target_sm=0.10, at_cg="fwd")
         assert result["status"] in ("suggestion", "error")
         wing_opts = [o for o in result.get("options", []) if o["lever"] == "wing_shift"]
@@ -1366,9 +1516,7 @@ class TestSuggestCorrectionsFwd:
     def test_fwd_options_have_required_fields(self):
         """Each fwd option must have lever, delta_value, delta_unit, predicted_sm, narrative."""
         suggest = _import_service()
-        ctx = _ctx_fwd(
-            x_np_m=0.12, cg_fwd_actual=0.06, cg_stability_fwd_m=0.075, mac_m=0.30
-        )
+        ctx = _ctx_fwd(x_np_m=0.12, cg_fwd_actual=0.06, cg_stability_fwd_m=0.075, mac_m=0.30)
         result = suggest(ctx, target_sm=0.10, at_cg="fwd")
         for opt in result.get("options", []):
             assert "lever" in opt
@@ -1380,9 +1528,7 @@ class TestSuggestCorrectionsFwd:
     def test_fwd_htail_scale_option_present(self):
         """htail_scale (increase Cm_δe authority) must be an option for fwd-CG violation."""
         suggest = _import_service()
-        ctx = _ctx_fwd(
-            x_np_m=0.12, cg_fwd_actual=0.06, cg_stability_fwd_m=0.075, mac_m=0.30
-        )
+        ctx = _ctx_fwd(x_np_m=0.12, cg_fwd_actual=0.06, cg_stability_fwd_m=0.075, mac_m=0.30)
         result = suggest(ctx, target_sm=0.10, at_cg="fwd")
         levers = {o["lever"] for o in result.get("options", [])}
         assert "htail_scale" in levers, (
@@ -1403,8 +1549,7 @@ class TestBidirectionalBothViolate:
         # Setup: aft SM = 0.05 (below target 0.10) → aft violation
         #        fwd SM = 0.20 > sm_max_fwd = 0.15 → fwd violation
         ctx = _ctx_fwd(
-            x_np_m=0.12, cg_aft_m=0.105, cg_fwd_actual=0.06,
-            cg_stability_fwd_m=0.075, mac_m=0.30
+            x_np_m=0.12, cg_aft_m=0.105, cg_fwd_actual=0.06, cg_stability_fwd_m=0.075, mac_m=0.30
         )
         # sm_at_aft = (0.12-0.105)/0.30 = 0.05 < target=0.10 → suggestion
         ctx["sm_at_aft"] = 0.05
@@ -1425,6 +1570,7 @@ class TestFwdCgIntegration:
     def _setup_plane_with_fwd_cg(self, db_session) -> tuple[str, int]:
         """Create aeroplane with fwd-CG violation context, return (uuid, main_wing_id)."""
         from app.models.aeroplanemodel import AeroplaneModel, WingModel, WingXSecModel
+
         uid = str(uuid.uuid4())
         # SM_fwd = (0.12 - 0.06) / 0.30 = 0.20 > sm_max_fwd = (0.12-0.075)/0.30 = 0.15
         ctx = {
@@ -1452,17 +1598,35 @@ class TestFwdCgIntegration:
         mw = WingModel(name="main_wing", symmetric=True, aeroplane_id=ap.id)
         db_session.add(mw)
         db_session.flush()
-        xs0 = WingXSecModel(wing_id=mw.id, xyz_le=[0.0, 0.0, 0.0], chord=0.30, twist=0.0,
-                            airfoil="naca2412", sort_index=0)
-        xs1 = WingXSecModel(wing_id=mw.id, xyz_le=[0.0, 0.5, 0.0], chord=0.20, twist=0.0,
-                            airfoil="naca2412", sort_index=1)
+        xs0 = WingXSecModel(
+            wing_id=mw.id,
+            xyz_le=[0.0, 0.0, 0.0],
+            chord=0.30,
+            twist=0.0,
+            airfoil="naca2412",
+            sort_index=0,
+        )
+        xs1 = WingXSecModel(
+            wing_id=mw.id,
+            xyz_le=[0.0, 0.5, 0.0],
+            chord=0.20,
+            twist=0.0,
+            airfoil="naca2412",
+            sort_index=1,
+        )
         db_session.add_all([xs0, xs1])
 
         ht = WingModel(name="horizontal_tail", symmetric=True, aeroplane_id=ap.id)
         db_session.add(ht)
         db_session.flush()
-        hxs0 = WingXSecModel(wing_id=ht.id, xyz_le=[0.60, 0.0, 0.0], chord=0.12, twist=0.0,
-                              airfoil="naca0012", sort_index=0)
+        hxs0 = WingXSecModel(
+            wing_id=ht.id,
+            xyz_le=[0.60, 0.0, 0.0],
+            chord=0.12,
+            twist=0.0,
+            airfoil="naca0012",
+            sort_index=0,
+        )
         db_session.add(hxs0)
         db_session.commit()
         return str(ap.uuid), mw.id

@@ -61,7 +61,10 @@ def _detect_flap_type(db: Session, aeroplane_id: int) -> str | None:
     # Join chain: TED → WingXSecDetail → WingXSec → Wing → filter by aeroplane_id
     has_flap = (
         db.query(WingXSecTrailingEdgeDeviceModel)
-        .join(WingXSecDetailModel, WingXSecDetailModel.id == WingXSecTrailingEdgeDeviceModel.wing_xsec_detail_id)
+        .join(
+            WingXSecDetailModel,
+            WingXSecDetailModel.id == WingXSecTrailingEdgeDeviceModel.wing_xsec_detail_id,
+        )
         .join(WingXSecModel, WingXSecModel.id == WingXSecDetailModel.wing_xsec_id)
         .join(WingModel, WingModel.id == WingXSecModel.wing_id)
         .filter(

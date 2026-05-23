@@ -12,6 +12,7 @@ Follows the 2026-04-16 "delete wiped almost everything" incident. Covers:
   * Concurrent/rapid DELETE: firing DELETE for the same id twice must leave
     other rows untouched (idempotency-ish — second call returns 404).
 """
+
 from __future__ import annotations
 
 from app.models.component_type import ComponentTypeModel
@@ -37,6 +38,7 @@ def _names_in_db(session_factory) -> set[str]:
 # Row-count invariants — the core of the data-loss regression guard
 # --------------------------------------------------------------------------- #
 
+
 class TestRowCountInvariants:
     """Every mutation changes the row count by exactly the expected delta."""
 
@@ -47,9 +49,14 @@ class TestRowCountInvariants:
     def test_create_adds_exactly_one_row(self, client_and_db):
         client, sf = client_and_db
         before = _count_types_in_db(sf)
-        client.post("/component-types", json={
-            "name": "u1", "label": "U1", "schema": [],
-        })
+        client.post(
+            "/component-types",
+            json={
+                "name": "u1",
+                "label": "U1",
+                "schema": [],
+            },
+        )
         assert _count_types_in_db(sf) == before + 1
 
     def test_update_does_not_change_row_count(self, client_and_db):
@@ -58,17 +65,27 @@ class TestRowCountInvariants:
         servo = next(t for t in body if t["name"] == "servo")
 
         before = _count_types_in_db(sf)
-        client.put(f"/component-types/{servo['id']}", json={
-            "name": servo["name"], "label": "Servo (edited)",
-            "description": None, "schema": servo["schema"],
-        })
+        client.put(
+            f"/component-types/{servo['id']}",
+            json={
+                "name": servo["name"],
+                "label": "Servo (edited)",
+                "description": None,
+                "schema": servo["schema"],
+            },
+        )
         assert _count_types_in_db(sf) == before
 
     def test_delete_removes_exactly_one_row(self, client_and_db):
         client, sf = client_and_db
-        created = client.post("/component-types", json={
-            "name": "doomed", "label": "Doomed", "schema": [],
-        }).json()
+        created = client.post(
+            "/component-types",
+            json={
+                "name": "doomed",
+                "label": "Doomed",
+                "schema": [],
+            },
+        ).json()
         before = _count_types_in_db(sf)
         res = client.delete(f"/component-types/{created['id']}")
         assert res.status_code == 204
@@ -88,12 +105,22 @@ class TestRowCountInvariants:
         # Missing → 404, no change
         client.delete("/component-types/99999")
         # Create a ref'd type, try to delete, expect 409
-        ref_target = client.post("/component-types", json={
-            "name": "ref_target", "label": "RefT", "schema": [],
-        }).json()
-        client.post("/components", json={
-            "name": "c1", "component_type": "ref_target", "specs": {},
-        })
+        ref_target = client.post(
+            "/component-types",
+            json={
+                "name": "ref_target",
+                "label": "RefT",
+                "schema": [],
+            },
+        ).json()
+        client.post(
+            "/components",
+            json={
+                "name": "c1",
+                "component_type": "ref_target",
+                "specs": {},
+            },
+        )
         client.delete(f"/component-types/{ref_target['id']}")
 
         assert _count_types_in_db(sf) == before_count + 1  # only ref_target added
@@ -104,18 +131,23 @@ class TestRowCountInvariants:
 # Full lifecycle round-trip
 # --------------------------------------------------------------------------- #
 
-class TestLifecycleRoundTrip:
 
+class TestLifecycleRoundTrip:
     def test_create_get_update_get_delete_get_roundtrip(self, client_and_db):
         client, sf = client_and_db
 
         # CREATE
-        created = client.post("/component-types", json={
-            "name": "rt_type", "label": "Round-Trip", "description": "x",
-            "schema": [
-                {"name": "foo", "label": "Foo", "type": "number", "min": 0, "max": 10},
-            ],
-        }).json()
+        created = client.post(
+            "/component-types",
+            json={
+                "name": "rt_type",
+                "label": "Round-Trip",
+                "description": "x",
+                "schema": [
+                    {"name": "foo", "label": "Foo", "type": "number", "min": 0, "max": 10},
+                ],
+            },
+        ).json()
         assert created["deletable"] is True
         assert created["schema"][0]["name"] == "foo"
 
@@ -125,7 +157,8 @@ class TestLifecycleRoundTrip:
 
         # UPDATE (schema change)
         updated_payload = {
-            "name": created["name"], "label": "Round-Trip v2",
+            "name": created["name"],
+            "label": "Round-Trip v2",
             "description": "changed",
             "schema": [
                 {"name": "foo", "label": "Foo", "type": "number", "min": 0, "max": 10},
@@ -157,8 +190,8 @@ class TestLifecycleRoundTrip:
 # Edge cases around the path / body
 # --------------------------------------------------------------------------- #
 
-class TestEdgeCases:
 
+class TestEdgeCases:
     def test_delete_with_trailing_slash_is_method_not_allowed_or_redirect(self, client_and_db):
         client, sf = client_and_db
         before = _count_types_in_db(sf)
@@ -188,9 +221,14 @@ class TestEdgeCases:
 
     def test_double_delete_second_returns_404_without_side_effects(self, client_and_db):
         client, sf = client_and_db
-        created = client.post("/component-types", json={
-            "name": "once", "label": "Once", "schema": [],
-        }).json()
+        created = client.post(
+            "/component-types",
+            json={
+                "name": "once",
+                "label": "Once",
+                "schema": [],
+            },
+        ).json()
         first = client.delete(f"/component-types/{created['id']}")
         assert first.status_code == 204
 
@@ -202,9 +240,14 @@ class TestEdgeCases:
     def test_create_with_duplicate_name_is_rejected_and_doesnt_touch_existing(self, client_and_db):
         client, sf = client_and_db
         before_names = _names_in_db(sf)
-        res = client.post("/component-types", json={
-            "name": "material", "label": "Dup", "schema": [],
-        })
+        res = client.post(
+            "/component-types",
+            json={
+                "name": "material",
+                "label": "Dup",
+                "schema": [],
+            },
+        )
         assert res.status_code == 409
         assert _names_in_db(sf) == before_names
 
@@ -213,15 +256,20 @@ class TestEdgeCases:
 # Concurrent requests — verify no cross-contamination
 # --------------------------------------------------------------------------- #
 
-class TestMultipleMutations:
 
+class TestMultipleMutations:
     def test_sequential_create_delete_pairs_leave_count_stable(self, client_and_db):
         client, sf = client_and_db
         baseline = _count_types_in_db(sf)
         for i in range(5):
-            created = client.post("/component-types", json={
-                "name": f"temp_{i}", "label": f"Temp {i}", "schema": [],
-            }).json()
+            created = client.post(
+                "/component-types",
+                json={
+                    "name": f"temp_{i}",
+                    "label": f"Temp {i}",
+                    "schema": [],
+                },
+            ).json()
             assert _count_types_in_db(sf) == baseline + 1
             res = client.delete(f"/component-types/{created['id']}")
             assert res.status_code == 204
@@ -231,9 +279,14 @@ class TestMultipleMutations:
         client, sf = client_and_db
         created_ids = []
         for i in range(5):
-            r = client.post("/component-types", json={
-                "name": f"keep_{i}", "label": f"Keep {i}", "schema": [],
-            })
+            r = client.post(
+                "/component-types",
+                json={
+                    "name": f"keep_{i}",
+                    "label": f"Keep {i}",
+                    "schema": [],
+                },
+            )
             assert r.status_code == 201, r.text
             created_ids.append(r.json()["id"])
 
@@ -259,8 +312,8 @@ class TestMultipleMutations:
 # Schema integrity after repair migration
 # --------------------------------------------------------------------------- #
 
-class TestSchemaIntegrity:
 
+class TestSchemaIntegrity:
     def test_all_seeded_schemas_come_back_as_lists_after_roundtrip(self, client_and_db):
         """Belt-and-suspenders: ensure every seeded type has a list-shaped
         schema in the HTTP response. Regression for the JSON-string bug."""

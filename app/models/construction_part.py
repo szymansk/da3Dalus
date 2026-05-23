@@ -6,6 +6,7 @@ part from being overwritten by a future regeneration pipeline (gh#57-qim).
 Actual STEP/STL file storage and full CRUD arrive in a follow-up ticket
 (gh#57-9uk).
 """
+
 from __future__ import annotations
 
 from datetime import datetime, timezone

@@ -14,7 +14,7 @@ class TestGetAeroplaneFuselages(unittest.TestCase):
         mock_db = MagicMock()
 
         with patch(
-            'app.services.fuselage_service.list_fuselage_names',
+            "app.services.fuselage_service.list_fuselage_names",
             return_value=["fuselage1", "fuselage2"],
         ) as mock_list:
             result = asyncio.run(get_aeroplane_fuselages(aeroplane_id=test_id, db=mock_db))
@@ -27,7 +27,7 @@ class TestGetAeroplaneFuselages(unittest.TestCase):
         mock_db = MagicMock()
 
         with patch(
-            'app.services.fuselage_service.list_fuselage_names',
+            "app.services.fuselage_service.list_fuselage_names",
             side_effect=NotFoundError(message="Aeroplane not found"),
         ):
             with self.assertRaises(HTTPException) as ctx:
@@ -41,7 +41,7 @@ class TestGetAeroplaneFuselages(unittest.TestCase):
         mock_db = MagicMock()
 
         with patch(
-            'app.services.fuselage_service.list_fuselage_names',
+            "app.services.fuselage_service.list_fuselage_names",
             side_effect=InternalError(message="Database error: DB down"),
         ):
             with self.assertRaises(HTTPException) as ctx:
@@ -55,7 +55,7 @@ class TestGetAeroplaneFuselages(unittest.TestCase):
         mock_db = MagicMock()
 
         with patch(
-            'app.services.fuselage_service.list_fuselage_names',
+            "app.services.fuselage_service.list_fuselage_names",
             side_effect=InternalError(message="Unexpected error: oops"),
         ):
             with self.assertRaises(HTTPException) as ctx:

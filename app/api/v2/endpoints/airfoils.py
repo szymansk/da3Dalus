@@ -7,7 +7,18 @@ from uuid import uuid4
 import aerosandbox as asb
 import matplotlib
 import numpy as np
-from fastapi import APIRouter, File, Query, Response, UploadFile, HTTPException, status, Request, Body, Depends
+from fastapi import (
+    APIRouter,
+    File,
+    Query,
+    Response,
+    UploadFile,
+    HTTPException,
+    status,
+    Request,
+    Body,
+    Depends,
+)
 from pydantic import BaseModel, Field, PositiveFloat, model_validator
 
 from app.core.exceptions import (
@@ -75,9 +86,7 @@ class AirfoilGeometryStatsResponse(BaseModel):
     max_camber_pct: float = Field(
         ..., description="Maximum camber-line deviation as percentage of chord."
     )
-    max_camber_x: float = Field(
-        ..., description="Chordwise position of maximum camber (0..1)."
-    )
+    max_camber_x: float = Field(..., description="Chordwise position of maximum camber (0..1).")
 
 
 class AirfoilNeuralFoilRequest(BaseModel):
@@ -85,14 +94,20 @@ class AirfoilNeuralFoilRequest(BaseModel):
         default_factory=lambda: [10000.0, 30000, 50000.0, 100000.0, 200000.0, 500000.0],
         min_length=1,
         description="Liste der Reynolds-Zahlen, für die das Airfoil analysiert wird.",
-)
+    )
     alpha_start_deg: float = Field(-10.0, description="Start-Anstellwinkel in Grad.")
     alpha_end_deg: float = Field(16.0, description="End-Anstellwinkel in Grad.")
-    alpha_step_deg: PositiveFloat = Field(1.0, description="Schrittweite des Anstellwinkels in Grad.")
+    alpha_step_deg: PositiveFloat = Field(
+        1.0, description="Schrittweite des Anstellwinkels in Grad."
+    )
     mach: float = Field(0.0, ge=0.0, description="Mach-Zahl für die Analyse.")
     n_crit: PositiveFloat = Field(9.0, description="e^N-Kriterium für Transition.")
-    xtr_upper: float = Field(1.0, ge=0.0, le=1.0, description="Forced transition upper side (0..1).")
-    xtr_lower: float = Field(1.0, ge=0.0, le=1.0, description="Forced transition lower side (0..1).")
+    xtr_upper: float = Field(
+        1.0, ge=0.0, le=1.0, description="Forced transition upper side (0..1)."
+    )
+    xtr_lower: float = Field(
+        1.0, ge=0.0, le=1.0, description="Forced transition lower side (0..1)."
+    )
     model_size: str = Field("large", description="NeuralFoil Modellgröße.")
     include_360_deg_effects: bool = Field(True, description="Post-stall 360°-Effekte einbeziehen.")
 
@@ -171,7 +186,9 @@ def _resolve_base_url(request: Request | None, settings: Settings) -> str:
     return base_url if base_url != "apiserver" else settings.base_url.rstrip("/")
 
 
-def _build_static_url_from_tmp_path(file_path: Path, request: Request | None, settings: Settings) -> str:
+def _build_static_url_from_tmp_path(
+    file_path: Path, request: Request | None, settings: Settings
+) -> str:
     tmp_root = Path("tmp").resolve()
     normalized = file_path.resolve()
     relative = normalized.relative_to(tmp_root).as_posix()
@@ -218,12 +235,13 @@ def _parse_selig_dat(file_path: Path) -> tuple[np.ndarray, np.ndarray]:
     arr = np.array(coords)
     le_idx = int(np.argmin(arr[:, 0]))
     upper = arr[: le_idx + 1]  # TE -> LE (x descending)
-    lower = arr[le_idx:]       # LE -> TE (x ascending)
+    lower = arr[le_idx:]  # LE -> TE (x ascending)
     return upper, lower
 
 
 def _compute_geometry_stats(
-    upper: np.ndarray, lower: np.ndarray,
+    upper: np.ndarray,
+    lower: np.ndarray,
 ) -> tuple[float, float, float, float]:
     """Return (max_thickness_pct, thickness_x, max_camber_pct, camber_x)."""
     # Flip upper so x is ascending for interpolation
@@ -255,7 +273,11 @@ def _list_available_airfoil_files() -> list[Path]:
     if not AIRFOILS_DIR.exists():
         return []
     return sorted(
-        [entry for entry in AIRFOILS_DIR.iterdir() if entry.is_file() and entry.suffix.lower() == ".dat"],
+        [
+            entry
+            for entry in AIRFOILS_DIR.iterdir()
+            if entry.is_file() and entry.suffix.lower() == ".dat"
+        ],
         key=lambda path: path.name.lower(),
     )
 
@@ -311,7 +333,9 @@ def _run_neuralfoil_analysis(
         cl = _coerce_array_to_alpha_size(raw.get("CL", np.nan), alpha_deg.size)
         cd = _coerce_array_to_alpha_size(raw.get("CD", np.nan), alpha_deg.size)
         cm = _coerce_array_to_alpha_size(raw.get("CM", np.nan), alpha_deg.size)
-        confidence = _coerce_array_to_alpha_size(raw.get("analysis_confidence", np.nan), alpha_deg.size)
+        confidence = _coerce_array_to_alpha_size(
+            raw.get("analysis_confidence", np.nan), alpha_deg.size
+        )
         cl_over_cd = np.divide(
             cl,
             cd,
@@ -366,7 +390,9 @@ def _save_figure_and_get_url(
     return _build_static_url_from_tmp_path(file_path, request, settings)
 
 
-def _plot_alpha_curve(alpha_deg: np.ndarray, results: list[dict[str, Any]], *, value_key: str, ylabel: str, title: str) -> plt.Figure:
+def _plot_alpha_curve(
+    alpha_deg: np.ndarray, results: list[dict[str, Any]], *, value_key: str, ylabel: str, title: str
+) -> plt.Figure:
     figure, ax = plt.subplots(figsize=(8.5, 5.5))
     for result in results:
         values = np.asarray(result[value_key], dtype=float)
@@ -417,7 +443,9 @@ def _save_airfoil_dat(file_name: str, dat_bytes: bytes, overwrite: bool) -> Airf
     )
 
 
-def upload_airfoil_dat_content(file_name: str, dat_content: str, overwrite: bool = False) -> AirfoilUploadResponse:
+def upload_airfoil_dat_content(
+    file_name: str, dat_content: str, overwrite: bool = False
+) -> AirfoilUploadResponse:
     normalized_name = _normalize_dat_filename(file_name)
     payload = (dat_content or "").strip()
     if not payload:
@@ -429,12 +457,18 @@ def _raise_http_from_domain(exc: ServiceException) -> None:
     if isinstance(exc, NotFoundError):
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=exc.message) from exc
     if isinstance(exc, (ValidationError, ValidationDomainError)):
-        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=exc.message) from exc
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=exc.message
+        ) from exc
     if isinstance(exc, ConflictError):
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=exc.message) from exc
     if isinstance(exc, InternalError):
-        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=exc.message) from exc
-    raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=exc.message) from exc
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=exc.message
+        ) from exc
+    raise HTTPException(
+        status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=exc.message
+    ) from exc
 
 
 # ── DB-backed airfoil endpoints (gh#335) ────────────────────────
@@ -485,7 +519,9 @@ async def get_airfoil_db(
     operation_id="import_airfoils_from_directory",
 )
 async def import_airfoils(
-    directory: Annotated[str, Body(embed=True, description="Directory path to scan recursively for .dat files")],
+    directory: Annotated[
+        str, Body(embed=True, description="Directory path to scan recursively for .dat files")
+    ],
     db: Annotated[Session, Depends(get_db)],
 ) -> AirfoilImportResult:
     """Recursively scan a directory for .dat files and import into DB.
@@ -505,7 +541,7 @@ async def import_airfoils(
     "/airfoils/{airfoil_name}/known",
     status_code=status.HTTP_200_OK,
     operation_id="is_airfoil_known",
-    tags=["airfoils"]
+    tags=["airfoils"],
 )
 async def is_airfoil_known(airfoil_name: str) -> AirfoilKnownResponse:
     try:
@@ -538,7 +574,7 @@ async def is_airfoil_known(airfoil_name: str) -> AirfoilKnownResponse:
     "/airfoils/datfile",
     status_code=status.HTTP_201_CREATED,
     operation_id="upload_airfoil_datfile",
-    tags=["airfoils"]
+    tags=["airfoils"],
 )
 async def upload_airfoil_datfile(
     response: Response,
@@ -568,10 +604,7 @@ async def upload_airfoil_datfile(
 
 
 @router.get(
-    "/airfoils",
-    status_code=status.HTTP_200_OK,
-    operation_id="list_airfoils",
-    tags=["airfoils"]
+    "/airfoils", status_code=status.HTTP_200_OK, operation_id="list_airfoils", tags=["airfoils"]
 )
 async def list_airfoils() -> AirfoilListResponse:
     try:
@@ -599,7 +632,7 @@ async def list_airfoils() -> AirfoilListResponse:
     "/airfoils/{airfoil_name}/datfile",
     status_code=status.HTTP_200_OK,
     operation_id="download_airfoil_datfile",
-    tags=["airfoils"]
+    tags=["airfoils"],
 )
 async def download_airfoil_datfile(
     airfoil_name: str,
@@ -635,7 +668,7 @@ async def download_airfoil_datfile(
     status_code=status.HTTP_200_OK,
     operation_id="get_airfoil_geometry_stats",
     tags=["airfoils"],
-    summary="Get airfoil geometry statistics (thickness, camber)."
+    summary="Get airfoil geometry statistics (thickness, camber).",
 )
 async def get_airfoil_geometry_stats(airfoil_name: str) -> AirfoilGeometryStatsResponse:
     """Compute max thickness and max camber from the .dat file coordinates."""
@@ -680,6 +713,7 @@ async def get_airfoil_coordinates(airfoil_name: str):
         lower_sorted = lower.copy()  # already LE→TE (x ascending)
         # Use lower x stations as reference
         from numpy import interp
+
         camber_x = lower_sorted[:, 0]
         upper_y_interp = interp(camber_x, upper_sorted[:, 0], upper_sorted[:, 1])
         camber_y = (upper_y_interp + lower_sorted[:, 1]) / 2
@@ -707,11 +741,13 @@ async def get_airfoil_coordinates(airfoil_name: str):
     "/airfoils/{airfoil_name}/neuralfoil/analysis",
     status_code=status.HTTP_200_OK,
     operation_id="analyze_airfoil_neuralfoil",
-    tags=["airfoils"]
+    tags=["airfoils"],
 )
 async def analyze_airfoil_neuralfoil(
     airfoil_name: str,
-    request: Annotated[AirfoilNeuralFoilRequest, Body(..., description="NeuralFoil Analyse-Konfiguration.")],
+    request: Annotated[
+        AirfoilNeuralFoilRequest, Body(..., description="NeuralFoil Analyse-Konfiguration.")
+    ],
 ) -> AirfoilNeuralFoilAnalysisResponse:
     try:
         file_name, file_path = _resolve_airfoil_file(airfoil_name)
@@ -752,11 +788,13 @@ async def analyze_airfoil_neuralfoil(
     "/airfoils/{airfoil_name}/neuralfoil/analysis/diagrams",
     status_code=status.HTTP_200_OK,
     operation_id="analyze_airfoil_neuralfoil_diagrams",
-    tags=["airfoils"]
+    tags=["airfoils"],
 )
 async def analyze_airfoil_neuralfoil_diagrams(
     airfoil_name: str,
-    request: Annotated[AirfoilNeuralFoilRequest, Body(..., description="NeuralFoil Analyse-Konfiguration.")],
+    request: Annotated[
+        AirfoilNeuralFoilRequest, Body(..., description="NeuralFoil Analyse-Konfiguration.")
+    ],
     settings: Annotated[Settings, Depends(get_settings)],
     http_request: Request = None,
 ) -> AirfoilNeuralFoilDiagramResponse:

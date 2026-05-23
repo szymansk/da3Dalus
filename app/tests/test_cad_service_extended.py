@@ -233,8 +233,13 @@ class TestExtractAeroplaneSettings:
 
     def test_servo_settings_are_dumped(self):
         servo = ServoSettings(
-            height=10, width=5, length=20, lever_length=8,
-            rot_x=1.0, rot_y=2.0, rot_z=3.0,
+            height=10,
+            width=5,
+            length=20,
+            lever_length=8,
+            rot_x=1.0,
+            rot_y=2.0,
+            rot_z=3.0,
         )
         settings = AeroplaneSettings(servo_information={1: servo})
         servo_dumps, _ = cad_service._extract_aeroplane_settings(settings)
@@ -628,9 +633,7 @@ class TestStartWingExportTask:
 
     @patch("app.services.cad_service._get_executor")
     @patch("app.services.cad_service._convert_wing_to_pickle")
-    def test_unsupported_exporter_raises_validation(
-        self, mock_convert, mock_get_executor
-    ):
+    def test_unsupported_exporter_raises_validation(self, mock_convert, mock_get_executor):
         mock_convert.return_value = b"pickled"
         with pytest.raises(ValidationError, match="Unsupported exporter type"):
             cad_service.start_wing_export_task(

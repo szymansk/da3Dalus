@@ -35,18 +35,22 @@ class ServoSettings(BaseModel):
 
     servo: Optional[Servo] = None
 
+
 class AeroplaneSettings(BaseModel):
     printer_settings: Optional[Printer3dSettings] = None
     servo_information: Optional[Dict[int, ServoSettings]] = None
+
 
 class CreatorUrlType(str, Enum):
     WING_LOFT = "wing_loft"
     VASE_MODE_WING = "vase_mode_wing"
 
+
 class AnalysisToolUrlType(str, Enum):
     AVL = "avl"
     AEROBUILDUP = "aerobuildup"
     VORTEX_LATTICE = "vortex_lattice"
+
 
 class ExporterUrlType(str, Enum):
     STL = "stl"
@@ -55,8 +59,10 @@ class ExporterUrlType(str, Enum):
     IGES = "iges"
     THREEMF = "3mf"
 
+
 class AeroplaneMassRequest(BaseModel):
     total_mass_kg: float = Field(..., description="Total mass of the aeroplan in kg")
+
 
 class AlphaSweepRequest(BaseModel):
     alpha_start: float = Field(-15, description="start alpha in degrees")
@@ -67,23 +73,32 @@ class AlphaSweepRequest(BaseModel):
     p: Optional[float] = Field(0.0, description="roll rate in rad/s")
     q: Optional[float] = Field(0.0, description="pitch in rad/s")
     r: Optional[float] = Field(0.0, description="roll in rad/s")
-    xyz_ref: Optional[List[float]] = Field([0.0,0.0,0.0], description="xyz reference points for moments and rotation rates")
+    xyz_ref: Optional[List[float]] = Field(
+        [0.0, 0.0, 0.0], description="xyz reference points for moments and rotation rates"
+    )
     altitude: Optional[float] = Field(0.0, description="altitude in m")
+
 
 class SimpleSweepRequest(BaseModel):
     step_size: float = Field(0.5, description="sweep step size")
     num: int = Field(30, description="number sweep samples")
-    sweep_var: Literal['alpha','velocity','beta','p','q','r'] = Field("alpha", description="variable to sweep over, e.g. alpha, beta, p, q, r")
+    sweep_var: Literal["alpha", "velocity", "beta", "p", "q", "r"] = Field(
+        "alpha", description="variable to sweep over, e.g. alpha, beta, p, q, r"
+    )
 
     alpha: float = Field(-5.0, description="start of fixed value for alpha in degrees")
     velocity: Optional[float] = Field(10.0, description="start of fixed value for velocity in m/s")
-    beta: Optional[float] = Field(0.0, description="start of fixed value for beta (yaw angle) in m/s")
+    beta: Optional[float] = Field(
+        0.0, description="start of fixed value for beta (yaw angle) in m/s"
+    )
     p: Optional[float] = Field(0.0, description="start of fixed value for roll rate in rad/s")
     q: Optional[float] = Field(0.0, description="start of fixed value for pitch in rad/s")
     r: Optional[float] = Field(0.0, description="start of fixed value for roll in rad/s")
-    xyz_ref: Optional[List[float]] = Field([0.0,0.0,0.0], description="start of fixed value for xyz reference points for moments and rotation rates")
+    xyz_ref: Optional[List[float]] = Field(
+        [0.0, 0.0, 0.0],
+        description="start of fixed value for xyz reference points for moments and rotation rates",
+    )
     altitude: Optional[float] = Field(0.0, description="start of fixed value for altitude in m")
-
 
 
 class CreateWingLoftRequest(BaseModel):
@@ -91,10 +106,7 @@ class CreateWingLoftRequest(BaseModel):
     settings: Optional[AeroplaneSettings] = None
 
     model_config = ConfigDict(
-        json_encoders={
-            dict: lambda v: json.dumps(v, sort_keys=False)
-        },
-
+        json_encoders={dict: lambda v: json.dumps(v, sort_keys=False)},
         json_schema_extra={
             "example": {
                 "wings": {
@@ -122,13 +134,16 @@ class CreateWingLoftRequest(BaseModel):
                                         "spare_position_factor": 0.25,
                                         "spare_start": 0.0,
                                         "spare_mode": "standard",
-                                        "spare_vector": [0.03673996532422339, 0.9992005450970961, 0.0157621580261394
-                                                         ],
+                                        "spare_vector": [
+                                            0.03673996532422339,
+                                            0.9992005450970961,
+                                            0.0157621580261394,
+                                        ],
                                         "spare_origin": [
                                             40.5,
                                             -0.04546757240303877,
-                                            2.604835478413867
-                                        ]
+                                            2.604835478413867,
+                                        ],
                                     },
                                     {
                                         "spare_support_dimension_width": 6.42,
@@ -137,16 +152,12 @@ class CreateWingLoftRequest(BaseModel):
                                         "spare_length": 70,
                                         "spare_start": 0.0,
                                         "spare_mode": "standard",
-                                        "spare_vector": [
-                                            0.0,
-                                            1.0,
-                                            0.0
-                                        ],
+                                        "spare_vector": [0.0, 1.0, 0.0],
                                         "spare_origin": [
                                             89.10000000000001,
                                             -0.0469884150916505,
-                                            2.6919644976908543
-                                        ]
+                                            2.6919644976908543,
+                                        ],
                                     },
                                     {
                                         "spare_support_dimension_width": 6.42,
@@ -155,17 +166,13 @@ class CreateWingLoftRequest(BaseModel):
                                         "spare_length": 70,
                                         "spare_start": 0.0,
                                         "spare_mode": "standard",
-                                        "spare_vector": [
-                                            0.0,
-                                            1.0,
-                                            0.0
-                                        ],
+                                        "spare_vector": [0.0, 1.0, 0.0],
                                         "spare_origin": [
                                             32.4,
                                             -0.04157221844287501,
-                                            2.3816707994978588
-                                        ]
-                                    }
+                                            2.3816707994978588,
+                                        ],
+                                    },
                                 ],
                                 "number_interpolation_points": 201,
                             },
@@ -194,13 +201,13 @@ class CreateWingLoftRequest(BaseModel):
                                         "spare_vector": [
                                             0.03673996532422339,
                                             0.9992005450970961,
-                                            0.0157621580261394
+                                            0.0157621580261394,
                                         ],
                                         "spare_origin": [
                                             41.23479930648447,
                                             19.938543329538884,
-                                            2.9200786389366553
-                                        ]
+                                            2.9200786389366553,
+                                        ],
                                     },
                                     {
                                         "spare_support_dimension_width": 6.42,
@@ -209,16 +216,12 @@ class CreateWingLoftRequest(BaseModel):
                                         "spare_length": 60,
                                         "spare_start": 0.0,
                                         "spare_mode": "follow",
-                                        "spare_vector": [
-                                            0.0,
-                                            1.0,
-                                            0.0
-                                        ],
+                                        "spare_vector": [0.0, 1.0, 0.0],
                                         "spare_origin": [
                                             89.10000000000001,
                                             19.95301158490835,
-                                            2.6919644976908543
-                                        ]
+                                            2.6919644976908543,
+                                        ],
                                     },
                                     {
                                         "spare_support_dimension_width": 6.42,
@@ -227,17 +230,13 @@ class CreateWingLoftRequest(BaseModel):
                                         "spare_length": 60,
                                         "spare_start": 0.0,
                                         "spare_mode": "follow",
-                                        "spare_vector": [
-                                            0.0,
-                                            1.0,
-                                            0.0
-                                        ],
+                                        "spare_vector": [0.0, 1.0, 0.0],
                                         "spare_origin": [
                                             32.4,
                                             19.958427781557123,
-                                            2.3816707994978588
-                                        ]
-                                    }
+                                            2.3816707994978588,
+                                        ],
+                                    },
                                 ],
                                 "number_interpolation_points": 201,
                             },
@@ -266,13 +265,13 @@ class CreateWingLoftRequest(BaseModel):
                                         "spare_vector": [
                                             0.03673996532422339,
                                             0.9992005450970961,
-                                            0.0157621580261394
+                                            0.0157621580261394,
                                         ],
                                         "spare_origin": [
                                             48.58279237132915,
                                             219.7786523489581,
-                                            6.072510244164535
-                                        ]
+                                            6.072510244164535,
+                                        ],
                                     }
                                 ],
                                 "trailing_edge_device": {
@@ -289,7 +288,7 @@ class CreateWingLoftRequest(BaseModel):
                                     "positive_deflection_deg": 35,
                                     "negative_deflection_deg": 35,
                                     "trailing_edge_offset_factor": 1.2,
-                                    "hinge_type": "top"
+                                    "hinge_type": "top",
                                 },
                                 "number_interpolation_points": 201,
                             },
@@ -318,13 +317,13 @@ class CreateWingLoftRequest(BaseModel):
                                         "spare_vector": [
                                             0.03673996532422339,
                                             0.9992005450970961,
-                                            0.0157621580261394
+                                            0.0157621580261394,
                                         ],
                                         "spare_origin": [
                                             57.767783702384996,
                                             469.57878862323213,
-                                            10.013049750699386
-                                        ]
+                                            10.013049750699386,
+                                        ],
                                     }
                                 ],
                                 "trailing_edge_device": {
@@ -333,7 +332,7 @@ class CreateWingLoftRequest(BaseModel):
                                     "positive_deflection_deg": 25,
                                     "negative_deflection_deg": 25,
                                     "trailing_edge_offset_factor": 1.0,
-                                    "hinge_type": "top"
+                                    "hinge_type": "top",
                                 },
                                 "number_interpolation_points": 201,
                             },
@@ -362,13 +361,13 @@ class CreateWingLoftRequest(BaseModel):
                                         "spare_vector": [
                                             0.03673996532422339,
                                             0.9992005450970961,
-                                            0.0157621580261394
+                                            0.0157621580261394,
                                         ],
                                         "spare_origin": [
                                             60.52328110170175,
                                             544.5188295055143,
-                                            11.19521160265984
-                                        ]
+                                            11.19521160265984,
+                                        ],
                                     }
                                 ],
                                 "trailing_edge_device": {
@@ -377,7 +376,7 @@ class CreateWingLoftRequest(BaseModel):
                                     "positive_deflection_deg": 25,
                                     "negative_deflection_deg": 25,
                                     "trailing_edge_offset_factor": 1.0,
-                                    "hinge_type": "top"
+                                    "hinge_type": "top",
                                 },
                                 "number_interpolation_points": 201,
                             },
@@ -406,13 +405,13 @@ class CreateWingLoftRequest(BaseModel):
                                         "spare_vector": [
                                             0.03673996532422339,
                                             0.9992005450970961,
-                                            0.0157621580261394
+                                            0.0157621580261394,
                                         ],
                                         "spare_origin": [
                                             63.64617815426074,
                                             629.4508758387675,
-                                            12.534995034881689
-                                        ]
+                                            12.534995034881689,
+                                        ],
                                     }
                                 ],
                                 "trailing_edge_device": {
@@ -421,7 +420,7 @@ class CreateWingLoftRequest(BaseModel):
                                     "positive_deflection_deg": 25,
                                     "negative_deflection_deg": 25,
                                     "trailing_edge_offset_factor": 1.0,
-                                    "hinge_type": "top"
+                                    "hinge_type": "top",
                                 },
                                 "number_interpolation_points": 201,
                             },
@@ -450,13 +449,13 @@ class CreateWingLoftRequest(BaseModel):
                                         "spare_vector": [
                                             0.03673996532422339,
                                             0.9992005450970961,
-                                            0.0157621580261394
+                                            0.0157621580261394,
                                         ],
                                         "spare_origin": [
                                             65.11577676722968,
                                             669.4188976426514,
-                                            13.165481355927264
-                                        ]
+                                            13.165481355927264,
+                                        ],
                                     }
                                 ],
                                 "number_interpolation_points": 201,
@@ -550,13 +549,9 @@ class CreateWingLoftRequest(BaseModel):
                                 },
                                 "number_interpolation_points": 201,
                                 "tip_type": "flat",
-                            }
+                            },
                         ],
-                        "nose_pnt": [
-                            0,
-                            0,
-                            0
-                        ]
+                        "nose_pnt": [0, 0, 0],
                     },
                 },
                 "settings": {
@@ -583,16 +578,16 @@ class CreateWingLoftRequest(BaseModel):
                                 "latch_length": 6,
                                 "cable_z": 26,
                                 "screw_hole_lx": 0,
-                                "screw_hole_d": 0
-                            }
+                                "screw_hole_d": 0,
+                            },
                         }
                     },
                     "printer_settings": {
                         "layer_height": 0.24,
                         "wall_thickness": 0.42,
-                        "rel_gap_wall_thickness": 0.075
-                    }
-                }
+                        "rel_gap_wall_thickness": 0.075,
+                    },
+                },
             }
         },
     )
@@ -605,10 +600,7 @@ class CreateAeroPlaneRequest(BaseModel):
     settings: Optional[AeroplaneSettings] = None
 
     model_config = ConfigDict(
-        json_encoders={
-            dict: lambda v: json.dumps(v, sort_keys=False)
-        },
-
+        json_encoders={dict: lambda v: json.dumps(v, sort_keys=False)},
         json_schema_extra={
             "example": {
                 "blueprint": {
@@ -624,15 +616,15 @@ class CreateAeroPlaneRequest(BaseModel):
                                             "avase_wing[8]",
                                             "avase_wing[9]",
                                             "avase_wing[10]",
-                                            "avase_wing[11]"
+                                            "avase_wing[11]",
                                         ],
                                         "loglevel": 20,
                                         "creator_id": "a_winglet",
-                                        _TYPE_KEY: "FuseMultipleShapesCreator"
+                                        _TYPE_KEY: "FuseMultipleShapesCreator",
                                     },
                                     "loglevel": 50,
                                     "creator_id": "a_winglet",
-                                    _TYPE_KEY: "ConstructionStepNode"
+                                    _TYPE_KEY: "ConstructionStepNode",
                                 },
                                 "x_printable": {
                                     "successors": {},
@@ -644,17 +636,17 @@ class CreateAeroPlaneRequest(BaseModel):
                                             "3": "avase_wing[3]",
                                             "4": "avase_wing[4]",
                                             "5": "avase_wing[5]",
-                                            "6": "a_winglet"
+                                            "6": "a_winglet",
                                         },
                                         "wing_index": "main_wing",
                                         "loglevel": 10,
                                         "creator_id": "x_printable",
-                                        _TYPE_KEY: "StandWingSegmentOnPrinterCreator"
+                                        _TYPE_KEY: "StandWingSegmentOnPrinterCreator",
                                     },
                                     "loglevel": 50,
                                     "creator_id": "",
-                                    _TYPE_KEY: "ConstructionStepNode"
-                                }
+                                    _TYPE_KEY: "ConstructionStepNode",
+                                },
                             },
                             "creator": {
                                 "leading_edge_offset_factor": 0.1,
@@ -664,11 +656,11 @@ class CreateAeroPlaneRequest(BaseModel):
                                 "wing_index": "main_wing",
                                 "loglevel": 10,
                                 "creator_id": "avase_wing",
-                                _TYPE_KEY: "VaseModeWingCreator"
+                                _TYPE_KEY: "VaseModeWingCreator",
                             },
                             "loglevel": 50,
                             "creator_id": "avase_wing",
-                            _TYPE_KEY: "ConstructionStepNode"
+                            _TYPE_KEY: "ConstructionStepNode",
                         },
                         "eHawk-wing": {
                             "successors": {},
@@ -685,20 +677,20 @@ class CreateAeroPlaneRequest(BaseModel):
                                     "avase_wing.aileron[3]",
                                     "avase_wing.aileron[2]*",
                                     "avase_wing.aileron[3]*",
-                                    "avase_wing[2].servo_mount"
+                                    "avase_wing[2].servo_mount",
                                 ],
                                 "loglevel": 20,
                                 "creator_id": "eHawk-wing",
-                                _TYPE_KEY: "ExportToStepCreator"
+                                _TYPE_KEY: "ExportToStepCreator",
                             },
                             "loglevel": 50,
                             "creator_id": "eHawk-wing",
-                            _TYPE_KEY: "ConstructionStepNode"
-                        }
+                            _TYPE_KEY: "ConstructionStepNode",
+                        },
                     },
                     "loglevel": 50,
                     "creator_id": "eHawk-wing.root",
-                    _TYPE_KEY: "ConstructionRootNode"
+                    _TYPE_KEY: "ConstructionRootNode",
                 },
                 "wings": {
                     "main_wing": {
@@ -725,13 +717,16 @@ class CreateAeroPlaneRequest(BaseModel):
                                         "spare_position_factor": 0.25,
                                         "spare_start": 0.0,
                                         "spare_mode": "standard",
-                                        "spare_vector": [0.03673996532422339, 0.9992005450970961, 0.0157621580261394
-                                                         ],
+                                        "spare_vector": [
+                                            0.03673996532422339,
+                                            0.9992005450970961,
+                                            0.0157621580261394,
+                                        ],
                                         "spare_origin": [
                                             40.5,
                                             -0.04546757240303877,
-                                            2.604835478413867
-                                        ]
+                                            2.604835478413867,
+                                        ],
                                     },
                                     {
                                         "spare_support_dimension_width": 6.42,
@@ -740,16 +735,12 @@ class CreateAeroPlaneRequest(BaseModel):
                                         "spare_length": 70,
                                         "spare_start": 0.0,
                                         "spare_mode": "standard",
-                                        "spare_vector": [
-                                            0.0,
-                                            1.0,
-                                            0.0
-                                        ],
+                                        "spare_vector": [0.0, 1.0, 0.0],
                                         "spare_origin": [
                                             89.10000000000001,
                                             -0.0469884150916505,
-                                            2.6919644976908543
-                                        ]
+                                            2.6919644976908543,
+                                        ],
                                     },
                                     {
                                         "spare_support_dimension_width": 6.42,
@@ -758,17 +749,13 @@ class CreateAeroPlaneRequest(BaseModel):
                                         "spare_length": 70,
                                         "spare_start": 0.0,
                                         "spare_mode": "standard",
-                                        "spare_vector": [
-                                            0.0,
-                                            1.0,
-                                            0.0
-                                        ],
+                                        "spare_vector": [0.0, 1.0, 0.0],
                                         "spare_origin": [
                                             32.4,
                                             -0.04157221844287501,
-                                            2.3816707994978588
-                                        ]
-                                    }
+                                            2.3816707994978588,
+                                        ],
+                                    },
                                 ],
                                 "number_interpolation_points": 201,
                             },
@@ -797,13 +784,13 @@ class CreateAeroPlaneRequest(BaseModel):
                                         "spare_vector": [
                                             0.03673996532422339,
                                             0.9992005450970961,
-                                            0.0157621580261394
+                                            0.0157621580261394,
                                         ],
                                         "spare_origin": [
                                             41.23479930648447,
                                             19.938543329538884,
-                                            2.9200786389366553
-                                        ]
+                                            2.9200786389366553,
+                                        ],
                                     },
                                     {
                                         "spare_support_dimension_width": 6.42,
@@ -812,16 +799,12 @@ class CreateAeroPlaneRequest(BaseModel):
                                         "spare_length": 60,
                                         "spare_start": 0.0,
                                         "spare_mode": "follow",
-                                        "spare_vector": [
-                                            0.0,
-                                            1.0,
-                                            0.0
-                                        ],
+                                        "spare_vector": [0.0, 1.0, 0.0],
                                         "spare_origin": [
                                             89.10000000000001,
                                             19.95301158490835,
-                                            2.6919644976908543
-                                        ]
+                                            2.6919644976908543,
+                                        ],
                                     },
                                     {
                                         "spare_support_dimension_width": 6.42,
@@ -830,17 +813,13 @@ class CreateAeroPlaneRequest(BaseModel):
                                         "spare_length": 60,
                                         "spare_start": 0.0,
                                         "spare_mode": "follow",
-                                        "spare_vector": [
-                                            0.0,
-                                            1.0,
-                                            0.0
-                                        ],
+                                        "spare_vector": [0.0, 1.0, 0.0],
                                         "spare_origin": [
                                             32.4,
                                             19.958427781557123,
-                                            2.3816707994978588
-                                        ]
-                                    }
+                                            2.3816707994978588,
+                                        ],
+                                    },
                                 ],
                                 "number_interpolation_points": 201,
                             },
@@ -869,13 +848,13 @@ class CreateAeroPlaneRequest(BaseModel):
                                         "spare_vector": [
                                             0.03673996532422339,
                                             0.9992005450970961,
-                                            0.0157621580261394
+                                            0.0157621580261394,
                                         ],
                                         "spare_origin": [
                                             48.58279237132915,
                                             219.7786523489581,
-                                            6.072510244164535
-                                        ]
+                                            6.072510244164535,
+                                        ],
                                     }
                                 ],
                                 "trailing_edge_device": {
@@ -892,7 +871,7 @@ class CreateAeroPlaneRequest(BaseModel):
                                     "positive_deflection_deg": 35,
                                     "negative_deflection_deg": 35,
                                     "trailing_edge_offset_factor": 1.2,
-                                    "hinge_type": "top"
+                                    "hinge_type": "top",
                                 },
                                 "number_interpolation_points": 201,
                             },
@@ -921,13 +900,13 @@ class CreateAeroPlaneRequest(BaseModel):
                                         "spare_vector": [
                                             0.03673996532422339,
                                             0.9992005450970961,
-                                            0.0157621580261394
+                                            0.0157621580261394,
                                         ],
                                         "spare_origin": [
                                             57.767783702384996,
                                             469.57878862323213,
-                                            10.013049750699386
-                                        ]
+                                            10.013049750699386,
+                                        ],
                                     }
                                 ],
                                 "trailing_edge_device": {
@@ -936,7 +915,7 @@ class CreateAeroPlaneRequest(BaseModel):
                                     "positive_deflection_deg": 25,
                                     "negative_deflection_deg": 25,
                                     "trailing_edge_offset_factor": 1.0,
-                                    "hinge_type": "top"
+                                    "hinge_type": "top",
                                 },
                                 "number_interpolation_points": 201,
                             },
@@ -965,13 +944,13 @@ class CreateAeroPlaneRequest(BaseModel):
                                         "spare_vector": [
                                             0.03673996532422339,
                                             0.9992005450970961,
-                                            0.0157621580261394
+                                            0.0157621580261394,
                                         ],
                                         "spare_origin": [
                                             60.52328110170175,
                                             544.5188295055143,
-                                            11.19521160265984
-                                        ]
+                                            11.19521160265984,
+                                        ],
                                     }
                                 ],
                                 "trailing_edge_device": {
@@ -980,7 +959,7 @@ class CreateAeroPlaneRequest(BaseModel):
                                     "positive_deflection_deg": 25,
                                     "negative_deflection_deg": 25,
                                     "trailing_edge_offset_factor": 1.0,
-                                    "hinge_type": "top"
+                                    "hinge_type": "top",
                                 },
                                 "number_interpolation_points": 201,
                             },
@@ -1009,13 +988,13 @@ class CreateAeroPlaneRequest(BaseModel):
                                         "spare_vector": [
                                             0.03673996532422339,
                                             0.9992005450970961,
-                                            0.0157621580261394
+                                            0.0157621580261394,
                                         ],
                                         "spare_origin": [
                                             63.64617815426074,
                                             629.4508758387675,
-                                            12.534995034881689
-                                        ]
+                                            12.534995034881689,
+                                        ],
                                     }
                                 ],
                                 "trailing_edge_device": {
@@ -1024,7 +1003,7 @@ class CreateAeroPlaneRequest(BaseModel):
                                     "positive_deflection_deg": 25,
                                     "negative_deflection_deg": 25,
                                     "trailing_edge_offset_factor": 1.0,
-                                    "hinge_type": "top"
+                                    "hinge_type": "top",
                                 },
                                 "number_interpolation_points": 201,
                             },
@@ -1053,13 +1032,13 @@ class CreateAeroPlaneRequest(BaseModel):
                                         "spare_vector": [
                                             0.03673996532422339,
                                             0.9992005450970961,
-                                            0.0157621580261394
+                                            0.0157621580261394,
                                         ],
                                         "spare_origin": [
                                             65.11577676722968,
                                             669.4188976426514,
-                                            13.165481355927264
-                                        ]
+                                            13.165481355927264,
+                                        ],
                                     }
                                 ],
                                 "number_interpolation_points": 201,
@@ -1153,13 +1132,9 @@ class CreateAeroPlaneRequest(BaseModel):
                                 },
                                 "number_interpolation_points": 201,
                                 "tip_type": "flat",
-                            }
+                            },
                         ],
-                        "nose_pnt": [
-                            0,
-                            0,
-                            0
-                        ]
+                        "nose_pnt": [0, 0, 0],
                     },
                 },
                 "fuselages": {},
@@ -1187,16 +1162,16 @@ class CreateAeroPlaneRequest(BaseModel):
                                 "latch_length": 6,
                                 "cable_z": 26,
                                 "screw_hole_lx": 0,
-                                "screw_hole_d": 0
-                            }
+                                "screw_hole_d": 0,
+                            },
                         }
                     },
                     "printer_settings": {
                         "layer_height": 0.24,
                         "wall_thickness": 0.42,
-                        "rel_gap_wall_thickness": 0.075
-                    }
-                }
+                        "rel_gap_wall_thickness": 0.075,
+                    },
+                },
             }
         },
     )

@@ -95,9 +95,7 @@ def _wait_for_task_completion(
             pytest.fail(f"CAD task failed: {last_payload}")
         time.sleep(0.5)
 
-    pytest.fail(
-        f"Timed out waiting for CAD task completion. Last status: {last_payload}"
-    )
+    pytest.fail(f"Timed out waiting for CAD task completion. Last status: {last_payload}")
 
 
 def _export_and_fetch_zip(
@@ -126,20 +124,16 @@ def _export_and_fetch_zip(
     a failure in Stage 5.
     """
     create_response = client.post(
-        f"/aeroplanes/{aeroplane_id}/wings/{wing_name}"
-        f"/{creator_url_type}/{exporter_url_type}",
+        f"/aeroplanes/{aeroplane_id}/wings/{wing_name}/{creator_url_type}/{exporter_url_type}",
         json=body,
     )
     assert create_response.status_code == 202, (
         f"[{stage_label}] POST {creator_url_type}/{exporter_url_type} "
         f"returned {create_response.status_code}: {create_response.text}"
     )
-    _wait_for_task_completion(
-        client, aeroplane_id=aeroplane_id, timeout_seconds=240.0
-    )
+    _wait_for_task_completion(client, aeroplane_id=aeroplane_id, timeout_seconds=240.0)
     download_meta_response = client.get(
-        f"/aeroplanes/{aeroplane_id}/wings/{wing_name}"
-        f"/{creator_url_type}/{exporter_url_type}/zip",
+        f"/aeroplanes/{aeroplane_id}/wings/{wing_name}/{creator_url_type}/{exporter_url_type}/zip",
     )
     assert download_meta_response.status_code == 200, (
         f"[{stage_label}] zip metadata GET failed: "
@@ -157,8 +151,7 @@ def _export_and_fetch_zip(
         f"{static_response.status_code} {static_response.text}"
     )
     assert "zip" in static_response.headers["content-type"], (
-        f"[{stage_label}] static zip content-type is "
-        f"{static_response.headers['content-type']!r}"
+        f"[{stage_label}] static zip content-type is {static_response.headers['content-type']!r}"
     )
     return static_response.content
 
@@ -186,14 +179,9 @@ def _parse_stl_vertices(
     if head.startswith(b"solid"):
         text = stl_bytes.decode("ascii", errors="replace")
         triangle_count = len(re.findall(r"facet normal", text))
-        vertex_matches = re.findall(
-            r"vertex\s+(\S+)\s+(\S+)\s+(\S+)", text
-        )
+        vertex_matches = re.findall(r"vertex\s+(\S+)\s+(\S+)\s+(\S+)", text)
         if not vertex_matches:
-            pytest.fail(
-                f"[{stage_label}] ASCII STL entry {entry_name!r} has "
-                f"no vertex lines"
-            )
+            pytest.fail(f"[{stage_label}] ASCII STL entry {entry_name!r} has no vertex lines")
         xs = [float(x) for x, _, _ in vertex_matches]
         ys = [float(y) for _, y, _ in vertex_matches]
         zs = [float(z) for _, _, z in vertex_matches]
@@ -217,9 +205,7 @@ def _parse_stl_vertices(
                 f"at triangle {t}/{triangle_count}"
             )
         for vert in range(3):
-            vx, vy, vz = struct.unpack_from(
-                "<fff", stl_bytes, offset + 12 + vert * 12
-            )
+            vx, vy, vz = struct.unpack_from("<fff", stl_bytes, offset + 12 + vert * 12)
             xs.append(vx)
             ys.append(vy)
             zs.append(vz)
@@ -268,9 +254,7 @@ def _assert_valid_stl(
     failure in Stage 5.
     """
     with ZipFile(io.BytesIO(zip_bytes)) as archive:
-        stl_entries = [
-            name for name in archive.namelist() if name.endswith(".stl")
-        ]
+        stl_entries = [name for name in archive.namelist() if name.endswith(".stl")]
         if not stl_entries:
             pytest.fail(
                 f"[{stage_label}] no .stl entries in the export zip; "
@@ -283,9 +267,7 @@ def _assert_valid_stl(
         total_triangles = 0
         for entry in stl_entries:
             stl_bytes = archive.read(entry)
-            triangle_count, xs, ys, zs = _parse_stl_vertices(
-                stl_bytes, stage_label, entry
-            )
+            triangle_count, xs, ys, zs = _parse_stl_vertices(stl_bytes, stage_label, entry)
             total_triangles += triangle_count
             all_xs.extend(xs)
             all_ys.extend(ys)
@@ -351,9 +333,7 @@ def test_ehawk_designer_workflow_stepwise(client: TestClient):
     # ------------------------------------------------------------------ #
     # Stage 0: create the aeroplane
     # ------------------------------------------------------------------ #
-    create_plane_response = client.post(
-        "/aeroplanes", params={"name": aeroplane_name}
-    )
+    create_plane_response = client.post("/aeroplanes", params={"name": aeroplane_name})
     assert create_plane_response.status_code == 201, create_plane_response.text
     aeroplane_id = create_plane_response.json()["id"]
 
@@ -398,17 +378,13 @@ def test_ehawk_designer_workflow_stepwise(client: TestClient):
     assert create_wing_response.status_code == 201, create_wing_response.text
 
     # GET the wing back and confirm segment metadata survived.
-    bare_wing_response = client.get(
-        f"/aeroplanes/{aeroplane_id}/wings/{wing_name}"
-    )
+    bare_wing_response = client.get(f"/aeroplanes/{aeroplane_id}/wings/{wing_name}")
     assert bare_wing_response.status_code == 200, bare_wing_response.text
     bare_wing_payload = bare_wing_response.json()
     assert len(bare_wing_payload["x_secs"]) == len(asb_wing.x_secs)
 
     tip_xsec_indices = [
-        i
-        for i, x_sec in enumerate(asb_wing.x_secs[:-1])
-        if x_sec.x_sec_type == "tip"
+        i for i, x_sec in enumerate(asb_wing.x_secs[:-1]) if x_sec.x_sec_type == "tip"
     ]
     # eHawk has five ``tip_type='flat'`` segments toward the wing tip.
     # If the stepwise path ever drops these fields again, this assertion
@@ -506,12 +482,8 @@ def test_ehawk_designer_workflow_stepwise(client: TestClient):
             # ones inherit via the WingModel's TED merging.
             cs_patch = {
                 "name": ted.name,
-                "hinge_point": float(ted.rel_chord_root)
-                if ted.rel_chord_root is not None
-                else 0.8,
-                "symmetric": bool(ted.symmetric)
-                if ted.symmetric is not None
-                else False,
+                "hinge_point": float(ted.rel_chord_root) if ted.rel_chord_root is not None else 0.8,
+                "symmetric": bool(ted.symmetric) if ted.symmetric is not None else False,
                 "deflection": 0.0,
             }
 
@@ -555,9 +527,7 @@ def test_ehawk_designer_workflow_stepwise(client: TestClient):
             assert ted_cad_response.status_code == 200, ted_cad_response.text
 
     # GET and verify TEDs are now on the expected cross-sections.
-    wing_with_teds = client.get(
-        f"/aeroplanes/{aeroplane_id}/wings/{wing_name}"
-    ).json()
+    wing_with_teds = client.get(f"/aeroplanes/{aeroplane_id}/wings/{wing_name}").json()
     teds_present = sum(
         1
         for x_sec in wing_with_teds["x_secs"][:-1]
@@ -633,12 +603,9 @@ def test_ehawk_designer_workflow_stepwise(client: TestClient):
 
     assert spare_total > 0, "expected eHawk to have at least one spar"
 
-    wing_with_spars = client.get(
-        f"/aeroplanes/{aeroplane_id}/wings/{wing_name}"
-    ).json()
+    wing_with_spars = client.get(f"/aeroplanes/{aeroplane_id}/wings/{wing_name}").json()
     persisted_spares = sum(
-        len(x_sec.get("spare_list") or [])
-        for x_sec in wing_with_spars["x_secs"][:-1]
+        len(x_sec.get("spare_list") or []) for x_sec in wing_with_spars["x_secs"][:-1]
     )
     assert persisted_spares == spare_total
 
@@ -715,6 +682,4 @@ def test_ehawk_designer_workflow_stepwise(client: TestClient):
         entries = archive.namelist()
     assert entries, "Stage 6 export zip should not be empty"
     step_entries = [name for name in entries if name.endswith((".step", ".stp"))]
-    assert step_entries, (
-        f"Stage 6 zip has no .step/.stp files; entries were: {entries}"
-    )
+    assert step_entries, f"Stage 6 zip has no .step/.stp files; entries were: {entries}"

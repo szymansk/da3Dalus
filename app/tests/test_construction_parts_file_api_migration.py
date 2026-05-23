@@ -1,4 +1,5 @@
 """Migration test for file_path + file_format columns on construction_parts (gh#57-9uk)."""
+
 from __future__ import annotations
 
 from alembic import command

@@ -236,9 +236,7 @@ class TestExpandBoundingBox:
 
 
 class TestMergeTessellationEntries:
-    def _make_entry(
-        self, *, component_type="wing", shapes=None, instances=None, count=1, bb=None
-    ):
+    def _make_entry(self, *, component_type="wing", shapes=None, instances=None, count=1, bb=None):
         entry = MagicMock()
         entry.component_type = component_type
         entry.is_stale = False
@@ -352,9 +350,7 @@ class TestStartWingTessellation:
                 "app.api.v2.endpoints.cad.tessellation_service.start_tessellation_task",
             ) as mock_start,
         ):
-            result = asyncio.run(
-                start_wing_tessellation(plane_id, "main_wing", mock_db)
-            )
+            result = asyncio.run(start_wing_tessellation(plane_id, "main_wing", mock_db))
 
         assert result.aeroplane_id == str(plane_id)
         mock_start.assert_called_once()
@@ -365,9 +361,7 @@ class TestStartWingTessellation:
             side_effect=NotFoundError("no plane"),
         ):
             with pytest.raises(HTTPException) as exc_info:
-                asyncio.run(
-                    start_wing_tessellation(plane_id, "wing", mock_db)
-                )
+                asyncio.run(start_wing_tessellation(plane_id, "wing", mock_db))
         assert exc_info.value.status_code == 404
 
     def test_unexpected_error_maps_to_500(self, plane_id, mock_db):
@@ -376,9 +370,7 @@ class TestStartWingTessellation:
             side_effect=RuntimeError("boom"),
         ):
             with pytest.raises(HTTPException) as exc_info:
-                asyncio.run(
-                    start_wing_tessellation(plane_id, "wing", mock_db)
-                )
+                asyncio.run(start_wing_tessellation(plane_id, "wing", mock_db))
         assert exc_info.value.status_code == 500
         assert "boom" in exc_info.value.detail
 
@@ -547,7 +539,9 @@ class TestCreateWingLoft:
             with pytest.raises(HTTPException) as exc_info:
                 asyncio.run(
                     create_wing_loft(
-                        plane_id, "wing", mock_db,
+                        plane_id,
+                        "wing",
+                        mock_db,
                         creator_url_type=CreatorUrlType.WING_LOFT,
                         exporter_url_type=ExporterUrlType.STL,
                     )
@@ -569,7 +563,9 @@ class TestCreateWingLoft:
             with pytest.raises(HTTPException) as exc_info:
                 asyncio.run(
                     create_wing_loft(
-                        plane_id, "wing", mock_db,
+                        plane_id,
+                        "wing",
+                        mock_db,
                         creator_url_type=CreatorUrlType.WING_LOFT,
                         exporter_url_type=ExporterUrlType.STL,
                     )
@@ -588,9 +584,7 @@ class TestGetAeroplaneTaskStatus:
             "app.api.v2.endpoints.cad.cad_service.get_task_result",
             return_value={"status": "PENDING"},
         ):
-            result = asyncio.run(
-                get_aeroplane_task_status("some-id")
-            )
+            result = asyncio.run(get_aeroplane_task_status("some-id"))
         assert result.status == "PENDING"
         assert result.message == "Task is pending."
         assert result.result is None
@@ -600,9 +594,7 @@ class TestGetAeroplaneTaskStatus:
             "app.api.v2.endpoints.cad.cad_service.get_task_result",
             return_value={"status": "SUCCESS", "result": {"key": "value"}},
         ):
-            result = asyncio.run(
-                get_aeroplane_task_status("some-id")
-            )
+            result = asyncio.run(get_aeroplane_task_status("some-id"))
         assert result.status == "SUCCESS"
         assert result.message is None
         assert result.result == {"key": "value"}
@@ -612,9 +604,7 @@ class TestGetAeroplaneTaskStatus:
             "app.api.v2.endpoints.cad.cad_service.get_task_result",
             return_value={"status": "FAILURE", "error": "Out of memory"},
         ):
-            result = asyncio.run(
-                get_aeroplane_task_status("some-id")
-            )
+            result = asyncio.run(get_aeroplane_task_status("some-id"))
         assert result.status == "FAILURE"
         assert result.message == "Out of memory"
 
@@ -623,9 +613,7 @@ class TestGetAeroplaneTaskStatus:
             "app.api.v2.endpoints.cad.cad_service.get_task_result",
             return_value={"status": "FAILURE"},
         ):
-            result = asyncio.run(
-                get_aeroplane_task_status("some-id")
-            )
+            result = asyncio.run(get_aeroplane_task_status("some-id"))
         assert result.message == "An error occurred"
 
     def test_unknown_status_returns_processing_message(self):
@@ -633,9 +621,7 @@ class TestGetAeroplaneTaskStatus:
             "app.api.v2.endpoints.cad.cad_service.get_task_result",
             return_value={"status": "RUNNING"},
         ):
-            result = asyncio.run(
-                get_aeroplane_task_status("some-id")
-            )
+            result = asyncio.run(get_aeroplane_task_status("some-id"))
         assert result.status == "RUNNING"
         assert result.message == "Task is processing."
 
@@ -658,9 +644,7 @@ class TestGetAeroplaneTaskStatus:
             "app.api.v2.endpoints.cad.cad_service.get_task_result",
             return_value={"status": "PENDING"},
         ) as mock_get:
-            asyncio.run(
-                get_aeroplane_task_status("plane-1", task_type="export")
-            )
+            asyncio.run(get_aeroplane_task_status("plane-1", task_type="export"))
         mock_get.assert_called_once_with("plane-1:export")
 
     def test_no_task_type_uses_aeroplane_id_as_key(self):
@@ -668,9 +652,7 @@ class TestGetAeroplaneTaskStatus:
             "app.api.v2.endpoints.cad.cad_service.get_task_result",
             return_value={"status": "PENDING"},
         ) as mock_get:
-            asyncio.run(
-                get_aeroplane_task_status("plane-1")
-            )
+            asyncio.run(get_aeroplane_task_status("plane-1"))
         mock_get.assert_called_once_with("plane-1")
 
     def test_service_exception_maps_correctly(self):
@@ -744,8 +726,12 @@ class TestDownloadAeroplaneZip:
             with pytest.raises(HTTPException) as exc_info:
                 asyncio.run(
                     download_aeroplane_zip(
-                        "plane-1", "wing", "wing_loft", "stl",
-                        mock_settings, mock_request,
+                        "plane-1",
+                        "wing",
+                        "wing_loft",
+                        "stl",
+                        mock_settings,
+                        mock_request,
                     )
                 )
         assert exc_info.value.status_code == 404
@@ -778,8 +764,12 @@ class TestDownloadAeroplaneZip:
         ):
             result = asyncio.run(
                 download_aeroplane_zip(
-                    "p", "wing", "wing_loft", "stl",
-                    mock_settings, mock_request,
+                    "p",
+                    "wing",
+                    "wing_loft",
+                    "stl",
+                    mock_settings,
+                    mock_request,
                 )
             )
 

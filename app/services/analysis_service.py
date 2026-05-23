@@ -397,13 +397,16 @@ async def calculate_streamlines_json(
     aircraft = get_aeroplane_or_raise(db, aeroplane_uuid)
     plane_schema = get_aeroplane_schema_or_raise(db, aeroplane_uuid)
     resolved_op = operating_point_resolver.resolve_operating_point(
-        db, operating_point, aircraft_pk=aircraft.id,
+        db,
+        operating_point,
+        aircraft_pk=aircraft.id,
     )
 
     try:
         asb_airplane: Airplane = aeroplane_schema_to_asb_airplane_async(plane_schema=plane_schema)
         validate_deflections_against_airplane(
-            asb_airplane, resolved_op.control_deflections,
+            asb_airplane,
+            resolved_op.control_deflections,
         )
         _, figure = analyse_aerodynamics(
             AnalysisToolUrlType.VORTEX_LATTICE,
@@ -418,7 +421,8 @@ async def calculate_streamlines_json(
     except Exception as e:
         logger.exception(
             "Error calculating streamlines for aeroplane %s (op_id=%s)",
-            aeroplane_uuid, resolved_op.operating_point_id,
+            aeroplane_uuid,
+            resolved_op.operating_point_id,
         )
         raise InternalError(message=f"Analysis error: {e}") from e
 
@@ -1398,13 +1402,16 @@ async def get_streamlines_three_view_image(
     aircraft = get_aeroplane_or_raise(db, aeroplane_uuid)
     plane_schema = get_aeroplane_schema_or_raise(db, aeroplane_uuid)
     resolved_op = operating_point_resolver.resolve_operating_point(
-        db, operating_point, aircraft_pk=aircraft.id,
+        db,
+        operating_point,
+        aircraft_pk=aircraft.id,
     )
 
     try:
         asb_airplane: Airplane = aeroplane_schema_to_asb_airplane_async(plane_schema=plane_schema)
         validate_deflections_against_airplane(
-            asb_airplane, resolved_op.control_deflections,
+            asb_airplane,
+            resolved_op.control_deflections,
         )
 
         _, figure = analyse_aerodynamics(
@@ -1423,7 +1430,8 @@ async def get_streamlines_three_view_image(
     except Exception as e:
         logger.exception(
             "Error generating streamlines view for aeroplane %s (op_id=%s)",
-            aeroplane_uuid, resolved_op.operating_point_id,
+            aeroplane_uuid,
+            resolved_op.operating_point_id,
         )
         raise InternalError(message=f"Analysis error: {e}") from e
 
@@ -1548,7 +1556,9 @@ async def analyze_airplane_strip_forces(
     # the AVL geometry file is tracked as a follow-up. The UI labels the
     # AVL strip-forces tab honestly to reflect this partial-trim state.
     resolved_op = operating_point_resolver.resolve_operating_point(
-        db, operating_point, aircraft_pk=aircraft.id,
+        db,
+        operating_point,
+        aircraft_pk=aircraft.id,
     )
 
     user_avl_content = get_user_avl_content(db, aeroplane_uuid)
@@ -1611,7 +1621,8 @@ async def analyze_airplane_strip_forces(
     except Exception as e:
         logger.exception(
             "Error analyzing airplane strip forces for aeroplane %s (op_id=%s)",
-            aeroplane_uuid, resolved_op.operating_point_id,
+            aeroplane_uuid,
+            resolved_op.operating_point_id,
         )
         raise InternalError(message=f"Strip forces analysis error: {e}") from e
 

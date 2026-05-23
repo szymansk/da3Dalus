@@ -22,6 +22,7 @@ from app.tests.conftest import make_aeroplane
 # Helpers
 # ---------------------------------------------------------------------------
 
+
 def _make_profile_payload(
     name: str = "test_trainer",
     profile_type: FlightProfileType = FlightProfileType.trainer,
@@ -41,6 +42,7 @@ def _make_update_payload(**kwargs) -> RCFlightProfileUpdate:
 # ---------------------------------------------------------------------------
 # _merge_dict
 # ---------------------------------------------------------------------------
+
 
 class TestMergeDict:
     def test_base_only_when_update_none(self):
@@ -70,6 +72,7 @@ class TestMergeDict:
 # _get_profile_or_raise / _get_aircraft_or_raise
 # ---------------------------------------------------------------------------
 
+
 class TestGetHelpers:
     def test_profile_not_found(self, client_and_db):
         _, SessionLocal = client_and_db
@@ -87,6 +90,7 @@ class TestGetHelpers:
 # ---------------------------------------------------------------------------
 # create_profile
 # ---------------------------------------------------------------------------
+
 
 class TestCreateProfile:
     def test_create_basic_profile(self, client_and_db):
@@ -137,6 +141,7 @@ class TestCreateProfile:
 # list_profiles
 # ---------------------------------------------------------------------------
 
+
 class TestListProfiles:
     def test_empty_list(self, client_and_db):
         _, SessionLocal = client_and_db
@@ -155,8 +160,13 @@ class TestListProfiles:
     def test_filter_by_type(self, client_and_db):
         _, SessionLocal = client_and_db
         with SessionLocal() as db:
-            svc.create_profile(db, _make_profile_payload(name="trainer_one", profile_type=FlightProfileType.trainer))
-            svc.create_profile(db, _make_profile_payload(name="glider_one", profile_type=FlightProfileType.glider))
+            svc.create_profile(
+                db,
+                _make_profile_payload(name="trainer_one", profile_type=FlightProfileType.trainer),
+            )
+            svc.create_profile(
+                db, _make_profile_payload(name="glider_one", profile_type=FlightProfileType.glider)
+            )
 
             trainers = svc.list_profiles(db, profile_type=FlightProfileType.trainer)
             assert len(trainers) == 1
@@ -182,6 +192,7 @@ class TestListProfiles:
 # get_profile
 # ---------------------------------------------------------------------------
 
+
 class TestGetProfile:
     def test_get_existing(self, client_and_db):
         _, SessionLocal = client_and_db
@@ -202,6 +213,7 @@ class TestGetProfile:
 # update_profile
 # ---------------------------------------------------------------------------
 
+
 class TestUpdateProfile:
     def test_update_name(self, client_and_db):
         _, SessionLocal = client_and_db
@@ -215,7 +227,8 @@ class TestUpdateProfile:
         with SessionLocal() as db:
             created = svc.create_profile(db, _make_profile_payload())
             updated = svc.update_profile(
-                db, created.id,
+                db,
+                created.id,
                 _make_update_payload(type=FlightProfileType.glider),
             )
             assert updated.type == FlightProfileType.glider
@@ -225,7 +238,8 @@ class TestUpdateProfile:
         with SessionLocal() as db:
             created = svc.create_profile(db, _make_profile_payload(name="keep_goals"))
             updated = svc.update_profile(
-                db, created.id,
+                db,
+                created.id,
                 _make_update_payload(name="new_name"),
             )
             # Goals should be preserved
@@ -246,7 +260,8 @@ class TestUpdateProfile:
             created = svc.create_profile(db, _make_profile_payload(name="keep_me"))
             # Update with same name but change type
             updated = svc.update_profile(
-                db, created.id,
+                db,
+                created.id,
                 _make_update_payload(name="keep_me", type=FlightProfileType.warbird),
             )
             assert updated.name == "keep_me"
@@ -278,7 +293,8 @@ class TestUpdateProfile:
             )
             created = svc.create_profile(db, payload)
             updated = svc.update_profile(
-                db, created.id,
+                db,
+                created.id,
                 _make_update_payload(environment={"altitude_m": 500}),
             )
             # altitude changed, wind preserved
@@ -289,6 +305,7 @@ class TestUpdateProfile:
 # ---------------------------------------------------------------------------
 # delete_profile
 # ---------------------------------------------------------------------------
+
 
 class TestDeleteProfile:
     def test_delete_existing(self, client_and_db):
@@ -327,6 +344,7 @@ class TestDeleteProfile:
 # ---------------------------------------------------------------------------
 # assign_profile_to_aircraft
 # ---------------------------------------------------------------------------
+
 
 class TestAssignProfileToAircraft:
     def test_assign_success(self, client_and_db):
@@ -375,6 +393,7 @@ class TestAssignProfileToAircraft:
 # ---------------------------------------------------------------------------
 # detach_profile_from_aircraft
 # ---------------------------------------------------------------------------
+
 
 class TestDetachProfileFromAircraft:
     def test_detach_success(self, client_and_db):

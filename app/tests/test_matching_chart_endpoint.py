@@ -109,7 +109,9 @@ class TestMatchingChartEndpoint:
         assert resp.status_code == 200, resp.text
         data = resp.json()
 
-        assert len(data["constraints"]) >= 4, f"Expected ≥4 constraints, got {len(data['constraints'])}"
+        assert len(data["constraints"]) >= 4, (
+            f"Expected ≥4 constraints, got {len(data['constraints'])}"
+        )
         for c in data["constraints"]:
             assert "name" in c
             assert "color" in c
@@ -260,13 +262,21 @@ class TestMatchingChartEndpointAdditional:
 
             # Seed minimal assumptions
             from app.models.aeroplanemodel import DesignAssumptionModel
-            for param, val in [("mass", 10.0), ("cl_max", 1.2), ("cd0", 0.035), ("t_static_N", 50.0)]:
-                db.add(DesignAssumptionModel(
-                    aeroplane_id=plane.id,
-                    parameter_name=param,
-                    estimate_value=val,
-                    active_source="ESTIMATE",
-                ))
+
+            for param, val in [
+                ("mass", 10.0),
+                ("cl_max", 1.2),
+                ("cd0", 0.035),
+                ("t_static_N", 50.0),
+            ]:
+                db.add(
+                    DesignAssumptionModel(
+                        aeroplane_id=plane.id,
+                        parameter_name=param,
+                        estimate_value=val,
+                        active_source="ESTIMATE",
+                    )
+                )
 
             # Context includes b_ref_m (triggers line 99)
             plane.assumption_computation_context = {
@@ -274,7 +284,7 @@ class TestMatchingChartEndpointAdditional:
                 "e_oswald": 0.8,
                 "aspect_ratio": 7.0,
                 "v_md_mps": 12.0,
-                "b_ref_m": 1.0,       # <-- this is the key triggering line 99
+                "b_ref_m": 1.0,  # <-- this is the key triggering line 99
             }
             db.flush()
             db.commit()
@@ -290,13 +300,16 @@ class TestMatchingChartEndpointAdditional:
             plane = make_aeroplane(db, name="no-context-test")
 
             from app.models.aeroplanemodel import DesignAssumptionModel
+
             for param, val in [("mass", 5.0), ("cl_max", 1.1), ("cd0", 0.04), ("t_static_N", 20.0)]:
-                db.add(DesignAssumptionModel(
-                    aeroplane_id=plane.id,
-                    parameter_name=param,
-                    estimate_value=val,
-                    active_source="ESTIMATE",
-                ))
+                db.add(
+                    DesignAssumptionModel(
+                        aeroplane_id=plane.id,
+                        parameter_name=param,
+                        estimate_value=val,
+                        active_source="ESTIMATE",
+                    )
+                )
 
             # No computation context — triggers all the "None" fallback paths
             plane.assumption_computation_context = None
@@ -332,6 +345,7 @@ class TestMatchingChartEndpointAdditional:
         # patch at the right place. Use a different strategy: patch at the
         # endpoint's import point.
         import app.services.matching_chart_service as mcs_module
+
         monkeypatch.setattr(mcs_module, "compute_chart", _raise_not_found)
 
         resp = client.get(f"/aeroplanes/{aeroplane_uuid}/matching-chart")

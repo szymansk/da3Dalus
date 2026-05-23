@@ -192,12 +192,14 @@ class TestGetVersion:
 
 class TestSerializeWing:
     def test_basic_wing(self):
-        xsec = _make_mock_xsec({
-            "sort_index": 0,
-            "chord": 0.3,
-            "twist": 2.0,
-            "airfoil": "naca0012",
-        })
+        xsec = _make_mock_xsec(
+            {
+                "sort_index": 0,
+                "chord": 0.3,
+                "twist": 2.0,
+                "airfoil": "naca0012",
+            }
+        )
         wing = MagicMock()
         wing.name = "main_wing"
         wing.symmetric = True
@@ -227,10 +229,12 @@ class TestSerializeWing:
 
 class TestSerializeFuselage:
     def test_basic_fuselage(self):
-        xsec = _make_mock_fuselage_xsec({
-            "sort_index": 0,
-            "radius": 0.1,
-        })
+        xsec = _make_mock_fuselage_xsec(
+            {
+                "sort_index": 0,
+                "radius": 0.1,
+            }
+        )
         fus = MagicMock()
         fus.name = "main_fus"
         fus.x_secs = [xsec]
@@ -386,9 +390,7 @@ class TestCreateVersion:
     def test_success(self):
         mock_db = MagicMock()
         now = datetime.now(timezone.utc)
-        ap = _make_mock_aeroplane(
-            wings=[], fuselages=[], weight_items=[], mission_objective=None
-        )
+        ap = _make_mock_aeroplane(wings=[], fuselages=[], weight_items=[], mission_objective=None)
         mock_db.query.return_value.filter.return_value.first.return_value = ap
 
         # After flush + refresh, the version object should have an id and created_at
@@ -418,9 +420,7 @@ class TestCreateVersion:
 
     def test_db_error_raises_internal_error(self):
         mock_db = MagicMock()
-        ap = _make_mock_aeroplane(
-            wings=[], fuselages=[], weight_items=[], mission_objective=None
-        )
+        ap = _make_mock_aeroplane(wings=[], fuselages=[], weight_items=[], mission_objective=None)
         mock_db.query.return_value.filter.return_value.first.return_value = ap
         mock_db.flush.side_effect = SQLAlchemyError("disk full")
 

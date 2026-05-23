@@ -1,4 +1,5 @@
 """REST endpoints for Aeroplane-bound Construction Plans (gh#126)."""
+
 from __future__ import annotations
 
 from typing import Annotated, List
@@ -38,7 +39,7 @@ def _handle_service_error(exc: ServiceException):
 @router.get(
     "/aeroplanes/{aeroplane_id}/construction-plans",
     tags=["construction-plans"],
-    operation_id="list_aeroplane_construction_plans"
+    operation_id="list_aeroplane_construction_plans",
 )
 async def list_aeroplane_plans(
     aeroplane_id: Annotated[str, Path(...)],
@@ -55,7 +56,7 @@ async def list_aeroplane_plans(
     "/aeroplanes/{aeroplane_id}/construction-plans/from-template/{template_id}",
     status_code=status.HTTP_201_CREATED,
     tags=["construction-plans"],
-    operation_id="instantiate_construction_template"
+    operation_id="instantiate_construction_template",
 )
 async def instantiate_template(
     aeroplane_id: Annotated[str, Path(...)],
@@ -78,7 +79,7 @@ async def instantiate_template(
 @router.post(
     "/aeroplanes/{aeroplane_id}/construction-plans/{plan_id}/execute",
     tags=["construction-plans"],
-    operation_id="execute_aeroplane_construction_plan"
+    operation_id="execute_aeroplane_construction_plan",
 )
 async def execute_plan(
     aeroplane_id: Annotated[str, Path(...)],
@@ -95,7 +96,7 @@ async def execute_plan(
 @router.get(
     "/aeroplanes/{aeroplane_id}/construction-plans/{plan_id}/execute-stream",
     tags=["construction-plans"],
-    operation_id="execute_aeroplane_construction_plan_stream"
+    operation_id="execute_aeroplane_construction_plan_stream",
 )
 async def execute_plan_stream(
     aeroplane_id: Annotated[str, Path(...)],
@@ -113,7 +114,9 @@ async def execute_plan_stream(
 
     try:
         generator = svc.execute_plan_streaming(
-            db, plan_id, ExecuteRequest(aeroplane_id=aeroplane_id),
+            db,
+            plan_id,
+            ExecuteRequest(aeroplane_id=aeroplane_id),
         )
         return StreamingResponse(
             generator,
@@ -132,7 +135,7 @@ async def execute_plan_stream(
     "/aeroplanes/{aeroplane_id}/construction-plans/{plan_id}/to-template",
     status_code=status.HTTP_201_CREATED,
     tags=["construction-plans"],
-    operation_id="plan_to_template"
+    operation_id="plan_to_template",
 )
 async def plan_to_template(
     aeroplane_id: Annotated[str, Path(...)],

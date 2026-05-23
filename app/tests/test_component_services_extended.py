@@ -5,6 +5,7 @@ Targets coverage gaps identified in GH Issue #294 (app/ Wave 4).
 Focuses on uncovered functions and error/edge-case paths that the
 existing integration tests do not exercise.
 """
+
 from __future__ import annotations
 
 import os
@@ -161,12 +162,8 @@ class TestBuildTree:
 
     def test_build_tree_parent_child_sorted(self, db):
         root = _make_tree_node(db, name="root", sort_index=0)
-        child_b = _make_tree_node(
-            db, name="B", parent_id=root.id, sort_index=2
-        )
-        child_a = _make_tree_node(
-            db, name="A", parent_id=root.id, sort_index=1
-        )
+        child_b = _make_tree_node(db, name="B", parent_id=root.id, sort_index=2)
+        child_a = _make_tree_node(db, name="A", parent_id=root.id, sort_index=1)
         tree = component_tree_service._build_tree([root, child_b, child_a])
         assert len(tree) == 1
         assert [c.name for c in tree[0].children] == ["A", "B"]
@@ -266,9 +263,7 @@ class TestWeightFromCots:
 
     def test_cots_component_no_mass_returns_none(self, db):
         comp = _make_component(db, name="MasslessComp", mass_g=None)
-        node = _make_tree_node(
-            db, node_type="cots", name="cots", component_id=comp.id
-        )
+        node = _make_tree_node(db, node_type="cots", name="cots", component_id=comp.id)
         assert component_tree_service._weight_from_cots(db, node) is None
 
     def test_cots_multiplied_by_quantity(self, db):
@@ -291,9 +286,7 @@ class TestWeightFromCadShape:
         assert component_tree_service._weight_from_cad_shape(db, node) is None
 
     def test_no_material_returns_none(self, db):
-        node = _make_tree_node(
-            db, node_type="cad_shape", name="s", volume_mm3=1000.0
-        )
+        node = _make_tree_node(db, node_type="cad_shape", name="s", volume_mm3=1000.0)
         assert component_tree_service._weight_from_cad_shape(db, node) is None
 
     def test_material_no_density_returns_none(self, db):
@@ -487,7 +480,6 @@ class TestAddNodeWithConstructionPart:
 
 
 class TestUpdateNode:
-
     def test_update_missing_node_raises_not_found(self, db):
         data = ComponentTreeNodeWrite(node_type="group", name="x")
         with pytest.raises(NotFoundError):
@@ -496,31 +488,24 @@ class TestUpdateNode:
     def test_update_changes_fields(self, db):
         node = _make_tree_node(db, name="old_name")
         data = ComponentTreeNodeWrite(node_type="group", name="new_name")
-        result = component_tree_service.update_node(
-            db, "aero-x", node.id, data
-        )
+        result = component_tree_service.update_node(db, "aero-x", node.id, data)
         assert result.name == "new_name"
 
 
 class TestDeleteNode:
-
     def test_delete_missing_node_raises_not_found(self, db):
         with pytest.raises(NotFoundError):
             component_tree_service.delete_node(db, "aero-x", 99999)
 
     def test_delete_synced_node_raises_validation(self, db):
-        node = _make_tree_node(
-            db, name="synced", synced_from="wing:main_wing"
-        )
+        node = _make_tree_node(db, name="synced", synced_from="wing:main_wing")
         with pytest.raises(ValidationError, match="synced"):
             component_tree_service.delete_node(db, "aero-x", node.id)
 
     def test_delete_node_with_children(self, db):
         parent = _make_tree_node(db, name="parent")
         child = _make_tree_node(db, name="child", parent_id=parent.id)
-        grandchild = _make_tree_node(
-            db, name="grandchild", parent_id=child.id
-        )
+        grandchild = _make_tree_node(db, name="grandchild", parent_id=child.id)
         component_tree_service.delete_node(db, "aero-x", parent.id)
         # All should be gone
         assert (
@@ -532,7 +517,6 @@ class TestDeleteNode:
 
 
 class TestMoveNode:
-
     def test_move_to_nonexistent_parent_raises(self, db):
         node = _make_tree_node(db, name="move_me")
         with pytest.raises(NotFoundError):
@@ -546,33 +530,24 @@ class TestMoveNode:
         parent = _make_tree_node(db, name="parent")
         child = _make_tree_node(db, name="child", parent_id=parent.id)
         with pytest.raises(ValidationError, match="subtree"):
-            component_tree_service.move_node(
-                db, "aero-x", parent.id, child.id, 0
-            )
+            component_tree_service.move_node(db, "aero-x", parent.id, child.id, 0)
 
     def test_move_to_root(self, db):
         parent = _make_tree_node(db, name="parent")
         child = _make_tree_node(db, name="child", parent_id=parent.id)
-        result = component_tree_service.move_node(
-            db, "aero-x", child.id, None, 5
-        )
+        result = component_tree_service.move_node(db, "aero-x", child.id, None, 5)
         assert result.parent_id is None
         assert result.sort_index == 5
 
 
 class TestCalculateWeight:
-
     def test_calculate_weight_missing_node_raises(self, db):
         with pytest.raises(NotFoundError):
             component_tree_service.calculate_weight(db, "aero-x", 99999)
 
     def test_calculate_weight_returns_response(self, db):
-        node = _make_tree_node(
-            db, name="weighted", weight_override_g=15.0
-        )
-        result = component_tree_service.calculate_weight(
-            db, "aero-x", node.id
-        )
+        node = _make_tree_node(db, name="weighted", weight_override_g=15.0)
+        result = component_tree_service.calculate_weight(db, "aero-x", node.id)
         assert result.own_weight_g == 15.0
         assert result.source == "override"
         assert result.total_weight_g == 15.0
@@ -585,23 +560,18 @@ class TestCalculateWeight:
             parent_id=parent.id,
             weight_override_g=10.0,
         )
-        child2 = _make_tree_node(
-            db, name="c2", parent_id=parent.id
-        )
+        child2 = _make_tree_node(db, name="c2", parent_id=parent.id)
         _make_tree_node(
             db,
             name="gc1",
             parent_id=child2.id,
             weight_override_g=5.0,
         )
-        result = component_tree_service.calculate_weight(
-            db, "aero-x", parent.id
-        )
+        result = component_tree_service.calculate_weight(db, "aero-x", parent.id)
         assert result.children_weight_g == 15.0
 
 
 class TestSyncGroups:
-
     def test_sync_group_for_wing_creates_node(self, db):
         component_tree_service.sync_group_for_wing(db, "aero-x", "main_wing")
         node = (
@@ -627,9 +597,7 @@ class TestSyncGroups:
         assert count == 1
 
     def test_sync_group_for_fuselage_creates_node(self, db):
-        component_tree_service.sync_group_for_fuselage(
-            db, "aero-x", "fuse_main"
-        )
+        component_tree_service.sync_group_for_fuselage(db, "aero-x", "fuse_main")
         node = (
             db.query(ComponentTreeNodeModel)
             .filter(
@@ -659,12 +627,8 @@ class TestSyncGroups:
             .filter(ComponentTreeNodeModel.synced_from == "wing:w_del")
             .first()
         )
-        _make_tree_node(
-            db, name="child_of_synced", parent_id=wing_group.id
-        )
-        component_tree_service.delete_synced_nodes(
-            db, "aero-x", "wing:w_del"
-        )
+        _make_tree_node(db, name="child_of_synced", parent_id=wing_group.id)
+        component_tree_service.delete_synced_nodes(db, "aero-x", "wing:w_del")
         db.commit()
         remaining = (
             db.query(ComponentTreeNodeModel)
@@ -675,14 +639,11 @@ class TestSyncGroups:
 
 
 class TestUpsertSyncedServo:
-
     def test_create_synced_servo(self, db):
         component_tree_service.sync_group_for_wing(db, "aero-x", "mw")
         db.commit()
         comp = _make_component(db, name="TinyServo", mass_g=10.0)
-        component_tree_service.upsert_synced_servo(
-            db, "aero-x", "mw", 0, comp.id, symmetric=False
-        )
+        component_tree_service.upsert_synced_servo(db, "aero-x", "mw", 0, comp.id, symmetric=False)
         db.commit()
         node = (
             db.query(ComponentTreeNodeModel)
@@ -703,9 +664,7 @@ class TestUpsertSyncedServo:
             db, "aero-x", "mw2", 1, comp1.id, symmetric=False
         )
         db.commit()
-        component_tree_service.upsert_synced_servo(
-            db, "aero-x", "mw2", 1, comp2.id, symmetric=True
-        )
+        component_tree_service.upsert_synced_servo(db, "aero-x", "mw2", 1, comp2.id, symmetric=True)
         db.commit()
         node = (
             db.query(ComponentTreeNodeModel)
@@ -719,14 +678,10 @@ class TestUpsertSyncedServo:
         component_tree_service.sync_group_for_wing(db, "aero-x", "mw3")
         db.commit()
         comp = _make_component(db, name="Servo3", mass_g=10.0)
-        component_tree_service.upsert_synced_servo(
-            db, "aero-x", "mw3", 0, comp.id
-        )
+        component_tree_service.upsert_synced_servo(db, "aero-x", "mw3", 0, comp.id)
         db.commit()
         # Remove by passing component_id=None
-        component_tree_service.upsert_synced_servo(
-            db, "aero-x", "mw3", 0, None
-        )
+        component_tree_service.upsert_synced_servo(db, "aero-x", "mw3", 0, None)
         db.commit()
         node = (
             db.query(ComponentTreeNodeModel)
@@ -737,16 +692,12 @@ class TestUpsertSyncedServo:
 
     def test_remove_nonexistent_servo_is_noop(self, db):
         # Should not raise
-        component_tree_service.upsert_synced_servo(
-            db, "aero-x", "nogroup", 0, None
-        )
+        component_tree_service.upsert_synced_servo(db, "aero-x", "nogroup", 0, None)
 
     def test_create_servo_without_wing_group(self, db):
         """When the wing group doesn't exist, parent_id is None."""
         comp = _make_component(db, name="OrphanServo", mass_g=5.0)
-        component_tree_service.upsert_synced_servo(
-            db, "aero-x", "no_wing", 0, comp.id
-        )
+        component_tree_service.upsert_synced_servo(db, "aero-x", "no_wing", 0, comp.id)
         db.commit()
         node = (
             db.query(ComponentTreeNodeModel)
@@ -758,15 +709,11 @@ class TestUpsertSyncedServo:
 
     def test_create_servo_with_missing_component(self, db):
         """When component is not found, name falls back to default."""
-        component_tree_service.upsert_synced_servo(
-            db, "aero-x", "mw_fallback", 0, 99999
-        )
+        component_tree_service.upsert_synced_servo(db, "aero-x", "mw_fallback", 0, 99999)
         db.commit()
         node = (
             db.query(ComponentTreeNodeModel)
-            .filter(
-                ComponentTreeNodeModel.synced_from == "servo:mw_fallback:0"
-            )
+            .filter(ComponentTreeNodeModel.synced_from == "servo:mw_fallback:0")
             .first()
         )
         assert node is not None
@@ -777,9 +724,7 @@ class TestGetTree:
     """Test the full get_tree response including weight enrichment."""
 
     def test_get_tree_enriches_weights(self, db):
-        node = _make_tree_node(
-            db, name="root_node", weight_override_g=42.0
-        )
+        node = _make_tree_node(db, name="root_node", weight_override_g=42.0)
         tree_resp = component_tree_service.get_tree(db, "aero-x")
         assert tree_resp.total_nodes == 1
         root = tree_resp.root_nodes[0]
@@ -827,39 +772,27 @@ class TestValidateSpecs:
 
     def test_unknown_type_raises_validation(self, db):
         with pytest.raises(ValidationError, match="Unknown component_type"):
-            component_type_service.validate_specs(
-                db, "nonexistent_type", {}
-            )
+            component_type_service.validate_specs(db, "nonexistent_type", {})
 
     def test_missing_required_property_raises(self, db):
         with pytest.raises(ValidationError, match="missing"):
-            component_type_service.validate_specs(
-                db, "brushless_motor", {}
-            )
+            component_type_service.validate_specs(db, "brushless_motor", {})
 
     def test_valid_specs_pass(self, db):
         # Should not raise
-        component_type_service.validate_specs(
-            db, "brushless_motor", {"kv_rpm_per_volt": 1000}
-        )
+        component_type_service.validate_specs(db, "brushless_motor", {"kv_rpm_per_volt": 1000})
 
     def test_number_below_min_raises(self, db):
         with pytest.raises(ValidationError, match="below"):
-            component_type_service.validate_specs(
-                db, "material", {"density_kg_m3": 50}
-            )
+            component_type_service.validate_specs(db, "material", {"density_kg_m3": 50})
 
     def test_number_above_max_raises(self, db):
         with pytest.raises(ValidationError, match="exceeds"):
-            component_type_service.validate_specs(
-                db, "material", {"density_kg_m3": 999999}
-            )
+            component_type_service.validate_specs(db, "material", {"density_kg_m3": 999999})
 
     def test_number_type_with_bool_raises(self, db):
         with pytest.raises(ValidationError, match="number"):
-            component_type_service.validate_specs(
-                db, "brushless_motor", {"kv_rpm_per_volt": True}
-            )
+            component_type_service.validate_specs(db, "brushless_motor", {"kv_rpm_per_volt": True})
 
     def test_number_type_with_string_raises(self, db):
         with pytest.raises(ValidationError, match="number"):
@@ -888,9 +821,7 @@ class TestValidateSpecs:
         db.add(ct)
         db.commit()
         with pytest.raises(ValidationError, match="true or false"):
-            component_type_service.validate_specs(
-                db, "test_bool_type", {"active": "yes"}
-            )
+            component_type_service.validate_specs(db, "test_bool_type", {"active": "yes"})
 
     def test_enum_invalid_option_raises(self, db):
         with pytest.raises(ValidationError, match="not allowed"):
@@ -905,13 +836,10 @@ class TestValidateSpecs:
 
     def test_unknown_keys_ignored(self, db):
         # generic has empty schema, unknown keys are tolerated
-        component_type_service.validate_specs(
-            db, "generic", {"anything": "goes"}
-        )
+        component_type_service.validate_specs(db, "generic", {"anything": "goes"})
 
 
 class TestListTypeNames:
-
     def test_returns_seeded_names(self, db):
         names = component_type_service.list_type_names(db)
         assert "material" in names
@@ -920,28 +848,20 @@ class TestListTypeNames:
 
 
 class TestComponentTypeCreateDuplicate:
-
     def test_create_duplicate_name_raises_conflict(self, db):
         from app.schemas.component_type import ComponentTypeWrite
 
-        data = ComponentTypeWrite(
-            name="dupe_test", label="Dupe", schema=[]
-        )
+        data = ComponentTypeWrite(name="dupe_test", label="Dupe", schema=[])
         component_type_service.create_type(db, data)
         with pytest.raises(ConflictError, match="already exists"):
             component_type_service.create_type(db, data)
 
 
 class TestComponentTypeDeleteProtections:
-
     def test_delete_seeded_raises_conflict(self, db):
         from app.models.component_type import ComponentTypeModel
 
-        seeded = (
-            db.query(ComponentTypeModel)
-            .filter(ComponentTypeModel.name == "material")
-            .first()
-        )
+        seeded = db.query(ComponentTypeModel).filter(ComponentTypeModel.name == "material").first()
         with pytest.raises(ConflictError, match="seeded"):
             component_type_service.delete_type(db, seeded.id)
 
@@ -949,9 +869,7 @@ class TestComponentTypeDeleteProtections:
         from app.models.component_type import ComponentTypeModel
         from app.schemas.component_type import ComponentTypeWrite
 
-        data = ComponentTypeWrite(
-            name="ref_del_test", label="RefDel", schema=[]
-        )
+        data = ComponentTypeWrite(name="ref_del_test", label="RefDel", schema=[])
         ct = component_type_service.create_type(db, data)
         _make_component(db, name="Referencing", component_type="ref_del_test")
         with pytest.raises(ConflictError, match="referenced"):
@@ -963,7 +881,6 @@ class TestComponentTypeDeleteProtections:
 
 
 class TestComponentTypeUpdate:
-
     def test_update_missing_raises_not_found(self, db):
         from app.schemas.component_type import ComponentTypeWrite
 
@@ -978,7 +895,6 @@ class TestComponentTypeUpdate:
 
 
 class TestComponentServiceListFiltering:
-
     def test_list_with_search_query(self, db):
         _make_component(db, name="Alpha Motor")
         _make_component(db, name="Beta Servo")
@@ -988,23 +904,16 @@ class TestComponentServiceListFiltering:
 
     def test_list_with_type_filter(self, db):
         _make_component(db, name="GenComp", component_type="generic")
-        result = component_service.list_components(
-            db, component_type="generic"
-        )
+        result = component_service.list_components(db, component_type="generic")
         assert result.total >= 1
-        assert all(
-            c.component_type == "generic" for c in result.items
-        )
+        assert all(c.component_type == "generic" for c in result.items)
 
     def test_list_empty(self, db):
-        result = component_service.list_components(
-            db, component_type="nonexistent_type_xyz"
-        )
+        result = component_service.list_components(db, component_type="nonexistent_type_xyz")
         assert result.total == 0
 
 
 class TestComponentServiceCRUD:
-
     def test_get_missing_raises_not_found(self, db):
         with pytest.raises(NotFoundError):
             component_service.get_component(db, 99999)
@@ -1045,7 +954,6 @@ class TestComponentServiceCRUD:
 
 
 class TestValidateUpload:
-
     def test_empty_content_raises(self):
         with pytest.raises(ValidationError, match="empty"):
             construction_part_service._validate_upload("test.step", b"")
@@ -1060,23 +968,17 @@ class TestValidateUpload:
             construction_part_service._validate_upload("model.obj", b"data")
 
     def test_step_extension_returns_step(self):
-        suffix, fmt = construction_part_service._validate_upload(
-            "model.step", b"data"
-        )
+        suffix, fmt = construction_part_service._validate_upload("model.step", b"data")
         assert suffix == ".step"
         assert fmt == "step"
 
     def test_stp_extension_returns_step(self):
-        suffix, fmt = construction_part_service._validate_upload(
-            "model.STP", b"data"
-        )
+        suffix, fmt = construction_part_service._validate_upload("model.STP", b"data")
         assert suffix == ".stp"
         assert fmt == "step"
 
     def test_stl_extension_returns_stl(self):
-        suffix, fmt = construction_part_service._validate_upload(
-            "model.stl", b"data"
-        )
+        suffix, fmt = construction_part_service._validate_upload("model.stl", b"data")
         assert suffix == ".stl"
         assert fmt == "stl"
 
@@ -1087,14 +989,11 @@ class TestValidateUpload:
 
 
 class TestStoreFile:
-
     def test_stores_file_on_disk(self, tmp_path):
         original_root = construction_part_service.STORAGE_ROOT
         construction_part_service.STORAGE_ROOT = tmp_path / "parts"
         try:
-            dest = construction_part_service._store_file(
-                "aero1", 42, b"step data", ".step"
-            )
+            dest = construction_part_service._store_file("aero1", 42, b"step data", ".step")
             assert dest.exists()
             assert dest.read_bytes() == b"step data"
             assert "aero1" in str(dest)
@@ -1103,7 +1002,6 @@ class TestStoreFile:
 
 
 class TestCreatePart:
-
     def test_create_with_valid_step_file(self, db, tmp_path):
         original_root = construction_part_service.STORAGE_ROOT
         construction_part_service.STORAGE_ROOT = tmp_path / "parts"
@@ -1137,96 +1035,67 @@ class TestCreatePart:
 
 
 class TestGetPartFile:
-
     def test_invalid_format_raises(self, db):
-        part = _make_construction_part(
-            db, file_path="/some/file.step", file_format="step"
-        )
+        part = _make_construction_part(db, file_path="/some/file.step", file_format="step")
         with pytest.raises(ValidationError, match="Invalid format"):
-            construction_part_service.get_part_file(
-                db, "aero-x", part.id, "obj"
-            )
+            construction_part_service.get_part_file(db, "aero-x", part.id, "obj")
 
     def test_missing_file_path_raises(self, db):
         part = _make_construction_part(db, file_path=None, file_format="step")
         with pytest.raises(NotFoundError):
-            construction_part_service.get_part_file(
-                db, "aero-x", part.id, "step"
-            )
+            construction_part_service.get_part_file(db, "aero-x", part.id, "step")
 
     def test_same_format_returns_path_directly(self, db, tmp_path):
         f = tmp_path / "test.step"
         f.write_bytes(b"step data")
-        part = _make_construction_part(
-            db, file_path=str(f), file_format="step"
-        )
-        path, mime = construction_part_service.get_part_file(
-            db, "aero-x", part.id, "step"
-        )
+        part = _make_construction_part(db, file_path=str(f), file_format="step")
+        path, mime = construction_part_service.get_part_file(db, "aero-x", part.id, "step")
         assert path == f
         assert mime == "model/step"
 
     def test_stl_from_stl_source(self, db, tmp_path):
         f = tmp_path / "test.stl"
         f.write_bytes(b"stl data")
-        part = _make_construction_part(
-            db, file_path=str(f), file_format="stl"
-        )
-        path, mime = construction_part_service.get_part_file(
-            db, "aero-x", part.id, "stl"
-        )
+        part = _make_construction_part(db, file_path=str(f), file_format="stl")
+        path, mime = construction_part_service.get_part_file(db, "aero-x", part.id, "stl")
         assert path == f
         assert mime == "model/stl"
 
     def test_step_from_stl_raises(self, db, tmp_path):
         f = tmp_path / "test.stl"
         f.write_bytes(b"stl data")
-        part = _make_construction_part(
-            db, file_path=str(f), file_format="stl"
-        )
+        part = _make_construction_part(db, file_path=str(f), file_format="stl")
         with pytest.raises(ValidationError, match="cannot be regenerated"):
-            construction_part_service.get_part_file(
-                db, "aero-x", part.id, "step"
-            )
+            construction_part_service.get_part_file(db, "aero-x", part.id, "step")
 
 
 class TestUpdatePart:
-
     def test_update_name(self, db):
         part = _make_construction_part(db, name="Old Name")
         data = ConstructionPartUpdate(name="New Name")
-        result = construction_part_service.update_part(
-            db, "aero-x", part.id, data
-        )
+        result = construction_part_service.update_part(db, "aero-x", part.id, data)
         assert result.name == "New Name"
 
     def test_update_material(self, db):
         mat = _make_component(db, name="PLA", component_type="material")
         part = _make_construction_part(db)
         data = ConstructionPartUpdate(material_component_id=mat.id)
-        result = construction_part_service.update_part(
-            db, "aero-x", part.id, data
-        )
+        result = construction_part_service.update_part(db, "aero-x", part.id, data)
         assert result.material_component_id == mat.id
 
     def test_update_thumbnail(self, db):
         part = _make_construction_part(db)
         data = ConstructionPartUpdate(thumbnail_url="/img/thumb.png")
-        result = construction_part_service.update_part(
-            db, "aero-x", part.id, data
-        )
+        result = construction_part_service.update_part(db, "aero-x", part.id, data)
         assert result.thumbnail_url == "/img/thumb.png"
 
     def test_update_missing_part_raises(self, db):
         data = ConstructionPartUpdate(name="X")
         with pytest.raises(NotFoundError):
-            construction_part_service.update_part(
-                db, "aero-x", 99999, data
-            )
+            construction_part_service.update_part(db, "aero-x", 99999, data)
 
 
 class TestDeletePart:
-
     def test_delete_locked_raises_conflict(self, db):
         part = _make_construction_part(db, locked=True)
         with pytest.raises(ConflictError, match="locked"):
@@ -1239,17 +1108,13 @@ class TestDeletePart:
     def test_delete_removes_file(self, db, tmp_path):
         f = tmp_path / "to_delete.step"
         f.write_bytes(b"data")
-        part = _make_construction_part(
-            db, file_path=str(f), file_format="step"
-        )
+        part = _make_construction_part(db, file_path=str(f), file_format="step")
         construction_part_service.delete_part(db, "aero-x", part.id)
         assert not f.exists()
 
     def test_delete_with_missing_file_succeeds(self, db):
         """If the file is already gone, delete should still succeed."""
-        part = _make_construction_part(
-            db, file_path="/nonexistent/path.step", file_format="step"
-        )
+        part = _make_construction_part(db, file_path="/nonexistent/path.step", file_format="step")
         # Should not raise
         construction_part_service.delete_part(db, "aero-x", part.id)
 
@@ -1257,15 +1122,12 @@ class TestDeletePart:
         part = _make_construction_part(db, file_path=None)
         construction_part_service.delete_part(db, "aero-x", part.id)
         assert (
-            db.query(ConstructionPartModel)
-            .filter(ConstructionPartModel.id == part.id)
-            .first()
+            db.query(ConstructionPartModel).filter(ConstructionPartModel.id == part.id).first()
             is None
         )
 
 
 class TestExtractGeometry:
-
     def test_non_step_returns_empty(self, tmp_path):
         f = tmp_path / "test.stl"
         f.write_bytes(b"stl data")
@@ -1282,7 +1144,6 @@ class TestExtractGeometry:
 
 
 class TestConstructionPartListAndGet:
-
     def test_list_scoped_to_aeroplane(self, db):
         _make_construction_part(db, "aero-1", name="P1")
         _make_construction_part(db, "aero-2", name="P2")

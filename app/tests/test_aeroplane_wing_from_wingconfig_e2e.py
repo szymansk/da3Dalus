@@ -20,8 +20,12 @@ FIXTURE_PATH = Path(__file__).parent / "fixtures" / "wingconfig_from_prompt.json
 @pytest.fixture()
 def client_and_db():
     app = create_app()
-    engine = create_engine("sqlite://", connect_args={"check_same_thread": False}, poolclass=StaticPool)
-    TestingSessionLocal = sessionmaker(bind=engine, autocommit=False, autoflush=False, class_=Session)
+    engine = create_engine(
+        "sqlite://", connect_args={"check_same_thread": False}, poolclass=StaticPool
+    )
+    TestingSessionLocal = sessionmaker(
+        bind=engine, autocommit=False, autoflush=False, class_=Session
+    )
     Base.metadata.create_all(bind=engine)
 
     def override_get_db():
@@ -114,7 +118,9 @@ def test_create_wing_from_wingconfig_endpoint_persists_full_details(client_and_d
                 assert ted.rel_chord_root == pytest.approx(0.8)
                 assert x_sec.control_surface is not None
                 assert x_sec.control_surface.hinge_point == pytest.approx(ted.rel_chord_root)
-                assert x_sec.control_surface.deflection == pytest.approx(0.0 if ted.deflection_deg is None else ted.deflection_deg)
+                assert x_sec.control_surface.deflection == pytest.approx(
+                    0.0 if ted.deflection_deg is None else ted.deflection_deg
+                )
 
             # Tip segments (last 5 segment anchors) keep tip_type=flat.
             if index >= 7:

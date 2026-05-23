@@ -12,6 +12,7 @@ Covers:
 - Templates per aircraft_class
 - Retrim integration
 """
+
 from __future__ import annotations
 
 import uuid
@@ -28,6 +29,7 @@ from app.models.aeroplanemodel import AeroplaneModel, DesignAssumptionModel
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def _make_aeroplane(session: Session, *, name: str = "test-plane") -> AeroplaneModel:
     a = AeroplaneModel(name=name, uuid=uuid.uuid4(), total_mass_kg=1.5)
@@ -94,12 +96,8 @@ class TestLoadingScenarioCrud:
             name="Battery Fwd",
             component_overrides={
                 "toggles": [],
-                "mass_overrides": [
-                    {"component_uuid": "abc123", "mass_kg_override": 0.3}
-                ],
-                "position_overrides": [
-                    {"component_uuid": "abc123", "x_m_override": 0.05}
-                ],
+                "mass_overrides": [{"component_uuid": "abc123", "mass_kg_override": 0.3}],
+                "position_overrides": [{"component_uuid": "abc123", "x_m_override": 0.05}],
                 "adhoc_items": [],
             },
         )
@@ -195,9 +193,7 @@ class TestLoadingScenarioCrud:
         )
         scenario_id = create_resp.json()["id"]
 
-        del_resp = client.delete(
-            f"/aeroplanes/{aeroplane_uuid}/loading-scenarios/{scenario_id}"
-        )
+        del_resp = client.delete(f"/aeroplanes/{aeroplane_uuid}/loading-scenarios/{scenario_id}")
         assert del_resp.status_code == 204, del_resp.text
 
         list_resp = client.get(f"/aeroplanes/{aeroplane_uuid}/loading-scenarios")
@@ -364,9 +360,7 @@ class TestStabilityEnvelope:
         )
         assert envelope["cg_stability_aft_m"] == pytest.approx(0.30 - 0.08 * 0.20)
 
-    def test_stability_envelope_fwd_stub(
-        self, client_and_db: Tuple[TestClient, any]
-    ) -> None:
+    def test_stability_envelope_fwd_stub(self, client_and_db: Tuple[TestClient, any]) -> None:
         """cg_stability_fwd uses stub value: x_NP - 0.30 * MAC.
 
         TODO: replace with full elevator-authority calculation as follow-up ticket.
@@ -383,9 +377,7 @@ class TestStabilityEnvelope:
         )
         assert envelope["cg_stability_fwd_m"] == pytest.approx(0.30 - 0.30 * 0.20)
 
-    def test_stability_envelope_aft_gt_fwd(
-        self, client_and_db: Tuple[TestClient, any]
-    ) -> None:
+    def test_stability_envelope_aft_gt_fwd(self, client_and_db: Tuple[TestClient, any]) -> None:
         """Aft stability limit must be forward of NP; fwd must be forward of aft."""
         from app.services.loading_scenario_service import compute_stability_envelope
 
@@ -451,11 +443,11 @@ class TestValidation:
 
 _SM_CASES = [
     # (sm, target, expected_tier)
-    (0.01, 0.08, "error"),    # sm < 0.02 → ERROR (unstable)
-    (0.04, 0.08, "warn"),     # 0.02 ≤ sm < target → WARN (low margin)
-    (0.10, 0.08, "ok"),       # target ≤ sm ≤ 0.20 → OK
-    (0.22, 0.08, "warn"),     # 0.20 < sm ≤ 0.30 → WARN (heavy nose)
-    (0.32, 0.08, "error"),    # sm > 0.30 → ERROR (elevator authority)
+    (0.01, 0.08, "error"),  # sm < 0.02 → ERROR (unstable)
+    (0.04, 0.08, "warn"),  # 0.02 ≤ sm < target → WARN (low margin)
+    (0.10, 0.08, "ok"),  # target ≤ sm ≤ 0.20 → OK
+    (0.22, 0.08, "warn"),  # 0.20 < sm ≤ 0.30 → WARN (heavy nose)
+    (0.32, 0.08, "error"),  # sm > 0.30 → ERROR (elevator authority)
 ]
 
 
@@ -577,9 +569,7 @@ _AIRCRAFT_CLASSES = [
 
 class TestTemplatesPerAircraftClass:
     @pytest.mark.parametrize("ac", _AIRCRAFT_CLASSES)
-    def test_template_for_class(
-        self, ac: str, client_and_db: Tuple[TestClient, any]
-    ) -> None:
+    def test_template_for_class(self, ac: str, client_and_db: Tuple[TestClient, any]) -> None:
         """Every aircraft_class has at least one loading scenario template."""
         from app.services.loading_template_service import get_templates_for_class
 
@@ -635,9 +625,7 @@ class TestRetrimIntegration:
             assert op_row is not None
             assert op_row.status == "DIRTY", f"Expected DIRTY, got {op_row.status}"
 
-    def test_assumption_changed_event_emitted(
-        self, client_and_db: Tuple[TestClient, any]
-    ) -> None:
+    def test_assumption_changed_event_emitted(self, client_and_db: Tuple[TestClient, any]) -> None:
         """Creating a loading scenario emits AssumptionChanged(cg_x) event."""
         from app.core.events import AssumptionChanged, event_bus
 
@@ -763,15 +751,22 @@ class TestComponentOverridesAffectCg:
         ]
 
         base_cg = compute_scenario_cg(
-            base_mass_kg=1.3, base_cg_x=0.0,
-            adhoc_items=[], mass_overrides=[], toggles=[], position_overrides=[],
+            base_mass_kg=1.3,
+            base_cg_x=0.0,
+            adhoc_items=[],
+            mass_overrides=[],
+            toggles=[],
+            position_overrides=[],
             components=components,
         )
 
         # Move battery from x=0.10 to x=0.05 (50mm forward)
         shifted_cg = compute_scenario_cg(
-            base_mass_kg=1.3, base_cg_x=0.0,
-            adhoc_items=[], mass_overrides=[], toggles=[],
+            base_mass_kg=1.3,
+            base_cg_x=0.0,
+            adhoc_items=[],
+            mass_overrides=[],
+            toggles=[],
             position_overrides=[{"component_uuid": bat_uuid, "x_m_override": 0.05}],
             components=components,
         )
@@ -799,8 +794,10 @@ class TestComponentOverridesAffectCg:
 
         # Disable battery → only fuselage remains
         no_battery_cg = compute_scenario_cg(
-            base_mass_kg=1.3, base_cg_x=0.0,
-            adhoc_items=[], mass_overrides=[],
+            base_mass_kg=1.3,
+            base_cg_x=0.0,
+            adhoc_items=[],
+            mass_overrides=[],
             toggles=[{"component_uuid": bat_uuid, "enabled": False}],
             position_overrides=[],
             components=components,
@@ -821,10 +818,16 @@ class TestComponentOverridesAffectCg:
 
         # Add a third component (motor)
         from app.models.aeroplanemodel import WeightItemModel
+
         with SessionLocal() as session:
             motor = WeightItemModel(
-                aeroplane_id=plane.id, name="Motor", mass_kg=0.2,
-                x_m=0.35, y_m=0.0, z_m=0.0, category="propulsion",
+                aeroplane_id=plane.id,
+                name="Motor",
+                mass_kg=0.2,
+                x_m=0.35,
+                y_m=0.0,
+                z_m=0.0,
+                category="propulsion",
             )
             session.add(motor)
             session.commit()
@@ -842,7 +845,8 @@ class TestComponentOverridesAffectCg:
         # toggle: fuselage stays on, motor stays on
         # adhoc: 0.1 kg camera at x=0.05
         cg = compute_scenario_cg(
-            base_mass_kg=1.5, base_cg_x=0.0,
+            base_mass_kg=1.5,
+            base_cg_x=0.0,
             adhoc_items=[{"name": "Camera", "mass_kg": 0.1, "x_m": 0.05, "y_m": 0.0, "z_m": 0.0}],
             mass_overrides=[{"component_uuid": bat_uuid, "mass_kg_override": 0.5}],
             toggles=[],
@@ -921,9 +925,9 @@ class TestMissingContextFallback:
         assert data["classification"] == "unknown"
 
         # Must contain an explicit stability_unavailable warning
-        assert any("stability" in w.lower() and "unavailable" in w.lower() for w in data["warnings"]), (
-            f"Expected 'stability unavailable' warning. Got: {data['warnings']}"
-        )
+        assert any(
+            "stability" in w.lower() and "unavailable" in w.lower() for w in data["warnings"]
+        ), f"Expected 'stability unavailable' warning. Got: {data['warnings']}"
 
     def test_no_false_positive_perfect_envelope(
         self, client_and_db: Tuple[TestClient, any]
@@ -1010,8 +1014,13 @@ class TestCgAggMatchesDefaultScenario:
             _seed_assumptions(session, plane.id)
             # Add weight items (no loading scenarios)
             wi = WeightItemModel(
-                aeroplane_id=plane.id, name="Motor", mass_kg=0.5,
-                x_m=0.30, y_m=0.0, z_m=0.0, category="propulsion",
+                aeroplane_id=plane.id,
+                name="Motor",
+                mass_kg=0.5,
+                x_m=0.30,
+                y_m=0.0,
+                z_m=0.0,
+                category="propulsion",
             )
             session.add(wi)
             session.commit()
@@ -1034,9 +1043,7 @@ class TestCgAggMatchesDefaultScenario:
 class TestEdgeCases:
     """Covers boundary values in classify_sm and compute_scenario_cg edge paths."""
 
-    def test_classify_sm_none_returns_unknown(
-        self, client_and_db: Tuple[TestClient, any]
-    ) -> None:
+    def test_classify_sm_none_returns_unknown(self, client_and_db: Tuple[TestClient, any]) -> None:
         """classify_sm(None, target) must return 'unknown'."""
         from app.services.loading_scenario_service import classify_sm
 
@@ -1092,9 +1099,7 @@ class TestEdgeCases:
 
         assert classify_sm(0.301, 0.08) == "error"
 
-    def test_classify_sm_exactly_at_target(
-        self, client_and_db: Tuple[TestClient, any]
-    ) -> None:
+    def test_classify_sm_exactly_at_target(self, client_and_db: Tuple[TestClient, any]) -> None:
         """classify_sm(target_sm, target_sm) is 'ok' (at the lower end of OK band)."""
         from app.services.loading_scenario_service import classify_sm
 
@@ -1122,9 +1127,7 @@ class TestEdgeCases:
         # total_mass == 0 → fallback to base_cg_x
         assert result == pytest.approx(0.15)
 
-    def test_position_override_y_z_optional(
-        self, client_and_db: Tuple[TestClient, any]
-    ) -> None:
+    def test_position_override_y_z_optional(self, client_and_db: Tuple[TestClient, any]) -> None:
         """PositionOverride with only x_m_override (y_m_override / z_m_override = None)
         must not crash and must correctly apply x-only shift."""
         from app.services.loading_scenario_service import compute_scenario_cg
@@ -1228,9 +1231,7 @@ class TestErrorPaths:
             plane = _make_aeroplane(session)
             aeroplane_uuid = str(plane.uuid)
 
-        resp = client.delete(
-            f"/aeroplanes/{aeroplane_uuid}/loading-scenarios/999999"
-        )
+        resp = client.delete(f"/aeroplanes/{aeroplane_uuid}/loading-scenarios/999999")
         assert resp.status_code == 404
 
     def test_delete_scenario_404_unknown_aeroplane(
@@ -1251,9 +1252,7 @@ class TestErrorPaths:
         resp = client.get(f"/aeroplanes/{unknown}/cg-envelope")
         assert resp.status_code == 404
 
-    def test_update_scenario_partial_name_only(
-        self, client_and_db: Tuple[TestClient, any]
-    ) -> None:
+    def test_update_scenario_partial_name_only(self, client_and_db: Tuple[TestClient, any]) -> None:
         """PATCH with only name updates name, leaves other fields intact."""
         client, SessionLocal = client_and_db
         with SessionLocal() as session:
@@ -1299,9 +1298,7 @@ class TestErrorPaths:
         assert result["aircraft_class"] == "glider"
         assert result["name"] == "Keep Name"  # unchanged
 
-    def test_update_scenario_is_default_only(
-        self, client_and_db: Tuple[TestClient, any]
-    ) -> None:
+    def test_update_scenario_is_default_only(self, client_and_db: Tuple[TestClient, any]) -> None:
         """PATCH with only is_default=True makes scenario the default."""
         client, SessionLocal = client_and_db
         with SessionLocal() as session:
@@ -1321,9 +1318,7 @@ class TestErrorPaths:
         assert patch_resp.status_code == 200
         assert patch_resp.json()["is_default"] is True
 
-    def test_update_scenario_overrides_only(
-        self, client_and_db: Tuple[TestClient, any]
-    ) -> None:
+    def test_update_scenario_overrides_only(self, client_and_db: Tuple[TestClient, any]) -> None:
         """PATCH with only component_overrides updates overrides."""
         client, SessionLocal = client_and_db
         with SessionLocal() as session:
@@ -1360,9 +1355,7 @@ class TestStabilityEnvelopeFallbacks:
     """Covers compute_stability_envelope None/zero handling and get_cg_envelope
     branches where x_np or mac is None (lines 598-599, 613, 624-625 in svc)."""
 
-    def test_stability_envelope_x_np_none(
-        self, client_and_db: Tuple[TestClient, any]
-    ) -> None:
+    def test_stability_envelope_x_np_none(self, client_and_db: Tuple[TestClient, any]) -> None:
         """x_np=None → both stability limits are None."""
         from app.services.loading_scenario_service import compute_stability_envelope
 
@@ -1370,9 +1363,7 @@ class TestStabilityEnvelopeFallbacks:
         assert result["cg_stability_aft_m"] is None
         assert result["cg_stability_fwd_m"] is None
 
-    def test_stability_envelope_mac_none(
-        self, client_and_db: Tuple[TestClient, any]
-    ) -> None:
+    def test_stability_envelope_mac_none(self, client_and_db: Tuple[TestClient, any]) -> None:
         """mac=None → both stability limits are None."""
         from app.services.loading_scenario_service import compute_stability_envelope
 
@@ -1380,9 +1371,7 @@ class TestStabilityEnvelopeFallbacks:
         assert result["cg_stability_aft_m"] is None
         assert result["cg_stability_fwd_m"] is None
 
-    def test_stability_envelope_mac_zero(
-        self, client_and_db: Tuple[TestClient, any]
-    ) -> None:
+    def test_stability_envelope_mac_zero(self, client_and_db: Tuple[TestClient, any]) -> None:
         """mac=0 → both stability limits are None (division by zero guard)."""
         from app.services.loading_scenario_service import compute_stability_envelope
 
@@ -1802,7 +1791,13 @@ class TestCgEnvelopeRankingBranch:
                     "mass_overrides": [],
                     "position_overrides": [],
                     "adhoc_items": [
-                        {"name": "Nose Ballast", "mass_kg": 3.0, "x_m": 0.01, "y_m": 0.0, "z_m": 0.0}
+                        {
+                            "name": "Nose Ballast",
+                            "mass_kg": 3.0,
+                            "x_m": 0.01,
+                            "y_m": 0.0,
+                            "z_m": 0.0,
+                        }
                     ],
                 },
             ),

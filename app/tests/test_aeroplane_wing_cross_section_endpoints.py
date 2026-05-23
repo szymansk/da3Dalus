@@ -27,6 +27,7 @@ from app.api.v2.endpoints.aeroplane.wings import (
 
 from app import schemas
 
+
 class TestAeroplaneWingCrossSectionEndpoints(unittest.TestCase):
     def setUp(self):
         self.test_plane_id = uuid.uuid4()
@@ -46,16 +47,16 @@ class TestAeroplaneWingCrossSectionEndpoints(unittest.TestCase):
         # Mock the schema validation
         mock_schemas = [
             schemas.WingXSecReadSchema.model_construct(airfoil="NACA0012", chord=1.0),
-            schemas.WingXSecReadSchema.model_construct(airfoil="NACA2412", chord=0.8)
+            schemas.WingXSecReadSchema.model_construct(airfoil="NACA2412", chord=0.8),
         ]
 
-        with patch('app.schemas.aeroplaneschema.WingXSecReadSchema.model_validate',
-                  side_effect=mock_schemas) as validate:
+        with patch(
+            "app.schemas.aeroplaneschema.WingXSecReadSchema.model_validate",
+            side_effect=mock_schemas,
+        ) as validate:
             result = asyncio.run(
                 get_aeroplane_wing_cross_sections(
-                    aeroplane_id=self.test_plane_id,
-                    wing_name=self.test_wing_name,
-                    db=mock_db
+                    aeroplane_id=self.test_plane_id, wing_name=self.test_wing_name, db=mock_db
                 )
             )
 
@@ -69,9 +70,7 @@ class TestAeroplaneWingCrossSectionEndpoints(unittest.TestCase):
         with self.assertRaises(HTTPException) as ctx:
             asyncio.run(
                 get_aeroplane_wing_cross_sections(
-                    aeroplane_id=self.test_plane_id,
-                    wing_name=self.test_wing_name,
-                    db=mock_db
+                    aeroplane_id=self.test_plane_id, wing_name=self.test_wing_name, db=mock_db
                 )
             )
         self.assertEqual(ctx.exception.status_code, 404)
@@ -85,14 +84,15 @@ class TestAeroplaneWingCrossSectionEndpoints(unittest.TestCase):
         with self.assertRaises(HTTPException) as ctx:
             asyncio.run(
                 get_aeroplane_wing_cross_sections(
-                    aeroplane_id=self.test_plane_id,
-                    wing_name=self.test_wing_name,
-                    db=mock_db
+                    aeroplane_id=self.test_plane_id, wing_name=self.test_wing_name, db=mock_db
                 )
             )
         self.assertEqual(ctx.exception.status_code, 404)
 
-    @patch("app.api.v2.endpoints.aeroplane.wings.wing_service.get_wing_design_model", return_value="asb")
+    @patch(
+        "app.api.v2.endpoints.aeroplane.wings.wing_service.get_wing_design_model",
+        return_value="asb",
+    )
     def test_delete_cross_sections_success(self, _mock_dm):
         mock_db = MagicMock()
         # Simulate plane with a wing that has cross sections
@@ -106,9 +106,7 @@ class TestAeroplaneWingCrossSectionEndpoints(unittest.TestCase):
 
         result = asyncio.run(
             delete_aeroplane_wing_cross_sections(
-                aeroplane_id=self.test_plane_id,
-                wing_name=self.test_wing_name,
-                db=mock_db
+                aeroplane_id=self.test_plane_id, wing_name=self.test_wing_name, db=mock_db
             )
         )
 
@@ -130,14 +128,16 @@ class TestAeroplaneWingCrossSectionEndpoints(unittest.TestCase):
 
         mock_schema = schemas.WingXSecReadSchema.model_construct(airfoil="NACA0012", chord=1.0)
 
-        with patch('app.schemas.aeroplaneschema.WingXSecReadSchema.model_validate',
-                  return_value=mock_schema) as validate:
+        with patch(
+            "app.schemas.aeroplaneschema.WingXSecReadSchema.model_validate",
+            return_value=mock_schema,
+        ) as validate:
             result = asyncio.run(
                 get_aeroplane_wing_cross_section(
                     aeroplane_id=self.test_plane_id,
                     wing_name=self.test_wing_name,
                     cross_section_index=self.test_cross_section_index,
-                    db=mock_db
+                    db=mock_db,
                 )
             )
 
@@ -160,13 +160,16 @@ class TestAeroplaneWingCrossSectionEndpoints(unittest.TestCase):
                     aeroplane_id=self.test_plane_id,
                     wing_name=self.test_wing_name,
                     cross_section_index=0,  # Index 0 is out of range for empty list
-                    db=mock_db
+                    db=mock_db,
                 )
             )
         self.assertEqual(ctx.exception.status_code, 404)
         self.assertEqual(ctx.exception.detail, "Cross-section not found")
 
-    @patch("app.api.v2.endpoints.aeroplane.wings.wing_service.get_wing_design_model", return_value="asb")
+    @patch(
+        "app.api.v2.endpoints.aeroplane.wings.wing_service.get_wing_design_model",
+        return_value="asb",
+    )
     def test_create_cross_section_success(self, _mock_dm):
         mock_db = MagicMock()
         # Simulate plane with a wing that has cross sections
@@ -185,7 +188,7 @@ class TestAeroplaneWingCrossSectionEndpoints(unittest.TestCase):
             twist=0.0,
         )
 
-        with patch('app.models.aeroplanemodel.WingXSecModel', autospec=True) as MockXSecModel:
+        with patch("app.models.aeroplanemodel.WingXSecModel", autospec=True) as MockXSecModel:
             # Mock the created cross section
             mock_xsec = MagicMock()
             MockXSecModel.return_value = mock_xsec
@@ -196,19 +199,22 @@ class TestAeroplaneWingCrossSectionEndpoints(unittest.TestCase):
                     wing_name=self.test_wing_name,
                     cross_section_index=0,
                     request=request_schema,
-                    db=mock_db
+                    db=mock_db,
                 )
             )
 
             # Verify cross section was added
             mock_db.add.assert_called_once()
             added_cs = mock_db.add.call_args[0][0]
-            self.assertEqual(added_cs.airfoil, 'NACA0012')
+            self.assertEqual(added_cs.airfoil, "NACA0012")
             self.assertEqual(added_cs.chord, 1.0)
             # Verify timestamp was updated
             self.assertIsNotNone(plane.updated_at)
 
-    @patch("app.api.v2.endpoints.aeroplane.wings.wing_service.get_wing_design_model", return_value="asb")
+    @patch(
+        "app.api.v2.endpoints.aeroplane.wings.wing_service.get_wing_design_model",
+        return_value="asb",
+    )
     def test_update_cross_section_success(self, _mock_dm):
         mock_db = MagicMock()
         # Simulate plane with a wing that has cross sections
@@ -238,7 +244,7 @@ class TestAeroplaneWingCrossSectionEndpoints(unittest.TestCase):
                 wing_name=self.test_wing_name,
                 cross_section_index=0,
                 request=request_schema,
-                db=mock_db
+                db=mock_db,
             )
         )
 
@@ -250,7 +256,10 @@ class TestAeroplaneWingCrossSectionEndpoints(unittest.TestCase):
         # Verify timestamp was updated
         self.assertIsNotNone(plane.updated_at)
 
-    @patch("app.api.v2.endpoints.aeroplane.wings.wing_service.get_wing_design_model", return_value="asb")
+    @patch(
+        "app.api.v2.endpoints.aeroplane.wings.wing_service.get_wing_design_model",
+        return_value="asb",
+    )
     def test_delete_cross_section_success(self, _mock_dm):
         mock_db = MagicMock()
         # Simulate plane with a wing that has cross sections
@@ -268,7 +277,7 @@ class TestAeroplaneWingCrossSectionEndpoints(unittest.TestCase):
                 aeroplane_id=self.test_plane_id,
                 wing_name=self.test_wing_name,
                 cross_section_index=0,
-                db=mock_db
+                db=mock_db,
             )
         )
 
@@ -284,9 +293,7 @@ class TestAeroplaneWingCrossSectionEndpoints(unittest.TestCase):
         with self.assertRaises(HTTPException) as ctx:
             asyncio.run(
                 get_aeroplane_wing_cross_sections(
-                    aeroplane_id=self.test_plane_id,
-                    wing_name=self.test_wing_name,
-                    db=mock_db
+                    aeroplane_id=self.test_plane_id, wing_name=self.test_wing_name, db=mock_db
                 )
             )
         self.assertEqual(ctx.exception.status_code, 500)
@@ -298,9 +305,7 @@ class TestAeroplaneWingCrossSectionEndpoints(unittest.TestCase):
         with self.assertRaises(HTTPException) as ctx:
             asyncio.run(
                 get_aeroplane_wing_cross_sections(
-                    aeroplane_id=self.test_plane_id,
-                    wing_name=self.test_wing_name,
-                    db=mock_db
+                    aeroplane_id=self.test_plane_id, wing_name=self.test_wing_name, db=mock_db
                 )
             )
         self.assertEqual(ctx.exception.status_code, 500)
@@ -314,9 +319,7 @@ class TestAeroplaneWingCrossSectionEndpoints(unittest.TestCase):
         with self.assertRaises(HTTPException) as ctx:
             asyncio.run(
                 delete_aeroplane_wing_cross_sections(
-                    aeroplane_id=self.test_plane_id,
-                    wing_name=self.test_wing_name,
-                    db=mock_db
+                    aeroplane_id=self.test_plane_id, wing_name=self.test_wing_name, db=mock_db
                 )
             )
         self.assertEqual(ctx.exception.status_code, 500)
@@ -329,9 +332,7 @@ class TestAeroplaneWingCrossSectionEndpoints(unittest.TestCase):
         with self.assertRaises(HTTPException) as ctx:
             asyncio.run(
                 delete_aeroplane_wing_cross_sections(
-                    aeroplane_id=self.test_plane_id,
-                    wing_name=self.test_wing_name,
-                    db=mock_db
+                    aeroplane_id=self.test_plane_id, wing_name=self.test_wing_name, db=mock_db
                 )
             )
         self.assertEqual(ctx.exception.status_code, 500)
@@ -347,7 +348,7 @@ class TestAeroplaneWingCrossSectionEndpoints(unittest.TestCase):
                     aeroplane_id=self.test_plane_id,
                     wing_name=self.test_wing_name,
                     cross_section_index=0,
-                    db=mock_db
+                    db=mock_db,
                 )
             )
         self.assertEqual(ctx.exception.status_code, 500)
@@ -362,7 +363,7 @@ class TestAeroplaneWingCrossSectionEndpoints(unittest.TestCase):
                     aeroplane_id=self.test_plane_id,
                     wing_name=self.test_wing_name,
                     cross_section_index=0,
-                    db=mock_db
+                    db=mock_db,
                 )
             )
         self.assertEqual(ctx.exception.status_code, 500)
@@ -386,7 +387,7 @@ class TestAeroplaneWingCrossSectionEndpoints(unittest.TestCase):
                     wing_name=self.test_wing_name,
                     cross_section_index=0,
                     request=request_schema,
-                    db=mock_db
+                    db=mock_db,
                 )
             )
         self.assertEqual(ctx.exception.status_code, 500)
@@ -409,7 +410,7 @@ class TestAeroplaneWingCrossSectionEndpoints(unittest.TestCase):
                     wing_name=self.test_wing_name,
                     cross_section_index=0,
                     request=request_schema,
-                    db=mock_db
+                    db=mock_db,
                 )
             )
         self.assertEqual(ctx.exception.status_code, 500)
@@ -433,7 +434,7 @@ class TestAeroplaneWingCrossSectionEndpoints(unittest.TestCase):
                     wing_name=self.test_wing_name,
                     cross_section_index=0,
                     request=request_schema,
-                    db=mock_db
+                    db=mock_db,
                 )
             )
         self.assertEqual(ctx.exception.status_code, 500)
@@ -456,7 +457,7 @@ class TestAeroplaneWingCrossSectionEndpoints(unittest.TestCase):
                     wing_name=self.test_wing_name,
                     cross_section_index=0,
                     request=request_schema,
-                    db=mock_db
+                    db=mock_db,
                 )
             )
         self.assertEqual(ctx.exception.status_code, 500)
@@ -473,7 +474,7 @@ class TestAeroplaneWingCrossSectionEndpoints(unittest.TestCase):
                     aeroplane_id=self.test_plane_id,
                     wing_name=self.test_wing_name,
                     cross_section_index=0,
-                    db=mock_db
+                    db=mock_db,
                 )
             )
         self.assertEqual(ctx.exception.status_code, 500)
@@ -489,7 +490,7 @@ class TestAeroplaneWingCrossSectionEndpoints(unittest.TestCase):
                     aeroplane_id=self.test_plane_id,
                     wing_name=self.test_wing_name,
                     cross_section_index=0,
-                    db=mock_db
+                    db=mock_db,
                 )
             )
         self.assertEqual(ctx.exception.status_code, 500)
@@ -509,7 +510,9 @@ class TestAeroplaneWingCrossSectionEndpoints(unittest.TestCase):
                 spare_origin=[1.0, 2.0, 3.0],
             )
         ]
-        with patch("app.api.v2.endpoints.aeroplane.wings.wing_service.get_spares", return_value=expected) as get_spars:
+        with patch(
+            "app.api.v2.endpoints.aeroplane.wings.wing_service.get_spares", return_value=expected
+        ) as get_spars:
             result = asyncio.run(
                 get_aeroplane_wing_cross_section_spars(
                     aeroplane_id=self.test_plane_id,
@@ -538,8 +541,15 @@ class TestAeroplaneWingCrossSectionEndpoints(unittest.TestCase):
             spare_vector=[0.0, 1.0, 0.0],
             spare_origin=[1.0, 2.0, 3.0],
         )
-        with patch("app.api.v2.endpoints.aeroplane.wings.wing_service.get_wing_design_model", return_value="asb"), \
-             patch("app.api.v2.endpoints.aeroplane.wings.wing_service.create_spare", return_value=None) as create_spare:
+        with (
+            patch(
+                "app.api.v2.endpoints.aeroplane.wings.wing_service.get_wing_design_model",
+                return_value="asb",
+            ),
+            patch(
+                "app.api.v2.endpoints.aeroplane.wings.wing_service.create_spare", return_value=None
+            ) as create_spare,
+        ):
             result = asyncio.run(
                 create_aeroplane_wing_cross_section_spar(
                     aeroplane_id=self.test_plane_id,
@@ -569,7 +579,10 @@ class TestAeroplaneWingCrossSectionEndpoints(unittest.TestCase):
         )
         patch_request = schemas.ControlSurfacePatchSchema.model_construct(hinge_point=0.82)
 
-        with patch("app.api.v2.endpoints.aeroplane.wings.wing_service.get_control_surface", return_value=expected) as get_cs:
+        with patch(
+            "app.api.v2.endpoints.aeroplane.wings.wing_service.get_control_surface",
+            return_value=expected,
+        ) as get_cs:
             result = asyncio.run(
                 get_aeroplane_wing_cross_section_control_surface(
                     aeroplane_id=self.test_plane_id,
@@ -578,11 +591,21 @@ class TestAeroplaneWingCrossSectionEndpoints(unittest.TestCase):
                     db=mock_db,
                 )
             )
-        get_cs.assert_called_once_with(mock_db, self.test_plane_id, self.test_wing_name, self.test_cross_section_index)
+        get_cs.assert_called_once_with(
+            mock_db, self.test_plane_id, self.test_wing_name, self.test_cross_section_index
+        )
         self.assertEqual(result, expected)
 
-        with patch("app.api.v2.endpoints.aeroplane.wings.wing_service.get_wing_design_model", return_value="asb"), \
-             patch("app.api.v2.endpoints.aeroplane.wings.wing_service.patch_control_surface", return_value=expected) as patch_cs:
+        with (
+            patch(
+                "app.api.v2.endpoints.aeroplane.wings.wing_service.get_wing_design_model",
+                return_value="asb",
+            ),
+            patch(
+                "app.api.v2.endpoints.aeroplane.wings.wing_service.patch_control_surface",
+                return_value=expected,
+            ) as patch_cs,
+        ):
             result = asyncio.run(
                 patch_aeroplane_wing_cross_section_control_surface(
                     aeroplane_id=self.test_plane_id,
@@ -593,12 +616,24 @@ class TestAeroplaneWingCrossSectionEndpoints(unittest.TestCase):
                 )
             )
         patch_cs.assert_called_once_with(
-            mock_db, self.test_plane_id, self.test_wing_name, self.test_cross_section_index, patch_request
+            mock_db,
+            self.test_plane_id,
+            self.test_wing_name,
+            self.test_cross_section_index,
+            patch_request,
         )
         self.assertEqual(result, expected)
 
-        with patch("app.api.v2.endpoints.aeroplane.wings.wing_service.get_wing_design_model", return_value="asb"), \
-             patch("app.api.v2.endpoints.aeroplane.wings.wing_service.delete_control_surface", return_value=None) as delete_cs:
+        with (
+            patch(
+                "app.api.v2.endpoints.aeroplane.wings.wing_service.get_wing_design_model",
+                return_value="asb",
+            ),
+            patch(
+                "app.api.v2.endpoints.aeroplane.wings.wing_service.delete_control_surface",
+                return_value=None,
+            ) as delete_cs,
+        ):
             result = asyncio.run(
                 delete_aeroplane_wing_cross_section_control_surface(
                     aeroplane_id=self.test_plane_id,
@@ -607,7 +642,9 @@ class TestAeroplaneWingCrossSectionEndpoints(unittest.TestCase):
                     db=mock_db,
                 )
             )
-        delete_cs.assert_called_once_with(mock_db, self.test_plane_id, self.test_wing_name, self.test_cross_section_index)
+        delete_cs.assert_called_once_with(
+            mock_db, self.test_plane_id, self.test_wing_name, self.test_cross_section_index
+        )
         self.assertEqual(result.status, "ok")
 
     def test_control_surface_cad_details_endpoints_delegate_to_service(self):
@@ -616,7 +653,9 @@ class TestAeroplaneWingCrossSectionEndpoints(unittest.TestCase):
             rel_chord_tip=0.75,
             hinge_spacing=2.0,
         )
-        patch_request = schemas.ControlSurfaceCadDetailsPatchSchema.model_construct(rel_chord_tip=0.77)
+        patch_request = schemas.ControlSurfaceCadDetailsPatchSchema.model_construct(
+            rel_chord_tip=0.77
+        )
 
         with patch(
             "app.api.v2.endpoints.aeroplane.wings.wing_service.get_control_surface_cad_details",
@@ -638,11 +677,16 @@ class TestAeroplaneWingCrossSectionEndpoints(unittest.TestCase):
         )
         self.assertEqual(result, expected)
 
-        with patch("app.api.v2.endpoints.aeroplane.wings.wing_service.get_wing_design_model", return_value="asb"), \
-             patch(
-            "app.api.v2.endpoints.aeroplane.wings.wing_service.patch_control_surface_cad_details",
-            return_value=expected,
-        ) as patch_cad_details:
+        with (
+            patch(
+                "app.api.v2.endpoints.aeroplane.wings.wing_service.get_wing_design_model",
+                return_value="asb",
+            ),
+            patch(
+                "app.api.v2.endpoints.aeroplane.wings.wing_service.patch_control_surface_cad_details",
+                return_value=expected,
+            ) as patch_cad_details,
+        ):
             result = asyncio.run(
                 patch_aeroplane_wing_cross_section_control_surface_cad_details(
                     aeroplane_id=self.test_plane_id,
@@ -653,15 +697,24 @@ class TestAeroplaneWingCrossSectionEndpoints(unittest.TestCase):
                 )
             )
         patch_cad_details.assert_called_once_with(
-            mock_db, self.test_plane_id, self.test_wing_name, self.test_cross_section_index, patch_request
+            mock_db,
+            self.test_plane_id,
+            self.test_wing_name,
+            self.test_cross_section_index,
+            patch_request,
         )
         self.assertEqual(result, expected)
 
-        with patch("app.api.v2.endpoints.aeroplane.wings.wing_service.get_wing_design_model", return_value="asb"), \
-             patch(
-            "app.api.v2.endpoints.aeroplane.wings.wing_service.delete_control_surface_cad_details",
-            return_value=None,
-        ) as delete_cad_details:
+        with (
+            patch(
+                "app.api.v2.endpoints.aeroplane.wings.wing_service.get_wing_design_model",
+                return_value="asb",
+            ),
+            patch(
+                "app.api.v2.endpoints.aeroplane.wings.wing_service.delete_control_surface_cad_details",
+                return_value=None,
+            ) as delete_cad_details,
+        ):
             result = asyncio.run(
                 delete_aeroplane_wing_cross_section_control_surface_cad_details(
                     aeroplane_id=self.test_plane_id,
@@ -703,11 +756,16 @@ class TestAeroplaneWingCrossSectionEndpoints(unittest.TestCase):
         )
         self.assertEqual(result, expected)
 
-        with patch("app.api.v2.endpoints.aeroplane.wings.wing_service.get_wing_design_model", return_value="asb"), \
-             patch(
-            "app.api.v2.endpoints.aeroplane.wings.wing_service.patch_control_surface_cad_details_servo_details",
-            return_value=expected,
-        ) as patch_servo_details:
+        with (
+            patch(
+                "app.api.v2.endpoints.aeroplane.wings.wing_service.get_wing_design_model",
+                return_value="asb",
+            ),
+            patch(
+                "app.api.v2.endpoints.aeroplane.wings.wing_service.patch_control_surface_cad_details_servo_details",
+                return_value=expected,
+            ) as patch_servo_details,
+        ):
             result = asyncio.run(
                 patch_aeroplane_wing_cross_section_control_surface_cad_details_servo_details(
                     aeroplane_id=self.test_plane_id,
@@ -718,15 +776,24 @@ class TestAeroplaneWingCrossSectionEndpoints(unittest.TestCase):
                 )
             )
         patch_servo_details.assert_called_once_with(
-            mock_db, self.test_plane_id, self.test_wing_name, self.test_cross_section_index, patch_request
+            mock_db,
+            self.test_plane_id,
+            self.test_wing_name,
+            self.test_cross_section_index,
+            patch_request,
         )
         self.assertEqual(result, expected)
 
-        with patch("app.api.v2.endpoints.aeroplane.wings.wing_service.get_wing_design_model", return_value="asb"), \
-             patch(
-            "app.api.v2.endpoints.aeroplane.wings.wing_service.delete_control_surface_cad_details_servo_details",
-            return_value=None,
-        ) as delete_servo_details:
+        with (
+            patch(
+                "app.api.v2.endpoints.aeroplane.wings.wing_service.get_wing_design_model",
+                return_value="asb",
+            ),
+            patch(
+                "app.api.v2.endpoints.aeroplane.wings.wing_service.delete_control_surface_cad_details_servo_details",
+                return_value=None,
+            ) as delete_servo_details,
+        ):
             result = asyncio.run(
                 delete_aeroplane_wing_cross_section_control_surface_cad_details_servo_details(
                     aeroplane_id=self.test_plane_id,
@@ -742,6 +809,7 @@ class TestAeroplaneWingCrossSectionEndpoints(unittest.TestCase):
             self.test_cross_section_index,
         )
         self.assertEqual(result.status, "ok")
+
 
 if __name__ == "__main__":
     unittest.main()

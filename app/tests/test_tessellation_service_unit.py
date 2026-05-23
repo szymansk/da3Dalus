@@ -162,8 +162,12 @@ class TestRunTessellationWorker:
 
         mock_bb = MagicMock()
         mock_bb.to_dict.return_value = {
-            "xmin": -1, "ymin": -2, "zmin": -3,
-            "xmax": 1, "ymax": 2, "zmax": 3,
+            "xmin": -1,
+            "ymin": -2,
+            "zmin": -3,
+            "xmax": 1,
+            "ymax": 2,
+            "zmax": 3,
         }
 
         mock_instances = [{"id": "/wing", "shape": "/wing"}]
@@ -194,7 +198,10 @@ class TestRunTessellationWorker:
             ),
         ):
             result = _run_tessellation_worker(
-                "aero-uuid-123", wing_schema_pickle, "main_wing", 1000.0,
+                "aero-uuid-123",
+                wing_schema_pickle,
+                "main_wing",
+                1000.0,
             )
 
         assert result["status"] == "SUCCESS"
@@ -242,14 +249,21 @@ class TestRunTessellationWorker:
             ),
         ):
             result = _run_tessellation_worker(
-                "aero-uuid-456", b"fake", "tail", 1000.0,
+                "aero-uuid-456",
+                b"fake",
+                "tail",
+                1000.0,
             )
 
         assert result["status"] == "SUCCESS"
         shapes = result["result"]["data"]["shapes"]
         assert shapes["bb"] == {
-            "xmin": 0, "ymin": 0, "zmin": 0,
-            "xmax": 1, "ymax": 1, "zmax": 1,
+            "xmin": 0,
+            "ymin": 0,
+            "zmin": 0,
+            "xmax": 1,
+            "ymax": 1,
+            "zmax": 1,
         }
 
     @patch("app.services.tessellation_service.pickle")
@@ -286,7 +300,10 @@ class TestRunTessellationWorker:
             patch("ocp_tessellate.convert.combined_bb", return_value=None),
         ):
             result = _run_tessellation_worker(
-                "aero-uuid", b"fake", "wing", 1000.0,
+                "aero-uuid",
+                b"fake",
+                "wing",
+                1000.0,
             )
             # Verify the empty Workplane was passed to to_ocpgroup
             mock_to_ocp.assert_called_once()
@@ -301,7 +318,10 @@ class TestRunTessellationWorker:
         mock_pickle.loads.side_effect = ValueError("bad pickle")
 
         result = _run_tessellation_worker(
-            "aero-uuid", b"corrupt", "wing", 1000.0,
+            "aero-uuid",
+            b"corrupt",
+            "wing",
+            1000.0,
         )
 
         assert result["status"] == "FAILURE"
@@ -319,14 +339,20 @@ class TestStartTessellationTask:
     @patch("app.services.tessellation_service._get_executor")
     @patch("app.services.tessellation_service.register_pending_task")
     def test_registers_pending_task_and_submits(
-        self, mock_register, mock_get_executor,
+        self,
+        mock_register,
+        mock_get_executor,
     ):
         """The function registers a pending task key and submits to executor."""
         mock_future = MagicMock(spec=Future)
         mock_get_executor.return_value.submit.return_value = mock_future
 
         start_tessellation_task(
-            "aero-123", "main_wing", b"pickled", "hash123", 1000.0,
+            "aero-123",
+            "main_wing",
+            b"pickled",
+            "hash123",
+            1000.0,
         )
 
         mock_register.assert_called_once_with("aero-123:tessellation:main_wing")
@@ -342,7 +368,9 @@ class TestStartTessellationTask:
     @patch("app.services.tessellation_service._get_executor")
     @patch("app.services.tessellation_service.register_pending_task")
     def test_on_done_callback_stores_success(
-        self, mock_register, mock_get_executor,
+        self,
+        mock_register,
+        mock_get_executor,
     ):
         """The done callback stores the worker result in the tasks dict."""
         from app.services.cad_service import tasks, tasks_lock
@@ -351,7 +379,11 @@ class TestStartTessellationTask:
         mock_get_executor.return_value.submit.return_value = mock_future
 
         start_tessellation_task(
-            "aero-cb", "wing1", b"pickled", "hash_cb", 1000.0,
+            "aero-cb",
+            "wing1",
+            b"pickled",
+            "hash_cb",
+            1000.0,
         )
 
         # Extract the callback
@@ -367,15 +399,17 @@ class TestStartTessellationTask:
         mock_db = MagicMock()
         mock_aeroplane = MagicMock()
         mock_aeroplane.id = 42
-        mock_db.query.return_value.filter.return_value.first.return_value = (
-            mock_aeroplane
-        )
+        mock_db.query.return_value.filter.return_value.first.return_value = mock_aeroplane
 
-        with patch(
-            "app.db.session.SessionLocal", return_value=mock_db,
-        ), patch(
-            "app.services.tessellation_cache_service.cache_tessellation",
-        ) as mock_cache:
+        with (
+            patch(
+                "app.db.session.SessionLocal",
+                return_value=mock_db,
+            ),
+            patch(
+                "app.services.tessellation_cache_service.cache_tessellation",
+            ) as mock_cache,
+        ):
             callback(mock_completed_future)
 
         with tasks_lock:
@@ -386,7 +420,9 @@ class TestStartTessellationTask:
     @patch("app.services.tessellation_service._get_executor")
     @patch("app.services.tessellation_service.register_pending_task")
     def test_on_done_callback_handles_exception(
-        self, mock_register, mock_get_executor,
+        self,
+        mock_register,
+        mock_get_executor,
     ):
         """The done callback handles futures that raised exceptions."""
         from app.services.cad_service import tasks, tasks_lock
@@ -395,7 +431,11 @@ class TestStartTessellationTask:
         mock_get_executor.return_value.submit.return_value = mock_future
 
         start_tessellation_task(
-            "aero-err", "wing_err", b"pickled", "", 1000.0,
+            "aero-err",
+            "wing_err",
+            b"pickled",
+            "",
+            1000.0,
         )
 
         callback = mock_future.add_done_callback.call_args[0][0]
@@ -440,11 +480,14 @@ class TestTriggerBackgroundTessellation:
         """First call for a key creates a debounce timer."""
         db_factory = MagicMock()
 
-        with patch(
-            "app.services.tessellation_service._start_tessellation_and_cache"
-        ):
+        with patch("app.services.tessellation_service._start_tessellation_and_cache"):
             trigger_background_tessellation(
-                "aero-1", "wing-1", b"data", db_factory, "hash1", 1000.0,
+                "aero-1",
+                "wing-1",
+                b"data",
+                db_factory,
+                "hash1",
+                1000.0,
             )
 
         with _timer_lock:
@@ -458,18 +501,24 @@ class TestTriggerBackgroundTessellation:
         """Calling twice for the same key cancels the first timer."""
         db_factory = MagicMock()
 
-        with patch(
-            "app.services.tessellation_service._start_tessellation_and_cache"
-        ):
+        with patch("app.services.tessellation_service._start_tessellation_and_cache"):
             trigger_background_tessellation(
-                "aero-2", "wing-2", b"data1", db_factory, "hash1",
+                "aero-2",
+                "wing-2",
+                b"data1",
+                db_factory,
+                "hash1",
             )
 
             with _timer_lock:
                 first_timer = _pending_timers["aero-2:wing-2"]
 
             trigger_background_tessellation(
-                "aero-2", "wing-2", b"data2", db_factory, "hash2",
+                "aero-2",
+                "wing-2",
+                b"data2",
+                db_factory,
+                "hash2",
             )
 
             with _timer_lock:
@@ -488,11 +537,13 @@ class TestTriggerBackgroundTessellation:
         with _timer_lock:
             _pending_futures["aero-3:wing-3"] = mock_future
 
-        with patch(
-            "app.services.tessellation_service._start_tessellation_and_cache"
-        ):
+        with patch("app.services.tessellation_service._start_tessellation_and_cache"):
             trigger_background_tessellation(
-                "aero-3", "wing-3", b"data", db_factory, "hash1",
+                "aero-3",
+                "wing-3",
+                b"data",
+                db_factory,
+                "hash1",
             )
 
         mock_future.cancel.assert_called_once()
@@ -507,14 +558,20 @@ class TestTriggerBackgroundTessellation:
         """Different (aeroplane, wing) keys have independent timers."""
         db_factory = MagicMock()
 
-        with patch(
-            "app.services.tessellation_service._start_tessellation_and_cache"
-        ):
+        with patch("app.services.tessellation_service._start_tessellation_and_cache"):
             trigger_background_tessellation(
-                "aero-4", "wing-a", b"data", db_factory, "h1",
+                "aero-4",
+                "wing-a",
+                b"data",
+                db_factory,
+                "h1",
             )
             trigger_background_tessellation(
-                "aero-4", "wing-b", b"data", db_factory, "h2",
+                "aero-4",
+                "wing-b",
+                b"data",
+                db_factory,
+                "h2",
             )
 
         with _timer_lock:
@@ -553,7 +610,12 @@ class TestStartTessellationAndCache:
         db_factory = MagicMock()
 
         _start_tessellation_and_cache(
-            "aero-sc", "wing-sc", b"pickled", db_factory, "hash_sc", 1000.0,
+            "aero-sc",
+            "wing-sc",
+            b"pickled",
+            db_factory,
+            "hash_sc",
+            1000.0,
         )
 
         mock_get_executor.return_value.submit.assert_called_once_with(
@@ -573,7 +635,12 @@ class TestStartTessellationAndCache:
         db_factory = MagicMock()
 
         _start_tessellation_and_cache(
-            "aero-pf", "wing-pf", b"pickled", db_factory, "hash_pf", 1000.0,
+            "aero-pf",
+            "wing-pf",
+            b"pickled",
+            db_factory,
+            "hash_pf",
+            1000.0,
         )
 
         with _timer_lock:
@@ -592,7 +659,12 @@ class TestStartTessellationAndCache:
             _pending_timers["aero-ct:wing-ct"] = mock_timer
 
         _start_tessellation_and_cache(
-            "aero-ct", "wing-ct", b"pickled", db_factory, "hash_ct", 1000.0,
+            "aero-ct",
+            "wing-ct",
+            b"pickled",
+            db_factory,
+            "hash_ct",
+            1000.0,
         )
 
         with _timer_lock:
@@ -607,13 +679,16 @@ class TestStartTessellationAndCache:
         mock_db = MagicMock()
         mock_aeroplane = MagicMock()
         mock_aeroplane.id = 99
-        mock_db.query.return_value.filter.return_value.first.return_value = (
-            mock_aeroplane
-        )
+        mock_db.query.return_value.filter.return_value.first.return_value = mock_aeroplane
         db_factory = MagicMock(return_value=mock_db)
 
         _start_tessellation_and_cache(
-            "aero-ok", "wing-ok", b"pickled", db_factory, "hash_ok", 1000.0,
+            "aero-ok",
+            "wing-ok",
+            b"pickled",
+            db_factory,
+            "hash_ok",
+            1000.0,
         )
 
         callback = mock_future.add_done_callback.call_args[0][0]
@@ -625,16 +700,23 @@ class TestStartTessellationAndCache:
             "result": {"data": {}, "type": "data", "count": 1},
         }
 
-        with patch(
-            "app.services.tessellation_cache_service.is_hash_current",
-            return_value=True,
-        ) as mock_hash_check, patch(
-            "app.services.tessellation_cache_service.cache_tessellation",
-        ) as mock_cache:
+        with (
+            patch(
+                "app.services.tessellation_cache_service.is_hash_current",
+                return_value=True,
+            ) as mock_hash_check,
+            patch(
+                "app.services.tessellation_cache_service.cache_tessellation",
+            ) as mock_cache,
+        ):
             callback(mock_done_future)
 
         mock_hash_check.assert_called_once_with(
-            mock_db, 99, "wing", "wing-ok", "hash_ok",
+            mock_db,
+            99,
+            "wing",
+            "wing-ok",
+            "hash_ok",
         )
         mock_cache.assert_called_once_with(
             mock_db,
@@ -655,13 +737,16 @@ class TestStartTessellationAndCache:
         mock_db = MagicMock()
         mock_aeroplane = MagicMock()
         mock_aeroplane.id = 100
-        mock_db.query.return_value.filter.return_value.first.return_value = (
-            mock_aeroplane
-        )
+        mock_db.query.return_value.filter.return_value.first.return_value = mock_aeroplane
         db_factory = MagicMock(return_value=mock_db)
 
         _start_tessellation_and_cache(
-            "aero-stale", "wing-stale", b"p", db_factory, "old_hash", 1000.0,
+            "aero-stale",
+            "wing-stale",
+            b"p",
+            db_factory,
+            "old_hash",
+            1000.0,
         )
 
         callback = mock_future.add_done_callback.call_args[0][0]
@@ -672,12 +757,15 @@ class TestStartTessellationAndCache:
             "result": {"data": {}},
         }
 
-        with patch(
-            "app.services.tessellation_cache_service.is_hash_current",
-            return_value=False,
-        ), patch(
-            "app.services.tessellation_cache_service.cache_tessellation",
-        ) as mock_cache:
+        with (
+            patch(
+                "app.services.tessellation_cache_service.is_hash_current",
+                return_value=False,
+            ),
+            patch(
+                "app.services.tessellation_cache_service.cache_tessellation",
+            ) as mock_cache,
+        ):
             callback(mock_done_future)
 
         mock_cache.assert_not_called()
@@ -692,7 +780,12 @@ class TestStartTessellationAndCache:
         db_factory = MagicMock()
 
         _start_tessellation_and_cache(
-            "aero-fail", "wing-fail", b"p", db_factory, "h", 1000.0,
+            "aero-fail",
+            "wing-fail",
+            b"p",
+            db_factory,
+            "h",
+            1000.0,
         )
 
         callback = mock_future.add_done_callback.call_args[0][0]
@@ -721,7 +814,12 @@ class TestStartTessellationAndCache:
         db_factory = MagicMock()
 
         _start_tessellation_and_cache(
-            "aero-exc", "wing-exc", b"p", db_factory, "h", 1000.0,
+            "aero-exc",
+            "wing-exc",
+            b"p",
+            db_factory,
+            "h",
+            1000.0,
         )
 
         callback = mock_future.add_done_callback.call_args[0][0]
@@ -737,7 +835,8 @@ class TestStartTessellationAndCache:
 
     @patch("app.services.tessellation_service._get_executor")
     def test_on_done_skips_cache_when_aeroplane_not_found(
-        self, mock_get_executor,
+        self,
+        mock_get_executor,
     ):
         """When aeroplane UUID is not in DB, caching is skipped gracefully."""
         mock_future = MagicMock(spec=Future)
@@ -748,7 +847,12 @@ class TestStartTessellationAndCache:
         db_factory = MagicMock(return_value=mock_db)
 
         _start_tessellation_and_cache(
-            "aero-gone", "wing-gone", b"p", db_factory, "h", 1000.0,
+            "aero-gone",
+            "wing-gone",
+            b"p",
+            db_factory,
+            "h",
+            1000.0,
         )
 
         callback = mock_future.add_done_callback.call_args[0][0]
@@ -776,7 +880,12 @@ class TestStartTessellationAndCache:
         db_factory = MagicMock()
 
         _start_tessellation_and_cache(
-            "aero-rm", "wing-rm", b"p", db_factory, "h", 1000.0,
+            "aero-rm",
+            "wing-rm",
+            b"p",
+            db_factory,
+            "h",
+            1000.0,
         )
 
         # Verify future was stored

@@ -13,7 +13,17 @@ class TestControlSurfaceRole:
         assert ControlSurfaceRole.OTHER == "other"
 
     def test_all_roles_present(self):
-        expected = {"elevator", "aileron", "rudder", "elevon", "stabilator", "flap", "flaperon", "ruddervator", "other"}
+        expected = {
+            "elevator",
+            "aileron",
+            "rudder",
+            "elevon",
+            "stabilator",
+            "flap",
+            "flaperon",
+            "ruddervator",
+            "other",
+        }
         assert {r.value for r in ControlSurfaceRole} == expected
 
     def test_dual_roles_are_subset_of_enum(self):
@@ -21,6 +31,7 @@ class TestControlSurfaceRole:
         # truth (gh-463). If they diverge, V-tail/flaperon configs fail with
         # 500 because trim enrichment expects roles the schema rejects.
         from app.services.trim_enrichment_service import DUAL_ROLES
+
         assert DUAL_ROLES <= {r.value for r in ControlSurfaceRole}
 
     def test_role_coefficient_map_keys_are_valid_enum_values(self):
@@ -28,6 +39,7 @@ class TestControlSurfaceRole:
         # values; otherwise trim enrichment looks up coefficients for roles that
         # can never be set on a TED.
         from app.services.trim_enrichment_service import ROLE_COEFFICIENT_MAP
+
         assert set(ROLE_COEFFICIENT_MAP) <= {r.value for r in ControlSurfaceRole}
 
     def test_every_actuating_role_is_covered_by_an_axis(self):
@@ -37,13 +49,16 @@ class TestControlSurfaceRole:
         # role silently fails to influence trim. Only "other" is exempt
         # (it's a catch-all label, not a routed axis).
         from app.services.operating_point_generator_service import (
-            PITCH_ROLES, ROLL_ROLES, YAW_ROLES, FLAP_ROLES,
+            PITCH_ROLES,
+            ROLL_ROLES,
+            YAW_ROLES,
+            FLAP_ROLES,
         )
+
         actuating = {r.value for r in ControlSurfaceRole} - {"other"}
         covered = PITCH_ROLES | ROLL_ROLES | YAW_ROLES | FLAP_ROLES
         assert actuating <= covered, (
-            f"Unrouted control surface roles (no axis assignment): "
-            f"{actuating - covered}"
+            f"Unrouted control surface roles (no axis assignment): {actuating - covered}"
         )
 
     def test_retrim_pitch_roles_match_op_generator(self):
@@ -54,6 +69,7 @@ class TestControlSurfaceRole:
         # leave stale trim values in place.
         from app.services.operating_point_generator_service import PITCH_ROLES
         from app.services.retrim_service import _PITCH_ROLES
+
         assert _PITCH_ROLES == PITCH_ROLES
 
 
@@ -85,6 +101,7 @@ class TestTedSchemaRoleField:
 
     def test_invalid_role_rejected(self):
         from pydantic import ValidationError
+
         with pytest.raises(ValidationError):
             TrailingEdgeDeviceDetailSchema(role="invalid_role")
 
@@ -226,6 +243,7 @@ class TestRoleBasedPickControl:
         # gh-483: Pitch-axis trim must be able to select a ruddervator
         # surface when no dedicated elevator exists.
         from app.services.operating_point_generator_service import PITCH_ROLES
+
         result = _pick_control_name(
             ["[ruddervator]V-Tail-L", "[ruddervator]V-Tail-R"],
             roles=PITCH_ROLES,
@@ -236,6 +254,7 @@ class TestRoleBasedPickControl:
         # gh-483: Yaw-axis trim must be able to select a ruddervator
         # surface when no dedicated rudder exists.
         from app.services.operating_point_generator_service import YAW_ROLES
+
         result = _pick_control_name(
             ["[ruddervator]V-Tail-L", "[ruddervator]V-Tail-R"],
             roles=YAW_ROLES,
@@ -246,6 +265,7 @@ class TestRoleBasedPickControl:
         # gh-483: Roll-axis trim must be able to select a flaperon when
         # the aircraft has no dedicated aileron.
         from app.services.operating_point_generator_service import ROLL_ROLES
+
         result = _pick_control_name(
             ["[flaperon]Left", "[flaperon]Right"],
             roles=ROLL_ROLES,
@@ -359,9 +379,7 @@ class TestTedPatchEndpoint:
             f"/aeroplanes/{aid}/wings/w/cross_sections/0/trailing_edge_device",
             json={"role": "rudder"},
         )
-        resp = _client.get(
-            f"/aeroplanes/{aid}/wings/w/cross_sections/0/trailing_edge_device"
-        )
+        resp = _client.get(f"/aeroplanes/{aid}/wings/w/cross_sections/0/trailing_edge_device")
         assert resp.status_code == 200, resp.text
         assert resp.json()["role"] == "rudder"
 

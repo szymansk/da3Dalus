@@ -245,7 +245,10 @@ async def get_aeroplane_fuselage_cross_section(
     """
     return _call_service(
         fuselage_service.get_cross_section,
-        db, aeroplane_id, fuselage_name, cross_section_index,
+        db,
+        aeroplane_id,
+        fuselage_name,
+        cross_section_index,
     )
 
 
@@ -281,7 +284,11 @@ async def create_aeroplane_fuselage_cross_section(
     """
     _call_service(
         fuselage_service.create_cross_section,
-        db, aeroplane_id, fuselage_name, cross_section_index, request,
+        db,
+        aeroplane_id,
+        fuselage_name,
+        cross_section_index,
+        request,
     )
     return OperationStatusResponse(status="created", operation="create_fuselage_cross_section")
 
@@ -309,7 +316,11 @@ async def update_aeroplane_fuselage_cross_section(
     """
     _call_service(
         fuselage_service.update_cross_section,
-        db, aeroplane_id, fuselage_name, cross_section_index, request,
+        db,
+        aeroplane_id,
+        fuselage_name,
+        cross_section_index,
+        request,
     )
     return OperationStatusResponse(status="ok", operation="update_fuselage_cross_section")
 
@@ -336,6 +347,9 @@ async def delete_aeroplane_fuselage_cross_section(
     """
     _call_service(
         fuselage_service.delete_cross_section,
-        db, aeroplane_id, fuselage_name, cross_section_index,
+        db,
+        aeroplane_id,
+        fuselage_name,
+        cross_section_index,
     )
     return OperationStatusResponse(status="ok", operation="delete_fuselage_cross_section")

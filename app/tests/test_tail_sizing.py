@@ -11,6 +11,7 @@ Cross-check data:
     S_w = 11.7 m², MAC = 0.638 m, b = 18.2 m
     S_H = 0.95 m², l_H = 3.22 m  →  V_H ≈ 0.41
 """
+
 from __future__ import annotations
 
 import uuid
@@ -29,6 +30,7 @@ from app.services.tail_sizing_service import (
 # ---------------------------------------------------------------------------
 # Minimal aircraft stand-ins for pure-unit tests
 # ---------------------------------------------------------------------------
+
 
 def _aircraft(
     *,
@@ -78,6 +80,7 @@ def _aircraft(
 # TestTailVolumeFormula — cross-checks against published data
 # ---------------------------------------------------------------------------
 
+
 class TestTailVolumeFormula:
     """Verify formula V_H = S_H · l_H / (S_w · MAC) against real aircraft."""
 
@@ -87,15 +90,15 @@ class TestTailVolumeFormula:
         # tail-AC at 0.25*htail_mac ahead of tail LE
         # l_H = x_htail_AC - x_wing_AC = 4.97 m (calibrated)
         # wing AC at x=0.337 (25% of 1.348 m from root LE at x=0)
-        wing_ac = 0.25 * 1.348          # ≈ 0.337 m
-        htail_mac = 0.6                 # reasonable stub
+        wing_ac = 0.25 * 1.348  # ≈ 0.337 m
+        htail_mac = 0.6  # reasonable stub
         htail_le = wing_ac + 4.97 - 0.25 * htail_mac  # place tail AC at correct distance
         ac = _aircraft(
             mac_m=1.348,
             s_ref_m2=16.17,
             b_ref_m=11.0,
             x_wing_ac_m=wing_ac,
-            x_np_m=wing_ac + 0.05,     # slightly aft of AC
+            x_np_m=wing_ac + 0.05,  # slightly aft of AC
             cg_aft_m=wing_ac,
             s_h_m2=2.72,
             x_htail_le_m=htail_le,
@@ -144,6 +147,7 @@ class TestTailVolumeFormula:
 # TestRecommendation — target-range per aircraft class
 # ---------------------------------------------------------------------------
 
+
 class TestRecommendation:
     """Verify that recommended S_H is computed from the right target range."""
 
@@ -191,7 +195,7 @@ class TestRecommendation:
         l_h = 0.90
         htail_le = wing_ac + l_h - 0.25 * htail_mac
         # Place CG far from wing-AC to verify l_h_m ≠ l_h_eff_from_aft_cg_m
-        cg_aft = wing_ac + 0.15   # ≠ wing_ac
+        cg_aft = wing_ac + 0.15  # ≠ wing_ac
         ac = _aircraft(
             x_wing_ac_m=wing_ac,
             cg_aft_m=cg_aft,
@@ -200,9 +204,7 @@ class TestRecommendation:
         )
         result = compute_tail_volumes(ac)
         # l_h_m should equal the wing-AC → tail-AC distance
-        assert abs(result.l_h_m - l_h) < 0.01, (
-            f"l_h_m={result.l_h_m:.4f}, expected≈{l_h:.4f}"
-        )
+        assert abs(result.l_h_m - l_h) < 0.01, f"l_h_m={result.l_h_m:.4f}, expected≈{l_h:.4f}"
         # l_h_eff_from_aft_cg_m should differ
         expected_eff = (wing_ac + l_h) - cg_aft
         assert abs(result.l_h_eff_from_aft_cg_m - expected_eff) < 0.01, (
@@ -213,6 +215,7 @@ class TestRecommendation:
 # ---------------------------------------------------------------------------
 # TestClassification — in_range / below_range / above_range / out_of_physical_range
 # ---------------------------------------------------------------------------
+
 
 class TestClassification:
     """Range and out-of-physical-range classification."""
@@ -273,6 +276,7 @@ class TestClassification:
 # TestNotApplicable
 # ---------------------------------------------------------------------------
 
+
 class TestNotApplicable:
     def test_canard_returns_not_applicable(self):
         ac = _aircraft(is_canard=True)
@@ -303,6 +307,7 @@ class TestNotApplicable:
 # TestFallback — cg_aware flag
 # ---------------------------------------------------------------------------
 
+
 class TestFallback:
     def test_no_x_np_uses_wing_ac_only_cg_aware_false(self):
         """When x_np_m is None, still compute V_H but mark cg_aware=False."""
@@ -311,7 +316,7 @@ class TestFallback:
         l_h = 0.60 * 0.6 * 0.3 / 0.08
         htail_le = wing_ac + l_h - 0.25 * htail_mac
         ac = _aircraft(
-            x_np_m=None,    # no polar yet
+            x_np_m=None,  # no polar yet
             x_wing_ac_m=wing_ac,
             x_htail_le_m=htail_le,
             htail_mac_m=htail_mac,
@@ -340,6 +345,7 @@ class TestFallback:
 # TestBrefInContext — sub-task: b_ref_m must be present in context
 # ---------------------------------------------------------------------------
 
+
 class TestBrefInContext:
     def test_b_ref_m_is_read_from_context(self):
         """Service must consume b_ref_m from context (not raise KeyError)."""
@@ -354,6 +360,7 @@ class TestBrefInContext:
 # ---------------------------------------------------------------------------
 # TestSecondaryMetric — l_h_eff_from_aft_cg_m
 # ---------------------------------------------------------------------------
+
 
 class TestSecondaryMetric:
     def test_l_h_eff_from_aft_cg_returned_for_display(self):
@@ -378,6 +385,7 @@ class TestSecondaryMetric:
 # ---------------------------------------------------------------------------
 # TestMissingInputs — service guard paths
 # ---------------------------------------------------------------------------
+
 
 class TestMissingInputs:
     """Cover guard branches that return not_applicable early."""
@@ -413,9 +421,9 @@ class TestMissingInputs:
         # With fallback x_wing_ac = 0.25 * 0.3 = 0.075 m
         # Place htail LE so l_H is valid
         htail_mac = 0.1
-        htail_le = 0.075 + 0.90 - 0.25 * htail_mac   # l_H ≈ 0.9
+        htail_le = 0.075 + 0.90 - 0.25 * htail_mac  # l_H ≈ 0.9
         ac = _aircraft(
-            x_wing_ac_m=None,    # trigger fallback
+            x_wing_ac_m=None,  # trigger fallback
             x_htail_le_m=htail_le,
             htail_mac_m=htail_mac,
         )
@@ -444,6 +452,7 @@ class TestMissingInputs:
 # TestAircraftClassFallback — unknown class uses rc_trainer defaults
 # ---------------------------------------------------------------------------
 
+
 class TestAircraftClassFallback:
     """Unknown aircraft class must silently fall back to rc_trainer targets."""
 
@@ -451,7 +460,7 @@ class TestAircraftClassFallback:
         """aircraft_class='experimental_biplane' → falls back to rc_trainer range."""
         wing_ac = 0.25 * 0.3
         htail_mac = 0.1
-        l_h = 0.62 * 0.6 * 0.3 / 0.08   # V_H in rc_trainer in_range
+        l_h = 0.62 * 0.6 * 0.3 / 0.08  # V_H in rc_trainer in_range
         htail_le = wing_ac + l_h - 0.25 * htail_mac
         ac = _aircraft(
             aircraft_class="experimental_biplane",  # not in AIRCRAFT_CLASS_TARGETS
@@ -469,6 +478,7 @@ class TestAircraftClassFallback:
 # ---------------------------------------------------------------------------
 # TestVVWarnings — V_V below/above range triggers warning messages
 # ---------------------------------------------------------------------------
+
 
 class TestVVWarnings:
     """V_V classification branches for below/above/out-of-physical-range."""
@@ -523,6 +533,7 @@ class TestVVWarnings:
 # TestBoundaryConditions — V_H / V_V exact at physical bounds
 # ---------------------------------------------------------------------------
 
+
 class TestBoundaryConditions:
     """Values at the boundary of physical validity ranges."""
 
@@ -531,12 +542,14 @@ class TestBoundaryConditions:
         htail_mac = 0.1
         l_h = v_h * 0.6 * 0.3 / 0.08
         htail_le = wing_ac + l_h - 0.25 * htail_mac
-        return compute_tail_volumes(_aircraft(
-            aircraft_class=aircraft_class,
-            x_wing_ac_m=wing_ac,
-            x_htail_le_m=htail_le,
-            htail_mac_m=htail_mac,
-        ))
+        return compute_tail_volumes(
+            _aircraft(
+                aircraft_class=aircraft_class,
+                x_wing_ac_m=wing_ac,
+                x_htail_le_m=htail_le,
+                htail_mac_m=htail_mac,
+            )
+        )
 
     def test_v_h_at_physical_min_boundary_is_not_out_of_physical_range(self):
         """V_H = 0.21 (just above physical min 0.20) → below_range, not out_of_physical_range."""
@@ -564,6 +577,7 @@ class TestBoundaryConditions:
 # ---------------------------------------------------------------------------
 # TestVTailMissingGeometry — vtail geometry entirely absent → no V_V computed
 # ---------------------------------------------------------------------------
+
 
 class TestVTailMissingGeometry:
     """When vtail geometry is absent, V_V should remain None (no crash)."""
@@ -593,17 +607,20 @@ class TestVTailMissingGeometry:
 # TestBuildContextFromAeroplane — build_tail_sizing_context_from_aeroplane
 # ---------------------------------------------------------------------------
 
+
 class TestBuildContextFromAeroplane:
     """Covers build_tail_sizing_context_from_aeroplane and the wing geometry helpers."""
 
     class _MockXsec:
         """Minimal mock for WingXSecModel."""
+
         def __init__(self, xyz_le, chord):
             self.xyz_le = xyz_le
             self.chord = chord
 
     class _MockWing:
         """Minimal mock for WingModel."""
+
         def __init__(self, name, xsecs, symmetric=True):
             self.name = name
             self.x_secs = xsecs
@@ -616,42 +633,71 @@ class TestBuildContextFromAeroplane:
 
     class _MockAircraft:
         """Minimal mock that mimics the AeroplaneModel interface."""
+
         def __init__(self, ctx, wings, scenarios=None):
             self.assumption_computation_context = ctx
             self.wings = wings
             self.loading_scenarios = scenarios or []
 
-    def _make_aircraft(self, *, ctx=None, with_htail=True, with_vtail=True,
-                       is_canard=False, no_main_wing=False, aircraft_class="rc_trainer"):
+    def _make_aircraft(
+        self,
+        *,
+        ctx=None,
+        with_htail=True,
+        with_vtail=True,
+        is_canard=False,
+        no_main_wing=False,
+        aircraft_class="rc_trainer",
+    ):
         """Build a mock aircraft with standard geometry."""
         Xsec = self._MockXsec
         Wing = self._MockWing
 
-        main_wing = Wing("main_wing", [
-            Xsec([0.0, 0.0, 0.0], 0.3),
-            Xsec([0.0, 1.0, 0.0], 0.2),
-        ])
+        main_wing = Wing(
+            "main_wing",
+            [
+                Xsec([0.0, 0.0, 0.0], 0.3),
+                Xsec([0.0, 1.0, 0.0], 0.2),
+            ],
+        )
 
         wings = []
         if not no_main_wing:
             wings.append(main_wing)
 
         if is_canard:
-            wings.append(Wing("canard", [
-                Xsec([0.0, 0.0, 0.0], 0.12),
-                Xsec([0.0, 0.2, 0.0], 0.09),
-            ]))
+            wings.append(
+                Wing(
+                    "canard",
+                    [
+                        Xsec([0.0, 0.0, 0.0], 0.12),
+                        Xsec([0.0, 0.2, 0.0], 0.09),
+                    ],
+                )
+            )
         elif with_htail:
-            wings.append(Wing("horizontal_tail", [
-                Xsec([0.55, 0.0, 0.0], 0.10),
-                Xsec([0.57, 0.17, 0.0], 0.08),
-            ], symmetric=True))
+            wings.append(
+                Wing(
+                    "horizontal_tail",
+                    [
+                        Xsec([0.55, 0.0, 0.0], 0.10),
+                        Xsec([0.57, 0.17, 0.0], 0.08),
+                    ],
+                    symmetric=True,
+                )
+            )
 
         if with_vtail:
-            wings.append(Wing("vertical_tail", [
-                Xsec([0.55, 0.0, 0.0], 0.10),
-                Xsec([0.59, 0.0, 0.20], 0.07),
-            ], symmetric=False))
+            wings.append(
+                Wing(
+                    "vertical_tail",
+                    [
+                        Xsec([0.55, 0.0, 0.0], 0.10),
+                        Xsec([0.59, 0.0, 0.20], 0.07),
+                    ],
+                    symmetric=False,
+                )
+            )
 
         ctx_data = ctx or {
             "mac_m": 0.3,
@@ -733,18 +779,29 @@ class TestBuildContextFromAeroplane:
         Wing = self._MockWing
 
         # Only an unlabelled wing named 'fuselage_pod' plus htail+vtail
-        fuselage_pod = Wing("fuselage_pod", [
-            Xsec([0.0, 0.0, 0.0], 0.5),
-            Xsec([0.0, 1.5, 0.0], 0.3),
-        ])
-        htail = Wing("horizontal_tail", [
-            Xsec([0.60, 0.0, 0.0], 0.10),
-            Xsec([0.62, 0.17, 0.0], 0.08),
-        ], symmetric=True)
-        vtail = Wing("vertical_tail", [
-            Xsec([0.60, 0.0, 0.0], 0.10),
-            Xsec([0.64, 0.0, 0.20], 0.07),
-        ], symmetric=False)
+        fuselage_pod = Wing(
+            "fuselage_pod",
+            [
+                Xsec([0.0, 0.0, 0.0], 0.5),
+                Xsec([0.0, 1.5, 0.0], 0.3),
+            ],
+        )
+        htail = Wing(
+            "horizontal_tail",
+            [
+                Xsec([0.60, 0.0, 0.0], 0.10),
+                Xsec([0.62, 0.17, 0.0], 0.08),
+            ],
+            symmetric=True,
+        )
+        vtail = Wing(
+            "vertical_tail",
+            [
+                Xsec([0.60, 0.0, 0.0], 0.10),
+                Xsec([0.64, 0.0, 0.20], 0.07),
+            ],
+            symmetric=False,
+        )
 
         aircraft = self._MockAircraft(
             {"mac_m": 0.4, "s_ref_m2": 0.8, "b_ref_m": 3.0},
@@ -753,7 +810,7 @@ class TestBuildContextFromAeroplane:
         )
         ctx = build_tail_sizing_context_from_aeroplane(aircraft)
         assert ctx is not None
-        assert ctx["x_wing_ac_m"] is not None   # fallback selected fuselage_pod
+        assert ctx["x_wing_ac_m"] is not None  # fallback selected fuselage_pod
 
     def test_full_pipeline_from_context(self):
         """Context dict from build_tail_sizing_context_from_aeroplane feeds compute_tail_volumes."""
@@ -762,7 +819,9 @@ class TestBuildContextFromAeroplane:
         assert ctx is not None
         result = compute_tail_volumes(ctx)
         # Should produce a valid (non-not_applicable) result
-        assert result.classification != "not_applicable" or result.classification == "not_applicable"
+        assert (
+            result.classification != "not_applicable" or result.classification == "not_applicable"
+        )
         assert result is not None
 
     def test_wing_area_approx_empty_xsecs_returns_zero(self):
@@ -780,6 +839,7 @@ class TestBuildContextFromAeroplane:
 # TestEndpointErrors — HTTP endpoint error paths
 # ---------------------------------------------------------------------------
 
+
 class TestEndpointErrors:
     """Cover the endpoint handler including 404 and not_applicable paths."""
 
@@ -792,6 +852,7 @@ class TestEndpointErrors:
     def test_200_not_applicable_when_no_context(self, client_and_db):
         """Aircraft without assumption_computation_context → 200 with not_applicable."""
         from app.tests.conftest import make_aeroplane
+
         client, SessionLocal = client_and_db
         with SessionLocal() as db:
             aeroplane = make_aeroplane(db)
@@ -810,43 +871,56 @@ class TestEndpointErrors:
             _add_xsec,
         )
         from app.models.aeroplanemodel import WingModel
+
         client, SessionLocal = client_and_db
 
         with SessionLocal() as db:
             aeroplane = make_aeroplane(db)
 
             # Add main wing
-            main_wing = WingModel(
-                name="main_wing", symmetric=True, aeroplane_id=aeroplane.id
-            )
+            main_wing = WingModel(name="main_wing", symmetric=True, aeroplane_id=aeroplane.id)
             db.add(main_wing)
             db.flush()
             _add_xsec(
-                db, main_wing,
-                xyz_le=[0.0, 0.0, 0.0], chord=0.3, twist=0.0,
-                airfoil="naca2412", sort_index=0,
+                db,
+                main_wing,
+                xyz_le=[0.0, 0.0, 0.0],
+                chord=0.3,
+                twist=0.0,
+                airfoil="naca2412",
+                sort_index=0,
             )
             _add_xsec(
-                db, main_wing,
-                xyz_le=[0.0, 1.0, 0.0], chord=0.2, twist=0.0,
-                airfoil="naca2412", sort_index=1,
+                db,
+                main_wing,
+                xyz_le=[0.0, 1.0, 0.0],
+                chord=0.2,
+                twist=0.0,
+                airfoil="naca2412",
+                sort_index=1,
             )
 
             # Add horizontal tail
-            htail = WingModel(
-                name="horizontal_tail", symmetric=True, aeroplane_id=aeroplane.id
-            )
+            htail = WingModel(name="horizontal_tail", symmetric=True, aeroplane_id=aeroplane.id)
             db.add(htail)
             db.flush()
             _add_xsec(
-                db, htail,
-                xyz_le=[0.65, 0.0, 0.0], chord=0.1, twist=0.0,
-                airfoil="naca0012", sort_index=0,
+                db,
+                htail,
+                xyz_le=[0.65, 0.0, 0.0],
+                chord=0.1,
+                twist=0.0,
+                airfoil="naca0012",
+                sort_index=0,
             )
             _add_xsec(
-                db, htail,
-                xyz_le=[0.67, 0.2, 0.0], chord=0.08, twist=0.0,
-                airfoil="naca0012", sort_index=1,
+                db,
+                htail,
+                xyz_le=[0.67, 0.2, 0.0],
+                chord=0.08,
+                twist=0.0,
+                airfoil="naca0012",
+                sort_index=1,
             )
 
             # Inject computed context
@@ -867,5 +941,9 @@ class TestEndpointErrors:
         assert data["l_h_m"] is not None
         assert data["l_h_m"] > 0
         assert data["classification"] in (
-            "in_range", "below_range", "above_range", "out_of_physical_range", "not_applicable"
+            "in_range",
+            "below_range",
+            "above_range",
+            "out_of_physical_range",
+            "not_applicable",
         )

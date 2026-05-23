@@ -12,6 +12,7 @@ class ComponentModel(Base):
     so every component type shares one table. The `component_type` discriminator
     enables filtering and validation at the schema/service layer.
     """
+
     __tablename__ = "components"
 
     name = Column(String, nullable=False)

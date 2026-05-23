@@ -54,8 +54,14 @@ def _get_polar_data(
     CLs = np.atleast_1d(aero["CL"])
     CDs = np.atleast_1d(aero["CD"])
     if not np.all(np.isfinite(CLs)) or not np.all(np.isfinite(CDs)):
-        logger.warning("NeuralFoil returned NaN/Inf for %s at Re=%.0f — using zero CDCL", airfoil_name, re)
-        return tuple(alphas.tolist()), tuple(np.zeros_like(CLs).tolist()), tuple(np.zeros_like(CDs).tolist())
+        logger.warning(
+            "NeuralFoil returned NaN/Inf for %s at Re=%.0f — using zero CDCL", airfoil_name, re
+        )
+        return (
+            tuple(alphas.tolist()),
+            tuple(np.zeros_like(CLs).tolist()),
+            tuple(np.zeros_like(CDs).tolist()),
+        )
     return tuple(alphas.tolist()), tuple(CLs.tolist()), tuple(CDs.tolist())
 
 

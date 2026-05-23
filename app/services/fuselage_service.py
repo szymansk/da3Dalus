@@ -28,13 +28,9 @@ _ERR_FUSELAGE_NOT_FOUND = "Fuselage not found"
 _ERR_XSEC_NOT_FOUND = "Cross-section not found"
 
 
-def _get_fuselage_or_raise(
-    aeroplane: AeroplaneModel, fuselage_name: str
-) -> FuselageModel:
+def _get_fuselage_or_raise(aeroplane: AeroplaneModel, fuselage_name: str) -> FuselageModel:
     """Get a fuselage by name from an aeroplane or raise NotFoundError."""
-    fuselage = next(
-        (f for f in aeroplane.fuselages if f.name == fuselage_name), None
-    )
+    fuselage = next((f for f in aeroplane.fuselages if f.name == fuselage_name), None)
     if not fuselage:
         raise NotFoundError(
             message=_ERR_FUSELAGE_NOT_FOUND,
@@ -87,9 +83,7 @@ def create_fuselage(
                 details={"fuselage_name": fuselage_name},
             )
 
-        fuselage = FuselageModel.from_dict(
-            name=fuselage_name, data=fuselage_data.model_dump()
-        )
+        fuselage = FuselageModel.from_dict(name=fuselage_name, data=fuselage_data.model_dump())
         plane.fuselages.append(fuselage)
         db.add(fuselage)
         plane.updated_at = datetime.now()
@@ -123,9 +117,7 @@ def update_fuselage(
         plane = get_aeroplane_or_raise(db, aeroplane_uuid)
         fuselage = _get_fuselage_or_raise(plane, fuselage_name)
 
-        new_fuselage = FuselageModel.from_dict(
-            name=fuselage_name, data=fuselage_data.model_dump()
-        )
+        new_fuselage = FuselageModel.from_dict(name=fuselage_name, data=fuselage_data.model_dump())
         plane.fuselages.remove(fuselage)
         plane.fuselages.append(new_fuselage)
         plane.updated_at = datetime.now()
@@ -214,9 +206,7 @@ def get_fuselage_cross_sections(
         aeroplane = get_aeroplane_or_raise(db, aeroplane_uuid)
         fuselage = _get_fuselage_or_raise(aeroplane, fuselage_name)
         return [
-            schemas.FuselageXSecSuperEllipseSchema.model_validate(
-                xs, from_attributes=True
-            )
+            schemas.FuselageXSecSuperEllipseSchema.model_validate(xs, from_attributes=True)
             for xs in fuselage.x_secs
         ]
     except NotFoundError:

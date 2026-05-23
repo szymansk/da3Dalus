@@ -1165,8 +1165,8 @@ async def get_aeroplane_three_view_tool(aeroplane_id: UUID4, ctx: Context = None
 @mcp_tool(
     name="get_stability",
     description="Get the last cached stability analysis result for an aeroplane. "
-                "Returns neutral point, static margin, CG range, and stability class "
-                "without triggering a new computation.",
+    "Returns neutral point, static margin, CG range, and stability class "
+    "without triggering a new computation.",
 )
 async def get_stability_tool(aeroplane_id: UUID4) -> Any:
     return await _call_endpoint(
@@ -1178,8 +1178,8 @@ async def get_stability_tool(aeroplane_id: UUID4) -> Any:
 @mcp_tool(
     name="compute_stability",
     description="Compute fresh stability analysis for an aeroplane using the specified solver. "
-                "Returns neutral point, static margin, CG range, stability derivatives, and "
-                "persists the result for future get_stability calls.",
+    "Returns neutral point, static margin, CG range, stability derivatives, and "
+    "persists the result for future get_stability calls.",
 )
 async def compute_stability_tool(
     aeroplane_id: UUID4,

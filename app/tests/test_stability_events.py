@@ -38,7 +38,9 @@ def _make_aeroplane(session: Session) -> AeroplaneModel:
     return a
 
 
-def _seed_stability_result(session: Session, aeroplane_id: int, solver: str = "avl") -> StabilityResultModel:
+def _seed_stability_result(
+    session: Session, aeroplane_id: int, solver: str = "avl"
+) -> StabilityResultModel:
     row = StabilityResultModel(
         aeroplane_id=aeroplane_id,
         solver=solver,
@@ -55,7 +57,6 @@ def _seed_stability_result(session: Session, aeroplane_id: int, solver: str = "a
 
 
 class TestStabilityEventsWing:
-
     def test_wing_insert_marks_dirty(self, db_session):
         a = _make_aeroplane(db_session)
         _seed_stability_result(db_session, a.id)
@@ -89,7 +90,6 @@ class TestStabilityEventsWing:
 
 
 class TestStabilityEventsFuselage:
-
     def test_fuselage_update_marks_dirty(self, db_session):
         a = _make_aeroplane(db_session)
         fus = FuselageModel(name="f1", aeroplane_id=a.id)
@@ -103,7 +103,6 @@ class TestStabilityEventsFuselage:
 
 
 class TestStabilityEventsNoOp:
-
     def test_no_crash_when_no_stability_results(self, db_session):
         a = _make_aeroplane(db_session)
         wing = WingModel(name="w1", aeroplane_id=a.id, symmetric=True)

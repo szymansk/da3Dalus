@@ -18,7 +18,11 @@ from __future__ import annotations
 from unittest.mock import patch
 
 from app.schemas.design_assumption import AssumptionSourceSwitch
-from app.services.design_assumptions_service import seed_defaults, switch_source, update_calculated_value
+from app.services.design_assumptions_service import (
+    seed_defaults,
+    switch_source,
+    update_calculated_value,
+)
 from app.tests.conftest import make_aeroplane
 
 
@@ -30,7 +34,11 @@ def test_switch_source_cg_x_does_not_schedule_recompute(client_and_db):
         seed_defaults(db, str(aeroplane.uuid))
         # Give cg_x a calculated value so the switch is allowed.
         update_calculated_value(
-            db, str(aeroplane.uuid), "cg_x", 0.085, "aerobuildup",
+            db,
+            str(aeroplane.uuid),
+            "cg_x",
+            0.085,
+            "aerobuildup",
             auto_switch_source=False,
         )
         db.commit()
@@ -41,7 +49,9 @@ def test_switch_source_cg_x_does_not_schedule_recompute(client_and_db):
     ) as mock_schedule:
         with SessionLocal() as db:
             switch_source(
-                db, aeroplane_uuid, "cg_x",
+                db,
+                aeroplane_uuid,
+                "cg_x",
                 AssumptionSourceSwitch(active_source="ESTIMATE"),
             )
             db.commit()
@@ -56,7 +66,11 @@ def test_switch_source_mass_schedules_recompute(client_and_db):
         aeroplane = make_aeroplane(db)
         seed_defaults(db, str(aeroplane.uuid))
         update_calculated_value(
-            db, str(aeroplane.uuid), "mass", 1.2, "weight_items",
+            db,
+            str(aeroplane.uuid),
+            "mass",
+            1.2,
+            "weight_items",
             auto_switch_source=False,
         )
         db.commit()
@@ -68,7 +82,9 @@ def test_switch_source_mass_schedules_recompute(client_and_db):
     ) as mock_schedule:
         with SessionLocal() as db:
             switch_source(
-                db, aeroplane_uuid, "mass",
+                db,
+                aeroplane_uuid,
+                "mass",
                 AssumptionSourceSwitch(active_source="CALCULATED"),
             )
             db.commit()

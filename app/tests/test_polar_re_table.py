@@ -20,6 +20,7 @@ Sources:
 - Hepperle (2012) / Drela: Oswald e insensitive to Re at subsonic → constant mean
 - gh-493 spec: Amendment 3 (interpolation), Amendment 2 (degeneracy), Amendment 4 (backward compat)
 """
+
 from __future__ import annotations
 
 import math
@@ -44,6 +45,7 @@ from app.services.polar_re_table_service import (
 # ---------------------------------------------------------------------------
 # Helper: build a synthetic V×α sweep dataset
 # ---------------------------------------------------------------------------
+
 
 def _make_synthetic_sweep(
     velocities: list[float],
@@ -119,6 +121,7 @@ ASW_27_SCALE = {
 # ---------------------------------------------------------------------------
 # Fixtures: standard sweep data for unit tests (no AeroBuildup)
 # ---------------------------------------------------------------------------
+
 
 def _make_rc_trainer_sweep(
     n_v: int = 7, n_alpha: int = 12
@@ -332,7 +335,9 @@ class TestDegeneracyGuard:
             cl_max=RC_TRAINER["cl_max"],
             ar=RC_TRAINER["ar"],
         )
-        assert isinstance(result, tuple), "build_re_table must return (table, degenerate_flag) tuple"
+        assert isinstance(result, tuple), (
+            "build_re_table must return (table, degenerate_flag) tuple"
+        )
         table, degenerate = result
         assert isinstance(table, list)
         assert isinstance(degenerate, bool)
@@ -414,9 +419,33 @@ class TestLookupCd0AtV:
         """Synthetic 3-row table for interpolation tests."""
         # Re values approximately matching RC-scale and mid-Re aircraft
         return [
-            {"re": 100_000.0,  "v_mps": 8.0,  "cd0": 0.050, "e_oswald": 0.75, "cl_max": 1.2, "r2": 0.98, "fallback_used": False},
-            {"re": 400_000.0,  "v_mps": 16.0, "cd0": 0.020, "e_oswald": 0.76, "cl_max": 1.2, "r2": 0.99, "fallback_used": False},
-            {"re": 1_000_000.0,"v_mps": 30.0, "cd0": 0.012, "e_oswald": 0.77, "cl_max": 1.2, "r2": 0.99, "fallback_used": False},
+            {
+                "re": 100_000.0,
+                "v_mps": 8.0,
+                "cd0": 0.050,
+                "e_oswald": 0.75,
+                "cl_max": 1.2,
+                "r2": 0.98,
+                "fallback_used": False,
+            },
+            {
+                "re": 400_000.0,
+                "v_mps": 16.0,
+                "cd0": 0.020,
+                "e_oswald": 0.76,
+                "cl_max": 1.2,
+                "r2": 0.99,
+                "fallback_used": False,
+            },
+            {
+                "re": 1_000_000.0,
+                "v_mps": 30.0,
+                "cd0": 0.012,
+                "e_oswald": 0.77,
+                "cl_max": 1.2,
+                "r2": 0.99,
+                "fallback_used": False,
+            },
         ]
 
     def test_interpolation_at_known_table_re_returns_table_cd0(self):
@@ -550,9 +579,33 @@ class TestLookupEOswaldAtV:
 
     def _make_table(self) -> list[dict]:
         return [
-            {"re": 100_000.0,  "v_mps": 8.0,  "cd0": 0.050, "e_oswald": 0.73, "cl_max": 1.2, "r2": 0.98, "fallback_used": False},
-            {"re": 400_000.0,  "v_mps": 16.0, "cd0": 0.020, "e_oswald": 0.76, "cl_max": 1.2, "r2": 0.99, "fallback_used": False},
-            {"re": 1_000_000.0,"v_mps": 30.0, "cd0": 0.012, "e_oswald": 0.79, "cl_max": 1.2, "r2": 0.99, "fallback_used": False},
+            {
+                "re": 100_000.0,
+                "v_mps": 8.0,
+                "cd0": 0.050,
+                "e_oswald": 0.73,
+                "cl_max": 1.2,
+                "r2": 0.98,
+                "fallback_used": False,
+            },
+            {
+                "re": 400_000.0,
+                "v_mps": 16.0,
+                "cd0": 0.020,
+                "e_oswald": 0.76,
+                "cl_max": 1.2,
+                "r2": 0.99,
+                "fallback_used": False,
+            },
+            {
+                "re": 1_000_000.0,
+                "v_mps": 30.0,
+                "cd0": 0.012,
+                "e_oswald": 0.79,
+                "cl_max": 1.2,
+                "r2": 0.99,
+                "fallback_used": False,
+            },
         ]
 
     def test_returns_constant_mean_regardless_of_v(self):
@@ -568,9 +621,33 @@ class TestLookupEOswaldAtV:
     def test_excludes_fallback_rows_from_mean(self):
         """Rows with fallback_used=True are excluded from e_oswald mean."""
         table = [
-            {"re": 100_000.0,  "v_mps": 8.0,  "cd0": None, "e_oswald": None, "cl_max": 1.2, "r2": None, "fallback_used": True},
-            {"re": 400_000.0,  "v_mps": 16.0, "cd0": 0.020, "e_oswald": 0.76, "cl_max": 1.2, "r2": 0.99, "fallback_used": False},
-            {"re": 1_000_000.0,"v_mps": 30.0, "cd0": 0.012, "e_oswald": 0.79, "cl_max": 1.2, "r2": 0.99, "fallback_used": False},
+            {
+                "re": 100_000.0,
+                "v_mps": 8.0,
+                "cd0": None,
+                "e_oswald": None,
+                "cl_max": 1.2,
+                "r2": None,
+                "fallback_used": True,
+            },
+            {
+                "re": 400_000.0,
+                "v_mps": 16.0,
+                "cd0": 0.020,
+                "e_oswald": 0.76,
+                "cl_max": 1.2,
+                "r2": 0.99,
+                "fallback_used": False,
+            },
+            {
+                "re": 1_000_000.0,
+                "v_mps": 30.0,
+                "cd0": 0.012,
+                "e_oswald": 0.79,
+                "cl_max": 1.2,
+                "r2": 0.99,
+                "fallback_used": False,
+            },
         ]
         # Only rows 1 and 2 contribute → mean of 0.76 and 0.79
         expected_mean = (0.76 + 0.79) / 2.0
@@ -582,8 +659,24 @@ class TestLookupEOswaldAtV:
     def test_falls_back_to_0_8_when_all_rows_fallback(self):
         """If all rows have fallback_used=True (or e_oswald=None), return 0.8."""
         table = [
-            {"re": 100_000.0,  "v_mps": 8.0,  "cd0": None, "e_oswald": None, "cl_max": 1.2, "r2": None, "fallback_used": True},
-            {"re": 400_000.0,  "v_mps": 16.0, "cd0": None, "e_oswald": None, "cl_max": 1.2, "r2": None, "fallback_used": True},
+            {
+                "re": 100_000.0,
+                "v_mps": 8.0,
+                "cd0": None,
+                "e_oswald": None,
+                "cl_max": 1.2,
+                "r2": None,
+                "fallback_used": True,
+            },
+            {
+                "re": 400_000.0,
+                "v_mps": 16.0,
+                "cd0": None,
+                "e_oswald": None,
+                "cl_max": 1.2,
+                "r2": None,
+                "fallback_used": True,
+            },
         ]
         e = lookup_e_oswald_at_v(v_mps=10.0, table=table)
         assert abs(e - 0.8) < 1e-9, f"Expected fallback 0.8, got {e}"
@@ -694,9 +787,7 @@ class TestConsumerIntegration:
         p_low_v_low_cd0 = _power_required(1.225, 8.0, 0.020, e, ar, mass, s_ref, eta)
 
         # Lower cd0 → lower parasitic drag → lower P_req
-        assert p_low_v_high_cd0 > p_low_v_low_cd0, (
-            "Higher cd0 at low V should produce higher P_req"
-        )
+        assert p_low_v_high_cd0 > p_low_v_low_cd0, "Higher cd0 at low V should produce higher P_req"
 
     def test_min_drag_speed_with_table_cd0_differs_from_scalar_cd0(self):
         """_min_drag_speed uses cd0 from table (V-dependent) vs scalar constant."""
@@ -1048,8 +1139,11 @@ class TestFitBandWithAr:
     def test_e_oswald_outside_range_returns_fallback(self, monkeypatch):
         """e_oswald outside (0.4, 1.0] after fit → fallback row with warning."""
         import app.services.polar_re_table_service as _svc
+
         warnings_logged = []
-        monkeypatch.setattr(_svc.logger, "warning", lambda msg, *a, **kw: warnings_logged.append(msg))
+        monkeypatch.setattr(
+            _svc.logger, "warning", lambda msg, *a, **kw: warnings_logged.append(msg)
+        )
 
         # Build polar with e=0.1 (outside range) using many points
         ac = RC_TRAINER
@@ -1095,9 +1189,7 @@ class TestCessnacd0Range:
 
         # Verify cruise Re is in expected range
         re_cruise = _reynolds_number_from_v(v_cruise, ac["mac_m"], rho=1.225)
-        assert 5.0e6 < re_cruise < 8.0e6, (
-            f"Cessna cruise Re expected ~6M, got {re_cruise:.3e}"
-        )
+        assert 5.0e6 < re_cruise < 8.0e6, f"Cessna cruise Re expected ~6M, got {re_cruise:.3e}"
 
         # Build synthetic sweep with enough alphas for ≥6 samples per band
         velocities = [v_s, v_cruise * 0.7, v_cruise, v_cruise * 1.15, v_max * 0.9, v_max]

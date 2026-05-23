@@ -1,4 +1,5 @@
 """Tail sizing endpoint (gh-491) — GET /aeroplanes/{id}/tail-sizing."""
+
 from __future__ import annotations
 
 import logging
@@ -119,11 +120,7 @@ async def get_tail_sizing(
     aeroplane_id: Annotated[UUID4, Path(..., description="The ID of the aeroplane")],
     db: Session = Depends(get_db),
 ) -> TailSizingResponse:
-    aircraft = (
-        db.query(AeroplaneModel)
-        .filter(AeroplaneModel.uuid == str(aeroplane_id))
-        .first()
-    )
+    aircraft = db.query(AeroplaneModel).filter(AeroplaneModel.uuid == str(aeroplane_id)).first()
     if aircraft is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -145,9 +142,7 @@ async def get_tail_sizing(
         result = compute_tail_volumes(ctx)
         return _to_response(result)
     except Exception as exc:
-        logger.error(
-            "Tail sizing failed for aeroplane %s: %s", aeroplane_id, exc, exc_info=True
-        )
+        logger.error("Tail sizing failed for aeroplane %s: %s", aeroplane_id, exc, exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Tail sizing computation failed: {exc}",

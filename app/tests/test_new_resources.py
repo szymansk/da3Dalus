@@ -40,9 +40,7 @@ class TestWeightItems:
         client, _ = client_and_db
         aeroplane_id = _create_aeroplane(client)
 
-        post_resp = client.post(
-            f"/aeroplanes/{aeroplane_id}/weight-items", json=self.BATTERY_ITEM
-        )
+        post_resp = client.post(f"/aeroplanes/{aeroplane_id}/weight-items", json=self.BATTERY_ITEM)
         assert post_resp.status_code in (200, 201), post_resp.text
 
         get_resp = client.get(f"/aeroplanes/{aeroplane_id}/weight-items")
@@ -57,9 +55,7 @@ class TestWeightItems:
         client, _ = client_and_db
         aeroplane_id = _create_aeroplane(client)
 
-        post_resp = client.post(
-            f"/aeroplanes/{aeroplane_id}/weight-items", json=self.BATTERY_ITEM
-        )
+        post_resp = client.post(f"/aeroplanes/{aeroplane_id}/weight-items", json=self.BATTERY_ITEM)
         item_id = post_resp.json()["id"]
 
         update_body = {**self.BATTERY_ITEM, "mass_kg": 0.8}
@@ -78,23 +74,17 @@ class TestWeightItems:
         client, _ = client_and_db
         aeroplane_id = _create_aeroplane(client)
 
-        post_resp = client.post(
-            f"/aeroplanes/{aeroplane_id}/weight-items", json=self.BATTERY_ITEM
-        )
+        post_resp = client.post(f"/aeroplanes/{aeroplane_id}/weight-items", json=self.BATTERY_ITEM)
         item_id = post_resp.json()["id"]
 
-        del_resp = client.delete(
-            f"/aeroplanes/{aeroplane_id}/weight-items/{item_id}"
-        )
+        del_resp = client.delete(f"/aeroplanes/{aeroplane_id}/weight-items/{item_id}")
         assert del_resp.status_code == 204, del_resp.text
 
     def test_list_weight_items_empty_after_delete(self, client_and_db):
         client, _ = client_and_db
         aeroplane_id = _create_aeroplane(client)
 
-        post_resp = client.post(
-            f"/aeroplanes/{aeroplane_id}/weight-items", json=self.BATTERY_ITEM
-        )
+        post_resp = client.post(f"/aeroplanes/{aeroplane_id}/weight-items", json=self.BATTERY_ITEM)
         item_id = post_resp.json()["id"]
 
         client.delete(f"/aeroplanes/{aeroplane_id}/weight-items/{item_id}")
@@ -116,14 +106,10 @@ class TestCopilotHistory:
         aeroplane_id = _create_aeroplane(client)
 
         message = {"role": "user", "content": "hello"}
-        post_resp = client.post(
-            f"/aeroplanes/{aeroplane_id}/copilot-history", json=message
-        )
+        post_resp = client.post(f"/aeroplanes/{aeroplane_id}/copilot-history", json=message)
         assert post_resp.status_code in (200, 201), post_resp.text
 
-        get_resp = client.get(
-            f"/aeroplanes/{aeroplane_id}/copilot-history"
-        )
+        get_resp = client.get(f"/aeroplanes/{aeroplane_id}/copilot-history")
         assert get_resp.status_code == 200, get_resp.text
         data = get_resp.json()
         assert "messages" in data
@@ -140,9 +126,7 @@ class TestCopilotHistory:
             json={"role": "user", "content": "hello"},
         )
 
-        del_resp = client.delete(
-            f"/aeroplanes/{aeroplane_id}/copilot-history"
-        )
+        del_resp = client.delete(f"/aeroplanes/{aeroplane_id}/copilot-history")
         assert del_resp.status_code == 204, del_resp.text
 
     def test_get_copilot_history_empty_after_clear(self, client_and_db):
@@ -155,9 +139,7 @@ class TestCopilotHistory:
         )
         client.delete(f"/aeroplanes/{aeroplane_id}/copilot-history")
 
-        get_resp = client.get(
-            f"/aeroplanes/{aeroplane_id}/copilot-history"
-        )
+        get_resp = client.get(f"/aeroplanes/{aeroplane_id}/copilot-history")
         assert get_resp.status_code == 200, get_resp.text
         data = get_resp.json()
         assert len(data["messages"]) == 0

@@ -106,17 +106,25 @@ class TestWingAutoSync:
         # Create wing twice (PUT semantics — idempotent)
         client.put(
             f"/aeroplanes/{aero_id}/wings/main_wing",
-            json={"name": "main_wing", "symmetric": True, "x_secs": [
-                {"xyz_le": [0, 0, 0], "chord": 0.15, "twist": 0, "airfoil": "naca0015"},
-                {"xyz_le": [0, 0.5, 0], "chord": 0.12, "twist": 0, "airfoil": "naca0015"},
-            ]},
+            json={
+                "name": "main_wing",
+                "symmetric": True,
+                "x_secs": [
+                    {"xyz_le": [0, 0, 0], "chord": 0.15, "twist": 0, "airfoil": "naca0015"},
+                    {"xyz_le": [0, 0.5, 0], "chord": 0.12, "twist": 0, "airfoil": "naca0015"},
+                ],
+            },
         )
         client.put(
             f"/aeroplanes/{aero_id}/wings/main_wing",
-            json={"name": "main_wing", "symmetric": True, "x_secs": [
-                {"xyz_le": [0, 0, 0], "chord": 0.15, "twist": 0, "airfoil": "naca0015"},
-                {"xyz_le": [0, 0.5, 0], "chord": 0.12, "twist": 0, "airfoil": "naca0015"},
-            ]},
+            json={
+                "name": "main_wing",
+                "symmetric": True,
+                "x_secs": [
+                    {"xyz_le": [0, 0, 0], "chord": 0.15, "twist": 0, "airfoil": "naca0015"},
+                    {"xyz_le": [0, 0.5, 0], "chord": 0.12, "twist": 0, "airfoil": "naca0015"},
+                ],
+            },
         )
         nodes = _get_tree(client, aero_id)
         groups = [n for n in _flatten(nodes) if n.get("synced_from") == "wing:main_wing"]
@@ -149,10 +157,13 @@ class TestFuselageAutoSync:
         aero_id = _create_aeroplane(client)
         client.put(
             f"/aeroplanes/{aero_id}/fuselages/fuse_1",
-            json={"name": "fuse_1", "x_secs": [
-                {"xyz": [0, 0, 0], "a": 0.05, "b": 0.05, "n": 2.0},
-                {"xyz": [0.3, 0, 0], "a": 0.04, "b": 0.04, "n": 2.0},
-            ]},
+            json={
+                "name": "fuse_1",
+                "x_secs": [
+                    {"xyz": [0, 0, 0], "a": 0.05, "b": 0.05, "n": 2.0},
+                    {"xyz": [0.3, 0, 0], "a": 0.04, "b": 0.04, "n": 2.0},
+                ],
+            },
         )
         assert _find_synced(_get_tree(client, aero_id), "fuselage:fuse_1") is not None
 

@@ -491,7 +491,9 @@ class LoadingScenarioModel(Base):
         index=True,
     )
     name = Column(String, nullable=False)
-    aircraft_class = Column(String, nullable=False, default="rc_trainer", server_default="rc_trainer")
+    aircraft_class = Column(
+        String, nullable=False, default="rc_trainer", server_default="rc_trainer"
+    )
     component_overrides = Column(JSON, nullable=False, default=dict, server_default="{}")
     is_default = Column(Boolean, nullable=False, default=False, server_default="false")
     created_at = Column(

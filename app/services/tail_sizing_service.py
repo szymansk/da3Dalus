@@ -14,6 +14,7 @@ Sources:
     Lennon "R/C Model Aircraft Design" Ch. 5
     Thomas "Fundamentals of Sailplane Design" Ch. 7
 """
+
 from __future__ import annotations
 
 import logging
@@ -43,7 +44,7 @@ AIRCRAFT_CLASS_TARGETS: dict[str, dict] = {
         "v_v_citation": "Lennon Ch.5",
     },
     "rc_aerobatic": {
-        "v_h_range": (0.35, 0.55),   # deliberately lower — snappy pitch response
+        "v_h_range": (0.35, 0.55),  # deliberately lower — snappy pitch response
         "v_v_range": (0.025, 0.040),
         "v_h_citation": "Lennon Ch.5",
         "v_v_citation": "Lennon Ch.5",
@@ -84,12 +85,15 @@ AIRCRAFT_CLASS_TARGETS: dict[str, dict] = {
 _DEFAULT_TARGETS = AIRCRAFT_CLASS_TARGETS["rc_trainer"]
 
 # Single-value classification literal
-_Classification = str   # "below_range" | "in_range" | "above_range" | "out_of_physical_range" | "not_applicable"
+_Classification = (
+    str  # "below_range" | "in_range" | "above_range" | "out_of_physical_range" | "not_applicable"
+)
 
 
 # ---------------------------------------------------------------------------
 # Return type
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class TailVolumeResult:
@@ -100,8 +104,8 @@ class TailVolumeResult:
     v_v_current: float | None = None
 
     # Arm lengths (metres)
-    l_h_m: float | None = None                   # wing-AC → tail-AC (recommendation driver)
-    l_h_eff_from_aft_cg_m: float | None = None   # aft-CG → tail-AC (display-only)
+    l_h_m: float | None = None  # wing-AC → tail-AC (recommendation driver)
+    l_h_eff_from_aft_cg_m: float | None = None  # aft-CG → tail-AC (display-only)
 
     # Recommended surfaces (mm² — consistent with frontend wing units)
     s_h_recommended_mm2: float | None = None
@@ -132,6 +136,7 @@ class TailVolumeResult:
 # ---------------------------------------------------------------------------
 # Public entry point
 # ---------------------------------------------------------------------------
+
 
 def compute_tail_volumes(ctx: dict) -> TailVolumeResult:
     """Compute tail volume coefficients from the assumption context dict.
@@ -183,7 +188,9 @@ def compute_tail_volumes(ctx: dict) -> TailVolumeResult:
 
     if s_h_m2 is None or x_htail_le_m is None or htail_mac_m is None:
         result.classification = "not_applicable"
-        result.warnings.append("Missing horizontal tail geometry (s_h_m2 / x_htail_le_m / htail_mac_m)")
+        result.warnings.append(
+            "Missing horizontal tail geometry (s_h_m2 / x_htail_le_m / htail_mac_m)"
+        )
         return result
 
     # Tail AC = leading-edge X + 25 % tail MAC (Roskam Vol II §8.2.1)
@@ -305,6 +312,7 @@ def compute_tail_volumes(ctx: dict) -> TailVolumeResult:
 # Helpers
 # ---------------------------------------------------------------------------
 
+
 def _classify_volume(
     value: float,
     phys_min: float,
@@ -396,7 +404,8 @@ def build_tail_sizing_context_from_aeroplane(aircraft) -> dict | None:
     # Fallback: if no main_wing found explicitly, pick largest non-tail wing
     if main_wing is None and wings:
         candidates = [
-            w for w in wings
+            w
+            for w in wings
             if "horizontal" not in (w.name or "").lower()
             and "vertical" not in (w.name or "").lower()
             and "canard" not in (w.name or "").lower()
@@ -477,7 +486,7 @@ def _wing_area_approx(wing) -> float:
         le1 = xsecs[i + 1].xyz_le or [0.0, 0.0, 0.0]
         dy = abs(float(le1[1]) - float(le0[1]))
         dz = abs(float(le1[2]) - float(le0[2]))
-        span_seg = (dy ** 2 + dz ** 2) ** 0.5
+        span_seg = (dy**2 + dz**2) ** 0.5
         total += 0.5 * (c0 + c1) * span_seg
     symmetric = getattr(wing, "symmetric", True)
     return total * (2.0 if symmetric else 1.0)

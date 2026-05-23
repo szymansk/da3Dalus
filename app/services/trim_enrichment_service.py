@@ -31,8 +31,8 @@ ROLE_COEFFICIENT_MAP: dict[str, str] = {
     "stabilator": "Cm",
     "aileron": "Cl",
     "rudder": "Cn",
-    "elevon": "Cm",       # dual-role: pitch is primary, roll via differential
-    "flaperon": "Cl",     # dual-role: roll is primary, flap (lift) via symmetric
+    "elevon": "Cm",  # dual-role: pitch is primary, roll via differential
+    "flaperon": "Cl",  # dual-role: roll is primary, flap (lift) via symmetric
     "ruddervator": "Cm",  # V-tail: pitch is primary, yaw via differential
     "flap": "CL",
 }

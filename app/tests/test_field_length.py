@@ -516,9 +516,7 @@ class TestComputeFieldLengthsForAeroplane:
     aeroplane's ``assumption_computation_context`` and ``MissionObjective``.
     """
 
-    def test_compute_field_lengths_for_aeroplane_uses_mission_runway(
-        self, client_and_db
-    ):
+    def test_compute_field_lengths_for_aeroplane_uses_mission_runway(self, client_and_db):
         _, SessionLocal = client_and_db
         from app.models.aeroplanemodel import AeroplaneModel
         from app.schemas.mission_objective import MissionObjective
@@ -570,9 +568,7 @@ class TestComputeFieldLengthsForAeroplane:
             assert result["s_to_ground_m"] > 0
             assert result["s_ldg_ground_m"] > 0
 
-    def test_compute_field_lengths_for_aeroplane_uses_total_mass_fallback(
-        self, client_and_db
-    ):
+    def test_compute_field_lengths_for_aeroplane_uses_total_mass_fallback(self, client_and_db):
         """When ctx has no mass_kg, the wrapper supplies aeroplane.total_mass_kg
         so the legacy compute_field_lengths can fall back to it.
         """

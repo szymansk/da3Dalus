@@ -5,7 +5,6 @@ from alembic.config import Config
 from sqlalchemy import create_engine, inspect
 
 
-
 def test_alembic_upgrade_head_creates_flight_profile_schema(tmp_path):
     db_path = tmp_path / "migration_test.db"
     db_url = f"sqlite:///{db_path}"

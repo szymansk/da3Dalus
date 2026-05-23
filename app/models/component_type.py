@@ -7,6 +7,7 @@ update (tolerant mode: unknown keys are kept, known keys are checked).
 Seeded types (the 9 original hardcoded ones) are inserted by the Alembic
 migration with ``deletable=False`` so the user cannot remove them.
 """
+
 from __future__ import annotations
 
 from datetime import datetime, timezone

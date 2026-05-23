@@ -14,6 +14,7 @@ class ComponentTreeNodeModel(Base):
     - "cad_shape": reference to a CadQuery shape from the Creator pipeline
     - "cots": reference to a COTS component in the components catalog
     """
+
     __tablename__ = "component_tree"
 
     aeroplane_id = Column(String, nullable=False, index=True)

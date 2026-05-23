@@ -40,9 +40,7 @@ def _has_centreline_break(surface: AvlSurface) -> bool:
     return False
 
 
-def _required_nspan_for_section_density(
-    surface: AvlSurface, safety_margin: int = 2
-) -> int:
+def _required_nspan_for_section_density(surface: AvlSurface, safety_margin: int = 2) -> int:
     """Minimum ``Nspan`` that lets AVL allocate ≥ 1 panel per inter-section gap.
 
     AVL refuses with ``Cannot adjust spanwise spacing at section N`` /
@@ -63,11 +61,7 @@ def _required_nspan_for_section_density(
     span = y_positions[-1] - y_positions[0]
     if span <= 0:
         return 0
-    gaps = [
-        b - a
-        for a, b in zip(y_positions, y_positions[1:], strict=False)
-        if b - a > 1e-9
-    ]
+    gaps = [b - a for a, b in zip(y_positions, y_positions[1:], strict=False) if b - a > 1e-9]
     if not gaps:
         return 0
     min_gap = min(gaps)

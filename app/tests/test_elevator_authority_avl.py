@@ -143,7 +143,9 @@ class TestForceSolverParameter:
         )
 
         with (
-            patch.object(svc, "_compute_forward_cg_limit_asb", return_value=mock_result) as mock_asb,
+            patch.object(
+                svc, "_compute_forward_cg_limit_asb", return_value=mock_result
+            ) as mock_asb,
             patch.object(svc, "_compute_forward_cg_limit_avl") as mock_avl,
         ):
             result = svc.compute_forward_cg_limit(MagicMock(), MagicMock(), force_solver="asb")
@@ -167,7 +169,9 @@ class TestForceSolverParameter:
         )
 
         with (
-            patch.object(svc, "_compute_forward_cg_limit_avl", return_value=mock_result) as mock_avl,
+            patch.object(
+                svc, "_compute_forward_cg_limit_avl", return_value=mock_result
+            ) as mock_avl,
             patch.object(svc, "_compute_forward_cg_limit_asb") as mock_asb,
         ):
             result = svc.compute_forward_cg_limit(MagicMock(), MagicMock(), force_solver="avl")
@@ -407,9 +411,7 @@ class TestComputeForwardCgLimitAvl:
         mock_ac = _build_mock_aeroplane()
 
         with (
-            patch.object(
-                svc, "_load_assumption_value", side_effect=lambda db, aid, p: None
-            ),
+            patch.object(svc, "_load_assumption_value", side_effect=lambda db, aid, p: None),
         ):
             with pytest.raises(ValueError, match="x_np"):
                 svc._compute_forward_cg_limit_avl(MagicMock(), mock_ac)
@@ -622,9 +624,7 @@ class TestForwardCgRecomputeEndpoint:
             "app.api.v2.endpoints.aeroplane.forward_cg.compute_forward_cg_limit",
             return_value=mock_result,
         ):
-            resp = client.post(
-                f"/aeroplanes/{fake_uuid}/forward-cg/recompute?solver=asb"
-            )
+            resp = client.post(f"/aeroplanes/{fake_uuid}/forward-cg/recompute?solver=asb")
 
         # 200 or 404 (no aeroplane in DB) — endpoint must exist (not 405 "route not found")
         assert resp.status_code in (200, 404, 422, 500), (
@@ -654,9 +654,7 @@ class TestForwardCgRecomputeEndpoint:
             "app.api.v2.endpoints.aeroplane.forward_cg.compute_forward_cg_limit",
             return_value=mock_result,
         ):
-            resp = client.post(
-                f"/aeroplanes/{fake_uuid}/forward-cg/recompute?solver=avl"
-            )
+            resp = client.post(f"/aeroplanes/{fake_uuid}/forward-cg/recompute?solver=avl")
 
         assert resp.status_code != 405, "Endpoint must accept POST with solver=avl"
         assert resp.status_code in (200, 404, 422, 500)
@@ -668,9 +666,7 @@ class TestForwardCgRecomputeEndpoint:
         client, _ = client_and_db
         fake_uuid = str(uuid.uuid4())
 
-        resp = client.post(
-            f"/aeroplanes/{fake_uuid}/forward-cg/recompute?solver=invalid_value"
-        )
+        resp = client.post(f"/aeroplanes/{fake_uuid}/forward-cg/recompute?solver=invalid_value")
         assert resp.status_code == 422, (
             f"Invalid solver value should return 422; got {resp.status_code}"
         )
@@ -709,8 +705,12 @@ class TestForwardCgLimitAvlIntegration:
                         name="Wing",
                         symmetric=True,
                         xsecs=[
-                            asb.WingXSec(xyz_le=[0, 0, 0], chord=0.30, airfoil=asb.Airfoil("naca2412")),
-                            asb.WingXSec(xyz_le=[0.05, 0.6, 0], chord=0.20, airfoil=asb.Airfoil("naca2412")),
+                            asb.WingXSec(
+                                xyz_le=[0, 0, 0], chord=0.30, airfoil=asb.Airfoil("naca2412")
+                            ),
+                            asb.WingXSec(
+                                xyz_le=[0.05, 0.6, 0], chord=0.20, airfoil=asb.Airfoil("naca2412")
+                            ),
                         ],
                     ),
                     asb.Wing(
@@ -776,12 +776,8 @@ class TestForwardCgLimitAvlIntegration:
             asb_deflected = asb_airplane.with_control_deflections(
                 {"[elevator]Elevator": delta_e_deg}
             )
-            r_base = asb.AeroBuildup(
-                airplane=asb_baseline, op_point=op, xyz_ref=xyz_ref
-            ).run()
-            r_defl = asb.AeroBuildup(
-                airplane=asb_deflected, op_point=op, xyz_ref=xyz_ref
-            ).run()
+            r_base = asb.AeroBuildup(airplane=asb_baseline, op_point=op, xyz_ref=xyz_ref).run()
+            r_defl = asb.AeroBuildup(airplane=asb_deflected, op_point=op, xyz_ref=xyz_ref).run()
 
             def _cm(r):
                 if isinstance(r, dict):
@@ -820,9 +816,7 @@ class TestForwardCgLimitAvlIntegration:
         except Exception as exc:
             pytest.skip(f"AVL run failed: {exc}")
 
-        cm_delta_e_avl = abs(
-            (r_avl_defl.get("Cm", 0.0) - r_avl_base.get("Cm", 0.0)) / delta_e_rad
-        )
+        cm_delta_e_avl = abs((r_avl_defl.get("Cm", 0.0) - r_avl_base.get("Cm", 0.0)) / delta_e_rad)
 
         # Both must be non-zero (otherwise comparison is meaningless)
         if cm_delta_e_avl < 0.001:

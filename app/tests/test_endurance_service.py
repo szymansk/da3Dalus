@@ -55,7 +55,7 @@ RC_TRAINER = {
     "v_md_mps": 10.6,
     "v_min_sink_mps": 8.05,
     "battery_capacity_wh": 74.0,
-    "battery_mass_kg": 0.40,        # user component mass
+    "battery_mass_kg": 0.40,  # user component mass
     "motor_continuous_w": 200.0,
     "eta_prop": 0.65,
     "eta_motor": 0.85,
@@ -180,12 +180,24 @@ class TestPowerRequired:
     def test_p_req_increases_with_speed_at_high_v(self):
         """At speeds above V_md, P_req increases (parasitic drag dominates)."""
         p_slow = _power_required(
-            rho=RHO_SL, v=14.0,
-            cd0=0.03, e=0.78, ar=7.0, mass=2.0, s_ref=0.4, eta_total=0.52,
+            rho=RHO_SL,
+            v=14.0,
+            cd0=0.03,
+            e=0.78,
+            ar=7.0,
+            mass=2.0,
+            s_ref=0.4,
+            eta_total=0.52,
         )
         p_fast = _power_required(
-            rho=RHO_SL, v=25.0,
-            cd0=0.03, e=0.78, ar=7.0, mass=2.0, s_ref=0.4, eta_total=0.52,
+            rho=RHO_SL,
+            v=25.0,
+            cd0=0.03,
+            e=0.78,
+            ar=7.0,
+            mass=2.0,
+            s_ref=0.4,
+            eta_total=0.52,
         )
         assert p_fast > p_slow
 
@@ -207,8 +219,14 @@ class TestPowerRequired:
         # Allow either ValueError/ZeroDivisionError or returning a large value
         try:
             p = _power_required(
-                rho=RHO_SL, v=0.0, cd0=0.03, e=0.78, ar=7.0,
-                mass=2.0, s_ref=0.4, eta_total=0.52,
+                rho=RHO_SL,
+                v=0.0,
+                cd0=0.03,
+                e=0.78,
+                ar=7.0,
+                mass=2.0,
+                s_ref=0.4,
+                eta_total=0.52,
             )
             # If it returns, it must be infinite or very large
             assert not math.isfinite(p) or p > 1e6
@@ -269,7 +287,7 @@ class TestBatteryMassConsistency:
         _check_battery_mass_consistency(
             capacity_wh=74.0,
             specific_energy_wh_per_kg=180.0,
-            battery_mass_kg=0.40,   # predicted = 74/180 ≈ 0.411 kg → 2.8% off
+            battery_mass_kg=0.40,  # predicted = 74/180 ≈ 0.411 kg → 2.8% off
             warnings=warnings,
         )
         assert len(warnings) == 0
@@ -280,11 +298,16 @@ class TestBatteryMassConsistency:
         _check_battery_mass_consistency(
             capacity_wh=74.0,
             specific_energy_wh_per_kg=180.0,
-            battery_mass_kg=0.10,   # predicted = 0.411 kg; |0.10-0.411|/0.411 ≈ 76% > 30%
+            battery_mass_kg=0.10,  # predicted = 0.411 kg; |0.10-0.411|/0.411 ≈ 76% > 30%
             warnings=warnings,
         )
         assert len(warnings) == 1
-        assert ">30 %" in warnings[0] or "30 %" in warnings[0] or "30%" in warnings[0] or "deviat" in warnings[0].lower()
+        assert (
+            ">30 %" in warnings[0]
+            or "30 %" in warnings[0]
+            or "30%" in warnings[0]
+            or "deviat" in warnings[0].lower()
+        )
 
     def test_returns_predicted_mass_g(self):
         """Function returns predicted battery mass in grams."""
@@ -304,12 +327,16 @@ class TestBatteryMassConsistency:
         warnings_high: list[str] = []
         # Same capacity, but very different user masses
         _check_battery_mass_consistency(
-            capacity_wh=100.0, specific_energy_wh_per_kg=180.0,
-            battery_mass_kg=0.555, warnings=warnings_low,  # matches predicted ≈0.556 kg
+            capacity_wh=100.0,
+            specific_energy_wh_per_kg=180.0,
+            battery_mass_kg=0.555,
+            warnings=warnings_low,  # matches predicted ≈0.556 kg
         )
         _check_battery_mass_consistency(
-            capacity_wh=100.0, specific_energy_wh_per_kg=180.0,
-            battery_mass_kg=0.10, warnings=warnings_high,  # far from predicted
+            capacity_wh=100.0,
+            specific_energy_wh_per_kg=180.0,
+            battery_mass_kg=0.10,
+            warnings=warnings_high,  # far from predicted
         )
         assert len(warnings_low) == 0
         assert len(warnings_high) == 1
@@ -346,13 +373,17 @@ class TestFallbackConsistency:
 
     def test_estimated_when_e_oswald_quality_unknown(self):
         """If e_oswald_quality='unknown' → confidence='estimated'."""
-        aircraft = _make_aircraft(e_oswald=None, e_oswald_fallback_used=True, e_oswald_quality="unknown")
+        aircraft = _make_aircraft(
+            e_oswald=None, e_oswald_fallback_used=True, e_oswald_quality="unknown"
+        )
         result = self._call(aircraft)
         assert result["confidence"] == "estimated"
 
     def test_computed_when_polar_valid(self):
         """Good polar quality + no fallback → confidence='computed'."""
-        aircraft = _make_aircraft(e_oswald=0.78, e_oswald_fallback_used=False, e_oswald_quality="good")
+        aircraft = _make_aircraft(
+            e_oswald=0.78, e_oswald_fallback_used=False, e_oswald_quality="good"
+        )
         result = self._call(aircraft)
         assert result["confidence"] == "computed"
 
@@ -479,9 +510,9 @@ class TestPMarginIntegration:
     def test_infeasible_when_p_req_above_motor(self):
         """Motor 10 W, aircraft needs >10 W → infeasible."""
         aircraft = _make_aircraft(
-            mass_kg=5.0,        # heavy aircraft, high P_req
-            s_ref_m2=0.20,      # small wing → high wing loading
-            motor_continuous_w=10.0,   # tiny motor
+            mass_kg=5.0,  # heavy aircraft, high P_req
+            s_ref_m2=0.20,  # small wing → high wing loading
+            motor_continuous_w=10.0,  # tiny motor
         )
         result = self._call(aircraft)
         assert result["p_margin_class"] == "infeasible — motor underpowered"
@@ -538,6 +569,7 @@ class TestComputeEnduranceForAeroplane:
         otherwise the service falls back to PARAMETER_DEFAULTS.
         """
         from types import SimpleNamespace as NS
+
         assumption_overrides = assumption_overrides or {}
         db = MagicMock()
 
@@ -545,7 +577,11 @@ class TestComputeEnduranceForAeroplane:
             chain = MagicMock()
             chain.filter.return_value = chain
 
-            from app.models.aeroplanemodel import AeroplaneModel, DesignAssumptionModel, WeightItemModel
+            from app.models.aeroplanemodel import (
+                AeroplaneModel,
+                DesignAssumptionModel,
+                WeightItemModel,
+            )
 
             if model_cls is AeroplaneModel:
                 chain.first.return_value = aeroplane
@@ -557,6 +593,7 @@ class TestComputeEnduranceForAeroplane:
                 # by returning a mock row whose estimate_value / active_source match.
                 def _assumption_first():
                     return None
+
                 chain.first.side_effect = _assumption_first
             elif model_cls is WeightItemModel:
                 chain.first.return_value = battery_item
@@ -570,6 +607,7 @@ class TestComputeEnduranceForAeroplane:
 
     def _make_aeroplane(self, with_context=True):
         from types import SimpleNamespace
+
         a = SimpleNamespace()
         a.id = 1
         a.uuid = uuid.uuid4()
@@ -578,7 +616,7 @@ class TestComputeEnduranceForAeroplane:
                 "e_oswald": 0.78,
                 "e_oswald_quality": "good",
                 "e_oswald_fallback_used": False,
-                "v_md_mps": 10.6,   # polar-consistent with CD0=0.03, e=0.78, AR=7, m=2kg, S=0.40
+                "v_md_mps": 10.6,  # polar-consistent with CD0=0.03, e=0.78, AR=7, m=2kg, S=0.40
                 "v_min_sink_mps": 8.05,
                 "s_ref_m2": 0.40,
                 "aspect_ratio": 7.0,
@@ -720,7 +758,8 @@ class TestAmendment7ConsumerWiring:
 
         # Aircraft with Re table
         aircraft_with_table = self._make_aircraft_with_retable(
-            cd0_scalar=0.035, cd0_table_vmd=0.025  # table has significantly different cd0
+            cd0_scalar=0.035,
+            cd0_table_vmd=0.025,  # table has significantly different cd0
         )
         # Aircraft without Re table (scalar only)
         aircraft_scalar = SimpleNamespace()
@@ -804,12 +843,14 @@ class TestPowertrainServiceRefactor:
         # The service must import endurance_service (Model A refactor)
         import importlib
         import app.services.endurance_service as es_module
+
         assert hasattr(es_module, "compute_endurance"), (
             "endurance_service must export compute_endurance"
         )
 
         # The hardcoded constants must be GONE from powertrain_sizing_service
         import inspect
+
         src = inspect.getsource(powertrain_sizing_service)
         assert "DRAG_COEFF_ESTIMATE" not in src, (
             "powertrain_sizing_service must not contain hardcoded DRAG_COEFF_ESTIMATE"

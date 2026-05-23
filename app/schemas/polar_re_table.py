@@ -9,6 +9,7 @@ writing to JSON-persisted context.  The ``_k_fit`` internal slope is NOT
 included here (it is only used as an intermediate quantity inside
 ``_fit_band_with_ar``).
 """
+
 from __future__ import annotations
 
 from pydantic import BaseModel, Field
@@ -31,9 +32,7 @@ class PolarReTableRow(BaseModel):
     re: int = Field(..., description="Aircraft-level Reynolds number ρ·V·MAC/μ")
     v_mps: float = Field(..., description="Band centre velocity [m/s]")
     cd0: float | None = Field(None, description="Fitted zero-lift drag coefficient")
-    e_oswald: float | None = Field(
-        None, description="Oswald span efficiency factor in (0.4, 1.0]"
-    )
+    e_oswald: float | None = Field(None, description="Oswald span efficiency factor in (0.4, 1.0]")
     cl_max: float = Field(..., description="CL_max used as OLS window upper bound")
     r2: float | None = Field(None, description="OLS R² (0–1); None when fit failed")
     fallback_used: bool = Field(

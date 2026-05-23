@@ -4,6 +4,7 @@ Covers POST upload, GET file download (with optional STEP→STL regeneration),
 PUT metadata-only update, and DELETE with lock-protection. File storage
 follows the components.py pattern: `tmp/construction_parts/{aeroplane}/...`.
 """
+
 from __future__ import annotations
 
 import io
@@ -36,8 +37,8 @@ _ASCII_STL_ONE_TRI = (
 # UPLOAD  POST /aeroplanes/{id}/construction-parts
 # --------------------------------------------------------------------------- #
 
-class TestUpload:
 
+class TestUpload:
     def test_upload_stl_creates_part(self, client_and_db):
         client, _ = client_and_db
         files = {"file": ("test.stl", _ASCII_STL_ONE_TRI, "application/octet-stream")}
@@ -55,7 +56,9 @@ class TestUpload:
     def test_upload_persists_file_to_disk(self, client_and_db):
         client, sf = client_and_db
         files = {"file": ("frame.stl", _ASCII_STL_ONE_TRI, "application/octet-stream")}
-        res = client.post("/aeroplanes/aero-x/construction-parts", files=files, data={"name": "Frame"})
+        res = client.post(
+            "/aeroplanes/aero-x/construction-parts", files=files, data={"name": "Frame"}
+        )
         part_id = res.json()["id"]
 
         session = sf()
@@ -75,10 +78,14 @@ class TestUpload:
 
     def test_upload_with_optional_metadata(self, client_and_db):
         client, _ = client_and_db
-        material_res = client.post("/components", json={
-            "name": "PLA+", "component_type": "material",
-            "specs": {"density_kg_m3": 1240},
-        })
+        material_res = client.post(
+            "/components",
+            json={
+                "name": "PLA+",
+                "component_type": "material",
+                "specs": {"density_kg_m3": 1240},
+            },
+        )
         material_id = material_res.json()["id"]
 
         files = {"file": ("p.stl", _ASCII_STL_ONE_TRI, "application/octet-stream")}
@@ -96,7 +103,9 @@ class TestUpload:
     def test_upload_rejects_unknown_extension(self, client_and_db):
         client, _ = client_and_db
         files = {"file": ("bad.txt", b"not a model", "text/plain")}
-        res = client.post("/aeroplanes/aero-1/construction-parts", files=files, data={"name": "Bad"})
+        res = client.post(
+            "/aeroplanes/aero-1/construction-parts", files=files, data={"name": "Bad"}
+        )
         assert res.status_code == 422
 
     def test_upload_rejects_oversized_file(self, client_and_db):
@@ -104,13 +113,17 @@ class TestUpload:
         # 60 MB > 50 MB limit
         big = b"\x00" * (60 * 1024 * 1024)
         files = {"file": ("big.stl", big, "application/octet-stream")}
-        res = client.post("/aeroplanes/aero-1/construction-parts", files=files, data={"name": "Big"})
+        res = client.post(
+            "/aeroplanes/aero-1/construction-parts", files=files, data={"name": "Big"}
+        )
         assert res.status_code == 413
 
     def test_upload_rejects_empty_file(self, client_and_db):
         client, _ = client_and_db
         files = {"file": ("empty.stl", b"", "application/octet-stream")}
-        res = client.post("/aeroplanes/aero-1/construction-parts", files=files, data={"name": "Empty"})
+        res = client.post(
+            "/aeroplanes/aero-1/construction-parts", files=files, data={"name": "Empty"}
+        )
         assert res.status_code == 422
 
     def test_upload_records_file_format(self, client_and_db):
@@ -124,13 +137,14 @@ class TestUpload:
 # DOWNLOAD  GET /aeroplanes/{id}/construction-parts/{partId}/file
 # --------------------------------------------------------------------------- #
 
-class TestDownload:
 
+class TestDownload:
     def _upload_stl(self, client, aeroplane_id="aero-1", name="Stl"):
         files = {"file": (f"{name}.stl", _ASCII_STL_ONE_TRI, "application/octet-stream")}
         return client.post(
             f"/aeroplanes/{aeroplane_id}/construction-parts",
-            files=files, data={"name": name},
+            files=files,
+            data={"name": name},
         ).json()
 
     def test_download_stl_when_source_is_stl(self, client_and_db):
@@ -170,13 +184,14 @@ class TestDownload:
 # UPDATE  PUT /aeroplanes/{id}/construction-parts/{partId}
 # --------------------------------------------------------------------------- #
 
-class TestUpdateMetadata:
 
+class TestUpdateMetadata:
     def _upload(self, client):
         files = {"file": ("p.stl", _ASCII_STL_ONE_TRI, "application/octet-stream")}
         return client.post(
             "/aeroplanes/aero-1/construction-parts",
-            files=files, data={"name": "Original"},
+            files=files,
+            data={"name": "Original"},
         ).json()
 
     def test_put_updates_name(self, client_and_db):
@@ -191,14 +206,23 @@ class TestUpdateMetadata:
 
     def test_put_updates_material_component_id(self, client_and_db):
         client, _ = client_and_db
-        material = client.post("/components", json={
-            "name": "PETG", "component_type": "material", "specs": {"density_kg_m3": 1270},
-        }).json()
+        material = client.post(
+            "/components",
+            json={
+                "name": "PETG",
+                "component_type": "material",
+                "specs": {"density_kg_m3": 1270},
+            },
+        ).json()
         part = self._upload(client)
 
         res = client.put(
             f"/aeroplanes/aero-1/construction-parts/{part['id']}",
-            json={"name": part["name"], "material_component_id": material["id"], "thumbnail_url": None},
+            json={
+                "name": part["name"],
+                "material_component_id": material["id"],
+                "thumbnail_url": None,
+            },
         )
         assert res.status_code == 200
         assert res.json()["material_component_id"] == material["id"]
@@ -228,13 +252,14 @@ class TestUpdateMetadata:
 # DELETE
 # --------------------------------------------------------------------------- #
 
-class TestDelete:
 
+class TestDelete:
     def _upload(self, client, name="P"):
         files = {"file": (f"{name}.stl", _ASCII_STL_ONE_TRI, "application/octet-stream")}
         return client.post(
             "/aeroplanes/aero-1/construction-parts",
-            files=files, data={"name": name},
+            files=files,
+            data={"name": name},
         ).json()
 
     def test_delete_unlocked_removes_row_and_file(self, client_and_db):
@@ -275,8 +300,8 @@ class TestDelete:
 # Geometry extraction (skipped on platforms without CadQuery)
 # --------------------------------------------------------------------------- #
 
-class TestGeometryExtraction:
 
+class TestGeometryExtraction:
     def test_geometry_extraction_skipped_for_stl_uploads(self, client_and_db):
         """MVP behavior: STL meshes are not analyzed for geometry; STEP is.
 
@@ -286,7 +311,9 @@ class TestGeometryExtraction:
         """
         client, _ = client_and_db
         files = {"file": ("triangle.stl", _ASCII_STL_ONE_TRI, "application/octet-stream")}
-        res = client.post("/aeroplanes/aero-1/construction-parts", files=files, data={"name": "Tri"})
+        res = client.post(
+            "/aeroplanes/aero-1/construction-parts", files=files, data={"name": "Tri"}
+        )
         body = res.json()
         for k in ("volume_mm3", "area_mm2", "bbox_x_mm", "bbox_y_mm", "bbox_z_mm"):
             assert body[k] is None, f"expected {k} to be NULL for STL upload"
@@ -294,12 +321,15 @@ class TestGeometryExtraction:
     def test_upload_succeeds_when_cadquery_unavailable(self, client_and_db, monkeypatch):
         """If CadQuery is unavailable, the row is still created but geometry stays NULL."""
         from app.core import platform
+
         platform.cad_available.cache_clear()
         monkeypatch.setattr(platform, "cad_available", lambda: False)
 
         client, _ = client_and_db
         files = {"file": ("p.stl", _ASCII_STL_ONE_TRI, "application/octet-stream")}
-        res = client.post("/aeroplanes/aero-1/construction-parts", files=files, data={"name": "NoCad"})
+        res = client.post(
+            "/aeroplanes/aero-1/construction-parts", files=files, data={"name": "NoCad"}
+        )
         assert res.status_code == 201
         body = res.json()
         # All geometry fields must be NULL

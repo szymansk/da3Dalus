@@ -24,9 +24,7 @@ logger = logging.getLogger(__name__)
 
 
 def _get_aeroplane(db: Session, aeroplane_uuid) -> AeroplaneModel:
-    aeroplane = db.query(AeroplaneModel).filter(
-        AeroplaneModel.uuid == aeroplane_uuid
-    ).first()
+    aeroplane = db.query(AeroplaneModel).filter(AeroplaneModel.uuid == aeroplane_uuid).first()
     if not aeroplane:
         raise NotFoundError(entity="Aeroplane", resource_id=aeroplane_uuid)
     return aeroplane
@@ -35,7 +33,9 @@ def _get_aeroplane(db: Session, aeroplane_uuid) -> AeroplaneModel:
 def _get_version(db: Session, aeroplane: AeroplaneModel, version_id: int) -> DesignVersionModel:
     ver = (
         db.query(DesignVersionModel)
-        .filter(DesignVersionModel.aeroplane_id == aeroplane.id, DesignVersionModel.id == version_id)
+        .filter(
+            DesignVersionModel.aeroplane_id == aeroplane.id, DesignVersionModel.id == version_id
+        )
         .first()
     )
     if ver is None:
@@ -44,6 +44,7 @@ def _get_version(db: Session, aeroplane: AeroplaneModel, version_id: int) -> Des
 
 
 # ── snapshot helpers ─────────────────────────────────────────────────
+
 
 def _serialize_wing(wing) -> dict[str, Any]:
     """Serialize a WingModel to a plain dict for snapshot storage."""
@@ -105,11 +106,13 @@ def _serialize_mission_objective(
 def _serialize_weight_items(items: list[WeightItemModel]) -> list[dict[str, Any]]:
     result = []
     for item in items:
-        result.append({
-            col.name: getattr(item, col.name)
-            for col in item.__table__.columns
-            if col.name not in ("id", "aeroplane_id")
-        })
+        result.append(
+            {
+                col.name: getattr(item, col.name)
+                for col in item.__table__.columns
+                if col.name not in ("id", "aeroplane_id")
+            }
+        )
     return result
 
 
@@ -129,12 +132,11 @@ def _build_snapshot(aeroplane: AeroplaneModel) -> dict[str, Any]:
 
 # ── CRUD ─────────────────────────────────────────────────────────────
 
+
 def list_versions(db: Session, aeroplane_uuid) -> list[DesignVersionSummary]:
     aeroplane = _get_aeroplane(db, aeroplane_uuid)
     rows = (
-        db.query(DesignVersionModel)
-        .filter(DesignVersionModel.aeroplane_id == aeroplane.id)
-        .all()
+        db.query(DesignVersionModel).filter(DesignVersionModel.aeroplane_id == aeroplane.id).all()
     )
     return [
         DesignVersionSummary(
@@ -148,9 +150,7 @@ def list_versions(db: Session, aeroplane_uuid) -> list[DesignVersionSummary]:
     ]
 
 
-def create_version(
-    db: Session, aeroplane_uuid, data: DesignVersionCreate
-) -> DesignVersionSummary:
+def create_version(db: Session, aeroplane_uuid, data: DesignVersionCreate) -> DesignVersionSummary:
     try:
         aeroplane = _get_aeroplane(db, aeroplane_uuid)
         snapshot = _build_snapshot(aeroplane)
@@ -219,6 +219,7 @@ def diff_versions(
 
 # ── diff engine ──────────────────────────────────────────────────────
 
+
 def _compute_diff(
     snap_a: dict[str, Any], snap_b: dict[str, Any], prefix: str = ""
 ) -> list[dict[str, Any]]:
@@ -248,9 +249,7 @@ def _compute_diff(
     return changes
 
 
-def _diff_lists(
-    list_a: list, list_b: list, path: str
-) -> list[dict[str, Any]]:
+def _diff_lists(list_a: list, list_b: list, path: str) -> list[dict[str, Any]]:
     changes: list[dict[str, Any]] = []
     max_len = max(len(list_a), len(list_b))
     for i in range(max_len):
@@ -262,5 +261,7 @@ def _diff_lists(
         elif isinstance(list_a[i], dict) and isinstance(list_b[i], dict):
             changes.extend(_compute_diff(list_a[i], list_b[i], item_path))
         elif list_a[i] != list_b[i]:
-            changes.append({"path": item_path, "type": "changed", "old": list_a[i], "new": list_b[i]})
+            changes.append(
+                {"path": item_path, "type": "changed", "old": list_a[i], "new": list_b[i]}
+            )
     return changes

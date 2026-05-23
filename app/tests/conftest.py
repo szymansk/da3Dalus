@@ -96,7 +96,8 @@ def _markers_for_path(path: str) -> list[str]:
 
 
 def pytest_collection_modifyitems(
-    config: pytest.Config, items: list[pytest.Item]  # noqa: ARG001
+    config: pytest.Config,
+    items: list[pytest.Item],  # noqa: ARG001
 ) -> None:
     """Apply markers derived from file name to every collected test item.
 
@@ -485,6 +486,7 @@ def seed_design_assumptions(session: Session, aeroplane_id: int) -> list[DesignA
 # Smoke-plane shared helpers
 # --------------------------------------------------------------------------- #
 
+
 def _ted(name: str, role: str, *, symmetric: bool = False) -> dict:
     """Build a TED kwargs dict. All smoke TEDs use 75% hinge, ±25° deflection."""
     return {
@@ -693,7 +695,8 @@ def seed_smoke_flying_wing(session: Session) -> AeroplaneModel:
     aeroplane = _smoke_aeroplane(session, "smoke-flying-wing")
 
     _smoke_main_wing(
-        session, aeroplane.id,
+        session,
+        aeroplane.id,
         sec0_ted=_ted("Elevon_0", "elevon"),
         sec1_ted=_ted("Elevon_1", "elevon"),
     )
@@ -708,7 +711,8 @@ def seed_smoke_flaperon_ttail(session: Session) -> AeroplaneModel:
     aeroplane = _smoke_aeroplane(session, "smoke-flaperon-ttail")
 
     _smoke_main_wing(
-        session, aeroplane.id,
+        session,
+        aeroplane.id,
         sec0_ted=_ted("Flaperon_0", "flaperon"),
         sec1_ted=_ted("Flaperon_1", "flaperon"),
     )
@@ -725,7 +729,8 @@ def seed_smoke_flap_aileron_ttail(session: Session) -> AeroplaneModel:
     aeroplane = _smoke_aeroplane(session, "smoke-flap-aileron-ttail")
 
     _smoke_main_wing(
-        session, aeroplane.id,
+        session,
+        aeroplane.id,
         sec0_ted=_ted("Flap", "flap", symmetric=True),
         sec1_ted=_AILERON,
     )

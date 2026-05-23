@@ -34,7 +34,9 @@ def test_auto_switch_on_first_calculated_value(mock_db_with_assumption):
         mock_aeroplane.id = 1
         mock_get.return_value = mock_aeroplane
 
-        update_calculated_value(db, "test-uuid", "cl_max", 1.35, "aerobuildup", auto_switch_source=True)
+        update_calculated_value(
+            db, "test-uuid", "cl_max", 1.35, "aerobuildup", auto_switch_source=True
+        )
 
     assert row.calculated_value == 1.35
     assert row.active_source == "CALCULATED"
@@ -50,7 +52,9 @@ def test_no_auto_switch_when_already_has_calculated(mock_db_with_assumption):
         mock_aeroplane.id = 1
         mock_get.return_value = mock_aeroplane
 
-        update_calculated_value(db, "test-uuid", "cl_max", 1.35, "aerobuildup", auto_switch_source=True)
+        update_calculated_value(
+            db, "test-uuid", "cl_max", 1.35, "aerobuildup", auto_switch_source=True
+        )
 
     assert row.calculated_value == 1.35
     assert row.active_source == "ESTIMATE"  # not overridden
@@ -65,6 +69,8 @@ def test_no_auto_switch_for_design_choice(mock_db_with_assumption):
         mock_aeroplane.id = 1
         mock_get.return_value = mock_aeroplane
 
-        update_calculated_value(db, "test-uuid", "g_limit", 3.5, "computed", auto_switch_source=True)
+        update_calculated_value(
+            db, "test-uuid", "g_limit", 3.5, "computed", auto_switch_source=True
+        )
 
     assert row.active_source == "ESTIMATE"  # design choices never auto-switch

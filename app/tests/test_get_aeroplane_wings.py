@@ -8,6 +8,7 @@ from sqlalchemy.exc import SQLAlchemyError
 from app.api.v2.endpoints.aeroplane.wings import get_aeroplane_wings
 from app import schemas
 
+
 class TestGetAeroplaneWings(unittest.TestCase):
     def test_get_aeroplane_wings_success(self):
         test_id = uuid.uuid4()
@@ -52,11 +53,13 @@ class TestGetAeroplaneWings(unittest.TestCase):
     def test_get_aeroplane_wings_unexpected_error(self):
         test_id = uuid.uuid4()
         mock_db = MagicMock()
+
         # simulate unexpected error fetching wings via property
         class DummyPlane:
             @property
             def wings(self):
                 raise Exception("oops")
+
         mock_model = DummyPlane()
         mock_db.query.return_value.filter.return_value.first.return_value = mock_model
 
@@ -65,6 +68,7 @@ class TestGetAeroplaneWings(unittest.TestCase):
 
         self.assertEqual(ctx.exception.status_code, 500)
         self.assertIn("Unexpected error", ctx.exception.detail)
+
 
 if __name__ == "__main__":
     unittest.main()

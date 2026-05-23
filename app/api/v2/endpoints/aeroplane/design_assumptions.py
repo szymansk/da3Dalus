@@ -64,7 +64,6 @@ def _call(func, *args, **kwargs):
         raise HTTPException(status_code=500, detail=f"Unexpected error: {exc}") from exc
 
 
-
 @router.post(
     "/aeroplanes/{aeroplane_id}/assumptions",
     status_code=status.HTTP_201_CREATED,
@@ -155,15 +154,9 @@ async def switch_source_endpoint(
 
 def _resolve_aeroplane(db: Session, aeroplane_id: UUID4) -> AeroplaneModel:
     """Return the AeroplaneModel for *aeroplane_id*, or raise HTTP 404."""
-    aeroplane = (
-        db.query(AeroplaneModel)
-        .filter(AeroplaneModel.uuid == str(aeroplane_id))
-        .first()
-    )
+    aeroplane = db.query(AeroplaneModel).filter(AeroplaneModel.uuid == str(aeroplane_id)).first()
     if aeroplane is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="Aeroplane not found"
-        )
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Aeroplane not found")
     return aeroplane
 
 

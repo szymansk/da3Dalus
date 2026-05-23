@@ -40,6 +40,7 @@ pytestmark = pytest.mark.skipif(
 # Helpers
 # ---------------------------------------------------------------------------
 
+
 def _op_payload(**overrides) -> dict:
     """Return a valid StoredOperatingPointCreate payload dict."""
     base = dict(
@@ -310,9 +311,9 @@ class TestReadOperatingPointSet:
         client.post("/operating_pointsets/", json=_opset_payload())
         db = SessionLocal()
         try:
-            opset = db.query(OperatingPointSetModel).order_by(
-                OperatingPointSetModel.id.desc()
-            ).first()
+            opset = (
+                db.query(OperatingPointSetModel).order_by(OperatingPointSetModel.id.desc()).first()
+            )
             return opset.id
         finally:
             db.close()
@@ -337,9 +338,9 @@ class TestUpdateOperatingPointSet:
         client.post("/operating_pointsets/", json=_opset_payload())
         db = SessionLocal()
         try:
-            opset = db.query(OperatingPointSetModel).order_by(
-                OperatingPointSetModel.id.desc()
-            ).first()
+            opset = (
+                db.query(OperatingPointSetModel).order_by(OperatingPointSetModel.id.desc()).first()
+            )
             return opset.id
         finally:
             db.close()
@@ -366,9 +367,9 @@ class TestDeleteOperatingPointSet:
         client.post("/operating_pointsets/", json=_opset_payload())
         db = SessionLocal()
         try:
-            opset = db.query(OperatingPointSetModel).order_by(
-                OperatingPointSetModel.id.desc()
-            ).first()
+            opset = (
+                db.query(OperatingPointSetModel).order_by(OperatingPointSetModel.id.desc()).first()
+            )
             return opset.id
         finally:
             db.close()
@@ -408,11 +409,21 @@ class TestGenerateDefaultOperatingPointSet:
             source_flight_profile_id=None,
             operating_points=[
                 StoredOperatingPointRead(
-                    id=1, name="op1", description="desc", velocity=20.0,
-                    alpha=0.05, beta=0.0, p=0.0, q=0.0, r=0.0,
-                    altitude=0.0, config="clean",
+                    id=1,
+                    name="op1",
+                    description="desc",
+                    velocity=20.0,
+                    alpha=0.05,
+                    beta=0.0,
+                    p=0.0,
+                    q=0.0,
+                    r=0.0,
+                    altitude=0.0,
+                    config="clean",
                     status=OperatingPointStatus.TRIMMED,
-                    warnings=[], controls={}, xyz_ref=[0, 0, 0],
+                    warnings=[],
+                    controls={},
+                    xyz_ref=[0, 0, 0],
                 ),
             ],
         )
@@ -434,8 +445,11 @@ class TestGenerateDefaultOperatingPointSet:
         aircraft_uuid, aircraft_pk = _make_aeroplane_detached(SessionLocal, "gen-body-test")
 
         mock_return = GeneratedOperatingPointSetRead(
-            id=2, name="custom_set", description="desc",
-            operating_points=[], aircraft_id=aircraft_pk,
+            id=2,
+            name="custom_set",
+            description="desc",
+            operating_points=[],
+            aircraft_id=aircraft_pk,
         )
         with patch(
             f"{self._SERVICE}.generate_default_set_for_aircraft",
@@ -537,11 +551,19 @@ class TestTrimOperatingPoint:
         mock_return = TrimmedOperatingPointRead(
             source_flight_profile_id=None,
             point=StoredOperatingPointCreate(
-                name="trimmed_pt", description="desc",
-                velocity=20.0, alpha=0.05, beta=0.0,
-                p=0.0, q=0.0, r=0.0, altitude=0.0,
-                config="clean", status=OperatingPointStatus.TRIMMED,
-                warnings=[], controls={"elevator": -0.02},
+                name="trimmed_pt",
+                description="desc",
+                velocity=20.0,
+                alpha=0.05,
+                beta=0.0,
+                p=0.0,
+                q=0.0,
+                r=0.0,
+                altitude=0.0,
+                config="clean",
+                status=OperatingPointStatus.TRIMMED,
+                warnings=[],
+                controls={"elevator": -0.02},
                 xyz_ref=[0, 0, 0],
             ),
         )

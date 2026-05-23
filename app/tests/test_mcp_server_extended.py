@@ -24,6 +24,7 @@ def _run(coro):
 # Fixtures
 # ---------------------------------------------------------------------------
 
+
 @pytest.fixture(autouse=True)
 def clear_asset_registry():
     with mcp_server.ASSET_REGISTRY_LOCK:
@@ -44,6 +45,7 @@ def stable_base_url(monkeypatch):
 # ---------------------------------------------------------------------------
 # _normalize_result
 # ---------------------------------------------------------------------------
+
 
 class TestNormalizeResult:
     def test_none_returns_status_ok(self):
@@ -88,6 +90,7 @@ class TestNormalizeResult:
         assert result["media_type"] == "image/png"
         assert result["encoding"] == "base64"
         import base64
+
         assert base64.b64decode(result["data"]) == image_bytes
 
     def test_response_with_json_body(self):
@@ -120,12 +123,16 @@ class TestNormalizeResult:
 # _base_url_from_request_url
 # ---------------------------------------------------------------------------
 
+
 class TestBaseUrlFromRequestUrl:
     def test_strips_mcp_suffix(self):
         assert mcp_server._base_url_from_request_url("http://host:8001/mcp") == "http://host:8001"
 
     def test_strips_nested_mcp_suffix(self):
-        assert mcp_server._base_url_from_request_url("http://host:8001/api/mcp") == "http://host:8001/api"
+        assert (
+            mcp_server._base_url_from_request_url("http://host:8001/api/mcp")
+            == "http://host:8001/api"
+        )
 
     def test_returns_none_for_missing_scheme(self):
         assert mcp_server._base_url_from_request_url("/just/a/path") is None
@@ -141,6 +148,7 @@ class TestBaseUrlFromRequestUrl:
 # ---------------------------------------------------------------------------
 # _base_url_from_context
 # ---------------------------------------------------------------------------
+
 
 class TestBaseUrlFromContext:
     def test_none_context_returns_none(self):
@@ -165,6 +173,7 @@ class TestBaseUrlFromContext:
 # _base_url_from_active_request
 # ---------------------------------------------------------------------------
 
+
 class TestBaseUrlFromActiveRequest:
     def test_returns_none_on_runtime_error(self, monkeypatch):
         monkeypatch.setattr(
@@ -185,6 +194,7 @@ class TestBaseUrlFromActiveRequest:
 # _resolve_tmp_path_from_static_url
 # ---------------------------------------------------------------------------
 
+
 class TestResolveTmpPathFromStaticUrl:
     def test_valid_static_url(self):
         result = mcp_server._resolve_tmp_path_from_static_url("/static/foo/bar.png")
@@ -202,6 +212,7 @@ class TestResolveTmpPathFromStaticUrl:
 # ---------------------------------------------------------------------------
 # resolve_tmp_path_from_known_output
 # ---------------------------------------------------------------------------
+
 
 class TestResolveTmpPathFromKnownOutput:
     def test_dict_with_file_path(self, tmp_path):
@@ -264,6 +275,7 @@ class TestResolveTmpPathFromKnownOutput:
 # _infer_asset_kind
 # ---------------------------------------------------------------------------
 
+
 class TestInferAssetKind:
     def test_explicit_kind_takes_priority(self):
         assert mcp_server._infer_asset_kind("application/zip", explicit_kind="archive") == "archive"
@@ -280,6 +292,7 @@ class TestInferAssetKind:
 # ---------------------------------------------------------------------------
 # register_file_asset
 # ---------------------------------------------------------------------------
+
 
 class TestRegisterFileAsset:
     def test_raises_for_nonexistent_file(self):
@@ -324,6 +337,7 @@ class TestRegisterFileAsset:
 # ---------------------------------------------------------------------------
 # register_bytes_asset
 # ---------------------------------------------------------------------------
+
 
 class TestRegisterBytesAsset:
     def test_registers_png_bytes(self):
@@ -374,6 +388,7 @@ class TestRegisterBytesAsset:
 # _asset_entry_or_raise
 # ---------------------------------------------------------------------------
 
+
 class TestAssetEntryOrRaise:
     def test_unknown_id_raises(self):
         with pytest.raises(NotFoundError, match="Unknown asset"):
@@ -398,6 +413,7 @@ class TestAssetEntryOrRaise:
 # ---------------------------------------------------------------------------
 # _to_resource_result
 # ---------------------------------------------------------------------------
+
 
 class TestToResourceResult:
     def test_text_file_returns_text_content(self):
@@ -434,6 +450,7 @@ class TestToResourceResult:
 # _register_image_payload
 # ---------------------------------------------------------------------------
 
+
 class TestRegisterImagePayload:
     def test_raises_for_non_dict(self):
         with pytest.raises(ValueError, match="Expected image payload dict"):
@@ -455,6 +472,7 @@ class TestRegisterImagePayload:
 
     def test_successful_registration(self):
         import base64
+
         image_bytes = b"\x89PNGfake"
         payload = {
             "encoding": "base64",
@@ -468,6 +486,7 @@ class TestRegisterImagePayload:
 
     def test_defaults_to_png_mime(self):
         import base64
+
         payload = {
             "encoding": "base64",
             "data": base64.b64encode(b"data").decode("ascii"),
@@ -477,6 +496,7 @@ class TestRegisterImagePayload:
 
     def test_non_png_uses_bin_suffix(self):
         import base64
+
         payload = {
             "encoding": "base64",
             "data": base64.b64encode(b"data").decode("ascii"),
@@ -489,6 +509,7 @@ class TestRegisterImagePayload:
 # ---------------------------------------------------------------------------
 # _asset_payload
 # ---------------------------------------------------------------------------
+
 
 class TestAssetPayload:
     def test_includes_filename_when_present(self):
@@ -519,6 +540,7 @@ class TestAssetPayload:
 # _normalize_file_path
 # ---------------------------------------------------------------------------
 
+
 class TestNormalizeFilePath:
     def test_absolute_path_unchanged(self, tmp_path):
         p = tmp_path / "file.txt"
@@ -534,6 +556,7 @@ class TestNormalizeFilePath:
 # ---------------------------------------------------------------------------
 # resolve_public_base_url
 # ---------------------------------------------------------------------------
+
 
 class TestResolvePublicBaseUrl:
     def test_falls_back_to_settings(self):
@@ -551,6 +574,7 @@ class TestResolvePublicBaseUrl:
 # build_public_url_from_tmp_path
 # ---------------------------------------------------------------------------
 
+
 class TestBuildPublicUrlFromTmpPath:
     def test_default_base_url(self):
         file_path = mcp_server._normalize_file_path(Path("tmp") / "foo" / "bar.png")
@@ -567,6 +591,7 @@ class TestBuildPublicUrlFromTmpPath:
 # download_export_zip_tool error path
 # ---------------------------------------------------------------------------
 
+
 class TestDownloadExportZipToolError:
     def test_raises_for_unexpected_payload(self, monkeypatch):
         async def fake_download(*, aeroplane_id, request=None, settings=None):
@@ -580,6 +605,7 @@ class TestDownloadExportZipToolError:
 # ---------------------------------------------------------------------------
 # MCPToolSpec and mcp_tool decorator
 # ---------------------------------------------------------------------------
+
 
 class TestMCPToolSpec:
     def test_dataclass_fields(self):
@@ -598,6 +624,7 @@ class TestMCPToolSpec:
 # create_mcp_server
 # ---------------------------------------------------------------------------
 
+
 class TestCreateMcpServer:
     def test_returns_fastmcp_instance(self):
         server = mcp_server.create_mcp_server()
@@ -615,6 +642,7 @@ class TestCreateMcpServer:
 # ---------------------------------------------------------------------------
 # _call_endpoint
 # ---------------------------------------------------------------------------
+
 
 class TestCallEndpoint:
     def test_sync_endpoint(self):

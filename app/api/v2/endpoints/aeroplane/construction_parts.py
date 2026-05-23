@@ -1,10 +1,22 @@
 """Endpoints for the per-aeroplane Construction-Parts domain (gh#57-g4h + gh#57-9uk)."""
+
 from __future__ import annotations
 
 import logging
 from typing import Annotated, Optional
 
-from fastapi import APIRouter, Body, Depends, File, Form, HTTPException, Path, Query, UploadFile, status
+from fastapi import (
+    APIRouter,
+    Body,
+    Depends,
+    File,
+    Form,
+    HTTPException,
+    Path,
+    Query,
+    UploadFile,
+    status,
+)
 from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session
 
@@ -46,9 +58,7 @@ def _raise_http(exc: ServiceException) -> None:
                 status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
                 detail=exc.message,
             ) from exc
-        raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT, detail=exc.message
-        ) from exc
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=exc.message) from exc
     raise HTTPException(
         status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=exc.message
     ) from exc
@@ -129,7 +139,9 @@ async def upload_construction_part(
     file: Annotated[UploadFile, File(..., description="STEP (.step/.stp) or STL (.stl) file")],
     name: Annotated[str, Form(..., min_length=1, description="Display name")],
     db: Annotated[Session, Depends(get_db)],
-    material_component_id: Annotated[Optional[int], Form(description="FK to components (material)")] = None,
+    material_component_id: Annotated[
+        Optional[int], Form(description="FK to components (material)")
+    ] = None,
     thumbnail_url: Annotated[Optional[str], Form(description="Optional preview image URL")] = None,
 ) -> ConstructionPartRead:
     """Upload a CAD file and create a new construction-part for this aeroplane.

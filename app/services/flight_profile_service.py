@@ -47,7 +47,9 @@ def _merge_dict(base: dict, update: Optional[dict]) -> dict:
 
 def create_profile(db: Session, payload: RCFlightProfileCreate) -> RCFlightProfileRead:
     try:
-        existing = db.query(RCFlightProfileModel).filter(RCFlightProfileModel.name == payload.name).first()
+        existing = (
+            db.query(RCFlightProfileModel).filter(RCFlightProfileModel.name == payload.name).first()
+        )
         if existing:
             raise ConflictError(_ERR_NAME_EXISTS)
 
@@ -90,14 +92,20 @@ def get_profile(db: Session, profile_id: int) -> RCFlightProfileRead:
         raise InternalError(f"Database error: {exc}")
 
 
-def update_profile(db: Session, profile_id: int, payload: RCFlightProfileUpdate) -> RCFlightProfileRead:
+def update_profile(
+    db: Session, profile_id: int, payload: RCFlightProfileUpdate
+) -> RCFlightProfileRead:
     try:
         profile = _get_profile_or_raise(db, profile_id)
 
         update_data = payload.model_dump(exclude_unset=True)
         target_name = update_data.get("name")
         if target_name and target_name != profile.name:
-            existing = db.query(RCFlightProfileModel).filter(RCFlightProfileModel.name == target_name).first()
+            existing = (
+                db.query(RCFlightProfileModel)
+                .filter(RCFlightProfileModel.name == target_name)
+                .first()
+            )
             if existing:
                 raise ConflictError(_ERR_NAME_EXISTS)
 

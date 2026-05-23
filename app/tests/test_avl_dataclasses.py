@@ -1,4 +1,5 @@
 """Tests for AVL geometry dataclass serialisation."""
+
 from __future__ import annotations
 
 
@@ -9,7 +10,11 @@ class TestAvlCdcl:
         cdcl = AvlCdcl(cl_min=-0.6, cd_min=0.024, cl_0=0.2, cd_0=0.008, cl_max=1.4, cd_max=0.032)
         result = repr(cdcl)
         assert "CDCL" in result
-        lines = [ln.strip() for ln in result.strip().splitlines() if ln.strip() and not ln.strip().startswith("!")]
+        lines = [
+            ln.strip()
+            for ln in result.strip().splitlines()
+            if ln.strip() and not ln.strip().startswith("!")
+        ]
         assert lines[0] == "CDCL"
         values = lines[1].split()
         assert len(values) == 6
@@ -35,9 +40,15 @@ class TestAvlControl:
     def test_repr_formats_control_block(self):
         from app.avl.geometry import AvlControl
 
-        ctrl = AvlControl(name="aileron", gain=1.0, xhinge=0.8, xyz_hvec=(0.0, 0.0, 0.0), sgn_dup=-1.0)
+        ctrl = AvlControl(
+            name="aileron", gain=1.0, xhinge=0.8, xyz_hvec=(0.0, 0.0, 0.0), sgn_dup=-1.0
+        )
         result = repr(ctrl)
-        lines = [ln.strip() for ln in result.strip().splitlines() if ln.strip() and not ln.strip().startswith("!")]
+        lines = [
+            ln.strip()
+            for ln in result.strip().splitlines()
+            if ln.strip() and not ln.strip().startswith("!")
+        ]
         assert lines[0] == "CONTROL"
         parts = lines[1].split()
         assert parts[0] == "aileron"
@@ -140,7 +151,10 @@ class TestAvlSurface:
             n_chord=12,
             c_space=1.0,
             yduplicate=0.0,
-            sections=[AvlSection(xyz_le=(0, 0, 0), chord=0.2), AvlSection(xyz_le=(0, 1, 0), chord=0.15)],
+            sections=[
+                AvlSection(xyz_le=(0, 0, 0), chord=0.2),
+                AvlSection(xyz_le=(0, 1, 0), chord=0.15),
+            ],
         )
         assert "YDUPLICATE" in repr(surf)
 
@@ -152,7 +166,10 @@ class TestAvlSurface:
             n_chord=12,
             c_space=1.0,
             component=1,
-            sections=[AvlSection(xyz_le=(0, 0, 0), chord=0.2), AvlSection(xyz_le=(0, 1, 0), chord=0.15)],
+            sections=[
+                AvlSection(xyz_le=(0, 0, 0), chord=0.2),
+                AvlSection(xyz_le=(0, 1, 0), chord=0.15),
+            ],
         )
         assert "COMPONENT" in repr(surf)
 
@@ -165,7 +182,10 @@ class TestAvlSurface:
             c_space=1.0,
             n_span=20,
             s_space=1.0,
-            sections=[AvlSection(xyz_le=(0, 0, 0), chord=0.2), AvlSection(xyz_le=(0, 1, 0), chord=0.15)],
+            sections=[
+                AvlSection(xyz_le=(0, 0, 0), chord=0.2),
+                AvlSection(xyz_le=(0, 1, 0), chord=0.15),
+            ],
         )
         result = repr(surf)
         lines = result.splitlines()
@@ -187,7 +207,10 @@ class TestAvlSurface:
             nowake=True,
             noalbe=True,
             noload=True,
-            sections=[AvlSection(xyz_le=(0, 0, 0), chord=0.1), AvlSection(xyz_le=(0, 0, 0.3), chord=0.08)],
+            sections=[
+                AvlSection(xyz_le=(0, 0, 0), chord=0.1),
+                AvlSection(xyz_le=(0, 0, 0.3), chord=0.08),
+            ],
         )
         result = repr(surf)
         assert "NOWAKE" in result
@@ -244,8 +267,12 @@ class TestAvlGeometryFile:
                     c_space=1.0,
                     yduplicate=0.0,
                     sections=[
-                        AvlSection(xyz_le=(0.0, 0.0, 0.0), chord=0.2, airfoil=AvlAfile("/tmp/af.dat")),
-                        AvlSection(xyz_le=(0.02, 1.0, 0.1), chord=0.15, airfoil=AvlAfile("/tmp/af.dat")),
+                        AvlSection(
+                            xyz_le=(0.0, 0.0, 0.0), chord=0.2, airfoil=AvlAfile("/tmp/af.dat")
+                        ),
+                        AvlSection(
+                            xyz_le=(0.02, 1.0, 0.1), chord=0.15, airfoil=AvlAfile("/tmp/af.dat")
+                        ),
                     ],
                 ),
             ],
@@ -257,7 +284,13 @@ class TestAvlGeometryFile:
         assert "YDUPLICATE" in result
 
     def test_file_with_cdp(self):
-        from app.avl.geometry import AvlGeometryFile, AvlReference, AvlSection, AvlSurface, AvlSymmetry
+        from app.avl.geometry import (
+            AvlGeometryFile,
+            AvlReference,
+            AvlSection,
+            AvlSurface,
+            AvlSymmetry,
+        )
 
         avl_file = AvlGeometryFile(
             title="Test",

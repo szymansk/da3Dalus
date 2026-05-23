@@ -21,6 +21,7 @@ SM Classification (relative to target_sm — Scholz §4.2):
   0.20 < sm ≤ 0.30       WARN    (heavy nose, trim drag, sluggish pitch)
   sm > 0.30              ERROR   (elevator authority at landing stall insufficient)
 """
+
 from __future__ import annotations
 
 import json
@@ -47,9 +48,9 @@ logger = logging.getLogger(__name__)
 # SM classification thresholds (Scholz §4.2)
 # ---------------------------------------------------------------------------
 
-_SM_UNSTABLE_LIMIT = 0.02    # below → ERROR (Phugoid divergent)
-_SM_HEAVY_NOSE_WARN = 0.20   # above → WARN  (heavy nose, trim drag)
-_SM_ELEVATOR_LIMIT = 0.30    # above → ERROR (elevator authority)
+_SM_UNSTABLE_LIMIT = 0.02  # below → ERROR (Phugoid divergent)
+_SM_HEAVY_NOSE_WARN = 0.20  # above → WARN  (heavy nose, trim drag)
+_SM_ELEVATOR_LIMIT = 0.30  # above → ERROR (elevator authority)
 
 
 # ---------------------------------------------------------------------------
@@ -155,16 +156,12 @@ def compute_scenario_cg(
     position_overrides = position_overrides or []
 
     # Build lookup maps for fast override access
-    disabled_uuids: set[str] = {
-        t["component_uuid"] for t in toggles if not t.get("enabled", True)
-    }
+    disabled_uuids: set[str] = {t["component_uuid"] for t in toggles if not t.get("enabled", True)}
     mass_ovr_map: dict[str, float] = {
-        m["component_uuid"]: float(m["mass_kg_override"])
-        for m in mass_overrides
+        m["component_uuid"]: float(m["mass_kg_override"]) for m in mass_overrides
     }
     pos_ovr_map: dict[str, float] = {
-        p["component_uuid"]: float(p["x_m_override"])
-        for p in position_overrides
+        p["component_uuid"]: float(p["x_m_override"]) for p in position_overrides
     }
 
     if components:
@@ -270,8 +267,12 @@ def enrich_context_with_cg_envelope(
     ctx["sm_at_fwd"] = sm_at_fwd
     ctx["sm_at_aft"] = sm_at_aft
     # Persist stability limits so sm_sizing_service can consume them without DB re-query.
-    ctx["cg_stability_fwd_m"] = round(cg_stability_fwd_m, 4) if cg_stability_fwd_m is not None else None
-    ctx["cg_stability_aft_m"] = round(cg_stability_aft_m, 4) if cg_stability_aft_m is not None else None
+    ctx["cg_stability_fwd_m"] = (
+        round(cg_stability_fwd_m, 4) if cg_stability_fwd_m is not None else None
+    )
+    ctx["cg_stability_aft_m"] = (
+        round(cg_stability_aft_m, 4) if cg_stability_aft_m is not None else None
+    )
     return ctx
 
 
@@ -328,11 +329,7 @@ def _load_components_as_dicts(db: Session, aeroplane_id: int) -> list[dict]:
     """
     from app.models.aeroplanemodel import WeightItemModel
 
-    rows = (
-        db.query(WeightItemModel)
-        .filter(WeightItemModel.aeroplane_id == aeroplane_id)
-        .all()
-    )
+    rows = db.query(WeightItemModel).filter(WeightItemModel.aeroplane_id == aeroplane_id).all()
     return [
         {
             "id": str(r.id),
@@ -387,18 +384,11 @@ def compute_cg_agg_for_aeroplane(db: Session, aeroplane: AeroplaneModel) -> floa
     from app.models.aeroplanemodel import WeightItemModel
     from app.services.mass_cg_service import aggregate_weight_items
 
-    rows = (
-        db.query(WeightItemModel)
-        .filter(WeightItemModel.aeroplane_id == aeroplane.id)
-        .all()
-    )
+    rows = db.query(WeightItemModel).filter(WeightItemModel.aeroplane_id == aeroplane.id).all()
     if not rows:
         return None
 
-    items = [
-        {"mass_kg": r.mass_kg, "x_m": r.x_m, "y_m": r.y_m, "z_m": r.z_m}
-        for r in rows
-    ]
+    items = [{"mass_kg": r.mass_kg, "x_m": r.x_m, "y_m": r.y_m, "z_m": r.z_m} for r in rows]
     _, cg_x, _, _ = aggregate_weight_items(items)
     return cg_x
 
@@ -463,9 +453,7 @@ def _trigger_retrim(db: Session, aeroplane: AeroplaneModel) -> None:
     from app.services.invalidation_service import mark_ops_dirty
 
     mark_ops_dirty(db, aeroplane.id)
-    event_bus.publish(
-        AssumptionChanged(aeroplane_id=aeroplane.id, parameter_name="cg_x")
-    )
+    event_bus.publish(AssumptionChanged(aeroplane_id=aeroplane.id, parameter_name="cg_x"))
 
 
 # ---------------------------------------------------------------------------
@@ -568,9 +556,7 @@ def delete_scenario(db: Session, aeroplane_uuid, scenario_id: int) -> None:
         raise InternalError(message=f"Database error: {exc}") from exc
 
 
-def get_cg_envelope(
-    db: Session, aeroplane_uuid
-) -> CgEnvelopeRead:
+def get_cg_envelope(db: Session, aeroplane_uuid) -> CgEnvelopeRead:
     """Compute the full CG envelope (loading + stability + classification).
 
     Returns a dict compatible with CgEnvelopeRead schema.

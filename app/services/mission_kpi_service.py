@@ -293,13 +293,9 @@ def _kpi_field_friendliness(
 ) -> MissionAxisKpi:
     """Field friendliness — composite take-off + landing field length score."""
     formula = "max(s_TO_50ft, s_LDG_50ft); score = target / effective"
-    eff, score, warning = _compute_field_length_score(
-        aeroplane, target_field_length_m, db=db
-    )
+    eff, score, warning = _compute_field_length_score(aeroplane, target_field_length_m, db=db)
     if eff is None or score is None:
-        return _missing(
-            "field_friendliness", range_min, range_max, formula, warning=warning
-        )
+        return _missing("field_friendliness", range_min, range_max, formula, warning=warning)
     return MissionAxisKpi(
         axis="field_friendliness",
         value=eff,

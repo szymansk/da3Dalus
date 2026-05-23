@@ -157,6 +157,7 @@ class TestExtractLiteralValues:
 
     def test_empty_param(self):
         import inspect
+
         assert _extract_literal_values(inspect.Parameter.empty) is None
 
 
