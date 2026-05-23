@@ -130,6 +130,21 @@ The frontend is a Next.js application located in `frontend/`.
    NEXT_PUBLIC_API_URL=http://localhost:9000 npm run dev
    ```
 
+### Optional: OpenVSP `.vsp3` Importer
+
+The OpenVSP importer (epic gh-637) lets users seed an aircraft model
+from an OpenVSP `.vsp3` file. It depends on the `openvsp` Python
+package, which is **not** installed by `poetry install` because the
+official wheel does not match our Python version at the time of
+writing.
+
+If you need the importer, see
+[`docs/md/openvsp-import-setup.md`](docs/md/openvsp-import-setup.md)
+for the three supported install paths (PyPI wheel when available,
+build from source, Docker microservice). Without it, the application
+runs normally; the import endpoint reports an actionable install
+hint when called.
+
 ### Option 2: Using Docker Compose (Production)
 
 Docker Compose provides a containerized environment with all dependencies pre-installed.

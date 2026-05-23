@@ -44,6 +44,27 @@ python = ">=3.11,<3.13" # because of vtk9.3.1 not in py3.13 yet
 nlopt = ">=2.9,<3.0"
 
 
+# OpenVSP `.vsp3` importer (gh-637) — install paths documented in
+# docs/md/openvsp-import-setup.md.
+#
+# The `openvsp` PyPI package is built against a specific CPython
+# version (typically NOT matching our Python 3.11/3.12 runtime), and
+# at the time of writing has no installable wheel for ANY currently
+# supported Python. Adding it to `[tool.poetry.group.openvsp]` would
+# therefore break `poetry lock` for everyone.
+#
+# Instead, OpenVSP is treated as an **out-of-tree** optional
+# dependency installed manually via `pip install openvsp` (when a
+# matching wheel becomes available) or via a vendored wheel built
+# from source (see docs Option B). The application gracefully
+# degrades when `openvsp` is missing through
+# `app.converters.openvsp_adapter`.
+#
+# Do NOT declare `openvsp` here even as `optional = true` — Poetry
+# still resolves optional dependencies during `lock`, and that fails
+# hard when no compatible distribution exists.
+
+
 [tool.poetry.group.dev.dependencies]
 pytest-cov = "^7.1.0"
 pytest-xdist = "^3.6"
