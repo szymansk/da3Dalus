@@ -28,6 +28,7 @@ import math
 import numpy as np
 import pytest
 
+from app.schemas.polar_by_config import PolarRejection
 from app.services.assumption_compute_service import (
     _fit_parabolic_polar,
     _min_drag_speed,
@@ -109,7 +110,7 @@ class TestFitParabolicPolar:
         """Clean synthetic Cessna 172 polar recovers e within ±0.07."""
         ac = CESSNA_172
         cls, cds = _make_synthetic_polar(ac["cd0"], ac["e"], ac["ar"], ac["cl_max"])
-        cd0_fit, e_fit, r2 = _fit_parabolic_polar(
+        cd0_fit, e_fit, r2, *_ = _fit_parabolic_polar(
             cls, cds, ar=ac["ar"], cl_max=ac["cl_max"], cd0_stability=ac["cd0"]
         )
         assert e_fit is not None, "fit should succeed on clean synthetic polar"
@@ -119,7 +120,7 @@ class TestFitParabolicPolar:
         """Clean synthetic ASW-27 polar (high AR) recovers e within ±0.07."""
         ac = ASW_27
         cls, cds = _make_synthetic_polar(ac["cd0"], ac["e"], ac["ar"], ac["cl_max"])
-        cd0_fit, e_fit, r2 = _fit_parabolic_polar(
+        cd0_fit, e_fit, r2, *_ = _fit_parabolic_polar(
             cls, cds, ar=ac["ar"], cl_max=ac["cl_max"], cd0_stability=ac["cd0"]
         )
         assert e_fit is not None, "fit should succeed on clean synthetic polar"
@@ -129,7 +130,7 @@ class TestFitParabolicPolar:
         """Clean synthetic RC-Trainer polar recovers e within ±0.07."""
         ac = RC_TRAINER
         cls, cds = _make_synthetic_polar(ac["cd0"], ac["e"], ac["ar"], ac["cl_max"])
-        cd0_fit, e_fit, r2 = _fit_parabolic_polar(
+        cd0_fit, e_fit, r2, *_ = _fit_parabolic_polar(
             cls, cds, ar=ac["ar"], cl_max=ac["cl_max"], cd0_stability=ac["cd0"]
         )
         assert e_fit is not None, "fit should succeed on clean synthetic polar"
@@ -140,7 +141,9 @@ class TestFitParabolicPolar:
         # Build a polar over a wide range; fit should still work for the clamped window
         cls = np.linspace(0.05, 0.45, 30)
         cds = 0.03 + cls**2 / (math.pi * 0.75 * 7.0)
-        cd0_fit, e_fit, r2 = _fit_parabolic_polar(cls, cds, ar=7.0, cl_max=0.5, cd0_stability=0.03)
+        cd0_fit, e_fit, r2, *_ = _fit_parabolic_polar(
+            cls, cds, ar=7.0, cl_max=0.5, cd0_stability=0.03
+        )
         # cl_hi = 0.85 * 0.5 = 0.425, cl_lo = 0.10 → window is [0.10, 0.425]
         # expect fit to succeed (enough points in that range)
         assert e_fit is not None, "should succeed with points in [0.10, 0.425]"
@@ -154,7 +157,7 @@ class TestFitParabolicPolar:
         # Only provide points ABOVE the window
         cls = np.linspace(cl_hi + 0.01, cl_max * 1.2, 5)
         cds = 0.03 + cls**2 / (math.pi * 0.75 * 7.0)
-        cd0_fit, e_fit, r2 = _fit_parabolic_polar(
+        cd0_fit, e_fit, r2, *_ = _fit_parabolic_polar(
             cls, cds, ar=7.0, cl_max=cl_max, cd0_stability=0.03
         )
         assert e_fit is None, "no points in window → should return None"
@@ -167,7 +170,7 @@ class TestFitParabolicPolar:
         cl_hi = 0.85 * cl_max
         cls = np.linspace(cl_lo, cl_hi, 5)
         cds = 0.03 + cls**2 / (math.pi * 0.75 * 7.0)
-        cd0_fit, e_fit, r2 = _fit_parabolic_polar(
+        cd0_fit, e_fit, r2, *_ = _fit_parabolic_polar(
             cls, cds, ar=7.0, cl_max=cl_max, cd0_stability=0.03
         )
         assert (cd0_fit, e_fit, r2) == (None, None, None), (
@@ -180,7 +183,7 @@ class TestFitParabolicPolar:
         cls = np.linspace(0.1, 0.8, 20)
         # Decreasing CD with increasing CL² — physically impossible
         cds = 0.04 - 0.01 * cls**2
-        cd0_fit, e_fit, r2 = _fit_parabolic_polar(
+        cd0_fit, e_fit, r2, *_ = _fit_parabolic_polar(
             cls, cds, ar=7.0, cl_max=cl_max, cd0_stability=0.04
         )
         assert (cd0_fit, e_fit, r2) == (None, None, None), "negative slope should be rejected"
@@ -192,7 +195,7 @@ class TestFitParabolicPolar:
         k_tiny_e = 1.0 / (math.pi * 0.1 * 7.0)
         cls = np.linspace(0.1, 0.8, 20)
         cds = 0.03 + k_tiny_e * cls**2
-        cd0_fit, e_fit, r2 = _fit_parabolic_polar(
+        cd0_fit, e_fit, r2, *_ = _fit_parabolic_polar(
             cls, cds, ar=7.0, cl_max=cl_max, cd0_stability=0.03
         )
         assert (cd0_fit, e_fit, r2) == (None, None, None), (
@@ -206,7 +209,7 @@ class TestFitParabolicPolar:
         k_too_high_e = 1.0 / (math.pi * 1.5 * 7.0)
         cls = np.linspace(0.1, 0.8, 20)
         cds = 0.03 + k_too_high_e * cls**2
-        cd0_fit, e_fit, r2 = _fit_parabolic_polar(
+        cd0_fit, e_fit, r2, *_ = _fit_parabolic_polar(
             cls, cds, ar=7.0, cl_max=cl_max, cd0_stability=0.03
         )
         assert (cd0_fit, e_fit, r2) == (None, None, None), "e > 1.0 should be rejected"
@@ -223,7 +226,7 @@ class TestFitParabolicPolar:
         mid = len(cls) // 2
         cds[mid] -= 0.015  # big dip
         cds[mid + 1] -= 0.010
-        cd0_fit, e_fit, r2 = _fit_parabolic_polar(
+        cd0_fit, e_fit, r2, *_ = _fit_parabolic_polar(
             cls, cds, ar=7.0, cl_max=cl_max, cd0_stability=0.03
         )
         assert (cd0_fit, e_fit, r2) == (None, None, None), (
@@ -238,7 +241,7 @@ class TestFitParabolicPolar:
         k = 1.0 / (math.pi * 0.75 * 7.0)
         cls = np.linspace(0.1, 0.8, 20)
         cds = 0.06 + k * cls**2
-        cd0_fit, e_fit, r2 = _fit_parabolic_polar(
+        cd0_fit, e_fit, r2, *_ = _fit_parabolic_polar(
             cls, cds, ar=7.0, cl_max=cl_max, cd0_stability=0.03
         )
         assert (cd0_fit, e_fit, r2) == (None, None, None), (
@@ -246,14 +249,14 @@ class TestFitParabolicPolar:
         )
 
     def test_returns_r2_in_tuple(self):
-        """Return value is a 3-tuple (cd0, e_oswald, r2) where r2 ∈ [0, 1]."""
+        """Return value is a 4-tuple (cd0, e_oswald, r2, rejection) where r2 ∈ [0, 1]."""
         ac = CESSNA_172
         cls, cds = _make_synthetic_polar(ac["cd0"], ac["e"], ac["ar"], ac["cl_max"])
         result = _fit_parabolic_polar(
             cls, cds, ar=ac["ar"], cl_max=ac["cl_max"], cd0_stability=ac["cd0"]
         )
-        assert len(result) == 3, "must return 3-tuple (cd0, e, r2)"
-        cd0_fit, e_fit, r2 = result
+        assert len(result) == 4, "must return 4-tuple (cd0, e, r2, rejection)"
+        cd0_fit, e_fit, r2, *_ = result
         assert r2 is not None
         assert 0.9 < r2 <= 1.0, f"clean synthetic polar should have R²>0.9, got {r2}"
 
@@ -263,7 +266,7 @@ class TestFitParabolicPolar:
         cls = np.linspace(0.1, 0.8, 20)
         # Very shallow slope but negative intercept → fit gives cd0 < 0
         cds = -0.01 + 0.001 * cls**2
-        cd0_fit, e_fit, r2 = _fit_parabolic_polar(
+        cd0_fit, e_fit, r2, *_ = _fit_parabolic_polar(
             cls, cds, ar=7.0, cl_max=cl_max, cd0_stability=0.03
         )
         assert (cd0_fit, e_fit, r2) == (None, None, None), (
@@ -279,12 +282,33 @@ class TestFitParabolicPolar:
 class TestCachedContextIntegration:
     """Verify that recompute_assumptions populates e_oswald context keys."""
 
-    def _run_recompute_with_fake_polar(self, client_and_db, ac: dict, fit_succeeds: bool = True):
+    def _run_recompute_with_fake_polar(
+        self,
+        client_and_db,
+        ac: dict,
+        fit_succeeds: bool = True,
+        fake_rejection_kwargs: dict | None = None,
+    ):
         """Helper: run recompute_assumptions with a fake alpha sweep that
-        produces a clean synthetic polar for the given reference aircraft."""
+        produces a clean synthetic polar for the given reference aircraft.
+
+        Parameters
+        ----------
+        fit_succeeds:
+            When True, sweep data yields a successful fit.
+            When False AND fake_rejection_kwargs is None, sweep data has only
+            3 points so the real fit naturally fails with (None, None, None, None).
+            When False AND fake_rejection_kwargs is provided, _fit_parabolic_polar
+            is mocked directly to return (None, None, None, PolarRejection(...)).
+        fake_rejection_kwargs:
+            Optional dict of kwargs for PolarRejection. Only honoured when
+            fit_succeeds=False. When provided, _fit_parabolic_polar is patched
+            to return the desired 4-tuple with the constructed rejection object.
+        """
         from types import SimpleNamespace
         from unittest.mock import patch
 
+        from app.schemas.polar_by_config import PolarRejection
         from app.services.assumption_compute_service import recompute_assumptions
         from app.services.design_assumptions_service import seed_defaults
         from app.tests.conftest import make_aeroplane
@@ -316,23 +340,22 @@ class TestCachedContextIntegration:
         if fit_succeeds:
             cls, cds = _make_synthetic_polar(ac["cd0"], ac["e"], ac["ar"], ac["cl_max"])
         else:
-            # Degenerate: only 3 points — fit will fail
+            # Degenerate: only 3 points — fit will fail (< 6 points in window)
             cls = np.array([0.1, 0.2, 0.3])
             cds = np.array([0.03, 0.035, 0.04])
 
-        with (
+        mac_val = float(fake_wing.mean_aerodynamic_chord())
+        v_arr = np.linspace(12.0, 28.0, len(cls))
+
+        # Common patch targets used regardless of fit-mock strategy.
+        common_patches = [
             patch(
                 "app.services.assumption_compute_service._build_asb_airplane",
                 return_value=fake_airplane,
             ),
             patch(
                 "app.services.assumption_compute_service._stability_run_at_cruise",
-                return_value=(
-                    0.085,
-                    float(fake_wing.mean_aerodynamic_chord()),
-                    ac["cd0"],
-                    ac["s_ref_m2"],
-                ),
+                return_value=(0.085, mac_val, ac["cd0"], ac["s_ref_m2"]),
             ),
             patch(
                 "app.services.assumption_compute_service._coarse_alpha_sweep",
@@ -341,7 +364,7 @@ class TestCachedContextIntegration:
             patch(
                 "app.services.assumption_compute_service._fine_sweep_cl_max",
                 # gh-493: now returns 4-tuple (cl_max, cl_arr, cd_arr, v_arr)
-                return_value=(ac["cl_max"], cls, cds, np.linspace(12.0, 28.0, len(cls))),
+                return_value=(ac["cl_max"], cls, cds, v_arr),
             ),
             patch(
                 "app.services.assumption_compute_service._extract_cl_alpha_from_linear_sweep",
@@ -351,10 +374,37 @@ class TestCachedContextIntegration:
                 "app.services.assumption_compute_service._load_flight_profile_speeds",
                 return_value=(18.0, 28.0, True),
             ),
+        ]
+
+        # When fake_rejection_kwargs is provided, mock _fit_parabolic_polar
+        # to return the requested rejection object directly.
+        if not fit_succeeds and fake_rejection_kwargs is not None:
+            fake_rejection = PolarRejection(**fake_rejection_kwargs)
+            common_patches.append(
+                patch(
+                    "app.services.assumption_compute_service._fit_parabolic_polar",
+                    return_value=(None, None, None, fake_rejection),
+                )
+            )
+
+        with (
+            common_patches[0],
+            common_patches[1],
+            common_patches[2],
+            common_patches[3],
+            common_patches[4],
+            common_patches[5],
         ):
-            with SessionLocal() as db:
-                recompute_assumptions(db, aeroplane_uuid)
-                db.commit()
+            # Activate the optional fit patch if it was added.
+            if len(common_patches) == 7:
+                with common_patches[6]:
+                    with SessionLocal() as db:
+                        recompute_assumptions(db, aeroplane_uuid)
+                        db.commit()
+            else:
+                with SessionLocal() as db:
+                    recompute_assumptions(db, aeroplane_uuid)
+                    db.commit()
 
         with SessionLocal() as db:
             a = db.query(AeroplaneModel).filter_by(id=aeroplane_id).first()
@@ -375,6 +425,188 @@ class TestCachedContextIntegration:
         assert ctx is not None
         assert "e_oswald_fallback_used" in ctx
         assert ctx["e_oswald_fallback_used"] is True
+
+    def test_polar_clean_rejection_propagates_to_context(self, client_and_db):
+        """When the clean polar fit is rejected with a design gate, the rejection
+        is attached to polar_by_config['clean'] in the cached context."""
+        ctx = self._run_recompute_with_fake_polar(
+            client_and_db,
+            CESSNA_172,
+            fit_succeeds=False,
+            fake_rejection_kwargs=dict(
+                gate="negative_slope_k",
+                category="design",
+                fitted_value=-0.001,
+                threshold="k > 0",
+                hint="Polare zeigt …",
+            ),
+        )
+        assert ctx is not None
+        pbc = ctx.get("polar_by_config", {})
+        clean = pbc.get("clean", {})
+        assert clean.get("rejection") is not None
+        assert clean["rejection"]["gate"] == "negative_slope_k"
+        assert clean["rejection"]["category"] == "design"
+
+    def _run_recompute_with_flap_fake(
+        self,
+        client_and_db,
+        ac: dict,
+        clean_succeeds: bool = True,
+        landing_succeeds: bool = True,
+        landing_rejection_kwargs: dict | None = None,
+    ):
+        """Helper: run recompute_assumptions with per-config control over polar outcomes.
+
+        Exercises the real ``_run_polar_for_deflection`` code path (takeoff +
+        landing configs) by patching ``_extract_flap_ted_max`` to return 30.0
+        and ``_detect_first_flap_name`` to return a synthetic flap name.
+
+        ``_fit_parabolic_polar`` is patched with a call-order side_effect:
+          1st call (clean) → success tuple.
+          2nd call (takeoff, δ=15°) → success tuple.
+          3rd call (landing, δ=30°) → rejection tuple when
+            ``landing_succeeds=False`` and ``landing_rejection_kwargs`` provided.
+
+        This exercises the real ``_run_polar_for_deflection`` so that the
+        production fix (threading ``rejection`` through the constructor) is
+        actually tested.
+        """
+        from types import SimpleNamespace
+        from unittest.mock import patch
+
+        from app.schemas.polar_by_config import PolarRejection
+        from app.services.assumption_compute_service import recompute_assumptions
+        from app.services.design_assumptions_service import seed_defaults
+        from app.tests.conftest import make_aeroplane
+        from app.models.aeroplanemodel import AeroplaneModel
+
+        _, SessionLocal = client_and_db
+
+        with SessionLocal() as db:
+            aeroplane = make_aeroplane(db)
+            seed_defaults(db, str(aeroplane.uuid))
+            db.commit()
+            aeroplane_uuid = str(aeroplane.uuid)
+            aeroplane_id = aeroplane.id
+
+        fake_wing = SimpleNamespace(
+            area=lambda: ac["s_ref_m2"],
+            mean_aerodynamic_chord=lambda: math.sqrt(ac["s_ref_m2"] / ac["ar"]),
+            span=lambda: math.sqrt(ac["s_ref_m2"] * ac["ar"]),
+        )
+        # fake_airplane must support .with_control_deflections() so that the
+        # real _run_polar_for_deflection doesn't raise AttributeError before
+        # reaching _fit_parabolic_polar.
+        fake_airplane = SimpleNamespace(
+            wings=[fake_wing],
+            xyz_ref=[0.08, 0.0, 0.0],
+            s_ref=ac["s_ref_m2"],
+            c_ref=math.sqrt(ac["s_ref_m2"] / ac["ar"]),
+            b_ref=math.sqrt(ac["s_ref_m2"] * ac["ar"]),
+        )
+        # Return a copy of itself so deflected airplane works with the mocked sweeps.
+        fake_airplane.with_control_deflections = lambda _deflections: fake_airplane
+
+        cls, cds = _make_synthetic_polar(ac["cd0"], ac["e"], ac["ar"], ac["cl_max"])
+        mac_val = float(fake_wing.mean_aerodynamic_chord())
+        v_arr = np.linspace(12.0, 28.0, len(cls))
+
+        # Build the ordered list of returns for _fit_parabolic_polar.
+        # Order: 1=clean, 2=takeoff, 3=landing.
+        if not landing_succeeds and landing_rejection_kwargs is not None:
+            landing_rejection = PolarRejection(**landing_rejection_kwargs)
+            landing_fit_return = (None, None, None, landing_rejection)
+        else:
+            landing_fit_return = (0.05, 0.72, 0.95, None)
+
+        fake_fit_returns = [
+            (ac["cd0"], ac["e"], 0.98, None),  # 1st call: clean (success)
+            (0.04, 0.78, 0.97, None),  # 2nd call: takeoff (success)
+            landing_fit_return,  # 3rd call: landing
+        ]
+
+        def _fit_side_effect(*args, **kwargs):
+            return fake_fit_returns.pop(0)
+
+        common_patches = [
+            patch(
+                "app.services.assumption_compute_service._build_asb_airplane",
+                return_value=fake_airplane,
+            ),
+            patch(
+                "app.services.assumption_compute_service._stability_run_at_cruise",
+                return_value=(0.085, mac_val, ac["cd0"], ac["s_ref_m2"]),
+            ),
+            patch(
+                "app.services.assumption_compute_service._coarse_alpha_sweep",
+                return_value=15.0,
+            ),
+            patch(
+                "app.services.assumption_compute_service._fine_sweep_cl_max",
+                return_value=(ac["cl_max"], cls, cds, v_arr),
+            ),
+            patch(
+                "app.services.assumption_compute_service._extract_cl_alpha_from_linear_sweep",
+                return_value=5.7,
+            ),
+            patch(
+                "app.services.assumption_compute_service._load_flight_profile_speeds",
+                return_value=(18.0, 28.0, True),
+            ),
+            patch(
+                "app.services.assumption_compute_service._extract_flap_ted_max",
+                return_value=30.0,
+            ),
+            patch(
+                "app.services.assumption_compute_service._detect_first_flap_name",
+                return_value="[flap]_main",
+            ),
+            patch(
+                "app.services.assumption_compute_service._fit_parabolic_polar",
+                side_effect=_fit_side_effect,
+            ),
+        ]
+
+        with (
+            common_patches[0],
+            common_patches[1],
+            common_patches[2],
+            common_patches[3],
+            common_patches[4],
+            common_patches[5],
+            common_patches[6],
+            common_patches[7],
+            common_patches[8],
+        ):
+            with SessionLocal() as db:
+                recompute_assumptions(db, aeroplane_uuid)
+                db.commit()
+
+        with SessionLocal() as db:
+            a = db.query(AeroplaneModel).filter_by(id=aeroplane_id).first()
+            return a.assumption_computation_context
+
+    def test_polar_landing_rejection_independent_of_clean(self, client_and_db):
+        """Landing-config fit failure attaches rejection only to polar_by_config['landing'],
+        leaving 'clean' (and 'takeoff') unaffected."""
+        ctx = self._run_recompute_with_flap_fake(
+            client_and_db,
+            CESSNA_172,
+            clean_succeeds=True,
+            landing_succeeds=False,
+            landing_rejection_kwargs=dict(
+                gate="unphysical_e_oswald",
+                category="design",
+                fitted_value=1.12,
+                threshold="(0.4, 1.0]",
+                hint="e=1.12 außerhalb (0.4, 1.0].",
+            ),
+        )
+        pbc = ctx["polar_by_config"]
+        assert pbc["clean"]["rejection"] is None
+        assert pbc["landing"]["rejection"]["gate"] == "unphysical_e_oswald"
+        assert pbc["landing"]["rejection"]["category"] == "design"
 
     def test_min_drag_speed_uses_cached_e(self, client_and_db):
         """v_md_mps in context is computed with fitted e (not hardcoded 0.8).
@@ -457,7 +689,7 @@ class TestCrossCheckAgainstAndersonFormula:
     def test_e_fit_within_0_07_of_reference(self, ac):
         """e_fit from clean synthetic polar must match reference e within ±0.07."""
         cls, cds = _make_synthetic_polar(ac["cd0"], ac["e"], ac["ar"], ac["cl_max"])
-        cd0_fit, e_fit, r2 = _fit_parabolic_polar(
+        cd0_fit, e_fit, r2, *_ = _fit_parabolic_polar(
             cls, cds, ar=ac["ar"], cl_max=ac["cl_max"], cd0_stability=ac["cd0"]
         )
         assert e_fit is not None, f"{ac['name']}: fit failed on clean synthetic polar"
@@ -469,7 +701,7 @@ class TestCrossCheckAgainstAndersonFormula:
     def test_v_md_within_5_percent_of_anderson(self, ac):
         """V_md with fitted e must be within 5% of Anderson textbook formula."""
         cls, cds = _make_synthetic_polar(ac["cd0"], ac["e"], ac["ar"], ac["cl_max"])
-        cd0_fit, e_fit, r2 = _fit_parabolic_polar(
+        cd0_fit, e_fit, r2, *_ = _fit_parabolic_polar(
             cls, cds, ar=ac["ar"], cl_max=ac["cl_max"], cd0_stability=ac["cd0"]
         )
         assert e_fit is not None, f"{ac['name']}: fit failed on clean synthetic polar"
@@ -494,7 +726,7 @@ class TestCrossCheckAgainstAndersonFormula:
     def test_cd0_fit_within_20_percent_of_stability_run(self, ac):
         """cd0_fit from clean synthetic polar must be within ±20% of true cd0."""
         cls, cds = _make_synthetic_polar(ac["cd0"], ac["e"], ac["ar"], ac["cl_max"])
-        cd0_fit, e_fit, r2 = _fit_parabolic_polar(
+        cd0_fit, e_fit, r2, *_ = _fit_parabolic_polar(
             cls, cds, ar=ac["ar"], cl_max=ac["cl_max"], cd0_stability=ac["cd0"]
         )
         assert cd0_fit is not None, f"{ac['name']}: fit failed on clean synthetic polar"
@@ -544,10 +776,114 @@ class TestRejectionLogging:
 
         result = _fit_parabolic_polar(cls, cds, ar=7.0, cl_max=cl_max, cd0_stability=0.03)
 
-        assert result == (None, None, None)
+        cd0_r, e_r, r2_r, *_ = result
+        assert (cd0_r, e_r, r2_r) == (None, None, None)
         # Check that a warning was emitted mentioning monotonicity or laminar bubble
         all_msgs = [str(msg) + " ".join(str(a) for a in args) for msg, args in warning_calls]
         assert any(
             "monoton" in m.lower() or "laminar" in m.lower() or "non-monoton" in m.lower()
             for m in all_msgs
         ), f"Expected a warning about non-monotonic polar. Got: {all_msgs}"
+
+
+# ---------------------------------------------------------------------------
+# gh-630: PolarRejection propagation per gate
+# ---------------------------------------------------------------------------
+
+
+def _make_insufficient_points():
+    cl_max = 1.0
+    cl_lo = max(0.10, 0.10 * cl_max)
+    cl_hi = 0.85 * cl_max
+    cls = np.linspace(cl_lo, cl_hi, 5)
+    cds = 0.03 + cls**2 / (math.pi * 0.75 * 7.0)
+    return dict(cl=cls, cd=cds, ar=7.0, cl_max=cl_max, cd0_stability=0.03)
+
+
+def _make_non_monotonic():
+    cl_max = 1.2
+    cl_lo = max(0.10, 0.10 * cl_max)
+    cl_hi = 0.85 * cl_max
+    cls = np.linspace(cl_lo, cl_hi, 25)
+    k = 1.0 / (math.pi * 0.75 * 7.0)
+    cds = 0.03 + k * cls**2
+    # Inject a downward dip mid-window — laminar-bubble signature
+    mid = len(cds) // 2
+    cds[mid] = cds[mid] - 0.005
+    return dict(cl=cls, cd=cds, ar=7.0, cl_max=cl_max, cd0_stability=0.03)
+
+
+def _make_negative_slope():
+    # Use a strictly flat CD array: monotonicity passes (diffs == 0),
+    # but OLS fit on constant CDs gives k == 0, triggering the k <= 0 gate.
+    cl_max = 1.0
+    cls = np.linspace(0.1, 0.8, 20)
+    cds = np.full_like(cls, 0.04)  # k = 0 from OLS → negative_slope_k gate
+    return dict(cl=cls, cd=cds, ar=7.0, cl_max=cl_max, cd0_stability=0.04)
+
+
+def _make_non_positive_cd0():
+    cl_max = 1.0
+    cls = np.linspace(0.1, 0.8, 20)
+    k = 1.0 / (math.pi * 0.75 * 7.0)
+    cds = k * cls**2 - 0.0050  # negative offset ensures cd0_fit < 0
+    return dict(cl=cls, cd=cds, ar=7.0, cl_max=cl_max, cd0_stability=0.03)
+
+
+def _make_unphysical_e_low():
+    cl_max = 1.0
+    k = 1.0 / (math.pi * 0.1 * 7.0)  # e=0.1 → out of range
+    cls = np.linspace(0.1, 0.8, 20)
+    cds = 0.03 + k * cls**2
+    return dict(cl=cls, cd=cds, ar=7.0, cl_max=cl_max, cd0_stability=0.03)
+
+
+def _make_unphysical_e_high():
+    cl_max = 1.0
+    k = 1.0 / (math.pi * 1.5 * 7.0)  # e=1.5 → out of range
+    cls = np.linspace(0.1, 0.8, 20)
+    cds = 0.03 + k * cls**2
+    return dict(cl=cls, cd=cds, ar=7.0, cl_max=cl_max, cd0_stability=0.03)
+
+
+def _make_cd0_stability_mismatch():
+    cl_max = 1.0
+    cls = np.linspace(0.1, 0.8, 20)
+    k = 1.0 / (math.pi * 0.75 * 7.0)
+    cds = 0.10 + k * cls**2  # fitted cd0≈0.10 vs stability 0.03 → 233% deviation
+    return dict(cl=cls, cd=cds, ar=7.0, cl_max=cl_max, cd0_stability=0.03)
+
+
+GATE_CASES = [
+    ("insufficient_points", "sweep", _make_insufficient_points),
+    ("non_monotonic_polar", "data", _make_non_monotonic),
+    ("negative_slope_k", "design", _make_negative_slope),
+    ("non_positive_cd0", "consistency", _make_non_positive_cd0),
+    ("unphysical_e_oswald", "design", _make_unphysical_e_low),
+    ("unphysical_e_oswald", "design", _make_unphysical_e_high),
+    ("cd0_stability_mismatch", "consistency", _make_cd0_stability_mismatch),
+]
+
+
+@pytest.mark.parametrize("expected_gate,expected_category,factory", GATE_CASES)
+def test_fit_parabolic_polar_returns_rejection(expected_gate, expected_category, factory):
+    inputs = factory()
+    result = _fit_parabolic_polar(**inputs)
+    assert isinstance(result, tuple) and len(result) == 4, (
+        "gh-630: _fit_parabolic_polar must return (cd0, e, r2, rejection)"
+    )
+    cd0_fit, e_fit, r2, rejection = result
+    assert (cd0_fit, e_fit, r2) == (None, None, None)
+    assert isinstance(rejection, PolarRejection)
+    assert rejection.gate == expected_gate
+    assert rejection.category == expected_category
+    assert rejection.hint  # non-empty
+
+
+def test_fit_parabolic_polar_success_carries_no_rejection():
+    cls, cds = _make_synthetic_polar(0.031, 0.75, 7.32, 1.6)
+    result = _fit_parabolic_polar(cls, cds, ar=7.32, cl_max=1.6, cd0_stability=0.031)
+    assert len(result) == 4
+    cd0_fit, e_fit, r2, rejection = result
+    assert e_fit is not None
+    assert rejection is None

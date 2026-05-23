@@ -38,7 +38,12 @@ from app.models.computation_config import (
 from app.schemas.AeroplaneRequest import AnalysisToolUrlType
 from app.schemas.aeroanalysisschema import OperatingPointSchema
 from app.schemas.design_assumption import PARAMETER_DEFAULTS
-from app.schemas.polar_by_config import ParabolicPolar
+from app.schemas.polar_by_config import (
+    ParabolicPolar,
+    PolarRejection,
+    RejectionCategory,
+    RejectionGate,
+)
 from app.services.design_assumptions_service import (
     _get_aeroplane,
     seed_defaults,
@@ -134,7 +139,7 @@ def recompute_assumptions(db: Session, aeroplane_uuid) -> None:
     # of the fallback constant 0.8.
     aspect_ratio = _main_wing_aspect_ratio(asb_airplane)
     cl_max_effective_for_fit = _load_effective_assumption(db, aircraft.id, "cl_max")
-    _cd0_fit, e_oswald_fit, e_r2 = _fit_parabolic_polar(
+    _cd0_fit, e_oswald_fit, e_r2, polar_rejection = _fit_parabolic_polar(
         np.asarray(sweep_cl_arr, dtype=float),
         np.asarray(sweep_cd_arr, dtype=float),
         ar=aspect_ratio if aspect_ratio is not None else 0.0,
@@ -157,6 +162,7 @@ def recompute_assumptions(db: Session, aeroplane_uuid) -> None:
         e_oswald_quality=_classify_polar_quality(e_r2) if e_r2 is not None else "unknown",
         flap_deflection_deg=0.0,
         provenance="aerobuildup",
+        rejection=polar_rejection,
     )
 
     ted_max = _extract_flap_ted_max(aircraft)
@@ -548,7 +554,7 @@ def _run_polar_for_deflection(
     cl_max, cl_arr, cd_arr, _v_arr = _fine_sweep_cl_max(
         deflected, stall_alpha, v_cruise, v_max, config
     )
-    _cd0_fit, e_oswald_fit, e_r2 = _fit_parabolic_polar(
+    _cd0_fit, e_oswald_fit, e_r2, polar_rejection = _fit_parabolic_polar(
         np.asarray(cl_arr, dtype=float),
         np.asarray(cd_arr, dtype=float),
         ar=aspect_ratio if aspect_ratio is not None else 0.0,
@@ -563,6 +569,7 @@ def _run_polar_for_deflection(
         e_oswald_quality=_classify_polar_quality(e_r2) if e_r2 is not None else "unknown",
         flap_deflection_deg=float(flap_deflection_deg),
         provenance="aerobuildup",
+        rejection=polar_rejection,
     )
 
 
@@ -921,13 +928,30 @@ def _extract_scalar(result: Any, key: str, *, default: float) -> float:
     return float(scalar) if scalar is not None else default
 
 
+def _build_rejection(
+    gate: RejectionGate,
+    category: RejectionCategory,
+    fitted_value: float | None,
+    threshold: str,
+    hint: str,
+) -> PolarRejection:
+    """Construct a PolarRejection (gh-630) with consistent rounding."""
+    return PolarRejection(
+        gate=gate,
+        category=category,
+        fitted_value=round(fitted_value, 6) if fitted_value is not None else None,
+        threshold=threshold,
+        hint=hint,
+    )
+
+
 def _fit_parabolic_polar(
     cl: np.ndarray,
     cd: np.ndarray,
     ar: float,
     cl_max: float,
     cd0_stability: float,
-) -> tuple[float | None, float | None, float | None]:
+) -> tuple[float | None, float | None, float | None, PolarRejection | None]:
     """Fit C_D = C_D0 + C_L²/(π·e·AR) to raw polar data via OLS.
 
     Reference: Anderson §6.1.2 (drag polar), §6.7.2 ((L/D)_max derivation).
@@ -937,7 +961,7 @@ def _fit_parabolic_polar(
         C_L_hi = 0.85 · C_L,max
 
     Requires ≥ 6 sample points in the window. All rejection guards must
-    pass; otherwise returns (None, None, None) and emits a logger.warning.
+    pass; otherwise returns (None, None, None, PolarRejection) and emits a logger.warning.
 
     Rejection guards:
     - ≥ 6 points in window
@@ -948,11 +972,23 @@ def _fit_parabolic_polar(
     - |cd0_fit - cd0_stability| / cd0_stability ≤ 0.20 (sanity check)
 
     Returns:
-        (cd0_fit, e_oswald, r2) on success, or (None, None, None) on rejection.
+        (cd0_fit, e_oswald, r2, None) on success, or
+        (None, None, None, PolarRejection) on rejection.
     """
     if ar is None or ar <= 0:
         logger.warning("polar fit rejected: invalid aspect ratio %r", ar)
-        return None, None, None
+        return (
+            None,
+            None,
+            None,
+            _build_rejection(
+                gate="insufficient_points",
+                category="sweep",
+                fitted_value=float(ar) if ar is not None else None,
+                threshold="ar > 0",
+                hint="Ungültiges Streckenverhältnis — Wing-Geometrie nicht definiert.",
+            ),
+        )
     cl_lo = max(0.10, 0.10 * cl_max)
     cl_hi = 0.85 * cl_max
 
@@ -967,7 +1003,18 @@ def _fit_parabolic_polar(
             cl_lo,
             cl_hi,
         )
-        return None, None, None
+        return (
+            None,
+            None,
+            None,
+            _build_rejection(
+                gate="insufficient_points",
+                category="sweep",
+                fitted_value=float(len(cl_win)),
+                threshold=">= 6 points",
+                hint="Zu wenig Punkte im linearen Polar-Fenster — α-Auflösung zu grob.",
+            ),
+        )
 
     cl2_win = cl_win**2
 
@@ -982,18 +1029,55 @@ def _fit_parabolic_polar(
             "polar fit rejected: non-monotonic dCD/d(CL²) in window — "
             "possible laminar bubble or stall contamination"
         )
-        return None, None, None
+        return (
+            None,
+            None,
+            None,
+            _build_rejection(
+                gate="non_monotonic_polar",
+                category="data",
+                fitted_value=float(np.min(diffs)),
+                threshold="dCD/d(CL²) >= 0",
+                hint="Nicht-monotone Polare im linearen Bereich — möglicher Laminar-Bubble oder Stall-Kontamination.",
+            ),
+        )
 
     # OLS fit: C_D = k · C_L² + cd0  (numpy returns highest-degree first)
     k, cd0_fit = np.polyfit(cl2_win, cd_win, deg=1)
 
     if k <= 0:
         logger.warning("polar fit rejected: non-positive slope k=%.6f (requires k>0)", k)
-        return None, None, None
+        return (
+            None,
+            None,
+            None,
+            _build_rejection(
+                gate="negative_slope_k",
+                category="design",
+                fitted_value=float(k),
+                threshold="k > 0",
+                hint=(
+                    "Polare zeigt mit steigendem Auftrieb fallenden Widerstand — "
+                    "wahrscheinlich Twist/Verwindung oder Planform-Kink unphysikalisch. "
+                    "AVL-Run prüfen."
+                ),
+            ),
+        )
 
     if cd0_fit <= 0:
         logger.warning("polar fit rejected: non-positive cd0_fit=%.6f (requires cd0>0)", cd0_fit)
-        return None, None, None
+        return (
+            None,
+            None,
+            None,
+            _build_rejection(
+                gate="non_positive_cd0",
+                category="consistency",
+                fitted_value=float(cd0_fit),
+                threshold="cd0 > 0",
+                hint="Parabolischer Fit liefert negatives cd0 — Datenrauschen am unteren Fensterrand.",
+            ),
+        )
 
     e_oswald = 1.0 / (np.pi * ar * k)
 
@@ -1002,7 +1086,21 @@ def _fit_parabolic_polar(
             "polar fit rejected: e_oswald=%.4f outside physical range (0.4, 1.0]",
             e_oswald,
         )
-        return None, None, None
+        return (
+            None,
+            None,
+            None,
+            _build_rejection(
+                gate="unphysical_e_oswald",
+                category="design",
+                fitted_value=float(e_oswald),
+                threshold="(0.4, 1.0]",
+                hint=(
+                    f"Berechnete Spannweiteneffizienz e = {e_oswald:.3f} außerhalb (0.4, 1.0]. "
+                    "Konfiguration für AeroBuildup vermutlich ungeeignet, AVL nutzen."
+                ),
+            ),
+        )
 
     if cd0_stability > 0:
         rel_dev = abs(cd0_fit - cd0_stability) / cd0_stability
@@ -1014,7 +1112,18 @@ def _fit_parabolic_polar(
                 rel_dev * 100,
                 cd0_stability,
             )
-            return None, None, None
+            return (
+                None,
+                None,
+                None,
+                _build_rejection(
+                    gate="cd0_stability_mismatch",
+                    category="consistency",
+                    fitted_value=float(rel_dev),
+                    threshold="<= 0.20",
+                    hint="cd0 aus Polar-Fit weicht >20 % vom Stability-Run ab — Datenkonsistenz prüfen.",
+                ),
+            )
 
     # R² for quality reporting
     ss_res = float(np.sum((cd_win - (k * cl2_win + cd0_fit)) ** 2))
@@ -1029,7 +1138,7 @@ def _fit_parabolic_polar(
         r2,
         n_pts,
     )
-    return float(cd0_fit), float(e_oswald), float(r2)
+    return float(cd0_fit), float(e_oswald), float(r2), None
 
 
 def _classify_polar_quality(r2: float) -> str:

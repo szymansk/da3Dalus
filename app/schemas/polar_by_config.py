@@ -13,7 +13,7 @@ from __future__ import annotations
 
 from typing import Literal
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 
 ConfigName = Literal["clean", "takeoff", "landing"]
 """Configuration keys for `polar_by_config`."""
@@ -30,6 +30,65 @@ Provenance = Literal[
 the UI should treat it as "we tried, the solver fell over, falling back
 to clean polar" rather than a successful but low-quality fit.
 """
+
+RejectionGate = Literal[
+    "insufficient_points",
+    "non_monotonic_polar",
+    "negative_slope_k",
+    "non_positive_cd0",
+    "unphysical_e_oswald",
+    "cd0_stability_mismatch",
+]
+"""Which gate in `_fit_parabolic_polar` rejected the fit (gh-630)."""
+
+RejectionCategory = Literal["sweep", "data", "design", "consistency"]
+"""Coarse class of the rejection (gh-630).
+
+- `sweep` — α-resolution too coarse; raise α density to fix.
+- `data` — polar shape contaminated (laminar bubble, stall); profile / Re issue.
+- `design` — geometry/config aerodynamically implausible; user-facing warning.
+- `consistency` — fit conflicts with the stability-run baseline; internal sanity.
+"""
+
+
+_GATE_CATEGORY: dict[RejectionGate, RejectionCategory] = {
+    "insufficient_points": "sweep",
+    "non_monotonic_polar": "data",
+    "negative_slope_k": "design",
+    "non_positive_cd0": "consistency",
+    "unphysical_e_oswald": "design",
+    "cd0_stability_mismatch": "consistency",
+}
+"""Canonical gate→category mapping (gh-630). Enforced by the
+`PolarRejection` model validator to prevent nonsensical pairs like
+internal-only gates marked `design` (which would surface to users) or
+design gates marked `sweep` (which would suppress real warnings)."""
+
+
+class PolarRejection(BaseModel):
+    """Why `_fit_parabolic_polar` could not produce a fit (gh-630).
+
+    Disjoint from `e_oswald_quality`: set ONLY when no fit was produced.
+    Surfaced to the UI only when `category == "design"`.
+    """
+
+    gate: RejectionGate = Field(..., description="Which rejection guard fired")
+    category: RejectionCategory = Field(..., description="Coarse class — controls UI visibility")
+    fitted_value: float | None = Field(
+        None, description="Numeric value that triggered the rejection, when meaningful"
+    )
+    threshold: str = Field(..., description="Threshold expression the value failed against")
+    hint: str = Field(..., description="Human-readable explanation; shown to user when design")
+
+    @model_validator(mode="after")
+    def _check_canonical_gate_category(self) -> "PolarRejection":
+        expected = _GATE_CATEGORY[self.gate]
+        if self.category != expected:
+            raise ValueError(
+                f"non-canonical gate/category pair: gate={self.gate!r} requires "
+                f"category={expected!r}, got {self.category!r}"
+            )
+        return self
 
 
 class ParabolicPolar(BaseModel):
@@ -52,6 +111,11 @@ class ParabolicPolar(BaseModel):
         0.0, description="Flap deflection used to produce this polar"
     )
     provenance: Provenance = Field("aerobuildup", description="How the polar entry was produced")
+    rejection: PolarRejection | None = Field(
+        None,
+        description="Set only when the parabolic fit was rejected (gh-630); "
+        "disjoint from e_oswald_quality which applies to successful fits.",
+    )
 
 
 PolarByConfig = dict[ConfigName, ParabolicPolar]

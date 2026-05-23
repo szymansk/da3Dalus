@@ -6,6 +6,7 @@ import type { AssumptionParameterName } from "@/hooks/useDesignAssumptions";
 import { useComputationContext } from "@/hooks/useComputationContext";
 import { AssumptionRow } from "@/components/workbench/AssumptionRow";
 import { CGComparisonBanner } from "@/components/workbench/CGComparisonBanner";
+import { PolarRejectionBadge } from "@/components/workbench/PolarRejectionBadge";
 
 // ─────────────────────────────────────────────────────────────────────
 // gh-603: Thematic grouping of design assumptions.
@@ -270,6 +271,20 @@ export function AssumptionsPanel({ aeroplaneId }: Props) {
                   />
                 ))}
               </div>
+              {/* gh-630: surface polar-fit design rejections in the Aerodynamics
+                  group where the user edits cl_max / cd0 — the natural home for
+                  "your polar shape is unphysical" warnings. All three configs
+                  are wired; the badge returns null for non-design / null cases. */}
+              {group.id === "aerodynamics" && ctx?.polar_by_config && (
+                <div
+                  className="flex flex-col gap-1 border-t border-border px-4 py-2"
+                  data-testid="polar-rejection-badges"
+                >
+                  <PolarRejectionBadge rejection={ctx.polar_by_config.clean.rejection} />
+                  <PolarRejectionBadge rejection={ctx.polar_by_config.takeoff.rejection} />
+                  <PolarRejectionBadge rejection={ctx.polar_by_config.landing.rejection} />
+                </div>
+              )}
             </section>
           );
         })}

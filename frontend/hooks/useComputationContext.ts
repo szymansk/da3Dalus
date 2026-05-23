@@ -4,6 +4,39 @@ import useSWR from "swr";
 import { fetcher } from "@/lib/fetcher";
 import type { EQuality } from "@/lib/polar";
 
+export type PolarRejectionGate =
+  | "insufficient_points"
+  | "non_monotonic_polar"
+  | "negative_slope_k"
+  | "non_positive_cd0"
+  | "unphysical_e_oswald"
+  | "cd0_stability_mismatch";
+
+export type PolarRejectionCategory = "sweep" | "data" | "design" | "consistency";
+
+export interface PolarRejection {
+  gate: PolarRejectionGate;
+  category: PolarRejectionCategory;
+  fitted_value: number | null;
+  threshold: string;
+  hint: string;
+}
+
+export type PolarConfigName = "clean" | "takeoff" | "landing";
+
+export interface ParabolicPolar {
+  cd0: number | null;
+  e_oswald: number | null;
+  cl_max: number;
+  e_oswald_r2: number | null;
+  e_oswald_quality: "high" | "medium" | "low" | "unknown";
+  flap_deflection_deg: number;
+  provenance: "aerobuildup" | "no_flap_geometry" | "aerobuildup_failed";
+  rejection: PolarRejection | null;
+}
+
+export type PolarByConfig = Record<PolarConfigName, ParabolicPolar>;
+
 export interface ComputationContext {
   v_cruise_mps: number;
   v_cruise_auto?: boolean;
@@ -44,6 +77,7 @@ export interface ComputationContext {
   // gate tail-volume-related UI off when true.
   is_tailless?: boolean;
   computed_at: string;
+  polar_by_config?: PolarByConfig;
 }
 
 export function useComputationContext(
