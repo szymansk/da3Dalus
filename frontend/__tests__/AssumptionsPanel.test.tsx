@@ -6,6 +6,7 @@ import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import React from "react";
 import type { Assumption, AssumptionsSummary } from "@/hooks/useDesignAssumptions";
+import type { PolarRejection, ComputationContext } from "@/hooks/useComputationContext";
 
 // ── Mocks ─────────────────────────────────────────────────────────
 
@@ -42,7 +43,8 @@ let hookReturn: {
 };
 
 // gh-603: ctx.is_glider drives whether powertrain groups render.
-let ctxReturn: { data: { is_glider?: boolean } | null };
+// gh-630: ctx.polar_by_config drives PolarRejectionBadge display.
+let ctxReturn: { data: Partial<ComputationContext> | null };
 
 vi.mock("@/hooks/useDesignAssumptions", () => ({
   useDesignAssumptions: () => hookReturn,
@@ -698,5 +700,98 @@ describe("ASSUMPTION_GROUPS table (gh-603)", () => {
     expect(new Set(hidden)).toEqual(
       new Set(["propulsion", "energy", "takeoff"]),
     );
+  });
+});
+
+// ── gh-630: PolarRejectionBadge wiring ────────────────────────────
+
+const designRejection: PolarRejection = {
+  gate: "negative_slope_k",
+  category: "design",
+  fitted_value: -0.001,
+  threshold: "k > 0",
+  hint: "Polare zeigt negativen Widerstandsanstieg",
+};
+
+function makeCtxWithRejection(
+  cleanRejection: PolarRejection | null,
+): Partial<ComputationContext> {
+  return {
+    is_glider: false,
+    polar_by_config: {
+      clean: {
+        cd0: null,
+        e_oswald: null,
+        cl_max: 1.2,
+        e_oswald_r2: null,
+        e_oswald_quality: "unknown",
+        flap_deflection_deg: 0,
+        provenance: "aerobuildup",
+        rejection: cleanRejection,
+      },
+      takeoff: {
+        cd0: 0.04,
+        e_oswald: 0.78,
+        cl_max: 1.6,
+        e_oswald_r2: 0.99,
+        e_oswald_quality: "high",
+        flap_deflection_deg: 15,
+        provenance: "aerobuildup",
+        rejection: null,
+      },
+      landing: {
+        cd0: 0.05,
+        e_oswald: 0.75,
+        cl_max: 2.0,
+        e_oswald_r2: 0.98,
+        e_oswald_quality: "high",
+        flap_deflection_deg: 35,
+        provenance: "aerobuildup",
+        rejection: null,
+      },
+    },
+  };
+}
+
+describe("AssumptionsPanel — PolarRejectionBadge wiring (gh-630)", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    hookReturn = {
+      data: {
+        assumptions: makeAllAssumptions(),
+        warnings_count: 0,
+      },
+      isLoading: false,
+      error: null,
+      seedDefaults: mockSeedDefaults,
+      updateEstimate: mockUpdateEstimate,
+      switchSource: mockSwitchSource,
+      mutate: mockMutate,
+    };
+  });
+
+  it("shows the design-rejection hint when polar_by_config.clean has a design rejection", () => {
+    ctxReturn = { data: makeCtxWithRejection(designRejection) };
+
+    render(<AssumptionsPanel aeroplaneId="aero-1" />);
+
+    expect(screen.getByText("Polare zeigt negativen Widerstandsanstieg")).toBeDefined();
+    expect(screen.getByRole("alert")).toBeDefined();
+  });
+
+  it("renders no rejection badge when all polars succeed (all rejections null)", () => {
+    ctxReturn = { data: makeCtxWithRejection(null) };
+
+    render(<AssumptionsPanel aeroplaneId="aero-1" />);
+
+    expect(screen.queryByRole("alert")).toBeNull();
+  });
+
+  it("renders no rejection badge when polar_by_config is absent", () => {
+    ctxReturn = { data: { is_glider: false } };
+
+    render(<AssumptionsPanel aeroplaneId="aero-1" />);
+
+    expect(screen.queryByRole("alert")).toBeNull();
   });
 });
