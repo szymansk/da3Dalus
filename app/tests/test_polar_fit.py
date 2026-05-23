@@ -27,6 +27,7 @@ import math
 import numpy as np
 import pytest
 
+from app.schemas.polar_by_config import PolarRejection
 from app.services.assumption_compute_service import (
     _fit_parabolic_polar,
     _min_drag_speed,
@@ -642,8 +643,6 @@ GATE_CASES = [
 
 @pytest.mark.parametrize("expected_gate,expected_category,factory", GATE_CASES)
 def test_fit_parabolic_polar_returns_rejection(expected_gate, expected_category, factory):
-    from app.schemas.polar_by_config import PolarRejection
-
     inputs = factory()
     result = _fit_parabolic_polar(**inputs)
     assert isinstance(result, tuple) and len(result) == 4, (
@@ -658,8 +657,6 @@ def test_fit_parabolic_polar_returns_rejection(expected_gate, expected_category,
 
 
 def test_fit_parabolic_polar_success_carries_no_rejection():
-    from app.schemas.polar_by_config import PolarRejection
-
     cls, cds = _make_synthetic_polar(0.031, 0.75, 7.32, 1.6)
     result = _fit_parabolic_polar(cls, cds, ar=7.32, cl_max=1.6, cd0_stability=0.031)
     assert len(result) == 4

@@ -38,7 +38,7 @@ from app.models.computation_config import (
 from app.schemas.AeroplaneRequest import AnalysisToolUrlType
 from app.schemas.aeroanalysisschema import OperatingPointSchema
 from app.schemas.design_assumption import PARAMETER_DEFAULTS
-from app.schemas.polar_by_config import ParabolicPolar, PolarRejection
+from app.schemas.polar_by_config import ParabolicPolar, PolarRejection, RejectionCategory, RejectionGate
 from app.services.design_assumptions_service import (
     _get_aeroplane,
     seed_defaults,
@@ -922,16 +922,16 @@ def _extract_scalar(result: Any, key: str, *, default: float) -> float:
 
 
 def _build_rejection(
-    gate: str,
-    category: str,
+    gate: RejectionGate,
+    category: RejectionCategory,
     fitted_value: float | None,
     threshold: str,
     hint: str,
 ) -> PolarRejection:
     """Construct a PolarRejection (gh-630) with consistent rounding."""
     return PolarRejection(
-        gate=gate,  # type: ignore[arg-type]
-        category=category,  # type: ignore[arg-type]
+        gate=gate,
+        category=category,
         fitted_value=round(fitted_value, 6) if fitted_value is not None else None,
         threshold=threshold,
         hint=hint,
