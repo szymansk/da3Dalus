@@ -114,23 +114,44 @@ export function PolarChipRow({ ctx, isRecomputing }: Props) {
   const eFromCtx = ctx?.e_oswald ?? null;
   const fallbackUsed = !!ctx?.e_oswald_fallback_used;
   const ar = ctx?.aspect_ratio ?? null;
-  const clMax = ctx?.polar_by_config?.clean?.cl_max ?? null;
+  const cleanPolar = ctx?.polar_by_config?.clean;
+  const clMax = cleanPolar?.cl_max ?? null;
   const isGlider = !!ctx?.is_glider;
   const quality = ctx?.e_oswald_quality ?? "unknown";
 
+  // gh-636: e provenance distinguishes the AeroBuildup-Trefftz path
+  // (`aerobuildup_trefftz`) from the legacy parabolic-fit path (`fit`) and the
+  // 0.8 regime-naive default (`fallback`). The asterisk marker is only shown
+  // when the e value is the regime-naive default — fit-based and AB-Trefftz
+  // values are both real measurements.
+  const eProvenance = cleanPolar?.e_oswald_provenance ?? null;
+  const eIsRealMeasurement =
+    eProvenance === "aerobuildup_trefftz" || eProvenance === "fit";
+  // Backwards-compat: when polar_by_config lacks provenance (legacy data),
+  // fall back to the gh-626 `e_oswald_fallback_used` flag.
+  const eShowsFallbackMarker = eProvenance ? !eIsRealMeasurement : fallbackUsed;
+
+  // gh-636: empirical (L/D)max + CL,md straight from the AeroBuildup sweep
+  // — `max(CL/CD)` over the sweep, no fit required. Formula-derived values
+  // remain as legacy fallback for pre-gh-636 recomputes.
+  const ldMaxBackend = cleanPolar?.ld_max ?? null;
+  const clMdBackend = cleanPolar?.cl_at_ld_max ?? null;
+
   const k = computeK(eFromCtx, fallbackUsed, ar);
-  const clMd = computeCLmd(cd0, eFromCtx, fallbackUsed, ar);
-  const eMax = computeEMax(cd0, eFromCtx, fallbackUsed, ar);
+  const clMd = clMdBackend ?? computeCLmd(cd0, eFromCtx, fallbackUsed, ar);
+  const eMax = ldMaxBackend ?? computeEMax(cd0, eFromCtx, fallbackUsed, ar);
   const rho = computeRho(cd0, eFromCtx, fallbackUsed, ar, clMax);
 
   // Displayed e: when fallback used, show the 0.80 fallback explicitly
   // with the asterisk; otherwise the real fit value. Fallback always
   // renders muted (quality necessarily 'unknown').
-  const eDisplayValue: number | null = fallbackUsed ? 0.8 : eFromCtx;
-  const eSymbol = fallbackUsed ? "e*" : "e";
-  const eTooltip = fallbackUsed
+  const eDisplayValue: number | null = eShowsFallbackMarker ? 0.8 : eFromCtx;
+  const eSymbol = eShowsFallbackMarker ? "e*" : "e";
+  const eTooltip = eShowsFallbackMarker
     ? "Polar fit was rejected — fallback 0.80 used (regime-naive). All derived polar quantities (k, C_L,md, L/D-max, ρ) are therefore suppressed."
-    : "Oswald efficiency — combined non-elliptical-lift-distribution loss and parasite-drag-with-lift. Typical 0.70–0.95. Colour reflects fit quality.";
+    : eProvenance === "aerobuildup_trefftz"
+      ? "Oswald efficiency from AeroBuildup's Trefftz-plane induced drag at (L/D)max (gh-636). Typical 0.70–0.95."
+      : "Oswald efficiency — combined non-elliptical-lift-distribution loss and parasite-drag-with-lift. Typical 0.70–0.95. Colour reflects fit quality.";
   const eQualityColour = fallbackUsed
     ? qualityColorClassName("unknown")
     : qualityColorClassName(quality);

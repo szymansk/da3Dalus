@@ -24,6 +24,11 @@ export interface PolarRejection {
 
 export type PolarConfigName = "clean" | "takeoff" | "landing";
 
+export type EOswaldProvenance =
+  | "aerobuildup_trefftz"
+  | "fit"
+  | "fallback";
+
 export interface ParabolicPolar {
   cd0: number | null;
   e_oswald: number | null;
@@ -33,6 +38,11 @@ export interface ParabolicPolar {
   flap_deflection_deg: number;
   provenance: "aerobuildup" | "no_flap_geometry" | "aerobuildup_failed";
   rejection: PolarRejection | null;
+  // gh-636: empirical (L/D)max + CL_at_(L/D)max from the AeroBuildup sweep;
+  // provenance of e (vlm-trefftz / fit / fallback).
+  ld_max?: number | null;
+  cl_at_ld_max?: number | null;
+  e_oswald_provenance?: EOswaldProvenance;
 }
 
 export type PolarByConfig = Record<PolarConfigName, ParabolicPolar>;
@@ -62,13 +72,6 @@ export interface ComputationContext {
   e_oswald?: number | null;
   e_oswald_quality?: EQuality;
   e_oswald_fallback_used?: boolean;
-  polar_by_config?: {
-    clean?: {
-      cd0?: number | null;
-      e_oswald?: number | null;
-      cl_max?: number | null;
-    };
-  } | null;
   x_np_m: number;
   target_static_margin: number;
   cg_agg_m: number | null;
@@ -77,6 +80,7 @@ export interface ComputationContext {
   // gate tail-volume-related UI off when true.
   is_tailless?: boolean;
   computed_at: string;
+  // gh-630 + gh-636: per-config polars + empirical L/D max + e provenance.
   polar_by_config?: PolarByConfig;
 }
 

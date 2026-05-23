@@ -23,6 +23,19 @@ Provenance = Literal[
     "no_flap_geometry",  # aircraft has no flap → cloned from clean
     "aerobuildup_failed",  # the flap-deflected AeroBuildup raised → cloned from clean
 ]
+
+EOswaldProvenance = Literal[
+    "aerobuildup_trefftz",  # gh-636: from AeroBuildup D_induced at (L/D)max point
+    "fit",  # gh-486 fallback: parabolic OLS fit of polar sweep
+    "fallback",  # 0.8 regime-naive default; both above paths failed
+]
+"""Where the Oswald factor e came from (gh-636).
+
+`aerobuildup_trefftz` is the primary path: AeroBuildup exposes
+`D_induced` per operating point, so `e = CL² / (π·AR·CDi)` is computed
+directly at the (L/D)max sweep index — no parabolic fit, no rejection
+gates, no 0.8 fallback when the polar is non-parabolic.
+"""
 """How the polar entry was produced.
 
 `aerobuildup_failed` covers any exception during the deflected sweep
@@ -115,6 +128,21 @@ class ParabolicPolar(BaseModel):
         None,
         description="Set only when the parabolic fit was rejected (gh-630); "
         "disjoint from e_oswald_quality which applies to successful fits.",
+    )
+    ld_max: float | None = Field(
+        None,
+        description="Empirical (L/D)max from sweep: max(CL/CD) over the alpha sweep. "
+        "Independent of parabolic-fit success (gh-636).",
+    )
+    cl_at_ld_max: float | None = Field(
+        None,
+        description="CL at (L/D)max — empirical from sweep, no model needed (gh-636).",
+    )
+    e_oswald_provenance: EOswaldProvenance = Field(
+        "fallback",
+        description="Where e_oswald was computed from. `aerobuildup_trefftz` is the "
+        "primary path (gh-636); `fit` is the gh-486 OLS-on-polar fallback; "
+        "`fallback` is the 0.8 regime-naive default when both above failed.",
     )
 
 
