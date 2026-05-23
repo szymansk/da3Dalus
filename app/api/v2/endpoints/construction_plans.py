@@ -200,7 +200,9 @@ async def list_artifact_files(
     subpath: Annotated[str, Query(description="Subdirectory path within execution dir")] = "",
     recursive: Annotated[
         bool,
-        Query(description="If true, return all files recursively as a flat list with relative paths"),
+        Query(
+            description="If true, return all files recursively as a flat list with relative paths"
+        ),
     ] = False,
 ) -> List[ArtifactFile]:
     """List files in a specific execution's artifact directory (or subdirectory)."""

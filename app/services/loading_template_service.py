@@ -4,6 +4,7 @@ Templates provide a sensible starting set of loading scenarios for each
 aircraft class.  They are applied client-side (the user can customise or
 discard them); they are not auto-created at aeroplane creation time.
 """
+
 from __future__ import annotations
 
 _EMPTY: dict = {

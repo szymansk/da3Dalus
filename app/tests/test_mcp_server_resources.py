@@ -101,9 +101,13 @@ def test_image_public_url_uses_mcp_request_port_when_context_is_available(monkey
             self.request_context = DummyRequestContext(url)
 
     ctx = DummyCtx("http://agent-zero.internal:8090/mcp")
-    payload = _run(mcp_server.get_aeroplane_three_view_tool("00000000-0000-0000-0000-000000000001", ctx=ctx))
+    payload = _run(
+        mcp_server.get_aeroplane_three_view_tool("00000000-0000-0000-0000-000000000001", ctx=ctx)
+    )
 
-    assert payload["url_from_docker_container"].startswith("http://agent-zero.internal:8090/static/")
+    assert payload["url_from_docker_container"].startswith(
+        "http://agent-zero.internal:8090/static/"
+    )
     assert payload["url_for_webui"].startswith("http://unit.test/static/")
 
 
@@ -113,13 +117,21 @@ def test_alpha_sweep_diagram_resource_and_public_url(monkeypatch, fastapi_client
     png_bytes = b"\x89PNG\r\n\x1a\nalpha-sweep"
     png_path.write_bytes(png_bytes)
 
-    async def fake_alpha_sweep_diagram(*, aeroplane_id, sweep_request, db, request=None, settings=None):
+    async def fake_alpha_sweep_diagram(
+        *, aeroplane_id, sweep_request, db, request=None, settings=None
+    ):
         return {"url": f"{settings.base_url}/static/test_assets/alpha_sweep.png"}
 
-    monkeypatch.setattr(mcp_server.aeroanalysis, "analyze_airplane_alpha_sweep_diagram", fake_alpha_sweep_diagram)
+    monkeypatch.setattr(
+        mcp_server.aeroanalysis, "analyze_airplane_alpha_sweep_diagram", fake_alpha_sweep_diagram
+    )
 
     server = mcp_server.create_mcp_server()
-    payload = _run(mcp_server.analyze_alpha_sweep_diagram_tool("00000000-0000-0000-0000-000000000001", object()))
+    payload = _run(
+        mcp_server.analyze_alpha_sweep_diagram_tool(
+            "00000000-0000-0000-0000-000000000001", object()
+        )
+    )
 
     assert payload["resource_uri"].startswith("img://")
     assert payload["url_from_docker_container"].endswith("/static/test_assets/alpha_sweep.png")

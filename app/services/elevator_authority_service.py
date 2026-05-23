@@ -635,9 +635,7 @@ def _compute_forward_cg_limit_asb(
     if flap_teds:
         try:
             # Baseline run at clean stall alpha needed for ΔCm_flap reference
-            asb_baseline_clean = asb_airplane.with_control_deflections(
-                {elevator_surface_name: 0.0}
-            )
+            asb_baseline_clean = asb_airplane.with_control_deflections({elevator_surface_name: 0.0})
             abu_baseline_clean = asb.AeroBuildup(
                 airplane=asb_baseline_clean,
                 op_point=op_stall,

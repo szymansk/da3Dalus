@@ -34,6 +34,7 @@ from app.converters.model_schema_converters import (  # noqa: E402
 # _to_payload
 # ---------------------------------------------------------------------------
 
+
 class TestToPayload:
     def test_none_returns_none(self):
         assert _to_payload(None) is None
@@ -53,6 +54,7 @@ class TestToPayload:
             def __init__(self):
                 self.x = 1
                 self._private = 2
+
         result = _to_payload(Obj())
         assert result == {"x": 1}
 
@@ -65,6 +67,7 @@ class TestToPayload:
 # _servo_to_schema
 # ---------------------------------------------------------------------------
 
+
 class TestServoToSchema:
     def test_none_returns_none(self):
         assert _servo_to_schema(None) is None
@@ -76,10 +79,17 @@ class TestServoToSchema:
         from app.schemas.Servo import Servo as ServoSchema
 
         data = ServoSchema(
-            length=10.0, width=5.0, height=3.0,
-            leading_length=4.0, latch_z=1.0, latch_x=2.0,
-            latch_thickness=0.5, latch_length=3.0,
-            cable_z=1.5, screw_hole_lx=2.0, screw_hole_d=0.3,
+            length=10.0,
+            width=5.0,
+            height=3.0,
+            leading_length=4.0,
+            latch_z=1.0,
+            latch_x=2.0,
+            latch_thickness=0.5,
+            latch_length=3.0,
+            cable_z=1.5,
+            screw_hole_lx=2.0,
+            screw_hole_d=0.3,
         )
         result = _servo_to_schema(data)
         assert result is not None
@@ -93,6 +103,7 @@ class TestServoToSchema:
 # ---------------------------------------------------------------------------
 # _servo_to_wing_servo
 # ---------------------------------------------------------------------------
+
 
 class TestServoToWingServo:
     def test_none_returns_none(self):
@@ -109,6 +120,7 @@ class TestServoToWingServo:
 # ---------------------------------------------------------------------------
 # _control_surface_from_ted — refactored ternary branches (S3358)
 # ---------------------------------------------------------------------------
+
 
 class TestControlSurfaceFromTed:
     """Each test targets a specific branch of the if/elif/else chains."""

@@ -98,30 +98,35 @@ def shutdown_executor() -> None:
 def get_aeroplane_with_wings(db: Session, aeroplane_uuid) -> AeroplaneModel:
     """
     Load an aeroplane with all related wings and fuselages.
-    
+
     Raises:
         NotFoundError: If the aeroplane does not exist.
         InternalError: If a database error occurs.
     """
     try:
-        plane = (db.query(AeroplaneModel)
-                 .options(joinedload(AeroplaneModel.wings)
-                          .joinedload(WingModel.x_secs)
-                          .joinedload(WingXSecModel.detail)
-                          .joinedload(WingXSecDetailModel.spares))
-                 .options(joinedload(AeroplaneModel.wings)
-                          .joinedload(WingModel.x_secs)
-                          .joinedload(WingXSecModel.detail)
-                          .joinedload(WingXSecDetailModel.trailing_edge_device)
-                          .joinedload(WingXSecTrailingEdgeDeviceModel.servo_data))
-                 .options(joinedload(AeroplaneModel.fuselages)
-                          .joinedload(FuselageModel.x_secs))
-                 .filter(AeroplaneModel.uuid == aeroplane_uuid).first())
-        
+        plane = (
+            db.query(AeroplaneModel)
+            .options(
+                joinedload(AeroplaneModel.wings)
+                .joinedload(WingModel.x_secs)
+                .joinedload(WingXSecModel.detail)
+                .joinedload(WingXSecDetailModel.spares)
+            )
+            .options(
+                joinedload(AeroplaneModel.wings)
+                .joinedload(WingModel.x_secs)
+                .joinedload(WingXSecModel.detail)
+                .joinedload(WingXSecDetailModel.trailing_edge_device)
+                .joinedload(WingXSecTrailingEdgeDeviceModel.servo_data)
+            )
+            .options(joinedload(AeroplaneModel.fuselages).joinedload(FuselageModel.x_secs))
+            .filter(AeroplaneModel.uuid == aeroplane_uuid)
+            .first()
+        )
+
         if not plane:
             raise NotFoundError(
-                message="Aeroplane not found",
-                details={"aeroplane_id": str(aeroplane_uuid)}
+                message="Aeroplane not found", details={"aeroplane_id": str(aeroplane_uuid)}
             )
         return plane
     except SQLAlchemyError as e:
@@ -132,7 +137,7 @@ def get_aeroplane_with_wings(db: Session, aeroplane_uuid) -> AeroplaneModel:
 def get_wing_from_aeroplane(aeroplane: AeroplaneModel, wing_name: str) -> WingModel:
     """
     Get a specific wing from an aeroplane.
-    
+
     Raises:
         NotFoundError: If the wing does not exist.
     """
@@ -140,7 +145,7 @@ def get_wing_from_aeroplane(aeroplane: AeroplaneModel, wing_name: str) -> WingMo
     if not wing:
         raise NotFoundError(
             message="Wing not found",
-            details={"wing_name": wing_name, "aeroplane_id": str(aeroplane.uuid)}
+            details={"wing_name": wing_name, "aeroplane_id": str(aeroplane.uuid)},
         )
     return wing
 
@@ -154,16 +159,16 @@ def get_task_status(aeroplane_id: str) -> Optional[Dict[str, Any]]:
 def check_task_available(aeroplane_id: str) -> None:
     """
     Check if a new task can be started for this aeroplane.
-    
+
     Raises:
         ConflictError: If another task is already running.
     """
     task = get_task_status(aeroplane_id)
     if task is not None:
-        if task.get('future') and (task['future'].running() or task['status'] == 'PENDING'):
+        if task.get("future") and (task["future"].running() or task["status"] == "PENDING"):
             raise ConflictError(
                 message="Another task is already running",
-                details={"aeroplane_id": aeroplane_id, "status": task['status']}
+                details={"aeroplane_id": aeroplane_id, "status": task["status"]},
             )
         else:
             # Remove completed task
@@ -174,27 +179,26 @@ def check_task_available(aeroplane_id: str) -> None:
 def register_pending_task(aeroplane_id: str) -> None:
     """Register a new pending task."""
     with tasks_lock:
-        tasks[aeroplane_id] = {'status': 'PENDING'}
+        tasks[aeroplane_id] = {"status": "PENDING"}
 
 
 def map_exporter_type(exporter_url_type: ExporterUrlType) -> str:
     """
     Map exporter URL type to exporter class name.
-    
+
     Raises:
         ValidationError: If the exporter type is not supported.
     """
     mapping = {
-        ExporterUrlType.STL: 'ExportToStlCreator',
-        ExporterUrlType.STEP: 'ExportToStepCreator',
-        ExporterUrlType.IGES: 'ExportToIgesCreator',
-        ExporterUrlType.THREEMF: 'ExportTo3MFCreator',
+        ExporterUrlType.STL: "ExportToStlCreator",
+        ExporterUrlType.STEP: "ExportToStepCreator",
+        ExporterUrlType.IGES: "ExportToIgesCreator",
+        ExporterUrlType.THREEMF: "ExportTo3MFCreator",
     }
     exporter_class = mapping.get(exporter_url_type)
     if not exporter_class:
         raise ValidationError(
-            message="Unsupported exporter type",
-            details={"exporter_type": str(exporter_url_type)}
+            message="Unsupported exporter type", details={"exporter_type": str(exporter_url_type)}
         )
     return exporter_class
 
@@ -208,53 +212,53 @@ def build_wing_blueprint(
 ) -> Dict[str, Any]:
     """Build the blueprint dict for wing construction."""
     blueprint = {
-        _TYPE_KEY: 'ConstructionRootNode',
-        'creator_id': 'eHawk-wing.root.root',
-        'loglevel': 50,
-        'successors': {}
+        _TYPE_KEY: "ConstructionRootNode",
+        "creator_id": "eHawk-wing.root.root",
+        "loglevel": 50,
+        "successors": {},
     }
-    
+
     # Add wing node
     wing_node = {
-        _TYPE_KEY: 'ConstructionStepNode',
-        'creator': {
+        _TYPE_KEY: "ConstructionStepNode",
+        "creator": {
             _TYPE_KEY: "",
-            'creator_id': wing_name,
-            'loglevel': 10,
-            'offset': 0,
-            'wing_index': wing_name,
-            'wing_side': 'BOTH'
+            "creator_id": wing_name,
+            "loglevel": 10,
+            "offset": 0,
+            "wing_index": wing_name,
+            "wing_side": "BOTH",
         },
-        'creator_id': wing_name,
-        'loglevel': 50,
-        'successors': {}
+        "creator_id": wing_name,
+        "loglevel": 50,
+        "successors": {},
     }
-    
+
     if creator_url_type == CreatorUrlType.WING_LOFT:
-        wing_node['creator'][_TYPE_KEY] = 'WingLoftCreator'
+        wing_node["creator"][_TYPE_KEY] = "WingLoftCreator"
     else:  # VASE_MODE_WING
-        wing_node['creator'][_TYPE_KEY] = 'VaseModeWingCreator'
-        wing_node['creator']['leading_edge_offset_factor'] = leading_edge_offset_factor
-        wing_node['creator']['trailing_edge_offset_factor'] = trailing_edge_offset_factor
-    
-    blueprint['successors'][wing_name] = wing_node
-    
+        wing_node["creator"][_TYPE_KEY] = "VaseModeWingCreator"
+        wing_node["creator"]["leading_edge_offset_factor"] = leading_edge_offset_factor
+        wing_node["creator"]["trailing_edge_offset_factor"] = trailing_edge_offset_factor
+
+    blueprint["successors"][wing_name] = wing_node
+
     # Add exporter node
-    blueprint['successors']['output-wing'] = {
-        _TYPE_KEY: 'ConstructionStepNode',
-        'creator': {
+    blueprint["successors"]["output-wing"] = {
+        _TYPE_KEY: "ConstructionStepNode",
+        "creator": {
             _TYPE_KEY: exporter_class,
-            'angular_tolerance': 0.1,
-            'creator_id': 'output-wing',
-            'file_path': './tmp/exports',
-            'loglevel': 20,
-            'tolerance': 0.1
+            "angular_tolerance": 0.1,
+            "creator_id": "output-wing",
+            "file_path": "./tmp/exports",
+            "loglevel": 20,
+            "tolerance": 0.1,
         },
-        'creator_id': 'output-wing',
-        'loglevel': 50,
-        'successors': {}
+        "creator_id": "output-wing",
+        "loglevel": 50,
+        "successors": {},
     }
-    
+
     return blueprint
 
 
@@ -281,6 +285,7 @@ def _run_construction_worker(
     # Reconfigure logging in the worker — spawn does not inherit the
     # parent's logging setup.
     import logging as _logging
+
     _logging.basicConfig(
         level=_logging.INFO,
         format="%(asctime)s [%(levelname)s] [%(name)s] [worker] %(message)s",
@@ -314,6 +319,7 @@ def _run_construction_worker(
         # (from ServoSettings.model_dump()) and reconstruct both the
         # Servo pydantic schema and the ServoInformation here.
         from app.schemas.Servo import Servo as _ServoSchema
+
         servo_information: Dict[int, ServoInformation] = {}
         for key, value in (servo_settings_dumps or {}).items():
             servo_dict = value.get("servo")
@@ -403,8 +409,11 @@ def _convert_wing_to_pickle(wing: WingModel, wing_name: str, aeroplane_id_str: s
     except Exception as exc:
         logger.error(
             "Failed to pickle wing schema for %s: %s; keys=%s",
-            aeroplane_id_str, exc,
-            list(wing_schemas[wing_name].model_dump().keys()) if wing_schemas.get(wing_name) else [],
+            aeroplane_id_str,
+            exc,
+            list(wing_schemas[wing_name].model_dump().keys())
+            if wing_schemas.get(wing_name)
+            else [],
         )
         raise InternalError(
             message=f"Failed to prepare wing data for '{wing_name}': {exc}",
@@ -426,7 +435,9 @@ def _extract_aeroplane_settings(
                 servo_settings_dumps[int(key)] = dict(value)
         printer_settings_obj = aeroplane_settings.printer_settings
 
-    printer_pickle = pickle.dumps(printer_settings_obj) if printer_settings_obj is not None else None
+    printer_pickle = (
+        pickle.dumps(printer_settings_obj) if printer_settings_obj is not None else None
+    )
     return servo_settings_dumps, printer_pickle
 
 
@@ -443,12 +454,16 @@ def _apply_worker_result(aeroplane_id_str: str, result: "Dict[str, Any]") -> Non
 
 def _make_task_done_callback(aeroplane_id_str: str):
     """Create the parent-side done callback for a worker future."""
+
     def _on_task_done(fut: "Future[Dict[str, Any]]") -> None:
         try:
             result = fut.result()
         except Exception as exc:
             logger.error(
-                "Worker process crashed for %s: %s", aeroplane_id_str, exc, exc_info=True,
+                "Worker process crashed for %s: %s",
+                aeroplane_id_str,
+                exc,
+                exc_info=True,
             )
             with tasks_lock:
                 if aeroplane_id_str in tasks:
@@ -459,6 +474,7 @@ def _make_task_done_callback(aeroplane_id_str: str):
             return
 
         _apply_worker_result(aeroplane_id_str, result)
+
     return _on_task_done
 
 
@@ -499,7 +515,7 @@ def start_wing_export_task(
         blueprint,
         wing_schemas_pickle,
         1000.0,  # wing_scale: metres → millimetres
-        None,    # fuselages — not yet routed through the REST path
+        None,  # fuselages — not yet routed through the REST path
         servo_settings_dumps,
         printer_settings_pickle,
     )
@@ -512,64 +528,54 @@ def start_wing_export_task(
 def get_task_result(aeroplane_id: str) -> Dict[str, Any]:
     """
     Get the current task status and result.
-    
+
     Raises:
         NotFoundError: If no task exists for this aeroplane.
     """
     with tasks_lock:
         task = tasks.get(aeroplane_id)
-    
+
     if not task:
-        raise NotFoundError(
-            message="Task not found",
-            details={"aeroplane_id": aeroplane_id}
-        )
-    
+        raise NotFoundError(message="Task not found", details={"aeroplane_id": aeroplane_id})
+
     # Update status if running
-    if task.get('future') and task['future'].running():
-        task['status'] = 'RUNNING'
-    
+    if task.get("future") and task["future"].running():
+        task["status"] = "RUNNING"
+
     return {
-        'status': task['status'],
-        'result': task.get('result'),
-        'error': task.get('error'),
+        "status": task["status"],
+        "result": task.get("result"),
+        "error": task.get("error"),
     }
 
 
 def get_export_file_path(aeroplane_id: str) -> str:
     """
     Get the path to the completed export file.
-    
+
     Raises:
         NotFoundError: If no task or file exists.
         ValidationError: If the task is not completed.
     """
     task = get_task_status(aeroplane_id)
-    
+
     if not task:
-        raise NotFoundError(
-            message="Task not found",
-            details={"aeroplane_id": aeroplane_id}
-        )
-    
-    if task['status'] != 'SUCCESS':
+        raise NotFoundError(message="Task not found", details={"aeroplane_id": aeroplane_id})
+
+    if task["status"] != "SUCCESS":
         raise ValidationError(
             message="Task not completed yet or failed",
-            details={"aeroplane_id": aeroplane_id, "status": task['status']}
+            details={"aeroplane_id": aeroplane_id, "status": task["status"]},
         )
-    
-    file_info = task.get('result')
-    if not file_info or 'zipfile' not in file_info:
-        raise InternalError(
-            message="File not available",
-            details={"aeroplane_id": aeroplane_id}
-        )
-    
-    file_path = file_info['zipfile']
+
+    file_info = task.get("result")
+    if not file_info or "zipfile" not in file_info:
+        raise InternalError(message="File not available", details={"aeroplane_id": aeroplane_id})
+
+    file_path = file_info["zipfile"]
     if not os.path.exists(file_path):
         raise NotFoundError(
-            message="File not found",
-            details={"aeroplane_id": aeroplane_id, "file_path": file_path}
+            message="File not found", details={"aeroplane_id": aeroplane_id, "file_path": file_path}
         )
-    
+
     return file_path

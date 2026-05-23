@@ -34,15 +34,17 @@ DIVERGENCE_LEVEL = Literal["none", "info", "warning", "alert"]
 # but will be replaced by a powertrain compute later.
 # Electric endurance params (battery_capacity_wh etc.) are design choices:
 # they are entered by the user and never auto-calculated from geometry.
-DESIGN_CHOICE_PARAMS = frozenset({
-    "target_static_margin",
-    "g_limit",
-    "battery_capacity_wh",
-    "battery_specific_energy_wh_per_kg",
-    "propulsion_eta_motor",
-    "propulsion_eta_esc",
-    "motor_continuous_power_w",
-})
+DESIGN_CHOICE_PARAMS = frozenset(
+    {
+        "target_static_margin",
+        "g_limit",
+        "battery_capacity_wh",
+        "battery_specific_energy_wh_per_kg",
+        "propulsion_eta_motor",
+        "propulsion_eta_esc",
+        "motor_continuous_power_w",
+    }
+)
 
 PARAMETER_UNITS: dict[str, str] = {
     "mass": "kg",
@@ -145,9 +147,7 @@ class AssumptionRead(BaseModel):
     active_source: ACTIVE_SOURCE
     effective_value: float = Field(..., description="Value used for simulations")
     divergence_pct: float | None = None
-    divergence_level: DIVERGENCE_LEVEL = Field(
-        ..., description="none, info, warning, or alert"
-    )
+    divergence_level: DIVERGENCE_LEVEL = Field(..., description="none, info, warning, or alert")
     unit: str = Field("", description="Display unit for this parameter")
     is_design_choice: bool = Field(
         False, description="True for params that are never auto-calculated"

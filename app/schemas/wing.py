@@ -11,66 +11,60 @@ class TrailingEdgeDevice(BaseModel):
     """
     Represents a trailing edge device (control surface) on a wing, such as an aileron, flap, or elevator.
 
-    This model defines the geometry and configuration of control surfaces that are attached to the 
+    This model defines the geometry and configuration of control surfaces that are attached to the
     trailing edge of a wing segment.
     """
+
     name: Optional[str] = Field(
-        default=None, 
-        description="Name of the trailing edge device (e.g., 'aileron', 'flap', 'elevator')"
+        default=None,
+        description="Name of the trailing edge device (e.g., 'aileron', 'flap', 'elevator')",
     )
     rel_chord_root: Optional[float] = Field(
-        default=None, 
-        description="Relative position of the hinge line at the root of the device as a fraction of chord length (0.0-1.0)"
+        default=None,
+        description="Relative position of the hinge line at the root of the device as a fraction of chord length (0.0-1.0)",
     )
     rel_chord_tip: Optional[float] = Field(
-        default=None, 
-        description="Relative position of the hinge line at the tip of the device as a fraction of chord length (0.0-1.0)"
+        default=None,
+        description="Relative position of the hinge line at the tip of the device as a fraction of chord length (0.0-1.0)",
     )
     hinge_spacing: Optional[float] = Field(
-        default=None, 
-        description="Spacing between hinges in millimeters"
+        default=None, description="Spacing between hinges in millimeters"
     )
     side_spacing_root: Optional[float] = Field(
-        default=None, 
-        description="Spacing from the root edge of the segment in millimeters"
+        default=None, description="Spacing from the root edge of the segment in millimeters"
     )
     side_spacing_tip: Optional[float] = Field(
-        default=None, 
-        description="Spacing from the tip edge of the segment in millimeters"
+        default=None, description="Spacing from the tip edge of the segment in millimeters"
     )
     servo: Servo | int | None = Field(
         default=None,
         validation_alias=AliasChoices("servo", "_servo"),
         serialization_alias="servo",
-        description="Servo object or servo index used to actuate the trailing edge device"
+        description="Servo object or servo index used to actuate the trailing edge device",
     )
     servo_placement: Literal["top", "bottom"] = Field(
-        default='top', 
-        description="Placement of the servo on the wing surface ('top' or 'bottom')"
+        default="top", description="Placement of the servo on the wing surface ('top' or 'bottom')"
     )
     rel_chord_servo_position: Optional[float] = Field(
-        default=None, 
-        description="Relative chord-wise position of the servo as a fraction of chord length (0.0-1.0)"
+        default=None,
+        description="Relative chord-wise position of the servo as a fraction of chord length (0.0-1.0)",
     )
     rel_length_servo_position: Optional[float] = Field(
-        default=None, 
-        description="Relative span-wise position of the servo as a fraction of segment length (0.0-1.0)"
+        default=None,
+        description="Relative span-wise position of the servo as a fraction of segment length (0.0-1.0)",
     )
     positive_deflection_deg: Optional[float] = Field(
-        default=None, 
-        description="Maximum positive deflection angle in degrees"
+        default=None, description="Maximum positive deflection angle in degrees"
     )
     negative_deflection_deg: Optional[float] = Field(
-        default=None, 
-        description="Maximum negative deflection angle in degrees"
+        default=None, description="Maximum negative deflection angle in degrees"
     )
     trailing_edge_offset_factor: Optional[float] = Field(
-        default=None, 
-        description="Factor to determine the offset of the trailing edge for manufacturing purposes"
+        default=None,
+        description="Factor to determine the offset of the trailing edge for manufacturing purposes",
     )
     hinge_type: Literal["middle", "top", "top_simple", "round_inside", "round_outside"] = Field(
-        default='top', 
-        description="Type of hinge mechanism used for the trailing edge device"
+        default="top", description="Type of hinge mechanism used for the trailing edge device"
     )
     symmetric: bool = Field(
         default=True,
@@ -79,6 +73,7 @@ class TrailingEdgeDevice(BaseModel):
             "(e.g. flaps/elevator) or anti-symmetrically (e.g. aileron)."
         ),
     )
+
 
 SpareMode = Literal["normal", "follow", "standard", "standard_backward", "orthogonal_backward"]
 """
@@ -90,6 +85,7 @@ Defines the different modes for spares. The "follow" mode behaviour is only appl
 - orthogonal_backward: Like the "standard_backward" mode, but the spare vector is orthogonal to the tip airfoils plane, it also adjusts the spare vectors of all spares in "follow" mode in root direction.
 """
 
+
 class Spare(BaseModel):
     """
     Represents a structural spar within a wing segment.
@@ -97,6 +93,7 @@ class Spare(BaseModel):
     Spars are the main load-bearing elements of a wing that run spanwise (from root to tip)
     and provide structural integrity and stiffness to the wing.
     """
+
     spare_support_dimension_width: float = Field(
         description="Width of the spar support structure in millimeters"
     )
@@ -107,8 +104,8 @@ class Spare(BaseModel):
         description="Relative chord-wise position of the spar as a fraction of chord length (0.0-1.0) from the leading edge"
     )
     spare_length: Optional[float] = Field(
-        default=None, 
-        description="Length of the spar in millimeters; if None, spans the entire segment"
+        default=None,
+        description="Length of the spar in millimeters; if None, spans the entire segment",
     )
     spare_start: float = Field(
         description="Starting position of the spar along the span in millimeters"
@@ -131,23 +128,18 @@ class Airfoil(BaseModel):
     An airfoil is the cross-sectional shape of a wing that determines its aerodynamic properties.
     This model defines the geometry and orientation of an airfoil within a wing segment.
     """
-    airfoil: str = Field(
-        description="Path to the airfoil data file or name of the airfoil profile"
-    )
-    chord: PositiveFloat = Field(
-        description="Length of the airfoil chord in millimeters"
-    )
+
+    airfoil: str = Field(description="Path to the airfoil data file or name of the airfoil profile")
+    chord: PositiveFloat = Field(description="Length of the airfoil chord in millimeters")
     dihedral_as_rotation_in_degrees: Optional[float] = Field(
         default=0,
         ge=-180.0,
         le=180.0,
-        description="Dihedral angle in degrees, representing the upward angle of this cross section. Positive is wingtip upwards, negative is anhedral."
+        description="Dihedral angle in degrees, representing the upward angle of this cross section. Positive is wingtip upwards, negative is anhedral.",
     )
     incidence: Optional[float] = Field(
-        default=0,
-        description="Incidence angle in degrees. Positive is leading edge upwards."
+        default=0, description="Incidence angle in degrees. Positive is leading edge upwards."
     )
-
 
 
 class Segment(BaseModel):
@@ -161,6 +153,7 @@ class Segment(BaseModel):
     A segment that follows the previous segment, in direction of the tip, will have the equal
     geometric properties of its root airfoil as the tip airfoil of the previous segment.
     """
+
     root_airfoil: Airfoil = Field(
         description="Airfoil profile at the root (inner end) of the segment"
     )
@@ -175,24 +168,22 @@ class Segment(BaseModel):
     )
     spare_list: Optional[List[Spare]] = Field(
         default=None,
-        description="List of structural spars within the segment. The first spare_list[0] is the main spare of the wing."
+        description="List of structural spars within the segment. The first spare_list[0] is the main spare of the wing.",
     )
     trailing_edge_device: Optional[TrailingEdgeDevice] = Field(
-        default=None,
-        description="Control surface attached to the trailing edge of the segment"
+        default=None, description="Control surface attached to the trailing edge of the segment"
     )
     number_interpolation_points: Optional[int] = Field(
         default=None,
-        description="Number of points used for interpolation between root and tip airfoils"
+        description="Number of points used for interpolation between root and tip airfoils",
     )
     wing_segment_type: Optional[Literal["root", "segment", "tip"]] = Field(
-        default=None,
-        description="Segment classification: 'root', 'segment', or 'tip'"
+        default=None, description="Segment classification: 'root', 'segment', or 'tip'"
     )
     tip_type: Optional[str] = Field(
-        default=None,
-        description="Type of wing tip for this segment (e.g., 'flat', 'rounded')"
+        default=None, description="Type of wing tip for this segment (e.g., 'flat', 'rounded')"
     )
+
 
 class Wing(BaseModel):
     """
@@ -201,9 +192,8 @@ class Wing(BaseModel):
     A wing consists of one or more segments and is positioned relative to the aircraft's
     coordinate system using a nose point.
     """
-    segments: List[Segment] = Field(
-        description="List of wing segments from root to tip"
-    )
+
+    segments: List[Segment] = Field(description="List of wing segments from root to tip")
     nose_pnt: List[float] = Field(
         description="3D coordinates [x, y, z] of the wing's nose point in the aircraft coordinate system"
     )
@@ -238,13 +228,12 @@ class Wing(BaseModel):
                                 "spare_position_factor": 0.25,
                                 "spare_start": 0.0,
                                 "spare_mode": "standard",
-                                "spare_vector": [0.03673996532422339, 0.9992005450970961, 0.0157621580261394
-                                                 ],
-                                "spare_origin": [
-                                    40.5,
-                                    -0.04546757240303877,
-                                    2.604835478413867
-                                ]
+                                "spare_vector": [
+                                    0.03673996532422339,
+                                    0.9992005450970961,
+                                    0.0157621580261394,
+                                ],
+                                "spare_origin": [40.5, -0.04546757240303877, 2.604835478413867],
                             },
                             {
                                 "spare_support_dimension_width": 6.42,
@@ -253,16 +242,12 @@ class Wing(BaseModel):
                                 "spare_length": 70,
                                 "spare_start": 0.0,
                                 "spare_mode": "standard",
-                                "spare_vector": [
-                                    0.0,
-                                    1.0,
-                                    0.0
-                                ],
+                                "spare_vector": [0.0, 1.0, 0.0],
                                 "spare_origin": [
                                     89.10000000000001,
                                     -0.0469884150916505,
-                                    2.6919644976908543
-                                ]
+                                    2.6919644976908543,
+                                ],
                             },
                             {
                                 "spare_support_dimension_width": 6.42,
@@ -271,17 +256,9 @@ class Wing(BaseModel):
                                 "spare_length": 70,
                                 "spare_start": 0.0,
                                 "spare_mode": "standard",
-                                "spare_vector": [
-                                    0.0,
-                                    1.0,
-                                    0.0
-                                ],
-                                "spare_origin": [
-                                    32.4,
-                                    -0.04157221844287501,
-                                    2.3816707994978588
-                                ]
-                            }
+                                "spare_vector": [0.0, 1.0, 0.0],
+                                "spare_origin": [32.4, -0.04157221844287501, 2.3816707994978588],
+                            },
                         ],
                         "number_interpolation_points": 201,
                     },
@@ -310,13 +287,13 @@ class Wing(BaseModel):
                                 "spare_vector": [
                                     0.03673996532422339,
                                     0.9992005450970961,
-                                    0.0157621580261394
+                                    0.0157621580261394,
                                 ],
                                 "spare_origin": [
                                     41.23479930648447,
                                     19.938543329538884,
-                                    2.9200786389366553
-                                ]
+                                    2.9200786389366553,
+                                ],
                             },
                             {
                                 "spare_support_dimension_width": 6.42,
@@ -325,16 +302,12 @@ class Wing(BaseModel):
                                 "spare_length": 60,
                                 "spare_start": 0.0,
                                 "spare_mode": "follow",
-                                "spare_vector": [
-                                    0.0,
-                                    1.0,
-                                    0.0
-                                ],
+                                "spare_vector": [0.0, 1.0, 0.0],
                                 "spare_origin": [
                                     89.10000000000001,
                                     19.95301158490835,
-                                    2.6919644976908543
-                                ]
+                                    2.6919644976908543,
+                                ],
                             },
                             {
                                 "spare_support_dimension_width": 6.42,
@@ -343,17 +316,9 @@ class Wing(BaseModel):
                                 "spare_length": 60,
                                 "spare_start": 0.0,
                                 "spare_mode": "follow",
-                                "spare_vector": [
-                                    0.0,
-                                    1.0,
-                                    0.0
-                                ],
-                                "spare_origin": [
-                                    32.4,
-                                    19.958427781557123,
-                                    2.3816707994978588
-                                ]
-                            }
+                                "spare_vector": [0.0, 1.0, 0.0],
+                                "spare_origin": [32.4, 19.958427781557123, 2.3816707994978588],
+                            },
                         ],
                         "number_interpolation_points": 201,
                     },
@@ -382,13 +347,13 @@ class Wing(BaseModel):
                                 "spare_vector": [
                                     0.03673996532422339,
                                     0.9992005450970961,
-                                    0.0157621580261394
+                                    0.0157621580261394,
                                 ],
                                 "spare_origin": [
                                     48.58279237132915,
                                     219.7786523489581,
-                                    6.072510244164535
-                                ]
+                                    6.072510244164535,
+                                ],
                             }
                         ],
                         "trailing_edge_device": {
@@ -405,7 +370,7 @@ class Wing(BaseModel):
                             "positive_deflection_deg": 35,
                             "negative_deflection_deg": 35,
                             "trailing_edge_offset_factor": 1.2,
-                            "hinge_type": "top"
+                            "hinge_type": "top",
                         },
                         "number_interpolation_points": 201,
                     },
@@ -434,13 +399,13 @@ class Wing(BaseModel):
                                 "spare_vector": [
                                     0.03673996532422339,
                                     0.9992005450970961,
-                                    0.0157621580261394
+                                    0.0157621580261394,
                                 ],
                                 "spare_origin": [
                                     57.767783702384996,
                                     469.57878862323213,
-                                    10.013049750699386
-                                ]
+                                    10.013049750699386,
+                                ],
                             }
                         ],
                         "trailing_edge_device": {
@@ -449,7 +414,7 @@ class Wing(BaseModel):
                             "positive_deflection_deg": 25,
                             "negative_deflection_deg": 25,
                             "trailing_edge_offset_factor": 1.0,
-                            "hinge_type": "top"
+                            "hinge_type": "top",
                         },
                         "number_interpolation_points": 201,
                     },
@@ -478,13 +443,13 @@ class Wing(BaseModel):
                                 "spare_vector": [
                                     0.03673996532422339,
                                     0.9992005450970961,
-                                    0.0157621580261394
+                                    0.0157621580261394,
                                 ],
                                 "spare_origin": [
                                     60.52328110170175,
                                     544.5188295055143,
-                                    11.19521160265984
-                                ]
+                                    11.19521160265984,
+                                ],
                             }
                         ],
                         "trailing_edge_device": {
@@ -493,7 +458,7 @@ class Wing(BaseModel):
                             "positive_deflection_deg": 25,
                             "negative_deflection_deg": 25,
                             "trailing_edge_offset_factor": 1.0,
-                            "hinge_type": "top"
+                            "hinge_type": "top",
                         },
                         "number_interpolation_points": 201,
                     },
@@ -522,13 +487,13 @@ class Wing(BaseModel):
                                 "spare_vector": [
                                     0.03673996532422339,
                                     0.9992005450970961,
-                                    0.0157621580261394
+                                    0.0157621580261394,
                                 ],
                                 "spare_origin": [
                                     63.64617815426074,
                                     629.4508758387675,
-                                    12.534995034881689
-                                ]
+                                    12.534995034881689,
+                                ],
                             }
                         ],
                         "trailing_edge_device": {
@@ -537,7 +502,7 @@ class Wing(BaseModel):
                             "positive_deflection_deg": 25,
                             "negative_deflection_deg": 25,
                             "trailing_edge_offset_factor": 1.0,
-                            "hinge_type": "top"
+                            "hinge_type": "top",
                         },
                         "number_interpolation_points": 201,
                     },
@@ -566,13 +531,13 @@ class Wing(BaseModel):
                                 "spare_vector": [
                                     0.03673996532422339,
                                     0.9992005450970961,
-                                    0.0157621580261394
+                                    0.0157621580261394,
                                 ],
                                 "spare_origin": [
                                     65.11577676722968,
                                     669.4188976426514,
-                                    13.165481355927264
-                                ]
+                                    13.165481355927264,
+                                ],
                             }
                         ],
                         "number_interpolation_points": 201,
@@ -666,13 +631,9 @@ class Wing(BaseModel):
                         },
                         "number_interpolation_points": 201,
                         "tip_type": "flat",
-                    }
+                    },
                 ],
-                "nose_pnt": [
-                    0,
-                    0,
-                    0
-                ]
+                "nose_pnt": [0, 0, 0],
             }
         }
     }

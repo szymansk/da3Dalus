@@ -9,6 +9,7 @@ that complement the global COTS Component Library. This MVP covers:
 File upload/download, general CRUD, and lock-aware regeneration are
 future tickets (gh#57-9uk, gh#57-qim).
 """
+
 from __future__ import annotations
 
 from typing import Optional
@@ -19,6 +20,7 @@ from app.models.construction_part import ConstructionPartModel
 # --------------------------------------------------------------------------- #
 # Test helper: create a ConstructionPart directly in the DB
 # --------------------------------------------------------------------------- #
+
 
 def _make_part(
     session_factory,
@@ -60,8 +62,8 @@ def _make_part(
 # LIST  GET /aeroplanes/{id}/construction-parts
 # --------------------------------------------------------------------------- #
 
-class TestListConstructionParts:
 
+class TestListConstructionParts:
     def test_empty_list(self, client_and_db):
         client, _ = client_and_db
         res = client.get("/aeroplanes/aero-empty/construction-parts")
@@ -138,8 +140,8 @@ class TestListConstructionParts:
 # DETAIL  GET /aeroplanes/{id}/construction-parts/{partId}
 # --------------------------------------------------------------------------- #
 
-class TestGetConstructionPart:
 
+class TestGetConstructionPart:
     def test_get_returns_part(self, client_and_db):
         client, sf = client_and_db
         part = _make_part(sf, aeroplane_id="a", name="X")
@@ -171,8 +173,8 @@ class TestGetConstructionPart:
 # PUT /aeroplanes/{id}/construction-parts/{partId}/unlock
 # --------------------------------------------------------------------------- #
 
-class TestLockUnlock:
 
+class TestLockUnlock:
     def test_lock_sets_flag_true(self, client_and_db):
         client, sf = client_and_db
         part = _make_part(sf, aeroplane_id="a", name="P", locked=False)
@@ -238,8 +240,8 @@ class TestLockUnlock:
 # Material FK wiring
 # --------------------------------------------------------------------------- #
 
-class TestMaterialLink:
 
+class TestMaterialLink:
     def test_material_component_id_is_surfaced(self, client_and_db):
         """material_component_id references a component with type='material'."""
         client, sf = client_and_db

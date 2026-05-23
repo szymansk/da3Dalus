@@ -26,9 +26,7 @@ from app.db.base import Base
 
 class AvlGeometryFileModel(Base):
     __tablename__ = "avl_geometry_files"
-    __table_args__ = (
-        UniqueConstraint("aeroplane_id", name="uq_avl_geometry_files_aeroplane_id"),
-    )
+    __table_args__ = (UniqueConstraint("aeroplane_id", name="uq_avl_geometry_files_aeroplane_id"),)
 
     aeroplane_id = Column(
         Integer,

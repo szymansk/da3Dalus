@@ -89,7 +89,5 @@ def test_put_computation_config_updates_fields(client_and_db):
 
 def test_get_computation_context_404_for_missing_aeroplane(client_and_db):
     client, _ = client_and_db
-    resp = client.get(
-        f"/aeroplanes/{uuid.uuid4()}/assumptions/computation-context"
-    )
+    resp = client.get(f"/aeroplanes/{uuid.uuid4()}/assumptions/computation-context")
     assert resp.status_code == 404

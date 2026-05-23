@@ -35,12 +35,18 @@ def _raise_http_from_domain(exc: ServiceException) -> None:
     if isinstance(exc, NotFoundError):
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=exc.message) from exc
     if isinstance(exc, (ValidationError, ValidationDomainError)):
-        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=exc.message) from exc
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=exc.message
+        ) from exc
     if isinstance(exc, ConflictError):
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=exc.message) from exc
     if isinstance(exc, InternalError):
-        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=exc.message) from exc
-    raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=exc.message) from exc
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=exc.message
+        ) from exc
+    raise HTTPException(
+        status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=exc.message
+    ) from exc
 
 
 def _call_service(func, *args, **kwargs):
@@ -59,7 +65,7 @@ def _call_service(func, *args, **kwargs):
     "/flight-profiles",
     status_code=status.HTTP_201_CREATED,
     operation_id="create_flight_profile",
-    tags=["flight-profiles"]
+    tags=["flight-profiles"],
 )
 async def create_flight_profile(
     payload: RCFlightProfileCreate,
@@ -73,16 +79,23 @@ async def create_flight_profile(
     "/flight-profiles",
     status_code=status.HTTP_200_OK,
     operation_id="list_flight_profiles",
-    tags=["flight-profiles"]
+    tags=["flight-profiles"],
 )
 async def list_flight_profiles(
     db: Annotated[Session, Depends(get_db)],
-    profile_type: Annotated[Optional[FlightProfileType], Query(
-        alias="type",
-        description="Optionaler Typfilter, z.B. trainer oder glider.",
-    )] = None,
-    skip: Annotated[int, Query(ge=0, description="Wie viele Einträge am Anfang übersprungen werden sollen.")] = 0,
-    limit: Annotated[int, Query(ge=1, le=500, description="Maximale Anzahl zurückgegebener Profile.")] = 100,
+    profile_type: Annotated[
+        Optional[FlightProfileType],
+        Query(
+            alias="type",
+            description="Optionaler Typfilter, z.B. trainer oder glider.",
+        ),
+    ] = None,
+    skip: Annotated[
+        int, Query(ge=0, description="Wie viele Einträge am Anfang übersprungen werden sollen.")
+    ] = 0,
+    limit: Annotated[
+        int, Query(ge=1, le=500, description="Maximale Anzahl zurückgegebener Profile.")
+    ] = 100,
 ) -> list[RCFlightProfileRead]:
     """Listet alle Profile auf. Optional kann nach Typ gefiltert und mit skip/limit paginiert werden."""
     return _call_service(
@@ -98,7 +111,7 @@ async def list_flight_profiles(
     "/flight-profiles/{profile_id}",
     status_code=status.HTTP_200_OK,
     operation_id="get_flight_profile",
-    tags=["flight-profiles"]
+    tags=["flight-profiles"],
 )
 async def get_flight_profile(
     profile_id: Annotated[int, Path(..., ge=1, description="Interne numerische Profil-ID.")],
@@ -112,7 +125,7 @@ async def get_flight_profile(
     "/flight-profiles/{profile_id}",
     status_code=status.HTTP_200_OK,
     operation_id="update_flight_profile",
-    tags=["flight-profiles"]
+    tags=["flight-profiles"],
 )
 async def update_flight_profile(
     payload: RCFlightProfileUpdate,
@@ -127,7 +140,7 @@ async def update_flight_profile(
     "/flight-profiles/{profile_id}",
     status_code=status.HTTP_200_OK,
     operation_id="delete_flight_profile",
-    tags=["flight-profiles"]
+    tags=["flight-profiles"],
 )
 async def delete_flight_profile(
     profile_id: Annotated[int, Path(..., ge=1, description="Interne numerische Profil-ID.")],
@@ -142,7 +155,7 @@ async def delete_flight_profile(
     "/aeroplanes/{aeroplane_id}/flight-profile/{profile_id}",
     status_code=status.HTTP_200_OK,
     operation_id="assign_flight_profile_to_aeroplane",
-    tags=["flight-profiles"]
+    tags=["flight-profiles"],
 )
 async def assign_flight_profile_to_aeroplane(
     aeroplane_id: Annotated[AircraftID, Path(..., description="UUID des Aeroplanes.")],
@@ -150,14 +163,16 @@ async def assign_flight_profile_to_aeroplane(
     db: Annotated[Session, Depends(get_db)],
 ) -> AircraftFlightProfileAssignmentRead:
     """Weist einem Aeroplane ein RC Flight Profile zu und überschreibt eine bestehende Zuweisung."""
-    return _call_service(flight_profile_service.assign_profile_to_aircraft, db, aeroplane_id, profile_id)
+    return _call_service(
+        flight_profile_service.assign_profile_to_aircraft, db, aeroplane_id, profile_id
+    )
 
 
 @router.delete(
     "/aeroplanes/{aeroplane_id}/flight-profile",
     status_code=status.HTTP_200_OK,
     operation_id="detach_flight_profile_from_aeroplane",
-    tags=["flight-profiles"]
+    tags=["flight-profiles"],
 )
 async def detach_flight_profile_from_aeroplane(
     aeroplane_id: Annotated[AircraftID, Path(..., description="UUID des Aeroplanes.")],

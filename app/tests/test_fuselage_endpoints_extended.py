@@ -22,6 +22,7 @@ from app.tests.conftest import make_aeroplane, make_fuselage
 # Helpers
 # ---------------------------------------------------------------------------
 
+
 def _xsec(xyz=None, a=0.5, b=0.4, n=2.0):
     """Return a valid FuselageXSecSuperEllipseSchema dict."""
     return {"xyz": xyz or [0.0, 0.0, 0.0], "a": a, "b": b, "n": n}
@@ -40,6 +41,7 @@ def _fuselage_body(name="fus", x_secs=None):
 # ---------------------------------------------------------------------------
 # GET /aeroplanes/{id}/fuselages  (list fuselage names)
 # ---------------------------------------------------------------------------
+
 
 class TestGetAeroplaneFuselages:
     """Cover get_aeroplane_fuselages endpoint."""
@@ -81,6 +83,7 @@ class TestGetAeroplaneFuselages:
 # ---------------------------------------------------------------------------
 # PUT /aeroplanes/{id}/fuselages/{name}  (create)
 # ---------------------------------------------------------------------------
+
 
 class TestCreateFuselage:
     """Cover create_aeroplane_fuselage endpoint."""
@@ -148,6 +151,7 @@ class TestCreateFuselage:
 # POST /aeroplanes/{id}/fuselages/{name}  (update)
 # ---------------------------------------------------------------------------
 
+
 class TestUpdateFuselage:
     """Cover update_aeroplane_fuselage endpoint."""
 
@@ -160,10 +164,13 @@ class TestUpdateFuselage:
         body = _fuselage_body("upd")
         client.put(f"/aeroplanes/{ap_uuid}/fuselages/upd", json=body)
 
-        updated_body = _fuselage_body("upd", x_secs=[
-            _xsec([0, 0, 0], a=1.0),
-            _xsec([0, 2, 0], a=1.5),
-        ])
+        updated_body = _fuselage_body(
+            "upd",
+            x_secs=[
+                _xsec([0, 0, 0], a=1.0),
+                _xsec([0, 2, 0], a=1.5),
+            ],
+        )
         resp = client.post(f"/aeroplanes/{ap_uuid}/fuselages/upd", json=updated_body)
         assert resp.status_code == 200
         data = resp.json()
@@ -199,6 +206,7 @@ class TestUpdateFuselage:
 # ---------------------------------------------------------------------------
 # GET /aeroplanes/{id}/fuselages/{name}  (get single)
 # ---------------------------------------------------------------------------
+
 
 class TestGetFuselage:
     """Cover get_aeroplane_fuselage endpoint."""
@@ -236,6 +244,7 @@ class TestGetFuselage:
 # ---------------------------------------------------------------------------
 # DELETE /aeroplanes/{id}/fuselages/{name}
 # ---------------------------------------------------------------------------
+
 
 class TestDeleteFuselage:
     """Cover delete_aeroplane_fuselage endpoint."""
@@ -277,6 +286,7 @@ class TestDeleteFuselage:
 # GET /aeroplanes/{id}/fuselages/{name}/cross_sections  (list)
 # ---------------------------------------------------------------------------
 
+
 class TestGetFuselageCrossSections:
     """Cover get_aeroplane_fuselage_cross_sections via HTTP."""
 
@@ -314,6 +324,7 @@ class TestGetFuselageCrossSections:
 # ---------------------------------------------------------------------------
 # DELETE /aeroplanes/{id}/fuselages/{name}/cross_sections  (delete all)
 # ---------------------------------------------------------------------------
+
 
 class TestDeleteAllCrossSections:
     """Cover delete_aeroplane_fuselage_cross_sections via HTTP."""
@@ -355,6 +366,7 @@ class TestDeleteAllCrossSections:
 # GET .../cross_sections/{index}  (get single)
 # ---------------------------------------------------------------------------
 
+
 class TestGetSingleCrossSection:
     """Cover get_aeroplane_fuselage_cross_section via HTTP."""
 
@@ -364,10 +376,13 @@ class TestGetSingleCrossSection:
             ap = make_aeroplane(s)
             ap_uuid = str(ap.uuid)
 
-        body = _fuselage_body("cs_get", x_secs=[
-            _xsec([0, 0, 0], a=0.1),
-            _xsec([0, 1, 0], a=0.2),
-        ])
+        body = _fuselage_body(
+            "cs_get",
+            x_secs=[
+                _xsec([0, 0, 0], a=0.1),
+                _xsec([0, 1, 0], a=0.2),
+            ],
+        )
         client.put(f"/aeroplanes/{ap_uuid}/fuselages/cs_get", json=body)
 
         resp = client.get(f"/aeroplanes/{ap_uuid}/fuselages/cs_get/cross_sections/0")
@@ -420,6 +435,7 @@ class TestGetSingleCrossSection:
 # ---------------------------------------------------------------------------
 # POST .../cross_sections/{index}  (create / splice)
 # ---------------------------------------------------------------------------
+
 
 class TestCreateCrossSection:
     """Cover create_aeroplane_fuselage_cross_section via HTTP."""
@@ -475,10 +491,13 @@ class TestCreateCrossSection:
             ap = make_aeroplane(s)
             ap_uuid = str(ap.uuid)
 
-        body = _fuselage_body("cs_mid", x_secs=[
-            _xsec([0, 0, 0], a=0.1),
-            _xsec([0, 2, 0], a=0.3),
-        ])
+        body = _fuselage_body(
+            "cs_mid",
+            x_secs=[
+                _xsec([0, 0, 0], a=0.1),
+                _xsec([0, 2, 0], a=0.3),
+            ],
+        )
         client.put(f"/aeroplanes/{ap_uuid}/fuselages/cs_mid", json=body)
 
         new_xs = _xsec([0, 1, 0], a=0.2)
@@ -538,6 +557,7 @@ class TestCreateCrossSection:
 # ---------------------------------------------------------------------------
 # PUT .../cross_sections/{index}  (update single)
 # ---------------------------------------------------------------------------
+
 
 class TestUpdateCrossSection:
     """Cover update_aeroplane_fuselage_cross_section via HTTP."""
@@ -618,6 +638,7 @@ class TestUpdateCrossSection:
 # DELETE .../cross_sections/{index}  (delete single)
 # ---------------------------------------------------------------------------
 
+
 class TestDeleteSingleCrossSection:
     """Cover delete_aeroplane_fuselage_cross_section via HTTP."""
 
@@ -627,11 +648,14 @@ class TestDeleteSingleCrossSection:
             ap = make_aeroplane(s)
             ap_uuid = str(ap.uuid)
 
-        body = _fuselage_body("cs_del", x_secs=[
-            _xsec([0, 0, 0], a=0.1),
-            _xsec([0, 1, 0], a=0.2),
-            _xsec([0, 2, 0], a=0.3),
-        ])
+        body = _fuselage_body(
+            "cs_del",
+            x_secs=[
+                _xsec([0, 0, 0], a=0.1),
+                _xsec([0, 1, 0], a=0.2),
+                _xsec([0, 2, 0], a=0.3),
+            ],
+        )
         client.put(f"/aeroplanes/{ap_uuid}/fuselages/cs_del", json=body)
 
         # Delete the middle one (index 1)
@@ -652,11 +676,14 @@ class TestDeleteSingleCrossSection:
             ap = make_aeroplane(s)
             ap_uuid = str(ap.uuid)
 
-        body = _fuselage_body("cs_del0", x_secs=[
-            _xsec([0, 0, 0], a=0.1),
-            _xsec([0, 1, 0], a=0.2),
-            _xsec([0, 2, 0], a=0.3),
-        ])
+        body = _fuselage_body(
+            "cs_del0",
+            x_secs=[
+                _xsec([0, 0, 0], a=0.1),
+                _xsec([0, 1, 0], a=0.2),
+                _xsec([0, 2, 0], a=0.3),
+            ],
+        )
         client.put(f"/aeroplanes/{ap_uuid}/fuselages/cs_del0", json=body)
 
         resp = client.delete(f"/aeroplanes/{ap_uuid}/fuselages/cs_del0/cross_sections/0")
@@ -673,11 +700,14 @@ class TestDeleteSingleCrossSection:
             ap = make_aeroplane(s)
             ap_uuid = str(ap.uuid)
 
-        body = _fuselage_body("cs_del_last", x_secs=[
-            _xsec([0, 0, 0], a=0.1),
-            _xsec([0, 1, 0], a=0.2),
-            _xsec([0, 2, 0], a=0.3),
-        ])
+        body = _fuselage_body(
+            "cs_del_last",
+            x_secs=[
+                _xsec([0, 0, 0], a=0.1),
+                _xsec([0, 1, 0], a=0.2),
+                _xsec([0, 2, 0], a=0.3),
+            ],
+        )
         client.put(f"/aeroplanes/{ap_uuid}/fuselages/cs_del_last", json=body)
 
         resp = client.delete(f"/aeroplanes/{ap_uuid}/fuselages/cs_del_last/cross_sections/2")
@@ -731,6 +761,7 @@ class TestDeleteSingleCrossSection:
 # End-to-end CRUD sequence
 # ---------------------------------------------------------------------------
 
+
 class TestFuselageCrudSequence:
     """Full CRUD lifecycle in a single test to verify state transitions."""
 
@@ -741,10 +772,13 @@ class TestFuselageCrudSequence:
             ap_uuid = str(ap.uuid)
 
         # 1. Create
-        body = _fuselage_body("lifecycle", x_secs=[
-            _xsec([0, 0, 0], a=0.5),
-            _xsec([0, 1, 0], a=0.6),
-        ])
+        body = _fuselage_body(
+            "lifecycle",
+            x_secs=[
+                _xsec([0, 0, 0], a=0.5),
+                _xsec([0, 1, 0], a=0.6),
+            ],
+        )
         create_resp = client.put(f"/aeroplanes/{ap_uuid}/fuselages/lifecycle", json=body)
         assert create_resp.status_code == 201
 
@@ -754,10 +788,13 @@ class TestFuselageCrudSequence:
         assert get_resp.json()["name"] == "lifecycle"
 
         # 3. Update
-        updated = _fuselage_body("lifecycle", x_secs=[
-            _xsec([0, 0, 0], a=1.0),
-            _xsec([0, 2, 0], a=1.5),
-        ])
+        updated = _fuselage_body(
+            "lifecycle",
+            x_secs=[
+                _xsec([0, 0, 0], a=1.0),
+                _xsec([0, 2, 0], a=1.5),
+            ],
+        )
         update_resp = client.post(f"/aeroplanes/{ap_uuid}/fuselages/lifecycle", json=updated)
         assert update_resp.status_code == 200
 

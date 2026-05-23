@@ -1,4 +1,5 @@
 """Endpoints for the Component Types registry (gh#83)."""
+
 from __future__ import annotations
 from typing import Annotated
 
@@ -31,9 +32,7 @@ def _raise_http(exc: ServiceException) -> None:
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=exc.message
         ) from exc
     if isinstance(exc, ConflictError):
-        raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT, detail=exc.message
-        ) from exc
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=exc.message) from exc
     raise HTTPException(
         status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=exc.message
     ) from exc
@@ -46,11 +45,7 @@ def _call(func, *args, **kwargs):
         _raise_http(exc)
 
 
-@router.get(
-    "",
-    status_code=status.HTTP_200_OK,
-    operation_id="list_component_types_v2"
-)
+@router.get("", status_code=status.HTTP_200_OK, operation_id="list_component_types_v2")
 async def list_component_types(
     db: Annotated[Session, Depends(get_db)],
 ) -> list[ComponentTypeRead]:
@@ -58,11 +53,7 @@ async def list_component_types(
     return _call(svc.list_types, db)
 
 
-@router.get(
-    "/{type_id}",
-    status_code=status.HTTP_200_OK,
-    operation_id="get_component_type"
-)
+@router.get("/{type_id}", status_code=status.HTTP_200_OK, operation_id="get_component_type")
 async def get_component_type(
     type_id: Annotated[int, Path(...)],
     db: Annotated[Session, Depends(get_db)],
@@ -70,11 +61,7 @@ async def get_component_type(
     return _call(svc.get_type, db, type_id)
 
 
-@router.post(
-    "",
-    status_code=status.HTTP_201_CREATED,
-    operation_id="create_component_type"
-)
+@router.post("", status_code=status.HTTP_201_CREATED, operation_id="create_component_type")
 async def create_component_type(
     body: Annotated[ComponentTypeWrite, Body(...)],
     db: Annotated[Session, Depends(get_db)],
@@ -83,11 +70,7 @@ async def create_component_type(
     return _call(svc.create_type, db, body)
 
 
-@router.put(
-    "/{type_id}",
-    status_code=status.HTTP_200_OK,
-    operation_id="update_component_type"
-)
+@router.put("/{type_id}", status_code=status.HTTP_200_OK, operation_id="update_component_type")
 async def update_component_type(
     type_id: Annotated[int, Path(...)],
     body: Annotated[ComponentTypeWrite, Body(...)],

@@ -44,7 +44,7 @@ def slice_step_file(
     except ImportError as exc:
         raise InternalError(
             message="CadQuery is not available on this platform. "
-                    "Fuselage slicing requires CadQuery + OCP."
+            "Fuselage slicing requires CadQuery + OCP."
         ) from exc
 
     # Sanitize filename: strip any path components to prevent path traversal (S2083)

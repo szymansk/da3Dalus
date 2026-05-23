@@ -1,13 +1,16 @@
 """Pydantic schemas for the Component Types (gh#83)."""
+
 from __future__ import annotations
 
 from datetime import datetime
 from typing import Any, Literal, Optional
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
+
 # Silence Pydantic's "schema shadows BaseModel attribute" warning — we do use
 # the field deliberately (it's the canonical JSON name for property-lists).
 import warnings
+
 warnings.filterwarnings(
     "ignore",
     message=r'Field name "schema"',
@@ -25,8 +28,12 @@ _SNAKE_CASE = r"^[a-z][a-z0-9_]*$"
 class PropertyDefinition(BaseModel):
     """Single property inside a ComponentType's schema."""
 
-    name: str = Field(..., pattern=_SNAKE_CASE, min_length=1,
-                      description="snake_case identifier used as key in component.specs")
+    name: str = Field(
+        ...,
+        pattern=_SNAKE_CASE,
+        min_length=1,
+        description="snake_case identifier used as key in component.specs",
+    )
     label: str = Field(..., min_length=1, description="Display name in the UI")
     type: PropertyType = Field(..., description="Data type")
     unit: Optional[str] = Field(None, description="Unit suffix for number inputs (kg/m³, mm, …)")

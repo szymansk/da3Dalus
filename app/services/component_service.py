@@ -73,9 +73,7 @@ def get_component(db: Session, component_id: int) -> ComponentRead:
     return _to_schema(comp)
 
 
-def update_component(
-    db: Session, component_id: int, data: ComponentWrite
-) -> ComponentRead:
+def update_component(db: Session, component_id: int, data: ComponentWrite) -> ComponentRead:
     # gh#83: validate specs against the dynamic type schema before updating.
     type_svc.validate_specs(db, data.component_type, data.specs)
     try:

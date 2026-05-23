@@ -9,11 +9,11 @@ MUST only affect one row. This test proves that invariant.
 If the test ever fails, someone re-introduced a bug that wipes unrelated
 rows (cascade, missing WHERE clause, etc).
 """
+
 from __future__ import annotations
 
 
 class TestDeleteDoesNotCascade:
-
     def test_deleting_one_user_type_leaves_all_others_intact(self, client_and_db):
         client, _ = client_and_db
 
@@ -23,12 +23,22 @@ class TestDeleteDoesNotCascade:
         assert len(seeded_ids) == 10
 
         # Create two user types
-        ut1 = client.post("/component-types", json={
-            "name": "u1", "label": "U1", "schema": [],
-        }).json()
-        ut2 = client.post("/component-types", json={
-            "name": "u2_garbage", "label": "U2 Garbage", "schema": [],
-        }).json()
+        ut1 = client.post(
+            "/component-types",
+            json={
+                "name": "u1",
+                "label": "U1",
+                "schema": [],
+            },
+        ).json()
+        ut2 = client.post(
+            "/component-types",
+            json={
+                "name": "u2_garbage",
+                "label": "U2 Garbage",
+                "schema": [],
+            },
+        ).json()
 
         mid = client.get("/component-types").json()
         assert len(mid) == 12
@@ -47,8 +57,7 @@ class TestDeleteDoesNotCascade:
         )
         assert ut1["id"] in remaining_ids
         assert seeded_ids.issubset(remaining_ids), (
-            f"Seeded types disappeared! "
-            f"Missing: {seeded_ids - remaining_ids}"
+            f"Seeded types disappeared! Missing: {seeded_ids - remaining_ids}"
         )
 
     def test_deleting_user_type_with_referenced_components_is_rejected(self, client_and_db):
@@ -56,13 +65,23 @@ class TestDeleteDoesNotCascade:
         backend must refuse deletion with 409. No silent data loss."""
         client, _ = client_and_db
 
-        ut = client.post("/component-types", json={
-            "name": "ref_target", "label": "Ref Target", "schema": [],
-        }).json()
+        ut = client.post(
+            "/component-types",
+            json={
+                "name": "ref_target",
+                "label": "Ref Target",
+                "schema": [],
+            },
+        ).json()
         # Create a component referencing it
-        client.post("/components", json={
-            "name": "c1", "component_type": "ref_target", "specs": {},
-        })
+        client.post(
+            "/components",
+            json={
+                "name": "c1",
+                "component_type": "ref_target",
+                "specs": {},
+            },
+        )
 
         before_count = len(client.get("/component-types").json())
         res = client.delete(f"/component-types/{ut['id']}")

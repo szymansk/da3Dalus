@@ -84,9 +84,7 @@ def _apply_preset_estimates(db: Session, aeroplane_id: int, mission_type: str) -
     """
     from app.models.aeroplanemodel import DesignAssumptionModel
 
-    preset = (
-        db.query(MissionPresetModel).filter_by(id=mission_type).one_or_none()
-    )
+    preset = db.query(MissionPresetModel).filter_by(id=mission_type).one_or_none()
     if preset is None:
         return
     estimates: dict = preset.suggested_estimates
@@ -97,9 +95,7 @@ def _apply_preset_estimates(db: Session, aeroplane_id: int, mission_type: str) -
             .one_or_none()
         )
         if a_row is None:
-            a_row = DesignAssumptionModel(
-                aeroplane_id=aeroplane_id, parameter_name=param_name
-            )
+            a_row = DesignAssumptionModel(aeroplane_id=aeroplane_id, parameter_name=param_name)
             db.add(a_row)
         a_row.estimate_value = value
     db.flush()

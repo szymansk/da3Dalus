@@ -35,18 +35,21 @@ AIRFOIL = "naca0015"
 # H-matrix theory (from docs/WingConfiguration.adoc)
 # ═══════════════════════════════════════════════════════════════════
 
+
 def _T(x, y, z):
-    return np.array([[1,0,0,x],[0,1,0,y],[0,0,1,z],[0,0,0,1]], dtype=float)
+    return np.array([[1, 0, 0, x], [0, 1, 0, y], [0, 0, 1, z], [0, 0, 0, 1]], dtype=float)
+
 
 def _Rx(deg):
     r = math.radians(deg)
     c, s = math.cos(r), math.sin(r)
-    return np.array([[1,0,0,0],[0,c,-s,0],[0,s,c,0],[0,0,0,1]], dtype=float)
+    return np.array([[1, 0, 0, 0], [0, c, -s, 0], [0, s, c, 0], [0, 0, 0, 1]], dtype=float)
+
 
 def _Ry(deg):
     r = math.radians(deg)
     c, s = math.cos(r), math.sin(r)
-    return np.array([[c,0,s,0],[0,1,0,0],[-s,0,c,0],[0,0,0,1]], dtype=float)
+    return np.array([[c, 0, s, 0], [0, 1, 0, 0], [-s, 0, c, 0], [0, 0, 0, 1]], dtype=float)
 
 
 def compute_expected_xsecs(segments_params):
@@ -77,11 +80,13 @@ def compute_expected_xsecs(segments_params):
     gamma_accum = seg0["root_dihedral"]
     theta_accum = seg0["root_incidence"]
 
-    xsecs.append({
-        "xyz_le": np.array([0.0, 0.0, 0.0]),
-        "twist": theta_accum,
-        "chord": seg0["root_chord"],
-    })
+    xsecs.append(
+        {
+            "xyz_le": np.array([0.0, 0.0, 0.0]),
+            "twist": theta_accum,
+            "chord": seg0["root_chord"],
+        }
+    )
 
     xyz_le = np.zeros(3)
 
@@ -95,11 +100,13 @@ def compute_expected_xsecs(segments_params):
         gamma_accum += seg.get("tip_dihedral", 0)
         theta_accum += seg.get("tip_incidence", 0)
 
-        xsecs.append({
-            "xyz_le": xyz_le.copy(),
-            "twist": theta_accum,
-            "chord": seg["tip_chord"],
-        })
+        xsecs.append(
+            {
+                "xyz_le": xyz_le.copy(),
+                "twist": theta_accum,
+                "chord": seg["tip_chord"],
+            }
+        )
 
     return xsecs
 
@@ -108,44 +115,67 @@ def compute_expected_xsecs(segments_params):
 # Helper: build Wing schema and extract code-computed ASB values
 # ═══════════════════════════════════════════════════════════════════
 
+
 def _seg_schema(
-    root_airfoil=AIRFOIL, root_chord=200, root_incidence=0, root_dihedral=0,
-    tip_airfoil=AIRFOIL, tip_chord=180, tip_incidence=0, tip_dihedral=0,
-    length=100, sweep=0, interpolation_pts=101,
+    root_airfoil=AIRFOIL,
+    root_chord=200,
+    root_incidence=0,
+    root_dihedral=0,
+    tip_airfoil=AIRFOIL,
+    tip_chord=180,
+    tip_incidence=0,
+    tip_dihedral=0,
+    length=100,
+    sweep=0,
+    interpolation_pts=101,
 ):
     return Segment(
         root_airfoil=Airfoil(
-            airfoil=root_airfoil, chord=root_chord,
+            airfoil=root_airfoil,
+            chord=root_chord,
             dihedral_as_rotation_in_degrees=root_dihedral,
             incidence=root_incidence,
         ),
         tip_airfoil=Airfoil(
-            airfoil=tip_airfoil, chord=tip_chord,
+            airfoil=tip_airfoil,
+            chord=tip_chord,
             dihedral_as_rotation_in_degrees=tip_dihedral,
             incidence=tip_incidence,
         ),
-        length=length, sweep=sweep,
+        length=length,
+        sweep=sweep,
         number_interpolation_points=interpolation_pts,
     )
 
 
 def _seg_params(
-    root_chord=200, root_incidence=0, root_dihedral=0,
-    tip_chord=180, tip_incidence=0, tip_dihedral=0,
-    length=100, sweep=0, dihedral_translation=0,
+    root_chord=200,
+    root_incidence=0,
+    root_dihedral=0,
+    tip_chord=180,
+    tip_incidence=0,
+    tip_dihedral=0,
+    length=100,
+    sweep=0,
+    dihedral_translation=0,
 ):
     """Parameters dict for the H-matrix computation."""
     return {
-        "root_chord": root_chord, "root_incidence": root_incidence,
+        "root_chord": root_chord,
+        "root_incidence": root_incidence,
         "root_dihedral": root_dihedral,
-        "tip_chord": tip_chord, "tip_incidence": tip_incidence,
+        "tip_chord": tip_chord,
+        "tip_incidence": tip_incidence,
         "tip_dihedral": tip_dihedral,
-        "length": length, "sweep": sweep,
+        "length": length,
+        "sweep": sweep,
         "dihedral_translation": dihedral_translation,
     }
 
 
-def _build_and_compare(segments_schemas, segments_params, scale=0.001, tol_pos=0.05, tol_twist=0.01):
+def _build_and_compare(
+    segments_schemas, segments_params, scale=0.001, tol_pos=0.05, tol_twist=0.01
+):
     """Build WingConfig from schema, compute ASB, compare against H-matrix theory.
 
     Returns (matches, details) where details is a list of per-xsec comparison results.
@@ -206,9 +236,11 @@ class TestForwardConversionVsTheory:
     def _run(self, schemas, params, label=""):
         ok, details = _build_and_compare(schemas, params)
         if not ok:
-            lines = [f"\n{'='*60}", f"MISMATCH in forward conversion: {label}", f"{'='*60}"]
+            lines = [f"\n{'=' * 60}", f"MISMATCH in forward conversion: {label}", f"{'=' * 60}"]
             for d in details:
-                status = "OK" if (d["le_match"] and d["twist_match"] and d["chord_match"]) else "FAIL"
+                status = (
+                    "OK" if (d["le_match"] and d["twist_match"] and d["chord_match"]) else "FAIL"
+                )
                 lines.append(
                     f"  x_sec {d['xsec']}: {status}"
                     f"  LE expected(mm)={d['expected_le_mm']} actual(m)={d['actual_le_m']}"
@@ -228,23 +260,31 @@ class TestForwardConversionVsTheory:
 
     def test_two_segments_flat(self):
         self._run(
-            [_seg_schema(root_chord=200, tip_chord=180, length=100),
-             _seg_schema(root_chord=180, tip_chord=160, length=200)],
-            [_seg_params(root_chord=200, tip_chord=180, length=100),
-             _seg_params(root_chord=180, tip_chord=160, length=200)],
+            [
+                _seg_schema(root_chord=200, tip_chord=180, length=100),
+                _seg_schema(root_chord=180, tip_chord=160, length=200),
+            ],
+            [
+                _seg_params(root_chord=200, tip_chord=180, length=100),
+                _seg_params(root_chord=180, tip_chord=160, length=200),
+            ],
             "two_segments_flat",
         )
 
     def test_four_segments_flat(self):
         self._run(
-            [_seg_schema(root_chord=200, tip_chord=180, length=50, sweep=3),
-             _seg_schema(root_chord=180, tip_chord=160, length=200, sweep=5),
-             _seg_schema(root_chord=160, tip_chord=120, length=200, sweep=8),
-             _seg_schema(root_chord=120, tip_chord=60, length=100, sweep=12)],
-            [_seg_params(root_chord=200, tip_chord=180, length=50, sweep=3),
-             _seg_params(root_chord=180, tip_chord=160, length=200, sweep=5),
-             _seg_params(root_chord=160, tip_chord=120, length=200, sweep=8),
-             _seg_params(root_chord=120, tip_chord=60, length=100, sweep=12)],
+            [
+                _seg_schema(root_chord=200, tip_chord=180, length=50, sweep=3),
+                _seg_schema(root_chord=180, tip_chord=160, length=200, sweep=5),
+                _seg_schema(root_chord=160, tip_chord=120, length=200, sweep=8),
+                _seg_schema(root_chord=120, tip_chord=60, length=100, sweep=12),
+            ],
+            [
+                _seg_params(root_chord=200, tip_chord=180, length=50, sweep=3),
+                _seg_params(root_chord=180, tip_chord=160, length=200, sweep=5),
+                _seg_params(root_chord=160, tip_chord=120, length=200, sweep=8),
+                _seg_params(root_chord=120, tip_chord=60, length=100, sweep=12),
+            ],
             "four_segments_flat",
         )
 
@@ -252,72 +292,100 @@ class TestForwardConversionVsTheory:
 
     def test_constant_incidence(self):
         self._run(
-            [_seg_schema(root_incidence=2, tip_incidence=2, length=100),
-             _seg_schema(root_incidence=2, tip_incidence=2, length=200)],
-            [_seg_params(root_incidence=2, tip_incidence=2, length=100),
-             _seg_params(root_incidence=2, tip_incidence=2, length=200)],
+            [
+                _seg_schema(root_incidence=2, tip_incidence=2, length=100),
+                _seg_schema(root_incidence=2, tip_incidence=2, length=200),
+            ],
+            [
+                _seg_params(root_incidence=2, tip_incidence=2, length=100),
+                _seg_params(root_incidence=2, tip_incidence=2, length=200),
+            ],
             "constant_incidence",
         )
 
     def test_washout_classic(self):
         self._run(
-            [_seg_schema(root_incidence=3, tip_incidence=1, length=200),
-             _seg_schema(root_incidence=1, tip_incidence=-1, length=200)],
-            [_seg_params(root_incidence=3, tip_incidence=1, length=200),
-             _seg_params(root_incidence=1, tip_incidence=-1, length=200)],
+            [
+                _seg_schema(root_incidence=3, tip_incidence=1, length=200),
+                _seg_schema(root_incidence=1, tip_incidence=-1, length=200),
+            ],
+            [
+                _seg_params(root_incidence=3, tip_incidence=1, length=200),
+                _seg_params(root_incidence=1, tip_incidence=-1, length=200),
+            ],
             "washout_classic",
         )
 
     def test_washin(self):
         self._run(
-            [_seg_schema(root_incidence=-1.5, tip_incidence=0, length=100),
-             _seg_schema(root_incidence=0, tip_incidence=1.5, length=200)],
-            [_seg_params(root_incidence=-1.5, tip_incidence=0, length=100),
-             _seg_params(root_incidence=0, tip_incidence=1.5, length=200)],
+            [
+                _seg_schema(root_incidence=-1.5, tip_incidence=0, length=100),
+                _seg_schema(root_incidence=0, tip_incidence=1.5, length=200),
+            ],
+            [
+                _seg_params(root_incidence=-1.5, tip_incidence=0, length=100),
+                _seg_params(root_incidence=0, tip_incidence=1.5, length=200),
+            ],
             "washin",
         )
 
     def test_root_incidence_tip_zero(self):
         self._run(
-            [_seg_schema(root_incidence=-1.5, tip_incidence=0, length=50),
-             _seg_schema(root_incidence=0, tip_incidence=0, length=200)],
-            [_seg_params(root_incidence=-1.5, tip_incidence=0, length=50),
-             _seg_params(root_incidence=0, tip_incidence=0, length=200)],
+            [
+                _seg_schema(root_incidence=-1.5, tip_incidence=0, length=50),
+                _seg_schema(root_incidence=0, tip_incidence=0, length=200),
+            ],
+            [
+                _seg_params(root_incidence=-1.5, tip_incidence=0, length=50),
+                _seg_params(root_incidence=0, tip_incidence=0, length=200),
+            ],
             "root_incidence_tip_zero",
         )
 
     def test_large_twist_range(self):
         self._run(
-            [_seg_schema(root_incidence=8, tip_incidence=4, length=100),
-             _seg_schema(root_incidence=4, tip_incidence=0, length=200),
-             _seg_schema(root_incidence=0, tip_incidence=-5, length=200)],
-            [_seg_params(root_incidence=8, tip_incidence=4, length=100),
-             _seg_params(root_incidence=4, tip_incidence=0, length=200),
-             _seg_params(root_incidence=0, tip_incidence=-5, length=200)],
+            [
+                _seg_schema(root_incidence=8, tip_incidence=4, length=100),
+                _seg_schema(root_incidence=4, tip_incidence=0, length=200),
+                _seg_schema(root_incidence=0, tip_incidence=-5, length=200),
+            ],
+            [
+                _seg_params(root_incidence=8, tip_incidence=4, length=100),
+                _seg_params(root_incidence=4, tip_incidence=0, length=200),
+                _seg_params(root_incidence=0, tip_incidence=-5, length=200),
+            ],
             "large_twist_range",
         )
 
     def test_nonmonotone_twist(self):
         self._run(
-            [_seg_schema(root_incidence=0, tip_incidence=2, length=100),
-             _seg_schema(root_incidence=2, tip_incidence=4, length=200),
-             _seg_schema(root_incidence=4, tip_incidence=1, length=200)],
-            [_seg_params(root_incidence=0, tip_incidence=2, length=100),
-             _seg_params(root_incidence=2, tip_incidence=4, length=200),
-             _seg_params(root_incidence=4, tip_incidence=1, length=200)],
+            [
+                _seg_schema(root_incidence=0, tip_incidence=2, length=100),
+                _seg_schema(root_incidence=2, tip_incidence=4, length=200),
+                _seg_schema(root_incidence=4, tip_incidence=1, length=200),
+            ],
+            [
+                _seg_params(root_incidence=0, tip_incidence=2, length=100),
+                _seg_params(root_incidence=2, tip_incidence=4, length=200),
+                _seg_params(root_incidence=4, tip_incidence=1, length=200),
+            ],
             "nonmonotone_twist",
         )
 
     def test_all_segments_different_incidence(self):
         self._run(
-            [_seg_schema(root_incidence=3, tip_incidence=2, length=50),
-             _seg_schema(root_incidence=2, tip_incidence=0, length=200),
-             _seg_schema(root_incidence=0, tip_incidence=-2, length=200),
-             _seg_schema(root_incidence=-2, tip_incidence=-4, length=100)],
-            [_seg_params(root_incidence=3, tip_incidence=2, length=50),
-             _seg_params(root_incidence=2, tip_incidence=0, length=200),
-             _seg_params(root_incidence=0, tip_incidence=-2, length=200),
-             _seg_params(root_incidence=-2, tip_incidence=-4, length=100)],
+            [
+                _seg_schema(root_incidence=3, tip_incidence=2, length=50),
+                _seg_schema(root_incidence=2, tip_incidence=0, length=200),
+                _seg_schema(root_incidence=0, tip_incidence=-2, length=200),
+                _seg_schema(root_incidence=-2, tip_incidence=-4, length=100),
+            ],
+            [
+                _seg_params(root_incidence=3, tip_incidence=2, length=50),
+                _seg_params(root_incidence=2, tip_incidence=0, length=200),
+                _seg_params(root_incidence=0, tip_incidence=-2, length=200),
+                _seg_params(root_incidence=-2, tip_incidence=-4, length=100),
+            ],
             "all_segments_different_incidence",
         )
 
@@ -325,21 +393,29 @@ class TestForwardConversionVsTheory:
 
     def test_constant_dihedral(self):
         self._run(
-            [_seg_schema(root_dihedral=3, tip_dihedral=3, length=200),
-             _seg_schema(root_dihedral=3, tip_dihedral=3, length=200)],
-            [_seg_params(root_dihedral=3, tip_dihedral=3, length=200),
-             _seg_params(root_dihedral=3, tip_dihedral=3, length=200)],
+            [
+                _seg_schema(root_dihedral=3, tip_dihedral=3, length=200),
+                _seg_schema(root_dihedral=3, tip_dihedral=3, length=200),
+            ],
+            [
+                _seg_params(root_dihedral=3, tip_dihedral=3, length=200),
+                _seg_params(root_dihedral=3, tip_dihedral=3, length=200),
+            ],
             "constant_dihedral",
         )
 
     def test_dihedral_only_root_segment(self):
         self._run(
-            [_seg_schema(root_dihedral=2, length=50),
-             _seg_schema(length=200),
-             _seg_schema(length=200)],
-            [_seg_params(root_dihedral=2, length=50),
-             _seg_params(length=200),
-             _seg_params(length=200)],
+            [
+                _seg_schema(root_dihedral=2, length=50),
+                _seg_schema(length=200),
+                _seg_schema(length=200),
+            ],
+            [
+                _seg_params(root_dihedral=2, length=50),
+                _seg_params(length=200),
+                _seg_params(length=200),
+            ],
             "dihedral_only_root_segment",
         )
 
@@ -347,43 +423,143 @@ class TestForwardConversionVsTheory:
 
     def test_washin_with_dihedral_and_sweep(self):
         self._run(
-            [_seg_schema(root_incidence=-1.5, tip_incidence=1, root_dihedral=3,
-                         length=50, sweep=5, root_chord=200, tip_chord=180),
-             _seg_schema(root_incidence=1, tip_incidence=0,
-                         length=200, sweep=8, root_chord=180, tip_chord=140),
-             _seg_schema(root_incidence=0, tip_incidence=-1,
-                         length=200, sweep=12, root_chord=140, tip_chord=80)],
-            [_seg_params(root_incidence=-1.5, tip_incidence=1, root_dihedral=3,
-                         length=50, sweep=5, root_chord=200, tip_chord=180),
-             _seg_params(root_incidence=1, tip_incidence=0,
-                         length=200, sweep=8, root_chord=180, tip_chord=140),
-             _seg_params(root_incidence=0, tip_incidence=-1,
-                         length=200, sweep=12, root_chord=140, tip_chord=80)],
+            [
+                _seg_schema(
+                    root_incidence=-1.5,
+                    tip_incidence=1,
+                    root_dihedral=3,
+                    length=50,
+                    sweep=5,
+                    root_chord=200,
+                    tip_chord=180,
+                ),
+                _seg_schema(
+                    root_incidence=1,
+                    tip_incidence=0,
+                    length=200,
+                    sweep=8,
+                    root_chord=180,
+                    tip_chord=140,
+                ),
+                _seg_schema(
+                    root_incidence=0,
+                    tip_incidence=-1,
+                    length=200,
+                    sweep=12,
+                    root_chord=140,
+                    tip_chord=80,
+                ),
+            ],
+            [
+                _seg_params(
+                    root_incidence=-1.5,
+                    tip_incidence=1,
+                    root_dihedral=3,
+                    length=50,
+                    sweep=5,
+                    root_chord=200,
+                    tip_chord=180,
+                ),
+                _seg_params(
+                    root_incidence=1,
+                    tip_incidence=0,
+                    length=200,
+                    sweep=8,
+                    root_chord=180,
+                    tip_chord=140,
+                ),
+                _seg_params(
+                    root_incidence=0,
+                    tip_incidence=-1,
+                    length=200,
+                    sweep=12,
+                    root_chord=140,
+                    tip_chord=80,
+                ),
+            ],
             "washin_with_dihedral_and_sweep",
         )
 
     def test_trapez_wing_full(self):
         self._run(
-            [_seg_schema(root_airfoil="naca2424", root_chord=200, root_incidence=2,
-                         tip_airfoil="naca2424", tip_chord=180, tip_incidence=1.5,
-                         root_dihedral=2, length=50, sweep=3),
-             _seg_schema(root_airfoil="naca2424", root_chord=180, root_incidence=1.5,
-                         tip_airfoil="naca2424", tip_chord=160, tip_incidence=1,
-                         length=200, sweep=5),
-             _seg_schema(root_airfoil="naca2424", root_chord=160, root_incidence=1,
-                         tip_airfoil="naca2424", tip_chord=120, tip_incidence=0,
-                         length=200, sweep=8),
-             _seg_schema(root_airfoil="naca2424", root_chord=120, root_incidence=0,
-                         tip_airfoil="naca2424", tip_chord=60, tip_incidence=-1,
-                         length=100, sweep=12)],
-            [_seg_params(root_chord=200, root_incidence=2, tip_chord=180, tip_incidence=1.5,
-                         root_dihedral=2, length=50, sweep=3),
-             _seg_params(root_chord=180, root_incidence=1.5, tip_chord=160, tip_incidence=1,
-                         length=200, sweep=5),
-             _seg_params(root_chord=160, root_incidence=1, tip_chord=120, tip_incidence=0,
-                         length=200, sweep=8),
-             _seg_params(root_chord=120, root_incidence=0, tip_chord=60, tip_incidence=-1,
-                         length=100, sweep=12)],
+            [
+                _seg_schema(
+                    root_airfoil="naca2424",
+                    root_chord=200,
+                    root_incidence=2,
+                    tip_airfoil="naca2424",
+                    tip_chord=180,
+                    tip_incidence=1.5,
+                    root_dihedral=2,
+                    length=50,
+                    sweep=3,
+                ),
+                _seg_schema(
+                    root_airfoil="naca2424",
+                    root_chord=180,
+                    root_incidence=1.5,
+                    tip_airfoil="naca2424",
+                    tip_chord=160,
+                    tip_incidence=1,
+                    length=200,
+                    sweep=5,
+                ),
+                _seg_schema(
+                    root_airfoil="naca2424",
+                    root_chord=160,
+                    root_incidence=1,
+                    tip_airfoil="naca2424",
+                    tip_chord=120,
+                    tip_incidence=0,
+                    length=200,
+                    sweep=8,
+                ),
+                _seg_schema(
+                    root_airfoil="naca2424",
+                    root_chord=120,
+                    root_incidence=0,
+                    tip_airfoil="naca2424",
+                    tip_chord=60,
+                    tip_incidence=-1,
+                    length=100,
+                    sweep=12,
+                ),
+            ],
+            [
+                _seg_params(
+                    root_chord=200,
+                    root_incidence=2,
+                    tip_chord=180,
+                    tip_incidence=1.5,
+                    root_dihedral=2,
+                    length=50,
+                    sweep=3,
+                ),
+                _seg_params(
+                    root_chord=180,
+                    root_incidence=1.5,
+                    tip_chord=160,
+                    tip_incidence=1,
+                    length=200,
+                    sweep=5,
+                ),
+                _seg_params(
+                    root_chord=160,
+                    root_incidence=1,
+                    tip_chord=120,
+                    tip_incidence=0,
+                    length=200,
+                    sweep=8,
+                ),
+                _seg_params(
+                    root_chord=120,
+                    root_incidence=0,
+                    tip_chord=60,
+                    tip_incidence=-1,
+                    length=100,
+                    sweep=12,
+                ),
+            ],
             "trapez_wing_full",
         )
 
@@ -391,32 +567,106 @@ class TestForwardConversionVsTheory:
 
     def test_drift_6_segment_wing(self):
         schemas = [
-            _seg_schema(root_chord=250, tip_chord=230, root_incidence=4, tip_incidence=3,
-                        root_dihedral=3, length=80, sweep=5),
-            _seg_schema(root_chord=230, tip_chord=200, root_incidence=3, tip_incidence=2,
-                        length=400, sweep=10),
-            _seg_schema(root_chord=200, tip_chord=170, root_incidence=2, tip_incidence=1,
-                        length=500, sweep=15),
-            _seg_schema(root_chord=170, tip_chord=130, root_incidence=1, tip_incidence=0,
-                        length=500, sweep=20),
-            _seg_schema(root_chord=130, tip_chord=90, root_incidence=0, tip_incidence=-1,
-                        length=400, sweep=15),
-            _seg_schema(root_chord=90, tip_chord=50, root_incidence=-1, tip_incidence=-3,
-                        length=200, sweep=10),
+            _seg_schema(
+                root_chord=250,
+                tip_chord=230,
+                root_incidence=4,
+                tip_incidence=3,
+                root_dihedral=3,
+                length=80,
+                sweep=5,
+            ),
+            _seg_schema(
+                root_chord=230,
+                tip_chord=200,
+                root_incidence=3,
+                tip_incidence=2,
+                length=400,
+                sweep=10,
+            ),
+            _seg_schema(
+                root_chord=200,
+                tip_chord=170,
+                root_incidence=2,
+                tip_incidence=1,
+                length=500,
+                sweep=15,
+            ),
+            _seg_schema(
+                root_chord=170,
+                tip_chord=130,
+                root_incidence=1,
+                tip_incidence=0,
+                length=500,
+                sweep=20,
+            ),
+            _seg_schema(
+                root_chord=130,
+                tip_chord=90,
+                root_incidence=0,
+                tip_incidence=-1,
+                length=400,
+                sweep=15,
+            ),
+            _seg_schema(
+                root_chord=90,
+                tip_chord=50,
+                root_incidence=-1,
+                tip_incidence=-3,
+                length=200,
+                sweep=10,
+            ),
         ]
         params = [
-            _seg_params(root_chord=250, tip_chord=230, root_incidence=4, tip_incidence=3,
-                        root_dihedral=3, length=80, sweep=5),
-            _seg_params(root_chord=230, tip_chord=200, root_incidence=3, tip_incidence=2,
-                        length=400, sweep=10),
-            _seg_params(root_chord=200, tip_chord=170, root_incidence=2, tip_incidence=1,
-                        length=500, sweep=15),
-            _seg_params(root_chord=170, tip_chord=130, root_incidence=1, tip_incidence=0,
-                        length=500, sweep=20),
-            _seg_params(root_chord=130, tip_chord=90, root_incidence=0, tip_incidence=-1,
-                        length=400, sweep=15),
-            _seg_params(root_chord=90, tip_chord=50, root_incidence=-1, tip_incidence=-3,
-                        length=200, sweep=10),
+            _seg_params(
+                root_chord=250,
+                tip_chord=230,
+                root_incidence=4,
+                tip_incidence=3,
+                root_dihedral=3,
+                length=80,
+                sweep=5,
+            ),
+            _seg_params(
+                root_chord=230,
+                tip_chord=200,
+                root_incidence=3,
+                tip_incidence=2,
+                length=400,
+                sweep=10,
+            ),
+            _seg_params(
+                root_chord=200,
+                tip_chord=170,
+                root_incidence=2,
+                tip_incidence=1,
+                length=500,
+                sweep=15,
+            ),
+            _seg_params(
+                root_chord=170,
+                tip_chord=130,
+                root_incidence=1,
+                tip_incidence=0,
+                length=500,
+                sweep=20,
+            ),
+            _seg_params(
+                root_chord=130,
+                tip_chord=90,
+                root_incidence=0,
+                tip_incidence=-1,
+                length=400,
+                sweep=15,
+            ),
+            _seg_params(
+                root_chord=90,
+                tip_chord=50,
+                root_incidence=-1,
+                tip_incidence=-3,
+                length=200,
+                sweep=10,
+            ),
         ]
         self._run(schemas, params, "drift_6_segment_wing")
 
@@ -424,23 +674,73 @@ class TestForwardConversionVsTheory:
 
     def test_drift_asymmetric_4_segments(self):
         schemas = [
-            _seg_schema(root_chord=300, tip_chord=260, root_incidence=-2, tip_incidence=3,
-                        root_dihedral=5, length=150, sweep=8),
-            _seg_schema(root_chord=260, tip_chord=200, root_incidence=3, tip_incidence=-1,
-                        length=600, sweep=12),
-            _seg_schema(root_chord=200, tip_chord=140, root_incidence=-1, tip_incidence=4,
-                        length=600, sweep=18),
-            _seg_schema(root_chord=140, tip_chord=60, root_incidence=4, tip_incidence=-3,
-                        length=300, sweep=25),
+            _seg_schema(
+                root_chord=300,
+                tip_chord=260,
+                root_incidence=-2,
+                tip_incidence=3,
+                root_dihedral=5,
+                length=150,
+                sweep=8,
+            ),
+            _seg_schema(
+                root_chord=260,
+                tip_chord=200,
+                root_incidence=3,
+                tip_incidence=-1,
+                length=600,
+                sweep=12,
+            ),
+            _seg_schema(
+                root_chord=200,
+                tip_chord=140,
+                root_incidence=-1,
+                tip_incidence=4,
+                length=600,
+                sweep=18,
+            ),
+            _seg_schema(
+                root_chord=140,
+                tip_chord=60,
+                root_incidence=4,
+                tip_incidence=-3,
+                length=300,
+                sweep=25,
+            ),
         ]
         params = [
-            _seg_params(root_chord=300, tip_chord=260, root_incidence=-2, tip_incidence=3,
-                        root_dihedral=5, length=150, sweep=8),
-            _seg_params(root_chord=260, tip_chord=200, root_incidence=3, tip_incidence=-1,
-                        length=600, sweep=12),
-            _seg_params(root_chord=200, tip_chord=140, root_incidence=-1, tip_incidence=4,
-                        length=600, sweep=18),
-            _seg_params(root_chord=140, tip_chord=60, root_incidence=4, tip_incidence=-3,
-                        length=300, sweep=25),
+            _seg_params(
+                root_chord=300,
+                tip_chord=260,
+                root_incidence=-2,
+                tip_incidence=3,
+                root_dihedral=5,
+                length=150,
+                sweep=8,
+            ),
+            _seg_params(
+                root_chord=260,
+                tip_chord=200,
+                root_incidence=3,
+                tip_incidence=-1,
+                length=600,
+                sweep=12,
+            ),
+            _seg_params(
+                root_chord=200,
+                tip_chord=140,
+                root_incidence=-1,
+                tip_incidence=4,
+                length=600,
+                sweep=18,
+            ),
+            _seg_params(
+                root_chord=140,
+                tip_chord=60,
+                root_incidence=4,
+                tip_incidence=-3,
+                length=300,
+                sweep=25,
+            ),
         ]
         self._run(schemas, params, "drift_asymmetric_4_segments")

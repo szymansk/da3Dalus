@@ -887,7 +887,10 @@ class TestExecuteStreaming:
 
         # Create a template via REST so the DB has a row
         template = _create_plan(
-            client, "Tpl Direct", tree=SAMPLE_TREE, plan_type="template",
+            client,
+            "Tpl Direct",
+            tree=SAMPLE_TREE,
+            plan_type="template",
         )
 
         with SessionLocal() as session:
@@ -918,7 +921,10 @@ class TestExecuteStreaming:
             aero_id = str(aero.uuid)
 
         template = _create_plan(
-            client, "Tpl Stream Real", tree=SAMPLE_TREE, plan_type="template",
+            client,
+            "Tpl Stream Real",
+            tree=SAMPLE_TREE,
+            plan_type="template",
         )
 
         with client.stream(

@@ -30,7 +30,9 @@ def client(client_and_db):
     yield test_client
 
 
-def _wait_for_task_completion(client: TestClient, aeroplane_id: str, timeout_seconds: float = 240.0) -> dict:
+def _wait_for_task_completion(
+    client: TestClient, aeroplane_id: str, timeout_seconds: float = 240.0
+) -> dict:
     deadline = time.monotonic() + timeout_seconds
     last_payload: dict | None = None
 
@@ -188,7 +190,9 @@ def test_rest_wing_vase_mode_step_export_workflow_via_wingconfig(client: TestCli
         "href": f"/aeroplanes/{aeroplane_id}",
     }
 
-    status_payload = _wait_for_task_completion(client, aeroplane_id=aeroplane_id, timeout_seconds=240.0)
+    status_payload = _wait_for_task_completion(
+        client, aeroplane_id=aeroplane_id, timeout_seconds=240.0
+    )
     assert status_payload["result"] is not None
     assert "zipfile" in status_payload["result"]
 

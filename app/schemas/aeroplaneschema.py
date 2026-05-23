@@ -40,8 +40,12 @@ class ControlSurfaceRole(str, Enum):
 
 class AeroplaneSchema(BaseModel):
     name: str = Field(..., description="Aeroplane name", examples=["Vanilla"])
-    total_mass_kg: Optional[float] = Field(None, description="Total mass of the aeroplane in kg", examples=[3.0])
-    wings: Optional[OrderedDict[str, "AsbWingSchema"]] = Field(None, description="Aeroplane wings dictionary")
+    total_mass_kg: Optional[float] = Field(
+        None, description="Total mass of the aeroplane in kg", examples=[3.0]
+    )
+    wings: Optional[OrderedDict[str, "AsbWingSchema"]] = Field(
+        None, description="Aeroplane wings dictionary"
+    )
     fuselages: Optional[OrderedDict[str, "FuselageSchema"]] = Field(
         None,
         description="Aeroplane fuselages dictionary",
@@ -212,7 +216,9 @@ class TrailingEdgeDeviceDetailSchema(BaseModel):
         description="Standardized control surface role for auto-trim detection",
     )
     label: Optional[str] = Field(None, description="Optional user-defined display name")
-    rel_chord_root: Optional[float] = Field(None, description="Root hinge position as relative chord (0.0-1.0)")
+    rel_chord_root: Optional[float] = Field(
+        None, description="Root hinge position as relative chord (0.0-1.0)"
+    )
     rel_chord_tip: Optional[float] = Field(None, description=_DESC_TIP_HINGE_REL_CHORD)
     hinge_spacing: Optional[float] = Field(None, description=_DESC_HINGE_SPACING_MM)
     side_spacing_root: Optional[float] = Field(None, description=_DESC_ROOT_SIDE_SPACING_MM)
@@ -284,7 +290,9 @@ class TrailingEdgeDevicePatchSchema(BaseModel):
     name: Optional[str] = Field(None, description="Trailing-edge device name")
     role: Optional[ControlSurfaceRole] = Field(None, description="Control surface role")
     label: Optional[str] = Field(None, description="Optional display name")
-    rel_chord_root: Optional[float] = Field(None, description="Root hinge position as relative chord (0.0-1.0)")
+    rel_chord_root: Optional[float] = Field(
+        None, description="Root hinge position as relative chord (0.0-1.0)"
+    )
     rel_chord_tip: Optional[float] = Field(None, description=_DESC_TIP_HINGE_REL_CHORD)
     hinge_spacing: Optional[float] = Field(None, description=_DESC_HINGE_SPACING_MM)
     side_spacing_root: Optional[float] = Field(None, description=_DESC_ROOT_SIDE_SPACING_MM)
@@ -371,8 +379,12 @@ class ControlSurfaceServoDetailsPatchSchema(TrailingEdgeServoPatchSchema):
 
 
 class WingUnitsSchema(BaseModel):
-    geometry_length: Literal["m"] = Field("m", description="Unit of `xyz_le`, `chord` in x-sections")
-    detail_length: Literal["m"] = Field("m", description="Unit of spar detail fields (origin, dimensions, length, start)")
+    geometry_length: Literal["m"] = Field(
+        "m", description="Unit of `xyz_le`, `chord` in x-sections"
+    )
+    detail_length: Literal["m"] = Field(
+        "m", description="Unit of spar detail fields (origin, dimensions, length, start)"
+    )
     angle: Literal["deg"] = Field("deg", description="Unit of angular fields")
 
     model_config = ConfigDict(from_attributes=True)
@@ -397,7 +409,10 @@ class WingXSecSchema(BaseModel):
     airfoil: str | HttpUrl = Field(
         ...,
         description="Airfoil dat file location of the cross-section (file or URL)",
-        examples=["./components/airfoils/naca0015.dat", "https://m-selig.ae.illinois.edu/ads/coord/naca0015.dat"],
+        examples=[
+            "./components/airfoils/naca0015.dat",
+            "https://m-selig.ae.illinois.edu/ads/coord/naca0015.dat",
+        ],
     )
     control_surface: Optional[ControlSurfaceSchema] = Field(
         None,

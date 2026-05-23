@@ -19,4 +19,3 @@ def setup_logging(default_level: str | int = "DEBUG") -> None:
     logging.getLogger("kaleido").setLevel(logging.CRITICAL)
     logging.getLogger("choreographer").setLevel(logging.CRITICAL)
     logging.getLogger("browser_proc").setLevel(logging.CRITICAL)
-

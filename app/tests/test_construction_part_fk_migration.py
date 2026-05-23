@@ -1,4 +1,5 @@
 """Migration test for construction_part_id FK on component_tree (gh#57-u4d)."""
+
 from __future__ import annotations
 
 from alembic import command

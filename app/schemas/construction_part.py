@@ -1,4 +1,5 @@
 """Pydantic schemas for the construction-parts domain (gh#57-g4h)."""
+
 from __future__ import annotations
 
 from datetime import datetime
@@ -41,9 +42,7 @@ class ConstructionPartRead(BaseModel):
     file_path: Optional[str] = Field(
         None, description="Local storage path of the uploaded CAD file"
     )
-    file_format: Optional[str] = Field(
-        None, description="Source file format: 'step' or 'stl'"
-    )
+    file_format: Optional[str] = Field(None, description="Source file format: 'step' or 'stl'")
 
     created_at: datetime
     updated_at: datetime

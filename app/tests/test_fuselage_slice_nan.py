@@ -44,7 +44,10 @@ class TestFuselageSliceNanHandling:
         """Helper: POST /fuselages/slice with mocked slice_step_to_fuselage."""
         # Patch the lazy import inside slice_step_file
         mock_fn = MagicMock(return_value=(MOCK_XSECS, metrics))
-        with patch.dict("sys.modules", {"cad_designer.aerosandbox.slicing": MagicMock(slice_step_to_fuselage=mock_fn)}):
+        with patch.dict(
+            "sys.modules",
+            {"cad_designer.aerosandbox.slicing": MagicMock(slice_step_to_fuselage=mock_fn)},
+        ):
             return client.post(
                 "/fuselages/slice",
                 files={"file": ("test.step", io.BytesIO(b"ISO-10303"), "application/step")},

@@ -1,4 +1,5 @@
 """Pydantic schemas for SM sizing constraint — gh-494."""
+
 from __future__ import annotations
 
 from typing import Literal
@@ -37,18 +38,18 @@ class SmOption(BaseModel):
 class SmSuggestionResponse(BaseModel):
     """Response from GET /aeroplanes/{uuid}/sm-suggestion."""
 
-    status: Literal[
-        "ok", "suggestion", "error", "not_applicable", "tailless_recommendation"
-    ] = Field(
-        ...,
-        description=(
-            "ok: SM already in target range [target_sm, 0.20]. "
-            "suggestion: SM deviates, options provided. "
-            "error: SM < 0.02 (unstable), block_save=True. "
-            "not_applicable: canard/boxwing/tandem/no-analysis. "
-            "tailless_recommendation: tailless/flying-wing — SM 5–10 % MAC "
-            "(gh-579, Anderson + Apogee + Scholz + Lennon)."
-        ),
+    status: Literal["ok", "suggestion", "error", "not_applicable", "tailless_recommendation"] = (
+        Field(
+            ...,
+            description=(
+                "ok: SM already in target range [target_sm, 0.20]. "
+                "suggestion: SM deviates, options provided. "
+                "error: SM < 0.02 (unstable), block_save=True. "
+                "not_applicable: canard/boxwing/tandem/no-analysis. "
+                "tailless_recommendation: tailless/flying-wing — SM 5–10 % MAC "
+                "(gh-579, Anderson + Apogee + Scholz + Lennon)."
+            ),
+        )
     )
     options: list[SmOption] = Field(
         default_factory=list,

@@ -213,12 +213,7 @@ class TestAvlGeometryService:
         db.flush()
 
         delete_avl_geometry(db, aeroplane.uuid)
-        assert (
-            db.query(AvlGeometryFileModel)
-            .filter_by(aeroplane_id=aeroplane.id)
-            .first()
-            is None
-        )
+        assert db.query(AvlGeometryFileModel).filter_by(aeroplane_id=aeroplane.id).first() is None
 
     def test_delete_avl_geometry_not_found(self, db: Session):
         aeroplane = AeroplaneModel(name="TestPlane")
@@ -429,6 +424,7 @@ class TestAvlAnalysisIntegration:
         db.flush()
 
         from app.services.avl_geometry_service import get_user_avl_content
+
         content = get_user_avl_content(db, aeroplane.uuid)
         assert content == "CUSTOM AVL CONTENT"
 
@@ -438,6 +434,7 @@ class TestAvlAnalysisIntegration:
         db.flush()
 
         from app.services.avl_geometry_service import get_user_avl_content
+
         content = get_user_avl_content(db, aeroplane.uuid)
         assert content is None
 
@@ -457,5 +454,6 @@ class TestAvlAnalysisIntegration:
         db.flush()
 
         from app.services.avl_geometry_service import get_user_avl_content
+
         content = get_user_avl_content(db, aeroplane.uuid)
         assert content is None

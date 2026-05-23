@@ -644,8 +644,13 @@ class TestAnalyzeWing:
         ]
         mock_result = MagicMock()
         op = OperatingPointSchema.model_construct(
-            velocity=20.0, alpha=5.0, beta=0.0,
-            p=0.0, q=0.0, r=0.0, xyz_ref=[0.0, 0.0, 0.0],
+            velocity=20.0,
+            alpha=5.0,
+            beta=0.0,
+            p=0.0,
+            q=0.0,
+            r=0.0,
+            xyz_ref=[0.0, 0.0, 0.0],
         )
 
         with (
@@ -677,8 +682,13 @@ class TestAnalyzeWing:
 
         mock_db = MagicMock()
         op = OperatingPointSchema.model_construct(
-            velocity=20.0, alpha=5.0, beta=0.0,
-            p=0.0, q=0.0, r=0.0, xyz_ref=[0.0, 0.0, 0.0],
+            velocity=20.0,
+            alpha=5.0,
+            beta=0.0,
+            p=0.0,
+            q=0.0,
+            r=0.0,
+            xyz_ref=[0.0, 0.0, 0.0],
         )
 
         with (
@@ -713,8 +723,13 @@ class TestAnalyzeAirplane:
         mock_db = MagicMock()
         mock_result = MagicMock()
         op = OperatingPointSchema.model_construct(
-            velocity=20.0, alpha=5.0, beta=0.0,
-            p=0.0, q=0.0, r=0.0, xyz_ref=[0.0, 0.0, 0.0],
+            velocity=20.0,
+            alpha=5.0,
+            beta=0.0,
+            p=0.0,
+            q=0.0,
+            r=0.0,
+            xyz_ref=[0.0, 0.0, 0.0],
         )
 
         with (
@@ -732,9 +747,7 @@ class TestAnalyzeAirplane:
             ),
         ):
             result = asyncio.run(
-                analyze_airplane(
-                    mock_db, uuid.uuid4(), op, AnalysisToolUrlType.VORTEX_LATTICE
-                )
+                analyze_airplane(mock_db, uuid.uuid4(), op, AnalysisToolUrlType.VORTEX_LATTICE)
             )
 
         assert result is mock_result
@@ -746,8 +759,13 @@ class TestAnalyzeAirplane:
 
         mock_db = MagicMock()
         op = OperatingPointSchema.model_construct(
-            velocity=20.0, alpha=5.0, beta=0.0,
-            p=0.0, q=0.0, r=0.0, xyz_ref=[0.0, 0.0, 0.0],
+            velocity=20.0,
+            alpha=5.0,
+            beta=0.0,
+            p=0.0,
+            q=0.0,
+            r=0.0,
+            xyz_ref=[0.0, 0.0, 0.0],
         )
 
         with (
@@ -762,9 +780,7 @@ class TestAnalyzeAirplane:
         ):
             with pytest.raises(InternalError):
                 asyncio.run(
-                    analyze_airplane(
-                        mock_db, uuid.uuid4(), op, AnalysisToolUrlType.AEROBUILDUP
-                    )
+                    analyze_airplane(mock_db, uuid.uuid4(), op, AnalysisToolUrlType.AEROBUILDUP)
                 )
 
 
@@ -870,41 +886,31 @@ class TestFormatPolarLabel:
         from app.services.analysis_service import _format_polar_label
 
         point = {"lift_to_drag_ratio": 25.0}
-        label = _format_polar_label(
-            "maximum_lift_to_drag_ratio_point", point, 0.02, 0.5
-        )
+        label = _format_polar_label("maximum_lift_to_drag_ratio_point", point, 0.02, 0.5)
         assert "(CL/CD)max=25.00" in label
 
     def test_cdmin_label(self):
         from app.services.analysis_service import _format_polar_label
 
-        label = _format_polar_label(
-            "minimum_drag_coefficient_point", {}, 0.005, 0.1
-        )
+        label = _format_polar_label("minimum_drag_coefficient_point", {}, 0.005, 0.1)
         assert "CDmin=0.005" in label
 
     def test_clmax_label(self):
         from app.services.analysis_service import _format_polar_label
 
-        label = _format_polar_label(
-            "maximum_lift_coefficient_point", {}, 0.04, 1.2
-        )
+        label = _format_polar_label("maximum_lift_coefficient_point", {}, 0.04, 1.2)
         assert "CLmax=1.200" in label
 
     def test_cd0_label(self):
         from app.services.analysis_service import _format_polar_label
 
-        label = _format_polar_label(
-            "drag_at_zero_lift_point", {}, 0.008, 0.0
-        )
+        label = _format_polar_label("drag_at_zero_lift_point", {}, 0.008, 0.0)
         assert "CD0=0.008" in label
 
     def test_fallback_label(self):
         from app.services.analysis_service import _format_polar_label
 
-        label = _format_polar_label(
-            "stall_point", {}, 0.06, 0.9
-        )
+        label = _format_polar_label("stall_point", {}, 0.06, 0.9)
         assert "CD=0.060" in label
         assert "CL=0.900" in label
 
@@ -926,9 +932,7 @@ class TestAnalyzeAlphaSweep:
         mock_schema.name = "TestPlane"
 
         mock_result = SimpleNamespace(
-            flight_condition=SimpleNamespace(
-                alpha=np.linspace(-5, 15, 21)
-            ),
+            flight_condition=SimpleNamespace(alpha=np.linspace(-5, 15, 21)),
             coefficients=SimpleNamespace(
                 CL=0.1 * np.linspace(-5, 15, 21),
                 CD=0.01 + 0.001 * np.linspace(-5, 15, 21) ** 2,
@@ -936,9 +940,16 @@ class TestAnalyzeAlphaSweep:
             ),
         )
         sweep = AlphaSweepRequest.model_construct(
-            altitude=0.0, velocity=20.0,
-            alpha_start=-5, alpha_end=15, alpha_num=21,
-            beta=0.0, p=0.0, q=0.0, r=0.0, xyz_ref=[0, 0, 0],
+            altitude=0.0,
+            velocity=20.0,
+            alpha_start=-5,
+            alpha_end=15,
+            alpha_num=21,
+            beta=0.0,
+            p=0.0,
+            q=0.0,
+            r=0.0,
+            xyz_ref=[0, 0, 0],
         )
 
         with (
@@ -955,9 +966,7 @@ class TestAnalyzeAlphaSweep:
                 return_value=(mock_result, None),
             ),
         ):
-            result = asyncio.run(
-                analyze_alpha_sweep(mock_db, uuid.uuid4(), sweep)
-            )
+            result = asyncio.run(analyze_alpha_sweep(mock_db, uuid.uuid4(), sweep))
 
         assert "analysis" in result
         assert "characteristic_points" in result

@@ -3,6 +3,7 @@
 GET  /aeroplanes/{uuid}/sm-suggestion         — suggest wing_shift / htail_scale
 POST /aeroplanes/{uuid}/sm-suggestions/apply  — apply (or dry-run) a suggestion
 """
+
 from __future__ import annotations
 
 import logging
@@ -29,11 +30,7 @@ router = APIRouter()
 
 def _get_aeroplane(db: Session, aeroplane_id: UUID4) -> AeroplaneModel:
     """Resolve aeroplane by UUID or raise HTTP 404."""
-    plane = (
-        db.query(AeroplaneModel)
-        .filter(AeroplaneModel.uuid == str(aeroplane_id))
-        .first()
-    )
+    plane = db.query(AeroplaneModel).filter(AeroplaneModel.uuid == str(aeroplane_id)).first()
     if plane is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -79,9 +76,7 @@ async def get_sm_suggestion(
     try:
         raw = sm_sizing_service.suggest_corrections(ctx, target_sm=target_sm, at_cg=at_cg)
     except Exception as exc:
-        logger.error(
-            "SM suggestion failed for %s: %s", aeroplane_id, exc, exc_info=True
-        )
+        logger.error("SM suggestion failed for %s: %s", aeroplane_id, exc, exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"SM suggestion computation failed: {exc}",
@@ -119,7 +114,9 @@ async def get_sm_suggestion(
     responses={
         404: {"description": "Aeroplane not found"},
         400: {"description": "Configuration not applicable (canard, tailless, no NP)"},
-        409: {"description": "Apply-loop convergence not reached after 3 iterations (gh-509, Scholz A6)"},
+        409: {
+            "description": "Apply-loop convergence not reached after 3 iterations (gh-509, Scholz A6)"
+        },
         422: {"description": "Invalid lever or delta_value"},
     },
 )
@@ -169,9 +166,7 @@ async def apply_sm_suggestion(
     except HTTPException:
         raise
     except Exception as exc:
-        logger.error(
-            "SM suggestion apply failed for %s: %s", aeroplane_id, exc, exc_info=True
-        )
+        logger.error("SM suggestion apply failed for %s: %s", aeroplane_id, exc, exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"SM suggestion apply failed: {exc}",

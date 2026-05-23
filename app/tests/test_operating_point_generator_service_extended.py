@@ -56,6 +56,7 @@ from app.services.operating_point_generator_service import (
 # Fixtures
 # ------------------------------------------------------------------ #
 
+
 @pytest.fixture()
 def db_session():
     engine = create_engine(
@@ -360,7 +361,11 @@ class TestDetectControlCapabilities:
 
     def test_empty_name_skipped(self):
         airplane = SimpleNamespace(
-            wings=[SimpleNamespace(xsecs=[SimpleNamespace(control_surfaces=[SimpleNamespace(name="")])])]
+            wings=[
+                SimpleNamespace(
+                    xsecs=[SimpleNamespace(control_surfaces=[SimpleNamespace(name="")])]
+                )
+            ]
         )
         caps = _detect_control_capabilities(airplane)
         assert caps["available_controls"] == []
@@ -519,7 +524,9 @@ class TestApplyLimitWarnings:
     def test_both_limits_reached(self):
         warnings: list[str] = []
         status = _apply_limit_warnings(
-            30.0, 35.0, 0.5,
+            30.0,
+            35.0,
+            0.5,
             {"max_alpha_deg": 25, "max_beta_deg": 30},
             warnings,
         )
@@ -627,9 +634,7 @@ class TestGenerateDefaultSetErrors:
     def test_profile_override_not_found_raises(self, db_session):
         aircraft = _make_aircraft(db_session)
         with pytest.raises(NotFoundError):
-            generate_default_set_for_aircraft(
-                db_session, aircraft.uuid, profile_id_override=99999
-            )
+            generate_default_set_for_aircraft(db_session, aircraft.uuid, profile_id_override=99999)
 
 
 # ================================================================== #
@@ -932,7 +937,9 @@ class TestGridSearchTrim:
         """Grid search should call _evaluate_trim_candidate and track the best."""
         call_count = {"n": 0}
 
-        def mock_evaluate(*, asb_airplane, altitude_m, velocity_mps, alpha_deg, beta_deg, cl_target):
+        def mock_evaluate(
+            *, asb_airplane, altitude_m, velocity_mps, alpha_deg, beta_deg, cl_target
+        ):
             call_count["n"] += 1
             # Return a low score for alpha near 4.0
             score = abs(alpha_deg - 4.0) * 0.1 + 0.01

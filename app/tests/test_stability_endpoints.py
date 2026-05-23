@@ -37,7 +37,6 @@ def _make_summary(**overrides) -> StabilitySummaryResponse:
 
 
 class TestGetCachedStabilityEndpoint:
-
     def test_404_when_no_cached_result(self, client_and_db):
         client, SessionLocal = client_and_db
         with SessionLocal() as db:

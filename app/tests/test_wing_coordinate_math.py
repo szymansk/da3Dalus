@@ -17,18 +17,22 @@ import pytest
 # The three building blocks from the documentation
 # ═══════════════════════════════════════════════════════════════════
 
+
 def T(x, y, z):
     """Translation matrix.
 
     From docs/WingConfiguration.adoc:
         T(x,y,z) = [[1,0,0,x],[0,1,0,y],[0,0,1,z],[0,0,0,1]]
     """
-    return np.array([
-        [1, 0, 0, x],
-        [0, 1, 0, y],
-        [0, 0, 1, z],
-        [0, 0, 0, 1],
-    ], dtype=float)
+    return np.array(
+        [
+            [1, 0, 0, x],
+            [0, 1, 0, y],
+            [0, 0, 1, z],
+            [0, 0, 0, 1],
+        ],
+        dtype=float,
+    )
 
 
 def Rx(delta_deg):
@@ -41,12 +45,15 @@ def Rx(delta_deg):
     """
     d = math.radians(delta_deg)
     c, s = math.cos(d), math.sin(d)
-    return np.array([
-        [1, 0,  0, 0],
-        [0, c, -s, 0],
-        [0, s,  c, 0],
-        [0, 0,  0, 1],
-    ], dtype=float)
+    return np.array(
+        [
+            [1, 0, 0, 0],
+            [0, c, -s, 0],
+            [0, s, c, 0],
+            [0, 0, 0, 1],
+        ],
+        dtype=float,
+    )
 
 
 def Ry(iota_deg):
@@ -59,17 +66,21 @@ def Ry(iota_deg):
     """
     i = math.radians(iota_deg)
     c, s = math.cos(i), math.sin(i)
-    return np.array([
-        [ c, 0, s, 0],
-        [ 0, 1, 0, 0],
-        [-s, 0, c, 0],
-        [ 0, 0, 0, 1],
-    ], dtype=float)
+    return np.array(
+        [
+            [c, 0, s, 0],
+            [0, 1, 0, 0],
+            [-s, 0, c, 0],
+            [0, 0, 0, 1],
+        ],
+        dtype=float,
+    )
 
 
 # ═══════════════════════════════════════════════════════════════════
 # H matrix formulas from the documentation
 # ═══════════════════════════════════════════════════════════════════
+
 
 def H0(C0, delta0, iota0):
     """Root segment coordinate system.
@@ -219,7 +230,6 @@ class TestH0RootSegment:
 
 
 class TestHiSubsequentSegments:
-
     def test_hi_translation_only(self):
         """H_i with only length — pure translation along y.
 
@@ -270,7 +280,6 @@ class TestHiSubsequentSegments:
 
 
 class TestCumulativeChain:
-
     def test_two_flat_segments(self):
         """Two flat segments: L0=100, L1=200, no angles.
 
@@ -416,11 +425,13 @@ class TestMathRoundtrip:
                 delta0, iota0 = seg.get("root_dihedral", 0), seg.get("root_incidence", 0)
                 H = Rx(delta0) @ Ry(iota0)
                 H_matrices.append(H)
-                xsecs.append({
-                    "xyz_le": extract_origin(H).copy(),
-                    "twist": iota0,
-                    "chord": C0,
-                })
+                xsecs.append(
+                    {
+                        "xyz_le": extract_origin(H).copy(),
+                        "twist": iota0,
+                        "chord": C0,
+                    }
+                )
             else:
                 prev = segments[seg_idx - 1]
                 Ci = prev["tip_chord"]
@@ -440,11 +451,13 @@ class TestMathRoundtrip:
                 for k in range(seg_idx):
                     cum_twist += segments[k].get("tip_incidence", 0)
 
-                xsecs.append({
-                    "xyz_le": extract_origin(C_cum).copy(),
-                    "twist": cum_twist,
-                    "chord": Ci,
-                })
+                xsecs.append(
+                    {
+                        "xyz_le": extract_origin(C_cum).copy(),
+                        "twist": cum_twist,
+                        "chord": Ci,
+                    }
+                )
 
         # Last x_sec (tip of last segment)
         last = segments[-1]
@@ -465,11 +478,13 @@ class TestMathRoundtrip:
         for k in range(len(segments)):
             cum_twist += segments[k].get("tip_incidence", 0)
 
-        xsecs.append({
-            "xyz_le": extract_origin(C_cum).copy(),
-            "twist": cum_twist,
-            "chord": Ci,
-        })
+        xsecs.append(
+            {
+                "xyz_le": extract_origin(C_cum).copy(),
+                "twist": cum_twist,
+                "chord": Ci,
+            }
+        )
 
         return xsecs
 
@@ -497,7 +512,9 @@ class TestMathRoundtrip:
 
             seg = {
                 "root_chord": asb_xsecs[i]["chord"],
-                "root_incidence": asb_xsecs[i]["twist"] if i == 0 else (asb_xsecs[i]["twist"] - asb_xsecs[i - 1]["twist"]),
+                "root_incidence": asb_xsecs[i]["twist"]
+                if i == 0
+                else (asb_xsecs[i]["twist"] - asb_xsecs[i - 1]["twist"]),
                 "root_dihedral": 0,  # lossy: always 0 in reverse
                 "tip_chord": asb_xsecs[i + 1]["chord"],
                 "tip_incidence": asb_xsecs[i + 1]["twist"] - asb_xsecs[i]["twist"],
@@ -516,45 +533,75 @@ class TestMathRoundtrip:
 
         Lossy fields (dihedral_as_rotation) are skipped.
         """
-        assert len(recovered_segments) == len(original_segments), \
+        assert len(recovered_segments) == len(original_segments), (
             f"{label}: segment count {len(recovered_segments)} != {len(original_segments)}"
+        )
 
         for i, (orig, rec) in enumerate(zip(original_segments, recovered_segments, strict=True)):
             prefix = f"{label} seg[{i}]"
 
             # Incidence must roundtrip exactly
-            assert rec["root_incidence"] == pytest.approx(orig["root_incidence"], abs=0.001), \
+            assert rec["root_incidence"] == pytest.approx(orig["root_incidence"], abs=0.001), (
                 f"{prefix}: root_incidence {rec['root_incidence']} != {orig['root_incidence']}"
-            assert rec["tip_incidence"] == pytest.approx(orig.get("tip_incidence", 0), abs=0.001), \
+            )
+            assert rec["tip_incidence"] == pytest.approx(orig.get("tip_incidence", 0), abs=0.001), (
                 f"{prefix}: tip_incidence {rec['tip_incidence']} != {orig.get('tip_incidence', 0)}"
+            )
 
             # Chord must roundtrip exactly
-            assert rec["root_chord"] == pytest.approx(orig["root_chord"], abs=0.01), \
+            assert rec["root_chord"] == pytest.approx(orig["root_chord"], abs=0.01), (
                 f"{prefix}: root_chord {rec['root_chord']} != {orig['root_chord']}"
-            assert rec["tip_chord"] == pytest.approx(orig["tip_chord"], abs=0.01), \
+            )
+            assert rec["tip_chord"] == pytest.approx(orig["tip_chord"], abs=0.01), (
                 f"{prefix}: tip_chord {rec['tip_chord']} != {orig['tip_chord']}"
+            )
 
             # Length and sweep — may have small differences due to rc projection
-            assert rec["length"] == pytest.approx(orig["length"], abs=0.1), \
+            assert rec["length"] == pytest.approx(orig["length"], abs=0.1), (
                 f"{prefix}: length {rec['length']} != {orig['length']}"
-            assert rec["sweep"] == pytest.approx(orig["sweep"], abs=0.1), \
+            )
+            assert rec["sweep"] == pytest.approx(orig["sweep"], abs=0.1), (
                 f"{prefix}: sweep {rec['sweep']} != {orig['sweep']}"
+            )
 
     # ── Test cases: same configurations as roundtrip tests ──
 
     def test_single_segment_flat(self):
-        segs = [{"root_chord": 200, "root_incidence": 0, "root_dihedral": 0,
-                 "tip_chord": 180, "tip_incidence": 0, "length": 100, "sweep": 0}]
+        segs = [
+            {
+                "root_chord": 200,
+                "root_incidence": 0,
+                "root_dihedral": 0,
+                "tip_chord": 180,
+                "tip_incidence": 0,
+                "length": 100,
+                "sweep": 0,
+            }
+        ]
         asb = self._forward(segs)
         rec = self._reverse(asb)
         self._assert_roundtrip(segs, rec, "flat")
 
     def test_washout_classic(self):
         segs = [
-            {"root_chord": 200, "root_incidence": 3, "root_dihedral": 0,
-             "tip_chord": 180, "tip_incidence": 1, "length": 200, "sweep": 0},
-            {"root_chord": 180, "root_incidence": 1, "root_dihedral": 0,
-             "tip_chord": 160, "tip_incidence": -1, "length": 200, "sweep": 0},
+            {
+                "root_chord": 200,
+                "root_incidence": 3,
+                "root_dihedral": 0,
+                "tip_chord": 180,
+                "tip_incidence": 1,
+                "length": 200,
+                "sweep": 0,
+            },
+            {
+                "root_chord": 180,
+                "root_incidence": 1,
+                "root_dihedral": 0,
+                "tip_chord": 160,
+                "tip_incidence": -1,
+                "length": 200,
+                "sweep": 0,
+            },
         ]
         asb = self._forward(segs)
         rec = self._reverse(asb)
@@ -563,10 +610,24 @@ class TestMathRoundtrip:
     def test_washin_basic(self):
         """Washin at rc=0 — should roundtrip exactly (no LE displacement)."""
         segs = [
-            {"root_chord": 200, "root_incidence": -1.5, "root_dihedral": 0,
-             "tip_chord": 180, "tip_incidence": 0, "length": 50, "sweep": 0},
-            {"root_chord": 180, "root_incidence": 0, "root_dihedral": 0,
-             "tip_chord": 160, "tip_incidence": 1.5, "length": 200, "sweep": 0},
+            {
+                "root_chord": 200,
+                "root_incidence": -1.5,
+                "root_dihedral": 0,
+                "tip_chord": 180,
+                "tip_incidence": 0,
+                "length": 50,
+                "sweep": 0,
+            },
+            {
+                "root_chord": 180,
+                "root_incidence": 0,
+                "root_dihedral": 0,
+                "tip_chord": 160,
+                "tip_incidence": 1.5,
+                "length": 200,
+                "sweep": 0,
+            },
         ]
         asb = self._forward(segs)
         rec = self._reverse(asb)
@@ -578,10 +639,24 @@ class TestMathRoundtrip:
         Incidence and chord must still roundtrip exactly.
         """
         segs = [
-            {"root_chord": 200, "root_incidence": -1.5, "root_dihedral": 0,
-             "tip_chord": 180, "tip_incidence": 0, "length": 50, "sweep": 0},
-            {"root_chord": 180, "root_incidence": 0, "root_dihedral": 0,
-             "tip_chord": 160, "tip_incidence": 1.5, "length": 200, "sweep": 0},
+            {
+                "root_chord": 200,
+                "root_incidence": -1.5,
+                "root_dihedral": 0,
+                "tip_chord": 180,
+                "tip_incidence": 0,
+                "length": 50,
+                "sweep": 0,
+            },
+            {
+                "root_chord": 180,
+                "root_incidence": 0,
+                "root_dihedral": 0,
+                "tip_chord": 160,
+                "tip_incidence": 1.5,
+                "length": 200,
+                "sweep": 0,
+            },
         ]
         asb = self._forward(segs)
         rec = self._reverse(asb)
@@ -595,33 +670,84 @@ class TestMathRoundtrip:
 
     def test_four_segments_with_sweep_and_twist(self):
         segs = [
-            {"root_chord": 200, "root_incidence": 3, "root_dihedral": 0,
-             "tip_chord": 180, "tip_incidence": 2, "length": 50, "sweep": 3},
-            {"root_chord": 180, "root_incidence": 2, "root_dihedral": 0,
-             "tip_chord": 160, "tip_incidence": 0, "length": 200, "sweep": 5},
-            {"root_chord": 160, "root_incidence": 0, "root_dihedral": 0,
-             "tip_chord": 120, "tip_incidence": -2, "length": 200, "sweep": 8},
-            {"root_chord": 120, "root_incidence": -2, "root_dihedral": 0,
-             "tip_chord": 60, "tip_incidence": -4, "length": 100, "sweep": 12},
+            {
+                "root_chord": 200,
+                "root_incidence": 3,
+                "root_dihedral": 0,
+                "tip_chord": 180,
+                "tip_incidence": 2,
+                "length": 50,
+                "sweep": 3,
+            },
+            {
+                "root_chord": 180,
+                "root_incidence": 2,
+                "root_dihedral": 0,
+                "tip_chord": 160,
+                "tip_incidence": 0,
+                "length": 200,
+                "sweep": 5,
+            },
+            {
+                "root_chord": 160,
+                "root_incidence": 0,
+                "root_dihedral": 0,
+                "tip_chord": 120,
+                "tip_incidence": -2,
+                "length": 200,
+                "sweep": 8,
+            },
+            {
+                "root_chord": 120,
+                "root_incidence": -2,
+                "root_dihedral": 0,
+                "tip_chord": 60,
+                "tip_incidence": -4,
+                "length": 100,
+                "sweep": 12,
+            },
         ]
         asb = self._forward(segs)
         rec = self._reverse(asb)
         # Check incidence and chord roundtrip
         for i in range(len(segs)):
-            assert rec[i]["root_incidence"] == pytest.approx(segs[i]["root_incidence"], abs=0.001), \
-                f"seg[{i}] root_incidence"
-            assert rec[i]["tip_incidence"] == pytest.approx(segs[i]["tip_incidence"], abs=0.001), \
+            assert rec[i]["root_incidence"] == pytest.approx(
+                segs[i]["root_incidence"], abs=0.001
+            ), f"seg[{i}] root_incidence"
+            assert rec[i]["tip_incidence"] == pytest.approx(segs[i]["tip_incidence"], abs=0.001), (
                 f"seg[{i}] tip_incidence"
+            )
 
     def test_large_twist_nonmonotone(self):
         """Non-monotone twist: 0°/2°/4°/1° — the delta approach should handle this."""
         segs = [
-            {"root_chord": 200, "root_incidence": 0, "root_dihedral": 0,
-             "tip_chord": 180, "tip_incidence": 2, "length": 100, "sweep": 0},
-            {"root_chord": 180, "root_incidence": 2, "root_dihedral": 0,
-             "tip_chord": 160, "tip_incidence": 4, "length": 200, "sweep": 0},
-            {"root_chord": 160, "root_incidence": 4, "root_dihedral": 0,
-             "tip_chord": 140, "tip_incidence": 1, "length": 200, "sweep": 0},
+            {
+                "root_chord": 200,
+                "root_incidence": 0,
+                "root_dihedral": 0,
+                "tip_chord": 180,
+                "tip_incidence": 2,
+                "length": 100,
+                "sweep": 0,
+            },
+            {
+                "root_chord": 180,
+                "root_incidence": 2,
+                "root_dihedral": 0,
+                "tip_chord": 160,
+                "tip_incidence": 4,
+                "length": 200,
+                "sweep": 0,
+            },
+            {
+                "root_chord": 160,
+                "root_incidence": 4,
+                "root_dihedral": 0,
+                "tip_chord": 140,
+                "tip_incidence": 1,
+                "length": 200,
+                "sweep": 0,
+            },
         ]
         asb = self._forward(segs)
         rec = self._reverse(asb)
@@ -633,8 +759,15 @@ class TestMathRoundtrip:
         Dihedral is always expressed as dihedral_as_rotation_in_degrees.
         """
         segs = [
-            {"root_chord": 200, "root_incidence": 0, "root_dihedral": 5,
-             "tip_chord": 180, "tip_incidence": 0, "length": 200, "sweep": 0},
+            {
+                "root_chord": 200,
+                "root_incidence": 0,
+                "root_dihedral": 5,
+                "tip_chord": 180,
+                "tip_incidence": 0,
+                "length": 200,
+                "sweep": 0,
+            },
         ]
         asb = self._forward(segs)
         rec = self._reverse(asb)
@@ -648,23 +781,40 @@ class TestMathRoundtrip:
         # The translation should encode the dihedral effect
         # z = L * sin(5°) ≈ 200 * 0.0872 ≈ 17.4mm
         assert rec[0]["dihedral_translation"] == pytest.approx(
-            200 * math.sin(math.radians(5)), abs=0.5)
+            200 * math.sin(math.radians(5)), abs=0.5
+        )
 
     def test_multi_segment_roundtrip(self):
         """Multi-segment roundtrip. Incidence must roundtrip exactly."""
         segs = [
-            {"root_chord": 200, "root_incidence": 5, "root_dihedral": 0,
-             "tip_chord": 180, "tip_incidence": -2, "length": 100, "sweep": 0},
-            {"root_chord": 180, "root_incidence": -2, "root_dihedral": 0,
-             "tip_chord": 160, "tip_incidence": 3, "length": 200, "sweep": 0},
+            {
+                "root_chord": 200,
+                "root_incidence": 5,
+                "root_dihedral": 0,
+                "tip_chord": 180,
+                "tip_incidence": -2,
+                "length": 100,
+                "sweep": 0,
+            },
+            {
+                "root_chord": 180,
+                "root_incidence": -2,
+                "root_dihedral": 0,
+                "tip_chord": 160,
+                "tip_incidence": 3,
+                "length": 200,
+                "sweep": 0,
+            },
         ]
         asb = self._forward(segs)
         rec = self._reverse(asb)
         for i in range(len(segs)):
-            assert rec[i]["root_incidence"] == pytest.approx(segs[i]["root_incidence"], abs=0.001), \
-                f"seg[{i}] root_incidence"
-            assert rec[i]["tip_incidence"] == pytest.approx(segs[i]["tip_incidence"], abs=0.001), \
+            assert rec[i]["root_incidence"] == pytest.approx(
+                segs[i]["root_incidence"], abs=0.001
+            ), f"seg[{i}] root_incidence"
+            assert rec[i]["tip_incidence"] == pytest.approx(segs[i]["tip_incidence"], abs=0.001), (
                 f"seg[{i}] tip_incidence"
+            )
 
     def test_n_times_math_roundtrip_no_drift(self):
         """Apply forward → reverse → forward → reverse N times.
@@ -675,18 +825,60 @@ class TestMathRoundtrip:
         """
         N = 10
         segs = [
-            {"root_chord": 250, "root_incidence": 4, "root_dihedral": 3,
-             "tip_chord": 230, "tip_incidence": 3, "length": 80, "sweep": 5},
-            {"root_chord": 230, "root_incidence": 3, "root_dihedral": 0,
-             "tip_chord": 200, "tip_incidence": 2, "length": 400, "sweep": 10},
-            {"root_chord": 200, "root_incidence": 2, "root_dihedral": 0,
-             "tip_chord": 170, "tip_incidence": 1, "length": 500, "sweep": 15},
-            {"root_chord": 170, "root_incidence": 1, "root_dihedral": 0,
-             "tip_chord": 130, "tip_incidence": 0, "length": 500, "sweep": 20},
-            {"root_chord": 130, "root_incidence": 0, "root_dihedral": 0,
-             "tip_chord": 90, "tip_incidence": -1, "length": 400, "sweep": 15},
-            {"root_chord": 90, "root_incidence": -1, "root_dihedral": 0,
-             "tip_chord": 50, "tip_incidence": -3, "length": 200, "sweep": 10},
+            {
+                "root_chord": 250,
+                "root_incidence": 4,
+                "root_dihedral": 3,
+                "tip_chord": 230,
+                "tip_incidence": 3,
+                "length": 80,
+                "sweep": 5,
+            },
+            {
+                "root_chord": 230,
+                "root_incidence": 3,
+                "root_dihedral": 0,
+                "tip_chord": 200,
+                "tip_incidence": 2,
+                "length": 400,
+                "sweep": 10,
+            },
+            {
+                "root_chord": 200,
+                "root_incidence": 2,
+                "root_dihedral": 0,
+                "tip_chord": 170,
+                "tip_incidence": 1,
+                "length": 500,
+                "sweep": 15,
+            },
+            {
+                "root_chord": 170,
+                "root_incidence": 1,
+                "root_dihedral": 0,
+                "tip_chord": 130,
+                "tip_incidence": 0,
+                "length": 500,
+                "sweep": 20,
+            },
+            {
+                "root_chord": 130,
+                "root_incidence": 0,
+                "root_dihedral": 0,
+                "tip_chord": 90,
+                "tip_incidence": -1,
+                "length": 400,
+                "sweep": 15,
+            },
+            {
+                "root_chord": 90,
+                "root_incidence": -1,
+                "root_dihedral": 0,
+                "tip_chord": 50,
+                "tip_incidence": -3,
+                "length": 200,
+                "sweep": 10,
+            },
         ]
 
         # First roundtrip: forward → reverse → produces canonical form
@@ -714,20 +906,18 @@ class TestMathRoundtrip:
             drift = abs(current[i]["length"] - canonical[i]["length"])
             max_length_drift = max(max_length_drift, drift)
 
-        print(f"\n{'='*60}")
+        print(f"\n{'=' * 60}")
         print(f"MATH DRIFT after {N} roundtrips (6-segment wing):")
         print(f"  max incidence drift: {max_incidence_drift:.10f}°")
         print(f"  max chord drift:     {max_chord_drift:.10f} mm")
         print(f"  max length drift:    {max_length_drift:.10f} mm")
-        print(f"{'='*60}")
+        print(f"{'=' * 60}")
 
-        assert max_incidence_drift < 1e-10, \
+        assert max_incidence_drift < 1e-10, (
             f"Math roundtrip drifted: incidence {max_incidence_drift}°"
-        assert max_chord_drift < 1e-10, \
-            f"Math roundtrip drifted: chord {max_chord_drift} mm"
-        assert max_length_drift < 1e-10, \
-            f"Math roundtrip drifted: length {max_length_drift} mm"
-
+        )
+        assert max_chord_drift < 1e-10, f"Math roundtrip drifted: chord {max_chord_drift} mm"
+        assert max_length_drift < 1e-10, f"Math roundtrip drifted: length {max_length_drift} mm"
 
     def test_asb_to_wc_to_asb_roundtrip(self):
         """Start from ASB representation, convert to WC, back to ASB.
@@ -751,12 +941,17 @@ class TestMathRoundtrip:
         # Compare
         for i in range(len(asb_xsecs)):
             np.testing.assert_array_almost_equal(
-                asb_recovered[i]["xyz_le"], asb_xsecs[i]["xyz_le"], decimal=6,
-                err_msg=f"x_sec {i}: xyz_le mismatch")
-            assert asb_recovered[i]["twist"] == pytest.approx(asb_xsecs[i]["twist"], abs=0.001), \
+                asb_recovered[i]["xyz_le"],
+                asb_xsecs[i]["xyz_le"],
+                decimal=6,
+                err_msg=f"x_sec {i}: xyz_le mismatch",
+            )
+            assert asb_recovered[i]["twist"] == pytest.approx(asb_xsecs[i]["twist"], abs=0.001), (
                 f"x_sec {i}: twist {asb_recovered[i]['twist']} != {asb_xsecs[i]['twist']}"
-            assert asb_recovered[i]["chord"] == pytest.approx(asb_xsecs[i]["chord"], abs=0.01), \
+            )
+            assert asb_recovered[i]["chord"] == pytest.approx(asb_xsecs[i]["chord"], abs=0.01), (
                 f"x_sec {i}: chord mismatch"
+            )
 
     def test_wc_to_asb_to_wc_roundtrip(self):
         """Start from WC representation, convert to ASB, back to WC.
@@ -765,12 +960,33 @@ class TestMathRoundtrip:
         Length/sweep may differ if rc ≠ 0 (documented lossy projection).
         """
         wc_segs = [
-            {"root_chord": 200, "root_incidence": 3, "root_dihedral": 0,
-             "tip_chord": 180, "tip_incidence": -2, "length": 200, "sweep": 5},
-            {"root_chord": 180, "root_incidence": -2, "root_dihedral": 0,
-             "tip_chord": 160, "tip_incidence": 1, "length": 200, "sweep": 8},
-            {"root_chord": 160, "root_incidence": 1, "root_dihedral": 0,
-             "tip_chord": 120, "tip_incidence": -3, "length": 100, "sweep": 12},
+            {
+                "root_chord": 200,
+                "root_incidence": 3,
+                "root_dihedral": 0,
+                "tip_chord": 180,
+                "tip_incidence": -2,
+                "length": 200,
+                "sweep": 5,
+            },
+            {
+                "root_chord": 180,
+                "root_incidence": -2,
+                "root_dihedral": 0,
+                "tip_chord": 160,
+                "tip_incidence": 1,
+                "length": 200,
+                "sweep": 8,
+            },
+            {
+                "root_chord": 160,
+                "root_incidence": 1,
+                "root_dihedral": 0,
+                "tip_chord": 120,
+                "tip_incidence": -3,
+                "length": 100,
+                "sweep": 12,
+            },
         ]
 
         # WC → ASB
@@ -785,14 +1001,42 @@ class TestMathRoundtrip:
         """WC → ASB → WC applied N times. Must be idempotent after first roundtrip."""
         N = 10
         segs = [
-            {"root_chord": 250, "root_incidence": 4, "root_dihedral": 3,
-             "tip_chord": 230, "tip_incidence": 3, "length": 80, "sweep": 5},
-            {"root_chord": 230, "root_incidence": 3, "root_dihedral": 0,
-             "tip_chord": 200, "tip_incidence": 2, "length": 400, "sweep": 10},
-            {"root_chord": 200, "root_incidence": 2, "root_dihedral": 0,
-             "tip_chord": 170, "tip_incidence": 1, "length": 500, "sweep": 15},
-            {"root_chord": 170, "root_incidence": 1, "root_dihedral": 0,
-             "tip_chord": 130, "tip_incidence": 0, "length": 500, "sweep": 20},
+            {
+                "root_chord": 250,
+                "root_incidence": 4,
+                "root_dihedral": 3,
+                "tip_chord": 230,
+                "tip_incidence": 3,
+                "length": 80,
+                "sweep": 5,
+            },
+            {
+                "root_chord": 230,
+                "root_incidence": 3,
+                "root_dihedral": 0,
+                "tip_chord": 200,
+                "tip_incidence": 2,
+                "length": 400,
+                "sweep": 10,
+            },
+            {
+                "root_chord": 200,
+                "root_incidence": 2,
+                "root_dihedral": 0,
+                "tip_chord": 170,
+                "tip_incidence": 1,
+                "length": 500,
+                "sweep": 15,
+            },
+            {
+                "root_chord": 170,
+                "root_incidence": 1,
+                "root_dihedral": 0,
+                "tip_chord": 130,
+                "tip_incidence": 0,
+                "length": 500,
+                "sweep": 20,
+            },
         ]
 
         # First roundtrip produces canonical form
@@ -843,10 +1087,11 @@ class TestMathRoundtrip:
             max_le_drift = max(max_le_drift, le_drift)
             max_twist_drift = max(max_twist_drift, twist_drift)
 
-        print(f"\n  ASB→WC→ASB drift after {N} iterations: LE={max_le_drift:.10f}mm, twist={max_twist_drift:.10f}°")
+        print(
+            f"\n  ASB→WC→ASB drift after {N} iterations: LE={max_le_drift:.10f}mm, twist={max_twist_drift:.10f}°"
+        )
         assert max_le_drift < 1e-10, f"ASB→WC→ASB LE drifted: {max_le_drift}mm"
         assert max_twist_drift < 1e-10, f"ASB→WC→ASB twist drifted: {max_twist_drift}°"
-
 
     def test_n_times_wc_asb_wc_extreme_angles(self):
         """Stress test: large angles, long segments — WC→ASB→WC N times.
@@ -856,18 +1101,60 @@ class TestMathRoundtrip:
         """
         N = 10
         segs = [
-            {"root_chord": 300, "root_incidence": 12, "root_dihedral": 10,
-             "tip_chord": 260, "tip_incidence": -8, "length": 500, "sweep": 30},
-            {"root_chord": 260, "root_incidence": -8, "root_dihedral": 0,
-             "tip_chord": 220, "tip_incidence": 15, "length": 800, "sweep": 20},
-            {"root_chord": 220, "root_incidence": 15, "root_dihedral": 0,
-             "tip_chord": 180, "tip_incidence": -10, "length": 700, "sweep": 40},
-            {"root_chord": 180, "root_incidence": -10, "root_dihedral": 0,
-             "tip_chord": 140, "tip_incidence": 5, "length": 600, "sweep": 15},
-            {"root_chord": 140, "root_incidence": 5, "root_dihedral": 0,
-             "tip_chord": 100, "tip_incidence": -12, "length": 500, "sweep": 25},
-            {"root_chord": 100, "root_incidence": -12, "root_dihedral": 0,
-             "tip_chord": 50, "tip_incidence": -15, "length": 300, "sweep": 10},
+            {
+                "root_chord": 300,
+                "root_incidence": 12,
+                "root_dihedral": 10,
+                "tip_chord": 260,
+                "tip_incidence": -8,
+                "length": 500,
+                "sweep": 30,
+            },
+            {
+                "root_chord": 260,
+                "root_incidence": -8,
+                "root_dihedral": 0,
+                "tip_chord": 220,
+                "tip_incidence": 15,
+                "length": 800,
+                "sweep": 20,
+            },
+            {
+                "root_chord": 220,
+                "root_incidence": 15,
+                "root_dihedral": 0,
+                "tip_chord": 180,
+                "tip_incidence": -10,
+                "length": 700,
+                "sweep": 40,
+            },
+            {
+                "root_chord": 180,
+                "root_incidence": -10,
+                "root_dihedral": 0,
+                "tip_chord": 140,
+                "tip_incidence": 5,
+                "length": 600,
+                "sweep": 15,
+            },
+            {
+                "root_chord": 140,
+                "root_incidence": 5,
+                "root_dihedral": 0,
+                "tip_chord": 100,
+                "tip_incidence": -12,
+                "length": 500,
+                "sweep": 25,
+            },
+            {
+                "root_chord": 100,
+                "root_incidence": -12,
+                "root_dihedral": 0,
+                "tip_chord": 50,
+                "tip_incidence": -15,
+                "length": 300,
+                "sweep": 10,
+            },
         ]
 
         asb = self._forward(segs)
@@ -885,7 +1172,9 @@ class TestMathRoundtrip:
                 max_inc_drift = max(max_inc_drift, abs(current[i][key] - canonical[i][key]))
             max_len_drift = max(max_len_drift, abs(current[i]["length"] - canonical[i]["length"]))
 
-        print(f"\n  EXTREME WC→ASB→WC drift ({N}x): incidence={max_inc_drift:.10f}°, length={max_len_drift:.10f}mm")
+        print(
+            f"\n  EXTREME WC→ASB→WC drift ({N}x): incidence={max_inc_drift:.10f}°, length={max_len_drift:.10f}mm"
+        )
         assert max_inc_drift < 1e-10, f"Incidence drifted: {max_inc_drift}°"
         assert max_len_drift < 1e-10, f"Length drifted: {max_len_drift}mm"
 
@@ -918,10 +1207,11 @@ class TestMathRoundtrip:
             max_le_drift = max(max_le_drift, le_drift)
             max_twist_drift = max(max_twist_drift, twist_drift)
 
-        print(f"\n  EXTREME ASB→WC→ASB drift ({N}x): LE={max_le_drift:.10f}mm, twist={max_twist_drift:.10f}°")
+        print(
+            f"\n  EXTREME ASB→WC→ASB drift ({N}x): LE={max_le_drift:.10f}mm, twist={max_twist_drift:.10f}°"
+        )
         assert max_le_drift < 1e-10, f"LE drifted: {max_le_drift}mm"
         assert max_twist_drift < 1e-10, f"Twist drifted: {max_twist_drift}°"
-
 
     def test_near_gimbal_lock_large_incidence(self):
         """Incidence near ±80° — tests numerical stability near gimbal lock.
@@ -930,10 +1220,24 @@ class TestMathRoundtrip:
         """
         N = 10
         segs = [
-            {"root_chord": 200, "root_incidence": 75, "root_dihedral": 0,
-             "tip_chord": 180, "tip_incidence": -80, "length": 500, "sweep": 10},
-            {"root_chord": 180, "root_incidence": -80, "root_dihedral": 0,
-             "tip_chord": 160, "tip_incidence": 60, "length": 500, "sweep": 5},
+            {
+                "root_chord": 200,
+                "root_incidence": 75,
+                "root_dihedral": 0,
+                "tip_chord": 180,
+                "tip_incidence": -80,
+                "length": 500,
+                "sweep": 10,
+            },
+            {
+                "root_chord": 180,
+                "root_incidence": -80,
+                "root_dihedral": 0,
+                "tip_chord": 160,
+                "tip_incidence": 60,
+                "length": 500,
+                "sweep": 5,
+            },
         ]
         asb = self._forward(segs)
         canonical = self._reverse(asb)
@@ -957,14 +1261,42 @@ class TestMathRoundtrip:
         """
         N = 10
         segs = [
-            {"root_chord": 200, "root_incidence": 10, "root_dihedral": 10,
-             "tip_chord": 180, "tip_incidence": 10, "length": 400, "sweep": 0},
-            {"root_chord": 180, "root_incidence": 10, "root_dihedral": 0,
-             "tip_chord": 160, "tip_incidence": 10, "length": 400, "sweep": 0},
-            {"root_chord": 160, "root_incidence": 10, "root_dihedral": 0,
-             "tip_chord": 140, "tip_incidence": 10, "length": 400, "sweep": 0},
-            {"root_chord": 140, "root_incidence": 10, "root_dihedral": 0,
-             "tip_chord": 120, "tip_incidence": 10, "length": 400, "sweep": 0},
+            {
+                "root_chord": 200,
+                "root_incidence": 10,
+                "root_dihedral": 10,
+                "tip_chord": 180,
+                "tip_incidence": 10,
+                "length": 400,
+                "sweep": 0,
+            },
+            {
+                "root_chord": 180,
+                "root_incidence": 10,
+                "root_dihedral": 0,
+                "tip_chord": 160,
+                "tip_incidence": 10,
+                "length": 400,
+                "sweep": 0,
+            },
+            {
+                "root_chord": 160,
+                "root_incidence": 10,
+                "root_dihedral": 0,
+                "tip_chord": 140,
+                "tip_incidence": 10,
+                "length": 400,
+                "sweep": 0,
+            },
+            {
+                "root_chord": 140,
+                "root_incidence": 10,
+                "root_dihedral": 0,
+                "tip_chord": 120,
+                "tip_incidence": 10,
+                "length": 400,
+                "sweep": 0,
+            },
         ]
         asb = self._forward(segs)
 
@@ -996,16 +1328,51 @@ class TestMathRoundtrip:
         """
         N = 10
         segs = [
-            {"root_chord": 200, "root_incidence": 15, "root_dihedral": 0,
-             "tip_chord": 180, "tip_incidence": -15, "length": 600, "sweep": 20},
-            {"root_chord": 180, "root_incidence": -15, "root_dihedral": 0,
-             "tip_chord": 160, "tip_incidence": 15, "length": 600, "sweep": 15},
-            {"root_chord": 160, "root_incidence": 15, "root_dihedral": 0,
-             "tip_chord": 140, "tip_incidence": -15, "length": 600, "sweep": 10},
-            {"root_chord": 140, "root_incidence": -15, "root_dihedral": 0,
-             "tip_chord": 120, "tip_incidence": 15, "length": 600, "sweep": 25},
-            {"root_chord": 120, "root_incidence": 15, "root_dihedral": 0,
-             "tip_chord": 100, "tip_incidence": -15, "length": 600, "sweep": 5},
+            {
+                "root_chord": 200,
+                "root_incidence": 15,
+                "root_dihedral": 0,
+                "tip_chord": 180,
+                "tip_incidence": -15,
+                "length": 600,
+                "sweep": 20,
+            },
+            {
+                "root_chord": 180,
+                "root_incidence": -15,
+                "root_dihedral": 0,
+                "tip_chord": 160,
+                "tip_incidence": 15,
+                "length": 600,
+                "sweep": 15,
+            },
+            {
+                "root_chord": 160,
+                "root_incidence": 15,
+                "root_dihedral": 0,
+                "tip_chord": 140,
+                "tip_incidence": -15,
+                "length": 600,
+                "sweep": 10,
+            },
+            {
+                "root_chord": 140,
+                "root_incidence": -15,
+                "root_dihedral": 0,
+                "tip_chord": 120,
+                "tip_incidence": 15,
+                "length": 600,
+                "sweep": 25,
+            },
+            {
+                "root_chord": 120,
+                "root_incidence": 15,
+                "root_dihedral": 0,
+                "tip_chord": 100,
+                "tip_incidence": -15,
+                "length": 600,
+                "sweep": 5,
+            },
         ]
         asb = self._forward(segs)
         canonical = self._reverse(asb)
@@ -1026,12 +1393,33 @@ class TestMathRoundtrip:
         """1mm segments with 20° incidence — extreme ratio of angle to length."""
         N = 10
         segs = [
-            {"root_chord": 50, "root_incidence": 20, "root_dihedral": 0,
-             "tip_chord": 45, "tip_incidence": -20, "length": 1, "sweep": 0.5},
-            {"root_chord": 45, "root_incidence": -20, "root_dihedral": 0,
-             "tip_chord": 40, "tip_incidence": 20, "length": 1, "sweep": 0.3},
-            {"root_chord": 40, "root_incidence": 20, "root_dihedral": 0,
-             "tip_chord": 35, "tip_incidence": -20, "length": 1, "sweep": 0.1},
+            {
+                "root_chord": 50,
+                "root_incidence": 20,
+                "root_dihedral": 0,
+                "tip_chord": 45,
+                "tip_incidence": -20,
+                "length": 1,
+                "sweep": 0.5,
+            },
+            {
+                "root_chord": 45,
+                "root_incidence": -20,
+                "root_dihedral": 0,
+                "tip_chord": 40,
+                "tip_incidence": 20,
+                "length": 1,
+                "sweep": 0.3,
+            },
+            {
+                "root_chord": 40,
+                "root_incidence": 20,
+                "root_dihedral": 0,
+                "tip_chord": 35,
+                "tip_incidence": -20,
+                "length": 1,
+                "sweep": 0.1,
+            },
         ]
         asb = self._forward(segs)
         canonical = self._reverse(asb)
@@ -1052,12 +1440,33 @@ class TestMathRoundtrip:
         """rc=1.0 — rotation pivot at the trailing edge (maximum LE displacement)."""
         N = 10
         segs = [
-            {"root_chord": 200, "root_incidence": 10, "root_dihedral": 0,
-             "tip_chord": 180, "tip_incidence": -5, "length": 500, "sweep": 10},
-            {"root_chord": 180, "root_incidence": -5, "root_dihedral": 0,
-             "tip_chord": 160, "tip_incidence": 8, "length": 500, "sweep": 15},
-            {"root_chord": 160, "root_incidence": 8, "root_dihedral": 0,
-             "tip_chord": 140, "tip_incidence": -10, "length": 500, "sweep": 5},
+            {
+                "root_chord": 200,
+                "root_incidence": 10,
+                "root_dihedral": 0,
+                "tip_chord": 180,
+                "tip_incidence": -5,
+                "length": 500,
+                "sweep": 10,
+            },
+            {
+                "root_chord": 180,
+                "root_incidence": -5,
+                "root_dihedral": 0,
+                "tip_chord": 160,
+                "tip_incidence": 8,
+                "length": 500,
+                "sweep": 15,
+            },
+            {
+                "root_chord": 160,
+                "root_incidence": 8,
+                "root_dihedral": 0,
+                "tip_chord": 140,
+                "tip_incidence": -10,
+                "length": 500,
+                "sweep": 5,
+            },
         ]
         asb = self._forward(segs)
         canonical = self._reverse(asb)
@@ -1072,10 +1481,11 @@ class TestMathRoundtrip:
             for k in ["root_incidence", "tip_incidence"]
         )
         max_len_drift = max(
-            abs(current[i]["length"] - canonical[i]["length"])
-            for i in range(len(canonical))
+            abs(current[i]["length"] - canonical[i]["length"]) for i in range(len(canonical))
         )
-        print(f"\n  RC=1.0 stress ({N}x): incidence drift={max_inc_drift:.10f}°, length drift={max_len_drift:.10f}mm")
+        print(
+            f"\n  RC=1.0 stress ({N}x): incidence drift={max_inc_drift:.10f}°, length drift={max_len_drift:.10f}mm"
+        )
         assert max_inc_drift < 1e-10, f"Incidence drifted at rc=1.0: {max_inc_drift}°"
         assert max_len_drift < 1e-10, f"Length drifted at rc=1.0: {max_len_drift}mm"
 
@@ -1087,10 +1497,24 @@ class TestMathRoundtrip:
         """
         N = 10
         segs = [
-            {"root_chord": 200, "root_incidence": 20, "root_dihedral": 30,
-             "tip_chord": 180, "tip_incidence": -20, "length": 500, "sweep": 0},
-            {"root_chord": 180, "root_incidence": -20, "root_dihedral": 0,
-             "tip_chord": 160, "tip_incidence": 15, "length": 500, "sweep": 0},
+            {
+                "root_chord": 200,
+                "root_incidence": 20,
+                "root_dihedral": 30,
+                "tip_chord": 180,
+                "tip_incidence": -20,
+                "length": 500,
+                "sweep": 0,
+            },
+            {
+                "root_chord": 180,
+                "root_incidence": -20,
+                "root_dihedral": 0,
+                "tip_chord": 160,
+                "tip_incidence": 15,
+                "length": 500,
+                "sweep": 0,
+            },
         ]
         asb = self._forward(segs)
         canonical = self._reverse(asb)
@@ -1121,16 +1545,18 @@ class TestInverseFormulas:
         for iota in [-5, -2, 0, 3, 7, 15]:
             H = Ry(iota)
             recovered = math.degrees(math.atan2(H[0, 2], H[0, 0]))
-            assert recovered == pytest.approx(iota, abs=0.001), \
+            assert recovered == pytest.approx(iota, abs=0.001), (
                 f"Failed to recover incidence {iota}° — got {recovered}°"
+            )
 
     def test_extract_dihedral_from_h(self):
         """atan2(H[2,1], H[1,1]) should recover the dihedral angle."""
         for delta in [0, 2, 5, 10, 30]:
             H = Rx(delta)
             recovered = math.degrees(math.atan2(H[2, 1], H[1, 1]))
-            assert recovered == pytest.approx(delta, abs=0.001), \
+            assert recovered == pytest.approx(delta, abs=0.001), (
                 f"Failed to recover dihedral {delta}° — got {recovered}°"
+            )
 
     def test_extract_both_angles_from_combined(self):
         """Extract both angles from R_x(δ) · R_y(ι)."""
@@ -1138,10 +1564,12 @@ class TestInverseFormulas:
             H = Rx(delta) @ Ry(iota)
             recovered_iota = math.degrees(math.atan2(H[0, 2], H[0, 0]))
             recovered_delta = math.degrees(math.atan2(H[2, 1], H[1, 1]))
-            assert recovered_iota == pytest.approx(iota, abs=0.001), \
+            assert recovered_iota == pytest.approx(iota, abs=0.001), (
                 f"Incidence: expected {iota}°, got {recovered_iota}°"
-            assert recovered_delta == pytest.approx(delta, abs=0.001), \
+            )
+            assert recovered_delta == pytest.approx(delta, abs=0.001), (
                 f"Dihedral: expected {delta}°, got {recovered_delta}°"
+            )
 
     def test_extract_from_full_h0(self):
         """Extract angles from a complete H_0 matrix."""

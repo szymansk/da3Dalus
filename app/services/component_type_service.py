@@ -5,6 +5,7 @@ Seeded types are non-deletable. User-added types are deletable only when
 tolerant — unknown keys are accepted; known keys are checked against
 type/required/min/max/options rules.
 """
+
 from __future__ import annotations
 
 import json
@@ -71,11 +72,7 @@ def _normalize_schema(raw: Any) -> list[dict[str, Any]]:
 
 
 def _reference_count(db: Session, type_name: str) -> int:
-    return (
-        db.query(ComponentModel)
-        .filter(ComponentModel.component_type == type_name)
-        .count()
-    )
+    return db.query(ComponentModel).filter(ComponentModel.component_type == type_name).count()
 
 
 def _to_schema(db: Session, m: ComponentTypeModel) -> ComponentTypeRead:
@@ -141,9 +138,7 @@ def create_type(db: Session, data: ComponentTypeWrite) -> ComponentTypeRead:
         raise InternalError(message=f"Database error: {exc}") from exc
 
 
-def update_type(
-    db: Session, type_id: int, data: ComponentTypeWrite
-) -> ComponentTypeRead:
+def update_type(db: Session, type_id: int, data: ComponentTypeWrite) -> ComponentTypeRead:
     """Update label / description / schema. Name and deletable are immutable."""
     try:
         row = _get_or_404(db, type_id)
@@ -200,16 +195,14 @@ def _validate_number_prop(prop: "PropertyDefinition", value: Any) -> None:
     if prop.min is not None and value < prop.min:
         raise ValidationError(
             message=(
-                f"Property '{prop.name}' is below the allowed minimum "
-                f"{prop.min} (got {value})."
+                f"Property '{prop.name}' is below the allowed minimum {prop.min} (got {value})."
             ),
             details={"property": prop.name, "min": prop.min, "value": value},
         )
     if prop.max is not None and value > prop.max:
         raise ValidationError(
             message=(
-                f"Property '{prop.name}' exceeds the allowed maximum "
-                f"{prop.max} (got {value})."
+                f"Property '{prop.name}' exceeds the allowed maximum {prop.max} (got {value})."
             ),
             details={"property": prop.name, "max": prop.max, "value": value},
         )
@@ -234,8 +227,7 @@ def _validate_single_prop(prop: "PropertyDefinition", value: Any) -> None:
     elif prop.type == "enum" and prop.options and value not in prop.options:
         raise ValidationError(
             message=(
-                f"Property '{prop.name}' value '{value}' is not allowed. "
-                f"Options: {prop.options}."
+                f"Property '{prop.name}' value '{value}' is not allowed. Options: {prop.options}."
             ),
             details={
                 "property": prop.name,
@@ -245,9 +237,7 @@ def _validate_single_prop(prop: "PropertyDefinition", value: Any) -> None:
         )
 
 
-def validate_specs(
-    db: Session, component_type_name: str, specs: dict[str, Any]
-) -> None:
+def validate_specs(db: Session, component_type_name: str, specs: dict[str, Any]) -> None:
     """Raise ValidationError if specs don't match the type's schema.
 
     Tolerant mode: unknown keys are ignored. Known keys are checked for:
@@ -256,14 +246,12 @@ def validate_specs(
       - range (number min/max)
     """
     row = (
-        db.query(ComponentTypeModel)
-        .filter(ComponentTypeModel.name == component_type_name)
-        .first()
+        db.query(ComponentTypeModel).filter(ComponentTypeModel.name == component_type_name).first()
     )
     if row is None:
         raise ValidationError(
             message=f"Unknown component_type '{component_type_name}'. "
-                    "Use GET /component-types to discover available types.",
+            "Use GET /component-types to discover available types.",
             details={"component_type": component_type_name},
         )
 
@@ -285,8 +273,7 @@ def validate_specs(
 def list_type_names(db: Session) -> list[str]:
     """Return the names of all registered types (for legacy /components/types)."""
     return [
-        row[0]
-        for row in db.query(ComponentTypeModel.name).order_by(ComponentTypeModel.label).all()
+        row[0] for row in db.query(ComponentTypeModel.name).order_by(ComponentTypeModel.label).all()
     ]
 
 
@@ -303,112 +290,233 @@ DEFAULT_SEED_TYPES: list[dict[str, Any]] = [
         "label": "Material (3D-Druck)",
         "description": "3D-print material with density and print type",
         "schema": [
-            {"name": "density_kg_m3", "label": "Dichte", "type": "number",
-             "unit": "kg/m³", "required": True, "min": 100, "max": 20000},
-            {"name": "print_resolution_mm", "label": "Druckauflösung", "type": "number",
-             "unit": "mm", "min": 0.05, "max": 2.0, "default": 0.4},
-            {"name": "print_type", "label": "Drucktyp", "type": "enum",
-             "options": ["volume", "surface"], "default": "volume"},
+            {
+                "name": "density_kg_m3",
+                "label": "Dichte",
+                "type": "number",
+                "unit": "kg/m³",
+                "required": True,
+                "min": 100,
+                "max": 20000,
+            },
+            {
+                "name": "print_resolution_mm",
+                "label": "Druckauflösung",
+                "type": "number",
+                "unit": "mm",
+                "min": 0.05,
+                "max": 2.0,
+                "default": 0.4,
+            },
+            {
+                "name": "print_type",
+                "label": "Drucktyp",
+                "type": "enum",
+                "options": ["volume", "surface"],
+                "default": "volume",
+            },
         ],
     },
     {
-        "name": "servo", "label": "Servo",
+        "name": "servo",
+        "label": "Servo",
         "description": "Servo actuator with electrical specs and CAD dimensions for wing pocket cutout",
         "schema": [
             # Electrical (existing)
             {"name": "torque_kg_cm", "label": "Drehmoment", "type": "number", "unit": "kg·cm"},
-            {"name": "speed_s_per_60deg", "label": "Geschwindigkeit", "type": "number", "unit": "s/60°"},
+            {
+                "name": "speed_s_per_60deg",
+                "label": "Geschwindigkeit",
+                "type": "number",
+                "unit": "s/60°",
+            },
             {"name": "voltage_v", "label": "Spannung", "type": "number", "unit": "V"},
-            {"name": "connector", "label": "Anschluss", "type": "enum",
-             "options": ["jr", "futaba", "universal"]},
+            {
+                "name": "connector",
+                "label": "Anschluss",
+                "type": "enum",
+                "options": ["jr", "futaba", "universal"],
+            },
             # CAD dimensions (gh#99) — used by VaseModeWingCreator for servo pocket
-            {"name": "servo_length", "label": "Länge", "type": "number", "unit": "mm",
-             "description": "X-Dimension des Servo-Körpers"},
-            {"name": "servo_width", "label": "Breite", "type": "number", "unit": "mm",
-             "description": "Y-Dimension des Servo-Körpers"},
-            {"name": "servo_height", "label": "Höhe", "type": "number", "unit": "mm",
-             "description": "Z-Dimension des Servo-Körpers"},
-            {"name": "leading_length", "label": "Vorderkante→Achse", "type": "number", "unit": "mm",
-             "description": "X von Vorderkante bis Rotationsachse"},
+            {
+                "name": "servo_length",
+                "label": "Länge",
+                "type": "number",
+                "unit": "mm",
+                "description": "X-Dimension des Servo-Körpers",
+            },
+            {
+                "name": "servo_width",
+                "label": "Breite",
+                "type": "number",
+                "unit": "mm",
+                "description": "Y-Dimension des Servo-Körpers",
+            },
+            {
+                "name": "servo_height",
+                "label": "Höhe",
+                "type": "number",
+                "unit": "mm",
+                "description": "Z-Dimension des Servo-Körpers",
+            },
+            {
+                "name": "leading_length",
+                "label": "Vorderkante→Achse",
+                "type": "number",
+                "unit": "mm",
+                "description": "X von Vorderkante bis Rotationsachse",
+            },
             {"name": "latch_z", "label": "Halterung Z", "type": "number", "unit": "mm"},
             {"name": "latch_x", "label": "Halterung X", "type": "number", "unit": "mm"},
             {"name": "latch_thickness", "label": "Halterungsdicke", "type": "number", "unit": "mm"},
             {"name": "latch_length", "label": "Halterungslänge", "type": "number", "unit": "mm"},
             {"name": "cable_z", "label": "Kabelausgang Z", "type": "number", "unit": "mm"},
-            {"name": "screw_hole_lx", "label": "Schraubloch X-Abstand", "type": "number", "unit": "mm"},
+            {
+                "name": "screw_hole_lx",
+                "label": "Schraubloch X-Abstand",
+                "type": "number",
+                "unit": "mm",
+            },
             {"name": "screw_hole_d", "label": "Schraubloch-Ø", "type": "number", "unit": "mm"},
         ],
     },
     {
-        "name": "brushless_motor", "label": "Brushless Motor", "description": None,
+        "name": "brushless_motor",
+        "label": "Brushless Motor",
+        "description": None,
         "schema": [
-            {"name": "kv_rpm_per_volt", "label": "KV", "type": "number", "unit": "RPM/V",
-             "required": True},
+            {
+                "name": "kv_rpm_per_volt",
+                "label": "KV",
+                "type": "number",
+                "unit": "RPM/V",
+                "required": True,
+            },
             {"name": "max_current_a", "label": "Max Strom", "type": "number", "unit": "A"},
             {"name": "shaft_diameter_mm", "label": "Wellen-Ø", "type": "number", "unit": "mm"},
         ],
     },
     {
-        "name": "battery", "label": "Battery", "description": None,
+        "name": "battery",
+        "label": "Battery",
+        "description": None,
         "schema": [
-            {"name": "capacity_mah", "label": "Kapazität", "type": "number", "unit": "mAh",
-             "required": True, "min": 0},
+            {
+                "name": "capacity_mah",
+                "label": "Kapazität",
+                "type": "number",
+                "unit": "mAh",
+                "required": True,
+                "min": 0,
+            },
             {"name": "cells", "label": "Zellen (S)", "type": "number", "required": True, "min": 1},
             {"name": "c_rate", "label": "C-Rate", "type": "number"},
             {"name": "voltage_v", "label": "Spannung", "type": "number", "unit": "V"},
         ],
     },
     {
-        "name": "esc", "label": "ESC", "description": None,
+        "name": "esc",
+        "label": "ESC",
+        "description": None,
         "schema": [
-            {"name": "max_current_a", "label": "Max Strom", "type": "number", "unit": "A",
-             "required": True},
+            {
+                "name": "max_current_a",
+                "label": "Max Strom",
+                "type": "number",
+                "unit": "A",
+                "required": True,
+            },
             {"name": "cells", "label": "Zellen (S)", "type": "number"},
             {"name": "bec_voltage_v", "label": "BEC Spannung", "type": "number", "unit": "V"},
             {"name": "bec_current_a", "label": "BEC Strom", "type": "number", "unit": "A"},
-            {"name": "protocol", "label": "Protokoll", "type": "enum",
-             "options": ["pwm", "oneshot", "dshot150", "dshot300", "dshot600"]},
+            {
+                "name": "protocol",
+                "label": "Protokoll",
+                "type": "enum",
+                "options": ["pwm", "oneshot", "dshot150", "dshot300", "dshot600"],
+            },
         ],
     },
     {
-        "name": "propeller", "label": "Propeller", "description": None,
+        "name": "propeller",
+        "label": "Propeller",
+        "description": None,
         "schema": [
-            {"name": "diameter_in", "label": "Durchmesser", "type": "number", "unit": "inch",
-             "required": True},
-            {"name": "pitch_in", "label": "Steigung", "type": "number", "unit": "inch",
-             "required": True},
+            {
+                "name": "diameter_in",
+                "label": "Durchmesser",
+                "type": "number",
+                "unit": "inch",
+                "required": True,
+            },
+            {
+                "name": "pitch_in",
+                "label": "Steigung",
+                "type": "number",
+                "unit": "inch",
+                "required": True,
+            },
             {"name": "blades", "label": "Blätter", "type": "number", "required": True, "min": 2},
             {"name": "material", "label": "Material", "type": "string"},
         ],
     },
     {
-        "name": "receiver", "label": "Receiver", "description": None,
+        "name": "receiver",
+        "label": "Receiver",
+        "description": None,
         "schema": [
             {"name": "channels", "label": "Kanäle", "type": "number"},
             {"name": "protocol", "label": "Protokoll", "type": "string"},
         ],
     },
     {
-        "name": "flight_controller", "label": "Flight Controller", "description": None,
+        "name": "flight_controller",
+        "label": "Flight Controller",
+        "description": None,
         "schema": [
             {"name": "firmware", "label": "Firmware", "type": "string"},
             {"name": "mcu", "label": "MCU", "type": "string"},
         ],
     },
     {
-        "name": "printer_settings", "label": "3D-Drucker Einstellungen",
+        "name": "printer_settings",
+        "label": "3D-Drucker Einstellungen",
         "description": "Druckparameter für Vase-Mode-Flügel (VaseModeWingCreator)",
         "schema": [
-            {"name": "layer_height", "label": "Schichthöhe", "type": "number",
-             "unit": "mm", "required": True, "min": 0.05, "max": 1.0, "default": 0.24},
-            {"name": "wall_thickness", "label": "Wandstärke", "type": "number",
-             "unit": "mm", "required": True, "min": 0.1, "max": 5.0, "default": 0.42},
-            {"name": "rel_gap_wall_thickness", "label": "Spalt-Wandstärke (rel.)", "type": "number",
-             "required": True, "min": 0.01, "max": 0.5, "default": 0.075},
+            {
+                "name": "layer_height",
+                "label": "Schichthöhe",
+                "type": "number",
+                "unit": "mm",
+                "required": True,
+                "min": 0.05,
+                "max": 1.0,
+                "default": 0.24,
+            },
+            {
+                "name": "wall_thickness",
+                "label": "Wandstärke",
+                "type": "number",
+                "unit": "mm",
+                "required": True,
+                "min": 0.1,
+                "max": 5.0,
+                "default": 0.42,
+            },
+            {
+                "name": "rel_gap_wall_thickness",
+                "label": "Spalt-Wandstärke (rel.)",
+                "type": "number",
+                "required": True,
+                "min": 0.01,
+                "max": 0.5,
+                "default": 0.075,
+            },
         ],
     },
     {
-        "name": "generic", "label": "Generic",
+        "name": "generic",
+        "label": "Generic",
         "description": "Free-form type with no structured schema",
         "schema": [],
     },

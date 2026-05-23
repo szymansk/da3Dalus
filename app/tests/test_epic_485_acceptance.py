@@ -78,13 +78,13 @@ CESSNA = {
     "v_cruise_mps": 62.0,
     "v_stall_mps": 25.4,
     # Stability
-    "x_np_m": 1.34,       # ~0.25 MAC from leading edge
+    "x_np_m": 1.34,  # ~0.25 MAC from leading edge
     "target_sm": 0.10,
     "g_limit": 3.8,
     # Expected ranges (Scholz/Roskam)
     "cd0_range": (0.027, 0.034),
-    "v_md_range": (30.0, 42.0),         # m/s — Anderson 6e §6.4: V_md ≈ 38.4 m/s at MTOM
-    "field_to_range": (200.0, 480.0),   # m (Roskam k_TO=1.66 gives ~470 m)
+    "v_md_range": (30.0, 42.0),  # m/s — Anderson 6e §6.4: V_md ≈ 38.4 m/s at MTOM
+    "field_to_range": (200.0, 480.0),  # m (Roskam k_TO=1.66 gives ~470 m)
     "field_ldg_range": (150.0, 480.0),
     # Tail geometry (metres, DB convention)
     "htail_le_x": 5.5,
@@ -106,7 +106,7 @@ CESSNA = {
 ASW27 = {
     "name": "asw27_rc",
     "mass_kg": 12.0,
-    "t_static_N": 0.0,    # unpowered
+    "t_static_N": 0.0,  # unpowered
     "s_ref_m2": 0.56,
     "b_ref_m": 4.0,
     "ar": 28.5,
@@ -122,8 +122,8 @@ ASW27 = {
     "target_sm": 0.08,
     "g_limit": 5.3,
     "cd0_range": (0.008, 0.030),
-    "v_md_range": (14.0, 22.0),         # m/s — Anderson §6.4: V_md ≈ 17.0 m/s at this geometry
-    "field_to_range": None,        # winch/hand launch → no runway constraint
+    "v_md_range": (14.0, 22.0),  # m/s — Anderson §6.4: V_md ≈ 17.0 m/s at this geometry
+    "field_to_range": None,  # winch/hand launch → no runway constraint
     "field_ldg_range": None,
     # Scale model fuselage ~1.0 m; tail arm 0.82 m preserves V_H ≈ 0.41 (full-scale ASW-27 ratio)
     "htail_le_x": 0.88,
@@ -144,7 +144,7 @@ ASW27 = {
 RC_TRAINER = {
     "name": "rc_trainer",
     "mass_kg": 2.0,
-    "t_static_N": 12.0,   # T/W ≈ 0.61 — typical RC electric trainer (Scholz §5 matching chart range)
+    "t_static_N": 12.0,  # T/W ≈ 0.61 — typical RC electric trainer (Scholz §5 matching chart range)
     "s_ref_m2": 0.40,
     "b_ref_m": 1.673,  # = sqrt(AR * S) = sqrt(7.0 * 0.40) — consistent with AR=7 (Scholz A11)
     "ar": 7.0,
@@ -160,10 +160,10 @@ RC_TRAINER = {
     "target_sm": 0.12,
     "g_limit": 5.0,
     "cd0_range": (0.040, 0.065),
-    "v_md_range": (7.0, 15.0),          # m/s — Anderson §6.4: V_md ≈ 9.3 m/s at this geometry
+    "v_md_range": (7.0, 15.0),  # m/s — Anderson §6.4: V_md ≈ 9.3 m/s at this geometry
     # W/S = 49 N/m² (very light wing loading) → ground roll physically ~5-10 m
     # Roskam formula: s = 1.21 * (W/S) / (rho * g * CL_max * T/W) ≈ 6.7 m at T/W=0.61
-    "field_to_range": (3.0, 30.0),    # m — short-field RC trainer with low wing loading
+    "field_to_range": (3.0, 30.0),  # m — short-field RC trainer with low wing loading
     "field_ldg_range": (3.0, 30.0),
     # Tail geometry (metres)
     "htail_le_x": 0.72,
@@ -187,7 +187,7 @@ RC_TRAINER = {
 VTAIL_UAV = {
     "name": "vtail_uav",
     "mass_kg": 3.0,
-    "t_static_N": 15.0,   # T/W ≈ 0.51 — typical small UAV electric (bungee/short runway)
+    "t_static_N": 15.0,  # T/W ≈ 0.51 — typical small UAV electric (bungee/short runway)
     "s_ref_m2": 0.55,
     "b_ref_m": 2.0,
     "ar": 7.3,
@@ -203,7 +203,7 @@ VTAIL_UAV = {
     "target_sm": 0.10,
     "g_limit": 4.0,
     "cd0_range": (0.025, 0.045),
-    "v_md_range": (8.0, 16.0),          # m/s — Anderson §6.4: V_md ≈ 10.4 m/s at this geometry
+    "v_md_range": (8.0, 16.0),  # m/s — Anderson §6.4: V_md ≈ 10.4 m/s at this geometry
     # W/S = 53.5 N/m² (lightweight UAV) → ground roll ~8 m at T/W=0.51 (Roskam §3.4)
     "field_to_range": (3.0, 25.0),
     "field_ldg_range": (3.0, 25.0),
@@ -230,6 +230,7 @@ ALL_AIRCRAFT = [CESSNA, ASW27, RC_TRAINER, VTAIL_UAV]
 # ===========================================================================
 # DB seeding helpers
 # ===========================================================================
+
 
 def _seed_aeroplane(session: Session, ac: dict) -> AeroplaneModel:
     """Create and commit an AeroplaneModel with the reference geometry."""
@@ -268,9 +269,7 @@ def _seed_xsec(
         detail = WingXSecDetailModel(wing_xsec_id=xsec.id, x_sec_type="segment")
         session.add(detail)
         session.flush()
-        ted = WingXSecTrailingEdgeDeviceModel(
-            wing_xsec_detail_id=detail.id, **ted_kwargs
-        )
+        ted = WingXSecTrailingEdgeDeviceModel(wing_xsec_detail_id=detail.id, **ted_kwargs)
         session.add(ted)
         session.flush()
     return xsec
@@ -288,7 +287,8 @@ def _add_wing(
     session.flush()
     for i, xs in enumerate(xsecs):
         _seed_xsec(
-            session, wing,
+            session,
+            wing,
             xyz_le=xs["xyz_le"],
             chord=xs["chord"],
             twist=xs.get("twist", 0.0),
@@ -315,39 +315,85 @@ def _ted(name: str, role: str, symmetric: bool = False) -> dict:
 def _seed_conventional_wings(session: Session, ap_id: int, ac: dict) -> None:
     """Main wing + horizontal tail + vertical tail for conventional aircraft."""
     span_half = ac["b_ref_m"] / 2.0
-    root_chord = ac["s_ref_m2"] / ac["b_ref_m"] * 1.25   # approximate tapered
+    root_chord = ac["s_ref_m2"] / ac["b_ref_m"] * 1.25  # approximate tapered
     tip_chord = root_chord * 0.7
-    _add_wing(session, ap_id, "main_wing", symmetric=True, xsecs=[
-        {"xyz_le": [0.0, 0.0, 0.0], "chord": root_chord, "twist": 2.0,
-         "airfoil": "naca2412",
-         "ted": _ted("Aileron", "aileron")},
-        {"xyz_le": [root_chord * 0.1, span_half * 0.5, 0.0], "chord": (root_chord + tip_chord) / 2, "twist": 0.0,
-         "airfoil": "naca2412"},
-        {"xyz_le": [root_chord * 0.2, span_half, 0.0], "chord": tip_chord, "twist": -1.0,
-         "airfoil": "naca2412"},
-    ])
+    _add_wing(
+        session,
+        ap_id,
+        "main_wing",
+        symmetric=True,
+        xsecs=[
+            {
+                "xyz_le": [0.0, 0.0, 0.0],
+                "chord": root_chord,
+                "twist": 2.0,
+                "airfoil": "naca2412",
+                "ted": _ted("Aileron", "aileron"),
+            },
+            {
+                "xyz_le": [root_chord * 0.1, span_half * 0.5, 0.0],
+                "chord": (root_chord + tip_chord) / 2,
+                "twist": 0.0,
+                "airfoil": "naca2412",
+            },
+            {
+                "xyz_le": [root_chord * 0.2, span_half, 0.0],
+                "chord": tip_chord,
+                "twist": -1.0,
+                "airfoil": "naca2412",
+            },
+        ],
+    )
     htail_le_x = ac["htail_le_x"]
     htail_chord_root = ac["htail_chord_root"]
     htail_chord_tip = ac["htail_chord_tip"]
     htail_span_half = ac["htail_span_half"]
-    _add_wing(session, ap_id, "horizontal_tail", symmetric=True, xsecs=[
-        {"xyz_le": [htail_le_x, 0.0, 0.0], "chord": htail_chord_root,
-         "twist": 0.0, "airfoil": "naca0010",
-         "ted": _ted("Elevator", "elevator", symmetric=True)},
-        {"xyz_le": [htail_le_x + 0.05 * htail_chord_root, htail_span_half, 0.0],
-         "chord": htail_chord_tip, "twist": 0.0, "airfoil": "naca0010"},
-    ])
+    _add_wing(
+        session,
+        ap_id,
+        "horizontal_tail",
+        symmetric=True,
+        xsecs=[
+            {
+                "xyz_le": [htail_le_x, 0.0, 0.0],
+                "chord": htail_chord_root,
+                "twist": 0.0,
+                "airfoil": "naca0010",
+                "ted": _ted("Elevator", "elevator", symmetric=True),
+            },
+            {
+                "xyz_le": [htail_le_x + 0.05 * htail_chord_root, htail_span_half, 0.0],
+                "chord": htail_chord_tip,
+                "twist": 0.0,
+                "airfoil": "naca0010",
+            },
+        ],
+    )
     vtail_le_x = ac["vtail_le_x"]
     vtail_chord_root = ac["vtail_chord_root"]
     vtail_chord_tip = ac["vtail_chord_tip"]
     vtail_span = ac["vtail_span"]
-    _add_wing(session, ap_id, "vertical_tail", symmetric=False, xsecs=[
-        {"xyz_le": [vtail_le_x, 0.0, 0.0], "chord": vtail_chord_root,
-         "twist": 0.0, "airfoil": "naca0010",
-         "ted": _ted("Rudder", "rudder", symmetric=True)},
-        {"xyz_le": [vtail_le_x + 0.05 * vtail_chord_root, 0.0, vtail_span],
-         "chord": vtail_chord_tip, "twist": 0.0, "airfoil": "naca0010"},
-    ])
+    _add_wing(
+        session,
+        ap_id,
+        "vertical_tail",
+        symmetric=False,
+        xsecs=[
+            {
+                "xyz_le": [vtail_le_x, 0.0, 0.0],
+                "chord": vtail_chord_root,
+                "twist": 0.0,
+                "airfoil": "naca0010",
+                "ted": _ted("Rudder", "rudder", symmetric=True),
+            },
+            {
+                "xyz_le": [vtail_le_x + 0.05 * vtail_chord_root, 0.0, vtail_span],
+                "chord": vtail_chord_tip,
+                "twist": 0.0,
+                "airfoil": "naca0010",
+            },
+        ],
+    )
 
 
 def _seed_vtail_wings(session: Session, ap_id: int, ac: dict) -> None:
@@ -355,24 +401,52 @@ def _seed_vtail_wings(session: Session, ap_id: int, ac: dict) -> None:
     span_half = ac["b_ref_m"] / 2.0
     root_chord = ac["s_ref_m2"] / ac["b_ref_m"] * 1.25
     tip_chord = root_chord * 0.7
-    _add_wing(session, ap_id, "main_wing", symmetric=True, xsecs=[
-        {"xyz_le": [0.0, 0.0, 0.0], "chord": root_chord, "twist": 2.0,
-         "airfoil": "naca4412",
-         "ted": _ted("Aileron", "aileron")},
-        {"xyz_le": [root_chord * 0.1, span_half, 0.0], "chord": tip_chord, "twist": -1.0,
-         "airfoil": "naca4412"},
-    ])
+    _add_wing(
+        session,
+        ap_id,
+        "main_wing",
+        symmetric=True,
+        xsecs=[
+            {
+                "xyz_le": [0.0, 0.0, 0.0],
+                "chord": root_chord,
+                "twist": 2.0,
+                "airfoil": "naca4412",
+                "ted": _ted("Aileron", "aileron"),
+            },
+            {
+                "xyz_le": [root_chord * 0.1, span_half, 0.0],
+                "chord": tip_chord,
+                "twist": -1.0,
+                "airfoil": "naca4412",
+            },
+        ],
+    )
     # V-tail: symmetric surface with dihedral simulated by z at tip
     v_span_half = 0.32
     v_root_chord = 0.18
     v_tip_chord = 0.12
-    _add_wing(session, ap_id, "v_tail", symmetric=True, xsecs=[
-        {"xyz_le": [0.80, 0.0, 0.06], "chord": v_root_chord,
-         "twist": -5.0, "airfoil": "naca0010",
-         "ted": _ted("Ruddervator", "ruddervator", symmetric=True)},
-        {"xyz_le": [0.82, v_span_half, v_span_half * 0.45], "chord": v_tip_chord,
-         "twist": -5.0, "airfoil": "naca0010"},
-    ])
+    _add_wing(
+        session,
+        ap_id,
+        "v_tail",
+        symmetric=True,
+        xsecs=[
+            {
+                "xyz_le": [0.80, 0.0, 0.06],
+                "chord": v_root_chord,
+                "twist": -5.0,
+                "airfoil": "naca0010",
+                "ted": _ted("Ruddervator", "ruddervator", symmetric=True),
+            },
+            {
+                "xyz_le": [0.82, v_span_half, v_span_half * 0.45],
+                "chord": v_tip_chord,
+                "twist": -5.0,
+                "airfoil": "naca0010",
+            },
+        ],
+    )
 
 
 def _seed_design_assumptions(
@@ -419,9 +493,7 @@ def _seed_design_assumptions(
     session.flush()
 
 
-def _seed_battery_weight_item(
-    session: Session, aeroplane_id: int, mass_kg: float = 0.40
-) -> None:
+def _seed_battery_weight_item(session: Session, aeroplane_id: int, mass_kg: float = 0.40) -> None:
     item = WeightItemModel(
         aeroplane_id=aeroplane_id,
         name="main_battery",
@@ -436,6 +508,7 @@ def _seed_battery_weight_item(
 # ===========================================================================
 # Shared stub factory for AeroBuildup internals
 # ===========================================================================
+
 
 def _make_asb_stubs(ac: dict):
     """Return (fake_airplane, patches_list) for stubbing ASB internals.
@@ -472,7 +545,7 @@ def _make_asb_stubs(ac: dict):
             alpha_rad = math.radians(alpha_deg)
             cl = 2 * math.pi * alpha_rad
             cl = max(-0.5, min(cl, ac["cl_max"]))
-            cd = cd0 + k * cl ** 2
+            cd = cd0 + k * cl**2
             cl_array.append(cl)
             cd_array.append(cd)
             v_array.append(v)
@@ -506,8 +579,14 @@ def _make_asb_stubs(ac: dict):
     )
 
     return fake_airplane, (
-        cl_max_sweep, cl_arr, cd_arr, v_arr,
-        x_np, mac, cd0, s_ref,
+        cl_max_sweep,
+        cl_arr,
+        cd_arr,
+        v_arr,
+        x_np,
+        mac,
+        cd0,
+        s_ref,
     )
 
 
@@ -549,6 +628,7 @@ def _patches_for_ac(ac: dict, fake_airplane, sweep_data):
 # Stage 2: matching_chart_service.compute_chart
 # ===========================================================================
 
+
 def _run_matching_chart(ac: dict, ctx: dict) -> dict:
     from app.services.matching_chart_service import compute_chart
 
@@ -581,14 +661,17 @@ def _run_matching_chart(ac: dict, ctx: dict) -> dict:
 # Stage 3: sm_sizing_service.suggest_corrections
 # ===========================================================================
 
+
 def _run_sm_sizing(ac: dict, ctx: dict) -> dict:
     from app.services.sm_sizing_service import suggest_corrections
+
     return suggest_corrections(ctx, target_sm=ac["target_sm"], at_cg="aft")
 
 
 # ===========================================================================
 # Stage 4: field_length_service.compute_field_lengths
 # ===========================================================================
+
 
 def _run_field_length(ac: dict, ctx: dict) -> dict | None:
     from app.services.field_length_service import compute_field_lengths
@@ -617,6 +700,7 @@ def _run_field_length(ac: dict, ctx: dict) -> dict | None:
 # Stage 6: tail_sizing_service.compute_tail_volumes
 # ===========================================================================
 
+
 def _build_tail_ctx(ac: dict, aeroplane: AeroplaneModel, ctx: dict) -> dict:
     """Merge assumption context + geometric tail keys into tail-sizing context."""
     tail_ctx = {**ctx}
@@ -631,13 +715,15 @@ def _build_tail_ctx(ac: dict, aeroplane: AeroplaneModel, ctx: dict) -> dict:
         tail_ctx["vtail_mac_m"] = ac["vtail_mac_m"]
     # Aircraft class for target lookup — must match keys in tail_sizing_service.AIRCRAFT_CLASS_TARGETS
     if ac["mass_kg"] > 100.0:
-        tail_ctx["aircraft_class"] = "rc_combust"  # GA analogue; no "general_aviation" key in service
+        tail_ctx["aircraft_class"] = (
+            "rc_combust"  # GA analogue; no "general_aviation" key in service
+        )
     elif ac["t_static_N"] <= 0:
-        tail_ctx["aircraft_class"] = "glider"      # ASW-27 scale sailplane
+        tail_ctx["aircraft_class"] = "glider"  # ASW-27 scale sailplane
     else:
         tail_ctx["aircraft_class"] = "rc_trainer"
     tail_ctx["is_canard"] = False
-    tail_ctx["is_tailless"] = (ac.get("htail_le_x") is None and ac.get("vtail_le_x") is None)
+    tail_ctx["is_tailless"] = ac.get("htail_le_x") is None and ac.get("vtail_le_x") is None
     tail_ctx["is_v_tail"] = ac["name"] == "vtail_uav"
     return tail_ctx
 
@@ -645,6 +731,7 @@ def _build_tail_ctx(ac: dict, aeroplane: AeroplaneModel, ctx: dict) -> dict:
 # ===========================================================================
 # Per-aircraft test functions
 # ===========================================================================
+
 
 def _run_full_workflow(ac: dict, client_and_db_fixture) -> dict[str, Any]:
     """Run all 8 workflow stages for one reference aircraft.
@@ -710,12 +797,14 @@ def _run_full_workflow(ac: dict, client_and_db_fixture) -> dict[str, Any]:
 
     # --- Stage 5: endurance -------------------------------------------------
     from app.services.endurance_service import compute_endurance_for_aeroplane
+
     with SessionLocal() as db:
         end_result = compute_endurance_for_aeroplane(db, aeroplane_uuid)
     results["stage5_endurance"] = end_result
 
     # --- Stage 6: tail sizing -----------------------------------------------
     from app.services.tail_sizing_service import compute_tail_volumes
+
     tail_ctx = _build_tail_ctx(ac, aeroplane_row, ctx)
     tail_result = compute_tail_volumes(tail_ctx)
     results["stage6_tail"] = tail_result
@@ -724,15 +813,20 @@ def _run_full_workflow(ac: dict, client_and_db_fixture) -> dict[str, Any]:
     # Patch the _build_asb_airplane used inside flight_envelope_service
     # (it calls compute_flight_envelope which calls _get_b_ref / _get_wing_area_m2)
     from app.services.flight_envelope_service import compute_flight_envelope
-    with patch(
-        "app.services.flight_envelope_service._get_wing_area_m2",
-        return_value=ac["s_ref_m2"],
-    ), patch(
-        "app.services.flight_envelope_service._get_b_ref",
-        return_value=ac["b_ref_m"],
-    ), patch(
-        "app.services.flight_envelope_service._get_v_max",
-        return_value=float(ctx.get("v_max_mps") or ac["v_cruise_mps"] * 1.5),
+
+    with (
+        patch(
+            "app.services.flight_envelope_service._get_wing_area_m2",
+            return_value=ac["s_ref_m2"],
+        ),
+        patch(
+            "app.services.flight_envelope_service._get_b_ref",
+            return_value=ac["b_ref_m"],
+        ),
+        patch(
+            "app.services.flight_envelope_service._get_v_max",
+            return_value=float(ctx.get("v_max_mps") or ac["v_cruise_mps"] * 1.5),
+        ),
     ):
         with SessionLocal() as db:
             fe_result = compute_flight_envelope(db, aeroplane_uuid)
@@ -745,13 +839,13 @@ def _run_full_workflow(ac: dict, client_and_db_fixture) -> dict[str, Any]:
 # Acceptance assertions
 # ===========================================================================
 
+
 def _assert_stage1(ac: dict, ctx: dict) -> None:
     """Stage 1: assumption context structure and value ranges."""
     assert ctx, f"{ac['name']}: assumption_computation_context is empty after recompute"
 
     # Required scalar keys
-    for key in ("cd0", "e_oswald", "cl_alpha_per_rad", "mac_m", "s_ref_m2",
-                "b_ref_m", "x_np_m"):
+    for key in ("cd0", "e_oswald", "cl_alpha_per_rad", "mac_m", "s_ref_m2", "b_ref_m", "x_np_m"):
         assert ctx.get(key) is not None, f"{ac['name']}: Stage 1: {key!r} missing from context"
 
     # CG envelope keys (Wave 3 — gh-488)
@@ -799,9 +893,7 @@ def _assert_stage2(ac: dict, chart: dict | None) -> None:
         return  # Glider — skipped
     assert "constraints" in chart, f"{ac['name']}: Stage 2: 'constraints' key missing"
     assert "design_point" in chart, f"{ac['name']}: Stage 2: 'design_point' key missing"
-    assert len(chart["constraints"]) > 0, (
-        f"{ac['name']}: Stage 2: constraint list is empty"
-    )
+    assert len(chart["constraints"]) > 0, f"{ac['name']}: Stage 2: constraint list is empty"
     dp = chart["design_point"]
     assert dp.get("ws_n_m2", 0) > 0, f"{ac['name']}: Stage 2: W/S ≤ 0"
     assert dp.get("t_w", 0) > 0, f"{ac['name']}: Stage 2: T/W ≤ 0"
@@ -827,19 +919,14 @@ def _assert_stage4(ac: dict, fl_result: dict | None) -> None:
         return  # Glider — skipped
     s_to = fl_result.get("s_to_50ft_m") or fl_result.get("s_to_ground_m")
     s_ldg = fl_result.get("s_ldg_50ft_m") or fl_result.get("s_ldg_ground_m")
-    assert s_to is not None and s_to > 0, (
-        f"{ac['name']}: Stage 4: s_to non-positive: {s_to}"
-    )
-    assert s_ldg is not None and s_ldg > 0, (
-        f"{ac['name']}: Stage 4: s_ldg non-positive: {s_ldg}"
-    )
+    assert s_to is not None and s_to > 0, f"{ac['name']}: Stage 4: s_to non-positive: {s_to}"
+    assert s_ldg is not None and s_ldg > 0, f"{ac['name']}: Stage 4: s_ldg non-positive: {s_ldg}"
     if ac["field_to_range"] is not None:
         lo, hi = ac["field_to_range"]
         # Use s_to_ground_m for the tight check (to-50ft includes obstacle factor)
         s_ground = fl_result.get("s_to_ground_m", s_to)
         assert lo <= s_ground <= hi, (
-            f"{ac['name']}: Stage 4: s_to_ground={s_ground:.1f} m "
-            f"outside expected [{lo}, {hi}] m"
+            f"{ac['name']}: Stage 4: s_to_ground={s_ground:.1f} m outside expected [{lo}, {hi}] m"
         )
 
 
@@ -872,6 +959,7 @@ def _assert_stage5(ac: dict, end_result: dict) -> None:
 def _assert_stage6(ac: dict, tail_result) -> None:
     """Stage 6: tail volume coefficients in Roskam/Scholz reference ranges."""
     from app.services.tail_sizing_service import TailVolumeResult
+
     assert isinstance(tail_result, TailVolumeResult), (
         f"{ac['name']}: Stage 6: result is not TailVolumeResult"
     )
@@ -909,6 +997,7 @@ def _assert_stage7(ac: dict, fe_result) -> None:
 # ===========================================================================
 # Parametric test
 # ===========================================================================
+
 
 @pytest.mark.slow
 @pytest.mark.parametrize("ac", ALL_AIRCRAFT, ids=[a["name"] for a in ALL_AIRCRAFT])

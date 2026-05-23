@@ -29,6 +29,7 @@ Notes on tolerances:
 - cd0 ∈ [0.010, 0.060] covers RC-scale clean wings at ISA SL (sd7037 + naca2412)
 - e_oswald ∈ [0.6, 1.0] per physical range; fit rejects < 0.4 and > 1.0
 """
+
 from __future__ import annotations
 
 import math
@@ -97,11 +98,7 @@ def _wide_alpha_sweep(
     """
     import aerosandbox as _asb
 
-    xyz_ref = (
-        list(asb_airplane.xyz_ref)
-        if asb_airplane.xyz_ref is not None
-        else [0.0, 0.0, 0.0]
-    )
+    xyz_ref = list(asb_airplane.xyz_ref) if asb_airplane.xyz_ref is not None else [0.0, 0.0, 0.0]
     alphas = np.arange(alpha_min_deg, alpha_max_deg + 0.001, alpha_step_deg)
     cl_list: list[float] = []
     cd_list: list[float] = []
@@ -132,11 +129,7 @@ def _wide_v_alpha_sweep(
     """
     import aerosandbox as _asb
 
-    xyz_ref = (
-        list(asb_airplane.xyz_ref)
-        if asb_airplane.xyz_ref is not None
-        else [0.0, 0.0, 0.0]
-    )
+    xyz_ref = list(asb_airplane.xyz_ref) if asb_airplane.xyz_ref is not None else [0.0, 0.0, 0.0]
     alphas = np.arange(alpha_min_deg, alpha_max_deg + 0.001, alpha_step_deg)
     v_list: list[float] = []
     cl_list: list[float] = []
@@ -175,9 +168,7 @@ def _build_asb_airplane_from_factory(factory_fn):
         connect_args={"check_same_thread": False},
         poolclass=StaticPool,
     )
-    SessionLocal = sessionmaker(
-        bind=engine, autocommit=False, autoflush=False, class_=Session
-    )
+    SessionLocal = sessionmaker(bind=engine, autocommit=False, autoflush=False, class_=Session)
     Base.metadata.create_all(bind=engine)
 
     with SessionLocal() as db:
@@ -284,9 +275,7 @@ class TestRealAeroBuildup2PolarFitRoundtrip:
         cd0_fit, e_fit, r2 = self._fit_without_cd0_guard(cl_arr, cd_arr, ar)
 
         if cd0_fit is None:
-            pytest.skip(
-                f"Polar fit was rejected (ar={ar:.2f}, cl_max={cl_arr.max():.3f})"
-            )
+            pytest.skip(f"Polar fit was rejected (ar={ar:.2f}, cl_max={cl_arr.max():.3f})")
         assert 0.008 <= cd0_fit <= 0.060, (
             f"cd0_fit = {cd0_fit:.5f} outside expected [0.008, 0.060] "
             "for RC-scale clean wing (sd7037)"
@@ -302,9 +291,7 @@ class TestRealAeroBuildup2PolarFitRoundtrip:
         cd0_fit, e_fit, r2 = self._fit_without_cd0_guard(cl_arr, cd_arr, ar)
 
         if e_fit is None:
-            pytest.skip(
-                f"Polar fit was rejected (ar={ar:.2f}, cl_max={cl_arr.max():.3f})"
-            )
+            pytest.skip(f"Polar fit was rejected (ar={ar:.2f}, cl_max={cl_arr.max():.3f})")
         assert 0.6 <= e_fit <= 1.0, (
             f"e_oswald = {e_fit:.4f} outside expected [0.6, 1.0] for realistic planform"
         )
@@ -401,8 +388,7 @@ class TestLaminarBubbleRejection:
         # Verify a warning was logged mentioning monotonicity or laminar bubble
         all_msgs = " ".join(warning_calls).lower()
         assert "monoton" in all_msgs or "laminar" in all_msgs, (
-            f"Expected warning about non-monotonic polar or laminar bubble. "
-            f"Got: {warning_calls}"
+            f"Expected warning about non-monotonic polar or laminar bubble. Got: {warning_calls}"
         )
 
 
@@ -567,8 +553,7 @@ class TestPolarReTableIntegration:
         # At least one row must have a valid fit for a clean wing
         valid_rows = [r for r in table if not r.get("fallback_used", True)]
         assert len(valid_rows) >= 1, (
-            f"No valid (non-fallback) rows in Re-table from real ASB sweep. "
-            f"Table: {table}"
+            f"No valid (non-fallback) rows in Re-table from real ASB sweep. Table: {table}"
         )
 
         for row in valid_rows:
@@ -637,9 +622,7 @@ class TestPolarReTableIntegration:
             key=lambda r: r["re"],
         )
         if len(valid_rows) < 2:
-            pytest.skip(
-                f"Only {len(valid_rows)} valid rows — cannot test interpolation"
-            )
+            pytest.skip(f"Only {len(valid_rows)} valid rows — cannot test interpolation")
 
         v_query = 18.0  # V_cruise — should be between table endpoints
         re_lo = valid_rows[0]["re"]
@@ -648,8 +631,7 @@ class TestPolarReTableIntegration:
 
         if not (re_lo <= re_query <= re_hi):
             pytest.skip(
-                f"Query Re={re_query:.0f} not within table range "
-                f"[{re_lo:.0f}, {re_hi:.0f}]"
+                f"Query Re={re_query:.0f} not within table range [{re_lo:.0f}, {re_hi:.0f}]"
             )
 
         cd0_lo = valid_rows[0]["cd0"]
@@ -713,29 +695,21 @@ class TestMultiConfigStability:
         """Conventional T-tail (clean wing, sd7037) should yield a successful polar fit."""
         cd0_fit, e_fit, r2, cd0_stab, ar = self._get_polar_fit(clean_wing_airplane)
         assert cd0_fit is not None, (
-            f"Polar fit failed for clean configuration "
-            f"(cd0_stab={cd0_stab:.5f}, ar={ar:.2f})"
+            f"Polar fit failed for clean configuration (cd0_stab={cd0_stab:.5f}, ar={ar:.2f})"
         )
         assert e_fit is not None
-        assert r2 is not None and r2 > 0.90, (
-            f"Clean config R² = {r2:.4f} should be > 0.90"
-        )
+        assert r2 is not None and r2 > 0.90, f"Clean config R² = {r2:.4f} should be > 0.90"
 
     def test_flap_config_yields_valid_fit(self, flap_wing_airplane):
         """Flap+aileron T-tail config should also yield a successful polar fit."""
         cd0_fit, e_fit, r2, cd0_stab, ar = self._get_polar_fit(flap_wing_airplane)
         assert cd0_fit is not None, (
-            f"Polar fit failed for flap configuration "
-            f"(cd0_stab={cd0_stab:.5f}, ar={ar:.2f})"
+            f"Polar fit failed for flap configuration (cd0_stab={cd0_stab:.5f}, ar={ar:.2f})"
         )
         assert e_fit is not None
-        assert r2 is not None and r2 > 0.90, (
-            f"Flap config R² = {r2:.4f} should be > 0.90"
-        )
+        assert r2 is not None and r2 > 0.90, f"Flap config R² = {r2:.4f} should be > 0.90"
 
-    def test_both_configs_yield_physical_e_oswald(
-        self, clean_wing_airplane, flap_wing_airplane
-    ):
+    def test_both_configs_yield_physical_e_oswald(self, clean_wing_airplane, flap_wing_airplane):
         """Both configurations must yield e_oswald ∈ [0.6, 1.0]."""
         cd0_clean, e_clean, r2_clean, _, _ = self._get_polar_fit(clean_wing_airplane)
         cd0_flap, e_flap, r2_flap, _, _ = self._get_polar_fit(flap_wing_airplane)
@@ -745,16 +719,10 @@ class TestMultiConfigStability:
         if e_flap is None:
             pytest.skip("Flap config polar fit was rejected")
 
-        assert 0.6 <= e_clean <= 1.0, (
-            f"Clean config: e_oswald = {e_clean:.4f} outside [0.6, 1.0]"
-        )
-        assert 0.6 <= e_flap <= 1.0, (
-            f"Flap config: e_oswald = {e_flap:.4f} outside [0.6, 1.0]"
-        )
+        assert 0.6 <= e_clean <= 1.0, f"Clean config: e_oswald = {e_clean:.4f} outside [0.6, 1.0]"
+        assert 0.6 <= e_flap <= 1.0, f"Flap config: e_oswald = {e_flap:.4f} outside [0.6, 1.0]"
 
-    def test_both_configs_yield_physical_cd0(
-        self, clean_wing_airplane, flap_wing_airplane
-    ):
+    def test_both_configs_yield_physical_cd0(self, clean_wing_airplane, flap_wing_airplane):
         """Both configs yield cd0 ∈ [0.010, 0.060] (RC-scale, sd7037 airfoil)."""
         cd0_clean, e_clean, r2_clean, _, _ = self._get_polar_fit(clean_wing_airplane)
         cd0_flap, e_flap, r2_flap, _, _ = self._get_polar_fit(flap_wing_airplane)

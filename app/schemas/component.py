@@ -10,7 +10,9 @@ class ComponentWrite(BaseModel):
     name: str = Field(..., min_length=1, description="Component name / model number")
     # gh#83: component_type is now a free string; validation happens at the
     # service layer against the dynamic `component_types` registry.
-    component_type: str = Field(..., min_length=1, description="Type name (see GET /component-types)")
+    component_type: str = Field(
+        ..., min_length=1, description="Type name (see GET /component-types)"
+    )
     manufacturer: Optional[str] = Field(None, description="Manufacturer name")
     description: Optional[str] = Field(None, description="Free-text description")
     mass_g: Optional[float] = Field(None, ge=0, description="Mass in grams")

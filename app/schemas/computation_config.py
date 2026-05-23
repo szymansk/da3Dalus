@@ -11,14 +11,22 @@ class ComputationConfigRead(BaseModel):
 
     id: int
     aeroplane_id: int
-    coarse_alpha_min_deg: float = Field(..., description="Lower bound of the coarse alpha sweep (deg)")
-    coarse_alpha_max_deg: float = Field(..., description="Upper bound of the coarse alpha sweep (deg)")
-    coarse_alpha_step_deg: float = Field(..., description="Step size of the coarse alpha sweep (deg)")
+    coarse_alpha_min_deg: float = Field(
+        ..., description="Lower bound of the coarse alpha sweep (deg)"
+    )
+    coarse_alpha_max_deg: float = Field(
+        ..., description="Upper bound of the coarse alpha sweep (deg)"
+    )
+    coarse_alpha_step_deg: float = Field(
+        ..., description="Step size of the coarse alpha sweep (deg)"
+    )
     fine_alpha_margin_deg: float = Field(
         ..., description="Margin around the coarse peak used for the fine sweep (deg)"
     )
     fine_alpha_step_deg: float = Field(..., description="Step size of the fine alpha sweep (deg)")
-    fine_velocity_count: int = Field(..., description="Number of velocity samples in the fine sweep")
+    fine_velocity_count: int = Field(
+        ..., description="Number of velocity samples in the fine sweep"
+    )
     debounce_seconds: float = Field(
         ..., description="Idle time before an auto-compute job is triggered (s)"
     )

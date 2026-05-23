@@ -5,6 +5,7 @@ D2 (9uk): create with multipart upload, file download (with optional
 STEP→STL regeneration), metadata update, lock-protected delete, +
 geometry extraction via CadQuery at upload time.
 """
+
 from __future__ import annotations
 
 import logging
@@ -40,9 +41,7 @@ ALLOWED_DOWNLOAD_FORMATS = {"step", "stl"}
 STORAGE_ROOT = Path("tmp") / "construction_parts"
 
 
-def _get_part_or_404(
-    db: Session, aeroplane_id: str, part_id: int
-) -> ConstructionPartModel:
+def _get_part_or_404(db: Session, aeroplane_id: str, part_id: int) -> ConstructionPartModel:
     """Fetch a part by (aeroplane_id, id). Raises NotFoundError if either check fails.
 
     Aeroplane scoping is enforced here so that callers cannot cross-access a
@@ -80,9 +79,7 @@ def get_part(db: Session, aeroplane_id: str, part_id: int) -> ConstructionPartRe
     return ConstructionPartRead.model_validate(part)
 
 
-def _set_locked(
-    db: Session, aeroplane_id: str, part_id: int, locked: bool
-) -> ConstructionPartRead:
+def _set_locked(db: Session, aeroplane_id: str, part_id: int, locked: bool) -> ConstructionPartRead:
     try:
         part = _get_part_or_404(db, aeroplane_id, part_id)
         part.locked = locked
@@ -122,18 +119,13 @@ def _validate_upload(filename: Optional[str], content: bytes) -> tuple[str, str]
     if len(content) > MAX_FILE_SIZE_BYTES:
         # Marker for the endpoint to map to 413.
         raise ConflictError(
-            message=(
-                f"File exceeds maximum size of {MAX_FILE_SIZE_BYTES // (1024 * 1024)} MB."
-            ),
+            message=(f"File exceeds maximum size of {MAX_FILE_SIZE_BYTES // (1024 * 1024)} MB."),
             details={"reason": "file_too_large"},
         )
     suffix = Path(filename or "upload.unknown").suffix.lower()
     if suffix not in ALLOWED_SUFFIXES:
         raise ValidationError(
-            message=(
-                f"Unsupported file extension '{suffix}'. "
-                f"Allowed: {sorted(ALLOWED_SUFFIXES)}"
-            ),
+            message=(f"Unsupported file extension '{suffix}'. Allowed: {sorted(ALLOWED_SUFFIXES)}"),
         )
     fmt = "stl" if suffix == ".stl" else "step"
     return suffix, fmt
@@ -172,7 +164,8 @@ def _extract_geometry(file_path: Path, file_format: str) -> dict[str, Optional[f
         # need geometry should upload STEP.
         logger.info(
             "Skipping geometry extraction for non-STEP format '%s' on %s",
-            file_format, file_path,
+            file_format,
+            file_path,
         )
         return empty
     try:
@@ -252,9 +245,7 @@ def create_part(
         raise InternalError(message=f"Database error: {exc}") from exc
 
 
-def get_part_file(
-    db: Session, aeroplane_id: str, part_id: int, fmt: str
-) -> tuple[Path, str]:
+def get_part_file(db: Session, aeroplane_id: str, part_id: int, fmt: str) -> tuple[Path, str]:
     """Return (path_to_serve, mime_type) for the requested format.
 
     Raises ValidationError when the format is invalid or cannot be produced
@@ -334,8 +325,7 @@ def delete_part(db: Session, aeroplane_id: str, part_id: int) -> None:
         if part.locked:
             raise ConflictError(
                 message=(
-                    f"ConstructionPart {part_id} is locked and cannot be deleted. "
-                    "Unlock it first."
+                    f"ConstructionPart {part_id} is locked and cannot be deleted. Unlock it first."
                 ),
                 details={"part_id": part_id},
             )

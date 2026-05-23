@@ -15,6 +15,7 @@ class WingAnalysisRequest(BaseModel):
     This model is used for the POST endpoint that analyzes wings using AVL.
     It includes the wing configuration and operating point parameters.
     """
+
     wings: Dict[str, Wing] = Field(..., description="Dictionary of wings to analyze")
     settings: Optional[AeroplaneSettings] = Field(None, description="Aeroplane settings")
 
@@ -26,8 +27,10 @@ class WingAnalysisRequest(BaseModel):
     q: float = Field(0.0, description="Pitch rate in rad/s")
     r: float = Field(0.0, description="Yaw rate in rad/s")
 
-    xyz_ref: List[float] \
-        = Field([0.0, 0.0, 0.0], description="default location in meters about which moments and rotation rates are defined (if doing trim calculations, XYZref must be the CG location)")
+    xyz_ref: List[float] = Field(
+        [0.0, 0.0, 0.0],
+        description="default location in meters about which moments and rotation rates are defined (if doing trim calculations, XYZref must be the CG location)",
+    )
 
     # Atmosphere parameters
     altitude: float = Field(0.0, description="Altitude in meters")
@@ -36,14 +39,13 @@ class WingAnalysisRequest(BaseModel):
         json_schema_extra={
             "example": {
                 "wings": {
-                    "main_wing" : {
+                    "main_wing": {
                         "segments": [
                             {
                                 "root_airfoil": {
                                     "airfoil": _DEFAULT_AIRFOIL_MH32,
                                     "chord": 162.0,
                                     "dihedral_as_rotation_in_degrees": 1,
-
                                     "incidence": 0,
                                 },
                                 "length": 20.0,
@@ -53,7 +55,6 @@ class WingAnalysisRequest(BaseModel):
                                     "airfoil": _DEFAULT_AIRFOIL_MH32,
                                     "chord": 162.0,
                                     "dihedral_as_rotation_in_degrees": 0,
-
                                     "incidence": 0,
                                 },
                                 "spare_list": [
@@ -67,13 +68,13 @@ class WingAnalysisRequest(BaseModel):
                                         "spare_vector": [
                                             0.03675826199775033,
                                             0.9992133621593052,
-                                            0.014882441237981625
+                                            0.014882441237981625,
                                         ],
                                         "spare_origin": [
                                             40.5,
                                             -0.06030645607992892,
-                                            3.4549545549062066
-                                        ]
+                                            3.4549545549062066,
+                                        ],
                                     },
                                     {
                                         "spare_support_dimension_width": 6.42,
@@ -82,16 +83,12 @@ class WingAnalysisRequest(BaseModel):
                                         "spare_length": 70,
                                         "spare_start": 0.0,
                                         "spare_mode": "standard",
-                                        "spare_vector": [
-                                            0.0,
-                                            1.0,
-                                            0.0
-                                        ],
+                                        "spare_vector": [0.0, 1.0, 0.0],
                                         "spare_origin": [
                                             89.10000000000001,
                                             -0.06454941004861466,
-                                            3.6980332249732912
-                                        ]
+                                            3.6980332249732912,
+                                        ],
                                     },
                                     {
                                         "spare_support_dimension_width": 6.42,
@@ -100,29 +97,24 @@ class WingAnalysisRequest(BaseModel):
                                         "spare_length": 70,
                                         "spare_start": 0.0,
                                         "spare_mode": "standard",
-                                        "spare_vector": [
-                                            0.0,
-                                            1.0,
-                                            0.0
-                                        ],
+                                        "spare_vector": [0.0, 1.0, 0.0],
                                         "spare_origin": [
                                             32.4,
                                             -0.05490891668391669,
-                                            3.1457297300081533
-                                        ]
-                                    }
+                                            3.1457297300081533,
+                                        ],
+                                    },
                                 ],
                                 "trailing_edge_device": None,
                                 "number_interpolation_points": 201,
                                 "tip_type": None,
-                                "wing_segment_type": "root"
+                                "wing_segment_type": "root",
                             },
                             {
                                 "root_airfoil": {
                                     "airfoil": _DEFAULT_AIRFOIL_MH32,
                                     "chord": 162.0,
                                     "dihedral_as_rotation_in_degrees": 0,
-
                                     "incidence": 0,
                                 },
                                 "length": 200,
@@ -132,7 +124,6 @@ class WingAnalysisRequest(BaseModel):
                                     "airfoil": _DEFAULT_AIRFOIL_MH32,
                                     "chord": 157,
                                     "dihedral_as_rotation_in_degrees": 0,
-
                                     "incidence": 0,
                                 },
                                 "spare_list": [
@@ -146,13 +137,13 @@ class WingAnalysisRequest(BaseModel):
                                         "spare_vector": [
                                             0.03675826199775033,
                                             0.9992133621593052,
-                                            0.014882441237981625
+                                            0.014882441237981625,
                                         ],
                                         "spare_origin": [
                                             41.23516523995501,
                                             19.923960787106175,
-                                            3.752603379665839
-                                        ]
+                                            3.752603379665839,
+                                        ],
                                     },
                                     {
                                         "spare_support_dimension_width": 6.42,
@@ -161,16 +152,12 @@ class WingAnalysisRequest(BaseModel):
                                         "spare_length": 60,
                                         "spare_start": 0.0,
                                         "spare_mode": "follow",
-                                        "spare_vector": [
-                                            0.0,
-                                            1.0,
-                                            0.0
-                                        ],
+                                        "spare_vector": [0.0, 1.0, 0.0],
                                         "spare_origin": [
                                             89.10000000000001,
                                             19.935450589951387,
-                                            3.6980332249732912
-                                        ]
+                                            3.6980332249732912,
+                                        ],
                                     },
                                     {
                                         "spare_support_dimension_width": 6.42,
@@ -179,29 +166,24 @@ class WingAnalysisRequest(BaseModel):
                                         "spare_length": 60,
                                         "spare_start": 0.0,
                                         "spare_mode": "follow",
-                                        "spare_vector": [
-                                            0.0,
-                                            1.0,
-                                            0.0
-                                        ],
+                                        "spare_vector": [0.0, 1.0, 0.0],
                                         "spare_origin": [
                                             32.4,
                                             19.945091083316083,
-                                            3.1457297300081533
-                                        ]
-                                    }
+                                            3.1457297300081533,
+                                        ],
+                                    },
                                 ],
                                 "trailing_edge_device": None,
                                 "number_interpolation_points": 201,
                                 "tip_type": None,
-                                "wing_segment_type": "segment"
+                                "wing_segment_type": "segment",
                             },
                             {
                                 "root_airfoil": {
                                     "airfoil": _DEFAULT_AIRFOIL_MH32,
                                     "chord": 157,
                                     "dihedral_as_rotation_in_degrees": 0,
-
                                     "incidence": 0,
                                 },
                                 "length": 250,
@@ -211,7 +193,6 @@ class WingAnalysisRequest(BaseModel):
                                     "airfoil": _DEFAULT_AIRFOIL_MH32,
                                     "chord": 132.88888888888889,
                                     "dihedral_as_rotation_in_degrees": 0,
-
                                     "incidence": 0,
                                 },
                                 "spare_list": [
@@ -225,13 +206,13 @@ class WingAnalysisRequest(BaseModel):
                                         "spare_vector": [
                                             0.03675826199775033,
                                             0.9992133621593052,
-                                            0.014882441237981625
+                                            0.014882441237981625,
                                         ],
                                         "spare_origin": [
                                             48.58681763950507,
                                             219.76663321896723,
-                                            6.729091627262164
-                                        ]
+                                            6.729091627262164,
+                                        ],
                                     }
                                 ],
                                 "trailing_edge_device": {
@@ -249,18 +230,17 @@ class WingAnalysisRequest(BaseModel):
                                     "negative_deflection_deg": 35,
                                     "trailing_edge_offset_factor": 1.2,
                                     "hinge_type": "top",
-                                    "symmetric": False
+                                    "symmetric": False,
                                 },
                                 "number_interpolation_points": 201,
                                 "tip_type": None,
-                                "wing_segment_type": "segment"
+                                "wing_segment_type": "segment",
                             },
                             {
                                 "root_airfoil": {
                                     "airfoil": _DEFAULT_AIRFOIL_MH32,
                                     "chord": 132.88888888888889,
                                     "dihedral_as_rotation_in_degrees": 0,
-
                                     "incidence": 0,
                                 },
                                 "length": 75,
@@ -270,7 +250,6 @@ class WingAnalysisRequest(BaseModel):
                                     "airfoil": _DEFAULT_AIRFOIL_MH32,
                                     "chord": 123.05555555555554,
                                     "dihedral_as_rotation_in_degrees": 0,
-
                                     "incidence": 0,
                                 },
                                 "spare_list": [
@@ -284,13 +263,13 @@ class WingAnalysisRequest(BaseModel):
                                         "spare_vector": [
                                             0.03675826199775033,
                                             0.9992133621593052,
-                                            0.014882441237981625
+                                            0.014882441237981625,
                                         ],
                                         "spare_origin": [
                                             57.77638313894265,
                                             469.56997375879354,
-                                            10.44970193675757
-                                        ]
+                                            10.44970193675757,
+                                        ],
                                     }
                                 ],
                                 "trailing_edge_device": {
@@ -308,18 +287,17 @@ class WingAnalysisRequest(BaseModel):
                                     "negative_deflection_deg": 25,
                                     "trailing_edge_offset_factor": 1.0,
                                     "hinge_type": "top",
-                                    "symmetric": True
+                                    "symmetric": True,
                                 },
                                 "number_interpolation_points": 201,
                                 "tip_type": None,
-                                "wing_segment_type": "segment"
+                                "wing_segment_type": "segment",
                             },
                             {
                                 "root_airfoil": {
                                     "airfoil": _DEFAULT_AIRFOIL_MH32,
                                     "chord": 123.05555555555554,
                                     "dihedral_as_rotation_in_degrees": 0,
-
                                     "incidence": 0,
                                 },
                                 "length": 85,
@@ -329,7 +307,6 @@ class WingAnalysisRequest(BaseModel):
                                     "airfoil": _DEFAULT_AIRFOIL_MH32,
                                     "chord": 105.21777777777777,
                                     "dihedral_as_rotation_in_degrees": 0,
-
                                     "incidence": 0,
                                 },
                                 "spare_list": [
@@ -343,13 +320,13 @@ class WingAnalysisRequest(BaseModel):
                                         "spare_vector": [
                                             0.03675826199775033,
                                             0.9992133621593052,
-                                            0.014882441237981625
+                                            0.014882441237981625,
                                         ],
                                         "spare_origin": [
                                             60.53325278877392,
                                             544.5109759207414,
-                                            11.565885029606193
-                                        ]
+                                            11.565885029606193,
+                                        ],
                                     }
                                 ],
                                 "trailing_edge_device": {
@@ -367,18 +344,17 @@ class WingAnalysisRequest(BaseModel):
                                     "negative_deflection_deg": 25,
                                     "trailing_edge_offset_factor": 1.0,
                                     "hinge_type": "top",
-                                    "symmetric": True
+                                    "symmetric": True,
                                 },
                                 "number_interpolation_points": 201,
                                 "tip_type": None,
-                                "wing_segment_type": "segment"
+                                "wing_segment_type": "segment",
                             },
                             {
                                 "root_airfoil": {
                                     "airfoil": _DEFAULT_AIRFOIL_MH32,
                                     "chord": 105.21777777777777,
                                     "dihedral_as_rotation_in_degrees": 0,
-
                                     "incidence": 0,
                                 },
                                 "length": 40,
@@ -388,7 +364,6 @@ class WingAnalysisRequest(BaseModel):
                                     "airfoil": _DEFAULT_AIRFOIL_MH32,
                                     "chord": 90,
                                     "dihedral_as_rotation_in_degrees": 0,
-
                                     "incidence": 0,
                                 },
                                 "spare_list": [
@@ -402,13 +377,13 @@ class WingAnalysisRequest(BaseModel):
                                         "spare_vector": [
                                             0.03675826199775033,
                                             0.9992133621593052,
-                                            0.014882441237981625
+                                            0.014882441237981625,
                                         ],
                                         "spare_origin": [
                                             63.6577050585827,
                                             629.4441117042824,
-                                            12.83089253483463
-                                        ]
+                                            12.83089253483463,
+                                        ],
                                     }
                                 ],
                                 "trailing_edge_device": {
@@ -426,18 +401,17 @@ class WingAnalysisRequest(BaseModel):
                                     "negative_deflection_deg": 25,
                                     "trailing_edge_offset_factor": 1.0,
                                     "hinge_type": "top",
-                                    "symmetric": True
+                                    "symmetric": True,
                                 },
                                 "number_interpolation_points": 201,
                                 "tip_type": None,
-                                "wing_segment_type": "segment"
+                                "wing_segment_type": "segment",
                             },
                             {
                                 "root_airfoil": {
                                     "airfoil": _DEFAULT_AIRFOIL_MH32,
                                     "chord": 90,
                                     "dihedral_as_rotation_in_degrees": 0,
-
                                     "incidence": 0,
                                 },
                                 "length": 20,
@@ -447,7 +421,6 @@ class WingAnalysisRequest(BaseModel):
                                     "airfoil": _DEFAULT_AIRFOIL_MH32,
                                     "chord": 79.5,
                                     "dihedral_as_rotation_in_degrees": 5,
-
                                     "incidence": 0,
                                 },
                                 "spare_list": [
@@ -461,26 +434,25 @@ class WingAnalysisRequest(BaseModel):
                                         "spare_vector": [
                                             0.03675826199775033,
                                             0.9992133621593052,
-                                            0.014882441237981625
+                                            0.014882441237981625,
                                         ],
                                         "spare_origin": [
                                             65.12803553849271,
                                             669.4126461906545,
-                                            13.426190184353896
-                                        ]
+                                            13.426190184353896,
+                                        ],
                                     }
                                 ],
                                 "trailing_edge_device": None,
                                 "number_interpolation_points": 201,
                                 "tip_type": None,
-                                "wing_segment_type": "segment"
+                                "wing_segment_type": "segment",
                             },
                             {
                                 "root_airfoil": {
                                     "airfoil": _DEFAULT_AIRFOIL_MH32,
                                     "chord": 79.5,
                                     "dihedral_as_rotation_in_degrees": 5,
-
                                     "incidence": 0,
                                 },
                                 "length": 15,
@@ -490,21 +462,19 @@ class WingAnalysisRequest(BaseModel):
                                     "airfoil": _DEFAULT_AIRFOIL_MH32,
                                     "chord": 71.0,
                                     "dihedral_as_rotation_in_degrees": 5,
-
                                     "incidence": 0,
                                 },
                                 "spare_list": None,
                                 "trailing_edge_device": None,
                                 "number_interpolation_points": 201,
                                 "tip_type": "flat",
-                                "wing_segment_type": "tip"
+                                "wing_segment_type": "tip",
                             },
                             {
                                 "root_airfoil": {
                                     "airfoil": _DEFAULT_AIRFOIL_MH32,
                                     "chord": 71.0,
                                     "dihedral_as_rotation_in_degrees": 5,
-
                                     "incidence": 0,
                                 },
                                 "length": 15,
@@ -514,21 +484,19 @@ class WingAnalysisRequest(BaseModel):
                                     "airfoil": _DEFAULT_AIRFOIL_MH32,
                                     "chord": 62.0,
                                     "dihedral_as_rotation_in_degrees": 5,
-
                                     "incidence": 0,
                                 },
                                 "spare_list": None,
                                 "trailing_edge_device": None,
                                 "number_interpolation_points": 201,
                                 "tip_type": "flat",
-                                "wing_segment_type": "tip"
+                                "wing_segment_type": "tip",
                             },
                             {
                                 "root_airfoil": {
                                     "airfoil": _DEFAULT_AIRFOIL_MH32,
                                     "chord": 62.0,
                                     "dihedral_as_rotation_in_degrees": 5,
-
                                     "incidence": 0,
                                 },
                                 "length": 15,
@@ -538,21 +506,19 @@ class WingAnalysisRequest(BaseModel):
                                     "airfoil": _DEFAULT_AIRFOIL_MH32,
                                     "chord": 52.5,
                                     "dihedral_as_rotation_in_degrees": 10,
-
                                     "incidence": -0.0,
                                 },
                                 "spare_list": None,
                                 "trailing_edge_device": None,
                                 "number_interpolation_points": 201,
                                 "tip_type": "flat",
-                                "wing_segment_type": "tip"
+                                "wing_segment_type": "tip",
                             },
                             {
                                 "root_airfoil": {
                                     "airfoil": _DEFAULT_AIRFOIL_MH32,
                                     "chord": 52.5,
                                     "dihedral_as_rotation_in_degrees": 10,
-
                                     "incidence": -0.0,
                                 },
                                 "length": 10,
@@ -562,21 +528,19 @@ class WingAnalysisRequest(BaseModel):
                                     "airfoil": _DEFAULT_AIRFOIL_MH32,
                                     "chord": 40.5,
                                     "dihedral_as_rotation_in_degrees": 15,
-
                                     "incidence": -0.0,
                                 },
                                 "spare_list": None,
                                 "trailing_edge_device": None,
                                 "number_interpolation_points": 201,
                                 "tip_type": "flat",
-                                "wing_segment_type": "tip"
+                                "wing_segment_type": "tip",
                             },
                             {
                                 "root_airfoil": {
                                     "airfoil": _DEFAULT_AIRFOIL_MH32,
                                     "chord": 40.5,
                                     "dihedral_as_rotation_in_degrees": 15,
-
                                     "incidence": -0.0,
                                 },
                                 "length": 5,
@@ -586,22 +550,17 @@ class WingAnalysisRequest(BaseModel):
                                     "airfoil": _DEFAULT_AIRFOIL_MH32,
                                     "chord": 24.0,
                                     "dihedral_as_rotation_in_degrees": 0,
-
                                     "incidence": -0.0,
                                 },
                                 "spare_list": None,
                                 "trailing_edge_device": None,
                                 "number_interpolation_points": 201,
                                 "tip_type": "flat",
-                                "wing_segment_type": "tip"
-                            }
+                                "wing_segment_type": "tip",
+                            },
                         ],
-                        "nose_pnt": [
-                            0,
-                            0,
-                            0
-                        ],
-                        "symmetric": True
+                        "nose_pnt": [0, 0, 0],
+                        "symmetric": True,
                     },
                     "v-tail": {
                         "segments": [
@@ -610,7 +569,6 @@ class WingAnalysisRequest(BaseModel):
                                     "airfoil": _DEFAULT_AIRFOIL_MH32,
                                     "chord": 85.0,
                                     "dihedral_as_rotation_in_degrees": 45,
-
                                     "incidence": -2,
                                 },
                                 "length": 210.0,
@@ -620,7 +578,6 @@ class WingAnalysisRequest(BaseModel):
                                     "airfoil": _DEFAULT_AIRFOIL_MH32,
                                     "chord": 70.0,
                                     "dihedral_as_rotation_in_degrees": 0,
-
                                     "incidence": 0,
                                 },
                                 "spare_list": [
@@ -634,13 +591,13 @@ class WingAnalysisRequest(BaseModel):
                                         "spare_vector": [
                                             0.05351516795938699,
                                             0.7058484920285241,
-                                            0.7063384692194934
+                                            0.7063384692194934,
                                         ],
                                         "spare_origin": [
                                             670.7907626482797,
                                             -17.321732711341372,
-                                            17.32173271134137
-                                        ]
+                                            17.32173271134137,
+                                        ],
                                     },
                                     {
                                         "spare_support_dimension_width": 6.42,
@@ -649,17 +606,13 @@ class WingAnalysisRequest(BaseModel):
                                         "spare_length": 70,
                                         "spare_start": 0.0,
                                         "spare_mode": "standard",
-                                        "spare_vector": [
-                                            0.0,
-                                            1.0,
-                                            0.0
-                                        ],
+                                        "spare_vector": [0.0, 1.0, 0.0],
                                         "spare_origin": [
                                             696.2707769328415,
                                             -18.04115740932608,
-                                            18.041157409326075
-                                        ]
-                                    }
+                                            18.041157409326075,
+                                        ],
+                                    },
                                 ],
                                 "trailing_edge_device": {
                                     "name": "v-tail",
@@ -676,20 +629,16 @@ class WingAnalysisRequest(BaseModel):
                                     "negative_deflection_deg": 35,
                                     "trailing_edge_offset_factor": 1.2,
                                     "hinge_type": "top",
-                                    "symmetric": False
+                                    "symmetric": False,
                                 },
                                 "number_interpolation_points": 201,
                                 "tip_type": None,
-                                "wing_segment_type": "root"
+                                "wing_segment_type": "root",
                             }
                         ],
-                        "nose_pnt": [
-                            650,
-                            0,
-                            0
-                        ],
-                        "symmetric": True
-                    }
+                        "nose_pnt": [650, 0, 0],
+                        "symmetric": True,
+                    },
                 },
                 "velocity": 15.0,
                 "alpha": 0.0,

@@ -88,9 +88,7 @@ async def recompute_forward_cg(
     On any computation failure, falls back to the 0.30·MAC stub.
     """
     # Look up the aeroplane model
-    aeroplane = (
-        db.query(AeroplaneModel).filter(AeroplaneModel.uuid == aeroplane_id).first()
-    )
+    aeroplane = db.query(AeroplaneModel).filter(AeroplaneModel.uuid == aeroplane_id).first()
     if aeroplane is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,

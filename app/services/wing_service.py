@@ -26,7 +26,10 @@ from app.models.aeroplanemodel import (
 from app.schemas.Servo import Servo as ServoSchema
 from app.schemas.wing import Wing as WingConfigurationSchema
 from app.services.create_wing_configuration import create_wing_configuration
-from app.converters.model_schema_converters import wing_config_to_wing_model, wing_model_to_wing_config
+from app.converters.model_schema_converters import (
+    wing_config_to_wing_model,
+    wing_model_to_wing_config,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -50,9 +53,13 @@ def _convert_spare_to_meters(spare: schemas.SpareDetailSchema) -> schemas.SpareD
         update={
             "spare_support_dimension_width": spare.spare_support_dimension_width * _MM_TO_M,
             "spare_support_dimension_height": spare.spare_support_dimension_height * _MM_TO_M,
-            "spare_length": spare.spare_length * _MM_TO_M if spare.spare_length is not None else None,
+            "spare_length": spare.spare_length * _MM_TO_M
+            if spare.spare_length is not None
+            else None,
             "spare_start": spare.spare_start * _MM_TO_M,
-            "spare_origin": [v * _MM_TO_M for v in spare.spare_origin] if spare.spare_origin is not None else None,
+            "spare_origin": [v * _MM_TO_M for v in spare.spare_origin]
+            if spare.spare_origin is not None
+            else None,
         }
     )
 
@@ -68,9 +75,13 @@ def _convert_spare_to_mm(spare: schemas.SpareDetailSchema) -> schemas.SpareDetai
         update={
             "spare_support_dimension_width": spare.spare_support_dimension_width * _M_TO_MM,
             "spare_support_dimension_height": spare.spare_support_dimension_height * _M_TO_MM,
-            "spare_length": spare.spare_length * _M_TO_MM if spare.spare_length is not None else None,
+            "spare_length": spare.spare_length * _M_TO_MM
+            if spare.spare_length is not None
+            else None,
             "spare_start": spare.spare_start * _M_TO_MM,
-            "spare_origin": [v * _M_TO_MM for v in spare.spare_origin] if spare.spare_origin is not None else None,
+            "spare_origin": [v * _M_TO_MM for v in spare.spare_origin]
+            if spare.spare_origin is not None
+            else None,
         }
     )
 
@@ -89,20 +100,17 @@ def _convert_xsec_spares_to_meters(
 def get_aeroplane_or_raise(db: Session, aeroplane_uuid) -> AeroplaneModel:
     """
     Get an aeroplane by UUID or raise NotFoundError.
-    
+
     Raises:
         NotFoundError: If the aeroplane does not exist.
         InternalError: If a database error occurs.
     """
     try:
-        aeroplane = db.query(AeroplaneModel).filter(
-            AeroplaneModel.uuid == aeroplane_uuid
-        ).first()
-        
+        aeroplane = db.query(AeroplaneModel).filter(AeroplaneModel.uuid == aeroplane_uuid).first()
+
         if not aeroplane:
             raise NotFoundError(
-                message="Aeroplane not found",
-                details={"aeroplane_id": str(aeroplane_uuid)}
+                message="Aeroplane not found", details={"aeroplane_id": str(aeroplane_uuid)}
             )
         return aeroplane
     except NotFoundError:
@@ -115,7 +123,7 @@ def get_aeroplane_or_raise(db: Session, aeroplane_uuid) -> AeroplaneModel:
 def get_wing_or_raise(aeroplane: AeroplaneModel, wing_name: str) -> WingModel:
     """
     Get a wing by name from an aeroplane or raise NotFoundError.
-    
+
     Raises:
         NotFoundError: If the wing does not exist.
     """
@@ -123,7 +131,7 @@ def get_wing_or_raise(aeroplane: AeroplaneModel, wing_name: str) -> WingModel:
     if not wing:
         raise NotFoundError(
             message="Wing not found",
-            details={"wing_name": wing_name, "aeroplane_id": str(aeroplane.uuid)}
+            details={"wing_name": wing_name, "aeroplane_id": str(aeroplane.uuid)},
         )
     return wing
 
@@ -249,7 +257,7 @@ def _serialize_control_surface_cad_details(
 def list_wing_names(db: Session, aeroplane_uuid) -> List[str]:
     """
     Get list of wing names for an aeroplane.
-    
+
     Raises:
         NotFoundError: If the aeroplane does not exist.
         InternalError: If a database error occurs.
@@ -259,14 +267,11 @@ def list_wing_names(db: Session, aeroplane_uuid) -> List[str]:
 
 
 def create_wing(
-    db: Session,
-    aeroplane_uuid,
-    wing_name: str,
-    wing_data: schemas.AsbWingGeometryWriteSchema
+    db: Session, aeroplane_uuid, wing_name: str, wing_data: schemas.AsbWingGeometryWriteSchema
 ) -> None:
     """
     Create a new wing for an aeroplane.
-    
+
     Raises:
         NotFoundError: If the aeroplane does not exist.
         ValidationError: If the wing name already exists.
@@ -274,13 +279,13 @@ def create_wing(
     """
     try:
         plane = get_aeroplane_or_raise(db, aeroplane_uuid)
-            
+
         if any(w.name == wing_name for w in plane.wings):
             raise ValidationError(
                 message="Wing name must be unique for this aeroplane",
-                details={"wing_name": wing_name}
+                details={"wing_name": wing_name},
             )
-            
+
         wing = WingModel.from_dict(name=wing_name, data=wing_data.model_dump())
         wing.design_model = "asb"
         plane.wings.append(wing)
@@ -289,6 +294,7 @@ def create_wing(
 
         # Auto-sync: create group in component tree (gh#108)
         from app.services.component_tree_service import sync_group_for_wing
+
         sync_group_for_wing(db, str(aeroplane_uuid), wing_name)
     except (NotFoundError, ValidationError):
         raise
@@ -340,6 +346,7 @@ def create_wing_from_wing_configuration(
 
         # Auto-sync: create group in component tree (gh#108)
         from app.services.component_tree_service import sync_group_for_wing
+
         sync_group_for_wing(db, str(aeroplane_uuid), wing_name)
     except (NotFoundError, ValidationError):
         raise
@@ -382,19 +389,21 @@ def _wing_config_to_dict(wc) -> dict:
             "root_airfoil": {
                 "airfoil": seg.root_airfoil.airfoil,
                 "chord": seg.root_airfoil.chord,
-                "dihedral_as_rotation_in_degrees": seg.root_airfoil.dihedral_as_rotation_in_degrees or 0,
+                "dihedral_as_rotation_in_degrees": seg.root_airfoil.dihedral_as_rotation_in_degrees
+                or 0,
                 "incidence": seg.root_airfoil.incidence or 0,
             },
             "tip_airfoil": {
                 "airfoil": seg.tip_airfoil.airfoil,
                 "chord": seg.tip_airfoil.chord,
-                "dihedral_as_rotation_in_degrees": seg.tip_airfoil.dihedral_as_rotation_in_degrees or 0,
+                "dihedral_as_rotation_in_degrees": seg.tip_airfoil.dihedral_as_rotation_in_degrees
+                or 0,
                 "incidence": seg.tip_airfoil.incidence or 0,
             },
             "length": seg.length,
             "sweep": seg.sweep,
             "number_interpolation_points": seg.number_interpolation_points,
-            "tip_type": getattr(seg, 'tip_type', None),
+            "tip_type": getattr(seg, "tip_type", None),
         }
 
         # Preserve spars (gh#107)
@@ -415,7 +424,7 @@ def _wing_config_to_dict(wc) -> dict:
         "segments": segments,
         "nose_pnt": list(wc.nose_pnt) if wc.nose_pnt else [0, 0, 0],
         "symmetric": wc.symmetric,
-        "parameters": wc.parameters if hasattr(wc, 'parameters') else "relative",
+        "parameters": wc.parameters if hasattr(wc, "parameters") else "relative",
     }
 
 
@@ -455,6 +464,7 @@ def put_wing_as_wingconfig(
 
         # Auto-sync: ensure group in component tree (gh#108)
         from app.services.component_tree_service import sync_group_for_wing
+
         sync_group_for_wing(db, str(aeroplane_uuid), wing_name)
     except (NotFoundError, ValidationError):
         raise
@@ -466,14 +476,11 @@ def put_wing_as_wingconfig(
 
 
 def update_wing(
-    db: Session,
-    aeroplane_uuid,
-    wing_name: str,
-    wing_data: schemas.AsbWingGeometryWriteSchema
+    db: Session, aeroplane_uuid, wing_name: str, wing_data: schemas.AsbWingGeometryWriteSchema
 ) -> None:
     """
     Update an existing wing.
-    
+
     Raises:
         NotFoundError: If the aeroplane or wing does not exist.
         InternalError: If a database error occurs.
@@ -481,7 +488,7 @@ def update_wing(
     try:
         plane = get_aeroplane_or_raise(db, aeroplane_uuid)
         wing = get_wing_or_raise(plane, wing_name)
-            
+
         new_wing = WingModel.from_dict(name=wing_name, data=wing_data.model_dump())
         new_wing.design_model = "asb"
         plane.wings.remove(wing)
@@ -527,7 +534,7 @@ def get_wing(db: Session, aeroplane_uuid, wing_name: str) -> schemas.AsbWingRead
 def delete_wing(db: Session, aeroplane_uuid, wing_name: str) -> None:
     """
     Delete a wing.
-    
+
     Raises:
         NotFoundError: If the aeroplane or wing does not exist.
         InternalError: If a database error occurs.
@@ -540,6 +547,7 @@ def delete_wing(db: Session, aeroplane_uuid, wing_name: str) -> None:
 
         # Auto-sync: remove wing group + servos from component tree (gh#108)
         from app.services.component_tree_service import delete_synced_nodes
+
         delete_synced_nodes(db, str(aeroplane_uuid), f"wing:{wing_name}")
         delete_synced_nodes(db, str(aeroplane_uuid), f"servo:{wing_name}:")
     except NotFoundError:
@@ -551,10 +559,9 @@ def delete_wing(db: Session, aeroplane_uuid, wing_name: str) -> None:
 
 # Cross-section operations
 
+
 def get_wing_cross_sections(
-    db: Session,
-    aeroplane_uuid,
-    wing_name: str
+    db: Session, aeroplane_uuid, wing_name: str
 ) -> List[schemas.WingXSecReadSchema]:
     """
     Get all cross-sections for a wing.
@@ -585,7 +592,7 @@ def get_wing_cross_sections(
 def delete_all_cross_sections(db: Session, aeroplane_uuid, wing_name: str) -> None:
     """
     Delete all cross-sections from a wing.
-    
+
     Raises:
         NotFoundError: If the aeroplane or wing does not exist.
         InternalError: If a database error occurs.
@@ -604,10 +611,7 @@ def delete_all_cross_sections(db: Session, aeroplane_uuid, wing_name: str) -> No
 
 
 def get_cross_section(
-    db: Session,
-    aeroplane_uuid,
-    wing_name: str,
-    index: int
+    db: Session, aeroplane_uuid, wing_name: str, index: int
 ) -> schemas.WingXSecReadSchema:
     """
     Get a specific cross-section by index.
@@ -654,10 +658,7 @@ def _build_cross_section_model(
         # design; silently drop to match the AsbWingSchema invariant.
         return new_xsec
 
-    if any(
-        value is not None
-        for value in (x_sec_type, tip_type, number_interpolation_points)
-    ):
+    if any(value is not None for value in (x_sec_type, tip_type, number_interpolation_points)):
         new_xsec.detail = WingXSecDetailModel(
             x_sec_type=x_sec_type,
             tip_type=tip_type,
@@ -672,11 +673,11 @@ def create_cross_section(
     aeroplane_uuid,
     wing_name: str,
     index: int,
-    xsec_data: schemas.WingXSecGeometryWriteSchema
+    xsec_data: schemas.WingXSecGeometryWriteSchema,
 ) -> None:
     """
     Create a new cross-section at the specified index.
-    
+
     Raises:
         NotFoundError: If the aeroplane or wing does not exist.
         InternalError: If a database error occurs.
@@ -696,7 +697,7 @@ def create_cross_section(
             sort_index=insertion_index,
             is_terminal_xsec=(insertion_index == len(existing)),
         )
-            
+
         for xs in existing[insertion_index:]:
             xs.sort_index = xs.sort_index + 1
             db.add(xs)
@@ -721,7 +722,7 @@ def update_cross_section(
     aeroplane_uuid,
     wing_name: str,
     index: int,
-    xsec_data: schemas.WingXSecGeometryWriteSchema
+    xsec_data: schemas.WingXSecGeometryWriteSchema,
 ) -> None:
     """
     Update an existing cross-section.
@@ -747,10 +748,7 @@ def update_cross_section(
         x_secs = wing.x_secs
 
         if index < 0 or index >= len(x_secs):
-            raise NotFoundError(
-                message=_ERR_XSEC_NOT_FOUND,
-                details={"index": index}
-            )
+            raise NotFoundError(message=_ERR_XSEC_NOT_FOUND, details={"index": index})
         xsec = x_secs[index]
         xsec.xyz_le = xsec_data.xyz_le
         xsec.chord = xsec_data.chord
@@ -786,9 +784,7 @@ def update_cross_section(
             if xsec_data.tip_type is not None:
                 xsec.detail.tip_type = xsec_data.tip_type
             if xsec_data.number_interpolation_points is not None:
-                xsec.detail.number_interpolation_points = (
-                    xsec_data.number_interpolation_points
-                )
+                xsec.detail.number_interpolation_points = xsec_data.number_interpolation_points
 
         aeroplane.updated_at = datetime.now()
         db.flush()
@@ -799,15 +795,10 @@ def update_cross_section(
         raise InternalError(message=f"Database error: {e}")
 
 
-def delete_cross_section(
-    db: Session,
-    aeroplane_uuid,
-    wing_name: str,
-    index: int
-) -> None:
+def delete_cross_section(db: Session, aeroplane_uuid, wing_name: str, index: int) -> None:
     """
     Delete a cross-section.
-    
+
     Raises:
         NotFoundError: If the aeroplane, wing, or cross-section does not exist.
         InternalError: If a database error occurs.
@@ -816,13 +807,10 @@ def delete_cross_section(
         aeroplane = get_aeroplane_or_raise(db, aeroplane_uuid)
         wing = get_wing_or_raise(aeroplane, wing_name)
         x_secs = wing.x_secs
-            
+
         if index < 0 or index >= len(x_secs):
-            raise NotFoundError(
-                message=_ERR_XSEC_NOT_FOUND,
-                details={"index": index}
-            )
-            
+            raise NotFoundError(message=_ERR_XSEC_NOT_FOUND, details={"index": index})
+
         xsec = x_secs.pop(index)
         db.delete(xsec)
         aeroplane.updated_at = datetime.now()
@@ -846,10 +834,18 @@ def _sync_spares_for_xsec(db_xsec, segment) -> None:
             break
         db_spare = db_xsec.detail.spares[spare_idx]
         if spare.spare_vector is not None:
-            vec = spare.spare_vector.toTuple() if hasattr(spare.spare_vector, "toTuple") else spare.spare_vector
+            vec = (
+                spare.spare_vector.toTuple()
+                if hasattr(spare.spare_vector, "toTuple")
+                else spare.spare_vector
+            )
             db_spare.spare_vector = [float(v) for v in vec]
         if spare.spare_origin is not None:
-            orig = spare.spare_origin.toTuple() if hasattr(spare.spare_origin, "toTuple") else spare.spare_origin
+            orig = (
+                spare.spare_origin.toTuple()
+                if hasattr(spare.spare_origin, "toTuple")
+                else spare.spare_origin
+            )
             db_spare.spare_origin = [float(v) * _M_TO_MM for v in orig]
 
 
@@ -1347,11 +1343,15 @@ def patch_control_surface_cad_details_servo_details(
 
         # Auto-sync: upsert servo node in component tree (gh#108)
         from app.services.component_tree_service import upsert_synced_servo
+
         comp_id = None
         if not isinstance(servo_payload, int) and ted.servo_data:
             comp_id = ted.servo_data.component_id
         upsert_synced_servo(
-            db, str(aeroplane_uuid), wing_name, xsec_index,
+            db,
+            str(aeroplane_uuid),
+            wing_name,
+            xsec_index,
             component_id=comp_id,
             symmetric=wing.symmetric if hasattr(wing, "symmetric") else False,
         )

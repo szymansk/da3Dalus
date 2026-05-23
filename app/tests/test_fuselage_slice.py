@@ -26,7 +26,6 @@ MOCK_RESPONSE = FuselageSliceResponse(
 
 
 class TestFuselageSliceEndpoint:
-
     def test_accepts_step_upload(self, client_and_db):
         client, _ = client_and_db
         with patch(
@@ -91,6 +90,7 @@ class TestFuselageSliceEndpoint:
             side_effect=Exception("Should not be called"),
         ):
             from app.core.exceptions import ValidationError
+
             with patch(
                 "app.services.fuselage_slice_service.slice_step_file",
                 new_callable=MagicMock,

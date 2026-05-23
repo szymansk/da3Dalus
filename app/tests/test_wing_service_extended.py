@@ -51,7 +51,12 @@ def client(client_and_db):
     yield c
 
 
-def _make_plane_with_wing(db, *, wing_name: str = "main", xsec_count: int = 2, ):
+def _make_plane_with_wing(
+    db,
+    *,
+    wing_name: str = "main",
+    xsec_count: int = 2,
+):
     """Create an aeroplane with a wing that has xsec_count cross-sections.
 
     Returns (aeroplane, wing) ORM instances.
@@ -74,7 +79,6 @@ def _make_plane_with_wing(db, *, wing_name: str = "main", xsec_count: int = 2, )
     db.commit()
     db.refresh(plane)
     return plane, wing
-
 
 
 # ── get_aeroplane_or_raise ────────────────────────────────────────────
@@ -186,9 +190,7 @@ class TestCreateWing:
             wing_service.create_wing(db, plane.uuid, "dup", write_schema)
 
     def test_raises_not_found_for_bad_plane(self, db):
-        write_schema = schemas.AsbWingGeometryWriteSchema.model_construct(
-            name="w", x_secs=[]
-        )
+        write_schema = schemas.AsbWingGeometryWriteSchema.model_construct(name="w", x_secs=[])
         with pytest.raises(NotFoundError):
             wing_service.create_wing(db, uuid.uuid4(), "w", write_schema)
 
@@ -210,9 +212,7 @@ class TestUpdateWing:
 
     def test_raises_not_found_for_missing_wing(self, db):
         plane = make_aeroplane(db)
-        write_schema = schemas.AsbWingGeometryWriteSchema.model_construct(
-            name="nope", x_secs=[]
-        )
+        write_schema = schemas.AsbWingGeometryWriteSchema.model_construct(name="nope", x_secs=[])
         with pytest.raises(NotFoundError):
             wing_service.update_wing(db, plane.uuid, "nope", write_schema)
 
@@ -613,9 +613,7 @@ class TestControlSurfaceCadDetailsService:
     def test_get_cad_details(self, db):
         plane, wing = _make_plane_with_wing(db, xsec_count=2)
         self._add_ted_with_cad(db, wing, 0)
-        result = wing_service.get_control_surface_cad_details(
-            db, plane.uuid, "main", 0
-        )
+        result = wing_service.get_control_surface_cad_details(db, plane.uuid, "main", 0)
         assert isinstance(result, schemas.ControlSurfaceCadDetailsSchema)
         assert result.rel_chord_tip == pytest.approx(0.75)
         assert result.hinge_spacing == pytest.approx(2.0)
@@ -623,9 +621,7 @@ class TestControlSurfaceCadDetailsService:
     def test_get_cad_details_no_ted_raises(self, db):
         plane, wing = _make_plane_with_wing(db, xsec_count=2)
         with pytest.raises(ValidationError, match="Control surface must exist"):
-            wing_service.get_control_surface_cad_details(
-                db, plane.uuid, "main", 0
-            )
+            wing_service.get_control_surface_cad_details(db, plane.uuid, "main", 0)
 
     def test_patch_cad_details(self, db):
         plane, wing = _make_plane_with_wing(db, xsec_count=2)
@@ -634,18 +630,14 @@ class TestControlSurfaceCadDetailsService:
             rel_chord_tip=0.82,
             hinge_type="top_simple",
         )
-        result = wing_service.patch_control_surface_cad_details(
-            db, plane.uuid, "main", 0, patch
-        )
+        result = wing_service.patch_control_surface_cad_details(db, plane.uuid, "main", 0, patch)
         assert result.rel_chord_tip == pytest.approx(0.82)
         assert result.hinge_type == "top_simple"
 
     def test_delete_cad_details_resets_to_minimal(self, db):
         plane, wing = _make_plane_with_wing(db, xsec_count=2)
         self._add_ted_with_cad(db, wing, 0)
-        wing_service.delete_control_surface_cad_details(
-            db, plane.uuid, "main", 0
-        )
+        wing_service.delete_control_surface_cad_details(db, plane.uuid, "main", 0)
         db.refresh(wing)
         ted = wing.x_secs[0].detail.trailing_edge_device
         # TED still exists but CAD-specific fields are cleared
@@ -664,10 +656,17 @@ class TestControlSurfaceCadServoDetailsService:
         if xsec.detail is None:
             xsec.detail = WingXSecDetailModel()
         servo = WingXSecTedServoModel(
-            length=23, width=12.5, height=31.5,
-            leading_length=6, latch_z=14.5, latch_x=7.25,
-            latch_thickness=2.6, latch_length=6, cable_z=26,
-            screw_hole_lx=0, screw_hole_d=0,
+            length=23,
+            width=12.5,
+            height=31.5,
+            leading_length=6,
+            latch_z=14.5,
+            latch_x=7.25,
+            latch_thickness=2.6,
+            latch_length=6,
+            cable_z=26,
+            screw_hole_lx=0,
+            screw_hole_d=0,
         )
         ted = WingXSecTrailingEdgeDeviceModel(
             name="ail",
@@ -719,9 +718,7 @@ class TestControlSurfaceCadServoDetailsService:
         db.add(ted)
         db.commit()
         with pytest.raises(NotFoundError, match="No servo configured"):
-            wing_service.get_control_surface_cad_details_servo_details(
-                db, plane.uuid, "main", 0
-            )
+            wing_service.get_control_surface_cad_details_servo_details(db, plane.uuid, "main", 0)
 
     def test_patch_servo_details_with_int(self, db):
         plane, wing = _make_plane_with_wing(db, xsec_count=2)
@@ -736,10 +733,17 @@ class TestControlSurfaceCadServoDetailsService:
         plane, wing = _make_plane_with_wing(db, xsec_count=2)
         self._add_ted_with_servo(db, wing, 0)
         servo = ServoSchema(
-            length=20, width=10, height=25,
-            leading_length=5, latch_z=10, latch_x=5,
-            latch_thickness=2, latch_length=5, cable_z=20,
-            screw_hole_lx=0, screw_hole_d=0,
+            length=20,
+            width=10,
+            height=25,
+            leading_length=5,
+            latch_z=10,
+            latch_x=5,
+            latch_thickness=2,
+            latch_length=5,
+            cable_z=20,
+            screw_hole_lx=0,
+            screw_hole_d=0,
         )
         patch = schemas.ControlSurfaceServoDetailsPatchSchema(servo=servo)
         result = wing_service.patch_control_surface_cad_details_servo_details(
@@ -750,9 +754,7 @@ class TestControlSurfaceCadServoDetailsService:
     def test_delete_servo_details(self, db):
         plane, wing = _make_plane_with_wing(db, xsec_count=2)
         self._add_ted_with_servo(db, wing, 0)
-        wing_service.delete_control_surface_cad_details_servo_details(
-            db, plane.uuid, "main", 0
-        )
+        wing_service.delete_control_surface_cad_details_servo_details(db, plane.uuid, "main", 0)
         db.refresh(wing)
         ted = wing.x_secs[0].detail.trailing_edge_device
         assert ted.servo_data is None
@@ -768,9 +770,7 @@ class TestControlSurfaceCadServoDetailsService:
         db.add(ted)
         db.commit()
         with pytest.raises(NotFoundError, match="No servo configured"):
-            wing_service.delete_control_surface_cad_details_servo_details(
-                db, plane.uuid, "main", 0
-            )
+            wing_service.delete_control_surface_cad_details_servo_details(db, plane.uuid, "main", 0)
 
 
 # ── Trailing Edge Device (direct TED access) ─────────────────────────
@@ -850,10 +850,17 @@ class TestTrailingEdgeServoService:
         if xsec.detail is None:
             xsec.detail = WingXSecDetailModel()
         servo = WingXSecTedServoModel(
-            length=20, width=10, height=25,
-            leading_length=5, latch_z=10, latch_x=5,
-            latch_thickness=2, latch_length=5, cable_z=20,
-            screw_hole_lx=0, screw_hole_d=0,
+            length=20,
+            width=10,
+            height=25,
+            leading_length=5,
+            latch_z=10,
+            latch_x=5,
+            latch_thickness=2,
+            latch_length=5,
+            cable_z=20,
+            screw_hole_lx=0,
+            screw_hole_d=0,
         )
         ted = WingXSecTrailingEdgeDeviceModel(
             name="ail",
@@ -870,7 +877,8 @@ class TestTrailingEdgeServoService:
         if xsec.detail is None:
             xsec.detail = WingXSecDetailModel()
         ted = WingXSecTrailingEdgeDeviceModel(
-            name="ail", rel_chord_root=0.8,
+            name="ail",
+            rel_chord_root=0.8,
         )
         xsec.detail.trailing_edge_device = ted
         db.add(ted)
@@ -910,10 +918,17 @@ class TestTrailingEdgeServoService:
         plane, wing = _make_plane_with_wing(db, xsec_count=2)
         self._add_ted_no_servo(db, wing, 0)
         servo = ServoSchema(
-            length=23, width=12.5, height=31.5,
-            leading_length=6, latch_z=14.5, latch_x=7.25,
-            latch_thickness=2.6, latch_length=6, cable_z=26,
-            screw_hole_lx=0, screw_hole_d=0,
+            length=23,
+            width=12.5,
+            height=31.5,
+            leading_length=6,
+            latch_z=14.5,
+            latch_x=7.25,
+            latch_thickness=2.6,
+            latch_length=6,
+            cable_z=26,
+            screw_hole_lx=0,
+            screw_hole_d=0,
         )
         patch = schemas.TrailingEdgeServoPatchSchema(servo=servo)
         result = wing_service.patch_trailing_edge_servo(db, plane.uuid, "main", 0, patch)
@@ -923,10 +938,17 @@ class TestTrailingEdgeServoService:
         plane, wing = _make_plane_with_wing(db, xsec_count=2)
         self._add_ted_with_servo(db, wing, 0)
         servo = ServoSchema(
-            length=30, width=15, height=35,
-            leading_length=8, latch_z=16, latch_x=8,
-            latch_thickness=3, latch_length=7, cable_z=28,
-            screw_hole_lx=1, screw_hole_d=2,
+            length=30,
+            width=15,
+            height=35,
+            leading_length=8,
+            latch_z=16,
+            latch_x=8,
+            latch_thickness=3,
+            latch_length=7,
+            cable_z=28,
+            screw_hole_lx=1,
+            screw_hole_d=2,
         )
         patch = schemas.TrailingEdgeServoPatchSchema(servo=servo)
         result = wing_service.patch_trailing_edge_servo(db, plane.uuid, "main", 0, patch)
@@ -986,47 +1008,67 @@ class TestEnsureSegmentDetailOrRaise:
 class TestServoSchemaFromTed:
     def test_with_servo_data(self, db):
         ted = WingXSecTrailingEdgeDeviceModel(
-            name="ail", rel_chord_root=0.8,
+            name="ail",
+            rel_chord_root=0.8,
         )
         ted.servo_data = WingXSecTedServoModel(
-            length=20, width=10, height=25,
-            leading_length=5, latch_z=10, latch_x=5,
-            latch_thickness=2, latch_length=5, cable_z=20,
-            screw_hole_lx=0, screw_hole_d=0,
+            length=20,
+            width=10,
+            height=25,
+            leading_length=5,
+            latch_z=10,
+            latch_x=5,
+            latch_thickness=2,
+            latch_length=5,
+            cable_z=20,
+            screw_hole_lx=0,
+            screw_hole_d=0,
         )
         result = wing_service._servo_schema_from_ted(ted)
         assert isinstance(result, schemas.TrailingEdgeServoSchema)
 
     def test_with_servo_index(self):
         ted = WingXSecTrailingEdgeDeviceModel(
-            name="ail", rel_chord_root=0.8, servo_index=3,
+            name="ail",
+            rel_chord_root=0.8,
+            servo_index=3,
         )
         result = wing_service._servo_schema_from_ted(ted)
         assert result.servo == 3
 
     def test_no_servo_raises(self):
         ted = WingXSecTrailingEdgeDeviceModel(
-            name="ail", rel_chord_root=0.8,
+            name="ail",
+            rel_chord_root=0.8,
         )
         with pytest.raises(NotFoundError, match="No servo configured"):
             wing_service._servo_schema_from_ted(ted)
 
     def test_control_surface_variant_with_data(self, db):
         ted = WingXSecTrailingEdgeDeviceModel(
-            name="ail", rel_chord_root=0.8,
+            name="ail",
+            rel_chord_root=0.8,
         )
         ted.servo_data = WingXSecTedServoModel(
-            length=20, width=10, height=25,
-            leading_length=5, latch_z=10, latch_x=5,
-            latch_thickness=2, latch_length=5, cable_z=20,
-            screw_hole_lx=0, screw_hole_d=0,
+            length=20,
+            width=10,
+            height=25,
+            leading_length=5,
+            latch_z=10,
+            latch_x=5,
+            latch_thickness=2,
+            latch_length=5,
+            cable_z=20,
+            screw_hole_lx=0,
+            screw_hole_d=0,
         )
         result = wing_service._control_surface_servo_details_schema_from_ted(ted)
         assert isinstance(result, schemas.ControlSurfaceServoDetailsSchema)
 
     def test_control_surface_variant_no_servo_raises(self):
         ted = WingXSecTrailingEdgeDeviceModel(
-            name="ail", rel_chord_root=0.8,
+            name="ail",
+            rel_chord_root=0.8,
         )
         with pytest.raises(NotFoundError, match="No servo configured"):
             wing_service._control_surface_servo_details_schema_from_ted(ted)
@@ -1241,26 +1283,20 @@ class TestExistingTedForControlSurface:
         ted = WingXSecTrailingEdgeDeviceModel(name="ail", rel_chord_root=0.8)
         xsec.detail.trailing_edge_device = ted
         db.commit()
-        result = wing_service._existing_ted_for_control_surface_or_raise(
-            wing, xsec, 0, "main"
-        )
+        result = wing_service._existing_ted_for_control_surface_or_raise(wing, xsec, 0, "main")
         assert result is ted
 
     def test_raises_when_no_ted(self, db):
         plane, wing = _make_plane_with_wing(db, xsec_count=2)
         xsec = wing.x_secs[0]
         with pytest.raises(ValidationError, match="Control surface must exist"):
-            wing_service._existing_ted_for_control_surface_or_raise(
-                wing, xsec, 0, "main"
-            )
+            wing_service._existing_ted_for_control_surface_or_raise(wing, xsec, 0, "main")
 
     def test_raises_for_terminal(self, db):
         plane, wing = _make_plane_with_wing(db, xsec_count=2)
         xsec = wing.x_secs[1]
         with pytest.raises(ValidationError, match="terminal"):
-            wing_service._existing_ted_for_control_surface_or_raise(
-                wing, xsec, 1, "main"
-            )
+            wing_service._existing_ted_for_control_surface_or_raise(wing, xsec, 1, "main")
 
 
 # ── gh-366: Unified units (meters) in wing endpoint response ─────────
@@ -1289,14 +1325,14 @@ class TestWingEndpointUnitsConsistency:
         detail = WingXSecDetailModel(x_sec_type="root")
         spare = WingXSecSpareModel(
             sort_index=0,
-            spare_support_dimension_width=4.42,   # mm in DB
-            spare_support_dimension_height=6.0,    # mm in DB
+            spare_support_dimension_width=4.42,  # mm in DB
+            spare_support_dimension_height=6.0,  # mm in DB
             spare_position_factor=0.25,
-            spare_length=70.0,                     # mm in DB
-            spare_start=5.0,                       # mm in DB
+            spare_length=70.0,  # mm in DB
+            spare_start=5.0,  # mm in DB
             spare_mode="standard",
             spare_vector=[0.0, 1.0, 0.0],
-            spare_origin=[40.5, 0.0, 3.45],        # mm in DB
+            spare_origin=[40.5, 0.0, 3.45],  # mm in DB
         )
         detail.spares.append(spare)
         xsec0.detail = detail
@@ -1427,7 +1463,7 @@ class TestSpareDbStorageUnitsMm:
             f"spare_origin[0]={spare.spare_origin[0]} looks like meters, expected mm (>1.0)"
         )
         assert spare.spare_vector is not None
-        mag = sum(v ** 2 for v in spare.spare_vector) ** 0.5
+        mag = sum(v**2 for v in spare.spare_vector) ** 0.5
         assert abs(mag - 1.0) < 0.01, (
             f"spare_vector magnitude={mag}, expected ~1.0 (dimensionless unit vector)"
         )
@@ -1505,7 +1541,7 @@ class TestSpareDbStorageUnitsMm:
         )
         # spare_vector is dimensionless — DB stores the raw unit vector
         assert db_spare.spare_vector is not None
-        mag = sum(v ** 2 for v in db_spare.spare_vector) ** 0.5
+        mag = sum(v**2 for v in db_spare.spare_vector) ** 0.5
         assert abs(mag - 1.0) < 0.01, (
             f"DB spare_vector magnitude={mag}, expected ~1.0 (dimensionless)"
         )

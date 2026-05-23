@@ -40,12 +40,18 @@ def _raise_http_from_domain(exc: ServiceException) -> None:
     if isinstance(exc, NotFoundError):
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=exc.message) from exc
     if isinstance(exc, (ValidationError, ValidationDomainError)):
-        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=exc.message) from exc
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=exc.message
+        ) from exc
     if isinstance(exc, ConflictError):
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=exc.message) from exc
     if isinstance(exc, InternalError):
-        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=exc.message) from exc
-    raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=exc.message) from exc
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=exc.message
+        ) from exc
+    raise HTTPException(
+        status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=exc.message
+    ) from exc
 
 
 def _resolve_base_url(request: Request | None, settings: Settings) -> str:
@@ -90,8 +96,9 @@ async def get_airplane_strip_forces(
     except ServiceException as exc:
         _raise_http_from_domain(exc)
     except Exception as exc:  # pragma: no cover - defensive fallback
-        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                            detail=f"Unexpected error: {exc}") from exc
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Unexpected error: {exc}"
+        ) from exc
 
 
 @router.post(
@@ -114,19 +121,26 @@ async def get_wing_strip_forces(
     except ServiceException as exc:
         _raise_http_from_domain(exc)
     except Exception as exc:  # pragma: no cover - defensive fallback
-        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                            detail=f"Unexpected error: {exc}") from exc
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Unexpected error: {exc}"
+        ) from exc
 
 
-@router.post("/aeroplanes/{aeroplane_id}/wings/{wing_name}/{analysis_tool}",
-             tags=["analysis"],
-             operation_id="analyze_wing_aerodynamics")
+@router.post(
+    "/aeroplanes/{aeroplane_id}/wings/{wing_name}/{analysis_tool}",
+    tags=["analysis"],
+    operation_id="analyze_wing_aerodynamics",
+)
 async def analyze_wing_post(
     aeroplane_id: Annotated[AeroPlaneID, Path(..., description=_DESC_AEROPLANE_ID)],
     wing_name: Annotated[str, Path(..., description="The ID of the wing")],
-    operating_point: Annotated[OperatingPointSchema, Body(..., description="The operating point of the analysis")],
-    analysis_tool: Annotated[AnalysisToolUrlType, Path(..., description="The tool for aerodynamic analysis")],
-    db: Annotated[Session, Depends(get_db)]
+    operating_point: Annotated[
+        OperatingPointSchema, Body(..., description="The operating point of the analysis")
+    ],
+    analysis_tool: Annotated[
+        AnalysisToolUrlType, Path(..., description="The tool for aerodynamic analysis")
+    ],
+    db: Annotated[Session, Depends(get_db)],
 ):
     """Analyze wings using aerobuildup, avl or vortex lattice and return the analysis results."""
     try:
@@ -136,18 +150,25 @@ async def analyze_wing_post(
     except ServiceException as exc:
         _raise_http_from_domain(exc)
     except Exception as exc:  # pragma: no cover - defensive fallback
-        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                            detail=f"Unexpected error: {exc}") from exc
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Unexpected error: {exc}"
+        ) from exc
 
 
-@router.post("/aeroplanes/{aeroplane_id}/stability_summary/{analysis_tool}",
-             tags=["analysis"],
-             operation_id="get_stability_summary")
+@router.post(
+    "/aeroplanes/{aeroplane_id}/stability_summary/{analysis_tool}",
+    tags=["analysis"],
+    operation_id="get_stability_summary",
+)
 async def get_stability_summary(
     aeroplane_id: Annotated[AeroPlaneID, Path(..., description=_DESC_AEROPLANE_ID)],
-    operating_point: Annotated[OperatingPointSchema, Body(..., description="The operating point for the analysis")],
-    analysis_tool: Annotated[AnalysisToolUrlType, Path(..., description="The analysis tool to use")],
-    db: Annotated[Session, Depends(get_db)]
+    operating_point: Annotated[
+        OperatingPointSchema, Body(..., description="The operating point for the analysis")
+    ],
+    analysis_tool: Annotated[
+        AnalysisToolUrlType, Path(..., description="The analysis tool to use")
+    ],
+    db: Annotated[Session, Depends(get_db)],
 ) -> StabilitySummaryResponse:
     """Get static stability summary (neutral point, static margin, stability derivatives)."""
     try:
@@ -157,16 +178,17 @@ async def get_stability_summary(
     except ServiceException as exc:
         _raise_http_from_domain(exc)
     except Exception as exc:
-        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                            detail=f"Unexpected error: {exc}") from exc
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Unexpected error: {exc}"
+        ) from exc
 
 
-@router.get("/aeroplanes/{aeroplane_id}/stability",
-            tags=["analysis"],
-            operation_id="get_cached_stability")
+@router.get(
+    "/aeroplanes/{aeroplane_id}/stability", tags=["analysis"], operation_id="get_cached_stability"
+)
 async def get_cached_stability(
     aeroplane_id: Annotated[AeroPlaneID, Path(..., description=_DESC_AEROPLANE_ID)],
-    db: Annotated[Session, Depends(get_db)]
+    db: Annotated[Session, Depends(get_db)],
 ) -> StabilityResultRead:
     """Get the last cached stability result without triggering a new analysis."""
     try:
@@ -182,14 +204,20 @@ async def get_cached_stability(
         _raise_http_from_domain(exc)
 
 
-@router.post("/aeroplanes/{aeroplane_id}/operating_point/{analysis_tool}",
-             tags=["analysis"],
-             operation_id="analyze_airplane_at_operating_point")
+@router.post(
+    "/aeroplanes/{aeroplane_id}/operating_point/{analysis_tool}",
+    tags=["analysis"],
+    operation_id="analyze_airplane_at_operating_point",
+)
 async def analyze_airplane_post(
     aeroplane_id: Annotated[AeroPlaneID, Path(..., description=_DESC_AEROPLANE_ID)],
-    operating_point: Annotated[OperatingPointSchema, Body(..., description="The operating point of the analysis")],
-    analysis_tool: Annotated[AnalysisToolUrlType, Path(..., description="The tool for aerodynamic analysis")],
-    db: Annotated[Session, Depends(get_db)]
+    operating_point: Annotated[
+        OperatingPointSchema, Body(..., description="The operating point of the analysis")
+    ],
+    analysis_tool: Annotated[
+        AnalysisToolUrlType, Path(..., description="The tool for aerodynamic analysis")
+    ],
+    db: Annotated[Session, Depends(get_db)],
 ):
     """Analyze an airplane using aerobuildup, avl or vortex lattice and return the analysis results."""
     try:
@@ -199,13 +227,14 @@ async def analyze_airplane_post(
     except ServiceException as exc:
         _raise_http_from_domain(exc)
     except Exception as exc:  # pragma: no cover - defensive fallback
-        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                            detail=f"Unexpected error: {exc}") from exc
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Unexpected error: {exc}"
+        ) from exc
 
 
-@router.post("/aeroplanes/{aeroplane_id}/streamlines",
-             tags=["analysis"],
-             operation_id="get_streamlines_json")
+@router.post(
+    "/aeroplanes/{aeroplane_id}/streamlines", tags=["analysis"], operation_id="get_streamlines_json"
+)
 async def calculate_streamlines_json(
     aeroplane_id: Annotated[AeroPlaneID, Path(..., description=_DESC_AEROPLANE_ID)],
     operating_point: Annotated[OperatingPointSchema, Body(..., description="The operating point")],
@@ -214,21 +243,26 @@ async def calculate_streamlines_json(
     """Calculate VLM streamlines and return Plotly figure as JSON."""
     try:
         return await analysis_service.calculate_streamlines_json(
-            db, aeroplane_id, operating_point,
+            db,
+            aeroplane_id,
+            operating_point,
         )
     except ServiceException as exc:
         _raise_http_from_domain(exc)
     except Exception as exc:
-        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                            detail=f"Unexpected error: {exc}") from exc
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Unexpected error: {exc}"
+        ) from exc
 
 
-@router.post("/aeroplanes/{aeroplane_id}/alpha_sweep",
-             tags=["analysis"],
-             operation_id="analyze_alpha_sweep")
+@router.post(
+    "/aeroplanes/{aeroplane_id}/alpha_sweep", tags=["analysis"], operation_id="analyze_alpha_sweep"
+)
 async def analyze_airplane_alpha_sweep(
     aeroplane_id: Annotated[AeroPlaneID, Path(..., description=_DESC_AEROPLANE_ID)],
-    sweep_request: Annotated[AlphaSweepRequest, Body(..., description="Sweep definitions and flight conditions")],
+    sweep_request: Annotated[
+        AlphaSweepRequest, Body(..., description="Sweep definitions and flight conditions")
+    ],
     db: Annotated[Session, Depends(get_db)],
 ):
     """Performs an angle of attack sweep for a given airplane."""
@@ -237,15 +271,21 @@ async def analyze_airplane_alpha_sweep(
     except ServiceException as exc:
         _raise_http_from_domain(exc)
     except Exception as exc:  # pragma: no cover - defensive fallback
-        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                            detail=f"Unexpected error: {exc}") from exc
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Unexpected error: {exc}"
+        ) from exc
 
-@router.post("/aeroplanes/{aeroplane_id}/alpha_sweep/diagram",
-             tags=["analysis"],
-             operation_id="analyze_alpha_sweep_diagram")
+
+@router.post(
+    "/aeroplanes/{aeroplane_id}/alpha_sweep/diagram",
+    tags=["analysis"],
+    operation_id="analyze_alpha_sweep_diagram",
+)
 async def analyze_airplane_alpha_sweep_diagram(
     aeroplane_id: Annotated[AeroPlaneID, Path(..., description=_DESC_AEROPLANE_ID)],
-    sweep_request: Annotated[AlphaSweepRequest, Body(..., description="Sweep definitions and flight conditions")],
+    sweep_request: Annotated[
+        AlphaSweepRequest, Body(..., description="Sweep definitions and flight conditions")
+    ],
     db: Annotated[Session, Depends(get_db)],
     settings: Annotated[Settings, Depends(get_settings)],
     request: Request = None,
@@ -261,15 +301,21 @@ async def analyze_airplane_alpha_sweep_diagram(
     except ServiceException as exc:
         _raise_http_from_domain(exc)
     except Exception as exc:  # pragma: no cover - defensive fallback
-        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                            detail=f"Unexpected error: {exc}") from exc
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Unexpected error: {exc}"
+        ) from exc
 
-@router.post("/aeroplanes/{aeroplane_id}/simple_sweep",
-             tags=["analysis"],
-             operation_id="analyze_parameter_sweep")
+
+@router.post(
+    "/aeroplanes/{aeroplane_id}/simple_sweep",
+    tags=["analysis"],
+    operation_id="analyze_parameter_sweep",
+)
 async def analyze_airplane_simple_sweep(
     aeroplane_id: Annotated[AeroPlaneID, Path(..., description=_DESC_AEROPLANE_ID)],
-    sweep_request: Annotated[SimpleSweepRequest, Body(..., description="Sweep definitions and flight conditions")],
+    sweep_request: Annotated[
+        SimpleSweepRequest, Body(..., description="Sweep definitions and flight conditions")
+    ],
     db: Annotated[Session, Depends(get_db)],
 ):
     """Performs sweep through the given sweep variable for a given airplane."""
@@ -278,8 +324,9 @@ async def analyze_airplane_simple_sweep(
     except ServiceException as exc:
         _raise_http_from_domain(exc)
     except Exception as exc:  # pragma: no cover - defensive fallback
-        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                            detail=f"Unexpected error: {exc}") from exc
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Unexpected error: {exc}"
+        ) from exc
 
 
 # Stub endpoints (stability_summary, lift_distribution, moment_distribution)
@@ -294,9 +341,11 @@ async def analyze_airplane_simple_sweep(
 # streamlines/three_view/url and are what clients should call.
 
 
-@router.get("/aeroplanes/{aeroplane_id}/three_view/url",
-         tags=["analysis"],
-         operation_id="get_aeroplane_three_view_url")
+@router.get(
+    "/aeroplanes/{aeroplane_id}/three_view/url",
+    tags=["analysis"],
+    operation_id="get_aeroplane_three_view_url",
+)
 async def get_aeroplane_three_view_url(
     aeroplane_id: Annotated[AeroPlaneID, Path(..., description=_DESC_AEROPLANE_ID)],
     db: Annotated[Session, Depends(get_db)],
@@ -317,15 +366,21 @@ async def get_aeroplane_three_view_url(
     except ServiceException as exc:
         _raise_http_from_domain(exc)
     except Exception as exc:  # pragma: no cover - defensive fallback
-        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                            detail=f"Unexpected error: {exc}") from exc
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Unexpected error: {exc}"
+        ) from exc
 
-@router.post("/aeroplanes/{aeroplane_id}/operating_point/vortex_lattice/streamlines/three_view/url",
-             tags=["analysis"],
-             operation_id="get_streamlines_three_view_url")
+
+@router.post(
+    "/aeroplanes/{aeroplane_id}/operating_point/vortex_lattice/streamlines/three_view/url",
+    tags=["analysis"],
+    operation_id="get_streamlines_three_view_url",
+)
 async def get_streamlines_three_view_url(
     aeroplane_id: Annotated[AeroPlaneID, Path(..., description=_DESC_AEROPLANE_ID)],
-    operating_point: Annotated[OperatingPointSchema, Body(..., description="The operating point of the analysis")],
+    operating_point: Annotated[
+        OperatingPointSchema, Body(..., description="The operating point of the analysis")
+    ],
     db: Annotated[Session, Depends(get_db)],
     settings: Annotated[Settings, Depends(get_settings)],
     request: Request = None,
@@ -346,5 +401,6 @@ async def get_streamlines_three_view_url(
     except ServiceException as exc:
         _raise_http_from_domain(exc)
     except Exception as exc:  # pragma: no cover - defensive fallback
-        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                            detail=f"Unexpected error: {exc}") from exc
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Unexpected error: {exc}"
+        ) from exc

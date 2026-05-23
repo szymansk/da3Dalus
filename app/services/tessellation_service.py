@@ -63,6 +63,7 @@ def _run_tessellation_worker(
     compatible with three-cad-viewer's Viewer.render() method.
     """
     import logging as _logging
+
     _logging.basicConfig(
         level=_logging.INFO,
         format="%(asctime)s [%(levelname)s] [worker] %(message)s",
@@ -111,7 +112,10 @@ def _run_tessellation_worker(
         # Tessellate with quality parameters
         params = {"deviation": 0.1, "angular_tolerance": 0.2}
         instances, shapes, _mapping = tessellate_group(
-            part_group, instances, params, progress=None,
+            part_group,
+            instances,
+            params,
+            progress=None,
         )
 
         # Add bounding box
@@ -131,6 +135,7 @@ def _run_tessellation_worker(
 
         # Convert NumPy arrays to plain Python lists for JSON serialization
         import numpy as np
+
         shapes_json = _numpy_to_list(shapes)
         instances_json = _numpy_to_list(instances)
 
@@ -203,12 +208,15 @@ def start_tessellation_task(
 
                 db = SessionLocal()
                 try:
-                    aeroplane = db.query(AeroplaneModel).filter(
-                        AeroplaneModel.uuid == aeroplane_id
-                    ).first()
+                    aeroplane = (
+                        db.query(AeroplaneModel).filter(AeroplaneModel.uuid == aeroplane_id).first()
+                    )
                     if aeroplane:
                         cache_svc.cache_tessellation(
-                            db, aeroplane.id, "wing", wing_name,
+                            db,
+                            aeroplane.id,
+                            "wing",
+                            wing_name,
                             geometry_hash or "manual",
                             worker_result["result"],
                         )
@@ -349,24 +357,14 @@ def _start_tessellation_and_cache(
         try:
             from app.models.aeroplanemodel import AeroplaneModel
 
-            aeroplane = (
-                db.query(AeroplaneModel)
-                .filter(AeroplaneModel.uuid == aeroplane_id)
-                .first()
-            )
+            aeroplane = db.query(AeroplaneModel).filter(AeroplaneModel.uuid == aeroplane_id).first()
             if aeroplane is None:
-                logger.warning(
-                    "Aeroplane %s not found when caching tessellation", aeroplane_id
-                )
+                logger.warning("Aeroplane %s not found when caching tessellation", aeroplane_id)
                 return
 
             # Check that the geometry hasn't changed while we were running
-            if not cache_svc.is_hash_current(
-                db, aeroplane.id, "wing", wing_name, geometry_hash
-            ):
-                logger.info(
-                    "Geometry changed while tessellating %s — discarding result", key
-                )
+            if not cache_svc.is_hash_current(db, aeroplane.id, "wing", wing_name, geometry_hash):
+                logger.info("Geometry changed while tessellating %s — discarding result", key)
                 return
 
             cache_svc.cache_tessellation(

@@ -185,13 +185,15 @@ def sync_component_tree_to_mass(db: Session, aeroplane_uuid) -> None:
     total_kg = get_aircraft_total_weight_kg(db, aeroplane_uuid)
     source = "component_tree" if total_kg is not None else None
     update_calculated_value(
-        db, aeroplane_uuid, "mass", total_kg, source,
+        db,
+        aeroplane_uuid,
+        "mass",
+        total_kg,
+        source,
         auto_switch_source=True,
     )
     mark_ops_dirty(db, aeroplane.id)
-    event_bus.publish(
-        AssumptionChanged(aeroplane_id=aeroplane.id, parameter_name="mass")
-    )
+    event_bus.publish(AssumptionChanged(aeroplane_id=aeroplane.id, parameter_name="mass"))
 
 
 def sync_weight_items_to_assumptions(db: Session, aeroplane_uuid) -> None:
@@ -233,13 +235,15 @@ def sync_weight_items_to_assumptions(db: Session, aeroplane_uuid) -> None:
 
     source = "weight_items" if total_mass is not None else None
     update_calculated_value(
-        db, aeroplane_uuid, "mass", total_mass, source,
+        db,
+        aeroplane_uuid,
+        "mass",
+        total_mass,
+        source,
         auto_switch_source=True,
     )
     mark_ops_dirty(db, aeroplane.id)
-    event_bus.publish(
-        AssumptionChanged(aeroplane_id=aeroplane.id, parameter_name="mass")
-    )
+    event_bus.publish(AssumptionChanged(aeroplane_id=aeroplane.id, parameter_name="mass"))
 
 
 def get_cg_comparison(db: Session, aeroplane_uuid) -> CGComparisonResponse:

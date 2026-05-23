@@ -68,7 +68,6 @@ def _make_summary(**overrides) -> StabilitySummaryResponse:
 
 
 class TestPersistStabilityResult:
-
     def test_creates_new_row(self, db_session):
         a = _make_aeroplane(db_session)
         summary = _make_summary()
@@ -86,14 +85,18 @@ class TestPersistStabilityResult:
         persist_stability_result(db_session, a.id, "avl", _make_summary(), "hash1")
         db_session.commit()
         persist_stability_result(
-            db_session, a.id, "avl",
+            db_session,
+            a.id,
+            "avl",
             _make_summary(neutral_point_x=0.15, static_margin_pct=20.0),
             "hash2",
         )
         db_session.commit()
-        count = db_session.query(StabilityResultModel).filter_by(
-            aeroplane_id=a.id, solver="avl"
-        ).count()
+        count = (
+            db_session.query(StabilityResultModel)
+            .filter_by(aeroplane_id=a.id, solver="avl")
+            .count()
+        )
         assert count == 1
         row = db_session.query(StabilityResultModel).first()
         assert row.neutral_point_x == pytest.approx(0.15)
@@ -109,7 +112,6 @@ class TestPersistStabilityResult:
 
 
 class TestGetCachedStability:
-
     def test_returns_none_when_empty(self, db_session):
         a = _make_aeroplane(db_session)
         result = get_cached_stability(db_session, a.id)
@@ -128,7 +130,9 @@ class TestGetCachedStability:
         a = _make_aeroplane(db_session)
         persist_stability_result(db_session, a.id, "avl", _make_summary(), "h1")
         persist_stability_result(
-            db_session, a.id, "aerobuildup",
+            db_session,
+            a.id,
+            "aerobuildup",
             _make_summary(neutral_point_x=0.15),
             "h2",
         )
@@ -145,7 +149,6 @@ class TestGetCachedStability:
 
 
 class TestMarkStabilityDirty:
-
     def test_marks_all_dirty(self, db_session):
         a = _make_aeroplane(db_session)
         persist_stability_result(db_session, a.id, "avl", _make_summary(), None)

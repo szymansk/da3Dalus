@@ -24,13 +24,16 @@ import pytest
 # Helpers to import service under test
 # ---------------------------------------------------------------------------
 
+
 def _service():
     from app.services.matching_chart_service import compute_chart
+
     return compute_chart
 
 
 def _helpers():
     from app.services import matching_chart_service as mcs
+
     return mcs
 
 
@@ -75,6 +78,7 @@ LIGHT_RC = {
 # Class 1: Constraint formula correctness
 # ===========================================================================
 
+
 class TestConstraintFormulas:
     """Verify each constraint helper against closed-form physics."""
 
@@ -86,8 +90,7 @@ class TestConstraintFormulas:
         mcs = _helpers()
         ws_range = [100.0, 200.0, 400.0, 600.0, 800.0]
         tw_values = [
-            mcs._takeoff_constraint(ws, s_runway=100.0, cl_max_to=1.6, rho=1.225)
-            for ws in ws_range
+            mcs._takeoff_constraint(ws, s_runway=100.0, cl_max_to=1.6, rho=1.225) for ws in ws_range
         ]
         # T/W must be strictly increasing with W/S
         for i in range(1, len(tw_values)):
@@ -184,19 +187,22 @@ class TestConstraintFormulas:
         """Steeper climb angle γ requires higher T/W."""
         mcs = _helpers()
         ws = 660.0
-        tw_5 = mcs._climb_constraint(ws, gamma_deg=5.0, v_climb=30.0, cd0=0.031, e=0.75, ar=7.32, rho=1.225)
-        tw_10 = mcs._climb_constraint(ws, gamma_deg=10.0, v_climb=30.0, cd0=0.031, e=0.75, ar=7.32, rho=1.225)
+        tw_5 = mcs._climb_constraint(
+            ws, gamma_deg=5.0, v_climb=30.0, cd0=0.031, e=0.75, ar=7.32, rho=1.225
+        )
+        tw_10 = mcs._climb_constraint(
+            ws, gamma_deg=10.0, v_climb=30.0, cd0=0.031, e=0.75, ar=7.32, rho=1.225
+        )
         assert tw_10 > tw_5, f"Steeper climb needs more T/W: {tw_10:.4f} vs {tw_5:.4f}"
 
     def test_climb_constraint_sin_gamma_dominates_at_steep_angles(self):
         """At γ = 30°, sin(γ) ≈ 0.5 should dominate T/W numerically."""
         mcs = _helpers()
-        tw = mcs._climb_constraint(ws=500.0, gamma_deg=30.0, v_climb=30.0,
-                                   cd0=0.031, e=0.75, ar=7.32, rho=1.225)
-        # T/W ≥ sin(30°) = 0.5
-        assert tw >= math.sin(math.radians(30.0)), (
-            f"T/W must be ≥ sin(γ); got {tw:.4f}"
+        tw = mcs._climb_constraint(
+            ws=500.0, gamma_deg=30.0, v_climb=30.0, cd0=0.031, e=0.75, ar=7.32, rho=1.225
         )
+        # T/W ≥ sin(30°) = 0.5
+        assert tw >= math.sin(math.radians(30.0)), f"T/W must be ≥ sin(γ); got {tw:.4f}"
 
     def test_stall_constraint_uses_cl_max_clean(self):
         """W/S_max = ½·ρ·V_s²·CL_max_clean.
@@ -215,7 +221,7 @@ class TestConstraintFormulas:
         """W/S_max = ½·1.225·10²·1.2 = 73.5 N/m²."""
         mcs = _helpers()
         ws_max = mcs._stall_constraint(v_s_target=10.0, cl_max_clean=1.2, rho=1.225)
-        expected = 0.5 * 1.225 * 10.0 ** 2 * 1.2
+        expected = 0.5 * 1.225 * 10.0**2 * 1.2
         assert abs(ws_max - expected) < 0.5, (
             f"Stall constraint W/S_max = {ws_max:.2f}, expected {expected:.2f}"
         )
@@ -232,6 +238,7 @@ class TestConstraintFormulas:
 # Class 2: Constants-drift consistency with field_length_service
 # ===========================================================================
 
+
 class TestConsistencyWithFieldLengthService:
     """Constants-drift test: same Loftin/Roskam constants as field_length_service (gh-489)."""
 
@@ -239,12 +246,14 @@ class TestConsistencyWithFieldLengthService:
         """K_TO_50FT must equal 1.66 in both services."""
         from app.services.matching_chart_service import _K_TO_50FT as mc_k
         from app.services.field_length_service import _K_TO_50FT as fl_k
+
         assert mc_k == fl_k, f"K_TO_50FT mismatch: mc={mc_k}, fl={fl_k}"
 
     def test_k_ldg_50ft_shared_value(self):
         """K_LDG_50FT must equal 2.73 in both services."""
         from app.services.matching_chart_service import _K_LDG_50FT as mc_k
         from app.services.field_length_service import _K_LDG_50FT as fl_k
+
         assert mc_k == fl_k, f"K_LDG_50FT mismatch: mc={mc_k}, fl={fl_k}"
 
     def test_constants_drift_takeoff_within_5_percent(self):
@@ -261,7 +270,7 @@ class TestConsistencyWithFieldLengthService:
         from app.services.field_length_service import compute_field_lengths
 
         s_runway_input = 411.0  # Cessna 172N POH to-50ft distance (m)
-        ws = 660.0              # Design point W/S
+        ws = 660.0  # Design point W/S
 
         tw_on_constraint = mcs._takeoff_constraint(
             ws=ws,
@@ -342,6 +351,7 @@ class TestConsistencyWithFieldLengthService:
 # Class 3: Drag semantics — Interpretation A
 # ===========================================================================
 
+
 class TestDragSemanticsInterpretationA:
     """During drag: W, T_static, AR, CD0, e fixed. S, b, V_md vary."""
 
@@ -377,6 +387,7 @@ class TestDragSemanticsInterpretationA:
 # Class 4: Cessna 172 cross-check (spec §AC)
 # ===========================================================================
 
+
 class TestCessna172CrossCheck:
     """Cessna 172N at MTOM: W/S ≈ 660 N/m² (±10%), T/W ≈ 0.20 (±15%)."""
 
@@ -386,18 +397,14 @@ class TestCessna172CrossCheck:
         s_ref_m2 = 16.17
         weight_n = mass_kg * 9.81
         ws = weight_n / s_ref_m2
-        assert 660 * 0.90 <= ws <= 660 * 1.10, (
-            f"Cessna W/S = {ws:.1f} N/m², expected 660 ± 10%"
-        )
+        assert 660 * 0.90 <= ws <= 660 * 1.10, f"Cessna W/S = {ws:.1f} N/m², expected 660 ± 10%"
 
     def test_design_point_tw_in_range(self):
         """Design-point T/W ≈ 0.20 ± 15% (Loftin textbook)."""
         mass_kg = 1088.0
         t_static_n = 1900.0
         tw = t_static_n / (mass_kg * 9.81)
-        assert 0.20 * 0.85 <= tw <= 0.20 * 1.15, (
-            f"Cessna T/W = {tw:.4f}, expected 0.20 ± 15%"
-        )
+        assert 0.20 * 0.85 <= tw <= 0.20 * 1.15, f"Cessna T/W = {tw:.4f}, expected 0.20 ± 15%"
 
     def test_design_point_above_takeoff_constraint(self):
         """Cessna design point must be at or above the takeoff constraint line.
@@ -407,9 +414,7 @@ class TestCessna172CrossCheck:
         """
         mcs = _helpers()
         ws = 660.0  # N/m²
-        tw_constraint = mcs._takeoff_constraint(
-            ws=ws, s_runway=411.0, cl_max_to=1.6, rho=1.225
-        )
+        tw_constraint = mcs._takeoff_constraint(ws=ws, s_runway=411.0, cl_max_to=1.6, rho=1.225)
         tw_actual = 1900.0 / (1088.0 * 9.81)
         assert tw_actual >= tw_constraint * 0.90, (
             f"Cessna design point below TO constraint: T/W_actual={tw_actual:.4f}, "
@@ -470,7 +475,7 @@ class TestCessna172CrossCheck:
             CESSNA_172,
             mode="uav_runway",
             s_runway=411.0,
-            v_s_target=26.0,   # Cessna's actual stall speed is 25.4 m/s
+            v_s_target=26.0,  # Cessna's actual stall speed is 25.4 m/s
         )
         assert chart["feasibility"] == "feasible", (
             f"Cessna should be feasible with s_runway=411 m, v_s_target=26 m/s, "
@@ -481,6 +486,7 @@ class TestCessna172CrossCheck:
 # ===========================================================================
 # Class 5: Mode defaults
 # ===========================================================================
+
 
 class TestRcAndUavModeDefaults:
     """RC vs UAV mode defaults from spec."""
@@ -533,6 +539,7 @@ class TestRcAndUavModeDefaults:
 # Class 6: compute_chart output structure
 # ===========================================================================
 
+
 class TestComputeChartOutputStructure:
     """Verify compute_chart returns correct keys and shapes."""
 
@@ -541,9 +548,7 @@ class TestComputeChartOutputStructure:
         compute_chart = _service()
         chart = compute_chart(CESSNA_172, mode="uav_runway")
         required = {"ws_range_n_m2", "constraints", "design_point", "feasibility", "warnings"}
-        assert required.issubset(chart.keys()), (
-            f"Missing keys: {required - chart.keys()}"
-        )
+        assert required.issubset(chart.keys()), f"Missing keys: {required - chart.keys()}"
 
     def test_design_point_has_ws_and_tw(self):
         """Design point dict must have ws_n_m2 and t_w."""
@@ -605,8 +610,7 @@ class TestComputeChartOutputStructure:
         for c in chart["constraints"]:
             if "t_w_points" in c:
                 assert len(c["t_w_points"]) == ws_len, (
-                    f"Constraint '{c['name']}': {len(c['t_w_points'])} points, "
-                    f"expected {ws_len}"
+                    f"Constraint '{c['name']}': {len(c['t_w_points'])} points, expected {ws_len}"
                 )
 
     def test_compute_chart_rc_mode(self):
@@ -633,6 +637,7 @@ class TestComputeChartOutputStructure:
 # ===========================================================================
 # Class 7: Binding constraint marker
 # ===========================================================================
+
 
 class TestBindingConstraintMarker:
     """The binding constraint is the one that most tightly limits the design point."""
@@ -666,6 +671,7 @@ class TestBindingConstraintMarker:
 # Class 8: Unknown mode fallback (line 123-124)
 # ===========================================================================
 
+
 class TestUnknownModeFallback:
     """_mode_defaults falls back to uav_runway for unknown mode strings."""
 
@@ -697,6 +703,7 @@ class TestUnknownModeFallback:
 # Class 9: Landing constraint zero-runway path (line 223)
 # ===========================================================================
 
+
 class TestLandingConstraintEdgeCases:
     """Edge cases in the landing constraint helper."""
 
@@ -718,6 +725,7 @@ class TestLandingConstraintEdgeCases:
 # Class 10: Design point resolution from aircraft dict (lines 349, 353)
 # ===========================================================================
 
+
 class TestDesignPointFromAircraftDict:
     """_design_point_from_aircraft covers all three W/S resolution paths."""
 
@@ -727,7 +735,7 @@ class TestDesignPointFromAircraftDict:
         aircraft = {
             "mass_kg": 100.0,
             "t_static_N": 200.0,
-            "ws_n_m2": 450.0,   # explicit W/S
+            "ws_n_m2": 450.0,  # explicit W/S
         }
         dp = mcs._design_point_from_aircraft(aircraft)
         assert dp["ws_n_m2"] == pytest.approx(450.0, abs=1.0)
@@ -758,6 +766,7 @@ class TestDesignPointFromAircraftDict:
 # ===========================================================================
 # Class 11: Cruise speed fallback from polar estimate (lines 483-492)
 # ===========================================================================
+
 
 class TestCruiseSpeedFallback:
     """compute_chart estimates v_cruise from polar when not given."""
@@ -797,7 +806,7 @@ class TestCruiseSpeedFallback:
             "cl_max_clean": 1.6,
             "cl_max_takeoff": 1.6,
             "cl_max_landing": 2.1,
-            "v_md_mps": 45.0,   # present, used as cruise fallback
+            "v_md_mps": 45.0,  # present, used as cruise fallback
             # NO v_cruise_mps
         }
         chart = compute_chart(aircraft_with_vmd, mode="uav_runway")
@@ -809,6 +818,7 @@ class TestCruiseSpeedFallback:
 # ===========================================================================
 # Class 12: uav_belly_land mode (line 520 — landing constraint disabled)
 # ===========================================================================
+
 
 class TestUavBellyLandMode:
     """uav_belly_land mode skips the landing distance constraint."""
@@ -885,7 +895,7 @@ class TestGaRunwayMode:
         mcs = _helpers()
         defaults = mcs._mode_defaults("ga_runway")
         rho = 1.225
-        cl_max_clean = 1.6   # Cessna 172 CL_max clean
+        cl_max_clean = 1.6  # Cessna 172 CL_max clean
 
         # W/S_max from stall constraint must be > Cessna's 660–691 N/m²
         ws_stall_max = 0.5 * rho * defaults["v_s_target"] ** 2 * cl_max_clean
@@ -939,9 +949,7 @@ class TestGaRunwayMode:
         compute_chart = _service()
         chart = compute_chart(CESSNA_172, mode="ga_runway")
         required_keys = {"ws_range_n_m2", "constraints", "design_point", "feasibility", "warnings"}
-        assert required_keys.issubset(chart.keys()), (
-            f"Missing keys: {required_keys - chart.keys()}"
-        )
+        assert required_keys.issubset(chart.keys()), f"Missing keys: {required_keys - chart.keys()}"
         assert len(chart["constraints"]) >= 4
         assert chart["feasibility"] in {"feasible", "infeasible_below_constraints"}
 
@@ -967,8 +975,7 @@ class TestGaRunwayMode:
         gamma_rc = mcs._mode_defaults("rc_runway")["gamma_climb_deg"]
         gamma_uav = mcs._mode_defaults("uav_runway")["gamma_climb_deg"]
         assert gamma_ga < gamma_uav < gamma_rc, (
-            f"Expected γ_ga < γ_uav < γ_rc: "
-            f"got ga={gamma_ga}°, uav={gamma_uav}°, rc={gamma_rc}°"
+            f"Expected γ_ga < γ_uav < γ_rc: got ga={gamma_ga}°, uav={gamma_uav}°, rc={gamma_rc}°"
         )
 
     def test_rc_runway_still_passes_after_ga_runway_added(self):
@@ -1149,7 +1156,9 @@ class TestPhaseBMissionMinTwConstraint:
         if mm is not None:
             pts = mm.get("t_w_points") or []
             if pts:
-                assert abs(pts[0] - 0.8) < 1e-6, f"wing_racer Mission-Min T/W = {pts[0]!r}, expected 0.8"
+                assert abs(pts[0] - 0.8) < 1e-6, (
+                    f"wing_racer Mission-Min T/W = {pts[0]!r}, expected 0.8"
+                )
 
     def test_trainer_has_no_mission_min_tw_applicable(self):
         """Trainer profile does NOT include mission_min_tw — marked not applicable."""
@@ -1233,9 +1242,7 @@ class TestPhaseBVerticalClimbConstraint:
 
     def test_vertical_climb_helper_above_one(self):
         mcs = _helpers()
-        tw = mcs._vertical_climb_constraint(
-            ws=500.0, cd0=0.03, e=0.8, ar=7.0, v_climb=20.0
-        )
+        tw = mcs._vertical_climb_constraint(ws=500.0, cd0=0.03, e=0.8, ar=7.0, v_climb=20.0)
         # T/W must be > 1 (need to overcome weight + drag)
         assert tw > 1.0
 
@@ -1371,8 +1378,16 @@ class TestPhaseBProfileMapTable:
     def test_profile_map_exposes_expected_profiles(self):
         mcs = _helpers()
         expected = {
-            "trainer", "sport", "wing_racer", "acro_3d", "stol_bush",
-            "slope_soarer", "glider", "sailplane", "motor_glider", "flying_wing",
+            "trainer",
+            "sport",
+            "wing_racer",
+            "acro_3d",
+            "stol_bush",
+            "slope_soarer",
+            "glider",
+            "sailplane",
+            "motor_glider",
+            "flying_wing",
         }
         assert expected.issubset(set(mcs._PROFILE_CONSTRAINT_MAP.keys()))
 
@@ -1388,8 +1403,16 @@ class TestPhaseBProfileMapTable:
         """Every key in the profile map matches a real constraint key emitted somewhere."""
         mcs = _helpers()
         known_keys = {
-            "takeoff", "landing", "cruise", "climb", "stall",
-            "mission_min_tw", "wcl", "power_loading", "vertical_climb", "hand_launch",
+            "takeoff",
+            "landing",
+            "cruise",
+            "climb",
+            "stall",
+            "mission_min_tw",
+            "wcl",
+            "power_loading",
+            "vertical_climb",
+            "hand_launch",
         }
         for profile, keys in mcs._PROFILE_CONSTRAINT_MAP.items():
             for k in keys:
@@ -1404,7 +1427,10 @@ class TestPhaseBBackwardCompatibility:
     def test_cessna_feasible_unchanged_with_no_profile(self):
         compute_chart = _service()
         chart = compute_chart(
-            CESSNA_172, mode="uav_runway", s_runway=411.0, v_s_target=26.0,
+            CESSNA_172,
+            mode="uav_runway",
+            s_runway=411.0,
+            v_s_target=26.0,
         )
         assert chart["feasibility"] == "feasible"
 

@@ -15,6 +15,7 @@ Two tests:
 2. Verify that the real Alembic migration upgrade → GET roundtrip
    returns a parsed list.
 """
+
 from __future__ import annotations
 
 import json
@@ -55,25 +56,18 @@ def _seed_double_encoded_row(session_factory) -> None:
 
 
 class TestJsonStringSchemaRecovery:
-
-    def test_get_component_types_does_not_500_on_legacy_double_encoded_schema(
-        self, client_and_db
-    ):
+    def test_get_component_types_does_not_500_on_legacy_double_encoded_schema(self, client_and_db):
         client, sf = client_and_db
         _seed_double_encoded_row(sf)
         res = client.get("/component-types")
-        assert res.status_code == 200, (
-            f"expected 200, got {res.status_code}: {res.text[:300]}"
-        )
+        assert res.status_code == 200, f"expected 200, got {res.status_code}: {res.text[:300]}"
         body = res.json()
         bad = next((t for t in body if t["name"] == "bad_legacy"), None)
         assert bad is not None
         assert isinstance(bad["schema"], list)
         assert bad["schema"][0]["name"] == "foo"
 
-    def test_get_single_component_type_also_handles_legacy_double_encoded(
-        self, client_and_db
-    ):
+    def test_get_single_component_type_also_handles_legacy_double_encoded(self, client_and_db):
         client, sf = client_and_db
         _seed_double_encoded_row(sf)
         body = client.get("/component-types").json()

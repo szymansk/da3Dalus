@@ -8,6 +8,7 @@ from sqlalchemy.exc import SQLAlchemyError
 from app.api.v2.endpoints.aeroplane.base import get_aeroplane
 from app import schemas
 
+
 class TestGetAeroplane(unittest.TestCase):
     def test_get_aeroplane_success(self):
         test_id = uuid.uuid4()
@@ -22,16 +23,13 @@ class TestGetAeroplane(unittest.TestCase):
 
         # patch AeroplaneSchema to return a dummy schema
         mock_schema = MagicMock()
-        with patch(
-            'app.schemas.AeroplaneSchema',
-            return_value=mock_schema
-        ) as schema_constructor:
+        with patch("app.schemas.AeroplaneSchema", return_value=mock_schema) as schema_constructor:
             result = asyncio.run(get_aeroplane(aeroplane_id=test_id, db=mock_db))
 
         # assertions
-        mock_db.query.assert_called_once()           # we queried the model
-        schema_constructor.assert_called_once()      # we created a schema
-        self.assertEqual(result, mock_schema)        # returned the schema
+        mock_db.query.assert_called_once()  # we queried the model
+        schema_constructor.assert_called_once()  # we created a schema
+        self.assertEqual(result, mock_schema)  # returned the schema
 
     def test_get_aeroplane_not_found(self):
         test_id = uuid.uuid4()
@@ -68,6 +66,7 @@ class TestGetAeroplane(unittest.TestCase):
 
         self.assertEqual(ctx.exception.status_code, 500)
         self.assertIn("Unexpected error", ctx.exception.detail)
+
 
 if __name__ == "__main__":
     unittest.main()

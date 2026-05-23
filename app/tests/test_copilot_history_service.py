@@ -19,6 +19,7 @@ from app.tests.conftest import make_aeroplane
 # Helpers
 # ---------------------------------------------------------------------------
 
+
 def _make_msg_write(
     role: str = "user",
     content: str = "hello",
@@ -38,6 +39,7 @@ def _make_msg_write(
 # ---------------------------------------------------------------------------
 # _get_aeroplane
 # ---------------------------------------------------------------------------
+
 
 class TestGetAeroplane:
     """Tests for the shared _get_aeroplane helper."""
@@ -59,6 +61,7 @@ class TestGetAeroplane:
 # ---------------------------------------------------------------------------
 # get_history
 # ---------------------------------------------------------------------------
+
 
 class TestGetHistory:
     """Tests for get_history."""
@@ -93,6 +96,7 @@ class TestGetHistory:
 # append_message
 # ---------------------------------------------------------------------------
 
+
 class TestAppendMessage:
     """Tests for append_message."""
 
@@ -113,7 +117,8 @@ class TestAppendMessage:
             aeroplane = make_aeroplane(db)
             tool_calls = [{"name": "get_wing", "args": {}}]
             msg = svc.append_message(
-                db, aeroplane.uuid,
+                db,
+                aeroplane.uuid,
                 _make_msg_write(role="assistant", content="", tool_calls=tool_calls),
             )
             assert msg.role == "assistant"
@@ -125,7 +130,8 @@ class TestAppendMessage:
             aeroplane = make_aeroplane(db)
             tool_results = [{"output": "ok"}]
             msg = svc.append_message(
-                db, aeroplane.uuid,
+                db,
+                aeroplane.uuid,
                 _make_msg_write(role="tool", content="", tool_results=tool_results),
             )
             assert msg.role == "tool"
@@ -137,7 +143,8 @@ class TestAppendMessage:
             aeroplane = make_aeroplane(db)
             first = svc.append_message(db, aeroplane.uuid, _make_msg_write(content="root"))
             child = svc.append_message(
-                db, aeroplane.uuid,
+                db,
+                aeroplane.uuid,
                 _make_msg_write(content="reply", parent_id=first.id),
             )
             assert child.parent_id == first.id
@@ -149,9 +156,12 @@ class TestAppendMessage:
             svc.append_message(db, aeroplane.uuid, _make_msg_write(content="a"))
             svc.append_message(db, aeroplane.uuid, _make_msg_write(content="b"))
 
-            msgs = db.query(CopilotMessageModel).filter(
-                CopilotMessageModel.aeroplane_id == aeroplane.id
-            ).order_by(CopilotMessageModel.sort_index).all()
+            msgs = (
+                db.query(CopilotMessageModel)
+                .filter(CopilotMessageModel.aeroplane_id == aeroplane.id)
+                .order_by(CopilotMessageModel.sort_index)
+                .all()
+            )
             assert msgs[0].sort_index == 0
             assert msgs[1].sort_index == 1
 
@@ -173,6 +183,7 @@ class TestAppendMessage:
 # ---------------------------------------------------------------------------
 # clear_history
 # ---------------------------------------------------------------------------
+
 
 class TestClearHistory:
     """Tests for clear_history."""
@@ -216,6 +227,7 @@ class TestClearHistory:
 # delete_message
 # ---------------------------------------------------------------------------
 
+
 class TestDeleteMessage:
     """Tests for delete_message."""
 
@@ -258,6 +270,7 @@ class TestDeleteMessage:
 # _msg_to_schema
 # ---------------------------------------------------------------------------
 
+
 class TestMsgToSchema:
     """Tests for _msg_to_schema conversion."""
 
@@ -268,7 +281,8 @@ class TestMsgToSchema:
             tool_calls = [{"name": "f", "args": {}}]
             tool_results = [{"output": "ok"}]
             msg = svc.append_message(
-                db, aeroplane.uuid,
+                db,
+                aeroplane.uuid,
                 _make_msg_write(
                     role="assistant",
                     content="text",

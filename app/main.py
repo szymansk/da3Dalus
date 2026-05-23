@@ -154,9 +154,7 @@ def create_app() -> FastAPI:
             db = _SessionLocal()
             try:
                 aeroplane = (
-                    db.query(_AeroplaneModel)
-                    .filter(_AeroplaneModel.id == aeroplane_id)
-                    .first()
+                    db.query(_AeroplaneModel).filter(_AeroplaneModel.id == aeroplane_id).first()
                 )
                 if aeroplane is None:
                     return
