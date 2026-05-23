@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import React from "react";
 
 vi.mock("lucide-react", () => {
@@ -52,13 +52,25 @@ const REJECTED = {
   is_glider: false,
 };
 
-function findRhoValueSpan(container: HTMLElement, rhoText: RegExp): HTMLElement {
-  // The ρ value span is inside the polar chip-row, with the rho text.
-  const matches = screen.getAllByText(rhoText);
-  // Return the last match — the chip's value span (the surrounding chip
-  // may render multiple matching texts on different lines; we want the
-  // actual value span which carries the colour).
-  return matches[matches.length - 1] as HTMLElement;
+function findRhoValueSpan(rhoText: RegExp): HTMLElement {
+  // Scope to the ρ chip (aria-label starts with "ρ:") so we don't pick up
+  // a coincidentally-matching number elsewhere in the polar row.
+  const polarRow = screen.getByTestId("chip-row-polar");
+  const rhoChip = within(polarRow).getByRole("group", { name: /^ρ:/ });
+  return within(rhoChip).getByText(rhoText) as HTMLElement;
+}
+
+function findEChipValueSpan(symbol: string, value: RegExp): HTMLElement {
+  // Scope assertions about the e / e* chip to the e chip itself so a
+  // coincidental match elsewhere in the row cannot pass the test.
+  const polarRow = screen.getByTestId("chip-row-polar");
+  // Both 'e' and 'e*' render with the aria-label "e: …" — renderSymbol
+  // keeps trailing non-word chars outside the subscript, but humanize()
+  // strips underscores only. So the label starts with "e:".
+  const eChip = symbol === "e*"
+    ? within(polarRow).getByRole("group", { name: /^e\*?:/ })
+    : within(polarRow).getByRole("group", { name: /^e:/ });
+  return within(eChip).getByText(value) as HTMLElement;
 }
 
 describe("PolarChipRow", () => {
@@ -87,7 +99,7 @@ describe("PolarChipRow", () => {
         isRecomputing={false}
       />,
     );
-    const rho = findRhoValueSpan(document.body, /^0\.38$/);
+    const rho = findRhoValueSpan(/^0\.38$/);
     expect(rho.className).toContain("text-emerald-400");
   });
 
@@ -105,7 +117,7 @@ describe("PolarChipRow", () => {
         isRecomputing={false}
       />,
     );
-    const rho = findRhoValueSpan(document.body, /^0\.33$/);
+    const rho = findRhoValueSpan(/^0\.33$/);
     expect(rho.className).toContain("text-amber-400");
   });
 
@@ -121,7 +133,7 @@ describe("PolarChipRow", () => {
         isRecomputing={false}
       />,
     );
-    const rho = findRhoValueSpan(document.body, /^1\.00$/);
+    const rho = findRhoValueSpan(/^1\.00$/);
     expect(rho.className).toContain("text-red-400");
   });
 
@@ -137,7 +149,7 @@ describe("PolarChipRow", () => {
         isRecomputing={false}
       />,
     );
-    const rho = findRhoValueSpan(document.body, /^0\.67$/);
+    const rho = findRhoValueSpan(/^0\.67$/);
     expect(rho.className).toContain("text-amber-400");
   });
 
@@ -146,32 +158,43 @@ describe("PolarChipRow", () => {
     ["medium", "text-amber-400"],
     ["low", "text-orange-400"],
     ["unknown", "text-muted-foreground"],
-  ] as const)("e-quality %s → %s", (q, cls) => {
+  ] as const)("e-quality %s → e value coloured %s", (q, cls) => {
     const ctx = { ...HEALTHY, e_oswald_quality: q };
-    const { container } = render(
+    render(
       <PolarChipRow
         ctx={ctx as unknown as ComputationContext}
         isRecomputing={false}
       />,
     );
-    expect(container.innerHTML).toContain(cls);
+    // Scope: the e chip specifically. innerHTML.contains would also pass
+    // when an unrelated chip happens to use the same Tailwind class.
+    const eValue = findEChipValueSpan("e", /^0\.80$/);
+    expect(eValue.className).toContain(cls);
   });
 
-  it("#625 reproduction: e* muted + k/CLmd/EMax/ρ all '–'", () => {
-    const { container } = render(
+  it("#625 reproduction: e*=0.80 muted + bail tooltip on exactly 4 derived chips", () => {
+    render(
       <PolarChipRow
         ctx={REJECTED as unknown as ComputationContext}
         isRecomputing={false}
       />,
     );
-    // e* muted
-    expect(container.innerHTML).toContain("text-muted-foreground");
-    // four derived chips render '–'
-    expect(screen.getAllByText("–").length).toBeGreaterThanOrEqual(4);
+    // e* chip: value is the fallback 0.80, value-span is muted.
+    const eValue = findEChipValueSpan("e*", /^0\.80$/);
+    expect(eValue.className).toContain("text-muted-foreground");
+    // Exactly four derived chips bail to '–' (k, C_L,md, (L/D)_max, ρ).
+    expect(screen.getAllByText("–").length).toBe(4);
+    // The bail tooltip text must appear on each of the four chips — and
+    // ONLY on those (not on Re/CD0/e*/CL,max which have their own
+    // non-bail descriptions).
+    expect(screen.getAllByText(/non-parabolic/i)).toHaveLength(4);
   });
 
   it("each null input nukes its dependents", () => {
-    const variants: Array<Partial<typeof HEALTHY>> = [
+    // Variant fixtures with one nullable input each — cast through
+    // `unknown` because typeof HEALTHY narrows the numeric fields to
+    // non-nullable based on the literal initialiser.
+    const variants: ReadonlyArray<unknown> = [
       { ...HEALTHY, cd0: null },
       { ...HEALTHY, aspect_ratio: null },
       { ...HEALTHY, polar_by_config: { clean: { cl_max: null } } },
@@ -179,7 +202,7 @@ describe("PolarChipRow", () => {
     for (const ctx of variants) {
       const { unmount } = render(
         <PolarChipRow
-          ctx={ctx as unknown as ComputationContext}
+          ctx={ctx as ComputationContext}
           isRecomputing={false}
         />,
       );
@@ -218,16 +241,17 @@ describe("PolarChipRow", () => {
     expect(screen.getByText(/headline polar number/i)).toBeInTheDocument();
   });
 
-  it("bail-rule tooltip contains 'non-parabolic'", () => {
-    render(
-      <PolarChipRow
-        ctx={REJECTED as unknown as ComputationContext}
-        isRecomputing={false}
-      />,
-    );
-    // Tooltip text appears in all 4 bailed derived chips (k, C_L,md,
-    // (L/D)_max, ρ) — assert at least one match exists.
-    expect(screen.getAllByText(/non-parabolic/i).length).toBeGreaterThanOrEqual(1);
+  it("missing-input tooltip distinguishes the cause from the bail rule", () => {
+    // gh-626 review #2: when rho is null because CD0 is missing (NOT
+    // because the fit was rejected), the tooltip must say "missing
+    // input" — NOT "fit rejected (see e*)" which would misdirect.
+    const ctx = { ...HEALTHY, cd0: null } as unknown as ComputationContext;
+    render(<PolarChipRow ctx={ctx} isRecomputing={false} />);
+    // No "non-parabolic" / "see e*" anywhere — the fit was not rejected.
+    expect(screen.queryByText(/non-parabolic/i)).toBeNull();
+    // The cause-distinguishing tooltip names the missing input.
+    expect(screen.getAllByText(/missing or non-physical input/i).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/C_D0/).length).toBeGreaterThan(0);
   });
 
   it("isRecomputing=true puts stale red on the ρ value (overrides emerald)", () => {
@@ -237,7 +261,7 @@ describe("PolarChipRow", () => {
         isRecomputing={true}
       />,
     );
-    const rho = findRhoValueSpan(document.body, /^0\.18$/);
+    const rho = findRhoValueSpan(/^0\.18$/);
     expect(rho.className).toContain("text-red-400");
   });
 });

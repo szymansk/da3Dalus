@@ -27,6 +27,18 @@ describe("polar.computeCLmd", () => {
     expect(computeCLmd(0.02, 0.8, false, 0)).toBeNull();
     expect(computeCLmd(-0.01, 0.8, false, 7)).toBeNull();
   });
+  it("rejects non-finite inputs (Infinity / -Infinity / NaN)", () => {
+    // Corrupt-payload guard — a backend `np.inf` from a degenerate fit
+    // would otherwise propagate through .toFixed(2) as "Infinity" in the
+    // chip rather than the documented "—" bail state.
+    expect(computeCLmd(Infinity, 0.8, false, 7)).toBeNull();
+    expect(computeCLmd(0.02, Infinity, false, 7)).toBeNull();
+    expect(computeCLmd(0.02, 0.8, false, Infinity)).toBeNull();
+    expect(computeCLmd(-Infinity, 0.8, false, 7)).toBeNull();
+    expect(computeCLmd(NaN, 0.8, false, 7)).toBeNull();
+    expect(computeCLmd(0.02, NaN, false, 7)).toBeNull();
+    expect(computeCLmd(0.02, 0.8, false, NaN)).toBeNull();
+  });
 });
 
 describe("polar.computeEMax", () => {
@@ -37,6 +49,34 @@ describe("polar.computeEMax", () => {
   });
   it("ρ-bail when fit rejected", () => {
     expect(computeEMax(0.02, 0.8, true, 7)).toBeNull();
+  });
+  it("rejects non-finite inputs", () => {
+    expect(computeEMax(Infinity, 0.8, false, 7)).toBeNull();
+    expect(computeEMax(0.02, NaN, false, 7)).toBeNull();
+    expect(computeEMax(0.02, 0.8, false, Infinity)).toBeNull();
+  });
+  it("cross-helper identity (L/D)_max · C_L,md = (π·e·AR) / 2 on the grid", () => {
+    // Cross-pin computeEMax against computeCLmd so a sign/factor regression
+    // in only one helper is caught even when both still match their own
+    // formula tests.  Anderson §6.7.2 derivation:
+    //   (L/D)_max = ½·√(π·e·AR / C_D0)
+    //   C_L,md    =      √(π·e·AR · C_D0)
+    //   ⇒ (L/D)_max · C_L,md = (π·e·AR) / 2
+    const cases: ReadonlyArray<[number, number, number]> = [
+      [0.008, 0.95, 36],
+      [0.02, 0.80, 7],
+      [0.04, 0.75, 6],
+      [0.012, 0.85, 18],
+      [0.025, 0.78, 10],
+      [0.015, 0.90, 25],
+    ];
+    for (const [cd0, e, ar] of cases) {
+      const eMax = computeEMax(cd0, e, false, ar);
+      const clMd = computeCLmd(cd0, e, false, ar);
+      expect(eMax).not.toBeNull();
+      expect(clMd).not.toBeNull();
+      expect(eMax! * clMd!).toBeCloseTo((Math.PI * e * ar) / 2, 6);
+    }
   });
 });
 
@@ -67,6 +107,11 @@ describe("polar.computeRho", () => {
   });
   it("ρ-bail when fit rejected", () => {
     expect(computeRho(0.02, 0.8, true, 7, 1.4)).toBeNull();
+  });
+  it("rejects non-finite inputs", () => {
+    expect(computeRho(Infinity, 0.8, false, 7, 1.4)).toBeNull();
+    expect(computeRho(0.02, 0.8, false, NaN, 1.4)).toBeNull();
+    expect(computeRho(0.02, 0.8, false, 7, Infinity)).toBeNull();
   });
 });
 
@@ -135,6 +180,9 @@ describe("polar.rhoColorClassName", () => {
   });
   it("glider: ρ = 2/3 → amber", () => {
     expect(rhoColorClassName(2 / 3, true)).toBe("text-amber-400");
+  });
+  it("glider: ρ ∈ (2/3, 1) → amber (interior)", () => {
+    expect(rhoColorClassName(0.85, true)).toBe("text-amber-400");
   });
   it("glider: ρ = 1 → red", () => {
     expect(rhoColorClassName(1.0, true)).toBe("text-red-400");

@@ -14,7 +14,11 @@ export type EQuality = "high" | "medium" | "low" | "unknown";
 export type RhoThresholds = { readonly amber: number; readonly red: number };
 
 function valid(...vs: (number | null | undefined)[]): boolean {
-  return vs.every((v) => v != null && v > 0);
+  // Reject null / undefined / non-finite (NaN, ±Infinity) / non-positive.
+  // Non-finite inputs are a corrupt-payload symptom — a backend bug like
+  // `np.inf` from a degenerate fit would otherwise produce "Infinity" /
+  // "0" chip values instead of the documented "—" bail state.
+  return vs.every((v) => v != null && Number.isFinite(v) && v > 0);
 }
 
 /** k = 1/(π·e·AR). Returns null on fit rejection or invalid inputs. */

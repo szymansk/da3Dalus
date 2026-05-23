@@ -4,7 +4,7 @@ import { Wind, Gauge, Activity, Target, TrendingUp, AlertTriangle } from "lucide
 import { Chip } from "@/components/workbench/Chip";
 import {
   computeK, computeCLmd, computeEMax, computeRho,
-  qualityColorClassName, rhoColorClassName,
+  qualityColorClassName, rhoColorClassName, rhoThresholdsForProfile,
 } from "@/lib/polar";
 import type { ComputationContext } from "@/hooks/useComputationContext";
 
@@ -13,11 +13,13 @@ interface Props {
   readonly isRecomputing: boolean;
 }
 
-function fmt(v: number | null, decimals: number, suffix = "") {
-  return v != null ? `${v.toFixed(decimals)}${suffix}` : "–";
+function fmt(v: number | null | undefined, decimals: number, suffix = "") {
+  if (v == null || !Number.isFinite(v)) return "–";
+  return `${v.toFixed(decimals)}${suffix}`;
 }
 function fmtRe(v: number | null | undefined) {
-  return v == null ? "–" : v.toExponential(1);
+  if (v == null || !Number.isFinite(v)) return "–";
+  return v.toExponential(1);
 }
 
 const BAIL_TOOLTIP =
@@ -25,8 +27,66 @@ const BAIL_TOOLTIP =
 
 const INTUITIVE_FORM = " ρ = (C_L,md/C_L,max)²";
 
-function rhoTooltip(rho: number | null, isGlider: boolean): string {
-  if (rho == null) return BAIL_TOOLTIP;
+/**
+ * Returns the human-readable reason a derived chip rendered `—`.
+ *
+ * Three cases are distinguished so we never blame the parabolic-fit
+ * rejection for a problem that is actually a missing/non-physical
+ * input (gh-626 review #2 + #3):
+ *
+ *   1. fallbackUsed         → BAIL_TOOLTIP (fit rejected)
+ *   2. ar / clMax / cd0 / e missing or non-physical → enumerate which
+ *   3. value computed fine  → caller passes the normal description
+ */
+function derivedChipTooltip(
+  fallbackUsed: boolean,
+  inputs: {
+    cd0: number | null;
+    e: number | null;
+    ar: number | null;
+    needsClMax: boolean;
+    clMax: number | null;
+  },
+  normalDescription: string,
+): string {
+  if (fallbackUsed) return BAIL_TOOLTIP;
+  const isBadNum = (v: number | null) =>
+    v == null || !Number.isFinite(v) || v <= 0;
+  const missing: string[] = [];
+  if (isBadNum(inputs.cd0)) missing.push("C_D0");
+  if (isBadNum(inputs.e)) missing.push("e");
+  if (isBadNum(inputs.ar)) missing.push("AR");
+  if (inputs.needsClMax && isBadNum(inputs.clMax)) missing.push("C_L,max");
+  if (missing.length > 0) {
+    return (
+      `Cannot compute — missing or non-physical input(s): ${missing.join(", ")}. ` +
+      "Trigger an assumption recompute or check the wing geometry."
+    );
+  }
+  return normalDescription;
+}
+
+function rhoTooltip(
+  rho: number | null,
+  isGlider: boolean,
+  fallbackUsed: boolean,
+  inputs: {
+    cd0: number | null;
+    e: number | null;
+    ar: number | null;
+    clMax: number | null;
+  },
+): string {
+  if (rho == null) {
+    return derivedChipTooltip(
+      fallbackUsed,
+      { ...inputs, needsClMax: true },
+      // Should not normally surface — rho==null implies one of the
+      // branches above. Defensive fallback string.
+      "Polar health metric not computable from current inputs.",
+    );
+  }
+  const { amber } = rhoThresholdsForProfile(isGlider);
   if (rho >= 1.0) {
     return (
       "Polar health: L/D-max coincident with or past stall — polar is degenerate. " +
@@ -34,7 +94,6 @@ function rhoTooltip(rho: number | null, isGlider: boolean): string {
       INTUITIVE_FORM
     );
   }
-  const amber = isGlider ? 2 / 3 : 1 / 3;
   if (rho >= amber) {
     return isGlider
       ? "Polar health: tightening sailplane optimum. Still healthy for glider regime." +
@@ -67,7 +126,7 @@ export function PolarChipRow({ ctx, isRecomputing }: Props) {
   // Displayed e: when fallback used, show the 0.80 fallback explicitly
   // with the asterisk; otherwise the real fit value. Fallback always
   // renders muted (quality necessarily 'unknown').
-  const eDisplayValue = fallbackUsed ? 0.8 : eFromCtx;
+  const eDisplayValue: number | null = fallbackUsed ? 0.8 : eFromCtx;
   const eSymbol = fallbackUsed ? "e*" : "e";
   const eTooltip = fallbackUsed
     ? "Polar fit was rejected — fallback 0.80 used (regime-naive). All derived polar quantities (k, C_L,md, L/D-max, ρ) are therefore suppressed."
@@ -75,6 +134,9 @@ export function PolarChipRow({ ctx, isRecomputing }: Props) {
   const eQualityColour = fallbackUsed
     ? qualityColorClassName("unknown")
     : qualityColorClassName(quality);
+
+  // Shared input bundle for the cause-distinguishing tooltip helpers.
+  const derivedInputs = { cd0, e: eFromCtx, ar };
 
   return (
     <div
@@ -106,24 +168,28 @@ export function PolarChipRow({ ctx, isRecomputing }: Props) {
       <Chip
         icon={Activity}
         symbol="k"
-        description={k == null
-          ? BAIL_TOOLTIP
-          : "Induced-drag factor k = 1/(πeAR). Drag rises as k·C_L². Lower k = less induced drag at the same lift."}
+        description={derivedChipTooltip(
+          fallbackUsed,
+          { ...derivedInputs, needsClMax: false, clMax: null },
+          "Induced-drag factor k = 1/(πeAR). Drag rises as k·C_L². Lower k = less induced drag at the same lift.",
+        )}
         value={fmt(k, 4)}
         stale={stale}
       />
       <Chip
         icon={Target}
-        symbol="C_L,md"
-        description={clMd == null
-          ? BAIL_TOOLTIP
-          : "Lift coefficient where L/D is maximum (best glide). Should sit well below C_L,max. If C_L,md ≥ C_L,max your wing must stall to reach best glide."}
+        symbol="C_L_md"
+        description={derivedChipTooltip(
+          fallbackUsed,
+          { ...derivedInputs, needsClMax: false, clMax: null },
+          "Lift coefficient where L/D is maximum (best glide). Should sit well below C_L,max. If C_L,md ≥ C_L,max your wing must stall to reach best glide.",
+        )}
         value={fmt(clMd, 2)}
         stale={stale}
       />
       <Chip
         icon={AlertTriangle}
-        symbol="C_L,max"
+        symbol="C_L_max"
         description="Maximum lift coefficient (clean configuration, no flaps). From AeroBuildup — known to underestimate at Re < 3×10⁵; treat as conservative for RC."
         value={fmt(clMax, 2)}
         stale={stale}
@@ -131,16 +197,20 @@ export function PolarChipRow({ ctx, isRecomputing }: Props) {
       <Chip
         icon={TrendingUp}
         symbol="(L/D)_max"
-        description={eMax == null
-          ? BAIL_TOOLTIP
-          : "Maximum lift-to-drag ratio. The headline polar number. Sailplane > 30 · GA 10–18 · jet transport 16–22 · trainer 8–12. Formula: ½·√(πeAR/C_D0)."}
+        description={derivedChipTooltip(
+          fallbackUsed,
+          { ...derivedInputs, needsClMax: false, clMax: null },
+          "Maximum lift-to-drag ratio. The headline polar number. Sailplane > 30 · GA 10–18 · jet transport 16–22 · trainer 8–12. Formula: ½·√(πeAR/C_D0).",
+        )}
         value={fmt(eMax, 1)}
         stale={stale}
       />
       <Chip
         icon={Gauge}
         symbol="ρ"
-        description={rhoTooltip(rho, isGlider)}
+        description={rhoTooltip(rho, isGlider, fallbackUsed, {
+          cd0, e: eFromCtx, ar, clMax,
+        })}
         value={fmt(rho, 2)}
         valueColorClassName={rhoColorClassName(rho, isGlider)}
         stale={stale}
