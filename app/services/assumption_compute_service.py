@@ -173,6 +173,18 @@ def recompute_assumptions(db: Session, aeroplane_uuid) -> None:
         e_oswald_provenance_clean = "fallback"
     e_oswald_fallback = e_oswald_final is None
     e_oswald_effective = e_oswald_final if e_oswald_final is not None else 0.8
+    logger.info(
+        "gh-636 e_oswald: value=%s provenance=%s ld_max=%s cl_at_ld_max=%s ar=%s "
+        "(future hook: asb.AeroBuildup wing_aero_components[0] exposes "
+        "`.oswalds_efficiency` and `.span_effective` per-wing — relevant when "
+        "non-planar wings / winglets / box-wings land; span_effective > b_ref "
+        "would quantify effective-AR enhancement.)",
+        e_oswald_final,
+        e_oswald_provenance_clean,
+        ld_max_clean,
+        cl_at_ld_max_clean,
+        aspect_ratio,
+    )
     # -----------------------------------------------------------------------
 
     # --- gh-526 / epic gh-525 C1: per-configuration parabolic polar -------
