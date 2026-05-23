@@ -827,16 +827,18 @@ def _trim_or_estimate_point(
         best_alpha = float(opti_solution["alpha_deg"])
         best_beta = float(opti_solution["beta_deg"])
         best_controls = dict(opti_solution["controls"])
-        # gh-528: surface solver_path on the success path so consumers
-        # can branch consistently with the fallback path.
+        # gh-627: solver_path lives on trim_method, NOT in trim_residuals.
+        # trim_residuals is typed as dict[str, float] (Pydantic-validated in
+        # TrimEnrichment) and rejects string values. The earlier
+        # `best_residuals["solver_path"] = "opti"` line (gh-528) broke
+        # every OP enrichment until removed.
         best_residuals = dict(opti_solution.get("metrics", {}))
-        best_residuals["solver_path"] = "opti"
         best_method = "opti"
 
     # gh-528 / epic gh-525 finding C3: grid-search fallback updates BOTH
-    # alpha AND velocity post-trim. Records solver_path in trim_residuals
-    # so downstream consumers (UI, AVL replay) can distinguish a confident
-    # Opti convergence from an estimated grid result.
+    # alpha AND velocity post-trim. The solver-path branch label lives on
+    # `trim_method` (gh-627) — NOT inside trim_residuals, which is typed
+    # dict[str, float] and Pydantic-rejects any string value.
     if best_score > 0.35:
         gs_score, gs_alpha, gs_beta, gs_velocity, gs_controls = _grid_search_trim(
             asb_airplane,
@@ -854,7 +856,6 @@ def _trim_or_estimate_point(
                 gs_controls,
             )
             best_residuals = {
-                "solver_path": "grid_fallback",
                 "final_residual": float(gs_score),
                 "grid_velocity_mps": float(gs_velocity),
                 "target_velocity_mps": float(velocity),

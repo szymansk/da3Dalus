@@ -486,10 +486,11 @@ def test_grid_search_updates_velocity_from_grid_result():
     )
 
 
-def test_grid_fallback_records_solver_path_in_trim_enrichment():
-    """gh-528 AC: trim_residuals / trim_enrichment must surface
-    a ``solver_path`` field so downstream consumers can audit which
-    branch produced each OP."""
+def test_grid_fallback_surfaces_trim_method_for_audit():
+    """gh-528 AC (revised gh-627): downstream consumers must be able to
+    audit which trim branch produced each OP. The branch label lives on
+    ``trim_method`` (a dedicated str field), NOT inside ``trim_residuals``
+    (which is dict[str, float] and Pydantic-rejects strings — gh-627)."""
     from app.services.operating_point_generator_service import _trim_or_estimate_point
 
     airplane = _mock_airplane_with_controls("[elevator]Elevator")
@@ -526,10 +527,134 @@ def test_grid_fallback_records_solver_path_in_trim_enrichment():
             effective_mass_kg=1.5,
         )
 
-    # trim_residuals receives the structured fallback metadata so
-    # downstream tools (UI, AVL replay) can branch on solver_path.
+    # gh-627: trim_method carries the branch label; trim_residuals stays
+    # numeric-only so the downstream TrimEnrichment Pydantic validation passes.
+    assert point.trim_method == "grid_fallback"
     assert point.trim_residuals is not None
-    assert point.trim_residuals.get("solver_path") == "grid_fallback"
+    assert "solver_path" not in point.trim_residuals
+    # Structured fallback metadata is still present, just without the string.
+    assert point.trim_residuals.get("final_residual") == pytest.approx(0.30)
+    assert point.trim_residuals.get("grid_velocity_mps") == pytest.approx(13.8)
+    assert point.trim_residuals.get("target_velocity_mps") == pytest.approx(14.0)
+
+
+def test_trim_residuals_round_trip_through_TrimEnrichment_schema():
+    """gh-627 regression: trim_residuals from the producer must be a
+    pure dict[str, float] (no string values), because it flows into
+    ``TrimEnrichment(trim_residuals=...)`` which Pydantic-validates
+    against ``dict[str, float]`` and rejects any string entry.
+
+    Failure mode pre-fix: the producer wrote ``solver_path: "opti"``
+    (or ``"grid_fallback"``) into ``trim_residuals``, causing every
+    OP enrichment to fail with ``ValidationError`` and the request to
+    silently return 200 OK with empty enrichment data.
+
+    This test exercises *both* the Opti-success path and the
+    grid-fallback path through ``_trim_or_estimate_point`` and
+    asserts:
+      1. every value in ``trim_residuals`` is numeric;
+      2. ``solver_path`` is NOT a key (it lives on ``trim_method``);
+      3. constructing ``TrimEnrichment(trim_residuals=...)`` raises
+         no ``ValidationError``.
+    """
+    from app.services.operating_point_generator_service import _trim_or_estimate_point
+    from app.schemas.aeroanalysisschema import TrimEnrichment
+
+    airplane = _mock_airplane_with_controls("[elevator]Elevator")
+    target = {
+        "name": "cruise",
+        "config": "clean",
+        "velocity": 18.0,
+        "altitude": 0.0,
+        "beta_target_deg": 0.0,
+        "n_target": 1.0,
+        "flap_deflection_deg": 0.0,
+    }
+
+    # --- Opti-success path -------------------------------------------------
+    opti_solution = {
+        "score": 0.05,
+        "alpha_deg": 3.2,
+        "beta_deg": 0.0,
+        "controls": {"[elevator]Elevator": -1.2},
+        "metrics": {"final_residual": 0.05, "alpha_residual": 0.01},
+    }
+    with (
+        patch(
+            "app.services.operating_point_generator_service._solve_trim_candidate_with_opti",
+            return_value=opti_solution,
+        ),
+        patch(
+            "app.services.operating_point_generator_service._cl_target_for_velocity",
+            return_value=0.45,
+        ),
+    ):
+        point = _trim_or_estimate_point(
+            asb_airplane=airplane,
+            aircraft=SimpleNamespace(id=1, total_mass_kg=1.5),
+            target=target,
+            constraints={"max_alpha_deg": 18.0, "max_beta_deg": 12.0},
+            capabilities={"available_controls": ["[elevator]Elevator"]},
+            effective_mass_kg=1.5,
+        )
+
+    assert point.trim_method == "opti"
+    assert point.trim_residuals is not None
+    assert "solver_path" not in point.trim_residuals, (
+        f"solver_path must live on trim_method, not in trim_residuals; "
+        f"got {point.trim_residuals!r}"
+    )
+    assert all(isinstance(v, (int, float)) for v in point.trim_residuals.values()), (
+        f"trim_residuals must contain only numeric values; got {point.trim_residuals!r}"
+    )
+    # The actual Pydantic round-trip that production hits — pre-fix this raises.
+    TrimEnrichment(
+        analysis_goal="cruise check",
+        trim_method=point.trim_method,
+        trim_score=point.trim_score,
+        trim_residuals=point.trim_residuals,
+    )
+
+    # --- Grid-fallback path ------------------------------------------------
+    with (
+        patch(
+            "app.services.operating_point_generator_service._solve_trim_candidate_with_opti",
+            return_value=None,
+        ),
+        patch(
+            "app.services.operating_point_generator_service._grid_search_trim",
+            return_value=(0.30, 8.0, 0.0, 17.5, {"[elevator]Elevator": -4.0}),
+        ),
+        patch(
+            "app.services.operating_point_generator_service._cl_target_for_velocity",
+            return_value=0.45,
+        ),
+    ):
+        point = _trim_or_estimate_point(
+            asb_airplane=airplane,
+            aircraft=SimpleNamespace(id=1, total_mass_kg=1.5),
+            target=target,
+            constraints={"max_alpha_deg": 18.0, "max_beta_deg": 12.0},
+            capabilities={"available_controls": ["[elevator]Elevator"]},
+            effective_mass_kg=1.5,
+        )
+
+    assert point.trim_method == "grid_fallback"
+    assert point.trim_residuals is not None
+    assert "solver_path" not in point.trim_residuals, (
+        f"solver_path must live on trim_method, not in trim_residuals; "
+        f"got {point.trim_residuals!r}"
+    )
+    assert all(isinstance(v, (int, float)) for v in point.trim_residuals.values()), (
+        f"trim_residuals must contain only numeric values; got {point.trim_residuals!r}"
+    )
+    # The actual Pydantic round-trip that production hits — pre-fix this raises.
+    TrimEnrichment(
+        analysis_goal="cruise check (grid)",
+        trim_method=point.trim_method,
+        trim_score=point.trim_score,
+        trim_residuals=point.trim_residuals,
+    )
 
 
 def test_opti_success_keeps_trim_method_opti_and_target_velocity():
