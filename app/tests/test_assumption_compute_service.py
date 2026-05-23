@@ -626,6 +626,111 @@ def test_flap_geometry_mismatch_falls_back_with_warning(client_and_db, caplog):
     )
 
 
+# gh-685: cold-start ValueError("x_np=None or mac=None") in
+# compute_forward_cg_limit is expected on the first recompute of a fresh
+# aeroplane — must NOT log WARNING + traceback. Only genuine errors do.
+
+
+def _run_recompute_with_forward_cg_exception(SessionLocal, exception, caplog):
+    """Helper: trigger recompute with a stubbed compute_forward_cg_limit
+    that raises ``exception``. Returns the captured log records."""
+    import contextlib
+    import logging
+
+    with SessionLocal() as db:
+        aeroplane = make_aeroplane(db)
+        seed_defaults(db, str(aeroplane.uuid))
+        db.commit()
+        aeroplane_uuid = str(aeroplane.uuid)
+
+    caplog.set_level(logging.INFO, logger="app.services.assumption_compute_service")
+    with contextlib.ExitStack() as stack:
+        for patcher in _patches(flap_ted_max=None):
+            stack.enter_context(patcher)
+        stack.enter_context(
+            patch(
+                "app.services.elevator_authority_service.compute_forward_cg_limit",
+                side_effect=exception,
+            )
+        )
+        with SessionLocal() as db:
+            recompute_assumptions(db, aeroplane_uuid)
+            db.commit()
+    return list(caplog.records)
+
+
+def test_forward_cg_cold_start_value_error_logs_info_no_traceback(client_and_db, caplog):
+    """gh-685: first-recompute cold-start uses INFO + no exc_info."""
+    import logging
+
+    _, SessionLocal = client_and_db
+    records = _run_recompute_with_forward_cg_exception(
+        SessionLocal,
+        ValueError("x_np=None or mac=None not available — run assumptions first."),
+        caplog,
+    )
+    matching = [
+        r
+        for r in records
+        if "Forward-CG limit deferred" in r.message
+        and r.name == "app.services.assumption_compute_service"
+    ]
+    assert matching, (
+        f"Expected an INFO 'Forward-CG limit deferred' message; got: "
+        f"{[(r.levelname, r.message[:80]) for r in records]}"
+    )
+    rec = matching[0]
+    assert rec.levelno == logging.INFO, f"Cold-start case must be INFO, got {rec.levelname}"
+    assert rec.exc_info is None, "Cold-start case must not attach traceback (exc_info)"
+
+
+def test_forward_cg_real_value_error_still_logs_warning_with_traceback(client_and_db, caplog):
+    """gh-685: a non-cold-start ValueError still produces WARNING + traceback."""
+    import logging
+
+    _, SessionLocal = client_and_db
+    records = _run_recompute_with_forward_cg_exception(
+        SessionLocal,
+        ValueError("something else went wrong in elevator authority"),
+        caplog,
+    )
+    matching = [
+        r
+        for r in records
+        if "Elevator authority forward CG failed" in r.message
+        and r.name == "app.services.assumption_compute_service"
+    ]
+    assert matching, (
+        f"Expected WARNING 'Elevator authority forward CG failed'; got: "
+        f"{[(r.levelname, r.message[:80]) for r in records]}"
+    )
+    rec = matching[0]
+    assert rec.levelno == logging.WARNING
+    assert rec.exc_info is not None, "Non-cold-start case must still attach traceback (exc_info)"
+
+
+def test_forward_cg_runtime_error_logs_warning_with_traceback(client_and_db, caplog):
+    """gh-685: non-ValueError exceptions still hit the broad Exception handler."""
+    import logging
+
+    _, SessionLocal = client_and_db
+    records = _run_recompute_with_forward_cg_exception(
+        SessionLocal,
+        RuntimeError("synthetic genuine bug"),
+        caplog,
+    )
+    matching = [
+        r
+        for r in records
+        if "Elevator authority forward CG failed" in r.message
+        and r.name == "app.services.assumption_compute_service"
+    ]
+    assert matching, "Expected WARNING for RuntimeError too"
+    rec = matching[0]
+    assert rec.levelno == logging.WARNING
+    assert rec.exc_info is not None
+
+
 def test_landing_polar_uses_full_ted_limit_above_30deg(client_and_db):
     """gh-534: with a 40°-rated Fowler flap, the landing polar must run
     at the FULL TED max (40°), not the historical 30° cap.

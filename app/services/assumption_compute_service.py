@@ -376,6 +376,28 @@ def recompute_assumptions(db: Session, aeroplane_uuid) -> None:
                 aircraft.id,
                 "; ".join(_fwd_cg_result.warnings),
             )
+    except ValueError as exc:
+        # gh-685: cold-start chicken-and-egg. On the first recompute of an
+        # aeroplane the assumption store doesn't have `x_np` / `mac` yet —
+        # `compute_forward_cg_limit` reads from the store and raises before
+        # this recompute pass writes the new values back. Functionally
+        # harmless (the stub fallback covers it), but the previous broad
+        # `except Exception + exc_info=True` dumped a full traceback that
+        # looked like a real bug. Demote that specific case to INFO without
+        # traceback; keep WARNING+traceback for genuine errors.
+        msg = str(exc)
+        if "x_np=None" in msg or "mac=None" in msg:
+            logger.info(
+                "Forward-CG limit deferred for aircraft %s "
+                "(first recompute — x_np/mac not yet in store).",
+                aircraft.id,
+            )
+        else:
+            logger.warning(
+                "Elevator authority forward CG failed for aircraft %s — keeping stub.",
+                aircraft.id,
+                exc_info=True,
+            )
     except Exception:
         logger.warning(
             "Elevator authority forward CG failed for aircraft %s — keeping stub.",
