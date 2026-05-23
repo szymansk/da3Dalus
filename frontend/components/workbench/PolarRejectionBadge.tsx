@@ -20,7 +20,7 @@ export interface PolarRejectionBadgeProps {
  * should pass `rejection` directly without category-routing.
  */
 export function PolarRejectionBadge({ rejection }: PolarRejectionBadgeProps) {
-  if (!rejection || rejection.category !== "design") {
+  if (rejection?.category !== "design") {
     return null;
   }
   return (
