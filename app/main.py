@@ -20,6 +20,7 @@ from app.api.v2.endpoints import endurance
 from app.api.v2.endpoints import flight_profiles
 from app.api.v2.endpoints import fuselage_slice
 from app.api.v2.endpoints import health
+from app.api.v2.endpoints import openvsp_import
 from app.core.platform import aerosandbox_available, cad_available
 
 # Heavy routers that transitively import CadQuery / Aerosandbox are loaded
@@ -193,6 +194,7 @@ def create_app() -> FastAPI:
     app.include_router(health.router, prefix="", tags=["health"])
     app.include_router(endurance.router, prefix="", tags=["endurance"])
     app.include_router(aeroplane_v2.router, prefix="", tags=[])
+    app.include_router(openvsp_import.router, prefix="/api/v2", tags=["import"])
     app.include_router(components.router, prefix="", tags=["components"])
     app.include_router(component_types.router, prefix="", tags=["component-types"])
     app.include_router(component_tree.router, prefix="", tags=["component-tree"])
