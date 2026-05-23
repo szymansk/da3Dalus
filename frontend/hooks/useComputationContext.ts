@@ -2,6 +2,7 @@
 
 import useSWR from "swr";
 import { fetcher } from "@/lib/fetcher";
+import type { EQuality } from "@/lib/polar";
 
 export interface ComputationContext {
   v_cruise_mps: number;
@@ -23,6 +24,18 @@ export interface ComputationContext {
   // S_ref and MAC for coefficient non-dimensionalisation.
   b_ref_m?: number | null;
   aspect_ratio?: number | null;
+  // gh-626: polar metrics surfaced in PolarChipRow.
+  cd0?: number | null;
+  e_oswald?: number | null;
+  e_oswald_quality?: EQuality;
+  e_oswald_fallback_used?: boolean;
+  polar_by_config?: {
+    clean?: {
+      cd0?: number | null;
+      e_oswald?: number | null;
+      cl_max?: number | null;
+    };
+  } | null;
   x_np_m: number;
   target_static_margin: number;
   cg_agg_m: number | null;
