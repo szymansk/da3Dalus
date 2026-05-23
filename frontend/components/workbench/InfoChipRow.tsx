@@ -7,6 +7,7 @@ import { GeometryChipRow } from "@/components/workbench/GeometryChipRow";
 import { PolarChipRow } from "@/components/workbench/PolarChipRow";
 import { StabilityChipRow } from "@/components/workbench/StabilityChipRow";
 import { TaillessBanner } from "./TaillessBanner";
+import { API_BASE } from "@/lib/fetcher";
 
 interface Props {
   readonly aeroplaneId: string | null;
@@ -19,6 +20,22 @@ export function InfoChipRow({ aeroplaneId, cgAero, isRecomputing, rightSlot }: P
   const { data: ctx, mutate } = useComputationContext(aeroplaneId, { isRecomputing });
   const recomputing = !!isRecomputing;
   const isTailless = !!ctx?.is_tailless;
+
+  // gh-687: refresh button must force a recompute, not just re-fetch
+  // the cached context. POST /aeroplanes/{id}/recompute schedules the
+  // same background job that AssumptionChanged events schedule;
+  // useRecomputeStatus then flips isRecomputing=true and the chip row
+  // polls computation-context every 1.5s until the job finishes.
+  const handleForceRecompute = async () => {
+    if (!aeroplaneId) return;
+    try {
+      await fetch(`${API_BASE}/aeroplanes/${aeroplaneId}/recompute`, {
+        method: "POST",
+      });
+    } finally {
+      await mutate();
+    }
+  };
 
   // gh-575: Recomputing pill + refresh button live in Row 1's rightSlot
   // so the in-flight state is co-located with the action that triggered it.
@@ -35,9 +52,9 @@ export function InfoChipRow({ aeroplaneId, cgAero, isRecomputing, rightSlot }: P
       )}
       <button
         type="button"
-        aria-label="Refresh computation context"
-        onClick={() => mutate()}
-        disabled={recomputing}
+        aria-label="Force recompute"
+        onClick={handleForceRecompute}
+        disabled={recomputing || !aeroplaneId}
         className="flex items-center gap-1 rounded-full bg-card-muted px-2.5 py-1.5 text-muted-foreground hover:bg-muted hover:text-foreground focus:outline-none focus-visible:ring-1 focus-visible:ring-primary disabled:cursor-not-allowed disabled:opacity-50"
       >
         <RefreshCw size={12} />

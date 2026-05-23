@@ -194,6 +194,40 @@ async def get_recompute_status(
     }
 
 
+@router.post(
+    "/aeroplanes/{aeroplane_id}/recompute",
+    status_code=status.HTTP_202_ACCEPTED,
+    tags=["design-assumptions"],
+    operation_id="trigger_recompute",
+    summary="Force a recompute of the assumption computation context",
+    responses={404: {"description": "Aeroplane not found"}},
+)
+async def trigger_recompute(
+    aeroplane_id: Annotated[UUID4, Path(..., description="The ID of the aeroplane")],
+    db: Annotated[Session, Depends(get_db)],
+) -> dict[str, str | None]:
+    """Enqueue the same background job that AssumptionChanged /
+    GeometryChanged events enqueue. Used by the workbench refresh
+    button and the tail-sizing pencil-action to force a fresh
+    computation when no upstream event has fired."""
+    from app.core.background_jobs import job_tracker
+
+    aeroplane = _resolve_aeroplane(db, aeroplane_id)
+    job_tracker.schedule_recompute_assumptions(aeroplane.id)
+    job = job_tracker.get_recompute_job(aeroplane.id)
+    if job is None:
+        # No event loop was available to schedule the task — return
+        # idle so the client can decide whether to retry. We still
+        # 202 because the request itself was accepted.
+        return {"status": "idle", "started_at": None, "finished_at": None, "error": None}
+    return {
+        "status": job.status.value.lower(),
+        "started_at": job.started_at.isoformat() if job.started_at else None,
+        "finished_at": job.finished_at.isoformat() if job.finished_at else None,
+        "error": job.error,
+    }
+
+
 # ---------------------------------------------------------------------------
 # Computation-context endpoint
 # ---------------------------------------------------------------------------
