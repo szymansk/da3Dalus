@@ -147,11 +147,17 @@ export function PolarChipRow({ ctx, isRecomputing }: Props) {
   // renders muted (quality necessarily 'unknown').
   const eDisplayValue: number | null = eShowsFallbackMarker ? 0.8 : eFromCtx;
   const eSymbol = eShowsFallbackMarker ? "e*" : "e";
-  const eTooltip = eShowsFallbackMarker
-    ? "Polar fit was rejected — fallback 0.80 used (regime-naive). All derived polar quantities (k, C_L,md, L/D-max, ρ) are therefore suppressed."
-    : eProvenance === "aerobuildup_trefftz"
-      ? "Oswald efficiency from AeroBuildup's Trefftz-plane induced drag at (L/D)max (gh-636). Typical 0.70–0.95."
-      : "Oswald efficiency — combined non-elliptical-lift-distribution loss and parasite-drag-with-lift. Typical 0.70–0.95. Colour reflects fit quality.";
+  let eTooltip: string;
+  if (eShowsFallbackMarker) {
+    eTooltip =
+      "Polar fit was rejected — fallback 0.80 used (regime-naive). All derived polar quantities (k, C_L,md, L/D-max, ρ) are therefore suppressed.";
+  } else if (eProvenance === "aerobuildup_trefftz") {
+    eTooltip =
+      "Oswald efficiency from AeroBuildup's Trefftz-plane induced drag at (L/D)max (gh-636). Typical 0.70–0.95.";
+  } else {
+    eTooltip =
+      "Oswald efficiency — combined non-elliptical-lift-distribution loss and parasite-drag-with-lift. Typical 0.70–0.95. Colour reflects fit quality.";
+  }
   const eQualityColour = fallbackUsed
     ? qualityColorClassName("unknown")
     : qualityColorClassName(quality);

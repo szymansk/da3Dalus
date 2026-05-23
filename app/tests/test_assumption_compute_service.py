@@ -95,7 +95,7 @@ def _patches(flap_ted_max: float | None = None, fine_sweep_cl_max: float = 1.35)
         i = sweep_call["i"]
         sweep_call["i"] += 1
         idx = min(i, len(cl_max_sequence) - 1)
-        return (cl_max_sequence[idx], cl_array, cd_array, v_array)
+        return (cl_max_sequence[idx], cl_array, cd_array, v_array, np.zeros_like(cl_array))
 
     return (
         patch(
@@ -409,6 +409,7 @@ def test_no_flap_aircraft_runs_one_pass_with_fallback_flag(client_and_db):
                 np.array([0.2, 0.4, 0.6, 0.8, 1.0, 1.2]),
                 np.array([0.026, 0.028, 0.032, 0.039, 0.049, 0.062]),
                 np.linspace(9.0, 28.0, 6),
+                np.zeros(6),
             ),
         ) as fine_sweep_mock,
         _enter_patches_no_fine_sweep(flap_ted_max=None),
@@ -590,6 +591,7 @@ def test_flap_geometry_mismatch_falls_back_with_warning(client_and_db, caplog):
                 np.array([0.2, 0.4, 0.6, 0.8, 1.0, 1.2]),
                 np.array([0.026, 0.028, 0.032, 0.039, 0.049, 0.062]),
                 np.linspace(9.0, 28.0, 6),
+                np.zeros(6),
             ),
         ),
         patch(

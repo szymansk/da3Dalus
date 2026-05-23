@@ -611,7 +611,7 @@ def _patches_for_ac(ac: dict, fake_airplane, sweep_data):
         ),
         patch(
             "app.services.assumption_compute_service._fine_sweep_cl_max",
-            return_value=(cl_max_sweep, cl_arr, cd_arr, v_arr),
+            return_value=(cl_max_sweep, cl_arr, cd_arr, v_arr, np.zeros_like(cl_arr)),
         ),
         patch(
             "app.services.assumption_compute_service._extract_cl_alpha_from_linear_sweep",
