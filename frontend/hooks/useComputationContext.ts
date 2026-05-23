@@ -30,7 +30,7 @@ export interface ParabolicPolar {
   e_oswald_r2: number | null;
   e_oswald_quality: "high" | "medium" | "low" | "unknown";
   flap_deflection_deg: number;
-  provenance: string;
+  provenance: "aerobuildup" | "no_flap_geometry" | "aerobuildup_failed";
   rejection: PolarRejection | null;
 }
 
