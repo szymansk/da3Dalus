@@ -173,12 +173,17 @@ def recompute_assumptions(db: Session, aeroplane_uuid) -> None:
         e_oswald_provenance_clean = "fallback"
     e_oswald_fallback = e_oswald_final is None
     e_oswald_effective = e_oswald_final if e_oswald_final is not None else 0.8
+    # gh-636 diagnostic. ASB AeroBuildup packs all non-planar effects
+    # (winglets via multi-section dihedral, V-tails, etc.) into
+    # `oswalds_efficiency` while keeping geometric AR fixed — so our polar
+    # formulas `(L/D)max = ½·√(π·e·AR/CD0)` etc. are already consistent for
+    # non-planar wings. `span_effective` from `wing_aero_components[0]` is
+    # the projected (Y-axis) span, NOT a classical-LL "effective span > b_ref":
+    # empirically b_eff ≤ b_ref (slightly under for steeply dihedraled tips,
+    # because the out-of-plane part doesn't project). Diagnostic value:
+    # large |b_eff/b_ref - 1| flags unusual geometry for sanity-check.
     logger.info(
-        "gh-636 e_oswald: value=%s provenance=%s ld_max=%s cl_at_ld_max=%s ar=%s "
-        "(future hook: asb.AeroBuildup wing_aero_components[0] exposes "
-        "`.oswalds_efficiency` and `.span_effective` per-wing — relevant when "
-        "non-planar wings / winglets / box-wings land; span_effective > b_ref "
-        "would quantify effective-AR enhancement.)",
+        "gh-636 e_oswald: value=%s provenance=%s ld_max=%s cl_at_ld_max=%s ar=%s",
         e_oswald_final,
         e_oswald_provenance_clean,
         ld_max_clean,
