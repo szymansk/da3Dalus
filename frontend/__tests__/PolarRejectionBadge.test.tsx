@@ -52,6 +52,13 @@ describe("PolarRejectionBadge", () => {
     expect(container.firstChild).toBeNull();
   });
 
+  // gh-634: pre-gh-630 aeroplanes have polar_by_config without a rejection
+  // key — runtime value is undefined, not null. The badge must not crash.
+  it("renders nothing when rejection is undefined (legacy data)", () => {
+    const { container } = render(<PolarRejectionBadge rejection={undefined} />);
+    expect(container.firstChild).toBeNull();
+  });
+
   it.each([
     ["sweep", sweepRejection],
     ["data", dataRejection],
