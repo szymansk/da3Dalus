@@ -16,6 +16,7 @@ Design choices:
   All three configs (clean, takeoff, landing) therefore receive the same
   rejection.  The assertion only checks the `clean` slot.
 """
+
 from __future__ import annotations
 
 import contextlib
@@ -80,39 +81,55 @@ def _enter_patches_with_rejection():
     v_array = np.linspace(9.0, 28.0, 6)
 
     with contextlib.ExitStack() as stack:
-        stack.enter_context(patch(
-            "app.services.assumption_compute_service._build_asb_airplane",
-            return_value=_make_fake_airplane(),
-        ))
-        stack.enter_context(patch(
-            "app.services.assumption_compute_service._stability_run_at_cruise",
-            return_value=(0.085, 0.20, 0.025, 0.30),  # x_np, MAC, CD0, s_ref
-        ))
-        stack.enter_context(patch(
-            "app.services.assumption_compute_service._coarse_alpha_sweep",
-            return_value=15.0,
-        ))
-        stack.enter_context(patch(
-            "app.services.assumption_compute_service._fine_sweep_cl_max",
-            return_value=(1.35, cl_array, cd_array, v_array),
-        ))
-        stack.enter_context(patch(
-            "app.services.assumption_compute_service._extract_cl_alpha_from_linear_sweep",
-            return_value=5.7,
-        ))
-        stack.enter_context(patch(
-            "app.services.assumption_compute_service._load_flight_profile_speeds",
-            return_value=(18.0, 28.0, True),
-        ))
-        stack.enter_context(patch(
-            "app.services.assumption_compute_service._extract_flap_ted_max",
-            return_value=None,  # no flap → clean polar cloned to takeoff / landing
-        ))
+        stack.enter_context(
+            patch(
+                "app.services.assumption_compute_service._build_asb_airplane",
+                return_value=_make_fake_airplane(),
+            )
+        )
+        stack.enter_context(
+            patch(
+                "app.services.assumption_compute_service._stability_run_at_cruise",
+                return_value=(0.085, 0.20, 0.025, 0.30),  # x_np, MAC, CD0, s_ref
+            )
+        )
+        stack.enter_context(
+            patch(
+                "app.services.assumption_compute_service._coarse_alpha_sweep",
+                return_value=15.0,
+            )
+        )
+        stack.enter_context(
+            patch(
+                "app.services.assumption_compute_service._fine_sweep_cl_max",
+                return_value=(1.35, cl_array, cd_array, v_array),
+            )
+        )
+        stack.enter_context(
+            patch(
+                "app.services.assumption_compute_service._extract_cl_alpha_from_linear_sweep",
+                return_value=5.7,
+            )
+        )
+        stack.enter_context(
+            patch(
+                "app.services.assumption_compute_service._load_flight_profile_speeds",
+                return_value=(18.0, 28.0, True),
+            )
+        )
+        stack.enter_context(
+            patch(
+                "app.services.assumption_compute_service._extract_flap_ted_max",
+                return_value=None,  # no flap → clean polar cloned to takeoff / landing
+            )
+        )
         # The key stub: every call to _fit_parabolic_polar returns the synthetic rejection.
-        stack.enter_context(patch(
-            "app.services.assumption_compute_service._fit_parabolic_polar",
-            return_value=(None, None, None, _FAKE_REJECTION),
-        ))
+        stack.enter_context(
+            patch(
+                "app.services.assumption_compute_service._fit_parabolic_polar",
+                return_value=(None, None, None, _FAKE_REJECTION),
+            )
+        )
         yield
 
 
@@ -143,9 +160,7 @@ class TestRejectionInComputationContextEndpoint:
                 db.commit()
 
         # --- assert: HTTP endpoint exposes the rejection ---
-        r = client.get(
-            f"/aeroplanes/{aeroplane_uuid}/assumptions/computation-context"
-        )
+        r = client.get(f"/aeroplanes/{aeroplane_uuid}/assumptions/computation-context")
         assert r.status_code == 200, r.text
         ctx = r.json()
 

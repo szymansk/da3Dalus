@@ -1,4 +1,5 @@
 """Schema tests for the gh-630 PolarRejection extension."""
+
 from __future__ import annotations
 
 import pytest

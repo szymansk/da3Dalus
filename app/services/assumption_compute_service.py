@@ -38,7 +38,12 @@ from app.models.computation_config import (
 from app.schemas.AeroplaneRequest import AnalysisToolUrlType
 from app.schemas.aeroanalysisschema import OperatingPointSchema
 from app.schemas.design_assumption import PARAMETER_DEFAULTS
-from app.schemas.polar_by_config import ParabolicPolar, PolarRejection, RejectionCategory, RejectionGate
+from app.schemas.polar_by_config import (
+    ParabolicPolar,
+    PolarRejection,
+    RejectionCategory,
+    RejectionGate,
+)
 from app.services.design_assumptions_service import (
     _get_aeroplane,
     seed_defaults,
@@ -972,12 +977,17 @@ def _fit_parabolic_polar(
     """
     if ar is None or ar <= 0:
         logger.warning("polar fit rejected: invalid aspect ratio %r", ar)
-        return None, None, None, _build_rejection(
-            gate="insufficient_points",
-            category="sweep",
-            fitted_value=float(ar) if ar is not None else None,
-            threshold="ar > 0",
-            hint="Ungültiges Streckenverhältnis — Wing-Geometrie nicht definiert.",
+        return (
+            None,
+            None,
+            None,
+            _build_rejection(
+                gate="insufficient_points",
+                category="sweep",
+                fitted_value=float(ar) if ar is not None else None,
+                threshold="ar > 0",
+                hint="Ungültiges Streckenverhältnis — Wing-Geometrie nicht definiert.",
+            ),
         )
     cl_lo = max(0.10, 0.10 * cl_max)
     cl_hi = 0.85 * cl_max
@@ -993,12 +1003,17 @@ def _fit_parabolic_polar(
             cl_lo,
             cl_hi,
         )
-        return None, None, None, _build_rejection(
-            gate="insufficient_points",
-            category="sweep",
-            fitted_value=float(len(cl_win)),
-            threshold=">= 6 points",
-            hint="Zu wenig Punkte im linearen Polar-Fenster — α-Auflösung zu grob.",
+        return (
+            None,
+            None,
+            None,
+            _build_rejection(
+                gate="insufficient_points",
+                category="sweep",
+                fitted_value=float(len(cl_win)),
+                threshold=">= 6 points",
+                hint="Zu wenig Punkte im linearen Polar-Fenster — α-Auflösung zu grob.",
+            ),
         )
 
     cl2_win = cl_win**2
@@ -1014,12 +1029,17 @@ def _fit_parabolic_polar(
             "polar fit rejected: non-monotonic dCD/d(CL²) in window — "
             "possible laminar bubble or stall contamination"
         )
-        return None, None, None, _build_rejection(
-            gate="non_monotonic_polar",
-            category="data",
-            fitted_value=float(np.min(diffs)),
-            threshold="dCD/d(CL²) >= 0",
-            hint="Nicht-monotone Polare im linearen Bereich — möglicher Laminar-Bubble oder Stall-Kontamination.",
+        return (
+            None,
+            None,
+            None,
+            _build_rejection(
+                gate="non_monotonic_polar",
+                category="data",
+                fitted_value=float(np.min(diffs)),
+                threshold="dCD/d(CL²) >= 0",
+                hint="Nicht-monotone Polare im linearen Bereich — möglicher Laminar-Bubble oder Stall-Kontamination.",
+            ),
         )
 
     # OLS fit: C_D = k · C_L² + cd0  (numpy returns highest-degree first)
@@ -1027,26 +1047,36 @@ def _fit_parabolic_polar(
 
     if k <= 0:
         logger.warning("polar fit rejected: non-positive slope k=%.6f (requires k>0)", k)
-        return None, None, None, _build_rejection(
-            gate="negative_slope_k",
-            category="design",
-            fitted_value=float(k),
-            threshold="k > 0",
-            hint=(
-                "Polare zeigt mit steigendem Auftrieb fallenden Widerstand — "
-                "wahrscheinlich Twist/Verwindung oder Planform-Kink unphysikalisch. "
-                "AVL-Run prüfen."
+        return (
+            None,
+            None,
+            None,
+            _build_rejection(
+                gate="negative_slope_k",
+                category="design",
+                fitted_value=float(k),
+                threshold="k > 0",
+                hint=(
+                    "Polare zeigt mit steigendem Auftrieb fallenden Widerstand — "
+                    "wahrscheinlich Twist/Verwindung oder Planform-Kink unphysikalisch. "
+                    "AVL-Run prüfen."
+                ),
             ),
         )
 
     if cd0_fit <= 0:
         logger.warning("polar fit rejected: non-positive cd0_fit=%.6f (requires cd0>0)", cd0_fit)
-        return None, None, None, _build_rejection(
-            gate="non_positive_cd0",
-            category="consistency",
-            fitted_value=float(cd0_fit),
-            threshold="cd0 > 0",
-            hint="Parabolischer Fit liefert negatives cd0 — Datenrauschen am unteren Fensterrand.",
+        return (
+            None,
+            None,
+            None,
+            _build_rejection(
+                gate="non_positive_cd0",
+                category="consistency",
+                fitted_value=float(cd0_fit),
+                threshold="cd0 > 0",
+                hint="Parabolischer Fit liefert negatives cd0 — Datenrauschen am unteren Fensterrand.",
+            ),
         )
 
     e_oswald = 1.0 / (np.pi * ar * k)
@@ -1056,14 +1086,19 @@ def _fit_parabolic_polar(
             "polar fit rejected: e_oswald=%.4f outside physical range (0.4, 1.0]",
             e_oswald,
         )
-        return None, None, None, _build_rejection(
-            gate="unphysical_e_oswald",
-            category="design",
-            fitted_value=float(e_oswald),
-            threshold="(0.4, 1.0]",
-            hint=(
-                f"Berechnete Spannweiteneffizienz e = {e_oswald:.3f} außerhalb (0.4, 1.0]. "
-                "Konfiguration für AeroBuildup vermutlich ungeeignet, AVL nutzen."
+        return (
+            None,
+            None,
+            None,
+            _build_rejection(
+                gate="unphysical_e_oswald",
+                category="design",
+                fitted_value=float(e_oswald),
+                threshold="(0.4, 1.0]",
+                hint=(
+                    f"Berechnete Spannweiteneffizienz e = {e_oswald:.3f} außerhalb (0.4, 1.0]. "
+                    "Konfiguration für AeroBuildup vermutlich ungeeignet, AVL nutzen."
+                ),
             ),
         )
 
@@ -1077,12 +1112,17 @@ def _fit_parabolic_polar(
                 rel_dev * 100,
                 cd0_stability,
             )
-            return None, None, None, _build_rejection(
-                gate="cd0_stability_mismatch",
-                category="consistency",
-                fitted_value=float(rel_dev),
-                threshold="<= 0.20",
-                hint="cd0 aus Polar-Fit weicht >20 % vom Stability-Run ab — Datenkonsistenz prüfen.",
+            return (
+                None,
+                None,
+                None,
+                _build_rejection(
+                    gate="cd0_stability_mismatch",
+                    category="consistency",
+                    fitted_value=float(rel_dev),
+                    threshold="<= 0.20",
+                    hint="cd0 aus Polar-Fit weicht >20 % vom Stability-Run ab — Datenkonsistenz prüfen.",
+                ),
             )
 
     # R² for quality reporting

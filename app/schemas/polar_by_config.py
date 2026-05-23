@@ -59,9 +59,7 @@ class PolarRejection(BaseModel):
     """
 
     gate: RejectionGate = Field(..., description="Which rejection guard fired")
-    category: RejectionCategory = Field(
-        ..., description="Coarse class — controls UI visibility"
-    )
+    category: RejectionCategory = Field(..., description="Coarse class — controls UI visibility")
     fitted_value: float | None = Field(
         None, description="Numeric value that triggered the rejection, when meaningful"
     )
@@ -92,7 +90,7 @@ class ParabolicPolar(BaseModel):
     rejection: PolarRejection | None = Field(
         None,
         description="Set only when the parabolic fit was rejected (gh-630); "
-                    "disjoint from e_oswald_quality which applies to successful fits.",
+        "disjoint from e_oswald_quality which applies to successful fits.",
     )
 
 

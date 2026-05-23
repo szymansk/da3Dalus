@@ -20,6 +20,7 @@ Design Decisions:
 - For context integration tests, a sentinel context dict is injected
   (no DB required).
 """
+
 from __future__ import annotations
 
 import math
@@ -113,9 +114,7 @@ class TestFitParabolicPolar:
             cls, cds, ar=ac["ar"], cl_max=ac["cl_max"], cd0_stability=ac["cd0"]
         )
         assert e_fit is not None, "fit should succeed on clean synthetic polar"
-        assert abs(e_fit - ac["e"]) < 0.07, (
-            f"Cessna: e_fit={e_fit:.4f} vs reference {ac['e']}"
-        )
+        assert abs(e_fit - ac["e"]) < 0.07, f"Cessna: e_fit={e_fit:.4f} vs reference {ac['e']}"
 
     def test_synthetic_polar_recovers_asw27(self):
         """Clean synthetic ASW-27 polar (high AR) recovers e within ±0.07."""
@@ -125,9 +124,7 @@ class TestFitParabolicPolar:
             cls, cds, ar=ac["ar"], cl_max=ac["cl_max"], cd0_stability=ac["cd0"]
         )
         assert e_fit is not None, "fit should succeed on clean synthetic polar"
-        assert abs(e_fit - ac["e"]) < 0.07, (
-            f"ASW-27: e_fit={e_fit:.4f} vs reference {ac['e']}"
-        )
+        assert abs(e_fit - ac["e"]) < 0.07, f"ASW-27: e_fit={e_fit:.4f} vs reference {ac['e']}"
 
     def test_synthetic_polar_recovers_rc_trainer(self):
         """Clean synthetic RC-Trainer polar recovers e within ±0.07."""
@@ -137,9 +134,7 @@ class TestFitParabolicPolar:
             cls, cds, ar=ac["ar"], cl_max=ac["cl_max"], cd0_stability=ac["cd0"]
         )
         assert e_fit is not None, "fit should succeed on clean synthetic polar"
-        assert abs(e_fit - ac["e"]) < 0.07, (
-            f"RC Trainer: e_fit={e_fit:.4f} vs reference {ac['e']}"
-        )
+        assert abs(e_fit - ac["e"]) < 0.07, f"RC Trainer: e_fit={e_fit:.4f} vs reference {ac['e']}"
 
     def test_window_clamps_cl_lo_to_0_10_when_cl_max_is_tiny(self):
         """C_L_lo = max(0.10, 0.10·CL_max) — for CL_max=0.5, cl_lo=max(0.10, 0.05)=0.10."""
@@ -191,9 +186,7 @@ class TestFitParabolicPolar:
         cd0_fit, e_fit, r2, *_ = _fit_parabolic_polar(
             cls, cds, ar=7.0, cl_max=cl_max, cd0_stability=0.04
         )
-        assert (cd0_fit, e_fit, r2) == (None, None, None), (
-            "negative slope should be rejected"
-        )
+        assert (cd0_fit, e_fit, r2) == (None, None, None), "negative slope should be rejected"
 
     def test_rejects_e_below_0_4(self):
         """e < 0.4 (physically implausible) → return (None, None, None)."""
@@ -219,9 +212,7 @@ class TestFitParabolicPolar:
         cd0_fit, e_fit, r2, *_ = _fit_parabolic_polar(
             cls, cds, ar=7.0, cl_max=cl_max, cd0_stability=0.03
         )
-        assert (cd0_fit, e_fit, r2) == (None, None, None), (
-            "e > 1.0 should be rejected"
-        )
+        assert (cd0_fit, e_fit, r2) == (None, None, None), "e > 1.0 should be rejected"
 
     def test_rejects_laminar_bubble_non_monotonic(self):
         """Non-monotonic dCD/dCL² (laminar bubble signature) → reject."""
@@ -530,9 +521,9 @@ class TestCachedContextIntegration:
             landing_fit_return = (0.05, 0.72, 0.95, None)
 
         fake_fit_returns = [
-            (ac["cd0"], ac["e"], 0.98, None),    # 1st call: clean (success)
-            (0.04, 0.78, 0.97, None),             # 2nd call: takeoff (success)
-            landing_fit_return,                   # 3rd call: landing
+            (ac["cd0"], ac["e"], 0.98, None),  # 1st call: clean (success)
+            (0.04, 0.78, 0.97, None),  # 2nd call: takeoff (success)
+            landing_fit_return,  # 3rd call: landing
         ]
 
         def _fit_side_effect(*args, **kwargs):
@@ -629,6 +620,7 @@ class TestCachedContextIntegration:
         — and verify the context value matches the fitted version.
         """
         from app.schemas.design_assumption import PARAMETER_DEFAULTS
+
         ac = CESSNA_172
         ctx = self._run_recompute_with_fake_polar(client_and_db, ac, fit_succeeds=True)
         e_cached = ctx.get("e_oswald")
@@ -659,6 +651,7 @@ class TestCachedContextIntegration:
     def test_min_sink_speed_uses_cached_e(self, client_and_db):
         """v_min_sink_mps in context is computed with fitted e (not hardcoded 0.8)."""
         from app.schemas.design_assumption import PARAMETER_DEFAULTS
+
         ac = CESSNA_172
         ctx = self._run_recompute_with_fake_polar(client_and_db, ac, fit_succeeds=True)
         e_cached = ctx.get("e_oswald")
@@ -714,9 +707,13 @@ class TestCrossCheckAgainstAndersonFormula:
         assert e_fit is not None, f"{ac['name']}: fit failed on clean synthetic polar"
 
         # V_md with fitted e
-        v_md_fit = _min_drag_speed(ac["mass_kg"], ac["s_ref_m2"], ac["cd0"], ac["ar"], oswald_e=e_fit)
+        v_md_fit = _min_drag_speed(
+            ac["mass_kg"], ac["s_ref_m2"], ac["cd0"], ac["ar"], oswald_e=e_fit
+        )
         # V_md with reference (textbook) e — Anderson §6.7.2
-        v_md_ref = _min_drag_speed(ac["mass_kg"], ac["s_ref_m2"], ac["cd0"], ac["ar"], oswald_e=ac["e"])
+        v_md_ref = _min_drag_speed(
+            ac["mass_kg"], ac["s_ref_m2"], ac["cd0"], ac["ar"], oswald_e=ac["e"]
+        )
         assert v_md_fit is not None
         assert v_md_ref is not None
         rel_err = abs(v_md_fit - v_md_ref) / v_md_ref
@@ -735,8 +732,7 @@ class TestCrossCheckAgainstAndersonFormula:
         assert cd0_fit is not None, f"{ac['name']}: fit failed on clean synthetic polar"
         rel_err = abs(cd0_fit - ac["cd0"]) / ac["cd0"]
         assert rel_err < 0.20, (
-            f"{ac['name']}: cd0_fit={cd0_fit:.5f} vs true cd0={ac['cd0']}, "
-            f"rel_err={rel_err:.3f}"
+            f"{ac['name']}: cd0_fit={cd0_fit:.5f} vs true cd0={ac['cd0']}, rel_err={rel_err:.3f}"
         )
 
 
@@ -778,9 +774,7 @@ class TestRejectionLogging:
         cds[mid] -= 0.015
         cds[mid + 1] -= 0.010
 
-        result = _fit_parabolic_polar(
-            cls, cds, ar=7.0, cl_max=cl_max, cd0_stability=0.03
-        )
+        result = _fit_parabolic_polar(cls, cds, ar=7.0, cl_max=cl_max, cd0_stability=0.03)
 
         cd0_r, e_r, r2_r, *_ = result
         assert (cd0_r, e_r, r2_r) == (None, None, None)
@@ -789,9 +783,7 @@ class TestRejectionLogging:
         assert any(
             "monoton" in m.lower() or "laminar" in m.lower() or "non-monoton" in m.lower()
             for m in all_msgs
-        ), (
-            f"Expected a warning about non-monotonic polar. Got: {all_msgs}"
-        )
+        ), f"Expected a warning about non-monotonic polar. Got: {all_msgs}"
 
 
 # ---------------------------------------------------------------------------
