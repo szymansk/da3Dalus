@@ -126,18 +126,61 @@ def _kpi_stall_safety(ctx: dict[str, Any], range_min: float, range_max: float) -
     )
 
 
-def _kpi_glide(ctx: dict[str, Any], range_min: float, range_max: float) -> MissionAxisKpi:
-    """Maximum lift-to-drag ratio from the clean polar."""
-    formula = "(L/D)_max = 0.5 · √(π · e · AR / C_D0)"
+def _resolve_polar_inputs(
+    ctx: dict[str, Any],
+) -> tuple[float | None, float | None, float | None, float | None]:
+    """gh-681: resolve (ld_max_empirical, cd0, e_oswald, ar) for the clean polar.
+
+    Provenance chain that survives parabolic-fit rejection:
+    - ``ld_max_empirical``: ``polar_by_config.clean.ld_max`` (gh-636 empirical
+      max(CL/CD) from the AeroBuildup sweep) if positive.
+    - ``cd0`` / ``e``: prefer ``polar_by_config.clean`` (post-fit values),
+      then fall back to top-level ``ctx['cd0']`` (always-written stability-run
+      cd0) and ``ctx['e_oswald']`` (gh-636 AB-Trefftz, populated independently
+      of the parabolic fit).
+    - ``ar``: ``ctx['aspect_ratio']``.
+    """
     polar = ctx.get("polar_by_config", {}).get("clean") if ctx.get("polar_by_config") else None
     ar = ctx.get("aspect_ratio")
-    if not polar or ar is None:
+    if ar is None or ar <= 0:
+        return None, None, None, None
+
+    ld_emp = polar.get("ld_max") if polar else None
+    if not isinstance(ld_emp, (int, float)) or ld_emp <= 0:
+        ld_emp = None
+
+    cd0 = polar.get("cd0") if polar else None
+    if cd0 is None or cd0 <= 0:
+        cd0 = ctx.get("cd0")
+        if cd0 is None or cd0 <= 0:
+            cd0 = None
+
+    e = polar.get("e_oswald") if polar else None
+    if e is None or e <= 0:
+        e = ctx.get("e_oswald")
+        if e is None or e <= 0:
+            e = None
+
+    return ld_emp, cd0, e, float(ar)
+
+
+def _kpi_glide(ctx: dict[str, Any], range_min: float, range_max: float) -> MissionAxisKpi:
+    """Maximum lift-to-drag ratio from the clean polar.
+
+    gh-681: prefer empirical (L/D)max from the sweep; if absent, use the
+    parabolic-polar formula with cd0/e_oswald via the provenance chain
+    that survives fit rejection (see ``_resolve_polar_inputs``).
+    """
+    formula = "(L/D)_max = 0.5 · √(π · e · AR / C_D0)"
+    ld_emp, cd0, e, ar = _resolve_polar_inputs(ctx)
+    if ar is None:
         return _missing("glide", range_min, range_max, formula)
-    cd0 = polar.get("cd0")
-    e = polar.get("e_oswald")
-    if cd0 is None or cd0 <= 0 or e is None or e <= 0 or ar <= 0:
+    if ld_emp is not None:
+        value = float(ld_emp)
+    elif cd0 is not None and e is not None:
+        value = 0.5 * math.sqrt(math.pi * e * ar / cd0)
+    else:
         return _missing("glide", range_min, range_max, formula)
-    value = 0.5 * math.sqrt(math.pi * e * ar / cd0)
     return MissionAxisKpi(
         axis="glide",
         value=value,
@@ -151,15 +194,15 @@ def _kpi_glide(ctx: dict[str, Any], range_min: float, range_max: float) -> Missi
 
 
 def _kpi_climb_energy(ctx: dict[str, Any], range_min: float, range_max: float) -> MissionAxisKpi:
-    """Climb-energy figure ``(C_L^1.5 / C_D)_max`` — relevant for thermalling and ROC."""
+    """Climb-energy figure ``(C_L^1.5 / C_D)_max`` — relevant for thermalling and ROC.
+
+    gh-681: uses the same provenance chain as ``_kpi_glide`` for cd0 / e_oswald.
+    No empirical equivalent for climb-energy yet (only ld_max is on the polar);
+    formula is the only path.
+    """
     formula = "(C_L^1.5 / C_D)_max = (3·π·e·AR)^0.75 / (4 · C_D0^0.25)"
-    polar = ctx.get("polar_by_config", {}).get("clean") if ctx.get("polar_by_config") else None
-    ar = ctx.get("aspect_ratio")
-    if not polar or ar is None:
-        return _missing("climb", range_min, range_max, formula)
-    cd0 = polar.get("cd0")
-    e = polar.get("e_oswald")
-    if cd0 is None or cd0 <= 0 or e is None or e <= 0 or ar <= 0:
+    _ld_emp_unused, cd0, e, ar = _resolve_polar_inputs(ctx)
+    if ar is None or cd0 is None or e is None:
         return _missing("climb", range_min, range_max, formula)
     # Closed-form maximum of CL^1.5/CD for the parabolic polar
     # CD = CD0 + CL^2/(π·e·AR). Setting d(CL^1.5/CD)/dCL = 0 gives

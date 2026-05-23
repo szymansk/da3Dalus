@@ -115,6 +115,93 @@ def test_kpi_climb_energy_missing_when_no_polar():
     assert kpi.provenance == "missing"
 
 
+# gh-681: when the parabolic-fit was rejected, polar_by_config.clean.cd0 is
+# None but top-level ctx['cd0'] (stability run) and ctx['e_oswald'] (gh-636
+# AB-Trefftz) are still valid. Both KPIs must fall back to those instead of
+# returning missing.
+
+
+def test_kpi_glide_falls_back_to_top_level_cd0_when_fit_rejected():
+    """gh-681: rejected fit ⇒ polar.cd0=None; use ctx['cd0'] + ctx['e_oswald']."""
+    ctx = {
+        "aspect_ratio": 18.71,
+        "cd0": 0.0159,
+        "e_oswald": 0.808,
+        "polar_by_config": {
+            "clean": {
+                "cd0": None,
+                "e_oswald": 0.808,
+                "cl_max": 1.12,
+                "rejection": {
+                    "gate": "non_monotonic_polar",
+                    "category": "data",
+                    "fitted_value": -0.15,
+                    "threshold": "dCD/d(CL²) >= 0",
+                    "hint": "laminar bubble",
+                },
+            },
+        },
+    }
+    kpi = _kpi_glide(ctx, range_min=15.0, range_max=35.0)
+    expected = 0.5 * math.sqrt(math.pi * 0.808 * 18.71 / 0.0159)
+    assert kpi.provenance == "computed"
+    assert kpi.value == pytest.approx(expected, rel=1e-3)
+
+
+def test_kpi_glide_prefers_empirical_ld_max():
+    """gh-681: when polar.ld_max is set, prefer it over the formula."""
+    ctx = {
+        "aspect_ratio": 18.71,
+        "cd0": 0.0159,
+        "e_oswald": 0.808,
+        "polar_by_config": {
+            "clean": {
+                "cd0": None,
+                "e_oswald": 0.808,
+                "cl_max": 1.12,
+                "ld_max": 30.52,  # empirical, gh-636
+            },
+        },
+    }
+    kpi = _kpi_glide(ctx, range_min=15.0, range_max=35.0)
+    assert kpi.provenance == "computed"
+    # Empirical 30.52 should win over formula (~30.7) — small difference
+    # but exercised path is what matters; assert the empirical value.
+    assert kpi.value == pytest.approx(30.52, rel=1e-3)
+
+
+def test_kpi_climb_energy_falls_back_to_top_level_when_fit_rejected():
+    """gh-681: rejected fit ⇒ polar.cd0=None; use ctx['cd0'] + ctx['e_oswald']."""
+    ctx = {
+        "aspect_ratio": 18.71,
+        "cd0": 0.0159,
+        "e_oswald": 0.808,
+        "polar_by_config": {
+            "clean": {
+                "cd0": None,
+                "e_oswald": 0.808,
+                "cl_max": 1.12,
+            },
+        },
+    }
+    kpi = _kpi_climb_energy(ctx, range_min=15.0, range_max=60.0)
+    expected = (3.0 * math.pi * 0.808 * 18.71) ** 0.75 / (4.0 * 0.0159**0.25)
+    assert kpi.provenance == "computed"
+    assert kpi.value == pytest.approx(expected, rel=1e-3)
+
+
+def test_kpi_glide_missing_when_ar_none_even_with_fallback():
+    """Fallback only fires when AR is present and at least one cd0 source exists."""
+    ctx = {
+        "aspect_ratio": None,
+        "cd0": 0.0159,
+        "e_oswald": 0.808,
+        "polar_by_config": {"clean": {"cd0": None, "e_oswald": 0.808, "cl_max": 1.12}},
+    }
+    kpi = _kpi_glide(ctx, range_min=15.0, range_max=35.0)
+    assert kpi.provenance == "missing"
+
+
 def test_kpi_cruise_from_context():
     ctx = {"v_cruise_mps": 22.0}
     kpi = _kpi_cruise(ctx, range_min=10.0, range_max=25.0)
