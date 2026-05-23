@@ -1,4 +1,5 @@
 """Loading Scenario endpoints (gh-488) — CG envelope from loading scenarios."""
+
 from __future__ import annotations
 
 from typing import Annotated
@@ -184,7 +185,9 @@ async def get_loading_scenario_templates(
     db: Annotated[Session, Depends(get_db)],
     aircraft_class: Annotated[
         str,
-        Query(description="Aircraft class: rc_trainer | rc_aerobatic | rc_combust | uav_survey | glider | boxwing"),
+        Query(
+            description="Aircraft class: rc_trainer | rc_aerobatic | rc_combust | uav_survey | glider | boxwing"
+        ),
     ] = "rc_trainer",
 ) -> list[dict]:
     """Get default loading scenario templates for the given aircraft class.

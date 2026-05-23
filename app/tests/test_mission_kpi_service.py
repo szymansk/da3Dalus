@@ -6,6 +6,7 @@ the cached ``assumption_computation_context`` payload of an aeroplane.
 The aggregator + endpoint tests (Task 2.2 / 2.3) live below the
 per-axis tests once those calculators exist.
 """
+
 from __future__ import annotations
 
 import math
@@ -279,9 +280,7 @@ def test_compute_mission_kpis_skips_unknown_mission_ids(client_and_db):
         return_value=(45.0, 1.0, None),
     ):
         with SessionLocal() as db:
-            kset = compute_mission_kpis(
-                db, aircraft_id, ["trainer", "nonexistent_preset"]
-            )
+            kset = compute_mission_kpis(db, aircraft_id, ["trainer", "nonexistent_preset"])
 
     # Unknown id silently dropped, known one survives
     assert {p.mission_id for p in kset.target_polygons} == {"trainer"}
@@ -329,14 +328,21 @@ def test_compute_mission_kpis_field_friendliness_computed_after_phase3(client_an
 
     with SessionLocal() as db:
         upsert_mission_objective(
-            db, aircraft_id,
+            db,
+            aircraft_id,
             MissionObjective(
                 mission_type="trainer",
-                target_cruise_mps=18.0, target_stall_safety=1.8,
-                target_maneuver_n=3.0, target_glide_ld=12.0,
-                target_climb_energy=22.0, target_wing_loading_n_m2=412.0,
-                target_field_length_m=50.0, available_runway_m=80.0,
-                runway_type="grass", t_static_N=20.0, takeoff_mode="runway",
+                target_cruise_mps=18.0,
+                target_stall_safety=1.8,
+                target_maneuver_n=3.0,
+                target_glide_ld=12.0,
+                target_climb_energy=22.0,
+                target_wing_loading_n_m2=412.0,
+                target_field_length_m=50.0,
+                available_runway_m=80.0,
+                runway_type="grass",
+                t_static_N=20.0,
+                takeoff_mode="runway",
             ),
         )
         db.commit()
@@ -454,9 +460,7 @@ def test_compute_field_length_score_propagates_unexpected_exception():
         side_effect=RuntimeError("division by zero in CL_max"),
     ):
         with pytest.raises(RuntimeError, match="division by zero"):
-            _compute_field_length_score(
-                _stub_aeroplane(), target_field_length_m=50.0
-            )
+            _compute_field_length_score(_stub_aeroplane(), target_field_length_m=50.0)
 
 
 def test_compute_field_length_score_returns_warning_when_eff_is_zero():

@@ -6,11 +6,14 @@ from types import SimpleNamespace
 
 import pytest
 
-from app.services.stability_service import classify_stability, compute_cg_range, compute_geometry_hash
+from app.services.stability_service import (
+    classify_stability,
+    compute_cg_range,
+    compute_geometry_hash,
+)
 
 
 class TestClassifyStability:
-
     def test_stable_high_margin(self):
         assert classify_stability(20.0) == "stable"
 
@@ -37,7 +40,6 @@ class TestClassifyStability:
 
 
 class TestComputeCGRange:
-
     def test_default_margins(self):
         forward, aft = compute_cg_range(0.10, 0.25)
         assert forward == pytest.approx(0.10 - 0.25 * 0.25)
@@ -64,14 +66,15 @@ class TestComputeCGRange:
 
 
 class TestComputeGeometryHash:
-
     def test_deterministic(self):
         schema = SimpleNamespace(
-            wings=[SimpleNamespace(
-                name="main",
-                symmetric=True,
-                x_secs=[SimpleNamespace(x_le=0, y_le=0, z_le=0, chord=0.3, twist=0)],
-            )],
+            wings=[
+                SimpleNamespace(
+                    name="main",
+                    symmetric=True,
+                    x_secs=[SimpleNamespace(x_le=0, y_le=0, z_le=0, chord=0.3, twist=0)],
+                )
+            ],
             fuselages=[],
         )
         h1 = compute_geometry_hash(schema)
@@ -81,19 +84,23 @@ class TestComputeGeometryHash:
 
     def test_changes_with_geometry(self):
         s1 = SimpleNamespace(
-            wings=[SimpleNamespace(
-                name="main",
-                symmetric=True,
-                x_secs=[SimpleNamespace(x_le=0, y_le=0, z_le=0, chord=0.3, twist=0)],
-            )],
+            wings=[
+                SimpleNamespace(
+                    name="main",
+                    symmetric=True,
+                    x_secs=[SimpleNamespace(x_le=0, y_le=0, z_le=0, chord=0.3, twist=0)],
+                )
+            ],
             fuselages=[],
         )
         s2 = SimpleNamespace(
-            wings=[SimpleNamespace(
-                name="main",
-                symmetric=True,
-                x_secs=[SimpleNamespace(x_le=0, y_le=0, z_le=0, chord=0.5, twist=0)],
-            )],
+            wings=[
+                SimpleNamespace(
+                    name="main",
+                    symmetric=True,
+                    x_secs=[SimpleNamespace(x_le=0, y_le=0, z_le=0, chord=0.5, twist=0)],
+                )
+            ],
             fuselages=[],
         )
         assert compute_geometry_hash(s1) != compute_geometry_hash(s2)

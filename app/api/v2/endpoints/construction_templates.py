@@ -1,4 +1,5 @@
 """REST endpoints for Construction Templates (gh#126)."""
+
 from __future__ import annotations
 
 from typing import Annotated, List
@@ -35,7 +36,7 @@ def _handle_service_error(exc: ServiceException):
 @router.get(
     "/construction-templates",
     tags=["construction-templates"],
-    operation_id="list_construction_templates"
+    operation_id="list_construction_templates",
 )
 async def list_templates(db: Annotated[Session, Depends(get_db)]) -> List[PlanSummary]:
     """List all construction templates."""
@@ -49,7 +50,7 @@ async def list_templates(db: Annotated[Session, Depends(get_db)]) -> List[PlanSu
     "/construction-templates",
     status_code=status.HTTP_201_CREATED,
     tags=["construction-templates"],
-    operation_id="create_construction_template"
+    operation_id="create_construction_template",
 )
 async def create_template(
     request: Annotated[PlanCreate, Body(...)],

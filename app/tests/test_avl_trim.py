@@ -716,9 +716,7 @@ class TestAVLTrimEndpoint:
         client, _ = client_and_db
         aeroplane_uuid = str(uuid.uuid4())
 
-        mock_trim.side_effect = ValidationDomainError(
-            message="Unknown trim variable 'nonexistent'"
-        )
+        mock_trim.side_effect = ValidationDomainError(message="Unknown trim variable 'nonexistent'")
 
         payload = {
             "operating_point": {"velocity": 15.0, "alpha": 5.0},

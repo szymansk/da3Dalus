@@ -68,9 +68,7 @@ from cad_designer.airplane.aircraft_topology.wing.WingConfiguration import (  # 
 #
 # tol defaults to float-noise levels — see the baseline notes in beads
 # issue cad-modelling-service-7kq for calibration rationale.
-PARAM_TOL: dict[str, tuple[float, float]] = {
-    case_id: (1e-9, 1e-6) for case_id, _ in CASE_FACTORIES
-}
+PARAM_TOL: dict[str, tuple[float, float]] = {case_id: (1e-9, 1e-6) for case_id, _ in CASE_FACTORIES}
 
 
 @pytest.fixture(

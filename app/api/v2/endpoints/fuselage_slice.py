@@ -18,14 +18,22 @@ router = APIRouter(prefix="/fuselages", tags=["fuselages"])
     "/slice",
     status_code=status.HTTP_200_OK,
     operation_id="slice_step_to_fuselage",
-    summary="Slice a STEP file into superellipse cross-sections (asb.Fuselage format)"
+    summary="Slice a STEP file into superellipse cross-sections (asb.Fuselage format)",
 )
 async def slice_step_to_fuselage(
     file: Annotated[UploadFile, File(..., description="STEP file (.step or .stp)")],
-    number_of_slices: Annotated[int, Form(ge=2, le=500, description="Number of cross-section slices")] = 50,
-    points_per_slice: Annotated[int, Form(ge=10, le=200, description="Points per wire discretization")] = 30,
-    slice_axis: Annotated[str, Form(description="Slice axis: 'x', 'y', 'z', or 'auto' (longest axis)")] = "auto",
-    fuselage_name: Annotated[str, Form(description="Name for the resulting fuselage")] = "Imported Fuselage",
+    number_of_slices: Annotated[
+        int, Form(ge=2, le=500, description="Number of cross-section slices")
+    ] = 50,
+    points_per_slice: Annotated[
+        int, Form(ge=10, le=200, description="Points per wire discretization")
+    ] = 30,
+    slice_axis: Annotated[
+        str, Form(description="Slice axis: 'x', 'y', 'z', or 'auto' (longest axis)")
+    ] = "auto",
+    fuselage_name: Annotated[
+        str, Form(description="Name for the resulting fuselage")
+    ] = "Imported Fuselage",
 ) -> FuselageSliceResponse:
     """Upload a STEP file, slice it along the fuselage longitudinal axis,
     fit symmetric superellipses to each cross-section, and return a
@@ -56,10 +64,18 @@ async def slice_step_to_fuselage(
             fuselage_name=fuselage_name,
         )
     except ValidationError as exc:
-        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=exc.message) from exc
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=exc.message
+        ) from exc
     except InternalError as exc:
         if "not available on this platform" in str(exc.message):
-            raise HTTPException(status_code=status.HTTP_501_NOT_IMPLEMENTED, detail=exc.message) from exc
-        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=exc.message) from exc
+            raise HTTPException(
+                status_code=status.HTTP_501_NOT_IMPLEMENTED, detail=exc.message
+            ) from exc
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=exc.message
+        ) from exc
     except ServiceException as exc:
-        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=exc.message) from exc
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=exc.message
+        ) from exc

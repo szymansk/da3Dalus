@@ -169,9 +169,7 @@ class TestMinSinkSpeedHelper:
         assert v_md is not None
         assert v_mp is not None
         ratio = v_mp / v_md
-        assert abs(ratio - 0.760) < 0.005, (
-            f"{aircraft.name}: V_mp/V_md={ratio:.4f}, expected 0.760"
-        )
+        assert abs(ratio - 0.760) < 0.005, f"{aircraft.name}: V_mp/V_md={ratio:.4f}, expected 0.760"
 
     def test_returns_none_on_degenerate_inputs(self):
         # Matches _min_drag_speed semantics: only the geometry/polar inputs
@@ -196,8 +194,11 @@ class TestDerivePerformanceKpisPolar:
     def test_v_md_from_polar_matches_textbook(self, aircraft):
         v_stall = _vs(aircraft)
         v_md_textbook = _min_drag_speed(
-            aircraft.mass_kg, aircraft.s_ref_m2, aircraft.cd0,
-            aircraft.aspect_ratio, oswald_e=aircraft.oswald_e,
+            aircraft.mass_kg,
+            aircraft.s_ref_m2,
+            aircraft.cd0,
+            aircraft.aspect_ratio,
+            oswald_e=aircraft.oswald_e,
         )
         assert v_md_textbook is not None
 
@@ -250,8 +251,12 @@ class TestDerivePerformanceKpisPolar:
         from app.schemas.flight_envelope import VnMarker
 
         marker = VnMarker(
-            op_id=42, name="best_ld_point", velocity_mps=15.0,
-            load_factor=1.0, status="TRIMMED", label="best_ld",
+            op_id=42,
+            name="best_ld_point",
+            velocity_mps=15.0,
+            load_factor=1.0,
+            status="TRIMMED",
+            label="best_ld",
         )
         kpis = derive_performance_kpis(
             stall_speed_mps=10.0,
@@ -340,8 +345,11 @@ class TestCrossServiceAgreement:
     @pytest.mark.parametrize("aircraft", REFERENCE_AIRCRAFT, ids=lambda a: a.name)
     def test_v_md_matches_within_half_mps(self, aircraft):
         v_md_from_assumption = _min_drag_speed(
-            aircraft.mass_kg, aircraft.s_ref_m2, aircraft.cd0,
-            aircraft.aspect_ratio, oswald_e=aircraft.oswald_e,
+            aircraft.mass_kg,
+            aircraft.s_ref_m2,
+            aircraft.cd0,
+            aircraft.aspect_ratio,
+            oswald_e=aircraft.oswald_e,
         )
         assert v_md_from_assumption is not None
         v_stall = _vs(aircraft)
@@ -364,8 +372,11 @@ class TestCrossServiceAgreement:
         a strict ±0.2 match unrealistic; the formula itself is unambiguous."""
         for aircraft in REFERENCE_AIRCRAFT:
             v_md = _min_drag_speed(
-                aircraft.mass_kg, aircraft.s_ref_m2, aircraft.cd0,
-                aircraft.aspect_ratio, oswald_e=aircraft.oswald_e,
+                aircraft.mass_kg,
+                aircraft.s_ref_m2,
+                aircraft.cd0,
+                aircraft.aspect_ratio,
+                oswald_e=aircraft.oswald_e,
             )
             assert v_md is not None
             assert abs(v_md - aircraft.expected_vmd) < 1.0, (

@@ -147,10 +147,14 @@ def get_tree(db: Session, aeroplane_id: str) -> ComponentTreeResponse:
 
 def _validate_parent_exists(db: Session, aeroplane_id: str, parent_id: int) -> None:
     """Raise NotFoundError if the parent node does not exist."""
-    parent = db.query(ComponentTreeNodeModel).filter(
-        ComponentTreeNodeModel.id == parent_id,
-        ComponentTreeNodeModel.aeroplane_id == aeroplane_id,
-    ).first()
+    parent = (
+        db.query(ComponentTreeNodeModel)
+        .filter(
+            ComponentTreeNodeModel.id == parent_id,
+            ComponentTreeNodeModel.aeroplane_id == aeroplane_id,
+        )
+        .first()
+    )
     if not parent:
         raise NotFoundError(entity="Parent node", resource_id=parent_id)
 
@@ -183,9 +187,7 @@ def _snapshot_construction_part_fields(
         payload["material_id"] = part.material_component_id
 
 
-def add_node(
-    db: Session, aeroplane_id: str, data: ComponentTreeNodeWrite
-) -> ComponentTreeNodeRead:
+def add_node(db: Session, aeroplane_id: str, data: ComponentTreeNodeWrite) -> ComponentTreeNodeRead:
     """Add a node to the tree.
 
     When `construction_part_id` is set, the referenced part is loaded and its
@@ -220,10 +222,14 @@ def update_node(
 ) -> ComponentTreeNodeRead:
     """Update a node in the tree."""
     try:
-        node = db.query(ComponentTreeNodeModel).filter(
-            ComponentTreeNodeModel.id == node_id,
-            ComponentTreeNodeModel.aeroplane_id == aeroplane_id,
-        ).first()
+        node = (
+            db.query(ComponentTreeNodeModel)
+            .filter(
+                ComponentTreeNodeModel.id == node_id,
+                ComponentTreeNodeModel.aeroplane_id == aeroplane_id,
+            )
+            .first()
+        )
         if not node:
             raise NotFoundError(entity=_ENTITY_COMPONENT_TREE_NODE, resource_id=node_id)
 
@@ -243,17 +249,21 @@ def update_node(
 def delete_node(db: Session, aeroplane_id: str, node_id: int) -> None:
     """Delete a node (and its children) from the tree."""
     try:
-        node = db.query(ComponentTreeNodeModel).filter(
-            ComponentTreeNodeModel.id == node_id,
-            ComponentTreeNodeModel.aeroplane_id == aeroplane_id,
-        ).first()
+        node = (
+            db.query(ComponentTreeNodeModel)
+            .filter(
+                ComponentTreeNodeModel.id == node_id,
+                ComponentTreeNodeModel.aeroplane_id == aeroplane_id,
+            )
+            .first()
+        )
         if not node:
             raise NotFoundError(entity=_ENTITY_COMPONENT_TREE_NODE, resource_id=node_id)
 
         if node.synced_from:
             raise ValidationError(
                 message=f"Cannot delete synced node '{node.name}' (synced from {node.synced_from}). "
-                        "Use move instead.",
+                "Use move instead.",
             )
 
         # Delete children recursively
@@ -270,10 +280,14 @@ def delete_node(db: Session, aeroplane_id: str, node_id: int) -> None:
 
 def _delete_subtree(db: Session, aeroplane_id: str, parent_id: int) -> None:
     """Recursively delete all children of a node."""
-    children = db.query(ComponentTreeNodeModel).filter(
-        ComponentTreeNodeModel.aeroplane_id == aeroplane_id,
-        ComponentTreeNodeModel.parent_id == parent_id,
-    ).all()
+    children = (
+        db.query(ComponentTreeNodeModel)
+        .filter(
+            ComponentTreeNodeModel.aeroplane_id == aeroplane_id,
+            ComponentTreeNodeModel.parent_id == parent_id,
+        )
+        .all()
+    )
     for child in children:
         _delete_subtree(db, aeroplane_id, child.id)
         db.delete(child)
@@ -284,18 +298,26 @@ def move_node(
 ) -> ComponentTreeNodeRead:
     """Move a node to a new parent."""
     try:
-        node = db.query(ComponentTreeNodeModel).filter(
-            ComponentTreeNodeModel.id == node_id,
-            ComponentTreeNodeModel.aeroplane_id == aeroplane_id,
-        ).first()
+        node = (
+            db.query(ComponentTreeNodeModel)
+            .filter(
+                ComponentTreeNodeModel.id == node_id,
+                ComponentTreeNodeModel.aeroplane_id == aeroplane_id,
+            )
+            .first()
+        )
         if not node:
             raise NotFoundError(entity=_ENTITY_COMPONENT_TREE_NODE, resource_id=node_id)
 
         if new_parent_id:
-            parent = db.query(ComponentTreeNodeModel).filter(
-                ComponentTreeNodeModel.id == new_parent_id,
-                ComponentTreeNodeModel.aeroplane_id == aeroplane_id,
-            ).first()
+            parent = (
+                db.query(ComponentTreeNodeModel)
+                .filter(
+                    ComponentTreeNodeModel.id == new_parent_id,
+                    ComponentTreeNodeModel.aeroplane_id == aeroplane_id,
+                )
+                .first()
+            )
             if not parent:
                 raise NotFoundError(entity="New parent node", resource_id=new_parent_id)
             # Prevent moving to own descendant
@@ -316,16 +338,24 @@ def move_node(
 
 def _is_descendant(db: Session, aeroplane_id: str, candidate_id: int, ancestor_id: int) -> bool:
     """Check if candidate is a descendant of ancestor."""
-    current = db.query(ComponentTreeNodeModel).filter(
-        ComponentTreeNodeModel.id == candidate_id,
-        ComponentTreeNodeModel.aeroplane_id == aeroplane_id,
-    ).first()
+    current = (
+        db.query(ComponentTreeNodeModel)
+        .filter(
+            ComponentTreeNodeModel.id == candidate_id,
+            ComponentTreeNodeModel.aeroplane_id == aeroplane_id,
+        )
+        .first()
+    )
     while current and current.parent_id:
         if current.parent_id == ancestor_id:
             return True
-        current = db.query(ComponentTreeNodeModel).filter(
-            ComponentTreeNodeModel.id == current.parent_id,
-        ).first()
+        current = (
+            db.query(ComponentTreeNodeModel)
+            .filter(
+                ComponentTreeNodeModel.id == current.parent_id,
+            )
+            .first()
+        )
     return False
 
 
@@ -369,18 +399,20 @@ def get_aircraft_total_weight_kg(db: Session, aeroplane_id: str) -> Optional[flo
     total_g = 0.0
     for r in roots:
         own, _ = _calculate_own_weight(db, r)
-        total_g += (own or 0.0) + _calculate_children_weight(
-            db, aeroplane_id, r.id
-        )
+        total_g += (own or 0.0) + _calculate_children_weight(db, aeroplane_id, r.id)
     return total_g / 1000.0 if total_g > 0 else None
 
 
 def calculate_weight(db: Session, aeroplane_id: str, node_id: int) -> WeightResponse:
     """Calculate recursive weight for a node."""
-    node = db.query(ComponentTreeNodeModel).filter(
-        ComponentTreeNodeModel.id == node_id,
-        ComponentTreeNodeModel.aeroplane_id == aeroplane_id,
-    ).first()
+    node = (
+        db.query(ComponentTreeNodeModel)
+        .filter(
+            ComponentTreeNodeModel.id == node_id,
+            ComponentTreeNodeModel.aeroplane_id == aeroplane_id,
+        )
+        .first()
+    )
     if not node:
         raise NotFoundError(entity=_ENTITY_COMPONENT_TREE_NODE, resource_id=node_id)
 
@@ -426,9 +458,7 @@ def _weight_from_cad_shape(db: Session, node: ComponentTreeNodeModel) -> Optiona
     return None
 
 
-def _calculate_own_weight(
-    db: Session, node: ComponentTreeNodeModel
-) -> tuple[Optional[float], str]:
+def _calculate_own_weight(db: Session, node: ComponentTreeNodeModel) -> tuple[Optional[float], str]:
     """Calculate a single node's own weight."""
     if node.weight_override_g is not None:
         return node.weight_override_g, "override"
@@ -446,10 +476,14 @@ def _calculate_own_weight(
 
 def _calculate_children_weight(db: Session, aeroplane_id: str, parent_id: int) -> float:
     """Recursively sum children weights."""
-    children = db.query(ComponentTreeNodeModel).filter(
-        ComponentTreeNodeModel.aeroplane_id == aeroplane_id,
-        ComponentTreeNodeModel.parent_id == parent_id,
-    ).all()
+    children = (
+        db.query(ComponentTreeNodeModel)
+        .filter(
+            ComponentTreeNodeModel.aeroplane_id == aeroplane_id,
+            ComponentTreeNodeModel.parent_id == parent_id,
+        )
+        .all()
+    )
     total = 0.0
     for child in children:
         own, _ = _calculate_own_weight(db, child)
@@ -464,10 +498,14 @@ def _calculate_children_weight(db: Session, aeroplane_id: str, parent_id: int) -
 def sync_group_for_wing(db: Session, aeroplane_id: str, wing_name: str) -> None:
     """Ensure a synced group exists in the component tree for a wing."""
     synced_from = f"wing:{wing_name}"
-    existing = db.query(ComponentTreeNodeModel).filter(
-        ComponentTreeNodeModel.aeroplane_id == aeroplane_id,
-        ComponentTreeNodeModel.synced_from == synced_from,
-    ).first()
+    existing = (
+        db.query(ComponentTreeNodeModel)
+        .filter(
+            ComponentTreeNodeModel.aeroplane_id == aeroplane_id,
+            ComponentTreeNodeModel.synced_from == synced_from,
+        )
+        .first()
+    )
     if existing:
         return  # already exists
     node = ComponentTreeNodeModel(
@@ -485,10 +523,14 @@ def sync_group_for_wing(db: Session, aeroplane_id: str, wing_name: str) -> None:
 def sync_group_for_fuselage(db: Session, aeroplane_id: str, fuselage_name: str) -> None:
     """Ensure a synced group exists in the component tree for a fuselage."""
     synced_from = f"fuselage:{fuselage_name}"
-    existing = db.query(ComponentTreeNodeModel).filter(
-        ComponentTreeNodeModel.aeroplane_id == aeroplane_id,
-        ComponentTreeNodeModel.synced_from == synced_from,
-    ).first()
+    existing = (
+        db.query(ComponentTreeNodeModel)
+        .filter(
+            ComponentTreeNodeModel.aeroplane_id == aeroplane_id,
+            ComponentTreeNodeModel.synced_from == synced_from,
+        )
+        .first()
+    )
     if existing:
         return
     node = ComponentTreeNodeModel(
@@ -505,10 +547,14 @@ def sync_group_for_fuselage(db: Session, aeroplane_id: str, fuselage_name: str) 
 
 def delete_synced_nodes(db: Session, aeroplane_id: str, synced_from_prefix: str) -> None:
     """Delete all synced nodes (and their children) matching a prefix."""
-    nodes = db.query(ComponentTreeNodeModel).filter(
-        ComponentTreeNodeModel.aeroplane_id == aeroplane_id,
-        ComponentTreeNodeModel.synced_from.like(f"{synced_from_prefix}%"),
-    ).all()
+    nodes = (
+        db.query(ComponentTreeNodeModel)
+        .filter(
+            ComponentTreeNodeModel.aeroplane_id == aeroplane_id,
+            ComponentTreeNodeModel.synced_from.like(f"{synced_from_prefix}%"),
+        )
+        .all()
+    )
     for node in nodes:
         _delete_subtree(db, aeroplane_id, node.id)
         db.delete(node)
@@ -527,17 +573,25 @@ def upsert_synced_servo(
     synced_from = f"servo:{wing_name}:{xsec_index}"
 
     # Find or create the wing group
-    wing_group = db.query(ComponentTreeNodeModel).filter(
-        ComponentTreeNodeModel.aeroplane_id == aeroplane_id,
-        ComponentTreeNodeModel.synced_from == f"wing:{wing_name}",
-    ).first()
+    wing_group = (
+        db.query(ComponentTreeNodeModel)
+        .filter(
+            ComponentTreeNodeModel.aeroplane_id == aeroplane_id,
+            ComponentTreeNodeModel.synced_from == f"wing:{wing_name}",
+        )
+        .first()
+    )
 
     if component_id is None:
         # Servo removed — delete synced node if it exists
-        existing = db.query(ComponentTreeNodeModel).filter(
-            ComponentTreeNodeModel.aeroplane_id == aeroplane_id,
-            ComponentTreeNodeModel.synced_from == synced_from,
-        ).first()
+        existing = (
+            db.query(ComponentTreeNodeModel)
+            .filter(
+                ComponentTreeNodeModel.aeroplane_id == aeroplane_id,
+                ComponentTreeNodeModel.synced_from == synced_from,
+            )
+            .first()
+        )
         if existing:
             db.delete(existing)
             db.flush()
@@ -547,10 +601,14 @@ def upsert_synced_servo(
     comp = db.query(ComponentModel).filter(ComponentModel.id == component_id).first()
     comp_name = comp.name if comp else f"Servo #{component_id}"
 
-    existing = db.query(ComponentTreeNodeModel).filter(
-        ComponentTreeNodeModel.aeroplane_id == aeroplane_id,
-        ComponentTreeNodeModel.synced_from == synced_from,
-    ).first()
+    existing = (
+        db.query(ComponentTreeNodeModel)
+        .filter(
+            ComponentTreeNodeModel.aeroplane_id == aeroplane_id,
+            ComponentTreeNodeModel.synced_from == synced_from,
+        )
+        .first()
+    )
 
     if existing:
         existing.component_id = component_id

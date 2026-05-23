@@ -3,6 +3,7 @@
 Verifies that adding, deleting, and bulk-deleting cross-sections works
 on wings with design_model='wc', not just 'asb'.
 """
+
 from __future__ import annotations
 
 from pathlib import Path
@@ -46,7 +47,6 @@ def _seed_wc_wing(client: TestClient, name: str = "wc_test") -> str:
 
 
 class TestWcWingXsecCrud:
-
     def test_add_cross_section_to_wc_wing(self, client):
         aid = _seed_wc_wing(client, "wc_add")
         new_xsec = {

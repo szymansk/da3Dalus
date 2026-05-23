@@ -413,11 +413,7 @@ def _hydrate_segment_from_xsec(
         segment.number_interpolation_points = root_x_sec.number_interpolation_points
 
     ted_raw = _to_payload(root_x_sec.trailing_edge_device)
-    ted_schema = (
-        schemas.TrailingEdgeDeviceDetailSchema.model_validate(ted_raw)
-        if ted_raw
-        else None
-    )
+    ted_schema = schemas.TrailingEdgeDeviceDetailSchema.model_validate(ted_raw) if ted_raw else None
     segment.trailing_edge_device = (
         _trailing_edge_device_schema_to_wing_ted(ted_schema) if ted_schema is not None else None
     )

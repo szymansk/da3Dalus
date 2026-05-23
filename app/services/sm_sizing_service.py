@@ -35,6 +35,7 @@ Convergence guard (spec-gate A6, gh-509):
   is refused with HTTPException(409).  A fresh recompute_assumptions call (or a
   change in target_static_margin) resets the counter.
 """
+
 from __future__ import annotations
 
 import logging
@@ -49,14 +50,14 @@ logger = logging.getLogger(__name__)
 # Constants
 # ---------------------------------------------------------------------------
 
-_SM_UNSTABLE_LIMIT = 0.02     # below → ERROR, block_save
-_SM_HEAVY_NOSE_WARN = 0.20    # above → overshoot suggestion
+_SM_UNSTABLE_LIMIT = 0.02  # below → ERROR, block_save
+_SM_HEAVY_NOSE_WARN = 0.20  # above → overshoot suggestion
 
 # Tailless / flying-wing SM target (gh-579, Anderson + Apogee + Scholz + Lennon)
 # All four authorities converge on SM = 5–10% MAC for tailless designs.
-_SM_TAILLESS_TARGET = 0.075   # mid of 5–10% range
-_SM_TAILLESS_FWD_CG = 0.10    # forward CG limit @ SM = 10% MAC (CG far ahead of NP)
-_SM_TAILLESS_AFT_CG = 0.05    # aft CG limit @ SM = 5% MAC (CG approaching NP)
+_SM_TAILLESS_TARGET = 0.075  # mid of 5–10% range
+_SM_TAILLESS_FWD_CG = 0.10  # forward CG limit @ SM = 10% MAC (CG far ahead of NP)
+_SM_TAILLESS_AFT_CG = 0.05  # aft CG limit @ SM = 5% MAC (CG approaching NP)
 
 # Below this absolute CG envelope width the configuration is unusable in practice
 # (e.g. a micro RC plank with MAC ≈ 80 mm has only 4 mm of CG travel).
@@ -71,7 +72,7 @@ _SM_TAILLESS_MESSAGE = (
 )
 
 # Roskam Vol I §8.1: downwash factor (1 - dε/dα) for conventional tail
-_DE_DA_FACTOR = 0.6   # (1 - dε/dα), typical for conventional aft tail
+_DE_DA_FACTOR = 0.6  # (1 - dε/dα), typical for conventional aft tail
 
 # Forward stability stub limit: SM = 0.30 (see loading_scenario_service.py)
 _SM_FORWARD_CLIP_LIMIT = 0.30
@@ -86,22 +87,20 @@ _MASS_COUPLING_WARNING = (
 )
 
 # Negative S_H warning (overshoot path, spec-gate A6)
-_NEGATIVE_SH_WARNING = (
-    "Shrinking HS reduces yaw damping — verify Dutch-roll mode after Apply."
-)
+_NEGATIVE_SH_WARNING = "Shrinking HS reduces yaw damping — verify Dutch-roll mode after Apply."
 
 # Convergence guard (spec-gate A6, gh-509)
-_SM_APPLY_MAX_ITERS = 3          # maximum apply calls before convergence check fires
+_SM_APPLY_MAX_ITERS = 3  # maximum apply calls before convergence check fires
 _SM_CONVERGENCE_THRESHOLD = 0.005  # |Δ(delta_sm)| < 0.5% → converged / stuck
 _SM_CONVERGENCE_MESSAGE = (
-    "Convergence not reached after 3 iterations. "
-    "Adjust target_static_margin or check geometry."
+    "Convergence not reached after 3 iterations. Adjust target_static_margin or check geometry."
 )
 
 
 # ---------------------------------------------------------------------------
 # Sensitivity helpers (public for unit-test access)
 # ---------------------------------------------------------------------------
+
 
 def _alpha_vh(ctx: dict) -> float:
     """Compute the tail efficiency factor α_VH (dimensionless, ~0.05–0.15).
@@ -167,6 +166,7 @@ def _dsm_dsh(ctx: dict) -> float:
 # Configuration-guard helpers
 # ---------------------------------------------------------------------------
 
+
 def _is_not_applicable(ctx: dict) -> tuple[bool, str]:
     """Return (True, reason) when SM suggestion is not applicable for this config.
 
@@ -187,14 +187,10 @@ def _is_not_applicable(ctx: dict) -> tuple[bool, str]:
         return True, "Run analysis first to compute x_NP (assumption recompute not yet run)."
     mac_m = ctx.get("mac_m")
     if mac_m is None or float(mac_m) <= 0:
-        return True, (
-            "MAC is missing or zero — run analysis to compute MAC/S_ref first."
-        )
+        return True, ("MAC is missing or zero — run analysis to compute MAC/S_ref first.")
     s_ref_m2 = ctx.get("s_ref_m2")
     if s_ref_m2 is None or float(s_ref_m2) <= 0:
-        return True, (
-            "S_ref is missing or zero — run analysis to compute MAC/S_ref first."
-        )
+        return True, ("S_ref is missing or zero — run analysis to compute MAC/S_ref first.")
     return False, ""
 
 
@@ -258,6 +254,7 @@ def _tailless_recommendation(ctx: dict) -> dict[str, Any]:
 # Convergence guard helpers (gh-509, spec-gate A6)
 # ---------------------------------------------------------------------------
 
+
 def _check_convergence_guard(ctx: dict, delta_sm_new: float) -> None:
     """Raise HTTPException(409) when the apply-loop has stalled after 3 iterations.
 
@@ -307,6 +304,7 @@ def _update_convergence_counter(ctx: dict, delta_sm: float) -> None:
 # ---------------------------------------------------------------------------
 # Main public service function
 # ---------------------------------------------------------------------------
+
 
 def suggest_corrections(
     ctx: dict,
@@ -411,9 +409,9 @@ def suggest_corrections(
 
     # Invert: ΔSM = target_sm - sm_at_aft → Δlevers
     delta_needed = target_sm - sm_at_aft
-    delta_x = delta_needed / dsm_dx        # metres (negative = move wing fwd)
-    delta_sh_m2 = delta_needed / dsm_dsh   # m² (negative = shrink HS)
-    delta_pct = delta_sh_m2 / s_h_m2      # fraction (negative = shrink)
+    delta_x = delta_needed / dsm_dx  # metres (negative = move wing fwd)
+    delta_sh_m2 = delta_needed / dsm_dsh  # m² (negative = shrink HS)
+    delta_pct = delta_sh_m2 / s_h_m2  # fraction (negative = shrink)
 
     # Clip: wing shift must not push forward CG past elevator-authority limit.
     # When cg_stability_fwd_m is available (from gh-488 CG envelope), compute the
@@ -459,6 +457,7 @@ def suggest_corrections(
 # ---------------------------------------------------------------------------
 # Forward-CG path (gh-515)
 # ---------------------------------------------------------------------------
+
 
 def _suggest_corrections_fwd(ctx: dict, target_sm: float) -> dict[str, Any]:
     """Suggest geometry changes for the forward-CG loading scenario (gh-515).
@@ -528,7 +527,7 @@ def _suggest_corrections_fwd(ctx: dict, target_sm: float) -> dict[str, Any]:
     if sm_fwd < _SM_UNSTABLE_LIMIT:
         # Need to increase SM_fwd: move NP aft → wing AFT (positive delta)
         delta_needed = target_sm - sm_fwd  # positive
-        delta_x = delta_needed / dsm_dx    # positive (aft)
+        delta_x = delta_needed / dsm_dx  # positive (aft)
         delta_sh_m2 = delta_needed / dsm_dsh
         delta_pct = delta_sh_m2 / s_h_m2
 
@@ -551,10 +550,10 @@ def _suggest_corrections_fwd(ctx: dict, target_sm: float) -> dict[str, Any]:
     # Need to decrease SM_fwd: move NP forward → wing FORWARD (negative delta)
     # OR increase elevator authority → increase S_H (positive delta_pct)
     delta_needed_to_limit = sm_max_fwd - sm_fwd  # negative (need to reduce SM_fwd)
-    delta_x = delta_needed_to_limit / dsm_dx      # negative (fwd shift)
+    delta_x = delta_needed_to_limit / dsm_dx  # negative (fwd shift)
     # For htail_scale: increasing S_H increases sm_max_fwd (relaxes the limit)
     # Increase sm_max_fwd by Δsm_limit = sm_fwd - sm_max_fwd
-    sm_deficit = sm_fwd - sm_max_fwd              # positive excess above limit
+    sm_deficit = sm_fwd - sm_max_fwd  # positive excess above limit
     # sm_max_fwd = (x_NP - cg_stability_fwd_m) / MAC
     # Increasing S_H by ΔS_H increases x_NP by dsm_dsh * ΔS_H * MAC... no.
     # Actually increasing S_H relaxes cg_stability_fwd_m (moves it forward).
@@ -605,18 +604,14 @@ def _wing_shift_fwd_option(
     direction = "forward" if delta_x_m < 0 else "aft"
 
     if violation == "too_large":
-        action_hint = (
-            "reduces NP position to bring SM_fwd within elevator-authority limit"
-        )
+        action_hint = "reduces NP position to bring SM_fwd within elevator-authority limit"
     else:
-        action_hint = (
-            "increases NP position to improve forward-CG stability margin"
-        )
+        action_hint = "increases NP position to improve forward-CG stability margin"
 
     narrative = (
         f"Move main wing {abs(delta_mm):.1f} mm {direction} (Δx = {delta_mm:+.1f} mm) "
-        f"to reach SM_fwd ≈ {sm_fwd_target*100:.1f}% at forward CG. "
-        f"MAC = {mac_m*1000:.0f} mm. "
+        f"to reach SM_fwd ≈ {sm_fwd_target * 100:.1f}% at forward CG. "
+        f"MAC = {mac_m * 1000:.0f} mm. "
         f"This {action_hint}. "
         f"{_MASS_COUPLING_WARNING}"
     )
@@ -651,9 +646,9 @@ def _htail_scale_fwd_option(
     predicted_sm = sm_fwd_current - dsm_dsh * delta_pct * s_h_m2
     action = "Enlarge" if delta_pct > 0 else "Shrink"
     narrative = (
-        f"{action} horizontal tail chord by {abs(delta_pct)*100:.1f}% "
-        f"(Δ = {delta_pct*100:+.1f}%) to increase elevator authority (Cm_δe), "
-        f"relaxing the forward CG stability limit to SM_fwd ≈ {sm_fwd_target*100:.1f}%. "
+        f"{action} horizontal tail chord by {abs(delta_pct) * 100:.1f}% "
+        f"(Δ = {delta_pct * 100:+.1f}%) to increase elevator authority (Cm_δe), "
+        f"relaxing the forward CG stability limit to SM_fwd ≈ {sm_fwd_target * 100:.1f}%. "
         f"Chord-scale preserves span (AR changes proportionally)."
     )
     if delta_pct < 0:
@@ -671,6 +666,7 @@ def _htail_scale_fwd_option(
 # Option builder helpers
 # ---------------------------------------------------------------------------
 
+
 def _wing_shift_option(
     ctx: dict,
     delta_x_m: float,
@@ -686,8 +682,8 @@ def _wing_shift_option(
     direction = "forward" if delta_x_m < 0 else "aft"
     narrative = (
         f"Move main wing {abs(delta_mm):.1f} mm {direction} (Δx = {delta_mm:+.1f} mm) "
-        f"to reach SM ≈ {target_sm*100:.0f}% at aft CG. "
-        f"MAC = {mac_m*1000:.0f} mm. "
+        f"to reach SM ≈ {target_sm * 100:.0f}% at aft CG. "
+        f"MAC = {mac_m * 1000:.0f} mm. "
         f"{_MASS_COUPLING_WARNING}"
     )
     return {
@@ -713,8 +709,8 @@ def _htail_scale_option(
     predicted_sm = sm_at_aft + dsm_dsh * delta_pct * s_h_m2
     action = "Enlarge" if delta_pct > 0 else "Shrink"
     narrative = (
-        f"{action} horizontal tail chord by {abs(delta_pct)*100:.1f}% "
-        f"(Δ = {delta_pct*100:+.1f}%) to reach SM ≈ {target_sm*100:.0f}% at aft CG. "
+        f"{action} horizontal tail chord by {abs(delta_pct) * 100:.1f}% "
+        f"(Δ = {delta_pct * 100:+.1f}%) to reach SM ≈ {target_sm * 100:.0f}% at aft CG. "
         f"Chord-scale preserves span (AR changes proportionally). "
     )
     if delta_pct < 0:
@@ -731,6 +727,7 @@ def _htail_scale_option(
 # ---------------------------------------------------------------------------
 # Apply helpers
 # ---------------------------------------------------------------------------
+
 
 def _load_apply_state(
     db: Session,
@@ -805,6 +802,7 @@ def _persist_ctx(aircraft: Any, ctx: dict[str, Any]) -> None:
     aircraft.assumption_computation_context = cast(Any, ctx)
     try:
         from sqlalchemy.orm.attributes import flag_modified
+
         flag_modified(aircraft, "assumption_computation_context")
     except Exception:
         pass  # non-critical; the column will still be flushed on session commit
@@ -813,11 +811,8 @@ def _persist_ctx(aircraft: Any, ctx: dict[str, Any]) -> None:
 def _find_aeroplane(db: Session, aeroplane_uuid: str):
     """Find AeroplaneModel by UUID string, return None if not found."""
     from app.models.aeroplanemodel import AeroplaneModel
-    return (
-        db.query(AeroplaneModel)
-        .filter(AeroplaneModel.uuid == aeroplane_uuid)
-        .first()
-    )
+
+    return db.query(AeroplaneModel).filter(AeroplaneModel.uuid == aeroplane_uuid).first()
 
 
 def _find_main_wing(aircraft):
@@ -826,14 +821,11 @@ def _find_main_wing(aircraft):
     candidates = []
     for w in wings:
         wname = (w.name or "").lower()
-        if (
-            "horizontal" not in wname
-            and "vertical" not in wname
-            and "canard" not in wname
-        ):
+        if "horizontal" not in wname and "vertical" not in wname and "canard" not in wname:
             candidates.append(w)
     if not candidates:
         return None
+
     # Pick by approximate area (sum of chord segments × span)
     def _approx_area(wing) -> float:
         xsecs = wing.x_secs if hasattr(wing, "x_secs") else []
@@ -848,6 +840,7 @@ def _find_main_wing(aircraft):
             span_seg = (dy**2 + dz**2) ** 0.5
             total += 0.5 * (c0 + c1) * span_seg
         return total
+
     return max(candidates, key=_approx_area)
 
 
@@ -906,7 +899,7 @@ def apply_wing_shift(
     if main_wing is None:
         raise ValueError("No main wing found on aeroplane")
 
-    for xsec in (main_wing.x_secs or []):
+    for xsec in main_wing.x_secs or []:
         current_le = list(xsec.xyz_le or [0.0, 0.0, 0.0])
         current_le[0] = float(current_le[0]) + delta_m
         xsec.xyz_le = current_le
@@ -924,7 +917,10 @@ def apply_wing_shift(
 
     logger.info(
         "apply_wing_shift: aircraft=%s delta_m=%.4f predicted_sm=%.4f xsecs_updated=%d sm_apply_count=%d",
-        aeroplane_uuid, delta_m, predicted_sm, len(main_wing.x_secs or []),
+        aeroplane_uuid,
+        delta_m,
+        predicted_sm,
+        len(main_wing.x_secs or []),
         ctx.get("sm_apply_count", 0),
     )
 
@@ -989,7 +985,7 @@ def apply_htail_scale(
             f"htail_scale would produce non-positive chord (scale={scale:.3f}). "
             "delta_pct must be greater than -0.9."
         )
-    for xsec in (htail.x_secs or []):
+    for xsec in htail.x_secs or []:
         xsec.chord = float(xsec.chord or 0.0) * scale
 
     db.flush()
@@ -1003,7 +999,10 @@ def apply_htail_scale(
 
     logger.info(
         "apply_htail_scale: aircraft=%s delta_pct=%.4f predicted_sm=%.4f xsecs_updated=%d sm_apply_count=%d",
-        aeroplane_uuid, delta_pct, predicted_sm, len(htail.x_secs or []),
+        aeroplane_uuid,
+        delta_pct,
+        predicted_sm,
+        len(htail.x_secs or []),
         ctx.get("sm_apply_count", 0),
     )
 
@@ -1019,6 +1018,7 @@ def apply_htail_scale(
 # Recompute trigger
 # ---------------------------------------------------------------------------
 
+
 def _trigger_geometry_recompute(aircraft) -> None:
     """Schedule a background assumption recompute by publishing GeometryChanged.
 
@@ -1027,10 +1027,13 @@ def _trigger_geometry_recompute(aircraft) -> None:
     """
     try:
         from app.core.events import GeometryChanged, event_bus
-        event_bus.publish(GeometryChanged(
-            aeroplane_id=aircraft.id,
-            source_model="WingXSecModel",  # geometry of wing changed
-        ))
+
+        event_bus.publish(
+            GeometryChanged(
+                aeroplane_id=aircraft.id,
+                source_model="WingXSecModel",  # geometry of wing changed
+            )
+        )
     except Exception:
         logger.warning(
             "Could not publish GeometryChanged event for aircraft %d", aircraft.id, exc_info=True

@@ -10,6 +10,7 @@ import pytest
 # Platform guard: skip entire module if CadQuery is not available
 try:
     from cad_designer.aerosandbox.slicing import slice_step_to_fuselage
+
     HAS_CADQUERY = True
 except ImportError:
     HAS_CADQUERY = False
@@ -28,9 +29,7 @@ class TestRV7Fuselage:
 
     @pytest.fixture(scope="class")
     def rv7_result(self):
-        xsecs, metrics = slice_step_to_fuselage(
-            RV7_STEP, number_of_slices=50, points_per_slice=30
-        )
+        xsecs, metrics = slice_step_to_fuselage(RV7_STEP, number_of_slices=50, points_per_slice=30)
         return xsecs, metrics
 
     def test_volume_fidelity_above_90_percent(self, rv7_result):
@@ -60,16 +59,14 @@ class TestRV7Fuselage:
 
     def test_slice_count_matches_request(self, rv7_result):
         xsecs, _ = rv7_result
-        assert abs(len(xsecs) - 50) <= 2, (
-            f"Expected ~50 slices, got {len(xsecs)}"
-        )
+        assert abs(len(xsecs) - 50) <= 2, f"Expected ~50 slices, got {len(xsecs)}"
 
     def test_xsecs_ordered_along_x(self, rv7_result):
         xsecs, _ = rv7_result
         x_coords = [xs["xyz"][0] for xs in xsecs]
         for i in range(1, len(x_coords)):
             assert x_coords[i] >= x_coords[i - 1], (
-                f"Section {i}: x={x_coords[i]:.4f} < previous x={x_coords[i-1]:.4f}"
+                f"Section {i}: x={x_coords[i]:.4f} < previous x={x_coords[i - 1]:.4f}"
             )
 
 
@@ -101,6 +98,7 @@ class TestAxisAutoDetection:
 
     def test_rv7_auto_detects_x(self):
         from cad_designer.aerosandbox.slicing import load_step_model, detect_longest_axis
+
         model = load_step_model(RV7_STEP)
         axis = detect_longest_axis(model.val())
         assert axis == "x", f"Expected auto-detect 'x', got '{axis}'"

@@ -5,6 +5,7 @@ Stability-Envelope = physically permissible CG range from aerodynamics.
 
 Source: Anderson 6e §7.5–§7.7, Scholz §4.2 (10_BoxWingSystematic.md).
 """
+
 from __future__ import annotations
 
 from typing import Literal

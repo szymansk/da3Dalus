@@ -83,7 +83,9 @@ def test_delete_profile_with_assignment_returns_409(client_and_db):
 
 def test_delete_profile_returns_json_payload(client_and_db):
     client, _ = client_and_db
-    profile = client.post("/flight-profiles", json=valid_profile_payload("delete_me_profile")).json()
+    profile = client.post(
+        "/flight-profiles", json=valid_profile_payload("delete_me_profile")
+    ).json()
 
     response = client.delete(f"/flight-profiles/{profile['id']}")
     assert response.status_code == 200

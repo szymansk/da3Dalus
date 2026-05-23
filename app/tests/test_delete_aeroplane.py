@@ -7,6 +7,7 @@ from sqlalchemy.exc import SQLAlchemyError
 
 from app.api.v2.endpoints.aeroplane.base import delete_aeroplane
 
+
 class TestDeleteAeroplane(unittest.TestCase):
     def test_delete_aeroplane_success(self):
         test_id = uuid.uuid4()
@@ -61,6 +62,7 @@ class TestDeleteAeroplane(unittest.TestCase):
 
         self.assertEqual(ctx.exception.status_code, 500)
         self.assertIn("Unexpected error", ctx.exception.detail)
+
 
 if __name__ == "__main__":
     unittest.main()

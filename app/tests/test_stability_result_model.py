@@ -39,7 +39,9 @@ def _make_aeroplane(session: Session, name: str = "test") -> AeroplaneModel:
     return a
 
 
-def _make_result(session: Session, aeroplane_id: int, solver: str = "avl", **kwargs) -> StabilityResultModel:
+def _make_result(
+    session: Session, aeroplane_id: int, solver: str = "avl", **kwargs
+) -> StabilityResultModel:
     defaults = {
         "neutral_point_x": 0.12,
         "mac": 0.25,
@@ -60,7 +62,6 @@ def _make_result(session: Session, aeroplane_id: int, solver: str = "avl", **kwa
 
 
 class TestStabilityResultModel:
-
     def test_create_and_query(self, db_session):
         a = _make_aeroplane(db_session)
         row = _make_result(db_session, a.id)

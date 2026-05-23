@@ -1,4 +1,5 @@
 """Pydantic schemas for airfoil profiles."""
+
 from __future__ import annotations
 
 from datetime import datetime

@@ -14,7 +14,7 @@ class StabilitySummaryResponse(BaseModel):
     static_margin: Optional[float] = Field(
         None,
         description="Static margin as fraction of MAC. Positive = stable. "
-                    "Calculated as (Xnp - Xcg) / MAC.",
+        "Calculated as (Xnp - Xcg) / MAC.",
     )
     neutral_point_x: Optional[float] = Field(
         None,
@@ -35,17 +35,17 @@ class StabilitySummaryResponse(BaseModel):
     Cma: Optional[float] = Field(
         None,
         description="Pitching moment coefficient derivative w.r.t. alpha (dCm/dalpha). "
-                    "Negative = longitudinally stable.",
+        "Negative = longitudinally stable.",
     )
     Cnb: Optional[float] = Field(
         None,
         description="Yawing moment coefficient derivative w.r.t. beta (dCn/dbeta). "
-                    "Positive = directionally stable.",
+        "Positive = directionally stable.",
     )
     Clb: Optional[float] = Field(
         None,
         description="Rolling moment coefficient derivative w.r.t. beta (dCl/dbeta). "
-                    "Negative = laterally stable (dihedral effect).",
+        "Negative = laterally stable (dihedral effect).",
     )
     is_statically_stable: bool = Field(
         False,

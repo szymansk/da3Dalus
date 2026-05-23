@@ -2,6 +2,7 @@ from functools import lru_cache
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
+
 class Settings(BaseSettings):
     # extra="ignore" so developer-local variables in .env (GITHUB_TOKEN, etc.)
     # do not break application startup or test collection.
@@ -11,7 +12,9 @@ class Settings(BaseSettings):
     openai_api_key: str = "sk*"
     version: str = "0.1.0"
 
+
 settings = Settings()
+
 
 @lru_cache()
 def get_settings() -> Settings:

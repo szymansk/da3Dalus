@@ -29,7 +29,7 @@ class TestAeroplaneFuselageCrossSectionEndpoints(unittest.TestCase):
         schema2 = schemas.FuselageXSecSuperEllipseSchema.model_construct()
 
         with patch(
-            'app.services.fuselage_service.get_fuselage_cross_sections',
+            "app.services.fuselage_service.get_fuselage_cross_sections",
             return_value=[schema1, schema2],
         ) as mock_get:
             result = asyncio.run(
@@ -48,7 +48,7 @@ class TestAeroplaneFuselageCrossSectionEndpoints(unittest.TestCase):
         mock_db = MagicMock()
 
         with patch(
-            'app.services.fuselage_service.get_fuselage_cross_sections',
+            "app.services.fuselage_service.get_fuselage_cross_sections",
             side_effect=NotFoundError(message="Aeroplane not found"),
         ):
             with self.assertRaises(HTTPException) as ctx:
@@ -66,7 +66,7 @@ class TestAeroplaneFuselageCrossSectionEndpoints(unittest.TestCase):
         mock_db = MagicMock()
 
         with patch(
-            'app.services.fuselage_service.get_fuselage_cross_sections',
+            "app.services.fuselage_service.get_fuselage_cross_sections",
             side_effect=NotFoundError(message="Fuselage not found"),
         ):
             with self.assertRaises(HTTPException) as ctx:
@@ -83,7 +83,7 @@ class TestAeroplaneFuselageCrossSectionEndpoints(unittest.TestCase):
     def test_delete_cross_sections_success(self):
         mock_db = MagicMock()
 
-        with patch('app.services.fuselage_service.delete_all_cross_sections') as mock_delete:
+        with patch("app.services.fuselage_service.delete_all_cross_sections") as mock_delete:
             result = asyncio.run(
                 delete_aeroplane_fuselage_cross_sections(
                     aeroplane_id=self.test_plane_id,
@@ -100,7 +100,7 @@ class TestAeroplaneFuselageCrossSectionEndpoints(unittest.TestCase):
         mock_db = MagicMock()
         request_schema = schemas.FuselageXSecSuperEllipseSchema.model_construct()
 
-        with patch('app.services.fuselage_service.create_cross_section') as mock_create:
+        with patch("app.services.fuselage_service.create_cross_section") as mock_create:
             result = asyncio.run(
                 create_aeroplane_fuselage_cross_section(
                     aeroplane_id=self.test_plane_id,
@@ -121,7 +121,7 @@ class TestAeroplaneFuselageCrossSectionEndpoints(unittest.TestCase):
         mock_db = MagicMock()
 
         with patch(
-            'app.services.fuselage_service.get_fuselage_cross_sections',
+            "app.services.fuselage_service.get_fuselage_cross_sections",
             side_effect=InternalError(message="Database error: Database error"),
         ):
             with self.assertRaises(HTTPException) as ctx:
@@ -139,7 +139,7 @@ class TestAeroplaneFuselageCrossSectionEndpoints(unittest.TestCase):
         mock_db = MagicMock()
 
         with patch(
-            'app.services.fuselage_service.get_fuselage_cross_sections',
+            "app.services.fuselage_service.get_fuselage_cross_sections",
             side_effect=InternalError(message="Unexpected error: Unexpected error"),
         ):
             with self.assertRaises(HTTPException) as ctx:
@@ -157,7 +157,7 @@ class TestAeroplaneFuselageCrossSectionEndpoints(unittest.TestCase):
         mock_db = MagicMock()
 
         with patch(
-            'app.services.fuselage_service.delete_all_cross_sections',
+            "app.services.fuselage_service.delete_all_cross_sections",
             side_effect=InternalError(message="Database error: Database error"),
         ):
             with self.assertRaises(HTTPException) as ctx:
@@ -175,7 +175,7 @@ class TestAeroplaneFuselageCrossSectionEndpoints(unittest.TestCase):
         mock_db = MagicMock()
 
         with patch(
-            'app.services.fuselage_service.delete_all_cross_sections',
+            "app.services.fuselage_service.delete_all_cross_sections",
             side_effect=InternalError(message="Unexpected error: Unexpected error"),
         ):
             with self.assertRaises(HTTPException) as ctx:

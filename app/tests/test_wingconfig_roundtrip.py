@@ -35,23 +35,36 @@ def _roundtrip(wing_data: Wing):
 
 
 def _seg(
-    root_airfoil=AIRFOIL, root_chord=200, root_incidence=0, root_dihedral=0,
-    tip_airfoil=AIRFOIL, tip_chord=180, tip_incidence=0, tip_dihedral=0,
-    length=100, sweep=0, interpolation_pts=101, tip_type=None,
-    wing_segment_type=None, trailing_edge_device=None,
+    root_airfoil=AIRFOIL,
+    root_chord=200,
+    root_incidence=0,
+    root_dihedral=0,
+    tip_airfoil=AIRFOIL,
+    tip_chord=180,
+    tip_incidence=0,
+    tip_dihedral=0,
+    length=100,
+    sweep=0,
+    interpolation_pts=101,
+    tip_type=None,
+    wing_segment_type=None,
+    trailing_edge_device=None,
 ) -> Segment:
     return Segment(
         root_airfoil=Airfoil(
-            airfoil=root_airfoil, chord=root_chord,
+            airfoil=root_airfoil,
+            chord=root_chord,
             dihedral_as_rotation_in_degrees=root_dihedral,
             incidence=root_incidence,
         ),
         tip_airfoil=Airfoil(
-            airfoil=tip_airfoil, chord=tip_chord,
+            airfoil=tip_airfoil,
+            chord=tip_chord,
             dihedral_as_rotation_in_degrees=tip_dihedral,
             incidence=tip_incidence,
         ),
-        length=length, sweep=sweep,
+        length=length,
+        sweep=sweep,
         number_interpolation_points=interpolation_pts,
         tip_type=tip_type,
         wing_segment_type=wing_segment_type,
@@ -64,8 +77,12 @@ def _wing(*segments: Segment) -> Wing:
 
 
 def _assert_airfoil_match(
-    original, roundtripped, label,
-    tol_chord=0.05, tol_angle=0.01, is_terminal_tip=False,
+    original,
+    roundtripped,
+    label,
+    tol_chord=0.05,
+    tol_angle=0.01,
+    is_terminal_tip=False,
 ):
     """Assert that airfoil parameters survive the roundtrip within tolerance.
 
@@ -74,18 +91,20 @@ def _assert_airfoil_match(
     to derive a dihedral direction from. WingConfiguration.from_asb sets
     cum_d[n-1] = cum_d[n-2], making the terminal delta always 0.
     """
-    assert roundtripped.incidence == pytest.approx(
-        original.incidence, abs=tol_angle
-    ), f"{label}: incidence {roundtripped.incidence} != {original.incidence}"
+    assert roundtripped.incidence == pytest.approx(original.incidence, abs=tol_angle), (
+        f"{label}: incidence {roundtripped.incidence} != {original.incidence}"
+    )
 
-    assert roundtripped.chord == pytest.approx(
-        original.chord, abs=tol_chord
-    ), f"{label}: chord {roundtripped.chord} != {original.chord}"
+    assert roundtripped.chord == pytest.approx(original.chord, abs=tol_chord), (
+        f"{label}: chord {roundtripped.chord} != {original.chord}"
+    )
 
     if not is_terminal_tip:
         assert roundtripped.dihedral_as_rotation_in_degrees == pytest.approx(
             original.dihedral_as_rotation_in_degrees, abs=0.1
-        ), f"{label}: dihedral {roundtripped.dihedral_as_rotation_in_degrees} != {original.dihedral_as_rotation_in_degrees}"
+        ), (
+            f"{label}: dihedral {roundtripped.dihedral_as_rotation_in_degrees} != {original.dihedral_as_rotation_in_degrees}"
+        )
 
 
 def _assert_segment_match(orig_seg, rt_seg, seg_idx, *, total_segments=None):
@@ -100,20 +119,20 @@ def _assert_segment_match(orig_seg, rt_seg, seg_idx, *, total_segments=None):
     """
     is_last = total_segments is not None and seg_idx == total_segments - 1
 
+    _assert_airfoil_match(orig_seg.root_airfoil, rt_seg.root_airfoil, f"seg[{seg_idx}].root")
     _assert_airfoil_match(
-        orig_seg.root_airfoil, rt_seg.root_airfoil, f"seg[{seg_idx}].root"
-    )
-    _assert_airfoil_match(
-        orig_seg.tip_airfoil, rt_seg.tip_airfoil, f"seg[{seg_idx}].tip",
+        orig_seg.tip_airfoil,
+        rt_seg.tip_airfoil,
+        f"seg[{seg_idx}].tip",
         is_terminal_tip=is_last,
     )
     # Length/sweep tolerance is relaxed because rc projection changes these
-    assert rt_seg.length == pytest.approx(
-        orig_seg.length, abs=1.0
-    ), f"seg[{seg_idx}].length: {rt_seg.length} != {orig_seg.length}"
-    assert rt_seg.sweep == pytest.approx(
-        orig_seg.sweep, abs=1.0
-    ), f"seg[{seg_idx}].sweep: {rt_seg.sweep} != {orig_seg.sweep}"
+    assert rt_seg.length == pytest.approx(orig_seg.length, abs=1.0), (
+        f"seg[{seg_idx}].length: {rt_seg.length} != {orig_seg.length}"
+    )
+    assert rt_seg.sweep == pytest.approx(orig_seg.sweep, abs=1.0), (
+        f"seg[{seg_idx}].sweep: {rt_seg.sweep} != {orig_seg.sweep}"
+    )
 
 
 # ═══════════════════════════════════════════════════════════════════
@@ -242,7 +261,6 @@ class TestIncidenceRoundtrip:
 
 
 class TestDihedralRoundtrip:
-
     def test_constant_dihedral(self):
         wing = _wing(
             _seg(root_dihedral=3, tip_dihedral=3, length=200),
@@ -279,21 +297,33 @@ class TestDihedralRoundtrip:
 
 
 class TestCombinedRoundtrip:
-
     def test_washin_with_dihedral_and_sweep(self):
         """Incidence, dihedral, sweep all non-zero — realistic case."""
         wing = _wing(
             _seg(
-                root_incidence=-1.5, tip_incidence=1, root_dihedral=3,
-                length=50, sweep=5, root_chord=200, tip_chord=180,
+                root_incidence=-1.5,
+                tip_incidence=1,
+                root_dihedral=3,
+                length=50,
+                sweep=5,
+                root_chord=200,
+                tip_chord=180,
             ),
             _seg(
-                root_incidence=1, tip_incidence=0,
-                length=200, sweep=8, root_chord=180, tip_chord=140,
+                root_incidence=1,
+                tip_incidence=0,
+                length=200,
+                sweep=8,
+                root_chord=180,
+                tip_chord=140,
             ),
             _seg(
-                root_incidence=0, tip_incidence=-1,
-                length=200, sweep=12, root_chord=140, tip_chord=80,
+                root_incidence=0,
+                tip_incidence=-1,
+                length=200,
+                sweep=12,
+                root_chord=140,
+                tip_chord=80,
             ),
         )
         wc, wc2 = _roundtrip(wing)
@@ -304,24 +334,45 @@ class TestCombinedRoundtrip:
         """Classic trapezoid wing — 4 segments, taper, washout, dihedral."""
         wing = _wing(
             _seg(
-                root_airfoil="naca2424", root_chord=200, root_incidence=2,
-                tip_airfoil="naca2424", tip_chord=180, tip_incidence=1.5,
-                root_dihedral=2, length=50, sweep=3,
+                root_airfoil="naca2424",
+                root_chord=200,
+                root_incidence=2,
+                tip_airfoil="naca2424",
+                tip_chord=180,
+                tip_incidence=1.5,
+                root_dihedral=2,
+                length=50,
+                sweep=3,
             ),
             _seg(
-                root_airfoil="naca2424", root_chord=180, root_incidence=1.5,
-                tip_airfoil="naca2424", tip_chord=160, tip_incidence=1,
-                length=200, sweep=5,
+                root_airfoil="naca2424",
+                root_chord=180,
+                root_incidence=1.5,
+                tip_airfoil="naca2424",
+                tip_chord=160,
+                tip_incidence=1,
+                length=200,
+                sweep=5,
             ),
             _seg(
-                root_airfoil="naca2424", root_chord=160, root_incidence=1,
-                tip_airfoil="naca2424", tip_chord=120, tip_incidence=0,
-                length=200, sweep=8,
+                root_airfoil="naca2424",
+                root_chord=160,
+                root_incidence=1,
+                tip_airfoil="naca2424",
+                tip_chord=120,
+                tip_incidence=0,
+                length=200,
+                sweep=8,
             ),
             _seg(
-                root_airfoil="naca2424", root_chord=120, root_incidence=0,
-                tip_airfoil="naca2424", tip_chord=60, tip_incidence=-1,
-                length=100, sweep=12,
+                root_airfoil="naca2424",
+                root_chord=120,
+                root_incidence=0,
+                tip_airfoil="naca2424",
+                tip_chord=60,
+                tip_incidence=-1,
+                length=100,
+                sweep=12,
             ),
         )
         wc, wc2 = _roundtrip(wing)
@@ -335,7 +386,6 @@ class TestCombinedRoundtrip:
 
 
 class TestAirfoilNameRoundtrip:
-
     def test_airfoil_name_preserved(self):
         wing = _wing(
             _seg(root_airfoil="naca2412", tip_airfoil="naca0015"),
@@ -360,7 +410,6 @@ class TestAirfoilNameRoundtrip:
 
 
 class TestWingSegmentTypeRoundtrip:
-
     def test_wing_segment_type_auto_assigned(self):
         """wing_segment_type is set by the CAD layer and survives roundtrip."""
         wing = _wing(
@@ -378,7 +427,8 @@ class TestWingSegmentTypeRoundtrip:
         seg = Segment(
             root_airfoil=Airfoil(airfoil=AIRFOIL, chord=200),
             tip_airfoil=Airfoil(airfoil=AIRFOIL, chord=180),
-            length=100, sweep=0,
+            length=100,
+            sweep=0,
             wing_segment_type="root",
         )
         data = seg.model_dump()
@@ -389,7 +439,8 @@ class TestWingSegmentTypeRoundtrip:
         seg = Segment(
             root_airfoil=Airfoil(airfoil=AIRFOIL, chord=200),
             tip_airfoil=Airfoil(airfoil=AIRFOIL, chord=180),
-            length=100, sweep=0,
+            length=100,
+            sweep=0,
         )
         assert seg.wing_segment_type is None
 
@@ -420,9 +471,13 @@ class TestTedPropagation:
         wing_data = _wing(
             _seg(root_chord=300, tip_chord=280, length=500),
             _seg(
-                root_chord=280, tip_chord=250, length=400,
+                root_chord=280,
+                tip_chord=250,
+                length=400,
                 trailing_edge_device=TrailingEdgeDevice(
-                    name="aileron", rel_chord_root=0.75, rel_chord_tip=0.75,
+                    name="aileron",
+                    rel_chord_root=0.75,
+                    rel_chord_tip=0.75,
                     symmetric=False,
                 ),
             ),
@@ -453,9 +508,13 @@ class TestTedPropagation:
         wing_data = _wing(
             _seg(root_chord=300, tip_chord=280, length=500),
             _seg(
-                root_chord=280, tip_chord=250, length=400,
+                root_chord=280,
+                tip_chord=250,
+                length=400,
                 trailing_edge_device=TrailingEdgeDevice(
-                    name="aileron", rel_chord_root=0.75, rel_chord_tip=0.75,
+                    name="aileron",
+                    rel_chord_root=0.75,
+                    rel_chord_tip=0.75,
                     symmetric=False,
                 ),
             ),
@@ -478,9 +537,13 @@ class TestTedPropagation:
         wing_data = _wing(
             _seg(root_chord=300, tip_chord=280, length=500),
             _seg(
-                root_chord=280, tip_chord=250, length=400,
+                root_chord=280,
+                tip_chord=250,
+                length=400,
                 trailing_edge_device=TrailingEdgeDevice(
-                    name="aileron", rel_chord_root=0.75, rel_chord_tip=0.75,
+                    name="aileron",
+                    rel_chord_root=0.75,
+                    rel_chord_tip=0.75,
                     symmetric=False,
                 ),
             ),
@@ -502,9 +565,13 @@ class TestTedPropagation:
         """Boundary: TED on segment 0 must not leak forward."""
         wing_data = _wing(
             _seg(
-                root_chord=300, tip_chord=280, length=500,
+                root_chord=300,
+                tip_chord=280,
+                length=500,
                 trailing_edge_device=TrailingEdgeDevice(
-                    name="flap", rel_chord_root=0.7, rel_chord_tip=0.7,
+                    name="flap",
+                    rel_chord_root=0.7,
+                    rel_chord_tip=0.7,
                 ),
             ),
             _seg(root_chord=280, tip_chord=250, length=400),
@@ -523,9 +590,13 @@ class TestTedPropagation:
             _seg(root_chord=300, tip_chord=280, length=500),
             _seg(root_chord=280, tip_chord=250, length=400),
             _seg(
-                root_chord=250, tip_chord=200, length=300,
+                root_chord=250,
+                tip_chord=200,
+                length=300,
                 trailing_edge_device=TrailingEdgeDevice(
-                    name="elevator", rel_chord_root=0.8, rel_chord_tip=0.8,
+                    name="elevator",
+                    rel_chord_root=0.8,
+                    rel_chord_tip=0.8,
                 ),
             ),
         )
@@ -540,16 +611,24 @@ class TestTedPropagation:
         """TEDs on segments 0 and 2 (non-adjacent) must not spread to 1 or 3."""
         wing_data = _wing(
             _seg(
-                root_chord=300, tip_chord=280, length=500,
+                root_chord=300,
+                tip_chord=280,
+                length=500,
                 trailing_edge_device=TrailingEdgeDevice(
-                    name="flap", rel_chord_root=0.7, rel_chord_tip=0.7,
+                    name="flap",
+                    rel_chord_root=0.7,
+                    rel_chord_tip=0.7,
                 ),
             ),
             _seg(root_chord=280, tip_chord=250, length=400),
             _seg(
-                root_chord=250, tip_chord=220, length=300,
+                root_chord=250,
+                tip_chord=220,
+                length=300,
                 trailing_edge_device=TrailingEdgeDevice(
-                    name="aileron", rel_chord_root=0.8, rel_chord_tip=0.8,
+                    name="aileron",
+                    rel_chord_root=0.8,
+                    rel_chord_tip=0.8,
                 ),
             ),
             _seg(root_chord=220, tip_chord=200, length=200),
@@ -568,15 +647,23 @@ class TestTedPropagation:
         wing_data = _wing(
             _seg(root_chord=300, tip_chord=280, length=500),
             _seg(
-                root_chord=280, tip_chord=250, length=400,
+                root_chord=280,
+                tip_chord=250,
+                length=400,
                 trailing_edge_device=TrailingEdgeDevice(
-                    name="flap", rel_chord_root=0.7, rel_chord_tip=0.7,
+                    name="flap",
+                    rel_chord_root=0.7,
+                    rel_chord_tip=0.7,
                 ),
             ),
             _seg(
-                root_chord=250, tip_chord=220, length=300,
+                root_chord=250,
+                tip_chord=220,
+                length=300,
                 trailing_edge_device=TrailingEdgeDevice(
-                    name="aileron", rel_chord_root=0.8, rel_chord_tip=0.8,
+                    name="aileron",
+                    rel_chord_root=0.8,
+                    rel_chord_tip=0.8,
                 ),
             ),
             _seg(root_chord=220, tip_chord=200, length=200),
@@ -593,14 +680,18 @@ class TestTedPropagation:
     def test_ted_stable_over_repeated_saves(self):
         """Repeated roundtrips must not grow TEDs onto new segments."""
         ted = TrailingEdgeDevice(
-            name="aileron", rel_chord_root=0.8, rel_chord_tip=0.8,
+            name="aileron",
+            rel_chord_root=0.8,
+            rel_chord_tip=0.8,
             symmetric=True,
         )
         wing_data = _wing(
             _seg(root_chord=300, tip_chord=280, length=500),
             _seg(root_chord=280, tip_chord=250, length=400),
             _seg(
-                root_chord=250, tip_chord=220, length=300,
+                root_chord=250,
+                tip_chord=220,
+                length=300,
                 trailing_edge_device=ted,
             ),
             _seg(root_chord=220, tip_chord=200, length=200),
@@ -609,9 +700,7 @@ class TestTedPropagation:
         wc = create_wing_configuration(wing_data)
         for cycle in range(5):
             asb_schema = wing_config_to_asb_wing_schema(wc, "test", scale=0.001)
-            ted_count = sum(
-                1 for x in asb_schema.x_secs if x.trailing_edge_device is not None
-            )
+            ted_count = sum(1 for x in asb_schema.x_secs if x.trailing_edge_device is not None)
             assert ted_count == 1, (
                 f"Cycle {cycle}: expected 1 TED, found {ted_count} — "
                 "TED propagated to adjacent segments"
@@ -638,6 +727,7 @@ class TestRoundtripDrift:
             wing_config_to_asb_wing_schema as to_asb,
             asb_wing_schema_to_wing_config as from_asb,
         )
+
         wc = create_wing_configuration(wing_data)
         snapshots = []
 
@@ -646,15 +736,17 @@ class TestRoundtripDrift:
             wc = from_asb(asb_schema, scale=1000.0)
             snapshot = []
             for seg in wc.segments:
-                snapshot.append({
-                    "root_incidence": seg.root_airfoil.incidence,
-                    "tip_incidence": seg.tip_airfoil.incidence,
-                    "root_chord": seg.root_airfoil.chord,
-                    "tip_chord": seg.tip_airfoil.chord,
-                    "root_dihedral": seg.root_airfoil.dihedral_as_rotation_in_degrees,
-                    "length": seg.length,
-                    "sweep": seg.sweep,
-                })
+                snapshot.append(
+                    {
+                        "root_incidence": seg.root_airfoil.incidence,
+                        "tip_incidence": seg.tip_airfoil.incidence,
+                        "root_chord": seg.root_airfoil.chord,
+                        "tip_chord": seg.tip_airfoil.chord,
+                        "root_dihedral": seg.root_airfoil.dihedral_as_rotation_in_degrees,
+                        "length": seg.length,
+                        "sweep": seg.sweep,
+                    }
+                )
             snapshots.append(snapshot)
         return snapshots
 
@@ -665,18 +757,55 @@ class TestRoundtripDrift:
         sweep on all segments, long spans for maximum lever arm.
         """
         wing = _wing(
-            _seg(root_chord=250, tip_chord=230, root_incidence=4, tip_incidence=3,
-                 root_dihedral=3, length=80, sweep=5),
-            _seg(root_chord=230, tip_chord=200, root_incidence=3, tip_incidence=2,
-                 length=400, sweep=10),
-            _seg(root_chord=200, tip_chord=170, root_incidence=2, tip_incidence=1,
-                 length=500, sweep=15),
-            _seg(root_chord=170, tip_chord=130, root_incidence=1, tip_incidence=0,
-                 length=500, sweep=20),
-            _seg(root_chord=130, tip_chord=90, root_incidence=0, tip_incidence=-1,
-                 length=400, sweep=15),
-            _seg(root_chord=90, tip_chord=50, root_incidence=-1, tip_incidence=-3,
-                 length=200, sweep=10),
+            _seg(
+                root_chord=250,
+                tip_chord=230,
+                root_incidence=4,
+                tip_incidence=3,
+                root_dihedral=3,
+                length=80,
+                sweep=5,
+            ),
+            _seg(
+                root_chord=230,
+                tip_chord=200,
+                root_incidence=3,
+                tip_incidence=2,
+                length=400,
+                sweep=10,
+            ),
+            _seg(
+                root_chord=200,
+                tip_chord=170,
+                root_incidence=2,
+                tip_incidence=1,
+                length=500,
+                sweep=15,
+            ),
+            _seg(
+                root_chord=170,
+                tip_chord=130,
+                root_incidence=1,
+                tip_incidence=0,
+                length=500,
+                sweep=20,
+            ),
+            _seg(
+                root_chord=130,
+                tip_chord=90,
+                root_incidence=0,
+                tip_incidence=-1,
+                length=400,
+                sweep=15,
+            ),
+            _seg(
+                root_chord=90,
+                tip_chord=50,
+                root_incidence=-1,
+                tip_incidence=-3,
+                length=200,
+                sweep=10,
+            ),
         )
 
         snapshots = self._multi_roundtrip(wing, self.ITERATIONS)
@@ -700,12 +829,12 @@ class TestRoundtripDrift:
             max_length_drift = max(max_length_drift, drift)
 
         # Report drift values for visibility
-        print(f"\n{'='*60}")
+        print(f"\n{'=' * 60}")
         print(f"DRIFT after {self.ITERATIONS} roundtrips (6-segment wing):")
         print(f"  max incidence drift: {max_incidence_drift:.6f}°")
         print(f"  max chord drift:     {max_chord_drift:.6f} mm")
         print(f"  max length drift:    {max_length_drift:.6f} mm")
-        print(f"{'='*60}")
+        print(f"{'=' * 60}")
 
         # After fix: drift must be zero (idempotent conversion)
         assert max_incidence_drift < 0.01, (
@@ -713,28 +842,51 @@ class TestRoundtripDrift:
             f"{self.ITERATIONS} iterations — conversion is not stable"
         )
         assert max_chord_drift < 0.01, (
-            f"Chord drifted by {max_chord_drift:.4f} mm over "
-            f"{self.ITERATIONS} iterations"
+            f"Chord drifted by {max_chord_drift:.4f} mm over {self.ITERATIONS} iterations"
         )
         # Length may drift slightly due to rc projection (rc=0.25 → rc=0).
         # The first roundtrip changes the representation, subsequent roundtrips
         # should be near-idempotent. 0.5mm over 10 iterations is acceptable.
         assert max_length_drift < 0.5, (
-            f"Length drifted by {max_length_drift:.4f} mm over "
-            f"{self.ITERATIONS} iterations"
+            f"Length drifted by {max_length_drift:.4f} mm over {self.ITERATIONS} iterations"
         )
 
     def test_drift_asymmetric_twist_4_segments(self):
         """4 segments with non-monotone twist pattern and long lever arms."""
         wing = _wing(
-            _seg(root_chord=300, tip_chord=260, root_incidence=-2, tip_incidence=3,
-                 root_dihedral=5, length=150, sweep=8),
-            _seg(root_chord=260, tip_chord=200, root_incidence=3, tip_incidence=-1,
-                 length=600, sweep=12),
-            _seg(root_chord=200, tip_chord=140, root_incidence=-1, tip_incidence=4,
-                 length=600, sweep=18),
-            _seg(root_chord=140, tip_chord=60, root_incidence=4, tip_incidence=-3,
-                 length=300, sweep=25),
+            _seg(
+                root_chord=300,
+                tip_chord=260,
+                root_incidence=-2,
+                tip_incidence=3,
+                root_dihedral=5,
+                length=150,
+                sweep=8,
+            ),
+            _seg(
+                root_chord=260,
+                tip_chord=200,
+                root_incidence=3,
+                tip_incidence=-1,
+                length=600,
+                sweep=12,
+            ),
+            _seg(
+                root_chord=200,
+                tip_chord=140,
+                root_incidence=-1,
+                tip_incidence=4,
+                length=600,
+                sweep=18,
+            ),
+            _seg(
+                root_chord=140,
+                tip_chord=60,
+                root_incidence=4,
+                tip_incidence=-3,
+                length=300,
+                sweep=25,
+            ),
         )
 
         snapshots = self._multi_roundtrip(wing, self.ITERATIONS)
@@ -747,23 +899,20 @@ class TestRoundtripDrift:
                 drift = abs(last[seg_idx][key] - first[seg_idx][key])
                 max_drift = max(max_drift, drift)
 
-        print(f"\n{'='*60}")
+        print(f"\n{'=' * 60}")
         print(f"DRIFT after {self.ITERATIONS} roundtrips (asymmetric twist):")
         print(f"  max incidence drift: {max_drift:.6f}°")
-        print(f"{'='*60}")
+        print(f"{'=' * 60}")
 
         # Print per-iteration drift for diagnostics
         for i, snap in enumerate(snapshots):
             incidences = [f"{s['root_incidence']:.3f}/{s['tip_incidence']:.3f}" for s in snap]
-            print(f"  iter {i+1}: {' | '.join(incidences)}")
+            print(f"  iter {i + 1}: {' | '.join(incidences)}")
 
-        assert max_drift < 0.01, (
-            f"Incidence drifted by {max_drift:.4f}° — conversion diverges"
-        )
+        assert max_drift < 0.01, f"Incidence drifted by {max_drift:.4f}° — conversion diverges"
 
 
 class TestSegmentCountRoundtrip:
-
     def test_one_segment(self):
         _, wc2 = _roundtrip(_wing(_seg()))
         assert len(wc2.segments) == 1

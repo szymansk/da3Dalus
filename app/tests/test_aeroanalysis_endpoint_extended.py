@@ -165,9 +165,7 @@ class TestGetAirplaneStripForces:
             "app.api.v2.endpoints.aeroanalysis.analysis_service.analyze_airplane_strip_forces",
             new=AsyncMock(return_value=expected),
         ) as mock_fn:
-            result = asyncio.run(
-                get_airplane_strip_forces(plane_id, operating_point, mock_db)
-            )
+            result = asyncio.run(get_airplane_strip_forces(plane_id, operating_point, mock_db))
         assert result == expected
         mock_fn.assert_awaited_once_with(mock_db, plane_id, operating_point)
 
@@ -177,9 +175,7 @@ class TestGetAirplaneStripForces:
             new=AsyncMock(side_effect=NotFoundError("no plane")),
         ):
             with pytest.raises(HTTPException) as exc_info:
-                asyncio.run(
-                    get_airplane_strip_forces(plane_id, operating_point, mock_db)
-                )
+                asyncio.run(get_airplane_strip_forces(plane_id, operating_point, mock_db))
         assert exc_info.value.status_code == 404
 
     def test_conflict_maps_to_409(self, plane_id, operating_point, mock_db):
@@ -188,9 +184,7 @@ class TestGetAirplaneStripForces:
             new=AsyncMock(side_effect=ConflictError("locked")),
         ):
             with pytest.raises(HTTPException) as exc_info:
-                asyncio.run(
-                    get_airplane_strip_forces(plane_id, operating_point, mock_db)
-                )
+                asyncio.run(get_airplane_strip_forces(plane_id, operating_point, mock_db))
         assert exc_info.value.status_code == 409
 
 
@@ -210,9 +204,7 @@ class TestGetWingStripForces:
                 get_wing_strip_forces(plane_id, "main_wing", operating_point, mock_db)
             )
         assert result == expected
-        mock_fn.assert_awaited_once_with(
-            mock_db, plane_id, "main_wing", operating_point
-        )
+        mock_fn.assert_awaited_once_with(mock_db, plane_id, "main_wing", operating_point)
 
     def test_not_found_maps_to_404(self, plane_id, operating_point, mock_db):
         with patch(
@@ -220,9 +212,7 @@ class TestGetWingStripForces:
             new=AsyncMock(side_effect=NotFoundError("wing gone")),
         ):
             with pytest.raises(HTTPException) as exc_info:
-                asyncio.run(
-                    get_wing_strip_forces(plane_id, "no_wing", operating_point, mock_db)
-                )
+                asyncio.run(get_wing_strip_forces(plane_id, "no_wing", operating_point, mock_db))
         assert exc_info.value.status_code == 404
 
     def test_validation_error_maps_to_422(self, plane_id, operating_point, mock_db):
@@ -231,9 +221,7 @@ class TestGetWingStripForces:
             new=AsyncMock(side_effect=ValidationError("bad wing config")),
         ):
             with pytest.raises(HTTPException) as exc_info:
-                asyncio.run(
-                    get_wing_strip_forces(plane_id, "bad_wing", operating_point, mock_db)
-                )
+                asyncio.run(get_wing_strip_forces(plane_id, "bad_wing", operating_point, mock_db))
         assert exc_info.value.status_code == 422
 
 
@@ -257,9 +245,7 @@ class TestGetStabilitySummary:
             new=AsyncMock(return_value=expected),
         ) as mock_fn:
             result = asyncio.run(
-                get_stability_summary(
-                    plane_id, operating_point, AnalysisToolUrlType.AVL, mock_db
-                )
+                get_stability_summary(plane_id, operating_point, AnalysisToolUrlType.AVL, mock_db)
             )
         assert result == expected
         mock_fn.assert_awaited_once_with(
@@ -319,9 +305,7 @@ class TestStreamlinesJsonErrors:
             new=AsyncMock(side_effect=InternalError("VLM diverged")),
         ):
             with pytest.raises(HTTPException) as exc_info:
-                asyncio.run(
-                    calculate_streamlines_json(plane_id, operating_point, mock_db)
-                )
+                asyncio.run(calculate_streamlines_json(plane_id, operating_point, mock_db))
         assert exc_info.value.status_code == 500
 
     def test_unexpected_exception_maps_to_500(self, plane_id, operating_point, mock_db):
@@ -330,9 +314,7 @@ class TestStreamlinesJsonErrors:
             new=AsyncMock(side_effect=RuntimeError("oops")),
         ):
             with pytest.raises(HTTPException) as exc_info:
-                asyncio.run(
-                    calculate_streamlines_json(plane_id, operating_point, mock_db)
-                )
+                asyncio.run(calculate_streamlines_json(plane_id, operating_point, mock_db))
         assert exc_info.value.status_code == 500
 
 
@@ -342,9 +324,7 @@ class TestStreamlinesJsonErrors:
 
 
 class TestAnalyzeWingPostErrors:
-    def test_validation_domain_error_maps_to_422(
-        self, plane_id, operating_point, mock_db
-    ):
+    def test_validation_domain_error_maps_to_422(self, plane_id, operating_point, mock_db):
         with patch(
             "app.api.v2.endpoints.aeroanalysis.analysis_service.analyze_wing",
             new=AsyncMock(side_effect=ValidationDomainError("chord <= 0")),
@@ -429,9 +409,7 @@ class TestAlphaSweepErrors:
             new=AsyncMock(side_effect=NotFoundError("no plane")),
         ):
             with pytest.raises(HTTPException) as exc_info:
-                asyncio.run(
-                    analyze_airplane_alpha_sweep(plane_id, sweep_request, mock_db)
-                )
+                asyncio.run(analyze_airplane_alpha_sweep(plane_id, sweep_request, mock_db))
         assert exc_info.value.status_code == 404
 
 
@@ -463,9 +441,7 @@ class TestSimpleSweepErrors:
             new=AsyncMock(side_effect=NotFoundError("no aeroplane")),
         ):
             with pytest.raises(HTTPException) as exc_info:
-                asyncio.run(
-                    analyze_airplane_simple_sweep(plane_id, sweep_request, mock_db)
-                )
+                asyncio.run(analyze_airplane_simple_sweep(plane_id, sweep_request, mock_db))
         assert exc_info.value.status_code == 404
 
 
@@ -482,9 +458,7 @@ class TestThreeViewErrors:
         ):
             with pytest.raises(HTTPException) as exc_info:
                 asyncio.run(
-                    get_aeroplane_three_view_url(
-                        plane_id, mock_db, mock_settings, mock_request
-                    )
+                    get_aeroplane_three_view_url(plane_id, mock_db, mock_settings, mock_request)
                 )
         assert exc_info.value.status_code == 404
 
@@ -495,9 +469,7 @@ class TestThreeViewErrors:
         ):
             with pytest.raises(HTTPException) as exc_info:
                 asyncio.run(
-                    get_aeroplane_three_view_url(
-                        plane_id, mock_db, mock_settings, mock_request
-                    )
+                    get_aeroplane_three_view_url(plane_id, mock_db, mock_settings, mock_request)
                 )
         assert exc_info.value.status_code == 422
 

@@ -15,9 +15,14 @@ from sqlalchemy.orm import Session
 
 from app import schemas
 from app.core.exceptions import NotFoundError, InternalError, ValidationError
-from app.converters.model_schema_converters import fuselage_model_to_fuselage_config, wing_model_to_wing_config
+from app.converters.model_schema_converters import (
+    fuselage_model_to_fuselage_config,
+    wing_model_to_wing_config,
+)
 from app.models.aeroplanemodel import AeroplaneModel
-from cad_designer.airplane.aircraft_topology.airplane.AirplaneConfiguration import AirplaneConfiguration
+from cad_designer.airplane.aircraft_topology.airplane.AirplaneConfiguration import (
+    AirplaneConfiguration,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -42,7 +47,7 @@ def _to_json_compatible(value):
 def list_all_aeroplanes(db: Session) -> List[AeroplaneModel]:
     """
     Get all aeroplanes ordered by name.
-    
+
     Raises:
         InternalError: If a database error occurs.
     """
@@ -56,7 +61,7 @@ def list_all_aeroplanes(db: Session) -> List[AeroplaneModel]:
 def create_aeroplane(db: Session, name: str) -> AeroplaneModel:
     """
     Create a new aeroplane.
-    
+
     Raises:
         InternalError: If a database error occurs.
     """
@@ -74,20 +79,17 @@ def create_aeroplane(db: Session, name: str) -> AeroplaneModel:
 def get_aeroplane_by_uuid(db: Session, aeroplane_uuid) -> AeroplaneModel:
     """
     Get an aeroplane by UUID.
-    
+
     Raises:
         NotFoundError: If the aeroplane does not exist.
         InternalError: If a database error occurs.
     """
     try:
-        aeroplane = db.query(AeroplaneModel).filter(
-            AeroplaneModel.uuid == aeroplane_uuid
-        ).first()
-        
+        aeroplane = db.query(AeroplaneModel).filter(AeroplaneModel.uuid == aeroplane_uuid).first()
+
         if not aeroplane:
             raise NotFoundError(
-                message=_ERR_AEROPLANE_NOT_FOUND,
-                details={"aeroplane_id": str(aeroplane_uuid)}
+                message=_ERR_AEROPLANE_NOT_FOUND, details={"aeroplane_id": str(aeroplane_uuid)}
             )
         return aeroplane
     except NotFoundError:
@@ -100,7 +102,7 @@ def get_aeroplane_by_uuid(db: Session, aeroplane_uuid) -> AeroplaneModel:
 def get_aeroplane_schema(db: Session, aeroplane_uuid) -> schemas.AeroplaneSchema:
     """
     Get an aeroplane as a schema with wings and fuselages.
-    
+
     Raises:
         NotFoundError: If the aeroplane does not exist.
         InternalError: If a database error occurs.
@@ -118,41 +120,39 @@ def get_aeroplane_schema(db: Session, aeroplane_uuid) -> schemas.AeroplaneSchema
             ted = detail.trailing_edge_device
             if ted is not None:
                 _ = ted.servo_data
-    
-    wing_map: OrderedDict[str, schemas.AsbWingSchema] = OrderedDict({
-        w.name: schemas.AsbWingSchema.model_validate(w, from_attributes=True)
-        for w in aeroplane.wings
-    })
-    fuselage_map: OrderedDict[str, schemas.FuselageSchema] = OrderedDict({
-        f.name: schemas.FuselageSchema.model_validate(f, from_attributes=True)
-        for f in aeroplane.fuselages
-    })
-    
+
+    wing_map: OrderedDict[str, schemas.AsbWingSchema] = OrderedDict(
+        {
+            w.name: schemas.AsbWingSchema.model_validate(w, from_attributes=True)
+            for w in aeroplane.wings
+        }
+    )
+    fuselage_map: OrderedDict[str, schemas.FuselageSchema] = OrderedDict(
+        {
+            f.name: schemas.FuselageSchema.model_validate(f, from_attributes=True)
+            for f in aeroplane.fuselages
+        }
+    )
+
     return schemas.AeroplaneSchema(
-        name=aeroplane.name,
-        xyz_ref=aeroplane.xyz_ref,
-        wings=wing_map,
-        fuselages=fuselage_map
+        name=aeroplane.name, xyz_ref=aeroplane.xyz_ref, wings=wing_map, fuselages=fuselage_map
     )
 
 
 def delete_aeroplane(db: Session, aeroplane_uuid) -> None:
     """
     Delete an aeroplane.
-    
+
     Raises:
         NotFoundError: If the aeroplane does not exist.
         InternalError: If a database error occurs.
     """
     try:
-        aeroplane = db.query(AeroplaneModel).filter(
-            AeroplaneModel.uuid == aeroplane_uuid
-        ).first()
+        aeroplane = db.query(AeroplaneModel).filter(AeroplaneModel.uuid == aeroplane_uuid).first()
 
         if not aeroplane:
             raise NotFoundError(
-                message=_ERR_AEROPLANE_NOT_FOUND,
-                details={"aeroplane_id": str(aeroplane_uuid)}
+                message=_ERR_AEROPLANE_NOT_FOUND, details={"aeroplane_id": str(aeroplane_uuid)}
             )
         db.delete(aeroplane)
     except NotFoundError:
@@ -165,17 +165,16 @@ def delete_aeroplane(db: Session, aeroplane_uuid) -> None:
 def get_aeroplane_mass(db: Session, aeroplane_uuid) -> float:
     """
     Get the total mass of an aeroplane.
-    
+
     Raises:
         NotFoundError: If the aeroplane or mass does not exist.
         InternalError: If a database error occurs.
     """
     aeroplane = get_aeroplane_by_uuid(db, aeroplane_uuid)
-    
+
     if aeroplane.total_mass_kg is None:
         raise NotFoundError(
-            message="Aeroplane weight not set",
-            details={"aeroplane_id": str(aeroplane_uuid)}
+            message="Aeroplane weight not set", details={"aeroplane_id": str(aeroplane_uuid)}
         )
     return aeroplane.total_mass_kg
 
@@ -183,24 +182,21 @@ def get_aeroplane_mass(db: Session, aeroplane_uuid) -> float:
 def set_aeroplane_mass(db: Session, aeroplane_uuid, total_mass_kg: float) -> bool:
     """
     Set the total mass of an aeroplane.
-    
+
     Returns:
         bool: True if mass was created, False if updated.
-    
+
     Raises:
         NotFoundError: If the aeroplane does not exist.
         InternalError: If a database error occurs.
     """
     try:
         created = False
-        aeroplane = db.query(AeroplaneModel).filter(
-            AeroplaneModel.uuid == aeroplane_uuid
-        ).first()
+        aeroplane = db.query(AeroplaneModel).filter(AeroplaneModel.uuid == aeroplane_uuid).first()
 
         if not aeroplane:
             raise NotFoundError(
-                message=_ERR_AEROPLANE_NOT_FOUND,
-                details={"aeroplane_id": str(aeroplane_uuid)}
+                message=_ERR_AEROPLANE_NOT_FOUND, details={"aeroplane_id": str(aeroplane_uuid)}
             )
 
         if aeroplane.total_mass_kg is None:

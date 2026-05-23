@@ -53,9 +53,7 @@ class StripForcesResponse(BaseModel):
     velocity_mps: Optional[float] = Field(
         None, description="Freestream velocity (m/s) used for the run"
     )
-    altitude_m: Optional[float] = Field(
-        None, description="Altitude (m) used to set the atmosphere"
-    )
+    altitude_m: Optional[float] = Field(None, description="Altitude (m) used to set the atmosphere")
     xyz_ref_m: Optional[list[float]] = Field(
         None,
         description="Moment/CG reference point [x, y, z] in metres",

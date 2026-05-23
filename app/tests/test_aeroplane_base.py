@@ -15,12 +15,13 @@ from app.api.v2.endpoints.aeroplane.base import (
     delete_aeroplane,
     get_aeroplane_total_mass_in_kg,
     create_aeroplane_total_mass_kg,
-    GetAeroplaneResponse
+    GetAeroplaneResponse,
 )
 from app.models.aeroplanemodel import AeroplaneModel
 from app.schemas.AeroplaneRequest import AeroplaneMassRequest
 from app.schemas.api_responses import CreateAeroplaneResponse, OperationStatusResponse
 from app import schemas
+
 
 class TestCreateAeroplane(unittest.TestCase):
     def test_create_aeroplane_success(self):
@@ -29,7 +30,10 @@ class TestCreateAeroplane(unittest.TestCase):
         mock_aeroplane = MagicMock()
         mock_aeroplane.uuid = mock_uuid
 
-        with patch('app.api.v2.endpoints.aeroplane.base.aeroplane_service.create_aeroplane', return_value=mock_aeroplane):
+        with patch(
+            "app.api.v2.endpoints.aeroplane.base.aeroplane_service.create_aeroplane",
+            return_value=mock_aeroplane,
+        ):
             result = asyncio.run(create_aeroplane(name="Test Aeroplane", db=mock_db))
 
             self.assertIsInstance(result, CreateAeroplaneResponse)
@@ -61,6 +65,7 @@ class TestCreateAeroplane(unittest.TestCase):
         self.assertEqual(context.exception.status_code, 500)
         self.assertIn("Unexpected error", context.exception.detail)
 
+
 class TestGetAeroplanes(unittest.TestCase):
     def test_get_aeroplanes_success(self):
         # Setup mock
@@ -80,7 +85,10 @@ class TestGetAeroplanes(unittest.TestCase):
         mock_aeroplane2.updated_at = datetime.now()
 
         # Setup the mock to return our mock aeroplanes
-        mock_db.query.return_value.order_by.return_value.all.return_value = [mock_aeroplane1, mock_aeroplane2]
+        mock_db.query.return_value.order_by.return_value.all.return_value = [
+            mock_aeroplane1,
+            mock_aeroplane2,
+        ]
 
         # Call the function
         result = asyncio.run(get_aeroplanes(db=mock_db))
@@ -124,6 +132,7 @@ class TestGetAeroplanes(unittest.TestCase):
         self.assertIn("Unexpected error", context.exception.detail)
         mock_db.query.assert_called_once_with(AeroplaneModel)
 
+
 class TestGetAeroplane(unittest.TestCase):
     def test_get_aeroplane_success(self):
         test_id = uuid.uuid4()
@@ -140,7 +149,7 @@ class TestGetAeroplane(unittest.TestCase):
         mock_schema = MagicMock()
 
         # Patch the model_validate method
-        with patch('app.schemas.AeroplaneSchema.model_validate', return_value=mock_schema):
+        with patch("app.schemas.AeroplaneSchema.model_validate", return_value=mock_schema):
             result = asyncio.run(get_aeroplane(aeroplane_id=test_id, db=mock_db))
 
         # Assertions
@@ -186,6 +195,7 @@ class TestGetAeroplane(unittest.TestCase):
 
         self.assertEqual(ctx.exception.status_code, 500)
         self.assertIn("Unexpected error", ctx.exception.detail)
+
 
 class TestDeleteAeroplane(unittest.TestCase):
     def test_delete_aeroplane_success(self):
@@ -241,6 +251,7 @@ class TestDeleteAeroplane(unittest.TestCase):
 
         self.assertEqual(ctx.exception.status_code, 500)
         self.assertIn("Unexpected error", ctx.exception.detail)
+
 
 class TestGetAeroplaneTotalMass(unittest.TestCase):
     def test_get_aeroplane_total_mass_success(self):
@@ -314,6 +325,7 @@ class TestGetAeroplaneTotalMass(unittest.TestCase):
         self.assertEqual(ctx.exception.status_code, 500)
         self.assertIn("Unexpected error", ctx.exception.detail)
 
+
 class TestCreateAeroplaneTotalMass(unittest.TestCase):
     def test_create_aeroplane_total_mass_new_success(self):
         test_id = uuid.uuid4()
@@ -333,12 +345,11 @@ class TestCreateAeroplaneTotalMass(unittest.TestCase):
         # Create request body
         mass_request = AeroplaneMassRequest(total_mass_kg=test_mass)
 
-        result = asyncio.run(create_aeroplane_total_mass_kg(
-            aeroplane_id=test_id, 
-            total_mass_kg=mass_request, 
-            response=response,
-            db=mock_db
-        ))
+        result = asyncio.run(
+            create_aeroplane_total_mass_kg(
+                aeroplane_id=test_id, total_mass_kg=mass_request, response=response, db=mock_db
+            )
+        )
 
         # Assertions
         mock_db.query.assert_called_once_with(AeroplaneModel)
@@ -368,12 +379,11 @@ class TestCreateAeroplaneTotalMass(unittest.TestCase):
         # Create request body
         mass_request = AeroplaneMassRequest(total_mass_kg=new_mass)
 
-        result = asyncio.run(create_aeroplane_total_mass_kg(
-            aeroplane_id=test_id, 
-            total_mass_kg=mass_request, 
-            response=response,
-            db=mock_db
-        ))
+        result = asyncio.run(
+            create_aeroplane_total_mass_kg(
+                aeroplane_id=test_id, total_mass_kg=mass_request, response=response, db=mock_db
+            )
+        )
 
         # Assertions
         mock_db.query.assert_called_once_with(AeroplaneModel)
@@ -396,11 +406,11 @@ class TestCreateAeroplaneTotalMass(unittest.TestCase):
         mass_request = AeroplaneMassRequest(total_mass_kg=test_mass)
 
         with self.assertRaises(HTTPException) as ctx:
-            asyncio.run(create_aeroplane_total_mass_kg(
-                aeroplane_id=test_id, 
-                total_mass_kg=mass_request, 
-                db=mock_db
-            ))
+            asyncio.run(
+                create_aeroplane_total_mass_kg(
+                    aeroplane_id=test_id, total_mass_kg=mass_request, db=mock_db
+                )
+            )
 
         self.assertEqual(ctx.exception.status_code, 404)
         self.assertIn("Aeroplane not found", ctx.exception.detail)
@@ -417,11 +427,11 @@ class TestCreateAeroplaneTotalMass(unittest.TestCase):
         mass_request = AeroplaneMassRequest(total_mass_kg=test_mass)
 
         with self.assertRaises(HTTPException) as ctx:
-            asyncio.run(create_aeroplane_total_mass_kg(
-                aeroplane_id=test_id, 
-                total_mass_kg=mass_request, 
-                db=mock_db
-            ))
+            asyncio.run(
+                create_aeroplane_total_mass_kg(
+                    aeroplane_id=test_id, total_mass_kg=mass_request, db=mock_db
+                )
+            )
 
         self.assertEqual(ctx.exception.status_code, 500)
         self.assertIn("Database error", ctx.exception.detail)
@@ -438,11 +448,11 @@ class TestCreateAeroplaneTotalMass(unittest.TestCase):
         mass_request = AeroplaneMassRequest(total_mass_kg=test_mass)
 
         with self.assertRaises(HTTPException) as ctx:
-            asyncio.run(create_aeroplane_total_mass_kg(
-                aeroplane_id=test_id, 
-                total_mass_kg=mass_request, 
-                db=mock_db
-            ))
+            asyncio.run(
+                create_aeroplane_total_mass_kg(
+                    aeroplane_id=test_id, total_mass_kg=mass_request, db=mock_db
+                )
+            )
 
         self.assertEqual(ctx.exception.status_code, 500)
         self.assertIn("Unexpected error", ctx.exception.detail)
@@ -470,7 +480,9 @@ class TestGetAirplaneConfiguration(unittest.TestCase):
             "app.api.v2.endpoints.aeroplane.base.aeroplane_service.get_aeroplane_airplane_configuration",
             return_value=mock_payload,
         ) as get_config:
-            result = asyncio.run(get_aeroplane_airplane_configuration(aeroplane_id=test_id, db=mock_db))
+            result = asyncio.run(
+                get_aeroplane_airplane_configuration(aeroplane_id=test_id, db=mock_db)
+            )
 
         get_config.assert_called_once_with(mock_db, test_id)
         self.assertEqual(result.name, "Test Plane")
@@ -504,6 +516,7 @@ class TestGetAirplaneConfiguration(unittest.TestCase):
 
         self.assertEqual(ctx.exception.status_code, 422)
         self.assertIn("mass missing", ctx.exception.detail)
+
 
 if __name__ == "__main__":
     unittest.main()

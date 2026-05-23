@@ -106,10 +106,14 @@ class TestFieldLengthEndpoint:
         assert resp.status_code == 200, resp.text
         data = resp.json()
         required = {
-            "s_to_ground_m", "s_to_50ft_m",
-            "s_ldg_ground_m", "s_ldg_50ft_m",
-            "vto_obstacle_mps", "vapp_mps",
-            "mode_takeoff", "mode_landing",
+            "s_to_ground_m",
+            "s_to_50ft_m",
+            "s_ldg_ground_m",
+            "s_ldg_50ft_m",
+            "vto_obstacle_mps",
+            "vapp_mps",
+            "mode_takeoff",
+            "mode_landing",
             "warnings",
         }
         assert not (required - data.keys())
@@ -149,11 +153,17 @@ class TestFieldLengthEndpoint:
                 plane.id,
                 MissionObjective(
                     mission_type="trainer",
-                    target_cruise_mps=18.0, target_stall_safety=1.8,
-                    target_maneuver_n=3.0, target_glide_ld=12.0,
-                    target_climb_energy=22.0, target_wing_loading_n_m2=412.0,
-                    target_field_length_m=50.0, available_runway_m=400.0,
-                    runway_type="grass", t_static_N=1900.0, takeoff_mode="runway",
+                    target_cruise_mps=18.0,
+                    target_stall_safety=1.8,
+                    target_maneuver_n=3.0,
+                    target_glide_ld=12.0,
+                    target_climb_energy=22.0,
+                    target_wing_loading_n_m2=412.0,
+                    target_field_length_m=50.0,
+                    available_runway_m=400.0,
+                    runway_type="grass",
+                    t_static_N=1900.0,
+                    takeoff_mode="runway",
                 ),
             )
             # No assumption_computation_context

@@ -23,10 +23,9 @@ def aeroplane_id(client_and_db):
     aeroplane_uuid = resp.json()["id"]
     # Resolve UUID to internal integer id
     from app.models.aeroplanemodel import AeroplaneModel
+
     session = SessionLocal()
-    aeroplane = session.query(AeroplaneModel).filter(
-        AeroplaneModel.uuid == aeroplane_uuid
-    ).first()
+    aeroplane = session.query(AeroplaneModel).filter(AeroplaneModel.uuid == aeroplane_uuid).first()
     yield aeroplane.id
     session.close()
 
@@ -39,10 +38,9 @@ def aeroplane_uuid_and_id(client_and_db):
     assert resp.status_code == 201
     aeroplane_uuid = resp.json()["id"]
     from app.models.aeroplanemodel import AeroplaneModel
+
     session = SessionLocal()
-    aeroplane = session.query(AeroplaneModel).filter(
-        AeroplaneModel.uuid == aeroplane_uuid
-    ).first()
+    aeroplane = session.query(AeroplaneModel).filter(AeroplaneModel.uuid == aeroplane_uuid).first()
     result = (aeroplane_uuid, aeroplane.id)
     session.close()
     return result
@@ -68,7 +66,8 @@ class TestGeometryHash:
 class TestCacheCRUD:
     def test_cache_and_retrieve(self, db_session, aeroplane_id):
         cache_svc.cache_tessellation(
-            db_session, aeroplane_id,
+            db_session,
+            aeroplane_id,
             component_type="wing",
             component_name="main_wing",
             geometry_hash="abc123",
@@ -82,10 +81,20 @@ class TestCacheCRUD:
 
     def test_cache_update_overwrites(self, db_session, aeroplane_id):
         cache_svc.cache_tessellation(
-            db_session, aeroplane_id, "wing", "main_wing", "hash1", {"v": 1},
+            db_session,
+            aeroplane_id,
+            "wing",
+            "main_wing",
+            "hash1",
+            {"v": 1},
         )
         cache_svc.cache_tessellation(
-            db_session, aeroplane_id, "wing", "main_wing", "hash2", {"v": 2},
+            db_session,
+            aeroplane_id,
+            "wing",
+            "main_wing",
+            "hash2",
+            {"v": 2},
         )
         cached = cache_svc.get_cached(db_session, aeroplane_id, "wing", "main_wing")
         assert cached.geometry_hash == "hash2"
@@ -114,7 +123,10 @@ class TestInvalidation:
         cache_svc.cache_tessellation(db_session, aeroplane_id, "wing", "w1", "h1", {})
         cache_svc.cache_tessellation(db_session, aeroplane_id, "wing", "w2", "h2", {})
         count = cache_svc.invalidate(
-            db_session, aeroplane_id, component_type="wing", component_name="w1",
+            db_session,
+            aeroplane_id,
+            component_type="wing",
+            component_name="w1",
         )
         assert count == 1
         assert cache_svc.get_cached(db_session, aeroplane_id, "wing", "w1").is_stale is True
@@ -177,8 +189,12 @@ class TestAeroplaneTessellationEndpoint:
             "count": 42,
         }
         cache_svc.cache_tessellation(
-            session, aeroplane_internal_id,
-            "wing", "main_wing", "hash_mw", wing_tess,
+            session,
+            aeroplane_internal_id,
+            "wing",
+            "main_wing",
+            "hash_mw",
+            wing_tess,
         )
 
         tail_tess = {
@@ -197,8 +213,12 @@ class TestAeroplaneTessellationEndpoint:
             "count": 18,
         }
         cache_svc.cache_tessellation(
-            session, aeroplane_internal_id,
-            "wing", "tail", "hash_tail", tail_tess,
+            session,
+            aeroplane_internal_id,
+            "wing",
+            "tail",
+            "hash_tail",
+            tail_tess,
         )
         session.commit()
         session.close()
@@ -240,15 +260,27 @@ class TestAeroplaneTessellationEndpoint:
             "count": 5,
         }
         cache_svc.cache_tessellation(
-            session, aeroplane_internal_id, "wing", "w1", "h1", tess,
+            session,
+            aeroplane_internal_id,
+            "wing",
+            "w1",
+            "h1",
+            tess,
         )
         cache_svc.cache_tessellation(
-            session, aeroplane_internal_id, "wing", "w2", "h2", tess,
+            session,
+            aeroplane_internal_id,
+            "wing",
+            "w2",
+            "h2",
+            tess,
         )
         # Mark one stale
         cache_svc.invalidate(
-            session, aeroplane_internal_id,
-            component_type="wing", component_name="w1",
+            session,
+            aeroplane_internal_id,
+            component_type="wing",
+            component_name="w1",
         )
         session.commit()
         session.close()

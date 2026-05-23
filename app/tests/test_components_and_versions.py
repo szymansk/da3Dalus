@@ -72,9 +72,7 @@ class TestComponentLibraryCRUD:
         assert resp.status_code == 200
         body = resp.json()
         assert body["total"] == 1
-        assert all(
-            item["component_type"] == "brushless_motor" for item in body["items"]
-        )
+        assert all(item["component_type"] == "brushless_motor" for item in body["items"])
 
     def test_get_single_component(self, client: TestClient):
         create_resp = client.post("/components", json=MOTOR_PAYLOAD)
@@ -165,9 +163,7 @@ class TestDesignVersions:
         )
         version_id = create_resp.json()["id"]
 
-        resp = client.get(
-            f"/aeroplanes/{aeroplane_id}/design-versions/{version_id}"
-        )
+        resp = client.get(f"/aeroplanes/{aeroplane_id}/design-versions/{version_id}")
         assert resp.status_code == 200
         body = resp.json()
         assert body["id"] == version_id
@@ -183,7 +179,5 @@ class TestDesignVersions:
         )
         version_id = create_resp.json()["id"]
 
-        del_resp = client.delete(
-            f"/aeroplanes/{aeroplane_id}/design-versions/{version_id}"
-        )
+        del_resp = client.delete(f"/aeroplanes/{aeroplane_id}/design-versions/{version_id}")
         assert del_resp.status_code == 204

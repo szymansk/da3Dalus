@@ -7,10 +7,16 @@ TARGET_JSON_ENDPOINTS: list[tuple[str, str]] = [
     ("post", "/aeroplanes"),
     ("post", "/aeroplanes/{aeroplane_id}/wings/{wing_name}/{creator_url_type}/{exporter_url_type}"),
     ("get", "/aeroplanes/{aeroplane_id}/status"),
-    ("get", "/aeroplanes/{aeroplane_id}/wings/{wing_name}/{creator_url_type}/{exporter_url_type}/zip"),
+    (
+        "get",
+        "/aeroplanes/{aeroplane_id}/wings/{wing_name}/{creator_url_type}/{exporter_url_type}/zip",
+    ),
     ("post", "/aeroplanes/{aeroplane_id}/alpha_sweep/diagram"),
     ("get", "/aeroplanes/{aeroplane_id}/three_view/url"),
-    ("post", "/aeroplanes/{aeroplane_id}/operating_point/vortex_lattice/streamlines/three_view/url"),
+    (
+        "post",
+        "/aeroplanes/{aeroplane_id}/operating_point/vortex_lattice/streamlines/three_view/url",
+    ),
     ("delete", "/aeroplanes/{aeroplane_id}"),
     ("post", "/aeroplanes/{aeroplane_id}/total_mass_kg"),
     ("put", "/aeroplanes/{aeroplane_id}/wings/{wing_name}"),
@@ -20,24 +26,66 @@ TARGET_JSON_ENDPOINTS: list[tuple[str, str]] = [
     ("post", "/aeroplanes/{aeroplane_id}/wings/{wing_name}/cross_sections/{cross_section_index}"),
     ("put", "/aeroplanes/{aeroplane_id}/wings/{wing_name}/cross_sections/{cross_section_index}"),
     ("delete", "/aeroplanes/{aeroplane_id}/wings/{wing_name}/cross_sections/{cross_section_index}"),
-    ("get", "/aeroplanes/{aeroplane_id}/wings/{wing_name}/cross_sections/{cross_section_index}/spars"),
-    ("post", "/aeroplanes/{aeroplane_id}/wings/{wing_name}/cross_sections/{cross_section_index}/spars"),
-    ("get", "/aeroplanes/{aeroplane_id}/wings/{wing_name}/cross_sections/{cross_section_index}/control_surface"),
-    ("patch", "/aeroplanes/{aeroplane_id}/wings/{wing_name}/cross_sections/{cross_section_index}/control_surface"),
-    ("delete", "/aeroplanes/{aeroplane_id}/wings/{wing_name}/cross_sections/{cross_section_index}/control_surface"),
-    ("get", "/aeroplanes/{aeroplane_id}/wings/{wing_name}/cross_sections/{cross_section_index}/control_surface/cad_details"),
-    ("patch", "/aeroplanes/{aeroplane_id}/wings/{wing_name}/cross_sections/{cross_section_index}/control_surface/cad_details"),
-    ("delete", "/aeroplanes/{aeroplane_id}/wings/{wing_name}/cross_sections/{cross_section_index}/control_surface/cad_details"),
-    ("get", "/aeroplanes/{aeroplane_id}/wings/{wing_name}/cross_sections/{cross_section_index}/control_surface/cad_details/servo_details"),
-    ("patch", "/aeroplanes/{aeroplane_id}/wings/{wing_name}/cross_sections/{cross_section_index}/control_surface/cad_details/servo_details"),
-    ("delete", "/aeroplanes/{aeroplane_id}/wings/{wing_name}/cross_sections/{cross_section_index}/control_surface/cad_details/servo_details"),
+    (
+        "get",
+        "/aeroplanes/{aeroplane_id}/wings/{wing_name}/cross_sections/{cross_section_index}/spars",
+    ),
+    (
+        "post",
+        "/aeroplanes/{aeroplane_id}/wings/{wing_name}/cross_sections/{cross_section_index}/spars",
+    ),
+    (
+        "get",
+        "/aeroplanes/{aeroplane_id}/wings/{wing_name}/cross_sections/{cross_section_index}/control_surface",
+    ),
+    (
+        "patch",
+        "/aeroplanes/{aeroplane_id}/wings/{wing_name}/cross_sections/{cross_section_index}/control_surface",
+    ),
+    (
+        "delete",
+        "/aeroplanes/{aeroplane_id}/wings/{wing_name}/cross_sections/{cross_section_index}/control_surface",
+    ),
+    (
+        "get",
+        "/aeroplanes/{aeroplane_id}/wings/{wing_name}/cross_sections/{cross_section_index}/control_surface/cad_details",
+    ),
+    (
+        "patch",
+        "/aeroplanes/{aeroplane_id}/wings/{wing_name}/cross_sections/{cross_section_index}/control_surface/cad_details",
+    ),
+    (
+        "delete",
+        "/aeroplanes/{aeroplane_id}/wings/{wing_name}/cross_sections/{cross_section_index}/control_surface/cad_details",
+    ),
+    (
+        "get",
+        "/aeroplanes/{aeroplane_id}/wings/{wing_name}/cross_sections/{cross_section_index}/control_surface/cad_details/servo_details",
+    ),
+    (
+        "patch",
+        "/aeroplanes/{aeroplane_id}/wings/{wing_name}/cross_sections/{cross_section_index}/control_surface/cad_details/servo_details",
+    ),
+    (
+        "delete",
+        "/aeroplanes/{aeroplane_id}/wings/{wing_name}/cross_sections/{cross_section_index}/control_surface/cad_details/servo_details",
+    ),
     ("put", "/aeroplanes/{aeroplane_id}/fuselages/{fuselage_name}"),
     ("post", "/aeroplanes/{aeroplane_id}/fuselages/{fuselage_name}"),
     ("delete", "/aeroplanes/{aeroplane_id}/fuselages/{fuselage_name}"),
     ("delete", "/aeroplanes/{aeroplane_id}/fuselages/{fuselage_name}/cross_sections"),
-    ("post", "/aeroplanes/{aeroplane_id}/fuselages/{fuselage_name}/cross_sections/{cross_section_index}"),
-    ("put", "/aeroplanes/{aeroplane_id}/fuselages/{fuselage_name}/cross_sections/{cross_section_index}"),
-    ("delete", "/aeroplanes/{aeroplane_id}/fuselages/{fuselage_name}/cross_sections/{cross_section_index}"),
+    (
+        "post",
+        "/aeroplanes/{aeroplane_id}/fuselages/{fuselage_name}/cross_sections/{cross_section_index}",
+    ),
+    (
+        "put",
+        "/aeroplanes/{aeroplane_id}/fuselages/{fuselage_name}/cross_sections/{cross_section_index}",
+    ),
+    (
+        "delete",
+        "/aeroplanes/{aeroplane_id}/fuselages/{fuselage_name}/cross_sections/{cross_section_index}",
+    ),
     ("delete", "/flight-profiles/{profile_id}"),
 ]
 
@@ -46,10 +94,16 @@ DTO_MODELED_ENDPOINTS: set[tuple[str, str]] = {
     ("post", "/aeroplanes/{aeroplane_id}/total_mass_kg"),
     ("post", "/aeroplanes/{aeroplane_id}/wings/{wing_name}/{creator_url_type}/{exporter_url_type}"),
     ("get", "/aeroplanes/{aeroplane_id}/status"),
-    ("get", "/aeroplanes/{aeroplane_id}/wings/{wing_name}/{creator_url_type}/{exporter_url_type}/zip"),
+    (
+        "get",
+        "/aeroplanes/{aeroplane_id}/wings/{wing_name}/{creator_url_type}/{exporter_url_type}/zip",
+    ),
     ("post", "/aeroplanes/{aeroplane_id}/alpha_sweep/diagram"),
     ("get", "/aeroplanes/{aeroplane_id}/three_view/url"),
-    ("post", "/aeroplanes/{aeroplane_id}/operating_point/vortex_lattice/streamlines/three_view/url"),
+    (
+        "post",
+        "/aeroplanes/{aeroplane_id}/operating_point/vortex_lattice/streamlines/three_view/url",
+    ),
 }
 
 

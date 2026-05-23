@@ -64,9 +64,7 @@ def _assumption_to_read(model: DesignAssumptionModel) -> AssumptionRead:
     )
 
 
-def get_effective_assumption(
-    db: Session, aeroplane_id: int, param_name: str
-) -> float | None:
+def get_effective_assumption(db: Session, aeroplane_id: int, param_name: str) -> float | None:
     """Return the effective (active-source) value of a design assumption, or None.
 
     Returns the calculated value when active_source == "CALCULATED" and a

@@ -13,7 +13,12 @@ from app.core.exceptions import InternalError, NotFoundError, ServiceException
 from app.db.session import get_db
 from app.models.aeroplanemodel import AeroplaneModel
 from app.schemas.design_assumption import PARAMETER_DEFAULTS
-from app.schemas.matching_chart import AircraftMode, MatchingChartResponse, ConstraintLine, DesignPoint
+from app.schemas.matching_chart import (
+    AircraftMode,
+    MatchingChartResponse,
+    ConstraintLine,
+    DesignPoint,
+)
 from app.services.design_assumptions_service import get_effective_assumption
 
 logger = logging.getLogger(__name__)
@@ -70,12 +75,8 @@ def _resolve_aircraft_params(
     plane_id: int = cast(int, plane.id)
     ctx: dict[str, Any] = cast(dict[str, Any], plane.assumption_computation_context or {})
 
-    mass_kg = float(
-        get_effective_assumption(db, plane_id, "mass") or PARAMETER_DEFAULTS["mass"]
-    )
-    cl_max = float(
-        get_effective_assumption(db, plane_id, "cl_max") or PARAMETER_DEFAULTS["cl_max"]
-    )
+    mass_kg = float(get_effective_assumption(db, plane_id, "mass") or PARAMETER_DEFAULTS["mass"])
+    cl_max = float(get_effective_assumption(db, plane_id, "cl_max") or PARAMETER_DEFAULTS["cl_max"])
     cd0 = float(
         get_effective_assumption(db, plane_id, "cd0") or PARAMETER_DEFAULTS.get("cd0", 0.03)
     )
@@ -96,7 +97,7 @@ def _resolve_aircraft_params(
         "e_oswald": e_oswald if e_oswald else 0.8,
         "ar": ar if ar else 7.0,
         "cl_max_clean": cl_max,
-        "cl_max_takeoff": cl_max,        # clean CL_max for TO (conservative)
+        "cl_max_takeoff": cl_max,  # clean CL_max for TO (conservative)
         "cl_max_landing": cl_max * 1.3,  # rough flaps factor for landing
     }
     if s_ref_m2 is not None and s_ref_m2 > 0:
@@ -160,8 +161,7 @@ async def get_matching_chart(
         Query(
             gt=0,
             le=30,
-            description="[Override] Target climb gradient [°]. "
-            "Defaults: rc=5°, uav=4°.",
+            description="[Override] Target climb gradient [°]. Defaults: rc=5°, uav=4°.",
         ),
     ] = None,
     v_cruise_mps: Annotated[

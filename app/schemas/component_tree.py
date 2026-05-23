@@ -33,7 +33,7 @@ class ComponentTreeNodeWrite(BaseModel):
     construction_part_id: Optional[int] = Field(
         None,
         description="Reference to construction_parts table (gh#57). Mutually "
-                    "compatible with shape_key (Creator pipeline source).",
+        "compatible with shape_key (Creator pipeline source).",
     )
 
     # Position / Orientation
@@ -45,9 +45,15 @@ class ComponentTreeNodeWrite(BaseModel):
     rot_z: float = Field(0, description="Rotation around Z in degrees")
 
     # Weight
-    material_id: Optional[int] = Field(None, description="Material component ID (for print weight calc)")
-    weight_override_g: Optional[float] = Field(None, ge=0, description="Manual weight override in grams")
-    print_type: Optional[str] = Field(None, description="'volume' or 'surface' for 3D print weight calc")
+    material_id: Optional[int] = Field(
+        None, description="Material component ID (for print weight calc)"
+    )
+    weight_override_g: Optional[float] = Field(
+        None, ge=0, description="Manual weight override in grams"
+    )
+    print_type: Optional[str] = Field(
+        None, description="'volume' or 'surface' for 3D print weight calc"
+    )
     scale_factor: float = Field(1.0, gt=0, description="Weight scaling factor (empirical)")
 
 
@@ -68,9 +74,7 @@ class ComponentTreeNodeRead(ComponentTreeNodeWrite):
     own_weight_g: Optional[float] = Field(
         None, description="Own weight of this node in grams; null if not derivable."
     )
-    own_weight_source: WeightSource = Field(
-        "none", description="Where own_weight_g came from."
-    )
+    own_weight_source: WeightSource = Field("none", description="Where own_weight_g came from.")
     total_weight_g: float = Field(
         0.0, description="Own weight plus total weight of every descendant."
     )
@@ -81,11 +85,13 @@ class ComponentTreeNodeRead(ComponentTreeNodeWrite):
 
 class ComponentTreeNodeWithChildren(ComponentTreeNodeRead):
     """Node with nested children for tree response."""
+
     children: list[ComponentTreeNodeWithChildren] = Field(default_factory=list)
 
 
 class ComponentTreeResponse(BaseModel):
     """Full component tree for an aeroplane."""
+
     aeroplane_id: str
     root_nodes: list[ComponentTreeNodeWithChildren] = Field(default_factory=list)
     total_nodes: int = 0

@@ -13,11 +13,14 @@ class TessellationCacheModel(Base):
     underlying ASB schema changes, the cache is marked stale and
     a background re-tessellation is triggered.
     """
+
     __tablename__ = "tessellation_cache"
 
     aeroplane_id = Column(
-        Integer, ForeignKey("aeroplanes.id", ondelete="CASCADE"),
-        nullable=False, index=True,
+        Integer,
+        ForeignKey("aeroplanes.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
     )
     component_type = Column(String, nullable=False)  # "wing" | "fuselage"
     component_name = Column(String, nullable=False)

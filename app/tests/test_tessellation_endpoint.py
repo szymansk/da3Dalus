@@ -32,17 +32,20 @@ def test_tessellation_returns_valid_viewer_json(client: TestClient):
     # 2. Create a simple wing (2 x_secs)
     # Use the from-wingconfig endpoint with a proper airfoil path
     from pathlib import Path
+
     repo_root = Path(__file__).resolve().parents[2]
     airfoil_path = str((repo_root / "components" / "airfoils" / "mh32.dat").resolve())
 
     wing_config = {
-        "segments": [{
-            "root_airfoil": {"airfoil": airfoil_path, "chord": 150.0, "incidence": 0},
-            "tip_airfoil": {"airfoil": airfoil_path, "chord": 120.0, "incidence": 0},
-            "length": 500.0,
-            "sweep": 0,
-            "number_interpolation_points": 101,
-        }],
+        "segments": [
+            {
+                "root_airfoil": {"airfoil": airfoil_path, "chord": 150.0, "incidence": 0},
+                "tip_airfoil": {"airfoil": airfoil_path, "chord": 120.0, "incidence": 0},
+                "length": 500.0,
+                "sweep": 0,
+                "number_interpolation_points": 101,
+            }
+        ],
         "nose_pnt": [0, 0, 0],
         "symmetric": True,
     }
@@ -53,9 +56,7 @@ def test_tessellation_returns_valid_viewer_json(client: TestClient):
     assert wing_res.status_code == 201
 
     # 3. Trigger tessellation
-    tess_res = client.post(
-        f"/aeroplanes/{aeroplane_id}/wings/test_wing/tessellation"
-    )
+    tess_res = client.post(f"/aeroplanes/{aeroplane_id}/wings/test_wing/tessellation")
     assert tess_res.status_code == 202
 
     # 4. Poll for completion

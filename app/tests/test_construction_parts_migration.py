@@ -1,4 +1,5 @@
 """Migration test for the construction_parts table (gh#57-g4h)."""
+
 from __future__ import annotations
 
 from alembic import command

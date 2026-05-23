@@ -23,13 +23,13 @@ class TestAeroplaneFuselageEndpoints(unittest.TestCase):
         mock_db = MagicMock()
         request_schema = schemas.FuselageSchema.model_construct(name=str(self.test_fuselage_name))
 
-        with patch('app.services.fuselage_service.create_fuselage') as mock_create:
+        with patch("app.services.fuselage_service.create_fuselage") as mock_create:
             result = asyncio.run(
                 create_aeroplane_fuselage(
                     aeroplane_id=self.test_plane_id,
                     fuselage_name=self.test_fuselage_name,
                     request=request_schema,
-                    db=mock_db
+                    db=mock_db,
                 )
             )
             mock_create.assert_called_once_with(
@@ -42,7 +42,7 @@ class TestAeroplaneFuselageEndpoints(unittest.TestCase):
         mock_db = MagicMock()
 
         with patch(
-            'app.services.fuselage_service.update_fuselage',
+            "app.services.fuselage_service.update_fuselage",
             side_effect=NotFoundError(message="Aeroplane not found"),
         ):
             with self.assertRaises(HTTPException) as ctx:
@@ -64,9 +64,7 @@ class TestAeroplaneFuselageEndpoints(unittest.TestCase):
             name=str(self.test_fuselage_name), x_secs=[{"a": 1}, {"b": 2}]
         )
 
-        with patch(
-            'app.services.fuselage_service.get_fuselage', return_value=schema
-        ) as mock_get:
+        with patch("app.services.fuselage_service.get_fuselage", return_value=schema) as mock_get:
             result = asyncio.run(
                 get_aeroplane_fuselage(
                     aeroplane_id=self.test_plane_id,
@@ -82,7 +80,7 @@ class TestAeroplaneFuselageEndpoints(unittest.TestCase):
         mock_db = MagicMock()
 
         with patch(
-            'app.services.fuselage_service.delete_fuselage',
+            "app.services.fuselage_service.delete_fuselage",
             side_effect=InternalError(message="Database error: fail"),
         ):
             with self.assertRaises(HTTPException) as ctx:
@@ -98,7 +96,7 @@ class TestAeroplaneFuselageEndpoints(unittest.TestCase):
     def test_delete_fuselage_success(self):
         mock_db = MagicMock()
 
-        with patch('app.services.fuselage_service.delete_fuselage') as mock_delete:
+        with patch("app.services.fuselage_service.delete_fuselage") as mock_delete:
             result = asyncio.run(
                 delete_aeroplane_fuselage(
                     aeroplane_id=self.test_plane_id,

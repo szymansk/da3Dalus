@@ -58,6 +58,4 @@ class AircraftComputationConfigModel(Base):
 
     aeroplane = relationship("AeroplaneModel", back_populates="computation_config")
 
-    __table_args__ = (
-        UniqueConstraint("aeroplane_id", name="uq_computation_config_aeroplane"),
-    )
+    __table_args__ = (UniqueConstraint("aeroplane_id", name="uq_computation_config_aeroplane"),)

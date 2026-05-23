@@ -3,6 +3,7 @@
 Verifies that WC wings reject ASB write endpoints (409) and vice versa,
 while read endpoints remain accessible for both design models.
 """
+
 from __future__ import annotations
 
 from pathlib import Path

@@ -190,7 +190,6 @@ class TestBuildAirfoilNode:
         assert isinstance(result, AvlNaca)
         assert result.digits == "0012"
 
-
     def test_naca_decimal_thickness_falls_through_to_file(self):
         """gh-588 (regression of gh-409): a decimal in a NACA-style name is NOT
         a valid 4-/5-digit NACA designation. AVL's ``NACA`` keyword expects an
@@ -248,8 +247,12 @@ class TestBuildGeometryEdgeCases:
                         name="Plain Wing",
                         symmetric=False,
                         x_secs=[
-                            WingXSecSchema(xyz_le=[0.0, 0.0, 0.0], chord=0.2, twist=0.0, airfoil="naca0012"),
-                            WingXSecSchema(xyz_le=[0.0, 1.0, 0.0], chord=0.1, twist=0.0, airfoil="naca0012"),
+                            WingXSecSchema(
+                                xyz_le=[0.0, 0.0, 0.0], chord=0.2, twist=0.0, airfoil="naca0012"
+                            ),
+                            WingXSecSchema(
+                                xyz_le=[0.0, 1.0, 0.0], chord=0.1, twist=0.0, airfoil="naca0012"
+                            ),
                         ],
                     ),
                 }

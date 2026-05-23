@@ -366,8 +366,11 @@ class TestComputeVnCurve:
 
         with pytest.raises(ValueError, match="positive"):
             compute_vn_curve(
-                mass_kg=0, cl_max=self.CL_MAX, g_limit=self.G_LIMIT,
-                wing_area_m2=self.S, v_max_mps=self.V_MAX,
+                mass_kg=0,
+                cl_max=self.CL_MAX,
+                g_limit=self.G_LIMIT,
+                wing_area_m2=self.S,
+                v_max_mps=self.V_MAX,
             )
 
     def test_rejects_non_positive_wing_area(self):
@@ -375,8 +378,11 @@ class TestComputeVnCurve:
 
         with pytest.raises(ValueError, match="positive"):
             compute_vn_curve(
-                mass_kg=self.MASS, cl_max=self.CL_MAX, g_limit=self.G_LIMIT,
-                wing_area_m2=-1.0, v_max_mps=self.V_MAX,
+                mass_kg=self.MASS,
+                cl_max=self.CL_MAX,
+                g_limit=self.G_LIMIT,
+                wing_area_m2=-1.0,
+                v_max_mps=self.V_MAX,
             )
 
 

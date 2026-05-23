@@ -343,6 +343,7 @@ def compute_endurance(db: Session, aircraft: Any) -> dict[str, Any]:
     # Backward-compat: fall back to scalar cd0/e_oswald when table is absent.
     if polar_re_table and mac_m is not None and mac_m > 0:
         from app.services.polar_re_table_service import lookup_cd0_at_v, lookup_e_oswald_at_v
+
         cd0_at_vmd = lookup_cd0_at_v(
             v_mps=float(v_md),
             table=polar_re_table,
@@ -360,7 +361,11 @@ def compute_endurance(db: Session, aircraft: Any) -> dict[str, Any]:
         logger.debug(
             "Endurance: using Re-table cd0 at V_md=%.1f m/s: %.5f (vs scalar %.5f); "
             "cd0 at V_min_sink=%.1f m/s: %.5f",
-            v_md, cd0_at_vmd, cd0, v_min_sink, cd0_at_vmin,
+            v_md,
+            cd0_at_vmd,
+            cd0,
+            v_min_sink,
+            cd0_at_vmin,
         )
     else:
         # Backward-compat: no Re table — use scalar cd0/e_oswald

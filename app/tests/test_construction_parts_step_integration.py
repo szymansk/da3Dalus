@@ -10,6 +10,7 @@ and verifies the aggregated weight comes out right.
 Skipped on platforms without CadQuery (linux/aarch64 per pyproject.toml
 markers) so CI can still run the rest of the suite on restricted hosts.
 """
+
 from __future__ import annotations
 
 from pathlib import Path
@@ -20,10 +21,10 @@ from app.core.platform import cad_available
 from app.models.construction_part import ConstructionPartModel
 
 CUBE_FIXTURE = Path(__file__).parent / "fixtures" / "cad" / "cube_10mm.step"
-CUBE_VOLUME_MM3 = 1000.0       # 10 × 10 × 10
-CUBE_AREA_MM2 = 600.0          # 6 × 10 × 10
+CUBE_VOLUME_MM3 = 1000.0  # 10 × 10 × 10
+CUBE_AREA_MM2 = 600.0  # 6 × 10 × 10
 CUBE_EDGE_MM = 10.0
-PLA_DENSITY_KG_M3 = 1240       # typical PLA
+PLA_DENSITY_KG_M3 = 1240  # typical PLA
 # 1000 mm³ × 1240 kg/m³ × 1e-6 = 1.24 g
 EXPECTED_WEIGHT_G = CUBE_VOLUME_MM3 * PLA_DENSITY_KG_M3 / 1e6
 
@@ -44,8 +45,8 @@ def cube_step_bytes():
 # AC-03 — STEP upload extracts the expected geometry
 # --------------------------------------------------------------------------- #
 
-class TestCubeStepUpload:
 
+class TestCubeStepUpload:
     def test_upload_extracts_correct_volume_and_area(
         self, client_and_db, _skip_if_no_cadquery, cube_step_bytes
     ):
@@ -95,19 +96,22 @@ class TestCubeStepUpload:
 # AC-04 — Full weight pipeline: upload → material → tree → weight
 # --------------------------------------------------------------------------- #
 
-class TestEndToEndWeight:
 
+class TestEndToEndWeight:
     def test_cube_wired_into_tree_produces_expected_weight(
         self, client_and_db, _skip_if_no_cadquery, cube_step_bytes
     ):
         client, sf = client_and_db
 
         # 1. Define PLA+ material (density 1240 kg/m³).
-        material = client.post("/components", json={
-            "name": "PLA+",
-            "component_type": "material",
-            "specs": {"density_kg_m3": PLA_DENSITY_KG_M3, "print_type": "volume"},
-        }).json()
+        material = client.post(
+            "/components",
+            json={
+                "name": "PLA+",
+                "component_type": "material",
+                "specs": {"density_kg_m3": PLA_DENSITY_KG_M3, "print_type": "volume"},
+            },
+        ).json()
 
         # 2. Upload the cube STEP with the material already linked.
         files = {"file": ("cube_10mm.step", cube_step_bytes, "application/octet-stream")}
@@ -118,11 +122,14 @@ class TestEndToEndWeight:
         ).json()
 
         # 3. Assign the part into the component tree as a cad_shape leaf.
-        node_res = client.post("/aeroplanes/aero-cube/component-tree", json={
-            "node_type": "cad_shape",
-            "name": "cube-in-tree",
-            "construction_part_id": part["id"],
-        })
+        node_res = client.post(
+            "/aeroplanes/aero-cube/component-tree",
+            json={
+                "node_type": "cad_shape",
+                "name": "cube-in-tree",
+                "construction_part_id": part["id"],
+            },
+        )
         assert node_res.status_code == 201, node_res.text
         node = node_res.json()
 

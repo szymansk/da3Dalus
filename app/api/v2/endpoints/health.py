@@ -33,11 +33,7 @@ class HealthResponse(BaseModel):
     )
 
 
-@router.get(
-    "/health",
-    tags=["health"],
-    summary="Liveness + database ping"
-)
+@router.get("/health", tags=["health"], summary="Liveness + database ping")
 def get_health(db: Annotated[Session, Depends(get_db)]) -> HealthResponse:
     """Return service status and a DB reachability flag.
 
