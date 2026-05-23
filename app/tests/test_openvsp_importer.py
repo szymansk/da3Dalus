@@ -13,7 +13,8 @@ All tests use the `openvsp_adapter` shim from gh-639 and mock the
 
 from __future__ import annotations
 
-from types import ModuleType
+from types import ModuleType, SimpleNamespace
+from typing import cast
 from unittest.mock import patch
 
 import pytest
@@ -48,7 +49,10 @@ def _make_fake_vsp(
     geoms = geoms or []
     parm_values = parm_values or {}
 
-    fake = ModuleType("openvsp")
+    # SimpleNamespace allows dynamic attribute assignment (unlike ModuleType
+    # which Pyright treats as having a fixed attribute set). cast() at return
+    # restores the ModuleType contract for the consumers.
+    fake = SimpleNamespace()
 
     # Enum-like constants used by the skeleton.
     fake.LEN_MM = 0
@@ -103,7 +107,7 @@ def _make_fake_vsp(
 
     fake.FindParm = _find_parm
     fake.GetParmVal = _get_parm_val
-    return fake
+    return cast(ModuleType, fake)
 
 
 # ---------------------------------------------------------------------------

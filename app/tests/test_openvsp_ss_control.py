@@ -14,7 +14,8 @@ sub-surfaces on that geom.
 
 from __future__ import annotations
 
-from types import ModuleType
+from types import ModuleType, SimpleNamespace
+from typing import cast
 
 import pytest
 
@@ -44,7 +45,7 @@ def _make_wing_with_sub_surfaces(
     """
     sub_surfaces = sub_surfaces or []
 
-    fake = ModuleType("openvsp")
+    fake = SimpleNamespace()  # see test_openvsp_importer for rationale
     fake.LEN_M = 2
     fake.SYM_XY = 1
     fake.SYM_XZ = 2
@@ -130,7 +131,7 @@ def _make_wing_with_sub_surfaces(
     fake.GetParmVal = _get_parm_val
     fake.GetXSecParm = lambda xs, name: ""  # no airfoil parms in this fake
 
-    return fake
+    return cast(ModuleType, fake)
 
 
 @pytest.fixture(autouse=True)

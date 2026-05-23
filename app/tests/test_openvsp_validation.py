@@ -12,7 +12,8 @@ no ASB CL_α comparison. We test:
 from __future__ import annotations
 
 from collections import OrderedDict
-from types import ModuleType
+from types import ModuleType, SimpleNamespace
+from typing import cast
 
 import pytest
 
@@ -68,7 +69,7 @@ def _make_vsp(
     fuse_id: str = "FUSE1",
     fuse_length: float | None = None,
 ) -> ModuleType:
-    fake = ModuleType("openvsp")
+    fake = SimpleNamespace()  # see test_openvsp_importer for rationale
 
     parms: dict[tuple[str, str, str], float] = {}
     if wing_total_span is not None:
@@ -91,7 +92,7 @@ def _make_vsp(
 
     fake.FindParm = _find_parm
     fake.GetParmVal = _get_parm_val
-    return fake
+    return cast(ModuleType, fake)
 
 
 # ---------------------------------------------------------------------------

@@ -123,7 +123,6 @@ def foilsurf_u_for_xs(vsp: ModuleType, xsurf: object, xsec_index: int) -> Option
 
 def _export_selig(
     vsp: ModuleType,
-    xs_id: str,
     geom_id: str,
     xsurf: object,
     xs_index: int,
@@ -230,7 +229,7 @@ def import_airfoil_from_xsec(
 
     # ---- File-airfoil → export verbatim -------------------------------
     if shape == getattr(vsp, "XS_FILE_AIRFOIL", None):
-        return _export_selig(vsp, xs_id, geom_id, xsurf, xs_index)
+        return _export_selig(vsp, geom_id, xsurf, xs_index)
 
     # ---- CST fallback -------------------------------------------------
     if shape == getattr(vsp, "XS_CST_AIRFOIL", None):
@@ -244,7 +243,7 @@ def import_airfoil_from_xsec(
             ),
             severity="info",
         )
-        return _export_selig(vsp, xs_id, geom_id, xsurf, xs_index, tag="vsp_imported_cst")
+        return _export_selig(vsp, geom_id, xsurf, xs_index, tag="vsp_imported_cst")
 
     # ---- Unknown shape — best-effort Selig export + warning ----------
     ctx.add_warning(
@@ -257,7 +256,7 @@ def import_airfoil_from_xsec(
         severity="warning",
     )
     try:
-        return _export_selig(vsp, xs_id, geom_id, xsurf, xs_index, tag="vsp_imported_unknown")
+        return _export_selig(vsp, geom_id, xsurf, xs_index, tag="vsp_imported_unknown")
     except Exception:
         # As an absolute last resort, return a placeholder so the
         # schema stays valid.

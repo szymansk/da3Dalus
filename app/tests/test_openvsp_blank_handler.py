@@ -14,7 +14,8 @@ All tests mock the `openvsp` module — no real install required.
 
 from __future__ import annotations
 
-from types import ModuleType
+from types import ModuleType, SimpleNamespace
+from typing import cast
 
 import pytest
 
@@ -42,7 +43,7 @@ def _make_blank_vsp(
     """
     geoms = geoms or []
 
-    fake = ModuleType("openvsp")
+    fake = SimpleNamespace()  # see test_openvsp_importer for rationale
     fake.LEN_M = 2
     fake.SYM_XZ = 2
 
@@ -102,7 +103,7 @@ def _make_blank_vsp(
 
     fake.FindParm = _find_parm
     fake.GetParmVal = _get_parm_val
-    return fake
+    return cast(ModuleType, fake)
 
 
 # ---------------------------------------------------------------------------

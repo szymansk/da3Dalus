@@ -14,7 +14,8 @@ Covers:
 from __future__ import annotations
 
 from pathlib import Path
-from types import ModuleType
+from types import ModuleType, SimpleNamespace
+from typing import cast
 
 import pytest
 
@@ -46,7 +47,7 @@ def _make_airfoil_vsp(
     ``xs_parms`` is a flat dict mapping airfoil-parm-name → value
     (used by both ``GetXSecParm`` and ``GetParmVal``).
     """
-    fake = ModuleType("openvsp")
+    fake = SimpleNamespace()  # see test_openvsp_importer for rationale
     fake.XS_POINT = 0
     fake.XS_CIRCLE = 1
     fake.XS_ELLIPSE = 2
@@ -110,7 +111,7 @@ def _make_airfoil_vsp(
             write_path_capture.append(str(path))
 
     fake.WriteSeligAirfoil = _write
-    return fake
+    return cast(ModuleType, fake)
 
 
 @pytest.fixture

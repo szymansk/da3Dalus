@@ -2,7 +2,8 @@
 
 from __future__ import annotations
 
-from types import ModuleType
+from types import ModuleType, SimpleNamespace
+from typing import cast
 
 import pytest
 
@@ -15,7 +16,7 @@ import pytest
 def _make_fake_vsp(geoms: list[dict] | None = None, name: str = "Empty") -> ModuleType:
     """Tiny fake vsp module sufficient for the endpoint's smoke flow."""
     geoms = geoms or []
-    fake = ModuleType("openvsp")
+    fake = SimpleNamespace()  # see test_openvsp_importer for rationale
     fake.LEN_M = 2
     fake.SYM_XZ = 2
     fake.ClearVSPModel = lambda *a, **k: None
@@ -30,7 +31,7 @@ def _make_fake_vsp(geoms: list[dict] | None = None, name: str = "Empty") -> Modu
     )
     fake.FindParm = lambda *a, **k: ""
     fake.GetParmVal = lambda pid: 0.0
-    return fake
+    return cast(ModuleType, fake)
 
 
 @pytest.fixture

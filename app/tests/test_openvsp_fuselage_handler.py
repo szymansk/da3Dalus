@@ -10,7 +10,8 @@ All tests run without the real OpenVSP package — they mock the
 
 from __future__ import annotations
 
-from types import ModuleType
+from types import ModuleType, SimpleNamespace
+from typing import cast
 
 import pytest
 
@@ -55,7 +56,7 @@ def _make_fuse_vsp(
        RoundedRect_Width/Height/Radius).
     """
     xsecs = xsecs or []
-    fake = ModuleType("openvsp")
+    fake = SimpleNamespace()  # see test_openvsp_importer for rationale
     fake.LEN_M = 2
     fake.SYM_XZ = 2
     for n, v in _SHAPES.items():
@@ -116,7 +117,7 @@ def _make_fuse_vsp(
 
     fake.FindParm = _find_parm
     fake.GetParmVal = _get_parm_val_router
-    return fake
+    return cast(ModuleType, fake)
 
 
 # ---------------------------------------------------------------------------

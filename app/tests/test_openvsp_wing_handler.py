@@ -16,7 +16,8 @@ Covers:
 from __future__ import annotations
 
 import math
-from types import ModuleType
+from types import ModuleType, SimpleNamespace
+from typing import cast
 
 import pytest
 
@@ -60,7 +61,7 @@ def _make_wing_vsp(
         }
     ]
 
-    fake = ModuleType("openvsp")
+    fake = SimpleNamespace()  # see test_openvsp_importer for rationale
     fake.LEN_MM, fake.LEN_CM, fake.LEN_M = 0, 1, 2
     fake.LEN_IN, fake.LEN_FT, fake.LEN_YD, fake.LEN_UNITLESS = 3, 4, 5, 6
     fake.SYM_XY, fake.SYM_XZ, fake.SYM_YZ = 1, 2, 4
@@ -110,7 +111,7 @@ def _make_wing_vsp(
 
     # Airfoil shape lookup — return XS_FOUR_SERIES so the placeholder is used.
     fake.GetXSecShape = lambda xs: fake.XS_FOUR_SERIES
-    return fake
+    return cast(ModuleType, fake)
 
 
 # ---------------------------------------------------------------------------
