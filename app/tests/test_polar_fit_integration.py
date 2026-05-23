@@ -250,7 +250,7 @@ class TestRealAeroBuildup2PolarFitRoundtrip:
             ar=ar,
             cl_max=cl_max,
             cd0_stability=0.0,  # 0.0 disables the cd0-vs-stability guard
-        )
+        )[:3]
 
     def test_r2_above_0_95_on_clean_wing(self, clean_wing_airplane):
         """Real AeroBuildup polar over [-5°, 12°] should be close-to-parabolic → R² > 0.95."""
@@ -395,7 +395,7 @@ class TestLaminarBubbleRejection:
             cd0_stability=0.0,  # bypass cd0 guard; test only monotonicity rejection
         )
 
-        assert result == (None, None, None), (
+        assert result[:3] == (None, None, None), (
             "Polar fit should have been rejected on bubble-injected data"
         )
         # Verify a warning was logged mentioning monotonicity or laminar bubble
@@ -445,7 +445,7 @@ class TestSignConvention:
             cd0_stability=cd0_true,
         )
         # Empty window → reject
-        assert result == (None, None, None), (
+        assert result[:3] == (None, None, None), (
             "All-negative CL array should produce empty window → (None, None, None)"
         )
 
@@ -466,7 +466,7 @@ class TestSignConvention:
         cl_mixed = np.linspace(-0.5, cl_max * 0.95, 50)
         cd_mixed = cd0_true + k * cl_mixed**2
 
-        cd0_fit, e_fit, r2 = _fit_parabolic_polar(
+        cd0_fit, e_fit, r2, *_ = _fit_parabolic_polar(
             cl_mixed,
             cd_mixed,
             ar=ar,
@@ -500,7 +500,7 @@ class TestSignConvention:
         ar = _main_wing_aspect_ratio(clean_wing_airplane)
         cl_max = float(cl_arr.max())
 
-        cd0_fit, e_fit, r2 = _fit_parabolic_polar(
+        cd0_fit, e_fit, r2, *_ = _fit_parabolic_polar(
             cl_arr,
             cd_arr,
             ar=ar,
@@ -700,7 +700,7 @@ class TestMultiConfigStability:
         if ar is None or ar <= 0:
             return None, None, None, cd0_stab, 0.0
 
-        cd0_fit, e_fit, r2 = _fit_parabolic_polar(
+        cd0_fit, e_fit, r2, *_ = _fit_parabolic_polar(
             cl_arr,
             cd_arr,
             ar=ar,
