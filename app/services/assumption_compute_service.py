@@ -502,7 +502,10 @@ def recompute_assumptions(db: Session, aeroplane_uuid) -> None:
         # Parabolic polar fit results (gh-486)
         # ctx["cd0"] scalar = stability-run cd0 (backward-compat key for gh-486 consumers)
         "cd0": round(cd0, 5),
-        "e_oswald": round(e_oswald_fit, 4) if e_oswald_fit is not None else None,
+        # gh-636: top-level e_oswald uses the same provenance chain as
+        # polar_by_config[clean].e_oswald — i.e. AB-Trefftz preferred, then
+        # parabolic-fit, then None. Matches `e_oswald_fallback_used` semantics.
+        "e_oswald": round(e_oswald_final, 4) if e_oswald_final is not None else None,
         "e_oswald_r2": round(e_r2, 4) if e_r2 is not None else None,
         "e_oswald_quality": _classify_polar_quality(e_r2) if e_r2 is not None else "unknown",
         "e_oswald_fallback_used": e_oswald_fallback,
