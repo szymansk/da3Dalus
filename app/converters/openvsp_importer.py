@@ -214,6 +214,40 @@ def _read_source_length_unit(vsp: ModuleType, vehicle_id: str) -> Optional[int]:
         return None
 
 
+_handlers_loaded = False
+
+
+def _ensure_handlers_loaded() -> None:
+    """Lazy-import + register component handlers on first call.
+
+    Lazy registration avoids a circular import at module-load time
+    and lets each handler module live in its own file (one per
+    sub-issue).
+    """
+    global _handlers_loaded
+    if _handlers_loaded:
+        return
+    try:  # pragma: no cover - import side effects
+        from app.converters import openvsp_wing_handler
+
+        openvsp_wing_handler.register()
+    except ImportError:
+        pass
+    try:  # pragma: no cover
+        from app.converters import openvsp_fuselage_handler
+
+        openvsp_fuselage_handler.register()
+    except ImportError:
+        pass
+    try:  # pragma: no cover
+        from app.converters import openvsp_blank_handler
+
+        openvsp_blank_handler.register()
+    except ImportError:
+        pass
+    _handlers_loaded = True
+
+
 def import_vsp3(path: Path) -> ImportResult:
     """Parse a ``.vsp3`` file → :class:`ImportResult`.
 
@@ -225,6 +259,7 @@ def import_vsp3(path: Path) -> ImportResult:
     FileNotFoundError
         When ``path`` does not exist on disk.
     """
+    _ensure_handlers_loaded()
     path = Path(path)
     vsp = openvsp_adapter.get_vsp()  # raises ImportError if missing
     if not path.exists():
