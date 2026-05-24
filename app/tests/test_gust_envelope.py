@@ -915,27 +915,23 @@ class TestExtractClAlphaFromLinearSweep:
 
     def test_success_path_returns_positive_cl_alpha(self):
         """Happy path: linear CL data → returns positive CL_α in rad⁻¹."""
-        import math
         from types import SimpleNamespace
         from unittest.mock import patch
 
-        from app.services.assumption_compute_service import _extract_cl_alpha_from_linear_sweep
-
-        # Simulate 9 alpha points [-2, -1, ..., 6] with CL = 5.7 * alpha_rad
         import numpy as np
 
+        from app.services.assumption_compute_service import _extract_cl_alpha_from_linear_sweep
+
+        # gh-690: AeroBuildup is now called ONCE with array op-points; the
+        # mock returns a single result whose CL is the full per-α array.
         alphas_deg = np.arange(-2.0, 6.01, 1.0)
         alphas_rad = np.deg2rad(alphas_deg)
         cl_true = 5.7 * alphas_rad  # perfect linear, CL_α = 5.7 rad⁻¹
-
-        results_iter = iter([SimpleNamespace(CL=cl, CD=0.03) for cl in cl_true])
-
-        def fake_run(self_):
-            return next(results_iter)
+        vec_result = SimpleNamespace(CL=cl_true, CD=np.full_like(cl_true, 0.03))
 
         asb_airplane = self._make_fake_airplane()
 
-        with patch("aerosandbox.AeroBuildup.run", fake_run):
+        with patch("aerosandbox.AeroBuildup.run", lambda self_: vec_result):
             result = _extract_cl_alpha_from_linear_sweep(asb_airplane, v_cruise=18.0)
 
         assert result is not None
@@ -959,29 +955,6 @@ class TestExtractClAlphaFromLinearSweep:
 
     def test_low_r2_returns_none(self):
         """When R² < threshold (nonlinear lift curve), returns None."""
-        import math
-        import random
-        from types import SimpleNamespace
-        from unittest.mock import patch
-
-        from app.services.assumption_compute_service import _extract_cl_alpha_from_linear_sweep
-
-        asb_airplane = self._make_fake_airplane()
-
-        # Highly nonlinear CL values: zigzag pattern → very low R²
-        # 9 alpha points: [-2, -1, 0, 1, 2, 3, 4, 5, 6]
-        # Give alternating high/low values so regression is terrible
-        cl_values = [1.0, -1.0, 1.5, -1.5, 2.0, -2.0, 1.0, -1.0, 0.5]
-        results = iter([SimpleNamespace(CL=cl, CD=0.03) for cl in cl_values])
-
-        with patch("aerosandbox.AeroBuildup.run", lambda self_: next(results)):
-            result = _extract_cl_alpha_from_linear_sweep(asb_airplane, v_cruise=18.0)
-
-        assert result is None
-
-    def test_negative_slope_returns_none(self):
-        """When fitted CL_α ≤ 0 (inverted lift curve), returns None."""
-        import math
         from types import SimpleNamespace
         from unittest.mock import patch
 
@@ -991,14 +964,34 @@ class TestExtractClAlphaFromLinearSweep:
 
         asb_airplane = self._make_fake_airplane()
 
-        # CL decreasing with alpha → negative slope
+        # gh-690: vectorised mock — zigzag CL pattern over the full 9-α grid
+        # so regression R² stays well below the 0.995 threshold.
+        cl_values = np.array([1.0, -1.0, 1.5, -1.5, 2.0, -2.0, 1.0, -1.0, 0.5])
+        vec_result = SimpleNamespace(CL=cl_values, CD=np.full_like(cl_values, 0.03))
+
+        with patch("aerosandbox.AeroBuildup.run", lambda self_: vec_result):
+            result = _extract_cl_alpha_from_linear_sweep(asb_airplane, v_cruise=18.0)
+
+        assert result is None
+
+    def test_negative_slope_returns_none(self):
+        """When fitted CL_α ≤ 0 (inverted lift curve), returns None."""
+        from types import SimpleNamespace
+        from unittest.mock import patch
+
+        import numpy as np
+
+        from app.services.assumption_compute_service import _extract_cl_alpha_from_linear_sweep
+
+        asb_airplane = self._make_fake_airplane()
+
+        # gh-690: vectorised mock — perfect negative slope CL = -5.0·α_rad.
         alphas_deg = np.arange(-2.0, 6.01, 1.0)
         alphas_rad = np.deg2rad(alphas_deg)
-        # Perfect negative slope: CL = -5.0 * alpha_rad
-        cl_values = list(-5.0 * alphas_rad)
-        results = iter([SimpleNamespace(CL=cl, CD=0.03) for cl in cl_values])
+        cl_values = -5.0 * alphas_rad
+        vec_result = SimpleNamespace(CL=cl_values, CD=np.full_like(cl_values, 0.03))
 
-        with patch("aerosandbox.AeroBuildup.run", lambda self_: next(results)):
+        with patch("aerosandbox.AeroBuildup.run", lambda self_: vec_result):
             result = _extract_cl_alpha_from_linear_sweep(asb_airplane, v_cruise=18.0)
 
         assert result is None
@@ -1030,16 +1023,17 @@ class TestExtractClAlphaFromLinearSweep:
 
         asb_airplane = self._make_fake_airplane()
 
-        # 9 alpha points: 3 valid, 6 NaN
+        # gh-690: vectorised mock — exactly 3 valid CLs, the rest NaN.
         alphas_deg = np.arange(-2.0, 6.01, 1.0)
         alphas_rad = np.deg2rad(alphas_deg)
-        # Only first 3 get real values, rest NaN
-        cl_values = list(5.7 * alphas_rad[:3]) + [float("nan")] * (len(alphas_rad) - 3)
-        results = iter([SimpleNamespace(CL=cl, CD=0.03) for cl in cl_values])
+        cl_values = np.concatenate(
+            [5.7 * alphas_rad[:3], np.full(len(alphas_rad) - 3, np.nan)]
+        )
+        vec_result = SimpleNamespace(CL=cl_values, CD=np.full_like(cl_values, 0.03))
 
-        with patch("aerosandbox.AeroBuildup.run", lambda self_: next(results)):
+        with patch("aerosandbox.AeroBuildup.run", lambda self_: vec_result):
             # With only 3 points R² might be perfect (3 points → perfect line)
-            # but the result will be some float (not None from the <3 check)
+            # but the result will be some float (not None from the <3 check).
             result = _extract_cl_alpha_from_linear_sweep(asb_airplane, v_cruise=18.0)
         # Result may be None (low R² or negative slope) or a float — either is acceptable.
         # Key thing: the < 3 guard did NOT fire for exactly 3 valid points.
