@@ -20,17 +20,24 @@ Scope (per ``feedback_openvsp_import_rc_scope``):
   ``XS_EDIT_CURVE`` (Phase 2 / B5), POD and BODYOFREVOLUTION as
   fuselages (Phase 2 / B4).
 
-Container convention (verified empirically during implementation —
-documented here as the source of truth for downstream handlers):
+Container convention (corrected after gh-702 — earlier docstring was
+wrong; OpenVSP 3.50 keeps these on the XSec itself, not the parent
+fuselage):
 
 * Length lives on the FUSELAGE container, group ``Design``, parm
   ``Length``.
-* Station positions live on the FUSELAGE container, group ``XSec``,
-  parm ``XLocPercent_<i>`` (and ``YLocPercent_<i>``,
-  ``ZLocPercent_<i>``).
+* Per-XSec **position** parms live on the **XSec container** in
+  group ``XSec``: ``XLocPercent``, ``YLocPercent``, ``ZLocPercent``
+  (no per-index suffix). Values are fractions of the fuselage length.
 * XSec-curve shape parms (Circle_Diameter, Ellipse_Width, etc.) live
   on the XSec curve container, accessed via
   ``vsp.GetXSecParm(xs_id, "Circle_Diameter")``.
+
+Geom-level XForm (translation + intrinsic XYZ rotation) is applied
+after the local-frame loop, identical pattern to the wing handler
+(``openvsp_wing_handler._apply_xform``). Parent-chain traversal for
+child-of-BLANK geoms (NoseFairing etc.) is out of scope here — a
+separate ticket.
 """
 
 from __future__ import annotations
@@ -39,6 +46,10 @@ from types import ModuleType
 
 from app.converters import openvsp_importer
 from app.converters.openvsp_importer import AeroplaneSchema, ImportContext
+from app.converters.openvsp_wing_handler import (
+    _apply_xform,
+    _read_geom_xform,
+)
 from app.schemas.aeroplaneschema import (
     FuselageSchema,
     FuselageXSecSuperEllipseSchema,
@@ -146,10 +157,22 @@ def _read_length(vsp: ModuleType, fuse_gid: str) -> float:
     return float(vsp.GetParmVal(pid))
 
 
-def _read_x_pct(vsp: ModuleType, fuse_gid: str, i: int) -> float:
-    pid = vsp.FindParm(fuse_gid, f"XLocPercent_{i}", "XSec")
+def _read_loc_pct(
+    vsp: ModuleType, xs_id: str, axis: str, i: int, n_xsec: int
+) -> float:
+    """Read ``{X,Y,Z}LocPercent`` from an XSec container.
+
+    These parms live on the XSec itself in group ``XSec`` (OpenVSP
+    3.50 convention) — NOT on the parent fuselage with an index
+    suffix. Fallback when missing: an evenly-spaced fraction
+    ``i / (n_xsec - 1)`` so we at least lay xsecs out along the
+    spine for X and produce 0 for Y/Z.
+    """
+    pid = vsp.FindParm(xs_id, f"{axis}LocPercent", "XSec")
     if not pid:
-        return float(i)  # fall back to evenly-spaced index proxy
+        if axis == "X" and n_xsec > 1:
+            return i / (n_xsec - 1)
+        return 0.0
     return float(vsp.GetParmVal(pid))
 
 
@@ -187,16 +210,27 @@ def _handle_fuselage(
     for i in range(n_xsec):
         xs_id = vsp.GetXSec(xsurf, i)
         shape = vsp.GetXSecShape(xs_id)
-        x_pct = _read_x_pct(vsp, gid, i)
+        x_pct = _read_loc_pct(vsp, xs_id, "X", i, n_xsec)
+        y_pct = _read_loc_pct(vsp, xs_id, "Y", i, n_xsec)
+        z_pct = _read_loc_pct(vsp, xs_id, "Z", i, n_xsec)
         a, b, n = _shape_to_super_ellipse(vsp, xs_id, shape, ctx)
         xsecs.append(
             FuselageXSecSuperEllipseSchema(
-                xyz=[x_pct * length, 0.0, 0.0],
+                xyz=[x_pct * length, y_pct * length, z_pct * length],
                 a=max(a, 0.0),
                 b=max(b, 0.0),
                 n=max(n, 1.0),
             )
         )
+
+    # Apply Geom-level XForm (translation + intrinsic XYZ rotation) to
+    # every xsec position — same pattern as the wing handler post-gh-698.
+    # Critical for Cessna 172 sub-fuselages (Struts rotated 90° about Z,
+    # MainStrut rotated -90°/MainFairing/etc.).
+    translation, rotation_deg = _read_geom_xform(vsp, gid)
+    if any(translation) or any(rotation_deg):
+        for xs in xsecs:
+            xs.xyz = _apply_xform(xs.xyz, translation, rotation_deg)
 
     fuse = FuselageSchema(name=name, x_secs=xsecs)
     if aeroplane.fuselages is None:

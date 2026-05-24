@@ -47,6 +47,7 @@ def _make_fuse_vsp(
     name: str = "Fuselage",
     length: float = 10.0,
     xsecs: list[dict] | None = None,
+    xform: dict | None = None,
 ) -> ModuleType:
     """Build a fake `openvsp` module describing one FUSELAGE geom.
 
@@ -96,13 +97,31 @@ def _make_fuse_vsp(
 
     fake.GetXSecParm = _get_xsec_parm
 
-    # Per-fuselage parms (Length, XLocPercent_<i>) accessed via FindParm.
+    # Parm routing per OpenVSP 3.50 convention (gh-702): Length lives on
+    # the fuselage container in group Design; XLocPercent/YLocPercent/
+    # ZLocPercent live on EACH XSec container in group XSec; XForm
+    # translation/rotation live on the fuselage container in group XForm.
+    xform = xform or {}
+    XFORM_PARMS = {
+        "X_Location", "Y_Location", "Z_Location",
+        "X_Rotation", "Y_Rotation", "Z_Rotation",
+    }
+
+    _LOC_KEY = {"XLocPercent": "x_pct", "YLocPercent": "y_pct", "ZLocPercent": "z_pct"}
+
     def _find_parm(container, parm, group):
-        if container == fuse_id:
-            if parm == "Length" and group == "Design":
-                return "PFUSE::Length"
-            if parm.startswith("XLocPercent_"):
-                return f"PFUSE::{parm}"
+        if container == fuse_id and parm == "Length" and group == "Design":
+            return "PFUSE::Length"
+        if container == fuse_id and group == "XForm" and parm in XFORM_PARMS:
+            return f"PXFORM::{parm}"
+        if container.startswith("XS_") and group == "XSec" and parm in _LOC_KEY:
+            # Mirror real OpenVSP: return "" when the test dict doesn't
+            # declare the corresponding *_pct key, so the handler's
+            # fallback path is exercised.
+            idx = int(container.split("_", 1)[1])
+            if _LOC_KEY[parm] not in xsecs[idx]:
+                return ""
+            return f"PXSEC::{container}::{parm}"
         return ""
 
     def _get_parm_val_router(pid):
@@ -110,9 +129,13 @@ def _make_fuse_vsp(
             return 0.0
         if pid == "PFUSE::Length":
             return float(length)
-        if pid.startswith("PFUSE::XLocPercent_"):
-            idx = int(pid.split("_", 1)[1])
-            return float(xsecs[idx].get("x_pct", 0.0))
+        if pid.startswith("PXFORM::"):
+            return float(xform.get(pid.split("::", 1)[1], 0.0))
+        if pid.startswith("PXSEC::"):
+            _, xs_id, name = pid.split("::", 2)
+            idx = int(xs_id.split("_", 1)[1])
+            key = {"XLocPercent": "x_pct", "YLocPercent": "y_pct", "ZLocPercent": "z_pct"}[name]
+            return float(xsecs[idx].get(key, 0.0))
         return _get_parm_val(pid)
 
     fake.FindParm = _find_parm
@@ -344,3 +367,119 @@ class TestFuselageImport:
         result = import_vsp3(f)
         assert result.aeroplane.fuselages is None or not result.aeroplane.fuselages
         assert result.warnings
+
+
+class TestFuselageXForm:
+    """gh-702: Geom-level XForm (translation + intrinsic XYZ rotation)
+    must be applied to every xsec xyz, identical pattern to the wing
+    handler post-gh-698."""
+
+    def test_pure_translation_offsets_all_xsecs(self, tmp_path, monkeypatch):
+        f = tmp_path / "x.vsp3"
+        f.write_text("")
+        xsecs = [
+            {"shape": "CIRCLE", "x_pct": 0.0, "Circle_Diameter": 0.5},
+            {"shape": "CIRCLE", "x_pct": 1.0, "Circle_Diameter": 0.5},
+        ]
+        fake = _make_fuse_vsp(
+            xsecs=xsecs,
+            length=5.0,
+            xform={"X_Location": 10.0, "Y_Location": -2.0, "Z_Location": 3.0},
+        )
+        monkeypatch.setattr(openvsp_adapter, "get_vsp", lambda: fake)
+        result = import_vsp3(f)
+        fuse = (result.aeroplane.fuselages or {})["Fuselage"]
+        # Every xsec is translated by (10, -2, 3) on top of its local xyz.
+        assert fuse.x_secs[0].xyz == pytest.approx([10.0, -2.0, 3.0])
+        assert fuse.x_secs[1].xyz == pytest.approx([15.0, -2.0, 3.0])
+
+    def test_z_rotation_90_rotates_about_world_z(self, tmp_path, monkeypatch):
+        # A fuselage laid along +X rotated 90° about Z should point along +Y.
+        f = tmp_path / "x.vsp3"
+        f.write_text("")
+        xsecs = [
+            {"shape": "CIRCLE", "x_pct": 0.0, "Circle_Diameter": 0.2},
+            {"shape": "CIRCLE", "x_pct": 1.0, "Circle_Diameter": 0.2},
+        ]
+        fake = _make_fuse_vsp(
+            xsecs=xsecs, length=4.0, xform={"Z_Rotation": 90.0}
+        )
+        monkeypatch.setattr(openvsp_adapter, "get_vsp", lambda: fake)
+        result = import_vsp3(f)
+        fuse = (result.aeroplane.fuselages or {})["Fuselage"]
+        # Local (4, 0, 0) → after Rz(90°) → (0, 4, 0)
+        assert fuse.x_secs[1].xyz == pytest.approx([0.0, 4.0, 0.0], abs=1e-9)
+
+    def test_y_rotation_neg80_with_translation_cessna_nose_strut(
+        self, tmp_path, monkeypatch
+    ):
+        # Mirrors NoseStrut from the Cessna 172 file: translated to
+        # (-1.22, 0, -1.0) and rotated by Y=-80°. A xsec at local
+        # (1.5, 0, 0) → after Ry(-80°): (cos(-80)·1.5, 0, -sin(-80)·1.5)
+        # = (0.260, 0, 1.477) → + translation = (-0.960, 0, 0.477).
+        import math
+        f = tmp_path / "x.vsp3"
+        f.write_text("")
+        xsecs = [
+            {"shape": "CIRCLE", "x_pct": 0.0, "Circle_Diameter": 0.1},
+            {"shape": "CIRCLE", "x_pct": 1.0, "Circle_Diameter": 0.1},
+        ]
+        fake = _make_fuse_vsp(
+            xsecs=xsecs,
+            length=1.5,
+            xform={
+                "X_Location": -1.22,
+                "Z_Location": -1.0,
+                "Y_Rotation": -80.0,
+            },
+        )
+        monkeypatch.setattr(openvsp_adapter, "get_vsp", lambda: fake)
+        result = import_vsp3(f)
+        fuse = (result.aeroplane.fuselages or {})["Fuselage"]
+        # Local tip at (1.5, 0, 0). Ry(-80°): x→cos(-80)*1.5, z→-sin(-80)*1.5
+        cos_t = math.cos(math.radians(-80.0))
+        sin_t = math.sin(math.radians(-80.0))
+        expected = [
+            -1.22 + cos_t * 1.5,
+            0.0,
+            -1.0 + (-sin_t * 1.5),
+        ]
+        assert fuse.x_secs[1].xyz == pytest.approx(expected, abs=1e-9)
+
+
+class TestFuselagePositionParms:
+    """gh-702: per-XSec position parms live on the XSec, not on the
+    parent fuselage with an _<i> suffix (corrects the earlier docstring
+    + handler convention)."""
+
+    def test_xsec_x_y_z_loc_percent_all_read(self, tmp_path, monkeypatch):
+        f = tmp_path / "x.vsp3"
+        f.write_text("")
+        xsecs = [
+            {"shape": "CIRCLE", "x_pct": 0.0, "y_pct": 0.0, "z_pct": 0.0, "Circle_Diameter": 0.5},
+            {"shape": "CIRCLE", "x_pct": 0.4, "y_pct": 0.05, "z_pct": -0.02, "Circle_Diameter": 0.5},
+        ]
+        fake = _make_fuse_vsp(xsecs=xsecs, length=10.0)
+        monkeypatch.setattr(openvsp_adapter, "get_vsp", lambda: fake)
+        result = import_vsp3(f)
+        fuse = (result.aeroplane.fuselages or {})["Fuselage"]
+        assert fuse.x_secs[0].xyz == pytest.approx([0.0, 0.0, 0.0])
+        assert fuse.x_secs[1].xyz == pytest.approx([4.0, 0.5, -0.2])
+
+    def test_missing_position_parms_falls_back_to_even_spacing(
+        self, tmp_path, monkeypatch
+    ):
+        # Provide xsec dicts WITHOUT any *_pct keys → handler falls
+        # back to i/(n-1) for X, 0 for Y/Z. With length=8.0 and
+        # n=5, the 3rd xsec (index 2) lands at 2/4 * 8 = 4.0.
+        f = tmp_path / "x.vsp3"
+        f.write_text("")
+        xsecs = [{"shape": "CIRCLE", "Circle_Diameter": 0.5} for _ in range(5)]
+        fake = _make_fuse_vsp(xsecs=xsecs, length=8.0)
+        monkeypatch.setattr(openvsp_adapter, "get_vsp", lambda: fake)
+        result = import_vsp3(f)
+        fuse = (result.aeroplane.fuselages or {})["Fuselage"]
+        xs_x = [xs.xyz[0] for xs in fuse.x_secs]
+        assert xs_x == pytest.approx([0.0, 2.0, 4.0, 6.0, 8.0])
+        # Y / Z all zero.
+        assert all(xs.xyz[1] == 0.0 and xs.xyz[2] == 0.0 for xs in fuse.x_secs)
