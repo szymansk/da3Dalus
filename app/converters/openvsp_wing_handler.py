@@ -136,6 +136,67 @@ def _read_symmetric(vsp: ModuleType, wing_gid: str) -> bool:
     return bool(flag & sym_xz)
 
 
+def _read_xform_parm(vsp: ModuleType, gid: str, name: str) -> float:
+    """Read a single XForm parm; 0.0 if not present."""
+    pid = vsp.FindParm(gid, name, "XForm")
+    if not pid:
+        return 0.0
+    try:
+        return float(vsp.GetParmVal(pid))
+    except Exception:
+        return 0.0
+
+
+def _read_geom_xform(
+    vsp: ModuleType, gid: str
+) -> tuple[tuple[float, float, float], tuple[float, float, float]]:
+    """Read the Geom-level XForm: (translation, rotation_deg).
+
+    Prefers the absolute ``*_Location`` / ``*_Rotation`` parms over the
+    relative ``*_Rel_*`` variants. Returns ``((0,0,0), (0,0,0))`` when
+    no XForm parms are present (e.g. very old VSP files or stubbed
+    test fakes).
+
+    Discovered necessary for gh-698: WING handler previously rendered
+    all wings at the origin in the X–Y plane, which broke Cessna 172
+    imports (HTP overlapped with main wing, VTP rendered flat).
+    """
+    translation = (
+        _read_xform_parm(vsp, gid, "X_Location"),
+        _read_xform_parm(vsp, gid, "Y_Location"),
+        _read_xform_parm(vsp, gid, "Z_Location"),
+    )
+    rotation_deg = (
+        _read_xform_parm(vsp, gid, "X_Rotation"),
+        _read_xform_parm(vsp, gid, "Y_Rotation"),
+        _read_xform_parm(vsp, gid, "Z_Rotation"),
+    )
+    return translation, rotation_deg
+
+
+def _apply_xform(
+    pt: list[float] | tuple[float, float, float],
+    translation: tuple[float, float, float],
+    rotation_deg: tuple[float, float, float],
+) -> list[float]:
+    """Apply OpenVSP's intrinsic XYZ rotation + translation to a 3D point.
+
+    OpenVSP applies rotations in the local frame in the order X → Y → Z
+    (intrinsic), then translates in the world frame. We mirror that
+    here so that ``StabVer`` (Cessna 172) with ``X_Rotation=90°`` correctly
+    rotates the wing's span axis from Y onto +Z.
+    """
+    x, y, z = pt
+    rx, ry, rz = (math.radians(a) for a in rotation_deg)
+    # Rx
+    y, z = y * math.cos(rx) - z * math.sin(rx), y * math.sin(rx) + z * math.cos(rx)
+    # Ry
+    x, z = x * math.cos(ry) + z * math.sin(ry), -x * math.sin(ry) + z * math.cos(ry)
+    # Rz
+    x, y = x * math.cos(rz) - y * math.sin(rz), x * math.sin(rz) + y * math.cos(rz)
+    return [x + translation[0], y + translation[1], z + translation[2]]
+
+
 # ---------------------------------------------------------------------------
 # Handler
 # ---------------------------------------------------------------------------
@@ -273,6 +334,16 @@ def _handle_wing(
         )
         ctx.mark_lossy(gid)
         return
+
+    # Apply Geom-level XForm (translation + intrinsic XYZ rotation) to every
+    # xyz_le so that wings end up at their world-frame position and orientation.
+    # Critical for HTP (aft translation) and VTP (90°-X rotation that stands
+    # the wing upright). See gh-698 for the Cessna 172 regression that
+    # surfaced this gap.
+    translation, rotation_deg = _read_geom_xform(vsp, gid)
+    if any(translation) or any(rotation_deg):
+        for xs in x_secs:
+            xs.xyz_le = _apply_xform(xs.xyz_le, translation, rotation_deg)
 
     wing = AsbWingSchema(
         name=name,
