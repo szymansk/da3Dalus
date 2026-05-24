@@ -1,7 +1,16 @@
-"""Integration tests for the OpenVSP import endpoint (gh-646)."""
+"""Integration tests for the OpenVSP import endpoint (gh-646).
+
+Extended for gh-695 with scaling-parameter coverage:
+
+* ``?target_span_m=<f>`` rescales the imported aeroplane to that span.
+* ``?scale_factor=<f>`` directly scales all length-typed fields.
+* Mutex (both supplied) → 400.
+* Out-of-range numeric inputs → 422.
+"""
 
 from __future__ import annotations
 
+from collections import OrderedDict
 from types import ModuleType, SimpleNamespace
 from typing import cast
 
@@ -112,3 +121,172 @@ class TestImportEndpoint:
         assert body["warnings"]
         assert any(w["component_type"] == "PROP" for w in body["warnings"])
         assert "G1" in body["lossy_components"]
+
+
+# ---------------------------------------------------------------------------
+# Scaling-parameter tests (gh-695)
+# ---------------------------------------------------------------------------
+
+
+def _stub_import_vsp3_with_wing(monkeypatch, *, span_m: float, root_chord: float = 0.5):
+    """Patch ``import_vsp3`` to yield a deterministic ImportResult with one
+    symmetric wing spanning ±``span_m`` (physical span = 2 * span_m).
+    """
+    from app.converters import openvsp_importer
+    from app.schemas.aeroplaneschema import AeroplaneSchema, AsbWingSchema, WingXSecSchema
+
+    def _fake_import(path):  # noqa: ARG001 — path is read for fixture only
+        wing = AsbWingSchema(
+            name="Main",
+            symmetric=True,
+            x_secs=[
+                WingXSecSchema(
+                    xyz_le=[0.0, 0.0, 0.0],
+                    chord=root_chord,
+                    twist=0.0,
+                    airfoil="naca0015",
+                ),
+                WingXSecSchema(
+                    xyz_le=[0.0, span_m, 0.0],
+                    chord=root_chord * 0.4,
+                    twist=0.0,
+                    airfoil="naca0015",
+                ),
+            ],
+        )
+        ap = AeroplaneSchema(name="ScaledTest")
+        ap.wings = OrderedDict([("Main", wing)])
+        return openvsp_importer.ImportResult(
+            aeroplane=ap,
+            warnings=[],
+            lossy_components=[],
+            weight_items=[],
+        )
+
+    # Patch both at the source module and at the alias used by the service.
+    monkeypatch.setattr(openvsp_importer, "import_vsp3", _fake_import)
+    from app.services import openvsp_import_service
+
+    monkeypatch.setattr(openvsp_import_service, "import_vsp3", _fake_import)
+
+
+class TestImportEndpointScaling:
+    def test_400_when_both_scale_params_supplied(self, client, monkeypatch):
+        from app.services import openvsp_import_service
+
+        monkeypatch.setattr(openvsp_import_service, "is_importer_available", lambda: True)
+        _stub_import_vsp3_with_wing(monkeypatch, span_m=10.0)
+
+        r = client.post(
+            "/api/v2/import/openvsp?target_span_m=1.5&scale_factor=0.1",
+            files={"file": ("x.vsp3", b"<vsp3/>", "application/octet-stream")},
+        )
+        assert r.status_code == 400
+        assert "mutually exclusive" in r.json()["detail"].lower()
+
+    def test_422_when_scale_factor_out_of_range(self, client, monkeypatch):
+        from app.services import openvsp_import_service
+
+        monkeypatch.setattr(openvsp_import_service, "is_importer_available", lambda: True)
+        _stub_import_vsp3_with_wing(monkeypatch, span_m=10.0)
+
+        # 50.0 is well above the max of 10.0
+        r = client.post(
+            "/api/v2/import/openvsp?scale_factor=50.0",
+            files={"file": ("x.vsp3", b"<vsp3/>", "application/octet-stream")},
+        )
+        assert r.status_code == 422
+        assert "scale_factor" in r.json()["detail"].lower()
+
+    def test_422_when_target_span_out_of_range(self, client, monkeypatch):
+        from app.services import openvsp_import_service
+
+        monkeypatch.setattr(openvsp_import_service, "is_importer_available", lambda: True)
+        _stub_import_vsp3_with_wing(monkeypatch, span_m=10.0)
+
+        r = client.post(
+            "/api/v2/import/openvsp?target_span_m=100.0",  # > 50 cap
+            files={"file": ("x.vsp3", b"<vsp3/>", "application/octet-stream")},
+        )
+        assert r.status_code == 422
+        assert "target_span_m" in r.json()["detail"].lower()
+
+    def test_scale_factor_applied_and_warning_emitted(self, client, monkeypatch):
+        from app.services import openvsp_import_service
+
+        monkeypatch.setattr(openvsp_import_service, "is_importer_available", lambda: True)
+        _stub_import_vsp3_with_wing(monkeypatch, span_m=10.0, root_chord=0.5)
+
+        r = client.post(
+            "/api/v2/import/openvsp?scale_factor=0.5",
+            files={"file": ("x.vsp3", b"<vsp3/>", "application/octet-stream")},
+        )
+        assert r.status_code == 201, r.text
+        body = r.json()
+        # SCALING warning should appear
+        scaling = [w for w in body["warnings"] if w["component_type"] == "SCALING"]
+        assert len(scaling) == 1
+        assert "scaled" in scaling[0]["reason"].lower()
+        assert "masses were not scaled" in scaling[0]["reason"].lower()
+
+    def test_target_span_resolves_to_correct_factor(self, client, monkeypatch):
+        """Roundtrip: span_m=10.0 sym → 20m physical; target_span=1.5 → factor 0.075."""
+        from app.services import openvsp_import_service
+
+        monkeypatch.setattr(openvsp_import_service, "is_importer_available", lambda: True)
+        _stub_import_vsp3_with_wing(monkeypatch, span_m=10.0, root_chord=0.5)
+
+        r = client.post(
+            "/api/v2/import/openvsp?target_span_m=1.5",
+            files={"file": ("x.vsp3", b"<vsp3/>", "application/octet-stream")},
+        )
+        assert r.status_code == 201, r.text
+        body = r.json()
+        # Look up the persisted wing and verify the y_le of the tip xsec.
+        # Tip y_le was 10.0; after factor 0.075 → 0.75. Sym wing → physical span 1.5.
+        uuid = body["aeroplane_uuid"]
+        rs = client.get(f"/aeroplanes/{uuid}/wings/Main")
+        assert rs.status_code == 200, rs.text
+        wing = rs.json()
+        tip_y = wing["x_secs"][1]["xyz_le"][1]
+        assert tip_y == pytest.approx(0.75, rel=0.01)
+
+    def test_target_span_on_wingless_returns_422(self, client, monkeypatch):
+        from app.converters import openvsp_importer
+        from app.schemas.aeroplaneschema import AeroplaneSchema
+        from app.services import openvsp_import_service
+
+        def _fake_import(path):  # noqa: ARG001
+            return openvsp_importer.ImportResult(
+                aeroplane=AeroplaneSchema(name="Wingless"),
+                warnings=[],
+                lossy_components=[],
+                weight_items=[],
+            )
+
+        monkeypatch.setattr(openvsp_import_service, "is_importer_available", lambda: True)
+        monkeypatch.setattr(openvsp_importer, "import_vsp3", _fake_import)
+        monkeypatch.setattr(openvsp_import_service, "import_vsp3", _fake_import)
+
+        r = client.post(
+            "/api/v2/import/openvsp?target_span_m=1.5",
+            files={"file": ("x.vsp3", b"<vsp3/>", "application/octet-stream")},
+        )
+        assert r.status_code == 422
+        assert "wing" in r.json()["detail"].lower() or "span" in r.json()["detail"].lower()
+
+    def test_no_scaling_when_no_params(self, client, monkeypatch):
+        """Without scale params the importer must NOT emit a SCALING warning."""
+        from app.services import openvsp_import_service
+
+        monkeypatch.setattr(openvsp_import_service, "is_importer_available", lambda: True)
+        _stub_import_vsp3_with_wing(monkeypatch, span_m=10.0)
+
+        r = client.post(
+            "/api/v2/import/openvsp",
+            files={"file": ("x.vsp3", b"<vsp3/>", "application/octet-stream")},
+        )
+        assert r.status_code == 201, r.text
+        body = r.json()
+        scaling = [w for w in body["warnings"] if w["component_type"] == "SCALING"]
+        assert scaling == []
