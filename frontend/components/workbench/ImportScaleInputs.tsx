@@ -96,7 +96,7 @@ export function ImportScaleInputs({
             max={50}
             value={value.mode === "target_span" ? value.target_span_m : ""}
             onChange={(e) => {
-              const next = parseFloat(e.target.value);
+              const next = Number.parseFloat(e.target.value);
               if (!Number.isNaN(next)) {
                 onChange({ mode: "target_span", target_span_m: next });
               }
@@ -123,7 +123,7 @@ export function ImportScaleInputs({
               onChange({
                 mode: "scale_factor",
                 scale_factor:
-                  value.mode === "scale_factor" ? value.scale_factor : 1.0,
+                  value.mode === "scale_factor" ? value.scale_factor : 1,
               })
             }
             className="accent-primary"
@@ -137,7 +137,7 @@ export function ImportScaleInputs({
             max={10}
             value={value.mode === "scale_factor" ? value.scale_factor : ""}
             onChange={(e) => {
-              const next = parseFloat(e.target.value);
+              const next = Number.parseFloat(e.target.value);
               if (!Number.isNaN(next)) {
                 onChange({ mode: "scale_factor", scale_factor: next });
               }

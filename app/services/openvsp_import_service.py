@@ -315,7 +315,10 @@ def import_openvsp_file(
     result = import_vsp3(path)
 
     factor = _resolve_scale_factor(result.aeroplane, target_span_m, scale_factor)
-    if factor is not None and factor != 1.0:
+    # S1244: any factor far enough from 1.0 to matter geometrically — using
+    # a small epsilon avoids float-equality pitfalls. Threshold 1e-9 is
+    # well below any user-typed scale value (UI step is 0.01).
+    if factor is not None and abs(factor - 1.0) > 1e-9:
         _scale_aeroplane_lengths(
             result.aeroplane, factor, weight_items=result.weight_items
         )
