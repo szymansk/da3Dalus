@@ -871,7 +871,12 @@ def _stability_run_at_cruise(asb_airplane, v_cruise: float) -> tuple[float, floa
 def _coarse_alpha_sweep(
     asb_airplane, v_cruise: float, config: AircraftComputationConfigModel
 ) -> float:
-    """Returns approximate stall_alpha_deg (alpha where CL peaks)."""
+    """Returns approximate stall_alpha_deg (alpha where CL peaks).
+
+    gh-690: vectorised — one ``AeroBuildup.run()`` call over the whole α
+    sweep. AeroSandbox 4.2.x accepts numpy-array op-points and returns
+    same-shape result fields.
+    """
     import aerosandbox as asb
 
     alphas = np.arange(
@@ -880,12 +885,12 @@ def _coarse_alpha_sweep(
         config.coarse_alpha_step_deg,
     )
     xyz_ref = list(asb_airplane.xyz_ref) if asb_airplane.xyz_ref is not None else [0.0, 0.0, 0.0]
-    cls: list[float] = []
-    for a in alphas:
-        op = asb.OperatingPoint(velocity=v_cruise, alpha=float(a))
-        abu = asb.AeroBuildup(airplane=asb_airplane, op_point=op, xyz_ref=xyz_ref)
-        r = abu.run()
-        cls.append(_extract_scalar(r, "CL", default=0.0))
+    op = asb.OperatingPoint(
+        velocity=np.full_like(alphas, v_cruise, dtype=float),
+        alpha=alphas.astype(float),
+    )
+    r = asb.AeroBuildup(airplane=asb_airplane, op_point=op, xyz_ref=xyz_ref).run()
+    cls = _extract_array(r, "CL", n=len(alphas), default=0.0)
     return float(alphas[int(np.argmax(cls))])
 
 
@@ -918,39 +923,34 @@ def _fine_sweep_cl_max(
 
     xyz_ref = list(asb_airplane.xyz_ref) if asb_airplane.xyz_ref is not None else [0.0, 0.0, 0.0]
     s_ref = float(asb_airplane.s_ref)
-    cl_max = -float("inf")
-    cl_list: list[float] = []
-    cd_list: list[float] = []
-    v_list: list[float] = []
-    cdi_list: list[float] = []
-    for v in velocities:
-        for a in alphas:
-            op = asb.OperatingPoint(velocity=float(v), alpha=float(a))
-            abu = asb.AeroBuildup(airplane=asb_airplane, op_point=op, xyz_ref=xyz_ref)
-            r = abu.run()
-            cl = _extract_scalar(r, "CL", default=0.0)
-            cd = _extract_scalar(r, "CD", default=0.0)
-            # gh-636: D_induced is exposed by AeroBuildup per op-point.
-            # CDi = D_induced / (q · S_ref). NaN/missing → fall back to NaN so
-            # the consumer can detect and skip these entries.
-            d_induced = _extract_scalar(r, "D_induced", default=float("nan"))
-            q = 0.5 * 1.225 * float(v) ** 2  # ISA sea-level rho; consistent with op
-            cdi = (
-                d_induced / (q * s_ref) if (s_ref > 0 and np.isfinite(d_induced)) else float("nan")
-            )
-            cl_list.append(cl)
-            cd_list.append(cd)
-            v_list.append(float(v))
-            cdi_list.append(cdi)
-            if cl > cl_max:
-                cl_max = cl
-    return (
-        float(cl_max),
-        np.asarray(cl_list, dtype=float),
-        np.asarray(cd_list, dtype=float),
-        np.asarray(v_list, dtype=float),
-        np.asarray(cdi_list, dtype=float),
-    )
+
+    # gh-690: one vectorised .run() over the flattened V × α grid (was
+    # ~150 calls per polar config). meshgrid + indexing="xy" gives
+    # V-outer / α-inner ravel order, which matches the pre-refactor
+    # nested-loop order that downstream consumers index against.
+    a_grid, v_grid = np.meshgrid(alphas, velocities, indexing="xy")
+    v_flat = v_grid.ravel().astype(float)
+    a_flat = a_grid.ravel().astype(float)
+    n_pts = v_flat.size
+    op = asb.OperatingPoint(velocity=v_flat, alpha=a_flat)
+    r = asb.AeroBuildup(airplane=asb_airplane, op_point=op, xyz_ref=xyz_ref).run()
+
+    cl_arr = _extract_array(r, "CL", n=n_pts, default=0.0)
+    cd_arr = _extract_array(r, "CD", n=n_pts, default=0.0)
+    # gh-636: D_induced exposed per op-point. CDi = D_induced / (q · S_ref).
+    # Keep NaNs where AeroBuildup returned NaN/missing so the consumer can
+    # detect and skip these entries (same contract as the pre-refactor code).
+    d_induced = _extract_array(r, "D_induced", n=n_pts, default=float("nan"))
+    q = 0.5 * 1.225 * v_flat ** 2  # ISA sea-level rho; consistent with op
+    with np.errstate(invalid="ignore", divide="ignore"):
+        cdi_arr = np.where(
+            (s_ref > 0) & np.isfinite(d_induced),
+            d_induced / (q * s_ref),
+            np.nan,
+        )
+
+    cl_max = float(np.max(cl_arr)) if cl_arr.size > 0 else -float("inf")
+    return (cl_max, cl_arr, cd_arr, v_flat, cdi_arr)
 
 
 def _extract_cl_alpha_from_linear_sweep(
@@ -981,15 +981,14 @@ def _extract_cl_alpha_from_linear_sweep(
     alphas_deg = np.arange(alpha_min_deg, alpha_max_deg + 0.01, alpha_step_deg)
     alphas_rad = np.deg2rad(alphas_deg)
 
-    cls: list[float] = []
-    for a in alphas_deg:
-        op = asb.OperatingPoint(velocity=v_cruise, alpha=float(a))
-        abu = asb.AeroBuildup(airplane=asb_airplane, op_point=op, xyz_ref=xyz_ref)
-        r = abu.run()
-        cls.append(_extract_scalar(r, "CL", default=float("nan")))
-
-    alphas_arr = np.array(alphas_rad)
-    cls_arr = np.array(cls)
+    # gh-690: vectorised — one AeroBuildup.run over the whole α sweep.
+    op = asb.OperatingPoint(
+        velocity=np.full_like(alphas_deg, v_cruise, dtype=float),
+        alpha=alphas_deg.astype(float),
+    )
+    r = asb.AeroBuildup(airplane=asb_airplane, op_point=op, xyz_ref=xyz_ref).run()
+    cls_arr = _extract_array(r, "CL", n=len(alphas_deg), default=float("nan"))
+    alphas_arr = np.asarray(alphas_rad)
 
     # Discard NaN points (convergence failures)
     mask = np.isfinite(cls_arr)
@@ -1057,6 +1056,32 @@ def _extract_scalar(result: Any, key: str, *, default: float) -> float:
         val = getattr(result, key, None)
     scalar = _scalar(val)
     return float(scalar) if scalar is not None else default
+
+
+def _extract_array(result: Any, key: str, *, n: int, default: float) -> np.ndarray:
+    """Extract a length-``n`` 1-D float array from a vectorised AeroBuildup result.
+
+    gh-690 companion to ``_extract_scalar``: when ``AeroBuildup.run()`` is
+    called with an array-shaped ``OperatingPoint``, each result field is a
+    same-shape array (or a 0-D array if the array happened to be length 1
+    on certain CasADi paths). Always return a 1-D ``np.ndarray`` of length
+    ``n``, filling with ``default`` on missing keys or non-array values to
+    preserve the contract of the pre-refactor per-point loop.
+    """
+    if isinstance(result, dict):
+        val = result.get(key)
+    else:
+        val = getattr(result, key, None)
+    if val is None:
+        return np.full(n, default, dtype=float)
+    arr = np.asarray(val, dtype=float).ravel()
+    if arr.size == n:
+        return arr
+    if arr.size == 1 and n == 1:
+        return arr.reshape(1)
+    # Shape mismatch (shouldn't happen with current ASB) — fall back to
+    # default so a downstream NaN-aware consumer can still proceed.
+    return np.full(n, default, dtype=float)
 
 
 def _build_rejection(
