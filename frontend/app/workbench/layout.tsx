@@ -5,6 +5,7 @@ import { AeroplaneProvider } from "@/components/workbench/AeroplaneContext";
 import { UnsavedChangesProvider } from "@/components/workbench/UnsavedChangesContext";
 import { UnsavedChangesModal } from "@/components/workbench/UnsavedChangesModal";
 import { AeroplanePickerHost } from "@/components/workbench/AeroplanePickerHost";
+import { WorkbenchImportWarningBanner } from "@/components/workbench/WorkbenchImportWarningBanner";
 
 export default function WorkbenchLayout({
   children,
@@ -17,6 +18,9 @@ export default function WorkbenchLayout({
         <UnsavedChangesProvider>
           <div className="flex h-full flex-col bg-background text-foreground font-[family-name:var(--font-geist-sans)]">
             <Header />
+            <div className="px-4 pt-4">
+              <WorkbenchImportWarningBanner />
+            </div>
             <main className="flex flex-1 overflow-hidden p-4 gap-4">
               {children}
             </main>

@@ -12,6 +12,12 @@ import { API_BASE } from "@/lib/fetcher";
  * `onImported` callback receives the response envelope so the parent
  * can navigate to the new aeroplane and surface warnings via the
  * banner (delivered in gh-648).
+ *
+ * Optional Quick-Scale (gh-695): when ``scaleOption`` is supplied,
+ * the matching query param is appended to the request URL. The
+ * backend translates the option to either a target wingspan or a
+ * direct multiplier on all length-typed fields. Masses are
+ * intentionally NOT scaled (see backend service docstring).
  */
 export type ImportOpenVspWarning = {
   component_type: string;
@@ -30,18 +36,48 @@ export type ImportOpenVspResponse = {
   lossy_components: string[];
 };
 
+/**
+ * Optional scaling instruction for the import request.
+ *
+ * - ``none``        — import as-is, no rescale.
+ * - ``target_span`` — rescale to the requested wingspan in metres.
+ * - ``scale_factor``— multiply all length-typed fields by the factor.
+ *
+ * Both ``target_span_m`` and ``scale_factor`` are validated server-side
+ * (out-of-range → 422). The UI should also enforce reasonable bounds
+ * to prevent obvious mistakes.
+ */
+export type ScaleOption =
+  | { mode: "none" }
+  | { mode: "target_span"; target_span_m: number }
+  | { mode: "scale_factor"; scale_factor: number };
+
 type Props = {
   onImported?: (response: ImportOpenVspResponse) => void;
   onError?: (message: string) => void;
   className?: string;
   label?: string;
+  scaleOption?: ScaleOption;
 };
+
+function buildImportUrl(scaleOption?: ScaleOption): string {
+  const base = `${API_BASE}/api/v2/import/openvsp`;
+  if (!scaleOption || scaleOption.mode === "none") return base;
+  const params = new URLSearchParams();
+  if (scaleOption.mode === "target_span") {
+    params.set("target_span_m", String(scaleOption.target_span_m));
+  } else if (scaleOption.mode === "scale_factor") {
+    params.set("scale_factor", String(scaleOption.scale_factor));
+  }
+  return `${base}?${params.toString()}`;
+}
 
 export default function ImportOpenVspButton({
   onImported,
   onError,
   className = "",
   label = "Import OpenVSP .vsp3",
+  scaleOption,
 }: Props) {
   const inputRef = useRef<HTMLInputElement | null>(null);
   const [uploading, setUploading] = useState(false);
@@ -55,7 +91,7 @@ export default function ImportOpenVspButton({
     try {
       const form = new FormData();
       form.append("file", file);
-      const res = await fetch(`${API_BASE}/api/v2/import/openvsp`, {
+      const res = await fetch(buildImportUrl(scaleOption), {
         method: "POST",
         body: form,
       });

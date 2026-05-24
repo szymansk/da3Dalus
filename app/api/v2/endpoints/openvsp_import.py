@@ -1,17 +1,25 @@
-"""REST endpoint for the OpenVSP `.vsp3` importer (gh-646).
+"""REST endpoint for the OpenVSP `.vsp3` importer (gh-646, scaling in gh-695).
 
 POST ``/api/v2/import/openvsp`` accepts a multipart upload, parses
 it via :func:`app.services.openvsp_import_service.import_openvsp_file`,
 and returns a JSON envelope with the created aeroplane uuid plus
 any import warnings.
 
+Optional Quick-Scale query parameters (gh-695, mutually exclusive):
+
+* ``?target_span_m=<float>`` — rescale so the largest wing physical
+  span equals this value (in metres).
+* ``?scale_factor=<float>`` — multiply all length-typed fields.
+
 Returns:
 
 * **201** with response body when the import succeeds (even with
   warnings).
-* **400** when the uploaded file isn't ``.vsp3``.
+* **400** when the uploaded file isn't ``.vsp3`` OR when both scaling
+  params are supplied (mutex violation).
 * **413** when the upload exceeds the size cap.
-* **422** when the file is malformed.
+* **422** when the file is malformed OR scaling inputs are out of
+  range / target_span_m requested with no wings.
 * **503** when the optional ``openvsp`` package isn't installed.
 """
 
@@ -21,14 +29,15 @@ import asyncio
 import logging
 import tempfile
 from pathlib import Path
-from typing import Annotated
+from typing import Annotated, Optional
 
-from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
+from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile, status
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
 from app.db.session import get_db
 from app.services import openvsp_import_service
+from app.services.openvsp_import_service import ScaleValidationError
 
 logger = logging.getLogger(__name__)
 
@@ -71,6 +80,27 @@ class OpenVspImportResponseModel(BaseModel):
 async def import_openvsp(
     file: Annotated[UploadFile, File(..., description="OpenVSP .vsp3 file")],
     db: Annotated[Session, Depends(get_db)],
+    target_span_m: Annotated[
+        Optional[float],
+        Query(
+            description=(
+                "Optional: rescale the imported aeroplane so the largest "
+                "wing physical span equals this value in metres. Mutually "
+                "exclusive with scale_factor. Range: (0.1, 50)."
+            ),
+        ),
+    ] = None,
+    scale_factor: Annotated[
+        Optional[float],
+        Query(
+            description=(
+                "Optional: multiply all length-typed fields (positions, "
+                "chords, fuselage radii, weight-item positions) by this "
+                "factor. Mutually exclusive with target_span_m. "
+                "Range: (0.001, 10). Masses are NOT scaled."
+            ),
+        ),
+    ] = None,
 ) -> OpenVspImportResponseModel:
     """Import an OpenVSP ``.vsp3`` file as a new aeroplane.
 
@@ -93,6 +123,18 @@ async def import_openvsp(
             detail="Expected a .vsp3 file upload.",
         )
 
+    # Mutex check is cheap and translates to 400 (request-shape error
+    # — the user supplied two contradictory parameters). Out-of-range
+    # checks happen inside the service and surface as 422 below.
+    if target_span_m is not None and scale_factor is not None:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=(
+                "target_span_m and scale_factor are mutually exclusive; "
+                "specify at most one."
+            ),
+        )
+
     raw = await file.read()
     if len(raw) > _MAX_FILE_SIZE_BYTES:
         raise HTTPException(
@@ -112,7 +154,11 @@ async def import_openvsp(
 
     try:
         response = await asyncio.to_thread(
-            openvsp_import_service.import_openvsp_file, db, tmp_path
+            openvsp_import_service.import_openvsp_file,
+            db,
+            tmp_path,
+            target_span_m=target_span_m,
+            scale_factor=scale_factor,
         )
     except FileNotFoundError as exc:
         raise HTTPException(
@@ -122,6 +168,14 @@ async def import_openvsp(
     except ImportError as exc:
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=str(exc)
+        ) from exc
+    except ScaleValidationError as exc:
+        # Out-of-range scale params / no-wings → 422 (semantic error
+        # in otherwise well-formed request). Distinct from the 400
+        # mutex-check above which guards request shape.
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=str(exc),
         ) from exc
     except Exception as exc:  # noqa: BLE001 — translate to 422 with hint
         logger.exception("OpenVSP import failed")

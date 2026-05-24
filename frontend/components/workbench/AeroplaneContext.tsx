@@ -11,7 +11,21 @@ import {
 import { useSearchParams, useRouter, usePathname } from "next/navigation";
 import type { ReactNode } from "react";
 
+import type { ImportOpenVspWarning } from "@/components/workbench/ImportOpenVspButton";
+
 export type TreeMode = "wingconfig" | "asb" | "fuselage";
+
+/**
+ * Snapshot of the most recent OpenVSP import (gh-695). Captured by
+ * the picker host on a successful upload and consumed by the
+ * workbench layout's ``ImportWarningBanner``. Cleared (or replaced)
+ * on the next import. Persists in memory only — the banner has its
+ * own per-uuid localStorage dismiss flag.
+ */
+export interface LastImportWarnings {
+  uuid: string;
+  warnings: ImportOpenVspWarning[];
+}
 
 interface AeroplaneContextValue {
   aeroplaneId: string | null;
@@ -22,6 +36,7 @@ interface AeroplaneContextValue {
   selectedFuselageXsecIndex: number | null;
   treeMode: TreeMode;
   pickerOpen: boolean;
+  lastImportWarnings: LastImportWarnings | null;
   setAeroplaneId: (id: string | null) => void;
   selectWing: (name: string | null) => void;
   selectXsec: (index: number | null) => void;
@@ -30,6 +45,7 @@ interface AeroplaneContextValue {
   setTreeMode: (mode: TreeMode) => void;
   openPicker: () => void;
   closePicker: () => void;
+  setLastImportWarnings: (value: LastImportWarnings | null) => void;
 }
 
 const Ctx = createContext<AeroplaneContextValue | null>(null);
@@ -49,6 +65,8 @@ export function AeroplaneProvider({ children }: Readonly<{ children: ReactNode }
   const [treeMode, setTreeMode] = useState<TreeMode>("wingconfig");
   const [hydrated, setHydrated] = useState(false);
   const [pickerOpen, setPickerOpen] = useState(false);
+  const [lastImportWarnings, setLastImportWarnings] =
+    useState<LastImportWarnings | null>(null);
   const openPicker = useCallback(() => setPickerOpen(true), []);
   const closePicker = useCallback(() => setPickerOpen(false), []);
 
@@ -118,6 +136,7 @@ export function AeroplaneProvider({ children }: Readonly<{ children: ReactNode }
     selectedFuselageXsecIndex,
     treeMode,
     pickerOpen,
+    lastImportWarnings,
     setAeroplaneId,
     selectWing,
     selectXsec,
@@ -126,6 +145,7 @@ export function AeroplaneProvider({ children }: Readonly<{ children: ReactNode }
     setTreeMode,
     openPicker,
     closePicker,
+    setLastImportWarnings,
   }), [
     aeroplaneId,
     hydrated,
@@ -135,6 +155,7 @@ export function AeroplaneProvider({ children }: Readonly<{ children: ReactNode }
     selectedFuselageXsecIndex,
     treeMode,
     pickerOpen,
+    lastImportWarnings,
     setAeroplaneId,
     selectWing,
     selectXsec,

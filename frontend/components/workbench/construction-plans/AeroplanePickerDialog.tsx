@@ -4,6 +4,11 @@ import { useState } from "react";
 import { Search, ChevronDown, X, Trash2 } from "lucide-react";
 import { useDialog } from "@/hooks/useDialog";
 import type { Aeroplane } from "@/hooks/useAeroplanes";
+import ImportOpenVspButton, {
+  type ImportOpenVspResponse,
+  type ScaleOption,
+} from "@/components/workbench/ImportOpenVspButton";
+import { ImportScaleInputs } from "@/components/workbench/ImportScaleInputs";
 
 interface AeroplanePickerDialogProps {
   open: boolean;
@@ -14,6 +19,13 @@ interface AeroplanePickerDialogProps {
   onSelect: (aeroplaneId: string) => Promise<void> | void;
   onDelete?: (aeroplaneId: string) => Promise<void>;
   onCreate?: (name: string) => Promise<void>;
+  /**
+   * Optional callback invoked after a successful OpenVSP `.vsp3` upload
+   * (gh-695). Receives the full import-response envelope; the host
+   * (typically ``AeroplanePickerHost``) is responsible for selecting
+   * the new aeroplane, closing the dialog, and surfacing any warnings.
+   */
+  onImport?: (response: ImportOpenVspResponse) => void;
 }
 
 export function AeroplanePickerDialog({
@@ -25,11 +37,20 @@ export function AeroplanePickerDialog({
   onSelect,
   onDelete,
   onCreate,
+  onImport,
 }: Readonly<AeroplanePickerDialogProps>) {
   const { dialogRef, handleClose } = useDialog(open, onClose);
   const [search, setSearch] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState<Aeroplane | null>(null);
+  // gh-695: Scale-option state co-lives with the picker so the user
+  // can pick a mode before triggering the file dialog. Default "none"
+  // matches the import-as-is contract.
+  const [scaleOption, setScaleOption] = useState<ScaleOption>({ mode: "none" });
+  // Local error surface for OpenVSP-specific failures (503 if openvsp
+  // isn't installed, 422 if the file is malformed, etc.). Keeps the
+  // dialog open so the user can retry without losing context.
+  const [importError, setImportError] = useState<string | null>(null);
 
   const filtered = aeroplanes.filter((a) =>
     a.name.toLowerCase().includes(search.toLowerCase()),
@@ -178,16 +199,49 @@ export function AeroplanePickerDialog({
           </div>
 
           {/* Footer */}
-          {onCreate && (
-            <div className="border-t border-border px-6 py-4">
-              <button
-                type="button"
-                disabled={submitting}
-                onClick={handleCreate}
-                className="w-full rounded-full bg-primary px-4 py-2.5 text-[13px] text-primary-foreground hover:opacity-90 disabled:opacity-50"
-              >
-                + Create New
-              </button>
+          {(onCreate || onImport) && (
+            <div className="border-t border-border px-6 py-4 space-y-3">
+              {onImport && (
+                <ImportScaleInputs
+                  value={scaleOption}
+                  onChange={setScaleOption}
+                  disabled={submitting}
+                />
+              )}
+              {importError && (
+                <p
+                  role="alert"
+                  data-testid="aeroplane-picker-import-error"
+                  className="rounded border border-red-500/40 bg-red-500/10 px-3 py-2 text-[12px] text-red-300"
+                >
+                  {importError}
+                </p>
+              )}
+              <div className="flex gap-2">
+                {onCreate && (
+                  <button
+                    type="button"
+                    disabled={submitting}
+                    onClick={handleCreate}
+                    className="flex-[2] rounded-full bg-primary px-4 py-2.5 text-[13px] text-primary-foreground hover:opacity-90 disabled:opacity-50"
+                    data-testid="aeroplane-picker-create-button"
+                  >
+                    + Create New
+                  </button>
+                )}
+                {onImport && (
+                  <ImportOpenVspButton
+                    label="Import .vsp3"
+                    scaleOption={scaleOption}
+                    className="flex-1 rounded-full bg-input/40 text-foreground hover:bg-sidebar-accent"
+                    onImported={(response) => {
+                      setImportError(null);
+                      onImport(response);
+                    }}
+                    onError={(message) => setImportError(message)}
+                  />
+                )}
+              </div>
             </div>
           )}
         </div>
