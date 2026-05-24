@@ -12,94 +12,162 @@ environment.**
 
 [openvsp-pkg]: https://pypi.org/project/openvsp/
 
+> **Quick path for da3Dalus contributors on macOS arm64 / Python 3.11:**
+> a pre-built wheel is published on the project's GitHub Releases. See
+> **Option A.1** below.
+
 ---
 
-## Option A — PyPI wheel (preferred)
+## Option A — Pre-built wheel from GitHub Releases (preferred)
 
-The cleanest path: a published wheel matches our Python version.
+Pre-built wheels for the configurations we actively support are
+attached as assets on releases tagged `openvsp-wheels-<version>` of
+this repository.
+
+### A.1 Install the pre-built wheel
 
 ```bash
-poetry run pip install openvsp
+# Replace VERSION + PYTAG + PLATTAG with the asset matching your env.
+poetry run pip install \
+  https://github.com/szymansk/da3Dalus/releases/download/openvsp-wheels-3.50.4/openvsp-3.50.4-cp311-cp311-macosx_14_0_arm64.whl
+
+# Smoke test:
 poetry run python -c "import openvsp; print(openvsp.GetVSPVersion())"
 ```
 
-> **Why `pip` and not `poetry add`?** The `openvsp` PyPI entry is a
-> placeholder with no installable distribution for any currently
-> supported Python (as of 2026-05). Declaring it in `pyproject.toml`
-> — even in an optional group — breaks `poetry lock` for everyone.
-> We therefore treat it as an **out-of-tree** install, manually
-> applied after `poetry install`, only when a wheel becomes
-> available.
+Supported wheel matrix (as of writing):
 
-**When this works:** the OpenVSP release ships a wheel for CPython
-3.11 or 3.12. As of writing (May 2026) this is **not** the case — the
-latest published `openvsp` wheels target older Python versions.
+| OpenVSP | Python | Platform                     | Notes                          |
+|---------|--------|------------------------------|--------------------------------|
+| 3.50.4  | 3.11   | `macosx_14_0_arm64`          | Apple Silicon, headless build |
 
-**Verify:**
+If your combination is not listed, fall back to **Option B**.
+
+### A.2 If/when PyPI publishes a matching wheel
 
 ```bash
-poetry run python -c "from app.converters.openvsp_adapter import is_available; print(is_available())"
-# Expected: True
+poetry run pip install openvsp
 ```
+
+> **Why not `poetry add`?** The `openvsp` PyPI entry has historically
+> been a placeholder with no installable distribution for any
+> currently supported Python. Declaring it in `pyproject.toml` —
+> even in an optional group — breaks `poetry lock` for everyone. We
+> therefore treat it as an out-of-tree install, manually applied
+> after `poetry install`.
 
 ---
 
-## Option B — Build from source against our Python (recommended fallback)
+## Option B — Build from source (when no wheel matches your env)
 
-When no matching wheel is on PyPI, build the SWIG bindings against
-our Python interpreter and vendor the resulting wheel.
-
-### Prerequisites
-
-- C++17 compiler (gcc 11+, clang 14+, or MSVC 2019+)
-- CMake 3.24+
-- SWIG 4.0+
-- The Python development headers for **our** Python version (3.11.x
-  or 3.12.x) — on macOS: `brew install python@3.11`; on Debian:
-  `sudo apt install python3.11-dev`.
-
-### Build steps
+Run the helper script (`scripts/build_openvsp_wheel.sh`) which
+automates the steps below:
 
 ```bash
-# 1. Clone OpenVSP at the version you want to track.
-git clone --depth 1 --branch OpenVSP_3.41.2 https://github.com/OpenVSP/OpenVSP.git
-cd OpenVSP
-
-# 2. Configure for our Python interpreter — POINT IT EXPLICITLY.
-mkdir build && cd build
-cmake -DCMAKE_BUILD_TYPE=Release \
-      -DVSP_USE_SYSTEM_PYTHON=ON \
-      -DPython3_EXECUTABLE=$(poetry run which python) \
-      -DVSP_NO_GRAPHICS=ON \
-      ../Libraries
-cmake --build . --parallel
-cmake -DCMAKE_BUILD_TYPE=Release \
-      -DVSP_USE_SYSTEM_PYTHON=ON \
-      -DPython3_EXECUTABLE=$(poetry run which python) \
-      -DCMAKE_INSTALL_PREFIX=../install \
-      ../src
-cmake --build . --parallel --target install
-
-# 3. Build the Python wheel.
-cd ../src/python_api/packages/openvsp
-$(poetry run which python) -m build --wheel
-
-# 4. Vendor the wheel into the da3Dalus repo.
-cp dist/openvsp-*.whl /path/to/cad-modelling-service/vendor/openvsp/
+scripts/build_openvsp_wheel.sh                  # OpenVSP_3.50.4 (default)
+scripts/build_openvsp_wheel.sh 3.49.0           # specific version
 ```
 
-### Install the vendored wheel
+The script handles everything: install pinned CMake, configure
+SuperProject, build, vendor the wheel, install into Poetry env, smoke
+test.
+
+### Manual build steps (for reference)
+
+If you prefer to drive it by hand or are debugging the script:
 
 ```bash
-cd /path/to/cad-modelling-service
+# 1. Build dependencies
+brew install swig
+# CMake 3.x — NOT 4.x; see "Pitfalls" below. Quick install:
+python3 -m venv /tmp/cmake-old-env
+/tmp/cmake-old-env/bin/pip install cmake==3.31.6
+export PATH="/tmp/cmake-old-env/bin:$PATH"
+
+# 2. Clone OpenVSP at the version you want.
+git clone --depth 1 --branch OpenVSP_3.50.4 \
+  https://github.com/OpenVSP/OpenVSP.git /tmp/openvsp-build/OpenVSP
+
+# 3. Resolve Python paths (point at the Poetry venv).
+PYBIN=$(poetry run which python)
+PYINC=$(poetry run python -c 'import sysconfig; print(sysconfig.get_paths()["include"])')
+PYLIBDIR=$(poetry run python -c 'import sysconfig; print(sysconfig.get_config_var("LIBDIR"))')
+PYLIB="$PYLIBDIR/libpython3.11.dylib"   # adjust suffix for Linux (.so)
+
+# 4. Configure SuperProject (unified Libraries + main build).
+mkdir -p /tmp/openvsp-build/build && cd /tmp/openvsp-build/build
+cmake -DCMAKE_BUILD_TYPE=Release \
+      -DVSP_NO_GRAPHICS=ON \
+      -DVSP_NO_VSPAERO=ON \
+      -DVSP_NO_PYDOC=ON \
+      -DVSP_NO_HELP=ON \
+      -DVSP_NO_DOC=ON \
+      -DPYTHON_EXECUTABLE="$PYBIN" \
+      -DPYTHON_INCLUDE_DIR="$PYINC" \
+      -DPYTHON_LIBRARY="$PYLIB" \
+      /tmp/openvsp-build/OpenVSP/SuperProject
+
+# 5. Build (30-60 min on Apple Silicon).
+cmake --build . --parallel $(sysctl -n hw.ncpu)
+
+# 6. Locate the wheel and vendor it.
+find . -name 'openvsp-*.whl' -exec cp {} vendor/openvsp/ \;
 poetry run pip install vendor/openvsp/openvsp-*.whl
 poetry run python -c "import openvsp; print(openvsp.GetVSPVersion())"
 ```
 
-Do **not** add the vendored wheel to the Poetry `openvsp` group —
-that group remains pointed at PyPI for the day a matching wheel
-appears there. Vendored installs are tracked as a manual step in the
-README setup checklist.
+### Build-time options we use
+
+| Flag | Why |
+|---|---|
+| `-DVSP_NO_GRAPHICS=ON` | Skip FLTK / OpenGL — we never render the OpenVSP GUI. |
+| `-DVSP_NO_VSPAERO=ON` | Skip VSPAERO solver. Uses OpenMP, which Apple clang lacks by default. Our import only needs geometry parsing. |
+| `-DVSP_NO_PYDOC=ON` | Skip Sphinx-based Python docs (Sphinx is not in our Poetry venv). |
+| `-DVSP_NO_HELP=ON` / `-DVSP_NO_DOC=ON` | Skip user-manual generation. |
+
+### Pitfalls
+
+#### CMake 4.x breaks the build
+
+CMake 4.x removed compatibility with `cmake_minimum_required(VERSION
+<3.5)`. Two of OpenVSP's bundled third-party dependencies (CODEELI,
+STEPCODE) still declare older minimums and fail to configure:
+
+```
+CMake Error at CMakeLists.txt:13 (cmake_minimum_required):
+  Compatibility with CMake < 3.5 has been removed from CMake.
+```
+
+**Fix:** use CMake 3.x. Easiest install method that doesn't touch
+the system:
+
+```bash
+python3 -m venv /tmp/cmake-old-env
+/tmp/cmake-old-env/bin/pip install cmake==3.31.6
+export PATH="/tmp/cmake-old-env/bin:$PATH"
+```
+
+Then re-run the configure step. CMake 3.31 happily handles both
+modern (OpenVSP 3.50) and old (CODEELI 0.0.0) projects.
+
+The helper script `scripts/build_openvsp_wheel.sh` auto-detects
+this case and installs the pinned CMake when it sees CMake 4+ on the
+PATH.
+
+#### Anaconda Python vs system Python
+
+`poetry env info --path` may show an anaconda-rooted venv. Make sure
+`PYTHON_LIBRARY` points at the **anaconda** `libpython3.x.dylib`,
+not the macOS framework Python. Mismatched library → wheel imports
+but segfaults on any C call.
+
+#### Sphinx, VSPAERO, and other optional pieces
+
+If you DON'T pass `VSP_NO_PYDOC`, the build will fail at the
+documentation step unless `sphinx` is in the active Python env. If
+you DON'T pass `VSP_NO_VSPAERO`, the build will fail on macOS
+because Apple clang doesn't bundle OpenMP. We skip both because the
+importer only needs the geometry-parsing API.
 
 ---
 
@@ -114,7 +182,7 @@ own compatible Python, and call it over HTTP.
 ```
 +-------------------+        HTTP        +--------------------+
 | da3Dalus backend  |  -- POST /parse -->|  openvsp-service   |
-| (Python 3.11/12)  |  <-- AeroplaneJSON | (Python 3.6, vsp.) |
+| (Python 3.11/12)  |  <-- AeroplaneJSON | (Python 3.x, vsp.) |
 +-------------------+                    +--------------------+
 ```
 
@@ -126,8 +194,36 @@ pattern — we can swap the local `import openvsp` for an HTTP client
 without touching the rest of the importer.
 
 A reference Dockerfile is **not** part of Phase 1 (gh-637 MVP). When
-Option A or B both fail in production, file a ticket against EPIC B
-(#638) to add the microservice fallback.
+Options A and B both fail in production, file a ticket against EPIC
+B (#638) to add the microservice fallback.
+
+---
+
+## Publishing a built wheel to a GitHub Release (for redistribution)
+
+Once you have a working wheel in `vendor/openvsp/`, share it with
+the team via a GitHub Release:
+
+```bash
+# Tag format: openvsp-wheels-<OpenVSP version>
+gh release create openvsp-wheels-3.50.4 \
+  vendor/openvsp/openvsp-3.50.4-cp311-cp311-macosx_14_0_arm64.whl \
+  --title "OpenVSP 3.50.4 Python wheels" \
+  --notes "Pre-built wheels for the OpenVSP 3.50.4 Python bindings.
+
+Built headless (no GUI, no VSPAERO, no Sphinx). See
+docs/md/openvsp-import-setup.md for the build commands.
+
+Install:
+  poetry run pip install <asset-url>"
+```
+
+Other developers (or this repo's CI in the future) can then install
+the wheel via Option A.1.
+
+License note: OpenVSP is **NASA Open Source Agreement (NOSA) 1.3**
+— redistribution of built binaries is explicitly permitted. No
+attribution headers required in the wheel itself.
 
 ---
 
@@ -143,6 +239,14 @@ All non-`SKIP` tests must pass. The smoke test
 `TestSmoke::test_real_openvsp_smoke` will run instead of being
 skipped — verifying that `vsp.ClearVSPModel` and `vsp.GetVSPVersion`
 both resolve.
+
+End-to-end via the REST endpoint:
+
+```bash
+curl -X POST http://localhost:8001/api/v2/import/openvsp \
+  -F "file=@some-model.vsp3"
+# Expect: 200 with {"aeroplane_uuid": "...", ...} (not 503)
+```
 
 ---
 
@@ -165,15 +269,25 @@ rebuild via Option B.
 
 ### `vsp.ClearVSPModel()` segfaults
 
-Likely a version mismatch between the SWIG bindings and the native
-`libvsp.so` / `libvsp.dylib`. Rebuild both from the same source tree
-via Option B.
+Likely a Python-library mismatch — the SWIG wheel was linked against
+a different `libpython3.x.dylib` than the one running. Common cause:
+mixing anaconda and macOS framework Python. Rebuild from source
+pointing `PYTHON_LIBRARY` at the same `libpython` the Poetry env
+uses.
+
+### Endpoint returns 503
+
+The `openvsp` package isn't visible to the FastAPI worker. Restart
+the server after installing the wheel — Python caches imported
+modules at process start.
 
 ---
 
 ## Related
 
 - Issue: gh-639 — install-strategy ticket
-- Epic: gh-637 — OpenVSP `.vsp3` importer Phase 1
+- Epic: gh-637 — OpenVSP `.vsp3` importer Phase 1 (MVP, merged)
 - Adapter shim: `app/converters/openvsp_adapter.py`
+- Build script: `scripts/build_openvsp_wheel.sh`
+- Vendor dir: `vendor/openvsp/`
 - Scope note: `~/.claude/projects/.../memory/feedback_openvsp_import_rc_scope.md`

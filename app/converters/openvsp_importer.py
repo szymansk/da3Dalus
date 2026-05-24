@@ -173,9 +173,47 @@ _HANDLERS: dict[str, HandlerFn] = {}
 _POST_PASSES: list[PostPassFn] = []
 
 
+# OpenVSP's `GetGeomTypeName(gid)` returns Title-Case display names
+# (e.g. "Wing", "Fuselage", "Propeller", "BodyOfRevolution"), even
+# though `AddGeom()` and `GetGeomTypes()` use UPPERCASE tokens
+# ("WING", "FUSELAGE", "PROP", "BODYOFREVOLUTION"). Discovered during
+# real-OpenVSP smoke testing — confirmed against OpenVSP 3.50.4.
+# We canonicalize to the uppercase tokens so handler registrations,
+# unsupported-reasons, and test mocks all use one consistent key.
+# Falls back to ``.upper()`` for unknown display names — forward-compat
+# with future OpenVSP additions.
+_DISPLAY_TO_CANONICAL: dict[str, str] = {
+    "Wing": "WING",
+    "Fuselage": "FUSELAGE",
+    "Pod": "POD",
+    "Stack": "STACK",
+    "Blank": "BLANK",
+    "Ellipsoid": "ELLIPSOID",
+    "BodyOfRevolution": "BOR",
+    "Human": "HUMAN",
+    "Propeller": "PROP",
+    "Gear": "GEAR",
+    "Hinge": "HINGE",
+    "Conformal": "CONFORMAL",
+    "Routing": "ROUTING",
+    "Auxiliary": "AUXILIARY",
+    "Cobra": "COBRA",
+}
+
+
+def _canonicalize_geom_type(display_name: str) -> str:
+    """Map OpenVSP's display name → canonical uppercase type token."""
+    return _DISPLAY_TO_CANONICAL.get(display_name, display_name.upper())
+
+
 def register_handler(geom_type: str, handler: HandlerFn) -> None:
-    """Register a handler for a VSP geom type (``"WING"``, ``"FUSELAGE"``, ...)."""
-    _HANDLERS[geom_type] = handler
+    """Register a handler for a VSP geom type (``"WING"``, ``"FUSELAGE"``, ...).
+
+    The ``geom_type`` is the canonical uppercase token. ``register_handler``
+    will normalize Title-Case input for safety, but registrations should
+    use UPPERCASE for consistency with ``_UNSUPPORTED_REASONS``.
+    """
+    _HANDLERS[_canonicalize_geom_type(geom_type)] = handler
 
 
 def register_post_pass(fn: PostPassFn) -> None:
@@ -288,13 +326,23 @@ def import_vsp3(path: Path) -> ImportResult:
     vsp.ClearVSPModel()
     vsp.ReadVSPFile(str(path))
 
-    # Read original unit BEFORE asking OpenVSP to rescale.
+    # Read original unit (advisory only — OpenVSP 3.50+ removed the
+    # vehicle-level LengthUnit parm; values are stored in user-defined
+    # units with no in-file annotation). The importer treats stored
+    # values as already-in-metres for our RC-scaling use case (user
+    # rescales the imported aeroplane to target wingspan anyway). If
+    # `_read_source_length_unit` finds a unit parm on an older VSP
+    # file, we record it on the ImportContext for transparency.
     vehicle_id = vsp.GetVehicleID()
     source_unit = _read_source_length_unit(vsp, vehicle_id)
     source_scale = LEN_UNIT_TO_METERS.get(source_unit) if source_unit is not None else None
 
-    # Ask OpenVSP to rescale all length parms to metres.
-    vsp.SetLengthUnit(vsp.LEN_M)
+    # `vsp.SetLengthUnit` was removed in OpenVSP 3.50 — earlier code
+    # called it to rescale all length parms. Modern OpenVSP has no
+    # equivalent; the model carries dimensionless numeric values that
+    # the caller (file author) interprets.
+    if hasattr(vsp, "SetLengthUnit"):  # pragma: no cover - legacy path
+        vsp.SetLengthUnit(vsp.LEN_M)
     vsp.Update()
 
     ctx = ImportContext(
@@ -308,7 +356,7 @@ def import_vsp3(path: Path) -> ImportResult:
     # ``register_handler``. Unknown / unsupported geoms become
     # warnings (#648 surfaces them in the UI).
     for gid in vsp.FindGeoms():
-        type_name = vsp.GetGeomTypeName(gid)
+        type_name = _canonicalize_geom_type(vsp.GetGeomTypeName(gid))
         name = vsp.GetGeomName(gid) or gid
         handler = _HANDLERS.get(type_name)
         if handler is not None:
