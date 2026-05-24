@@ -18,6 +18,7 @@ Scope (per ``feedback_openvsp_import_rc_scope``)
 
 from __future__ import annotations
 
+import math
 from pathlib import Path
 from types import ModuleType
 from typing import Optional
@@ -27,6 +28,10 @@ from app.converters.openvsp_importer import ImportContext
 
 # Resolves at import time. Tests monkeypatch this to a tmp directory.
 AIRFOILS_DIR: Path = Path("components") / "airfoils"
+
+# Cosine-spaced default resolution for generated NACA .dat files.
+# Matches the density of the hand-curated files in components/airfoils.
+_NACA_DAT_HALF_POINTS = 80
 
 
 # ---------------------------------------------------------------------------
@@ -80,6 +85,114 @@ def naca_16series_name(*, camber: float, thick_chord: float) -> str:
     c = round(camber * 100)
     t = round(thick_chord * 100)
     return f"naca16-{c:d}{t:02d}"
+
+
+# ---------------------------------------------------------------------------
+# NACA 4-digit .dat generation (gh-700)
+# ---------------------------------------------------------------------------
+
+
+def _naca4_thickness_offset(x: float, thickness: float) -> float:
+    """Standard NACA 4-digit half-thickness distribution.
+
+    Uses the open-TE coefficient (-0.1015) consistent with Selig data;
+    callers that need a closed TE can chop the last point or use
+    -0.1036 instead.
+    """
+    return 5 * thickness * (
+        0.2969 * math.sqrt(max(x, 0.0))
+        - 0.1260 * x
+        - 0.3516 * x * x
+        + 0.2843 * x * x * x
+        - 0.1015 * x * x * x * x
+    )
+
+
+def _naca4_camber_line(
+    x: float, camber: float, camber_loc: float
+) -> tuple[float, float]:
+    """Returns ``(y_camber, dy/dx)`` for the NACA 4-digit camber line.
+
+    Symmetric airfoils (camber == 0) and the degenerate case
+    camber_loc == 0 both produce ``(0.0, 0.0)``. The piecewise quadratic
+    matches the canonical NACA definition.
+    """
+    if camber == 0 or camber_loc == 0:
+        return 0.0, 0.0
+    if x <= camber_loc:
+        yc = (camber / (camber_loc ** 2)) * (2 * camber_loc * x - x * x)
+        dyc = (2 * camber / (camber_loc ** 2)) * (camber_loc - x)
+    else:
+        denom = (1 - camber_loc) ** 2
+        yc = (camber / denom) * ((1 - 2 * camber_loc) + 2 * camber_loc * x - x * x)
+        dyc = (2 * camber / denom) * (camber_loc - x)
+    return yc, dyc
+
+
+def naca4_coordinates(
+    *,
+    camber: float,
+    camber_loc: float,
+    thick_chord: float,
+    n_half: int = _NACA_DAT_HALF_POINTS,
+) -> list[tuple[float, float]]:
+    """Generate Selig-format coordinates for a NACA 4-digit airfoil.
+
+    Returns ``n_half * 2 + 1`` points (cosine-spaced over each surface,
+    sharing the LE point). Order: TE → upper → LE → lower → TE — the
+    Selig convention all existing files in ``components/airfoils`` use.
+    """
+    upper: list[tuple[float, float]] = []
+    lower: list[tuple[float, float]] = []
+    for i in range(n_half + 1):
+        beta = math.pi * i / n_half
+        x = 0.5 * (1.0 - math.cos(beta))
+        yt = _naca4_thickness_offset(x, thick_chord)
+        yc, dyc = _naca4_camber_line(x, camber, camber_loc)
+        theta = math.atan(dyc)
+        sin_t = math.sin(theta)
+        cos_t = math.cos(theta)
+        upper.append((x - yt * sin_t, yc + yt * cos_t))
+        lower.append((x + yt * sin_t, yc - yt * cos_t))
+    # Selig: TE → upper-surface → LE → lower-surface → TE.
+    # Reverse upper so we walk from TE to LE; share the LE point.
+    return list(reversed(upper)) + lower[1:]
+
+
+def ensure_naca4_dat(
+    *,
+    name: str,
+    camber: float,
+    camber_loc: float,
+    thick_chord: float,
+    airfoils_dir: Path | None = None,
+) -> Path:
+    """Write ``{airfoils_dir}/{name}.dat`` if it doesn't already exist.
+
+    Idempotent: returns the path either way. Never raises — on write
+    failure (e.g. read-only fs) it logs nothing and returns the path
+    the caller should record; the downstream renderer will degrade
+    gracefully when the file is missing.
+    """
+    target_dir = airfoils_dir if airfoils_dir is not None else AIRFOILS_DIR
+    target = target_dir / f"{name}.dat"
+    if target.exists():
+        return target
+    try:
+        target_dir.mkdir(parents=True, exist_ok=True)
+        coords = naca4_coordinates(
+            camber=camber, camber_loc=camber_loc, thick_chord=thick_chord
+        )
+        # Header: airfoil name on its own line (XFOIL / Selig convention).
+        header = name.upper().replace("NACA", "NACA ") if name.lower().startswith("naca") else name
+        lines = [header.strip()]
+        for x, y in coords:
+            lines.append(f"{x:.6f}  {y:.6f}")
+        target.write_text("\n".join(lines) + "\n")
+    except OSError:
+        # Read-only fs / permission error — don't crash the import.
+        pass
+    return target
 
 
 # ---------------------------------------------------------------------------
@@ -177,22 +290,44 @@ def import_airfoil_from_xsec(
 
     # ---- NACA 4-series ------------------------------------------------
     if shape == getattr(vsp, "XS_FOUR_SERIES", None):
-        return naca_4series_name(
-            camber=_get_parm(vsp, xs_id, "Camber"),
-            camber_loc=_get_parm(vsp, xs_id, "CamberLoc"),
-            thick_chord=_get_parm(vsp, xs_id, "ThickChord"),
+        camber = _get_parm(vsp, xs_id, "Camber")
+        camber_loc = _get_parm(vsp, xs_id, "CamberLoc")
+        thick_chord = _get_parm(vsp, xs_id, "ThickChord")
+        name = naca_4series_name(
+            camber=camber, camber_loc=camber_loc, thick_chord=thick_chord
         )
+        # gh-700: write a .dat for this NACA-4 profile so the renderer
+        # has something to draw, regardless of whether it's in our
+        # curated airfoil library.
+        ensure_naca4_dat(
+            name=name,
+            camber=camber,
+            camber_loc=camber_loc,
+            thick_chord=thick_chord,
+        )
+        return name
 
     # ---- NACA 4-digit modified ---------------------------------------
     if shape == getattr(vsp, "XS_FOUR_DIGIT_MOD", None):
+        camber = _get_parm(vsp, xs_id, "Camber")
+        camber_loc = _get_parm(vsp, xs_id, "CamberLoc")
+        thick_chord = _get_parm(vsp, xs_id, "ThickChord")
         base = naca_4series_name(
-            camber=_get_parm(vsp, xs_id, "Camber"),
-            camber_loc=_get_parm(vsp, xs_id, "CamberLoc"),
-            thick_chord=_get_parm(vsp, xs_id, "ThickChord"),
+            camber=camber, camber_loc=camber_loc, thick_chord=thick_chord
         )
         # Append the leading-edge-radius/thickness-location modifier
         # (OpenVSP's "modified" parms). Format: "naca2412-mod"
-        return f"{base}-mod"
+        name = f"{base}-mod"
+        # Generate the base 4-digit .dat so the modified-profile at
+        # least has a renderable fallback; the LE/thickness modifiers
+        # are not encoded in the analytical thickness polynomial.
+        ensure_naca4_dat(
+            name=name,
+            camber=camber,
+            camber_loc=camber_loc,
+            thick_chord=thick_chord,
+        )
+        return name
 
     # ---- NACA 5-series + modified ------------------------------------
     if shape == getattr(vsp, "XS_FIVE_DIGIT", None):
