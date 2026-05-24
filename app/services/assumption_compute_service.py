@@ -427,6 +427,13 @@ def recompute_assumptions(db: Session, aeroplane_uuid) -> None:
     v_min_sink = _min_sink_speed(
         mass, s_ref, cd0_effective, aspect_ratio, oswald_e=e_oswald_effective
     )
+    # gh-692: w_min — vertical speed at V_min_sink, derived in closed form
+    # from the same parabolic-polar scalars. Picard iteration below refines
+    # V_min_sink by <5% for healthy polars; we keep w_min on the scalar
+    # average to match how pilots read it off the speed polar chart.
+    min_sink_rate = _min_sink_rate(
+        mass, s_ref, cd0_effective, aspect_ratio, oswald_e=e_oswald_effective
+    )
 
     # V_max from physics if powered (P/W > 0); otherwise fall back to
     # the user-set goal in the flight profile (gliders set max speed
@@ -529,6 +536,8 @@ def recompute_assumptions(db: Session, aeroplane_uuid) -> None:
         "v_s0_mps": round(v_s0, 1) if v_s0 is not None else None,
         "v_md_mps": round(v_md, 1) if v_md is not None else None,
         "v_min_sink_mps": round(v_min_sink, 1) if v_min_sink is not None else None,
+        # gh-692: vertical speed at V_min_sink — Glider/Motorsegler chip.
+        "min_sink_rate_mps": round(min_sink_rate, 2) if min_sink_rate is not None else None,
         # gh-476: extended V-speed set surfaced on the chip row.
         # V_a, V_dive: physics / heuristic (provenance noted in field doc).
         # V_x, V_y: pulled from operating-point rows when they exist;
@@ -1545,6 +1554,37 @@ def _min_sink_speed(
         return None
     weight_n = mass_kg * g
     return float(np.sqrt(2.0 * weight_n / (rho * s_ref_m2 * cl_mp)))
+
+
+def _min_sink_rate(
+    mass_kg: float,
+    s_ref_m2: float,
+    cd0: float,
+    aspect_ratio: float | None,
+    rho: float = 1.225,
+    g: float = 9.81,
+    oswald_e: float = 0.8,
+) -> float | None:
+    """Sea-level minimum sink rate w_min [m/s] — vertical speed at V_min_sink.
+
+    gh-692: the value pilots read off the speed polar as "wieviel Höhe
+    verliere ich pro Sekunde am besten?". Derived in closed form from
+    Anderson §6.7.2 at the min-power point:
+
+        C_L_mp = sqrt(3·π·e·AR·C_D0)
+        C_D_mp = 4·C_D0   (induced drag = 3 × parasitic at this point)
+        (C_D/C_L)_mp = 4·sqrt(C_D0 / (3·π·e·AR))
+        w_min = V_min_sink · (C_D/C_L)_mp
+
+    Same degenerate-input contract as ``_min_sink_speed`` (no wing,
+    zero AR, zero CD0 → None).
+    """
+    v_ms = _min_sink_speed(mass_kg, s_ref_m2, cd0, aspect_ratio, rho=rho, g=g, oswald_e=oswald_e)
+    if v_ms is None:
+        return None
+    # aspect_ratio is guaranteed > 0 here (None / ≤ 0 already returned None above).
+    cd_over_cl = 4.0 * float(np.sqrt(cd0 / (3.0 * np.pi * oswald_e * aspect_ratio)))
+    return float(v_ms * cd_over_cl)
 
 
 def _picard_iterate_speed(

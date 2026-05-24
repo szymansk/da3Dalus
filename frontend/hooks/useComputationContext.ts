@@ -55,6 +55,9 @@ export interface ComputationContext {
   v_md_mps?: number | null;
   // gh-476: extended V-speed set surfaced on the chip row.
   v_min_sink_mps?: number | null;
+  // gh-692: vertical speed at V_min_sink — minimum sink rate the polar can deliver.
+  // Glider/Motorsegler chip; powered aircraft also receive it for completeness.
+  min_sink_rate_mps?: number | null;
   v_a_mps?: number | null;
   v_dive_mps?: number | null;
   v_x_mps?: number | null;

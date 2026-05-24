@@ -137,6 +137,108 @@ describe("Info Chip Row", () => {
     expect(screen.getByRole("group", { name: /V min sink/ })).toBeInTheDocument();
   });
 
+  // gh-692: w_min chip renders the minimum sink rate next to V_min_sink.
+  it("renders w_min chip with min_sink_rate_mps value formatted to 2 dp m/s", async () => {
+    (useComputationContext as ReturnType<typeof vi.fn>).mockReturnValue({
+      data: {
+        v_cruise_mps: 18.0,
+        v_min_sink_mps: 13.2,
+        min_sink_rate_mps: 0.62,
+        reynolds: 230000,
+        mac_m: 0.21,
+        x_np_m: 0.085,
+        target_static_margin: 0.12,
+        cg_agg_m: 0.092,
+      },
+      isLoading: false,
+      error: null,
+    });
+
+    const { InfoChipRow } = await import("@/components/workbench/InfoChipRow");
+    render(<InfoChipRow aeroplaneId="42" cgAero={0.073} />);
+
+    const wMinChip = screen.getByRole("group", { name: /^w min:/ });
+    expect(wMinChip).toBeInTheDocument();
+    expect(wMinChip.textContent).toMatch(/0\.62 m\/s/);
+  });
+
+  it("renders w_min chip with dash when min_sink_rate_mps is missing", async () => {
+    (useComputationContext as ReturnType<typeof vi.fn>).mockReturnValue({
+      data: {
+        v_cruise_mps: 18.0,
+        // min_sink_rate_mps intentionally absent
+        reynolds: 230000,
+        mac_m: 0.21,
+        x_np_m: 0.085,
+        target_static_margin: 0.12,
+        cg_agg_m: 0.092,
+      },
+      isLoading: false,
+      error: null,
+    });
+
+    const { InfoChipRow } = await import("@/components/workbench/InfoChipRow");
+    render(<InfoChipRow aeroplaneId="42" cgAero={0.073} />);
+
+    const wMinChip = screen.getByRole("group", { name: /^w min:/ });
+    expect(wMinChip.textContent).toMatch(/=\s*–/);
+  });
+
+  // gh-692: V_x / V_y hidden for pure gliders (no motor → no climb speeds).
+  it("hides V_x and V_y chips when is_glider is true", async () => {
+    (useComputationContext as ReturnType<typeof vi.fn>).mockReturnValue({
+      data: {
+        v_cruise_mps: 30.0,
+        v_min_sink_mps: 22.0,
+        v_x_mps: null,
+        v_y_mps: null,
+        is_glider: true,
+        reynolds: 800000,
+        mac_m: 0.42,
+        x_np_m: 0.15,
+        target_static_margin: 0.12,
+        cg_agg_m: 0.13,
+      },
+      isLoading: false,
+      error: null,
+    });
+
+    const { InfoChipRow } = await import("@/components/workbench/InfoChipRow");
+    render(<InfoChipRow aeroplaneId="42" cgAero={0.13} />);
+
+    expect(screen.queryByRole("group", { name: /^V x:/ })).toBeNull();
+    expect(screen.queryByRole("group", { name: /^V y:/ })).toBeNull();
+  });
+
+  // gh-692 regression guard — Motorsegler (P/W > 0 → is_glider=false) MUST
+  // keep its V_x / V_y chips even though w_min is also shown.
+  it("renders V_x and V_y chips when is_glider is false", async () => {
+    (useComputationContext as ReturnType<typeof vi.fn>).mockReturnValue({
+      data: {
+        v_cruise_mps: 25.0,
+        v_min_sink_mps: 16.0,
+        min_sink_rate_mps: 0.85,
+        v_x_mps: 14.0,
+        v_y_mps: 18.0,
+        is_glider: false,
+        reynolds: 500000,
+        mac_m: 0.30,
+        x_np_m: 0.11,
+        target_static_margin: 0.12,
+        cg_agg_m: 0.10,
+      },
+      isLoading: false,
+      error: null,
+    });
+
+    const { InfoChipRow } = await import("@/components/workbench/InfoChipRow");
+    render(<InfoChipRow aeroplaneId="42" cgAero={0.10} />);
+
+    expect(screen.getByRole("group", { name: /^V x:/ })).toBeInTheDocument();
+    expect(screen.getByRole("group", { name: /^V y:/ })).toBeInTheDocument();
+    expect(screen.getByRole("group", { name: /^w min:/ })).toBeInTheDocument();
+  });
+
   // gh-540: each chip exposes a hover description and is keyboard-focusable.
   it("renders hover-description tooltip and is keyboard focusable", async () => {
     (useComputationContext as ReturnType<typeof vi.fn>).mockReturnValue({

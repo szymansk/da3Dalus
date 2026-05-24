@@ -39,6 +39,13 @@ export function SpeedChipRow({ ctx, isRecomputing, rightSlot }: Props) {
       />
       <Chip
         icon={Wind}
+        symbol="w_min"
+        description="Minimum sink rate — vertical speed at V_min_sink (best endurance descent)"
+        value={fmt(ctx?.min_sink_rate_mps, 2, " m/s")}
+        stale={stale}
+      />
+      <Chip
+        icon={Wind}
         symbol="V_md"
         description="Minimum-drag speed — best L/D, longest glide distance"
         value={fmt(ctx?.v_md_mps, 1, " m/s")}
@@ -55,20 +62,27 @@ export function SpeedChipRow({ ctx, isRecomputing, rightSlot }: Props) {
         value={fmt(ctx?.v_cruise_mps, 1, " m/s")}
         stale={stale}
       />
-      <Chip
-        icon={TrendingUp}
-        symbol="V_x"
-        description="Best angle-of-climb speed — steepest altitude gain per unit ground distance"
-        value={fmt(ctx?.v_x_mps, 1, " m/s")}
-        stale={stale}
-      />
-      <Chip
-        icon={Plane}
-        symbol="V_y"
-        description="Best rate-of-climb speed — fastest altitude gain per unit time"
-        value={fmt(ctx?.v_y_mps, 1, " m/s")}
-        stale={stale}
-      />
+      {/* gh-692: V_x / V_y exist only with a motor. Pure gliders (P/W = 0
+          → is_glider=true) get them hidden; Motorsegler (is_glider=false)
+          still see them. Same guard pattern as V_a / V_max / V_dive below. */}
+      {!ctx?.is_glider && (
+        <Chip
+          icon={TrendingUp}
+          symbol="V_x"
+          description="Best angle-of-climb speed — steepest altitude gain per unit ground distance"
+          value={fmt(ctx?.v_x_mps, 1, " m/s")}
+          stale={stale}
+        />
+      )}
+      {!ctx?.is_glider && (
+        <Chip
+          icon={Plane}
+          symbol="V_y"
+          description="Best rate-of-climb speed — fastest altitude gain per unit time"
+          value={fmt(ctx?.v_y_mps, 1, " m/s")}
+          stale={stale}
+        />
+      )}
       {!ctx?.is_glider && (
         <Chip
           icon={Gauge}

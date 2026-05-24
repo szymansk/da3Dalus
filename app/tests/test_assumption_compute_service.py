@@ -929,6 +929,80 @@ def test_context_v_x_and_v_y_read_from_existing_ops(client_and_db):
     assert ctx["v_y_mps"] == 15.3
 
 
+# ---------------------------------------------------------------------------
+# gh-692: min sink rate (w_min) — vertical speed at V_min_sink
+# ---------------------------------------------------------------------------
+
+
+def test_context_includes_min_sink_rate_mps(client_and_db):
+    """gh-692: w_min is the vertical speed at V_min_sink — the value pilots
+    read off the speed polar. Derived in closed form from the polar (no
+    AeroBuildup call), so it must populate alongside v_min_sink_mps."""
+    _, SessionLocal = client_and_db
+    with SessionLocal() as db:
+        aeroplane = make_aeroplane(db)
+        seed_defaults(db, str(aeroplane.uuid))
+        db.commit()
+        aeroplane_uuid = str(aeroplane.uuid)
+        aeroplane_id = aeroplane.id
+
+    with _enter_patches(flap_ted_max=30.0):
+        with SessionLocal() as db:
+            recompute_assumptions(db, aeroplane_uuid)
+            db.commit()
+
+    ctx = _load_ctx(SessionLocal, aeroplane_id)
+    assert "min_sink_rate_mps" in ctx
+    w_min = ctx["min_sink_rate_mps"]
+    assert w_min is not None
+    # Plausible band for the default fixture (RC-scale clean trainer).
+    assert 0.3 <= w_min <= 2.0, f"w_min={w_min} m/s outside plausible [0.3, 2.0]"
+
+
+def test_min_sink_rate_helper_matches_closed_form_formula():
+    """gh-692: pin the formula directly on the helper, decoupled from the
+    recompute pipeline's effective-value resolution / Picard / clamp.
+
+        w_min = V_min_sink · (C_D/C_L)_mp
+        (C_D/C_L)_mp = 4 · sqrt(C_D0 / (3·π·e·AR))   (Anderson §6.7.2)
+    """
+    from app.services.assumption_compute_service import _min_sink_rate, _min_sink_speed
+
+    # Representative RC-scale trainer scalars.
+    mass = 1.5  # kg
+    s_ref = 0.30  # m²
+    cd0 = 0.025
+    ar = 8.0
+    e = 0.85
+    rho = 1.225
+    g = 9.81
+
+    v_ms = _min_sink_speed(mass, s_ref, cd0, ar, rho=rho, g=g, oswald_e=e)
+    w_min = _min_sink_rate(mass, s_ref, cd0, ar, rho=rho, g=g, oswald_e=e)
+
+    expected_ratio = 4.0 * np.sqrt(cd0 / (3.0 * np.pi * e * ar))
+    expected_w = v_ms * expected_ratio
+
+    # Both come from closed-form math → expect machine precision agreement.
+    assert abs(w_min - expected_w) < 1e-12, (
+        f"w_min={w_min}, expected={expected_w} from V_min_sink={v_ms}, "
+        f"CD0={cd0}, e={e}, AR={ar}, ratio={expected_ratio}"
+    )
+
+
+def test_min_sink_rate_null_when_degenerate_inputs(client_and_db):
+    """gh-692: when V_min_sink would be None (zero CD0 / no wing / etc.),
+    w_min must also be None — same degenerate-input contract."""
+    from app.services.assumption_compute_service import _min_sink_rate
+
+    # Direct unit test of the helper to cover degenerate paths the
+    # full-pipeline tests can't easily reach.
+    assert _min_sink_rate(mass_kg=1.0, s_ref_m2=0.0, cd0=0.02, aspect_ratio=8.0) is None
+    assert _min_sink_rate(mass_kg=1.0, s_ref_m2=0.3, cd0=0.0, aspect_ratio=8.0) is None
+    assert _min_sink_rate(mass_kg=1.0, s_ref_m2=0.3, cd0=0.02, aspect_ratio=None) is None
+    assert _min_sink_rate(mass_kg=1.0, s_ref_m2=0.3, cd0=0.02, aspect_ratio=0.0) is None
+
+
 @contextlib.contextmanager
 def _enter_patches_no_fine_sweep(flap_ted_max: float | None = None):
     """Variant: skip the fine_sweep patch so the test can supply its own
