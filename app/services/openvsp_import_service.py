@@ -1,13 +1,15 @@
-"""Service layer for the OpenVSP `.vsp3` importer (gh-646).
+"""Service layer for the OpenVSP `.vsp3` importer (gh-646, gh-693).
 
 Bridges :func:`app.converters.openvsp_importer.import_vsp3` and the
-existing aeroplane/wing/fuselage services. Persists the parsed model
-in a single transaction and returns a structured response describing
-which components were imported and which were dropped with warnings.
+existing aeroplane/wing/fuselage/weight-item services. Persists the
+parsed model in a single transaction and returns a structured
+response describing which components were imported and which were
+dropped with warnings.
 
-Scope per ``feedback_openvsp_import_rc_scope``: the service does NOT
-attach weight items in Phase 1 (no DB-level WeightItem write — the
-warnings surface the count to the user; a future PR adds the join).
+Phase 1.5 (gh-693): the importer now persists **all** four component
+types — Aeroplane, Wings, Fuselages, and Weight Items. Each component
+write is wrapped in its own try/except; a failure on one record adds
+a warning instead of rolling back the whole import.
 
 Optional Quick-Scale (gh-695, Variante A)
 -----------------------------------------
@@ -38,7 +40,7 @@ from typing import Optional
 from sqlalchemy.orm import Session
 
 from app.converters import openvsp_adapter
-from app.converters.openvsp_importer import ImportResult, import_vsp3
+from app.converters.openvsp_importer import ImportResult, ImportWarning, import_vsp3
 from app.schemas.aeroplaneschema import (
     AeroplaneSchema,
     AsbWingGeometryWriteSchema,
@@ -269,6 +271,36 @@ def _resolve_aeroplane_name(
     return "OpenVSP Import"
 
 
+def _record_persist_failure(
+    result: ImportResult,
+    *,
+    component_type: str,
+    component_name: str,
+    exc: Exception,
+) -> None:
+    """Log a per-component persistence failure and surface it as a
+    user-visible warning so the importer banner can show it.
+
+    One failure must not roll back the whole import: the rest of the
+    aeroplane (other wings/fuselages/weight items) stays usable.
+    """
+    logger.warning(
+        "Failed to persist %s %r: %s",
+        component_type.lower(),
+        component_name,
+        exc,
+        exc_info=True,
+    )
+    result.warnings.append(
+        ImportWarning(
+            component_type=component_type,
+            component_name=component_name,
+            reason=f"Failed to persist {component_type.lower()} to database: {exc}",
+            severity="warning",
+        )
+    )
+
+
 def _persist_aeroplane(
     db: Session,
     result: ImportResult,
@@ -276,10 +308,22 @@ def _persist_aeroplane(
     name: Optional[str] = None,
     source_filename: Optional[str] = None,
 ) -> tuple[str, str]:
-    """Persist the parsed aeroplane and return (uuid_str, name)."""
+    """Persist the parsed aeroplane and return (uuid_str, name).
+
+    Writes (gh-693): Aeroplane + Wings + Fuselages + WeightItems. Each
+    component is wrapped in its own try/except — a failure on one
+    record records a warning but lets the rest of the import succeed,
+    so the user never loses an entire aeroplane to a single broken
+    fuselage or weight item.
+    """
     # Lazy import to avoid pulling sqlalchemy/CAD pieces at module load
     # in environments that only need the importer (e.g. unit tests).
-    from app.services import aeroplane_service, wing_service
+    from app.services import (
+        aeroplane_service,
+        fuselage_service,
+        weight_items_service,
+        wing_service,
+    )
 
     resolved_name = _resolve_aeroplane_name(
         explicit_name=name,
@@ -312,12 +356,32 @@ def _persist_aeroplane(
                 )
                 wing_service.create_wing(db, aeroplane.uuid, wing_name, write)
             except Exception as exc:  # noqa: BLE001 — convert to warning
-                logger.warning("Failed to persist wing %r: %s", wing_name, exc, exc_info=True)
+                _record_persist_failure(
+                    result, component_type="WING", component_name=wing_name, exc=exc
+                )
 
-    # Fuselages: delegate to a future fuselage_service.create_fuselage.
-    # Phase 1: counted in the response envelope; DB-level persistence is
-    # deferred to a follow-up issue (no fuselage_service.create_fuselage
-    # entry-point exists today).
+    # Fuselages (gh-693): persist each fuselage via fuselage_service.
+    # FuselageSchema fields are already in metres (no unit conversion
+    # needed — different from wings which are mm-in-schema).
+    if result.aeroplane.fuselages:
+        for fuse_name, fuse in result.aeroplane.fuselages.items():
+            try:
+                fuselage_service.create_fuselage(db, aeroplane.uuid, fuse_name, fuse)
+            except Exception as exc:  # noqa: BLE001
+                _record_persist_failure(
+                    result, component_type="FUSELAGE", component_name=fuse_name, exc=exc
+                )
+
+    # Weight items (gh-693): persist each WeightItemWrite via the same
+    # entry point the manual mass-properties UI uses, so categories,
+    # CG-recompute hooks, and validation stay aligned.
+    for item in result.weight_items:
+        try:
+            weight_items_service.create_weight_item(db, aeroplane.uuid, item)
+        except Exception as exc:  # noqa: BLE001
+            _record_persist_failure(
+                result, component_type="WEIGHT_ITEM", component_name=item.name, exc=exc
+            )
 
     return str(aeroplane.uuid), aeroplane.name
 
