@@ -105,6 +105,38 @@ class TestBuildAsbFuselages:
         assert result == []
 
 
+class TestFuselageConfigsWithMirrors:
+    """``_fuselage_configs_with_mirrors`` is the CAD-config equivalent
+    of ``_build_asb_fuselages``. Its symmetric-expansion path is
+    otherwise only reachable through the cadquery-dependent
+    ``aeroplane_schema_to_airplane_configuration_async`` — extracting
+    it as a helper lets us unit-test the expansion in fast tier.
+    """
+
+    def test_symmetric_emits_two_configs(self):
+        from collections import OrderedDict
+
+        from app.converters.model_schema_converters import _fuselage_configs_with_mirrors
+
+        configs = _fuselage_configs_with_mirrors(
+            OrderedDict([("Strut", _make_strut(symmetric=True))])
+        )
+        assert len(configs) == 2
+        assert configs[0].name == "Strut"
+        assert configs[1].name == "Strut (mirror)"
+
+    def test_non_symmetric_stays_single(self):
+        from collections import OrderedDict
+
+        from app.converters.model_schema_converters import _fuselage_configs_with_mirrors
+
+        configs = _fuselage_configs_with_mirrors(
+            OrderedDict([("Strut", _make_strut(symmetric=False))])
+        )
+        assert len(configs) == 1
+        assert configs[0].name == "Strut"
+
+
 class TestAsbFuselageXSecsMirrorY:
     """``_asb_fuselage_xsecs_from_schema(mirror_y=True)`` flips just the
     y centre of each xsec — primary and mirror share the same xsec

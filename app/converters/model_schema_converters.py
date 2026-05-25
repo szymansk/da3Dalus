@@ -404,6 +404,28 @@ def _build_asb_fuselages(
     return result
 
 
+def _fuselage_configs_with_mirrors(
+    fuselages: dict[str, schemas.FuselageSchema],
+) -> List[FuselageConfiguration]:
+    """Build the CAD-side ``FuselageConfiguration`` list, expanding
+    ``symmetric=True`` entries into a primary + mirrored pair
+    (gh-715). Extracted so the symmetric-expansion logic can be
+    unit-tested without dragging in the full
+    ``aeroplane_schema_to_airplane_configuration_async`` pipeline
+    (which needs cadquery and is fast-tier-excluded).
+    """
+    configs: List[FuselageConfiguration] = []
+    for fuselage_schema in fuselages.values():
+        configs.append(fuselage_schema_to_fuselage_config(fuselage_schema))
+        if fuselage_schema.symmetric:
+            configs.append(
+                fuselage_schema_to_fuselage_config(
+                    _mirror_fuselage_schema_y(fuselage_schema)
+                )
+            )
+    return configs
+
+
 def _mirror_fuselage_schema_y(
     fuselage: schemas.FuselageSchema,
 ) -> schemas.FuselageSchema:
@@ -592,19 +614,12 @@ def aeroplane_schema_to_airplane_configuration_async(
 
     fuselage_configs: Optional[List[FuselageConfiguration]] = None
     if plane_schema.fuselages:
-        fuselage_configs = []
-        for fuselage_schema in plane_schema.fuselages.values():
-            fuselage_configs.append(fuselage_schema_to_fuselage_config(fuselage_schema))
-            # gh-715: symmetric fuselages duplicate into a mirrored
-            # half (y → -y) so paired sub-fuselages (struts, fairings)
-            # render on both sides in the CAD output, matching what
-            # the workbench viewer and ASB drag see.
-            if fuselage_schema.symmetric:
-                fuselage_configs.append(
-                    fuselage_schema_to_fuselage_config(
-                        _mirror_fuselage_schema_y(fuselage_schema)
-                    )
-                )
+        # gh-715: ``_fuselage_configs_with_mirrors`` handles the
+        # symmetric → primary + mirrored-half expansion so paired
+        # sub-fuselages (struts, fairings) end up on both sides in
+        # the CAD output. Extracted as a helper so the expansion
+        # logic is unit-testable in the CI fast tier.
+        fuselage_configs = _fuselage_configs_with_mirrors(plane_schema.fuselages)
 
     return AirplaneConfiguration(
         name=plane_schema.name,
