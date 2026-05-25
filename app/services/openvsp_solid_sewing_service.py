@@ -42,6 +42,7 @@ bad fuselage.
 from __future__ import annotations
 
 import logging
+import math
 from pathlib import Path
 from typing import Optional
 
@@ -253,7 +254,10 @@ def _make_solid_oriented(shell):
     props = GProp_GProps()
     BRepGProp.VolumeProperties_s(healed, props)
     volume = props.Mass()
-    if volume != volume:  # NaN — defensive, BRepCheck should already reject
+    # NaN — defensive; BRepCheck should already reject open shells but
+    # we keep the guard for the edge case where divergence-integration
+    # produces a non-finite result on a barely-closed shell.
+    if math.isnan(volume):
         return None
     if volume == 0:
         return None

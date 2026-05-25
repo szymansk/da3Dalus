@@ -15,6 +15,9 @@ from pathlib import Path
 import pytest
 
 from app.services.openvsp_solid_sewing_service import (
+    _compound_of_solids,
+    _make_solid_oriented,
+    _sew_faces,
     solid_step_filename,
     sew_to_solid_step,
     sew_imported_geom_to_solid,
@@ -240,3 +243,84 @@ class TestSewImportedGeomToSolid:
             "openvsp_imports/uuid/missing.stp", "uuid", "missing"
         )
         assert result is None
+
+    def test_dedupes_when_target_already_exists(self, tmp_path, monkeypatch):
+        """Two consecutive imports of geoms whose names sanitise to
+        the same stem must each produce a non-clobbering file.
+        Exercises the ``while target.exists()`` rename loop.
+        """
+        from app.core import config as core_config
+
+        monkeypatch.setattr(core_config.settings, "ARTIFACTS_BASE_DIR", tmp_path)
+
+        uuid = "dedupe-test"
+        per_aeroplane_dir = tmp_path / "openvsp_imports" / uuid
+        per_aeroplane_dir.mkdir(parents=True)
+        source_full = _export_box_as_surface_step(per_aeroplane_dir / "MyFuse.stp")
+        source_rel = str(source_full.relative_to(tmp_path))
+
+        first = sew_imported_geom_to_solid(source_rel, uuid, "MyFuse")
+        second = sew_imported_geom_to_solid(source_rel, uuid, "MyFuse")
+
+        assert first is not None
+        assert second is not None
+        assert first != second
+        assert first.endswith("MyFuse_solid.stp")
+        assert second.endswith("_solid.stp")
+        # Sanity: the dedupe must not have overwritten the first file.
+        assert (tmp_path / first).exists()
+        assert (tmp_path / second).exists()
+
+
+class TestPipelineInternals:
+    """Coverage for the otherwise-unreachable internals: empty STEP,
+    compound packer, and the ``BRepBuilderAPI_MakeSolid`` rejection
+    path. Direct unit tests are necessary because shaping cadquery
+    output to hit each branch through the public surface is awkward.
+    """
+
+    def test_sew_to_solid_returns_false_on_face_less_step(self, tmp_path):
+        """An empty Compound (no faces) — the ``not faces`` branch of
+        ``_sew_and_solidify`` must short-circuit cleanly without
+        crashing OCP.
+        """
+        from OCP.BRep import BRep_Builder
+        from OCP.IFSelect import IFSelect_RetDone
+        from OCP.STEPControl import STEPControl_AsIs, STEPControl_Writer
+        from OCP.TopoDS import TopoDS_Compound
+
+        source = tmp_path / "no_faces.stp"
+        compound = TopoDS_Compound()
+        builder = BRep_Builder()
+        builder.MakeCompound(compound)
+        # Write the empty compound — OCP accepts it.
+        writer = STEPControl_Writer()
+        writer.Transfer(compound, STEPControl_AsIs)
+        status = writer.Write(str(source))
+        assert status == IFSelect_RetDone
+
+        target = tmp_path / "no_faces_solid.stp"
+        ok = sew_to_solid_step(source, target)
+        assert ok is False
+
+    def test_compound_of_solids_packs_n_solids(self):
+        """``_compound_of_solids`` collects an arbitrary list of
+        ``TopoDS_Solid`` into one ``TopoDS_Compound``. Reimporting
+        the resulting shape via cadquery must yield N solids back.
+        """
+        # Build 3 boxes → 3 closed shells → 3 oriented solids.
+        boxes = [
+            cq.Workplane("XY").box(2, 2, 2).translate((10 * i, 0, 0))
+            for i in range(3)
+        ]
+        solids = []
+        for box in boxes:
+            shells = _sew_faces(box.faces().vals(), 0.001)
+            assert len(shells) == 1
+            solid = _make_solid_oriented(shells[0])
+            assert solid is not None
+            solids.append(solid)
+
+        compound = _compound_of_solids(solids)
+        wp = cq.Workplane(cq.Shape(compound))
+        assert len(wp.solids().vals()) == 3
