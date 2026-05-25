@@ -450,6 +450,11 @@ class FuselageXSecSuperEllipseModel(Base):
 class FuselageModel(Base):
     __tablename__ = "fuselages"
     name = Column(String, nullable=False)
+    # XZ-mirror flag (gh-715): when True, downstream consumers
+    # (importer's ASB-converter, CAD builder, viewer) duplicate the
+    # geometry with y → -y. Used for paired sub-fuselages like
+    # landing-gear struts where OpenVSP stores only one side.
+    symmetric = Column(Boolean, nullable=False, default=False, server_default="0")
 
     # Relationship with FuselageXSecSuperEllipse
     x_secs = relationship(

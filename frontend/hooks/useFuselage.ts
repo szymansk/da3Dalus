@@ -13,6 +13,13 @@ export interface FuselageXSec {
 export interface Fuselage {
   name: string;
   x_secs: FuselageXSec[];
+  /**
+   * gh-715: XZ-mirror flag. When true, the viewer renders a mirrored
+   * copy (y → -y) so paired sub-fuselages (landing-gear struts,
+   * wheel-fairings) show on both sides. Defaults to false for the
+   * main fuselage which sits on the symmetry plane itself.
+   */
+  symmetric?: boolean;
 }
 
 /**

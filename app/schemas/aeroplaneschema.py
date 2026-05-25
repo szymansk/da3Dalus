@@ -616,5 +616,17 @@ class FuselageSchema(BaseModel):
         description="List of cross-sections of the fuselage",
         min_length=2,
     )
+    symmetric: bool = Field(
+        default=False,
+        description=(
+            "If True the fuselage is mirrored about the XZ plane on the "
+            "fly (downstream consumers — ASB, CAD, viewer — duplicate "
+            "the geometry with y → -y). Use for paired sub-fuselages "
+            "like landing-gear struts, wheel-fairings, engine-cowlings "
+            "where OpenVSP stores only one side. Default False — the "
+            "main fuselage usually sits on the symmetry plane itself "
+            "and should not be mirrored."
+        ),
+    )
 
     model_config = ConfigDict(from_attributes=True)

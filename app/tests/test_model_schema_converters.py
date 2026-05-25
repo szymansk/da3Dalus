@@ -726,6 +726,11 @@ class TestFuselageAxisConvention:
             f"got width={xsecs[1].width}, height={xsecs[1].height}."
         )
 
+    # gh-715 symmetric-fuselage tests moved to
+    # ``test_fuselage_symmetric_expansion.py`` so they run in the CI
+    # fast tier (no ``requires_aerosandbox`` module marker) and
+    # contribute to SonarCloud's new-code coverage.
+
     def test_asymmetric_xsec_through_model_converter(self):
         """Same invariant via the model→config path used by analysis runs."""
         fuselage_model = FuselageModel.from_dict(

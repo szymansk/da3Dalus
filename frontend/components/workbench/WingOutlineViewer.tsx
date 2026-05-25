@@ -831,6 +831,20 @@ async function collectAllTraces(opts: CollectTracesOptions): Promise<PlotlyData[
     if (!opts.visibleFuselages.has(fuse.name)) continue;
     const fuseSelIdx = opts.selectedFuselage === fuse.name ? opts.selectedFuselageXsecIndex : null;
     traces.push(...buildFuselageTraces(fuse, "#3B82F6", fuseSelIdx));
+    // gh-715: render mirrored half of XZ-symmetric sub-fuselages
+    // (landing-gear struts, wheel-fairings, etc.).
+    if (fuse.symmetric) {
+      const mirrored: Fuselage = {
+        ...fuse,
+        name: `${fuse.name} (mirror)`,
+        symmetric: false,
+        x_secs: fuse.x_secs.map((xs) => ({
+          ...xs,
+          xyz: [xs.xyz[0], -xs.xyz[1], xs.xyz[2]],
+        })),
+      };
+      traces.push(...buildFuselageTraces(mirrored, "#3B82F6", null));
+    }
   }
 
   return traces;
