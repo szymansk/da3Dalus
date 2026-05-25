@@ -26,7 +26,11 @@ from __future__ import annotations
 from types import ModuleType
 
 from app.converters import openvsp_importer
-from app.converters.openvsp_fuselage_handler import _read_sym_planar_flag
+from app.converters.openvsp_fuselage_handler import (
+    _read_sym_planar_flag,
+    _refine_xsecs_adaptive,
+    sample_station_via_comp_pnt as _sample_station,
+)
 from app.converters.openvsp_importer import AeroplaneSchema, ImportContext
 from app.converters.openvsp_wing_handler import _apply_xform, _read_geom_xform
 from app.schemas.aeroplaneschema import (
@@ -35,41 +39,11 @@ from app.schemas.aeroplaneschema import (
 )
 
 
-# How many u-stations to sample along the body and how many w-points
-# per station for bounding-box derivation. 12 × 32 captures the
+# How many u-stations to sample along the body. 12 captures the
 # Generic Transport's nose curvature + tail taper without producing
-# an unwieldy xsec list. Increase the u count if a future Custom
-# Geom has more complex spline behaviour.
+# an unwieldy xsec list. Adaptive refinement (gh-721) adds more
+# stations where curvature demands it.
 _N_U_STATIONS = 12
-_N_W_POINTS = 32
-
-
-def _sample_station(
-    vsp: ModuleType, gid: str, u: float
-) -> tuple[float, float, float, float, float]:
-    """Sample ``_N_W_POINTS`` around the surface at fixed ``u`` and
-    return ``(centroid_x, centroid_y, centroid_z, a, b)``.
-
-    ``a`` = (max y − min y) / 2 (Y half-axis), ``b`` analogously for
-    Z. Centroids are the bounding-box midpoints — matches the
-    convention the regular FUSELAGE handler uses so downstream
-    consumers see identical geometry semantics.
-    """
-    ys: list[float] = []
-    zs: list[float] = []
-    xs: list[float] = []
-    for k in range(_N_W_POINTS):
-        w = k / float(_N_W_POINTS)
-        p = vsp.CompPnt01(gid, 0, u, w)
-        xs.append(float(p.x()))
-        ys.append(float(p.y()))
-        zs.append(float(p.z()))
-    cx = sum(xs) / len(xs)
-    cy = (max(ys) + min(ys)) / 2.0
-    cz = (max(zs) + min(zs)) / 2.0
-    a = (max(ys) - min(ys)) / 2.0
-    b = (max(zs) - min(zs)) / 2.0
-    return cx, cy, cz, a, b
 
 
 def _handle_custom(
@@ -100,6 +74,7 @@ def _handle_custom(
         return
 
     xsecs: list[FuselageXSecSuperEllipseSchema] = []
+    xsec_us: list[float] = []
     for i in range(_N_U_STATIONS):
         u = i / float(_N_U_STATIONS - 1) if _N_U_STATIONS > 1 else 0.0
         try:
@@ -120,6 +95,20 @@ def _handle_custom(
                 xyz=[cx, cy, cz], a=max(a, 0.0), b=max(b, 0.0), n=2.0
             )
         )
+        xsec_us.append(u)
+
+    # gh-721: adaptive refinement of the uniform sampling. Length
+    # comes from the bounding-box X-range of the sampled points so we
+    # don't have to find a Custom-Geom-specific length parm.
+    if xsecs and ctx.xsec_tolerance_rel > 0.0:
+        length = xsecs[-1].xyz[0] - xsecs[0].xyz[0]
+        if length > 0.0:
+            _, xsecs = _refine_xsecs_adaptive(
+                vsp, gid, xsec_us, xsecs,
+                tol_m=length * ctx.xsec_tolerance_rel,
+                ctx=ctx,
+                component_name=name,
+            )
 
     if len(xsecs) < 2:
         ctx.add_warning(

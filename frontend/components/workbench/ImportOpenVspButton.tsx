@@ -65,9 +65,27 @@ type Props = {
    * desired default).
    */
   customName?: string;
+  /**
+   * gh-721: relative tolerance for adaptive fuselage-xsec refinement.
+   * Fraction of body length — 0.0025 (default) means 1.75 mm extra
+   * resolution per 700 mm of body, 18 mm per 7 m, etc. ``0`` disables
+   * refinement entirely. Forwarded as ``?xsec_tolerance_rel=<value>``.
+   */
+  xsecTolerance?: number;
+  /**
+   * gh-721: ceiling on xsecs per fuselage after adaptive refinement.
+   * Forwarded as ``?xsec_max_count=<value>``. ``undefined`` keeps the
+   * backend default (100).
+   */
+  xsecMaxCount?: number;
 };
 
-function buildImportUrl(scaleOption?: ScaleOption, customName?: string): string {
+function buildImportUrl(
+  scaleOption?: ScaleOption,
+  customName?: string,
+  xsecTolerance?: number,
+  xsecMaxCount?: number,
+): string {
   const base = `${API_BASE}/api/v2/import/openvsp`;
   const params = new URLSearchParams();
   if (scaleOption?.mode === "target_span") {
@@ -78,6 +96,14 @@ function buildImportUrl(scaleOption?: ScaleOption, customName?: string): string 
   const trimmedName = customName?.trim() ?? "";
   if (trimmedName) {
     params.set("name", trimmedName);
+  }
+  // Forward the tolerance only when explicitly set — lets the backend
+  // default (0.0025) own the value otherwise.
+  if (typeof xsecTolerance === "number" && Number.isFinite(xsecTolerance)) {
+    params.set("xsec_tolerance_rel", String(xsecTolerance));
+  }
+  if (typeof xsecMaxCount === "number" && Number.isFinite(xsecMaxCount)) {
+    params.set("xsec_max_count", String(Math.trunc(xsecMaxCount)));
   }
   const qs = params.toString();
   return qs ? `${base}?${qs}` : base;
@@ -90,6 +116,8 @@ export default function ImportOpenVspButton({
   label = "Import OpenVSP .vsp3",
   scaleOption,
   customName,
+  xsecTolerance,
+  xsecMaxCount,
 }: Props) {
   const inputRef = useRef<HTMLInputElement | null>(null);
   const [uploading, setUploading] = useState(false);
@@ -103,10 +131,10 @@ export default function ImportOpenVspButton({
     try {
       const form = new FormData();
       form.append("file", file);
-      const res = await fetch(buildImportUrl(scaleOption, customName), {
-        method: "POST",
-        body: form,
-      });
+      const res = await fetch(
+        buildImportUrl(scaleOption, customName, xsecTolerance, xsecMaxCount),
+        { method: "POST", body: form },
+      );
       if (!res.ok) {
         let detail = `HTTP ${res.status}`;
         try {
