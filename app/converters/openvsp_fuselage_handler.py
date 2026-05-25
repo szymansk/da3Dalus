@@ -84,6 +84,84 @@ def _rounded_rect_to_n(*, width: float, height: float, radius: float) -> float:
     return n_low + (n_high - n_low) * (1.0 - f)
 
 
+def _fit_n_from_xsec_points(
+    points_yz: list[tuple[float, float]], a: float, b: float
+) -> float:
+    """Fit the super-ellipse exponent ``n`` against sampled outline points.
+
+    Super-ellipse: ``|y/a|^n + |z/b|^n = 1``. Given a sample of (y, z)
+    points on the outline plus the bounding-box half-axes (a, b), pick
+    the ``n ∈ [1, 50]`` that minimises the sum of squared implicit
+    residuals. Returns ``2.0`` (plain ellipse) for degenerate inputs:
+    a or b ≤ 0, no usable off-axis points.
+
+    Used by the OpenVSP fuselage handler (gh-713) for shapes whose
+    outline isn't analytically known — GENERAL_FUSE, FILE_FUSE,
+    SHIFT_LE/MID/TE. The bounding box (a, b) is trusted (it comes
+    from ``GetXSecWidth``/``GetXSecHeight``); only the squareness
+    exponent is fitted.
+    """
+    if a <= 0.0 or b <= 0.0:
+        return 2.0
+
+    # Keep only points that contribute information about the exponent:
+    # near-axis samples (|u| or |v| ≈ 0) are dominated by the other
+    # term and don't help discriminate between candidate n values.
+    valid = [
+        (abs(y) / a, abs(z) / b)
+        for y, z in points_yz
+        if abs(y) / a > 0.1 and abs(z) / b > 0.1
+    ]
+    if len(valid) < 3:
+        return 2.0
+
+    # scipy is already a transitive dep via aerosandbox, so no new
+    # runtime cost. ``bounded`` minimisation needs no initial guess
+    # and clamps automatically — perfect for a constrained 1-D fit.
+    from scipy.optimize import minimize_scalar
+
+    def _residual_sum(n: float) -> float:
+        return sum((u**n + v**n - 1.0) ** 2 for u, v in valid)
+
+    res = minimize_scalar(_residual_sum, bounds=(1.0, 50.0), method="bounded")
+    return float(res.x)
+
+
+def _sample_xsec_yz(
+    vsp: ModuleType, xs_id: str, n_points: int = 24
+) -> list[tuple[float, float]]:
+    """Sample (y, z) points around an XSec outline via ``ComputeXSecPnt``.
+
+    Returns world-frame (y, z) tuples relative to the XSec's own
+    centre. Returns ``[]`` when the API is unavailable on the running
+    OpenVSP build or any sample call fails — caller falls back to the
+    safe default ``n=2``.
+    """
+    if not hasattr(vsp, "ComputeXSecPnt"):
+        return []
+    pts: list[tuple[float, float]] = []
+    for k in range(n_points):
+        fract = k / float(n_points)
+        try:
+            p = vsp.ComputeXSecPnt(xs_id, fract)
+        except Exception:  # noqa: BLE001 — defensive against any API drift
+            return []
+        try:
+            y = float(p.y())
+            z = float(p.z())
+        except Exception:  # noqa: BLE001
+            return []
+        pts.append((y, z))
+    if not pts:
+        return []
+    # ComputeXSecPnt returns world-frame coords — subtract the
+    # bounding-box centre so the sample is centred on the origin,
+    # matching the super-ellipse equation's frame.
+    y_mid = (max(y for y, _ in pts) + min(y for y, _ in pts)) / 2.0
+    z_mid = (max(z for _, z in pts) + min(z for _, z in pts)) / 2.0
+    return [(y - y_mid, z - z_mid) for y, z in pts]
+
+
 def _read_xsec_bounding(vsp: ModuleType, xs_id: str) -> tuple[float, float]:
     """Return the (Y-half-axis, Z-half-axis) of an XSec via the
     shape-agnostic OpenVSP accessors (gh-709).
@@ -152,28 +230,34 @@ def _shape_to_super_ellipse(
         )
         return a, b, n
 
-    # Shapes whose outline can't be captured by a super-ellipse
-    # (GENERAL_FUSE = box-with-rounded-corners, FILE_FUSE = arbitrary
-    # spline, SHIFT_LE/MID/TE = loft-control markers). For RC scaling
-    # and ASB drag the bounding ellipse is plenty; surface the
-    # approximation so the user knows.
-    _APPROXIMATED = {
+    # Shapes whose outline isn't analytically known — GENERAL_FUSE
+    # (box-with-rounded-corners), FILE_FUSE (arbitrary spline),
+    # SHIFT_LE/MID/TE (loft-control markers). Sample the outline via
+    # ``ComputeXSecPnt`` and fit the super-ellipse exponent so the
+    # shape isn't forced to be a plain ellipse (gh-713). For a typical
+    # Cessna-style Mansardendach this drops the radial residual from
+    # ~26 cm (n=2) to <5 cm (n≈3–4).
+    _FIT_SHAPES = {
         getattr(vsp, "XS_GENERAL_FUSE", -2),
         getattr(vsp, "XS_FILE_FUSE", -3),
         getattr(vsp, "XS_SHIFT_LE", -4),
         getattr(vsp, "XS_SHIFT_MID", -5),
         getattr(vsp, "XS_SHIFT_TE", -6),
     }
-    if shape in _APPROXIMATED and (a > 0.0 or b > 0.0):
+    if shape in _FIT_SHAPES and (a > 0.0 or b > 0.0):
+        sampled = _sample_xsec_yz(vsp, xs_id)
+        n_fit = _fit_n_from_xsec_points(sampled, a, b) if sampled else 2.0
         ctx.add_warning(
             component_type="FUSELAGE_XSEC",
             component_name=xs_id,
             reason=(
                 f"XSec shape id={shape} (non-super-ellipse curve) "
-                f"approximated as bounding ellipse a={a:.3f}, b={b:.3f}, n=2."
+                f"approximated as super-ellipse a={a:.3f}, b={b:.3f}, "
+                f"n={n_fit:.2f} {'(fitted)' if sampled else '(default — sampling unavailable)'}."
             ),
             severity="info",
         )
+        return a, b, n_fit
 
     return a, b, 2.0
 
