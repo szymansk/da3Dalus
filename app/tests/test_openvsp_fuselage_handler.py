@@ -19,6 +19,7 @@ from app.converters import openvsp_adapter, openvsp_importer
 from app.converters.openvsp_fuselage_handler import (
     _fit_n_from_xsec_points,
     _rounded_rect_to_n,
+    _sample_xsec_yz,
     _shape_to_super_ellipse,
     register,
 )
@@ -525,6 +526,55 @@ class TestSuperEllipseFit:
         pts = [(0.3, 0.1), (0.5, 0.2), (0.2, 0.4), (-0.3, -0.1), (-0.5, 0.2)]
         n = _fit_n_from_xsec_points(pts, a=1.0, b=0.5)
         assert 1.0 <= n <= 50.0
+
+
+class TestSampleXsecYz:
+    """``_sample_xsec_yz`` wraps ``vsp.ComputeXSecPnt`` into a defensive
+    centroid-subtracted list — must degrade safely when the API is
+    missing or throws, and must centre the sample on the bounding
+    middle so the super-ellipse fit downstream sees an origin-centred
+    cloud.
+    """
+
+    def _make_minimal_vsp(self, with_compute=True, raise_on_compute=False, pts=None):
+        fake = SimpleNamespace()
+        if with_compute:
+            class _P:
+                def __init__(self, x, y, z):
+                    self._x, self._y, self._z = x, y, z
+                def x(self): return self._x
+                def y(self): return self._y
+                def z(self): return self._z
+
+            samples = pts or [(0.0, y, z) for y, z in [
+                (0.5, 0.5), (-0.5, 0.5), (-0.5, -0.5), (0.5, -0.5)
+            ]]
+
+            def _compute(_xs_id, fract):
+                if raise_on_compute:
+                    raise RuntimeError("API drift")
+                k = int(fract * len(samples)) % len(samples)
+                return _P(*samples[k])
+
+            fake.ComputeXSecPnt = _compute
+        return fake
+
+    def test_returns_empty_when_compute_missing(self):
+        fake = SimpleNamespace()  # no ComputeXSecPnt at all
+        assert _sample_xsec_yz(cast(ModuleType, fake), "XS_0") == []
+
+    def test_returns_empty_when_compute_raises(self):
+        fake = self._make_minimal_vsp(raise_on_compute=True)
+        assert _sample_xsec_yz(cast(ModuleType, fake), "XS_0") == []
+
+    def test_subtracts_bounding_midpoint(self):
+        # All sample points sit at (y=2, z=3) — centred → (0, 0).
+        fake = self._make_minimal_vsp(pts=[(0.0, 2.0, 3.0)] * 8)
+        out = _sample_xsec_yz(cast(ModuleType, fake), "XS_0", n_points=8)
+        assert len(out) == 8
+        for y, z in out:
+            assert y == pytest.approx(0.0)
+            assert z == pytest.approx(0.0)
 
 
 class TestRoundedRectToN:
