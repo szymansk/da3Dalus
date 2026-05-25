@@ -86,4 +86,86 @@ describe("ImportOpenVspButton", () => {
     await userEvent.upload(input, f);
     expect(onError).toHaveBeenCalledWith("openvsp not installed");
   });
+
+  it("appends ?name= when a customName is supplied", async () => {
+    vi.mocked(global.fetch).mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({
+        aeroplane_uuid: "u",
+        aeroplane_name: "Cessna 172",
+        n_wings: 0,
+        n_fuselages: 0,
+        n_weight_items: 0,
+        warnings: [],
+        lossy_components: [],
+      }),
+    } as Response);
+    render(<ImportOpenVspButton customName="Cessna 172" />);
+    const input = screen.getByTestId(
+      "openvsp-file-input",
+    ) as HTMLInputElement;
+    const f = new File(["<vsp3/>"], "x.vsp3", {
+      type: "application/octet-stream",
+    });
+    await userEvent.upload(input, f);
+    const calledUrl = vi.mocked(global.fetch).mock.calls[0][0] as string;
+    // URLSearchParams encodes spaces as '+'.
+    expect(calledUrl).toMatch(/[?&]name=Cessna\+172\b/);
+  });
+
+  it("omits ?name= when customName is empty or whitespace", async () => {
+    vi.mocked(global.fetch).mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({
+        aeroplane_uuid: "u",
+        aeroplane_name: "x",
+        n_wings: 0,
+        n_fuselages: 0,
+        n_weight_items: 0,
+        warnings: [],
+        lossy_components: [],
+      }),
+    } as Response);
+    render(<ImportOpenVspButton customName="   " />);
+    const input = screen.getByTestId(
+      "openvsp-file-input",
+    ) as HTMLInputElement;
+    const f = new File(["<vsp3/>"], "x.vsp3", {
+      type: "application/octet-stream",
+    });
+    await userEvent.upload(input, f);
+    const calledUrl = vi.mocked(global.fetch).mock.calls[0][0] as string;
+    expect(calledUrl).not.toMatch(/[?&]name=/);
+  });
+
+  it("combines customName with a scaleOption query param", async () => {
+    vi.mocked(global.fetch).mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({
+        aeroplane_uuid: "u",
+        aeroplane_name: "RV-7",
+        n_wings: 0,
+        n_fuselages: 0,
+        n_weight_items: 0,
+        warnings: [],
+        lossy_components: [],
+      }),
+    } as Response);
+    render(
+      <ImportOpenVspButton
+        customName="RV-7"
+        scaleOption={{ mode: "scale_factor", scale_factor: 0.5 }}
+      />,
+    );
+    const input = screen.getByTestId(
+      "openvsp-file-input",
+    ) as HTMLInputElement;
+    const f = new File(["<vsp3/>"], "x.vsp3", {
+      type: "application/octet-stream",
+    });
+    await userEvent.upload(input, f);
+    const calledUrl = vi.mocked(global.fetch).mock.calls[0][0] as string;
+    expect(calledUrl).toMatch(/scale_factor=0\.5/);
+    expect(calledUrl).toMatch(/name=RV-7/);
+  });
 });

@@ -58,18 +58,29 @@ type Props = {
   className?: string;
   label?: string;
   scaleOption?: ScaleOption;
+  /**
+   * Optional user-supplied aeroplane name forwarded to the backend as
+   * ``?name=<value>``. Empty / whitespace-only values are dropped so
+   * the server falls back to the uploaded filename's stem (the
+   * desired default).
+   */
+  customName?: string;
 };
 
-function buildImportUrl(scaleOption?: ScaleOption): string {
+function buildImportUrl(scaleOption?: ScaleOption, customName?: string): string {
   const base = `${API_BASE}/api/v2/import/openvsp`;
-  if (!scaleOption || scaleOption.mode === "none") return base;
   const params = new URLSearchParams();
-  if (scaleOption.mode === "target_span") {
+  if (scaleOption?.mode === "target_span") {
     params.set("target_span_m", String(scaleOption.target_span_m));
-  } else if (scaleOption.mode === "scale_factor") {
+  } else if (scaleOption?.mode === "scale_factor") {
     params.set("scale_factor", String(scaleOption.scale_factor));
   }
-  return `${base}?${params.toString()}`;
+  const trimmedName = customName?.trim() ?? "";
+  if (trimmedName) {
+    params.set("name", trimmedName);
+  }
+  const qs = params.toString();
+  return qs ? `${base}?${qs}` : base;
 }
 
 export default function ImportOpenVspButton({
@@ -78,6 +89,7 @@ export default function ImportOpenVspButton({
   className = "",
   label = "Import OpenVSP .vsp3",
   scaleOption,
+  customName,
 }: Props) {
   const inputRef = useRef<HTMLInputElement | null>(null);
   const [uploading, setUploading] = useState(false);
@@ -91,7 +103,7 @@ export default function ImportOpenVspButton({
     try {
       const form = new FormData();
       form.append("file", file);
-      const res = await fetch(buildImportUrl(scaleOption), {
+      const res = await fetch(buildImportUrl(scaleOption, customName), {
         method: "POST",
         body: form,
       });

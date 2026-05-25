@@ -47,6 +47,9 @@ export function AeroplanePickerDialog({
   // can pick a mode before triggering the file dialog. Default "none"
   // matches the import-as-is contract.
   const [scaleOption, setScaleOption] = useState<ScaleOption>({ mode: "none" });
+  // Optional user-typed name for the imported aeroplane. Empty string
+  // means "let the server use the upload filename's stem".
+  const [importName, setImportName] = useState("");
   // Local error surface for OpenVSP-specific failures (503 if openvsp
   // isn't installed, 422 if the file is malformed, etc.). Keeps the
   // dialog open so the user can retry without losing context.
@@ -202,11 +205,28 @@ export function AeroplanePickerDialog({
           {(onCreate || onImport) && (
             <div className="border-t border-border px-6 py-4 space-y-3">
               {onImport && (
-                <ImportScaleInputs
-                  value={scaleOption}
-                  onChange={setScaleOption}
-                  disabled={submitting}
-                />
+                <>
+                  <label className="flex flex-col gap-1">
+                    <span className="text-[11px] uppercase tracking-wide text-muted-foreground">
+                      Aeroplane name (optional)
+                    </span>
+                    <input
+                      type="text"
+                      value={importName}
+                      onChange={(e) => setImportName(e.target.value)}
+                      placeholder="Defaults to the .vsp3 file name"
+                      maxLength={200}
+                      disabled={submitting}
+                      data-testid="aeroplane-picker-import-name"
+                      className="rounded-lg border border-border bg-input px-3 py-2 text-[13px] text-foreground outline-none placeholder:text-subtle-foreground focus:border-primary disabled:opacity-50"
+                    />
+                  </label>
+                  <ImportScaleInputs
+                    value={scaleOption}
+                    onChange={setScaleOption}
+                    disabled={submitting}
+                  />
+                </>
               )}
               {importError && (
                 <p
@@ -233,9 +253,11 @@ export function AeroplanePickerDialog({
                   <ImportOpenVspButton
                     label="Import .vsp3"
                     scaleOption={scaleOption}
+                    customName={importName}
                     className="flex-1 rounded-full bg-input/40 text-foreground hover:bg-sidebar-accent"
                     onImported={(response) => {
                       setImportError(null);
+                      setImportName("");
                       onImport(response);
                     }}
                     onError={(message) => setImportError(message)}
