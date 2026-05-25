@@ -17,6 +17,7 @@ import pytest
 
 from app.converters import openvsp_adapter, openvsp_importer
 from app.converters.openvsp_fuselage_handler import (
+    _fit_n_from_xsec_points,
     _rounded_rect_to_n,
     _shape_to_super_ellipse,
     register,
@@ -466,6 +467,64 @@ class TestCessna172FuselageRegression:
 # ---------------------------------------------------------------------------
 # _rounded_rect_to_n heuristic
 # ---------------------------------------------------------------------------
+
+
+class TestSuperEllipseFit:
+    """gh-713: ``_fit_n_from_xsec_points`` recovers the super-ellipse
+    exponent ``n`` from a sampled outline. The bounding-box half-axes
+    ``a`` and ``b`` are inputs (we trust ``GetXSecWidth/Height`` for
+    those); only ``n`` is free.
+    """
+
+    @staticmethod
+    def _sample_superellipse(a: float, b: float, n: float, n_points: int = 24) -> list[tuple[float, float]]:
+        """Sample n_points evenly in parameter ``t ∈ [0, 2π)`` from the
+        super-ellipse ``|y/a|^n + |z/b|^n = 1``.
+        """
+        import math
+
+        pts: list[tuple[float, float]] = []
+        for k in range(n_points):
+            t = 2.0 * math.pi * k / n_points
+            ct, st = math.cos(t), math.sin(t)
+            # Parametric form: y = a · sign(ct) · |ct|^(2/n), z = b · sign(st) · |st|^(2/n)
+            y = a * (1.0 if ct >= 0 else -1.0) * abs(ct) ** (2.0 / n)
+            z = b * (1.0 if st >= 0 else -1.0) * abs(st) ** (2.0 / n)
+            pts.append((y, z))
+        return pts
+
+    def test_recovers_ellipse_n_equals_2(self):
+        pts = self._sample_superellipse(a=1.0, b=0.5, n=2.0)
+        n = _fit_n_from_xsec_points(pts, a=1.0, b=0.5)
+        assert n == pytest.approx(2.0, abs=0.1)
+
+    def test_recovers_n_equals_4(self):
+        # Squarer profile — classic Mansardendach shape.
+        pts = self._sample_superellipse(a=0.55, b=0.725, n=4.0)
+        n = _fit_n_from_xsec_points(pts, a=0.55, b=0.725)
+        assert n == pytest.approx(4.0, abs=0.1)
+
+    def test_recovers_diamond_n_equals_1(self):
+        pts = self._sample_superellipse(a=1.0, b=1.0, n=1.0)
+        n = _fit_n_from_xsec_points(pts, a=1.0, b=1.0)
+        assert n == pytest.approx(1.0, abs=0.15)
+
+    def test_clamps_for_degenerate_axes(self):
+        # If ``a`` or ``b`` is zero (endcap-like) the fit is undefined —
+        # must return the safe default n=2 without raising.
+        assert _fit_n_from_xsec_points([(0.0, 0.0)], a=0.0, b=0.5) == pytest.approx(2.0)
+        assert _fit_n_from_xsec_points([(0.5, 0.0)], a=1.0, b=0.0) == pytest.approx(2.0)
+
+    def test_clamps_for_too_few_points(self):
+        # Need at least a handful of off-axis samples to fit a curve.
+        assert _fit_n_from_xsec_points([], a=1.0, b=0.5) == pytest.approx(2.0)
+        assert _fit_n_from_xsec_points([(0.5, 0.25)], a=1.0, b=0.5) == pytest.approx(2.0)
+
+    def test_clamps_to_sane_range(self):
+        # Random scatter inside the bounding box — fit must stay in [1, 50].
+        pts = [(0.3, 0.1), (0.5, 0.2), (0.2, 0.4), (-0.3, -0.1), (-0.5, 0.2)]
+        n = _fit_n_from_xsec_points(pts, a=1.0, b=0.5)
+        assert 1.0 <= n <= 50.0
 
 
 class TestRoundedRectToN:
