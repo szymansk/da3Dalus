@@ -38,6 +38,27 @@ _SHAPES = {
     "ROUNDED_RECTANGLE": 4,
     "GENERAL_FUSE": 5,
     "FILE_FUSE": 6,
+    "SHIFT_LE": 7,
+    "SHIFT_MID": 8,
+    "SHIFT_TE": 9,
+}
+
+
+# Map shape name → (width-key, height-key) on the per-xsec dict. The
+# stub uses these to expose ``GetXSecWidth``/``GetXSecHeight`` — the
+# shape-agnostic OpenVSP accessors that the production handler relies
+# on as of gh-709.
+_WIDTH_HEIGHT_KEYS: dict[str, tuple[str | None, str | None]] = {
+    "POINT": (None, None),
+    "CIRCLE": ("Circle_Diameter", "Circle_Diameter"),
+    "ELLIPSE": ("Ellipse_Width", "Ellipse_Height"),
+    "SUPER_ELLIPSE": ("Super_Width", "Super_Height"),
+    "ROUNDED_RECTANGLE": ("RoundedRect_Width", "RoundedRect_Height"),
+    "GENERAL_FUSE": ("width", "height"),
+    "FILE_FUSE": ("width", "height"),
+    "SHIFT_LE": ("width", "height"),
+    "SHIFT_MID": ("width", "height"),
+    "SHIFT_TE": ("width", "height"),
 }
 
 
@@ -96,6 +117,22 @@ def _make_fuse_vsp(
         return float(xsecs[idx].get(name, 0.0))
 
     fake.GetXSecParm = _get_xsec_parm
+
+    # gh-709: production handler now reads bounding W/H via shape-agnostic
+    # ``GetXSecWidth``/``GetXSecHeight``. Stub them by looking up the
+    # per-shape width/height keys defined above.
+    def _xsec_dim(xs_id: str, axis: str) -> float:
+        idx = int(xs_id.split("_", 1)[1])
+        xs = xsecs[idx]
+        shape_name = xs["shape"]
+        w_key, h_key = _WIDTH_HEIGHT_KEYS.get(shape_name, (None, None))
+        key = w_key if axis == "W" else h_key
+        if key is None or key not in xs:
+            return 0.0
+        return float(xs[key])
+
+    fake.GetXSecWidth = lambda xs_id: _xsec_dim(xs_id, "W")
+    fake.GetXSecHeight = lambda xs_id: _xsec_dim(xs_id, "H")
 
     # Parm routing per OpenVSP 3.50 convention (gh-702): Length lives on
     # the fuselage container in group Design; XLocPercent/YLocPercent/
@@ -241,6 +278,127 @@ class TestShapeToSuperEllipse:
         assert a == 0.0
         assert b == 0.0
         assert n == pytest.approx(2.0)
+
+
+# ---------------------------------------------------------------------------
+# gh-709: shape-agnostic bounding-reader for unsupported shapes
+# ---------------------------------------------------------------------------
+
+
+class TestShapeAgnosticBoundingReader:
+    """For shape types we cannot decode parm-by-parm (GENERAL_FUSE,
+    SHIFT_LE/MID/TE, FILE_FUSE) the handler must fall back to OpenVSP's
+    shape-agnostic ``GetXSecWidth``/``GetXSecHeight`` accessors instead
+    of returning the hard-coded ``(0.5, 0.5, 2.0)`` placeholder that
+    used to produce identical-barrel imports (Cessna 172, gh-709).
+    """
+
+    def test_general_fuse_reads_real_bounding_box(self):
+        # Mid-fuselage xsec of a Cessna 172 has W=1.10, H=1.45.
+        fake = _make_fuse_vsp(
+            xsecs=[{"shape": "GENERAL_FUSE", "x_pct": 0.5, "width": 1.10, "height": 1.45}]
+        )
+        ctx = ImportContext()
+        a, b, n = _shape_to_super_ellipse(fake, "XS_0", _SHAPES["GENERAL_FUSE"], ctx)
+        assert a == pytest.approx(0.55)
+        assert b == pytest.approx(0.725)
+        # Bounding ellipse approximation — n defaults to 2.
+        assert n == pytest.approx(2.0)
+        # Info-warning surfaces the approximation so the user knows
+        # the exact outline was lost.
+        assert any("approxim" in w.reason.lower() for w in ctx.warnings)
+
+    def test_shift_le_endcap_returns_zero(self):
+        # SHIFT_LE on a real fuselage is the nose / tail cap — bounding
+        # W and H are 0, so the xsec must collapse to a point.
+        fake = _make_fuse_vsp(
+            xsecs=[{"shape": "SHIFT_LE", "x_pct": 0.0, "width": 0.0, "height": 0.0}]
+        )
+        ctx = ImportContext()
+        a, b, n = _shape_to_super_ellipse(fake, "XS_0", _SHAPES["SHIFT_LE"], ctx)
+        assert a == 0.0
+        assert b == 0.0
+        assert n == pytest.approx(2.0)
+
+    def test_shift_te_with_real_dimensions(self):
+        # SHIFT_TE xsec[1] on Cessna 172 has W=H=0.28 — it's NOT an
+        # endcap, just a loft-control marker on an ellipse-shaped curve.
+        fake = _make_fuse_vsp(
+            xsecs=[{"shape": "SHIFT_TE", "x_pct": 0.05, "width": 0.28, "height": 0.28}]
+        )
+        ctx = ImportContext()
+        a, b, n = _shape_to_super_ellipse(fake, "XS_0", _SHAPES["SHIFT_TE"], ctx)
+        assert a == pytest.approx(0.14)
+        assert b == pytest.approx(0.14)
+
+    def test_file_fuse_reads_real_bounding_box(self):
+        fake = _make_fuse_vsp(
+            xsecs=[{"shape": "FILE_FUSE", "x_pct": 0.5, "width": 0.8, "height": 0.6}]
+        )
+        ctx = ImportContext()
+        a, b, n = _shape_to_super_ellipse(fake, "XS_0", _SHAPES["FILE_FUSE"], ctx)
+        assert a == pytest.approx(0.4)
+        assert b == pytest.approx(0.3)
+        assert n == pytest.approx(2.0)
+
+
+# ---------------------------------------------------------------------------
+# gh-709 regression: Cessna 172 fuselage shape mix
+# ---------------------------------------------------------------------------
+
+
+class TestCessna172FuselageRegression:
+    """The Cessna 172 fuselage in cessna172.vsp3 has 10 xsecs with a
+    mix of SHIFT_LE, SHIFT_TE, SUPER_ELLIPSE, and GENERAL_FUSE. The
+    pre-gh-709 handler returned 0.5/0.5 for 4 of 10 xsecs, producing
+    a chain of identical barrels. This test replays the exact shape
+    pattern and asserts the import now matches reality.
+    """
+
+    def test_mixed_xsecs_produce_tapered_fuselage(self, tmp_path, monkeypatch):
+        f = tmp_path / "cessna_replay.vsp3"
+        f.write_text("")
+        # Values lifted from a real probe of cessna172.vsp3 (see
+        # gh-709 description).
+        xsecs = [
+            {"shape": "SHIFT_LE", "x_pct": 0.00, "width": 0.00, "height": 0.00},
+            {"shape": "SHIFT_TE", "x_pct": 0.05, "width": 0.28, "height": 0.28},
+            {"shape": "SUPER_ELLIPSE", "x_pct": 0.15, "Super_Width": 0.82, "Super_Height": 0.52,
+             "Super_M": 2.0, "Super_N": 2.0},
+            {"shape": "SUPER_ELLIPSE", "x_pct": 0.30, "Super_Width": 1.00, "Super_Height": 0.98,
+             "Super_M": 2.0, "Super_N": 2.0},
+            {"shape": "SUPER_ELLIPSE", "x_pct": 0.45, "Super_Width": 1.07, "Super_Height": 1.04,
+             "Super_M": 2.0, "Super_N": 2.0},
+            {"shape": "GENERAL_FUSE", "x_pct": 0.60, "width": 1.10, "height": 1.45},
+            {"shape": "GENERAL_FUSE", "x_pct": 0.75, "width": 1.10, "height": 1.22},
+            {"shape": "SUPER_ELLIPSE", "x_pct": 0.85, "Super_Width": 0.97, "Super_Height": 0.88,
+             "Super_M": 2.0, "Super_N": 2.0},
+            {"shape": "SUPER_ELLIPSE", "x_pct": 0.95, "Super_Width": 0.10, "Super_Height": 0.36,
+             "Super_M": 2.0, "Super_N": 2.0},
+            {"shape": "SHIFT_LE", "x_pct": 1.00, "width": 0.00, "height": 0.00},
+        ]
+        fake = _make_fuse_vsp(xsecs=xsecs, length=7.23)
+        monkeypatch.setattr(openvsp_adapter, "get_vsp", lambda: fake)
+        result = import_vsp3(f)
+
+        fuse = (result.aeroplane.fuselages or {})["Fuselage"]
+        # Endcaps collapse to a point.
+        assert fuse.x_secs[0].a == 0.0
+        assert fuse.x_secs[0].b == 0.0
+        assert fuse.x_secs[-1].a == 0.0
+        # Middle GENERAL_FUSE sections must have the real bounding box,
+        # NOT the legacy 0.5/0.5 fallback.
+        gen_fuse_a = fuse.x_secs[5]
+        assert gen_fuse_a.a == pytest.approx(0.55)
+        assert gen_fuse_a.b == pytest.approx(0.725)
+        gen_fuse_b = fuse.x_secs[6]
+        assert gen_fuse_b.a == pytest.approx(0.55)
+        assert gen_fuse_b.b == pytest.approx(0.61)
+        # No two adjacent non-endcap xsecs may share the same (a, b) —
+        # that's the chain-of-identical-barrels signature.
+        bodies = fuse.x_secs[1:-1]
+        for left, right in zip(bodies, bodies[1:], strict=False):
+            assert (left.a, left.b) != (right.a, right.b)
 
 
 # ---------------------------------------------------------------------------
