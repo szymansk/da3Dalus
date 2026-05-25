@@ -135,7 +135,7 @@ def _stub_import_vsp3_with_wing(monkeypatch, *, span_m: float, root_chord: float
     from app.converters import openvsp_importer
     from app.schemas.aeroplaneschema import AeroplaneSchema, AsbWingSchema, WingXSecSchema
 
-    def _fake_import(path):  # noqa: ARG001 — path is read for fixture only
+    def _fake_import(path, **_kw):  # noqa: ARG001 — path/kwargs are read for fixture only
         wing = AsbWingSchema(
             name="Main",
             symmetric=True,
@@ -256,7 +256,7 @@ class TestImportEndpointScaling:
         from app.schemas.aeroplaneschema import AeroplaneSchema
         from app.services import openvsp_import_service
 
-        def _fake_import(path):  # noqa: ARG001
+        def _fake_import(path, **_kw):  # noqa: ARG001
             return openvsp_importer.ImportResult(
                 aeroplane=AeroplaneSchema(name="Wingless"),
                 warnings=[],
@@ -389,7 +389,7 @@ def _stub_import_vsp3_with_fuselage_and_weights(monkeypatch):
     )
     from app.schemas.weight_item import WeightItemWrite
 
-    def _fake_import(path):  # noqa: ARG001 — fixture-only path
+    def _fake_import(path, **_kw):  # noqa: ARG001 — fixture-only path
         wing = AsbWingSchema(
             name="Main",
             symmetric=True,

@@ -108,6 +108,15 @@ class ImportContext:
     # and consumed by post-passes that need to walk wings (e.g.
     # SS_CONTROL → TrailingEdgeDevice in gh-644).
     wing_geom_ids: dict[str, str] = field(default_factory=dict)
+    # gh-721: relative tolerance (fraction of body length) the FUSELAGE
+    # and CUSTOM handlers use to decide whether to insert extra xsecs
+    # at high-curvature sections. ``0.0`` disables refinement entirely.
+    xsec_tolerance_rel: float = 0.0025
+    # gh-721: hard ceiling on xsecs per fuselage after refinement.
+    # 100 matches what real-world OpenVSP geoms (RV-7 sub-fuselages
+    # etc.) ship; users with simpler bodies can tighten this for DB
+    # / viewer-performance reasons.
+    xsec_max_count: int = 100
 
     def add_warning(
         self,
@@ -312,8 +321,23 @@ def _ensure_handlers_loaded() -> None:
     _handlers_loaded = True
 
 
-def import_vsp3(path: Path) -> ImportResult:
+def import_vsp3(
+    path: Path,
+    *,
+    xsec_tolerance_rel: float = 0.0025,
+    xsec_max_count: int = 100,
+) -> ImportResult:
     """Parse a ``.vsp3`` file → :class:`ImportResult`.
+
+    Parameters
+    ----------
+    path
+        Filesystem path to the ``.vsp3`` upload.
+    xsec_tolerance_rel
+        gh-721: relative tolerance (fraction of body length) the
+        FUSELAGE and CUSTOM handlers use for adaptive xsec refinement
+        at high-curvature sections. Default ``0.0025`` (= 0.25%).
+        Pass ``0.0`` to disable refinement.
 
     Raises
     ------
@@ -357,6 +381,8 @@ def import_vsp3(path: Path) -> ImportResult:
     ctx = ImportContext(
         source_length_unit=source_unit,
         source_scale_to_meters=source_scale,
+        xsec_tolerance_rel=xsec_tolerance_rel,
+        xsec_max_count=xsec_max_count,
     )
 
     aeroplane = AeroplaneSchema(name=path.stem)
