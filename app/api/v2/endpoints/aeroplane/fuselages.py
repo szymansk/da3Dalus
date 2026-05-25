@@ -156,6 +156,46 @@ async def get_aeroplane_fuselage(
     return _call_service(fuselage_service.get_fuselage, db, aeroplane_id, fuselage_name)
 
 
+def _serve_fuselage_step_attribute(
+    *,
+    db: Session,
+    aeroplane_id: UUID4,
+    fuselage_name: str,
+    attribute: str,
+    no_step_detail: str,
+    download_suffix: str,
+) -> FileResponse:
+    """Shared serving logic for the gh-729 Surface STEP and the
+    gh-731 sewed-Solid STEP download endpoints.
+
+    The two endpoints differ only in which FuselageSchema attribute
+    holds the relative path and the human-facing wording on 404 / the
+    download filename suffix; the resolve / containment / on-disk
+    checks are identical and security-critical.
+    """
+    fuselage = _call_service(fuselage_service.get_fuselage, db, aeroplane_id, fuselage_name)
+    rel_path = getattr(fuselage, attribute, None)
+    if not rel_path:
+        raise HTTPException(status_code=404, detail=no_step_detail)
+    artifacts_root = _FsPath(settings.ARTIFACTS_BASE_DIR).resolve()
+    resolved = (_FsPath(settings.ARTIFACTS_BASE_DIR) / rel_path).resolve()
+    if artifacts_root not in resolved.parents and resolved != artifacts_root:
+        logger.warning(
+            "STEP path %r escapes artifacts root — refusing to serve.", rel_path
+        )
+        raise HTTPException(status_code=404, detail="STEP file unavailable.")
+    if not resolved.exists():
+        raise HTTPException(
+            status_code=404,
+            detail=f"STEP file for fuselage {fuselage_name!r} is missing on disk.",
+        )
+    return FileResponse(
+        path=str(resolved),
+        media_type="model/step",
+        filename=f"{fuselage_name}{download_suffix}",
+    )
+
+
 @router.get(
     "/aeroplanes/{aeroplane_id}/fuselages/{fuselage_name}/step",
     tags=["fuselages"],
@@ -173,44 +213,64 @@ async def get_aeroplane_fuselage_step(
     fuselage_name: Annotated[str, Path(..., description="The fuselage name")],
     db: Annotated[Session, Depends(get_db)],
 ):
-    """Download the per-geom STEP file (gh-729).
+    """Download the per-geom Surface STEP file (gh-729).
 
     Only available when the fuselage was imported from an OpenVSP
     ``.vsp3`` file and the STEP export succeeded at import time.
     Returns 404 for CAD-created fuselages or when the file is
     missing from disk.
     """
-    # Resolve the schema first — that yields a 404 for unknown
-    # fuselage names with a structured error body.
-    fuselage = _call_service(fuselage_service.get_fuselage, db, aeroplane_id, fuselage_name)
-    if not getattr(fuselage, "step_path", None):
-        raise HTTPException(
-            status_code=404,
-            detail=(
-                f"Fuselage {fuselage_name!r} has no STEP file "
-                "(only OpenVSP-imported fuselages do)."
-            ),
-        )
-    full_path = _FsPath(settings.ARTIFACTS_BASE_DIR) / fuselage.step_path
-    # Containment check — defence in depth against a manipulated
-    # ``step_path`` somehow escaping the artifacts root.
-    artifacts_root = _FsPath(settings.ARTIFACTS_BASE_DIR).resolve()
-    resolved = full_path.resolve()
-    if artifacts_root not in resolved.parents and resolved != artifacts_root:
-        logger.warning(
-            "STEP path %r escapes artifacts root — refusing to serve.",
-            fuselage.step_path,
-        )
-        raise HTTPException(status_code=404, detail="STEP file unavailable.")
-    if not resolved.exists():
-        raise HTTPException(
-            status_code=404,
-            detail=f"STEP file for fuselage {fuselage_name!r} is missing on disk.",
-        )
-    return FileResponse(
-        path=str(resolved),
-        media_type="model/step",
-        filename=f"{fuselage_name}.stp",
+    return _serve_fuselage_step_attribute(
+        db=db,
+        aeroplane_id=aeroplane_id,
+        fuselage_name=fuselage_name,
+        attribute="step_path",
+        no_step_detail=(
+            f"Fuselage {fuselage_name!r} has no STEP file "
+            "(only OpenVSP-imported fuselages do)."
+        ),
+        download_suffix=".stp",
+    )
+
+
+@router.get(
+    "/aeroplanes/{aeroplane_id}/fuselages/{fuselage_name}/solid_step",
+    tags=["fuselages"],
+    operation_id="get_aeroplane_fuselage_solid_step",
+    responses={
+        200: {
+            "content": {"model/step": {}},
+            "description": "Sewed closed-Solid STEP file bytes",
+        },
+        404: {"description": "Aeroplane / fuselage / Solid STEP file not found"},
+    },
+)
+async def get_aeroplane_fuselage_solid_step(
+    aeroplane_id: Annotated[AeroPlaneID, Path(..., description="The ID of the aeroplane")],
+    fuselage_name: Annotated[str, Path(..., description="The fuselage name")],
+    db: Annotated[Session, Depends(get_db)],
+):
+    """Download the sewed closed-Solid STEP file (gh-731).
+
+    Only available when the fuselage was imported from an OpenVSP
+    ``.vsp3`` file AND the surface STEP healed into a valid Solid.
+    Sewing legitimately fails on some VSP exports (open caps,
+    leaky patches); in that case this endpoint returns 404 and the
+    user should fall back to the surface STEP from
+    ``/step`` and sew manually in their CAD tool.
+    """
+    return _serve_fuselage_step_attribute(
+        db=db,
+        aeroplane_id=aeroplane_id,
+        fuselage_name=fuselage_name,
+        attribute="solid_step_path",
+        no_step_detail=(
+            f"Fuselage {fuselage_name!r} has no Solid STEP file — "
+            "either the fuselage wasn't VSP-imported or the surface "
+            "STEP did not heal into a closed Solid (use /step "
+            "and sew manually in your CAD tool)."
+        ),
+        download_suffix="_solid.stp",
     )
 
 

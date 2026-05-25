@@ -456,9 +456,17 @@ class FuselageModel(Base):
     # landing-gear struts where OpenVSP stores only one side.
     symmetric = Column(Boolean, nullable=False, default=False, server_default="0")
     # Relative path to a per-geom STEP file exported at OpenVSP-import
-    # time (gh-729). Stored as Surface-only — see gh-730 for the
-    # sewed-Solid follow-up. Resolved against ``settings.ARTIFACTS_BASE_DIR``.
+    # time (gh-729). Stored as Surface-only — see ``solid_step_path``
+    # below for the sewed-Solid follow-up. Resolved against
+    # ``settings.ARTIFACTS_BASE_DIR``.
     step_path = Column(String, nullable=True)
+    # Relative path to a sewed/healed closed-Solid STEP file produced
+    # by ``openvsp_solid_sewing_service`` from ``step_path`` at
+    # OpenVSP-import time (gh-731). ``None`` when sewing failed or
+    # the fuselage wasn't VSP-imported. Solid is the input the user's
+    # CAD-construction pipeline (battery bay cuts, servo-mount unions,
+    # carbon-tube reinforcement bores) actually needs.
+    solid_step_path = Column(String, nullable=True)
 
     # Relationship with FuselageXSecSuperEllipse
     x_secs = relationship(

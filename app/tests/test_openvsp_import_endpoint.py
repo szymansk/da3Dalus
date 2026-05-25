@@ -619,6 +619,186 @@ class TestImportEndpointPersistence:
         assert rs.status_code == 404
         assert "STEP" in rs.json()["detail"]
 
+    def test_fuselage_solid_step_path_persisted_on_import(
+        self, client, monkeypatch, tmp_path
+    ):
+        """gh-731: when the surface STEP export succeeds, the sewing
+        service should run and the resulting Solid-STEP relative path
+        must land on ``FuselageModel.solid_step_path``.
+        """
+        from app.core import config as core_config
+        from app.services import openvsp_import_service
+
+        monkeypatch.setattr(openvsp_import_service, "is_importer_available", lambda: True)
+        monkeypatch.setattr(core_config.settings, "ARTIFACTS_BASE_DIR", tmp_path)
+        _stub_import_vsp3_with_fuselage_and_weights(monkeypatch)
+
+        # Fake gh-729 exporter — must run so gh-731 has source input.
+        from app.services import (
+            openvsp_solid_sewing_service,
+            openvsp_step_export_service,
+        )
+
+        def _fake_export(vsp, gid, geom_name, aeroplane_uuid):
+            out_dir = openvsp_step_export_service.step_storage_dir(aeroplane_uuid)
+            stem = openvsp_step_export_service.sanitize_geom_filename(geom_name)
+            target = out_dir / f"{stem}.stp"
+            target.write_text(f"FAKE SURFACE STEP for {geom_name} ({gid})")
+            from pathlib import Path
+            return str(target.relative_to(Path(tmp_path)))
+
+        monkeypatch.setattr(
+            openvsp_step_export_service, "export_geom_step", _fake_export
+        )
+
+        # Fake sewing service — write a small file marked as solid so we
+        # can verify it's served back through the endpoint.
+        def _fake_sew(source_rel_step, aeroplane_uuid, geom_name):
+            out_dir = openvsp_solid_sewing_service.step_storage_dir(aeroplane_uuid)
+            stem = openvsp_solid_sewing_service.sanitize_geom_filename(geom_name)
+            target = out_dir / f"{stem}_solid.stp"
+            target.write_text(f"FAKE SOLID STEP for {geom_name}")
+            from pathlib import Path
+            return str(target.relative_to(Path(tmp_path)))
+
+        monkeypatch.setattr(
+            openvsp_solid_sewing_service, "sew_imported_geom_to_solid", _fake_sew
+        )
+
+        # Stub VSP adapter so the gh-729 codepath runs.
+        from app.converters import openvsp_adapter
+
+        class _StubVsp:
+            pass
+
+        monkeypatch.setattr(openvsp_adapter, "is_available", lambda: True)
+        monkeypatch.setattr(openvsp_adapter, "get_vsp", lambda: _StubVsp())
+
+        # Provide a geom-id → fuselage-name mapping the import service expects.
+        from app.converters import openvsp_importer
+
+        orig_fake = openvsp_importer.import_vsp3
+
+        def _fake_with_gids(path, **kw):
+            r = orig_fake(path, **kw)
+            r.fuselage_geom_ids = {"FAKE_GID_FUSE": "Fuselage"}
+            return r
+
+        monkeypatch.setattr(openvsp_importer, "import_vsp3", _fake_with_gids)
+        monkeypatch.setattr(openvsp_import_service, "import_vsp3", _fake_with_gids)
+
+        r = client.post(
+            "/api/v2/import/openvsp",
+            files={"file": ("x.vsp3", b"<vsp3/>", "application/octet-stream")},
+        )
+        assert r.status_code == 201, r.text
+        uuid = r.json()["aeroplane_uuid"]
+        rs = client.get(f"/aeroplanes/{uuid}/fuselages/Fuselage")
+        assert rs.status_code == 200, rs.text
+        body = rs.json()
+        assert body["step_path"] is not None  # gh-729
+        assert body["solid_step_path"] is not None  # gh-731
+        assert body["solid_step_path"].endswith("_solid.stp")
+        from pathlib import Path
+        full_path = Path(tmp_path) / body["solid_step_path"]
+        assert full_path.exists()
+        assert "FAKE SOLID STEP" in full_path.read_text()
+
+        # The /solid_step endpoint must serve the file.
+        rs_solid = client.get(
+            f"/aeroplanes/{uuid}/fuselages/Fuselage/solid_step"
+        )
+        assert rs_solid.status_code == 200, rs_solid.text
+        assert rs_solid.headers["content-type"] == "model/step"
+        assert b"FAKE SOLID STEP" in rs_solid.content
+        assert "_solid.stp" in rs_solid.headers.get("content-disposition", "")
+
+    def test_solid_step_endpoint_404_when_no_solid_step_path(
+        self, client, monkeypatch
+    ):
+        """A fuselage without a sewed solid (CAD-created or sewing
+        failed) → 404 with the actionable "use /step and sew
+        manually" hint.
+        """
+        from app.services import openvsp_import_service
+
+        monkeypatch.setattr(openvsp_import_service, "is_importer_available", lambda: True)
+        _stub_import_vsp3_with_fuselage_and_weights(monkeypatch)
+
+        r = client.post(
+            "/api/v2/import/openvsp",
+            files={"file": ("x.vsp3", b"<vsp3/>", "application/octet-stream")},
+        )
+        uuid = r.json()["aeroplane_uuid"]
+        rs = client.get(f"/aeroplanes/{uuid}/fuselages/Fuselage/solid_step")
+        assert rs.status_code == 404
+        assert "Solid STEP" in rs.json()["detail"]
+        assert "/step" in rs.json()["detail"]
+
+    def test_solid_step_skipped_when_sewing_fails(self, client, monkeypatch, tmp_path):
+        """Sewing failures must not abort the import — the import
+        succeeds, ``step_path`` still lands, and ``solid_step_path``
+        stays null.
+        """
+        from app.core import config as core_config
+        from app.services import openvsp_import_service
+
+        monkeypatch.setattr(openvsp_import_service, "is_importer_available", lambda: True)
+        monkeypatch.setattr(core_config.settings, "ARTIFACTS_BASE_DIR", tmp_path)
+        _stub_import_vsp3_with_fuselage_and_weights(monkeypatch)
+
+        from app.services import (
+            openvsp_solid_sewing_service,
+            openvsp_step_export_service,
+        )
+
+        def _fake_export(vsp, gid, geom_name, aeroplane_uuid):
+            out_dir = openvsp_step_export_service.step_storage_dir(aeroplane_uuid)
+            stem = openvsp_step_export_service.sanitize_geom_filename(geom_name)
+            target = out_dir / f"{stem}.stp"
+            target.write_text("FAKE")
+            from pathlib import Path
+            return str(target.relative_to(Path(tmp_path)))
+
+        monkeypatch.setattr(
+            openvsp_step_export_service, "export_geom_step", _fake_export
+        )
+        # Sewing returns None → solid_step_path stays null.
+        monkeypatch.setattr(
+            openvsp_solid_sewing_service,
+            "sew_imported_geom_to_solid",
+            lambda **kw: None,
+        )
+
+        from app.converters import openvsp_adapter, openvsp_importer
+
+        class _StubVsp:
+            pass
+
+        monkeypatch.setattr(openvsp_adapter, "is_available", lambda: True)
+        monkeypatch.setattr(openvsp_adapter, "get_vsp", lambda: _StubVsp())
+
+        orig_fake = openvsp_importer.import_vsp3
+
+        def _fake_with_gids(path, **kw):
+            r = orig_fake(path, **kw)
+            r.fuselage_geom_ids = {"FAKE_GID_FUSE": "Fuselage"}
+            return r
+
+        monkeypatch.setattr(openvsp_importer, "import_vsp3", _fake_with_gids)
+        monkeypatch.setattr(openvsp_import_service, "import_vsp3", _fake_with_gids)
+
+        r = client.post(
+            "/api/v2/import/openvsp",
+            files={"file": ("x.vsp3", b"<vsp3/>", "application/octet-stream")},
+        )
+        assert r.status_code == 201, r.text
+        uuid = r.json()["aeroplane_uuid"]
+        rs = client.get(f"/aeroplanes/{uuid}/fuselages/Fuselage")
+        body = rs.json()
+        assert body["step_path"] is not None
+        assert body["solid_step_path"] is None
+
     def test_fuselage_failure_becomes_warning_not_crash(self, client, monkeypatch):
         """A broken fuselage write must not roll back the whole import —
         the wing should still land, and the failure must surface as an

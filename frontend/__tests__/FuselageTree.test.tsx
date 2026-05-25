@@ -15,7 +15,7 @@ vi.mock("lucide-react", () => {
     ChevronDown: icon, ChevronRight: icon, Plus: icon, Trash2: icon,
     Eye: icon, EyeOff: icon, Loader: icon, PanelLeftClose: icon, Pencil: icon,
     X: icon, Upload: icon, Check: icon, Loader2: icon, Maximize2: icon,
-    Minimize2: icon, Play: icon, Lock: icon, Download: icon,
+    Minimize2: icon, Play: icon, Lock: icon, Download: icon, Box: icon,
   };
 });
 
@@ -170,6 +170,30 @@ describe("Fuselage in AeroplaneTree", () => {
     await user.click(screen.getByText("xsec 1"));
 
     expect(mockSelectFuselageXsec).toHaveBeenCalledWith(1);
+  });
+
+  it("renders both Surface and Solid STEP download links (gh-731)", () => {
+    render(
+      <AeroplaneTree
+        aeroplaneId="aero-1"
+        wingNames={[]}
+        fuselageNames={["MyFuselage"]}
+        aeroplaneName="eHawk"
+      />
+    );
+    // gh-729: surface STEP icon
+    const surface = document.querySelector(
+      '[data-testid="download-step-fuselage-MyFuselage"]'
+    );
+    expect(surface).toBeTruthy();
+    expect(surface?.getAttribute("href")).toContain("/fuselages/MyFuselage/step");
+    // gh-731: solid STEP icon
+    const solid = document.querySelector(
+      '[data-testid="download-solid-step-fuselage-MyFuselage"]'
+    );
+    expect(solid).toBeTruthy();
+    expect(solid?.getAttribute("href")).toContain("/fuselages/MyFuselage/solid_step");
+    expect(solid?.getAttribute("title")).toContain("Solid");
   });
 
   it("highlights selected xsec", async () => {

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useMemo } from "react";
-import { ChevronDown, ChevronRight, Plus, Trash2, Eye, EyeOff, Loader, PanelLeftClose, Pencil, Download } from "lucide-react";
+import { ChevronDown, ChevronRight, Plus, Trash2, Eye, EyeOff, Loader, PanelLeftClose, Pencil, Download, Box } from "lucide-react";
 import { useAeroplaneContext } from "@/components/workbench/AeroplaneContext";
 import { useWing, useAllWingData } from "@/hooks/useWings";
 import type { XSec } from "@/hooks/useWings";
@@ -38,6 +38,11 @@ interface TreeNode {
   // Rendered as a small icon button on the tree row.
   downloadHref?: string;
   downloadLabel?: string;
+  // gh-731: optional sewed Solid-STEP download link, rendered next to
+  // the gh-729 surface link with a distinct 3D-cube icon. Endpoint
+  // returns 404 with an actionable hint when sewing failed.
+  solidDownloadHref?: string;
+  solidDownloadLabel?: string;
 }
 
 // ── Callback & context interfaces for build*Nodes ──────────────
@@ -571,17 +576,23 @@ function buildTreeData(params: BuildTreeDataParams): TreeNode[] {
   return treeData;
 }
 
+// gh-729 + gh-731: build the per-fuselage STEP-download hrefs.
+// Surface link comes from gh-729; Solid link from gh-731. Both link
+// unconditionally — the backend 404s with an actionable message for
+// CAD-created bodies / failed sewing.
+function fuselageStepHrefs(
+  aeroplaneId: string | null | undefined,
+  fuselageName: string,
+): { stepHref?: string; solidStepHref?: string } {
+  if (!aeroplaneId) return {};
+  const base = `${API_BASE}/aeroplanes/${aeroplaneId}/fuselages/${encodeURIComponent(fuselageName)}`;
+  return { stepHref: `${base}/step`, solidStepHref: `${base}/solid_step` };
+}
+
 function buildFuselageNodes(treeData: TreeNode[], params: BuildTreeDataParams): void {
   for (const fn of params.fuselageNames) {
     const fusExpanded = params.expandedSet.has(`fuselage-${fn}`);
-    // gh-729: surface a STEP-download link when the fuselage was
-    // imported from VSP. The presence flag comes via the same
-    // ``useFuselage`` data — but only the currently-selected
-    // fuselage's full schema is loaded, so we link unconditionally
-    // and let the backend 404 cover CAD-created bodies.
-    const stepHref = params.aeroplaneId
-      ? `${API_BASE}/aeroplanes/${params.aeroplaneId}/fuselages/${encodeURIComponent(fn)}/step`
-      : undefined;
+    const { stepHref, solidStepHref } = fuselageStepHrefs(params.aeroplaneId, fn);
     treeData.push({
       id: `fuselage-${fn}`,
       label: fn,
@@ -597,7 +608,9 @@ function buildFuselageNodes(treeData: TreeNode[], params: BuildTreeDataParams): 
         ? () => params.onToggleFuselagePreview!(fn)
         : undefined,
       downloadHref: stepHref,
-      downloadLabel: `Download ${fn}.stp`,
+      downloadLabel: `Download ${fn}.stp (surface)`,
+      solidDownloadHref: solidStepHref,
+      solidDownloadLabel: `Download ${fn}_solid.stp (closed Solid for CAD)`,
     });
 
     if (!fusExpanded) continue;
@@ -1066,6 +1079,19 @@ function TreeRow({ node, onToggle }: Readonly<{ node: TreeNode; onToggle: () => 
           data-testid={`download-step-${node.id}`}
         >
           <Download size={10} />
+        </a>
+      )}
+
+      {node.solidDownloadHref && (
+        <a
+          href={node.solidDownloadHref}
+          download
+          onClick={(e) => e.stopPropagation()}
+          className="hidden h-5 w-5 items-center justify-center rounded-xl text-muted-foreground hover:bg-sidebar-accent hover:text-foreground group-hover:flex"
+          title={node.solidDownloadLabel ?? "Download Solid STEP"}
+          data-testid={`download-solid-step-${node.id}`}
+        >
+          <Box size={10} />
         </a>
       )}
 

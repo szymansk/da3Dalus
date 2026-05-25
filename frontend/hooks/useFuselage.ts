@@ -27,6 +27,14 @@ export interface Fuselage {
    * download goes through ``GET /aeroplanes/{id}/fuselages/{name}/step``.
    */
   step_path?: string | null;
+  /**
+   * gh-731: relative path to the sewed closed-Solid STEP file
+   * produced from ``step_path`` at OpenVSP-import time. ``null``
+   * when sewing failed or the fuselage wasn't VSP-imported. Frontend
+   * uses this only as a "has Solid STEP?" flag — download goes
+   * through ``GET /aeroplanes/{id}/fuselages/{name}/solid_step``.
+   */
+  solid_step_path?: string | null;
 }
 
 /**
