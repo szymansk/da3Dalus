@@ -763,6 +763,84 @@ class TestFuselageAxisConvention:
         assert primary.xsecs[1].xyz_c[2] == pytest.approx(-1.0)
         assert mirror.xsecs[1].xyz_c[2] == pytest.approx(-1.0)
 
+    def test_mirror_fuselage_schema_y_flips_y_keeps_xz(self):
+        """``_mirror_fuselage_schema_y`` produces a mirror-named copy
+        with y inverted on every xsec (gh-715 helper used by the CAD
+        configuration path)."""
+        from app.converters.model_schema_converters import _mirror_fuselage_schema_y
+
+        original = schemas.FuselageSchema(
+            name="Strut",
+            symmetric=True,
+            x_secs=[
+                schemas.FuselageXSecSuperEllipseSchema(
+                    xyz=[1.0, 0.6, -0.3], a=0.02, b=0.02, n=2.0
+                ),
+                schemas.FuselageXSecSuperEllipseSchema(
+                    xyz=[1.0, 0.6, -1.0], a=0.02, b=0.02, n=2.0
+                ),
+            ],
+        )
+        mirror = _mirror_fuselage_schema_y(original)
+        assert mirror.name == "Strut (mirror)"
+        assert mirror.symmetric is False  # not symmetric anymore — IS the other half
+        assert mirror.x_secs[0].xyz == [1.0, -0.6, -0.3]
+        assert mirror.x_secs[1].xyz == [1.0, -0.6, -1.0]
+        # Shape unchanged.
+        assert mirror.x_secs[0].a == original.x_secs[0].a
+        # Original schema unchanged (no mutation).
+        assert original.x_secs[0].xyz == [1.0, 0.6, -0.3]
+
+    def test_symmetric_fuselage_expands_in_cad_config(self):
+        """Same mirror expansion must happen in the CAD-config builder
+        so STEP/STL exports include both halves. Wing is added because
+        AirplaneConfiguration requires at least one wing to assemble."""
+        from app.converters.model_schema_converters import (
+            aeroplane_schema_to_airplane_configuration_async,
+            wing_config_to_asb_wing_schema,
+        )
+
+        wing_config = _create_test_wing_config()
+        wing_schema = wing_config_to_asb_wing_schema(
+            wing_config=wing_config, wing_name="main-wing"
+        )
+        strut = schemas.FuselageSchema(
+            name="Strut",
+            symmetric=True,
+            x_secs=[
+                schemas.FuselageXSecSuperEllipseSchema(
+                    xyz=[0.0, 0.6, 0.0], a=0.02, b=0.02, n=2.0
+                ),
+                schemas.FuselageXSecSuperEllipseSchema(
+                    xyz=[0.0, 0.6, -0.5], a=0.02, b=0.02, n=2.0
+                ),
+            ],
+        )
+        plane = schemas.AeroplaneSchema(
+            name="testplane",
+            total_mass_kg=1.0,
+            wings={"main-wing": wing_schema},
+            fuselages={"Strut": strut},
+        )
+        airplane_config = aeroplane_schema_to_airplane_configuration_async(plane)
+        assert airplane_config.fuselages is not None
+        assert len(airplane_config.fuselages) == 2
+        names = [f.name for f in airplane_config.fuselages]
+        assert names == ["Strut", "Strut (mirror)"]
+
+    def test_build_asb_fuselages_skips_empty_xsecs(self):
+        from collections import OrderedDict
+
+        from app.converters.model_schema_converters import _build_asb_fuselages
+
+        # FuselageSchema requires min_length=2, so build via model_construct
+        # to bypass validation for this degenerate edge case.
+        empty = schemas.FuselageSchema.model_construct(
+            name="Empty", symmetric=False, x_secs=[]
+        )
+        result = _build_asb_fuselages(OrderedDict([("Empty", empty)]))
+        assert result == []
+
     def test_non_symmetric_fuselage_stays_single(self):
         from collections import OrderedDict
 
