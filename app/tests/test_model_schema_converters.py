@@ -673,7 +673,79 @@ def test_fuselage_model_to_fuselage_config():
     assert fuselage_config.name == "fuselage-a"
     assert fuselage_config.asb_fuselage is not None
     assert len(fuselage_config.asb_fuselage.xsecs) == 2
-    assert fuselage_config.asb_fuselage.xsecs[1].height == pytest.approx(0.06)
+    # Axis convention (gh-706): schema.a = Y-half-axis (ASB.width),
+    # schema.b = Z-half-axis (ASB.height). The second xsec has a=0.06, b=0.05.
+    assert fuselage_config.asb_fuselage.xsecs[1].width == pytest.approx(0.06)
+    assert fuselage_config.asb_fuselage.xsecs[1].height == pytest.approx(0.05)
+
+
+# ---------------------------------------------------------------------------
+# gh-706: Fuselage axis convention regression
+# ---------------------------------------------------------------------------
+
+
+class TestFuselageAxisConvention:
+    """The schema's ``a``/``b`` fields map to ASB's ``width``/``height`` via:
+
+        a  →  ASB.width   (Y half-axis, lateral / sideways)
+        b  →  ASB.height  (Z half-axis, vertical / up-down)
+
+    ASB's own ellipse equation is ``(y/width)^n + (z/height)^n = 1``.
+
+    These tests use deliberately **asymmetric** cross-sections (a ≠ b) so
+    that any axis swap is immediately visible — symmetric (round)
+    cross-sections would silently pass even under the pre-fix bug.
+    """
+
+    def test_asymmetric_xsec_through_fuselage_schema_converter(self):
+        """Roundtrip: a wider-than-tall fuselage stays wider than tall."""
+        from app.converters.model_schema_converters import (
+            _asb_fuselage_xsecs_from_schema,
+        )
+
+        wide_fuselage = schemas.FuselageSchema(
+            name="wide-glider-cabin",
+            x_secs=[
+                schemas.FuselageXSecSuperEllipseSchema(
+                    xyz=[0.0, 0.0, 0.0], a=0.0, b=0.0, n=2.0
+                ),
+                # Source body: 2 m wide (Y), 1 m tall (Z) → a=1.0, b=0.5.
+                schemas.FuselageXSecSuperEllipseSchema(
+                    xyz=[0.5, 0.0, 0.0], a=1.0, b=0.5, n=2.0
+                ),
+            ],
+        )
+
+        xsecs = _asb_fuselage_xsecs_from_schema(wide_fuselage)
+
+        assert xsecs[1].width == pytest.approx(1.0)
+        assert xsecs[1].height == pytest.approx(0.5)
+        assert xsecs[1].width > xsecs[1].height, (
+            f"Source body was wider than tall (a=1.0 > b=0.5); after the "
+            f"converter the ASB xsec must still satisfy width > height, "
+            f"got width={xsecs[1].width}, height={xsecs[1].height}."
+        )
+
+    def test_asymmetric_xsec_through_model_converter(self):
+        """Same invariant via the model→config path used by analysis runs."""
+        fuselage_model = FuselageModel.from_dict(
+            name="oblong",
+            data={
+                "x_secs": [
+                    {"xyz": [0.0, 0.0, 0.0], "a": 0.0, "b": 0.0, "n": 2.0},
+                    # 0.4 m Y-half, 0.1 m Z-half: a much wider than b.
+                    {"xyz": [0.5, 0.0, 0.0], "a": 0.4, "b": 0.1, "n": 2.0},
+                ]
+            },
+        )
+
+        fuselage_config = fuselage_model_to_fuselage_config(fuselage_model)
+
+        assert fuselage_config.asb_fuselage is not None
+        xs = fuselage_config.asb_fuselage.xsecs[1]
+        assert xs.width == pytest.approx(0.4)
+        assert xs.height == pytest.approx(0.1)
+        assert xs.width > xs.height
 
 
 class TestBuildAsbAirfoil:

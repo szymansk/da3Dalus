@@ -353,13 +353,18 @@ def _scale_asb_wing_geometry_schema(
 def _asb_fuselage_xsecs_from_schema(
     fuselage: schemas.FuselageSchema,
 ) -> List[FuselageXSec]:
+    # Axis convention (gh-706): schema.a = Y-half-axis = ASB.width,
+    # schema.b = Z-half-axis = ASB.height. ASB's own ellipse equation is
+    # ``(y/width)^n + (z/height)^n = 1`` — so a goes to width, b to
+    # height. The pre-fix code had these swapped, rotating every
+    # non-circular fuselage by 90° around the spine.
     return [
         FuselageXSec(
             xyz_c=[float(value) for value in x_sec.xyz],
             xyz_normal=[1.0, 0.0, 0.0],
             radius=None,
-            height=float(x_sec.a),
-            width=float(x_sec.b),
+            width=float(x_sec.a),
+            height=float(x_sec.b),
             shape=float(x_sec.n),
         )
         for x_sec in fuselage.x_secs
@@ -381,6 +386,8 @@ def fuselage_model_to_fuselage_config(
     fuselage: FuselageModel,
 ) -> FuselageConfiguration:
     fuselage_config = FuselageConfiguration(name=fuselage.name)
+    # See ``_asb_fuselage_xsecs_from_schema`` for axis-convention (gh-706):
+    # schema.a → ASB.width (Y), schema.b → ASB.height (Z).
     fuselage_config.asb_fuselage = asb.Fuselage(
         name=fuselage.name,
         xsecs=[
@@ -388,8 +395,8 @@ def fuselage_model_to_fuselage_config(
                 xyz_c=[float(value) for value in x_sec.xyz],
                 xyz_normal=[1.0, 0.0, 0.0],
                 radius=None,
-                height=float(x_sec.a),
-                width=float(x_sec.b),
+                width=float(x_sec.a),
+                height=float(x_sec.b),
                 shape=float(x_sec.n),
             )
             for x_sec in (fuselage.x_secs or [])
