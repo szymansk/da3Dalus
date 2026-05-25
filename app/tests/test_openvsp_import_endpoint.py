@@ -290,3 +290,81 @@ class TestImportEndpointScaling:
         body = r.json()
         scaling = [w for w in body["warnings"] if w["component_type"] == "SCALING"]
         assert scaling == []
+
+
+# ---------------------------------------------------------------------------
+# Aeroplane-name tests (post-MVP UX fix)
+# ---------------------------------------------------------------------------
+
+
+class TestImportEndpointAeroplaneName:
+    """The aeroplane name must come from (in order of precedence):
+
+    1. Explicit ``?name=`` query param (user-typed in the import dialog).
+    2. The original upload filename's stem (so ``cessna172.vsp3`` →
+       ``cessna172``).
+    3. The converter-supplied fallback (which uses ``path.stem`` —
+       previously surfaced as ``tmpXXXX`` because the endpoint writes
+       to a NamedTemporaryFile before parsing).
+    """
+
+    def test_explicit_name_query_param_overrides_filename(self, client, monkeypatch):
+        from app.services import openvsp_import_service
+
+        monkeypatch.setattr(openvsp_import_service, "is_importer_available", lambda: True)
+        _stub_import_vsp3_with_wing(monkeypatch, span_m=10.0)
+
+        r = client.post(
+            "/api/v2/import/openvsp?name=My%20Custom%20Plane",
+            files={"file": ("cessna172.vsp3", b"<vsp3/>", "application/octet-stream")},
+        )
+        assert r.status_code == 201, r.text
+        assert r.json()["aeroplane_name"] == "My Custom Plane"
+
+    def test_fallback_to_uploaded_filename_stem(self, client, monkeypatch):
+        """No explicit name → use the uploaded filename's stem, NOT the
+        tempfile stem the endpoint generates internally.
+        """
+        from app.services import openvsp_import_service
+
+        monkeypatch.setattr(openvsp_import_service, "is_importer_available", lambda: True)
+        _stub_import_vsp3_with_wing(monkeypatch, span_m=10.0)
+
+        r = client.post(
+            "/api/v2/import/openvsp",
+            files={"file": ("cessna172.vsp3", b"<vsp3/>", "application/octet-stream")},
+        )
+        assert r.status_code == 201, r.text
+        body = r.json()
+        assert body["aeroplane_name"] == "cessna172"
+        # Defensive: no `tmp` leaked-tempfile prefix.
+        assert not body["aeroplane_name"].startswith("tmp")
+
+    def test_blank_name_param_falls_back_to_filename(self, client, monkeypatch):
+        """An explicit empty-or-whitespace ``?name=`` is treated as 'no
+        override' so we still get a sane name from the upload filename.
+        """
+        from app.services import openvsp_import_service
+
+        monkeypatch.setattr(openvsp_import_service, "is_importer_available", lambda: True)
+        _stub_import_vsp3_with_wing(monkeypatch, span_m=10.0)
+
+        r = client.post(
+            "/api/v2/import/openvsp?name=%20%20",
+            files={"file": ("rv7.vsp3", b"<vsp3/>", "application/octet-stream")},
+        )
+        assert r.status_code == 201, r.text
+        assert r.json()["aeroplane_name"] == "rv7"
+
+    def test_name_param_is_trimmed(self, client, monkeypatch):
+        from app.services import openvsp_import_service
+
+        monkeypatch.setattr(openvsp_import_service, "is_importer_available", lambda: True)
+        _stub_import_vsp3_with_wing(monkeypatch, span_m=10.0)
+
+        r = client.post(
+            "/api/v2/import/openvsp?name=%20%20Cessna%20172%20%20",
+            files={"file": ("ignored.vsp3", b"<vsp3/>", "application/octet-stream")},
+        )
+        assert r.status_code == 201, r.text
+        assert r.json()["aeroplane_name"] == "Cessna 172"

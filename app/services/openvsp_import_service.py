@@ -234,14 +234,59 @@ def _make_scaling_warning(
     )
 
 
-def _persist_aeroplane(db: Session, result: ImportResult) -> tuple[str, str]:
+def _resolve_aeroplane_name(
+    *,
+    explicit_name: Optional[str],
+    source_filename: Optional[str],
+    parsed_name: Optional[str],
+) -> str:
+    """Resolve the aeroplane name from the first non-empty source.
+
+    Precedence (each must be a non-empty trimmed string to count):
+
+    1. ``explicit_name`` — user-typed in the import dialog.
+    2. ``source_filename`` stem — the original upload's basename
+       (so ``cessna172.vsp3`` → ``cessna172``). Avoids leaking the
+       ``tmpXXXX`` name of the NamedTemporaryFile the endpoint writes.
+    3. ``parsed_name`` — whatever the converter recorded on the
+       parsed schema (legacy fallback, may itself be the tempfile
+       stem when called via the endpoint).
+    4. ``"OpenVSP Import"`` — final hard fallback.
+    """
+    explicit = (explicit_name or "").strip()
+    if explicit:
+        return explicit
+
+    if source_filename:
+        stem = Path(source_filename).stem.strip()
+        if stem:
+            return stem
+
+    parsed = (parsed_name or "").strip()
+    if parsed:
+        return parsed
+
+    return "OpenVSP Import"
+
+
+def _persist_aeroplane(
+    db: Session,
+    result: ImportResult,
+    *,
+    name: Optional[str] = None,
+    source_filename: Optional[str] = None,
+) -> tuple[str, str]:
     """Persist the parsed aeroplane and return (uuid_str, name)."""
     # Lazy import to avoid pulling sqlalchemy/CAD pieces at module load
     # in environments that only need the importer (e.g. unit tests).
     from app.services import aeroplane_service, wing_service
 
-    name = result.aeroplane.name or "OpenVSP Import"
-    aeroplane = aeroplane_service.create_aeroplane(db, name)
+    resolved_name = _resolve_aeroplane_name(
+        explicit_name=name,
+        source_filename=source_filename,
+        parsed_name=result.aeroplane.name,
+    )
+    aeroplane = aeroplane_service.create_aeroplane(db, resolved_name)
 
     # Wings: convert each AsbWingSchema → AsbWingGeometryWriteSchema and
     # delegate to wing_service. The full schema isn't directly accepted
@@ -283,6 +328,8 @@ def import_openvsp_file(
     *,
     target_span_m: Optional[float] = None,
     scale_factor: Optional[float] = None,
+    name: Optional[str] = None,
+    source_filename: Optional[str] = None,
 ) -> OpenVspImportResponse:
     """Parse a ``.vsp3`` file and persist its content as a new aeroplane.
 
@@ -301,6 +348,14 @@ def import_openvsp_file(
     scale_factor
         Optional direct scaling factor. Mutually exclusive with
         ``target_span_m``. Multiplies every length-typed field.
+    name
+        Optional user-typed aeroplane name from the import dialog. When
+        non-empty (after trim) it overrides every other name source.
+    source_filename
+        Original upload filename (``cessna172.vsp3``). Used as a sane
+        fallback for the persisted aeroplane name when ``name`` is not
+        supplied — without this the endpoint would persist the
+        ``NamedTemporaryFile`` stem (``tmpXXXX``).
 
     Raises
     ------
@@ -329,7 +384,9 @@ def import_openvsp_file(
             _make_scaling_warning(factor, target_span_m, scale_factor)
         )
 
-    uuid, name = _persist_aeroplane(db, result)
+    uuid, name = _persist_aeroplane(
+        db, result, name=name, source_filename=source_filename
+    )
     return OpenVspImportResponse(
         aeroplane_uuid=uuid,
         aeroplane_name=name,

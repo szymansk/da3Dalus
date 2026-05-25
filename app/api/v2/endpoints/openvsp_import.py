@@ -101,6 +101,17 @@ async def import_openvsp(
             ),
         ),
     ] = None,
+    name: Annotated[
+        Optional[str],
+        Query(
+            max_length=200,
+            description=(
+                "Optional: user-supplied aeroplane name. Overrides the "
+                "default (which is the uploaded filename's stem). "
+                "Whitespace-only values are treated as 'no override'."
+            ),
+        ),
+    ] = None,
 ) -> OpenVspImportResponseModel:
     """Import an OpenVSP ``.vsp3`` file as a new aeroplane.
 
@@ -159,6 +170,8 @@ async def import_openvsp(
             tmp_path,
             target_span_m=target_span_m,
             scale_factor=scale_factor,
+            name=name,
+            source_filename=file.filename,
         )
     except FileNotFoundError as exc:
         raise HTTPException(
