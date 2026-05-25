@@ -271,6 +271,37 @@ def _resolve_aeroplane_name(
     return "OpenVSP Import"
 
 
+def _set_fuselage_step_path(
+    db: Session, aeroplane_uuid, fuse_name: str, rel_path: str
+) -> None:
+    """Write the per-geom STEP path onto an already-persisted
+    ``FuselageModel`` row (gh-729).
+
+    Done as a second-pass update — ``fuselage_service.create_fuselage``
+    only takes a ``FuselageSchema`` today, and adding a new field
+    there would mean threading the path through every other caller.
+    """
+    from app.models.aeroplanemodel import AeroplaneModel, FuselageModel
+
+    aeroplane = (
+        db.query(AeroplaneModel).filter(AeroplaneModel.uuid == aeroplane_uuid).first()
+    )
+    if aeroplane is None:
+        return
+    fuse_row = (
+        db.query(FuselageModel)
+        .filter(
+            FuselageModel.aeroplane_id == aeroplane.id,
+            FuselageModel.name == fuse_name,
+        )
+        .first()
+    )
+    if fuse_row is None:
+        return
+    fuse_row.step_path = rel_path
+    db.flush()
+
+
 def _record_persist_failure(
     result: ImportResult,
     *,
@@ -363,7 +394,21 @@ def _persist_aeroplane(
     # Fuselages (gh-693): persist each fuselage via fuselage_service.
     # FuselageSchema fields are already in metres (no unit conversion
     # needed — different from wings which are mm-in-schema).
+    #
+    # gh-729: also export a per-geom STEP file and record its
+    # relative path on the FuselageModel row. The geom→schema-name
+    # mapping comes from ``result.fuselage_geom_ids``; we look the
+    # gid up by schema name when persisting.
     if result.aeroplane.fuselages:
+        # Invert the gid → name map for name-based lookup. (Importer
+        # may have renamed colliding names — gh-705 dedupe — so the
+        # ``ctx`` map is the authoritative source.)
+        name_to_gid = {n: g for g, n in (result.fuselage_geom_ids or {}).items()}
+        from app.converters import openvsp_adapter
+        from app.services import openvsp_step_export_service
+
+        vsp = openvsp_adapter.get_vsp() if openvsp_adapter.is_available() else None
+
         for fuse_name, fuse in result.aeroplane.fuselages.items():
             try:
                 fuselage_service.create_fuselage(db, aeroplane.uuid, fuse_name, fuse)
@@ -371,6 +416,17 @@ def _persist_aeroplane(
                 _record_persist_failure(
                     result, component_type="FUSELAGE", component_name=fuse_name, exc=exc
                 )
+                continue
+            gid = name_to_gid.get(fuse_name)
+            if vsp is not None and gid is not None:
+                rel_step = openvsp_step_export_service.export_geom_step(
+                    vsp=vsp,
+                    gid=gid,
+                    geom_name=fuse_name,
+                    aeroplane_uuid=str(aeroplane.uuid),
+                )
+                if rel_step:
+                    _set_fuselage_step_path(db, aeroplane.uuid, fuse_name, rel_step)
 
     # Weight items (gh-693): persist each WeightItemWrite via the same
     # entry point the manual mass-properties UI uses, so categories,

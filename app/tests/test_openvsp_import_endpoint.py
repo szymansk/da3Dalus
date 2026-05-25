@@ -527,6 +527,98 @@ class TestImportEndpointPersistence:
         expected_cg = (1.5 * 0.3 + 0.08 * 0.5) / 1.58
         assert summary["cg_x_m"] == pytest.approx(expected_cg, abs=1e-5)
 
+    def test_fuselage_step_path_persisted_on_import(self, client, monkeypatch, tmp_path):
+        """gh-729: a real OpenVSP STEP export should land on disk and
+        the relative path should be recorded on ``FuselageModel.step_path``.
+        """
+        from app.core import config as core_config
+        from app.services import openvsp_import_service
+
+        monkeypatch.setattr(openvsp_import_service, "is_importer_available", lambda: True)
+        monkeypatch.setattr(core_config.settings, "ARTIFACTS_BASE_DIR", tmp_path)
+        _stub_import_vsp3_with_fuselage_and_weights(monkeypatch)
+
+        # Fake VSP exporter — write a small file with the geom-id baked
+        # in so we can verify the per-geom isolation logic ran.
+        from app.services import openvsp_step_export_service
+
+        def _fake_export(vsp, gid, geom_name, aeroplane_uuid):
+            out_dir = openvsp_step_export_service.step_storage_dir(aeroplane_uuid)
+            stem = openvsp_step_export_service.sanitize_geom_filename(geom_name)
+            target = out_dir / f"{stem}.stp"
+            target.write_text(f"FAKE STEP for {geom_name} ({gid})")
+            from pathlib import Path
+            return str(target.relative_to(Path(tmp_path)))
+
+        monkeypatch.setattr(
+            openvsp_step_export_service, "export_geom_step", _fake_export
+        )
+        # ``import_openvsp_file`` looks up vsp via openvsp_adapter — give
+        # it a stub so the ``is_available`` gate passes.
+        from app.converters import openvsp_adapter
+
+        class _StubVsp:
+            pass
+
+        monkeypatch.setattr(openvsp_adapter, "is_available", lambda: True)
+        monkeypatch.setattr(openvsp_adapter, "get_vsp", lambda: _StubVsp())
+
+        # Make the stub import_vsp3 record the geom-id → fuselage-name
+        # mapping that ``_persist_aeroplane`` needs.
+        from app.converters import openvsp_importer
+
+        orig_fake = openvsp_importer.import_vsp3
+
+        def _fake_with_gids(path, **kw):
+            r = orig_fake(path, **kw)
+            r.fuselage_geom_ids = {"FAKE_GID_FUSE": "Fuselage"}
+            return r
+
+        monkeypatch.setattr(openvsp_importer, "import_vsp3", _fake_with_gids)
+        monkeypatch.setattr(openvsp_import_service, "import_vsp3", _fake_with_gids)
+
+        r = client.post(
+            "/api/v2/import/openvsp",
+            files={"file": ("x.vsp3", b"<vsp3/>", "application/octet-stream")},
+        )
+        assert r.status_code == 201, r.text
+        uuid = r.json()["aeroplane_uuid"]
+        # GET the fuselage and check step_path is populated.
+        rs = client.get(f"/aeroplanes/{uuid}/fuselages/Fuselage")
+        assert rs.status_code == 200, rs.text
+        body = rs.json()
+        assert body["step_path"] is not None
+        # File exists on disk.
+        from pathlib import Path
+        full_path = Path(tmp_path) / body["step_path"]
+        assert full_path.exists()
+        assert "FAKE STEP" in full_path.read_text()
+
+        # GET the STEP-download endpoint serves the file.
+        rs_step = client.get(f"/aeroplanes/{uuid}/fuselages/Fuselage/step")
+        assert rs_step.status_code == 200, rs_step.text
+        assert rs_step.headers["content-type"] == "model/step"
+        assert b"FAKE STEP" in rs_step.content
+
+    def test_step_endpoint_404_when_no_step_path(self, client, monkeypatch):
+        """A CAD-created fuselage (no STEP export) → 404 with a
+        helpful message, not a 500.
+        """
+        from app.services import openvsp_import_service
+
+        monkeypatch.setattr(openvsp_import_service, "is_importer_available", lambda: True)
+        _stub_import_vsp3_with_fuselage_and_weights(monkeypatch)
+
+        r = client.post(
+            "/api/v2/import/openvsp",
+            files={"file": ("x.vsp3", b"<vsp3/>", "application/octet-stream")},
+        )
+        uuid = r.json()["aeroplane_uuid"]
+        # No real STEP export ran — step_path stays None.
+        rs = client.get(f"/aeroplanes/{uuid}/fuselages/Fuselage/step")
+        assert rs.status_code == 404
+        assert "STEP" in rs.json()["detail"]
+
     def test_fuselage_failure_becomes_warning_not_crash(self, client, monkeypatch):
         """A broken fuselage write must not roll back the whole import —
         the wing should still land, and the failure must surface as an

@@ -151,6 +151,7 @@ def _handle_custom(
     if unique_name != name:
         fuse = fuse.model_copy(update={"name": unique_name})
     aeroplane.fuselages[unique_name] = fuse
+    ctx.fuselage_geom_ids[gid] = unique_name
 
 
 def register() -> None:

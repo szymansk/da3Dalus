@@ -455,6 +455,10 @@ class FuselageModel(Base):
     # geometry with y → -y. Used for paired sub-fuselages like
     # landing-gear struts where OpenVSP stores only one side.
     symmetric = Column(Boolean, nullable=False, default=False, server_default="0")
+    # Relative path to a per-geom STEP file exported at OpenVSP-import
+    # time (gh-729). Stored as Surface-only — see gh-730 for the
+    # sewed-Solid follow-up. Resolved against ``settings.ARTIFACTS_BASE_DIR``.
+    step_path = Column(String, nullable=True)
 
     # Relationship with FuselageXSecSuperEllipse
     x_secs = relationship(

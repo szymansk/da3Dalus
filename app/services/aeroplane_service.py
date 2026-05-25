@@ -161,6 +161,17 @@ def delete_aeroplane(db: Session, aeroplane_uuid) -> None:
         logger.error(f"Database error when deleting aeroplane: {e}")
         raise InternalError(message=f"Database error: {e}")
 
+    # gh-729: clean up per-aeroplane STEP storage (best-effort, never
+    # raises — DB cascade has already run by this point).
+    try:
+        from app.services import openvsp_step_export_service
+
+        openvsp_step_export_service.cleanup_aeroplane_step_files(str(aeroplane_uuid))
+    except Exception as exc:  # noqa: BLE001 — purely defensive
+        logger.warning(
+            "STEP cleanup for aeroplane %s failed: %s", aeroplane_uuid, exc
+        )
+
 
 def get_aeroplane_mass(db: Session, aeroplane_uuid) -> float:
     """
