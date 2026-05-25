@@ -368,3 +368,191 @@ class TestImportEndpointAeroplaneName:
         )
         assert r.status_code == 201, r.text
         assert r.json()["aeroplane_name"] == "Cessna 172"
+
+
+# ---------------------------------------------------------------------------
+# gh-693: Phase 1.5 — Fuselage + WeightItem DB persistence
+# ---------------------------------------------------------------------------
+
+
+def _stub_import_vsp3_with_fuselage_and_weights(monkeypatch):
+    """Patch ``import_vsp3`` to yield an ImportResult with one wing,
+    one fuselage (3 super-ellipse xsecs), and 2 weight items.
+    """
+    from app.converters import openvsp_importer
+    from app.schemas.aeroplaneschema import (
+        AeroplaneSchema,
+        AsbWingSchema,
+        FuselageSchema,
+        FuselageXSecSuperEllipseSchema,
+        WingXSecSchema,
+    )
+    from app.schemas.weight_item import WeightItemWrite
+
+    def _fake_import(path):  # noqa: ARG001 — fixture-only path
+        wing = AsbWingSchema(
+            name="Main",
+            symmetric=True,
+            x_secs=[
+                WingXSecSchema(
+                    xyz_le=[0.0, 0.0, 0.0],
+                    chord=0.5,
+                    twist=0.0,
+                    airfoil="naca0015",
+                ),
+                WingXSecSchema(
+                    xyz_le=[0.0, 5.0, 0.0],
+                    chord=0.2,
+                    twist=0.0,
+                    airfoil="naca0015",
+                ),
+            ],
+        )
+        fuse = FuselageSchema(
+            name="Fuselage",
+            x_secs=[
+                FuselageXSecSuperEllipseSchema(
+                    xyz=[0.0, 0.0, 0.0], a=0.0, b=0.0, n=2.0
+                ),
+                FuselageXSecSuperEllipseSchema(
+                    xyz=[1.0, 0.0, 0.0], a=0.4, b=0.3, n=2.0
+                ),
+                FuselageXSecSuperEllipseSchema(
+                    xyz=[2.0, 0.0, 0.0], a=0.0, b=0.0, n=2.0
+                ),
+            ],
+        )
+        ap = AeroplaneSchema(name="WithFuse")
+        ap.wings = OrderedDict([("Main", wing)])
+        ap.fuselages = OrderedDict([("Fuselage", fuse)])
+
+        return openvsp_importer.ImportResult(
+            aeroplane=ap,
+            warnings=[],
+            lossy_components=[],
+            weight_items=[
+                WeightItemWrite(
+                    name="Battery",
+                    mass_kg=1.5,
+                    x_m=0.3,
+                    y_m=0.0,
+                    z_m=0.05,
+                    category="other",
+                ),
+                WeightItemWrite(
+                    name="ESC",
+                    mass_kg=0.08,
+                    x_m=0.5,
+                    y_m=0.1,
+                    z_m=0.0,
+                    category="other",
+                ),
+            ],
+        )
+
+    from app.services import openvsp_import_service
+
+    monkeypatch.setattr(openvsp_importer, "import_vsp3", _fake_import)
+    monkeypatch.setattr(openvsp_import_service, "import_vsp3", _fake_import)
+
+
+class TestImportEndpointPersistence:
+    """After a successful import the DB must contain the parsed
+    fuselages and weight items — not just the wing.
+
+    Pre-gh-693 the importer counted them in the response envelope but
+    silently dropped them on the way to the DB, leaving the user with
+    a wing-only aeroplane that couldn't be scaled or analysed end-to-end.
+    """
+
+    def test_fuselage_persisted_after_import(self, client, monkeypatch):
+        from app.services import openvsp_import_service
+
+        monkeypatch.setattr(openvsp_import_service, "is_importer_available", lambda: True)
+        _stub_import_vsp3_with_fuselage_and_weights(monkeypatch)
+
+        r = client.post(
+            "/api/v2/import/openvsp",
+            files={"file": ("x.vsp3", b"<vsp3/>", "application/octet-stream")},
+        )
+        assert r.status_code == 201, r.text
+        body = r.json()
+        assert body["n_fuselages"] == 1
+
+        # Fuselage must be retrievable through the REST API.
+        uuid = body["aeroplane_uuid"]
+        rs = client.get(f"/aeroplanes/{uuid}/fuselages/Fuselage")
+        assert rs.status_code == 200, rs.text
+        fuse = rs.json()
+        assert fuse["name"] == "Fuselage"
+        assert len(fuse["x_secs"]) == 3
+        # Middle xsec carries the non-trivial geometry.
+        mid = fuse["x_secs"][1]
+        assert mid["a"] == pytest.approx(0.4)
+        assert mid["b"] == pytest.approx(0.3)
+        assert mid["xyz"] == [pytest.approx(1.0), pytest.approx(0.0), pytest.approx(0.0)]
+
+    def test_weight_items_persisted_after_import(self, client, monkeypatch):
+        from app.services import openvsp_import_service
+
+        monkeypatch.setattr(openvsp_import_service, "is_importer_available", lambda: True)
+        _stub_import_vsp3_with_fuselage_and_weights(monkeypatch)
+
+        r = client.post(
+            "/api/v2/import/openvsp",
+            files={"file": ("x.vsp3", b"<vsp3/>", "application/octet-stream")},
+        )
+        assert r.status_code == 201, r.text
+        body = r.json()
+        assert body["n_weight_items"] == 2
+
+        # Weight items must be readable via the existing weight-items
+        # endpoint. The list-endpoint returns a WeightSummary envelope
+        # ``{items, total_mass_kg, cg_x_m, cg_y_m, cg_z_m}``.
+        uuid = body["aeroplane_uuid"]
+        rs = client.get(f"/aeroplanes/{uuid}/weight-items")
+        assert rs.status_code == 200, rs.text
+        summary = rs.json()
+        items = summary["items"]
+        assert len(items) == 2
+        names = sorted(it["name"] for it in items)
+        assert names == ["Battery", "ESC"]
+        battery = next(it for it in items if it["name"] == "Battery")
+        assert battery["mass_kg"] == pytest.approx(1.5)
+        assert battery["x_m"] == pytest.approx(0.3)
+        assert battery["category"] == "other"
+        # CG of (1.5 kg @ x=0.3) + (0.08 kg @ x=0.5) ≈ 0.31013 m. The
+        # endpoint rounds to 6 decimals — keep the tolerance loose.
+        assert summary["total_mass_kg"] == pytest.approx(1.58)
+        expected_cg = (1.5 * 0.3 + 0.08 * 0.5) / 1.58
+        assert summary["cg_x_m"] == pytest.approx(expected_cg, abs=1e-5)
+
+    def test_fuselage_failure_becomes_warning_not_crash(self, client, monkeypatch):
+        """A broken fuselage write must not roll back the whole import —
+        the wing should still land, and the failure must surface as an
+        importer warning so the user sees what happened.
+        """
+        from app.services import fuselage_service, openvsp_import_service
+
+        monkeypatch.setattr(openvsp_import_service, "is_importer_available", lambda: True)
+        _stub_import_vsp3_with_fuselage_and_weights(monkeypatch)
+
+        def _boom(*_a, **_kw):
+            raise RuntimeError("simulated DB failure on fuselage write")
+
+        monkeypatch.setattr(fuselage_service, "create_fuselage", _boom)
+
+        r = client.post(
+            "/api/v2/import/openvsp",
+            files={"file": ("x.vsp3", b"<vsp3/>", "application/octet-stream")},
+        )
+        assert r.status_code == 201, r.text
+        body = r.json()
+        # Wing still landed.
+        uuid = body["aeroplane_uuid"]
+        rs = client.get(f"/aeroplanes/{uuid}/wings/Main")
+        assert rs.status_code == 200, rs.text
+        # Failure surfaced as a FUSELAGE-typed warning.
+        fuse_warnings = [w for w in body["warnings"] if w["component_type"] == "FUSELAGE"]
+        assert fuse_warnings, body["warnings"]
+        assert "simulated DB failure" in fuse_warnings[0]["reason"]
