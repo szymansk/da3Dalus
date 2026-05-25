@@ -566,6 +566,19 @@ class AsbWingGeometryWriteSchema(BaseModel):
 
 
 class FuselageXSecSuperEllipseSchema(BaseModel):
+    """Super-ellipse cross-section of a fuselage.
+
+    The shape obeys ``|y/a|^n + |z/b|^n = 1`` in the cross-section plane
+    (Y = lateral, Z = vertical). ``a`` and ``b`` are **half-axes**, not
+    full diameters; pick them to match VSP's ``Ellipse_Width/2`` and
+    ``Ellipse_Height/2`` respectively.
+
+    Axis convention (gh-706) — keep consistent across the stack:
+
+    * ``a`` → ASB ``FuselageXSec.width``  (Y, lateral / left-right)
+    * ``b`` → ASB ``FuselageXSec.height`` (Z, vertical / up-down)
+    """
+
     xyz: list[float] = Field(
         ...,
         description="Coordinates of the center of the cross-section in the local coordinate system",
@@ -573,12 +586,18 @@ class FuselageXSecSuperEllipseSchema(BaseModel):
     )
     a: float = Field(
         ...,
-        description="Semi-major axis of the superellipse in meters",
+        description=(
+            "Y-direction half-axis (semi-width) of the superellipse in metres. "
+            "Maps to ASB FuselageXSec.width."
+        ),
         examples=[0.5, 0.6],
     )
     b: float = Field(
         ...,
-        description="Semi-minor axis of the superellipse in meters",
+        description=(
+            "Z-direction half-axis (semi-height) of the superellipse in metres. "
+            "Maps to ASB FuselageXSec.height."
+        ),
         examples=[0.5, 0.4],
     )
     n: float = Field(
