@@ -185,6 +185,7 @@ _POST_PASSES: list[PostPassFn] = []
 _DISPLAY_TO_CANONICAL: dict[str, str] = {
     "Wing": "WING",
     "Fuselage": "FUSELAGE",
+    "Custom": "CUSTOM",
     "Pod": "POD",
     "Stack": "STACK",
     "Blank": "BLANK",
@@ -233,7 +234,9 @@ _UNSUPPORTED_REASONS: dict[str, str] = {
     "PROP": "Propellers not yet supported (Phase 2 — see issue #649)",
     "DISK": "Actuator disks not yet supported (Phase 2)",
     "MESH": "Imported meshes not yet supported (Phase 2)",
-    "CUSTOM": "Custom Geoms (AngelScript) cannot be imported parametrically",
+    # CUSTOM is handled by ``openvsp_custom_handler`` (gh-719) — only
+    # falls back to "unsupported" when the Custom Geom has no parametric
+    # surface to sample.
     "CONFORMAL": "Conformal Geoms not yet supported (Phase 2)",
     "NGON_MESH": "N-Gon Mesh imports come in Phase 2",
     "HUMAN": "Human pilot geoms are not part of the aerodynamic model",
@@ -298,6 +301,12 @@ def _ensure_handlers_loaded() -> None:
         from app.converters import openvsp_blank_handler
 
         openvsp_blank_handler.register()
+    except ImportError:
+        pass
+    try:  # pragma: no cover
+        from app.converters import openvsp_custom_handler
+
+        openvsp_custom_handler.register()
     except ImportError:
         pass
     _handlers_loaded = True
