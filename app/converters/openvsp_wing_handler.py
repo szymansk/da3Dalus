@@ -179,21 +179,23 @@ def _apply_xform(
     translation: tuple[float, float, float],
     rotation_deg: tuple[float, float, float],
 ) -> list[float]:
-    """Apply OpenVSP's intrinsic XYZ rotation + translation to a 3D point.
+    """Apply OpenVSP's Geom XForm rotation + translation to a 3D point.
 
-    OpenVSP applies rotations in the local frame in the order X → Y → Z
-    (intrinsic), then translates in the world frame. We mirror that
-    here so that ``StabVer`` (Cessna 172) with ``X_Rotation=90°`` correctly
-    rotates the wing's span axis from Y onto +Z.
+    OpenVSP composes the rotation matrix as ``R = Rx · Ry · Rz`` —
+    when applied to a vector ``R · v`` that means **Rz is applied to
+    the vector first, then Ry, then Rx**. Reverse order would still
+    pass the gh-698 StabVer test (single-axis rotation) but breaks
+    on any Geom with two combined rotations like Cessna 172's
+    MainStrut ``rot=(-30°, 0°, -90°)`` — see gh-717.
     """
     x, y, z = pt
     rx, ry, rz = (math.radians(a) for a in rotation_deg)
-    # Rx
-    y, z = y * math.cos(rx) - z * math.sin(rx), y * math.sin(rx) + z * math.cos(rx)
+    # Rz first
+    x, y = x * math.cos(rz) - y * math.sin(rz), x * math.sin(rz) + y * math.cos(rz)
     # Ry
     x, z = x * math.cos(ry) + z * math.sin(ry), -x * math.sin(ry) + z * math.cos(ry)
-    # Rz
-    x, y = x * math.cos(rz) - y * math.sin(rz), x * math.sin(rz) + y * math.cos(rz)
+    # Rx last
+    y, z = y * math.cos(rx) - z * math.sin(rx), y * math.sin(rx) + z * math.cos(rx)
     return [x + translation[0], y + translation[1], z + translation[2]]
 
 

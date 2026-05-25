@@ -131,18 +131,35 @@ class TestApplyXform:
         )
         assert _approx_eq(out, [2.09, 0.0, 1.13])
 
-    def test_intrinsic_xyz_order(self):
-        """Pin rotation order: intrinsic X → Y → Z.
+    def test_openvsp_rotation_order(self):
+        """Pin OpenVSP's rotation order: matrix product ``R = Rx · Ry · Rz``
+        — i.e. apply Rz to the vector first, then Ry, then Rx (gh-717).
 
-        Sequence (Rx(90°), Ry(90°)) applied to (1, 0, 0):
-            Rx(90°)(1,0,0)        = (1, 0, 0)            (X is the axis)
-            Ry(90°)(1,0,0)        = (0, 0, -1)           (+X → −Z)
-        Sequence (Rx(90°), Ry(90°)) applied to (0, 1, 0):
-            Rx(90°)(0,1,0)        = (0, 0, 1)
-            Ry(90°)(0,0,1)        = (1, 0, 0)            (+Z → +X)
+        Sequence applied to (0, 1, 0) with (Rx=90°, Ry=90°, Rz=0°):
+            Rz(0°)(0,1,0)         = (0, 1, 0)
+            Ry(90°)(0,1,0)        = (0, 1, 0)            (Y is the axis)
+            Rx(90°)(0,1,0)        = (0, 0, 1)            (+Y → +Z)
         """
         out = _apply_xform([0.0, 1.0, 0.0], (0, 0, 0), (90.0, 90.0, 0.0))
-        assert _approx_eq(out, [1.0, 0.0, 0.0])
+        assert _approx_eq(out, [0.0, 0.0, 1.0])
+
+    def test_cessna_mainstrut_rotation(self):
+        """gh-717 regression: a two-axis Geom rotation must agree with
+        OpenVSP's ``CompPnt01`` world-frame surface point.
+
+        MainStrut on the Cessna 172:
+          rot   = (Rx=-30°, Ry=0°, Rz=-90°)
+          trans = (+0.37, +1.27, -0.90)
+          local tip xsec at (1, 0, 0) — 1 m along the local spine
+
+        VSP says u=1.0 lands at world (+0.43, +0.40, -0.40). Pre-fix
+        the handler applied rotations in reverse order and ended up
+        at (+0.37, +0.27, -0.90) — horizontal instead of inclined.
+        """
+        out = _apply_xform(
+            [1.0, 0.0, 0.0], (0.37, 1.27, -0.90), (-30.0, 0.0, -90.0)
+        )
+        assert _approx_eq(out, [0.37, 0.404, -0.4], tol=1e-3)
 
     @pytest.mark.parametrize(
         "rot_deg,inp,expected",
