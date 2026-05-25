@@ -864,6 +864,13 @@ class TestImportEndpointPersistence:
             openvsp_solid_sewing_service, "sew_imported_geom_to_solid", _fake_sew
         )
         monkeypatch.setattr(_slicing, "slice_step_to_fuselage", _fake_slicer)
+        # Bypass the world-frame X-dominance gate — the stub STEP file
+        # is plain text, not cadquery-readable, so the real gate would
+        # always say "skip". The gate itself is unit-tested in
+        # test_openvsp_solid_sewing.py-style direct tests of the helper.
+        monkeypatch.setattr(
+            openvsp_import_service, "_is_x_dominant_fuselage", lambda _p: True
+        )
 
         from app.converters import openvsp_adapter, openvsp_importer
 
@@ -906,6 +913,83 @@ class TestImportEndpointPersistence:
         # gh-729 + gh-731 paths still intact after refinement.
         assert body["step_path"] is not None
         assert body["solid_step_path"] is not None
+
+    def test_slicer_skipped_for_non_x_dominant_fuselage(self, client, monkeypatch, tmp_path):
+        """gh-732: Cessna sub-fuselages (Struts oriented along Z,
+        MainStrut diagonal) are rotated 90° in OpenVSP. Slicing them
+        along X would either cut perpendicular to the long axis
+        (garbage xsecs) or rotate the model and put xyz in the wrong
+        frame. Both are visually degenerate. The handler schema must
+        win when the world-frame X-dominance gate fires.
+        """
+        from app.core import config as core_config
+        from app.services import openvsp_import_service
+
+        monkeypatch.setattr(openvsp_import_service, "is_importer_available", lambda: True)
+        monkeypatch.setattr(core_config.settings, "ARTIFACTS_BASE_DIR", tmp_path)
+        _stub_import_vsp3_with_fuselage_and_weights(monkeypatch)
+
+        from app.services import (
+            openvsp_solid_sewing_service,
+            openvsp_step_export_service,
+        )
+        from cad_designer.aerosandbox import slicing as _slicing
+
+        def _fake_export(vsp, gid, geom_name, aeroplane_uuid):
+            out_dir = openvsp_step_export_service.step_storage_dir(aeroplane_uuid)
+            stem = openvsp_step_export_service.sanitize_geom_filename(geom_name)
+            target = out_dir / f"{stem}.stp"
+            target.write_text("FAKE")
+            from pathlib import Path
+            return str(target.relative_to(Path(tmp_path)))
+
+        # Force the X-dominance gate to refuse refinement.
+        monkeypatch.setattr(
+            openvsp_import_service, "_is_x_dominant_fuselage", lambda _p: False
+        )
+
+        # Slicer must not be called at all — make it crash if it is.
+        def _slicer_must_not_run(*_a, **_kw):
+            raise AssertionError("slicer must not run when gate refuses")
+
+        monkeypatch.setattr(openvsp_step_export_service, "export_geom_step", _fake_export)
+        monkeypatch.setattr(
+            openvsp_solid_sewing_service,
+            "sew_imported_geom_to_solid",
+            lambda **kw: None,
+        )
+        monkeypatch.setattr(_slicing, "slice_step_to_fuselage", _slicer_must_not_run)
+
+        from app.converters import openvsp_adapter, openvsp_importer
+
+        class _StubVsp:
+            pass
+
+        monkeypatch.setattr(openvsp_adapter, "is_available", lambda: True)
+        monkeypatch.setattr(openvsp_adapter, "get_vsp", lambda: _StubVsp())
+
+        orig_fake = openvsp_importer.import_vsp3
+
+        def _fake_with_gids(path, **kw):
+            r = orig_fake(path, **kw)
+            r.fuselage_geom_ids = {"FAKE_GID_FUSE": "Fuselage"}
+            return r
+
+        monkeypatch.setattr(openvsp_importer, "import_vsp3", _fake_with_gids)
+        monkeypatch.setattr(openvsp_import_service, "import_vsp3", _fake_with_gids)
+
+        r = client.post(
+            "/api/v2/import/openvsp",
+            files={"file": ("x.vsp3", b"<vsp3/>", "application/octet-stream")},
+        )
+        assert r.status_code == 201, r.text
+        uuid = r.json()["aeroplane_uuid"]
+        rs = client.get(f"/aeroplanes/{uuid}/fuselages/Fuselage")
+        body = rs.json()
+        # Gate refused → handler schema (3 xsecs) preserved.
+        assert len(body["x_secs"]) == 3
+        # Handler values unchanged (gh-693 stub: a=0.4 at xsec[1]).
+        assert body["x_secs"][1]["a"] == pytest.approx(0.4)
 
     def test_slicer_failure_keeps_handler_schema(self, client, monkeypatch, tmp_path):
         """gh-732: when the slicer raises or returns <2 xsecs, the

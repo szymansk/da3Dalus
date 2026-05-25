@@ -774,8 +774,17 @@ def slice_step_to_fuselage(
     #   (potentially with inner loops or multiple disjoint sections);
     #   keep historic "take first wire" semantics so the existing
     #   fuselage-slice quality tests stay byte-stable.
+    #
+    # gh-732 bug-fix: each slice is fitted **independently** — no
+    # ``prev_params`` chaining. The smoothness term in
+    # ``fit_shape_area_superellipse`` is a causal forward bias that
+    # pins each slice's (a, b, n) toward the previous slice's fit.
+    # The nose slice is tiny (a few mm), so subsequent slices stay
+    # 50–80 % too small for the next 5-6 stations until the optimizer
+    # finally outgrows the degenerate anchor. Independent fitting is
+    # both correct in scope (the slicer has enough resolution that
+    # smoothness emerges from the data) and trivially parallelisable.
     xsec_dicts = []
-    prev_params = None
     for wire_set in wire_slices:
         if not wire_set:
             continue
@@ -787,7 +796,7 @@ def slice_step_to_fuselage(
             continue
         x = float(slice_points[0][0])
         points_2d = np.array([(y, z) for (_, y, z) in slice_points])
-        fit = fit_shape_area_superellipse(points_2d, prev_params=prev_params)
+        fit = fit_shape_area_superellipse(points_2d, prev_params=None)
         xyz = [x, float(fit["center"][0]), float(fit["center"][1])]
         xsec_dicts.append({
             "xyz": xyz,
@@ -795,7 +804,6 @@ def slice_step_to_fuselage(
             "b": float(fit["b"]),
             "n": float(np.clip(fit["n"], 0.5, 8.0)),
         })
-        prev_params = fit
 
     # Reconstruct as asb.Fuselage for fidelity comparison
     fuselage_xsecs = []

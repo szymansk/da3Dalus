@@ -347,6 +347,33 @@ def _replace_fuselage_xsecs(
 _MM_TO_M = 0.001
 
 
+def _is_x_dominant_fuselage(step_path: Path) -> bool:
+    """True when the STEP file's bounding box has X as its longest
+    axis — the only case where the slicer can run with ``slice_axis="x"``
+    and produce xsec coordinates the FuselageSchema can use unchanged.
+
+    For Y- or Z-dominant geoms (Cessna NoseStrut along Z, MainStrut
+    diagonal, etc.) the slicer would either cut perpendicular to the
+    long axis (garbage xsecs) or rotate the model to align X (correct
+    xsecs but in the wrong frame for the world-coord schema). Both
+    failure modes produce visually degenerate fuselages. The handler
+    schema is correct in both cases — refinement only helps when we
+    can stay in the original frame.
+    """
+    try:
+        import cadquery as cq
+    except ImportError:
+        return False
+    try:
+        bb = cq.importers.importStep(str(step_path)).val().BoundingBox()
+    except Exception:  # noqa: BLE001 — defensive
+        return False
+    # Margin of 1.2 keeps borderline cases (length:width ≈ 1) out of
+    # the refinement path so we don't replace a fine handler schema
+    # with marginal slicer output.
+    return bb.xlen >= 1.2 * bb.ylen and bb.xlen >= 1.2 * bb.zlen
+
+
 def _try_slicer_refinement(
     rel_step_path: str,
     handler_fuse,
@@ -355,9 +382,10 @@ def _try_slicer_refinement(
     """Slice the gh-729/731 STEP file into a finer xsec list (gh-732).
 
     Returns a list of ``FuselageXSecSuperEllipseSchema`` in metres, or
-    ``None`` when slicing fails / produces too few points to be useful.
-    Failure is **silent on purpose** — the slicer is a refinement, not
-    a requirement, and the handler-built schema is always the fallback.
+    ``None`` when slicing fails / produces too few points to be useful
+    / the fuselage isn't X-dominant in world frame. Failure is **silent
+    on purpose** — the slicer is a refinement, not a requirement, and
+    the handler-built schema is always the fallback.
     """
     from app.core.config import settings
     from app.schemas.aeroplaneschema import FuselageXSecSuperEllipseSchema
@@ -365,6 +393,18 @@ def _try_slicer_refinement(
     full_path = Path(settings.ARTIFACTS_BASE_DIR) / rel_step_path
     if not full_path.exists():
         return None
+
+    # Frame-safety gate: only refine fuselages whose long axis is X in
+    # world frame. Cessna sub-fuselages (Struts, Fairings) are rotated
+    # 90° in OpenVSP — slicing them along X would produce garbage,
+    # rotating them to align with X would produce out-of-frame xyz.
+    if not _is_x_dominant_fuselage(full_path):
+        logger.info(
+            "Skipping slicer refinement for %r — not X-dominant in world frame.",
+            fuse_name,
+        )
+        return None
+
     try:
         from cad_designer.aerosandbox.slicing import slice_step_to_fuselage
     except ImportError:
