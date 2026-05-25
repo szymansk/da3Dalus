@@ -269,6 +269,44 @@ def _read_length(vsp: ModuleType, fuse_gid: str) -> float:
     return float(vsp.GetParmVal(pid))
 
 
+# Sym_Planar_Flag enum values used by OpenVSP. We only support XZ
+# (the typical mirror for left/right paired sub-fuselages); anything
+# else falls back to ``symmetric=False`` with an info-warning.
+_SYM_XZ = 2
+
+
+def _read_sym_planar_flag(
+    vsp: ModuleType, gid: str, name: str, ctx: ImportContext
+) -> bool:
+    """Return ``True`` iff the geom is marked XZ-symmetric (gh-715).
+
+    OpenVSP exposes per-geom symmetry via the ``Sym_Planar_Flag`` parm
+    in group ``Sym``. Cessna 172 uses ``Sym_Planar_Flag = 2`` (XZ) on
+    paired sub-fuselages (Struts, MainFairing, MainStrut) — the GUI
+    auto-mirrors them about the XZ plane. Other modes (XY, YZ, multi)
+    are extremely rare for fuselages and emit a warning + fall back
+    to non-symmetric.
+    """
+    pid = vsp.FindParm(gid, "Sym_Planar_Flag", "Sym")
+    if not pid:
+        return False
+    val = int(vsp.GetParmVal(pid))
+    if val == 0:
+        return False
+    if val == _SYM_XZ:
+        return True
+    ctx.add_warning(
+        component_type="FUSELAGE",
+        component_name=name,
+        reason=(
+            f"FUSELAGE {name!r} has Sym_Planar_Flag={val} which is not "
+            f"the supported XZ mode; importing as non-symmetric."
+        ),
+        severity="info",
+    )
+    return False
+
+
 def _read_loc_pct(
     vsp: ModuleType, xs_id: str, axis: str, i: int, n_xsec: int
 ) -> float:
@@ -348,7 +386,9 @@ def _handle_fuselage(
         for xs in xsecs:
             xs.xyz = _apply_xform(xs.xyz, translation, rotation_deg)
 
-    fuse = FuselageSchema(name=name, x_secs=xsecs)
+    symmetric = _read_sym_planar_flag(vsp, gid, name, ctx)
+
+    fuse = FuselageSchema(name=name, x_secs=xsecs, symmetric=symmetric)
     if aeroplane.fuselages is None:
         from collections import OrderedDict
 

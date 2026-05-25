@@ -157,6 +157,11 @@ def _make_fuse_vsp(
             return "PFUSE::Length"
         if container == fuse_id and group == "XForm" and parm in XFORM_PARMS:
             return f"PXFORM::{parm}"
+        # gh-715: Sym_Planar_Flag lives in group ``Sym`` on the Geom.
+        if container == fuse_id and group == "Sym" and parm == "Sym_Planar_Flag":
+            if "Sym_Planar_Flag" not in xform:
+                return ""
+            return "PSYM::Sym_Planar_Flag"
         # XSec-position parms: real OpenVSP 3.50 returns "" here — the
         # handler must reach them via GetXSecParm instead.
         return ""
@@ -181,6 +186,8 @@ def _make_fuse_vsp(
             return 0.0
         if pid == "PFUSE::Length":
             return float(length)
+        if pid == "PSYM::Sym_Planar_Flag":
+            return float(xform.get("Sym_Planar_Flag", 0))
         if pid.startswith("PXFORM::"):
             return float(xform.get(pid.split("::", 1)[1], 0.0))
         if pid.startswith("PXSEC::"):
@@ -414,6 +421,63 @@ class TestCessna172FuselageRegression:
         bodies = fuse.x_secs[1:-1]
         for left, right in zip(bodies, bodies[1:], strict=False):
             assert (left.a, left.b) != (right.a, right.b)
+
+    def test_sym_planar_flag_xz_sets_symmetric_true(self, tmp_path, monkeypatch):
+        """gh-715: Sym_Planar_Flag = 2 (XZ) on the Geom must map to
+        FuselageSchema.symmetric = True so downstream consumers
+        mirror the half-fuselage automatically.
+        """
+        f = tmp_path / "x.vsp3"
+        f.write_text("")
+        xsecs = [
+            {"shape": "CIRCLE", "x_pct": 0.0, "Circle_Diameter": 0.0},
+            {"shape": "CIRCLE", "x_pct": 1.0, "Circle_Diameter": 0.3},
+        ]
+        fake = _make_fuse_vsp(
+            xsecs=xsecs, length=1.0, xform={"Sym_Planar_Flag": 2}
+        )
+        monkeypatch.setattr(openvsp_adapter, "get_vsp", lambda: fake)
+        result = import_vsp3(f)
+        fuse = (result.aeroplane.fuselages or {})["Fuselage"]
+        assert fuse.symmetric is True
+
+    def test_sym_planar_flag_none_keeps_symmetric_false(self, tmp_path, monkeypatch):
+        f = tmp_path / "x.vsp3"
+        f.write_text("")
+        xsecs = [
+            {"shape": "CIRCLE", "x_pct": 0.0, "Circle_Diameter": 0.0},
+            {"shape": "CIRCLE", "x_pct": 1.0, "Circle_Diameter": 0.3},
+        ]
+        # Sym=0 (none) — typical for main fuselages on the symmetry plane.
+        fake = _make_fuse_vsp(
+            xsecs=xsecs, length=1.0, xform={"Sym_Planar_Flag": 0}
+        )
+        monkeypatch.setattr(openvsp_adapter, "get_vsp", lambda: fake)
+        result = import_vsp3(f)
+        fuse = (result.aeroplane.fuselages or {})["Fuselage"]
+        assert fuse.symmetric is False
+
+    def test_sym_planar_flag_unsupported_warns_and_falls_back(self, tmp_path, monkeypatch):
+        f = tmp_path / "x.vsp3"
+        f.write_text("")
+        xsecs = [
+            {"shape": "CIRCLE", "x_pct": 0.0, "Circle_Diameter": 0.0},
+            {"shape": "CIRCLE", "x_pct": 1.0, "Circle_Diameter": 0.3},
+        ]
+        # Sym=4 (YZ) — top/bottom mirror is unusual for fuselages.
+        fake = _make_fuse_vsp(
+            xsecs=xsecs, length=1.0, xform={"Sym_Planar_Flag": 4}
+        )
+        monkeypatch.setattr(openvsp_adapter, "get_vsp", lambda: fake)
+        result = import_vsp3(f)
+        fuse = (result.aeroplane.fuselages or {})["Fuselage"]
+        assert fuse.symmetric is False
+        # Info warning surfaces the unsupported mode.
+        sym_warnings = [
+            w for w in result.warnings
+            if w.component_type == "FUSELAGE" and "Sym_Planar_Flag" in w.reason
+        ]
+        assert sym_warnings, [w.reason for w in result.warnings]
 
     def test_real_cessna_xsec_positions_match(self, tmp_path, monkeypatch):
         """gh-711: every xsec X/Z position must match the real Cessna

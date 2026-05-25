@@ -351,16 +351,24 @@ def _scale_asb_wing_geometry_schema(
 
 
 def _asb_fuselage_xsecs_from_schema(
-    fuselage: schemas.FuselageSchema,
+    fuselage: schemas.FuselageSchema, *, mirror_y: bool = False
 ) -> List[FuselageXSec]:
     # Axis convention (gh-706): schema.a = Y-half-axis = ASB.width,
     # schema.b = Z-half-axis = ASB.height. ASB's own ellipse equation is
     # ``(y/width)^n + (z/height)^n = 1`` — so a goes to width, b to
     # height. The pre-fix code had these swapped, rotating every
     # non-circular fuselage by 90° around the spine.
+    #
+    # ``mirror_y`` (gh-715): when True, flip every xsec's y centre
+    # so the caller can build the mirrored half of a symmetric
+    # fuselage (paired sub-fuselages like landing-gear struts).
     return [
         FuselageXSec(
-            xyz_c=[float(value) for value in x_sec.xyz],
+            xyz_c=[
+                float(x_sec.xyz[0]),
+                -float(x_sec.xyz[1]) if mirror_y else float(x_sec.xyz[1]),
+                float(x_sec.xyz[2]),
+            ],
             xyz_normal=[1.0, 0.0, 0.0],
             radius=None,
             width=float(x_sec.a),
@@ -369,6 +377,53 @@ def _asb_fuselage_xsecs_from_schema(
         )
         for x_sec in fuselage.x_secs
     ]
+
+
+def _build_asb_fuselages(
+    fuselages: dict[str, schemas.FuselageSchema],
+):
+    """Build the ``asb.Airplane.fuselages`` list, expanding each
+    ``symmetric=True`` fuselage into its mirrored pair (gh-715).
+    """
+    from aerosandbox import Fuselage
+
+    result = []
+    for name, fuselage in fuselages.items():
+        if not fuselage.x_secs:
+            continue
+        result.append(
+            Fuselage(name=name, xsecs=_asb_fuselage_xsecs_from_schema(fuselage))
+        )
+        if fuselage.symmetric:
+            result.append(
+                Fuselage(
+                    name=f"{name} (mirror)",
+                    xsecs=_asb_fuselage_xsecs_from_schema(fuselage, mirror_y=True),
+                )
+            )
+    return result
+
+
+def _mirror_fuselage_schema_y(
+    fuselage: schemas.FuselageSchema,
+) -> schemas.FuselageSchema:
+    """Return a copy of ``fuselage`` with every xsec mirrored about
+    the XZ plane (y → -y). Used to build the mirror half of a
+    ``symmetric=True`` fuselage for the CAD pipeline (gh-715).
+    """
+    return schemas.FuselageSchema(
+        name=f"{fuselage.name} (mirror)",
+        symmetric=False,
+        x_secs=[
+            schemas.FuselageXSecSuperEllipseSchema(
+                xyz=[float(xs.xyz[0]), -float(xs.xyz[1]), float(xs.xyz[2])],
+                a=xs.a,
+                b=xs.b,
+                n=xs.n,
+            )
+            for xs in fuselage.x_secs
+        ],
+    )
 
 
 def fuselage_schema_to_fuselage_config(
@@ -499,7 +554,7 @@ def aeroplane_schema_to_asb_airplane_async(plane_schema: AeroplaneSchema) -> "as
     Returns:
         asb.Airplane: The converted Aerosandbox Airplane object.
     """
-    from aerosandbox import Airplane, Fuselage, Wing
+    from aerosandbox import Airplane, Wing
 
     asb_airplane: Airplane = Airplane(
         name=plane_schema.name,
@@ -513,15 +568,7 @@ def aeroplane_schema_to_asb_airplane_async(plane_schema: AeroplaneSchema) -> "as
         ]
         if plane_schema.wings
         else None,
-        fuselages=[
-            Fuselage(
-                name=fuselage_name,
-                xsecs=_asb_fuselage_xsecs_from_schema(fuselage) if fuselage.x_secs else None,
-            )
-            for fuselage_name, fuselage in plane_schema.fuselages.items()
-        ]
-        if plane_schema.fuselages
-        else None,
+        fuselages=_build_asb_fuselages(plane_schema.fuselages) if plane_schema.fuselages else None,
         xyz_ref=plane_schema.xyz_ref,
     )
 
@@ -545,10 +592,19 @@ def aeroplane_schema_to_airplane_configuration_async(
 
     fuselage_configs: Optional[List[FuselageConfiguration]] = None
     if plane_schema.fuselages:
-        fuselage_configs = [
-            fuselage_schema_to_fuselage_config(fuselage_schema)
-            for fuselage_schema in plane_schema.fuselages.values()
-        ]
+        fuselage_configs = []
+        for fuselage_schema in plane_schema.fuselages.values():
+            fuselage_configs.append(fuselage_schema_to_fuselage_config(fuselage_schema))
+            # gh-715: symmetric fuselages duplicate into a mirrored
+            # half (y → -y) so paired sub-fuselages (struts, fairings)
+            # render on both sides in the CAD output, matching what
+            # the workbench viewer and ASB drag see.
+            if fuselage_schema.symmetric:
+                fuselage_configs.append(
+                    fuselage_schema_to_fuselage_config(
+                        _mirror_fuselage_schema_y(fuselage_schema)
+                    )
+                )
 
     return AirplaneConfiguration(
         name=plane_schema.name,

@@ -726,6 +726,68 @@ class TestFuselageAxisConvention:
             f"got width={xsecs[1].width}, height={xsecs[1].height}."
         )
 
+    def test_symmetric_flag_expands_into_two_asb_fuselages(self):
+        """gh-715: a ``symmetric=True`` fuselage builds both the
+        original and the y-mirrored half on the ``asb.Airplane``."""
+        from collections import OrderedDict
+
+        from app.converters.model_schema_converters import (
+            aeroplane_schema_to_asb_airplane_async,
+        )
+
+        strut = schemas.FuselageSchema(
+            name="Strut",
+            symmetric=True,
+            x_secs=[
+                schemas.FuselageXSecSuperEllipseSchema(
+                    xyz=[0.0, 0.6, -0.3], a=0.02, b=0.02, n=2.0
+                ),
+                schemas.FuselageXSecSuperEllipseSchema(
+                    xyz=[0.0, 0.6, -1.0], a=0.02, b=0.02, n=2.0
+                ),
+            ],
+        )
+        plane = schemas.AeroplaneSchema(
+            name="testplane", wings=OrderedDict(), fuselages=OrderedDict([("Strut", strut)])
+        )
+        asb_plane = aeroplane_schema_to_asb_airplane_async(plane)
+        assert len(asb_plane.fuselages) == 2
+
+        primary = asb_plane.fuselages[0]
+        mirror = asb_plane.fuselages[1]
+        assert primary.name == "Strut"
+        assert mirror.name == "Strut (mirror)"
+        # Y centres flipped, X and Z unchanged.
+        assert primary.xsecs[0].xyz_c[1] == pytest.approx(0.6)
+        assert mirror.xsecs[0].xyz_c[1] == pytest.approx(-0.6)
+        assert primary.xsecs[1].xyz_c[2] == pytest.approx(-1.0)
+        assert mirror.xsecs[1].xyz_c[2] == pytest.approx(-1.0)
+
+    def test_non_symmetric_fuselage_stays_single(self):
+        from collections import OrderedDict
+
+        from app.converters.model_schema_converters import (
+            aeroplane_schema_to_asb_airplane_async,
+        )
+
+        main = schemas.FuselageSchema(
+            name="Main",
+            symmetric=False,
+            x_secs=[
+                schemas.FuselageXSecSuperEllipseSchema(
+                    xyz=[0.0, 0.0, 0.0], a=0.5, b=0.5, n=2.0
+                ),
+                schemas.FuselageXSecSuperEllipseSchema(
+                    xyz=[5.0, 0.0, 0.0], a=0.0, b=0.0, n=2.0
+                ),
+            ],
+        )
+        plane = schemas.AeroplaneSchema(
+            name="testplane", wings=OrderedDict(), fuselages=OrderedDict([("Main", main)])
+        )
+        asb_plane = aeroplane_schema_to_asb_airplane_async(plane)
+        assert len(asb_plane.fuselages) == 1
+
     def test_asymmetric_xsec_through_model_converter(self):
         """Same invariant via the model→config path used by analysis runs."""
         fuselage_model = FuselageModel.from_dict(
