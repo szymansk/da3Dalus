@@ -84,26 +84,46 @@ def _rounded_rect_to_n(*, width: float, height: float, radius: float) -> float:
     return n_low + (n_high - n_low) * (1.0 - f)
 
 
+def _read_xsec_bounding(vsp: ModuleType, xs_id: str) -> tuple[float, float]:
+    """Return the (Y-half-axis, Z-half-axis) of an XSec via the
+    shape-agnostic OpenVSP accessors (gh-709).
+
+    ``GetXSecWidth`` / ``GetXSecHeight`` work for **every** XSec shape
+    in OpenVSP 3.50 — CIRCLE, ELLIPSE, SUPER_ELLIPSE, ROUNDED_RECT,
+    GENERAL_FUSE, FILE_FUSE, SHIFT_LE/MID/TE, POINT — returning the
+    bounding-box width/height of the cross-section in metres.
+
+    Returns half-axes (W/2, H/2) ready for the super-ellipse schema.
+    """
+    w = float(vsp.GetXSecWidth(xs_id))
+    h = float(vsp.GetXSecHeight(xs_id))
+    return w / 2.0, h / 2.0
+
+
 def _shape_to_super_ellipse(
     vsp: ModuleType, xs_id: str, shape: int, ctx: ImportContext
 ) -> tuple[float, float, float]:
     """Map an XSec shape to (a, b, n) for a super-ellipse representation.
 
-    Returns ``(0, 0, 2)`` for unsupported shapes (caller can decide
-    whether to emit a warning).
-    """
-    if shape == getattr(vsp, "XS_CIRCLE", -1):
-        d = _get_xsec_parm(vsp, xs_id, "Circle_Diameter")
-        return d / 2.0, d / 2.0, 2.0
+    Width/Height come from ``GetXSecWidth``/``GetXSecHeight`` which
+    work for **every** XSec shape. Only the super-ellipse exponent
+    ``n`` is shape-specific:
 
-    if shape == getattr(vsp, "XS_ELLIPSE", -1):
-        w = _get_xsec_parm(vsp, xs_id, "Ellipse_Width")
-        h = _get_xsec_parm(vsp, xs_id, "Ellipse_Height")
-        return w / 2.0, h / 2.0, 2.0
+    * ``XS_SUPER_ELLIPSE`` — average of the ``Super_M`` / ``Super_N``
+      parms (with a warning when asymmetric).
+    * ``XS_ROUNDED_RECTANGLE`` — derived from the corner radius via
+      :func:`_rounded_rect_to_n` (with a warning that the corner
+      detail is approximated).
+    * ``XS_GENERAL_FUSE``, ``XS_FILE_FUSE``, ``XS_SHIFT_LE/MID/TE``
+      — defaulted to ``n=2`` (bounding ellipse). An info-warning
+      surfaces the approximation so the user knows the exact outline
+      was lost.
+    * Everything else — ``n=2`` silently. CIRCLE/ELLIPSE/POINT are
+      true ellipses anyway.
+    """
+    a, b = _read_xsec_bounding(vsp, xs_id)
 
     if shape == getattr(vsp, "XS_SUPER_ELLIPSE", -1):
-        w = _get_xsec_parm(vsp, xs_id, "Super_Width")
-        h = _get_xsec_parm(vsp, xs_id, "Super_Height")
         m = _get_xsec_parm(vsp, xs_id, "Super_M")
         n_exp = _get_xsec_parm(vsp, xs_id, "Super_N")
         if abs(m - n_exp) > 0.01:
@@ -116,13 +136,11 @@ def _shape_to_super_ellipse(
                 ),
                 severity="info",
             )
-        return w / 2.0, h / 2.0, (m + n_exp) / 2.0
+        return a, b, (m + n_exp) / 2.0
 
     if shape == getattr(vsp, "XS_ROUNDED_RECTANGLE", -1):
-        w = _get_xsec_parm(vsp, xs_id, "RoundedRect_Width")
-        h = _get_xsec_parm(vsp, xs_id, "RoundedRect_Height")
         r = _get_xsec_parm(vsp, xs_id, "RoundedRect_Radius")
-        n = _rounded_rect_to_n(width=w, height=h, radius=r)
+        n = _rounded_rect_to_n(width=2.0 * a, height=2.0 * b, radius=r)
         ctx.add_warning(
             component_type="FUSELAGE_XSEC",
             component_name=xs_id,
@@ -132,22 +150,32 @@ def _shape_to_super_ellipse(
             ),
             severity="info",
         )
-        return w / 2.0, h / 2.0, n
+        return a, b, n
 
-    if shape == getattr(vsp, "XS_POINT", -1):
-        return 0.0, 0.0, 2.0
+    # Shapes whose outline can't be captured by a super-ellipse
+    # (GENERAL_FUSE = box-with-rounded-corners, FILE_FUSE = arbitrary
+    # spline, SHIFT_LE/MID/TE = loft-control markers). For RC scaling
+    # and ASB drag the bounding ellipse is plenty; surface the
+    # approximation so the user knows.
+    _APPROXIMATED = {
+        getattr(vsp, "XS_GENERAL_FUSE", -2),
+        getattr(vsp, "XS_FILE_FUSE", -3),
+        getattr(vsp, "XS_SHIFT_LE", -4),
+        getattr(vsp, "XS_SHIFT_MID", -5),
+        getattr(vsp, "XS_SHIFT_TE", -6),
+    }
+    if shape in _APPROXIMATED and (a > 0.0 or b > 0.0):
+        ctx.add_warning(
+            component_type="FUSELAGE_XSEC",
+            component_name=xs_id,
+            reason=(
+                f"XSec shape id={shape} (non-super-ellipse curve) "
+                f"approximated as bounding ellipse a={a:.3f}, b={b:.3f}, n=2."
+            ),
+            severity="info",
+        )
 
-    # Unsupported shape — emit warning, return a defensible bounding ellipse.
-    ctx.add_warning(
-        component_type="FUSELAGE_XSEC",
-        component_name=xs_id,
-        reason=(
-            f"XSec shape id={shape} not supported in Phase 1; "
-            "falling back to a=b=0.5, n=2 placeholder."
-        ),
-        severity="warning",
-    )
-    return 0.5, 0.5, 2.0
+    return a, b, 2.0
 
 
 def _read_length(vsp: ModuleType, fuse_gid: str) -> float:
