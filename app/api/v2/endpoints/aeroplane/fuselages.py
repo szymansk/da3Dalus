@@ -1,10 +1,14 @@
 import logging
+from pathlib import Path as _FsPath
 from typing import Annotated, List
 
 from fastapi import APIRouter, Body, Depends, HTTPException, Path
 from fastapi import status
+from fastapi.responses import FileResponse
 from pydantic import UUID4, BaseModel
 from sqlalchemy.orm import Session
+
+from app.core.config import settings
 
 from app import schemas
 from app.core.exceptions import (
@@ -150,6 +154,64 @@ async def get_aeroplane_fuselage(
     Returns the aeroplane fuselage.
     """
     return _call_service(fuselage_service.get_fuselage, db, aeroplane_id, fuselage_name)
+
+
+@router.get(
+    "/aeroplanes/{aeroplane_id}/fuselages/{fuselage_name}/step",
+    tags=["fuselages"],
+    operation_id="get_aeroplane_fuselage_step",
+    responses={
+        200: {
+            "content": {"model/step": {}},
+            "description": "STEP file bytes",
+        },
+        404: {"description": "Aeroplane / fuselage / STEP file not found"},
+    },
+)
+async def get_aeroplane_fuselage_step(
+    aeroplane_id: Annotated[AeroPlaneID, Path(..., description="The ID of the aeroplane")],
+    fuselage_name: Annotated[str, Path(..., description="The fuselage name")],
+    db: Annotated[Session, Depends(get_db)],
+):
+    """Download the per-geom STEP file (gh-729).
+
+    Only available when the fuselage was imported from an OpenVSP
+    ``.vsp3`` file and the STEP export succeeded at import time.
+    Returns 404 for CAD-created fuselages or when the file is
+    missing from disk.
+    """
+    # Resolve the schema first — that yields a 404 for unknown
+    # fuselage names with a structured error body.
+    fuselage = _call_service(fuselage_service.get_fuselage, db, aeroplane_id, fuselage_name)
+    if not getattr(fuselage, "step_path", None):
+        raise HTTPException(
+            status_code=404,
+            detail=(
+                f"Fuselage {fuselage_name!r} has no STEP file "
+                "(only OpenVSP-imported fuselages do)."
+            ),
+        )
+    full_path = _FsPath(settings.ARTIFACTS_BASE_DIR) / fuselage.step_path
+    # Containment check — defence in depth against a manipulated
+    # ``step_path`` somehow escaping the artifacts root.
+    artifacts_root = _FsPath(settings.ARTIFACTS_BASE_DIR).resolve()
+    resolved = full_path.resolve()
+    if artifacts_root not in resolved.parents and resolved != artifacts_root:
+        logger.warning(
+            "STEP path %r escapes artifacts root — refusing to serve.",
+            fuselage.step_path,
+        )
+        raise HTTPException(status_code=404, detail="STEP file unavailable.")
+    if not resolved.exists():
+        raise HTTPException(
+            status_code=404,
+            detail=f"STEP file for fuselage {fuselage_name!r} is missing on disk.",
+        )
+    return FileResponse(
+        path=str(resolved),
+        media_type="model/step",
+        filename=f"{fuselage_name}.stp",
+    )
 
 
 @router.delete(

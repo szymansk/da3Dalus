@@ -428,6 +428,7 @@ def _handle_fuselage(
 
         aeroplane.fuselages = OrderedDict()
     aeroplane.fuselages[name] = fuse
+    ctx.fuselage_geom_ids[gid] = name
 
 
 # ---------------------------------------------------------------------------

@@ -628,5 +628,15 @@ class FuselageSchema(BaseModel):
             "and should not be mirrored."
         ),
     )
+    step_path: Optional[str] = Field(
+        default=None,
+        description=(
+            "Relative path (under ARTIFACTS_BASE_DIR) to the per-geom "
+            "STEP file exported at OpenVSP-import time (gh-729). "
+            "``None`` when the fuselage wasn't imported from .vsp3. "
+            "Surface-only — sewed Solid lives at a separate path "
+            "(gh-730 follow-up)."
+        ),
+    )
 
     model_config = ConfigDict(from_attributes=True)

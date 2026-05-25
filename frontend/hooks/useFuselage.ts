@@ -20,6 +20,13 @@ export interface Fuselage {
    * main fuselage which sits on the symmetry plane itself.
    */
   symmetric?: boolean;
+  /**
+   * gh-729: relative path to the per-geom STEP file exported at
+   * OpenVSP-import time. ``null`` for CAD-created fuselages.
+   * Frontend uses this only as a "has STEP?" flag — the actual
+   * download goes through ``GET /aeroplanes/{id}/fuselages/{name}/step``.
+   */
+  step_path?: string | null;
 }
 
 /**

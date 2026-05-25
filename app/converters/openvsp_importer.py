@@ -108,6 +108,10 @@ class ImportContext:
     # and consumed by post-passes that need to walk wings (e.g.
     # SS_CONTROL → TrailingEdgeDevice in gh-644).
     wing_geom_ids: dict[str, str] = field(default_factory=dict)
+    # Map of FUSELAGE/CUSTOM geom-id → schema name, populated by the
+    # respective handlers. Consumed by the STEP-export pass (gh-729)
+    # so it knows which VSP geom to flag for each fuselage row.
+    fuselage_geom_ids: dict[str, str] = field(default_factory=dict)
 
     def add_warning(
         self,
@@ -152,6 +156,11 @@ class ImportResult:
     weight_items: list[WeightItemWrite] = field(default_factory=list)
     source_length_unit: Optional[int] = None
     source_scale_to_meters: Optional[float] = None
+    # gh-729: schema-name → VSP geom-id mapping so downstream
+    # persistence can find each fuselage in the live VSP model
+    # (e.g. to export a per-geom STEP file). Maps the FUSELAGE +
+    # CUSTOM handler outputs.
+    fuselage_geom_ids: dict[str, str] = field(default_factory=dict)
 
 
 # ---------------------------------------------------------------------------
@@ -407,4 +416,5 @@ def import_vsp3(path: Path) -> ImportResult:
         weight_items=list(ctx.weight_items),
         source_length_unit=ctx.source_length_unit,
         source_scale_to_meters=ctx.source_scale_to_meters,
+        fuselage_geom_ids=dict(ctx.fuselage_geom_ids),
     )

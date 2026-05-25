@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useMemo } from "react";
-import { ChevronDown, ChevronRight, Plus, Trash2, Eye, EyeOff, Loader, PanelLeftClose, Pencil } from "lucide-react";
+import { ChevronDown, ChevronRight, Plus, Trash2, Eye, EyeOff, Loader, PanelLeftClose, Pencil, Download } from "lucide-react";
 import { useAeroplaneContext } from "@/components/workbench/AeroplaneContext";
 import { useWing, useAllWingData } from "@/hooks/useWings";
 import type { XSec } from "@/hooks/useWings";
@@ -34,6 +34,10 @@ interface TreeNode {
   onPreviewToggle?: () => void;
   onAdd?: (e: React.MouseEvent) => void;
   onEdit?: () => void;
+  // gh-729: optional STEP-download link for OpenVSP-imported fuselages.
+  // Rendered as a small icon button on the tree row.
+  downloadHref?: string;
+  downloadLabel?: string;
 }
 
 // ── Callback & context interfaces for build*Nodes ──────────────
@@ -491,6 +495,7 @@ interface BuildTreeDataParams {
   wingNames: string[];
   fuselageNames: string[];
   aeroplaneName?: string;
+  aeroplaneId?: string | null;
   expandedSet: Set<string>;
   wing: { name: string; symmetric: boolean; x_secs: XSec[] } | null;
   wingConfig: { nose_pnt: number[] | null } | null;
@@ -569,6 +574,14 @@ function buildTreeData(params: BuildTreeDataParams): TreeNode[] {
 function buildFuselageNodes(treeData: TreeNode[], params: BuildTreeDataParams): void {
   for (const fn of params.fuselageNames) {
     const fusExpanded = params.expandedSet.has(`fuselage-${fn}`);
+    // gh-729: surface a STEP-download link when the fuselage was
+    // imported from VSP. The presence flag comes via the same
+    // ``useFuselage`` data — but only the currently-selected
+    // fuselage's full schema is loaded, so we link unconditionally
+    // and let the backend 404 cover CAD-created bodies.
+    const stepHref = params.aeroplaneId
+      ? `${API_BASE}/aeroplanes/${params.aeroplaneId}/fuselages/${encodeURIComponent(fn)}/step`
+      : undefined;
     treeData.push({
       id: `fuselage-${fn}`,
       label: fn,
@@ -583,6 +596,8 @@ function buildFuselageNodes(treeData: TreeNode[], params: BuildTreeDataParams): 
       onPreviewToggle: params.onToggleFuselagePreview
         ? () => params.onToggleFuselagePreview!(fn)
         : undefined,
+      downloadHref: stepHref,
+      downloadLabel: `Download ${fn}.stp`,
     });
 
     if (!fusExpanded) continue;
@@ -821,6 +836,7 @@ export function AeroplaneTree(props: Readonly<AeroplaneTreeProps>) {
 
   // Build tree data
   const treeData = buildTreeData({
+    aeroplaneId,
     wingNames,
     fuselageNames,
     aeroplaneName,
@@ -1038,6 +1054,19 @@ function TreeRow({ node, onToggle }: Readonly<{ node: TreeNode; onToggle: () => 
         >
           <Pencil size={10} />
         </button>
+      )}
+
+      {node.downloadHref && (
+        <a
+          href={node.downloadHref}
+          download
+          onClick={(e) => e.stopPropagation()}
+          className="hidden h-5 w-5 items-center justify-center rounded-xl text-muted-foreground hover:bg-sidebar-accent hover:text-foreground group-hover:flex"
+          title={node.downloadLabel ?? "Download STEP"}
+          data-testid={`download-step-${node.id}`}
+        >
+          <Download size={10} />
+        </a>
       )}
 
       {node.onDelete && (
