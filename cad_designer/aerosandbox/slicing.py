@@ -749,9 +749,12 @@ def slice_step_to_fuselage(
             )
         else:
             bb = cq.Shape(sliceable).BoundingBox()
+            # Clamp the slice-station count so a caller-controlled
+            # ``number_of_slices`` can't drive an unbounded loop.
+            n_stations = max(2, min(int(number_of_slices), 4096))
             x_stations = [
-                bb.xmin + (bb.xmax - bb.xmin) * i / (number_of_slices - 1)
-                for i in range(number_of_slices)
+                bb.xmin + (bb.xmax - bb.xmin) * i / (n_stations - 1)
+                for i in range(n_stations)
             ]
         wire_slices = []
         for x in x_stations:
