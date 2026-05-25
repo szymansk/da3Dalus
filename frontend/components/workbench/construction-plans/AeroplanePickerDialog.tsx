@@ -50,12 +50,6 @@ export function AeroplanePickerDialog({
   // Optional user-typed name for the imported aeroplane. Empty string
   // means "let the server use the upload filename's stem".
   const [importName, setImportName] = useState("");
-  // gh-721: adaptive xsec-refinement tolerance as a percent of the
-  // fuselage body length. Stored as a percent string so the user can
-  // type "0.25" naturally; converted to fraction (×0.01) on submit.
-  const [tolerancePct, setTolerancePct] = useState("0.25");
-  // gh-721: ceiling on xsecs per fuselage after refinement.
-  const [maxXsecsStr, setMaxXsecsStr] = useState("100");
   // Local error surface for OpenVSP-specific failures (503 if openvsp
   // isn't installed, 422 if the file is malformed, etc.). Keeps the
   // dialog open so the user can retry without losing context.
@@ -232,45 +226,6 @@ export function AeroplanePickerDialog({
                     onChange={setScaleOption}
                     disabled={submitting}
                   />
-                  <div className="grid grid-cols-2 gap-3">
-                    <label className="flex flex-col gap-1">
-                      <span className="text-[11px] uppercase tracking-wide text-muted-foreground">
-                        Detail (% of body)
-                      </span>
-                      <input
-                        type="number"
-                        step="0.05"
-                        min={0}
-                        max={10}
-                        value={tolerancePct}
-                        onChange={(e) => setTolerancePct(e.target.value)}
-                        placeholder="0.25"
-                        disabled={submitting}
-                        data-testid="aeroplane-picker-xsec-tol"
-                        className="rounded-lg border border-border bg-input px-3 py-2 text-[13px] text-foreground outline-none placeholder:text-subtle-foreground focus:border-primary disabled:opacity-50"
-                      />
-                    </label>
-                    <label className="flex flex-col gap-1">
-                      <span className="text-[11px] uppercase tracking-wide text-muted-foreground">
-                        Max xsecs / fuselage
-                      </span>
-                      <input
-                        type="number"
-                        step={10}
-                        min={2}
-                        max={500}
-                        value={maxXsecsStr}
-                        onChange={(e) => setMaxXsecsStr(e.target.value)}
-                        placeholder="100"
-                        disabled={submitting}
-                        data-testid="aeroplane-picker-xsec-max"
-                        className="rounded-lg border border-border bg-input px-3 py-2 text-[13px] text-foreground outline-none placeholder:text-subtle-foreground focus:border-primary disabled:opacity-50"
-                      />
-                    </label>
-                  </div>
-                  <span className="text-[10px] text-muted-foreground">
-                    Detail: smaller → more xsecs in curved sections, 0 keeps only what VSP declares. Default 0.25%, cap 100.
-                  </span>
                 </>
               )}
               {importError && (
@@ -299,14 +254,6 @@ export function AeroplanePickerDialog({
                     label="Import .vsp3"
                     scaleOption={scaleOption}
                     customName={importName}
-                    xsecTolerance={(() => {
-                      const parsed = parseFloat(tolerancePct);
-                      return Number.isFinite(parsed) ? parsed / 100 : undefined;
-                    })()}
-                    xsecMaxCount={(() => {
-                      const parsed = parseInt(maxXsecsStr, 10);
-                      return Number.isFinite(parsed) ? parsed : undefined;
-                    })()}
                     className="flex-1 rounded-full bg-input/40 text-foreground hover:bg-sidebar-accent"
                     onImported={(response) => {
                       setImportError(null);
