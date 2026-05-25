@@ -134,10 +134,14 @@ def _make_fuse_vsp(
     fake.GetXSecWidth = lambda xs_id: _xsec_dim(xs_id, "W")
     fake.GetXSecHeight = lambda xs_id: _xsec_dim(xs_id, "H")
 
-    # Parm routing per OpenVSP 3.50 convention (gh-702): Length lives on
-    # the fuselage container in group Design; XLocPercent/YLocPercent/
-    # ZLocPercent live on EACH XSec container in group XSec; XForm
-    # translation/rotation live on the fuselage container in group XForm.
+    # Parm routing per OpenVSP 3.50 convention (gh-711): Length lives on
+    # the fuselage container in group Design; XForm translation/rotation
+    # live on the fuselage container in group XForm. The per-XSec
+    # position parms (XLocPercent etc.) cannot be reached via
+    # ``FindParm(xs_id, ..., "XSec")`` — real OpenVSP 3.50 returns ""
+    # for that call. They are only reachable via ``GetXSecParm`` (see
+    # ``_get_xsec_parm`` stub above, which already routes ``x_pct``/
+    # ``y_pct``/``z_pct`` through the right XSec keys).
     xform = xform or {}
     XFORM_PARMS = {
         "X_Location", "Y_Location", "Z_Location",
@@ -151,15 +155,24 @@ def _make_fuse_vsp(
             return "PFUSE::Length"
         if container == fuse_id and group == "XForm" and parm in XFORM_PARMS:
             return f"PXFORM::{parm}"
-        if container.startswith("XS_") and group == "XSec" and parm in _LOC_KEY:
-            # Mirror real OpenVSP: return "" when the test dict doesn't
-            # declare the corresponding *_pct key, so the handler's
-            # fallback path is exercised.
-            idx = int(container.split("_", 1)[1])
-            if _LOC_KEY[parm] not in xsecs[idx]:
-                return ""
-            return f"PXSEC::{container}::{parm}"
+        # XSec-position parms: real OpenVSP 3.50 returns "" here — the
+        # handler must reach them via GetXSecParm instead.
         return ""
+
+    # Route GetXSecParm so position parms (XLocPercent/YLocPercent/
+    # ZLocPercent) work via the same key lookup as the shape parms.
+    _orig_get_xsec_parm = fake.GetXSecParm
+
+    def _get_xsec_parm_routed(xs_id: str, name: str) -> str:
+        if name in _LOC_KEY:
+            idx = int(xs_id.split("_", 1)[1])
+            loc_key = _LOC_KEY[name]
+            if loc_key not in xsecs[idx]:
+                return ""
+            return f"PXSEC::{xs_id}::{name}"
+        return _orig_get_xsec_parm(xs_id, name)
+
+    fake.GetXSecParm = _get_xsec_parm_routed
 
     def _get_parm_val_router(pid):
         if not pid:
@@ -399,6 +412,55 @@ class TestCessna172FuselageRegression:
         bodies = fuse.x_secs[1:-1]
         for left, right in zip(bodies, bodies[1:], strict=False):
             assert (left.a, left.b) != (right.a, right.b)
+
+    def test_real_cessna_xsec_positions_match(self, tmp_path, monkeypatch):
+        """gh-711: every xsec X/Z position must match the real Cessna
+        172 values within 1 mm, not the ``i/(n-1)``-fallback evenly
+        spaced grid the broken FindParm path produced.
+        """
+        f = tmp_path / "cessna_pos.vsp3"
+        f.write_text("")
+        length = 7.23
+        # (XLocPercent, ZLocPercent) probed from cessna172.vsp3.
+        positions = [
+            (0.0000, 0.0000),
+            (0.0567, 0.0000),
+            (0.0747, -0.0069),
+            (0.1494, -0.0221),
+            (0.2102, -0.0194),
+            (0.2752, 0.0124),
+            (0.5076, 0.0194),
+            (0.5864, 0.0097),
+            (0.9862, 0.0429),
+            (1.0000, 0.0429),
+        ]
+        # Minimal xsec list — only the position parms matter here, shape
+        # values are stubs sufficient for the bounding reader to return
+        # something non-degenerate.
+        xsecs = [
+            {
+                "shape": "SUPER_ELLIPSE", "x_pct": x, "z_pct": z,
+                "Super_Width": 0.5, "Super_Height": 0.5,
+                "Super_M": 2.0, "Super_N": 2.0,
+            }
+            for x, z in positions
+        ]
+        fake = _make_fuse_vsp(xsecs=xsecs, length=length)
+        monkeypatch.setattr(openvsp_adapter, "get_vsp", lambda: fake)
+        result = import_vsp3(f)
+
+        fuse = (result.aeroplane.fuselages or {})["Fuselage"]
+        for i, (x_pct, z_pct) in enumerate(positions):
+            expected_x = x_pct * length
+            expected_z = z_pct * length
+            assert fuse.x_secs[i].xyz[0] == pytest.approx(expected_x, abs=1e-3), (
+                f"xsec[{i}] X drift: expected {expected_x:.4f} m, "
+                f"got {fuse.x_secs[i].xyz[0]:.4f} m"
+            )
+            assert fuse.x_secs[i].xyz[2] == pytest.approx(expected_z, abs=1e-3), (
+                f"xsec[{i}] Z versatz lost: expected {expected_z:+.4f} m, "
+                f"got {fuse.x_secs[i].xyz[2]:+.4f} m"
+            )
 
 
 # ---------------------------------------------------------------------------
