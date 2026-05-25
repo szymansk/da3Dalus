@@ -190,13 +190,17 @@ def _read_loc_pct(
 ) -> float:
     """Read ``{X,Y,Z}LocPercent`` from an XSec container.
 
-    These parms live on the XSec itself in group ``XSec`` (OpenVSP
-    3.50 convention) — NOT on the parent fuselage with an index
-    suffix. Fallback when missing: an evenly-spaced fraction
-    ``i / (n_xsec - 1)`` so we at least lay xsecs out along the
-    spine for X and produce 0 for Y/Z.
+    OpenVSP 3.50 convention (gh-711): the position parms live on the
+    XSec container in group ``XSec``, but ``FindParm(xs_id, …, "XSec")``
+    silently returns ``""`` for XSec containers. The only reliable
+    access path is ``GetXSecParm`` — the same family we use for shape
+    parms (``Circle_Diameter``, ``Super_Width`` …).
+
+    Fallback when the parm genuinely isn't there (rare — should only
+    happen for degenerate stub fuselages): an evenly-spaced fraction
+    ``i / (n_xsec - 1)`` for X, ``0`` for Y/Z.
     """
-    pid = vsp.FindParm(xs_id, f"{axis}LocPercent", "XSec")
+    pid = vsp.GetXSecParm(xs_id, f"{axis}LocPercent")
     if not pid:
         if axis == "X" and n_xsec > 1:
             return i / (n_xsec - 1)
