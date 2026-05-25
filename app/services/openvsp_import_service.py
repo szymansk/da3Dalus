@@ -288,6 +288,138 @@ def _set_fuselage_solid_step_path(
     _update_fuselage_field(db, aeroplane_uuid, fuse_name, "solid_step_path", rel_path)
 
 
+def _replace_fuselage_xsecs(
+    db: Session, aeroplane_uuid, fuse_name: str, new_xsecs
+) -> bool:
+    """Replace the existing fuselage's ``x_secs`` rows with new ones
+    (gh-732). Pure mutation of the persisted row — keeps the gh-729
+    Surface STEP path and the gh-731 Solid STEP path intact.
+
+    ``new_xsecs`` is a list of ``FuselageXSecSuperEllipseSchema`` (or
+    dict-form equivalents). The ``cascade=all, delete-orphan`` on
+    ``FuselageModel.x_secs`` handles row-deletion for the old xsecs
+    as soon as we clear the list.
+
+    Returns True on success, False if the fuselage row could not be
+    located (the slicer refinement is purely opportunistic, so the
+    caller must be able to ignore failure).
+    """
+    from app.models.aeroplanemodel import (
+        AeroplaneModel,
+        FuselageModel,
+        FuselageXSecSuperEllipseModel,
+    )
+
+    aeroplane = (
+        db.query(AeroplaneModel).filter(AeroplaneModel.uuid == aeroplane_uuid).first()
+    )
+    if aeroplane is None:
+        return False
+    fuse_row = (
+        db.query(FuselageModel)
+        .filter(
+            FuselageModel.aeroplane_id == aeroplane.id,
+            FuselageModel.name == fuse_name,
+        )
+        .first()
+    )
+    if fuse_row is None:
+        return False
+
+    fuse_row.x_secs.clear()
+    for i, xs in enumerate(new_xsecs):
+        payload = xs.model_dump() if hasattr(xs, "model_dump") else dict(xs)
+        # ``name`` doesn't live on the xsec model; ``sort_index`` is
+        # set explicitly below to keep ordering stable.
+        payload.pop("name", None)
+        payload.pop("sort_index", None)
+        fuse_row.x_secs.append(
+            FuselageXSecSuperEllipseModel(sort_index=i, **payload)
+        )
+    db.flush()
+    return True
+
+
+# Scale factor between cadquery's internal mm units (what
+# ``slice_step_to_fuselage`` returns) and the FuselageSchema's metres.
+# OCC's STEP reader normalises every length to mm regardless of the
+# file's declared unit, so 1 mm = 0.001 m.
+_MM_TO_M = 0.001
+
+
+def _try_slicer_refinement(
+    rel_step_path: str,
+    handler_fuse,
+    fuse_name: str,
+):
+    """Slice the gh-729/731 STEP file into a finer xsec list (gh-732).
+
+    Returns a list of ``FuselageXSecSuperEllipseSchema`` in metres, or
+    ``None`` when slicing fails / produces too few points to be useful.
+    Failure is **silent on purpose** — the slicer is a refinement, not
+    a requirement, and the handler-built schema is always the fallback.
+    """
+    from app.core.config import settings
+    from app.schemas.aeroplaneschema import FuselageXSecSuperEllipseSchema
+
+    full_path = Path(settings.ARTIFACTS_BASE_DIR) / rel_step_path
+    if not full_path.exists():
+        return None
+    try:
+        from cad_designer.aerosandbox.slicing import slice_step_to_fuselage
+    except ImportError:
+        logger.info(
+            "cadquery / slicer unavailable — leaving handler-built schema for %r.",
+            fuse_name,
+        )
+        return None
+
+    try:
+        slicer_xsecs, metrics = slice_step_to_fuselage(
+            str(full_path),
+            number_of_slices=30,
+            points_per_slice=30,
+            slice_axis="x",
+            fuselage_name=fuse_name,
+            adaptive=True,
+            curvature_weight=0.7,
+        )
+    except Exception as exc:  # noqa: BLE001 — refinement is best-effort
+        logger.info(
+            "Slicer refinement skipped for %r (%s) — keeping handler-built schema.",
+            fuse_name, exc,
+        )
+        return None
+
+    # FuselageSchema demands min_length=2.
+    if len(slicer_xsecs) < 2:
+        logger.info(
+            "Slicer produced %d xsec(s) for %r — too few to refine; keeping handler schema.",
+            len(slicer_xsecs), fuse_name,
+        )
+        return None
+
+    refined = []
+    for xs in slicer_xsecs:
+        refined.append(
+            FuselageXSecSuperEllipseSchema(
+                xyz=[v * _MM_TO_M for v in xs["xyz"]],
+                a=max(float(xs["a"]) * _MM_TO_M, 0.0),
+                b=max(float(xs["b"]) * _MM_TO_M, 0.0),
+                n=max(float(xs["n"]), 1.0),
+            )
+        )
+
+    logger.info(
+        "Slicer refinement for %r: %d→%d xsecs (area_ratio=%.3f, "
+        "vol_ratio=%.3f).",
+        fuse_name, len(handler_fuse.x_secs), len(refined),
+        metrics.get("area_ratio") or 0.0,
+        metrics.get("volume_ratio") or 0.0,
+    )
+    return refined
+
+
 def _update_fuselage_field(
     db: Session, aeroplane_uuid, fuse_name: str, attr: str, value: str
 ) -> None:
@@ -457,6 +589,20 @@ def _persist_aeroplane(
             if rel_solid:
                 _set_fuselage_solid_step_path(
                     db, aeroplane.uuid, fuse_name, rel_solid
+                )
+
+            # gh-732: refine the schema's xsecs from the just-exported
+            # STEP via the slicer. Solid STEP gives the slicer a real
+            # volume metric for logging; we fall back to the Surface
+            # STEP when sewing failed. The handler-built schema stays
+            # if the slicer fails or produces too few points.
+            slicer_source = rel_solid or rel_step
+            refined_xsecs = _try_slicer_refinement(
+                slicer_source, fuse, fuse_name
+            )
+            if refined_xsecs is not None:
+                _replace_fuselage_xsecs(
+                    db, aeroplane.uuid, fuse_name, refined_xsecs
                 )
 
     # Weight items (gh-693): persist each WeightItemWrite via the same
