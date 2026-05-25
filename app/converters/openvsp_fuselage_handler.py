@@ -423,23 +423,29 @@ def _refine_xsecs_adaptive(
                 _cx, _cy, cz, a, b = sample_station_via_comp_pnt(vsp, gid, u_mid)
             except Exception:  # noqa: BLE001
                 continue
+            approx_cx = (xs[i].xyz[0] + xs[i + 1].xyz[0]) / 2.0
+            approx_cy = (xs[i].xyz[1] + xs[i + 1].xyz[1]) / 2.0
             approx_cz = (xs[i].xyz[2] + xs[i + 1].xyz[2]) / 2.0
             approx_a = (xs[i].a + xs[i + 1].a) / 2.0
             approx_b = (xs[i].b + xs[i + 1].b) / 2.0
+            # Compare Z + half-axes against VSP truth. X/Y are NOT
+            # compared because near SHIFT_LE/MID/TE xsecs OpenVSP's
+            # surface centroid jumps non-monotonically, which would
+            # both over-trigger refinement and leave inserts out of
+            # X-sort order in the schema list.
             err = max(abs(cz - approx_cz), abs(a - approx_a), abs(b - approx_b))
             if err <= tol_m:
                 continue
-            approx_cx = (xs[i].xyz[0] + xs[i + 1].xyz[0]) / 2.0
-            approx_cy = (xs[i].xyz[1] + xs[i + 1].xyz[1]) / 2.0
             candidates.append(
                 (
                     err,
                     i,
                     u_mid,
                     FuselageXSecSuperEllipseSchema(
-                        # Trust the VSP surface for height-axis values
-                        # but keep the linear-interp X/Y centroid so the
-                        # spine stays smooth in the schema frame.
+                        # X/Y from linear interp (already in world
+                        # frame; preserves spine ordering). Z + a/b
+                        # from the VSP surface so the bulge / dip
+                        # actually shows up in the refined geometry.
                         xyz=[approx_cx, approx_cy, cz],
                         a=max(a, 0.0),
                         b=max(b, 0.0),
@@ -548,10 +554,22 @@ def _handle_fuselage(
         # (OpenVSP's parametric u matches the body fraction).
         xsec_us.append(x_pct)
 
-    # gh-721: optional adaptive refinement at high-curvature sections.
-    # Run BEFORE XForm so the CompPnt01-derived points live in the
-    # same local frame as ``xsecs`` (the XForm pass below transforms
-    # all of them at once).
+    # Apply Geom-level XForm (translation + intrinsic XYZ rotation) to
+    # every xsec position — same pattern as the wing handler post-gh-698.
+    # Critical for Cessna 172 sub-fuselages (Struts rotated 90° about Z,
+    # MainStrut rotated -90°/MainFairing/etc.).
+    #
+    # Done BEFORE refinement (gh-721 bugfix): ``CompPnt01`` returns
+    # world-frame surface points, so the refinement loop must compare
+    # them against world-frame originals — otherwise inserts come out
+    # rotated/translated relative to the original xsecs.
+    translation, rotation_deg = _read_geom_xform(vsp, gid)
+    if any(translation) or any(rotation_deg):
+        for xs in xsecs:
+            xs.xyz = _apply_xform(xs.xyz, translation, rotation_deg)
+
+    # gh-721: adaptive refinement at high-curvature sections — now
+    # in the world frame consistent with CompPnt01.
     tol_rel = ctx.xsec_tolerance_rel
     if tol_rel > 0.0 and length > 0.0:
         _, xsecs = _refine_xsecs_adaptive(
@@ -560,15 +578,6 @@ def _handle_fuselage(
             ctx=ctx,
             component_name=name,
         )
-
-    # Apply Geom-level XForm (translation + intrinsic XYZ rotation) to
-    # every xsec position — same pattern as the wing handler post-gh-698.
-    # Critical for Cessna 172 sub-fuselages (Struts rotated 90° about Z,
-    # MainStrut rotated -90°/MainFairing/etc.).
-    translation, rotation_deg = _read_geom_xform(vsp, gid)
-    if any(translation) or any(rotation_deg):
-        for xs in xsecs:
-            xs.xyz = _apply_xform(xs.xyz, translation, rotation_deg)
 
     symmetric = _read_sym_planar_flag(vsp, gid, name, ctx)
 
