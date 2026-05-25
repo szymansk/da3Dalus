@@ -15,10 +15,6 @@ import pytest
 
 pytest.importorskip("cadquery")
 pytest.importorskip("aerosandbox")
-pytestmark = [
-    pytest.mark.requires_cadquery,
-    pytest.mark.requires_aerosandbox,
-]
 
 import cadquery as cq
 
