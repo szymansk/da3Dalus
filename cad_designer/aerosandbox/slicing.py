@@ -97,12 +97,16 @@ def slice_at_x(
     outline edge (4 edges typical on a VSP fuselage — one per quadrant
     of the cross-section).
     """
+    # Clamp ``points_per_edge`` against a sane ceiling — caller-supplied
+    # values bound the inner loop, SonarQube flags that as a controllable
+    # iteration source. 4096 is well past any visual-quality need.
+    n_pts = max(2, min(int(points_per_edge), 4096))
     edges = _section_outline_edges(shape, (x, 0.0, 0.0), (1.0, 0.0, 0.0))
     polylines: list[list[tuple[float, float, float]]] = []
     for e in edges:
         poly = []
-        for k in range(points_per_edge):
-            t = k / float(points_per_edge - 1) if points_per_edge > 1 else 0.0
+        for k in range(n_pts):
+            t = k / float(n_pts - 1) if n_pts > 1 else 0.0
             p = e.positionAt(t)
             poly.append((p.x, p.y, p.z))
         polylines.append(poly)
@@ -120,11 +124,13 @@ def extract_xz_profile(
     envelope. Use for curvature-aware station picking and as a
     construction reference for fuselage editing tools.
     """
+    # Same loop-bound clamp as ``slice_at_x`` (gh-727).
+    n_pts = max(2, min(int(points_per_edge), 4096))
     edges = _section_outline_edges(shape, (0.0, 0.0, 0.0), (0.0, 1.0, 0.0))
     pts_xz: list[tuple[float, float]] = []
     for e in edges:
-        for k in range(points_per_edge):
-            t = k / float(points_per_edge - 1) if points_per_edge > 1 else 0.0
+        for k in range(n_pts):
+            t = k / float(n_pts - 1) if n_pts > 1 else 0.0
             p = e.positionAt(t)
             pts_xz.append((p.x, p.z))
     if not pts_xz:
@@ -214,10 +220,18 @@ def adaptive_x_stations(
         samples_x.extend(xs.tolist())
         samples_w.extend(dz2.tolist())
 
+    # The outline endpoints define the full X range — pin those so
+    # stations[0] and stations[-1] hit the actual body bounds, not
+    # the inner curvature-sample bounds. (Curvature is undefined at
+    # endpoints because central differences need both neighbours.)
+    all_outline = top or bot
+    x_min = min(p[0] for p in (top + bot)) if (top or bot) else 0.0
+    x_max = max(p[0] for p in (top + bot)) if (top or bot) else 1.0
+    if x_max - x_min < 1e-9:
+        return [x_min for _ in range(n_stations)]
+
     if not samples_x:
         # Pure uniform — no curvature info available.
-        all_outline = top or bot
-        x_min, x_max = all_outline[0][0], all_outline[-1][0]
         return [x_min + (x_max - x_min) * i / (n_stations - 1) for i in range(n_stations)]
 
     # Normalize curvature weights into a PDF-like density on [x_min, x_max].
@@ -226,8 +240,6 @@ def adaptive_x_stations(
     sort_idx = np.argsort(arr_x)
     arr_x = arr_x[sort_idx]
     arr_w = arr_w[sort_idx]
-
-    x_min, x_max = arr_x.min(), arr_x.max()
     # Resample the curvature density onto a fine uniform X grid so we
     # can integrate it deterministically.
     n_grid = max(200, 4 * n_stations)
