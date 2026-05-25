@@ -112,34 +112,6 @@ async def import_openvsp(
             ),
         ),
     ] = None,
-    xsec_tolerance_rel: Annotated[
-        float,
-        Query(
-            ge=0.0,
-            le=0.10,
-            description=(
-                "Optional: adaptive xsec refinement tolerance, as a "
-                "fraction of the fuselage body length. Default 0.0025 "
-                "(= 0.25%). For a 700 mm RC body that translates to "
-                "1.75 mm; for a 7 m Cessna it's 18 mm. Set to 0 to "
-                "keep only the xsecs the VSP file declares."
-            ),
-        ),
-    ] = 0.0025,
-    xsec_max_count: Annotated[
-        int,
-        Query(
-            ge=2,
-            le=500,
-            description=(
-                "Optional: hard ceiling on xsecs per fuselage after "
-                "adaptive refinement. Default 100 (matches real-world "
-                "OpenVSP Geoms like RV-7 sub-fuselages). Lower the cap "
-                "to save DB rows / viewer FPS on simple bodies; raise "
-                "it when a highly curved body keeps hitting the cap."
-            ),
-        ),
-    ] = 100,
 ) -> OpenVspImportResponseModel:
     """Import an OpenVSP ``.vsp3`` file as a new aeroplane.
 
@@ -200,8 +172,6 @@ async def import_openvsp(
             scale_factor=scale_factor,
             name=name,
             source_filename=file.filename,
-            xsec_tolerance_rel=xsec_tolerance_rel,
-            xsec_max_count=xsec_max_count,
         )
     except FileNotFoundError as exc:
         raise HTTPException(

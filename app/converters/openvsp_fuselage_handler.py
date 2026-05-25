@@ -331,18 +331,10 @@ def _read_loc_pct(
 
 
 # ---------------------------------------------------------------------------
-# gh-721: adaptive xsec refinement at high-curvature sections
+# Shared CompPnt01 sampler — used by the CUSTOM handler (gh-719) to
+# reconstruct AngelScript-defined bodies that don't expose the standard
+# XSec position parms.
 # ---------------------------------------------------------------------------
-
-
-# Default hard cap so a pathologically curved body doesn't explode our
-# DB-row count. 100 matches real-world OpenVSP Geoms (RV-7 sub-fuselages
-# etc.). User-tunable via the import endpoint's ``xsec_max_count`` param
-# (gh-721) threaded through ``ImportContext.xsec_max_count``.
-_DEFAULT_MAX_XSECS = 100
-# Max bisection depth — 4 levels means each original section can grow into
-# up to 16 sub-sections before we give up.
-_MAX_REFINEMENT_DEPTH = 4
 
 
 def sample_station_via_comp_pnt(
@@ -351,9 +343,9 @@ def sample_station_via_comp_pnt(
     """Sample ``n_w`` points around the parametric surface at fixed ``u``
     and return ``(centroid_x, centroid_y, centroid_z, a, b)``.
 
-    Shared by the FUSELAGE handler's refinement pass (gh-721) and the
-    CUSTOM handler's primary loop (gh-719). Half-axes ``a`` / ``b`` are
-    the Y / Z bounding-box half-widths.
+    Used by the CUSTOM handler to reconstruct AngelScript-defined
+    bodies that don't expose the standard XSec position parms.
+    Half-axes ``a`` / ``b`` are the Y / Z bounding-box half-widths.
     """
     xs_list: list[float] = []
     ys: list[float] = []
@@ -370,137 +362,6 @@ def sample_station_via_comp_pnt(
     a = (max(ys) - min(ys)) / 2.0
     b = (max(zs) - min(zs)) / 2.0
     return cx, cy, cz, a, b
-
-
-def _refine_xsecs_adaptive(
-    vsp: ModuleType,
-    gid: str,
-    xsec_us: list[float],
-    xsecs: list[FuselageXSecSuperEllipseSchema],
-    *,
-    tol_m: float,
-    ctx: ImportContext,
-    component_name: str,
-) -> tuple[list[float], list[FuselageXSecSuperEllipseSchema]]:
-    """Adaptive bisection refinement (gh-721).
-
-    For each section between consecutive xsecs, sample the VSP-spline
-    midpoint and compare against the linear interpolation our schema
-    would produce. The worst component (centroid_z, a, or b) is the
-    section's "error".
-
-    Priority-by-error (gh-721 follow-up): in each depth iteration we
-    rank ALL out-of-tolerance candidate midpoints by their error and
-    insert highest-error first, up to the global xsec cap. This keeps
-    the budget on the sections that need it — without priority the
-    naive left-to-right insertion would starve the most-curved
-    sections at the tail (Cessna's "wespentaille" was ending up with
-    only 1 insert instead of 16).
-
-    Bails out at ``_MAX_REFINEMENT_DEPTH`` recursions or
-    ``cap`` total xsecs. Requires the running
-    OpenVSP build to expose ``CompPnt01``; old builds silently fall
-    back to the original xsec list.
-    """
-    if tol_m <= 0.0 or not hasattr(vsp, "CompPnt01"):
-        return xsec_us, xsecs
-
-    cap = max(int(getattr(ctx, "xsec_max_count", _DEFAULT_MAX_XSECS)), len(xsecs))
-    us = list(xsec_us)
-    xs = list(xsecs)
-    capped = False
-
-    for _ in range(_MAX_REFINEMENT_DEPTH):
-        # Pass 1: gather every out-of-tolerance midpoint with its
-        # error and the candidate FuselageXSec it would produce.
-        # Candidates carry (error, after_index, u_mid, schema).
-        candidates: list[
-            tuple[float, int, float, FuselageXSecSuperEllipseSchema]
-        ] = []
-        for i in range(len(us) - 1):
-            u_mid = (us[i] + us[i + 1]) / 2.0
-            try:
-                _cx, _cy, cz, a, b = sample_station_via_comp_pnt(vsp, gid, u_mid)
-            except Exception:  # noqa: BLE001
-                continue
-            approx_cx = (xs[i].xyz[0] + xs[i + 1].xyz[0]) / 2.0
-            approx_cy = (xs[i].xyz[1] + xs[i + 1].xyz[1]) / 2.0
-            approx_cz = (xs[i].xyz[2] + xs[i + 1].xyz[2]) / 2.0
-            approx_a = (xs[i].a + xs[i + 1].a) / 2.0
-            approx_b = (xs[i].b + xs[i + 1].b) / 2.0
-            # Compare Z + half-axes against VSP truth. X/Y are NOT
-            # compared because near SHIFT_LE/MID/TE xsecs OpenVSP's
-            # surface centroid jumps non-monotonically, which would
-            # both over-trigger refinement and leave inserts out of
-            # X-sort order in the schema list.
-            err = max(abs(cz - approx_cz), abs(a - approx_a), abs(b - approx_b))
-            if err <= tol_m:
-                continue
-            candidates.append(
-                (
-                    err,
-                    i,
-                    u_mid,
-                    FuselageXSecSuperEllipseSchema(
-                        # X/Y from linear interp (already in world
-                        # frame; preserves spine ordering). Z + a/b
-                        # from the VSP surface so the bulge / dip
-                        # actually shows up in the refined geometry.
-                        xyz=[approx_cx, approx_cy, cz],
-                        a=max(a, 0.0),
-                        b=max(b, 0.0),
-                        n=2.0,
-                    ),
-                )
-            )
-
-        if not candidates:
-            break
-
-        # Priority order: biggest error first. Then clip to whatever
-        # budget the cap allows so the worst-curved sections always
-        # land before lesser ones.
-        candidates.sort(key=lambda c: c[0], reverse=True)
-        budget = cap - len(xs)
-        if budget <= 0:
-            capped = True
-            break
-        if len(candidates) > budget:
-            capped = True
-            candidates = candidates[:budget]
-
-        # Pass 2: splice the selected inserts back into the section
-        # order. Sort by after_index so we walk left-to-right and
-        # build the new lists in O(n).
-        candidates.sort(key=lambda c: c[1])
-        new_us: list[float] = []
-        new_xs: list[FuselageXSecSuperEllipseSchema] = []
-        cand_iter = iter(candidates)
-        nxt = next(cand_iter, None)
-        for i in range(len(us)):
-            new_us.append(us[i])
-            new_xs.append(xs[i])
-            while nxt is not None and nxt[1] == i:
-                _err, _after, u_mid, schema_xs = nxt
-                new_us.append(u_mid)
-                new_xs.append(schema_xs)
-                nxt = next(cand_iter, None)
-        us, xs = new_us, new_xs
-
-    if capped:
-        ctx.add_warning(
-            component_type="FUSELAGE",
-            component_name=component_name,
-            reason=(
-                f"FUSELAGE {component_name!r}: hit the {cap}-xsec cap "
-                "during adaptive refinement; some high-curvature sections "
-                "may still exceed the tolerance. Raise the cap via the "
-                "import endpoint's ``xsec_max_count`` if needed."
-            ),
-            severity="info",
-        )
-
-    return us, xs
 
 
 # ---------------------------------------------------------------------------
@@ -534,7 +395,6 @@ def _handle_fuselage(
         length = 1.0
 
     xsecs: list[FuselageXSecSuperEllipseSchema] = []
-    xsec_us: list[float] = []
     for i in range(n_xsec):
         xs_id = vsp.GetXSec(xsurf, i)
         shape = vsp.GetXSecShape(xs_id)
@@ -550,34 +410,15 @@ def _handle_fuselage(
                 n=max(n, 1.0),
             )
         )
-        # u parameter for the surface query is the same XLocPercent
-        # (OpenVSP's parametric u matches the body fraction).
-        xsec_us.append(x_pct)
 
     # Apply Geom-level XForm (translation + intrinsic XYZ rotation) to
     # every xsec position — same pattern as the wing handler post-gh-698.
     # Critical for Cessna 172 sub-fuselages (Struts rotated 90° about Z,
     # MainStrut rotated -90°/MainFairing/etc.).
-    #
-    # Done BEFORE refinement (gh-721 bugfix): ``CompPnt01`` returns
-    # world-frame surface points, so the refinement loop must compare
-    # them against world-frame originals — otherwise inserts come out
-    # rotated/translated relative to the original xsecs.
     translation, rotation_deg = _read_geom_xform(vsp, gid)
     if any(translation) or any(rotation_deg):
         for xs in xsecs:
             xs.xyz = _apply_xform(xs.xyz, translation, rotation_deg)
-
-    # gh-721: adaptive refinement at high-curvature sections — now
-    # in the world frame consistent with CompPnt01.
-    tol_rel = ctx.xsec_tolerance_rel
-    if tol_rel > 0.0 and length > 0.0:
-        _, xsecs = _refine_xsecs_adaptive(
-            vsp, gid, xsec_us, xsecs,
-            tol_m=length * tol_rel,
-            ctx=ctx,
-            component_name=name,
-        )
 
     symmetric = _read_sym_planar_flag(vsp, gid, name, ctx)
 

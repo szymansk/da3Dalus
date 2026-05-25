@@ -386,12 +386,6 @@ def _persist_aeroplane(
     return str(aeroplane.uuid), aeroplane.name
 
 
-_XSEC_TOL_REL_MIN: float = 0.0
-_XSEC_TOL_REL_MAX: float = 0.10
-_XSEC_MAX_COUNT_MIN: int = 2
-_XSEC_MAX_COUNT_MAX: int = 500
-
-
 def import_openvsp_file(
     db: Session,
     path: Path,
@@ -400,8 +394,6 @@ def import_openvsp_file(
     scale_factor: Optional[float] = None,
     name: Optional[str] = None,
     source_filename: Optional[str] = None,
-    xsec_tolerance_rel: float = 0.0025,
-    xsec_max_count: int = 100,
 ) -> OpenVspImportResponse:
     """Parse a ``.vsp3`` file and persist its content as a new aeroplane.
 
@@ -439,22 +431,7 @@ def import_openvsp_file(
         When the scaling inputs are invalid (mutex, out-of-range,
         target span on a wingless aeroplane).
     """
-    if not (_XSEC_TOL_REL_MIN <= xsec_tolerance_rel <= _XSEC_TOL_REL_MAX):
-        raise ScaleValidationError(
-            f"xsec_tolerance_rel must be in [{_XSEC_TOL_REL_MIN}, "
-            f"{_XSEC_TOL_REL_MAX}], got {xsec_tolerance_rel!r}."
-        )
-    if not (_XSEC_MAX_COUNT_MIN <= xsec_max_count <= _XSEC_MAX_COUNT_MAX):
-        raise ScaleValidationError(
-            f"xsec_max_count must be in [{_XSEC_MAX_COUNT_MIN}, "
-            f"{_XSEC_MAX_COUNT_MAX}], got {xsec_max_count!r}."
-        )
-
-    result = import_vsp3(
-        path,
-        xsec_tolerance_rel=xsec_tolerance_rel,
-        xsec_max_count=xsec_max_count,
-    )
+    result = import_vsp3(path)
 
     factor = _resolve_scale_factor(result.aeroplane, target_span_m, scale_factor)
     # S1244: any factor far enough from 1.0 to matter geometrically — using

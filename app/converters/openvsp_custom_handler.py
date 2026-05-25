@@ -28,7 +28,6 @@ from types import ModuleType
 from app.converters import openvsp_importer
 from app.converters.openvsp_fuselage_handler import (
     _read_sym_planar_flag,
-    _refine_xsecs_adaptive,
     sample_station_via_comp_pnt as _sample_station,
 )
 from app.converters.openvsp_importer import AeroplaneSchema, ImportContext
@@ -96,19 +95,7 @@ def _handle_custom(
             )
         )
         xsec_us.append(u)
-
-    # gh-721: adaptive refinement of the uniform sampling. Length
-    # comes from the bounding-box X-range of the sampled points so we
-    # don't have to find a Custom-Geom-specific length parm.
-    if xsecs and ctx.xsec_tolerance_rel > 0.0:
-        length = xsecs[-1].xyz[0] - xsecs[0].xyz[0]
-        if length > 0.0:
-            _, xsecs = _refine_xsecs_adaptive(
-                vsp, gid, xsec_us, xsecs,
-                tol_m=length * ctx.xsec_tolerance_rel,
-                ctx=ctx,
-                component_name=name,
-            )
+    _ = xsec_us  # reserved for a future curvature-aware sampler
 
     if len(xsecs) < 2:
         ctx.add_warning(
