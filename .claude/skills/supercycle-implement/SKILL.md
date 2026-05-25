@@ -103,7 +103,22 @@ After fixing:
 </condition>
 </phase>
 
-<phase name="finish" order="5">
+<phase name="manual-smoke-test" order="5">
+<description>Manual smoke test on the worktree before finishing.</description>
+
+<step name="run-smoke-test">
+Follow the procedure in `../supercycle-common/manual-smoke-test.md`:
+1. Build a PR-specific smoke-test checklist (golden path + edge
+   cases + regression risk) from the issue and PR diff.
+2. Ask the user whether to start the stack.
+3. If yes: pre-flight, allocate free ports, start backend + frontend
+   in background, report URLs + checklist, iterate on findings,
+   stop the stack when the user approves.
+4. If no: skip directly to phase 6.
+</step>
+</phase>
+
+<phase name="finish" order="6">
 <action>Invoke `/finishing-a-development-branch`</action>
 </phase>
 

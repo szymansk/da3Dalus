@@ -80,6 +80,21 @@ Invoke `/verification-before-completion`:
 </step>
 </phase>
 
+<phase name="manual-smoke-test" order="4">
+<description>Manual smoke test on the worktree before reporting fix-complete.</description>
+
+<step name="run-smoke-test">
+Follow the procedure in `../supercycle-common/manual-smoke-test.md`:
+1. Build a fix-specific smoke-test checklist focused on the
+   findings just fixed + regression risk on shared files.
+2. Ask the user whether to start the stack.
+3. If yes: pre-flight, allocate free ports, start backend + frontend
+   in background, report URLs + checklist, iterate on findings,
+   stop the stack when the user approves.
+4. If no: skip directly to track.
+</step>
+</phase>
+
 </delegate>
 
 ---
