@@ -9,6 +9,14 @@ this service stitches the patches into a Shell with
 ``BRepBuilderAPI_Sewing`` and then walks the result into one or more
 ``TopoDS_Solid`` instances.
 
+.. important:: This module must **never** call into ``vsp.*``. The
+   ``openvsp`` C++ runtime and the ``OCP`` (Open CASCADE) runtime
+   both live as singletons in this Python process; mixing them on
+   the same thread is unsafe — especially during an import flow
+   where ``openvsp_step_export_service`` is actively mutating
+   VSP's user-set state. The disk file (``step_path``) is the only
+   allowed channel between gh-729 and gh-731.
+
 The flow in :func:`sew_to_solid_step`:
 
 1. Load the source STEP through cadquery (which wraps OCP / OCCT).
@@ -46,17 +54,18 @@ from app.services.openvsp_step_export_service import (
 logger = logging.getLogger(__name__)
 
 
-# Tight sew tolerance (millimetres). VSP surface patches generally
-# meet to within ~0.1 mm; 1 mm safely bridges the typical gap without
-# fusing unrelated detail features. Picked empirically on the Cessna
-# 172 fuselage and validated on the Diamond DA42 multi-body case.
-_SEW_TOLERANCE_TIGHT_MM = 0.001
-
-# Looser fallback when the tight pass produces no shells at all. Five
-# millimetres is the most we'll bridge without risking that the
-# nose-cap stitches itself to the tail. Above this the result is
-# usually unusable anyway and we'd rather null the solid_step_path.
-_SEW_TOLERANCE_LOOSE_MM = 0.005
+# Sewing tolerance — interpreted in the *shape's own units*. For
+# VSP-exported STEP files that's metres (we set
+# ``SetLengthUnit(LEN_M)`` before export), so 0.001 = 1 mm and
+# 0.005 = 5 mm in world space. Picked empirically: VSP surface
+# patches generally meet to within ~0.1 mm, so 1 mm safely bridges
+# the typical gap without fusing unrelated detail features. The
+# looser fallback runs only when the tight pass produces no shells;
+# 5 mm is the most we'll bridge without risking that the nose-cap
+# stitches itself to the tail. Above this the result is usually
+# unusable anyway and we'd rather null the solid_step_path.
+_SEW_TOLERANCE_TIGHT = 0.001
+_SEW_TOLERANCE_LOOSE = 0.005
 
 # Suffix appended to the sanitized geom stem to distinguish the
 # sewed-Solid file from gh-729's surface STEP next to it in the same
@@ -165,13 +174,13 @@ def _sew_and_solidify(source_step_path: Path):
         logger.info("No faces in %s — nothing to sew.", source_step_path)
         return None
 
-    shells = _sew_faces(faces, _SEW_TOLERANCE_TIGHT_MM)
+    shells = _sew_faces(faces, _SEW_TOLERANCE_TIGHT)
     if not shells:
         logger.debug(
             "Tight sew (%g mm) produced no shells; retrying loose (%g mm).",
-            _SEW_TOLERANCE_TIGHT_MM, _SEW_TOLERANCE_LOOSE_MM,
+            _SEW_TOLERANCE_TIGHT, _SEW_TOLERANCE_LOOSE,
         )
-        shells = _sew_faces(faces, _SEW_TOLERANCE_LOOSE_MM)
+        shells = _sew_faces(faces, _SEW_TOLERANCE_LOOSE)
     if not shells:
         return None
 
