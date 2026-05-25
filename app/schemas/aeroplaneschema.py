@@ -634,8 +634,20 @@ class FuselageSchema(BaseModel):
             "Relative path (under ARTIFACTS_BASE_DIR) to the per-geom "
             "STEP file exported at OpenVSP-import time (gh-729). "
             "``None`` when the fuselage wasn't imported from .vsp3. "
-            "Surface-only — sewed Solid lives at a separate path "
-            "(gh-730 follow-up)."
+            "Surface-only — sewed Solid lives at ``solid_step_path`` "
+            "(gh-731)."
+        ),
+    )
+    solid_step_path: Optional[str] = Field(
+        default=None,
+        description=(
+            "Relative path (under ARTIFACTS_BASE_DIR) to the "
+            "sewed/healed closed-Solid STEP file produced from "
+            "``step_path`` at OpenVSP-import time (gh-731). ``None`` "
+            "when the surface STEP did not heal into a valid Solid "
+            "or the fuselage wasn't VSP-imported. Suitable as input "
+            "to the CAD-construction pipeline (battery bay cuts, "
+            "servo unions, carbon-tube bores)."
         ),
     )
 

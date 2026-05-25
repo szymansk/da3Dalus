@@ -274,12 +274,25 @@ def _resolve_aeroplane_name(
 def _set_fuselage_step_path(
     db: Session, aeroplane_uuid, fuse_name: str, rel_path: str
 ) -> None:
-    """Write the per-geom STEP path onto an already-persisted
-    ``FuselageModel`` row (gh-729).
+    """Write the per-geom Surface-STEP path onto an already-persisted
+    ``FuselageModel`` row (gh-729)."""
+    _update_fuselage_field(db, aeroplane_uuid, fuse_name, "step_path", rel_path)
 
-    Done as a second-pass update — ``fuselage_service.create_fuselage``
-    only takes a ``FuselageSchema`` today, and adding a new field
-    there would mean threading the path through every other caller.
+
+def _set_fuselage_solid_step_path(
+    db: Session, aeroplane_uuid, fuse_name: str, rel_path: str
+) -> None:
+    """Write the sewed-Solid-STEP path onto an already-persisted
+    ``FuselageModel`` row (gh-731). Done as a second-pass update for
+    the same reason as :func:`_set_fuselage_step_path`."""
+    _update_fuselage_field(db, aeroplane_uuid, fuse_name, "solid_step_path", rel_path)
+
+
+def _update_fuselage_field(
+    db: Session, aeroplane_uuid, fuse_name: str, attr: str, value: str
+) -> None:
+    """Common second-pass update for ``FuselageModel`` text columns
+    that the create_fuselage path doesn't know about (gh-729 / gh-731).
     """
     from app.models.aeroplanemodel import AeroplaneModel, FuselageModel
 
@@ -298,7 +311,7 @@ def _set_fuselage_step_path(
     )
     if fuse_row is None:
         return
-    fuse_row.step_path = rel_path
+    setattr(fuse_row, attr, value)
     db.flush()
 
 
@@ -395,17 +408,24 @@ def _persist_aeroplane(
     # FuselageSchema fields are already in metres (no unit conversion
     # needed — different from wings which are mm-in-schema).
     #
-    # gh-729: also export a per-geom STEP file and record its
+    # gh-729: also export a per-geom Surface STEP file and record its
     # relative path on the FuselageModel row. The geom→schema-name
     # mapping comes from ``result.fuselage_geom_ids``; we look the
     # gid up by schema name when persisting.
+    #
+    # gh-731: when the Surface STEP succeeded, sew it into a closed
+    # Solid STEP (for the CAD-construction pipeline) and record its
+    # path too. Sewing failures stay null and never abort the import.
     if result.aeroplane.fuselages:
         # Invert the gid → name map for name-based lookup. (Importer
         # may have renamed colliding names — gh-705 dedupe — so the
         # ``ctx`` map is the authoritative source.)
         name_to_gid = {n: g for g, n in (result.fuselage_geom_ids or {}).items()}
         from app.converters import openvsp_adapter
-        from app.services import openvsp_step_export_service
+        from app.services import (
+            openvsp_solid_sewing_service,
+            openvsp_step_export_service,
+        )
 
         vsp = openvsp_adapter.get_vsp() if openvsp_adapter.is_available() else None
 
@@ -418,15 +438,26 @@ def _persist_aeroplane(
                 )
                 continue
             gid = name_to_gid.get(fuse_name)
-            if vsp is not None and gid is not None:
-                rel_step = openvsp_step_export_service.export_geom_step(
-                    vsp=vsp,
-                    gid=gid,
-                    geom_name=fuse_name,
-                    aeroplane_uuid=str(aeroplane.uuid),
+            if vsp is None or gid is None:
+                continue
+            rel_step = openvsp_step_export_service.export_geom_step(
+                vsp=vsp,
+                gid=gid,
+                geom_name=fuse_name,
+                aeroplane_uuid=str(aeroplane.uuid),
+            )
+            if not rel_step:
+                continue
+            _set_fuselage_step_path(db, aeroplane.uuid, fuse_name, rel_step)
+            rel_solid = openvsp_solid_sewing_service.sew_imported_geom_to_solid(
+                source_rel_step=rel_step,
+                aeroplane_uuid=str(aeroplane.uuid),
+                geom_name=fuse_name,
+            )
+            if rel_solid:
+                _set_fuselage_solid_step_path(
+                    db, aeroplane.uuid, fuse_name, rel_solid
                 )
-                if rel_step:
-                    _set_fuselage_step_path(db, aeroplane.uuid, fuse_name, rel_step)
 
     # Weight items (gh-693): persist each WeightItemWrite via the same
     # entry point the manual mass-properties UI uses, so categories,
