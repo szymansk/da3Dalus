@@ -14,9 +14,13 @@ from scipy.integrate import quad
 from scipy.special import gamma
 
 from OCP.BRepAdaptor import BRepAdaptor_CompCurve
+from OCP.BRepAlgoAPI import BRepAlgoAPI_Section
+from OCP.BRepBuilderAPI import BRepBuilderAPI_Sewing
 from OCP.GCPnts import GCPnts_UniformAbscissa
-from OCP.TopoDS import TopoDS_Wire
-from OCP.gp import gp_Pnt
+from OCP.TopAbs import TopAbs_EDGE
+from OCP.TopExp import TopExp_Explorer
+from OCP.TopoDS import TopoDS_Shape, TopoDS_Wire
+from OCP.gp import gp_Dir, gp_Pln, gp_Pnt
 
 from cad_designer.cq_plugins.display import display
 
@@ -41,6 +45,219 @@ def load_step_model(filepath: str) -> cq.Workplane:
     if not os.path.exists(filepath):
         raise FileNotFoundError(f"STEP file not found at: {filepath}")
     return cq.importers.importStep(filepath)
+
+
+# ---------------------------------------------------------------------------
+# gh-727: Shell-tolerant slicing + XZ-profile + adaptive station picking
+# ---------------------------------------------------------------------------
+
+
+def _ensure_sliceable_shape(model: cq.Workplane) -> TopoDS_Shape:
+    """Return a single TopoDS_Shape ready for plane-cuts.
+
+    Accepts a Workplane wrapping either a Solid (existing CAD pipeline)
+    or a collection of Surface-patches (OpenVSP STEP exports). When
+    given only surfaces, sews them into a closed-as-possible Shell so
+    ``BRepAlgoAPI_Section`` produces continuous outline edges.
+    """
+    solids = model.solids().vals()
+    if solids:
+        return solids[0].wrapped
+    faces = model.faces().vals()
+    if not faces:
+        raise ValueError("STEP model has neither solids nor faces to slice.")
+    sewing = BRepBuilderAPI_Sewing(0.001)
+    for f in faces:
+        sewing.Add(f.wrapped)
+    sewing.Perform()
+    return sewing.SewedShape()
+
+
+def _section_outline_edges(shape: TopoDS_Shape, origin: tuple[float, float, float], normal: tuple[float, float, float]) -> list[cq.Edge]:
+    """Intersect ``shape`` with the plane ``(origin, normal)`` and
+    return every resulting edge wrapped as a cadquery ``Edge``.
+    """
+    plane = gp_Pln(gp_Pnt(*origin), gp_Dir(*normal))
+    section = BRepAlgoAPI_Section(shape, plane)
+    section.ComputePCurveOn1(True)
+    section.Approximation(False)
+    section.Build()
+    edges: list[cq.Edge] = []
+    exp = TopExp_Explorer(section.Shape(), TopAbs_EDGE)
+    while exp.More():
+        edges.append(cq.Edge(exp.Current()))
+        exp.Next()
+    return edges
+
+
+def slice_at_x(
+    shape: TopoDS_Shape, x: float, points_per_edge: int = 30
+) -> list[list[tuple[float, float, float]]]:
+    """Cut the shape at world X = ``x`` and return one polyline per
+    outline edge (4 edges typical on a VSP fuselage — one per quadrant
+    of the cross-section).
+    """
+    edges = _section_outline_edges(shape, (x, 0.0, 0.0), (1.0, 0.0, 0.0))
+    polylines: list[list[tuple[float, float, float]]] = []
+    for e in edges:
+        poly = []
+        for k in range(points_per_edge):
+            t = k / float(points_per_edge - 1) if points_per_edge > 1 else 0.0
+            p = e.positionAt(t)
+            poly.append((p.x, p.y, p.z))
+        polylines.append(poly)
+    return polylines
+
+
+def extract_xz_profile(
+    shape: TopoDS_Shape, points_per_edge: int = 30
+) -> tuple[list[tuple[float, float]], list[tuple[float, float]]]:
+    """Cut the shape at Y = 0 and return the side-profile as
+    ``(top_outline, bottom_outline)``.
+
+    Each outline is a list of ``(x, z)`` tuples sorted by X. ``top``
+    is the upper envelope (max Z per X-bin), ``bottom`` the lower
+    envelope. Use for curvature-aware station picking and as a
+    construction reference for fuselage editing tools.
+    """
+    edges = _section_outline_edges(shape, (0.0, 0.0, 0.0), (0.0, 1.0, 0.0))
+    pts_xz: list[tuple[float, float]] = []
+    for e in edges:
+        for k in range(points_per_edge):
+            t = k / float(points_per_edge - 1) if points_per_edge > 1 else 0.0
+            p = e.positionAt(t)
+            pts_xz.append((p.x, p.z))
+    if not pts_xz:
+        return [], []
+    # Sort by X, then split top/bottom by binning. Each X-bin yields a
+    # max-Z (top) + min-Z (bottom) sample point.
+    pts_xz.sort()
+    xs = [p[0] for p in pts_xz]
+    x_min, x_max = xs[0], xs[-1]
+    # Bin width chosen so each bin gets ~3 samples — keeps the
+    # envelope smooth without aliasing.
+    n_bins = max(8, len(pts_xz) // 3)
+    if x_max - x_min < 1e-9:
+        return [], []
+    bin_w = (x_max - x_min) / n_bins
+    top: list[tuple[float, float]] = []
+    bot: list[tuple[float, float]] = []
+    for i in range(n_bins):
+        x_lo = x_min + i * bin_w
+        x_hi = x_lo + bin_w + 1e-9
+        in_bin = [p for p in pts_xz if x_lo <= p[0] < x_hi]
+        if not in_bin:
+            continue
+        x_center = sum(p[0] for p in in_bin) / len(in_bin)
+        z_max = max(p[1] for p in in_bin)
+        z_min = min(p[1] for p in in_bin)
+        top.append((x_center, z_max))
+        bot.append((x_center, z_min))
+    return top, bot
+
+
+def _curvature_density(
+    outline: list[tuple[float, float]],
+) -> tuple[NDArray[np.float64], NDArray[np.float64]]:
+    """Return ``(x_samples, |d²z/dx²|)`` for a side-profile outline.
+
+    Uses central finite differences on the outline samples. Returns
+    arrays of length ``len(outline) - 2`` (the endpoints have no
+    central neighbours).
+    """
+    if len(outline) < 3:
+        return np.array([]), np.array([])
+    arr = np.asarray(outline, dtype=float)
+    xs, zs = arr[:, 0], arr[:, 1]
+    # Central second-derivative ≈ (z[i+1] - 2z[i] + z[i-1]) / Δ²
+    dz2 = np.zeros(len(outline) - 2)
+    for i in range(1, len(outline) - 1):
+        dx1, dx2 = xs[i] - xs[i - 1], xs[i + 1] - xs[i]
+        if dx1 < 1e-9 or dx2 < 1e-9:
+            continue
+        # Non-uniform-spacing second derivative
+        dz2[i - 1] = abs(
+            2 * (zs[i - 1] / (dx1 * (dx1 + dx2))
+                 - zs[i] / (dx1 * dx2)
+                 + zs[i + 1] / (dx2 * (dx1 + dx2)))
+        )
+    return xs[1:-1], dz2
+
+
+def adaptive_x_stations(
+    top: list[tuple[float, float]],
+    bot: list[tuple[float, float]],
+    n_stations: int,
+    curvature_weight: float = 0.7,
+) -> list[float]:
+    """Place ``n_stations`` X-positions weighted by side-profile curvature.
+
+    Combines |d²z/dx²| of top + bottom envelopes into a per-X density.
+    Mixes that density with a flat (uniform) baseline via
+    ``curvature_weight``: ``0`` → uniform spacing, ``1`` → pure
+    curvature-driven, default ``0.7`` → biased toward high-curvature
+    but no zero-density gaps.
+
+    Always includes the X bounds as stations so the endcaps land on
+    actual outline endpoints.
+    """
+    if n_stations < 2:
+        raise ValueError("adaptive_x_stations needs n_stations >= 2")
+    if not top and not bot:
+        raise ValueError("adaptive_x_stations needs at least one outline")
+
+    # Pull curvature samples from both envelopes; concatenate + sort.
+    samples_x: list[float] = []
+    samples_w: list[float] = []
+    for outline in (top, bot):
+        xs, dz2 = _curvature_density(outline)
+        samples_x.extend(xs.tolist())
+        samples_w.extend(dz2.tolist())
+
+    if not samples_x:
+        # Pure uniform — no curvature info available.
+        all_outline = top or bot
+        x_min, x_max = all_outline[0][0], all_outline[-1][0]
+        return [x_min + (x_max - x_min) * i / (n_stations - 1) for i in range(n_stations)]
+
+    # Normalize curvature weights into a PDF-like density on [x_min, x_max].
+    arr_x = np.asarray(samples_x)
+    arr_w = np.asarray(samples_w)
+    sort_idx = np.argsort(arr_x)
+    arr_x = arr_x[sort_idx]
+    arr_w = arr_w[sort_idx]
+
+    x_min, x_max = arr_x.min(), arr_x.max()
+    # Resample the curvature density onto a fine uniform X grid so we
+    # can integrate it deterministically.
+    n_grid = max(200, 4 * n_stations)
+    grid = np.linspace(x_min, x_max, n_grid)
+    density_curve = np.interp(grid, arr_x, arr_w, left=0.0, right=0.0)
+    # Smooth a touch — neighbour-averaging cancels finite-difference noise.
+    if len(density_curve) >= 5:
+        kernel = np.array([1, 2, 4, 2, 1], dtype=float)
+        kernel /= kernel.sum()
+        density_curve = np.convolve(density_curve, kernel, mode="same")
+    # Normalize density_curve so its mean = 1, then mix with uniform.
+    mean_c = density_curve.mean()
+    if mean_c > 1e-9:
+        density_curve = density_curve / mean_c
+    else:
+        density_curve = np.ones_like(density_curve)
+    mixed = curvature_weight * density_curve + (1.0 - curvature_weight) * 1.0
+
+    # Integrate the mixed density to get a cumulative-distribution-like
+    # mapping x → cdf; pick stations by equidistantly sampling cdf
+    # values and inverting back to x.
+    dx = grid[1] - grid[0] if len(grid) > 1 else 0.0
+    cdf = np.cumsum(mixed) * dx
+    cdf -= cdf[0]
+    if cdf[-1] < 1e-12:
+        # Degenerate — fall back to uniform.
+        return [x_min + (x_max - x_min) * i / (n_stations - 1) for i in range(n_stations)]
+    cdf /= cdf[-1]
+    targets = np.linspace(0.0, 1.0, n_stations)
+    return [float(np.interp(t, cdf, grid)) for t in targets]
 
 def get_x_bounds(shape: cq.Shape) -> tuple[float, float]:
     bb = shape.BoundingBox()
@@ -70,25 +287,54 @@ def slice_model_along_x(
 ) -> list[list[tuple[float, float, float]]]:
     """Slice a model along the X axis into cross-section wire points.
 
-    Bug fixes applied:
-    - Starts at xmin (not x=0)
-    - Terminates at xmax (not on identical-slice heuristic)
-    """
-    xmin, xmax = get_x_bounds(shape.val())
+    Two paths:
 
+    * **Solid input** — uses the original ``Workplane.split(keepTop=True)``
+      path which returns one closed wire per slice. Kept verbatim to
+      preserve the RV-7 / Punisher / eHawk quality-test fidelity.
+    * **Shell input** (gh-727) — falls back to ``BRepAlgoAPI_Section``
+      which returns N quadrant edges per slice. Used for OpenVSP STEP
+      Open Shells where ``.split()`` fails.
+    """
+    if not shape.solids().vals():
+        # Shell-only path (gh-727)
+        sliceable = _ensure_sliceable_shape(shape)
+        bb = cq.Shape(sliceable).BoundingBox()
+        xmin, xmax = bb.xmin, bb.xmax
+        if number_of_slices is not None:
+            number_of_slices = max(number_of_slices, 2)
+            spacing = (xmax - xmin) / (number_of_slices - 1)
+        slices = []
+        x = xmin
+        max_iterations = int((xmax - xmin) / spacing) + 2 if spacing > 0 else 1000
+        for _ in range(max_iterations):
+            if x > xmax + spacing * 0.01:
+                break
+            try:
+                polylines = slice_at_x(sliceable, x, points_per_edge=points_per_slice)
+            except Exception as exc:
+                logger.warning(f"Section slice failed at x={x:.5f}: {exc}")
+                x += spacing
+                continue
+            if polylines:
+                slices.append(polylines)
+            x += spacing
+        logger.info(f"Section slicing complete: {len(slices)} slices "
+                    f"from x={xmin:.4f} to x={xmax:.4f}")
+        return slices
+
+    # Solid path — preserve original behaviour byte-for-byte
+    xmin, xmax = get_x_bounds(shape.val())
     if number_of_slices is not None:
         number_of_slices = max(number_of_slices, 2)
         spacing = (xmax - xmin) / (number_of_slices - 1)
         logger.info(f"Slicing with {number_of_slices} slices, spacing = {spacing:.5f}")
-
     slices = []
     x = xmin
     max_iterations = int((xmax - xmin) / spacing) + 2 if spacing > 0 else 1000
-
     for _ in range(max_iterations):
         if x > xmax + spacing * 0.01:
             break
-
         try:
             offset_from_min_face = x - xmin
             if offset_from_min_face < 1e-9:
@@ -106,19 +352,15 @@ def slice_model_along_x(
             logger.warning(f"Slicing failed at x={x:.5f}: {exc}")
             x += spacing
             continue
-
         wire_slice = []
         for wire in wires:
             points = discretize_wire(wire.toOCC(), points_per_slice)
             tuple_points = [(pt.X(), pt.Y(), pt.Z()) for pt in points]
             wire_slice.append(tuple_points)
-
         if wire_slice:
             slices.append(wire_slice)
             logger.debug(f"Slice at x={x:.5f}: {len(wire_slice)} wire(s)")
-
         x += spacing
-
     logger.info(f"Slicing complete: {len(slices)} slices from x={xmin:.4f} to x={xmax:.4f}")
     return slices
 
@@ -211,7 +453,7 @@ def fit_symmetric_superellipse(points: np.ndarray, initial_n: float = 2.0) -> di
     result = minimize(
         objective,
         x0=[1.0, 1.0, initial_n],
-        bounds=[(1e-3, None), (1e-3, None), (0.5, 10.0)],
+        bounds=[(1e-3, None), (1e-3, None), (0.5, 8.0)],
         method='L-BFGS-B'
     )
 
@@ -258,7 +500,7 @@ def fit_superellipse(points: np.ndarray, initial_n: float = 2.0) -> dict:
     result = minimize(
         objective,
         x0=[1.0, 1.0, initial_n],
-        bounds=[(1e-3, None), (1e-3, None), (0.5, 10.0)],
+        bounds=[(1e-3, None), (1e-3, None), (0.5, 8.0)],
         method='L-BFGS-B'
     )
 
@@ -310,18 +552,41 @@ def fit_shape_area_superellipse(points: np.ndarray, initial_n: float = 2.0, prev
         area_loss = ((area_fit - area_actual) / area_actual) ** 2
         loss = shape_loss / (np.mean(radii) ** 2) + 0.01 * area_loss
 
-        # Smoothness term
+        # Smoothness term (gh-727: normalised relative, not absolute.
+        # Old absolute form ``(a-a_p)²`` was unit-dependent — for mm
+        # inputs (typical from VSP STEP exports) a 30 mm change gave a
+        # 900-unit penalty that dominated the shape-loss entirely and
+        # locked subsequent slices to the previous a/b. Relative form
+        # is scale-invariant: a 10% change costs 0.01 regardless of
+        # whether the body is in mm or m.)
         if prev_params:
             a_p, b_p, n_p = prev_params["a"], prev_params["b"], prev_params["n"]
-            smoothness_loss = (a - a_p) ** 2 + (b - b_p) ** 2 + (n - n_p) ** 2
+            smoothness_loss = (
+                ((a / max(a_p, 1e-9)) - 1.0) ** 2
+                + ((b / max(b_p, 1e-9)) - 1.0) ** 2
+                + ((n - n_p) / max(n_p, 1e-9)) ** 2
+            )
             loss += smoothness_weight * smoothness_loss
 
         return loss
 
+    # gh-727: data-driven initial guess. The old x0=[1,1,n] anchored
+    # the optimizer at 1 unit half-axes — fine when inputs are in
+    # metres (0–2 m typical), catastrophic when inputs are in mm (100–
+    # 300 mm typical) because the smoothness term then pinned every
+    # subsequent slice to the previous a/b. Bounding-box-derived
+    # initial puts L-BFGS-B in the right neighborhood for any scale.
+    if shifted.size:
+        a_init = max(float(np.max(np.abs(shifted[:, 0]))), 1e-3)
+        b_init = max(float(np.max(np.abs(shifted[:, 1]))), 1e-3)
+    else:
+        a_init = b_init = 1.0
+    x0 = [a_init, b_init, initial_n]
+
     result = minimize(
         objective,
-        x0=[1.0, 1.0, initial_n],
-        bounds=[(1e-3, None), (1e-3, None), (0.5, 10.0)],
+        x0=x0,
+        bounds=[(1e-3, None), (1e-3, None), (0.5, 8.0)],
         method='L-BFGS-B'
     )
 
@@ -382,6 +647,9 @@ def slice_step_to_fuselage(
     points_per_slice: int = 30,
     slice_axis: str = "auto",
     fuselage_name: str = "Imported Fuselage",
+    *,
+    adaptive: bool = False,
+    curvature_weight: float = 0.7,
 ) -> tuple[list[dict], dict]:
     """Load STEP file, slice along longitudinal axis, fit symmetric
     superellipses, and return FuselageXSec dicts + fidelity metrics.
@@ -423,30 +691,96 @@ def slice_step_to_fuselage(
     elif slice_axis != "x":
         raise ValueError(f"Invalid slice_axis: {slice_axis}. Must be 'x', 'y', 'z', or 'auto'.")
 
-    # Compute original geometry properties
-    original_props = compute_shape_properties(model.solids().first().toOCC())
+    # Compute original geometry properties (Shell-tolerant: Volume is
+    # only defined for closed Solids — fall back to surface-area alone
+    # when given an Open Shell from VSP).
+    solids = model.solids().vals()
+    if solids:
+        # cq.Solid.wrapped is the OCP shape; older code used the
+        # since-removed ``.toOCC()`` accessor on Workplane().solids().first().
+        first_solid = solids[0]
+        occ_shape = getattr(first_solid, "wrapped", None) or first_solid.toOCC()
+        original_props = compute_shape_properties(occ_shape)
+    else:
+        from OCP.GProp import GProp_GProps as _GProp
+        from OCP.BRepGProp import BRepGProp as _BRepGProp
+        faces_shape = _ensure_sliceable_shape(model)
+        sa_props = _GProp()
+        _BRepGProp.SurfaceProperties_s(faces_shape, sa_props)
+        original_props = {"volume": 0.0, "surface_area": sa_props.Mass()}
+        logger.info(
+            "No Solid found in STEP — falling back to Shell-only metrics "
+            "(volume will be 0; surface area = %.4f).",
+            original_props["surface_area"],
+        )
 
-    # Slice
-    wire_slices = slice_model_along_x(
-        model, number_of_slices=number_of_slices, points_per_slice=points_per_slice
-    )
+    # gh-727: two slicer dispatches.
+    #
+    # ``via_shell`` (Section-based) is required for VSP STEP imports —
+    # those carry only Surface patches, no Solid. Section-Edges from
+    # one slice are 4 quadrants of ONE outline and must be flattened.
+    #
+    # The legacy Workplane.split path is byte-stable for the existing
+    # RV-7 / Punisher / eHawk fuselage-slice tests — there a single
+    # wire_set entry is one closed wire (outer contour); inner loops
+    # / disjoint section components also show up here but we keep the
+    # historic "take first wire" semantics.
+    has_solid = bool(model.solids().vals())
+    via_shell = (not has_solid) or adaptive
+    if via_shell:
+        sliceable = _ensure_sliceable_shape(model)
+        if adaptive:
+            top, bot = extract_xz_profile(sliceable)
+            x_stations = adaptive_x_stations(
+                top, bot, n_stations=number_of_slices,
+                curvature_weight=curvature_weight,
+            )
+        else:
+            bb = cq.Shape(sliceable).BoundingBox()
+            x_stations = [
+                bb.xmin + (bb.xmax - bb.xmin) * i / (number_of_slices - 1)
+                for i in range(number_of_slices)
+            ]
+        wire_slices = []
+        for x in x_stations:
+            polylines = slice_at_x(sliceable, x, points_per_edge=points_per_slice)
+            if polylines:
+                wire_slices.append(polylines)
+    else:
+        wire_slices = slice_model_along_x(
+            model, number_of_slices=number_of_slices, points_per_slice=points_per_slice
+        )
 
-    # Fit superellipses and build xsec dicts
+    # Fit superellipses and build xsec dicts.
+    #
+    # * ``via_shell`` slices have polylines = quadrant edges of one
+    #   outline → flatten into one point cloud.
+    # * Solid-path slices have polylines = full closed wires
+    #   (potentially with inner loops or multiple disjoint sections);
+    #   keep historic "take first wire" semantics so the existing
+    #   fuselage-slice quality tests stay byte-stable.
     xsec_dicts = []
     prev_params = None
     for wire_set in wire_slices:
-        for points in wire_set:
-            points_2d = np.array([(y, z) for (_, y, z) in points])
-            fit = fit_shape_area_superellipse(points_2d, prev_params=prev_params)
-            xyz = [float(points[0][0]), float(fit["center"][0]), float(fit["center"][1])]
-            xsec_dicts.append({
-                "xyz": xyz,
-                "a": float(fit["a"]),
-                "b": float(fit["b"]),
-                "n": float(np.clip(fit["n"], 0.5, 10.0)),
-            })
-            prev_params = fit
-            break  # take first wire per slice (outermost contour)
+        if not wire_set:
+            continue
+        if via_shell:
+            slice_points = [pt for poly in wire_set for pt in poly]
+        else:
+            slice_points = list(wire_set[0])
+        if not slice_points:
+            continue
+        x = float(slice_points[0][0])
+        points_2d = np.array([(y, z) for (_, y, z) in slice_points])
+        fit = fit_shape_area_superellipse(points_2d, prev_params=prev_params)
+        xyz = [x, float(fit["center"][0]), float(fit["center"][1])]
+        xsec_dicts.append({
+            "xyz": xyz,
+            "a": float(fit["a"]),
+            "b": float(fit["b"]),
+            "n": float(np.clip(fit["n"], 0.5, 8.0)),
+        })
+        prev_params = fit
 
     # Reconstruct as asb.Fuselage for fidelity comparison
     fuselage_xsecs = []
