@@ -373,7 +373,9 @@ def _is_x_dominant_fuselage(handler_xsec_dicts: list[dict]) -> bool:
     extents = xs.max(axis=0) - xs.min(axis=0)
     if extents[0] <= 1e-6:
         return False
-    return (
+    # Cast to plain Python bool — numpy's bool_ doesn't satisfy ``is True``
+    # / ``is False`` identity checks, which trips up test assertions.
+    return bool(
         extents[0] >= 1.2 * extents[1]
         and extents[0] >= 1.2 * extents[2]
     )
