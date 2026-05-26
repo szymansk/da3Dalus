@@ -35,7 +35,20 @@ from __future__ import annotations
 import logging
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Optional
+from typing import Callable, Optional
+
+
+# Progress callback signature: ``(step, pct, detail)``.
+# Used by gh-737 to drive a frontend progress bar via SSE. Called
+# synchronously from inside the import flow — the caller is
+# responsible for hopping the data over thread boundaries (typically
+# via ``loop.call_soon_threadsafe(queue.put_nowait, ...)``).
+ProgressCallback = Callable[[str, int, str], None]
+
+
+def _noop_progress(_step: str, _pct: int, _detail: str) -> None:  # pragma: no cover
+    """No-op default callback so the import flow doesn't need to
+    check ``if progress_cb is not None`` at every checkpoint."""
 
 from sqlalchemy.orm import Session
 
@@ -589,6 +602,7 @@ def _persist_aeroplane(
     *,
     name: Optional[str] = None,
     source_filename: Optional[str] = None,
+    progress_cb: ProgressCallback = _noop_progress,
 ) -> tuple[str, str]:
     """Persist the parsed aeroplane and return (uuid_str, name).
 
@@ -597,6 +611,10 @@ def _persist_aeroplane(
     record records a warning but lets the rest of the import succeed,
     so the user never loses an entire aeroplane to a single broken
     fuselage or weight item.
+
+    ``progress_cb`` (gh-737) gets called at each major persistence
+    checkpoint so a streaming endpoint can drive a frontend progress
+    bar. Signature: ``(step, pct, detail)`` — see ProgressCallback.
     """
     # Lazy import to avoid pulling sqlalchemy/CAD pieces at module load
     # in environments that only need the importer (e.g. unit tests).
@@ -613,12 +631,19 @@ def _persist_aeroplane(
         parsed_name=result.aeroplane.name,
     )
     aeroplane = aeroplane_service.create_aeroplane(db, resolved_name)
+    progress_cb("aeroplane", 20, f"Created aeroplane {resolved_name!r}")
 
     # Wings: convert each AsbWingSchema → AsbWingGeometryWriteSchema and
     # delegate to wing_service. The full schema isn't directly accepted
     # by the create_wing service, but the geometry-write schema is.
     if result.aeroplane.wings:
-        for wing_name, wing in result.aeroplane.wings.items():
+        n_wings = len(result.aeroplane.wings)
+        for i, (wing_name, wing) in enumerate(result.aeroplane.wings.items()):
+            progress_cb(
+                "wing",
+                25 + int(5 * (i + 1) / max(n_wings, 1)),
+                f"Wing {i + 1}/{n_wings}: {wing_name}",
+            )
             try:
                 write = AsbWingGeometryWriteSchema(
                     name=wing_name,
@@ -666,8 +691,21 @@ def _persist_aeroplane(
         )
 
         vsp = openvsp_adapter.get_vsp() if openvsp_adapter.is_available() else None
+        # gh-737: fuselages dominate the import wall-clock time (per-geom
+        # STEP export + sewing + slicer refinement). Allocate 30–85 % of
+        # the progress range to them; each fuselage gets a base pct plus
+        # sub-events for the slow stages.
+        n_fuselages = len(result.aeroplane.fuselages)
+        fuselage_span_pct = 55  # 30 → 85
+        fuselage_step_pct = fuselage_span_pct / max(n_fuselages, 1)
 
-        for fuse_name, fuse in result.aeroplane.fuselages.items():
+        for i, (fuse_name, fuse) in enumerate(result.aeroplane.fuselages.items()):
+            base_pct = 30 + int(fuselage_step_pct * i)
+            progress_cb(
+                "fuselage",
+                base_pct,
+                f"Fuselage {i + 1}/{n_fuselages}: {fuse_name}",
+            )
             try:
                 fuselage_service.create_fuselage(db, aeroplane.uuid, fuse_name, fuse)
             except Exception as exc:  # noqa: BLE001
@@ -678,6 +716,11 @@ def _persist_aeroplane(
             gid = name_to_gid.get(fuse_name)
             if vsp is None or gid is None:
                 continue
+            progress_cb(
+                "fuselage_step",
+                base_pct + int(fuselage_step_pct * 0.25),
+                f"{fuse_name}: exporting STEP",
+            )
             rel_step = openvsp_step_export_service.export_geom_step(
                 vsp=vsp,
                 gid=gid,
@@ -687,6 +730,11 @@ def _persist_aeroplane(
             if not rel_step:
                 continue
             _set_fuselage_step_path(db, aeroplane.uuid, fuse_name, rel_step)
+            progress_cb(
+                "fuselage_sew",
+                base_pct + int(fuselage_step_pct * 0.5),
+                f"{fuse_name}: sewing closed Solid",
+            )
             rel_solid = openvsp_solid_sewing_service.sew_imported_geom_to_solid(
                 source_rel_step=rel_step,
                 aeroplane_uuid=str(aeroplane.uuid),
@@ -702,6 +750,11 @@ def _persist_aeroplane(
             # volume metric for logging; we fall back to the Surface
             # STEP when sewing failed. The handler-built schema stays
             # if the slicer fails or produces too few points.
+            progress_cb(
+                "fuselage_slice",
+                base_pct + int(fuselage_step_pct * 0.75),
+                f"{fuse_name}: slicing for finer xsecs",
+            )
             slicer_source = rel_solid or rel_step
             refined_xsecs = _try_slicer_refinement(
                 slicer_source, fuse, fuse_name
@@ -714,6 +767,11 @@ def _persist_aeroplane(
     # Weight items (gh-693): persist each WeightItemWrite via the same
     # entry point the manual mass-properties UI uses, so categories,
     # CG-recompute hooks, and validation stay aligned.
+    if result.weight_items:
+        progress_cb(
+            "weight_items", 90,
+            f"Persisting {len(result.weight_items)} weight items",
+        )
     for item in result.weight_items:
         try:
             weight_items_service.create_weight_item(db, aeroplane.uuid, item)
@@ -733,6 +791,7 @@ def import_openvsp_file(
     scale_factor: Optional[float] = None,
     name: Optional[str] = None,
     source_filename: Optional[str] = None,
+    progress_cb: ProgressCallback = _noop_progress,
 ) -> OpenVspImportResponse:
     """Parse a ``.vsp3`` file and persist its content as a new aeroplane.
 
@@ -770,13 +829,20 @@ def import_openvsp_file(
         When the scaling inputs are invalid (mutex, out-of-range,
         target span on a wingless aeroplane).
     """
+    progress_cb("parsing", 5, "Reading .vsp3 file")
     result = import_vsp3(path)
+    progress_cb(
+        "parsing", 15,
+        f"Parsed {len(result.aeroplane.wings or {})} wing(s), "
+        f"{len(result.aeroplane.fuselages or {})} fuselage(s)",
+    )
 
     factor = _resolve_scale_factor(result.aeroplane, target_span_m, scale_factor)
     # S1244: any factor far enough from 1.0 to matter geometrically — using
     # a small epsilon avoids float-equality pitfalls. Threshold 1e-9 is
     # well below any user-typed scale value (UI step is 0.01).
     if factor is not None and abs(factor - 1.0) > 1e-9:
+        progress_cb("scaling", 18, f"Scaling by {factor:g}")
         _scale_aeroplane_lengths(
             result.aeroplane, factor, weight_items=result.weight_items
         )
@@ -788,8 +854,12 @@ def import_openvsp_file(
         )
 
     uuid, name = _persist_aeroplane(
-        db, result, name=name, source_filename=source_filename
+        db, result,
+        name=name,
+        source_filename=source_filename,
+        progress_cb=progress_cb,
     )
+    progress_cb("finalising", 95, "Finalising aeroplane")
     return OpenVspImportResponse(
         aeroplane_uuid=uuid,
         aeroplane_name=name,
