@@ -26,12 +26,14 @@ Returns:
 from __future__ import annotations
 
 import asyncio
+import json
 import logging
 import tempfile
 from pathlib import Path
 from typing import Annotated, Optional
 
 from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile, status
+from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
@@ -210,4 +212,183 @@ async def import_openvsp(
         n_weight_items=response.n_weight_items,
         warnings=[ImportWarningResponse(**w) for w in response.warnings],
         lossy_components=response.lossy_components,
+    )
+
+
+# ---------------------------------------------------------------------------
+# gh-737: streaming variant that emits SSE progress events
+# ---------------------------------------------------------------------------
+
+
+def _sse_format(event_type: str, data: dict) -> str:
+    """Encode one SSE event. ``data:`` may not contain newlines, so
+    we always JSON-serialise the payload."""
+    return f"event: {event_type}\ndata: {json.dumps(data, separators=(',', ':'))}\n\n"
+
+
+@router.post(
+    "/import/openvsp/stream",
+    tags=["import"],
+    operation_id="import_openvsp_vsp3_stream",
+    responses={
+        200: {
+            "content": {"text/event-stream": {}},
+            "description": (
+                "SSE stream. Yields ``progress`` events with "
+                "``{step, pct, detail}`` payloads, followed by a single "
+                "``complete`` event with the same body as the non-stream "
+                "endpoint, OR an ``error`` event with ``{detail}``."
+            ),
+        },
+        400: {"description": "Invalid request shape (mutex / wrong file type)"},
+        413: {"description": "Upload exceeds the size limit"},
+        503: {"description": "OpenVSP bindings not installed"},
+    },
+)
+async def import_openvsp_stream(
+    file: Annotated[UploadFile, File(..., description="OpenVSP .vsp3 file")],
+    db: Annotated[Session, Depends(get_db)],
+    target_span_m: Annotated[Optional[float], Query()] = None,
+    scale_factor: Annotated[Optional[float], Query()] = None,
+    name: Annotated[Optional[str], Query(max_length=200)] = None,
+):
+    """Streaming variant of ``/import/openvsp`` (gh-737).
+
+    Returns ``text/event-stream`` instead of JSON. The browser can't
+    use ``EventSource`` directly because the request is POST + multipart;
+    the frontend reads ``response.body`` as a ``ReadableStream`` and
+    parses SSE-format chunks itself (see ``frontend/lib/sseStream.ts``).
+    """
+    # Same up-front validation as the JSON endpoint — fail fast so the
+    # client doesn't open an SSE stream just to receive an error event.
+    if not openvsp_import_service.is_importer_available():
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail=(
+                "OpenVSP Python bindings are not installed on this server. "
+                "See docs/md/openvsp-import-setup.md for setup."
+            ),
+        )
+
+    filename = file.filename or ""
+    if not filename.lower().endswith(".vsp3"):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Expected a .vsp3 file upload.",
+        )
+
+    if target_span_m is not None and scale_factor is not None:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=(
+                "target_span_m and scale_factor are mutually exclusive; "
+                "specify at most one."
+            ),
+        )
+
+    raw = await file.read()
+    if len(raw) > _MAX_FILE_SIZE_BYTES:
+        raise HTTPException(
+            status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+            detail=(f"Upload exceeds the {_MAX_FILE_SIZE_BYTES // (1024 * 1024)} MB size limit."),
+        )
+
+    def _write_temp() -> Path:
+        with tempfile.NamedTemporaryFile(suffix=".vsp3", delete=False) as tmp:
+            tmp.write(raw)
+            return Path(tmp.name)
+
+    tmp_path = await asyncio.to_thread(_write_temp)
+    source_filename = file.filename
+
+    async def event_generator():
+        """Yield SSE events as the import runs in a worker thread."""
+        loop = asyncio.get_running_loop()
+        queue: asyncio.Queue = asyncio.Queue()
+        # Sentinel used to terminate the consumer loop when the worker
+        # thread is done (success or failure).
+        _DONE = object()
+
+        def progress_cb(step: str, pct: int, detail: str) -> None:
+            """Called from the worker thread — hop the event onto the
+            event loop's queue. ``put_nowait`` itself is thread-safe
+            for asyncio.Queue, but the safer pattern is to use
+            ``call_soon_threadsafe`` since the queue's internal locks
+            assume single-threaded access."""
+            loop.call_soon_threadsafe(
+                queue.put_nowait,
+                ("progress", {"step": step, "pct": pct, "detail": detail}),
+            )
+
+        async def run_import() -> None:
+            try:
+                response = await asyncio.to_thread(
+                    openvsp_import_service.import_openvsp_file,
+                    db, tmp_path,
+                    target_span_m=target_span_m,
+                    scale_factor=scale_factor,
+                    name=name,
+                    source_filename=source_filename,
+                    progress_cb=progress_cb,
+                )
+                queue.put_nowait(
+                    (
+                        "complete",
+                        {
+                            "aeroplane_uuid": response.aeroplane_uuid,
+                            "aeroplane_name": response.aeroplane_name,
+                            "n_wings": response.n_wings,
+                            "n_fuselages": response.n_fuselages,
+                            "n_weight_items": response.n_weight_items,
+                            "warnings": response.warnings,
+                            "lossy_components": response.lossy_components,
+                        },
+                    )
+                )
+            except ScaleValidationError as exc:
+                queue.put_nowait(
+                    ("error", {"status": 422, "detail": str(exc)})
+                )
+            except ImportError as exc:
+                queue.put_nowait(
+                    ("error", {"status": 503, "detail": str(exc)})
+                )
+            except Exception as exc:  # noqa: BLE001 — surface message to client
+                logger.exception("OpenVSP import (stream) failed")
+                queue.put_nowait(
+                    (
+                        "error",
+                        {
+                            "status": 422,
+                            "detail": f"Failed to parse OpenVSP file: {exc}",
+                        },
+                    )
+                )
+            finally:
+                try:
+                    await asyncio.to_thread(tmp_path.unlink, missing_ok=True)
+                except OSError:
+                    logger.warning("Could not remove temp file %s", tmp_path)
+                queue.put_nowait(_DONE)
+
+        import_task = asyncio.create_task(run_import())
+        try:
+            while True:
+                event = await queue.get()
+                if event is _DONE:
+                    break
+                event_type, payload = event
+                yield _sse_format(event_type, payload)
+        finally:
+            await import_task
+
+    return StreamingResponse(
+        event_generator(),
+        media_type="text/event-stream",
+        headers={
+            # Disable nginx buffering so events arrive in real time when
+            # behind a reverse proxy in production.
+            "X-Accel-Buffering": "no",
+            "Cache-Control": "no-cache",
+        },
     )

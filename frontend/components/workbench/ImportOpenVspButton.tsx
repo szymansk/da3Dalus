@@ -2,16 +2,19 @@
 
 import { useRef, useState } from "react";
 
-import { API_BASE } from "@/lib/fetcher";
+import ImportProgressBar from "./ImportProgressBar";
 
 /**
  * Frontend upload control for the OpenVSP `.vsp3` importer (gh-646).
  *
  * Single button; opens a hidden `<input type=file>` and POSTs the
- * selected `.vsp3` to `/api/v2/import/openvsp`. On success the
- * `onImported` callback receives the response envelope so the parent
- * can navigate to the new aeroplane and surface warnings via the
- * banner (delivered in gh-648).
+ * selected `.vsp3` to ``/api/v2/import/openvsp/stream`` (gh-737). The
+ * streaming endpoint yields SSE progress events; during the upload the
+ * button is replaced by a real progress bar driven by
+ * ``ImportProgressBar``. On the final ``complete`` event the
+ * ``onImported`` callback receives the same envelope as the legacy
+ * JSON endpoint so the parent can navigate to the new aeroplane and
+ * surface warnings via the banner (delivered in gh-648).
  *
  * Optional Quick-Scale (gh-695): when ``scaleOption`` is supplied,
  * the matching query param is appended to the request URL. The
@@ -67,25 +70,6 @@ type Props = {
   customName?: string;
 };
 
-function buildImportUrl(
-  scaleOption?: ScaleOption,
-  customName?: string,
-): string {
-  const base = `${API_BASE}/api/v2/import/openvsp`;
-  const params = new URLSearchParams();
-  if (scaleOption?.mode === "target_span") {
-    params.set("target_span_m", String(scaleOption.target_span_m));
-  } else if (scaleOption?.mode === "scale_factor") {
-    params.set("scale_factor", String(scaleOption.scale_factor));
-  }
-  const trimmedName = customName?.trim() ?? "";
-  if (trimmedName) {
-    params.set("name", trimmedName);
-  }
-  const qs = params.toString();
-  return qs ? `${base}?${qs}` : base;
-}
-
 export default function ImportOpenVspButton({
   onImported,
   onError,
@@ -95,42 +79,18 @@ export default function ImportOpenVspButton({
   customName,
 }: Props) {
   const inputRef = useRef<HTMLInputElement | null>(null);
-  const [uploading, setUploading] = useState(false);
+  // ``pendingFile`` holds the user-selected .vsp3 while the streaming
+  // import runs. While it's non-null the button is replaced by an
+  // ``ImportProgressBar`` driven by the gh-737 SSE endpoint.
+  const [pendingFile, setPendingFile] = useState<File | null>(null);
 
-  async function handleFile(file: File) {
+  function handleFile(file: File) {
     if (!file.name.toLowerCase().endsWith(".vsp3")) {
       onError?.("Expected a .vsp3 file.");
+      if (inputRef.current) inputRef.current.value = "";
       return;
     }
-    setUploading(true);
-    try {
-      const form = new FormData();
-      form.append("file", file);
-      const res = await fetch(
-        buildImportUrl(scaleOption, customName),
-        { method: "POST", body: form },
-      );
-      if (!res.ok) {
-        let detail = `HTTP ${res.status}`;
-        try {
-          const body = await res.json();
-          detail = typeof body.detail === "string" ? body.detail : detail;
-        } catch {
-          // Ignore JSON parse errors — keep the HTTP-status default.
-        }
-        onError?.(detail);
-        return;
-      }
-      const body = (await res.json()) as ImportOpenVspResponse;
-      onImported?.(body);
-    } catch (err) {
-      onError?.(
-        err instanceof Error ? err.message : "Unexpected error during import",
-      );
-    } finally {
-      setUploading(false);
-      if (inputRef.current) inputRef.current.value = "";
-    }
+    setPendingFile(file);
   }
 
   return (
@@ -142,19 +102,38 @@ export default function ImportOpenVspButton({
         style={{ display: "none" }}
         onChange={(e) => {
           const f = e.target.files?.[0];
-          if (f) void handleFile(f);
+          if (f) handleFile(f);
         }}
         data-testid="openvsp-file-input"
       />
-      <button
-        type="button"
-        className={`rounded border border-neutral-700 px-3 py-1.5 text-sm font-medium text-neutral-200 hover:bg-neutral-800 disabled:cursor-not-allowed disabled:opacity-50 ${className}`}
-        disabled={uploading}
-        onClick={() => inputRef.current?.click()}
-        data-testid="openvsp-import-button"
-      >
-        {uploading ? "Importing…" : label}
-      </button>
+      {pendingFile ? (
+        <div className={`flex-1 ${className}`} data-testid="openvsp-import-progress-wrapper">
+          <ImportProgressBar
+            file={pendingFile}
+            scaleOption={scaleOption}
+            customName={customName}
+            onComplete={(response) => {
+              setPendingFile(null);
+              if (inputRef.current) inputRef.current.value = "";
+              onImported?.(response);
+            }}
+            onError={(message) => {
+              setPendingFile(null);
+              if (inputRef.current) inputRef.current.value = "";
+              onError?.(message);
+            }}
+          />
+        </div>
+      ) : (
+        <button
+          type="button"
+          className={`rounded border border-neutral-700 px-3 py-1.5 text-sm font-medium text-neutral-200 hover:bg-neutral-800 disabled:cursor-not-allowed disabled:opacity-50 ${className}`}
+          onClick={() => inputRef.current?.click()}
+          data-testid="openvsp-import-button"
+        >
+          {label}
+        </button>
+      )}
     </>
   );
 }
