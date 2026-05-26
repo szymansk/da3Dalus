@@ -269,36 +269,54 @@ class VaseModeWingCreator(AbstractShapeCreator):
                 logging.info(f"==> creating wing hull for '{self.identifier}[{segment}]'")
                 current_hull = Workplane(current.vals()[-1].cut(current_2xpwt_offset.vals()[-1]))
 
-                # create the base shape of the main spare and the spare's plane
-                logging.info(f"==> creating main spare shape for '{self.identifier}[{segment}]'")
-                raw_spare, spare_plane = self._create_spare_shape(current=current_2xpwt_offset, segment=segment,
-                                                                  wing_config=wing_config, spare_idx=0)
-                # create the cut out for the ribs in an hour glass like shape
-                # the cut out is created in a way that the main spare fits into it nicely
-                logging.info(f"==> creating rib shapes for '{self.identifier}[{segment}]'")
-                raw_ribs, leading_edge_start, trailing_edge_start, spare_vector_origin, lower_part = self._create_ribs_shape(
-                    current_2xpwt_offset, segment, wing_config, leading_edge_start, trailing_edge_start, not lower_part)
+                # gh-361: outer segments may carry only a TED (no spares).
+                # In that case the spare / rib / slot / glue-tongue pipeline
+                # must be skipped — accessing ``spare_list[0]`` would crash
+                # with IndexError. We fall back to empty Workplane stand-ins
+                # for raw_spare / raw_ribs / right_wing_slot so the
+                # downstream TED + final-combine code keeps working without
+                # any spare contribution.
+                has_spares = bool(wing_segment.spare_list)
+                if has_spares:
+                    # create the base shape of the main spare and the spare's plane
+                    logging.info(f"==> creating main spare shape for '{self.identifier}[{segment}]'")
+                    raw_spare, spare_plane = self._create_spare_shape(current=current_2xpwt_offset, segment=segment,
+                                                                      wing_config=wing_config, spare_idx=0)
+                    # create the cut out for the ribs in an hour glass like shape
+                    # the cut out is created in a way that the main spare fits into it nicely
+                    logging.info(f"==> creating rib shapes for '{self.identifier}[{segment}]'")
+                    raw_ribs, leading_edge_start, trailing_edge_start, spare_vector_origin, lower_part = self._create_ribs_shape(
+                        current_2xpwt_offset, segment, wing_config, leading_edge_start, trailing_edge_start, not lower_part)
 
-                # create a shape for the slot that is needed to make the wing printable in vase mode
-                # only spare with index 0 will get this slot
-                logging.info(f"==> creating rib slot for '{self.identifier}[{segment}]'")
-                right_wing_slot = (Workplane(spare_plane)
-                                   .box(length=self.gap_rel_printer_wall_thickness * self.printer_wall_thickness,
-                                        width=100,
-                                        height=wing_segment.length * 10,
-                                        centered=(False, False, True)))
+                    # create a shape for the slot that is needed to make the wing printable in vase mode
+                    # only spare with index 0 will get this slot
+                    logging.info(f"==> creating rib slot for '{self.identifier}[{segment}]'")
+                    right_wing_slot = (Workplane(spare_plane)
+                                       .box(length=self.gap_rel_printer_wall_thickness * self.printer_wall_thickness,
+                                            width=100,
+                                            height=wing_segment.length * 10,
+                                            centered=(False, False, True)))
 
-                # create all other spares
-                for spare_idx in range(1, len(wing_segment.spare_list)):
-                    logging.info(f"==> creating spare '{spare_idx}' shapes for '{self.identifier}[{segment}]'")
-                    raw_add_spar, _ = self._create_spare_shape(current=current_2xpwt_offset, segment=segment,
-                                                               wing_config=wing_config, spare_idx=spare_idx)
-                    raw_spare = raw_spare.add(raw_add_spar)
+                    # create all other spares
+                    for spare_idx in range(1, len(wing_segment.spare_list)):
+                        logging.info(f"==> creating spare '{spare_idx}' shapes for '{self.identifier}[{segment}]'")
+                        raw_add_spar, _ = self._create_spare_shape(current=current_2xpwt_offset, segment=segment,
+                                                                   wing_config=wing_config, spare_idx=spare_idx)
+                        raw_spare = raw_spare.add(raw_add_spar)
 
-                try:
-                    raw_spare.combine(glue=True)
-                except ValueError:
-                    pass
+                    try:
+                        raw_spare.combine(glue=True)
+                    except ValueError:
+                        pass
+                else:
+                    # Spareless segment — hull + TED only.
+                    logging.info(
+                        f"==> skipping spare / rib / slot for spareless segment "
+                        f"'{self.identifier}[{segment}]' (gh-361)"
+                    )
+                    raw_spare = Workplane()
+                    raw_ribs = Workplane()
+                    right_wing_slot = Workplane()
 
                 # cut out trailing edge device (ted) from segment
                 ted = wing_segment.trailing_edge_device
