@@ -406,7 +406,11 @@ def _try_slicer_refinement(
         return None
 
     try:
-        from cad_designer.aerosandbox.slicing import slice_step_to_fuselage
+        from cad_designer.aerosandbox.slicing import (
+            slice_step_at_stations,
+            slice_step_to_fuselage,
+            vsp_anchored_x_stations,
+        )
     except ImportError:
         logger.info(
             "cadquery / slicer unavailable — leaving handler-built schema for %r.",
@@ -414,16 +418,46 @@ def _try_slicer_refinement(
         )
         return None
 
+    # gh-732: stations are driven by VSP handler anchors when we have
+    # them — every VSP-defined xsec is a mandatory anchor and the
+    # remaining intermediate budget is distributed weighted by shape
+    # change between consecutive anchors. This preserves the VSP-defined
+    # positions exactly and concentrates extra slices where the spline
+    # actually curves. Falls back to cadquery's XZ-profile curvature
+    # for the rare case where the handler list is empty / has < 2 xsecs.
     try:
-        slicer_xsecs, metrics = slice_step_to_fuselage(
-            str(full_path),
-            number_of_slices=30,
-            points_per_slice=30,
-            slice_axis="x",
-            fuselage_name=fuse_name,
-            adaptive=True,
-            curvature_weight=0.7,
-        )
+        handler_xsec_dicts = [
+            {"xyz": list(xs.xyz), "a": xs.a, "b": xs.b, "n": xs.n}
+            for xs in handler_fuse.x_secs
+        ]
+        if len(handler_xsec_dicts) >= 2:
+            # Budget: ~6 stations per VSP-defined xsec OR 60 minimum.
+            # Empirically (cessna172) 30 stations leave the rapid-change
+            # nose-cap and tail-cap sections under-resolved (area_ratio
+            # 0.53–0.74); 60 stations + tip + rapid-change weight
+            # boosts get them above 0.85.
+            x_stations_mm = vsp_anchored_x_stations(
+                handler_xsec_dicts,
+                total_stations=max(60, 6 * len(handler_xsec_dicts)),
+                scale_to_mm=True,
+            )
+            slicer_xsecs, metrics = slice_step_at_stations(
+                str(full_path),
+                x_stations_mm=x_stations_mm,
+                points_per_slice=30,
+                slice_axis="x",
+                fuselage_name=fuse_name,
+            )
+        else:
+            slicer_xsecs, metrics = slice_step_to_fuselage(
+                str(full_path),
+                number_of_slices=30,
+                points_per_slice=30,
+                slice_axis="x",
+                fuselage_name=fuse_name,
+                adaptive=True,
+                curvature_weight=0.7,
+            )
     except Exception as exc:  # noqa: BLE001 — refinement is best-effort
         logger.info(
             "Slicer refinement skipped for %r (%s) — keeping handler-built schema.",

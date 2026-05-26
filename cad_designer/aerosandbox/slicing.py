@@ -839,6 +839,231 @@ def slice_step_to_fuselage(
     return xsec_dicts, metrics
 
 
+def vsp_anchored_x_stations(
+    handler_xsecs: list[dict],
+    total_stations: int,
+    *,
+    scale_to_mm: bool = True,
+) -> list[float]:
+    """X-stations driven by VSP handler anchors (gh-732).
+
+    Each handler xsec position is a **mandatory** anchor so the
+    slicer's downstream xsec list contains the VSP-defined positions
+    exactly. The remaining budget is distributed between consecutive
+    anchors weighted by *shape change*: ``|Δa| + |Δb| + |Δy| + |Δz|``
+    plus a baseline term so a section with zero shape change still
+    gets a few interpolation points.
+
+    Inputs:
+      * ``handler_xsecs`` — list of dicts ``{"xyz": [x, y, z], "a", "b", "n"}``,
+        coordinates in metres (FuselageSchema convention).
+      * ``total_stations`` — global budget. Handler-anchor count is
+        subtracted to determine the intermediate budget.
+      * ``scale_to_mm`` — convert the returned stations to cadquery's
+        internal mm convention (default True, so the result drops
+        straight into ``slice_at_x``).
+
+    Returns x stations sorted ascending. Always includes every handler
+    anchor; never produces duplicates.
+    """
+    if len(handler_xsecs) < 2:
+        return []
+
+    anchors = sorted(
+        (
+            (
+                float(xs["xyz"][0]),
+                float(xs["xyz"][1]),
+                float(xs["xyz"][2]),
+                float(xs["a"]),
+                float(xs["b"]),
+            )
+            for xs in handler_xsecs
+        ),
+        key=lambda t: t[0],
+    )
+
+    n_sections = len(anchors) - 1
+    weights: list[float] = []
+    # Find the body-typical scale so the tip-boost has a reference.
+    # Use the median (a + b) over all non-degenerate anchors so a
+    # single bogus anchor doesn't skew the calibration.
+    body_dim_median = float(np.median([
+        a + b for _, _, _, a, b in anchors if a + b > 1e-3
+    ])) or 1.0
+    tip_threshold = 0.15 * body_dim_median  # below this, anchor is a tip
+    for i in range(n_sections):
+        x_a, y_a, z_a, a_a, b_a = anchors[i]
+        x_b, y_b, z_b, a_b, b_b = anchors[i + 1]
+        delta_shape = abs(a_b - a_a) + abs(b_b - b_a)
+        delta_position = abs(y_b - y_a) + abs(z_b - z_a)
+        # Baseline so empty sections (rare but possible) still get a
+        # couple of points. Scaled by section length so big featureless
+        # sections (tail boom) still get density-proportional coverage.
+        section_len = max(abs(x_b - x_a), 1e-6)
+        baseline = 0.3 * section_len
+        weight = delta_shape + delta_position + baseline
+        # Tip-cap boost (gh-732): sections that include the nose tip or
+        # tail tip (a+b at one anchor below ~15% of the body's typical
+        # size) curve rapidly from a point to a finite cross-section.
+        # The asb.Fuselage's cone-frustum interpolation between sparse
+        # xsecs systematically under-estimates the surface area there.
+        # Boost the weight ~4x so the budgeter pours intermediate
+        # stations into these sections.
+        size_a = a_a + b_a
+        size_b = a_b + b_b
+        if size_a < tip_threshold or size_b < tip_threshold:
+            weight *= 4.0
+        # Rapid-shape-change boost (gh-732): when the cross-section
+        # grows / shrinks fast within a short section (e.g. xsec[1]→[2]
+        # on the cessna nose: a goes from 0.14 m to 0.41 m over only
+        # 0.13 m of length), the linear cone-frustum interpolation
+        # between super-ellipse anchors under-estimates the actual
+        # curved surface. Sections whose shape-change-rate exceeds 50 %
+        # of the body's typical dim per metre get an extra ×2 boost.
+        shape_change_rate = delta_shape / section_len
+        if shape_change_rate > 0.5 * body_dim_median:
+            weight *= 2.0
+        weights.append(weight)
+
+    total_w = sum(weights) or 1.0
+    n_intermediates_total = max(0, int(total_stations) - len(anchors))
+
+    intermediates_per_section: list[int] = []
+    fractional_remainder = 0.0
+    for w in weights:
+        ideal = w / total_w * n_intermediates_total + fractional_remainder
+        n = int(round(ideal))
+        fractional_remainder = ideal - n
+        intermediates_per_section.append(max(0, n))
+
+    stations: list[float] = []
+    for i in range(n_sections):
+        x_a = anchors[i][0]
+        x_b = anchors[i + 1][0]
+        stations.append(x_a)
+        n_inter = intermediates_per_section[i]
+        for k in range(1, n_inter + 1):
+            frac = k / (n_inter + 1)
+            stations.append(x_a + frac * (x_b - x_a))
+    stations.append(anchors[-1][0])
+
+    # Deduplicate consecutive equal stations (defensive — shouldn't
+    # happen, but a handler xsec at distance zero from another would
+    # do this).
+    deduped: list[float] = []
+    for s in stations:
+        if not deduped or abs(s - deduped[-1]) > 1e-9:
+            deduped.append(s)
+
+    if scale_to_mm:
+        deduped = [s * 1000.0 for s in deduped]
+    return deduped
+
+
+def slice_step_at_stations(
+    step_path: str,
+    x_stations_mm: list[float],
+    *,
+    points_per_slice: int = 30,
+    slice_axis: str = "x",
+    fuselage_name: str = "Imported Fuselage",
+) -> tuple[list[dict], dict]:
+    """Like :func:`slice_step_to_fuselage` but with an explicit station
+    list (already in cadquery mm). Used by the gh-732 wiring so handler
+    xsec positions can drive the slicer instead of cadquery's
+    XZ-profile curvature.
+
+    Returns ``(xsec_dicts, metrics)`` in the same shape as
+    :func:`slice_step_to_fuselage`. Each fit is independent (no
+    ``prev_params`` cascade — see the bug-fix note in
+    :func:`slice_step_to_fuselage`).
+    """
+    if slice_axis != "x":
+        # Keep this entry-point minimal — the legacy auto-rotate path
+        # belongs in slice_step_to_fuselage. Callers that need it
+        # should pre-rotate.
+        raise ValueError(
+            f"slice_step_at_stations only supports slice_axis='x' (got {slice_axis!r})."
+        )
+
+    model = load_step_model(step_path)
+    sliceable = _ensure_sliceable_shape(model)
+
+    # Original geometry properties (Shell-tolerant: Volume is only
+    # defined for closed Solids — fall back to surface-area alone when
+    # given an Open Shell from VSP).
+    solids = model.solids().vals()
+    if solids:
+        first_solid = solids[0]
+        occ_shape = getattr(first_solid, "wrapped", None) or first_solid.toOCC()
+        original_props = compute_shape_properties(occ_shape)
+    else:
+        from OCP.GProp import GProp_GProps as _GProp
+        from OCP.BRepGProp import BRepGProp as _BRepGProp
+        faces_shape = _ensure_sliceable_shape(model)
+        sa_props = _GProp()
+        _BRepGProp.SurfaceProperties_s(faces_shape, sa_props)
+        original_props = {"volume": 0.0, "surface_area": sa_props.Mass()}
+
+    xsec_dicts: list[dict] = []
+    for x in x_stations_mm:
+        polylines = slice_at_x(sliceable, x, points_per_edge=points_per_slice)
+        if not polylines:
+            continue
+        slice_points = [pt for poly in polylines for pt in poly]
+        if not slice_points:
+            continue
+        x_real = float(slice_points[0][0])
+        points_2d = np.array([(y, z) for (_, y, z) in slice_points])
+        fit = fit_shape_area_superellipse(points_2d, prev_params=None)
+        xyz = [x_real, float(fit["center"][0]), float(fit["center"][1])]
+        xsec_dicts.append(
+            {
+                "xyz": xyz,
+                "a": float(fit["a"]),
+                "b": float(fit["b"]),
+                "n": float(np.clip(fit["n"], 0.5, 8.0)),
+            }
+        )
+
+    # Reconstruct as asb.Fuselage for global fidelity.
+    fuselage_xsecs = [
+        asb.FuselageXSec(
+            xyz_c=d["xyz"],
+            xyz_normal=np.array([1.0, 0.0, 0.0]),
+            radius=None,
+            width=2.0 * d["a"],
+            height=2.0 * d["b"],
+            shape=d["n"],
+        )
+        for d in xsec_dicts
+    ]
+    asb_fuselage = asb.Fuselage(name=fuselage_name, xsecs=fuselage_xsecs)
+    rec_vol = asb_fuselage.volume()
+    rec_area = asb_fuselage.area_wetted()
+    metrics = {
+        "original_volume": original_props["volume"],
+        "original_area": original_props["surface_area"],
+        "reconstructed_volume": rec_vol,
+        "reconstructed_area": rec_area,
+        "volume_ratio": (
+            rec_vol / original_props["volume"]
+            if original_props["volume"] > 0 else 0.0
+        ),
+        "area_ratio": (
+            rec_area / original_props["surface_area"]
+            if original_props["surface_area"] > 0 else 0.0
+        ),
+    }
+    logger.info(
+        "Fuselage %r: %d xsecs from %d stations, volume_ratio=%.3f, area_ratio=%.3f",
+        fuselage_name, len(xsec_dicts), len(x_stations_mm),
+        metrics["volume_ratio"], metrics["area_ratio"],
+    )
+    return xsec_dicts, metrics
+
+
 if __name__ == "__main__":
     import sys
     logging.basicConfig(level=logging.DEBUG, format="%(asctime)s [%(levelname)s] %(message)s",

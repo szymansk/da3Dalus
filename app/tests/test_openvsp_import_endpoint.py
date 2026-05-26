@@ -839,7 +839,7 @@ class TestImportEndpointPersistence:
         # metres before storing.
         from cad_designer.aerosandbox import slicing as _slicing
 
-        def _fake_slicer(step_path, **_kw):
+        def _fake_slicer(*_a, **_kw):
             xsecs = [
                 {
                     "xyz": [100.0 * i, 0.0, 50.0],
@@ -863,7 +863,15 @@ class TestImportEndpointPersistence:
         monkeypatch.setattr(
             openvsp_solid_sewing_service, "sew_imported_geom_to_solid", _fake_sew
         )
+        # gh-732: the wiring uses ``slice_step_at_stations`` (VSP-anchored
+        # path) when the handler has ≥ 2 xsecs, falling back to
+        # ``slice_step_to_fuselage`` otherwise. Stub both so the test
+        # is robust to either branch.
         monkeypatch.setattr(_slicing, "slice_step_to_fuselage", _fake_slicer)
+        monkeypatch.setattr(_slicing, "slice_step_at_stations", _fake_slicer)
+        monkeypatch.setattr(
+            _slicing, "vsp_anchored_x_stations", lambda *_a, **_kw: [0.0, 1.0]
+        )
         # Bypass the world-frame X-dominance gate — the stub STEP file
         # is plain text, not cadquery-readable, so the real gate would
         # always say "skip". The gate itself is unit-tested in
@@ -959,6 +967,7 @@ class TestImportEndpointPersistence:
             lambda **kw: None,
         )
         monkeypatch.setattr(_slicing, "slice_step_to_fuselage", _slicer_must_not_run)
+        monkeypatch.setattr(_slicing, "slice_step_at_stations", _slicer_must_not_run)
 
         from app.converters import openvsp_adapter, openvsp_importer
 
@@ -1028,6 +1037,7 @@ class TestImportEndpointPersistence:
             lambda **kw: None,
         )
         monkeypatch.setattr(_slicing, "slice_step_to_fuselage", _boom_slicer)
+        monkeypatch.setattr(_slicing, "slice_step_at_stations", _boom_slicer)
 
         from app.converters import openvsp_adapter, openvsp_importer
 
