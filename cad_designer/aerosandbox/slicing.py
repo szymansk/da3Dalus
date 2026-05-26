@@ -113,6 +113,188 @@ def slice_at_x(
     return polylines
 
 
+def arc_length_weights(points_2d: np.ndarray) -> np.ndarray:
+    """Per-point weight equal to the distance to its nearest neighbour
+    (gh-732). Approximates arc-length-uniform sampling without
+    discarding any data.
+
+    Background. ``slice_at_x`` discretises each Section-edge into a
+    fixed ``points_per_edge`` count by *parameter*. A short edge
+    (e.g. the 2 mm tall plateau line at the front of the cessna
+    cockpit) gets the same 30 points as a 1 m long body edge — so the
+    flattened cloud has 40 over-sampled points clustered on the
+    plateau plus 80 thinly-spread body points. Unweighted statistics
+    (mean centre, RMS residual) over-represent the plateau by 5–10×.
+
+    Solution: weight each point by how much arc length it actually
+    represents. The nearest-neighbour distance is a robust local
+    estimate of that arc spacing. Sum of weights then approximates
+    the total perimeter, and weighted means / variances behave as
+    if we'd sampled the outline uniformly by arc length.
+
+    Returns a 1-D weight array of length ``len(points_2d)``. All
+    weights are strictly positive (a tiny floor avoids division by
+    zero in pathological inputs).
+    """
+    pts = np.asarray(points_2d, dtype=float)
+    if len(pts) < 2:
+        return np.ones(len(pts))
+    diffs = pts[:, None, :] - pts[None, :, :]
+    dists = np.linalg.norm(diffs, axis=-1)
+    np.fill_diagonal(dists, np.inf)
+    nn = dists.min(axis=1)
+    # Tiny positive floor to keep the weights well-defined when two
+    # samples happen to coincide exactly.
+    floor = 1e-6 * float(nn.max() if nn.size and np.isfinite(nn.max()) else 1.0)
+    return np.maximum(nn, floor)
+
+
+def thin_oversampled_points(
+    points_2d: np.ndarray, radius_ratio: float = 0.2
+) -> np.ndarray:
+    """Drop points that are over-sampled relative to the cloud's
+    natural inter-point spacing (gh-732).
+
+    Background. ``slice_at_x`` discretises each Section-edge into
+    ``points_per_edge`` (default 30) points by *parameter*, not by
+    arc length. A long edge spreads its 30 points over its full
+    physical length (~50 mm spacing on a Cessna fuselage), while a
+    short edge — like the canopy-base plateau line that appears at
+    the front of the cockpit (~2 mm tall in z) — also gets 30 points
+    but all clustered together. When all polylines are flattened
+    into one cloud for the super-ellipse fit, the over-sampled
+    plateau dominates the arithmetic centroid and pulls it upward,
+    producing the deformed ``xsec[27]`` we see on the cessna.
+
+    Heuristic. The MAXIMUM nearest-neighbour distance ``max_nn`` is
+    a good estimate of the natural spacing in the well-sampled
+    regions of the outline (long edges). Points whose neighbours
+    are way closer than that live in an over-sampled cluster.
+
+    Walk the cloud; for each point, count how many other points are
+    within ``radius = max_nn * radius_ratio``. With a well-spaced
+    outline that count is 0–2 (no over-sampling). In a dense plateau
+    cluster the count blows up. Greedy thinning then keeps the first
+    representative of each cluster and drops the rest.
+
+    Returns the thinned 2-D array. Pass-through for tiny clouds.
+    """
+    pts = np.asarray(points_2d, dtype=float)
+    if len(pts) < 8:
+        return pts
+
+    diffs = pts[:, None, :] - pts[None, :, :]
+    dists = np.linalg.norm(diffs, axis=-1)
+    np.fill_diagonal(dists, np.inf)
+    nn = dists.min(axis=1)
+    max_nn = float(nn.max())
+    if max_nn <= 0 or not np.isfinite(max_nn):
+        return pts
+
+    radius = max_nn * radius_ratio
+    keep = np.ones(len(pts), dtype=bool)
+    for i in range(len(pts)):
+        if not keep[i]:
+            continue
+        # Drop every later point within radius — that point is one
+        # of the over-sampled duplicates of ``i``.
+        too_close = (dists[i] < radius) & keep
+        too_close[: i + 1] = False
+        keep[too_close] = False
+    return pts[keep]
+
+
+def select_outer_contour(
+    polylines: list[list[tuple[float, float, float]]],
+) -> list[list[tuple[float, float, float]]]:
+    """Drop inner / disjoint contours so the super-ellipse fitter sees
+    only the OUTER fuselage skin (gh-732).
+
+    A Section-cut at a VSP fuselage's canopy / cowling transition can
+    produce multiple disjoint closed outlines: the main fuselage skin
+    AND a separate small loop for the canopy bubble (when VSP renders
+    the canopy as a separate inner feature). Flattening all points
+    into one cloud biases the super-ellipse centroid upward and
+    yields a deformed xsec.
+
+    Heuristic: cluster polylines by centroid proximity (threshold =
+    25 % of the slice's overall yz-extent diagonal), then keep only
+    the cluster whose collective point cloud has the largest extent.
+    Single-cluster slices pass through unchanged.
+    """
+    # A single closed outline cuts as ~4 polylines (one per quadrant);
+    # below this threshold treat the slice as single-contour and pass
+    # through unchanged. Multi-contour slices (canopy + cowling +
+    # fuselage at the same x) produce ≥ 8 edges and need filtering.
+    if len(polylines) <= 6:
+        return polylines
+
+    centroids = []
+    for poly in polylines:
+        if not poly:
+            centroids.append(np.array([0.0, 0.0]))
+            continue
+        pts = np.array([(p[1], p[2]) for p in poly])
+        centroids.append(pts.mean(axis=0))
+    centroids = np.array(centroids)
+
+    all_yz = np.array([(p[1], p[2]) for poly in polylines for p in poly if poly])
+    if all_yz.size == 0:
+        return polylines
+    diag = float(np.linalg.norm(np.ptp(all_yz, axis=0)))
+    # 50 % of the bbox diagonal is conservative: keeps the 4 quadrants
+    # of a single outline together (their pairwise centroid distance
+    # is ≲ half the diagonal) while still separating a canopy bubble
+    # (sitting clearly above the fuselage by ≳ a full body diagonal).
+    threshold = 0.50 * max(diag, 1e-9)
+
+    cluster_id = [-1] * len(polylines)
+    n_clusters = 0
+    for i in range(len(polylines)):
+        if cluster_id[i] != -1:
+            continue
+        cluster_id[i] = n_clusters
+        for j in range(i + 1, len(polylines)):
+            if cluster_id[j] != -1:
+                continue
+            if float(np.linalg.norm(centroids[j] - centroids[i])) < threshold:
+                cluster_id[j] = n_clusters
+        n_clusters += 1
+
+    if n_clusters <= 1:
+        return polylines
+
+    # Pick the cluster that **encloses the longitudinal axis** —
+    # i.e. whose centroid is closest to (y=0, z=fuselage_axis_z). The
+    # fuselage's outer skin always wraps around the axis; canopy /
+    # cowling sub-features are offset above (z > 0) with their
+    # centroids well clear of the body's centerline. Initial naive
+    # "largest extent" heuristic was wrong: a tall narrow canopy can
+    # legitimately have a larger y-z diagonal than the fuselage skin
+    # at the same x.
+    #
+    # Reference centerline: the all-points centroid is a robust
+    # estimator because the fuselage outline contributes more points
+    # than the small inner sub-features.
+    all_pts = np.array([(p[1], p[2]) for poly in polylines for p in poly if poly])
+    axis_ref = all_pts.mean(axis=0)
+    best_cluster = -1
+    best_distance = float("inf")
+    for k in range(n_clusters):
+        cluster_centroids = np.array(
+            [centroids[i] for i in range(len(polylines)) if cluster_id[i] == k]
+        )
+        if cluster_centroids.size == 0:
+            continue
+        cluster_centroid = cluster_centroids.mean(axis=0)
+        distance = float(np.linalg.norm(cluster_centroid - axis_ref))
+        if distance < best_distance:
+            best_distance = distance
+            best_cluster = k
+
+    return [poly for i, poly in enumerate(polylines) if cluster_id[i] == best_cluster]
+
+
 def extract_xz_profile(
     shape: TopoDS_Shape, points_per_edge: int = 30
 ) -> tuple[list[tuple[float, float]], list[tuple[float, float]]]:
@@ -542,73 +724,91 @@ def fit_shape_area_superellipse(points: np.ndarray, initial_n: float = 2.0, prev
             - 'success' (bool): Whether the optimization was successful.
             - 'fun' (float): The value of the objective function at the solution.
     """
-    # Force symmetry about Z-axis
-    center_z = np.mean(points[:, 1])
-    center = np.array([0.0, center_z])
+    # gh-732: axis-anchored super-ellipse fit.
+    #
+    # The super-ellipse ``|y/a|^n + |z/b|^n = 1`` passes by definition
+    # through its four cardinal extremes (±a, 0) and (0, ±b). We
+    # exploit that algebraically: rather than letting the optimiser
+    # roam in a / b / n space (where unweighted least squares pulls
+    # the curve away from the actual extremes when the point cloud is
+    # asymmetric — see the cessna xsec-28 deformation), we *anchor*
+    #
+    #     cy = 0                       (forced y-symmetry of fuselage)
+    #     cz = (z_max + z_min) / 2     (bbox mid so N/S are equidistant)
+    #     a  = max |y - cy|            (E/W extremes touch the curve)
+    #     b  = (z_max - z_min) / 2     (N/S extremes touch the curve)
+    #
+    # leaving only ``n`` to optimise — the curve fit then becomes a
+    # 1-D search for the exponent that best matches the in-between
+    # points. Arc-length weights still apply to the residual so that
+    # densely-sampled regions (canopy plateau lines) don't dominate
+    # the n estimate.
+    weights = arc_length_weights(points)
+
+    # gh-732: for main-axis fuselages the cross-section is symmetric
+    # about y = 0 and the weighted mean of y is ≈ 0. For off-axis
+    # sub-fuselages (cessna MainFairing at y = +1.27 m, NoseFairing at
+    # similar offsets) the body lives well clear of the symmetry plane
+    # and ``cy`` must follow it — otherwise ``a = max|y - cy|`` jumps
+    # to the distance from the world origin and the fit becomes
+    # nonsense (a = 1.38 m for a 0.11 m wide fairing). Using the
+    # weighted mean as ``cy`` handles both cases without a heuristic.
+    cy = float(np.average(points[:, 0], weights=weights))
+    z_min = float(points[:, 1].min())
+    z_max = float(points[:, 1].max())
+    cz = 0.5 * (z_min + z_max)
+    center = np.array([cy, cz])
     shifted = points - center
+
+    a_fixed = float(np.max(np.abs(shifted[:, 0])))
+    b_fixed = float(np.max(np.abs(shifted[:, 1])))
 
     angles = np.arctan2(shifted[:, 1], shifted[:, 0])
     radii = np.linalg.norm(shifted, axis=1)
 
-    # Mirror points to enforce symmetry
+    # Mirror across the local y-axis (no longer the global y=0 line —
+    # the centroid moves to follow the body). Weights mirror with them.
     angles = np.concatenate([angles, -angles])
     radii = np.concatenate([radii, radii])
-
-    area_actual = polygon_area(shifted)
+    weights_full = np.concatenate([weights, weights])
+    weight_sum = float(weights_full.sum()) or 1.0
+    radii_norm_sq = max(
+        float(np.sum(weights_full * radii ** 2) / weight_sum), 1e-9
+    )
 
     def objective(params: np.ndarray) -> float:
-        a, b, n = params
-        fit_r = superellipse_radius(angles, a, b, n)
-        area_fit = approximate_area(a, b, n)
-        shape_loss = np.mean((radii - fit_r) ** 2)
-        area_loss = ((area_fit - area_actual) / area_actual) ** 2
-        loss = shape_loss / (np.mean(radii) ** 2) + 0.01 * area_loss
+        n_val = float(params[0])
+        fit_r = superellipse_radius(angles, a_fixed, b_fixed, n_val)
+        shape_loss = float(
+            np.sum(weights_full * (radii - fit_r) ** 2) / weight_sum
+        )
+        loss = shape_loss / radii_norm_sq
 
-        # Smoothness term (gh-727: normalised relative, not absolute.
-        # Old absolute form ``(a-a_p)²`` was unit-dependent — for mm
-        # inputs (typical from VSP STEP exports) a 30 mm change gave a
-        # 900-unit penalty that dominated the shape-loss entirely and
-        # locked subsequent slices to the previous a/b. Relative form
-        # is scale-invariant: a 10% change costs 0.01 regardless of
-        # whether the body is in mm or m.)
+        # Optional smoothness term — unused in the current ``slice_step_*``
+        # pipeline but kept for backwards-compat with callers that still
+        # pass ``prev_params``. Relative / scale-invariant form.
         if prev_params:
-            a_p, b_p, n_p = prev_params["a"], prev_params["b"], prev_params["n"]
-            smoothness_loss = (
-                ((a / max(a_p, 1e-9)) - 1.0) ** 2
-                + ((b / max(b_p, 1e-9)) - 1.0) ** 2
-                + ((n - n_p) / max(n_p, 1e-9)) ** 2
-            )
-            loss += smoothness_weight * smoothness_loss
+            n_p = prev_params.get("n", n_val)
+            loss += smoothness_weight * ((n_val - n_p) / max(n_p, 1e-9)) ** 2
 
         return loss
 
-    # gh-727: data-driven initial guess. The old x0=[1,1,n] anchored
-    # the optimizer at 1 unit half-axes — fine when inputs are in
-    # metres (0–2 m typical), catastrophic when inputs are in mm (100–
-    # 300 mm typical) because the smoothness term then pinned every
-    # subsequent slice to the previous a/b. Bounding-box-derived
-    # initial puts L-BFGS-B in the right neighborhood for any scale.
-    if shifted.size:
-        a_init = max(float(np.max(np.abs(shifted[:, 0]))), 1e-3)
-        b_init = max(float(np.max(np.abs(shifted[:, 1]))), 1e-3)
-    else:
-        a_init = b_init = 1.0
-    x0 = [a_init, b_init, initial_n]
-
+    # Single-parameter optimisation: only n is free (a, b, cy, cz are
+    # anchored to the contour's bounding box).
     result = minimize(
         objective,
-        x0=x0,
-        bounds=[(1e-3, None), (1e-3, None), (0.5, 8.0)],
-        method='L-BFGS-B'
+        x0=[float(initial_n)],
+        bounds=[(0.5, 8.0)],
+        method='L-BFGS-B',
     )
 
     return {
         "center": center,
-        "a": result.x[0],
-        "b": result.x[1],
-        "n": result.x[2],
-        "success": result.success,
-        "fun": result.fun
+        "a": a_fixed,
+        "b": b_fixed,
+        "n": float(result.x[0]),
+        "success": bool(result.success),
+        "fun": float(result.fun),
     }
 
 def plot_superellipse_fit(points_3d: np.ndarray, fit_result: dict, num_samples: int = 300) -> None:
@@ -961,6 +1161,41 @@ def vsp_anchored_x_stations(
     return deduped
 
 
+def _clip_to_y_half_space(shape, keep_positive: bool, pad: float = 100.0):
+    """Boolean-intersect a shape with a half-space y > 0 (or y < 0).
+
+    Used when slicing a ``symmetric=True`` fuselage's STEP file, which
+    contains BOTH mirrored halves. Each section cut would otherwise
+    intersect both copies → two disjoint contours per slice and
+    centroid ambiguity. Clipping to one half before slicing yields a
+    single clean contour per station.
+
+    Returns the clipped TopoDS_Shape, or the original shape on failure.
+    """
+    try:
+        import cadquery as cq
+        from OCP.BRepAlgoAPI import BRepAlgoAPI_Common
+        from OCP.BRepPrimAPI import BRepPrimAPI_MakeBox
+        from OCP.gp import gp_Pnt
+
+        bb = cq.Shape(shape).BoundingBox()
+        y_lo = 0.0 if keep_positive else bb.ymin - pad
+        y_hi = bb.ymax + pad if keep_positive else 0.0
+        clip_box = cq.Shape(
+            BRepPrimAPI_MakeBox(
+                gp_Pnt(bb.xmin - pad, y_lo, bb.zmin - pad),
+                gp_Pnt(bb.xmax + pad, y_hi, bb.zmax + pad),
+            ).Shape()
+        )
+        op = BRepAlgoAPI_Common(shape, clip_box.wrapped)
+        op.Build()
+        if op.IsDone():
+            return op.Shape()
+    except Exception as exc:  # noqa: BLE001 — defensive, fall through to original
+        logger.info("Half-space clip failed (%s) — using full shape.", exc)
+    return shape
+
+
 def slice_step_at_stations(
     step_path: str,
     x_stations_mm: list[float],
@@ -968,6 +1203,7 @@ def slice_step_at_stations(
     points_per_slice: int = 30,
     slice_axis: str = "x",
     fuselage_name: str = "Imported Fuselage",
+    keep_y_side: Optional[str] = None,
 ) -> tuple[list[dict], dict]:
     """Like :func:`slice_step_to_fuselage` but with an explicit station
     list (already in cadquery mm). Used by the gh-732 wiring so handler
@@ -990,6 +1226,15 @@ def slice_step_at_stations(
     model = load_step_model(step_path)
     sliceable = _ensure_sliceable_shape(model)
 
+    # gh-732: when slicing a ``symmetric=True`` fuselage, clip the STEP
+    # to one half (y > 0 or y < 0) so each Section cut yields a single
+    # outline. Without clipping, every slice would intersect BOTH
+    # mirrored copies and the fitter would have to pick one.
+    if keep_y_side == "positive":
+        sliceable = _clip_to_y_half_space(sliceable, keep_positive=True)
+    elif keep_y_side == "negative":
+        sliceable = _clip_to_y_half_space(sliceable, keep_positive=False)
+
     # Original geometry properties (Shell-tolerant: Volume is only
     # defined for closed Solids — fall back to surface-area alone when
     # given an Open Shell from VSP).
@@ -1011,6 +1256,10 @@ def slice_step_at_stations(
         polylines = slice_at_x(sliceable, x, points_per_edge=points_per_slice)
         if not polylines:
             continue
+        # gh-732: drop inner / disjoint contours (canopy bubbles,
+        # cowling sub-features) so the fitter sees only the outer skin.
+        # See ``select_outer_contour`` for the clustering heuristic.
+        polylines = select_outer_contour(polylines)
         slice_points = [pt for poly in polylines for pt in poly]
         if not slice_points:
             continue

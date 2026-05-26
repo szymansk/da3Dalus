@@ -347,31 +347,36 @@ def _replace_fuselage_xsecs(
 _MM_TO_M = 0.001
 
 
-def _is_x_dominant_fuselage(step_path: Path) -> bool:
-    """True when the STEP file's bounding box has X as its longest
-    axis — the only case where the slicer can run with ``slice_axis="x"``
-    and produce xsec coordinates the FuselageSchema can use unchanged.
+def _is_x_dominant_fuselage(handler_xsec_dicts: list[dict]) -> bool:
+    """True when the handler-built schema's xsec positions are
+    X-dominant — i.e. the long axis is world X.
 
-    For Y- or Z-dominant geoms (Cessna NoseStrut along Z, MainStrut
-    diagonal, etc.) the slicer would either cut perpendicular to the
-    long axis (garbage xsecs) or rotate the model to align X (correct
-    xsecs but in the wrong frame for the world-coord schema). Both
-    failure modes produce visually degenerate fuselages. The handler
-    schema is correct in both cases — refinement only helps when we
-    can stay in the original frame.
+    Using **handler xsec positions** (not the STEP bbox) is critical
+    for paired symmetric sub-fuselages: the STEP file contains BOTH
+    halves of a ``symmetric=True`` geom (e.g. cessna's MainFairing at
+    y = ±1.27 m), so the STEP bbox spans 2.76 m in Y but only 1.1 m
+    in X — falsely flagging the geom as Y-dominant. The handler schema
+    contains only ONE side (the convention) and shows the true long
+    axis directly.
+
+    Margin of 1.2 keeps borderline cases (length:width ≈ 1) out of
+    the refinement path so we don't replace a fine handler schema
+    with marginal slicer output.
     """
-    try:
-        import cadquery as cq
-    except ImportError:
+    if len(handler_xsec_dicts) < 2:
         return False
-    try:
-        bb = cq.importers.importStep(str(step_path)).val().BoundingBox()
-    except Exception:  # noqa: BLE001 — defensive
+    import numpy as np
+
+    xs = np.array(
+        [[d["xyz"][0], d["xyz"][1], d["xyz"][2]] for d in handler_xsec_dicts]
+    )
+    extents = xs.max(axis=0) - xs.min(axis=0)
+    if extents[0] <= 1e-6:
         return False
-    # Margin of 1.2 keeps borderline cases (length:width ≈ 1) out of
-    # the refinement path so we don't replace a fine handler schema
-    # with marginal slicer output.
-    return bb.xlen >= 1.2 * bb.ylen and bb.xlen >= 1.2 * bb.zlen
+    return (
+        extents[0] >= 1.2 * extents[1]
+        and extents[0] >= 1.2 * extents[2]
+    )
 
 
 def _try_slicer_refinement(
@@ -392,17 +397,6 @@ def _try_slicer_refinement(
 
     full_path = Path(settings.ARTIFACTS_BASE_DIR) / rel_step_path
     if not full_path.exists():
-        return None
-
-    # Frame-safety gate: only refine fuselages whose long axis is X in
-    # world frame. Cessna sub-fuselages (Struts, Fairings) are rotated
-    # 90° in OpenVSP — slicing them along X would produce garbage,
-    # rotating them to align with X would produce out-of-frame xyz.
-    if not _is_x_dominant_fuselage(full_path):
-        logger.info(
-            "Skipping slicer refinement for %r — not X-dominant in world frame.",
-            fuse_name,
-        )
         return None
 
     try:
@@ -430,23 +424,59 @@ def _try_slicer_refinement(
             {"xyz": list(xs.xyz), "a": xs.a, "b": xs.b, "n": xs.n}
             for xs in handler_fuse.x_secs
         ]
+
+        # Frame-safety gate: only refine fuselages whose long axis is
+        # X in world frame. Cessna sub-fuselages (NoseStrut, Struts,
+        # MainStrut) are rotated 90° in OpenVSP — slicing them along
+        # X would produce garbage. The check uses **handler xsec
+        # positions** (not the STEP bbox) so that a symmetric pair —
+        # whose STEP holds both halves and looks Y-dominant by bbox —
+        # is correctly classified by the single-half handler schema.
+        if not _is_x_dominant_fuselage(handler_xsec_dicts):
+            logger.info(
+                "Skipping slicer refinement for %r — not X-dominant in world frame.",
+                fuse_name,
+            )
+            return None
         if len(handler_xsec_dicts) >= 2:
-            # Budget: ~6 stations per VSP-defined xsec OR 60 minimum.
-            # Empirically (cessna172) 30 stations leave the rapid-change
-            # nose-cap and tail-cap sections under-resolved (area_ratio
-            # 0.53–0.74); 60 stations + tip + rapid-change weight
-            # boosts get them above 0.85.
+            # Budget proportional to VSP handler-xsec count: every
+            # VSP-defined section gets ~5 intermediate stations plus
+            # the two anchors. Floor at 15 (so tiny 2-3-xsec geoms
+            # still get a reasonable refinement) and cap at 80
+            # (Diamond DA42 main-fuselage with ~12 VSP xsecs would
+            # otherwise blow past 70). This stops small sub-fuselages
+            # (NoseFairing with ~6 VSP xsecs) from getting the same
+            # 60-station treatment as the main fuselage — they
+            # previously came out unnecessarily detailed compared to
+            # their X-dominance-gated peers (MainFairing etc.).
+            n_handler = len(handler_xsec_dicts)
+            budget = min(80, max(15, n_handler + 5 * (n_handler - 1)))
             x_stations_mm = vsp_anchored_x_stations(
                 handler_xsec_dicts,
-                total_stations=max(60, 6 * len(handler_xsec_dicts)),
+                total_stations=budget,
                 scale_to_mm=True,
             )
+            # gh-732: for ``symmetric=True`` geoms (cessna MainFairing
+            # at y=+1.27 m, paired with mirror at y=-1.27 m), the STEP
+            # holds both halves. Clip to the side matching the handler
+            # schema so each slice yields a single clean outline.
+            keep_y_side: Optional[str] = None
+            if getattr(handler_fuse, "symmetric", False):
+                mean_y_m = sum(
+                    d["xyz"][1] for d in handler_xsec_dicts
+                ) / len(handler_xsec_dicts)
+                if mean_y_m > 1e-3:
+                    keep_y_side = "positive"
+                elif mean_y_m < -1e-3:
+                    keep_y_side = "negative"
+                # else: handler centred on symmetry plane → no clip
             slicer_xsecs, metrics = slice_step_at_stations(
                 str(full_path),
                 x_stations_mm=x_stations_mm,
                 points_per_slice=30,
                 slice_axis="x",
                 fuselage_name=fuse_name,
+                keep_y_side=keep_y_side,
             )
         else:
             slicer_xsecs, metrics = slice_step_to_fuselage(
