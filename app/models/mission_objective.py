@@ -35,4 +35,12 @@ class MissionObjectiveModel(Base):
     t_static_N = Column(Float, nullable=False, default=18.0)
     takeoff_mode = Column(String, nullable=False, default="runway")
 
+    # gh-477: Landing-field-length inputs. Optional — when unset the
+    # service falls back to grass-short / safety=1.5 / no length check.
+    # See LANDING_SURFACE_MU in assumption_compute_service.py for the
+    # μ_eff lookup table.
+    landing_surface = Column(String, nullable=True)
+    landing_safety_factor = Column(Float, nullable=True)
+    available_field_length_m = Column(Float, nullable=True)
+
     aeroplane = relationship("AeroplaneModel", back_populates="mission_objective")

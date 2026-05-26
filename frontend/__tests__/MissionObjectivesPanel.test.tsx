@@ -210,12 +210,14 @@ describe("MissionObjectivesPanel", () => {
         "runway = wheeled take-off; hand_launch = thrown by hand (RC); bungee = elastic catapult (gliders); catapult = launched device.",
     };
 
-    it("renders 11 tooltip elements — one per editable input + Mission Type", () => {
+    it("renders 14 tooltip elements — one per editable input + Mission Type", () => {
+      // gh-477: added three landing-field inputs (Landing Surface,
+      // Landing Safety Factor, Available Landing Field) → 11 + 3 = 14.
       render(<MissionObjectivesPanel aeroplaneId="x" />);
       // role="tooltip" elements are hidden via Tailwind `hidden` class but
       // still in the DOM so screen readers and `screen.getAllByRole` find them.
       const tips = screen.getAllByRole("tooltip", { hidden: true });
-      expect(tips.length).toBe(11);
+      expect(tips.length).toBe(14);
     });
 
     it("each tooltip text matches the spec exactly", () => {

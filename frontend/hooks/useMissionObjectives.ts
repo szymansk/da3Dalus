@@ -3,6 +3,17 @@
 import useSWR from "swr";
 import { fetcher, putJson } from "@/lib/fetcher";
 
+// gh-477: backend ``LandingSurface`` literal — keep in lock-step with
+// ``app/schemas/mission_objective.py``. The mission page uses these
+// values verbatim in the dropdown.
+export type LandingSurface =
+  | "grass_short"
+  | "grass_long"
+  | "hard_paved"
+  | "soft_soil"
+  | "belly_grass"
+  | "net_recovery";
+
 export interface MissionObjective {
   mission_type: string;
   target_cruise_mps: number;
@@ -16,6 +27,11 @@ export interface MissionObjective {
   runway_type: "grass" | "asphalt" | "belly";
   t_static_N: number;
   takeoff_mode: "runway" | "hand_launch" | "bungee" | "catapult";
+  // gh-477: landing-field-length inputs. All optional — the service
+  // falls back to grass-short / safety=1.5 / no length check when absent.
+  landing_surface?: LandingSurface | null;
+  landing_safety_factor?: number | null;
+  available_field_length_m?: number | null;
 }
 
 export function useMissionObjectives(aeroplaneId: string | null) {
