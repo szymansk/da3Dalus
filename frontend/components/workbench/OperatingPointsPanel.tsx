@@ -50,6 +50,14 @@ const STATUS_STYLES: Record<
     label: "Computing",
     spinner: true,
   },
+  INVALID: {
+    // gh-623: row is corrupt — re-create the OP, retrying won't help.
+    // Distinct purple chip so the user immediately separates this from
+    // the yellow "Not Trimmed" (= solver couldn't converge) case.
+    bg: "bg-fuchsia-500/15",
+    text: "text-fuchsia-400",
+    label: "Invalid",
+  },
 };
 
 type SortKey = "name" | "velocity" | "alpha" | "beta" | "config" | "status";

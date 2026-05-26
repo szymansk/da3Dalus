@@ -859,3 +859,242 @@ class TestRetrimIntegration:
         db3.close()
 
         mock_stability.assert_called_once()
+
+
+class TestRetrimDistinguishesCorruptRowsFromSolverFailures:
+    """gh-623 — a data-integrity error must land in INVALID, not NOT_TRIMMED.
+
+    Before the fix, ``retrim_dirty_ops`` caught everything with a broad
+    ``except Exception`` and shoved both solver crashes and corrupt-row
+    errors into ``NOT_TRIMMED``. The UI then offered "retry the trim" for
+    both — useless for a corrupt row.
+    """
+
+    @staticmethod
+    def _setup_aeroplane_with_elevator(db) -> AeroplaneModel:
+        from app.models.aeroplanemodel import (
+            WingModel,
+            WingXSecDetailModel,
+            WingXSecModel,
+            WingXSecTrailingEdgeDeviceModel,
+        )
+
+        aeroplane = make_aeroplane(db, name=f"corrupt-row-{id(db)}")
+        wing = WingModel(name="h-stab", aeroplane_id=aeroplane.id, symmetric=True)
+        db.add(wing)
+        db.flush()
+        xsec = WingXSecModel(
+            wing_id=wing.id,
+            xyz_le=[0, 0, 0],
+            chord=0.2,
+            twist=0,
+            airfoil="naca0012",
+            sort_index=0,
+        )
+        db.add(xsec)
+        db.flush()
+        detail = WingXSecDetailModel(wing_xsec_id=xsec.id)
+        db.add(detail)
+        db.flush()
+        db.add(
+            WingXSecTrailingEdgeDeviceModel(
+                wing_xsec_detail_id=detail.id,
+                name="elevator",
+                role="elevator",
+            )
+        )
+        db.commit()
+        return aeroplane
+
+    def test_validation_domain_error_lands_in_invalid_not_not_trimmed(
+        self, client_and_db
+    ):
+        """A corrupt OP row (NOT-NULL column was NULL → ValidationDomainError
+        bubbles out of ``operating_point_model_to_schema``) must be marked
+        INVALID, with the reason persisted to ``warnings`` for diagnostics.
+        """
+        from app.core.exceptions import ValidationDomainError
+
+        _, SessionLocal = client_and_db
+        db = SessionLocal()
+        aeroplane = self._setup_aeroplane_with_elevator(db)
+        make_operating_point(db, aircraft_id=aeroplane.id, name="bad-row", status="DIRTY")
+        db.close()
+
+        with (
+            patch("app.services.retrim_service.SessionLocal", SessionLocal),
+            patch(
+                "app.services.retrim_service.operating_point_model_to_schema",
+                side_effect=ValidationDomainError(message="velocity is required"),
+            ),
+            patch(
+                "app.services.retrim_service.trim_with_aerobuildup",
+                new_callable=AsyncMock,
+            ) as mock_trim,
+        ):
+            from app.services.retrim_service import retrim_dirty_ops
+
+            _run(retrim_dirty_ops(aeroplane.id))
+
+        # Solver should never have been called — the row is bad before we
+        # get there.
+        mock_trim.assert_not_called()
+
+        db2 = SessionLocal()
+        op = db2.query(OperatingPointModel).filter_by(aircraft_id=aeroplane.id).first()
+        assert op.status == "INVALID", (
+            f"Corrupt row must land in INVALID (was {op.status}). "
+            f"NOT_TRIMMED is reserved for solver failures the user can retry."
+        )
+        # The reason must be persisted so the UI can show it actionably —
+        # without it the user has no signal beyond a colour change.
+        assert any(
+            "velocity is required" in w for w in (op.warnings or [])
+        ), f"reason not persisted to warnings: {op.warnings!r}"
+        db2.close()
+
+    def test_pydantic_validation_error_also_lands_in_invalid(self, client_and_db):
+        """A raw pydantic ``ValidationError`` (e.g. the schema validator
+        rejected the persisted model) must also be classified INVALID,
+        not NOT_TRIMMED.
+        """
+        from pydantic import BaseModel, ValidationError, field_validator
+
+        class _StrictModel(BaseModel):
+            v: float
+
+            @field_validator("v")
+            @classmethod
+            def _positive(cls, value: float) -> float:
+                if value <= 0:
+                    raise ValueError("v must be positive")
+                return value
+
+        try:
+            _StrictModel(v=-1.0)
+        except ValidationError as exc:
+            raised_pydantic_error = exc
+        else:  # pragma: no cover — pydantic guarantees this raises
+            pytest.fail("expected pydantic ValidationError")
+
+        _, SessionLocal = client_and_db
+        db = SessionLocal()
+        aeroplane = self._setup_aeroplane_with_elevator(db)
+        make_operating_point(db, aircraft_id=aeroplane.id, name="pyd-bad", status="DIRTY")
+        db.close()
+
+        with (
+            patch("app.services.retrim_service.SessionLocal", SessionLocal),
+            patch(
+                "app.services.retrim_service.operating_point_model_to_schema",
+                side_effect=raised_pydantic_error,
+            ),
+            patch(
+                "app.services.retrim_service.trim_with_aerobuildup",
+                new_callable=AsyncMock,
+            ),
+        ):
+            from app.services.retrim_service import retrim_dirty_ops
+
+            _run(retrim_dirty_ops(aeroplane.id))
+
+        db2 = SessionLocal()
+        op = db2.query(OperatingPointModel).filter_by(aircraft_id=aeroplane.id).first()
+        assert op.status == "INVALID"
+        db2.close()
+
+    def test_solver_runtime_error_still_lands_in_not_trimmed(self, client_and_db):
+        """Regression: the existing solver-failure path is unchanged. A
+        ``RuntimeError`` from the trim solver must still land in
+        NOT_TRIMMED so the user knows "retry the trim" is the right
+        action for this OP.
+        """
+        _, SessionLocal = client_and_db
+        db = SessionLocal()
+        aeroplane = self._setup_aeroplane_with_elevator(db)
+        make_operating_point(db, aircraft_id=aeroplane.id, name="solver-fail", status="DIRTY")
+        db.close()
+
+        with (
+            patch("app.services.retrim_service.SessionLocal", SessionLocal),
+            patch(
+                "app.services.retrim_service.trim_with_aerobuildup",
+                new_callable=AsyncMock,
+                side_effect=RuntimeError("solver did not converge after 200 iters"),
+            ),
+        ):
+            from app.services.retrim_service import retrim_dirty_ops
+
+            _run(retrim_dirty_ops(aeroplane.id))
+
+        db2 = SessionLocal()
+        op = db2.query(OperatingPointModel).filter_by(aircraft_id=aeroplane.id).first()
+        assert op.status == "NOT_TRIMMED", (
+            f"Solver RuntimeError must stay in NOT_TRIMMED (was {op.status})"
+        )
+        db2.close()
+
+    def test_corrupt_row_does_not_abort_batch(self, client_and_db):
+        """The existing isolation contract must hold: one corrupt OP must
+        not prevent the next OP in the batch from being trimmed.
+        """
+        from app.core.exceptions import ValidationDomainError
+
+        _, SessionLocal = client_and_db
+        db = SessionLocal()
+        aeroplane = self._setup_aeroplane_with_elevator(db)
+        make_operating_point(db, aircraft_id=aeroplane.id, name="bad", status="DIRTY")
+        make_operating_point(db, aircraft_id=aeroplane.id, name="good", status="DIRTY")
+        db.close()
+
+        call_count = {"n": 0}
+        ok_result = MagicMock()
+        ok_result.converged = True
+        ok_result.trimmed_deflection = -2.0
+        ok_result.aero_coefficients = {"CL": 0.4}
+        ok_result.stability_derivatives = {}
+
+        def _resolver_side_effect(op_model):
+            call_count["n"] += 1
+            if call_count["n"] == 1:
+                raise ValidationDomainError(message="xyz_ref is empty")
+            # Delegate to the real resolver for the good OP. Importing it
+            # lazily keeps the patch surface small.
+            from app.services.operating_point_resolver import (
+                operating_point_model_to_schema as real_resolver,
+            )
+
+            return real_resolver(op_model)
+
+        with (
+            patch("app.services.retrim_service.SessionLocal", SessionLocal),
+            patch(
+                "app.services.retrim_service.operating_point_model_to_schema",
+                side_effect=_resolver_side_effect,
+            ),
+            patch(
+                "app.services.retrim_service.trim_with_aerobuildup",
+                new_callable=AsyncMock,
+                return_value=ok_result,
+            ),
+            patch(
+                "app.services.retrim_service.get_stability_summary",
+                new_callable=AsyncMock,
+            ),
+        ):
+            from app.services.retrim_service import retrim_dirty_ops
+
+            _run(retrim_dirty_ops(aeroplane.id))
+
+        db2 = SessionLocal()
+        ops = (
+            db2.query(OperatingPointModel)
+            .filter_by(aircraft_id=aeroplane.id)
+            .order_by(OperatingPointModel.id)
+            .all()
+        )
+        assert ops[0].status == "INVALID"
+        assert ops[1].status == "TRIMMED", (
+            f"good OP was {ops[1].status} — corrupt row aborted the batch"
+        )
+        db2.close()

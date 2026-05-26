@@ -312,6 +312,11 @@ class OperatingPointStatus(str, Enum):
     LIMIT_REACHED = "LIMIT_REACHED"
     DIRTY = "DIRTY"
     COMPUTING = "COMPUTING"
+    # gh-623: row itself is broken (NOT-NULL column arrived NULL, or a
+    # Pydantic validator rejected the persisted model). Distinct from a
+    # solver failure — the user must re-create the OP; retrying the trim
+    # cannot recover it.
+    INVALID = "INVALID"
 
 
 class StoredOperatingPointCreate(BaseModel):
@@ -531,7 +536,7 @@ class TrimEnrichment(BaseModel):
 class AnalysisStatusResponse(BaseModel):
     op_counts: dict[str, int] = Field(
         default_factory=dict,
-        description="Count of operating points per status (TRIMMED, NOT_TRIMMED, DIRTY, COMPUTING, LIMIT_REACHED)",
+        description="Count of operating points per status (TRIMMED, NOT_TRIMMED, DIRTY, COMPUTING, LIMIT_REACHED, INVALID)",
     )
     total_ops: int = Field(0, description="Total number of operating points")
     retrim_active: bool = Field(False, description="Whether a background retrim job is running")
