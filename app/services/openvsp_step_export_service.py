@@ -75,6 +75,38 @@ def step_storage_dir(aeroplane_uuid: str) -> Path:
     return base
 
 
+def _set_step_export_length_unit_metres(vsp: ModuleType) -> None:
+    """Force ``STEPSettings.LenUnit`` to ``LEN_M`` before ExportFile.
+
+    Lives on the Vehicle container. We resolve the parm-id via
+    ``FindContainerParm`` (silent-fail in OpenVSP 3.50, hence the
+    explicit guard) and update only when needed so re-exports are cheap.
+    """
+    try:
+        vid = vsp.FindContainer("Vehicle", 0)
+        if not vid:
+            return
+        # OpenVSP 3.50 uses ``FindParm(container_id, name, group)`` —
+        # earlier ``FindContainerParm`` was removed. Returns "" silently
+        # when the parm doesn't exist.
+        pid = vsp.FindParm(vid, "LenUnit", "STEPSettings")
+        if not pid:
+            return
+        current = vsp.GetParmVal(pid)
+        if abs(current - float(vsp.LEN_M)) > 1e-9:
+            vsp.SetParmVal(pid, float(vsp.LEN_M))
+            vsp.Update()
+            logger.debug(
+                "Set STEPSettings.LenUnit %g → %g (LEN_M) before STEP export.",
+                current, float(vsp.LEN_M),
+            )
+    except Exception as exc:  # noqa: BLE001 — defensive, never abort
+        logger.warning(
+            "Could not set STEPSettings.LenUnit to LEN_M (%s) — falling back to "
+            "VSP default (typically FOOT).", exc,
+        )
+
+
 def export_geom_step(
     vsp: ModuleType,
     gid: str,
@@ -91,6 +123,17 @@ def export_geom_step(
         # known geom so the export is clean.
         for other_gid in vsp.FindGeoms():
             vsp.SetSetFlag(other_gid, _VSP_USER_SET, other_gid == gid)
+
+        # gh-732: force METRE units for STEP export. OpenVSP defaults
+        # ``STEPSettings.LenUnit`` to ``LEN_FT=4`` (foot). The exporter
+        # then writes geometry **numeric values in metres** but flags
+        # the file as ``CONVERSION_BASED_UNIT('FOOT', 304.8)`` — every
+        # conformant STEP reader (OCC/cadquery) applies the foot→mm
+        # conversion and produces a fuselage that is exactly 0.3048 ×
+        # too small. Setting it to ``LEN_M=2`` writes the file with a
+        # plain ``SI_UNIT(.MILLI.,.METRE.)`` declaration that round-trips
+        # to the correct physical scale.
+        _set_step_export_length_unit_metres(vsp)
 
         out_dir = step_storage_dir(aeroplane_uuid)
         safe_stem = sanitize_geom_filename(geom_name)

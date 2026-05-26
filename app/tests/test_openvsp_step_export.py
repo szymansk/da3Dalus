@@ -94,3 +94,113 @@ class TestCleanup:
         monkeypatch.setattr(core_config.settings, "ARTIFACTS_BASE_DIR", tmp_path)
         # Should not raise.
         cleanup_aeroplane_step_files("never-existed")
+
+
+# ---------------------------------------------------------------------------
+# gh-732: STEPSettings.LenUnit FOOT → METRE override
+# ---------------------------------------------------------------------------
+
+
+class _FakeVsp:
+    """Minimal stub of the OpenVSP API surface that
+    ``_set_step_export_length_unit_metres`` interacts with. Tracks the
+    LenUnit parm in an instance attribute so tests can assert it
+    flipped from 4 (FOOT) to 2 (LEN_M).
+    """
+
+    LEN_M = 2
+    LEN_FT = 4
+
+    def __init__(self, *, vehicle_id: str = "VID", parm_id: str = "PARM-LU"):
+        self._vehicle_id = vehicle_id
+        self._parm_id = parm_id
+        self.len_unit_value = float(self.LEN_FT)  # default like real VSP
+        self.update_called = 0
+
+    def FindContainer(self, name: str, _idx: int) -> str:  # noqa: N802
+        return self._vehicle_id if name == "Vehicle" else ""
+
+    def FindParm(self, vid: str, parm_name: str, group: str) -> str:  # noqa: N802
+        if vid == self._vehicle_id and parm_name == "LenUnit" and group == "STEPSettings":
+            return self._parm_id
+        return ""
+
+    def GetParmVal(self, pid: str) -> float:  # noqa: N802
+        return self.len_unit_value if pid == self._parm_id else 0.0
+
+    def SetParmVal(self, pid: str, val: float) -> None:  # noqa: N802
+        if pid == self._parm_id:
+            self.len_unit_value = float(val)
+
+    def Update(self) -> None:  # noqa: N802
+        self.update_called += 1
+
+
+class TestSetStepExportLengthUnit:
+    """gh-732: the export service must flip STEPSettings.LenUnit to
+    METRE before each ExportFile call, otherwise OCC readers apply a
+    spurious 0.3048× scale (the file declares FOOT but holds metres)."""
+
+    def test_flips_from_foot_to_metre(self):
+        from app.services.openvsp_step_export_service import (
+            _set_step_export_length_unit_metres,
+        )
+
+        vsp = _FakeVsp()
+        assert vsp.len_unit_value == 4.0  # default
+        _set_step_export_length_unit_metres(vsp)
+        assert vsp.len_unit_value == 2.0  # LEN_M
+        assert vsp.update_called == 1
+
+    def test_noop_when_already_metre(self):
+        """Setting the parm a second time is cheap — no extra Update()
+        call when value already matches."""
+        from app.services.openvsp_step_export_service import (
+            _set_step_export_length_unit_metres,
+        )
+
+        vsp = _FakeVsp()
+        vsp.len_unit_value = 2.0  # already metres
+        _set_step_export_length_unit_metres(vsp)
+        assert vsp.len_unit_value == 2.0
+        assert vsp.update_called == 0
+
+    def test_silently_skips_when_container_missing(self):
+        """If FindContainer returns "" (very old VSP), the helper
+        bails without raising."""
+        from app.services.openvsp_step_export_service import (
+            _set_step_export_length_unit_metres,
+        )
+
+        class _Stub(_FakeVsp):
+            def FindContainer(self, _name, _idx):  # noqa: N802
+                return ""
+
+        _set_step_export_length_unit_metres(_Stub())  # must not raise
+
+    def test_silently_skips_when_parm_missing(self):
+        """If FindParm returns "" (parm renamed in a future VSP version),
+        the helper bails without raising."""
+        from app.services.openvsp_step_export_service import (
+            _set_step_export_length_unit_metres,
+        )
+
+        class _Stub(_FakeVsp):
+            def FindParm(self, _vid, _name, _group):  # noqa: N802
+                return ""
+
+        _set_step_export_length_unit_metres(_Stub())  # must not raise
+
+    def test_swallows_exceptions(self):
+        """If something inside VSP throws (3.50 era ``FindParm`` known
+        to print to stderr in some edge cases), the helper logs a
+        warning and returns — never aborts the import."""
+        from app.services.openvsp_step_export_service import (
+            _set_step_export_length_unit_metres,
+        )
+
+        class _Boom(_FakeVsp):
+            def SetParmVal(self, _pid, _val):  # noqa: N802
+                raise RuntimeError("simulated VSP failure")
+
+        _set_step_export_length_unit_metres(_Boom())  # must not raise
