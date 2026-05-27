@@ -13,6 +13,7 @@ const STATUS_COLORS: Record<string, string> = {
   TRIMMED: "#30A46C",
   NOT_TRIMMED: "#F59E0B",
   LIMIT_REACHED: "#E5484D",
+  INVALID: "#C026D3", // gh-623: purple — corrupt OP row, distinct from solver failure
 };
 
 interface Props {

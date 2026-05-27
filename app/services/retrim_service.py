@@ -5,6 +5,9 @@ from __future__ import annotations
 import logging
 from typing import TYPE_CHECKING
 
+from pydantic import ValidationError as PydanticValidationError
+
+from app.core.exceptions import ValidationDomainError
 from app.db.session import SessionLocal
 from app.models.aeroplanemodel import (
     AeroplaneModel,
@@ -102,6 +105,24 @@ async def retrim_dirty_ops(aeroplane_id: int) -> None:
                     }
                 else:
                     op.status = "LIMIT_REACHED"
+            except (ValidationDomainError, PydanticValidationError) as exc:
+                # gh-623: data-integrity error — the row itself is broken
+                # (NOT-NULL column arrived NULL, or a Pydantic validator
+                # rejected the persisted model). Retrying the trim cannot
+                # fix this; the user must re-create the OP. Distinct from
+                # NOT_TRIMMED so the UI can give the actionable signal.
+                logger.exception(
+                    "Retrim: OP %d (%s) on aeroplane %d is corrupt — %s",
+                    op.id,
+                    op.name,
+                    aeroplane_id,
+                    exc,
+                )
+                op.status = "INVALID"
+                op.warnings = [
+                    *(op.warnings or []),
+                    f"Operating point row is corrupt and must be re-created: {exc}",
+                ]
             except Exception:
                 logger.exception(
                     "Retrim failed for OP %d (%s) on aeroplane %d",
