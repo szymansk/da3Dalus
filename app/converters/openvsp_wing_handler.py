@@ -136,6 +136,32 @@ def _read_symmetric(vsp: ModuleType, wing_gid: str) -> bool:
     return bool(flag & sym_xz)
 
 
+def _read_relative_flag(vsp: ModuleType, wing_gid: str, parm_name: str) -> bool:
+    """gh-755: read a ``Relative*Flag`` parm on the Wing container.
+
+    OpenVSP carries ``RelativeDihedralFlag`` and ``RelativeTwistFlag``
+    on the WING container (constructor: ``m_*.Init(name, m_Name, ...)``
+    in WingGeom.cpp). Default ``0`` (= ABSOLUTE; per-section parm is
+    world-frame). Value ``1`` switches to RELATIVE (per-section parm
+    is incremental over the prior section).
+
+    The container's group name has varied across VSP versions, so we
+    try a handful of known group strings — the parm name itself is
+    stable, so any positive ``FindParm`` hit wins.
+
+    Returns ``False`` when the parm is absent (= old VSP file without
+    the flag, or pre-fix import test stub — treat as absolute).
+    """
+    for grp in ("WingGeom", "Wing"):
+        pid = vsp.FindParm(wing_gid, parm_name, grp)
+        if pid:
+            try:
+                return bool(int(vsp.GetParmVal(pid)))
+            except Exception:
+                return False
+    return False
+
+
 def _read_xform_parm(vsp: ModuleType, gid: str, name: str) -> float:
     """Read a single XForm parm; 0.0 if not present."""
     pid = vsp.FindParm(gid, name, "XForm")
@@ -464,9 +490,24 @@ def _handle_wing(
         )
     )
 
+    # gh-755: read the per-Wing Relative*Flag parms so we know
+    # whether the per-section dihedral/twist parms are absolute
+    # (world-frame, VSP default) or relative (incremental over prior
+    # section). Pre-fix, both flags were silently ignored —
+    # ``RelativeDihedralFlag=1`` profiles (e.g. DG-101G) collapsed
+    # the chained dihedral on Section 2+ to flat-horizontal, visible
+    # as a kink at the Section 1/2 boundary.
+    relative_dihedral = _read_relative_flag(vsp, gid, "RelativeDihedralFlag")
+    relative_twist = _read_relative_flag(vsp, gid, "RelativeTwistFlag")
+
     cum_x = 0.0
     cum_y = 0.0
     cum_z = 0.0
+    # Cumulative dihedral / twist in degrees. Tracked alongside the
+    # per-section values so the absolute branch can override them
+    # cheaply on each iteration.
+    cum_dihedral_deg = 0.0
+    cum_twist_deg = 0.0
     prev_chord = root_chord
 
     for i in range(1, n_sec + 1):
@@ -474,8 +515,8 @@ def _handle_wing(
         tip_chord = _read_section_parm(vsp, gid, i, "Tip_Chord")
         sweep_xref = _read_section_parm(vsp, gid, i, "Sweep")
         sweep_loc = _read_section_parm(vsp, gid, i, "Sweep_Location")
-        dihedral = _read_section_parm(vsp, gid, i, "Dihedral")
-        twist = _read_section_parm(vsp, gid, i, "Twist")
+        dihedral_parm = _read_section_parm(vsp, gid, i, "Dihedral")
+        twist_parm = _read_section_parm(vsp, gid, i, "Twist")
 
         if span <= 0:
             ctx.add_warning(
@@ -487,8 +528,24 @@ def _handle_wing(
             ctx.mark_lossy(gid)
             continue
 
+        # gh-755: resolve absolute dihedral / twist for this section.
+        # In RELATIVE mode the parm is added to the carried-over
+        # cumulative angle (matching VSP's ``GetSumDihedral(i)``).
+        # In ABSOLUTE mode the parm IS the world-frame angle, so it
+        # replaces (not adds to) the carried-over value.
+        if relative_dihedral:
+            cum_dihedral_deg += dihedral_parm
+        else:
+            cum_dihedral_deg = dihedral_parm
+        if relative_twist:
+            cum_twist_deg += twist_parm
+        else:
+            cum_twist_deg = twist_parm
+
         # Convert sweep to LE reference so we can advance the LE point.
         # (Internal record uses c/4 if a downstream consumer wants it.)
+        # Sweep stays absolute per section in VSP — no flag, no
+        # accumulation; see WingGeom.cpp line 1111.
         le_sweep = sweep_at_le(
             sweep_xref_deg=sweep_xref,
             xref=sweep_loc,
@@ -497,9 +554,13 @@ def _handle_wing(
             c_tip=tip_chord,
         )
 
+        # gh-755: y-step now follows VSP's own formula
+        # (``rad*cos(angle)``) rather than the small-angle
+        # approximation ``cum_y += span`` — visible on winglets and
+        # V-tail surfaces where the dihedral exceeds ~5°.
         cum_x += span * math.tan(math.radians(le_sweep))
-        cum_y += span
-        cum_z += span * math.tan(math.radians(dihedral))
+        cum_y += span * math.cos(math.radians(cum_dihedral_deg))
+        cum_z += span * math.sin(math.radians(cum_dihedral_deg))
 
         # Mark intermediate xsecs as `segment`; final xsec is terminal
         # and must have no segment-specific fields (Pydantic validator
@@ -509,7 +570,7 @@ def _handle_wing(
             WingXSecSchema(
                 xyz_le=[cum_x, cum_y, cum_z],
                 chord=tip_chord if tip_chord > 0 else prev_chord,
-                twist=twist,
+                twist=cum_twist_deg,
                 airfoil=_airfoil_for(i),
                 x_sec_type=None if is_last else "segment",
             )

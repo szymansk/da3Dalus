@@ -198,10 +198,12 @@ class TestSingleSectionTrapezoidal:
         root = wing.x_secs[0]
         assert root.xyz_le == pytest.approx([0.0, 0.0, 0.0])
         assert root.chord == pytest.approx(1.0)
-        # Tip xsec — y = span, z = span*tan(dihedral)
+        # Tip xsec — y = span·cos(dihedral), z = span·sin(dihedral)
+        # gh-755: switched from tan-approximation to the sin/cos
+        # form VSP's WingGeom.cpp itself uses (line 1108-1109).
         tip = wing.x_secs[1]
-        assert tip.xyz_le[1] == pytest.approx(5.0, rel=1e-6)
-        assert tip.xyz_le[2] == pytest.approx(5.0 * math.tan(math.radians(3.0)), rel=1e-6)
+        assert tip.xyz_le[1] == pytest.approx(5.0 * math.cos(math.radians(3.0)), rel=1e-6)
+        assert tip.xyz_le[2] == pytest.approx(5.0 * math.sin(math.radians(3.0)), rel=1e-6)
         assert tip.chord == pytest.approx(0.5)
         # Twist on the tip xsec
         assert tip.twist == pytest.approx(2.0)
@@ -261,16 +263,20 @@ class TestMultiSectionWing:
         wing = result.aeroplane.wings["MainWing"]
         # n_sec sections → n_sec+1 xsecs.
         assert len(wing.x_secs) == 3
-        # Cumulative span at each xsec along Y.
+        # Cumulative span at each xsec along Y. gh-755: Y now uses
+        # cos(dihedral) per section. Inner panel has 0° dihedral so
+        # y advances by full span = 2.0. Outer panel has 4° dihedral
+        # so y advances by 3·cos(4°) ≈ 2.9927 (not the bare 3.0).
         ys = [xs.xyz_le[1] for xs in wing.x_secs]
-        assert ys == pytest.approx([0.0, 2.0, 5.0], rel=1e-6)
-        # Cumulative Z due to dihedral.
-        # Inner panel dihedral 0 → z stays 0 at xsec 1.
-        # Outer panel dihedral 4° → tip z = inner_tip_z + 3*tan(4°)
+        assert ys[0] == pytest.approx(0.0, abs=1e-9)
+        assert ys[1] == pytest.approx(2.0, rel=1e-6)
+        assert ys[2] == pytest.approx(2.0 + 3.0 * math.cos(math.radians(4.0)), rel=1e-6)
+        # Cumulative Z due to dihedral. gh-755: Z uses sin (not tan)
+        # of the cumulative dihedral, matching VSP's WingGeom.cpp.
         zs = [xs.xyz_le[2] for xs in wing.x_secs]
         assert zs[0] == pytest.approx(0.0)
-        assert zs[1] == pytest.approx(0.0)
-        assert zs[2] == pytest.approx(3.0 * math.tan(math.radians(4.0)), rel=1e-6)
+        assert zs[1] == pytest.approx(0.0)  # inner panel 0° dihedral
+        assert zs[2] == pytest.approx(3.0 * math.sin(math.radians(4.0)), rel=1e-6)
 
 
 class TestSweepLocationConversion:
