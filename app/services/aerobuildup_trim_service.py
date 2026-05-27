@@ -82,6 +82,21 @@ async def trim_with_aerobuildup(
     asb_airplane = aeroplane_schema_to_asb_airplane_async(plane_schema=plane_schema)
     asb_airplane.xyz_ref = op.xyz_ref
 
+    # gh-624: guard against stale control-deflection keys on the OP.
+    # ``Airplane.with_control_deflections`` silently drops keys that
+    # don't match any ``ControlSurface.name`` on the airplane — so a
+    # renamed elevator (``elevator`` → ``elev_pitch``) would let a
+    # retrim run cleanly on a pruned deflection set and mark the OP
+    # ``TRIMMED`` on a result that no longer applies. Validating
+    # here closes the gap for **both** entry points: endpoint callers
+    # (Trefftz / streamline) AND the background ``retrim_dirty_ops``.
+    # The validator is a no-op when ``control_deflections`` is empty.
+    from app.services.operating_point_resolver import (
+        validate_deflections_against_airplane,
+    )
+
+    validate_deflections_against_airplane(asb_airplane, op.control_deflections)
+
     atmosphere = asb.Atmosphere(altitude=op.altitude)
     op_point = asb.OperatingPoint(
         velocity=op.velocity,
