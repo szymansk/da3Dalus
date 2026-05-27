@@ -68,9 +68,12 @@ async function collectExistingSteps() {
 
 // ------------------------------------------------------------------
 // Feature-file walker — yield (file, lineNumber, phrase) for every
-// Gherkin step line.
+// Gherkin step line. The regex uses a possessive-style ``\S`` lead +
+// greedy ``.*`` (instead of lazy ``.+?\s*$``) to avoid the
+// super-linear backtracking sonarjs flags on lazy-quantifier-then-
+// trailing-whitespace patterns.
 // ------------------------------------------------------------------
-const GHERKIN_STEP_RE = /^\s+(?:Given|When|Then|And|But)\s+(.+?)\s*$/;
+const GHERKIN_STEP_RE = /^\s+(?:Given|When|Then|And|But)\s+(\S.*)$/;
 
 async function* iterFeatureSteps() {
   const files = await fs.readdir(FEATURES_DIR);
@@ -80,52 +83,69 @@ async function* iterFeatureSteps() {
     const lines = txt.split("\n");
     for (let i = 0; i < lines.length; i++) {
       const m = lines[i].match(GHERKIN_STEP_RE);
-      if (m) yield { file: fn, line: i + 1, phrase: m[1] };
+      if (m) yield { file: fn, line: i + 1, phrase: m[1].trimEnd() };
     }
   }
 }
 
-async function main() {
-  const asJson = process.argv.includes("--json");
+async function collectMissing() {
   const existing = await collectExistingSteps();
   const existingNormalized = new Set();
   for (const p of existing) existingNormalized.add(normalize(p));
 
-  const missingByFile = new Map();
+  const byFile = new Map();
   for await (const { file, line, phrase } of iterFeatureSteps()) {
     if (existing.has(phrase) || existingNormalized.has(normalize(phrase))) continue;
-    if (!missingByFile.has(file)) missingByFile.set(file, []);
-    missingByFile.get(file).push({ line, phrase });
+    if (!byFile.has(file)) byFile.set(file, []);
+    byFile.get(file).push({ line, phrase });
   }
+  return byFile;
+}
 
+function totalCount(byFile) {
   let total = 0;
-  for (const arr of missingByFile.values()) total += arr.length;
+  for (const arr of byFile.values()) total += arr.length;
+  return total;
+}
+
+function printJson(byFile, total) {
+  const payload = {
+    total,
+    by_file: Object.fromEntries(
+      [...byFile.entries()].map(([f, arr]) => [f, arr]),
+    ),
+  };
+  process.stdout.write(JSON.stringify(payload, null, 2) + "\n");
+}
+
+function printHuman(byFile, total) {
+  if (total === 0) {
+    console.log("✓ all feature steps have implementations");
+    return;
+  }
+  console.log(`✗ ${total} missing step definitions across ${byFile.size} feature(s):\n`);
+  for (const [f, arr] of [...byFile.entries()].sort()) {
+    console.log(`  ${f}: ${arr.length} missing`);
+    for (const { line, phrase } of arr) {
+      console.log(`    line ${line}: ${phrase}`);
+    }
+    console.log("");
+  }
+  console.log(
+    `Run \`npx -p playwright-bdd bddgen\` to get the implementation snippets.\n` +
+      `See #564 + its sub-issues for the per-feature breakdown.`,
+  );
+}
+
+async function main() {
+  const asJson = process.argv.includes("--json");
+  const byFile = await collectMissing();
+  const total = totalCount(byFile);
 
   if (asJson) {
-    const payload = {
-      total,
-      by_file: Object.fromEntries(
-        [...missingByFile.entries()].map(([f, arr]) => [f, arr]),
-      ),
-    };
-    process.stdout.write(JSON.stringify(payload, null, 2) + "\n");
+    printJson(byFile, total);
   } else {
-    if (total === 0) {
-      console.log("✓ all feature steps have implementations");
-    } else {
-      console.log(`✗ ${total} missing step definitions across ${missingByFile.size} feature(s):\n`);
-      for (const [f, arr] of [...missingByFile.entries()].sort()) {
-        console.log(`  ${f}: ${arr.length} missing`);
-        for (const { line, phrase } of arr) {
-          console.log(`    line ${line}: ${phrase}`);
-        }
-        console.log("");
-      }
-      console.log(
-        `Run \`npx -p playwright-bdd bddgen\` to get the implementation snippets.\n` +
-          `See #564 + its sub-issues for the per-feature breakdown.`,
-      );
-    }
+    printHuman(byFile, total);
   }
 
   process.exit(total === 0 ? 0 : 1);
