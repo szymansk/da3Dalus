@@ -33,11 +33,30 @@ export function useAeroplanes() {
   }
 
   async function deleteAeroplane(id: string): Promise<void> {
-    const res = await fetch(`${API_BASE}/aeroplanes/${id}`, {
-      method: "DELETE",
+    // gh-751: optimistic update. The pre-fix flow was DELETE → wait
+    // for the request to settle → mutate() to revalidate; users saw
+    // the deleted row linger in the list until the refetch finished.
+    // SWR's optimistic-update contract removes the row from the cache
+    // synchronously, runs the DELETE in the background, and reverts
+    // on error.
+    const filterOut = (current: AeroplanesResponse | undefined): AeroplanesResponse => ({
+      aeroplanes: (current?.aeroplanes ?? []).filter((a: Aeroplane) => a.id !== id),
     });
-    if (!res.ok) throw new Error(`Failed to delete aeroplane: ${res.status}`);
-    mutate();
+    await mutate(
+      async (current: AeroplanesResponse | undefined) => {
+        const res = await fetch(`${API_BASE}/aeroplanes/${id}`, {
+          method: "DELETE",
+        });
+        if (!res.ok)
+          throw new Error(`Failed to delete aeroplane: ${res.status}`);
+        return filterOut(current);
+      },
+      {
+        optimisticData: filterOut,
+        rollbackOnError: true,
+        revalidate: false,
+      },
+    );
   }
 
   return {
