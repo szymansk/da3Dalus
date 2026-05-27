@@ -476,26 +476,39 @@ def _capped_vsp(
     root_chord: float = 2.0,
     u_cap_start: float = 0.90,
     cap_z: float = 0.5,
+    cap_chord: float = 0.05,
 ):
     """Build a VSP stub whose CompPnt01 simulates a real wing surface
     WITH a tip cap. For u < u_cap_start, behaves like the ellipse stub
-    (smoothly varying LE/TE). For u >= u_cap_start, all points converge
-    to the cap centerline at (0, half_span * u_cap_start, cap_z),
-    mimicking how a rounded VSP tip cap collapses to its centerline as
-    u → 1.0.
+    (smoothly varying LE/TE). For u >= u_cap_start, the LE clusters to
+    the cap centerline at (-cap_chord/2, half_span * u_cap_start, cap_z)
+    while the TE clusters to (+cap_chord/2, ..., cap_z) — preserving a
+    small non-zero ``cap_chord`` distance so the augmenter's
+    ``chord <= 0`` check does NOT fire.
 
-    This stub is what makes the gh-758 bug REPRODUCIBLE in unit tests:
-    the pre-fix augmenter inserts xsecs whose u lands in the cap region,
-    producing the duplicate-xyz_le + Z-lifted-xsec symptoms reported on
-    the Spitfire and Cessna 172.
+    That distinction matters: review on PR #759 caught that a stub where
+    cap-region LE == TE made the existing ``if chord <= 0: continue``
+    silently drop every cap-region insert pre-fix, so the regression
+    tests "passed" against the pre-fix code. Real VSP CompPnt01 returns
+    distinct-but-clustered LE/TE in the cap region — the Spitfire DB
+    evidence (rows 8/9/10 with identical xyz_le but non-zero chord)
+    is exactly this shape. This stub models that faithfully so the
+    tests actually pin the regression they claim to.
     """
 
     class _Stub:
         @staticmethod
         def CompPnt01(_gid: str, _surf: int, u: float, w: float) -> _Pnt:
             if u >= u_cap_start:
-                # Cap region: all points converge to centerline.
-                return _Pnt(0.0, half_span * u_cap_start, cap_z)
+                # Cap region: LE/TE cluster to the cap centerline ±
+                # cap_chord/2 — identical for every u in the cap, but
+                # LE != TE so chord > 0 (matches Spitfire DB evidence).
+                y_cap = half_span * u_cap_start
+                if abs(w - _W_LE) < 1e-9:
+                    return _Pnt(-cap_chord / 2.0, y_cap, cap_z)
+                if abs(w - _W_TE) < 1e-9:
+                    return _Pnt(+cap_chord / 2.0, y_cap, cap_z)
+                return _Pnt(-cap_chord / 2.0, y_cap, cap_z)
             y = half_span * u
             chord = root_chord * math.sqrt(max(0.0, 1.0 - u * u))
             if abs(w - _W_LE) < 1e-9:
@@ -522,7 +535,7 @@ class TestFindCapSafeUMax:
     def test_capped_returns_below_cap_start(self):
         """A capped stub with u_cap_start=0.90 → probe must return a
         u_max <= 0.90 so that inserts stay clear of the cap region."""
-        u_max = _find_cap_safe_u_max(_capped_vsp(u_cap_start=0.90), "wing-gid")
+        u_max = _find_cap_safe_u_max(_capped_vsp(u_cap_start=0.85), "wing-gid")
         assert u_max <= 0.90
 
     def test_no_comppnt01_returns_one(self):
@@ -566,7 +579,7 @@ class TestCapAwareAugmentation:
             _xsec(airfoil="naca2213", xyz_le=(0.0, 5.4, 0.0), chord=0.4, t=None),
         ]
         out = _augment_same_airfoil_pairs(
-            anchors, _capped_vsp(u_cap_start=0.90), "wing-gid", _ctx(), "wing"
+            anchors, _capped_vsp(u_cap_start=0.85), "wing-gid", _ctx(), "wing"
         )
         # Walk the output and assert no two consecutive xsecs share
         # an xyz_le within 1e-6 m (= 1 μm — far below any meaningful
@@ -578,13 +591,20 @@ class TestCapAwareAugmentation:
     def test_no_insert_lands_on_cap_z(self):
         """Inserts must not pick up the cap's Z-offset (which causes
         the 'tip-caps parked at z≈1' visual symptom). Anchors all have
-        z=0; inserts must keep z near 0 too."""
+        z=0; inserts must keep z near 0 too.
+
+        4-anchor setup so the last pair's outer inserts (u ≈ 0.867,
+        0.933) actually exercise the cap region pre-fix — that's the
+        regression reported in the gh-758 issue body.
+        """
         anchors = [
             _xsec(airfoil="naca2213", xyz_le=(0.0, 0.0, 0.0), chord=2.0, t="root"),
-            _xsec(airfoil="naca2213", xyz_le=(0.0, 5.4, 0.0), chord=0.4, t=None),
+            _xsec(airfoil="naca2213", xyz_le=(0.0, 2.0, 0.0), chord=1.8, t="segment"),
+            _xsec(airfoil="naca2213", xyz_le=(0.0, 4.0, 0.0), chord=1.2, t="segment"),
+            _xsec(airfoil="naca2213", xyz_le=(0.0, 5.1, 0.0), chord=0.4, t=None),
         ]
         out = _augment_same_airfoil_pairs(
-            anchors, _capped_vsp(u_cap_start=0.90, cap_z=0.5), "wing-gid", _ctx(), "wing"
+            anchors, _capped_vsp(u_cap_start=0.85, cap_z=0.5), "wing-gid", _ctx(), "wing"
         )
         # All inserts (everything except first/last anchors) must have
         # z ≈ 0 (the non-cap surface), not z = 0.5 (the cap centerline).
@@ -614,7 +634,7 @@ class TestCapAwareAugmentation:
             _xsec(airfoil="naca2213", xyz_le=(0.0, 5.4, 0.0), chord=0.4, t=None),
         ]
         _augment_same_airfoil_pairs(
-            anchors, _capped_vsp(u_cap_start=0.90), "wing-gid", ctx, "main_wing"
+            anchors, _capped_vsp(u_cap_start=0.85), "wing-gid", ctx, "main_wing"
         )
         # Look for a gh-758 cap-truncation warning specifically.
         cap_warnings = [w for w in ctx.warnings if w.severity == "info" and "gh-758" in w.reason]
@@ -644,10 +664,122 @@ class TestCapAwareAugmentation:
             _xsec(airfoil="naca2213", xyz_le=(0.0, 5.4, 0.0), chord=0.4, t=None),
         ]
         out = _augment_same_airfoil_pairs(
-            anchors, _capped_vsp(u_cap_start=0.90), "wing-gid", _ctx(), "wing"
+            anchors, _capped_vsp(u_cap_start=0.85), "wing-gid", _ctx(), "wing"
         )
         # First segment (root → mid): 4 inserts expected (u ∈ [0, 0.5]
         # — well below the cap start).
         # Second segment (mid → tip): some inserts may be dropped.
         # Total must be at least 3 anchors + 4 first-segment inserts = 7.
         assert len(out) >= 7
+
+    def test_dedup_safety_net_fires_when_probe_misses_cluster(self):
+        """The LE-dedup is a belt-and-suspenders safety net for the
+        cap probe. This test pins the dedup-only path: probe sees
+        distinct LE at u=0.99 (so u_max≈0.99, no cap clamp), but a
+        mid-range cluster (u ∈ [0.35, 0.65]) makes consecutive inserts
+        share an LE — the dedup must drop the duplicate.
+
+        Per review on PR #759: without this test, the dedup branch
+        has no coverage of its own (the original cap-region tests
+        triggered the u-clamp before the dedup ever ran).
+        """
+
+        def _clustered_mid_vsp():
+            class _Stub:
+                @staticmethod
+                def CompPnt01(_gid, _surf, u, w):
+                    if 0.35 < u < 0.65:
+                        # Mid-range cluster: same LE/TE for every u
+                        # in this band → dedup must fire on the 2nd
+                        # consecutive insert.
+                        if abs(w - _W_LE) < 1e-9:
+                            return _Pnt(-0.5, 3.0, 0.0)
+                        return _Pnt(+0.5, 3.0, 0.0)
+                    y = 6.0 * u
+                    chord = 2.0 * math.sqrt(max(0.0, 1.0 - u * u))
+                    if abs(w - _W_LE) < 1e-9:
+                        return _Pnt(-chord / 2.0, y, 0.0)
+                    return _Pnt(+chord / 2.0, y, 0.0)
+
+            return _Stub()
+
+        ctx = _ctx()
+        anchors = [
+            _xsec(airfoil="naca2213", xyz_le=(0.0, 0.0, 0.0), chord=2.0, t="root"),
+            _xsec(airfoil="naca2213", xyz_le=(0.0, 6.0, 0.0), chord=0.0, t=None),
+        ]
+        out = _augment_same_airfoil_pairs(anchors, _clustered_mid_vsp(), "wing-gid", ctx, "wing")
+        # No duplicate consecutive xyz_le in the output.
+        for prev, curr in zip(out, out[1:], strict=False):
+            d = math.sqrt(sum((a - b) ** 2 for a, b in zip(prev.xyz_le, curr.xyz_le, strict=True)))
+            assert d > 1e-6, f"Dedup failed to catch cluster: {prev.xyz_le}"
+        # A dedup-specific warning must fire (distinct from cap-clamp).
+        dedup_warnings = [
+            w for w in ctx.warnings if "gh-758" in w.reason and "LE-dedup" in w.reason
+        ]
+        assert len(dedup_warnings) == 1, "Dedup safety net fired but no LE-dedup warning emitted"
+
+    def test_narrow_cap_at_u_098(self):
+        """Some VSP cap configurations occupy only a tiny u-range near
+        the tip (e.g. flat-cut cap, u ≥ 0.98). The probe's first
+        entry (0.99) lands inside the cap → walk down → return 0.98
+        or 0.97. Inserts at u ≤ 0.95 must still succeed normally.
+
+        Pins the high-end of the probe table (review nit #8 on
+        PR #759)."""
+        anchors = [
+            _xsec(airfoil="naca2213", xyz_le=(0.0, 0.0, 0.0), chord=2.0, t="root"),
+            _xsec(airfoil="naca2213", xyz_le=(0.0, 5.88, 0.0), chord=0.0, t=None),
+        ]
+        out = _augment_same_airfoil_pairs(
+            anchors, _capped_vsp(u_cap_start=0.98), "wing-gid", _ctx(), "wing"
+        )
+        # 2 anchors + N inserts. With u_cap_start=0.98 and inserts at
+        # u = 0.2 / 0.4 / 0.6 / 0.8, all 4 fall below cap_start → all
+        # inserts succeed. No clamping, no dedup.
+        assert len(out) == 2 + _N_INTERP_PER_PAIR
+        # And no duplicate xyz_le.
+        for prev, curr in zip(out, out[1:], strict=False):
+            d = math.sqrt(sum((a - b) ** 2 for a, b in zip(prev.xyz_le, curr.xyz_le, strict=True)))
+            assert d > 1e-6
+
+    def test_dihedral_with_cap_does_not_kink_at_tip(self):
+        """gh-758 DG-101G evidence: a dihedral wing with a tip cap
+        used to render a Z-jump kink near the tip. The fix's u-clamp
+        keeps inserts clear of the cap, and the augmenter's twist
+        interpolation continues to ignore body-frame Z (PR #754).
+        Combined: no kink, no false twist."""
+
+        def _dihedral_capped_vsp():
+            class _Stub:
+                @staticmethod
+                def CompPnt01(_gid, _surf, u, w):
+                    if u >= 0.85:
+                        # Cap region: LE clusters at cap_z. Pre-fix
+                        # would lift the tip section to z=0.5.
+                        if abs(w - _W_LE) < 1e-9:
+                            return _Pnt(-0.025, 5.1, 0.5)
+                        return _Pnt(+0.025, 5.1, 0.5)
+                    # Non-cap: LE is dihedral'd (z = 0.1 * u).
+                    y = 6.0 * u
+                    z = 0.1 * u
+                    chord = 2.0 * math.sqrt(max(0.0, 1.0 - u * u))
+                    if abs(w - _W_LE) < 1e-9:
+                        return _Pnt(-chord / 2.0, y, z)
+                    return _Pnt(+chord / 2.0, y, z)
+
+            return _Stub()
+
+        anchors = [
+            _xsec(airfoil="naca2213", xyz_le=(0.0, 0.0, 0.0), chord=2.0, twist=0.0, t="root"),
+            _xsec(airfoil="naca2213", xyz_le=(0.0, 6.0, 0.6), chord=0.0, twist=0.0, t=None),
+        ]
+        out = _augment_same_airfoil_pairs(
+            anchors, _dihedral_capped_vsp(), "wing-gid", _ctx(), "wing"
+        )
+        # No insert may carry the cap z-offset (0.5).
+        for ins in out[1:-1]:
+            assert ins.xyz_le[2] < 0.4, f"Cap Z leaked into a dihedral wing insert: {ins.xyz_le}"
+        # And twist stays 0 (no atan2 from body-frame Z).
+        for ins in out[1:-1]:
+            assert ins.twist == 0.0
