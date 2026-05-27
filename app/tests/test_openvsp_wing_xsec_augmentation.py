@@ -278,7 +278,7 @@ class TestTwistInterpolation:
         )
         inserts = out[1:-1]
         expected = [-0.8, -1.6, -2.4, -3.2]
-        for ins, exp in zip(inserts, expected):
+        for ins, exp in zip(inserts, expected, strict=True):
             assert ins.twist == pytest.approx(exp, rel=1e-9)
 
     def test_zero_twist_anchors_yield_zero_twist_inserts(self):
