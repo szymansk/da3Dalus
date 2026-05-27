@@ -38,7 +38,26 @@ const FIELD_DESCRIPTIONS = {
     "Powertrain static thrust at zero airspeed (N). Sets the T/W ratio on the matching chart. For gliders, 0.",
   takeoff_mode:
     "runway = wheeled take-off; hand_launch = thrown by hand (RC); bungee = elastic catapult (gliders); catapult = launched device.",
+  // gh-477: landing-field-length inputs. The three feed
+  // ``computation_context.landing_field_length_m`` + the L_landing chip.
+  landing_surface:
+    "Expected landing surface. Drives μ_eff: short grass μ=0.15, long grass μ=0.22, hard paved (no brake) μ=0.07, soft soil μ=0.30, belly on grass μ=0.40, net/cable recovery → no ground roll.",
+  landing_safety_factor:
+    "Safety multiplier applied to the computed landing length (s_flare + s_ground). Typical 1.5–2.0. Higher = more conservative field-length recommendation.",
+  available_field_length_m:
+    "Length of the planned landing field (m). When set, the L_landing chip turns green (sufficient) or red (insufficient). Leave at 0 to suppress the comparison and show only the required length.",
 } as const;
+
+// gh-477: landing-surface options for the dropdown. Plain-English
+// labels for the user, kebab-case values for the backend literal.
+const LANDING_SURFACE_OPTIONS: { value: string; label: string }[] = [
+  { value: "grass_short", label: "Short grass" },
+  { value: "grass_long", label: "Long grass" },
+  { value: "hard_paved", label: "Hard paved (no brake)" },
+  { value: "soft_soil", label: "Soft soil" },
+  { value: "belly_grass", label: "Belly landing on grass" },
+  { value: "net_recovery", label: "Net / cable recovery" },
+];
 
 /** Per-axis → MissionObjective target-field mapping (gh-601). */
 const AXIS_TO_TARGET_FIELD: Partial<Record<AxisName, keyof MissionObjective>> = {
@@ -159,7 +178,7 @@ export function MissionObjectivesPanel({ aeroplaneId }: Props) {
     }
     const next = { ...draft };
     for (const row of suggestedTargets) {
-      (next as Record<string, number>)[row.field as string] = row.suggested;
+      (next as unknown as Record<string, number>)[row.field as string] = row.suggested;
     }
     setDraft(next);
     void update(next);
@@ -271,6 +290,69 @@ export function MissionObjectivesPanel({ aeroplaneId }: Props) {
         <NumField label="Static Thrust" suffix="N" value={draft.t_static_N} onChange={(v) => set("t_static_N", v)} description={FIELD_DESCRIPTIONS.t_static_N}/>
         <SelectField label="Takeoff Mode" value={draft.takeoff_mode} options={["runway", "hand_launch", "bungee", "catapult"]} onChange={(v) => set("takeoff_mode", v as MissionObjective["takeoff_mode"])} description={FIELD_DESCRIPTIONS.takeoff_mode}/>
       </div>
+
+      <div className="text-[10px] uppercase tracking-wider text-muted-foreground border-b border-border pb-1 mt-2">
+        Landing Field (L_landing chip)
+      </div>
+      <div className="grid grid-cols-2 gap-2">
+        <LabelledSelectField
+          label="Landing Surface"
+          value={draft.landing_surface ?? "grass_short"}
+          options={LANDING_SURFACE_OPTIONS}
+          onChange={(v) => set("landing_surface", v as MissionObjective["landing_surface"])}
+          description={FIELD_DESCRIPTIONS.landing_surface}
+        />
+        <NumField
+          label="Landing Safety Factor"
+          suffix="×"
+          value={draft.landing_safety_factor ?? 1.5}
+          onChange={(v) => set("landing_safety_factor", v)}
+          description={FIELD_DESCRIPTIONS.landing_safety_factor}
+        />
+        <NumField
+          label="Available Landing Field"
+          suffix="m"
+          value={draft.available_field_length_m ?? 0}
+          onChange={(v) =>
+            // 0 → null so the backend skips the green/red comparison and the
+            // chip renders only the required length (issue: "available unset
+            // → don't render the comparison").
+            set("available_field_length_m", (v > 0 ? v : null) as unknown as number)
+          }
+          description={FIELD_DESCRIPTIONS.available_field_length_m}
+        />
+      </div>
+    </div>
+  );
+}
+
+// gh-477: variant of SelectField that takes labelled options (the
+// landing-surface dropdown's value is a kebab-case literal but the
+// user reads a plain-English label).
+function LabelledSelectField(props: {
+  label: string;
+  value: string;
+  options: { value: string; label: string }[];
+  onChange: (v: string) => void;
+  description?: string;
+}) {
+  const id = `f-${props.label.replace(/\s+/g, "-").toLowerCase()}`;
+  return (
+    <div>
+      <InfoLabel label={props.label} description={props.description} htmlFor={id} />
+      <select
+        id={id}
+        aria-label={props.label}
+        className="w-full rounded bg-background border border-border px-2 py-1.5 text-sm"
+        value={props.value}
+        onChange={(e) => props.onChange(e.target.value)}
+      >
+        {props.options.map((o) => (
+          <option key={o.value} value={o.value}>
+            {o.label}
+          </option>
+        ))}
+      </select>
     </div>
   );
 }

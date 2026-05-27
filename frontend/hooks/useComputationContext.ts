@@ -85,6 +85,14 @@ export interface ComputationContext {
   computed_at: string;
   // gh-630 + gh-636: per-config polars + empirical L/D max + e provenance.
   polar_by_config?: PolarByConfig;
+  // gh-477: required landing field length from physics + mission surface.
+  // ``landing_field_length_m`` is null when CL_max_landing, mass, or S_ref
+  // is not yet known. ``landing_field_sufficient`` compares against the
+  // mission's ``available_field_length_m``; null when one of the two is
+  // absent (chip renders neutral).
+  landing_field_length_m?: number | null;
+  landing_surface_used?: string | null;
+  landing_field_sufficient?: boolean | null;
 }
 
 export function useComputationContext(

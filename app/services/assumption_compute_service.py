@@ -35,6 +35,7 @@ from app.models.computation_config import (
     AircraftComputationConfigModel,
     COMPUTATION_CONFIG_DEFAULTS,
 )
+from app.models.mission_objective import MissionObjectiveModel
 from app.schemas.AeroplaneRequest import AnalysisToolUrlType
 from app.schemas.aeroanalysisschema import OperatingPointSchema
 from app.schemas.design_assumption import PARAMETER_DEFAULTS
@@ -596,6 +597,39 @@ def recompute_assumptions(db: Session, aeroplane_uuid) -> None:
         "polar_by_config": polar_by_config,
         "computed_at": datetime.now(timezone.utc).isoformat(),
     }
+
+    # gh-477: required landing field length from the energy balance
+    # using the landing-config CL_max (with flaps), the user's chosen
+    # surface (or grass_short default), and safety factor. Compared
+    # against ``available_field_length_m`` from the mission spec so the
+    # UI can render the chip green / red / neutral.
+    mission_obj = (
+        db.query(MissionObjectiveModel).filter_by(aeroplane_id=aircraft.id).first()
+    )
+    landing_field_m, surface_used = _compute_landing_field_length(
+        mass_kg=mass,
+        s_ref_m2=s_ref,
+        cl_max_landing=polar_by_config["landing"]["cl_max"],
+        landing_surface=mission_obj.landing_surface if mission_obj is not None else None,
+        landing_safety_factor=(
+            mission_obj.landing_safety_factor if mission_obj is not None else None
+        ),
+    )
+    available = (
+        mission_obj.available_field_length_m if mission_obj is not None else None
+    )
+    landing_field_sufficient: bool | None
+    if landing_field_m is None or available is None:
+        landing_field_sufficient = None
+    else:
+        landing_field_sufficient = available >= landing_field_m
+
+    context["landing_field_length_m"] = (
+        round(landing_field_m, 1) if landing_field_m is not None else None
+    )
+    context["landing_surface_used"] = surface_used
+    context["landing_field_sufficient"] = landing_field_sufficient
+
     enrich_context_with_cg_envelope(
         ctx=context,
         cg_loading_fwd_m=_loading["cg_loading_fwd_m"],
@@ -1433,6 +1467,77 @@ def _stall_speed(
     cl_max_safe = max(cl_max, 0.5)
     weight_n = mass_kg * g
     return float(np.sqrt(2.0 * weight_n / (rho * s_ref_m2 * cl_max_safe)))
+
+
+# gh-477: μ_eff for the landing-field-length energy balance. Values
+# come from operational RC / UAV practice (the issue's "References /
+# Formula derivation" section). Not from Anderson — aircraft
+# performance is a separate textbook domain (Raymer ch. 17, Roskam P.7).
+LANDING_SURFACE_MU: dict[str, float] = {
+    "grass_short": 0.15,
+    "grass_long": 0.22,
+    "hard_paved": 0.07,  # no-brake default; brake flag is a future ticket
+    "soft_soil": 0.30,
+    "belly_grass": 0.40,
+    "net_recovery": 0.0,  # special-cased to s_ground=0 below
+}
+
+_LANDING_FLARE_M: float = 15.0
+_LANDING_SAFETY_DEFAULT: float = 1.5
+_LANDING_SURFACE_DEFAULT: str = "grass_short"
+_V_TD_OVER_V_S0: float = 1.15  # touchdown speed = 1.15 · V_S0 (RC rule of thumb)
+
+
+def _compute_landing_field_length(
+    mass_kg: float | None,
+    s_ref_m2: float | None,
+    cl_max_landing: float | None,
+    landing_surface: str | None,
+    landing_safety_factor: float | None,
+    rho: float = 1.225,
+    g: float = 9.81,
+) -> tuple[float | None, str | None]:
+    """Required landing field length (gh-477).
+
+    Returns ``(L_landing_m, surface_used)``. Both are ``None`` when any
+    of ``cl_max_landing``, ``mass_kg`` or ``s_ref_m2`` is missing or
+    non-positive — the caller renders no chip in that case.
+
+    Energy balance: ½·m·V_TD² = μ_eff·m·g·s_ground ⇒
+    ``s_ground = V_TD² / (2·g·μ_eff)``. The mass cancels — the result
+    depends only on V_TD (from V_S0 from physics) and surface friction.
+
+    Special case: ``net_recovery`` is a catch / arrester — there is no
+    ground roll, so ``L_landing`` collapses to the safety-padded flare.
+    """
+    if mass_kg is None or s_ref_m2 is None or cl_max_landing is None:
+        return (None, None)
+    if mass_kg <= 0 or s_ref_m2 <= 0 or cl_max_landing <= 0:
+        return (None, None)
+
+    surface_key = landing_surface if landing_surface in LANDING_SURFACE_MU else _LANDING_SURFACE_DEFAULT
+    safety = (
+        landing_safety_factor
+        if landing_safety_factor is not None and landing_safety_factor >= 1.0
+        else _LANDING_SAFETY_DEFAULT
+    )
+
+    v_s0 = _stall_speed(mass_kg, s_ref_m2, cl_max_landing, rho=rho, g=g)
+    if v_s0 is None:
+        return (None, None)
+    v_td = _V_TD_OVER_V_S0 * v_s0
+
+    if surface_key == "net_recovery":
+        s_ground = 0.0
+    else:
+        mu = LANDING_SURFACE_MU[surface_key]
+        # mu==0 would mean infinite roll — defensive, even though the
+        # table has no such entry outside net_recovery.
+        if mu <= 0:
+            return (None, surface_key)
+        s_ground = (v_td * v_td) / (2.0 * g * mu)
+
+    return (float(safety * (_LANDING_FLARE_M + s_ground)), surface_key)
 
 
 def _main_wing_aspect_ratio(asb_airplane) -> float | None:

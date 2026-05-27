@@ -23,6 +23,8 @@ vi.mock("lucide-react", () => {
     RefreshCw: icon,
     Square: icon,
     ArrowLeftRight: icon,
+    // gh-477: GeometryChipRow's new L_landing chip uses MapPin.
+    MapPin: icon,
   };
 });
 

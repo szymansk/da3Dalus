@@ -23,6 +23,8 @@ vi.mock("lucide-react", () => {
     ArrowLeftRight: icon,
     // gh-581: TaillessBanner uses Info icon when ctx.is_tailless is true.
     Info: icon,
+    // gh-477: GeometryChipRow's new L_landing chip uses MapPin.
+    MapPin: icon,
   };
 });
 
