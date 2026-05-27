@@ -135,6 +135,15 @@ def create_segment(segment_model: SegmentModel) -> dict | None:
 
 
 def create_tip_segment(segment_model: SegmentModel) -> dict | None:
+    """Build the kwargs for ``WingConfiguration.add_tip_segment``.
+
+    A ``WingConfiguration`` tip segment is a cosmetic wing-end cap by
+    design — :meth:`WingConfiguration.add_tip_segment` does not accept
+    ``spare_list`` or ``trailing_edge_device``. If the caller put a
+    control surface on a segment that also carries ``tip_type``, gh-523
+    used to silently drop the TED here; we now refuse loudly at the
+    validation layer above (see :func:`create_wing_configuration`).
+    """
     if segment_model is None:
         return None
     initialization_dict = segment_model.__dict__.copy()
@@ -148,8 +157,43 @@ def create_tip_segment(segment_model: SegmentModel) -> dict | None:
     return initialization_dict
 
 
+def _validate_tip_segments_have_no_control_surfaces(wing_model: WingModel) -> None:
+    """gh-523: reject WingConfiguration payloads whose tip segments carry
+    a ``trailing_edge_device`` or ``spare_list``.
+
+    ``WingConfiguration.add_tip_segment`` is by design a cosmetic
+    wing-end cap — it accepts only ``tip_type`` / ``tip_airfoil`` /
+    ``length`` / ``sweep`` / ``number_interpolation_points``. Before
+    this guard, any TED on a tip-marked segment was silently dropped
+    during the schema → cad_designer conversion, so an aileron on a
+    rounded wing tip vanished without trace and the wing came back
+    with ``control_surface=None``. Failing loud at the request edge
+    lets the user move the control surface to a separate aerodynamic
+    segment.
+    """
+    for index, segment in enumerate(wing_model.segments):
+        if segment.tip_type is None:
+            continue
+        has_ted = segment.trailing_edge_device is not None
+        has_spares = segment.spare_list is not None and len(segment.spare_list) > 0
+        if has_ted or has_spares:
+            problem_parts = []
+            if has_ted:
+                problem_parts.append("trailing_edge_device")
+            if has_spares:
+                problem_parts.append("spare_list")
+            raise ValueError(
+                f"Wing segment[{index}] has tip_type={segment.tip_type!r} but also "
+                f"carries {' and '.join(problem_parts)}. WingConfiguration tip "
+                "segments cannot hold control surfaces or spares (they are "
+                "cosmetic wing-end caps). Move the control surface into a "
+                "non-tip segment, or remove the tip_type from this segment."
+            )
+
+
 def create_wing_configuration(wing_model: WingModel) -> WingConfiguration:
     """Create a WingConfiguration from a Wing model object"""
+    _validate_tip_segments_have_no_control_surfaces(wing_model)
     # creating root segment
     wing_config: WingConfiguration = WingConfiguration(**create_root_segment(wing_model))
 
