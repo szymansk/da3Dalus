@@ -92,9 +92,14 @@ class _VspStub:
         # come from the placeholder which is unique per xsec via the
         # monkey-patched _airfoil_for in the test wiring).
         class _P:
-            x = lambda self: 0.0
-            y = lambda self: 0.0
-            z = lambda self: 0.0
+            def x(self) -> float:
+                return 0.0
+
+            def y(self) -> float:
+                return 0.0
+
+            def z(self) -> float:
+                return 0.0
 
         return _P()
 
@@ -181,11 +186,16 @@ class TestReadRelativeFlag:
         assert _read_relative_flag(vsp, "wing-gid", "RelativeDihedralFlag") is True
 
     def test_value_0_returns_false(self):
-        # Parm exists but is set to 0 — same effect as absent.
-        # NB: our stub only registers the parm when value != 0 (the
-        # ``_build_parms`` helper skips zero defaults). Instead we
-        # construct the absent case directly.
-        vsp = _VspStub(n_xsec=2, parms={})
+        # Parm EXISTS but is set to 0.0 — must take the
+        # ``int(GetParmVal) → False`` path, not the early ``return
+        # False`` for an absent parm. The pre-fix bug was symmetric
+        # in both paths, but a future change to ``_read_relative_flag``
+        # could regress one without the other; this test pins the
+        # value-0 path explicitly. Bypass the ``_build_parms`` helper
+        # so the parm is registered even with zero value.
+        vsp = _VspStub(
+            n_xsec=2, parms={("RelativeTwistFlag", "WingGeom"): 0.0}
+        )
         assert _read_relative_flag(vsp, "wing-gid", "RelativeTwistFlag") is False
 
 
