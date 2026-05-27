@@ -151,6 +151,18 @@ class VaseModeWingCreator(AbstractShapeCreator):
 
         logging.info(f"construct vase mode wing from configuration --> '{self.identifier}'")
         wing_config: WingConfiguration = self._wing_config[self.wing_index]
+
+        # gh-361: a VaseModeWing is structurally inseparable from its
+        # spar — the spar is what holds the hollow vase-printed segments
+        # together. A non-tip / non-root segment without any spare is
+        # therefore an invalid construction input, not a degenerate
+        # geometry we can quietly skip. Validate up front so the user
+        # gets a clear, actionable error instead of an opaque
+        # ``IndexError`` (pre-fix) or
+        # ``ValueError: Cannot find a solid on the stack`` (mid-pipeline)
+        # several minutes into the CAD task.
+        self._validate_all_non_tip_segments_have_spares(wing_config)
+
         if self.wing_side is None:
             if wing_config.symmetric:
                 self._wing_side = "BOTH"
@@ -687,6 +699,40 @@ class VaseModeWingCreator(AbstractShapeCreator):
         raw_ribs = raw_ribs.cut(wing_cutout)
 
         return current_hull, raw_ribs, ted_shape, ted_distance
+
+    @staticmethod
+    def _validate_all_non_tip_segments_have_spares(wing_config: WingConfiguration) -> None:
+        """gh-361: every non-tip segment MUST carry at least one spar.
+
+        VaseModeWing is a hollow vase-printed shell — the spar is the
+        load-bearing element that holds adjacent segments together at
+        the rib interfaces. Without a spar the segment is not a valid
+        VaseMode construction input, regardless of whether it also
+        carries a trailing-edge device.
+
+        Tip segments (``wing_segment_type == 'tip'``) are a separate
+        topology — cosmetic wing-end caps that do not need a spar — so
+        we explicitly exclude them from the check.
+
+        Raises ``ValueError`` with the offending segment indices and an
+        actionable remediation so the user sees the constraint up front
+        instead of an opaque ``IndexError`` (pre-fix) or
+        ``Cannot find a solid on the stack`` mid-pipeline failure.
+        """
+        offending: list[int] = [
+            i
+            for i, segment in enumerate(wing_config.segments)
+            if segment.wing_segment_type != "tip" and not segment.spare_list
+        ]
+        if offending:
+            raise ValueError(
+                f"VaseModeWingCreator requires at least one spar on every "
+                f"non-tip segment. Segments {offending} have an empty "
+                f"``spare_list``. Add a ``Spare(...)`` to each of these "
+                f"segments — the spar is the load-bearing element that "
+                f"holds the hollow vase-printed shell together at the rib "
+                f"interfaces."
+            )
 
     def _create_basic_root_segment_shapes(self, wing_config: WingConfiguration):
         segment: int = 0
