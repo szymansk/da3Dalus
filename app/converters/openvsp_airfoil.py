@@ -196,6 +196,229 @@ def ensure_naca4_dat(
 
 
 # ---------------------------------------------------------------------------
+# NACA 5-digit .dat generation (gh-733)
+# ---------------------------------------------------------------------------
+#
+# 5-digit mean-line constants from Abbott & von Doenhoff, "Theory of
+# Wing Sections" Appendix III, Tables 1–2 (originally NACA Reports 537
+# & 824). Each row is keyed by the camber-position digit P (the 2nd
+# digit of the 5-code), which represents the chord-fraction position
+# of max camber as P × 0.05 — i.e. P=3 → x_m=0.15, P=4 → x_m=0.20.
+# Standard (S=0) and reflex (S=1) families use different camber-line
+# polynomials with different (m, k1) constants; reflex additionally
+# carries a k2/k1 ratio for the aft segment. Tables apply at design
+# C_l = 0.3; for other design C_l, k1 scales linearly (see
+# ``_scale_k1``).
+
+# (m, k1) keyed by camber-position digit P, for standard 5-digit.
+_NACA5_STANDARD: dict[int, tuple[float, float]] = {
+    1: (0.0580, 361.4),
+    2: (0.1260, 51.64),
+    3: (0.2025, 15.957),
+    4: (0.2900, 6.643),
+    5: (0.3910, 3.230),
+}
+
+# (m, k1, k2_over_k1) keyed by P, for reflex 5-digit (S=1, e.g. naca23112).
+_NACA5_REFLEX: dict[int, tuple[float, float, float]] = {
+    2: (0.1300, 51.99, 0.000764),
+    3: (0.2170, 15.793, 0.00677),
+    4: (0.3180, 6.520, 0.0303),
+    5: (0.4410, 3.191, 0.1355),
+}
+
+# Reference design Cl that the (m, k1) tables are tabulated for.
+_NACA5_REFERENCE_CL: float = 0.3
+
+
+def _scale_k1(k1_table: float, design_cl: float) -> float:
+    """Scale tabulated ``k1`` for a non-0.3 design C_l.
+
+    k1 enters the camber line linearly, so the camber amplitude scales
+    linearly with design C_l. Standard NACA 5-digit profiles (L=2)
+    are tabulated at design C_l = 0.3; the L digit "L" is the
+    nomenclature shorthand ``L = design_cl × 20/3``, so
+    L=2 → design_cl=0.3 → factor=1.0.
+    """
+    return k1_table * (design_cl / _NACA5_REFERENCE_CL)
+
+
+def _naca5_camber_line_standard(
+    x: float, m: float, k1: float
+) -> tuple[float, float]:
+    """Standard NACA 5-digit camber line — ``(y_camber, dy/dx)``.
+
+    Cubic forward of ``x=m``, linear (-k1·m³/6 slope) aft. Reference:
+    Abbott & von Doenhoff Theory of Wing Sections (eq. 4.13).
+    """
+    if x <= m:
+        yc = (k1 / 6.0) * (x ** 3 - 3 * m * x * x + m * m * (3 - m) * x)
+        dyc = (k1 / 6.0) * (3 * x * x - 6 * m * x + m * m * (3 - m))
+    else:
+        yc = (k1 * m ** 3 / 6.0) * (1.0 - x)
+        dyc = -(k1 * m ** 3) / 6.0
+    return yc, dyc
+
+
+def _naca5_camber_line_reflex(
+    x: float, m: float, k1: float, k2_over_k1: float
+) -> tuple[float, float]:
+    """Reflex NACA 5-digit camber line — ``(y_camber, dy/dx)``.
+
+    Both forward and aft segments are cubics; the aft segment has
+    its leading term scaled by ``k2/k1`` so the trailing edge curls
+    back up ("reflex"). Reference: NACA Report 537 §3.
+    """
+    if x <= m:
+        forward_cubic = (x - m) ** 3
+    else:
+        forward_cubic = k2_over_k1 * (x - m) ** 3
+    common = k2_over_k1 * (1 - m) ** 3 * x + m ** 3 * x - m ** 3
+    yc = (k1 / 6.0) * (forward_cubic - common)
+    if x <= m:
+        d_forward = 3.0 * (x - m) ** 2
+    else:
+        d_forward = 3.0 * k2_over_k1 * (x - m) ** 2
+    d_common = k2_over_k1 * (1 - m) ** 3 + m ** 3
+    dyc = (k1 / 6.0) * (d_forward - d_common)
+    return yc, dyc
+
+
+def naca5_coordinates(
+    *,
+    design_cl: float,
+    camber_loc_digit: int,
+    reflex: bool,
+    thick_chord: float,
+    n_half: int = _NACA_DAT_HALF_POINTS,
+) -> list[tuple[float, float]]:
+    """Generate Selig-format coordinates for a NACA 5-digit airfoil.
+
+    Identical resolution + ordering convention as
+    :func:`naca4_coordinates` (TE → upper → LE → lower → TE,
+    cosine-spaced, ``2·n_half + 1`` points). Reuses the 4-digit
+    thickness polynomial — both series share it.
+
+    Raises ``ValueError`` if the camber-position digit isn't in the
+    tabulated set ({1..5} for standard, {2..5} for reflex). The caller
+    is expected to fall back to a curated default in that case.
+    """
+    if reflex:
+        table_r = _NACA5_REFLEX.get(camber_loc_digit)
+        if table_r is None:
+            raise ValueError(
+                f"NACA 5-digit reflex: no tabulated constants for "
+                f"camber-position digit P={camber_loc_digit} "
+                f"(valid: 2..5)"
+            )
+        m, k1_ref, k2_over_k1 = table_r
+    else:
+        table_s = _NACA5_STANDARD.get(camber_loc_digit)
+        if table_s is None:
+            raise ValueError(
+                f"NACA 5-digit standard: no tabulated constants for "
+                f"camber-position digit P={camber_loc_digit} "
+                f"(valid: 1..5)"
+            )
+        m, k1_ref = table_s
+        k2_over_k1 = 0.0  # unused on the standard path
+
+    k1 = _scale_k1(k1_ref, design_cl)
+
+    upper: list[tuple[float, float]] = []
+    lower: list[tuple[float, float]] = []
+    for i in range(n_half + 1):
+        beta = math.pi * i / n_half
+        x = 0.5 * (1.0 - math.cos(beta))
+        yt = _naca4_thickness_offset(x, thick_chord)
+        if reflex:
+            yc, dyc = _naca5_camber_line_reflex(x, m, k1, k2_over_k1)
+        else:
+            yc, dyc = _naca5_camber_line_standard(x, m, k1)
+        theta = math.atan(dyc)
+        sin_t = math.sin(theta)
+        cos_t = math.cos(theta)
+        upper.append((x - yt * sin_t, yc + yt * cos_t))
+        lower.append((x + yt * sin_t, yc - yt * cos_t))
+    return list(reversed(upper)) + lower[1:]
+
+
+def ensure_naca5_dat(
+    *,
+    name: str,
+    camber: float,
+    camber_loc: float,
+    reflex: float,
+    thick_chord: float,
+    airfoils_dir: Path | None = None,
+    ctx: Optional["ImportContext"] = None,
+    component_name: str = "",
+) -> Path:
+    """Write ``{airfoils_dir}/{name}.dat`` for a NACA 5-digit airfoil.
+
+    Idempotent (skips when the file already exists). When the
+    OpenVSP-supplied camber-position is out of the tabulated range
+    (P ∉ {1..5} standard, {2..5} reflex), the function emits an
+    import warning via ``ctx`` (when provided) and returns the path
+    that would have been written without writing anything — the
+    schema's ``airfoil`` reference becomes dangling, which the
+    downstream renderer falls back on a curved default.
+
+    Parameters
+    ----------
+    name
+        Canonical 5-digit name from :func:`naca_5series_name`
+        (e.g. ``"naca23012"``).
+    camber
+        OpenVSP "Camber" parm — the design lift coefficient (0.3 for
+        the canonical L=2 leading digit).
+    camber_loc
+        OpenVSP "CamberLoc" parm — chord-fraction position of max
+        camber (0.15 for the canonical P=3 second digit).
+    reflex
+        OpenVSP "Reflex" parm — 0.0 (standard) or 1.0 (reflex).
+    thick_chord
+        Thickness-to-chord ratio (0.12 for the canonical TT=12).
+    """
+    target_dir = airfoils_dir if airfoils_dir is not None else AIRFOILS_DIR
+    target = target_dir / f"{name}.dat"
+    if target.exists():
+        return target
+
+    # Recover the P digit from CamberLoc (P × 0.05 = camber_loc).
+    p_digit = max(0, min(9, round(camber_loc * 20)))
+    is_reflex = reflex >= 0.5
+
+    try:
+        coords = naca5_coordinates(
+            design_cl=camber,
+            camber_loc_digit=p_digit,
+            reflex=is_reflex,
+            thick_chord=thick_chord,
+        )
+    except ValueError as exc:
+        if ctx is not None:
+            ctx.add_warning(
+                component_type="WING_XSEC",
+                component_name=component_name or name,
+                reason=str(exc),
+                severity="warning",
+            )
+        return target
+
+    try:
+        target_dir.mkdir(parents=True, exist_ok=True)
+        header = name.upper().replace("NACA", "NACA ") if name.lower().startswith("naca") else name
+        lines = [header.strip()]
+        for x, y in coords:
+            lines.append(f"{x:.6f}  {y:.6f}")
+        target.write_text("\n".join(lines) + "\n")
+    except OSError:
+        pass
+    return target
+
+
+# ---------------------------------------------------------------------------
 # foilsurf_u_for_xs — end-cap-aware mapping (per review on #642)
 # ---------------------------------------------------------------------------
 
@@ -331,20 +554,49 @@ def import_airfoil_from_xsec(
 
     # ---- NACA 5-series + modified ------------------------------------
     if shape == getattr(vsp, "XS_FIVE_DIGIT", None):
-        return naca_5series_name(
-            camber=_get_parm(vsp, xs_id, "Camber"),
-            camber_loc=_get_parm(vsp, xs_id, "CamberLoc"),
-            reflex=_get_parm(vsp, xs_id, "Reflex"),
-            thick_chord=_get_parm(vsp, xs_id, "ThickChord"),
+        camber = _get_parm(vsp, xs_id, "Camber")
+        camber_loc = _get_parm(vsp, xs_id, "CamberLoc")
+        reflex = _get_parm(vsp, xs_id, "Reflex")
+        thick_chord = _get_parm(vsp, xs_id, "ThickChord")
+        name = naca_5series_name(
+            camber=camber, camber_loc=camber_loc, reflex=reflex, thick_chord=thick_chord
         )
+        # gh-733: write a .dat for the 5-digit profile so the renderer
+        # has the actual airfoil curve to draw (Bugatti 23018 / 23012,
+        # Corsair 23015 / 23009, Spitfire 14012, etc.).
+        ensure_naca5_dat(
+            name=name,
+            camber=camber,
+            camber_loc=camber_loc,
+            reflex=reflex,
+            thick_chord=thick_chord,
+            ctx=ctx,
+            component_name=f"{geom_id}::XSec[{xs_index}]",
+        )
+        return name
     if shape == getattr(vsp, "XS_FIVE_DIGIT_MOD", None):
+        camber = _get_parm(vsp, xs_id, "Camber")
+        camber_loc = _get_parm(vsp, xs_id, "CamberLoc")
+        reflex = _get_parm(vsp, xs_id, "Reflex")
+        thick_chord = _get_parm(vsp, xs_id, "ThickChord")
         base = naca_5series_name(
-            camber=_get_parm(vsp, xs_id, "Camber"),
-            camber_loc=_get_parm(vsp, xs_id, "CamberLoc"),
-            reflex=_get_parm(vsp, xs_id, "Reflex"),
-            thick_chord=_get_parm(vsp, xs_id, "ThickChord"),
+            camber=camber, camber_loc=camber_loc, reflex=reflex, thick_chord=thick_chord
         )
-        return f"{base}-mod"
+        name = f"{base}-mod"
+        # gh-733: same approach as XS_FOUR_DIGIT_MOD — write the base
+        # 5-digit shape so the modified profile at least has a
+        # renderable fallback; the LE-radius / max-thickness-position
+        # modifiers are not encoded in the analytical thickness polynomial.
+        ensure_naca5_dat(
+            name=name,
+            camber=camber,
+            camber_loc=camber_loc,
+            reflex=reflex,
+            thick_chord=thick_chord,
+            ctx=ctx,
+            component_name=f"{geom_id}::XSec[{xs_index}]",
+        )
+        return name
 
     # ---- NACA 6-series ------------------------------------------------
     if shape == getattr(vsp, "XS_SIX_SERIES", None):
