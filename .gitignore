@@ -106,6 +106,7 @@ ENV/
 [Ll]ocal
 [Ss]cripts
 !/scripts/
+!/frontend/e2e/scripts/
 pyvenv.cfg
 .venv
 pip-selfcheck.json
