@@ -29,6 +29,7 @@ from app.converters.openvsp_wing_handler import (
     _W_TE,
     _augment_same_airfoil_pairs,
     _chord_from_le_te,
+    _find_cap_safe_u_max,
     _sample_le_te_at,
 )
 from app.schemas.aeroplaneschema import WingXSecSchema
@@ -273,9 +274,7 @@ class TestTwistInterpolation:
             _xsec(airfoil="naca2412", twist=0.0, t="root"),
             _xsec(airfoil="naca2412", twist=-4.0, t=None),
         ]
-        out = _augment_same_airfoil_pairs(
-            anchors, _ellipse_vsp(), "wing-gid", _ctx(), "wing"
-        )
+        out = _augment_same_airfoil_pairs(anchors, _ellipse_vsp(), "wing-gid", _ctx(), "wing")
         inserts = out[1:-1]
         expected = [-0.8, -1.6, -2.4, -3.2]
         for ins, exp in zip(inserts, expected, strict=True):
@@ -291,9 +290,7 @@ class TestTwistInterpolation:
             _xsec(airfoil="naca2412", twist=0.0, t="root"),
             _xsec(airfoil="naca2412", twist=0.0, t=None),
         ]
-        out = _augment_same_airfoil_pairs(
-            anchors, _ellipse_vsp(), "wing-gid", _ctx(), "wing"
-        )
+        out = _augment_same_airfoil_pairs(anchors, _ellipse_vsp(), "wing-gid", _ctx(), "wing")
         for ins in out[1:-1]:
             assert ins.twist == 0.0
 
@@ -322,9 +319,7 @@ class TestTwistInterpolation:
             _xsec(airfoil="naca2412", twist=0.0, t="root"),
             _xsec(airfoil="naca2412", twist=0.0, t=None),
         ]
-        out = _augment_same_airfoil_pairs(
-            anchors, _DihedralStub(), "wing-gid", _ctx(), "wing"
-        )
+        out = _augment_same_airfoil_pairs(anchors, _DihedralStub(), "wing-gid", _ctx(), "wing")
         # Anchor twists are 0 → every insert twist must be 0 even
         # though the body-frame LE/TE has a 0.5 m vertical offset.
         for ins in out[1:-1]:
@@ -356,15 +351,11 @@ class TestLossyWarning:
             _xsec(airfoil="naca2412", t="root"),
             _xsec(airfoil="naca2412", t=None),
         ]
-        out = _augment_same_airfoil_pairs(
-            anchors, _AlwaysRaises(), "wing-gid", ctx, "main_wing"
-        )
+        out = _augment_same_airfoil_pairs(anchors, _AlwaysRaises(), "wing-gid", ctx, "main_wing")
         # No inserts succeeded → 2 anchors only.
         assert len(out) == 2
         # Exactly one info-warning emitted with the count diff.
-        info_warnings = [
-            w for w in ctx.warnings if w.severity == "info" and "gh-753" in w.reason
-        ]
+        info_warnings = [w for w in ctx.warnings if w.severity == "info" and "gh-753" in w.reason]
         assert len(info_warnings) == 1
         assert info_warnings[0].component_name == "main_wing"
         assert "0/4" in info_warnings[0].reason
@@ -389,9 +380,7 @@ class TestLossyWarning:
             _xsec(airfoil="naca2412", t="root"),
             _xsec(airfoil="naca2412", t=None),
         ]
-        out = _augment_same_airfoil_pairs(
-            anchors, _FlakyAtMidU(), "wing-gid", ctx, "main_wing"
-        )
+        out = _augment_same_airfoil_pairs(anchors, _FlakyAtMidU(), "wing-gid", ctx, "main_wing")
         # 3 successful inserts + 2 anchors = 5
         assert len(out) == 5
         info_warnings = [w for w in ctx.warnings if "gh-753" in w.reason]
@@ -406,9 +395,7 @@ class TestLossyWarning:
             _xsec(airfoil="naca2412", t="root"),
             _xsec(airfoil="naca2412", t=None),
         ]
-        _augment_same_airfoil_pairs(
-            anchors, _ellipse_vsp(), "wing-gid", ctx, "main_wing"
-        )
+        _augment_same_airfoil_pairs(anchors, _ellipse_vsp(), "wing-gid", ctx, "main_wing")
         info_warnings = [w for w in ctx.warnings if "gh-753" in w.reason]
         assert info_warnings == []
 
@@ -460,9 +447,207 @@ class TestDegenerateInputs:
             _xsec(airfoil="naca2412", t="root"),
             _xsec(airfoil="naca2412", t=None),
         ]
-        out = _augment_same_airfoil_pairs(
-            anchors, _FlakyVsp(), "wing-gid", _ctx(), "wing"
-        )
+        out = _augment_same_airfoil_pairs(anchors, _FlakyVsp(), "wing-gid", _ctx(), "wing")
         # The u≈0.4 insert is skipped; the other 3 succeed.
         # Total: 2 anchors + 3 successful inserts = 5
         assert len(out) == 5
+
+
+# ---------------------------------------------------------------------------
+# gh-758 — Tip-cap-aware augmentation
+# ---------------------------------------------------------------------------
+#
+# Real VSP wings have an implicit tip cap (round / flat / etc.) which
+# occupies an u-range near 1.0 on the main wing surface. Within this
+# range, ``CompPnt01(gid, 0, u, w)`` returns near-identical points that
+# converge to the cap centerline as u → 1.0 — see the gh-758 issue body
+# for the Cessna 172 + Spitfire reproductions where DB rows 8/9/10 had
+# exactly identical ``xyz_le = [-0.055, 5.243, 0.510]`` after
+# augmentation.
+#
+# The fix introduces ``_find_cap_safe_u_max`` to probe the surface for
+# the largest non-convergent u, and the augmenter skips any insert
+# whose u exceeds that threshold. A defensive xyz_le-dedup catches any
+# edge case the probe might miss.
+
+
+def _capped_vsp(
+    half_span: float = 6.0,
+    root_chord: float = 2.0,
+    u_cap_start: float = 0.90,
+    cap_z: float = 0.5,
+):
+    """Build a VSP stub whose CompPnt01 simulates a real wing surface
+    WITH a tip cap. For u < u_cap_start, behaves like the ellipse stub
+    (smoothly varying LE/TE). For u >= u_cap_start, all points converge
+    to the cap centerline at (0, half_span * u_cap_start, cap_z),
+    mimicking how a rounded VSP tip cap collapses to its centerline as
+    u → 1.0.
+
+    This stub is what makes the gh-758 bug REPRODUCIBLE in unit tests:
+    the pre-fix augmenter inserts xsecs whose u lands in the cap region,
+    producing the duplicate-xyz_le + Z-lifted-xsec symptoms reported on
+    the Spitfire and Cessna 172.
+    """
+
+    class _Stub:
+        @staticmethod
+        def CompPnt01(_gid: str, _surf: int, u: float, w: float) -> _Pnt:
+            if u >= u_cap_start:
+                # Cap region: all points converge to centerline.
+                return _Pnt(0.0, half_span * u_cap_start, cap_z)
+            y = half_span * u
+            chord = root_chord * math.sqrt(max(0.0, 1.0 - u * u))
+            if abs(w - _W_LE) < 1e-9:
+                return _Pnt(-chord / 2.0, y, 0.0)
+            if abs(w - _W_TE) < 1e-9:
+                return _Pnt(+chord / 2.0, y, 0.0)
+            return _Pnt(-chord / 2.0, y, 0.0)
+
+    return _Stub()
+
+
+class TestFindCapSafeUMax:
+    """Probe-based detection of the largest u for which CompPnt01
+    still returns a distinct (= non-cap) point. The augmenter clamps
+    inserts to stay clear of this boundary."""
+
+    def test_no_cap_returns_high_u(self):
+        """The plain ellipse stub has no cap — every u ∈ [0, 1] gives
+        a distinct point. The probe returns ~1.0 (or the largest probe
+        value that's still distinct from u=1.0)."""
+        u_max = _find_cap_safe_u_max(_ellipse_vsp(), "wing-gid")
+        assert u_max >= 0.95
+
+    def test_capped_returns_below_cap_start(self):
+        """A capped stub with u_cap_start=0.90 → probe must return a
+        u_max <= 0.90 so that inserts stay clear of the cap region."""
+        u_max = _find_cap_safe_u_max(_capped_vsp(u_cap_start=0.90), "wing-gid")
+        assert u_max <= 0.90
+
+    def test_no_comppnt01_returns_one(self):
+        """No CompPnt01 → probe is unusable; return 1.0 (= no clamping,
+        the augmenter's early-return covers the actual call sites)."""
+
+        class _StubWithoutCompPnt:
+            pass
+
+        u_max = _find_cap_safe_u_max(_StubWithoutCompPnt(), "wing-gid")
+        assert u_max == 1.0
+
+    def test_raising_comppnt01_returns_one(self):
+        """If CompPnt01 raises on the tip probe, fall back to 1.0
+        (= no clamping; let the augmenter's per-u exception path
+        handle individual failures)."""
+
+        class _AlwaysRaises:
+            @staticmethod
+            def CompPnt01(_gid, _surf, _u, _w):
+                raise RuntimeError("synthetic")
+
+        u_max = _find_cap_safe_u_max(_AlwaysRaises(), "wing-gid")
+        assert u_max == 1.0
+
+
+class TestCapAwareAugmentation:
+    """gh-758 acceptance criterion: a wing with a tip cap must NOT
+    produce duplicate xyz_le rows in the augmented xsec list, and no
+    insert must land on the cap surface (which would visually lift
+    the wing into a z-kink)."""
+
+    def test_no_duplicate_xyz_le_with_tip_cap(self):
+        """A 4-anchor wing on a capped stub must produce 0 duplicate
+        consecutive xyz_le values. This is the direct DB-inspection
+        criterion from the issue body."""
+        anchors = [
+            _xsec(airfoil="naca2213", xyz_le=(0.0, 0.0, 0.0), chord=2.0, t="root"),
+            _xsec(airfoil="naca2213", xyz_le=(0.0, 2.0, 0.0), chord=1.8, t="segment"),
+            _xsec(airfoil="naca2213", xyz_le=(0.0, 4.0, 0.0), chord=1.2, t="segment"),
+            _xsec(airfoil="naca2213", xyz_le=(0.0, 5.4, 0.0), chord=0.4, t=None),
+        ]
+        out = _augment_same_airfoil_pairs(
+            anchors, _capped_vsp(u_cap_start=0.90), "wing-gid", _ctx(), "wing"
+        )
+        # Walk the output and assert no two consecutive xsecs share
+        # an xyz_le within 1e-6 m (= 1 μm — far below any meaningful
+        # wing geometry resolution).
+        for prev, curr in zip(out, out[1:], strict=False):
+            d = math.sqrt(sum((a - b) ** 2 for a, b in zip(prev.xyz_le, curr.xyz_le, strict=True)))
+            assert d > 1e-6, f"Duplicate xyz_le detected: {prev.xyz_le} == {curr.xyz_le}"
+
+    def test_no_insert_lands_on_cap_z(self):
+        """Inserts must not pick up the cap's Z-offset (which causes
+        the 'tip-caps parked at z≈1' visual symptom). Anchors all have
+        z=0; inserts must keep z near 0 too."""
+        anchors = [
+            _xsec(airfoil="naca2213", xyz_le=(0.0, 0.0, 0.0), chord=2.0, t="root"),
+            _xsec(airfoil="naca2213", xyz_le=(0.0, 5.4, 0.0), chord=0.4, t=None),
+        ]
+        out = _augment_same_airfoil_pairs(
+            anchors, _capped_vsp(u_cap_start=0.90, cap_z=0.5), "wing-gid", _ctx(), "wing"
+        )
+        # All inserts (everything except first/last anchors) must have
+        # z ≈ 0 (the non-cap surface), not z = 0.5 (the cap centerline).
+        for ins in out[1:-1]:
+            assert abs(ins.xyz_le[2]) < 1e-6, (
+                f"Insert picked up cap Z: xyz_le={ins.xyz_le} — "
+                "augmenter should have skipped this cap-region u"
+            )
+
+    def test_emits_cap_truncation_warning(self):
+        """When inserts are skipped due to the cap region, the
+        augmenter must surface that via ctx.add_warning so the user
+        can correlate the visual symptom (fewer-than-expected xsecs
+        near the tip) with an import event. Phrased differently from
+        the existing 'CompPnt01 failure' warning so the two are
+        distinguishable in the import report.
+
+        Setup mirrors the Spitfire's 4-anchor wing — the gh-758 bug
+        reproducer — where the outer pair's outer inserts land in
+        the cap region.
+        """
+        ctx = _ctx()
+        anchors = [
+            _xsec(airfoil="naca2213", xyz_le=(0.0, 0.0, 0.0), chord=2.0, t="root"),
+            _xsec(airfoil="naca2213", xyz_le=(0.0, 2.0, 0.0), chord=1.8, t="segment"),
+            _xsec(airfoil="naca2213", xyz_le=(0.0, 4.0, 0.0), chord=1.2, t="segment"),
+            _xsec(airfoil="naca2213", xyz_le=(0.0, 5.4, 0.0), chord=0.4, t=None),
+        ]
+        _augment_same_airfoil_pairs(
+            anchors, _capped_vsp(u_cap_start=0.90), "wing-gid", ctx, "main_wing"
+        )
+        # Look for a gh-758 cap-truncation warning specifically.
+        cap_warnings = [w for w in ctx.warnings if w.severity == "info" and "gh-758" in w.reason]
+        assert len(cap_warnings) == 1
+        assert cap_warnings[0].component_name == "main_wing"
+
+    def test_no_cap_warning_for_no_cap_wing(self):
+        """A wing with no cap (ellipse stub, u_max ≈ 1.0) must NOT
+        emit the cap-truncation warning — would be noise on healthy
+        imports."""
+        ctx = _ctx()
+        anchors = [
+            _xsec(airfoil="naca2213", xyz_le=(0.0, 0.0, 0.0), chord=2.0, t="root"),
+            _xsec(airfoil="naca2213", xyz_le=(0.0, 6.0, 0.0), chord=0.0, t=None),
+        ]
+        _augment_same_airfoil_pairs(anchors, _ellipse_vsp(), "wing-gid", ctx, "main_wing")
+        cap_warnings = [w for w in ctx.warnings if "gh-758" in w.reason]
+        assert cap_warnings == []
+
+    def test_inserts_remain_in_non_cap_segments(self):
+        """The first segments of a multi-anchor wing (root→mid) are far
+        from the tip cap. Their inserts must still happen normally — the
+        clamp only affects the outermost segment."""
+        anchors = [
+            _xsec(airfoil="naca2213", xyz_le=(0.0, 0.0, 0.0), chord=2.0, t="root"),
+            _xsec(airfoil="naca2213", xyz_le=(0.0, 2.0, 0.0), chord=1.8, t="segment"),
+            _xsec(airfoil="naca2213", xyz_le=(0.0, 5.4, 0.0), chord=0.4, t=None),
+        ]
+        out = _augment_same_airfoil_pairs(
+            anchors, _capped_vsp(u_cap_start=0.90), "wing-gid", _ctx(), "wing"
+        )
+        # First segment (root → mid): 4 inserts expected (u ∈ [0, 0.5]
+        # — well below the cap start).
+        # Second segment (mid → tip): some inserts may be dropped.
+        # Total must be at least 3 anchors + 4 first-segment inserts = 7.
+        assert len(out) >= 7

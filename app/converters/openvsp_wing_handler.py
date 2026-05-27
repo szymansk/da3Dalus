@@ -280,9 +280,7 @@ def _sample_le_te_at(
     )
 
 
-def _chord_from_le_te(
-    le: tuple[float, float, float], te: tuple[float, float, float]
-) -> float:
+def _chord_from_le_te(le: tuple[float, float, float], te: tuple[float, float, float]) -> float:
     """Straight-line distance LE→TE in 3D (= planform chord, in metres).
 
     Twist is NOT derived from these points — they're in the VSP body
@@ -302,6 +300,72 @@ def _chord_from_le_te(
     if chord < 1e-9:
         return 0.0
     return chord
+
+
+# gh-758: probe-distance threshold for declaring two CompPnt01 samples
+# "distinct". 1e-4 m = 0.1 mm — well below the smallest meaningful wing
+# anchor spacing (the Spitfire's anchors are ~1 m apart) but well above
+# any floating-point rounding noise in VSP's spline evaluator.
+_CAP_PROBE_EPS: float = 1e-4
+
+# gh-758: candidate u-values to probe, walked from highest (just below
+# the tip) to lower. Returns the FIRST u whose LE differs from u=1.0 by
+# more than _CAP_PROBE_EPS — that's the largest "safe" u (i.e. clear of
+# VSP's implicit tip cap which converges to a single point as u → 1).
+_CAP_PROBE_US: tuple[float, ...] = (0.99, 0.98, 0.97, 0.95, 0.92, 0.90, 0.85, 0.80, 0.70)
+
+
+def _find_cap_safe_u_max(vsp: ModuleType, gid: str) -> float:
+    """Return the largest spanwise ``u`` for which ``CompPnt01`` on the
+    wing main surface still returns a point geometrically distinct from
+    the tip (``u = 1.0``).
+
+    VSP wings have an implicit tip cap (round / flat / etc., controlled
+    by ``Cap_Tip`` parms) that occupies a small u-range near 1.0. Within
+    that range, ``CompPnt01(gid, 0, u, w)`` returns points that converge
+    to the cap centerline as u → 1, regardless of the chordwise ``w``.
+    Inserting interpolated xsecs into this range produces (a) duplicate
+    ``xyz_le`` rows and (b) Z-lifted xsecs that visually break the wing
+    render — the gh-758 Cessna 172 + Spitfire reproductions.
+
+    Method: sample LE at ``u = 1.0`` and at the values in
+    :data:`_CAP_PROBE_US` (highest first). The first probe whose LE
+    distance from the tip exceeds :data:`_CAP_PROBE_EPS` is returned —
+    that's our largest "safe" u. If every probe converges (degenerate
+    surface) or ``CompPnt01`` is unusable, return ``1.0`` so the caller
+    falls back to its existing per-u failure path.
+    """
+    if not hasattr(vsp, "CompPnt01"):
+        return 1.0
+    try:
+        le_at_tip, _ = _sample_le_te_at(vsp, gid, 1.0)
+    except Exception:
+        # CompPnt01 raised on the tip probe — no cap detection possible;
+        # the augmenter's per-u except will handle individual failures.
+        return 1.0
+
+    for u_probe in _CAP_PROBE_US:
+        try:
+            le_probe, _ = _sample_le_te_at(vsp, gid, u_probe)
+        except Exception:
+            continue
+        dx = le_at_tip[0] - le_probe[0]
+        dy = le_at_tip[1] - le_probe[1]
+        dz = le_at_tip[2] - le_probe[2]
+        if math.sqrt(dx * dx + dy * dy + dz * dz) > _CAP_PROBE_EPS:
+            return u_probe
+    # Every probe converged (or raised) — wing is degenerate in u.
+    # Returning the smallest tried probe is safer than 1.0 because we
+    # know u-values up to that point are also converged; clamp inserts
+    # well clear of them.
+    return _CAP_PROBE_US[-1]
+
+
+# gh-758: dedup threshold for consecutive output xsecs. 1e-6 m = 1 μm —
+# defensively skips inserts whose LE is geometrically identical to the
+# previous one. Guards against narrow caps or other VSP edge cases the
+# probe might miss. Real wing anchors differ by ≥ millimetres.
+_DEDUP_EPS: float = 1e-6
 
 
 def _augment_same_airfoil_pairs(
@@ -332,22 +396,32 @@ def _augment_same_airfoil_pairs(
     XForm pass) so the interpolated xsecs are transformed by the
     same pipeline as the anchors.
 
+    gh-758: inserts are clamped to stay clear of VSP's implicit tip
+    cap (see :func:`_find_cap_safe_u_max`). A defensive xyz_le-dedup
+    guards against narrow caps or u-mapping edge cases the probe
+    misses — duplicate xyz_le rows in the DB are the smoking gun the
+    issue body cites for the Spitfire / Cessna 172 breakage.
+
     If ``vsp.CompPnt01`` is unavailable (very old VSP build or a
     test stub), the original ``x_secs`` list is returned unchanged.
 
-    Emits a single ``ctx.add_warning`` (severity=info) when ≥1
-    expected insert silently failed (e.g. ``CompPnt01`` raised or
-    returned a degenerate chord) so a corrupted geom is visible in
-    the import report instead of just looking like a polygonal
-    wing without explanation.
+    Emits ``ctx.add_warning`` (severity=info) for two distinct cases:
+    - gh-753 "CompPnt01 failure" — inserts skipped because CompPnt01
+      raised or returned a degenerate chord
+    - gh-758 "tip-cap truncation" — inserts skipped because their u
+      fell inside the wing's tip-cap region; user can correlate the
+      visual symptom (slightly polygonal tip section) with the cause.
     """
     if not hasattr(vsp, "CompPnt01") or len(x_secs) < 2:
         return x_secs
+
+    u_max = _find_cap_safe_u_max(vsp, gid)
 
     n_anchors = len(x_secs)
     out: list[WingXSecSchema] = []
     expected_inserts = 0
     actual_inserts = 0
+    cap_truncated = 0  # gh-758: inserts dropped because u ≥ u_max
 
     for i, anchor in enumerate(x_secs):
         out.append(anchor)
@@ -366,6 +440,13 @@ def _augment_same_airfoil_pairs(
 
         for k in range(1, _N_INTERP_PER_PAIR + 1):
             u = u_lo + k * step
+            if u >= u_max:
+                # gh-758: u landed in the tip-cap region where CompPnt01
+                # converges to a single point. Skipping here keeps the
+                # outer tip section slightly polygonal rather than
+                # producing duplicate xsecs at the cap centerline.
+                cap_truncated += 1
+                continue
             try:
                 le_xyz, te_xyz = _sample_le_te_at(vsp, gid, u)
             except Exception:
@@ -377,6 +458,16 @@ def _augment_same_airfoil_pairs(
                 continue
             chord = _chord_from_le_te(le_xyz, te_xyz)
             if chord <= 0:
+                continue
+            # gh-758 defensive dedup: skip if this insert's LE is
+            # geometrically identical to the previously appended xsec.
+            # Catches u-mapping edge cases the cap probe misses.
+            prev_le = out[-1].xyz_le
+            ddx = le_xyz[0] - prev_le[0]
+            ddy = le_xyz[1] - prev_le[1]
+            ddz = le_xyz[2] - prev_le[2]
+            if math.sqrt(ddx * ddx + ddy * ddy + ddz * ddz) < _DEDUP_EPS:
+                cap_truncated += 1
                 continue
             # Linear interpolation of twist between the bracketing
             # anchors at fractional position t = k / (N_INTERP + 1).
@@ -393,11 +484,33 @@ def _augment_same_airfoil_pairs(
             )
             actual_inserts += 1
 
-    if expected_inserts > 0 and actual_inserts < expected_inserts:
+    if cap_truncated > 0:
+        # gh-758: distinct from the gh-753 warning below — the user can
+        # tell whether the wing is slightly polygonal because of a tip
+        # cap (expected, harmless) or because CompPnt01 failed (real
+        # importer problem worth investigating).
+        ctx.add_warning(
+            component_type="WING",
+            component_name=geom_name,
+            reason=(
+                f"WING {geom_name!r}: gh-758 tip-cap truncation skipped "
+                f"{cap_truncated} insert(s) whose u-parameter landed in "
+                f"the wing's implicit tip-cap region (u_max={u_max:.3f}). "
+                "The outer tip section will be slightly less smooth than "
+                "the rest of the wing — this is expected behaviour for "
+                "VSP wings with a round / flat tip cap."
+            ),
+            severity="info",
+        )
+
+    real_failures = expected_inserts - actual_inserts - cap_truncated
+    if real_failures > 0:
         # PR #754 review finding #2: a silently-incomplete augmentation
         # used to look like a polygonal wing without explanation.
         # Surface the count diff so the user can correlate the visual
-        # symptom with a real importer event.
+        # symptom with a real importer event. gh-758: cap-truncated
+        # inserts are excluded from this count — they get their own
+        # warning above so the two causes don't get conflated.
         ctx.add_warning(
             component_type="WING",
             component_name=geom_name,
