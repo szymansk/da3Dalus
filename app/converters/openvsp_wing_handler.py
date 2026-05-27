@@ -200,6 +200,150 @@ def _apply_xform(
 
 
 # ---------------------------------------------------------------------------
+# Spanwise xsec augmentation between same-airfoil anchors (gh-753)
+# ---------------------------------------------------------------------------
+#
+# OpenVSP wings with few defined XSecs render polygonal in the
+# workbench — the Spitfire's elliptical wing has only 4 anchors in
+# the .vsp3, so the planform looks like a pentagon. We augment via
+# VSP's ``CompPnt01`` parametric-surface sampling, *but only between
+# XSec pairs that share the same airfoil reference*. The user must
+# remain able to swap profiles at the anchors for Re-number scaling
+# workflows — interpolated cross-airfoil xsecs would be opaque
+# morphed-profile blobs the user can't edit cleanly.
+
+
+# VSP wing surface parametrisation:
+#   u ∈ [0, 1] — spanwise (0 = root, 1 = tip)
+#   w ∈ [0, 1] — chordwise loop (0/1 = TE, 0.5 = LE — closed surface)
+#
+# These constants are the chordwise w-values for LE / TE sampling
+# under VSP's convention. The convention is verified empirically in
+# the unit tests against a stub VSP module; if VSP ever changes
+# this, the tests will catch it before users see broken imports.
+_W_LE: float = 0.5
+_W_TE: float = 0.0
+
+# Number of intermediate xsecs inserted between each same-airfoil
+# anchor pair. 4 takes the Spitfire's 4-anchor main wing from
+# pentagonal to a smooth 16-station ellipse. A future Phase-2
+# ticket will switch to LE-curvature-driven adaptive sampling
+# (denser at wingtips, sparser inboard); 4 is the calibrated
+# baseline.
+_N_INTERP_PER_PAIR: int = 4
+
+
+def _sample_le_te_at(
+    vsp: ModuleType, gid: str, u: float
+) -> tuple[tuple[float, float, float], tuple[float, float, float]]:
+    """Return ``(le_xyz, te_xyz)`` for the wing surface at spanwise
+    parameter ``u`` via ``CompPnt01``.
+
+    LE and TE are sampled at the canonical chordwise positions
+    (``w=0.5`` and ``w=0.0`` under VSP convention). Result is in the
+    VSP body frame — the caller applies the Geom XForm later so the
+    augmentation slot in the handler stays before the existing
+    XForm pass.
+    """
+    le = vsp.CompPnt01(gid, 0, u, _W_LE)
+    te = vsp.CompPnt01(gid, 0, u, _W_TE)
+    return (float(le.x()), float(le.y()), float(le.z())), (
+        float(te.x()),
+        float(te.y()),
+        float(te.z()),
+    )
+
+
+def _chord_and_twist_from_le_te(
+    le: tuple[float, float, float], te: tuple[float, float, float]
+) -> tuple[float, float]:
+    """Derive ``(chord_m, twist_deg)`` from a LE/TE point pair.
+
+    Chord is the straight-line distance LE→TE in 3D (the planform
+    chord). Twist is positive when the LE sits higher than the TE
+    in the wing's local frame (incidence-up). Returns ``(0.0, 0.0)``
+    when LE and TE coincide (degenerate xsec).
+    """
+    dx = te[0] - le[0]
+    dy = te[1] - le[1]
+    dz = te[2] - le[2]
+    chord = math.sqrt(dx * dx + dy * dy + dz * dz)
+    if chord < 1e-9:
+        return 0.0, 0.0
+    twist_rad = math.atan2(le[2] - te[2], te[0] - le[0])
+    return chord, math.degrees(twist_rad)
+
+
+def _augment_same_airfoil_pairs(
+    x_secs: list[WingXSecSchema],
+    vsp: ModuleType,
+    gid: str,
+) -> list[WingXSecSchema]:
+    """Insert ``_N_INTERP_PER_PAIR`` interpolated xsecs between every
+    consecutive pair of anchors that shares the same ``airfoil``
+    reference. Pairs with different airfoils are left untouched.
+
+    The interpolated xsecs:
+    - sit at evenly spaced ``u`` values between the two anchors
+    - inherit the anchor's airfoil name (NACA preserved — no
+      ``vsp_imported_*.dat`` generated for same-airfoil paths)
+    - carry ``x_sec_type="segment"`` (intermediate, not root/tip)
+    - take their xyz_le / chord / twist from VSP's parametric surface
+      via ``CompPnt01`` — the "real" Spitfire ellipse, not a
+      linear interpolation between the anchors
+
+    The augmentation runs in the VSP body frame (before the Geom
+    XForm pass) so the interpolated xsecs are transformed by the
+    same pipeline as the anchors.
+
+    If ``vsp.CompPnt01`` is unavailable (very old VSP build or a
+    test stub), the original ``x_secs`` list is returned unchanged.
+    """
+    if not hasattr(vsp, "CompPnt01") or len(x_secs) < 2:
+        return x_secs
+
+    n_anchors = len(x_secs)
+    out: list[WingXSecSchema] = []
+
+    for i, anchor in enumerate(x_secs):
+        out.append(anchor)
+        if i == n_anchors - 1:
+            break  # last anchor, no next pair
+        nxt = x_secs[i + 1]
+        if anchor.airfoil != nxt.airfoil:
+            continue  # different profiles → skip (user-edit-ability)
+
+        u_lo = i / (n_anchors - 1)
+        u_hi = (i + 1) / (n_anchors - 1)
+        step = (u_hi - u_lo) / (_N_INTERP_PER_PAIR + 1)
+
+        for k in range(1, _N_INTERP_PER_PAIR + 1):
+            u = u_lo + k * step
+            try:
+                le_xyz, te_xyz = _sample_le_te_at(vsp, gid, u)
+            except Exception:
+                # CompPnt01 raised — skip this u and continue. A noisy
+                # raise here would mask the more common surrounding
+                # cases (e.g. one VSP version missing the call); the
+                # workbench renderer just sees one fewer xsec.
+                continue
+            chord, twist_deg = _chord_and_twist_from_le_te(le_xyz, te_xyz)
+            if chord <= 0:
+                continue
+            out.append(
+                WingXSecSchema(
+                    xyz_le=list(le_xyz),
+                    chord=chord,
+                    twist=twist_deg,
+                    airfoil=anchor.airfoil,
+                    x_sec_type="segment",
+                )
+            )
+
+    return out
+
+
+# ---------------------------------------------------------------------------
 # Handler
 # ---------------------------------------------------------------------------
 
@@ -336,6 +480,14 @@ def _handle_wing(
         )
         ctx.mark_lossy(gid)
         return
+
+    # gh-753: insert interpolated xsecs between consecutive anchors
+    # that share the same airfoil reference, so wings with few VSP-
+    # defined XSecs (Spitfire 4-anchor elliptical wing → looks
+    # pentagonal pre-augmentation) render as smooth splines. Runs in
+    # the VSP body frame before XForm so the new xsecs are
+    # transformed alongside the anchors.
+    x_secs = _augment_same_airfoil_pairs(x_secs, vsp, gid)
 
     # Apply Geom-level XForm (translation + intrinsic XYZ rotation) to every
     # xyz_le so that wings end up at their world-frame position and orientation.
