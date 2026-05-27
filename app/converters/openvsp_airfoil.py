@@ -419,6 +419,208 @@ def ensure_naca5_dat(
 
 
 # ---------------------------------------------------------------------------
+# NACA "a"-family mean line (gh-733 Phase 2)
+# ---------------------------------------------------------------------------
+#
+# Single-parameter mean-line shape per NACA Report 824 / Abbott &
+# von Doenhoff §4.5. Lift is distributed uniformly over 0 ≤ x ≤ a
+# then drops linearly to zero at x=1. a=1.0 is full-chord uniform
+# load (6-series default), a=0.0 is triangular pressure.
+#
+# Closed form (Abbott eq. 4.26), valid 0 ≤ a < 1:
+#
+#   y_c/c_li = 1/(2π(a+1)) · {
+#        (1/(1-a)) · [ ½(a-x)²ln|a-x| - ½(1-x)²ln(1-x)
+#                      + ¼(1-x)² - ¼(a-x)² ]
+#        - x·ln(x) + g - h·x
+#   }
+#
+# Constants depend only on a:
+#   g = -1/(1-a) · [ a²·(½ln(a) - ¼) + ¼ ]
+#   h =  1/(1-a) · [ ½(1-a)²ln(1-a) - ¼(1-a)² ] + g
+#
+# Singular limit a → 1 (uniform full-chord load):
+#   y_c/c_li = -1/(4π) · [ (1-x)·ln(1-x) + x·ln(x) ]
+
+
+def _naca_a_family_g(a: float) -> float:
+    """Constant ``g`` in Abbott eq. 4.26 — depends only on ``a``."""
+    if abs(1.0 - a) < 1e-9:
+        return 0.0  # singular branch handles a=1 separately
+    if a <= 0.0:
+        # Limit a→0: a²·ln(a) → 0, so g = -¼.
+        return -0.25
+    return -(1.0 / (1.0 - a)) * (a * a * (0.5 * math.log(a) - 0.25) + 0.25)
+
+
+def _naca_a_family_h(a: float) -> float:
+    """Constant ``h`` in Abbott eq. 4.26 — depends only on ``a``."""
+    if abs(1.0 - a) < 1e-9:
+        return 0.0
+    g = _naca_a_family_g(a)
+    return (
+        (1.0 / (1.0 - a))
+        * (0.5 * (1.0 - a) ** 2 * math.log(1.0 - a) - 0.25 * (1.0 - a) ** 2)
+        + g
+    )
+
+
+def _xlnx(x: float) -> float:
+    """``x·ln(x)`` with the analytic limit 0 at x=0."""
+    if x <= 0.0:
+        return 0.0
+    return x * math.log(x)
+
+
+def naca_a_family_camber_at(x: float, a: float, design_cl: float) -> float:
+    """``y_c(x)`` for the NACA "a"-family at design lift coefficient
+    ``design_cl``. Returns the camber-line y-coordinate at chord
+    fraction ``x``.
+
+    Slope is computed numerically by the caller via central
+    differences — the closed-form derivative carries additional
+    log-singularities at x=a and x=1 that don't add accuracy over
+    a small-h finite difference.
+    """
+    if x <= 0.0 or x >= 1.0:
+        return 0.0  # LE and TE: y_c = 0 by construction.
+
+    if abs(1.0 - a) < 1e-9:
+        # Uniform-load limit (a=1).
+        return -(design_cl / (4.0 * math.pi)) * (
+            (1.0 - x) * math.log(1.0 - x) + x * math.log(x)
+        )
+
+    g = _naca_a_family_g(a)
+    h = _naca_a_family_h(a)
+
+    am_x = a - x
+    log_am_x = math.log(abs(am_x)) if abs(am_x) > 1e-12 else 0.0
+    log_1m_x = math.log(1.0 - x) if (1.0 - x) > 1e-12 else 0.0
+
+    term_in = (
+        0.5 * am_x * am_x * log_am_x
+        - 0.5 * (1.0 - x) ** 2 * log_1m_x
+        + 0.25 * (1.0 - x) ** 2
+        - 0.25 * am_x * am_x
+    )
+    bracket = (1.0 / (1.0 - a)) * term_in - _xlnx(x) + g - h * x
+    return (design_cl / (2.0 * math.pi * (a + 1.0))) * bracket
+
+
+def naca_a_family_coordinates(
+    *,
+    a: float,
+    design_cl: float,
+    thick_chord: float,
+    n_half: int = _NACA_DAT_HALF_POINTS,
+) -> list[tuple[float, float]]:
+    """Selig-format coordinates for an airfoil with a-family mean
+    line and the 4-digit thickness polynomial.
+
+    Reusing the 4-digit thickness is a deliberate approximation: the
+    6-series profiles that natively use the a-family carry a
+    numerical thickness distribution (conformal-mapping derived) we
+    don't reconstruct here. The 4-digit polynomial preserves t/c and
+    peak-thickness location to within a few percent — sufficient for
+    the workbench renderer.
+
+    Slopes are central-differenced (eps=1e-6) because the analytical
+    derivative carries log-singularities at x=a and x=1 that
+    finite-differences handle cleanly.
+    """
+    EPS = 1e-6
+    upper: list[tuple[float, float]] = []
+    lower: list[tuple[float, float]] = []
+    for i in range(n_half + 1):
+        beta = math.pi * i / n_half
+        x = 0.5 * (1.0 - math.cos(beta))
+        yt = _naca4_thickness_offset(x, thick_chord)
+        yc = naca_a_family_camber_at(x, a, design_cl)
+        x_l = max(0.0, x - EPS)
+        x_r = min(1.0, x + EPS)
+        dyc = (
+            naca_a_family_camber_at(x_r, a, design_cl)
+            - naca_a_family_camber_at(x_l, a, design_cl)
+        ) / max(x_r - x_l, EPS)
+        theta = math.atan(dyc)
+        sin_t = math.sin(theta)
+        cos_t = math.cos(theta)
+        upper.append((x - yt * sin_t, yc + yt * cos_t))
+        lower.append((x + yt * sin_t, yc - yt * cos_t))
+    return list(reversed(upper)) + lower[1:]
+
+
+def ensure_naca_a_family_dat(
+    *,
+    name: str,
+    a: float,
+    design_cl: float,
+    thick_chord: float,
+    airfoils_dir: Path | None = None,
+    ctx: Optional["ImportContext"] = None,
+    component_name: str = "",
+) -> Path:
+    """Write ``{airfoils_dir}/{name}.dat`` for an "a"-family-mean-line
+    airfoil. Idempotent, never raises.
+
+    Used by:
+    * NACA 6-series xsecs (``XS_SIX_SERIES``) — VSP carries
+      ``Series``, ``IdealCl``, ``ThickChord``, ``A`` parms.
+    * NACA 16-series xsecs (``XS_ONE_SIX_SERIES``) — same a=1.0
+      uniform-load mean line, smaller t/c family.
+    * Mean-line-modified 4-digit shapes when OpenVSP carries a
+      ``MeanLine_a`` parm on the xsec.
+
+    Out-of-range ``a`` (a<0 or a>1) is clamped to [0, 1] and an
+    importer warning is emitted; OpenVSP enforces the range upstream
+    but the clamp prevents log-of-negative crashes on corrupt input.
+    """
+    target_dir = airfoils_dir if airfoils_dir is not None else AIRFOILS_DIR
+    target = target_dir / f"{name}.dat"
+    if target.exists():
+        return target
+
+    if a < 0.0 or a > 1.0:
+        if ctx is not None:
+            ctx.add_warning(
+                component_type="WING_XSEC",
+                component_name=component_name or name,
+                reason=(
+                    f"NACA mean-line parameter a={a:.3f} is outside the "
+                    "physical range [0, 1]; clamping for .dat generation."
+                ),
+                severity="info",
+            )
+        a = max(0.0, min(1.0, a))
+
+    try:
+        coords = naca_a_family_coordinates(
+            a=a, design_cl=design_cl, thick_chord=thick_chord
+        )
+    except (ValueError, ArithmeticError) as exc:
+        if ctx is not None:
+            ctx.add_warning(
+                component_type="WING_XSEC",
+                component_name=component_name or name,
+                reason=f"a-family mean-line generation failed: {exc}",
+                severity="warning",
+            )
+        return target
+
+    try:
+        target_dir.mkdir(parents=True, exist_ok=True)
+        header = name.upper().replace("NACA", "NACA ") if name.lower().startswith("naca") else name
+        lines = [header.strip()]
+        for x, y in coords:
+            lines.append(f"{x:.6f}  {y:.6f}")
+        target.write_text("\n".join(lines) + "\n")
+    except OSError:
+        pass
+    return target
+
+
+# ---------------------------------------------------------------------------
 # foilsurf_u_for_xs — end-cap-aware mapping (per review on #642)
 # ---------------------------------------------------------------------------
 
@@ -493,6 +695,15 @@ def _get_parm(vsp: ModuleType, xs_id: str, name: str) -> float:
     return float(vsp.GetParmVal(pid))
 
 
+def _has_parm(vsp: ModuleType, xs_id: str, name: str) -> bool:
+    """``True`` iff the parm exists on this xsec. Needed when the
+    *absence* of a parm carries semantics distinct from a 0.0 value
+    (e.g. the optional ``MeanLine_a`` modifier on a 4-digit-mod xsec
+    — a=0.0 is a valid triangular-load mean line)."""
+    pid = vsp.GetXSecParm(xs_id, name)
+    return bool(pid)
+
+
 def import_airfoil_from_xsec(
     *,
     xs_id: str,
@@ -535,15 +746,37 @@ def import_airfoil_from_xsec(
         camber = _get_parm(vsp, xs_id, "Camber")
         camber_loc = _get_parm(vsp, xs_id, "CamberLoc")
         thick_chord = _get_parm(vsp, xs_id, "ThickChord")
+        # gh-733 Phase 2: OpenVSP may carry a ``MeanLine_a`` parm on
+        # the 4-digit-mod xsec to overlay an "a"-family mean line
+        # (e.g. ``naca4-923-a0.6`` on the Spitfire). When present and
+        # the design Cl is non-zero, generate the .dat from the
+        # a-family camber + 4-digit thickness instead of the plain
+        # 4-digit. Name suffix ``-a{a:.1f}`` keeps schema references
+        # uniquely resolvable.
+        has_a = _has_parm(vsp, xs_id, "MeanLine_a")
+        if has_a and camber > 0.0:
+            a_value = _get_parm(vsp, xs_id, "MeanLine_a")
+            base = naca_4series_name(
+                camber=camber, camber_loc=camber_loc, thick_chord=thick_chord
+            )
+            name = f"{base}-a{a_value:.1f}"
+            ensure_naca_a_family_dat(
+                name=name,
+                a=a_value,
+                design_cl=camber,
+                thick_chord=thick_chord,
+                ctx=ctx,
+                component_name=f"{geom_id}::XSec[{xs_index}]",
+            )
+            return name
+        # Fallback: plain 4-digit-mod, write the base 4-digit shape
+        # so the LE/thickness modifiers at least have a renderable
+        # baseline (LE radius / max-thickness-position modifiers are
+        # not encoded in the analytical thickness polynomial).
         base = naca_4series_name(
             camber=camber, camber_loc=camber_loc, thick_chord=thick_chord
         )
-        # Append the leading-edge-radius/thickness-location modifier
-        # (OpenVSP's "modified" parms). Format: "naca2412-mod"
         name = f"{base}-mod"
-        # Generate the base 4-digit .dat so the modified-profile at
-        # least has a renderable fallback; the LE/thickness modifiers
-        # are not encoded in the analytical thickness polynomial.
         ensure_naca4_dat(
             name=name,
             camber=camber,
@@ -600,19 +833,74 @@ def import_airfoil_from_xsec(
 
     # ---- NACA 6-series ------------------------------------------------
     if shape == getattr(vsp, "XS_SIX_SERIES", None):
-        return naca_6series_name(
-            series=int(_get_parm(vsp, xs_id, "Series")),
-            ideal_cl=_get_parm(vsp, xs_id, "IdealCl"),
-            thick_chord=_get_parm(vsp, xs_id, "ThickChord"),
-            a=_get_parm(vsp, xs_id, "A"),
+        series = int(_get_parm(vsp, xs_id, "Series"))
+        ideal_cl = _get_parm(vsp, xs_id, "IdealCl")
+        thick_chord = _get_parm(vsp, xs_id, "ThickChord")
+        a_value = _get_parm(vsp, xs_id, "A")
+        name = naca_6series_name(
+            series=series, ideal_cl=ideal_cl, thick_chord=thick_chord, a=a_value
         )
+        # gh-733 Phase 2: write a .dat using the a-family mean line
+        # (which is the 6-series canonical mean line) + 4-digit
+        # thickness polynomial as a pragmatic stand-in for the
+        # numerical 6-series thickness distribution. The schema's
+        # airfoil reference resolves to a real curve for the renderer;
+        # an "approximation" info-warning is emitted via ``ctx`` so
+        # users know the t/c is exact but the thickness shape is
+        # 4-digit-equivalent rather than the conformal-mapped 6-series
+        # form.
+        if ctx is not None:
+            ctx.add_warning(
+                component_type="WING_XSEC",
+                component_name=f"{geom_id}::XSec[{xs_index}]",
+                reason=(
+                    f"NACA 6-series ({name}): writing .dat with a-family "
+                    "mean line + 4-digit thickness approximation. The 6-series "
+                    "thickness distribution requires conformal mapping; "
+                    "t/c and design Cl are preserved exactly."
+                ),
+                severity="info",
+            )
+        ensure_naca_a_family_dat(
+            name=name,
+            a=a_value,
+            design_cl=ideal_cl,
+            thick_chord=thick_chord,
+            ctx=ctx,
+            component_name=f"{geom_id}::XSec[{xs_index}]",
+        )
+        return name
 
     # ---- NACA 16-series ----------------------------------------------
     if shape == getattr(vsp, "XS_ONE_SIX_SERIES", None):
-        return naca_16series_name(
-            camber=_get_parm(vsp, xs_id, "Camber"),
-            thick_chord=_get_parm(vsp, xs_id, "ThickChord"),
+        camber = _get_parm(vsp, xs_id, "Camber")
+        thick_chord = _get_parm(vsp, xs_id, "ThickChord")
+        name = naca_16series_name(camber=camber, thick_chord=thick_chord)
+        # gh-733 Phase 2: 16-series is the high-speed propeller family
+        # — a-family mean line with a=1.0 (full-chord uniform load).
+        # OpenVSP's "Camber" parm on a 16-series xsec is the design Cl
+        # (matches the 6-series naming). Same thickness approximation
+        # as 6-series.
+        if ctx is not None:
+            ctx.add_warning(
+                component_type="WING_XSEC",
+                component_name=f"{geom_id}::XSec[{xs_index}]",
+                reason=(
+                    f"NACA 16-series ({name}): writing .dat with a=1 mean "
+                    "line + 4-digit thickness approximation (16-series "
+                    "thickness shape is not analytically encoded)."
+                ),
+                severity="info",
+            )
+        ensure_naca_a_family_dat(
+            name=name,
+            a=1.0,
+            design_cl=camber,
+            thick_chord=thick_chord,
+            ctx=ctx,
+            component_name=f"{geom_id}::XSec[{xs_index}]",
         )
+        return name
 
     # ---- File-airfoil → export verbatim -------------------------------
     if shape == getattr(vsp, "XS_FILE_AIRFOIL", None):
