@@ -80,11 +80,16 @@ def naca_6series_name(*, series: int, ideal_cl: float, thick_chord: float, a: fl
     return f"naca{int(series):d}-{cl_digit:d}{t:02d}-a{a:.1f}"
 
 
-def naca_16series_name(*, camber: float, thick_chord: float) -> str:
-    """Build a NACA 16-series name (e.g. "naca16-012")."""
-    c = round(camber * 100)
+def naca_16series_name(*, design_cl: float, thick_chord: float) -> str:
+    """Build a NACA 16-series name (e.g. "naca16-412" for Cl_i=0.4, t/c=0.12).
+
+    The 16-series nomenclature is ``naca16-CTT`` where:
+      C  = design lift coefficient × 10  (one digit; Cl=0.4 → "4")
+      TT = thickness as a chord fraction × 100 (two digits; t/c=0.12 → "12")
+    """
+    cl_digit = max(0, min(9, round(design_cl * 10)))
     t = round(thick_chord * 100)
-    return f"naca16-{c:d}{t:02d}"
+    return f"naca16-{cl_digit:d}{t:02d}"
 
 
 # ---------------------------------------------------------------------------
@@ -610,7 +615,16 @@ def ensure_naca_a_family_dat(
 
     try:
         target_dir.mkdir(parents=True, exist_ok=True)
-        header = name.upper().replace("NACA", "NACA ") if name.lower().startswith("naca") else name
+        # Header convention: uppercase digits/series ID, lowercase ``a``
+        # in the mean-line suffix to match the canonical NACA designation
+        # ("NACA 65-410, a=0.5"). The body uppercases the bare name but
+        # preserves the ``-a`` token verbatim.
+        if name.lower().startswith("naca"):
+            head, _, suffix = name.partition("-a")
+            head_up = head.upper().replace("NACA", "NACA ")
+            header = f"{head_up}-a{suffix}" if suffix else head_up
+        else:
+            header = name
         lines = [header.strip()]
         for x, y in coords:
             lines.append(f"{x:.6f}  {y:.6f}")
@@ -695,13 +709,6 @@ def _get_parm(vsp: ModuleType, xs_id: str, name: str) -> float:
     return float(vsp.GetParmVal(pid))
 
 
-def _has_parm(vsp: ModuleType, xs_id: str, name: str) -> bool:
-    """``True`` iff the parm exists on this xsec. Needed when the
-    *absence* of a parm carries semantics distinct from a 0.0 value
-    (e.g. the optional ``MeanLine_a`` modifier on a 4-digit-mod xsec
-    — a=0.0 is a valid triangular-load mean line)."""
-    pid = vsp.GetXSecParm(xs_id, name)
-    return bool(pid)
 
 
 def import_airfoil_from_xsec(
@@ -746,33 +753,19 @@ def import_airfoil_from_xsec(
         camber = _get_parm(vsp, xs_id, "Camber")
         camber_loc = _get_parm(vsp, xs_id, "CamberLoc")
         thick_chord = _get_parm(vsp, xs_id, "ThickChord")
-        # gh-733 Phase 2: OpenVSP may carry a ``MeanLine_a`` parm on
-        # the 4-digit-mod xsec to overlay an "a"-family mean line
-        # (e.g. ``naca4-923-a0.6`` on the Spitfire). When present and
-        # the design Cl is non-zero, generate the .dat from the
-        # a-family camber + 4-digit thickness instead of the plain
-        # 4-digit. Name suffix ``-a{a:.1f}`` keeps schema references
-        # uniquely resolvable.
-        has_a = _has_parm(vsp, xs_id, "MeanLine_a")
-        if has_a and camber > 0.0:
-            a_value = _get_parm(vsp, xs_id, "MeanLine_a")
-            base = naca_4series_name(
-                camber=camber, camber_loc=camber_loc, thick_chord=thick_chord
-            )
-            name = f"{base}-a{a_value:.1f}"
-            ensure_naca_a_family_dat(
-                name=name,
-                a=a_value,
-                design_cl=camber,
-                thick_chord=thick_chord,
-                ctx=ctx,
-                component_name=f"{geom_id}::XSec[{xs_index}]",
-            )
-            return name
-        # Fallback: plain 4-digit-mod, write the base 4-digit shape
-        # so the LE/thickness modifiers at least have a renderable
-        # baseline (LE radius / max-thickness-position modifiers are
-        # not encoded in the analytical thickness polynomial).
+        # gh-733 Phase 2 note: an earlier draft tried to overlay an
+        # a-family mean line via a hypothetical ``MeanLine_a`` parm on
+        # ``XS_FOUR_DIGIT_MOD``. Verified against OpenVSP 3.50 (PR #750
+        # review): no such parm exists. The 4-digit-mod xsec exposes
+        # only ``Camber``, ``CamberLoc``, ``ThickChord``, ``ThickLoc``,
+        # ``LERadIndx``, ``IdealCl``, ``CamberInputFlag``, ``SharpTEFlag``.
+        # The "mod" in this shape is the LE-radius / max-thickness-
+        # position modifier, which is not encoded in the analytical
+        # 4-digit thickness polynomial — so we still fall back to the
+        # plain 4-digit shape for a renderable baseline. Spitfire-style
+        # ``naca4-923-a0.6`` profiles require a different OpenVSP shape
+        # entirely (likely ``XS_SIX_SERIES`` mis-named in the spec) and
+        # would be picked up by the 6-series branch below.
         base = naca_4series_name(
             camber=camber, camber_loc=camber_loc, thick_chord=thick_chord
         )
@@ -873,14 +866,18 @@ def import_airfoil_from_xsec(
 
     # ---- NACA 16-series ----------------------------------------------
     if shape == getattr(vsp, "XS_ONE_SIX_SERIES", None):
-        camber = _get_parm(vsp, xs_id, "Camber")
+        # gh-733 Phase 2: XS_ONE_SIX_SERIES exposes ``IdealCl`` (the
+        # design lift coefficient), ``ThickChord``, ``SharpTEFlag``.
+        # Verified against OpenVSP 3.50 (PR #750 review). The
+        # pre-PR code read ``Camber`` which doesn't exist on this
+        # shape — VSP printed "GetParmVal::Can't Find Parm" to stderr
+        # and returned 0.0, so 16-series xsecs were always treated as
+        # symmetric (design_cl=0). The 16-series is the high-speed
+        # propeller family using an a=1.0 (full-chord uniform load)
+        # mean line; same 4-digit thickness approximation as 6-series.
+        design_cl = _get_parm(vsp, xs_id, "IdealCl")
         thick_chord = _get_parm(vsp, xs_id, "ThickChord")
-        name = naca_16series_name(camber=camber, thick_chord=thick_chord)
-        # gh-733 Phase 2: 16-series is the high-speed propeller family
-        # — a-family mean line with a=1.0 (full-chord uniform load).
-        # OpenVSP's "Camber" parm on a 16-series xsec is the design Cl
-        # (matches the 6-series naming). Same thickness approximation
-        # as 6-series.
+        name = naca_16series_name(design_cl=design_cl, thick_chord=thick_chord)
         if ctx is not None:
             ctx.add_warning(
                 component_type="WING_XSEC",
@@ -895,7 +892,7 @@ def import_airfoil_from_xsec(
         ensure_naca_a_family_dat(
             name=name,
             a=1.0,
-            design_cl=camber,
+            design_cl=design_cl,
             thick_chord=thick_chord,
             ctx=ctx,
             component_name=f"{geom_id}::XSec[{xs_index}]",

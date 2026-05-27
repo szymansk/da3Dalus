@@ -180,22 +180,24 @@ class TestCoordinates:
 
 
 class TestEnsureDat:
-    def test_writes_spitfire_a06(self, tmp_path: Path):
-        # Spitfire's ``naca4-923-a0.6``: design Cl ≈ 0.49 (the "4" in
-        # the 4-digit nomenclature × 1/15 ≈ 0.267, but VSP carries the
-        # design Cl directly via the Camber parm). We exercise the
-        # writer with a representative Cl=0.3, a=0.6, t/c=0.12.
+    def test_writes_a_family_dat_with_lowercase_a_in_header(self, tmp_path: Path):
+        # The canonical NACA designation uses lowercase ``a`` in the
+        # mean-line suffix (e.g. "NACA 65-410, a=0.5"). The header
+        # uppercases the digits/series ID but preserves the
+        # ``-a<value>`` token verbatim — the reviewer of #750 flagged
+        # an earlier draft that returned ``NACA 4-923-A0.6`` as
+        # non-standard.
         out = ensure_naca_a_family_dat(
-            name="naca4-923-a0.6",
-            a=0.6, design_cl=0.3, thick_chord=0.12,
+            name="naca65-410-a0.5",
+            a=0.5, design_cl=0.4, thick_chord=0.10,
             airfoils_dir=tmp_path,
         )
         assert out.exists()
-        assert out.stat().st_size > 200  # ~162 lines of coordinates
-        # Header line follows the same convention as the 4-/5-digit
-        # writers (uppercase, space after NACA).
+        assert out.stat().st_size > 200
         first_line = out.read_text().splitlines()[0]
-        assert first_line == "NACA 4-923-A0.6"
+        assert first_line == "NACA 65-410-a0.5", (
+            f"header capitalisation regression — got {first_line!r}"
+        )
 
     def test_writes_stratos_a10(self, tmp_path: Path):
         # Stratos_UL ``naca0-414-a1.0``: a=1.0 uniform-load mean line.
@@ -269,13 +271,19 @@ class TestSeriesNamingRoundTrip:
         assert out.name == "naca65-410-a0.5.dat"
 
     def test_16series_canonical_name_matches_writer(self, tmp_path: Path):
+        # 16-series nomenclature is ``naca16-CTT`` where C=design_Cl×10
+        # and TT=thick_chord×100. Per the OpenVSP API the parm is
+        # ``IdealCl``, not ``Camber`` — verified in the PR #750 review
+        # (the pre-PR code read the non-existent ``Camber`` parm and
+        # silently fell back to design_cl=0). For Cl_i=0.4, t/c=0.12 →
+        # "naca16-412".
         from app.converters.openvsp_airfoil import naca_16series_name
 
-        name = naca_16series_name(camber=0.04, thick_chord=0.12)
+        name = naca_16series_name(design_cl=0.4, thick_chord=0.12)
         assert name == "naca16-412"
         out = ensure_naca_a_family_dat(
             name=name,
-            a=1.0, design_cl=0.04, thick_chord=0.12,
+            a=1.0, design_cl=0.4, thick_chord=0.12,
             airfoils_dir=tmp_path,
         )
         assert out.exists()
