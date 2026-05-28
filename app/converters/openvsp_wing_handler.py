@@ -464,9 +464,13 @@ def _augment_same_airfoil_pairs(
       geometry. The body-frame ``atan2(le.z-te.z, te.x-le.x)``
       mixes dihedral into twist (PR #754 review finding #1).
 
-    The augmentation runs in the VSP body frame (before the Geom
-    XForm pass) so the interpolated xsecs are transformed by the
-    same pipeline as the anchors.
+    The augmenter operates in the **world frame**: anchors must
+    already be XForm-applied at call time. CompPnt01 returns
+    world-frame coordinates (the Geom XForm is baked into the VSP
+    surface), so the inserts naturally compose with post-XForm
+    anchors. The caller (``_handle_wing``) applies XForm BEFORE
+    this function (gh-758 #2) — the previous order (augment first,
+    XForm second) silently double-transformed every insert.
 
     gh-758: inserts are clamped to stay clear of VSP's implicit tip
     cap (see :func:`_find_cap_safe_u_max`). A defensive xyz_le-dedup
@@ -788,23 +792,32 @@ def _handle_wing(
         ctx.mark_lossy(gid)
         return
 
-    # gh-753: insert interpolated xsecs between consecutive anchors
-    # that share the same airfoil reference, so wings with few VSP-
-    # defined XSecs (Spitfire 4-anchor elliptical wing → looks
-    # pentagonal pre-augmentation) render as smooth splines. Runs in
-    # the VSP body frame before XForm so the new xsecs are
-    # transformed alongside the anchors.
-    x_secs = _augment_same_airfoil_pairs(x_secs, vsp, gid, ctx, name)
-
     # Apply Geom-level XForm (translation + intrinsic XYZ rotation) to every
-    # xyz_le so that wings end up at their world-frame position and orientation.
-    # Critical for HTP (aft translation) and VTP (90°-X rotation that stands
-    # the wing upright). See gh-698 for the Cessna 172 regression that
-    # surfaced this gap.
+    # anchor's xyz_le so that wings end up at their world-frame position and
+    # orientation. Critical for HTP (aft translation) and VTP (90°-X rotation
+    # that stands the wing upright). See gh-698 for the Cessna 172 regression
+    # that surfaced this gap.
+    #
+    # gh-758 #2: XForm MUST happen BEFORE augmentation (was: after). Reason:
+    # VSP's CompPnt01 returns coordinates in the WORLD FRAME (XForm already
+    # baked into the surface), so for the augmenter's inserts to match the
+    # anchors in frame, the anchors need to be world-frame too at that point.
+    # The old order (augment first, then XForm) silently DOUBLE-XFORMED every
+    # insert — visible on the Cessna 172 as "disconnected wing pieces" with
+    # xsec rows showing xyz_le = 2 × translation (e.g. z = 1.42 m when the
+    # wing's Z_Location is 0.71 m).
     translation, rotation_deg = _read_geom_xform(vsp, gid)
     if any(translation) or any(rotation_deg):
         for xs in x_secs:
             xs.xyz_le = _apply_xform(xs.xyz_le, translation, rotation_deg)
+
+    # gh-753: insert interpolated xsecs between consecutive anchors that
+    # share the same airfoil reference, so wings with few VSP-defined XSecs
+    # (Spitfire 4-anchor elliptical wing → looks pentagonal pre-augmentation)
+    # render as smooth splines. Runs in WORLD frame post-XForm — CompPnt01
+    # returns world-frame coordinates so the inserts compose directly with
+    # the post-XForm anchors. No further transform is applied to the inserts.
+    x_secs = _augment_same_airfoil_pairs(x_secs, vsp, gid, ctx, name)
 
     wing = AsbWingSchema(
         name=name,
