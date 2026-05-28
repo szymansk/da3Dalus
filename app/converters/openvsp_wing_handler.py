@@ -259,6 +259,76 @@ _W_TE: float = 0.0
 _N_INTERP_PER_PAIR: int = 4
 
 
+# gh-760: VSP's per-anchor u-position depends on the wing's cap
+# configuration. ``CapUMinOption`` and ``CapUMaxOption`` on the Wing's
+# ``EndCap`` parm group control whether root/tip caps occupy a slice
+# of u-range. Any non-zero value = cap present (1=flat, 2=round, etc.).
+_CAP_OPTION_PARMS: tuple[str, str] = ("CapUMinOption", "CapUMaxOption")
+
+
+def _read_cap_option(vsp: ModuleType, gid: str, parm_name: str) -> int:
+    """Read ``CapUMinOption`` or ``CapUMaxOption`` from the Wing's
+    ``EndCap`` parm group. Returns the raw enum value (0 = no cap,
+    >0 = some cap type), or ``-1`` when the parm is absent / unreadable
+    (old VSP file or test stub without EndCap parms). The augmenter
+    treats ``-1`` as "unknown — fall back to the empirical probe"
+    rather than assuming no caps (which would degrade to the naïve
+    pre-gh-760 u-mapping).
+    """
+    try:
+        pid = vsp.FindParm(gid, parm_name, "EndCap")
+    except (AttributeError, Exception):
+        return -1
+    if not pid:
+        return -1
+    try:
+        return int(vsp.GetParmVal(pid))
+    except Exception:
+        return -1
+
+
+def _anchor_u_position(vsp: ModuleType, gid: str, anchor_index: int, n_xsec: int) -> float:
+    """Return VSP's actual ``u`` position for anchor ``anchor_index``
+    on the wing's main surface, or ``-1.0`` when the wing's ``EndCap``
+    parms are absent (caller should fall back to the empirical probe).
+
+    Empirically verified across 13 wings (Spitfire, Cessna 172,
+    DG-101G) via ``GetUWTess01``: VSP distributes anchors as
+
+        cap_min = 1 if CapUMinOption > 0 else 0
+        cap_max = 1 if CapUMaxOption > 0 else 0
+        total_segments = (n_xsec - 1) + cap_min + cap_max
+        anchor_u[i] = (i + cap_min) / total_segments
+
+    The gh-753 augmenter previously assumed ``u = i / (n_anchors - 1)``
+    which only happens to be correct when ``cap_min = cap_max = 0`` —
+    a configuration none of the canonical RC / GA aircraft samples use.
+    The mismatch produced the Spitfire xsec 5/6 collision (issue #760)
+    and the entirely-cap-clamped outer wing section.
+
+    For ``n_xsec < 2`` the wing is degenerate; return 0.0 so callers
+    don't divide-by-zero.
+
+    When BOTH ``CapU*Option`` parms are absent (``_read_cap_option``
+    returns -1), the formula cannot be evaluated safely — defaulting
+    cap_min/max to 0 would regress to the naïve mapping for any
+    capped wing. Return ``-1.0`` so the caller knows to fall back to
+    the gh-758 empirical probe instead.
+    """
+    if n_xsec < 2:
+        return 0.0
+    raw_min = _read_cap_option(vsp, gid, _CAP_OPTION_PARMS[0])
+    raw_max = _read_cap_option(vsp, gid, _CAP_OPTION_PARMS[1])
+    if raw_min < 0 and raw_max < 0:
+        return -1.0  # sentinel: caller falls back to empirical probe
+    cap_min = 1 if max(raw_min, 0) > 0 else 0
+    cap_max = 1 if max(raw_max, 0) > 0 else 0
+    total_segments = (n_xsec - 1) + cap_min + cap_max
+    if total_segments <= 0:
+        return 0.0
+    return (anchor_index + cap_min) / total_segments
+
+
 def _sample_le_te_at(
     vsp: ModuleType, gid: str, u: float
 ) -> tuple[tuple[float, float, float], tuple[float, float, float]]:
@@ -494,9 +564,16 @@ def _augment_same_airfoil_pairs(
     if not hasattr(vsp, "CompPnt01") or len(x_secs) < 2:
         return x_secs
 
-    u_max = _find_cap_safe_u_max(vsp, gid)
-
     n_anchors = len(x_secs)
+    # gh-760: u_max is the LAST anchor's u-position (formula-based).
+    # The formula is empirically verified across 13 wings (Spitfire,
+    # Cessna 172, DG-101G — see issue #760), so we trust it for any
+    # wing with ``EndCap`` parms present. When the parms are absent
+    # (``-1.0`` sentinel from ``_anchor_u_position``), fall back to
+    # the gh-758 empirical probe.
+    u_max_formula = _anchor_u_position(vsp, gid, n_anchors - 1, n_anchors)
+    use_formula_u = u_max_formula > 0
+    u_max = u_max_formula if use_formula_u else _find_cap_safe_u_max(vsp, gid)
     out: list[WingXSecSchema] = []
     expected_inserts = 0
     counts: dict[str, int] = {
@@ -514,8 +591,21 @@ def _augment_same_airfoil_pairs(
         if anchor.airfoil != nxt.airfoil:
             continue  # different profiles → skip (user-edit-ability)
 
-        u_lo = i / (n_anchors - 1)
-        u_hi = (i + 1) / (n_anchors - 1)
+        # gh-760: query VSP for each anchor's real u-position instead
+        # of the naive ``i / (n_anchors - 1)`` mapping. The cap-aware
+        # formula reads ``CapUMinOption`` / ``CapUMaxOption`` from the
+        # Wing's ``EndCap`` group — without this, the last insert in
+        # pair (n-2 → n-1) collides with Anchor n-1 (Spitfire xsec 5/6)
+        # and the inner-pair inserts fall into the root-cap region.
+        # When the EndCap parms are absent (test stubs / old VSP files),
+        # ``use_formula_u`` is False and we keep the legacy mapping —
+        # the gh-758 probe handles the cap region in that path.
+        if use_formula_u:
+            u_lo = _anchor_u_position(vsp, gid, i, n_anchors)
+            u_hi = _anchor_u_position(vsp, gid, i + 1, n_anchors)
+        else:
+            u_lo = i / (n_anchors - 1)
+            u_hi = (i + 1) / (n_anchors - 1)
         step = (u_hi - u_lo) / (_N_INTERP_PER_PAIR + 1)
         twist_lo = float(anchor.twist or 0.0)
         twist_hi = float(nxt.twist or 0.0)
