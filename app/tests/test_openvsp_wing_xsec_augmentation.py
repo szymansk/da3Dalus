@@ -27,6 +27,7 @@ from app.converters.openvsp_wing_handler import (
     _N_INTERP_PER_PAIR,
     _W_LE,
     _W_TE,
+    _anchor_u_position,
     _augment_same_airfoil_pairs,
     _chord_from_le_te,
     _find_cap_safe_u_max,
@@ -497,6 +498,15 @@ def _capped_vsp(
     """
 
     class _Stub:
+        # gh-760: legacy capped stub keeps the gh-758 cap-probe path
+        # exercised by NOT exposing ``CapUMinOption`` / ``CapUMaxOption``
+        # parms. Returning 0 from ``FindParm`` for EndCap parms forces
+        # the augmenter to fall back to ``_find_cap_safe_u_max`` — the
+        # original behaviour these gh-758 tests pin.
+        @staticmethod
+        def FindParm(_gid: str, _parm: str, _group: str) -> int:
+            return 0
+
         @staticmethod
         def CompPnt01(_gid: str, _surf: int, u: float, w: float) -> _Pnt:
             if u >= u_cap_start:
@@ -783,3 +793,244 @@ class TestCapAwareAugmentation:
         # And twist stays 0 (no atan2 from body-frame Z).
         for ins in out[1:-1]:
             assert ins.twist == 0.0
+
+
+# ---------------------------------------------------------------------------
+# gh-760 — VSP anchor-u formula
+# ---------------------------------------------------------------------------
+#
+# Real VSP wings do not place anchors uniformly across u ∈ [0, 1]. The
+# anchor-u positions depend on the wing's cap configuration:
+#
+#     cap_min = 1 if CapUMinOption > 0 else 0     # root cap present?
+#     cap_max = 1 if CapUMaxOption > 0 else 0     # tip cap present?
+#     total_segments = (n_xsec - 1) + cap_min + cap_max
+#     anchor_u[i] = (i + cap_min) / total_segments
+#
+# Verified empirically via ``GetUWTess01`` across 13 wings in
+# Spitfire / Cessna 172 / DG-101G — see issue #760 for the dashboard
+# Phase 4 table. The pre-fix augmenter assumed ``u = i / (n_anchors - 1)``,
+# producing the Spitfire xsec 5/6 collision (insert at augmenter-u 0.6
+# landed on Anchor 2's real VSP u = 0.6).
+
+
+class _CappedWingStub:
+    """VSP stub that exposes ``CapUMinOption`` / ``CapUMaxOption``
+    via ``FindParm`` + ``GetParmVal`` so the new ``_anchor_u_position``
+    helper can read them. CompPnt01 simulates an ellipse with the
+    correct cap-aware u-parameterization: anchor i sits at u =
+    (i + cap_min) / total_segments.
+
+    cap_*_option is 0 for no cap, 1 for flat cap, 2 for round cap
+    (matching VSP's enum). Any non-zero value counts as cap_present=1.
+    """
+
+    def __init__(
+        self,
+        n_xsec: int,
+        cap_min_option: int = 1,
+        cap_max_option: int = 1,
+        half_span: float = 6.0,
+        root_chord: float = 2.0,
+    ):
+        self.n_xsec = n_xsec
+        self.cap_min_option = cap_min_option
+        self.cap_max_option = cap_max_option
+        self.half_span = half_span
+        self.root_chord = root_chord
+        cap_min = 1 if cap_min_option > 0 else 0
+        cap_max = 1 if cap_max_option > 0 else 0
+        self.total_segments = (n_xsec - 1) + cap_min + cap_max
+        self.cap_min = cap_min
+        self.cap_max = cap_max
+
+    # FindParm / GetParmVal — only resolve CapU*Option from EndCap group.
+    def FindParm(self, gid: str, parm: str, group: str) -> int:
+        if group == "EndCap" and parm == "CapUMinOption":
+            return 11
+        if group == "EndCap" and parm == "CapUMaxOption":
+            return 12
+        return 0
+
+    def GetParmVal(self, pid: int) -> float:
+        if pid == 11:
+            return float(self.cap_min_option)
+        if pid == 12:
+            return float(self.cap_max_option)
+        raise KeyError(pid)
+
+    # CompPnt01 — cap-aware ellipse. u_anchor[i] = (i+cap_min)/total.
+    # Between anchors → linear interpolation in y; in cap regions →
+    # converge to the root/tip anchor point (matches real VSP).
+    def CompPnt01(self, _gid: str, _surf: int, u: float, w: float) -> "_Pnt":
+        if self.cap_min and u < self.cap_min / self.total_segments:
+            # Root cap — converge to Anchor 0
+            return self._anchor_pnt(0, w)
+        if self.cap_max and u > (self.n_xsec - 1 + self.cap_min) / self.total_segments:
+            # Tip cap — converge to Anchor n-1
+            return self._anchor_pnt(self.n_xsec - 1, w)
+        # In a section: find which one, then interpolate
+        for i in range(self.n_xsec - 1):
+            u_lo = (i + self.cap_min) / self.total_segments
+            u_hi = (i + 1 + self.cap_min) / self.total_segments
+            if u_lo <= u <= u_hi + 1e-9:
+                # frac ∈ [0, 1] within the section
+                frac = (u - u_lo) / (u_hi - u_lo) if u_hi > u_lo else 0.0
+                y_lo = self.half_span * i / (self.n_xsec - 1)
+                y_hi = self.half_span * (i + 1) / (self.n_xsec - 1)
+                y = y_lo + frac * (y_hi - y_lo)
+                chord = self.root_chord * math.sqrt(max(0.0, 1.0 - (y / self.half_span) ** 2))
+                if abs(w - _W_LE) < 1e-9:
+                    return _Pnt(-chord / 2.0, y, 0.0)
+                if abs(w - _W_TE) < 1e-9:
+                    return _Pnt(+chord / 2.0, y, 0.0)
+                return _Pnt(-chord / 2.0, y, 0.0)
+        # Fallback for u slightly outside [0, 1]: return tip
+        return self._anchor_pnt(self.n_xsec - 1, w)
+
+    def _anchor_pnt(self, i: int, w: float) -> "_Pnt":
+        y = self.half_span * i / (self.n_xsec - 1)
+        chord = self.root_chord * math.sqrt(max(0.0, 1.0 - (y / self.half_span) ** 2))
+        if abs(w - _W_LE) < 1e-9:
+            return _Pnt(-chord / 2.0, y, 0.0)
+        if abs(w - _W_TE) < 1e-9:
+            return _Pnt(+chord / 2.0, y, 0.0)
+        return _Pnt(-chord / 2.0, y, 0.0)
+
+
+class TestAnchorUPosition:
+    """gh-760 contract — VSP's actual u-position per anchor depends on
+    cap configuration. Pin the formula across the four canonical cases:
+    both caps, neither cap, root-only, tip-only."""
+
+    def test_both_caps_present(self):
+        """Standard wing (Wing, Spitfire) — both ``CapUMinOption`` and
+        ``CapUMaxOption`` non-zero → anchor i at (i+1)/(n_xsec+1)."""
+        vsp = _CappedWingStub(n_xsec=4, cap_min_option=1, cap_max_option=1)
+        # 4 anchors, total_segments = 3 + 1 + 1 = 5
+        # Anchor i at (i + 1) / 5
+        for i, expected in enumerate([0.2, 0.4, 0.6, 0.8]):
+            assert _anchor_u_position(vsp, "wing-gid", i, 4) == pytest.approx(expected)
+
+    def test_no_caps(self):
+        """Edge case: both options = 0 → anchors span full u-range.
+        Anchor 0 at u=0, anchor n-1 at u=1."""
+        vsp = _CappedWingStub(n_xsec=3, cap_min_option=0, cap_max_option=0)
+        # total_segments = 2 + 0 + 0 = 2
+        # Anchor i at i / 2
+        for i, expected in enumerate([0.0, 0.5, 1.0]):
+            assert _anchor_u_position(vsp, "wing-gid", i, 3) == pytest.approx(expected)
+
+    def test_root_only_cap(self):
+        """``CapUMinOption > 0, CapUMaxOption = 0`` — anchors offset
+        forward; anchor n-1 sits at the tip (u=1)."""
+        vsp = _CappedWingStub(n_xsec=3, cap_min_option=1, cap_max_option=0)
+        # total_segments = 2 + 1 + 0 = 3
+        # Anchor i at (i + 1) / 3
+        for i, expected in enumerate([1 / 3, 2 / 3, 3 / 3]):
+            assert _anchor_u_position(vsp, "wing-gid", i, 3) == pytest.approx(expected)
+
+    def test_tip_only_cap_matches_dg_htail(self):
+        """``CapUMinOption = 0, CapUMaxOption > 0`` — the DG-101G H-Tail
+        edge case. Anchor 0 at u=0 (no root cap), anchor n-1 inboard
+        of tip cap."""
+        vsp = _CappedWingStub(n_xsec=2, cap_min_option=0, cap_max_option=2)
+        # total_segments = 1 + 0 + 1 = 2
+        # Anchor i at i / 2
+        assert _anchor_u_position(vsp, "wing-gid", 0, 2) == pytest.approx(0.0)
+        assert _anchor_u_position(vsp, "wing-gid", 1, 2) == pytest.approx(0.5)
+
+    def test_round_cap_option_2_counts_as_present(self):
+        """VSP's ``CapU*Option = 2`` (round cap) still means "cap
+        present". The helper treats any non-zero value as cap_present=1.
+        """
+        vsp = _CappedWingStub(n_xsec=3, cap_min_option=2, cap_max_option=2)
+        # Same as both_caps_present (round vs flat doesn't change u-position)
+        for i, expected in enumerate([0.25, 0.5, 0.75]):
+            assert _anchor_u_position(vsp, "wing-gid", i, 3) == pytest.approx(expected)
+
+
+class TestAugmenterUsesCorrectUMapping:
+    """gh-760: the regression scenario. Spitfire-like 4-anchor wing
+    with both caps. The pre-fix augmenter mapped anchor i to
+    u = i/(n_anchors-1), so the last insert in pair (n-2 → n-1) at
+    u_lo + 4·step = (n-2)/(n-1) + 4·(1/(n-1))/5 = (n-2)/(n-1) +
+    0.8/(n-1) landed at Anchor n-1's real VSP u for n=4 (= 0.6).
+
+    Post-fix, inserts in pair (i → i+1) span [u_anchor[i], u_anchor[i+1]]
+    which is BETWEEN the anchors' actual u-positions — no collision."""
+
+    def test_no_insert_collides_with_next_anchor(self):
+        """Pin the Spitfire 5/6 collision: with cap-aware u-mapping,
+        the last insert in pair (n-2 → n-1) sits BEFORE anchor n-1's
+        real u-position. Pre-fix the insert and the anchor had the
+        same xyz_le (the user's "oversized oval" near the tip)."""
+        anchors = [
+            _xsec(airfoil="naca2213", xyz_le=(-1.0, 0.0, 0.0), chord=2.0, t="root"),
+            _xsec(airfoil="naca2213", xyz_le=(-0.92, 2.0, 0.0), chord=1.83, t="segment"),
+            _xsec(airfoil="naca2213", xyz_le=(-0.60, 4.0, 0.0), chord=1.20, t="segment"),
+            _xsec(airfoil="naca2213", xyz_le=(-0.07, 5.5, 0.0), chord=0.14, t=None),
+        ]
+        vsp = _CappedWingStub(n_xsec=4, cap_min_option=1, cap_max_option=1)
+        out = _augment_same_airfoil_pairs(anchors, vsp, "wing-gid", _ctx(), "Wing")
+        # No consecutive xsecs share an xyz_le within 1 mm (= the
+        # gh-760 DB-evidence threshold; pre-fix the gap was ~1 mm).
+        for prev, curr in zip(out, out[1:], strict=False):
+            d = math.sqrt(sum((a - b) ** 2 for a, b in zip(prev.xyz_le, curr.xyz_le, strict=True)))
+            assert d > 1e-3, (
+                f"Insert collides with next anchor: prev={prev.xyz_le}, curr={curr.xyz_le} "
+                f"(distance {d * 1000:.2f} mm) — gh-760 u-mapping regression."
+            )
+
+    def test_outer_section_gets_inserts(self):
+        """Pre-fix, pair (n-2 → n-1) inserts mapped to u ∈ [0.667, 1.0]
+        (for 4 anchors) and were ALL cap-clamped by the gh-758 safety
+        net (u_max ≈ 0.7). Post-fix, they map to u ∈ [0.6, 0.8] which
+        is fully inside the wing surface — all 4 should INSERT."""
+        anchors = [
+            _xsec(airfoil="naca2213", xyz_le=(-1.0, 0.0, 0.0), chord=2.0, t="root"),
+            _xsec(airfoil="naca2213", xyz_le=(-0.92, 2.0, 0.0), chord=1.83, t="segment"),
+            _xsec(airfoil="naca2213", xyz_le=(-0.60, 4.0, 0.0), chord=1.20, t="segment"),
+            _xsec(airfoil="naca2213", xyz_le=(-0.07, 5.5, 0.0), chord=0.14, t=None),
+        ]
+        vsp = _CappedWingStub(n_xsec=4, cap_min_option=1, cap_max_option=1)
+        out = _augment_same_airfoil_pairs(anchors, vsp, "wing-gid", _ctx(), "Wing")
+        # 4 anchors + 4 inserts × 3 pairs = 16 expected when augmenter
+        # correctly maps anchor-u and the cap-clamp is reachable only
+        # for inserts truly in the cap region.
+        # Allow some slack — but ALL three pairs must contribute at
+        # least one insert (especially the outer one).
+        outer_pair_inserts = 0
+        # The outer pair's inserts sit between anchor 2 (y=4.0) and
+        # anchor 3 (y=5.5), so y ∈ (4.0, 5.5).
+        for xs in out:
+            if 4.0 < xs.xyz_le[1] < 5.5:
+                outer_pair_inserts += 1
+        assert outer_pair_inserts >= 2, (
+            f"Outer pair (anchor n-2 → n-1) got only {outer_pair_inserts} inserts "
+            "— pre-fix this section was entirely cap-clamped."
+        )
+
+    def test_inner_section_no_root_cap_dedup(self):
+        """Pre-fix, pair 0→1 inserts at augmenter-u ∈ (0, 0.333) landed
+        in VSP's root-cap region (u ∈ [0, 0.2] for both-caps wing) and
+        got DEDUPED. Post-fix, inserts map to u ∈ (0.2, 0.4) — clear
+        of the root cap."""
+        anchors = [
+            _xsec(airfoil="naca2213", xyz_le=(-1.0, 0.0, 0.0), chord=2.0, t="root"),
+            _xsec(airfoil="naca2213", xyz_le=(-0.92, 2.0, 0.0), chord=1.83, t=None),
+        ]
+        ctx = _ctx()
+        vsp = _CappedWingStub(n_xsec=2, cap_min_option=1, cap_max_option=1)
+        out = _augment_same_airfoil_pairs(anchors, vsp, "wing-gid", ctx, "Wing")
+        # 2 anchors + 4 inserts (none should dedup with cap-aware mapping).
+        assert len(out) == 2 + _N_INTERP_PER_PAIR
+        # The dedup safety-net warning must NOT fire — cap-aware
+        # u-mapping eliminates the root-cap collision.
+        dedup_warnings = [
+            w for w in ctx.warnings if "gh-758" in w.reason and "LE-dedup" in w.reason
+        ]
+        assert dedup_warnings == [], (
+            "LE-dedup fired on a cap-aware mapping — should be unreachable "
+            "in the no-pathological-cap case."
+        )
