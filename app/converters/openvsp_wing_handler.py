@@ -275,9 +275,11 @@ def _read_cap_option(vsp: ModuleType, gid: str, parm_name: str) -> int:
     rather than assuming no caps (which would degrade to the naïve
     pre-gh-760 u-mapping).
     """
+    if not hasattr(vsp, "FindParm"):
+        return -1
     try:
         pid = vsp.FindParm(gid, parm_name, "EndCap")
-    except (AttributeError, Exception):
+    except Exception:
         return -1
     if not pid:
         return -1
@@ -571,6 +573,14 @@ def _augment_same_airfoil_pairs(
     # wing with ``EndCap`` parms present. When the parms are absent
     # (``-1.0`` sentinel from ``_anchor_u_position``), fall back to
     # the gh-758 empirical probe.
+    #
+    # Note: in the formula path, ``u_max`` is the last anchor's u
+    # (NOT the cap-safe boundary). The per-insert ``u > u_max`` guard
+    # in ``_try_emit_one_insert`` is then a no-op — the augmenter's
+    # last insert is at ``u_lo + N_INTERP*step`` which is strictly
+    # less than ``u_hi = u_max_formula``. The guard remains relevant
+    # for the legacy-fallback path where ``u_max`` comes from the
+    # probe and may be tighter than the naïve mapping's range.
     u_max_formula = _anchor_u_position(vsp, gid, n_anchors - 1, n_anchors)
     use_formula_u = u_max_formula > 0
     u_max = u_max_formula if use_formula_u else _find_cap_safe_u_max(vsp, gid)
