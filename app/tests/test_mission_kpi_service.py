@@ -492,6 +492,98 @@ def test_compute_mission_kpis_raises_when_presets_table_empty(client_and_db):
 
 
 # ---------------------------------------------------------------------------
+# gh-767: the active Soll polygon must reflect the user's editable
+# MissionObjective targets, not the static preset.target_polygon.
+# ---------------------------------------------------------------------------
+
+
+def _persist_objective(SessionLocal, aircraft_id: int, **overrides) -> None:
+    """Upsert a MissionObjective with sensible defaults + per-test overrides."""
+    from app.schemas.mission_objective import MissionObjective
+    from app.services.mission_objective_service import upsert_mission_objective
+
+    base = MissionObjective(
+        mission_type="trainer",
+        target_cruise_mps=18.0,
+        target_stall_safety=1.8,
+        target_maneuver_n=3.0,
+        target_glide_ld=12.0,
+        target_climb_energy=22.0,
+        target_wing_loading_n_m2=50.0,
+        target_field_length_m=50.0,
+        available_runway_m=80.0,
+        runway_type="grass",
+        t_static_N=20.0,
+        takeoff_mode="runway",
+    )
+    with SessionLocal() as db:
+        upsert_mission_objective(db, aircraft_id, base.model_copy(update=overrides))
+        db.commit()
+
+
+def test_active_target_polygon_reflects_objective_targets(client_and_db):
+    """gh-767: the active Soll polygon is normalised from the user's
+    MissionObjective targets, not copied from preset.target_polygon."""
+    _, SessionLocal = client_and_db
+    with SessionLocal() as db:
+        aeroplane = make_aeroplane(db, total_mass_kg=2.0)
+        aircraft_id = aeroplane.id
+    _seed_context(SessionLocal, aircraft_id)
+
+    # Trainer preset cruise target_polygon == 0.3 with axis range (10, 25).
+    # A 22 m/s target normalises to (22-10)/(25-10) = 0.8 — clearly distinct.
+    _persist_objective(
+        SessionLocal,
+        aircraft_id,
+        mission_type="trainer",
+        target_cruise_mps=22.0,
+        target_stall_safety=1.9,  # range (1.3, 2.5) -> 0.5
+        target_glide_ld=18.0,  # range (5, 18) -> 1.0
+    )
+
+    with patch(
+        "app.services.mission_kpi_service._compute_field_length_score",
+        return_value=(45.0, 1.0, None),
+    ):
+        with SessionLocal() as db:
+            kset = compute_mission_kpis(db, aircraft_id, ["trainer"])
+
+    soll = next(p for p in kset.target_polygons if p.mission_id == "trainer")
+    # cruise reflects the user's target (0.8), NOT the preset's hardcoded 0.3.
+    assert soll.scores_0_1["cruise"] == pytest.approx(0.8)
+    assert soll.scores_0_1["stall_safety"] == pytest.approx(0.5)
+    assert soll.scores_0_1["glide"] == pytest.approx(1.0)
+    # field_friendliness: Ist is target/effective, so meeting the declared
+    # target field length == full score.
+    assert soll.scores_0_1["field_friendliness"] == pytest.approx(1.0)
+
+
+def test_comparison_target_polygons_keep_preset_defaults(client_and_db):
+    """gh-767: only the active mission's Soll is objective-derived; comparison
+    overlays keep their static preset polygon (no per-aeroplane targets exist
+    for them)."""
+    from app.services.mission_objective_service import list_mission_presets
+
+    _, SessionLocal = client_and_db
+    with SessionLocal() as db:
+        aeroplane = make_aeroplane(db, total_mass_kg=2.0)
+        aircraft_id = aeroplane.id
+    _seed_context(SessionLocal, aircraft_id)
+    _persist_objective(SessionLocal, aircraft_id, mission_type="trainer")
+
+    with patch(
+        "app.services.mission_kpi_service._compute_field_length_score",
+        return_value=(45.0, 1.0, None),
+    ):
+        with SessionLocal() as db:
+            presets = {p.id: p for p in list_mission_presets(db)}
+            kset = compute_mission_kpis(db, aircraft_id, ["trainer", "sailplane"])
+
+    sailplane_soll = next(p for p in kset.target_polygons if p.mission_id == "sailplane")
+    assert sailplane_soll.scores_0_1 == presets["sailplane"].target_polygon
+
+
+# ---------------------------------------------------------------------------
 # Warning propagation (#562 review fix — surface t_static_N / recompute hints
 # via MissionAxisKpi.warning now that FieldLengthsPanel is gone).
 # ---------------------------------------------------------------------------

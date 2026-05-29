@@ -115,6 +115,16 @@ export function MissionRadarChart({
   // the aircraft's KPI band (gh-601).
   const globalRanges = computeAxisRanges(activeMissions, kpis);
 
+  // gh-767: the Soll polygon scores come from the backend `target_polygons`
+  // (which the active mission derives from the user's editable MissionObjective
+  // targets), keyed by mission id. Fall back per-axis to the static preset
+  // polygon when the backend supplies no score for that mission/axis.
+  const targetScoresById = new Map(
+    kpis.target_polygons.map((tp) => [tp.mission_id, tp.scores_0_1]),
+  );
+  const sollScore = (m: MissionPreset, axis: AxisName): number =>
+    targetScoresById.get(m.id)?.[axis] ?? m.target_polygon[axis];
+
   const istPoints = AXES.map((axis, i) => {
     const k = kpis.ist_polygon[axis];
     const local: [number, number] = [k.range_min, k.range_max];
@@ -127,7 +137,7 @@ export function MissionRadarChart({
 
   const sollPoints = active
     ? AXES.map((axis, i) => {
-        const localScore = active.target_polygon[axis];
+        const localScore = sollScore(active, axis);
         const local = active.axis_ranges[axis];
         const global = renormalise(localScore, local, globalRanges[axis]);
         return polarToCartesian(i, global, R);
@@ -136,7 +146,7 @@ export function MissionRadarChart({
 
   const ghostPolygons = ghosts.map((g) =>
     AXES.map((axis, i) => {
-      const score = g.target_polygon[axis];
+      const score = sollScore(g, axis);
       const local = g.axis_ranges[axis];
       const global = renormalise(score, local, globalRanges[axis]);
       return polarToCartesian(i, global, R);
@@ -333,14 +343,23 @@ function AxisTooltip({ axis, kpis, active, ghosts }: AxisTooltipProps) {
       ? normalizedToRaw(k.score_0_1, [k.range_min, k.range_max])
       : null;
 
+  // gh-767: mirror the chart's Soll source — prefer the backend
+  // target_polygons score (objective-derived for the active mission), with a
+  // per-axis fallback to the static preset polygon.
+  const targetScoresById = new Map(
+    kpis.target_polygons.map((tp) => [tp.mission_id, tp.scores_0_1]),
+  );
+  const sollScore = (m: MissionPreset): number =>
+    targetScoresById.get(m.id)?.[axis] ?? m.target_polygon[axis];
+
   const sollValue = active
-    ? normalizedToRaw(active.target_polygon[axis], active.axis_ranges[axis])
+    ? normalizedToRaw(sollScore(active), active.axis_ranges[axis])
     : null;
 
   const ghostValues = ghosts.map((g, idx) => ({
     label: g.label,
     color: GHOST_COLORS[idx % GHOST_COLORS.length],
-    value: normalizedToRaw(g.target_polygon[axis], g.axis_ranges[axis]),
+    value: normalizedToRaw(sollScore(g), g.axis_ranges[axis]),
   }));
 
   // Position the tooltip box. Width/height are estimates; we offset so the

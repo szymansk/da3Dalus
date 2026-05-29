@@ -408,6 +408,64 @@ describe("MissionRadarChart", () => {
     }
   });
 
+  it("derives the Soll line from kpis.target_polygons, not the static preset (gh-767)", () => {
+    // Backend supplies an objective-derived Soll: cruise score 0.8.
+    // trainer preset cruise range [10,25] → 10 + 0.8×15 = 22.00.
+    // The static preset's cruise target_polygon is 0.5 → 17.50 (the stale value).
+    const ksetWithTargets: MissionKpiSet = {
+      ...kset,
+      ist_polygon: { ...kset.ist_polygon, cruise: cruiseKpi },
+      target_polygons: [
+        {
+          mission_id: "trainer",
+          label: "trainer",
+          scores_0_1: {
+            stall_safety: 0.5,
+            glide: 0.5,
+            climb: 0.5,
+            cruise: 0.8,
+            maneuver: 0.5,
+            wing_loading: 0.5,
+            field_friendliness: 1.0,
+          },
+        },
+      ],
+    };
+    const { getByTestId } = render(
+      <MissionRadarChart
+        kpis={ksetWithTargets}
+        activeMissions={[preset("trainer")]}
+        onAxisClick={() => undefined}
+      />,
+    );
+    fireEvent.mouseEnter(getByTestId("hover-wedge-cruise"));
+    const sollRow = getByTestId("axis-tooltip-cruise-soll");
+    const text = sollRow.textContent ?? "";
+    // Reflects the backend (user-target) score 0.8 → 22.00 …
+    expect(text).toMatch(/22\.00/);
+    // … and NOT the static preset value 0.5 → 17.50.
+    expect(text).not.toMatch(/17\.50/);
+  });
+
+  it("falls back to the preset polygon when the backend supplies no target score (gh-767)", () => {
+    // Empty target_polygons → keep using the static preset (legacy behaviour).
+    const ksetCruise = {
+      ...kset,
+      ist_polygon: { ...kset.ist_polygon, cruise: cruiseKpi },
+    };
+    const { getByTestId } = render(
+      <MissionRadarChart
+        kpis={ksetCruise}
+        activeMissions={[preset("trainer")]}
+        onAxisClick={() => undefined}
+      />,
+    );
+    fireEvent.mouseEnter(getByTestId("hover-wedge-cruise"));
+    const sollRow = getByTestId("axis-tooltip-cruise-soll");
+    // preset cruise 0.5 → 10 + 0.5×15 = 17.50.
+    expect(sollRow.textContent ?? "").toMatch(/17\.50/);
+  });
+
   it("includes ghost mission values in tooltip (gh-601)", () => {
     const ghost = preset("sailplane");
     // Set a distinctive cruise score on the ghost so we can locate it.
