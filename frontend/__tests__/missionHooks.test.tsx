@@ -200,6 +200,76 @@ describe("useMissionObjectives", () => {
     expect(String(putUrl)).toContain("/aeroplanes/aero-2/mission-objectives");
     expect(putInit).toMatchObject({ method: "PUT" });
   });
+
+  it("revalidates the mission-kpis cache after update() so the radar updates live (gh-770)", async () => {
+    const objective = {
+      mission_type: "trainer",
+      target_cruise_mps: 20,
+      target_stall_safety: 1.3,
+      target_maneuver_n: 4,
+      target_glide_ld: 10,
+      target_climb_energy: 5,
+      target_wing_loading_n_m2: 200,
+      target_field_length_m: 50,
+      available_runway_m: 100,
+      runway_type: "grass" as const,
+      t_static_N: 30,
+      takeoff_mode: "runway" as const,
+    };
+    const updated = { ...objective, target_cruise_mps: 25 };
+    const kpis = {
+      aeroplane_uuid: "aero-3",
+      ist_polygon: {},
+      target_polygons: [],
+      active_mission_id: "trainer",
+      computed_at: "now",
+      context_hash: "x",
+    };
+
+    let kpiGetCount = 0;
+    vi.spyOn(global, "fetch").mockImplementation((input, init) => {
+      const url = String(input);
+      const method = (init?.method ?? "GET").toUpperCase();
+      if (url.includes("/mission-kpis")) {
+        kpiGetCount += 1;
+        return Promise.resolve(
+          new Response(JSON.stringify(kpis), { status: 200 }),
+        );
+      }
+      if (url.includes("/mission-objectives")) {
+        const body = method === "PUT" ? updated : objective;
+        return Promise.resolve(
+          new Response(JSON.stringify(body), { status: 200 }),
+        );
+      }
+      return Promise.resolve(new Response("{}", { status: 200 }));
+    });
+
+    // Render both hooks in the SAME SWR cache so a global revalidation from
+    // the objectives hook is visible to the kpis cache entry.
+    const { result } = renderHook(
+      () => ({
+        kpis: useMissionKpis("aero-3", ["trainer"]),
+        obj: useMissionObjectives("aero-3"),
+      }),
+      { wrapper },
+    );
+
+    await waitFor(() => expect(result.current.obj.data).toEqual(objective));
+    await waitFor(() => expect(result.current.kpis.data).toBeTruthy());
+
+    const kpiGetsBeforeUpdate = kpiGetCount;
+
+    await act(async () => {
+      await result.current.obj.update(updated);
+    });
+
+    // The PUT must trigger a fresh mission-kpis fetch (live radar refresh),
+    // not leave the stale payload until a page reload.
+    await waitFor(() =>
+      expect(kpiGetCount).toBeGreaterThan(kpiGetsBeforeUpdate),
+    );
+  });
 });
 
 describe("useMissionPresets", () => {

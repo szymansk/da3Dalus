@@ -1,6 +1,6 @@
 "use client";
 
-import useSWR from "swr";
+import useSWR, { useSWRConfig } from "swr";
 import { fetcher, putJson } from "@/lib/fetcher";
 
 // gh-477: backend ``LandingSurface`` literal — keep in lock-step with
@@ -35,6 +35,7 @@ export interface MissionObjective {
 }
 
 export function useMissionObjectives(aeroplaneId: string | null) {
+  const { mutate: globalMutate } = useSWRConfig();
   const path = aeroplaneId
     ? `/aeroplanes/${encodeURIComponent(aeroplaneId)}/mission-objectives`
     : null;
@@ -49,6 +50,15 @@ export function useMissionObjectives(aeroplaneId: string | null) {
     if (!aeroplaneId || !path) return null;
     const updated = await putJson<MissionObjective>(path, payload);
     await mutate(updated, { revalidate: false });
+    // gh-770: the spider chart's Soll polygon (and Ist) is computed server-side
+    // in /mission-kpis from the persisted objective (since gh-767). Revalidate
+    // every mission-kpis cache entry for this aeroplane so the radar refreshes
+    // live instead of only after a page reload. Prefix match because the key
+    // carries a `?missions=…` query that varies with the active/comparison set.
+    const kpiPrefix = `/aeroplanes/${encodeURIComponent(aeroplaneId)}/mission-kpis`;
+    await globalMutate(
+      (key) => typeof key === "string" && key.startsWith(kpiPrefix),
+    );
     return updated;
   };
 
