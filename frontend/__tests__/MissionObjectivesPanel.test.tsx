@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen, fireEvent, waitFor } from "@testing-library/react";
+import { render, screen, fireEvent, waitFor, act } from "@testing-library/react";
 import React from "react";
 import { MissionObjectivesPanel } from "@/components/workbench/mission/MissionObjectivesPanel";
 
@@ -287,6 +287,32 @@ describe("MissionObjectivesPanel", () => {
         vi.useRealTimers();
       }
     });
+  });
+
+  // gh-763: the 300 ms debounce scheduled by set() (e.g. on a mission_type
+  // change) must be cleared when the component unmounts. Otherwise the
+  // orphaned timer fires after unmount and issues a stale-closure update()
+  // for an aeroplane the user has navigated away from — a data-write bug in
+  // production, and the source of cross-test timer leakage that flakes the
+  // full suite (the leaked call carries the pre-change draft and lands after
+  // a later test's assertions).
+  it("does not call update() after unmount when a debounce is pending (gh-763)", () => {
+    vi.useFakeTimers();
+    try {
+      const { unmount } = render(<MissionObjectivesPanel aeroplaneId="x" />);
+      const select = screen.getByLabelText(/Mission Type/i) as HTMLSelectElement;
+      fireEvent.change(select, { target: { value: "motor_glider" } });
+      // A 300 ms debounced update() is now pending. Unmount before it fires.
+      unmount();
+      // Advance well past the debounce window.
+      act(() => {
+        vi.advanceTimersByTime(400);
+      });
+      // The orphaned timer must have been cleared on unmount.
+      expect(updateMock).not.toHaveBeenCalled();
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it("preserves in-flight draft edits across SWR revalidations for the SAME aeroplaneId (gh-602)", () => {

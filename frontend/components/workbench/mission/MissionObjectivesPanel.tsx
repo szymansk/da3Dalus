@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useRef, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { useMissionObjectives, type MissionObjective } from "@/hooks/useMissionObjectives";
 import { useMissionPresets, type MissionPreset, type AxisName } from "@/hooks/useMissionPresets";
 import { normalizedToRaw } from "@/lib/missionScale";
@@ -130,6 +130,19 @@ export function MissionObjectivesPanel({ aeroplaneId }: Props) {
   const [bannerVisible, setBannerVisible] = useState<boolean>(false);
   const [lastAeroplaneId, setLastAeroplaneId] = useState<string | null>(null);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // gh-763: clear any pending debounce on unmount. Without this, the 300 ms
+  // timer scheduled by set() fires after the component is gone and issues a
+  // stale-closure update() for an aeroplane the user already left — a spurious
+  // write in production, and the source of cross-test timer leakage that flakes
+  // the unit suite. Cleanup-only effect (no setState), so it does not run afoul
+  // of the react-hooks/set-state-in-effect constraint noted below.
+  useEffect(
+    () => () => {
+      if (timer.current) clearTimeout(timer.current);
+    },
+    [],
+  );
 
   // "Adjust state when a prop changes" pattern — avoids useEffect+setState
   // (which react-hooks/set-state-in-effect forbids). When the aeroplaneId
