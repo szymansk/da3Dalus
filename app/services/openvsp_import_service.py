@@ -449,7 +449,10 @@ def _try_slicer_refinement(
         # ``factor``) so the slice stations, X-dominance gate, and
         # symmetry-clip all reason in the STEP's own frame. Output is
         # rescaled by ``factor`` below. ``n`` is dimensionless.
-        inv = 1.0 / factor if factor else 1.0
+        # ``factor`` is validated to (0.001, 10) upstream; the guard keeps
+        # a stray non-positive value from zeroing or flipping the geometry.
+        safe_factor = factor if factor > 0.0 else 1.0
+        inv = 1.0 / safe_factor
         handler_xsec_dicts = [
             {
                 "xyz": [v * inv for v in xs.xyz],
@@ -540,8 +543,9 @@ def _try_slicer_refinement(
 
     # gh-765: the slicer output is in the full-size STEP frame (mm).
     # Convert mm→m and re-apply the import ``factor`` so the refined
-    # xsecs land at the same scale as the wings.
-    eff = _MM_TO_M * factor
+    # xsecs land at the same scale as the wings. (``safe_factor`` mirrors
+    # the non-positive guard used for ``inv`` above.)
+    eff = _MM_TO_M * safe_factor
     refined = []
     for xs in slicer_xsecs:
         refined.append(
