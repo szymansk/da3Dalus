@@ -583,6 +583,66 @@ def test_comparison_target_polygons_keep_preset_defaults(client_and_db):
     assert sailplane_soll.scores_0_1 == presets["sailplane"].target_polygon
 
 
+def test_objective_override_follows_mission_type_not_primary(client_and_db):
+    """gh-767: the objective targets land on objective.mission_type's polygon
+    even when a *different* mission is the primary/active one — they describe
+    the user's own mission, not whichever id happens to be first."""
+    from app.services.mission_objective_service import list_mission_presets
+
+    _, SessionLocal = client_and_db
+    with SessionLocal() as db:
+        aeroplane = make_aeroplane(db, total_mass_kg=2.0)
+        aircraft_id = aeroplane.id
+    _seed_context(SessionLocal, aircraft_id)
+    # User's stored mission is trainer; cruise 22 → trainer range (10,25) → 0.8.
+    _persist_objective(SessionLocal, aircraft_id, mission_type="trainer", target_cruise_mps=22.0)
+
+    with patch(
+        "app.services.mission_kpi_service._compute_field_length_score",
+        return_value=(45.0, 1.0, None),
+    ):
+        with SessionLocal() as db:
+            presets = {p.id: p for p in list_mission_presets(db)}
+            # sailplane is primary, trainer is only a comparison overlay.
+            kset = compute_mission_kpis(db, aircraft_id, ["sailplane", "trainer"])
+
+    trainer_soll = next(p for p in kset.target_polygons if p.mission_id == "trainer")
+    sailplane_soll = next(p for p in kset.target_polygons if p.mission_id == "sailplane")
+    # The objective mission (trainer) is objective-derived even though not primary…
+    assert trainer_soll.scores_0_1["cruise"] == pytest.approx(0.8)
+    # …and the primary-but-non-objective mission keeps its static preset polygon.
+    assert sailplane_soll.scores_0_1 == presets["sailplane"].target_polygon
+
+
+def test_objective_target_scores_clip_out_of_range(client_and_db):
+    """gh-767: targets outside the axis range clip to [0,1] exactly like the
+    matching Ist axis (guards against a future raw (v-lo)/(hi-lo) regression)."""
+    _, SessionLocal = client_and_db
+    with SessionLocal() as db:
+        aeroplane = make_aeroplane(db, total_mass_kg=2.0)
+        aircraft_id = aeroplane.id
+    _seed_context(SessionLocal, aircraft_id)
+    # trainer cruise range (10,25); stall_safety range (1.3,2.5).
+    _persist_objective(
+        SessionLocal,
+        aircraft_id,
+        mission_type="trainer",
+        target_cruise_mps=999.0,  # >> hi → clip to 1.0
+        target_stall_safety=1.0,  # < lo → clip to 0.0
+    )
+
+    with patch(
+        "app.services.mission_kpi_service._compute_field_length_score",
+        return_value=(45.0, 1.0, None),
+    ):
+        with SessionLocal() as db:
+            kset = compute_mission_kpis(db, aircraft_id, ["trainer"])
+
+    soll = next(p for p in kset.target_polygons if p.mission_id == "trainer")
+    assert soll.scores_0_1["cruise"] == 1.0
+    assert soll.scores_0_1["stall_safety"] == 0.0
+
+
 # ---------------------------------------------------------------------------
 # Warning propagation (#562 review fix — surface t_static_N / recompute hints
 # via MissionAxisKpi.warning now that FieldLengthsPanel is gone).

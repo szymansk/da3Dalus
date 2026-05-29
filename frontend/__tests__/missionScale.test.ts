@@ -217,3 +217,45 @@ describe("computeAxisRanges with Ist KPIs (gh-601 Part C)", () => {
     expect(ranges.field_friendliness[1]).toBeGreaterThanOrEqual(120);
   });
 });
+
+describe("resolveSollScore (gh-767)", () => {
+  const kset = (
+    targets: MissionKpiSet["target_polygons"],
+  ): MissionKpiSet => ({
+    aeroplane_uuid: "x",
+    ist_polygon: {} as MissionKpiSet["ist_polygon"],
+    target_polygons: targets,
+    active_mission_id: "trainer",
+    computed_at: "",
+    context_hash: "0".repeat(64),
+  });
+
+  it("prefers the backend target_polygons score over the preset", async () => {
+    const { resolveSollScore } = await import("@/lib/missionScale");
+    const kpis = kset([
+      {
+        mission_id: "trainer",
+        label: "Trainer",
+        scores_0_1: { cruise: 0.8 },
+      },
+    ]);
+    // preset trainer cruise score is 0.3 — backend 0.8 must win.
+    expect(resolveSollScore(kpis, trainer, "cruise")).toBe(0.8);
+  });
+
+  it("falls back to the preset score per-axis when the backend omits it", async () => {
+    const { resolveSollScore } = await import("@/lib/missionScale");
+    // Backend entry exists for trainer but carries only cruise — glide must
+    // fall back to the preset (0.4).
+    const kpis = kset([
+      { mission_id: "trainer", label: "Trainer", scores_0_1: { cruise: 0.8 } },
+    ]);
+    expect(resolveSollScore(kpis, trainer, "glide")).toBe(0.4);
+  });
+
+  it("falls back to the preset polygon when no backend entry matches", async () => {
+    const { resolveSollScore } = await import("@/lib/missionScale");
+    const kpis = kset([]);
+    expect(resolveSollScore(kpis, trainer, "cruise")).toBe(0.3);
+  });
+});
