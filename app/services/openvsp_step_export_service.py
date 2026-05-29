@@ -164,6 +164,57 @@ def export_geom_step(
         return None
 
 
+def scale_geom_step(
+    rel_step_path: str, factor: float, aeroplane_uuid: str
+) -> Optional[str]:
+    """Scale a stored STEP file uniformly by ``factor`` about the origin,
+    in place, and return its (unchanged) relative path (gh-769).
+
+    OpenVSP exports the STEP from the **unscaled** model; this brings the
+    precise download geometry to the same model scale as the rest of the
+    imported aeroplane (so it matches the scaled xsecs and is usable for
+    internal-installation work). Scaling the actual solid — rather than
+    fudging the STEP unit declaration — avoids the foot/metre
+    reader-interpretation footgun seen in gh-732.
+
+    ``factor == 1.0`` is a no-op (returns the path unchanged). Returns
+    ``None`` when CadQuery is unavailable or the transform/export fails;
+    the caller then keeps the unscaled file (best-effort, never aborts
+    the import). ``aeroplane_uuid`` is accepted for symmetry with
+    :func:`export_geom_step`.
+    """
+    if abs(factor - 1.0) < 1e-9:
+        return rel_step_path
+    try:
+        import cadquery as cq
+        from cadquery import exporters
+        from OCP.BRepBuilderAPI import BRepBuilderAPI_Transform
+        from OCP.gp import gp_Pnt, gp_Trsf
+    except Exception:  # noqa: BLE001 — CAD stack is optional on some platforms
+        logger.info("CadQuery unavailable — leaving STEP %r unscaled.", rel_step_path)
+        return None
+    try:
+        full_path = Path(settings.ARTIFACTS_BASE_DIR) / rel_step_path
+        if not full_path.exists():
+            return None
+        shape = cq.importers.importStep(str(full_path)).val()
+        trsf = gp_Trsf()
+        trsf.SetScale(gp_Pnt(0.0, 0.0, 0.0), float(factor))
+        scaled = cq.Shape.cast(
+            BRepBuilderAPI_Transform(shape.wrapped, trsf, True).Shape()
+        )
+        exporters.export(
+            cq.Workplane(obj=scaled), str(full_path), exporters.ExportTypes.STEP
+        )
+        return rel_step_path
+    except Exception as exc:  # noqa: BLE001 — best effort, never abort import
+        logger.warning(
+            "Failed to scale STEP %r by %g (%s) — keeping unscaled.",
+            rel_step_path, factor, exc,
+        )
+        return None
+
+
 def cleanup_aeroplane_step_files(aeroplane_uuid: str) -> None:
     """Best-effort removal of the per-aeroplane STEP directory on
     ``DELETE /aeroplanes/<uuid>``. Errors are logged but never raised

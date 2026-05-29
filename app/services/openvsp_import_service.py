@@ -138,29 +138,24 @@ def _scale_aeroplane_lengths(
     Scales:
 
     * Wing x-sec ``xyz_le`` and ``chord``
-    * Fuselage x-sec ``xyz`` and superellipse ``a``/``b`` semi-axes
     * Aeroplane ``xyz_ref`` (reference point / CG)
     * Optional weight items' ``x_m``/``y_m``/``z_m`` positions
 
-    Does NOT scale (intentional, per ``feedback_openvsp_import_rc_scope``):
+    Does NOT scale here:
 
+    * **Fuselages** — scaled in ``_persist_aeroplane`` via
+      :func:`_scale_fuselage_xsecs`, *after* the slicer refinement which
+      must run in the unscaled STEP frame (gh-765). Scaling them here
+      would force the slicer to unscale/rescale around the import factor.
     * Wing-section ``twist`` (angular)
-    * Fuselage superellipse ``n`` exponent (dimensionless)
-    * Weight items ``mass_kg`` — see Variante B for the mass-scaling story
-    * ``total_mass_kg`` on the aeroplane
+    * Weight items ``mass_kg`` / ``total_mass_kg`` (per
+      ``feedback_openvsp_import_rc_scope`` — see Variante B)
     """
     # Wings
     for wing in (aeroplane.wings or {}).values():
         for xs in wing.x_secs:
             xs.xyz_le = [v * factor for v in xs.xyz_le]
             xs.chord = xs.chord * factor
-
-    # Fuselages
-    for fus in (aeroplane.fuselages or {}).values():
-        for fxs in fus.x_secs:
-            fxs.xyz = [v * factor for v in fxs.xyz]
-            fxs.a = fxs.a * factor
-            fxs.b = fxs.b * factor
 
     # Aeroplane reference point (CG / origin) — also a length
     if aeroplane.xyz_ref is not None:
@@ -172,6 +167,27 @@ def _scale_aeroplane_lengths(
             item.x_m = item.x_m * factor
             item.y_m = item.y_m * factor
             item.z_m = item.z_m * factor
+
+
+def _scale_fuselage_xsecs(x_secs, factor: float):
+    """Return a new xsec list scaled by ``factor`` (gh-765).
+
+    Applied once in ``_persist_aeroplane`` after the slicer refinement,
+    which runs in the unscaled STEP frame. Scales the length-typed fields
+    (``xyz`` position, ``a``/``b`` semi-axes); the dimensionless
+    super-ellipse exponent ``n`` is left untouched.
+    """
+    from app.schemas.aeroplaneschema import FuselageXSecSuperEllipseSchema
+
+    return [
+        FuselageXSecSuperEllipseSchema(
+            xyz=[v * factor for v in xs.xyz],
+            a=xs.a * factor,
+            b=xs.b * factor,
+            n=xs.n,
+        )
+        for xs in x_secs
+    ]
 
 
 def _resolve_scale_factor(
@@ -398,7 +414,6 @@ def _try_slicer_refinement(
     rel_step_path: str,
     handler_fuse,
     fuse_name: str,
-    factor: float = 1.0,
 ):
     """Slice the gh-729/731 STEP file into a finer xsec list (gh-732).
 
@@ -408,13 +423,11 @@ def _try_slicer_refinement(
     on purpose** — the slicer is a refinement, not a requirement, and
     the handler-built schema is always the fallback.
 
-    ``factor`` (gh-765) is the import scale factor already applied to
-    the handler schema. The STEP is exported from the **unscaled**
-    OpenVSP model, so the slicer runs in the full-size frame: the
-    handler anchors are divided by ``factor`` to recover the STEP's
-    coordinates, and the slicer's full-size output is multiplied back by
-    ``factor`` so the refined xsecs match the rest of the scaled
-    aeroplane. ``factor=1.0`` (no scaling requested) is a no-op.
+    Frame-pure (gh-765): both the handler anchors and the STEP are in the
+    **unscaled** OpenVSP frame, so this just converts the slicer's mm
+    output to metres. The import scale factor is applied once afterwards,
+    in :func:`_persist_aeroplane` via :func:`_scale_fuselage_xsecs` (xsecs)
+    and ``scale_geom_step`` (the stored STEP files).
     """
     from app.core.config import settings
     from app.schemas.aeroplaneschema import FuselageXSecSuperEllipseSchema
@@ -444,22 +457,8 @@ def _try_slicer_refinement(
     # actually curves. Falls back to cadquery's XZ-profile curvature
     # for the rare case where the handler list is empty / has < 2 xsecs.
     try:
-        # gh-765: the STEP is exported from the unscaled OpenVSP model.
-        # Recover the full-size handler anchors (divide out the import
-        # ``factor``) so the slice stations, X-dominance gate, and
-        # symmetry-clip all reason in the STEP's own frame. Output is
-        # rescaled by ``factor`` below. ``n`` is dimensionless.
-        # ``factor`` is validated to (0.001, 10) upstream; the guard keeps
-        # a stray non-positive value from zeroing or flipping the geometry.
-        safe_factor = factor if factor > 0.0 else 1.0
-        inv = 1.0 / safe_factor
         handler_xsec_dicts = [
-            {
-                "xyz": [v * inv for v in xs.xyz],
-                "a": xs.a * inv,
-                "b": xs.b * inv,
-                "n": xs.n,
-            }
+            {"xyz": list(xs.xyz), "a": xs.a, "b": xs.b, "n": xs.n}
             for xs in handler_fuse.x_secs
         ]
 
@@ -541,18 +540,13 @@ def _try_slicer_refinement(
         )
         return None
 
-    # gh-765: the slicer output is in the full-size STEP frame (mm).
-    # Convert mm→m and re-apply the import ``factor`` so the refined
-    # xsecs land at the same scale as the wings. (``safe_factor`` mirrors
-    # the non-positive guard used for ``inv`` above.)
-    eff = _MM_TO_M * safe_factor
     refined = []
     for xs in slicer_xsecs:
         refined.append(
             FuselageXSecSuperEllipseSchema(
-                xyz=[v * eff for v in xs["xyz"]],
-                a=max(float(xs["a"]) * eff, 0.0),
-                b=max(float(xs["b"]) * eff, 0.0),
+                xyz=[v * _MM_TO_M for v in xs["xyz"]],
+                a=max(float(xs["a"]) * _MM_TO_M, 0.0),
+                b=max(float(xs["b"]) * _MM_TO_M, 0.0),
                 n=max(float(xs["n"]), 1.0),
             )
         )
@@ -742,56 +736,89 @@ def _persist_aeroplane(
                     result, component_type="FUSELAGE", component_name=fuse_name, exc=exc
                 )
                 continue
+            # gh-765: STEP export + sewing + slicer refinement all run in
+            # the UNSCALED OpenVSP frame. The import scale is applied once
+            # afterwards — to the xsecs (``_scale_fuselage_xsecs``) and to
+            # the stored STEP download files (``scale_geom_step``, gh-769).
             gid = name_to_gid.get(fuse_name)
-            if vsp is None or gid is None:
-                continue
-            progress_cb(
-                "fuselage_step",
-                base_pct + int(fuselage_step_pct * 0.25),
-                f"{fuse_name}: exporting STEP",
-            )
-            rel_step = openvsp_step_export_service.export_geom_step(
-                vsp=vsp,
-                gid=gid,
-                geom_name=fuse_name,
-                aeroplane_uuid=str(aeroplane.uuid),
-            )
-            if not rel_step:
-                continue
-            _set_fuselage_step_path(db, aeroplane.uuid, fuse_name, rel_step)
-            progress_cb(
-                "fuselage_sew",
-                base_pct + int(fuselage_step_pct * 0.5),
-                f"{fuse_name}: sewing closed Solid",
-            )
-            rel_solid = openvsp_solid_sewing_service.sew_imported_geom_to_solid(
-                source_rel_step=rel_step,
-                aeroplane_uuid=str(aeroplane.uuid),
-                geom_name=fuse_name,
-            )
-            if rel_solid:
-                _set_fuselage_solid_step_path(
-                    db, aeroplane.uuid, fuse_name, rel_solid
+            rel_step: Optional[str] = None
+            rel_solid: Optional[str] = None
+            refined_xsecs = None
+            if vsp is not None and gid is not None:
+                progress_cb(
+                    "fuselage_step",
+                    base_pct + int(fuselage_step_pct * 0.25),
+                    f"{fuse_name}: exporting STEP",
+                )
+                rel_step = openvsp_step_export_service.export_geom_step(
+                    vsp=vsp,
+                    gid=gid,
+                    geom_name=fuse_name,
+                    aeroplane_uuid=str(aeroplane.uuid),
+                )
+                if rel_step:
+                    _set_fuselage_step_path(db, aeroplane.uuid, fuse_name, rel_step)
+                    progress_cb(
+                        "fuselage_sew",
+                        base_pct + int(fuselage_step_pct * 0.5),
+                        f"{fuse_name}: sewing closed Solid",
+                    )
+                    rel_solid = openvsp_solid_sewing_service.sew_imported_geom_to_solid(
+                        source_rel_step=rel_step,
+                        aeroplane_uuid=str(aeroplane.uuid),
+                        geom_name=fuse_name,
+                    )
+                    if rel_solid:
+                        _set_fuselage_solid_step_path(
+                            db, aeroplane.uuid, fuse_name, rel_solid
+                        )
+
+                    # gh-732: refine the schema's xsecs from the just-exported
+                    # (unscaled) STEP. Solid STEP gives the slicer a real
+                    # volume metric for logging; fall back to the Surface STEP
+                    # when sewing failed. The handler-built schema stays if the
+                    # slicer fails or produces too few points.
+                    progress_cb(
+                        "fuselage_slice",
+                        base_pct + int(fuselage_step_pct * 0.75),
+                        f"{fuse_name}: slicing for finer xsecs",
+                    )
+                    slicer_source = rel_solid or rel_step
+                    refined_xsecs = _try_slicer_refinement(
+                        slicer_source, fuse, fuse_name
+                    )
+
+            # gh-765: apply the import scale ONCE, after refinement. Persist
+            # the scaled xsecs whether they came from the slicer or the
+            # handler fallback. Skip the rewrite only when nothing changed
+            # (no refinement and no scaling) — ``create_fuselage`` already
+            # stored the unscaled handler xsecs in that case.
+            scaling = abs(scale_factor - 1.0) > 1e-9
+            if refined_xsecs is not None or scaling:
+                final_xsecs = refined_xsecs if refined_xsecs is not None else fuse.x_secs
+                _replace_fuselage_xsecs(
+                    db,
+                    aeroplane.uuid,
+                    fuse_name,
+                    _scale_fuselage_xsecs(final_xsecs, scale_factor),
                 )
 
-            # gh-732: refine the schema's xsecs from the just-exported
-            # STEP via the slicer. Solid STEP gives the slicer a real
-            # volume metric for logging; we fall back to the Surface
-            # STEP when sewing failed. The handler-built schema stays
-            # if the slicer fails or produces too few points.
-            progress_cb(
-                "fuselage_slice",
-                base_pct + int(fuselage_step_pct * 0.75),
-                f"{fuse_name}: slicing for finer xsecs",
-            )
-            slicer_source = rel_solid or rel_step
-            refined_xsecs = _try_slicer_refinement(
-                slicer_source, fuse, fuse_name, scale_factor
-            )
-            if refined_xsecs is not None:
-                _replace_fuselage_xsecs(
-                    db, aeroplane.uuid, fuse_name, refined_xsecs
-                )
+            # gh-769: scale the stored STEP download files to model scale.
+            # Done AFTER slicing (which needed the unscaled frame). The
+            # precise STEP is what the user downloads / uses for internal
+            # installations, so it must match the scaled aeroplane.
+            if scaling:
+                for setter, rel in (
+                    (_set_fuselage_step_path, rel_step),
+                    (_set_fuselage_solid_step_path, rel_solid),
+                ):
+                    if not rel:
+                        continue
+                    scaled_rel = openvsp_step_export_service.scale_geom_step(
+                        rel, scale_factor, str(aeroplane.uuid)
+                    )
+                    if scaled_rel:
+                        setter(db, aeroplane.uuid, fuse_name, scaled_rel)
 
     # Weight items (gh-693): persist each WeightItemWrite via the same
     # entry point the manual mass-properties UI uses, so categories,
