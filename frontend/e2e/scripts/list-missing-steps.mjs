@@ -124,7 +124,7 @@ function printHuman(byFile, total) {
     return;
   }
   console.log(`✗ ${total} missing step definitions across ${byFile.size} feature(s):\n`);
-  for (const [f, arr] of [...byFile.entries()].sort()) {
+  for (const [f, arr] of [...byFile.entries()].sort(([a], [b]) => a.localeCompare(b))) {
     console.log(`  ${f}: ${arr.length} missing`);
     for (const { line, phrase } of arr) {
       console.log(`    line ${line}: ${phrase}`);
