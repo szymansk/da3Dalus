@@ -35,6 +35,7 @@ from app.schemas.mission_kpi import (
     MissionKpiSet,
     MissionTargetPolygon,
 )
+from app.schemas.mission_objective import MissionObjective
 
 # Module-level import so the symbol exists for both runtime calls and
 # `unittest.mock.patch("app.services.mission_kpi_service.compute_field_lengths_for_aeroplane", ...)`.
@@ -351,6 +352,40 @@ def _kpi_field_friendliness(
     )
 
 
+# ----- Soll polygon from user targets (gh-767) ------------------------------
+
+
+def _objective_target_scores(
+    objective: MissionObjective,
+    axis_ranges: dict[AxisName, tuple[float, float]],
+) -> dict[AxisName, float]:
+    """Soll-polygon scores derived from the user's editable mission targets.
+
+    gh-767: each score is normalised with the *same* ``_normalise_score`` and
+    ``axis_ranges`` the matching Ist axis uses, so the white Soll line and the
+    orange Ist polygon stay directly comparable on the radar.
+
+    ``field_friendliness`` is special: its Ist axis is
+    ``target_field_length_m / effective`` (an achievement ratio), not a
+    range-normalised physical value. Meeting the user's declared target field
+    length is therefore full score by construction (``1.0``) — the Ist polygon
+    shows how close the aircraft actually gets.
+    """
+    return {
+        "stall_safety": _normalise_score(
+            objective.target_stall_safety, *axis_ranges["stall_safety"]
+        ),
+        "glide": _normalise_score(objective.target_glide_ld, *axis_ranges["glide"]),
+        "climb": _normalise_score(objective.target_climb_energy, *axis_ranges["climb"]),
+        "cruise": _normalise_score(objective.target_cruise_mps, *axis_ranges["cruise"]),
+        "maneuver": _normalise_score(objective.target_maneuver_n, *axis_ranges["maneuver"]),
+        "wing_loading": _normalise_score(
+            objective.target_wing_loading_n_m2, *axis_ranges["wing_loading"]
+        ),
+        "field_friendliness": 1.0,
+    }
+
+
 # ----- Aggregator -----------------------------------------------------------
 
 
@@ -432,17 +467,25 @@ def compute_mission_kpis(
         ),
     }
 
-    # Build target polygons (Soll for each active mission preset)
+    # Build target polygons (Soll for each active mission preset). gh-767:
+    # the polygon for the user's own mission (objective.mission_type) is
+    # derived from their editable MissionObjective targets so the white Soll
+    # line tracks live edits; comparison overlays keep their static preset
+    # polygon (no per-aeroplane targets exist for them).
     targets: list[MissionTargetPolygon] = []
     for mid in active_mission_ids:
         preset = presets.get(mid)
         if preset is None:
             continue
+        if mid == objective.mission_type:
+            scores = _objective_target_scores(objective, preset.axis_ranges)
+        else:
+            scores = preset.target_polygon
         targets.append(
             MissionTargetPolygon(
                 mission_id=preset.id,
                 label=preset.label,
-                scores_0_1=preset.target_polygon,
+                scores_0_1=scores,
             )
         )
 

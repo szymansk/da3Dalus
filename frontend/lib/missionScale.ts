@@ -96,6 +96,23 @@ export function normalizedToRaw(score: number, range: AxisRange): number {
   return range[0] + clamped * (range[1] - range[0]);
 }
 
+/**
+ * Resolve the Soll-polygon score for one mission/axis (gh-767).
+ *
+ * Prefers the backend `target_polygons` score (which the active mission derives
+ * from the user's editable MissionObjective targets), keyed by mission id, with
+ * a per-axis fallback to the static `preset.target_polygon` when the backend
+ * supplies no score for that mission/axis.
+ */
+export function resolveSollScore(
+  kpis: MissionKpiSet,
+  preset: MissionPreset,
+  axis: AxisName,
+): number {
+  const tp = kpis.target_polygons.find((t) => t.mission_id === preset.id);
+  return tp?.scores_0_1[axis] ?? preset.target_polygon[axis];
+}
+
 /** Display unit for each axis — used by the radar hover tooltip. */
 export const AXIS_UNITS: Record<AxisName, string> = {
   stall_safety: "×",

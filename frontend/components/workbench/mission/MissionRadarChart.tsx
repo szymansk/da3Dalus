@@ -10,6 +10,7 @@ import {
   normalizedToRaw,
   polarToCartesian,
   renormalise,
+  resolveSollScore,
 } from "@/lib/missionScale";
 
 interface Props {
@@ -127,7 +128,7 @@ export function MissionRadarChart({
 
   const sollPoints = active
     ? AXES.map((axis, i) => {
-        const localScore = active.target_polygon[axis];
+        const localScore = resolveSollScore(kpis, active, axis);
         const local = active.axis_ranges[axis];
         const global = renormalise(localScore, local, globalRanges[axis]);
         return polarToCartesian(i, global, R);
@@ -136,7 +137,7 @@ export function MissionRadarChart({
 
   const ghostPolygons = ghosts.map((g) =>
     AXES.map((axis, i) => {
-      const score = g.target_polygon[axis];
+      const score = resolveSollScore(kpis, g, axis);
       const local = g.axis_ranges[axis];
       const global = renormalise(score, local, globalRanges[axis]);
       return polarToCartesian(i, global, R);
@@ -333,14 +334,15 @@ function AxisTooltip({ axis, kpis, active, ghosts }: AxisTooltipProps) {
       ? normalizedToRaw(k.score_0_1, [k.range_min, k.range_max])
       : null;
 
+  // gh-767: mirror the chart's Soll source via the shared resolver.
   const sollValue = active
-    ? normalizedToRaw(active.target_polygon[axis], active.axis_ranges[axis])
+    ? normalizedToRaw(resolveSollScore(kpis, active, axis), active.axis_ranges[axis])
     : null;
 
   const ghostValues = ghosts.map((g, idx) => ({
     label: g.label,
     color: GHOST_COLORS[idx % GHOST_COLORS.length],
-    value: normalizedToRaw(g.target_polygon[axis], g.axis_ranges[axis]),
+    value: normalizedToRaw(resolveSollScore(kpis, g, axis), g.axis_ranges[axis]),
   }));
 
   // Position the tooltip box. Width/height are estimates; we offset so the
