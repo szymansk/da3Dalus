@@ -190,22 +190,28 @@ def scale_geom_step(
         from cadquery import exporters
         from OCP.BRepBuilderAPI import BRepBuilderAPI_Transform
         from OCP.gp import gp_Pnt, gp_Trsf
-    except Exception:  # noqa: BLE001 — CAD stack is optional on some platforms
+    except ImportError:
         logger.info("CadQuery unavailable — leaving STEP %r unscaled.", rel_step_path)
         return None
     try:
         full_path = Path(settings.ARTIFACTS_BASE_DIR) / rel_step_path
         if not full_path.exists():
             return None
-        shape = cq.importers.importStep(str(full_path)).val()
+        # ``.vals()`` (not ``.val()``) so multi-shell STEPs — e.g. a
+        # symmetric fuselage whose export holds both halves — are scaled
+        # in full instead of silently dropping all but the first shell.
+        shapes = cq.importers.importStep(str(full_path)).vals()
+        if not shapes:
+            return None
         trsf = gp_Trsf()
         trsf.SetScale(gp_Pnt(0.0, 0.0, 0.0), float(factor))
-        scaled = cq.Shape.cast(
-            BRepBuilderAPI_Transform(shape.wrapped, trsf, True).Shape()
-        )
-        exporters.export(
-            cq.Workplane(obj=scaled), str(full_path), exporters.ExportTypes.STEP
-        )
+        scaled = [
+            cq.Shape.cast(BRepBuilderAPI_Transform(s.wrapped, trsf, True).Shape())
+            for s in shapes
+        ]
+        # ``exporters.export`` accepts a Shape or an iterable of Shapes.
+        out = scaled[0] if len(scaled) == 1 else scaled
+        exporters.export(out, str(full_path), exporters.ExportTypes.STEP)
         return rel_step_path
     except Exception as exc:  # noqa: BLE001 — best effort, never abort import
         logger.warning(

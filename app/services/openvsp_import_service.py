@@ -57,6 +57,8 @@ from app.converters.openvsp_importer import ImportResult, ImportWarning, import_
 from app.schemas.aeroplaneschema import (
     AeroplaneSchema,
     AsbWingGeometryWriteSchema,
+    FuselageSchema,
+    FuselageXSecSuperEllipseSchema,
 )
 from app.schemas.weight_item import WeightItemWrite
 
@@ -169,7 +171,9 @@ def _scale_aeroplane_lengths(
             item.z_m = item.z_m * factor
 
 
-def _scale_fuselage_xsecs(x_secs, factor: float):
+def _scale_fuselage_xsecs(
+    x_secs: list[FuselageXSecSuperEllipseSchema], factor: float
+) -> list[FuselageXSecSuperEllipseSchema]:
     """Return a new xsec list scaled by ``factor`` (gh-765).
 
     Applied once in ``_persist_aeroplane`` after the slicer refinement,
@@ -177,8 +181,6 @@ def _scale_fuselage_xsecs(x_secs, factor: float):
     (``xyz`` position, ``a``/``b`` semi-axes); the dimensionless
     super-ellipse exponent ``n`` is left untouched.
     """
-    from app.schemas.aeroplaneschema import FuselageXSecSuperEllipseSchema
-
     return [
         FuselageXSecSuperEllipseSchema(
             xyz=[v * factor for v in xs.xyz],
@@ -412,9 +414,9 @@ def _is_x_dominant_fuselage(handler_xsec_dicts: list[dict]) -> bool:
 
 def _try_slicer_refinement(
     rel_step_path: str,
-    handler_fuse,
+    handler_fuse: FuselageSchema,
     fuse_name: str,
-):
+) -> list[FuselageXSecSuperEllipseSchema] | None:
     """Slice the gh-729/731 STEP file into a finer xsec list (gh-732).
 
     Returns a list of ``FuselageXSecSuperEllipseSchema`` in metres, or
@@ -430,7 +432,6 @@ def _try_slicer_refinement(
     and ``scale_geom_step`` (the stored STEP files).
     """
     from app.core.config import settings
-    from app.schemas.aeroplaneschema import FuselageXSecSuperEllipseSchema
 
     full_path = Path(settings.ARTIFACTS_BASE_DIR) / rel_step_path
     if not full_path.exists():
@@ -788,13 +789,13 @@ def _persist_aeroplane(
                         slicer_source, fuse, fuse_name
                     )
 
-            # gh-765: apply the import scale ONCE, after refinement. Persist
-            # the scaled xsecs whether they came from the slicer or the
-            # handler fallback. Skip the rewrite only when nothing changed
-            # (no refinement and no scaling) — ``create_fuselage`` already
-            # stored the unscaled handler xsecs in that case.
+            # gh-765: apply the import scale ONCE, after refinement (the
+            # slicer ran in the unscaled STEP frame). When scaling, persist
+            # the scaled xsecs — slicer output or handler fallback. When
+            # not scaling, only the slicer result needs writing; the
+            # handler xsecs are already correct from ``create_fuselage``.
             scaling = abs(scale_factor - 1.0) > 1e-9
-            if refined_xsecs is not None or scaling:
+            if scaling:
                 final_xsecs = refined_xsecs if refined_xsecs is not None else fuse.x_secs
                 _replace_fuselage_xsecs(
                     db,
@@ -802,11 +803,16 @@ def _persist_aeroplane(
                     fuse_name,
                     _scale_fuselage_xsecs(final_xsecs, scale_factor),
                 )
+            elif refined_xsecs is not None:
+                _replace_fuselage_xsecs(db, aeroplane.uuid, fuse_name, refined_xsecs)
 
             # gh-769: scale the stored STEP download files to model scale.
             # Done AFTER slicing (which needed the unscaled frame). The
             # precise STEP is what the user downloads / uses for internal
             # installations, so it must match the scaled aeroplane.
+            # ``scale_geom_step`` overwrites in place and returns the same
+            # path, so the DB row (set above) already points at the scaled
+            # file — only re-set on the (future-proof) chance it relocates.
             if scaling:
                 for setter, rel in (
                     (_set_fuselage_step_path, rel_step),
@@ -817,7 +823,7 @@ def _persist_aeroplane(
                     scaled_rel = openvsp_step_export_service.scale_geom_step(
                         rel, scale_factor, str(aeroplane.uuid)
                     )
-                    if scaled_rel:
+                    if scaled_rel and scaled_rel != rel:
                         setter(db, aeroplane.uuid, fuse_name, scaled_rel)
 
     # Weight items (gh-693): persist each WeightItemWrite via the same
