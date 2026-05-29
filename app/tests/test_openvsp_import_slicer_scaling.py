@@ -16,11 +16,13 @@ from __future__ import annotations
 
 import sys
 import types
+from collections import OrderedDict
 from unittest.mock import MagicMock
 
 import pytest
 
 from app.schemas.aeroplaneschema import (
+    AeroplaneSchema,
     FuselageSchema,
     FuselageXSecSuperEllipseSchema,
 )
@@ -117,9 +119,13 @@ def test_scale_aeroplane_lengths_leaves_fuselages_untouched():
 # --------------------------------------------------------------------------- #
 
 
-@pytest.mark.slow
 def test_scale_geom_step_scales_bounding_box(monkeypatch, tmp_path):
-    """A stored STEP is rewritten at model scale; its bbox shrinks by factor."""
+    """A stored STEP is rewritten at model scale; its bbox shrinks by factor.
+
+    Uses real CadQuery (gated by ``importorskip`` — installed in the fast CI
+    tier, like the existing solid-sewing / step-export tests), so the
+    ``scale_geom_step`` body is exercised for coverage rather than mocked.
+    """
     cq = pytest.importorskip("cadquery")
     from cadquery import exporters
 
@@ -150,3 +156,115 @@ def test_scale_geom_step_factor_one_returns_same_path(tmp_path, monkeypatch):
 
     monkeypatch.setattr(settings, "ARTIFACTS_BASE_DIR", str(tmp_path))
     assert step_svc.scale_geom_step("x/y.stp", 1.0, "x") == "x/y.stp"
+
+
+def test_scale_geom_step_missing_file_returns_none(tmp_path, monkeypatch):
+    pytest.importorskip("cadquery")
+    from app.core.config import settings
+    from app.services import openvsp_step_export_service as step_svc
+
+    monkeypatch.setattr(settings, "ARTIFACTS_BASE_DIR", str(tmp_path))
+    assert step_svc.scale_geom_step("does/not/exist.stp", 0.5, "u") is None
+
+
+def test_scale_geom_step_invalid_step_returns_none(tmp_path, monkeypatch):
+    """A corrupt/unreadable STEP fails gracefully (best-effort): None, no raise."""
+    pytest.importorskip("cadquery")
+    from app.core.config import settings
+    from app.services import openvsp_step_export_service as step_svc
+
+    monkeypatch.setattr(settings, "ARTIFACTS_BASE_DIR", str(tmp_path))
+    (tmp_path / "bad.stp").write_text("this is not a STEP file")
+    assert step_svc.scale_geom_step("bad.stp", 0.5, "u") is None
+
+
+# --------------------------------------------------------------------------- #
+# _persist_aeroplane — fuselage scaling applied once, after refinement (gh-765)
+#
+# CAD-free: OpenVSP / CadQuery are mocked so these run in the `fast` CI job
+# (which excludes requires_cadquery/openvsp) and exercise the persist branches.
+# --------------------------------------------------------------------------- #
+
+
+def _import_result_with_fuselage(**geom_ids):
+    from app.converters.openvsp_importer import ImportResult
+
+    ap = AeroplaneSchema(name="F")
+    ap.fuselages = OrderedDict([("Body", _fuse())])
+    return ImportResult(aeroplane=ap, fuselage_geom_ids=dict(geom_ids))
+
+
+def _read_fuselage(db, uuid):
+    from app.models.aeroplanemodel import AeroplaneModel, FuselageModel
+
+    ap = db.query(AeroplaneModel).filter(AeroplaneModel.uuid == uuid).first()
+    return db.query(FuselageModel).filter(FuselageModel.aeroplane_id == ap.id).first()
+
+
+def test_persist_scales_fuselage_xsecs_when_vsp_unavailable(client_and_db, monkeypatch):
+    """vsp unavailable → no STEP path; the handler xsecs are scaled once."""
+    _client, SessionLocal = client_and_db
+    from app.converters import openvsp_adapter
+    from app.services import openvsp_import_service as svc
+
+    monkeypatch.setattr(openvsp_adapter, "is_available", lambda: False)
+
+    db = SessionLocal()
+    uuid, _name = svc._persist_aeroplane(
+        db, _import_result_with_fuselage(), scale_factor=0.5
+    )
+    db.commit()
+
+    f = _read_fuselage(db, uuid)
+    # _fuse() mid-section a=1.0 → scaled 0.5; length 10 m → 5 m.
+    assert max(s.a for s in f.x_secs) == pytest.approx(0.5)
+    xs = [s.xyz[0] for s in f.x_secs]
+    assert max(xs) - min(xs) == pytest.approx(5.0)
+    db.close()
+
+
+def test_persist_scales_refined_xsecs_and_step_with_vsp(client_and_db, monkeypatch):
+    """vsp present → STEP export/sew/slice (mocked); the refined xsecs and
+    the stored STEP files are both scaled by the import factor."""
+    _client, SessionLocal = client_and_db
+    from app.converters import openvsp_adapter
+    from app.services import openvsp_import_service as svc
+    from app.services import (
+        openvsp_solid_sewing_service as sew_svc,
+    )
+    from app.services import (
+        openvsp_step_export_service as step_svc,
+    )
+
+    monkeypatch.setattr(openvsp_adapter, "is_available", lambda: True)
+    monkeypatch.setattr(openvsp_adapter, "get_vsp", lambda: object())
+    monkeypatch.setattr(step_svc, "export_geom_step", lambda **kw: "imp/u/body.stp")
+    monkeypatch.setattr(
+        sew_svc, "sew_imported_geom_to_solid", lambda **kw: "imp/u/body_solid.stp"
+    )
+    scale_calls: list[tuple[str, float]] = []
+    monkeypatch.setattr(
+        step_svc,
+        "scale_geom_step",
+        lambda rel, factor, uuid: (scale_calls.append((rel, factor)) or rel),
+    )
+    # Slicer returns an UNSCALED refined list (mid a=2.0); persist scales it.
+    refined = [
+        FuselageXSecSuperEllipseSchema(xyz=[0.0, 0.0, 0.0], a=0.0, b=0.0, n=2.0),
+        FuselageXSecSuperEllipseSchema(xyz=[10.0, 0.0, 0.0], a=2.0, b=1.0, n=2.0),
+    ]
+    monkeypatch.setattr(svc, "_try_slicer_refinement", lambda *a, **k: refined)
+
+    db = SessionLocal()
+    uuid, _name = svc._persist_aeroplane(
+        db, _import_result_with_fuselage(GID1="Body"), scale_factor=0.5
+    )
+    db.commit()
+
+    f = _read_fuselage(db, uuid)
+    # refined mid a=2.0 → scaled 1.0 (proves slicer output, not handler, won).
+    assert max(s.a for s in f.x_secs) == pytest.approx(1.0)
+    # both stored STEP files were scaled by the same factor.
+    assert ("imp/u/body.stp", 0.5) in scale_calls
+    assert ("imp/u/body_solid.stp", 0.5) in scale_calls
+    db.close()
