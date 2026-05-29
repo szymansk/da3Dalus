@@ -22,12 +22,14 @@
 
 import { promises as fs } from "node:fs";
 import * as path from "node:path";
-import { fileURLToPath } from "node:url";
+import { fileURLToPath, pathToFileURL } from "node:url";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const FRONTEND_ROOT = path.resolve(__dirname, "..", "..");
 const STEPS_DIR = path.join(FRONTEND_ROOT, "e2e", "steps");
 const FEATURES_DIR = path.join(FRONTEND_ROOT, "e2e", "features");
+
+export { STEPS_DIR, FEATURES_DIR };
 
 // ------------------------------------------------------------------
 // Phrase normalization — ``"foo"`` → ``{string}``, ``42`` → ``{int}``,
@@ -38,7 +40,7 @@ const STRING_RE = /"[^"]*"/g;
 const FLOAT_RE = /\b\d+\.\d+\b/g;
 const INT_RE = /\b\d+\b/g;
 
-function normalize(phrase) {
+export function normalize(phrase) {
   return phrase
     .replace(STRING_RE, "{string}")
     .replace(FLOAT_RE, "{float}")
@@ -52,12 +54,12 @@ function normalize(phrase) {
 // ------------------------------------------------------------------
 const STEP_DEF_RE = /(?:Given|When|Then)\(\s*([`'"])((?:[^\\]|\\.)*?)\1/g;
 
-async function collectExistingSteps() {
+export async function collectExistingSteps(stepsDir = STEPS_DIR) {
   const out = new Set();
-  const files = await fs.readdir(STEPS_DIR);
+  const files = await fs.readdir(stepsDir);
   for (const fn of files) {
     if (!fn.endsWith(".ts")) continue;
-    const txt = await fs.readFile(path.join(STEPS_DIR, fn), "utf8");
+    const txt = await fs.readFile(path.join(stepsDir, fn), "utf8");
     let m;
     while ((m = STEP_DEF_RE.exec(txt)) !== null) {
       out.add(m[2]);
@@ -75,11 +77,11 @@ async function collectExistingSteps() {
 // ------------------------------------------------------------------
 const GHERKIN_STEP_RE = /^\s+(?:Given|When|Then|And|But)\s+(\S.*)$/;
 
-async function* iterFeatureSteps() {
-  const files = await fs.readdir(FEATURES_DIR);
+export async function* iterFeatureSteps(featuresDir = FEATURES_DIR) {
+  const files = await fs.readdir(featuresDir);
   for (const fn of files) {
     if (!fn.endsWith(".feature")) continue;
-    const txt = await fs.readFile(path.join(FEATURES_DIR, fn), "utf8");
+    const txt = await fs.readFile(path.join(featuresDir, fn), "utf8");
     const lines = txt.split("\n");
     for (let i = 0; i < lines.length; i++) {
       const m = lines[i].match(GHERKIN_STEP_RE);
@@ -88,13 +90,13 @@ async function* iterFeatureSteps() {
   }
 }
 
-async function collectMissing() {
-  const existing = await collectExistingSteps();
+export async function collectMissing(stepsDir = STEPS_DIR, featuresDir = FEATURES_DIR) {
+  const existing = await collectExistingSteps(stepsDir);
   const existingNormalized = new Set();
   for (const p of existing) existingNormalized.add(normalize(p));
 
   const byFile = new Map();
-  for await (const { file, line, phrase } of iterFeatureSteps()) {
+  for await (const { file, line, phrase } of iterFeatureSteps(featuresDir)) {
     if (existing.has(phrase) || existingNormalized.has(normalize(phrase))) continue;
     if (!byFile.has(file)) byFile.set(file, []);
     byFile.get(file).push({ line, phrase });
@@ -102,13 +104,13 @@ async function collectMissing() {
   return byFile;
 }
 
-function totalCount(byFile) {
+export function totalCount(byFile) {
   let total = 0;
   for (const arr of byFile.values()) total += arr.length;
   return total;
 }
 
-function printJson(byFile, total) {
+export function printJson(byFile, total) {
   const payload = {
     total,
     by_file: Object.fromEntries(
@@ -118,7 +120,7 @@ function printJson(byFile, total) {
   process.stdout.write(JSON.stringify(payload, null, 2) + "\n");
 }
 
-function printHuman(byFile, total) {
+export function printHuman(byFile, total) {
   if (total === 0) {
     console.log("✓ all feature steps have implementations");
     return;
@@ -137,7 +139,7 @@ function printHuman(byFile, total) {
   );
 }
 
-async function main() {
+export async function main() {
   const asJson = process.argv.includes("--json");
   const byFile = await collectMissing();
   const total = totalCount(byFile);
@@ -151,7 +153,12 @@ async function main() {
   process.exit(total === 0 ? 0 : 1);
 }
 
-main().catch((err) => {
-  console.error(err);
-  process.exit(2);
-});
+// Only auto-run as a CLI when invoked directly (e.g. `node list-missing-steps.mjs`
+// via `npm run bdd:missing`). When imported by unit tests, the named exports above
+// are used and main() is not executed.
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+  main().catch((err) => {
+    console.error(err);
+    process.exit(2);
+  });
+}
