@@ -398,6 +398,7 @@ def _try_slicer_refinement(
     rel_step_path: str,
     handler_fuse,
     fuse_name: str,
+    factor: float = 1.0,
 ):
     """Slice the gh-729/731 STEP file into a finer xsec list (gh-732).
 
@@ -406,6 +407,14 @@ def _try_slicer_refinement(
     / the fuselage isn't X-dominant in world frame. Failure is **silent
     on purpose** — the slicer is a refinement, not a requirement, and
     the handler-built schema is always the fallback.
+
+    ``factor`` (gh-765) is the import scale factor already applied to
+    the handler schema. The STEP is exported from the **unscaled**
+    OpenVSP model, so the slicer runs in the full-size frame: the
+    handler anchors are divided by ``factor`` to recover the STEP's
+    coordinates, and the slicer's full-size output is multiplied back by
+    ``factor`` so the refined xsecs match the rest of the scaled
+    aeroplane. ``factor=1.0`` (no scaling requested) is a no-op.
     """
     from app.core.config import settings
     from app.schemas.aeroplaneschema import FuselageXSecSuperEllipseSchema
@@ -435,8 +444,19 @@ def _try_slicer_refinement(
     # actually curves. Falls back to cadquery's XZ-profile curvature
     # for the rare case where the handler list is empty / has < 2 xsecs.
     try:
+        # gh-765: the STEP is exported from the unscaled OpenVSP model.
+        # Recover the full-size handler anchors (divide out the import
+        # ``factor``) so the slice stations, X-dominance gate, and
+        # symmetry-clip all reason in the STEP's own frame. Output is
+        # rescaled by ``factor`` below. ``n`` is dimensionless.
+        inv = 1.0 / factor if factor else 1.0
         handler_xsec_dicts = [
-            {"xyz": list(xs.xyz), "a": xs.a, "b": xs.b, "n": xs.n}
+            {
+                "xyz": [v * inv for v in xs.xyz],
+                "a": xs.a * inv,
+                "b": xs.b * inv,
+                "n": xs.n,
+            }
             for xs in handler_fuse.x_secs
         ]
 
@@ -518,13 +538,17 @@ def _try_slicer_refinement(
         )
         return None
 
+    # gh-765: the slicer output is in the full-size STEP frame (mm).
+    # Convert mm→m and re-apply the import ``factor`` so the refined
+    # xsecs land at the same scale as the wings.
+    eff = _MM_TO_M * factor
     refined = []
     for xs in slicer_xsecs:
         refined.append(
             FuselageXSecSuperEllipseSchema(
-                xyz=[v * _MM_TO_M for v in xs["xyz"]],
-                a=max(float(xs["a"]) * _MM_TO_M, 0.0),
-                b=max(float(xs["b"]) * _MM_TO_M, 0.0),
+                xyz=[v * eff for v in xs["xyz"]],
+                a=max(float(xs["a"]) * eff, 0.0),
+                b=max(float(xs["b"]) * eff, 0.0),
                 n=max(float(xs["n"]), 1.0),
             )
         )
@@ -603,6 +627,7 @@ def _persist_aeroplane(
     name: Optional[str] = None,
     source_filename: Optional[str] = None,
     progress_cb: ProgressCallback = _noop_progress,
+    scale_factor: float = 1.0,
 ) -> tuple[str, str]:
     """Persist the parsed aeroplane and return (uuid_str, name).
 
@@ -757,7 +782,7 @@ def _persist_aeroplane(
             )
             slicer_source = rel_solid or rel_step
             refined_xsecs = _try_slicer_refinement(
-                slicer_source, fuse, fuse_name
+                slicer_source, fuse, fuse_name, scale_factor
             )
             if refined_xsecs is not None:
                 _replace_fuselage_xsecs(
@@ -858,6 +883,10 @@ def import_openvsp_file(
         name=name,
         source_filename=source_filename,
         progress_cb=progress_cb,
+        # gh-765: the fuselage slicer refinement reads a STEP exported
+        # from the unscaled OpenVSP model, so it needs the factor to
+        # rescale its output to match the already-scaled schema.
+        scale_factor=factor if factor is not None else 1.0,
     )
     progress_cb("finalising", 95, "Finalising aeroplane")
     return OpenVspImportResponse(
