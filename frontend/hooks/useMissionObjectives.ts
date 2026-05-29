@@ -55,10 +55,19 @@ export function useMissionObjectives(aeroplaneId: string | null) {
     // every mission-kpis cache entry for this aeroplane so the radar refreshes
     // live instead of only after a page reload. Prefix match because the key
     // carries a `?missions=…` query that varies with the active/comparison set.
+    //
+    // The PUT already succeeded and the objectives cache is updated above, so a
+    // failed radar refresh must not reject update() (callers fire-and-forget
+    // via `void update(...)` — an unhandled rejection would surface). Log it
+    // instead of swallowing it silently.
     const kpiPrefix = `/aeroplanes/${encodeURIComponent(aeroplaneId)}/mission-kpis`;
-    await globalMutate(
-      (key) => typeof key === "string" && key.startsWith(kpiPrefix),
-    );
+    try {
+      await globalMutate(
+        (key) => typeof key === "string" && key.startsWith(kpiPrefix),
+      );
+    } catch (err) {
+      console.warn("mission-kpis revalidation after objective update failed", err);
+    }
     return updated;
   };
 
