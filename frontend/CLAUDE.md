@@ -22,7 +22,21 @@ npm run lint         # ESLint
 npm run test:unit    # Vitest unit tests
 npm run test:e2e     # Playwright-BDD end-to-end tests
 npm run deps:check   # Dependency-cruiser architecture checks
+npm run bdd:missing  # List feature steps without implementations (gh-564)
 ```
+
+### BDD step inventory (gh-564)
+
+``npm run bdd:missing`` reports every Gherkin step in
+``e2e/features/*.feature`` that has no matching
+``Given/When/Then("…")`` definition in ``e2e/steps/*.ts``. Add
+``-- --json`` for a machine-readable payload. Exits non-zero when
+there is at least one missing step — wire into CI to catch
+re-introductions.
+
+``npx -p playwright-bdd bddgen`` truncates its missing-step
+snippets at 10. Use ``npm run bdd:missing`` to see the full list
+plus ``bddgen`` to copy the snippet stubs.
 
 ## Design Rules
 

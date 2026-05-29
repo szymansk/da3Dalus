@@ -13,6 +13,7 @@
     "test:e2e:ui": "npx -p playwright-bdd bddgen && npx playwright test --ui",
     "test:e2e:headed": "npx -p playwright-bdd bddgen && npx playwright test --headed --grep-invert @slow",
     "test:e2e:polar-warning": "npx -p playwright-bdd bddgen -c e2e/playwright.polar-design-warning.config.ts && npx playwright test -c e2e/playwright.polar-design-warning.config.ts",
+    "bdd:missing": "node e2e/scripts/list-missing-steps.mjs",
     "deps:check": "depcruise --config .dependency-cruiser.cjs components/ hooks/ lib/ app/",
     "deps:graph": "depcruise --config .dependency-cruiser.cjs --output-type dot components/ hooks/ lib/ app/ | dot -T svg > dependency-graph.svg",
     "prepare": "cd .. && husky frontend/.husky"
