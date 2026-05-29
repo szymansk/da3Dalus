@@ -148,22 +148,32 @@ class TestScaleAeroplaneLengths:
         assert wing.x_secs[0].twist == pytest.approx(5.0)
         assert wing.x_secs[1].twist == pytest.approx(-1.0)
 
-    def test_fuselage_xsec_lengths_scale(self):
+    def test_fuselages_are_not_scaled_here(self):
+        # gh-765: fuselage scaling moved out of _scale_aeroplane_lengths
+        # into the persist path (after the unscaled-frame slicer), via
+        # _scale_fuselage_xsecs. This helper must leave fuselages alone.
         ap = AeroplaneSchema(name="X")
         ap.fuselages = {"Body": _make_fuselage(length_m=2.0, half_width=0.3, half_height=0.2)}
         _scale_aeroplane_lengths(ap, 2.0)
         fus = ap.fuselages["Body"]
-        assert fus.x_secs[0].a == pytest.approx(0.6)
-        assert fus.x_secs[0].b == pytest.approx(0.4)
-        # x-position scales:
-        assert fus.x_secs[1].xyz[0] == pytest.approx(4.0)
+        assert fus.x_secs[0].a == pytest.approx(0.3)  # unchanged
+        assert fus.x_secs[1].xyz[0] == pytest.approx(2.0)  # unchanged
 
-    def test_fuselage_n_exponent_is_NOT_scaled(self):
-        ap = AeroplaneSchema(name="X")
-        ap.fuselages = {"Body": _make_fuselage(length_m=2.0, half_width=0.3, half_height=0.2)}
-        _scale_aeroplane_lengths(ap, 2.0)
-        fus = ap.fuselages["Body"]
-        assert fus.x_secs[0].n == pytest.approx(2.0)  # superellipse exponent stays
+
+class TestScaleFuselageXsecs:
+    """gh-765: the single fuselage-scaling step, applied in persist after
+    the (unscaled-frame) slicer refinement."""
+
+    def test_lengths_scale_exponent_does_not(self):
+        from app.services.openvsp_import_service import _scale_fuselage_xsecs
+
+        fus = _make_fuselage(length_m=2.0, half_width=0.3, half_height=0.2)
+        scaled = _scale_fuselage_xsecs(fus.x_secs, 2.0)
+        assert scaled[0].a == pytest.approx(0.6)
+        assert scaled[0].b == pytest.approx(0.4)
+        assert scaled[1].xyz[0] == pytest.approx(4.0)
+        # superellipse exponent is dimensionless — never scaled
+        assert scaled[0].n == pytest.approx(2.0)
 
     def test_xyz_ref_scales(self):
         ap = AeroplaneSchema(name="X")
