@@ -111,4 +111,79 @@ describe("useAnalysis", () => {
       alpha: [-5, 15],
     });
   });
+
+  it("extracts speed_polar curves from the response", async () => {
+    globalThis.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      json: () =>
+        Promise.resolve({
+          analysis: {
+            coefficients: { CL: [0.5], CD: [0.02], Cm: [0.0] },
+            flight_condition: { alpha: [2] },
+          },
+          speed_polar: {
+            base_mass_kg: 1.5,
+            s_ref: 0.225,
+            rho: 1.225,
+            altitude: 0,
+            curves: [
+              {
+                mass_kg: 1.5,
+                is_base: true,
+                V: [12],
+                w: [0.5],
+                cl: [0.5],
+                cd: [0.02],
+                v_stall: 10,
+                v_min_sink: 12,
+                w_min: 0.5,
+                v_best_glide: 13,
+                ld_max: 25,
+              },
+            ],
+          },
+        }),
+    });
+
+    const { result } = renderHook(() => useAnalysis("aero-1"));
+    await act(async () => {
+      await result.current.runAlphaSweep({
+        alpha_start: 0,
+        alpha_end: 5,
+        alpha_num: 2,
+        velocity: 14,
+        beta: 0,
+        altitude: 0,
+        xyz_ref: [0, 0, 0],
+        masses_kg: [1.5],
+      });
+    });
+
+    expect(result.current.speedPolar?.base_mass_kg).toBe(1.5);
+    expect(result.current.speedPolar?.curves).toHaveLength(1);
+    expect(result.current.speedPolar?.curves[0].is_base).toBe(true);
+  });
+
+  it("leaves speedPolar null when response omits speed_polar", async () => {
+    globalThis.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      json: () => Promise.resolve(FAKE_RESPONSE),
+    });
+
+    const { result } = renderHook(() => useAnalysis("aero-1"));
+    await act(async () => {
+      await result.current.runAlphaSweep({
+        alpha_start: -5,
+        alpha_end: 15,
+        alpha_num: 21,
+        velocity: 14,
+        beta: 0,
+        altitude: 0,
+        xyz_ref: [0, 0, 0],
+      });
+    });
+
+    expect(result.current.result).not.toBeNull();
+    expect(result.current.speedPolar).toBeNull();
+  });
 });
