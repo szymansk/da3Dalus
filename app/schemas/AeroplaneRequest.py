@@ -77,6 +77,11 @@ class AlphaSweepRequest(BaseModel):
         [0.0, 0.0, 0.0], description="xyz reference points for moments and rotation rates"
     )
     altitude: Optional[float] = Field(0.0, description="altitude in m")
+    masses_kg: Optional[List[float]] = Field(
+        None,
+        description="Extra aircraft masses [kg] for speed-polar comparison curves. "
+        "The effective design mass is always included.",
+    )
 
 
 class SimpleSweepRequest(BaseModel):
