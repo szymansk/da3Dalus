@@ -18,6 +18,7 @@
       "source": "Luka, OpenVSP groups (VSPAERO VLM)"
     }
   ],
+  "reference_polar": null,
   "sources": {
     "vspaero": {
       "label": "VSPAERO (VLM, wings-only)",

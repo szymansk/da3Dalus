@@ -26,6 +26,16 @@ class Anchor:
 
 
 @dataclass(frozen=True)
+class ReferencePolar:
+    """A digitized external reference drag polar (CL vs CD) for overlay."""
+    label: str
+    source: str
+    CL: list[float]
+    CD: list[float]
+    note: str = ""
+
+
+@dataclass(frozen=True)
 class AircraftConfig:
     key: str
     name: str
@@ -38,6 +48,8 @@ class AircraftConfig:
     notes: str = ""
     # VSPAERO mirror flag: 0 = geometry already full (our .vsp3 files).
     symmetry: int = 0
+    # Optional digitized external reference polar (overlaid on drag-polar chart).
+    reference_polar: ReferencePolar | None = None
 
     @property
     def vsp_path(self) -> Path:
@@ -104,6 +116,34 @@ AIRCRAFT: list[AircraftConfig] = [
             Anchor("CLmax", 1.45, "from published Vs 58-61 km/h"),
         ],
         notes="Boxwing topology stress-test; joined tips. Original 1985 prototype.",
+    ),
+    AircraftConfig(
+        key="falcon_v2",
+        name="Titan Dynamics Falcon V2",
+        vsp_filename="tdfalconv2.vsp3",
+        velocity_mps=15.0,           # ~cruise (45-65 km/h = 12.5-18 m/s)
+        altitude_m=0.0,
+        category="anchored",
+        topology="3D-printed RC/UAV; cambered wing (NACA 4411→3411), 4° washout, V-tail",
+        anchors=[
+            Anchor("CLmax", 1.42, "Titan Dynamics manual (CFD)"),
+            Anchor("max_LD", 12.0, "Titan CFD drag plot, AUW 3 kg, full aircraft"),
+        ],
+        notes=("Real 3D-printed RC model — exact app target audience. Anchors are "
+               "Titan Dynamics' own CFD (not WT/flight). CFD drag is full-aircraft "
+               "(incl. fuselage), so only AeroBuildup compares on total C_D; C_Di, "
+               "C_Lα, AoA are the clean comparisons. Known airfoils (NACA 4411 root) "
+               "make this the test for the importer camber fidelity (#791)."),
+        # Digitized from the AUW = 3 kg total-drag plot (manual p.7):
+        # W = 29.43 N, S = 0.4514 m², ρ = 1.225. CL = W/(qS), CD = D/(qS).
+        reference_polar=ReferencePolar(
+            label="Titan CFD (3 kg, full aircraft)",
+            source="Titan Dynamics manual rev 1.1, p.7 (digitized ±)",
+            CL=[1.064, 0.739, 0.543, 0.416, 0.328, 0.266, 0.185],
+            CD=[0.0904, 0.0616, 0.0489, 0.0424, 0.0391, 0.0380, 0.0364],
+            note="full-aircraft total C_D incl. fuselage parasite — compares to "
+                 "AeroBuildup, not wings-only VSPAERO",
+        ),
     ),
 ]
 

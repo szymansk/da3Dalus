@@ -156,6 +156,11 @@ function render(){
       lodT.push({x:[Math.min(...[].concat(...lodT.map(t=>t.x))),Math.max(...[].concat(...lodT.map(t=>t.x)))],
         y:[lda,lda],name:'real max L/D='+lda,mode:'lines',type:'scatter',
         line:{color:'#E0E0E0',width:1.5,dash:'dash'}}); }
+    // external reference polar overlay (e.g. Titan CFD) on the drag polar
+    const rp=ac.reference_polar;
+    if(rp&&rp.CD&&rp.CL){ polT.push({x:rp.CD,y:rp.CL,name:rp.label,
+        mode:'lines+markers',type:'scatter',
+        line:{color:'#E0E0E0',width:1.5,dash:'dash'},marker:{size:5,symbol:'diamond',color:'#E0E0E0'}}); }
     const cfg={displayModeBar:false,responsive:true};
     Plotly.newPlot('cl_'+idx,clT,lay('Lift curve','α [deg]','C_L'),cfg);
     Plotly.newPlot('polar_'+idx,polT,lay('Drag polar','C_D','C_L'),cfg);

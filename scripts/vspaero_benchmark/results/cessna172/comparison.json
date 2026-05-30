@@ -23,6 +23,7 @@
       "source": "WT / POH stall speed"
     }
   ],
+  "reference_polar": null,
   "sources": {
     "vspaero": {
       "label": "VSPAERO (VLM, wings-only)",

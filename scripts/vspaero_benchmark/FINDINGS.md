@@ -82,3 +82,12 @@ VLM solve took **215 s** (≈ 54 min for a 15-α sweep).
 - **VLM lift-slope (ASB vs VSPAERO):** agree within ~2–3 % on the
   conventional aircraft — the two independent VLM implementations are
   consistent once references match.
+- **Titan Falcon V2 (real 3D-printed RC/UAV) vs Titan's own CFD:**
+  C_Lmax ≈ 1.42 reproduced (sweep shows 1.25–1.53); C_Lα agree within
+  ~4 %; importer camber fidelity is good here (C_L0 offset only 0.07 vs
+  DG-101G's 0.43 — so F4 is geometry-specific). Our tools predict
+  higher max L/D (17–21) than the CFD's 12 because the real aircraft
+  carries far more parasite drag (antennas, payload bay, surface
+  finish) than our idealised wing+fuselage models — expected, and a
+  good reminder that wings-only / clean-body predictions are optimistic
+  for a draggy RC airframe.

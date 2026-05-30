@@ -18,6 +18,7 @@
       "source": "from published Vs 58-61 km/h"
     }
   ],
+  "reference_polar": null,
   "sources": {
     "vspaero": {
       "label": "VSPAERO (VLM, wings-only)",
