@@ -486,18 +486,33 @@ class StabilityClassification(BaseModel):
 
 
 class MixerValues(BaseModel):
-    """Symmetric/differential decomposition for dual-role surfaces."""
+    """Symmetric/antisymmetric decomposition + left/right physical angles (gh-772).
+
+    A mixed surface trims to a symmetric (pitch/lift) and an antisymmetric
+    (roll/yaw) component. The left/right physical deflections are reconstructed
+    by superposition with the (reporting-only) differential ratio applied to the
+    up-going side. Aileron is included because it carries differential too.
+    """
 
     symmetric_offset: float = Field(
-        ..., description="Average deflection of paired surfaces (degrees)"
+        ..., description="Symmetric (pitch/lift) component, degrees"
     )
     differential_throw: float = Field(
-        ..., ge=0.0, description="Half-difference of paired surfaces (degrees)"
+        ..., ge=0.0, description="Antisymmetric (roll/yaw) command magnitude, degrees"
+    )
+    deflection_left: float = Field(
+        0.0, description="Reconstructed left-surface physical deflection (degrees)"
+    )
+    deflection_right: float = Field(
+        0.0, description="Reconstructed right-surface physical deflection (degrees)"
+    )
+    differential_ratio: float = Field(
+        1.0, description="Up/down throw ratio applied to the up-going side (reporting-only)"
     )
     role: str = Field(
         ...,
-        description="Dual-role type: elevon, flaperon, ruddervator",
-        pattern="^(elevon|flaperon|ruddervator)$",
+        description="Mixed-surface role",
+        pattern="^(aileron|elevon|flaperon|ruddervator)$",
     )
 
 

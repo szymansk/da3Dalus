@@ -145,6 +145,7 @@ async def trim_with_avl(
         try:
             from app.services.trim_enrichment_service import (
                 build_deflection_limits_from_schema,
+                build_mix_params_from_schema,
                 compute_enrichment,
             )
 
@@ -160,6 +161,7 @@ async def trim_with_avl(
                 alpha_deg=alpha_deg,
                 stability_derivatives=trimmed.stability_derivatives or None,
                 aero_coefficients=trimmed.aero_coefficients or None,
+                mix_params=build_mix_params_from_schema(plane_schema),
             )
             trimmed = trimmed.model_copy(update={"trim_enrichment": enrichment})
         except Exception:

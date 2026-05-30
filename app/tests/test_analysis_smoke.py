@@ -32,7 +32,9 @@ SMOKE_CONFIGS = [
     SmokeConfig("conventional-ttail", seed_smoke_conventional_ttail, "Elevator"),
     SmokeConfig("vtail-ruddervator", seed_smoke_vtail_ruddervator, "Ruddervator"),
     SmokeConfig("conventional-cross", seed_smoke_conventional_cross, "Elevator"),
-    SmokeConfig("flying-wing", seed_smoke_flying_wing, "Elevon_0"),
+    # gh-772: dual-role surfaces are addressed by role ("Elevon"), which resolves
+    # to the surface's primary (pitch) control axis on the AeroBuildup path.
+    SmokeConfig("flying-wing", seed_smoke_flying_wing, "Elevon"),
     SmokeConfig("flaperon-ttail", seed_smoke_flaperon_ttail, "Elevator"),
     SmokeConfig("flap-aileron-ttail", seed_smoke_flap_aileron_ttail, "Elevator"),
     SmokeConfig("stabilator-ttail", seed_smoke_stabilator_ttail, "Aileron"),

@@ -114,33 +114,34 @@ def _build_section(
     )
 
 
-def _build_controls_for_wing(wing: AsbWingSchema) -> list[list[AvlControl]]:
+def _build_controls_for_wing(
+    wing: AsbWingSchema, wing_key: str = "w"
+) -> list[list[AvlControl]]:
     """Build per-section control lists replicating ASB's CONTROL duplication.
 
-    For each xsec[i] with a control surface, the CONTROL command is added to
-    both section i and section i+1 so AVL interpolates the deflection across
-    the panel strip.
+    For each xsec[i] with a control surface, the CONTROL command(s) are added to
+    both section i and section i+1 so AVL interpolates the deflection across the
+    panel strip. A dual-role surface (gh-772: elevon/flaperon/ruddervator) emits
+    TWO CONTROL variables per section (primary symmetric + secondary
+    antisymmetric); single-axis surfaces emit one, unchanged.
     """
-    from app.converters.model_schema_converters import _control_surface_for_xsec
+    from app.converters.model_schema_converters import axes_for_xsec
 
     n = len(wing.x_secs)
     controls_per_section: list[list[AvlControl]] = [[] for _ in range(n)]
 
     for i, xsec in enumerate(wing.x_secs):
-        cs = _control_surface_for_xsec(xsec)
-        if cs is None:
-            continue
-
-        ctrl = AvlControl(
-            name=cs.name,
-            gain=1.0,
-            xhinge=cs.hinge_point,
-            xyz_hvec=(0.0, 0.0, 0.0),
-            sgn_dup=1.0 if cs.symmetric else -1.0,
-        )
-        controls_per_section[i].append(ctrl)
-        if i + 1 < n:
-            controls_per_section[i + 1].append(ctrl)
+        for axis in axes_for_xsec(xsec, wing_key, i):
+            ctrl = AvlControl(
+                name=axis.name,
+                gain=axis.gain,
+                xhinge=axis.hinge_point,
+                xyz_hvec=(0.0, 0.0, 0.0),
+                sgn_dup=axis.sgn_dup,
+            )
+            controls_per_section[i].append(ctrl)
+            if i + 1 < n:
+                controls_per_section[i + 1].append(ctrl)
 
     return controls_per_section
 
@@ -151,7 +152,7 @@ def _build_surface(
     spacing_config: SpacingConfig,
 ) -> AvlSurface:
     """Build an AvlSurface from a wing schema."""
-    controls_per_section = _build_controls_for_wing(wing)
+    controls_per_section = _build_controls_for_wing(wing, wing_key=wing_name)
 
     sections = [_build_section(xsec, controls_per_section[i]) for i, xsec in enumerate(wing.x_secs)]
 
@@ -195,6 +196,18 @@ def build_avl_geometry_file(
     if plane_schema.wings:
         for wing_name, wing in plane_schema.wings.items():
             surfaces.append(_build_surface(wing_name, wing, spacing_config))
+
+    # gh-772: a control-variable name shared across two physical surfaces would be
+    # silently collapsed into one AVL DOF (avl_doc 778-789). Panel duplication
+    # repeats a name within one surface legitimately, so dedup per surface first,
+    # then assert the cross-surface set is unique.
+    from app.services.control_surface_mixing import assert_unique_control_names
+
+    cross_surface_names: list[str] = []
+    for surface in surfaces:
+        names_in_surface = {c.name for section in surface.sections for c in section.controls}
+        cross_surface_names.extend(names_in_surface)
+    assert_unique_control_names(cross_surface_names)
 
     return AvlGeometryFile(
         title=plane_schema.name,

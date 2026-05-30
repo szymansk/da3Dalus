@@ -132,6 +132,10 @@ class WingXSecTrailingEdgeDeviceModel(Base):
     trailing_edge_offset_factor = Column(Float, nullable=True)
     hinge_type = Column(String, nullable=True)
     symmetric = Column(Boolean, nullable=True)
+    # gh-772: mixed control-surface mix gains + differential (reporting-only) ratio.
+    mix_gain_primary = Column(Float, nullable=False, default=1.0, server_default="1.0")
+    mix_gain_secondary = Column(Float, nullable=False, default=1.0, server_default="1.0")
+    differential_ratio = Column(Float, nullable=False, default=1.0, server_default="1.0")
     servo_index = Column(Integer, nullable=True)
 
     detail = relationship("WingXSecDetailModel", back_populates="trailing_edge_device")

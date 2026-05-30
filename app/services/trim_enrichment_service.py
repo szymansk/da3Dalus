@@ -216,45 +216,113 @@ def compute_control_effectiveness(
     return effectiveness
 
 
+def build_mix_params_from_schema(
+    plane_schema: Any,
+) -> dict[str, tuple[float, float, float]]:
+    """Per-surface ``(mix_gain_primary, mix_gain_secondary, differential_ratio)``.
+
+    Keyed by ``"{role}:{surface_suffix}"`` so :func:`decompose_dual_role` can look
+    up the gains and differential ratio of the two control variables belonging to
+    one physical surface. Mirrors the naming in ``control_surface_mixing``.
+    """
+    from app.services.control_surface_mixing import surface_suffix
+
+    params: dict[str, tuple[float, float, float]] = {}
+    if not plane_schema or not getattr(plane_schema, "wings", None):
+        return params
+
+    wings = plane_schema.wings
+    wing_items = wings.items() if isinstance(wings, dict) else enumerate(wings or [])
+
+    for wing_key, wing in wing_items:
+        xsecs = getattr(wing, "x_secs", None) or getattr(wing, "xsecs", None) or []
+        xsec_list = list(xsecs.values()) if isinstance(xsecs, dict) else list(xsecs)
+        for xsec_index, xsec in enumerate(xsec_list):
+            ted = getattr(xsec, "trailing_edge_device", None)
+            if ted is None:
+                continue
+            role = getattr(ted, "role", None)
+            role_value = role.value if hasattr(role, "value") else role
+            if not role_value:
+                continue
+            gp = float(getattr(ted, "mix_gain_primary", 1.0) or 1.0)
+            gs = float(getattr(ted, "mix_gain_secondary", 1.0) or 1.0)
+            diff = float(getattr(ted, "differential_ratio", 1.0) or 1.0)
+            if role_value in DUAL_ROLES:
+                key = f"{role_value}:{surface_suffix(str(wing_key), xsec_index)}"
+                params[key] = (gp, gs, diff)
+            elif role_value == "aileron":
+                # Single-axis aileron keeps its tagged name; key by display so the
+                # decomposition (which groups aileron by its display) can find it.
+                display = getattr(ted, "name", None) or "aileron"
+                params[f"aileron:{display}"] = (1.0, 1.0, diff)
+    return params
+
+
 def decompose_dual_role(
     controls: dict[str, float],
+    mix_params: dict[str, tuple[float, float, float]] | None = None,
 ) -> dict[str, MixerValues]:
-    """Decompose dual-role surface deflections into symmetric and differential components.
+    """Reconstruct per-surface symmetric/antisymmetric + left/right deflections.
 
-    Looks for paired surfaces with the same dual-role tag
-    (e.g. two ``[elevon]`` surfaces).
-    Symmetric = average, Differential = half the difference.
+    gh-772: a mixed surface now contributes TWO control variables
+    (``[role]pitch_<suffix>`` + ``[role]roll_<suffix>``), or one for an aileron.
+    The symmetric (pitch/lift) and antisymmetric (roll/yaw) components are
+    superposed into physical left/right angles; the (reporting-only) differential
+    ratio scales the up-going side. ``mix_params`` carries per-surface gains +
+    ratio (defaults: gains 1.0, ratio 1.0).
     """
+    from app.services.control_surface_mixing import PRIMARY_AXES, SECONDARY_AXES
+
+    mix_params = mix_params or {}
     mixer_values: dict[str, MixerValues] = {}
 
-    # Group controls by role
-    role_groups: dict[str, list[tuple[str, float]]] = {}
+    # Group the control variables of one physical surface together.
+    groups: dict[tuple[str, str], dict[str, float]] = {}
     for surface_name, deflection in controls.items():
-        role, _display = parse_role_tag(surface_name)
-        if role and role in DUAL_ROLES:
-            role_groups.setdefault(role, []).append((surface_name, deflection))
+        role, display = parse_role_tag(surface_name)
+        if role is None:
+            continue
+        if role in DUAL_ROLES:
+            axis, _, suffix = display.partition("_")
+            groups.setdefault((role, suffix), {})[axis] = float(deflection)
+        elif role == "aileron":
+            groups.setdefault((role, display), {})["roll"] = float(deflection)
 
-    for role, surfaces in role_groups.items():
-        if len(surfaces) >= 2:
-            # Paired surfaces: compute symmetric and differential
-            defl_values = [d for _, d in surfaces]
-            symmetric = sum(defl_values) / len(defl_values)
-            # Differential = half-difference between first two surfaces
-            differential = abs(defl_values[0] - defl_values[1]) / 2.0
-            group_key = f"{role}_mixer"
-            mixer_values[group_key] = MixerValues(
-                symmetric_offset=round(symmetric, 3),
-                differential_throw=round(differential, 3),
-                role=role,
-            )
-        elif len(surfaces) == 1:
-            # Single dual-role surface: symmetric = deflection, differential = 0
-            name, deflection = surfaces[0]
-            mixer_values[name] = MixerValues(
-                symmetric_offset=round(deflection, 3),
-                differential_throw=0.0,
-                role=role,
-            )
+    for (role, suffix), axes in groups.items():
+        primary_val = 0.0
+        secondary_val = 0.0
+        for axis, value in axes.items():
+            if axis in PRIMARY_AXES:
+                primary_val = value
+            elif axis in SECONDARY_AXES:
+                secondary_val = value
+
+        gp, gs, diff = mix_params.get(f"{role}:{suffix}", (1.0, 1.0, 1.0))
+        d_sym = gp * primary_val
+        d_anti = gs * secondary_val
+
+        # Differential is taken about the symmetric/neutral reference (as a real
+        # differential linkage is): scale the side whose ANTISYMMETRIC excursion is
+        # up-relative-to-symmetric (negative), i.e. the larger-throw side. This is
+        # applied to the antisymmetric component only, before adding the symmetric
+        # offset, so the symmetric (pitch/lift) bias is never scaled by the ratio.
+        right = d_anti
+        left = -d_anti
+        if right < 0:
+            right *= diff
+        if left < 0:
+            left *= diff
+
+        group_key = f"{role}_{suffix}_mixer" if suffix else f"{role}_mixer"
+        mixer_values[group_key] = MixerValues(
+            symmetric_offset=round(d_sym, 3),
+            differential_throw=round(abs(d_anti), 3),
+            deflection_left=round(d_sym + left, 3),
+            deflection_right=round(d_sym + right, 3),
+            differential_ratio=diff,
+            role=role,
+        )
 
     return mixer_values
 
@@ -320,6 +388,7 @@ def compute_enrichment(
     reserve_critical_threshold: float = 0.95,
     margin_low_threshold: float = 0.05,
     margin_high_threshold: float = 0.30,
+    mix_params: dict[str, tuple[float, float, float]] | None = None,
 ) -> TrimEnrichment:
     """Compute full enrichment from trim results.
 
@@ -449,7 +518,24 @@ def compute_enrichment(
         effectiveness = compute_control_effectiveness(stability_derivatives, controls)
 
     # --- Dual-role decomposition ---
-    mixer_values = decompose_dual_role(controls)
+    mixer_values = decompose_dual_role(controls, mix_params)
+
+    # gh-772: the AeroBuildup/NeuralFoil model is single-axis — it cannot trim the
+    # antisymmetric (roll/yaw) component of a mixed surface. Warn loudly so AVL and
+    # AeroBuildup results for mixed-surface aircraft are never silently compared.
+    if trim_method == "aerobuildup" and mixer_values:
+        warnings.append(
+            DesignWarning(
+                level="warning",
+                category="solver",
+                surface=None,
+                message=(
+                    "Lateral-directional (roll/yaw) control of mixed surfaces is "
+                    "modeled in AVL only — this AeroBuildup trim solved the "
+                    "symmetric (pitch/lift) axis only."
+                ),
+            )
+        )
 
     # --- Result summary ---
     result_summary = generate_result_summary(

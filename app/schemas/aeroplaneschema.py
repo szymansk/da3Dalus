@@ -1,3 +1,4 @@
+import math
 from enum import Enum
 from typing import Literal, Optional, OrderedDict
 
@@ -36,6 +37,45 @@ class ControlSurfaceRole(str, Enum):
     STABILATOR = "stabilator"
     FLAP = "flap"
     OTHER = "other"
+
+
+# gh-772: roles that combine a symmetric and an antisymmetric axis on ONE physical
+# surface — they get a SECOND AVL CONTROL line (a secondary mix gain).
+DUAL_ROLE_VALUES = {"elevon", "flaperon", "ruddervator"}
+# Roles whose antisymmetric (roll/yaw) throw can be made differential. Aileron is
+# single-axis but still supports differential; the dual roles carry it on their
+# antisymmetric component.
+DIFFERENTIAL_ROLE_VALUES = {"aileron", "elevon", "flaperon", "ruddervator"}
+
+
+def _validate_mix_fields(role, mix_gain_secondary, differential_ratio) -> None:
+    """Cross-validate gh-772 mix fields against the control-surface role.
+
+    differential_ratio only makes sense where an antisymmetric axis exists;
+    mix_gain_secondary only where a *second* (dual-role) axis exists. Raises
+    ``ValueError`` so Pydantic surfaces a clean validation error.
+    """
+    role_value = role.value if hasattr(role, "value") else role
+    if role_value is None:
+        return  # cannot cross-validate without a role (e.g. partial patch)
+    if (
+        differential_ratio is not None
+        and not math.isclose(differential_ratio, 1.0, rel_tol=1e-9, abs_tol=1e-9)
+        and role_value not in DIFFERENTIAL_ROLE_VALUES
+    ):
+        raise ValueError(
+            f"differential_ratio != 1.0 is only valid for roles with an "
+            f"antisymmetric axis {sorted(DIFFERENTIAL_ROLE_VALUES)}, not '{role_value}'"
+        )
+    if (
+        mix_gain_secondary is not None
+        and not math.isclose(mix_gain_secondary, 1.0, rel_tol=1e-9, abs_tol=1e-9)
+        and role_value not in DUAL_ROLE_VALUES
+    ):
+        raise ValueError(
+            f"mix_gain_secondary != 1.0 is only valid for dual-role surfaces "
+            f"{sorted(DUAL_ROLE_VALUES)}, not '{role_value}'"
+        )
 
 
 class AeroplaneSchema(BaseModel):
@@ -276,11 +316,44 @@ class TrailingEdgeDeviceDetailSchema(BaseModel):
         None,
         description="Whether deflection is symmetric between left/right wing",
     )
+    mix_gain_primary: float = Field(
+        1.0,
+        gt=0.0,
+        le=5.0,
+        description=(
+            "gh-772: AVL gain on the PRIMARY (symmetric: pitch/lift) control axis "
+            "(deg deflection per unit control variable)."
+        ),
+    )
+    mix_gain_secondary: float = Field(
+        1.0,
+        gt=0.0,
+        le=5.0,
+        description=(
+            "gh-772: AVL gain on the SECONDARY (antisymmetric: roll/yaw) axis of a "
+            "dual-role surface (elevon/flaperon/ruddervator)."
+        ),
+    )
+    differential_ratio: float = Field(
+        1.0,
+        gt=0.3,
+        le=3.0,
+        description=(
+            "gh-772: up/down throw ratio of the antisymmetric axis, applied as a "
+            "post-trim kinematic for left/right display only. 1.0 = symmetric throw; "
+            "does NOT alter the aero/trim solution."
+        ),
+    )
 
     @model_validator(mode="after")
     def _compute_name_from_role(self):
         if self.name is None and (self.label is not None or self.role != ControlSurfaceRole.OTHER):
             self.name = self.label if self.label else self.role.value
+        return self
+
+    @model_validator(mode="after")
+    def _validate_mix_fields(self):
+        _validate_mix_fields(self.role, self.mix_gain_secondary, self.differential_ratio)
         return self
 
     model_config = ConfigDict(from_attributes=True)
@@ -327,6 +400,18 @@ class TrailingEdgeDevicePatchSchema(BaseModel):
         None,
         description="Whether deflection is symmetric between left/right wing",
     )
+    mix_gain_primary: Optional[float] = Field(
+        None, gt=0.0, le=5.0, description="gh-772: primary (symmetric) axis AVL gain"
+    )
+    mix_gain_secondary: Optional[float] = Field(
+        None, gt=0.0, le=5.0, description="gh-772: secondary (antisymmetric) axis AVL gain"
+    )
+    differential_ratio: Optional[float] = Field(
+        None,
+        gt=0.3,
+        le=3.0,
+        description="gh-772: antisymmetric up/down throw ratio (reporting-only)",
+    )
 
     @model_validator(mode="after")
     def validate_non_empty_patch(self):
@@ -350,9 +435,18 @@ class TrailingEdgeDevicePatchSchema(BaseModel):
                 self.trailing_edge_offset_factor,
                 self.hinge_type,
                 self.symmetric,
+                self.mix_gain_primary,
+                self.mix_gain_secondary,
+                self.differential_ratio,
             ]
         ):
             raise ValueError("TrailingEdgeDevicePatchSchema requires at least one field.")
+        return self
+
+    @model_validator(mode="after")
+    def _validate_mix_fields(self):
+        # Only cross-validate when a role is present on the patch.
+        _validate_mix_fields(self.role, self.mix_gain_secondary, self.differential_ratio)
         return self
 
     model_config = ConfigDict(extra="forbid")
