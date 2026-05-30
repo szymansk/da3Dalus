@@ -92,6 +92,7 @@ export default function AnalysisPage() {
         <div className="min-h-0 flex-1 overflow-hidden">
           <AnalysisViewerPanel
             result={analysis.result}
+            speedPolar={analysis.speedPolar}
             aeroplaneId={aeroplaneId}
             hasWings={hasWings}
             lastRunTime={analysis.lastRunTime}
@@ -183,6 +184,7 @@ export default function AnalysisPage() {
                   (a) => a.parameter_name === "cg_x",
                 )?.effective_value ?? null
               }
+              effectiveMassKg={currentMassKg}
               operatingPoints={ops.points}
               onClose={() => setConfigOpen(false)}
             />

@@ -5,6 +5,7 @@ import { Loader2, Maximize2, Minimize2, Settings } from "lucide-react";
 import { InfoChipRow } from "@/components/workbench/InfoChipRow";
 import type { AnalysisResult } from "@/hooks/useAnalysis";
 import type { StripForcesResult } from "@/hooks/useStripForces";
+import type { SpeedPolar, SpeedPolarCurve } from "@/hooks/useAnalysis";
 import type { FlightEnvelopeData } from "@/hooks/useFlightEnvelope";
 import { EnvelopePanel } from "@/components/workbench/EnvelopePanel";
 import type { StoredOperatingPoint, AVLTrimResult, AeroBuildupTrimResult, TrimConstraint, ControlSurface } from "@/hooks/useOperatingPoints";
@@ -53,6 +54,7 @@ interface WingXSec {
 
 interface Props {
   readonly result: AnalysisResult | null;
+  readonly speedPolar?: SpeedPolar | null;
   readonly aeroplaneId?: string | null;
   readonly lastRunTime?: Date | null;
   readonly lastRunDurationMs?: number | null;
@@ -227,6 +229,145 @@ function PlotlyChart({
         className="rounded-xl border border-border bg-card"
         style={{ height: isMaximized ? "100%" : 220 }}
       >
+        <div ref={containerRef} className="h-full w-full" />
+      </div>
+    </div>
+  );
+}
+
+// -- Speed Polar (Geschwindigkeitspolare) ---------------------------------
+
+const SPEED_POLAR_COLORS = [
+  "#3B82F6", "#30A46C", "#E5484D", "#A78BFA", "#F59E0B", "#06B6D4",
+];
+
+/** Format a mass for German-style display ("1.5" -> "1,5"). */
+function fmtMassKg(m: number): string {
+  return String(m).replace(".", ",");
+}
+
+/** Negate one sink-rate value (plotted downward). Hoisted to avoid deep nesting. */
+function negate(w: number): number {
+  return -w;
+}
+
+/** Build the line trace for one mass curve. */
+function speedPolarLineTrace(c: SpeedPolarCurve, i: number): PlotlyTrace {
+  return {
+    x: c.V,
+    y: c.w.map(negate),
+    customdata: c.w,
+    type: "scatter",
+    mode: "lines",
+    name: `${fmtMassKg(c.mass_kg)} kg${c.is_base ? " (Basis)" : ""}`,
+    line: {
+      color: c.is_base ? "#FF8400" : SPEED_POLAR_COLORS[i % SPEED_POLAR_COLORS.length],
+      width: c.is_base ? 2.5 : 1.5,
+    },
+    hovertemplate: `${fmtMassKg(c.mass_kg)} kg<br>V: %{x:.1f} m/s<br>w: %{customdata:.2f} m/s<extra></extra>`,
+  };
+}
+
+/** Marker trace for min-sink / best-glide on the base curve, or null if absent. */
+function speedPolarMarkerTrace(base: SpeedPolarCurve): PlotlyTrace | null {
+  const mX: number[] = [];
+  const mY: number[] = [];
+  const mT: string[] = [];
+  if (base.v_min_sink != null && base.w_min != null) {
+    mX.push(base.v_min_sink);
+    mY.push(-base.w_min);
+    mT.push("min sink");
+  }
+  if (base.v_best_glide != null && base.ld_max && base.ld_max > 0) {
+    mX.push(base.v_best_glide);
+    mY.push(-(base.v_best_glide / base.ld_max));
+    mT.push("best glide");
+  }
+  if (mX.length === 0) return null;
+  return {
+    x: mX,
+    y: mY,
+    text: mT,
+    type: "scatter",
+    mode: "markers+text",
+    name: "Punkte",
+    textposition: "top center",
+    textfont: { size: 9, color: "#FAFAFA" },
+    marker: { color: "#FAFAFA", size: 7, symbol: "circle" },
+    hovertemplate: "%{text}<br>V: %{x:.1f} m/s<extra></extra>",
+  };
+}
+
+function speedPolarTraces(curves: SpeedPolarCurve[]): PlotlyTrace[] {
+  const traces = curves.map(speedPolarLineTrace);
+  const base = curves.find((c) => c.is_base) ?? curves[0];
+  const markers = speedPolarMarkerTrace(base);
+  if (markers) traces.push(markers);
+  return traces;
+}
+
+const SPEED_POLAR_LAYOUT: Record<string, unknown> = {
+  paper_bgcolor: "transparent",
+  plot_bgcolor: "transparent",
+  font: { color: "#A1A1AA", family: "JetBrains Mono, monospace", size: 10 },
+  margin: { l: 55, r: 15, t: 5, b: 40 },
+  xaxis: {
+    title: { text: "V [m/s]", font: { size: 11 } },
+    gridcolor: "#27272A",
+    zerolinecolor: "#3F3F46",
+  },
+  yaxis: {
+    title: { text: "w [m/s] (Sinken)", font: { size: 11 } },
+    gridcolor: "#27272A",
+    zerolinecolor: "#3F3F46",
+  },
+  showlegend: true,
+  legend: { font: { size: 9 }, bgcolor: "transparent", orientation: "h", y: 1.14 },
+  autosize: true,
+};
+
+/**
+ * Glider speed polar: sink rate w over forward speed V, one curve per mass.
+ * Sink is plotted downward (y = -w). The base (effective design) mass is
+ * highlighted; min-sink and best-glide points are marked on it.
+ */
+function SpeedPolarChart({ speedPolar }: Readonly<{ speedPolar: SpeedPolar }>) {
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const node = containerRef.current;
+    const curves = speedPolar.curves.filter((c) => c.V.length > 0);
+    if (!node || curves.length === 0) return;
+    let disposed = false;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    let PlotlyRef: any = null;
+    const traces = speedPolarTraces(curves);
+
+    (async () => {
+      PlotlyRef = await import("plotly.js-gl3d-dist-min");
+      if (disposed || !node) return;
+      await PlotlyRef.react(node, traces, SPEED_POLAR_LAYOUT, {
+        responsive: true,
+        displayModeBar: false,
+      });
+    })();
+
+    return () => {
+      disposed = true;
+      if (node && PlotlyRef) PlotlyRef.purge(node);
+    };
+  }, [speedPolar]);
+
+  if (speedPolar.curves.every((c) => c.V.length === 0)) {
+    return null;
+  }
+
+  return (
+    <div className="flex flex-col gap-1">
+      <span className="font-[family-name:var(--font-jetbrains-mono)] text-[11px] text-foreground">
+        Geschwindigkeitspolare (w über V)
+      </span>
+      <div className="rounded-xl border border-border bg-card" style={{ height: 280 }}>
         <div ref={containerRef} className="h-full w-full" />
       </div>
     </div>
@@ -611,6 +752,7 @@ function StreamlinesTabContent({
 
 export function AnalysisViewerPanel({
   result,
+  speedPolar,
   aeroplaneId,
   lastRunTime,
   lastRunDurationMs,
@@ -853,6 +995,9 @@ export function AnalysisViewerPanel({
                 Analysis{"\u201D"}
               </span>
             </div>
+          )}
+          {speedPolar && speedPolar.curves.some((c) => c.V.length > 0) && (
+            <SpeedPolarChart speedPolar={speedPolar} />
           )}
         </div>
       )}

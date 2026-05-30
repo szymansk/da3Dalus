@@ -550,3 +550,37 @@ class AnalysisStatusResponse(BaseModel):
 AVLTrimResult.model_rebuild()
 AeroBuildupTrimResult.model_rebuild()
 StoredOperatingPointCreate.model_rebuild()
+
+
+class SpeedPolarCurve(BaseModel):
+    """One glide speed polar (sink rate w over forward speed V) for a mass."""
+
+    mass_kg: float = Field(..., description="Aircraft mass for this curve [kg]")
+    is_base: bool = Field(
+        ..., description="True if this is the effective design (assumption) mass"
+    )
+    V: List[float] = Field(..., description="Forward speed [m/s], ascending")
+    w: List[float] = Field(..., description="Sink rate [m/s], positive downward")
+    cl: List[float] = Field(..., description="Lift coefficient at each point")
+    cd: List[float] = Field(..., description="Drag coefficient at each point")
+    v_stall: Optional[float] = Field(None, description="Stall speed at CL_max [m/s]")
+    v_min_sink: Optional[float] = Field(
+        None, description="Speed for minimum sink rate [m/s]"
+    )
+    w_min: Optional[float] = Field(None, description="Minimum sink rate [m/s]")
+    v_best_glide: Optional[float] = Field(
+        None, description="Speed for best glide / max L/D [m/s]"
+    )
+    ld_max: Optional[float] = Field(None, description="Maximum lift-to-drag ratio")
+
+
+class SpeedPolar(BaseModel):
+    """Speed polar bundle: one curve per mass, derived from a drag polar."""
+
+    base_mass_kg: float = Field(..., description="Effective design mass [kg]")
+    s_ref: float = Field(..., description="Wing reference area [m^2]")
+    rho: float = Field(..., description="Air density used [kg/m^3]")
+    altitude: float = Field(..., description="Altitude used [m]")
+    curves: List[SpeedPolarCurve] = Field(
+        ..., description="Speed polar curves, ascending by mass"
+    )

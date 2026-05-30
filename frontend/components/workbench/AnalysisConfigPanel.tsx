@@ -7,8 +7,14 @@ import type { StripForcesAllParams } from "@/hooks/useStripForces";
 import type { StreamlinesParams } from "@/hooks/useStreamlines";
 import type { StoredOperatingPoint } from "@/hooks/useOperatingPoints";
 import type { Tab } from "@/components/workbench/AnalysisViewerPanel";
+import { parseMasses, formatMass } from "@/lib/masses";
 
 type Mode = "single" | "sweep";
+
+/** Default speed-polar masses field value: the effective mass, or empty. */
+function defaultMassesFor(effectiveMassKg?: number | null): string {
+  return effectiveMassKg != null ? formatMass(effectiveMassKg) : "";
+}
 /**
  * gh-577: Trefftz/Streamlines basis selection.
  * - "trimmed" (default): pick a stored, trimmed OperatingPoint from the
@@ -36,6 +42,9 @@ interface AnalysisConfigPanelProps {
   // (cg_x effective value from assumptions). Falls back to 0 when not
   // available.
   readonly designCgX?: number | null;
+  // Effective design mass [kg] (assumption: calculated or estimate). Prefills
+  // the speed-polar masses field. Falls back to empty when not available.
+  readonly effectiveMassKg?: number | null;
   // gh-577: stored operating points for the trimmed-OP dropdown on the
   // Trefftz Plane and Streamlines tabs. The panel filters to TRIMMED
   // entries before rendering.
@@ -228,6 +237,7 @@ export function AnalysisConfigPanel({
   streamlinesRunning,
   streamlinesError,
   designCgX,
+  effectiveMassKg,
   operatingPoints,
   onClose,
 }: Readonly<AnalysisConfigPanelProps>) {
@@ -255,6 +265,10 @@ export function AnalysisConfigPanel({
   const [velocity, setVelocity] = useState("14");
   const [altitude, setAltitude] = useState("100");
   const [beta, setBeta] = useState("0");
+  // Speed-polar masses [kg], German format (comma decimal, semicolon separator).
+  // Prefilled with the effective design mass.
+  const defaultMassesInput = defaultMassesFor(effectiveMassKg);
+  const [massesInput, setMassesInput] = useState(defaultMassesInput);
   const [analysisTool, setAnalysisTool] = useState("aero_buildup");
   // xyzRef defaults to the design CG (cg_x effective from assumptions)
   // — that is the moment-reference point the rest of the system uses.
@@ -286,6 +300,7 @@ export function AnalysisConfigPanel({
       beta: Number.parseFloat(beta) || 0,
       altitude: Number.parseFloat(altitude) || 0,
       xyz_ref: parseXyzRef(),
+      masses_kg: parseMasses(massesInput),
     });
     onClose?.();
   };
@@ -330,6 +345,7 @@ export function AnalysisConfigPanel({
     setVelocity("14");
     setAltitude("100");
     setBeta("0");
+    setMassesInput(defaultMassesInput);
     setAnalysisTool("aero_buildup");
     setXyzRef(designCgX != null ? `${designCgX.toFixed(4)}, 0, 0` : "0, 0, 0");
     setTrefftzAlpha("5");
@@ -648,6 +664,32 @@ export function AnalysisConfigPanel({
                 </div>
               </div>
             )}
+          </div>
+
+          {/* ── Speed Polar Masses Card ── */}
+          <div className="flex flex-col gap-3 rounded-xl border border-border bg-card p-4">
+            <span className="font-[family-name:var(--font-jetbrains-mono)] text-[12px] text-muted-foreground">
+              Geschwindigkeitspolare — Massen [kg]
+            </span>
+            <div className="flex flex-col gap-1">
+              <label
+                htmlFor="speed-polar-masses"
+                className="font-[family-name:var(--font-geist-sans)] text-[11px] text-muted-foreground"
+              >
+                Massen (Komma = Dezimal, Semikolon = Trenner)
+              </label>
+              <input
+                id="speed-polar-masses"
+                type="text"
+                value={massesInput}
+                onChange={(e) => setMassesInput(e.target.value)}
+                placeholder="z. B. 1,5; 2,0; 2,5"
+                className="w-full rounded-xl border border-border bg-input px-3 py-2 font-[family-name:var(--font-geist-sans)] text-[13px] text-foreground"
+              />
+              <p className="font-[family-name:var(--font-geist-sans)] text-[10px] italic text-subtle-foreground">
+                Die effektive Auslegungsmasse wird immer als Basiskurve ergänzt.
+              </p>
+            </div>
           </div>
 
           {/* ── Analysis Tool Card ── */}
