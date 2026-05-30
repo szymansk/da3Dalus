@@ -262,9 +262,8 @@ export function AnalysisConfigPanel({
   const [beta, setBeta] = useState("0");
   // Speed-polar masses [kg], German format (comma decimal, semicolon separator).
   // Prefilled with the effective design mass.
-  const [massesInput, setMassesInput] = useState(
-    effectiveMassKg != null ? formatMass(effectiveMassKg) : "",
-  );
+  const defaultMassesInput = effectiveMassKg != null ? formatMass(effectiveMassKg) : "";
+  const [massesInput, setMassesInput] = useState(defaultMassesInput);
   const [analysisTool, setAnalysisTool] = useState("aero_buildup");
   // xyzRef defaults to the design CG (cg_x effective from assumptions)
   // — that is the moment-reference point the rest of the system uses.
@@ -341,7 +340,7 @@ export function AnalysisConfigPanel({
     setVelocity("14");
     setAltitude("100");
     setBeta("0");
-    setMassesInput(effectiveMassKg != null ? formatMass(effectiveMassKg) : "");
+    setMassesInput(defaultMassesInput);
     setAnalysisTool("aero_buildup");
     setXyzRef(designCgX != null ? `${designCgX.toFixed(4)}, 0, 0` : "0, 0, 0");
     setTrefftzAlpha("5");
