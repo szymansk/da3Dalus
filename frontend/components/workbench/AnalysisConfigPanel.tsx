@@ -10,6 +10,11 @@ import type { Tab } from "@/components/workbench/AnalysisViewerPanel";
 import { parseMasses, formatMass } from "@/lib/masses";
 
 type Mode = "single" | "sweep";
+
+/** Default speed-polar masses field value: the effective mass, or empty. */
+function defaultMassesFor(effectiveMassKg?: number | null): string {
+  return effectiveMassKg != null ? formatMass(effectiveMassKg) : "";
+}
 /**
  * gh-577: Trefftz/Streamlines basis selection.
  * - "trimmed" (default): pick a stored, trimmed OperatingPoint from the
@@ -262,7 +267,7 @@ export function AnalysisConfigPanel({
   const [beta, setBeta] = useState("0");
   // Speed-polar masses [kg], German format (comma decimal, semicolon separator).
   // Prefilled with the effective design mass.
-  const defaultMassesInput = effectiveMassKg != null ? formatMass(effectiveMassKg) : "";
+  const defaultMassesInput = defaultMassesFor(effectiveMassKg);
   const [massesInput, setMassesInput] = useState(defaultMassesInput);
   const [analysisTool, setAnalysisTool] = useState("aero_buildup");
   // xyzRef defaults to the design CG (cg_x effective from assumptions)
