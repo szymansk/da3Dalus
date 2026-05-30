@@ -1,0 +1,332 @@
+{
+  "key": "stratos_ul",
+  "name": "Ligeti Stratos",
+  "category": "anchored",
+  "topology": "Closed-tandem / joined-tip Boxwing",
+  "notes": "Boxwing topology stress-test; joined tips. Original 1985 prototype.",
+  "velocity_mps": 50.0,
+  "altitude_m": 0.0,
+  "anchors": [
+    {
+      "metric": "max_LD",
+      "value": 20.0,
+      "source": "Ligeti open-source spec sheet"
+    },
+    {
+      "metric": "CLmax",
+      "value": 1.45,
+      "source": "from published Vs 58-61 km/h"
+    }
+  ],
+  "sources": {
+    "vspaero": {
+      "label": "VSPAERO (VLM, wings-only)",
+      "curves": {
+        "alpha": [
+          -2.0,
+          -1.0,
+          0.0,
+          1.0,
+          2.0,
+          3.0,
+          4.0,
+          5.0,
+          6.0,
+          7.0,
+          8.0,
+          9.0,
+          10.0,
+          11.0,
+          12.0
+        ],
+        "CL": [
+          0.362347,
+          0.489252,
+          0.611018,
+          0.726985,
+          0.836594,
+          0.940216,
+          1.039014,
+          1.13321,
+          1.222869,
+          1.306926,
+          1.384848,
+          1.457775,
+          1.526688,
+          1.589982,
+          1.647495
+        ],
+        "CD": [
+          0.019497,
+          0.022623,
+          0.026169,
+          0.02986,
+          0.033326,
+          0.036409,
+          0.038828,
+          0.040428,
+          0.040903,
+          0.039753,
+          0.036995,
+          0.032071,
+          0.025282,
+          0.015813,
+          0.003418
+        ],
+        "CM": [
+          -0.657395,
+          -0.848321,
+          -1.025115,
+          -1.185618,
+          -1.328187,
+          -1.453706,
+          -1.565537,
+          -1.66458,
+          -1.750081,
+          -1.818833,
+          -1.869544,
+          -1.904695,
+          -1.926543,
+          -1.930452,
+          -1.915449
+        ],
+        "LoD": [
+          18.576349,
+          21.631912,
+          23.364229,
+          24.371004,
+          25.13548,
+          25.863389,
+          26.80769,
+          28.088023,
+          29.967028,
+          32.96286,
+          37.544228,
+          45.604387,
+          60.607982,
+          100.954147,
+          484.108385
+        ]
+      },
+      "metrics": {
+        "CL0": 0.611018,
+        "CL_alpha_per_deg": 0.11276803571428573,
+        "CD_min": 0.003418,
+        "max_LD": 484.108385,
+        "alpha_at_max_LD": 12.0,
+        "CM_alpha_per_deg": -0.15136671428571424,
+        "e_mean": 2.4795149333333333,
+        "CL_max_in_sweep": 1.647495
+      },
+      "flags": [
+        "span efficiency e=2.48 > 1.0 \u2014 expected for a box wing (beats the monoplane limit), but the AR-based formula is only indicative here"
+      ]
+    },
+    "asb_vlm": {
+      "label": "ASB VortexLattice (inviscid)",
+      "curves": {
+        "alpha": [
+          -2.0,
+          -1.0,
+          0.0,
+          1.0,
+          2.0,
+          3.0,
+          4.0,
+          5.0,
+          6.0,
+          7.0,
+          8.0,
+          9.0,
+          10.0,
+          11.0,
+          12.0
+        ],
+        "CL": [
+          -0.056649,
+          0.082977,
+          0.222655,
+          0.362284,
+          0.501763,
+          0.640992,
+          0.779871,
+          0.9183,
+          1.056181,
+          1.193415,
+          1.329906,
+          1.465559,
+          1.60028,
+          1.733975,
+          1.866554
+        ],
+        "CD": [
+          -5.2e-05,
+          -5.2e-05,
+          0.001053,
+          0.003265,
+          0.006583,
+          0.011003,
+          0.016516,
+          0.023112,
+          0.030775,
+          0.039488,
+          0.049229,
+          0.059976,
+          0.071699,
+          0.084369,
+          0.097952
+        ],
+        "CM": [
+          0.009948,
+          -0.224163,
+          -0.458937,
+          -0.694089,
+          -0.929332,
+          -1.164379,
+          -1.398945,
+          -1.632742,
+          -1.865488,
+          -2.096896,
+          -2.326687,
+          -2.55458,
+          -2.780297,
+          -3.003563,
+          -3.224107
+        ],
+        "LoD": [
+          1087.105741,
+          -1586.606075,
+          211.521022,
+          110.96469,
+          76.21937,
+          58.25661,
+          47.218545,
+          39.73307,
+          34.319545,
+          30.222335,
+          27.01443,
+          24.435947,
+          22.319511,
+          20.552392,
+          19.055862
+        ]
+      },
+      "metrics": {
+        "CL0": 0.222655,
+        "CL_alpha_per_deg": 0.13945349999999998,
+        "CD_min": -5.2e-05,
+        "max_LD": 1087.105741,
+        "alpha_at_max_LD": -2.0,
+        "CM_alpha_per_deg": -0.23491092857142856,
+        "e_mean": 1.3498608461538462,
+        "CL_max_in_sweep": 1.866554
+      },
+      "flags": [
+        "span efficiency e=1.35 > 1.0 \u2014 expected for a box wing (beats the monoplane limit), but the AR-based formula is only indicative here"
+      ]
+    },
+    "asb_aerobuildup": {
+      "label": "ASB AeroBuildup (app default)",
+      "curves": {
+        "alpha": [
+          -1.999,
+          -0.999,
+          0.001,
+          1.001,
+          2.001,
+          3.001,
+          4.001,
+          5.001,
+          6.001,
+          7.001,
+          8.001,
+          9.001,
+          10.001,
+          11.001,
+          12.001
+        ],
+        "CL": [
+          NaN,
+          NaN,
+          NaN,
+          NaN,
+          NaN,
+          NaN,
+          NaN,
+          NaN,
+          NaN,
+          NaN,
+          NaN,
+          NaN,
+          NaN,
+          NaN,
+          NaN
+        ],
+        "CD": [
+          NaN,
+          NaN,
+          NaN,
+          NaN,
+          NaN,
+          NaN,
+          NaN,
+          NaN,
+          NaN,
+          NaN,
+          NaN,
+          NaN,
+          NaN,
+          NaN,
+          NaN
+        ],
+        "CM": [
+          NaN,
+          NaN,
+          NaN,
+          NaN,
+          NaN,
+          NaN,
+          NaN,
+          NaN,
+          NaN,
+          NaN,
+          NaN,
+          NaN,
+          NaN,
+          NaN,
+          NaN
+        ],
+        "LoD": [
+          NaN,
+          NaN,
+          NaN,
+          NaN,
+          NaN,
+          NaN,
+          NaN,
+          NaN,
+          NaN,
+          NaN,
+          NaN,
+          NaN,
+          NaN,
+          NaN,
+          NaN
+        ]
+      },
+      "metrics": {
+        "CL0": NaN,
+        "CL_alpha_per_deg": NaN,
+        "CD_min": NaN,
+        "max_LD": NaN,
+        "alpha_at_max_LD": NaN,
+        "CM_alpha_per_deg": NaN,
+        "e_mean": 0.7810869999999999,
+        "CL_max_in_sweep": NaN
+      },
+      "flags": [
+        "method produced all-NaN (failed for this geometry)"
+      ]
+    }
+  }
+}
