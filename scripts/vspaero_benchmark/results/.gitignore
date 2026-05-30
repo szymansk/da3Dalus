@@ -1,0 +1,18 @@
+# VSPAERO sidecar binaries — large, regenerable, not worth versioning
+*/vspaero/*.adb
+*/vspaero/*.adb.cases
+*/vspaero/*.vspgeom
+*/vspaero/*.lod
+*/vspaero/*.csf
+*/vspaero/*.vkey
+*/vspaero/*.group.*
+*/vspaero/*_vspaero_raw.csv
+*/vspaero/*.vsp3
+_debug_*/*.vsp3
+_debug_*/*.vspgeom
+_debug_*/*.adb*
+*/vspaero/*.case.*.dat
+*/vspaero/*.cuts
+*/vspaero/*.slc
+*/vspaero/*.quad.cases
+*/vspaero/*.history

@@ -11,6 +11,8 @@ export interface AlphaSweepParams {
   beta: number;
   altitude: number;
   xyz_ref: number[];
+  /** Extra masses [kg] for speed-polar comparison curves (base mass always included). */
+  masses_kg?: number[];
 }
 
 export interface AnalysisResult {
@@ -19,6 +21,28 @@ export interface AnalysisResult {
   Cm: number[];
   alpha: number[];
   [key: string]: unknown;
+}
+
+export interface SpeedPolarCurve {
+  mass_kg: number;
+  is_base: boolean;
+  V: number[];
+  w: number[];
+  cl: number[];
+  cd: number[];
+  v_stall: number | null;
+  v_min_sink: number | null;
+  w_min: number | null;
+  v_best_glide: number | null;
+  ld_max: number | null;
+}
+
+export interface SpeedPolar {
+  base_mass_kg: number;
+  s_ref: number;
+  rho: number;
+  altitude: number;
+  curves: SpeedPolarCurve[];
 }
 
 /**
@@ -40,6 +64,7 @@ function extractResult(data: Record<string, unknown>): AnalysisResult {
 
 export interface UseAnalysisReturn {
   result: AnalysisResult | null;
+  speedPolar: SpeedPolar | null;
   isRunning: boolean;
   error: string | null;
   lastRunTime: Date | null;
@@ -49,6 +74,7 @@ export interface UseAnalysisReturn {
 
 export function useAnalysis(aeroplaneId: string | null): UseAnalysisReturn {
   const [result, setResult] = useState<AnalysisResult | null>(null);
+  const [speedPolar, setSpeedPolar] = useState<SpeedPolar | null>(null);
   const [isRunning, setIsRunning] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [lastRunTime, setLastRunTime] = useState<Date | null>(null);
@@ -76,6 +102,7 @@ export function useAnalysis(aeroplaneId: string | null): UseAnalysisReturn {
         }
         const data = await res.json();
         setResult(extractResult(data));
+        setSpeedPolar((data.speed_polar as SpeedPolar | undefined) ?? null);
         setLastRunTime(new Date());
         setLastRunDurationMs(Date.now() - t0);
       } catch (err) {
@@ -87,5 +114,5 @@ export function useAnalysis(aeroplaneId: string | null): UseAnalysisReturn {
     [aeroplaneId],
   );
 
-  return { result, isRunning, error, lastRunTime, lastRunDurationMs, runAlphaSweep };
+  return { result, speedPolar, isRunning, error, lastRunTime, lastRunDurationMs, runAlphaSweep };
 }

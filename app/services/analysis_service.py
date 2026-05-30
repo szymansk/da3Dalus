@@ -427,6 +427,146 @@ async def calculate_streamlines_json(
         raise InternalError(message=f"Analysis error: {e}") from e
 
 
+def _compute_speed_polar(
+    cl,
+    cd,
+    masses_kg,
+    base_mass_kg,
+    s_ref_m2,
+    rho,
+    altitude: float = 0.0,
+    g: float = 9.81,
+):
+    """Derive glide speed polars (sink rate ``w`` over forward speed ``V``) from
+    a drag polar (CL/CD), for one or more masses.
+
+    Aerodynamic coefficients are mass independent; only the speed required to
+    fly a given CL scales with mass. For each point with ``CL > 0``::
+
+        V = sqrt(2 * m * g / (rho * S_ref * CL))
+        w = V * (CD / CL)
+
+    Curves for different masses therefore scale as ``V, w ∝ sqrt(m)``. The
+    effective design mass (``base_mass_kg``) is always included and flagged
+    ``is_base``. Pure function — no DB or aero calls — so it is unit testable.
+    """
+    from app.schemas.aeroanalysisschema import SpeedPolar, SpeedPolarCurve
+
+    cl_arr = np.atleast_1d(np.asarray(cl, dtype=float))
+    cd_arr = np.atleast_1d(np.asarray(cd, dtype=float))
+    n = min(len(cl_arr), len(cd_arr))
+    cl_arr, cd_arr = cl_arr[:n], cd_arr[:n]
+
+    # Deduplicated, ascending mass set that always includes the base mass.
+    tol = 1e-9
+    masses: list[float] = [float(base_mass_kg)]
+    for m in masses_kg or []:
+        mf = float(m)
+        if mf > 0 and all(abs(mf - existing) > tol for existing in masses):
+            masses.append(mf)
+    masses.sort()
+
+    # Only positive-CL points describe a steady glide.
+    pos = cl_arr > 0
+    cl_pos = cl_arr[pos]
+    cd_pos = cd_arr[pos]
+    cl_max = float(np.max(cl_arr)) if cl_arr.size else 0.0
+    valid_geometry = s_ref_m2 > 0 and rho > 0
+
+    curves: list[SpeedPolarCurve] = []
+    for m in masses:
+        is_base = abs(m - float(base_mass_kg)) <= tol
+        if not valid_geometry or cl_pos.size == 0 or m <= 0:
+            curves.append(
+                SpeedPolarCurve(
+                    mass_kg=m,
+                    is_base=is_base,
+                    V=[],
+                    w=[],
+                    cl=[],
+                    cd=[],
+                    v_stall=None,
+                    v_min_sink=None,
+                    w_min=None,
+                    v_best_glide=None,
+                    ld_max=None,
+                )
+            )
+            continue
+        weight_n = m * g
+        v = np.sqrt(2.0 * weight_n / (rho * s_ref_m2 * cl_pos))
+        w = v * (cd_pos / cl_pos)
+        # Co-sort all parallel arrays ascending by V (higher CL -> lower V).
+        order = np.argsort(v)
+        v, w = v[order], w[order]
+        cl_s, cd_s = cl_pos[order], cd_pos[order]
+
+        i_min_sink = int(np.argmin(w))
+        ld = cl_s / cd_s  # equals V / w
+        i_best = int(np.argmax(ld))
+        v_stall = float(np.sqrt(2.0 * weight_n / (rho * s_ref_m2 * cl_max))) if cl_max > 0 else None
+        curves.append(
+            SpeedPolarCurve(
+                mass_kg=m,
+                is_base=is_base,
+                V=v.tolist(),
+                w=w.tolist(),
+                cl=cl_s.tolist(),
+                cd=cd_s.tolist(),
+                v_stall=v_stall,
+                v_min_sink=float(v[i_min_sink]),
+                w_min=float(w[i_min_sink]),
+                v_best_glide=float(v[i_best]),
+                ld_max=float(ld[i_best]),
+            )
+        )
+
+    return SpeedPolar(
+        base_mass_kg=float(base_mass_kg),
+        s_ref=float(s_ref_m2),
+        rho=float(rho),
+        altitude=float(altitude),
+        curves=curves,
+    )
+
+
+def _build_speed_polar(db, aeroplane_uuid, sweep_request, asb_airplane, cl_values, cd_values):
+    """Glue around :func:`_compute_speed_polar`: resolve effective mass, wing
+    reference area and air density, then build the speed polar. Returns ``None``
+    if no polar data is available or anything goes wrong (best-effort add-on)."""
+    if cl_values is None or cd_values is None:
+        return None
+    try:
+        import aerosandbox as asb
+
+        from app.core.exceptions import NotFoundError
+        from app.services.mass_cg_service import get_effective_assumption_value
+
+        try:
+            base_mass = float(get_effective_assumption_value(db, aeroplane_uuid, "mass"))
+        except NotFoundError:
+            base_mass = 1.0
+            logger.warning(
+                "No 'mass' assumption for %s; speed polar defaults to 1.0 kg",
+                aeroplane_uuid,
+            )
+        s_ref = float(getattr(asb_airplane, "s_ref", 0.0) or 0.0)
+        altitude = float(getattr(sweep_request, "altitude", 0.0) or 0.0)
+        rho = float(asb.Atmosphere(altitude=altitude).density())
+        return _compute_speed_polar(
+            cl=cl_values,
+            cd=cd_values,
+            masses_kg=getattr(sweep_request, "masses_kg", None) or [],
+            base_mass_kg=base_mass,
+            s_ref_m2=s_ref,
+            rho=rho,
+            altitude=altitude,
+        )
+    except Exception as e:  # pragma: no cover - defensive add-on
+        logger.error("Speed polar computation failed: %s", e)
+        return None
+
+
 async def analyze_alpha_sweep(db: Session, aeroplane_uuid, sweep_request: AlphaSweepRequest) -> Any:
     """
     Perform an angle of attack sweep.
@@ -464,9 +604,13 @@ async def analyze_alpha_sweep(db: Session, aeroplane_uuid, sweep_request: AlphaS
         characteristic_points = _compute_alpha_sweep_characteristic_points(
             alpha_array, cl_values, cd_values, cm_values
         )
+        speed_polar = _build_speed_polar(
+            db, aeroplane_uuid, sweep_request, asb_airplane, cl_values, cd_values
+        )
         return {
             "analysis": result,
             "characteristic_points": characteristic_points,
+            "speed_polar": speed_polar,
             "aircraft_name": getattr(plane_schema, "name", str(aeroplane_uuid)),
         }
     except Exception as e:
