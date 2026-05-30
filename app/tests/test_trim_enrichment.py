@@ -665,32 +665,54 @@ class TestControlEffectiveness:
 
 
 class TestDualRoleDecomposition:
-    def test_paired_elevons(self):
+    # gh-772: a mixed surface now exposes TWO axis control variables
+    # (pitch/lift + roll/yaw) from ONE physical surface, decomposed into
+    # symmetric + antisymmetric components and reconstructed into left/right
+    # physical angles. The old "two separately-named surfaces / half-difference"
+    # model — and its "single dual-role -> differential 0" bug — are gone.
+
+    def test_dual_axis_elevon_decomposes_to_left_right(self):
         controls = {
-            "[elevon]Left Elevon": 5.0,
-            "[elevon]Right Elevon": 3.0,
+            "[elevon]pitch_wing_0": 4.0,
+            "[elevon]roll_wing_0": 1.0,
         }
         mixer = decompose_dual_role(controls)
-        assert "elevon_mixer" in mixer
-        assert mixer["elevon_mixer"].symmetric_offset == pytest.approx(4.0)
-        assert mixer["elevon_mixer"].differential_throw == pytest.approx(1.0)
-        assert mixer["elevon_mixer"].role == "elevon"
+        assert "elevon_wing_0_mixer" in mixer
+        mv = mixer["elevon_wing_0_mixer"]
+        assert mv.symmetric_offset == pytest.approx(4.0)
+        assert mv.differential_throw == pytest.approx(1.0)
+        assert mv.deflection_left == pytest.approx(3.0)   # 4 - 1
+        assert mv.deflection_right == pytest.approx(5.0)  # 4 + 1
+        assert mv.role == "elevon"
 
-    def test_single_dual_role(self):
-        controls = {"[elevon]Single Elevon": 7.0}
+    def test_dual_role_with_both_axes_is_one_surface(self):
+        # The old code reported differential 0 for a single (mirrored) surface;
+        # now the antisymmetric axis variable carries the real roll/yaw throw.
+        controls = {
+            "[ruddervator]pitch_t_0": 7.0,
+            "[ruddervator]yaw_t_0": 2.0,
+        }
         mixer = decompose_dual_role(controls)
-        assert "[elevon]Single Elevon" in mixer
-        assert mixer["[elevon]Single Elevon"].symmetric_offset == pytest.approx(7.0)
-        assert mixer["[elevon]Single Elevon"].differential_throw == pytest.approx(0.0)
+        assert len(mixer) == 1
+        mv = next(iter(mixer.values()))
+        assert mv.differential_throw == pytest.approx(2.0)  # NOT 0
 
-    def test_no_dual_role_empty(self):
+    def test_truly_single_axis_roles_not_decomposed(self):
         controls = {
             "[elevator]Elev": -3.0,
-            "[aileron]Ail": 5.0,
             "[rudder]Rud": 2.0,
+            "[flap]Flap": 10.0,
         }
         mixer = decompose_dual_role(controls)
         assert len(mixer) == 0
+
+    def test_aileron_is_decomposed_for_differential(self):
+        # gh-772: aileron now yields left/right so differential can be shown.
+        mixer = decompose_dual_role({"[aileron]Ail": 5.0})
+        mv = next(iter(mixer.values()))
+        assert mv.role == "aileron"
+        assert mv.deflection_left == pytest.approx(-5.0)
+        assert mv.deflection_right == pytest.approx(5.0)
 
 
 # ---------------------------------------------------------------------------

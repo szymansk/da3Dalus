@@ -275,6 +275,7 @@ async def trim_with_aerobuildup(
     try:
         from app.services.trim_enrichment_service import (
             build_deflection_limits_from_schema,
+            build_mix_params_from_schema,
             compute_enrichment,
             parse_role_tag,
         )
@@ -303,6 +304,7 @@ async def trim_with_aerobuildup(
             alpha_deg=alpha_deg,
             stability_derivatives=derivs or None,
             aero_coefficients=aero or None,
+            mix_params=build_mix_params_from_schema(plane_schema),
         )
         trim_enrichment_data = enrichment
     except Exception:

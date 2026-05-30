@@ -303,10 +303,51 @@ def _control_surface_for_xsec(
     return x_sec.control_surface
 
 
-def _asb_wing_xsecs_from_schema(wing: schemas.AsbWingSchema) -> List[asb.WingXSec]:
+def axes_for_xsec(
+    x_sec: schemas.WingXSecSchema,
+    wing_key: str,
+    xsec_index: int,
+) -> list:
+    """gh-772: decompose an xsec's control surface into its AVL control axes.
+
+    Dual-role surfaces (elevon/flaperon/ruddervator) yield TWO axes; single-axis
+    surfaces yield one with their existing name/sign preserved. Shared by the ASB
+    airplane builder and the AVL geometry builder so both agree on names/order.
+    """
+    from app.services.control_surface_mixing import (
+        control_axes_for_surface,
+        parse_role_tag,
+    )
+
+    cs = _control_surface_for_xsec(x_sec)
+    if cs is None:
+        return []
+    ted = x_sec.trailing_edge_device
+    if ted is not None and getattr(ted, "role", None) is not None:
+        role = ted.role.value if hasattr(ted.role, "value") else ted.role
+    else:
+        role = parse_role_tag(cs.name)[0]
+    gp = float(getattr(ted, "mix_gain_primary", 1.0) or 1.0) if ted is not None else 1.0
+    gs = float(getattr(ted, "mix_gain_secondary", 1.0) or 1.0) if ted is not None else 1.0
+    return control_axes_for_surface(
+        role=role,
+        tagged_name=cs.name,
+        symmetric=cs.symmetric,
+        hinge_point=cs.hinge_point,
+        deflection=cs.deflection,
+        mix_gain_primary=gp,
+        mix_gain_secondary=gs,
+        wing_key=wing_key,
+        xsec_index=xsec_index,
+    )
+
+
+def _asb_wing_xsecs_from_schema(
+    wing: schemas.AsbWingSchema, wing_key: str = "w"
+) -> List[asb.WingXSec]:
     xsecs: List[asb.WingXSec] = []
-    for x_sec in wing.x_secs:
-        control_surface = _control_surface_for_xsec(x_sec)
+    for xsec_index, x_sec in enumerate(wing.x_secs):
+        axes = axes_for_xsec(x_sec, wing_key, xsec_index)
         xsecs.append(
             asb.WingXSec(
                 xyz_le=x_sec.xyz_le,
@@ -315,15 +356,14 @@ def _asb_wing_xsecs_from_schema(wing: schemas.AsbWingSchema) -> List[asb.WingXSe
                 airfoil=_build_asb_airfoil(x_sec.airfoil),
                 control_surfaces=[
                     asb.ControlSurface(
-                        name=control_surface.name,
-                        symmetric=control_surface.symmetric,
-                        deflection=control_surface.deflection,
-                        hinge_point=control_surface.hinge_point,
+                        name=axis.name,
+                        symmetric=axis.symmetric,
+                        deflection=axis.deflection,
+                        hinge_point=axis.hinge_point,
                         trailing_edge=True,
                     )
-                ]
-                if control_surface
-                else [],
+                    for axis in axes
+                ],
             )
         )
     return xsecs
@@ -584,7 +624,9 @@ def aeroplane_schema_to_asb_airplane_async(plane_schema: AeroplaneSchema) -> "as
             Wing(
                 name=wing_name,
                 symmetric=wing.symmetric,
-                xsecs=list(_asb_wing_xsecs_from_schema(wing)) if wing.x_secs else None,
+                xsecs=list(_asb_wing_xsecs_from_schema(wing, wing_key=wing_name))
+                if wing.x_secs
+                else None,
             )
             for wing_name, wing in plane_schema.wings.items()
         ]
@@ -606,8 +648,8 @@ def aeroplane_schema_to_airplane_configuration_async(
         )
 
     wing_configs: List[WingConfiguration] = []
-    for wing in (plane_schema.wings or {}).values():
-        xsecs = _asb_wing_xsecs_from_schema(wing)
+    for wing_key, wing in (plane_schema.wings or {}).items():
+        xsecs = _asb_wing_xsecs_from_schema(wing, wing_key=wing_key)
         wing_config = WingConfiguration.from_asb(xsecs=xsecs, symmetric=wing.symmetric)
         _hydrate_wing_configuration_details(wing_config, wing)
         wing_configs.append(wing_config)
@@ -683,7 +725,9 @@ def asb_wing_schema_to_wing_config(
     been transported via pickle.
     """
     geometry_scaled_schema = _scale_asb_wing_geometry_schema(asb_wing, scale=scale)
-    xsecs = _asb_wing_xsecs_from_schema(geometry_scaled_schema)
+    xsecs = _asb_wing_xsecs_from_schema(
+        geometry_scaled_schema, wing_key=getattr(asb_wing, "name", "w") or "w"
+    )
     wing_config = WingConfiguration.from_asb(xsecs, geometry_scaled_schema.symmetric)
     _hydrate_wing_configuration_details(wing_config, asb_wing)
     return wing_config
