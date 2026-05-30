@@ -1,3 +1,4 @@
+import math
 from enum import Enum
 from typing import Literal, Optional, OrderedDict
 
@@ -59,7 +60,7 @@ def _validate_mix_fields(role, mix_gain_secondary, differential_ratio) -> None:
         return  # cannot cross-validate without a role (e.g. partial patch)
     if (
         differential_ratio is not None
-        and differential_ratio != 1.0
+        and not math.isclose(differential_ratio, 1.0, rel_tol=1e-9, abs_tol=1e-9)
         and role_value not in DIFFERENTIAL_ROLE_VALUES
     ):
         raise ValueError(
@@ -68,7 +69,7 @@ def _validate_mix_fields(role, mix_gain_secondary, differential_ratio) -> None:
         )
     if (
         mix_gain_secondary is not None
-        and mix_gain_secondary != 1.0
+        and not math.isclose(mix_gain_secondary, 1.0, rel_tol=1e-9, abs_tol=1e-9)
         and role_value not in DUAL_ROLE_VALUES
     ):
         raise ValueError(
@@ -406,7 +407,10 @@ class TrailingEdgeDevicePatchSchema(BaseModel):
         None, gt=0.0, le=5.0, description="gh-772: secondary (antisymmetric) axis AVL gain"
     )
     differential_ratio: Optional[float] = Field(
-        None, gt=0.3, le=3.0, description="gh-772: antisymmetric up/down throw ratio (reporting-only)"
+        None,
+        gt=0.3,
+        le=3.0,
+        description="gh-772: antisymmetric up/down throw ratio (reporting-only)",
     )
 
     @model_validator(mode="after")
