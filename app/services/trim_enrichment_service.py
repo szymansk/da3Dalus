@@ -302,7 +302,11 @@ def decompose_dual_role(
         d_sym = gp * primary_val
         d_anti = gs * secondary_val
 
-        # Superpose; apply differential to whichever side is going up (negative TE).
+        # Differential is taken about the symmetric/neutral reference (as a real
+        # differential linkage is): scale the side whose ANTISYMMETRIC excursion is
+        # up-relative-to-symmetric (negative), i.e. the larger-throw side. This is
+        # applied to the antisymmetric component only, before adding the symmetric
+        # offset, so the symmetric (pitch/lift) bias is never scaled by the ratio.
         right = d_anti
         left = -d_anti
         if right < 0:

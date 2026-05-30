@@ -197,6 +197,18 @@ def build_avl_geometry_file(
         for wing_name, wing in plane_schema.wings.items():
             surfaces.append(_build_surface(wing_name, wing, spacing_config))
 
+    # gh-772: a control-variable name shared across two physical surfaces would be
+    # silently collapsed into one AVL DOF (avl_doc 778-789). Panel duplication
+    # repeats a name within one surface legitimately, so dedup per surface first,
+    # then assert the cross-surface set is unique.
+    from app.services.control_surface_mixing import assert_unique_control_names
+
+    cross_surface_names: list[str] = []
+    for surface in surfaces:
+        names_in_surface = {c.name for section in surface.sections for c in section.controls}
+        cross_surface_names.extend(names_in_surface)
+    assert_unique_control_names(cross_surface_names)
+
     return AvlGeometryFile(
         title=plane_schema.name,
         mach=0.0,

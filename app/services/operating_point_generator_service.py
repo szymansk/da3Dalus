@@ -26,6 +26,7 @@ from app.schemas.aeroanalysisschema import (
 )
 from app.services.trim_enrichment_service import (
     build_deflection_limits_from_schema,
+    build_mix_params_from_schema,
     compute_enrichment,
     parse_role_tag,
 )
@@ -1040,6 +1041,7 @@ def generate_default_set_for_aircraft(
                     op_name=point.name,
                     alpha_deg=math.degrees(point.alpha_rad),
                     status=point.status.value if point.status else None,
+                    mix_params=build_mix_params_from_schema(plane_schema),
                 )
                 point.trim_enrichment = enrichment.model_dump()
             except Exception:
@@ -1154,6 +1156,7 @@ def trim_operating_point_for_aircraft(
                 op_name=point.name,
                 alpha_deg=math.degrees(point.alpha_rad),
                 status=point.status.value if point.status else None,
+                mix_params=build_mix_params_from_schema(plane_schema),
             )
             enrichment_data = enrichment.model_dump()
         except Exception:

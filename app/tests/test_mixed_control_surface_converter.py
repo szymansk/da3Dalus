@@ -6,9 +6,13 @@ names so the trim index map stays consistent. Single-axis surfaces are unchanged
 Differential never enters the geometry (SgnDup stays ±1).
 """
 
+from collections import OrderedDict
+
+import pytest
+
 import app.schemas.aeroplaneschema as schemas
 from app.converters.model_schema_converters import _asb_wing_xsecs_from_schema
-from app.services.avl_geometry_service import _build_controls_for_wing
+from app.services.avl_geometry_service import _build_controls_for_wing, build_avl_geometry_file
 
 _AF = "./components/airfoils/mh32.dat"
 
@@ -98,3 +102,28 @@ class TestAvlDualAxis:
         assert per_section[0][0].name == "[flap]flap"
         assert per_section[0][0].gain == 1.0
         assert per_section[0][0].sgn_dup == 1.0
+
+
+def _plane(wings: "OrderedDict") -> schemas.AeroplaneSchema:
+    return schemas.AeroplaneSchema(name="t", wings=wings, xyz_ref=[0.0, 0.0, 0.0])
+
+
+class TestUniquenessAssertionWired:
+    def test_elevon_panel_duplication_does_not_false_positive(self):
+        ted = schemas.TrailingEdgeDeviceDetailSchema(role="elevon", rel_chord_root=0.75)
+        plane = _plane(OrderedDict(wing=_wing_with_ted(ted)))
+        # Two CONTROL lines per panel are repeated across adjacent sections by
+        # design; the assertion must NOT treat that legitimate repetition as a clash.
+        geom = build_avl_geometry_file(plane)
+        assert geom is not None
+
+    def test_cross_surface_name_collision_raises(self):
+        # Two wing keys that sanitize to the same token would emit identical
+        # dual-role control names → must raise instead of silently collapsing.
+        ted_a = schemas.TrailingEdgeDeviceDetailSchema(role="elevon", rel_chord_root=0.75)
+        ted_b = schemas.TrailingEdgeDeviceDetailSchema(role="elevon", rel_chord_root=0.75)
+        wings = OrderedDict()
+        wings["a b"] = _wing_with_ted(ted_a)
+        wings["a_b"] = _wing_with_ted(ted_b)
+        with pytest.raises(ValueError, match="collapse"):
+            build_avl_geometry_file(_plane(wings))

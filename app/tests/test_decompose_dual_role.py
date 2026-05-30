@@ -54,6 +54,21 @@ class TestDifferentialSignBranched:
         )
 
 
+class TestSymmetricDominantDifferential:
+    def test_differential_is_about_symmetric_reference_not_absolute_te(self):
+        # gh-772 code-review pin: with a large symmetric (pitch) offset both
+        # surfaces may stay TE-down, yet the differential is still taken about the
+        # symmetric/neutral reference (real differential-linkage behaviour).
+        controls = {"[elevon]pitch_w_0": 5.0, "[elevon]roll_w_0": 3.0}
+        mix = {"elevon:w_0": (1.0, 1.0, 2.0)}
+        mv = next(iter(decompose_dual_role(controls, mix).values()))
+        # antisymmetric: right=+3 (unscaled), left=-3*2=-6 (scaled about symmetric)
+        assert mv.deflection_right == 5.0 + 3.0   # 8.0
+        assert mv.deflection_left == 5.0 - 6.0    # -1.0
+        # symmetric bias itself is NOT scaled by the ratio
+        assert mv.symmetric_offset == 5.0
+
+
 class TestGains:
     def test_gains_scale_components(self):
         controls = {"[ruddervator]pitch_t_1": 2.0, "[ruddervator]yaw_t_1": 4.0}
