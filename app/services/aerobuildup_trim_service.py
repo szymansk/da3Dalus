@@ -111,22 +111,33 @@ async def trim_with_aerobuildup(
     # Fail fast before expensive solver iterations if the surface doesn't exist.
     # Match against both the full tagged name and the display-only portion
     # so callers can use either "[elevator]Elevator" or just "Elevator".
+    from app.services.control_surface_mixing import PRIMARY_AXES
     from app.services.trim_enrichment_service import parse_role_tag
 
     control_names: set[str] = set()
     display_to_tagged: dict[str, str] = {}
+    # gh-772: a dual-role surface (elevon/flaperon/ruddervator) is now split into a
+    # primary (pitch/lift) + secondary (roll/yaw) control variable. AeroBuildup can
+    # only trim the symmetric axis, so a friendly role name like "Ruddervator"
+    # resolves to that surface's PRIMARY-axis control.
+    role_to_primary: dict[str, str] = {}
     for wing in asb_airplane.wings:
         for xsec in wing.xsecs:
             for cs in xsec.control_surfaces:
                 cs_name = str(getattr(cs, "name", "")).strip()
                 control_names.add(cs_name)
-                _role, display = parse_role_tag(cs_name)
+                role, display = parse_role_tag(cs_name)
                 display_to_tagged[display.strip()] = cs_name
+                axis = display.split("_", 1)[0]
+                if role and axis in PRIMARY_AXES and role not in role_to_primary:
+                    role_to_primary[role] = cs_name
 
     resolved_trim_var = request.trim_variable
     if resolved_trim_var not in control_names:
         if resolved_trim_var in display_to_tagged:
             resolved_trim_var = display_to_tagged[resolved_trim_var]
+        elif resolved_trim_var.lower() in role_to_primary:
+            resolved_trim_var = role_to_primary[resolved_trim_var.lower()]
         else:
             raise ValidationDomainError(
                 message=f"Control surface '{request.trim_variable}' not found on airplane. "
