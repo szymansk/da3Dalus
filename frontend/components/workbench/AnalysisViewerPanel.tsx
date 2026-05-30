@@ -752,6 +752,7 @@ function StreamlinesTabContent({
 
 export function AnalysisViewerPanel({
   result,
+  speedPolar,
   aeroplaneId,
   lastRunTime,
   lastRunDurationMs,
