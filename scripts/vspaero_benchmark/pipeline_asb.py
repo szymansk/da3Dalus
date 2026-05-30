@@ -86,7 +86,8 @@ def correct_reference_to_main_wing(asb_airplane) -> dict:
         return {"s_ref": asb_airplane.s_ref, "b_ref": asb_airplane.b_ref,
                 "c_ref": asb_airplane.c_ref, "corrected": False}
     main = max(asb_airplane.wings, key=lambda w: w.area())
-    s = float(main.area()); b = float(main.span())
+    s = float(main.area())
+    b = float(main.span())
     c = float(main.mean_aerodynamic_chord())
     corrected = abs(s - float(asb_airplane.s_ref)) / max(s, 1e-9) > 0.05
     if corrected:
@@ -256,7 +257,8 @@ def _rows_vlm_per_alpha(asb_airplane, flight, alphas) -> list[dict]:
         )
         try:
             d = vlm.run()
-            cl = float(d["CL"]); cd = float(d["CD"])
+            cl = float(d["CL"])
+            cd = float(d["CD"])
             cdi = float(d.get("CDi", cd))   # VLM CD is induced
             cm = float(d.get("Cm", math.nan))
             ar = (asb_airplane.b_ref ** 2) / asb_airplane.s_ref

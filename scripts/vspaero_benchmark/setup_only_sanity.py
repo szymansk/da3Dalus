@@ -47,7 +47,7 @@ def main() -> int:
     print(f"working dir: {WORK_DIR}")
     print(f"reading:     {VSP_FILE}")
     if not VSP_FILE.exists():
-        print(f"ERROR: vsp3 file not found", file=sys.stderr)
+        print("ERROR: vsp3 file not found", file=sys.stderr)
         return 2
 
     vsp.ClearVSPModel()

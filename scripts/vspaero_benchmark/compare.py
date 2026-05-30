@@ -38,7 +38,7 @@ def _col(rows: list[dict], name: str) -> list[float]:
 
 def _interp_at(x: list[float], y: list[float], x0: float) -> float:
     """Linear interpolation of y(x0); NaN if out of range / insufficient data."""
-    pts = [(a, b) for a, b in zip(x, y) if not (math.isnan(a) or math.isnan(b))]
+    pts = [(a, b) for a, b in zip(x, y, strict=False) if not (math.isnan(a) or math.isnan(b))]
     pts.sort()
     if len(pts) < 2:
         return math.nan
@@ -57,13 +57,15 @@ def _interp_at(x: list[float], y: list[float], x0: float) -> float:
 
 def _linfit_slope(x: list[float], y: list[float], lo: float, hi: float) -> float:
     """Least-squares slope dy/dx over the window [lo, hi] (per degree)."""
-    pts = [(a, b) for a, b in zip(x, y)
+    pts = [(a, b) for a, b in zip(x, y, strict=False)
            if not (math.isnan(a) or math.isnan(b)) and lo <= a <= hi]
     n = len(pts)
     if n < 2:
         return math.nan
-    sx = sum(p[0] for p in pts); sy = sum(p[1] for p in pts)
-    sxx = sum(p[0] ** 2 for p in pts); sxy = sum(p[0] * p[1] for p in pts)
+    sx = sum(p[0] for p in pts)
+    sy = sum(p[1] for p in pts)
+    sxx = sum(p[0] ** 2 for p in pts)
+    sxy = sum(p[0] * p[1] for p in pts)
     denom = n * sxx - sx * sx
     return (n * sxy - sx * sy) / denom if denom else math.nan
 
@@ -219,7 +221,8 @@ def _write_results_md(cfg: AircraftConfig, comp: dict) -> None:
     lines.append("## Interpretation\n")
     lines.append("> Auto-generated headline comparisons; fill in narrative below.\n")
     if "vspaero" in src and "asb_vlm" in src:
-        v = src["vspaero"]["metrics"]; a = src["asb_vlm"]["metrics"]
+        v = src["vspaero"]["metrics"]
+        a = src["asb_vlm"]["metrics"]
         if not (math.isnan(v["CL_alpha_per_deg"]) or math.isnan(a["CL_alpha_per_deg"])):
             d = 100 * (a["CL_alpha_per_deg"] - v["CL_alpha_per_deg"]) / v["CL_alpha_per_deg"]
             lines.append(f"- **VLM C_Lα agreement (ASB vs VSPAERO):** "

@@ -206,7 +206,7 @@ def write_summary(data: list[dict], out_md: Path | None = None) -> Path:
     lines.append("|---|---|---|---|---|---|")
     for ac in data:
         s = ac["sources"]
-        def mx(k):
+        def mx(k, s=s):
             return _fmt(s[k]["metrics"]["max_LD"]) if k in s else "—"
         real = next((a["value"] for a in ac["anchors"] if a["metric"] == "max_LD"), None)
         lines.append(f"| {ac['name']} | {ac['topology']} | {mx('vspaero')} | "
@@ -219,7 +219,8 @@ def write_summary(data: list[dict], out_md: Path | None = None) -> Path:
     for ac in data:
         s = ac["sources"]
         if "vspaero" in s and "asb_vlm" in s:
-            v = s["vspaero"]["metrics"]; a = s["asb_vlm"]["metrics"]
+            v = s["vspaero"]["metrics"]
+            a = s["asb_vlm"]["metrics"]
             vs, as_ = v["CL_alpha_per_deg"], a["CL_alpha_per_deg"]
             d = (f"{100*(as_-vs)/vs:+.1f} %" if vs not in (None, 0) and vs == vs else "—")
             off = (a["CL0"] - v["CL0"]) if (a["CL0"] == a["CL0"] and v["CL0"] == v["CL0"]) else None
@@ -231,7 +232,7 @@ def write_summary(data: list[dict], out_md: Path | None = None) -> Path:
     lines.append("|---|---|---|---|")
     for ac in data:
         s = ac["sources"]
-        def e(k): return _fmt(s[k]["metrics"]["e_mean"]) if k in s else "—"
+        def e(k, s=s): return _fmt(s[k]["metrics"]["e_mean"]) if k in s else "—"
         lines.append(f"| {ac['name']} | {e('vspaero')} | {e('asb_vlm')} | {e('asb_aerobuildup')} |")
     lines.append("")
     lines.append("> See each aircraft's `RESULTS.md` for full metrics + interpretation, "
