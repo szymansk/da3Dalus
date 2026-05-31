@@ -183,6 +183,9 @@ def test_bounds_fallback_no_v_dive() -> None:
     curve = sp.curves[0]
     expected_v_max = max(curve.V)
     assert sp.v_axis_max == pytest.approx(expected_v_max, rel=1e-9)
+    # Left bound is still derived from v_stall (CL_max = 1.4 for this polar).
+    assert curve.v_stall is not None
+    assert sp.v_axis_min == pytest.approx(0.7 * curve.v_stall, rel=1e-9)
 
 
 def test_bounds_multi_mass_v_axis_min_uses_lightest() -> None:
@@ -249,3 +252,27 @@ def test_bounds_degenerate_no_positive_cl() -> None:
     )
     assert sp.v_axis_min is None
     assert sp.v_axis_max is None
+
+
+def test_bounds_inverted_guard() -> None:
+    """When v_axis_min >= v_axis_max both bounds collapse to None (autorange).
+
+    Scenario: very low v_dive (5 m/s) so that 1.3*v_dive < 0.7*v_stall.
+    With CL_max ≈ 1.4, s_ref=0.225, mass=1.5 kg, rho=1.225:
+      v_stall = sqrt(2*1.5*9.81 / (1.225*0.225*1.4)) ≈ 8.76 m/s
+      0.7*v_stall ≈ 6.13  >  1.3*5 = 6.5  — barely above, so use a clearly
+      inverted case with v_dive=2.0:
+      1.3*2 = 2.6  <  0.7*8.76 ≈ 6.13  → inverted, both None.
+    """
+    cl, cd, s_ref, rho = _make_polar_with_stall()
+    sp = _compute_speed_polar(
+        cl=cl,
+        cd=cd,
+        masses_kg=[],
+        base_mass_kg=1.5,
+        s_ref_m2=s_ref,
+        rho=rho,
+        v_dive=2.0,  # extremely low — 1.3*2=2.6 < 0.7*v_stall≈6.1
+    )
+    assert sp.v_axis_min is None, "inverted bounds should collapse to None"
+    assert sp.v_axis_max is None, "inverted bounds should collapse to None"

@@ -533,7 +533,7 @@ def _compute_speed_polar(
         v_axis_max: float | None = 1.3 * v_dive
     else:
         # Fallback: highest V across all curves (lowest positive CL point)
-        all_v = [v for c in curves for v in c.V]
+        all_v = [vi for curve in curves for vi in curve.V]
         v_axis_max = max(all_v) if all_v else None
 
     # Drop to autorange when either bound is absent or bounds are inverted.
