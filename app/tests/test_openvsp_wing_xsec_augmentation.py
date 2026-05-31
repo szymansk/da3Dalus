@@ -264,6 +264,18 @@ class TestDifferentAirfoilPairMorphed:
             "naca6409",
         ]
 
+    def test_morph_fallback_emits_info_warning(self, monkeypatch):
+        from app.converters import openvsp_airfoil
+
+        monkeypatch.setattr(openvsp_airfoil, "morph_airfoils", lambda a, b, t: None)
+        ctx = _ctx()
+        anchors = [
+            _xsec(airfoil="naca2412", t="root"),
+            _xsec(airfoil="naca6409", t=None),
+        ]
+        _augment_xsec_pairs(anchors, _ellipse_vsp(), "wing-gid", ctx, "main_wing")
+        assert any("nearest anchor" in w.reason for w in ctx.warnings)
+
     def test_mixed_wing_augments_all_segments(self, monkeypatch):
         """Root→mid same airfoil, mid→tip different: BOTH segments now get
         ``N_INTERP`` inserts (was: only the same-airfoil segment)."""

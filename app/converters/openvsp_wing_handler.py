@@ -226,17 +226,19 @@ def _apply_xform(
 
 
 # ---------------------------------------------------------------------------
-# Spanwise xsec augmentation between same-airfoil anchors (gh-753)
+# Spanwise xsec augmentation between anchor pairs (gh-753, gh-796)
 # ---------------------------------------------------------------------------
 #
 # OpenVSP wings with few defined XSecs render polygonal in the
 # workbench — the Spitfire's elliptical wing has only 4 anchors in
 # the .vsp3, so the planform looks like a pentagon. We augment via
-# VSP's ``CompPnt01`` parametric-surface sampling, *but only between
-# XSec pairs that share the same airfoil reference*. The user must
-# remain able to swap profiles at the anchors for Re-number scaling
-# workflows — interpolated cross-airfoil xsecs would be opaque
-# morphed-profile blobs the user can't edit cleanly.
+# VSP's ``CompPnt01`` parametric-surface sampling between **every**
+# consecutive anchor pair (gh-796 — previously only same-airfoil pairs,
+# which left the Corsair gull wing unaugmented). Same-airfoil pairs
+# inherit the airfoil name; differing-airfoil pairs get a Kulfan-morphed
+# intermediate profile per insert (nearest-anchor fallback if morphing
+# is unavailable). The anchors keep their raw airfoils, so the user can
+# still swap profiles there for Re-number scaling workflows.
 
 
 # VSP wing surface parametrisation:
@@ -590,6 +592,7 @@ def _augment_xsec_pairs(
     u_max = u_max_formula if use_formula_u else _find_cap_safe_u_max(vsp, gid)
     out: list[WingXSecSchema] = []
     expected_inserts = 0
+    morph_fallbacks = 0  # gh-796: inserts that fell back to a nearest-anchor airfoil
     counts: dict[str, int] = {
         _OUTCOME_INSERTED: 0,
         _OUTCOME_CAP_CLAMPED: 0,
@@ -635,9 +638,14 @@ def _augment_xsec_pairs(
             if same_airfoil:
                 insert_airfoil = anchor.airfoil
             else:
-                insert_airfoil = openvsp_airfoil.morph_airfoils(
+                morphed = openvsp_airfoil.morph_airfoils(
                     str(anchor.airfoil), str(nxt.airfoil), t
-                ) or (anchor.airfoil if t < 0.5 else nxt.airfoil)
+                )
+                if morphed is None:
+                    morph_fallbacks += 1
+                    insert_airfoil = anchor.airfoil if t < 0.5 else nxt.airfoil
+                else:
+                    insert_airfoil = morphed
             outcome = _try_emit_one_insert(
                 vsp=vsp,
                 gid=gid,
@@ -656,6 +664,19 @@ def _augment_xsec_pairs(
         expected_inserts=expected_inserts,
         counts=counts,
     )
+    if morph_fallbacks:
+        # gh-796: surface silent airfoil approximations (e.g. AeroSandbox not
+        # installed) so the user knows the morphed sections are placeholders.
+        ctx.add_warning(
+            component_type="WING",
+            component_name=geom_name,
+            reason=(
+                f"{morph_fallbacks} augmented xsec(s) used the nearest anchor's "
+                f"airfoil because Kulfan morphing was unavailable or failed; the "
+                f"planform is correct but those sections' profiles are approximate."
+            ),
+            severity="info",
+        )
 
     return out
 
