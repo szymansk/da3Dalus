@@ -24,7 +24,7 @@
     }
   ],
   "reference_polar": null,
-  "verdict": "Lift slopes line up, but every tool predicts a higher L/D than the real aircraft achieves in flight test (~10.5). That gap is expected and honest: the .vsp3 carries the wing + fuselage but not the bracing strut, fixed landing gear, antennas and surface roughness that dominate a real 172's parasite drag. Verdict: lift is right; absolute drag is optimistic for a draggy fixed-gear airframe.",
+  "verdict": "Lift slopes line up, but every tool predicts a higher L/D than flight test (~10.5). The reasons are instructive. The .vsp3 does model the struts and gear fairings (as fuselage-type bodies), but VSPAERO is run wings-only, so it ignores the fuselage, struts and gear entirely. AeroBuildup does count them, yet still comes out optimistic because the propeller, spinner and cooling drag aren't modelled at all, and a streamlined-body buildup underestimates the bluff-body and interference drag of exposed struts and fixed gear. Verdict: lift is right; absolute drag is optimistic \u2014 chiefly missing propulsion drag and under-modelled interference, not missing geometry.",
   "sources": {
     "vspaero": {
       "label": "VSPAERO (VLM, wings-only)",

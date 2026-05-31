@@ -103,12 +103,16 @@ AIRCRAFT: list[AircraftConfig] = [
         ],
         notes="Multiple wind-tunnel reports; classic validation case.",
         verdict=(
-            "Lift slopes line up, but every tool predicts a higher L/D than the "
-            "real aircraft achieves in flight test (~10.5). That gap is expected "
-            "and honest: the .vsp3 carries the wing + fuselage but not the bracing "
-            "strut, fixed landing gear, antennas and surface roughness that "
-            "dominate a real 172's parasite drag. Verdict: lift is right; absolute "
-            "drag is optimistic for a draggy fixed-gear airframe."
+            "Lift slopes line up, but every tool predicts a higher L/D than flight "
+            "test (~10.5). The reasons are instructive. The .vsp3 does model the "
+            "struts and gear fairings (as fuselage-type bodies), but VSPAERO is run "
+            "wings-only, so it ignores the fuselage, struts and gear entirely. "
+            "AeroBuildup does count them, yet still comes out optimistic because "
+            "the propeller, spinner and cooling drag aren't modelled at all, and a "
+            "streamlined-body buildup underestimates the bluff-body and "
+            "interference drag of exposed struts and fixed gear. Verdict: lift is "
+            "right; absolute drag is optimistic — chiefly missing propulsion drag "
+            "and under-modelled interference, not missing geometry."
         ),
     ),
     AircraftConfig(
@@ -209,9 +213,13 @@ EXECUTIVE_SUMMARY = (
     "polar), and the two independent vortex-lattice solvers (AeroSandbox and "
     "VSPAERO) **agree on lift-curve slope to within ~2–4 %** once reference areas "
     "match. Lift and lift-slope are therefore trustworthy. **Absolute drag and L/D "
-    "are optimistic** for draggy real airframes (fixed gear, struts, antennas, "
-    "surface finish) that the geometry model doesn't carry — a limitation to keep "
-    "in mind, not a solver error. The exercise also paid for itself by surfacing "
+    "are optimistic** for draggy real airframes — because the analysis doesn't "
+    "fully capture every real drag source: propulsion (propeller, spinner, "
+    "cooling) is not modelled, bluff-body and interference drag of struts and gear "
+    "is under-estimated, surface finish is ignored, and the wings-only VSPAERO "
+    "pass leaves out the fuselage and struts entirely. It's a modelling-scope "
+    "limitation, not a solver error. The exercise also paid for itself by "
+    "surfacing "
     "**five real app defects**, one critical: the analysis converter was taking "
     "its reference area from the wrong wing (#788), silently producing ~8× wrong "
     "coefficients whenever the tail imported before the wing. Net: the analysis "
