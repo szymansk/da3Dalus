@@ -33,6 +33,7 @@ panel.
 from __future__ import annotations
 
 import logging
+import math
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Callable, Optional
@@ -78,6 +79,126 @@ SCALE_FACTOR_MIN: float = 0.001
 SCALE_FACTOR_MAX: float = 10.0
 TARGET_SPAN_MIN: float = 0.1  # metres
 TARGET_SPAN_MAX: float = 50.0  # metres
+
+
+# ---------------------------------------------------------------------------
+# Source length-unit detection (gh-808)
+# ---------------------------------------------------------------------------
+
+# Known length-unit → metre factors. OpenVSP 3.50 stores .vsp3 values in
+# user-defined units with no in-file annotation, so the importer can't read
+# the unit. But the STEP export (gh-732) is metric, while the handler keeps
+# raw values: the ratio metric_extent / handler_extent IS the unit factor
+# (e.g. 0.3048 for a feet model). We snap that ratio to a known unit and,
+# when it's not metres, convert the whole aeroplane to metres.
+_LENGTH_UNIT_FACTORS: dict[str, float] = {
+    "m": 1.0,
+    "yd": 0.9144,
+    "ft": 0.3048,
+    "in": 0.0254,
+    "cm": 0.01,
+    "mm": 0.001,
+}
+# Relative tolerance for snapping. The unit factors are well separated
+# (nearest pair ft/yd ≈ 3×), so a tight ±2 % never aliases between units
+# while absorbing slicer/bbox noise.
+_UNIT_SNAP_TOL: float = 0.02
+
+
+def _snap_to_unit_scale(raw_ratio: float) -> Optional[tuple[str, float]]:
+    """Snap a measured (metric STEP / raw handler) extent ratio to a unit.
+
+    Returns ``(unit_name, factor)`` when the ratio lands within tolerance
+    of a known **non-metre** length unit (so the source needs converting
+    to metres). Returns ``None`` for metres (ratio ≈ 1.0), a non-positive /
+    non-finite ratio, or a ratio that matches no known unit — in all of
+    which cases the import is left unchanged (safe default).
+    """
+    if not math.isfinite(raw_ratio) or raw_ratio <= 0.0:
+        return None
+    best: Optional[tuple[str, float]] = None
+    for name, factor in _LENGTH_UNIT_FACTORS.items():
+        if abs(raw_ratio - factor) <= _UNIT_SNAP_TOL * factor:
+            if best is None or abs(raw_ratio - factor) < abs(raw_ratio - best[1]):
+                best = (name, factor)
+    if best is None or best[0] == "m":
+        return None
+    return best
+
+
+def _convert_aeroplane_to_metres(
+    aeroplane: AeroplaneSchema,
+    factor: float,
+    weight_items: Optional[list[WeightItemWrite]] = None,
+) -> None:
+    """Convert the whole aeroplane to metres by ``factor`` (gh-808).
+
+    Unlike :func:`_scale_aeroplane_lengths` (which deliberately defers
+    fuselages to the persist path), this is the up-front source-unit
+    conversion, so it scales **everything** — wings, fuselages, the
+    reference point and weight-item positions — into the same metric
+    frame before any target-span rescale or STEP refinement runs.
+    """
+    _scale_aeroplane_lengths(aeroplane, factor, weight_items=weight_items)
+    for fuse in (aeroplane.fuselages or {}).values():
+        fuse.x_secs = _scale_fuselage_xsecs(fuse.x_secs, factor)
+
+
+def _detect_source_scale_to_meters(
+    vsp,
+    aeroplane: AeroplaneSchema,
+    fuselage_geom_ids: dict[str, str],
+    detect_uuid: str,
+) -> Optional[tuple[str, float]]:
+    """Detect a non-metre source length unit (gh-808). Best-effort.
+
+    OpenVSP 3.50 keeps no in-file unit, but its STEP export is metric.
+    Export the reference fuselage (largest handler X-span), measure its
+    metric bbox, and compare to the raw handler extent: the ratio is the
+    unit factor. Returns ``(unit_name, factor)`` for a confidently
+    detected non-metre unit, else ``None`` (no cadquery, no fuselage,
+    export/measure failure, or metre/unknown ratio) — import unchanged.
+    """
+    fuselages = aeroplane.fuselages or {}
+    if not fuselages:
+        return None
+    name_to_gid = {n: g for g, n in fuselage_geom_ids.items()}
+    ref_name = max(fuselages, key=lambda n: _x_span(fuselages[n].x_secs))
+    handler_span = _x_span(fuselages[ref_name].x_secs)
+    gid = name_to_gid.get(ref_name)
+    if gid is None or handler_span <= 1e-6:
+        return None
+    from app.services import openvsp_step_export_service
+
+    try:
+        import cadquery as cq
+
+        from app.core.config import settings
+
+        rel = openvsp_step_export_service.export_geom_step(
+            vsp=vsp, gid=gid, geom_name=ref_name, aeroplane_uuid=detect_uuid
+        )
+        if not rel:
+            return None
+        bb = (
+            cq.importers.importStep(str(Path(settings.ARTIFACTS_BASE_DIR) / rel))
+            .val()
+            .BoundingBox()
+        )
+        metric_span = bb.xlen / 1000.0  # STEP geometry is in millimetres
+        return _snap_to_unit_scale(metric_span / handler_span)
+    except Exception:  # noqa: BLE001 — detection is best-effort
+        logger.info("Source-unit detection skipped (best-effort).", exc_info=True)
+        return None
+    finally:
+        try:
+            import shutil
+
+            d = openvsp_step_export_service.step_storage_dir(detect_uuid)
+            if d.exists():
+                shutil.rmtree(d)
+        except Exception:  # noqa: BLE001
+            pass
 
 
 class ScaleValidationError(ValueError):
@@ -935,6 +1056,36 @@ def import_openvsp_file(
         f"Parsed {len(result.aeroplane.wings or {})} wing(s), "
         f"{len(result.aeroplane.fuselages or {})} fuselage(s)",
     )
+
+    # gh-808: OpenVSP 3.50 stores no in-file length unit, so a feet/inch
+    # model would import 3.28×/39× too big. Detect the source unit from
+    # OpenVSP's own metric STEP export and convert the whole aeroplane to
+    # metres up front — before target-span resolution and the slicer
+    # refinement (which then matches the metric STEP, #807). Best-effort:
+    # silently skipped when undetectable, so metre models are untouched.
+    if openvsp_adapter.is_available():
+        detected = _detect_source_scale_to_meters(
+            openvsp_adapter.get_vsp(),
+            result.aeroplane,
+            result.fuselage_geom_ids,
+            detect_uuid=f"_unitdetect_{path.stem}",
+        )
+        if detected is not None:
+            unit_name, unit_factor = detected
+            progress_cb("units", 16, f"Source unit {unit_name} → metres")
+            _convert_aeroplane_to_metres(result.aeroplane, unit_factor, result.weight_items)
+            result.warnings.append(
+                ImportWarning(
+                    component_type="UNITS",
+                    component_name=unit_name,
+                    reason=(
+                        f"Source model detected as {unit_name!r} (no length unit "
+                        f"is stored in OpenVSP 3.50 files); converted to metres "
+                        f"(×{unit_factor:g}). Verify the scale before use."
+                    ),
+                    severity="warning",
+                )
+            )
 
     factor = _resolve_scale_factor(result.aeroplane, target_span_m, scale_factor)
     # S1244: any factor far enough from 1.0 to matter geometrically — using

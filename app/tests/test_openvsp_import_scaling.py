@@ -270,3 +270,78 @@ class TestResolveScaleFactor:
         with pytest.raises(ScaleValidationError) as exc:
             _resolve_scale_factor(ap, target_span_m=1.5, scale_factor=None)
         assert "wing" in str(exc.value).lower() or "span" in str(exc.value).lower()
+
+
+# ---------------------------------------------------------------------------
+# gh-808: snap a measured (metric STEP / handler) extent ratio to a unit
+# ---------------------------------------------------------------------------
+
+
+class TestSnapToUnitScale:
+    """``_snap_to_unit_scale`` maps a measured STEP-vs-handler extent ratio
+    to a known length-unit→metre factor, or ``None`` when it's metres /
+    matches nothing. This is how a feet-unit .vsp3 (no in-file unit) is
+    detected: the STEP export is metric, the handler is raw, so the ratio
+    is the unit factor (0.3048 for feet)."""
+
+    def test_feet_ratio_snaps_to_ft(self):
+        from app.services.openvsp_import_service import _snap_to_unit_scale
+
+        assert _snap_to_unit_scale(0.305) == ("ft", pytest.approx(0.3048))
+        # cessna337's measured ratio (6.03 / 19.78)
+        assert _snap_to_unit_scale(6.03 / 19.78) == ("ft", pytest.approx(0.3048))
+
+    def test_inch_and_mm_and_cm_snap(self):
+        from app.services.openvsp_import_service import _snap_to_unit_scale
+
+        assert _snap_to_unit_scale(0.0253)[0] == "in"
+        assert _snap_to_unit_scale(0.00099)[0] == "mm"
+        assert _snap_to_unit_scale(0.0101)[0] == "cm"
+
+    def test_metres_returns_none(self):
+        from app.services.openvsp_import_service import _snap_to_unit_scale
+
+        assert _snap_to_unit_scale(1.0) is None
+        assert _snap_to_unit_scale(0.995) is None
+
+    def test_unknown_ratio_returns_none(self):
+        from app.services.openvsp_import_service import _snap_to_unit_scale
+
+        assert _snap_to_unit_scale(0.5) is None  # matches no unit
+        assert _snap_to_unit_scale(0.0) is None
+        assert _snap_to_unit_scale(-1.0) is None
+
+
+class TestConvertAeroplaneToMetres:
+    """``_convert_aeroplane_to_metres`` (gh-808) scales the WHOLE aeroplane
+    — wings AND fuselages AND refs — unlike ``_scale_aeroplane_lengths``
+    which defers fuselages to the persist path."""
+
+    def test_scales_wings_and_fuselages(self):
+        from app.services.openvsp_import_service import _convert_aeroplane_to_metres
+
+        ap = AeroplaneSchema(name="ft_model")
+        ap.wings = {"Main": _make_wing(span_m=10.0)}  # tip xsec at y=10.0
+        ap.fuselages = {
+            "Body": FuselageSchema(
+                name="Body",
+                symmetric=False,
+                x_secs=[
+                    FuselageXSecSuperEllipseSchema(xyz=[0.0, 0.0, 0.0], a=1.0, b=0.5, n=2.0),
+                    FuselageXSecSuperEllipseSchema(xyz=[10.0, 0.0, 0.0], a=1.0, b=0.5, n=2.0),
+                ],
+            )
+        }
+        ap.xyz_ref = [2.0, 0.0, 0.0]
+
+        _convert_aeroplane_to_metres(ap, 0.3048)  # feet → metres
+
+        # wing scaled
+        assert ap.wings["Main"].x_secs[1].xyz_le[1] == pytest.approx(10.0 * 0.3048)
+        # fuselage scaled (unlike _scale_aeroplane_lengths)
+        body = ap.fuselages["Body"]
+        assert body.x_secs[1].xyz[0] == pytest.approx(10.0 * 0.3048)
+        assert body.x_secs[1].a == pytest.approx(1.0 * 0.3048)
+        assert body.x_secs[1].n == pytest.approx(2.0)  # exponent untouched
+        # ref scaled
+        assert ap.xyz_ref[0] == pytest.approx(2.0 * 0.3048)
