@@ -94,6 +94,39 @@ def test_slicer_refinement_takes_no_factor_argument():
     assert "scale_factor" not in params
 
 
+def test_slicer_refinement_rejected_on_frame_mismatch(monkeypatch, tmp_path):
+    """gh-803: a slicer result whose X-extent grossly mismatches the handler
+    anchors is rejected → the handler schema is kept.
+
+    This is the cessna337 feet-unit case: the handler keeps raw (feet)
+    values while gh-732 forces the exported STEP to metres, so the slicer
+    output sits at ~0.3× the handler extent. Accepting it would shrink the
+    fuselage out of sync with the (handler-frame) wings.
+    """
+    from app.core.config import settings
+
+    monkeypatch.setattr(settings, "ARTIFACTS_BASE_DIR", str(tmp_path))
+    (tmp_path / "body.stp").write_text("dummy step")
+
+    # Handler _fuse() spans x 0..10 m; the slicer only covers 0..3 m
+    # (ratio 0.3) — a gross frame mismatch.
+    mm_xsecs = [
+        {"xyz": [0.0, 0.0, 0.0], "a": 60.0, "b": 30.0, "n": 2.0},
+        {"xyz": [1500.0, 0.0, 0.0], "a": 300.0, "b": 150.0, "n": 2.0},
+        {"xyz": [3000.0, 0.0, 0.0], "a": 60.0, "b": 30.0, "n": 2.0},
+    ]
+    fake = types.ModuleType("cad_designer.aerosandbox.slicing")
+    fake.slice_step_at_stations = MagicMock(return_value=(mm_xsecs, {"area_ratio": 1.0}))
+    fake.slice_step_to_fuselage = MagicMock(return_value=(mm_xsecs, {}))
+    fake.vsp_anchored_x_stations = MagicMock(return_value=[0.0, 5000.0, 10000.0])
+    monkeypatch.setitem(sys.modules, "cad_designer.aerosandbox.slicing", fake)
+
+    from app.services.openvsp_import_service import _try_slicer_refinement
+
+    refined = _try_slicer_refinement("body.stp", _fuse(), "Body")
+    assert refined is None  # handler schema kept (no desync with wings)
+
+
 # --------------------------------------------------------------------------- #
 # _scale_aeroplane_lengths — no longer touches fuselages (gh-765)
 # --------------------------------------------------------------------------- #
@@ -136,9 +169,7 @@ def test_scale_geom_step_scales_bounding_box(monkeypatch, tmp_path):
     rel = "openvsp_imports/uuid/body.stp"
     src = tmp_path / rel
     src.parent.mkdir(parents=True, exist_ok=True)
-    exporters.export(
-        cq.Workplane("XY").box(10, 4, 2), str(src), exporters.ExportTypes.STEP
-    )
+    exporters.export(cq.Workplane("XY").box(10, 4, 2), str(src), exporters.ExportTypes.STEP)
 
     new_rel = step_svc.scale_geom_step(rel, 0.1, "uuid")
     assert new_rel is not None
@@ -210,9 +241,7 @@ def test_persist_scales_fuselage_xsecs_when_vsp_unavailable(client_and_db, monke
     monkeypatch.setattr(openvsp_adapter, "is_available", lambda: False)
 
     db = SessionLocal()
-    uuid, _name = svc._persist_aeroplane(
-        db, _import_result_with_fuselage(), scale_factor=0.5
-    )
+    uuid, _name = svc._persist_aeroplane(db, _import_result_with_fuselage(), scale_factor=0.5)
     db.commit()
 
     f = _read_fuselage(db, uuid)
@@ -239,14 +268,12 @@ def test_persist_scales_refined_xsecs_and_step_with_vsp(client_and_db, monkeypat
     monkeypatch.setattr(openvsp_adapter, "is_available", lambda: True)
     monkeypatch.setattr(openvsp_adapter, "get_vsp", lambda: object())
     monkeypatch.setattr(step_svc, "export_geom_step", lambda **kw: "imp/u/body.stp")
-    monkeypatch.setattr(
-        sew_svc, "sew_imported_geom_to_solid", lambda **kw: "imp/u/body_solid.stp"
-    )
+    monkeypatch.setattr(sew_svc, "sew_imported_geom_to_solid", lambda **kw: "imp/u/body_solid.stp")
     scale_calls: list[tuple[str, float]] = []
     monkeypatch.setattr(
         step_svc,
         "scale_geom_step",
-        lambda rel, factor, uuid: (scale_calls.append((rel, factor)) or rel),
+        lambda rel, factor, uuid: scale_calls.append((rel, factor)) or rel,
     )
     # Slicer returns an UNSCALED refined list (mid a=2.0); persist scales it.
     refined = [

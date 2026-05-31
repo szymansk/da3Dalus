@@ -50,6 +50,7 @@ def _noop_progress(_step: str, _pct: int, _detail: str) -> None:  # pragma: no c
     """No-op default callback so the import flow doesn't need to
     check ``if progress_cb is not None`` at every checkpoint."""
 
+
 from sqlalchemy.orm import Session
 
 from app.converters import openvsp_adapter
@@ -206,8 +207,7 @@ def _resolve_scale_factor(
     """
     if target_span_m is not None and scale_factor is not None:
         raise ScaleValidationError(
-            "target_span_m and scale_factor are mutually exclusive; "
-            "specify at most one."
+            "target_span_m and scale_factor are mutually exclusive; specify at most one."
         )
 
     if scale_factor is not None:
@@ -302,9 +302,7 @@ def _resolve_aeroplane_name(
     return "OpenVSP Import"
 
 
-def _set_fuselage_step_path(
-    db: Session, aeroplane_uuid, fuse_name: str, rel_path: str
-) -> None:
+def _set_fuselage_step_path(db: Session, aeroplane_uuid, fuse_name: str, rel_path: str) -> None:
     """Write the per-geom Surface-STEP path onto an already-persisted
     ``FuselageModel`` row (gh-729)."""
     _update_fuselage_field(db, aeroplane_uuid, fuse_name, "step_path", rel_path)
@@ -319,9 +317,7 @@ def _set_fuselage_solid_step_path(
     _update_fuselage_field(db, aeroplane_uuid, fuse_name, "solid_step_path", rel_path)
 
 
-def _replace_fuselage_xsecs(
-    db: Session, aeroplane_uuid, fuse_name: str, new_xsecs
-) -> bool:
+def _replace_fuselage_xsecs(db: Session, aeroplane_uuid, fuse_name: str, new_xsecs) -> bool:
     """Replace the existing fuselage's ``x_secs`` rows with new ones
     (gh-732). Pure mutation of the persisted row — keeps the gh-729
     Surface STEP path and the gh-731 Solid STEP path intact.
@@ -341,9 +337,7 @@ def _replace_fuselage_xsecs(
         FuselageXSecSuperEllipseModel,
     )
 
-    aeroplane = (
-        db.query(AeroplaneModel).filter(AeroplaneModel.uuid == aeroplane_uuid).first()
-    )
+    aeroplane = db.query(AeroplaneModel).filter(AeroplaneModel.uuid == aeroplane_uuid).first()
     if aeroplane is None:
         return False
     fuse_row = (
@@ -364,9 +358,7 @@ def _replace_fuselage_xsecs(
         # set explicitly below to keep ordering stable.
         payload.pop("name", None)
         payload.pop("sort_index", None)
-        fuse_row.x_secs.append(
-            FuselageXSecSuperEllipseModel(sort_index=i, **payload)
-        )
+        fuse_row.x_secs.append(FuselageXSecSuperEllipseModel(sort_index=i, **payload))
     db.flush()
     return True
 
@@ -398,18 +390,52 @@ def _is_x_dominant_fuselage(handler_xsec_dicts: list[dict]) -> bool:
         return False
     import numpy as np
 
-    xs = np.array(
-        [[d["xyz"][0], d["xyz"][1], d["xyz"][2]] for d in handler_xsec_dicts]
-    )
+    xs = np.array([[d["xyz"][0], d["xyz"][1], d["xyz"][2]] for d in handler_xsec_dicts])
     extents = xs.max(axis=0) - xs.min(axis=0)
     if extents[0] <= 1e-6:
         return False
     # Cast to plain Python bool — numpy's bool_ doesn't satisfy ``is True``
     # / ``is False`` identity checks, which trips up test assertions.
-    return bool(
-        extents[0] >= 1.2 * extents[1]
-        and extents[0] >= 1.2 * extents[2]
-    )
+    return bool(extents[0] >= 1.2 * extents[1] and extents[0] >= 1.2 * extents[2])
+
+
+# Bounds for the slicer-vs-handler frame check (gh-803). The slicer
+# slices the STEP at the handler's anchor X-stations, so a faithful
+# refinement must reproduce the handler's overall X-extent. A gross
+# mismatch means the STEP and handler schema are in different
+# frames/units: gh-732 forces the exported STEP to metres, but the
+# importer keeps handler values in raw source units (OpenVSP 3.50 no
+# longer exposes the length unit, so a feet-unit model like cessna337
+# stays unconverted). The metric STEP then sits at ~0.305× the handler
+# extent, the slices truncate/shrink, and accepting them would desync
+# the fuselage from the (handler-frame) wings. Bounds are generous so
+# only gross unit/frame mismatches trip — a real refinement is ≈ 1.0.
+_SLICER_FRAME_RATIO_MIN = 0.5
+_SLICER_FRAME_RATIO_MAX = 2.0
+
+
+def _x_span(x_secs: list[FuselageXSecSuperEllipseSchema]) -> float:
+    xs = [s.xyz[0] for s in x_secs]
+    return (max(xs) - min(xs)) if xs else 0.0
+
+
+def _slicer_frame_matches_handler(
+    refined: list[FuselageXSecSuperEllipseSchema],
+    handler_x_secs: list[FuselageXSecSuperEllipseSchema],
+) -> bool:
+    """True when the slicer output shares the handler's X-frame (gh-803).
+
+    Compares the X-extent of the slicer result against the handler
+    anchors. A ratio far from 1.0 signals a unit/frame mismatch — the
+    refinement must then be rejected so the handler schema (which is
+    consistent with the wings) is kept.
+    """
+    h_span = _x_span(handler_x_secs)
+    r_span = _x_span(refined)
+    if h_span <= 1e-9 or r_span <= 1e-9:
+        return False
+    ratio = r_span / h_span
+    return _SLICER_FRAME_RATIO_MIN <= ratio <= _SLICER_FRAME_RATIO_MAX
 
 
 def _try_slicer_refinement(
@@ -459,8 +485,7 @@ def _try_slicer_refinement(
     # for the rare case where the handler list is empty / has < 2 xsecs.
     try:
         handler_xsec_dicts = [
-            {"xyz": list(xs.xyz), "a": xs.a, "b": xs.b, "n": xs.n}
-            for xs in handler_fuse.x_secs
+            {"xyz": list(xs.xyz), "a": xs.a, "b": xs.b, "n": xs.n} for xs in handler_fuse.x_secs
         ]
 
         # Frame-safety gate: only refine fuselages whose long axis is
@@ -500,9 +525,7 @@ def _try_slicer_refinement(
             # schema so each slice yields a single clean outline.
             keep_y_side: Optional[str] = None
             if getattr(handler_fuse, "symmetric", False):
-                mean_y_m = sum(
-                    d["xyz"][1] for d in handler_xsec_dicts
-                ) / len(handler_xsec_dicts)
+                mean_y_m = sum(d["xyz"][1] for d in handler_xsec_dicts) / len(handler_xsec_dicts)
                 if mean_y_m > 1e-3:
                     keep_y_side = "positive"
                 elif mean_y_m < -1e-3:
@@ -529,7 +552,8 @@ def _try_slicer_refinement(
     except Exception as exc:  # noqa: BLE001 — refinement is best-effort
         logger.info(
             "Slicer refinement skipped for %r (%s) — keeping handler-built schema.",
-            fuse_name, exc,
+            fuse_name,
+            exc,
         )
         return None
 
@@ -537,7 +561,8 @@ def _try_slicer_refinement(
     if len(slicer_xsecs) < 2:
         logger.info(
             "Slicer produced %d xsec(s) for %r — too few to refine; keeping handler schema.",
-            len(slicer_xsecs), fuse_name,
+            len(slicer_xsecs),
+            fuse_name,
         )
         return None
 
@@ -552,10 +577,26 @@ def _try_slicer_refinement(
             )
         )
 
+    # gh-803: reject a refinement that doesn't share the handler's frame
+    # (gross X-extent mismatch → unit/frame desync, e.g. cessna337's
+    # feet-unit handler vs the metre-forced STEP). Keep the handler schema
+    # so the fuselage stays consistent with the (handler-frame) wings.
+    if not _slicer_frame_matches_handler(refined, handler_fuse.x_secs):
+        logger.info(
+            "Slicer refinement for %r diverges from the handler frame "
+            "(refined X-span %.2f m vs handler %.2f m) — likely a unit/frame "
+            "mismatch (gh-803); keeping handler schema.",
+            fuse_name,
+            _x_span(refined),
+            _x_span(handler_fuse.x_secs),
+        )
+        return None
+
     logger.info(
-        "Slicer refinement for %r: %d→%d xsecs (area_ratio=%.3f, "
-        "vol_ratio=%.3f).",
-        fuse_name, len(handler_fuse.x_secs), len(refined),
+        "Slicer refinement for %r: %d→%d xsecs (area_ratio=%.3f, vol_ratio=%.3f).",
+        fuse_name,
+        len(handler_fuse.x_secs),
+        len(refined),
         metrics.get("area_ratio") or 0.0,
         metrics.get("volume_ratio") or 0.0,
     )
@@ -570,9 +611,7 @@ def _update_fuselage_field(
     """
     from app.models.aeroplanemodel import AeroplaneModel, FuselageModel
 
-    aeroplane = (
-        db.query(AeroplaneModel).filter(AeroplaneModel.uuid == aeroplane_uuid).first()
-    )
+    aeroplane = db.query(AeroplaneModel).filter(AeroplaneModel.uuid == aeroplane_uuid).first()
     if aeroplane is None:
         return
     fuse_row = (
@@ -770,9 +809,7 @@ def _persist_aeroplane(
                         geom_name=fuse_name,
                     )
                     if rel_solid:
-                        _set_fuselage_solid_step_path(
-                            db, aeroplane.uuid, fuse_name, rel_solid
-                        )
+                        _set_fuselage_solid_step_path(db, aeroplane.uuid, fuse_name, rel_solid)
 
                     # gh-732: refine the schema's xsecs from the just-exported
                     # (unscaled) STEP. Solid STEP gives the slicer a real
@@ -785,9 +822,7 @@ def _persist_aeroplane(
                         f"{fuse_name}: slicing for finer xsecs",
                     )
                     slicer_source = rel_solid or rel_step
-                    refined_xsecs = _try_slicer_refinement(
-                        slicer_source, fuse, fuse_name
-                    )
+                    refined_xsecs = _try_slicer_refinement(slicer_source, fuse, fuse_name)
 
             # gh-765: apply the import scale ONCE, after refinement (the
             # slicer ran in the unscaled STEP frame). When scaling, persist
@@ -831,7 +866,8 @@ def _persist_aeroplane(
     # CG-recompute hooks, and validation stay aligned.
     if result.weight_items:
         progress_cb(
-            "weight_items", 90,
+            "weight_items",
+            90,
             f"Persisting {len(result.weight_items)} weight items",
         )
     for item in result.weight_items:
@@ -894,7 +930,8 @@ def import_openvsp_file(
     progress_cb("parsing", 5, "Reading .vsp3 file")
     result = import_vsp3(path)
     progress_cb(
-        "parsing", 15,
+        "parsing",
+        15,
         f"Parsed {len(result.aeroplane.wings or {})} wing(s), "
         f"{len(result.aeroplane.fuselages or {})} fuselage(s)",
     )
@@ -905,18 +942,15 @@ def import_openvsp_file(
     # well below any user-typed scale value (UI step is 0.01).
     if factor is not None and abs(factor - 1.0) > 1e-9:
         progress_cb("scaling", 18, f"Scaling by {factor:g}")
-        _scale_aeroplane_lengths(
-            result.aeroplane, factor, weight_items=result.weight_items
-        )
+        _scale_aeroplane_lengths(result.aeroplane, factor, weight_items=result.weight_items)
         # Surface the scaling decision + the mass-not-scaled caveat to
         # the user. The frontend banner renders these alongside any
         # importer-level warnings.
-        result.warnings.append(
-            _make_scaling_warning(factor, target_span_m, scale_factor)
-        )
+        result.warnings.append(_make_scaling_warning(factor, target_span_m, scale_factor))
 
     uuid, name = _persist_aeroplane(
-        db, result,
+        db,
+        result,
         name=name,
         source_filename=source_filename,
         progress_cb=progress_cb,
