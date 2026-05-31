@@ -1,19 +1,19 @@
-"""gh-753 — augment wing xsecs between same-airfoil anchors.
+"""Wing xsec augmentation (gh-753 → gh-796 → gh-800).
 
-The augmentation runs inside the WING handler after the original
-xsec loop, before the Geom XForm pass. It inserts
-``_N_INTERP_PER_PAIR`` interpolated xsecs between consecutive
-anchor pairs that share the same ``airfoil`` reference. Pairs
-with different airfoils are skipped so the user retains full
-profile-editability for Re-number scaling workflows.
+The augmentation runs inside the WING handler after the original xsec
+loop, before the Geom XForm pass. It inserts interpolated xsecs between
+**every** consecutive anchor pair, with positions chosen
+**curvature-adaptively** (gh-800): the pair's u-range is bisected and an
+insert is added wherever the VSP loft deviates from the straight
+anchor→anchor line by more than ``_AUGMENT_TOL_REL`` of the chord —
+dense where the spline curves (elliptical tip, gull bend), ~none where
+it is straight, capped at ``2**_AUGMENT_MAX_DEPTH - 1`` per pair.
 
-These tests pin three contract points:
-
-1. Same-airfoil pair → ``N_INTERP`` inserts; NACA name preserved.
-2. Different-airfoil pair → 0 inserts (user-edit-ability).
-3. Spitfire-style 4-anchor wing → 4 + 4·3 = 16 total xsecs;
-   xyz_le values follow VSP's parametric surface (verified
-   against the stub VSP's ``CompPnt01`` return values).
+Insert airfoils (gh-796): same-airfoil pairs inherit the NACA name;
+differing-airfoil pairs get a Kulfan-morphed profile (nearest-anchor
+fallback). Inserts follow VSP's parametric surface via ``CompPnt01``,
+not a linear interpolation. Twist is linearly interpolated between the
+bracketing anchor twists at each insert's spanwise fraction.
 """
 
 from __future__ import annotations
@@ -24,14 +24,18 @@ import pytest
 
 from app.converters.openvsp_importer import ImportContext
 from app.converters.openvsp_wing_handler import (
-    _N_INTERP_PER_PAIR,
+    _AUGMENT_MAX_DEPTH,
+    _AUGMENT_TOL_REL,
+    _OUTCOME_DEDUPED,
     _W_LE,
     _W_TE,
+    _adaptive_u_fractions,
     _anchor_u_position,
     _augment_xsec_pairs,
     _chord_from_le_te,
     _find_cap_safe_u_max,
     _sample_le_te_at,
+    _try_emit_one_insert,
 )
 from app.schemas.aeroplaneschema import WingXSecSchema
 
@@ -155,16 +159,19 @@ class TestSampleLeTeAt:
 
 class TestSameAirfoilPairAugmentation:
     """gh-753 happy path: two anchors with the same airfoil get
-    ``_N_INTERP_PER_PAIR`` interpolated xsecs between them."""
+    adaptively-placed interpolated xsecs between them; count is
+    curvature-driven and bounded by ``2**_AUGMENT_MAX_DEPTH - 1`` per
+    pair; the NACA name is preserved on every insert."""
 
-    def test_inserts_n_interp_xsecs(self):
+    def test_inserts_some_xsecs_for_curved_pair(self):
         anchors = [
             _xsec(airfoil="naca2412", xyz_le=(-1.0, 0.0, 0.0), chord=2.0, t="root"),
             _xsec(airfoil="naca2412", xyz_le=(0.0, 6.0, 0.0), chord=0.0, t=None),
         ]
         out = _augment_xsec_pairs(anchors, _ellipse_vsp(), "wing-gid", _ctx(), "wing")
-        # 2 anchors + N inserts = 2 + 4 = 6
-        assert len(out) == 2 + _N_INTERP_PER_PAIR
+        # gh-800: the elliptical pair curves → adaptive inserts are added
+        # (count is curvature-driven, not a fixed 4), capped per pair.
+        assert 2 < len(out) <= 2 + (2**_AUGMENT_MAX_DEPTH - 1)
 
     def test_preserves_naca_name_on_inserts(self):
         anchors = [
@@ -189,28 +196,27 @@ class TestSameAirfoilPairAugmentation:
             assert xs.x_sec_type == "segment"
 
     def test_inserts_follow_vsp_spline_not_linear_interp(self):
-        """For a Spitfire-style elliptical wing, the chord at u=0.5
-        is ``root_chord * sqrt(1 - 0.5²) = 1.732`` (≠ linear midpoint
-        between root_chord=2.0 and tip_chord=0.0 which would be 1.0).
-        Tests the augmentation reads the real VSP spline, not a
-        straight interpolation between the anchors.
-        """
+        """Every insert's chord follows the real elliptical surface, not a
+        straight interpolation between the anchors. The ellipse stub has
+        ``chord(u) = 2·sqrt(1 - u²)`` with ``u = y / half_span`` — so each
+        insert's chord must match the ellipse at its own y (≠ linear
+        ``2·(1 - u)``)."""
+        half_span = 6.0
         anchors = [
             _xsec(airfoil="naca2412", xyz_le=(-1.0, 0.0, 0.0), chord=2.0, t="root"),
-            _xsec(airfoil="naca2412", xyz_le=(0.0, 6.0, 0.0), chord=0.0, t=None),
+            _xsec(airfoil="naca2412", xyz_le=(0.0, half_span, 0.0), chord=0.0, t=None),
         ]
         out = _augment_xsec_pairs(anchors, _ellipse_vsp(), "wing-gid", _ctx(), "wing")
-        # The middle insert (k=2) sits at u = 0 + 2 · (1/(4+1)) = 0.4.
-        # On the elliptical surface, chord(0.4) = 2 · sqrt(1 - 0.16) ≈ 1.833.
-        # Linear interpolation between anchors would give 2.0·(1-0.4)=1.2.
-        # Pin the spline-following value, not the linear approximation.
-        # out[0]=root, out[1..4]=inserts at u=0.2/0.4/0.6/0.8, out[5]=tip.
-        # The insert at u=0.4 is out[2]; chord(0.4) = 2·sqrt(1-0.16)
-        # ≈ 1.833 on the ellipse, NOT 1.2 which is what linear
-        # interpolation between root (2.0) and tip (0.0) would give.
-        u04 = out[2]
-        expected_chord = 2.0 * math.sqrt(1.0 - 0.4 * 0.4)
-        assert u04.chord == pytest.approx(expected_chord, rel=1e-6)
+        inserts = out[1:-1]
+        assert inserts  # the curved pair produced inserts
+        for ins in inserts:
+            u = ins.xyz_le[1] / half_span
+            ellipse_chord = 2.0 * math.sqrt(max(0.0, 1.0 - u * u))
+            linear_chord = 2.0 * (1.0 - u)
+            assert ins.chord == pytest.approx(ellipse_chord, rel=1e-6)
+            # and meaningfully off the linear approximation (except near ends)
+            if 0.1 < u < 0.95:
+                assert abs(ins.chord - linear_chord) > 1e-3
 
 
 class TestDifferentAirfoilPairMorphed:
@@ -236,13 +242,14 @@ class TestDifferentAirfoilPairMorphed:
         ]
         out = _augment_xsec_pairs(anchors, _ellipse_vsp(), "wing-gid", _ctx(), "wing")
 
-        assert len(out) == 2 + _N_INTERP_PER_PAIR
         inserts = out[1:-1]
+        assert inserts  # adaptive count, but the curved pair produces inserts
         assert all(
             ins.airfoil == "./components/airfoils/vsp_morph_DEADBEEF.dat"
             for ins in inserts
         )
-        assert calls == [("naca2412", "naca6409")] * _N_INTERP_PER_PAIR
+        # one morph call per insert, always between the two anchor airfoils
+        assert calls == [("naca2412", "naca6409")] * len(inserts)
         # Anchors keep their raw airfoils (faithful original).
         assert out[0].airfoil == "naca2412"
         assert out[-1].airfoil == "naca6409"
@@ -256,13 +263,14 @@ class TestDifferentAirfoilPairMorphed:
             _xsec(airfoil="naca6409", t=None),
         ]
         out = _augment_xsec_pairs(anchors, _ellipse_vsp(), "wing-gid", _ctx(), "wing")
-        # t = 0.2/0.4/0.6/0.8 → nearest anchor: 2412 (t<0.5) else 6409.
-        assert [ins.airfoil for ins in out[1:-1]] == [
-            "naca2412",
-            "naca2412",
-            "naca6409",
-            "naca6409",
-        ]
+        # Each insert falls back to the nearest anchor by its spanwise
+        # fraction t (= u for a single 0→1 pair, and u = y/half_span here):
+        # naca2412 for t<0.5, else naca6409.
+        inserts = out[1:-1]
+        assert inserts
+        for ins in inserts:
+            t = ins.xyz_le[1] / 6.0
+            assert ins.airfoil == ("naca2412" if t < 0.5 else "naca6409")
 
     def test_morph_fallback_emits_info_warning(self, monkeypatch):
         from app.converters import openvsp_airfoil
@@ -277,8 +285,9 @@ class TestDifferentAirfoilPairMorphed:
         assert any("nearest anchor" in w.reason for w in ctx.warnings)
 
     def test_mixed_wing_augments_all_segments(self, monkeypatch):
-        """Root→mid same airfoil, mid→tip different: BOTH segments now get
-        ``N_INTERP`` inserts (was: only the same-airfoil segment)."""
+        """Root→mid same airfoil, mid→tip different: BOTH segments are
+        augmented — the same-airfoil pair inherits the NACA name, the
+        differing pair gets morphed inserts."""
         from app.converters import openvsp_airfoil
 
         monkeypatch.setattr(
@@ -292,15 +301,22 @@ class TestDifferentAirfoilPairMorphed:
             _xsec(airfoil="naca6409", t=None),
         ]
         out = _augment_xsec_pairs(anchors, _ellipse_vsp(), "wing-gid", _ctx(), "wing")
-        assert len(out) == 3 + 2 * _N_INTERP_PER_PAIR
+        inserts = out[1:-1]
+        # First (same-airfoil) pair contributes naca2412 inserts (sampled
+        # y>0 distinguishes them from the mid anchor, which keeps y=0);
+        # second (differing) pair contributes morphed inserts.
+        assert any(x.airfoil == "naca2412" and x.xyz_le[1] > 0.0 for x in inserts)
+        assert any(
+            x.airfoil == "./components/airfoils/vsp_morph_X.dat" for x in inserts
+        )
 
 
 class TestSpitfireAnchorCount:
-    """Pin the Spitfire scenario from the user's screenshot: 4 anchor
-    xsecs (all NACA 2213 or similar, same airfoil throughout) → 4 +
-    3·N inserts = 16 total xsecs in the schema."""
+    """Spitfire scenario: a 4-anchor elliptical wing is adaptively
+    augmented — more than the 4 raw anchors, capped per pair, with the
+    high-curvature tip pair denser than the inner pairs (gh-800)."""
 
-    def test_four_anchors_same_airfoil_gives_sixteen_xsecs(self):
+    def test_four_anchors_adaptively_augmented(self):
         anchors = [
             _xsec(airfoil="naca2213", t="root"),
             _xsec(airfoil="naca2213", t="segment"),
@@ -308,8 +324,12 @@ class TestSpitfireAnchorCount:
             _xsec(airfoil="naca2213", t=None),
         ]
         out = _augment_xsec_pairs(anchors, _ellipse_vsp(), "wing-gid", _ctx(), "wing")
-        # 4 anchors + 3 pairs · N inserts each = 4 + 12 = 16
-        assert len(out) == 4 + 3 * _N_INTERP_PER_PAIR
+        cap = 2**_AUGMENT_MAX_DEPTH - 1
+        assert 4 < len(out) <= 4 + 3 * cap
+        # tip pair (high ellipse curvature) is denser than the inner pair
+        inner = _adaptive_u_fractions(_ellipse_vsp(), "g", 0.0, 1.0 / 3.0)
+        tip = _adaptive_u_fractions(_ellipse_vsp(), "g", 2.0 / 3.0, 1.0)
+        assert len(tip) > len(inner)
 
 
 class TestTwistInterpolation:
@@ -317,20 +337,22 @@ class TestTwistInterpolation:
     LE/TE (which would mix dihedral and section-Z stagger into a
     bogus twist value, especially bad for VTPs). Instead, augmenter
     interpolates ``twist`` linearly between the bracketing anchor
-    twists at the fractional position ``k / (N_INTERP + 1)``."""
+    twists at each insert's spanwise fraction ``t``."""
 
     def test_interpolates_twist_between_anchors(self):
-        # Root twist = 0°, tip twist = -4° → 4 inserts at fractional
-        # positions 0.2/0.4/0.6/0.8 → twists ≈ -0.8/-1.6/-2.4/-3.2°.
+        # Root twist = 0°, tip twist = -4°. Each insert's twist is the
+        # linear interpolation at its spanwise fraction t (= u = y/half_span
+        # for a single 0→1 pair): twist = -4·t.
         anchors = [
             _xsec(airfoil="naca2412", twist=0.0, t="root"),
             _xsec(airfoil="naca2412", twist=-4.0, t=None),
         ]
         out = _augment_xsec_pairs(anchors, _ellipse_vsp(), "wing-gid", _ctx(), "wing")
         inserts = out[1:-1]
-        expected = [-0.8, -1.6, -2.4, -3.2]
-        for ins, exp in zip(inserts, expected, strict=True):
-            assert ins.twist == pytest.approx(exp, rel=1e-9)
+        assert inserts
+        for ins in inserts:
+            t = ins.xyz_le[1] / 6.0
+            assert ins.twist == pytest.approx(-4.0 * t, rel=1e-9, abs=1e-9)
 
     def test_zero_twist_anchors_yield_zero_twist_inserts(self):
         # All-zero twist (Spitfire, no washout) → every insert is 0.
@@ -387,11 +409,11 @@ class TestLossyWarning:
     can correlate the visual symptom (still-polygonal wing) with a
     real importer event in the import report."""
 
-    def test_emits_warning_when_all_inserts_fail(self):
-        """A VSP stub whose ``CompPnt01`` raises for every u causes
-        all 4 inserts to silently fail. Pre-fix, the wing rendered
-        polygonal without any user-visible signal. Post-fix, a single
-        info-warning surfaces the count diff."""
+    def test_warns_when_pair_cannot_be_sampled(self):
+        """A VSP stub whose ``CompPnt01`` raises for every u means the
+        adaptive sampler can't assess the pair at all → 0 inserts and a
+        single info-warning so the polygonal wing isn't silent (gh-800,
+        preserving the gh-753 lossy-warning intent)."""
 
         class _AlwaysRaises:
             @staticmethod
@@ -404,23 +426,23 @@ class TestLossyWarning:
             _xsec(airfoil="naca2412", t=None),
         ]
         out = _augment_xsec_pairs(anchors, _AlwaysRaises(), "wing-gid", ctx, "main_wing")
-        # No inserts succeeded → 2 anchors only.
+        # No inserts → 2 anchors only.
         assert len(out) == 2
-        # Exactly one info-warning emitted with the count diff.
-        info_warnings = [w for w in ctx.warnings if w.severity == "info" and "gh-753" in w.reason]
-        assert len(info_warnings) == 1
-        assert info_warnings[0].component_name == "main_wing"
-        assert "0/4" in info_warnings[0].reason
+        sampling_warnings = [
+            w for w in ctx.warnings if w.severity == "info" and "could not sample" in w.reason
+        ]
+        assert len(sampling_warnings) == 1
+        assert sampling_warnings[0].component_name == "main_wing"
 
-    def test_emits_warning_when_some_inserts_fail(self):
-        """Partial failure (1 of 4 u-samples raises) → warning
-        emitted with the partial count so the user sees the wing
-        is degraded but not entirely missing intermediates."""
+    def test_partial_sampling_failure_degrades_gracefully(self):
+        """Endpoints sample fine but a mid-u sample raises: the bisection
+        just stops that branch — fewer inserts, all valid, no crash, and
+        no spurious 'could not sample' warning (the pair WAS assessable)."""
 
         class _FlakyAtMidU:
             @staticmethod
             def CompPnt01(_gid, _surf, u, w):
-                if 0.35 < u < 0.45:  # k=2 only
+                if 0.35 < u < 0.45:
                     raise RuntimeError("synthetic mid-u failure")
                 chord = 2.0 * math.sqrt(max(0.0, 1.0 - u * u))
                 if abs(w - _W_LE) < 1e-9:
@@ -433,23 +455,22 @@ class TestLossyWarning:
             _xsec(airfoil="naca2412", t=None),
         ]
         out = _augment_xsec_pairs(anchors, _FlakyAtMidU(), "wing-gid", ctx, "main_wing")
-        # 3 successful inserts + 2 anchors = 5
-        assert len(out) == 5
-        info_warnings = [w for w in ctx.warnings if "gh-753" in w.reason]
-        assert len(info_warnings) == 1
-        assert "3/4" in info_warnings[0].reason
+        assert len(out) >= 2  # never crashes; some inserts may survive
+        assert not [w for w in ctx.warnings if "could not sample" in w.reason]
 
     def test_no_warning_when_all_inserts_succeed(self):
-        """Happy path: all inserts succeed → no warning (would be
-        noise for healthy imports)."""
+        """Happy path: a fully-sampleable wing → no degradation warning."""
         ctx = _ctx()
         anchors = [
             _xsec(airfoil="naca2412", t="root"),
             _xsec(airfoil="naca2412", t=None),
         ]
         _augment_xsec_pairs(anchors, _ellipse_vsp(), "wing-gid", ctx, "main_wing")
-        info_warnings = [w for w in ctx.warnings if "gh-753" in w.reason]
-        assert info_warnings == []
+        assert not [
+            w
+            for w in ctx.warnings
+            if "could not sample" in w.reason or "gh-758" in w.reason
+        ]
 
 
 class TestDegenerateInputs:
@@ -500,9 +521,12 @@ class TestDegenerateInputs:
             _xsec(airfoil="naca2412", t=None),
         ]
         out = _augment_xsec_pairs(anchors, _FlakyVsp(), "wing-gid", _ctx(), "wing")
-        # The u≈0.4 insert is skipped; the other 3 succeed.
-        # Total: 2 anchors + 3 successful inserts = 5
-        assert len(out) == 5
+        # Import never crashes; the adaptive bisection simply avoids the
+        # flaky u-band, so no surviving insert lands inside it.
+        assert len(out) >= 2
+        for ins in out[1:-1]:
+            u = ins.xyz_le[1] / 6.0
+            assert not (0.35 < u < 0.45)
 
 
 # ---------------------------------------------------------------------------
@@ -727,67 +751,45 @@ class TestCapAwareAugmentation:
         out = _augment_xsec_pairs(
             anchors, _capped_vsp(u_cap_start=0.85), "wing-gid", _ctx(), "wing"
         )
-        # First segment (root → mid): 4 inserts expected (u ∈ [0, 0.5]
-        # — well below the cap start).
-        # Second segment (mid → tip): some inserts may be dropped.
-        # Total must be at least 3 anchors + 4 first-segment inserts = 7.
+        # First segment (root → mid, u ∈ [0, 0.5]) is well below the cap
+        # start and gets adaptive inserts; the second (mid → tip) is partly
+        # cap-clamped. The exact count is curvature-driven — the >= 7 bound
+        # is a conservative floor that both segments clear in practice.
         assert len(out) >= 7
 
-    def test_dedup_safety_net_fires_when_probe_misses_cluster(self):
-        """The LE-dedup is a belt-and-suspenders safety net for the
-        cap probe. This test pins the dedup-only path: probe sees
-        distinct LE at u=0.99 (so u_max≈0.99, no cap clamp), but a
-        mid-range cluster (u ∈ [0.35, 0.65]) makes consecutive inserts
-        share an LE — the dedup must drop the duplicate.
-
-        Per review on PR #759: without this test, the dedup branch
-        has no coverage of its own (the original cap-region tests
-        triggered the u-clamp before the dedup ever ran).
+    def test_dedup_safety_net_drops_clustered_insert(self):
+        """The LE-dedup safety net (``_try_emit_one_insert`` → DEDUPED)
+        drops an insert whose LE clusters within ``_DEDUP_EPS`` of the
+        previous xsec. Tested at the mechanism level since the adaptive
+        sampler (gh-800) no longer manufactures mid-span clusters itself
+        — the net remains a defence for cap-convergence regions.
         """
 
-        def _clustered_mid_vsp():
+        def _flat_vsp():
             class _Stub:
                 @staticmethod
-                def CompPnt01(_gid, _surf, u, w):
-                    if 0.35 < u < 0.65:
-                        # Mid-range cluster: same LE/TE for every u
-                        # in this band → dedup must fire on the 2nd
-                        # consecutive insert.
-                        if abs(w - _W_LE) < 1e-9:
-                            return _Pnt(-0.5, 3.0, 0.0)
-                        return _Pnt(+0.5, 3.0, 0.0)
-                    y = 6.0 * u
-                    chord = 2.0 * math.sqrt(max(0.0, 1.0 - u * u))
-                    if abs(w - _W_LE) < 1e-9:
-                        return _Pnt(-chord / 2.0, y, 0.0)
-                    return _Pnt(+chord / 2.0, y, 0.0)
+                def CompPnt01(_gid, _surf, _u, w):
+                    # Same LE/TE for any u → any insert clusters.
+                    return _Pnt(-0.5, 3.0, 0.0) if abs(w - _W_LE) < 1e-9 else _Pnt(0.5, 3.0, 0.0)
 
             return _Stub()
 
-        ctx = _ctx()
-        anchors = [
-            _xsec(airfoil="naca2213", xyz_le=(0.0, 0.0, 0.0), chord=2.0, t="root"),
-            _xsec(airfoil="naca2213", xyz_le=(0.0, 6.0, 0.0), chord=0.0, t=None),
-        ]
-        out = _augment_xsec_pairs(anchors, _clustered_mid_vsp(), "wing-gid", ctx, "wing")
-        # No duplicate consecutive xyz_le in the output.
-        for prev, curr in zip(out, out[1:], strict=False):
-            d = math.sqrt(sum((a - b) ** 2 for a, b in zip(prev.xyz_le, curr.xyz_le, strict=True)))
-            assert d > 1e-6, f"Dedup failed to catch cluster: {prev.xyz_le}"
-        # A dedup-specific warning must fire (distinct from cap-clamp).
-        dedup_warnings = [
-            w for w in ctx.warnings if "gh-758" in w.reason and "LE-dedup" in w.reason
-        ]
-        assert len(dedup_warnings) == 1, "Dedup safety net fired but no LE-dedup warning emitted"
+        out = [_xsec(airfoil="naca2213", xyz_le=(-0.5, 3.0, 0.0), chord=1.0, t="root")]
+        outcome = _try_emit_one_insert(
+            vsp=_flat_vsp(),
+            gid="g",
+            u=0.5,
+            u_max=1.0,
+            twist_deg=0.0,
+            airfoil="naca2213",
+            out=out,
+        )
+        assert outcome == _OUTCOME_DEDUPED
+        assert len(out) == 1  # the clustered insert was not appended
 
-    def test_narrow_cap_at_u_098(self):
-        """Some VSP cap configurations occupy only a tiny u-range near
-        the tip (e.g. flat-cut cap, u ≥ 0.98). The probe's first
-        entry (0.99) lands inside the cap → walk down → return 0.98
-        or 0.97. Inserts at u ≤ 0.95 must still succeed normally.
-
-        Pins the high-end of the probe table (review nit #8 on
-        PR #759)."""
+    def test_no_duplicate_xyz_le_in_adaptive_output(self):
+        """Whatever the adaptive bisection produces, consecutive output
+        xsecs are never duplicates (dedup invariant)."""
         anchors = [
             _xsec(airfoil="naca2213", xyz_le=(0.0, 0.0, 0.0), chord=2.0, t="root"),
             _xsec(airfoil="naca2213", xyz_le=(0.0, 5.88, 0.0), chord=0.0, t=None),
@@ -795,13 +797,11 @@ class TestCapAwareAugmentation:
         out = _augment_xsec_pairs(
             anchors, _capped_vsp(u_cap_start=0.98), "wing-gid", _ctx(), "wing"
         )
-        # 2 anchors + N inserts. With u_cap_start=0.98 and inserts at
-        # u = 0.2 / 0.4 / 0.6 / 0.8, all 4 fall below cap_start → all
-        # inserts succeed. No clamping, no dedup.
-        assert len(out) == 2 + _N_INTERP_PER_PAIR
-        # And no duplicate xyz_le.
+        assert len(out) > 2  # the elliptical pair produced inserts
         for prev, curr in zip(out, out[1:], strict=False):
-            d = math.sqrt(sum((a - b) ** 2 for a, b in zip(prev.xyz_le, curr.xyz_le, strict=True)))
+            d = math.sqrt(
+                sum((a - b) ** 2 for a, b in zip(prev.xyz_le, curr.xyz_le, strict=True))
+            )
             assert d > 1e-6
 
     def test_dihedral_with_cap_does_not_kink_at_tip(self):
@@ -1046,11 +1046,9 @@ class TestAugmenterUsesCorrectUMapping:
         ]
         vsp = _CappedWingStub(n_xsec=4, cap_min_option=1, cap_max_option=1)
         out = _augment_xsec_pairs(anchors, vsp, "wing-gid", _ctx(), "Wing")
-        # 4 anchors + 4 inserts × 3 pairs = 16 expected when augmenter
-        # correctly maps anchor-u and the cap-clamp is reachable only
-        # for inserts truly in the cap region.
-        # Allow some slack — but ALL three pairs must contribute at
-        # least one insert (especially the outer one).
+        # The contract here is that the OUTER pair (anchor n-2 → n-1) is no
+        # longer entirely cap-clamped (the pre-fix bug) — it must contribute
+        # inserts. The adaptive count is curvature-driven.
         outer_pair_inserts = 0
         # The outer pair's inserts sit between anchor 2 (y=4.0) and
         # anchor 3 (y=5.5), so y ∈ (4.0, 5.5).
@@ -1074,8 +1072,9 @@ class TestAugmenterUsesCorrectUMapping:
         ctx = _ctx()
         vsp = _CappedWingStub(n_xsec=2, cap_min_option=1, cap_max_option=1)
         out = _augment_xsec_pairs(anchors, vsp, "wing-gid", ctx, "Wing")
-        # 2 anchors + 4 inserts (none should dedup with cap-aware mapping).
-        assert len(out) == 2 + _N_INTERP_PER_PAIR
+        # Adaptive inserts are produced (count is curvature-driven) and none
+        # dedup, because cap-aware u-mapping keeps them clear of the root cap.
+        assert len(out) > 2
         # The dedup safety-net warning must NOT fire — cap-aware
         # u-mapping eliminates the root-cap collision.
         dedup_warnings = [
