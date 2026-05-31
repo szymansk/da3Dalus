@@ -1,19 +1,19 @@
-"""gh-753 — augment wing xsecs between same-airfoil anchors.
+"""Wing xsec augmentation (gh-753 → gh-796 → gh-800).
 
-The augmentation runs inside the WING handler after the original
-xsec loop, before the Geom XForm pass. It inserts
-``_N_INTERP_PER_PAIR`` interpolated xsecs between consecutive
-anchor pairs that share the same ``airfoil`` reference. Pairs
-with different airfoils are skipped so the user retains full
-profile-editability for Re-number scaling workflows.
+The augmentation runs inside the WING handler after the original xsec
+loop, before the Geom XForm pass. It inserts interpolated xsecs between
+**every** consecutive anchor pair, with positions chosen
+**curvature-adaptively** (gh-800): the pair's u-range is bisected and an
+insert is added wherever the VSP loft deviates from the straight
+anchor→anchor line by more than ``_AUGMENT_TOL_REL`` of the chord —
+dense where the spline curves (elliptical tip, gull bend), ~none where
+it is straight, capped at ``2**_AUGMENT_MAX_DEPTH - 1`` per pair.
 
-These tests pin three contract points:
-
-1. Same-airfoil pair → ``N_INTERP`` inserts; NACA name preserved.
-2. Different-airfoil pair → 0 inserts (user-edit-ability).
-3. Spitfire-style 4-anchor wing → 4 + 4·3 = 16 total xsecs;
-   xyz_le values follow VSP's parametric surface (verified
-   against the stub VSP's ``CompPnt01`` return values).
+Insert airfoils (gh-796): same-airfoil pairs inherit the NACA name;
+differing-airfoil pairs get a Kulfan-morphed profile (nearest-anchor
+fallback). Inserts follow VSP's parametric surface via ``CompPnt01``,
+not a linear interpolation. Twist is linearly interpolated between the
+bracketing anchor twists at each insert's spanwise fraction.
 """
 
 from __future__ import annotations
@@ -159,7 +159,9 @@ class TestSampleLeTeAt:
 
 class TestSameAirfoilPairAugmentation:
     """gh-753 happy path: two anchors with the same airfoil get
-    ``_N_INTERP_PER_PAIR`` interpolated xsecs between them."""
+    adaptively-placed interpolated xsecs between them; count is
+    curvature-driven and bounded by ``2**_AUGMENT_MAX_DEPTH - 1`` per
+    pair; the NACA name is preserved on every insert."""
 
     def test_inserts_some_xsecs_for_curved_pair(self):
         anchors = [
@@ -335,7 +337,7 @@ class TestTwistInterpolation:
     LE/TE (which would mix dihedral and section-Z stagger into a
     bogus twist value, especially bad for VTPs). Instead, augmenter
     interpolates ``twist`` linearly between the bracketing anchor
-    twists at the fractional position ``k / (N_INTERP + 1)``."""
+    twists at each insert's spanwise fraction ``t``."""
 
     def test_interpolates_twist_between_anchors(self):
         # Root twist = 0°, tip twist = -4°. Each insert's twist is the
@@ -749,10 +751,10 @@ class TestCapAwareAugmentation:
         out = _augment_xsec_pairs(
             anchors, _capped_vsp(u_cap_start=0.85), "wing-gid", _ctx(), "wing"
         )
-        # First segment (root → mid): 4 inserts expected (u ∈ [0, 0.5]
-        # — well below the cap start).
-        # Second segment (mid → tip): some inserts may be dropped.
-        # Total must be at least 3 anchors + 4 first-segment inserts = 7.
+        # First segment (root → mid, u ∈ [0, 0.5]) is well below the cap
+        # start and gets adaptive inserts; the second (mid → tip) is partly
+        # cap-clamped. The exact count is curvature-driven — the >= 7 bound
+        # is a conservative floor that both segments clear in practice.
         assert len(out) >= 7
 
     def test_dedup_safety_net_drops_clustered_insert(self):
@@ -1044,11 +1046,9 @@ class TestAugmenterUsesCorrectUMapping:
         ]
         vsp = _CappedWingStub(n_xsec=4, cap_min_option=1, cap_max_option=1)
         out = _augment_xsec_pairs(anchors, vsp, "wing-gid", _ctx(), "Wing")
-        # 4 anchors + 4 inserts × 3 pairs = 16 expected when augmenter
-        # correctly maps anchor-u and the cap-clamp is reachable only
-        # for inserts truly in the cap region.
-        # Allow some slack — but ALL three pairs must contribute at
-        # least one insert (especially the outer one).
+        # The contract here is that the OUTER pair (anchor n-2 → n-1) is no
+        # longer entirely cap-clamped (the pre-fix bug) — it must contribute
+        # inserts. The adaptive count is curvature-driven.
         outer_pair_inserts = 0
         # The outer pair's inserts sit between anchor 2 (y=4.0) and
         # anchor 3 (y=5.5), so y ∈ (4.0, 5.5).

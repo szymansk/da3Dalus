@@ -415,13 +415,21 @@ def _adaptive_u_fractions(
 
     fracs: list[float] = []
 
-    def _recurse(ta, tb, le_a, c_a, le_b, c_b, depth):
+    def _recurse(
+        ta: float,
+        tb: float,
+        le_a: tuple[float, float, float],
+        c_a: float,
+        le_b: tuple[float, float, float],
+        c_b: float,
+        depth: int,
+    ) -> None:
         if depth >= max_depth:
             return
         tm = 0.5 * (ta + tb)
         try:
             le_m, c_m = _sample(tm)
-        except Exception:  # noqa: BLE001
+        except Exception:  # noqa: BLE001 — CompPnt01 raised at this u; skip branch
             return
         le_lin = tuple((le_a[k] + le_b[k]) * 0.5 for k in range(3))
         c_lin = (c_a + c_b) * 0.5
@@ -434,6 +442,8 @@ def _adaptive_u_fractions(
         _recurse(tm, tb, le_m, c_m, le_b, c_b, depth + 1)
 
     _recurse(0.0, 1.0, le0, c0, le1, c1, 0)
+    # ``fracs`` is in pre-order DFS append order; the sort restores the
+    # spanwise sequence ``_try_emit_one_insert``'s LE-dedup relies on.
     return sorted(fracs)
 
 
