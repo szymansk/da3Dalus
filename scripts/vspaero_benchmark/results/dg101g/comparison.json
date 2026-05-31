@@ -19,6 +19,7 @@
     }
   ],
   "reference_polar": null,
+  "verdict": "Best result of the set. AeroBuildup \u2014 the app's default method \u2014 reproduces the glider's real measured glide ratio almost exactly (~39 vs Akaflieg's 38.3). The two VLMs agree on lift-curve slope to within ~2 %; VSPAERO sits lower on L/D only because it is run wings-only (no fuselage). Verdict: the analysis core is trustworthy for a clean, high-aspect-ratio sailplane.",
   "sources": {
     "vspaero": {
       "label": "VSPAERO (VLM, wings-only)",

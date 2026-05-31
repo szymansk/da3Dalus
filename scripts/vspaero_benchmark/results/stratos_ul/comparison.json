@@ -19,6 +19,7 @@
     }
   ],
   "reference_polar": null,
+  "verdict": "The unconventional-topology stress test. The VLMs handle the joined-tip box wing and show a span efficiency above 1.0 \u2014 which is physically correct here: a box wing beats the equivalent monoplane's induced-drag limit. AeroBuildup, however, fails outright (all-NaN) on the imported fuselage (#790). Verdict: the vortex-lattice path copes with exotic geometry; the component-buildup path needs a fuselage guard before it can touch box wings.",
   "sources": {
     "vspaero": {
       "label": "VSPAERO (VLM, wings-only)",

@@ -41,6 +41,7 @@
     ],
     "note": "full-aircraft total C_D incl. fuselage parasite \u2014 compares to AeroBuildup, not wings-only VSPAERO"
   },
+  "verdict": "The most relevant case for the app's audience: a real 3D-printed RC/UAV checked against the manufacturer's own CFD. CLmax (1.42) is reproduced and lift slopes agree to ~4 %, and camber fidelity is good here (small C_L0 offset \u2014 so #791 is geometry-specific, not universal). As with the Cessna, our tools predict a higher L/D than the real airframe, because the CFD captures the antenna/payload-bay parasite drag our idealised model omits. Verdict: strong agreement on the aerodynamics that depend on the wing shape; absolute drag stays optimistic.",
   "sources": {
     "vspaero": {
       "label": "VSPAERO (VLM, wings-only)",

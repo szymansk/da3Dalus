@@ -165,6 +165,7 @@ def compare_aircraft(cfg: AircraftConfig) -> dict:
         "altitude_m": cfg.altitude_m,
         "anchors": [asdict(an) for an in cfg.anchors],
         "reference_polar": asdict(cfg.reference_polar) if cfg.reference_polar else None,
+        "verdict": cfg.verdict,
         "sources": sources,
     }
     (result_dir / "comparison.json").write_text(json.dumps(comparison, indent=2))

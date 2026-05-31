@@ -14,6 +14,7 @@
     }
   ],
   "reference_polar": null,
+  "verdict": "This model is the one that exposed the critical bug (#788): the ASB converter took its reference area from the tailplane instead of the wing, inflating every coefficient ~8\u00d7. With that corrected, the two VLMs agree on lift slope to ~3 %. VSPAERO's induced-drag solve is still unreliable on this thin elliptical wing (it reports a non-physical span efficiency, flagged), while AeroSandbox recovers a sensible near-elliptical e. Verdict: a tool-vs-tool diagnostic that earned its keep by catching a real defect.",
   "sources": {
     "vspaero": {
       "label": "VSPAERO (VLM, wings-only)",

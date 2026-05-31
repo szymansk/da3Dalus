@@ -53,6 +53,8 @@ class AircraftConfig:
     symmetry: int = 0
     # Optional digitized external reference polar (overlaid on drag-polar chart).
     reference_polar: ReferencePolar | None = None
+    # Qualitative interpretation of this aircraft's comparison (dashboard prose).
+    verdict: str = ""
 
     @property
     def vsp_path(self) -> Path:
@@ -77,6 +79,14 @@ AIRCRAFT: list[AircraftConfig] = [
             Anchor("max_LD_vspaero_ref", 26.0, "Luka, OpenVSP groups (VSPAERO VLM)"),
         ],
         notes="Strongest external anchor; community VSPAERO reference exists.",
+        verdict=(
+            "Best result of the set. AeroBuildup — the app's default method — "
+            "reproduces the glider's real measured glide ratio almost exactly "
+            "(~39 vs Akaflieg's 38.3). The two VLMs agree on lift-curve slope to "
+            "within ~2 %; VSPAERO sits lower on L/D only because it is run "
+            "wings-only (no fuselage). Verdict: the analysis core is trustworthy "
+            "for a clean, high-aspect-ratio sailplane."
+        ),
     ),
     AircraftConfig(
         key="cessna172",
@@ -92,6 +102,14 @@ AIRCRAFT: list[AircraftConfig] = [
             Anchor("CLmax", 1.5, "WT / POH stall speed"),
         ],
         notes="Multiple wind-tunnel reports; classic validation case.",
+        verdict=(
+            "Lift slopes line up, but every tool predicts a higher L/D than the "
+            "real aircraft achieves in flight test (~10.5). That gap is expected "
+            "and honest: the .vsp3 carries the wing + fuselage but not the bracing "
+            "strut, fixed landing gear, antennas and surface roughness that "
+            "dominate a real 172's parasite drag. Verdict: lift is right; absolute "
+            "drag is optimistic for a draggy fixed-gear airframe."
+        ),
     ),
     AircraftConfig(
         key="spitfire",
@@ -105,6 +123,16 @@ AIRCRAFT: list[AircraftConfig] = [
             Anchor("CLmax", 1.36, "Shenstone / RAeS (qualitative)"),
         ],
         notes="Elliptical wing: do both tools recover near-unity span efficiency?",
+        verdict=(
+            "This model is the one that exposed the critical bug (#788): the ASB "
+            "converter took its reference area from the tailplane instead of the "
+            "wing, inflating every coefficient ~8×. With that corrected, the two "
+            "VLMs agree on lift slope to ~3 %. VSPAERO's induced-drag solve is "
+            "still unreliable on this thin elliptical wing (it reports a "
+            "non-physical span efficiency, flagged), while AeroSandbox recovers a "
+            "sensible near-elliptical e. Verdict: a tool-vs-tool diagnostic that "
+            "earned its keep by catching a real defect."
+        ),
     ),
     AircraftConfig(
         key="stratos_ul",
@@ -119,6 +147,15 @@ AIRCRAFT: list[AircraftConfig] = [
             Anchor("CLmax", 1.45, "from published Vs 58-61 km/h"),
         ],
         notes="Boxwing topology stress-test; joined tips. Original 1985 prototype.",
+        verdict=(
+            "The unconventional-topology stress test. The VLMs handle the "
+            "joined-tip box wing and show a span efficiency above 1.0 — which is "
+            "physically correct here: a box wing beats the equivalent monoplane's "
+            "induced-drag limit. AeroBuildup, however, fails outright (all-NaN) on "
+            "the imported fuselage (#790). Verdict: the vortex-lattice path copes "
+            "with exotic geometry; the component-buildup path needs a fuselage "
+            "guard before it can touch box wings."
+        ),
     ),
     AircraftConfig(
         key="falcon_v2",
@@ -149,8 +186,38 @@ AIRCRAFT: list[AircraftConfig] = [
             note="full-aircraft total C_D incl. fuselage parasite — compares to "
             "AeroBuildup, not wings-only VSPAERO",
         ),
+        verdict=(
+            "The most relevant case for the app's audience: a real 3D-printed "
+            "RC/UAV checked against the manufacturer's own CFD. CLmax (1.42) is "
+            "reproduced and lift slopes agree to ~4 %, and camber fidelity is good "
+            "here (small C_L0 offset — so #791 is geometry-specific, not "
+            "universal). As with the Cessna, our tools predict a higher L/D than "
+            "the real airframe, because the CFD captures the antenna/payload-bay "
+            "parasite drag our idealised model omits. Verdict: strong agreement on "
+            "the aerodynamics that depend on the wing shape; absolute drag stays "
+            "optimistic."
+        ),
     ),
 ]
+
+# Overall qualitative conclusion across all aircraft (dashboard executive summary).
+EXECUTIVE_SUMMARY = (
+    "Across five aircraft spanning sailplane, GA, elliptical, box-wing and RC/UAV "
+    "configurations, the picture is consistent. **AeroSandbox AeroBuildup — the "
+    "app's default analysis — reproduces measured glide performance closely where "
+    "clean flight or wind-tunnel data exists** (within ~2 % of a real glider's "
+    "polar), and the two independent vortex-lattice solvers (AeroSandbox and "
+    "VSPAERO) **agree on lift-curve slope to within ~2–4 %** once reference areas "
+    "match. Lift and lift-slope are therefore trustworthy. **Absolute drag and L/D "
+    "are optimistic** for draggy real airframes (fixed gear, struts, antennas, "
+    "surface finish) that the geometry model doesn't carry — a limitation to keep "
+    "in mind, not a solver error. The exercise also paid for itself by surfacing "
+    "**five real app defects**, one critical: the analysis converter was taking "
+    "its reference area from the wrong wing (#788), silently producing ~8× wrong "
+    "coefficients whenever the tail imported before the wing. Net: the analysis "
+    "core is sound for the aerodynamics that matter most, with a short, concrete "
+    "list of import/geometry-handling fixes to harden it."
+)
 
 
 def by_key(key: str) -> AircraftConfig:

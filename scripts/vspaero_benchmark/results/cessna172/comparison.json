@@ -24,6 +24,7 @@
     }
   ],
   "reference_polar": null,
+  "verdict": "Lift slopes line up, but every tool predicts a higher L/D than the real aircraft achieves in flight test (~10.5). That gap is expected and honest: the .vsp3 carries the wing + fuselage but not the bracing strut, fixed landing gear, antennas and surface roughness that dominate a real 172's parasite drag. Verdict: lift is right; absolute drag is optimistic for a draggy fixed-gear airframe.",
   "sources": {
     "vspaero": {
       "label": "VSPAERO (VLM, wings-only)",
