@@ -555,6 +555,24 @@ def _compute_speed_polar(
     )
 
 
+def _resolve_v_dive_from_context(context) -> float | None:
+    """Extract V_dive [m/s] from a cached ``assumption_computation_context`` (gh-799).
+
+    Returns ``None`` when the context is missing, not a dict, or has no usable
+    numeric ``v_dive_mps``. Pure and db-free so the resolution logic is
+    unit-testable without a database.
+    """
+    if not isinstance(context, dict):
+        return None
+    raw = context.get("v_dive_mps")
+    if raw is None:
+        return None
+    try:
+        return float(raw)
+    except (TypeError, ValueError):
+        return None
+
+
 def _build_speed_polar(db, aeroplane_uuid, sweep_request, asb_airplane, cl_values, cd_values):
     """Glue around :func:`_compute_speed_polar`: resolve effective mass, wing
     reference area and air density, then build the speed polar. Returns ``None``
@@ -587,10 +605,9 @@ def _build_speed_polar(db, aeroplane_uuid, sweep_request, asb_airplane, cl_value
             aeroplane_row = (
                 db.query(AeroplaneModel).filter(AeroplaneModel.uuid == aeroplane_uuid).first()
             )
-            ctx = getattr(aeroplane_row, "assumption_computation_context", None) or {}
-            raw_v_dive = ctx.get("v_dive_mps")
-            if raw_v_dive is not None:
-                v_dive = float(raw_v_dive)
+            v_dive = _resolve_v_dive_from_context(
+                getattr(aeroplane_row, "assumption_computation_context", None)
+            )
         except Exception:  # pragma: no cover - defensive
             pass
         return _compute_speed_polar(

@@ -8,6 +8,7 @@ import type { StripForcesResult } from "@/hooks/useStripForces";
 import type { SpeedPolar, SpeedPolarCurve } from "@/hooks/useAnalysis";
 import type { FlightEnvelopeData } from "@/hooks/useFlightEnvelope";
 import { EnvelopePanel } from "@/components/workbench/EnvelopePanel";
+import { buildSpeedPolarLayout } from "@/lib/speedPolarLayout";
 import type { StoredOperatingPoint, AVLTrimResult, AeroBuildupTrimResult, TrimConstraint, ControlSurface } from "@/hooks/useOperatingPoints";
 import { OperatingPointsPanel } from "@/components/workbench/OperatingPointsPanel";
 import { MatchingChartTab } from "@/components/workbench/MatchingChartTab";
@@ -344,21 +345,7 @@ function SpeedPolarChart({ speedPolar }: Readonly<{ speedPolar: SpeedPolar }>) {
     const traces = speedPolarTraces(curves);
 
     const { v_axis_min, v_axis_max } = speedPolar;
-    const hasBounds =
-      typeof v_axis_min === "number" &&
-      isFinite(v_axis_min) &&
-      typeof v_axis_max === "number" &&
-      isFinite(v_axis_max);
-    const layout = hasBounds
-      ? {
-          ...SPEED_POLAR_LAYOUT,
-          xaxis: {
-            ...(SPEED_POLAR_LAYOUT.xaxis as Record<string, unknown>),
-            range: [v_axis_min, v_axis_max],
-            autorange: false,
-          },
-        }
-      : SPEED_POLAR_LAYOUT;
+    const layout = buildSpeedPolarLayout(SPEED_POLAR_LAYOUT, v_axis_min, v_axis_max);
 
     (async () => {
       PlotlyRef = await import("plotly.js-gl3d-dist-min");

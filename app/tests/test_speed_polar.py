@@ -13,7 +13,10 @@ import math
 import numpy as np
 import pytest
 
-from app.services.analysis_service import _compute_speed_polar
+from app.services.analysis_service import (
+    _compute_speed_polar,
+    _resolve_v_dive_from_context,
+)
 
 G = 9.81
 
@@ -276,3 +279,39 @@ def test_bounds_inverted_guard() -> None:
     )
     assert sp.v_axis_min is None, "inverted bounds should collapse to None"
     assert sp.v_axis_max is None, "inverted bounds should collapse to None"
+
+
+# --- _resolve_v_dive_from_context (gh-799) ---------------------------------
+
+
+def test_resolve_v_dive_valid_value():
+    assert _resolve_v_dive_from_context({"v_dive_mps": 52.0}) == 52.0
+
+
+def test_resolve_v_dive_int_is_coerced_to_float():
+    result = _resolve_v_dive_from_context({"v_dive_mps": 40})
+    assert result == 40.0
+    assert isinstance(result, float)
+
+
+def test_resolve_v_dive_none_context():
+    assert _resolve_v_dive_from_context(None) is None
+
+
+def test_resolve_v_dive_missing_key():
+    assert _resolve_v_dive_from_context({"v_max_mps": 30.0}) is None
+
+
+def test_resolve_v_dive_explicit_none_value():
+    assert _resolve_v_dive_from_context({"v_dive_mps": None}) is None
+
+
+def test_resolve_v_dive_non_dict_context():
+    # Defensive: a corrupted JSON column holding a non-dict must not raise.
+    assert _resolve_v_dive_from_context("garbage") is None
+    assert _resolve_v_dive_from_context([1, 2, 3]) is None
+
+
+def test_resolve_v_dive_non_numeric_value():
+    # A non-numeric value degrades to None rather than raising.
+    assert _resolve_v_dive_from_context({"v_dive_mps": "fast"}) is None

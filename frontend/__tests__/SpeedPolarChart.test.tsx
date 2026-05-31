@@ -6,36 +6,13 @@
  * are finite numbers, and omits the range (letting Plotly autorange)
  * when the bounds are absent, null, NaN, or Infinity.
  *
- * The pure `buildSpeedPolarLayout` helper mirrors the exact logic baked into
- * SpeedPolarChart so we can test it without importing the full component tree.
+ * Imports the REAL `buildSpeedPolarLayout` helper that SpeedPolarChart uses
+ * (frontend/lib/speedPolarLayout.ts), so the production layout logic is what's
+ * under test (and covered) — not a copy.
  */
 import { describe, it, expect } from "vitest";
 import type { SpeedPolar } from "@/hooks/useAnalysis";
-
-// ---------------------------------------------------------------------------
-// Pure helper — mirrors the SpeedPolarChart layout-building code exactly
-// ---------------------------------------------------------------------------
-function buildSpeedPolarLayout(
-  baseLayout: Record<string, unknown>,
-  v_axis_min: number | null | undefined,
-  v_axis_max: number | null | undefined,
-): Record<string, unknown> {
-  const hasBounds =
-    typeof v_axis_min === "number" &&
-    isFinite(v_axis_min) &&
-    typeof v_axis_max === "number" &&
-    isFinite(v_axis_max);
-  return hasBounds
-    ? {
-        ...baseLayout,
-        xaxis: {
-          ...(baseLayout.xaxis as Record<string, unknown>),
-          range: [v_axis_min, v_axis_max],
-          autorange: false,
-        },
-      }
-    : baseLayout;
-}
+import { buildSpeedPolarLayout } from "@/lib/speedPolarLayout";
 
 const BASE_LAYOUT: Record<string, unknown> = {
   paper_bgcolor: "transparent",
