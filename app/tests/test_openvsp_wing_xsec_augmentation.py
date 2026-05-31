@@ -28,7 +28,7 @@ from app.converters.openvsp_wing_handler import (
     _W_LE,
     _W_TE,
     _anchor_u_position,
-    _augment_same_airfoil_pairs,
+    _augment_xsec_pairs,
     _chord_from_le_te,
     _find_cap_safe_u_max,
     _sample_le_te_at,
@@ -162,7 +162,7 @@ class TestSameAirfoilPairAugmentation:
             _xsec(airfoil="naca2412", xyz_le=(-1.0, 0.0, 0.0), chord=2.0, t="root"),
             _xsec(airfoil="naca2412", xyz_le=(0.0, 6.0, 0.0), chord=0.0, t=None),
         ]
-        out = _augment_same_airfoil_pairs(anchors, _ellipse_vsp(), "wing-gid", _ctx(), "wing")
+        out = _augment_xsec_pairs(anchors, _ellipse_vsp(), "wing-gid", _ctx(), "wing")
         # 2 anchors + N inserts = 2 + 4 = 6
         assert len(out) == 2 + _N_INTERP_PER_PAIR
 
@@ -171,7 +171,7 @@ class TestSameAirfoilPairAugmentation:
             _xsec(airfoil="naca2412", t="root"),
             _xsec(airfoil="naca2412", t=None),
         ]
-        out = _augment_same_airfoil_pairs(anchors, _ellipse_vsp(), "wing-gid", _ctx(), "wing")
+        out = _augment_xsec_pairs(anchors, _ellipse_vsp(), "wing-gid", _ctx(), "wing")
         # All inserts inherit the anchor's airfoil — never a generated
         # ``vsp_imported_*.dat`` for same-airfoil paths.
         for xs in out[1:-1]:
@@ -182,7 +182,7 @@ class TestSameAirfoilPairAugmentation:
             _xsec(airfoil="naca2412", t="root"),
             _xsec(airfoil="naca2412", t=None),
         ]
-        out = _augment_same_airfoil_pairs(anchors, _ellipse_vsp(), "wing-gid", _ctx(), "wing")
+        out = _augment_xsec_pairs(anchors, _ellipse_vsp(), "wing-gid", _ctx(), "wing")
         # The inserts sit between root and the terminal xsec, so they
         # all carry x_sec_type="segment" (intermediate).
         for xs in out[1:-1]:
@@ -199,7 +199,7 @@ class TestSameAirfoilPairAugmentation:
             _xsec(airfoil="naca2412", xyz_le=(-1.0, 0.0, 0.0), chord=2.0, t="root"),
             _xsec(airfoil="naca2412", xyz_le=(0.0, 6.0, 0.0), chord=0.0, t=None),
         ]
-        out = _augment_same_airfoil_pairs(anchors, _ellipse_vsp(), "wing-gid", _ctx(), "wing")
+        out = _augment_xsec_pairs(anchors, _ellipse_vsp(), "wing-gid", _ctx(), "wing")
         # The middle insert (k=2) sits at u = 0 + 2 · (1/(4+1)) = 0.4.
         # On the elliptical surface, chord(0.4) = 2 · sqrt(1 - 0.16) ≈ 1.833.
         # Linear interpolation between anchors would give 2.0·(1-0.4)=1.2.
@@ -213,35 +213,74 @@ class TestSameAirfoilPairAugmentation:
         assert u04.chord == pytest.approx(expected_chord, rel=1e-6)
 
 
-class TestDifferentAirfoilPairSkipped:
-    """gh-753 user constraint: pairs with different airfoils are
-    skipped so the user can swap profiles for Re-number scaling
-    at the anchors without dealing with morphed-profile blobs in
-    between."""
+class TestDifferentAirfoilPairMorphed:
+    """gh-796: pairs with DIFFERENT airfoils are now augmented too — each
+    insert carries a morphed profile (a content-hash ``vsp_morph_*.dat``).
+    Morphing is mocked here to keep the test CAD-free and deterministic;
+    the real Kulfan morph is exercised in test_openvsp_airfoil_hash_morph.py.
+    """
 
-    def test_zero_inserts_between_different_airfoils(self):
+    def test_inserts_between_different_airfoils_carry_morphed_profile(self, monkeypatch):
+        from app.converters import openvsp_airfoil
+
+        calls: list[tuple[str, str]] = []
+
+        def _fake_morph(a, b, t):
+            calls.append((a, b))
+            return "./components/airfoils/vsp_morph_DEADBEEF.dat"
+
+        monkeypatch.setattr(openvsp_airfoil, "morph_airfoils", _fake_morph)
         anchors = [
             _xsec(airfoil="naca2412", t="root"),
             _xsec(airfoil="naca6409", t=None),
         ]
-        out = _augment_same_airfoil_pairs(anchors, _ellipse_vsp(), "wing-gid", _ctx(), "wing")
-        # 2 anchors, no inserts.
-        assert len(out) == 2
-        assert out[0].airfoil == "naca2412"
-        assert out[1].airfoil == "naca6409"
+        out = _augment_xsec_pairs(anchors, _ellipse_vsp(), "wing-gid", _ctx(), "wing")
 
-    def test_mixed_wing_augments_only_same_airfoil_segments(self):
-        """A three-anchor wing where root→mid share airfoil and mid→tip
-        differ should get ``N_INTERP`` inserts in the first segment
-        and zero in the second."""
+        assert len(out) == 2 + _N_INTERP_PER_PAIR
+        inserts = out[1:-1]
+        assert all(
+            ins.airfoil == "./components/airfoils/vsp_morph_DEADBEEF.dat"
+            for ins in inserts
+        )
+        assert calls == [("naca2412", "naca6409")] * _N_INTERP_PER_PAIR
+        # Anchors keep their raw airfoils (faithful original).
+        assert out[0].airfoil == "naca2412"
+        assert out[-1].airfoil == "naca6409"
+
+    def test_morph_failure_falls_back_to_nearest_anchor(self, monkeypatch):
+        from app.converters import openvsp_airfoil
+
+        monkeypatch.setattr(openvsp_airfoil, "morph_airfoils", lambda a, b, t: None)
+        anchors = [
+            _xsec(airfoil="naca2412", t="root"),
+            _xsec(airfoil="naca6409", t=None),
+        ]
+        out = _augment_xsec_pairs(anchors, _ellipse_vsp(), "wing-gid", _ctx(), "wing")
+        # t = 0.2/0.4/0.6/0.8 → nearest anchor: 2412 (t<0.5) else 6409.
+        assert [ins.airfoil for ins in out[1:-1]] == [
+            "naca2412",
+            "naca2412",
+            "naca6409",
+            "naca6409",
+        ]
+
+    def test_mixed_wing_augments_all_segments(self, monkeypatch):
+        """Root→mid same airfoil, mid→tip different: BOTH segments now get
+        ``N_INTERP`` inserts (was: only the same-airfoil segment)."""
+        from app.converters import openvsp_airfoil
+
+        monkeypatch.setattr(
+            openvsp_airfoil,
+            "morph_airfoils",
+            lambda a, b, t: "./components/airfoils/vsp_morph_X.dat",
+        )
         anchors = [
             _xsec(airfoil="naca2412", t="root"),
             _xsec(airfoil="naca2412", t="segment"),
             _xsec(airfoil="naca6409", t=None),
         ]
-        out = _augment_same_airfoil_pairs(anchors, _ellipse_vsp(), "wing-gid", _ctx(), "wing")
-        # 3 anchors + N inserts (first segment only)
-        assert len(out) == 3 + _N_INTERP_PER_PAIR
+        out = _augment_xsec_pairs(anchors, _ellipse_vsp(), "wing-gid", _ctx(), "wing")
+        assert len(out) == 3 + 2 * _N_INTERP_PER_PAIR
 
 
 class TestSpitfireAnchorCount:
@@ -256,7 +295,7 @@ class TestSpitfireAnchorCount:
             _xsec(airfoil="naca2213", t="segment"),
             _xsec(airfoil="naca2213", t=None),
         ]
-        out = _augment_same_airfoil_pairs(anchors, _ellipse_vsp(), "wing-gid", _ctx(), "wing")
+        out = _augment_xsec_pairs(anchors, _ellipse_vsp(), "wing-gid", _ctx(), "wing")
         # 4 anchors + 3 pairs · N inserts each = 4 + 12 = 16
         assert len(out) == 4 + 3 * _N_INTERP_PER_PAIR
 
@@ -275,7 +314,7 @@ class TestTwistInterpolation:
             _xsec(airfoil="naca2412", twist=0.0, t="root"),
             _xsec(airfoil="naca2412", twist=-4.0, t=None),
         ]
-        out = _augment_same_airfoil_pairs(anchors, _ellipse_vsp(), "wing-gid", _ctx(), "wing")
+        out = _augment_xsec_pairs(anchors, _ellipse_vsp(), "wing-gid", _ctx(), "wing")
         inserts = out[1:-1]
         expected = [-0.8, -1.6, -2.4, -3.2]
         for ins, exp in zip(inserts, expected, strict=True):
@@ -291,7 +330,7 @@ class TestTwistInterpolation:
             _xsec(airfoil="naca2412", twist=0.0, t="root"),
             _xsec(airfoil="naca2412", twist=0.0, t=None),
         ]
-        out = _augment_same_airfoil_pairs(anchors, _ellipse_vsp(), "wing-gid", _ctx(), "wing")
+        out = _augment_xsec_pairs(anchors, _ellipse_vsp(), "wing-gid", _ctx(), "wing")
         for ins in out[1:-1]:
             assert ins.twist == 0.0
 
@@ -320,7 +359,7 @@ class TestTwistInterpolation:
             _xsec(airfoil="naca2412", twist=0.0, t="root"),
             _xsec(airfoil="naca2412", twist=0.0, t=None),
         ]
-        out = _augment_same_airfoil_pairs(anchors, _DihedralStub(), "wing-gid", _ctx(), "wing")
+        out = _augment_xsec_pairs(anchors, _DihedralStub(), "wing-gid", _ctx(), "wing")
         # Anchor twists are 0 → every insert twist must be 0 even
         # though the body-frame LE/TE has a 0.5 m vertical offset.
         for ins in out[1:-1]:
@@ -352,7 +391,7 @@ class TestLossyWarning:
             _xsec(airfoil="naca2412", t="root"),
             _xsec(airfoil="naca2412", t=None),
         ]
-        out = _augment_same_airfoil_pairs(anchors, _AlwaysRaises(), "wing-gid", ctx, "main_wing")
+        out = _augment_xsec_pairs(anchors, _AlwaysRaises(), "wing-gid", ctx, "main_wing")
         # No inserts succeeded → 2 anchors only.
         assert len(out) == 2
         # Exactly one info-warning emitted with the count diff.
@@ -381,7 +420,7 @@ class TestLossyWarning:
             _xsec(airfoil="naca2412", t="root"),
             _xsec(airfoil="naca2412", t=None),
         ]
-        out = _augment_same_airfoil_pairs(anchors, _FlakyAtMidU(), "wing-gid", ctx, "main_wing")
+        out = _augment_xsec_pairs(anchors, _FlakyAtMidU(), "wing-gid", ctx, "main_wing")
         # 3 successful inserts + 2 anchors = 5
         assert len(out) == 5
         info_warnings = [w for w in ctx.warnings if "gh-753" in w.reason]
@@ -396,7 +435,7 @@ class TestLossyWarning:
             _xsec(airfoil="naca2412", t="root"),
             _xsec(airfoil="naca2412", t=None),
         ]
-        _augment_same_airfoil_pairs(anchors, _ellipse_vsp(), "wing-gid", ctx, "main_wing")
+        _augment_xsec_pairs(anchors, _ellipse_vsp(), "wing-gid", ctx, "main_wing")
         info_warnings = [w for w in ctx.warnings if "gh-753" in w.reason]
         assert info_warnings == []
 
@@ -404,7 +443,7 @@ class TestLossyWarning:
 class TestDegenerateInputs:
     def test_single_xsec_passthrough(self):
         anchors = [_xsec(airfoil="naca2412", t="root")]
-        out = _augment_same_airfoil_pairs(anchors, _ellipse_vsp(), "wing-gid", _ctx(), "wing")
+        out = _augment_xsec_pairs(anchors, _ellipse_vsp(), "wing-gid", _ctx(), "wing")
         assert out == anchors
 
     def test_no_comppnt01_passes_through_unchanged(self):
@@ -419,7 +458,7 @@ class TestDegenerateInputs:
             _xsec(airfoil="naca2412", t="root"),
             _xsec(airfoil="naca2412", t=None),
         ]
-        out = _augment_same_airfoil_pairs(
+        out = _augment_xsec_pairs(
             anchors, _StubWithoutCompPnt(), "wing-gid", _ctx(), "wing"
         )
         assert out == anchors
@@ -448,7 +487,7 @@ class TestDegenerateInputs:
             _xsec(airfoil="naca2412", t="root"),
             _xsec(airfoil="naca2412", t=None),
         ]
-        out = _augment_same_airfoil_pairs(anchors, _FlakyVsp(), "wing-gid", _ctx(), "wing")
+        out = _augment_xsec_pairs(anchors, _FlakyVsp(), "wing-gid", _ctx(), "wing")
         # The u≈0.4 insert is skipped; the other 3 succeed.
         # Total: 2 anchors + 3 successful inserts = 5
         assert len(out) == 5
@@ -588,7 +627,7 @@ class TestCapAwareAugmentation:
             _xsec(airfoil="naca2213", xyz_le=(0.0, 4.0, 0.0), chord=1.2, t="segment"),
             _xsec(airfoil="naca2213", xyz_le=(0.0, 5.4, 0.0), chord=0.4, t=None),
         ]
-        out = _augment_same_airfoil_pairs(
+        out = _augment_xsec_pairs(
             anchors, _capped_vsp(u_cap_start=0.85), "wing-gid", _ctx(), "wing"
         )
         # Walk the output and assert no two consecutive xsecs share
@@ -613,7 +652,7 @@ class TestCapAwareAugmentation:
             _xsec(airfoil="naca2213", xyz_le=(0.0, 4.0, 0.0), chord=1.2, t="segment"),
             _xsec(airfoil="naca2213", xyz_le=(0.0, 5.1, 0.0), chord=0.4, t=None),
         ]
-        out = _augment_same_airfoil_pairs(
+        out = _augment_xsec_pairs(
             anchors, _capped_vsp(u_cap_start=0.85, cap_z=0.5), "wing-gid", _ctx(), "wing"
         )
         # All inserts (everything except first/last anchors) must have
@@ -643,7 +682,7 @@ class TestCapAwareAugmentation:
             _xsec(airfoil="naca2213", xyz_le=(0.0, 4.0, 0.0), chord=1.2, t="segment"),
             _xsec(airfoil="naca2213", xyz_le=(0.0, 5.4, 0.0), chord=0.4, t=None),
         ]
-        _augment_same_airfoil_pairs(
+        _augment_xsec_pairs(
             anchors, _capped_vsp(u_cap_start=0.85), "wing-gid", ctx, "main_wing"
         )
         # Look for a gh-758 cap-truncation warning specifically.
@@ -660,7 +699,7 @@ class TestCapAwareAugmentation:
             _xsec(airfoil="naca2213", xyz_le=(0.0, 0.0, 0.0), chord=2.0, t="root"),
             _xsec(airfoil="naca2213", xyz_le=(0.0, 6.0, 0.0), chord=0.0, t=None),
         ]
-        _augment_same_airfoil_pairs(anchors, _ellipse_vsp(), "wing-gid", ctx, "main_wing")
+        _augment_xsec_pairs(anchors, _ellipse_vsp(), "wing-gid", ctx, "main_wing")
         cap_warnings = [w for w in ctx.warnings if "gh-758" in w.reason]
         assert cap_warnings == []
 
@@ -673,7 +712,7 @@ class TestCapAwareAugmentation:
             _xsec(airfoil="naca2213", xyz_le=(0.0, 2.0, 0.0), chord=1.8, t="segment"),
             _xsec(airfoil="naca2213", xyz_le=(0.0, 5.4, 0.0), chord=0.4, t=None),
         ]
-        out = _augment_same_airfoil_pairs(
+        out = _augment_xsec_pairs(
             anchors, _capped_vsp(u_cap_start=0.85), "wing-gid", _ctx(), "wing"
         )
         # First segment (root → mid): 4 inserts expected (u ∈ [0, 0.5]
@@ -718,7 +757,7 @@ class TestCapAwareAugmentation:
             _xsec(airfoil="naca2213", xyz_le=(0.0, 0.0, 0.0), chord=2.0, t="root"),
             _xsec(airfoil="naca2213", xyz_le=(0.0, 6.0, 0.0), chord=0.0, t=None),
         ]
-        out = _augment_same_airfoil_pairs(anchors, _clustered_mid_vsp(), "wing-gid", ctx, "wing")
+        out = _augment_xsec_pairs(anchors, _clustered_mid_vsp(), "wing-gid", ctx, "wing")
         # No duplicate consecutive xyz_le in the output.
         for prev, curr in zip(out, out[1:], strict=False):
             d = math.sqrt(sum((a - b) ** 2 for a, b in zip(prev.xyz_le, curr.xyz_le, strict=True)))
@@ -741,7 +780,7 @@ class TestCapAwareAugmentation:
             _xsec(airfoil="naca2213", xyz_le=(0.0, 0.0, 0.0), chord=2.0, t="root"),
             _xsec(airfoil="naca2213", xyz_le=(0.0, 5.88, 0.0), chord=0.0, t=None),
         ]
-        out = _augment_same_airfoil_pairs(
+        out = _augment_xsec_pairs(
             anchors, _capped_vsp(u_cap_start=0.98), "wing-gid", _ctx(), "wing"
         )
         # 2 anchors + N inserts. With u_cap_start=0.98 and inserts at
@@ -784,7 +823,7 @@ class TestCapAwareAugmentation:
             _xsec(airfoil="naca2213", xyz_le=(0.0, 0.0, 0.0), chord=2.0, twist=0.0, t="root"),
             _xsec(airfoil="naca2213", xyz_le=(0.0, 6.0, 0.6), chord=0.0, twist=0.0, t=None),
         ]
-        out = _augment_same_airfoil_pairs(
+        out = _augment_xsec_pairs(
             anchors, _dihedral_capped_vsp(), "wing-gid", _ctx(), "wing"
         )
         # No insert may carry the cap z-offset (0.5).
@@ -972,7 +1011,7 @@ class TestAugmenterUsesCorrectUMapping:
             _xsec(airfoil="naca2213", xyz_le=(-0.07, 5.5, 0.0), chord=0.14, t=None),
         ]
         vsp = _CappedWingStub(n_xsec=4, cap_min_option=1, cap_max_option=1)
-        out = _augment_same_airfoil_pairs(anchors, vsp, "wing-gid", _ctx(), "Wing")
+        out = _augment_xsec_pairs(anchors, vsp, "wing-gid", _ctx(), "Wing")
         # No consecutive xsecs share an xyz_le within 1 mm (= the
         # gh-760 DB-evidence threshold; pre-fix the gap was ~1 mm).
         for prev, curr in zip(out, out[1:], strict=False):
@@ -994,7 +1033,7 @@ class TestAugmenterUsesCorrectUMapping:
             _xsec(airfoil="naca2213", xyz_le=(-0.07, 5.5, 0.0), chord=0.14, t=None),
         ]
         vsp = _CappedWingStub(n_xsec=4, cap_min_option=1, cap_max_option=1)
-        out = _augment_same_airfoil_pairs(anchors, vsp, "wing-gid", _ctx(), "Wing")
+        out = _augment_xsec_pairs(anchors, vsp, "wing-gid", _ctx(), "Wing")
         # 4 anchors + 4 inserts × 3 pairs = 16 expected when augmenter
         # correctly maps anchor-u and the cap-clamp is reachable only
         # for inserts truly in the cap region.
@@ -1022,7 +1061,7 @@ class TestAugmenterUsesCorrectUMapping:
         ]
         ctx = _ctx()
         vsp = _CappedWingStub(n_xsec=2, cap_min_option=1, cap_max_option=1)
-        out = _augment_same_airfoil_pairs(anchors, vsp, "wing-gid", ctx, "Wing")
+        out = _augment_xsec_pairs(anchors, vsp, "wing-gid", ctx, "Wing")
         # 2 anchors + 4 inserts (none should dedup with cap-aware mapping).
         assert len(out) == 2 + _N_INTERP_PER_PAIR
         # The dedup safety-net warning must NOT fire — cap-aware

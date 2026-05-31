@@ -726,6 +726,114 @@ def write_imported_airfoil_dat(coordinates: CoordList, *, tag: str = "vsp_import
     return f"./components/airfoils/{fname}"
 
 
+def _resolve_coords(ref: str) -> Optional[CoordList]:
+    """Resolve an airfoil reference (NACA name or ``.dat`` path) to
+    coordinates (gh-796). Tries the path as-is, under ``AIRFOILS_DIR``,
+    and as ``<name>.dat``; falls back to AeroSandbox's named library for
+    bare NACA names. Returns ``None`` if nothing resolves."""
+    for cand in (Path(ref), AIRFOILS_DIR / Path(ref).name, AIRFOILS_DIR / f"{ref}.dat"):
+        if cand.exists():
+            coords = _read_dat_coords(cand)
+            if coords:
+                return coords
+    try:
+        import aerosandbox as asb
+
+        af = asb.Airfoil(name=ref)
+        if af.coordinates is not None:
+            return [(float(x), float(y)) for x, y in af.coordinates]
+    except Exception:  # noqa: BLE001 — asb optional / unknown name
+        pass
+    return None
+
+
+def _kulfan_morph(ca: CoordList, cb: CoordList, t: float) -> Optional[CoordList]:
+    """Morph two airfoils in Kulfan/CST weight space at fraction ``t``
+    (gh-796). Both are fit to ``asb.KulfanAirfoil`` (same mode count), the
+    weights interpolated, and coordinates regenerated. Returns ``None`` on
+    any failure / mode-count mismatch / non-finite result so the caller
+    can fall back to a raw coordinate blend."""
+    import aerosandbox as asb
+    import numpy as np
+
+    ka = asb.Airfoil(coordinates=np.array(ca, dtype=float)).to_kulfan_airfoil()
+    kb = asb.Airfoil(coordinates=np.array(cb, dtype=float)).to_kulfan_airfoil()
+    if len(ka.upper_weights) != len(kb.upper_weights):
+        return None
+
+    def _blend(a, b):
+        return (1.0 - t) * np.asarray(a, dtype=float) + t * np.asarray(b, dtype=float)
+
+    m = asb.KulfanAirfoil(
+        name="morph",
+        upper_weights=_blend(ka.upper_weights, kb.upper_weights),
+        lower_weights=_blend(ka.lower_weights, kb.lower_weights),
+        leading_edge_weight=float(
+            (1.0 - t) * ka.leading_edge_weight + t * kb.leading_edge_weight
+        ),
+        TE_thickness=float((1.0 - t) * ka.TE_thickness + t * kb.TE_thickness),
+    )
+    coords = np.array(m.coordinates, dtype=float)
+    if coords.size == 0 or not np.isfinite(coords).all():
+        return None
+    return [(float(x), float(y)) for x, y in coords]
+
+
+def _raw_blend(ca: CoordList, cb: CoordList, t: float) -> Optional[CoordList]:
+    """Fallback morph: blend upper/lower surfaces on a common cosine
+    x-grid (gh-796). Pure NumPy — works when AeroSandbox/Kulfan is
+    unavailable or its fit fails (e.g. reflex/cusp profiles)."""
+    import numpy as np
+
+    def _split(c):
+        arr = np.array(c, dtype=float)
+        i = int(np.argmin(arr[:, 0]))
+        top, bot = arr[: i + 1], arr[i:]
+        if top[0, 0] > top[-1, 0]:
+            top = top[::-1]
+        if bot[0, 0] > bot[-1, 0]:
+            bot = bot[::-1]
+        return top, bot
+
+    xs = 0.5 * (1.0 - np.cos(np.linspace(0.0, np.pi, 80)))
+    ta, ba = _split(ca)
+    tb, bb = _split(cb)
+    yu = (1.0 - t) * np.interp(xs, ta[:, 0], ta[:, 1]) + t * np.interp(xs, tb[:, 0], tb[:, 1])
+    yl = (1.0 - t) * np.interp(xs, ba[:, 0], ba[:, 1]) + t * np.interp(xs, bb[:, 0], bb[:, 1])
+    if not (np.isfinite(yu).all() and np.isfinite(yl).all()):
+        return None
+    upper = list(zip(xs[::-1], yu[::-1], strict=True))
+    lower = list(zip(xs, yl, strict=True))
+    return [(float(x), float(y)) for x, y in upper + lower[1:]]
+
+
+def morph_airfoils(ref_a: str, ref_b: str, t: float) -> Optional[str]:
+    """Morph between two airfoil references at fraction ``t`` and store the
+    result under a content-hash ``vsp_morph_*.dat`` (gh-796).
+
+    Kulfan/CST interpolation first (smooth, always-valid); raw coordinate
+    blend as fallback. Returns the relative ``.dat`` path, or ``None`` if
+    neither anchor resolves / both methods fail — the caller then assigns
+    the nearer anchor's airfoil so the geometric form is still captured.
+    """
+    ca, cb = _resolve_coords(ref_a), _resolve_coords(ref_b)
+    if ca is None or cb is None:
+        return None
+    coords: Optional[CoordList] = None
+    try:
+        coords = _kulfan_morph(ca, cb, t)
+    except Exception:  # noqa: BLE001 — fall back on any asb/fit failure
+        coords = None
+    if coords is None:
+        try:
+            coords = _raw_blend(ca, cb, t)
+        except Exception:  # noqa: BLE001
+            return None
+    if not coords:
+        return None
+    return write_imported_airfoil_dat(coords, tag="vsp_morph")
+
+
 def _export_selig(
     vsp: ModuleType,
     geom_id: str,

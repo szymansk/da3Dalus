@@ -361,7 +361,7 @@ def _chord_from_le_te(le: tuple[float, float, float], te: tuple[float, float, fl
     review flagged that as wrong for any non-zero-dihedral wing
     (VTPs would get a 90° "twist" from the upright rotation). Twist
     is instead linearly interpolated between the anchor xsecs' own
-    ``twist`` parm values — see :func:`_augment_same_airfoil_pairs`.
+    ``twist`` parm values — see :func:`_augment_xsec_pairs`.
 
     Returns ``0.0`` when LE and TE coincide (degenerate xsec).
     """
@@ -464,7 +464,7 @@ def _try_emit_one_insert(
     ``u``. Returns one of the ``_OUTCOME_*`` strings so the caller can
     bookkeep cap-clamps, dedupes, and CompPnt01 failures separately.
 
-    Extracted from :func:`_augment_same_airfoil_pairs` to keep the
+    Extracted from :func:`_augment_xsec_pairs` to keep the
     outer loop's cognitive complexity below SonarQube's ``python:S3776``
     threshold (= 15). Each early-return represents one decision branch
     that would otherwise have lived in the loop body.
@@ -512,21 +512,25 @@ def _try_emit_one_insert(
     return _OUTCOME_INSERTED
 
 
-def _augment_same_airfoil_pairs(
+def _augment_xsec_pairs(
     x_secs: list[WingXSecSchema],
     vsp: ModuleType,
     gid: str,
     ctx: ImportContext,
     geom_name: str,
 ) -> list[WingXSecSchema]:
-    """Insert ``_N_INTERP_PER_PAIR`` interpolated xsecs between every
-    consecutive pair of anchors that shares the same ``airfoil``
-    reference. Pairs with different airfoils are left untouched.
+    """Insert ``_N_INTERP_PER_PAIR`` interpolated xsecs between **every**
+    consecutive anchor pair (gh-796 — previously only same-airfoil pairs,
+    which left e.g. the Corsair gull wing unaugmented).
 
     The interpolated xsecs:
     - sit at evenly spaced ``u`` values between the two anchors
-    - inherit the anchor's airfoil name (NACA preserved — no
-      ``vsp_imported_*.dat`` generated for same-airfoil paths)
+    - get their airfoil from the anchors:
+      - same airfoil on both → inherit it (NACA name preserved, no file)
+      - different → a **Kulfan-morphed** profile blended at the insert's
+        spanwise fraction ``t`` (``openvsp_airfoil.morph_airfoils``),
+        stored under a content-hash ``vsp_morph_*.dat``. If morphing
+        fails, the nearer anchor's airfoil is used (form still captured).
     - carry ``x_sec_type="segment"`` (intermediate, not root/tip)
     - take their ``xyz_le`` and ``chord`` from VSP's parametric
       surface via ``CompPnt01`` — the "real" Spitfire ellipse, not
@@ -598,8 +602,7 @@ def _augment_same_airfoil_pairs(
         if i == n_anchors - 1:
             break  # last anchor, no next pair
         nxt = x_secs[i + 1]
-        if anchor.airfoil != nxt.airfoil:
-            continue  # different profiles → skip (user-edit-ability)
+        same_airfoil = anchor.airfoil == nxt.airfoil
 
         # gh-760: query VSP for each anchor's real u-position instead
         # of the naive ``i / (n_anchors - 1)`` mapping. The cap-aware
@@ -627,13 +630,21 @@ def _augment_same_airfoil_pairs(
             # anchors at fractional position t = k / (N_INTERP + 1).
             t = k / float(_N_INTERP_PER_PAIR + 1)
             twist_deg = twist_lo + (twist_hi - twist_lo) * t
+            # gh-796: same airfoil → inherit; different → morph at t (with
+            # nearest-anchor fallback so the form is captured regardless).
+            if same_airfoil:
+                insert_airfoil = anchor.airfoil
+            else:
+                insert_airfoil = openvsp_airfoil.morph_airfoils(
+                    str(anchor.airfoil), str(nxt.airfoil), t
+                ) or (anchor.airfoil if t < 0.5 else nxt.airfoil)
             outcome = _try_emit_one_insert(
                 vsp=vsp,
                 gid=gid,
                 u=u,
                 u_max=u_max,
                 twist_deg=twist_deg,
-                airfoil=anchor.airfoil,
+                airfoil=insert_airfoil,
                 out=out,
             )
             counts[outcome] += 1
@@ -917,7 +928,7 @@ def _handle_wing(
     # render as smooth splines. Runs in WORLD frame post-XForm — CompPnt01
     # returns world-frame coordinates so the inserts compose directly with
     # the post-XForm anchors. No further transform is applied to the inserts.
-    x_secs = _augment_same_airfoil_pairs(x_secs, vsp, gid, ctx, name)
+    x_secs = _augment_xsec_pairs(x_secs, vsp, gid, ctx, name)
 
     wing = AsbWingSchema(
         name=name,

@@ -66,3 +66,54 @@ def test_custom_tag_prefix(tmp_path, monkeypatch):
     monkeypatch.setattr(oa, "AIRFOILS_DIR", tmp_path)
     rel = oa.write_imported_airfoil_dat(_sym(0.05), tag="vsp_morph")
     assert Path(rel).name.startswith("vsp_morph_")
+
+
+# --------------------------------------------------------------------------- #
+# gh-796 — morphing
+# --------------------------------------------------------------------------- #
+
+
+def _max_upper_y(coords):
+    return max(y for _x, y in coords)
+
+
+def test_raw_blend_thickness_is_between_anchors():
+    # Pure NumPy fallback: blend a 6% and a 10% symmetric section at 0.5
+    # → ~8% half-thickness, valid finite coords.
+    out = oa._raw_blend(_sym(0.06), _sym(0.10), 0.5)
+    assert out is not None
+    assert _max_upper_y(out) == pytest.approx(0.08, abs=0.01)
+
+
+def test_morph_falls_back_to_raw_blend_when_kulfan_fails(tmp_path, monkeypatch):
+    # No AeroSandbox needed: resolve two .dat from disk, force the Kulfan
+    # path to raise → raw-blend fallback still yields a content-hash file.
+    monkeypatch.setattr(oa, "AIRFOILS_DIR", tmp_path)
+    a = oa.write_imported_airfoil_dat(_sym(0.06), tag="anchor_a")
+    b = oa.write_imported_airfoil_dat(_sym(0.10), tag="anchor_b")
+
+    def _boom(*_a, **_k):
+        raise RuntimeError("kulfan unavailable")
+
+    monkeypatch.setattr(oa, "_kulfan_morph", _boom)
+    rel = oa.morph_airfoils(Path(a).name, Path(b).name, 0.5)
+    assert rel is not None
+    assert Path(rel).name.startswith("vsp_morph_")
+    assert (tmp_path / Path(rel).name).exists()
+
+
+def test_morph_returns_none_when_anchor_unresolvable(tmp_path, monkeypatch):
+    monkeypatch.setattr(oa, "AIRFOILS_DIR", tmp_path)
+    assert oa.morph_airfoils("does_not_exist_a", "does_not_exist_b", 0.5) is None
+
+
+def test_kulfan_morph_thickness_between_anchors(tmp_path, monkeypatch):
+    """Real Kulfan interpolation between two symmetric NACA sections."""
+    pytest.importorskip("aerosandbox")
+    monkeypatch.setattr(oa, "AIRFOILS_DIR", tmp_path)
+    # asb resolves bare NACA names; 18% and 8% symmetric → ~13% at t=0.5.
+    rel = oa.morph_airfoils("naca0018", "naca0008", 0.5)
+    assert rel is not None
+    assert Path(rel).name.startswith("vsp_morph_")
+    coords = oa._read_dat_coords(tmp_path / Path(rel).name)
+    assert _max_upper_y(coords) == pytest.approx(0.065, abs=0.02)  # ~half of 13%
