@@ -221,13 +221,11 @@ class TestImportAirfoilFromXsec:
         assert result == "naca2412"
         assert ctx.warnings == []
 
-    def test_file_airfoil_writes_dat_file(self, airfoils_dir, monkeypatch):
-        capture: list[str] = []
+    def test_file_airfoil_writes_dat_file(self, airfoils_dir):
         fake = _make_airfoil_vsp(
             xs_shape=12,  # XS_FILE_AIRFOIL
             xs_parms={},
             xs_shapes_in_surface=[12, 12, 12],
-            write_path_capture=capture,
         )
         ctx = ImportContext()
         result = import_airfoil_from_xsec(
@@ -240,39 +238,30 @@ class TestImportAirfoilFromXsec:
         )
         assert result is not None
         assert result.endswith(".dat")
-        assert len(capture) == 1
-        # The file actually exists on disk now.
-        written = Path(capture[0])
-        assert written.exists()
-        assert "vsp_imported" in written.name
+        # gh-795: stored under a content-hash name (not the ephemeral
+        # geom-id). The file exists at the returned path's basename.
+        assert "vsp_imported" in Path(result).name
+        assert (airfoils_dir / Path(result).name).exists()
 
-    def test_unique_filenames_for_two_file_airfoils(self, airfoils_dir):
-        capture: list[str] = []
+    def test_identical_airfoils_dedup_to_one_file(self, airfoils_dir):
+        # gh-795: two xsecs with identical geometry (the fake VSP writes the
+        # same coordinates) now map to the SAME content-hash file instead of
+        # two geom-id-named duplicates. (Distinct-geometry → distinct-file is
+        # covered in test_openvsp_airfoil_hash_morph.py.)
         fake = _make_airfoil_vsp(
             xs_shape=12,
             xs_parms={},
             xs_shapes_in_surface=[12, 12, 12],
-            write_path_capture=capture,
         )
         ctx = ImportContext()
         r1 = import_airfoil_from_xsec(
-            xs_id="XS_0",
-            geom_id="WING1",
-            xsurf="XSURF",
-            xs_index=0,
-            ctx=ctx,
-            vsp=fake,
+            xs_id="XS_0", geom_id="WING1", xsurf="XSURF", xs_index=0, ctx=ctx, vsp=fake
         )
         r2 = import_airfoil_from_xsec(
-            xs_id="XS_1",
-            geom_id="WING1",
-            xsurf="XSURF",
-            xs_index=1,
-            ctx=ctx,
-            vsp=fake,
+            xs_id="XS_1", geom_id="WING1", xsurf="XSURF", xs_index=1, ctx=ctx, vsp=fake
         )
-        assert r1 != r2
-        assert len(set(capture)) == 2
+        assert r1 == r2
+        assert len(list(airfoils_dir.glob("vsp_imported_*.dat"))) == 1
 
     def test_cst_falls_back_to_file_export_with_warning(self, airfoils_dir):
         fake = _make_airfoil_vsp(

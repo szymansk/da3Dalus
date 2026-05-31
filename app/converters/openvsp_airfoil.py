@@ -18,6 +18,7 @@ Scope (per ``feedback_openvsp_import_rc_scope``)
 
 from __future__ import annotations
 
+import hashlib
 import math
 from pathlib import Path
 from types import ModuleType
@@ -673,6 +674,58 @@ def foilsurf_u_for_xs(vsp: ModuleType, xsurf: object, xsec_index: int) -> Option
 # ---------------------------------------------------------------------------
 
 
+CoordList = list[tuple[float, float]]
+
+
+def _coords_hash(coordinates: CoordList) -> str:
+    """Stable 10-hex content hash of an airfoil's coordinates (gh-795).
+
+    Coordinates are rounded to 6 decimals before hashing so trivial
+    float-formatting differences don't change the name. Identical
+    geometry → identical hash → identical filename → reused on
+    re-import (no ``vsp_imported_<random-geom-id>`` clutter).
+    """
+    canon = ";".join(f"{float(x):.6f},{float(y):.6f}" for x, y in coordinates)
+    return hashlib.sha1(canon.encode("utf-8")).hexdigest()[:10]
+
+
+def _read_dat_coords(path: Path) -> CoordList:
+    """Parse ``x y`` coordinate pairs from a Selig ``.dat`` (header lines
+    and blanks ignored)."""
+    coords: CoordList = []
+    for line in path.read_text().splitlines():
+        parts = line.split()
+        if len(parts) != 2:
+            continue
+        try:
+            coords.append((float(parts[0]), float(parts[1])))
+        except ValueError:
+            continue
+    return coords
+
+
+def _write_selig_dat(target: Path, coordinates: CoordList, *, name: str) -> None:
+    lines = [name]
+    lines += [f"{float(x):.6f} {float(y):.6f}" for x, y in coordinates]
+    target.write_text("\n".join(lines) + "\n")
+
+
+def write_imported_airfoil_dat(coordinates: CoordList, *, tag: str = "vsp_imported") -> str:
+    """Store an imported/derived airfoil under a **content-hash** filename
+    and return its relative path (gh-795).
+
+    Re-import of the same geometry maps to the same ``{tag}_{hash}.dat``
+    and the write is skipped (dedup). Used both for VSP-exported anchor
+    profiles and for morphed intermediate profiles (gh-796).
+    """
+    AIRFOILS_DIR.mkdir(parents=True, exist_ok=True)
+    fname = f"{tag}_{_coords_hash(coordinates)}.dat"
+    target = AIRFOILS_DIR / fname
+    if not target.exists():
+        _write_selig_dat(target, coordinates, name=fname[:-4])
+    return f"./components/airfoils/{fname}"
+
+
 def _export_selig(
     vsp: ModuleType,
     geom_id: str,
@@ -680,21 +733,33 @@ def _export_selig(
     xs_index: int,
     tag: str = "vsp_imported",
 ) -> str:
-    """Write a Selig ``.dat`` file via ``vsp.WriteSeligAirfoil``.
+    """Export an XSec's airfoil via ``vsp.WriteSeligAirfoil`` and store it
+    under a content-hash filename (gh-795).
 
-    Returns a relative path string the WingXSecSchema can store.
-    Filenames are unique per (geom, xs_index, tag) to support multiple
-    file-airfoils on a single import.
+    VSP writes by path, so we export to a throwaway temp file, read the
+    coordinates back, and re-store them under ``{tag}_{hash}.dat`` so
+    identical geometry dedups across re-imports. Returns a relative path
+    the WingXSecSchema can store.
     """
     AIRFOILS_DIR.mkdir(parents=True, exist_ok=True)
-    fname = f"{tag}_{geom_id}_xsec{xs_index}.dat"
-    target = AIRFOILS_DIR / fname
     u = foilsurf_u_for_xs(vsp, xsurf, xs_index)
     if u is None:
         # End-cap — call with 0.0 to keep behaviour deterministic.
         u = 0.0
-    vsp.WriteSeligAirfoil(str(target), geom_id, float(u))
-    return f"./components/airfoils/{fname}"
+    tmp = AIRFOILS_DIR / f"._tmp_{geom_id}_xsec{xs_index}.dat"
+    vsp.WriteSeligAirfoil(str(tmp), geom_id, float(u))
+    coords = _read_dat_coords(tmp) if tmp.exists() else []
+    try:
+        tmp.unlink()
+    except OSError:
+        pass
+    if not coords:
+        # Defensive: keep the legacy stable-ish name if the export produced
+        # nothing parseable (should not happen for valid geometry).
+        fallback = AIRFOILS_DIR / f"{tag}_{geom_id}_xsec{xs_index}.dat"
+        vsp.WriteSeligAirfoil(str(fallback), geom_id, float(u))
+        return f"./components/airfoils/{fallback.name}"
+    return write_imported_airfoil_dat(coords, tag=tag)
 
 
 # ---------------------------------------------------------------------------
