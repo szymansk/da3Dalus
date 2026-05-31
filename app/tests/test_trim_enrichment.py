@@ -367,7 +367,9 @@ class TestAnalysisGoals:
             "loiter_endurance",
             "max_level_speed",
             "approach_landing",
-            "turn_n2",
+            "turn_20",
+            "turn_40",
+            "turn_60",
             "dutch_role_start",
             "best_angle_climb_vx",
             "best_rate_climb_vy",
@@ -375,6 +377,7 @@ class TestAnalysisGoals:
             "stall_with_flaps",
         }
         assert expected_names <= set(ANALYSIS_GOALS.keys())
+        assert "turn_n2" not in ANALYSIS_GOALS
 
     def test_unknown_name_not_in_goals(self):
         assert "custom_op_xyz" not in ANALYSIS_GOALS

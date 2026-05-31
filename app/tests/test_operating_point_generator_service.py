@@ -111,7 +111,7 @@ def test_generate_default_set_with_profile_assignment(db_session):
         result = generate_default_set_for_aircraft(db_session, aircraft_uuid)
 
     assert result.source_flight_profile_id == profile.id
-    assert len(result.operating_points) == 11
+    assert len(result.operating_points) == 13
     assert "dutch_role_start" in [p.name for p in result.operating_points]
 
     persisted = (
@@ -119,7 +119,7 @@ def test_generate_default_set_with_profile_assignment(db_session):
         .filter(OperatingPointModel.aircraft_id == aircraft.id)
         .all()
     )
-    assert len(persisted) == 11
+    assert len(persisted) == 13
 
 
 def test_generate_default_set_without_profile_uses_defaults(db_session):
@@ -145,7 +145,7 @@ def test_generate_default_set_without_profile_uses_defaults(db_session):
         result = generate_default_set_for_aircraft(db_session, aircraft_uuid)
 
     assert result.source_flight_profile_id is None
-    assert len(result.operating_points) == 11
+    assert len(result.operating_points) == 13
 
 
 def test_generate_replace_existing_replaces_old_rows(db_session):
@@ -176,7 +176,7 @@ def test_generate_replace_existing_replaces_old_rows(db_session):
         .filter(OperatingPointModel.aircraft_id == aircraft.id)
         .all()
     )
-    assert len(points) == 11
+    assert len(points) == 13
 
 
 def test_generate_skips_points_when_required_controls_missing(db_session, caplog):
@@ -203,7 +203,9 @@ def test_generate_skips_points_when_required_controls_missing(db_session, caplog
         result = generate_default_set_for_aircraft(db_session, aircraft_uuid)
 
     names = [point.name for point in result.operating_points]
-    assert "turn_n2" not in names
+    assert "turn_20" not in names
+    assert "turn_40" not in names
+    assert "turn_60" not in names
     assert "dutch_role_start" not in names
     assert "stall_with_flaps" not in names
     assert len(result.operating_points) == 9
@@ -235,7 +237,7 @@ def test_generate_with_rudder_keeps_dutch_role_point(db_session):
 
     names = [point.name for point in result.operating_points]
     assert "dutch_role_start" in names
-    assert len(result.operating_points) == 11
+    assert len(result.operating_points) == 13
 
 
 def test_generate_replace_existing_with_skips_keeps_consistent_rows(db_session):
@@ -266,6 +268,8 @@ def test_generate_replace_existing_with_skips_keeps_consistent_rows(db_session):
         .filter(OperatingPointModel.aircraft_id == aircraft.id)
         .all()
     )
+    # 14 total targets; skip 3 turns (no roll/yaw) + 1 dutch_role_start (no yaw)
+    # + 1 stall_with_flaps (no flap) = 9 kept
     assert len(points) == 9
 
 
