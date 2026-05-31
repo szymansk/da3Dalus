@@ -18,6 +18,7 @@ from app.db.session import get_db
 from app.models.aeroplanemodel import AeroplaneModel
 from app.models.analysismodels import OperatingPointModel, OperatingPointSetModel
 from app.schemas.aeroanalysisschema import (
+    AddTurnRequest,
     AeroBuildupTrimRequest,
     AeroBuildupTrimResult,
     AnalysisStatusResponse,
@@ -189,6 +190,30 @@ async def aerobuildup_trim_operating_point(
             aeroplane_uuid=aeroplane_id,
             request=request,
         )
+    except ServiceException as exc:
+        _raise_http_from_domain(exc)
+    except Exception as exc:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Unexpected error: {exc}",
+        ) from exc
+
+
+@router.post(
+    "/aeroplanes/{aeroplane_uuid}/operating-points/add-turn",
+    response_model=StoredOperatingPointRead,
+    operation_id="add_turn_operating_point",
+)
+def add_turn_operating_point_endpoint(
+    aeroplane_uuid: Annotated[UUID4, Path(..., description="Aeroplane UUID")],
+    request: Annotated[AddTurnRequest, Body(...)],
+    db: Annotated[Session, Depends(get_db)],
+):
+    """Create a banked-turn operating point for the given aeroplane."""
+    from app.services.add_turn_service import add_turn_operating_point
+
+    try:
+        return add_turn_operating_point(db, aeroplane_uuid, request)
     except ServiceException as exc:
         _raise_http_from_domain(exc)
     except Exception as exc:
