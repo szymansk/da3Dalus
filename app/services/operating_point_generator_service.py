@@ -364,7 +364,6 @@ def _build_target_definitions(
 
     cruise = float(goals.get("cruise_speed_mps", 18.0))
     v_max_level = float(goals.get("max_level_speed_mps") or max(1.35 * cruise, cruise + 8.0))
-    target_turn_n = float(goals.get("target_turn_n", 2.0))
 
     stall_near = float(goals.get("min_speed_margin_vs_clean", 1.20)) * refs["vs_clean"]
     takeoff = float(goals.get("takeoff_speed_margin_vs_to", 1.25)) * refs["vs_to"]
@@ -454,14 +453,18 @@ def _build_target_definitions(
             "n_target": 1.0,
             "flap_deflection_deg": 30.0,
         },
-        {
-            "name": "turn_n2",
-            "config": "clean",
-            "velocity": max(cruise, 1.3 * refs["vs_clean"]),
-            "altitude": altitude,
-            "beta_target_deg": 0.0,
-            "n_target": target_turn_n,
-        },
+        *[
+            {
+                "name": f"turn_{bank}",
+                "config": "clean",
+                "velocity": max(cruise, 1.3 * refs["vs_clean"]),
+                "altitude": altitude,
+                "beta_target_deg": 0.0,
+                "bank_deg": float(bank),
+                "n_target": round(1.0 / math.cos(math.radians(bank)), 4),
+            }
+            for bank in (20, 40, 60)
+        ],
         {
             "name": "dutch_role_start",
             "config": "clean",
@@ -519,7 +522,7 @@ def _detect_control_capabilities(asb_airplane: asb.Airplane) -> dict[str, Any]:
 
 
 def _required_capabilities_for_target(target_name: str) -> set[str]:
-    if target_name == "turn_n2":
+    if target_name.startswith("turn_"):
         return {"has_roll_control|has_yaw_control"}
     if target_name == "dutch_role_start":
         return {"has_yaw_control"}
@@ -532,7 +535,7 @@ def _validate_target_capability(
     target: dict[str, Any], capabilities: dict[str, Any]
 ) -> tuple[bool, str]:
     target_name = str(target.get("name", ""))
-    if target_name == "turn_n2":
+    if target_name.startswith("turn_"):
         if capabilities.get("has_roll_control") or capabilities.get("has_yaw_control"):
             return True, ""
         return False, "has_roll_control|has_yaw_control"
@@ -582,11 +585,11 @@ def _solve_trim_candidate_with_opti(
             control_variables[pitch_name] = opti.variable(
                 init_guess=0.0, lower_bound=-25.0, upper_bound=25.0
             )
-        if target["name"] == "turn_n2" and roll_name:
+        if target["name"].startswith("turn_") and roll_name:
             control_variables[roll_name] = opti.variable(
                 init_guess=0.0, lower_bound=-20.0, upper_bound=20.0
             )
-        if target["name"] in {"turn_n2", "dutch_role_start"} and yaw_name:
+        if (target["name"].startswith("turn_") or target["name"] == "dutch_role_start") and yaw_name:
             control_variables[yaw_name] = opti.variable(
                 init_guess=0.0, lower_bound=-25.0, upper_bound=25.0
             )
@@ -636,7 +639,7 @@ def _solve_trim_candidate_with_opti(
         objective = 50.0 * cm**2 + 3.0 * cy**2
         if cl_target is not None:
             objective += 15.0 * (cl - cl_target) ** 2
-        if target["name"] == "turn_n2":
+        if target["name"].startswith("turn_"):
             objective += 2.0 * result["Cl"] ** 2 + 2.0 * result["Cn"] ** 2
         for control in control_variables.values():
             objective += 0.001 * control**2

@@ -382,8 +382,9 @@ class TestDetectControlCapabilities:
 
 
 class TestRequiredCapabilitiesForTarget:
-    def test_turn_n2(self):
-        assert _required_capabilities_for_target("turn_n2") == {"has_roll_control|has_yaw_control"}
+    def test_turn_banks(self):
+        for bank in (20, 40, 60):
+            assert _required_capabilities_for_target(f"turn_{bank}") == {"has_roll_control|has_yaw_control"}
 
     def test_dutch_role_start(self):
         assert _required_capabilities_for_target("dutch_role_start") == {"has_yaw_control"}
@@ -401,24 +402,24 @@ class TestRequiredCapabilitiesForTarget:
 
 
 class TestValidateTargetCapability:
-    def test_turn_n2_with_roll_control(self):
+    def test_turn_with_roll_control(self):
         ok, missing = _validate_target_capability(
-            {"name": "turn_n2"},
+            {"name": "turn_20"},
             {"has_roll_control": True, "has_yaw_control": False},
         )
         assert ok is True
         assert missing == ""
 
-    def test_turn_n2_with_yaw_control(self):
+    def test_turn_with_yaw_control(self):
         ok, missing = _validate_target_capability(
-            {"name": "turn_n2"},
+            {"name": "turn_40"},
             {"has_roll_control": False, "has_yaw_control": True},
         )
         assert ok is True
 
-    def test_turn_n2_without_controls(self):
+    def test_turn_without_controls(self):
         ok, missing = _validate_target_capability(
-            {"name": "turn_n2"},
+            {"name": "turn_60"},
             {"has_roll_control": False, "has_yaw_control": False},
         )
         assert ok is False
@@ -569,15 +570,18 @@ class TestEstimateReferenceSpeeds:
 
 
 class TestBuildTargetDefinitions:
-    def test_returns_12_targets(self):
+    def test_returns_14_targets(self):
         profile = _default_profile()
         refs = _estimate_reference_speeds(profile)
         targets = _build_target_definitions(profile, refs)
-        assert len(targets) == 12
+        assert len(targets) == 14
         names = [t["name"] for t in targets]
         assert "cruise" in names
         assert "dutch_role_start" in names
-        assert "turn_n2" in names
+        assert "turn_20" in names
+        assert "turn_40" in names
+        assert "turn_60" in names
+        assert "turn_n2" not in names
         assert "stall_with_flaps" in names
 
     def test_altitude_propagated(self):
@@ -662,7 +666,7 @@ class TestTrimOperatingPointErrors:
 
     def test_missing_controls_raises_validation_error(self, db_session):
         aircraft = _make_aircraft(db_session)
-        request = self._make_request(name="turn_n2")
+        request = self._make_request(name="turn_20")
         with (
             patch(
                 "app.services.operating_point_generator_service.aeroplane_model_to_aeroplane_schema_async",
