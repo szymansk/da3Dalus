@@ -2,11 +2,15 @@
 
 from __future__ import annotations
 
+import logging
 import math
 from typing import TYPE_CHECKING
 
+from app.core.exceptions import ValidationError
 from app.models.analysismodels import OperatingPointModel
 from app.schemas.aeroanalysisschema import AddTurnRequest
+
+logger = logging.getLogger(__name__)
 
 if TYPE_CHECKING:
     from sqlalchemy.orm import Session
@@ -30,6 +34,7 @@ def add_turn_operating_point(
         _load_effective_mass_kg,
         _resolve_cruise_speed_with_md_fallback,
         _trim_or_estimate_point,
+        _validate_target_capability,
     )
     from app.services.trim_enrichment_service import (
         build_deflection_limits_from_schema,
@@ -72,6 +77,13 @@ def add_turn_operating_point(
     asb_airplane = aeroplane_schema_to_asb_airplane_async(plane_schema=plane_schema)
     asb_airplane.xyz_ref = [design_cg_x, 0.0, 0.0]
     capabilities = _detect_control_capabilities(asb_airplane)
+
+    is_supported, missing = _validate_target_capability(target, capabilities)
+    if not is_supported:
+        raise ValidationError(
+            message=f"Cannot add a turn: aircraft lacks required control(s): {missing}"
+        )
+
     deflection_limits = build_deflection_limits_from_schema(plane_schema)
 
     point = _trim_or_estimate_point(
@@ -99,6 +111,11 @@ def add_turn_operating_point(
         )
         enrichment_data = enrichment.model_dump()
     except Exception:
+        logger.warning(
+            "Enrichment computation failed for add-turn OP on aircraft %s",
+            aircraft_uuid,
+            exc_info=True,
+        )
         enrichment_data = None
 
     model = OperatingPointModel(
