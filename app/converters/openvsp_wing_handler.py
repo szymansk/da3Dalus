@@ -252,13 +252,15 @@ def _apply_xform(
 _W_LE: float = 0.5
 _W_TE: float = 0.0
 
-# Number of intermediate xsecs inserted between each same-airfoil
-# anchor pair. 4 takes the Spitfire's 4-anchor main wing from
-# pentagonal to a smooth 16-station ellipse. A future Phase-2
-# ticket will switch to LE-curvature-driven adaptive sampling
-# (denser at wingtips, sparser inboard); 4 is the calibrated
-# baseline.
-_N_INTERP_PER_PAIR: int = 4
+# gh-800: adaptive curvature-driven xsec augmentation. Instead of a fixed
+# number of equidistant inserts per pair, we bisect each anchor pair and
+# insert wherever the VSP loft deviates from the straight anchor→anchor
+# line by more than ``_AUGMENT_TOL_REL`` of the local chord — dense at the
+# elliptical Spitfire tip / Corsair gull bend, ~none on straight panels.
+# ``_AUGMENT_MAX_DEPTH`` caps inserts at 2**depth - 1 per pair so a
+# pathological spline can't explode.
+_AUGMENT_TOL_REL: float = 0.01  # 1 % of chord
+_AUGMENT_MAX_DEPTH: int = 5
 
 
 # gh-760: VSP's per-anchor u-position depends on the wing's cap
@@ -374,6 +376,65 @@ def _chord_from_le_te(le: tuple[float, float, float], te: tuple[float, float, fl
     if chord < 1e-9:
         return 0.0
     return chord
+
+
+def _adaptive_u_fractions(
+    vsp: ModuleType,
+    gid: str,
+    u_lo: float,
+    u_hi: float,
+    tol_rel: float = _AUGMENT_TOL_REL,
+    max_depth: int = _AUGMENT_MAX_DEPTH,
+) -> list[float] | None:
+    """Curvature-driven insert fractions for one anchor pair (gh-800).
+
+    Bisects the pair's ``u``-range and returns the fractions ``t ∈ (0, 1)``
+    where the VSP loft (LE position + chord, via ``CompPnt01``) deviates
+    from the straight anchor→anchor interpolation by more than
+    ``tol_rel`` of the local chord. Endpoints (the anchors) are sampled
+    from the surface too so the deviation is self-consistent. Recursion
+    is capped at ``max_depth`` (≤ 2**depth - 1 inserts per pair).
+
+    Returns a sorted (possibly empty) list when the pair could be
+    assessed — empty meaning "straight enough, no inserts needed". Returns
+    ``None`` when the pair could not be sampled at all (CompPnt01
+    unavailable or it raised on an endpoint), so the caller can warn that
+    the wing is left polygonal there.
+    """
+    span = u_hi - u_lo
+
+    def _sample(t: float) -> tuple[tuple[float, float, float], float]:
+        le, te = _sample_le_te_at(vsp, gid, u_lo + t * span)
+        return le, _chord_from_le_te(le, te)
+
+    try:
+        le0, c0 = _sample(0.0)
+        le1, c1 = _sample(1.0)
+    except Exception:  # noqa: BLE001 — CompPnt01 unavailable / raised
+        return None
+
+    fracs: list[float] = []
+
+    def _recurse(ta, tb, le_a, c_a, le_b, c_b, depth):
+        if depth >= max_depth:
+            return
+        tm = 0.5 * (ta + tb)
+        try:
+            le_m, c_m = _sample(tm)
+        except Exception:  # noqa: BLE001
+            return
+        le_lin = tuple((le_a[k] + le_b[k]) * 0.5 for k in range(3))
+        c_lin = (c_a + c_b) * 0.5
+        ref = max(c_m, c_a, c_b, 1e-9)
+        deviation = max(math.dist(le_m, le_lin), abs(c_m - c_lin)) / ref
+        if deviation <= tol_rel:
+            return
+        fracs.append(tm)
+        _recurse(ta, tm, le_a, c_a, le_m, c_m, depth + 1)
+        _recurse(tm, tb, le_m, c_m, le_b, c_b, depth + 1)
+
+    _recurse(0.0, 1.0, le0, c0, le1, c1, 0)
+    return sorted(fracs)
 
 
 # gh-758: probe-distance threshold for declaring two CompPnt01 samples
@@ -521,12 +582,14 @@ def _augment_xsec_pairs(
     ctx: ImportContext,
     geom_name: str,
 ) -> list[WingXSecSchema]:
-    """Insert ``_N_INTERP_PER_PAIR`` interpolated xsecs between **every**
-    consecutive anchor pair (gh-796 — previously only same-airfoil pairs,
-    which left e.g. the Corsair gull wing unaugmented).
+    """Insert interpolated xsecs between **every** consecutive anchor pair
+    (gh-796 — previously only same-airfoil pairs, which left e.g. the
+    Corsair gull wing unaugmented).
 
     The interpolated xsecs:
-    - sit at evenly spaced ``u`` values between the two anchors
+    - sit at **curvature-adaptive** ``u`` values chosen by
+      :func:`_adaptive_u_fractions` (gh-800) — dense where the loft
+      curves, none where it's straight (was a fixed 4 equidistant)
     - get their airfoil from the anchors:
       - same airfoil on both → inherit it (NACA name preserved, no file)
       - different → a **Kulfan-morphed** profile blended at the insert's
@@ -593,6 +656,7 @@ def _augment_xsec_pairs(
     out: list[WingXSecSchema] = []
     expected_inserts = 0
     morph_fallbacks = 0  # gh-796: inserts that fell back to a nearest-anchor airfoil
+    unsampled_pairs = 0  # gh-800: pairs CompPnt01 couldn't assess (left polygonal)
     counts: dict[str, int] = {
         _OUTCOME_INSERTED: 0,
         _OUTCOME_CAP_CLAMPED: 0,
@@ -622,16 +686,22 @@ def _augment_xsec_pairs(
         else:
             u_lo = i / (n_anchors - 1)
             u_hi = (i + 1) / (n_anchors - 1)
-        step = (u_hi - u_lo) / (_N_INTERP_PER_PAIR + 1)
         twist_lo = float(anchor.twist or 0.0)
         twist_hi = float(nxt.twist or 0.0)
-        expected_inserts += _N_INTERP_PER_PAIR
+        # gh-800: adaptive, curvature-driven insert positions — dense where
+        # the loft curves, none where it's straight (was a fixed 4 equidistant).
+        fractions = _adaptive_u_fractions(vsp, gid, u_lo, u_hi)
+        if fractions is None:
+            # Pair couldn't be sampled (CompPnt01 unavailable/failed) — leave
+            # it polygonal and surface it below.
+            unsampled_pairs += 1
+            fractions = []
+        expected_inserts += len(fractions)
 
-        for k in range(1, _N_INTERP_PER_PAIR + 1):
-            u = u_lo + k * step
-            # Linear interpolation of twist between the bracketing
-            # anchors at fractional position t = k / (N_INTERP + 1).
-            t = k / float(_N_INTERP_PER_PAIR + 1)
+        for t in fractions:
+            u = u_lo + t * (u_hi - u_lo)
+            # Linear interpolation of twist between the bracketing anchors at
+            # the insert's spanwise fraction t.
             twist_deg = twist_lo + (twist_hi - twist_lo) * t
             # gh-796: same airfoil → inherit; different → morph at t (with
             # nearest-anchor fallback so the form is captured regardless).
@@ -664,6 +734,20 @@ def _augment_xsec_pairs(
         expected_inserts=expected_inserts,
         counts=counts,
     )
+    if unsampled_pairs:
+        # gh-800: surface pairs the adaptive sampler couldn't assess (CompPnt01
+        # unavailable/failed) — the wing is left polygonal there, same symptom
+        # the gh-753 lossy warning guarded against.
+        ctx.add_warning(
+            component_type="WING",
+            component_name=geom_name,
+            reason=(
+                f"WING {geom_name!r}: gh-800 adaptive augmentation could not "
+                f"sample {unsampled_pairs} anchor pair(s) (CompPnt01 unavailable "
+                f"or failed); those segments are left with the raw anchors only."
+            ),
+            severity="info",
+        )
     if morph_fallbacks:
         # gh-796: surface silent airfoil approximations (e.g. AeroSandbox not
         # installed) so the user knows the morphed sections are placeholders.
