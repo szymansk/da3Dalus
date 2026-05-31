@@ -18,7 +18,10 @@ Scope (per ``feedback_openvsp_import_rc_scope``)
 
 from __future__ import annotations
 
+import hashlib
 import math
+import os
+import tempfile
 from pathlib import Path
 from types import ModuleType
 from typing import Optional
@@ -673,6 +676,211 @@ def foilsurf_u_for_xs(vsp: ModuleType, xsurf: object, xsec_index: int) -> Option
 # ---------------------------------------------------------------------------
 
 
+CoordList = list[tuple[float, float]]
+
+
+def _coords_hash(coordinates: CoordList) -> str:
+    """Stable 10-hex content hash of an airfoil's coordinates (gh-795).
+
+    Coordinates are rounded to 6 decimals before hashing so trivial
+    float-formatting differences don't change the name. Identical
+    geometry → identical hash → identical filename → reused on
+    re-import (no ``vsp_imported_<random-geom-id>`` clutter).
+    """
+    canon = ";".join(f"{float(x):.6f},{float(y):.6f}" for x, y in coordinates)
+    # Not a security primitive — a short content-dedup key. usedforsecurity
+    # silences SAST/Sonar weak-hash hotspots.
+    return hashlib.sha1(canon.encode("utf-8"), usedforsecurity=False).hexdigest()[:10]
+
+
+def _read_dat_coords(path: Path) -> CoordList:
+    """Parse ``x y`` coordinate pairs from a Selig ``.dat`` (header lines
+    and blanks ignored)."""
+    coords: CoordList = []
+    for line in path.read_text().splitlines():
+        parts = line.split()
+        if len(parts) != 2:
+            continue
+        try:
+            coords.append((float(parts[0]), float(parts[1])))
+        except ValueError:
+            continue
+    return coords
+
+
+def _write_selig_dat(target: Path, coordinates: CoordList, *, name: str) -> None:
+    lines = [name]
+    lines += [f"{float(x):.6f} {float(y):.6f}" for x, y in coordinates]
+    target.write_text("\n".join(lines) + "\n")
+
+
+def write_imported_airfoil_dat(coordinates: CoordList, *, tag: str = "vsp_imported") -> str:
+    """Store an imported/derived airfoil under a **content-hash** filename
+    and return its relative path (gh-795).
+
+    Re-import of the same geometry maps to the same ``{tag}_{hash}.dat``
+    and the write is skipped (dedup). Used both for VSP-exported anchor
+    profiles and for morphed intermediate profiles (gh-796).
+    """
+    AIRFOILS_DIR.mkdir(parents=True, exist_ok=True)
+    fname = f"{tag}_{_coords_hash(coordinates)}.dat"
+    target = AIRFOILS_DIR / fname
+    if not target.exists():
+        _write_selig_dat(target, coordinates, name=fname[:-4])
+    return f"./components/airfoils/{fname}"
+
+
+def _resolve_coords(ref: str) -> Optional[CoordList]:
+    """Resolve an airfoil reference (NACA name or ``.dat`` path) to
+    coordinates (gh-796). Tries the path as-is, under ``AIRFOILS_DIR``,
+    and as ``<name>.dat``; falls back to AeroSandbox's named library for
+    bare NACA names. Returns ``None`` if nothing resolves."""
+    for cand in (Path(ref), AIRFOILS_DIR / Path(ref).name, AIRFOILS_DIR / f"{ref}.dat"):
+        if cand.exists():
+            coords = _read_dat_coords(cand)
+            if coords:
+                return coords
+    try:
+        import aerosandbox as asb
+
+        af = asb.Airfoil(name=ref)
+        if af.coordinates is not None:
+            return [(float(x), float(y)) for x, y in af.coordinates]
+    except (ImportError, ModuleNotFoundError, ValueError, KeyError, TypeError):
+        # asb absent or the name isn't in its library — expected misses.
+        pass
+    return None
+
+
+# Content-keyed cache of Kulfan fits: the SLSQP fit is the expensive part
+# of morphing, and the augmenter morphs every insert of a pair from the
+# same two anchors. Keyed by coordinate-content hash (not file path), so
+# it's correct regardless of AIRFOILS_DIR and safe across imports/tests.
+_KULFAN_FIT_CACHE: dict[str, Optional[tuple]] = {}
+
+
+def _fit_kulfan(coords: CoordList) -> Optional[tuple]:
+    """Fit ``coords`` to a KulfanAirfoil; return (upper, lower, le, te)
+    weight tuple, or ``None`` on failure. Cached by content hash."""
+    key = _coords_hash(coords)
+    if key in _KULFAN_FIT_CACHE:
+        return _KULFAN_FIT_CACHE[key]
+    try:
+        import aerosandbox as asb
+        import numpy as np
+
+        k = asb.Airfoil(coordinates=np.array(coords, dtype=float)).to_kulfan_airfoil()
+        res: Optional[tuple] = (
+            tuple(float(w) for w in k.upper_weights),
+            tuple(float(w) for w in k.lower_weights),
+            float(k.leading_edge_weight),
+            float(k.TE_thickness),
+        )
+    except Exception:  # noqa: BLE001 — asb optional / fit failure → caller falls back
+        res = None
+    _KULFAN_FIT_CACHE[key] = res
+    return res
+
+
+def _kulfan_morph(ca: CoordList, cb: CoordList, t: float) -> Optional[CoordList]:
+    """Morph two airfoils in Kulfan/CST weight space at fraction ``t``
+    (gh-796). Both are fit to ``asb.KulfanAirfoil``, the weights
+    interpolated, and coordinates regenerated. Returns ``None`` on any
+    failure / mode-count mismatch / non-finite result so the caller can
+    fall back to a raw coordinate blend."""
+    import aerosandbox as asb
+    import numpy as np
+
+    fa, fb = _fit_kulfan(ca), _fit_kulfan(cb)
+    if fa is None or fb is None:
+        return None
+    ua, la, lea, tea = fa
+    ub, lb, leb, teb = fb
+    # Guard for callers that fit with different n_weights_per_side — the
+    # default fit always matches, but stay defensive.
+    if len(ua) != len(ub) or len(la) != len(lb):
+        return None
+
+    def _blend(a, b):
+        return (1.0 - t) * np.asarray(a, dtype=float) + t * np.asarray(b, dtype=float)
+
+    m = asb.KulfanAirfoil(
+        name="morph",
+        upper_weights=_blend(ua, ub),
+        lower_weights=_blend(la, lb),
+        leading_edge_weight=float((1.0 - t) * lea + t * leb),
+        TE_thickness=float((1.0 - t) * tea + t * teb),
+    )
+    coords = np.array(m.coordinates, dtype=float)
+    if coords.size == 0 or not np.isfinite(coords).all():
+        return None
+    return [(float(x), float(y)) for x, y in coords]
+
+
+def _raw_blend(ca: CoordList, cb: CoordList, t: float) -> Optional[CoordList]:
+    """Fallback morph: blend upper/lower surfaces on a common cosine
+    x-grid (gh-796). Pure NumPy — works when AeroSandbox/Kulfan is
+    unavailable or its fit fails (e.g. reflex/cusp profiles)."""
+    import numpy as np
+
+    def _split(c):
+        arr = np.array(c, dtype=float)
+        i = int(np.argmin(arr[:, 0]))
+        top, bot = arr[: i + 1], arr[i:]
+        if top.shape[0] < 2 or bot.shape[0] < 2:
+            return None, None
+        if top[0, 0] > top[-1, 0]:
+            top = top[::-1]
+        if bot[0, 0] > bot[-1, 0]:
+            bot = bot[::-1]
+        # The argmin-split assumes Selig order (upper then lower). If the
+        # points came the other way round, the halves are inverted — detect
+        # via mean-y and swap so ``top`` is always the upper surface.
+        if float(top[:, 1].mean()) < float(bot[:, 1].mean()):
+            top, bot = bot, top
+        return top, bot
+
+    xs = 0.5 * (1.0 - np.cos(np.linspace(0.0, np.pi, 80)))
+    ta, ba = _split(ca)
+    tb, bb = _split(cb)
+    if ta is None or tb is None:
+        return None
+    yu = (1.0 - t) * np.interp(xs, ta[:, 0], ta[:, 1]) + t * np.interp(xs, tb[:, 0], tb[:, 1])
+    yl = (1.0 - t) * np.interp(xs, ba[:, 0], ba[:, 1]) + t * np.interp(xs, bb[:, 0], bb[:, 1])
+    if not (np.isfinite(yu).all() and np.isfinite(yl).all()):
+        return None
+    upper = list(zip(xs[::-1], yu[::-1], strict=True))
+    lower = list(zip(xs, yl, strict=True))
+    return [(float(x), float(y)) for x, y in upper + lower[1:]]
+
+
+def morph_airfoils(ref_a: str, ref_b: str, t: float) -> Optional[str]:
+    """Morph between two airfoil references at fraction ``t`` and store the
+    result under a content-hash ``vsp_morph_*.dat`` (gh-796).
+
+    Kulfan/CST interpolation first (smooth, always-valid); raw coordinate
+    blend as fallback. Returns the relative ``.dat`` path, or ``None`` if
+    neither anchor resolves / both methods fail — the caller then assigns
+    the nearer anchor's airfoil so the geometric form is still captured.
+    """
+    ca, cb = _resolve_coords(ref_a), _resolve_coords(ref_b)
+    if ca is None or cb is None:
+        return None
+    coords: Optional[CoordList] = None
+    try:
+        coords = _kulfan_morph(ca, cb, t)
+    except Exception:  # noqa: BLE001 — fall back on any asb/fit failure
+        coords = None
+    if coords is None:
+        try:
+            coords = _raw_blend(ca, cb, t)
+        except Exception:  # noqa: BLE001
+            return None
+    if not coords:
+        return None
+    return write_imported_airfoil_dat(coords, tag="vsp_morph")
+
+
 def _export_selig(
     vsp: ModuleType,
     geom_id: str,
@@ -680,21 +888,45 @@ def _export_selig(
     xs_index: int,
     tag: str = "vsp_imported",
 ) -> str:
-    """Write a Selig ``.dat`` file via ``vsp.WriteSeligAirfoil``.
+    """Export an XSec's airfoil via ``vsp.WriteSeligAirfoil`` and store it
+    under a content-hash filename (gh-795).
 
-    Returns a relative path string the WingXSecSchema can store.
-    Filenames are unique per (geom, xs_index, tag) to support multiple
-    file-airfoils on a single import.
+    VSP writes by path, so we export to a throwaway temp file, read the
+    coordinates back, and re-store them under ``{tag}_{hash}.dat`` so
+    identical geometry dedups across re-imports. Returns a relative path
+    the WingXSecSchema can store.
     """
     AIRFOILS_DIR.mkdir(parents=True, exist_ok=True)
-    fname = f"{tag}_{geom_id}_xsec{xs_index}.dat"
-    target = AIRFOILS_DIR / fname
     u = foilsurf_u_for_xs(vsp, xsurf, xs_index)
     if u is None:
         # End-cap — call with 0.0 to keep behaviour deterministic.
         u = 0.0
-    vsp.WriteSeligAirfoil(str(target), geom_id, float(u))
-    return f"./components/airfoils/{fname}"
+    # Collision-safe OS temp name (geom_id may contain unsafe chars).
+    fd, tmp_name = tempfile.mkstemp(prefix="_tmp_export_", suffix=".dat", dir=AIRFOILS_DIR)
+    os.close(fd)
+    tmp = Path(tmp_name)
+    vsp.WriteSeligAirfoil(str(tmp), geom_id, float(u))
+    coords = _read_dat_coords(tmp) if tmp.exists() else []
+    try:
+        tmp.unlink()
+    except OSError:
+        pass
+    if coords:
+        return write_imported_airfoil_dat(coords, tag=tag)
+    # Defensive fallback (should not happen for valid geometry): re-export
+    # to a sanitized name and still route through the content-hash sink so
+    # the result dedups like every other imported airfoil.
+    safe_id = "".join(c if c.isalnum() else "_" for c in str(geom_id))
+    fallback = AIRFOILS_DIR / f"{tag}_{safe_id}_xsec{xs_index}.dat"
+    vsp.WriteSeligAirfoil(str(fallback), geom_id, float(u))
+    fb_coords = _read_dat_coords(fallback) if fallback.exists() else []
+    if fb_coords:
+        try:
+            fallback.unlink()
+        except OSError:
+            pass
+        return write_imported_airfoil_dat(fb_coords, tag=tag)
+    return f"./components/airfoils/{fallback.name}"
 
 
 # ---------------------------------------------------------------------------
