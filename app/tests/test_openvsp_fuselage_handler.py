@@ -146,8 +146,12 @@ def _make_fuse_vsp(
     # ``y_pct``/``z_pct`` through the right XSec keys).
     xform = xform or {}
     XFORM_PARMS = {
-        "X_Location", "Y_Location", "Z_Location",
-        "X_Rotation", "Y_Rotation", "Z_Rotation",
+        "X_Location",
+        "Y_Location",
+        "Z_Location",
+        "X_Rotation",
+        "Y_Rotation",
+        "Z_Rotation",
     }
 
     _LOC_KEY = {"XLocPercent": "x_pct", "YLocPercent": "y_pct", "ZLocPercent": "z_pct"}
@@ -385,18 +389,48 @@ class TestCessna172FuselageRegression:
         xsecs = [
             {"shape": "SHIFT_LE", "x_pct": 0.00, "width": 0.00, "height": 0.00},
             {"shape": "SHIFT_TE", "x_pct": 0.05, "width": 0.28, "height": 0.28},
-            {"shape": "SUPER_ELLIPSE", "x_pct": 0.15, "Super_Width": 0.82, "Super_Height": 0.52,
-             "Super_M": 2.0, "Super_N": 2.0},
-            {"shape": "SUPER_ELLIPSE", "x_pct": 0.30, "Super_Width": 1.00, "Super_Height": 0.98,
-             "Super_M": 2.0, "Super_N": 2.0},
-            {"shape": "SUPER_ELLIPSE", "x_pct": 0.45, "Super_Width": 1.07, "Super_Height": 1.04,
-             "Super_M": 2.0, "Super_N": 2.0},
+            {
+                "shape": "SUPER_ELLIPSE",
+                "x_pct": 0.15,
+                "Super_Width": 0.82,
+                "Super_Height": 0.52,
+                "Super_M": 2.0,
+                "Super_N": 2.0,
+            },
+            {
+                "shape": "SUPER_ELLIPSE",
+                "x_pct": 0.30,
+                "Super_Width": 1.00,
+                "Super_Height": 0.98,
+                "Super_M": 2.0,
+                "Super_N": 2.0,
+            },
+            {
+                "shape": "SUPER_ELLIPSE",
+                "x_pct": 0.45,
+                "Super_Width": 1.07,
+                "Super_Height": 1.04,
+                "Super_M": 2.0,
+                "Super_N": 2.0,
+            },
             {"shape": "GENERAL_FUSE", "x_pct": 0.60, "width": 1.10, "height": 1.45},
             {"shape": "GENERAL_FUSE", "x_pct": 0.75, "width": 1.10, "height": 1.22},
-            {"shape": "SUPER_ELLIPSE", "x_pct": 0.85, "Super_Width": 0.97, "Super_Height": 0.88,
-             "Super_M": 2.0, "Super_N": 2.0},
-            {"shape": "SUPER_ELLIPSE", "x_pct": 0.95, "Super_Width": 0.10, "Super_Height": 0.36,
-             "Super_M": 2.0, "Super_N": 2.0},
+            {
+                "shape": "SUPER_ELLIPSE",
+                "x_pct": 0.85,
+                "Super_Width": 0.97,
+                "Super_Height": 0.88,
+                "Super_M": 2.0,
+                "Super_N": 2.0,
+            },
+            {
+                "shape": "SUPER_ELLIPSE",
+                "x_pct": 0.95,
+                "Super_Width": 0.10,
+                "Super_Height": 0.36,
+                "Super_M": 2.0,
+                "Super_N": 2.0,
+            },
             {"shape": "SHIFT_LE", "x_pct": 1.00, "width": 0.00, "height": 0.00},
         ]
         fake = _make_fuse_vsp(xsecs=xsecs, length=7.23)
@@ -433,9 +467,7 @@ class TestCessna172FuselageRegression:
             {"shape": "CIRCLE", "x_pct": 0.0, "Circle_Diameter": 0.0},
             {"shape": "CIRCLE", "x_pct": 1.0, "Circle_Diameter": 0.3},
         ]
-        fake = _make_fuse_vsp(
-            xsecs=xsecs, length=1.0, xform={"Sym_Planar_Flag": 2}
-        )
+        fake = _make_fuse_vsp(xsecs=xsecs, length=1.0, xform={"Sym_Planar_Flag": 2})
         monkeypatch.setattr(openvsp_adapter, "get_vsp", lambda: fake)
         result = import_vsp3(f)
         fuse = (result.aeroplane.fuselages or {})["Fuselage"]
@@ -449,9 +481,7 @@ class TestCessna172FuselageRegression:
             {"shape": "CIRCLE", "x_pct": 1.0, "Circle_Diameter": 0.3},
         ]
         # Sym=0 (none) — typical for main fuselages on the symmetry plane.
-        fake = _make_fuse_vsp(
-            xsecs=xsecs, length=1.0, xform={"Sym_Planar_Flag": 0}
-        )
+        fake = _make_fuse_vsp(xsecs=xsecs, length=1.0, xform={"Sym_Planar_Flag": 0})
         monkeypatch.setattr(openvsp_adapter, "get_vsp", lambda: fake)
         result = import_vsp3(f)
         fuse = (result.aeroplane.fuselages or {})["Fuselage"]
@@ -465,16 +495,15 @@ class TestCessna172FuselageRegression:
             {"shape": "CIRCLE", "x_pct": 1.0, "Circle_Diameter": 0.3},
         ]
         # Sym=4 (YZ) — top/bottom mirror is unusual for fuselages.
-        fake = _make_fuse_vsp(
-            xsecs=xsecs, length=1.0, xform={"Sym_Planar_Flag": 4}
-        )
+        fake = _make_fuse_vsp(xsecs=xsecs, length=1.0, xform={"Sym_Planar_Flag": 4})
         monkeypatch.setattr(openvsp_adapter, "get_vsp", lambda: fake)
         result = import_vsp3(f)
         fuse = (result.aeroplane.fuselages or {})["Fuselage"]
         assert fuse.symmetric is False
         # Info warning surfaces the unsupported mode.
         sym_warnings = [
-            w for w in result.warnings
+            w
+            for w in result.warnings
             if w.component_type == "FUSELAGE" and "Sym_Planar_Flag" in w.reason
         ]
         assert sym_warnings, [w.reason for w in result.warnings]
@@ -505,9 +534,13 @@ class TestCessna172FuselageRegression:
         # something non-degenerate.
         xsecs = [
             {
-                "shape": "SUPER_ELLIPSE", "x_pct": x, "z_pct": z,
-                "Super_Width": 0.5, "Super_Height": 0.5,
-                "Super_M": 2.0, "Super_N": 2.0,
+                "shape": "SUPER_ELLIPSE",
+                "x_pct": x,
+                "z_pct": z,
+                "Super_Width": 0.5,
+                "Super_Height": 0.5,
+                "Super_M": 2.0,
+                "Super_N": 2.0,
             }
             for x, z in positions
         ]
@@ -520,8 +553,7 @@ class TestCessna172FuselageRegression:
             expected_x = x_pct * length
             expected_z = z_pct * length
             assert fuse.x_secs[i].xyz[0] == pytest.approx(expected_x, abs=1e-3), (
-                f"xsec[{i}] X drift: expected {expected_x:.4f} m, "
-                f"got {fuse.x_secs[i].xyz[0]:.4f} m"
+                f"xsec[{i}] X drift: expected {expected_x:.4f} m, got {fuse.x_secs[i].xyz[0]:.4f} m"
             )
             assert fuse.x_secs[i].xyz[2] == pytest.approx(expected_z, abs=1e-3), (
                 f"xsec[{i}] Z versatz lost: expected {expected_z:+.4f} m, "
@@ -542,7 +574,9 @@ class TestSuperEllipseFit:
     """
 
     @staticmethod
-    def _sample_superellipse(a: float, b: float, n: float, n_points: int = 24) -> list[tuple[float, float]]:
+    def _sample_superellipse(
+        a: float, b: float, n: float, n_points: int = 24
+    ) -> list[tuple[float, float]]:
         """Sample n_points evenly in parameter ``t ∈ [0, 2π)`` from the
         super-ellipse ``|y/a|^n + |z/b|^n = 1``.
         """
@@ -603,16 +637,23 @@ class TestSampleXsecYz:
     def _make_minimal_vsp(self, with_compute=True, raise_on_compute=False, pts=None):
         fake = SimpleNamespace()
         if with_compute:
+
             class _P:
                 def __init__(self, x, y, z):
                     self._x, self._y, self._z = x, y, z
-                def x(self): return self._x
-                def y(self): return self._y
-                def z(self): return self._z
 
-            samples = pts or [(0.0, y, z) for y, z in [
-                (0.5, 0.5), (-0.5, 0.5), (-0.5, -0.5), (0.5, -0.5)
-            ]]
+                def x(self):
+                    return self._x
+
+                def y(self):
+                    return self._y
+
+                def z(self):
+                    return self._z
+
+            samples = pts or [
+                (0.0, y, z) for y, z in [(0.5, 0.5), (-0.5, 0.5), (-0.5, -0.5), (0.5, -0.5)]
+            ]
 
             def _compute(_xs_id, fract):
                 if raise_on_compute:
@@ -794,23 +835,20 @@ class TestFuselageXForm:
             {"shape": "CIRCLE", "x_pct": 0.0, "Circle_Diameter": 0.2},
             {"shape": "CIRCLE", "x_pct": 1.0, "Circle_Diameter": 0.2},
         ]
-        fake = _make_fuse_vsp(
-            xsecs=xsecs, length=4.0, xform={"Z_Rotation": 90.0}
-        )
+        fake = _make_fuse_vsp(xsecs=xsecs, length=4.0, xform={"Z_Rotation": 90.0})
         monkeypatch.setattr(openvsp_adapter, "get_vsp", lambda: fake)
         result = import_vsp3(f)
         fuse = (result.aeroplane.fuselages or {})["Fuselage"]
         # Local (4, 0, 0) → after Rz(90°) → (0, 4, 0)
         assert fuse.x_secs[1].xyz == pytest.approx([0.0, 4.0, 0.0], abs=1e-9)
 
-    def test_y_rotation_neg80_with_translation_cessna_nose_strut(
-        self, tmp_path, monkeypatch
-    ):
+    def test_y_rotation_neg80_with_translation_cessna_nose_strut(self, tmp_path, monkeypatch):
         # Mirrors NoseStrut from the Cessna 172 file: translated to
         # (-1.22, 0, -1.0) and rotated by Y=-80°. A xsec at local
         # (1.5, 0, 0) → after Ry(-80°): (cos(-80)·1.5, 0, -sin(-80)·1.5)
         # = (0.260, 0, 1.477) → + translation = (-0.960, 0, 0.477).
         import math
+
         f = tmp_path / "x.vsp3"
         f.write_text("")
         xsecs = [
@@ -850,7 +888,13 @@ class TestFuselagePositionParms:
         f.write_text("")
         xsecs = [
             {"shape": "CIRCLE", "x_pct": 0.0, "y_pct": 0.0, "z_pct": 0.0, "Circle_Diameter": 0.5},
-            {"shape": "CIRCLE", "x_pct": 0.4, "y_pct": 0.05, "z_pct": -0.02, "Circle_Diameter": 0.5},
+            {
+                "shape": "CIRCLE",
+                "x_pct": 0.4,
+                "y_pct": 0.05,
+                "z_pct": -0.02,
+                "Circle_Diameter": 0.5,
+            },
         ]
         fake = _make_fuse_vsp(xsecs=xsecs, length=10.0)
         monkeypatch.setattr(openvsp_adapter, "get_vsp", lambda: fake)
@@ -859,9 +903,7 @@ class TestFuselagePositionParms:
         assert fuse.x_secs[0].xyz == pytest.approx([0.0, 0.0, 0.0])
         assert fuse.x_secs[1].xyz == pytest.approx([4.0, 0.5, -0.2])
 
-    def test_missing_position_parms_falls_back_to_even_spacing(
-        self, tmp_path, monkeypatch
-    ):
+    def test_missing_position_parms_falls_back_to_even_spacing(self, tmp_path, monkeypatch):
         # Provide xsec dicts WITHOUT any *_pct keys → handler falls
         # back to i/(n-1) for X, 0 for Y/Z. With length=8.0 and
         # n=5, the 3rd xsec (index 2) lands at 2/4 * 8 = 4.0.
@@ -876,3 +918,83 @@ class TestFuselagePositionParms:
         assert xs_x == pytest.approx([0.0, 2.0, 4.0, 6.0, 8.0])
         # Y / Z all zero.
         assert all(xs.xyz[1] == 0.0 and xs.xyz[2] == 0.0 for xs in fuse.x_secs)
+
+
+# ---------------------------------------------------------------------------
+# gh-804: degenerate (zero cross-section) Fuselage-type geoms are dropped
+# ---------------------------------------------------------------------------
+
+
+class TestDegenerateFuselageFilter:
+    """Not every VSP ``FUSELAGE`` geom is an outer-mold-line body. Romo's
+    ``SeatGroup`` (cabin seats) imports as a Fuselage whose cross-sections
+    have **zero height at every station** (b=0), and similar interior /
+    structural bodies can collapse one axis. Such degenerate geoms have no
+    cross-sectional area — they must be dropped (and recorded as lossy),
+    not rendered as a flat ribbon over the aircraft (#804).
+    """
+
+    def test_zero_height_fuselage_is_dropped(self, tmp_path, monkeypatch):
+        f = tmp_path / "seatgroup.vsp3"
+        f.write_text("")
+        # Every xsec: real width, zero height — like SeatGroup.
+        xsecs = [
+            {
+                "shape": "SUPER_ELLIPSE",
+                "x_pct": p,
+                "Super_Width": 0.22,
+                "Super_Height": 0.0,
+                "Super_M": 2.0,
+                "Super_N": 2.0,
+            }
+            for p in (0.0, 0.5, 1.0)
+        ]
+        fake = _make_fuse_vsp(xsecs=xsecs, length=2.0, name="SeatGroup")
+        monkeypatch.setattr(openvsp_adapter, "get_vsp", lambda: fake)
+        result = import_vsp3(f)
+        assert "SeatGroup" not in (result.aeroplane.fuselages or {})
+        # dropped explicitly (lossy + warning), never silently
+        assert any(
+            w.component_name == "SeatGroup" and "degenerate" in w.reason.lower()
+            for w in result.warnings
+        )
+
+    def test_zero_width_fuselage_is_dropped(self, tmp_path, monkeypatch):
+        f = tmp_path / "ribbon.vsp3"
+        f.write_text("")
+        xsecs = [
+            {
+                "shape": "SUPER_ELLIPSE",
+                "x_pct": p,
+                "Super_Width": 0.0,
+                "Super_Height": 0.3,
+                "Super_M": 2.0,
+                "Super_N": 2.0,
+            }
+            for p in (0.0, 0.5, 1.0)
+        ]
+        fake = _make_fuse_vsp(xsecs=xsecs, length=2.0, name="Fin0")
+        monkeypatch.setattr(openvsp_adapter, "get_vsp", lambda: fake)
+        result = import_vsp3(f)
+        assert "Fin0" not in (result.aeroplane.fuselages or {})
+
+    def test_normal_fuselage_is_kept(self, tmp_path, monkeypatch):
+        # Control: a body with real width AND height somewhere must survive.
+        f = tmp_path / "ok.vsp3"
+        f.write_text("")
+        xsecs = [
+            {"shape": "POINT", "x_pct": 0.0},
+            {
+                "shape": "SUPER_ELLIPSE",
+                "x_pct": 0.5,
+                "Super_Width": 1.0,
+                "Super_Height": 0.8,
+                "Super_M": 2.0,
+                "Super_N": 2.0,
+            },
+            {"shape": "POINT", "x_pct": 1.0},
+        ]
+        fake = _make_fuse_vsp(xsecs=xsecs, length=4.0, name="Fuselage")
+        monkeypatch.setattr(openvsp_adapter, "get_vsp", lambda: fake)
+        result = import_vsp3(f)
+        assert "Fuselage" in (result.aeroplane.fuselages or {})
