@@ -283,3 +283,12 @@ Avl/eispack/*.o
 Avl/eispack/*.a
 
 db/
+
+# OpenVSP models + import artifacts — NOT committed.
+# .vsp3 models are community-contributed via VSP Airshow with no
+# redistribution licence; download them yourself (see
+# components/aircraft/vsp/README.md). The vsp_imported_/vsp_morph_
+# airfoils are generated at import time.
+components/aircraft/vsp/*.vsp3
+components/airfoils/vsp_imported_*.dat
+components/airfoils/vsp_morph_*.dat
