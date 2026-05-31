@@ -141,6 +141,8 @@ describe("useAnalysis", () => {
                 ld_max: 25,
               },
             ],
+            v_axis_min: 5.5,
+            v_axis_max: 40.0,
           },
         }),
     });
@@ -162,6 +164,8 @@ describe("useAnalysis", () => {
     expect(result.current.speedPolar?.base_mass_kg).toBe(1.5);
     expect(result.current.speedPolar?.curves).toHaveLength(1);
     expect(result.current.speedPolar?.curves[0].is_base).toBe(true);
+    expect(result.current.speedPolar?.v_axis_min).toBe(5.5);
+    expect(result.current.speedPolar?.v_axis_max).toBe(40.0);
   });
 
   it("leaves speedPolar null when response omits speed_polar", async () => {

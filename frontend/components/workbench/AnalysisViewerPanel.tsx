@@ -8,6 +8,7 @@ import type { StripForcesResult } from "@/hooks/useStripForces";
 import type { SpeedPolar, SpeedPolarCurve } from "@/hooks/useAnalysis";
 import type { FlightEnvelopeData } from "@/hooks/useFlightEnvelope";
 import { EnvelopePanel } from "@/components/workbench/EnvelopePanel";
+import { buildSpeedPolarLayout } from "@/lib/speedPolarLayout";
 import type { StoredOperatingPoint, AVLTrimResult, AeroBuildupTrimResult, TrimConstraint, ControlSurface } from "@/hooks/useOperatingPoints";
 import { OperatingPointsPanel } from "@/components/workbench/OperatingPointsPanel";
 import { MatchingChartTab } from "@/components/workbench/MatchingChartTab";
@@ -343,10 +344,13 @@ function SpeedPolarChart({ speedPolar }: Readonly<{ speedPolar: SpeedPolar }>) {
     let PlotlyRef: any = null;
     const traces = speedPolarTraces(curves);
 
+    const { v_axis_min, v_axis_max } = speedPolar;
+    const layout = buildSpeedPolarLayout(SPEED_POLAR_LAYOUT, v_axis_min, v_axis_max);
+
     (async () => {
       PlotlyRef = await import("plotly.js-gl3d-dist-min");
       if (disposed || !node) return;
-      await PlotlyRef.react(node, traces, SPEED_POLAR_LAYOUT, {
+      await PlotlyRef.react(node, traces, layout, {
         responsive: true,
         displayModeBar: false,
       });

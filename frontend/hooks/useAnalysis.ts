@@ -43,6 +43,10 @@ export interface SpeedPolar {
   rho: number;
   altitude: number;
   curves: SpeedPolarCurve[];
+  /** Recommended X-axis lower limit [m/s] = 0.7 × min V_stall over curves */
+  v_axis_min?: number | null;
+  /** Recommended X-axis upper limit [m/s] = 1.3 × V_dive or max sweep V */
+  v_axis_max?: number | null;
 }
 
 /**
