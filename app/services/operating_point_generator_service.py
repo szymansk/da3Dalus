@@ -145,6 +145,31 @@ def _op_turn_rates(target: dict, velocity: float) -> tuple[float, float, float]:
     return (round(tk.p, 6), round(tk.q, 6), round(tk.r, 6))
 
 
+def _apply_turn_feasibility(point, bank_deg, velocity: float, vs_clean: float) -> None:
+    """Flag a turn point as stall-limited when V < vs_clean * sqrt(n) (mutates point).
+
+    A steady level turn at bank angle ``bank_deg`` requires a load factor
+    n = 1/cos(phi). The stall speed in the turn scales as vs_clean * sqrt(n).
+    When the target velocity is below this threshold the wing cannot produce
+    enough lift to sustain the turn, so the point is marked LIMIT_REACHED with
+    a STALL_IN_TURN warning rather than silently delivering a trim at the wrong n.
+    """
+    if bank_deg is None or vs_clean <= 0:
+        return
+    from app.services.turn_kinematics import turn_kinematics
+
+    n = turn_kinematics(bank_deg=float(bank_deg), velocity=float(velocity)).n
+    v_stall_turn = vs_clean * (n ** 0.5)
+    if velocity < v_stall_turn:
+        msg = (
+            f"STALL_IN_TURN: required CL at {bank_deg:.0f} deg bank (n={n:.2f}) exceeds "
+            f"CL_max — V={velocity:.1f} < V_stall_turn={v_stall_turn:.1f} m/s"
+        )
+        if msg not in point.warnings:
+            point.warnings.append(msg)
+        point.status = OperatingPointStatus.LIMIT_REACHED
+
+
 def _safe_coeff(result: dict[str, Any], key: str, default: float = 0.0) -> float:
     value = result.get(key)
     if value is None:
@@ -1050,6 +1075,9 @@ def generate_default_set_for_aircraft(
                 constraints=profile.get("constraints", {}),
                 capabilities=capabilities,
                 effective_mass_kg=effective_mass_kg,
+            )
+            _apply_turn_feasibility(
+                point, target.get("bank_deg"), point.velocity, refs.get("vs_clean", 0.0)
             )
             try:
                 enrichment = compute_enrichment(
