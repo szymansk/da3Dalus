@@ -16,6 +16,7 @@ Two methods are exposed:
 CSV columns:
     alpha_deg, CL, CD, CDi, CDo, CM, eff_e, LoD
 """
+
 from __future__ import annotations
 
 import math
@@ -83,23 +84,28 @@ def correct_reference_to_main_wing(asb_airplane) -> dict:
     both tools share identical references. Returns the applied refs.
     """
     if not asb_airplane.wings:
-        return {"s_ref": asb_airplane.s_ref, "b_ref": asb_airplane.b_ref,
-                "c_ref": asb_airplane.c_ref, "corrected": False}
+        return {
+            "s_ref": asb_airplane.s_ref,
+            "b_ref": asb_airplane.b_ref,
+            "c_ref": asb_airplane.c_ref,
+            "corrected": False,
+        }
     main = max(asb_airplane.wings, key=lambda w: w.area())
     s = float(main.area())
     b = float(main.span())
     c = float(main.mean_aerodynamic_chord())
     corrected = abs(s - float(asb_airplane.s_ref)) / max(s, 1e-9) > 0.05
     if corrected:
-        print(f"[asb] reference-area CORRECTION: airplane.s_ref="
-              f"{float(asb_airplane.s_ref):.3f} → main wing '{main.name}' "
-              f"area={s:.3f} (converter bug: ref taken from first wing geom)",
-              flush=True)
+        print(
+            f"[asb] reference-area CORRECTION: airplane.s_ref="
+            f"{float(asb_airplane.s_ref):.3f} → main wing '{main.name}' "
+            f"area={s:.3f} (converter bug: ref taken from first wing geom)",
+            flush=True,
+        )
     asb_airplane.s_ref = s
     asb_airplane.b_ref = b
     asb_airplane.c_ref = c
-    return {"s_ref": s, "b_ref": b, "c_ref": c, "corrected": corrected,
-            "main_wing": main.name}
+    return {"s_ref": s, "b_ref": b, "c_ref": c, "corrected": corrected, "main_wing": main.name}
 
 
 def _sanitize_airfoils(asb_airplane) -> int:
@@ -144,22 +150,25 @@ def run(
     result = import_vsp3(vsp_file)
     schema = result.aeroplane
     if result.warnings:
-        print(f"[asb:{method}] importer warnings: {len(result.warnings)}",
-              flush=True)
+        print(f"[asb:{method}] importer warnings: {len(result.warnings)}", flush=True)
 
     asb_airplane = aeroplane_schema_to_asb_airplane_async(plane_schema=schema)
     correct_reference_to_main_wing(asb_airplane)
     removed = _sanitize_airfoils(asb_airplane)
     if removed:
-        print(f"[asb:{method}] sanitized airfoils: removed {removed} "
-              f"duplicate point(s) (importer data-quality bug)", flush=True)
+        print(
+            f"[asb:{method}] sanitized airfoils: removed {removed} "
+            f"duplicate point(s) (importer data-quality bug)",
+            flush=True,
+        )
 
-    alphas = list(
-        np.linspace(flight.alpha_start_deg, flight.alpha_end_deg, flight.alpha_npts)
+    alphas = list(np.linspace(flight.alpha_start_deg, flight.alpha_end_deg, flight.alpha_npts))
+    print(
+        f"[asb:{method}] analyse α=[{flight.alpha_start_deg}, "
+        f"{flight.alpha_end_deg}]°×{flight.alpha_npts} "
+        f"V={flight.velocity_mps} h={flight.altitude_m} …",
+        flush=True,
     )
-    print(f"[asb:{method}] analyse α=[{flight.alpha_start_deg}, "
-          f"{flight.alpha_end_deg}]°×{flight.alpha_npts} "
-          f"V={flight.velocity_mps} h={flight.altitude_m} …", flush=True)
 
     if method == "aerobuildup":
         rows = _rows_aerobuildup(tool, asb_airplane, flight, alphas)
@@ -177,8 +186,7 @@ def run(
                 f"{r['alpha']:.6f},{r['CL']:.6f},{r['CD']:.6f},{r['CDi']:.6f},"
                 f"{r['CDo']:.6f},{r['CM']:.6f},{r['eff_e']:.6f},{r['LoD']:.6f}\n"
             )
-    print(f"[asb:{method}] wrote {out_csv} ({len(rows)} rows, {n_nan} NaN)",
-          flush=True)
+    print(f"[asb:{method}] wrote {out_csv} ({len(rows)} rows, {n_nan} NaN)", flush=True)
     return out_csv
 
 
@@ -193,28 +201,41 @@ def _rows_aerobuildup(tool, asb_airplane, flight, alphas) -> list[dict]:
         velocity=flight.velocity_mps,
         altitude=flight.altitude_m,
         alpha=alphas,
-        beta=0.0, p=0.0, q=0.0, r=0.0,
+        beta=0.0,
+        p=0.0,
+        q=0.0,
+        r=0.0,
         xyz_ref=[flight.x_cg_m, 0.0, 0.0],
     )
     model, _ = analyse_aerodynamics(tool, op, asb_airplane)
     n = len(alphas)
     alpha_out = _coef(model.flight_condition.alpha, n) or alphas
-    CL  = _coef(model.coefficients.CL, n)
-    CD  = _coef(model.coefficients.CD, n)
+    CL = _coef(model.coefficients.CL, n)
+    CD = _coef(model.coefficients.CD, n)
     CDi = _coef(model.coefficients.CDind, n)
     CDv = _coef(model.coefficients.CDvis, n)
-    CM  = _coef(model.coefficients.Cm, n)
+    CM = _coef(model.coefficients.Cm, n)
     eff = _coef(model.coefficients.e, n)
     rows = []
     for i in range(n):
         cd, cdi, cdv = CD[i], CDi[i], CDv[i]
-        cdo = cdv if not math.isnan(cdv) else (
-            cd - cdi if not (math.isnan(cd) or math.isnan(cdi)) else math.nan
+        cdo = (
+            cdv
+            if not math.isnan(cdv)
+            else (cd - cdi if not (math.isnan(cd) or math.isnan(cdi)) else math.nan)
         )
-        rows.append({
-            "alpha": alpha_out[i], "CL": CL[i], "CD": cd, "CDi": cdi,
-            "CDo": cdo, "CM": CM[i], "eff_e": eff[i], "LoD": _lod(CL[i], cd),
-        })
+        rows.append(
+            {
+                "alpha": alpha_out[i],
+                "CL": CL[i],
+                "CD": cd,
+                "CDi": cdi,
+                "CDo": cdo,
+                "CM": CM[i],
+                "eff_e": eff[i],
+                "LoD": _lod(CL[i], cd),
+            }
+        )
     return rows
 
 
@@ -242,15 +263,18 @@ def _rows_vlm_per_alpha(asb_airplane, flight, alphas) -> list[dict]:
     robust. VLM is inviscid → CD is purely induced (CDi == CD, CDo = 0).
     """
     span_res = _vlm_spanwise_resolution(asb_airplane)
-    print(f"[asb:vortex_lattice] spanwise_resolution={span_res}, "
-          f"chordwise_resolution={_VLM_CHORDWISE_RESOLUTION} "
-          f"(max wing sections={max((len(w.xsecs) for w in asb_airplane.wings), default=0)})",
-          flush=True)
+    print(
+        f"[asb:vortex_lattice] spanwise_resolution={span_res}, "
+        f"chordwise_resolution={_VLM_CHORDWISE_RESOLUTION} "
+        f"(max wing sections={max((len(w.xsecs) for w in asb_airplane.wings), default=0)})",
+        flush=True,
+    )
     rows = []
     for a in alphas:
         op = asb.OperatingPoint(velocity=flight.velocity_mps, alpha=float(a))
         vlm = asb.VortexLatticeMethod(
-            airplane=asb_airplane, op_point=op,
+            airplane=asb_airplane,
+            op_point=op,
             xyz_ref=[flight.x_cg_m, 0.0, 0.0],
             spanwise_resolution=span_res,
             chordwise_resolution=_VLM_CHORDWISE_RESOLUTION,
@@ -259,17 +283,36 @@ def _rows_vlm_per_alpha(asb_airplane, flight, alphas) -> list[dict]:
             d = vlm.run()
             cl = float(d["CL"])
             cd = float(d["CD"])
-            cdi = float(d.get("CDi", cd))   # VLM CD is induced
+            cdi = float(d.get("CDi", cd))  # VLM CD is induced
             cm = float(d.get("Cm", math.nan))
-            ar = (asb_airplane.b_ref ** 2) / asb_airplane.s_ref
+            ar = (asb_airplane.b_ref**2) / asb_airplane.s_ref
             e = (cl * cl) / (math.pi * ar * cdi) if cdi > 1e-9 else math.nan
-            rows.append({"alpha": float(a), "CL": cl, "CD": cd, "CDi": cdi,
-                         "CDo": 0.0, "CM": cm, "eff_e": e, "LoD": _lod(cl, cd)})
+            rows.append(
+                {
+                    "alpha": float(a),
+                    "CL": cl,
+                    "CD": cd,
+                    "CDi": cdi,
+                    "CDo": 0.0,
+                    "CM": cm,
+                    "eff_e": e,
+                    "LoD": _lod(cl, cd),
+                }
+            )
         except Exception as exc:
             print(f"[asb:vortex_lattice] α={a:.1f}° failed: {exc}", flush=True)
-            rows.append({"alpha": float(a), "CL": math.nan, "CD": math.nan,
-                         "CDi": math.nan, "CDo": math.nan, "CM": math.nan,
-                         "eff_e": math.nan, "LoD": math.nan})
+            rows.append(
+                {
+                    "alpha": float(a),
+                    "CL": math.nan,
+                    "CD": math.nan,
+                    "CDi": math.nan,
+                    "CDo": math.nan,
+                    "CM": math.nan,
+                    "eff_e": math.nan,
+                    "LoD": math.nan,
+                }
+            )
     return rows
 
 

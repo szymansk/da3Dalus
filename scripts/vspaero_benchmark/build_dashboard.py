@@ -5,6 +5,7 @@ emits results/dashboard.html — a single file (Plotly via CDN) with the
 da3Dalus dark + orange theme. Per aircraft: metrics table, real-world
 anchors, and overlaid CL(α), drag-polar, L/D(α), CM(α) charts.
 """
+
 from __future__ import annotations
 
 import json
@@ -15,8 +16,8 @@ sys.path.insert(0, str(Path(__file__).parent))
 from benchmark_config import AIRCRAFT, RESULTS_DIR
 
 SOURCE_STYLE = {
-    "vspaero":        {"color": "#FF8400", "label": "VSPAERO (VLM)"},
-    "asb_vlm":        {"color": "#4FC3F7", "label": "ASB VortexLattice"},
+    "vspaero": {"color": "#FF8400", "label": "VSPAERO (VLM)"},
+    "asb_vlm": {"color": "#4FC3F7", "label": "ASB VortexLattice"},
     "asb_aerobuildup": {"color": "#81C784", "label": "ASB AeroBuildup"},
 }
 
@@ -197,20 +198,26 @@ def write_summary(data: list[dict], out_md: Path | None = None) -> Path:
     """Cross-aircraft headline table: max L/D per source vs real anchor."""
     out_md = out_md or (RESULTS_DIR / "SUMMARY.md")
     lines = ["# VSPAERO × da3Dalus — Benchmark Summary\n"]
-    lines.append("Offline cross-validation on identical `.vsp3` geometry and "
-                 "reference quantities. VSPAERO runs VLM (wings-only); ASB "
-                 "AeroBuildup is the app's default method.\n")
+    lines.append(
+        "Offline cross-validation on identical `.vsp3` geometry and "
+        "reference quantities. VSPAERO runs VLM (wings-only); ASB "
+        "AeroBuildup is the app's default method.\n"
+    )
 
     lines.append("## Max L/D — tool vs reality\n")
     lines.append("| Aircraft | Topology | VSPAERO VLM | ASB VLM | ASB AeroBuildup | Real |")
     lines.append("|---|---|---|---|---|---|")
     for ac in data:
         s = ac["sources"]
+
         def mx(k, s=s):
             return _fmt(s[k]["metrics"]["max_LD"]) if k in s else "—"
+
         real = next((a["value"] for a in ac["anchors"] if a["metric"] == "max_LD"), None)
-        lines.append(f"| {ac['name']} | {ac['topology']} | {mx('vspaero')} | "
-                     f"{mx('asb_vlm')} | {mx('asb_aerobuildup')} | {_fmt(real)} |")
+        lines.append(
+            f"| {ac['name']} | {ac['topology']} | {mx('vspaero')} | "
+            f"{mx('asb_vlm')} | {mx('asb_aerobuildup')} | {_fmt(real)} |"
+        )
     lines.append("")
 
     lines.append("## VLM lift-slope agreement (ASB VortexLattice vs VSPAERO)\n")
@@ -222,7 +229,7 @@ def write_summary(data: list[dict], out_md: Path | None = None) -> Path:
             v = s["vspaero"]["metrics"]
             a = s["asb_vlm"]["metrics"]
             vs, as_ = v["CL_alpha_per_deg"], a["CL_alpha_per_deg"]
-            d = (f"{100*(as_-vs)/vs:+.1f} %" if vs not in (None, 0) and vs == vs else "—")
+            d = f"{100 * (as_ - vs) / vs:+.1f} %" if vs not in (None, 0) and vs == vs else "—"
             off = (a["CL0"] - v["CL0"]) if (a["CL0"] == a["CL0"] and v["CL0"] == v["CL0"]) else None
             lines.append(f"| {ac['name']} | {_fmt(vs)} | {_fmt(as_)} | {d} | {_fmt(off)} |")
     lines.append("")
@@ -232,11 +239,16 @@ def write_summary(data: list[dict], out_md: Path | None = None) -> Path:
     lines.append("|---|---|---|---|")
     for ac in data:
         s = ac["sources"]
-        def e(k, s=s): return _fmt(s[k]["metrics"]["e_mean"]) if k in s else "—"
+
+        def e(k, s=s):
+            return _fmt(s[k]["metrics"]["e_mean"]) if k in s else "—"
+
         lines.append(f"| {ac['name']} | {e('vspaero')} | {e('asb_vlm')} | {e('asb_aerobuildup')} |")
     lines.append("")
-    lines.append("> See each aircraft's `RESULTS.md` for full metrics + interpretation, "
-                 "and `dashboard.html` for interactive polars.")
+    lines.append(
+        "> See each aircraft's `RESULTS.md` for full metrics + interpretation, "
+        "and `dashboard.html` for interactive polars."
+    )
     out_md.write_text("\n".join(lines))
     print(f"[summary] wrote {out_md} ({len(data)} aircraft)")
     return out_md
@@ -245,9 +257,9 @@ def write_summary(data: list[dict], out_md: Path | None = None) -> Path:
 def build_dashboard(out_html: Path | None = None) -> Path:
     out_html = out_html or (RESULTS_DIR / "dashboard.html")
     data = _load_all()
-    html = (_TEMPLATE
-            .replace("__DATA__", json.dumps(data))
-            .replace("__STYLE__", json.dumps(SOURCE_STYLE)))
+    html = _TEMPLATE.replace("__DATA__", json.dumps(data)).replace(
+        "__STYLE__", json.dumps(SOURCE_STYLE)
+    )
     out_html.write_text(html)
     print(f"[dashboard] wrote {out_html} ({len(data)} aircraft)")
     write_summary(data)

@@ -12,6 +12,7 @@ Bounded by design: 1 α, low wake-iter count. The caller wraps this
 in an RSS watchdog + wall-clock timeout so a divergent solve can
 never balloon memory again.
 """
+
 from __future__ import annotations
 
 import sys
@@ -59,40 +60,39 @@ def main() -> int:
 
     # Step 1: ComputeGeometry (VLM, no extra mirroring — wing has Sym=2)
     vsp.SetAnalysisInputDefaults("VSPAEROComputeGeometry")
-    vsp.SetIntAnalysisInput("VSPAEROComputeGeometry", "GeomSet",     [vsp.SET_NONE], 0)
-    vsp.SetIntAnalysisInput("VSPAEROComputeGeometry", "ThinGeomSet", [vsp.SET_ALL],  0)
-    vsp.SetIntAnalysisInput("VSPAEROComputeGeometry", "Symmetry",    [0], 0)
+    vsp.SetIntAnalysisInput("VSPAEROComputeGeometry", "GeomSet", [vsp.SET_NONE], 0)
+    vsp.SetIntAnalysisInput("VSPAEROComputeGeometry", "ThinGeomSet", [vsp.SET_ALL], 0)
+    vsp.SetIntAnalysisInput("VSPAEROComputeGeometry", "Symmetry", [0], 0)
     print("[vspaero] ComputeGeometry (wing only) …", flush=True)
     vsp.ExecAnalysis("VSPAEROComputeGeometry")
 
     # Step 2: single-α sweep
     vsp.SetAnalysisInputDefaults("VSPAEROSweep")
-    vsp.SetIntAnalysisInput("VSPAEROSweep", "GeomSet",     [vsp.SET_NONE], 0)
-    vsp.SetIntAnalysisInput("VSPAEROSweep", "ThinGeomSet", [vsp.SET_ALL],  0)
-    vsp.SetIntAnalysisInput("VSPAEROSweep", "Symmetry",    [0], 0)
+    vsp.SetIntAnalysisInput("VSPAEROSweep", "GeomSet", [vsp.SET_NONE], 0)
+    vsp.SetIntAnalysisInput("VSPAEROSweep", "ThinGeomSet", [vsp.SET_ALL], 0)
+    vsp.SetIntAnalysisInput("VSPAEROSweep", "Symmetry", [0], 0)
 
-    vsp.SetIntAnalysisInput   ("VSPAEROSweep", "RefFlag", [0], 0)
+    vsp.SetIntAnalysisInput("VSPAEROSweep", "RefFlag", [0], 0)
     vsp.SetDoubleAnalysisInput("VSPAEROSweep", "Sref", [S_REF], 0)
     vsp.SetDoubleAnalysisInput("VSPAEROSweep", "bref", [B_REF], 0)
     vsp.SetDoubleAnalysisInput("VSPAEROSweep", "cref", [C_REF], 0)
-    vsp.SetDoubleAnalysisInput("VSPAEROSweep", "Xcg",  [X_CG], 0)
+    vsp.SetDoubleAnalysisInput("VSPAEROSweep", "Xcg", [X_CG], 0)
 
-    vsp.SetDoubleAnalysisInput("VSPAEROSweep", "Rho",  [RHO], 0)
+    vsp.SetDoubleAnalysisInput("VSPAEROSweep", "Rho", [RHO], 0)
     vsp.SetDoubleAnalysisInput("VSPAEROSweep", "Vinf", [VINF], 0)
     vsp.SetDoubleAnalysisInput("VSPAEROSweep", "MachStart", [MACH], 0)
-    vsp.SetDoubleAnalysisInput("VSPAEROSweep", "MachEnd",   [MACH], 0)
-    vsp.SetIntAnalysisInput   ("VSPAEROSweep", "MachNpts",  [1], 0)
-    vsp.SetDoubleAnalysisInput("VSPAEROSweep", "ReCref",     [RE_C], 0)
-    vsp.SetIntAnalysisInput   ("VSPAEROSweep", "ReCrefNpts", [1], 0)
+    vsp.SetDoubleAnalysisInput("VSPAEROSweep", "MachEnd", [MACH], 0)
+    vsp.SetIntAnalysisInput("VSPAEROSweep", "MachNpts", [1], 0)
+    vsp.SetDoubleAnalysisInput("VSPAEROSweep", "ReCref", [RE_C], 0)
+    vsp.SetIntAnalysisInput("VSPAEROSweep", "ReCrefNpts", [1], 0)
 
     vsp.SetDoubleAnalysisInput("VSPAEROSweep", "AlphaStart", [ALPHA_DEG], 0)
-    vsp.SetDoubleAnalysisInput("VSPAEROSweep", "AlphaEnd",   [ALPHA_DEG], 0)
-    vsp.SetIntAnalysisInput   ("VSPAEROSweep", "AlphaNpts",  [1], 0)
+    vsp.SetDoubleAnalysisInput("VSPAEROSweep", "AlphaEnd", [ALPHA_DEG], 0)
+    vsp.SetIntAnalysisInput("VSPAEROSweep", "AlphaNpts", [1], 0)
 
     vsp.SetIntAnalysisInput("VSPAEROSweep", "NumWakeNodes", [20], 0)
-    vsp.SetIntAnalysisInput("VSPAEROSweep", "WakeNumIter",  [3], 0)
-    vsp.SetStringAnalysisInput("VSPAEROSweep", "RedirectFile",
-                                [str(WORKDIR / "wing_only.log")], 0)
+    vsp.SetIntAnalysisInput("VSPAEROSweep", "WakeNumIter", [3], 0)
+    vsp.SetStringAnalysisInput("VSPAEROSweep", "RedirectFile", [str(WORKDIR / "wing_only.log")], 0)
 
     print(f"[vspaero] Sweep single α={ALPHA_DEG}° …", flush=True)
     rid = vsp.ExecAnalysis("VSPAEROSweep")

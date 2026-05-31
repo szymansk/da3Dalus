@@ -13,6 +13,7 @@ is hard-killed (see VSPAERO_API.md lesson 5):
     ./scripts/vspaero_benchmark/run_with_watchdog.sh \
         "PYTHONPATH=. poetry run python scripts/vspaero_benchmark/run_all.py [keys...]"
 """
+
 from __future__ import annotations
 
 import sys
@@ -55,17 +56,19 @@ def _derive_refs_and_atmosphere(cfg: AircraftConfig):
     mu = float(atmo.dynamic_viscosity())
     mach = cfg.velocity_mps / a_sound
     re_cref = rho * cfg.velocity_mps * c_ref / mu
-    return dict(s_ref=s_ref, b_ref=b_ref, c_ref=c_ref, x_cg=x_cg,
-                rho=rho, mach=mach, re_cref=re_cref)
+    return dict(
+        s_ref=s_ref, b_ref=b_ref, c_ref=c_ref, x_cg=x_cg, rho=rho, mach=mach, re_cref=re_cref
+    )
 
 
 def run_one(cfg: AircraftConfig) -> None:
     print(f"\n{'=' * 70}\n{cfg.name}  [{cfg.key}]\n{'=' * 70}", flush=True)
     d = _derive_refs_and_atmosphere(cfg)
-    print(f"  refs: S={d['s_ref']:.4f} b={d['b_ref']:.4f} c={d['c_ref']:.4f} "
-          f"x_cg={d['x_cg']:.4f}", flush=True)
-    print(f"  atmo: rho={d['rho']:.4f} Mach={d['mach']:.4f} Re={d['re_cref']:.3e}",
-          flush=True)
+    print(
+        f"  refs: S={d['s_ref']:.4f} b={d['b_ref']:.4f} c={d['c_ref']:.4f} x_cg={d['x_cg']:.4f}",
+        flush=True,
+    )
+    print(f"  atmo: rho={d['rho']:.4f} Mach={d['mach']:.4f} Re={d['re_cref']:.3e}", flush=True)
 
     rdir = cfg.result_dir
 
@@ -74,12 +77,17 @@ def run_one(cfg: AircraftConfig) -> None:
         pv.run(
             vsp_file=cfg.vsp_path,
             ref=pv.ReferenceQuantities(
-                s_ref_m2=d["s_ref"], b_ref_m=d["b_ref"],
-                c_ref_m=d["c_ref"], x_cg_m=d["x_cg"],
+                s_ref_m2=d["s_ref"],
+                b_ref_m=d["b_ref"],
+                c_ref_m=d["c_ref"],
+                x_cg_m=d["x_cg"],
             ),
             flight=pv.FlightCondition(
-                name=cfg.key, vinf_mps=cfg.velocity_mps,
-                mach=d["mach"], re_cref=d["re_cref"], rho_kgm3=d["rho"],
+                name=cfg.key,
+                vinf_mps=cfg.velocity_mps,
+                mach=d["mach"],
+                re_cref=d["re_cref"],
+                rho_kgm3=d["rho"],
             ),
             workdir=rdir / "vspaero",
             out_csv=rdir / "vspaero_polar.csv",
@@ -90,12 +98,18 @@ def run_one(cfg: AircraftConfig) -> None:
 
     # 2) ASB (both methods)
     flight = pa.AsbFlightCondition(
-        velocity_mps=cfg.velocity_mps, altitude_m=cfg.altitude_m, x_cg_m=d["x_cg"],
+        velocity_mps=cfg.velocity_mps,
+        altitude_m=cfg.altitude_m,
+        x_cg_m=d["x_cg"],
     )
     for method in ("vortex_lattice", "aerobuildup"):
         try:
-            pa.run(vsp_file=cfg.vsp_path, flight=flight, method=method,
-                   out_csv=rdir / f"asb_{method}_polar.csv")
+            pa.run(
+                vsp_file=cfg.vsp_path,
+                flight=flight,
+                method=method,
+                out_csv=rdir / f"asb_{method}_polar.csv",
+            )
         except Exception as exc:
             print(f"  [asb:{method}] FAILED: {type(exc).__name__}: {exc}", flush=True)
 

@@ -10,6 +10,7 @@ Verifies:
 - Reference quantities pass through to VSPAERO
 - Output files land where expected
 """
+
 from __future__ import annotations
 
 import os
@@ -24,22 +25,22 @@ WORK_DIR = Path(__file__).parent / "results" / "_sanity_dg101g"
 WORK_DIR.mkdir(parents=True, exist_ok=True)
 
 # Reference quantities — DG-101G, read from the .vsp3 Vehicle/Wing block.
-S_REF = 11.064      # m^2
-B_REF = 15.000      # m
-C_REF = 0.7087      # m (TotalChord = Cave)
-X_CG  = 2.0         # m, approx 25% MAC behind nose — placeholder for sanity check
+S_REF = 11.064  # m^2
+B_REF = 15.000  # m
+C_REF = 0.7087  # m (TotalChord = Cave)
+X_CG = 2.0  # m, approx 25% MAC behind nose — placeholder for sanity check
 
 # Akaflieg flight condition (Luka's OpenVSP-groups comparison point):
 # 105 km/h, 1500 m ISA, Re_c ≈ 1.5e6
-V_INF  = 29.17      # m/s (= 105 km/h)
-MACH   = 0.087
-RE_C   = 1.5e6
-RHO    = 1.0581     # kg/m^3 (ISA 1500 m)
+V_INF = 29.17  # m/s (= 105 km/h)
+MACH = 0.087
+RE_C = 1.5e6
+RHO = 1.0581  # kg/m^3 (ISA 1500 m)
 
 # Sweep
 ALPHA_START = -2.0
-ALPHA_END   = 12.0
-ALPHA_NPTS  = 15
+ALPHA_END = 12.0
+ALPHA_NPTS = 15
 
 
 def main() -> int:
@@ -62,9 +63,9 @@ def main() -> int:
 
     # Step 1: VSPAEROComputeGeometry — VLM mode (thin)
     vsp.SetAnalysisInputDefaults("VSPAEROComputeGeometry")
-    vsp.SetIntAnalysisInput("VSPAEROComputeGeometry", "GeomSet",     [vsp.SET_NONE], 0)
-    vsp.SetIntAnalysisInput("VSPAEROComputeGeometry", "ThinGeomSet", [vsp.SET_ALL],  0)
-    vsp.SetIntAnalysisInput("VSPAEROComputeGeometry", "Symmetry",    [1],            0)
+    vsp.SetIntAnalysisInput("VSPAEROComputeGeometry", "GeomSet", [vsp.SET_NONE], 0)
+    vsp.SetIntAnalysisInput("VSPAEROComputeGeometry", "ThinGeomSet", [vsp.SET_ALL], 0)
+    vsp.SetIntAnalysisInput("VSPAEROComputeGeometry", "Symmetry", [1], 0)
     print("\nexec VSPAEROComputeGeometry …")
     cg_rid = vsp.ExecAnalysis("VSPAEROComputeGeometry")
     print(f"  result id: {cg_rid}")
@@ -73,46 +74,45 @@ def main() -> int:
     vsp.SetAnalysisInputDefaults("VSPAEROSweep")
 
     # Geometry set
-    vsp.SetIntAnalysisInput("VSPAEROSweep", "GeomSet",     [vsp.SET_NONE], 0)
-    vsp.SetIntAnalysisInput("VSPAEROSweep", "ThinGeomSet", [vsp.SET_ALL],  0)
-    vsp.SetIntAnalysisInput("VSPAEROSweep", "Symmetry",    [1],            0)
+    vsp.SetIntAnalysisInput("VSPAEROSweep", "GeomSet", [vsp.SET_NONE], 0)
+    vsp.SetIntAnalysisInput("VSPAEROSweep", "ThinGeomSet", [vsp.SET_ALL], 0)
+    vsp.SetIntAnalysisInput("VSPAEROSweep", "Symmetry", [1], 0)
 
     # Reference quantities — manual
-    vsp.SetIntAnalysisInput   ("VSPAEROSweep", "RefFlag", [0],     0)
-    vsp.SetDoubleAnalysisInput("VSPAEROSweep", "Sref",    [S_REF], 0)
-    vsp.SetDoubleAnalysisInput("VSPAEROSweep", "bref",    [B_REF], 0)
-    vsp.SetDoubleAnalysisInput("VSPAEROSweep", "cref",    [C_REF], 0)
-    vsp.SetDoubleAnalysisInput("VSPAEROSweep", "Xcg",     [X_CG],  0)
-    vsp.SetDoubleAnalysisInput("VSPAEROSweep", "Ycg",     [0.0],   0)
-    vsp.SetDoubleAnalysisInput("VSPAEROSweep", "Zcg",     [0.0],   0)
+    vsp.SetIntAnalysisInput("VSPAEROSweep", "RefFlag", [0], 0)
+    vsp.SetDoubleAnalysisInput("VSPAEROSweep", "Sref", [S_REF], 0)
+    vsp.SetDoubleAnalysisInput("VSPAEROSweep", "bref", [B_REF], 0)
+    vsp.SetDoubleAnalysisInput("VSPAEROSweep", "cref", [C_REF], 0)
+    vsp.SetDoubleAnalysisInput("VSPAEROSweep", "Xcg", [X_CG], 0)
+    vsp.SetDoubleAnalysisInput("VSPAEROSweep", "Ycg", [0.0], 0)
+    vsp.SetDoubleAnalysisInput("VSPAEROSweep", "Zcg", [0.0], 0)
 
     # Atmosphere — SI override
-    vsp.SetDoubleAnalysisInput("VSPAEROSweep", "Rho",  [RHO],   0)
+    vsp.SetDoubleAnalysisInput("VSPAEROSweep", "Rho", [RHO], 0)
     vsp.SetDoubleAnalysisInput("VSPAEROSweep", "Vinf", [V_INF], 0)
 
     # Single-point Mach / Re
     vsp.SetDoubleAnalysisInput("VSPAEROSweep", "MachStart", [MACH], 0)
-    vsp.SetDoubleAnalysisInput("VSPAEROSweep", "MachEnd",   [MACH], 0)
-    vsp.SetIntAnalysisInput   ("VSPAEROSweep", "MachNpts",  [1],    0)
-    vsp.SetDoubleAnalysisInput("VSPAEROSweep", "Machref",   [MACH], 0)
+    vsp.SetDoubleAnalysisInput("VSPAEROSweep", "MachEnd", [MACH], 0)
+    vsp.SetIntAnalysisInput("VSPAEROSweep", "MachNpts", [1], 0)
+    vsp.SetDoubleAnalysisInput("VSPAEROSweep", "Machref", [MACH], 0)
 
-    vsp.SetDoubleAnalysisInput("VSPAEROSweep", "ReCref",     [RE_C], 0)
-    vsp.SetDoubleAnalysisInput("VSPAEROSweep", "ReCrefEnd",  [RE_C], 0)
-    vsp.SetIntAnalysisInput   ("VSPAEROSweep", "ReCrefNpts", [1],    0)
+    vsp.SetDoubleAnalysisInput("VSPAEROSweep", "ReCref", [RE_C], 0)
+    vsp.SetDoubleAnalysisInput("VSPAEROSweep", "ReCrefEnd", [RE_C], 0)
+    vsp.SetIntAnalysisInput("VSPAEROSweep", "ReCrefNpts", [1], 0)
 
     # α-sweep
     vsp.SetDoubleAnalysisInput("VSPAEROSweep", "AlphaStart", [ALPHA_START], 0)
-    vsp.SetDoubleAnalysisInput("VSPAEROSweep", "AlphaEnd",   [ALPHA_END],   0)
-    vsp.SetIntAnalysisInput   ("VSPAEROSweep", "AlphaNpts",  [ALPHA_NPTS],  0)
+    vsp.SetDoubleAnalysisInput("VSPAEROSweep", "AlphaEnd", [ALPHA_END], 0)
+    vsp.SetIntAnalysisInput("VSPAEROSweep", "AlphaNpts", [ALPHA_NPTS], 0)
 
     # Solver
     vsp.SetIntAnalysisInput("VSPAEROSweep", "NumWakeNodes", [20], 0)
-    vsp.SetIntAnalysisInput("VSPAEROSweep", "WakeNumIter",  [5],  0)
+    vsp.SetIntAnalysisInput("VSPAEROSweep", "WakeNumIter", [5], 0)
 
     # STOP before solve — sanity dry-run
     vsp.SetIntAnalysisInput("VSPAEROSweep", "StopBeforeRun", [1], 0)
-    vsp.SetStringAnalysisInput("VSPAEROSweep", "RedirectFile",
-                                ["vspaero_setup.log"], 0)
+    vsp.SetStringAnalysisInput("VSPAEROSweep", "RedirectFile", ["vspaero_setup.log"], 0)
 
     print("\nexec VSPAEROSweep (StopBeforeRun=1) …")
     sw_rid = vsp.ExecAnalysis("VSPAEROSweep")

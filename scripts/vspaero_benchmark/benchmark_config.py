@@ -7,6 +7,7 @@ byte-identical references (eliminating reference-area as a comparison
 variable). Only the things that can't be derived live here: the flight
 speed/altitude, and the real-world anchor values from literature.
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass, field
@@ -20,14 +21,16 @@ RESULTS_DIR = Path(__file__).parent / "results"
 @dataclass(frozen=True)
 class Anchor:
     """A single real-world reference value (wind tunnel / flight test)."""
-    metric: str          # e.g. "max_LD", "CD0", "CLmax"
+
+    metric: str  # e.g. "max_LD", "CD0", "CLmax"
     value: float
-    source: str          # short citation
+    source: str  # short citation
 
 
 @dataclass(frozen=True)
 class ReferencePolar:
     """A digitized external reference drag polar (CL vs CD) for overlay."""
+
     label: str
     source: str
     CL: list[float]
@@ -42,8 +45,8 @@ class AircraftConfig:
     vsp_filename: str
     velocity_mps: float
     altitude_m: float
-    category: str            # "anchored" (has real data) | "tool_vs_tool"
-    topology: str            # short description for the dashboard
+    category: str  # "anchored" (has real data) | "tool_vs_tool"
+    topology: str  # short description for the dashboard
     anchors: list[Anchor] = field(default_factory=list)
     notes: str = ""
     # VSPAERO mirror flag: 0 = geometry already full (our .vsp3 files).
@@ -65,7 +68,7 @@ AIRCRAFT: list[AircraftConfig] = [
         key="dg101g",
         name="Glaser-Dirks DG-101G",
         vsp_filename="dg101g.vsp3",
-        velocity_mps=29.17,          # 105 km/h
+        velocity_mps=29.17,  # 105 km/h
         altitude_m=1500.0,
         category="anchored",
         topology="High-AR Standard-Class sailplane",
@@ -79,7 +82,7 @@ AIRCRAFT: list[AircraftConfig] = [
         key="cessna172",
         name="Cessna 172",
         vsp_filename="cessna172.vsp3",
-        velocity_mps=50.0,           # ~cruise
+        velocity_mps=50.0,  # ~cruise
         altitude_m=0.0,
         category="anchored",
         topology="Conventional GA, strut-braced high wing",
@@ -94,7 +97,7 @@ AIRCRAFT: list[AircraftConfig] = [
         key="spitfire",
         name="Supermarine Spitfire",
         vsp_filename="spitfire.vsp3",
-        velocity_mps=102.0,          # ~M=0.3 sea level
+        velocity_mps=102.0,  # ~M=0.3 sea level
         altitude_m=0.0,
         category="tool_vs_tool",
         topology="Elliptical planform (e → 1 test)",
@@ -107,7 +110,7 @@ AIRCRAFT: list[AircraftConfig] = [
         key="stratos_ul",
         name="Ligeti Stratos",
         vsp_filename="Stratos_UL_2025-11-29T11_54_22.123Z.vsp3",
-        velocity_mps=50.0,           # 180 km/h cruise
+        velocity_mps=50.0,  # 180 km/h cruise
         altitude_m=0.0,
         category="anchored",
         topology="Closed-tandem / joined-tip Boxwing",
@@ -121,7 +124,7 @@ AIRCRAFT: list[AircraftConfig] = [
         key="falcon_v2",
         name="Titan Dynamics Falcon V2",
         vsp_filename="tdfalconv2.vsp3",
-        velocity_mps=15.0,           # ~cruise (45-65 km/h = 12.5-18 m/s)
+        velocity_mps=15.0,  # ~cruise (45-65 km/h = 12.5-18 m/s)
         altitude_m=0.0,
         category="anchored",
         topology="3D-printed RC/UAV; cambered wing (NACA 4411→3411), 4° washout, V-tail",
@@ -129,11 +132,13 @@ AIRCRAFT: list[AircraftConfig] = [
             Anchor("CLmax", 1.42, "Titan Dynamics manual (CFD)"),
             Anchor("max_LD", 12.0, "Titan CFD drag plot, AUW 3 kg, full aircraft"),
         ],
-        notes=("Real 3D-printed RC model — exact app target audience. Anchors are "
-               "Titan Dynamics' own CFD (not WT/flight). CFD drag is full-aircraft "
-               "(incl. fuselage), so only AeroBuildup compares on total C_D; C_Di, "
-               "C_Lα, AoA are the clean comparisons. Known airfoils (NACA 4411 root) "
-               "make this the test for the importer camber fidelity (#791)."),
+        notes=(
+            "Real 3D-printed RC model — exact app target audience. Anchors are "
+            "Titan Dynamics' own CFD (not WT/flight). CFD drag is full-aircraft "
+            "(incl. fuselage), so only AeroBuildup compares on total C_D; C_Di, "
+            "C_Lα, AoA are the clean comparisons. Known airfoils (NACA 4411 root) "
+            "make this the test for the importer camber fidelity (#791)."
+        ),
         # Digitized from the AUW = 3 kg total-drag plot (manual p.7):
         # W = 29.43 N, S = 0.4514 m², ρ = 1.225. CL = W/(qS), CD = D/(qS).
         reference_polar=ReferencePolar(
@@ -142,7 +147,7 @@ AIRCRAFT: list[AircraftConfig] = [
             CL=[1.064, 0.739, 0.543, 0.416, 0.328, 0.266, 0.185],
             CD=[0.0904, 0.0616, 0.0489, 0.0424, 0.0391, 0.0380, 0.0364],
             note="full-aircraft total C_D incl. fuselage parasite — compares to "
-                 "AeroBuildup, not wings-only VSPAERO",
+            "AeroBuildup, not wings-only VSPAERO",
         ),
     ),
 ]

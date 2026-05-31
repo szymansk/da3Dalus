@@ -5,6 +5,7 @@ small set of headline metrics per source, writes:
   - comparison.json   (aligned curves + metrics + anchors → dashboard)
   - RESULTS.md        (human-readable Δ-table + interpretation)
 """
+
 from __future__ import annotations
 
 import csv
@@ -17,8 +18,8 @@ from benchmark_config import AircraftConfig
 
 # Maps a source key → (csv filename, human label, method family)
 SOURCES = [
-    ("vspaero",      "vspaero_polar.csv",            "VSPAERO (VLM, wings-only)"),
-    ("asb_vlm",      "asb_vortex_lattice_polar.csv", "ASB VortexLattice (inviscid)"),
+    ("vspaero", "vspaero_polar.csv", "VSPAERO (VLM, wings-only)"),
+    ("asb_vlm", "asb_vortex_lattice_polar.csv", "ASB VortexLattice (inviscid)"),
     ("asb_aerobuildup", "asb_aerobuildup_polar.csv", "ASB AeroBuildup (app default)"),
 ]
 
@@ -27,8 +28,7 @@ def _read_csv(path: Path) -> list[dict[str, float]]:
     rows: list[dict[str, float]] = []
     with path.open() as f:
         for r in csv.DictReader(f):
-            rows.append({k: float(v) if v not in ("", "nan") else math.nan
-                         for k, v in r.items()})
+            rows.append({k: float(v) if v not in ("", "nan") else math.nan for k, v in r.items()})
     return rows
 
 
@@ -42,9 +42,9 @@ def _interp_at(x: list[float], y: list[float], x0: float) -> float:
     pts.sort()
     if len(pts) < 2:
         return math.nan
-    (x1, y1), (x2, y2) = pts[0], pts[1]            # default: extrapolate low end
+    (x1, y1), (x2, y2) = pts[0], pts[1]  # default: extrapolate low end
     if x0 >= pts[-1][0]:
-        (x1, y1), (x2, y2) = pts[-2], pts[-1]      # extrapolate high end
+        (x1, y1), (x2, y2) = pts[-2], pts[-1]  # extrapolate high end
     elif x0 > pts[0][0]:
         for i in range(1, len(pts)):
             if pts[i][0] >= x0:
@@ -57,8 +57,11 @@ def _interp_at(x: list[float], y: list[float], x0: float) -> float:
 
 def _linfit_slope(x: list[float], y: list[float], lo: float, hi: float) -> float:
     """Least-squares slope dy/dx over the window [lo, hi] (per degree)."""
-    pts = [(a, b) for a, b in zip(x, y, strict=False)
-           if not (math.isnan(a) or math.isnan(b)) and lo <= a <= hi]
+    pts = [
+        (a, b)
+        for a, b in zip(x, y, strict=False)
+        if not (math.isnan(a) or math.isnan(b)) and lo <= a <= hi
+    ]
     n = len(pts)
     if n < 2:
         return math.nan
@@ -79,7 +82,7 @@ def _metrics(rows: list[dict]) -> dict[str, float]:
     eff = _col(rows, "eff_e_vsp") if "eff_e_vsp" in rows[0] else _col(rows, "eff_e")
 
     lod_valid = [(v, a[i]) for i, v in enumerate(lod) if not math.isnan(v)]
-    max_lod, a_at_max = (max(lod_valid) if lod_valid else (math.nan, math.nan))
+    max_lod, a_at_max = max(lod_valid) if lod_valid else (math.nan, math.nan)
     cd_valid = [v for v in cd if not math.isnan(v)]
     eff_valid = [v for v in eff if not math.isnan(v)]
     return {
@@ -102,19 +105,27 @@ def _flags(metrics: dict, curves: dict, is_boxwing: bool) -> list[str]:
         return ["method produced all-NaN (failed for this geometry)"]
     sl = metrics.get("CL_alpha_per_deg", math.nan)
     if not math.isnan(sl) and not (0.03 <= sl <= 0.18):
-        out.append(f"non-physical lift slope C_Lα={sl:.3f}/deg "
-                   f"(expected 0.03–0.18); suspect geometry/reference")
+        out.append(
+            f"non-physical lift slope C_Lα={sl:.3f}/deg "
+            f"(expected 0.03–0.18); suspect geometry/reference"
+        )
     e = metrics.get("e_mean", math.nan)
     if not math.isnan(e) and e < 0.3:
-        out.append(f"non-physical span efficiency e={e:.3f} (≪ typical 0.7–1.0) — "
-                   f"induced-drag solve looks unreliable for this geometry")
+        out.append(
+            f"non-physical span efficiency e={e:.3f} (≪ typical 0.7–1.0) — "
+            f"induced-drag solve looks unreliable for this geometry"
+        )
     if not math.isnan(e) and e > 1.1 and not is_boxwing:
-        out.append(f"non-physical span efficiency e={e:.2f} > 1.0 "
-                   f"(VLM tip-discretisation / back-computed artifact)")
+        out.append(
+            f"non-physical span efficiency e={e:.2f} > 1.0 "
+            f"(VLM tip-discretisation / back-computed artifact)"
+        )
     if is_boxwing and not math.isnan(e) and e > 1.1:
-        out.append(f"span efficiency e={e:.2f} > 1.0 — expected for a box "
-                   f"wing (beats the monoplane limit), but the AR-based "
-                   f"formula is only indicative here")
+        out.append(
+            f"span efficiency e={e:.2f} > 1.0 — expected for a box "
+            f"wing (beats the monoplane limit), but the AR-based "
+            f"formula is only indicative here"
+        )
     return out
 
 
@@ -174,8 +185,7 @@ def _write_results_md(cfg: AircraftConfig, comp: dict) -> None:
     lines.append(f"# {cfg.name} — VSPAERO vs AeroSandbox\n")
     lines.append(f"- **Topology:** {cfg.topology}")
     lines.append(f"- **Category:** {cfg.category}")
-    lines.append(f"- **Flight point:** V = {cfg.velocity_mps} m/s, "
-                 f"altitude = {cfg.altitude_m} m")
+    lines.append(f"- **Flight point:** V = {cfg.velocity_mps} m/s, altitude = {cfg.altitude_m} m")
     if cfg.notes:
         lines.append(f"- **Notes:** {cfg.notes}")
     lines.append("")
@@ -225,15 +235,19 @@ def _write_results_md(cfg: AircraftConfig, comp: dict) -> None:
         a = src["asb_vlm"]["metrics"]
         if not (math.isnan(v["CL_alpha_per_deg"]) or math.isnan(a["CL_alpha_per_deg"])):
             d = 100 * (a["CL_alpha_per_deg"] - v["CL_alpha_per_deg"]) / v["CL_alpha_per_deg"]
-            lines.append(f"- **VLM C_Lα agreement (ASB vs VSPAERO):** "
-                         f"{a['CL_alpha_per_deg']:.4f} vs {v['CL_alpha_per_deg']:.4f} "
-                         f"/deg → Δ = {d:+.1f} %.")
+            lines.append(
+                f"- **VLM C_Lα agreement (ASB vs VSPAERO):** "
+                f"{a['CL_alpha_per_deg']:.4f} vs {v['CL_alpha_per_deg']:.4f} "
+                f"/deg → Δ = {d:+.1f} %."
+            )
         if not (math.isnan(v["CL0"]) or math.isnan(a["CL0"])):
-            lines.append(f"- **C_L0 offset (ASB vs VSPAERO VLM):** "
-                         f"{a['CL0']:.3f} vs {v['CL0']:.3f} → Δ = {a['CL0'] - v['CL0']:+.3f}. "
-                         f"A matched slope with a C_L0 offset points to an airfoil "
-                         f"camber / zero-lift-angle interpretation difference, not "
-                         f"reference area.")
+            lines.append(
+                f"- **C_L0 offset (ASB vs VSPAERO VLM):** "
+                f"{a['CL0']:.3f} vs {v['CL0']:.3f} → Δ = {a['CL0'] - v['CL0']:+.3f}. "
+                f"A matched slope with a C_L0 offset points to an airfoil "
+                f"camber / zero-lift-angle interpretation difference, not "
+                f"reference area."
+            )
     # max L/D vs real anchor
     real_lod = next((an.value for an in cfg.anchors if an.metric == "max_LD"), None)
     if real_lod is not None:
@@ -241,15 +255,19 @@ def _write_results_md(cfg: AircraftConfig, comp: dict) -> None:
             m = src[k]["metrics"]["max_LD"]
             if not math.isnan(m):
                 d = 100 * (m - real_lod) / real_lod
-                lines.append(f"- **max L/D — {src[k]['label']}:** {m:.1f} vs "
-                             f"real {real_lod:.1f} → {d:+.0f} %.")
+                lines.append(
+                    f"- **max L/D — {src[k]['label']}:** {m:.1f} vs "
+                    f"real {real_lod:.1f} → {d:+.0f} %."
+                )
     # non-physical span efficiency flag (per design-error-feedback memory)
     for k in keys:
         e = src[k]["metrics"]["e_mean"]
         if not math.isnan(e) and e > 1.05:
-            lines.append(f"- ⚠️ **{src[k]['label']}: mean span efficiency e = {e:.3f} "
-                         f"> 1.0** — non-physical; flag rather than hide (VLM tip "
-                         f"discretisation / back-computed-e artifact).")
+            lines.append(
+                f"- ⚠️ **{src[k]['label']}: mean span efficiency e = {e:.3f} "
+                f"> 1.0** — non-physical; flag rather than hide (VLM tip "
+                f"discretisation / back-computed-e artifact)."
+            )
     lines.append("")
 
     (cfg.result_dir / "RESULTS.md").write_text("\n".join(lines))
@@ -257,14 +275,19 @@ def _write_results_md(cfg: AircraftConfig, comp: dict) -> None:
 
 def main() -> int:
     import sys
+
     sys.path.insert(0, str(Path(__file__).parent))
     from benchmark_config import AIRCRAFT
+
     for cfg in AIRCRAFT:
-        if (cfg.result_dir / "comparison.json").parent.exists() and \
-           any((cfg.result_dir / s[1]).exists() for s in SOURCES):
+        if (cfg.result_dir / "comparison.json").parent.exists() and any(
+            (cfg.result_dir / s[1]).exists() for s in SOURCES
+        ):
             comp = compare_aircraft(cfg)
-            print(f"[compare] {cfg.key}: {len(comp['sources'])} sources → "
-                  f"{cfg.result_dir / 'RESULTS.md'}")
+            print(
+                f"[compare] {cfg.key}: {len(comp['sources'])} sources → "
+                f"{cfg.result_dir / 'RESULTS.md'}"
+            )
         else:
             print(f"[compare] {cfg.key}: no polar CSVs yet, skipping")
     return 0

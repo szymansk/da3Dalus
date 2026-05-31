@@ -13,6 +13,7 @@ Output CSV columns:
 Where eff_e is the span efficiency back-computed from CDi:
     e = CL² / (π · AR · CDi)   with AR = bref² / Sref
 """
+
 from __future__ import annotations
 
 import math
@@ -27,6 +28,7 @@ import openvsp as vsp
 @dataclass(frozen=True)
 class FlightCondition:
     """A single Mach/Re/atmosphere point. α is swept separately."""
+
     name: str
     vinf_mps: float
     mach: float
@@ -37,6 +39,7 @@ class FlightCondition:
 @dataclass(frozen=True)
 class ReferenceQuantities:
     """All values in SI (m, m², m). Source: the .vsp3 Vehicle/Wing block."""
+
     s_ref_m2: float
     b_ref_m: float
     c_ref_m: float
@@ -65,8 +68,16 @@ class SweepConfig:
 #   Reynolds → "FC_ReCref_" (not "ReCref")
 # VSPAERO also exposes "L/D" and "E" (span efficiency) directly.
 RESULT_FIELDS = (
-    "Alpha", "Mach", "FC_ReCref_",
-    "CLtot", "CDtot", "CDo", "CDi", "CMytot", "L/D", "E",
+    "Alpha",
+    "Mach",
+    "FC_ReCref_",
+    "CLtot",
+    "CDtot",
+    "CDo",
+    "CDi",
+    "CMytot",
+    "L/D",
+    "E",
 )
 
 # Lifting-surface set: VSPAERO meshes a Fuselage as a degenerate thin
@@ -109,8 +120,7 @@ def _select_lifting_surfaces() -> int:
         vsp.SetSetFlag(gid, LIFTING_SURFACE_SET, is_wing)
         if is_wing:
             wing_names.append(vsp.GetGeomName(gid))
-    print(f"[vspaero] lifting surfaces (set {LIFTING_SURFACE_SET}): {wing_names}",
-          flush=True)
+    print(f"[vspaero] lifting surfaces (set {LIFTING_SURFACE_SET}): {wing_names}", flush=True)
     if not wing_names:
         raise RuntimeError("no WING-type geoms found — nothing to mesh")
     return LIFTING_SURFACE_SET
@@ -118,9 +128,9 @@ def _select_lifting_surfaces() -> int:
 
 def _configure_compute_geometry(thin_set: int, symmetry: int) -> None:
     vsp.SetAnalysisInputDefaults("VSPAEROComputeGeometry")
-    _set_int("VSPAEROComputeGeometry", "GeomSet",     vsp.SET_NONE)  # VLM
+    _set_int("VSPAEROComputeGeometry", "GeomSet", vsp.SET_NONE)  # VLM
     _set_int("VSPAEROComputeGeometry", "ThinGeomSet", thin_set)
-    _set_int("VSPAEROComputeGeometry", "Symmetry",    symmetry)
+    _set_int("VSPAEROComputeGeometry", "Symmetry", symmetry)
 
 
 def _configure_sweep(
@@ -133,41 +143,41 @@ def _configure_sweep(
     vsp.SetAnalysisInputDefaults("VSPAEROSweep")
 
     # Geometry mode (VLM) — lifting surfaces only
-    _set_int("VSPAEROSweep", "GeomSet",     vsp.SET_NONE)
+    _set_int("VSPAEROSweep", "GeomSet", vsp.SET_NONE)
     _set_int("VSPAEROSweep", "ThinGeomSet", thin_set)
-    _set_int("VSPAEROSweep", "Symmetry",    sweep.symmetry)
+    _set_int("VSPAEROSweep", "Symmetry", sweep.symmetry)
 
     # Reference quantities — manual
-    _set_int   ("VSPAEROSweep", "RefFlag", 0)
-    _set_double("VSPAEROSweep", "Sref",    ref.s_ref_m2)
-    _set_double("VSPAEROSweep", "bref",    ref.b_ref_m)
-    _set_double("VSPAEROSweep", "cref",    ref.c_ref_m)
-    _set_double("VSPAEROSweep", "Xcg",     ref.x_cg_m)
-    _set_double("VSPAEROSweep", "Ycg",     ref.y_cg_m)
-    _set_double("VSPAEROSweep", "Zcg",     ref.z_cg_m)
+    _set_int("VSPAEROSweep", "RefFlag", 0)
+    _set_double("VSPAEROSweep", "Sref", ref.s_ref_m2)
+    _set_double("VSPAEROSweep", "bref", ref.b_ref_m)
+    _set_double("VSPAEROSweep", "cref", ref.c_ref_m)
+    _set_double("VSPAEROSweep", "Xcg", ref.x_cg_m)
+    _set_double("VSPAEROSweep", "Ycg", ref.y_cg_m)
+    _set_double("VSPAEROSweep", "Zcg", ref.z_cg_m)
 
     # Atmosphere — SI override (defaults are imperial)
-    _set_double("VSPAEROSweep", "Rho",  flight.rho_kgm3)
+    _set_double("VSPAEROSweep", "Rho", flight.rho_kgm3)
     _set_double("VSPAEROSweep", "Vinf", flight.vinf_mps)
 
     # Single-point Mach / Re
     _set_double("VSPAEROSweep", "MachStart", flight.mach)
-    _set_double("VSPAEROSweep", "MachEnd",   flight.mach)
-    _set_int   ("VSPAEROSweep", "MachNpts",  1)
-    _set_double("VSPAEROSweep", "Machref",   flight.mach)
+    _set_double("VSPAEROSweep", "MachEnd", flight.mach)
+    _set_int("VSPAEROSweep", "MachNpts", 1)
+    _set_double("VSPAEROSweep", "Machref", flight.mach)
 
-    _set_double("VSPAEROSweep", "ReCref",     flight.re_cref)
-    _set_double("VSPAEROSweep", "ReCrefEnd",  flight.re_cref)
-    _set_int   ("VSPAEROSweep", "ReCrefNpts", 1)
+    _set_double("VSPAEROSweep", "ReCref", flight.re_cref)
+    _set_double("VSPAEROSweep", "ReCrefEnd", flight.re_cref)
+    _set_int("VSPAEROSweep", "ReCrefNpts", 1)
 
     # α-sweep
     _set_double("VSPAEROSweep", "AlphaStart", sweep.alpha_start_deg)
-    _set_double("VSPAEROSweep", "AlphaEnd",   sweep.alpha_end_deg)
-    _set_int   ("VSPAEROSweep", "AlphaNpts",  sweep.alpha_npts)
+    _set_double("VSPAEROSweep", "AlphaEnd", sweep.alpha_end_deg)
+    _set_int("VSPAEROSweep", "AlphaNpts", sweep.alpha_npts)
 
     # Solver
     _set_int("VSPAEROSweep", "NumWakeNodes", sweep.num_wake_nodes)
-    _set_int("VSPAEROSweep", "WakeNumIter",  sweep.wake_num_iter)
+    _set_int("VSPAEROSweep", "WakeNumIter", sweep.wake_num_iter)
 
     _set_string("VSPAEROSweep", "RedirectFile", str(log_path))
 
@@ -218,7 +228,7 @@ def run(
     # "Can't Find Name" stderr spam from probing the wrong sub-results.
     rid_vec = vsp.GetStringResults(sweep_rid, "ResultsVec")
 
-    ar = (ref.b_ref_m ** 2) / ref.s_ref_m2
+    ar = (ref.b_ref_m**2) / ref.s_ref_m2
     rows: list[dict[str, float]] = []
     for sub_rid in rid_vec:
         names = set(vsp.GetAllDataNames(sub_rid))
@@ -233,25 +243,27 @@ def run(
         # Cross-check: span-efficiency back-computed from Trefftz CDi,
         # alongside VSPAERO's own "E". e = CL² / (π · AR · CDi).
         cl, cdi = row["CLtot"], row["CDi"]
-        row["eff_e_calc"] = (
-            (cl * cl) / (math.pi * ar * cdi) if cdi > 1e-9 else math.nan
-        )
+        row["eff_e_calc"] = (cl * cl) / (math.pi * ar * cdi) if cdi > 1e-9 else math.nan
         rows.append(row)
 
     if len(rows) != sweep.alpha_npts:
-        print(f"[vspaero] WARNING: extracted {len(rows)} α-points, "
-              f"expected {sweep.alpha_npts}", flush=True)
+        print(
+            f"[vspaero] WARNING: extracted {len(rows)} α-points, expected {sweep.alpha_npts}",
+            flush=True,
+        )
 
     # A diverged sub-result yields NaN forces — flag rather than hide.
     n_nan = sum(1 for r in rows if math.isnan(r["CLtot"]))
     if n_nan:
-        print(f"[vspaero] WARNING: {n_nan}/{len(rows)} α-points are NaN "
-              f"(solver did not converge) — see {log_path}", flush=True)
+        print(
+            f"[vspaero] WARNING: {n_nan}/{len(rows)} α-points are NaN "
+            f"(solver did not converge) — see {log_path}",
+            flush=True,
+        )
 
     out_csv.parent.mkdir(parents=True, exist_ok=True)
     with out_csv.open("w") as f:
-        f.write("alpha_deg,mach,re_cref,CLtot,CDtot,CDo,CDi,CMytot,"
-                "LoD,eff_e_vsp,eff_e_calc\n")
+        f.write("alpha_deg,mach,re_cref,CLtot,CDtot,CDo,CDi,CMytot,LoD,eff_e_vsp,eff_e_calc\n")
         for r in rows:
             f.write(
                 f"{r['Alpha']:.6f},{r['Mach']:.6f},{r['FC_ReCref_']:.6e},"
@@ -260,8 +272,7 @@ def run(
                 f"{r['E']:.6f},{r['eff_e_calc']:.6f}\n"
             )
 
-    print(f"[vspaero] wrote {out_csv}  ({len(rows)} rows, {n_nan} NaN)",
-          flush=True)
+    print(f"[vspaero] wrote {out_csv}  ({len(rows)} rows, {n_nan} NaN)", flush=True)
     return out_csv
 
 
