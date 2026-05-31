@@ -343,10 +343,27 @@ function SpeedPolarChart({ speedPolar }: Readonly<{ speedPolar: SpeedPolar }>) {
     let PlotlyRef: any = null;
     const traces = speedPolarTraces(curves);
 
+    const { v_axis_min, v_axis_max } = speedPolar;
+    const hasBounds =
+      typeof v_axis_min === "number" &&
+      isFinite(v_axis_min) &&
+      typeof v_axis_max === "number" &&
+      isFinite(v_axis_max);
+    const layout = hasBounds
+      ? {
+          ...SPEED_POLAR_LAYOUT,
+          xaxis: {
+            ...(SPEED_POLAR_LAYOUT.xaxis as Record<string, unknown>),
+            range: [v_axis_min, v_axis_max],
+            autorange: false,
+          },
+        }
+      : SPEED_POLAR_LAYOUT;
+
     (async () => {
       PlotlyRef = await import("plotly.js-gl3d-dist-min");
       if (disposed || !node) return;
-      await PlotlyRef.react(node, traces, SPEED_POLAR_LAYOUT, {
+      await PlotlyRef.react(node, traces, layout, {
         responsive: true,
         displayModeBar: false,
       });
