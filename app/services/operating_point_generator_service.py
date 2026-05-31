@@ -130,6 +130,21 @@ class TrimmedPoint:
     trim_enrichment: dict | None = None
 
 
+def _op_turn_rates(target: dict, velocity: float) -> tuple[float, float, float]:
+    """Body rates (p, q, r) in rad/s for a turn target, or zeros for non-turns.
+
+    A turn target carries ``bank_deg``; kinematics come from
+    :func:`app.services.turn_kinematics.turn_kinematics`.
+    """
+    bank_deg = target.get("bank_deg")
+    if bank_deg is None:
+        return (0.0, 0.0, 0.0)
+    from app.services.turn_kinematics import turn_kinematics
+
+    tk = turn_kinematics(bank_deg=float(bank_deg), velocity=float(velocity))
+    return (round(tk.p, 6), round(tk.q, 6), round(tk.r, 6))
+
+
 def _safe_coeff(result: dict[str, Any], key: str, default: float = 0.0) -> float:
     value = result.get(key)
     if value is None:
@@ -597,13 +612,14 @@ def _solve_trim_candidate_with_opti(
             else:
                 airplane_for_eval = asb_airplane
 
+        _p, _q, _r = _op_turn_rates(target, velocity_mps)
         op = asb.OperatingPoint(
             velocity=float(velocity_mps),
             alpha=alpha_deg,
             beta=float(beta_target_deg),
-            p=0.0,
-            q=0.0,
-            r=0.0,
+            p=_p,
+            q=_q,
+            r=_r,
             atmosphere=asb.Atmosphere(altitude=altitude_m),
         )
 
@@ -879,6 +895,7 @@ def _trim_or_estimate_point(
             best_controls = dict(best_controls)
             best_controls[flap_name] = float(flap_deflection_target)
 
+    _tp_rates = _op_turn_rates(target, velocity)
     return TrimmedPoint(
         name=target["name"],
         description=(
@@ -890,9 +907,9 @@ def _trim_or_estimate_point(
         altitude=float(altitude),
         alpha_rad=math.radians(best_alpha),
         beta_rad=math.radians(best_beta),
-        p=0.0,
-        q=0.0,
-        r=0.0,
+        p=_tp_rates[0],
+        q=_tp_rates[1],
+        r=_tp_rates[2],
         status=trim_status,
         warnings=warnings,
         controls=best_controls,
