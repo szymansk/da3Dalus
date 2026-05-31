@@ -107,6 +107,49 @@ def test_morph_returns_none_when_anchor_unresolvable(tmp_path, monkeypatch):
     assert oa.morph_airfoils("does_not_exist_a", "does_not_exist_b", 0.5) is None
 
 
+def test_raw_blend_degenerate_split_returns_none():
+    # Fewer than 2 points per surface → _split bails → None (caller then
+    # uses nearest-anchor airfoil).
+    assert oa._raw_blend([(0.0, 0.0)], [(0.0, 0.0)], 0.5) is None
+
+
+class _FakeSeligVsp:
+    """Minimal VSP stub for _export_selig: writes a chosen sequence of
+    file contents on successive WriteSeligAirfoil calls."""
+
+    def __init__(self, contents):
+        self._contents = list(contents)
+        self.calls = 0
+
+    def WriteSeligAirfoil(self, path, geom_id, u):  # noqa: N802 — VSP API name
+        body = self._contents[min(self.calls, len(self._contents) - 1)]
+        Path(path).write_text(body)
+        self.calls += 1
+
+
+def test_export_selig_routes_fallback_through_content_hash(tmp_path, monkeypatch):
+    # Temp export empty (unparseable) → fallback re-export yields coords →
+    # still stored under a content-hash name (no legacy-named dedup bypass).
+    monkeypatch.setattr(oa, "AIRFOILS_DIR", tmp_path)
+    monkeypatch.setattr(oa, "foilsurf_u_for_xs", lambda *a, **k: 0.0)
+    vsp = _FakeSeligVsp(["", "fb\n1.0 0.0\n0.0 0.0\n1.0 -0.0\n"])
+    rel = oa._export_selig(vsp, "GEOM/UNSAFE\\ID", object(), 2)
+    assert vsp.calls == 2  # temp empty → fallback re-export
+    assert Path(rel).name.startswith("vsp_imported_")
+    assert (tmp_path / Path(rel).name).exists()
+
+
+def test_export_selig_last_resort_legacy_name_when_unparseable(tmp_path, monkeypatch):
+    # Both temp and fallback unparseable → last-resort sanitized legacy name.
+    monkeypatch.setattr(oa, "AIRFOILS_DIR", tmp_path)
+    monkeypatch.setattr(oa, "foilsurf_u_for_xs", lambda *a, **k: 0.0)
+    vsp = _FakeSeligVsp([""])  # always empty
+    rel = oa._export_selig(vsp, "GEOM/UNSAFE\\ID", object(), 0)
+    name = Path(rel).name
+    assert name.startswith("vsp_imported_")
+    assert "/" not in name and "\\" not in name  # geom_id sanitized
+
+
 def test_kulfan_morph_thickness_between_anchors(tmp_path, monkeypatch):
     """Real Kulfan interpolation between two symmetric NACA sections."""
     pytest.importorskip("aerosandbox")
