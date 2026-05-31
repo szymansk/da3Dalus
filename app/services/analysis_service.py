@@ -436,6 +436,7 @@ def _compute_speed_polar(
     rho,
     altitude: float = 0.0,
     g: float = 9.81,
+    v_dive: float | None = None,
 ):
     """Derive glide speed polars (sink rate ``w`` over forward speed ``V``) from
     a drag polar (CL/CD), for one or more masses.
@@ -521,12 +522,36 @@ def _compute_speed_polar(
             )
         )
 
+    # --- velocity-axis display bounds (gh-799) ---
+    v_stall_values = [c.v_stall for c in curves if c.v_stall is not None]
+    if v_stall_values:
+        v_axis_min: float | None = 0.7 * min(v_stall_values)
+    else:
+        v_axis_min = None
+
+    if v_dive is not None and v_dive > 0:
+        v_axis_max: float | None = 1.3 * v_dive
+    else:
+        # Fallback: highest V across all curves (lowest positive CL point)
+        all_v = [v for c in curves for v in c.V]
+        v_axis_max = max(all_v) if all_v else None
+
+    # Drop to autorange when either bound is absent or bounds are inverted.
+    if v_axis_min is None or v_axis_max is None:
+        v_axis_min = None
+        v_axis_max = None
+    elif v_axis_min >= v_axis_max:
+        v_axis_min = None
+        v_axis_max = None
+
     return SpeedPolar(
         base_mass_kg=float(base_mass_kg),
         s_ref=float(s_ref_m2),
         rho=float(rho),
         altitude=float(altitude),
         curves=curves,
+        v_axis_min=v_axis_min,
+        v_axis_max=v_axis_max,
     )
 
 
@@ -553,6 +578,21 @@ def _build_speed_polar(db, aeroplane_uuid, sweep_request, asb_airplane, cl_value
         s_ref = float(getattr(asb_airplane, "s_ref", 0.0) or 0.0)
         altitude = float(getattr(sweep_request, "altitude", 0.0) or 0.0)
         rho = float(asb.Atmosphere(altitude=altitude).density())
+        # Resolve V_dive from the cached assumption computation context (gh-799).
+        # Best-effort: a missing or None context must not break the polar.
+        v_dive: float | None = None
+        try:
+            from app.models.aeroplanemodel import AeroplaneModel
+
+            aeroplane_row = (
+                db.query(AeroplaneModel).filter(AeroplaneModel.uuid == aeroplane_uuid).first()
+            )
+            ctx = getattr(aeroplane_row, "assumption_computation_context", None) or {}
+            raw_v_dive = ctx.get("v_dive_mps")
+            if raw_v_dive is not None:
+                v_dive = float(raw_v_dive)
+        except Exception:  # pragma: no cover - defensive
+            pass
         return _compute_speed_polar(
             cl=cl_values,
             cd=cd_values,
@@ -561,6 +601,7 @@ def _build_speed_polar(db, aeroplane_uuid, sweep_request, asb_airplane, cl_value
             s_ref_m2=s_ref,
             rho=rho,
             altitude=altitude,
+            v_dive=v_dive,
         )
     except Exception as e:  # pragma: no cover - defensive add-on
         logger.error("Speed polar computation failed: %s", e)

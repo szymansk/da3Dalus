@@ -133,3 +133,119 @@ def test_w_min_matches_closed_form() -> None:
     w_min_closed = _min_sink_rate(mass, s_ref, cd0, ar, rho=rho, oswald_e=e)
     assert w_min_closed is not None
     assert w_min_discrete == pytest.approx(w_min_closed, rel=0.03)
+
+
+# ---------------------------------------------------------------------------
+# Velocity-axis bounds (gh-799)
+# ---------------------------------------------------------------------------
+
+
+def _make_polar_with_stall() -> tuple:
+    """Return (cl, cd, s_ref, rho) for a simple polar with a well-defined CL_max."""
+    cl = np.linspace(0.2, 1.4, 50)
+    cd0, e, ar = 0.012, 0.85, 12.0
+    cd = cd0 + cl**2 / (math.pi * e * ar)
+    return cl, cd, 0.225, 1.225
+
+
+def test_bounds_with_v_dive() -> None:
+    """With v_dive provided: v_axis_min=0.7*min(v_stall), v_axis_max=1.3*v_dive."""
+    cl, cd, s_ref, rho = _make_polar_with_stall()
+    v_dive = 40.0
+    sp = _compute_speed_polar(
+        cl=cl,
+        cd=cd,
+        masses_kg=[],
+        base_mass_kg=1.5,
+        s_ref_m2=s_ref,
+        rho=rho,
+        v_dive=v_dive,
+    )
+    assert len(sp.curves) == 1
+    v_stall = sp.curves[0].v_stall
+    assert v_stall is not None
+    assert sp.v_axis_min == pytest.approx(0.7 * v_stall, rel=1e-9)
+    assert sp.v_axis_max == pytest.approx(1.3 * v_dive, rel=1e-9)
+
+
+def test_bounds_fallback_no_v_dive() -> None:
+    """With v_dive=None the right bound falls back to max(V) over all curves."""
+    cl, cd, s_ref, rho = _make_polar_with_stall()
+    sp = _compute_speed_polar(
+        cl=cl,
+        cd=cd,
+        masses_kg=[],
+        base_mass_kg=1.5,
+        s_ref_m2=s_ref,
+        rho=rho,
+        v_dive=None,
+    )
+    curve = sp.curves[0]
+    expected_v_max = max(curve.V)
+    assert sp.v_axis_max == pytest.approx(expected_v_max, rel=1e-9)
+
+
+def test_bounds_multi_mass_v_axis_min_uses_lightest() -> None:
+    """With multiple masses, v_axis_min is anchored to the lightest mass's v_stall."""
+    cl, cd, s_ref, rho = _make_polar_with_stall()
+    # Lighter mass → lower v_stall → lower left edge
+    sp = _compute_speed_polar(
+        cl=cl,
+        cd=cd,
+        masses_kg=[3.0],
+        base_mass_kg=1.5,
+        s_ref_m2=s_ref,
+        rho=rho,
+        v_dive=50.0,
+    )
+    by_mass = {c.mass_kg: c for c in sp.curves}
+    v_stall_light = by_mass[1.5].v_stall
+    v_stall_heavy = by_mass[3.0].v_stall
+    assert v_stall_light is not None
+    assert v_stall_heavy is not None
+    # Lightest mass gives smallest v_stall
+    assert v_stall_light < v_stall_heavy
+    assert sp.v_axis_min == pytest.approx(0.7 * v_stall_light, rel=1e-9)
+
+
+def test_bounds_v_dive_mass_independent() -> None:
+    """Right edge is identical regardless of extra comparison masses added."""
+    cl, cd, s_ref, rho = _make_polar_with_stall()
+    v_dive = 35.0
+    sp_single = _compute_speed_polar(
+        cl=cl,
+        cd=cd,
+        masses_kg=[],
+        base_mass_kg=1.5,
+        s_ref_m2=s_ref,
+        rho=rho,
+        v_dive=v_dive,
+    )
+    sp_multi = _compute_speed_polar(
+        cl=cl,
+        cd=cd,
+        masses_kg=[2.5, 4.0],
+        base_mass_kg=1.5,
+        s_ref_m2=s_ref,
+        rho=rho,
+        v_dive=v_dive,
+    )
+    assert sp_single.v_axis_max == pytest.approx(sp_multi.v_axis_max, rel=1e-9)
+    assert sp_single.v_axis_max == pytest.approx(1.3 * v_dive, rel=1e-9)
+
+
+def test_bounds_degenerate_no_positive_cl() -> None:
+    """When no positive-CL points exist, both bounds are None — no exception raised."""
+    cl = np.array([-0.5, -0.1, 0.0])
+    cd = np.array([0.04, 0.02, 0.015])
+    sp = _compute_speed_polar(
+        cl=cl,
+        cd=cd,
+        masses_kg=[],
+        base_mass_kg=1.5,
+        s_ref_m2=0.225,
+        rho=1.225,
+        v_dive=30.0,
+    )
+    assert sp.v_axis_min is None
+    assert sp.v_axis_max is None
