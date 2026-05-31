@@ -84,9 +84,7 @@ def _rounded_rect_to_n(*, width: float, height: float, radius: float) -> float:
     return n_low + (n_high - n_low) * (1.0 - f)
 
 
-def _fit_n_from_xsec_points(
-    points_yz: list[tuple[float, float]], a: float, b: float
-) -> float:
+def _fit_n_from_xsec_points(points_yz: list[tuple[float, float]], a: float, b: float) -> float:
     """Fit the super-ellipse exponent ``n`` against sampled outline points.
 
     Super-ellipse: ``|y/a|^n + |z/b|^n = 1``. Given a sample of (y, z)
@@ -108,9 +106,7 @@ def _fit_n_from_xsec_points(
     # near-axis samples (|u| or |v| ≈ 0) are dominated by the other
     # term and don't help discriminate between candidate n values.
     valid = [
-        (abs(y) / a, abs(z) / b)
-        for y, z in points_yz
-        if abs(y) / a > 0.1 and abs(z) / b > 0.1
+        (abs(y) / a, abs(z) / b) for y, z in points_yz if abs(y) / a > 0.1 and abs(z) / b > 0.1
     ]
     if len(valid) < 3:
         return 2.0
@@ -127,9 +123,7 @@ def _fit_n_from_xsec_points(
     return float(res.x)
 
 
-def _sample_xsec_yz(
-    vsp: ModuleType, xs_id: str, n_points: int = 24
-) -> list[tuple[float, float]]:
+def _sample_xsec_yz(vsp: ModuleType, xs_id: str, n_points: int = 24) -> list[tuple[float, float]]:
     """Sample (y, z) points around an XSec outline via ``ComputeXSecPnt``.
 
     Returns world-frame (y, z) tuples relative to the XSec's own
@@ -274,10 +268,13 @@ def _read_length(vsp: ModuleType, fuse_gid: str) -> float:
 # else falls back to ``symmetric=False`` with an info-warning.
 _SYM_XZ = 2
 
+# A fuselage whose largest half-width or half-height across all xsecs is
+# at or below this (metres) has effectively zero cross-section — treated
+# as a degenerate / non-outer-mold-line body and dropped (gh-804).
+_DEGENERATE_HALF_AXIS_M = 1e-6
 
-def _read_sym_planar_flag(
-    vsp: ModuleType, gid: str, name: str, ctx: ImportContext
-) -> bool:
+
+def _read_sym_planar_flag(vsp: ModuleType, gid: str, name: str, ctx: ImportContext) -> bool:
     """Return ``True`` iff the geom is marked XZ-symmetric (gh-715).
 
     OpenVSP exposes per-geom symmetry via the ``Sym_Planar_Flag`` parm
@@ -307,9 +304,7 @@ def _read_sym_planar_flag(
     return False
 
 
-def _read_loc_pct(
-    vsp: ModuleType, xs_id: str, axis: str, i: int, n_xsec: int
-) -> float:
+def _read_loc_pct(vsp: ModuleType, xs_id: str, axis: str, i: int, n_xsec: int) -> float:
     """Read ``{X,Y,Z}LocPercent`` from an XSec container.
 
     OpenVSP 3.50 convention (gh-711): the position parms live on the
@@ -436,6 +431,47 @@ def _handle_fuselage(
 # ---------------------------------------------------------------------------
 
 
+def _drop_degenerate_fuselages(
+    aeroplane: AeroplaneSchema,
+    ctx: ImportContext,
+    vsp: ModuleType,
+) -> None:
+    """Post-pass: drop fuselages with no cross-sectional area (gh-804).
+
+    A body whose cross-section collapses one axis at **every** station
+    (zero width or zero height throughout) is not an outer-mold-line
+    fuselage — e.g. Romo's ``SeatGroup`` (cabin seats, imported via the
+    Custom handler with b≈0). Rendered, it would be a flat ribbon across
+    the aircraft. Handler-agnostic — runs over the populated aeroplane so
+    it catches FUSELAGE-, Custom- and Stack-sourced bodies alike.
+    """
+    fuselages = aeroplane.fuselages
+    if not fuselages:
+        return
+    name_to_gid = {n: g for g, n in ctx.fuselage_geom_ids.items()}
+    for name in list(fuselages.keys()):
+        xsecs = fuselages[name].x_secs
+        max_a = max((xs.a for xs in xsecs), default=0.0)
+        max_b = max((xs.b for xs in xsecs), default=0.0)
+        if max_a > _DEGENERATE_HALF_AXIS_M and max_b > _DEGENERATE_HALF_AXIS_M:
+            continue
+        del fuselages[name]
+        ctx.add_warning(
+            component_type="FUSELAGE",
+            component_name=name,
+            reason=(
+                f"FUSELAGE {name!r} has a degenerate cross-section "
+                f"(max half-width={max_a:.3g} m, max half-height={max_b:.3g} m) "
+                f"— not an outer-mold-line body; skipped."
+            ),
+            severity="warning",
+        )
+        gid = name_to_gid.get(name)
+        if gid is not None:
+            ctx.mark_lossy(gid)
+
+
 def register() -> None:
     """Register the FUSELAGE handler with the importer skeleton."""
     openvsp_importer.register_handler("FUSELAGE", _handle_fuselage)
+    openvsp_importer.register_post_pass(_drop_degenerate_fuselages)
