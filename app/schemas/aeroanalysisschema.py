@@ -149,6 +149,17 @@ class AeroBuildupTrimRequest(BaseModel):
         return self
 
 
+class AddTurnRequest(BaseModel):
+    """Request to add a coordinated-turn operating point at a given bank angle."""
+
+    bank_angle_deg: float = Field(..., gt=0.0, lt=90.0, description="Turn bank angle (deg)")
+    velocity: Optional[float] = Field(
+        None, gt=0.0, description="TAS (m/s); default = representative turn speed"
+    )
+    altitude: Optional[float] = Field(None, ge=0.0, description="Altitude (m); default 0")
+    name: Optional[str] = Field(None, description="OP name; default 'turn_{bank}'")
+
+
 class AeroBuildupTrimResult(BaseModel):
     """Result of AeroBuildup trim analysis."""
 
