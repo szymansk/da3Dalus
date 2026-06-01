@@ -25,7 +25,9 @@ from OCP.gp import gp_Dir, gp_Pln, gp_Pnt
 from cad_designer.cq_plugins.display import display
 
 import logging
+
 logger = logging.getLogger(__name__)
+
 
 def discretize_wire(wire: TopoDS_Wire, num_points: int) -> list[gp_Pnt]:
     comp_curve = BRepAdaptor_CompCurve(wire)
@@ -40,6 +42,7 @@ def discretize_wire(wire: TopoDS_Wire, num_points: int) -> list[gp_Pnt]:
         point = comp_curve.Value(param)
         points.append(point)
     return points
+
 
 def load_step_model(filepath: str) -> cq.Workplane:
     if not os.path.exists(filepath):
@@ -73,7 +76,9 @@ def _ensure_sliceable_shape(model: cq.Workplane) -> TopoDS_Shape:
     return sewing.SewedShape()
 
 
-def _section_outline_edges(shape: TopoDS_Shape, origin: tuple[float, float, float], normal: tuple[float, float, float]) -> list[cq.Edge]:
+def _section_outline_edges(
+    shape: TopoDS_Shape, origin: tuple[float, float, float], normal: tuple[float, float, float]
+) -> list[cq.Edge]:
     """Intersect ``shape`` with the plane ``(origin, normal)`` and
     return every resulting edge wrapped as a cadquery ``Edge``.
     """
@@ -149,9 +154,7 @@ def arc_length_weights(points_2d: np.ndarray) -> np.ndarray:
     return np.maximum(nn, floor)
 
 
-def thin_oversampled_points(
-    points_2d: np.ndarray, radius_ratio: float = 0.2
-) -> np.ndarray:
+def thin_oversampled_points(points_2d: np.ndarray, radius_ratio: float = 0.2) -> np.ndarray:
     """Drop points that are over-sampled relative to the cloud's
     natural inter-point spacing (gh-732).
 
@@ -365,9 +368,12 @@ def _curvature_density(
             continue
         # Non-uniform-spacing second derivative
         dz2[i - 1] = abs(
-            2 * (zs[i - 1] / (dx1 * (dx1 + dx2))
-                 - zs[i] / (dx1 * dx2)
-                 + zs[i + 1] / (dx2 * (dx1 + dx2)))
+            2
+            * (
+                zs[i - 1] / (dx1 * (dx1 + dx2))
+                - zs[i] / (dx1 * dx2)
+                + zs[i + 1] / (dx2 * (dx1 + dx2))
+            )
         )
     return xs[1:-1], dz2
 
@@ -453,9 +459,11 @@ def adaptive_x_stations(
     targets = np.linspace(0.0, 1.0, n_stations)
     return [float(np.interp(t, cdf, grid)) for t in targets]
 
+
 def get_x_bounds(shape: cq.Shape) -> tuple[float, float]:
     bb = shape.BoundingBox()
     return bb.xmin, bb.xmax
+
 
 def get_bounding_box_dims(shape: cq.Shape) -> dict[str, float]:
     """Return bounding box dimensions per axis."""
@@ -513,8 +521,9 @@ def slice_model_along_x(
             if polylines:
                 slices.append(polylines)
             x += spacing
-        logger.info(f"Section slicing complete: {len(slices)} slices "
-                    f"from x={xmin:.4f} to x={xmax:.4f}")
+        logger.info(
+            f"Section slicing complete: {len(slices)} slices from x={xmin:.4f} to x={xmax:.4f}"
+        )
         return slices
 
     # Solid path — preserve original behaviour byte-for-byte
@@ -558,11 +567,9 @@ def slice_model_along_x(
     logger.info(f"Slicing complete: {len(slices)} slices from x={xmin:.4f} to x={xmax:.4f}")
     return slices
 
+
 def to_superellipse(
-    vertices: Sequence[tuple[float, float]],
-    exponent: float = 2.5,
-    a: float = 1.0,
-    b: float = 1.0
+    vertices: Sequence[tuple[float, float]], exponent: float = 2.5, a: float = 1.0, b: float = 1.0
 ) -> NDArray[np.float64]:
     vertices = np.array(vertices)
     center = np.mean(vertices, axis=0)
@@ -571,8 +578,9 @@ def to_superellipse(
     normalized /= scale  # normalize to [-1, 1] box
 
     angles = np.arctan2(normalized[:, 1], normalized[:, 0])
-    super_radii = (np.abs(np.cos(angles) / a) ** exponent +
-                   np.abs(np.sin(angles) / b) ** exponent) ** (-1 / exponent)
+    super_radii = (
+        np.abs(np.cos(angles) / a) ** exponent + np.abs(np.sin(angles) / b) ** exponent
+    ) ** (-1 / exponent)
     x_new = super_radii * np.cos(angles)
     y_new = super_radii * np.sin(angles)
 
@@ -582,30 +590,39 @@ def to_superellipse(
     new_shape += center
     return new_shape
 
+
 def superellipse_radius(theta: np.ndarray, a: float, b: float, n: float) -> np.ndarray:
     return (np.abs(np.cos(theta) / a) ** n + np.abs(np.sin(theta) / b) ** n) ** (-1 / n)
+
 
 def approximate_perimeter(a: float, b: float, n: float) -> float:
     # Numerically integrate the perimeter of the superellipse
     def integrand(theta):
         r = (np.abs(np.cos(theta) / a) ** n + np.abs(np.sin(theta) / b) ** n) ** (-1 / n)
-        dr_dtheta = n * r * (
-                (np.abs(np.sin(theta) / b) ** (n - 1) * np.cos(theta) / b) -
-                (np.abs(np.cos(theta) / a) ** (n - 1) * np.sin(theta) / a)
+        dr_dtheta = (
+            n
+            * r
+            * (
+                (np.abs(np.sin(theta) / b) ** (n - 1) * np.cos(theta) / b)
+                - (np.abs(np.cos(theta) / a) ** (n - 1) * np.sin(theta) / a)
+            )
         )
-        return np.sqrt(r ** 2 + dr_dtheta ** 2)
+        return np.sqrt(r**2 + dr_dtheta**2)
 
     return quad(integrand, 0, 2 * np.pi, limit=200)[0]
 
+
 def approximate_area(a: float, b: float, n: float) -> float:
     # Approximation using Gamma function
-    return 4 * a * b * (gamma(1 + 1/n)**2) / gamma(1 + 2/n)
+    return 4 * a * b * (gamma(1 + 1 / n) ** 2) / gamma(1 + 2 / n)
+
 
 def polygon_area(points: np.ndarray) -> float:
     # Shoelace formula for polygon area
     x = points[:, 0]
     y = points[:, 1]
     return 0.5 * np.abs(np.dot(x, np.roll(y, 1)) - np.dot(y, np.roll(x, 1)))
+
 
 def fit_symmetric_superellipse(points: np.ndarray, initial_n: float = 2.0) -> dict:
     """
@@ -640,15 +657,15 @@ def fit_symmetric_superellipse(points: np.ndarray, initial_n: float = 2.0) -> di
         fit_r = superellipse_radius(angles, a, b, n)
         perimeter_fit = approximate_perimeter(a, b, n)
         perimeter_actual = np.sum(np.linalg.norm(np.roll(shifted, -1, axis=0) - shifted, axis=1))
-        radius_loss = np.mean((radii - fit_r)**2)
-        length_loss = (perimeter_fit - perimeter_actual)**2
+        radius_loss = np.mean((radii - fit_r) ** 2)
+        length_loss = (perimeter_fit - perimeter_actual) ** 2
         return radius_loss + 0.01 * length_loss
 
     result = minimize(
         objective,
         x0=[1.0, 1.0, initial_n],
         bounds=[(1e-3, None), (1e-3, None), (0.5, 8.0)],
-        method='L-BFGS-B'
+        method="L-BFGS-B",
     )
 
     return {
@@ -657,8 +674,9 @@ def fit_symmetric_superellipse(points: np.ndarray, initial_n: float = 2.0) -> di
         "b": result.x[1],
         "n": result.x[2],
         "success": result.success,
-        "fun": result.fun
+        "fun": result.fun,
     }
+
 
 def fit_superellipse(points: np.ndarray, initial_n: float = 2.0) -> dict:
     """
@@ -695,7 +713,7 @@ def fit_superellipse(points: np.ndarray, initial_n: float = 2.0) -> dict:
         objective,
         x0=[1.0, 1.0, initial_n],
         bounds=[(1e-3, None), (1e-3, None), (0.5, 8.0)],
-        method='L-BFGS-B'
+        method="L-BFGS-B",
     )
 
     return {
@@ -704,10 +722,16 @@ def fit_superellipse(points: np.ndarray, initial_n: float = 2.0) -> dict:
         "b": result.x[1],
         "n": result.x[2],
         "success": result.success,
-        "fun": result.fun
+        "fun": result.fun,
     }
 
-def fit_shape_area_superellipse(points: np.ndarray, initial_n: float = 2.0, prev_params: Optional[dict] = None, smoothness_weight: float = 0.1) -> dict:
+
+def fit_shape_area_superellipse(
+    points: np.ndarray,
+    initial_n: float = 2.0,
+    prev_params: Optional[dict] = None,
+    smoothness_weight: float = 0.1,
+) -> dict:
     """
     Fits a symmetric superellipse to a given set of 2D points, ensuring symmetry about the Z-axis.
 
@@ -772,16 +796,12 @@ def fit_shape_area_superellipse(points: np.ndarray, initial_n: float = 2.0, prev
     radii = np.concatenate([radii, radii])
     weights_full = np.concatenate([weights, weights])
     weight_sum = float(weights_full.sum()) or 1.0
-    radii_norm_sq = max(
-        float(np.sum(weights_full * radii ** 2) / weight_sum), 1e-9
-    )
+    radii_norm_sq = max(float(np.sum(weights_full * radii**2) / weight_sum), 1e-9)
 
     def objective(params: np.ndarray) -> float:
         n_val = float(params[0])
         fit_r = superellipse_radius(angles, a_fixed, b_fixed, n_val)
-        shape_loss = float(
-            np.sum(weights_full * (radii - fit_r) ** 2) / weight_sum
-        )
+        shape_loss = float(np.sum(weights_full * (radii - fit_r) ** 2) / weight_sum)
         loss = shape_loss / radii_norm_sq
 
         # Optional smoothness term — unused in the current ``slice_step_*``
@@ -799,7 +819,7 @@ def fit_shape_area_superellipse(points: np.ndarray, initial_n: float = 2.0, prev
         objective,
         x0=[float(initial_n)],
         bounds=[(0.5, 8.0)],
-        method='L-BFGS-B',
+        method="L-BFGS-B",
     )
 
     return {
@@ -811,6 +831,7 @@ def fit_shape_area_superellipse(points: np.ndarray, initial_n: float = 2.0, prev
         "fun": float(result.fun),
     }
 
+
 def plot_superellipse_fit(points_3d: np.ndarray, fit_result: dict, num_samples: int = 300) -> None:
     center = fit_result["center"]
     a, b, n = fit_result["a"], fit_result["b"], fit_result["n"]
@@ -820,15 +841,15 @@ def plot_superellipse_fit(points_3d: np.ndarray, fit_result: dict, num_samples: 
 
     # Generate superellipse points
     theta = np.linspace(0, 2 * np.pi, num_samples)
-    r = (np.abs(np.cos(theta)/a)**n + np.abs(np.sin(theta)/b)**n)**(-1/n)
+    r = (np.abs(np.cos(theta) / a) ** n + np.abs(np.sin(theta) / b) ** n) ** (-1 / n)
     x = r * np.cos(theta) + center[0]
     y = r * np.sin(theta) + center[1]
 
     # Plot
     plt.figure()
-    plt.plot(points_2d[:, 0], points_2d[:, 1], 'go', label="Original Points")
-    plt.plot(x, y, 'r-', label="Fitted Superellipse")
-    plt.axis('equal')
+    plt.plot(points_2d[:, 0], points_2d[:, 1], "go", label="Original Points")
+    plt.plot(x, y, "r-", label="Fitted Superellipse")
+    plt.axis("equal")
     plt.title("Superellipse Fit to Wire")
     plt.xlabel("Y")
     plt.ylabel("Z")
@@ -852,6 +873,7 @@ def compute_shape_properties(shape):
         "volume": volume,
         "surface_area": surface_area,
     }
+
 
 def slice_step_to_fuselage(
     step_path: str,
@@ -916,6 +938,7 @@ def slice_step_to_fuselage(
     else:
         from OCP.GProp import GProp_GProps as _GProp
         from OCP.BRepGProp import BRepGProp as _BRepGProp
+
         faces_shape = _ensure_sliceable_shape(model)
         sa_props = _GProp()
         _BRepGProp.SurfaceProperties_s(faces_shape, sa_props)
@@ -944,7 +967,9 @@ def slice_step_to_fuselage(
         if adaptive:
             top, bot = extract_xz_profile(sliceable)
             x_stations = adaptive_x_stations(
-                top, bot, n_stations=number_of_slices,
+                top,
+                bot,
+                n_stations=number_of_slices,
                 curvature_weight=curvature_weight,
             )
         else:
@@ -953,8 +978,7 @@ def slice_step_to_fuselage(
             # ``number_of_slices`` can't drive an unbounded loop.
             n_stations = max(2, min(int(number_of_slices), 4096))
             x_stations = [
-                bb.xmin + (bb.xmax - bb.xmin) * i / (n_stations - 1)
-                for i in range(n_stations)
+                bb.xmin + (bb.xmax - bb.xmin) * i / (n_stations - 1) for i in range(n_stations)
             ]
         wire_slices = []
         for x in x_stations:
@@ -998,24 +1022,28 @@ def slice_step_to_fuselage(
         points_2d = np.array([(y, z) for (_, y, z) in slice_points])
         fit = fit_shape_area_superellipse(points_2d, prev_params=None)
         xyz = [x, float(fit["center"][0]), float(fit["center"][1])]
-        xsec_dicts.append({
-            "xyz": xyz,
-            "a": float(fit["a"]),
-            "b": float(fit["b"]),
-            "n": float(np.clip(fit["n"], 0.5, 8.0)),
-        })
+        xsec_dicts.append(
+            {
+                "xyz": xyz,
+                "a": float(fit["a"]),
+                "b": float(fit["b"]),
+                "n": float(np.clip(fit["n"], 0.5, 8.0)),
+            }
+        )
 
     # Reconstruct as asb.Fuselage for fidelity comparison
     fuselage_xsecs = []
     for xsec in xsec_dicts:
-        fuselage_xsecs.append(asb.FuselageXSec(
-            xyz_c=xsec["xyz"],
-            xyz_normal=np.array([1.0, 0.0, 0.0]),
-            radius=None,
-            width=2.0 * xsec["a"],
-            height=2.0 * xsec["b"],
-            shape=xsec["n"],
-        ))
+        fuselage_xsecs.append(
+            asb.FuselageXSec(
+                xyz_c=xsec["xyz"],
+                xyz_normal=np.array([1.0, 0.0, 0.0]),
+                radius=None,
+                width=2.0 * xsec["a"],
+                height=2.0 * xsec["b"],
+                shape=xsec["n"],
+            )
+        )
 
     asb_fuselage = asb.Fuselage(name=fuselage_name, xsecs=fuselage_xsecs)
 
@@ -1027,8 +1055,12 @@ def slice_step_to_fuselage(
         "original_area": original_props["surface_area"],
         "reconstructed_volume": reconstructed_volume,
         "reconstructed_area": reconstructed_area,
-        "volume_ratio": reconstructed_volume / original_props["volume"] if original_props["volume"] > 0 else 0,
-        "area_ratio": reconstructed_area / original_props["surface_area"] if original_props["surface_area"] > 0 else 0,
+        "volume_ratio": reconstructed_volume / original_props["volume"]
+        if original_props["volume"] > 0
+        else 0,
+        "area_ratio": reconstructed_area / original_props["surface_area"]
+        if original_props["surface_area"] > 0
+        else 0,
     }
 
     logger.info(
@@ -1088,9 +1120,7 @@ def vsp_anchored_x_stations(
     # Find the body-typical scale so the tip-boost has a reference.
     # Use the median (a + b) over all non-degenerate anchors so a
     # single bogus anchor doesn't skew the calibration.
-    body_dim_median = float(np.median([
-        a + b for _, _, _, a, b in anchors if a + b > 1e-3
-    ])) or 1.0
+    body_dim_median = float(np.median([a + b for _, _, _, a, b in anchors if a + b > 1e-3])) or 1.0
     tip_threshold = 0.15 * body_dim_median  # below this, anchor is a tip
     for i in range(n_sections):
         x_a, y_a, z_a, a_a, b_a = anchors[i]
@@ -1099,9 +1129,14 @@ def vsp_anchored_x_stations(
         delta_position = abs(y_b - y_a) + abs(z_b - z_a)
         # Baseline so empty sections (rare but possible) still get a
         # couple of points. Scaled by section length so big featureless
-        # sections (tail boom) still get density-proportional coverage.
+        # sections (tail boom) still get density-proportional coverage —
+        # but the length contribution is **capped** at the body's typical
+        # cross-section size (gh-804): a long, featureless mid-body (e.g.
+        # Romo's 9 m constant section) otherwise dominates the budget and
+        # starves the short, highly-curved nose-body fillet next to it,
+        # which then renders as a kink.
         section_len = max(abs(x_b - x_a), 1e-6)
-        baseline = 0.3 * section_len
+        baseline = 0.3 * min(section_len, body_dim_median)
         weight = delta_shape + delta_position + baseline
         # Tip-cap boost (gh-732): sections that include the nose tip or
         # tail tip (a+b at one anchor below ~15% of the body's typical
@@ -1144,7 +1179,14 @@ def vsp_anchored_x_stations(
         stations.append(x_a)
         n_inter = intermediates_per_section[i]
         for k in range(1, n_inter + 1):
-            frac = k / (n_inter + 1)
+            # Cosine clustering toward BOTH anchors (gh-804): VSP lofts a
+            # spline through the control xsecs, so curvature is highest
+            # next to the anchors (the nose-body fillet, tail cone). A
+            # uniform split places the first intermediate too far from the
+            # anchor and the fillet renders as a kink; cosine spacing
+            # pulls samples toward the section ends where the surface
+            # actually curves.
+            frac = 0.5 * (1.0 - np.cos(np.pi * k / (n_inter + 1)))
             stations.append(x_a + frac * (x_b - x_a))
     stations.append(anchors[-1][0])
 
@@ -1246,6 +1288,7 @@ def slice_step_at_stations(
     else:
         from OCP.GProp import GProp_GProps as _GProp
         from OCP.BRepGProp import BRepGProp as _BRepGProp
+
         faces_shape = _ensure_sliceable_shape(model)
         sa_props = _GProp()
         _BRepGProp.SurfaceProperties_s(faces_shape, sa_props)
@@ -1297,32 +1340,40 @@ def slice_step_at_stations(
         "reconstructed_volume": rec_vol,
         "reconstructed_area": rec_area,
         "volume_ratio": (
-            rec_vol / original_props["volume"]
-            if original_props["volume"] > 0 else 0.0
+            rec_vol / original_props["volume"] if original_props["volume"] > 0 else 0.0
         ),
         "area_ratio": (
-            rec_area / original_props["surface_area"]
-            if original_props["surface_area"] > 0 else 0.0
+            rec_area / original_props["surface_area"] if original_props["surface_area"] > 0 else 0.0
         ),
     }
     logger.info(
         "Fuselage %r: %d xsecs from %d stations, volume_ratio=%.3f, area_ratio=%.3f",
-        fuselage_name, len(xsec_dicts), len(x_stations_mm),
-        metrics["volume_ratio"], metrics["area_ratio"],
+        fuselage_name,
+        len(xsec_dicts),
+        len(x_stations_mm),
+        metrics["volume_ratio"],
+        metrics["area_ratio"],
     )
     return xsec_dicts, metrics
 
 
 if __name__ == "__main__":
     import sys
-    logging.basicConfig(level=logging.DEBUG, format="%(asctime)s [%(levelname)s] %(message)s",
-                        handlers=[logging.StreamHandler(sys.stdout)])
+
+    logging.basicConfig(
+        level=logging.DEBUG,
+        format="%(asctime)s [%(levelname)s] %(message)s",
+        handlers=[logging.StreamHandler(sys.stdout)],
+    )
 
     step_path = "../../components/aircraft/eHawk/e-Hawk Rumpf v29.step"
     xsecs, metrics = slice_step_to_fuselage(step_path, number_of_slices=50)
 
-    print(f"\n{'='*60}")
+    print(f"\n{'=' * 60}")
     print(f"Sections: {len(xsecs)}")
-    print(f"Volume:   original={metrics['original_volume']:.6f}  reconstructed={metrics['reconstructed_volume']:.6f}  ratio={metrics['volume_ratio']:.3f}")
-    print(f"Area:     original={metrics['original_area']:.6f}  reconstructed={metrics['reconstructed_area']:.6f}  ratio={metrics['area_ratio']:.3f}")
-
+    print(
+        f"Volume:   original={metrics['original_volume']:.6f}  reconstructed={metrics['reconstructed_volume']:.6f}  ratio={metrics['volume_ratio']:.3f}"
+    )
+    print(
+        f"Area:     original={metrics['original_area']:.6f}  reconstructed={metrics['reconstructed_area']:.6f}  ratio={metrics['area_ratio']:.3f}"
+    )
