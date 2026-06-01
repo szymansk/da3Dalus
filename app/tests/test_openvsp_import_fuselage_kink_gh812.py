@@ -42,9 +42,74 @@ def test_xsec_slice_source_falls_back_to_solid_when_surface_missing():
 
 
 def test_xsec_slice_source_none_when_neither_present():
+    """Neither STEP present → None, so no slicer refinement runs."""
     from app.services.openvsp_import_service import _select_xsec_slice_source
 
     assert _select_xsec_slice_source(None, None) is None
+
+
+# --------------------------------------------------------------------------- #
+# Fast CI-tier guard for the *call site* (no OpenVSP / CadQuery).
+#
+# The helper unit tests above only prove the decision in isolation. The bug
+# lived at the wiring in ``_persist_aeroplane`` — which path it feeds to the
+# slicer. A regression that reverts the call site to ``rel_solid or rel_step``
+# would pass the helper tests and be caught only by the slow romo test, which
+# skips in CI (vsp3 models are gitignored). This pure-mock test closes that gap.
+# --------------------------------------------------------------------------- #
+
+
+def test_persist_feeds_surface_step_to_slicer_not_solid(client_and_db, monkeypatch):
+    """gh-812: ``_persist_aeroplane`` must slice the surface STEP, not the
+    sewn solid. Exports/sew/slicer are mocked so this runs in the fast tier."""
+    from collections import OrderedDict
+
+    from app.converters import openvsp_adapter
+    from app.converters.openvsp_importer import ImportResult
+    from app.schemas.aeroplaneschema import (
+        AeroplaneSchema,
+        FuselageSchema,
+        FuselageXSecSuperEllipseSchema,
+    )
+    from app.services import openvsp_import_service as svc
+    from app.services import openvsp_solid_sewing_service as sew_svc
+    from app.services import openvsp_step_export_service as step_svc
+
+    monkeypatch.setattr(openvsp_adapter, "is_available", lambda: True)
+    monkeypatch.setattr(openvsp_adapter, "get_vsp", lambda: object())
+    monkeypatch.setattr(step_svc, "export_geom_step", lambda **kw: "imp/u/body.stp")
+    monkeypatch.setattr(sew_svc, "sew_imported_geom_to_solid", lambda **kw: "imp/u/body_solid.stp")
+
+    captured: dict[str, str] = {}
+    monkeypatch.setattr(
+        svc,
+        "_try_slicer_refinement",
+        lambda source, *a, **k: captured.setdefault("source", source) and None,
+    )
+
+    ap = AeroplaneSchema(name="F")
+    ap.fuselages = OrderedDict(
+        Body=FuselageSchema(
+            name="Body",
+            symmetric=False,
+            x_secs=[
+                FuselageXSecSuperEllipseSchema(xyz=[0.0, 0.0, 0.0], a=0.2, b=0.1, n=2.0),
+                FuselageXSecSuperEllipseSchema(xyz=[10.0, 0.0, 0.0], a=0.2, b=0.1, n=2.0),
+            ],
+        )
+    )
+    result = ImportResult(aeroplane=ap, fuselage_geom_ids={"GID1": "Body"})
+
+    _client, session_factory = client_and_db
+    db = session_factory()
+    try:
+        svc._persist_aeroplane(db, result)
+        db.commit()
+    finally:
+        db.close()
+
+    # Pre-fix this was "imp/u/body_solid.stp" (the fragmentation-prone solid).
+    assert captured["source"] == "imp/u/body.stp"
 
 
 # --------------------------------------------------------------------------- #
