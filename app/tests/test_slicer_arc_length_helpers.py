@@ -252,17 +252,14 @@ class TestVspAnchoredStations:
         """
         from cad_designer.aerosandbox.slicing import vsp_anchored_x_stations
 
-        # One 10 m section between two equal body anchors → all budget
-        # lands here, so we can inspect the intra-section distribution.
         handler = self._make_handler([(0.0, 1.0, 1.0), (10.0, 1.0, 1.0)])
         st = sorted(vsp_anchored_x_stations(handler, total_stations=12, scale_to_mm=False))
         inter = [s for s in st if 0.0 < s < 10.0]
         assert len(inter) >= 4
         n = len(inter)
-        # Cosine places the first intermediate at frac 0.5(1-cos(pi/(n+1))),
-        # strictly inside the uniform 1/(n+1) → clustered toward the anchor.
+        # Cosine places the first intermediate inside the uniform 1/(n+1)
+        # spacing → clustered toward the anchor; symmetric at the far end.
         assert inter[0] < (1.0 / (n + 1)) * 10.0
-        # Symmetric: the last intermediate mirrors the first at the far end.
         assert (10.0 - inter[-1]) == pytest.approx(inter[0], rel=0.1)
 
     def test_long_featureless_section_does_not_starve_short_curved_one(self):
@@ -274,16 +271,15 @@ class TestVspAnchoredStations:
         handler = self._make_handler(
             [
                 (0.0, 0.0, 0.0),
-                (2.4, 1.18, 1.10),  # short fillet section (a/b change)
+                (2.4, 1.18, 1.10),
                 (3.4, 1.35, 1.25),
-                (12.5, 1.35, 1.25),  # long constant body (9 m)
+                (12.5, 1.35, 1.25),
                 (12.5, 0.0, 0.0),
             ]
         )
         st = vsp_anchored_x_stations(handler, total_stations=40, scale_to_mm=False)
-        fillet = sum(1 for s in st if 2.4 < s < 3.4)  # 1 m fillet section
-        body = sum(1 for s in st if 3.4 < s < 12.5)  # 9 m body section
-        # The 1 m fillet must be denser per metre than the 9 m body.
+        fillet = sum(1 for s in st if 2.4 < s < 3.4)
+        body = sum(1 for s in st if 3.4 < s < 12.5)
         assert fillet / 1.0 > body / 9.1
 
 
