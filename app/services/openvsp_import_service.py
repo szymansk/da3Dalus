@@ -559,6 +559,22 @@ def _slicer_frame_matches_handler(
     return _SLICER_FRAME_RATIO_MIN <= ratio <= _SLICER_FRAME_RATIO_MAX
 
 
+def _select_xsec_slice_source(
+    rel_surface: Optional[str], rel_solid: Optional[str]
+) -> Optional[str]:
+    """Pick which STEP to slice for fuselage xsec geometry (gh-812).
+
+    Prefer the **surface** STEP: it is the faithful VSP export and slices
+    into a single clean outline at every station. The gh-731 sewn solid
+    can carry internal seam faces at sharply-curved loft regions (Romo's
+    nose-body fillet); a section cut there fragments into dozens of
+    contours that ``select_outer_contour`` cannot resolve, so the fitted
+    centre drifts laterally (the y ≈ +0.70 m kink). The solid is only a
+    fallback for the rare case where the surface export is missing.
+    """
+    return rel_surface or rel_solid
+
+
 def _try_slicer_refinement(
     rel_step_path: str,
     handler_fuse: FuselageSchema,
@@ -932,18 +948,22 @@ def _persist_aeroplane(
                     if rel_solid:
                         _set_fuselage_solid_step_path(db, aeroplane.uuid, fuse_name, rel_solid)
 
-                    # gh-732: refine the schema's xsecs from the just-exported
-                    # (unscaled) STEP. Solid STEP gives the slicer a real
-                    # volume metric for logging; fall back to the Surface STEP
-                    # when sewing failed. The handler-built schema stays if the
-                    # slicer fails or produces too few points.
+                    # gh-732/gh-812: refine the schema's xsecs from the
+                    # just-exported (unscaled) STEP. Slice the **surface** STEP
+                    # — it is the faithful VSP geometry. The sewn solid (gh-731)
+                    # is kept for the construction download, but slicing it can
+                    # fragment at sharply-curved loft regions (Romo's nose-body
+                    # fillet), drifting the section centre laterally into a kink.
+                    # The handler-built schema stays if the slicer fails or
+                    # produces too few points.
                     progress_cb(
                         "fuselage_slice",
                         base_pct + int(fuselage_step_pct * 0.75),
                         f"{fuse_name}: slicing for finer xsecs",
                     )
-                    slicer_source = rel_solid or rel_step
-                    refined_xsecs = _try_slicer_refinement(slicer_source, fuse, fuse_name)
+                    slicer_source = _select_xsec_slice_source(rel_step, rel_solid)
+                    if slicer_source:
+                        refined_xsecs = _try_slicer_refinement(slicer_source, fuse, fuse_name)
 
             # gh-765: apply the import scale ONCE, after refinement (the
             # slicer ran in the unscaled STEP frame). When scaling, persist
