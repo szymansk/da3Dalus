@@ -158,28 +158,26 @@ class TestVspAnchoredStations:
     def _make_handler(self, positions_a_b):
         """Return list of handler-style xsec dicts. Each entry:
         (x_m, a_m, b_m). y/z fixed at 0."""
-        return [
-            {"xyz": [x, 0.0, 0.0], "a": a, "b": b, "n": 2.0}
-            for x, a, b in positions_a_b
-        ]
+        return [{"xyz": [x, 0.0, 0.0], "a": a, "b": b, "n": 2.0} for x, a, b in positions_a_b]
 
     def test_returns_empty_for_under_two_xsecs(self):
         from cad_designer.aerosandbox.slicing import vsp_anchored_x_stations
 
         assert vsp_anchored_x_stations([], total_stations=10) == []
-        assert vsp_anchored_x_stations(
-            [{"xyz": [0, 0, 0], "a": 0.1, "b": 0.1, "n": 2.0}],
-            total_stations=10,
-        ) == []
+        assert (
+            vsp_anchored_x_stations(
+                [{"xyz": [0, 0, 0], "a": 0.1, "b": 0.1, "n": 2.0}],
+                total_stations=10,
+            )
+            == []
+        )
 
     def test_includes_every_handler_anchor(self):
         """Every handler position must appear in the station list."""
         from cad_designer.aerosandbox.slicing import vsp_anchored_x_stations
 
-        handler = self._make_handler([(0.0, 0.1, 0.1), (1.0, 0.2, 0.2),
-                                       (2.0, 0.1, 0.1)])
-        stations = vsp_anchored_x_stations(handler, total_stations=20,
-                                            scale_to_mm=True)
+        handler = self._make_handler([(0.0, 0.1, 0.1), (1.0, 0.2, 0.2), (2.0, 0.1, 0.1)])
+        stations = vsp_anchored_x_stations(handler, total_stations=20, scale_to_mm=True)
         # 0, 1000, 2000 mm must all appear (within float tolerance).
         for required_mm in (0.0, 1000.0, 2000.0):
             assert any(abs(s - required_mm) < 1e-6 for s in stations), (
@@ -190,8 +188,7 @@ class TestVspAnchoredStations:
         from cad_designer.aerosandbox.slicing import vsp_anchored_x_stations
 
         handler = self._make_handler([(0.0, 0.1, 0.1), (1.0, 0.1, 0.1)])
-        stations = vsp_anchored_x_stations(handler, total_stations=5,
-                                            scale_to_mm=False)
+        stations = vsp_anchored_x_stations(handler, total_stations=5, scale_to_mm=False)
         assert stations[0] == 0.0
         assert stations[-1] == 1.0
 
@@ -203,13 +200,14 @@ class TestVspAnchoredStations:
 
         # Section 0: tip a=0 → body a=0.5 over 0.4 m (tip-cap)
         # Section 1: a=0.5 → a=0.5 over 1.0 m (uniform body)
-        handler = self._make_handler([
-            (0.0, 0.0, 0.0),     # tip
-            (0.4, 0.5, 0.5),     # body start
-            (1.4, 0.5, 0.5),     # body end
-        ])
-        stations = vsp_anchored_x_stations(handler, total_stations=20,
-                                            scale_to_mm=True)
+        handler = self._make_handler(
+            [
+                (0.0, 0.0, 0.0),  # tip
+                (0.4, 0.5, 0.5),  # body start
+                (1.4, 0.5, 0.5),  # body end
+            ]
+        )
+        stations = vsp_anchored_x_stations(handler, total_stations=20, scale_to_mm=True)
         # Count stations in section 0 vs section 1 (excluding anchors).
         sec0 = sum(1 for s in stations if 0.0 < s < 400.0)
         sec1 = sum(1 for s in stations if 400.0 < s < 1400.0)
@@ -222,11 +220,14 @@ class TestVspAnchoredStations:
         anchors)."""
         from cad_designer.aerosandbox.slicing import vsp_anchored_x_stations
 
-        handler = self._make_handler([
-            (0.0, 0.1, 0.1), (0.5, 0.1, 0.1), (1.0, 0.1, 0.1),
-        ])
-        stations = vsp_anchored_x_stations(handler, total_stations=10,
-                                            scale_to_mm=True)
+        handler = self._make_handler(
+            [
+                (0.0, 0.1, 0.1),
+                (0.5, 0.1, 0.1),
+                (1.0, 0.1, 0.1),
+            ]
+        )
+        stations = vsp_anchored_x_stations(handler, total_stations=10, scale_to_mm=True)
         # 3 anchors + up to 7 intermediates = ≤10 total.
         assert 3 <= len(stations) <= 12  # some slack for rounding
 
@@ -234,12 +235,52 @@ class TestVspAnchoredStations:
         """Output is sorted ascending."""
         from cad_designer.aerosandbox.slicing import vsp_anchored_x_stations
 
-        handler = self._make_handler([
-            (0.0, 0.1, 0.1), (1.0, 0.1, 0.1), (0.5, 0.1, 0.1),
-        ])
-        stations = vsp_anchored_x_stations(handler, total_stations=10,
-                                            scale_to_mm=False)
+        handler = self._make_handler(
+            [
+                (0.0, 0.1, 0.1),
+                (1.0, 0.1, 0.1),
+                (0.5, 0.1, 0.1),
+            ]
+        )
+        stations = vsp_anchored_x_stations(handler, total_stations=10, scale_to_mm=False)
         assert stations == sorted(stations)
+
+    def test_intermediates_cluster_near_anchors(self):
+        """gh-804: intermediate stations cluster toward the section ends
+        (cosine spacing), where VSP lofts round their corners — so the
+        nose-body fillet is sampled instead of straight-lined into a kink.
+        """
+        from cad_designer.aerosandbox.slicing import vsp_anchored_x_stations
+
+        handler = self._make_handler([(0.0, 1.0, 1.0), (10.0, 1.0, 1.0)])
+        st = sorted(vsp_anchored_x_stations(handler, total_stations=12, scale_to_mm=False))
+        inter = [s for s in st if 0.0 < s < 10.0]
+        assert len(inter) >= 4
+        n = len(inter)
+        # Cosine places the first intermediate inside the uniform 1/(n+1)
+        # spacing → clustered toward the anchor; symmetric at the far end.
+        assert inter[0] < (1.0 / (n + 1)) * 10.0
+        assert (10.0 - inter[-1]) == pytest.approx(inter[0], rel=0.1)
+
+    def test_long_featureless_section_does_not_starve_short_curved_one(self):
+        """gh-804: the length-scaled baseline is capped so a long constant
+        mid-body can't steal the whole budget from a short, highly-curved
+        nose-body fillet section next to it."""
+        from cad_designer.aerosandbox.slicing import vsp_anchored_x_stations
+
+        handler = self._make_handler(
+            [
+                (0.0, 0.0, 0.0),
+                (2.4, 1.18, 1.10),
+                (3.4, 1.35, 1.25),
+                (12.5, 1.35, 1.25),
+                (12.5, 0.0, 0.0),
+            ]
+        )
+        st = vsp_anchored_x_stations(handler, total_stations=40, scale_to_mm=False)
+        fillet = sum(1 for s in st if 2.4 < s < 3.4)
+        body = sum(1 for s in st if 3.4 < s < 12.5)
+        assert fillet / 1.0 > body / 9.1
 
 
 # ---------------------------------------------------------------------------

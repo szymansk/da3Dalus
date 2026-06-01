@@ -1099,9 +1099,14 @@ def vsp_anchored_x_stations(
         delta_position = abs(y_b - y_a) + abs(z_b - z_a)
         # Baseline so empty sections (rare but possible) still get a
         # couple of points. Scaled by section length so big featureless
-        # sections (tail boom) still get density-proportional coverage.
+        # sections (tail boom) still get density-proportional coverage —
+        # but the length contribution is capped at the body's typical
+        # cross-section size (gh-804): a long, featureless mid-body (e.g.
+        # Romo's 9 m constant section) otherwise dominates the budget and
+        # starves the short, highly-curved nose-body fillet next to it,
+        # which then renders as a kink.
         section_len = max(abs(x_b - x_a), 1e-6)
-        baseline = 0.3 * section_len
+        baseline = 0.3 * min(section_len, body_dim_median)
         weight = delta_shape + delta_position + baseline
         # Tip-cap boost (gh-732): sections that include the nose tip or
         # tail tip (a+b at one anchor below ~15% of the body's typical
@@ -1144,7 +1149,13 @@ def vsp_anchored_x_stations(
         stations.append(x_a)
         n_inter = intermediates_per_section[i]
         for k in range(1, n_inter + 1):
-            frac = k / (n_inter + 1)
+            # Cosine clustering toward BOTH anchors (gh-804): VSP lofts a
+            # spline through the control xsecs, so curvature is highest
+            # next to the anchors (the nose-body fillet, tail cone). A
+            # uniform split places the first intermediate too far from the
+            # anchor and the fillet renders as a kink; cosine spacing pulls
+            # samples toward the section ends where the surface curves.
+            frac = 0.5 * (1.0 - np.cos(np.pi * k / (n_inter + 1)))
             stations.append(x_a + frac * (x_b - x_a))
     stations.append(anchors[-1][0])
 
