@@ -1,0 +1,174 @@
+"""Regression test for gh#815: alpha_sweep returns 500 on non-finite floats.
+
+Cause: AeroBuildup can emit non-finite coefficients (NaN / +/-Inf) — e.g. a
+degenerate fuselage with zero volume yields ``length**3 / volume`` -> NaN and a
+zero Reynolds number yields ``log10(0)`` -> -inf. The aero analysis endpoints
+return these raw computed dicts, and FastAPI serializes them through Starlette's
+``JSONResponse.render``, which calls ``json.dumps(content, allow_nan=False)``.
+stdlib json then raises ``ValueError: Out of range float values are not JSON
+compliant`` -> unhandled HTTP 500 (the crash escapes the endpoint's try/except
+because serialization happens after the handler returns).
+
+Fix: the aero router serializes via a response class that represents non-finite
+floats as JSON ``null`` — an honest "no value", not a fabricated fallback.
+
+Two layers of tests:
+
+1. Unit: the ``replace_nonfinite`` helper maps NaN/Inf (incl. numpy floats) to
+   None recursively while preserving every finite/other value.
+2. Integration: a real request through the aero router whose service returns a
+   NaN/Inf-laden payload must respond 200 with nulls, not 500.
+"""
+
+from __future__ import annotations
+
+import json
+import uuid
+from unittest.mock import AsyncMock, patch
+
+import numpy as np
+import pytest
+
+from app.core.json_safe import NonFiniteSafeJSONResponse, replace_nonfinite
+from app.core.platform import aerosandbox_available
+
+
+class TestReplaceNonFinite:
+    def test_nan_and_infinities_become_none(self):
+        assert replace_nonfinite(float("nan")) is None
+        assert replace_nonfinite(float("inf")) is None
+        assert replace_nonfinite(float("-inf")) is None
+
+    def test_numpy_nonfinite_become_none(self):
+        assert replace_nonfinite(np.float64("nan")) is None
+        assert replace_nonfinite(np.float64("inf")) is None
+        assert replace_nonfinite(np.float32("-inf")) is None
+
+    def test_finite_and_other_values_preserved(self):
+        assert replace_nonfinite(0.0) == 0.0
+        assert replace_nonfinite(-3.5) == -3.5
+        assert replace_nonfinite(7) == 7
+        assert replace_nonfinite("ok") == "ok"
+        assert replace_nonfinite(True) is True
+        assert replace_nonfinite(None) is None
+
+    def test_nested_structures_are_sanitized(self):
+        payload = {
+            "coefficients": {
+                "CL": [0.1, float("nan"), 0.5],
+                "CD": (0.01, float("inf"), 0.02),
+            },
+            "points": [{"alpha": float("-inf"), "CL": 1.2}],
+            "name": "wing",
+        }
+        result = replace_nonfinite(payload)
+        assert result["coefficients"]["CL"] == [0.1, None, 0.5]
+        assert result["coefficients"]["CD"] == [0.01, None, 0.02]
+        assert result["points"][0]["alpha"] is None
+        assert result["points"][0]["CL"] == 1.2
+        assert result["name"] == "wing"
+
+    def test_nested_numpy_floats_are_converted(self):
+        payload = {"CL": [np.float64(0.3), np.float32("nan"), np.float64("inf")]}
+        result = replace_nonfinite(payload)
+        assert result["CL"][0] == 0.3
+        assert isinstance(result["CL"][0], float)
+        assert result["CL"][1] is None
+        assert result["CL"][2] is None
+
+
+class TestNonFiniteSafeJSONResponse:
+    """Cover the response class directly — no app / aero deps required."""
+
+    def test_render_emits_null_for_nonfinite(self):
+        response = NonFiniteSafeJSONResponse(content=None)
+        rendered = response.render({"CL": [0.1, float("nan"), float("inf")], "name": "x"})
+        assert json.loads(rendered) == {"CL": [0.1, None, None], "name": "x"}
+
+    def test_render_preserves_finite_payload(self):
+        response = NonFiniteSafeJSONResponse(content=None)
+        rendered = response.render({"CL": [0.1, 0.2], "n": 3})
+        assert json.loads(rendered) == {"CL": [0.1, 0.2], "n": 3}
+
+    def test_render_logs_warning_only_when_substituting(self, caplog):
+        response = NonFiniteSafeJSONResponse(content=None)
+        with caplog.at_level("WARNING", logger="app.core.json_safe"):
+            response.render({"CL": [0.1, 0.2]})
+        assert not caplog.records
+        with caplog.at_level("WARNING", logger="app.core.json_safe"):
+            response.render({"CL": [float("nan")]})
+        assert any("non-finite" in rec.message for rec in caplog.records)
+
+
+@pytest.mark.skipif(
+    not aerosandbox_available(),
+    reason="alpha_sweep route is only mounted when AeroSandbox is available",
+)
+class TestAlphaSweepEndpointDoesNotCrashOnNonFinite:
+    def test_alpha_sweep_returns_200_with_nulls_not_500(self, client_and_db):
+        client, _ = client_and_db
+        plane_id = uuid.uuid4()
+
+        # Payload shaped like a real alpha_sweep result, but with the non-finite
+        # values AeroBuildup emits for degenerate geometry / zero Reynolds number.
+        nan_payload = {
+            "analysis": {
+                "coefficients": {
+                    "CL": [0.1, float("nan"), 0.5],
+                    "CD": [0.01, float("inf"), 0.02],
+                    "Cm": [-0.05, 0.0, float("-inf")],
+                }
+            },
+            "characteristic_points": {
+                "stall_point": {"alpha_deg": float("nan"), "CL": 1.2},
+            },
+            "speed_polar": None,
+            "aircraft_name": "test-plane",
+        }
+
+        with patch(
+            "app.services.analysis_service.analyze_alpha_sweep",
+            new=AsyncMock(return_value=nan_payload),
+        ):
+            res = client.post(f"/aeroplanes/{plane_id}/alpha_sweep", json={})
+
+        assert res.status_code == 200, f"expected 200, got {res.status_code}: {res.text[:300]}"
+        body = res.json()
+        coeffs = body["analysis"]["coefficients"]
+        assert coeffs["CL"] == [0.1, None, 0.5]
+        assert coeffs["CD"] == [0.01, None, 0.02]
+        assert coeffs["Cm"] == [-0.05, 0.0, None]
+        assert body["characteristic_points"]["stall_point"]["alpha_deg"] is None
+        assert body["characteristic_points"]["stall_point"]["CL"] == 1.2
+        assert body["aircraft_name"] == "test-plane"
+
+    def test_nonfinite_substitution_is_logged(self, client_and_db, caplog):
+        """The substitution must leave a server-side trace, not vanish silently."""
+        client, _ = client_and_db
+        plane_id = uuid.uuid4()
+        nan_payload = {"analysis": {"coefficients": {"CL": [float("nan")]}}}
+
+        with patch(
+            "app.services.analysis_service.analyze_alpha_sweep",
+            new=AsyncMock(return_value=nan_payload),
+        ):
+            with caplog.at_level("WARNING", logger="app.core.json_safe"):
+                res = client.post(f"/aeroplanes/{plane_id}/alpha_sweep", json={})
+
+        assert res.status_code == 200
+        assert any("non-finite" in rec.message for rec in caplog.records)
+
+    def test_raised_solver_error_still_surfaces_as_500_not_swallowed(self, client_and_db):
+        """The sanitizer must not turn a genuine failure into a fake 200."""
+        from app.core.exceptions import InternalError
+
+        client, _ = client_and_db
+        plane_id = uuid.uuid4()
+
+        with patch(
+            "app.services.analysis_service.analyze_alpha_sweep",
+            new=AsyncMock(side_effect=InternalError("solver blew up")),
+        ):
+            res = client.post(f"/aeroplanes/{plane_id}/alpha_sweep", json={})
+
+        assert res.status_code == 500

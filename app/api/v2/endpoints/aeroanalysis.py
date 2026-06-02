@@ -17,6 +17,7 @@ from app.core.exceptions import (
     ConflictError,
     InternalError,
 )
+from app.core.json_safe import NonFiniteSafeJSONResponse
 from app.db.session import get_db
 from app.schemas.AeroplaneRequest import AnalysisToolUrlType, AlphaSweepRequest, SimpleSweepRequest
 from app.schemas.api_responses import StaticUrlResponse
@@ -28,7 +29,10 @@ from app.services import stability_service
 from app.services.wing_service import get_aeroplane_or_raise
 from app.settings import Settings, get_settings
 
-router = APIRouter()
+# Aero solvers (AeroBuildup) can emit non-finite coefficients (NaN / +/-Inf) for
+# degenerate inputs; serialize via a response class that renders those as JSON
+# null so the API never 500s on "Out of range float values" (gh#815).
+router = APIRouter(default_response_class=NonFiniteSafeJSONResponse)
 AeroPlaneID = UUID4
 
 _DESC_AEROPLANE_ID = "The ID of the aeroplane"
