@@ -65,6 +65,14 @@ class TestReplaceNonFinite:
         assert result["points"][0]["CL"] == 1.2
         assert result["name"] == "wing"
 
+    def test_nested_numpy_floats_are_converted(self):
+        payload = {"CL": [np.float64(0.3), np.float32("nan"), np.float64("inf")]}
+        result = replace_nonfinite(payload)
+        assert result["CL"][0] == 0.3
+        assert isinstance(result["CL"][0], float)
+        assert result["CL"][1] is None
+        assert result["CL"][2] is None
+
 
 class TestAlphaSweepEndpointDoesNotCrashOnNonFinite:
     def test_alpha_sweep_returns_200_with_nulls_not_500(self, client_and_db):
@@ -103,3 +111,34 @@ class TestAlphaSweepEndpointDoesNotCrashOnNonFinite:
         assert body["characteristic_points"]["stall_point"]["alpha_deg"] is None
         assert body["characteristic_points"]["stall_point"]["CL"] == 1.2
         assert body["aircraft_name"] == "test-plane"
+
+    def test_nonfinite_substitution_is_logged(self, client_and_db, caplog):
+        """The substitution must leave a server-side trace, not vanish silently."""
+        client, _ = client_and_db
+        plane_id = uuid.uuid4()
+        nan_payload = {"analysis": {"coefficients": {"CL": [float("nan")]}}}
+
+        with patch(
+            "app.services.analysis_service.analyze_alpha_sweep",
+            new=AsyncMock(return_value=nan_payload),
+        ):
+            with caplog.at_level("WARNING", logger="app.core.json_safe"):
+                res = client.post(f"/aeroplanes/{plane_id}/alpha_sweep", json={})
+
+        assert res.status_code == 200
+        assert any("non-finite" in rec.message for rec in caplog.records)
+
+    def test_raised_solver_error_still_surfaces_as_500_not_swallowed(self, client_and_db):
+        """The sanitizer must not turn a genuine failure into a fake 200."""
+        from app.core.exceptions import InternalError
+
+        client, _ = client_and_db
+        plane_id = uuid.uuid4()
+
+        with patch(
+            "app.services.analysis_service.analyze_alpha_sweep",
+            new=AsyncMock(side_effect=InternalError("solver blew up")),
+        ):
+            res = client.post(f"/aeroplanes/{plane_id}/alpha_sweep", json={})
+
+        assert res.status_code == 500
