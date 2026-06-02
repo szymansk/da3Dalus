@@ -22,12 +22,15 @@ Two layers of tests:
 
 from __future__ import annotations
 
+import json
 import uuid
 from unittest.mock import AsyncMock, patch
 
 import numpy as np
+import pytest
 
-from app.core.json_safe import replace_nonfinite
+from app.core.json_safe import NonFiniteSafeJSONResponse, replace_nonfinite
+from app.core.platform import aerosandbox_available
 
 
 class TestReplaceNonFinite:
@@ -74,6 +77,33 @@ class TestReplaceNonFinite:
         assert result["CL"][2] is None
 
 
+class TestNonFiniteSafeJSONResponse:
+    """Cover the response class directly — no app / aero deps required."""
+
+    def test_render_emits_null_for_nonfinite(self):
+        response = NonFiniteSafeJSONResponse(content=None)
+        rendered = response.render({"CL": [0.1, float("nan"), float("inf")], "name": "x"})
+        assert json.loads(rendered) == {"CL": [0.1, None, None], "name": "x"}
+
+    def test_render_preserves_finite_payload(self):
+        response = NonFiniteSafeJSONResponse(content=None)
+        rendered = response.render({"CL": [0.1, 0.2], "n": 3})
+        assert json.loads(rendered) == {"CL": [0.1, 0.2], "n": 3}
+
+    def test_render_logs_warning_only_when_substituting(self, caplog):
+        response = NonFiniteSafeJSONResponse(content=None)
+        with caplog.at_level("WARNING", logger="app.core.json_safe"):
+            response.render({"CL": [0.1, 0.2]})
+        assert not caplog.records
+        with caplog.at_level("WARNING", logger="app.core.json_safe"):
+            response.render({"CL": [float("nan")]})
+        assert any("non-finite" in rec.message for rec in caplog.records)
+
+
+@pytest.mark.skipif(
+    not aerosandbox_available(),
+    reason="alpha_sweep route is only mounted when AeroSandbox is available",
+)
 class TestAlphaSweepEndpointDoesNotCrashOnNonFinite:
     def test_alpha_sweep_returns_200_with_nulls_not_500(self, client_and_db):
         client, _ = client_and_db
