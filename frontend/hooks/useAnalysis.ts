@@ -58,7 +58,8 @@ export interface SpeedPolar {
  */
 function extractResult(data: Record<string, unknown>): AnalysisResult {
   const analysis = data.analysis as Record<string, unknown> | undefined;
-  const coefficients = analysis?.coefficients as Record<string, number[]> | undefined;
+  // Coefficients may contain null where the backend sanitized non-finite values (gh-815).
+  const coefficients = analysis?.coefficients as Record<string, (number | null)[]> | undefined;
   const flightCondition = analysis?.flight_condition as Record<string, number[]> | undefined;
 
   return {

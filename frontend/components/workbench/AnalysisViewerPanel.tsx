@@ -634,8 +634,11 @@ export function derivePolarCharts(result: AnalysisResult | null): PolarCharts | 
   const { CL, CD, Cm, alpha } = result;
   const clOverCd = CL.map((cl, i) => {
     const cd = CD[i];
-    if (cl == null || cd == null || !Number.isFinite(cl) || !Number.isFinite(cd)) return null;
-    return cd === 0 ? 0 : cl / cd;
+    // null for any non-computable L/D — including cd === 0 (degenerate), so it
+    // renders as a gap and is never picked as the L/D max.
+    if (cl == null || cd == null || !Number.isFinite(cl) || !Number.isFinite(cd) || cd === 0)
+      return null;
+    return cl / cd;
   });
 
   const maxCLIdx = finiteArgMax(CL);

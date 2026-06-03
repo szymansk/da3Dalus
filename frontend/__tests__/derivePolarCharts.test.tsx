@@ -87,6 +87,17 @@ describe("derivePolarCharts", () => {
     expect(safeToFixed(charts!.clMax, 2)).toBe("n/a");
   });
 
+  it("treats zero drag as a non-computable L/D (null, not 0)", () => {
+    const charts = derivePolarCharts(
+      base({ CL: [0.5, 0.7], CD: [0, 0.05], Cm: [], alpha: [0, 5] }),
+    );
+    // cd === 0 -> null (gap), so it is never selected as the L/D max
+    expect(charts!.clOverCd[0]).toBeNull();
+    expect(charts!.clOverCd[1]).toBeCloseTo(0.7 / 0.05);
+    expect(charts!.ldMax).toBeCloseTo(0.7 / 0.05);
+    expect(charts!.alphaLdMax).toBe(5);
+  });
+
   it("still reports a finite max when only some entries are null", () => {
     const charts = derivePolarCharts(
       base({ CL: [null, 0.9, null], CD: [null, 0.05, null], Cm: [], alpha: [0, 6, 12] }),
