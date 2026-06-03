@@ -16,9 +16,12 @@ export interface AlphaSweepParams {
 }
 
 export interface AnalysisResult {
-  CL: number[];
-  CD: number[];
-  Cm: number[];
+  // Coefficients may contain null where the backend sanitized a non-finite
+  // (NaN/Inf) solver value for a degenerate sweep (gh-815). alpha is the swept
+  // input, always finite.
+  CL: (number | null)[];
+  CD: (number | null)[];
+  Cm: (number | null)[];
   alpha: number[];
   [key: string]: unknown;
 }
@@ -55,7 +58,8 @@ export interface SpeedPolar {
  */
 function extractResult(data: Record<string, unknown>): AnalysisResult {
   const analysis = data.analysis as Record<string, unknown> | undefined;
-  const coefficients = analysis?.coefficients as Record<string, number[]> | undefined;
+  // Coefficients may contain null where the backend sanitized non-finite values (gh-815).
+  const coefficients = analysis?.coefficients as Record<string, (number | null)[]> | undefined;
   const flightCondition = analysis?.flight_condition as Record<string, number[]> | undefined;
 
   return {
