@@ -16,9 +16,12 @@ export interface AlphaSweepParams {
 }
 
 export interface AnalysisResult {
-  CL: number[];
-  CD: number[];
-  Cm: number[];
+  // Coefficients may contain null where the backend sanitized a non-finite
+  // (NaN/Inf) solver value for a degenerate sweep (gh-815). alpha is the swept
+  // input, always finite.
+  CL: (number | null)[];
+  CD: (number | null)[];
+  Cm: (number | null)[];
   alpha: number[];
   [key: string]: unknown;
 }

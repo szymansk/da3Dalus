@@ -120,8 +120,10 @@ function PlotlyChart({
   extraTraces,
   shapes,
 }: Readonly<{
-  xData: number[];
-  yData: number[];
+  // null entries are rendered by Plotly as gaps (degenerate/sanitized
+  // coefficients from gh-815); see derivePolarCharts.
+  xData: (number | null)[];
+  yData: (number | null)[];
   xLabel: string;
   yLabel: string;
   title: string;
@@ -583,6 +585,75 @@ export function buildTrefftzAnnotationText(stripForces: StripForcesResult): stri
   return lines.join("<br>");
 }
 
+// -- Polar chart derivation (null-safe) -----------------------------------
+
+// gh-817: coefficient arrays may contain null where the backend sanitized a
+// non-finite solver value (gh-815). These helpers derive the polar
+// characteristic points without being fooled by null->0 coercion in
+// Math.max(...), and format them with a null-safe fallback. Exported for tests.
+
+export interface PolarCharts {
+  alpha: number[];
+  CL: (number | null)[];
+  CD: (number | null)[];
+  Cm: (number | null)[] | null;
+  clOverCd: (number | null)[];
+  clMax: number | null;
+  alphaClMax: number | null;
+  ldMax: number | null;
+  alphaLdMax: number | null;
+}
+
+/** Index of the largest finite value, or -1 if none is finite. */
+export function finiteArgMax(values: ReadonlyArray<number | null | undefined>): number {
+  let bestIdx = -1;
+  let bestVal = -Infinity;
+  for (let i = 0; i < values.length; i++) {
+    const v = values[i];
+    if (v != null && Number.isFinite(v) && v > bestVal) {
+      bestVal = v;
+      bestIdx = i;
+    }
+  }
+  return bestIdx;
+}
+
+/** toFixed that renders a fallback for null / undefined / non-finite values. */
+export function safeToFixed(
+  value: number | null | undefined,
+  digits: number,
+  fallback = "n/a",
+): string {
+  return value == null || !Number.isFinite(value) ? fallback : value.toFixed(digits);
+}
+
+/** Derive polar series + characteristic points, tolerating null coefficients. */
+export function derivePolarCharts(result: AnalysisResult | null): PolarCharts | null {
+  if (!result?.CL || result.CL.length === 0) return null;
+
+  const { CL, CD, Cm, alpha } = result;
+  const clOverCd = CL.map((cl, i) => {
+    const cd = CD[i];
+    if (cl == null || cd == null || !Number.isFinite(cl) || !Number.isFinite(cd)) return null;
+    return cd === 0 ? 0 : cl / cd;
+  });
+
+  const maxCLIdx = finiteArgMax(CL);
+  const maxLDIdx = finiteArgMax(clOverCd);
+
+  return {
+    alpha,
+    CL,
+    CD,
+    Cm: Cm.length > 0 ? Cm : null,
+    clOverCd,
+    clMax: maxCLIdx >= 0 ? (CL[maxCLIdx] as number) : null,
+    alphaClMax: maxCLIdx >= 0 ? alpha[maxCLIdx] : null,
+    ldMax: maxLDIdx >= 0 ? (clOverCd[maxLDIdx] as number) : null,
+    alphaLdMax: maxLDIdx >= 0 ? alpha[maxLDIdx] : null,
+  };
+}
+
 // -- Trefftz Plane Combined Chart -----------------------------------------
 
 function TrefftzPlaneChart({
@@ -814,27 +885,7 @@ export function AnalysisViewerPanel({
   ]);
   const showWingGate = !hasWings && COMPUTATION_TABS.has(activeTab);
 
-  const charts = useMemo(() => {
-    if (!result?.CL || result.CL.length === 0) return null;
-
-    const { CL, CD, Cm, alpha } = result;
-    const clOverCd = CL.map((cl, i) => (CD[i] === 0 ? 0 : cl / CD[i]));
-
-    const maxCLIdx = CL.indexOf(Math.max(...CL));
-    const maxLDIdx = clOverCd.indexOf(Math.max(...clOverCd));
-
-    return {
-      alpha,
-      CL,
-      CD,
-      Cm: Cm.length > 0 ? Cm : null,
-      clOverCd,
-      clMax: CL[maxCLIdx],
-      alphaClMax: alpha[maxCLIdx],
-      ldMax: clOverCd[maxLDIdx],
-      alphaLdMax: alpha[maxLDIdx],
-    };
-  }, [result]);
+  const charts = useMemo(() => derivePolarCharts(result), [result]);
 
   return (
     <div className="flex h-full flex-col overflow-hidden rounded-xl border border-border">
@@ -907,7 +958,7 @@ export function AnalysisViewerPanel({
                   xLabel: "\u03B1 [\u00B0]",
                   yLabel: "C_L",
                   title: "C_L vs \u03B1",
-                  annotation: `C_L,max \u2248 ${charts.clMax.toFixed(2)} @ ${charts.alphaClMax.toFixed(0)}\u00B0`,
+                  annotation: `C_L,max \u2248 ${safeToFixed(charts.clMax, 2)} @ ${safeToFixed(charts.alphaClMax, 0)}\u00B0`,
                   color: "#FF8400",
                 },
                 {
@@ -926,7 +977,7 @@ export function AnalysisViewerPanel({
                   xLabel: "\u03B1 [\u00B0]",
                   yLabel: "C_L / C_D",
                   title: "C_L / C_D vs \u03B1",
-                  annotation: `L/D,max \u2248 ${charts.ldMax.toFixed(1)} @ ${charts.alphaLdMax.toFixed(0)}\u00B0`,
+                  annotation: `L/D,max \u2248 ${safeToFixed(charts.ldMax, 1)} @ ${safeToFixed(charts.alphaLdMax, 0)}\u00B0`,
                   color: "#30A46C",
                 },
                 {
