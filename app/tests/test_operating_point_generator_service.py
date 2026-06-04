@@ -567,12 +567,10 @@ def _assert_trim_residuals_round_trip_clean(point) -> None:
 
     assert point.trim_residuals is not None
     assert "solver_path" not in point.trim_residuals, (
-        f"solver_path must live on trim_method, not in trim_residuals; "
-        f"got {point.trim_residuals!r}"
+        f"solver_path must live on trim_method, not in trim_residuals; got {point.trim_residuals!r}"
     )
     assert all(isinstance(v, (int, float)) for v in point.trim_residuals.values()), (
-        f"trim_residuals must contain only numeric values; "
-        f"got {point.trim_residuals!r}"
+        f"trim_residuals must contain only numeric values; got {point.trim_residuals!r}"
     )
     # The Pydantic constructor that production hits — pre-fix this raises.
     TrimEnrichment(

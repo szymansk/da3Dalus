@@ -431,9 +431,7 @@ def _build_asb_fuselages(
     for name, fuselage in fuselages.items():
         if not fuselage.x_secs:
             continue
-        result.append(
-            Fuselage(name=name, xsecs=_asb_fuselage_xsecs_from_schema(fuselage))
-        )
+        result.append(Fuselage(name=name, xsecs=_asb_fuselage_xsecs_from_schema(fuselage)))
         if fuselage.symmetric:
             result.append(
                 Fuselage(
@@ -459,9 +457,7 @@ def _fuselage_configs_with_mirrors(
         configs.append(fuselage_schema_to_fuselage_config(fuselage_schema))
         if fuselage_schema.symmetric:
             configs.append(
-                fuselage_schema_to_fuselage_config(
-                    _mirror_fuselage_schema_y(fuselage_schema)
-                )
+                fuselage_schema_to_fuselage_config(_mirror_fuselage_schema_y(fuselage_schema))
             )
     return configs
 

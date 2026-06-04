@@ -142,10 +142,7 @@ async def import_openvsp(
     if target_span_m is not None and scale_factor is not None:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=(
-                "target_span_m and scale_factor are mutually exclusive; "
-                "specify at most one."
-            ),
+            detail=("target_span_m and scale_factor are mutually exclusive; specify at most one."),
         )
 
     raw = await file.read()
@@ -280,10 +277,7 @@ async def import_openvsp_stream(
     if target_span_m is not None and scale_factor is not None:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=(
-                "target_span_m and scale_factor are mutually exclusive; "
-                "specify at most one."
-            ),
+            detail=("target_span_m and scale_factor are mutually exclusive; specify at most one."),
         )
 
     raw = await file.read()
@@ -324,7 +318,8 @@ async def import_openvsp_stream(
             try:
                 response = await asyncio.to_thread(
                     openvsp_import_service.import_openvsp_file,
-                    db, tmp_path,
+                    db,
+                    tmp_path,
                     target_span_m=target_span_m,
                     scale_factor=scale_factor,
                     name=name,
@@ -346,13 +341,9 @@ async def import_openvsp_stream(
                     )
                 )
             except ScaleValidationError as exc:
-                queue.put_nowait(
-                    ("error", {"status": 422, "detail": str(exc)})
-                )
+                queue.put_nowait(("error", {"status": 422, "detail": str(exc)}))
             except ImportError as exc:
-                queue.put_nowait(
-                    ("error", {"status": 503, "detail": str(exc)})
-                )
+                queue.put_nowait(("error", {"status": 503, "detail": str(exc)}))
             except Exception as exc:  # noqa: BLE001 — surface message to client
                 logger.exception("OpenVSP import (stream) failed")
                 queue.put_nowait(

@@ -168,9 +168,7 @@ def delete_aeroplane(db: Session, aeroplane_uuid) -> None:
 
         openvsp_step_export_service.cleanup_aeroplane_step_files(str(aeroplane_uuid))
     except Exception as exc:  # noqa: BLE001 — purely defensive
-        logger.warning(
-            "STEP cleanup for aeroplane %s failed: %s", aeroplane_uuid, exc
-        )
+        logger.warning("STEP cleanup for aeroplane %s failed: %s", aeroplane_uuid, exc)
 
 
 def get_aeroplane_mass(db: Session, aeroplane_uuid) -> float:

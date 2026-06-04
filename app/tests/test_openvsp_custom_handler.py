@@ -63,6 +63,7 @@ def _make_custom_vsp(
         # Transport shape closely enough for the regression test.
         def _default_surface(g, surf, u, w):
             import math
+
             length = 20.0
             x = -5.7 + u * length
             # Width/Height profile: 0 at u=0, peak 1.75 at u=0.25..0.5,
@@ -76,9 +77,7 @@ def _make_custom_vsp(
             theta = 2 * math.pi * w
             y = radius * math.cos(theta)
             z = radius * math.sin(theta)
-            return SimpleNamespace(
-                x=lambda v=x: v, y=lambda v=y: v, z=lambda v=z: v
-            )
+            return SimpleNamespace(x=lambda v=x: v, y=lambda v=y: v, z=lambda v=z: v)
 
         surface_fn = surface or _default_surface
         fake.CompPnt01 = lambda g, surf, u, w: surface_fn(g, surf, u, w)
@@ -156,7 +155,8 @@ class TestCustomImport:
         result = import_vsp3(f)
         assert (result.aeroplane.fuselages or {}) == {}
         warnings = [
-            w for w in result.warnings
+            w
+            for w in result.warnings
             if w.component_type == "CUSTOM" and "no parametric surface" in w.reason
         ]
         assert warnings
@@ -182,6 +182,7 @@ class TestCustomImport:
             if u > 0.5:
                 raise RuntimeError("surface eval blew up")
             import math
+
             theta = 2 * math.pi * w
             return SimpleNamespace(
                 x=lambda v=u * 10: v,
@@ -198,7 +199,6 @@ class TestCustomImport:
         assert 2 <= len(fuse.x_secs) < 12
         # Warning surfaces.
         warnings = [
-            w for w in result.warnings
-            if w.component_type == "CUSTOM" and "blew up" in w.reason
+            w for w in result.warnings if w.component_type == "CUSTOM" and "blew up" in w.reason
         ]
         assert warnings

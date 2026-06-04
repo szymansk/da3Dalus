@@ -55,11 +55,7 @@ def add_turn_operating_point(
     design_cg_x = _load_design_cg_x(db, aircraft.id)
 
     bank = float(request.bank_angle_deg)
-    velocity = (
-        float(request.velocity)
-        if request.velocity
-        else max(cruise, 1.3 * refs["vs_clean"])
-    )
+    velocity = float(request.velocity) if request.velocity else max(cruise, 1.3 * refs["vs_clean"])
     altitude = float(request.altitude) if request.altitude is not None else 0.0
     name = request.name or f"turn_{round(bank)}"
 

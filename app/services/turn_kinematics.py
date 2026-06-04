@@ -16,11 +16,11 @@ _G = 9.81
 
 @dataclass(frozen=True)
 class TurnKinematics:
-    n: float          # load factor = 1/cos(phi)
-    psi_dot: float    # heading rate (rad/s)
-    p: float          # body roll rate (rad/s)
-    q: float          # body pitch rate (rad/s)
-    r: float          # body yaw rate (rad/s)
+    n: float  # load factor = 1/cos(phi)
+    psi_dot: float  # heading rate (rad/s)
+    p: float  # body roll rate (rad/s)
+    q: float  # body pitch rate (rad/s)
+    r: float  # body yaw rate (rad/s)
     cl_factor: float  # CL_turn / CL_1g == n
 
 

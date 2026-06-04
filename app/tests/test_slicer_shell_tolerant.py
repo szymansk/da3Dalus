@@ -202,6 +202,7 @@ class TestExtractXzProfile:
         class _FakeEdge:
             def positionAt(self, _t):
                 from types import SimpleNamespace
+
                 return SimpleNamespace(x=0.0, y=0.0, z=0.0)
 
         monkeypatch.setattr(mod, "_section_outline_edges", lambda *a, **k: [_FakeEdge()])

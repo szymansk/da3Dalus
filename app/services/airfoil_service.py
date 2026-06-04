@@ -138,6 +138,7 @@ def import_directory(db: Session, directory: str) -> AirfoilImportResult:
             db.flush()
             existing_names.add(airfoil_name.lower())
             result.imported += 1
+            result.imported_names.append(airfoil_name)
         except SQLAlchemyError as exc:
             logger.warning("Failed to import airfoil '%s': %s", airfoil_name, exc)
             db.rollback()  # Required: reset session state so next iteration can proceed

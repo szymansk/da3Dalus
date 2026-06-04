@@ -159,7 +159,7 @@ def _apply_turn_feasibility(point, bank_deg, velocity: float, vs_clean: float) -
     from app.services.turn_kinematics import turn_kinematics
 
     n = turn_kinematics(bank_deg=float(bank_deg), velocity=float(velocity)).n
-    v_stall_turn = vs_clean * (n ** 0.5)
+    v_stall_turn = vs_clean * (n**0.5)
     if velocity < v_stall_turn:
         msg = (
             f"STALL_IN_TURN: required CL at {bank_deg:.0f} deg bank (n={n:.2f}) exceeds "
@@ -614,7 +614,9 @@ def _solve_trim_candidate_with_opti(
             control_variables[roll_name] = opti.variable(
                 init_guess=0.0, lower_bound=-20.0, upper_bound=20.0
             )
-        if (target["name"].startswith("turn_") or target["name"] == "dutch_role_start") and yaw_name:
+        if (
+            target["name"].startswith("turn_") or target["name"] == "dutch_role_start"
+        ) and yaw_name:
             control_variables[yaw_name] = opti.variable(
                 init_guess=0.0, lower_bound=-25.0, upper_bound=25.0
             )

@@ -34,5 +34,7 @@ def test_add_turn_rejects_bad_bank(client_and_db):
         uuid = seed_smoke_conventional_ttail(session).uuid
     finally:
         session.close()
-    resp = client.post(f"/aeroplanes/{uuid}/operating-points/add-turn", json={"bank_angle_deg": 95.0})
+    resp = client.post(
+        f"/aeroplanes/{uuid}/operating-points/add-turn", json={"bank_angle_deg": 95.0}
+    )
     assert resp.status_code == 422

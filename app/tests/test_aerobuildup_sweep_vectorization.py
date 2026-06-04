@@ -118,16 +118,12 @@ def _count_runs(monkeypatch):
 
 
 class TestSingleAeroBuildupCall:
-    def test_coarse_alpha_sweep_makes_one_run_call(
-        self, tiny_airplane, sweep_config, monkeypatch
-    ):
+    def test_coarse_alpha_sweep_makes_one_run_call(self, tiny_airplane, sweep_config, monkeypatch):
         counter = _count_runs(monkeypatch)
         _coarse_alpha_sweep(tiny_airplane, v_cruise=15.0, config=sweep_config)
         assert counter["n"] == 1
 
-    def test_fine_sweep_cl_max_makes_one_run_call(
-        self, tiny_airplane, sweep_config, monkeypatch
-    ):
+    def test_fine_sweep_cl_max_makes_one_run_call(self, tiny_airplane, sweep_config, monkeypatch):
         counter = _count_runs(monkeypatch)
         _fine_sweep_cl_max(
             tiny_airplane,
@@ -138,9 +134,7 @@ class TestSingleAeroBuildupCall:
         )
         assert counter["n"] == 1
 
-    def test_cl_alpha_linear_sweep_makes_one_run_call(
-        self, tiny_airplane, monkeypatch
-    ):
+    def test_cl_alpha_linear_sweep_makes_one_run_call(self, tiny_airplane, monkeypatch):
         counter = _count_runs(monkeypatch)
         _extract_cl_alpha_from_linear_sweep(
             tiny_airplane,
@@ -159,9 +153,7 @@ class TestSingleAeroBuildupCall:
 
 def _serial_coarse_alpha_sweep(asb_airplane, v_cruise, config):
     """Point-by-point baseline mirroring the pre-refactor implementation."""
-    xyz_ref = (
-        list(asb_airplane.xyz_ref) if asb_airplane.xyz_ref is not None else [0.0, 0.0, 0.0]
-    )
+    xyz_ref = list(asb_airplane.xyz_ref) if asb_airplane.xyz_ref is not None else [0.0, 0.0, 0.0]
     alphas = np.arange(
         config.coarse_alpha_min_deg,
         config.coarse_alpha_max_deg + 0.01,
@@ -177,9 +169,7 @@ def _serial_coarse_alpha_sweep(asb_airplane, v_cruise, config):
 
 def _serial_fine_sweep_cl_max(asb_airplane, stall_alpha_deg, v_cruise, v_max, config):
     """Point-by-point baseline mirroring the pre-refactor implementation."""
-    xyz_ref = (
-        list(asb_airplane.xyz_ref) if asb_airplane.xyz_ref is not None else [0.0, 0.0, 0.0]
-    )
+    xyz_ref = list(asb_airplane.xyz_ref) if asb_airplane.xyz_ref is not None else [0.0, 0.0, 0.0]
     s_ref = float(asb_airplane.s_ref)
     alpha_min = stall_alpha_deg - config.fine_alpha_margin_deg
     alpha_max = stall_alpha_deg + config.fine_alpha_margin_deg
@@ -215,9 +205,7 @@ def _serial_cl_alpha_linear_sweep(
     asb_airplane, v_cruise, alpha_min_deg, alpha_max_deg, alpha_step_deg
 ):
     """Point-by-point baseline mirroring the pre-refactor implementation."""
-    xyz_ref = (
-        list(asb_airplane.xyz_ref) if asb_airplane.xyz_ref is not None else [0.0, 0.0, 0.0]
-    )
+    xyz_ref = list(asb_airplane.xyz_ref) if asb_airplane.xyz_ref is not None else [0.0, 0.0, 0.0]
     alphas_deg = np.arange(alpha_min_deg, alpha_max_deg + 0.01, alpha_step_deg)
     cls = []
     for a in alphas_deg:
@@ -257,9 +245,7 @@ class TestEquivalenceAgainstSerialBaseline:
         nan_mask_v = np.isnan(cdi_v)
         nan_mask_s = np.isnan(cdi_s)
         assert np.array_equal(nan_mask_v, nan_mask_s)
-        np.testing.assert_allclose(
-            cdi_v[~nan_mask_v], cdi_s[~nan_mask_s], rtol=0, atol=1e-9
-        )
+        np.testing.assert_allclose(cdi_v[~nan_mask_v], cdi_s[~nan_mask_s], rtol=0, atol=1e-9)
 
     def test_cl_alpha_linear_sweep_matches_serial(self, tiny_airplane):
         vectorised = _extract_cl_alpha_from_linear_sweep(

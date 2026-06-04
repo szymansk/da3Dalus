@@ -126,9 +126,7 @@ class TestApplyXform:
         """Cessna 172 StabVer-style XForm: translate to (2.09, 0, 0.13)
         + 90° X-rotation. A point at (0, 1, 0) — the local-frame span
         tip — should end up at (2.09, 0, 1.13)."""
-        out = _apply_xform(
-            [0.0, 1.0, 0.0], (2.09, 0.0, 0.13), (90.0, 0.0, 0.0)
-        )
+        out = _apply_xform([0.0, 1.0, 0.0], (2.09, 0.0, 0.13), (90.0, 0.0, 0.0))
         assert _approx_eq(out, [2.09, 0.0, 1.13])
 
     def test_openvsp_rotation_order(self):
@@ -156,9 +154,7 @@ class TestApplyXform:
         the handler applied rotations in reverse order and ended up
         at (+0.37, +0.27, -0.90) — horizontal instead of inclined.
         """
-        out = _apply_xform(
-            [1.0, 0.0, 0.0], (0.37, 1.27, -0.90), (-30.0, 0.0, -90.0)
-        )
+        out = _apply_xform([1.0, 0.0, 0.0], (0.37, 1.27, -0.90), (-30.0, 0.0, -90.0))
         assert _approx_eq(out, [0.37, 0.404, -0.4], tol=1e-3)
 
     @pytest.mark.parametrize(

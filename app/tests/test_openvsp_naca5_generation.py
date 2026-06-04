@@ -156,7 +156,10 @@ class TestReflexCamberLine:
 class TestCoordinates:
     def test_returns_2n_plus_1_points(self):
         coords = naca5_coordinates(
-            design_cl=0.3, camber_loc_digit=3, reflex=False, thick_chord=0.12,
+            design_cl=0.3,
+            camber_loc_digit=3,
+            reflex=False,
+            thick_chord=0.12,
             n_half=20,
         )
         # n_half=20 → 21 upper + 20 lower (LE shared) = 41 points.
@@ -164,7 +167,10 @@ class TestCoordinates:
 
     def test_starts_and_ends_at_trailing_edge(self):
         coords = naca5_coordinates(
-            design_cl=0.3, camber_loc_digit=3, reflex=False, thick_chord=0.12,
+            design_cl=0.3,
+            camber_loc_digit=3,
+            reflex=False,
+            thick_chord=0.12,
         )
         # First and last point both ≈ TE (x≈1).
         assert abs(coords[0][0] - 1.0) < 0.01
@@ -175,7 +181,10 @@ class TestCoordinates:
 
     def test_leading_edge_at_origin(self):
         coords = naca5_coordinates(
-            design_cl=0.3, camber_loc_digit=3, reflex=False, thick_chord=0.12,
+            design_cl=0.3,
+            camber_loc_digit=3,
+            reflex=False,
+            thick_chord=0.12,
         )
         # Selig convention: LE is the midpoint of the array.
         le = coords[len(coords) // 2]
@@ -185,7 +194,10 @@ class TestCoordinates:
         # NACA 5-digit and 4-digit share the same thickness polynomial.
         # The half-thickness at x=0.30 should be ≈t/c × 0.5 (peak).
         coords = naca5_coordinates(
-            design_cl=0.3, camber_loc_digit=3, reflex=False, thick_chord=0.12,
+            design_cl=0.3,
+            camber_loc_digit=3,
+            reflex=False,
+            thick_chord=0.12,
         )
         # Find the upper-surface point closest to x=0.30
         upper = coords[: len(coords) // 2 + 1]
@@ -204,12 +216,18 @@ class TestCoordinates:
         # (ensure_naca5_dat) catches this and emits a warning instead.
         with pytest.raises(ValueError, match="camber-position digit"):
             naca5_coordinates(
-                design_cl=0.3, camber_loc_digit=7, reflex=False, thick_chord=0.12,
+                design_cl=0.3,
+                camber_loc_digit=7,
+                reflex=False,
+                thick_chord=0.12,
             )
         with pytest.raises(ValueError, match="camber-position digit"):
             # P=1 is invalid for reflex (table starts at P=2).
             naca5_coordinates(
-                design_cl=0.3, camber_loc_digit=1, reflex=True, thick_chord=0.12,
+                design_cl=0.3,
+                camber_loc_digit=1,
+                reflex=True,
+                thick_chord=0.12,
             )
 
 
@@ -222,7 +240,10 @@ class TestEnsureDat:
     def test_writes_file_in_given_dir(self, tmp_path: Path):
         out = ensure_naca5_dat(
             name="naca23012",
-            camber=0.3, camber_loc=0.15, reflex=0.0, thick_chord=0.12,
+            camber=0.3,
+            camber_loc=0.15,
+            reflex=0.0,
+            thick_chord=0.12,
             airfoils_dir=tmp_path,
         )
         assert out == tmp_path / "naca23012.dat"
@@ -239,13 +260,19 @@ class TestEnsureDat:
         # downstream assumes a stable .dat once present.
         out = ensure_naca5_dat(
             name="naca23012",
-            camber=0.3, camber_loc=0.15, reflex=0.0, thick_chord=0.12,
+            camber=0.3,
+            camber_loc=0.15,
+            reflex=0.0,
+            thick_chord=0.12,
             airfoils_dir=tmp_path,
         )
         first = out.read_text()
         out2 = ensure_naca5_dat(
             name="naca23012",
-            camber=0.99, camber_loc=0.99, reflex=1.0, thick_chord=0.99,  # nonsense
+            camber=0.99,
+            camber_loc=0.99,
+            reflex=1.0,
+            thick_chord=0.99,  # nonsense
             airfoils_dir=tmp_path,
         )
         assert out == out2
@@ -256,7 +283,10 @@ class TestEnsureDat:
         # OpenVSP "Reflex" parm flips the polynomial selection.
         out = ensure_naca5_dat(
             name="naca23112",
-            camber=0.3, camber_loc=0.15, reflex=1.0, thick_chord=0.12,
+            camber=0.3,
+            camber_loc=0.15,
+            reflex=1.0,
+            thick_chord=0.12,
             airfoils_dir=tmp_path,
         )
         assert out.exists()
@@ -265,7 +295,10 @@ class TestEnsureDat:
         # taken.
         ensure_naca5_dat(
             name="naca23012",
-            camber=0.3, camber_loc=0.15, reflex=0.0, thick_chord=0.12,
+            camber=0.3,
+            camber_loc=0.15,
+            reflex=0.0,
+            thick_chord=0.12,
             airfoils_dir=tmp_path,
         )
         std = (tmp_path / "naca23012.dat").read_text()
@@ -280,7 +313,8 @@ class TestEnsureDat:
             name="nacaweird",
             camber=0.3,
             camber_loc=0.35,  # P=7 — not in standard table
-            reflex=0.0, thick_chord=0.12,
+            reflex=0.0,
+            thick_chord=0.12,
             airfoils_dir=tmp_path,
         )
         # File does NOT exist, but the call did not raise.
@@ -302,7 +336,10 @@ class TestEnsureDat:
         for name, tc in profiles:
             out = ensure_naca5_dat(
                 name=name,
-                camber=0.3, camber_loc=0.15, reflex=0.0, thick_chord=tc,
+                camber=0.3,
+                camber_loc=0.15,
+                reflex=0.0,
+                thick_chord=tc,
                 airfoils_dir=tmp_path,
             )
             assert out.exists(), f"{name}.dat not written"
@@ -337,13 +374,13 @@ class TestEnsureDat:
         # Patch _get_parm + GetXSecShape + AIRFOILS_DIR to inject
         # NACA 23012 parameters without a real VSP runtime.
         def _fake_get_parm(vsp, xs_id, parm_name):
-            return {"Camber": 0.3, "CamberLoc": 0.15,
-                    "Reflex": 0.0, "ThickChord": 0.12}[parm_name]
+            return {"Camber": 0.3, "CamberLoc": 0.15, "Reflex": 0.0, "ThickChord": 0.12}[parm_name]
 
         monkeypatch.setattr(openvsp_airfoil, "_get_parm", _fake_get_parm)
         monkeypatch.setattr(openvsp_airfoil, "AIRFOILS_DIR", tmp_path)
         monkeypatch.setattr(
-            openvsp_airfoil, "_get_xsec_shape",
+            openvsp_airfoil,
+            "_get_xsec_shape",
             lambda vsp, geom_id, xs_index: _MockVsp.XS_FIVE_DIGIT,
             raising=False,
         )
@@ -354,8 +391,11 @@ class TestEnsureDat:
         # against a name we'd get from the dispatch.
         name = "naca23012"
         ensure_naca5_dat(
-            name=name, camber=0.3, camber_loc=0.15,
-            reflex=0.0, thick_chord=0.12,
+            name=name,
+            camber=0.3,
+            camber_loc=0.15,
+            reflex=0.0,
+            thick_chord=0.12,
             airfoils_dir=tmp_path,
         )
         assert (tmp_path / f"{name}.dat").exists()

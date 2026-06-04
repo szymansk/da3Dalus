@@ -164,9 +164,7 @@ def _patch_airfoil_resolution(monkeypatch):
         counter["i"] += 1
         return f"./components/airfoils/test_unique_{counter['i']}.dat"
 
-    monkeypatch.setattr(
-        openvsp_airfoil, "import_airfoil_from_xsec", _unique_airfoil
-    )
+    monkeypatch.setattr(openvsp_airfoil, "import_airfoil_from_xsec", _unique_airfoil)
 
 
 # ---------------------------------------------------------------------------
@@ -180,9 +178,7 @@ class TestReadRelativeFlag:
         assert _read_relative_flag(vsp, "wing-gid", "RelativeDihedralFlag") is False
 
     def test_value_1_returns_true(self):
-        vsp = _VspStub(
-            n_xsec=2, parms={("RelativeDihedralFlag", "WingGeom"): 1.0}
-        )
+        vsp = _VspStub(n_xsec=2, parms={("RelativeDihedralFlag", "WingGeom"): 1.0})
         assert _read_relative_flag(vsp, "wing-gid", "RelativeDihedralFlag") is True
 
     def test_value_0_returns_false(self):
@@ -193,9 +189,7 @@ class TestReadRelativeFlag:
         # could regress one without the other; this test pins the
         # value-0 path explicitly. Bypass the ``_build_parms`` helper
         # so the parm is registered even with zero value.
-        vsp = _VspStub(
-            n_xsec=2, parms={("RelativeTwistFlag", "WingGeom"): 0.0}
-        )
+        vsp = _VspStub(n_xsec=2, parms={("RelativeTwistFlag", "WingGeom"): 0.0})
         assert _read_relative_flag(vsp, "wing-gid", "RelativeTwistFlag") is False
 
 
@@ -434,9 +428,7 @@ class TestCosineCorrectYStep:
                 }
             ],
         )
-        _handle_wing(
-            "wing-gid", "Winglet", aeroplane, ctx, _VspStub(2, parms)
-        )
+        _handle_wing("wing-gid", "Winglet", aeroplane, ctx, _VspStub(2, parms))
         wing = aeroplane.wings["Winglet"]
         tip = wing.x_secs[1]
         # Y must be span · cos(60°) = 0.5. Pre-fix gave 1.0 (the bare span).

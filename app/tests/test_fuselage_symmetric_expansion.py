@@ -21,12 +21,8 @@ def _make_strut(symmetric: bool = True) -> schemas.FuselageSchema:
         name="Strut",
         symmetric=symmetric,
         x_secs=[
-            schemas.FuselageXSecSuperEllipseSchema(
-                xyz=[0.0, 0.6, -0.3], a=0.02, b=0.02, n=2.0
-            ),
-            schemas.FuselageXSecSuperEllipseSchema(
-                xyz=[0.0, 0.6, -1.0], a=0.02, b=0.02, n=2.0
-            ),
+            schemas.FuselageXSecSuperEllipseSchema(xyz=[0.0, 0.6, -0.3], a=0.02, b=0.02, n=2.0),
+            schemas.FuselageXSecSuperEllipseSchema(xyz=[0.0, 0.6, -1.0], a=0.02, b=0.02, n=2.0),
         ],
     )
 
@@ -98,9 +94,7 @@ class TestBuildAsbFuselages:
 
         from app.converters.model_schema_converters import _build_asb_fuselages
 
-        empty = schemas.FuselageSchema.model_construct(
-            name="Empty", symmetric=False, x_secs=[]
-        )
+        empty = schemas.FuselageSchema.model_construct(name="Empty", symmetric=False, x_secs=[])
         result = _build_asb_fuselages(OrderedDict([("Empty", empty)]))
         assert result == []
 

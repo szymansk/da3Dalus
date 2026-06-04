@@ -33,22 +33,22 @@ _DUAL_ROLE_AXES: dict[str, tuple[str, str]] = {
 }
 
 # Axis-label classification for the enrichment L/R reconstruction.
-PRIMARY_AXES = {"pitch", "lift"}      # symmetric component
-SECONDARY_AXES = {"roll", "yaw"}      # antisymmetric component
+PRIMARY_AXES = {"pitch", "lift"}  # symmetric component
+SECONDARY_AXES = {"roll", "yaw"}  # antisymmetric component
 
 
 @dataclass(frozen=True)
 class ControlAxis:
     """One AVL control variable contributing to a physical surface's deflection."""
 
-    name: str          # globally-unique AVL/ASB control-variable name
-    sgn_dup: float     # +1 symmetric, -1 antisymmetric (NEVER a differential magnitude)
-    gain: float        # AVL gain column (deg deflection per control variable)
-    symmetric: bool    # True → pitch/lift axis; False → roll/yaw axis
+    name: str  # globally-unique AVL/ASB control-variable name
+    sgn_dup: float  # +1 symmetric, -1 antisymmetric (NEVER a differential magnitude)
+    gain: float  # AVL gain column (deg deflection per control variable)
+    symmetric: bool  # True → pitch/lift axis; False → roll/yaw axis
     hinge_point: float
     deflection: float  # baseline deflection for this axis (antisym dual axis → 0 in ASB)
     role: str
-    axis: str          # "pitch" | "lift" | "roll" | "yaw" | "" (single-axis)
+    axis: str  # "pitch" | "lift" | "roll" | "yaw" | "" (single-axis)
 
 
 def is_dual_role(role: str | None) -> bool:
@@ -160,6 +160,5 @@ def assert_unique_control_names(names: list[str]) -> None:
         seen.add(n)
     if dupes:
         raise ValueError(
-            f"Duplicate control-variable names would collapse into one AVL DOF: "
-            f"{sorted(dupes)}"
+            f"Duplicate control-variable names would collapse into one AVL DOF: {sorted(dupes)}"
         )

@@ -68,9 +68,9 @@ def _parse_sse(body: str) -> list[tuple[str, dict]]:
         data_str = ""
         for line in block.split("\n"):
             if line.startswith("event:"):
-                event_type = line[len("event:"):].strip()
+                event_type = line[len("event:") :].strip()
             elif line.startswith("data:"):
-                data_str += line[len("data:"):].strip()
+                data_str += line[len("data:") :].strip()
         if not data_str:
             continue
         try:
@@ -103,7 +103,10 @@ def _stub_import_vsp3(monkeypatch):
         ap = AeroplaneSchema(name="StreamTest")
         ap.wings = OrderedDict([("Main", wing)])
         return openvsp_importer.ImportResult(
-            aeroplane=ap, warnings=[], lossy_components=[], weight_items=[],
+            aeroplane=ap,
+            warnings=[],
+            lossy_components=[],
+            weight_items=[],
         )
 
     monkeypatch.setattr(openvsp_importer, "import_vsp3", _fake_import)

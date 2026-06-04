@@ -32,9 +32,7 @@ airfoil_path = str(
 )
 
 
-def _post_wingconfig_with_asymmetric_ted(
-    client: TestClient, aeroplane_id: str, wing_name: str
-):
+def _post_wingconfig_with_asymmetric_ted(client: TestClient, aeroplane_id: str, wing_name: str):
     """POST a 1-segment wing with an aileron whose ``symmetric=False``."""
     wing_config = {
         "nose_pnt": [0, 0, 0],
@@ -153,9 +151,7 @@ class TestFromWingConfigAsymmetricTed:
                 }
             ],
         }
-        resp = client.post(
-            f"/aeroplanes/{aid}/wings/main_wing/from-wingconfig", json=wing_config
-        )
+        resp = client.post(f"/aeroplanes/{aid}/wings/main_wing/from-wingconfig", json=wing_config)
         assert resp.status_code == 422, resp.text
         detail = resp.json().get("detail", "")
         # Message must call out the exact fields that conflict and
@@ -214,9 +210,7 @@ class TestFromWingConfigAsymmetricTed:
                 },
             ],
         }
-        resp = client.post(
-            f"/aeroplanes/{aid}/wings/main_wing/from-wingconfig", json=wing_config
-        )
+        resp = client.post(f"/aeroplanes/{aid}/wings/main_wing/from-wingconfig", json=wing_config)
         assert resp.status_code == 201, resp.text
         wing = client.get(f"/aeroplanes/{aid}/wings/main_wing").json()
 
@@ -286,13 +280,12 @@ class TestFromWingConfigAsymmetricTed:
                 }
             ],
         }
-        resp = client.post(
-            f"/aeroplanes/{aid}/wings/main_wing/from-wingconfig", json=wing_config
-        )
+        resp = client.post(f"/aeroplanes/{aid}/wings/main_wing/from-wingconfig", json=wing_config)
         assert resp.status_code == 201, resp.text
         wing = client.get(f"/aeroplanes/{aid}/wings/main_wing").json()
         sym_xsecs = [
-            xs for xs in wing["x_secs"]
+            xs
+            for xs in wing["x_secs"]
             if (xs.get("control_surface") is not None)
             or (xs.get("trailing_edge_device") is not None)
         ]

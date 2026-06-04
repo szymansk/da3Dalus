@@ -718,9 +718,7 @@ def _augment_xsec_pairs(
             if same_airfoil:
                 insert_airfoil = anchor.airfoil
             else:
-                morphed = openvsp_airfoil.morph_airfoils(
-                    str(anchor.airfoil), str(nxt.airfoil), t
-                )
+                morphed = openvsp_airfoil.morph_airfoils(str(anchor.airfoil), str(nxt.airfoil), t)
                 if morphed is None:
                     morph_fallbacks += 1
                     insert_airfoil = anchor.airfoil if t < 0.5 else nxt.airfoil

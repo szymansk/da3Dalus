@@ -603,9 +603,7 @@ def recompute_assumptions(db: Session, aeroplane_uuid) -> None:
     # surface (or grass_short default), and safety factor. Compared
     # against ``available_field_length_m`` from the mission spec so the
     # UI can render the chip green / red / neutral.
-    mission_obj = (
-        db.query(MissionObjectiveModel).filter_by(aeroplane_id=aircraft.id).first()
-    )
+    mission_obj = db.query(MissionObjectiveModel).filter_by(aeroplane_id=aircraft.id).first()
     landing_field_m, surface_used = _compute_landing_field_length(
         mass_kg=mass,
         s_ref_m2=s_ref,
@@ -615,9 +613,7 @@ def recompute_assumptions(db: Session, aeroplane_uuid) -> None:
             mission_obj.landing_safety_factor if mission_obj is not None else None
         ),
     )
-    available = (
-        mission_obj.available_field_length_m if mission_obj is not None else None
-    )
+    available = mission_obj.available_field_length_m if mission_obj is not None else None
     landing_field_sufficient: bool | None
     if landing_field_m is None or available is None:
         landing_field_sufficient = None
@@ -984,7 +980,7 @@ def _fine_sweep_cl_max(
     # Keep NaNs where AeroBuildup returned NaN/missing so the consumer can
     # detect and skip these entries (same contract as the pre-refactor code).
     d_induced = _extract_array(r, "D_induced", n=n_pts, default=float("nan"))
-    q = 0.5 * 1.225 * v_flat ** 2  # ISA sea-level rho; consistent with op
+    q = 0.5 * 1.225 * v_flat**2  # ISA sea-level rho; consistent with op
     with np.errstate(invalid="ignore", divide="ignore"):
         cdi_arr = np.where(
             (s_ref > 0) & np.isfinite(d_induced),
@@ -1515,7 +1511,9 @@ def _compute_landing_field_length(
     if mass_kg <= 0 or s_ref_m2 <= 0 or cl_max_landing <= 0:
         return (None, None)
 
-    surface_key = landing_surface if landing_surface in LANDING_SURFACE_MU else _LANDING_SURFACE_DEFAULT
+    surface_key = (
+        landing_surface if landing_surface in LANDING_SURFACE_MU else _LANDING_SURFACE_DEFAULT
+    )
     safety = (
         landing_safety_factor
         if landing_safety_factor is not None and landing_safety_factor >= 1.0

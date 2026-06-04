@@ -240,3 +240,15 @@ wind-tunnel validation when `min_analysis_confidence < 0.85`.
 - Confirm the airfoil-family heuristic thresholds against a few known airfoils.
 - Decide final mission-weight coefficients (start from RC-expert heuristics,
   tune; keep them in config so they can change without recompute).
+- **Confidence-limited band under xxxlarge (40k–100k):** Under
+  `model_size='xxxlarge'` with `confidence_gate=0.90`, NeuralFoil does not
+  reach the gate in the 40k–100k Re band for most airfoils (probed: SD7037
+  max_conf=0.859 at Re=100k, 0.870 at Re=150k, 0.892 at Re=200k).  The
+  production backfill correctly writes DB rows for these Re grid points with
+  all metric columns NULL — the confidence badge (`min_analysis_confidence`)
+  is still stored.  `score_re_agnostic` returns `None` for such rows, which
+  the response caveat block surfaces to the UI as low-confidence.  This is
+  by design: the 0.90 gate is NOT loosened.  Candidate follow-up: investigate
+  whether a per-Re-band gate (e.g. 0.85 for Re < 150k) or a dedicated
+  low-Re model preset would recover reliable scores in the 40k–100k range
+  without overstating confidence.

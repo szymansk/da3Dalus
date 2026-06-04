@@ -33,16 +33,12 @@ class TestRangeValidation:
     @pytest.mark.parametrize("bad", [0.0, -1.0, 5.1])
     def test_mix_gain_primary_out_of_range(self, bad):
         with pytest.raises(ValidationError):
-            TrailingEdgeDeviceDetailSchema(
-                role=ControlSurfaceRole.ELEVON, mix_gain_primary=bad
-            )
+            TrailingEdgeDeviceDetailSchema(role=ControlSurfaceRole.ELEVON, mix_gain_primary=bad)
 
     @pytest.mark.parametrize("bad", [0.3, 0.2, 3.1, 0.0])
     def test_differential_ratio_out_of_range(self, bad):
         with pytest.raises(ValidationError):
-            TrailingEdgeDeviceDetailSchema(
-                role=ControlSurfaceRole.AILERON, differential_ratio=bad
-            )
+            TrailingEdgeDeviceDetailSchema(role=ControlSurfaceRole.AILERON, differential_ratio=bad)
 
     def test_differential_ratio_in_range_ok(self):
         ted = TrailingEdgeDeviceDetailSchema(
@@ -52,9 +48,7 @@ class TestRangeValidation:
 
 
 class TestRoleAwareValidation:
-    @pytest.mark.parametrize(
-        "role", ["aileron", "elevon", "flaperon", "ruddervator"]
-    )
+    @pytest.mark.parametrize("role", ["aileron", "elevon", "flaperon", "ruddervator"])
     def test_differential_allowed_for_roles_with_antisymmetric_axis(self, role):
         ted = TrailingEdgeDeviceDetailSchema(role=role, differential_ratio=1.5)
         assert ted.differential_ratio == 1.5
@@ -87,9 +81,7 @@ class TestPatchSchema:
 
     def test_patch_validates_when_role_present(self):
         with pytest.raises(ValidationError):
-            TrailingEdgeDevicePatchSchema(
-                role=ControlSurfaceRole.ELEVATOR, differential_ratio=1.5
-            )
+            TrailingEdgeDevicePatchSchema(role=ControlSurfaceRole.ELEVATOR, differential_ratio=1.5)
 
     def test_patch_skips_role_validation_when_role_absent(self):
         # Without a role on a patch we cannot cross-validate; range still applies.

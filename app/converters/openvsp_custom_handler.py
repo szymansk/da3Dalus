@@ -90,9 +90,7 @@ def _handle_custom(
             )
             break
         xsecs.append(
-            FuselageXSecSuperEllipseSchema(
-                xyz=[cx, cy, cz], a=max(a, 0.0), b=max(b, 0.0), n=2.0
-            )
+            FuselageXSecSuperEllipseSchema(xyz=[cx, cy, cz], a=max(a, 0.0), b=max(b, 0.0), n=2.0)
         )
         xsec_us.append(u)
     _ = xsec_us  # reserved for a future curvature-aware sampler
@@ -101,9 +99,7 @@ def _handle_custom(
         ctx.add_warning(
             component_type="CUSTOM",
             component_name=name,
-            reason=(
-                f"Custom Geom {name!r} yielded fewer than 2 usable xsecs; skipped."
-            ),
+            reason=(f"Custom Geom {name!r} yielded fewer than 2 usable xsecs; skipped."),
             severity="warning",
         )
         ctx.mark_lossy(gid)

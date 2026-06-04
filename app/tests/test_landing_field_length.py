@@ -28,6 +28,7 @@ from app.services.assumption_compute_service import (
 # Sanity: the surface table covers the schema literal exactly.
 # ---------------------------------------------------------------------------
 
+
 def test_surface_table_matches_schema_literal():
     """The compute service's LANDING_SURFACE_MU must enumerate exactly the
     surfaces the schema accepts — otherwise a user-set surface from the
@@ -38,8 +39,7 @@ def test_surface_table_matches_schema_literal():
     # Literal -> set of legal values
     legal = set(LandingSurface.__args__)
     assert set(LANDING_SURFACE_MU) == legal, (
-        f"surface table out of sync with schema: "
-        f"table={set(LANDING_SURFACE_MU)}, schema={legal}"
+        f"surface table out of sync with schema: table={set(LANDING_SURFACE_MU)}, schema={legal}"
     )
 
 
@@ -244,12 +244,18 @@ class TestEdgeCases:
         shorter, not longer. Catches sign-flip / table-swap regressions."""
         s_ref = _solve_s_ref_for_v_s0(mass_kg=3.0, v_s0_mps=9.0, cl_max=1.4)
         l_grass, _ = _compute_landing_field_length(
-            mass_kg=3.0, s_ref_m2=s_ref, cl_max_landing=1.4,
-            landing_surface="grass_long", landing_safety_factor=1.5,
+            mass_kg=3.0,
+            s_ref_m2=s_ref,
+            cl_max_landing=1.4,
+            landing_surface="grass_long",
+            landing_safety_factor=1.5,
         )
         l_paved, _ = _compute_landing_field_length(
-            mass_kg=3.0, s_ref_m2=s_ref, cl_max_landing=1.4,
-            landing_surface="hard_paved", landing_safety_factor=1.5,
+            mass_kg=3.0,
+            s_ref_m2=s_ref,
+            cl_max_landing=1.4,
+            landing_surface="hard_paved",
+            landing_safety_factor=1.5,
         )
         assert l_grass is not None and l_paved is not None
         assert l_grass < l_paved, f"grass_long {l_grass} should beat paved-no-brake {l_paved}"

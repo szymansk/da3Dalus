@@ -50,9 +50,11 @@ def _v_stall_turn(bank_deg: float, vs_clean: float = _VS_CLEAN) -> float:
 
 @pytest.mark.parametrize(
     "bank, expected_n",
-    [(20.0, 1.0 / math.cos(math.radians(20.0))),
-     (40.0, 1.0 / math.cos(math.radians(40.0))),
-     (60.0, 2.0)],
+    [
+        (20.0, 1.0 / math.cos(math.radians(20.0))),
+        (40.0, 1.0 / math.cos(math.radians(40.0))),
+        (60.0, 2.0),
+    ],
 )
 def test_load_factor_matches_sadraey(bank, expected_n):
     """Sanity-anchor the n we build the boundary on: n=1/cos(phi)."""

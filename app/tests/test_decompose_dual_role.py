@@ -34,8 +34,8 @@ class TestDifferentialSignBranched:
         mix = {"elevon:w_0": (1.0, 1.0, 2.0)}  # differential_ratio 2.0
         mv = next(iter(decompose_dual_role(controls, mix).values()))
         # right_anti=+2 (down, unscaled); left_anti=-2*2=-4 (up, scaled)
-        assert mv.deflection_right == 5.0   # 3 + 2
-        assert mv.deflection_left == -1.0   # 3 - 4
+        assert mv.deflection_right == 5.0  # 3 + 2
+        assert mv.deflection_left == -1.0  # 3 - 4
         # up-going (left) carries the larger antisymmetric magnitude
         assert abs(mv.deflection_left - mv.symmetric_offset) > abs(
             mv.deflection_right - mv.symmetric_offset
@@ -47,7 +47,7 @@ class TestDifferentialSignBranched:
         mv = next(iter(decompose_dual_role(controls, mix).values()))
         # right_anti=-2 (up, scaled ->-4); left_anti=+2 (down, unscaled)
         assert mv.deflection_right == -1.0  # 3 - 4
-        assert mv.deflection_left == 5.0    # 3 + 2
+        assert mv.deflection_left == 5.0  # 3 + 2
         # for the opposite sign the up-going side is now the right
         assert abs(mv.deflection_right - mv.symmetric_offset) > abs(
             mv.deflection_left - mv.symmetric_offset
@@ -63,8 +63,8 @@ class TestSymmetricDominantDifferential:
         mix = {"elevon:w_0": (1.0, 1.0, 2.0)}
         mv = next(iter(decompose_dual_role(controls, mix).values()))
         # antisymmetric: right=+3 (unscaled), left=-3*2=-6 (scaled about symmetric)
-        assert mv.deflection_right == 5.0 + 3.0   # 8.0
-        assert mv.deflection_left == 5.0 - 6.0    # -1.0
+        assert mv.deflection_right == 5.0 + 3.0  # 8.0
+        assert mv.deflection_left == 5.0 - 6.0  # -1.0
         # symmetric bias itself is NOT scaled by the ratio
         assert mv.symmetric_offset == 5.0
 
@@ -74,7 +74,7 @@ class TestGains:
         controls = {"[ruddervator]pitch_t_1": 2.0, "[ruddervator]yaw_t_1": 4.0}
         mix = {"ruddervator:t_1": (1.5, 0.5, 1.0)}
         mv = next(iter(decompose_dual_role(controls, mix).values()))
-        assert mv.symmetric_offset == 3.0   # 1.5 * 2
+        assert mv.symmetric_offset == 3.0  # 1.5 * 2
         assert mv.differential_throw == 2.0  # 0.5 * 4
 
 

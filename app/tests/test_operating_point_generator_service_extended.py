@@ -384,7 +384,9 @@ class TestDetectControlCapabilities:
 class TestRequiredCapabilitiesForTarget:
     def test_turn_banks(self):
         for bank in (20, 40, 60):
-            assert _required_capabilities_for_target(f"turn_{bank}") == {"has_roll_control|has_yaw_control"}
+            assert _required_capabilities_for_target(f"turn_{bank}") == {
+                "has_roll_control|has_yaw_control"
+            }
 
     def test_dutch_role_start(self):
         assert _required_capabilities_for_target("dutch_role_start") == {"has_yaw_control"}

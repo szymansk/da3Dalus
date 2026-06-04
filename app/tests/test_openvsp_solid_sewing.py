@@ -239,9 +239,7 @@ class TestSewImportedGeomToSolid:
 
         monkeypatch.setattr(core_config.settings, "ARTIFACTS_BASE_DIR", tmp_path)
         # Plausible-looking path, but the file is not on disk.
-        result = sew_imported_geom_to_solid(
-            "openvsp_imports/uuid/missing.stp", "uuid", "missing"
-        )
+        result = sew_imported_geom_to_solid("openvsp_imports/uuid/missing.stp", "uuid", "missing")
         assert result is None
 
     def test_dedupes_when_target_already_exists(self, tmp_path, monkeypatch):
@@ -309,10 +307,7 @@ class TestPipelineInternals:
         the resulting shape via cadquery must yield N solids back.
         """
         # Build 3 boxes → 3 closed shells → 3 oriented solids.
-        boxes = [
-            cq.Workplane("XY").box(2, 2, 2).translate((10 * i, 0, 0))
-            for i in range(3)
-        ]
+        boxes = [cq.Workplane("XY").box(2, 2, 2).translate((10 * i, 0, 0)) for i in range(3)]
         solids = []
         for box in boxes:
             shells = _sew_faces(box.faces().vals(), 0.001)

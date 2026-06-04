@@ -21,14 +21,26 @@ from fastapi import (
 )
 from pydantic import BaseModel, Field, PositiveFloat, model_validator
 
+from sqlalchemy.orm import Session
+
+from app.core.background_jobs import schedule_airfoil_low_re
 from app.core.exceptions import (
-    ServiceException,
-    NotFoundError,
-    ValidationError,
-    ValidationDomainError,
     ConflictError,
     InternalError,
+    NotFoundError,
+    ServiceException,
+    ValidationDomainError,
+    ValidationError,
 )
+from app.db.session import get_db
+from app.schemas.airfoil import (
+    AirfoilImportResult,
+    AirfoilRead,
+    AirfoilSummary,
+    SuitabilityResponse,
+)
+from app.services import airfoil_service
+from app.services.suitability_service import search_suitability
 from app.settings import Settings, get_settings
 
 matplotlib.use("Agg")
@@ -473,10 +485,86 @@ def _raise_http_from_domain(exc: ServiceException) -> None:
 
 # ── DB-backed airfoil endpoints (gh#335) ────────────────────────
 
-from sqlalchemy.orm import Session
-from app.db.session import get_db
-from app.schemas.airfoil import AirfoilImportResult, AirfoilRead, AirfoilSummary
-from app.services import airfoil_service
+
+@router.get(
+    "/airfoils/db/suitability",
+    status_code=status.HTTP_200_OK,
+    tags=["airfoils"],
+    operation_id="get_airfoil_suitability",
+    summary="Rank DB airfoils by low-Re suitability at the given chord/speed.",
+    response_model=SuitabilityResponse,
+)
+async def get_airfoil_suitability(
+    chord_m: Annotated[
+        float,
+        Query(description="Root chord in metres (used to compute Re).", gt=0.0),
+    ],
+    speed_ms: Annotated[
+        float,
+        Query(description="Airspeed in m/s (used to compute Re).", gt=0.0),
+    ],
+    db: Annotated[Session, Depends(get_db)],
+    settings: Annotated[Settings, Depends(get_settings)],
+    aeroplane_id: Annotated[
+        str | None,
+        Query(
+            description="UUID4 of the aeroplane (aeroplanes.uuid). Resolves mission preset + operating CLs."
+        ),
+    ] = None,
+    mission_type: Annotated[
+        str | None,
+        Query(
+            description="Explicit mission type override: trainer|sport|aerobatic|glider|flying_wing."
+        ),
+    ] = None,
+    target_cl_cruise: Annotated[
+        float | None,
+        Query(description="Explicit target CL at cruise (overrides aeroplane-derived value)."),
+    ] = None,
+    target_cl_loiter: Annotated[
+        float | None,
+        Query(
+            description="Explicit target CL at loiter/landing (display-only, not used for ranking)."
+        ),
+    ] = None,
+    tip_chord_m: Annotated[
+        float | None,
+        Query(description="Tip chord in metres — only used to compute tip Re and set tip_re_flag."),
+    ] = None,
+    limit: Annotated[
+        int, Query(description="Maximum number of results to return.", ge=1, le=200)
+    ] = 50,
+) -> SuitabilityResponse:
+    """Return airfoils ranked by low-Re suitability.
+
+    Three scoring lenses are computed at query time (no precomputed scores stored):
+    1. **re_agnostic** — normalised quality from scalar metrics at the query Re.
+    2. **mission** — re_agnostic × mission weighting (family/thickness/CL_max).
+    3. **target_cl_cruise** — drag from parabolic fit at the operating cruise CL.
+
+    active_lens priority: mission > target_cl_cruise > re_agnostic.
+    active_lens is NEVER 'target_cl_loiter' (loiter is display-only).
+    """
+    try:
+        return search_suitability(
+            db=db,
+            chord_m=chord_m,
+            speed_ms=speed_ms,
+            aeroplane_id=aeroplane_id,
+            mission_type=mission_type,
+            target_cl_cruise=target_cl_cruise,
+            target_cl_loiter=target_cl_loiter,
+            tip_chord_m=tip_chord_m,
+            limit=limit,
+            settings=settings,
+        )
+    except ServiceException as exc:
+        _raise_http_from_domain(exc)
+    except Exception as exc:  # pragma: no cover - defensive fallback
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Unexpected error: {exc}",
+        ) from exc
 
 
 @router.get(
@@ -529,7 +617,13 @@ async def import_airfoils(
     Skips malformed files and existing airfoils (case-insensitive name match).
     """
     try:
-        return airfoil_service.import_directory(db, directory)
+        result = airfoil_service.import_directory(db, directory)
+        # Schedule low-Re recompute for newly imported airfoils only (gh-821).
+        # Existing airfoils are skipped — they were either already computed or
+        # will be handled by the scheduled backfill.
+        if result.imported_names:
+            schedule_airfoil_low_re(result.imported_names)
+        return result
     except ServiceException as exc:
         _raise_http_from_domain(exc)
 
