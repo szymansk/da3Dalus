@@ -21,11 +21,12 @@ export function airfoilShortName(raw: string): string {
  * Relationship:
  *  - 'mission'          → item.mission ?? item.re_agnostic (fallback when no mission score)
  *  - 'target_cl_cruise' → item.target_cl_cruise ?? item.re_agnostic
- *  - 'target_cl_loiter' → display-only lens, never used as ranking lens; fall through to re_agnostic
  *  - 're_agnostic' / default → item.re_agnostic
+ *
+ * Note: target_cl_best_glide and target_cl_min_sink are display-only — never ranking lenses.
  */
 export function activeLensScore(
-  item: { re_agnostic: number; mission: number | null; target_cl_cruise: number | null; target_cl_loiter: number | null },
+  item: { re_agnostic: number; mission: number | null; target_cl_cruise: number | null },
   lens: string | undefined,
 ): number {
   if (lens === "mission") return item.mission ?? item.re_agnostic;
@@ -299,6 +300,8 @@ export default function AirfoilPreviewPage() {
           onRootRankedModeToggle={() => setRootRankedMode((v) => !v)}
           tipRankedMode={tipRankedMode}
           onTipRankedModeToggle={() => setTipRankedMode((v) => !v)}
+          targetClProvenance={rootSuitability.data?.query.target_cl_provenance}
+          suitabilityCaveat={rootSuitability.data?.caveat}
         />
       </div>
     </div>

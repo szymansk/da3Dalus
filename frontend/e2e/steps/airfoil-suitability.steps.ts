@@ -1,5 +1,5 @@
 /**
- * gh-822: Playwright-BDD step definitions for airfoil suitability feature.
+ * gh-825: Playwright-BDD step definitions for airfoil suitability feature.
  *
  * Strategy: use page.route() to stub GET /airfoils/db/suitability with
  * frozen-contract fixtures. A minimal stub for GET /airfoils is also provided
@@ -19,7 +19,10 @@ function suitabilityItem(
     re_agnostic: number;
     mission: number | null;
     target_cl_cruise: number | null;
-    target_cl_loiter: number | null;
+    target_cl_best_glide: number | null;
+    target_cl_min_sink: number | null;
+    stall_gentleness: number | null;
+    cl_max_margin: number | null;
     min_analysis_confidence: number;
     tip_re_flag: boolean;
     caveat: string;
@@ -31,7 +34,10 @@ function suitabilityItem(
     re_agnostic: 0.82,
     mission: 0.75,
     target_cl_cruise: 0.68,
-    target_cl_loiter: 0.55,
+    target_cl_best_glide: 0.80,
+    target_cl_min_sink: 0.55,
+    stall_gentleness: -0.02,
+    cl_max_margin: 0.15,
     min_analysis_confidence: 0.92,
     tip_re_flag: false,
     caveat: "Nur relative Rangfolge.",
@@ -48,12 +54,15 @@ function suitabilityResponse(items: ReturnType<typeof suitabilityItem>[]) {
       re_clamped: false,
       mission_type: "trainer",
       target_cl_cruise: 0.68,
-      target_cl_loiter: 0.55,
+      target_cl_best_glide: 0.80,
+      target_cl_min_sink: 0.55,
+      target_cl_provenance: "estimated",
       active_lens: "re_agnostic",
     },
     caveat: {
       relative_ranking_only: true,
       no_hysteresis_modelling: true,
+      ignores_tip_re_clmax_collapse: true,
       recommend_xfoil_validation: false,
       text: "Nur relative Rangfolge. Kein Hysterese-Modell.",
     },
@@ -221,10 +230,19 @@ Then(
 );
 
 Then(
-  "the root suitability card shows the Ziel-CL Loiter lens",
+  "the root suitability card shows the Ziel-CL Best-Glide lens",
   async ({ page }) => {
     await expect(
-      page.getByText(/Loiter/i).first(),
+      page.getByText(/Best-Glide/i).first(),
+    ).toBeVisible({ timeout: 10000 });
+  },
+);
+
+Then(
+  "the root suitability card shows the Ziel-CL Min-Sink lens",
+  async ({ page }) => {
+    await expect(
+      page.getByText(/Min-Sink/i).first(),
     ).toBeVisible({ timeout: 10000 });
   },
 );
@@ -273,5 +291,14 @@ Then(
     // e423 (0.82) should appear before naca0015 (0.55)
     const e423 = page.getByText("e423").first();
     await expect(e423).toBeVisible({ timeout: 5000 });
+  },
+);
+
+Then(
+  "the root suitability card shows a provenance indicator",
+  async ({ page }) => {
+    await expect(
+      page.getByTestId("provenance-indicator").first(),
+    ).toBeVisible({ timeout: 10000 });
   },
 );
