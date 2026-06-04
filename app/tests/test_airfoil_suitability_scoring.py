@@ -147,7 +147,7 @@ class TestMissionScore:
 
 
 # ---------------------------------------------------------------------------
-# Task 6c: target_cl_cruise/loiter from parabolic fit
+# Task 6c: target_cl scoring from parabolic fit (L/D-based, gh-825 fix)
 # ---------------------------------------------------------------------------
 
 
@@ -192,6 +192,36 @@ class TestTargetClScore:
         low_score = score_target_cl(high_drag_polar, cl_target=0.5)
         high_score = score_target_cl(_GOOD_POLAR, cl_target=0.5)
         assert high_score > low_score
+
+    def test_high_cl_min_sink_scores_positive_for_good_airfoil(self):
+        """gh-825 fix: at high CL (glider min-sink ≈ 1.1), a good airfoil with L/D > 8
+        must score > 0.  Before the fix, CD-based normalisation produced 0.0 for any
+        airfoil where CD > 0.05 at the target CL."""
+        from app.services.airfoil_low_re_service import score_target_cl
+
+        # _GOOD_POLAR: cd0=0.012, k=0.04, cl0=0.3
+        # At CL=1.1: CD = 0.012 + 0.04*(1.1-0.3)^2 = 0.012 + 0.04*0.64 = 0.0376
+        # L/D = 1.1 / 0.0376 ≈ 29.2  (excellent; just below 30 → score ≈ 0.95)
+        result = score_target_cl(_GOOD_POLAR, cl_target=1.1)
+        assert result is not None
+        assert result > 0.0, (
+            f"gh-825 bug reproduced: score_target_cl returned {result} for CL=1.1 "
+            f"with a good polar (should be > 0 — L/D-based scoring fix not applied)"
+        )
+
+    def test_high_cl_good_vs_poor_ordering_preserved(self):
+        """At high CL, a good airfoil (low cd0) must score higher than a poor one."""
+        from app.services.airfoil_low_re_service import score_target_cl
+
+        poor_polar = dict(_POOR_POLAR)
+        good_score = score_target_cl(_GOOD_POLAR, cl_target=1.0)
+        poor_score = score_target_cl(poor_polar, cl_target=1.0)
+        assert good_score is not None
+        assert poor_score is not None
+        assert good_score > poor_score, (
+            f"Good airfoil score ({good_score}) should exceed poor airfoil score ({poor_score}) "
+            f"at CL=1.0"
+        )
 
 
 # ---------------------------------------------------------------------------
@@ -271,8 +301,8 @@ class TestPartialContextDegradation:
         # All None → cannot compute
         assert mass is None and v_cruise is None and s_ref is None
 
-    def test_missing_v_min_sink_gives_null_loiter_cl(self):
-        """When v_min_sink_mps is absent, target_cl_loiter must be null."""
+    def test_missing_v_min_sink_gives_null_min_sink_cl(self):
+        """When v_min_sink_mps is absent, target_cl_min_sink must be null."""
         ctx = {"mass_kg": 2.0, "v_cruise_mps": 18.0, "s_ref_m2": 0.3}
         # v_min_sink absent
         v_min_sink = ctx.get("v_min_sink_mps")

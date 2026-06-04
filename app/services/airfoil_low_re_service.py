@@ -618,10 +618,20 @@ def score_target_cl(
 ) -> float | None:
     """Score how well an airfoil performs at the target CL (0..1).
 
-    Uses the parabolic drag fit CD = cd0 + k*(CL-cl0)^2.
-    Returns None if fit coefficients are absent or cl_target is out of valid range.
+    Uses the parabolic drag fit CD = cd0 + k*(CL-cl0)^2 to compute the L/D
+    at the target operating point, then normalises against reference L/D values.
 
-    Higher score = lower drag at cl_target (better suitability).
+    Scoring is based on L/D (= cl_target / cd_at_target) rather than absolute
+    CD.  Absolute-CD normalisation breaks at high-CL operating points (glider
+    min-sink CL ≈ 1.2–1.8) where even excellent airfoils have CD > 0.05,
+    producing a spurious 0.0 score for the entire glider min-sink column.
+
+    Reference values (RC sailplane / glider range):
+      L/D ≥ 30 at target CL  → score 1.0   (excellent high-lift section)
+      L/D ≤  8 at target CL  → score 0.0   (poor)
+
+    Returns None if fit coefficients are absent.
+    Higher score = better aerodynamic efficiency at cl_target.
     """
     if polar is None:
         return None
@@ -643,20 +653,20 @@ def score_target_cl(
 
     cd_at_target = cd0 + k * (cl_target - cl0) ** 2
 
-    # Score: normalise against a reference CD (good RC airfoil at op. CL)
-    # CD of 0.012 at operating CL → score 1.0; CD of 0.05 → score ~0
-    CD_REF_EXCELLENT = 0.010
-    CD_REF_POOR = 0.050
-
     if cd_at_target <= 0:
         return 0.0
 
-    # Linear scale: 1.0 at excellent, 0.0 at poor
-    cd_score = max(0.0, (CD_REF_POOR - cd_at_target) / (CD_REF_POOR - CD_REF_EXCELLENT))
-    cd_score = min(cd_score, 1.0)
+    # Score on L/D — CL-independent, works at any operating point
+    ld_at_target = abs(cl_target) / cd_at_target
+
+    LD_REF_EXCELLENT = 30.0
+    LD_REF_POOR = 8.0
+
+    ld_score = (ld_at_target - LD_REF_POOR) / (LD_REF_EXCELLENT - LD_REF_POOR)
+    ld_score = max(0.0, min(ld_score, 1.0))
 
     # Penalise if outside valid range
     if not in_range:
-        cd_score *= 0.5
+        ld_score *= 0.5
 
-    return float(cd_score)
+    return float(ld_score)

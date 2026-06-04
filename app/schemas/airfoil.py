@@ -1,6 +1,6 @@
 """Pydantic schemas for airfoil profiles.
 
-Includes the frozen API contract for the low-Re suitability endpoint (gh-821).
+Includes the frozen API contract for the low-Re suitability endpoint (gh-821/gh-825).
 See docs/superpowers/specs/2026-06-04-low-re-airfoil-scoring-design.md.
 """
 
@@ -49,33 +49,43 @@ class AirfoilImportResult(BaseModel):
 
 
 # ---------------------------------------------------------------------------
-# Low-Re suitability scoring — frozen API contract (gh-821)
+# Low-Re suitability scoring — frozen API contract (gh-821, updated gh-825)
 # ---------------------------------------------------------------------------
 
 # Frozen family literals — must match the classifier labels exactly.
 AirfoilFamily = Literal["flat_bottom", "semi_symmetric", "symmetric", "cambered", "reflexed"]
 
-# Frozen active-lens literals — 'target_cl_loiter' is explicitly excluded (loiter
-# is display-only; see spec §FROZEN API CONTRACT).
+# Frozen active-lens literals — glide-point lenses are display-only and never
+# used for ranking (see spec §FROZEN API CONTRACT).
 ActiveLens = Literal["re_agnostic", "mission", "target_cl_cruise"]
+
+# Provenance of target CL values resolved from aeroplane context.
+TargetClProvenance = Literal["estimated", "calculated", "mixed"]
 
 
 class SuitabilityItem(BaseModel):
-    """One airfoil in the ranked suitability response."""
+    """One airfoil in the ranked suitability response (gh-825 schema)."""
 
     airfoil_name: str
     family: AirfoilFamily
     re_agnostic: float = Field(..., ge=0.0, le=1.0)
     mission: Optional[float] = Field(None, ge=0.0, le=1.0)
     target_cl_cruise: Optional[float] = Field(None, ge=0.0, le=1.0)
-    target_cl_loiter: Optional[float] = Field(None, ge=0.0, le=1.0)
+    # gh-825: renamed from target_cl_loiter → target_cl_min_sink
+    target_cl_min_sink: Optional[float] = Field(None, ge=0.0, le=1.0)
+    # gh-825: new field — target CL at best-glide (engine-off / glide)
+    target_cl_best_glide: Optional[float] = Field(None, ge=0.0, le=1.0)
+    # gh-825: raw dCL/dα past peak (≈0 gentle, negative = abrupt stall)
+    stall_gentleness: Optional[float] = None
+    # gh-825: signed CL margin = cl_max − max(target CLs); negative means target > section CL_max
+    cl_max_margin: Optional[float] = None
     min_analysis_confidence: float = Field(..., ge=0.0, le=1.0)
     tip_re_flag: bool
     caveat: str
 
 
 class SuitabilityQuery(BaseModel):
-    """Echo of the query parameters used to compute this response."""
+    """Echo of the query parameters used to compute this response (gh-825 schema)."""
 
     chord_m: float
     speed_ms: float
@@ -83,15 +93,22 @@ class SuitabilityQuery(BaseModel):
     re_clamped: bool
     mission_type: Optional[str]
     target_cl_cruise: Optional[float]
-    target_cl_loiter: Optional[float]
+    # gh-825: renamed from target_cl_loiter
+    target_cl_min_sink: Optional[float]
+    # gh-825: new — best-glide target CL
+    target_cl_best_glide: Optional[float] = None
+    # gh-825: provenance of the resolved target CL values
+    target_cl_provenance: Optional[TargetClProvenance] = None
     active_lens: ActiveLens
 
 
 class SuitabilityCaveat(BaseModel):
-    """Caveats block. Always present in every suitability response."""
+    """Caveats block. Always present in every suitability response (gh-825 schema)."""
 
     relative_ranking_only: bool = True
     no_hysteresis_modelling: bool = True
+    # gh-825: always True — section CL == wing CL (elliptical/untwisted assumption)
+    ignores_tip_re_clmax_collapse: bool = True
     recommend_xfoil_validation: bool
     text: str
 

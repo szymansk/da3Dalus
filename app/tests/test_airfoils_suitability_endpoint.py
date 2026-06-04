@@ -63,7 +63,7 @@ def client_no_svc():
 
 
 def _make_fake_response():
-    """Build a minimal SuitabilityResponse for mocking."""
+    """Build a minimal SuitabilityResponse for mocking (gh-825 schema)."""
     from app.schemas.airfoil import (
         SuitabilityResponse,
         SuitabilityQuery,
@@ -79,7 +79,7 @@ def _make_fake_response():
             re_clamped=False,
             mission_type=None,
             target_cl_cruise=None,
-            target_cl_loiter=None,
+            target_cl_min_sink=None,
             active_lens="re_agnostic",
         ),
         caveat=SuitabilityCaveat(
@@ -95,7 +95,7 @@ def _make_fake_response():
                 re_agnostic=0.85,
                 mission=None,
                 target_cl_cruise=None,
-                target_cl_loiter=None,
+                target_cl_min_sink=None,
                 min_analysis_confidence=0.95,
                 tip_re_flag=False,
                 caveat="",
@@ -151,10 +151,15 @@ def test_endpoint_response_has_frozen_shape(client_no_svc):
     assert "re_agnostic" in r
     assert "mission" in r
     assert "target_cl_cruise" in r
-    assert "target_cl_loiter" in r
+    assert "target_cl_min_sink" in r
+    assert "target_cl_best_glide" in r
+    assert "stall_gentleness" in r
+    assert "cl_max_margin" in r
     assert "min_analysis_confidence" in r
     assert "tip_re_flag" in r
     assert "caveat" in r
+    # Old field must not appear in response
+    assert "target_cl_loiter" not in r
 
 
 def test_endpoint_passes_optional_params_to_service(client_no_svc):

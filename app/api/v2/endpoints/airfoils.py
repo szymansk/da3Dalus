@@ -521,10 +521,16 @@ async def get_airfoil_suitability(
         float | None,
         Query(description="Explicit target CL at cruise (overrides aeroplane-derived value)."),
     ] = None,
-    target_cl_loiter: Annotated[
+    target_cl_min_sink: Annotated[
         float | None,
         Query(
-            description="Explicit target CL at loiter/landing (display-only, not used for ranking)."
+            description="Explicit target CL at min-sink speed (display-only, not used for ranking)."
+        ),
+    ] = None,
+    target_cl_best_glide: Annotated[
+        float | None,
+        Query(
+            description="Explicit target CL at best-glide speed (display-only, not used for ranking)."
         ),
     ] = None,
     tip_chord_m: Annotated[
@@ -543,7 +549,7 @@ async def get_airfoil_suitability(
     3. **target_cl_cruise** — drag from parabolic fit at the operating cruise CL.
 
     active_lens priority: mission > target_cl_cruise > re_agnostic.
-    active_lens is NEVER 'target_cl_loiter' (loiter is display-only).
+    active_lens is NEVER 'target_cl_min_sink' or 'target_cl_best_glide' (display-only).
     """
     try:
         return search_suitability(
@@ -553,7 +559,8 @@ async def get_airfoil_suitability(
             aeroplane_id=aeroplane_id,
             mission_type=mission_type,
             target_cl_cruise=target_cl_cruise,
-            target_cl_loiter=target_cl_loiter,
+            target_cl_min_sink=target_cl_min_sink,
+            target_cl_best_glide=target_cl_best_glide,
             tip_chord_m=tip_chord_m,
             limit=limit,
             settings=settings,

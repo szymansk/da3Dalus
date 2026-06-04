@@ -264,8 +264,9 @@ def test_search_suitability_explicit_target_cl_overrides(seeded_db):
     assert resp.query.target_cl_cruise == pytest.approx(0.5)
 
 
-def test_search_suitability_active_lens_is_never_loiter(seeded_db):
-    """active_lens must never be 'target_cl_loiter'."""
+def test_search_suitability_active_lens_is_never_glide_points(seeded_db):
+    """active_lens must never be 'target_cl_min_sink' or 'target_cl_best_glide'
+    (these are display-only glide-point lenses, not ranking lenses)."""
     from app.services.suitability_service import search_suitability
 
     SessionLocal, ap_uuid = seeded_db
@@ -273,13 +274,81 @@ def test_search_suitability_active_lens_is_never_loiter(seeded_db):
         for params in [
             {},
             {"aeroplane_id": str(ap_uuid)},
-            {"target_cl_loiter": 0.8},
+            {"target_cl_min_sink": 0.8},
+            {"target_cl_best_glide": 0.7},
             {"mission_type": "glider"},
         ]:
             resp = search_suitability(db=session, chord_m=0.15, speed_ms=15.0, **params)
-            assert resp.query.active_lens != "target_cl_loiter", (
-                f"active_lens must never be 'target_cl_loiter', got '{resp.query.active_lens}'"
+            assert resp.query.active_lens not in ("target_cl_min_sink", "target_cl_best_glide"), (
+                f"active_lens must not be a glide-point lens, got '{resp.query.active_lens}'"
             )
+
+
+def test_search_suitability_target_cl_min_sink_echoed_in_query(seeded_db):
+    """Explicit target_cl_min_sink is echoed in the query block."""
+    from app.services.suitability_service import search_suitability
+
+    SessionLocal, _ = seeded_db
+    with SessionLocal() as session:
+        resp = search_suitability(
+            db=session,
+            chord_m=0.15,
+            speed_ms=15.0,
+            target_cl_min_sink=1.1,
+        )
+    assert resp.query.target_cl_min_sink == pytest.approx(1.1)
+    # The min-sink score must be non-None for at least some airfoils
+    scores = [r.target_cl_min_sink for r in resp.results]
+    # At CL=1.1, some airfoils should score > 0
+    assert any(s is not None for s in scores)
+
+
+def test_search_suitability_min_sink_score_positive_for_high_cl_glider(seeded_db):
+    """gh-825 fix: for a glider min-sink CL of 1.0+, the score must be > 0.0
+    for a good airfoil (sd7037). Before the fix, score_target_cl used CD-based
+    normalisation that returned 0.0 for any CD > 0.05 (which all airfoils exceed
+    at CL≈1.1)."""
+    from app.services.suitability_service import search_suitability
+
+    SessionLocal, _ = seeded_db
+    # CL_min_sink for a glider might be ~1.1
+    with SessionLocal() as session:
+        resp = search_suitability(
+            db=session,
+            chord_m=0.20,
+            speed_ms=14.0,
+            target_cl_min_sink=1.1,
+        )
+    # sd7037 is our good airfoil — its min-sink score must be > 0
+    sd_item = next((r for r in resp.results if r.airfoil_name == "sd7037"), None)
+    assert sd_item is not None, "sd7037 must be in results"
+    assert sd_item.target_cl_min_sink is not None, (
+        "target_cl_min_sink score must not be None for sd7037"
+    )
+    assert sd_item.target_cl_min_sink > 0.0, (
+        f"gh-825 bug: sd7037 target_cl_min_sink={sd_item.target_cl_min_sink} should be > 0 "
+        f"for a good airfoil at CL_target=1.1"
+    )
+
+
+def test_search_suitability_stall_gentleness_and_cl_max_margin_populated(seeded_db):
+    """gh-825: stall_gentleness and cl_max_margin are populated in each result."""
+    from app.services.suitability_service import search_suitability
+
+    SessionLocal, _ = seeded_db
+    with SessionLocal() as session:
+        resp = search_suitability(
+            db=session,
+            chord_m=0.15,
+            speed_ms=15.0,
+            target_cl_cruise=0.5,
+        )
+    # stall_gentleness should be non-null for airfoils that have it in the polar
+    items_with_stall = [r for r in resp.results if r.stall_gentleness is not None]
+    assert len(items_with_stall) > 0, "At least some results should have stall_gentleness"
+    # cl_max_margin should be non-null when target CL and polar cl_max are available
+    items_with_margin = [r for r in resp.results if r.cl_max_margin is not None]
+    assert len(items_with_margin) > 0, "At least some results should have cl_max_margin"
 
 
 def test_search_suitability_tip_re_flag(seeded_db):
