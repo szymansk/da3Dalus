@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useMemo } from "react";
-import { Maximize2, Minimize2 } from "lucide-react";
+import { Maximize2, Minimize2, AlertTriangle } from "lucide-react";
 import type { AirfoilGeometry } from "@/hooks/useAirfoilGeometry";
 import type { AirfoilAnalysisResult } from "@/hooks/useAirfoilAnalysis";
 import { interpolateY } from "@/hooks/useAirfoilGeometry";
@@ -18,6 +18,8 @@ interface AirfoilPreviewViewerPanelProps {
   tipRe: number | null;
   ma: number;
   onMaChange: (ma: number) => void;
+  /** gh-822 ADDITIVE: operating α for the polar marker (degrees) */
+  operatingAlphaDeg?: number;
 }
 
 const COLOR_ROOT = "#FF8400";
@@ -41,6 +43,8 @@ function LineChart({
   color = "var(--color-primary)",
   onToggleMaximize,
   isMaximized,
+  operatingX,
+  operatingY,
 }: Readonly<{
   xData: (number | null)[];
   yData: (number | null)[];
@@ -57,6 +61,10 @@ function LineChart({
   xFormat?: (v: number) => string;
   onToggleMaximize?: () => void;
   isMaximized?: boolean;
+  /** gh-822: operating point marker x value (α in degrees for L/D chart) */
+  operatingX?: number;
+  /** gh-822: operating point marker y value (L/D at operating α) */
+  operatingY?: number;
 }>) {
   const W = 400;
   const H = 200;
@@ -289,6 +297,20 @@ function LineChart({
               strokeLinejoin="round"
             />
           )}
+
+          {/* gh-822: Operating point marker */}
+          {operatingX != null && operatingY != null && (
+            <circle
+              data-testid="operating-point-marker"
+              cx={sx(operatingX)}
+              cy={sy(operatingY)}
+              r="4"
+              fill={COLOR_ROOT}
+              stroke="white"
+              strokeWidth="1.5"
+              opacity="0.9"
+            />
+          )}
         </svg>
       </div>
     </div>
@@ -479,6 +501,7 @@ export function AirfoilPreviewViewerPanel({
   tipRe,
   ma,
   onMaChange,
+  operatingAlphaDeg,
 }: Readonly<AirfoilPreviewViewerPanelProps>) {
   const [maximizedChart, setMaximizedChart] = useState<string | null>(null);
 
@@ -505,8 +528,24 @@ export function AirfoilPreviewViewerPanel({
     return parts.join("  |  ");
   }, [rootGeometry, tipGeometry, hasTip]);
 
+  // gh-822: show tip-Re warning when tip is present and tipRe < rootRe
+  const showTipReBanner = hasTip && tipRe != null && tipRe < rootRe;
+
   return (
     <div className="flex flex-1 flex-col gap-4 overflow-hidden p-4">
+      {/* gh-822: Tip-Re < Root-Re warning banner */}
+      {showTipReBanner && (
+        <div
+          role="alert"
+          className="flex items-center gap-2 rounded-xl border border-red-500/40 bg-red-500/10 px-3 py-2 text-[12px] text-red-300"
+        >
+          <AlertTriangle size={13} className="shrink-0" aria-hidden="true" />
+          <span>
+            Tip Re ({tipRe != null ? `${Math.round(tipRe / 1000)}k` : "—"}) &lt; Root Re ({Math.round(rootRe / 1000)}k) — tapered chord reduces effective Re at the tip.
+          </span>
+        </div>
+      )}
+
       {/* Header Row */}
       <div className="flex items-center gap-2">
         <span className="font-[family-name:var(--font-jetbrains-mono)] text-[13px] text-foreground">
@@ -603,6 +642,24 @@ export function AirfoilPreviewViewerPanel({
           const seriesLabel = hasTip ? "root" : undefined;
           const seriesLabel2 = hasTip ? "tip" : undefined;
 
+          // gh-822: Find L/D value at operating alpha for the marker
+          const operatingLdAtAlpha: number | undefined = (() => {
+            if (operatingAlphaDeg == null) return undefined;
+            // Find the closest alpha index
+            const alphas = rootAnalysisResult.alphaDeg;
+            let closestIdx = 0;
+            let closestDist = Math.abs(alphas[0] - operatingAlphaDeg);
+            for (let i = 1; i < alphas.length; i++) {
+              const d = Math.abs(alphas[i] - operatingAlphaDeg);
+              if (d < closestDist) {
+                closestDist = d;
+                closestIdx = i;
+              }
+            }
+            const ld = rootAnalysisResult.clOverCd[closestIdx];
+            return ld != null ? ld : undefined;
+          })();
+
           const allCharts = [
             {
               id: "cl",
@@ -653,6 +710,9 @@ export function AirfoilPreviewViewerPanel({
               color2: COLOR_TIP,
               label: seriesLabel,
               label2: seriesLabel2,
+              // gh-822: operating point marker on L/D chart
+              operatingX: operatingAlphaDeg,
+              operatingY: operatingLdAtAlpha,
             },
             {
               id: "polar",
