@@ -521,10 +521,24 @@ async def get_airfoil_suitability(
         float | None,
         Query(description="Explicit target CL at cruise (overrides aeroplane-derived value)."),
     ] = None,
-    target_cl_loiter: Annotated[
+    target_cl_best_glide: Annotated[
         float | None,
         Query(
-            description="Explicit target CL at loiter/landing (display-only, not used for ranking)."
+            description=(
+                "Explicit target CL at best-glide speed (V_md). "
+                "Display-only — does not drive active_lens. "
+                "Overrides aeroplane-derived value from v_md_mps context."
+            )
+        ),
+    ] = None,
+    target_cl_min_sink: Annotated[
+        float | None,
+        Query(
+            description=(
+                "Explicit target CL at min-sink speed (V_min_sink). "
+                "Display-only — does not drive active_lens. "
+                "Renamed from target_cl_loiter (gh-825)."
+            )
         ),
     ] = None,
     tip_chord_m: Annotated[
@@ -535,15 +549,25 @@ async def get_airfoil_suitability(
         int, Query(description="Maximum number of results to return.", ge=1, le=200)
     ] = 50,
 ) -> SuitabilityResponse:
-    """Return airfoils ranked by low-Re suitability.
+    """Return airfoils ranked by low-Re suitability (gh-821, gh-825).
 
     Three scoring lenses are computed at query time (no precomputed scores stored):
     1. **re_agnostic** — normalised quality from scalar metrics at the query Re.
     2. **mission** — re_agnostic × mission weighting (family/thickness/CL_max).
-    3. **target_cl_cruise** — drag from parabolic fit at the operating cruise CL.
+    3. **target_cl_cruise** — Match×Efficiency score at the cruise CL.
+
+    Two additional display-only CL scores are computed but never drive ranking:
+    - **target_cl_best_glide** — Match×Efficiency at V_md (best-glide / max-range speed).
+    - **target_cl_min_sink**   — Match×Efficiency at V_min_sink (slowest / highest CL).
 
     active_lens priority: mission > target_cl_cruise > re_agnostic.
-    active_lens is NEVER 'target_cl_loiter' (loiter is display-only).
+    Glide points (best_glide, min_sink) NEVER appear in active_lens.
+
+    Documented assumptions:
+    - Re is LOCAL (per xsec chord).
+    - Section CL ≈ wing CL (ideal elliptic, untwisted assumption).
+    - Tip-Re CL_max collapse is not modelled; surfaced via tip_re_flag + cl_max_margin +
+      caveat.ignores_tip_re_clmax_collapse.
     """
     try:
         return search_suitability(
@@ -553,7 +577,8 @@ async def get_airfoil_suitability(
             aeroplane_id=aeroplane_id,
             mission_type=mission_type,
             target_cl_cruise=target_cl_cruise,
-            target_cl_loiter=target_cl_loiter,
+            target_cl_best_glide=target_cl_best_glide,
+            target_cl_min_sink=target_cl_min_sink,
             tip_chord_m=tip_chord_m,
             limit=limit,
             settings=settings,

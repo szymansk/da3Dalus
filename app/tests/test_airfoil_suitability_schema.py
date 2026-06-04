@@ -15,7 +15,10 @@ def test_suitability_item_required_fields():
         re_agnostic=0.85,
         mission=None,
         target_cl_cruise=None,
-        target_cl_loiter=None,
+        target_cl_best_glide=None,
+        target_cl_min_sink=None,
+        stall_gentleness=-0.04,
+        cl_max_margin=0.3,
         min_analysis_confidence=0.92,
         tip_re_flag=False,
         caveat="",
@@ -25,7 +28,10 @@ def test_suitability_item_required_fields():
     assert item.re_agnostic == pytest.approx(0.85)
     assert item.mission is None
     assert item.target_cl_cruise is None
-    assert item.target_cl_loiter is None
+    assert item.target_cl_best_glide is None
+    assert item.target_cl_min_sink is None
+    assert item.stall_gentleness == pytest.approx(-0.04)
+    assert item.cl_max_margin == pytest.approx(0.3)
     assert item.min_analysis_confidence == pytest.approx(0.92)
     assert item.tip_re_flag is False
     assert item.caveat == ""
@@ -42,7 +48,8 @@ def test_suitability_item_family_literals():
             re_agnostic=0.5,
             mission=None,
             target_cl_cruise=None,
-            target_cl_loiter=None,
+            target_cl_best_glide=None,
+            target_cl_min_sink=None,
             min_analysis_confidence=0.9,
             tip_re_flag=False,
             caveat="",
@@ -60,7 +67,8 @@ def test_suitability_item_invalid_family():
             re_agnostic=0.5,
             mission=None,
             target_cl_cruise=None,
-            target_cl_loiter=None,
+            target_cl_best_glide=None,
+            target_cl_min_sink=None,
             min_analysis_confidence=0.9,
             tip_re_flag=False,
             caveat="",
@@ -77,7 +85,9 @@ def test_suitability_query_required_fields():
         re_clamped=False,
         mission_type=None,
         target_cl_cruise=None,
-        target_cl_loiter=None,
+        target_cl_best_glide=None,
+        target_cl_min_sink=None,
+        target_cl_provenance="estimated",
         active_lens="re_agnostic",
     )
     assert q.chord_m == pytest.approx(0.15)
@@ -86,7 +96,9 @@ def test_suitability_query_required_fields():
     assert q.re_clamped is False
     assert q.mission_type is None
     assert q.target_cl_cruise is None
-    assert q.target_cl_loiter is None
+    assert q.target_cl_best_glide is None
+    assert q.target_cl_min_sink is None
+    assert q.target_cl_provenance == "estimated"
     assert q.active_lens == "re_agnostic"
 
 
@@ -102,27 +114,32 @@ def test_suitability_query_active_lens_literals():
             re_clamped=False,
             mission_type=None,
             target_cl_cruise=None,
-            target_cl_loiter=None,
+            target_cl_best_glide=None,
+            target_cl_min_sink=None,
+            target_cl_provenance="estimated",
             active_lens=lens,
         )
         assert q.active_lens == lens
 
 
-def test_suitability_query_active_lens_never_loiter():
-    """active_lens MUST NOT be 'target_cl_loiter' per the frozen contract."""
+def test_suitability_query_active_lens_never_glide_point():
+    """active_lens MUST NOT be any glide point per the gh-825 contract."""
     from app.schemas.airfoil import SuitabilityQuery
 
-    with pytest.raises(ValidationError):
-        SuitabilityQuery(
-            chord_m=0.15,
-            speed_ms=15.0,
-            reynolds=150_000.0,
-            re_clamped=False,
-            mission_type=None,
-            target_cl_cruise=None,
-            target_cl_loiter=None,
-            active_lens="target_cl_loiter",  # NOT valid
-        )
+    for bad_lens in ("target_cl_loiter", "target_cl_best_glide", "target_cl_min_sink"):
+        with pytest.raises(ValidationError):
+            SuitabilityQuery(
+                chord_m=0.15,
+                speed_ms=15.0,
+                reynolds=150_000.0,
+                re_clamped=False,
+                mission_type=None,
+                target_cl_cruise=None,
+                target_cl_best_glide=None,
+                target_cl_min_sink=None,
+                target_cl_provenance="estimated",
+                active_lens=bad_lens,  # NOT valid
+            )
 
 
 def test_suitability_caveat_required_fields():
@@ -156,12 +173,15 @@ def test_suitability_response_shape():
             re_clamped=False,
             mission_type=None,
             target_cl_cruise=None,
-            target_cl_loiter=None,
+            target_cl_best_glide=None,
+            target_cl_min_sink=None,
+            target_cl_provenance="estimated",
             active_lens="re_agnostic",
         ),
         caveat=SuitabilityCaveat(
             relative_ranking_only=True,
             no_hysteresis_modelling=True,
+            ignores_tip_re_clmax_collapse=True,
             recommend_xfoil_validation=False,
             text="Nur relative Reihenfolge.",
         ),
@@ -172,7 +192,10 @@ def test_suitability_response_shape():
                 re_agnostic=0.85,
                 mission=None,
                 target_cl_cruise=None,
-                target_cl_loiter=None,
+                target_cl_best_glide=None,
+                target_cl_min_sink=None,
+                stall_gentleness=-0.04,
+                cl_max_margin=0.4,
                 min_analysis_confidence=0.92,
                 tip_re_flag=False,
                 caveat="",
@@ -191,12 +214,16 @@ def test_suitability_response_shape():
     assert "re_clamped" in q
     assert "mission_type" in q
     assert "target_cl_cruise" in q
-    assert "target_cl_loiter" in q
+    assert "target_cl_best_glide" in q
+    assert "target_cl_min_sink" in q
+    assert "target_cl_provenance" in q
     assert "active_lens" in q
+    assert "target_cl_loiter" not in q
 
     c = data["caveat"]
     assert "relative_ranking_only" in c
     assert "no_hysteresis_modelling" in c
+    assert "ignores_tip_re_clmax_collapse" in c
     assert "recommend_xfoil_validation" in c
     assert "text" in c
 
@@ -206,7 +233,11 @@ def test_suitability_response_shape():
     assert "re_agnostic" in r
     assert "mission" in r
     assert "target_cl_cruise" in r
-    assert "target_cl_loiter" in r
+    assert "target_cl_best_glide" in r
+    assert "target_cl_min_sink" in r
+    assert "stall_gentleness" in r
+    assert "cl_max_margin" in r
     assert "min_analysis_confidence" in r
     assert "tip_re_flag" in r
     assert "caveat" in r
+    assert "target_cl_loiter" not in r

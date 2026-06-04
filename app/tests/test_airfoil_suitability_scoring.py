@@ -147,28 +147,46 @@ class TestMissionScore:
 
 
 # ---------------------------------------------------------------------------
-# Task 6c: target_cl_cruise/loiter from parabolic fit
+# Task 6c: target_cl — gh-825 Match×Efficiency scoring (updated contract)
 # ---------------------------------------------------------------------------
 
 
 class TestTargetClScore:
+    """Updated for gh-825: score_target_cl now requires re_cd0_reference + settings."""
+
+    def _settings(self):
+        from app.settings import Settings
+
+        return Settings()
+
     def test_target_cl_within_range_returns_score(self):
         from app.services.airfoil_low_re_service import score_target_cl
 
-        result = score_target_cl(_GOOD_POLAR, cl_target=0.5)
+        result = score_target_cl(
+            _GOOD_POLAR, cl_target=0.5, re_cd0_reference=0.012, settings=self._settings()
+        )
         assert result is not None
         assert 0.0 <= result <= 1.0
 
-    def test_target_cl_outside_valid_range_penalized(self):
-        """CL outside [cl_valid_lo, cl_valid_hi] should score lower."""
-        from app.services.airfoil_low_re_service import score_target_cl
+    def test_target_cl_outside_sweet_spot_scores_lower(self):
+        """CL far from cl_star should score lower than CL near cl_star."""
+        from app.services.airfoil_low_re_service import score_target_cl, best_ld_cl
+        import math
 
-        in_range = score_target_cl(_GOOD_POLAR, cl_target=0.5)
-        out_of_range = score_target_cl(_GOOD_POLAR, cl_target=2.0)  # above cl_valid_hi=1.2
-        # Out-of-range should be penalized (lower score or None)
-        assert in_range is not None
-        if out_of_range is not None:
-            assert in_range >= out_of_range
+        settings = self._settings()
+        re_ref = 0.012
+        # cl_star ≈ sqrt(cl0^2 + cd0/k) for _GOOD_POLAR
+        cl_star = best_ld_cl(_GOOD_POLAR["cd0"], _GOOD_POLAR["k"], _GOOD_POLAR["cl0"])
+        near_score = score_target_cl(
+            _GOOD_POLAR, cl_target=cl_star, re_cd0_reference=re_ref, settings=settings
+        )
+        far_score = score_target_cl(
+            _GOOD_POLAR, cl_target=2.0, re_cd0_reference=re_ref, settings=settings
+        )
+        # near cl_star should score higher than far away
+        assert near_score is not None
+        if far_score is not None:
+            assert near_score >= far_score
 
     def test_target_cl_none_when_no_fit(self):
         from app.services.airfoil_low_re_service import score_target_cl
@@ -177,21 +195,174 @@ class TestTargetClScore:
         polar_no_fit["cd0"] = None
         polar_no_fit["k"] = None
         polar_no_fit["cl0"] = None
-        result = score_target_cl(polar_no_fit, cl_target=0.5)
+        result = score_target_cl(
+            polar_no_fit, cl_target=0.5, re_cd0_reference=0.012, settings=self._settings()
+        )
         assert result is None
 
     def test_lower_drag_at_target_cl_yields_higher_score(self):
-        from app.services.airfoil_low_re_service import score_target_cl
+        """At the same fleet reference cd0, lower airfoil cd0 → higher efficiency → higher score."""
+        from app.services.airfoil_low_re_service import score_target_cl, best_ld_cl
 
-        # Airfoil with very low cd0 should score higher
+        settings = self._settings()
+        # Use a fleet reference between the two cd0 values
+        re_ref = 0.020  # > 0.012 (good) and < 0.040 (high drag)
+
+        # Use cl_star for _GOOD_POLAR so match is maximised
+        cl_star = best_ld_cl(_GOOD_POLAR["cd0"], _GOOD_POLAR["k"], _GOOD_POLAR["cl0"])
+
+        # High drag polar: same structure but higher cd0
         high_drag_polar = dict(_GOOD_POLAR)
-        high_drag_polar["cd0"] = 0.040  # much higher drag
-        high_drag_polar["k"] = 0.04
-        high_drag_polar["cl0"] = 0.3
+        high_drag_polar["cd0"] = 0.040
 
-        low_score = score_target_cl(high_drag_polar, cl_target=0.5)
-        high_score = score_target_cl(_GOOD_POLAR, cl_target=0.5)
-        assert high_score > low_score
+        high_score = score_target_cl(
+            _GOOD_POLAR, cl_target=cl_star, re_cd0_reference=re_ref, settings=settings
+        )
+        low_score = score_target_cl(
+            high_drag_polar, cl_target=cl_star, re_cd0_reference=re_ref, settings=settings
+        )
+        assert high_score is not None
+        assert low_score is not None
+        # Good polar (cd0=0.012 < re_ref=0.020) gets efficiency=1.0
+        # High-drag polar (cd0=0.040 > re_ref=0.020) gets efficiency<1.0
+        assert high_score >= low_score
+
+
+# ---------------------------------------------------------------------------
+# Task 6c-glide: score_target_cl for high-CL operating points (gh-825 bug fix)
+#
+# Root cause: the drag-rise ratio r = CD(cl_target)/cd0 measures distance from
+# the parabola vertex (cl0, minimum drag), NOT from cl_star (best L/D).
+# For a glider operating at V_min_sink, CL ≈ sqrt(3)×CL_md >> cl0, giving
+# r >> r_poor and score=0.0 for nearly every airfoil.
+#
+# Fix: when cl_target > cl_star (high-CL regime), switch to a CL_max-margin
+# score: how safely can the airfoil fly at this CL without stalling?
+# ---------------------------------------------------------------------------
+
+# A glider-representative airfoil polar (high CL_max, low drag)
+_GLIDER_POLAR = {
+    "ld_max": 60.0,
+    "cl_max": 1.45,
+    "alpha_attached_lo": -3.0,
+    "alpha_attached_hi": 13.0,
+    "drag_bucket_width": 0.7,
+    "cd_min": 0.008,
+    "stall_gentleness": -0.03,
+    "cd0": 0.009,
+    "k": 0.025,
+    "cl0": 0.3,
+    "cl_valid_lo": 0.0,
+    "cl_valid_hi": 1.4,
+    "min_analysis_confidence": 0.97,
+}
+
+# cl_star for _GLIDER_POLAR: sqrt(0.3^2 + 0.009/0.025) ≈ sqrt(0.09 + 0.36) = sqrt(0.45) ≈ 0.671
+# cl_min_sink ≈ sqrt(3) * 0.671 ≈ 1.162
+
+
+class TestTargetClScoreGlidePoints:
+    """score_target_cl must return non-trivial scores for high-CL glide points.
+
+    Bug: with the drag-rise r-formula, nearly all glider airfoils score 0.0 at
+    the min-sink CL because r = CD(cl_min_sink)/cd0 >> r_poor=2.5.
+    """
+
+    def _settings(self):
+        from app.settings import Settings
+
+        return Settings()
+
+    def test_min_sink_cl_scores_above_zero_for_good_glider(self):
+        """A glider airfoil with CL_max well above the min-sink CL must score > 0."""
+        import math
+        from app.services.airfoil_low_re_service import score_target_cl, best_ld_cl
+
+        cl_star = best_ld_cl(
+            _GLIDER_POLAR["cd0"], _GLIDER_POLAR["k"], _GLIDER_POLAR["cl0"]
+        )
+        cl_min_sink = math.sqrt(3) * cl_star
+
+        # Sanity: min-sink CL must be above cl_star for this to test the right path
+        assert cl_min_sink > cl_star, (
+            f"cl_min_sink={cl_min_sink:.3f} should be above cl_star={cl_star:.3f}"
+        )
+
+        score = score_target_cl(
+            _GLIDER_POLAR,
+            cl_target=cl_min_sink,
+            re_cd0_reference=0.009,
+            settings=self._settings(),
+        )
+        assert score is not None
+        assert score > 0.0, (
+            f"Good glider airfoil (cl_max={_GLIDER_POLAR['cl_max']}) scoring 0 "
+            f"at min-sink CL={cl_min_sink:.3f} — glide-point scoring is broken. "
+            f"Got score={score}"
+        )
+
+    def test_min_sink_cl_monotone_in_cl_max_margin(self):
+        """Airfoil with larger CL_max margin at min-sink CL must score higher."""
+        import math
+        from app.services.airfoil_low_re_service import score_target_cl, best_ld_cl
+
+        cl_star = best_ld_cl(
+            _GLIDER_POLAR["cd0"], _GLIDER_POLAR["k"], _GLIDER_POLAR["cl0"]
+        )
+        cl_min_sink = math.sqrt(3) * cl_star
+
+        settings = self._settings()
+        re_ref = 0.009
+
+        # Good: cl_max well above cl_min_sink (large margin)
+        polar_good = dict(_GLIDER_POLAR)
+        polar_good["cl_max"] = cl_min_sink + 0.40  # big margin
+
+        # Poor: cl_max barely above cl_min_sink (tiny margin)
+        polar_poor = dict(_GLIDER_POLAR)
+        polar_poor["cl_max"] = cl_min_sink + 0.05  # tiny margin
+
+        # Stall risk: cl_max BELOW cl_min_sink
+        polar_stall = dict(_GLIDER_POLAR)
+        polar_stall["cl_max"] = cl_min_sink - 0.05  # stall risk
+
+        score_good = score_target_cl(polar_good, cl_target=cl_min_sink, re_cd0_reference=re_ref, settings=settings)
+        score_poor = score_target_cl(polar_poor, cl_target=cl_min_sink, re_cd0_reference=re_ref, settings=settings)
+        score_stall = score_target_cl(polar_stall, cl_target=cl_min_sink, re_cd0_reference=re_ref, settings=settings)
+
+        assert score_good is not None and score_poor is not None and score_stall is not None
+        assert score_good > score_poor, (
+            f"Larger CL_max margin should score higher: good={score_good:.3f}, poor={score_poor:.3f}"
+        )
+        assert score_stall == 0.0, (
+            f"Stall-risk airfoil (cl_max < cl_target) must score 0.0, got {score_stall:.3f}"
+        )
+
+    def test_score_continuous_across_cl_star_boundary(self):
+        """score_target_cl must not produce a large discontinuity at cl_target == cl_star."""
+        import math
+        from app.services.airfoil_low_re_service import score_target_cl, best_ld_cl
+
+        settings = self._settings()
+        re_ref = 0.009
+        cl_star = best_ld_cl(
+            _GLIDER_POLAR["cd0"], _GLIDER_POLAR["k"], _GLIDER_POLAR["cl0"]
+        )
+        delta = 0.01  # 0.01 CL units either side of the boundary
+
+        score_just_below = score_target_cl(
+            _GLIDER_POLAR, cl_target=cl_star - delta, re_cd0_reference=re_ref, settings=settings
+        )
+        score_just_above = score_target_cl(
+            _GLIDER_POLAR, cl_target=cl_star + delta, re_cd0_reference=re_ref, settings=settings
+        )
+        assert score_just_below is not None and score_just_above is not None
+        # Allow at most 40% relative jump at the boundary
+        gap = abs(score_just_above - score_just_below)
+        assert gap < 0.40, (
+            f"Discontinuity at cl_star boundary: below={score_just_below:.3f}, "
+            f"above={score_just_above:.3f}, gap={gap:.3f}"
+        )
 
 
 # ---------------------------------------------------------------------------

@@ -1,4 +1,4 @@
-"""Airfoil suitability search service (gh-821).
+"""Airfoil suitability search service (gh-821, gh-825).
 
 Implements GET /airfoils/db/suitability — resolves Re from chord/speed,
 optionally resolves aeroplane context (UUID → mission + operating CLs),
@@ -8,10 +8,23 @@ ranked results with a caveat block.
 Three lenses (ranked desc by active_lens):
   1. re_agnostic — normalised quality from scalar metrics at query Re.
   2. mission     — re_agnostic × mission-weighting table (family/thickness/cl_max).
-  3. target_cl_cruise — CD(CL_target) from parabolic fit; null when CL unavailable.
+  3. target_cl_cruise — Match×Efficiency at the cruise CL; null when CL unavailable.
 
 active_lens priority: mission (if resolved) > target_cl_cruise (if resolved) > re_agnostic.
-active_lens is NEVER 'target_cl_loiter' (loiter is display-only).
+active_lens is NEVER a glide point (target_cl_best_glide / target_cl_min_sink).
+
+## Documented assumptions (gh-825)
+- Re stays LOCAL (per xsec chord).
+- Section CL ≈ whole-wing CL under the elliptical, untwisted ideal (top-down design target).
+- Tip-Re CL_max collapse is NOT modelled — surfaced via tip_re_flag + cl_max_margin +
+  caveat.ignores_tip_re_clmax_collapse.
+
+## Target CL provenance
+target_cl_provenance documents the reliability of the three resolved target CLs:
+  - 'calculated' : mass row CALCULATED/auto AND v_cruise_auto=True in ctx
+  - 'estimated'  : mass row ESTIMATE/manual OR v_cruise_auto absent/False
+  - 'mixed'      : mass calculated but speed estimated (or vice versa)
+  - Default 'estimated' when no aeroplane or no mass row.
 """
 
 from __future__ import annotations
@@ -22,7 +35,7 @@ from typing import Optional
 
 from sqlalchemy.orm import Session
 
-from app.models.aeroplanemodel import AeroplaneModel
+from app.models.aeroplanemodel import AeroplaneModel, DesignAssumptionModel
 from app.models.airfoil import AirfoilModel
 from app.models.airfoil_low_re import AirfoilGeometryModel, AirfoilLowRePolarModel
 from app.models.mission_objective import MissionObjectiveModel
@@ -31,9 +44,11 @@ from app.schemas.airfoil import (
     SuitabilityItem,
     SuitabilityQuery,
     SuitabilityResponse,
+    TargetClProvenance,
 )
 from app.services.airfoil_low_re_service import (
     _level_flight_cl,
+    compute_re_cd0_reference,
     interpolate_polar_at_re,
     score_mission,
     score_re_agnostic,
@@ -106,6 +121,48 @@ def _clamp_re_to_grid(re: float, grid: list[int]) -> tuple[float, bool]:
     return re, False
 
 
+def _resolve_provenance(
+    aeroplane: Optional[AeroplaneModel],
+    db: Session,
+    ctx: dict,
+) -> TargetClProvenance:
+    """Derive target_cl_provenance from the mass DesignAssumptionModel + v_cruise_auto.
+
+    Rules:
+      - No aeroplane / no mass row → 'estimated'
+      - mass.active_source in ('CALCULATED', 'COMPUTED') AND ctx['v_cruise_auto'] is truthy
+        → 'calculated'
+      - mass.active_source in ('ESTIMATE', 'MANUAL') AND NOT v_cruise_auto
+        → 'estimated'
+      - Otherwise (one calculated, one estimated) → 'mixed'
+    """
+    if aeroplane is None:
+        return "estimated"
+
+    mass_row = (
+        db.query(DesignAssumptionModel)
+        .filter(
+            DesignAssumptionModel.aeroplane_id == aeroplane.id,
+            DesignAssumptionModel.parameter_name == "mass",
+        )
+        .first()
+    )
+
+    mass_is_calculated = False
+    if mass_row is not None:
+        src = (mass_row.active_source or "").upper()
+        mass_is_calculated = src in ("CALCULATED", "COMPUTED", "AUTO")
+
+    v_cruise_auto = bool(ctx.get("v_cruise_auto", False))
+
+    if mass_is_calculated and v_cruise_auto:
+        return "calculated"
+    if not mass_is_calculated and not v_cruise_auto:
+        return "estimated"
+    # Mixed: one is calculated, the other is not
+    return "mixed"
+
+
 def search_suitability(
     db: Session,
     chord_m: float,
@@ -114,7 +171,8 @@ def search_suitability(
     aeroplane_id: Optional[str] = None,
     mission_type: Optional[str] = None,
     target_cl_cruise: Optional[float] = None,
-    target_cl_loiter: Optional[float] = None,
+    target_cl_best_glide: Optional[float] = None,
+    target_cl_min_sink: Optional[float] = None,
     tip_chord_m: Optional[float] = None,
     limit: int = 50,
     settings: Optional[Settings] = None,
@@ -131,13 +189,22 @@ def search_suitability(
                            Unknown UUID → degrade to re_agnostic-only (no 500).
     mission_type : str     Optional explicit mission type (overrides model-derived).
     target_cl_cruise : float  Optional explicit override for cruise target CL.
-    target_cl_loiter : float  Optional explicit override for loiter target CL.
+    target_cl_best_glide : float  Optional explicit override for best-glide CL.
+    target_cl_min_sink : float    Optional explicit override for min-sink CL
+                           (renamed from target_cl_loiter).
     tip_chord_m : float    Optional tip chord for tip Re flag only.
     limit : int            Maximum results to return.
     settings : Settings    Application settings.  When omitted the module-level
                            lru-cached ``get_settings()`` is used — avoids
                            constructing a fresh ``Settings()`` per request.
                            Pass an explicit instance from the CLI or tests.
+
+    ## Three target CLs
+    target_cl_cruise    ← v_cruise_mps   (drives active_lens; can auto-rank)
+    target_cl_best_glide ← v_md_mps     (display-only; never auto-ranks)
+    target_cl_min_sink  ← v_min_sink_mps (display-only; never auto-ranks)
+
+    Explicit params always override context-derived values.
     """
     if settings is None:
         settings = get_settings()
@@ -158,7 +225,12 @@ def search_suitability(
     # --- Resolve aeroplane context ---
     effective_mission_type: Optional[str] = mission_type
     effective_target_cl_cruise: Optional[float] = target_cl_cruise
-    effective_target_cl_loiter: Optional[float] = target_cl_loiter
+    effective_target_cl_best_glide: Optional[float] = target_cl_best_glide
+    effective_target_cl_min_sink: Optional[float] = target_cl_min_sink
+
+    aeroplane: Optional[AeroplaneModel] = None
+    ctx: dict = {}
+    provenance: TargetClProvenance = "estimated"
 
     if aeroplane_id is not None:
         aeroplane = (
@@ -184,6 +256,7 @@ def search_suitability(
             ctx = getattr(aeroplane, "assumption_computation_context", None) or {}
             mass_kg: Optional[float] = ctx.get("mass_kg")
             v_cruise_mps: Optional[float] = ctx.get("v_cruise_mps")
+            v_md_mps: Optional[float] = ctx.get("v_md_mps")  # best-glide speed (NEW)
             v_min_sink_mps: Optional[float] = ctx.get("v_min_sink_mps")
             s_ref_m2: Optional[float] = ctx.get("s_ref_m2")
 
@@ -197,15 +270,28 @@ def search_suitability(
                     except (ValueError, ZeroDivisionError):
                         effective_target_cl_cruise = None
 
-            # Compute loiter CL (explicit param overrides derived)
-            if effective_target_cl_loiter is None:
+            # Compute best-glide CL from v_md_mps (explicit param overrides derived)
+            if effective_target_cl_best_glide is None:
+                if all(v is not None for v in (mass_kg, v_md_mps, s_ref_m2)):
+                    try:
+                        effective_target_cl_best_glide = _level_flight_cl(
+                            mass_kg, v_md_mps, s_ref_m2
+                        )
+                    except (ValueError, ZeroDivisionError):
+                        effective_target_cl_best_glide = None
+
+            # Compute min-sink CL (renamed from loiter; explicit param overrides derived)
+            if effective_target_cl_min_sink is None:
                 if all(v is not None for v in (mass_kg, v_min_sink_mps, s_ref_m2)):
                     try:
-                        effective_target_cl_loiter = _level_flight_cl(
+                        effective_target_cl_min_sink = _level_flight_cl(
                             mass_kg, v_min_sink_mps, s_ref_m2
                         )
                     except (ValueError, ZeroDivisionError):
-                        effective_target_cl_loiter = None
+                        effective_target_cl_min_sink = None
+
+    # --- Provenance ---
+    provenance = _resolve_provenance(aeroplane, db, ctx)
 
     # --- Query DB: all airfoil geometries + polars ---
     geo_rows = db.query(AirfoilGeometryModel).all()
@@ -217,6 +303,9 @@ def search_suitability(
     polars_by_name: dict[str, list] = {}
     for p in polar_rows:
         polars_by_name.setdefault(p.airfoil_name, []).append(p)
+
+    # --- Per-Re cd0 reference (computed once for the request) ---
+    re_cd0_ref = compute_re_cd0_reference(polars_by_name, re_clamped_root)
 
     # --- Score each airfoil ---
     items: list[SuitabilityItem] = []
@@ -242,14 +331,54 @@ def search_suitability(
                 mission_weights=mission_weights,
             )
 
-        # Target CL lenses
+        # Target CL lenses — cruise can auto-rank; glide points are display-only
         cl_cruise_score: Optional[float] = None
         if effective_target_cl_cruise is not None and polar is not None:
-            cl_cruise_score = score_target_cl(polar, effective_target_cl_cruise)
+            cl_cruise_score = score_target_cl(
+                polar,
+                effective_target_cl_cruise,
+                re_cd0_reference=re_cd0_ref,
+                settings=settings,
+            )
 
-        cl_loiter_score: Optional[float] = None
-        if effective_target_cl_loiter is not None and polar is not None:
-            cl_loiter_score = score_target_cl(polar, effective_target_cl_loiter)
+        cl_best_glide_score: Optional[float] = None
+        if effective_target_cl_best_glide is not None and polar is not None:
+            cl_best_glide_score = score_target_cl(
+                polar,
+                effective_target_cl_best_glide,
+                re_cd0_reference=re_cd0_ref,
+                settings=settings,
+            )
+
+        cl_min_sink_score: Optional[float] = None
+        if effective_target_cl_min_sink is not None and polar is not None:
+            cl_min_sink_score = score_target_cl(
+                polar,
+                effective_target_cl_min_sink,
+                re_cd0_reference=re_cd0_ref,
+                settings=settings,
+            )
+
+        # stall_gentleness — raw from polar
+        stall_gentleness: Optional[float] = polar.get("stall_gentleness") if polar else None
+
+        # cl_max_margin = cl_max − max(resolved target CLs present)
+        cl_max_margin: Optional[float] = None
+        if polar is not None:
+            cl_max_val = polar.get("cl_max")
+            if cl_max_val is not None:
+                # Collect all resolved target CLs
+                target_cls = [
+                    v
+                    for v in (
+                        effective_target_cl_cruise,
+                        effective_target_cl_best_glide,
+                        effective_target_cl_min_sink,
+                    )
+                    if v is not None
+                ]
+                if target_cls:
+                    cl_max_margin = cl_max_val - max(target_cls)
 
         # min_analysis_confidence
         min_conf = polar.get("min_analysis_confidence") if polar else None
@@ -270,7 +399,10 @@ def search_suitability(
                 re_agnostic=re_agn,
                 mission=mission_score,
                 target_cl_cruise=cl_cruise_score,
-                target_cl_loiter=cl_loiter_score,
+                target_cl_best_glide=cl_best_glide_score,
+                target_cl_min_sink=cl_min_sink_score,
+                stall_gentleness=stall_gentleness,
+                cl_max_margin=cl_max_margin,
                 min_analysis_confidence=min_conf,
                 tip_re_flag=tip_re_flag_all,
                 caveat=item_caveat,
@@ -283,6 +415,13 @@ def search_suitability(
     #   Secondary: active-lens score descending within each confidence tier
     # The *displayed* scores (re_agnostic / mission / target_cl_cruise) are
     # intentionally unchanged — only the sort position is confidence-aware.
+    #
+    # RANKING RULE (gh-825):
+    #   active_lens chosen by priority:
+    #     1. 'mission'           — if any item.mission is not None
+    #     2. 'target_cl_cruise'  — else if any item.target_cl_cruise is not None
+    #     3. 're_agnostic'       — otherwise
+    #   Glide points NEVER auto-rank (never assigned to active_lens).
     has_mission = any(item.mission is not None for item in items)
     has_cruise = any(item.target_cl_cruise is not None for item in items)
 
@@ -304,10 +443,15 @@ def search_suitability(
     items = items[:limit]
 
     # --- Build response ---
-    caveat_text = "Relative ranking only. No hysteresis or laminar-bubble modelling. "
+    caveat_text = (
+        "Relative ranking only. "
+        "No hysteresis or laminar-bubble modelling. "
+        "Section CL ≈ wing CL (ideal elliptic, untwisted). "
+        "Tip-Re CL_max collapse not modelled — check tip_re_flag and cl_max_margin."
+    )
     if recommend_xfoil:
         caveat_text += (
-            "Some airfoils have low analysis confidence — "
+            " Some airfoils have low analysis confidence — "
             "validation with XFoil or wind tunnel recommended."
         )
 
@@ -318,12 +462,15 @@ def search_suitability(
         re_clamped=re_clamped,
         mission_type=effective_mission_type,
         target_cl_cruise=effective_target_cl_cruise,
-        target_cl_loiter=effective_target_cl_loiter,
+        target_cl_best_glide=effective_target_cl_best_glide,
+        target_cl_min_sink=effective_target_cl_min_sink,
+        target_cl_provenance=provenance,
         active_lens=active_lens,
     )
     caveat = SuitabilityCaveat(
         relative_ranking_only=True,
         no_hysteresis_modelling=True,
+        ignores_tip_re_clmax_collapse=True,
         recommend_xfoil_validation=recommend_xfoil,
         text=caveat_text,
     )

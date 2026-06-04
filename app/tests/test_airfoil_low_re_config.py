@@ -90,3 +90,35 @@ def test_mission_weights_values_positive():
     s = Settings()
     for mission, weights in s.low_re_mission_weights.items():
         assert weights["cl_max_weight"] > 0, f"cl_max_weight must be positive for {mission}"
+
+
+# ---------------------------------------------------------------------------
+# gh-825 new scoring constants
+# ---------------------------------------------------------------------------
+
+
+def test_low_re_score_r_poor_default():
+    """low_re_score_r_poor must default to ~2.5 (relative drag-rise at Match→0)."""
+    from app.settings import Settings
+
+    s = Settings()
+    assert s.low_re_score_r_poor == pytest.approx(2.5)
+
+
+def test_low_re_bucket_tolerance_ref_default():
+    """low_re_bucket_tolerance_ref must default to ~0.6 (full-credit bucket width)."""
+    from app.settings import Settings
+
+    s = Settings()
+    assert s.low_re_bucket_tolerance_ref == pytest.approx(0.6)
+
+
+def test_settings_gh825_fields_present():
+    """Both gh-825 fields must be accessible on the Settings object."""
+    from app.settings import Settings
+
+    s = Settings()
+    assert hasattr(s, "low_re_score_r_poor")
+    assert hasattr(s, "low_re_bucket_tolerance_ref")
+    assert s.low_re_score_r_poor > 1.0
+    assert 0.0 < s.low_re_bucket_tolerance_ref <= 2.0
