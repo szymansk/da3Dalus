@@ -96,6 +96,9 @@ class Settings(BaseSettings):
     low_re_score_r_poor: float = 2.5
     # Drag-bucket width that earns full tolerance credit in Match formula (gh-825).
     low_re_bucket_tolerance_ref: float = 0.6
+    # CL_max margin (cl_max − cl_target) at which the high-CL Match component
+    # reaches 1.0.  Below 0 → score 0 (stall risk).  (gh-825 glide-point fix)
+    low_re_score_cl_max_safety_band: float = 0.30
     # Mission-weight coefficient table keyed by mission preset name.
     low_re_mission_weights: dict[str, dict[str, Any]] = Field(
         default_factory=lambda: dict(_DEFAULT_MISSION_WEIGHTS)

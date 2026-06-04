@@ -742,7 +742,9 @@ def score_target_cl(
 
     Formula: Match × Efficiency, clamped to [0, 1].
 
-    **Match** — how well cl_target sits in this airfoil's drag sweet-spot:
+    Formula: Match × Efficiency, clamped to [0, 1].
+
+    **Match** — primary: drag-rise ratio r-formula (cruise / best-glide region)
 
         cl_star = best_ld_cl(cd0, k, cl0)   # CL at max L/D
         r = CD(cl_target) / cd0             # relative drag rise at target
@@ -763,6 +765,28 @@ def score_target_cl(
         A wider bucket: tolerance zone is wider → Match degrades more slowly
         with distance from cl_star.
 
+    **CL_max safety fallback** (high-CL glide-point correction — gh-825)
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    When r ≥ r_poor (drag-rise formula gives 0), an airfoil with ample
+    CL_max margin above cl_target is unfairly penalised. This occurs for
+    glider min-sink CLs (CL ≈ sqrt(3)·CL_md >> cl_star), where r >> r_poor
+    even for excellent glider airfoils.
+
+    When r ≥ r_poor AND cl_max is present in the polar, we replace the
+    drag-rise Match=0 with a CL_max-margin score:
+
+        margin = cl_max − cl_target
+        safety_band = settings.low_re_score_cl_max_safety_band  (default 0.30)
+
+        Match_fallback = clamp(margin / safety_band, 0, 1)
+
+        margin ≤ 0    : Match = 0.0 (target CL at or above CL_max — stall risk)
+        margin ≥ band : Match = 1.0 (ample safety margin)
+        in between    : linear interpolation
+
+    This ensures the glide-point lens differentiates airfoils by their
+    usable CL range rather than collapsing to zero universally.
+
     **Efficiency** — Re-fair: how clean is this airfoil at this Re vs fleet?
 
         efficiency = min(re_cd0_reference / cd0, 1.0)
@@ -779,7 +803,8 @@ def score_target_cl(
     polar : dict | None        Interpolated polar dict (from interpolate_polar_at_re).
     cl_target : float          Operating CL to evaluate (level-flight cruise, etc.).
     re_cd0_reference : float   Per-Re fleet cd0 reference (from compute_re_cd0_reference).
-    settings : Settings        Application settings (for r_poor and bucket_tolerance_ref).
+    settings : Settings        Application settings (for r_poor, bucket_tolerance_ref,
+                               and cl_max_safety_band).
     """
     if polar is None:
         return None
@@ -798,11 +823,15 @@ def score_target_cl(
     bucket_width = polar.get("drag_bucket_width") or 0.0
     r_poor = settings.low_re_score_r_poor
     bucket_ref = settings.low_re_bucket_tolerance_ref
+    cl_max_safety_band = settings.low_re_score_cl_max_safety_band
 
-    # --- Match component ---
+    # --- cl_star: CL at maximum L/D ---
     cl_star = best_ld_cl(cd0, k, cl0)
     if cl_star is None:
         return None
+
+    # --- Match component: drag-rise r-formula with CL_max safety fallback ---
+    cl_max = polar.get("cl_max")
 
     cd_at_target = cd0 + k * (cl_target - cl0) ** 2
     r = cd_at_target / cd0  # relative drag rise; r=1 at CL_min, r>1 away from it
@@ -811,32 +840,34 @@ def score_target_cl(
     tolerance_half = (bucket_width / max(bucket_ref, 1e-9)) * 0.5
     distance_from_sweet_spot = abs(cl_target - cl_star)
 
-    # Inside tolerance zone: Match decays only due to r
-    # Outside: Match decays due to r (which grows with distance)
-    # Use r to compute Match directly: it captures both bucket penalty and drag rise
     if r <= 1.0:
-        # At or below minimum drag: match = 1.0 (but softened by tolerance if
-        # we're in the bucket centre)
+        # At or below minimum drag: match = 1.0
         match = 1.0
     elif r >= r_poor:
-        match = 0.0
+        # Drag-rise formula would give 0. For high-CL glide points (e.g.
+        # V_min_sink where CL ≈ sqrt(3)·CL_md), r is structurally large even
+        # for excellent airfoils. Use CL_max safety margin as a fallback when
+        # cl_max is available: differentiates by stall margin rather than
+        # collapsing universally to 0.
+        if cl_max is not None:
+            margin = cl_max - cl_target
+            if margin <= 0.0:
+                match = 0.0  # stall risk: target at or above CL_max
+            else:
+                match = min(margin / max(cl_max_safety_band, 1e-9), 1.0)
+        else:
+            match = 0.0
     else:
-        # Linear decay from 1 (r=1) to 0 (r=r_poor)
+        # r in (1, r_poor): linear decay + bucket tolerance bonus
         match_raw = 1.0 - (r - 1.0) / (r_poor - 1.0)
-        # Bonus for wide bucket: widen the effective r=1 zone by scaling down
-        # the distance from optimal — a wider bucket means we reach a given r
-        # more slowly as target moves away from cl_star.
-        # Implement: if distance_from_sweet_spot < tolerance_half, boost match
         if tolerance_half > 0 and distance_from_sweet_spot < tolerance_half:
-            # Partial credit for being inside the bucket tolerance zone:
-            # interpolate between match_raw and 1.0 based on proximity
             frac = 1.0 - distance_from_sweet_spot / tolerance_half
             match = match_raw + (1.0 - match_raw) * frac * 0.5
             match = min(match, 1.0)
         else:
             match = match_raw
 
-    # --- Efficiency component ---
+    # --- Efficiency component (both paths) ---
     if re_cd0_reference > 0.0 and cd0 > 0.0:
         efficiency = min(re_cd0_reference / cd0, 1.0)
     else:
