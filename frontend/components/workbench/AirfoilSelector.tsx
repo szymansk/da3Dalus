@@ -24,6 +24,13 @@ interface AirfoilSelectorProps {
   /** Existing slot: right-aligned badge text per airfoil name */
   stats?: Record<string, string>;
   /**
+   * gh-825 ADDITIVE: explicit id for the <label htmlFor> and trigger <button id>.
+   * When provided, overrides the label-derived id fallback.
+   * Use this to avoid duplicate-id violations when label='' (e.g. in
+   * AirfoilPreviewConfigPanel where the visible heading is a sibling <span>).
+   */
+  id?: string;
+  /**
    * gh-822 ADDITIVE: pre-sorted list of airfoil names (desc by score).
    * When provided, the dropdown renders in this order instead of the
    * alphabetical default.
@@ -53,6 +60,7 @@ export function AirfoilSelector({
   onChange,
   onPreviewToggle,
   stats,
+  id: idProp,
   sortedNames,
   suitabilityToggle,
 }: Readonly<AirfoilSelectorProps>) {
@@ -102,6 +110,11 @@ export function AirfoilSelector({
     if (open) searchRef.current?.focus();
   }, [open]);
 
+  // Resolve the effective id: use idProp when provided, else derive from label.
+  // This avoids duplicate-id violations when label='' (both selectors would
+  // otherwise get id='airfoil-').
+  const effectiveId = idProp ?? `airfoil-${label.toLowerCase().replaceAll(/\s+/g, "-")}`;
+
   const toggle = () => {
     const next = !open;
     setOpen(next);
@@ -119,7 +132,7 @@ export function AirfoilSelector({
   return (
     <div ref={containerRef} className="relative flex flex-1 flex-col gap-1">
       <div className="flex items-center gap-1">
-        <label htmlFor={`airfoil-${label.toLowerCase().replaceAll(/\s+/g, "-")}`} className="flex-1 text-[11px] text-muted-foreground">{label}</label>
+        <label htmlFor={effectiveId} className="flex-1 text-[11px] text-muted-foreground">{label}</label>
         {/* gh-822 ADDITIVE: Passende finden toggle */}
         {suitabilityToggle && (
           <button
@@ -139,7 +152,7 @@ export function AirfoilSelector({
 
       {/* Trigger */}
       <button
-        id={`airfoil-${label.toLowerCase().replaceAll(/\s+/g, "-")}`}
+        id={effectiveId}
         onClick={toggle}
         className={`flex items-center gap-2 rounded-xl px-3 py-2 transition-colors ${
           open ? "border-2 border-primary bg-input" : "border border-border bg-input"

@@ -295,6 +295,7 @@ export function AirfoilPreviewConfigPanel({
         </span>
         <AirfoilSelector
           label=""
+          id="airfoil-root"
           value={rootAirfoil}
           onChange={onRootAirfoilChange}
           stats={rootScoreMap}
@@ -332,6 +333,7 @@ export function AirfoilPreviewConfigPanel({
         </span>
         <AirfoilSelector
           label=""
+          id="airfoil-tip"
           value={tipAirfoil}
           onChange={onTipAirfoilChange}
           stats={tipScoreMap}
