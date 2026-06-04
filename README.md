@@ -282,6 +282,32 @@ Or use the included shell script:
 ./run_all_tests.sh
 ```
 
+### Airfoil low-Re suitability backfill (gh-821)
+
+The low-Re airfoil suitability feature (endpoint `GET /airfoils/db/suitability`,
+surfaced in the workbench airfoil preview) reads **precomputed** NeuralFoil
+metrics from the `airfoil_geometry` and `airfoil_low_re_polar` tables. New
+airfoils imported via `POST /airfoils/import` are scored automatically by a
+background job, but the **existing** airfoil library must be backfilled once:
+
+```bash
+# 1. apply the migration (creates the two low-Re tables)
+poetry run alembic upgrade head
+
+# 2. score every airfoil in the DB across the absolute Re grid
+poetry run python scripts/backfill_airfoil_low_re.py
+```
+
+The backfill is **idempotent** — re-running it skips airfoils already scored
+with the current NeuralFoil model size (pass `--force` to recompute all). It
+uses `model_size="xxxlarge"` and the 13-point Re grid (40k–750k) from
+`app/settings.py` (`low_re_*`). Until the backfill has run, the suitability
+endpoint returns empty results for existing airfoils and the UI shows a
+"no low-Re data" placeholder.
+
+> **Note:** restart the API after the migration — `uvicorn --reload` does not
+> re-register the import-hook / background-job wiring.
+
 ### Project Structure
 
 ```
