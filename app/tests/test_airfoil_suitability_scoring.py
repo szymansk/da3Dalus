@@ -307,3 +307,137 @@ class TestConfigDefaults:
         from app.settings import Settings
 
         assert len(Settings().low_re_grid) == 13
+
+
+# ---------------------------------------------------------------------------
+# Task: Graceful degradation when polar rows have all-None metrics
+# (models the 40k–100k band under xxxlarge where confidence_gate=0.90 is
+# not reached — these rows exist in the DB but must not crash the scorer)
+# ---------------------------------------------------------------------------
+
+
+class _NullMetricRow:
+    """Mock DB row where every metric is None (confidence-limited, sub-gate Re)."""
+
+    def __init__(self, reynolds: float, min_confidence: float = 0.88) -> None:
+        self.reynolds = reynolds
+        self.ld_max = None
+        self.cl_max = None
+        self.alpha_attached_lo = None
+        self.alpha_attached_hi = None
+        self.drag_bucket_width = None
+        self.cd_min = None
+        self.stall_gentleness = None
+        self.cd0 = None
+        self.k = None
+        self.cl0 = None
+        self.cl_valid_lo = None
+        self.cl_valid_hi = None
+        self.min_analysis_confidence = min_confidence
+
+
+class _RealMetricRow:
+    """Mock DB row with realistic metrics (trusted, above gate)."""
+
+    def __init__(self, reynolds: float) -> None:
+        self.reynolds = reynolds
+        self.ld_max = 55.0
+        self.cl_max = 1.1
+        self.alpha_attached_lo = -3.0
+        self.alpha_attached_hi = 10.0
+        self.drag_bucket_width = 0.5
+        self.cd_min = 0.009
+        self.stall_gentleness = -0.05
+        self.cd0 = 0.010
+        self.k = 0.04
+        self.cl0 = 0.3
+        self.cl_valid_lo = 0.0
+        self.cl_valid_hi = 1.1
+        self.min_analysis_confidence = 0.93
+
+
+class TestGracefulDegradationNullRows:
+    """score_re_agnostic and interpolate_polar_at_re must handle all-None rows
+    without crashing, and must return None (not fabricated scores) so that the
+    caller can surface a low-confidence caveat rather than hiding it.
+
+    This models the production scenario where xxxlarge confidence_gate=0.90 is
+    not reached in the 40k–100k band: the backfill writes a valid DB row (with
+    reynolds + min_analysis_confidence) but all metric columns are NULL.
+    """
+
+    def test_score_re_agnostic_returns_none_for_all_null_polar(self):
+        """When polar has no metric fields, score_re_agnostic must return None."""
+        from app.services.airfoil_low_re_service import score_re_agnostic
+
+        null_polar = {
+            "ld_max": None,
+            "cl_max": None,
+            "drag_bucket_width": None,
+            "stall_gentleness": None,
+            "cd_min": None,
+            "min_analysis_confidence": 0.88,
+        }
+        result = score_re_agnostic(null_polar)
+        assert result is None, (
+            "score_re_agnostic must return None (not 0 or fabricated) "
+            "when every metric in the polar dict is None"
+        )
+
+    def test_interpolate_exact_null_row_returns_none_metrics(self):
+        """An exact-match None row passes through unchanged (all metrics None)."""
+        from app.services.airfoil_low_re_service import interpolate_polar_at_re
+
+        rows = [_NullMetricRow(100_000)]
+        polar = interpolate_polar_at_re(rows, 100_000, [100_000])
+        assert polar is not None, "interpolate_polar_at_re must return a dict (not None itself)"
+        assert polar["ld_max"] is None
+        assert polar["cl_max"] is None
+        # Scoring such a polar must be None, not a crash
+        from app.services.airfoil_low_re_service import score_re_agnostic
+
+        assert score_re_agnostic(polar) is None
+
+    def test_interpolate_between_two_null_rows_gives_none_metrics(self):
+        """Interpolation between two all-None neighbours must propagate None."""
+        from app.services.airfoil_low_re_service import interpolate_polar_at_re
+
+        rows = [_NullMetricRow(90_000), _NullMetricRow(110_000)]
+        polar = interpolate_polar_at_re(rows, 100_000, [90_000, 110_000])
+        assert polar is not None
+        assert polar["ld_max"] is None
+        assert polar["cl_max"] is None
+        from app.services.airfoil_low_re_service import score_re_agnostic
+
+        assert score_re_agnostic(polar) is None
+
+    def test_interpolate_null_lo_real_hi_uses_real_values(self):
+        """When the lower neighbour has all-None metrics and the upper has real data,
+        _lerp must return the real (non-None) value so the score degrades gracefully
+        rather than silently discarding valid high-Re data.
+        """
+        from app.services.airfoil_low_re_service import interpolate_polar_at_re, score_re_agnostic
+
+        rows = [_NullMetricRow(200_000), _RealMetricRow(300_000)]
+        polar = interpolate_polar_at_re(rows, 250_000, [200_000, 300_000])
+        assert polar is not None
+        # _lerp(None, real, t) returns real — score must be non-None
+        score = score_re_agnostic(polar)
+        assert score is not None, (
+            "When one neighbour has real metrics, score_re_agnostic must return "
+            "a finite score (not None) — partial data is better than no data"
+        )
+        assert 0.0 < score <= 1.0
+
+    def test_empty_polar_rows_returns_none(self):
+        """interpolate_polar_at_re with an empty list must return None."""
+        from app.services.airfoil_low_re_service import interpolate_polar_at_re
+
+        result = interpolate_polar_at_re([], 100_000, [100_000])
+        assert result is None
+
+    def test_score_re_agnostic_none_polar_returns_none(self):
+        """score_re_agnostic(None) must return None without raising."""
+        from app.services.airfoil_low_re_service import score_re_agnostic
+
+        assert score_re_agnostic(None) is None
