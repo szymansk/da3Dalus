@@ -79,6 +79,13 @@ interface AirfoilPreviewConfigPanelProps {
    * next to the velocity input. A button is hidden when its speed is null.
    */
   suitabilitySpeedContext?: SuitabilitySpeedContext;
+  /**
+   * gh-837 ADDITIVE: airfoil names already used in the current aeroplane model
+   * (derived client-side from all segments' root/tip airfoils). Passed through
+   * to both root and tip AirfoilSelector instances so the user can re-select
+   * without searching again.
+   */
+  usedAirfoilNames?: string[];
 }
 
 function ReadOnlyField({
@@ -193,6 +200,7 @@ export function AirfoilPreviewConfigPanel({
   targetClProvenance,
   suitabilityCaveat,
   suitabilitySpeedContext,
+  usedAirfoilNames,
 }: Readonly<AirfoilPreviewConfigPanelProps>) {
   const [showReInfo, setShowReInfo] = useState(false);
   const [velocityDraft, setVelocityDraft] = useState(String(velocity));
@@ -350,6 +358,7 @@ export function AirfoilPreviewConfigPanel({
               ? { active: rootRankedMode ?? false, onToggle: onRootRankedModeToggle }
               : undefined
           }
+          usedNames={usedAirfoilNames}
         />
         <ReynoldsField
           label="Re"
@@ -388,6 +397,7 @@ export function AirfoilPreviewConfigPanel({
               ? { active: tipRankedMode ?? false, onToggle: onTipRankedModeToggle }
               : undefined
           }
+          usedNames={usedAirfoilNames}
         />
         {hasTip && (
           <ReynoldsField

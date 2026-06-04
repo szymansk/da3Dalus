@@ -41,6 +41,13 @@ interface AirfoilSelectorProps {
    * button next to the dropdown trigger.
    */
   suitabilityToggle?: SuitabilityToggle;
+  /**
+   * gh-837 ADDITIVE: airfoil names already used in the current model.
+   * When provided and non-empty, renders an 'In Verwendung' section at the
+   * top of the dropdown (above the full list) so the user can re-select
+   * without searching again. Deduped internally; filtered by search query.
+   */
+  usedNames?: string[];
 }
 
 const MAX_VISIBLE = 50;
@@ -54,6 +61,57 @@ function scoreBadgeColor(scoreStr: string): string {
   return "#F87171";
 }
 
+/** Shared row renderer used by both the 'In Verwendung' section and the main list. */
+function AirfoilRow({
+  name,
+  value,
+  stats,
+  onSelect,
+  testId,
+  itemKey,
+}: {
+  name: string;
+  value: string;
+  stats?: Record<string, string>;
+  onSelect: (name: string) => void;
+  testId?: string;
+  itemKey: string;
+}) {
+  return (
+    <button
+      key={itemKey}
+      data-testid={testId}
+      onClick={() => onSelect(name)}
+      className="flex w-full items-center gap-2 px-3 py-1.5 hover:bg-sidebar-accent"
+    >
+      {name === value ? (
+        <Check size={12} className="text-primary" />
+      ) : (
+        <div className="w-3" />
+      )}
+      <span className="font-[family-name:var(--font-jetbrains-mono)] text-[13px] text-foreground">
+        {name}
+      </span>
+      {stats?.[name] && (
+        <>
+          <span className="flex-1" />
+          <span
+            data-testid="score-badge"
+            className="rounded-full border border-current px-1.5 py-0.5 font-[family-name:var(--font-jetbrains-mono)] text-[10px]"
+            style={{
+              color: scoreBadgeColor(stats[name]),
+              backgroundColor: `${scoreBadgeColor(stats[name])}1a`,
+              borderColor: `${scoreBadgeColor(stats[name])}40`,
+            }}
+          >
+            {stats[name]}
+          </span>
+        </>
+      )}
+    </button>
+  );
+}
+
 export function AirfoilSelector({
   label,
   value,
@@ -63,6 +121,7 @@ export function AirfoilSelector({
   id: idProp,
   sortedNames,
   suitabilityToggle,
+  usedNames,
 }: Readonly<AirfoilSelectorProps>) {
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState("");
@@ -80,6 +139,19 @@ export function AirfoilSelector({
     if (sortedNames && sortedNames.length > 0) return sortedNames;
     return data?.airfoils?.map((a) => a.airfoil_name) ?? [];
   }, [data, sortedNames]);
+
+  // gh-837: deduped list of in-use names; empty array when prop is absent/empty
+  const dedupeUsedNames = useMemo(() => {
+    if (!usedNames || usedNames.length === 0) return [];
+    return Array.from(new Set(usedNames));
+  }, [usedNames]);
+
+  const filteredUsed = useMemo(() => {
+    if (dedupeUsedNames.length === 0) return [];
+    const q = search.toLowerCase();
+    if (!q) return dedupeUsedNames;
+    return dedupeUsedNames.filter((n) => n.toLowerCase().includes(q));
+  }, [dedupeUsedNames, search]);
 
   const filtered = useMemo(() => {
     const q = search.toLowerCase();
@@ -185,42 +257,43 @@ export function AirfoilSelector({
 
           {/* List */}
           <div className="max-h-[240px] overflow-y-auto py-1">
-            {filtered.length === 0 ? (
+            {/* gh-837: 'In Verwendung' section — shown when usedNames is non-empty */}
+            {filteredUsed.length > 0 && (
+              <>
+                <div
+                  data-testid="in-verwendung-header"
+                  className="px-3 py-1 text-[10px] font-medium uppercase tracking-wider text-muted-foreground"
+                >
+                  In Verwendung
+                </div>
+                {filteredUsed.map((name) => (
+                  <AirfoilRow
+                    key={`used-${name}`}
+                    itemKey={`used-${name}`}
+                    name={name}
+                    value={value}
+                    stats={stats}
+                    onSelect={select}
+                    testId="in-verwendung-item"
+                  />
+                ))}
+                <div className="mx-3 my-1 border-t border-border" />
+              </>
+            )}
+            {filtered.length === 0 && filteredUsed.length === 0 ? (
               <div className="px-3 py-3 text-center text-[12px] text-muted-foreground">
                 No airfoils found
               </div>
             ) : (
               filtered.map((name) => (
-                <button
+                <AirfoilRow
                   key={name}
-                  onClick={() => select(name)}
-                  className="flex w-full items-center gap-2 px-3 py-1.5 hover:bg-sidebar-accent"
-                >
-                  {name === value ? (
-                    <Check size={12} className="text-primary" />
-                  ) : (
-                    <div className="w-3" />
-                  )}
-                  <span className="font-[family-name:var(--font-jetbrains-mono)] text-[13px] text-foreground">
-                    {name}
-                  </span>
-                  {stats?.[name] && (
-                    <>
-                      <span className="flex-1" />
-                      <span
-                        data-testid="score-badge"
-                        className="rounded-full border border-current px-1.5 py-0.5 font-[family-name:var(--font-jetbrains-mono)] text-[10px]"
-                        style={{
-                          color: scoreBadgeColor(stats[name]),
-                          backgroundColor: `${scoreBadgeColor(stats[name])}1a`,
-                          borderColor: `${scoreBadgeColor(stats[name])}40`,
-                        }}
-                      >
-                        {stats[name]}
-                      </span>
-                    </>
-                  )}
-                </button>
+                  itemKey={name}
+                  name={name}
+                  value={value}
+                  stats={stats}
+                  onSelect={select}
+                />
               ))
             )}
           </div>
