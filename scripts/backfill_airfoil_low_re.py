@@ -51,6 +51,12 @@ def run_backfill(
     n_crit : float, optional
         Override the n_crit from settings.
     """
+    # Load the full SQLAlchemy model registry BEFORE any query.  Without this,
+    # running the script standalone (without importing app.main first) causes
+    # an InvalidRequestError because AeroplaneModel has a relationship to
+    # StabilityResultModel that isn't registered yet when the mapper initialises.
+    import app.models  # noqa: F401 — registers all models in the mapper
+
     from app.models.airfoil import AirfoilModel
     from app.models.airfoil_low_re import AirfoilGeometryModel, AirfoilLowRePolarModel
     from app.services.airfoil_low_re_service import (

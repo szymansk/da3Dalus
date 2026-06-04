@@ -44,18 +44,30 @@ _SYMMETRIC_MAX_CAMBER_PCT = 0.5  # max_camber_pct below which → symmetric
 _SEMI_SYMMETRIC_MAX_CAMBER_PCT = 2.0  # between SYMMETRIC and this → semi_symmetric
 _FLAT_BOTTOM_Y_THRESHOLD = 0.002  # lower surface mean abs(y) below this → flat (strict legacy)
 _REFLEX_CAMBER_AT_TE_THRESHOLD = -0.003  # camber_at_te below this → reflexed
-# --- gh-825 item 3: improved flat-bottom detection ---
-# Evaluate flatness of the lower surface over the aft chord region [AFT_X_LO, 1.0].
-# Many real flat-bottom airfoils (Clark Y, Gottingen 417a) have a small forward camber
-# bulge but are essentially flat aft of ~25% chord. We detect flatness by measuring
-# the MAXIMUM absolute y_lower value over the aft window [AFT_X_LO, 1.0].
-# A near-flat lower surface (flat-bottom) has max |y_lower| well below the threshold,
-# while semi-symmetric airfoils have their lower surface tracking the camber line
-# (larger positive y_lower values even in the aft region).
-# Note: stored AirfoilGeometryModel.family values may change after this improvement;
-# a PO-run re-backfill is required post-merge (gh-825 item 3).
-_FLAT_BOTTOM_AFT_X_LO = 0.25  # start of the aft evaluation window (25% chord)
-_FLAT_BOTTOM_FLATNESS_THRESHOLD = 0.005  # max |y_lower| over aft region → flat_bottom
+# --- gh-825 item 1 (re-tuned): lower-surface linearity for flat-bottom detection ---
+# Real flat-bottom airfoils (Clark Y, Gottingen 417a, Clark X/V/K/Z, Dormoy, PT40) have a
+# lower surface that is nearly LINEAR from ~30% chord to the TE — it runs at a slight
+# negative angle but with very little curvature (second-order polynomial coefficient ≈ 0).
+# Truly cambered airfoils (NACA 4412, NACA 2412) have a curved lower surface that follows
+# the camber line, with a much larger quadratic coefficient over the same aft region.
+#
+# Algorithm: fit a 2nd-order polynomial to y_lower over x ∈ [0.30, 1.0].
+# If the magnitude of the quadratic coefficient is below the threshold, the lower surface
+# is near-linear → flat_bottom. This reliably separates:
+#   flat_bottom (quad_coeff < 0.005): Clark Y (0.00006), Clark X (0.0), Clark V (0.0013)
+#   cambered    (quad_coeff > 0.008): NACA 4412 (0.030), NACA 4418 (0.009), SG6040 (0.015)
+#
+# IMPORTANT: symmetric check must fire BEFORE flat_bottom because a perfectly symmetric
+# airfoil (NACA 0000) has a near-zero lower surface that would also pass the linearity test.
+# The ordering reflexed → symmetric → flat_bottom → semi_symmetric → cambered ensures
+# symmetric airfoils are correctly classified before the flat-bottom test fires.
+#
+# Note: stored AirfoilGeometryModel.family values may change after this fix;
+# a PO-run re-backfill (--force) is required post-merge (gh-825 item 1).
+_FLAT_BOTTOM_AFT_X_LO = 0.30  # start of aft evaluation window for linearity check (30% chord)
+_FLAT_BOTTOM_QUAD_THRESHOLD = (
+    0.005  # max quadratic coefficient of lower surface aft fit → flat_bottom
+)
 
 
 # ---------------------------------------------------------------------------
@@ -82,12 +94,16 @@ def classify_family(coords: np.ndarray) -> AirfoilFamily:
     ---------
     1. Split into upper / lower surfaces by finding the leading edge (min x).
     2. Compute camber line by interpolating both surfaces to common x stations.
-    3. Evaluate:
-       - reflex: camber_at_te (camber line at x≈1) strongly negative.
-       - flat_bottom: mean |y_lower| < threshold (lower surface near y=0).
-       - symmetric: max |camber| < threshold.
-       - semi_symmetric: max |camber| < moderate threshold.
-       - cambered: otherwise.
+    3. Evaluate in priority order:
+       a. reflexed:      camber_at_te (camber line at x≈1) strongly negative.
+       b. symmetric:     max_camber_pct < 0.5% (checked BEFORE flat_bottom to
+                         prevent purely symmetric airfoils being mis-labelled).
+       c. flat_bottom:   lower surface is near-linear over aft chord (gh-825
+                         re-tune): quadratic coefficient of polynomial fit to
+                         y_lower over [0.30, 1.0] is below the threshold.
+                         Also catches pure y=0 lower surfaces via legacy mean-y gate.
+       d. semi_symmetric: max_camber_pct < 2%.
+       e. cambered:      everything else.
 
     NOTE: The existing ``_compute_geometry_stats`` in endpoints/airfoils.py
     returns max thickness/camber + their x-positions but does NOT extract
@@ -150,36 +166,43 @@ def classify_family(coords: np.ndarray) -> AirfoilFamily:
     # camber_at_te: evaluate camber line at x=max(x_eval) which is near TE
     camber_at_te = float(camber[-1])
 
-    # Lower surface mean abs y (flat-bottom detection)
+    # Lower surface mean abs y (strict legacy flat-bottom gate for pure y=0 lower surfaces)
     mean_lower_abs_y = float(np.mean(np.abs(y_lower)))
+
+    # Aft-linearity of lower surface (gh-825 re-tune): quadratic coefficient of polynomial
+    # fit to y_lower over [_FLAT_BOTTOM_AFT_X_LO, 1.0].  Near-zero → flat_bottom.
+    aft_mask = x_eval >= _FLAT_BOTTOM_AFT_X_LO
+    aft_quad_coeff = 0.0
+    if aft_mask.sum() >= 4:
+        p_aft = np.polyfit(x_eval[aft_mask], y_lower[aft_mask], 2)
+        aft_quad_coeff = float(abs(p_aft[0]))
 
     # --- Classification rules (ordered by priority) ---
     # 1. Reflexed: camber line is clearly negative (below chord) at TE
-    #    (must stay first so reflexed airfoils aren't misclassified as flat_bottom)
+    #    (must stay first so reflexed airfoils aren't mis-classified as flat_bottom)
     if camber_at_te < _REFLEX_CAMBER_AT_TE_THRESHOLD:
         return "reflexed"
 
-    # 2. Flat-bottom: lower surface is near-flat over the aft chord region.
-    #    Two-tier heuristic (gh-825 item 3):
-    #    (a) Strict legacy: mean |y_lower| < strict threshold — catches pure y=0 lower surfaces.
-    #    (b) Aft-flatness: max |y_lower| over [AFT_X_LO, 1.0] is below the flatness threshold —
-    #        catches real flat-bottom airfoils (Clark Y, Gottingen 417a) that have a small forward
-    #        camber bulge but an aft lower surface that stays very close to y=0. This reliably
-    #        distinguishes flat-bottom from semi-symmetric, where the lower surface tracks the
-    #        camber line and has larger positive y values in the aft region (~0.005–0.007).
-    if mean_lower_abs_y < _FLAT_BOTTOM_Y_THRESHOLD:
-        return "flat_bottom"
-    # Aft-flatness test: max |y_lower| over x ∈ [_FLAT_BOTTOM_AFT_X_LO, 1.0]
-    aft_mask = x_eval >= _FLAT_BOTTOM_AFT_X_LO
-    if aft_mask.sum() >= 4:
-        y_aft = y_lower[aft_mask]
-        max_aft_abs_y = float(np.max(np.abs(y_aft)))
-        if max_aft_abs_y < _FLAT_BOTTOM_FLATNESS_THRESHOLD:
-            return "flat_bottom"
-
-    # 3. Symmetric: almost no camber
+    # 2. Symmetric: almost no camber.
+    #    MUST be checked BEFORE flat_bottom: a perfectly symmetric airfoil (NACA 0000)
+    #    has near-zero lower surface y and a near-linear lower surface that would
+    #    otherwise pass the flat_bottom linearity test below.
     if max_camber_pct < _SYMMETRIC_MAX_CAMBER_PCT:
         return "symmetric"
+
+    # 3. Flat-bottom: lower surface is near-linear over the aft chord region.
+    #    Two-tier heuristic:
+    #    (a) Strict legacy: mean |y_lower| < strict threshold — catches pure y=0 lower surfaces.
+    #    (b) Aft-linearity: quadratic coefficient of polynomial fit to y_lower over
+    #        [_FLAT_BOTTOM_AFT_X_LO, 1.0] is below _FLAT_BOTTOM_QUAD_THRESHOLD.
+    #        Real flat-bottom airfoils (Clark Y, X, V, K, Z; Dormoy; PT40) have a nearly
+    #        straight lower surface in this region (quad_coeff < 0.002).  Truly cambered
+    #        airfoils (NACA 4412: 0.030, NACA 4418: 0.009, SG6040: 0.015) have a curved
+    #        lower surface that tracks the camber line → much larger quadratic coefficient.
+    if mean_lower_abs_y < _FLAT_BOTTOM_Y_THRESHOLD:
+        return "flat_bottom"
+    if aft_quad_coeff < _FLAT_BOTTOM_QUAD_THRESHOLD:
+        return "flat_bottom"
 
     # 4. Semi-symmetric: small camber
     if max_camber_pct < _SEMI_SYMMETRIC_MAX_CAMBER_PCT:

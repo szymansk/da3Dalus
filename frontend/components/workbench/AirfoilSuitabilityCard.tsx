@@ -140,8 +140,10 @@ function CaveatCallout({
   readonly text: string;
   readonly hasLowConfidence?: boolean;
 }) {
+  // gh-825 item 3: low-confidence note must be ONE consistent language (German).
+  // Use a standalone German UI string instead of appending the raw English backend text.
   const displayText = hasLowConfidence
-    ? `Geringe Modell-Konfidenz bei diesem Re — Werte als grobe Orientierung verstehen. ${text}`
+    ? "Geringe Modell-Konfidenz bei diesem Re — Werte als grobe Orientierung verstehen."
     : text;
   return (
     <div
@@ -336,16 +338,17 @@ export function AirfoilSuitabilityCard({
   item,
   defaultOpen = true,
   targetClProvenance,
-  caveatObject,
+  caveatObject: _caveatObject,  // kept for API compatibility; no longer used for warning gate
 }: Readonly<AirfoilSuitabilityCardProps>) {
   const [open, setOpen] = useState(defaultOpen);
   const isLowConfidence = item.min_analysis_confidence < 0.85;
 
-  // Show tip-Re CL_max collapse warning when the caveat object signals it,
-  // or when the item has tip_re_flag set.
-  const showTipReClMaxWarning =
-    item.tip_re_flag ||
-    (caveatObject?.ignores_tip_re_clmax_collapse === true);
+  // gh-825 item 4: gate the tip-Re CL_max warning on the PER-AIRFOIL flag ONLY.
+  // The global caveat flag (caveatObject.ignores_tip_re_clmax_collapse) is always true
+  // for the whole suitability response, so ORing it caused the warning to appear on
+  // EVERY card. Only the per-airfoil item.tip_re_flag indicates that this specific
+  // airfoil is affected by tip-Re CL_max collapse.
+  const showTipReClMaxWarning = item.tip_re_flag === true;
 
   return (
     <div className="flex flex-col gap-1 rounded-xl border border-border bg-card-muted px-3 py-2">

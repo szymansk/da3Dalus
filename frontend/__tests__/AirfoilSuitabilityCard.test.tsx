@@ -225,9 +225,34 @@ describe("AirfoilSuitabilityCard — F4: stall gentleness and CL_max margin", ()
 });
 
 // ── F5: Tip-Re CL_max collapse warning ───────────────────────────
+// gh-825 item 4: warning is gated on per-airfoil item.tip_re_flag ONLY.
+// The global caveatObject.ignores_tip_re_clmax_collapse is always-true for the
+// whole suitability response and must NOT trigger the warning on every card.
 
 describe("AirfoilSuitabilityCard — F5: tip-Re CL_max collapse warning", () => {
-  it("shows tip-Re warning when caveat.ignores_tip_re_clmax_collapse is true", () => {
+  it("shows tip-Re warning when item.tip_re_flag is true", () => {
+    const tipFlagItem: SuitabilityItem = {
+      ...baseItem,
+      tip_re_flag: true,
+    };
+    render(<AirfoilSuitabilityCard item={tipFlagItem} defaultOpen />);
+    expect(screen.getByTestId("tip-re-clmax-warning")).toBeDefined();
+    expect(screen.getByTestId("tip-re-clmax-warning").textContent).toMatch(
+      /Tip-Re.*CL_max|CL_max.*Einbruch|tip.*stall/i,
+    );
+  });
+
+  it("shows tip-Re warning when item.tip_re_flag is true regardless of caveatObject", () => {
+    const tipFlagItem: SuitabilityItem = {
+      ...baseItem,
+      tip_re_flag: true,
+    };
+    render(<AirfoilSuitabilityCard item={tipFlagItem} defaultOpen caveatObject={baseCaveat} />);
+    expect(screen.getByTestId("tip-re-clmax-warning")).toBeDefined();
+  });
+
+  it("does NOT show tip-Re warning when tip_re_flag=false even if caveatObject.ignores_tip_re_clmax_collapse=true", () => {
+    // gh-825 fix: global caveat flag is always-true and must NOT trigger the warning
     render(
       <AirfoilSuitabilityCard
         item={baseItem}
@@ -235,38 +260,11 @@ describe("AirfoilSuitabilityCard — F5: tip-Re CL_max collapse warning", () => 
         caveatObject={baseCaveat}
       />,
     );
-    expect(screen.getByTestId("tip-re-clmax-warning")).toBeDefined();
-    expect(screen.getByTestId("tip-re-clmax-warning").textContent).toMatch(
-      /Tip-Re.*CL_max|CL_max.*Einbruch|tip.*stall/i,
-    );
-  });
-
-  it("shows tip-Re warning when item.tip_re_flag is true (even without caveatObject)", () => {
-    const tipFlagItem: SuitabilityItem = {
-      ...baseItem,
-      tip_re_flag: true,
-    };
-    render(<AirfoilSuitabilityCard item={tipFlagItem} defaultOpen />);
-    expect(screen.getByTestId("tip-re-clmax-warning")).toBeDefined();
-  });
-
-  it("does NOT show tip-Re warning when both tip_re_flag=false and no caveatObject", () => {
-    render(<AirfoilSuitabilityCard item={baseItem} defaultOpen />);
     expect(screen.queryByTestId("tip-re-clmax-warning")).toBeNull();
   });
 
-  it("does NOT show tip-Re warning when caveat.ignores_tip_re_clmax_collapse is false", () => {
-    const noCaveat: SuitabilityCaveat = {
-      ...baseCaveat,
-      ignores_tip_re_clmax_collapse: false,
-    };
-    render(
-      <AirfoilSuitabilityCard
-        item={baseItem}
-        defaultOpen
-        caveatObject={noCaveat}
-      />,
-    );
+  it("does NOT show tip-Re warning when tip_re_flag=false and no caveatObject", () => {
+    render(<AirfoilSuitabilityCard item={baseItem} defaultOpen />);
     expect(screen.queryByTestId("tip-re-clmax-warning")).toBeNull();
   });
 });

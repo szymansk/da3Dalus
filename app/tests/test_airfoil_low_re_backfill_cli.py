@@ -226,3 +226,35 @@ def test_backfill_logs_progress(backfill_db, caplog):
                 run_backfill(session=session, force=False)
     # Something should have been logged
     assert len(caplog.records) > 0
+
+
+def test_backfill_standalone_no_invalid_request_error(backfill_db):
+    """gh-825 item 2: run_backfill must not raise InvalidRequestError when called
+    standalone (without app.main pre-imported).
+
+    The bug: AeroplaneModel has a relationship('StabilityResultModel') that is
+    only resolved if stability_result is in the SQLAlchemy mapper registry.
+    Before the fix, running the script directly (poetry run python
+    scripts/backfill_airfoil_low_re.py) crashed with::
+
+        InvalidRequestError: … 'StabilityResultModel' failed to locate a name …
+
+    The fix: run_backfill imports ``app.models`` at the top of the function body
+    to register the full model graph before any query fires.
+
+    This test exercises that path WITHOUT importing app.main, confirming no error.
+    """
+    from app.models.airfoil import AirfoilModel
+
+    with backfill_db() as session:
+        af = AirfoilModel(name="registry_test_af", coordinates=_SD7037_COORDS)
+        session.add(af)
+        session.commit()
+
+    # Patch compute so we don't need NeuralFoil
+    with patch("app.services.airfoil_low_re_service.compute_airfoil_low_re", return_value=[]):
+        from scripts.backfill_airfoil_low_re import run_backfill
+
+        # Must not raise InvalidRequestError
+        with backfill_db() as session:
+            run_backfill(session=session, force=False)  # raises if registry missing
