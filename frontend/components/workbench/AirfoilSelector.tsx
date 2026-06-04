@@ -38,6 +38,15 @@ interface AirfoilSelectorProps {
 
 const MAX_VISIBLE = 50;
 
+// Score badge colour: green ≥ 0.7, amber 0.4–0.7, red < 0.4
+function scoreBadgeColor(scoreStr: string): string {
+  const v = Number.parseFloat(scoreStr);
+  if (Number.isNaN(v)) return "#9CA3AF"; // neutral gray
+  if (v >= 0.7) return "#34D399";
+  if (v >= 0.4) return "#FBBF24";
+  return "#F87171";
+}
+
 export function AirfoilSelector({
   label,
   value,
@@ -185,7 +194,15 @@ export function AirfoilSelector({
                   {stats?.[name] && (
                     <>
                       <span className="flex-1" />
-                      <span className="font-[family-name:var(--font-jetbrains-mono)] text-[10px] text-muted-foreground">
+                      <span
+                        data-testid="score-badge"
+                        className="rounded-full border border-current px-1.5 py-0.5 font-[family-name:var(--font-jetbrains-mono)] text-[10px]"
+                        style={{
+                          color: scoreBadgeColor(stats[name]),
+                          backgroundColor: `${scoreBadgeColor(stats[name])}1a`,
+                          borderColor: `${scoreBadgeColor(stats[name])}40`,
+                        }}
+                      >
                         {stats[name]}
                       </span>
                     </>

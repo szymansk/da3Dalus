@@ -162,4 +162,46 @@ describe("AirfoilSelector — suitability enhancements", () => {
     // Active state — should have primary/accent styling
     expect(findBtn.className).toMatch(/primary|text-primary|text-\[#FF8400\]/);
   });
+
+  // ── Issue #2: Score badge visually rendered in ranked mode ────
+  it("score badge has data-testid='score-badge' and is not just muted text", async () => {
+    const user = userEvent.setup();
+    render(
+      <AirfoilSelector
+        label="Root"
+        value="naca0015"
+        stats={STATS}
+      />,
+    );
+    const trigger = screen.getByRole("button");
+    await user.click(trigger);
+
+    // Should find at least one score badge with data-testid
+    const badges = screen.getAllByTestId("score-badge");
+    expect(badges.length).toBeGreaterThan(0);
+    // Badge for e423 (0.85) should be present
+    const e423Badge = badges.find((el) => el.textContent === "0.85");
+    expect(e423Badge).toBeDefined();
+  });
+
+  it("score badge has inline color styling (not plain text-muted-foreground)", async () => {
+    const user = userEvent.setup();
+    render(
+      <AirfoilSelector
+        label="Root"
+        value="naca0015"
+        stats={STATS}
+      />,
+    );
+    const trigger = screen.getByRole("button");
+    await user.click(trigger);
+
+    const badges = screen.getAllByTestId("score-badge");
+    // At least one badge should have a color style (green/amber/red)
+    const hasColorStyle = badges.some((el) => {
+      const style = el.getAttribute("style") ?? "";
+      return style.includes("color");
+    });
+    expect(hasColorStyle).toBe(true);
+  });
 });

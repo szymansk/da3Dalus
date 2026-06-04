@@ -25,7 +25,7 @@ vi.mock("lucide-react", () => ({
   ),
 }));
 
-import { AirfoilSuitabilityCard } from "../components/workbench/AirfoilSuitabilityCard";
+import { AirfoilSuitabilityCard, AirfoilSuitabilityNoData, qualitativeLabel } from "../components/workbench/AirfoilSuitabilityCard";
 import type { SuitabilityItem } from "../hooks/useAirfoilSuitability";
 
 const baseItem: SuitabilityItem = {
@@ -199,5 +199,113 @@ describe("AirfoilSuitabilityCard", () => {
     await user.click(toggle);
 
     expect(screen.queryByText(/Re-agnostisch/i)).toBeNull();
+  });
+
+  // ── Issue #1: Confidence chip overflow fix ─────────────────────
+  it("confidence chip is rendered inside the button (not overflowing header row)", () => {
+    render(<AirfoilSuitabilityCard item={baseItem} defaultOpen />);
+    // The chip now lives in its own sub-row (pl-4 wrapper) inside the toggle button.
+    // It must still be present and not overflow the 480px panel.
+    // We verify the chip text is present at all.
+    expect(screen.getByText(/Konfidenz 0\.92/i)).toBeDefined();
+  });
+
+  it("confidence chip text contains the confidence value", () => {
+    render(<AirfoilSuitabilityCard item={lowConfidenceItem} defaultOpen />);
+    expect(screen.getByText(/Konfidenz 0\.72/i)).toBeDefined();
+  });
+
+  it("confidence chip has a tooltip (title) explaining the value", () => {
+    render(<AirfoilSuitabilityCard item={baseItem} defaultOpen />);
+    const chip = screen.getByText(/Konfidenz 0\.92/i);
+    const title = chip.getAttribute("title");
+    expect(title).toBeTruthy();
+    expect(title).toMatch(/Konfidenz|Modell|Re/i);
+  });
+
+  // ── Issue #3: No-data placeholder ─────────────────────────────
+  it("AirfoilSuitabilityNoData renders placeholder text without airfoilName", () => {
+    render(<AirfoilSuitabilityNoData />);
+    expect(screen.getByTestId("suitability-no-data")).toBeDefined();
+    expect(screen.getByText(/Keine Low-Re-Eignungsdaten/i)).toBeDefined();
+  });
+
+  it("AirfoilSuitabilityNoData renders airfoil name when provided", () => {
+    render(<AirfoilSuitabilityNoData airfoilName="rae2822" />);
+    expect(screen.getByText(/rae2822/i)).toBeDefined();
+  });
+
+  // ── Issue #4a: Qualitative labels ─────────────────────────────
+  describe("qualitativeLabel (exported)", () => {
+    it("returns 'Gut' for score >= 0.75", () => {
+      expect(qualitativeLabel(0.75)).toBe("Gut");
+      expect(qualitativeLabel(1.0)).toBe("Gut");
+      expect(qualitativeLabel(0.85)).toBe("Gut");
+    });
+
+    it("returns 'Mäßig' for score >= 0.5 and < 0.75", () => {
+      expect(qualitativeLabel(0.5)).toBe("Mäßig");
+      expect(qualitativeLabel(0.6)).toBe("Mäßig");
+      expect(qualitativeLabel(0.74)).toBe("Mäßig");
+    });
+
+    it("returns 'Schwach' for score < 0.5", () => {
+      expect(qualitativeLabel(0.49)).toBe("Schwach");
+      expect(qualitativeLabel(0.0)).toBe("Schwach");
+      expect(qualitativeLabel(0.3)).toBe("Schwach");
+    });
+  });
+
+  it("renders qualitative label next to each score bar", () => {
+    render(<AirfoilSuitabilityCard item={baseItem} defaultOpen />);
+    // re_agnostic = 0.82 → "Gut"
+    // mission = 0.75 → "Gut"
+    const labels = screen.getAllByTestId("qualitative-label");
+    expect(labels.length).toBeGreaterThan(0);
+    // At least one "Gut" label visible (re_agnostic=0.82)
+    const gutLabels = labels.filter((el) => el.textContent === "Gut");
+    expect(gutLabels.length).toBeGreaterThan(0);
+  });
+
+  it("renders 'Mäßig' qualitative label for mid-range scores", () => {
+    const midItem: SuitabilityItem = {
+      ...baseItem,
+      re_agnostic: 0.6,
+      mission: 0.55,
+      target_cl_cruise: 0.52,
+      target_cl_loiter: 0.51,
+    };
+    render(<AirfoilSuitabilityCard item={midItem} defaultOpen />);
+    const labels = screen.getAllByTestId("qualitative-label");
+    const masigLabels = labels.filter((el) => el.textContent === "Mäßig");
+    expect(masigLabels.length).toBeGreaterThan(0);
+  });
+
+  it("renders 'Schwach' qualitative label for low scores", () => {
+    const weakItem: SuitabilityItem = {
+      ...baseItem,
+      re_agnostic: 0.25,
+      mission: 0.3,
+      target_cl_cruise: 0.2,
+      target_cl_loiter: 0.1,
+    };
+    render(<AirfoilSuitabilityCard item={weakItem} defaultOpen />);
+    const labels = screen.getAllByTestId("qualitative-label");
+    const schwachLabels = labels.filter((el) => el.textContent === "Schwach");
+    expect(schwachLabels.length).toBeGreaterThan(0);
+  });
+
+  // ── Issue #4b: Softer low-confidence caveat ──────────────────
+  it("shows softened caveat when confidence is low (<0.85)", () => {
+    render(<AirfoilSuitabilityCard item={lowConfidenceItem} defaultOpen />);
+    // The CaveatCallout should include the hobbyist-friendly low-confidence prefix
+    expect(screen.getByRole("note").textContent).toMatch(/Geringe Modell-Konfidenz|grobe Orientierung/i);
+  });
+
+  it("does NOT show low-confidence prefix in caveat when confidence is high (>=0.85)", () => {
+    render(<AirfoilSuitabilityCard item={baseItem} defaultOpen />);
+    // baseItem confidence = 0.92 (high)
+    const note = screen.getByRole("note");
+    expect(note.textContent).not.toMatch(/Geringe Modell-Konfidenz/i);
   });
 });

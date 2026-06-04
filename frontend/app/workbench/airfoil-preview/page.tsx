@@ -279,7 +279,18 @@ export default function AirfoilPreviewPage() {
           onRevert={handleRevert}
           onBack={handleBack}
           rootSuitabilityItem={rootSuitabilityItem ?? undefined}
+          rootSuitabilityNotFound={
+            !rootSuitability.isLoading &&
+            rootSuitability.data != null &&
+            rootSuitabilityItem == null
+          }
           tipSuitabilityItem={hasTip ? (tipSuitabilityItem ?? undefined) : undefined}
+          tipSuitabilityNotFound={
+            hasTip &&
+            !tipSuitability.isLoading &&
+            tipSuitability.data != null &&
+            tipSuitabilityItem == null
+          }
           rootScoreMap={rootRankedMode ? rootScoreMap : undefined}
           tipScoreMap={tipRankedMode ? tipScoreMap : undefined}
           rootSortedNames={rootRankedMode ? rootSortedNames : undefined}

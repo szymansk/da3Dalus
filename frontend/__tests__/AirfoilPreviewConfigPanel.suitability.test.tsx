@@ -123,6 +123,38 @@ describe("AirfoilPreviewConfigPanel — suitability card wiring", () => {
     expect(screen.queryByText(/Re-agnostisch/i)).toBeNull();
   });
 
+  // ── Issue #3: No-data placeholder ─────────────────────────────
+  it("renders no-data placeholder for root when rootSuitabilityNotFound is true", () => {
+    render(
+      <AirfoilPreviewConfigPanel
+        {...baseProps}
+        rootSuitabilityNotFound
+      />,
+    );
+    expect(screen.getByTestId("suitability-no-data")).toBeDefined();
+    expect(screen.getByText(/Keine Low-Re-Eignungsdaten/i)).toBeDefined();
+  });
+
+  it("does NOT render no-data placeholder when rootSuitabilityNotFound is false", () => {
+    render(
+      <AirfoilPreviewConfigPanel
+        {...baseProps}
+        rootSuitabilityNotFound={false}
+      />,
+    );
+    expect(screen.queryByTestId("suitability-no-data")).toBeNull();
+  });
+
+  it("renders no-data placeholder for tip when tipSuitabilityNotFound is true", () => {
+    render(
+      <AirfoilPreviewConfigPanel
+        {...baseProps}
+        tipSuitabilityNotFound
+      />,
+    );
+    expect(screen.getByTestId("suitability-no-data")).toBeDefined();
+  });
+
   it("passes stats to root AirfoilSelector and score badge appears in dropdown", async () => {
     // Strengthened from a no-crash check: opens the dropdown and asserts the
     // score badge text is visible for the airfoil in the rootScoreMap.

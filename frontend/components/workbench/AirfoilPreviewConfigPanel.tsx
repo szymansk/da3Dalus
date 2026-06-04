@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { Info, ArrowLeft, Save, Loader2, ChevronLeft, ChevronRight, Undo2 } from "lucide-react";
 import { AirfoilSelector } from "./AirfoilSelector";
-import { AirfoilSuitabilityCard } from "./AirfoilSuitabilityCard";
+import { AirfoilSuitabilityCard, AirfoilSuitabilityNoData } from "./AirfoilSuitabilityCard";
 import type { SuitabilityItem } from "@/hooks/useAirfoilSuitability";
 
 interface AirfoilPreviewConfigPanelProps {
@@ -38,6 +38,16 @@ interface AirfoilPreviewConfigPanelProps {
   rootSuitabilityItem?: SuitabilityItem;
   /** gh-822 ADDITIVE: suitability item for tip airfoil */
   tipSuitabilityItem?: SuitabilityItem;
+  /**
+   * gh-822 ADDITIVE: true when the suitability API responded but did not
+   * include the selected root airfoil (non-seeded profile). Used to show
+   * the "no data" placeholder instead of silently hiding the card.
+   */
+  rootSuitabilityNotFound?: boolean;
+  /**
+   * gh-822 ADDITIVE: same as rootSuitabilityNotFound but for the tip.
+   */
+  tipSuitabilityNotFound?: boolean;
   /** gh-822 ADDITIVE: score map (airfoil name -> score string) for root AirfoilSelector stats slot */
   rootScoreMap?: Record<string, string>;
   /** gh-822 ADDITIVE: score map for tip AirfoilSelector stats slot */
@@ -153,6 +163,8 @@ export function AirfoilPreviewConfigPanel({
   onBack,
   rootSuitabilityItem,
   tipSuitabilityItem,
+  rootSuitabilityNotFound,
+  tipSuitabilityNotFound,
   rootScoreMap,
   tipScoreMap,
   rootSortedNames,
@@ -295,9 +307,8 @@ export function AirfoilPreviewConfigPanel({
           color="#FF8400"
         />
         {/* gh-822: Root suitability card (open by default) */}
-        {rootSuitabilityItem && (
-          <AirfoilSuitabilityCard item={rootSuitabilityItem} defaultOpen />
-        )}
+        {rootSuitabilityItem && <AirfoilSuitabilityCard item={rootSuitabilityItem} defaultOpen />}
+        {!rootSuitabilityItem && rootSuitabilityNotFound && <AirfoilSuitabilityNoData airfoilName={rootAirfoil} />}
 
         {/* Divider */}
         <div className="border-t border-border" />
@@ -328,9 +339,8 @@ export function AirfoilPreviewConfigPanel({
           />
         )}
         {/* gh-822: Tip suitability card (collapsed by default) */}
-        {tipSuitabilityItem && (
-          <AirfoilSuitabilityCard item={tipSuitabilityItem} defaultOpen={false} />
-        )}
+        {tipSuitabilityItem && <AirfoilSuitabilityCard item={tipSuitabilityItem} defaultOpen={false} />}
+        {!tipSuitabilityItem && tipSuitabilityNotFound && <AirfoilSuitabilityNoData airfoilName={tipAirfoil} />}
 
         {/* Divider */}
         <div className="border-t border-border" />
