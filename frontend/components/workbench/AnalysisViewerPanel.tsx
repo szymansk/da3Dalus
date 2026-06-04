@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useMemo, useRef, useEffect } from "react";
-import { Loader2, Maximize2, Minimize2, Settings } from "lucide-react";
+import { AlertTriangle, Loader2, Maximize2, Minimize2, Settings } from "lucide-react";
 import { InfoChipRow } from "@/components/workbench/InfoChipRow";
 import type { AnalysisResult } from "@/hooks/useAnalysis";
 import type { StripForcesResult } from "@/hooks/useStripForces";
@@ -627,6 +627,12 @@ export function safeToFixed(
   return value == null || !Number.isFinite(value) ? fallback : value.toFixed(digits);
 }
 
+/** True if any coefficient series holds at least one finite value to plot. */
+export function polarHasFiniteData(charts: PolarCharts): boolean {
+  const series = [charts.CL, charts.CD, charts.clOverCd, charts.Cm ?? []];
+  return series.some((arr) => arr.some((v) => v != null && Number.isFinite(v)));
+}
+
 /** Derive polar series + characteristic points, tolerating null coefficients. */
 export function derivePolarCharts(result: AnalysisResult | null): PolarCharts | null {
   if (!result?.CL || result.CL.length === 0) return null;
@@ -953,6 +959,24 @@ export function AnalysisViewerPanel({
         <div className="flex flex-1 flex-col gap-4 overflow-auto bg-card-muted p-6">
           {charts ? (
             (() => {
+              // Degenerate sweep: coefficients all non-finite -> null (gh-815).
+              // Surface it instead of rendering blank charts (gh-819).
+              if (!polarHasFiniteData(charts)) {
+                return (
+                  <div className="flex flex-1 flex-col items-center justify-center gap-3 text-center">
+                    <AlertTriangle size={28} className="text-primary" />
+                    <span className="font-[family-name:var(--font-jetbrains-mono)] text-[14px] text-foreground">
+                      Analysis produced no valid results
+                    </span>
+                    <span className="max-w-md text-[12px] text-subtle-foreground">
+                      All coefficients are non-finite (NaN/Inf) for this sweep —
+                      usually a sign of degenerate geometry, e.g. a zero-volume
+                      fuselage from an incomplete import. Check the imported model
+                      and re-run.
+                    </span>
+                  </div>
+                );
+              }
               const allCharts = [
                 {
                   id: "cl",
