@@ -8,6 +8,7 @@ import { useAirfoilGeometry } from "@/hooks/useAirfoilGeometry";
 import { useAirfoilAnalysis } from "@/hooks/useAirfoilAnalysis";
 import { useAirfoilSuitability } from "@/hooks/useAirfoilSuitability";
 import { AirfoilPreviewViewerPanel } from "@/components/workbench/AirfoilPreviewViewerPanel";
+import type { OperatingPoints } from "@/components/workbench/AirfoilPreviewViewerPanel";
 import { AirfoilPreviewConfigPanel } from "@/components/workbench/AirfoilPreviewConfigPanel";
 
 export function airfoilShortName(raw: string): string {
@@ -174,6 +175,49 @@ export default function AirfoilPreviewPage() {
     return rootAnalysis.result.alphaDeg[closestIdx];
   }, [rootAnalysis.result, rootSuitabilityItem]);
 
+  // gh-839: Compute operating points (alpha positions) for the three design-speed lenses.
+  // Each target CL is mapped to an alpha via the analysis CL-alpha curve.
+  function clToAlpha(targetCl: number | null | undefined): number | undefined {
+    if (targetCl == null || !rootAnalysis.result) return undefined;
+    const cls = rootAnalysis.result.cl;
+    const alphas = rootAnalysis.result.alphaDeg;
+    if (cls.length === 0) return undefined;
+    let closestIdx = 0;
+    let closestDist = Math.abs((cls[0] ?? 0) - targetCl);
+    for (let i = 1; i < cls.length; i++) {
+      const v = cls[i];
+      if (v == null) continue;
+      const d = Math.abs(v - targetCl);
+      if (d < closestDist) {
+        closestDist = d;
+        closestIdx = i;
+      }
+    }
+    return alphas[closestIdx];
+  }
+
+  const rootOperatingPoints = useMemo((): OperatingPoints | undefined => {
+    if (!rootAnalysis.result || !rootSuitabilityItem) return undefined;
+    const q = rootSuitability.data?.query;
+    const alphaCruise = clToAlpha(rootSuitabilityItem.target_cl_cruise);
+    const alphaBestGlide = clToAlpha(rootSuitabilityItem.target_cl_best_glide);
+    const alphaMinSink = clToAlpha(rootSuitabilityItem.target_cl_min_sink);
+
+    const pts: OperatingPoints = {};
+    if (alphaCruise != null && q?.v_cruise_mps != null) {
+      pts.cruise = { alpha: alphaCruise, label: `Cruise ${q.v_cruise_mps.toFixed(1)} m/s` };
+    }
+    if (alphaBestGlide != null && q?.v_md_mps != null) {
+      pts.bestGlide = { alpha: alphaBestGlide, label: `Best-Glide ${q.v_md_mps.toFixed(1)} m/s` };
+    }
+    if (alphaMinSink != null && q?.v_min_sink_mps != null) {
+      pts.minSink = { alpha: alphaMinSink, label: `Min-Sink ${q.v_min_sink_mps.toFixed(1)} m/s` };
+    }
+    if (!pts.cruise && !pts.bestGlide && !pts.minSink) return undefined;
+    return pts;
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [rootAnalysis.result, rootSuitabilityItem, rootSuitability.data?.query]);
+
   // Sync airfoils from segment when index or wingConfig changes
   useEffect(() => {
     const seg = wingConfig?.segments?.[selectedXsecIndex ?? 0];
@@ -261,6 +305,7 @@ export default function AirfoilPreviewPage() {
           onMaChange={setMa}
           operatingAlphaDeg={rootOperatingAlpha}
           tipSuitabilityItem={hasTip ? (tipSuitabilityItem ?? undefined) : undefined}
+          operatingPoints={rootOperatingPoints}
         />
       </div>
       <div className="shrink-0 overflow-hidden" style={{ width: 480 }}>
@@ -315,6 +360,15 @@ export default function AirfoilPreviewPage() {
           onTipRankedModeToggle={() => setTipRankedMode((v) => !v)}
           targetClProvenance={rootSuitability.data?.query.target_cl_provenance}
           suitabilityCaveat={rootSuitability.data?.caveat}
+          suitabilitySpeedContext={
+            rootSuitability.data?.query
+              ? {
+                  v_cruise_mps: rootSuitability.data.query.v_cruise_mps,
+                  v_md_mps: rootSuitability.data.query.v_md_mps,
+                  v_min_sink_mps: rootSuitability.data.query.v_min_sink_mps,
+                }
+              : undefined
+          }
         />
       </div>
     </div>

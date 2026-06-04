@@ -231,7 +231,7 @@ def search_suitability(
     mission_weights = settings.low_re_mission_weights
     low_conf_flag = settings.low_re_low_confidence_flag
 
-    # --- Reynolds number at root chord ---
+    # --- Reynolds number at root chord (query / slider Re) ---
     re_root = _compute_re(chord_m, speed_ms)
     re_clamped_root, re_clamped = _clamp_re_to_grid(re_root, re_grid)
 
@@ -338,6 +338,38 @@ def search_suitability(
     # --- Provenance ---
     provenance = _resolve_provenance(aeroplane, db, ctx)
 
+    # ── gh-838: per-lens Re ───────────────────────────────────────────────────
+    # Each target-CL lens is scored at its OWN Reynolds number, derived from
+    # its own design speed and the same root chord.  This makes the score
+    # independent of the slider Re (speed_ms).
+    #
+    # Rule:
+    #   - When a design speed is available from the aeroplane context (v_*_mps),
+    #     Re_lens = v_*_mps * chord_m / nu   (nu = 1.46e-5 m²/s)
+    #     clamped to the grid just like re_root.
+    #   - When no aeroplane context is available (or explicit target_cl_* params
+    #     with no design speed), fall back to the slider Re (re_clamped_root).
+    #     This preserves existing behaviour for explicit-param callers.
+    _NU = 1.46e-5  # kinematic viscosity m²/s at 15°C
+
+    def _per_lens_re(v_mps: Optional[float]) -> float:
+        """Return clamped Re for this lens speed, or the slider Re as fallback."""
+        if v_mps is None:
+            return re_clamped_root
+        raw = v_mps * chord_m / _NU
+        clamped, _ = _clamp_re_to_grid(raw, re_grid)
+        return clamped
+
+    # Resolved design speeds (from context — used for both Re computation and query echo)
+    _v_cruise: Optional[float] = ctx.get("v_cruise_mps")
+    _v_md: Optional[float] = ctx.get("v_md_mps")
+    _v_min_sink: Optional[float] = ctx.get("v_min_sink_mps")
+
+    # Per-lens clamped Re values (gh-838)
+    re_cruise = _per_lens_re(_v_cruise if aeroplane is not None else None)
+    re_best_glide = _per_lens_re(_v_md if aeroplane is not None else None)
+    re_min_sink = _per_lens_re(_v_min_sink if aeroplane is not None else None)
+
     # --- Query DB: all airfoil geometries + polars ---
     geo_rows = db.query(AirfoilGeometryModel).all()
     # Index geometry by airfoil_name
@@ -349,8 +381,27 @@ def search_suitability(
     for p in polar_rows:
         polars_by_name.setdefault(p.airfoil_name, []).append(p)
 
-    # --- Per-Re cd0 reference (computed once for the request) ---
+    # --- Per-Re cd0 references (gh-838) ---
+    # re_agnostic and mission lenses use the slider Re (re_clamped_root).
+    # Each target-CL lens uses its own per-lens Re.
+    # We need a cd0 fleet reference at each distinct Re to normalise efficiency.
     re_cd0_ref = compute_re_cd0_reference(polars_by_name, re_clamped_root)
+    # Only compute per-lens references when they differ from the slider Re
+    re_cd0_ref_cruise = (
+        compute_re_cd0_reference(polars_by_name, re_cruise)
+        if re_cruise != re_clamped_root
+        else re_cd0_ref
+    )
+    re_cd0_ref_best_glide = (
+        compute_re_cd0_reference(polars_by_name, re_best_glide)
+        if re_best_glide != re_clamped_root
+        else re_cd0_ref
+    )
+    re_cd0_ref_min_sink = (
+        compute_re_cd0_reference(polars_by_name, re_min_sink)
+        if re_min_sink != re_clamped_root
+        else re_cd0_ref
+    )
 
     # --- Score each airfoil ---
     items: list[SuitabilityItem] = []
@@ -358,13 +409,32 @@ def search_suitability(
 
     for name, geo in geo_by_name.items():
         rows = polars_by_name.get(name, [])
+        # Slider-Re polar (for re_agnostic, mission, stall_gentleness, cl_max_margin)
         polar = interpolate_polar_at_re(rows, re_clamped_root, re_grid)
+
+        # gh-838: per-lens polars for target-CL scoring
+        # When the per-lens Re equals the slider Re, reuse the already-interpolated polar.
+        polar_cruise = (
+            interpolate_polar_at_re(rows, re_cruise, re_grid)
+            if re_cruise != re_clamped_root
+            else polar
+        )
+        polar_best_glide = (
+            interpolate_polar_at_re(rows, re_best_glide, re_grid)
+            if re_best_glide != re_clamped_root
+            else polar
+        )
+        polar_min_sink = (
+            interpolate_polar_at_re(rows, re_min_sink, re_grid)
+            if re_min_sink != re_clamped_root
+            else polar
+        )
 
         re_agn = score_re_agnostic(polar)
         if re_agn is None:
             re_agn = 0.0
 
-        # Mission lens
+        # Mission lens (uses slider-Re polar)
         mission_score: Optional[float] = None
         if effective_mission_type is not None:
             mission_score = score_mission(
@@ -377,30 +447,31 @@ def search_suitability(
             )
 
         # Target CL lenses — cruise can auto-rank; glide points are display-only
+        # gh-838: each lens uses its own per-lens polar + cd0 reference
         cl_cruise_score: Optional[float] = None
-        if effective_target_cl_cruise is not None and polar is not None:
+        if effective_target_cl_cruise is not None and polar_cruise is not None:
             cl_cruise_score = score_target_cl(
-                polar,
+                polar_cruise,
                 effective_target_cl_cruise,
-                re_cd0_reference=re_cd0_ref,
+                re_cd0_reference=re_cd0_ref_cruise,
                 settings=settings,
             )
 
         cl_best_glide_score: Optional[float] = None
-        if effective_target_cl_best_glide is not None and polar is not None:
+        if effective_target_cl_best_glide is not None and polar_best_glide is not None:
             cl_best_glide_score = score_target_cl(
-                polar,
+                polar_best_glide,
                 effective_target_cl_best_glide,
-                re_cd0_reference=re_cd0_ref,
+                re_cd0_reference=re_cd0_ref_best_glide,
                 settings=settings,
             )
 
         cl_min_sink_score: Optional[float] = None
-        if effective_target_cl_min_sink is not None and polar is not None:
+        if effective_target_cl_min_sink is not None and polar_min_sink is not None:
             cl_min_sink_score = score_target_cl(
-                polar,
+                polar_min_sink,
                 effective_target_cl_min_sink,
-                re_cd0_reference=re_cd0_ref,
+                re_cd0_reference=re_cd0_ref_min_sink,
                 settings=settings,
             )
 
@@ -543,6 +614,10 @@ def search_suitability(
         target_cl_min_sink=effective_target_cl_min_sink,
         target_cl_provenance=provenance,
         active_lens=active_lens,
+        # gh-839: expose design speeds from context (null when no aeroplane)
+        v_cruise_mps=_v_cruise if aeroplane is not None else None,
+        v_md_mps=_v_md if aeroplane is not None else None,
+        v_min_sink_mps=_v_min_sink if aeroplane is not None else None,
     )
     caveat = SuitabilityCaveat(
         relative_ranking_only=True,

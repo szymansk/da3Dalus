@@ -133,6 +133,14 @@ class SuitabilityQuery(BaseModel):
       - 'calculated' : mass and cruise speed were both auto-computed
       - 'estimated'  : at least one input was a manual estimate
       - 'mixed'      : some inputs calculated, some estimated
+
+    Speed fields (gh-839 additive):
+      v_cruise_mps   — cruise speed from aeroplane context (null when absent)
+      v_md_mps       — best-glide speed from aeroplane context (null when absent)
+      v_min_sink_mps — min-sink speed from aeroplane context (null when absent)
+
+    These are the per-lens speeds used for #838 Re computation.
+    They are null when no aeroplane context is available.
     """
 
     chord_m: float
@@ -145,6 +153,10 @@ class SuitabilityQuery(BaseModel):
     target_cl_min_sink: Optional[float] = None
     target_cl_provenance: TargetClProvenance = "estimated"
     active_lens: ActiveLens
+    # gh-839: design-speed values from aeroplane context (additive; null when absent)
+    v_cruise_mps: Optional[float] = None
+    v_md_mps: Optional[float] = None
+    v_min_sink_mps: Optional[float] = None
 
 
 class SuitabilityCaveat(BaseModel):

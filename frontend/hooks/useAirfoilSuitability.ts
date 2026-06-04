@@ -87,6 +87,12 @@ export interface SuitabilityQuery {
   /** NEW gh-825 — provenance of the target CL values */
   target_cl_provenance: TargetClProvenance;
   active_lens: ActiveLens;
+  /** NEW gh-839 — design speeds from aeroplane context (null when absent) */
+  v_cruise_mps: number | null;
+  /** NEW gh-839 — best-glide speed from aeroplane context (null when absent) */
+  v_md_mps: number | null;
+  /** NEW gh-839 — min-sink speed from aeroplane context (null when absent) */
+  v_min_sink_mps: number | null;
 }
 
 export interface SuitabilityCaveat {
