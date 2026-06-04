@@ -10,15 +10,42 @@ interface AirfoilListResponse {
   airfoils: { airfoil_name: string; file_name: string }[];
 }
 
+interface SuitabilityToggle {
+  /** Whether ranked / "Passende finden" mode is currently active */
+  active: boolean;
+  onToggle: () => void;
+}
+
 interface AirfoilSelectorProps {
   label: string;
   value: string;
   onChange?: (value: string) => void;
   onPreviewToggle?: (active: boolean) => void;
+  /** Existing slot: right-aligned badge text per airfoil name */
   stats?: Record<string, string>;
+  /**
+   * gh-822 ADDITIVE: pre-sorted list of airfoil names (desc by score).
+   * When provided, the dropdown renders in this order instead of the
+   * alphabetical default.
+   */
+  sortedNames?: string[];
+  /**
+   * gh-822 ADDITIVE: when provided, renders a "🔍 Passende finden" toggle
+   * button next to the dropdown trigger.
+   */
+  suitabilityToggle?: SuitabilityToggle;
 }
 
 const MAX_VISIBLE = 50;
+
+// Score badge colour: green ≥ 0.7, amber 0.4–0.7, red < 0.4
+function scoreBadgeColor(scoreStr: string): string {
+  const v = Number.parseFloat(scoreStr);
+  if (Number.isNaN(v)) return "#9CA3AF"; // neutral gray
+  if (v >= 0.7) return "#34D399";
+  if (v >= 0.4) return "#FBBF24";
+  return "#F87171";
+}
 
 export function AirfoilSelector({
   label,
@@ -26,6 +53,8 @@ export function AirfoilSelector({
   onChange,
   onPreviewToggle,
   stats,
+  sortedNames,
+  suitabilityToggle,
 }: Readonly<AirfoilSelectorProps>) {
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState("");
@@ -38,10 +67,11 @@ export function AirfoilSelector({
     dedupingInterval: 60_000,
   });
 
-  const allNames = useMemo(
-    () => data?.airfoils?.map((a) => a.airfoil_name) ?? [],
-    [data],
-  );
+  const allNames = useMemo(() => {
+    // gh-822: when sortedNames is provided, use that order (ranked by suitability)
+    if (sortedNames && sortedNames.length > 0) return sortedNames;
+    return data?.airfoils?.map((a) => a.airfoil_name) ?? [];
+  }, [data, sortedNames]);
 
   const filtered = useMemo(() => {
     const q = search.toLowerCase();
@@ -88,7 +118,24 @@ export function AirfoilSelector({
 
   return (
     <div ref={containerRef} className="relative flex flex-1 flex-col gap-1">
-      <label htmlFor={`airfoil-${label.toLowerCase().replaceAll(/\s+/g, "-")}`} className="text-[11px] text-muted-foreground">{label}</label>
+      <div className="flex items-center gap-1">
+        <label htmlFor={`airfoil-${label.toLowerCase().replaceAll(/\s+/g, "-")}`} className="flex-1 text-[11px] text-muted-foreground">{label}</label>
+        {/* gh-822 ADDITIVE: Passende finden toggle */}
+        {suitabilityToggle && (
+          <button
+            type="button"
+            title="🔍 Passende finden"
+            onClick={suitabilityToggle.onToggle}
+            className={`text-[10px] transition-colors ${
+              suitabilityToggle.active
+                ? "text-primary font-medium"
+                : "text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            🔍
+          </button>
+        )}
+      </div>
 
       {/* Trigger */}
       <button
@@ -147,7 +194,15 @@ export function AirfoilSelector({
                   {stats?.[name] && (
                     <>
                       <span className="flex-1" />
-                      <span className="font-[family-name:var(--font-jetbrains-mono)] text-[10px] text-muted-foreground">
+                      <span
+                        data-testid="score-badge"
+                        className="rounded-full border border-current px-1.5 py-0.5 font-[family-name:var(--font-jetbrains-mono)] text-[10px]"
+                        style={{
+                          color: scoreBadgeColor(stats[name]),
+                          backgroundColor: `${scoreBadgeColor(stats[name])}1a`,
+                          borderColor: `${scoreBadgeColor(stats[name])}40`,
+                        }}
+                      >
                         {stats[name]}
                       </span>
                     </>

@@ -3,6 +3,8 @@
 import { useState, useEffect } from "react";
 import { Info, ArrowLeft, Save, Loader2, ChevronLeft, ChevronRight, Undo2 } from "lucide-react";
 import { AirfoilSelector } from "./AirfoilSelector";
+import { AirfoilSuitabilityCard, AirfoilSuitabilityNoData } from "./AirfoilSuitabilityCard";
+import type { SuitabilityItem } from "@/hooks/useAirfoilSuitability";
 
 interface AirfoilPreviewConfigPanelProps {
   rootAirfoil: string;
@@ -32,6 +34,34 @@ interface AirfoilPreviewConfigPanelProps {
   onSave: () => void;
   onRevert: () => void;
   onBack: () => void;
+  /** gh-822 ADDITIVE: suitability item for root airfoil */
+  rootSuitabilityItem?: SuitabilityItem;
+  /** gh-822 ADDITIVE: suitability item for tip airfoil */
+  tipSuitabilityItem?: SuitabilityItem;
+  /**
+   * gh-822 ADDITIVE: true when the suitability API responded but did not
+   * include the selected root airfoil (non-seeded profile). Used to show
+   * the "no data" placeholder instead of silently hiding the card.
+   */
+  rootSuitabilityNotFound?: boolean;
+  /**
+   * gh-822 ADDITIVE: same as rootSuitabilityNotFound but for the tip.
+   */
+  tipSuitabilityNotFound?: boolean;
+  /** gh-822 ADDITIVE: score map (airfoil name -> score string) for root AirfoilSelector stats slot */
+  rootScoreMap?: Record<string, string>;
+  /** gh-822 ADDITIVE: score map for tip AirfoilSelector stats slot */
+  tipScoreMap?: Record<string, string>;
+  /** gh-822 ADDITIVE: sorted names for root AirfoilSelector ranked mode */
+  rootSortedNames?: string[];
+  /** gh-822 ADDITIVE: sorted names for tip AirfoilSelector ranked mode */
+  tipSortedNames?: string[];
+  /** gh-822 ADDITIVE: toggle state for root ranked mode */
+  rootRankedMode?: boolean;
+  onRootRankedModeToggle?: () => void;
+  /** gh-822 ADDITIVE: toggle state for tip ranked mode */
+  tipRankedMode?: boolean;
+  onTipRankedModeToggle?: () => void;
 }
 
 function ReadOnlyField({
@@ -131,6 +161,18 @@ export function AirfoilPreviewConfigPanel({
   onSave,
   onRevert,
   onBack,
+  rootSuitabilityItem,
+  tipSuitabilityItem,
+  rootSuitabilityNotFound,
+  tipSuitabilityNotFound,
+  rootScoreMap,
+  tipScoreMap,
+  rootSortedNames,
+  tipSortedNames,
+  rootRankedMode,
+  onRootRankedModeToggle,
+  tipRankedMode,
+  onTipRankedModeToggle,
 }: Readonly<AirfoilPreviewConfigPanelProps>) {
   const [showReInfo, setShowReInfo] = useState(false);
   const [velocityDraft, setVelocityDraft] = useState(String(velocity));
@@ -249,6 +291,13 @@ export function AirfoilPreviewConfigPanel({
           label=""
           value={rootAirfoil}
           onChange={onRootAirfoilChange}
+          stats={rootScoreMap}
+          sortedNames={rootSortedNames}
+          suitabilityToggle={
+            onRootRankedModeToggle
+              ? { active: rootRankedMode ?? false, onToggle: onRootRankedModeToggle }
+              : undefined
+          }
         />
         <ReynoldsField
           label="Re"
@@ -257,6 +306,9 @@ export function AirfoilPreviewConfigPanel({
           chordMm={rootChordMm}
           color="#FF8400"
         />
+        {/* gh-822: Root suitability card (open by default) */}
+        {rootSuitabilityItem && <AirfoilSuitabilityCard item={rootSuitabilityItem} defaultOpen />}
+        {!rootSuitabilityItem && rootSuitabilityNotFound && <AirfoilSuitabilityNoData airfoilName={rootAirfoil} />}
 
         {/* Divider */}
         <div className="border-t border-border" />
@@ -269,6 +321,13 @@ export function AirfoilPreviewConfigPanel({
           label=""
           value={tipAirfoil}
           onChange={onTipAirfoilChange}
+          stats={tipScoreMap}
+          sortedNames={tipSortedNames}
+          suitabilityToggle={
+            onTipRankedModeToggle
+              ? { active: tipRankedMode ?? false, onToggle: onTipRankedModeToggle }
+              : undefined
+          }
         />
         {hasTip && (
           <ReynoldsField
@@ -279,6 +338,9 @@ export function AirfoilPreviewConfigPanel({
             color="#22D3EE"
           />
         )}
+        {/* gh-822: Tip suitability card (collapsed by default) */}
+        {tipSuitabilityItem && <AirfoilSuitabilityCard item={tipSuitabilityItem} defaultOpen={false} />}
+        {!tipSuitabilityItem && tipSuitabilityNotFound && <AirfoilSuitabilityNoData airfoilName={tipAirfoil} />}
 
         {/* Divider */}
         <div className="border-t border-border" />

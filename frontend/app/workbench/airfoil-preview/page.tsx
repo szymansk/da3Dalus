@@ -1,16 +1,36 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { useAeroplaneContext } from "@/components/workbench/AeroplaneContext";
 import { useWingConfig } from "@/hooks/useWingConfig";
 import { useAirfoilGeometry } from "@/hooks/useAirfoilGeometry";
 import { useAirfoilAnalysis } from "@/hooks/useAirfoilAnalysis";
+import { useAirfoilSuitability } from "@/hooks/useAirfoilSuitability";
 import { AirfoilPreviewViewerPanel } from "@/components/workbench/AirfoilPreviewViewerPanel";
 import { AirfoilPreviewConfigPanel } from "@/components/workbench/AirfoilPreviewConfigPanel";
 
-function airfoilShortName(raw: string): string {
+export function airfoilShortName(raw: string): string {
   return (raw.split("/").pop() ?? raw).replace(/\.dat$/i, "");
+}
+
+/**
+ * Returns the score to display in the dropdown badge for a suitability item,
+ * based on the active lens from the backend query.
+ *
+ * Relationship:
+ *  - 'mission'          → item.mission ?? item.re_agnostic (fallback when no mission score)
+ *  - 'target_cl_cruise' → item.target_cl_cruise ?? item.re_agnostic
+ *  - 'target_cl_loiter' → display-only lens, never used as ranking lens; fall through to re_agnostic
+ *  - 're_agnostic' / default → item.re_agnostic
+ */
+export function activeLensScore(
+  item: { re_agnostic: number; mission: number | null; target_cl_cruise: number | null; target_cl_loiter: number | null },
+  lens: string | undefined,
+): number {
+  if (lens === "mission") return item.mission ?? item.re_agnostic;
+  if (lens === "target_cl_cruise") return item.target_cl_cruise ?? item.re_agnostic;
+  return item.re_agnostic;
 }
 
 const NU_AIR = 1.46e-5; // kinematic viscosity [m\u00B2/s] at 15\u00B0C
@@ -58,6 +78,87 @@ export default function AirfoilPreviewPage() {
   const tipGeo = useAirfoilGeometry(tipAirfoil === rootAirfoil ? null : tipAirfoil);
   const rootAnalysis = useAirfoilAnalysis();
   const tipAnalysis = useAirfoilAnalysis();
+
+  // gh-822: Suitability hooks (chord in metres = chordMm / 1000)
+  const [rootRankedMode, setRootRankedMode] = useState(false);
+  const [tipRankedMode, setTipRankedMode] = useState(false);
+
+  const rootSuitability = useAirfoilSuitability({
+    chord_m: rootChordMm / 1000,
+    speed_ms: velocity,
+    aeroplane_id: aeroplaneId,
+  });
+  const tipSuitability = useAirfoilSuitability({
+    chord_m: tipChordMm / 1000,
+    speed_ms: velocity,
+    aeroplane_id: aeroplaneId,
+  });
+
+  // Build lookup maps: airfoil name -> score string + sorted names.
+  // The displayed score uses the active lens so the badge matches the ranking order.
+  const rootScoreMap = useMemo((): Record<string, string> => {
+    if (!rootSuitability.data) return {};
+    const lens = rootSuitability.data.query.active_lens;
+    return Object.fromEntries(
+      rootSuitability.data.results.map((item) => [
+        item.airfoil_name,
+        activeLensScore(item, lens).toFixed(2),
+      ]),
+    );
+  }, [rootSuitability.data]);
+
+  const tipScoreMap = useMemo((): Record<string, string> => {
+    if (!tipSuitability.data) return {};
+    const lens = tipSuitability.data.query.active_lens;
+    return Object.fromEntries(
+      tipSuitability.data.results.map((item) => [
+        item.airfoil_name,
+        activeLensScore(item, lens).toFixed(2),
+      ]),
+    );
+  }, [tipSuitability.data]);
+
+  const rootSortedNames = useMemo(
+    () => rootSuitability.data?.results.map((item) => item.airfoil_name),
+    [rootSuitability.data],
+  );
+
+  const tipSortedNames = useMemo(
+    () => tipSuitability.data?.results.map((item) => item.airfoil_name),
+    [tipSuitability.data],
+  );
+
+  // Find the selected airfoil's suitability item
+  const rootSuitabilityItem = useMemo(
+    () => rootSuitability.data?.results.find((item) => item.airfoil_name === rootAirfoil) ?? null,
+    [rootSuitability.data, rootAirfoil],
+  );
+
+  const tipSuitabilityItem = useMemo(
+    () => tipSuitability.data?.results.find((item) => item.airfoil_name === tipAirfoil) ?? null,
+    [tipSuitability.data, tipAirfoil],
+  );
+
+  // gh-822: Compute operating alpha from operating CL via the L/D polar
+  // (find closest CL index in the analysis result)
+  const rootOperatingAlpha = useMemo((): number | undefined => {
+    if (!rootAnalysis.result) return undefined;
+    const targetCl = rootSuitabilityItem?.target_cl_cruise;
+    if (targetCl == null) return undefined;
+    const cls = rootAnalysis.result.cl;
+    let closestIdx = 0;
+    let closestDist = Math.abs((cls[0] ?? 0) - targetCl);
+    for (let i = 1; i < cls.length; i++) {
+      const v = cls[i];
+      if (v == null) continue;
+      const d = Math.abs(v - targetCl);
+      if (d < closestDist) {
+        closestDist = d;
+        closestIdx = i;
+      }
+    }
+    return rootAnalysis.result.alphaDeg[closestIdx];
+  }, [rootAnalysis.result, rootSuitabilityItem]);
 
   // Sync airfoils from segment when index or wingConfig changes
   useEffect(() => {
@@ -144,6 +245,8 @@ export default function AirfoilPreviewPage() {
           tipRe={hasTip ? tipRe : null}
           ma={ma}
           onMaChange={setMa}
+          operatingAlphaDeg={rootOperatingAlpha}
+          tipSuitabilityItem={hasTip ? (tipSuitabilityItem ?? undefined) : undefined}
         />
       </div>
       <div className="shrink-0 overflow-hidden" style={{ width: 480 }}>
@@ -175,6 +278,27 @@ export default function AirfoilPreviewPage() {
           onSave={handleSave}
           onRevert={handleRevert}
           onBack={handleBack}
+          rootSuitabilityItem={rootSuitabilityItem ?? undefined}
+          rootSuitabilityNotFound={
+            !rootSuitability.isLoading &&
+            rootSuitability.data != null &&
+            rootSuitabilityItem == null
+          }
+          tipSuitabilityItem={hasTip ? (tipSuitabilityItem ?? undefined) : undefined}
+          tipSuitabilityNotFound={
+            hasTip &&
+            !tipSuitability.isLoading &&
+            tipSuitability.data != null &&
+            tipSuitabilityItem == null
+          }
+          rootScoreMap={rootRankedMode ? rootScoreMap : undefined}
+          tipScoreMap={tipRankedMode ? tipScoreMap : undefined}
+          rootSortedNames={rootRankedMode ? rootSortedNames : undefined}
+          tipSortedNames={tipRankedMode ? tipSortedNames : undefined}
+          rootRankedMode={rootRankedMode}
+          onRootRankedModeToggle={() => setRootRankedMode((v) => !v)}
+          tipRankedMode={tipRankedMode}
+          onTipRankedModeToggle={() => setTipRankedMode((v) => !v)}
         />
       </div>
     </div>
