@@ -92,6 +92,10 @@ class Settings(BaseSettings):
     low_re_confidence_gate: float = 0.90
     # Flag threshold: any item with min_analysis_confidence < flag → caveat.
     low_re_low_confidence_flag: float = 0.85
+    # Relative drag-rise CD(CL_target)/cd0 at which Match→0  (gh-825 scoring).
+    low_re_score_r_poor: float = 2.5
+    # Drag-bucket width that earns full tolerance credit in Match formula (gh-825).
+    low_re_bucket_tolerance_ref: float = 0.6
     # Mission-weight coefficient table keyed by mission preset name.
     low_re_mission_weights: dict[str, dict[str, Any]] = Field(
         default_factory=lambda: dict(_DEFAULT_MISSION_WEIGHTS)

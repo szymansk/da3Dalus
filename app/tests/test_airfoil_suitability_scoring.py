@@ -147,28 +147,46 @@ class TestMissionScore:
 
 
 # ---------------------------------------------------------------------------
-# Task 6c: target_cl_cruise/loiter from parabolic fit
+# Task 6c: target_cl — gh-825 Match×Efficiency scoring (updated contract)
 # ---------------------------------------------------------------------------
 
 
 class TestTargetClScore:
+    """Updated for gh-825: score_target_cl now requires re_cd0_reference + settings."""
+
+    def _settings(self):
+        from app.settings import Settings
+
+        return Settings()
+
     def test_target_cl_within_range_returns_score(self):
         from app.services.airfoil_low_re_service import score_target_cl
 
-        result = score_target_cl(_GOOD_POLAR, cl_target=0.5)
+        result = score_target_cl(
+            _GOOD_POLAR, cl_target=0.5, re_cd0_reference=0.012, settings=self._settings()
+        )
         assert result is not None
         assert 0.0 <= result <= 1.0
 
-    def test_target_cl_outside_valid_range_penalized(self):
-        """CL outside [cl_valid_lo, cl_valid_hi] should score lower."""
-        from app.services.airfoil_low_re_service import score_target_cl
+    def test_target_cl_outside_sweet_spot_scores_lower(self):
+        """CL far from cl_star should score lower than CL near cl_star."""
+        from app.services.airfoil_low_re_service import score_target_cl, best_ld_cl
+        import math
 
-        in_range = score_target_cl(_GOOD_POLAR, cl_target=0.5)
-        out_of_range = score_target_cl(_GOOD_POLAR, cl_target=2.0)  # above cl_valid_hi=1.2
-        # Out-of-range should be penalized (lower score or None)
-        assert in_range is not None
-        if out_of_range is not None:
-            assert in_range >= out_of_range
+        settings = self._settings()
+        re_ref = 0.012
+        # cl_star ≈ sqrt(cl0^2 + cd0/k) for _GOOD_POLAR
+        cl_star = best_ld_cl(_GOOD_POLAR["cd0"], _GOOD_POLAR["k"], _GOOD_POLAR["cl0"])
+        near_score = score_target_cl(
+            _GOOD_POLAR, cl_target=cl_star, re_cd0_reference=re_ref, settings=settings
+        )
+        far_score = score_target_cl(
+            _GOOD_POLAR, cl_target=2.0, re_cd0_reference=re_ref, settings=settings
+        )
+        # near cl_star should score higher than far away
+        assert near_score is not None
+        if far_score is not None:
+            assert near_score >= far_score
 
     def test_target_cl_none_when_no_fit(self):
         from app.services.airfoil_low_re_service import score_target_cl
@@ -177,21 +195,37 @@ class TestTargetClScore:
         polar_no_fit["cd0"] = None
         polar_no_fit["k"] = None
         polar_no_fit["cl0"] = None
-        result = score_target_cl(polar_no_fit, cl_target=0.5)
+        result = score_target_cl(
+            polar_no_fit, cl_target=0.5, re_cd0_reference=0.012, settings=self._settings()
+        )
         assert result is None
 
     def test_lower_drag_at_target_cl_yields_higher_score(self):
-        from app.services.airfoil_low_re_service import score_target_cl
+        """At the same fleet reference cd0, lower airfoil cd0 → higher efficiency → higher score."""
+        from app.services.airfoil_low_re_service import score_target_cl, best_ld_cl
 
-        # Airfoil with very low cd0 should score higher
+        settings = self._settings()
+        # Use a fleet reference between the two cd0 values
+        re_ref = 0.020  # > 0.012 (good) and < 0.040 (high drag)
+
+        # Use cl_star for _GOOD_POLAR so match is maximised
+        cl_star = best_ld_cl(_GOOD_POLAR["cd0"], _GOOD_POLAR["k"], _GOOD_POLAR["cl0"])
+
+        # High drag polar: same structure but higher cd0
         high_drag_polar = dict(_GOOD_POLAR)
-        high_drag_polar["cd0"] = 0.040  # much higher drag
-        high_drag_polar["k"] = 0.04
-        high_drag_polar["cl0"] = 0.3
+        high_drag_polar["cd0"] = 0.040
 
-        low_score = score_target_cl(high_drag_polar, cl_target=0.5)
-        high_score = score_target_cl(_GOOD_POLAR, cl_target=0.5)
-        assert high_score > low_score
+        high_score = score_target_cl(
+            _GOOD_POLAR, cl_target=cl_star, re_cd0_reference=re_ref, settings=settings
+        )
+        low_score = score_target_cl(
+            high_drag_polar, cl_target=cl_star, re_cd0_reference=re_ref, settings=settings
+        )
+        assert high_score is not None
+        assert low_score is not None
+        # Good polar (cd0=0.012 < re_ref=0.020) gets efficiency=1.0
+        # High-drag polar (cd0=0.040 > re_ref=0.020) gets efficiency<1.0
+        assert high_score >= low_score
 
 
 # ---------------------------------------------------------------------------

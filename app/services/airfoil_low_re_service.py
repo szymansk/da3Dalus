@@ -22,11 +22,14 @@ from __future__ import annotations
 
 import logging
 import math
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import numpy as np
 
 from app.schemas.airfoil import AirfoilFamily
+
+if TYPE_CHECKING:
+    from app.settings import Settings
 
 logger = logging.getLogger(__name__)
 
@@ -496,6 +499,122 @@ def _level_flight_cl(mass_kg: float, v_ms: float, s_ref_m2: float) -> float:
 
 
 # ---------------------------------------------------------------------------
+# best_ld_cl — closed-form CL at maximum L/D (gh-825)
+# ---------------------------------------------------------------------------
+
+
+def best_ld_cl(cd0: float, k: float, cl0: float) -> float | None:
+    """Compute the CL that maximises L/D for a parabolic drag polar.
+
+    Polar model: CD = cd0 + k·(CL − cl0)²
+
+    From d/dCL [ CL / CD ] = 0 we get:
+
+        CD·1 − CL·d(CD)/dCL = 0
+        (cd0 + k·(CL−cl0)²) − CL·2k·(CL−cl0) = 0
+
+    Let u = CL − cl0:
+        cd0 + k·u² = (u + cl0)·2k·u
+        cd0 = 2k·u² + 2k·cl0·u − k·u²
+        cd0 = k·u² + 2k·cl0·u   ← rearranged
+                                    (using symmetry around cl0: the cl0 cross
+                                     term cancels and we get u = sqrt(cd0/k))
+
+    The exact closed-form solution is:
+        CL* = cl0 + sqrt(cd0 / k)
+
+    Full derivation:  L/D = CL/CD.  d(L/D)/dCL = 0 gives
+        CD − CL·dCD/dCL = 0
+        cd0 + k(CL−cl0)² = CL·2k(CL−cl0)
+    Let u = CL−cl0, so CL = u + cl0:
+        cd0 + k·u² = 2k(u+cl0)·u = 2k·u² + 2k·cl0·u
+        0 = k·u² + 2k·cl0·u − cd0
+    Solve quadratic: u = [−2k·cl0 ± sqrt(4k²·cl0² + 4k·cd0)] / (2k)
+                       = −cl0 ± sqrt(cl0² + cd0/k)
+    CL* = u + cl0 = ±sqrt(cl0² + cd0/k); take positive root.
+
+    Special case cl0=0: CL* = sqrt(cd0/k). ✓
+
+    Parameters
+    ----------
+    cd0 : float  Parasite drag coefficient (must be > 0).
+    k   : float  Induced drag factor (must be > 0).
+    cl0 : float  CL at minimum CD (offset of the parabola vertex).
+
+    Returns
+    -------
+    float | None
+        CL at maximum L/D (positive root), or None if the inputs are unphysical.
+    """
+    if cd0 <= 0.0 or k <= 0.0:
+        return None
+    return math.sqrt(cl0**2 + cd0 / k)
+
+
+# ---------------------------------------------------------------------------
+# compute_re_cd0_reference — fleet-level cd0 percentile for Re-fair efficiency
+# ---------------------------------------------------------------------------
+
+# Fallback cd0 reference when no finite values can be extracted.
+_CD0_REFERENCE_FALLBACK = 0.020
+
+
+def compute_re_cd0_reference(
+    polars_by_name: dict[str, list],
+    re_query: float,
+    percentile: float = 20.0,
+) -> float:
+    """Compute a robust low-percentile cd0 across the fleet at the given Re.
+
+    This provides a per-Re reference for the Efficiency component of
+    score_target_cl: how does this airfoil's cd0 compare to the *best*
+    airfoils achievable at this Re?
+
+    Algorithm:
+      1. For each airfoil in `polars_by_name`, interpolate to re_query (log-linear).
+      2. Collect all finite cd0 values from the interpolated polars.
+      3. Return the `percentile`-th percentile (default 20th) — a robust minimum
+         that is not dominated by outliers but still reflects the best performers.
+
+    Returns the documented fallback value (_CD0_REFERENCE_FALLBACK = 0.020) when
+    no finite cd0 values are present (empty fleet or all-None rows).
+
+    Parameters
+    ----------
+    polars_by_name : dict[str, list[AirfoilLowRePolarModel]]
+        Keyed by airfoil_name.  One entry per unique airfoil.
+    re_query : float
+        Query Re (may be between grid points — will be interpolated).
+    percentile : float
+        Which percentile of the fleet cd0 distribution to use as reference.
+        Default 20.0 (robust low end; not the absolute minimum).
+
+    Returns
+    -------
+    float  Per-Re cd0 reference (> 0).
+    """
+    # We need the grid for interpolation.  Use a wide grid to avoid clamping.
+    from app.settings import get_settings
+
+    re_grid = get_settings().low_re_grid
+
+    cd0_values: list[float] = []
+    for rows in polars_by_name.values():
+        polar = interpolate_polar_at_re(rows, re_query, re_grid)
+        if polar is None:
+            continue
+        cd0 = polar.get("cd0")
+        if cd0 is not None and math.isfinite(cd0) and cd0 > 0.0:
+            cd0_values.append(cd0)
+
+    if not cd0_values:
+        return _CD0_REFERENCE_FALLBACK
+
+    cd0_arr = np.array(cd0_values, dtype=float)
+    return float(np.percentile(cd0_arr, percentile))
+
+
+# ---------------------------------------------------------------------------
 # Three scoring lenses
 # ---------------------------------------------------------------------------
 
@@ -613,15 +732,54 @@ def score_mission(
 
 
 def score_target_cl(
-    polar: dict,
+    polar: dict | None,
     cl_target: float,
+    *,
+    re_cd0_reference: float,
+    settings: "Settings",
 ) -> float | None:
-    """Score how well an airfoil performs at the target CL (0..1).
+    """Score how well an airfoil performs at the target CL (0..1) — gh-825.
 
-    Uses the parabolic drag fit CD = cd0 + k*(CL-cl0)^2.
-    Returns None if fit coefficients are absent or cl_target is out of valid range.
+    Formula: Match × Efficiency, clamped to [0, 1].
 
-    Higher score = lower drag at cl_target (better suitability).
+    **Match** — how well cl_target sits in this airfoil's drag sweet-spot:
+
+        cl_star = best_ld_cl(cd0, k, cl0)   # CL at max L/D
+        r = CD(cl_target) / cd0             # relative drag rise at target
+        r_poor = settings.low_re_score_r_poor   # r at which Match → 0
+
+        A wider drag bucket gives a wider tolerance band.  The tolerance
+        half-width is scaled by the airfoil's drag_bucket_width relative to
+        settings.low_re_bucket_tolerance_ref (a wide-bucket reference).
+
+        Specifically:
+          tolerance = (drag_bucket_width / low_re_bucket_tolerance_ref) × 0.5
+          (half-width of a linearly forgiving zone around cl_star)
+
+        Within tolerance: Match = 1 − (r−1) / (r_poor − 1)   [linear in r]
+        r ≤ 1 (at/below cl_star): Match = 1.0 (can only be better)
+        r ≥ r_poor: Match = 0.0
+
+        A wider bucket: tolerance zone is wider → Match degrades more slowly
+        with distance from cl_star.
+
+    **Efficiency** — Re-fair: how clean is this airfoil at this Re vs fleet?
+
+        efficiency = min(re_cd0_reference / cd0, 1.0)
+
+        If this airfoil has cd0 < re_cd0_reference it earns extra efficiency
+        (capped at 1.0). An airfoil with cd0 = fleet median gets partial credit.
+
+    Final = Match × Efficiency, clamped to [0, 1].
+
+    Returns None when cd0/k/cl0 are absent in the polar dict.
+
+    Parameters
+    ----------
+    polar : dict | None        Interpolated polar dict (from interpolate_polar_at_re).
+    cl_target : float          Operating CL to evaluate (level-flight cruise, etc.).
+    re_cd0_reference : float   Per-Re fleet cd0 reference (from compute_re_cd0_reference).
+    settings : Settings        Application settings (for r_poor and bucket_tolerance_ref).
     """
     if polar is None:
         return None
@@ -629,34 +787,60 @@ def score_target_cl(
     cd0 = polar.get("cd0")
     k = polar.get("k")
     cl0 = polar.get("cl0")
-    cl_lo = polar.get("cl_valid_lo")
-    cl_hi = polar.get("cl_valid_hi")
 
     if any(v is None for v in (cd0, k, cl0)):
         return None
 
-    # Check if cl_target is within the valid fit range
-    in_range = True
-    if cl_lo is not None and cl_hi is not None:
-        if cl_target < cl_lo or cl_target > cl_hi:
-            in_range = False
+    # Guard against unphysical fit values (e.g. near-zero k from bad fit)
+    if cd0 <= 0.0 or k <= 0.0:
+        return None
+
+    bucket_width = polar.get("drag_bucket_width") or 0.0
+    r_poor = settings.low_re_score_r_poor
+    bucket_ref = settings.low_re_bucket_tolerance_ref
+
+    # --- Match component ---
+    cl_star = best_ld_cl(cd0, k, cl0)
+    if cl_star is None:
+        return None
 
     cd_at_target = cd0 + k * (cl_target - cl0) ** 2
+    r = cd_at_target / cd0  # relative drag rise; r=1 at CL_min, r>1 away from it
 
-    # Score: normalise against a reference CD (good RC airfoil at op. CL)
-    # CD of 0.012 at operating CL → score 1.0; CD of 0.05 → score ~0
-    CD_REF_EXCELLENT = 0.010
-    CD_REF_POOR = 0.050
+    # Tolerance: wider bucket → wider acceptance zone
+    tolerance_half = (bucket_width / max(bucket_ref, 1e-9)) * 0.5
+    distance_from_sweet_spot = abs(cl_target - cl_star)
 
-    if cd_at_target <= 0:
-        return 0.0
+    # Inside tolerance zone: Match decays only due to r
+    # Outside: Match decays due to r (which grows with distance)
+    # Use r to compute Match directly: it captures both bucket penalty and drag rise
+    if r <= 1.0:
+        # At or below minimum drag: match = 1.0 (but softened by tolerance if
+        # we're in the bucket centre)
+        match = 1.0
+    elif r >= r_poor:
+        match = 0.0
+    else:
+        # Linear decay from 1 (r=1) to 0 (r=r_poor)
+        match_raw = 1.0 - (r - 1.0) / (r_poor - 1.0)
+        # Bonus for wide bucket: widen the effective r=1 zone by scaling down
+        # the distance from optimal — a wider bucket means we reach a given r
+        # more slowly as target moves away from cl_star.
+        # Implement: if distance_from_sweet_spot < tolerance_half, boost match
+        if tolerance_half > 0 and distance_from_sweet_spot < tolerance_half:
+            # Partial credit for being inside the bucket tolerance zone:
+            # interpolate between match_raw and 1.0 based on proximity
+            frac = 1.0 - distance_from_sweet_spot / tolerance_half
+            match = match_raw + (1.0 - match_raw) * frac * 0.5
+            match = min(match, 1.0)
+        else:
+            match = match_raw
 
-    # Linear scale: 1.0 at excellent, 0.0 at poor
-    cd_score = max(0.0, (CD_REF_POOR - cd_at_target) / (CD_REF_POOR - CD_REF_EXCELLENT))
-    cd_score = min(cd_score, 1.0)
+    # --- Efficiency component ---
+    if re_cd0_reference > 0.0 and cd0 > 0.0:
+        efficiency = min(re_cd0_reference / cd0, 1.0)
+    else:
+        efficiency = 1.0
 
-    # Penalise if outside valid range
-    if not in_range:
-        cd_score *= 0.5
-
-    return float(cd_score)
+    score = match * efficiency
+    return float(min(max(score, 0.0), 1.0))

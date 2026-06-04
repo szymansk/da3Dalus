@@ -264,8 +264,10 @@ def test_search_suitability_explicit_target_cl_overrides(seeded_db):
     assert resp.query.target_cl_cruise == pytest.approx(0.5)
 
 
-def test_search_suitability_active_lens_is_never_loiter(seeded_db):
-    """active_lens must never be 'target_cl_loiter'."""
+def test_search_suitability_active_lens_is_never_glide_point(seeded_db):
+    """active_lens must never be a glide point (target_cl_best_glide / target_cl_min_sink).
+    Updated for gh-825: target_cl_loiter renamed to target_cl_min_sink.
+    """
     from app.services.suitability_service import search_suitability
 
     SessionLocal, ap_uuid = seeded_db
@@ -273,13 +275,16 @@ def test_search_suitability_active_lens_is_never_loiter(seeded_db):
         for params in [
             {},
             {"aeroplane_id": str(ap_uuid)},
-            {"target_cl_loiter": 0.8},
+            {"target_cl_min_sink": 0.8},
+            {"target_cl_best_glide": 0.75},
             {"mission_type": "glider"},
         ]:
             resp = search_suitability(db=session, chord_m=0.15, speed_ms=15.0, **params)
-            assert resp.query.active_lens != "target_cl_loiter", (
-                f"active_lens must never be 'target_cl_loiter', got '{resp.query.active_lens}'"
-            )
+            assert resp.query.active_lens not in (
+                "target_cl_loiter",
+                "target_cl_best_glide",
+                "target_cl_min_sink",
+            ), f"active_lens must never be a glide point, got '{resp.query.active_lens}'"
 
 
 def test_search_suitability_tip_re_flag(seeded_db):

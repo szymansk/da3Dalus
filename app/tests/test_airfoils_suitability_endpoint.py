@@ -63,7 +63,7 @@ def client_no_svc():
 
 
 def _make_fake_response():
-    """Build a minimal SuitabilityResponse for mocking."""
+    """Build a minimal SuitabilityResponse for mocking (gh-825 contract)."""
     from app.schemas.airfoil import (
         SuitabilityResponse,
         SuitabilityQuery,
@@ -79,12 +79,15 @@ def _make_fake_response():
             re_clamped=False,
             mission_type=None,
             target_cl_cruise=None,
-            target_cl_loiter=None,
+            target_cl_best_glide=None,
+            target_cl_min_sink=None,
+            target_cl_provenance="estimated",
             active_lens="re_agnostic",
         ),
         caveat=SuitabilityCaveat(
             relative_ranking_only=True,
             no_hysteresis_modelling=True,
+            ignores_tip_re_clmax_collapse=True,
             recommend_xfoil_validation=False,
             text="Nur relative Reihenfolge.",
         ),
@@ -95,7 +98,10 @@ def _make_fake_response():
                 re_agnostic=0.85,
                 mission=None,
                 target_cl_cruise=None,
-                target_cl_loiter=None,
+                target_cl_best_glide=None,
+                target_cl_min_sink=None,
+                stall_gentleness=-0.04,
+                cl_max_margin=0.4,
                 min_analysis_confidence=0.95,
                 tip_re_flag=False,
                 caveat="",
@@ -125,6 +131,7 @@ def test_endpoint_returns_200_with_required_params(client_no_svc):
 
 
 def test_endpoint_response_has_frozen_shape(client_no_svc):
+    """Verify response shape matches gh-825 contract."""
     fake_resp = _make_fake_response()
     with patch("app.api.v2.endpoints.airfoils.search_suitability", return_value=fake_resp):
         resp = client_no_svc.get(
@@ -141,9 +148,14 @@ def test_endpoint_response_has_frozen_shape(client_no_svc):
     assert "reynolds" in q
     assert "re_clamped" in q
     assert "active_lens" in q
+    assert "target_cl_best_glide" in q
+    assert "target_cl_min_sink" in q
+    assert "target_cl_provenance" in q
+    assert "target_cl_loiter" not in q
     c = data["caveat"]
     assert "relative_ranking_only" in c
     assert "no_hysteresis_modelling" in c
+    assert "ignores_tip_re_clmax_collapse" in c
     assert "recommend_xfoil_validation" in c
     r = data["results"][0]
     assert "airfoil_name" in r
@@ -151,10 +163,14 @@ def test_endpoint_response_has_frozen_shape(client_no_svc):
     assert "re_agnostic" in r
     assert "mission" in r
     assert "target_cl_cruise" in r
-    assert "target_cl_loiter" in r
+    assert "target_cl_best_glide" in r
+    assert "target_cl_min_sink" in r
+    assert "stall_gentleness" in r
+    assert "cl_max_margin" in r
     assert "min_analysis_confidence" in r
     assert "tip_re_flag" in r
     assert "caveat" in r
+    assert "target_cl_loiter" not in r
 
 
 def test_endpoint_passes_optional_params_to_service(client_no_svc):
