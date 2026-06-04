@@ -259,11 +259,14 @@ describe("ITEM 4 — StallClMaxRow: German row labels", () => {
 });
 
 // ── 4g: TipReClMaxWarning is German ─────────────────────────────────
+// gh-825 item 4: warning is gated on per-airfoil tip_re_flag ONLY, so we must
+// use an item with tip_re_flag=true to trigger it.
 
 describe("ITEM 4 — TipReClMaxWarning: German text", () => {
   it("tip-Re warning text is in German", () => {
+    const tipFlagItem: SuitabilityItem = { ...baseItem, tip_re_flag: true };
     render(
-      <AirfoilSuitabilityCard item={baseItem} defaultOpen caveatObject={baseCaveat} />,
+      <AirfoilSuitabilityCard item={tipFlagItem} defaultOpen caveatObject={baseCaveat} />,
     );
     const warning = screen.getByTestId("tip-re-clmax-warning");
     // Text must contain German words (not English equivalent)
