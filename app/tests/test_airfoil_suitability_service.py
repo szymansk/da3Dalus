@@ -443,7 +443,7 @@ def test_sailplane_mission_type_activates_mission_lens(seeded_db):
         ("sailplane", "glider"),
         ("motor_glider", "glider"),
         ("motorglider", "glider"),
-        ("slope_soarer", "glider"),
+        ("slope_soarer", "slope_soarer"),  # gh-825 item 12: own weight key
         ("wing_racer", "sport"),
         ("acro_3d", "aerobatic"),
         ("stol_bush", "trainer"),

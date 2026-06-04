@@ -64,12 +64,21 @@ def test_low_confidence_flag_default():
 
 
 def test_mission_weights_keys():
-    """Mission weight table must have all required mission types."""
+    """Mission weight table must have all required mission types.
+
+    gh-825 item 12: slope_soarer added as an additional key (additive — no renames).
+    """
     from app.settings import Settings
 
     s = Settings()
     required_keys = {"trainer", "sport", "aerobatic", "glider", "flying_wing"}
-    assert required_keys == set(s.low_re_mission_weights.keys())
+    # All original keys must be present (additive — no renames)
+    assert required_keys.issubset(set(s.low_re_mission_weights.keys())), (
+        f"All original mission weight keys must be present; "
+        f"missing: {required_keys - set(s.low_re_mission_weights.keys())}"
+    )
+    # slope_soarer is the new additive key (gh-825 item 12)
+    assert "slope_soarer" in s.low_re_mission_weights
 
 
 def test_mission_weights_structure():

@@ -896,3 +896,592 @@ class TestEndpointParams825:
             assert "stall_gentleness" in item
             assert "cl_max_margin" in item
             assert "target_cl_loiter" not in item
+
+
+# ---------------------------------------------------------------------------
+# ITEM 2 (gh-825): Tip-Re significance threshold tests
+# ---------------------------------------------------------------------------
+#
+# The threshold logic (gh-825 item 2):
+#   tip_re_flag = True  iff
+#       (re_tip < settings.low_re_tip_re_abs_floor)
+#     OR
+#       ((re_root - re_tip) > settings.low_re_tip_re_rel_drop)
+#   otherwise False.
+#
+# Re computation: re = RHO * speed * chord / MU  (1.225*v*c/1.81e-5)
+# For speed_ms=15.0:
+#   chord 0.15 → Re ~152_072   (root)
+#   tip_chord 0.10 → Re ~101_381
+#   tip_chord 0.08 → Re ~81_105
+#   tip_chord 0.07 → Re ~70_967  (below 80k floor)
+#
+# _RHO=1.225, _MU=1.81e-5 → Re = 1.225*15/1.81e-5 * chord
+#                                = 1_015_470 * chord  (approx)
+# More precisely: 1.225*15.0/1.81e-5 = 1_015_470.0 (per metre of chord)
+
+
+def _make_minimal_db_with_airfoil(in_memory_db):
+    """Seed one airfoil + geometry + polar so search_suitability returns items."""
+    from app.models.airfoil import AirfoilModel
+    from app.models.airfoil_low_re import AirfoilGeometryModel, AirfoilLowRePolarModel
+    from datetime import datetime, timezone
+
+    with in_memory_db() as session:
+        session.add(AirfoilModel(name="tip_re_af", coordinates=[[0, 0], [0.5, 0.07], [1, 0]]))
+        session.flush()
+        session.add(
+            AirfoilGeometryModel(
+                airfoil_name="tip_re_af",
+                max_thickness_pct=10.0,
+                max_camber_pct=2.0,
+                camber_at_te=0.001,
+                family="cambered",
+                computed_at=datetime.now(timezone.utc),
+            )
+        )
+        session.add(
+            AirfoilLowRePolarModel(
+                airfoil_name="tip_re_af",
+                reynolds=100_000.0,
+                ld_max=45.0,
+                cl_max=1.2,
+                alpha_attached_lo=-3.0,
+                alpha_attached_hi=12.0,
+                drag_bucket_width=0.50,
+                cd_min=0.012,
+                stall_gentleness=-0.05,
+                cd0=0.012,
+                k=0.04,
+                cl0=0.25,
+                cl_valid_lo=0.0,
+                cl_valid_hi=1.2,
+                min_analysis_confidence=0.93,
+                neuralfoil_model_size="xxxlarge",
+                n_crit=9.0,
+                computed_at=datetime.now(timezone.utc),
+            )
+        )
+        session.commit()
+    return in_memory_db
+
+
+class TestTipReSignificanceThreshold:
+    """Item 2 (gh-825): boundary tests for the tip-Re significance threshold.
+
+    Uses explicit Settings overrides to isolate threshold logic from defaults.
+    abs_floor=80_000, rel_drop=50_000 (matching new default values).
+    """
+
+    # Re = 1.225 * speed * chord / 1.81e-5
+    # speed_ms = 15.0
+    # Factor = 1.225 * 15.0 / 1.81e-5 ≈ 1_015_469.6  per metre chord
+    _FACTOR = 1.225 * 15.0 / 1.81e-5
+
+    def _re(self, chord_m):
+        return self._FACTOR * chord_m
+
+    def test_tip_re_flag_false_gentle_taper(self, in_memory_db):
+        """Gentle taper: tip_Re above floor AND (root_Re - tip_Re) <= rel_drop → flag False."""
+        from app.services.suitability_service import search_suitability
+        from app.settings import Settings
+
+        db_factory = _make_minimal_db_with_airfoil(in_memory_db)
+
+        # root_chord → Re ≈ 152_220  (0.15 m)
+        # tip_chord  → Re ≈ 101_480  (0.1 m)
+        # re_tip > 80_000 (floor)  ✓  abs_floor passes
+        # re_root - re_tip ≈ 50_740  > 50_000  → would trip rel_drop
+        # Need gentler taper: tip = 0.105 m → re_tip ≈ 106_524
+        # re_root - re_tip ≈ 152_220 - 106_524 = 45_696 < 50_000  ✓
+
+        root_chord = 0.15
+        tip_chord = 0.105
+        re_root = self._re(root_chord)
+        re_tip = self._re(tip_chord)
+
+        settings = Settings(
+            low_re_tip_re_abs_floor=80_000.0,
+            low_re_tip_re_rel_drop=50_000.0,
+        )
+        # Verify our test invariants hold
+        assert re_tip >= settings.low_re_tip_re_abs_floor, (
+            f"re_tip={re_tip:.0f} must be >= floor={settings.low_re_tip_re_abs_floor}"
+        )
+        assert (re_root - re_tip) <= settings.low_re_tip_re_rel_drop, (
+            f"drop={re_root - re_tip:.0f} must be <= rel_drop={settings.low_re_tip_re_rel_drop}"
+        )
+
+        with db_factory() as session:
+            resp = search_suitability(
+                db=session,
+                chord_m=root_chord,
+                speed_ms=15.0,
+                tip_chord_m=tip_chord,
+                settings=settings,
+            )
+
+        for item in resp.results:
+            assert item.tip_re_flag is False, (
+                f"Expected tip_re_flag=False for gentle taper, got True on {item.airfoil_name}"
+            )
+
+    def test_tip_re_flag_true_below_abs_floor(self, in_memory_db):
+        """tip_Re < abs_floor (80k) → flag must be True."""
+        from app.services.suitability_service import search_suitability
+        from app.settings import Settings
+
+        db_factory = _make_minimal_db_with_airfoil(in_memory_db)
+
+        # tip_chord = 0.07 → re_tip ≈ 70_983 < 80_000  → flag True
+        tip_chord = 0.07
+        re_tip = self._re(tip_chord)
+        settings = Settings(
+            low_re_tip_re_abs_floor=80_000.0,
+            low_re_tip_re_rel_drop=50_000.0,
+        )
+        assert re_tip < settings.low_re_tip_re_abs_floor, (
+            f"re_tip={re_tip:.0f} must be < floor={settings.low_re_tip_re_abs_floor}"
+        )
+
+        with db_factory() as session:
+            resp = search_suitability(
+                db=session,
+                chord_m=0.15,
+                speed_ms=15.0,
+                tip_chord_m=tip_chord,
+                settings=settings,
+            )
+
+        for item in resp.results:
+            assert item.tip_re_flag is True, (
+                f"Expected tip_re_flag=True for re_tip < floor, got False on {item.airfoil_name}"
+            )
+
+    def test_tip_re_flag_true_large_rel_drop(self, in_memory_db):
+        """(re_root - re_tip) > rel_drop (50k) → flag must be True even if re_tip > floor."""
+        from app.services.suitability_service import search_suitability
+        from app.settings import Settings
+
+        db_factory = _make_minimal_db_with_airfoil(in_memory_db)
+
+        # root_chord = 0.15 → re_root ≈ 152_220
+        # tip_chord = 0.095 → re_tip ≈ 96_470
+        # drop ≈ 55_750 > 50_000  → flag True
+        # re_tip > 80_000  → abs_floor alone wouldn't flag it
+        root_chord = 0.15
+        tip_chord = 0.095
+        re_root = self._re(root_chord)
+        re_tip = self._re(tip_chord)
+        settings = Settings(
+            low_re_tip_re_abs_floor=80_000.0,
+            low_re_tip_re_rel_drop=50_000.0,
+        )
+        assert re_tip >= settings.low_re_tip_re_abs_floor, (
+            f"re_tip={re_tip:.0f} must be >= floor (testing rel_drop path only)"
+        )
+        assert (re_root - re_tip) > settings.low_re_tip_re_rel_drop, (
+            f"drop={re_root - re_tip:.0f} must be > rel_drop={settings.low_re_tip_re_rel_drop}"
+        )
+
+        with db_factory() as session:
+            resp = search_suitability(
+                db=session,
+                chord_m=root_chord,
+                speed_ms=15.0,
+                tip_chord_m=tip_chord,
+                settings=settings,
+            )
+
+        for item in resp.results:
+            assert item.tip_re_flag is True, (
+                f"Expected tip_re_flag=True for large rel_drop, got False on {item.airfoil_name}"
+            )
+
+    def test_tip_re_flag_edge_exactly_at_floor(self, in_memory_db):
+        """Exactly at abs_floor: re_tip == floor → flag must be False (not strictly less than)."""
+        from app.services.suitability_service import search_suitability
+        from app.settings import Settings
+
+        db_factory = _make_minimal_db_with_airfoil(in_memory_db)
+
+        # We need re_tip == exactly 80_000.  Compute chord:
+        # chord = 80_000 / FACTOR
+        abs_floor = 80_000.0
+        tip_chord_exact = abs_floor / self._FACTOR
+        # Also ensure rel_drop doesn't fire: root=0.15 → re_root≈152_220
+        # drop = 152_220 - 80_000 = 72_220 > 50_000 → rel_drop fires
+        # So use a small root where re_root - 80_000 <= 50_000
+        # re_root <= 130_000 → chord_root <= 0.128 m
+        root_chord = 0.125  # re_root ≈ 126_934
+        re_root = self._re(root_chord)
+        re_tip = self._re(tip_chord_exact)
+        drop = re_root - re_tip
+
+        settings = Settings(
+            low_re_tip_re_abs_floor=abs_floor,
+            low_re_tip_re_rel_drop=50_000.0,
+        )
+        # Validate our invariants
+        assert abs(re_tip - abs_floor) < 1.0, f"re_tip={re_tip:.2f} must equal floor={abs_floor}"
+        assert drop <= settings.low_re_tip_re_rel_drop, (
+            f"drop={drop:.0f} must be <= rel_drop so only floor edge matters"
+        )
+
+        with db_factory() as session:
+            resp = search_suitability(
+                db=session,
+                chord_m=root_chord,
+                speed_ms=15.0,
+                tip_chord_m=tip_chord_exact,
+                settings=settings,
+            )
+
+        # re_tip == floor exactly: not strictly less than → flag False
+        for item in resp.results:
+            assert item.tip_re_flag is False, (
+                f"At exactly floor boundary, tip_re_flag should be False; "
+                f"got True on {item.airfoil_name}"
+            )
+
+    def test_tip_re_flag_edge_just_below_rel_drop(self, in_memory_db):
+        """Just below rel_drop: (re_root - re_tip) slightly < rel_drop → flag must be False."""
+        from app.services.suitability_service import search_suitability
+        from app.settings import Settings
+
+        db_factory = _make_minimal_db_with_airfoil(in_memory_db)
+
+        # Use a rel_drop threshold of 50_000 and ensure (re_root - re_tip) < 50_000
+        # by giving a relatively long tip chord.
+        # root_chord = 0.15 → re_root ≈ 152_279
+        # We want re_tip = re_root - 49_000 ≈ 103_279  (drop of 49k < 50k)
+        # tip_chord = (re_root - 49_000) / FACTOR  ≈ 0.10166 m
+        # re_tip ≈ 103_279 > 80_000 floor  → abs_floor doesn't fire either
+        rel_drop = 50_000.0
+        abs_floor = 80_000.0
+        root_chord = 0.15
+        re_root = self._re(root_chord)
+        re_tip_target = re_root - 49_000.0  # 1000 Re units below the threshold
+        tip_chord = re_tip_target / self._FACTOR
+
+        settings = Settings(
+            low_re_tip_re_abs_floor=abs_floor,
+            low_re_tip_re_rel_drop=rel_drop,
+        )
+
+        # Confirm our invariants hold for this test case
+        re_tip_actual = self._re(tip_chord)
+        assert re_tip_actual > abs_floor
+        assert (re_root - re_tip_actual) < rel_drop
+
+        with db_factory() as session:
+            resp = search_suitability(
+                db=session,
+                chord_m=root_chord,
+                speed_ms=15.0,
+                tip_chord_m=tip_chord,
+                settings=settings,
+            )
+
+        # Drop is clearly below rel_drop → flag False
+        for item in resp.results:
+            assert item.tip_re_flag is False, (
+                f"Drop just below rel_drop: tip_re_flag should be False; "
+                f"got True on {item.airfoil_name}"
+            )
+
+    def test_tip_re_flag_none_when_no_tip_chord(self, in_memory_db):
+        """When tip_chord_m is None, tip_re_flag must always be False."""
+        from app.services.suitability_service import search_suitability
+        from app.settings import Settings
+
+        db_factory = _make_minimal_db_with_airfoil(in_memory_db)
+        settings = Settings(
+            low_re_tip_re_abs_floor=80_000.0,
+            low_re_tip_re_rel_drop=50_000.0,
+        )
+
+        with db_factory() as session:
+            resp = search_suitability(
+                db=session,
+                chord_m=0.15,
+                speed_ms=15.0,
+                tip_chord_m=None,
+                settings=settings,
+            )
+
+        for item in resp.results:
+            assert item.tip_re_flag is False, (
+                f"tip_re_flag should be False when no tip_chord_m; got True on {item.airfoil_name}"
+            )
+
+
+# ---------------------------------------------------------------------------
+# ITEM 5-BE (gh-825): `include` additive query param — service-level tests
+# ---------------------------------------------------------------------------
+
+
+class TestIncludeParam:
+    """Service-level tests for the additive `include` parameter in search_suitability.
+
+    Contract (gh-825 item 5):
+    - Named airfoils in `include` that have low-Re polar rows are ALWAYS returned,
+      even if `limit` would drop them from the top-N ranked block.
+    - Named airfoils with NO polar rows are NOT fabricated (not returned).
+    - De-duplication: included names already in the top-N are NOT duplicated.
+    - Default None → identical behaviour to before (no include).
+    """
+
+    @pytest.fixture()
+    def db_many_airfoils(self, in_memory_db):
+        """DB with 5 airfoils with varying quality + 1 airfoil with NO polar rows."""
+        from app.models.airfoil import AirfoilModel
+        from app.models.airfoil_low_re import AirfoilGeometryModel, AirfoilLowRePolarModel
+        from datetime import datetime, timezone
+
+        with in_memory_db() as session:
+            for i, (ld, cl_max_val, cd0_val) in enumerate(
+                [
+                    (55, 1.4, 0.010),  # af_0 — best
+                    (45, 1.2, 0.013),  # af_1
+                    (35, 1.1, 0.016),  # af_2
+                    (25, 0.9, 0.020),  # af_3
+                    (15, 0.7, 0.025),  # af_4 — worst
+                ]
+            ):
+                name = f"af_{i}"
+                session.add(AirfoilModel(name=name, coordinates=[[0, 0], [0.5, 0.07], [1, 0]]))
+                session.flush()
+                session.add(
+                    AirfoilGeometryModel(
+                        airfoil_name=name,
+                        max_thickness_pct=10.0,
+                        max_camber_pct=2.0,
+                        camber_at_te=0.0,
+                        family="cambered",
+                        computed_at=datetime.now(timezone.utc),
+                    )
+                )
+                session.add(
+                    AirfoilLowRePolarModel(
+                        airfoil_name=name,
+                        reynolds=100_000.0,
+                        ld_max=float(ld),
+                        cl_max=float(cl_max_val),
+                        alpha_attached_lo=-3.0,
+                        alpha_attached_hi=12.0,
+                        drag_bucket_width=0.50,
+                        cd_min=float(cd0_val),
+                        stall_gentleness=-0.05,
+                        cd0=float(cd0_val),
+                        k=0.04,
+                        cl0=0.25,
+                        cl_valid_lo=0.0,
+                        cl_valid_hi=float(cl_max_val),
+                        min_analysis_confidence=0.93,
+                        neuralfoil_model_size="xxxlarge",
+                        n_crit=9.0,
+                        computed_at=datetime.now(timezone.utc),
+                    )
+                )
+
+            # Add one airfoil with geometry but NO polar rows
+            session.add(AirfoilModel(name="no_polar_af", coordinates=[[0, 0], [0.5, 0.06], [1, 0]]))
+            session.flush()
+            session.add(
+                AirfoilGeometryModel(
+                    airfoil_name="no_polar_af",
+                    max_thickness_pct=11.0,
+                    max_camber_pct=1.5,
+                    camber_at_te=0.0,
+                    family="semi_symmetric",
+                    computed_at=datetime.now(timezone.utc),
+                )
+            )
+            # No AirfoilLowRePolarModel for no_polar_af
+            session.commit()
+
+        return in_memory_db
+
+    def test_include_forces_airfoil_beyond_limit(self, db_many_airfoils):
+        """Airfoils named in `include` appear even when limit drops them."""
+        from app.services.suitability_service import search_suitability
+
+        # limit=1 → only top 1 (af_0). But include=['af_4'] should force af_4 to appear.
+        with db_many_airfoils() as session:
+            resp = search_suitability(
+                db=session,
+                chord_m=0.15,
+                speed_ms=15.0,
+                limit=1,
+                include=["af_4"],
+            )
+
+        result_names = [item.airfoil_name for item in resp.results]
+        assert "af_4" in result_names, (
+            f"af_4 should be in results due to include=[]; got {result_names}"
+        )
+        # Top-N (limit=1) still has af_0
+        assert "af_0" in result_names, f"af_0 (top-1) should still be present; got {result_names}"
+        # Total should be 2 (top-1 + include)
+        assert len(resp.results) == 2, (
+            f"Expected 2 results, got {len(resp.results)}: {result_names}"
+        )
+
+    def test_include_no_fabrication_for_no_polar(self, db_many_airfoils):
+        """Airfoils in `include` with NO polar rows must NOT be fabricated."""
+        from app.services.suitability_service import search_suitability
+
+        with db_many_airfoils() as session:
+            resp = search_suitability(
+                db=session,
+                chord_m=0.15,
+                speed_ms=15.0,
+                limit=1,
+                include=["no_polar_af"],
+            )
+
+        result_names = [item.airfoil_name for item in resp.results]
+        assert "no_polar_af" not in result_names, (
+            f"no_polar_af has no polar rows and must NOT be fabricated; got {result_names}"
+        )
+
+    def test_include_no_duplication_when_in_topn(self, db_many_airfoils):
+        """An included name already in top-N must NOT appear twice."""
+        from app.services.suitability_service import search_suitability
+
+        # limit=5 → all 5 af_* are in top-N. include=['af_0'] → should not duplicate.
+        with db_many_airfoils() as session:
+            resp = search_suitability(
+                db=session,
+                chord_m=0.15,
+                speed_ms=15.0,
+                limit=5,
+                include=["af_0"],
+            )
+
+        result_names = [item.airfoil_name for item in resp.results]
+        count_af0 = result_names.count("af_0")
+        assert count_af0 == 1, (
+            f"af_0 should appear exactly once; found {count_af0} times in {result_names}"
+        )
+
+    def test_include_none_identical_to_before(self, db_many_airfoils):
+        """include=None (default) must give identical results to omitting the param."""
+        from app.services.suitability_service import search_suitability
+
+        with db_many_airfoils() as session:
+            resp_default = search_suitability(
+                db=session,
+                chord_m=0.15,
+                speed_ms=15.0,
+                limit=3,
+            )
+        with db_many_airfoils() as session:
+            resp_none = search_suitability(
+                db=session,
+                chord_m=0.15,
+                speed_ms=15.0,
+                limit=3,
+                include=None,
+            )
+
+        names_default = [item.airfoil_name for item in resp_default.results]
+        names_none = [item.airfoil_name for item in resp_none.results]
+        assert names_default == names_none, (
+            f"include=None must give identical behaviour to omitting param; "
+            f"default={names_default}, none={names_none}"
+        )
+
+    def test_include_case_insensitive(self, db_many_airfoils):
+        """include names should match case-insensitively against geo_by_name keys."""
+        from app.services.suitability_service import search_suitability
+
+        with db_many_airfoils() as session:
+            resp = search_suitability(
+                db=session,
+                chord_m=0.15,
+                speed_ms=15.0,
+                limit=1,
+                include=["AF_4"],  # uppercase variant
+            )
+
+        result_names = [item.airfoil_name for item in resp.results]
+        assert "af_4" in result_names, (
+            f"include=['AF_4'] should match 'af_4' case-insensitively; got {result_names}"
+        )
+
+
+# ---------------------------------------------------------------------------
+# ITEM 12 (gh-825): slope_soarer gets its own mission-weighting key
+# ---------------------------------------------------------------------------
+
+
+class TestSlopeSoarerMissionWeight:
+    """gh-825 item 12: 'slope_soarer' maps to its own weight key (not 'glider')."""
+
+    def test_slope_soarer_resolves_to_slope_soarer_weights(self, seeded_db_825):
+        """search_suitability with mission_type='slope_soarer' must use 'slope_soarer' weights
+        (semi_symmetric/cambered preferred), NOT 'glider' weights."""
+        from app.services.suitability_service import search_suitability
+        from app.settings import Settings
+
+        # Verify the mission weight key exists in settings
+        settings = Settings()
+        assert "slope_soarer" in settings.low_re_mission_weights, (
+            "slope_soarer weight key must exist in Settings.low_re_mission_weights"
+        )
+        weights = settings.low_re_mission_weights["slope_soarer"]
+        assert "preferred_families" in weights
+        assert (
+            "semi_symmetric" in weights["preferred_families"]
+            or "cambered" in weights["preferred_families"]
+        ), "slope_soarer preferred_families should include semi_symmetric or cambered"
+
+        # Check 'glider' is still present for unmapped aliases
+        assert "glider" in settings.low_re_mission_weights, (
+            "glider key must still exist as fallback"
+        )
+
+        # The mapping: 'slope_soarer' → 'slope_soarer' (not 'glider')
+        from app.services.suitability_service import _MISSION_TYPE_MAP
+
+        assert _MISSION_TYPE_MAP.get("slope_soarer") == "slope_soarer", (
+            f"_MISSION_TYPE_MAP['slope_soarer'] must be 'slope_soarer', "
+            f"got {_MISSION_TYPE_MAP.get('slope_soarer')!r}"
+        )
+
+        # Service: with explicit mission_type='slope_soarer', items should get mission score
+        # (non-None) rather than None (which would happen if the key were missing)
+        SessionLocal, _ = seeded_db_825
+        with SessionLocal() as session:
+            resp = search_suitability(
+                db=session,
+                chord_m=0.15,
+                speed_ms=15.0,
+                mission_type="slope_soarer",
+                settings=settings,
+            )
+
+        # With slope_soarer weights, mission scores should be non-None (key exists in weights)
+        items_with_polar = [r for r in resp.results if r.re_agnostic > 0]
+        assert any(r.mission is not None for r in items_with_polar), (
+            "slope_soarer mission type should produce non-None mission scores; "
+            "check that 'slope_soarer' key is in Settings.low_re_mission_weights"
+        )
+        # active_lens should be 'mission' when mission scores are available
+        assert resp.query.active_lens == "mission", (
+            f"active_lens should be 'mission' for slope_soarer; got {resp.query.active_lens!r}"
+        )
+
+    def test_slope_soarer_different_from_glider_weights(self):
+        """slope_soarer and glider must have different preferred_families."""
+        from app.settings import Settings
+
+        settings = Settings()
+        ss_weights = settings.low_re_mission_weights.get("slope_soarer", {})
+        glider_weights = settings.low_re_mission_weights.get("glider", {})
+        # They should not be identical (slope_soarer has own niche)
+        assert ss_weights != glider_weights, (
+            "slope_soarer weights should differ from glider weights (own aerobatic niche)"
+        )

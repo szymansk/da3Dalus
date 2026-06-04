@@ -42,8 +42,20 @@ RHO = 1.225  # kg/m³  (ISA sea-level)
 # Thresholds for family classifier
 _SYMMETRIC_MAX_CAMBER_PCT = 0.5  # max_camber_pct below which → symmetric
 _SEMI_SYMMETRIC_MAX_CAMBER_PCT = 2.0  # between SYMMETRIC and this → semi_symmetric
-_FLAT_BOTTOM_Y_THRESHOLD = 0.002  # lower surface mean abs(y) below this → flat
+_FLAT_BOTTOM_Y_THRESHOLD = 0.002  # lower surface mean abs(y) below this → flat (strict legacy)
 _REFLEX_CAMBER_AT_TE_THRESHOLD = -0.003  # camber_at_te below this → reflexed
+# --- gh-825 item 3: improved flat-bottom detection ---
+# Evaluate flatness of the lower surface over the aft chord region [AFT_X_LO, 1.0].
+# Many real flat-bottom airfoils (Clark Y, Gottingen 417a) have a small forward camber
+# bulge but are essentially flat aft of ~25% chord. We detect flatness by measuring
+# the MAXIMUM absolute y_lower value over the aft window [AFT_X_LO, 1.0].
+# A near-flat lower surface (flat-bottom) has max |y_lower| well below the threshold,
+# while semi-symmetric airfoils have their lower surface tracking the camber line
+# (larger positive y_lower values even in the aft region).
+# Note: stored AirfoilGeometryModel.family values may change after this improvement;
+# a PO-run re-backfill is required post-merge (gh-825 item 3).
+_FLAT_BOTTOM_AFT_X_LO = 0.25  # start of the aft evaluation window (25% chord)
+_FLAT_BOTTOM_FLATNESS_THRESHOLD = 0.005  # max |y_lower| over aft region → flat_bottom
 
 
 # ---------------------------------------------------------------------------
@@ -143,12 +155,27 @@ def classify_family(coords: np.ndarray) -> AirfoilFamily:
 
     # --- Classification rules (ordered by priority) ---
     # 1. Reflexed: camber line is clearly negative (below chord) at TE
+    #    (must stay first so reflexed airfoils aren't misclassified as flat_bottom)
     if camber_at_te < _REFLEX_CAMBER_AT_TE_THRESHOLD:
         return "reflexed"
 
-    # 2. Flat-bottom: lower surface is essentially flat (y ≈ 0)
+    # 2. Flat-bottom: lower surface is near-flat over the aft chord region.
+    #    Two-tier heuristic (gh-825 item 3):
+    #    (a) Strict legacy: mean |y_lower| < strict threshold — catches pure y=0 lower surfaces.
+    #    (b) Aft-flatness: max |y_lower| over [AFT_X_LO, 1.0] is below the flatness threshold —
+    #        catches real flat-bottom airfoils (Clark Y, Gottingen 417a) that have a small forward
+    #        camber bulge but an aft lower surface that stays very close to y=0. This reliably
+    #        distinguishes flat-bottom from semi-symmetric, where the lower surface tracks the
+    #        camber line and has larger positive y values in the aft region (~0.005–0.007).
     if mean_lower_abs_y < _FLAT_BOTTOM_Y_THRESHOLD:
         return "flat_bottom"
+    # Aft-flatness test: max |y_lower| over x ∈ [_FLAT_BOTTOM_AFT_X_LO, 1.0]
+    aft_mask = x_eval >= _FLAT_BOTTOM_AFT_X_LO
+    if aft_mask.sum() >= 4:
+        y_aft = y_lower[aft_mask]
+        max_aft_abs_y = float(np.max(np.abs(y_aft)))
+        if max_aft_abs_y < _FLAT_BOTTOM_FLATNESS_THRESHOLD:
+            return "flat_bottom"
 
     # 3. Symmetric: almost no camber
     if max_camber_pct < _SYMMETRIC_MAX_CAMBER_PCT:
@@ -307,6 +334,19 @@ def compute_airfoil_low_re(
     list[dict]
         One dict per Re-grid point with scalar metrics + fit coefficients.
         May be empty if AeroSandbox is not available on this platform.
+
+    NOTE (gh-825 item 1): ``min_analysis_confidence`` stored in the returned
+    rows is the MIN of ``analysis_confidence`` over the ATTACHED/OPERATING alpha
+    window [alpha_attached_lo, alpha_attached_hi], NOT the full sweep minimum.
+    This reflects the confidence of the aerodynamic model in the region that
+    actually matters for performance scoring (cruise / operating point).
+    Deep-stall alpha points often have low confidence that is irrelevant to
+    operational performance and should not penalise the stored confidence metric.
+
+    IMPORTANT: This semantic change from the original implementation (which used
+    the global sweep minimum) means that stored AirfoilLowRePolarModel rows
+    computed before this change must be RE-BACKFILLED by the PO after merge.
+    Do NOT run any backfill in the workflow.
     """
     try:
         import aerosandbox as asb
@@ -335,26 +375,88 @@ def compute_airfoil_low_re(
         if conf_arr.size == 1:
             conf_arr = np.full_like(cl_arr, float(conf_arr[0]))
 
-        min_confidence = float(np.nanmin(conf_arr)) if np.any(np.isfinite(conf_arr)) else 0.0
-
         # Gate: only use alpha points with confidence >= gate
         trusted = conf_arr >= confidence_gate
         cl_trusted = cl_arr[trusted] if trusted.any() else np.array([])
         cd_trusted = cd_arr[trusted] if trusted.any() else np.array([])
         alpha_trusted = alpha_deg[trusted] if trusted.any() else np.array([])
 
+        # Compute metrics from trusted arrays (provides alpha_attached_lo/hi)
+        # Use a placeholder for min_confidence initially; we'll overwrite below.
         row = _extract_metrics(
             cl_trusted,
             cd_trusted,
             alpha_trusted,
-            min_confidence,
+            0.0,  # placeholder — overwritten with windowed min below
             re,
             model_size=model_size,
             n_crit=n_crit,
         )
+
+        # --- Windowed min_analysis_confidence (gh-825 item 1) ---
+        # Use the attached/operating alpha window returned by _extract_metrics.
+        # Only alphas within [alpha_attached_lo, alpha_attached_hi] are relevant
+        # for operational performance; deep-stall confidence is irrelevant.
+        # Fallback to whole-sweep min_confidence if the window is undefined,
+        # has fewer than 4 points, or has no finite conf values in window.
+        alpha_attached_lo = row.get("alpha_attached_lo")
+        alpha_attached_hi = row.get("alpha_attached_hi")
+        min_confidence = _windowed_min_confidence(
+            alpha_deg=alpha_deg,
+            conf_arr=conf_arr,
+            alpha_attached_lo=alpha_attached_lo,
+            alpha_attached_hi=alpha_attached_hi,
+        )
+        row["min_analysis_confidence"] = min_confidence
+
         results.append(row)
 
     return results
+
+
+def _windowed_min_confidence(
+    alpha_deg: np.ndarray,
+    conf_arr: np.ndarray,
+    alpha_attached_lo: float | None,
+    alpha_attached_hi: float | None,
+) -> float:
+    """Compute min analysis_confidence over the attached alpha window.
+
+    If the window is undefined (None bounds, < 4 points, or no finite values),
+    falls back to the whole-sweep min confidence (does NOT regress to 0.0).
+
+    Parameters
+    ----------
+    alpha_deg : np.ndarray
+        Full alpha sweep array (same length as conf_arr).
+    conf_arr : np.ndarray
+        Full confidence array from NeuralFoil (same length as alpha_deg).
+    alpha_attached_lo : float | None
+        Lower bound of the attached alpha window (from _extract_metrics).
+    alpha_attached_hi : float | None
+        Upper bound of the attached alpha window (from _extract_metrics).
+
+    Returns
+    -------
+    float
+        Min confidence over the windowed region, or whole-sweep min as fallback.
+    """
+    # Compute fallback: whole-sweep min (finite values only)
+    finite_conf = conf_arr[np.isfinite(conf_arr)]
+    fallback = float(np.min(finite_conf)) if len(finite_conf) > 0 else 0.0
+
+    if alpha_attached_lo is None or alpha_attached_hi is None:
+        return fallback
+
+    # Mask to the attached window
+    window_mask = (alpha_deg >= alpha_attached_lo) & (alpha_deg <= alpha_attached_hi)
+    window_conf = conf_arr[window_mask]
+    window_finite = window_conf[np.isfinite(window_conf)]
+
+    if len(window_finite) < 4:
+        return fallback
+
+    return float(np.min(window_finite))
 
 
 def _extract_metrics(

@@ -545,6 +545,17 @@ async def get_airfoil_suitability(
         float | None,
         Query(description="Tip chord in metres — only used to compute tip Re and set tip_re_flag."),
     ] = None,
+    include: Annotated[
+        str | None,
+        Query(
+            description=(
+                "Comma-separated airfoil names to always score+return even if outside top-N. "
+                "Additive; old clients (no include) get identical behaviour to before. "
+                "Names with no low-Re polar rows are NOT fabricated. "
+                "Example: ?include=s1223,ag35"
+            )
+        ),
+    ] = None,
     limit: Annotated[
         int, Query(description="Maximum number of results to return.", ge=1, le=200)
     ] = 50,
@@ -569,6 +580,13 @@ async def get_airfoil_suitability(
     - Tip-Re CL_max collapse is not modelled; surfaced via tip_re_flag + cl_max_margin +
       caveat.ignores_tip_re_clmax_collapse.
     """
+    # Parse include: comma-separated string → list[str] (strip whitespace, drop empties)
+    include_list: list[str] | None = None
+    if include is not None:
+        parsed = [name.strip() for name in include.split(",")]
+        parsed = [name for name in parsed if name]
+        include_list = parsed if parsed else None
+
     try:
         return search_suitability(
             db=db,
@@ -580,6 +598,7 @@ async def get_airfoil_suitability(
             target_cl_best_glide=target_cl_best_glide,
             target_cl_min_sink=target_cl_min_sink,
             tip_chord_m=tip_chord_m,
+            include=include_list,
             limit=limit,
             settings=settings,
         )
