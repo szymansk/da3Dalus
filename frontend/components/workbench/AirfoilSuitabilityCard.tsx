@@ -2,7 +2,11 @@
 
 import { useState } from "react";
 import { ChevronDown, ChevronRight, AlertTriangle } from "lucide-react";
-import type { SuitabilityItem } from "@/hooks/useAirfoilSuitability";
+import type {
+  SuitabilityItem,
+  SuitabilityCaveat,
+  TargetClProvenance,
+} from "@/hooks/useAirfoilSuitability";
 
 // ── Colour thresholds ─────────────────────────────────────────────
 const COLOR_GREEN = "#34D399";
@@ -27,17 +31,26 @@ export function qualitativeLabel(score: number): string {
 
 function ScoreBar({
   label,
+  sublabel,
   score,
 }: {
   readonly label: string;
+  readonly sublabel?: string;
   readonly score: number | null;
 }) {
   if (score === null) {
     return (
       <div className="flex items-center gap-2">
-        <span className="w-32 font-[family-name:var(--font-jetbrains-mono)] text-[10px] text-muted-foreground">
-          {label}
-        </span>
+        <div className="flex w-32 flex-col">
+          <span className="font-[family-name:var(--font-jetbrains-mono)] text-[10px] text-muted-foreground">
+            {label}
+          </span>
+          {sublabel && (
+            <span className="font-[family-name:var(--font-jetbrains-mono)] text-[9px] text-subtle-foreground">
+              {sublabel}
+            </span>
+          )}
+        </div>
         <span className="font-[family-name:var(--font-jetbrains-mono)] text-[10px] text-muted-foreground">
           n/a
         </span>
@@ -51,9 +64,16 @@ function ScoreBar({
 
   return (
     <div className="flex items-center gap-2">
-      <span className="w-32 font-[family-name:var(--font-jetbrains-mono)] text-[10px] text-muted-foreground">
-        {label}
-      </span>
+      <div className="flex w-32 flex-col">
+        <span className="font-[family-name:var(--font-jetbrains-mono)] text-[10px] text-muted-foreground">
+          {label}
+        </span>
+        {sublabel && (
+          <span className="font-[family-name:var(--font-jetbrains-mono)] text-[9px] text-subtle-foreground">
+            {sublabel}
+          </span>
+        )}
+      </div>
       <div className="flex-1 overflow-hidden rounded-full bg-card-muted" style={{ height: 6 }}>
         <div
           className="h-full rounded-full transition-all"
@@ -113,7 +133,13 @@ function ConfidenceChip({
 // ── Caveat callout (mirrors PolarRejectionBadge amber pattern) ─────
 // Issue #4b: softer, actionable wording for hobbyists.
 
-function CaveatCallout({ text, hasLowConfidence }: { readonly text: string; readonly hasLowConfidence?: boolean }) {
+function CaveatCallout({
+  text,
+  hasLowConfidence,
+}: {
+  readonly text: string;
+  readonly hasLowConfidence?: boolean;
+}) {
   const displayText = hasLowConfidence
     ? `Geringe Modell-Konfidenz bei diesem Re — Werte als grobe Orientierung verstehen. ${text}`
     : text;
@@ -124,6 +150,146 @@ function CaveatCallout({ text, hasLowConfidence }: { readonly text: string; read
     >
       <AlertTriangle className="mt-0.5 h-3 w-3 shrink-0" aria-hidden="true" />
       <span>{displayText}</span>
+    </div>
+  );
+}
+
+// ── Provenance indicator ──────────────────────────────────────────
+// gh-825: Shows whether the target CL values are design-derived or manually estimated.
+
+function ProvenanceIndicator({
+  provenance,
+}: {
+  readonly provenance: TargetClProvenance;
+}) {
+  let label: string;
+  let tooltip: string;
+  let color: string;
+
+  if (provenance === "calculated") {
+    label = "Ber. Referenz";
+    tooltip =
+      "calculated — bewegliche Referenz: Ziel-CL stammt aus den Design-Annahmen. " +
+      "Der Wert verschiebt sich mit dem Design und Profil — Vergleiche sind relativ.";
+    color = COLOR_GREEN;
+  } else if (provenance === "mixed") {
+    label = "Gem. Referenz";
+    tooltip =
+      "mixed — kombinierte Referenz: Ein Teil der Ziel-CL-Werte stammt aus automatischen " +
+      "Design-Annahmen, ein Teil aus manuellen Schätzungen.";
+    color = COLOR_AMBER;
+  } else {
+    // estimated
+    label = "Geschätzte Ref.";
+    tooltip =
+      "estimated — feste Referenz: Ziel-CL basiert auf manuellen Schätzungen. " +
+      "Der Wert bleibt konstant, unabhängig vom Design.";
+    color = COLOR_AMBER;
+  }
+
+  return (
+    <span
+      data-testid="provenance-indicator"
+      title={tooltip}
+      className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 font-[family-name:var(--font-jetbrains-mono)] text-[9px] cursor-help"
+      style={{
+        color,
+        backgroundColor:
+          provenance === "calculated"
+            ? "rgba(52, 211, 153, 0.10)"
+            : "rgba(251, 191, 36, 0.10)",
+        border: `1px solid ${color}40`,
+      }}
+    >
+      ◆ {label}
+    </span>
+  );
+}
+
+// ── Stall/CLmax detail row ─────────────────────────────────────────
+// gh-825: Surface stall_gentleness (raw dCL/dα, NOT 0..1) and cl_max_margin (signed CL margin).
+
+function StallClMaxRow({
+  stallGentleness,
+  clMaxMargin,
+}: {
+  readonly stallGentleness: number | null;
+  readonly clMaxMargin: number | null;
+}) {
+  if (stallGentleness === null && clMaxMargin === null) return null;
+
+  const marginNegative = clMaxMargin !== null && clMaxMargin < 0;
+  const stallAbrupt = stallGentleness !== null && stallGentleness < -0.05;
+
+  return (
+    <div className="flex flex-col gap-1 rounded-md border border-border bg-card px-2 py-1.5">
+      {stallGentleness !== null && (
+        <div className="flex items-center gap-2">
+          <span className="w-32 font-[family-name:var(--font-jetbrains-mono)] text-[9px] text-muted-foreground">
+            Stall-Sanftheit
+          </span>
+          <span
+            data-testid="stall-gentleness-value"
+            className="font-[family-name:var(--font-jetbrains-mono)] text-[10px]"
+            style={{ color: stallAbrupt ? COLOR_RED : COLOR_GREEN }}
+          >
+            dCL/dα {stallGentleness.toFixed(3)}
+          </span>
+          {stallAbrupt && (
+            <span
+              data-testid="stall-abrupt-warning"
+              className="font-[family-name:var(--font-jetbrains-mono)] text-[9px]"
+              style={{ color: COLOR_RED }}
+            >
+              abrupt
+            </span>
+          )}
+        </div>
+      )}
+      {clMaxMargin !== null && (
+        <div className="flex items-center gap-2">
+          <span className="w-32 font-[family-name:var(--font-jetbrains-mono)] text-[9px] text-muted-foreground">
+            CL-Margin
+          </span>
+          <span
+            data-testid="cl-max-margin-value"
+            className="font-[family-name:var(--font-jetbrains-mono)] text-[10px]"
+            style={{ color: marginNegative ? COLOR_RED : COLOR_GREEN }}
+          >
+            {clMaxMargin >= 0 ? "+" : ""}
+            {clMaxMargin.toFixed(3)}
+          </span>
+          {marginNegative && (
+            <span
+              data-testid="cl-max-margin-warning"
+              className="font-[family-name:var(--font-jetbrains-mono)] text-[9px]"
+              style={{ color: COLOR_RED }}
+            >
+              Ziel &gt; CL_max!
+            </span>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── Tip-Re CL_max collapse warning ─────────────────────────────────
+// gh-825: Surface the warning when caveat.ignores_tip_re_clmax_collapse or tip_re_flag.
+
+function TipReClMaxWarning() {
+  return (
+    <div
+      data-testid="tip-re-clmax-warning"
+      role="note"
+      className="inline-flex items-start gap-2 rounded-md border border-amber-500/40 bg-amber-500/10 px-2.5 py-1 text-xs leading-tight text-amber-200"
+    >
+      <AlertTriangle className="mt-0.5 h-3 w-3 shrink-0" aria-hidden="true" />
+      <span>
+        Der Score ignoriert den Tip-Re-CL_max-Einbruch: An der Flügelspitze
+        wirkt die verminderte Re auf CL_max (Tip-Stall-Zone). Dieser Effekt
+        ist in der Profilbewertung nicht modelliert — XFoil-Validierung empfohlen.
+      </span>
     </div>
   );
 }
@@ -153,14 +319,33 @@ export function AirfoilSuitabilityNoData({ airfoilName }: { readonly airfoilName
 export interface AirfoilSuitabilityCardProps {
   item: SuitabilityItem;
   defaultOpen?: boolean;
+  /**
+   * gh-825 ADDITIVE: provenance of the target CL values.
+   * When provided, renders the ProvenanceIndicator chip.
+   */
+  targetClProvenance?: TargetClProvenance;
+  /**
+   * gh-825 ADDITIVE: full caveat object.
+   * When provided (alongside item.caveat string), the
+   * ignores_tip_re_clmax_collapse flag is used to show the tip-Re warning.
+   */
+  caveatObject?: SuitabilityCaveat;
 }
 
 export function AirfoilSuitabilityCard({
   item,
   defaultOpen = true,
+  targetClProvenance,
+  caveatObject,
 }: Readonly<AirfoilSuitabilityCardProps>) {
   const [open, setOpen] = useState(defaultOpen);
   const isLowConfidence = item.min_analysis_confidence < 0.85;
+
+  // Show tip-Re CL_max collapse warning when the caveat object signals it,
+  // or when the item has tip_re_flag set.
+  const showTipReClMaxWarning =
+    item.tip_re_flag ||
+    (caveatObject?.ignores_tip_re_clmax_collapse === true);
 
   return (
     <div className="flex flex-col gap-1 rounded-xl border border-border bg-card-muted px-3 py-2">
@@ -180,8 +365,11 @@ export function AirfoilSuitabilityCard({
             Eignung
           </span>
         </div>
-        <div className="pl-4">
+        <div className="pl-4 flex items-center gap-2 flex-wrap">
           <ConfidenceChip confidence={item.min_analysis_confidence} />
+          {targetClProvenance && (
+            <ProvenanceIndicator provenance={targetClProvenance} />
+          )}
         </div>
       </button>
 
@@ -194,7 +382,26 @@ export function AirfoilSuitabilityCard({
             score={item.mission}
           />
           <ScoreBar label="Ziel-CL · Cruise" score={item.target_cl_cruise} />
-          <ScoreBar label="Ziel-CL · Loiter" score={item.target_cl_loiter} />
+          <ScoreBar
+            label="Ziel-CL · Best-Glide"
+            sublabel="Motorausfall / Segelflug"
+            score={item.target_cl_best_glide}
+          />
+          <ScoreBar label="Ziel-CL · Min-Sink" score={item.target_cl_min_sink} />
+
+          {/* gh-825: Stall gentleness + CL_max margin */}
+          <StallClMaxRow
+            stallGentleness={item.stall_gentleness}
+            clMaxMargin={item.cl_max_margin}
+          />
+
+          {/* gh-825: Tip-Re CL_max collapse warning */}
+          {showTipReClMaxWarning && (
+            <div className="mt-1">
+              <TipReClMaxWarning />
+            </div>
+          )}
+
           {item.caveat && (
             <div className="mt-1">
               <CaveatCallout text={item.caveat} hasLowConfidence={isLowConfidence} />

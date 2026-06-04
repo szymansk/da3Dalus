@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import { Info, ArrowLeft, Save, Loader2, ChevronLeft, ChevronRight, Undo2 } from "lucide-react";
 import { AirfoilSelector } from "./AirfoilSelector";
 import { AirfoilSuitabilityCard, AirfoilSuitabilityNoData } from "./AirfoilSuitabilityCard";
-import type { SuitabilityItem } from "@/hooks/useAirfoilSuitability";
+import type { SuitabilityItem, SuitabilityCaveat, TargetClProvenance } from "@/hooks/useAirfoilSuitability";
 
 interface AirfoilPreviewConfigPanelProps {
   rootAirfoil: string;
@@ -62,6 +62,10 @@ interface AirfoilPreviewConfigPanelProps {
   /** gh-822 ADDITIVE: toggle state for tip ranked mode */
   tipRankedMode?: boolean;
   onTipRankedModeToggle?: () => void;
+  /** gh-825 ADDITIVE: provenance of target CL values, passed to suitability card */
+  targetClProvenance?: TargetClProvenance;
+  /** gh-825 ADDITIVE: full caveat object from suitability response, for tip-Re CL_max warning */
+  suitabilityCaveat?: SuitabilityCaveat;
 }
 
 function ReadOnlyField({
@@ -173,6 +177,8 @@ export function AirfoilPreviewConfigPanel({
   onRootRankedModeToggle,
   tipRankedMode,
   onTipRankedModeToggle,
+  targetClProvenance,
+  suitabilityCaveat,
 }: Readonly<AirfoilPreviewConfigPanelProps>) {
   const [showReInfo, setShowReInfo] = useState(false);
   const [velocityDraft, setVelocityDraft] = useState(String(velocity));
@@ -306,8 +312,15 @@ export function AirfoilPreviewConfigPanel({
           chordMm={rootChordMm}
           color="#FF8400"
         />
-        {/* gh-822: Root suitability card (open by default) */}
-        {rootSuitabilityItem && <AirfoilSuitabilityCard item={rootSuitabilityItem} defaultOpen />}
+        {/* gh-822/gh-825: Root suitability card (open by default) */}
+        {rootSuitabilityItem && (
+          <AirfoilSuitabilityCard
+            item={rootSuitabilityItem}
+            defaultOpen
+            targetClProvenance={targetClProvenance}
+            caveatObject={suitabilityCaveat}
+          />
+        )}
         {!rootSuitabilityItem && rootSuitabilityNotFound && <AirfoilSuitabilityNoData airfoilName={rootAirfoil} />}
 
         {/* Divider */}
@@ -338,8 +351,15 @@ export function AirfoilPreviewConfigPanel({
             color="#22D3EE"
           />
         )}
-        {/* gh-822: Tip suitability card (collapsed by default) */}
-        {tipSuitabilityItem && <AirfoilSuitabilityCard item={tipSuitabilityItem} defaultOpen={false} />}
+        {/* gh-822/gh-825: Tip suitability card (collapsed by default) */}
+        {tipSuitabilityItem && (
+          <AirfoilSuitabilityCard
+            item={tipSuitabilityItem}
+            defaultOpen={false}
+            targetClProvenance={targetClProvenance}
+            caveatObject={suitabilityCaveat}
+          />
+        )}
         {!tipSuitabilityItem && tipSuitabilityNotFound && <AirfoilSuitabilityNoData airfoilName={tipAirfoil} />}
 
         {/* Divider */}

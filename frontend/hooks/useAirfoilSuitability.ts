@@ -22,15 +22,25 @@ export type MissionType =
 export type ActiveLens =
   | "re_agnostic"
   | "mission"
-  | "target_cl_cruise"
-  | "target_cl_loiter";
+  | "target_cl_cruise";
 
 /**
  * Lenses that drive the ranked sort order in the UI.
- * 'target_cl_loiter' is display-only — it adds a score column but never
- * re-ranks the list, so it is excluded here.
+ * Glide points (target_cl_best_glide, target_cl_min_sink) are display-only —
+ * they add score columns but never re-rank the list.
+ * ActiveLens is already the ranking set (no loiter/glide points),
+ * so RankingLens is kept as a distinct union for semantic clarity in imports.
  */
-export type RankingLens = Exclude<ActiveLens, "target_cl_loiter">;
+// eslint-disable-next-line sonarjs/redundant-type-aliases
+export type RankingLens = ActiveLens;
+
+/**
+ * Provenance of the target CL values.
+ * 'calculated' — all inputs from automated design assumptions (v_cruise_auto etc.)
+ * 'estimated'  — all inputs from manual user estimates
+ * 'mixed'      — some calculated, some estimated
+ */
+export type TargetClProvenance = "estimated" | "calculated" | "mixed";
 
 export interface SuitabilityItem {
   airfoil_name: string;
@@ -38,7 +48,20 @@ export interface SuitabilityItem {
   re_agnostic: number;
   mission: number | null;
   target_cl_cruise: number | null;
-  target_cl_loiter: number | null;
+  /** NEW gh-825 — target CL at best-glide (engine-off / glide) */
+  target_cl_best_glide: number | null;
+  /** RENAMED from target_cl_loiter — target CL at min-sink */
+  target_cl_min_sink: number | null;
+  /**
+   * NEW gh-825 — raw dCL/dα past peak (≈0 gentle, negative = abrupt stall).
+   * NOT a 0..1 score — raw engineering value.
+   */
+  stall_gentleness: number | null;
+  /**
+   * NEW gh-825 — signed CL margin = cl_max − max(target CLs present).
+   * Negative means the target exceeds the section CL_max.
+   */
+  cl_max_margin: number | null;
   min_analysis_confidence: number;
   tip_re_flag: boolean;
   /**
@@ -57,13 +80,20 @@ export interface SuitabilityQuery {
   re_clamped: boolean;
   mission_type: string | null;
   target_cl_cruise: number | null;
-  target_cl_loiter: number | null;
+  /** NEW gh-825 — resolved best-glide target CL */
+  target_cl_best_glide: number | null;
+  /** RENAMED from target_cl_loiter */
+  target_cl_min_sink: number | null;
+  /** NEW gh-825 — provenance of the target CL values */
+  target_cl_provenance: TargetClProvenance;
   active_lens: ActiveLens;
 }
 
 export interface SuitabilityCaveat {
   relative_ranking_only: boolean;
   no_hysteresis_modelling: boolean;
+  /** NEW gh-825 — always true; score is section-CL == wing-CL ideal (elliptical, untwisted) */
+  ignores_tip_re_clmax_collapse: boolean;
   recommend_xfoil_validation: boolean;
   text: string;
 }
@@ -85,7 +115,10 @@ export interface UseAirfoilSuitabilityParams {
   aeroplane_id?: string | null;
   mission_type?: MissionType;
   target_cl_cruise?: number;
-  target_cl_loiter?: number;
+  /** RENAMED from target_cl_loiter */
+  target_cl_min_sink?: number;
+  /** NEW gh-825 — best-glide target CL */
+  target_cl_best_glide?: number;
   limit?: number;
   tip_chord_m?: number;
 }
@@ -99,7 +132,8 @@ export function useAirfoilSuitability(params: UseAirfoilSuitabilityParams) {
     aeroplane_id,
     mission_type,
     target_cl_cruise,
-    target_cl_loiter,
+    target_cl_min_sink,
+    target_cl_best_glide,
     limit,
     tip_chord_m,
   } = params;
@@ -110,7 +144,8 @@ export function useAirfoilSuitability(params: UseAirfoilSuitabilityParams) {
       ? buildKey(chord_m, speed_ms, aeroplane_id ?? null, {
           mission_type,
           target_cl_cruise,
-          target_cl_loiter,
+          target_cl_min_sink,
+          target_cl_best_glide,
           limit,
           tip_chord_m,
         })
@@ -139,7 +174,8 @@ function buildKey(
   optional: {
     mission_type?: MissionType;
     target_cl_cruise?: number;
-    target_cl_loiter?: number;
+    target_cl_min_sink?: number;
+    target_cl_best_glide?: number;
     limit?: number;
     tip_chord_m?: number;
   },
@@ -156,8 +192,11 @@ function buildKey(
   if (optional.target_cl_cruise != null) {
     params.set("target_cl_cruise", String(optional.target_cl_cruise));
   }
-  if (optional.target_cl_loiter != null) {
-    params.set("target_cl_loiter", String(optional.target_cl_loiter));
+  if (optional.target_cl_min_sink != null) {
+    params.set("target_cl_min_sink", String(optional.target_cl_min_sink));
+  }
+  if (optional.target_cl_best_glide != null) {
+    params.set("target_cl_best_glide", String(optional.target_cl_best_glide));
   }
   if (optional.limit != null) {
     params.set("limit", String(optional.limit));
