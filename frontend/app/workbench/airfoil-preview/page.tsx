@@ -143,6 +143,18 @@ export default function AirfoilPreviewPage() {
     [tipSuitability.data],
   );
 
+  // gh-837: collect all airfoil names used across the current aeroplane model
+  // (all segments' root + tip airfoils). Derived client-side from wingConfig.
+  const usedAirfoilNames = useMemo(() => {
+    if (!wingConfig?.segments) return [];
+    const names: string[] = [];
+    for (const seg of wingConfig.segments) {
+      if (seg.root_airfoil?.airfoil) names.push(airfoilShortName(seg.root_airfoil.airfoil));
+      if (seg.tip_airfoil?.airfoil) names.push(airfoilShortName(seg.tip_airfoil.airfoil));
+    }
+    return Array.from(new Set(names));
+  }, [wingConfig]);
+
   // Find the selected airfoil's suitability item
   const rootSuitabilityItem = useMemo(
     () => rootSuitability.data?.results.find((item) => item.airfoil_name === rootAirfoil) ?? null,
@@ -369,6 +381,7 @@ export default function AirfoilPreviewPage() {
                 }
               : undefined
           }
+          usedAirfoilNames={usedAirfoilNames}
         />
       </div>
     </div>
