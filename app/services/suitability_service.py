@@ -39,7 +39,7 @@ from app.services.airfoil_low_re_service import (
     score_re_agnostic,
     score_target_cl,
 )
-from app.settings import Settings
+from app.settings import Settings, get_settings
 
 logger = logging.getLogger(__name__)
 
@@ -88,6 +88,7 @@ def search_suitability(
     target_cl_loiter: Optional[float] = None,
     tip_chord_m: Optional[float] = None,
     limit: int = 50,
+    settings: Optional[Settings] = None,
 ) -> SuitabilityResponse:
     """Search and rank airfoils by suitability at the given chord/speed.
 
@@ -104,8 +105,13 @@ def search_suitability(
     target_cl_loiter : float  Optional explicit override for loiter target CL.
     tip_chord_m : float    Optional tip chord for tip Re flag only.
     limit : int            Maximum results to return.
+    settings : Settings    Application settings.  When omitted the module-level
+                           lru-cached ``get_settings()`` is used — avoids
+                           constructing a fresh ``Settings()`` per request.
+                           Pass an explicit instance from the CLI or tests.
     """
-    settings = Settings()
+    if settings is None:
+        settings = get_settings()
     re_grid = settings.low_re_grid
     mission_weights = settings.low_re_mission_weights
     low_conf_flag = settings.low_re_low_confidence_flag
@@ -260,11 +266,11 @@ def search_suitability(
     items = items[:limit]
 
     # --- Build response ---
-    caveat_text = "Nur relative Reihenfolge. Keine Hysterese- oder Blasen-Modellierung. "
+    caveat_text = "Relative ranking only. No hysteresis or laminar-bubble modelling. "
     if recommend_xfoil:
         caveat_text += (
-            "Einige Airfoils haben niedrige Analysegenauigkeit — "
-            "Validierung mit XFoil oder Windkanal empfohlen."
+            "Some airfoils have low analysis confidence — "
+            "validation with XFoil or wind tunnel recommended."
         )
 
     query = SuitabilityQuery(

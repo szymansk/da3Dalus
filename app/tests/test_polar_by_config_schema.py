@@ -57,8 +57,8 @@ class TestPolarRejection:
         """gh-630 type-hardening: gate=design but category=sweep must raise."""
         with pytest.raises(ValidationError):
             PolarRejection(
-                gate="negative_slope_k",   # canonical: design
-                category="sweep",           # nonsensical pair
+                gate="negative_slope_k",  # canonical: design
+                category="sweep",  # nonsensical pair
                 fitted_value=-0.001,
                 threshold="k > 0",
                 hint="hint",

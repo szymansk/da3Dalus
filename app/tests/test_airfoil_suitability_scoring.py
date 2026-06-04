@@ -2,6 +2,7 @@
 
 No aero dependencies. Seed polar dicts directly.
 """
+
 from __future__ import annotations
 
 import pytest
@@ -48,6 +49,7 @@ _POOR_POLAR = {
 # Task 6a: re_agnostic from scalar metrics
 # ---------------------------------------------------------------------------
 
+
 class TestReAgnostic:
     def test_good_polar_scores_higher_than_poor(self):
         from app.services.airfoil_low_re_service import score_re_agnostic
@@ -79,6 +81,7 @@ class TestReAgnostic:
 # ---------------------------------------------------------------------------
 # Task 6b: mission = re_agnostic * weighting
 # ---------------------------------------------------------------------------
+
 
 class TestMissionScore:
     def test_mission_null_when_no_mission_type(self):
@@ -147,6 +150,7 @@ class TestMissionScore:
 # Task 6c: target_cl_cruise/loiter from parabolic fit
 # ---------------------------------------------------------------------------
 
+
 class TestTargetClScore:
     def test_target_cl_within_range_returns_score(self):
         from app.services.airfoil_low_re_service import score_target_cl
@@ -193,6 +197,7 @@ class TestTargetClScore:
 # ---------------------------------------------------------------------------
 # Task 6d: Numeric test of _level_flight_cl
 # ---------------------------------------------------------------------------
+
 
 class TestLevelFlightCl:
     def test_numeric_cruise(self):
@@ -246,6 +251,7 @@ class TestLevelFlightCl:
 # Task 6e: Partial context degradation matrix
 # ---------------------------------------------------------------------------
 
+
 class TestPartialContextDegradation:
     """Verify the degradation rules for target CL lenses."""
 
@@ -287,6 +293,7 @@ class TestPartialContextDegradation:
 # Task 6f: Config defaults check (already in test_airfoil_low_re_config.py;
 #          here verify weights load for all mission types)
 # ---------------------------------------------------------------------------
+
 
 class TestConfigDefaults:
     def test_all_mission_types_have_weights(self):

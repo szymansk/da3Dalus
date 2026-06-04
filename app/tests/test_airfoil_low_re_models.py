@@ -1,4 +1,5 @@
 """Tests for AirfoilGeometryModel + AirfoilLowRePolarModel (Task 1, gh-821)."""
+
 from __future__ import annotations
 
 from datetime import datetime, timezone
@@ -17,10 +18,12 @@ def engine_and_session():
         poolclass=StaticPool,
     )
     from app.db.base import Base
+
     # Import models so they register with Base
     import app.models  # noqa: F401
     from app.models.airfoil import AirfoilModel
     from app.models.airfoil_low_re import AirfoilGeometryModel, AirfoilLowRePolarModel  # noqa: F401
+
     Base.metadata.create_all(bind=engine)
     SessionLocal = sessionmaker(bind=engine, autocommit=False, autoflush=False, class_=Session)
     yield engine, SessionLocal
@@ -43,8 +46,14 @@ def test_airfoil_geometry_columns(engine_and_session):
     engine, _ = engine_and_session
     inspector = inspect(engine)
     col_names = {c["name"] for c in inspector.get_columns("airfoil_geometry")}
-    for col in ("airfoil_name", "max_thickness_pct", "max_camber_pct",
-                "camber_at_te", "family", "computed_at"):
+    for col in (
+        "airfoil_name",
+        "max_thickness_pct",
+        "max_camber_pct",
+        "camber_at_te",
+        "family",
+        "computed_at",
+    ):
         assert col in col_names, f"missing column: {col}"
 
 
@@ -72,6 +81,7 @@ def test_airfoil_geometry_unique_constraint(engine_and_session):
 
         # Duplicate should fail
         from sqlalchemy.exc import IntegrityError
+
         g2 = AirfoilGeometryModel(
             airfoil_name="naca2412",
             max_thickness_pct=12.0,
@@ -90,11 +100,24 @@ def test_airfoil_low_re_polar_columns(engine_and_session):
     inspector = inspect(engine)
     col_names = {c["name"] for c in inspector.get_columns("airfoil_low_re_polar")}
     required = {
-        "airfoil_name", "reynolds", "ld_max", "cl_max",
-        "alpha_attached_lo", "alpha_attached_hi", "drag_bucket_width",
-        "cd_min", "stall_gentleness", "cd0", "k", "cl0",
-        "cl_valid_lo", "cl_valid_hi", "min_analysis_confidence",
-        "neuralfoil_model_size", "n_crit", "computed_at",
+        "airfoil_name",
+        "reynolds",
+        "ld_max",
+        "cl_max",
+        "alpha_attached_lo",
+        "alpha_attached_hi",
+        "drag_bucket_width",
+        "cd_min",
+        "stall_gentleness",
+        "cd0",
+        "k",
+        "cl0",
+        "cl_valid_lo",
+        "cl_valid_hi",
+        "min_analysis_confidence",
+        "neuralfoil_model_size",
+        "n_crit",
+        "computed_at",
     }
     for col in required:
         assert col in col_names, f"missing column: {col}"

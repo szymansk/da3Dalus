@@ -179,12 +179,8 @@ def test_nonzero_alpha_scales_q_and_r_by_cos_theta():
     assert tilted.r == pytest.approx(base.r * math.cos(theta), rel=1e-12)
 
     # Absolute closed forms with the theta projection.
-    assert tilted.q == pytest.approx(
-        tilted.psi_dot * math.cos(theta) * math.sin(phi), rel=1e-12
-    )
-    assert tilted.r == pytest.approx(
-        tilted.psi_dot * math.cos(theta) * math.cos(phi), rel=1e-12
-    )
+    assert tilted.q == pytest.approx(tilted.psi_dot * math.cos(theta) * math.sin(phi), rel=1e-12)
+    assert tilted.r == pytest.approx(tilted.psi_dot * math.cos(theta) * math.cos(phi), rel=1e-12)
 
     # cos(theta) < 1, so the in-plane rates shrink slightly when pitched up.
     assert tilted.q < base.q

@@ -22,12 +22,11 @@ from __future__ import annotations
 
 import logging
 import math
-from typing import TYPE_CHECKING, Literal
+from typing import Any
 
 import numpy as np
 
-if TYPE_CHECKING:
-    pass
+from app.schemas.airfoil import AirfoilFamily
 
 logger = logging.getLogger(__name__)
 
@@ -36,9 +35,6 @@ logger = logging.getLogger(__name__)
 # ---------------------------------------------------------------------------
 G = 9.80665  # m/s²
 RHO = 1.225  # kg/m³  (ISA sea-level)
-
-# Frozen family literals
-AirfoilFamily = Literal["flat_bottom", "semi_symmetric", "symmetric", "cambered", "reflexed"]
 
 # Thresholds for family classifier
 _SYMMETRIC_MAX_CAMBER_PCT = 0.5  # max_camber_pct below which → symmetric
@@ -52,7 +48,7 @@ _REFLEX_CAMBER_AT_TE_THRESHOLD = -0.003  # camber_at_te below this → reflexed
 # ---------------------------------------------------------------------------
 
 
-def classify_family(coords: np.ndarray) -> str:
+def classify_family(coords: np.ndarray) -> AirfoilFamily:
     """Classify an airfoil into one of five family labels from its coordinates.
 
     Parameters
@@ -221,7 +217,7 @@ def interpolate_polar_at_re(
     return _interpolate_rows(r_lo, r_hi, t)
 
 
-def _row_to_dict(row) -> dict:
+def _row_to_dict(row: Any) -> dict:
     return {
         "ld_max": row.ld_max,
         "cl_max": row.cl_max,
@@ -239,13 +235,13 @@ def _row_to_dict(row) -> dict:
     }
 
 
-def _lerp(a, b, t: float):
+def _lerp(a: Any, b: Any, t: float) -> Any:
     if a is None or b is None:
         return a if b is None else b
     return a + t * (b - a)
 
 
-def _interpolate_rows(r_lo, r_hi, t: float) -> dict:
+def _interpolate_rows(r_lo: Any, r_hi: Any, t: float) -> dict:
     return {
         "ld_max": _lerp(r_lo.ld_max, r_hi.ld_max, t),
         "cl_max": _lerp(r_lo.cl_max, r_hi.cl_max, t),
@@ -280,7 +276,7 @@ def compute_airfoil_low_re(
     confidence_gate: float = 0.90,
     alpha_start: float = -5.0,
     alpha_end: float = 18.0,
-    alpha_step: float = 0.5,
+    alpha_step: float = 0.2,
 ) -> list[dict]:
     """Run NeuralFoil on `coords` across each Re in `re_grid` and return metrics.
 

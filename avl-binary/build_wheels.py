@@ -51,8 +51,7 @@ def build_wheel(platform: str, binary_path: Path) -> Path:
         wheels = list(DIST_DIR.glob("avl_binary-*-any.whl"))
         if not wheels:
             raise FileNotFoundError(
-                f"No generic wheel found in {DIST_DIR}. "
-                "Check that 'python -m build' succeeded."
+                f"No generic wheel found in {DIST_DIR}. Check that 'python -m build' succeeded."
             )
         generic_wheel = wheels[0]
         platform_tag = PLATFORM_TAGS[platform]

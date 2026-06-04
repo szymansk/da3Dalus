@@ -116,8 +116,8 @@ class TestCoordinates:
         # Easiest sanity: at x≈0.4, mean(yu, yl) should ≈ 0.02 (max camber)
         # Find the pair of points closest to x=0.4 on upper + lower
         n = len(coords)
-        upper = coords[: n // 2 + 1]   # TE → LE
-        lower = coords[n // 2 :]       # LE → TE
+        upper = coords[: n // 2 + 1]  # TE → LE
+        lower = coords[n // 2 :]  # LE → TE
         # closest to x=0.4 on each side
         u_at_04 = min(upper, key=lambda p: abs(p[0] - 0.4))
         l_at_04 = min(lower, key=lambda p: abs(p[0] - 0.4))
@@ -130,7 +130,7 @@ class TestCoordinates:
         # x near 0.5: y on upper surface should be clearly above 0
         for x, y in coords[: len(coords) // 2]:
             if abs(x - 0.5) < 0.05:
-                assert y > 0.04   # camber + half-thickness
+                assert y > 0.04  # camber + half-thickness
 
 
 # ---------------------------------------------------------------------------

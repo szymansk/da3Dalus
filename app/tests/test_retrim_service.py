@@ -906,9 +906,7 @@ class TestRetrimDistinguishesCorruptRowsFromSolverFailures:
         db.commit()
         return aeroplane
 
-    def test_validation_domain_error_lands_in_invalid_not_not_trimmed(
-        self, client_and_db
-    ):
+    def test_validation_domain_error_lands_in_invalid_not_not_trimmed(self, client_and_db):
         """A corrupt OP row (NOT-NULL column was NULL → ValidationDomainError
         bubbles out of ``operating_point_model_to_schema``) must be marked
         INVALID, with the reason persisted to ``warnings`` for diagnostics.
@@ -948,9 +946,9 @@ class TestRetrimDistinguishesCorruptRowsFromSolverFailures:
         )
         # The reason must be persisted so the UI can show it actionably —
         # without it the user has no signal beyond a colour change.
-        assert any(
-            "velocity is required" in w for w in (op.warnings or [])
-        ), f"reason not persisted to warnings: {op.warnings!r}"
+        assert any("velocity is required" in w for w in (op.warnings or [])), (
+            f"reason not persisted to warnings: {op.warnings!r}"
+        )
         db2.close()
 
     def test_pydantic_validation_error_also_lands_in_invalid(self, client_and_db):

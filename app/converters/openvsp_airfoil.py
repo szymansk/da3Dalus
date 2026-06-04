@@ -107,18 +107,20 @@ def _naca4_thickness_offset(x: float, thickness: float) -> float:
     callers that need a closed TE can chop the last point or use
     -0.1036 instead.
     """
-    return 5 * thickness * (
-        0.2969 * math.sqrt(max(x, 0.0))
-        - 0.1260 * x
-        - 0.3516 * x * x
-        + 0.2843 * x * x * x
-        - 0.1015 * x * x * x * x
+    return (
+        5
+        * thickness
+        * (
+            0.2969 * math.sqrt(max(x, 0.0))
+            - 0.1260 * x
+            - 0.3516 * x * x
+            + 0.2843 * x * x * x
+            - 0.1015 * x * x * x * x
+        )
     )
 
 
-def _naca4_camber_line(
-    x: float, camber: float, camber_loc: float
-) -> tuple[float, float]:
+def _naca4_camber_line(x: float, camber: float, camber_loc: float) -> tuple[float, float]:
     """Returns ``(y_camber, dy/dx)`` for the NACA 4-digit camber line.
 
     Symmetric airfoils (camber == 0) and the degenerate case
@@ -128,8 +130,8 @@ def _naca4_camber_line(
     if camber == 0 or camber_loc == 0:
         return 0.0, 0.0
     if x <= camber_loc:
-        yc = (camber / (camber_loc ** 2)) * (2 * camber_loc * x - x * x)
-        dyc = (2 * camber / (camber_loc ** 2)) * (camber_loc - x)
+        yc = (camber / (camber_loc**2)) * (2 * camber_loc * x - x * x)
+        dyc = (2 * camber / (camber_loc**2)) * (camber_loc - x)
     else:
         denom = (1 - camber_loc) ** 2
         yc = (camber / denom) * ((1 - 2 * camber_loc) + 2 * camber_loc * x - x * x)
@@ -188,9 +190,7 @@ def ensure_naca4_dat(
         return target
     try:
         target_dir.mkdir(parents=True, exist_ok=True)
-        coords = naca4_coordinates(
-            camber=camber, camber_loc=camber_loc, thick_chord=thick_chord
-        )
+        coords = naca4_coordinates(camber=camber, camber_loc=camber_loc, thick_chord=thick_chord)
         # Header: airfoil name on its own line (XFOIL / Selig convention).
         header = name.upper().replace("NACA", "NACA ") if name.lower().startswith("naca") else name
         lines = [header.strip()]
@@ -251,20 +251,18 @@ def _scale_k1(k1_table: float, design_cl: float) -> float:
     return k1_table * (design_cl / _NACA5_REFERENCE_CL)
 
 
-def _naca5_camber_line_standard(
-    x: float, m: float, k1: float
-) -> tuple[float, float]:
+def _naca5_camber_line_standard(x: float, m: float, k1: float) -> tuple[float, float]:
     """Standard NACA 5-digit camber line — ``(y_camber, dy/dx)``.
 
     Cubic forward of ``x=m``, linear (-k1·m³/6 slope) aft. Reference:
     Abbott & von Doenhoff Theory of Wing Sections (eq. 4.13).
     """
     if x <= m:
-        yc = (k1 / 6.0) * (x ** 3 - 3 * m * x * x + m * m * (3 - m) * x)
+        yc = (k1 / 6.0) * (x**3 - 3 * m * x * x + m * m * (3 - m) * x)
         dyc = (k1 / 6.0) * (3 * x * x - 6 * m * x + m * m * (3 - m))
     else:
-        yc = (k1 * m ** 3 / 6.0) * (1.0 - x)
-        dyc = -(k1 * m ** 3) / 6.0
+        yc = (k1 * m**3 / 6.0) * (1.0 - x)
+        dyc = -(k1 * m**3) / 6.0
     return yc, dyc
 
 
@@ -281,13 +279,13 @@ def _naca5_camber_line_reflex(
         forward_cubic = (x - m) ** 3
     else:
         forward_cubic = k2_over_k1 * (x - m) ** 3
-    common = k2_over_k1 * (1 - m) ** 3 * x + m ** 3 * x - m ** 3
+    common = k2_over_k1 * (1 - m) ** 3 * x + m**3 * x - m**3
     yc = (k1 / 6.0) * (forward_cubic - common)
     if x <= m:
         d_forward = 3.0 * (x - m) ** 2
     else:
         d_forward = 3.0 * k2_over_k1 * (x - m) ** 2
-    d_common = k2_over_k1 * (1 - m) ** 3 + m ** 3
+    d_common = k2_over_k1 * (1 - m) ** 3 + m**3
     dyc = (k1 / 6.0) * (d_forward - d_common)
     return yc, dyc
 
@@ -466,11 +464,9 @@ def _naca_a_family_h(a: float) -> float:
     if abs(1.0 - a) < 1e-9:
         return 0.0
     g = _naca_a_family_g(a)
-    return (
-        (1.0 / (1.0 - a))
-        * (0.5 * (1.0 - a) ** 2 * math.log(1.0 - a) - 0.25 * (1.0 - a) ** 2)
-        + g
-    )
+    return (1.0 / (1.0 - a)) * (
+        0.5 * (1.0 - a) ** 2 * math.log(1.0 - a) - 0.25 * (1.0 - a) ** 2
+    ) + g
 
 
 def _xlnx(x: float) -> float:
@@ -495,9 +491,7 @@ def naca_a_family_camber_at(x: float, a: float, design_cl: float) -> float:
 
     if abs(1.0 - a) < 1e-9:
         # Uniform-load limit (a=1).
-        return -(design_cl / (4.0 * math.pi)) * (
-            (1.0 - x) * math.log(1.0 - x) + x * math.log(x)
-        )
+        return -(design_cl / (4.0 * math.pi)) * ((1.0 - x) * math.log(1.0 - x) + x * math.log(x))
 
     g = _naca_a_family_g(a)
     h = _naca_a_family_h(a)
@@ -548,8 +542,7 @@ def naca_a_family_coordinates(
         x_l = max(0.0, x - EPS)
         x_r = min(1.0, x + EPS)
         dyc = (
-            naca_a_family_camber_at(x_r, a, design_cl)
-            - naca_a_family_camber_at(x_l, a, design_cl)
+            naca_a_family_camber_at(x_r, a, design_cl) - naca_a_family_camber_at(x_l, a, design_cl)
         ) / max(x_r - x_l, EPS)
         theta = math.atan(dyc)
         sin_t = math.sin(theta)
@@ -603,9 +596,7 @@ def ensure_naca_a_family_dat(
         a = max(0.0, min(1.0, a))
 
     try:
-        coords = naca_a_family_coordinates(
-            a=a, design_cl=design_cl, thick_chord=thick_chord
-        )
+        coords = naca_a_family_coordinates(a=a, design_cl=design_cl, thick_chord=thick_chord)
     except (ValueError, ArithmeticError) as exc:
         if ctx is not None:
             ctx.add_warning(
@@ -941,8 +932,6 @@ def _get_parm(vsp: ModuleType, xs_id: str, name: str) -> float:
     return float(vsp.GetParmVal(pid))
 
 
-
-
 def import_airfoil_from_xsec(
     *,
     xs_id: str,
@@ -966,9 +955,7 @@ def import_airfoil_from_xsec(
         camber = _get_parm(vsp, xs_id, "Camber")
         camber_loc = _get_parm(vsp, xs_id, "CamberLoc")
         thick_chord = _get_parm(vsp, xs_id, "ThickChord")
-        name = naca_4series_name(
-            camber=camber, camber_loc=camber_loc, thick_chord=thick_chord
-        )
+        name = naca_4series_name(camber=camber, camber_loc=camber_loc, thick_chord=thick_chord)
         # gh-700: write a .dat for this NACA-4 profile so the renderer
         # has something to draw, regardless of whether it's in our
         # curated airfoil library.
@@ -998,9 +985,7 @@ def import_airfoil_from_xsec(
         # ``naca4-923-a0.6`` profiles require a different OpenVSP shape
         # entirely (likely ``XS_SIX_SERIES`` mis-named in the spec) and
         # would be picked up by the 6-series branch below.
-        base = naca_4series_name(
-            camber=camber, camber_loc=camber_loc, thick_chord=thick_chord
-        )
+        base = naca_4series_name(camber=camber, camber_loc=camber_loc, thick_chord=thick_chord)
         name = f"{base}-mod"
         ensure_naca4_dat(
             name=name,

@@ -19,6 +19,7 @@ Run from the repo root with the backend listening on localhost:8001:
 
     poetry run python docs/testing/ingest_gold_standards.py
 """
+
 from __future__ import annotations
 
 import json
@@ -69,8 +70,9 @@ def ingest_aircraft(client: httpx.Client, config_path: Path, wing_names: list[st
     print(f"  created aeroplane {name} -> {aeroplane_id}")
 
     # 2) POST each wing
-    assert len(cfg["wings"]) == len(wing_names), \
+    assert len(cfg["wings"]) == len(wing_names), (
         f"{len(cfg['wings'])} wings in config vs {len(wing_names)} names supplied"
+    )
     for wing_name, wing_body in zip(wing_names, cfg["wings"], strict=True):
         resp = client.post(
             f"/aeroplanes/{aeroplane_id}/wings/{wing_name}/from-wingconfig",
@@ -91,25 +93,38 @@ def ingest_aircraft(client: httpx.Client, config_path: Path, wing_names: list[st
         # TED fields — strip servo plumbing (handled via a separate
         # endpoint).
         PATCH_TED_FIELDS = {
-            "name", "role", "label",
-            "rel_chord_root", "rel_chord_tip",
-            "hinge_spacing", "side_spacing_root", "side_spacing_tip",
-            "rel_chord_servo_position", "rel_length_servo_position",
+            "name",
+            "role",
+            "label",
+            "rel_chord_root",
+            "rel_chord_tip",
+            "hinge_spacing",
+            "side_spacing_root",
+            "side_spacing_tip",
+            "rel_chord_servo_position",
+            "rel_length_servo_position",
             "servo_placement",
-            "positive_deflection_deg", "negative_deflection_deg",
-            "trailing_edge_offset_factor", "hinge_type", "symmetric",
+            "positive_deflection_deg",
+            "negative_deflection_deg",
+            "trailing_edge_offset_factor",
+            "hinge_type",
+            "symmetric",
         }
         for seg_idx, seg in enumerate(wing_body["segments"]):
             ted = seg.get("trailing_edge_device")
             if not ted:
                 continue
             patch_body = {k: v for k, v in ted.items() if k in PATCH_TED_FIELDS}
-            url = (f"/aeroplanes/{aeroplane_id}/wings/{wing_name}"
-                   f"/cross_sections/{seg_idx}/trailing_edge_device")
+            url = (
+                f"/aeroplanes/{aeroplane_id}/wings/{wing_name}"
+                f"/cross_sections/{seg_idx}/trailing_edge_device"
+            )
             r = client.patch(url, json=patch_body)
             if r.status_code >= 400:
-                print(f"      ✗ PATCH ted '{ted['name']}' @ xsec {seg_idx}: "
-                      f"{r.status_code} {r.text[:200]}")
+                print(
+                    f"      ✗ PATCH ted '{ted['name']}' @ xsec {seg_idx}: "
+                    f"{r.status_code} {r.text[:200]}"
+                )
             else:
                 print(f"      ✓ PATCH ted '{ted['name']}' @ xsec {seg_idx}")
 

@@ -1,4 +1,5 @@
 """Tests for low-Re airfoil scoring configuration defaults (Task 0, gh-821)."""
+
 from __future__ import annotations
 
 import pytest
@@ -9,8 +10,21 @@ def test_re_grid_default():
     from app.settings import Settings
 
     s = Settings()
-    expected = [40_000, 50_000, 60_000, 75_000, 90_000, 110_000, 130_000, 160_000,
-                200_000, 250_000, 350_000, 500_000, 750_000]
+    expected = [
+        40_000,
+        50_000,
+        60_000,
+        75_000,
+        90_000,
+        110_000,
+        130_000,
+        160_000,
+        200_000,
+        250_000,
+        350_000,
+        500_000,
+        750_000,
+    ]
     assert s.low_re_grid == expected
 
 

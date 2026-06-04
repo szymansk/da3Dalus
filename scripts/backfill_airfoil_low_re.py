@@ -103,10 +103,16 @@ def run_backfill(
                     skipped += 1
                     continue
 
-            # Get coordinates
+            # Get coordinates — require at least 10 points for a meaningful
+            # NeuralFoil run (3-point "triangles" and similar degenerate shapes
+            # produce wildly unreliable polars; 10 is a conservative minimum).
             coords = af.coordinates
-            if not coords or len(coords) < 2:
-                logger.warning("  Skipping '%s' — no coordinates", name)
+            if not coords or len(coords) < 10:
+                logger.warning(
+                    "  Skipping '%s' — too few coordinates (%d < 10)",
+                    name,
+                    len(coords) if coords else 0,
+                )
                 continue
 
             coords_arr = np.asarray(coords, dtype=float)

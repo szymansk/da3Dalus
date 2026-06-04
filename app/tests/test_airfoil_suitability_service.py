@@ -2,6 +2,7 @@
 
 Uses mocked DB rows and in-memory SQLite. NO real AeroSandbox.
 """
+
 from __future__ import annotations
 
 import uuid
@@ -26,6 +27,7 @@ def in_memory_db():
     from app.db.base import Base
     import app.models  # noqa: F401
     from app.models.airfoil_low_re import AirfoilGeometryModel, AirfoilLowRePolarModel  # noqa: F401
+
     Base.metadata.create_all(bind=engine)
     SessionLocal = sessionmaker(bind=engine, autocommit=False, autoflush=False, class_=Session)
     yield SessionLocal
@@ -59,26 +61,28 @@ def seeded_db(in_memory_db):
             (100_000, 45.0, 1.2, 0.010, 0.012, 0.04, 0.3, 0.6),
             (200_000, 55.0, 1.3, 0.009, 0.011, 0.035, 0.3, 0.7),
         ]:
-            session.add(AirfoilLowRePolarModel(
-                airfoil_name="sd7037",
-                reynolds=float(re_val),
-                ld_max=ld,
-                cl_max=cl_max,
-                alpha_attached_lo=-3.0,
-                alpha_attached_hi=12.0,
-                drag_bucket_width=bucket,
-                cd_min=cd_min,
-                stall_gentleness=-0.05,
-                cd0=cd0,
-                k=k,
-                cl0=cl0,
-                cl_valid_lo=0.0,
-                cl_valid_hi=1.2,
-                min_analysis_confidence=0.95,
-                neuralfoil_model_size="xxxlarge",
-                n_crit=9.0,
-                computed_at=datetime.now(timezone.utc),
-            ))
+            session.add(
+                AirfoilLowRePolarModel(
+                    airfoil_name="sd7037",
+                    reynolds=float(re_val),
+                    ld_max=ld,
+                    cl_max=cl_max,
+                    alpha_attached_lo=-3.0,
+                    alpha_attached_hi=12.0,
+                    drag_bucket_width=bucket,
+                    cd_min=cd_min,
+                    stall_gentleness=-0.05,
+                    cd0=cd0,
+                    k=k,
+                    cl0=cl0,
+                    cl_valid_lo=0.0,
+                    cl_valid_hi=1.2,
+                    min_analysis_confidence=0.95,
+                    neuralfoil_model_size="xxxlarge",
+                    n_crit=9.0,
+                    computed_at=datetime.now(timezone.utc),
+                )
+            )
 
         # Airfoil 2: poor performer (naca0012-like)
         af2 = AirfoilModel(name="naca0012", coordinates=[[0, 0], [0.5, 0.06], [1, 0]])
@@ -93,26 +97,28 @@ def seeded_db(in_memory_db):
             computed_at=datetime.now(timezone.utc),
         )
         session.add(g2)
-        session.add(AirfoilLowRePolarModel(
-            airfoil_name="naca0012",
-            reynolds=100_000.0,
-            ld_max=20.0,
-            cl_max=0.9,
-            alpha_attached_lo=-5.0,
-            alpha_attached_hi=10.0,
-            drag_bucket_width=0.2,
-            cd_min=0.020,
-            stall_gentleness=-0.3,
-            cd0=0.022,
-            k=0.06,
-            cl0=0.0,
-            cl_valid_lo=-0.2,
-            cl_valid_hi=0.8,
-            min_analysis_confidence=0.90,
-            neuralfoil_model_size="xxxlarge",
-            n_crit=9.0,
-            computed_at=datetime.now(timezone.utc),
-        ))
+        session.add(
+            AirfoilLowRePolarModel(
+                airfoil_name="naca0012",
+                reynolds=100_000.0,
+                ld_max=20.0,
+                cl_max=0.9,
+                alpha_attached_lo=-5.0,
+                alpha_attached_hi=10.0,
+                drag_bucket_width=0.2,
+                cd_min=0.020,
+                stall_gentleness=-0.3,
+                cd0=0.022,
+                k=0.06,
+                cl0=0.0,
+                cl_valid_lo=-0.2,
+                cl_valid_hi=0.8,
+                min_analysis_confidence=0.90,
+                neuralfoil_model_size="xxxlarge",
+                n_crit=9.0,
+                computed_at=datetime.now(timezone.utc),
+            )
+        )
 
         # Create an aeroplane with mission + context
         ap_uuid = uuid.uuid4()
@@ -308,34 +314,38 @@ def test_search_suitability_recommend_xfoil_when_low_confidence(seeded_db):
         af = AirfoilModel(name="low_conf_af", coordinates=[[0, 0], [1, 0]])
         session.add(af)
         session.flush()
-        session.add(AirfoilGeometryModel(
-            airfoil_name="low_conf_af",
-            max_thickness_pct=10.0,
-            max_camber_pct=1.0,
-            camber_at_te=0.0,
-            family="semi_symmetric",
-            computed_at=datetime.now(timezone.utc),
-        ))
-        session.add(AirfoilLowRePolarModel(
-            airfoil_name="low_conf_af",
-            reynolds=100_000.0,
-            ld_max=15.0,
-            cl_max=0.8,
-            alpha_attached_lo=-2.0,
-            alpha_attached_hi=8.0,
-            drag_bucket_width=0.2,
-            cd_min=0.025,
-            stall_gentleness=-0.5,
-            cd0=0.028,
-            k=0.06,
-            cl0=0.1,
-            cl_valid_lo=0.0,
-            cl_valid_hi=0.7,
-            min_analysis_confidence=0.80,  # below 0.85 flag threshold
-            neuralfoil_model_size="xxxlarge",
-            n_crit=9.0,
-            computed_at=datetime.now(timezone.utc),
-        ))
+        session.add(
+            AirfoilGeometryModel(
+                airfoil_name="low_conf_af",
+                max_thickness_pct=10.0,
+                max_camber_pct=1.0,
+                camber_at_te=0.0,
+                family="semi_symmetric",
+                computed_at=datetime.now(timezone.utc),
+            )
+        )
+        session.add(
+            AirfoilLowRePolarModel(
+                airfoil_name="low_conf_af",
+                reynolds=100_000.0,
+                ld_max=15.0,
+                cl_max=0.8,
+                alpha_attached_lo=-2.0,
+                alpha_attached_hi=8.0,
+                drag_bucket_width=0.2,
+                cd_min=0.025,
+                stall_gentleness=-0.5,
+                cd0=0.028,
+                k=0.06,
+                cl0=0.1,
+                cl_valid_lo=0.0,
+                cl_valid_hi=0.7,
+                min_analysis_confidence=0.80,  # below 0.85 flag threshold
+                neuralfoil_model_size="xxxlarge",
+                n_crit=9.0,
+                computed_at=datetime.now(timezone.utc),
+            )
+        )
         session.commit()
 
     with SessionLocal() as session:

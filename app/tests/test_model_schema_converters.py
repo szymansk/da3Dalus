@@ -706,13 +706,9 @@ class TestFuselageAxisConvention:
         wide_fuselage = schemas.FuselageSchema(
             name="wide-glider-cabin",
             x_secs=[
-                schemas.FuselageXSecSuperEllipseSchema(
-                    xyz=[0.0, 0.0, 0.0], a=0.0, b=0.0, n=2.0
-                ),
+                schemas.FuselageXSecSuperEllipseSchema(xyz=[0.0, 0.0, 0.0], a=0.0, b=0.0, n=2.0),
                 # Source body: 2 m wide (Y), 1 m tall (Z) → a=1.0, b=0.5.
-                schemas.FuselageXSecSuperEllipseSchema(
-                    xyz=[0.5, 0.0, 0.0], a=1.0, b=0.5, n=2.0
-                ),
+                schemas.FuselageXSecSuperEllipseSchema(xyz=[0.5, 0.0, 0.0], a=1.0, b=0.5, n=2.0),
             ],
         )
 

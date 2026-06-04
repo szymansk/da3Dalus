@@ -684,7 +684,7 @@ class TestDualRoleDecomposition:
         mv = mixer["elevon_wing_0_mixer"]
         assert mv.symmetric_offset == pytest.approx(4.0)
         assert mv.differential_throw == pytest.approx(1.0)
-        assert mv.deflection_left == pytest.approx(3.0)   # 4 - 1
+        assert mv.deflection_left == pytest.approx(3.0)  # 4 - 1
         assert mv.deflection_right == pytest.approx(5.0)  # 4 + 1
         assert mv.role == "elevon"
 

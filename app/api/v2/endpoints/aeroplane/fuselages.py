@@ -180,9 +180,7 @@ def _serve_fuselage_step_attribute(
     artifacts_root = _FsPath(settings.ARTIFACTS_BASE_DIR).resolve()
     resolved = (_FsPath(settings.ARTIFACTS_BASE_DIR) / rel_path).resolve()
     if artifacts_root not in resolved.parents and resolved != artifacts_root:
-        logger.warning(
-            "STEP path %r escapes artifacts root — refusing to serve.", rel_path
-        )
+        logger.warning("STEP path %r escapes artifacts root — refusing to serve.", rel_path)
         raise HTTPException(status_code=404, detail="STEP file unavailable.")
     if not resolved.exists():
         raise HTTPException(
@@ -226,8 +224,7 @@ async def get_aeroplane_fuselage_step(
         fuselage_name=fuselage_name,
         attribute="step_path",
         no_step_detail=(
-            f"Fuselage {fuselage_name!r} has no STEP file "
-            "(only OpenVSP-imported fuselages do)."
+            f"Fuselage {fuselage_name!r} has no STEP file (only OpenVSP-imported fuselages do)."
         ),
         download_suffix=".stp",
     )

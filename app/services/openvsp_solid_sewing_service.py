@@ -104,7 +104,9 @@ def sew_to_solid_step(source_step_path: Path, target_step_path: Path) -> bool:
     except Exception as exc:  # noqa: BLE001 — defensive, never abort import
         logger.warning(
             "Solid sewing failed for %s: %s",
-            source_step_path, exc, exc_info=True,
+            source_step_path,
+            exc,
+            exc_info=True,
         )
         return False
 
@@ -179,7 +181,8 @@ def _sew_and_solidify(source_step_path: Path):
     if not shells:
         logger.debug(
             "Tight sew (%g mm) produced no shells; retrying loose (%g mm).",
-            _SEW_TOLERANCE_TIGHT, _SEW_TOLERANCE_LOOSE,
+            _SEW_TOLERANCE_TIGHT,
+            _SEW_TOLERANCE_LOOSE,
         )
         shells = _sew_faces(faces, _SEW_TOLERANCE_LOOSE)
     if not shells:
@@ -289,7 +292,8 @@ def _merge_solids(solids):
         except Exception as exc:  # noqa: BLE001 — fall back, not fatal
             logger.info(
                 "Boolean Fuse failed (%s); falling back to Compound of %d solids.",
-                exc, len(solids),
+                exc,
+                len(solids),
             )
             return _compound_of_solids(solids)
     return fused

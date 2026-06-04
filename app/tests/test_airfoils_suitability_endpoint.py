@@ -2,6 +2,7 @@
 
 Uses TestClient with mocked service.
 """
+
 from __future__ import annotations
 
 from unittest.mock import patch, MagicMock
@@ -28,10 +29,13 @@ def client_no_svc():
         poolclass=StaticPool,
     )
     Base.metadata.create_all(bind=engine)
-    TestingSessionLocal = sessionmaker(bind=engine, autocommit=False, autoflush=False, class_=Session)
+    TestingSessionLocal = sessionmaker(
+        bind=engine, autocommit=False, autoflush=False, class_=Session
+    )
 
     from app.services.component_type_service import seed_default_types
     from app.services.mission_objective_service import seed_mission_presets
+
     _s = TestingSessionLocal()
     try:
         seed_default_types(_s)
@@ -61,8 +65,12 @@ def client_no_svc():
 def _make_fake_response():
     """Build a minimal SuitabilityResponse for mocking."""
     from app.schemas.airfoil import (
-        SuitabilityResponse, SuitabilityQuery, SuitabilityCaveat, SuitabilityItem,
+        SuitabilityResponse,
+        SuitabilityQuery,
+        SuitabilityCaveat,
+        SuitabilityItem,
     )
+
     return SuitabilityResponse(
         query=SuitabilityQuery(
             chord_m=0.15,
@@ -152,7 +160,9 @@ def test_endpoint_response_has_frozen_shape(client_no_svc):
 def test_endpoint_passes_optional_params_to_service(client_no_svc):
     """Verify optional params are forwarded to the service."""
     fake_resp = _make_fake_response()
-    with patch("app.api.v2.endpoints.airfoils.search_suitability", return_value=fake_resp) as mock_svc:
+    with patch(
+        "app.api.v2.endpoints.airfoils.search_suitability", return_value=fake_resp
+    ) as mock_svc:
         resp = client_no_svc.get(
             "/airfoils/db/suitability",
             params={
@@ -173,9 +183,12 @@ def test_endpoint_passes_optional_params_to_service(client_no_svc):
 def test_endpoint_aeroplane_id_forwarded(client_no_svc):
     """aeroplane_id UUID string is forwarded to the service."""
     import uuid
+
     fake_resp = _make_fake_response()
     ap_uuid = str(uuid.uuid4())
-    with patch("app.api.v2.endpoints.airfoils.search_suitability", return_value=fake_resp) as mock_svc:
+    with patch(
+        "app.api.v2.endpoints.airfoils.search_suitability", return_value=fake_resp
+    ) as mock_svc:
         resp = client_no_svc.get(
             "/airfoils/db/suitability",
             params={

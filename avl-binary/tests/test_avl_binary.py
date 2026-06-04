@@ -21,8 +21,6 @@ def test_avl_path_points_to_bin_directory():
 def test_avl_path_raises_when_binary_missing(tmp_path, monkeypatch):
     import avl_binary
 
-    monkeypatch.setattr(
-        avl_binary, "__file__", str(tmp_path / "fake" / "__init__.py")
-    )
+    monkeypatch.setattr(avl_binary, "__file__", str(tmp_path / "fake" / "__init__.py"))
     with pytest.raises(FileNotFoundError, match="AVL binary not found"):
         avl_binary.avl_path()

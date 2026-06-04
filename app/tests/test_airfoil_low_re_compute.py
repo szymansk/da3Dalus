@@ -4,6 +4,7 @@ NO real AeroSandbox import in this fast test — the NeuralFoil call is
 monkey-patched via pytest monkeypatch. Deterministic fake polar arrays
 drive the metric extraction and parabolic fit assertions.
 """
+
 from __future__ import annotations
 
 import numpy as np
@@ -65,7 +66,9 @@ def mock_asb(monkeypatch):
                 self.name = name
                 self.coordinates = coordinates
 
-            def get_aero_from_neuralfoil(self, alpha, Re, mach=0, n_crit=9.0, model_size="large", **kwargs):
+            def get_aero_from_neuralfoil(
+                self, alpha, Re, mach=0, n_crit=9.0, model_size="large", **kwargs
+            ):
                 return _make_fake_aero_result(np.atleast_1d(alpha), re=Re)
 
         asb_module.Airfoil = FakeAirfoil
@@ -162,6 +165,7 @@ def test_compute_low_confidence_excludes_metrics(monkeypatch):
     monkeypatch.setattr(asb.Airfoil, "get_aero_from_neuralfoil", fake_low_conf)
 
     from app.services.airfoil_low_re_service import compute_airfoil_low_re
+
     coords = np.array([[0.0, 0.0], [0.5, 0.06], [1.0, 0.0]])
     results = compute_airfoil_low_re("test_af", coords, [100_000], confidence_gate=0.90)
     row = results[0]
@@ -201,6 +205,7 @@ def test_compute_graceful_when_aerosandbox_unavailable(monkeypatch):
 
     try:
         from app.services.airfoil_low_re_service import compute_airfoil_low_re
+
         coords = np.array([[0.0, 0.0], [0.5, 0.06], [1.0, 0.0]])
         results = compute_airfoil_low_re("test_af", coords, [100_000])
         assert results == []

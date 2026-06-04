@@ -411,15 +411,9 @@ def _stub_import_vsp3_with_fuselage_and_weights(monkeypatch):
         fuse = FuselageSchema(
             name="Fuselage",
             x_secs=[
-                FuselageXSecSuperEllipseSchema(
-                    xyz=[0.0, 0.0, 0.0], a=0.0, b=0.0, n=2.0
-                ),
-                FuselageXSecSuperEllipseSchema(
-                    xyz=[1.0, 0.0, 0.0], a=0.4, b=0.3, n=2.0
-                ),
-                FuselageXSecSuperEllipseSchema(
-                    xyz=[2.0, 0.0, 0.0], a=0.0, b=0.0, n=2.0
-                ),
+                FuselageXSecSuperEllipseSchema(xyz=[0.0, 0.0, 0.0], a=0.0, b=0.0, n=2.0),
+                FuselageXSecSuperEllipseSchema(xyz=[1.0, 0.0, 0.0], a=0.4, b=0.3, n=2.0),
+                FuselageXSecSuperEllipseSchema(xyz=[2.0, 0.0, 0.0], a=0.0, b=0.0, n=2.0),
             ],
         )
         ap = AeroplaneSchema(name="WithFuse")
@@ -548,11 +542,10 @@ class TestImportEndpointPersistence:
             target = out_dir / f"{stem}.stp"
             target.write_text(f"FAKE STEP for {geom_name} ({gid})")
             from pathlib import Path
+
             return str(target.relative_to(Path(tmp_path)))
 
-        monkeypatch.setattr(
-            openvsp_step_export_service, "export_geom_step", _fake_export
-        )
+        monkeypatch.setattr(openvsp_step_export_service, "export_geom_step", _fake_export)
         # ``import_openvsp_file`` looks up vsp via openvsp_adapter — give
         # it a stub so the ``is_available`` gate passes.
         from app.converters import openvsp_adapter
@@ -590,6 +583,7 @@ class TestImportEndpointPersistence:
         assert body["step_path"] is not None
         # File exists on disk.
         from pathlib import Path
+
         full_path = Path(tmp_path) / body["step_path"]
         assert full_path.exists()
         assert "FAKE STEP" in full_path.read_text()
@@ -619,9 +613,7 @@ class TestImportEndpointPersistence:
         assert rs.status_code == 404
         assert "STEP" in rs.json()["detail"]
 
-    def test_fuselage_solid_step_path_persisted_on_import(
-        self, client, monkeypatch, tmp_path
-    ):
+    def test_fuselage_solid_step_path_persisted_on_import(self, client, monkeypatch, tmp_path):
         """gh-731: when the surface STEP export succeeds, the sewing
         service should run and the resulting Solid-STEP relative path
         must land on ``FuselageModel.solid_step_path``.
@@ -645,11 +637,10 @@ class TestImportEndpointPersistence:
             target = out_dir / f"{stem}.stp"
             target.write_text(f"FAKE SURFACE STEP for {geom_name} ({gid})")
             from pathlib import Path
+
             return str(target.relative_to(Path(tmp_path)))
 
-        monkeypatch.setattr(
-            openvsp_step_export_service, "export_geom_step", _fake_export
-        )
+        monkeypatch.setattr(openvsp_step_export_service, "export_geom_step", _fake_export)
 
         # Fake sewing service — write a small file marked as solid so we
         # can verify it's served back through the endpoint.
@@ -659,11 +650,10 @@ class TestImportEndpointPersistence:
             target = out_dir / f"{stem}_solid.stp"
             target.write_text(f"FAKE SOLID STEP for {geom_name}")
             from pathlib import Path
+
             return str(target.relative_to(Path(tmp_path)))
 
-        monkeypatch.setattr(
-            openvsp_solid_sewing_service, "sew_imported_geom_to_solid", _fake_sew
-        )
+        monkeypatch.setattr(openvsp_solid_sewing_service, "sew_imported_geom_to_solid", _fake_sew)
 
         # Stub VSP adapter so the gh-729 codepath runs.
         from app.converters import openvsp_adapter
@@ -700,22 +690,19 @@ class TestImportEndpointPersistence:
         assert body["solid_step_path"] is not None  # gh-731
         assert body["solid_step_path"].endswith("_solid.stp")
         from pathlib import Path
+
         full_path = Path(tmp_path) / body["solid_step_path"]
         assert full_path.exists()
         assert "FAKE SOLID STEP" in full_path.read_text()
 
         # The /solid_step endpoint must serve the file.
-        rs_solid = client.get(
-            f"/aeroplanes/{uuid}/fuselages/Fuselage/solid_step"
-        )
+        rs_solid = client.get(f"/aeroplanes/{uuid}/fuselages/Fuselage/solid_step")
         assert rs_solid.status_code == 200, rs_solid.text
         assert rs_solid.headers["content-type"] == "model/step"
         assert b"FAKE SOLID STEP" in rs_solid.content
         assert "_solid.stp" in rs_solid.headers.get("content-disposition", "")
 
-    def test_solid_step_endpoint_404_when_no_solid_step_path(
-        self, client, monkeypatch
-    ):
+    def test_solid_step_endpoint_404_when_no_solid_step_path(self, client, monkeypatch):
         """A fuselage without a sewed solid (CAD-created or sewing
         failed) → 404 with the actionable "use /step and sew
         manually" hint.
@@ -758,11 +745,10 @@ class TestImportEndpointPersistence:
             target = out_dir / f"{stem}.stp"
             target.write_text("FAKE")
             from pathlib import Path
+
             return str(target.relative_to(Path(tmp_path)))
 
-        monkeypatch.setattr(
-            openvsp_step_export_service, "export_geom_step", _fake_export
-        )
+        monkeypatch.setattr(openvsp_step_export_service, "export_geom_step", _fake_export)
         # Sewing returns None → solid_step_path stays null.
         monkeypatch.setattr(
             openvsp_solid_sewing_service,
@@ -824,6 +810,7 @@ class TestImportEndpointPersistence:
             target = out_dir / f"{stem}.stp"
             target.write_text("FAKE SURFACE STEP")
             from pathlib import Path
+
             return str(target.relative_to(Path(tmp_path)))
 
         def _fake_sew(source_rel_step, aeroplane_uuid, geom_name):
@@ -832,6 +819,7 @@ class TestImportEndpointPersistence:
             target = out_dir / f"{stem}_solid.stp"
             target.write_text("FAKE SOLID STEP")
             from pathlib import Path
+
             return str(target.relative_to(Path(tmp_path)))
 
         # Stub the slicer to emulate a 30-xsec refinement. Values are
@@ -860,25 +848,19 @@ class TestImportEndpointPersistence:
             return xsecs, metrics
 
         monkeypatch.setattr(openvsp_step_export_service, "export_geom_step", _fake_export)
-        monkeypatch.setattr(
-            openvsp_solid_sewing_service, "sew_imported_geom_to_solid", _fake_sew
-        )
+        monkeypatch.setattr(openvsp_solid_sewing_service, "sew_imported_geom_to_solid", _fake_sew)
         # gh-732: the wiring uses ``slice_step_at_stations`` (VSP-anchored
         # path) when the handler has ≥ 2 xsecs, falling back to
         # ``slice_step_to_fuselage`` otherwise. Stub both so the test
         # is robust to either branch.
         monkeypatch.setattr(_slicing, "slice_step_to_fuselage", _fake_slicer)
         monkeypatch.setattr(_slicing, "slice_step_at_stations", _fake_slicer)
-        monkeypatch.setattr(
-            _slicing, "vsp_anchored_x_stations", lambda *_a, **_kw: [0.0, 1.0]
-        )
+        monkeypatch.setattr(_slicing, "vsp_anchored_x_stations", lambda *_a, **_kw: [0.0, 1.0])
         # Bypass the world-frame X-dominance gate — the stub STEP file
         # is plain text, not cadquery-readable, so the real gate would
         # always say "skip". The gate itself is unit-tested in
         # test_openvsp_solid_sewing.py-style direct tests of the helper.
-        monkeypatch.setattr(
-            openvsp_import_service, "_is_x_dominant_fuselage", lambda _p: True
-        )
+        monkeypatch.setattr(openvsp_import_service, "_is_x_dominant_fuselage", lambda _p: True)
 
         from app.converters import openvsp_adapter, openvsp_importer
 
@@ -909,8 +891,7 @@ class TestImportEndpointPersistence:
         body = rs.json()
         # 30 xsecs from the slicer, NOT the 3 from the handler stub.
         assert len(body["x_secs"]) == 30, (
-            f"slicer refinement didn't replace handler xsecs "
-            f"(got {len(body['x_secs'])})"
+            f"slicer refinement didn't replace handler xsecs (got {len(body['x_secs'])})"
         )
         # Values must have been scaled from mm to metres.
         mid = body["x_secs"][15]
@@ -949,12 +930,11 @@ class TestImportEndpointPersistence:
             target = out_dir / f"{stem}.stp"
             target.write_text("FAKE")
             from pathlib import Path
+
             return str(target.relative_to(Path(tmp_path)))
 
         # Force the X-dominance gate to refuse refinement.
-        monkeypatch.setattr(
-            openvsp_import_service, "_is_x_dominant_fuselage", lambda _p: False
-        )
+        monkeypatch.setattr(openvsp_import_service, "_is_x_dominant_fuselage", lambda _p: False)
 
         # Slicer must not be called at all — make it crash if it is.
         def _slicer_must_not_run(*_a, **_kw):
@@ -1024,6 +1004,7 @@ class TestImportEndpointPersistence:
             target = out_dir / f"{stem}.stp"
             target.write_text("FAKE SURFACE STEP")
             from pathlib import Path
+
             return str(target.relative_to(Path(tmp_path)))
 
         def _boom_slicer(*_a, **_kw):

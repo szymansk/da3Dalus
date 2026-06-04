@@ -111,9 +111,7 @@ class TestCamberLineGeneral:
         xs = [i * 0.005 for i in range(201)]
         ys = [naca_a_family_camber_at(x, a=0.6, design_cl=0.3) for x in xs]
         i_max = ys.index(max(ys))
-        assert 0.4 <= xs[i_max] <= 0.55, (
-            f"a=0.6 peak position out of expected range: x={xs[i_max]}"
-        )
+        assert 0.4 <= xs[i_max] <= 0.55, f"a=0.6 peak position out of expected range: x={xs[i_max]}"
 
     def test_a_below_a1_distinct_from_a1(self):
         # Without this, the singular-branch detection might silently
@@ -140,15 +138,11 @@ class TestCamberLineGeneral:
 
 class TestCoordinates:
     def test_returns_2n_plus_1_points(self):
-        coords = naca_a_family_coordinates(
-            a=0.6, design_cl=0.3, thick_chord=0.12, n_half=20
-        )
+        coords = naca_a_family_coordinates(a=0.6, design_cl=0.3, thick_chord=0.12, n_half=20)
         assert len(coords) == 2 * 20 + 1
 
     def test_le_at_origin_and_te_symmetric(self):
-        coords = naca_a_family_coordinates(
-            a=0.6, design_cl=0.3, thick_chord=0.12
-        )
+        coords = naca_a_family_coordinates(a=0.6, design_cl=0.3, thick_chord=0.12)
         # Selig: LE is the midpoint.
         assert coords[len(coords) // 2] == (0.0, 0.0)
         # TE x ≈ 1, lower below chord, upper above.
@@ -160,9 +154,7 @@ class TestCoordinates:
     def test_symmetric_airfoil_when_cl_zero(self):
         # design_Cl=0 should produce a perfectly symmetric airfoil
         # regardless of a — the camber term vanishes for all x.
-        coords = naca_a_family_coordinates(
-            a=0.6, design_cl=0.0, thick_chord=0.12
-        )
+        coords = naca_a_family_coordinates(a=0.6, design_cl=0.0, thick_chord=0.12)
         mid = len(coords) // 2
         # Selig: upper from index 0 (TE) to ``mid`` (LE), lower from
         # ``mid`` (LE) to len-1 (TE). For symmetric pairs at the same
@@ -189,7 +181,9 @@ class TestEnsureDat:
         # non-standard.
         out = ensure_naca_a_family_dat(
             name="naca65-410-a0.5",
-            a=0.5, design_cl=0.4, thick_chord=0.10,
+            a=0.5,
+            design_cl=0.4,
+            thick_chord=0.10,
             airfoils_dir=tmp_path,
         )
         assert out.exists()
@@ -203,7 +197,9 @@ class TestEnsureDat:
         # Stratos_UL ``naca0-414-a1.0``: a=1.0 uniform-load mean line.
         out = ensure_naca_a_family_dat(
             name="naca0-414-a1.0",
-            a=1.0, design_cl=0.4, thick_chord=0.14,
+            a=1.0,
+            design_cl=0.4,
+            thick_chord=0.14,
             airfoils_dir=tmp_path,
         )
         assert out.exists()
@@ -212,14 +208,18 @@ class TestEnsureDat:
     def test_idempotent_when_file_exists(self, tmp_path: Path):
         out = ensure_naca_a_family_dat(
             name="naca6series",
-            a=0.5, design_cl=0.4, thick_chord=0.10,
+            a=0.5,
+            design_cl=0.4,
+            thick_chord=0.10,
             airfoils_dir=tmp_path,
         )
         first = out.read_text()
         # Subsequent call with nonsense parms must NOT overwrite.
         ensure_naca_a_family_dat(
             name="naca6series",
-            a=0.99, design_cl=0.99, thick_chord=0.99,
+            a=0.99,
+            design_cl=0.99,
+            thick_chord=0.99,
             airfoils_dir=tmp_path,
         )
         assert out.read_text() == first
@@ -235,7 +235,9 @@ class TestEnsureDat:
 
         out = ensure_naca_a_family_dat(
             name="naca-clamped",
-            a=1.5, design_cl=0.3, thick_chord=0.12,
+            a=1.5,
+            design_cl=0.3,
+            thick_chord=0.12,
             airfoils_dir=tmp_path,
             ctx=_MockCtx(),
         )
@@ -257,14 +259,14 @@ class TestSeriesNamingRoundTrip:
     def test_6series_canonical_name_matches_writer(self, tmp_path: Path):
         from app.converters.openvsp_airfoil import naca_6series_name
 
-        name = naca_6series_name(
-            series=65, ideal_cl=0.4, thick_chord=0.10, a=0.5
-        )
+        name = naca_6series_name(series=65, ideal_cl=0.4, thick_chord=0.10, a=0.5)
         assert name == "naca65-410-a0.5"
 
         out = ensure_naca_a_family_dat(
             name=name,
-            a=0.5, design_cl=0.4, thick_chord=0.10,
+            a=0.5,
+            design_cl=0.4,
+            thick_chord=0.10,
             airfoils_dir=tmp_path,
         )
         assert out.exists()
@@ -283,7 +285,9 @@ class TestSeriesNamingRoundTrip:
         assert name == "naca16-412"
         out = ensure_naca_a_family_dat(
             name=name,
-            a=1.0, design_cl=0.4, thick_chord=0.12,
+            a=1.0,
+            design_cl=0.4,
+            thick_chord=0.12,
             airfoils_dir=tmp_path,
         )
         assert out.exists()

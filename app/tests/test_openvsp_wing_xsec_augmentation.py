@@ -244,10 +244,7 @@ class TestDifferentAirfoilPairMorphed:
 
         inserts = out[1:-1]
         assert inserts  # adaptive count, but the curved pair produces inserts
-        assert all(
-            ins.airfoil == "./components/airfoils/vsp_morph_DEADBEEF.dat"
-            for ins in inserts
-        )
+        assert all(ins.airfoil == "./components/airfoils/vsp_morph_DEADBEEF.dat" for ins in inserts)
         # one morph call per insert, always between the two anchor airfoils
         assert calls == [("naca2412", "naca6409")] * len(inserts)
         # Anchors keep their raw airfoils (faithful original).
@@ -306,9 +303,7 @@ class TestDifferentAirfoilPairMorphed:
         # y>0 distinguishes them from the mid anchor, which keeps y=0);
         # second (differing) pair contributes morphed inserts.
         assert any(x.airfoil == "naca2412" and x.xyz_le[1] > 0.0 for x in inserts)
-        assert any(
-            x.airfoil == "./components/airfoils/vsp_morph_X.dat" for x in inserts
-        )
+        assert any(x.airfoil == "./components/airfoils/vsp_morph_X.dat" for x in inserts)
 
 
 class TestSpitfireAnchorCount:
@@ -467,9 +462,7 @@ class TestLossyWarning:
         ]
         _augment_xsec_pairs(anchors, _ellipse_vsp(), "wing-gid", ctx, "main_wing")
         assert not [
-            w
-            for w in ctx.warnings
-            if "could not sample" in w.reason or "gh-758" in w.reason
+            w for w in ctx.warnings if "could not sample" in w.reason or "gh-758" in w.reason
         ]
 
 
@@ -491,9 +484,7 @@ class TestDegenerateInputs:
             _xsec(airfoil="naca2412", t="root"),
             _xsec(airfoil="naca2412", t=None),
         ]
-        out = _augment_xsec_pairs(
-            anchors, _StubWithoutCompPnt(), "wing-gid", _ctx(), "wing"
-        )
+        out = _augment_xsec_pairs(anchors, _StubWithoutCompPnt(), "wing-gid", _ctx(), "wing")
         assert out == anchors
 
     def test_comppnt01_raises_skips_that_u_only(self):
@@ -718,9 +709,7 @@ class TestCapAwareAugmentation:
             _xsec(airfoil="naca2213", xyz_le=(0.0, 4.0, 0.0), chord=1.2, t="segment"),
             _xsec(airfoil="naca2213", xyz_le=(0.0, 5.4, 0.0), chord=0.4, t=None),
         ]
-        _augment_xsec_pairs(
-            anchors, _capped_vsp(u_cap_start=0.85), "wing-gid", ctx, "main_wing"
-        )
+        _augment_xsec_pairs(anchors, _capped_vsp(u_cap_start=0.85), "wing-gid", ctx, "main_wing")
         # Look for a gh-758 cap-truncation warning specifically.
         cap_warnings = [w for w in ctx.warnings if w.severity == "info" and "gh-758" in w.reason]
         assert len(cap_warnings) == 1
@@ -799,9 +788,7 @@ class TestCapAwareAugmentation:
         )
         assert len(out) > 2  # the elliptical pair produced inserts
         for prev, curr in zip(out, out[1:], strict=False):
-            d = math.sqrt(
-                sum((a - b) ** 2 for a, b in zip(prev.xyz_le, curr.xyz_le, strict=True))
-            )
+            d = math.sqrt(sum((a - b) ** 2 for a, b in zip(prev.xyz_le, curr.xyz_le, strict=True)))
             assert d > 1e-6
 
     def test_dihedral_with_cap_does_not_kink_at_tip(self):
@@ -835,9 +822,7 @@ class TestCapAwareAugmentation:
             _xsec(airfoil="naca2213", xyz_le=(0.0, 0.0, 0.0), chord=2.0, twist=0.0, t="root"),
             _xsec(airfoil="naca2213", xyz_le=(0.0, 6.0, 0.6), chord=0.0, twist=0.0, t=None),
         ]
-        out = _augment_xsec_pairs(
-            anchors, _dihedral_capped_vsp(), "wing-gid", _ctx(), "wing"
-        )
+        out = _augment_xsec_pairs(anchors, _dihedral_capped_vsp(), "wing-gid", _ctx(), "wing")
         # No insert may carry the cap z-offset (0.5).
         for ins in out[1:-1]:
             assert ins.xyz_le[2] < 0.4, f"Cap Z leaked into a dihedral wing insert: {ins.xyz_le}"

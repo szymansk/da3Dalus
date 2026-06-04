@@ -114,9 +114,7 @@ def _build_section(
     )
 
 
-def _build_controls_for_wing(
-    wing: AsbWingSchema, wing_key: str = "w"
-) -> list[list[AvlControl]]:
+def _build_controls_for_wing(wing: AsbWingSchema, wing_key: str = "w") -> list[list[AvlControl]]:
     """Build per-section control lists replicating ASB's CONTROL duplication.
 
     For each xsec[i] with a control surface, the CONTROL command(s) are added to

@@ -52,8 +52,19 @@ _DEFAULT_MISSION_WEIGHTS: dict[str, dict[str, Any]] = {
 # Absolute Re grid for the low-Re backfill (13 log-spaced points).
 # Dense below 250k where the laminar-separation bubble governs; coarser above.
 _DEFAULT_LOW_RE_GRID: list[int] = [
-    40_000, 50_000, 60_000, 75_000, 90_000, 110_000, 130_000, 160_000,
-    200_000, 250_000, 350_000, 500_000, 750_000,
+    40_000,
+    50_000,
+    60_000,
+    75_000,
+    90_000,
+    110_000,
+    130_000,
+    160_000,
+    200_000,
+    250_000,
+    350_000,
+    500_000,
+    750_000,
 ]
 
 

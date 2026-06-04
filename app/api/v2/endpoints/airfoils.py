@@ -21,14 +21,26 @@ from fastapi import (
 )
 from pydantic import BaseModel, Field, PositiveFloat, model_validator
 
+from sqlalchemy.orm import Session
+
+from app.core.background_jobs import schedule_airfoil_low_re
 from app.core.exceptions import (
-    ServiceException,
-    NotFoundError,
-    ValidationError,
-    ValidationDomainError,
     ConflictError,
     InternalError,
+    NotFoundError,
+    ServiceException,
+    ValidationDomainError,
+    ValidationError,
 )
+from app.db.session import get_db
+from app.schemas.airfoil import (
+    AirfoilImportResult,
+    AirfoilRead,
+    AirfoilSummary,
+    SuitabilityResponse,
+)
+from app.services import airfoil_service
+from app.services.suitability_service import search_suitability
 from app.settings import Settings, get_settings
 
 matplotlib.use("Agg")
@@ -473,18 +485,6 @@ def _raise_http_from_domain(exc: ServiceException) -> None:
 
 # ── DB-backed airfoil endpoints (gh#335) ────────────────────────
 
-from sqlalchemy.orm import Session
-from app.core.background_jobs import schedule_airfoil_low_re
-from app.db.session import get_db
-from app.schemas.airfoil import (
-    AirfoilImportResult,
-    AirfoilRead,
-    AirfoilSummary,
-    SuitabilityResponse,
-)
-from app.services import airfoil_service
-from app.services.suitability_service import search_suitability
-
 
 @router.get(
     "/airfoils/db/suitability",
@@ -492,11 +492,19 @@ from app.services.suitability_service import search_suitability
     tags=["airfoils"],
     operation_id="get_airfoil_suitability",
     summary="Rank DB airfoils by low-Re suitability at the given chord/speed.",
+    response_model=SuitabilityResponse,
 )
 async def get_airfoil_suitability(
-    chord_m: Annotated[float, Query(description="Root chord in metres (used to compute Re).")],
-    speed_ms: Annotated[float, Query(description="Airspeed in m/s (used to compute Re).")],
+    chord_m: Annotated[
+        float,
+        Query(description="Root chord in metres (used to compute Re).", gt=0.0),
+    ],
+    speed_ms: Annotated[
+        float,
+        Query(description="Airspeed in m/s (used to compute Re).", gt=0.0),
+    ],
     db: Annotated[Session, Depends(get_db)],
+    settings: Annotated[Settings, Depends(get_settings)],
     aeroplane_id: Annotated[
         str | None,
         Query(
@@ -548,6 +556,7 @@ async def get_airfoil_suitability(
             target_cl_loiter=target_cl_loiter,
             tip_chord_m=tip_chord_m,
             limit=limit,
+            settings=settings,
         )
     except ServiceException as exc:
         _raise_http_from_domain(exc)

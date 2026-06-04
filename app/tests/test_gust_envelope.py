@@ -1026,9 +1026,7 @@ class TestExtractClAlphaFromLinearSweep:
         # gh-690: vectorised mock — exactly 3 valid CLs, the rest NaN.
         alphas_deg = np.arange(-2.0, 6.01, 1.0)
         alphas_rad = np.deg2rad(alphas_deg)
-        cl_values = np.concatenate(
-            [5.7 * alphas_rad[:3], np.full(len(alphas_rad) - 3, np.nan)]
-        )
+        cl_values = np.concatenate([5.7 * alphas_rad[:3], np.full(len(alphas_rad) - 3, np.nan)])
         vec_result = SimpleNamespace(CL=cl_values, CD=np.full_like(cl_values, 0.03))
 
         with patch("aerosandbox.AeroBuildup.run", lambda self_: vec_result):

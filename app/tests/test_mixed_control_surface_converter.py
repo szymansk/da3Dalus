@@ -23,11 +23,17 @@ def _wing_with_ted(ted: schemas.TrailingEdgeDeviceDetailSchema) -> schemas.AsbWi
         symmetric=True,
         x_secs=[
             schemas.WingXSecSchema(
-                xyz_le=[0.0, 0.0, 0.0], chord=0.2, twist=0.0, airfoil=_AF,
+                xyz_le=[0.0, 0.0, 0.0],
+                chord=0.2,
+                twist=0.0,
+                airfoil=_AF,
                 trailing_edge_device=ted,
             ),
             schemas.WingXSecSchema(
-                xyz_le=[0.0, 0.5, 0.0], chord=0.16, twist=0.0, airfoil=_AF,
+                xyz_le=[0.0, 0.5, 0.0],
+                chord=0.16,
+                twist=0.0,
+                airfoil=_AF,
             ),
         ],
     )
@@ -36,8 +42,11 @@ def _wing_with_ted(ted: schemas.TrailingEdgeDeviceDetailSchema) -> schemas.AsbWi
 class TestAsbDualAxis:
     def test_ruddervator_emits_two_control_surfaces(self):
         ted = schemas.TrailingEdgeDeviceDetailSchema(
-            role="ruddervator", rel_chord_root=0.7, deflection_deg=2.0,
-            mix_gain_primary=1.2, mix_gain_secondary=0.6,
+            role="ruddervator",
+            rel_chord_root=0.7,
+            deflection_deg=2.0,
+            mix_gain_primary=1.2,
+            mix_gain_secondary=0.6,
         )
         xsecs = _asb_wing_xsecs_from_schema(_wing_with_ted(ted), wing_key="vtail")
         cs = xsecs[0].control_surfaces
@@ -67,8 +76,10 @@ class TestAsbDualAxis:
 class TestAvlDualAxis:
     def test_ruddervator_two_control_lines_sgndup_signs(self):
         ted = schemas.TrailingEdgeDeviceDetailSchema(
-            role="ruddervator", rel_chord_root=0.7,
-            mix_gain_primary=1.2, mix_gain_secondary=0.6,
+            role="ruddervator",
+            rel_chord_root=0.7,
+            mix_gain_primary=1.2,
+            mix_gain_secondary=0.6,
         )
         per_section = _build_controls_for_wing(_wing_with_ted(ted), wing_key="vtail")
         # both sections of the single panel carry both axes

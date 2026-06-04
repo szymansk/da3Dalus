@@ -121,9 +121,7 @@ def turn_ops():
     session = SessionLocal()
     try:
         aeroplane = seed_smoke_conventional_ttail(session)
-        result = generate_default_set_for_aircraft(
-            session, aeroplane.uuid, replace_existing=True
-        )
+        result = generate_default_set_for_aircraft(session, aeroplane.uuid, replace_existing=True)
     finally:
         session.close()
 
@@ -268,8 +266,7 @@ def test_turn_is_coordinated_with_proturn_rudder(turn_ops):
     # The seeded conventional T-tail must expose a yaw control at all.
     has_yaw_key = any(_classify_control(k) == "yaw" for k in op.controls)
     assert has_yaw_key, (
-        "expected a yaw (rudder) control on the conventional T-tail; "
-        f"controls={op.controls}"
+        f"expected a yaw (rudder) control on the conventional T-tail; controls={op.controls}"
     )
     yaw_mag = _yaw_magnitude(op.controls)
     assert yaw_mag > 1e-3, (

@@ -277,17 +277,142 @@ class JobTracker:
     async def _run_airfoil_low_re_compute(self, airfoil_names: list[str]) -> None:
         """Execute the low-Re compute for the given airfoil names.
 
-        Defers the actual computation to avoid blocking the event loop.
-        In a server context this would call into the backfill service;
-        for now it logs and yields so tests can hook it cleanly.
+        Defers the CPU-bound NeuralFoil work to a worker thread via
+        ``asyncio.to_thread`` so the event loop stays responsive.
+
+        The actual DB work is handled by ``run_backfill`` from the backfill
+        script, scoped to only the supplied names (not the full library).
+
+        Any exception is logged but not re-raised — a failed background
+        recompute is non-fatal; the airfoil is still usable, just without
+        pre-computed low-Re polars.
         """
         await asyncio.sleep(0)  # yield to event loop (debounce-compatible)
         logger.info(
-            "airfoil_low_re_compute: processing %d airfoil(s): %s",
+            "airfoil_low_re_compute: starting for %d airfoil(s): %s",
             len(airfoil_names),
             airfoil_names,
         )
-        # TODO: wire into compute_airfoil_low_re when async backfill is implemented
+        try:
+            await asyncio.to_thread(self._run_backfill_for_names, airfoil_names)
+        except Exception:
+            logger.exception(
+                "airfoil_low_re_compute: background compute failed for %s",
+                airfoil_names,
+            )
+        else:
+            logger.info(
+                "airfoil_low_re_compute: completed for %d airfoil(s)",
+                len(airfoil_names),
+            )
+
+    @staticmethod
+    def _run_backfill_for_names(airfoil_names: list[str]) -> None:
+        """Run the backfill scoped to the specified airfoil names.
+
+        Executed inside a worker thread by ``_run_airfoil_low_re_compute``.
+        Imports are deferred to this method so the module-level singleton
+        (``job_tracker``) does not drag in DB / settings at import time.
+        """
+        from app.db.session import SessionLocal  # noqa: PLC0415
+
+        with SessionLocal() as session:
+            _backfill_names(session, airfoil_names)
+
+
+def _backfill_names(session, airfoil_names: list[str]) -> None:
+    """Run the low-Re compute for specific airfoil names in the DB.
+
+    Factored out of ``JobTracker._run_backfill_for_names`` to make it
+    testable without an async context.
+    """
+    import numpy as np  # noqa: PLC0415
+
+    from app.models.airfoil import AirfoilModel  # noqa: PLC0415
+    from app.models.airfoil_low_re import AirfoilGeometryModel, AirfoilLowRePolarModel  # noqa: PLC0415
+    from app.services.airfoil_low_re_service import (  # noqa: PLC0415
+        classify_family,
+        compute_airfoil_low_re,
+    )
+    from app.settings import get_settings  # noqa: PLC0415
+
+    settings = get_settings()
+    re_grid = settings.low_re_grid
+    model_size = settings.low_re_neuralfoil_model_size
+    n_crit = settings.low_re_n_crit
+    confidence_gate = settings.low_re_confidence_gate
+
+    airfoils = session.query(AirfoilModel).filter(AirfoilModel.name.in_(airfoil_names)).all()
+    for af in airfoils:
+        name = af.name
+        coords = af.coordinates
+        if not coords or len(coords) < 10:
+            logger.warning(
+                "_backfill_names: skipping '%s' — too few coordinates (%d < 10)",
+                name,
+                len(coords) if coords else 0,
+            )
+            continue
+
+        coords_arr = np.asarray(coords, dtype=float)
+
+        # Geometry classification
+        try:
+            family = classify_family(coords_arr)
+            from scripts.backfill_airfoil_low_re import _compute_geometry_stats  # noqa: PLC0415
+            from datetime import datetime, timezone  # noqa: PLC0415
+
+            max_thickness_pct, max_camber_pct, camber_at_te = _compute_geometry_stats(coords_arr)
+            geo = (
+                session.query(AirfoilGeometryModel)
+                .filter(AirfoilGeometryModel.airfoil_name == name)
+                .first()
+            )
+            if geo is None:
+                geo = AirfoilGeometryModel(airfoil_name=name)
+                session.add(geo)
+            geo.max_thickness_pct = max_thickness_pct
+            geo.max_camber_pct = max_camber_pct
+            geo.camber_at_te = camber_at_te
+            geo.family = family
+            geo.computed_at = datetime.now(timezone.utc)
+        except Exception:
+            logger.exception("_backfill_names: geometry failed for '%s'", name)
+
+        # Polar compute
+        try:
+            polar_results = compute_airfoil_low_re(
+                name,
+                coords_arr,
+                re_grid,
+                model_size=model_size,
+                n_crit=n_crit,
+                confidence_gate=confidence_gate,
+            )
+        except Exception:
+            logger.exception("_backfill_names: compute failed for '%s'", name)
+            polar_results = []
+
+        for row in polar_results:
+            re_val = float(row["reynolds"])
+            polar_row = (
+                session.query(AirfoilLowRePolarModel)
+                .filter(
+                    AirfoilLowRePolarModel.airfoil_name == name,
+                    AirfoilLowRePolarModel.reynolds == re_val,
+                )
+                .first()
+            )
+            if polar_row is None:
+                polar_row = AirfoilLowRePolarModel(airfoil_name=name, reynolds=re_val)
+                session.add(polar_row)
+            for field_name, value in row.items():
+                if field_name != "reynolds" and hasattr(polar_row, field_name):
+                    setattr(polar_row, field_name, value)
+
+        logger.info("_backfill_names: '%s' done (%d polar points)", name, len(polar_results))
+
+    session.commit()
 
 
 # Module-level singleton

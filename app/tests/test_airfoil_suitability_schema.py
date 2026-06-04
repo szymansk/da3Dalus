@@ -1,4 +1,5 @@
 """Tests for the frozen Pydantic schemas for airfoil suitability (Task 3, gh-821)."""
+
 from __future__ import annotations
 
 import pytest
@@ -140,7 +141,12 @@ def test_suitability_caveat_required_fields():
 
 
 def test_suitability_response_shape():
-    from app.schemas.airfoil import SuitabilityResponse, SuitabilityQuery, SuitabilityCaveat, SuitabilityItem
+    from app.schemas.airfoil import (
+        SuitabilityResponse,
+        SuitabilityQuery,
+        SuitabilityCaveat,
+        SuitabilityItem,
+    )
 
     resp = SuitabilityResponse(
         query=SuitabilityQuery(

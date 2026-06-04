@@ -41,9 +41,7 @@ def test_persisted_turn_rates_match_kinematics(client_and_db, bank):
     session = SessionLocal()
     try:
         aeroplane = seed_smoke_conventional_ttail(session)
-        op = add_turn_operating_point(
-            session, aeroplane.uuid, AddTurnRequest(bank_angle_deg=bank)
-        )
+        op = add_turn_operating_point(session, aeroplane.uuid, AddTurnRequest(bank_angle_deg=bank))
         op_id = op.id
         velocity = op.velocity
         name = op.name
@@ -69,9 +67,9 @@ def test_persisted_turn_rates_match_kinematics(client_and_db, bank):
 
     # 3) Conservation identity: the body-rate vector magnitude equals the heading rate.
     #    sqrt(q^2 + r^2) == psi_dot (since p == 0 here).
-    assert math.isclose(
-        math.hypot(q, r), tk.psi_dot, rel_tol=1e-4, abs_tol=1e-4
-    ), "sqrt(q^2 + r^2) must equal psi_dot for a coordinated turn"
+    assert math.isclose(math.hypot(q, r), tk.psi_dot, rel_tol=1e-4, abs_tol=1e-4), (
+        "sqrt(q^2 + r^2) must equal psi_dot for a coordinated turn"
+    )
 
     # 4) The independent kinematic definitions hold at this velocity.
     phi = math.radians(bank)
@@ -86,11 +84,7 @@ def test_persisted_turn_rates_match_kinematics(client_and_db, bank):
     assert name == f"turn_{round(bank)}"
     session2 = SessionLocal()
     try:
-        reloaded = (
-            session2.query(OperatingPointModel)
-            .filter(OperatingPointModel.id == op_id)
-            .one()
-        )
+        reloaded = session2.query(OperatingPointModel).filter(OperatingPointModel.id == op_id).one()
         assert reloaded.name == f"turn_{round(bank)}"
         # The reloaded-from-DB rates still match the kinematics: persistence is lossless.
         assert reloaded.r == round(tk.r, 6)

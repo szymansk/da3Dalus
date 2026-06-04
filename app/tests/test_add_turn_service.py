@@ -109,7 +109,9 @@ def test_add_turn_persists_trimmed_point_and_flags_substall(client_and_db, monke
     from app.schemas.aeroanalysisschema import OperatingPointStatus
     from app.tests.conftest import seed_smoke_conventional_ttail
 
-    _patch_solver(monkeypatch, point=_stub_point(velocity=5.0))  # 5 m/s @60deg => below V_stall*sqrt(2)
+    _patch_solver(
+        monkeypatch, point=_stub_point(velocity=5.0)
+    )  # 5 m/s @60deg => below V_stall*sqrt(2)
     _client, SessionLocal = client_and_db
     session = SessionLocal()
     try:
@@ -122,7 +124,11 @@ def test_add_turn_persists_trimmed_point_and_flags_substall(client_and_db, monke
         assert op.aircraft_id == aeroplane.id
         assert op.config == "clean"
         assert op.velocity == 5.0
-        assert op.controls == {"[elevator]Elevator": 1.5, "[aileron]Aileron": 0.1, "[rudder]Rudder": 0.02}
+        assert op.controls == {
+            "[elevator]Elevator": 1.5,
+            "[aileron]Aileron": 0.1,
+            "[rudder]Rudder": 0.02,
+        }
         # feasibility guard ran inside the service:
         assert op.status == OperatingPointStatus.LIMIT_REACHED.value
         assert any("STALL_IN_TURN" in w for w in op.warnings)
@@ -168,9 +174,7 @@ def test_add_turn_creates_op(client_and_db):
     session = SessionLocal()
     try:
         aeroplane = seed_smoke_conventional_ttail(session)
-        op = add_turn_operating_point(
-            session, aeroplane.uuid, AddTurnRequest(bank_angle_deg=30.0)
-        )
+        op = add_turn_operating_point(session, aeroplane.uuid, AddTurnRequest(bank_angle_deg=30.0))
         session.flush()
         assert op.name == "turn_30"
         assert op.r is not None and abs(op.r) > 0.0

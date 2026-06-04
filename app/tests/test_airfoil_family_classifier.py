@@ -2,6 +2,7 @@
 
 Uses hand-built minimal coordinate arrays to test each family type.
 """
+
 from __future__ import annotations
 
 import numpy as np
@@ -42,7 +43,7 @@ def _make_cambered():
     camber = np.where(
         x <= p,
         (m / p**2) * (2 * p * x - x**2),
-        (m / (1 - p)**2) * ((1 - 2 * p) + 2 * p * x - x**2),
+        (m / (1 - p) ** 2) * ((1 - 2 * p) + 2 * p * x - x**2),
     )
     t = 0.12 * (0.2969 * np.sqrt(x) - 0.126 * x - 0.3516 * x**2 + 0.2843 * x**3 - 0.1015 * x**4)
     upper = np.column_stack([x, camber + t])
@@ -71,13 +72,16 @@ def _make_semi_symmetric():
     return np.vstack([upper[::-1], lower[1:]])
 
 
-@pytest.mark.parametrize("coords_fn,expected", [
-    (_make_symmetric_naca0012, "symmetric"),
-    (_make_flat_bottom, "flat_bottom"),
-    (_make_cambered, "cambered"),
-    (_make_reflexed, "reflexed"),
-    (_make_semi_symmetric, "semi_symmetric"),
-])
+@pytest.mark.parametrize(
+    "coords_fn,expected",
+    [
+        (_make_symmetric_naca0012, "symmetric"),
+        (_make_flat_bottom, "flat_bottom"),
+        (_make_cambered, "cambered"),
+        (_make_reflexed, "reflexed"),
+        (_make_semi_symmetric, "semi_symmetric"),
+    ],
+)
 def test_classify_family(coords_fn, expected):
     from app.services.airfoil_low_re_service import classify_family
 
@@ -92,7 +96,12 @@ def test_classify_family_output_always_valid_literal():
     """Verify every output is in the frozen literal set."""
     from app.services.airfoil_low_re_service import classify_family
 
-    for coords_fn in [_make_symmetric_naca0012, _make_flat_bottom, _make_cambered,
-                      _make_reflexed, _make_semi_symmetric]:
+    for coords_fn in [
+        _make_symmetric_naca0012,
+        _make_flat_bottom,
+        _make_cambered,
+        _make_reflexed,
+        _make_semi_symmetric,
+    ]:
         result = classify_family(coords_fn())
         assert result in VALID_FAMILIES, f"classify_family returned invalid literal: {result!r}"

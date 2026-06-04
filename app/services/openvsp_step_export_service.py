@@ -98,12 +98,14 @@ def _set_step_export_length_unit_metres(vsp: ModuleType) -> None:
             vsp.Update()
             logger.debug(
                 "Set STEPSettings.LenUnit %g → %g (LEN_M) before STEP export.",
-                current, float(vsp.LEN_M),
+                current,
+                float(vsp.LEN_M),
             )
     except Exception as exc:  # noqa: BLE001 — defensive, never abort
         logger.warning(
             "Could not set STEPSettings.LenUnit to LEN_M (%s) — falling back to "
-            "VSP default (typically FOOT).", exc,
+            "VSP default (typically FOOT).",
+            exc,
         )
 
 
@@ -150,7 +152,8 @@ def export_geom_step(
         if not target.exists() or target.stat().st_size == 0:
             logger.warning(
                 "STEP export for geom %r produced no file at %s",
-                geom_name, target,
+                geom_name,
+                target,
             )
             return None
 
@@ -159,14 +162,15 @@ def export_geom_step(
     except Exception as exc:  # noqa: BLE001 — defensive, never abort import
         logger.warning(
             "STEP export failed for geom %r (gid=%s): %s",
-            geom_name, gid, exc, exc_info=True,
+            geom_name,
+            gid,
+            exc,
+            exc_info=True,
         )
         return None
 
 
-def scale_geom_step(
-    rel_step_path: str, factor: float, aeroplane_uuid: str
-) -> Optional[str]:
+def scale_geom_step(rel_step_path: str, factor: float, aeroplane_uuid: str) -> Optional[str]:
     """Scale a stored STEP file uniformly by ``factor`` about the origin,
     in place, and return its (unchanged) relative path (gh-769).
 
@@ -206,8 +210,7 @@ def scale_geom_step(
         trsf = gp_Trsf()
         trsf.SetScale(gp_Pnt(0.0, 0.0, 0.0), float(factor))
         scaled = [
-            cq.Shape.cast(BRepBuilderAPI_Transform(s.wrapped, trsf, True).Shape())
-            for s in shapes
+            cq.Shape.cast(BRepBuilderAPI_Transform(s.wrapped, trsf, True).Shape()) for s in shapes
         ]
         # ``exporters.export`` accepts a Shape or an iterable of Shapes.
         out = scaled[0] if len(scaled) == 1 else scaled
@@ -216,7 +219,9 @@ def scale_geom_step(
     except Exception as exc:  # noqa: BLE001 — best effort, never abort import
         logger.warning(
             "Failed to scale STEP %r by %g (%s) — keeping unscaled.",
-            rel_step_path, factor, exc,
+            rel_step_path,
+            factor,
+            exc,
         )
         return None
 
@@ -236,5 +241,6 @@ def cleanup_aeroplane_step_files(aeroplane_uuid: str) -> None:
     except OSError as exc:
         logger.warning(
             "Failed to remove STEP storage for aeroplane %s: %s",
-            aeroplane_uuid, exc,
+            aeroplane_uuid,
+            exc,
         )
