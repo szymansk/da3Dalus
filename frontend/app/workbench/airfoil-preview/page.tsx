@@ -10,7 +10,7 @@ import { useAirfoilSuitability } from "@/hooks/useAirfoilSuitability";
 import { AirfoilPreviewViewerPanel } from "@/components/workbench/AirfoilPreviewViewerPanel";
 import { AirfoilPreviewConfigPanel } from "@/components/workbench/AirfoilPreviewConfigPanel";
 
-function airfoilShortName(raw: string): string {
+export function airfoilShortName(raw: string): string {
   return (raw.split("/").pop() ?? raw).replace(/\.dat$/i, "");
 }
 

@@ -136,6 +136,38 @@ describe("useAirfoilSuitability — query string construction", () => {
     const url = new URL(capturedKey!, "http://localhost");
     expect(url.searchParams.has("aeroplane_id")).toBe(false);
   });
+
+  it("appends limit when provided", () => {
+    renderHook(() =>
+      useAirfoilSuitability({ chord_m: 0.2, speed_ms: 14, limit: 20 }),
+    );
+    const url = new URL(capturedKey!, "http://localhost");
+    expect(url.searchParams.get("limit")).toBe("20");
+  });
+
+  it("does NOT append limit when not provided", () => {
+    renderHook(() =>
+      useAirfoilSuitability({ chord_m: 0.2, speed_ms: 14 }),
+    );
+    const url = new URL(capturedKey!, "http://localhost");
+    expect(url.searchParams.has("limit")).toBe(false);
+  });
+
+  it("appends tip_chord_m when provided", () => {
+    renderHook(() =>
+      useAirfoilSuitability({ chord_m: 0.2, speed_ms: 14, tip_chord_m: 0.15 }),
+    );
+    const url = new URL(capturedKey!, "http://localhost");
+    expect(url.searchParams.get("tip_chord_m")).toBe("0.15");
+  });
+
+  it("does NOT append tip_chord_m when not provided", () => {
+    renderHook(() =>
+      useAirfoilSuitability({ chord_m: 0.2, speed_ms: 14 }),
+    );
+    const url = new URL(capturedKey!, "http://localhost");
+    expect(url.searchParams.has("tip_chord_m")).toBe(false);
+  });
 });
 
 // ── Type-level tests for ActiveLens and RankingLens (gh-822) ────
