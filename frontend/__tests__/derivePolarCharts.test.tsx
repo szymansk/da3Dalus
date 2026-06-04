@@ -8,14 +8,48 @@
  *
  * These tests cover the null-safe extraction helpers.
  */
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi } from "vitest";
+import { render, screen } from "@testing-library/react";
+import React from "react";
 
 import {
   finiteArgMax,
   safeToFixed,
   derivePolarCharts,
+  polarHasFiniteData,
 } from "@/components/workbench/AnalysisViewerPanel";
 import type { AnalysisResult } from "@/hooks/useAnalysis";
+
+vi.mock("lucide-react", () => {
+  const icon = (props: Record<string, unknown>) => React.createElement("span", props);
+  return {
+    Maximize2: icon,
+    Minimize2: icon,
+    Settings: icon,
+    Wind: icon,
+    Ruler: icon,
+    Target: icon,
+    Navigation: icon,
+    Gauge: icon,
+    AlertTriangle: icon,
+    SlidersHorizontal: icon,
+    Activity: icon,
+    Loader2: icon,
+    Plane: icon,
+    TrendingUp: icon,
+    Zap: icon,
+    RefreshCw: icon,
+    Square: icon,
+    ArrowLeftRight: icon,
+    MapPin: icon,
+  };
+});
+vi.mock("@/hooks/useComputationContext", () => ({
+  useComputationContext: () => ({ data: null, isLoading: false }),
+}));
+vi.mock("@/hooks/useDesignAssumptions", () => ({
+  useDesignAssumptions: () => ({ data: null, isLoading: false }),
+}));
 
 describe("finiteArgMax", () => {
   it("returns the index of the largest finite value", () => {
@@ -51,15 +85,15 @@ describe("safeToFixed", () => {
   });
 });
 
-describe("derivePolarCharts", () => {
-  const base = (over: Partial<AnalysisResult>): AnalysisResult => ({
-    CL: [],
-    CD: [],
-    Cm: [],
-    alpha: [],
-    ...over,
-  });
+const base = (over: Partial<AnalysisResult>): AnalysisResult => ({
+  CL: [],
+  CD: [],
+  Cm: [],
+  alpha: [],
+  ...over,
+});
 
+describe("derivePolarCharts", () => {
   it("returns null when there is no data", () => {
     expect(derivePolarCharts(null)).toBeNull();
     expect(derivePolarCharts(base({ CL: [] }))).toBeNull();
@@ -104,5 +138,55 @@ describe("derivePolarCharts", () => {
     );
     expect(charts!.clMax).toBe(0.9);
     expect(charts!.alphaClMax).toBe(6);
+  });
+});
+
+describe("polarHasFiniteData", () => {
+  it("is false when every coefficient is null", () => {
+    const charts = derivePolarCharts(
+      base({ CL: [null, null], CD: [null, null], Cm: [], alpha: [0, 5] }),
+    );
+    expect(polarHasFiniteData(charts!)).toBe(false);
+  });
+
+  it("is true for a normal sweep", () => {
+    const charts = derivePolarCharts(
+      base({ CL: [0.1, 0.8], CD: [0.01, 0.04], Cm: [0, -0.1], alpha: [0, 5] }),
+    );
+    expect(polarHasFiniteData(charts!)).toBe(true);
+  });
+
+  it("is true when only some series have finite values", () => {
+    const charts = derivePolarCharts(
+      base({ CL: [null, null], CD: [0.02, 0.03], Cm: [], alpha: [0, 5] }),
+    );
+    expect(polarHasFiniteData(charts!)).toBe(true);
+  });
+});
+
+describe("Polar tab empty states", () => {
+  const renderPolar = async (result: AnalysisResult | null) => {
+    const { AnalysisViewerPanel } = await import("@/components/workbench/AnalysisViewerPanel");
+    render(
+      <AnalysisViewerPanel
+        result={result}
+        activeTab="Polar"
+        onTabChange={() => {}}
+        hasWings
+        wingXSecs={null}
+      />,
+    );
+  };
+
+  it("shows a 'no valid results' notice for an all-null sweep instead of blank charts", async () => {
+    await renderPolar({ CL: [null, null], CD: [null, null], Cm: [], alpha: [0, 5] });
+    expect(screen.getByText(/no valid results/i)).toBeInTheDocument();
+    expect(screen.queryByText(/run an analysis/i)).not.toBeInTheDocument();
+  });
+
+  it("shows the run-analysis prompt when there is no result yet", async () => {
+    await renderPolar(null);
+    expect(screen.getByText(/run an analysis/i)).toBeInTheDocument();
+    expect(screen.queryByText(/no valid results/i)).not.toBeInTheDocument();
   });
 });
