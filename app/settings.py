@@ -47,6 +47,12 @@ _DEFAULT_MISSION_WEIGHTS: dict[str, dict[str, Any]] = {
         "cl_max_weight": 0.5,
         "preferred_families": ["reflexed", "symmetric"],
     },
+    "slope_soarer": {
+        "thickness_min_pct": 8.0,
+        "thickness_max_pct": 12.0,
+        "cl_max_weight": 0.45,
+        "preferred_families": ["semi_symmetric", "cambered"],
+    },
 }
 
 # Absolute Re grid for the low-Re backfill (13 log-spaced points).
@@ -99,6 +105,13 @@ class Settings(BaseSettings):
     # CL_max margin (cl_max − cl_target) at which the high-CL Match component
     # reaches 1.0.  Below 0 → score 0 (stall risk).  (gh-825 glide-point fix)
     low_re_score_cl_max_safety_band: float = 0.30
+    # Tip-Re significance: absolute floor below which tip Re is flagged regardless
+    # of root Re.  Re_tip < this value → tip_re_flag = True.  (gh-825 item 2)
+    low_re_tip_re_abs_floor: float = 80_000.0
+    # Tip-Re significance: relative drop threshold.  If (Re_root − Re_tip) exceeds
+    # this value the tip is in a meaningfully different aerodynamic regime and
+    # tip_re_flag = True.  (gh-825 item 2)
+    low_re_tip_re_rel_drop: float = 50_000.0
     # Mission-weight coefficient table keyed by mission preset name.
     low_re_mission_weights: dict[str, dict[str, Any]] = Field(
         default_factory=lambda: dict(_DEFAULT_MISSION_WEIGHTS)

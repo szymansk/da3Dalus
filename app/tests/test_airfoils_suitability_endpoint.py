@@ -216,3 +216,78 @@ def test_endpoint_aeroplane_id_forwarded(client_no_svc):
     assert resp.status_code == 200
     call_kwargs = mock_svc.call_args[1]
     assert call_kwargs.get("aeroplane_id") == ap_uuid
+
+
+# ---------------------------------------------------------------------------
+# ITEM 5-BE (gh-825): `include` query param — endpoint-level tests
+# ---------------------------------------------------------------------------
+
+
+def test_endpoint_include_param_parsed_and_forwarded(client_no_svc):
+    """include=s1223,ag35 is parsed and forwarded as list[str] to the service."""
+    fake_resp = _make_fake_response()
+    with patch(
+        "app.api.v2.endpoints.airfoils.search_suitability", return_value=fake_resp
+    ) as mock_svc:
+        resp = client_no_svc.get(
+            "/airfoils/db/suitability",
+            params={
+                "chord_m": 0.15,
+                "speed_ms": 15.0,
+                "include": "s1223,ag35",
+            },
+        )
+    assert resp.status_code == 200
+    call_kwargs = mock_svc.call_args[1]
+    include_param = call_kwargs.get("include")
+    assert include_param is not None, "include must be forwarded to service"
+    assert isinstance(include_param, list), (
+        f"include must be parsed to list, got {type(include_param)}"
+    )
+    assert sorted(include_param) == sorted(["s1223", "ag35"]), (
+        f"include must contain ['s1223', 'ag35'], got {include_param}"
+    )
+
+
+def test_endpoint_include_param_absent_gives_none(client_no_svc):
+    """Old clients (no include param) must get include=None → identical behaviour."""
+    fake_resp = _make_fake_response()
+    with patch(
+        "app.api.v2.endpoints.airfoils.search_suitability", return_value=fake_resp
+    ) as mock_svc:
+        resp = client_no_svc.get(
+            "/airfoils/db/suitability",
+            params={"chord_m": 0.15, "speed_ms": 15.0},
+        )
+    assert resp.status_code == 200
+    call_kwargs = mock_svc.call_args[1]
+    # include should either be absent or None — either way, no include list
+    include_param = call_kwargs.get("include")
+    assert include_param is None, (
+        f"Old clients (no include) must get include=None; got {include_param}"
+    )
+
+
+def test_endpoint_include_whitespace_stripped(client_no_svc):
+    """include values are stripped of whitespace (e.g. 's1223 , ag35')."""
+    fake_resp = _make_fake_response()
+    with patch(
+        "app.api.v2.endpoints.airfoils.search_suitability", return_value=fake_resp
+    ) as mock_svc:
+        resp = client_no_svc.get(
+            "/airfoils/db/suitability",
+            params={
+                "chord_m": 0.15,
+                "speed_ms": 15.0,
+                "include": " s1223 , ag35 , ",
+            },
+        )
+    assert resp.status_code == 200
+    call_kwargs = mock_svc.call_args[1]
+    include_param = call_kwargs.get("include")
+    # Empty strings after split+strip must be dropped
+    assert "" not in (include_param or []), (
+        f"Empty strings must be dropped from include: {include_param}"
+    )
+    assert "s1223" in (include_param or []), "s1223 must be present after strip"
+    assert "ag35" in (include_param or []), "ag35 must be present after strip"

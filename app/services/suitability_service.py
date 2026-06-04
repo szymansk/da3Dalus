@@ -13,6 +13,16 @@ Three lenses (ranked desc by active_lens):
 active_lens priority: mission (if resolved) > target_cl_cruise (if resolved) > re_agnostic.
 active_lens is NEVER a glide point (target_cl_best_glide / target_cl_min_sink).
 
+## Additive `include` parameter (gh-825 item 5)
+search_suitability accepts an optional ``include: Optional[list[str]]`` kwarg.
+Any airfoil name in ``include`` that genuinely has low-Re polar rows is ALWAYS
+scored and returned, even if it falls outside the top-``limit`` ranked block.
+Airfoils with NO polar rows are NOT fabricated — they are simply absent.
+Names already in the top-N are NOT duplicated.
+Ordering: top-N ranked block first (confidence-aware sort), then any included
+extras that were dropped by the limit (appended in order of `include`).
+Old clients omitting `include` get identical behaviour to before (include=None).
+
 ## Documented assumptions (gh-825)
 - Re stays LOCAL (per xsec chord).
 - Section CL ≈ whole-wing CL under the elliptical, untwisted ideal (top-down design target).
@@ -87,7 +97,7 @@ _MISSION_TYPE_MAP = {
     "sailplane": "glider",
     "motor_glider": "glider",
     "motorglider": "glider",  # legacy spelling without underscore
-    "slope_soarer": "glider",  # slope soarer is aerobatic-capable but glider in airfoil needs
+    "slope_soarer": "slope_soarer",  # gh-825 item 12: own weighting (thinner t/c, semi_sym/cambered)
     "thermal": "glider",  # forward-compat if "thermal" ever becomes a preset id
     "soarer": "glider",  # forward-compat
     # Wing-racer / FPV → sport (speed + moderate maneuver)
@@ -176,6 +186,7 @@ def search_suitability(
     target_cl_min_sink: Optional[float] = None,
     tip_chord_m: Optional[float] = None,
     limit: int = 50,
+    include: Optional[list[str]] = None,
     settings: Optional[Settings] = None,
 ) -> SuitabilityResponse:
     """Search and rank airfoils by suitability at the given chord/speed.
@@ -195,6 +206,13 @@ def search_suitability(
                            (renamed from target_cl_loiter).
     tip_chord_m : float    Optional tip chord for tip Re flag only.
     limit : int            Maximum results to return.
+    include : list[str]    Optional list of airfoil names to ALWAYS score and return,
+                           even if they fall outside the top-``limit`` ranked block.
+                           - Only names with genuine low-Re polar rows are returned;
+                             names with no data are NOT fabricated.
+                           - Names already in the top-N are NOT duplicated.
+                           - Included extras are appended AFTER the top-N block.
+                           - None (default) → identical behaviour to before (no-op).
     settings : Settings    Application settings.  When omitted the module-level
                            lru-cached ``get_settings()`` is used — avoids
                            constructing a fresh ``Settings()`` per request.
@@ -218,10 +236,20 @@ def search_suitability(
     re_clamped_root, re_clamped = _clamp_re_to_grid(re_root, re_grid)
 
     # --- Tip Re flag ---
+    # (gh-825 item 2) Flag is True if:
+    #   - tip_Re < settings.low_re_tip_re_abs_floor  (absolute low-Re regime)
+    #   OR
+    #   - (re_root - re_tip) > settings.low_re_tip_re_rel_drop
+    #     (tip Re is in a meaningfully different aerodynamic regime than root)
+    # Both comparisons use the RAW (un-clamped) Re values from _compute_re.
+    # Boundary: strictly less-than / strictly greater-than (edges are NOT flagged).
     tip_re_flag_all = False
     if tip_chord_m is not None:
         re_tip = _compute_re(tip_chord_m, speed_ms)
-        tip_re_flag_all = re_tip < re_root
+        tip_re_flag_all = (
+            re_tip < settings.low_re_tip_re_abs_floor
+            or (re_root - re_tip) > settings.low_re_tip_re_rel_drop
+        )
 
     # --- Resolve aeroplane context ---
     effective_mission_type: Optional[str] = mission_type
@@ -456,8 +484,40 @@ def search_suitability(
         active_lens = "re_agnostic"
         items.sort(key=lambda i: (_conf_tier(i), -i.re_agnostic))
 
+    # Save full scored+sorted list before applying limit (needed for include extras)
+    all_items = list(items)
+
     # Apply limit
     items = items[:limit]
+
+    # --- Additive `include` extras (gh-825 item 5) ---
+    # Append items whose airfoil_name is in `include` but were dropped by the limit.
+    # Only genuine entries (with scored polar rows, re_agnostic > 0 or has been scored)
+    # are appended; names with no geometry/polar data are not fabricated.
+    # De-duplication: skip names already present in the top-N block.
+    if include:
+        # Build a lookup from the full (pre-limit) scored set, keyed by lowercase name
+        all_items_by_name: dict[str, SuitabilityItem] = {
+            item.airfoil_name.lower(): item for item in all_items
+        }
+        present_names = {item.airfoil_name.lower() for item in items}
+        for name_raw in include:
+            name_lower = name_raw.strip().lower()
+            if not name_lower:
+                continue
+            if name_lower in present_names:
+                continue  # already in top-N — no duplicate
+            candidate = all_items_by_name.get(name_lower)
+            if candidate is None:
+                continue  # no geometry row at all — not fabricated
+            # Only include if the airfoil genuinely has polar rows
+            # (polars_by_name is populated only for airfoils with rows)
+            # Match against geo_by_name keys (case-insensitive)
+            has_polars = any(n.lower() == name_lower for n in polars_by_name)
+            if not has_polars:
+                continue  # no polar data — not fabricated
+            items.append(candidate)
+            present_names.add(name_lower)
 
     # --- Build response ---
     caveat_text = (
