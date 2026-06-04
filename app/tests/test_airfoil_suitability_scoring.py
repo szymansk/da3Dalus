@@ -278,9 +278,7 @@ class TestTargetClScoreGlidePoints:
         import math
         from app.services.airfoil_low_re_service import score_target_cl, best_ld_cl
 
-        cl_star = best_ld_cl(
-            _GLIDER_POLAR["cd0"], _GLIDER_POLAR["k"], _GLIDER_POLAR["cl0"]
-        )
+        cl_star = best_ld_cl(_GLIDER_POLAR["cd0"], _GLIDER_POLAR["k"], _GLIDER_POLAR["cl0"])
         cl_min_sink = math.sqrt(3) * cl_star
 
         # Sanity: min-sink CL must be above cl_star for this to test the right path
@@ -306,9 +304,7 @@ class TestTargetClScoreGlidePoints:
         import math
         from app.services.airfoil_low_re_service import score_target_cl, best_ld_cl
 
-        cl_star = best_ld_cl(
-            _GLIDER_POLAR["cd0"], _GLIDER_POLAR["k"], _GLIDER_POLAR["cl0"]
-        )
+        cl_star = best_ld_cl(_GLIDER_POLAR["cd0"], _GLIDER_POLAR["k"], _GLIDER_POLAR["cl0"])
         cl_min_sink = math.sqrt(3) * cl_star
 
         settings = self._settings()
@@ -326,9 +322,15 @@ class TestTargetClScoreGlidePoints:
         polar_stall = dict(_GLIDER_POLAR)
         polar_stall["cl_max"] = cl_min_sink - 0.05  # stall risk
 
-        score_good = score_target_cl(polar_good, cl_target=cl_min_sink, re_cd0_reference=re_ref, settings=settings)
-        score_poor = score_target_cl(polar_poor, cl_target=cl_min_sink, re_cd0_reference=re_ref, settings=settings)
-        score_stall = score_target_cl(polar_stall, cl_target=cl_min_sink, re_cd0_reference=re_ref, settings=settings)
+        score_good = score_target_cl(
+            polar_good, cl_target=cl_min_sink, re_cd0_reference=re_ref, settings=settings
+        )
+        score_poor = score_target_cl(
+            polar_poor, cl_target=cl_min_sink, re_cd0_reference=re_ref, settings=settings
+        )
+        score_stall = score_target_cl(
+            polar_stall, cl_target=cl_min_sink, re_cd0_reference=re_ref, settings=settings
+        )
 
         assert score_good is not None and score_poor is not None and score_stall is not None
         assert score_good > score_poor, (
@@ -345,9 +347,7 @@ class TestTargetClScoreGlidePoints:
 
         settings = self._settings()
         re_ref = 0.009
-        cl_star = best_ld_cl(
-            _GLIDER_POLAR["cd0"], _GLIDER_POLAR["k"], _GLIDER_POLAR["cl0"]
-        )
+        cl_star = best_ld_cl(_GLIDER_POLAR["cd0"], _GLIDER_POLAR["k"], _GLIDER_POLAR["cl0"])
         delta = 0.01  # 0.01 CL units either side of the boundary
 
         score_just_below = score_target_cl(
