@@ -7,6 +7,21 @@ import type { AirfoilAnalysisResult } from "@/hooks/useAirfoilAnalysis";
 import type { SuitabilityItem } from "@/hooks/useAirfoilSuitability";
 import { interpolateY } from "@/hooks/useAirfoilGeometry";
 
+/** gh-839 ADDITIVE: a single operating point for alpha-diagram markers. */
+export interface OperatingPoint {
+  /** alpha in degrees — used as the x-coordinate on alpha-based charts */
+  alpha: number;
+  /** human-readable label for the legend */
+  label: string;
+}
+
+/** gh-839 ADDITIVE: operating points for the three design-speed lenses. */
+export interface OperatingPoints {
+  cruise?: OperatingPoint;
+  bestGlide?: OperatingPoint;
+  minSink?: OperatingPoint;
+}
+
 interface AirfoilPreviewViewerPanelProps {
   rootAirfoilName: string;
   tipAirfoilName: string | null;
@@ -27,12 +42,27 @@ interface AirfoilPreviewViewerPanelProps {
    * The arithmetic fallback (tipRe < rootRe) is only used when no suitability item is available.
    */
   tipSuitabilityItem?: SuitabilityItem;
+  /**
+   * gh-839 ADDITIVE: operating points for cruise/best-glide/min-sink.
+   * Each point maps a target CL to an alpha via the analysis CL-alpha curve.
+   * When provided, markers and a legend are added to the L/D and CL/CD charts.
+   */
+  operatingPoints?: OperatingPoints;
 }
 
 const COLOR_ROOT = "#FF8400";
 const COLOR_TIP = "#22D3EE";
 
 // ── SVG Line Chart (follows AnalysisViewerPanel pattern) ────────
+
+/** gh-839: a named marker on the chart (x, y in data coords) */
+interface ChartMarker {
+  x: number;
+  y: number;
+  color: string;
+  testId: string;
+  label?: string;
+}
 
 function LineChart({
   xData,
@@ -52,6 +82,8 @@ function LineChart({
   isMaximized,
   operatingX,
   operatingY,
+  markers,
+  showMarkersLegend,
 }: Readonly<{
   xData: (number | null)[];
   yData: (number | null)[];
@@ -72,6 +104,10 @@ function LineChart({
   operatingX?: number;
   /** gh-822: operating point marker y value (L/D at operating α) */
   operatingY?: number;
+  /** gh-839: additional named markers (CL_max, L/D_max, operating points) */
+  markers?: ChartMarker[];
+  /** gh-839: when true, render a compact legend for markers */
+  showMarkersLegend?: boolean;
 }>) {
   const W = 400;
   const H = 200;
@@ -305,7 +341,7 @@ function LineChart({
             />
           )}
 
-          {/* gh-822: Operating point marker */}
+          {/* gh-822: Operating point marker (legacy single-marker) */}
           {operatingX != null && operatingY != null && (
             <circle
               data-testid="operating-point-marker"
@@ -318,8 +354,50 @@ function LineChart({
               opacity="0.9"
             />
           )}
+
+          {/* gh-839: named markers (CL_max, L/D_max, operating points) */}
+          {markers?.map((m) => {
+            // Guard: only render when within the chart range
+            if (!Number.isFinite(m.x) || !Number.isFinite(m.y)) return null;
+            return (
+              <circle
+                key={m.testId}
+                data-testid={m.testId}
+                cx={sx(m.x)}
+                cy={sy(m.y)}
+                r="4"
+                fill={m.color}
+                stroke="white"
+                strokeWidth="1.5"
+                opacity="0.92"
+              />
+            );
+          })}
         </svg>
       </div>
+
+      {/* gh-839: markers legend */}
+      {showMarkersLegend && markers && markers.length > 0 && (
+        <div
+          data-testid="chart-markers-legend"
+          className="flex flex-wrap items-center gap-x-3 gap-y-0.5 pt-1"
+        >
+          {markers.map((m) =>
+            m.label ? (
+              <span
+                key={m.testId}
+                className="flex items-center gap-1 font-[family-name:var(--font-jetbrains-mono)] text-[8px] text-muted-foreground"
+              >
+                <span
+                  className="inline-block size-[5px] rounded-full"
+                  style={{ backgroundColor: m.color }}
+                />
+                {m.label}
+              </span>
+            ) : null,
+          )}
+        </div>
+      )}
     </div>
   );
 }
@@ -496,6 +574,96 @@ function AirfoilSvg({
 
 // ── Main Panel ──────────────────────────────────────────────────
 
+// ── Helpers ─────────────────────────────────────────────────────
+
+/** Marker colors (gh-839) */
+const COLOR_CLMAX = "#ef4444";
+const COLOR_LDMAX = "#22c55e";
+const COLOR_CRUISE = "#FF8400";
+const COLOR_BEST_GLIDE = "#38bdf8";
+const COLOR_MIN_SINK = "#a78bfa";
+
+/** Look up y-value at alpha x from two parallel arrays */
+function lookupYAtX(
+  xs: (number | null)[],
+  ys: (number | null)[],
+  targetX: number,
+): number | null {
+  if (xs.length === 0) return null;
+  let closestIdx = 0;
+  let closestDist = Math.abs((xs[0] ?? 0) - targetX);
+  for (let i = 1; i < xs.length; i++) {
+    const x = xs[i];
+    if (x == null) continue;
+    const d = Math.abs(x - targetX);
+    if (d < closestDist) {
+      closestDist = d;
+      closestIdx = i;
+    }
+  }
+  return ys[closestIdx] ?? null;
+}
+
+/** gh-839: build CL-alpha chart markers from analysis + optional operating points */
+function buildClChartMarkers(
+  result: AirfoilAnalysisResult,
+  pts?: OperatingPoints,
+): ChartMarker[] {
+  const markers: ChartMarker[] = [];
+  if (result.clMax != null && result.alphaAtClMax != null) {
+    markers.push({
+      x: result.alphaAtClMax,
+      y: result.clMax,
+      color: COLOR_CLMAX,
+      testId: "clmax-marker",
+      label: `C_L,max≈${result.clMax.toFixed(2)}`,
+    });
+  }
+  if (pts?.cruise != null) {
+    const y = lookupYAtX(result.alphaDeg, result.cl, pts.cruise.alpha);
+    if (y != null) markers.push({ x: pts.cruise.alpha, y, color: COLOR_CRUISE, testId: "op-marker-cruise", label: pts.cruise.label });
+  }
+  if (pts?.bestGlide != null) {
+    const y = lookupYAtX(result.alphaDeg, result.cl, pts.bestGlide.alpha);
+    if (y != null) markers.push({ x: pts.bestGlide.alpha, y, color: COLOR_BEST_GLIDE, testId: "op-marker-best-glide", label: pts.bestGlide.label });
+  }
+  if (pts?.minSink != null) {
+    const y = lookupYAtX(result.alphaDeg, result.cl, pts.minSink.alpha);
+    if (y != null) markers.push({ x: pts.minSink.alpha, y, color: COLOR_MIN_SINK, testId: "op-marker-min-sink", label: pts.minSink.label });
+  }
+  return markers;
+}
+
+/** gh-839: build L/D-alpha chart markers from analysis + optional operating points */
+function buildLdChartMarkers(
+  result: AirfoilAnalysisResult,
+  pts?: OperatingPoints,
+): ChartMarker[] {
+  const markers: ChartMarker[] = [];
+  if (result.ldMax != null && result.alphaAtLdMax != null) {
+    markers.push({
+      x: result.alphaAtLdMax,
+      y: result.ldMax,
+      color: COLOR_LDMAX,
+      testId: "ldmax-marker",
+      label: `L/D,max≈${result.ldMax.toFixed(1)}`,
+    });
+  }
+  if (pts?.cruise != null) {
+    const y = lookupYAtX(result.alphaDeg, result.clOverCd, pts.cruise.alpha);
+    if (y != null) markers.push({ x: pts.cruise.alpha, y, color: COLOR_CRUISE, testId: "op-marker-cruise", label: pts.cruise.label });
+  }
+  if (pts?.bestGlide != null) {
+    const y = lookupYAtX(result.alphaDeg, result.clOverCd, pts.bestGlide.alpha);
+    if (y != null) markers.push({ x: pts.bestGlide.alpha, y, color: COLOR_BEST_GLIDE, testId: "op-marker-best-glide", label: pts.bestGlide.label });
+  }
+  if (pts?.minSink != null) {
+    const y = lookupYAtX(result.alphaDeg, result.clOverCd, pts.minSink.alpha);
+    if (y != null) markers.push({ x: pts.minSink.alpha, y, color: COLOR_MIN_SINK, testId: "op-marker-min-sink", label: pts.minSink.label });
+  }
+  return markers;
+}
+
 export function AirfoilPreviewViewerPanel({
   rootAirfoilName,
   tipAirfoilName,
@@ -510,6 +678,7 @@ export function AirfoilPreviewViewerPanel({
   onMaChange,
   operatingAlphaDeg,
   tipSuitabilityItem,
+  operatingPoints,
 }: Readonly<AirfoilPreviewViewerPanelProps>) {
   const [maximizedChart, setMaximizedChart] = useState<string | null>(null);
 
@@ -675,6 +844,14 @@ export function AirfoilPreviewViewerPanel({
             return ld != null ? ld : undefined;
           })();
 
+          // gh-839: build named markers using extracted helpers \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
+          const clChartMarkers = buildClChartMarkers(rootAnalysisResult, operatingPoints);
+          const ldChartMarkers = buildLdChartMarkers(rootAnalysisResult, operatingPoints);
+          const hasAnyOperatingPoints =
+            operatingPoints?.cruise != null ||
+            operatingPoints?.bestGlide != null ||
+            operatingPoints?.minSink != null;
+
           const allCharts = [
             {
               id: "cl",
@@ -693,6 +870,7 @@ export function AirfoilPreviewViewerPanel({
               color2: COLOR_TIP,
               label: seriesLabel,
               label2: seriesLabel2,
+              markers: clChartMarkers.length > 0 ? clChartMarkers : undefined,
             },
             {
               id: "cd",
@@ -725,9 +903,12 @@ export function AirfoilPreviewViewerPanel({
               color2: COLOR_TIP,
               label: seriesLabel,
               label2: seriesLabel2,
-              // gh-822: operating point marker on L/D chart
+              // gh-822: operating point marker on L/D chart (legacy single marker)
               operatingX: operatingAlphaDeg,
               operatingY: operatingLdAtAlpha,
+              // gh-839: named markers + legend
+              markers: ldChartMarkers.length > 0 ? ldChartMarkers : undefined,
+              showMarkersLegend: hasAnyOperatingPoints && ldChartMarkers.length > 0,
             },
             {
               id: "polar",

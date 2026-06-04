@@ -6,6 +6,13 @@ import { AirfoilSelector } from "./AirfoilSelector";
 import { AirfoilSuitabilityCard, AirfoilSuitabilityNoData } from "./AirfoilSuitabilityCard";
 import type { SuitabilityItem, SuitabilityCaveat, TargetClProvenance } from "@/hooks/useAirfoilSuitability";
 
+/** gh-839 ADDITIVE: design speeds from aeroplane context for speed quick-set buttons */
+export interface SuitabilitySpeedContext {
+  v_cruise_mps: number | null;
+  v_md_mps: number | null;
+  v_min_sink_mps: number | null;
+}
+
 interface AirfoilPreviewConfigPanelProps {
   rootAirfoil: string;
   tipAirfoil: string;
@@ -66,6 +73,12 @@ interface AirfoilPreviewConfigPanelProps {
   targetClProvenance?: TargetClProvenance;
   /** gh-825 ADDITIVE: full caveat object from suitability response, for tip-Re CL_max warning */
   suitabilityCaveat?: SuitabilityCaveat;
+  /**
+   * gh-839 ADDITIVE: design speeds from aeroplane context.
+   * When provided, speed quick-set buttons (Cruise / Best-Glide / Min-Sink) appear
+   * next to the velocity input. A button is hidden when its speed is null.
+   */
+  suitabilitySpeedContext?: SuitabilitySpeedContext;
 }
 
 function ReadOnlyField({
@@ -179,6 +192,7 @@ export function AirfoilPreviewConfigPanel({
   onTipRankedModeToggle,
   targetClProvenance,
   suitabilityCaveat,
+  suitabilitySpeedContext,
 }: Readonly<AirfoilPreviewConfigPanelProps>) {
   const [showReInfo, setShowReInfo] = useState(false);
   const [velocityDraft, setVelocityDraft] = useState(String(velocity));
@@ -267,6 +281,37 @@ export function AirfoilPreviewConfigPanel({
           <span className="font-[family-name:var(--font-jetbrains-mono)] text-[10px] text-muted-foreground">
             m/s ({(velocity * 3.6).toFixed(1)} km/h)
           </span>
+          {/* gh-839: speed quick-set buttons */}
+          {suitabilitySpeedContext?.v_cruise_mps != null && (
+            <button
+              data-testid="speed-btn-cruise"
+              onClick={() => onVelocityChange(suitabilitySpeedContext.v_cruise_mps!)}
+              className="rounded-full border border-border px-2 py-0.5 font-[family-name:var(--font-jetbrains-mono)] text-[9px] text-muted-foreground hover:border-primary hover:text-primary"
+              title={`Set to cruise speed: ${suitabilitySpeedContext.v_cruise_mps} m/s`}
+            >
+              Cruise
+            </button>
+          )}
+          {suitabilitySpeedContext?.v_md_mps != null && (
+            <button
+              data-testid="speed-btn-best-glide"
+              onClick={() => onVelocityChange(suitabilitySpeedContext.v_md_mps!)}
+              className="rounded-full border border-border px-2 py-0.5 font-[family-name:var(--font-jetbrains-mono)] text-[9px] text-muted-foreground hover:border-primary hover:text-primary"
+              title={`Set to best-glide speed: ${suitabilitySpeedContext.v_md_mps} m/s`}
+            >
+              Best-Glide
+            </button>
+          )}
+          {suitabilitySpeedContext?.v_min_sink_mps != null && (
+            <button
+              data-testid="speed-btn-min-sink"
+              onClick={() => onVelocityChange(suitabilitySpeedContext.v_min_sink_mps!)}
+              className="rounded-full border border-border px-2 py-0.5 font-[family-name:var(--font-jetbrains-mono)] text-[9px] text-muted-foreground hover:border-primary hover:text-primary"
+              title={`Set to min-sink speed: ${suitabilitySpeedContext.v_min_sink_mps} m/s`}
+            >
+              Min-Sink
+            </button>
+          )}
           <span className="flex-1" />
           <button
             onClick={() => setShowReInfo((s) => !s)}
