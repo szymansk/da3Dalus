@@ -40,6 +40,7 @@ from app.schemas.airfoil import (
     SuitabilityResponse,
 )
 from app.services import airfoil_service
+from app.services.airfoil_tags import ALL_FAMILIES, ALL_ROLE_TAGS
 from app.services.suitability_service import search_suitability
 from app.settings import Settings, get_settings
 
@@ -559,6 +560,49 @@ async def get_airfoil_suitability(
     limit: Annotated[
         int, Query(description="Maximum number of results to return.", ge=1, le=200)
     ] = 50,
+    # gh-835 ADDITIVE filter params
+    family: Annotated[
+        str | None,
+        Query(
+            description=(
+                "gh-835: Comma-separated family filter. "
+                "Valid values: flat_bottom, semi_symmetric, symmetric, cambered, reflexed. "
+                "OR logic within this dimension. "
+                "Example: ?family=reflexed,cambered"
+            )
+        ),
+    ] = None,
+    tags: Annotated[
+        str | None,
+        Query(
+            description=(
+                "gh-835: Comma-separated role-tag filter. "
+                "Valid values: v_stabilizer, h_stabilizer, acro, winglet, low_re, high_re. "
+                "OR logic: any single matching tag is sufficient. "
+                "Example: ?tags=acro,winglet"
+            )
+        ),
+    ] = None,
+    thickness_min_pct: Annotated[
+        float | None,
+        Query(
+            description=(
+                "gh-835: Lower bound on max_thickness_pct (inclusive, % of chord). "
+                "Combined AND with other filter dimensions."
+            ),
+            ge=0.0,
+        ),
+    ] = None,
+    thickness_max_pct: Annotated[
+        float | None,
+        Query(
+            description=(
+                "gh-835: Upper bound on max_thickness_pct (inclusive, % of chord). "
+                "Combined AND with other filter dimensions."
+            ),
+            ge=0.0,
+        ),
+    ] = None,
 ) -> SuitabilityResponse:
     """Return airfoils ranked by low-Re suitability (gh-821, gh-825).
 
@@ -587,6 +631,24 @@ async def get_airfoil_suitability(
         parsed = [name for name in parsed if name]
         include_list = parsed if parsed else None
 
+    # gh-835: parse and validate filter params
+    def _parse_csv(raw: str | None, valid_set: frozenset[str], param_name: str) -> list[str] | None:
+        if raw is None:
+            return None
+        values = [v.strip().lower() for v in raw.split(",") if v.strip()]
+        if not values:
+            return None
+        invalid = [v for v in values if v not in valid_set]
+        if invalid:
+            raise HTTPException(
+                status_code=422,
+                detail=f"Invalid {param_name} value(s): {invalid}. Valid: {sorted(valid_set)}",
+            )
+        return values
+
+    filter_families_list = _parse_csv(family, ALL_FAMILIES, "family")
+    filter_tags_list = _parse_csv(tags, ALL_ROLE_TAGS, "tags")
+
     try:
         return search_suitability(
             db=db,
@@ -600,6 +662,10 @@ async def get_airfoil_suitability(
             tip_chord_m=tip_chord_m,
             include=include_list,
             limit=limit,
+            filter_families=filter_families_list,
+            filter_tags=filter_tags_list,
+            filter_thickness_min_pct=thickness_min_pct,
+            filter_thickness_max_pct=thickness_max_pct,
             settings=settings,
         )
     except ServiceException as exc:

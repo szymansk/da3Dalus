@@ -104,6 +104,9 @@ class SuitabilityItem(BaseModel):
           NOT normalised to [0, 1] — raw slope value in units of CL per degree.
       - cl_max_margin : cl_max − max(target CLs present). Negative means target CL
           exceeds section CL_max — a stall-risk flag.
+      - tags : gh-835 query-time role tags (e.g. ['acro', 'v_stabilizer']).
+          Computed at query time from geometry + polars — no DB column.
+          Possible values: v_stabilizer, h_stabilizer, acro, winglet, low_re, high_re.
     """
 
     airfoil_name: str
@@ -124,6 +127,15 @@ class SuitabilityItem(BaseModel):
     min_analysis_confidence: float = Field(..., ge=0.0, le=1.0)
     tip_re_flag: bool
     caveat: str
+    # gh-835 ADDITIVE: query-time role tags
+    tags: list[str] = Field(
+        default_factory=list,
+        description=(
+            "Query-time role tags (gh-835). "
+            "Possible values: v_stabilizer, h_stabilizer, acro, winglet, low_re, high_re. "
+            "Computed from geometry + polars at query time — no DB column."
+        ),
+    )
 
 
 class SuitabilityQuery(BaseModel):

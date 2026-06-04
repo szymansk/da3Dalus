@@ -4,7 +4,10 @@ import { useState, useEffect } from "react";
 import { Info, ArrowLeft, Save, Loader2, ChevronLeft, ChevronRight, Undo2 } from "lucide-react";
 import { AirfoilSelector } from "./AirfoilSelector";
 import { AirfoilSuitabilityCard, AirfoilSuitabilityNoData } from "./AirfoilSuitabilityCard";
+import { AirfoilSuitabilityFilterBar } from "./AirfoilSuitabilityFilterBar";
+import type { AirfoilSuitabilityFilters } from "./AirfoilSuitabilityFilterBar";
 import type { SuitabilityItem, SuitabilityCaveat, TargetClProvenance } from "@/hooks/useAirfoilSuitability";
+export type { AirfoilSuitabilityFilters };
 
 /** gh-839 ADDITIVE: design speeds from aeroplane context for speed quick-set buttons */
 export interface SuitabilitySpeedContext {
@@ -86,6 +89,16 @@ interface AirfoilPreviewConfigPanelProps {
    * without searching again.
    */
   usedAirfoilNames?: string[];
+  /**
+   * gh-835 ADDITIVE: current filter state for the suitability filter bar.
+   * Shown when at least one ranked mode is active (root or tip).
+   * When undefined, the filter bar is not rendered.
+   */
+  suitabilityFilters?: AirfoilSuitabilityFilters;
+  /**
+   * gh-835 ADDITIVE: callback when the filter bar state changes.
+   */
+  onSuitabilityFiltersChange?: (next: AirfoilSuitabilityFilters) => void;
 }
 
 function ReadOnlyField({
@@ -201,6 +214,8 @@ export function AirfoilPreviewConfigPanel({
   suitabilityCaveat,
   suitabilitySpeedContext,
   usedAirfoilNames,
+  suitabilityFilters,
+  onSuitabilityFiltersChange,
 }: Readonly<AirfoilPreviewConfigPanelProps>) {
   const [showReInfo, setShowReInfo] = useState(false);
   const [velocityDraft, setVelocityDraft] = useState(String(velocity));
@@ -342,6 +357,14 @@ export function AirfoilPreviewConfigPanel({
         {/* Divider */}
         <div className="border-t border-border" />
 
+        {/* gh-835: suitability filter bar (shown when ranked mode is active) */}
+        {suitabilityFilters != null && onSuitabilityFiltersChange != null && (
+          <AirfoilSuitabilityFilterBar
+            filters={suitabilityFilters}
+            onFiltersChange={onSuitabilityFiltersChange}
+          />
+        )}
+
         {/* root_airfoil */}
         <span className="font-[family-name:var(--font-jetbrains-mono)] text-[11px] text-primary">
           root_airfoil
@@ -367,6 +390,15 @@ export function AirfoilPreviewConfigPanel({
           chordMm={rootChordMm}
           color="#FF8400"
         />
+        {/* gh-835: empty filter state — shown when ranked mode is on + filter returns 0 results */}
+        {rootRankedMode && rootSortedNames != null && rootSortedNames.length === 0 && (
+          <div
+            data-testid="filter-empty-state-root"
+            className="rounded-xl border border-dashed border-border px-3 py-2 text-center font-[family-name:var(--font-jetbrains-mono)] text-[11px] text-muted-foreground"
+          >
+            Keine Profile passen zu den Filtern.
+          </div>
+        )}
         {/* gh-822/gh-825: Root suitability card (open by default) */}
         {rootSuitabilityItem && (
           <AirfoilSuitabilityCard
