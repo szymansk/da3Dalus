@@ -121,6 +121,13 @@ export interface UseAirfoilSuitabilityParams {
   target_cl_best_glide?: number;
   limit?: number;
   tip_chord_m?: number;
+  /**
+   * gh-825 ADDITIVE: names of airfoils to always include in results even if
+   * they fall outside the top-`limit` ranked block (e.g. the currently-selected
+   * root/tip airfoil).  When undefined or empty, the SWR key is byte-for-byte
+   * identical to old callers → no cache bust for existing clients.
+   */
+  include?: string[];
 }
 
 // ── Hook ─────────────────────────────────────────────────────────
@@ -136,6 +143,7 @@ export function useAirfoilSuitability(params: UseAirfoilSuitabilityParams) {
     target_cl_best_glide,
     limit,
     tip_chord_m,
+    include,
   } = params;
 
   // Only build a key when required params are present
@@ -148,6 +156,7 @@ export function useAirfoilSuitability(params: UseAirfoilSuitabilityParams) {
           target_cl_best_glide,
           limit,
           tip_chord_m,
+          include,
         })
       : null;
 
@@ -178,6 +187,7 @@ function buildKey(
     target_cl_best_glide?: number;
     limit?: number;
     tip_chord_m?: number;
+    include?: string[];
   },
 ): string {
   const params = new URLSearchParams();
@@ -203,6 +213,11 @@ function buildKey(
   }
   if (optional.tip_chord_m != null) {
     params.set("tip_chord_m", String(optional.tip_chord_m));
+  }
+  // gh-825 ADDITIVE: include param — only appended when present and non-empty
+  // so old SWR cache keys are byte-for-byte unchanged for existing callers.
+  if (optional.include != null && optional.include.length > 0) {
+    params.set("include", optional.include.join(","));
   }
   return `/airfoils/db/suitability?${params.toString()}`;
 }

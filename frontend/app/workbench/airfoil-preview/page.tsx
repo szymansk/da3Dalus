@@ -40,6 +40,16 @@ export function computeRe(velocityMs: number, chordMm: number): number {
   return Math.round((velocityMs * (chordMm / 1000)) / NU_AIR);
 }
 
+/**
+ * gh-825: Returns [name] as the include param for useAirfoilSuitability, or
+ * undefined when the name is empty / is the placeholder '\u2014'.
+ * Extracted as a module-level helper to keep AirfoilPreviewPage within
+ * sonarjs/cognitive-complexity budget.
+ */
+export function toInclude(name: string): string[] | undefined {
+  return name && name !== "\u2014" ? [name] : undefined;
+}
+
 export default function AirfoilPreviewPage() {
   const router = useRouter();
   const { aeroplaneId, selectedWing, selectedXsecIndex, selectXsec } =
@@ -88,11 +98,14 @@ export default function AirfoilPreviewPage() {
     chord_m: rootChordMm / 1000,
     speed_ms: velocity,
     aeroplane_id: aeroplaneId,
+    // gh-825 ADDITIVE: always score the selected airfoil even if outside top-N
+    include: toInclude(rootAirfoil),
   });
   const tipSuitability = useAirfoilSuitability({
     chord_m: tipChordMm / 1000,
     speed_ms: velocity,
     aeroplane_id: aeroplaneId,
+    include: toInclude(tipAirfoil),
   });
 
   // Build lookup maps: airfoil name -> score string + sorted names.
