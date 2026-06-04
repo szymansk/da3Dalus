@@ -61,6 +61,57 @@ function scoreBadgeColor(scoreStr: string): string {
   return "#F87171";
 }
 
+/** Shared row renderer used by both the 'In Verwendung' section and the main list. */
+function AirfoilRow({
+  name,
+  value,
+  stats,
+  onSelect,
+  testId,
+  itemKey,
+}: {
+  name: string;
+  value: string;
+  stats?: Record<string, string>;
+  onSelect: (name: string) => void;
+  testId?: string;
+  itemKey: string;
+}) {
+  return (
+    <button
+      key={itemKey}
+      data-testid={testId}
+      onClick={() => onSelect(name)}
+      className="flex w-full items-center gap-2 px-3 py-1.5 hover:bg-sidebar-accent"
+    >
+      {name === value ? (
+        <Check size={12} className="text-primary" />
+      ) : (
+        <div className="w-3" />
+      )}
+      <span className="font-[family-name:var(--font-jetbrains-mono)] text-[13px] text-foreground">
+        {name}
+      </span>
+      {stats?.[name] && (
+        <>
+          <span className="flex-1" />
+          <span
+            data-testid="score-badge"
+            className="rounded-full border border-current px-1.5 py-0.5 font-[family-name:var(--font-jetbrains-mono)] text-[10px]"
+            style={{
+              color: scoreBadgeColor(stats[name]),
+              backgroundColor: `${scoreBadgeColor(stats[name])}1a`,
+              borderColor: `${scoreBadgeColor(stats[name])}40`,
+            }}
+          >
+            {stats[name]}
+          </span>
+        </>
+      )}
+    </button>
+  );
+}
+
 export function AirfoilSelector({
   label,
   value,
@@ -216,37 +267,15 @@ export function AirfoilSelector({
                   In Verwendung
                 </div>
                 {filteredUsed.map((name) => (
-                  <button
+                  <AirfoilRow
                     key={`used-${name}`}
-                    data-testid="in-verwendung-item"
-                    onClick={() => select(name)}
-                    className="flex w-full items-center gap-2 px-3 py-1.5 hover:bg-sidebar-accent"
-                  >
-                    {name === value ? (
-                      <Check size={12} className="text-primary" />
-                    ) : (
-                      <div className="w-3" />
-                    )}
-                    <span className="font-[family-name:var(--font-jetbrains-mono)] text-[13px] text-foreground">
-                      {name}
-                    </span>
-                    {stats?.[name] && (
-                      <>
-                        <span className="flex-1" />
-                        <span
-                          data-testid="score-badge"
-                          className="rounded-full border border-current px-1.5 py-0.5 font-[family-name:var(--font-jetbrains-mono)] text-[10px]"
-                          style={{
-                            color: scoreBadgeColor(stats[name]),
-                            backgroundColor: `${scoreBadgeColor(stats[name])}1a`,
-                            borderColor: `${scoreBadgeColor(stats[name])}40`,
-                          }}
-                        >
-                          {stats[name]}
-                        </span>
-                      </>
-                    )}
-                  </button>
+                    itemKey={`used-${name}`}
+                    name={name}
+                    value={value}
+                    stats={stats}
+                    onSelect={select}
+                    testId="in-verwendung-item"
+                  />
                 ))}
                 <div className="mx-3 my-1 border-t border-border" />
               </>
@@ -257,36 +286,14 @@ export function AirfoilSelector({
               </div>
             ) : (
               filtered.map((name) => (
-                <button
+                <AirfoilRow
                   key={name}
-                  onClick={() => select(name)}
-                  className="flex w-full items-center gap-2 px-3 py-1.5 hover:bg-sidebar-accent"
-                >
-                  {name === value ? (
-                    <Check size={12} className="text-primary" />
-                  ) : (
-                    <div className="w-3" />
-                  )}
-                  <span className="font-[family-name:var(--font-jetbrains-mono)] text-[13px] text-foreground">
-                    {name}
-                  </span>
-                  {stats?.[name] && (
-                    <>
-                      <span className="flex-1" />
-                      <span
-                        data-testid="score-badge"
-                        className="rounded-full border border-current px-1.5 py-0.5 font-[family-name:var(--font-jetbrains-mono)] text-[10px]"
-                        style={{
-                          color: scoreBadgeColor(stats[name]),
-                          backgroundColor: `${scoreBadgeColor(stats[name])}1a`,
-                          borderColor: `${scoreBadgeColor(stats[name])}40`,
-                        }}
-                      >
-                        {stats[name]}
-                      </span>
-                    </>
-                  )}
-                </button>
+                  itemKey={name}
+                  name={name}
+                  value={value}
+                  stats={stats}
+                  onSelect={select}
+                />
               ))
             )}
           </div>
