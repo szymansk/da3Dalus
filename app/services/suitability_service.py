@@ -31,6 +31,7 @@ from __future__ import annotations
 
 import logging
 import math
+import uuid as _uuid_module
 from typing import Optional
 
 from sqlalchemy.orm import Session
@@ -233,62 +234,78 @@ def search_suitability(
     provenance: TargetClProvenance = "estimated"
 
     if aeroplane_id is not None:
-        aeroplane = (
-            db.query(AeroplaneModel).filter(AeroplaneModel.uuid == str(aeroplane_id)).first()
-        )
-        if aeroplane is None:
+        # Guard: validate that aeroplane_id is a well-formed UUID before querying.
+        # A malformed value (e.g. '9', 'not-a-uuid') would cause SQLAlchemy to
+        # raise StatementError(ValueError('badly formed hexadecimal UUID string'))
+        # leaking raw SQL into the response.  Treat any malformed id exactly like
+        # an unknown-but-valid UUID — degrade to re_agnostic-only (gh-829).
+        _is_valid_uuid = False
+        try:
+            _uuid_module.UUID(str(aeroplane_id))
+            _is_valid_uuid = True
+        except (ValueError, AttributeError):
             logger.warning(
-                "Unknown aeroplane_id '%s' — degrading to re_agnostic-only", aeroplane_id
+                "Malformed aeroplane_id '%s' — degrading to re_agnostic-only (gh-829)",
+                aeroplane_id,
             )
-        else:
-            # Resolve mission type (explicit param overrides model value)
-            if effective_mission_type is None:
-                mission_obj = (
-                    db.query(MissionObjectiveModel)
-                    .filter(MissionObjectiveModel.aeroplane_id == aeroplane.id)
-                    .first()
+
+        if _is_valid_uuid:
+            aeroplane = (
+                db.query(AeroplaneModel).filter(AeroplaneModel.uuid == str(aeroplane_id)).first()
+            )
+            if aeroplane is None:
+                logger.warning(
+                    "Unknown aeroplane_id '%s' — degrading to re_agnostic-only", aeroplane_id
                 )
-                if mission_obj is not None:
-                    mapped = _MISSION_TYPE_MAP.get((mission_obj.mission_type or "").lower())
-                    effective_mission_type = mapped  # may still be None if unmapped
+            else:
+                # Resolve mission type (explicit param overrides model value)
+                if effective_mission_type is None:
+                    mission_obj = (
+                        db.query(MissionObjectiveModel)
+                        .filter(MissionObjectiveModel.aeroplane_id == aeroplane.id)
+                        .first()
+                    )
+                    if mission_obj is not None:
+                        mapped = _MISSION_TYPE_MAP.get((mission_obj.mission_type or "").lower())
+                        effective_mission_type = mapped  # may still be None if unmapped
 
-            # Resolve operating CLs from assumption_computation_context
-            ctx = getattr(aeroplane, "assumption_computation_context", None) or {}
-            mass_kg: Optional[float] = ctx.get("mass_kg")
-            v_cruise_mps: Optional[float] = ctx.get("v_cruise_mps")
-            v_md_mps: Optional[float] = ctx.get("v_md_mps")  # best-glide speed (NEW)
-            v_min_sink_mps: Optional[float] = ctx.get("v_min_sink_mps")
-            s_ref_m2: Optional[float] = ctx.get("s_ref_m2")
+                # Resolve operating CLs from assumption_computation_context
+                ctx = getattr(aeroplane, "assumption_computation_context", None) or {}
+                mass_kg: Optional[float] = ctx.get("mass_kg")
+                v_cruise_mps: Optional[float] = ctx.get("v_cruise_mps")
+                v_md_mps: Optional[float] = ctx.get("v_md_mps")  # best-glide speed (NEW)
+                v_min_sink_mps: Optional[float] = ctx.get("v_min_sink_mps")
+                s_ref_m2: Optional[float] = ctx.get("s_ref_m2")
 
-            # Compute cruise CL (explicit param overrides derived)
-            if effective_target_cl_cruise is None:
-                if all(v is not None for v in (mass_kg, v_cruise_mps, s_ref_m2)):
-                    try:
-                        effective_target_cl_cruise = _level_flight_cl(
-                            mass_kg, v_cruise_mps, s_ref_m2
-                        )
-                    except (ValueError, ZeroDivisionError):
-                        effective_target_cl_cruise = None
+                # Compute cruise CL (explicit param overrides derived)
+                if effective_target_cl_cruise is None:
+                    if all(v is not None for v in (mass_kg, v_cruise_mps, s_ref_m2)):
+                        try:
+                            effective_target_cl_cruise = _level_flight_cl(
+                                mass_kg, v_cruise_mps, s_ref_m2
+                            )
+                        except (ValueError, ZeroDivisionError):
+                            effective_target_cl_cruise = None
 
-            # Compute best-glide CL from v_md_mps (explicit param overrides derived)
-            if effective_target_cl_best_glide is None:
-                if all(v is not None for v in (mass_kg, v_md_mps, s_ref_m2)):
-                    try:
-                        effective_target_cl_best_glide = _level_flight_cl(
-                            mass_kg, v_md_mps, s_ref_m2
-                        )
-                    except (ValueError, ZeroDivisionError):
-                        effective_target_cl_best_glide = None
+                # Compute best-glide CL from v_md_mps (explicit param overrides derived)
+                if effective_target_cl_best_glide is None:
+                    if all(v is not None for v in (mass_kg, v_md_mps, s_ref_m2)):
+                        try:
+                            effective_target_cl_best_glide = _level_flight_cl(
+                                mass_kg, v_md_mps, s_ref_m2
+                            )
+                        except (ValueError, ZeroDivisionError):
+                            effective_target_cl_best_glide = None
 
-            # Compute min-sink CL (renamed from loiter; explicit param overrides derived)
-            if effective_target_cl_min_sink is None:
-                if all(v is not None for v in (mass_kg, v_min_sink_mps, s_ref_m2)):
-                    try:
-                        effective_target_cl_min_sink = _level_flight_cl(
-                            mass_kg, v_min_sink_mps, s_ref_m2
-                        )
-                    except (ValueError, ZeroDivisionError):
-                        effective_target_cl_min_sink = None
+                # Compute min-sink CL (renamed from loiter; explicit param overrides derived)
+                if effective_target_cl_min_sink is None:
+                    if all(v is not None for v in (mass_kg, v_min_sink_mps, s_ref_m2)):
+                        try:
+                            effective_target_cl_min_sink = _level_flight_cl(
+                                mass_kg, v_min_sink_mps, s_ref_m2
+                            )
+                        except (ValueError, ZeroDivisionError):
+                            effective_target_cl_min_sink = None
 
     # --- Provenance ---
     provenance = _resolve_provenance(aeroplane, db, ctx)

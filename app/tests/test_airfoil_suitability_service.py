@@ -585,3 +585,45 @@ def test_confidence_aware_ranking_high_score_low_conf_ranks_below_reliable(seede
             f"Last high-conf idx={last_high_conf_idx}, first low-conf idx={first_low_conf_idx}. "
             f"Order: {result_names}"
         )
+
+
+# ---------------------------------------------------------------------------
+# gh-829: malformed aeroplane_id must degrade gracefully, never 500
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize(
+    "bad_id",
+    [
+        "9",  # bare integer string
+        "not-a-uuid",  # arbitrary text
+        "00000000",  # too short hex
+        "",  # empty string (edge)
+        "abc!@#$",  # special chars
+    ],
+)
+def test_malformed_aeroplane_id_degrades_gracefully(seeded_db, bad_id):
+    """gh-829: a non-UUID aeroplane_id must NOT raise an exception.
+
+    The service must degrade to the re_agnostic-only response (active_lens=
+    're_agnostic', mission_type=null, target_cl_cruise=null) — exactly as an
+    unknown-but-valid UUID does.  It must NEVER propagate a ValueError /
+    database-level exception or return HTTP 500.
+    """
+    from app.services.suitability_service import search_suitability
+
+    SessionLocal, _ = seeded_db
+    with SessionLocal() as session:
+        resp = search_suitability(
+            db=session,
+            chord_m=0.15,
+            speed_ms=15.0,
+            aeroplane_id=bad_id,
+        )
+
+    # Must return a valid response (not raise)
+    assert resp is not None
+    # No mission/CL context resolved — re_agnostic-only
+    assert resp.query.active_lens == "re_agnostic"
+    assert resp.query.mission_type is None
+    assert resp.query.target_cl_cruise is None
