@@ -43,7 +43,49 @@ RHO = 1.225  # kg/m³  (ISA sea-level)
 _SYMMETRIC_MAX_CAMBER_PCT = 0.5  # max_camber_pct below which → symmetric
 _SEMI_SYMMETRIC_MAX_CAMBER_PCT = 2.0  # between SYMMETRIC and this → semi_symmetric
 _FLAT_BOTTOM_Y_THRESHOLD = 0.002  # lower surface mean abs(y) below this → flat (strict legacy)
-_REFLEX_CAMBER_AT_TE_THRESHOLD = -0.003  # camber_at_te below this → reflexed
+# --- gh-834: reflex detection from camber-line SHAPE (replaces TE-endpoint check) ---
+#
+# Background: The old code used camber_at_te = camber[-1] (the mean-camber-line endpoint
+# value).  For any sharp-TE airfoil upper[-1] == lower[-1], so camber[-1] ≈ 0 for EVERY
+# sharp-TE airfoil regardless of whether it is reflexed.  Only blunt/open-TE airfoils like
+# supercritical sc20xxx shapes ever produced a non-zero (negative) TE-endpoint value, so
+# those were wrongly labelled 'reflexed' while true flying-wing sections (MH60, E184, EH
+# series) were missed entirely.
+#
+# The fix uses the camber-line SHAPE over the aft chord, not just the endpoint:
+#
+# Signal A — sharp-TE reflex (MH / E / EH / S-series flying-wing sections):
+#   These airfoils have a steeply falling camber line that reaches close to 0 — or dips
+#   below it — by x = 0.9 while the max_camber sits further forward.  Metric:
+#
+#       aft_camber_ratio = camber_at_x90 / max_camber
+#
+#   where camber_at_x90 is the mean-camber-line value at x = 0.9.  For reflexed sharp-TE
+#   airfoils this ratio is always < 0.06 (camber almost vanishes at 90% chord).  For
+#   non-reflexed cambered (NACA 4412: 0.31) or flat-bottom (Clark Y: 0.28) it is >> 0.06.
+#
+# Signal B — open / upturned-TE reflex (Clark YH and similar plank + reflexed-TE shapes):
+#   The camber line does not dip to near-zero — it decreases gently but curves gently
+#   upward in the aft section, producing a POSITIVE quadratic coefficient when a 2nd-order
+#   polynomial is fitted to the camber line over x ∈ [0.5, 1.0].  For Clark YH this
+#   coefficient ≈ +0.039; for NACA 4412 (not reflexed) it is −0.11.  Threshold 0.015 with
+#   a minimum max_camber guard (> 2%) prevents symmetric airfoils (which have zero camber)
+#   from triggering this path.
+#
+# Together the two signals correctly classify the full MH / E / EH / clarkyh / s5010 suite
+# as reflexed without introducing false positives on NACA 4412, Clark Y, NACA 0006, or
+# supercritical sc20xxx shapes.
+#
+# camber_at_te is now stored as the camber-line value at x = 0.9 (not the TE endpoint).
+# This value is non-trivially informative for all airfoils including sharp-TE sections and
+# directly encodes Signal A above.
+_REFLEX_AFT_CAMBER_RATIO_MAX = (
+    0.06  # aft_camber_ratio = c_at_x90 / max_camber; below → reflexed (A)
+)
+_REFLEX_AFT_CONCAVITY_MIN = (
+    0.015  # min positive quadratic coeff of camber line over [0.5,1] → reflexed (B)
+)
+_REFLEX_B_MIN_CAMBER_PCT = 2.0  # Signal B only fires if max_camber_pct > this (% chord)
 # --- gh-825 item 1 (re-tuned): lower-surface linearity for flat-bottom detection ---
 # Real flat-bottom airfoils (Clark Y, Gottingen 417a, Clark X/V/K/Z, Dormoy, PT40) have a
 # lower surface that is nearly LINEAR from ~30% chord to the TE — it runs at a slight
@@ -95,7 +137,15 @@ def classify_family(coords: np.ndarray) -> AirfoilFamily:
     1. Split into upper / lower surfaces by finding the leading edge (min x).
     2. Compute camber line by interpolating both surfaces to common x stations.
     3. Evaluate in priority order:
-       a. reflexed:      camber_at_te (camber line at x≈1) strongly negative.
+       a. reflexed:      camber-line SHAPE signals A or B (gh-834):
+            A. Aft camber ratio: camber_at_x90 / max_camber < 0.06.
+               Catches sharp-TE flying-wing sections (MH, E, EH, S series)
+               where the camber line nearly vanishes at 90% chord.
+            B. Positive aft concavity: quadratic coefficient of camber-line
+               polynomial fit over [0.5, 1.0] > 0.015 AND max_camber > 2%.
+               Catches upturned-TE sections (Clark YH and similar).
+          Must stay first so reflexed airfoils aren't mis-classified as
+          flat_bottom or semi_symmetric.
        b. symmetric:     max_camber_pct < 0.5% (checked BEFORE flat_bottom to
                          prevent purely symmetric airfoils being mis-labelled).
        c. flat_bottom:   lower surface is near-linear over aft chord (gh-825
@@ -105,10 +155,10 @@ def classify_family(coords: np.ndarray) -> AirfoilFamily:
        d. semi_symmetric: max_camber_pct < 2%.
        e. cambered:      everything else.
 
-    NOTE: The existing ``_compute_geometry_stats`` in endpoints/airfoils.py
-    returns max thickness/camber + their x-positions but does NOT extract
-    ``camber_at_te`` or detect reflex. This function implements those separately
-    from the mean camber line.
+    NOTE: ``camber_at_te`` as returned by this module is now the mean-camber-line
+    value at x = 0.9 (aft-reflex signal A), not the TE endpoint.  This is more
+    informative for all airfoils including sharp-TE sections.  The stored column
+    name is unchanged (gh-834).
     """
     coords = np.asarray(coords, dtype=float)
     # Find LE (min x) to split surfaces
@@ -163,8 +213,26 @@ def classify_family(coords: np.ndarray) -> AirfoilFamily:
     max_camber = float(np.max(camber))
     max_camber_pct = max_camber * 100.0  # as % of chord (coords normalized 0..1)
 
-    # camber_at_te: evaluate camber line at x=max(x_eval) which is near TE
-    camber_at_te = float(camber[-1])
+    # --- gh-834: reflex signals derived from camber-line SHAPE ---
+    # camber_at_te is now the camber value at x = 0.9, not the TE endpoint.
+    # For sharp-TE airfoils the TE endpoint camber ≈ 0 for ALL airfoils (both
+    # surfaces meet), so that value carries no reflex information. At x = 0.9
+    # the mean camber line still separates reflexed from non-reflexed.
+    camber_at_te = float(np.interp(0.9, x_eval, camber))  # camber at x = 0.9
+
+    # Signal A: aft camber ratio — near-zero camber at 90% chord → reflexed
+    # For reflexed sharp-TE sections (MH / E / EH / S series): ratio < 0.06
+    # For non-reflexed cambered / flat-bottom: ratio >> 0.06
+    aft_camber_ratio = camber_at_te / max(max_camber, 1e-9)
+
+    # Signal B: positive aft camber concavity → upturned-TE reflex (Clark YH type)
+    # Fit 2nd-order polynomial to camber over [0.5, 1.0]; positive leading
+    # coefficient means the camber line curves upward (S-shape) in the aft region.
+    aft_concavity_mask = (x_eval >= 0.50) & (x_eval <= 1.0)
+    aft_concavity = 0.0
+    if aft_concavity_mask.sum() >= 4:
+        p_aft_c = np.polyfit(x_eval[aft_concavity_mask], camber[aft_concavity_mask], 2)
+        aft_concavity = float(p_aft_c[0])
 
     # Lower surface mean abs y (strict legacy flat-bottom gate for pure y=0 lower surfaces)
     mean_lower_abs_y = float(np.mean(np.abs(y_lower)))
@@ -178,9 +246,25 @@ def classify_family(coords: np.ndarray) -> AirfoilFamily:
         aft_quad_coeff = float(abs(p_aft[0]))
 
     # --- Classification rules (ordered by priority) ---
-    # 1. Reflexed: camber line is clearly negative (below chord) at TE
-    #    (must stay first so reflexed airfoils aren't mis-classified as flat_bottom)
-    if camber_at_te < _REFLEX_CAMBER_AT_TE_THRESHOLD:
+    # 1. Reflexed: camber-line SHAPE signals (gh-834).
+    #    Two complementary signals cover both reflexed families:
+    #    A. Sharp-TE reflex (MH/E/EH/S flying-wing sections):
+    #       aft_camber_ratio = camber_at_x90 / max_camber < 0.06
+    #       Guard: only fires when max_camber_pct > symmetric threshold
+    #       (symmetric airfoils have max_camber = 0, yielding ratio = 0,
+    #       which would falsely trigger Signal A without this guard).
+    #    B. Upturned-TE reflex (Clark YH, plank + reflexed-TE airfoils):
+    #       aft camber concavity > 0.015 AND max_camber_pct > 2%
+    #    Must fire BEFORE flat_bottom/semi_symmetric so reflexed airfoils
+    #    are not mis-classified by the lower-surface linearity test.
+    reflex_signal_a = (
+        max_camber_pct >= _SYMMETRIC_MAX_CAMBER_PCT  # guard: not symmetric
+        and aft_camber_ratio < _REFLEX_AFT_CAMBER_RATIO_MAX
+    )
+    reflex_signal_b = (
+        aft_concavity > _REFLEX_AFT_CONCAVITY_MIN and max_camber_pct > _REFLEX_B_MIN_CAMBER_PCT
+    )
+    if reflex_signal_a or reflex_signal_b:
         return "reflexed"
 
     # 2. Symmetric: almost no camber.

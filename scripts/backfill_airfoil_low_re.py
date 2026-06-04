@@ -239,7 +239,12 @@ def _compute_geometry_stats(coords: np.ndarray) -> tuple[float, float, float]:
 
     max_thickness_pct = float(np.max(thickness)) * 100.0
     max_camber_pct = float(np.max(np.abs(camber))) * 100.0
-    camber_at_te = float(camber[-1])
+    # gh-834: store camber at x=0.9 (not the TE endpoint) as camber_at_te.
+    # For sharp-TE airfoils the TE endpoint has camber ≈ 0 for all airfoils
+    # (both surfaces meet), so that value carries no reflex information.
+    # The camber at x=0.9 is the primary reflex signal (Signal A) used by
+    # classify_family() and remains meaningful even for sharp-TE sections.
+    camber_at_te = float(np.interp(0.9, x_eval, camber))
 
     return max_thickness_pct, max_camber_pct, camber_at_te
 
