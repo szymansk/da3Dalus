@@ -1,11 +1,18 @@
 /**
- * Unit tests for useAirfoilSuitability hook (gh-822).
+ * Unit tests for useAirfoilSuitability hook (gh-825).
  * Verifies that the SWR query string is built correctly per the frozen contract.
  */
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { renderHook } from "@testing-library/react";
 import { useAirfoilSuitability } from "@/hooks/useAirfoilSuitability";
-import type { ActiveLens, RankingLens } from "@/hooks/useAirfoilSuitability";
+import type {
+  ActiveLens,
+  RankingLens,
+  TargetClProvenance,
+  SuitabilityItem,
+  SuitabilityQuery,
+  SuitabilityCaveat,
+} from "@/hooks/useAirfoilSuitability";
 
 // ── Capture the SWR key ──────────────────────────────────────────
 let capturedKey: string | null = undefined as unknown as string | null;
@@ -92,16 +99,38 @@ describe("useAirfoilSuitability — query string construction", () => {
     expect(url.searchParams.get("target_cl_cruise")).toBe("0.6");
   });
 
-  it("appends target_cl_loiter when provided", () => {
+  it("appends target_cl_min_sink (renamed from loiter) when provided", () => {
     renderHook(() =>
       useAirfoilSuitability({
         chord_m: 0.2,
         speed_ms: 14,
-        target_cl_loiter: 0.9,
+        target_cl_min_sink: 0.9,
       }),
     );
     const url = new URL(capturedKey!, "http://localhost");
-    expect(url.searchParams.get("target_cl_loiter")).toBe("0.9");
+    expect(url.searchParams.get("target_cl_min_sink")).toBe("0.9");
+    // Ensure old param name is NOT sent
+    expect(url.searchParams.has("target_cl_loiter")).toBe(false);
+  });
+
+  it("appends target_cl_best_glide (new gh-825) when provided", () => {
+    renderHook(() =>
+      useAirfoilSuitability({
+        chord_m: 0.2,
+        speed_ms: 14,
+        target_cl_best_glide: 0.8,
+      }),
+    );
+    const url = new URL(capturedKey!, "http://localhost");
+    expect(url.searchParams.get("target_cl_best_glide")).toBe("0.8");
+  });
+
+  it("does NOT append target_cl_best_glide when not provided", () => {
+    renderHook(() =>
+      useAirfoilSuitability({ chord_m: 0.2, speed_ms: 14 }),
+    );
+    const url = new URL(capturedKey!, "http://localhost");
+    expect(url.searchParams.has("target_cl_best_glide")).toBe(false);
   });
 
   it("builds complete query string with all optional params", () => {
@@ -113,7 +142,8 @@ describe("useAirfoilSuitability — query string construction", () => {
         aeroplane_id: uuid,
         mission_type: "sport",
         target_cl_cruise: 0.7,
-        target_cl_loiter: 1.0,
+        target_cl_min_sink: 1.0,
+        target_cl_best_glide: 0.85,
       }),
     );
     const url = new URL(capturedKey!, "http://localhost");
@@ -122,7 +152,8 @@ describe("useAirfoilSuitability — query string construction", () => {
     expect(url.searchParams.get("aeroplane_id")).toBe(uuid);
     expect(url.searchParams.get("mission_type")).toBe("sport");
     expect(url.searchParams.get("target_cl_cruise")).toBe("0.7");
-    expect(url.searchParams.get("target_cl_loiter")).toBe("1");
+    expect(url.searchParams.get("target_cl_min_sink")).toBe("1");
+    expect(url.searchParams.get("target_cl_best_glide")).toBe("0.85");
   });
 
   // The spec says: appends aeroplane_id as the UUID string from
@@ -170,19 +201,104 @@ describe("useAirfoilSuitability — query string construction", () => {
   });
 });
 
-// ── Type-level tests for ActiveLens and RankingLens (gh-822) ────
-describe("useAirfoilSuitability — ActiveLens and RankingLens types (gh-822)", () => {
-  it("ActiveLens includes 'target_cl_loiter' to match the backend verbatim", () => {
-    // This compiles only if 'target_cl_loiter' is a valid ActiveLens member
-    const lens: ActiveLens = "target_cl_loiter";
-    expect(lens).toBe("target_cl_loiter");
+// ── Type-level tests for ActiveLens, RankingLens, TargetClProvenance ──
+describe("useAirfoilSuitability — types (gh-825)", () => {
+  it("ActiveLens includes re_agnostic, mission, target_cl_cruise", () => {
+    const lenses: ActiveLens[] = ["re_agnostic", "mission", "target_cl_cruise"];
+    expect(lenses).toHaveLength(3);
   });
 
-  it("RankingLens excludes 'target_cl_loiter' (display-only, never ranking lens)", () => {
-    // All valid RankingLens values must compile; 'target_cl_loiter' must NOT be assignable
+  it("ActiveLens does NOT include target_cl_loiter (removed in gh-825)", () => {
+    const lenses: ActiveLens[] = ["re_agnostic", "mission", "target_cl_cruise"];
+    expect(lenses.includes("target_cl_loiter" as ActiveLens)).toBe(false);
+  });
+
+  it("RankingLens equals ActiveLens (no glide points in ranking set)", () => {
     const lenses: RankingLens[] = ["re_agnostic", "mission", "target_cl_cruise"];
     expect(lenses).toHaveLength(3);
-    // TypeScript would catch this at compile time; at runtime we verify the array excludes it
     expect(lenses.includes("target_cl_loiter" as RankingLens)).toBe(false);
+  });
+
+  it("TargetClProvenance has the three expected literals", () => {
+    const provenances: TargetClProvenance[] = [
+      "estimated",
+      "calculated",
+      "mixed",
+    ];
+    expect(provenances).toHaveLength(3);
+  });
+
+  it("SuitabilityItem has the gh-825 fields: target_cl_best_glide, target_cl_min_sink, stall_gentleness, cl_max_margin", () => {
+    const item: SuitabilityItem = {
+      airfoil_name: "e423",
+      family: "cambered",
+      re_agnostic: 0.82,
+      mission: 0.75,
+      target_cl_cruise: 0.68,
+      target_cl_best_glide: 0.80,
+      target_cl_min_sink: 0.95,
+      stall_gentleness: -0.15,
+      cl_max_margin: 0.12,
+      min_analysis_confidence: 0.92,
+      tip_re_flag: false,
+      caveat: "Nur relative Rangfolge.",
+    };
+    expect(item.target_cl_best_glide).toBe(0.80);
+    expect(item.target_cl_min_sink).toBe(0.95);
+    expect(item.stall_gentleness).toBe(-0.15);
+    expect(item.cl_max_margin).toBe(0.12);
+    // Ensure old field is not present
+    expect("target_cl_loiter" in item).toBe(false);
+  });
+
+  it("SuitabilityItem nullable fields accept null for all gh-825 additions", () => {
+    const item: SuitabilityItem = {
+      airfoil_name: "naca0015",
+      family: "symmetric",
+      re_agnostic: 0.6,
+      mission: null,
+      target_cl_cruise: null,
+      target_cl_best_glide: null,
+      target_cl_min_sink: null,
+      stall_gentleness: null,
+      cl_max_margin: null,
+      min_analysis_confidence: 0.88,
+      tip_re_flag: false,
+      caveat: "",
+    };
+    expect(item.target_cl_best_glide).toBeNull();
+    expect(item.target_cl_min_sink).toBeNull();
+    expect(item.stall_gentleness).toBeNull();
+    expect(item.cl_max_margin).toBeNull();
+  });
+
+  it("SuitabilityQuery has target_cl_best_glide, target_cl_min_sink, target_cl_provenance", () => {
+    const query: SuitabilityQuery = {
+      chord_m: 0.2,
+      speed_ms: 14,
+      reynolds: 191781,
+      re_clamped: false,
+      mission_type: "trainer",
+      target_cl_cruise: 0.68,
+      target_cl_best_glide: 0.80,
+      target_cl_min_sink: 0.95,
+      target_cl_provenance: "calculated",
+      active_lens: "re_agnostic",
+    };
+    expect(query.target_cl_best_glide).toBe(0.80);
+    expect(query.target_cl_min_sink).toBe(0.95);
+    expect(query.target_cl_provenance).toBe("calculated");
+    expect("target_cl_loiter" in query).toBe(false);
+  });
+
+  it("SuitabilityCaveat has ignores_tip_re_clmax_collapse field", () => {
+    const caveat: SuitabilityCaveat = {
+      relative_ranking_only: true,
+      no_hysteresis_modelling: true,
+      ignores_tip_re_clmax_collapse: true,
+      recommend_xfoil_validation: false,
+      text: "Test caveat.",
+    };
+    expect(caveat.ignores_tip_re_clmax_collapse).toBe(true);
   });
 });

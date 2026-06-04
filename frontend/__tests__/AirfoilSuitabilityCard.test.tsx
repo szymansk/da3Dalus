@@ -1,6 +1,7 @@
 /**
- * Unit tests for AirfoilSuitabilityCard (gh-822).
- * Verifies: three lens bars, null handling, confidence chip, caveat callout,
+ * Unit tests for AirfoilSuitabilityCard (gh-825).
+ * Verifies: three operating-point bars, provenance indicator, stall/CLmax rows,
+ * tip-Re CL_max warning, null handling, confidence chip, caveat callout,
  * collapsible behaviour.
  */
 import { describe, it, expect, vi } from "vitest";
@@ -26,7 +27,9 @@ vi.mock("lucide-react", () => ({
 }));
 
 import { AirfoilSuitabilityCard, AirfoilSuitabilityNoData, qualitativeLabel } from "../components/workbench/AirfoilSuitabilityCard";
-import type { SuitabilityItem } from "../hooks/useAirfoilSuitability";
+import type { SuitabilityItem, SuitabilityCaveat } from "../hooks/useAirfoilSuitability";
+
+// ── Base fixtures ──────────────────────────────────────────────────
 
 const baseItem: SuitabilityItem = {
   airfoil_name: "e423",
@@ -34,7 +37,10 @@ const baseItem: SuitabilityItem = {
   re_agnostic: 0.82,
   mission: 0.75,
   target_cl_cruise: 0.68,
-  target_cl_loiter: 0.55,
+  target_cl_best_glide: 0.80,
+  target_cl_min_sink: 0.55,
+  stall_gentleness: -0.02,
+  cl_max_margin: 0.15,
   min_analysis_confidence: 0.92,
   tip_re_flag: false,
   caveat: "Nur relative Rangfolge.",
@@ -48,8 +54,224 @@ const lowConfidenceItem: SuitabilityItem = {
 const nullMissionItem: SuitabilityItem = {
   ...baseItem,
   mission: null,
-  target_cl_loiter: null,
+  target_cl_min_sink: null,
+  target_cl_best_glide: null,
 };
+
+const baseCaveat: SuitabilityCaveat = {
+  relative_ranking_only: true,
+  no_hysteresis_modelling: true,
+  ignores_tip_re_clmax_collapse: true,
+  recommend_xfoil_validation: false,
+  text: "Nur relative Rangfolge. Kein Hysterese-Modell.",
+};
+
+// ── F2: Three operating-point bars ───────────────────────────────
+
+describe("AirfoilSuitabilityCard — F2: three operating-point bars", () => {
+  it("renders Ziel-CL · Cruise bar", () => {
+    render(<AirfoilSuitabilityCard item={baseItem} defaultOpen />);
+    expect(screen.getByText(/Cruise/i)).toBeDefined();
+  });
+
+  it("renders Ziel-CL · Best-Glide bar with sublabel", () => {
+    render(<AirfoilSuitabilityCard item={baseItem} defaultOpen />);
+    expect(screen.getByText(/Best-Glide/i)).toBeDefined();
+    expect(screen.getByText(/Motorausfall \/ Segelflug/i)).toBeDefined();
+  });
+
+  it("renders Ziel-CL · Min-Sink bar", () => {
+    render(<AirfoilSuitabilityCard item={baseItem} defaultOpen />);
+    expect(screen.getByText(/Min-Sink/i)).toBeDefined();
+  });
+
+  it("does NOT render Loiter bar (removed in gh-825)", () => {
+    render(<AirfoilSuitabilityCard item={baseItem} defaultOpen />);
+    expect(screen.queryByText(/Loiter/i)).toBeNull();
+  });
+
+  it("shows n/a for target_cl_best_glide when null", () => {
+    render(<AirfoilSuitabilityCard item={nullMissionItem} defaultOpen />);
+    const naElements = screen.queryAllByText(/n\/a/i);
+    expect(naElements.length).toBeGreaterThan(0);
+  });
+
+  it("shows n/a for target_cl_min_sink when null", () => {
+    render(<AirfoilSuitabilityCard item={nullMissionItem} defaultOpen />);
+    const naElements = screen.queryAllByText(/n\/a/i);
+    expect(naElements.length).toBeGreaterThan(0);
+  });
+});
+
+// ── F3: Provenance indicator ───────────────────────────────────────
+
+describe("AirfoilSuitabilityCard — F3: provenance indicator", () => {
+  it("renders provenance indicator when targetClProvenance is provided", () => {
+    render(
+      <AirfoilSuitabilityCard
+        item={baseItem}
+        defaultOpen
+        targetClProvenance="calculated"
+      />,
+    );
+    expect(screen.getByTestId("provenance-indicator")).toBeDefined();
+  });
+
+  it("does NOT render provenance indicator when targetClProvenance is absent", () => {
+    render(<AirfoilSuitabilityCard item={baseItem} defaultOpen />);
+    expect(screen.queryByTestId("provenance-indicator")).toBeNull();
+  });
+
+  it("shows 'bewegliche Referenz' tooltip for calculated provenance", () => {
+    render(
+      <AirfoilSuitabilityCard
+        item={baseItem}
+        defaultOpen
+        targetClProvenance="calculated"
+      />,
+    );
+    const indicator = screen.getByTestId("provenance-indicator");
+    const title = indicator.getAttribute("title");
+    expect(title).toMatch(/bewegliche Referenz|calculated/i);
+  });
+
+  it("shows 'feste Referenz' tooltip for estimated provenance", () => {
+    render(
+      <AirfoilSuitabilityCard
+        item={baseItem}
+        defaultOpen
+        targetClProvenance="estimated"
+      />,
+    );
+    const indicator = screen.getByTestId("provenance-indicator");
+    const title = indicator.getAttribute("title");
+    expect(title).toMatch(/feste Referenz|estimated/i);
+  });
+
+  it("shows 'kombinierte Referenz' tooltip for mixed provenance", () => {
+    render(
+      <AirfoilSuitabilityCard
+        item={baseItem}
+        defaultOpen
+        targetClProvenance="mixed"
+      />,
+    );
+    const indicator = screen.getByTestId("provenance-indicator");
+    const title = indicator.getAttribute("title");
+    expect(title).toMatch(/kombinierte Referenz|mixed/i);
+  });
+});
+
+// ── F4: Stall gentleness + CL_max margin ─────────────────────────
+
+describe("AirfoilSuitabilityCard — F4: stall gentleness and CL_max margin", () => {
+  it("renders stall_gentleness value when present", () => {
+    render(<AirfoilSuitabilityCard item={baseItem} defaultOpen />);
+    expect(screen.getByTestId("stall-gentleness-value")).toBeDefined();
+    // baseItem stall_gentleness = -0.02
+    expect(screen.getByTestId("stall-gentleness-value").textContent).toMatch(/-0\.0[12]\d/);
+  });
+
+  it("renders cl_max_margin value when present", () => {
+    render(<AirfoilSuitabilityCard item={baseItem} defaultOpen />);
+    expect(screen.getByTestId("cl-max-margin-value")).toBeDefined();
+    // baseItem cl_max_margin = 0.15
+    expect(screen.getByTestId("cl-max-margin-value").textContent).toMatch(/\+0\.1[45]\d/);
+  });
+
+  it("shows abrupt-stall warning when stall_gentleness < -0.05", () => {
+    const abruptItem: SuitabilityItem = {
+      ...baseItem,
+      stall_gentleness: -0.18,
+    };
+    render(<AirfoilSuitabilityCard item={abruptItem} defaultOpen />);
+    expect(screen.getByTestId("stall-abrupt-warning")).toBeDefined();
+  });
+
+  it("does NOT show abrupt-stall warning when stall_gentleness is gentle (>= -0.05)", () => {
+    const gentleItem: SuitabilityItem = {
+      ...baseItem,
+      stall_gentleness: -0.02,
+    };
+    render(<AirfoilSuitabilityCard item={gentleItem} defaultOpen />);
+    expect(screen.queryByTestId("stall-abrupt-warning")).toBeNull();
+  });
+
+  it("shows negative-margin warning (Ziel > CL_max) when cl_max_margin < 0", () => {
+    const negMarginItem: SuitabilityItem = {
+      ...baseItem,
+      cl_max_margin: -0.05,
+    };
+    render(<AirfoilSuitabilityCard item={negMarginItem} defaultOpen />);
+    expect(screen.getByTestId("cl-max-margin-warning")).toBeDefined();
+    expect(screen.getByTestId("cl-max-margin-warning").textContent).toMatch(/Ziel.*CL_max/i);
+  });
+
+  it("does NOT show negative-margin warning when cl_max_margin >= 0", () => {
+    render(<AirfoilSuitabilityCard item={baseItem} defaultOpen />);
+    expect(screen.queryByTestId("cl-max-margin-warning")).toBeNull();
+  });
+
+  it("does not render stall/CLmax row when both are null", () => {
+    const noStallItem: SuitabilityItem = {
+      ...baseItem,
+      stall_gentleness: null,
+      cl_max_margin: null,
+    };
+    render(<AirfoilSuitabilityCard item={noStallItem} defaultOpen />);
+    expect(screen.queryByTestId("stall-gentleness-value")).toBeNull();
+    expect(screen.queryByTestId("cl-max-margin-value")).toBeNull();
+  });
+});
+
+// ── F5: Tip-Re CL_max collapse warning ───────────────────────────
+
+describe("AirfoilSuitabilityCard — F5: tip-Re CL_max collapse warning", () => {
+  it("shows tip-Re warning when caveat.ignores_tip_re_clmax_collapse is true", () => {
+    render(
+      <AirfoilSuitabilityCard
+        item={baseItem}
+        defaultOpen
+        caveatObject={baseCaveat}
+      />,
+    );
+    expect(screen.getByTestId("tip-re-clmax-warning")).toBeDefined();
+    expect(screen.getByTestId("tip-re-clmax-warning").textContent).toMatch(
+      /Tip-Re.*CL_max|CL_max.*Einbruch|tip.*stall/i,
+    );
+  });
+
+  it("shows tip-Re warning when item.tip_re_flag is true (even without caveatObject)", () => {
+    const tipFlagItem: SuitabilityItem = {
+      ...baseItem,
+      tip_re_flag: true,
+    };
+    render(<AirfoilSuitabilityCard item={tipFlagItem} defaultOpen />);
+    expect(screen.getByTestId("tip-re-clmax-warning")).toBeDefined();
+  });
+
+  it("does NOT show tip-Re warning when both tip_re_flag=false and no caveatObject", () => {
+    render(<AirfoilSuitabilityCard item={baseItem} defaultOpen />);
+    expect(screen.queryByTestId("tip-re-clmax-warning")).toBeNull();
+  });
+
+  it("does NOT show tip-Re warning when caveat.ignores_tip_re_clmax_collapse is false", () => {
+    const noCaveat: SuitabilityCaveat = {
+      ...baseCaveat,
+      ignores_tip_re_clmax_collapse: false,
+    };
+    render(
+      <AirfoilSuitabilityCard
+        item={baseItem}
+        defaultOpen
+        caveatObject={noCaveat}
+      />,
+    );
+    expect(screen.queryByTestId("tip-re-clmax-warning")).toBeNull();
+  });
+});
+
+// ── General card tests ────────────────────────────────────────────
 
 describe("AirfoilSuitabilityCard", () => {
   it("renders Re-agnostisch bar", () => {
@@ -64,16 +286,6 @@ describe("AirfoilSuitabilityCard", () => {
     expect(screen.getByText(/Mission/i)).toBeDefined();
   });
 
-  it("renders Ziel-CL Cruise bar", () => {
-    render(<AirfoilSuitabilityCard item={baseItem} defaultOpen />);
-    expect(screen.getByText(/Cruise/i)).toBeDefined();
-  });
-
-  it("renders Ziel-CL Loiter bar", () => {
-    render(<AirfoilSuitabilityCard item={baseItem} defaultOpen />);
-    expect(screen.getByText(/Loiter/i)).toBeDefined();
-  });
-
   it("hides Mission bar or shows n/a when mission score is null", () => {
     render(<AirfoilSuitabilityCard item={nullMissionItem} defaultOpen />);
     // When mission is null, it should either not render the bar or show 'n/a'
@@ -84,15 +296,6 @@ describe("AirfoilSuitabilityCard", () => {
       expect(naElements.length).toBeGreaterThan(0);
     }
     // Otherwise it's hidden — both are valid per spec
-  });
-
-  it("hides Loiter bar or shows n/a when target_cl_loiter score is null", () => {
-    render(<AirfoilSuitabilityCard item={nullMissionItem} defaultOpen />);
-    const loiterBars = screen.queryAllByText(/Loiter/i);
-    if (loiterBars.length > 0) {
-      const naElements = screen.queryAllByText(/n\/a/i);
-      expect(naElements.length).toBeGreaterThan(0);
-    }
   });
 
   it("shows green color class for score >= 0.7", () => {
@@ -273,7 +476,8 @@ describe("AirfoilSuitabilityCard", () => {
       re_agnostic: 0.6,
       mission: 0.55,
       target_cl_cruise: 0.52,
-      target_cl_loiter: 0.51,
+      target_cl_min_sink: 0.51,
+      target_cl_best_glide: 0.51,
     };
     render(<AirfoilSuitabilityCard item={midItem} defaultOpen />);
     const labels = screen.getAllByTestId("qualitative-label");
@@ -287,7 +491,8 @@ describe("AirfoilSuitabilityCard", () => {
       re_agnostic: 0.25,
       mission: 0.3,
       target_cl_cruise: 0.2,
-      target_cl_loiter: 0.1,
+      target_cl_min_sink: 0.1,
+      target_cl_best_glide: 0.1,
     };
     render(<AirfoilSuitabilityCard item={weakItem} defaultOpen />);
     const labels = screen.getAllByTestId("qualitative-label");
@@ -305,7 +510,13 @@ describe("AirfoilSuitabilityCard", () => {
   it("does NOT show low-confidence prefix in caveat when confidence is high (>=0.85)", () => {
     render(<AirfoilSuitabilityCard item={baseItem} defaultOpen />);
     // baseItem confidence = 0.92 (high)
-    const note = screen.getByRole("note");
-    expect(note.textContent).not.toMatch(/Geringe Modell-Konfidenz/i);
+    // When tip_re_flag is false and no caveatObject, there is only one note (the caveat)
+    const notes = screen.getAllByRole("note");
+    // Find the one that is the caveat (not tip-Re warning)
+    const caveatNote = notes.find(
+      (n) => n.textContent?.includes("Nur relative Rangfolge"),
+    );
+    expect(caveatNote).toBeDefined();
+    expect(caveatNote?.textContent).not.toMatch(/Geringe Modell-Konfidenz/i);
   });
 });

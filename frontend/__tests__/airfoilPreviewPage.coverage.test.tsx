@@ -48,7 +48,6 @@ describe("activeLensScore — edge cases", () => {
     re_agnostic: 0.8,
     mission: null as number | null,
     target_cl_cruise: null as number | null,
-    target_cl_loiter: null as number | null,
   };
 
   it("falls back to re_agnostic when mission is null", () => {
@@ -349,19 +348,23 @@ describe("AirfoilPreviewPage — rendering and wiring (gh-822)", () => {
 
   it("suitabilityData present: rootScoreMap passed as defined", () => {
     mockSuitabilityData = {
-      query: { active_lens: "re_agnostic" },
+      query: { active_lens: "re_agnostic", target_cl_provenance: "estimated" },
       results: [
         {
           airfoil_name: "e423",
           re_agnostic: 0.82,
           mission: null,
           target_cl_cruise: null,
-          target_cl_loiter: null,
+          target_cl_best_glide: null,
+          target_cl_min_sink: null,
+          stall_gentleness: null,
+          cl_max_margin: null,
           min_analysis_confidence: 0.9,
           tip_re_flag: false,
           caveat: "",
         },
       ],
+      caveat: { relative_ranking_only: true, no_hysteresis_modelling: true, ignores_tip_re_clmax_collapse: true, recommend_xfoil_validation: false, text: "" },
     };
     // Render and assert rootRankedMode is false (scores but not ranked)
     render(<AirfoilPreviewPage />);
@@ -433,7 +436,6 @@ describe("AirfoilPreviewPage — rendering and wiring (gh-822)", () => {
       re_agnostic: 0.5,
       mission: 0.9,
       target_cl_cruise: 0.6,
-      target_cl_loiter: 0.4,
     };
     expect(activeLensScore(item, "mission")).toBe(0.9);
     expect(activeLensScore(item, "target_cl_cruise")).toBe(0.6);
@@ -455,19 +457,23 @@ describe("AirfoilPreviewPage — rendering and wiring (gh-822)", () => {
       alphaAtLdMax: 10,
     };
     mockSuitabilityData = {
-      query: { active_lens: "target_cl_cruise" },
+      query: { active_lens: "target_cl_cruise", target_cl_provenance: "calculated" },
       results: [
         {
           airfoil_name: "naca0015",
           re_agnostic: 0.75,
           mission: null,
           target_cl_cruise: 0.5,  // matches cl[2]=0.5 → α=5°
-          target_cl_loiter: null,
+          target_cl_best_glide: null,
+          target_cl_min_sink: null,
+          stall_gentleness: null,
+          cl_max_margin: null,
           min_analysis_confidence: 0.9,
           tip_re_flag: false,
           caveat: "",
         },
       ],
+      caveat: { relative_ranking_only: true, no_hysteresis_modelling: true, ignores_tip_re_clmax_collapse: true, recommend_xfoil_validation: false, text: "" },
     };
     render(<AirfoilPreviewPage />);
     // The page should render without crash; the viewer panel receives operatingAlphaDeg
@@ -490,19 +496,23 @@ describe("AirfoilPreviewPage — rendering and wiring (gh-822)", () => {
       alphaAtLdMax: null,
     };
     mockSuitabilityData = {
-      query: { active_lens: "re_agnostic" },
+      query: { active_lens: "re_agnostic", target_cl_provenance: "estimated" },
       results: [
         {
           airfoil_name: "naca0015",
           re_agnostic: 0.75,
           mission: null,
           target_cl_cruise: null,  // null → no operating alpha
-          target_cl_loiter: null,
+          target_cl_best_glide: null,
+          target_cl_min_sink: null,
+          stall_gentleness: null,
+          cl_max_margin: null,
           min_analysis_confidence: 0.9,
           tip_re_flag: false,
           caveat: "",
         },
       ],
+      caveat: { relative_ranking_only: true, no_hysteresis_modelling: true, ignores_tip_re_clmax_collapse: true, recommend_xfoil_validation: false, text: "" },
     };
     render(<AirfoilPreviewPage />);
     // operatingAlphaDeg should be empty string (undefined passed to dataset)
@@ -525,19 +535,23 @@ describe("AirfoilPreviewPage — rendering and wiring (gh-822)", () => {
       alphaAtLdMax: 15,
     };
     mockSuitabilityData = {
-      query: { active_lens: "target_cl_cruise" },
+      query: { active_lens: "target_cl_cruise", target_cl_provenance: "calculated" },
       results: [
         {
           airfoil_name: "naca0015",
           re_agnostic: 0.78,
           mission: null,
           target_cl_cruise: 0.68,  // closest to cl[2]=0.7 → α=10°
-          target_cl_loiter: null,
+          target_cl_best_glide: null,
+          target_cl_min_sink: null,
+          stall_gentleness: null,
+          cl_max_margin: null,
           min_analysis_confidence: 0.9,
           tip_re_flag: false,
           caveat: "",
         },
       ],
+      caveat: { relative_ranking_only: true, no_hysteresis_modelling: true, ignores_tip_re_clmax_collapse: true, recommend_xfoil_validation: false, text: "" },
     };
     render(<AirfoilPreviewPage />);
     const viewer = screen.getByTestId("viewer-panel");
@@ -547,19 +561,23 @@ describe("AirfoilPreviewPage — rendering and wiring (gh-822)", () => {
 
   it("rootScoreMap built from suitabilityData with mission lens", () => {
     mockSuitabilityData = {
-      query: { active_lens: "mission" },
+      query: { active_lens: "mission", target_cl_provenance: "mixed" },
       results: [
         {
           airfoil_name: "e423",
           re_agnostic: 0.82,
           mission: 0.90,
           target_cl_cruise: 0.70,
-          target_cl_loiter: 0.55,
+          target_cl_best_glide: 0.75,
+          target_cl_min_sink: 0.55,
+          stall_gentleness: -0.03,
+          cl_max_margin: 0.10,
           min_analysis_confidence: 0.92,
           tip_re_flag: false,
           caveat: "",
         },
       ],
+      caveat: { relative_ranking_only: true, no_hysteresis_modelling: true, ignores_tip_re_clmax_collapse: true, recommend_xfoil_validation: false, text: "" },
     };
     // When rootRankedMode=false, rootScoreMap is undefined (scores not passed)
     render(<AirfoilPreviewPage />);
