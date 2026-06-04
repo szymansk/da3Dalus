@@ -374,3 +374,209 @@ def test_search_suitability_caveat_block_always_present(seeded_db):
     assert resp.caveat.no_hysteresis_modelling is True
     assert isinstance(resp.caveat.text, str)
     assert len(resp.caveat.text) > 0
+
+
+# ---------------------------------------------------------------------------
+# gh-821 persona-smoke fixes
+# ---------------------------------------------------------------------------
+
+
+def test_sailplane_mission_type_activates_mission_lens(seeded_db):
+    """Blocker gh-821: aeroplane with mission_type='sailplane' must resolve to
+    the 'glider' weighting lens — not null.  The eHawk persona exposed this:
+    the _MISSION_TYPE_MAP was missing 'sailplane' so mission=null was returned
+    for every result and the active_lens fell back to re_agnostic.
+    """
+    from app.services.suitability_service import search_suitability
+    from app.models.aeroplanemodel import AeroplaneModel
+    from app.models.mission_objective import MissionObjectiveModel
+
+    SessionLocal, _ = seeded_db
+    ap2_uuid = uuid.uuid4()
+    with SessionLocal() as session:
+        ap2 = AeroplaneModel(
+            name="ehawk",
+            uuid=ap2_uuid,
+            total_mass_kg=2.5,
+            assumption_computation_context={
+                "mass_kg": 2.5,
+                "v_cruise_mps": 16.0,
+                "s_ref_m2": 0.50,
+                "v_min_sink_mps": 10.0,
+            },
+        )
+        session.add(ap2)
+        session.flush()
+        session.add(MissionObjectiveModel(aeroplane_id=ap2.id, mission_type="sailplane"))
+        session.commit()
+
+    with SessionLocal() as session:
+        resp = search_suitability(
+            db=session,
+            chord_m=0.20,
+            speed_ms=14.0,
+            aeroplane_id=str(ap2_uuid),
+        )
+
+    # mission_type must be resolved to "glider" (via the alias map)
+    assert resp.query.mission_type == "glider", (
+        f"Expected 'glider' from sailplane alias; got '{resp.query.mission_type}'"
+    )
+    # active_lens must be 'mission' (not re_agnostic) because mission is now resolved
+    assert resp.query.active_lens == "mission", (
+        f"Expected active_lens='mission'; got '{resp.query.active_lens}'"
+    )
+    # At least one result must have a non-null mission score
+    assert any(r.mission is not None for r in resp.results), (
+        "All mission scores are None — glider weighting was not applied"
+    )
+
+
+@pytest.mark.parametrize(
+    "stored_mission_type,expected_lens_key",
+    [
+        ("sailplane", "glider"),
+        ("motor_glider", "glider"),
+        ("motorglider", "glider"),
+        ("slope_soarer", "glider"),
+        ("wing_racer", "sport"),
+        ("acro_3d", "aerobatic"),
+        ("stol_bush", "trainer"),
+    ],
+)
+def test_mission_type_map_covers_all_stored_presets(
+    seeded_db, stored_mission_type, expected_lens_key
+):
+    """Every valid stored mission_type must map to a weighting-enum key so the
+    mission lens activates.  This test validates the _MISSION_TYPE_MAP
+    exhaustiveness for all non-core preset ids introduced in mission_preset_seed.py.
+    """
+    from app.services.suitability_service import search_suitability
+    from app.models.aeroplanemodel import AeroplaneModel
+    from app.models.mission_objective import MissionObjectiveModel
+
+    SessionLocal, _ = seeded_db
+    ap_uuid = uuid.uuid4()
+    with SessionLocal() as session:
+        ap = AeroplaneModel(
+            name=f"test-{stored_mission_type}",
+            uuid=ap_uuid,
+            total_mass_kg=2.0,
+            assumption_computation_context={
+                "mass_kg": 2.0,
+                "v_cruise_mps": 18.0,
+                "s_ref_m2": 0.35,
+                "v_min_sink_mps": 12.0,
+            },
+        )
+        session.add(ap)
+        session.flush()
+        session.add(MissionObjectiveModel(aeroplane_id=ap.id, mission_type=stored_mission_type))
+        session.commit()
+
+    with SessionLocal() as session:
+        resp = search_suitability(
+            db=session,
+            chord_m=0.15,
+            speed_ms=15.0,
+            aeroplane_id=str(ap_uuid),
+        )
+
+    assert resp.query.mission_type == expected_lens_key, (
+        f"mission_type='{stored_mission_type}' → expected '{expected_lens_key}', "
+        f"got '{resp.query.mission_type}'"
+    )
+    assert resp.query.active_lens == "mission", (
+        f"Expected active_lens='mission' for '{stored_mission_type}'; "
+        f"got '{resp.query.active_lens}'"
+    )
+
+
+def test_confidence_aware_ranking_high_score_low_conf_ranks_below_reliable(seeded_db):
+    """BUG-3 fix: a high-score item with low analysis confidence must rank *below*
+    a slightly-lower-score item that has high confidence (>= 0.85 threshold).
+
+    Sort key change: items are grouped by confidence tier first
+    (confident: min_analysis_confidence >= 0.85 come first),
+    then sorted by active-lens score descending within each tier.
+    The *displayed* scores (re_agnostic / mission / target_cl_cruise) are
+    unchanged — only the sort order is confidence-aware.
+    """
+    from app.services.suitability_service import search_suitability
+    from app.models.airfoil import AirfoilModel
+    from app.models.airfoil_low_re import AirfoilGeometryModel, AirfoilLowRePolarModel
+
+    SessionLocal, _ = seeded_db
+
+    # Add a third airfoil: excellent re_agnostic score BUT low confidence (0.046)
+    # This simulates the sd7037 low-confidence scenario from the smoke-test report.
+    with SessionLocal() as session:
+        af = AirfoilModel(name="high_score_low_conf", coordinates=[[0, 0], [0.5, 0.07], [1, 0]])
+        session.add(af)
+        session.flush()
+        session.add(
+            AirfoilGeometryModel(
+                airfoil_name="high_score_low_conf",
+                max_thickness_pct=10.0,
+                max_camber_pct=3.0,
+                camber_at_te=0.001,
+                family="cambered",
+                computed_at=datetime.now(timezone.utc),
+            )
+        )
+        # Polar with an extremely high ld_max / cl_max but min_analysis_confidence=0.046
+        session.add(
+            AirfoilLowRePolarModel(
+                airfoil_name="high_score_low_conf",
+                reynolds=100_000.0,
+                ld_max=999.0,  # would rank #1 on re_agnostic alone
+                cl_max=2.0,
+                alpha_attached_lo=-5.0,
+                alpha_attached_hi=20.0,
+                drag_bucket_width=1.0,
+                cd_min=0.001,
+                stall_gentleness=-0.01,
+                cd0=0.002,
+                k=0.01,
+                cl0=0.5,
+                cl_valid_lo=-0.5,
+                cl_valid_hi=2.0,
+                min_analysis_confidence=0.046,  # far below 0.85 flag threshold
+                neuralfoil_model_size="xxxlarge",
+                n_crit=9.0,
+                computed_at=datetime.now(timezone.utc),
+            )
+        )
+        session.commit()
+
+    with SessionLocal() as session:
+        resp = search_suitability(db=session, chord_m=0.15, speed_ms=15.0)
+
+    # The low-confidence item must NOT be ranked first
+    first_result = resp.results[0]
+    assert first_result.airfoil_name != "high_score_low_conf", (
+        "Low-confidence item 'high_score_low_conf' (conf=0.046) ranked #1 despite "
+        "having a high re_agnostic score — confidence-aware sort is broken."
+    )
+
+    # All high-confidence items must appear before the low-confidence one
+    from app.settings import Settings
+
+    low_conf_flag = Settings().low_re_low_confidence_flag
+    high_conf_names = {
+        r.airfoil_name for r in resp.results if r.min_analysis_confidence >= low_conf_flag
+    }
+    low_conf_names = {
+        r.airfoil_name for r in resp.results if r.min_analysis_confidence < low_conf_flag
+    }
+
+    # Verify that the positions are correct: last index of high-conf < first index of low-conf
+    result_names = [r.airfoil_name for r in resp.results]
+    if high_conf_names and low_conf_names:
+        last_high_conf_idx = max(result_names.index(n) for n in high_conf_names)
+        first_low_conf_idx = min(result_names.index(n) for n in low_conf_names)
+        assert last_high_conf_idx < first_low_conf_idx, (
+            f"High-confidence items should all appear before low-confidence items. "
+            f"Last high-conf idx={last_high_conf_idx}, first low-conf idx={first_low_conf_idx}. "
+            f"Order: {result_names}"
+        )

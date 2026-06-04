@@ -47,16 +47,45 @@ logger = logging.getLogger(__name__)
 _RHO = 1.225  # kg/m³
 _MU = 1.81e-5  # Pa·s  dynamic viscosity
 
-# MISSION enum → our internal keys (MissionObjectiveModel.mission_type values)
+# MISSION enum → our internal weighting keys (5-key set: trainer|sport|aerobatic|glider|flying_wing)
+#
+# Maps every valid stored mission_type (MissionPreset.id values from
+# mission_preset_seed.py) onto one of the five scoring-weight categories
+# defined in Settings.low_re_mission_weights.
+#
+# Rule of thumb:
+#   - Glider-type missions (pure soaring, self-launching) → "glider"
+#   - Speed/racing missions → "sport"
+#   - High-maneuver/3D/aerobatic missions → "aerobatic"
+#   - STOL / high-CL / forgiving missions → "trainer"
+#   - Tailless flying wings → "flying_wing"
 _MISSION_TYPE_MAP = {
+    # --- 1:1 passthrough for the 5 canonical weight keys ---
     "trainer": "trainer",
     "sport": "sport",
     "aerobatic": "aerobatic",
     "glider": "glider",
     "flying_wing": "flying_wing",
-    # common aliases / legacy values
-    "motorglider": "glider",
+    # --- Seeded preset aliases (mission_preset_seed.py) ---
+    # Sailplane / motor-glider family → glider weighting
+    "sailplane": "glider",
     "motor_glider": "glider",
+    "motorglider": "glider",  # legacy spelling without underscore
+    "slope_soarer": "glider",  # slope soarer is aerobatic-capable but glider in airfoil needs
+    "thermal": "glider",  # forward-compat if "thermal" ever becomes a preset id
+    "soarer": "glider",  # forward-compat
+    # Wing-racer / FPV → sport (speed + moderate maneuver)
+    "wing_racer": "sport",
+    "fpv_cruiser": "sport",
+    # Acrobatic 3D / warbird → aerobatic
+    "acro_3d": "aerobatic",
+    "warbird": "aerobatic",
+    "three_d": "aerobatic",
+    "3d": "aerobatic",
+    # STOL / bush → trainer (high CL_max, forgiving stall)
+    "stol_bush": "trainer",
+    "stol": "trainer",
+    "bush": "trainer",
 }
 
 
@@ -249,18 +278,27 @@ def search_suitability(
         )
 
     # --- Determine active lens and rank ---
+    # Confidence-aware sort key (BUG-3 fix, gh-821):
+    #   Primary:   confident items first (min_analysis_confidence >= low_conf_flag)
+    #   Secondary: active-lens score descending within each confidence tier
+    # The *displayed* scores (re_agnostic / mission / target_cl_cruise) are
+    # intentionally unchanged — only the sort position is confidence-aware.
     has_mission = any(item.mission is not None for item in items)
     has_cruise = any(item.target_cl_cruise is not None for item in items)
 
+    def _conf_tier(item: SuitabilityItem) -> int:
+        """Return 0 for confident items (ranked first), 1 for low-confidence."""
+        return 0 if item.min_analysis_confidence >= low_conf_flag else 1
+
     if has_mission:
         active_lens = "mission"
-        items.sort(key=lambda i: i.mission or 0.0, reverse=True)
+        items.sort(key=lambda i: (_conf_tier(i), -(i.mission or 0.0)))
     elif has_cruise:
         active_lens = "target_cl_cruise"
-        items.sort(key=lambda i: i.target_cl_cruise or 0.0, reverse=True)
+        items.sort(key=lambda i: (_conf_tier(i), -(i.target_cl_cruise or 0.0)))
     else:
         active_lens = "re_agnostic"
-        items.sort(key=lambda i: i.re_agnostic, reverse=True)
+        items.sort(key=lambda i: (_conf_tier(i), -i.re_agnostic))
 
     # Apply limit
     items = items[:limit]
