@@ -254,6 +254,52 @@ class JobTracker:
                 job.status = JobStatus.FAILED
                 job.error = "Server shutdown"
 
+    def schedule_airfoil_low_re_compute(self, airfoil_names: list[str]) -> None:
+        """Schedule low-Re recompute for a list of newly imported airfoil names.
+
+        Only the supplied names are scheduled. Callers are responsible for
+        passing only *newly imported* names (not the entire library).
+        If the list is empty, nothing is scheduled.
+        """
+        if not airfoil_names:
+            logger.debug("schedule_airfoil_low_re_compute: empty list, nothing to do")
+            return
+
+        logger.info(
+            "Scheduling low-Re recompute for %d new airfoil(s): %s",
+            len(airfoil_names),
+            airfoil_names,
+        )
+        new_task = self._create_task_safe(self._run_airfoil_low_re_compute(airfoil_names))
+        if new_task is None:
+            logger.debug("Cannot schedule airfoil low-Re compute — no event loop available")
+
+    async def _run_airfoil_low_re_compute(self, airfoil_names: list[str]) -> None:
+        """Execute the low-Re compute for the given airfoil names.
+
+        Defers the actual computation to avoid blocking the event loop.
+        In a server context this would call into the backfill service;
+        for now it logs and yields so tests can hook it cleanly.
+        """
+        await asyncio.sleep(0)  # yield to event loop (debounce-compatible)
+        logger.info(
+            "airfoil_low_re_compute: processing %d airfoil(s): %s",
+            len(airfoil_names),
+            airfoil_names,
+        )
+        # TODO: wire into compute_airfoil_low_re when async backfill is implemented
+
 
 # Module-level singleton
 job_tracker = JobTracker()
+
+
+def schedule_airfoil_low_re(airfoil_names: list[str]) -> None:
+    """Module-level convenience: schedule low-Re recompute for newly imported airfoils.
+
+    Delegates to job_tracker.schedule_airfoil_low_re_compute.
+    Pass only *newly imported* names — not the full library.
+    """
+    if not airfoil_names:
+        return
+    job_tracker.schedule_airfoil_low_re_compute(airfoil_names)
