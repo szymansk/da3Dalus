@@ -1,4 +1,4 @@
-"""Tests for the airfoil family classifier (Task 4, gh-821; Item 1, gh-825).
+"""Tests for the airfoil family classifier (Task 4, gh-821; Item 1, gh-825; gh-834).
 
 Uses hand-built minimal coordinate arrays to test each family type AND loads
 real Clark Y coordinates from components/airfoils/clarky.dat to verify the
@@ -16,8 +16,33 @@ gh-825 item 1 (re-tuned): Improved flat-bottom detection.
   Additionally, the symmetric check now fires BEFORE flat_bottom to prevent
   purely symmetric airfoils (NACA 0000) from being mis-labelled as flat_bottom.
 
+gh-834: Corrected reflexed-family detection (camber-line shape).
+  The previous code keyed reflex on camber_at_te = the mean-camber-line
+  ENDPOINT value (camber[-1]).  For sharp-TE airfoils (upper == lower at TE)
+  that value is ~0 for EVERY airfoil → true reflexed airfoils (mh60, e184;
+  sharp TE) scored 0 and were missed; only blunt/open-TE airfoils (sc20612)
+  got a non-zero (negative) value and were wrongly labelled reflexed.
+
+  The fix uses two complementary signals derived from the camber-LINE SHAPE:
+
+    A. Sharp-TE reflex (MH / E / EH / S-series flying-wing sections):
+       The camber at x=0.9 is nearly zero or negative relative to max_camber.
+       Criterion: camber_at_x90 / max_camber < 0.06.
+       These airfoils' camber line falls steeply from its peak and almost
+       reaches the chord line (or dips below it) by 90% chord.
+
+    B. Open / upturned-TE reflex (Clark YH and similar):
+       The aft camber line has positive second-order concavity — the camber
+       curves gently upward toward the TE (S-shape visible in the curvature).
+       Criterion: quadratic coefficient of camber-line polynomial fit over
+       [0.5..1.0] > 0.015 AND max_camber_pct > 2.0%.
+
+  camber_at_te is now repurposed to store the camber-line value at x=0.9
+  (instead of the TE endpoint), which is the primary reflex signal and
+  is meaningful even for sharp-TE airfoils.
+
 NOTE: Stored AirfoilGeometryModel.family values change after this re-tune.
-A PO-run re-backfill (--force) is required post-merge (gh-825 item 1).
+A PO-run re-backfill (--force) is required post-merge (gh-834).
 """
 
 from __future__ import annotations
@@ -244,5 +269,96 @@ def test_classify_real_airfoil_family_regression(filename: str, expected: str, d
     result = classify_family(coords)
     assert result == expected, (
         f"{description}: expected {expected!r}, got {result!r} for {filename}"
+    )
+    assert result in VALID_FAMILIES
+
+
+# ---------------------------------------------------------------------------
+# gh-834: Reflexed family — real coordinate tests
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize(
+    "filename,description",
+    [
+        # Martin Hepperle flying-wing sections (sharp TE, camber dips to ~0 at 90% chord)
+        ("mh60.dat", "MH 60 (Maughmer flying-wing, sharp TE reflex)"),
+        ("mh61.dat", "MH 61 (Maughmer flying-wing, sharp TE reflex)"),
+        ("mh62.dat", "MH 62 (Maughmer flying-wing, sharp TE reflex)"),
+        ("mh64.dat", "MH 64 (Maughmer flying-wing, sharp TE reflex)"),
+        ("mh78.dat", "MH 78 (Maughmer flying-wing, steep reflex)"),
+        # Eppler flying-wing sections (sharp TE, camber goes below chord in aft)
+        ("e184.dat", "E 184 (Eppler flying-wing reflex)"),
+        ("e186.dat", "E 186 (Eppler flying-wing reflex)"),
+        # Althaus / EH tailless sections (sharp TE, near-zero aft camber)
+        ("eh1070.dat", "EH 1070 (Althaus tailless reflex)"),
+        ("eh2010.dat", "EH 2010 (Althaus tailless reflex)"),
+        # Upturned-TE reflex via positive aft camber concavity (S-shape)
+        ("clarkyh.dat", "Clark YH (flat-bottom + upturned TE for flying wings)"),
+        # Selig flying-wing section
+        ("s5010.dat", "S 5010 (Selig flying-wing reflex)"),
+    ],
+)
+def test_classify_real_reflexed_airfoil(filename: str, description: str) -> None:
+    """gh-834: Real flying-wing / reflexed-TE airfoils must classify as 'reflexed'.
+
+    Previous code (gh-825) used camber_at_te = camber[-1] (the TE endpoint).
+    For sharp-TE airfoils upper == lower at TE → camber[-1] ≈ 0 for every
+    airfoil, so the old threshold (-0.003) was never triggered and all these
+    airfoils were mis-classified as semi_symmetric / flat_bottom / cambered.
+
+    The fix (gh-834): detect reflex from the camber-LINE SHAPE, not the
+    endpoint.  Two signals:
+      A. Aft camber ratio: camber_at_x90 / max_camber < 0.06  (sharp-TE types)
+      B. Positive aft concavity: quadratic coeff of camber over [0.5..1.0] > 0.015
+         AND max_camber_pct > 2%  (upturned-TE types like Clark YH)
+    """
+    from app.services.airfoil_low_re_service import classify_family
+
+    coords = _load_dat(filename)
+    result = classify_family(coords)
+    assert result == "reflexed", (
+        f"{description} ({filename}) must be 'reflexed', got {result!r}. "
+        "gh-834: reflex detection must use camber-line shape, not TE endpoint."
+    )
+    assert result in VALID_FAMILIES
+
+
+@pytest.mark.parametrize(
+    "filename,expected_not_reflexed,description",
+    [
+        # Supercritical — previously WRONGLY labelled reflexed due to blunt TE
+        # giving negative camber_at_te = TE-endpoint value.  With max_camber ≈ 1.1%
+        # the correct family after the reflex fix is semi_symmetric.
+        ("sc20612.dat", "semi_symmetric", "SC 20612 (supercritical — blunt TE, NOT reflexed)"),
+        # Genuine cambered — must not be reflexed
+        ("naca4412.dat", "cambered", "NACA 4412 (cambered — must NOT be reflexed)"),
+        # Symmetric — symmetric check fires first
+        ("naca0006.dat", "symmetric", "NACA 0006 (symmetric — must NOT be reflexed)"),
+        # Flat-bottom — flat-bottom, not reflexed
+        ("clarky.dat", "flat_bottom", "Clark Y (flat-bottom — NOT reflexed)"),
+    ],
+)
+def test_classify_real_not_reflexed(
+    filename: str, expected_not_reflexed: str, description: str
+) -> None:
+    """gh-834: Airfoils that are NOT reflexed must NOT be classified as 'reflexed'.
+
+    sc20612 (supercritical with blunt TE) was previously mis-labelled 'reflexed'
+    because its TE endpoint camber value is -0.0096 (below the old -0.003 threshold).
+    That is purely a TE-thickness asymmetry artifact, not a reflexed camber line.
+
+    After the fix these must remain in their correct non-reflexed families.
+    """
+    from app.services.airfoil_low_re_service import classify_family
+
+    coords = _load_dat(filename)
+    result = classify_family(coords)
+    assert result != "reflexed", (
+        f"{description} ({filename}) must NOT be 'reflexed', got {result!r}. "
+        "gh-834: blunt-TE / supercritical mis-labelling regression."
+    )
+    assert result == expected_not_reflexed, (
+        f"{description}: expected {expected_not_reflexed!r}, got {result!r}"
     )
     assert result in VALID_FAMILIES
