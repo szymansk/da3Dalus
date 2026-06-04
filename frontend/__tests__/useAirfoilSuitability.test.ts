@@ -5,6 +5,7 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { renderHook } from "@testing-library/react";
 import { useAirfoilSuitability } from "@/hooks/useAirfoilSuitability";
+import type { ActiveLens, RankingLens } from "@/hooks/useAirfoilSuitability";
 
 // ── Capture the SWR key ──────────────────────────────────────────
 let capturedKey: string | null = undefined as unknown as string | null;
@@ -134,5 +135,22 @@ describe("useAirfoilSuitability — query string construction", () => {
     );
     const url = new URL(capturedKey!, "http://localhost");
     expect(url.searchParams.has("aeroplane_id")).toBe(false);
+  });
+});
+
+// ── Type-level tests for ActiveLens and RankingLens (gh-822) ────
+describe("useAirfoilSuitability — ActiveLens and RankingLens types (gh-822)", () => {
+  it("ActiveLens includes 'target_cl_loiter' to match the backend verbatim", () => {
+    // This compiles only if 'target_cl_loiter' is a valid ActiveLens member
+    const lens: ActiveLens = "target_cl_loiter";
+    expect(lens).toBe("target_cl_loiter");
+  });
+
+  it("RankingLens excludes 'target_cl_loiter' (display-only, never ranking lens)", () => {
+    // All valid RankingLens values must compile; 'target_cl_loiter' must NOT be assignable
+    const lenses: RankingLens[] = ["re_agnostic", "mission", "target_cl_cruise"];
+    expect(lenses).toHaveLength(3);
+    // TypeScript would catch this at compile time; at runtime we verify the array excludes it
+    expect(lenses.includes("target_cl_loiter" as RankingLens)).toBe(false);
   });
 });

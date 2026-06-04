@@ -14,6 +14,25 @@ function airfoilShortName(raw: string): string {
   return (raw.split("/").pop() ?? raw).replace(/\.dat$/i, "");
 }
 
+/**
+ * Returns the score to display in the dropdown badge for a suitability item,
+ * based on the active lens from the backend query.
+ *
+ * Relationship:
+ *  - 'mission'          → item.mission ?? item.re_agnostic (fallback when no mission score)
+ *  - 'target_cl_cruise' → item.target_cl_cruise ?? item.re_agnostic
+ *  - 'target_cl_loiter' → display-only lens, never used as ranking lens; fall through to re_agnostic
+ *  - 're_agnostic' / default → item.re_agnostic
+ */
+export function activeLensScore(
+  item: { re_agnostic: number; mission: number | null; target_cl_cruise: number | null; target_cl_loiter: number | null },
+  lens: string | undefined,
+): number {
+  if (lens === "mission") return item.mission ?? item.re_agnostic;
+  if (lens === "target_cl_cruise") return item.target_cl_cruise ?? item.re_agnostic;
+  return item.re_agnostic;
+}
+
 const NU_AIR = 1.46e-5; // kinematic viscosity [m\u00B2/s] at 15\u00B0C
 
 export function computeRe(velocityMs: number, chordMm: number): number {
@@ -75,23 +94,26 @@ export default function AirfoilPreviewPage() {
     aeroplane_id: aeroplaneId,
   });
 
-  // Build lookup maps: airfoil name -> score string + sorted names
+  // Build lookup maps: airfoil name -> score string + sorted names.
+  // The displayed score uses the active lens so the badge matches the ranking order.
   const rootScoreMap = useMemo((): Record<string, string> => {
     if (!rootSuitability.data) return {};
+    const lens = rootSuitability.data.query.active_lens;
     return Object.fromEntries(
       rootSuitability.data.results.map((item) => [
         item.airfoil_name,
-        item.re_agnostic.toFixed(2),
+        activeLensScore(item, lens).toFixed(2),
       ]),
     );
   }, [rootSuitability.data]);
 
   const tipScoreMap = useMemo((): Record<string, string> => {
     if (!tipSuitability.data) return {};
+    const lens = tipSuitability.data.query.active_lens;
     return Object.fromEntries(
       tipSuitability.data.results.map((item) => [
         item.airfoil_name,
-        item.re_agnostic.toFixed(2),
+        activeLensScore(item, lens).toFixed(2),
       ]),
     );
   }, [tipSuitability.data]);
@@ -224,6 +246,7 @@ export default function AirfoilPreviewPage() {
           ma={ma}
           onMaChange={setMa}
           operatingAlphaDeg={rootOperatingAlpha}
+          tipSuitabilityItem={hasTip ? (tipSuitabilityItem ?? undefined) : undefined}
         />
       </div>
       <div className="shrink-0 overflow-hidden" style={{ width: 480 }}>

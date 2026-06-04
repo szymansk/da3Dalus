@@ -20,6 +20,19 @@ vi.mock("lucide-react", () => ({
 import { AirfoilPreviewViewerPanel } from "../components/workbench/AirfoilPreviewViewerPanel";
 import type { AirfoilAnalysisResult } from "../hooks/useAirfoilAnalysis";
 import type { AirfoilGeometry } from "../hooks/useAirfoilGeometry";
+import type { SuitabilityItem } from "../hooks/useAirfoilSuitability";
+
+const baseSuitabilityItem: SuitabilityItem = {
+  airfoil_name: "naca0012",
+  family: "symmetric",
+  re_agnostic: 0.65,
+  mission: null,
+  target_cl_cruise: null,
+  target_cl_loiter: null,
+  min_analysis_confidence: 0.88,
+  tip_re_flag: false,
+  caveat: "Nur relative Rangfolge.",
+};
 
 const mockGeometry: AirfoilGeometry = {
   upper: [[0, 0], [0.5, 0.08], [1, 0]],
@@ -134,6 +147,28 @@ describe("AirfoilPreviewViewerPanel — suitability enhancements", () => {
     expect(screen.queryByTestId("operating-point-marker")).toBeNull();
   });
 
+  it("does NOT render operating point marker when alphaDeg array is empty (empty-array guard)", () => {
+    // Regression guard for the unguarded alphas[0] access: an empty alphaDeg array
+    // must not produce a NaN coordinate that renders an invisible/misplaced marker.
+    const emptyAlphaAnalysis: AirfoilAnalysisResult = {
+      ...mockAnalysis,
+      alphaDeg: [],
+      cl: [],
+      cd: [],
+      cm: [],
+      clOverCd: [],
+    };
+    render(
+      <AirfoilPreviewViewerPanel
+        {...baseProps}
+        rootAnalysisResult={emptyAlphaAnalysis}
+        operatingAlphaDeg={5}
+      />,
+    );
+    // The component must not crash, and the marker must be absent (no valid coords)
+    expect(screen.queryByTestId("operating-point-marker")).toBeNull();
+  });
+
   it("banner text mentions tip Re reduction", () => {
     render(
       <AirfoilPreviewViewerPanel
@@ -146,5 +181,50 @@ describe("AirfoilPreviewViewerPanel — suitability enhancements", () => {
     const alert = screen.getByRole("alert");
     // Should mention tip or Re in some form
     expect(alert.textContent).toMatch(/tip|Re|Tip/i);
+  });
+
+  // tip_re_flag is the AUTHORITATIVE trigger when a suitability item is available.
+  // The arithmetic fallback (tipRe < rootRe) is only used when no item is present.
+
+  it("shows tip-Re banner when tipSuitabilityItem.tip_re_flag is true, even if tipRe > rootRe", () => {
+    // Authoritative path: backend flag set → show banner regardless of arithmetic
+    render(
+      <AirfoilPreviewViewerPanel
+        {...baseProps}
+        tipAirfoilName="naca0012"
+        tipRe={300000}
+        rootRe={200000}
+        tipSuitabilityItem={{ ...baseSuitabilityItem, tip_re_flag: true }}
+      />,
+    );
+    expect(screen.getByRole("alert")).toBeDefined();
+  });
+
+  it("does NOT show tip-Re banner when tipSuitabilityItem.tip_re_flag is false, even if tipRe < rootRe", () => {
+    // Authoritative path: backend flag clear → no banner even when arithmetic says tipRe < rootRe
+    render(
+      <AirfoilPreviewViewerPanel
+        {...baseProps}
+        tipAirfoilName="naca0012"
+        tipRe={100000}
+        rootRe={200000}
+        tipSuitabilityItem={{ ...baseSuitabilityItem, tip_re_flag: false }}
+      />,
+    );
+    expect(screen.queryByRole("alert")).toBeNull();
+  });
+
+  it("falls back to arithmetic (tipRe < rootRe) when no tipSuitabilityItem is provided", () => {
+    // Fallback path: no suitability data, use arithmetic check
+    render(
+      <AirfoilPreviewViewerPanel
+        {...baseProps}
+        tipAirfoilName="naca0012"
+        tipRe={100000}
+        rootRe={200000}
+        // tipSuitabilityItem intentionally omitted
+      />,
+    );
+    expect(screen.getByRole("alert")).toBeDefined();
   });
 });

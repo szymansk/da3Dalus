@@ -22,7 +22,15 @@ export type MissionType =
 export type ActiveLens =
   | "re_agnostic"
   | "mission"
-  | "target_cl_cruise";
+  | "target_cl_cruise"
+  | "target_cl_loiter";
+
+/**
+ * Lenses that drive the ranked sort order in the UI.
+ * 'target_cl_loiter' is display-only — it adds a score column but never
+ * re-ranks the list, so it is excluded here.
+ */
+export type RankingLens = Exclude<ActiveLens, "target_cl_loiter">;
 
 export interface SuitabilityItem {
   airfoil_name: string;
@@ -33,6 +41,12 @@ export interface SuitabilityItem {
   target_cl_loiter: number | null;
   min_analysis_confidence: number;
   tip_re_flag: boolean;
+  /**
+   * Pre-formatted human-readable caveat text.
+   * This is the `.text` field of the backend `SuitabilityCaveat` object —
+   * not the caveat object itself. The backend serialises it as a plain string
+   * per item so the UI can render it without further processing.
+   */
   caveat: string;
 }
 

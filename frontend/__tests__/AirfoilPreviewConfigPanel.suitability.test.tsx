@@ -5,6 +5,7 @@
  */
 import { describe, it, expect, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import React from "react";
 
 // Mock lucide-react
@@ -122,7 +123,10 @@ describe("AirfoilPreviewConfigPanel — suitability card wiring", () => {
     expect(screen.queryByText(/Re-agnostisch/i)).toBeNull();
   });
 
-  it("passes stats to root AirfoilSelector when rootScoreMap provided", () => {
+  it("passes stats to root AirfoilSelector and score badge appears in dropdown", async () => {
+    // Strengthened from a no-crash check: opens the dropdown and asserts the
+    // score badge text is visible for the airfoil in the rootScoreMap.
+    const user = userEvent.setup();
     const rootScoreMap: Record<string, string> = { "e423": "0.82" };
     render(
       <AirfoilPreviewConfigPanel
@@ -130,10 +134,18 @@ describe("AirfoilPreviewConfigPanel — suitability card wiring", () => {
         rootScoreMap={rootScoreMap}
       />,
     );
-    // The AirfoilSelector accepts stats; the score should show up
-    // when the dropdown is opened, but we only check the prop is passed
-    // (the actual rendering of stats is tested in AirfoilSelector tests)
-    // We verify no crash — component renders
+    // The root_airfoil label is visible before opening
     expect(screen.getByText("root_airfoil")).toBeDefined();
+
+    // Open the root AirfoilSelector dropdown (first trigger button in the form)
+    // The root selector trigger shows the current value "e423"
+    const triggers = screen.getAllByRole("button");
+    // Find the button that shows the current root airfoil value "e423" as its text
+    const rootTrigger = triggers.find((btn) => btn.textContent?.includes("e423"));
+    expect(rootTrigger).toBeDefined();
+    await user.click(rootTrigger!);
+
+    // The score badge "0.82" should now be visible in the dropdown row for e423
+    expect(screen.getByText("0.82")).toBeDefined();
   });
 });

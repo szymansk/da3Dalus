@@ -4,6 +4,7 @@ import { useState, useMemo } from "react";
 import { Maximize2, Minimize2, AlertTriangle } from "lucide-react";
 import type { AirfoilGeometry } from "@/hooks/useAirfoilGeometry";
 import type { AirfoilAnalysisResult } from "@/hooks/useAirfoilAnalysis";
+import type { SuitabilityItem } from "@/hooks/useAirfoilSuitability";
 import { interpolateY } from "@/hooks/useAirfoilGeometry";
 
 interface AirfoilPreviewViewerPanelProps {
@@ -20,6 +21,12 @@ interface AirfoilPreviewViewerPanelProps {
   onMaChange: (ma: number) => void;
   /** gh-822 ADDITIVE: operating α for the polar marker (degrees) */
   operatingAlphaDeg?: number;
+  /**
+   * gh-822 ADDITIVE: suitability item for the tip airfoil.
+   * When present, tip_re_flag is the AUTHORITATIVE trigger for the tip-Re warning banner.
+   * The arithmetic fallback (tipRe < rootRe) is only used when no suitability item is available.
+   */
+  tipSuitabilityItem?: SuitabilityItem;
 }
 
 const COLOR_ROOT = "#FF8400";
@@ -502,6 +509,7 @@ export function AirfoilPreviewViewerPanel({
   ma,
   onMaChange,
   operatingAlphaDeg,
+  tipSuitabilityItem,
 }: Readonly<AirfoilPreviewViewerPanelProps>) {
   const [maximizedChart, setMaximizedChart] = useState<string | null>(null);
 
@@ -528,8 +536,14 @@ export function AirfoilPreviewViewerPanel({
     return parts.join("  |  ");
   }, [rootGeometry, tipGeometry, hasTip]);
 
-  // gh-822: show tip-Re warning when tip is present and tipRe < rootRe
-  const showTipReBanner = hasTip && tipRe != null && tipRe < rootRe;
+  // gh-822: tip-Re warning banner.
+  // AUTHORITATIVE trigger: tipSuitabilityItem.tip_re_flag (set by the backend suitability scorer).
+  // FALLBACK (no suitability data): arithmetic tipRe < rootRe check.
+  const showTipReBanner = hasTip && (
+    tipSuitabilityItem != null
+      ? tipSuitabilityItem.tip_re_flag
+      : (tipRe != null && tipRe < rootRe)
+  );
 
   return (
     <div className="flex flex-1 flex-col gap-4 overflow-hidden p-4">
@@ -645,10 +659,11 @@ export function AirfoilPreviewViewerPanel({
           // gh-822: Find L/D value at operating alpha for the marker
           const operatingLdAtAlpha: number | undefined = (() => {
             if (operatingAlphaDeg == null) return undefined;
-            // Find the closest alpha index
+            // Guard: empty alphaDeg array yields no marker
             const alphas = rootAnalysisResult.alphaDeg;
+            if (alphas.length === 0) return undefined;
             let closestIdx = 0;
-            let closestDist = Math.abs(alphas[0] - operatingAlphaDeg);
+            let closestDist = Math.abs((alphas[0] ?? 0) - operatingAlphaDeg);
             for (let i = 1; i < alphas.length; i++) {
               const d = Math.abs(alphas[i] - operatingAlphaDeg);
               if (d < closestDist) {
