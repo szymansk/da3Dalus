@@ -93,7 +93,7 @@ describe("OpComparisonTable", () => {
     render(<OpComparisonTable points={POINTS} />);
     expect(screen.getByText("OP")).toBeTruthy();
     expect(screen.getByText("α (°)")).toBeTruthy();
-    expect(screen.getByText("Elev (°)")).toBeTruthy();
+    expect(screen.getByText("Elevator (°)")).toBeTruthy();
     expect(screen.getByText("Reserve")).toBeTruthy();
     expect(screen.getByText("CL")).toBeTruthy();
     expect(screen.getByText("CD")).toBeTruthy();
@@ -132,5 +132,57 @@ describe("OpComparisonTable", () => {
     const untrimmed = [makeOp({ name: "x", status: "NOT_TRIMMED" })];
     const { container } = render(<OpComparisonTable points={untrimmed} />);
     expect(container.firstChild).toBeNull();
+  });
+
+  it("renders a column for EVERY control surface, not just elevator (gh-863)", () => {
+    const op = makeOp({
+      id: 9,
+      name: "turn",
+      alpha: 6 * RAD,
+      trim_enrichment: {
+        analysis_goal: "Turn",
+        result_summary: "",
+        trim_method: "opti",
+        trim_score: 0.02,
+        trim_residuals: {},
+        deflection_reserves: {
+          "[elevator]Elevator": {
+            deflection_deg: -3.0,
+            max_pos_deg: 25,
+            max_neg_deg: 25,
+            usage_fraction: 0.12,
+          },
+          "[aileron]Aileron": {
+            deflection_deg: 8.0,
+            max_pos_deg: 20,
+            max_neg_deg: 20,
+            usage_fraction: 0.4,
+          },
+          "[rudder]Rudder": {
+            deflection_deg: 4.0,
+            max_pos_deg: 30,
+            max_neg_deg: 30,
+            usage_fraction: 0.133,
+          },
+        },
+        design_warnings: [],
+        effectiveness: {},
+        stability_classification: null,
+        mixer_values: {},
+        aero_coefficients: { CL: 0.6, CD: 0.04 },
+      },
+    });
+    render(<OpComparisonTable points={[op]} />);
+
+    // a header per surface (display names, role-ordered elevator→aileron→rudder)
+    expect(screen.getByText("Elevator (°)")).toBeTruthy();
+    expect(screen.getByText("Aileron (°)")).toBeTruthy();
+    expect(screen.getByText("Rudder (°)")).toBeTruthy();
+    // and their deflection values are shown
+    expect(screen.getByText("-3.0")).toBeTruthy();
+    expect(screen.getByText("8.0")).toBeTruthy();
+    expect(screen.getByText("4.0")).toBeTruthy();
+    // Reserve is the binding (max) authority used across surfaces → aileron 40%
+    expect(screen.getByText("40%")).toBeTruthy();
   });
 });

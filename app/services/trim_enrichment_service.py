@@ -402,8 +402,14 @@ def compute_enrichment(
     analysis_goal = ANALYSIS_GOALS.get(op_name, _DEFAULT_ANALYSIS_GOAL)
 
     # --- Deflection reserves ---
+    # gh-863: report EVERY geometry control surface (the union of `limits` and
+    # the trimmed `controls`), not just the trimmed one — so the OP Comparison
+    # and Control Authority views show all surfaces the aircraft has. Untrimmed
+    # surfaces sit at 0° (full reserve); trimmed deflections win where present.
     deflection_reserves: dict[str, DeflectionReserve] = {}
-    for surface_name, deflection_deg in controls.items():
+    surface_deflections: dict[str, float] = {name: 0.0 for name in limits}
+    surface_deflections.update(controls)
+    for surface_name, deflection_deg in surface_deflections.items():
         max_pos, max_neg = limits.get(surface_name, (25.0, 25.0))
         limit = max_pos if deflection_deg >= 0 else max_neg
         usage = abs(deflection_deg) / limit if limit > 0 else 0.0
