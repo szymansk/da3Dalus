@@ -55,22 +55,133 @@ def _wing_strip_counts(airplane, spanwise_resolution: int) -> list[int]:
     return counts
 
 
+# gh-855: target spanwise panels per half-wing, distributed ∝ segment span.
+_SPANWISE_PANELS_PER_HALF = 40
+_MIN_PANELS_PER_SEGMENT = 2
+
+
+def _panels_per_segment(spans: list[float], budget: int, min_per_segment: int) -> list[int]:
+    """Distribute ``budget`` spanwise panels across segments ∝ span (gh-855).
+
+    Each segment gets at least ``min_per_segment`` panels so a tiny segment is
+    never over-resolved relative to a large one. Pure function (no aerosandbox).
+    """
+    if not spans:
+        return []
+    total = float(sum(spans))
+    if total <= 0:
+        return [max(min_per_segment, 1) for _ in spans]
+    return [max(min_per_segment, int(round(budget * s / total))) for s in spans]
+
+
+def _segment_spans(wing) -> list[float]:
+    """True (dihedral-inclusive) spanwise length of each wing segment [m]."""
+    xs = wing.xsecs
+    spans: list[float] = []
+    for xa, xb in zip(xs[:-1], xs[1:], strict=False):
+        a = np.asarray(xa.xyz_le, dtype=float)
+        b = np.asarray(xb.xyz_le, dtype=float)
+        spans.append(float(math.hypot(b[1] - a[1], b[2] - a[2])))
+    return spans
+
+
+def _blend_xsec(xa, xb, frac: float):
+    """Interpolate a ``WingXSec`` between ``xa`` (frac 0) and ``xb`` (frac 1).
+
+    chord/twist/xyz_le are linear; the airfoil is blended via
+    ``Airfoil.blend_with_another_airfoil`` — the same call AeroSandbox uses
+    internally when subdividing sections (gh-855).
+    """
+    import aerosandbox as asb
+
+    a, b = 1.0 - frac, frac
+    name_a = getattr(xa.airfoil, "name", "") or ""
+    name_b = getattr(xb.airfoil, "name", "") or ""
+    if frac <= 0.0 or name_a == name_b:
+        airfoil = xa.airfoil
+    elif frac >= 1.0:
+        airfoil = xb.airfoil
+    else:
+        try:
+            airfoil = xa.airfoil.blend_with_another_airfoil(airfoil=xb.airfoil, blend_fraction=b)
+        except Exception:  # noqa: BLE001 — blend failure → keep inboard section
+            airfoil = xa.airfoil
+    return asb.WingXSec(
+        xyz_le=np.asarray(xa.xyz_le, dtype=float) * a + np.asarray(xb.xyz_le, dtype=float) * b,
+        chord=float(xa.chord) * a + float(xb.chord) * b,
+        twist=float(xa.twist) * a + float(xb.twist) * b,
+        airfoil=airfoil,
+        control_surfaces=xa.control_surfaces,
+    )
+
+
+def remesh_uniform_density(wing, *, budget: int, min_per_segment: int):
+    """Return a copy of ``wing`` with span-proportional spanwise subdivision.
+
+    Inserts intermediate cross-sections so the wing carries ~``budget`` panels
+    per half, distributed ∝ segment span (≥ ``min_per_segment`` each). Run the
+    VLM with ``spanwise_resolution=1`` on the result so each inserted section is
+    exactly one spanwise panel → uniform panel density (gh-855).
+    """
+    import aerosandbox as asb
+
+    xs = wing.xsecs
+    if len(xs) < 2:
+        return wing
+    counts = _panels_per_segment(_segment_spans(wing), budget, min_per_segment)
+    new_xsecs = []
+    for (xa, xb), n in zip(zip(xs[:-1], xs[1:], strict=False), counts, strict=False):
+        for i in range(n):
+            new_xsecs.append(_blend_xsec(xa, xb, i / n))
+    new_xsecs.append(xs[-1])
+    return asb.Wing(name=wing.name, xsecs=new_xsecs, symmetric=wing.symmetric)
+
+
+def _remesh_airplane(asb_airplane, *, budget: int, min_per_segment: int):
+    """Rebuild the airplane with uniform-density wings, preserving the (gh-788)
+    reference geometry."""
+    import aerosandbox as asb
+
+    remeshed = [
+        remesh_uniform_density(w, budget=budget, min_per_segment=min_per_segment)
+        for w in asb_airplane.wings
+    ]
+    return asb.Airplane(
+        name=asb_airplane.name,
+        wings=remeshed,
+        fuselages=list(getattr(asb_airplane, "fuselages", []) or []),
+        xyz_ref=asb_airplane.xyz_ref,
+        s_ref=float(asb_airplane.s_ref),
+        b_ref=float(asb_airplane.b_ref),
+        c_ref=float(asb_airplane.c_ref),
+    )
+
+
 def compute_vlm_strip_forces(
     asb_airplane,
     op_point,
     *,
     xyz_ref: list[float] | None = None,
-    spanwise_resolution: int = 12,
+    spanwise_panels: int = _SPANWISE_PANELS_PER_HALF,
     chordwise_resolution: int = 8,
+    min_panels_per_segment: int = _MIN_PANELS_PER_SEGMENT,
 ) -> dict[str, Any]:
     """Run a VLM solve and return AVL-compatible per-strip force data.
+
+    Spanwise panels are distributed **∝ segment span** (gh-855): the wing is
+    remeshed so panel density is ~uniform (``spanwise_panels`` per half,
+    ≥ ``min_panels_per_segment`` per segment), then the VLM runs with
+    ``spanwise_resolution=1``. This avoids over-resolving tiny segments — the
+    old per-segment ``spanwise_resolution`` gave a 5 cm segment as many strips
+    as a 95 cm one, spiking the cl(y) plot.
 
     Args:
         asb_airplane: the ``asb.Airplane`` to analyse.
         op_point: the ``asb.OperatingPoint``.
         xyz_ref: moment reference point; defaults to the airplane's own.
-        spanwise_resolution: VLM spanwise panels per wing segment.
+        spanwise_panels: target spanwise panels per half-wing.
         chordwise_resolution: VLM chordwise panels per strip.
+        min_panels_per_segment: floor on panels for any single segment.
 
     Returns:
         A dict with ``Sref``/``Cref``/``Bref``/``alpha``/``beta``/``mach``/
@@ -82,11 +193,16 @@ def compute_vlm_strip_forces(
     if xyz_ref is not None:
         asb_airplane.xyz_ref = xyz_ref
 
+    meshed = _remesh_airplane(
+        asb_airplane, budget=spanwise_panels, min_per_segment=min_panels_per_segment
+    )
+
     vlm = asb.VortexLatticeMethod(
-        airplane=asb_airplane,
+        airplane=meshed,
         op_point=op_point,
-        spanwise_resolution=spanwise_resolution,
+        spanwise_resolution=1,  # gh-855: density set by the remesh, not here
         chordwise_resolution=chordwise_resolution,
+        spanwise_spacing_function=np.linspace,
     )
     run = vlm.run()
 
@@ -109,7 +225,8 @@ def compute_vlm_strip_forces(
     l_hat = l_hat / np.linalg.norm(l_hat)
 
     strip_ranges = _strip_index_ranges(np.asarray(vlm.is_trailing_edge))
-    wing_counts = _wing_strip_counts(asb_airplane, spanwise_resolution)
+    # spanwise_resolution=1 → one strip per (remeshed) segment per half.
+    wing_counts = _wing_strip_counts(meshed, 1)
 
     # Assign contiguous blocks of strips to wings in airplane.wings order.
     # If the expected counts don't sum to the actual strip count (unusual
@@ -118,7 +235,7 @@ def compute_vlm_strip_forces(
         wing_counts = [len(strip_ranges)]
         wing_names = [asb_airplane.name or "Aircraft"]
     else:
-        wing_names = [w.name for w in asb_airplane.wings]
+        wing_names = [w.name for w in meshed.wings]
 
     surfaces: list[dict[str, Any]] = []
     cursor = 0
