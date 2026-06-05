@@ -80,7 +80,7 @@ export function OpComparisonTable({ points }: Props) {
     const surfaceNames = [...roleByDisplay.keys()].sort((a, b) => {
       const ra = roleRank(a);
       const rb = roleRank(b);
-      return ra !== rb ? ra - rb : a.localeCompare(b);
+      return ra === rb ? a.localeCompare(b) : ra - rb;
     });
     return { surfaces: surfaceNames, rows: rowData };
   }, [points]);
@@ -178,7 +178,7 @@ export function OpComparisonTable({ points }: Props) {
                 <td className="px-2 py-1.5">{row.alpha_deg.toFixed(1)}</td>
                 {surfaces.map((s) => (
                   <td key={s} className="px-2 py-1.5">
-                    {row.deflections[s] !== undefined ? row.deflections[s].toFixed(1) : "—"}
+                    {row.deflections[s] === undefined ? "—" : row.deflections[s].toFixed(1)}
                   </td>
                 ))}
                 <td className="px-2 py-1.5">{row.reserve_pct}%</td>

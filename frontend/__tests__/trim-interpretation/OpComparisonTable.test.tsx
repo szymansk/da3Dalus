@@ -134,6 +134,48 @@ describe("OpComparisonTable", () => {
     expect(container.firstChild).toBeNull();
   });
 
+  it("sorting by every column re-sorts without crashing", async () => {
+    const user = userEvent.setup();
+    render(<OpComparisonTable points={POINTS} />);
+    for (const label of ["OP", "Elevator (°)", "CL", "CD", "L/D", "Reserve", "α (°)"]) {
+      await user.click(screen.getByText(label));
+      expect(screen.getAllByTestId(/^op-row-/)).toHaveLength(2);
+    }
+  });
+
+  it("shows — for missing coefficients and absent surfaces", () => {
+    const partial = makeOp({
+      id: 7,
+      name: "partial",
+      alpha: 4 * RAD,
+      trim_enrichment: {
+        analysis_goal: "Partial",
+        result_summary: "",
+        trim_method: "opti",
+        trim_score: 0.03,
+        trim_residuals: {},
+        // only a rudder reserve; no elevator, and no aero_coefficients
+        deflection_reserves: {
+          "[rudder]Rudder": {
+            deflection_deg: 5.0,
+            max_pos_deg: 30,
+            max_neg_deg: 30,
+            usage_fraction: 0.17,
+          },
+        },
+        design_warnings: [],
+        effectiveness: {},
+        stability_classification: null,
+        mixer_values: {},
+        aero_coefficients: {},
+      },
+    });
+    // POINTS[0] has elevator → union columns are Elevator + Rudder.
+    render(<OpComparisonTable points={[POINTS[0], partial]} />);
+    // partial row: Elevator absent → "—"; CL/CD/LD absent → "—" (multiple dashes)
+    expect(screen.getAllByText("—").length).toBeGreaterThanOrEqual(3);
+  });
+
   it("renders a column for EVERY control surface, not just elevator (gh-863)", () => {
     const op = makeOp({
       id: 9,

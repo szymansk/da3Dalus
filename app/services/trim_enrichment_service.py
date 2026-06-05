@@ -407,7 +407,7 @@ def compute_enrichment(
     # and Control Authority views show all surfaces the aircraft has. Untrimmed
     # surfaces sit at 0° (full reserve); trimmed deflections win where present.
     deflection_reserves: dict[str, DeflectionReserve] = {}
-    surface_deflections: dict[str, float] = {name: 0.0 for name in limits}
+    surface_deflections: dict[str, float] = dict.fromkeys(limits, 0.0)
     surface_deflections.update(controls)
     for surface_name, deflection_deg in surface_deflections.items():
         max_pos, max_neg = limits.get(surface_name, (25.0, 25.0))
