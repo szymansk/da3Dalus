@@ -31,6 +31,7 @@ _cad_router = None
 _aeroanalysis_router = None
 _operating_points_router = None
 _airfoils_router = None
+_section_aoa_router = None
 
 if cad_available():
     try:
@@ -61,6 +62,13 @@ if aerosandbox_available():
         _airfoils_router = _airfoils_module.router
     except ImportError as exc:
         logging.getLogger(__name__).warning("airfoils router unavailable: %s", exc)
+
+    try:
+        from app.api.v2.endpoints import section_aoa as _section_aoa_module
+
+        _section_aoa_router = _section_aoa_module.router
+    except ImportError as exc:
+        logging.getLogger(__name__).warning("section_aoa router unavailable: %s", exc)
 from app.mcp_server import create_mcp_http_app
 from app.core.exceptions import (
     ServiceException,
@@ -212,6 +220,8 @@ def create_app() -> FastAPI:
         app.include_router(_operating_points_router, prefix="", tags=["operating_points"])
     if _airfoils_router is not None:
         app.include_router(_airfoils_router, prefix="", tags=["airfoils"])
+    if _section_aoa_router is not None:
+        app.include_router(_section_aoa_router, prefix="", tags=["wings"])
 
     app.add_middleware(
         CORSMiddleware,
