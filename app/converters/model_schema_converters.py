@@ -602,9 +602,34 @@ def _resolve_spare_vectors_and_origins(wing_config: WingConfiguration) -> None:
             _resolve_single_spare(wing_config, segment_index, spare_index, spare)
 
 
+def _find_reference_wing(wings: list) -> object | None:
+    """Return the wing with the largest planform area (the main/reference wing).
+
+    AeroSandbox's ``asb.Airplane`` constructor uses ``wings[0]`` to set
+    ``s_ref``, ``b_ref``, and ``c_ref`` when those are not passed explicitly.
+    For tail-first imports (e.g. OpenVSP orders HTP, VTP, Wing) that makes the
+    tail the reference — inflating every coefficient by the wing/tail area ratio
+    (~8× for the Spitfire).  Choosing the largest-area wing is import-order
+    independent and robust for any conventional or canard layout (gh-788).
+
+    Args:
+        wings: List of ``asb.Wing`` objects (may be empty).
+
+    Returns:
+        The wing with the largest ``area()``, or ``None`` if the list is empty.
+    """
+    if not wings:
+        return None
+    return max(wings, key=lambda w: w.area())
+
+
 def aeroplane_schema_to_asb_airplane_async(plane_schema: AeroplaneSchema) -> "asb.Airplane":
     """
     Convert an AeroplaneSchema to an Aerosandbox Airplane object.
+
+    s_ref, b_ref and c_ref are derived from the **largest-planform wing** so
+    that the reference geometry is independent of import order.  AeroSandbox
+    defaults to wings[0] which is wrong for tail-first imports (gh-788).
 
     Args:
         plane_schema (AeroplaneSchema): The schema to convert.
@@ -614,9 +639,8 @@ def aeroplane_schema_to_asb_airplane_async(plane_schema: AeroplaneSchema) -> "as
     """
     from aerosandbox import Airplane, Wing
 
-    asb_airplane: Airplane = Airplane(
-        name=plane_schema.name,
-        wings=[
+    asb_wings = (
+        [
             Wing(
                 name=wing_name,
                 symmetric=wing.symmetric,
@@ -627,9 +651,24 @@ def aeroplane_schema_to_asb_airplane_async(plane_schema: AeroplaneSchema) -> "as
             for wing_name, wing in plane_schema.wings.items()
         ]
         if plane_schema.wings
-        else None,
+        else None
+    )
+
+    # gh-788: choose the reference geometry from the largest-area wing so the
+    # result is independent of import order (e.g. OpenVSP tail-first exports).
+    ref_wing = _find_reference_wing(asb_wings or [])
+    ref_kwargs: dict = {}
+    if ref_wing is not None:
+        ref_kwargs["s_ref"] = float(ref_wing.area())
+        ref_kwargs["b_ref"] = float(ref_wing.span())
+        ref_kwargs["c_ref"] = float(ref_wing.mean_aerodynamic_chord())
+
+    asb_airplane: Airplane = Airplane(
+        name=plane_schema.name,
+        wings=asb_wings,
         fuselages=_build_asb_fuselages(plane_schema.fuselages) if plane_schema.fuselages else None,
         xyz_ref=plane_schema.xyz_ref,
+        **ref_kwargs,
     )
 
     return asb_airplane
