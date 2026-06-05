@@ -1724,12 +1724,81 @@ def _build_strip_forces_response(
     )
 
 
+def _strip_surfaces_from_result(result: dict[str, Any]) -> list[SurfaceStripForces]:
+    """Map a solver result dict's ``strip_forces`` into schema objects.
+
+    Shared by the AVL and VLM (gh-674) paths — both emit the same per-surface
+    dict shape, so the Trefftz-Plane chart consumes either unchanged.
+    """
+    surfaces = []
+    for sf in result.get("strip_forces", []):
+        strips = [StripForceEntry.model_validate(s) for s in sf["strips"]]
+        surfaces.append(
+            SurfaceStripForces(
+                surface_name=sf["surface_name"],
+                surface_number=sf["surface_number"],
+                n_chordwise=sf["n_chordwise"],
+                n_spanwise=sf["n_spanwise"],
+                surface_area=sf["surface_area"],
+                strips=strips,
+            )
+        )
+    return surfaces
+
+
+def _run_avl_strip_forces(
+    db: Session,
+    aeroplane_uuid,
+    plane_schema,
+    resolved_op: OperatingPointSchema,
+    asb_airplane,
+    op_point,
+    *,
+    timeout: int,
+) -> dict[str, Any]:
+    """Run the AVL subprocess for strip forces (gh-674 fallback path).
+
+    Uses the stored user AVL file when present, otherwise builds one from the
+    plane schema. AVL reads control-surface deflections from the geometry file,
+    so the resolved ``control_deflections`` feed it only partially today.
+    """
+    from app.services.avl_runner import AVLRunner
+    from app.services.avl_geometry_service import (
+        get_user_avl_content,
+        build_avl_geometry_file,
+        inject_cdcl,
+    )
+    from app.schemas.aeroanalysisschema import CdclConfig, SpacingConfig
+
+    user_avl_content = get_user_avl_content(db, aeroplane_uuid)
+    if user_avl_content is None:
+        cdcl_config = resolved_op.cdcl_config or CdclConfig()
+        spacing_config = resolved_op.spacing_config or SpacingConfig()
+        avl_file = build_avl_geometry_file(plane_schema, spacing_config)
+        inject_cdcl(avl_file, plane_schema, resolved_op, cdcl_config)
+        user_avl_content = repr(avl_file)
+
+    runner = AVLRunner(
+        airplane=asb_airplane,
+        op_point=op_point,
+        xyz_ref=resolved_op.xyz_ref,
+        timeout=timeout,
+    )
+    return runner.run(avl_file_content=user_avl_content, include_strip_forces=True)
+
+
 async def analyze_airplane_strip_forces(
     db: Session,
     aeroplane_uuid,
     operating_point: OperatingPointSchema,
+    solver: str = "vlm",
 ) -> StripForcesResponse:
-    """Run AVL with strip-force capture for the full airplane (all wings).
+    """Compute strip-force distributions for the full airplane (all wings).
+
+    The default solver is the in-process AeroSandbox VortexLatticeMethod
+    (gh-674) — same Trefftz-plane induced-drag core as AVL, an order of
+    magnitude faster (no subprocess / file I/O). Pass ``solver="avl"`` to use
+    the AVL subprocess for cases that need its native handling.
 
     When ``operating_point.operating_point_id`` is set the stored trimmed OP
     is resolved server-side (gh-577) so the strip-force distribution
@@ -1740,36 +1809,13 @@ async def analyze_airplane_strip_forces(
     """
     import aerosandbox as asb
 
-    from app.services.avl_runner import AVLRunner
-    from app.services.avl_geometry_service import (
-        get_user_avl_content,
-        build_avl_geometry_file,
-        inject_cdcl,
-    )
-    from app.schemas.aeroanalysisschema import CdclConfig, SpacingConfig
-
     aircraft = get_aeroplane_or_raise(db, aeroplane_uuid)
     plane_schema = get_aeroplane_schema_or_raise(db, aeroplane_uuid)
-    # gh-577: alpha/xyz_ref/velocity/altitude are pulled from the trimmed OP
-    # when ``operating_point_id`` is set. NOTE: AVL reads control-surface
-    # deflections from the geometry file (built from ``plane_schema``), so
-    # the resolved ``control_deflections`` do NOT yet feed AVL here — only
-    # the VLM streamline path consumes them. Full deflection injection into
-    # the AVL geometry file is tracked as a follow-up. The UI labels the
-    # AVL strip-forces tab honestly to reflect this partial-trim state.
     resolved_op = operating_point_resolver.resolve_operating_point(
         db,
         operating_point,
         aircraft_pk=aircraft.id,
     )
-
-    user_avl_content = get_user_avl_content(db, aeroplane_uuid)
-    if user_avl_content is None:
-        cdcl_config = resolved_op.cdcl_config or CdclConfig()
-        spacing_config = resolved_op.spacing_config or SpacingConfig()
-        avl_file = build_avl_geometry_file(plane_schema, spacing_config)
-        inject_cdcl(avl_file, plane_schema, resolved_op, cdcl_config)
-        user_avl_content = repr(avl_file)
 
     try:
         asb_airplane: Airplane = aeroplane_schema_to_asb_airplane_async(plane_schema=plane_schema)
@@ -1786,37 +1832,24 @@ async def analyze_airplane_strip_forces(
             atmosphere=atmosphere,
         )
 
-        runner = AVLRunner(
-            airplane=asb_airplane,
-            op_point=op_point,
-            xyz_ref=resolved_op.xyz_ref,
-            timeout=60,
-        )
-        result = runner.run(
-            avl_file_content=user_avl_content,
-            include_strip_forces=True,
-        )
-
-        strip_forces_data = result.get("strip_forces", [])
-        surfaces = []
-        for sf in strip_forces_data:
-            strips = [StripForceEntry.model_validate(s) for s in sf["strips"]]
-            surfaces.append(
-                SurfaceStripForces(
-                    surface_name=sf["surface_name"],
-                    surface_number=sf["surface_number"],
-                    n_chordwise=sf["n_chordwise"],
-                    n_spanwise=sf["n_spanwise"],
-                    surface_area=sf["surface_area"],
-                    strips=strips,
-                )
+        if solver == "avl":
+            result = _run_avl_strip_forces(
+                db, aeroplane_uuid, plane_schema, resolved_op, asb_airplane, op_point, timeout=60
             )
+            aero_model = "AVL"
+        else:
+            from app.services.vlm_strip_forces import compute_vlm_strip_forces
 
+            result = compute_vlm_strip_forces(asb_airplane, op_point, xyz_ref=resolved_op.xyz_ref)
+            aero_model = "ASB"
+
+        surfaces = _strip_surfaces_from_result(result)
         return _build_strip_forces_response(
             avl_result=result,
             surfaces=surfaces,
             resolved_op=resolved_op,
             wing_name=aircraft.name,
+            aero_model=aero_model,
         )
     except ServiceException:
         raise
@@ -1834,8 +1867,12 @@ async def analyze_wing_strip_forces(
     aeroplane_uuid,
     wing_name: str,
     operating_point: OperatingPointSchema,
+    solver: str = "vlm",
 ) -> StripForcesResponse:
-    """Run AVL with strip-force capture for a single wing.
+    """Compute strip-force distributions for a single wing.
+
+    Defaults to the in-process VLM (gh-674); ``solver="avl"`` uses the AVL
+    subprocess.
 
     Returns:
         StripForcesResponse with per-surface spanwise strip-force distributions.
@@ -1846,19 +1883,7 @@ async def analyze_wing_strip_forces(
     """
     import aerosandbox as asb
 
-    from app.services.avl_runner import AVLRunner
-
     plane_schema = get_wing_schema_or_raise(db, aeroplane_uuid, wing_name)
-
-    # Build AVL geometry from the wing schema
-    from app.services.avl_geometry_service import build_avl_geometry_file, inject_cdcl
-    from app.schemas.aeroanalysisschema import CdclConfig, SpacingConfig
-
-    cdcl_config = operating_point.cdcl_config or CdclConfig()
-    spacing_config = operating_point.spacing_config or SpacingConfig()
-    avl_file = build_avl_geometry_file(plane_schema, spacing_config)
-    inject_cdcl(avl_file, plane_schema, operating_point, cdcl_config)
-    user_avl_content = repr(avl_file)
 
     try:
         asb_airplane: Airplane = aeroplane_schema_to_asb_airplane_async(plane_schema=plane_schema)
@@ -1877,37 +1902,38 @@ async def analyze_wing_strip_forces(
             atmosphere=atmosphere,
         )
 
-        runner = AVLRunner(
-            airplane=asb_airplane,
-            op_point=op_point,
-            xyz_ref=operating_point.xyz_ref,
-            timeout=30,
-        )
-        result = runner.run(
-            avl_file_content=user_avl_content,
-            include_strip_forces=True,
-        )
+        if solver == "avl":
+            from app.services.avl_runner import AVLRunner
+            from app.services.avl_geometry_service import build_avl_geometry_file, inject_cdcl
+            from app.schemas.aeroanalysisschema import CdclConfig, SpacingConfig
 
-        strip_forces_data = result.get("strip_forces", [])
-        surfaces = []
-        for sf in strip_forces_data:
-            strips = [StripForceEntry.model_validate(s) for s in sf["strips"]]
-            surfaces.append(
-                SurfaceStripForces(
-                    surface_name=sf["surface_name"],
-                    surface_number=sf["surface_number"],
-                    n_chordwise=sf["n_chordwise"],
-                    n_spanwise=sf["n_spanwise"],
-                    surface_area=sf["surface_area"],
-                    strips=strips,
-                )
+            cdcl_config = operating_point.cdcl_config or CdclConfig()
+            spacing_config = operating_point.spacing_config or SpacingConfig()
+            avl_file = build_avl_geometry_file(plane_schema, spacing_config)
+            inject_cdcl(avl_file, plane_schema, operating_point, cdcl_config)
+            runner = AVLRunner(
+                airplane=asb_airplane,
+                op_point=op_point,
+                xyz_ref=operating_point.xyz_ref,
+                timeout=30,
             )
+            result = runner.run(avl_file_content=repr(avl_file), include_strip_forces=True)
+            aero_model = "AVL"
+        else:
+            from app.services.vlm_strip_forces import compute_vlm_strip_forces
 
+            result = compute_vlm_strip_forces(
+                asb_airplane, op_point, xyz_ref=operating_point.xyz_ref
+            )
+            aero_model = "ASB"
+
+        surfaces = _strip_surfaces_from_result(result)
         return _build_strip_forces_response(
             avl_result=result,
             surfaces=surfaces,
             resolved_op=operating_point,
             wing_name=wing_name,
+            aero_model=aero_model,
         )
     except Exception as e:
         logger.error(f"Error analyzing wing strip forces: {e}")

@@ -167,7 +167,16 @@ class TestGetAirplaneStripForces:
         ) as mock_fn:
             result = asyncio.run(get_airplane_strip_forces(plane_id, operating_point, mock_db))
         assert result == expected
-        mock_fn.assert_awaited_once_with(mock_db, plane_id, operating_point)
+        mock_fn.assert_awaited_once_with(mock_db, plane_id, operating_point, solver="vlm")
+
+    def test_avl_solver_passthrough(self, plane_id, operating_point, mock_db):
+        # gh-674: ?solver=avl must reach the service so the AVL fallback stays reachable.
+        with patch(
+            "app.api.v2.endpoints.aeroanalysis.analysis_service.analyze_airplane_strip_forces",
+            new=AsyncMock(return_value={"surfaces": []}),
+        ) as mock_fn:
+            asyncio.run(get_airplane_strip_forces(plane_id, operating_point, mock_db, solver="avl"))
+        mock_fn.assert_awaited_once_with(mock_db, plane_id, operating_point, solver="avl")
 
     def test_not_found_maps_to_404(self, plane_id, operating_point, mock_db):
         with patch(
@@ -204,7 +213,9 @@ class TestGetWingStripForces:
                 get_wing_strip_forces(plane_id, "main_wing", operating_point, mock_db)
             )
         assert result == expected
-        mock_fn.assert_awaited_once_with(mock_db, plane_id, "main_wing", operating_point)
+        mock_fn.assert_awaited_once_with(
+            mock_db, plane_id, "main_wing", operating_point, solver="vlm"
+        )
 
     def test_not_found_maps_to_404(self, plane_id, operating_point, mock_db):
         with patch(

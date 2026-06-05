@@ -1,10 +1,10 @@
 import logging
 import os
-from typing import Annotated
+from typing import Annotated, Literal
 from urllib.parse import urljoin
 from uuid import uuid4
 
-from fastapi import Path, APIRouter, Body, Depends, Request, HTTPException
+from fastapi import Path, APIRouter, Body, Depends, Query, Request, HTTPException
 from fastapi import status
 from pydantic import UUID4
 from sqlalchemy.orm import Session
@@ -91,11 +91,19 @@ async def get_airplane_strip_forces(
     aeroplane_id: Annotated[AeroPlaneID, Path(..., description=_DESC_AEROPLANE_ID)],
     operating_point: Annotated[OperatingPointSchema, Body(..., description="The operating point")],
     db: Annotated[Session, Depends(get_db)],
+    solver: Annotated[
+        Literal["vlm", "avl"],
+        Query(description="Strip-force solver: 'vlm' (default, in-process) or 'avl' (subprocess)"),
+    ] = "vlm",
 ):
-    """Run AVL analysis for the full airplane and return strip-force distributions for all surfaces."""
+    """Return strip-force distributions for all surfaces.
+
+    Defaults to the in-process VortexLatticeMethod (gh-674); pass
+    ``?solver=avl`` to use the AVL subprocess.
+    """
     try:
         return await analysis_service.analyze_airplane_strip_forces(
-            db, aeroplane_id, operating_point
+            db, aeroplane_id, operating_point, solver=solver
         )
     except ServiceException as exc:
         _raise_http_from_domain(exc)
@@ -116,11 +124,19 @@ async def get_wing_strip_forces(
     wing_name: Annotated[str, Path(..., description="The name of the wing")],
     operating_point: Annotated[OperatingPointSchema, Body(..., description="The operating point")],
     db: Annotated[Session, Depends(get_db)],
+    solver: Annotated[
+        Literal["vlm", "avl"],
+        Query(description="Strip-force solver: 'vlm' (default, in-process) or 'avl' (subprocess)"),
+    ] = "vlm",
 ):
-    """Run AVL analysis and return spanwise strip-force distributions."""
+    """Return spanwise strip-force distributions for one wing.
+
+    Defaults to the in-process VortexLatticeMethod (gh-674); pass
+    ``?solver=avl`` to use the AVL subprocess.
+    """
     try:
         return await analysis_service.analyze_wing_strip_forces(
-            db, aeroplane_id, wing_name, operating_point
+            db, aeroplane_id, wing_name, operating_point, solver=solver
         )
     except ServiceException as exc:
         _raise_http_from_domain(exc)
