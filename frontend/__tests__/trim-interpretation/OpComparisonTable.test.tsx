@@ -93,7 +93,7 @@ describe("OpComparisonTable", () => {
     render(<OpComparisonTable points={POINTS} />);
     expect(screen.getByText("OP")).toBeTruthy();
     expect(screen.getByText("α (°)")).toBeTruthy();
-    expect(screen.getByText("Elev (°)")).toBeTruthy();
+    expect(screen.getByText("Elevator (°)")).toBeTruthy();
     expect(screen.getByText("Reserve")).toBeTruthy();
     expect(screen.getByText("CL")).toBeTruthy();
     expect(screen.getByText("CD")).toBeTruthy();
@@ -132,5 +132,152 @@ describe("OpComparisonTable", () => {
     const untrimmed = [makeOp({ name: "x", status: "NOT_TRIMMED" })];
     const { container } = render(<OpComparisonTable points={untrimmed} />);
     expect(container.firstChild).toBeNull();
+  });
+
+  it("sorting every column (mixed surfaces, unknown roles, null aero, both directions)", async () => {
+    const user = userEvent.setup();
+    // A second OP with a known + two unknown-role surfaces and NO aero — exercises
+    // the role-rank fallback, the absent-surface / null-coefficient (?? 0) branches,
+    // and the asc↔desc toggle for every column.
+    const mixed = makeOp({
+      id: 8,
+      name: "mixed",
+      alpha: 7 * RAD,
+      trim_enrichment: {
+        analysis_goal: "Mixed",
+        result_summary: "",
+        trim_method: "opti",
+        trim_score: 0.04,
+        trim_residuals: {},
+        deflection_reserves: {
+          "[aileron]Aileron": {
+            deflection_deg: 6.0,
+            max_pos_deg: 20,
+            max_neg_deg: 20,
+            usage_fraction: 0.3,
+          },
+          "[winglet]Winglet": {
+            deflection_deg: 1.0,
+            max_pos_deg: 10,
+            max_neg_deg: 10,
+            usage_fraction: 0.1,
+          },
+          "[spoiler]Spoiler": {
+            deflection_deg: 2.0,
+            max_pos_deg: 15,
+            max_neg_deg: 15,
+            usage_fraction: 0.13,
+          },
+        },
+        design_warnings: [],
+        effectiveness: {},
+        stability_classification: null,
+        mixer_values: {},
+        aero_coefficients: {}, // null CL/CD/LD → "—" + ?? 0 sort branches
+      },
+    });
+    render(<OpComparisonTable points={[POINTS[0], mixed]} />);
+    // role-ordered: known roles first (Elevator, Aileron), unknown last alpha-sorted (Spoiler, Winglet)
+    for (const label of [
+      "OP",
+      "Elevator (°)",
+      "Aileron (°)",
+      "Spoiler (°)",
+      "Winglet (°)",
+      "CL",
+      "CD",
+      "L/D",
+      "Reserve",
+      "α (°)",
+    ]) {
+      await user.click(screen.getByText(label)); // desc
+      await user.click(screen.getByText(label)); // asc (toggle)
+      expect(screen.getAllByTestId(/^op-row-/)).toHaveLength(2);
+    }
+  });
+
+  it("shows — for missing coefficients and absent surfaces", () => {
+    const partial = makeOp({
+      id: 7,
+      name: "partial",
+      alpha: 4 * RAD,
+      trim_enrichment: {
+        analysis_goal: "Partial",
+        result_summary: "",
+        trim_method: "opti",
+        trim_score: 0.03,
+        trim_residuals: {},
+        // only a rudder reserve; no elevator, and no aero_coefficients
+        deflection_reserves: {
+          "[rudder]Rudder": {
+            deflection_deg: 5.0,
+            max_pos_deg: 30,
+            max_neg_deg: 30,
+            usage_fraction: 0.17,
+          },
+        },
+        design_warnings: [],
+        effectiveness: {},
+        stability_classification: null,
+        mixer_values: {},
+        aero_coefficients: {},
+      },
+    });
+    // POINTS[0] has elevator → union columns are Elevator + Rudder.
+    render(<OpComparisonTable points={[POINTS[0], partial]} />);
+    // partial row: Elevator absent → "—"; CL/CD/LD absent → "—" (multiple dashes)
+    expect(screen.getAllByText("—").length).toBeGreaterThanOrEqual(3);
+  });
+
+  it("renders a column for EVERY control surface, not just elevator (gh-863)", () => {
+    const op = makeOp({
+      id: 9,
+      name: "turn",
+      alpha: 6 * RAD,
+      trim_enrichment: {
+        analysis_goal: "Turn",
+        result_summary: "",
+        trim_method: "opti",
+        trim_score: 0.02,
+        trim_residuals: {},
+        deflection_reserves: {
+          "[elevator]Elevator": {
+            deflection_deg: -3.0,
+            max_pos_deg: 25,
+            max_neg_deg: 25,
+            usage_fraction: 0.12,
+          },
+          "[aileron]Aileron": {
+            deflection_deg: 8.0,
+            max_pos_deg: 20,
+            max_neg_deg: 20,
+            usage_fraction: 0.4,
+          },
+          "[rudder]Rudder": {
+            deflection_deg: 4.0,
+            max_pos_deg: 30,
+            max_neg_deg: 30,
+            usage_fraction: 0.133,
+          },
+        },
+        design_warnings: [],
+        effectiveness: {},
+        stability_classification: null,
+        mixer_values: {},
+        aero_coefficients: { CL: 0.6, CD: 0.04 },
+      },
+    });
+    render(<OpComparisonTable points={[op]} />);
+
+    // a header per surface (display names, role-ordered elevator→aileron→rudder)
+    expect(screen.getByText("Elevator (°)")).toBeTruthy();
+    expect(screen.getByText("Aileron (°)")).toBeTruthy();
+    expect(screen.getByText("Rudder (°)")).toBeTruthy();
+    // and their deflection values are shown
+    expect(screen.getByText("-3.0")).toBeTruthy();
+    expect(screen.getByText("8.0")).toBeTruthy();
+    expect(screen.getByText("4.0")).toBeTruthy();
+    // Reserve is the binding (max) authority used across surfaces → aileron 40%
+    expect(screen.getByText("40%")).toBeTruthy();
   });
 });

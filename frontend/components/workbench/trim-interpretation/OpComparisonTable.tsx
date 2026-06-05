@@ -3,36 +3,35 @@
 import { useState, useMemo } from "react";
 import { ChevronUp, ChevronDown } from "lucide-react";
 import type { StoredOperatingPoint } from "@/hooks/useOperatingPoints";
+import { displaySurfaceName } from "./utils";
 
 const RAD_TO_DEG = 180 / Math.PI;
 
-type SortKey = "name" | "alpha" | "elevator" | "reserve" | "cl" | "cd" | "ld";
+// Role priority for ordering the dynamic control-surface columns (gh-863).
+const ROLE_ORDER = [
+  "elevator",
+  "stabilator",
+  "elevon",
+  "ruddervator",
+  "aileron",
+  "flaperon",
+  "flap",
+  "rudder",
+];
+
+type FixedKey = "name" | "alpha" | "reserve" | "cl" | "cd" | "ld";
+type SortKey = FixedKey | `surf:${string}`;
 type SortDir = "asc" | "desc";
 
 interface RowData {
   id: number;
   name: string;
   alpha_deg: number;
-  elevator_deg: number | null;
-  reserve_pct: number;
+  reserve_pct: number; // binding (max) authority used across the OP's surfaces
   cl: number | null;
   cd: number | null;
   ld: number | null;
-}
-
-function extractElevator(enrichment: NonNullable<StoredOperatingPoint["trim_enrichment"]>): {
-  deg: number | null;
-  reserve: number;
-} {
-  const elevatorEntry = Object.entries(enrichment.deflection_reserves).find(([key]) =>
-    key.toLowerCase().includes("elevator"),
-  );
-  if (!elevatorEntry) {
-    const firstEntry = Object.entries(enrichment.deflection_reserves)[0];
-    if (!firstEntry) return { deg: null, reserve: 0 };
-    return { deg: firstEntry[1].deflection_deg, reserve: firstEntry[1].usage_fraction };
-  }
-  return { deg: elevatorEntry[1].deflection_deg, reserve: elevatorEntry[1].usage_fraction };
+  deflections: Record<string, number>; // display surface name → deflection [deg]
 }
 
 interface Props {
@@ -43,12 +42,22 @@ export function OpComparisonTable({ points }: Props) {
   const [sortKey, setSortKey] = useState<SortKey>("reserve");
   const [sortDir, setSortDir] = useState<SortDir>("desc");
 
-  const rows: RowData[] = useMemo(() => {
-    return points
+  const { surfaces, rows } = useMemo(() => {
+    const roleByDisplay = new Map<string, string>();
+    const rowData: RowData[] = points
       .filter((p) => p.status === "TRIMMED" && p.trim_enrichment)
       .map((p) => {
         const enrichment = p.trim_enrichment!;
-        const { deg, reserve } = extractElevator(enrichment);
+        const deflections: Record<string, number> = {};
+        let maxUsage = 0;
+        for (const [key, reserve] of Object.entries(enrichment.deflection_reserves)) {
+          const dn = displaySurfaceName(key);
+          deflections[dn] = reserve.deflection_deg;
+          if (!roleByDisplay.has(dn)) {
+            roleByDisplay.set(dn, (/^\[(\w+)\]/.exec(key)?.[1] ?? "").toLowerCase());
+          }
+          maxUsage = Math.max(maxUsage, reserve.usage_fraction);
+        }
         const cl = enrichment.aero_coefficients?.CL ?? null;
         const cd = enrichment.aero_coefficients?.CD ?? null;
         const ld = cl !== null && cd !== null && cd > 0 ? cl / cd : null;
@@ -56,43 +65,50 @@ export function OpComparisonTable({ points }: Props) {
           id: p.id,
           name: p.name,
           alpha_deg: p.alpha * RAD_TO_DEG,
-          elevator_deg: deg,
-          reserve_pct: Math.round(reserve * 100),
+          reserve_pct: Math.round(maxUsage * 100),
           cl,
           cd,
           ld,
+          deflections,
         };
       });
+
+    const roleRank = (dn: string): number => {
+      const idx = ROLE_ORDER.indexOf(roleByDisplay.get(dn) ?? "");
+      return idx < 0 ? ROLE_ORDER.length : idx;
+    };
+    const surfaceNames = [...roleByDisplay.keys()].sort((a, b) => {
+      const ra = roleRank(a);
+      const rb = roleRank(b);
+      return ra === rb ? a.localeCompare(b) : ra - rb;
+    });
+    return { surfaces: surfaceNames, rows: rowData };
   }, [points]);
 
   const sorted = useMemo(() => {
-    return [...rows].sort((a, b) => {
-      let cmp = 0;
+    const cmpFor = (a: RowData, b: RowData): number => {
+      if (sortKey.startsWith("surf:")) {
+        const s = sortKey.slice(5);
+        return (a.deflections[s] ?? 0) - (b.deflections[s] ?? 0);
+      }
       switch (sortKey) {
         case "name":
-          cmp = a.name.localeCompare(b.name);
-          break;
+          return a.name.localeCompare(b.name);
         case "alpha":
-          cmp = a.alpha_deg - b.alpha_deg;
-          break;
-        case "elevator":
-          cmp = (a.elevator_deg ?? 0) - (b.elevator_deg ?? 0);
-          break;
+          return a.alpha_deg - b.alpha_deg;
         case "reserve":
-          cmp = a.reserve_pct - b.reserve_pct;
-          break;
+          return a.reserve_pct - b.reserve_pct;
         case "cl":
-          cmp = (a.cl ?? 0) - (b.cl ?? 0);
-          break;
+          return (a.cl ?? 0) - (b.cl ?? 0);
         case "cd":
-          cmp = (a.cd ?? 0) - (b.cd ?? 0);
-          break;
+          return (a.cd ?? 0) - (b.cd ?? 0);
         case "ld":
-          cmp = (a.ld ?? 0) - (b.ld ?? 0);
-          break;
+          return (a.ld ?? 0) - (b.ld ?? 0);
+        default:
+          return 0;
       }
-      return sortDir === "asc" ? cmp : -cmp;
-    });
+    };
+    return [...rows].sort((a, b) => (sortDir === "asc" ? cmpFor(a, b) : -cmpFor(a, b)));
   }, [rows, sortKey, sortDir]);
 
   const worstId = useMemo(() => {
@@ -114,7 +130,7 @@ export function OpComparisonTable({ points }: Props) {
   const columns: { key: SortKey; label: string }[] = [
     { key: "name", label: "OP" },
     { key: "alpha", label: "α (°)" },
-    { key: "elevator", label: "Elev (°)" },
+    ...surfaces.map((s) => ({ key: `surf:${s}` as SortKey, label: `${s} (°)` })),
     { key: "reserve", label: "Reserve" },
     { key: "cl", label: "CL" },
     { key: "cd", label: "CD" },
@@ -160,9 +176,11 @@ export function OpComparisonTable({ points }: Props) {
               >
                 <td className="px-2 py-1.5 font-medium">{row.name}</td>
                 <td className="px-2 py-1.5">{row.alpha_deg.toFixed(1)}</td>
-                <td className="px-2 py-1.5">
-                  {row.elevator_deg !== null ? row.elevator_deg.toFixed(1) : "—"}
-                </td>
+                {surfaces.map((s) => (
+                  <td key={s} className="px-2 py-1.5">
+                    {row.deflections[s] === undefined ? "—" : row.deflections[s].toFixed(1)}
+                  </td>
+                ))}
                 <td className="px-2 py-1.5">{row.reserve_pct}%</td>
                 <td className="px-2 py-1.5">{row.cl !== null ? row.cl.toFixed(3) : "—"}</td>
                 <td className="px-2 py-1.5">{row.cd !== null ? row.cd.toFixed(4) : "—"}</td>
