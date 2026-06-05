@@ -432,3 +432,150 @@ class TestGetSectionAoaService:
 
         assert isinstance(result, list)
         mock_compute.assert_called_once()
+
+
+# ---------------------------------------------------------------------------
+# Tests: get_section_aoa — real DB, mocked ASB (gh-840 regression)
+# ---------------------------------------------------------------------------
+
+
+class TestGetSectionAoaDbPath:
+    """Exercises the DB OP-resolution path of get_section_aoa using a real
+    in-memory SQLite session (client_and_db fixture).
+
+    These tests catch the AttributeError that fired because get_section_aoa
+    used ``plane_schema.id`` (AeroplaneSchema has no .id field) instead of
+    loading the DB integer PK from AeroplaneModel.
+
+    AeroSandbox is fully mocked — this runs in the 'not slow' tier.
+    """
+
+    def test_resolves_trimmed_op_by_aircraft_id(self, client_and_db):
+        """get_section_aoa() finds the TRIMMED OP for the aircraft and calls
+        compute_section_aoa without raising AttributeError.
+
+        Setup: create a real AeroplaneModel + TRIMMED OperatingPointModel in
+        the in-memory DB, then call get_section_aoa with no operating_point_id.
+        The service must resolve aircraft_db_id via AeroplaneModel.uuid and
+        then find the matching OP.
+        """
+        import asyncio
+        from unittest.mock import MagicMock, patch
+
+        from app.tests.conftest import make_aeroplane, make_operating_point
+
+        _client, SessionLocal = client_and_db
+        db = SessionLocal()
+
+        try:
+            # Arrange: real DB rows
+            aeroplane = make_aeroplane(db, name="test-section-aoa-plane")
+            make_operating_point(
+                db,
+                aircraft_id=aeroplane.id,
+                name="trimmed_op",
+                velocity=15.0,
+                alpha=0.07,  # radians — converted to degrees by resolver
+                beta=0.0,
+                xyz_ref=[0.1, 0.0, 0.0],
+                altitude=0.0,
+                status="TRIMMED",
+            )
+
+            # Mock ASB at the module boundary so no real LiftingLine runs
+            mock_asb = MagicMock()
+            mock_asb.Atmosphere = MagicMock(return_value=MagicMock())
+            mock_asb.OperatingPoint = MagicMock(return_value=MagicMock())
+
+            mock_compute = MagicMock(return_value=[])
+
+            with (
+                patch(
+                    "app.services.section_aoa_service.aeroplane_schema_to_asb_airplane_async",
+                    return_value=_make_mock_airplane(),
+                ),
+                patch(
+                    "app.services.section_aoa_service.compute_section_aoa",
+                    mock_compute,
+                ),
+                patch.dict("sys.modules", {"aerosandbox": mock_asb}),
+            ):
+                result = asyncio.run(
+                    __import__(
+                        "app.services.section_aoa_service", fromlist=["get_section_aoa"]
+                    ).get_section_aoa(
+                        db,
+                        aeroplane.uuid,
+                        "main_wing",
+                        operating_point_id=None,
+                    )
+                )
+
+            # Assert: no AttributeError, compute_section_aoa was reached
+            assert isinstance(result, list)
+            mock_compute.assert_called_once()
+
+        finally:
+            db.close()
+
+    def test_explicit_op_id_resolves_by_aircraft_id(self, client_and_db):
+        """get_section_aoa() with an explicit operating_point_id resolves the
+        OP correctly when it belongs to the aircraft.
+
+        This covers the explicit-OP branch that also used plane_schema.id.
+        """
+        import asyncio
+        from unittest.mock import MagicMock, patch
+
+        from app.tests.conftest import make_aeroplane, make_operating_point
+
+        _client, SessionLocal = client_and_db
+        db = SessionLocal()
+
+        try:
+            aeroplane = make_aeroplane(db, name="test-explicit-op-plane")
+            op_model = make_operating_point(
+                db,
+                aircraft_id=aeroplane.id,
+                name="explicit_op",
+                velocity=20.0,
+                alpha=0.05,
+                beta=0.0,
+                xyz_ref=[0.1, 0.0, 0.0],
+                altitude=0.0,
+                status="TRIMMED",
+            )
+
+            mock_asb = MagicMock()
+            mock_asb.Atmosphere = MagicMock(return_value=MagicMock())
+            mock_asb.OperatingPoint = MagicMock(return_value=MagicMock())
+
+            mock_compute = MagicMock(return_value=[])
+
+            with (
+                patch(
+                    "app.services.section_aoa_service.aeroplane_schema_to_asb_airplane_async",
+                    return_value=_make_mock_airplane(),
+                ),
+                patch(
+                    "app.services.section_aoa_service.compute_section_aoa",
+                    mock_compute,
+                ),
+                patch.dict("sys.modules", {"aerosandbox": mock_asb}),
+            ):
+                result = asyncio.run(
+                    __import__(
+                        "app.services.section_aoa_service", fromlist=["get_section_aoa"]
+                    ).get_section_aoa(
+                        db,
+                        aeroplane.uuid,
+                        "main_wing",
+                        operating_point_id=op_model.id,
+                    )
+                )
+
+            assert isinstance(result, list)
+            mock_compute.assert_called_once()
+
+        finally:
+            db.close()

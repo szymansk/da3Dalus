@@ -277,12 +277,26 @@ async def get_section_aoa(
     """
     import aerosandbox as asb
 
+    from app.models.aeroplanemodel import AeroplaneModel
     from app.models.analysismodels import OperatingPointModel
     from app.schemas.aeroanalysisschema import OperatingPointStatus
     from app.services.operating_point_resolver import operating_point_model_to_schema
 
     plane_schema = get_aeroplane_schema_or_raise(db, aeroplane_uuid)
     asb_airplane = aeroplane_schema_to_asb_airplane_async(plane_schema=plane_schema)
+
+    # ------------------------------------------------------------------
+    # Resolve the DB integer PK for this aircraft (AeroplaneSchema has no
+    # .id field — we must look it up via the UUID).
+    # ------------------------------------------------------------------
+    aircraft_model = (
+        db.query(AeroplaneModel)
+        .filter(AeroplaneModel.uuid == str(aeroplane_uuid))
+        .first()
+    )
+    if aircraft_model is None:  # pragma: no cover — already raised above
+        raise NotFoundError(message=f"Aeroplane {aeroplane_uuid} not found.")
+    aircraft_db_id: int = aircraft_model.id
 
     # ------------------------------------------------------------------
     # Resolve OP
@@ -295,7 +309,7 @@ async def get_section_aoa(
             db.query(OperatingPointModel)
             .filter(
                 OperatingPointModel.id == operating_point_id,
-                OperatingPointModel.aircraft_id == plane_schema.id,
+                OperatingPointModel.aircraft_id == aircraft_db_id,
             )
             .first()
         )
@@ -311,7 +325,7 @@ async def get_section_aoa(
         op_model = (
             db.query(OperatingPointModel)
             .filter(
-                OperatingPointModel.aircraft_id == plane_schema.id,
+                OperatingPointModel.aircraft_id == aircraft_db_id,
                 OperatingPointModel.status == OperatingPointStatus.TRIMMED,
             )
             .first()
