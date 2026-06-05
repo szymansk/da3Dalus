@@ -326,6 +326,14 @@ def compute_section_aoa(
     alpha_geom_arr = op_alpha_deg + twist_at_y  # [deg]
 
     # Induced angle = geometric − effective
+    # NOTE: a small *negative* induced angle (|i| < ~0.1°) is physically valid
+    # for non-elliptic or multi-segment span loading (the trailing-vortex sheet
+    # can locally produce upwash at a few mid-span sections).  This is real
+    # aerodynamics — do NOT clamp induced_angle_arr to >= 0.  Clamping would
+    # hide genuine loading information and violate energy conservation in the
+    # Trefftz-plane sense.  The tip-singularity guard is handled upstream via
+    # the cl-derived alpha_eff formula (see module docstring); it does not
+    # interact with the sign of the induced angle at interior sections.
     induced_angle_arr = alpha_geom_arr - alpha_eff_arr
 
     # ------------------------------------------------------------------
