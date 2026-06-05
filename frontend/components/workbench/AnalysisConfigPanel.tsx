@@ -16,6 +16,60 @@ type Mode = "single" | "sweep";
 function defaultMassesFor(effectiveMassKg?: number | null): string {
   return effectiveMassKg != null ? formatMass(effectiveMassKg) : "";
 }
+
+/**
+ * Resolve the α-axis for a polar run (gh-786). "single" → one evaluation
+ * point (alpha_num=1); "sweep" → the start/end/step range (≥2 points).
+ */
+function polarAlphaRange(
+  mode: Mode,
+  v: { singlePointAlpha: string; alphaStart: string; alphaEnd: string; alphaStep: string },
+): { alpha_start: number; alpha_end: number; alpha_num: number } {
+  if (mode === "single") {
+    const a = finiteOr(v.singlePointAlpha, 5);
+    return { alpha_start: a, alpha_end: a, alpha_num: 1 };
+  }
+  const start = finiteOr(v.alphaStart, -5);
+  const end = finiteOr(v.alphaEnd, 15);
+  const step = finiteOr(v.alphaStep, 1);
+  return {
+    alpha_start: start,
+    alpha_end: end,
+    alpha_num: Math.max(2, Math.round((end - start) / step) + 1),
+  };
+}
+
+/** Accessible radio for the Single Point / Parameter Sweep choice. */
+function ModeRadio({
+  checked,
+  label,
+  onSelect,
+}: Readonly<{ checked: boolean; label: string; onSelect: () => void }>) {
+  return (
+    <label className="flex cursor-pointer items-center gap-2">
+      <span
+        onClick={onSelect}
+        onKeyDown={(e) => {
+          if (e.key === "Enter" || e.key === " ") {
+            e.preventDefault();
+            onSelect();
+          }
+        }}
+        role="radio"
+        aria-checked={checked}
+        tabIndex={0}
+        className={`flex h-4 w-4 items-center justify-center rounded-full border-2 bg-background ${
+          checked ? "border-primary" : "border-border-strong"
+        }`}
+      >
+        {checked && <span className="h-2 w-2 rounded-full bg-primary" />}
+      </span>
+      <span className="font-[family-name:var(--font-geist-sans)] text-[13px] text-foreground">
+        {label}
+      </span>
+    </label>
+  );
+}
 /**
  * gh-577: Trefftz/Streamlines basis selection.
  * - "trimmed" (default): pick a stored, trimmed OperatingPoint from the
@@ -270,7 +324,8 @@ export function AnalysisConfigPanel({
   // Prefilled with the effective design mass.
   const defaultMassesInput = defaultMassesFor(effectiveMassKg);
   const [massesInput, setMassesInput] = useState(defaultMassesInput);
-  const [analysisTool, setAnalysisTool] = useState("aero_buildup");
+  // Single-point α (gh-786): used when mode === "single".
+  const [singlePointAlpha, setSinglePointAlpha] = useState("5");
   // xyzRef defaults to the design CG (cg_x effective from assumptions)
   // — that is the moment-reference point the rest of the system uses.
   // Falling back to "0, 0, 0" is just a placeholder until the prop arrives.
@@ -290,13 +345,10 @@ export function AnalysisConfigPanel({
 
   // ── Polar handlers ──
   const handleRunPolar = () => {
-    const start = finiteOr(alphaStart, -5);
-    const end = finiteOr(alphaEnd, 15);
-    const step = finiteOr(alphaStep, 1);
+    // gh-786: "Single Point" runs a genuine 1-point evaluation (alpha_num=1)
+    // instead of silently falling back to the default α-sweep.
     analysis.runAlphaSweep({
-      alpha_start: start,
-      alpha_end: end,
-      alpha_num: Math.max(2, Math.round((end - start) / step) + 1),
+      ...polarAlphaRange(mode, { singlePointAlpha, alphaStart, alphaEnd, alphaStep }),
       velocity: finiteOr(velocity, 14),
       beta: finiteOr(beta, 0),
       altitude: finiteOr(altitude, 0),
@@ -347,7 +399,7 @@ export function AnalysisConfigPanel({
     setAltitude("100");
     setBeta("0");
     setMassesInput(defaultMassesInput);
-    setAnalysisTool("aero_buildup");
+    setSinglePointAlpha("5");
     setXyzRef(designCgX != null ? `${designCgX.toFixed(4)}, 0, 0` : "0, 0, 0");
     setTrefftzAlpha("5");
   };
@@ -439,68 +491,25 @@ export function AnalysisConfigPanel({
 
             {/* Radio row */}
             <div className="flex items-center gap-4">
-              <label className="flex cursor-pointer items-center gap-2">
-                <span
-                  onClick={() => setMode("single")}
-                  onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); setMode("single"); } }}
-                  role="radio"
-                  aria-checked={mode === "single"}
-                  tabIndex={0}
-                  className={`flex h-4 w-4 items-center justify-center rounded-full border-2 bg-background ${
-                    mode === "single" ? "border-primary" : "border-border-strong"
-                  }`}
-                >
-                  {mode === "single" && (
-                    <span className="h-2 w-2 rounded-full bg-primary" />
-                  )}
-                </span>
-                <span className="font-[family-name:var(--font-geist-sans)] text-[13px] text-foreground">
-                  Single Point
-                </span>
-              </label>
-              <label className="flex cursor-pointer items-center gap-2">
-                <span
-                  onClick={() => setMode("sweep")}
-                  onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); setMode("sweep"); } }}
-                  role="radio"
-                  aria-checked={mode === "sweep"}
-                  tabIndex={0}
-                  className={`flex h-4 w-4 items-center justify-center rounded-full border-2 bg-background ${
-                    mode === "sweep" ? "border-primary" : "border-border-strong"
-                  }`}
-                >
-                  {mode === "sweep" && (
-                    <span className="h-2 w-2 rounded-full bg-primary" />
-                  )}
-                </span>
-                <span className="font-[family-name:var(--font-geist-sans)] text-[13px] text-foreground">
-                  Parameter Sweep
-                </span>
-              </label>
+              <ModeRadio
+                checked={mode === "single"}
+                label="Single Point"
+                onSelect={() => setMode("single")}
+              />
+              <ModeRadio
+                checked={mode === "sweep"}
+                label="Parameter Sweep"
+                onSelect={() => setMode("sweep")}
+              />
             </div>
 
-            {/* Sweep fields (shown when Parameter Sweep is selected) */}
-            {mode === "sweep" && (
-              <div className="flex flex-col gap-3">
-                {/* sweep_var */}
-                <div className="flex flex-col gap-1">
-                  <label htmlFor="sweep-var-select" className="font-[family-name:var(--font-geist-sans)] text-[11px] text-muted-foreground">
-                    sweep_var
-                  </label>
-                  <div className="relative">
-                    <select id="sweep-var-select" className="w-full appearance-none rounded-xl border border-border bg-input px-3 py-2 pr-8 font-[family-name:var(--font-geist-sans)] text-[13px] text-foreground">
-                      <option>alpha</option>
-                      <option>beta</option>
-                      <option>velocity</option>
-                    </select>
-                    <ChevronDown
-                      size={14}
-                      className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground"
-                    />
-                  </div>
-                </div>
-
-                {/* Range row */}
+            {/* Operating-point inputs. alpha is the only sweep variable —
+                gh-786 removed the decorative beta/velocity sweep_var select.
+                Single Point shows one α; Parameter Sweep shows the α range.
+                The fixed values below render in BOTH modes. */}
+            <div className="flex flex-col gap-3">
+              {mode === "sweep" ? (
+                /* Range row */
                 <div className="grid grid-cols-3 gap-3">
                   <div className="flex flex-col gap-1">
                     <label htmlFor="sweep-start" className="font-[family-name:var(--font-geist-sans)] text-[11px] text-muted-foreground">
@@ -539,6 +548,26 @@ export function AnalysisConfigPanel({
                     />
                   </div>
                 </div>
+              ) : (
+                /* Single α (gh-786): one evaluation point */
+                <div className="flex flex-col gap-1">
+                  <label htmlFor="single-alpha" className="font-[family-name:var(--font-geist-sans)] text-[11px] text-muted-foreground">
+                    alpha
+                  </label>
+                  <div className="relative">
+                    <input
+                      id="single-alpha"
+                      type="text"
+                      value={singlePointAlpha}
+                      onChange={(e) => setSinglePointAlpha(e.target.value)}
+                      className="w-full rounded-xl border border-border bg-input px-3 py-2 pr-8 font-[family-name:var(--font-geist-sans)] text-[13px] text-foreground"
+                    />
+                    <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 font-[family-name:var(--font-geist-sans)] text-[11px] text-muted-foreground">
+                      &deg;
+                    </span>
+                  </div>
+                </div>
+              )}
 
                 {/* Divider with "Fixed values" */}
                 <div className="flex items-center gap-3">
@@ -664,7 +693,6 @@ export function AnalysisConfigPanel({
                   )}
                 </div>
               </div>
-            )}
           </div>
 
           {/* ── Speed Polar Masses Card ── */}
@@ -693,62 +721,6 @@ export function AnalysisConfigPanel({
             </div>
           </div>
 
-          {/* ── Analysis Tool Card ── */}
-          <div className="flex flex-col gap-3 rounded-xl border border-border bg-card p-4">
-            <span className="font-[family-name:var(--font-jetbrains-mono)] text-[12px] text-muted-foreground">
-              Analysis Tool
-            </span>
-
-            {/* Tool select */}
-            <div className="relative">
-              <select
-                value={analysisTool}
-                onChange={(e) => setAnalysisTool(e.target.value)}
-                className="w-full appearance-none rounded-xl border border-border bg-input px-3 py-2 pr-8 font-[family-name:var(--font-geist-sans)] text-[13px] text-foreground"
-              >
-                <option value="aero_buildup">aerobuildup</option>
-                <option value="avl">avl</option>
-                <option value="vortex_lattice">vortex_lattice</option>
-              </select>
-              <ChevronDown
-                size={14}
-                className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground"
-              />
-            </div>
-
-            {/* Tool chips */}
-            <div className="flex items-center gap-2">
-              <span className="rounded-full border border-border bg-card-muted px-2.5 py-1 font-[family-name:var(--font-jetbrains-mono)] text-[11px] text-muted-foreground">
-                avl
-              </span>
-              <span className="rounded-full border border-border bg-card-muted px-2.5 py-1 font-[family-name:var(--font-jetbrains-mono)] text-[11px] text-muted-foreground">
-                vortex_lattice
-              </span>
-            </div>
-
-            {/* Flight profile */}
-            <div className="flex flex-col gap-1">
-              <label htmlFor="flight-profile-select" className="font-[family-name:var(--font-geist-sans)] text-[11px] text-muted-foreground">
-                Flight profile
-              </label>
-              <div className="relative">
-                <select id="flight-profile-select" className="w-full appearance-none rounded-xl border border-border bg-input px-3 py-2 pr-8 font-[family-name:var(--font-geist-sans)] text-[13px] text-foreground">
-                  <option>cruise</option>
-                  <option>takeoff</option>
-                  <option>landing</option>
-                </select>
-                <ChevronDown
-                  size={14}
-                  className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground"
-                />
-              </div>
-            </div>
-
-            {/* Footer text */}
-            <p className="font-[family-name:var(--font-geist-sans)] text-[10px] italic text-subtle-foreground">
-              AVL: single point only &middot; AeroBuildup / VLM: sweeps supported
-            </p>
-          </div>
         </>
       )}
 

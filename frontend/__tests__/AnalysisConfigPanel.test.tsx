@@ -100,3 +100,66 @@ describe("AnalysisConfigPanel numeric inputs (gh-787)", () => {
     expect(onRunStreamlines.mock.calls[0][0]).toMatchObject({ beta: 0 });
   });
 });
+
+describe("AnalysisConfigPanel honest Polar selectors (gh-786)", () => {
+  it("no longer renders the decorative sweep_var / solver / flight-profile selectors", () => {
+    render(<AnalysisConfigPanel activeTab="Polar" analysis={makeAnalysis()} {...BASE} />);
+
+    // sweep_var (alpha/beta/velocity) select removed — alpha is the only sweep
+    expect(screen.queryByLabelText("sweep_var")).toBeNull();
+    // solver picker + flight-profile select + the whole card removed
+    expect(screen.queryByText("Analysis Tool")).toBeNull();
+    expect(screen.queryByLabelText("Flight profile")).toBeNull();
+    // the misleading footer claim is gone too
+    expect(screen.queryByText(/AVL: single point only/i)).toBeNull();
+  });
+
+  it("Single Point mode runs a genuine 1-point evaluation (alpha_num=1)", () => {
+    const analysis = makeAnalysis();
+    render(<AnalysisConfigPanel activeTab="Polar" analysis={analysis} {...BASE} />);
+
+    // switch to Single Point (first radio) and set the single α
+    fireEvent.click(screen.getAllByRole("radio")[0]);
+    fireEvent.change(screen.getByLabelText("alpha"), { target: { value: "6" } });
+    fireEvent.click(runButton());
+
+    expect(analysis.runAlphaSweep).toHaveBeenCalledTimes(1);
+    expect(analysis.runAlphaSweep.mock.calls[0][0]).toMatchObject({
+      alpha_start: 6,
+      alpha_end: 6,
+      alpha_num: 1,
+    });
+  });
+
+  it("Parameter Sweep mode still produces a multi-point sweep", () => {
+    const analysis = makeAnalysis();
+    render(<AnalysisConfigPanel activeTab="Polar" analysis={analysis} {...BASE} />);
+
+    // default mode is sweep; defaults -5..15 step 1 → 21 points
+    fireEvent.click(runButton());
+    const call = analysis.runAlphaSweep.mock.calls[0][0];
+    expect(call.alpha_num).toBeGreaterThan(1);
+  });
+
+  it("activates Single Point via keyboard (ModeRadio onKeyDown)", () => {
+    render(<AnalysisConfigPanel activeTab="Polar" analysis={makeAnalysis()} {...BASE} />);
+
+    // default sweep → range "start" shown, no single "alpha"
+    expect(screen.queryByLabelText("alpha")).toBeNull();
+    fireEvent.keyDown(screen.getAllByRole("radio")[0], { key: "Enter" });
+    // single mode now → single-alpha input present, range gone
+    expect(screen.getByLabelText("alpha")).toBeTruthy();
+    expect(screen.queryByLabelText("start")).toBeNull();
+  });
+
+  it("Reset to defaults restores the sweep start (and resets single α) without crashing", () => {
+    const analysis = makeAnalysis();
+    render(<AnalysisConfigPanel activeTab="Polar" analysis={analysis} {...BASE} />);
+
+    fireEvent.change(screen.getByLabelText("start"), { target: { value: "3" } });
+    fireEvent.click(screen.getByRole("button", { name: /Reset to defaults/i }));
+    fireEvent.click(runButton());
+
+    expect(analysis.runAlphaSweep.mock.calls[0][0]).toMatchObject({ alpha_start: -5 });
+  });
+});
