@@ -13,9 +13,8 @@ from app.schemas.wing import Servo as ServoModel
 from app.schemas.wing import Spare as SpareModel
 from pathlib import Path
 
-
-_REPO_ROOT = Path(__file__).resolve().parents[2]
-_AIRFOILS_DIR = _REPO_ROOT / "components" / "airfoils"
+from app.core.config import AIRFOILS_DIR as _AIRFOILS_DIR
+from app.core.config import REPO_ROOT as _REPO_ROOT
 
 
 _airfoil_map: dict[str, Path] | None = None
@@ -66,10 +65,20 @@ def _resolve_airfoil_reference(airfoil_reference: str) -> str:
     else:
         bare_name = Path(normalized).name
 
-    # 3. Case-insensitive lookup in components/airfoils/
+    # 3. Case-insensitive lookup in components/airfoils/ (cached map)
     found = _find_airfoil_case_insensitive(bare_name)
     if found:
         return str(found)
+
+    # 3b. Direct filesystem check. The map in (3) is process-cached, so an
+    #     airfoil written AFTER it was first built (freshly imported/generated)
+    #     would otherwise stay "missing" until restart. Always fall back to a
+    #     direct stat in the canonical dir.
+    direct = _AIRFOILS_DIR / (
+        bare_name if bare_name.lower().endswith(".dat") else f"{bare_name}.dat"
+    )
+    if direct.is_file():
+        return str(direct)
 
     # 4. Try repo-relative path
     repo_relative = (_REPO_ROOT / airfoil_reference).resolve()
