@@ -134,11 +134,64 @@ describe("OpComparisonTable", () => {
     expect(container.firstChild).toBeNull();
   });
 
-  it("sorting by every column re-sorts without crashing", async () => {
+  it("sorting every column (mixed surfaces, unknown roles, null aero, both directions)", async () => {
     const user = userEvent.setup();
-    render(<OpComparisonTable points={POINTS} />);
-    for (const label of ["OP", "Elevator (°)", "CL", "CD", "L/D", "Reserve", "α (°)"]) {
-      await user.click(screen.getByText(label));
+    // A second OP with a known + two unknown-role surfaces and NO aero — exercises
+    // the role-rank fallback, the absent-surface / null-coefficient (?? 0) branches,
+    // and the asc↔desc toggle for every column.
+    const mixed = makeOp({
+      id: 8,
+      name: "mixed",
+      alpha: 7 * RAD,
+      trim_enrichment: {
+        analysis_goal: "Mixed",
+        result_summary: "",
+        trim_method: "opti",
+        trim_score: 0.04,
+        trim_residuals: {},
+        deflection_reserves: {
+          "[aileron]Aileron": {
+            deflection_deg: 6.0,
+            max_pos_deg: 20,
+            max_neg_deg: 20,
+            usage_fraction: 0.3,
+          },
+          "[winglet]Winglet": {
+            deflection_deg: 1.0,
+            max_pos_deg: 10,
+            max_neg_deg: 10,
+            usage_fraction: 0.1,
+          },
+          "[spoiler]Spoiler": {
+            deflection_deg: 2.0,
+            max_pos_deg: 15,
+            max_neg_deg: 15,
+            usage_fraction: 0.13,
+          },
+        },
+        design_warnings: [],
+        effectiveness: {},
+        stability_classification: null,
+        mixer_values: {},
+        aero_coefficients: {}, // null CL/CD/LD → "—" + ?? 0 sort branches
+      },
+    });
+    render(<OpComparisonTable points={[POINTS[0], mixed]} />);
+    // role-ordered: known roles first (Elevator, Aileron), unknown last alpha-sorted (Spoiler, Winglet)
+    for (const label of [
+      "OP",
+      "Elevator (°)",
+      "Aileron (°)",
+      "Spoiler (°)",
+      "Winglet (°)",
+      "CL",
+      "CD",
+      "L/D",
+      "Reserve",
+      "α (°)",
+    ]) {
+      await user.click(screen.getByText(label)); // desc
+      await user.click(screen.getByText(label)); // asc (toggle)
       expect(screen.getAllByTestId(/^op-row-/)).toHaveLength(2);
     }
   });
