@@ -106,3 +106,94 @@ def test_section_aoa_physical_sanity_on_tapered_wing():
             f"alpha_eff({e.alpha_effective_deg:.2f}) > alpha_geom({e.alpha_geometric_deg:.2f}) "
             f"at y={e.y_m:.3f}"
         )
+
+    # 6. TIP panels: no singularity. The outermost panel must satisfy the same
+    #    invariant (alpha_eff < alpha_geom) and must not show a spike > 20°.
+    tip_panel = pos_entries[-1]
+    assert tip_panel.alpha_effective_deg < tip_panel.alpha_geometric_deg + 0.5, (
+        f"TIP alpha_eff({tip_panel.alpha_effective_deg:.2f}) > alpha_geom({tip_panel.alpha_geometric_deg:.2f}) "
+        f"at y={tip_panel.y_m:.3f} — tip singularity detected"
+    )
+    assert abs(tip_panel.alpha_effective_deg) < 20.0, (
+        f"TIP alpha_eff spike: {tip_panel.alpha_effective_deg:.2f}° at y={tip_panel.y_m:.3f}"
+    )
+    assert tip_panel.induced_angle_deg > -5.0, (
+        f"TIP induced angle strongly negative: {tip_panel.induced_angle_deg:.2f}° at y={tip_panel.y_m:.3f}"
+    )
+
+
+@pytest.mark.slow
+def test_section_aoa_tip_singularity_free_on_high_taper():
+    """CL-based alpha_eff derivation must not produce singularities at collapsing-chord tips.
+
+    Uses an extreme taper (root chord 0.30 m → tip chord 0.03 m over 0.8 m span)
+    at high spanwise resolution.  The velocity-based atan2 path is singular here
+    (self-induced velocity diverges as chord→0); the CL-based path must stay well-
+    behaved.
+
+    Assertions (positive-y panels only):
+      1. No panel has alpha_eff > alpha_geom + 1.0° (no singularity spikes).
+      2. No panel has |alpha_eff| > 20° (no runaway values).
+      3. induced_angle > −5° everywhere (no strongly negative values).
+      4. TIP panel specifically: induced_angle > 0° (downwash present at tip).
+    """
+    import aerosandbox as asb
+
+    from app.services.section_aoa_service import compute_section_aoa
+
+    # 30:1 taper (root 0.30 m → tip 0.01 m) — collapses chord toward the tip.
+    # The old velocity-based atan2 path produces alpha_eff > alpha_geom by ~2° at
+    # the outer panels (4 panels at res=32 in the velocity path; zero violations in
+    # the CL path).  NACA0012 is used so alpha_L0=0; the formula simplifies to
+    # alpha_eff = degrees(cl / (2*pi)).
+    root_xsec = asb.WingXSec(
+        xyz_le=[0.0, 0.0, 0.0],
+        chord=0.30,
+        twist=3.0,
+        airfoil=asb.Airfoil("naca0012"),  # symmetric → alpha_L0 = 0
+    )
+    tip_xsec = asb.WingXSec(
+        xyz_le=[0.05, 0.80, 0.0],
+        chord=0.01,  # 30:1 taper — collapses toward zero
+        twist=0.0,
+        airfoil=asb.Airfoil("naca0012"),
+    )
+    wing = asb.Wing(
+        name="high_taper_wing",
+        xsecs=[root_xsec, tip_xsec],
+        symmetric=True,
+    )
+    airplane = asb.Airplane(
+        wings=[wing],
+        xyz_ref=[0.05, 0.0, 0.0],
+    )
+    op = asb.OperatingPoint(
+        velocity=15.0,
+        alpha=4.0,
+        beta=0.0,
+        atmosphere=asb.Atmosphere(altitude=0.0),
+    )
+
+    # res=32 exposes the singularity in the old velocity-based path (4 violations)
+    entries = compute_section_aoa(airplane, op, wing_name="high_taper_wing", spanwise_resolution=32)
+
+    pos_entries = [e for e in entries if e.y_m > 0]
+    assert len(pos_entries) >= 4, "Expected multiple positive-y panels"
+
+    for e in pos_entries:
+        assert e.alpha_effective_deg <= e.alpha_geometric_deg + 1.0, (
+            f"alpha_eff({e.alpha_effective_deg:.2f}) > alpha_geom({e.alpha_geometric_deg:.2f}) "
+            f"at y={e.y_m:.3f} — possible tip singularity"
+        )
+        assert abs(e.alpha_effective_deg) < 20.0, (
+            f"alpha_eff spike: {e.alpha_effective_deg:.2f}° at y={e.y_m:.3f}"
+        )
+        assert e.induced_angle_deg > -5.0, (
+            f"induced_angle strongly negative: {e.induced_angle_deg:.2f}° at y={e.y_m:.3f}"
+        )
+
+    # Tip panel specifically: induced downwash must be positive (lift generates downwash)
+    tip_panel = pos_entries[-1]
+    assert tip_panel.induced_angle_deg > 0.0, (
+        f"TIP induced angle non-positive: {tip_panel.induced_angle_deg:.2f}° at y={tip_panel.y_m:.3f}"
+    )

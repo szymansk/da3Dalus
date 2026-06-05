@@ -8,9 +8,19 @@ local velocity vectors from which we derive:
   gamma      = vortex_strengths  [m²/s]
   V_local    = get_velocity_at_points(vortex_centres)  [m/s, shape (N, 3)]
   Vmag       = ||V_local||  [m/s]
-  cl         = 2·Γ / (Vmag · c)    (section lift coefficient, includes induced)
+  cl         = 2·Γ / (Vmag · c)    (section lift coefficient, Kutta-Joukowski)
 
-  alpha_eff  = atan2(V·n, V·f)     [deg]   (effective AoA including downwash)
+Effective AoA is derived from the section lift coefficient via the
+thin-airfoil lift curve (tip-singularity-safe):
+
+  a0          = 2·π  [/rad]   (thin-airfoil section lift-curve slope)
+  alpha_L0    = zero-lift angle of the section airfoil [deg]
+                (from NeuralFoil 2D polar; 0° for symmetric sections)
+  alpha_eff   = degrees(cl / a0) + alpha_L0   [deg]
+
+This avoids the singularity that arises when sampling self-induced velocity
+directly ON the vortex centres of collapsing-chord tip panels (the velocity-
+based atan2 path diverges there; cl from Kutta-Joukowski stays well-behaved).
 
 Geometric AoA at each panel:
   alpha_geom = op_alpha + incidence_w + twist(y)
@@ -99,6 +109,93 @@ class SectionAoaEntry:
 
 
 # ---------------------------------------------------------------------------
+# Internal helpers
+# ---------------------------------------------------------------------------
+
+
+def _compute_alpha_l0_per_section(
+    wing,
+    op_point,
+) -> tuple:
+    """Return (y_positions, alpha_L0_values) arrays for the wing's xsecs.
+
+    For each cross-section the zero-lift angle alpha_L0 is obtained from the
+    section's airfoil NeuralFoil polar at the local chord-Reynolds number.
+    If NeuralFoil is unavailable or fails, falls back to 0° (conservative:
+    correct for symmetric sections; small error for cambered ones).
+
+    Parameters
+    ----------
+    wing:
+        ``asb.Wing`` — the wing whose xsecs are inspected.
+    op_point:
+        ``asb.OperatingPoint`` — used to derive the freestream velocity for Re.
+
+    Returns
+    -------
+    (y_arr, alpha_l0_arr) : tuple of two numpy arrays of shape (n_xsecs,)
+    """
+    import aerosandbox as asb
+    import numpy as np
+
+    nu = 1.5e-5  # kinematic viscosity [m²/s] — standard sea-level air
+    try:
+        velocity = float(np.atleast_1d(op_point.velocity)[0])
+    except Exception:
+        velocity = 15.0  # safe default
+
+    xsecs = wing.xsecs
+    y_vals: list[float] = []
+    alpha_l0_vals: list[float] = []
+
+    # Cache results so we don't re-evaluate the same airfoil twice
+    _cache: dict[str, float] = {}
+
+    for xs in xsecs:
+        y_vals.append(float(np.atleast_1d(xs.xyz_le)[1]))
+
+        try:
+            chord = float(xs.chord)
+        except Exception:
+            chord = 0.20
+
+        re_local = max(velocity * chord / nu, 1e4)  # avoid Re=0
+
+        try:
+            airfoil = xs.airfoil
+            airfoil_name: str = getattr(airfoil, "name", "") or ""
+        except Exception:
+            airfoil_name = ""
+            airfoil = None
+
+        cache_key = f"{airfoil_name}:{re_local:.0f}"
+        if cache_key in _cache:
+            alpha_l0_vals.append(_cache[cache_key])
+            continue
+
+        alpha_l0 = 0.0  # fallback for symmetric / unknown sections
+        if airfoil is not None:
+            try:
+                alphas = np.linspace(-6.0, 2.0, 40)
+                polar = airfoil.get_aero_from_neuralfoil(
+                    alpha=alphas,
+                    Re=re_local,
+                    model_size="small",
+                )
+                cl_2d = np.atleast_1d(polar["CL"])
+                if len(cl_2d) >= 2 and not np.all(np.isnan(cl_2d)):
+                    # Interpolate to find alpha where CL = 0
+                    alpha_l0 = float(np.interp(0.0, cl_2d, alphas))
+            except Exception:
+                alpha_l0 = 0.0  # NeuralFoil unavailable or failed
+
+        _cache[cache_key] = alpha_l0
+        alpha_l0_vals.append(alpha_l0)
+
+    return np.array(y_vals), np.array(alpha_l0_vals)
+
+
+# ---------------------------------------------------------------------------
 # Pure computation (requires aerosandbox)
 # ---------------------------------------------------------------------------
 
@@ -181,21 +278,26 @@ def compute_section_aoa(
     # Section lift coefficient (Kutta-Joukowski, 2D slice):
     cl_arr = 2.0 * gamma_arr / (vmag * chord_arr)
 
-    # Effective AoA (includes induced downwash) from local velocity resolved
-    # onto the panel's normal and forward directions.
+    # Effective AoA — derived from the section CL via the thin-airfoil lift curve.
     #
-    # Convention note (ASB LiftingLine):
-    #   ``local_forward_direction`` points from TE to LE (rearward), i.e. the
-    #   negative of the aerodynamic chord direction.  To recover the standard
-    #   AoA sign (positive nose-up) we negate the forward component before
-    #   applying atan2.
-    fwd = np.array(ll.local_forward_direction)  # (N, 3) — TE→LE unit vector
-    norm = np.array(ll.normal_directions)  # (N, 3) — panel normal unit vector
+    # Rationale: sampling self-induced velocity directly ON the vortex centres
+    # of collapsing-chord tip panels (the old atan2 path) is singular — velocity
+    # diverges as chord → 0.  cl from Kutta-Joukowski is well-behaved everywhere.
+    #
+    # Thin-airfoil lift-curve slope: a0 = 2π  [/rad]
+    # Zero-lift angle:               alpha_L0 [deg]  (from NeuralFoil 2D polar;
+    #                                                  0° for symmetric sections)
+    # alpha_eff = degrees(cl / a0) + alpha_L0
+    #
+    # a0 = 2π is the theoretical value; a small correction per section would
+    # require per-panel Re-dependent polars and is not worth the cost here.
+    _A0_RAD = 2.0 * math.pi  # thin-airfoil section lift-curve slope [/rad]
 
-    v_dot_norm = np.sum(v_local * norm, axis=1)
-    v_dot_fwd = np.sum(v_local * fwd, axis=1)
-    # Negate v_dot_fwd to convert from TE→LE to LE→TE convention
-    alpha_eff_arr = np.degrees(np.arctan2(v_dot_norm, -v_dot_fwd))  # (N,) [deg]
+    alpha_L0_per_section = _compute_alpha_l0_per_section(target_wing, asb_op_point)
+    # Interpolate alpha_L0 from xsec y positions to panel y positions
+    alpha_L0_at_y = np.interp(y_arr, alpha_L0_per_section[0], alpha_L0_per_section[1])
+
+    alpha_eff_arr = np.degrees(cl_arr / _A0_RAD) + alpha_L0_at_y  # (N,) [deg]
 
     # ------------------------------------------------------------------
     # 4.  Geometric AoA at each panel
@@ -290,9 +392,7 @@ async def get_section_aoa(
     # .id field — we must look it up via the UUID).
     # ------------------------------------------------------------------
     aircraft_model = (
-        db.query(AeroplaneModel)
-        .filter(AeroplaneModel.uuid == str(aeroplane_uuid))
-        .first()
+        db.query(AeroplaneModel).filter(AeroplaneModel.uuid == str(aeroplane_uuid)).first()
     )
     if aircraft_model is None:  # pragma: no cover — already raised above
         raise NotFoundError(message=f"Aeroplane {aeroplane_uuid} not found.")

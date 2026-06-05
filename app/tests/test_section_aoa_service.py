@@ -170,22 +170,33 @@ class TestComputeSectionAoa:
         assert abs(entries[0].cl - expected_cl) < 1e-4
 
     def test_alpha_eff_formula(self):
-        """alpha_eff = atan2(V·n, -V·f) [deg] (ASB convention: fwd is TE→LE).
+        """alpha_eff = degrees(cl / (2*pi)) + alpha_L0  (CL-based, tip-singularity-safe).
 
-        V = [10, 0, 1], fwd (TE→LE) = [-1, 0, 0], norm = [0, 0, 1]
-        V·fwd = -10, V·norm = 1
-        alpha_eff = atan2(1, -(-10)) = atan2(1, 10) [deg]
+        With mock airfoils alpha_L0 falls back to 0° (NeuralFoil mock raises →
+        exception handler returns 0).
+
+        Panel parameters:
+          gamma = 0.3 m²/s,  V = [10, 0, 1] m/s  →  Vmag = sqrt(101),
+          chord = 0.2 m
+          cl = 2 * 0.3 / (sqrt(101) * 0.2)
+          alpha_eff = degrees(cl / (2*pi))   (alpha_L0 = 0 from mock fallback)
         """
+        import numpy as np
+
+        gamma = 0.3
         v = [10.0, 0.0, 1.0]
-        # fwd is TE→LE in ASB convention (negative x for a standard wing)
-        expected_alpha_eff = math.degrees(math.atan2(1.0, 10.0))
+        chord = 0.2
+        vmag = math.sqrt(101.0)
+        cl_expected = 2.0 * gamma / (vmag * chord)
+        a0 = 2.0 * math.pi
+        expected_alpha_eff = math.degrees(cl_expected / a0)  # alpha_L0 = 0
 
         entries = self._run(
             y_positions=[0.25],
-            gammas=[0.3],
-            chords=[0.2],
+            gammas=[gamma],
+            chords=[chord],
             velocities=[v],
-            fwds=[[-1.0, 0.0, 0.0]],  # TE→LE (ASB convention)
+            fwds=[[-1.0, 0.0, 0.0]],  # still needed for vmag computation
             norms=[[0.0, 0.0, 1.0]],
             op_alpha=4.0,
             xsec_specs=[(0.0, 2.0), (0.5, 0.0)],
