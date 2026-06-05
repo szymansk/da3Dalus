@@ -32,8 +32,27 @@ function makeOP(overrides: Partial<StoredOperatingPoint> = {}): StoredOperatingP
     xyz_ref: [0.1, 0, 0],
     altitude: 500,
     control_deflections: null,
+    trim_enrichment: null,
     ...overrides,
   };
+}
+
+/** gh-865: build a fake fetch Response whose body streams the given SSE
+ * records (already in `event: X\ndata: Y\n\n` form), as the streaming
+ * generate-default endpoint does. */
+function sseResponse(records: string[]) {
+  const encoder = new TextEncoder();
+  const body = new ReadableStream<Uint8Array>({
+    start(controller) {
+      for (const r of records) controller.enqueue(encoder.encode(r));
+      controller.close();
+    },
+  });
+  return { ok: true, status: 200, body } as unknown as Response;
+}
+
+function sse(event: string, data: unknown): string {
+  return `event: ${event}\ndata: ${JSON.stringify(data)}\n\n`;
 }
 
 const FAKE_AVL_RESULT: AVLTrimResult = {
@@ -91,12 +110,24 @@ describe("useOperatingPoints", () => {
     expect(result.current.error).toBeNull();
   });
 
-  it("generate() calls the correct endpoint and refreshes", async () => {
+  it("generate() streams the default-set endpoint and refreshes (gh-865)", async () => {
     const fakePoints = [makeOP()];
     const mockFetch = vi
       .fn()
+      // mount refresh → empty
       .mockResolvedValueOnce({ ok: true, status: 200, json: () => Promise.resolve([]) })
-      .mockResolvedValueOnce({ ok: true, status: 200, json: () => Promise.resolve({}) })
+      // streaming generate-default → SSE: targets, one op, done
+      .mockResolvedValueOnce(
+        sseResponse([
+          sse("targets", {
+            opset_id: 1,
+            targets: [{ name: "Cruise", config: "clean", status: "COMPUTING" }],
+          }),
+          sse("op", makeOP()),
+          sse("done", { opset_id: 1, count: 1 }),
+        ]),
+      )
+      // post-done refresh → persisted points
       .mockResolvedValueOnce({ ok: true, status: 200, json: () => Promise.resolve(fakePoints) });
     globalThis.fetch = mockFetch;
 
@@ -111,7 +142,7 @@ describe("useOperatingPoints", () => {
     });
 
     expect(mockFetch.mock.calls[1][0]).toContain(
-      "/aeroplanes/42/operating-pointsets/generate-default",
+      "/aeroplanes/42/operating-pointsets/generate-default/stream",
     );
     expect(mockFetch.mock.calls[1][1]).toEqual(
       expect.objectContaining({ method: "POST" }),
@@ -119,8 +150,45 @@ describe("useOperatingPoints", () => {
     const body = JSON.parse(mockFetch.mock.calls[1][1].body);
     expect(body).toEqual({ replace_existing: true });
 
+    // refreshed persisted points + streaming state cleared on done
     expect(result.current.points).toEqual(fakePoints);
+    expect(result.current.streamingPoints).toBeNull();
     expect(result.current.isGenerating).toBe(false);
+  });
+
+  it("generate() handles op + skip events and clears streaming on done (gh-865)", async () => {
+    const solved = makeOP({ id: 7, name: "Cruise", status: "TRIMMED" });
+    const mockFetch = vi
+      .fn()
+      .mockResolvedValueOnce({ ok: true, status: 200, json: () => Promise.resolve([]) })
+      .mockResolvedValueOnce(
+        sseResponse([
+          sse("targets", {
+            opset_id: 1,
+            targets: [
+              { name: "Cruise", config: "clean", status: "COMPUTING" },
+              { name: "Loiter", config: "clean", status: "COMPUTING" },
+            ],
+          }),
+          sse("op", solved), // Cruise solves
+          sse("skip", { name: "Loiter" }), // Loiter unsolvable → dropped
+          sse("done", { opset_id: 1, count: 1 }),
+        ]),
+      )
+      .mockResolvedValueOnce({ ok: true, status: 200, json: () => Promise.resolve([solved]) });
+    globalThis.fetch = mockFetch;
+
+    const { result } = renderHook(() => useOperatingPoints("42"));
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+
+    await act(async () => {
+      await result.current.generate();
+    });
+
+    // streaming cleared on done; refresh pulled the one persisted point
+    expect(result.current.streamingPoints).toBeNull();
+    expect(result.current.points).toEqual([solved]);
+    expect(result.current.error).toBeNull();
   });
 
   it("trimWithAvl() calls correct endpoint, returns result, and refreshes", async () => {

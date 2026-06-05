@@ -127,6 +127,7 @@ export default function AnalysisPage() {
             envelopeError={envelope.error}
             onComputeEnvelope={envelope.compute}
             operatingPoints={ops.points}
+            streamingOperatingPoints={ops.streamingPoints}
             isLoadingOps={ops.isLoading}
             isGeneratingOps={ops.isGenerating}
             isTrimmingOps={ops.isTrimming}
