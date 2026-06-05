@@ -72,16 +72,13 @@ def _coef(model_field, n: int) -> list[float]:
 
 
 def correct_reference_to_main_wing(asb_airplane) -> dict:
-    """Force S/b/c reference to the LARGEST-area wing (the main wing).
+    """Report the current S/b/c reference without mutating the airplane.
 
-    BENCHMARK-SIDE CORRECTION for a converter bug: the app's
-    aeroplane_schema_to_asb_airplane converter sets airplane.s_ref from
-    the FIRST wing geom, not the main wing. When the OpenVSP import
-    order places the tailplane before the wing (e.g. Spitfire: HTP, VTP,
-    Wing), s_ref becomes the *tail* area → every coefficient is wrong by
-    the wing/tail area ratio (~8× for the Spitfire). We override the
-    reference to the largest wing so the comparison is meaningful and
-    both tools share identical references. Returns the applied refs.
+    RETIRED WORKAROUND (gh-788 fixed): aeroplane_schema_to_asb_airplane_async
+    now passes s_ref/b_ref/c_ref from the largest-planform wing directly to
+    asb.Airplane, so this function's mutation is no longer needed. It is kept
+    as a no-op diagnostic to confirm "corrected=False" on every run; remove
+    this function once confidence is established that the converter is correct.
     """
     if not asb_airplane.wings:
         return {
@@ -96,16 +93,16 @@ def correct_reference_to_main_wing(asb_airplane) -> dict:
     c = float(main.mean_aerodynamic_chord())
     corrected = abs(s - float(asb_airplane.s_ref)) / max(s, 1e-9) > 0.05
     if corrected:
+        # Should no longer happen after gh-788 fix.
         print(
-            f"[asb] reference-area CORRECTION: airplane.s_ref="
-            f"{float(asb_airplane.s_ref):.3f} → main wing '{main.name}' "
-            f"area={s:.3f} (converter bug: ref taken from first wing geom)",
+            f"[asb] WARNING: reference-area mismatch after gh-788 fix: "
+            f"airplane.s_ref={float(asb_airplane.s_ref):.3f}, main wing '{main.name}' "
+            f"area={s:.3f}. This is unexpected — please file a bug.",
             flush=True,
         )
-    asb_airplane.s_ref = s
-    asb_airplane.b_ref = b
-    asb_airplane.c_ref = c
-    return {"s_ref": s, "b_ref": b, "c_ref": c, "corrected": corrected, "main_wing": main.name}
+    # No longer mutate the airplane — the converter now sets the correct refs.
+    return {"s_ref": float(asb_airplane.s_ref), "b_ref": float(asb_airplane.b_ref),
+            "c_ref": float(asb_airplane.c_ref), "corrected": corrected, "main_wing": main.name}
 
 
 def _sanitize_airfoils(asb_airplane) -> int:
