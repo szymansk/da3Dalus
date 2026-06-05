@@ -127,6 +127,9 @@ class TrimmedPoint:
     trim_score: float | None = None
     trim_residuals: dict[str, float] | None = None
     trim_method: str = "opti"
+    # gh-861: finite CL/CD/Cm at the trimmed point, fed into the enrichment so
+    # the OP Comparison table can show CL/CD/L/D instead of "—".
+    aero_coefficients: dict[str, float] | None = None
     trim_enrichment: dict | None = None
 
 
@@ -735,6 +738,44 @@ def _evaluate_trim_candidate(
     return score, {"cm": cm, "cl": cl, "cy": cy}
 
 
+def _aero_coefficients_at(
+    asb_airplane: asb.Airplane,
+    altitude_m: float,
+    velocity_mps: float,
+    alpha_deg: float,
+    beta_deg: float,
+    controls: Optional[dict[str, float]],
+) -> dict[str, float]:
+    """Run one AeroBuildup eval at the trimmed point and return finite CL/CD/Cm.
+
+    Populates ``trim_enrichment.aero_coefficients`` so the OP Comparison table
+    shows CL/CD/L/D (gh-861). Non-finite values are omitted (they serialise as
+    null per gh-815 → the table shows "—"). Returns ``{}`` on any failure so OP
+    generation never breaks.
+    """
+    try:
+        op = asb.OperatingPoint(
+            velocity=float(velocity_mps),
+            alpha=float(alpha_deg),
+            beta=float(beta_deg),
+            p=0.0,
+            q=0.0,
+            r=0.0,
+            atmosphere=asb.Atmosphere(altitude=altitude_m),
+        )
+        airplane = asb_airplane.with_control_deflections(controls) if controls else asb_airplane
+        result = asb.AeroBuildup(airplane=airplane, op_point=op, xyz_ref=airplane.xyz_ref).run()
+        out: dict[str, float] = {}
+        for key in ("CL", "CD", "Cm"):
+            val = _safe_coeff(result, key, default=math.nan)
+            if math.isfinite(val):
+                out[key] = round(val, 6)
+        return out
+    except Exception:  # noqa: BLE001 — never let a diagnostic eval break OP gen
+        logger.debug("gh-861: aero-coefficient eval failed at trim point", exc_info=True)
+        return {}
+
+
 def _cl_target_for_velocity(
     candidate_velocity_mps: float,
     total_mass_kg: Optional[float],
@@ -925,6 +966,12 @@ def _trim_or_estimate_point(
             best_controls = dict(best_controls)
             best_controls[flap_name] = float(flap_deflection_target)
 
+    # gh-861: capture CL/CD/Cm at the final trimmed state for the enrichment /
+    # OP Comparison table (one extra AeroBuildup eval; degrades to {} on failure).
+    aero_coefficients = _aero_coefficients_at(
+        asb_airplane, altitude, velocity, best_alpha, best_beta, best_controls
+    )
+
     _tp_rates = _op_turn_rates(target, velocity)
     return TrimmedPoint(
         name=target["name"],
@@ -946,6 +993,7 @@ def _trim_or_estimate_point(
         trim_score=best_score if best_score < float("inf") else None,
         trim_residuals=best_residuals,
         trim_method=best_method,
+        aero_coefficients=aero_coefficients or None,
     )
 
 
@@ -1206,6 +1254,7 @@ def trim_operating_point_for_aircraft(
                 op_name=point.name,
                 alpha_deg=math.degrees(point.alpha_rad),
                 status=point.status.value if point.status else None,
+                aero_coefficients=point.aero_coefficients or None,
                 mix_params=build_mix_params_from_schema(plane_schema),
             )
             enrichment_data = enrichment.model_dump()
