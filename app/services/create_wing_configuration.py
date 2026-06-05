@@ -65,10 +65,20 @@ def _resolve_airfoil_reference(airfoil_reference: str) -> str:
     else:
         bare_name = Path(normalized).name
 
-    # 3. Case-insensitive lookup in components/airfoils/
+    # 3. Case-insensitive lookup in components/airfoils/ (cached map)
     found = _find_airfoil_case_insensitive(bare_name)
     if found:
         return str(found)
+
+    # 3b. Direct filesystem check. The map in (3) is process-cached, so an
+    #     airfoil written AFTER it was first built (freshly imported/generated)
+    #     would otherwise stay "missing" until restart. Always fall back to a
+    #     direct stat in the canonical dir.
+    direct = _AIRFOILS_DIR / (
+        bare_name if bare_name.lower().endswith(".dat") else f"{bare_name}.dat"
+    )
+    if direct.is_file():
+        return str(direct)
 
     # 4. Try repo-relative path
     repo_relative = (_REPO_ROOT / airfoil_reference).resolve()
