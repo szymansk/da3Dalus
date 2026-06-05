@@ -8,6 +8,7 @@ import type { StreamlinesParams } from "@/hooks/useStreamlines";
 import type { StoredOperatingPoint } from "@/hooks/useOperatingPoints";
 import type { Tab } from "@/components/workbench/AnalysisViewerPanel";
 import { parseMasses, formatMass } from "@/lib/masses";
+import { finiteOr } from "@/lib/numericInput";
 
 type Mode = "single" | "sweep";
 
@@ -289,16 +290,16 @@ export function AnalysisConfigPanel({
 
   // ── Polar handlers ──
   const handleRunPolar = () => {
-    const start = Number.parseFloat(alphaStart) || -5;
-    const end = Number.parseFloat(alphaEnd) || 15;
-    const step = Number.parseFloat(alphaStep) || 1;
+    const start = finiteOr(alphaStart, -5);
+    const end = finiteOr(alphaEnd, 15);
+    const step = finiteOr(alphaStep, 1);
     analysis.runAlphaSweep({
       alpha_start: start,
       alpha_end: end,
       alpha_num: Math.max(2, Math.round((end - start) / step) + 1),
-      velocity: Number.parseFloat(velocity) || 14,
-      beta: Number.parseFloat(beta) || 0,
-      altitude: Number.parseFloat(altitude) || 0,
+      velocity: finiteOr(velocity, 14),
+      beta: finiteOr(beta, 0),
+      altitude: finiteOr(altitude, 0),
       xyz_ref: parseXyzRef(),
       masses_kg: parseMasses(massesInput),
     });
@@ -315,10 +316,10 @@ export function AnalysisConfigPanel({
   // ── Trefftz Plane handlers ──
   const handleRunStripForces = () => {
     onRunStripForces?.({
-      velocity: Number.parseFloat(velocity) || 14,
-      alpha: Number.parseFloat(trefftzAlpha) || 5,
-      beta: Number.parseFloat(beta) || 0,
-      altitude: Number.parseFloat(altitude) || 100,
+      velocity: finiteOr(velocity, 14),
+      alpha: finiteOr(trefftzAlpha, 5),
+      beta: finiteOr(beta, 0),
+      altitude: finiteOr(altitude, 100),
       xyz_ref: parseXyzRef(),
       operating_point_id: useTrimmedOp ? effectiveOpId : null,
     });
@@ -328,10 +329,10 @@ export function AnalysisConfigPanel({
   // ── Streamlines handlers ──
   const handleRunStreamlines = () => {
     onRunStreamlines?.({
-      velocity: Number.parseFloat(velocity) || 14,
-      alpha: Number.parseFloat(trefftzAlpha) || 5,
-      beta: Number.parseFloat(beta) || 0,
-      altitude: Number.parseFloat(altitude) || 100,
+      velocity: finiteOr(velocity, 14),
+      alpha: finiteOr(trefftzAlpha, 5),
+      beta: finiteOr(beta, 0),
+      altitude: finiteOr(altitude, 100),
       xyz_ref: parseXyzRef(),
       operating_point_id: useTrimmedOp ? effectiveOpId : null,
     });
