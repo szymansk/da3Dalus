@@ -418,13 +418,22 @@ def test_no_flap_aircraft_runs_one_pass_with_fallback_flag(client_and_db):
             recompute_assumptions(db, aeroplane_uuid)
             db.commit()
 
-    assert fine_sweep_mock.call_count == 1, (
-        f"Expected 1 AeroBuildup pass (no flap geometry), got {fine_sweep_mock.call_count}"
+    # No flap geometry → only the CLEAN config is computed (takeoff/landing are
+    # cloned, not separately swept). gh-672: this fixture's sweep yields only 5
+    # in-window points (cl_max=1.35 → window [0.135, 1.1475]), so the clean fit
+    # is rejected for `insufficient_points` and the α-resolution auto-recovery
+    # re-runs the (still-degenerate) clean sweep twice → 1 initial + 2 retries.
+    # That no takeoff/landing AeroBuildup passes run is carried by the
+    # provenance assertions below.
+    assert fine_sweep_mock.call_count == 3, (
+        f"Expected 1 clean pass + 2 gh-672 refinement retries, got {fine_sweep_mock.call_count}"
     )
 
     ctx = _load_ctx(SessionLocal, aeroplane_id)
     pbc = ctx["polar_by_config"]
     assert pbc["clean"]["provenance"] == "aerobuildup"
+    # refinement was attempted but the degenerate sweep still didn't fit → no banner
+    assert pbc["clean"]["auto_refined"] is False
     assert pbc["takeoff"]["provenance"] == "no_flap_geometry"
     assert pbc["landing"]["provenance"] == "no_flap_geometry"
     # C_L_max identical when fallback cloned from clean

@@ -141,12 +141,19 @@ def recompute_assumptions(db: Session, aeroplane_uuid) -> None:
     # of the fallback constant 0.8.
     aspect_ratio = _main_wing_aspect_ratio(asb_airplane)
     cl_max_effective_for_fit = _load_effective_assumption(db, aircraft.id, "cl_max")
-    _cd0_fit, e_oswald_fit, e_r2, polar_rejection = _fit_parabolic_polar(
-        np.asarray(sweep_cl_arr, dtype=float),
-        np.asarray(sweep_cd_arr, dtype=float),
-        ar=aspect_ratio if aspect_ratio is not None else 0.0,
-        cl_max=cl_max_effective_for_fit,
-        cd0_stability=cd0,
+    _cd0_fit, e_oswald_fit, e_r2, polar_rejection, polar_auto_refined = (
+        _fit_parabolic_polar_with_refinement(
+            asb_airplane=asb_airplane,
+            stall_alpha_deg=stall_alpha,
+            v_cruise=v_cruise,
+            v_max=v_max,
+            config=config,
+            aspect_ratio=aspect_ratio if aspect_ratio is not None else 0.0,
+            cl_max_for_fit=cl_max_effective_for_fit,
+            cd0_stability=cd0,
+            cl=np.asarray(sweep_cl_arr, dtype=float),
+            cd=np.asarray(sweep_cd_arr, dtype=float),
+        )
     )
     # gh-636: derive (L/D)max + e_oswald directly from the AeroBuildup sweep
     # — no parabolic-fit dependency for e. The fit still gives us cd0; e is
@@ -209,6 +216,7 @@ def recompute_assumptions(db: Session, aeroplane_uuid) -> None:
         ld_max=round(ld_max_clean, 2) if ld_max_clean is not None else None,
         cl_at_ld_max=round(cl_at_ld_max_clean, 3) if cl_at_ld_max_clean is not None else None,
         e_oswald_provenance=e_oswald_provenance_clean,
+        auto_refined=polar_auto_refined,
     )
 
     ted_max = _extract_flap_ted_max(aircraft)
@@ -688,12 +696,19 @@ def _run_polar_for_deflection(
     cl_max, cl_arr, cd_arr, _v_arr, cdi_arr = _fine_sweep_cl_max(
         deflected, stall_alpha, v_cruise, v_max, config
     )
-    _cd0_fit, e_oswald_fit, e_r2, polar_rejection = _fit_parabolic_polar(
-        np.asarray(cl_arr, dtype=float),
-        np.asarray(cd_arr, dtype=float),
-        ar=aspect_ratio if aspect_ratio is not None else 0.0,
-        cl_max=cl_max_effective_for_fit if cl_max_effective_for_fit else cl_max,
-        cd0_stability=cd0_stability,
+    _cd0_fit, e_oswald_fit, e_r2, polar_rejection, polar_auto_refined = (
+        _fit_parabolic_polar_with_refinement(
+            asb_airplane=deflected,
+            stall_alpha_deg=stall_alpha,
+            v_cruise=v_cruise,
+            v_max=v_max,
+            config=config,
+            aspect_ratio=aspect_ratio if aspect_ratio is not None else 0.0,
+            cl_max_for_fit=cl_max_effective_for_fit if cl_max_effective_for_fit else cl_max,
+            cd0_stability=cd0_stability,
+            cl=np.asarray(cl_arr, dtype=float),
+            cd=np.asarray(cd_arr, dtype=float),
+        )
     )
     # gh-636: empirical (L/D)max + AB-Trefftz e for this configuration.
     ld_max_cfg, cl_at_ld_max_cfg, ld_max_idx_cfg = _ld_max_from_sweep(
@@ -727,6 +742,7 @@ def _run_polar_for_deflection(
         ld_max=round(ld_max_cfg, 2) if ld_max_cfg is not None else None,
         cl_at_ld_max=round(cl_at_ld_max_cfg, 3) if cl_at_ld_max_cfg is not None else None,
         e_oswald_provenance=provenance_e,
+        auto_refined=polar_auto_refined,
     )
 
 
@@ -939,6 +955,9 @@ def _fine_sweep_cl_max(
     v_cruise: float,
     v_max: float,
     config: AircraftComputationConfigModel,
+    *,
+    alpha_step_override: float | None = None,
+    alpha_margin_override: float | None = None,
 ) -> tuple[float, np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
     """Returns (CL_max, cl_array, cd_array, v_array, cdi_array) from a fine α × V sweep.
 
@@ -950,12 +969,22 @@ def _fine_sweep_cl_max(
       at each sample. It lets `recompute_assumptions` extract Oswald e directly
       via ``e = CL² / (π·AR·CDi)`` at the (L/D)max point, without re-fitting a
       parabola. Costs zero extra AeroBuildup calls.
+
+    ``alpha_step_override`` / ``alpha_margin_override`` (gh-672) let the
+    polar-fit auto-recovery re-run a *finer* sweep without mutating the stored
+    config. They default to the config's values.
     """
     import aerosandbox as asb
 
-    alpha_min = stall_alpha_deg - config.fine_alpha_margin_deg
-    alpha_max = stall_alpha_deg + config.fine_alpha_margin_deg
-    alphas = np.arange(alpha_min, alpha_max + 0.01, config.fine_alpha_step_deg)
+    alpha_step = (
+        alpha_step_override if alpha_step_override is not None else config.fine_alpha_step_deg
+    )
+    alpha_margin = (
+        alpha_margin_override if alpha_margin_override is not None else config.fine_alpha_margin_deg
+    )
+    alpha_min = stall_alpha_deg - alpha_margin
+    alpha_max = stall_alpha_deg + alpha_margin
+    alphas = np.arange(alpha_min, alpha_max + 0.01, alpha_step)
 
     v_stall_approx = max(v_cruise * 0.5, 3.0)
     velocities = np.linspace(v_stall_approx, v_max, config.fine_velocity_count)
@@ -1382,6 +1411,90 @@ def _fit_parabolic_polar(
         n_pts,
     )
     return float(cd0_fit), float(e_oswald), float(r2), None
+
+
+# gh-672: rejection gates that are caused by too-coarse α-resolution (vs a
+# genuinely unphysical polar). Only these trigger an auto-refinement retry.
+_REFINABLE_REJECTION_GATES = frozenset({"insufficient_points", "non_monotonic_polar"})
+
+
+def _fit_parabolic_polar_with_refinement(
+    *,
+    asb_airplane,
+    stall_alpha_deg: float,
+    v_cruise: float,
+    v_max: float,
+    config: "AircraftComputationConfigModel",
+    aspect_ratio: float,
+    cl_max_for_fit: float | None,
+    cd0_stability: float,
+    cl: np.ndarray,
+    cd: np.ndarray,
+    max_retries: int = 2,
+) -> tuple[float | None, float | None, float | None, "PolarRejection | None", bool]:
+    """Fit the parabolic polar, auto-refining the α-resolution on resolution-
+    related rejections (gh-672).
+
+    If the fit is rejected with ``insufficient_points`` or
+    ``non_monotonic_polar`` — both caused by a too-coarse sweep — re-run a
+    *finer* ``_fine_sweep_cl_max`` (halved α-step, ×1.5 α-margin) and refit,
+    up to ``max_retries`` times. Per memory ``feedback_aerobuildup_resolution``
+    this only ever **increases resolution** — it never loosens a threshold.
+    Other gates (negative slope, unphysical e, …) are genuine design/physics
+    rejections and do not retry.
+
+    Returns ``(cd0_fit, e_oswald, r2, rejection, auto_refined)`` where
+    ``auto_refined`` is True only when a refinement produced a *successful* fit
+    (so the UI banner is shown only when it actually helped).
+    """
+    fit = _fit_parabolic_polar(
+        np.asarray(cl, dtype=float),
+        np.asarray(cd, dtype=float),
+        ar=aspect_ratio,
+        cl_max=cl_max_for_fit,
+        cd0_stability=cd0_stability,
+    )
+    did_refine = False
+    for attempt in range(1, max_retries + 1):
+        rejection = fit[3]
+        if rejection is None or rejection.gate not in _REFINABLE_REJECTION_GATES:
+            break
+        step = config.fine_alpha_step_deg / (2**attempt)
+        margin = config.fine_alpha_margin_deg * (1.5**attempt)
+        logger.info(
+            "gh-672: polar fit gate '%s' — auto-refining α-resolution "
+            "(attempt %d/%d): step→%.3f°, margin→%.2f°",
+            rejection.gate,
+            attempt,
+            max_retries,
+            step,
+            margin,
+        )
+        try:
+            refined = _fine_sweep_cl_max(
+                asb_airplane,
+                stall_alpha_deg,
+                v_cruise,
+                v_max,
+                config,
+                alpha_step_override=step,
+                alpha_margin_override=margin,
+            )
+        except Exception:
+            logger.exception("gh-672: refined fine sweep failed; keeping original rejection")
+            break
+        did_refine = True
+        fit = _fit_parabolic_polar(
+            np.asarray(refined[1], dtype=float),
+            np.asarray(refined[2], dtype=float),
+            ar=aspect_ratio,
+            cl_max=cl_max_for_fit,
+            cd0_stability=cd0_stability,
+        )
+
+    cd0_fit, e_oswald, r2, rejection = fit
+    auto_refined = did_refine and rejection is None
+    return cd0_fit, e_oswald, r2, rejection, auto_refined
 
 
 def _classify_polar_quality(r2: float) -> str:
