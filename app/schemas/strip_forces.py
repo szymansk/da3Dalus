@@ -70,7 +70,11 @@ class StripForcesResponse(BaseModel):
     )
     aero_model: Optional[Literal["AVL", "ASB"]] = Field(
         "AVL",
-        description="Aerodynamic solver that produced the strip forces (today fixed to AVL)",
+        description=(
+            "Aerodynamic solver that produced the strip forces: 'ASB' for the "
+            "default in-process VortexLatticeMethod, 'AVL' for the subprocess "
+            "fallback (gh-674)"
+        ),
     )
     computed_at: Optional[datetime] = Field(
         None, description="UTC timestamp when the run completed (ISO-8601)"

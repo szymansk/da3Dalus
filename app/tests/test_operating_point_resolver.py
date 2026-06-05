@@ -606,6 +606,9 @@ class TestStreamlineServiceUsesResolvedOp:
                     _db_returning(op),
                     aeroplane_uuid="0" * 36,
                     operating_point=OperatingPointSchema(operating_point_id=42),
+                    # gh-674: exercise the AVL path this test already mocks (VLM is
+                    # the default now but can't run on a MagicMock airplane).
+                    solver="avl",
                 )
             )
 
