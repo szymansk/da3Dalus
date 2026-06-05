@@ -12,6 +12,7 @@ from pyvista import Plotter
 
 from app.schemas.AeroplaneRequest import AnalysisToolUrlType
 from app.schemas.aeroanalysisschema import OperatingPointSchema
+from app.services.vlm_strip_forces import _remesh_airplane
 from cad_designer.airplane.aircraft_topology.models.analysis_model import AnalysisModel
 
 
@@ -68,9 +69,19 @@ def _run_aerobuildup(asb_airplane, op_point, operating_point):
 
 
 def _run_vlm(asb_airplane, op_point, operating_point, draw_streamlines, backend):
-    """Run Vortex Lattice Method analysis."""
+    """Run Vortex Lattice Method analysis.
+
+    gh-857: spanwise panels are distributed ∝ segment span (the same remesh as
+    the strip-force path, gh-855) so tiny segments aren't over-resolved — this
+    keeps the streamline panel density uniform and the VLM solve consistent.
+    """
+    meshed = _remesh_airplane(asb_airplane)
     vlm = asb.VortexLatticeMethod(
-        airplane=asb_airplane, op_point=op_point, xyz_ref=operating_point.xyz_ref
+        airplane=meshed,
+        op_point=op_point,
+        xyz_ref=operating_point.xyz_ref,
+        spanwise_resolution=1,  # gh-857: density set by the remesh, not here
+        spanwise_spacing_function=np.linspace,
     )
     vlm.verbose = True
     vlm_results = vlm.run_with_stability_derivatives()

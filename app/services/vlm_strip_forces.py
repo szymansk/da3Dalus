@@ -137,7 +137,12 @@ def remesh_uniform_density(wing, *, budget: int, min_per_segment: int):
     return asb.Wing(name=wing.name, xsecs=new_xsecs, symmetric=wing.symmetric)
 
 
-def _remesh_airplane(asb_airplane, *, budget: int, min_per_segment: int):
+def _remesh_airplane(
+    asb_airplane,
+    *,
+    budget: int = _SPANWISE_PANELS_PER_HALF,
+    min_per_segment: int = _MIN_PANELS_PER_SEGMENT,
+):
     """Rebuild the airplane with uniform-density wings, preserving the (gh-788)
     reference geometry."""
     import aerosandbox as asb

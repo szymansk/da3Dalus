@@ -242,9 +242,12 @@ class TestRunAerobuildup:
 class TestRunVlm:
     """_run_vlm creates a VortexLatticeMethod, runs, and optionally draws."""
 
+    @patch("app.api.utils._remesh_airplane", side_effect=lambda ap: ap)
     @patch("app.api.utils.AnalysisModel")
     @patch("app.api.utils.asb")
-    def test_without_streamlines(self, mock_asb, mock_analysis_model):
+    def test_without_streamlines(self, mock_asb, mock_analysis_model, _mock_remesh):
+        import numpy as np
+
         from app.api.utils import _run_vlm
 
         mock_vlm_instance = MagicMock()
@@ -264,19 +267,23 @@ class TestRunVlm:
             backend="plotly",
         )
 
+        # gh-857: span-proportional remesh + spanwise_resolution=1
         mock_asb.VortexLatticeMethod.assert_called_once_with(
             airplane=airplane,
             op_point=op_point,
             xyz_ref=operating_point.xyz_ref,
+            spanwise_resolution=1,
+            spanwise_spacing_function=np.linspace,
         )
         assert mock_vlm_instance.verbose is True
         mock_vlm_instance.run_with_stability_derivatives.assert_called_once()
         mock_vlm_instance.draw.assert_not_called()
         assert figure is None
 
+    @patch("app.api.utils._remesh_airplane", side_effect=lambda ap: ap)
     @patch("app.api.utils.AnalysisModel")
     @patch("app.api.utils.asb")
-    def test_with_streamlines(self, mock_asb, mock_analysis_model):
+    def test_with_streamlines(self, mock_asb, mock_analysis_model, _mock_remesh):
         from app.api.utils import _run_vlm
 
         mock_vlm_instance = MagicMock()
@@ -300,9 +307,12 @@ class TestRunVlm:
         mock_vlm_instance.draw.assert_called_once_with(show=False, backend="pyvista")
         assert figure is not None
 
+    @patch("app.api.utils._remesh_airplane", side_effect=lambda ap: ap)
     @patch("app.api.utils.AnalysisModel")
     @patch("app.api.utils.asb")
-    def test_from_abu_dict_called_with_vortex_lattice_method(self, mock_asb, mock_analysis_model):
+    def test_from_abu_dict_called_with_vortex_lattice_method(
+        self, mock_asb, mock_analysis_model, _mock_remesh
+    ):
         from app.api.utils import _run_vlm
 
         mock_vlm_instance = MagicMock()
