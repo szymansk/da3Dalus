@@ -16,13 +16,32 @@ from app.schemas import aeroplaneschema as schemas
 
 
 def _make_strut(symmetric: bool = True) -> schemas.FuselageSchema:
-    """Build a minimal off-spine sub-fuselage suitable for mirror checks."""
+    """Build a minimal off-spine sub-fuselage suitable for mirror checks.
+
+    Note: both xsecs sit at x=0 (a purely vertical leg), so the body has zero
+    x-spine length/volume — i.e. it is *degenerate* for AeroBuildup (gh-790).
+    Used for the CAD-config / pure-Python mirror tests, where that is fine.
+    """
     return schemas.FuselageSchema(
         name="Strut",
         symmetric=symmetric,
         x_secs=[
             schemas.FuselageXSecSuperEllipseSchema(xyz=[0.0, 0.6, -0.3], a=0.02, b=0.02, n=2.0),
             schemas.FuselageXSecSuperEllipseSchema(xyz=[0.0, 0.6, -1.0], a=0.02, b=0.02, n=2.0),
+        ],
+    )
+
+
+def _make_pod(symmetric: bool = True) -> schemas.FuselageSchema:
+    """Build an off-spine sub-fuselage with a real x-extent (non-degenerate),
+    so it survives the gh-790 aero-model guard while still exercising the
+    mirror-expansion (Y-flip) logic."""
+    return schemas.FuselageSchema(
+        name="Pod",
+        symmetric=symmetric,
+        x_secs=[
+            schemas.FuselageXSecSuperEllipseSchema(xyz=[0.0, 0.6, 0.0], a=0.05, b=0.05, n=2.0),
+            schemas.FuselageXSecSuperEllipseSchema(xyz=[0.5, 0.6, 0.0], a=0.05, b=0.05, n=2.0),
         ],
     )
 
@@ -70,10 +89,10 @@ class TestBuildAsbFuselages:
 
         from app.converters.model_schema_converters import _build_asb_fuselages
 
-        result = _build_asb_fuselages(OrderedDict([("Strut", _make_strut(symmetric=True))]))
+        result = _build_asb_fuselages(OrderedDict([("Pod", _make_pod(symmetric=True))]))
         assert len(result) == 2
-        assert result[0].name == "Strut"
-        assert result[1].name == "Strut (mirror)"
+        assert result[0].name == "Pod"
+        assert result[1].name == "Pod (mirror)"
         # Y centres flipped on the mirror, X/Z preserved.
         assert result[0].xsecs[0].xyz_c[1] == pytest.approx(0.6)
         assert result[1].xsecs[0].xyz_c[1] == pytest.approx(-0.6)
@@ -85,9 +104,19 @@ class TestBuildAsbFuselages:
 
         from app.converters.model_schema_converters import _build_asb_fuselages
 
-        result = _build_asb_fuselages(OrderedDict([("Main", _make_strut(symmetric=False))]))
+        result = _build_asb_fuselages(OrderedDict([("Main", _make_pod(symmetric=False))]))
         assert len(result) == 1
         assert result[0].name == "Main"
+
+    def test_degenerate_strut_skipped_from_aero_model(self):
+        # gh-790: a zero-x-length strut would make AeroBuildup return all-NaN,
+        # so it is dropped from the ASB aero model (the CAD mirror path keeps it).
+        from collections import OrderedDict
+
+        from app.converters.model_schema_converters import _build_asb_fuselages
+
+        result = _build_asb_fuselages(OrderedDict([("Strut", _make_strut(symmetric=True))]))
+        assert result == []
 
     def test_skips_empty_xsecs(self):
         from collections import OrderedDict
