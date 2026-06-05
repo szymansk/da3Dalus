@@ -1,3 +1,4 @@
+import logging
 import math
 import os
 from typing import Any, List, Optional
@@ -22,6 +23,8 @@ from cad_designer.airplane.aircraft_topology.wing import (
     TrailingEdgeDevice,
     WingConfiguration,
 )
+
+logger = logging.getLogger(__name__)
 
 
 def aeroplane_model_to_aeroplane_schema_async(plane: AeroplaneModel) -> AeroplaneSchema:
@@ -419,11 +422,35 @@ def _asb_fuselage_xsecs_from_schema(
     ]
 
 
+def _asb_fuselage_is_degenerate(fuselage, *, eps: float = 1e-9) -> bool:
+    """True when an ASB fuselage has zero/non-finite length or volume (gh-790).
+
+    AeroBuildup derives the fineness ratio as ``sqrt(length**3 / volume * …)``
+    and a skin-friction term as ``log10(Re)`` (Re ∝ length). A degenerate
+    imported fuselage (all xsecs at one station → length 0, or all-zero radii
+    → volume 0) drives those to inf/NaN and poisons the *entire* aero solve
+    with NaN. Such a body has no meaningful aerodynamic contribution, so the
+    caller drops it from the ASB model.
+    """
+    try:
+        length = float(fuselage.length())
+        volume = float(fuselage.volume())
+    except (ValueError, ZeroDivisionError, FloatingPointError):
+        return True
+    if not (math.isfinite(length) and math.isfinite(volume)):
+        return True
+    return length <= eps or volume <= eps
+
+
 def _build_asb_fuselages(
     fuselages: dict[str, schemas.FuselageSchema],
 ):
     """Build the ``asb.Airplane.fuselages`` list, expanding each
     ``symmetric=True`` fuselage into its mirrored pair (gh-715).
+
+    Degenerate fuselages (zero length/volume) are dropped with a warning so
+    they cannot make AeroBuildup return all-NaN (gh-790). The CAD pipeline
+    builds fuselages on a separate path and is unaffected.
     """
     from aerosandbox import Fuselage
 
@@ -431,7 +458,15 @@ def _build_asb_fuselages(
     for name, fuselage in fuselages.items():
         if not fuselage.x_secs:
             continue
-        result.append(Fuselage(name=name, xsecs=_asb_fuselage_xsecs_from_schema(fuselage)))
+        primary = Fuselage(name=name, xsecs=_asb_fuselage_xsecs_from_schema(fuselage))
+        if _asb_fuselage_is_degenerate(primary):
+            logger.warning(
+                "Skipping degenerate fuselage %r from the ASB aero model "
+                "(zero length/volume would make AeroBuildup return NaN); gh-790.",
+                name,
+            )
+            continue
+        result.append(primary)
         if fuselage.symmetric:
             result.append(
                 Fuselage(
