@@ -6,6 +6,9 @@ import type { AirfoilGeometry } from "@/hooks/useAirfoilGeometry";
 import type { AirfoilAnalysisResult } from "@/hooks/useAirfoilAnalysis";
 import type { SuitabilityItem } from "@/hooks/useAirfoilSuitability";
 import { interpolateY } from "@/hooks/useAirfoilGeometry";
+import type { AircraftSpeedPolar } from "@/hooks/useSpeedPolar";
+import { GeschwindigkeitspolareChart } from "@/components/workbench/GeschwindigkeitspolareChart";
+import { AirfoilProxyChart } from "@/components/workbench/AirfoilProxyChart";
 
 /** gh-839 ADDITIVE: a single operating point for alpha-diagram markers. */
 export interface OperatingPoint {
@@ -48,6 +51,14 @@ interface AirfoilPreviewViewerPanelProps {
    * When provided, markers and a legend are added to the L/D and CL/CD charts.
    */
   operatingPoints?: OperatingPoints;
+  /**
+   * gh-841 ADDITIVE: aircraft speed polar from the backend (closed-form).
+   * When provided, renders the Geschwindigkeitspolare chart with best-glide
+   * and min-sink markers.
+   */
+  speedPolar?: AircraftSpeedPolar | null;
+  /** gh-841 ADDITIVE: true while speed polar is loading from the backend. */
+  speedPolarLoading?: boolean;
 }
 
 const COLOR_ROOT = "#FF8400";
@@ -679,6 +690,8 @@ export function AirfoilPreviewViewerPanel({
   operatingAlphaDeg,
   tipSuitabilityItem,
   operatingPoints,
+  speedPolar,
+  speedPolarLoading,
 }: Readonly<AirfoilPreviewViewerPanelProps>) {
   const [maximizedChart, setMaximizedChart] = useState<string | null>(null);
 
@@ -971,6 +984,19 @@ export function AirfoilPreviewViewerPanel({
           </span>
         </div>
       )}
+
+      {/* gh-841: Geschwindigkeitspolare + 2D airfoil proxy charts */}
+      <div className="grid grid-cols-2 gap-4 rounded-xl border border-border bg-card p-4">
+        <div className="flex flex-col">
+          <GeschwindigkeitspolareChart
+            polar={speedPolar ?? null}
+            isLoading={speedPolarLoading}
+          />
+        </div>
+        <div className="flex flex-col">
+          <AirfoilProxyChart analysisResult={rootAnalysisResult} />
+        </div>
+      </div>
     </div>
   );
 }
