@@ -59,6 +59,12 @@ interface AirfoilPreviewViewerPanelProps {
   speedPolar?: AircraftSpeedPolar | null;
   /** gh-841 ADDITIVE: true while speed polar is loading from the backend. */
   speedPolarLoading?: boolean;
+  /**
+   * gh-840 ADDITIVE: as-built effective AoA from LiftingLine for the current
+   * wing section.  When provided, a marker is added to the C_L-vs-α and
+   * C_L/C_D-vs-α charts labelled 'As-built (Einstellwinkel+Schränkung+Trimm)'.
+   */
+  asBuiltAlphaDeg?: number | null;
 }
 
 const COLOR_ROOT = "#FF8400";
@@ -587,12 +593,14 @@ function AirfoilSvg({
 
 // ── Helpers ─────────────────────────────────────────────────────
 
-/** Marker colors (gh-839) */
+/** Marker colors (gh-839, gh-840) */
 const COLOR_CLMAX = "#ef4444";
 const COLOR_LDMAX = "#22c55e";
 const COLOR_CRUISE = "#FF8400";
 const COLOR_BEST_GLIDE = "#38bdf8";
 const COLOR_MIN_SINK = "#a78bfa";
+/** gh-840: as-built world AoA (LiftingLine result) — bright gold */
+const COLOR_AS_BUILT = "#eab308";
 
 /** Look up y-value at alpha x from two parallel arrays */
 function lookupYAtX(
@@ -619,6 +627,7 @@ function lookupYAtX(
 function buildClChartMarkers(
   result: AirfoilAnalysisResult,
   pts?: OperatingPoints,
+  asBuiltAlphaDeg?: number | null,
 ): ChartMarker[] {
   const markers: ChartMarker[] = [];
   if (result.clMax != null && result.alphaAtClMax != null) {
@@ -642,6 +651,19 @@ function buildClChartMarkers(
     const y = lookupYAtX(result.alphaDeg, result.cl, pts.minSink.alpha);
     if (y != null) markers.push({ x: pts.minSink.alpha, y, color: COLOR_MIN_SINK, testId: "op-marker-min-sink", label: pts.minSink.label });
   }
+  // gh-840: as-built world AoA from LiftingLine
+  if (asBuiltAlphaDeg != null && Number.isFinite(asBuiltAlphaDeg)) {
+    const y = lookupYAtX(result.alphaDeg, result.cl, asBuiltAlphaDeg);
+    if (y != null) {
+      markers.push({
+        x: asBuiltAlphaDeg,
+        y,
+        color: COLOR_AS_BUILT,
+        testId: "as-built-aoa-marker-cl",
+        label: `As-built (Einstellwinkel+Schränkung+Trimm) α=${asBuiltAlphaDeg.toFixed(1)}°`,
+      });
+    }
+  }
   return markers;
 }
 
@@ -649,6 +671,7 @@ function buildClChartMarkers(
 function buildLdChartMarkers(
   result: AirfoilAnalysisResult,
   pts?: OperatingPoints,
+  asBuiltAlphaDeg?: number | null,
 ): ChartMarker[] {
   const markers: ChartMarker[] = [];
   if (result.ldMax != null && result.alphaAtLdMax != null) {
@@ -672,6 +695,19 @@ function buildLdChartMarkers(
     const y = lookupYAtX(result.alphaDeg, result.clOverCd, pts.minSink.alpha);
     if (y != null) markers.push({ x: pts.minSink.alpha, y, color: COLOR_MIN_SINK, testId: "op-marker-min-sink", label: pts.minSink.label });
   }
+  // gh-840: as-built world AoA from LiftingLine
+  if (asBuiltAlphaDeg != null && Number.isFinite(asBuiltAlphaDeg)) {
+    const y = lookupYAtX(result.alphaDeg, result.clOverCd, asBuiltAlphaDeg);
+    if (y != null) {
+      markers.push({
+        x: asBuiltAlphaDeg,
+        y,
+        color: COLOR_AS_BUILT,
+        testId: "as-built-aoa-marker-ld",
+        label: `As-built α=${asBuiltAlphaDeg.toFixed(1)}°`,
+      });
+    }
+  }
   return markers;
 }
 
@@ -692,6 +728,7 @@ export function AirfoilPreviewViewerPanel({
   operatingPoints,
   speedPolar,
   speedPolarLoading,
+  asBuiltAlphaDeg,
 }: Readonly<AirfoilPreviewViewerPanelProps>) {
   const [maximizedChart, setMaximizedChart] = useState<string | null>(null);
 
@@ -857,9 +894,9 @@ export function AirfoilPreviewViewerPanel({
             return ld != null ? ld : undefined;
           })();
 
-          // gh-839: build named markers using extracted helpers \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
-          const clChartMarkers = buildClChartMarkers(rootAnalysisResult, operatingPoints);
-          const ldChartMarkers = buildLdChartMarkers(rootAnalysisResult, operatingPoints);
+          // gh-839/840: build named markers (design-speed OPs + as-built world AoA)
+          const clChartMarkers = buildClChartMarkers(rootAnalysisResult, operatingPoints, asBuiltAlphaDeg);
+          const ldChartMarkers = buildLdChartMarkers(rootAnalysisResult, operatingPoints, asBuiltAlphaDeg);
           const hasAnyOperatingPoints =
             operatingPoints?.cruise != null ||
             operatingPoints?.bestGlide != null ||

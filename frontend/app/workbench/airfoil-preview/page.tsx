@@ -8,6 +8,7 @@ import { useAirfoilGeometry } from "@/hooks/useAirfoilGeometry";
 import { useAirfoilAnalysis } from "@/hooks/useAirfoilAnalysis";
 import { useAirfoilSuitability } from "@/hooks/useAirfoilSuitability";
 import { useSpeedPolar } from "@/hooks/useSpeedPolar";
+import { useSectionAoa, sectionForXsecIndex } from "@/hooks/useSectionAoa";
 import { AirfoilPreviewViewerPanel } from "@/components/workbench/AirfoilPreviewViewerPanel";
 import type { OperatingPoints } from "@/components/workbench/AirfoilPreviewViewerPanel";
 import { AirfoilPreviewConfigPanel } from "@/components/workbench/AirfoilPreviewConfigPanel";
@@ -199,6 +200,9 @@ export default function AirfoilPreviewPage() {
   // gh-841: aircraft speed polar from the backend (closed-form from assumptions)
   const speedPolar = useSpeedPolar(aeroplaneId);
 
+  // gh-840: per-section world AoA via LiftingLine (as-built operating condition)
+  const sectionAoa = useSectionAoa(aeroplaneId, selectedWing);
+
   // gh-822: Suitability hooks (chord in metres = chordMm / 1000)
   const [rootRankedMode, setRootRankedMode] = useState(false);
   const [tipRankedMode, setTipRankedMode] = useState(false);
@@ -279,6 +283,19 @@ export default function AirfoilPreviewPage() {
     () => tipSuitability.data?.results.find((item) => item.airfoil_name === tipAirfoil) ?? null,
     [tipSuitability.data, tipAirfoil],
   );
+
+  // gh-840: Derive the as-built effective AoA for the currently selected section.
+  // Uses the section closest to the selected xsec index within the LiftingLine span data.
+  const segmentCount = wingConfig?.segments?.length ?? 1;
+  const asBuiltAlphaDeg = useMemo((): number | null => {
+    if (!sectionAoa.data || sectionAoa.data.sections.length === 0) return null;
+    const section = sectionForXsecIndex(
+      sectionAoa.data.sections,
+      selectedXsecIndex ?? 0,
+      segmentCount,
+    );
+    return section?.alpha_effective_deg ?? null;
+  }, [sectionAoa.data, selectedXsecIndex, segmentCount]);
 
   // gh-822: Compute operating alpha from operating CL via the L/D polar
   // (find closest CL index in the analysis result)
@@ -393,6 +410,8 @@ export default function AirfoilPreviewPage() {
           // gh-841: speed polar + 2D proxy charts
           speedPolar={speedPolar.data ?? null}
           speedPolarLoading={speedPolar.isLoading}
+          // gh-840: as-built world AoA from LiftingLine (null when no aero/op-point)
+          asBuiltAlphaDeg={asBuiltAlphaDeg}
         />
       </div>
       <div className="shrink-0 overflow-hidden" style={{ width: 480 }}>
