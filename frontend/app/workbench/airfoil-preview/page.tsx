@@ -10,6 +10,9 @@ import { useAirfoilSuitability } from "@/hooks/useAirfoilSuitability";
 import { AirfoilPreviewViewerPanel } from "@/components/workbench/AirfoilPreviewViewerPanel";
 import type { OperatingPoints } from "@/components/workbench/AirfoilPreviewViewerPanel";
 import { AirfoilPreviewConfigPanel } from "@/components/workbench/AirfoilPreviewConfigPanel";
+import { emptyFilters } from "@/components/workbench/AirfoilSuitabilityFilterBar";
+import type { AirfoilSuitabilityFilters } from "@/components/workbench/AirfoilSuitabilityFilterBar";
+import type { AirfoilFamily, RoleTag } from "@/hooks/useAirfoilSuitability";
 
 export function airfoilShortName(raw: string): string {
   return (raw.split("/").pop() ?? raw).replace(/\.dat$/i, "");
@@ -51,6 +54,111 @@ export function toInclude(name: string): string[] | undefined {
   return name && name !== "\u2014" ? [name] : undefined;
 }
 
+/**
+ * Derive the saved airfoil short-name for a segment slot, defaulting to 'naca0015'.
+ * Extracted at module level to reduce cognitive complexity of AirfoilPreviewPage.
+ */
+export function savedSlotName(
+  segment: { root_airfoil?: { airfoil?: string } | null; tip_airfoil?: { airfoil?: string } | null } | undefined,
+  slot: "root" | "tip",
+): string {
+  if (!segment) return "naca0015";
+  if (slot === "root") return airfoilShortName(segment.root_airfoil?.airfoil ?? "naca0015");
+  return airfoilShortName(
+    segment.tip_airfoil?.airfoil ?? segment.root_airfoil?.airfoil ?? "naca0015",
+  );
+}
+
+/**
+ * Collect unique airfoil names used in all segments of a wing config.
+ * Extracted at module level to reduce cognitive complexity of AirfoilPreviewPage.
+ */
+export function collectUsedAirfoilNames(
+  segments: Array<{
+    root_airfoil?: { airfoil?: string } | null;
+    tip_airfoil?: { airfoil?: string } | null;
+  }>,
+): string[] {
+  const names: string[] = [];
+  for (const seg of segments) {
+    if (seg.root_airfoil?.airfoil) names.push(airfoilShortName(seg.root_airfoil.airfoil));
+    if (seg.tip_airfoil?.airfoil) names.push(airfoilShortName(seg.tip_airfoil.airfoil));
+  }
+  return Array.from(new Set(names));
+}
+
+/**
+ * gh-835: Convert AirfoilSuitabilityFilters to query-param shape for useAirfoilSuitability.
+ * Extracted at module level to reduce cognitive complexity of AirfoilPreviewPage.
+ * Undefined return values mean "no filter" (additive; old callers unaffected).
+ */
+export function toSuitabilityQueryFilters(filters: AirfoilSuitabilityFilters): {
+  family: AirfoilFamily[] | undefined;
+  tags: RoleTag[] | undefined;
+  thickness_min_pct: number | undefined;
+  thickness_max_pct: number | undefined;
+} {
+  return {
+    family: filters.families.length > 0 ? filters.families : undefined,
+    tags: filters.tags.length > 0 ? filters.tags : undefined,
+    thickness_min_pct:
+      filters.thicknessMinPct !== "" ? Number(filters.thicknessMinPct) : undefined,
+    thickness_max_pct:
+      filters.thicknessMaxPct !== "" ? Number(filters.thicknessMaxPct) : undefined,
+  };
+}
+
+/**
+ * Map a target CL to the closest alpha in an analysis result CL-alpha curve.
+ * Extracted at module level to reduce cognitive complexity of AirfoilPreviewPage.
+ */
+export function clToAlpha(
+  targetCl: number | null | undefined,
+  cls: (number | null)[],
+  alphas: number[],
+): number | undefined {
+  if (targetCl == null || cls.length === 0) return undefined;
+  let closestIdx = 0;
+  let closestDist = Math.abs((cls[0] ?? 0) - targetCl);
+  for (let i = 1; i < cls.length; i++) {
+    const v = cls[i];
+    if (v == null) continue;
+    const d = Math.abs(v - targetCl);
+    if (d < closestDist) {
+      closestDist = d;
+      closestIdx = i;
+    }
+  }
+  return alphas[closestIdx];
+}
+
+/**
+ * Build an OperatingPoints map from a suitability item + analysis result.
+ * Extracted at module level to reduce cognitive complexity of AirfoilPreviewPage.
+ */
+export function buildOperatingPoints(
+  suitabilityItem: { target_cl_cruise: number | null; target_cl_best_glide: number | null; target_cl_min_sink: number | null },
+  cls: (number | null)[],
+  alphas: number[],
+  query: { v_cruise_mps: number | null; v_md_mps: number | null; v_min_sink_mps: number | null } | undefined,
+): OperatingPoints | undefined {
+  const alphaCruise = clToAlpha(suitabilityItem.target_cl_cruise, cls, alphas);
+  const alphaBestGlide = clToAlpha(suitabilityItem.target_cl_best_glide, cls, alphas);
+  const alphaMinSink = clToAlpha(suitabilityItem.target_cl_min_sink, cls, alphas);
+
+  const pts: OperatingPoints = {};
+  if (alphaCruise != null && query?.v_cruise_mps != null) {
+    pts.cruise = { alpha: alphaCruise, label: `Cruise ${query.v_cruise_mps.toFixed(1)} m/s` };
+  }
+  if (alphaBestGlide != null && query?.v_md_mps != null) {
+    pts.bestGlide = { alpha: alphaBestGlide, label: `Best-Glide ${query.v_md_mps.toFixed(1)} m/s` };
+  }
+  if (alphaMinSink != null && query?.v_min_sink_mps != null) {
+    pts.minSink = { alpha: alphaMinSink, label: `Min-Sink ${query.v_min_sink_mps.toFixed(1)} m/s` };
+  }
+  return (pts.cruise ?? pts.bestGlide ?? pts.minSink) ? pts : undefined;
+}
+
 export default function AirfoilPreviewPage() {
   const router = useRouter();
   const { aeroplaneId, selectedWing, selectedXsecIndex, selectXsec } =
@@ -59,12 +167,8 @@ export default function AirfoilPreviewPage() {
   const [isSaving, setIsSaving] = useState(false);
 
   const segment = wingConfig?.segments?.[selectedXsecIndex ?? 0];
-  const initialRoot = segment
-    ? airfoilShortName(segment.root_airfoil?.airfoil ?? "naca0015")
-    : "naca0015";
-  const initialTip = segment
-    ? airfoilShortName(segment.tip_airfoil?.airfoil ?? initialRoot)
-    : initialRoot;
+  const initialRoot = savedSlotName(segment, "root");
+  const initialTip = savedSlotName(segment, "tip");
 
   const [rootAirfoil, setRootAirfoil] = useState(initialRoot);
   const [tipAirfoil, setTipAirfoil] = useState(initialTip);
@@ -95,18 +199,30 @@ export default function AirfoilPreviewPage() {
   const [rootRankedMode, setRootRankedMode] = useState(false);
   const [tipRankedMode, setTipRankedMode] = useState(false);
 
+  // gh-835: shared filter state (applied to both root + tip suitability queries)
+  const [suitabilityFilters, setSuitabilityFilters] = useState<AirfoilSuitabilityFilters>(
+    () => emptyFilters(),
+  );
+
+  // gh-835: convert filter state to query params
+  const filterQueryParams = toSuitabilityQueryFilters(suitabilityFilters);
+
   const rootSuitability = useAirfoilSuitability({
     chord_m: rootChordMm / 1000,
     speed_ms: velocity,
     aeroplane_id: aeroplaneId,
     // gh-825 ADDITIVE: always score the selected airfoil even if outside top-N
     include: toInclude(rootAirfoil),
+    // gh-835 ADDITIVE: filter params
+    ...filterQueryParams,
   });
   const tipSuitability = useAirfoilSuitability({
     chord_m: tipChordMm / 1000,
     speed_ms: velocity,
     aeroplane_id: aeroplaneId,
     include: toInclude(tipAirfoil),
+    // gh-835 ADDITIVE: same filter params for tip
+    ...filterQueryParams,
   });
 
   // Build lookup maps: airfoil name -> score string + sorted names.
@@ -144,16 +260,10 @@ export default function AirfoilPreviewPage() {
   );
 
   // gh-837: collect all airfoil names used across the current aeroplane model
-  // (all segments' root + tip airfoils). Derived client-side from wingConfig.
-  const usedAirfoilNames = useMemo(() => {
-    if (!wingConfig?.segments) return [];
-    const names: string[] = [];
-    for (const seg of wingConfig.segments) {
-      if (seg.root_airfoil?.airfoil) names.push(airfoilShortName(seg.root_airfoil.airfoil));
-      if (seg.tip_airfoil?.airfoil) names.push(airfoilShortName(seg.tip_airfoil.airfoil));
-    }
-    return Array.from(new Set(names));
-  }, [wingConfig]);
+  const usedAirfoilNames = useMemo(
+    () => (wingConfig?.segments ? collectUsedAirfoilNames(wingConfig.segments) : []),
+    [wingConfig],
+  );
 
   // Find the selected airfoil's suitability item
   const rootSuitabilityItem = useMemo(
@@ -170,64 +280,22 @@ export default function AirfoilPreviewPage() {
   // (find closest CL index in the analysis result)
   const rootOperatingAlpha = useMemo((): number | undefined => {
     if (!rootAnalysis.result) return undefined;
-    const targetCl = rootSuitabilityItem?.target_cl_cruise;
-    if (targetCl == null) return undefined;
-    const cls = rootAnalysis.result.cl;
-    let closestIdx = 0;
-    let closestDist = Math.abs((cls[0] ?? 0) - targetCl);
-    for (let i = 1; i < cls.length; i++) {
-      const v = cls[i];
-      if (v == null) continue;
-      const d = Math.abs(v - targetCl);
-      if (d < closestDist) {
-        closestDist = d;
-        closestIdx = i;
-      }
-    }
-    return rootAnalysis.result.alphaDeg[closestIdx];
+    return clToAlpha(
+      rootSuitabilityItem?.target_cl_cruise ?? null,
+      rootAnalysis.result.cl,
+      rootAnalysis.result.alphaDeg,
+    );
   }, [rootAnalysis.result, rootSuitabilityItem]);
 
   // gh-839: Compute operating points (alpha positions) for the three design-speed lenses.
-  // Each target CL is mapped to an alpha via the analysis CL-alpha curve.
-  function clToAlpha(targetCl: number | null | undefined): number | undefined {
-    if (targetCl == null || !rootAnalysis.result) return undefined;
-    const cls = rootAnalysis.result.cl;
-    const alphas = rootAnalysis.result.alphaDeg;
-    if (cls.length === 0) return undefined;
-    let closestIdx = 0;
-    let closestDist = Math.abs((cls[0] ?? 0) - targetCl);
-    for (let i = 1; i < cls.length; i++) {
-      const v = cls[i];
-      if (v == null) continue;
-      const d = Math.abs(v - targetCl);
-      if (d < closestDist) {
-        closestDist = d;
-        closestIdx = i;
-      }
-    }
-    return alphas[closestIdx];
-  }
-
   const rootOperatingPoints = useMemo((): OperatingPoints | undefined => {
     if (!rootAnalysis.result || !rootSuitabilityItem) return undefined;
-    const q = rootSuitability.data?.query;
-    const alphaCruise = clToAlpha(rootSuitabilityItem.target_cl_cruise);
-    const alphaBestGlide = clToAlpha(rootSuitabilityItem.target_cl_best_glide);
-    const alphaMinSink = clToAlpha(rootSuitabilityItem.target_cl_min_sink);
-
-    const pts: OperatingPoints = {};
-    if (alphaCruise != null && q?.v_cruise_mps != null) {
-      pts.cruise = { alpha: alphaCruise, label: `Cruise ${q.v_cruise_mps.toFixed(1)} m/s` };
-    }
-    if (alphaBestGlide != null && q?.v_md_mps != null) {
-      pts.bestGlide = { alpha: alphaBestGlide, label: `Best-Glide ${q.v_md_mps.toFixed(1)} m/s` };
-    }
-    if (alphaMinSink != null && q?.v_min_sink_mps != null) {
-      pts.minSink = { alpha: alphaMinSink, label: `Min-Sink ${q.v_min_sink_mps.toFixed(1)} m/s` };
-    }
-    if (!pts.cruise && !pts.bestGlide && !pts.minSink) return undefined;
-    return pts;
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    return buildOperatingPoints(
+      rootSuitabilityItem,
+      rootAnalysis.result.cl,
+      rootAnalysis.result.alphaDeg,
+      rootSuitability.data?.query,
+    );
   }, [rootAnalysis.result, rootSuitabilityItem, rootSuitability.data?.query]);
 
   // Sync airfoils from segment when index or wingConfig changes
@@ -265,8 +333,8 @@ export default function AirfoilPreviewPage() {
   }, [tipAirfoil, tipRe, ma, hasTip]);
 
   // Detect if airfoils changed vs. saved state
-  const savedRoot = segment ? airfoilShortName(segment.root_airfoil?.airfoil ?? "naca0015") : "naca0015";
-  const savedTip = segment ? airfoilShortName(segment.tip_airfoil?.airfoil ?? segment.root_airfoil?.airfoil ?? "naca0015") : "naca0015";
+  const savedRoot = savedSlotName(segment, "root");
+  const savedTip = savedSlotName(segment, "tip");
   const isDirty = rootAirfoil !== savedRoot || tipAirfoil !== savedTip;
 
   const handleRevert = useCallback(() => {
@@ -382,6 +450,13 @@ export default function AirfoilPreviewPage() {
               : undefined
           }
           usedAirfoilNames={usedAirfoilNames}
+          // gh-835 ADDITIVE: filter bar (shown only when at least one ranked mode is active)
+          suitabilityFilters={
+            rootRankedMode || tipRankedMode ? suitabilityFilters : undefined
+          }
+          onSuitabilityFiltersChange={
+            rootRankedMode || tipRankedMode ? setSuitabilityFilters : undefined
+          }
         />
       </div>
     </div>

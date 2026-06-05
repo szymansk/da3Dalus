@@ -65,6 +65,7 @@ from app.services.airfoil_low_re_service import (
     score_re_agnostic,
     score_target_cl,
 )
+from app.services.airfoil_tags import ALL_FAMILIES, ALL_ROLE_TAGS, compute_tags
 from app.settings import Settings, get_settings
 
 logger = logging.getLogger(__name__)
@@ -187,6 +188,11 @@ def search_suitability(
     tip_chord_m: Optional[float] = None,
     limit: int = 50,
     include: Optional[list[str]] = None,
+    # gh-835 ADDITIVE filters (applied BEFORE top-N limit; include still forces named airfoils through)
+    filter_families: Optional[list[str]] = None,
+    filter_tags: Optional[list[str]] = None,
+    filter_thickness_min_pct: Optional[float] = None,
+    filter_thickness_max_pct: Optional[float] = None,
     settings: Optional[Settings] = None,
 ) -> SuitabilityResponse:
     """Search and rank airfoils by suitability at the given chord/speed.
@@ -213,6 +219,17 @@ def search_suitability(
                            - Names already in the top-N are NOT duplicated.
                            - Included extras are appended AFTER the top-N block.
                            - None (default) → identical behaviour to before (no-op).
+    filter_families : list[str]  gh-835 ADDITIVE. Restrict to airfoils in any of these
+                           family values ('flat_bottom', 'semi_symmetric', etc.).
+                           OR-within / AND-across; applied BEFORE top-N; `include`
+                           named airfoils bypass this filter.
+    filter_tags : list[str]  gh-835 ADDITIVE. Restrict to airfoils that carry at least
+                           one of these role tags ('acro', 'winglet', etc.).  OR logic:
+                           any single matching tag is sufficient.  Applied BEFORE top-N.
+    filter_thickness_min_pct : float  gh-835 ADDITIVE. Lower bound on max_thickness_pct
+                           (inclusive). Applied BEFORE top-N.
+    filter_thickness_max_pct : float  gh-835 ADDITIVE. Upper bound on max_thickness_pct
+                           (inclusive). Applied BEFORE top-N.
     settings : Settings    Application settings.  When omitted the module-level
                            lru-cached ``get_settings()`` is used — avoids
                            constructing a fresh ``Settings()`` per request.
@@ -224,6 +241,13 @@ def search_suitability(
     target_cl_min_sink  ← v_min_sink_mps (display-only; never auto-ranks)
 
     Explicit params always override context-derived values.
+
+    ## gh-835 Filter behaviour
+    Filters apply BEFORE the top-N limit.  They are AND-combined across dimensions
+    (family AND tags AND thickness), OR-within each dimension.
+    `include` named airfoils ALWAYS bypass the filter gate and are scored/returned
+    regardless of family/tags/thickness.  Old callers omitting filters get byte-identical
+    behaviour to before (all filters None → no filter applied).
     """
     if settings is None:
         settings = get_settings()
@@ -403,6 +427,16 @@ def search_suitability(
         else re_cd0_ref
     )
 
+    # gh-835: normalise filter params (None / empty → no filter)
+    _filter_families: Optional[set[str]] = (
+        {f.lower() for f in filter_families if f} if filter_families else None
+    )
+    _filter_tags: Optional[set[str]] = (
+        {t.lower() for t in filter_tags if t} if filter_tags else None
+    )
+    # Build a set of lowercase include names for fast O(1) bypass lookups
+    _include_names_lower: set[str] = {n.strip().lower() for n in (include or []) if n.strip()}
+
     # --- Score each airfoil ---
     items: list[SuitabilityItem] = []
     recommend_xfoil = False
@@ -508,6 +542,17 @@ def search_suitability(
         if min_conf < low_conf_flag:
             item_caveat = "Low analysis confidence — validate with XFoil."
 
+        # gh-835: compute role tags from geometry + all polar rows (not just slider-Re polar)
+        item_tags = compute_tags(
+            family=geo.family,
+            max_thickness_pct=geo.max_thickness_pct,
+            max_camber_pct=geo.max_camber_pct,
+            polars=[
+                {"reynolds": r.reynolds, "min_analysis_confidence": r.min_analysis_confidence}
+                for r in rows
+            ],
+        )
+
         items.append(
             SuitabilityItem(
                 airfoil_name=name,
@@ -522,8 +567,42 @@ def search_suitability(
                 min_analysis_confidence=min_conf,
                 tip_re_flag=tip_re_flag_all,
                 caveat=item_caveat,
+                tags=item_tags,
             )
         )
+
+    # --- gh-835: apply filters BEFORE ranking/limit ---
+    # Filters are AND-combined across dimensions, OR-within each dimension.
+    # `include` named airfoils always bypass filters.
+    if (
+        _filter_families
+        or _filter_tags
+        or filter_thickness_min_pct is not None
+        or filter_thickness_max_pct is not None
+    ):
+        filtered_items: list[SuitabilityItem] = []
+        for item in items:
+            name_lower = item.airfoil_name.lower()
+            # `include` bypass: named airfoils always pass through
+            if name_lower in _include_names_lower:
+                filtered_items.append(item)
+                continue
+            # Family filter (OR within dimension)
+            if _filter_families and item.family.lower() not in _filter_families:
+                continue
+            # Thickness bounds
+            geo_row = geo_by_name.get(item.airfoil_name)
+            if geo_row is not None:
+                t = geo_row.max_thickness_pct
+                if filter_thickness_min_pct is not None and t < filter_thickness_min_pct:
+                    continue
+                if filter_thickness_max_pct is not None and t > filter_thickness_max_pct:
+                    continue
+            # Tag filter (OR within dimension: at least one tag must match)
+            if _filter_tags and not (_filter_tags & set(item.tags)):
+                continue
+            filtered_items.append(item)
+        items = filtered_items
 
     # --- Determine active lens and rank ---
     # Confidence-aware sort key (BUG-3 fix, gh-821):

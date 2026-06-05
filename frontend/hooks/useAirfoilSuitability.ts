@@ -42,6 +42,15 @@ export type RankingLens = ActiveLens;
  */
 export type TargetClProvenance = "estimated" | "calculated" | "mixed";
 
+/** gh-835: role tags computed at query time from geometry + polars. */
+export type RoleTag =
+  | "v_stabilizer"
+  | "h_stabilizer"
+  | "acro"
+  | "winglet"
+  | "low_re"
+  | "high_re";
+
 export interface SuitabilityItem {
   airfoil_name: string;
   family: AirfoilFamily;
@@ -71,6 +80,8 @@ export interface SuitabilityItem {
    * per item so the UI can render it without further processing.
    */
   caveat: string;
+  /** gh-835 ADDITIVE: query-time role tags. */
+  tags: RoleTag[];
 }
 
 export interface SuitabilityQuery {
@@ -134,6 +145,26 @@ export interface UseAirfoilSuitabilityParams {
    * identical to old callers → no cache bust for existing clients.
    */
   include?: string[];
+  /**
+   * gh-835 ADDITIVE: family filter — CSV of family values.
+   * When undefined or empty, no family filter is applied.
+   */
+  family?: AirfoilFamily[];
+  /**
+   * gh-835 ADDITIVE: role-tag filter — CSV of role tag values.
+   * When undefined or empty, no tag filter is applied.
+   */
+  tags?: RoleTag[];
+  /**
+   * gh-835 ADDITIVE: lower bound on max_thickness_pct (inclusive).
+   * When undefined, no lower bound is applied.
+   */
+  thickness_min_pct?: number;
+  /**
+   * gh-835 ADDITIVE: upper bound on max_thickness_pct (inclusive).
+   * When undefined, no upper bound is applied.
+   */
+  thickness_max_pct?: number;
 }
 
 // ── Hook ─────────────────────────────────────────────────────────
@@ -150,6 +181,10 @@ export function useAirfoilSuitability(params: UseAirfoilSuitabilityParams) {
     limit,
     tip_chord_m,
     include,
+    family,
+    tags,
+    thickness_min_pct,
+    thickness_max_pct,
   } = params;
 
   // Only build a key when required params are present
@@ -163,6 +198,10 @@ export function useAirfoilSuitability(params: UseAirfoilSuitabilityParams) {
           limit,
           tip_chord_m,
           include,
+          family,
+          tags,
+          thickness_min_pct,
+          thickness_max_pct,
         })
       : null;
 
@@ -194,6 +233,11 @@ function buildKey(
     limit?: number;
     tip_chord_m?: number;
     include?: string[];
+    // gh-835 ADDITIVE
+    family?: AirfoilFamily[];
+    tags?: RoleTag[];
+    thickness_min_pct?: number;
+    thickness_max_pct?: number;
   },
 ): string {
   const params = new URLSearchParams();
@@ -224,6 +268,20 @@ function buildKey(
   // so old SWR cache keys are byte-for-byte unchanged for existing callers.
   if (optional.include != null && optional.include.length > 0) {
     params.set("include", optional.include.join(","));
+  }
+  // gh-835 ADDITIVE: filter params — only appended when present and non-empty
+  // so old SWR cache keys are byte-for-byte unchanged for existing callers.
+  if (optional.family != null && optional.family.length > 0) {
+    params.set("family", optional.family.join(","));
+  }
+  if (optional.tags != null && optional.tags.length > 0) {
+    params.set("tags", optional.tags.join(","));
+  }
+  if (optional.thickness_min_pct != null) {
+    params.set("thickness_min_pct", String(optional.thickness_min_pct));
+  }
+  if (optional.thickness_max_pct != null) {
+    params.set("thickness_max_pct", String(optional.thickness_max_pct));
   }
   return `/airfoils/db/suitability?${params.toString()}`;
 }
