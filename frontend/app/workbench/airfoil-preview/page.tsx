@@ -7,6 +7,7 @@ import { useWingConfig } from "@/hooks/useWingConfig";
 import { useAirfoilGeometry } from "@/hooks/useAirfoilGeometry";
 import { useAirfoilAnalysis } from "@/hooks/useAirfoilAnalysis";
 import { useAirfoilSuitability } from "@/hooks/useAirfoilSuitability";
+import { useSpeedPolar } from "@/hooks/useSpeedPolar";
 import { AirfoilPreviewViewerPanel } from "@/components/workbench/AirfoilPreviewViewerPanel";
 import type { OperatingPoints } from "@/components/workbench/AirfoilPreviewViewerPanel";
 import { AirfoilPreviewConfigPanel } from "@/components/workbench/AirfoilPreviewConfigPanel";
@@ -194,6 +195,9 @@ export default function AirfoilPreviewPage() {
   const tipGeo = useAirfoilGeometry(tipAirfoil === rootAirfoil ? null : tipAirfoil);
   const rootAnalysis = useAirfoilAnalysis();
   const tipAnalysis = useAirfoilAnalysis();
+
+  // gh-841: aircraft speed polar from the backend (closed-form from assumptions)
+  const speedPolar = useSpeedPolar(aeroplaneId);
 
   // gh-822: Suitability hooks (chord in metres = chordMm / 1000)
   const [rootRankedMode, setRootRankedMode] = useState(false);
@@ -386,6 +390,9 @@ export default function AirfoilPreviewPage() {
           operatingAlphaDeg={rootOperatingAlpha}
           tipSuitabilityItem={hasTip ? (tipSuitabilityItem ?? undefined) : undefined}
           operatingPoints={rootOperatingPoints}
+          // gh-841: speed polar + 2D proxy charts
+          speedPolar={speedPolar.data ?? null}
+          speedPolarLoading={speedPolar.isLoading}
         />
       </div>
       <div className="shrink-0 overflow-hidden" style={{ width: 480 }}>
