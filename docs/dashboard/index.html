@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>da3Dalus — Feature-Dashboard</title>
+<style>
+  :root{ --bg:#0f0f11; --panel:#18181b; --panel2:#1f1f23; --border:#27272a; --fg:#e4e4e7; --mut:#a1a1aa; --acc:#ff8400; --good:#34d399; --warn:#fbbf24; }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--fg);font-family:"JetBrains Mono",ui-monospace,monospace;line-height:1.55}
+  header{padding:28px 32px;border-bottom:1px solid var(--border);background:linear-gradient(180deg,#161618,#0f0f11)}
+  header h1{margin:0 0 6px;font-size:22px}
+  header h1 .acc{color:var(--acc)}
+  header p{margin:0;color:var(--mut);font-size:13px;max-width:900px}
+  .tabs{display:flex;flex-wrap:wrap;gap:6px;padding:14px 32px;border-bottom:1px solid var(--border);position:sticky;top:0;background:var(--bg);z-index:5}
+  .tab{padding:7px 13px;border:1px solid var(--border);border-radius:999px;background:var(--panel);color:var(--mut);font-size:12px;cursor:pointer}
+  .tab:hover{color:var(--fg)}
+  .tab.active{background:rgba(255,132,0,.14);border-color:rgba(255,132,0,.5);color:var(--acc)}
+  main{padding:26px 32px;max-width:1100px}
+  section{display:none} section.active{display:block}
+  h2{font-size:18px;margin:0 0 4px} h2 .acc{color:var(--acc)}
+  .sub{color:var(--mut);font-size:13px;margin:0 0 18px}
+  .card{background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:16px 18px;margin:0 0 16px}
+  .card h3{margin:0 0 8px;font-size:14px}
+  .card p{margin:6px 0;font-size:13px;color:#d4d4d8}
+  .pill{display:inline-block;font-size:10px;padding:2px 8px;border-radius:999px;border:1px solid;margin-left:6px;vertical-align:middle}
+  .p-done{color:var(--good);border-color:rgba(52,211,153,.4);background:rgba(52,211,153,.12)}
+  .p-app{color:var(--mut);border-color:var(--border);background:var(--panel2)}
+  .meta{font-size:11px;color:var(--mut)}
+  code{background:var(--panel2);padding:1px 5px;border-radius:5px;font-size:12px;color:#e4e4e7}
+  ul{margin:6px 0;padding-left:18px} li{font-size:13px;color:#d4d4d8;margin:3px 0}
+  .shots{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:12px;margin:12px 0}
+  figure{margin:0;border:1px solid var(--border);border-radius:10px;overflow:hidden;background:#000}
+  figure img{width:100%;display:block}
+  figcaption{font-size:11px;color:var(--mut);padding:7px 10px;background:var(--panel)}
+  table{border-collapse:collapse;width:100%;font-size:12px;margin:8px 0}
+  th,td{border:1px solid var(--border);padding:6px 9px;text-align:left}
+  th{color:var(--mut);font-weight:500;background:var(--panel2)}
+  .note{font-size:12px;color:var(--warn)}
+</style>
+</head>
+<body>
+<header>
+  <h1><span class="acc">da3Dalus</span> — Feature-Dashboard</h1>
+  <p>Was im Workbench umgesetzt ist — je Bereich ein Tab. Hervorgehoben: die neu gebaute <b>Low-Re Airfoil-Eignung</b> (mit Live-Smoke-Screenshots). <span class="p-done pill">umgesetzt</span> = in dieser Kampagne gebaut/gemergt, <span class="p-app pill">vorhanden</span> = bestehende App-Funktion.</p>
+</header>
+
+<nav class="tabs">
+  <div class="tab active" data-t="overview">Übersicht</div>
+  <div class="tab" data-t="airfoil">Airfoil-Eignung ★</div>
+  <div class="tab" data-t="powertrain">Antriebsstrang</div>
+  <div class="tab" data-t="mission">Mission &amp; Compliance</div>
+  <div class="tab" data-t="analysis">Analyse (Aero/Stabilität)</div>
+  <div class="tab" data-t="construction">Konstruktion &amp; CAD</div>
+  <div class="tab" data-t="components">Komponenten &amp; Pläne</div>
+</nav>
+
+<main>
+
+<section id="overview" class="active">
+  <h2>Übersicht — was in dieser Kampagne umgesetzt wurde</h2>
+  <p class="sub">Autonom vom Team (Architekt · Backend/Frontend-Dev · Reviewer · QM · Domänen-Experten · 4 Kunden-Personas) bis zum Merge.</p>
+  <div class="card">
+    <h3>Neue Tickets — alle gemergt</h3>
+    <table>
+      <tr><th>#</th><th>Feature</th><th>PR</th></tr>
+      <tr><td>838 / 839</td><td>Ziel-CL am eigenen Betriebs-Re (Bug) + Speed-Buttons + Diagramm-Marker</td><td>#842 ✅</td></tr>
+      <tr><td>837</td><td>„In Verwendung"-Bereich im Airfoil-Picker</td><td>#843 ✅</td></tr>
+      <tr><td>835</td><td>Multi-Tag-Filter (Familie / Rollen-Tags / Dicke) — Query-Zeit</td><td>#844 ✅</td></tr>
+      <tr><td>841</td><td>Geschwindigkeitspolare (Flugzeug) + 2D-Profil-Proxy</td><td>#845 ✅</td></tr>
+      <tr><td>840</td><td>As-built Welt-Anstellwinkel je Flügelschnitt (LiftingLine)</td><td>#846 ✅</td></tr>
+    </table>
+    <p class="meta">Frühere Session-Arbeit: Feature #821/#822, Scoring-v2 #825-Serie, Bugfixes #829/#834. Backend-Bug #788 (kritisch) in Arbeit.</p>
+  </div>
+  <div class="card">
+    <h3>Qualitätssicherung pro Ticket</h3>
+    <ul>
+      <li>TDD (Test-first), Lane-Purity-Gate, unabhängiger QM-Re-Run (kein Vertrauen in Self-Reports).</li>
+      <li>4 Kunden-Personas (RC-Trainer-Anfänger · FPV/Sport-Racer · Segler/Nuri-Bauer · Profi-UAV) smoke-testen live; Fachexperten bewerten die Physik.</li>
+      <li>CI-gated Merge (SonarCloud: ≥80 % New-Coverage, ≤3 % Duplikation); Self-Healing bei transienten Infra-Fehlern.</li>
+      <li>Bei #840 fanden die Gates 3 echte Bugs nacheinander (UUID-500 → Tip-Singularität → Coverage) — jeder gefixt, bevor gemergt wurde.</li>
+    </ul>
+  </div>
+</section>
+
+<section id="airfoil">
+  <h2><span class="acc">Airfoil-Eignung</span> — Low-Re Profilbewertung <span class="pill p-done">umgesetzt</span></h2>
+  <p class="sub">Im <code>/workbench/airfoil-preview</code>. Für ~1640 Profile vorberechnet (NeuralFoil, Re-Grid 40k–750k). Bewertet, ob ein Profil bei deinen echten RC/UAV-Flugbedingungen taugt.</p>
+
+  <div class="card">
+    <h3>Drei Bewertungs-Lesarten + Betriebspunkte</h3>
+    <p>Re-agnostisch (allgemeine Low-Re-Güte) · Mission-gewichtet · <b>Ziel-CL an drei Betriebspunkten: Cruise / Best-Glide / Min-Sink</b> — jeweils am <b>eigenen</b> Betriebs-Re bewertet (Bug #838: vorher hing es am UI-Slider). Speed-Buttons übernehmen die Design-Geschwindigkeiten; wichtige Punkte sind in den Diagrammen markiert.</p>
+  </div>
+
+  <div class="card">
+    <h3>„In Verwendung"-Picker <span class="meta">(#837)</span></h3>
+    <p>Bereits im Modell genutzte Profile stehen oben im Dropdown — kein erneutes Suchen.</p>
+    <div class="shots">
+      <figure><img src="assets/smoke837_dropdown_open.png"><figcaption>„In Verwendung"-Sektion oben im AirfoilSelector</figcaption></figure>
+      <figure><img src="assets/smoke837_after_select.png"><figcaption>Auswahl daraus übernommen</figcaption></figure>
+    </div>
+  </div>
+
+  <div class="card">
+    <h3>Multi-Tag-Filter <span class="meta">(#835)</span></h3>
+    <p>Filter nach Familie (flat_bottom / semi_symmetric / symmetric / cambered / <b>reflexed</b>), Rollen-Tags (v-stab / h-stab / acro / winglet / low_re) und Dicke. Tags werden zur Query-Zeit aus den Metriken berechnet. <b>Nuri-Fall:</b> Filter <code>reflexed</code> liefert die MH-/EH-/E18x-Serie.</p>
+    <div class="shots">
+      <figure><img src="assets/smoke835_filterbar.png"><figcaption>Filterleiste (Familie + Rollen-Tags + Dicke)</figcaption></figure>
+      <figure><img src="assets/smoke835_reflexed_result.png"><figcaption>Filter „reflexed" → Flying-Wing-Profile für den Nuri</figcaption></figure>
+      <figure><img src="assets/smoke835_thickness_narrow.png"><figcaption>Dickenbereich kombiniert mit Familie</figcaption></figure>
+    </div>
+  </div>
+
+  <div class="card">
+    <h3>Geschwindigkeitspolare + 2D-Proxy <span class="meta">(#841)</span></h3>
+    <p>Echte Flugzeug-Speed-Polare (Sinkrate vs. Fluggeschwindigkeit) mit Best-Glide (Ursprungs-Tangente) und Min-Sink (Tiefpunkt). Dazu ein 2D-Profil-Indikator (cl¹·⁵/cd, cl/cd), klar als Sektions-Größe gekennzeichnet — nicht als Flugzeug-Polare.</p>
+    <div class="shots">
+      <figure><img src="assets/smoke841_speedpolar.png"><figcaption>Geschwindigkeitspolare mit Best-Glide + Min-Sink</figcaption></figure>
+      <figure><img src="assets/smoke841_2dproxy.png"><figcaption>2D-Profil-Indikator (kein Flugzeug)</figcaption></figure>
+    </div>
+  </div>
+
+  <div class="card">
+    <h3>As-built Welt-Anstellwinkel <span class="meta">(#840)</span></h3>
+    <p>Je Flügelschnitt der <b>real installierte</b> Anstellwinkel aus der Konstruktion (Einstellwinkel + Schränkung + Trimm − induzierter Winkel) via <code>asb.LiftingLine</code>. Als goldener „As-built"-Marker in den Diagrammen — Washout sichtbar (Tip steht flacher an). Inline berechnet.</p>
+    <div class="shots">
+      <figure><img src="assets/smoke840_viewport_goldmarker.png"><figcaption>Gold-Marker „As-built" auf den Polaren</figcaption></figure>
+      <figure><img src="assets/smoke840_charts.png"><figcaption>As-built-Betriebspunkt vs. Design-Marker</figcaption></figure>
+    </div>
+  </div>
+</section>
+
+<section id="powertrain">
+  <h2>Auslegung des Antriebsstrangs <span class="pill p-app">vorhanden</span></h2>
+  <p class="sub">Elektrische Antriebsstrang-Auslegung — Motor + ESC + Akku.</p>
+  <div class="card">
+    <h3>Powertrain-Sizing</h3>
+    <p>Katalog-Sweep über COTS-Komponenten (Motor/ESC/Akku) zu den Missionsanforderungen; rankt Kombinationen mit Stromaufnahme- und RPM-Checks (COTS-Picker-Dialog).</p>
+    <p class="meta">Backend <code>powertrain_sizing_service.py</code> · <code>/aeroplanes/{uuid}/powertrain/sizing</code> · Frontend <code>CotsPickerDialog</code>.</p>
+  </div>
+  <div class="card">
+    <h3>Endurance &amp; Reichweite</h3>
+    <p>Elektrische Flugdauer/Reichweite aus Energiebilanz (Akku-Wh, Wirkungsgrade Motor/Prop/ESC, Masse, Polare).</p>
+    <p class="meta"><code>endurance_service.py</code> · <code>/aeroplanes/{uuid}/endurance</code> · <code>EnduranceCard</code>.</p>
+  </div>
+</section>
+
+<section id="mission">
+  <h2>Mission &amp; Compliance <span class="pill p-app">vorhanden</span></h2>
+  <p class="sub">Route <code>/workbench/mission</code>.</p>
+  <div class="card">
+    <h3>Missionsziele + 7-Achsen-Compliance-Radar</h3>
+    <p>Mission-Typ (Trainer/Sport/Kunstflug/Segler/Flying-Wing) + Zielwerte; Compliance-Radar (Speed, Stall-Sicherheit, Manövrierbarkeit, Gleiten, Steigen, Flächenbelastung, Feldlänge) automatisch aus Assumptions + Aero.</p>
+    <p class="meta"><code>mission_objective_service</code> / <code>mission_kpi_service</code> · <code>MissionCompliancePanel</code>/<code>MissionRadarChart</code>.</p>
+  </div>
+</section>
+
+<section id="analysis">
+  <h2>Analyse — Aero &amp; Stabilität <span class="pill p-app">vorhanden</span></h2>
+  <p class="sub">Route <code>/workbench/analysis</code>.</p>
+  <div class="card">
+    <h3>Polaren · Stabilität · Operating-Points · Trefftz · Streamlines · V-n-Envelope · Sizing</h3>
+    <ul>
+      <li>Aerodynamik via AeroBuildup/AVL; Re-indexierte Polaren-Tabelle; Operating-Point-Generator (Takeoff/Cruise/Landing) mit Trim.</li>
+      <li>Matching-Chart (T/W vs W/S) mit ziehbarem Designpunkt; V-n-Flugenvelope; Feldlängen (TO/LDG); Tail-Sizing; Loading-Scenarios + CG-Envelope.</li>
+      <li>Design-Assumptions mit ESTIMATED/CALCULATED-Toggle; Recompute bei Geometrieänderung.</li>
+    </ul>
+    <p class="note">Bug #788 (kritisch, in Arbeit): ASB-Referenzfläche kam aus dem ersten statt dem Hauptflügel → bei tail-first-Importen ~8× falsche Koeffizienten. Fix: Referenz = größter Flügel.</p>
+  </div>
+</section>
+
+<section id="construction">
+  <h2>Konstruktion &amp; CAD <span class="pill p-app">vorhanden</span></h2>
+  <p class="sub">Route <code>/workbench</code>.</p>
+  <div class="card">
+    <h3>Wing/Fuselage-Editor + 3D-Vorschau</h3>
+    <p>Querschnitte, Chord, Twist, Sweep, Profilfamilien, Holme, Steuerflächen; 3D-Plotly-Wireframe mit Stabilitäts-Overlay (NP/CG). STEP/STL/Tessellation-Export.</p>
+    <p class="meta"><code>wing_service</code>/<code>fuselage_service</code>/<code>cad_service</code> · <code>AeroplaneTree</code>/<code>WingOutlineViewer</code>. OpenVSP-Import vorhanden (Geometrie + Masse).</p>
+  </div>
+</section>
+
+<section id="components">
+  <h2>Komponenten &amp; Pläne <span class="pill p-app">vorhanden</span></h2>
+  <p class="sub">Routen <code>/workbench/components</code>, <code>/workbench/construction-plans</code>.</p>
+  <div class="card">
+    <h3>Komponenten-Bibliothek + Construction-Parts</h3>
+    <p>Globaler Katalog (Motoren/Akkus/ESC/Servos/Material/Props) + flugzeugspezifische Zuweisung im Parts-Baum.</p>
+  </div>
+  <div class="card">
+    <h3>Construction-Plans (CAD-Automation)</h3>
+    <p>Baumbasierte Creator-Schritte (z. B. WingCreator → FuselageCreator → ExportToSTEP), als Templates speicher-/instanziierbar; Ausführung erzeugt STEP/STL.</p>
+  </div>
+</section>
+
+</main>
+<script>
+  document.querySelectorAll('.tab').forEach(t=>t.addEventListener('click',()=>{
+    document.querySelectorAll('.tab').forEach(x=>x.classList.remove('active'));
+    document.querySelectorAll('section').forEach(x=>x.classList.remove('active'));
+    t.classList.add('active');
+    document.getElementById(t.dataset.t).classList.add('active');
+    window.scrollTo(0,0);
+  }));
+</script>
+</body>
+</html>
