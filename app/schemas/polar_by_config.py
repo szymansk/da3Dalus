@@ -144,6 +144,12 @@ class ParabolicPolar(BaseModel):
         "primary path (gh-636); `fit` is the gh-486 OLS-on-polar fallback; "
         "`fallback` is the 0.8 regime-naive default when both above failed.",
     )
+    auto_refined: bool = Field(
+        False,
+        description="True when the α-sweep resolution was automatically refined to "
+        "recover a polar fit that was first rejected for being too coarse "
+        "(gh-672). Lets the UI show a 'resolution auto-refined' hint.",
+    )
 
 
 PolarByConfig = dict[ConfigName, ParabolicPolar]
