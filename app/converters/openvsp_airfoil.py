@@ -705,6 +705,25 @@ def _write_selig_dat(target: Path, coordinates: CoordList, *, name: str) -> None
     target.write_text("\n".join(lines) + "\n")
 
 
+def _dedup_consecutive_points(coordinates: CoordList, *, tol: float = 1e-9) -> CoordList:
+    """Drop consecutive duplicate (within ``tol``) coordinate pairs (gh-789).
+
+    OpenVSP exports can carry adjacent identical points, which makes
+    AeroSandbox's ``Airfoil.repanel()`` (used during VLM section
+    subdivision) raise "duplicate point" and crash the solve. Only
+    *adjacent* duplicates are removed, so a legitimately repeated
+    closing point (first == last of a closed contour) is preserved.
+    """
+    out: CoordList = []
+    for pt in coordinates:
+        if out:
+            px, py = out[-1]
+            if abs(pt[0] - px) <= tol and abs(pt[1] - py) <= tol:
+                continue
+        out.append(pt)
+    return out
+
+
 def write_imported_airfoil_dat(coordinates: CoordList, *, tag: str = "vsp_imported") -> str:
     """Store an imported/derived airfoil under a **content-hash** filename
     and return its relative path (gh-795).
@@ -712,7 +731,12 @@ def write_imported_airfoil_dat(coordinates: CoordList, *, tag: str = "vsp_import
     Re-import of the same geometry maps to the same ``{tag}_{hash}.dat``
     and the write is skipped (dedup). Used both for VSP-exported anchor
     profiles and for morphed intermediate profiles (gh-796).
+
+    Consecutive duplicate points are removed before hashing/writing so the
+    stored ``.dat`` never trips AeroSandbox's repanel duplicate-point guard
+    (gh-789).
     """
+    coordinates = _dedup_consecutive_points(coordinates)
     AIRFOILS_DIR.mkdir(parents=True, exist_ok=True)
     fname = f"{tag}_{_coords_hash(coordinates)}.dat"
     target = AIRFOILS_DIR / fname
