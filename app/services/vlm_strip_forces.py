@@ -149,7 +149,9 @@ def compute_vlm_strip_forces(
             cl = lift / denom if denom > 0 else 0.0
             cd = drag / denom if denom > 0 else 0.0
             # Induced angle: D_i = L · α_i for small angles → α_i = atan(cd/cl).
-            ai_deg = math.degrees(math.atan2(drag, lift)) if lift != 0.0 else 0.0
+            # atan2 is well-defined for all inputs (atan2(0, 0) == 0), so no
+            # float-equality guard is needed.
+            ai_deg = math.degrees(math.atan2(drag, lift))
             cl_norm = cl * chord / c_ref if c_ref > 0 else 0.0
 
             strips.append(
