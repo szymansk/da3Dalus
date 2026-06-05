@@ -140,4 +140,26 @@ describe("AnalysisConfigPanel honest Polar selectors (gh-786)", () => {
     const call = analysis.runAlphaSweep.mock.calls[0][0];
     expect(call.alpha_num).toBeGreaterThan(1);
   });
+
+  it("activates Single Point via keyboard (ModeRadio onKeyDown)", () => {
+    render(<AnalysisConfigPanel activeTab="Polar" analysis={makeAnalysis()} {...BASE} />);
+
+    // default sweep → range "start" shown, no single "alpha"
+    expect(screen.queryByLabelText("alpha")).toBeNull();
+    fireEvent.keyDown(screen.getAllByRole("radio")[0], { key: "Enter" });
+    // single mode now → single-alpha input present, range gone
+    expect(screen.getByLabelText("alpha")).toBeTruthy();
+    expect(screen.queryByLabelText("start")).toBeNull();
+  });
+
+  it("Reset to defaults restores the sweep start (and resets single α) without crashing", () => {
+    const analysis = makeAnalysis();
+    render(<AnalysisConfigPanel activeTab="Polar" analysis={analysis} {...BASE} />);
+
+    fireEvent.change(screen.getByLabelText("start"), { target: { value: "3" } });
+    fireEvent.click(screen.getByRole("button", { name: /Reset to defaults/i }));
+    fireEvent.click(runButton());
+
+    expect(analysis.runAlphaSweep.mock.calls[0][0]).toMatchObject({ alpha_start: -5 });
+  });
 });
