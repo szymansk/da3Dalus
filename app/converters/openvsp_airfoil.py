@@ -27,10 +27,14 @@ from types import ModuleType
 from typing import Optional
 
 from app.converters.openvsp_importer import ImportContext
+from app.core.config import AIRFOILS_DIR as _CANONICAL_AIRFOILS_DIR
 
 
-# Resolves at import time. Tests monkeypatch this to a tmp directory.
-AIRFOILS_DIR: Path = Path("components") / "airfoils"
+# Absolute, CWD-independent (single source of truth in app.core.config).
+# Must match the read-side dir in create_wing_configuration so airfoils
+# written during import are found by analysis/UI regardless of working
+# directory. Tests monkeypatch this module attribute to a tmp directory.
+AIRFOILS_DIR: Path = _CANONICAL_AIRFOILS_DIR
 
 # Cosine-spaced default resolution for generated NACA .dat files.
 # Matches the density of the hand-curated files in components/airfoils.

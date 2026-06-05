@@ -4,6 +4,7 @@ import os
 from typing import Any, List, Optional
 
 import aerosandbox as asb
+import numpy as np
 from aerosandbox import FuselageXSec
 
 from app import schemas
@@ -35,6 +36,44 @@ def aeroplane_model_to_aeroplane_schema_async(plane: AeroplaneModel) -> Aeroplan
     return plane_schema
 
 
+def _dedupe_consecutive_points(coordinates, tol: float = 1e-10):
+    """Drop consecutive duplicate coordinate points from an airfoil.
+
+    AeroSandbox's ``Airfoil.repanel()`` (called by the VLM during
+    ``subdivide_sections`` → ``blend_with_another_airfoil``) builds a
+    ``CubicSpline`` parameterised along each surface. A repeated point makes
+    that parameter non-strictly-increasing and raises
+    ``ValueError("`x` must be strictly increasing sequence.")`` — surfaced as
+    "It looks like your Airfoil has a duplicate point.".
+
+    Some UIUC library ``.dat`` files and every OpenVSP-imported airfoil carry a
+    duplicated leading-edge ``(0, 0)`` point (upper-surface end and
+    lower-surface start coincide), so every airfoil entering the solvers is
+    sanitised here.
+    """
+    if coordinates is None or len(coordinates) < 2:
+        return coordinates
+    keep = np.ones(len(coordinates), dtype=bool)
+    keep[1:] = np.any(np.abs(np.diff(coordinates, axis=0)) > tol, axis=1)
+    return coordinates[keep]
+
+
+def _sanitize_airfoil(airfoil: asb.Airfoil) -> asb.Airfoil:
+    """Return an airfoil free of consecutive duplicate points (solver-safe)."""
+    coords = getattr(airfoil, "coordinates", None)
+    if coords is None:
+        return airfoil
+    deduped = _dedupe_consecutive_points(coords)
+    if len(deduped) == len(coords):
+        return airfoil
+    logger.warning(
+        "Airfoil %r had %d duplicate coordinate point(s); removed for solver stability.",
+        airfoil.name,
+        len(coords) - len(deduped),
+    )
+    return asb.Airfoil(name=airfoil.name, coordinates=deduped)
+
+
 def _build_asb_airfoil(airfoil_ref) -> asb.Airfoil:
     from app.services.create_wing_configuration import _resolve_airfoil_reference
 
@@ -43,14 +82,16 @@ def _build_asb_airfoil(airfoil_ref) -> asb.Airfoil:
     # Use the central resolver (handles case-insensitive lookup, bare names, paths)
     resolved = _resolve_airfoil_reference(airfoil_ref_str)
     if os.path.isfile(resolved):
-        return asb.Airfoil(
-            name=os.path.splitext(os.path.basename(resolved))[0],
-            coordinates=resolved,
+        return _sanitize_airfoil(
+            asb.Airfoil(
+                name=os.path.splitext(os.path.basename(resolved))[0],
+                coordinates=resolved,
+            )
         )
 
     # Fall back to ASB name-based lookup (e.g. "naca2412", "sd7037", UIUC names).
     airfoil_name = os.path.splitext(os.path.basename(airfoil_ref_str))[0] or airfoil_ref_str
-    return asb.Airfoil(name=airfoil_name)
+    return _sanitize_airfoil(asb.Airfoil(name=airfoil_name))
 
 
 def _normalize_airfoil_reference_for_schema(airfoil_ref: asb.Airfoil | str) -> str:

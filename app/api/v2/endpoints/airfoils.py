@@ -49,7 +49,9 @@ import matplotlib.pyplot as plt
 
 router = APIRouter()
 
-AIRFOILS_DIR = Path("components") / "airfoils"
+# Absolute, CWD-independent (single source of truth in app.core.config) so the
+# airfoil library listing/serving matches where the importer writes .dat files.
+from app.core.config import AIRFOILS_DIR  # noqa: E402
 
 
 class AirfoilKnownResponse(BaseModel):

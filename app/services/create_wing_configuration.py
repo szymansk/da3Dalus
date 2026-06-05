@@ -13,9 +13,8 @@ from app.schemas.wing import Servo as ServoModel
 from app.schemas.wing import Spare as SpareModel
 from pathlib import Path
 
-
-_REPO_ROOT = Path(__file__).resolve().parents[2]
-_AIRFOILS_DIR = _REPO_ROOT / "components" / "airfoils"
+from app.core.config import AIRFOILS_DIR as _AIRFOILS_DIR
+from app.core.config import REPO_ROOT as _REPO_ROOT
 
 
 _airfoil_map: dict[str, Path] | None = None

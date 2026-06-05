@@ -767,3 +767,45 @@ class TestBuildAsbAirfoil:
 
         airfoil = _build_asb_airfoil("naca2412")
         assert airfoil.coordinates is not None
+
+    def test_dedupe_consecutive_points_removes_duplicate(self):
+        """The pure helper drops only consecutive duplicate rows."""
+        import numpy as np
+
+        from app.converters.model_schema_converters import _dedupe_consecutive_points
+
+        coords = np.array(
+            [[1.0, 0.0], [0.5, 0.05], [0.0, 0.0], [0.0, 0.0], [0.5, -0.05], [1.0, 0.0]]
+        )
+        out = _dedupe_consecutive_points(coords)
+        assert len(out) == 5
+        assert not np.any(np.all(np.abs(np.diff(out, axis=0)) < 1e-12, axis=1))
+
+    def test_duplicate_leading_edge_airfoil_is_repanelable(self):
+        """Airfoils with a duplicated LE point must not crash the VLM.
+
+        Regression for the strip-forces ValueError ("duplicate point") raised
+        from AeroSandbox repanel/blend during VortexLatticeMethod.run().
+        Several library .dat files (e.g. fxlv152) and all OpenVSP-imported
+        airfoils carry a duplicated (0, 0) leading-edge point; _build_asb_airfoil
+        must sanitise them so downstream repanel/blend succeeds.
+        """
+        import numpy as np
+
+        from app.converters.model_schema_converters import _build_asb_airfoil
+
+        airfoil = _build_asb_airfoil("fxlv152")
+        coords = airfoil.coordinates
+        assert coords is not None
+        # No consecutive duplicate points remain.
+        assert not np.any(np.all(np.abs(np.diff(coords, axis=0)) < 1e-10, axis=1)), (
+            "sanitised airfoil still has a duplicate coordinate point"
+        )
+        # The exact operation that crashed must now succeed.
+        repaneled = airfoil.repanel(n_points_per_side=50)
+        assert repaneled.coordinates is not None
+        # And the VLM blend path that triggered the crash works too.
+        blended = airfoil.blend_with_another_airfoil(
+            _build_asb_airfoil("naca2412"), blend_fraction=0.5
+        )
+        assert blended.coordinates is not None
