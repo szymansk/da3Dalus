@@ -77,6 +77,8 @@ interface Props {
   readonly envelopeError?: string | null;
   readonly onComputeEnvelope?: () => void;
   readonly operatingPoints?: StoredOperatingPoint[];
+  /** gh-865: live placeholder + solved rows during streaming generation. */
+  readonly streamingOperatingPoints?: StoredOperatingPoint[] | null;
   readonly isLoadingOps?: boolean;
   readonly isGeneratingOps?: boolean;
   readonly isTrimmingOps?: boolean;
@@ -858,6 +860,7 @@ export function AnalysisViewerPanel({
   envelopeError,
   onComputeEnvelope,
   operatingPoints,
+  streamingOperatingPoints,
   isLoadingOps,
   isGeneratingOps,
   isTrimmingOps,
@@ -1116,6 +1119,7 @@ export function AnalysisViewerPanel({
       {!showWingGate && activeTab === "Operating Points" && (
         <OperatingPointsPanel
           points={operatingPoints ?? []}
+          comparisonPoints={streamingOperatingPoints ?? undefined}
           isLoading={isLoadingOps ?? false}
           isGenerating={isGeneratingOps ?? false}
           isTrimming={isTrimmingOps ?? false}

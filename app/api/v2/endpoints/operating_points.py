@@ -1,6 +1,7 @@
 from typing import Annotated, Optional
 
 from fastapi import Depends, APIRouter, Query, Path, Body, HTTPException, status
+from fastapi.responses import StreamingResponse
 from pydantic import UUID4
 from sqlalchemy import func
 from sqlalchemy.orm import Session
@@ -120,6 +121,33 @@ async def generate_default_operating_point_set(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Unexpected error: {exc}",
         ) from exc
+
+
+@router.post(
+    "/aeroplanes/{aeroplane_id}/operating-pointsets/generate-default/stream",
+    operation_id="generate_default_operating_point_set_stream",
+)
+async def generate_default_operating_point_set_stream(
+    aeroplane_id: Annotated[UUID4, Path(..., description="Aeroplane UUID")],
+    db: Annotated[Session, Depends(get_db)],
+    request: Annotated[GenerateOperatingPointSetRequest, Body()] = None,
+):
+    """Stream OP generation as Server-Sent-Events (gh-865): a ``targets`` event
+    with all placeholder rows, an ``op`` event per solved point, then ``done``.
+    Operating points are persisted incrementally, so the table fills in live.
+    """
+    req = request or GenerateOperatingPointSetRequest()
+    generator = operating_point_generator_service.generate_default_set_stream_for_aircraft(
+        db=db,
+        aircraft_uuid=aeroplane_id,
+        replace_existing=req.replace_existing,
+        profile_id_override=req.profile_id_override,
+    )
+    return StreamingResponse(
+        generator,
+        media_type="text/event-stream",
+        headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
+    )
 
 
 @router.post(

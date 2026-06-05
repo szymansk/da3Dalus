@@ -1,7 +1,8 @@
+import json
 import logging
 import math
 from dataclasses import dataclass
-from typing import Any, Optional
+from typing import Any, Iterator, Optional
 
 import aerosandbox as asb
 import numpy as np
@@ -997,6 +998,43 @@ def _trim_or_estimate_point(
     )
 
 
+_OPSET_NAME = "default_operating_point_set"
+_OPSET_DESC = "Auto-generated standard operating point set including Dutch-roll start point."
+
+
+def _op_model_from_point(
+    aircraft: AeroplaneModel, point: TrimmedPoint, design_cg_x: float
+) -> OperatingPointModel:
+    """Build an OperatingPointModel from a solved TrimmedPoint."""
+    return OperatingPointModel(
+        aircraft_id=aircraft.id,
+        name=point.name,
+        description=point.description,
+        config=point.config,
+        status=point.status.value,
+        warnings=point.warnings,
+        controls=point.controls,
+        velocity=point.velocity,
+        alpha=point.alpha_rad,
+        beta=point.beta_rad,
+        p=point.p,
+        q=point.q,
+        r=point.r,
+        xyz_ref=[design_cg_x, 0.0, 0.0],
+        altitude=point.altitude,
+        trim_enrichment=point.trim_enrichment,
+    )
+
+
+def _clear_existing_op_sets(db: Session, aircraft: AeroplaneModel) -> None:
+    db.query(OperatingPointSetModel).filter(
+        OperatingPointSetModel.aircraft_id == aircraft.id
+    ).delete(synchronize_session=False)
+    db.query(OperatingPointModel).filter(OperatingPointModel.aircraft_id == aircraft.id).delete(
+        synchronize_session=False
+    )
+
+
 def _persist_point_set(
     db: Session,
     aircraft: AeroplaneModel,
@@ -1006,41 +1044,19 @@ def _persist_point_set(
     design_cg_x: float = 0.0,
 ) -> tuple[OperatingPointSetModel, list[OperatingPointModel]]:
     if replace_existing:
-        db.query(OperatingPointSetModel).filter(
-            OperatingPointSetModel.aircraft_id == aircraft.id
-        ).delete(synchronize_session=False)
-        db.query(OperatingPointModel).filter(OperatingPointModel.aircraft_id == aircraft.id).delete(
-            synchronize_session=False
-        )
+        _clear_existing_op_sets(db, aircraft)
 
     stored_points: list[OperatingPointModel] = []
     for point in points:
-        model = OperatingPointModel(
-            aircraft_id=aircraft.id,
-            name=point.name,
-            description=point.description,
-            config=point.config,
-            status=point.status.value,
-            warnings=point.warnings,
-            controls=point.controls,
-            velocity=point.velocity,
-            alpha=point.alpha_rad,
-            beta=point.beta_rad,
-            p=point.p,
-            q=point.q,
-            r=point.r,
-            xyz_ref=[design_cg_x, 0.0, 0.0],
-            altitude=point.altitude,
-            trim_enrichment=point.trim_enrichment,
-        )
+        model = _op_model_from_point(aircraft, point, design_cg_x)
         db.add(model)
         stored_points.append(model)
 
     db.flush()
 
     opset = OperatingPointSetModel(
-        name="default_operating_point_set",
-        description="Auto-generated standard operating point set including Dutch-roll start point.",
+        name=_OPSET_NAME,
+        description=_OPSET_DESC,
         aircraft_id=aircraft.id,
         source_flight_profile_id=source_flight_profile_id,
         operating_points=[point.id for point in stored_points],
@@ -1051,6 +1067,107 @@ def _persist_point_set(
     return opset, stored_points
 
 
+@dataclass
+class _GenerationContext:
+    """Everything the per-target solve needs — shared by the batch and the
+    streaming (gh-865) generation paths."""
+
+    aircraft: AeroplaneModel
+    targets: list[dict[str, Any]]
+    asb_airplane: asb.Airplane
+    capabilities: dict[str, Any]
+    deflection_limits: dict[str, tuple[float, float]]
+    plane_schema: Any
+    constraints: dict[str, Any]
+    effective_mass_kg: Optional[float]
+    design_cg_x: float
+    source_profile_id: Optional[int]
+    refs: dict[str, Any]
+
+
+def _prepare_generation(
+    db: Session, aircraft_uuid, profile_id_override: Optional[int]
+) -> _GenerationContext:
+    """Resolve the aircraft, profile, targets and ASB model for OP generation."""
+    aircraft = _get_aircraft_or_raise(db, aircraft_uuid)
+    profile, source_profile_id = _load_effective_flight_profile(db, aircraft, profile_id_override)
+    cruise_resolved = _resolve_cruise_speed_with_md_fallback(
+        aircraft, profile.get("goals", {}), source_profile_id
+    )
+    profile.setdefault("goals", {})["cruise_speed_mps"] = cruise_resolved
+
+    effective_mass_kg = _load_effective_mass_kg(db, aircraft.id, aircraft.total_mass_kg)
+    design_cg_x = _load_design_cg_x(db, aircraft.id)
+
+    refs = _estimate_reference_speeds(
+        profile, cached_context=aircraft.assumption_computation_context
+    )
+    targets = _build_target_definitions(profile, refs)
+
+    plane_schema = aeroplane_model_to_aeroplane_schema_async(aircraft)
+    asb_airplane = aeroplane_schema_to_asb_airplane_async(plane_schema=plane_schema)
+    flap_limits = build_deflection_limits_from_schema(plane_schema)
+    targets = [_clip_flap_to_ted_limit(t, flap_limits) for t in targets]
+    targets = _stamp_stale_no_polar(targets, refs)
+    asb_airplane.xyz_ref = [design_cg_x, 0.0, 0.0]
+
+    return _GenerationContext(
+        aircraft=aircraft,
+        targets=targets,
+        asb_airplane=asb_airplane,
+        capabilities=_detect_control_capabilities(asb_airplane),
+        deflection_limits=build_deflection_limits_from_schema(plane_schema),
+        plane_schema=plane_schema,
+        constraints=profile.get("constraints", {}),
+        effective_mass_kg=effective_mass_kg,
+        design_cg_x=design_cg_x,
+        source_profile_id=source_profile_id,
+        refs=refs,
+    )
+
+
+def _solve_and_enrich(ctx: _GenerationContext, target: dict[str, Any]) -> Optional[TrimmedPoint]:
+    """Solve + enrich one target, or return None when its controls are missing."""
+    is_supported, missing_required = _validate_target_capability(target, ctx.capabilities)
+    if not is_supported:
+        logger.warning(
+            "Skipping operating point '%s': missing required controls=%s, available=%s",
+            target["name"],
+            missing_required,
+            ctx.capabilities.get("available_controls", []),
+        )
+        return None
+
+    point = _trim_or_estimate_point(
+        asb_airplane=ctx.asb_airplane,
+        aircraft=ctx.aircraft,
+        target=target,
+        constraints=ctx.constraints,
+        capabilities=ctx.capabilities,
+        effective_mass_kg=ctx.effective_mass_kg,
+    )
+    _apply_turn_feasibility(
+        point, target.get("bank_deg"), point.velocity, ctx.refs.get("vs_clean", 0.0)
+    )
+    try:
+        enrichment = compute_enrichment(
+            controls=point.controls,
+            limits=ctx.deflection_limits,
+            trim_method=point.trim_method,
+            trim_score=point.trim_score,
+            trim_residuals=point.trim_residuals or {},
+            op_name=point.name,
+            alpha_deg=math.degrees(point.alpha_rad),
+            status=point.status.value if point.status else None,
+            aero_coefficients=point.aero_coefficients or None,
+            mix_params=build_mix_params_from_schema(ctx.plane_schema),
+        )
+        point.trim_enrichment = enrichment.model_dump()
+    except Exception:
+        logger.warning("Enrichment computation failed for OP '%s'", point.name, exc_info=True)
+    return point
+
+
 def generate_default_set_for_aircraft(
     db: Session,
     aircraft_uuid,
@@ -1058,105 +1175,19 @@ def generate_default_set_for_aircraft(
     profile_id_override: Optional[int] = None,
 ) -> GeneratedOperatingPointSetRead:
     try:
-        aircraft = _get_aircraft_or_raise(db, aircraft_uuid)
-        profile, source_profile_id = _load_effective_flight_profile(
-            db, aircraft, profile_id_override
-        )
-        # When no flight profile is set, fall back to V_md for cruise —
-        # the same auto-suggestion logic the Info Chip Row uses. Patch
-        # the goals dict in-place before reference-speed estimation so
-        # all downstream targets see the resolved cruise speed.
-        cruise_resolved = _resolve_cruise_speed_with_md_fallback(
-            aircraft, profile.get("goals", {}), source_profile_id
-        )
-        profile.setdefault("goals", {})["cruise_speed_mps"] = cruise_resolved
-
-        # Effective values from design assumptions take precedence over
-        # legacy aircraft fields, so Component-Tree weight changes and
-        # SM choices flow into the trim solution without an extra step.
-        effective_mass_kg = _load_effective_mass_kg(db, aircraft.id, aircraft.total_mass_kg)
-        design_cg_x = _load_design_cg_x(db, aircraft.id)
-
-        # Seed V_s from cached physics when available; cruise/margin only
-        # as a cold-start fallback (gh-475).
-        refs = _estimate_reference_speeds(
-            profile,
-            cached_context=aircraft.assumption_computation_context,
-        )
-        targets = _build_target_definitions(profile, refs)
-
-        plane_schema = aeroplane_model_to_aeroplane_schema_async(aircraft)
-        asb_airplane = aeroplane_schema_to_asb_airplane_async(plane_schema=plane_schema)
-        # gh-527: clip per-target flap deflection to the TED mechanical
-        # limit BEFORE the trim solver sees the value. Out-of-bound flap
-        # angles produce non-physical AVL / NeuralFoil results otherwise.
-        _flap_limits_for_clip = build_deflection_limits_from_schema(plane_schema)
-        targets = [_clip_flap_to_ted_limit(t, _flap_limits_for_clip) for t in targets]
-        # gh-535: when the OPG ran without a polar (cold-start fallback to
-        # cruise/margin), stamp every target's warnings list so persisted
-        # OPs surface the STALE_NO_POLAR signal to consumers.
-        targets = _stamp_stale_no_polar(targets, refs)
-        # Use the design CG as the moment-reference point for trim, so
-        # Cm=0 means "balanced about the user's design CG", not about
-        # the origin. Mirrors what stability_summary already does.
-        asb_airplane.xyz_ref = [design_cg_x, 0.0, 0.0]
-        capabilities = _detect_control_capabilities(asb_airplane)
-        deflection_limits = build_deflection_limits_from_schema(plane_schema)
-
-        points: list[TrimmedPoint] = []
-        skipped_names: list[str] = []
-        for target in targets:
-            is_supported, missing_required = _validate_target_capability(target, capabilities)
-            if not is_supported:
-                skipped_names.append(target["name"])
-                logger.warning(
-                    "Skipping operating point '%s' for aircraft %s: missing required controls=%s, available=%s",
-                    target["name"],
-                    aircraft_uuid,
-                    missing_required,
-                    capabilities.get("available_controls", []),
-                )
-                continue
-
-            point = _trim_or_estimate_point(
-                asb_airplane=asb_airplane,
-                aircraft=aircraft,
-                target=target,
-                constraints=profile.get("constraints", {}),
-                capabilities=capabilities,
-                effective_mass_kg=effective_mass_kg,
-            )
-            _apply_turn_feasibility(
-                point, target.get("bank_deg"), point.velocity, refs.get("vs_clean", 0.0)
-            )
-            try:
-                enrichment = compute_enrichment(
-                    controls=point.controls,
-                    limits=deflection_limits,
-                    trim_method=point.trim_method,
-                    trim_score=point.trim_score,
-                    trim_residuals=point.trim_residuals or {},
-                    op_name=point.name,
-                    alpha_deg=math.degrees(point.alpha_rad),
-                    status=point.status.value if point.status else None,
-                    mix_params=build_mix_params_from_schema(plane_schema),
-                )
-                point.trim_enrichment = enrichment.model_dump()
-            except Exception:
-                logger.warning(
-                    "Enrichment computation failed for OP '%s' on aircraft %s",
-                    point.name,
-                    aircraft_uuid,
-                    exc_info=True,
-                )
-            points.append(point)
+        ctx = _prepare_generation(db, aircraft_uuid, profile_id_override)
+        aircraft = ctx.aircraft
+        source_profile_id = ctx.source_profile_id
+        design_cg_x = ctx.design_cg_x
+        points: list[TrimmedPoint] = [
+            p for target in ctx.targets if (p := _solve_and_enrich(ctx, target)) is not None
+        ]
 
         logger.info(
-            "Operating-point generation finished for aircraft %s: generated=%d, skipped=%d, skipped_names=%s",
+            "Operating-point generation finished for aircraft %s: generated=%d / %d targets",
             aircraft_uuid,
             len(points),
-            len(skipped_names),
-            skipped_names,
+            len(ctx.targets),
         )
 
         opset, stored_points = _persist_point_set(
@@ -1190,6 +1221,88 @@ def generate_default_set_for_aircraft(
         raise InternalError(f"Database error: {exc}")
     except Exception as exc:
         raise InternalError(f"Operating-point generation error: {exc}")
+
+
+def _sse(event: str, data_json: str) -> str:
+    """Format one Server-Sent-Event record (single-line data payload)."""
+    return f"event: {event}\ndata: {data_json}\n\n"
+
+
+def generate_default_set_stream_for_aircraft(
+    db: Session,
+    aircraft_uuid,
+    replace_existing: bool = False,
+    profile_id_override: Optional[int] = None,
+) -> Iterator[str]:
+    """Stream OP generation as SSE (gh-865): ``targets`` → ``op`` per solved
+    point → ``done``.
+
+    Each operating point is persisted and committed as soon as it is solved, so
+    the table fills in live and a dropped connection still leaves a valid
+    partial set. Errors surface as an ``error`` event rather than a 500.
+    """
+    try:
+        ctx = _prepare_generation(db, aircraft_uuid, profile_id_override)
+    except (NotFoundError, ValidationError) as exc:
+        yield _sse("error", json.dumps({"message": getattr(exc, "message", str(exc))}))
+        return
+    except Exception as exc:  # noqa: BLE001 — report any setup failure to the client
+        logger.exception("OP-generation stream setup failed for %s", aircraft_uuid)
+        yield _sse("error", json.dumps({"message": f"Generation setup failed: {exc}"}))
+        return
+
+    supported = [t for t in ctx.targets if _validate_target_capability(t, ctx.capabilities)[0]]
+
+    if replace_existing:
+        _clear_existing_op_sets(db, ctx.aircraft)
+    opset = OperatingPointSetModel(
+        name=_OPSET_NAME,
+        description=_OPSET_DESC,
+        aircraft_id=ctx.aircraft.id,
+        source_flight_profile_id=ctx.source_profile_id,
+        operating_points=[],
+    )
+    db.add(opset)
+    db.flush()
+    opset_id = opset.id
+    db.commit()
+
+    yield _sse(
+        "targets",
+        json.dumps(
+            {
+                "opset_id": opset_id,
+                "targets": [
+                    {"name": t["name"], "config": t["config"], "status": "COMPUTING"}
+                    for t in supported
+                ],
+            }
+        ),
+    )
+
+    op_ids: list[int] = []
+    for target in supported:
+        try:
+            point = _solve_and_enrich(ctx, target)
+        except Exception:  # noqa: BLE001 — one bad target must not kill the stream
+            logger.exception("OP solve failed for target '%s'", target.get("name"))
+            point = None
+        if point is None:
+            yield _sse("skip", json.dumps({"name": target["name"]}))
+            continue
+
+        model = _op_model_from_point(ctx.aircraft, point, ctx.design_cg_x)
+        db.add(model)
+        db.flush()
+        op_ids.append(model.id)
+        opset.operating_points = list(op_ids)
+        db.add(opset)
+        db.commit()
+        db.refresh(model)
+        read = StoredOperatingPointRead.model_validate(model, from_attributes=True)
+        yield _sse("op", read.model_dump_json())
+
+    yield _sse("done", json.dumps({"opset_id": opset_id, "count": len(op_ids)}))
 
 
 def trim_operating_point_for_aircraft(

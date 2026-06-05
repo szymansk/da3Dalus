@@ -2,6 +2,7 @@
 
 import { useState, useCallback, useEffect } from "react";
 import { API_BASE } from "@/lib/fetcher";
+import { parseSseStream } from "@/lib/sseStream";
 import type { Wing } from "@/hooks/useWings";
 
 export type OperatingPointStatus =
@@ -137,6 +138,9 @@ export interface TrimConstraint {
 
 export interface UseOperatingPointsReturn {
   points: StoredOperatingPoint[];
+  /** gh-865: live rows during streaming generation (placeholders + completed),
+   * or null when not streaming. Consumers show this in the OP Comparison view. */
+  streamingPoints: StoredOperatingPoint[] | null;
   isLoading: boolean;
   isGenerating: boolean;
   isTrimming: boolean;
@@ -169,6 +173,35 @@ export interface UseOperatingPointsReturn {
   }) => Promise<void>;
 }
 
+/** gh-865: a greyed placeholder row shown while a target is still solving.
+ * Negative `id` keeps it distinct from persisted points (positive ids). */
+function makeComputingPlaceholder(
+  name: string,
+  config: string,
+  id: number,
+): StoredOperatingPoint {
+  return {
+    id,
+    name,
+    description: "",
+    aircraft_id: null,
+    config,
+    status: "COMPUTING",
+    warnings: [],
+    controls: {},
+    velocity: 0,
+    alpha: 0,
+    beta: 0,
+    p: 0,
+    q: 0,
+    r: 0,
+    xyz_ref: [],
+    altitude: 0,
+    control_deflections: null,
+    trim_enrichment: null,
+  };
+}
+
 function toTrimPayload(point: StoredOperatingPoint) {
   return {
     velocity: point.velocity,
@@ -187,6 +220,7 @@ export function useOperatingPoints(
   aeroplaneId: string | null,
 ): UseOperatingPointsReturn {
   const [points, setPoints] = useState<StoredOperatingPoint[]>([]);
+  const [streamingPoints, setStreamingPoints] = useState<StoredOperatingPoint[] | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
   const [isTrimming, setIsTrimming] = useState(false);
@@ -224,9 +258,14 @@ export function useOperatingPoints(
       if (!aeroplaneId) return;
       setIsGenerating(true);
       setError(null);
+      // gh-865: consume the SSE stream so OPs appear as greyed "COMPUTING"
+      // placeholders immediately and fill in live as each point solves.
+      // `liveRows` is keyed display order; placeholders are matched/replaced
+      // by name as `op` events arrive.
+      let liveRows: StoredOperatingPoint[] = [];
       try {
         const res = await fetch(
-          `${API_BASE}/aeroplanes/${encodeURIComponent(aeroplaneId)}/operating-pointsets/generate-default`,
+          `${API_BASE}/aeroplanes/${encodeURIComponent(aeroplaneId)}/operating-pointsets/generate-default/stream`,
           {
             method: "POST",
             headers: { "Content-Type": "application/json" },
@@ -237,14 +276,40 @@ export function useOperatingPoints(
             body: JSON.stringify({ replace_existing: replaceExisting ?? true }),
           },
         );
-        if (!res.ok) {
+        if (!res.ok || !res.body) {
           const body = await res.text();
           throw new Error(`Generate failed: ${res.status} ${body}`);
+        }
+        for await (const { event, data } of parseSseStream<unknown>(res)) {
+          if (event === "targets") {
+            const payload = data as {
+              targets: { name: string; config: string }[];
+            };
+            liveRows = payload.targets.map((t, i) =>
+              makeComputingPlaceholder(t.name, t.config, -(i + 1)),
+            );
+            setStreamingPoints([...liveRows]);
+          } else if (event === "op") {
+            const op = data as StoredOperatingPoint;
+            const idx = liveRows.findIndex((r) => r.name === op.name);
+            if (idx >= 0) liveRows[idx] = op;
+            else liveRows.push(op);
+            setStreamingPoints([...liveRows]);
+          } else if (event === "skip") {
+            const { name } = data as { name: string };
+            liveRows = liveRows.filter((r) => r.name !== name);
+            setStreamingPoints([...liveRows]);
+          } else if (event === "error") {
+            const { message } = data as { message: string };
+            throw new Error(`Generate failed: ${message}`);
+          }
+          // `done`: stream ends; fall through to refresh + clear below.
         }
         await refresh();
       } catch (err) {
         setError(err instanceof Error ? err.message : String(err));
       } finally {
+        setStreamingPoints(null);
         setIsGenerating(false);
       }
     },
@@ -451,6 +516,7 @@ export function useOperatingPoints(
 
   return {
     points,
+    streamingPoints,
     isLoading,
     isGenerating,
     isTrimming,

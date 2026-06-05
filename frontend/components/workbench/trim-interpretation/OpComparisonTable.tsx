@@ -42,7 +42,7 @@ export function OpComparisonTable({ points }: Props) {
   const [sortKey, setSortKey] = useState<SortKey>("reserve");
   const [sortDir, setSortDir] = useState<SortDir>("desc");
 
-  const { surfaces, rows } = useMemo(() => {
+  const { surfaces, rows, computing } = useMemo(() => {
     const roleByDisplay = new Map<string, string>();
     const rowData: RowData[] = points
       .filter((p) => p.status === "TRIMMED" && p.trim_enrichment)
@@ -82,7 +82,11 @@ export function OpComparisonTable({ points }: Props) {
       const rb = roleRank(b);
       return ra === rb ? a.localeCompare(b) : ra - rb;
     });
-    return { surfaces: surfaceNames, rows: rowData };
+    // gh-865: OPs still being computed appear as greyed placeholder rows.
+    const computingNames = points
+      .filter((p) => p.status === "COMPUTING")
+      .map((p) => p.name);
+    return { surfaces: surfaceNames, rows: rowData, computing: computingNames };
   }, [points]);
 
   const sorted = useMemo(() => {
@@ -116,7 +120,7 @@ export function OpComparisonTable({ points }: Props) {
     return rows.reduce((worst, r) => (r.reserve_pct > worst.reserve_pct ? r : worst), rows[0]).id;
   }, [rows]);
 
-  if (rows.length === 0) return null;
+  if (rows.length === 0 && computing.length === 0) return null;
 
   const handleSort = (key: SortKey) => {
     if (sortKey === key) {
@@ -185,6 +189,19 @@ export function OpComparisonTable({ points }: Props) {
                 <td className="px-2 py-1.5">{row.cl !== null ? row.cl.toFixed(3) : "—"}</td>
                 <td className="px-2 py-1.5">{row.cd !== null ? row.cd.toFixed(4) : "—"}</td>
                 <td className="px-2 py-1.5">{row.ld !== null ? row.ld.toFixed(1) : "—"}</td>
+              </tr>
+            ))}
+            {/* gh-865: rows still being computed, greyed with a live indicator */}
+            {computing.map((name) => (
+              <tr
+                key={`computing-${name}`}
+                data-testid={`op-computing-${name}`}
+                className="animate-pulse border-b border-border/50 text-subtle-foreground"
+              >
+                <td className="px-2 py-1.5 font-medium">{name}</td>
+                <td className="px-2 py-1.5" colSpan={columns.length - 1}>
+                  rechnet…
+                </td>
               </tr>
             ))}
           </tbody>

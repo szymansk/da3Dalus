@@ -74,6 +74,9 @@ const COLUMNS: { key: SortKey; label: string }[] = [
 
 interface Props {
   readonly points: StoredOperatingPoint[];
+  /** gh-865: rows for the OP Comparison table. During streaming generation
+   * this carries placeholder + live rows; defaults to `points` otherwise. */
+  readonly comparisonPoints?: StoredOperatingPoint[];
   readonly isLoading: boolean;
   readonly isGenerating: boolean;
   readonly isTrimming: boolean;
@@ -140,6 +143,7 @@ function sortPoints(
 
 export function OperatingPointsPanel({
   points,
+  comparisonPoints,
   isLoading,
   isGenerating,
   isTrimming,
@@ -409,7 +413,7 @@ export function OperatingPointsPanel({
         </div>
       )}
 
-      <OpComparisonTable points={points} />
+      <OpComparisonTable points={comparisonPoints ?? points} />
 
       {selectedPoint && (
         <div className="fixed inset-0 z-50 flex justify-end">

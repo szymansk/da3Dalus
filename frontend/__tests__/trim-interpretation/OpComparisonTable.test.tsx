@@ -280,4 +280,36 @@ describe("OpComparisonTable", () => {
     // Reserve is the binding (max) authority used across surfaces → aileron 40%
     expect(screen.getByText("40%")).toBeTruthy();
   });
+
+  it("renders greyed placeholder rows for COMPUTING points (gh-865)", () => {
+    const computing = makeOp({
+      id: -1,
+      name: "max_range",
+      status: "COMPUTING",
+      trim_enrichment: null,
+    });
+    render(<OpComparisonTable points={[POINTS[0], computing]} />);
+    // the solved row is shown normally
+    expect(screen.getByTestId("op-row-1")).toBeTruthy();
+    // the computing target appears as a greyed placeholder with a live label
+    const placeholder = screen.getByTestId("op-computing-max_range");
+    expect(placeholder).toBeTruthy();
+    expect(placeholder.className).toContain("animate-pulse");
+    expect(screen.getByText("rechnet…")).toBeTruthy();
+  });
+
+  it("renders the table when ONLY computing placeholders exist (gh-865)", () => {
+    // No trimmed rows yet — but the table must still appear so the user sees
+    // the greyed rows immediately at the start of a streaming generation.
+    const computing = [
+      makeOp({ id: -1, name: "cruise", status: "COMPUTING", trim_enrichment: null }),
+      makeOp({ id: -2, name: "loiter", status: "COMPUTING", trim_enrichment: null }),
+    ];
+    render(<OpComparisonTable points={computing} />);
+    expect(screen.getByText("OP Comparison")).toBeTruthy();
+    expect(screen.getByTestId("op-computing-cruise")).toBeTruthy();
+    expect(screen.getByTestId("op-computing-loiter")).toBeTruthy();
+    // no solved data rows
+    expect(screen.queryAllByTestId(/^op-row-/)).toHaveLength(0);
+  });
 });
