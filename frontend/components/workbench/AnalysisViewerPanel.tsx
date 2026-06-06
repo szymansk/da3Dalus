@@ -635,6 +635,59 @@ export function polarHasFiniteData(charts: PolarCharts): boolean {
   return series.some((arr) => arr.some((v) => v != null && Number.isFinite(v)));
 }
 
+/**
+ * gh-870: Build a Plotly marker trace for a characteristic point on one of
+ * the Analysis-Polar charts. Returns null when the relevant values are absent
+ * or non-finite (null-safe, never throws).
+ *
+ * Supported chart ids:
+ *   "cl"  → C_L,max marker on the CL-α chart
+ *   "ld"  → (L/D),max marker on the L/D-α chart
+ *   all others → null (no characteristic point defined)
+ *
+ * The marker style mirrors the speed-polar markers (white, circle, size 7).
+ * Exported for direct unit testing.
+ */
+export function buildAnalysisPolarMarkerTrace(
+  chartId: string,
+  polar: Pick<PolarCharts, "clMax" | "alphaClMax" | "ldMax" | "alphaLdMax">,
+): PlotlyTrace | null {
+  let x: number;
+  let y: number;
+  let label: string;
+
+  if (chartId === "cl") {
+    const { clMax, alphaClMax } = polar;
+    if (clMax == null || !Number.isFinite(clMax)) return null;
+    if (alphaClMax == null || !Number.isFinite(alphaClMax)) return null;
+    x = alphaClMax;
+    y = clMax;
+    label = `CL,max = ${clMax.toFixed(2)}`;
+  } else if (chartId === "ld") {
+    const { ldMax, alphaLdMax } = polar;
+    if (ldMax == null || !Number.isFinite(ldMax)) return null;
+    if (alphaLdMax == null || !Number.isFinite(alphaLdMax)) return null;
+    x = alphaLdMax;
+    y = ldMax;
+    label = `L/D,max = ${ldMax.toFixed(1)}`;
+  } else {
+    return null;
+  }
+
+  return {
+    x: [x],
+    y: [y],
+    text: [label],
+    type: "scatter",
+    mode: "markers+text",
+    name: label,
+    textposition: "top center",
+    textfont: { size: 9, color: "#FAFAFA" },
+    marker: { color: "#FAFAFA", size: 7, symbol: "circle" },
+    hovertemplate: `${label}<extra></extra>`,
+  };
+}
+
 /** Derive polar series + characteristic points, tolerating null coefficients. */
 export function derivePolarCharts(result: AnalysisResult | null): PolarCharts | null {
   if (!result?.CL || result.CL.length === 0) return null;
@@ -990,6 +1043,7 @@ export function AnalysisViewerPanel({
                   title: "C_L vs \u03B1",
                   annotation: `C_L,max \u2248 ${safeToFixed(charts.clMax, 2)} @ ${safeToFixed(charts.alphaClMax, 0)}\u00B0`,
                   color: "#FF8400",
+                  extraTraces: [buildAnalysisPolarMarkerTrace("cl", charts)].filter(Boolean) as PlotlyTrace[],
                 },
                 {
                   id: "cd",
@@ -1009,6 +1063,7 @@ export function AnalysisViewerPanel({
                   title: "C_L / C_D vs \u03B1",
                   annotation: `L/D,max \u2248 ${safeToFixed(charts.ldMax, 1)} @ ${safeToFixed(charts.alphaLdMax, 0)}\u00B0`,
                   color: "#30A46C",
+                  extraTraces: [buildAnalysisPolarMarkerTrace("ld", charts)].filter(Boolean) as PlotlyTrace[],
                 },
                 {
                   id: "polar",
