@@ -313,21 +313,38 @@ function AsbFields({
   setAsb,
   xsec,
   setDirty,
+  router,
+  selectXsec,
+  selectedXsecIndex,
 }: Readonly<{
   asb: AsbState;
   setAsb: (v: AsbState) => void;
   xsec: XSec;
   setDirty: (v: boolean) => void;
+  router: ReturnType<typeof useRouter>;
+  selectXsec: (index: number | null) => void;
+  selectedXsecIndex: number;
 }>) {
   return (
     <>
       {/* ASB mode: airfoil | chord */}
       <div className="flex gap-3">
-        <AirfoilSelector
-          label="airfoil"
-          value={asb.airfoil}
-          onChange={(v) => { setDirty(true); setAsb({ ...asb, airfoil: v }); }}
-        />
+        <div className="flex flex-1 items-end gap-1.5">
+          <div className="flex-1">
+            <AirfoilSelector
+              label="airfoil"
+              value={asb.airfoil}
+              onChange={(v) => { setDirty(true); setAsb({ ...asb, airfoil: v }); }}
+            />
+          </div>
+          <button
+            onClick={() => { selectXsec(selectedXsecIndex); router.push("/workbench/airfoil-preview"); }}
+            className="mb-0.5 flex size-8 shrink-0 items-center justify-center rounded-full border border-border bg-card-muted text-muted-foreground hover:bg-sidebar-accent"
+            title="Preview airfoil"
+          >
+            <Eye size={14} />
+          </button>
+        </div>
         <Field
           label="chord"
           value={asb.chord}
@@ -388,6 +405,7 @@ interface FieldGridContentProps {
   selectedXsecIndex: number;
   setDirty: (v: boolean) => void;
   router: ReturnType<typeof useRouter>;
+  selectXsec: (index: number | null) => void;
 }
 
 function FieldGridContent({
@@ -406,6 +424,7 @@ function FieldGridContent({
   selectedXsecIndex,
   setDirty,
   router,
+  selectXsec,
 }: Readonly<FieldGridContentProps>) {
   if (mode === "wingconfig" && wc) {
     return (
@@ -425,7 +444,15 @@ function FieldGridContent({
 
   if (asb && !isReadOnly) {
     return (
-      <AsbFields asb={asb} setAsb={setAsb} xsec={xsec} setDirty={setDirty} />
+      <AsbFields
+        asb={asb}
+        setAsb={setAsb}
+        xsec={xsec}
+        setDirty={setDirty}
+        router={router}
+        selectXsec={selectXsec}
+        selectedXsecIndex={selectedXsecIndex}
+      />
     );
   }
 
@@ -526,7 +553,7 @@ export function PropertyForm({ onGeometryChanged, ref }: Readonly<{
   onGeometryChanged?: (wingName: string) => void;
   ref?: React.Ref<PropertyFormHandle>;
 }>) {
-  const { aeroplaneId, selectedWing, selectedXsecIndex, selectedFuselage, selectedFuselageXsecIndex, treeMode } =
+  const { aeroplaneId, selectedWing, selectedXsecIndex, selectXsec, selectedFuselage, selectedFuselageXsecIndex, treeMode } =
     useAeroplaneContext();
   const { wing, updateXSec, mutate } = useWing(aeroplaneId, selectedWing);
 
@@ -711,6 +738,7 @@ export function PropertyForm({ onGeometryChanged, ref }: Readonly<{
           selectedXsecIndex={selectedXsecIndex}
           setDirty={setDirty}
           router={router}
+          selectXsec={selectXsec}
         />
       </div>
 
