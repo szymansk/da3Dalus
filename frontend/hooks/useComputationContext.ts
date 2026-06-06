@@ -58,6 +58,13 @@ export interface ComputationContext {
   // gh-692: vertical speed at V_min_sink — minimum sink rate the polar can deliver.
   // Glider/Motorsegler chip; powered aircraft also receive it for completeness.
   min_sink_rate_mps?: number | null;
+  // gh-871: angle of attack at characteristic speeds [degrees], derived from the
+  // linear lift-curve regression (CL_α, α₀) stored in the computation context.
+  // Null when the lift-curve data is absent (e.g. before first recompute or
+  // degenerate geometry that fails the R² quality gate).
+  alpha_stall_deg?: number | null;
+  alpha_min_sink_deg?: number | null;
+  alpha_best_glide_deg?: number | null;
   v_a_mps?: number | null;
   v_dive_mps?: number | null;
   v_x_mps?: number | null;

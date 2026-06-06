@@ -934,8 +934,11 @@ class TestExtractClAlphaFromLinearSweep:
         with patch("aerosandbox.AeroBuildup.run", lambda self_: vec_result):
             result = _extract_cl_alpha_from_linear_sweep(asb_airplane, v_cruise=18.0)
 
-        assert result is not None
-        assert result == pytest.approx(5.7, rel=0.02)
+        # gh-871: now returns (cl_alpha_per_rad, alpha_0_deg)
+        cl_alpha, alpha_0 = result
+        assert cl_alpha is not None
+        assert cl_alpha == pytest.approx(5.7, rel=0.02)
+        assert alpha_0 is not None  # zero-lift angle should be ~0° for this input
 
     def test_nan_handling_returns_none_when_fewer_than_3_valid(self):
         """When < 3 valid (non-NaN) CL points, returns None."""
@@ -951,7 +954,8 @@ class TestExtractClAlphaFromLinearSweep:
         with patch("aerosandbox.AeroBuildup.run", lambda self_: nan_result):
             result = _extract_cl_alpha_from_linear_sweep(asb_airplane, v_cruise=18.0)
 
-        assert result is None
+        # gh-871: returns (None, None) on failure
+        assert result == (None, None)
 
     def test_low_r2_returns_none(self):
         """When R² < threshold (nonlinear lift curve), returns None."""
@@ -972,7 +976,8 @@ class TestExtractClAlphaFromLinearSweep:
         with patch("aerosandbox.AeroBuildup.run", lambda self_: vec_result):
             result = _extract_cl_alpha_from_linear_sweep(asb_airplane, v_cruise=18.0)
 
-        assert result is None
+        # gh-871: returns (None, None) on failure
+        assert result == (None, None)
 
     def test_negative_slope_returns_none(self):
         """When fitted CL_α ≤ 0 (inverted lift curve), returns None."""
@@ -994,7 +999,8 @@ class TestExtractClAlphaFromLinearSweep:
         with patch("aerosandbox.AeroBuildup.run", lambda self_: vec_result):
             result = _extract_cl_alpha_from_linear_sweep(asb_airplane, v_cruise=18.0)
 
-        assert result is None
+        # gh-871: returns (None, None) on failure
+        assert result == (None, None)
 
     def test_exception_during_asb_propagates_up(self):
         """Exception from AeroBuildup.run propagates out of the function."""
@@ -1033,10 +1039,13 @@ class TestExtractClAlphaFromLinearSweep:
             # With only 3 points R² might be perfect (3 points → perfect line)
             # but the result will be some float (not None from the <3 check).
             result = _extract_cl_alpha_from_linear_sweep(asb_airplane, v_cruise=18.0)
-        # Result may be None (low R² or negative slope) or a float — either is acceptable.
+        # gh-871: now returns (cl_alpha_per_rad, alpha_0_deg).
+        # Result may be (None, None) (low R² or negative slope) or (float, float).
         # Key thing: the < 3 guard did NOT fire for exactly 3 valid points.
         # We just verify no exception was raised.
-        assert result is None or isinstance(result, float)
+        cl_alpha, alpha_0 = result
+        assert cl_alpha is None or isinstance(cl_alpha, float)
+        assert alpha_0 is None or isinstance(alpha_0, float)
 
 
 # ────────────────────────────────────────────────────────────────────────────

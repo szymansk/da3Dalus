@@ -526,7 +526,28 @@ def recompute_assumptions(db: Session, aeroplane_uuid) -> None:
     # Regression over α ∈ [-2°, +6°] with R² > 0.995 quality gate.
     # Cached as cl_alpha_per_rad; downstream compute_vn_curve uses it
     # for the Pratt-Walker gust alleviation computation.
-    cl_alpha_per_rad = _extract_cl_alpha_from_linear_sweep(asb_airplane, v_cruise)
+    cl_alpha_per_rad, alpha_0_deg = _extract_cl_alpha_from_linear_sweep(asb_airplane, v_cruise)
+
+    # gh-871: α at characteristic speeds from the linear lift curve.
+    # CL at stall = cl_max_effective; CL at best-glide and min-sink come from
+    # the closed-form parabolic-polar optima (same scalars used by _min_drag_speed
+    # / _min_sink_speed). All three are mass-independent.
+    alpha_stall_ctx: float | None = None
+    alpha_md_ctx: float | None = None
+    alpha_min_sink_ctx: float | None = None
+    if cl_alpha_per_rad is not None and alpha_0_deg is not None:
+        alpha_stall_ctx = _cl_to_alpha_deg(cl_max_effective or 0.0, cl_alpha_per_rad, alpha_0_deg)
+        if (
+            cd0_effective is not None
+            and cd0_effective > 0
+            and aspect_ratio is not None
+            and aspect_ratio > 0
+        ):
+            k = 1.0 / (math.pi * aspect_ratio * e_oswald_effective)
+            cl_bg = math.sqrt(cd0_effective / k)
+            cl_ms = math.sqrt(3.0 * cd0_effective / k)
+            alpha_md_ctx = _cl_to_alpha_deg(cl_bg, cl_alpha_per_rad, alpha_0_deg)
+            alpha_min_sink_ctx = _cl_to_alpha_deg(cl_ms, cl_alpha_per_rad, alpha_0_deg)
 
     # Build base context; enrich_context_with_cg_envelope appends gh-488 keys
     # additively (cg_forward_m, cg_aft_m, sm_at_fwd, sm_at_aft) without
@@ -593,6 +614,16 @@ def recompute_assumptions(db: Session, aeroplane_uuid) -> None:
         "e_oswald_fallback_used": e_oswald_fallback,
         # Linear-range CL_α from α-sweep (gh-487) — consumed by compute_vn_curve for gust loads
         "cl_alpha_per_rad": round(cl_alpha_per_rad, 4) if cl_alpha_per_rad is not None else None,
+        # gh-871: zero-lift angle α₀ [degrees] — paired with cl_alpha_per_rad to invert CL→α
+        # at characteristic speeds (V_stall, V_min_sink, V_md) for the speed-chip display.
+        "alpha_0_deg": round(alpha_0_deg, 4) if alpha_0_deg is not None else None,
+        # gh-871: α at characteristic speeds [degrees], surfaced on the speed-chip row.
+        # Derived from the linear lift curve; None when lift-curve data is absent.
+        "alpha_stall_deg": round(alpha_stall_ctx, 2) if alpha_stall_ctx is not None else None,
+        "alpha_best_glide_deg": round(alpha_md_ctx, 2) if alpha_md_ctx is not None else None,
+        "alpha_min_sink_deg": round(alpha_min_sink_ctx, 2)
+        if alpha_min_sink_ctx is not None
+        else None,
         # Reynolds-dependent polar table (gh-493) — 3 V-bands from existing fine-sweep rebinning.
         # No extra AeroBuildup runs. Schema per row: {re, v_mps, cd0, e_oswald, cl_max, r2, fallback_used}
         # ctx["cd0"] and ctx["e_oswald"] scalar keys REMAIN for backward compat (gh-486 consumers).
@@ -1028,20 +1059,22 @@ def _extract_cl_alpha_from_linear_sweep(
     alpha_max_deg: float = 6.0,
     alpha_step_deg: float = 1.0,
     r2_threshold: float = 0.995,
-) -> float | None:
-    """CL_α from a linear-range alpha-sweep at cruise speed (gh-487).
+) -> tuple[float | None, float | None]:
+    """CL_α and zero-lift angle from a linear-range alpha-sweep at cruise speed (gh-487).
 
     Runs AeroBuildup at α ∈ [alpha_min_deg, alpha_max_deg] (default [-2°, +6°])
     and fits CL = CL_α·α + CL_0 with ordinary least squares.
 
     Quality gate: if R² < r2_threshold (default 0.995), the lift curve is
     nonlinear in this range (early stall, control surface interaction, etc.)
-    and cl_alpha_per_rad is returned as None.  The downstream gust computation
-    will then fall back to Helmbold-Diederich.
+    and (None, None) is returned.  The downstream gust computation will then
+    fall back to Helmbold-Diederich.
 
-    Returns CL_α in rad⁻¹ (radians, not degrees).
+    Returns:
+        (cl_alpha_per_rad, alpha_0_deg) — CL_α in rad⁻¹ and zero-lift angle α₀ in degrees.
+        (None, None) on failure / quality-gate rejection.
 
-    Sources: gh-487 spec; Anderson 6e §5.3; FAR-25.341(a)(2).
+    Sources: gh-487 spec; Anderson 6e §5.3; FAR-25.341(a)(2); gh-871.
     """
     import aerosandbox as asb
 
@@ -1067,7 +1100,7 @@ def _extract_cl_alpha_from_linear_sweep(
             alpha_min_deg,
             alpha_max_deg,
         )
-        return None
+        return None, None
 
     a_fit = alphas_arr[mask]
     cl_fit = cls_arr[mask]
@@ -1095,7 +1128,7 @@ def _extract_cl_alpha_from_linear_sweep(
             alpha_min_deg,
             alpha_max_deg,
         )
-        return None
+        return None, None
 
     if cl_alpha_fit <= 0:
         logger.warning(
@@ -1103,17 +1136,23 @@ def _extract_cl_alpha_from_linear_sweep(
             "Setting cl_alpha_per_rad=None.",
             cl_alpha_fit,
         )
-        return None
+        return None, None
+
+    # gh-871: zero-lift angle α₀ = -cl_0 / cl_alpha [radians] → degrees
+    # The linear lift curve is CL = cl_alpha * (alpha - alpha_0), so
+    # alpha_0 = -cl_0 / cl_alpha (in radians). Convert to degrees for storage.
+    alpha_0_deg = math.degrees(-cl_0 / cl_alpha_fit)
 
     logger.debug(
-        "CL_α extraction: CL_α=%.4f rad⁻¹, CL_0=%.4f, R²=%.4f (α ∈ [%.0f°, %.0f°]).",
+        "CL_α extraction: CL_α=%.4f rad⁻¹, CL_0=%.4f, α₀=%.2f°, R²=%.4f (α ∈ [%.0f°, %.0f°]).",
         cl_alpha_fit,
         cl_0,
+        alpha_0_deg,
         r2,
         alpha_min_deg,
         alpha_max_deg,
     )
-    return cl_alpha_fit
+    return cl_alpha_fit, alpha_0_deg
 
 
 def _extract_scalar(result: Any, key: str, *, default: float) -> float:
@@ -1801,6 +1840,29 @@ def _min_sink_rate(
     # aspect_ratio is guaranteed > 0 here (None / ≤ 0 already returned None above).
     cd_over_cl = 4.0 * float(np.sqrt(cd0 / (3.0 * np.pi * oswald_e * aspect_ratio)))
     return float(v_ms * cd_over_cl)
+
+
+def _cl_to_alpha_deg(
+    cl: float,
+    cl_alpha_per_rad: float | None,
+    alpha_0_deg: float | None,
+) -> float | None:
+    """Convert a lift coefficient to angle of attack [degrees] via the linear lift curve.
+
+    The linear lift curve is: CL = cl_alpha * (alpha - alpha_0)
+    Inverted: alpha = alpha_0 + CL / cl_alpha [radians] → converted to degrees.
+
+    gh-871: used to annotate characteristic speeds with their operating α.
+
+    Returns None when cl_alpha_per_rad or alpha_0_deg are absent/invalid.
+    """
+    if cl_alpha_per_rad is None or alpha_0_deg is None:
+        return None
+    if cl_alpha_per_rad <= 0:
+        return None
+    alpha_0_rad = math.radians(alpha_0_deg)
+    alpha_rad = alpha_0_rad + cl / cl_alpha_per_rad
+    return math.degrees(alpha_rad)
 
 
 def _picard_iterate_speed(

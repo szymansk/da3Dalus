@@ -590,6 +590,21 @@ class SpeedPolarCurve(BaseModel):
     w_min: Optional[float] = Field(None, description="Minimum sink rate [m/s]")
     v_best_glide: Optional[float] = Field(None, description="Speed for best glide / max L/D [m/s]")
     ld_max: Optional[float] = Field(None, description="Maximum lift-to-drag ratio")
+    # gh-871: angle of attack at each characteristic speed, derived from the
+    # linear lift curve (CL = cl_0 + cl_alpha*alpha). None when the lift-curve
+    # regression data is absent from the computation context.
+    alpha_stall_deg: Optional[float] = Field(
+        None,
+        description="Angle of attack at stall (CL_max) [deg]; None when lift-curve data absent",
+    )
+    alpha_min_sink_deg: Optional[float] = Field(
+        None,
+        description="Angle of attack at minimum-sink speed [deg]; None when lift-curve data absent",
+    )
+    alpha_best_glide_deg: Optional[float] = Field(
+        None,
+        description="Angle of attack at best-glide speed [deg]; None when lift-curve data absent",
+    )
 
 
 class SpeedPolar(BaseModel):

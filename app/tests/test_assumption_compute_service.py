@@ -116,7 +116,7 @@ def _patches(flap_ted_max: float | None = None, fine_sweep_cl_max: float = 1.35)
         ),
         patch(
             "app.services.assumption_compute_service._extract_cl_alpha_from_linear_sweep",
-            return_value=5.7,
+            return_value=(5.7, -2.3),  # gh-871: now returns (cl_alpha_per_rad, alpha_0_deg)
         ),
         patch(
             "app.services.assumption_compute_service._load_flight_profile_speeds",
@@ -605,7 +605,7 @@ def test_flap_geometry_mismatch_falls_back_with_warning(client_and_db, caplog):
         ),
         patch(
             "app.services.assumption_compute_service._extract_cl_alpha_from_linear_sweep",
-            return_value=5.7,
+            return_value=(5.7, -2.3),  # gh-871: now returns (cl_alpha_per_rad, alpha_0_deg)
         ),
         patch(
             "app.services.assumption_compute_service._load_flight_profile_speeds",

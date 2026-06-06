@@ -615,7 +615,7 @@ def _patches_for_ac(ac: dict, fake_airplane, sweep_data):
         ),
         patch(
             "app.services.assumption_compute_service._extract_cl_alpha_from_linear_sweep",
-            return_value=5.7,
+            return_value=(5.7, -2.3),  # gh-871: (cl_alpha_per_rad, alpha_0_deg)
         ),
         patch(
             "app.services.assumption_compute_service._load_flight_profile_speeds",
