@@ -391,7 +391,10 @@ export default function AirfoilPreviewPage() {
 
   return (
     <div className="flex flex-1 gap-4 overflow-hidden">
-      <div className="flex-1 overflow-hidden">
+      {/* gh-868: this wrapper is the actual scroll container — the panel root
+          inside expands to full content height, so the bounded-height wrapper
+          must scroll (not the panel). */}
+      <div data-testid="airfoil-preview-scroll" className="flex-1 overflow-y-auto">
         <AirfoilPreviewViewerPanel
           rootAirfoilName={rootAirfoil}
           tipAirfoilName={hasTip ? tipAirfoil : null}
