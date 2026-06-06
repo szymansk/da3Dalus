@@ -91,7 +91,7 @@ def test_recompute_publishes_assumption_changed_on_cg_change(client_and_db):
         ),
         patch(
             "app.services.assumption_compute_service._extract_cl_alpha_from_linear_sweep",
-            return_value=5.7,
+            return_value=(5.7, -2.3),  # gh-871: (cl_alpha_per_rad, alpha_0_deg)
         ),
         patch(
             "app.services.assumption_compute_service._load_flight_profile_speeds",
@@ -166,7 +166,7 @@ def test_recompute_does_not_publish_when_cg_unchanged(client_and_db):
         ),
         patch(
             "app.services.assumption_compute_service._extract_cl_alpha_from_linear_sweep",
-            return_value=5.7,
+            return_value=(5.7, -2.3),  # gh-871: (cl_alpha_per_rad, alpha_0_deg)
         ),
         patch(
             "app.services.assumption_compute_service._load_flight_profile_speeds",

@@ -72,4 +72,73 @@ describe("SpeedChipRow", () => {
     );
     expect(screen.getByTestId("my-slot")).toBeInTheDocument();
   });
+
+  // gh-871: angle of attack display
+  describe("gh-871 α at characteristic speeds", () => {
+    it("shows α alongside V_stall when alpha_stall_deg is available", () => {
+      render(
+        <SpeedChipRow
+          ctx={{ ...baseCtx, alpha_stall_deg: 14.5 } as unknown as ComputationContext}
+          isRecomputing={false}
+        />,
+      );
+      // V_stall chip must show "13.2 m/s @ 14.5°"
+      expect(screen.getByText("13.2 m/s @ 14.5°")).toBeInTheDocument();
+    });
+
+    it("shows α alongside V_min_sink when alpha_min_sink_deg is available", () => {
+      render(
+        <SpeedChipRow
+          ctx={{ ...baseCtx, alpha_min_sink_deg: 8.3 } as unknown as ComputationContext}
+          isRecomputing={false}
+        />,
+      );
+      expect(screen.getByText("14.5 m/s @ 8.3°")).toBeInTheDocument();
+    });
+
+    it("shows α alongside V_md when alpha_best_glide_deg is available", () => {
+      render(
+        <SpeedChipRow
+          ctx={{ ...baseCtx, alpha_best_glide_deg: 6.2 } as unknown as ComputationContext}
+          isRecomputing={false}
+        />,
+      );
+      expect(screen.getByText("17.0 m/s @ 6.2°")).toBeInTheDocument();
+    });
+
+    it("shows speed without α suffix when alpha_stall_deg is null", () => {
+      render(
+        <SpeedChipRow
+          ctx={{ ...baseCtx, alpha_stall_deg: null } as unknown as ComputationContext}
+          isRecomputing={false}
+        />,
+      );
+      expect(screen.getByText("13.2 m/s")).toBeInTheDocument();
+    });
+
+    it("shows speed without α suffix when alpha field is absent from context", () => {
+      // baseCtx has no alpha fields at all
+      render(<SpeedChipRow ctx={baseCtx as unknown as ComputationContext} isRecomputing={false} />);
+      // No "@ " pattern should appear in the V_stall chip when alpha is absent
+      const stall = screen.getByText(/13\.2 m\/s/);
+      expect(stall.textContent).not.toContain("@");
+    });
+
+    it("all three alpha chips together", () => {
+      render(
+        <SpeedChipRow
+          ctx={{
+            ...baseCtx,
+            alpha_stall_deg: 14.5,
+            alpha_min_sink_deg: 8.3,
+            alpha_best_glide_deg: 6.2,
+          } as unknown as ComputationContext}
+          isRecomputing={false}
+        />,
+      );
+      expect(screen.getByText("13.2 m/s @ 14.5°")).toBeInTheDocument();
+      expect(screen.getByText("14.5 m/s @ 8.3°")).toBeInTheDocument();
+      expect(screen.getByText("17.0 m/s @ 6.2°")).toBeInTheDocument();
+    });
+  });
 });

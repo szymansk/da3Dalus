@@ -16,6 +16,16 @@ function fmt(v: number | null | undefined, decimals: number, suffix = "") {
   return v != null ? `${v.toFixed(decimals)}${suffix}` : "–";
 }
 
+/** Format a speed+alpha pair: "X.X m/s @ Y.Y°" or just "X.X m/s" when α is absent. */
+function fmtSpeedAlpha(
+  speed: number | null | undefined,
+  alpha: number | null | undefined,
+): string {
+  if (speed == null) return "–";
+  const alphaPart = alpha != null ? ` @ ${alpha.toFixed(1)}°` : "";
+  return `${speed.toFixed(1)} m/s${alphaPart}`;
+}
+
 export function SpeedChipRow({ ctx, isRecomputing, rightSlot }: Props) {
   const stale = isRecomputing;
   return (
@@ -27,14 +37,14 @@ export function SpeedChipRow({ ctx, isRecomputing, rightSlot }: Props) {
         icon={AlertTriangle}
         symbol="V_stall"
         description="Stall speed in clean configuration at 1 g"
-        value={fmt(ctx?.v_stall_mps, 1, " m/s")}
+        value={fmtSpeedAlpha(ctx?.v_stall_mps, ctx?.alpha_stall_deg)}
         stale={stale}
       />
       <Chip
         icon={Wind}
         symbol="V_min_sink"
         description="Speed for minimum sink rate — best endurance / longest glide time"
-        value={fmt(ctx?.v_min_sink_mps, 1, " m/s")}
+        value={fmtSpeedAlpha(ctx?.v_min_sink_mps, ctx?.alpha_min_sink_deg)}
         stale={stale}
       />
       <Chip
@@ -48,7 +58,7 @@ export function SpeedChipRow({ ctx, isRecomputing, rightSlot }: Props) {
         icon={Wind}
         symbol="V_md"
         description="Minimum-drag speed — best L/D, longest glide distance"
-        value={fmt(ctx?.v_md_mps, 1, " m/s")}
+        value={fmtSpeedAlpha(ctx?.v_md_mps, ctx?.alpha_best_glide_deg)}
         stale={stale}
       />
       <Chip

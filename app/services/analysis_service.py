@@ -437,6 +437,8 @@ def _compute_speed_polar(
     altitude: float = 0.0,
     g: float = 9.81,
     v_dive: float | None = None,
+    cl_alpha_per_rad: float | None = None,
+    alpha_0_deg: float | None = None,
 ):
     """Derive glide speed polars (sink rate ``w`` over forward speed ``V``) from
     a drag polar (CL/CD), for one or more masses.
@@ -450,8 +452,14 @@ def _compute_speed_polar(
     Curves for different masses therefore scale as ``V, w ∝ sqrt(m)``. The
     effective design mass (``base_mass_kg``) is always included and flagged
     ``is_base``. Pure function — no DB or aero calls — so it is unit testable.
+
+    gh-871: ``cl_alpha_per_rad`` and ``alpha_0_deg`` (from the linear lift-curve
+    regression stored in the computation context) are used to convert the CL at
+    each characteristic speed to an angle of attack in degrees. Both must be
+    present for the alpha fields to be populated; otherwise they are None.
     """
     from app.schemas.aeroanalysisschema import SpeedPolar, SpeedPolarCurve
+    from app.services.assumption_compute_service import _cl_to_alpha_deg
 
     cl_arr = np.atleast_1d(np.asarray(cl, dtype=float))
     cd_arr = np.atleast_1d(np.asarray(cd, dtype=float))
@@ -474,6 +482,11 @@ def _compute_speed_polar(
     cl_max = float(np.max(cl_arr)) if cl_arr.size else 0.0
     valid_geometry = s_ref_m2 > 0 and rho > 0
 
+    # gh-871: CL indices for characteristic points are mass-independent (only
+    # V scales with mass, not CL). Pre-compute alpha_stall here; alpha at
+    # min-sink and best-glide CL come from the per-curve i_min_sink / i_best.
+    alpha_stall_deg_val = _cl_to_alpha_deg(cl_max, cl_alpha_per_rad, alpha_0_deg)
+
     curves: list[SpeedPolarCurve] = []
     for m in masses:
         is_base = abs(m - float(base_mass_kg)) <= tol
@@ -491,6 +504,9 @@ def _compute_speed_polar(
                     w_min=None,
                     v_best_glide=None,
                     ld_max=None,
+                    alpha_stall_deg=None,
+                    alpha_min_sink_deg=None,
+                    alpha_best_glide_deg=None,
                 )
             )
             continue
@@ -506,6 +522,15 @@ def _compute_speed_polar(
         ld = cl_s / cd_s  # equals V / w
         i_best = int(np.argmax(ld))
         v_stall = float(np.sqrt(2.0 * weight_n / (rho * s_ref_m2 * cl_max))) if cl_max > 0 else None
+
+        # gh-871: alpha at characteristic CL values (mass-independent).
+        alpha_min_sink_deg_val = _cl_to_alpha_deg(
+            float(cl_s[i_min_sink]), cl_alpha_per_rad, alpha_0_deg
+        )
+        alpha_best_glide_deg_val = _cl_to_alpha_deg(
+            float(cl_s[i_best]), cl_alpha_per_rad, alpha_0_deg
+        )
+
         curves.append(
             SpeedPolarCurve(
                 mass_kg=m,
@@ -519,6 +544,9 @@ def _compute_speed_polar(
                 w_min=float(w[i_min_sink]),
                 v_best_glide=float(v[i_best]),
                 ld_max=float(ld[i_best]),
+                alpha_stall_deg=alpha_stall_deg_val,
+                alpha_min_sink_deg=alpha_min_sink_deg_val,
+                alpha_best_glide_deg=alpha_best_glide_deg_val,
             )
         )
 
@@ -596,18 +624,32 @@ def _build_speed_polar(db, aeroplane_uuid, sweep_request, asb_airplane, cl_value
         s_ref = float(getattr(asb_airplane, "s_ref", 0.0) or 0.0)
         altitude = float(getattr(sweep_request, "altitude", 0.0) or 0.0)
         rho = float(asb.Atmosphere(altitude=altitude).density())
-        # Resolve V_dive from the cached assumption computation context (gh-799).
-        # Best-effort: a missing or None context must not break the polar.
+        # Resolve V_dive, cl_alpha_per_rad and alpha_0_deg from the cached
+        # assumption computation context (gh-799 / gh-871). Best-effort: a
+        # missing or None context must not break the polar.
         v_dive: float | None = None
+        cl_alpha_from_ctx: float | None = None
+        alpha_0_from_ctx: float | None = None
         try:
             from app.models.aeroplanemodel import AeroplaneModel
 
             aeroplane_row = (
                 db.query(AeroplaneModel).filter(AeroplaneModel.uuid == aeroplane_uuid).first()
             )
-            v_dive = _resolve_v_dive_from_context(
-                getattr(aeroplane_row, "assumption_computation_context", None)
-            )
+            ctx = getattr(aeroplane_row, "assumption_computation_context", None) or {}
+            v_dive = _resolve_v_dive_from_context(ctx)
+            # gh-871: lift-curve regression data stored by recompute_assumptions
+            if isinstance(ctx, dict):
+                raw_cl_alpha = ctx.get("cl_alpha_per_rad")
+                raw_alpha_0 = ctx.get("alpha_0_deg")
+                try:
+                    cl_alpha_from_ctx = float(raw_cl_alpha) if raw_cl_alpha is not None else None
+                except (TypeError, ValueError):
+                    cl_alpha_from_ctx = None
+                try:
+                    alpha_0_from_ctx = float(raw_alpha_0) if raw_alpha_0 is not None else None
+                except (TypeError, ValueError):
+                    alpha_0_from_ctx = None
         except Exception:  # pragma: no cover - defensive
             pass
         return _compute_speed_polar(
@@ -619,6 +661,8 @@ def _build_speed_polar(db, aeroplane_uuid, sweep_request, asb_airplane, cl_value
             rho=rho,
             altitude=altitude,
             v_dive=v_dive,
+            cl_alpha_per_rad=cl_alpha_from_ctx,
+            alpha_0_deg=alpha_0_from_ctx,
         )
     except Exception as e:  # pragma: no cover - defensive add-on
         logger.error("Speed polar computation failed: %s", e)

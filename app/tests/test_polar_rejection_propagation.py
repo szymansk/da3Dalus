@@ -108,7 +108,7 @@ def _enter_patches_with_rejection():
         stack.enter_context(
             patch(
                 "app.services.assumption_compute_service._extract_cl_alpha_from_linear_sweep",
-                return_value=5.7,
+                return_value=(5.7, -2.3),  # gh-871: (cl_alpha_per_rad, alpha_0_deg)
             )
         )
         stack.enter_context(

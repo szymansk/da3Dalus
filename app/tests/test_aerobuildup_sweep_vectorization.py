@@ -269,13 +269,15 @@ class TestEquivalenceAgainstSerialBaseline:
         coeffs, *_ = np.linalg.lstsq(a_mat, cls[mask], rcond=None)
         serial_cl_alpha = float(coeffs[0])
 
-        # Both either produce a number or both reject via the R² gate.
-        if vectorised is None:
+        # gh-871: now returns (cl_alpha_per_rad, alpha_0_deg). Both either
+        # produce numbers or both reject via the R² gate.
+        cl_alpha_v, alpha_0_v = vectorised
+        if cl_alpha_v is None:
             # If the vectorised path rejected, the serial fit on the same
             # data should also produce a low R². We don't recompute R² here
             # — leave the rejection to the production-side gate.
             pytest.skip("vectorised CL_α extraction rejected via R² gate")
-        assert abs(vectorised - serial_cl_alpha) < 1e-9
+        assert abs(cl_alpha_v - serial_cl_alpha) < 1e-9
 
 
 # ---------------------------------------------------------------------------
