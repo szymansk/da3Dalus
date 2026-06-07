@@ -168,10 +168,34 @@ export function MetricsDashboard() {
 
   return (
     <div className="w-full" data-testid="metrics-band">
+      {/* persistent handle — sits ABOVE the band; toggles it open/closed */}
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        aria-expanded={open}
+        aria-label={open ? "Collapse metrics" : "Expand metrics"}
+        className="flex h-8 w-full shrink-0 items-center gap-3 border-t border-border bg-sidebar px-4 text-muted-foreground transition-colors hover:bg-sidebar-accent hover:text-foreground"
+      >
+        {open ? <ChevronDown size={15} /> : <ChevronUp size={15} />}
+        <span className="text-[12px] font-medium">Metrics</span>
+        {!open && (
+          <span className="flex min-w-0 items-center gap-2 truncate font-[family-name:var(--font-geist-mono)] text-[11px] text-subtle-foreground">
+            {collapsedItems.map((c, i) => (
+              <span key={c.sym} className="whitespace-nowrap">
+                {i > 0 && <span className="mr-2 text-border">·</span>}
+                {renderSymbol(c.sym)} <span className="text-muted-foreground">{c.val}</span>
+              </span>
+            ))}
+          </span>
+        )}
+        <span className="flex-1" />
+        <span className="text-[10px] text-subtle-foreground">{open ? "hide" : "show"}</span>
+      </button>
+
       {/* sliding band — collapses to 0 height via the grid-rows trick */}
       <div className={`grid transition-[grid-template-rows] duration-300 ease-out ${open ? "grid-rows-[1fr]" : "grid-rows-[0fr]"}`}>
         <div className="min-h-0 overflow-hidden">
-          <div className="h-[15vh] min-h-[118px] w-full pb-2" data-testid="metrics-band-body">
+          <div className="h-[15vh] min-h-[118px] w-full pt-2" data-testid="metrics-band-body">
             <div className="flex h-full w-full gap-2">
               {IDS.map((id) => (
                 <MetricColumn
@@ -190,30 +214,6 @@ export function MetricsDashboard() {
           </div>
         </div>
       </div>
-
-      {/* persistent handle — toggles the whole band open/closed (drawer down) */}
-      <button
-        type="button"
-        onClick={() => setOpen((v) => !v)}
-        aria-expanded={open}
-        aria-label={open ? "Collapse metrics" : "Expand metrics"}
-        className="flex h-8 w-full shrink-0 items-center gap-3 rounded-t-lg border-t border-border bg-sidebar px-4 text-muted-foreground transition-colors hover:bg-sidebar-accent hover:text-foreground"
-      >
-        {open ? <ChevronDown size={15} /> : <ChevronUp size={15} />}
-        <span className="text-[12px] font-medium">Metrics</span>
-        {!open && (
-          <span className="flex min-w-0 items-center gap-2 truncate font-[family-name:var(--font-geist-mono)] text-[11px] text-subtle-foreground">
-            {collapsedItems.map((c, i) => (
-              <span key={c.sym} className="whitespace-nowrap">
-                {i > 0 && <span className="mr-2 text-border">·</span>}
-                {renderSymbol(c.sym)} <span className="text-muted-foreground">{c.val}</span>
-              </span>
-            ))}
-          </span>
-        )}
-        <span className="flex-1" />
-        <span className="text-[10px] text-subtle-foreground">{open ? "hide" : "show"}</span>
-      </button>
     </div>
   );
 }
