@@ -25,6 +25,7 @@ import {
   computeCLmd,
   computeEMax,
   computeRho,
+  rhoThresholdsForProfile,
 } from "@/lib/polar";
 
 // ---------------------------------------------------------------------------
@@ -244,13 +245,21 @@ const E_ZONES: readonly GaugeZone[] = [
 const E_MIN = 0.5;
 const E_MAX = 1.0;
 
-const RHO_ZONES: readonly GaugeZone[] = [
-  { from: 0, to: 0.5, quality: "bad" },
-  { from: 0.5, to: 0.75, quality: "caution" },
-  { from: 0.75, to: 1, quality: "good" },
-];
 const RHO_MIN = 0;
 const RHO_MAX = 1;
+
+/** Build ρ gauge zones that mirror rhoThresholdsForProfile / rhoColorClassName. */
+function buildRhoZones(isGlider: boolean): readonly GaugeZone[] {
+  const { amber } = rhoThresholdsForProfile(isGlider);
+  // Lower ρ is better (ρ→0 means plenty of lift margin at best-glide speed).
+  // Colour mapping mirrors rhoColorClassName: [0, amber) → good, [amber, 1] → caution.
+  // ρ ≥ 1 is physically degenerate (V_md = V_stall) — treat the [1.0, 1.0] edge as bad,
+  // but since we clamp to [RHO_MIN, RHO_MAX=1] this appears at the very top of the gauge.
+  return [
+    { from: RHO_MIN, to: amber, quality: "good" },
+    { from: amber, to: RHO_MAX, quality: "caution" },
+  ];
+}
 
 const SM_ZONES: readonly GaugeZone[] = [
   { from: -5, to: 3, quality: "bad" },
@@ -308,6 +317,9 @@ export function toQualityGauges(
     ? ((ctx.x_np_m - ctx.cg_agg_m) / ctx.mac_m) * 100
     : null;
 
+  const isGlider = !!ctx.is_glider;
+  const rhoZones = buildRhoZones(isGlider);
+
   const gauges: GaugeData[] = [];
 
   // (L/D)_max
@@ -339,15 +351,16 @@ export function toQualityGauges(
     });
   }
 
-  // ρ (polar health)
+  // ρ (polar health) — zones derived from rhoThresholdsForProfile so the
+  // colouring matches PolarChipRow / rhoColorClassName for both powered and glider.
   gauges.push({
     symbol: "ρ",
     label: "Polar health",
     value: rhoValue,
     min: RHO_MIN,
     max: RHO_MAX,
-    zones: RHO_ZONES,
-    quality: fallbackUsed ? "bad" : zoneQuality(Math.max(rhoValue, RHO_MIN), RHO_ZONES),
+    zones: rhoZones,
+    quality: fallbackUsed ? "bad" : zoneQuality(Math.max(rhoValue, RHO_MIN), rhoZones),
     description: "(C_L,md / C_L,max)² — how much margin to stall at best glide.",
     format: (v) => v.toFixed(2),
   });
@@ -374,6 +387,16 @@ export function toQualityGauges(
     const l = ctx.landing_field_length_m;
     const lClamped = Math.min(Math.max(l, L_LAND_MIN), L_LAND_MAX);
     const sufficient = ctx.landing_field_sufficient;
+    // Quality derives from the real sufficiency flag when present; fall back to
+    // the threshold-based zone only when the flag is absent (null / undefined).
+    let lQuality: Quality;
+    if (sufficient === true) {
+      lQuality = "good";
+    } else if (sufficient === false) {
+      lQuality = "bad";
+    } else {
+      lQuality = zoneQuality(lClamped, L_LAND_ZONES);
+    }
     const formatFn = (v: number): string => {
       if (sufficient === true) return `${v.toFixed(0)} m ✓`;
       if (sufficient === false) return `${v.toFixed(0)} m ✗`;
@@ -386,8 +409,8 @@ export function toQualityGauges(
       min: L_LAND_MIN,
       max: L_LAND_MAX,
       zones: L_LAND_ZONES,
-      quality: zoneQuality(lClamped, L_LAND_ZONES),
-      description: "Required landing field length vs. available 35 m.",
+      quality: lQuality,
+      description: "Required landing field length — ✓/✗ when available field length is known.",
       format: formatFn,
     });
   }

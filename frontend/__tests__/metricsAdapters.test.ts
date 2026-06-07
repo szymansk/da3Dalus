@@ -19,6 +19,7 @@ import {
   toQualityRaw,
   toTail,
   toPowertrainItems,
+  toPMarginGauge,
 } from "@/lib/metricsAdapters";
 
 // ---------------------------------------------------------------------------
@@ -400,23 +401,25 @@ describe("toQualityGauges", () => {
     expect(lGauge.value).toBeCloseTo(24);
   });
 
-  it("polar fallback: (L/D)_max / ρ gauges are omitted or have a sentinel value", () => {
+  it("polar fallback: (L/D)_max gauge is always emitted with sentinel value 0", () => {
     // When e_oswald_fallback_used=true, polar-derived quantities are non-physical.
-    // The adapter must not show garbage — it either omits those gauges or
-    // replaces with a special sentinel (NaN / 0 is not acceptable).
+    // The adapter always emits the gauge with value=0 (sentinel) so BulletGauge
+    // renders a bar at min rather than a garbage number.
     const gauges = toQualityGauges(FALLBACK_CTX);
     const ldGauge = gauges.find((g) => g.symbol === "(L/D)_max");
+    // MUST be present — dropping it would make the quality column layout jump.
+    expect(ldGauge).toBeDefined();
+    expect(ldGauge!.value).toBe(0);
+    expect(ldGauge!.quality).toBe("bad");
+  });
+
+  it("polar fallback: ρ gauge is always emitted with sentinel value 0", () => {
+    const gauges = toQualityGauges(FALLBACK_CTX);
     const rhoGauge = gauges.find((g) => g.symbol === "ρ");
-    // Either omitted entirely, or value is null-like (0 is the documented sentinel)
-    if (ldGauge) {
-      expect(Number.isFinite(ldGauge.value)).toBe(true);
-      // value should be 0 to signal "not computed" to BulletGauge
-      expect(ldGauge.value).toBe(0);
-    }
-    if (rhoGauge) {
-      expect(Number.isFinite(rhoGauge.value)).toBe(true);
-      expect(rhoGauge.value).toBe(0);
-    }
+    // MUST be present — dropping it would silently hide the polar-health gauge.
+    expect(rhoGauge).toBeDefined();
+    expect(rhoGauge!.value).toBe(0);
+    expect(rhoGauge!.quality).toBe("bad");
   });
 
   it("landing field gauge omitted when landing_field_length_m is null", () => {
@@ -473,15 +476,15 @@ describe("toQualityRaw", () => {
     expect(item.value).toMatch(/e\+?\d/i);
   });
 
-  it("k shows dash-string when fallback used", () => {
+  it("k is always present and shows dash-string when fallback used", () => {
+    // The adapter always emits k — if it vanished, the raw row would silently lose a column.
     const items = toQualityRaw(FALLBACK_CTX);
     const kItem = items.find((i) => i.symbol === "k");
-    if (kItem) {
-      expect(kItem.value).toBe("–");
-    }
+    expect(kItem).toBeDefined();
+    expect(kItem!.value).toBe("–");
   });
 
-  it("C_L_md shows empirical backend value even when fit fallback used (sweep-derived, not fit-derived)", () => {
+  it("C_L_md is always present and shows dash when no empirical value and fallback used", () => {
     // cl_at_ld_max from the AeroBuildup sweep is independent of the parabolic fit.
     // When e_oswald_fallback_used=true, only formula-derived C_L_md is suppressed;
     // the empirical backend value (cl_at_ld_max) is always shown (mirrors PolarChipRow).
@@ -497,9 +500,9 @@ describe("toQualityRaw", () => {
     };
     const items = toQualityRaw(ctxNoEmpiricalClMd);
     const item = items.find((i) => i.symbol === "C_L_md");
-    if (item) {
-      expect(item.value).toBe("–");
-    }
+    // MUST be present — silently dropping it would make the row narrower with no feedback.
+    expect(item).toBeDefined();
+    expect(item!.value).toBe("–");
   });
 });
 
@@ -623,9 +626,149 @@ describe("toPowertrainItems", () => {
       warnings: [],
     };
     const result = toPowertrainItems(sparse);
+    // Items must still be present — dropping them would silently remove the powertrain column content.
     const endItem = result.items.find((i) => i.symbol === "Endurance");
-    if (endItem) {
-      expect(endItem.value).toBe("–");
-    }
+    expect(endItem).toBeDefined();
+    expect(endItem!.value).toBe("–");
+    const rangeItem = result.items.find((i) => i.symbol === "Range");
+    expect(rangeItem).toBeDefined();
+    expect(rangeItem!.value).toBe("–");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// toPMarginGauge
+// ---------------------------------------------------------------------------
+describe("toPMarginGauge", () => {
+  it("returns null when endurance is null", () => {
+    expect(toPMarginGauge(null)).toBeNull();
+    expect(toPMarginGauge(undefined)).toBeNull();
+  });
+
+  it("returns null when p_margin is null", () => {
+    const sparse: EnduranceData = {
+      ...NOMINAL_ENDURANCE,
+      p_margin: null,
+    };
+    expect(toPMarginGauge(sparse)).toBeNull();
+  });
+
+  it("nominal p_margin produces a gauge with correct value and symbol", () => {
+    const gauge = toPMarginGauge(NOMINAL_ENDURANCE);
+    // MUST be non-null — dropping P_margin gauge would make it vanish with no failure.
+    expect(gauge).not.toBeNull();
+    expect(gauge!.symbol).toBe("P_margin");
+    expect(gauge!.value).toBeCloseTo(NOMINAL_ENDURANCE.p_margin!);
+  });
+
+  it("p_margin=0.18 maps to quality=caution (P_MARGIN_ZONES: [0, 0.2) is caution)", () => {
+    const gauge = toPMarginGauge(NOMINAL_ENDURANCE);
+    expect(gauge!.quality).toBe("caution");
+  });
+
+  it("p_margin=0.35 maps to quality=good ([0.2, 0.6] is good)", () => {
+    const gauge = toPMarginGauge({ ...NOMINAL_ENDURANCE, p_margin: 0.35 });
+    expect(gauge!.quality).toBe("good");
+  });
+
+  it("p_margin=-0.1 maps to quality=bad (negative = not enough power)", () => {
+    const gauge = toPMarginGauge({ ...NOMINAL_ENDURANCE, p_margin: -0.1 });
+    expect(gauge!.quality).toBe("bad");
+  });
+
+  it("format function returns percentage string", () => {
+    const gauge = toPMarginGauge({ ...NOMINAL_ENDURANCE, p_margin: 0.35 });
+    expect(gauge!.format!(gauge!.value)).toMatch(/%/);
+  });
+
+  it("p_margin is clamped to [P_MARGIN_MIN, P_MARGIN_MAX] range", () => {
+    const gaugeLow = toPMarginGauge({ ...NOMINAL_ENDURANCE, p_margin: -1.5 });
+    expect(gaugeLow!.value).toBeGreaterThanOrEqual(-0.3);
+    const gaugeHigh = toPMarginGauge({ ...NOMINAL_ENDURANCE, p_margin: 2.0 });
+    expect(gaugeHigh!.value).toBeLessThanOrEqual(0.6);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Landing tri-state format (issue 7)
+// ---------------------------------------------------------------------------
+describe("toQualityGauges — L_land tri-state format", () => {
+  it("sufficient=true: format(value) contains ✓", () => {
+    const gauges = toQualityGauges({ ...NOMINAL_CTX, landing_field_sufficient: true });
+    const lGauge = gauges.find((g) => g.symbol === "L_land")!;
+    expect(lGauge).toBeDefined();
+    const formatted = lGauge.format!(lGauge.value);
+    expect(formatted).toContain("✓");
+    expect(formatted).not.toContain("✗");
+  });
+
+  it("sufficient=false: format(value) contains ✗", () => {
+    const gauges = toQualityGauges({ ...NOMINAL_CTX, landing_field_sufficient: false });
+    const lGauge = gauges.find((g) => g.symbol === "L_land")!;
+    expect(lGauge).toBeDefined();
+    const formatted = lGauge.format!(lGauge.value);
+    expect(formatted).toContain("✗");
+    expect(formatted).not.toContain("✓");
+  });
+
+  it("sufficient=null: format(value) contains neither ✓ nor ✗", () => {
+    const gauges = toQualityGauges({ ...NOMINAL_CTX, landing_field_sufficient: null });
+    const lGauge = gauges.find((g) => g.symbol === "L_land")!;
+    expect(lGauge).toBeDefined();
+    const formatted = lGauge.format!(lGauge.value);
+    expect(formatted).not.toContain("✓");
+    expect(formatted).not.toContain("✗");
+  });
+
+  it("sufficient=true: quality is 'good' regardless of threshold", () => {
+    // A landing run of 50 m (above the old 35 m zone) but with sufficient=true
+    // should produce quality='good' because the field flag wins.
+    const gauges = toQualityGauges({
+      ...NOMINAL_CTX,
+      landing_field_length_m: 50,
+      landing_field_sufficient: true,
+    });
+    const lGauge = gauges.find((g) => g.symbol === "L_land")!;
+    expect(lGauge.quality).toBe("good");
+  });
+
+  it("sufficient=false: quality is 'bad' regardless of threshold", () => {
+    // A landing run of 10 m (below 35 m) but with sufficient=false should be bad.
+    const gauges = toQualityGauges({
+      ...NOMINAL_CTX,
+      landing_field_length_m: 10,
+      landing_field_sufficient: false,
+    });
+    const lGauge = gauges.find((g) => g.symbol === "L_land")!;
+    expect(lGauge.quality).toBe("bad");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// toTail — additional classification branches (issue 9)
+// ---------------------------------------------------------------------------
+describe("toTail — above_range and out_of_physical_range classifications", () => {
+  it("above_range classification maps to quality=bad", () => {
+    const aboveRangeTail: TailSizingResult = {
+      ...NOMINAL_TAIL,
+      v_h_current: 0.75,
+      classification: "above_range",
+      classification_h: "above_range",
+    };
+    const result = toTail(aboveRangeTail, NOMINAL_CTX);
+    expect(result).not.toBeNull();
+    expect(result!.gauge.quality).toBe("bad");
+  });
+
+  it("out_of_physical_range classification maps to quality=bad", () => {
+    const outOfRangeTail: TailSizingResult = {
+      ...NOMINAL_TAIL,
+      v_h_current: 0.95,
+      classification: "out_of_physical_range",
+      classification_h: "out_of_physical_range",
+    };
+    const result = toTail(outOfRangeTail, NOMINAL_CTX);
+    expect(result).not.toBeNull();
+    expect(result!.gauge.quality).toBe("bad");
   });
 });

@@ -5,6 +5,7 @@
 // (compact, equal-width column) · "large" (full width). The band height stays
 // constant (~20vh) in every mode; content scrolls if it overflows.
 
+import type { KeyboardEvent } from "react";
 import { Maximize2, X } from "lucide-react";
 
 export type ColumnMode = "tab" | "tile" | "large";
@@ -50,6 +51,15 @@ export function MetricColumn({
       data-testid={`metric-col-${title.toLowerCase()}`}
       data-mode={mode}
       onClick={isLarge ? undefined : onActivate}
+      {...(!isLarge && {
+        tabIndex: 0,
+        role: "button",
+        "aria-label": `Expand ${title}`,
+        onKeyDown: (e: KeyboardEvent<HTMLElement>) => {
+          if (e.key === "Enter") { onActivate(); }
+          if (e.key === " ") { e.preventDefault(); onActivate(); }
+        },
+      })}
     >
       <header className="flex shrink-0 items-center gap-1.5 px-2.5 py-1.5">
         <Icon size={13} className="text-primary" />

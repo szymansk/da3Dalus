@@ -268,7 +268,7 @@ function GeometryLarge({ geometryItems, balance, tail, loading }: GeometryColPro
     <div className="flex h-full items-stretch gap-4 pt-1">
       <div className="flex h-full min-h-0 flex-[2] items-center justify-center">
         <PlanformDiagram
-          bRef={balance != null ? balance.macLength.toFixed(3) : "–"}
+          bRef={geometryItems.find((m) => m.symbol === "B_ref")?.value ?? "–"}
           mac={balance != null ? balance.macLength.toFixed(3) : "–"}
           sRef={geometryItems.find((m) => m.symbol === "S_ref")?.value ?? "–"}
           ar={geometryItems.find((m) => m.symbol === "AR")?.value ?? "–"}
