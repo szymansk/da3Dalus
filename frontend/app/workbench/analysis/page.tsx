@@ -11,13 +11,11 @@ import { useWings, useAllWingData, useWing } from "@/hooks/useWings";
 import { useFlightEnvelope } from "@/hooks/useFlightEnvelope";
 import { useOperatingPoints, extractControlSurfaces } from "@/hooks/useOperatingPoints";
 import { useAnalysisStatus } from "@/hooks/useAnalysisStatus";
-import { useMassSweep } from "@/hooks/useMassSweep";
 import { useDesignAssumptions } from "@/hooks/useDesignAssumptions";
 import { AnalysisViewerPanel, type Tab } from "@/components/workbench/AnalysisViewerPanel";
 import { AnalysisConfigPanel } from "@/components/workbench/AnalysisConfigPanel";
 import { AvlGeometryEditor } from "@/components/workbench/AvlGeometryEditor";
 import { AssumptionsPanel } from "@/components/workbench/AssumptionsPanel";
-import { MassSweepPanel } from "@/components/workbench/MassSweepPanel";
 
 export default function AnalysisPage() {
   const { aeroplaneId, hydrated, selectedWing, openPicker } = useAeroplaneContext();
@@ -27,7 +25,6 @@ export default function AnalysisPage() {
   const envelope = useFlightEnvelope(aeroplaneId);
   const ops = useOperatingPoints(aeroplaneId);
   const analysisStatus = useAnalysisStatus(aeroplaneId);
-  const massSweep = useMassSweep(aeroplaneId);
   const assumptions = useDesignAssumptions(aeroplaneId);
   const currentMassKg = useMemo(() => {
     const massAssumption = assumptions.data?.assumptions.find((a) => a.parameter_name === "mass");
@@ -108,20 +105,7 @@ export default function AnalysisPage() {
             onEditAvlGeometry={() => setAvlEditorOpen(true)}
             wingXSecs={wing?.x_secs}
             wingSymmetric={wing?.symmetric}
-            assumptionsSlot={
-              <>
-                <AssumptionsPanel aeroplaneId={aeroplaneId} />
-                <div className="mt-6">
-                  <MassSweepPanel
-                    data={massSweep.data}
-                    isComputing={massSweep.isComputing}
-                    error={massSweep.error}
-                    onCompute={massSweep.compute}
-                    currentMassKg={currentMassKg}
-                  />
-                </div>
-              </>
-            }
+            assumptionsSlot={<AssumptionsPanel aeroplaneId={aeroplaneId} />}
             envelope={envelope.data}
             isComputingEnvelope={envelope.isComputing}
             envelopeError={envelope.error}
