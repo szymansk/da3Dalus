@@ -55,16 +55,21 @@ export function EnvelopeAxis({
   const zones: { from: number; to: number; kind: SpeedMarker["kind"] }[] = [];
   let prev = 0;
   for (const m of sorted) {
-    zones.push({ from: prev, to: m.value, kind: m.kind });
+    // gh-897: coincident markers (e.g. V_md == V_cruise) would push a
+    // zero-width zone that renders nothing and collided on the zone key —
+    // skip them.
+    if (m.value > prev) {
+      zones.push({ from: prev, to: m.value, kind: m.kind });
+    }
     prev = m.value;
   }
 
   return (
     <div className={large ? "pt-10 pb-1" : "py-4"}>
       <div className="relative h-2 w-full rounded-pill bg-card-muted">
-        {zones.map((z) => (
+        {zones.map((z, i) => (
           <div
-            key={`${z.kind}-${z.to}`}
+            key={`zone-${i}-${z.kind}`}
             className={`absolute top-0 h-2 ${ZONE_COLOR[z.kind]} opacity-25`}
             style={{ left: pos(z.from), width: `${((z.to - z.from) / max) * 100}%` }}
           />
