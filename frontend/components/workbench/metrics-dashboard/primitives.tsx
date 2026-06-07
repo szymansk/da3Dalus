@@ -4,6 +4,7 @@
 // Pure presentational components driven by props. Exact numbers are always
 // available: inline where there is room, otherwise on hover (tooltip).
 
+import { renderSymbol } from "@/components/workbench/renderSymbol";
 import type { GaugeData, MetricItem, Quality, SpeedMarker } from "./metricsMock";
 
 const ZONE_COLOR: Record<SpeedMarker["kind"], string> = {
@@ -78,15 +79,15 @@ export function EnvelopeAxis({
             <div className={`h-3.5 w-[3px] rounded-full ${ZONE_COLOR[m.kind]}`} />
             {large && (
               // slanted labels ABOVE the axis fan out instead of colliding
-              <span className="absolute bottom-2.5 left-1/2 origin-bottom-left -rotate-[20deg] whitespace-nowrap font-[family-name:var(--font-geist-mono)] text-[9px] text-muted-foreground">
-                {m.symbol}
+              <span className="absolute bottom-2.5 left-1/2 origin-bottom-left -rotate-[20deg] whitespace-nowrap font-[family-name:var(--font-geist-mono)] text-[10px] text-muted-foreground">
+                {renderSymbol(m.symbol)}
               </span>
             )}
             {/* hover/focus detail tooltip — below the axis in large (clears the slanted labels), above in compact */}
             <span
               className={`pointer-events-none absolute left-1/2 z-50 hidden -translate-x-1/2 whitespace-nowrap rounded-lg border border-border bg-card px-2 py-1 font-[family-name:var(--font-geist-mono)] text-[10px] leading-snug shadow-lg group-hover/m:block group-focus-within/m:block ${large ? "top-5" : "bottom-5"}`}
             >
-              <span className="font-semibold text-foreground">{m.symbol}</span>
+              <span className="font-semibold text-foreground">{renderSymbol(m.symbol)}</span>
               <span className="text-subtle-foreground"> · {m.label}</span>
               <br />
               <span className="text-foreground">{m.value.toFixed(1)} m/s{m.aoa != null ? ` @ ${m.aoa.toFixed(1)}°` : ""}</span>
@@ -99,7 +100,7 @@ export function EnvelopeAxis({
           {markers.map((m) => (
             <span key={m.symbol} className="font-[family-name:var(--font-geist-mono)] text-[11px] text-muted-foreground">
               <span className={`mr-1 inline-block h-2 w-2 rounded-full align-middle ${ZONE_COLOR[m.kind]}`} />
-              {m.symbol} {m.value.toFixed(1)}
+              {renderSymbol(m.symbol)} {m.value.toFixed(1)}
               {m.aoa != null && <span className="text-subtle-foreground"> @{m.aoa.toFixed(1)}°</span>}
             </span>
           ))}
@@ -117,7 +118,7 @@ export function BulletGauge({ g, large = false }: { readonly g: GaugeData; reado
   return (
     <div className="group/m relative" tabIndex={0}>
       <div className="mb-1 flex items-baseline justify-between gap-2">
-        <span className="font-[family-name:var(--font-geist-mono)] text-[11px] text-muted-foreground">{g.symbol}</span>
+        <span className="font-[family-name:var(--font-geist-mono)] text-[11px] text-muted-foreground">{renderSymbol(g.symbol)}</span>
         <span className={`font-[family-name:var(--font-geist-mono)] text-[12px] font-semibold ${QUALITY_TEXT[g.quality]}`}>
           {fmt(g.value)}
         </span>
@@ -196,7 +197,7 @@ export function MacCgDiagram({
 export function MetricCard({ item, large = false }: { readonly item: MetricItem; readonly large?: boolean }) {
   return (
     <div className="group/m relative flex min-w-[112px] flex-col rounded-md border border-border bg-card-muted px-3 py-2" tabIndex={0}>
-      <span className="font-[family-name:var(--font-geist-mono)] text-[10px] uppercase tracking-wide text-subtle-foreground">{item.symbol}</span>
+      <span className="font-[family-name:var(--font-geist-mono)] text-[10px] uppercase tracking-wide text-subtle-foreground">{renderSymbol(item.symbol)}</span>
       <span className="font-[family-name:var(--font-geist-mono)] text-[14px] font-semibold text-foreground">
         {item.value}
         {item.unit && <span className="ml-1 text-[11px] font-normal text-muted-foreground">{item.unit}</span>}

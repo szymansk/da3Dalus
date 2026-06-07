@@ -7,6 +7,7 @@
 
 import { useState } from "react";
 import { Wind, Scale, Gauge, Ruler, BatteryCharging } from "lucide-react";
+import { renderSymbol } from "@/components/workbench/renderSymbol";
 import { MetricColumn, type ColumnMode } from "./MetricColumn";
 import { EnvelopeAxis, BulletGauge, MetricCard, MacCgDiagram, Tip } from "./primitives";
 import { PlanformDiagram } from "./PlanformDiagram";
@@ -24,7 +25,7 @@ function MiniKV({ items }: { readonly items: readonly MetricItem[] }) {
     <div className="grid grid-cols-2 gap-x-2 gap-y-1.5">
       {items.map((m) => (
         <div key={m.symbol} className="group/m relative min-w-0" tabIndex={0}>
-          <div className="truncate font-[family-name:var(--font-geist-mono)] text-[9px] uppercase tracking-wide text-subtle-foreground">{m.symbol}</div>
+          <div className="truncate font-[family-name:var(--font-geist-mono)] text-[10px] uppercase tracking-wide text-subtle-foreground">{renderSymbol(m.symbol)}</div>
           <div className="truncate font-[family-name:var(--font-geist-mono)] text-[12px] font-semibold text-foreground">
             {m.value}{m.unit && <span className="ml-0.5 text-[9px] font-normal text-muted-foreground">{m.unit}</span>}
           </div>
@@ -93,7 +94,7 @@ export function MetricsDashboard() {
           <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 border-t border-border pt-1.5">
             {gueteRawMock.map((r) => (
               <span key={r.symbol} className="group/m relative font-[family-name:var(--font-geist-mono)] text-[10px] text-muted-foreground" tabIndex={0}>
-                {r.symbol} <span className="text-foreground">{r.value}</span>
+                {renderSymbol(r.symbol)} <span className="text-foreground">{r.value}</span>
                 <Tip>{r.label} — {r.description}</Tip>
               </span>
             ))}

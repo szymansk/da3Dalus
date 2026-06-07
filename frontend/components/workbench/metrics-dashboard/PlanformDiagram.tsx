@@ -1,5 +1,7 @@
 "use client";
 
+import { renderSymbol } from "@/components/workbench/renderSymbol";
+
 // Click-dummy (#881) — schematic top-view planform with dimension annotations,
 // like a technical drawing. SVG draws only the shapes + dimension lines; the
 // labels are real HTML overlaid on top (crisp text at any band height, instead
@@ -54,10 +56,10 @@ export function PlanformDiagram({
 
       {annotate && (
         <div className="pointer-events-none absolute inset-0 font-[family-name:var(--font-geist-mono)]">
-          <Label x={120} y={126} anchor="center" className="text-foreground">B_ref {bRef} m</Label>
-          <Label x={68} y={64} anchor="end" className="text-primary">MAC {mac} m</Label>
-          <Label x={150} y={40} anchor="start" className="text-muted-foreground">S_ref {sRef} m²</Label>
-          <Label x={150} y={92} anchor="start" className="text-muted-foreground">AR {ar}</Label>
+          <Label x={120} y={126} anchor="center" className="text-foreground">{renderSymbol("B_ref")} {bRef} m</Label>
+          <Label x={68} y={64} anchor="end" className="text-primary">{renderSymbol("MAC")} {mac} m</Label>
+          <Label x={150} y={40} anchor="start" className="text-muted-foreground">{renderSymbol("S_ref")} {sRef} m²</Label>
+          <Label x={150} y={92} anchor="start" className="text-muted-foreground">{renderSymbol("AR")} {ar}</Label>
         </div>
       )}
     </div>
