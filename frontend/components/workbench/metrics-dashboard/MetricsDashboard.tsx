@@ -68,7 +68,7 @@ export function MetricsDashboard() {
     guete: {
       title: "Güte", icon: Gauge, headline: "(L/D) 21.0 · ρ 0.70 ⚠",
       tile: (
-        <div className="flex flex-col gap-2 pt-1">
+        <div className="flex flex-col gap-1 pt-0.5">
           {gueteMock.slice(0, 3).map((g) => <BulletGauge key={g.symbol} g={g} />)}
         </div>
       ),
@@ -91,20 +91,20 @@ export function MetricsDashboard() {
     geometry: {
       title: "Geometry", icon: Ruler, headline: "AR 11.3 · SM 8.1% · V_H 0.58",
       tile: (
-        <div className="flex h-full flex-col gap-1 pt-1">
-          <div className="flex min-h-0 flex-1 items-center justify-center">
+        <div className="flex h-full items-center gap-2 pt-0.5">
+          <div className="h-full min-h-0 shrink-0">
             <PlanformDiagram bRef="1.50" mac="0.135" sRef="0.200" ar="11.3" cgFrac={cgFrac} npFrac={npFrac} sm={smStr} smOk={smInTarget} />
           </div>
-          <div className="flex items-end justify-between gap-2">
-            <div className="min-w-0 flex-1"><MiniKV items={geometryMock} /></div>
-            <div className="flex shrink-0 gap-3 text-right font-[family-name:var(--font-geist-mono)]">
+          <div className="flex min-w-0 flex-1 flex-col gap-1">
+            <MiniKV items={geometryMock} />
+            <div className="flex gap-3 font-[family-name:var(--font-geist-mono)]">
               <div className="group/m relative" tabIndex={0}>
-                <div className={`text-[15px] font-bold leading-none ${smInTarget ? "text-success" : "text-amber-400"}`}>{balanceMock.smPercent.toFixed(1)}%</div>
+                <div className={`text-[14px] font-bold leading-none ${smInTarget ? "text-success" : "text-amber-400"}`}>{balanceMock.smPercent.toFixed(1)}%</div>
                 <div className="text-[9px] uppercase tracking-wide text-subtle-foreground">SM</div>
                 <Tip>Static margin — longitudinal stability as % of MAC (CG ahead of neutral point). Target {balanceMock.targetSmMin}–{balanceMock.targetSmMax}%.</Tip>
               </div>
               <div className="group/m relative" tabIndex={0}>
-                <div className={`text-[15px] font-bold leading-none ${QCOL[tailVhGauge.quality]}`}>{tailVhGauge.value.toFixed(2)}</div>
+                <div className={`text-[14px] font-bold leading-none ${QCOL[tailVhGauge.quality]}`}>{tailVhGauge.value.toFixed(2)}</div>
                 <div className="text-[9px] uppercase tracking-wide text-subtle-foreground">{renderSymbol("V_H")}</div>
                 <Tip>{tailVhGauge.label} — {tailVhGauge.description}</Tip>
               </div>
@@ -158,7 +158,7 @@ export function MetricsDashboard() {
   };
 
   return (
-    <div className="h-[20vh] min-h-[140px] w-full" data-testid="metrics-band">
+    <div className="h-[15vh] min-h-[118px] w-full" data-testid="metrics-band">
       <div className="flex h-full w-full gap-2">
         {IDS.map((id) => (
           <MetricColumn

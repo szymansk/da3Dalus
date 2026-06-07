@@ -117,7 +117,7 @@ export function BulletGauge({ g, large = false }: { readonly g: GaugeData; reado
   const fmt = g.format ?? ((v: number) => String(v));
   return (
     <div className="group/m relative" tabIndex={0}>
-      <div className="mb-1 flex items-baseline justify-between gap-2">
+      <div className="mb-0.5 flex items-baseline justify-between gap-2">
         <span className="font-[family-name:var(--font-geist-mono)] text-[11px] text-muted-foreground">{renderSymbol(g.symbol)}</span>
         <span className={`font-[family-name:var(--font-geist-mono)] text-[12px] font-semibold ${QUALITY_TEXT[g.quality]}`}>
           {fmt(g.value)}
