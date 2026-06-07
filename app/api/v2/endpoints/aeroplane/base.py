@@ -24,6 +24,7 @@ from app.schemas.api_responses import (
     OperationStatusResponse,
 )
 from app.services import aeroplane_service
+from app.services import aeroplane_version_service
 
 logger = logging.getLogger(__name__)
 
@@ -66,10 +67,28 @@ def _raise_http_from_domain(exc: ServiceException) -> None:
     tags=["aeroplanes"],
     operation_id="get_all_aeroplanes",
 )
-async def get_aeroplanes(db: Annotated[Session, Depends(get_db)]) -> GetAeroplaneResponse:
-    """Returns a list of all aeroplanes names with ids alphabetically sorted by the name."""
+async def get_aeroplanes(
+    db: Annotated[Session, Depends(get_db)],
+    heads_only: Annotated[
+        bool,
+        Query(
+            description=(
+                "When True (default), only branch-head aeroplane nodes are returned "
+                "(hides immutable snapshots). Set to False to include all rows."
+            )
+        ),
+    ] = True,
+) -> GetAeroplaneResponse:
+    """Returns a list of all aeroplanes names with ids alphabetically sorted by the name.
+
+    By default (``heads_only=True``) only branch-head / legacy rows are returned so
+    the aeroplane picker does not surface immutable snapshot nodes.
+    """
     try:
-        aeroplanes = aeroplane_service.list_all_aeroplanes(db)
+        if heads_only:
+            aeroplanes = aeroplane_version_service.list_aeroplanes_heads_only(db)
+        else:
+            aeroplanes = aeroplane_service.list_all_aeroplanes(db)
         items = [
             GetAeroplaneResponse.NameIdMap(
                 name=ap.name,
