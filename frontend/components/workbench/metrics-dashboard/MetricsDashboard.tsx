@@ -91,24 +91,23 @@ export function MetricsDashboard() {
     geometry: {
       title: "Geometry", icon: Ruler, headline: "AR 11.3 · SM 8.1% · V_H 0.58",
       tile: (
-        <div className="flex h-full items-center gap-2 pt-0.5">
-          <div className="h-full min-h-0 shrink-0">
-            <PlanformDiagram bRef="1.50" mac="0.135" sRef="0.200" ar="11.3" cgFrac={cgFrac} npFrac={npFrac} sm={smStr} smOk={smInTarget} />
-          </div>
-          <div className="flex min-w-0 flex-1 flex-col gap-1">
-            <MiniKV items={geometryMock} />
-            <div className="flex gap-3 font-[family-name:var(--font-geist-mono)]">
-              <div className="group/m relative" tabIndex={0}>
-                <div className={`text-[14px] font-bold leading-none ${smInTarget ? "text-success" : "text-amber-400"}`}>{balanceMock.smPercent.toFixed(1)}%</div>
-                <div className="text-[9px] uppercase tracking-wide text-subtle-foreground">SM</div>
-                <Tip>Static margin — longitudinal stability as % of MAC (CG ahead of neutral point). Target {balanceMock.targetSmMin}–{balanceMock.targetSmMax}%.</Tip>
-              </div>
-              <div className="group/m relative" tabIndex={0}>
-                <div className={`text-[14px] font-bold leading-none ${QCOL[tailVhGauge.quality]}`}>{tailVhGauge.value.toFixed(2)}</div>
-                <div className="text-[9px] uppercase tracking-wide text-subtle-foreground">{renderSymbol("V_H")}</div>
-                <Tip>{tailVhGauge.label} — {tailVhGauge.description}</Tip>
-              </div>
+        <div className="grid h-full grid-cols-3 content-center gap-x-3 gap-y-2 pt-0.5 font-[family-name:var(--font-geist-mono)]">
+          {geometryMock.map((m) => (
+            <div key={m.symbol} className="group/m relative min-w-0" tabIndex={0}>
+              <div className="truncate text-[10px] uppercase tracking-wide text-subtle-foreground">{renderSymbol(m.symbol)}</div>
+              <div className="truncate text-[13px] font-semibold text-foreground">{m.value}{m.unit && <span className="ml-0.5 text-[9px] font-normal text-muted-foreground">{m.unit}</span>}</div>
+              <Tip>{m.label} — {m.description}</Tip>
             </div>
+          ))}
+          <div className="group/m relative" tabIndex={0}>
+            <div className="text-[10px] uppercase tracking-wide text-subtle-foreground">SM</div>
+            <div className={`text-[13px] font-bold ${smInTarget ? "text-success" : "text-amber-400"}`}>{balanceMock.smPercent.toFixed(1)}%</div>
+            <Tip>Static margin — longitudinal stability as % of MAC (CG ahead of neutral point). Target {balanceMock.targetSmMin}–{balanceMock.targetSmMax}%.</Tip>
+          </div>
+          <div className="group/m relative" tabIndex={0}>
+            <div className="text-[10px] uppercase tracking-wide text-subtle-foreground">{renderSymbol("V_H")}</div>
+            <div className={`text-[13px] font-bold ${QCOL[tailVhGauge.quality]}`}>{tailVhGauge.value.toFixed(2)}</div>
+            <Tip>{tailVhGauge.label} — {tailVhGauge.description}</Tip>
           </div>
         </div>
       ),
