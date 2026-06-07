@@ -752,7 +752,11 @@ class CopilotMessageModel(Base):
         nullable=False,
     )
 
-    aeroplane = relationship("AeroplaneModel", back_populates="copilot_messages")
+    aeroplane = relationship(
+        "AeroplaneModel",
+        back_populates="copilot_messages",
+        foreign_keys=[aeroplane_id],
+    )
 
 
 
