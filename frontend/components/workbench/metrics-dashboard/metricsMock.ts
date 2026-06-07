@@ -144,6 +144,11 @@ export const geometryMock: readonly MetricItem[] = [
 ];
 
 // ── Tail sizing (RC rules of thumb; real data: GET /tail-sizing, gh-491) ──
+// The V_H target band is MISSION-dependent — the backend returns aircraft_class_used.
+export const tailMission = "sport"; // would come from aircraft_class_used
+export const tailBandsNote =
+  "V_H target band depends on aircraft type: trainer 0.60–0.70, sport 0.50–0.60, aerobatic 0.45–0.55, glider ~0.45–0.60. RC rule of thumb (rcplanedesigner / Lennon) — defer to Scholz for UAV / full-scale.";
+
 export const tailVhGauge: GaugeData = {
   symbol: "V_H", label: "H-tail volume coef.", value: 0.58, min: 0.3, max: 0.8, quality: "good",
   zones: [
@@ -151,7 +156,7 @@ export const tailVhGauge: GaugeData = {
     { from: 0.5, to: 0.6, quality: "good" }, { from: 0.6, to: 0.65, quality: "caution" },
     { from: 0.65, to: 0.8, quality: "bad" },
   ],
-  description: "V_H = S_HT·l_HT/(S_W·MAC). Sport target 0.50–0.60 (RC rule of thumb; Raymer 6.27).",
+  description: "V_H = S_HT·l_HT/(S_W·MAC). Band shown for sport (0.50–0.60); changes by aircraft type. RC rule of thumb (Raymer 6.27).",
   format: (v) => v.toFixed(2),
 };
 

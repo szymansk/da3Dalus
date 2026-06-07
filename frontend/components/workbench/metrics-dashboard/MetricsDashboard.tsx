@@ -13,7 +13,7 @@ import { EnvelopeAxis, BulletGauge, MetricCard, Tip } from "./primitives";
 import { PlanformDiagram } from "./PlanformDiagram";
 import {
   antriebDetailMock, antriebMock, balanceMock, geometryMock,
-  gueteMock, gueteRawMock, speedMock, tailItems, tailVhGauge, type MetricItem,
+  gueteMock, gueteRawMock, speedMock, tailBandsNote, tailItems, tailMission, tailVhGauge, type MetricItem,
 } from "./metricsMock";
 
 type Id = "speed" | "geometry" | "guete" | "antrieb";
@@ -126,7 +126,10 @@ export function MetricsDashboard() {
             <p className="text-[10px] text-subtle-foreground">Component CG {balanceMock.cgComponent?.toFixed(3)} m · target SM {balanceMock.targetSmMin}–{balanceMock.targetSmMax}% MAC</p>
           </div>
           <div className="flex flex-1 flex-col justify-center gap-1.5">
-            <div className="text-[9px] uppercase tracking-wide text-subtle-foreground">Tail · RC rule of thumb</div>
+            <div className="group/m relative inline-block text-[9px] uppercase tracking-wide text-subtle-foreground" tabIndex={0}>
+              Tail · <span className="text-muted-foreground">{tailMission}</span> · RC rule of thumb
+              <Tip>{tailBandsNote}</Tip>
+            </div>
             <BulletGauge g={tailVhGauge} />
             <div className="flex flex-wrap gap-x-3 gap-y-0.5 font-[family-name:var(--font-geist-mono)]">
               {tailItems.map((t) => (
