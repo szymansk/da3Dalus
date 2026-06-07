@@ -627,7 +627,9 @@ export function toTail(
       unit: "dm²",
       description:
         "Recommended horizontal-tail area derived from V_H target (mid-band) × S_W × MAC / l_HT. " +
-        "Source: tail-sizing service using the RC rule-of-thumb V_H band for the detected aircraft class.",
+        "Source: tail-sizing service using the RC rule-of-thumb V_H band for the detected aircraft class. " +
+        "This is the TARGET area at the V_H midpoint — the current S_HT is not shown separately here. " +
+        "Whether your actual H-tail area meets this target is indicated by the V_H coefficient gauge above.",
     });
   }
 

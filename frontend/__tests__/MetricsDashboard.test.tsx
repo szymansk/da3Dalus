@@ -20,7 +20,7 @@
  */
 
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { render, screen, fireEvent } from "@testing-library/react";
 import React from "react";
 
 // ---------------------------------------------------------------------------
@@ -767,8 +767,6 @@ describe("MetricsDashboard — gh-889: component-CG fallback in Balance panel", 
     // The geometry tile only renders the SM mini-cell when balance != null.
     // With no CG source, balance=null → the SM cell (which renders an "SM" label
     // and a percentage value) is absent.
-    // Just assert the column renders without crashing.
-    expect(geomCol).not.toBeNull();
     // In tile mode, the SM% cell is absent. The AR value (11.3) still renders.
     expect(geomCol!.textContent).toContain("11.3");
     // smCell-based assertion: query the mini-cell div that only renders when balance != null.
@@ -782,18 +780,40 @@ describe("MetricsDashboard — gh-889: component-CG fallback in Balance panel", 
   });
 
   it("renders the 'calc' badge when balance panel is in component-CG mode", async () => {
+    // Setup: cg_agg_m=null (no aero CG yet) but cg_x assumption is present → cgIsComponent=true.
     setupHooks({
       ctx: { ...NOMINAL_CTX, cg_agg_m: null },
-      assumptions: NOMINAL_ASSUMPTIONS,
+      assumptions: NOMINAL_ASSUMPTIONS, // effective_value=0.122 → cgIsComponent=true
     });
     const { container } = await renderDashboard();
-    // The 'calc' badge is only in the BalancePanel (GeometryLarge → not rendered in
-    // tile mode). Verify at the adapter level that the balance has cgIsComponent=true,
-    // and verify the container renders the geometry column without crashing.
+
+    // The calc badge lives in BalancePanel which is rendered inside GeometryLarge.
+    // GeometryLarge is only mounted when the Geometry column is in "large" mode
+    // (active === "geometry"). Expand the column by clicking it.
     const geomCol = container.querySelector('[data-testid="metric-col-geometry"]');
     expect(geomCol).not.toBeNull();
-    // At minimum: column renders; adapter correctness is verified in metricsAdapters.test.ts.
-    expect(container.querySelector("[data-testid='metrics-band']")).not.toBeNull();
+    fireEvent.click(geomCol!);
+
+    // After clicking, the geometry column is in large mode → GeometryLarge renders
+    // → BalancePanel renders with cgIsComponent=true → calc badge is present.
+    const calcBadge = container.querySelector('[data-testid="balance-cg-calc-badge"]');
+    expect(calcBadge).not.toBeNull();
+    expect(calcBadge!.textContent?.toLowerCase()).toContain("calc");
+  });
+
+  it("does NOT render the 'calc' badge in nominal aero-CG mode", async () => {
+    // Inverse: cg_agg_m is present → cgIsComponent=false → no calc badge.
+    setupHooks({}); // NOMINAL_CTX has cg_agg_m=0.132
+    const { container } = await renderDashboard();
+
+    // Expand the Geometry column to large mode so BalancePanel is rendered.
+    const geomCol = container.querySelector('[data-testid="metric-col-geometry"]');
+    expect(geomCol).not.toBeNull();
+    fireEvent.click(geomCol!);
+
+    // With a real aero CG, BalancePanel renders WITHOUT the calc badge.
+    const calcBadge = container.querySelector('[data-testid="balance-cg-calc-badge"]');
+    expect(calcBadge).toBeNull();
   });
 
   it("nominal path (cg_agg_m present): Balance still rendered, cgIsComponent absent", async () => {

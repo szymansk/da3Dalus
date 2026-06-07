@@ -23,6 +23,7 @@ export function CopilotStrip() {
           type="button"
           onClick={() => setOpen((v) => !v)}
           aria-expanded={open}
+          aria-controls="copilot-panel"
           aria-label={open ? "Collapse copilot panel" : "Expand copilot panel"}
           className="flex h-7 w-7 items-center justify-center rounded-xl border border-border bg-card-muted hover:bg-sidebar-accent"
         >
@@ -42,6 +43,7 @@ export function CopilotStrip() {
       >
         <div className="min-h-0 overflow-hidden">
           <div
+            id="copilot-panel"
             data-testid="copilot-panel"
             className="flex flex-col gap-3 px-6 pb-4 pt-2"
           >

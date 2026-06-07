@@ -19,6 +19,16 @@ describe("CopilotStrip", () => {
     ).toBeInTheDocument();
   });
 
+  it("toggle button has aria-controls matching the panel id (disclosure pattern)", () => {
+    render(<CopilotStrip />);
+    const toggleBtn = screen.getByRole("button", { name: "Expand copilot panel" });
+    const panel = screen.getByTestId("copilot-panel");
+    // The panel must have an id attribute.
+    expect(panel).toHaveAttribute("id");
+    // aria-controls on the toggle must reference the same id.
+    expect(toggleBtn).toHaveAttribute("aria-controls", panel.getAttribute("id"));
+  });
+
   it("starts collapsed: panel is present in DOM but visually hidden (grid-rows-[0fr])", () => {
     render(<CopilotStrip />);
     // The toggle button has aria-expanded=false initially.
