@@ -58,7 +58,7 @@ export function EnvelopeAxis({
   }
 
   return (
-    <div className={large ? "pt-6 pb-7" : "py-4"}>
+    <div className={large ? "pt-10 pb-1" : "py-4"}>
       <div className="relative h-2 w-full rounded-pill bg-card-muted">
         {zones.map((z) => (
           <div
@@ -75,20 +75,22 @@ export function EnvelopeAxis({
             tabIndex={0}
           >
             <div className={`h-3.5 w-[3px] rounded-full ${ZONE_COLOR[m.kind]}`} />
-            {large && (
-              <span className="absolute left-1/2 top-4 -translate-x-1/2 whitespace-nowrap font-[family-name:var(--font-geist-mono)] text-[9px] text-muted-foreground">
+            {large ? (
+              // slanted labels ABOVE the axis fan out instead of colliding
+              <span className="absolute bottom-2.5 left-1/2 origin-bottom-left -rotate-[20deg] whitespace-nowrap font-[family-name:var(--font-geist-mono)] text-[9px] text-muted-foreground">
                 {m.symbol}
               </span>
+            ) : (
+              <span className="absolute bottom-5 left-1/2 -translate-x-1/2 whitespace-nowrap font-[family-name:var(--font-geist-mono)] text-[10px] font-medium text-foreground opacity-0 transition-opacity group-hover/m:opacity-100 group-focus-within/m:opacity-100">
+                {m.value.toFixed(1)}
+                {m.aoa != null ? ` m/s @ ${m.aoa.toFixed(1)}°` : " m/s"}
+              </span>
             )}
-            <span className="absolute bottom-5 left-1/2 -translate-x-1/2 whitespace-nowrap font-[family-name:var(--font-geist-mono)] text-[10px] font-medium text-foreground opacity-0 transition-opacity group-hover/m:opacity-100 group-focus-within/m:opacity-100">
-              {m.value.toFixed(1)}
-              {m.aoa != null ? ` m/s @ ${m.aoa.toFixed(1)}°` : " m/s"}
-            </span>
           </div>
         ))}
       </div>
       {large && (
-        <div className="mt-9 flex flex-wrap gap-x-4 gap-y-1">
+        <div className="mt-4 flex flex-wrap gap-x-4 gap-y-1">
           {markers.map((m) => (
             <span key={m.symbol} className="font-[family-name:var(--font-geist-mono)] text-[11px] text-muted-foreground">
               <span className={`mr-1 inline-block h-2 w-2 rounded-full align-middle ${ZONE_COLOR[m.kind]}`} />
@@ -115,11 +117,16 @@ export function BulletGauge({ g, large = false }: { readonly g: GaugeData; reado
           {fmt(g.value)}
         </span>
       </div>
-      <div className="relative h-1.5 w-full rounded-pill bg-card-muted">
-        <div
-          className="absolute top-0 h-1.5 rounded-pill bg-success/20"
-          style={{ left: norm(g.targetMin), width: `${((g.targetMax - g.targetMin) / span) * 100}%` }}
-        />
+      <div className="relative h-1.5 w-full overflow-hidden rounded-pill bg-card-muted">
+        {/* traffic-light scale: red / amber / green zones */}
+        {g.zones.map((z) => (
+          <div
+            key={`${z.from}-${z.to}`}
+            className={`absolute top-0 h-1.5 ${QUALITY_BAR[z.quality]} opacity-30`}
+            style={{ left: norm(z.from), width: `${((z.to - z.from) / span) * 100}%` }}
+          />
+        ))}
+        {/* value marker */}
         <div
           className={`absolute top-1/2 h-3 w-[3px] -translate-y-1/2 rounded-full ${QUALITY_BAR[g.quality]}`}
           style={{ left: norm(g.value) }}

@@ -30,6 +30,12 @@ export interface BalanceData {
   readonly cgComponent?: number; // component-derived CG, m
 }
 
+export interface GaugeZone {
+  readonly from: number;
+  readonly to: number;
+  readonly quality: Quality; // good / caution / bad → green / amber / red
+}
+
 export interface GaugeData {
   readonly symbol: string;
   readonly label: string;
@@ -37,9 +43,8 @@ export interface GaugeData {
   readonly unit?: string;
   readonly min: number;
   readonly max: number;
-  readonly targetMin: number;
-  readonly targetMax: number;
-  readonly quality: Quality;
+  readonly zones: readonly GaugeZone[]; // traffic-light scale, must span [min, max]
+  readonly quality: Quality; // quality of the current value (matches its zone)
   readonly description: string;
   readonly format?: (v: number) => string;
 }
@@ -84,38 +89,38 @@ export const balanceMock: BalanceData = {
 // ── Güte / quality gauges ───────────────────────────────────────
 export const gueteMock: readonly GaugeData[] = [
   {
-    symbol: "(L/D)_max", label: "Max glide ratio", value: 21.0, min: 5, max: 35,
-    targetMin: 18, targetMax: 35, quality: "good",
+    symbol: "(L/D)_max", label: "Max glide ratio", value: 21.0, min: 5, max: 35, quality: "good",
+    zones: [{ from: 5, to: 12, quality: "bad" }, { from: 12, to: 18, quality: "caution" }, { from: 18, to: 35, quality: "good" }],
     description: "Best lift-to-drag ratio — the headline efficiency number.",
     format: (v) => v.toFixed(1),
   },
   {
-    symbol: "e", label: "Oswald efficiency", value: 0.79, min: 0.5, max: 1.0,
-    targetMin: 0.75, targetMax: 0.95, quality: "good",
+    symbol: "e", label: "Oswald efficiency", value: 0.79, min: 0.5, max: 1.0, quality: "good",
+    zones: [{ from: 0.5, to: 0.7, quality: "bad" }, { from: 0.7, to: 0.78, quality: "caution" }, { from: 0.78, to: 0.95, quality: "good" }, { from: 0.95, to: 1.0, quality: "caution" }],
     description: "Span efficiency factor from the Trefftz-plane analysis.",
     format: (v) => v.toFixed(2),
   },
   {
-    symbol: "ρ", label: "Polar health", value: 0.70, min: 0, max: 1,
-    targetMin: 0.75, targetMax: 1.0, quality: "caution",
+    symbol: "ρ", label: "Polar health", value: 0.70, min: 0, max: 1, quality: "caution",
+    zones: [{ from: 0, to: 0.5, quality: "bad" }, { from: 0.5, to: 0.75, quality: "caution" }, { from: 0.75, to: 1, quality: "good" }],
     description: "(C_L,md / C_L,max)² — how much margin to stall at best glide.",
     format: (v) => v.toFixed(2),
   },
   {
-    symbol: "SM", label: "Static margin", value: 8.1, min: -5, max: 25,
-    targetMin: 5, targetMax: 15, quality: "good",
-    description: "Longitudinal stability margin as % of MAC.",
+    symbol: "SM", label: "Static margin", value: 8.1, min: -5, max: 25, quality: "good",
+    zones: [{ from: -5, to: 3, quality: "bad" }, { from: 3, to: 5, quality: "caution" }, { from: 5, to: 15, quality: "good" }, { from: 15, to: 20, quality: "caution" }, { from: 20, to: 25, quality: "bad" }],
+    description: "Longitudinal stability margin as % of MAC — too low is unstable, too high is sluggish.",
     format: (v) => `${v.toFixed(1)}%`,
   },
   {
-    symbol: "L_land", label: "Landing field", value: 24, min: 0, max: 60,
-    targetMin: 0, targetMax: 35, quality: "good",
+    symbol: "L_land", label: "Landing field", value: 24, min: 0, max: 60, quality: "good",
+    zones: [{ from: 0, to: 35, quality: "good" }, { from: 35, to: 60, quality: "bad" }],
     description: "Required landing field length vs. available 35 m.",
     format: (v) => `${v.toFixed(0)} m ✓`,
   },
   {
-    symbol: "P_margin", label: "Motor reserve", value: 0.18, min: -0.3, max: 0.6,
-    targetMin: 0.15, targetMax: 0.6, quality: "caution",
+    symbol: "P_margin", label: "Motor reserve", value: 0.18, min: -0.3, max: 0.6, quality: "caution",
+    zones: [{ from: -0.3, to: 0, quality: "bad" }, { from: 0, to: 0.2, quality: "caution" }, { from: 0.2, to: 0.6, quality: "good" }],
     description: "(P_motor − P_req@V_md) / P_motor — 'feasible but tight'.",
     format: (v) => `${(v * 100).toFixed(0)}%`,
   },
