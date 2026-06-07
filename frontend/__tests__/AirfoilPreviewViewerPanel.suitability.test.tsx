@@ -35,6 +35,7 @@ const baseSuitabilityItem: SuitabilityItem = {
   min_analysis_confidence: 0.88,
   tip_re_flag: false,
   caveat: "Nur relative Rangfolge.",
+  tags: [],
 };
 
 const mockGeometry: AirfoilGeometry = {

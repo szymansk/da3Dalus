@@ -44,6 +44,7 @@ const baseItem: SuitabilityItem = {
   min_analysis_confidence: 0.92,
   tip_re_flag: false,
   caveat: "Nur relative Rangfolge.",
+  tags: [],
 };
 
 const lowConfidenceItem: SuitabilityItem = {

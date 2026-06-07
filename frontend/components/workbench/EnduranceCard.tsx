@@ -90,15 +90,15 @@ export function EnduranceCard({ aeroplaneId }: Props) {
             Endurance / Range
           </span>
           {(isEstimated || hasWarnings) && (
-            <AlertTriangle
-              size={12}
-              className="text-yellow-400"
+            <span
               title={
                 isEstimated
                   ? "Estimated — polar fit unreliable. Run assumption recompute to improve."
                   : data.warnings.join(" | ")
               }
-            />
+            >
+              <AlertTriangle size={12} className="text-yellow-400" />
+            </span>
           )}
         </div>
         {/* Mode toggle */}

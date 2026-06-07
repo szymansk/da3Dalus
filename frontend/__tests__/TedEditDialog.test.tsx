@@ -156,7 +156,7 @@ describe("TedEditDialog save payload (gh-450)", () => {
 
     expect(fetchSpy).toHaveBeenCalled();
     const tedCall = fetchSpy.mock.calls.find(
-      (c) => typeof c[0] === "string" && c[0].includes("/trailing_edge_device"),
+      (c: Parameters<typeof fetch>) => typeof c[0] === "string" && c[0].includes("/trailing_edge_device"),
     );
     expect(tedCall).toBeTruthy();
     const body = JSON.parse((tedCall![1] as RequestInit).body as string);
@@ -175,7 +175,7 @@ describe("TedEditDialog save payload (gh-450)", () => {
     await user.click(saveBtn);
 
     const tedCall = fetchSpy.mock.calls.find(
-      (c) => typeof c[0] === "string" && c[0].includes("/trailing_edge_device"),
+      (c: Parameters<typeof fetch>) => typeof c[0] === "string" && c[0].includes("/trailing_edge_device"),
     );
     const body = JSON.parse((tedCall![1] as RequestInit).body as string);
     expect(body.label).toBeNull();
@@ -192,7 +192,7 @@ describe("TedEditDialog save payload (gh-450)", () => {
     await user.click(saveBtn);
 
     const tedCall = fetchSpy.mock.calls.find(
-      (c) => typeof c[0] === "string" && c[0].includes("/trailing_edge_device"),
+      (c: Parameters<typeof fetch>) => typeof c[0] === "string" && c[0].includes("/trailing_edge_device"),
     );
     const body = JSON.parse((tedCall![1] as RequestInit).body as string);
     expect(body.role).toBe("aileron");

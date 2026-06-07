@@ -242,6 +242,7 @@ describe("useAirfoilSuitability — types (gh-825)", () => {
       min_analysis_confidence: 0.92,
       tip_re_flag: false,
       caveat: "Nur relative Rangfolge.",
+      tags: [],
     };
     expect(item.target_cl_best_glide).toBe(0.80);
     expect(item.target_cl_min_sink).toBe(0.95);
@@ -265,6 +266,7 @@ describe("useAirfoilSuitability — types (gh-825)", () => {
       min_analysis_confidence: 0.88,
       tip_re_flag: false,
       caveat: "",
+      tags: [],
     };
     expect(item.target_cl_best_glide).toBeNull();
     expect(item.target_cl_min_sink).toBeNull();
@@ -284,6 +286,9 @@ describe("useAirfoilSuitability — types (gh-825)", () => {
       target_cl_min_sink: 0.95,
       target_cl_provenance: "calculated",
       active_lens: "re_agnostic",
+      v_cruise_mps: null,
+      v_md_mps: null,
+      v_min_sink_mps: null,
     };
     expect(query.target_cl_best_glide).toBe(0.80);
     expect(query.target_cl_min_sink).toBe(0.95);

@@ -110,7 +110,7 @@ export function CreatorDetailView({ creator, onBack }: Readonly<CreatorDetailVie
                 )}
                 {(param.options?.length ?? 0) > 0 && (
                   <div className="flex flex-wrap gap-1 mt-0.5">
-                    {param.options.map((opt) => (
+                    {param.options!.map((opt) => (
                       <span
                         key={opt}
                         className="rounded bg-card-muted px-1.5 py-0.5 font-[family-name:var(--font-jetbrains-mono)] text-[9px] text-primary"

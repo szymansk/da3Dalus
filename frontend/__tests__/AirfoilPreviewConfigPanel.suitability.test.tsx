@@ -52,6 +52,7 @@ const rootSuitabilityItem: SuitabilityItem = {
   min_analysis_confidence: 0.92,
   tip_re_flag: false,
   caveat: "Nur relative Rangfolge.",
+  tags: [],
 };
 
 const tipSuitabilityItem: SuitabilityItem = {
@@ -67,6 +68,7 @@ const tipSuitabilityItem: SuitabilityItem = {
   min_analysis_confidence: 0.88,
   tip_re_flag: false,
   caveat: "Keine Missionsdaten.",
+  tags: [],
 };
 
 const baseProps = {

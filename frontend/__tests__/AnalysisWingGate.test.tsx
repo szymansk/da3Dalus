@@ -32,10 +32,6 @@ vi.mock("@/hooks/useComputationContext", () => ({
   useComputationContext: () => ({ data: null, isLoading: false }),
 }));
 
-vi.mock("@/hooks/useDesignAssumptions", () => ({
-  useDesignAssumptions: () => ({ data: null, isLoading: false }),
-}));
-
 describe("Analysis Tab Wing Gate", () => {
   it("shows empty state for Polar tab when hasWings is false", async () => {
     const mod = await import("@/components/workbench/AnalysisViewerPanel");

@@ -132,7 +132,6 @@ export function useTessellation(aeroplaneId: string | null, wingName: string | n
 
     if (!aeroplaneId || !wingName) {
       lastKeyRef.current = "";
-      // eslint-disable-next-line react-hooks/set-state-in-effect -- intentional reset on prop change
       setState(emptyState);
       return;
     }
@@ -162,6 +161,7 @@ export function useTessellation(aeroplaneId: string | null, wingName: string | n
         }
       })
       .catch(() => { /* best-effort fetch — errors are non-critical */ });
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- state.data used as optimistic guard only; including it causes infinite re-fetch loops
   }, [aeroplaneId, wingName]);
 
   const triggerTessellation = useCallback(async () => {

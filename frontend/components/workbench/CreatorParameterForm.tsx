@@ -47,7 +47,7 @@ function ParamInput({
         className="rounded-lg border border-border bg-input px-3 py-1.5 text-[12px] text-foreground outline-none"
       >
         {!param.required && <option value="">—</option>}
-        {param.options.map((opt) => (
+        {param.options!.map((opt) => (
           <option key={opt} value={opt}>{opt}</option>
         ))}
       </select>
