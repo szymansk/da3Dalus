@@ -190,6 +190,9 @@ def create_app() -> FastAPI:
 
                 await job_tracker.shutdown()
                 _cad_service.shutdown_executor()
+                from app.services import operating_point_generator_service as _opg
+
+                _opg.shutdown_opg_executor()
 
     app = FastAPI(
         title="da3dalus Model Context Protocol (v2)",

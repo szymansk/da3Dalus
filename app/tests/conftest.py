@@ -182,13 +182,17 @@ def clean_cad_task_state():
     submits CAD work, so tests that never touch the CAD path pay no
     spawn cost.
     """
+    from app.services import operating_point_generator_service as _opg
+
     with cad_service.tasks_lock:
         cad_service.tasks.clear()
     cad_service.shutdown_executor()
+    _opg.shutdown_opg_executor()  # gh-867: no OP-generation worker may outlive a test
     yield
     with cad_service.tasks_lock:
         cad_service.tasks.clear()
     cad_service.shutdown_executor()
+    _opg.shutdown_opg_executor()
 
 
 # --------------------------------------------------------------------------- #
