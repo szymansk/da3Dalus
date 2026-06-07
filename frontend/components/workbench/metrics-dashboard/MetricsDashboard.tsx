@@ -19,7 +19,7 @@ import type {
   BalanceData,
   GaugeData,
   MetricItem,
-} from "./metricsMock";
+} from "./metricsTypes";
 import type { TailAdapterResult, PowertrainAdapterResult } from "@/lib/metricsAdapters";
 
 // ---------------------------------------------------------------------------

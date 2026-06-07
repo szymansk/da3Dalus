@@ -1,61 +1,25 @@
 // Click-dummy (#881): hardcoded representative data for the metrics dashboard.
 // No backend wiring — every value here is fake but plausible for a small electric glider.
+//
+// Types live in metricsTypes.ts; re-exported here so existing test imports remain valid.
 
-export type SectionState = "collapsed" | "compact" | "large";
+import type {
+  SpeedData,
+  BalanceData,
+  GaugeData,
+  MetricItem,
+} from "./metricsTypes";
 
-export type Quality = "good" | "caution" | "bad";
-
-export interface SpeedMarker {
-  readonly symbol: string;
-  readonly label: string;
-  readonly value: number; // m/s
-  readonly aoa?: number; // deg, where available
-  readonly kind: "stall" | "normal" | "caution" | "ne"; // drives zone colour
-}
-
-export interface SpeedData {
-  readonly markers: readonly SpeedMarker[];
-  readonly wMin: number; // min sink rate, m/s
-  readonly isGlider: boolean;
-}
-
-export interface BalanceData {
-  readonly cg: number; // m
-  readonly np: number; // m
-  readonly macStart: number; // m, LE of MAC
-  readonly macLength: number; // m
-  readonly smPercent: number; // % MAC
-  readonly targetSmMin: number;
-  readonly targetSmMax: number;
-  readonly cgComponent?: number; // component-derived CG, m
-}
-
-export interface GaugeZone {
-  readonly from: number;
-  readonly to: number;
-  readonly quality: Quality; // good / caution / bad → green / amber / red
-}
-
-export interface GaugeData {
-  readonly symbol: string;
-  readonly label: string;
-  readonly value: number;
-  readonly unit?: string;
-  readonly min: number;
-  readonly max: number;
-  readonly zones: readonly GaugeZone[]; // traffic-light scale, must span [min, max]
-  readonly quality: Quality; // quality of the current value (matches its zone)
-  readonly description: string;
-  readonly format?: (v: number) => string;
-}
-
-export interface MetricItem {
-  readonly symbol: string;
-  readonly label: string;
-  readonly value: string;
-  readonly unit?: string;
-  readonly description: string;
-}
+export type {
+  SectionState,
+  Quality,
+  SpeedMarker,
+  SpeedData,
+  BalanceData,
+  GaugeZone,
+  GaugeData,
+  MetricItem,
+} from "./metricsTypes";
 
 // ── Speed envelope ──────────────────────────────────────────────
 export const speedMock: SpeedData = {

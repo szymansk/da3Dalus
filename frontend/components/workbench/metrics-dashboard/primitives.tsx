@@ -5,7 +5,7 @@
 // available: inline where there is room, otherwise on hover (tooltip).
 
 import { renderSymbol } from "@/components/workbench/renderSymbol";
-import type { GaugeData, MetricItem, Quality, SpeedMarker } from "./metricsMock";
+import type { GaugeData, MetricItem, Quality, SpeedMarker } from "./metricsTypes";
 
 const ZONE_COLOR: Record<SpeedMarker["kind"], string> = {
   stall: "bg-destructive",

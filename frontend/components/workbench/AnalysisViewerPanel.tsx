@@ -2,7 +2,6 @@
 
 import { useState, useMemo, useRef, useEffect } from "react";
 import { AlertTriangle, Loader2, Maximize2, Minimize2, Settings } from "lucide-react";
-import { InfoChipRow } from "@/components/workbench/InfoChipRow";
 import type { AnalysisResult } from "@/hooks/useAnalysis";
 import type { StripForcesResult } from "@/hooks/useStripForces";
 import type { SpeedPolar, SpeedPolarCurve } from "@/hooks/useAnalysis";
@@ -14,8 +13,6 @@ import { OperatingPointsPanel } from "@/components/workbench/OperatingPointsPane
 import { MatchingChartTab } from "@/components/workbench/MatchingChartTab";
 import { AnalysisStatusIndicator } from "./AnalysisStatusIndicator";
 import type { AnalysisStatus } from "@/hooks/useAnalysisStatus";
-import { useDesignAssumptions } from "@/hooks/useDesignAssumptions";
-import { useRecomputeStatus } from "@/hooks/useRecomputeStatus";
 
 const TABS = ["Assumptions", "Operating Points", "Polar", "Trefftz Plane", "Streamlines", "Envelope", "Sizing"] as const;
 export type Tab = (typeof TABS)[number];
@@ -893,8 +890,8 @@ export function AnalysisViewerPanel({
   result,
   speedPolar,
   aeroplaneId,
-  lastRunTime,
-  lastRunDurationMs,
+  lastRunTime: _lastRunTime,
+  lastRunDurationMs: _lastRunDurationMs,
   stripForces,
   stripForcesLoading,
   streamlinesFigure,
@@ -929,12 +926,6 @@ export function AnalysisViewerPanel({
   analysisStatus,
 }: Readonly<Props>) {
   const [maximizedChart, setMaximizedChart] = useState<string | null>(null);
-  const assumptions = useDesignAssumptions(aeroplaneId);
-  const recomputeStatus = useRecomputeStatus(aeroplaneId);
-  const cgAero = useMemo(() => {
-    const a = assumptions.data?.assumptions.find((x) => x.parameter_name === "cg_x");
-    return a?.effective_value ?? null;
-  }, [assumptions.data]);
 
   function toggleChart(id: string) {
     setMaximizedChart((prev) => (prev === id ? null : id));
@@ -1202,18 +1193,6 @@ export function AnalysisViewerPanel({
         </div>
       )}
 
-      {/* Info Chip Row \u2014 gh-575: rightSlot built from optional analysis metadata;
-          renders null when neither charts nor a last-run timestamp is present. */}
-      <InfoChipRow
-        aeroplaneId={aeroplaneId}
-        cgAero={cgAero}
-        isRecomputing={recomputeStatus.isRecomputing}
-        rightSlot={buildAnalysisRightSlot(
-          charts ? charts.alpha.length : null,
-          lastRunTime,
-          lastRunDurationMs,
-        )}
-      />
     </div>
   );
 }

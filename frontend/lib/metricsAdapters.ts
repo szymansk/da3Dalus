@@ -19,7 +19,7 @@ import type {
   GaugeZone,
   MetricItem,
   Quality,
-} from "@/components/workbench/metrics-dashboard/metricsMock";
+} from "@/components/workbench/metrics-dashboard/metricsTypes";
 import {
   computeK,
   computeCLmd,
