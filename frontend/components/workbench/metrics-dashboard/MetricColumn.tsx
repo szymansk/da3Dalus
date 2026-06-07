@@ -68,7 +68,8 @@ export function MetricColumn({
           <Maximize2 size={11} className="ml-auto text-subtle-foreground" />
         )}
       </header>
-      <div className="min-h-0 flex-1 overflow-y-auto px-2.5 pb-2">
+      {/* overflow-visible so hover tooltips aren't clipped (real impl: render via portal) */}
+      <div className="min-h-0 flex-1 overflow-visible px-2.5 pb-2">
         {isLarge ? large : tile}
       </div>
     </section>

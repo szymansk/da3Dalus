@@ -8,7 +8,7 @@
 import { useState } from "react";
 import { Wind, Scale, Gauge, Ruler, BatteryCharging } from "lucide-react";
 import { MetricColumn, type ColumnMode } from "./MetricColumn";
-import { EnvelopeAxis, BulletGauge, MetricCard, MacCgDiagram } from "./primitives";
+import { EnvelopeAxis, BulletGauge, MetricCard, MacCgDiagram, Tip } from "./primitives";
 import { PlanformDiagram } from "./PlanformDiagram";
 import {
   antriebDetailMock, antriebMock, balanceMock, geometryMock,
@@ -28,6 +28,7 @@ function MiniKV({ items }: { readonly items: readonly MetricItem[] }) {
           <div className="truncate font-[family-name:var(--font-geist-mono)] text-[12px] font-semibold text-foreground">
             {m.value}{m.unit && <span className="ml-0.5 text-[9px] font-normal text-muted-foreground">{m.unit}</span>}
           </div>
+          <Tip>{m.label} — {m.description}</Tip>
         </div>
       ))}
     </div>
@@ -50,9 +51,9 @@ export function MetricsDashboard() {
         <div>
           <EnvelopeAxis markers={speedMock.markers} />
           <div className="mt-1 flex justify-between font-[family-name:var(--font-geist-mono)] text-[10px] text-muted-foreground">
-            <span>stall <span className="text-foreground">8.2</span></span>
-            <span>cruise <span className="text-foreground">14.0</span></span>
-            <span>max <span className="text-foreground">22.0</span></span>
+            <span className="group/m relative" tabIndex={0}>stall <span className="text-foreground">8.2</span><Tip>Stall speed — slowest controllable speed (1g).</Tip></span>
+            <span className="group/m relative" tabIndex={0}>cruise <span className="text-foreground">14.0</span><Tip>Design cruise speed.</Tip></span>
+            <span className="group/m relative" tabIndex={0}>max <span className="text-foreground">22.0</span><Tip>Max operating speed.</Tip></span>
           </div>
         </div>
       ),
@@ -62,9 +63,10 @@ export function MetricsDashboard() {
       title: "Balance", icon: Scale, headline: `SM ${balanceMock.smPercent.toFixed(1)}%`,
       tile: (
         <div className="pt-1">
-          <div className="font-[family-name:var(--font-geist-mono)] text-[18px] font-bold leading-none">
+          <div className="group/m relative inline-block font-[family-name:var(--font-geist-mono)] text-[18px] font-bold leading-none" tabIndex={0}>
             <span className={smInTarget ? "text-success" : "text-amber-400"}>{balanceMock.smPercent.toFixed(1)}%</span>
             <span className="ml-1 text-[10px] font-normal text-subtle-foreground">SM</span>
+            <Tip>Static margin — longitudinal stability as % of MAC (CG ahead of neutral point). Target {balanceMock.targetSmMin}–{balanceMock.targetSmMax}%.</Tip>
           </div>
           <MacCgDiagram {...balanceMock} inTarget={smInTarget} />
         </div>
@@ -90,7 +92,10 @@ export function MetricsDashboard() {
           </div>
           <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 border-t border-border pt-1.5">
             {gueteRawMock.map((r) => (
-              <span key={r.symbol} className="font-[family-name:var(--font-geist-mono)] text-[10px] text-muted-foreground">{r.symbol} <span className="text-foreground">{r.value}</span></span>
+              <span key={r.symbol} className="group/m relative font-[family-name:var(--font-geist-mono)] text-[10px] text-muted-foreground" tabIndex={0}>
+                {r.symbol} <span className="text-foreground">{r.value}</span>
+                <Tip>{r.label} — {r.description}</Tip>
+              </span>
             ))}
           </div>
         </div>

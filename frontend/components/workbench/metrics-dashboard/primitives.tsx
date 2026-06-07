@@ -26,7 +26,8 @@ const QUALITY_BAR: Record<Quality, string> = {
 };
 
 // ── Hover tooltip (same mechanics as the existing Chip) ─────────
-function Tip({ children }: { readonly children: React.ReactNode }) {
+// Parent must be `group/m relative` (and ideally tabIndex={0} for keyboard).
+export function Tip({ children }: { readonly children: React.ReactNode }) {
   return (
     <span
       aria-hidden="true"
