@@ -122,7 +122,6 @@ const ALL_KNOWN_PARAMS = [
 if (process.env.NODE_ENV !== "production") {
   const missing = ALL_KNOWN_PARAMS.filter((p) => !ALL_GROUPED_PARAMS.has(p));
   if (missing.length > 0) {
-    // eslint-disable-next-line no-console
     console.warn(
       `[AssumptionsPanel] gh-603: ASSUMPTION_GROUPS is missing parameters: ${missing.join(
         ", ",
@@ -138,7 +137,6 @@ if (process.env.NODE_ENV !== "production") {
     .filter(([, n]) => n > 1)
     .map(([p]) => p);
   if (dups.length > 0) {
-    // eslint-disable-next-line no-console
     console.warn(
       `[AssumptionsPanel] gh-603: ASSUMPTION_GROUPS contains duplicate parameters: ${dups.join(
         ", ",

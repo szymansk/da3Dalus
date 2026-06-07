@@ -153,6 +153,7 @@ function FuselagePreview3D({ xsecs, selectedXsec }: Readonly<{ xsecs: XSec[]; se
           .catch(() => { /* cleanup — safe to ignore */ });
       }
     };
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- selectedXsec applied via restyle below; including it would cause full redraws
   }, [xsecs]);
 
   // Selection highlight — single batch restyle, preserves camera
@@ -169,7 +170,7 @@ function FuselagePreview3D({ xsecs, selectedXsec }: Readonly<{ xsecs: XSec[]; se
       "line.color": colors,
       "line.width": widths,
     }, traceIndices);
-  }, [selectedXsec, xsecs.length]);
+  }, [selectedXsec, xsecs]);
 
   return <div ref={containerRef} className="h-full w-full" />;
 }

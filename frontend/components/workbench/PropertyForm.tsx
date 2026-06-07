@@ -597,6 +597,12 @@ export function PropertyForm({ onGeometryChanged, ref }: Readonly<{
   const [wc, setWc] = useState<WingConfigState | null>(null);
 
   // Sync ASB state when selection changes
+  const xsecAirfoil = xsec?.airfoil;
+  const xsecChord = xsec?.chord;
+  const xsecTwist = xsec?.twist;
+  const xsecXle0 = xsec?.xyz_le?.[0];
+  const xsecXle1 = xsec?.xyz_le?.[1];
+  const xsecXle2 = xsec?.xyz_le?.[2];
   useEffect(() => {
     if (xsec) {
       setAsb(xsecToAsb(xsec));
@@ -604,7 +610,8 @@ export function PropertyForm({ onGeometryChanged, ref }: Readonly<{
       setAsb(null);
     }
     setError(null);
-  }, [xsec?.airfoil, xsec?.chord, xsec?.twist, xsec?.xyz_le?.[0], xsec?.xyz_le?.[1], xsec?.xyz_le?.[2], selectedXsecIndex]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- xsec is captured via extracted primitives; including the full object causes extra renders
+  }, [xsecAirfoil, xsecChord, xsecTwist, xsecXle0, xsecXle1, xsecXle2, selectedXsecIndex]);
 
   // Sync WingConfig state from API response
   // nose_pnt state (mm) — only editable on segment 0

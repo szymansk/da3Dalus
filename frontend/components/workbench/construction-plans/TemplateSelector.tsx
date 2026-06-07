@@ -27,6 +27,7 @@ export function TemplateSelector({ templates, selectedId, onSelect }: Readonly<T
         onKeyDown={(e) => { if (e.key === "Enter") setOpen(!open); }}
         role="combobox"
         aria-expanded={open}
+        aria-controls="template-selector-listbox"
         tabIndex={0}
       >
         <Search className="size-3.5 text-muted-foreground" />
@@ -44,7 +45,7 @@ export function TemplateSelector({ templates, selectedId, onSelect }: Readonly<T
         <ChevronDown size={12} className="text-muted-foreground" />
       </div>
       {open && (
-        <div className="absolute left-0 top-full z-50 mt-1 max-h-[200px] w-full overflow-y-auto rounded-xl border border-border bg-card shadow-lg">
+        <div id="template-selector-listbox" className="absolute left-0 top-full z-50 mt-1 max-h-[200px] w-full overflow-y-auto rounded-xl border border-border bg-card shadow-lg">
           {filtered.length === 0 ? (
             <p className="px-3 py-2 text-[12px] text-muted-foreground">No templates found</p>
           ) : (
