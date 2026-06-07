@@ -13,11 +13,12 @@ import { EnvelopeAxis, BulletGauge, MetricCard, Tip } from "./primitives";
 import { PlanformDiagram } from "./PlanformDiagram";
 import {
   antriebDetailMock, antriebMock, balanceMock, geometryMock,
-  gueteMock, gueteRawMock, speedMock, type MetricItem,
+  gueteMock, gueteRawMock, speedMock, tailItems, tailVhGauge, type MetricItem,
 } from "./metricsMock";
 
 type Id = "speed" | "geometry" | "guete" | "antrieb";
 const IDS: Id[] = ["speed", "geometry", "guete", "antrieb"];
+const QCOL = { good: "text-success", caution: "text-amber-400", bad: "text-destructive" } as const;
 
 // tiny key/value used in compact tiles
 function MiniKV({ items }: { readonly items: readonly MetricItem[] }) {
@@ -88,7 +89,7 @@ export function MetricsDashboard() {
       ),
     },
     geometry: {
-      title: "Geometry", icon: Ruler, headline: "AR 11.3 · S_ref 0.200 m² · SM 8.1%",
+      title: "Geometry", icon: Ruler, headline: "AR 11.3 · SM 8.1% · V_H 0.58",
       tile: (
         <div className="flex h-full flex-col gap-1 pt-1">
           <div className="flex min-h-0 flex-1 items-center justify-center">
@@ -96,25 +97,45 @@ export function MetricsDashboard() {
           </div>
           <div className="flex items-end justify-between gap-2">
             <div className="min-w-0 flex-1"><MiniKV items={geometryMock} /></div>
-            <div className="group/m relative shrink-0 text-right font-[family-name:var(--font-geist-mono)]" tabIndex={0}>
-              <div className={`text-[16px] font-bold leading-none ${smInTarget ? "text-success" : "text-amber-400"}`}>{balanceMock.smPercent.toFixed(1)}%</div>
-              <div className="text-[9px] uppercase tracking-wide text-subtle-foreground">SM</div>
-              <Tip>Static margin — longitudinal stability as % of MAC (CG ahead of neutral point). Target {balanceMock.targetSmMin}–{balanceMock.targetSmMax}%.</Tip>
+            <div className="flex shrink-0 gap-3 text-right font-[family-name:var(--font-geist-mono)]">
+              <div className="group/m relative" tabIndex={0}>
+                <div className={`text-[15px] font-bold leading-none ${smInTarget ? "text-success" : "text-amber-400"}`}>{balanceMock.smPercent.toFixed(1)}%</div>
+                <div className="text-[9px] uppercase tracking-wide text-subtle-foreground">SM</div>
+                <Tip>Static margin — longitudinal stability as % of MAC (CG ahead of neutral point). Target {balanceMock.targetSmMin}–{balanceMock.targetSmMax}%.</Tip>
+              </div>
+              <div className="group/m relative" tabIndex={0}>
+                <div className={`text-[15px] font-bold leading-none ${QCOL[tailVhGauge.quality]}`}>{tailVhGauge.value.toFixed(2)}</div>
+                <div className="text-[9px] uppercase tracking-wide text-subtle-foreground">{renderSymbol("V_H")}</div>
+                <Tip>{tailVhGauge.label} — {tailVhGauge.description}</Tip>
+              </div>
             </div>
           </div>
         </div>
       ),
       large: (
         <div className="flex h-full items-stretch gap-4 pt-1">
-          <div className="flex h-full min-h-0 flex-[3] items-center justify-center">
+          <div className="flex h-full min-h-0 flex-[2] items-center justify-center">
             <PlanformDiagram bRef="1.50" mac="0.135" sRef="0.200" ar="11.3" annotate cgFrac={cgFrac} npFrac={npFrac} sm={smStr} smOk={smInTarget} />
           </div>
           <div className="flex flex-1 flex-col justify-center gap-1.5 font-[family-name:var(--font-geist-mono)] text-[11px]">
+            <div className="text-[9px] uppercase tracking-wide text-subtle-foreground">Balance</div>
             <div className="group/m relative" tabIndex={0}>
               SM <span className={smInTarget ? "text-success" : "text-amber-400"}>{smStr}</span> · CG {balanceMock.cg.toFixed(3)} m · NP {balanceMock.np.toFixed(3)} m
               <Tip>Static margin = (NP − CG) / MAC. CG must sit ahead of the neutral point. Target {balanceMock.targetSmMin}–{balanceMock.targetSmMax}% MAC.</Tip>
             </div>
             <p className="text-[10px] text-subtle-foreground">Component CG {balanceMock.cgComponent?.toFixed(3)} m · target SM {balanceMock.targetSmMin}–{balanceMock.targetSmMax}% MAC</p>
+          </div>
+          <div className="flex flex-1 flex-col justify-center gap-1.5">
+            <div className="text-[9px] uppercase tracking-wide text-subtle-foreground">Tail · RC rule of thumb</div>
+            <BulletGauge g={tailVhGauge} />
+            <div className="flex flex-wrap gap-x-3 gap-y-0.5 font-[family-name:var(--font-geist-mono)]">
+              {tailItems.map((t) => (
+                <span key={t.symbol} className="group/m relative text-[10px] text-muted-foreground" tabIndex={0}>
+                  {renderSymbol(t.symbol)} <span className="text-foreground">{t.value}{t.unit ? ` ${t.unit}` : ""}</span>
+                  <Tip>{t.label} — {t.description}</Tip>
+                </span>
+              ))}
+            </div>
           </div>
         </div>
       ),

@@ -143,6 +143,24 @@ export const geometryMock: readonly MetricItem[] = [
   { symbol: "AR", label: "Aspect ratio", value: "11.3", description: "Span² / area — higher ⇒ less induced drag." },
 ];
 
+// ── Tail sizing (RC rules of thumb; real data: GET /tail-sizing, gh-491) ──
+export const tailVhGauge: GaugeData = {
+  symbol: "V_H", label: "H-tail volume coef.", value: 0.58, min: 0.3, max: 0.8, quality: "good",
+  zones: [
+    { from: 0.3, to: 0.45, quality: "bad" }, { from: 0.45, to: 0.5, quality: "caution" },
+    { from: 0.5, to: 0.6, quality: "good" }, { from: 0.6, to: 0.65, quality: "caution" },
+    { from: 0.65, to: 0.8, quality: "bad" },
+  ],
+  description: "V_H = S_HT·l_HT/(S_W·MAC). Sport target 0.50–0.60 (RC rule of thumb; Raymer 6.27).",
+  format: (v) => v.toFixed(2),
+};
+
+export const tailItems: readonly MetricItem[] = [
+  { symbol: "l_HT", label: "Tail moment arm", value: "3.2", unit: "·MAC", description: "Wing AC → tail AC = 0.43 m ≈ 3.2×MAC (RC 2.5–4×MAC)." },
+  { symbol: "S_HT", label: "H-tail area", value: "19", unit: "% S_W", description: "H-tail area vs wing area; RC sport ~18–22%." },
+  { symbol: "V_V", label: "V-tail volume coef.", value: "0.035", description: "V_V = S_VT·l_VT/(S_W·b); RC ~0.02–0.05 (rule of thumb)." },
+];
+
 // ── Antrieb / powertrain ────────────────────────────────────────
 export const antriebMock: readonly MetricItem[] = [
   { symbol: "Battery", label: "Battery pack", value: "3S · 2200", unit: "mAh", description: "LiPo configuration and capacity." },
