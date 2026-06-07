@@ -1,4 +1,4 @@
-"""Mass / CG design parameter service — derived metrics, sweep, and CG comparison."""
+"""Mass / CG design parameter service — derived metrics and CG comparison."""
 
 from __future__ import annotations
 
