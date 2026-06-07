@@ -4,6 +4,7 @@ persists each operating point incrementally."""
 from __future__ import annotations
 
 import json
+from concurrent.futures import Future
 from unittest.mock import patch
 
 import pytest
@@ -20,12 +21,28 @@ from app.services.operating_point_generator_service import TrimmedPoint, _Genera
 from app.services.trim_enrichment_service import compute_enrichment
 
 
+class _InlineExecutor:
+    """Runs submitted work synchronously in-process so the parallel solve path
+    (gh-867) is exercised without spawning real worker processes in fast tests.
+    ``as_completed`` works on the resolved Futures it returns."""
+
+    def submit(self, fn, *args, **kwargs):
+        future: Future = Future()
+        try:
+            future.set_result(fn(*args, **kwargs))
+        except Exception as exc:  # pragma: no cover - mirrors pool error path
+            future.set_exception(exc)
+        return future
+
+
 @pytest.fixture()
 def db_session():
     engine = create_engine(
         "sqlite://", connect_args={"check_same_thread": False}, poolclass=StaticPool
     )
-    TestingSessionLocal = sessionmaker(bind=engine, autocommit=False, autoflush=False, class_=Session)
+    TestingSessionLocal = sessionmaker(
+        bind=engine, autocommit=False, autoflush=False, class_=Session
+    )
     Base.metadata.create_all(bind=engine)
     db = TestingSessionLocal()
     try:
@@ -106,6 +123,7 @@ def test_stream_emits_targets_then_op_per_point_then_done(db_session):
         patch.object(opg, "_prepare_generation", return_value=ctx),
         patch.object(opg, "_validate_target_capability", return_value=(True, [])),
         patch.object(opg, "_solve_and_enrich", side_effect=lambda _c, t: _point(t["name"])),
+        patch.object(opg, "_get_opg_executor", return_value=_InlineExecutor()),
     ):
         chunks = list(
             opg.generate_default_set_stream_for_aircraft(
@@ -115,20 +133,25 @@ def test_stream_emits_targets_then_op_per_point_then_done(db_session):
 
     events = _parse_sse(chunks)
     names = [e[0] for e in events]
-    assert names == ["targets", "op", "op", "done"]
+    # gh-867: solves run in parallel, so op events arrive in solve-completion
+    # order, not target order — assert the structure, not a fixed sequence.
+    assert names[0] == "targets"
+    assert names[-1] == "done"
+    assert names.count("op") == 2
 
-    # targets event: both placeholder rows, COMPUTING
+    # targets event: both placeholder rows up-front, COMPUTING
     _, targets_payload = events[0]
     assert [t["name"] for t in targets_payload["targets"]] == ["cruise", "stall"]
     assert all(t["status"] == "COMPUTING" for t in targets_payload["targets"])
 
     # each op event carries a real persisted operating point with aero
-    op_names = [events[1][1]["name"], events[2][1]["name"]]
-    assert op_names == ["cruise", "stall"]
-    assert events[1][1]["trim_enrichment"]["aero_coefficients"]["CL"] == 0.4
+    op_events = [e for n, e in events if n == "op"]
+    assert {e["name"] for e in op_events} == {"cruise", "stall"}
+    assert all(e["trim_enrichment"]["aero_coefficients"]["CL"] == 0.4 for e in op_events)
 
     # done event + incremental persistence
-    assert events[3][1]["count"] == 2
+    done_payload = events[-1][1]
+    assert done_payload["count"] == 2
     assert db_session.query(OperatingPointModel).count() == 2
     opset = db_session.query(OperatingPointSetModel).one()
     assert len(opset.operating_points) == 2
@@ -146,13 +169,19 @@ def test_stream_skips_unsolvable_targets(db_session):
         patch.object(opg, "_prepare_generation", return_value=ctx),
         patch.object(opg, "_validate_target_capability", return_value=(True, [])),
         patch.object(opg, "_solve_and_enrich", side_effect=_solve),
+        patch.object(opg, "_get_opg_executor", return_value=_InlineExecutor()),
     ):
         events = _parse_sse(
             list(opg.generate_default_set_stream_for_aircraft(db_session, aircraft.uuid))
         )
 
     names = [e[0] for e in events]
-    assert names == ["targets", "op", "skip", "done"]
-    assert events[2][1]["name"] == "bad"
-    assert events[3][1]["count"] == 1
+    # gh-867: order is solve-completion, not target order — assert structure.
+    assert names[0] == "targets"
+    assert names[-1] == "done"
+    assert names.count("op") == 1
+    assert names.count("skip") == 1
+    skip_event = next(e for n, e in events if n == "skip")
+    assert skip_event["name"] == "bad"
+    assert events[-1][1]["count"] == 1
     assert db_session.query(OperatingPointModel).count() == 1

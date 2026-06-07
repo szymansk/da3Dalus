@@ -1,7 +1,11 @@
 import json
 import logging
 import math
+import multiprocessing
+import os
+from concurrent.futures import ProcessPoolExecutor, as_completed
 from dataclasses import dataclass
+from threading import Lock
 from typing import Any, Iterator, Optional
 
 import aerosandbox as asb
@@ -1168,6 +1172,185 @@ def _solve_and_enrich(ctx: _GenerationContext, target: dict[str, Any]) -> Option
     return point
 
 
+# ---------------------------------------------------------------------------
+# gh-867: bounded ProcessPool for parallel trim solves.
+#
+# The CasADi/IPOPT trim solve does NOT release the GIL, so a ThreadPool is
+# counter-productive (benchmark: 0.35-0.89x). A ProcessPool with BLAS pinned to
+# one thread per worker gives ~2.9x at 4 workers. asb.Airplane pickles cleanly,
+# so the main process builds the context once and ships the picklable subset to
+# the workers; workers never touch the database. The main process owns
+# persistence and streams each result in solve-completion order
+# (concurrent.futures.as_completed). Mirrors the cad_service ProcessPoolExecutor
+# pattern (spawn context + FastAPI lifespan teardown).
+# ---------------------------------------------------------------------------
+
+_BLAS_THREAD_ENV = (
+    "OMP_NUM_THREADS",
+    "OPENBLAS_NUM_THREADS",
+    "MKL_NUM_THREADS",
+    "VECLIB_MAXIMUM_THREADS",
+    "NUMEXPR_NUM_THREADS",
+)
+_opg_mp_context = multiprocessing.get_context("spawn")
+_opg_executor: Optional[ProcessPoolExecutor] = None
+_opg_executor_lock = Lock()
+
+
+def _opg_worker_count() -> int:
+    """Bounded worker count, capped at 4 (benchmark sweet spot; 8 is only
+    marginally faster at more RAM). Never exceeds cpu-1 and is at least 1."""
+    cpu = os.cpu_count() or 1
+    return max(1, min(4, cpu - 1))
+
+
+def _opg_worker_init() -> None:
+    """Pin BLAS/IPOPT to one thread per worker so workers x BLAS-threads do not
+    oversubscribe the cores. Belt-and-suspenders alongside the parent-env pin
+    applied at spawn time in _get_opg_executor."""
+    for var in _BLAS_THREAD_ENV:
+        os.environ.setdefault(var, "1")
+
+
+def _opg_noop(_x: Any = None) -> None:
+    return None
+
+
+def _get_opg_executor() -> ProcessPoolExecutor:
+    """Return the lazily-created OP-generation process pool.
+
+    A single trim solve is already single-core, so pinning BLAS threads to 1
+    never slows sequential work; it only prevents the parallel workers from
+    oversubscribing the cores. The pin is applied via the parent environment at
+    spawn time (children inherit it) plus the worker initializer; the parent
+    environment is restored immediately so other endpoints keep multi-threaded
+    BLAS.
+    """
+    global _opg_executor
+    with _opg_executor_lock:
+        if _opg_executor is None:
+            workers = _opg_worker_count()
+            previous = {var: os.environ.get(var) for var in _BLAS_THREAD_ENV}
+            for var in _BLAS_THREAD_ENV:
+                os.environ[var] = "1"
+            try:
+                executor = ProcessPoolExecutor(
+                    max_workers=workers,
+                    mp_context=_opg_mp_context,
+                    initializer=_opg_worker_init,
+                )
+                # Force eager spawn so each child imports numpy with the pin in
+                # place (children inherit the parent env at spawn time).
+                list(executor.map(_opg_noop, range(workers)))
+            finally:
+                for var, old in previous.items():
+                    if old is None:
+                        os.environ.pop(var, None)
+                    else:
+                        os.environ[var] = old
+            _opg_executor = executor
+    return _opg_executor
+
+
+def shutdown_opg_executor() -> None:
+    """Tear down the OP-generation pool (FastAPI lifespan shutdown + tests)."""
+    global _opg_executor
+    with _opg_executor_lock:
+        if _opg_executor is not None:
+            try:
+                _opg_executor.shutdown(wait=False, cancel_futures=True)
+            except Exception as exc:  # noqa: BLE001
+                logger.warning("Error shutting down OPG executor: %s", exc)
+            _opg_executor = None
+
+
+@dataclass
+class _WorkerSolveCtx:
+    """Picklable subset of _GenerationContext shipped to ProcessPool workers.
+
+    asb.Airplane pickles cleanly (verified); the SQLAlchemy aircraft model does
+    not, and the solve path only reads its scalar total_mass_kg (a mass
+    fallback), so just that scalar is carried."""
+
+    asb_airplane: asb.Airplane
+    capabilities: dict[str, Any]
+    deflection_limits: dict[str, tuple[float, float]]
+    plane_schema: Any
+    constraints: dict[str, Any]
+    effective_mass_kg: Optional[float]
+    refs: dict[str, Any]
+    total_mass_kg: Optional[float]
+
+
+class _AircraftMassOnly:
+    """Minimal aircraft stand-in for worker processes: the solve path reads only
+    total_mass_kg (a fallback when effective mass is None)."""
+
+    __slots__ = ("total_mass_kg",)
+
+    def __init__(self, total_mass_kg: Optional[float]) -> None:
+        self.total_mass_kg = total_mass_kg
+
+
+def _worker_ctx_from(ctx: _GenerationContext) -> _WorkerSolveCtx:
+    """Extract the picklable subset of a generation context for the workers."""
+    return _WorkerSolveCtx(
+        asb_airplane=ctx.asb_airplane,
+        capabilities=ctx.capabilities,
+        deflection_limits=ctx.deflection_limits,
+        plane_schema=ctx.plane_schema,
+        constraints=ctx.constraints,
+        effective_mass_kg=ctx.effective_mass_kg,
+        refs=ctx.refs,
+        total_mass_kg=getattr(ctx.aircraft, "total_mass_kg", None),
+    )
+
+
+def _solve_target_in_worker(
+    worker_ctx: _WorkerSolveCtx, target: dict[str, Any]
+) -> Optional[TrimmedPoint]:
+    """Worker entry point: rebuild a solve context and run one target.
+
+    Top-level (picklable) so it can run under a spawn ProcessPool. Returns a
+    picklable TrimmedPoint (or None); never touches the database."""
+    solve_ctx = _GenerationContext(
+        aircraft=_AircraftMassOnly(worker_ctx.total_mass_kg),
+        targets=[],
+        asb_airplane=worker_ctx.asb_airplane,
+        capabilities=worker_ctx.capabilities,
+        deflection_limits=worker_ctx.deflection_limits,
+        plane_schema=worker_ctx.plane_schema,
+        constraints=worker_ctx.constraints,
+        effective_mass_kg=worker_ctx.effective_mass_kg,
+        design_cg_x=0.0,
+        source_profile_id=None,
+        refs=worker_ctx.refs,
+    )
+    return _solve_and_enrich(solve_ctx, target)
+
+
+def _solve_targets_in_parallel(
+    ctx: _GenerationContext, targets: list[dict[str, Any]]
+) -> Iterator[tuple[dict[str, Any], Optional[TrimmedPoint]]]:
+    """Solve ``targets`` across the bounded ProcessPool, yielding
+    ``(target, point)`` in solve-completion order. A failed solve yields
+    ``(target, None)`` so the caller can skip it without aborting the run."""
+    if not targets:
+        return
+    worker_ctx = _worker_ctx_from(ctx)
+    executor = _get_opg_executor()
+    future_to_target = {
+        executor.submit(_solve_target_in_worker, worker_ctx, target): target for target in targets
+    }
+    for future in as_completed(future_to_target):
+        target = future_to_target[future]
+        try:
+            yield target, future.result()
+        except Exception:  # noqa: BLE001 — one bad target must not kill the run
+            logger.exception("OP solve failed for target '%s'", target.get("name"))
+            yield target, None
+
+
 def generate_default_set_for_aircraft(
     db: Session,
     aircraft_uuid,
@@ -1179,6 +1362,10 @@ def generate_default_set_for_aircraft(
         aircraft = ctx.aircraft
         source_profile_id = ctx.source_profile_id
         design_cg_x = ctx.design_cg_x
+        # The non-streaming batch path stays sequential: gh-867 parallelism is
+        # applied only to the streaming path (the live "Generate Default OPs"
+        # UI flow), so the batch contract — and the many tests that mock the
+        # solver here — are unchanged.
         points: list[TrimmedPoint] = [
             p for target in ctx.targets if (p := _solve_and_enrich(ctx, target)) is not None
         ]
@@ -1280,13 +1467,12 @@ def generate_default_set_stream_for_aircraft(
         ),
     )
 
+    # gh-867: solves run on the bounded ProcessPool; as_completed delivers each
+    # point in solve-completion order, so the table fills in as work finishes
+    # rather than in target order. Persistence + streaming stay on this thread
+    # (the worker pool never touches the DB session).
     op_ids: list[int] = []
-    for target in supported:
-        try:
-            point = _solve_and_enrich(ctx, target)
-        except Exception:  # noqa: BLE001 — one bad target must not kill the stream
-            logger.exception("OP solve failed for target '%s'", target.get("name"))
-            point = None
+    for target, point in _solve_targets_in_parallel(ctx, supported):
         if point is None:
             yield _sse("skip", json.dumps({"name": target["name"]}))
             continue
