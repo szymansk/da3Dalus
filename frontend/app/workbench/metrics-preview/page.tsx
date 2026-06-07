@@ -7,14 +7,16 @@ import { MetricsDashboard } from "@/components/workbench/metrics-dashboard/Metri
 
 export default function MetricsPreviewPage() {
   return (
-    <div className="flex w-full flex-col gap-4 overflow-auto">
+    <div className="flex w-full flex-col gap-3">
       <div className="rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-[11px] text-amber-300">
-        Click-dummy — metrics dashboard prototype (#881). Hardcoded data, no backend. Toggle each section between
-        collapsed / compact / large; only one section can be large at a time.
+        Click-dummy — metrics band (#881). Hardcoded data. Five compact columns in a ~20vh strip; click a column to
+        expand it to full width (others shrink to tabs). Height stays constant.
       </div>
-      <div className="mx-auto w-full max-w-[920px]">
-        <MetricsDashboard />
+      {/* simulate the chart area above, so the band's 20vh proportion is visible */}
+      <div className="flex h-[55vh] items-center justify-center rounded-lg border border-dashed border-border text-[12px] text-subtle-foreground">
+        (analysis charts would be here)
       </div>
+      <MetricsDashboard />
     </div>
   );
 }
