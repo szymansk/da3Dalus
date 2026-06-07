@@ -155,7 +155,7 @@ export function SnapshotDialog({ open, onClose, onSnapshot }: SnapshotDialogProp
         </div>
 
         <p className="text-[11px] text-muted-foreground">
-          Tip: <kbd className="rounded border border-border px-1 font-[family-name:var(--font-jetbrains-mono)] text-[10px]">⌘ Enter</kbd> to save.
+          Tip: <kbd className="rounded border border-border px-1 font-[family-name:var(--font-jetbrains-mono)] text-[10px]">⌘/Ctrl Enter</kbd> to save.
         </p>
       </div>
     </dialog>

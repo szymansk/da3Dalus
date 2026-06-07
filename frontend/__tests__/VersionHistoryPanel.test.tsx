@@ -276,6 +276,22 @@ describe("VersionHistoryPanel (gh-907)", () => {
     expect(screen.getByText(/2 nodes selected/i)).toBeDefined();
   });
 
+  it("selecting two nodes and clicking Compare opens the compare view", async () => {
+    const user = userEvent.setup();
+    renderPanel();
+
+    const compareBtns = screen.getAllByRole("button", { name: /select for comparison|remove from comparison/i });
+    await user.click(compareBtns[0]);
+    await user.click(compareBtns[1]);
+
+    // The "Compare" button should now be visible in the compare bar
+    const compareOpenBtn = screen.getByRole("button", { name: /open compare view/i });
+    await user.click(compareOpenBtn);
+
+    // VersionCompareView stub should render
+    expect(screen.getByTestId("version-compare-view")).toBeDefined();
+  });
+
   // -------------------------------------------------------------------------
   // 4. "Branch from" action
   // -------------------------------------------------------------------------
@@ -289,11 +305,12 @@ describe("VersionHistoryPanel (gh-907)", () => {
     expect(screen.getByRole("textbox", { name: /branch name/i })).toBeDefined();
   });
 
-  it("confirming Branch from calls createBranch() with the entered name", async () => {
+  it("confirming Branch from calls createBranch() with the SELECTED node id and entered name", async () => {
     const user = userEvent.setup();
     const createBranch = vi.fn().mockResolvedValue({ id: 3, name: "new-exp" });
     renderPanel({ actionsOverride: { createBranch } });
 
+    // First node in FAKE_TREE branch 1 is id=10 ("Initial")
     const branchBtns = screen.getAllByRole("button", { name: /fork a new branch/i });
     await user.click(branchBtns[0]);
 
@@ -302,7 +319,9 @@ describe("VersionHistoryPanel (gh-907)", () => {
     await user.click(screen.getByRole("button", { name: /confirm branch name/i }));
 
     await waitFor(() => expect(createBranch).toHaveBeenCalledOnce());
-    const [body] = createBranch.mock.calls[0];
+    const [nodeId, body] = createBranch.mock.calls[0];
+    // Must use the selected node's id (10), NOT always the head aeroplane id
+    expect(nodeId).toBe(10);
     expect(body.name).toBe("new-exp");
   });
 
@@ -354,9 +373,9 @@ describe("VersionHistoryPanel (gh-907)", () => {
   });
 
   // -------------------------------------------------------------------------
-  // 7. "Discard" action
+  // 7. "Discard" action — requires a two-step confirmation gate
   // -------------------------------------------------------------------------
-  it("clicking Discard on a non-main branch calls discardBranch(branchId)", async () => {
+  it("clicking Discard once shows confirmation UI and does NOT call discardBranch yet", async () => {
     const user = userEvent.setup();
     const discardBranch = vi.fn().mockResolvedValue(undefined);
     renderPanel({ actionsOverride: { discardBranch } });
@@ -364,8 +383,43 @@ describe("VersionHistoryPanel (gh-907)", () => {
     const discardBtns = screen.getAllByRole("button", { name: /discard branch/i });
     await user.click(discardBtns[0]);
 
+    // Confirmation prompt must appear
+    expect(screen.getByText(/delete all nodes/i)).toBeDefined();
+    // API must NOT have been called yet
+    expect(discardBranch).not.toHaveBeenCalled();
+  });
+
+  it("clicking Discard then confirming calls discardBranch(branchId)", async () => {
+    const user = userEvent.setup();
+    const discardBranch = vi.fn().mockResolvedValue(undefined);
+    renderPanel({ actionsOverride: { discardBranch } });
+
+    // First click — shows confirm UI
+    const discardBtns = screen.getAllByRole("button", { name: /discard branch/i });
+    await user.click(discardBtns[0]);
+
+    // Second click — confirm
+    const confirmBtn = screen.getByRole("button", { name: /confirm discard branch/i });
+    await user.click(confirmBtn);
+
     await waitFor(() => expect(discardBranch).toHaveBeenCalledOnce());
     expect(discardBranch).toHaveBeenCalledWith(2); // branch id of ai/winglet-v1
+  });
+
+  it("clicking Discard then Cancel does not call discardBranch", async () => {
+    const user = userEvent.setup();
+    const discardBranch = vi.fn().mockResolvedValue(undefined);
+    renderPanel({ actionsOverride: { discardBranch } });
+
+    const discardBtns = screen.getAllByRole("button", { name: /discard branch/i });
+    await user.click(discardBtns[0]);
+
+    const cancelBtn = screen.getByRole("button", { name: /cancel discard/i });
+    await user.click(cancelBtn);
+
+    expect(discardBranch).not.toHaveBeenCalled();
+    // Discard button is back
+    expect(screen.getAllByRole("button", { name: /discard branch/i }).length).toBeGreaterThan(0);
   });
 
   // -------------------------------------------------------------------------

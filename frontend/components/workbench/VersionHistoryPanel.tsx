@@ -333,6 +333,7 @@ function BranchSection({
   busy,
 }: BranchSectionProps) {
   const isAiBranch = branch.name.startsWith("ai/");
+  const [discardPending, setDiscardPending] = useState(false);
 
   return (
     <section aria-label={`Branch: ${branch.name}`} className="flex flex-col gap-2">
@@ -372,10 +373,10 @@ function BranchSection({
               Adopt
             </button>
           )}
-          {!branch.is_main && (
+          {!branch.is_main && !discardPending && (
             <button
               type="button"
-              onClick={() => { void onDiscard(branch.id); }}
+              onClick={() => setDiscardPending(true)}
               disabled={busy}
               aria-label={`Discard branch '${branch.name}'`}
               title="Discard branch and all its nodes"
@@ -385,28 +386,54 @@ function BranchSection({
               Discard
             </button>
           )}
+          {!branch.is_main && discardPending && (
+            <span className="flex items-center gap-1">
+              <span className="text-[10px] font-medium text-destructive" aria-live="polite">
+                Delete all nodes?
+              </span>
+              <button
+                type="button"
+                onClick={() => { setDiscardPending(false); void onDiscard(branch.id); }}
+                disabled={busy}
+                aria-label={`Confirm discard branch '${branch.name}'`}
+                className="rounded bg-destructive px-2 py-1 text-[10px] font-medium text-white disabled:opacity-50"
+              >
+                Yes, delete
+              </button>
+              <button
+                type="button"
+                onClick={() => setDiscardPending(false)}
+                disabled={busy}
+                aria-label="Cancel discard"
+                className="rounded bg-sidebar-accent px-2 py-1 text-[10px] text-muted-foreground disabled:opacity-50"
+              >
+                Cancel
+              </button>
+            </span>
+          )}
         </div>
       </div>
 
       {/* Nodes belonging to this branch */}
-      <div className="flex flex-col gap-2 pl-4 border-l border-border">
+      <ul role="list" className="flex flex-col gap-2 pl-4 border-l border-border">
         {nodes.length === 0 ? (
-          <p className="text-[11px] text-muted-foreground italic">No nodes on this branch.</p>
+          <li className="text-[11px] text-muted-foreground italic">No nodes on this branch.</li>
         ) : (
           nodes.map((node) => (
-            <NodeRow
-              key={node.id}
-              node={node}
-              isCurrentHead={node.id === currentHeadId}
-              isSelectedForCompare={compareSet.has(node.id)}
-              onSelectForCompare={onSelectForCompare}
-              onBranchFrom={onBranchFrom}
-              onRestore={onRestore}
-              busy={busy}
-            />
+            <li key={node.id} aria-current={node.id === currentHeadId ? "true" : undefined}>
+              <NodeRow
+                node={node}
+                isCurrentHead={node.id === currentHeadId}
+                isSelectedForCompare={compareSet.has(node.id)}
+                onSelectForCompare={onSelectForCompare}
+                onBranchFrom={onBranchFrom}
+                onRestore={onRestore}
+                busy={busy}
+              />
+            </li>
           ))
         )}
-      </div>
+      </ul>
     </section>
   );
 }
@@ -470,20 +497,21 @@ function PanelContent({
           <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wide">
             Legacy (pre-versioning)
           </p>
-          <div className="flex flex-col gap-2">
+          <ul role="list" className="flex flex-col gap-2">
             {legacyNodes.map((node) => (
-              <NodeRow
-                key={node.id}
-                node={node}
-                isCurrentHead={node.id === currentHeadId}
-                isSelectedForCompare={compareSet.has(node.id)}
-                onSelectForCompare={onSelectForCompare}
-                onBranchFrom={onBranchFrom}
-                onRestore={onRestore}
-                busy={busy}
-              />
+              <li key={node.id} aria-current={node.id === currentHeadId ? "true" : undefined}>
+                <NodeRow
+                  node={node}
+                  isCurrentHead={node.id === currentHeadId}
+                  isSelectedForCompare={compareSet.has(node.id)}
+                  onSelectForCompare={onSelectForCompare}
+                  onBranchFrom={onBranchFrom}
+                  onRestore={onRestore}
+                  busy={busy}
+                />
+              </li>
             ))}
-          </div>
+          </ul>
         </section>
       )}
 
@@ -573,9 +601,8 @@ export function VersionHistoryPanel({
   }, []);
 
   const handleBranchFrom = useCallback(
-    // _nodeId is accepted for API symmetry; current UI always branches from the head.
-    async (_nodeId: number, name: string) => {
-      await run(() => actions.createBranch({ name }));
+    async (nodeId: number, name: string) => {
+      await run(() => actions.createBranch(nodeId, { name }));
     },
     [run, actions],
   );

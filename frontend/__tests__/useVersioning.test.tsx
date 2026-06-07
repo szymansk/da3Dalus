@@ -212,7 +212,7 @@ describe("useVersionActions", () => {
     );
   });
 
-  it("createBranch() POSTs to the correct endpoint and revalidates", async () => {
+  it("createBranch() POSTs to the SELECTED node endpoint and revalidates", async () => {
     mockFetch
       .mockResolvedValueOnce(jsonResponse(FAKE_BRANCH, 201))
       .mockResolvedValue(jsonResponse({})); // revalidation
@@ -221,22 +221,17 @@ describe("useVersionActions", () => {
 
     let branch: BranchOut | undefined;
     await act(async () => {
-      branch = await result.current.createBranch({ name: "ai/winglet", created_by: "ai" });
+      // Pass node id 42 explicitly — must NOT fall back to the head aeroplane id (10)
+      branch = await result.current.createBranch(42, { name: "ai/winglet", created_by: "ai" });
     });
 
     expect(branch?.name).toBe("ai/winglet");
 
     const postCall = mockFetch.mock.calls[0];
-    expect(postCall[0]).toContain("/aeroplanes/10/branch");
+    // URL path must use the SELECTED node id (42), not the head aeroplane id (10)
+    expect(postCall[0]).toContain("/aeroplanes/42/branch");
     expect(postCall[1].method).toBe("POST");
     expect(JSON.parse(postCall[1].body)).toEqual({ name: "ai/winglet", created_by: "ai" });
-  });
-
-  it("createBranch() throws when aeroplaneId is null", async () => {
-    const { result } = renderHook(() => useVersionActions(null, null), { wrapper });
-    await expect(result.current.createBranch({ name: "x" })).rejects.toThrow(
-      "aeroplaneId is required",
-    );
   });
 
   it("adoptBranch() POSTs to /branches/{id}/adopt and revalidates", async () => {
@@ -255,6 +250,8 @@ describe("useVersionActions", () => {
     const postCall = mockFetch.mock.calls[0];
     expect(postCall[0]).toContain("/branches/7/adopt");
     expect(postCall[1].method).toBe("POST");
+    // adoptBranch must send NO body — the backend takes none
+    expect(postCall[1].body).toBeUndefined();
   });
 
   it("restore() POSTs to /aeroplanes/{snapshotId}/restore and revalidates", async () => {
@@ -298,7 +295,7 @@ describe("useVersionActions", () => {
     const { result } = renderHook(() => useVersionActions(10, null), { wrapper });
 
     await act(async () => {
-      await result.current.createBranch({ name: "no-root" });
+      await result.current.createBranch(10, { name: "no-root" });
     });
 
     // No tree revalidation when rootId is null

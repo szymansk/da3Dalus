@@ -282,7 +282,7 @@ interface MetricRowProps {
   readonly differs: boolean;
 }
 
-function MetricRow({ symbol, valA, valB, differs }: MetricRowProps) {
+function MetricRow({ symbol, valA, valB, labelA, labelB, differs }: MetricRowProps) {
   return (
     <div
       className={`grid grid-cols-[1fr_auto_1fr] items-center gap-2 rounded px-2 py-1 font-[family-name:var(--font-geist-mono)] text-[11px] ${
@@ -292,7 +292,10 @@ function MetricRow({ symbol, valA, valB, differs }: MetricRowProps) {
       data-differs={differs ? "true" : undefined}
     >
       {/* A value */}
-      <span className={`text-right ${differs ? "font-semibold text-foreground" : "text-muted-foreground"}`}>
+      <span
+        aria-label={`${labelA}: ${valA}`}
+        className={`text-right ${differs ? "font-semibold text-foreground" : "text-muted-foreground"}`}
+      >
         {valA}
       </span>
       {/* Symbol */}
@@ -300,7 +303,10 @@ function MetricRow({ symbol, valA, valB, differs }: MetricRowProps) {
         {renderSymbol(symbol)}
       </span>
       {/* B value */}
-      <span className={`text-left ${differs ? "font-semibold text-foreground" : "text-muted-foreground"}`}>
+      <span
+        aria-label={`${labelB}: ${valB}`}
+        className={`text-left ${differs ? "font-semibold text-foreground" : "text-muted-foreground"}`}
+      >
         {valB}
       </span>
     </div>

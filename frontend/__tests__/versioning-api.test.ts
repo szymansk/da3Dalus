@@ -157,7 +157,7 @@ describe("createBranch()", () => {
 // ---------------------------------------------------------------------------
 
 describe("adoptBranch()", () => {
-  it("POSTs to /branches/{id}/adopt with empty body", async () => {
+  it("POSTs to /branches/{id}/adopt with NO body (backend takes none)", async () => {
     mockFetch.mockResolvedValueOnce(jsonResponse(FAKE_BRANCH_OUT));
 
     const result = await vapi.adoptBranch(7);
@@ -165,7 +165,8 @@ describe("adoptBranch()", () => {
     const [url, init] = mockFetch.mock.calls[0];
     expect(url).toContain("/branches/7/adopt");
     expect(init.method).toBe("POST");
-    expect(JSON.parse(init.body as string)).toEqual({});
+    // The backend takes no request body — must NOT send one
+    expect(init.body).toBeUndefined();
     expect(result.id).toBe(1);
   });
 

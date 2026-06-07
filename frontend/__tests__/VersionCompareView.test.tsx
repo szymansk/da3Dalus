@@ -135,7 +135,41 @@ function makeCtx(overrides: Partial<ComputationContext> = {}): ComputationContex
   };
 }
 
+/**
+ * Wrap a ComputationContext in the REAL backend shape:
+ *   { assumption_computation_context: ctx, id, uuid, name, ... }
+ * This exercises the PRIMARY extraction path in VersionCompareView.toCtx().
+ */
+function wrapCtx(ctx: ComputationContext | null): Record<string, unknown> | null {
+  if (ctx === null) return null;
+  return {
+    id: 1,
+    uuid: "test-uuid",
+    name: "Test Plane",
+    total_mass_kg: 1.5,
+    wing_count: 1,
+    fuselage_count: 1,
+    assumption_computation_context: ctx,
+  };
+}
+
 function makeCompareOut(
+  metricsA: ComputationContext | null,
+  metricsB: ComputationContext | null,
+): CompareOut {
+  return {
+    node_a: BASE_NODE_A,
+    node_b: BASE_NODE_B,
+    metrics_a: wrapCtx(metricsA),
+    metrics_b: wrapCtx(metricsB),
+  };
+}
+
+/**
+ * Make a CompareOut where metrics are passed flat (no nesting) — exercises
+ * the FALLBACK extraction path in toCtx().
+ */
+function makeCompareOutFlat(
   metricsA: ComputationContext | null,
   metricsB: ComputationContext | null,
 ): CompareOut {
@@ -335,6 +369,25 @@ describe("VersionCompareView (gh-907)", () => {
     );
     // Should render headers but no metric rows
     expect(screen.getAllByText("Alpha build").length).toBeGreaterThan(0);
+  });
+
+  // -------------------------------------------------------------------------
+  // 9a. Fallback shape — flat metrics dict (legacy / tests without nesting)
+  // -------------------------------------------------------------------------
+  it("renders metric rows correctly with flat metrics (fallback extraction path)", () => {
+    // Flat shape: metrics_a/b IS the ctx directly (no assumption_computation_context wrapper)
+    const compareOut = makeCompareOutFlat(makeCtx(), makeCtx());
+    const { container } = render(
+      <VersionCompareView
+        compareOut={compareOut}
+        isLoading={false}
+        error={null}
+        onClose={vi.fn()}
+      />,
+    );
+    // V_cruise row should still render via the fallback path
+    const row = container.querySelector('[data-testid="compare-row-V_cruise"]');
+    expect(row).not.toBeNull();
   });
 
   // -------------------------------------------------------------------------

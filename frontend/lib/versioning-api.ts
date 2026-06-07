@@ -32,6 +32,15 @@ async function postJson<T>(path: string, body: unknown): Promise<T> {
   return res.json() as Promise<T>;
 }
 
+async function postNoBody<T>(path: string): Promise<T> {
+  const res = await fetch(`${API_BASE}${path}`, { method: "POST" });
+  if (!res.ok) {
+    const text = await res.text().catch(() => "");
+    throw new Error(`POST ${path} failed: ${res.status} ${res.statusText}: ${text}`);
+  }
+  return res.json() as Promise<T>;
+}
+
 async function deleteReq(path: string): Promise<void> {
   const res = await fetch(`${API_BASE}${path}`, { method: "DELETE" });
   if (!res.ok) {
@@ -65,22 +74,22 @@ export async function snapshot(
 }
 
 /**
- * POST /aeroplanes/{id}/branch
- * Fork a new editable branch from a node.
+ * POST /aeroplanes/{nodeId}/branch
+ * Fork a new editable branch from a specific node (mutable head or snapshot).
  */
 export async function createBranch(
-  aeroplaneId: number,
+  nodeId: number,
   body: BranchRequest,
 ): Promise<BranchOut> {
-  return postJson<BranchOut>(`/aeroplanes/${aeroplaneId}/branch`, body);
+  return postJson<BranchOut>(`/aeroplanes/${nodeId}/branch`, body);
 }
 
 /**
  * POST /branches/{id}/adopt
- * Promote a branch to is_main=true.
+ * Promote a branch to is_main=true. The backend takes no request body.
  */
 export async function adoptBranch(branchId: number): Promise<BranchOut> {
-  return postJson<BranchOut>(`/branches/${branchId}/adopt`, {});
+  return postNoBody<BranchOut>(`/branches/${branchId}/adopt`);
 }
 
 /**

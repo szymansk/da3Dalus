@@ -55,10 +55,12 @@ export interface UseVersionActionsResult {
   snapshot: (body: SnapshotRequest) => Promise<VersionNode>;
 
   /**
-   * Fork a new editable branch from the current aeroplane node.
+   * Fork a new editable branch from the given source node.
+   * Pass the node id of the selected node — NOT the head — so that
+   * "Branch from" actually forks from the chosen node.
    * Revalidates the lineage tree and the aeroplanes list.
    */
-  createBranch: (body: BranchRequest) => Promise<BranchOut>;
+  createBranch: (nodeId: number, body: BranchRequest) => Promise<BranchOut>;
 
   /**
    * Promote a branch to is_main=true.
@@ -119,13 +121,12 @@ export function useVersionActions(
   );
 
   const createBranchAction = useCallback(
-    async (body: BranchRequest): Promise<BranchOut> => {
-      if (aeroplaneId === null) throw new Error("aeroplaneId is required");
-      const branch = await api.createBranch(aeroplaneId, body);
+    async (nodeId: number, body: BranchRequest): Promise<BranchOut> => {
+      const branch = await api.createBranch(nodeId, body);
       await revalidateAll();
       return branch;
     },
-    [aeroplaneId, revalidateAll],
+    [revalidateAll],
   );
 
   const adoptBranchAction = useCallback(
