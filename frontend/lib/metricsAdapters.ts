@@ -615,6 +615,22 @@ export function toTail(
     });
   }
 
+  // S_HT recommended — convert mm² → dm² (÷ 10 000) for a human-readable scale.
+  // At typical RC sizes (S_W ~0.1–1 m²), the recommended HT area is 10 000–150 000 mm²
+  // which reads as 1–15 dm². cm² would give 100–1 500, which is noisier to scan.
+  if (tailSizing.s_h_recommended_mm2 != null) {
+    const s_ht_dm2 = tailSizing.s_h_recommended_mm2 / 10_000;
+    items.push({
+      symbol: "S_HT",
+      label: "H-tail area (rec.)",
+      value: s_ht_dm2.toFixed(1),
+      unit: "dm²",
+      description:
+        "Recommended horizontal-tail area derived from V_H target (mid-band) × S_W × MAC / l_HT. " +
+        "Source: tail-sizing service using the RC rule-of-thumb V_H band for the detected aircraft class.",
+    });
+  }
+
   const bandsNote =
     "V_H target band depends on aircraft type: trainer 0.60–0.70, sport 0.50–0.60, aerobatic 0.45–0.55, glider ~0.45–0.60. RC rule of thumb (rcplanedesigner / Lennon) — defer to Scholz for UAV / full-scale.";
 

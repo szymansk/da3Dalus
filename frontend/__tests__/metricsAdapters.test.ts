@@ -144,6 +144,13 @@ const NOMINAL_TAIL: TailSizingResult = {
   warnings: [],
 };
 
+// NOMINAL_TAIL has s_h_recommended_mm2: null (tests that item is conditional).
+// TAIL_WITH_S_HT provides a realistic 80 000 mm² recommended area (= 8.0 dm²).
+const TAIL_WITH_S_HT: TailSizingResult = {
+  ...NOMINAL_TAIL,
+  s_h_recommended_mm2: 80_000,
+};
+
 const NOT_APPLICABLE_TAIL: TailSizingResult = {
   ...NOMINAL_TAIL,
   v_h_current: null,
@@ -620,6 +627,45 @@ describe("toTail", () => {
     const result = toTail(NOMINAL_TAIL, NOMINAL_CTX)!;
     expect(typeof result.bandsNote).toBe("string");
     expect(result.bandsNote.length).toBeGreaterThan(10);
+  });
+
+  // gh-890: S_HT recommended area
+  it("S_HT item is present when s_h_recommended_mm2 is provided", () => {
+    const result = toTail(TAIL_WITH_S_HT, NOMINAL_CTX)!;
+    const shtItem = result.items.find((i) => i.symbol === "S_HT");
+    expect(shtItem).toBeDefined();
+  });
+
+  it("S_HT value is s_h_recommended_mm2 converted to dm² (÷ 10 000), 1 dp", () => {
+    const result = toTail(TAIL_WITH_S_HT, NOMINAL_CTX)!;
+    const shtItem = result.items.find((i) => i.symbol === "S_HT")!;
+    // 80 000 mm² ÷ 10 000 = 8.0 dm²
+    expect(shtItem.value).toBe("8.0");
+    expect(shtItem.unit).toBe("dm²");
+  });
+
+  it("S_HT label contains 'rec.' to distinguish recommended from current", () => {
+    const result = toTail(TAIL_WITH_S_HT, NOMINAL_CTX)!;
+    const shtItem = result.items.find((i) => i.symbol === "S_HT")!;
+    expect(shtItem.label).toMatch(/rec\./i);
+  });
+
+  it("S_HT description contains formula reference", () => {
+    const result = toTail(TAIL_WITH_S_HT, NOMINAL_CTX)!;
+    const shtItem = result.items.find((i) => i.symbol === "S_HT")!;
+    expect(shtItem.description).toMatch(/V_H/);
+  });
+
+  it("S_HT item is absent when s_h_recommended_mm2 is null", () => {
+    // NOMINAL_TAIL has s_h_recommended_mm2: null
+    const result = toTail(NOMINAL_TAIL, NOMINAL_CTX)!;
+    const shtItem = result.items.find((i) => i.symbol === "S_HT");
+    expect(shtItem).toBeUndefined();
+  });
+
+  it("S_HT item is absent when classification is not_applicable", () => {
+    // classification=not_applicable causes toTail to return null entirely
+    expect(toTail(NOT_APPLICABLE_TAIL, NOMINAL_CTX)).toBeNull();
   });
 });
 
