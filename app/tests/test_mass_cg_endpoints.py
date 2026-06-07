@@ -64,63 +64,6 @@ class TestDesignMetricsEndpoint:
 
 
 # ---------------------------------------------------------------------------
-# POST /aeroplanes/{id}/mass_sweep
-# ---------------------------------------------------------------------------
-
-
-class TestMassSweepEndpoint:
-    def test_returns_200(self, client_and_db):
-        client, SessionLocal = client_and_db
-        with SessionLocal() as db:
-            aeroplane = make_aeroplane(db)
-
-        client.post(f"/aeroplanes/{aeroplane.uuid}/assumptions")
-        with patch(
-            "app.services.mass_cg_service.get_s_ref_for_aeroplane",
-            return_value=MOCK_S_REF,
-        ):
-            resp = client.post(
-                f"/aeroplanes/{aeroplane.uuid}/mass_sweep",
-                json={"masses_kg": [1.0, 1.5, 2.0], "velocity": 15.0, "altitude": 0.0},
-            )
-        assert resp.status_code == 200
-        body = resp.json()
-        assert len(body["points"]) == 3
-        assert body["velocity"] == 15.0
-        assert body["s_ref"] == MOCK_S_REF
-
-    def test_404_for_missing_aeroplane(self, client_and_db):
-        client, _ = client_and_db
-        resp = client.post(
-            f"/aeroplanes/{uuid.uuid4()}/mass_sweep",
-            json={"masses_kg": [1.0], "velocity": 15.0, "altitude": 0.0},
-        )
-        assert resp.status_code == 404
-
-    def test_422_for_empty_masses(self, client_and_db):
-        client, SessionLocal = client_and_db
-        with SessionLocal() as db:
-            aeroplane = make_aeroplane(db)
-
-        resp = client.post(
-            f"/aeroplanes/{aeroplane.uuid}/mass_sweep",
-            json={"masses_kg": [], "velocity": 15.0, "altitude": 0.0},
-        )
-        assert resp.status_code == 422
-
-    def test_422_for_negative_mass(self, client_and_db):
-        client, SessionLocal = client_and_db
-        with SessionLocal() as db:
-            aeroplane = make_aeroplane(db)
-
-        resp = client.post(
-            f"/aeroplanes/{aeroplane.uuid}/mass_sweep",
-            json={"masses_kg": [1.0, -0.5], "velocity": 15.0, "altitude": 0.0},
-        )
-        assert resp.status_code == 422
-
-
-# ---------------------------------------------------------------------------
 # GET /aeroplanes/{id}/cg_comparison
 # ---------------------------------------------------------------------------
 

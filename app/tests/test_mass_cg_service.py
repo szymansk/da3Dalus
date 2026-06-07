@@ -154,52 +154,6 @@ class TestComputeDesignMetrics:
 
 
 # ---------------------------------------------------------------------------
-# compute_mass_sweep
-# ---------------------------------------------------------------------------
-
-
-class TestComputeMassSweep:
-    def test_returns_correct_number_of_points(self):
-        masses = [1.0, 1.5, 2.0, 2.5]
-        result = svc.compute_mass_sweep(masses, 0.3, 1.4, SEA_LEVEL_RHO, 15.0)
-        assert len(result) == 4
-
-    def test_wing_loading_increases_with_mass(self):
-        masses = [1.0, 2.0, 3.0]
-        points = svc.compute_mass_sweep(masses, 0.3, 1.4, SEA_LEVEL_RHO, 15.0)
-        loadings = [p.wing_loading_pa for p in points]
-        assert loadings == sorted(loadings)
-
-    def test_stall_speed_increases_with_mass(self):
-        masses = [1.0, 2.0, 3.0]
-        points = svc.compute_mass_sweep(masses, 0.3, 1.4, SEA_LEVEL_RHO, 15.0)
-        speeds = [p.stall_speed_ms for p in points]
-        assert speeds == sorted(speeds)
-
-    def test_cl_margin_decreases_with_mass(self):
-        masses = [1.0, 2.0, 3.0]
-        points = svc.compute_mass_sweep(masses, 0.3, 1.4, SEA_LEVEL_RHO, 15.0)
-        margins = [p.cl_margin for p in points]
-        assert margins == sorted(margins, reverse=True)
-
-    def test_single_mass_point(self):
-        points = svc.compute_mass_sweep([1.5], 0.3, 1.4, SEA_LEVEL_RHO, 15.0)
-        assert len(points) == 1
-        assert points[0].mass_kg == 1.5
-
-    def test_each_point_matches_single_computation(self):
-        """Each sweep point must match a standalone compute_design_metrics call."""
-        masses = [1.0, 1.5, 2.0]
-        points = svc.compute_mass_sweep(masses, 0.3, 1.4, SEA_LEVEL_RHO, 15.0)
-        for pt in points:
-            single = svc.compute_design_metrics(pt.mass_kg, 0.3, 1.4, SEA_LEVEL_RHO, 15.0)
-            assert pt.wing_loading_pa == pytest.approx(single.wing_loading_pa)
-            assert pt.stall_speed_ms == pytest.approx(single.stall_speed_ms)
-            assert pt.required_cl == pytest.approx(single.required_cl)
-            assert pt.cl_margin == pytest.approx(single.cl_margin)
-
-
-# ---------------------------------------------------------------------------
 # aggregate_weight_items
 # ---------------------------------------------------------------------------
 

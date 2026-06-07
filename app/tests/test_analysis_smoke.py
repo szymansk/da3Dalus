@@ -202,23 +202,6 @@ def test_aerobuildup_trim(smoke_plane):
 
 
 @pytest.mark.integration
-@pytest.mark.requires_aerosandbox
-def test_mass_sweep(smoke_plane):
-    client, aeroplane, config = smoke_plane
-    response = client.post(
-        f"/aeroplanes/{aeroplane.uuid}/mass_sweep",
-        json={
-            "masses_kg": [1.0, 1.5, 2.0],
-            "velocity": 15.0,
-            "altitude": 0,
-        },
-    )
-    assert response.status_code == 200, f"{config.name}: {response.text}"
-    data = response.json()
-    assert "points" in data, f"{config.name}: missing 'points'"
-
-
-@pytest.mark.integration
 def test_cg_comparison(smoke_plane):
     client, aeroplane, config = smoke_plane
     response = client.get(f"/aeroplanes/{aeroplane.uuid}/cg_comparison")

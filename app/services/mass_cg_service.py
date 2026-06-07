@@ -1,4 +1,4 @@
-"""Mass / CG design parameter service — derived metrics, sweep, and CG comparison."""
+"""Mass / CG design parameter service — derived metrics and CG comparison."""
 
 from __future__ import annotations
 
@@ -13,8 +13,6 @@ from app.models.aeroplanemodel import AeroplaneModel, DesignAssumptionModel, Wei
 from app.schemas.mass_cg import (
     CGComparisonResponse,
     DesignMetricsResponse,
-    MassSweepPoint,
-    MassSweepResponse,
 )
 
 logger = logging.getLogger(__name__)
@@ -75,29 +73,6 @@ def compute_design_metrics(
         required_cl=required_cl,
         cl_margin=cl_margin,
     )
-
-
-def compute_mass_sweep(
-    masses_kg: list[float],
-    s_ref: float,
-    cl_max: float,
-    rho: float,
-    velocity: float,
-) -> list[MassSweepPoint]:
-    """Compute derived metrics at each mass point (no aero re-run needed)."""
-    points: list[MassSweepPoint] = []
-    for m in masses_kg:
-        dm = compute_design_metrics(m, s_ref, cl_max, rho, velocity)
-        points.append(
-            MassSweepPoint(
-                mass_kg=m,
-                wing_loading_pa=dm.wing_loading_pa,
-                stall_speed_ms=dm.stall_speed_ms,
-                required_cl=dm.required_cl,
-                cl_margin=dm.cl_margin,
-            )
-        )
-    return points
 
 
 def aggregate_weight_items(
@@ -307,25 +282,3 @@ def get_design_metrics_for_aeroplane(
     return compute_design_metrics(mass_kg, s_ref, cl_max, rho, velocity)
 
 
-def get_mass_sweep_for_aeroplane(
-    db: Session,
-    aeroplane_uuid,
-    masses_kg: list[float],
-    velocity: float,
-    altitude: float,
-) -> MassSweepResponse:
-    """Compute a mass sweep for an aeroplane."""
-    import aerosandbox as asb
-
-    cl_max = get_effective_assumption_value(db, aeroplane_uuid, "cl_max")
-    s_ref = get_s_ref_for_aeroplane(db, aeroplane_uuid)
-    rho = asb.Atmosphere(altitude=altitude).density()
-
-    points = compute_mass_sweep(masses_kg, s_ref, cl_max, rho, velocity)
-    return MassSweepResponse(
-        s_ref=s_ref,
-        cl_max=cl_max,
-        velocity=velocity,
-        altitude=altitude,
-        points=points,
-    )

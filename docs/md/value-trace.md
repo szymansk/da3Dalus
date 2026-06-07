@@ -21,7 +21,7 @@
 > sowie persistierte Aero/Trim-Resultate (Operating Points, Strip-Forces,
 > Flight-Envelope) ab.
 
-**Inventar:** ~80 distinkte Werte, 26 API-Endpoints, 6 unterschiedliche
+**Inventar:** ~80 distinkte Werte, 25 API-Endpoints, 6 unterschiedliche
 Parametersätze, 2 alternative Solver-Backends (AeroSandbox / AVL).
 
 ---
@@ -79,7 +79,6 @@ flowchart TB
         H_end[useEndurance]
         H_tail[useTailSizing]
         H_mis[useMissionKpis]
-        H_mass[useMassSweep]
     end
 
     subgraph API["FastAPI v2"]
@@ -94,7 +93,6 @@ flowchart TB
         E_mis["GET /mission-kpis"]
         E_op["GET/POST /operating_points"]
         E_trim["POST /operating-points/avl-trim<br/>POST /operating-points/aerobuildup-trim"]
-        E_mass["POST /mass_sweep"]
     end
 
     subgraph SVC["Service-Layer"]
@@ -131,7 +129,6 @@ flowchart TB
     UI_OP    --> H_op   --> E_op   --> C_op
     UI_OP    -.trim trigger.-> E_trim --> S_trim_abu & S_trim_avl
     UI_Polar --> H_ana  --> E_alpha & E_strip & E_stream
-    UI_Mass  --> H_mass --> E_mass
 
     C_ctx --populated by--> S_recompute --> S_polar
     S_recompute --> SLV_ABU
@@ -528,28 +525,7 @@ beim Trainer), Wing-Loading 10–50 N/m², Cruise 10–25 m/s.
 
 ---
 
-## 10. Pfad: Mass Sweep (Matching-Chart)
-
-```mermaid
-flowchart LR
-    classDef geom  fill:#cfe8ff,stroke:#1f6feb,stroke-width:2px
-    classDef polar fill:#ffe0b2,stroke:#ef6c00,stroke-width:2px
-    classDef user  fill:#fff59d,stroke:#f9a825,stroke-width:2px
-
-    UI[MassSweepChart.tsx] --> H[useMassSweep]
-    H --> EP["POST /aeroplanes/{id}/mass_sweep"]
-
-    G[🟦 S_ref]:::geom --> SVC
-    P["🟧 CL_max"]:::polar --> SVC
-    U["🟨 mass range (default 0.5..10 kg),<br/>velocity, altitude"]:::user --> SVC
-
-    EP --> SVC["mass_sweep_service<br/>(parameter sweep over mass)"]
-    SVC --> PTS["points[]:<br/>mass_kg, wing_loading_pa,<br/>stall_speed_ms, cl_margin"]
-```
-
----
-
-## 11. Pfad: Operating-Point-Persistierung & Resolver
+## 10. Pfad: Operating-Point-Persistierung & Resolver
 
 Operating Points sind die einzigen **persistierten** Berechnungsergebnisse
 neben dem ComputationContext. Sie ermöglichen reproducible Visualisierungen
@@ -611,7 +587,7 @@ LIMIT_REACHED | DIRTY`
 
 ---
 
-## 14. Vollständige Endpoint-Übersicht (26 Endpoints)
+## 14. Vollständige Endpoint-Übersicht (25 Endpoints)
 
 ### Computation Context & Assumptions
 1. `GET /aeroplanes/{id}/assumptions/computation-context` — ⭐ Hauptcache
@@ -648,14 +624,11 @@ LIMIT_REACHED | DIRTY`
 22. `POST /aeroplanes/{id}/operating-points/aerobuildup-trim` — ASB-Trim
 23. `POST /aeroplanes/{id}/operating-pointsets/generate-default` — Default OPs
 
-### Mass Sweep & Sizing
-24. `POST /aeroplanes/{id}/mass_sweep` — Matching-Chart
-
 ### Mission Compliance
-25. `GET /aeroplanes/{id}/mission-kpis?missions=...` — 7-Achs-Radar
+24. `GET /aeroplanes/{id}/mission-kpis?missions=...` — 7-Achs-Radar
 
 ### Wings & Geometry
-26. `GET /aeroplanes/{id}/wings/{name}` — Wing-Geometrie inkl. x_secs
+25. `GET /aeroplanes/{id}/wings/{name}` — Wing-Geometrie inkl. x_secs
 
 ---
 
@@ -706,7 +679,6 @@ LIMIT_REACHED | DIRTY`
 - `frontend/components/.../EnduranceCard.tsx`
 - `frontend/components/.../TailVolumeCard.tsx`
 - `frontend/components/.../MissionRadarChart.tsx`
-- `frontend/components/.../MassSweepChart.tsx`
 - `frontend/components/.../OperatingPointsPanel.tsx`
 - `frontend/lib/polar.ts` — derived metrics (k, C_L_md, L/D_max, ρ)
 - `frontend/lib/missionScale.ts` — Spider-Chart-Normalisierung

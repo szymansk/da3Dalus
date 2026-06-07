@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-from typing import Annotated
-
 from pydantic import BaseModel, Field
 
 
@@ -41,36 +39,6 @@ class DesignMetricsResponse(BaseModel):
     stall_speed_ms: float = Field(..., description="Stall speed at given altitude [m/s]")
     required_cl: float = Field(..., description="CL required for level flight at given velocity")
     cl_margin: float = Field(..., description="CL_max - required_CL (positive = above stall)")
-
-
-class MassSweepRequest(BaseModel):
-    """Input for a mass sweep (post-processing, no re-run of aero)."""
-
-    masses_kg: list[Annotated[float, Field(gt=0)]] = Field(
-        ..., min_length=1, max_length=100, description="List of mass values to evaluate [kg]"
-    )
-    velocity: float = Field(15.0, gt=0, description="Cruise velocity in m/s")
-    altitude: float = Field(0.0, ge=0, description="Altitude in meters")
-
-
-class MassSweepPoint(BaseModel):
-    """One data point in a mass sweep."""
-
-    mass_kg: float = Field(..., description="Mass at this sweep point [kg]")
-    wing_loading_pa: float = Field(..., description="Wing loading W/S [N/m^2]")
-    stall_speed_ms: float = Field(..., description="Stall speed at given altitude [m/s]")
-    required_cl: float = Field(..., description="CL required for level flight")
-    cl_margin: float = Field(..., description="CL_max - required_CL")
-
-
-class MassSweepResponse(BaseModel):
-    """Result of a mass sweep."""
-
-    s_ref: float = Field(..., description="Wing reference area [m^2]")
-    cl_max: float = Field(..., description="Maximum lift coefficient")
-    velocity: float = Field(..., description="Cruise velocity used [m/s]")
-    altitude: float = Field(..., description="Altitude used [m]")
-    points: list[MassSweepPoint] = Field(..., description="Sweep data points")
 
 
 class CGComparisonResponse(BaseModel):
