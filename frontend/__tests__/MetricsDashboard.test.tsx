@@ -359,17 +359,16 @@ describe("MetricsDashboard — polar fallback (e_oswald_fallback_used=true)", ()
     expect(qualityCol).not.toBeNull();
   });
 
-  it("(L/D)_max gauge value is 0 (sentinel) when fallback used", async () => {
-    // toQualityGauges sets value=0 for (L/D)_max when e_oswald_fallback_used.
-    // BulletGauge renders the format fn output: "0.0" for the sentinel.
-    // The key invariant is that no large finite L/D value (> 5) is shown.
+  it("(L/D)_max and ρ gauges are omitted on fallback (no bogus 0.0 / 0.00)", async () => {
+    // Smoke-test finding: a glider with a rejected polar must not show
+    // "(L/D)max 0.0" or "ρ 0.00". The gauges are dropped; the raw row dashes
+    // the underlying numbers instead.
     const { container } = await renderDashboard();
     const qualityCol = container.querySelector('[data-testid="metric-col-quality"]');
     expect(qualityCol).not.toBeNull();
-    if (qualityCol) {
-      // No value like "21.0" (the nominal L/D) should appear.
-      expect(qualityCol.textContent).not.toMatch(/21\.0/);
-    }
+    // No sentinel "0.0"/"0.00" gauge reading, and no nominal L/D either.
+    expect(qualityCol!.textContent).not.toMatch(/\b0\.00?\b/);
+    expect(qualityCol!.textContent).not.toMatch(/21\.0/);
   });
 });
 

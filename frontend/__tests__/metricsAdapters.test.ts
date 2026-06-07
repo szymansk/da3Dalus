@@ -401,25 +401,23 @@ describe("toQualityGauges", () => {
     expect(lGauge.value).toBeCloseTo(24);
   });
 
-  it("polar fallback: (L/D)_max gauge is always emitted with sentinel value 0", () => {
+  it("polar fallback: (L/D)_max gauge is OMITTED (no bogus 0.0 bar)", () => {
     // When e_oswald_fallback_used=true, polar-derived quantities are non-physical.
-    // The adapter always emits the gauge with value=0 (sentinel) so BulletGauge
-    // renders a bar at min rather than a garbage number.
+    // A real glider showing "(L/D)max 0.0" is nonsense (smoke-test finding), so the
+    // gauge is omitted entirely; the raw row dashes the underlying numbers instead.
     const gauges = toQualityGauges(FALLBACK_CTX);
-    const ldGauge = gauges.find((g) => g.symbol === "(L/D)_max");
-    // MUST be present — dropping it would make the quality column layout jump.
-    expect(ldGauge).toBeDefined();
-    expect(ldGauge!.value).toBe(0);
-    expect(ldGauge!.quality).toBe("bad");
+    expect(gauges.find((g) => g.symbol === "(L/D)_max")).toBeUndefined();
   });
 
-  it("polar fallback: ρ gauge is always emitted with sentinel value 0", () => {
+  it("polar fallback: ρ gauge is OMITTED (no bogus 0.00 bar)", () => {
     const gauges = toQualityGauges(FALLBACK_CTX);
-    const rhoGauge = gauges.find((g) => g.symbol === "ρ");
-    // MUST be present — dropping it would silently hide the polar-health gauge.
-    expect(rhoGauge).toBeDefined();
-    expect(rhoGauge!.value).toBe(0);
-    expect(rhoGauge!.quality).toBe("bad");
+    expect(gauges.find((g) => g.symbol === "ρ")).toBeUndefined();
+  });
+
+  it("nominal: (L/D)_max and ρ gauges ARE present (omission is fallback-only)", () => {
+    const gauges = toQualityGauges(NOMINAL_CTX);
+    expect(gauges.find((g) => g.symbol === "(L/D)_max")).toBeDefined();
+    expect(gauges.find((g) => g.symbol === "ρ")).toBeDefined();
   });
 
   it("landing field gauge omitted when landing_field_length_m is null", () => {

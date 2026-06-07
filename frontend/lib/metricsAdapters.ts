@@ -306,11 +306,9 @@ export function toQualityGauges(
 
   // Empirical (L/D)max from backend sweep takes priority; formula is fallback.
   const ldMaxRaw = cleanPolar?.ld_max ?? computeEMax(cd0, eFromCtx, fallbackUsed, ar);
-  const ldMaxValue = fallbackUsed ? 0 : (ldMaxRaw ?? 0);
 
-  // ρ: degeneracy ratio
+  // ρ: stall-margin degeneracy ratio (lower is better)
   const rhoRaw = computeRho(cd0, eFromCtx, fallbackUsed, ar, clMax);
-  const rhoValue = fallbackUsed ? 0 : (rhoRaw ?? 0);
 
   // SM from ctx
   const smPercent = ctx.cg_agg_m != null
@@ -322,18 +320,21 @@ export function toQualityGauges(
 
   const gauges: GaugeData[] = [];
 
-  // (L/D)_max
-  gauges.push({
-    symbol: "(L/D)_max",
-    label: "Max glide ratio",
-    value: ldMaxValue,
-    min: LD_MAX_MIN,
-    max: LD_MAX_MAX,
-    zones: LD_MAX_ZONES,
-    quality: fallbackUsed ? "bad" : zoneQuality(ldMaxValue, LD_MAX_ZONES),
-    description: "Best lift-to-drag ratio — the headline efficiency number.",
-    format: (v) => v.toFixed(1),
-  });
+  // (L/D)_max — omitted when the polar fit was rejected (fallback) or unavailable;
+  // the raw row dashes the underlying numbers rather than showing a bogus 0.0.
+  if (!fallbackUsed && ldMaxRaw != null) {
+    gauges.push({
+      symbol: "(L/D)_max",
+      label: "Max glide ratio",
+      value: ldMaxRaw,
+      min: LD_MAX_MIN,
+      max: LD_MAX_MAX,
+      zones: LD_MAX_ZONES,
+      quality: zoneQuality(ldMaxRaw, LD_MAX_ZONES),
+      description: "Best lift-to-drag ratio — the headline efficiency number.",
+      format: (v) => v.toFixed(1),
+    });
+  }
 
   // e (Oswald efficiency)
   if (eFromCtx != null) {
@@ -351,19 +352,23 @@ export function toQualityGauges(
     });
   }
 
-  // ρ (polar health) — zones derived from rhoThresholdsForProfile so the
-  // colouring matches PolarChipRow / rhoColorClassName for both powered and glider.
-  gauges.push({
-    symbol: "ρ",
-    label: "Polar health",
-    value: rhoValue,
-    min: RHO_MIN,
-    max: RHO_MAX,
-    zones: rhoZones,
-    quality: fallbackUsed ? "bad" : zoneQuality(Math.max(rhoValue, RHO_MIN), rhoZones),
-    description: "(C_L,md / C_L,max)² — how much margin to stall at best glide.",
-    format: (v) => v.toFixed(2),
-  });
+  // ρ (polar health) — degeneracy ratio; omitted on fallback like (L/D)_max.
+  // Zones derive from rhoThresholdsForProfile so the colouring matches PolarChipRow
+  // / rhoColorClassName for both powered and glider profiles.
+  if (!fallbackUsed && rhoRaw != null) {
+    gauges.push({
+      symbol: "ρ",
+      label: "Polar health",
+      value: rhoRaw,
+      min: RHO_MIN,
+      max: RHO_MAX,
+      zones: rhoZones,
+      quality: zoneQuality(Math.max(rhoRaw, RHO_MIN), rhoZones),
+      description:
+        "ρ = C_D0·π·e·AR / C_L,max² — stall-margin degeneracy (Anderson §6.7.2). Lower is better: ρ=1/3 ⇔ min-sink at stall, ρ=1 ⇔ best glide at stall.",
+      format: (v) => v.toFixed(2),
+    });
+  }
 
   // SM
   if (smPercent != null) {
