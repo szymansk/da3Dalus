@@ -9,7 +9,7 @@ import { useState } from "react";
 import { Wind, Gauge, Ruler, BatteryCharging } from "lucide-react";
 import { renderSymbol } from "@/components/workbench/renderSymbol";
 import { MetricColumn, type ColumnMode } from "./MetricColumn";
-import { EnvelopeAxis, BulletGauge, MetricCard, MacCgDiagram, Tip } from "./primitives";
+import { EnvelopeAxis, BulletGauge, MetricCard, Tip } from "./primitives";
 import { PlanformDiagram } from "./PlanformDiagram";
 import {
   antriebDetailMock, antriebMock, balanceMock, geometryMock,
@@ -44,6 +44,10 @@ export function MetricsDashboard() {
   }
 
   const smInTarget = balanceMock.smPercent >= balanceMock.targetSmMin && balanceMock.smPercent <= balanceMock.targetSmMax;
+  // CG/NP as a fraction of MAC (LE → TE) for placement on the planform centreline
+  const cgFrac = (balanceMock.cg - balanceMock.macStart) / balanceMock.macLength;
+  const npFrac = (balanceMock.np - balanceMock.macStart) / balanceMock.macLength;
+  const smStr = `${balanceMock.smPercent.toFixed(1)}%`;
 
   const cols: Record<Id, { title: string; icon: typeof Wind; headline: string; tile: React.ReactNode; large: React.ReactNode }> = {
     speed: {
@@ -88,7 +92,7 @@ export function MetricsDashboard() {
       tile: (
         <div className="flex h-full flex-col gap-1 pt-1">
           <div className="flex min-h-0 flex-1 items-center justify-center">
-            <PlanformDiagram bRef="1.50" mac="0.135" sRef="0.200" ar="11.3" />
+            <PlanformDiagram bRef="1.50" mac="0.135" sRef="0.200" ar="11.3" cgFrac={cgFrac} npFrac={npFrac} sm={smStr} smOk={smInTarget} />
           </div>
           <div className="flex items-end justify-between gap-2">
             <div className="min-w-0 flex-1"><MiniKV items={geometryMock} /></div>
@@ -102,11 +106,14 @@ export function MetricsDashboard() {
       ),
       large: (
         <div className="flex h-full items-stretch gap-4 pt-1">
-          <div className="flex h-full min-h-0 flex-[2] items-center justify-center">
-            <PlanformDiagram bRef="1.50" mac="0.135" sRef="0.200" ar="11.3" annotate />
+          <div className="flex h-full min-h-0 flex-[3] items-center justify-center">
+            <PlanformDiagram bRef="1.50" mac="0.135" sRef="0.200" ar="11.3" annotate cgFrac={cgFrac} npFrac={npFrac} sm={smStr} smOk={smInTarget} />
           </div>
-          <div className="flex flex-1 flex-col justify-center gap-1">
-            <MacCgDiagram {...balanceMock} inTarget={smInTarget} large />
+          <div className="flex flex-1 flex-col justify-center gap-1.5 font-[family-name:var(--font-geist-mono)] text-[11px]">
+            <div className="group/m relative" tabIndex={0}>
+              SM <span className={smInTarget ? "text-success" : "text-amber-400"}>{smStr}</span> · CG {balanceMock.cg.toFixed(3)} m · NP {balanceMock.np.toFixed(3)} m
+              <Tip>Static margin = (NP − CG) / MAC. CG must sit ahead of the neutral point. Target {balanceMock.targetSmMin}–{balanceMock.targetSmMax}% MAC.</Tip>
+            </div>
             <p className="text-[10px] text-subtle-foreground">Component CG {balanceMock.cgComponent?.toFixed(3)} m · target SM {balanceMock.targetSmMin}–{balanceMock.targetSmMax}% MAC</p>
           </div>
         </div>
