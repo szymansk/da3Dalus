@@ -11,6 +11,7 @@ from fastapi.responses import JSONResponse
 from app.api.v2.endpoints import aeroplane as aeroplane_v2
 from app.api.v2.endpoints import components
 from app.api.v2.endpoints import component_types
+from app.api.v2.endpoints import versioning as versioning_v2
 from app.api.v2.endpoints.aeroplane import component_tree
 from app.api.v2.endpoints.aeroplane import construction_parts
 from app.api.v2.endpoints import aeroplane_construction_plans
@@ -215,6 +216,7 @@ def create_app() -> FastAPI:
     app.include_router(construction_templates.router, prefix="", tags=["construction-templates"])
     app.include_router(flight_profiles.router, prefix="", tags=["flight-profiles"])
     app.include_router(fuselage_slice.router, prefix="", tags=["fuselages"])
+    app.include_router(versioning_v2.router, prefix="", tags=["versioning"])
     if _cad_router is not None:
         app.include_router(_cad_router, prefix="", tags=["cad"])
     if _aeroanalysis_router is not None:

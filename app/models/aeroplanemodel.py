@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Float, Boolean, ForeignKey, JSON, UniqueConstraint
+from sqlalchemy import Column, Integer, String, Float, Boolean, ForeignKey, JSON, Text, UniqueConstraint
 from sqlalchemy.orm import relationship
 import uuid
 from sqlalchemy.dialects.postgresql import UUID
@@ -527,6 +527,53 @@ class LoadingScenarioModel(Base):
     aeroplane = relationship("AeroplaneModel", back_populates="loading_scenarios")
 
 
+class BranchModel(Base):
+    """A named branch within a versioning lineage (gh-901).
+
+    ``root_id`` points to the lineage root aeroplane (the first node ever
+    created in this lineage).  ``head_id`` points to the currently mutable
+    aeroplane node for this branch.  Exactly one branch per lineage has
+    ``is_main=True``.
+    """
+
+    __tablename__ = "branches"
+
+    # FK declared with use_alter to break the circular dependency between
+    # aeroplanes ↔ branches (aeroplanes.branch_id → branches.id and
+    # branches.root_id / head_id → aeroplanes.id).
+    root_id = Column(
+        Integer,
+        ForeignKey("aeroplanes.id", use_alter=True, name="fk_branches_root_id"),
+        nullable=False,
+    )
+    head_id = Column(
+        Integer,
+        ForeignKey("aeroplanes.id", use_alter=True, name="fk_branches_head_id"),
+        nullable=False,
+    )
+    name = Column(String, nullable=False)
+    is_main = Column(Boolean, nullable=False, default=False, server_default="false")
+    created_by = Column(String, nullable=True)  # 'human' | 'ai'
+    created_at = Column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(timezone.utc),
+        server_default=func.now(),
+        nullable=False,
+    )
+
+    # Relationships — explicit foreign_keys= to resolve ambiguity.
+    root = relationship(
+        "AeroplaneModel",
+        foreign_keys=[root_id],
+        back_populates="root_branches",
+    )
+    head = relationship(
+        "AeroplaneModel",
+        foreign_keys=[head_id],
+        back_populates="head_branches",
+    )
+
+
 class AeroplaneModel(Base):
     __tablename__ = "aeroplanes"
     uuid = Column(GUID, default=lambda: uuid.uuid4(), unique=True, nullable=False)
@@ -553,6 +600,36 @@ class AeroplaneModel(Base):
         nullable=False,
     )
 
+    # ── versioning columns (gh-903) ──────────────────────────────────────
+    # FK to branches.id: which branch this node belongs to.
+    # use_alter breaks the circular dependency (aeroplanes → branches → aeroplanes).
+    branch_id = Column(
+        Integer,
+        ForeignKey("branches.id", use_alter=True, name="fk_aeroplanes_branch_id"),
+        nullable=True,
+    )
+    # Self-referential FKs: predecessor and lineage root.
+    predecessor_id = Column(
+        Integer,
+        ForeignKey("aeroplanes.id", use_alter=True, name="fk_aeroplanes_predecessor_id"),
+        nullable=True,
+    )
+    root_id = Column(
+        Integer,
+        ForeignKey("aeroplanes.id", use_alter=True, name="fk_aeroplanes_root_id"),
+        nullable=True,
+    )
+    is_immutable = Column(Boolean, nullable=False, default=False, server_default="false")
+    version_label = Column(String, nullable=True)
+    version_note = Column(Text, nullable=True)
+    created_by = Column(String, nullable=True)  # 'human' | 'ai'
+    provenance_message_id = Column(
+        Integer,
+        ForeignKey("copilot_messages.id", use_alter=True, name="fk_aeroplanes_provenance_msg"),
+        nullable=True,
+    )
+    preview_png = Column(Text, nullable=True)  # base64-encoded PNG thumbnail
+
     # Relationships
     wings = relationship(
         "WingModel", back_populates="aeroplane", cascade=_CASCADE_ALL_DELETE_ORPHAN
@@ -578,12 +655,7 @@ class AeroplaneModel(Base):
         back_populates="aeroplane",
         cascade=_CASCADE_ALL_DELETE_ORPHAN,
         order_by="CopilotMessageModel.sort_index",
-    )
-    design_versions = relationship(
-        "DesignVersionModel",
-        back_populates="aeroplane",
-        cascade=_CASCADE_ALL_DELETE_ORPHAN,
-        order_by="DesignVersionModel.id.desc()",
+        foreign_keys="CopilotMessageModel.aeroplane_id",
     )
     design_assumptions = relationship(
         "DesignAssumptionModel",
@@ -606,6 +678,35 @@ class AeroplaneModel(Base):
         back_populates="aeroplane",
         cascade=_CASCADE_ALL_DELETE_ORPHAN,
         order_by="LoadingScenarioModel.id",
+    )
+    # Versioning relationships (gh-903)
+    branch = relationship(
+        "BranchModel",
+        foreign_keys=[branch_id],
+        back_populates=None,
+    )
+    predecessor = relationship(
+        "AeroplaneModel",
+        foreign_keys="[AeroplaneModel.predecessor_id]",
+        primaryjoin="AeroplaneModel.predecessor_id == AeroplaneModel.id",
+        remote_side="AeroplaneModel.id",
+    )
+    root = relationship(
+        "AeroplaneModel",
+        foreign_keys="[AeroplaneModel.root_id]",
+        primaryjoin="AeroplaneModel.root_id == AeroplaneModel.id",
+        remote_side="AeroplaneModel.id",
+    )
+    # Branches where this aeroplane is the lineage root or the head
+    root_branches = relationship(
+        "BranchModel",
+        foreign_keys="[BranchModel.root_id]",
+        back_populates="root",
+    )
+    head_branches = relationship(
+        "BranchModel",
+        foreign_keys="[BranchModel.head_id]",
+        back_populates="head",
     )
 
 
@@ -651,30 +752,12 @@ class CopilotMessageModel(Base):
         nullable=False,
     )
 
-    aeroplane = relationship("AeroplaneModel", back_populates="copilot_messages")
-
-
-class DesignVersionModel(Base):
-    __tablename__ = "design_versions"
-
-    aeroplane_id = Column(
-        Integer,
-        ForeignKey(_FK_AEROPLANES_ID, ondelete="CASCADE"),
-        nullable=False,
-        index=True,
-    )
-    label = Column(String, nullable=False)
-    description = Column(String, nullable=True)
-    parent_version_id = Column(Integer, nullable=True)
-    snapshot = Column(JSON, nullable=False)
-    created_at = Column(
-        DateTime(timezone=True),
-        default=lambda: datetime.now(timezone.utc),
-        server_default=func.now(),
-        nullable=False,
+    aeroplane = relationship(
+        "AeroplaneModel",
+        back_populates="copilot_messages",
+        foreign_keys=[aeroplane_id],
     )
 
-    aeroplane = relationship("AeroplaneModel", back_populates="design_versions")
 
 
 class DesignAssumptionModel(Base):

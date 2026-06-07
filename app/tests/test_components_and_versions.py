@@ -119,7 +119,14 @@ class TestComponentLibraryCRUD:
 
 
 class TestDesignVersions:
-    """CRUD lifecycle for design versions scoped to an aeroplane."""
+    """Design-version endpoints are retired (gh-903) — table has been dropped.
+
+    The service stubs now raise NotFoundError (404) for every call.
+    These tests document that expectation while gh-905 (new version ops) is
+    not yet merged.
+
+    TODO(gh-905): replace with real version-tree endpoint tests.
+    """
 
     @staticmethod
     def _create_aeroplane(client: TestClient) -> str:
@@ -128,56 +135,27 @@ class TestDesignVersions:
         assert resp.status_code == 201
         return resp.json()["id"]
 
-    def test_create_design_version(self, client: TestClient):
+    def test_create_design_version_retired(self, client: TestClient):
         aeroplane_id = self._create_aeroplane(client)
-
         resp = client.post(
             f"/aeroplanes/{aeroplane_id}/design-versions",
             json={"label": "v1", "description": "initial"},
         )
-        assert resp.status_code == 201
-        body = resp.json()
-        assert body["label"] == "v1"
-        assert body["description"] == "initial"
-        assert "id" in body
+        # Retired endpoint now returns 404 (stub raises NotFoundError).
+        assert resp.status_code == 404
 
-    def test_list_design_versions(self, client: TestClient):
+    def test_list_design_versions_retired(self, client: TestClient):
         aeroplane_id = self._create_aeroplane(client)
-        client.post(
-            f"/aeroplanes/{aeroplane_id}/design-versions",
-            json={"label": "v1", "description": "initial"},
-        )
-
         resp = client.get(f"/aeroplanes/{aeroplane_id}/design-versions")
-        assert resp.status_code == 200
-        body = resp.json()
-        assert isinstance(body, list)
-        assert len(body) == 1
-        assert body[0]["label"] == "v1"
+        # Retired endpoint now returns 404.
+        assert resp.status_code == 404
 
-    def test_get_single_design_version(self, client: TestClient):
+    def test_get_single_design_version_retired(self, client: TestClient):
         aeroplane_id = self._create_aeroplane(client)
-        create_resp = client.post(
-            f"/aeroplanes/{aeroplane_id}/design-versions",
-            json={"label": "v1", "description": "initial"},
-        )
-        version_id = create_resp.json()["id"]
+        resp = client.get(f"/aeroplanes/{aeroplane_id}/design-versions/1")
+        assert resp.status_code == 404
 
-        resp = client.get(f"/aeroplanes/{aeroplane_id}/design-versions/{version_id}")
-        assert resp.status_code == 200
-        body = resp.json()
-        assert body["id"] == version_id
-        assert body["label"] == "v1"
-        # The single-version response should include a snapshot of the design.
-        assert "snapshot" in body or "description" in body
-
-    def test_delete_design_version(self, client: TestClient):
+    def test_delete_design_version_retired(self, client: TestClient):
         aeroplane_id = self._create_aeroplane(client)
-        create_resp = client.post(
-            f"/aeroplanes/{aeroplane_id}/design-versions",
-            json={"label": "v1", "description": "initial"},
-        )
-        version_id = create_resp.json()["id"]
-
-        del_resp = client.delete(f"/aeroplanes/{aeroplane_id}/design-versions/{version_id}")
-        assert del_resp.status_code == 204
+        resp = client.delete(f"/aeroplanes/{aeroplane_id}/design-versions/1")
+        assert resp.status_code == 404
