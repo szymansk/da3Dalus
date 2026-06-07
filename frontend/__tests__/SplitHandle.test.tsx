@@ -6,7 +6,7 @@ import React from "react";
 vi.mock("react-resizable-panels", () => ({
   Separator: ({ children, className, ...props }: Record<string, unknown> & { children?: React.ReactNode; className?: string }) => (
     <div data-testid="separator" className={className} {...props}>
-      {typeof children === "function" ? children() : children}
+      {typeof children === "function" ? (children as () => React.ReactNode)() : children}
     </div>
   ),
 }));

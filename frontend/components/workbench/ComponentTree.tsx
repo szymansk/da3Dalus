@@ -277,6 +277,7 @@ export function ComponentTree({
   );
 
   async function moveToRoot(activeId: number) {
+    if (!aeroplaneId) return;
     mutate();
     try {
       await moveTreeNode(aeroplaneId, activeId, {

@@ -13,6 +13,7 @@ vi.mock("@/hooks/useTailSizing", async () => {
 
 import { TailVolumeCard } from "@/components/workbench/TailVolumeCard";
 import { useTailSizing } from "@/hooks/useTailSizing";
+import type { TailSizingResult } from "@/hooks/useTailSizing";
 
 const MOCK_RESULT_IN_RANGE = {
   v_h_current: 0.62,
@@ -53,7 +54,7 @@ const MOCK_RESULT_NOT_APPLICABLE = {
 };
 
 function setupMock(
-  data: typeof MOCK_RESULT_IN_RANGE | null,
+  data: TailSizingResult | null,
   opts: { isLoading?: boolean } = {}
 ) {
   const recomputeOnce = vi.fn().mockResolvedValue(undefined);

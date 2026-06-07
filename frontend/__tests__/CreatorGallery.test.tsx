@@ -27,7 +27,7 @@ const MOCK_CREATORS: CreatorInfo[] = [
     parameters: [
       { name: "wing_index", type: "str", default: null, required: true, description: "Index of the wing", options: null },
     ],
-    outputs: [{ key: "{id}", description: "Complete wing assembly", options: null }],
+    outputs: [{ key: "{id}", description: "Complete wing assembly" }],
     suggested_id: "{wing_index}.vase_wing",
   },
   {
@@ -49,7 +49,7 @@ const MOCK_CREATORS: CreatorInfo[] = [
       { name: "shape_key_a", type: "str", default: null, required: true, description: null, options: null },
       { name: "shape_key_b", type: "str", default: null, required: true, description: null, options: null },
     ],
-    outputs: [{ key: "{id}", description: "Boolean union result", options: null }],
+    outputs: [{ key: "{id}", description: "Boolean union result" }],
     suggested_id: "fuse.{shape_key_a}.{shape_key_b}",
   },
 ];

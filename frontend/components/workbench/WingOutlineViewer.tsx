@@ -918,9 +918,10 @@ export function WingOutlineViewer({
       }
 
       // Track camera changes from user interaction
-      node?.on?.("plotly_relayout", (update: Record<string, unknown>) => {
-        if (update["scene.camera"]) savedCamera.current = update["scene.camera"];
-      });
+      (node as unknown as { on?: (ev: string, cb: (u: Record<string, unknown>) => void) => void })
+        ?.on?.("plotly_relayout", (update: Record<string, unknown>) => {
+          if (update["scene.camera"]) savedCamera.current = update["scene.camera"];
+        });
 
       setLoading(false);
     }

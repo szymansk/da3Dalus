@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { Upload, X, Check, Loader2, Maximize2, Minimize2, Plus, Trash2, Play } from "lucide-react";
 import { API_BASE } from "@/lib/fetcher";
 import { useDialog } from "@/hooks/useDialog";
@@ -53,7 +53,8 @@ function buildFuselageSurface(
 /** Plotly 3D preview of fuselage from xsecs — lazy loaded */
 function FuselagePreview3D({ xsecs, selectedXsec }: Readonly<{ xsecs: XSec[]; selectedXsec: number | null }>) {
   const containerRef = useRef<HTMLDivElement>(null);
-  const plotlyRef = useRef<{ restyle: (el: HTMLDivElement, update: Record<string, unknown>, indices: number[]) => void } | null>(null);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const plotlyRef = useRef<any>(null);
   const cameraRef = useRef<Record<string, unknown> | null>(null);
 
   // Initial plot + full rebuild when xsecs change
@@ -688,7 +689,7 @@ interface PreviewPhaseProps {
   xsecs: XSec[];
   selectedXsec: number | null;
   setSelectedXsec: (v: number | null) => void;
-  setXsecs: (v: XSec[]) => void;
+  setXsecs: React.Dispatch<React.SetStateAction<XSec[]>>;
   viewerMaximized: boolean;
   setViewerMaximized: (fn: (v: boolean) => boolean) => void;
   xsecsMaximized: boolean;

@@ -29,7 +29,7 @@ export function CGComparisonBanner({ aeroplaneId, onCGSynced }: Props) {
   async function handleSync() {
     setSyncing(true);
     try {
-      await syncDesignCG(data.component_cg_x!);
+      await syncDesignCG(data!.component_cg_x!);
       onCGSynced();
     } finally {
       setSyncing(false);

@@ -9,12 +9,12 @@ const FULL = {
 };
 
 /** Mean of vertex coordinates — for a symmetric icosphere this equals the centre. */
-function meshCenter(trace: { x: unknown; y: unknown; z: unknown }) {
+function meshCenter(trace: Record<string, unknown>) {
   const avg = (a: number[]) => a.reduce((s, v) => s + v, 0) / a.length;
   return {
-    x: avg(trace.x as number[]),
-    y: avg(trace.y as number[]),
-    z: avg(trace.z as number[]),
+    x: avg(trace["x"] as number[]),
+    y: avg(trace["y"] as number[]),
+    z: avg(trace["z"] as number[]),
   };
 }
 

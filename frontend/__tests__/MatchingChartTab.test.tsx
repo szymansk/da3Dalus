@@ -83,49 +83,24 @@ import {
 
 // ── Test data ─────────────────────────────────────────────────────────────────
 
+/** Build a complete ConstraintLine with required gh-613 fields defaulted for tests. */
+function mkLine(partial: Omit<ConstraintLine, "category" | "binding_for_warning" | "applicable_for_profile"> & Partial<Pick<ConstraintLine, "category" | "binding_for_warning" | "applicable_for_profile">>): ConstraintLine {
+  return {
+    category: "universal",
+    binding_for_warning: true,
+    applicable_for_profile: true,
+    ...partial,
+  };
+}
+
 const MOCK_CESSNA: MatchingChartData = {
   ws_range_n_m2: Array.from({ length: 200 }, (_, i) => 10 + (1490 / 199) * i),
   constraints: [
-    {
-      name: "Takeoff",
-      t_w_points: Array(200).fill(0.17),
-      ws_max: null,
-      color: "#FF8400",
-      binding: true,
-      hover_text: "Takeoff distance ≤ s_runway.",
-    },
-    {
-      name: "Landing",
-      t_w_points: null,
-      ws_max: 662.0,
-      color: "#3B82F6",
-      binding: false,
-      hover_text: "Landing distance constraint.",
-    },
-    {
-      name: "Cruise",
-      t_w_points: Array(200).fill(0.12),
-      ws_max: null,
-      color: "#30A46C",
-      binding: false,
-      hover_text: "Level cruise.",
-    },
-    {
-      name: "Climb",
-      t_w_points: Array(200).fill(0.14),
-      ws_max: null,
-      color: "#E5484D",
-      binding: false,
-      hover_text: "Climb gradient.",
-    },
-    {
-      name: "Stall",
-      t_w_points: null,
-      ws_max: 900.0,
-      color: "#A78BFA",
-      binding: false,
-      hover_text: "Stall speed.",
-    },
+    mkLine({ name: "Takeoff", t_w_points: Array(200).fill(0.17), ws_max: null, color: "#FF8400", binding: true, hover_text: "Takeoff distance ≤ s_runway." }),
+    mkLine({ name: "Landing", t_w_points: null, ws_max: 662.0, color: "#3B82F6", binding: false, hover_text: "Landing distance constraint." }),
+    mkLine({ name: "Cruise", t_w_points: Array(200).fill(0.12), ws_max: null, color: "#30A46C", binding: false, hover_text: "Level cruise." }),
+    mkLine({ name: "Climb", t_w_points: Array(200).fill(0.14), ws_max: null, color: "#E5484D", binding: false, hover_text: "Climb gradient." }),
+    mkLine({ name: "Stall", t_w_points: null, ws_max: 900.0, color: "#A78BFA", binding: false, hover_text: "Stall speed." }),
   ],
   design_point: { ws_n_m2: 660.07, t_w: 0.17801 },
   feasibility: "feasible",
@@ -422,30 +397,9 @@ describe("findBindingConstraintAtPoint", () => {
   const wsRange = Array.from({ length: 100 }, (_, i) => 100 + i * 10); // 100..1090
 
   const constraints: ConstraintLine[] = [
-    {
-      name: "Takeoff",
-      t_w_points: Array(100).fill(0.2),
-      ws_max: null,
-      color: "#FF8400",
-      binding: true,
-      hover_text: null,
-    },
-    {
-      name: "Cruise",
-      t_w_points: Array(100).fill(0.1),
-      ws_max: null,
-      color: "#30A46C",
-      binding: false,
-      hover_text: null,
-    },
-    {
-      name: "Stall",
-      t_w_points: null,
-      ws_max: 800,
-      color: "#A78BFA",
-      binding: false,
-      hover_text: null,
-    },
+    mkLine({ name: "Takeoff", t_w_points: Array(100).fill(0.2), ws_max: null, color: "#FF8400", binding: true, hover_text: null }),
+    mkLine({ name: "Cruise", t_w_points: Array(100).fill(0.1), ws_max: null, color: "#30A46C", binding: false, hover_text: null }),
+    mkLine({ name: "Stall", t_w_points: null, ws_max: 800, color: "#A78BFA", binding: false, hover_text: null }),
   ];
 
   it("returns null when wsRange is empty", () => {
@@ -510,14 +464,7 @@ describe("findBindingConstraintAtPoint", () => {
 
   it("handles constraint with zero t_w_points (avoids divide by zero)", () => {
     const zeroConstraints: ConstraintLine[] = [
-      {
-        name: "Zero",
-        t_w_points: Array(100).fill(0),
-        ws_max: null,
-        color: "#fff",
-        binding: false,
-        hover_text: null,
-      },
+      mkLine({ name: "Zero", t_w_points: Array(100).fill(0), ws_max: null, color: "#fff", binding: false, hover_text: null }),
     ];
     // twReq = 0, so the branch `if (twReq > 0)` is false → _constraintViolationRatio returns -Infinity
     // bindingName never gets updated (initial value stays null), so result is null
@@ -527,14 +474,7 @@ describe("findBindingConstraintAtPoint", () => {
 
   it("handles ws_max = Infinity gracefully (branch: isFinite check)", () => {
     const infConstraint: ConstraintLine[] = [
-      {
-        name: "InfStall",
-        t_w_points: null,
-        ws_max: Infinity,
-        color: "#fff",
-        binding: false,
-        hover_text: null,
-      },
+      mkLine({ name: "InfStall", t_w_points: null, ws_max: Infinity, color: "#fff", binding: false, hover_text: null }),
     ];
     // isFinite(Infinity) = false → returns -Infinity → never binding
     const result = findBindingConstraintAtPoint(500, 0.1, wsRange, infConstraint);
@@ -545,14 +485,7 @@ describe("findBindingConstraintAtPoint", () => {
   it("returns correct binding for a constraint with ws_max = null and t_w_points = null", () => {
     // Both null → _constraintViolationRatio returns -Infinity for all
     const emptyConstraints: ConstraintLine[] = [
-      {
-        name: "Empty",
-        t_w_points: null,
-        ws_max: null,
-        color: "#fff",
-        binding: false,
-        hover_text: null,
-      },
+      mkLine({ name: "Empty", t_w_points: null, ws_max: null, color: "#fff", binding: false, hover_text: null }),
     ];
     const result = findBindingConstraintAtPoint(500, 0.1, wsRange, emptyConstraints);
     // maxRatio = -Infinity, bindingName = null (initial); "Empty" never wins
@@ -562,7 +495,7 @@ describe("findBindingConstraintAtPoint", () => {
   it("handles single-element wsRange", () => {
     const singleRange = [500];
     const result = findBindingConstraintAtPoint(500, 0.05, singleRange, [
-      { name: "T", t_w_points: [0.2], ws_max: null, color: "#f00", binding: true, hover_text: null },
+      mkLine({ name: "T", t_w_points: [0.2], ws_max: null, color: "#f00", binding: true, hover_text: null }),
     ]);
     expect(result).toBe("T");
   });
@@ -767,7 +700,7 @@ describe("MatchingChartTab — trace builders indirect (via render with specific
     const wsOnlyData: MatchingChartData = {
       ...MOCK_CESSNA,
       constraints: [
-        { name: "Stall", t_w_points: null, ws_max: 800, color: "#A78BFA", binding: true, hover_text: null },
+        mkLine({ name: "Stall", t_w_points: null, ws_max: 800, color: "#A78BFA", binding: true, hover_text: null }),
       ],
     };
     hookReturn = { ...MOCK_OK_STATE, data: wsOnlyData };
@@ -848,7 +781,7 @@ describe("MatchingChartTab — async Plotly render (trace builders + buildLayout
     const wsOnlyData: MatchingChartData = {
       ...MOCK_CESSNA,
       constraints: [
-        { name: "Stall", t_w_points: null, ws_max: 800, color: "#A78BFA", binding: false, hover_text: null },
+        mkLine({ name: "Stall", t_w_points: null, ws_max: 800, color: "#A78BFA", binding: false, hover_text: null }),
       ],
     };
     hookReturn = { ...MOCK_OK_STATE, data: wsOnlyData };
@@ -1111,14 +1044,7 @@ describe("MatchingChartTab — insufficient thrust warning (gh-606)", () => {
       ...MOCK_CESSNA,
       ws_range_n_m2: Array.from({ length: 200 }, (_, i) => 10 + (1490 / 199) * i),
       constraints: [
-        {
-          name: "Climb",
-          t_w_points: Array(200).fill(0.5),
-          ws_max: null,
-          color: "#E5484D",
-          binding: true,
-          hover_text: "Insufficient climb thrust",
-        },
+        mkLine({ name: "Climb", t_w_points: Array(200).fill(0.5), ws_max: null, color: "#E5484D", binding: true, hover_text: "Insufficient climb thrust" }),
       ],
       design_point: { ws_n_m2: 400, t_w: 0.5 },
     };
@@ -1141,14 +1067,7 @@ describe("MatchingChartTab — insufficient thrust warning (gh-606)", () => {
     const customData: MatchingChartData = {
       ...MOCK_CESSNA,
       constraints: [
-        {
-          name: "Climb",
-          t_w_points: Array(200).fill(0.05),
-          ws_max: null,
-          color: "#E5484D",
-          binding: false,
-          hover_text: "OK",
-        },
+        mkLine({ name: "Climb", t_w_points: Array(200).fill(0.05), ws_max: null, color: "#E5484D", binding: false, hover_text: "OK" }),
       ],
     };
     hookReturn = { ...MOCK_OK_STATE, data: customData };
@@ -1277,9 +1196,9 @@ describe("computeWingArea / computeThrust / computeAspectRatio (gh-606)", () => 
 describe("findInsufficientThrustConstraint (gh-606)", () => {
   const wsRange = Array.from({ length: 100 }, (_, i) => 100 + i * 10);
   const constraints: ConstraintLine[] = [
-    { name: "Takeoff", t_w_points: Array(100).fill(0.2), ws_max: null, color: "#FF8400", binding: true, hover_text: null },
-    { name: "Climb", t_w_points: Array(100).fill(0.5), ws_max: null, color: "#E5484D", binding: false, hover_text: null },
-    { name: "Stall", t_w_points: null, ws_max: 800, color: "#A78BFA", binding: false, hover_text: null },
+    mkLine({ name: "Takeoff", t_w_points: Array(100).fill(0.2), ws_max: null, color: "#FF8400", binding: true, hover_text: null }),
+    mkLine({ name: "Climb", t_w_points: Array(100).fill(0.5), ws_max: null, color: "#E5484D", binding: false, hover_text: null }),
+    mkLine({ name: "Stall", t_w_points: null, ws_max: 800, color: "#A78BFA", binding: false, hover_text: null }),
   ];
 
   it("returns most-violated t_w_points constraint when below all", () => {
@@ -1293,7 +1212,7 @@ describe("findInsufficientThrustConstraint (gh-606)", () => {
 
   it("ignores ws_max-only constraints", () => {
     const wsOnly: ConstraintLine[] = [
-      { name: "Stall", t_w_points: null, ws_max: 800, color: "#A78BFA", binding: false, hover_text: null },
+      mkLine({ name: "Stall", t_w_points: null, ws_max: 800, color: "#A78BFA", binding: false, hover_text: null }),
     ];
     expect(findInsufficientThrustConstraint(900, 0.1, wsRange, wsOnly)).toBeNull();
   });
@@ -1304,7 +1223,7 @@ describe("findInsufficientThrustConstraint (gh-606)", () => {
 
   it("ignores zero-valued constraints to avoid divide-by-zero", () => {
     const zero: ConstraintLine[] = [
-      { name: "Zero", t_w_points: Array(100).fill(0), ws_max: null, color: "#fff", binding: false, hover_text: null },
+      mkLine({ name: "Zero", t_w_points: Array(100).fill(0), ws_max: null, color: "#fff", binding: false, hover_text: null }),
     ];
     expect(findInsufficientThrustConstraint(500, 0.1, wsRange, zero)).toBeNull();
   });
@@ -1431,22 +1350,8 @@ describe("MatchingChartTab — gh-613 Phase A insufficient-T/W skips OEI", () =>
       ...MOCK_CESSNA,
       constraints: [
         // Only the OEI constraint is binding/violated — everything else is OK.
-        {
-          name: "Second-Segment Climb (OEI)",
-          t_w_points: Array(200).fill(0.5),
-          ws_max: null,
-          color: "#E5484D",
-          binding: true,
-          hover_text: "OEI segment-2",
-        },
-        {
-          name: "Cruise",
-          t_w_points: Array(200).fill(0.05),
-          ws_max: null,
-          color: "#30A46C",
-          binding: false,
-          hover_text: "Cruise",
-        },
+        mkLine({ name: "Second-Segment Climb (OEI)", t_w_points: Array(200).fill(0.5), ws_max: null, color: "#E5484D", binding: true, hover_text: "OEI segment-2", binding_for_warning: false }),
+        mkLine({ name: "Cruise", t_w_points: Array(200).fill(0.05), ws_max: null, color: "#30A46C", binding: false, hover_text: "Cruise" }),
       ],
       design_point: { ws_n_m2: 400, t_w: 0.5 },
     };
@@ -1470,14 +1375,7 @@ describe("MatchingChartTab — gh-613 Phase A insufficient-T/W skips OEI", () =>
     const data: MatchingChartData = {
       ...MOCK_CESSNA,
       constraints: [
-        {
-          name: "Missed-Approach Climb",
-          t_w_points: Array(200).fill(0.5),
-          ws_max: null,
-          color: "#E5484D",
-          binding: true,
-          hover_text: "Missed approach",
-        },
+        mkLine({ name: "Missed-Approach Climb", t_w_points: Array(200).fill(0.5), ws_max: null, color: "#E5484D", binding: true, hover_text: "Missed approach", binding_for_warning: false }),
       ],
       design_point: { ws_n_m2: 400, t_w: 0.5 },
     };
@@ -1501,23 +1399,9 @@ describe("MatchingChartTab — gh-613 Phase A insufficient-T/W skips OEI", () =>
       ...MOCK_CESSNA,
       constraints: [
         // OEI exists but is satisfied (low requirement) — should still be skipped from warning anyway
-        {
-          name: "Second-Segment Climb (OEI)",
-          t_w_points: Array(200).fill(0.02),
-          ws_max: null,
-          color: "#888",
-          binding: false,
-          hover_text: "OEI segment-2",
-        },
+        mkLine({ name: "Second-Segment Climb (OEI)", t_w_points: Array(200).fill(0.02), ws_max: null, color: "#888", binding: false, hover_text: "OEI segment-2", binding_for_warning: false }),
         // Stall (T/W requirement) is genuinely violated
-        {
-          name: "Stall Climb",
-          t_w_points: Array(200).fill(0.5),
-          ws_max: null,
-          color: "#E5484D",
-          binding: true,
-          hover_text: "Stall climb",
-        },
+        mkLine({ name: "Stall Climb", t_w_points: Array(200).fill(0.5), ws_max: null, color: "#E5484D", binding: true, hover_text: "Stall climb" }),
       ],
       design_point: { ws_n_m2: 400, t_w: 0.5 },
     };
@@ -1545,17 +1429,12 @@ describe("findInsufficientThrustConstraint — gh-613 Phase A skipOei flag", () 
   const wsRange = Array.from({ length: 100 }, (_, i) => 100 + i * 10);
 
   it("skipOei=true ignores 'Second-Segment Climb (OEI)' constraint", () => {
+    // Phase B: OEI constraints carry binding_for_warning=false — skipNonBinding
+    // must skip them even when skipNonBinding=true.
     const constraints: ConstraintLine[] = [
-      {
-        name: "Second-Segment Climb (OEI)",
-        t_w_points: Array(100).fill(0.5),
-        ws_max: null,
-        color: "#E5484D",
-        binding: true,
-        hover_text: null,
-      },
+      mkLine({ name: "Second-Segment Climb (OEI)", t_w_points: Array(100).fill(0.5), ws_max: null, color: "#E5484D", binding: true, hover_text: null, binding_for_warning: false }),
     ];
-    // T/W = 0.05 violates the OEI constraint; with skipOei it should be ignored.
+    // T/W = 0.05 violates the OEI constraint; with skipNonBinding it should be ignored.
     expect(
       findInsufficientThrustConstraint(500, 0.05, wsRange, constraints, true),
     ).toBeNull();
@@ -1567,14 +1446,7 @@ describe("findInsufficientThrustConstraint — gh-613 Phase A skipOei flag", () 
 
   it("skipOei=true ignores 'Missed-Approach Climb' constraint", () => {
     const constraints: ConstraintLine[] = [
-      {
-        name: "Missed-Approach Climb",
-        t_w_points: Array(100).fill(0.5),
-        ws_max: null,
-        color: "#E5484D",
-        binding: true,
-        hover_text: null,
-      },
+      mkLine({ name: "Missed-Approach Climb", t_w_points: Array(100).fill(0.5), ws_max: null, color: "#E5484D", binding: true, hover_text: null, binding_for_warning: false }),
     ];
     expect(
       findInsufficientThrustConstraint(500, 0.05, wsRange, constraints, true),
@@ -1583,22 +1455,8 @@ describe("findInsufficientThrustConstraint — gh-613 Phase A skipOei flag", () 
 
   it("skipOei=true still flags genuine non-OEI binding constraints", () => {
     const constraints: ConstraintLine[] = [
-      {
-        name: "Second-Segment Climb (OEI)",
-        t_w_points: Array(100).fill(0.5),
-        ws_max: null,
-        color: "#E5484D",
-        binding: true,
-        hover_text: null,
-      },
-      {
-        name: "Climb",
-        t_w_points: Array(100).fill(0.4),
-        ws_max: null,
-        color: "#E5484D",
-        binding: false,
-        hover_text: null,
-      },
+      mkLine({ name: "Second-Segment Climb (OEI)", t_w_points: Array(100).fill(0.5), ws_max: null, color: "#E5484D", binding: true, hover_text: null, binding_for_warning: false }),
+      mkLine({ name: "Climb", t_w_points: Array(100).fill(0.4), ws_max: null, color: "#E5484D", binding: false, hover_text: null }),
     ];
     // T/W = 0.05 violates Climb (non-OEI) — should still report it.
     expect(
@@ -1609,16 +1467,9 @@ describe("findInsufficientThrustConstraint — gh-613 Phase A skipOei flag", () 
   it("default (no skipOei argument) preserves previous behavior", () => {
     // Backwards compat: callers that don't pass the flag get the old behavior.
     const constraints: ConstraintLine[] = [
-      {
-        name: "Second-Segment Climb (OEI)",
-        t_w_points: Array(100).fill(0.5),
-        ws_max: null,
-        color: "#E5484D",
-        binding: true,
-        hover_text: null,
-      },
+      mkLine({ name: "Second-Segment Climb (OEI)", t_w_points: Array(100).fill(0.5), ws_max: null, color: "#E5484D", binding: true, hover_text: null, binding_for_warning: false }),
     ];
-    // No 5th arg → undefined → falsy → OEI not skipped → bindingName returned.
+    // No 5th arg → undefined → falsy → OEI not excluded → bindingName returned.
     expect(
       findInsufficientThrustConstraint(500, 0.05, wsRange, constraints),
     ).toBe("Second-Segment Climb (OEI)");

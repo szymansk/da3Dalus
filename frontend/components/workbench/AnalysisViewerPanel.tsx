@@ -744,7 +744,7 @@ function TrefftzPlaneChart({
       const traces: PlotlyTrace[] = buildSurfaceTraces(surfaceGroups);
 
       if ((wingXSecs?.length ?? 0) > 0) {
-        traces.push(buildSegmentMarkerTrace(wingXSecs, wingSymmetric));
+        traces.push(buildSegmentMarkerTrace(wingXSecs!, wingSymmetric));
       }
 
       const shapes: PlotlyShape[] = [];
@@ -841,7 +841,7 @@ export function TrefftzPlaneTabContent({
   if ((stripForces?.surfaces.length ?? 0) > 0) {
     return (
       <TrefftzPlaneChart
-        stripForces={stripForces}
+        stripForces={stripForces!}
         wingXSecs={wingXSecs}
         wingSymmetric={wingSymmetric}
       />

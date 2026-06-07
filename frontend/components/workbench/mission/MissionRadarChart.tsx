@@ -377,7 +377,7 @@ function AxisTooltip({ axis, kpis, active, ghosts }: AxisTooltipProps) {
     >
       <div
         // xmlns required so React renders HTML inside foreignObject
-        xmlns="http://www.w3.org/1999/xhtml"
+        {...({ xmlns: "http://www.w3.org/1999/xhtml" } as Record<string, unknown>)}
         className="rounded border border-border bg-background/95 p-1.5 font-mono text-[10px] leading-tight text-foreground shadow-lg"
         style={{
           width: "100%",

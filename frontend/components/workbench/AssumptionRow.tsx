@@ -2,7 +2,7 @@
 
 import { useState, useRef } from "react";
 import { ArrowLeftRight, Info } from "lucide-react";
-import type { Assumption } from "@/hooks/useDesignAssumptions";
+import type { Assumption, AssumptionParameterName } from "@/hooks/useDesignAssumptions";
 
 const PARAM_LABELS: Record<string, string> = {
   mass: "Total Mass",
@@ -82,9 +82,9 @@ function SourceBadge({ assumption }: Readonly<{ assumption: Assumption }>) {
 
 interface Props {
   readonly assumption: Assumption;
-  readonly onUpdateEstimate: (paramName: string, value: number) => void;
+  readonly onUpdateEstimate: (paramName: AssumptionParameterName, value: number) => void;
   readonly onSwitchSource: (
-    paramName: string,
+    paramName: AssumptionParameterName,
     source: "ESTIMATE" | "CALCULATED",
   ) => void;
 }

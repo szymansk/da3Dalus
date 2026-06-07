@@ -67,7 +67,9 @@ vi.mock("@/hooks/useEndurance", () => ({
 
 import { useAeroplaneContext } from "@/components/workbench/AeroplaneContext";
 import { useComputationContext } from "@/hooks/useComputationContext";
+import type { ComputationContext } from "@/hooks/useComputationContext";
 import { useTailSizing } from "@/hooks/useTailSizing";
+import type { TailSizingResult } from "@/hooks/useTailSizing";
 import { useEndurance } from "@/hooks/useEndurance";
 
 // ---------------------------------------------------------------------------
@@ -78,7 +80,7 @@ import { useEndurance } from "@/hooks/useEndurance";
  * Minimal but realistic ComputationContext for a powered fixed-wing aircraft.
  * Every optional field that drives a chip or gauge is populated.
  */
-const NOMINAL_CTX = {
+const NOMINAL_CTX: ComputationContext = {
   v_cruise_mps: 14.0,
   v_stall_mps: 8.2,
   v_min_sink_mps: 9.1,
@@ -146,7 +148,7 @@ const NOMINAL_CTX = {
   landing_field_sufficient: true,
 };
 
-const NOMINAL_TAIL = {
+const NOMINAL_TAIL: TailSizingResult = {
   v_h_current: 0.58,
   v_v_current: 0.035,
   l_h_m: 0.43,
@@ -335,13 +337,13 @@ describe("MetricsDashboard — polar fallback (e_oswald_fallback_used=true)", ()
         e_oswald_fallback_used: true,
         polar_by_config: {
           clean: {
-            ...NOMINAL_CTX.polar_by_config.clean,
+            ...NOMINAL_CTX.polar_by_config!.clean,
             e_oswald_provenance: "fallback",
             ld_max: null,
             cl_at_ld_max: null,
           },
-          takeoff: NOMINAL_CTX.polar_by_config.takeoff,
-          landing: NOMINAL_CTX.polar_by_config.landing,
+          takeoff: NOMINAL_CTX.polar_by_config!.takeoff,
+          landing: NOMINAL_CTX.polar_by_config!.landing,
         },
       },
     });
