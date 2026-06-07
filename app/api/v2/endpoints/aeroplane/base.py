@@ -1,6 +1,6 @@
 import logging
 from datetime import datetime
-from typing import Annotated, List
+from typing import Annotated, List, Optional
 
 from fastapi import APIRouter, Path, Depends, Query, Body, Response, HTTPException
 from fastapi import status
@@ -39,6 +39,12 @@ class GetAeroplaneResponse(BaseModel):
         id: AeroPlaneID
         created_at: datetime
         updated_at: datetime
+        # Versioning metadata (gh-907). Null for pre-versioning legacy rows.
+        int_id: Optional[int] = None
+        root_id: Optional[int] = None
+        branch_name: Optional[str] = None
+        is_main_branch: Optional[bool] = None
+        total_mass_kg: Optional[float] = None
 
     aeroplanes: List[NameIdMap]
 
@@ -89,15 +95,23 @@ async def get_aeroplanes(
             aeroplanes = aeroplane_version_service.list_aeroplanes_heads_only(db)
         else:
             aeroplanes = aeroplane_service.list_all_aeroplanes(db)
-        items = [
-            GetAeroplaneResponse.NameIdMap(
-                name=ap.name,
-                id=ap.uuid,
-                created_at=ap.created_at,
-                updated_at=ap.updated_at,
+        items = []
+        for ap in aeroplanes:
+            # Resolve branch metadata for versioned heads (gh-907).
+            branch = ap.branch if ap.branch_id is not None else None
+            items.append(
+                GetAeroplaneResponse.NameIdMap(
+                    name=ap.name,
+                    id=ap.uuid,
+                    created_at=ap.created_at,
+                    updated_at=ap.updated_at,
+                    int_id=ap.id,
+                    root_id=ap.root_id,
+                    branch_name=branch.name if branch else None,
+                    is_main_branch=branch.is_main if branch else None,
+                    total_mass_kg=ap.total_mass_kg,
+                )
             )
-            for ap in aeroplanes
-        ]
         return GetAeroplaneResponse(aeroplanes=items)
     except ServiceException as exc:
         _raise_http_from_domain(exc)
