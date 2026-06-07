@@ -75,17 +75,21 @@ export function EnvelopeAxis({
             tabIndex={0}
           >
             <div className={`h-3.5 w-[3px] rounded-full ${ZONE_COLOR[m.kind]}`} />
-            {large ? (
+            {large && (
               // slanted labels ABOVE the axis fan out instead of colliding
               <span className="absolute bottom-2.5 left-1/2 origin-bottom-left -rotate-[20deg] whitespace-nowrap font-[family-name:var(--font-geist-mono)] text-[9px] text-muted-foreground">
                 {m.symbol}
               </span>
-            ) : (
-              <span className="absolute bottom-5 left-1/2 -translate-x-1/2 whitespace-nowrap font-[family-name:var(--font-geist-mono)] text-[10px] font-medium text-foreground opacity-0 transition-opacity group-hover/m:opacity-100 group-focus-within/m:opacity-100">
-                {m.value.toFixed(1)}
-                {m.aoa != null ? ` m/s @ ${m.aoa.toFixed(1)}°` : " m/s"}
-              </span>
             )}
+            {/* hover/focus detail tooltip — below the axis in large (clears the slanted labels), above in compact */}
+            <span
+              className={`pointer-events-none absolute left-1/2 z-50 hidden -translate-x-1/2 whitespace-nowrap rounded-lg border border-border bg-card px-2 py-1 font-[family-name:var(--font-geist-mono)] text-[10px] leading-snug shadow-lg group-hover/m:block group-focus-within/m:block ${large ? "top-5" : "bottom-5"}`}
+            >
+              <span className="font-semibold text-foreground">{m.symbol}</span>
+              <span className="text-subtle-foreground"> · {m.label}</span>
+              <br />
+              <span className="text-foreground">{m.value.toFixed(1)} m/s{m.aoa != null ? ` @ ${m.aoa.toFixed(1)}°` : ""}</span>
+            </span>
           </div>
         ))}
       </div>
