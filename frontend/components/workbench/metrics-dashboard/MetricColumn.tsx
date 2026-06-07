@@ -35,7 +35,7 @@ export function MetricColumn({
         type="button"
         onClick={onActivate}
         title={`${title} — ${headline}`}
-        className="flex h-full w-9 shrink-0 flex-col items-center gap-2 rounded-lg border border-border bg-card py-2 text-subtle-foreground transition-colors hover:border-border-strong hover:text-foreground focus:outline-none focus-visible:ring-1 focus-visible:ring-primary"
+        className="flex h-full w-9 shrink-0 flex-col items-center gap-2 rounded-b-lg border border-border bg-card py-2 text-subtle-foreground transition-colors hover:border-border-strong hover:text-foreground focus:outline-none focus-visible:ring-1 focus-visible:ring-primary"
       >
         <Icon size={14} className="text-primary" />
         <span className="text-[11px] font-semibold uppercase tracking-wide [writing-mode:vertical-rl]">{title}</span>
@@ -46,7 +46,7 @@ export function MetricColumn({
   const isLarge = mode === "large";
   return (
     <section
-      className={`flex h-full min-w-0 flex-col rounded-lg border bg-card ${isLarge ? "flex-1 border-border-strong" : "flex-1 cursor-pointer hover:border-border-strong"} border-border transition-colors`}
+      className={`flex h-full min-w-0 flex-col rounded-b-lg border bg-card ${isLarge ? "flex-1 border-border-strong" : "flex-1 cursor-pointer hover:border-border-strong"} border-border transition-colors`}
       data-testid={`metric-col-${title.toLowerCase()}`}
       data-mode={mode}
       onClick={isLarge ? undefined : onActivate}

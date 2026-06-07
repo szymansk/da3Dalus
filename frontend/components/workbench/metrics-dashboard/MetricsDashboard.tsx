@@ -195,7 +195,7 @@ export function MetricsDashboard() {
       {/* sliding band — collapses to 0 height via the grid-rows trick */}
       <div className={`grid transition-[grid-template-rows] duration-300 ease-out ${open ? "grid-rows-[1fr]" : "grid-rows-[0fr]"}`}>
         <div className="min-h-0 overflow-hidden">
-          <div className="h-[15vh] min-h-[118px] w-full pt-2" data-testid="metrics-band-body">
+          <div className="h-[15vh] min-h-[118px] w-full" data-testid="metrics-band-body">
             <div className="flex h-full w-full gap-2">
               {IDS.map((id) => (
                 <MetricColumn
