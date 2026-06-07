@@ -9,6 +9,7 @@ import { useState } from "react";
 import { Wind, Scale, Gauge, Ruler, BatteryCharging } from "lucide-react";
 import { MetricColumn, type ColumnMode } from "./MetricColumn";
 import { EnvelopeAxis, BulletGauge, MetricCard, MacCgDiagram } from "./primitives";
+import { PlanformDiagram } from "./PlanformDiagram";
 import {
   antriebDetailMock, antriebMock, balanceMock, geometryMock,
   gueteMock, gueteRawMock, speedMock, type MetricItem,
@@ -96,9 +97,23 @@ export function MetricsDashboard() {
       ),
     },
     geometry: {
-      title: "Geometry", icon: Ruler, headline: "AR 11.3 · S_ref 0.200 m²",
-      tile: <div className="pt-1"><MiniKV items={geometryMock} /></div>,
-      large: <div className="flex flex-wrap gap-2 pt-1">{geometryMock.map((m) => <MetricCard key={m.symbol} item={m} large />)}</div>,
+      title: "Geometry", icon: Ruler, headline: "AR 11.3 · S_ref 0.200 m² · B 1.50 m",
+      tile: (
+        <div className="flex h-full flex-col gap-1 pt-1">
+          <div className="flex min-h-0 flex-1 items-center justify-center">
+            <PlanformDiagram bRef="1.50" mac="0.135" sRef="0.200" ar="11.3" />
+          </div>
+          <MiniKV items={geometryMock} />
+        </div>
+      ),
+      large: (
+        <div className="flex h-full items-center gap-4 pt-1">
+          <div className="flex h-full min-h-0 flex-[2] items-center justify-center">
+            <PlanformDiagram bRef="1.50" mac="0.135" sRef="0.200" ar="11.3" annotate />
+          </div>
+          <div className="flex-1"><MiniKV items={geometryMock} /></div>
+        </div>
+      ),
     },
     antrieb: {
       title: "Antrieb", icon: BatteryCharging, headline: "Endurance 42 min · P/W 4.1",
