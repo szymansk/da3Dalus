@@ -6,7 +6,7 @@
 // height never changes — content scrolls inside a column if needed.
 
 import { useState } from "react";
-import { Wind, Scale, Gauge, Ruler, BatteryCharging } from "lucide-react";
+import { Wind, Gauge, Ruler, BatteryCharging } from "lucide-react";
 import { renderSymbol } from "@/components/workbench/renderSymbol";
 import { MetricColumn, type ColumnMode } from "./MetricColumn";
 import { EnvelopeAxis, BulletGauge, MetricCard, MacCgDiagram, Tip } from "./primitives";
@@ -16,8 +16,8 @@ import {
   gueteMock, gueteRawMock, speedMock, type MetricItem,
 } from "./metricsMock";
 
-type Id = "speed" | "balance" | "guete" | "geometry" | "antrieb";
-const IDS: Id[] = ["speed", "balance", "guete", "geometry", "antrieb"];
+type Id = "speed" | "geometry" | "guete" | "antrieb";
+const IDS: Id[] = ["speed", "geometry", "guete", "antrieb"];
 
 // tiny key/value used in compact tiles
 function MiniKV({ items }: { readonly items: readonly MetricItem[] }) {
@@ -60,25 +60,6 @@ export function MetricsDashboard() {
       ),
       large: <EnvelopeAxis markers={speedMock.markers} large />,
     },
-    balance: {
-      title: "Balance", icon: Scale, headline: `SM ${balanceMock.smPercent.toFixed(1)}%`,
-      tile: (
-        <div className="pt-1">
-          <div className="group/m relative inline-block font-[family-name:var(--font-geist-mono)] text-[18px] font-bold leading-none" tabIndex={0}>
-            <span className={smInTarget ? "text-success" : "text-amber-400"}>{balanceMock.smPercent.toFixed(1)}%</span>
-            <span className="ml-1 text-[10px] font-normal text-subtle-foreground">SM</span>
-            <Tip>Static margin — longitudinal stability as % of MAC (CG ahead of neutral point). Target {balanceMock.targetSmMin}–{balanceMock.targetSmMax}%.</Tip>
-          </div>
-          <MacCgDiagram {...balanceMock} inTarget={smInTarget} />
-        </div>
-      ),
-      large: (
-        <div>
-          <MacCgDiagram {...balanceMock} inTarget={smInTarget} large />
-          <p className="mt-1 text-[10px] text-subtle-foreground">Component CG {balanceMock.cgComponent?.toFixed(3)} m · target SM {balanceMock.targetSmMin}–{balanceMock.targetSmMax}% MAC</p>
-        </div>
-      ),
-    },
     guete: {
       title: "Güte", icon: Gauge, headline: "(L/D) 21.0 · ρ 0.70 ⚠",
       tile: (
@@ -103,21 +84,31 @@ export function MetricsDashboard() {
       ),
     },
     geometry: {
-      title: "Geometry", icon: Ruler, headline: "AR 11.3 · S_ref 0.200 m² · B 1.50 m",
+      title: "Geometry", icon: Ruler, headline: "AR 11.3 · S_ref 0.200 m² · SM 8.1%",
       tile: (
         <div className="flex h-full flex-col gap-1 pt-1">
           <div className="flex min-h-0 flex-1 items-center justify-center">
             <PlanformDiagram bRef="1.50" mac="0.135" sRef="0.200" ar="11.3" />
           </div>
-          <MiniKV items={geometryMock} />
+          <div className="flex items-end justify-between gap-2">
+            <div className="min-w-0 flex-1"><MiniKV items={geometryMock} /></div>
+            <div className="group/m relative shrink-0 text-right font-[family-name:var(--font-geist-mono)]" tabIndex={0}>
+              <div className={`text-[16px] font-bold leading-none ${smInTarget ? "text-success" : "text-amber-400"}`}>{balanceMock.smPercent.toFixed(1)}%</div>
+              <div className="text-[9px] uppercase tracking-wide text-subtle-foreground">SM</div>
+              <Tip>Static margin — longitudinal stability as % of MAC (CG ahead of neutral point). Target {balanceMock.targetSmMin}–{balanceMock.targetSmMax}%.</Tip>
+            </div>
+          </div>
         </div>
       ),
       large: (
-        <div className="flex h-full items-center gap-4 pt-1">
+        <div className="flex h-full items-stretch gap-4 pt-1">
           <div className="flex h-full min-h-0 flex-[2] items-center justify-center">
             <PlanformDiagram bRef="1.50" mac="0.135" sRef="0.200" ar="11.3" annotate />
           </div>
-          <div className="flex-1"><MiniKV items={geometryMock} /></div>
+          <div className="flex flex-1 flex-col justify-center gap-1">
+            <MacCgDiagram {...balanceMock} inTarget={smInTarget} large />
+            <p className="text-[10px] text-subtle-foreground">Component CG {balanceMock.cgComponent?.toFixed(3)} m · target SM {balanceMock.targetSmMin}–{balanceMock.targetSmMax}% MAC</p>
+          </div>
         </div>
       ),
     },
