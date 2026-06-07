@@ -9,6 +9,11 @@ export interface Aeroplane {
   total_mass_kg: number | null;
   created_at: string;
   updated_at: string;
+  // Versioning metadata (gh-907). Null/absent for pre-versioning legacy rows.
+  int_id?: number | null;
+  root_id?: number | null;
+  branch_name?: string | null;
+  is_main_branch?: boolean | null;
 }
 
 interface AeroplanesResponse {

@@ -73,17 +73,32 @@ class TestGetAeroplanes(unittest.TestCase):
 
     def test_get_aeroplanes_success(self):
         # Create mock aeroplanes
+        main_branch = MagicMock()
+        main_branch.name = "main"
+        main_branch.is_main = True
+
         mock_aeroplane1 = MagicMock()
         mock_aeroplane1.name = "Test Aeroplane 1"
         mock_aeroplane1.uuid = uuid.uuid4()
         mock_aeroplane1.created_at = datetime.now()
         mock_aeroplane1.updated_at = datetime.now()
+        # Versioning metadata (gh-907) consumed by the endpoint's NameIdMap
+        mock_aeroplane1.id = 1
+        mock_aeroplane1.root_id = 1
+        mock_aeroplane1.branch_id = 10
+        mock_aeroplane1.branch = main_branch
+        mock_aeroplane1.total_mass_kg = 1.5
 
         mock_aeroplane2 = MagicMock()
         mock_aeroplane2.name = "Test Aeroplane 2"
         mock_aeroplane2.uuid = uuid.uuid4()
         mock_aeroplane2.created_at = datetime.now()
         mock_aeroplane2.updated_at = datetime.now()
+        mock_aeroplane2.id = 2
+        mock_aeroplane2.root_id = 2
+        mock_aeroplane2.branch_id = 20
+        mock_aeroplane2.branch = main_branch
+        mock_aeroplane2.total_mass_kg = None
 
         mock_db = MagicMock()
 
@@ -101,6 +116,13 @@ class TestGetAeroplanes(unittest.TestCase):
         self.assertEqual(result.aeroplanes[0].id, mock_aeroplane1.uuid)
         self.assertEqual(result.aeroplanes[1].name, mock_aeroplane2.name)
         self.assertEqual(result.aeroplanes[1].id, mock_aeroplane2.uuid)
+        # Versioning metadata (gh-907) is surfaced on each entry
+        self.assertEqual(result.aeroplanes[0].int_id, 1)
+        self.assertEqual(result.aeroplanes[0].root_id, 1)
+        self.assertEqual(result.aeroplanes[0].branch_name, "main")
+        self.assertTrue(result.aeroplanes[0].is_main_branch)
+        self.assertEqual(result.aeroplanes[0].total_mass_kg, 1.5)
+        self.assertIsNone(result.aeroplanes[1].total_mass_kg)
 
     def test_get_aeroplanes_db_error(self):
         mock_db = MagicMock()
