@@ -11,7 +11,6 @@ from sqlalchemy.orm import Session
 
 from app.core.exceptions import (
     ConflictError,
-    InternalError,
     NotFoundError,
     ServiceException,
     ValidationDomainError,
@@ -22,8 +21,6 @@ from app.schemas.mass_cg import (
     CGComparisonResponse,
     DesignMetricsRequest,
     DesignMetricsResponse,
-    MassSweepRequest,
-    MassSweepResponse,
 )
 from app.services import mass_cg_service as svc
 
@@ -77,33 +74,6 @@ async def design_metrics_endpoint(
         svc.get_design_metrics_for_aeroplane,
         db,
         aeroplane_id,
-        body.velocity,
-        body.altitude,
-    )
-
-
-@router.post(
-    "/aeroplanes/{aeroplane_id}/mass_sweep",
-    status_code=status.HTTP_200_OK,
-    tags=["mass-cg"],
-    operation_id="compute_mass_sweep",
-    responses={
-        404: {"description": "Resource not found"},
-        422: {"description": "Validation error"},
-        500: {"description": "Internal server error"},
-    },
-)
-async def mass_sweep_endpoint(
-    aeroplane_id: Annotated[UUID4, Path(..., description="The ID of the aeroplane")],
-    body: Annotated[MassSweepRequest, Body(..., description="Sweep parameters")],
-    db: Annotated[Session, Depends(get_db)],
-) -> MassSweepResponse:
-    """Sweep mass values and compute derived metrics at each point (no aero re-run)."""
-    return _call(
-        svc.get_mass_sweep_for_aeroplane,
-        db,
-        aeroplane_id,
-        body.masses_kg,
         body.velocity,
         body.altitude,
     )

@@ -186,49 +186,6 @@ def test_stability_analysis_pipeline(client_and_db):
 
 
 # ---------------------------------------------------------------------------
-# Test 5 — Mass Sweep
-# ---------------------------------------------------------------------------
-
-
-@pytest.mark.integration
-@pytest.mark.requires_aerosandbox
-def test_mass_sweep(client_and_db):
-    client, SessionLocal = client_and_db
-    session = SessionLocal()
-    try:
-        aeroplane = seed_integration_aeroplane(session)
-        seed_design_assumptions(session, aeroplane.id)
-
-        masses = [0.5, 1.0, 1.5, 2.0, 2.5, 3.0]
-        response = client.post(
-            f"/aeroplanes/{aeroplane.uuid}/mass_sweep",
-            json={
-                "masses_kg": masses,
-                "velocity": 15.0,
-                "altitude": 0.0,
-            },
-        )
-        assert response.status_code == 200, response.text
-        data = response.json()
-
-        points = data["points"]
-        assert len(points) == 6
-
-        stall_speeds = [p["stall_speed_ms"] for p in points]
-        for i in range(1, len(stall_speeds)):
-            assert stall_speeds[i] >= stall_speeds[i - 1]
-
-        cl_margins = [p["cl_margin"] for p in points]
-        for i in range(1, len(cl_margins)):
-            assert cl_margins[i] <= cl_margins[i - 1]
-
-        assert points[0]["cl_margin"] > 0
-        assert points[0]["cl_margin"] > points[-1]["cl_margin"]
-    finally:
-        session.close()
-
-
-# ---------------------------------------------------------------------------
 # Test 6 — CG Comparison
 # ---------------------------------------------------------------------------
 
