@@ -16,7 +16,7 @@
  */
 
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen, fireEvent, waitFor } from "@testing-library/react";
+import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import React from "react";
 
@@ -45,9 +45,19 @@ vi.mock("lucide-react", () => {
 // Versioning hooks
 const mockUseLineageTree = vi.fn();
 const mockUseVersionActions = vi.fn();
+const mockUseCompareNodes = vi.fn();
 vi.mock("@/hooks/useVersioning", () => ({
   useLineageTree: (...args: unknown[]) => mockUseLineageTree(...args),
   useVersionActions: (...args: unknown[]) => mockUseVersionActions(...args),
+  useCompareNodes: (...args: unknown[]) => mockUseCompareNodes(...args),
+}));
+
+// VersionCompareView — stub so the compare panel does not need real adapters.
+vi.mock("@/components/workbench/VersionCompareView", () => ({
+  VersionCompareView: ({ onClose }: { onClose: () => void }) =>
+    React.createElement("div", { "data-testid": "version-compare-view" },
+      React.createElement("button", { type: "button", onClick: onClose, "aria-label": "Close compare panel" }, "Close compare"),
+    ),
 }));
 
 // ---------------------------------------------------------------------------
@@ -187,6 +197,11 @@ function renderPanel(overrides: {
 describe("VersionHistoryPanel (gh-907)", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockUseCompareNodes.mockReturnValue({
+      compareOut: undefined,
+      isLoading: false,
+      error: undefined,
+    });
   });
 
   // -------------------------------------------------------------------------
@@ -258,7 +273,7 @@ describe("VersionHistoryPanel (gh-907)", () => {
     await user.click(compareBtns[0]);
     await user.click(compareBtns[1]);
 
-    expect(screen.getByText(/2 nodes selected for comparison/i)).toBeDefined();
+    expect(screen.getByText(/2 nodes selected/i)).toBeDefined();
   });
 
   // -------------------------------------------------------------------------

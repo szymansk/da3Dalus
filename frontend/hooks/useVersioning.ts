@@ -164,6 +164,38 @@ export function useVersionActions(
 }
 
 // ---------------------------------------------------------------------------
+// useCompareNodes
+// ---------------------------------------------------------------------------
+
+export interface UseCompareNodesResult {
+  compareOut: CompareOut | undefined;
+  isLoading: boolean;
+  error: Error | undefined;
+}
+
+/**
+ * Fetch the side-by-side metrics comparison for two aeroplane nodes.
+ *
+ * Pass both IDs as non-null to enable fetching.
+ * Either null disables the request (e.g. while the user selects the second
+ * node).
+ */
+export function useCompareNodes(
+  a: number | null,
+  b: number | null,
+): UseCompareNodesResult {
+  const path = a !== null && b !== null ? `/aeroplanes/compare?a=${a}&b=${b}` : null;
+
+  const { data, error, isLoading } = useSWR<CompareOut>(path, fetcher);
+
+  return {
+    compareOut: data,
+    isLoading,
+    error: error as Error | undefined,
+  };
+}
+
+// ---------------------------------------------------------------------------
 // Re-export types so consumers can import from a single place
 // ---------------------------------------------------------------------------
 export type { BranchOut, BranchRequest, CompareOut, SnapshotRequest, TreeOut, VersionNode };

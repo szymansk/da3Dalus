@@ -34,7 +34,8 @@ import {
   Clock,
   Image as ImageIcon,
 } from "lucide-react";
-import { useLineageTree, useVersionActions } from "@/hooks/useVersioning";
+import { useLineageTree, useVersionActions, useCompareNodes } from "@/hooks/useVersioning";
+import { VersionCompareView } from "@/components/workbench/VersionCompareView";
 import type { BranchOut, TreeNodeOut, TreeOut } from "@/types/versioning";
 
 // ---------------------------------------------------------------------------
@@ -527,8 +528,24 @@ export function VersionHistoryPanel({
   const actions = useVersionActions(aeroplaneId, rootId);
 
   const [compareSet, setCompareSet] = useState<Set<number>>(new Set());
+  const [compareOpen, setCompareOpen] = useState(false);
   const [busy, setBusy] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
+
+  // Derive the two compare IDs only when exactly 2 are selected.
+  const compareIds = compareSet.size === 2 ? [...compareSet] : null;
+  const compareIdA = compareIds?.[0] ?? null;
+  const compareIdB = compareIds?.[1] ?? null;
+
+  // Fetch comparison only when the panel is open and both IDs are known.
+  const {
+    compareOut,
+    isLoading: compareLoading,
+    error: compareError,
+  } = useCompareNodes(
+    compareOpen ? compareIdA : null,
+    compareOpen ? compareIdB : null,
+  );
 
   const run = useCallback(async (fn: () => Promise<unknown>) => {
     setBusy(true);
@@ -618,22 +635,27 @@ export function VersionHistoryPanel({
       </div>
 
       {/* Compare bar */}
-      {compareSet.size > 0 && (
+      {compareSet.size > 0 && !compareOpen && (
         <div className="flex items-center gap-2 border-b border-border bg-primary/5 px-4 py-2">
           <ArrowLeftRight size={12} className="text-primary" />
           <span className="flex-1 text-[11px] text-foreground">
             {compareSet.size === 1
               ? "Select one more node to compare"
-              : "2 nodes selected for comparison"}
+              : "2 nodes selected"}
           </span>
           {compareSet.size === 2 && (
-            <span className="text-[10px] text-muted-foreground italic">
-              (Compare view coming soon)
-            </span>
+            <button
+              type="button"
+              onClick={() => setCompareOpen(true)}
+              aria-label="Open compare view"
+              className="rounded bg-primary px-2 py-0.5 text-[10px] font-medium text-primary-foreground"
+            >
+              Compare
+            </button>
           )}
           <button
             type="button"
-            onClick={() => setCompareSet(new Set())}
+            onClick={() => { setCompareSet(new Set()); setCompareOpen(false); }}
             aria-label="Clear comparison selection"
             className="text-[10px] text-muted-foreground hover:text-foreground"
           >
@@ -649,8 +671,20 @@ export function VersionHistoryPanel({
         </div>
       )}
 
+      {/* Compare view (replaces content area when open) */}
+      {compareOpen && (
+        <div className="flex flex-1 flex-col overflow-hidden">
+          <VersionCompareView
+            compareOut={compareOut ?? null}
+            isLoading={compareLoading}
+            error={compareError?.message ?? null}
+            onClose={() => setCompareOpen(false)}
+          />
+        </div>
+      )}
+
       {/* Content */}
-      <div className="flex-1 overflow-y-auto px-4 py-4">
+      {!compareOpen && <div className="flex-1 overflow-y-auto px-4 py-4">
         <PanelContent
           rootId={rootId}
           isLoading={isLoading}
@@ -665,7 +699,7 @@ export function VersionHistoryPanel({
           onDiscard={handleDiscard}
           busy={busy}
         />
-      </div>
+      </div>}
     </aside>
   );
 }
