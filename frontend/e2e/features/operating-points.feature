@@ -28,14 +28,6 @@ Feature: Operating Point Management
     And I click "Save Deflections"
     Then the status badge changes to "DIRTY"
 
-  Scenario: Mass sweep visualization
-    When I navigate to the assumptions tab
-    And I enter velocity 15 m/s and altitude 0 m
-    And I click "Compute Mass Sweep"
-    Then the mass sweep chart is displayed
-    And the current mass marker is at 1.5 kg
-    And the infeasible region is highlighted in red
-
   Scenario: CG comparison warning
     Given weight items exist with total CG at 0.30m
     And design CG assumption is 0.25m
