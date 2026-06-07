@@ -174,7 +174,7 @@ export function MetricsDashboard() {
         onClick={() => setOpen((v) => !v)}
         aria-expanded={open}
         aria-label={open ? "Collapse metrics" : "Expand metrics"}
-        className="flex h-8 w-full shrink-0 items-center gap-3 border-t border-border bg-sidebar px-4 text-muted-foreground transition-colors hover:bg-sidebar-accent hover:text-foreground"
+        className="flex h-8 w-full shrink-0 items-center gap-3 rounded-t-xl border border-border bg-sidebar px-4 text-muted-foreground transition-colors hover:bg-sidebar-accent hover:text-foreground"
       >
         {open ? <ChevronDown size={15} /> : <ChevronUp size={15} />}
         <span className="text-[12px] font-medium">Metrics</span>
