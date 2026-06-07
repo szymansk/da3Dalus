@@ -23,6 +23,7 @@ from __future__ import annotations
 
 import os
 import sqlite3
+import sys
 import tempfile
 from pathlib import Path
 
@@ -34,10 +35,9 @@ import pytest
 WORKTREE = Path(__file__).resolve().parents[2]  # /…/cad-gh901
 ALEMBIC_CFG = WORKTREE / "alembic.ini"
 
-PYTHON = (
-    "/Users/szymanski/Library/Caches/pypoetry/virtualenvs/"
-    "cad-modelling-service-8Qwdif1w-py3.11/bin/python"
-)
+# The interpreter running the tests — portable across machines and CI runners
+# (NEVER hardcode a local virtualenv path; it won't exist on CI).
+PYTHON = sys.executable
 
 # The revision *before* our gh-903 migration (used to seed the temp DB).
 PREV_REVISION = "16cbb884a838"
