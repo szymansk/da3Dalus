@@ -67,7 +67,7 @@ export function MetricsDashboard() {
       large: <EnvelopeAxis markers={speedMock.markers} large />,
     },
     guete: {
-      title: "Güte", icon: Gauge, headline: "(L/D) 21.0 · ρ 0.70 ⚠",
+      title: "Quality", icon: Gauge, headline: "(L/D) 21.0 · ρ 0.70 ⚠",
       tile: (
         <div className="flex flex-col gap-1 pt-0.5">
           {gueteMock.slice(0, 3).map((g) => <BulletGauge key={g.symbol} g={g} />)}
@@ -144,7 +144,7 @@ export function MetricsDashboard() {
       ),
     },
     antrieb: {
-      title: "Antrieb", icon: BatteryCharging, headline: "Endurance 42 min · P/W 4.1",
+      title: "Powertrain", icon: BatteryCharging, headline: "Endurance 42 min · P/W 4.1",
       tile: <div className="pt-1"><MiniKV items={antriebMock} /></div>,
       large: (
         <div>

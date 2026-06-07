@@ -86,7 +86,7 @@ export const balanceMock: BalanceData = {
   cgComponent: 0.129,
 };
 
-// ── Güte / quality gauges ───────────────────────────────────────
+// ── Quality / figures-of-merit gauges ───────────────────────────
 export const gueteMock: readonly GaugeData[] = [
   {
     symbol: "(L/D)_max", label: "Max glide ratio", value: 21.0, min: 5, max: 35, quality: "good",
@@ -166,7 +166,7 @@ export const tailItems: readonly MetricItem[] = [
   { symbol: "V_V", label: "V-tail volume coef.", value: "0.035", description: "V_V = S_VT·l_VT/(S_W·b); RC ~0.02–0.05 (rule of thumb)." },
 ];
 
-// ── Antrieb / powertrain ────────────────────────────────────────
+// ── Powertrain ──────────────────────────────────────────────────
 export const antriebMock: readonly MetricItem[] = [
   { symbol: "Battery", label: "Battery pack", value: "3S · 2200", unit: "mAh", description: "LiPo configuration and capacity." },
   { symbol: "Endurance", label: "Endurance (min-sink)", value: "42", unit: "min", description: "Max endurance at V_min_sink." },
