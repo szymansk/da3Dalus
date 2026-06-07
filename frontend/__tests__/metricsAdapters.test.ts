@@ -144,6 +144,13 @@ const NOMINAL_TAIL: TailSizingResult = {
   warnings: [],
 };
 
+// NOMINAL_TAIL has s_h_recommended_mm2: null (tests that item is conditional).
+// TAIL_WITH_S_HT provides a realistic 80 000 mm² recommended area (= 8.0 dm²).
+const TAIL_WITH_S_HT: TailSizingResult = {
+  ...NOMINAL_TAIL,
+  s_h_recommended_mm2: 80_000,
+};
+
 const NOT_APPLICABLE_TAIL: TailSizingResult = {
   ...NOMINAL_TAIL,
   v_h_current: null,
@@ -348,6 +355,61 @@ describe("toBalanceData", () => {
   it("cgComponent is undefined when not passed", () => {
     const result = toBalanceData(NOMINAL_CTX)!;
     expect(result.cgComponent).toBeUndefined();
+  });
+
+  // gh-889: component-CG fallback scenarios
+  it("returns null when NEITHER cg_agg_m nor cgComponent is available", () => {
+    const ctx: ComputationContext = { ...NOMINAL_CTX, cg_agg_m: null };
+    expect(toBalanceData(ctx, undefined)).toBeNull();
+    expect(toBalanceData(ctx)).toBeNull();
+  });
+
+  it("returns BalanceData flagged cgIsComponent=true when cg_agg_m is null but cgComponent is provided", () => {
+    const ctx: ComputationContext = { ...NOMINAL_CTX, cg_agg_m: null };
+    const result = toBalanceData(ctx, 0.120);
+    expect(result).not.toBeNull();
+    expect(result!.cgIsComponent).toBe(true);
+    // The primary CG should be the component value
+    expect(result!.cg).toBeCloseTo(0.120);
+    // No cross-check when component CG is primary
+    expect(result!.cgComponent).toBeUndefined();
+    // SM is computed from the component CG
+    const expectedSm = ((NOMINAL_CTX.x_np_m - 0.120) / NOMINAL_CTX.mac_m) * 100;
+    expect(result!.smPercent).toBeCloseTo(expectedSm, 2);
+  });
+
+  it("cgIsComponent is omitted (undefined) when aero CG is used", () => {
+    const result = toBalanceData(NOMINAL_CTX, 0.129)!;
+    // cgIsComponent should be falsy when using the real aero CG
+    expect(result.cgIsComponent).toBeFalsy();
+  });
+
+  it("cgDivergencePct is computed when BOTH cg_agg_m and cgComponent are present", () => {
+    // cg_agg_m=0.132, cgComponent=0.129, mac=0.135
+    const result = toBalanceData(NOMINAL_CTX, 0.129)!;
+    const expectedDivPct = (Math.abs(0.132 - 0.129) / 0.135) * 100;
+    expect(result.cgDivergencePct).toBeCloseTo(expectedDivPct, 2);
+  });
+
+  it("cgDivergencePct is undefined when only aero CG is present (no cross-check)", () => {
+    const result = toBalanceData(NOMINAL_CTX)!;
+    expect(result.cgDivergencePct).toBeUndefined();
+  });
+
+  it("cgDivergencePct is undefined when only component CG is used (no aero CG to diverge from)", () => {
+    const ctx: ComputationContext = { ...NOMINAL_CTX, cg_agg_m: null };
+    const result = toBalanceData(ctx, 0.120)!;
+    expect(result.cgDivergencePct).toBeUndefined();
+  });
+
+  it("component-CG fallback: NP, mac, target SM are still taken from ctx", () => {
+    const ctx: ComputationContext = { ...NOMINAL_CTX, cg_agg_m: null };
+    const result = toBalanceData(ctx, 0.120)!;
+    expect(result.np).toBeCloseTo(NOMINAL_CTX.x_np_m);
+    expect(result.macLength).toBeCloseTo(NOMINAL_CTX.mac_m);
+    const targetPct = NOMINAL_CTX.target_static_margin * 100;
+    expect(result.targetSmMin).toBeLessThan(targetPct);
+    expect(result.targetSmMax).toBeGreaterThan(targetPct);
   });
 });
 
@@ -565,6 +627,45 @@ describe("toTail", () => {
     const result = toTail(NOMINAL_TAIL, NOMINAL_CTX)!;
     expect(typeof result.bandsNote).toBe("string");
     expect(result.bandsNote.length).toBeGreaterThan(10);
+  });
+
+  // gh-890: S_HT recommended area
+  it("S_HT item is present when s_h_recommended_mm2 is provided", () => {
+    const result = toTail(TAIL_WITH_S_HT, NOMINAL_CTX)!;
+    const shtItem = result.items.find((i) => i.symbol === "S_HT");
+    expect(shtItem).toBeDefined();
+  });
+
+  it("S_HT value is s_h_recommended_mm2 converted to dm² (÷ 10 000), 1 dp", () => {
+    const result = toTail(TAIL_WITH_S_HT, NOMINAL_CTX)!;
+    const shtItem = result.items.find((i) => i.symbol === "S_HT")!;
+    // 80 000 mm² ÷ 10 000 = 8.0 dm²
+    expect(shtItem.value).toBe("8.0");
+    expect(shtItem.unit).toBe("dm²");
+  });
+
+  it("S_HT label contains 'rec.' to distinguish recommended from current", () => {
+    const result = toTail(TAIL_WITH_S_HT, NOMINAL_CTX)!;
+    const shtItem = result.items.find((i) => i.symbol === "S_HT")!;
+    expect(shtItem.label).toMatch(/rec\./i);
+  });
+
+  it("S_HT description contains formula reference", () => {
+    const result = toTail(TAIL_WITH_S_HT, NOMINAL_CTX)!;
+    const shtItem = result.items.find((i) => i.symbol === "S_HT")!;
+    expect(shtItem.description).toMatch(/V_H/);
+  });
+
+  it("S_HT item is absent when s_h_recommended_mm2 is null", () => {
+    // NOMINAL_TAIL has s_h_recommended_mm2: null
+    const result = toTail(NOMINAL_TAIL, NOMINAL_CTX)!;
+    const shtItem = result.items.find((i) => i.symbol === "S_HT");
+    expect(shtItem).toBeUndefined();
+  });
+
+  it("S_HT item is absent when classification is not_applicable", () => {
+    // classification=not_applicable causes toTail to return null entirely
+    expect(toTail(NOT_APPLICABLE_TAIL, NOMINAL_CTX)).toBeNull();
   });
 });
 

@@ -29,6 +29,18 @@ export interface BalanceData {
   readonly targetSmMin: number;
   readonly targetSmMax: number;
   readonly cgComponent?: number; // component-derived CG, m
+  /**
+   * True when `cg` is the component/calculated CG (cg_x design assumption)
+   * rather than the aerodynamic aggregated CG from the VLM run.
+   * When false (default), `cg` is the aero CG and `cgComponent` (if set)
+   * is the cross-check value.
+   */
+  readonly cgIsComponent?: boolean;
+  /**
+   * CG divergence level between component CG and aero CG, as % of MAC.
+   * Only set when BOTH cg_agg_m and cgComponent are available.
+   */
+  readonly cgDivergencePct?: number;
 }
 
 export interface GaugeZone {

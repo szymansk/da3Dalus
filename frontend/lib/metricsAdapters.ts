@@ -176,20 +176,40 @@ export function toGeometryItems(
 
 /**
  * Map ctx stability fields to the BalanceData shape consumed by MacCgDiagram /
- * PlanformDiagram. Returns null when cg_agg_m is absent (design not balanced).
+ * PlanformDiagram.
  *
- * @param cgComponent optional component-derived CG from the tree (metres)
+ * Fallback behaviour (gh-889):
+ *   - When `ctx.cg_agg_m` is present → use it as the primary CG (aero CG).
+ *     `cgComponent` (if provided) is stored as the cross-check value and
+ *     `cgDivergencePct` is computed from the difference.
+ *   - When `ctx.cg_agg_m` is null but `cgComponent` is available → use the
+ *     component/calculated CG as the primary CG and set `cgIsComponent=true`.
+ *     The dashboard MUST render but with a "calculated CG" marker so the user
+ *     knows it is not aerodynamically balanced yet.
+ *   - When NEITHER is available → return null (no balance data at all).
+ *
+ * @param cgComponent optional component/calculated CG from the design assumptions
+ *                    (the `cg_x` assumption's effective_value, in metres)
  */
 export function toBalanceData(
   ctx: ComputationContext | null | undefined,
   cgComponent?: number,
 ): BalanceData | null {
   if (ctx == null) return null;
-  if (ctx.cg_agg_m == null) return null;
 
-  const cg = ctx.cg_agg_m;
+  const hasAeroCg = ctx.cg_agg_m != null;
+  const hasComponentCg = cgComponent != null && Number.isFinite(cgComponent);
+
+  // Guard: need at least one CG source.
+  if (!hasAeroCg && !hasComponentCg) return null;
+
   const np = ctx.x_np_m;
   const mac = ctx.mac_m;
+
+  // Primary CG selection.
+  const cg = hasAeroCg ? (ctx.cg_agg_m as number) : (cgComponent as number);
+  const cgIsComponent = !hasAeroCg;
+
   const smPercent = ((np - cg) / mac) * 100;
 
   // Build a target SM range centred on target_static_margin.
@@ -201,13 +221,18 @@ export function toBalanceData(
   const targetSmMin = Math.max(0, targetPct - halfBand);
   const targetSmMax = targetPct + halfBand;
 
-  // macStart: place MAC so that cg_agg_m is at smPercent along it.
-  // We know: (np - cg) / mac = smPercent/100 → already consistent.
-  // The MAC leading-edge position: macStart = cg - (smPercent/100 - SM_LE_fraction)*mac.
-  // We don't have the LE fraction from the API, so use a reasonable approximation:
+  // macStart: place MAC so that the CG is at smPercent along it.
+  // We don't have the LE fraction from the API, so approximate:
   // place the CG at 30% of MAC from the LE, consistent with typical aircraft.
   const cgFracInMac = 0.30;
   const macStart = cg - cgFracInMac * mac;
+
+  // Divergence between aero CG and component CG (% MAC) — only meaningful
+  // when both are present.
+  const cgDivergencePct =
+    hasAeroCg && hasComponentCg
+      ? (Math.abs((ctx.cg_agg_m as number) - (cgComponent as number)) / mac) * 100
+      : undefined;
 
   return {
     cg,
@@ -217,7 +242,11 @@ export function toBalanceData(
     smPercent,
     targetSmMin,
     targetSmMax,
-    cgComponent,
+    // Cross-check value: when aero CG is primary, pass cgComponent as cross-check;
+    // when component CG is primary (cgIsComponent), there is no separate cross-check.
+    cgComponent: hasAeroCg ? cgComponent : undefined,
+    cgIsComponent: cgIsComponent || undefined, // omit false to keep the type tidy
+    cgDivergencePct,
   };
 }
 
@@ -583,6 +612,24 @@ export function toTail(
       label: "V-tail volume coef.",
       value: tailSizing.v_v_current.toFixed(3),
       description: `V_V = S_VT·l_VT/(S_W·b). ${tailSizing.v_v_citation}.`,
+    });
+  }
+
+  // S_HT recommended — convert mm² → dm² (÷ 10 000) for a human-readable scale.
+  // At typical RC sizes (S_W ~0.1–1 m²), the recommended HT area is 10 000–150 000 mm²
+  // which reads as 1–15 dm². cm² would give 100–1 500, which is noisier to scan.
+  if (tailSizing.s_h_recommended_mm2 != null) {
+    const s_ht_dm2 = tailSizing.s_h_recommended_mm2 / 10_000;
+    items.push({
+      symbol: "S_HT",
+      label: "H-tail area (rec.)",
+      value: s_ht_dm2.toFixed(1),
+      unit: "dm²",
+      description:
+        "Recommended horizontal-tail area derived from V_H target (mid-band) × S_W × MAC / l_HT. " +
+        "Source: tail-sizing service using the RC rule-of-thumb V_H band for the detected aircraft class. " +
+        "This is the TARGET area at the V_H midpoint — the current S_HT is not shown separately here. " +
+        "Whether your actual H-tail area meets this target is indicated by the V_H coefficient gauge above.",
     });
   }
 
