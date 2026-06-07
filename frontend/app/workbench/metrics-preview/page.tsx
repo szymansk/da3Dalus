@@ -4,6 +4,19 @@
 // Removed in #887 once the real dashboard replaces InfoChipRow.
 
 import { MetricsDashboard } from "@/components/workbench/metrics-dashboard/MetricsDashboard";
+import {
+  speedMock,
+  geometryMock,
+  balanceMock,
+  gueteMock,
+  gueteRawMock,
+  tailVhGauge,
+  tailItems,
+  tailMission,
+  tailBandsNote,
+  antriebMock,
+  antriebDetailMock,
+} from "@/components/workbench/metrics-dashboard/metricsMock";
 
 export default function MetricsPreviewPage() {
   return (
@@ -16,9 +29,31 @@ export default function MetricsPreviewPage() {
       <div className="flex min-h-0 flex-1 items-center justify-center rounded-lg border border-dashed border-border text-[12px] text-subtle-foreground">
         (analysis charts / other views fill this space)
       </div>
-      {/* docked metrics band */}
+      {/* docked metrics band with hardcoded mock data */}
       <div className="shrink-0">
-        <MetricsDashboard />
+        <MetricsDashboard
+          speed={speedMock}
+          geometryItems={geometryMock}
+          balance={balanceMock}
+          qualityGauges={gueteMock}
+          qualityRaw={gueteRawMock}
+          tail={{
+            gauge: tailVhGauge,
+            items: tailItems,
+            mission: tailMission,
+            bandsNote: tailBandsNote,
+          }}
+          powertrain={{
+            items: antriebMock,
+            detail: {
+              pReqVmd: antriebDetailMock.pReqVmd,
+              pReqVminSink: antriebDetailMock.pReqVminSink,
+              pMarginClass: antriebDetailMock.pMarginClass,
+              batteryMassPredicted: antriebDetailMock.batteryMassPredicted,
+              confidence: antriebDetailMock.confidence,
+            },
+          }}
+        />
       </div>
     </div>
   );

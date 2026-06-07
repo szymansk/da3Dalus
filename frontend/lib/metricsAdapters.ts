@@ -582,7 +582,7 @@ export interface PowertrainDetail {
 }
 
 export interface PowertrainAdapterResult {
-  readonly items: MetricItem[];
+  readonly items: readonly MetricItem[];
   readonly detail: PowertrainDetail;
 }
 
