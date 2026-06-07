@@ -6,7 +6,7 @@
 // height never changes — content scrolls inside a column if needed.
 
 import { useState } from "react";
-import { Wind, Gauge, Ruler, BatteryCharging } from "lucide-react";
+import { Wind, Gauge, Ruler, BatteryCharging, ChevronUp, ChevronDown } from "lucide-react";
 import { renderSymbol } from "@/components/workbench/renderSymbol";
 import { MetricColumn, type ColumnMode } from "./MetricColumn";
 import { EnvelopeAxis, BulletGauge, MetricCard, Tip } from "./primitives";
@@ -39,6 +39,7 @@ function MiniKV({ items }: { readonly items: readonly MetricItem[] }) {
 
 export function MetricsDashboard() {
   const [active, setActive] = useState<Id | null>(null);
+  const [open, setOpen] = useState(true);
   function modeOf(id: Id): ColumnMode {
     if (active === null) return "tile";
     return active === id ? "large" : "tab";
@@ -156,23 +157,63 @@ export function MetricsDashboard() {
     },
   };
 
+  // condensed summary chips shown on the handle when the band is collapsed
+  const collapsedItems: { sym: string; val: string }[] = [
+    { sym: "V_cruise", val: `${speedMock.markers.find((m) => m.symbol === "V_cruise")?.value.toFixed(0)}` },
+    { sym: "AR", val: `${geometryMock.find((m) => m.symbol === "AR")?.value}` },
+    { sym: "(L/D)_max", val: gueteMock[0].value.toFixed(0) },
+    { sym: "SM", val: `${balanceMock.smPercent.toFixed(0)}%` },
+    { sym: "Endurance", val: `${antriebMock[1].value} ${antriebMock[1].unit}` },
+  ];
+
   return (
-    <div className="h-[15vh] min-h-[118px] w-full" data-testid="metrics-band">
-      <div className="flex h-full w-full gap-2">
-        {IDS.map((id) => (
-          <MetricColumn
-            key={id}
-            title={cols[id].title}
-            icon={cols[id].icon}
-            mode={modeOf(id)}
-            onActivate={() => setActive(id)}
-            onCollapse={() => setActive(null)}
-            headline={cols[id].headline}
-            tile={cols[id].tile}
-            large={cols[id].large}
-          />
-        ))}
+    <div className="w-full" data-testid="metrics-band">
+      {/* sliding band — collapses to 0 height via the grid-rows trick */}
+      <div className={`grid transition-[grid-template-rows] duration-300 ease-out ${open ? "grid-rows-[1fr]" : "grid-rows-[0fr]"}`}>
+        <div className="min-h-0 overflow-hidden">
+          <div className="h-[15vh] min-h-[118px] w-full pb-2" data-testid="metrics-band-body">
+            <div className="flex h-full w-full gap-2">
+              {IDS.map((id) => (
+                <MetricColumn
+                  key={id}
+                  title={cols[id].title}
+                  icon={cols[id].icon}
+                  mode={modeOf(id)}
+                  onActivate={() => setActive(id)}
+                  onCollapse={() => setActive(null)}
+                  headline={cols[id].headline}
+                  tile={cols[id].tile}
+                  large={cols[id].large}
+                />
+              ))}
+            </div>
+          </div>
+        </div>
       </div>
+
+      {/* persistent handle — toggles the whole band open/closed (drawer down) */}
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        aria-expanded={open}
+        aria-label={open ? "Collapse metrics" : "Expand metrics"}
+        className="flex h-8 w-full shrink-0 items-center gap-3 rounded-t-lg border-t border-border bg-sidebar px-4 text-muted-foreground transition-colors hover:bg-sidebar-accent hover:text-foreground"
+      >
+        {open ? <ChevronDown size={15} /> : <ChevronUp size={15} />}
+        <span className="text-[12px] font-medium">Metrics</span>
+        {!open && (
+          <span className="flex min-w-0 items-center gap-2 truncate font-[family-name:var(--font-geist-mono)] text-[11px] text-subtle-foreground">
+            {collapsedItems.map((c, i) => (
+              <span key={c.sym} className="whitespace-nowrap">
+                {i > 0 && <span className="mr-2 text-border">·</span>}
+                {renderSymbol(c.sym)} <span className="text-muted-foreground">{c.val}</span>
+              </span>
+            ))}
+          </span>
+        )}
+        <span className="flex-1" />
+        <span className="text-[10px] text-subtle-foreground">{open ? "hide" : "show"}</span>
+      </button>
     </div>
   );
 }
