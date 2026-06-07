@@ -67,10 +67,11 @@ class TestCreateAeroplane(unittest.TestCase):
 
 
 class TestGetAeroplanes(unittest.TestCase):
-    def test_get_aeroplanes_success(self):
-        # Setup mock
-        mock_db = MagicMock()
+    # The endpoint now delegates to aeroplane_version_service.list_aeroplanes_heads_only
+    # (heads_only=True is the default) which uses a subquery that a raw MagicMock db
+    # cannot satisfy.  We patch at the service boundary instead.
 
+    def test_get_aeroplanes_success(self):
         # Create mock aeroplanes
         mock_aeroplane1 = MagicMock()
         mock_aeroplane1.name = "Test Aeroplane 1"
@@ -84,14 +85,14 @@ class TestGetAeroplanes(unittest.TestCase):
         mock_aeroplane2.created_at = datetime.now()
         mock_aeroplane2.updated_at = datetime.now()
 
-        # Setup the mock to return our mock aeroplanes
-        mock_db.query.return_value.order_by.return_value.all.return_value = [
-            mock_aeroplane1,
-            mock_aeroplane2,
-        ]
+        mock_db = MagicMock()
 
-        # Call the function
-        result = asyncio.run(get_aeroplanes(db=mock_db))
+        with patch(
+            "app.api.v2.endpoints.aeroplane.base.aeroplane_version_service"
+            ".list_aeroplanes_heads_only",
+            return_value=[mock_aeroplane1, mock_aeroplane2],
+        ):
+            result = asyncio.run(get_aeroplanes(db=mock_db))
 
         # Assertions
         self.assertIsInstance(result, GetAeroplaneResponse)
@@ -100,37 +101,32 @@ class TestGetAeroplanes(unittest.TestCase):
         self.assertEqual(result.aeroplanes[0].id, mock_aeroplane1.uuid)
         self.assertEqual(result.aeroplanes[1].name, mock_aeroplane2.name)
         self.assertEqual(result.aeroplanes[1].id, mock_aeroplane2.uuid)
-        mock_db.query.assert_called_once_with(AeroplaneModel)
-        mock_db.query.return_value.order_by.assert_called_once()
-        mock_db.query.return_value.order_by.return_value.all.assert_called_once()
 
     def test_get_aeroplanes_db_error(self):
-        # Setup mock
         mock_db = MagicMock()
-        mock_db.query.side_effect = SQLAlchemyError("Test DB error")
 
-        # Call the function and check for exception
-        with self.assertRaises(HTTPException) as context:
-            asyncio.run(get_aeroplanes(db=mock_db))
+        with patch(
+            "app.api.v2.endpoints.aeroplane.base.aeroplane_version_service"
+            ".list_aeroplanes_heads_only",
+            side_effect=SQLAlchemyError("Test DB error"),
+        ):
+            with self.assertRaises(HTTPException) as context:
+                asyncio.run(get_aeroplanes(db=mock_db))
 
-        # Assertions
         self.assertEqual(context.exception.status_code, 500)
-        self.assertIn("Database error", context.exception.detail)
-        mock_db.query.assert_called_once_with(AeroplaneModel)
 
     def test_get_aeroplanes_unexpected_error(self):
-        # Setup mock
         mock_db = MagicMock()
-        mock_db.query.return_value.order_by.side_effect = Exception("Test unexpected error")
 
-        # Call the function and check for exception
-        with self.assertRaises(HTTPException) as context:
-            asyncio.run(get_aeroplanes(db=mock_db))
+        with patch(
+            "app.api.v2.endpoints.aeroplane.base.aeroplane_version_service"
+            ".list_aeroplanes_heads_only",
+            side_effect=Exception("Test unexpected error"),
+        ):
+            with self.assertRaises(HTTPException) as context:
+                asyncio.run(get_aeroplanes(db=mock_db))
 
-        # Assertions
         self.assertEqual(context.exception.status_code, 500)
-        self.assertIn("Unexpected error", context.exception.detail)
-        mock_db.query.assert_called_once_with(AeroplaneModel)
 
 
 class TestGetAeroplane(unittest.TestCase):

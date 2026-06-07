@@ -138,19 +138,23 @@ def upgrade() -> None:
         )
 
     # ── 3. Backfill — create a main branch for every existing aeroplane ───────
+    # NOTE: We use INSERT … RETURNING id instead of result.lastrowid because
+    # lastrowid is None on PostgreSQL, silently leaving branch_id NULL for all
+    # pre-existing aircraft.  Both SQLite ≥3.35 and PostgreSQL support RETURNING.
     conn = op.get_bind()
     aeroplanes = conn.execute(sa.text("SELECT id FROM aeroplanes")).fetchall()
     for row in aeroplanes:
         aeroplane_id = row[0]
-        # Insert main branch: root = self, head = self
+        # Insert main branch using RETURNING to get the new PK portably.
         result = conn.execute(
             sa.text(
                 "INSERT INTO branches (root_id, head_id, name, is_main, created_by)"
                 " VALUES (:rid, :hid, 'main', :is_main, 'human')"
+                " RETURNING id"
             ),
             {"rid": aeroplane_id, "hid": aeroplane_id, "is_main": True},
         )
-        branch_id = result.lastrowid
+        branch_id = result.fetchone()[0]
 
         # Point the aeroplane's versioning columns at its new main branch
         conn.execute(
@@ -162,7 +166,20 @@ def upgrade() -> None:
             {"rid": aeroplane_id, "bid": branch_id, "aid": aeroplane_id},
         )
 
-    # ── 4. Drop design_versions (JSON snapshot system retired) ────────────────
+    # ── 4. Partial unique index: one main branch per lineage root ─────────────
+    # Both SQLite (≥3.8) and PostgreSQL support partial indexes.  This enforces
+    # the invariant at the DB level so concurrent writes can't create two main
+    # branches for the same root_id.
+    op.create_index(
+        "uq_branches_one_main_per_root",
+        "branches",
+        ["root_id"],
+        unique=True,
+        postgresql_where=sa.text("is_main = true"),
+        sqlite_where=sa.text("is_main = 1"),
+    )
+
+    # ── 5. Drop design_versions (JSON snapshot system retired) ────────────────
     op.drop_table("design_versions")
 
 
@@ -215,9 +232,10 @@ def downgrade() -> None:
         batch_op.drop_column("provenance_message_id")
         batch_op.drop_column("preview_png")
 
-    # ── 3. Drop branches table ────────────────────────────────────────────────
+    # ── 3. Drop branches table (index dropped implicitly with the table) ──────
     # Drop the deferred FK constraints on branches before dropping the table.
     with op.batch_alter_table("branches") as batch_op:
         batch_op.drop_constraint("fk_branches_root_id", type_="foreignkey")
         batch_op.drop_constraint("fk_branches_head_id", type_="foreignkey")
+        batch_op.drop_index("uq_branches_one_main_per_root")
     op.drop_table("branches")

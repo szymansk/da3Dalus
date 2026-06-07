@@ -15,10 +15,13 @@ No db.commit() is called; get_db() owns the transaction.
 from __future__ import annotations
 
 import copy
+import logging
 import uuid as _uuid_mod
 from typing import Any
 
 from sqlalchemy.orm import Session
+
+logger = logging.getLogger(__name__)
 
 from app.models.aeroplanemodel import (
     AeroplaneModel,
@@ -48,6 +51,21 @@ from app.models.stability_result import StabilityResultModel
 # ---------------------------------------------------------------------------
 
 #: Tables that are deep-copied into the new aeroplane node.
+#
+# COVERAGE-TEST BLIND SPOT — STRING-FK TABLES
+# The coverage test (test_aeroplane_clone_coverage.py) introspects SQLAlchemy
+# ForeignKey objects to discover which tables are related to ``aeroplanes``.
+# It therefore CANNOT find tables whose aeroplane reference is stored as a
+# plain String column (no SQLAlchemy ForeignKey constraint), because those
+# string FKs are invisible to the reflection-based BFS.
+#
+# Tables currently in this category (must be maintained manually):
+#   • ``component_tree``  — aeroplane_id is VARCHAR(UUID); no int FK
+#   • ``construction_plans`` — soft string FK; EXCLUDED intentionally
+#   • ``construction_parts`` — string aeroplane_id; EXCLUDED intentionally
+#
+# If you add a new table with a string aeroplane reference, you MUST add it
+# here (or to EXCLUDED_TABLES) by hand — the coverage test will not catch it.
 CLONED_TABLES: frozenset[str] = frozenset(
     [
         "aeroplanes",  # the root — a new row is created
@@ -65,6 +83,8 @@ CLONED_TABLES: frozenset[str] = frozenset(
         "aircraft_computation_config",  # owned by aeroplane_id FK
         "stability_results",  # owned by aeroplane_id FK
         "loading_scenarios",  # owned; component_overrides JSON remapped
+        # STRING-FK: aeroplane_id is VARCHAR(UUID), not an integer FK → invisible
+        # to the BFS introspection; added manually (see blind-spot note above).
         "component_tree",  # owned; aeroplane_id = UUID str; parent_id remapped
     ]
 )
@@ -529,3 +549,19 @@ def _clone_component_tree(
                 db.query(ComponentTreeNodeModel).filter(
                     ComponentTreeNodeModel.id == new_node_id
                 ).update({"parent_id": new_parent_id})
+            else:
+                # The source node's parent_id is not in the id_map — this means
+                # the parent node belongs to a different aeroplane (cross-aeroplane
+                # reference) or the data is corrupt.  We drop the parent link
+                # (parent_id stays None from pass-1) and log a warning so the
+                # operator can investigate without a silent data loss.
+                logger.warning(
+                    "_clone_component_tree: node %s (source id=%s) has parent_id=%s "
+                    "that is not in the cloned node set for aeroplane %s → %s. "
+                    "parent_id left as None on the cloned node.",
+                    id_map[node.id],
+                    node.id,
+                    node.parent_id,
+                    source.id,
+                    clone.id,
+                )

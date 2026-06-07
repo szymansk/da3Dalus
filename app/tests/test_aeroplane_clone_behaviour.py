@@ -816,3 +816,149 @@ class TestCloneAeroplaneSubgraph:
         db_session.flush()
         assert clone.id != minimal.id
         assert clone.name == "minimal"
+
+    def test_component_tree_3level_parent_remapping(self, db_session):
+        """3-level hierarchy (root → child → grandchild): parent_id remapping
+        must be correct at every depth, not just root→child."""
+        src = AeroplaneModel(uuid=uuid.uuid4(), name="3level", total_mass_kg=None)
+        db_session.add(src)
+        db_session.flush()
+
+        # root (depth 0)
+        root_node = ComponentTreeNodeModel(
+            aeroplane_id=str(src.uuid),
+            parent_id=None,
+            sort_index=0,
+            node_type="group",
+            name="root",
+        )
+        db_session.add(root_node)
+        db_session.flush()
+
+        # child (depth 1) — parent is root
+        child_node = ComponentTreeNodeModel(
+            aeroplane_id=str(src.uuid),
+            parent_id=root_node.id,
+            sort_index=0,
+            node_type="group",
+            name="child",
+        )
+        db_session.add(child_node)
+        db_session.flush()
+
+        # grandchild (depth 2) — parent is child
+        grandchild_node = ComponentTreeNodeModel(
+            aeroplane_id=str(src.uuid),
+            parent_id=child_node.id,
+            sort_index=0,
+            node_type="cad_shape",
+            name="grandchild",
+        )
+        db_session.add(grandchild_node)
+        db_session.flush()
+        db_session.commit()
+        db_session.refresh(src)
+
+        clone = clone_aeroplane_subgraph(
+            db_session, src, immutable=False, branch_id=None, predecessor_id=None, root_id=None
+        )
+        db_session.flush()
+
+        # All clone nodes use the clone's UUID
+        clone_nodes = (
+            db_session.query(ComponentTreeNodeModel)
+            .filter(ComponentTreeNodeModel.aeroplane_id == str(clone.uuid))
+            .order_by(ComponentTreeNodeModel.id)
+            .all()
+        )
+        assert len(clone_nodes) == 3, "All three levels must be cloned"
+
+        # Verify tree structure: none of the clone node ids exist in the source
+        src_node_ids = {root_node.id, child_node.id, grandchild_node.id}
+        clone_node_ids = {n.id for n in clone_nodes}
+        assert src_node_ids.isdisjoint(clone_node_ids), "Clone nodes must have new PKs"
+
+        # root → no parent
+        clone_root = next(n for n in clone_nodes if n.name == "root")
+        assert clone_root.parent_id is None
+
+        # child → parent is clone_root
+        clone_child = next(n for n in clone_nodes if n.name == "child")
+        assert clone_child.parent_id == clone_root.id, (
+            f"clone_child.parent_id={clone_child.parent_id} must equal "
+            f"clone_root.id={clone_root.id}"
+        )
+
+        # grandchild → parent is clone_child
+        clone_grandchild = next(n for n in clone_nodes if n.name == "grandchild")
+        assert clone_grandchild.parent_id == clone_child.id, (
+            f"clone_grandchild.parent_id={clone_grandchild.parent_id} must equal "
+            f"clone_child.id={clone_child.id}"
+        )
+
+    def test_component_tree_orphan_parent_logs_warning(self, db_session, caplog):
+        """When a source node's parent_id is not in the cloned node set
+        (cross-aeroplane / corrupt data), the clone service must log a WARNING
+        and set parent_id=None on the cloned node — not raise."""
+        import logging
+
+        src = AeroplaneModel(uuid=uuid.uuid4(), name="orphan-test", total_mass_kg=None)
+        db_session.add(src)
+        db_session.flush()
+
+        # Create a node whose parent_id references a node from a DIFFERENT aeroplane
+        # (simulated by using an id that is not in this aeroplane's node set).
+        other = AeroplaneModel(uuid=uuid.uuid4(), name="other", total_mass_kg=None)
+        db_session.add(other)
+        db_session.flush()
+
+        other_node = ComponentTreeNodeModel(
+            aeroplane_id=str(other.uuid),
+            parent_id=None,
+            sort_index=0,
+            node_type="group",
+            name="other-root",
+        )
+        db_session.add(other_node)
+        db_session.flush()
+
+        # Node for src that points to the other aeroplane's node as its "parent"
+        orphan = ComponentTreeNodeModel(
+            aeroplane_id=str(src.uuid),
+            parent_id=other_node.id,  # cross-aeroplane reference
+            sort_index=0,
+            node_type="cad_shape",
+            name="orphan",
+        )
+        db_session.add(orphan)
+        db_session.flush()
+        db_session.commit()
+        db_session.refresh(src)
+
+        with caplog.at_level(logging.WARNING, logger="app.services.aeroplane_clone_service"):
+            clone = clone_aeroplane_subgraph(
+                db_session,
+                src,
+                immutable=False,
+                branch_id=None,
+                predecessor_id=None,
+                root_id=None,
+            )
+            db_session.flush()
+
+        # The cloned orphan node must have parent_id=None
+        clone_node = (
+            db_session.query(ComponentTreeNodeModel)
+            .filter(
+                ComponentTreeNodeModel.aeroplane_id == str(clone.uuid),
+                ComponentTreeNodeModel.name == "orphan",
+            )
+            .first()
+        )
+        assert clone_node is not None
+        assert clone_node.parent_id is None, "Orphaned parent must be dropped (parent_id=None)"
+
+        # A warning must have been logged
+        assert any("parent_id" in record.message for record in caplog.records), (
+            "Expected a WARNING log about the dropped parent link"
+        )

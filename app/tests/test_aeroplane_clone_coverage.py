@@ -102,6 +102,17 @@ class TestCloneCoverage:
         If this test fails, a table linked to aeroplanes is not listed in
         either CLONED_TABLES or EXCLUDED_TABLES.  Add it to the appropriate
         set in aeroplane_clone_service.py with a reason.
+
+        KNOWN BLIND SPOT — STRING-FK TABLES:
+        This BFS introspection walks SQLAlchemy ``ForeignKey`` objects.
+        Tables whose aeroplane reference is stored as a plain ``String``
+        column (no SQLAlchemy ForeignKey constraint) are INVISIBLE to this
+        traversal and will NOT be flagged by this test even if unclassified.
+        Those tables must be added to CLONED_TABLES or EXCLUDED_TABLES
+        manually.  Current string-FK tables (as of gh-904):
+          • ``component_tree``   (aeroplane_id = VARCHAR/UUID, in CLONED_TABLES)
+          • ``construction_plans`` (soft string FK, in EXCLUDED_TABLES)
+          • ``construction_parts`` (string aeroplane_id, in EXCLUDED_TABLES)
         """
         # Build an in-memory SQLite and create all tables so the metadata is
         # fully populated (foreign_keys are resolved).

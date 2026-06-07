@@ -19,7 +19,7 @@ from app.converters.model_schema_converters import (
     fuselage_model_to_fuselage_config,
     wing_model_to_wing_config,
 )
-from app.models.aeroplanemodel import AeroplaneModel
+from app.models.aeroplanemodel import AeroplaneModel, BranchModel
 from cad_designer.airplane.aircraft_topology.airplane.AirplaneConfiguration import (
     AirplaneConfiguration,
 )
@@ -60,15 +60,42 @@ def list_all_aeroplanes(db: Session) -> List[AeroplaneModel]:
 
 def create_aeroplane(db: Session, name: str) -> AeroplaneModel:
     """
-    Create a new aeroplane.
+    Create a new aeroplane with a versioning main branch.
+
+    Every new aeroplane is immediately a valid versioning node: root_id points
+    to itself, branch_id points to a freshly created ``main`` branch, and
+    is_immutable is False.  This mirrors the gh-903 migration backfill so that
+    new aeroplanes are treated identically to pre-migration ones.
+
+    No db.commit() is called — get_db() owns the transaction boundary.
 
     Raises:
         InternalError: If a database error occurs.
     """
     try:
-        aeroplane = AeroplaneModel(name=name)
+        aeroplane = AeroplaneModel(name=name, is_immutable=False)
         db.add(aeroplane)
+        db.flush()  # obtain aeroplane.id
+
+        # Set root_id to itself — this is the lineage root.
+        aeroplane.root_id = aeroplane.id
         db.flush()
+
+        # Create the main branch for this lineage.
+        branch = BranchModel(
+            root_id=aeroplane.id,
+            head_id=aeroplane.id,
+            name="main",
+            is_main=True,
+            created_by="human",
+        )
+        db.add(branch)
+        db.flush()  # obtain branch.id
+
+        # Back-fill branch_id on the aeroplane row.
+        aeroplane.branch_id = branch.id
+        db.flush()
+
         db.refresh(aeroplane)
         return aeroplane
     except SQLAlchemyError as e:
