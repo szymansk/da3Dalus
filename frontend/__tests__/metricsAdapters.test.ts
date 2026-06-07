@@ -349,6 +349,61 @@ describe("toBalanceData", () => {
     const result = toBalanceData(NOMINAL_CTX)!;
     expect(result.cgComponent).toBeUndefined();
   });
+
+  // gh-889: component-CG fallback scenarios
+  it("returns null when NEITHER cg_agg_m nor cgComponent is available", () => {
+    const ctx: ComputationContext = { ...NOMINAL_CTX, cg_agg_m: null };
+    expect(toBalanceData(ctx, undefined)).toBeNull();
+    expect(toBalanceData(ctx)).toBeNull();
+  });
+
+  it("returns BalanceData flagged cgIsComponent=true when cg_agg_m is null but cgComponent is provided", () => {
+    const ctx: ComputationContext = { ...NOMINAL_CTX, cg_agg_m: null };
+    const result = toBalanceData(ctx, 0.120);
+    expect(result).not.toBeNull();
+    expect(result!.cgIsComponent).toBe(true);
+    // The primary CG should be the component value
+    expect(result!.cg).toBeCloseTo(0.120);
+    // No cross-check when component CG is primary
+    expect(result!.cgComponent).toBeUndefined();
+    // SM is computed from the component CG
+    const expectedSm = ((NOMINAL_CTX.x_np_m - 0.120) / NOMINAL_CTX.mac_m) * 100;
+    expect(result!.smPercent).toBeCloseTo(expectedSm, 2);
+  });
+
+  it("cgIsComponent is omitted (undefined) when aero CG is used", () => {
+    const result = toBalanceData(NOMINAL_CTX, 0.129)!;
+    // cgIsComponent should be falsy when using the real aero CG
+    expect(result.cgIsComponent).toBeFalsy();
+  });
+
+  it("cgDivergencePct is computed when BOTH cg_agg_m and cgComponent are present", () => {
+    // cg_agg_m=0.132, cgComponent=0.129, mac=0.135
+    const result = toBalanceData(NOMINAL_CTX, 0.129)!;
+    const expectedDivPct = (Math.abs(0.132 - 0.129) / 0.135) * 100;
+    expect(result.cgDivergencePct).toBeCloseTo(expectedDivPct, 2);
+  });
+
+  it("cgDivergencePct is undefined when only aero CG is present (no cross-check)", () => {
+    const result = toBalanceData(NOMINAL_CTX)!;
+    expect(result.cgDivergencePct).toBeUndefined();
+  });
+
+  it("cgDivergencePct is undefined when only component CG is used (no aero CG to diverge from)", () => {
+    const ctx: ComputationContext = { ...NOMINAL_CTX, cg_agg_m: null };
+    const result = toBalanceData(ctx, 0.120)!;
+    expect(result.cgDivergencePct).toBeUndefined();
+  });
+
+  it("component-CG fallback: NP, mac, target SM are still taken from ctx", () => {
+    const ctx: ComputationContext = { ...NOMINAL_CTX, cg_agg_m: null };
+    const result = toBalanceData(ctx, 0.120)!;
+    expect(result.np).toBeCloseTo(NOMINAL_CTX.x_np_m);
+    expect(result.macLength).toBeCloseTo(NOMINAL_CTX.mac_m);
+    const targetPct = NOMINAL_CTX.target_static_margin * 100;
+    expect(result.targetSmMin).toBeLessThan(targetPct);
+    expect(result.targetSmMax).toBeGreaterThan(targetPct);
+  });
 });
 
 // ---------------------------------------------------------------------------

@@ -176,20 +176,40 @@ export function toGeometryItems(
 
 /**
  * Map ctx stability fields to the BalanceData shape consumed by MacCgDiagram /
- * PlanformDiagram. Returns null when cg_agg_m is absent (design not balanced).
+ * PlanformDiagram.
  *
- * @param cgComponent optional component-derived CG from the tree (metres)
+ * Fallback behaviour (gh-889):
+ *   - When `ctx.cg_agg_m` is present → use it as the primary CG (aero CG).
+ *     `cgComponent` (if provided) is stored as the cross-check value and
+ *     `cgDivergencePct` is computed from the difference.
+ *   - When `ctx.cg_agg_m` is null but `cgComponent` is available → use the
+ *     component/calculated CG as the primary CG and set `cgIsComponent=true`.
+ *     The dashboard MUST render but with a "calculated CG" marker so the user
+ *     knows it is not aerodynamically balanced yet.
+ *   - When NEITHER is available → return null (no balance data at all).
+ *
+ * @param cgComponent optional component/calculated CG from the design assumptions
+ *                    (the `cg_x` assumption's effective_value, in metres)
  */
 export function toBalanceData(
   ctx: ComputationContext | null | undefined,
   cgComponent?: number,
 ): BalanceData | null {
   if (ctx == null) return null;
-  if (ctx.cg_agg_m == null) return null;
 
-  const cg = ctx.cg_agg_m;
+  const hasAeroCg = ctx.cg_agg_m != null;
+  const hasComponentCg = cgComponent != null && Number.isFinite(cgComponent);
+
+  // Guard: need at least one CG source.
+  if (!hasAeroCg && !hasComponentCg) return null;
+
   const np = ctx.x_np_m;
   const mac = ctx.mac_m;
+
+  // Primary CG selection.
+  const cg = hasAeroCg ? (ctx.cg_agg_m as number) : (cgComponent as number);
+  const cgIsComponent = !hasAeroCg;
+
   const smPercent = ((np - cg) / mac) * 100;
 
   // Build a target SM range centred on target_static_margin.
@@ -201,13 +221,18 @@ export function toBalanceData(
   const targetSmMin = Math.max(0, targetPct - halfBand);
   const targetSmMax = targetPct + halfBand;
 
-  // macStart: place MAC so that cg_agg_m is at smPercent along it.
-  // We know: (np - cg) / mac = smPercent/100 → already consistent.
-  // The MAC leading-edge position: macStart = cg - (smPercent/100 - SM_LE_fraction)*mac.
-  // We don't have the LE fraction from the API, so use a reasonable approximation:
+  // macStart: place MAC so that the CG is at smPercent along it.
+  // We don't have the LE fraction from the API, so approximate:
   // place the CG at 30% of MAC from the LE, consistent with typical aircraft.
   const cgFracInMac = 0.30;
   const macStart = cg - cgFracInMac * mac;
+
+  // Divergence between aero CG and component CG (% MAC) — only meaningful
+  // when both are present.
+  const cgDivergencePct =
+    hasAeroCg && hasComponentCg
+      ? (Math.abs((ctx.cg_agg_m as number) - (cgComponent as number)) / mac) * 100
+      : undefined;
 
   return {
     cg,
@@ -217,7 +242,11 @@ export function toBalanceData(
     smPercent,
     targetSmMin,
     targetSmMax,
-    cgComponent,
+    // Cross-check value: when aero CG is primary, pass cgComponent as cross-check;
+    // when component CG is primary (cgIsComponent), there is no separate cross-check.
+    cgComponent: hasAeroCg ? cgComponent : undefined,
+    cgIsComponent: cgIsComponent || undefined, // omit false to keep the type tidy
+    cgDivergencePct,
   };
 }
 

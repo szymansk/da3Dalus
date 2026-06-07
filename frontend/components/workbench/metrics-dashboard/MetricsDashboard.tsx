@@ -172,16 +172,68 @@ function BalancePanel({ balance, loading }: { readonly balance: BalanceData | nu
   const smInTarget = balance.smPercent >= balance.targetSmMin && balance.smPercent <= balance.targetSmMax;
   const smStr = `${balance.smPercent.toFixed(1)}%`;
   const targetRange = `${balance.targetSmMin.toFixed(0)}–${balance.targetSmMax.toFixed(0)}`;
+
+  // gh-889: when the CG is component-derived (not yet aerodynamically balanced),
+  // show a muted "calc" badge and a tooltip explaining the source.
+  const isComponentCg = !!balance.cgIsComponent;
+
+  // Divergence warning between aero CG and component CG.
+  const divPct = balance.cgDivergencePct;
+  let divColor: string | null = null;
+  if (divPct != null) {
+    if (divPct < 5) {
+      divColor = "text-emerald-400";
+    } else if (divPct <= 15) {
+      divColor = "text-amber-400";
+    } else {
+      divColor = "text-destructive";
+    }
+  }
+
   return (
     <>
-      <div className="group/m relative" tabIndex={0}>
+      <div className="group/m relative" tabIndex={0} data-testid="balance-panel-row">
         SM{" "}
         <span className={smInTargetClass(smInTarget)}>{smStr}</span>
-        {" · "}CG {balance.cg.toFixed(3)} m{" · "}NP {balance.np.toFixed(3)} m
-        <Tip>Static margin = (NP − CG) / MAC. CG must sit ahead of the neutral point. Target {targetRange}% MAC.</Tip>
+        {" · "}
+        {isComponentCg ? (
+          <>
+            CG{" "}
+            <span className="text-muted-foreground" data-testid="balance-cg-component">
+              {balance.cg.toFixed(3)} m
+            </span>
+            {" "}
+            <span
+              className="rounded bg-muted px-0.5 py-px text-[9px] uppercase tracking-wide text-muted-foreground"
+              data-testid="balance-cg-calc-badge"
+            >
+              calc
+            </span>
+          </>
+        ) : (
+          <>CG {balance.cg.toFixed(3)} m</>
+        )}
+        {" · "}NP {balance.np.toFixed(3)} m
+        <Tip>
+          {isComponentCg
+            ? "CG shown is the component/calculated design CG (cg_x assumption). Run an aerodynamic analysis to get the VLM-balanced CG."
+            : "Static margin = (NP − CG) / MAC. CG must sit ahead of the neutral point."}
+          {" "}Target {targetRange}% MAC.
+        </Tip>
       </div>
       <p className="text-[10px] text-subtle-foreground">
-        {balance.cgComponent != null && `Component CG ${balance.cgComponent.toFixed(3)} m · `}
+        {!isComponentCg && balance.cgComponent != null && (
+          <>
+            Component CG{" "}
+            {divColor != null ? (
+              <span className={divColor}>{balance.cgComponent.toFixed(3)} m</span>
+            ) : (
+              `${balance.cgComponent.toFixed(3)} m`
+            )}
+            {divPct != null && ` (Δ ${divPct.toFixed(1)}% MAC)`}
+            {" · "}
+          </>
+        )}
         target SM {targetRange}% MAC
       </p>
     </>
