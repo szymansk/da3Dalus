@@ -455,6 +455,22 @@ class TestPolarDragBreakdownWiring:
                 is None
             )
 
+    def test_breakdown_swallows_errors_and_returns_none(self, client_and_db):
+        import numpy as np
+
+        _, SessionLocal = client_and_db
+        with SessionLocal() as db:
+            plane = make_aeroplane(db)
+            # _metrics_payload blowing up must not break the polar — best-effort
+            with patch(
+                "app.services.aeroplane_version_service._metrics_payload",
+                side_effect=RuntimeError("boom"),
+            ):
+                bd = tools_module._polar_drag_breakdown(
+                    db, str(plane.uuid), np.array([0.5, 0.55]), np.array([0.03, 0.023])
+                )
+        assert bd is None
+
 
 class TestToolRegistry:
     def test_registry_has_three_tools(self):
