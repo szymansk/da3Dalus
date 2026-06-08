@@ -128,6 +128,94 @@ def _run_analysis(db: Session, aeroplane_id: int, kind: str = "polar") -> dict:
         return {"error": str(exc)}
 
 
+def _drag_breakdown(
+    cl: float | None, cd_total: float | None, ar: float | None, e: float | None
+) -> dict | None:
+    """Deterministic induced/parasitic drag split at one operating point.
+
+    The LLM is unreliable at this arithmetic (it has produced both
+    physically-impossible splits and 10x errors), so we compute it here and
+    let the model simply report it. Induced drag uses the lifting-line form
+    CD_i = CL^2 / (pi * AR * e); parasitic is the remainder of the polar's
+    own total CD — one consistent source, never mixing snapshot cd0 with a
+    polar total.
+    """
+    import math
+
+    if cl is None or cd_total is None or ar is None or e is None:
+        return None
+    if ar <= 0 or e <= 0 or cd_total <= 0:
+        return None
+    cd_i = cl**2 / (math.pi * ar * e)
+    cd_par = cd_total - cd_i
+    if cd_i < 0 or cd_par < 0 or cd_i > cd_total:
+        # Inconsistent — surface the raw inputs rather than a wrong split.
+        return {
+            "note": (
+                "induced-drag estimate is inconsistent with the polar total "
+                "(possible non-parabolic polar or e/AR mismatch); not decomposed"
+            ),
+            "cl": round(float(cl), 4),
+            "cd_total": round(float(cd_total), 5),
+            "aspect_ratio": round(float(ar), 3),
+            "e_oswald": round(float(e), 4),
+        }
+    return {
+        "cl": round(float(cl), 4),
+        "cd_total": round(float(cd_total), 5),
+        "cd_induced": round(float(cd_i), 5),
+        "cd_parasite": round(float(cd_par), 5),
+        "induced_fraction": round(float(cd_i / cd_total), 3),
+        "parasite_fraction": round(float(cd_par / cd_total), 3),
+        "aspect_ratio": round(float(ar), 3),
+        "e_oswald": round(float(e), 4),
+        "operating_point": "best_glide (max L/D)",
+        "method": "CD_i = CL^2/(pi*AR*e); CD_parasite = CD_total - CD_i",
+    }
+
+
+def _polar_drag_breakdown(
+    db: Session, aeroplane_uuid: str, cl_values, cd_values
+) -> dict | None:
+    """Best-glide drag split for a polar sweep, using AR/e from the snapshot.
+
+    Pulls AR and Oswald e from the design snapshot's computation context (the
+    same source as the polar's `e`), picks the max-L/D point from the sweep,
+    and delegates the arithmetic to :func:`_drag_breakdown`. Best-effort: any
+    failure (missing context, empty arrays) returns ``None`` and the polar
+    summary simply omits the breakdown.
+    """
+    import numpy as np
+
+    if cl_values is None or cd_values is None:
+        return None
+    try:
+        ratio = cl_values / np.where(cd_values > 0, cd_values, np.nan)
+        idx = int(np.nanargmax(ratio))
+        from app.models.aeroplanemodel import AeroplaneModel
+        from app.services.aeroplane_version_service import _metrics_payload
+
+        node = (
+            db.query(AeroplaneModel)
+            .filter(AeroplaneModel.uuid == aeroplane_uuid)
+            .first()
+        )
+        ctx = (
+            (_metrics_payload(node) or {}).get("assumption_computation_context", {})
+            if node is not None
+            else {}
+        )
+        return _drag_breakdown(
+            cl=float(cl_values[idx]),
+            cd_total=float(cd_values[idx]),
+            ar=ctx.get("aspect_ratio"),
+            e=ctx.get("e_oswald"),
+        )
+    except Exception:  # noqa: BLE001 — breakdown is best-effort
+        logger.debug("drag_breakdown computation skipped", exc_info=True)
+        return None
+
+
 async def _run_polar_async(db: Session, aeroplane_uuid: str) -> dict:
     """Run an AeroBuildup alpha sweep and return key polar numbers."""
     import numpy as np
@@ -184,6 +272,12 @@ async def _run_polar_async(db: Session, aeroplane_uuid: str) -> dict:
     if cl_values is not None and cd_values is not None:
         ratio = cl_values / np.where(cd_values > 0, cd_values, np.nan)
         summary["cl_cd_max"] = float(np.nanmax(ratio))
+
+        # Deterministic drag breakdown at the best-glide (max L/D) point, so
+        # the model reports it instead of doing the error-prone arithmetic.
+        breakdown = _polar_drag_breakdown(db, aeroplane_uuid, cl_values, cd_values)
+        if breakdown:
+            summary["drag_breakdown"] = breakdown
 
     # Include key characteristic points (rename keys for LLM clarity)
     _char_map = {

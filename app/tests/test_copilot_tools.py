@@ -357,6 +357,121 @@ class TestGetVersionTree:
 # ---------------------------------------------------------------------------
 
 
+class TestDragBreakdown:
+    """Deterministic induced/parasitic split (gh-925) — the LLM is unreliable
+    at this arithmetic, so the tool computes it.
+    """
+
+    def test_split_is_correct_for_ehawk_best_glide(self):
+        from app.services.copilot_tools import _drag_breakdown
+
+        # eHawk best-glide point from the real polar (the case the LLM got
+        # wrong by 10x): CL 0.552, CD 0.02302, AR 11.3, e 0.7916.
+        bd = _drag_breakdown(cl=0.552, cd_total=0.02302, ar=11.3, e=0.7916)
+        assert bd is not None and "note" not in bd
+        # CD_i = 0.552^2 / (pi * 11.3 * 0.7916) ≈ 0.01084 (NOT 0.00108)
+        assert bd["cd_induced"] == pytest.approx(0.01084, abs=2e-4)
+        assert bd["cd_parasite"] == pytest.approx(0.02302 - 0.01084, abs=2e-4)
+        # induced is ~47% of total — well above the ~5% the model hallucinated
+        assert bd["induced_fraction"] == pytest.approx(0.47, abs=0.03)
+        # components are physical
+        assert 0 < bd["cd_induced"] < bd["cd_total"]
+        assert 0 < bd["cd_parasite"] < bd["cd_total"]
+
+    def test_components_sum_to_total(self):
+        from app.services.copilot_tools import _drag_breakdown
+
+        bd = _drag_breakdown(cl=0.5, cd_total=0.03, ar=10.0, e=0.8)
+        assert bd["cd_induced"] + bd["cd_parasite"] == pytest.approx(0.03, abs=1e-9)
+
+    def test_inconsistent_split_returns_note_not_wrong_numbers(self):
+        from app.services.copilot_tools import _drag_breakdown
+
+        # CD_i would exceed total → must NOT fabricate a negative parasitic
+        bd = _drag_breakdown(cl=1.5, cd_total=0.01, ar=5.0, e=0.7)
+        assert bd is not None
+        assert "note" in bd
+        assert "cd_parasite" not in bd
+
+    def test_missing_inputs_return_none(self):
+        from app.services.copilot_tools import _drag_breakdown
+
+        assert _drag_breakdown(cl=0.5, cd_total=0.03, ar=None, e=0.8) is None
+        assert _drag_breakdown(cl=None, cd_total=0.03, ar=10, e=0.8) is None
+        assert _drag_breakdown(cl=0.5, cd_total=0.03, ar=0, e=0.8) is None
+
+
+class TestPolarDragBreakdownWiring:
+    """The polar wiring that picks best-glide and pulls AR/e from the snapshot
+    context (gh-925). Mocks only _metrics_payload — no aero deps needed.
+    """
+
+    def test_breakdown_uses_context_ar_and_e(self, client_and_db):
+        import numpy as np
+
+        _, SessionLocal = client_and_db
+        with SessionLocal() as db:
+            plane = make_aeroplane(db)
+            # best L/D is at index 1 (CL 0.552 / CD 0.02302) — the eHawk point
+            cl = np.array([0.1, 0.552, 1.2])
+            cd = np.array([0.013, 0.02302, 0.10])
+            with patch(
+                "app.services.aeroplane_version_service._metrics_payload",
+                return_value={
+                    "assumption_computation_context": {
+                        "aspect_ratio": 11.3,
+                        "e_oswald": 0.7916,
+                    }
+                },
+            ):
+                bd = tools_module._polar_drag_breakdown(db, str(plane.uuid), cl, cd)
+
+        assert bd is not None and "note" not in bd
+        assert bd["cd_induced"] == pytest.approx(0.01084, abs=2e-4)
+        assert bd["induced_fraction"] == pytest.approx(0.47, abs=0.03)
+        assert bd["cd_total"] == pytest.approx(0.02302, abs=1e-5)
+
+    def test_breakdown_none_when_context_missing_ar_e(self, client_and_db):
+        import numpy as np
+
+        _, SessionLocal = client_and_db
+        with SessionLocal() as db:
+            plane = make_aeroplane(db)
+            with patch(
+                "app.services.aeroplane_version_service._metrics_payload",
+                return_value={"assumption_computation_context": {}},
+            ):
+                bd = tools_module._polar_drag_breakdown(
+                    db, str(plane.uuid), np.array([0.5]), np.array([0.03])
+                )
+        assert bd is None
+
+    def test_breakdown_none_on_empty_arrays(self, client_and_db):
+        _, SessionLocal = client_and_db
+        with SessionLocal() as db:
+            plane = make_aeroplane(db)
+            assert (
+                tools_module._polar_drag_breakdown(db, str(plane.uuid), None, None)
+                is None
+            )
+
+    def test_breakdown_swallows_errors_and_returns_none(self, client_and_db):
+        import numpy as np
+
+        _, SessionLocal = client_and_db
+        with SessionLocal() as db:
+            plane = make_aeroplane(db)
+            # _metrics_payload blowing up must not break the polar — best-effort
+            with patch(
+                "app.services.aeroplane_version_service._metrics_payload",
+                side_effect=RuntimeError("boom"),
+            ):
+                bd = tools_module._polar_drag_breakdown(
+                    db, str(plane.uuid), np.array([0.5, 0.55]), np.array([0.03, 0.023])
+                )
+        assert bd is None
+
+
 class TestToolRegistry:
     def test_registry_has_three_tools(self):
         assert len(tools_module.TOOL_REGISTRY) == 3
