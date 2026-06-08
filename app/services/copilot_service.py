@@ -26,6 +26,7 @@ inject a fake client — **no real API call is ever made in CI**.
 
 from __future__ import annotations
 
+import asyncio
 import json
 import logging
 from typing import Any, AsyncGenerator
@@ -33,6 +34,47 @@ from typing import Any, AsyncGenerator
 from sqlalchemy.orm import Session
 
 logger = logging.getLogger(__name__)
+
+
+# ---------------------------------------------------------------------------
+# SSE error sanitization
+# ---------------------------------------------------------------------------
+
+
+def _sanitize_error(exc: BaseException) -> str:
+    """Return a safe error message that never exposes the configured API key.
+
+    Any occurrence of the raw COPILOT_API_KEY value in ``str(exc)`` is
+    replaced with the placeholder ``"[REDACTED]"``.  Additionally the raw
+    exception text is replaced with a category message so that transient
+    auth / network details are not forwarded to the browser.
+    """
+    try:
+        from app.core.config import settings
+
+        secret = settings.COPILOT_API_KEY
+        key_value = secret.get_secret_value() if secret else None
+    except Exception:  # noqa: BLE001
+        key_value = None
+
+    # Build a human-friendly category string from the exception type.
+    exc_type = type(exc).__name__
+    raw = str(exc)
+
+    # Redact the key before doing anything else.
+    if key_value and key_value in raw:
+        raw = raw.replace(key_value, "[REDACTED]")
+
+    # For authentication/connection errors substitute a generic message so
+    # internal details (URLs, tokens) are not forwarded to the browser.
+    lower = raw.lower()
+    if any(kw in lower for kw in ("auth", "key", "token", "api_key", "secret", "credential")):
+        return f"{exc_type}: authentication or configuration error"
+    if any(kw in lower for kw in ("connect", "timeout", "network", "refused", "unreachable")):
+        return f"{exc_type}: hub connection error"
+
+    # Generic fallback — include redacted message.
+    return f"{exc_type}: {raw}"
 
 # ---------------------------------------------------------------------------
 # Guard
@@ -225,6 +267,11 @@ async def run_turn(
     # The final text the assistant produced (used for persistence)
     final_text = ""
 
+    # Set to True when the loop exits via a clean finish_reason="stop"; stays
+    # False if we ran out of MAX_LOOP_ITERATIONS while the model was still
+    # requesting tool calls (truncated turn).
+    turn_complete = False
+
     client = _make_openai_client()
 
     for iteration in range(MAX_LOOP_ITERATIONS):
@@ -239,7 +286,7 @@ async def run_turn(
             )
         except Exception as exc:  # noqa: BLE001
             logger.exception("Hub call failed on iteration %d", iteration)
-            yield {"type": "error", "message": f"Hub error: {exc}"}
+            yield {"type": "error", "message": f"Hub error: {_sanitize_error(exc)}"}
             return
 
         # Collect the streamed response
@@ -284,7 +331,7 @@ async def run_turn(
                                 )
         except Exception as exc:  # noqa: BLE001
             logger.exception("Stream read failed on iteration %d", iteration)
-            yield {"type": "error", "message": f"Stream error: {exc}"}
+            yield {"type": "error", "message": f"Stream error: {_sanitize_error(exc)}"}
             return
 
         if text_delta:
@@ -294,10 +341,12 @@ async def run_turn(
 
         if finish_reason == "stop" or (not tool_call_chunks and finish_reason != "tool_calls"):
             # Normal text completion — we're done
+            turn_complete = True
             break
 
         if not tool_call_chunks:
             # Unexpected finish without tool_calls and not stop
+            turn_complete = True
             break
 
         # ---- execute tool calls ------------------------------------------
@@ -330,9 +379,14 @@ async def run_turn(
 
             yield {"type": "tool_call", "name": tool_name, "args": args}
 
-            # Execute server-side
+            # Execute server-side in a worker thread so the event loop stays
+            # free (tool execution is CPU-bound / blocking I/O).  Inside the
+            # worker thread there is no running event loop, so _run_analysis
+            # can safely call asyncio.run().
             try:
-                result = copilot_tools.execute(tool_name, db, aeroplane_id, **args)
+                result = await asyncio.to_thread(
+                    copilot_tools.execute, tool_name, db, aeroplane_id, **args
+                )
             except Exception as exc:  # noqa: BLE001
                 logger.exception("Tool %s execution failed", tool_name)
                 result = {"error": str(exc)}
@@ -357,7 +411,15 @@ async def run_turn(
         # Append all tool results to the message thread
         openai_messages.extend(tool_result_messages)
 
-    # Guard: if we hit MAX_LOOP_ITERATIONS without a stop, emit a note
-    # (the final text is whatever was accumulated so far)
+    # If we exhausted MAX_LOOP_ITERATIONS without a clean stop the client
+    # should know the turn was cut off so it can tell the user.
+    done_event: dict[str, Any] = {
+        "type": "done",
+        "tool_calls": accumulated_tool_calls,
+        "tool_results": accumulated_tool_results,
+        "final_text": final_text,
+    }
+    if not turn_complete:
+        done_event["truncated"] = True
 
-    yield {"type": "done", "tool_calls": accumulated_tool_calls, "tool_results": accumulated_tool_results, "final_text": final_text}
+    yield done_event

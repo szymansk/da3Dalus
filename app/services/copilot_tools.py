@@ -96,24 +96,21 @@ def _run_analysis(db: Session, aeroplane_id: int, kind: str = "polar") -> dict:
     aeroplane_uuid = str(node.uuid)
 
     try:
-        loop = asyncio.new_event_loop()
-        try:
-            if kind == "polar":
-                result = loop.run_until_complete(
-                    asyncio.wait_for(
-                        _run_polar_async(db, aeroplane_uuid),
-                        timeout=DEFAULT_ANALYSIS_TIMEOUT_S,
-                    )
-                )
-            else:
-                result = loop.run_until_complete(
-                    asyncio.wait_for(
-                        _run_stability_async(db, aeroplane_uuid),
-                        timeout=DEFAULT_ANALYSIS_TIMEOUT_S,
-                    )
-                )
-        finally:
-            loop.close()
+        # ``_run_analysis`` is always called from a worker thread (via
+        # ``asyncio.to_thread`` in ``run_turn``), so there is NO running event
+        # loop here.  Use ``asyncio.run`` — it creates a fresh loop, runs the
+        # coroutine, and closes the loop when done.  This is safe and correct;
+        # do NOT use ``asyncio.new_event_loop().run_until_complete`` because
+        # that leaks the loop and fails if accidentally called on the main
+        # thread while a loop is already running.
+        if kind == "polar":
+            coro = _run_polar_async(db, aeroplane_uuid)
+        else:
+            coro = _run_stability_async(db, aeroplane_uuid)
+
+        result = asyncio.run(
+            asyncio.wait_for(coro, timeout=DEFAULT_ANALYSIS_TIMEOUT_S)
+        )
         return result
     except asyncio.TimeoutError:
         return {

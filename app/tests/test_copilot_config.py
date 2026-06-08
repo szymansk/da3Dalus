@@ -163,3 +163,41 @@ class TestExistingFields:
         assert isinstance(REPO_ROOT, Path)
         assert isinstance(AIRFOILS_DIR, Path)
         assert AIRFOILS_DIR == REPO_ROOT / "components" / "airfoils"
+
+
+# ---------------------------------------------------------------------------
+# ARTIFACTS_BASE_DIR always resolved to absolute path (gh-902 minor fix)
+# ---------------------------------------------------------------------------
+
+
+class TestArtifactsDirResolution:
+    """ARTIFACTS_BASE_DIR must always be an absolute Path, even when set via env."""
+
+    def test_default_is_absolute(self):
+        from app.core.config import Settings
+
+        s = Settings()
+        assert s.ARTIFACTS_BASE_DIR.is_absolute(), (
+            f"Default ARTIFACTS_BASE_DIR must be absolute, got: {s.ARTIFACTS_BASE_DIR}"
+        )
+
+    def test_relative_env_override_is_resolved_to_absolute(self, monkeypatch):
+        """A relative path in the env var must be made absolute by the validator."""
+        monkeypatch.setenv("ARTIFACTS_BASE_DIR", "relative/path/to/artifacts")
+        from app.core.config import Settings
+
+        s = Settings()
+        assert s.ARTIFACTS_BASE_DIR.is_absolute(), (
+            f"Relative ARTIFACTS_BASE_DIR env override was not resolved: "
+            f"{s.ARTIFACTS_BASE_DIR}"
+        )
+
+    def test_absolute_env_override_stays_absolute(self, monkeypatch):
+        monkeypatch.setenv("ARTIFACTS_BASE_DIR", "/tmp/custom_artifacts")
+        from app.core.config import Settings
+
+        s = Settings()
+        assert s.ARTIFACTS_BASE_DIR.is_absolute()
+        # resolve() may expand symlinks (e.g. /tmp → /private/tmp on macOS),
+        # so just check the meaningful path suffix is preserved.
+        assert "custom_artifacts" in str(s.ARTIFACTS_BASE_DIR)

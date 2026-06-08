@@ -1,6 +1,6 @@
 from pathlib import Path
 
-from pydantic import SecretStr
+from pydantic import SecretStr, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 # Canonical, absolute project paths — the single source of truth.
@@ -21,8 +21,15 @@ class Settings(BaseSettings):
     VERSION: str = "1.0.0"
     UVICORN_HOST: str = "127.0.0.1"
 
-    # Construction plan artifacts directory
+    # Construction plan artifacts directory.  Always resolved to an absolute
+    # path so that a relative env-var override becomes absolute regardless of
+    # the working directory at startup.
     ARTIFACTS_BASE_DIR: Path = Path("/tmp/da3dalus_artifacts")
+
+    @field_validator("ARTIFACTS_BASE_DIR", mode="after")
+    @classmethod
+    def _resolve_artifacts_dir(cls, v: Path) -> Path:
+        return v.resolve()
 
     # ------------------------------------------------------------------
     # AI Copilot (gh-902 / gh-916)
