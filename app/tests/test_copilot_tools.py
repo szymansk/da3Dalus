@@ -1,0 +1,370 @@
+"""Tests for app.services.copilot_tools — curated copilot tool facade (gh-917).
+
+All heavy analysis services are mocked so these run fast with no real
+aerosandbox/network call.  The hub is never reached.
+"""
+
+from __future__ import annotations
+
+import asyncio
+from unittest.mock import MagicMock, patch
+
+import pytest
+
+import app.services.copilot_tools as tools_module
+from app.services.copilot_tools import execute, list_schemas
+from app.tests.conftest import make_aeroplane
+
+
+# ---------------------------------------------------------------------------
+# Helpers
+# ---------------------------------------------------------------------------
+
+
+def _make_db(client_and_db):
+    _, SessionLocal = client_and_db
+    return SessionLocal()
+
+
+# ---------------------------------------------------------------------------
+# list_schemas
+# ---------------------------------------------------------------------------
+
+
+class TestListSchemas:
+    def test_returns_three_schemas(self):
+        schemas = list_schemas()
+        assert len(schemas) == 3
+
+    def test_schema_names(self):
+        names = {s["function"]["name"] for s in list_schemas()}
+        assert names == {"get_design_snapshot", "run_analysis", "get_version_tree"}
+
+    def test_each_schema_has_required_keys(self):
+        for s in list_schemas():
+            assert s["type"] == "function"
+            fn = s["function"]
+            assert "name" in fn
+            assert "description" in fn
+            assert "parameters" in fn
+
+    def test_run_analysis_schema_has_kind_param(self):
+        schema = next(
+            s for s in list_schemas() if s["function"]["name"] == "run_analysis"
+        )
+        props = schema["function"]["parameters"]["properties"]
+        assert "kind" in props
+        assert props["kind"]["enum"] == ["polar", "stability"]
+
+
+# ---------------------------------------------------------------------------
+# execute — unknown tool
+# ---------------------------------------------------------------------------
+
+
+class TestExecuteUnknownTool:
+    def test_returns_error_dict_for_unknown_tool(self, client_and_db):
+        db = _make_db(client_and_db)
+        try:
+            result = execute("nonexistent_tool", db, aeroplane_id=1)
+            assert "error" in result
+            assert "nonexistent_tool" in result["error"]
+        finally:
+            db.close()
+
+    def test_error_message_lists_known_tools(self, client_and_db):
+        db = _make_db(client_and_db)
+        try:
+            result = execute("bad_tool", db, aeroplane_id=1)
+            error_msg = result["error"]
+            assert "get_design_snapshot" in error_msg
+            assert "run_analysis" in error_msg
+            assert "get_version_tree" in error_msg
+        finally:
+            db.close()
+
+
+# ---------------------------------------------------------------------------
+# get_design_snapshot
+# ---------------------------------------------------------------------------
+
+
+class TestGetDesignSnapshot:
+    def test_returns_dict_for_known_aeroplane(self, client_and_db):
+        _, SessionLocal = client_and_db
+        with SessionLocal() as db:
+            plane = make_aeroplane(db)
+            result = execute("get_design_snapshot", db, aeroplane_id=plane.id)
+        assert isinstance(result, dict)
+        assert "error" not in result
+
+    def test_contains_basic_fields(self, client_and_db):
+        _, SessionLocal = client_and_db
+        with SessionLocal() as db:
+            plane = make_aeroplane(db, name="snapshot-plane")
+            result = execute("get_design_snapshot", db, aeroplane_id=plane.id)
+        assert result["id"] == plane.id
+        assert result["name"] == "snapshot-plane"
+
+    def test_returns_error_for_missing_aeroplane(self, client_and_db):
+        _, SessionLocal = client_and_db
+        with SessionLocal() as db:
+            result = execute("get_design_snapshot", db, aeroplane_id=999999)
+        assert "error" in result
+
+    def test_returns_uuid_as_string(self, client_and_db):
+        _, SessionLocal = client_and_db
+        with SessionLocal() as db:
+            plane = make_aeroplane(db)
+            result = execute("get_design_snapshot", db, aeroplane_id=plane.id)
+        assert isinstance(result.get("uuid"), str)
+
+    def test_wing_count_field_present(self, client_and_db):
+        _, SessionLocal = client_and_db
+        with SessionLocal() as db:
+            plane = make_aeroplane(db)
+            result = execute("get_design_snapshot", db, aeroplane_id=plane.id)
+        assert "wing_count" in result
+
+
+# ---------------------------------------------------------------------------
+# run_analysis — unknown kind
+# ---------------------------------------------------------------------------
+
+
+class TestRunAnalysisUnknownKind:
+    def test_returns_error_for_bad_kind(self, client_and_db):
+        _, SessionLocal = client_and_db
+        with SessionLocal() as db:
+            plane = make_aeroplane(db)
+            result = execute("run_analysis", db, aeroplane_id=plane.id, kind="avl_full")
+        assert "error" in result
+        assert "avl_full" in result["error"]
+
+    def test_returns_error_for_missing_aeroplane(self, client_and_db):
+        _, SessionLocal = client_and_db
+        with SessionLocal() as db:
+            result = execute("run_analysis", db, aeroplane_id=999999, kind="polar")
+        assert "error" in result
+
+
+# ---------------------------------------------------------------------------
+# run_analysis — timeout path
+# ---------------------------------------------------------------------------
+
+
+class TestRunAnalysisTimeout:
+    def test_polar_timeout_returns_status_dict(self, client_and_db):
+        _, SessionLocal = client_and_db
+        with SessionLocal() as db:
+            plane = make_aeroplane(db)
+
+            original_timeout = tools_module.DEFAULT_ANALYSIS_TIMEOUT_S
+            tools_module.DEFAULT_ANALYSIS_TIMEOUT_S = 0.001  # near-zero → always times out
+
+            async def _slow_polar(*args, **kwargs):
+                await asyncio.sleep(10)
+                return {}
+
+            try:
+                with patch.object(tools_module, "_run_polar_async", _slow_polar):
+                    result = execute("run_analysis", db, aeroplane_id=plane.id, kind="polar")
+            finally:
+                tools_module.DEFAULT_ANALYSIS_TIMEOUT_S = original_timeout
+
+        assert result.get("status") == "timeout"
+        assert "note" in result
+
+    def test_stability_timeout_returns_status_dict(self, client_and_db):
+        _, SessionLocal = client_and_db
+        with SessionLocal() as db:
+            plane = make_aeroplane(db)
+
+            original_timeout = tools_module.DEFAULT_ANALYSIS_TIMEOUT_S
+            tools_module.DEFAULT_ANALYSIS_TIMEOUT_S = 0.001
+
+            async def _slow_stability(*args, **kwargs):
+                await asyncio.sleep(10)
+                return {}
+
+            try:
+                with patch.object(tools_module, "_run_stability_async", _slow_stability):
+                    result = execute("run_analysis", db, aeroplane_id=plane.id, kind="stability")
+            finally:
+                tools_module.DEFAULT_ANALYSIS_TIMEOUT_S = original_timeout
+
+        assert result.get("status") == "timeout"
+        assert "note" in result
+
+
+# ---------------------------------------------------------------------------
+# run_analysis — mocked happy-path (polar)
+# ---------------------------------------------------------------------------
+
+
+class TestRunAnalysisPolarMocked:
+    def test_polar_returns_ok_shape(self, client_and_db):
+        _, SessionLocal = client_and_db
+        with SessionLocal() as db:
+            plane = make_aeroplane(db)
+
+            expected = {
+                "status": "ok",
+                "kind": "polar",
+                "cl_max": 1.4,
+                "cl_min": -0.3,
+                "cd_min": 0.02,
+                "cl_cd_max": 18.5,
+            }
+
+            async def _mock_polar(*args, **kwargs):
+                return expected
+
+            with patch.object(tools_module, "_run_polar_async", _mock_polar):
+                result = execute("run_analysis", db, aeroplane_id=plane.id, kind="polar")
+
+        assert result["status"] == "ok"
+        assert result["kind"] == "polar"
+        assert "cl_max" in result
+        assert "cl_cd_max" in result
+
+    def test_polar_values_are_finite_floats(self, client_and_db):
+        _, SessionLocal = client_and_db
+        with SessionLocal() as db:
+            plane = make_aeroplane(db)
+
+            async def _mock_polar(*args, **kwargs):
+                return {
+                    "status": "ok",
+                    "kind": "polar",
+                    "cl_max": 1.4,
+                    "cd_min": 0.025,
+                    "cl_cd_max": 16.0,
+                }
+
+            with patch.object(tools_module, "_run_polar_async", _mock_polar):
+                result = execute("run_analysis", db, aeroplane_id=plane.id, kind="polar")
+
+        for key in ("cl_max", "cd_min", "cl_cd_max"):
+            assert isinstance(result[key], float)
+            assert result[key] == result[key]  # not NaN
+
+
+# ---------------------------------------------------------------------------
+# run_analysis — mocked happy-path (stability)
+# ---------------------------------------------------------------------------
+
+
+class TestRunAnalysisStabilityMocked:
+    def test_stability_returns_ok_shape(self, client_and_db):
+        _, SessionLocal = client_and_db
+        with SessionLocal() as db:
+            plane = make_aeroplane(db)
+
+            expected = {
+                "status": "ok",
+                "kind": "stability",
+                "static_margin_pct": 12.3,
+                "stability_class": "stable",
+                "is_statically_stable": True,
+                "neutral_point_x_m": 0.45,
+                "mac_m": 0.25,
+                "Cma": -0.8,
+                "Cnb": 0.12,
+                "Clb": -0.09,
+                "is_directionally_stable": True,
+                "is_laterally_stable": True,
+                "cg_x_m": 0.40,
+                "cg_range_forward_m": 0.35,
+                "cg_range_aft_m": 0.48,
+            }
+
+            async def _mock_stability(*args, **kwargs):
+                return expected
+
+            with patch.object(tools_module, "_run_stability_async", _mock_stability):
+                result = execute("run_analysis", db, aeroplane_id=plane.id, kind="stability")
+
+        assert result["status"] == "ok"
+        assert result["kind"] == "stability"
+        assert "static_margin_pct" in result
+        assert "stability_class" in result
+        assert "is_statically_stable" in result
+
+
+# ---------------------------------------------------------------------------
+# get_version_tree
+# ---------------------------------------------------------------------------
+
+
+class TestGetVersionTree:
+    def test_returns_dict_with_required_keys(self, client_and_db):
+        _, SessionLocal = client_and_db
+        with SessionLocal() as db:
+            plane = make_aeroplane(db)
+            result = execute("get_version_tree", db, aeroplane_id=plane.id)
+        assert isinstance(result, dict)
+        assert "error" not in result
+        assert "root_id" in result
+        assert "nodes" in result
+        assert "branches" in result
+
+    def test_nodes_is_list(self, client_and_db):
+        _, SessionLocal = client_and_db
+        with SessionLocal() as db:
+            plane = make_aeroplane(db)
+            result = execute("get_version_tree", db, aeroplane_id=plane.id)
+        assert isinstance(result["nodes"], list)
+
+    def test_branches_is_list(self, client_and_db):
+        _, SessionLocal = client_and_db
+        with SessionLocal() as db:
+            plane = make_aeroplane(db)
+            result = execute("get_version_tree", db, aeroplane_id=plane.id)
+        assert isinstance(result["branches"], list)
+
+    def test_node_has_expected_fields(self, client_and_db):
+        _, SessionLocal = client_and_db
+        with SessionLocal() as db:
+            plane = make_aeroplane(db)
+            result = execute("get_version_tree", db, aeroplane_id=plane.id)
+        # For a plain (non-versioned) aeroplane the node list contains just itself
+        if result["nodes"]:
+            node = result["nodes"][0]
+            for field_name in ("id", "uuid", "name", "is_immutable"):
+                assert field_name in node, f"Missing field: {field_name}"
+
+    def test_returns_error_for_missing_aeroplane(self, client_and_db):
+        _, SessionLocal = client_and_db
+        with SessionLocal() as db:
+            result = execute("get_version_tree", db, aeroplane_id=999999)
+        assert "error" in result
+
+    def test_result_is_json_serializable(self, client_and_db):
+        import json
+
+        _, SessionLocal = client_and_db
+        with SessionLocal() as db:
+            plane = make_aeroplane(db)
+            result = execute("get_version_tree", db, aeroplane_id=plane.id)
+        # This must not raise
+        serialized = json.dumps(result)
+        assert serialized
+
+
+# ---------------------------------------------------------------------------
+# Tool registry structure
+# ---------------------------------------------------------------------------
+
+
+class TestToolRegistry:
+    def test_registry_has_three_tools(self):
+        assert len(tools_module.TOOL_REGISTRY) == 3
+
+    def test_registry_keys_match_schema_names(self):
+        for key, entry in tools_module.TOOL_REGISTRY.items():
+            assert entry.schema["function"]["name"] == key
+
+    def test_each_entry_has_impl_callable(self):
+        for entry in tools_module.TOOL_REGISTRY.values():
+            assert callable(entry.impl)
