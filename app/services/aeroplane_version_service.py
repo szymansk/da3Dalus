@@ -140,6 +140,11 @@ def snapshot(
     head = _get_node(db, node_id)
     _guard_immutable(head)
 
+    # Resolve the lineage root: if the head IS the root its root_id may be NULL
+    # or equal to its own id.  Either way the snapshot must carry the correct
+    # root_id so it remains findable by list_tree.
+    resolved_root_id = head.root_id if head.root_id is not None else head.id
+
     # Clone the current head into an immutable copy that becomes the predecessor.
     snapshot_node = clone_aeroplane_subgraph(
         db,
@@ -147,7 +152,7 @@ def snapshot(
         immutable=True,
         branch_id=head.branch_id,
         predecessor_id=head.predecessor_id,  # inherits head's old predecessor
-        root_id=head.root_id,
+        root_id=resolved_root_id,
     )
 
     # Set version metadata on the snapshot.

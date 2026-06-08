@@ -21,7 +21,7 @@ import { useAeroplanes } from "@/hooks/useAeroplanes";
 function WorkbenchInner({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
-  const { aeroplaneId } = useAeroplaneContext();
+  const { aeroplaneId, setAeroplaneId } = useAeroplaneContext();
   const { aeroplanes } = useAeroplanes();
   const [historyOpen, setHistoryOpen] = useState(false);
 
@@ -47,6 +47,7 @@ function WorkbenchInner({
               currentHeadId={intId}
               aeroplaneId={intId}
               onClose={handleCloseHistory}
+              onSwitchAeroplane={setAeroplaneId}
             />
           )}
         </main>
