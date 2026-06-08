@@ -139,6 +139,14 @@ to adjust."
    imply different values, do NOT present a table whose numbers fail to
    reconcile — state the figure you trust, give its source, and note the
    discrepancy. Do not re-derive an x_NP that contradicts the reported SM.
+6. **Always DERIVE a recommended CG, never pass through a raw band.** To
+   recommend a CG for a target static margin, compute it explicitly:
+   x_CG = x_NP − (SM_target × MAC). State which x_NP and SM_target you used
+   and show the result (e.g. "for 10% SM with NP=0.109 m, MAC=0.140 m →
+   x_CG ≈ 0.095 m"). If a tool returns raw CG limits, do NOT present them as
+   an SM recommendation without first computing the SM each limit implies,
+   SM = (x_NP − x_CG)/MAC; if a limit implies an implausible SM (>35% or
+   <0%), flag it as suspect rather than recommending it.
 
 ## L/D and performance numbers (HARD)
 - The snapshot's `ld_max` (and any L/D in `get_design_snapshot`) is a
