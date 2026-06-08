@@ -294,6 +294,105 @@ def test_adopt_branch_not_found_raises(db: Session):
         adopt_branch(db, 99999)
 
 
+def test_adopt_branch_no_integrity_error_with_unique_index(db: Session):
+    """adopt_branch must not raise IntegrityError from the partial unique index.
+
+    Regression test for gh-912: before the demote-first fix, SQLite fired
+    ``UNIQUE constraint failed: branches.root_id`` (from the partial index
+    ``uq_branches_one_main_per_root``) because the target branch was promoted
+    BEFORE the old main was demoted within the same flush, creating a transient
+    window with two is_main=True rows for the same root_id.
+
+    This test ONLY passes when:
+      1. The partial unique index is present on BranchModel (so create_all
+         builds a schema that enforces the constraint), AND
+      2. The service demotes the old main FIRST (with a flush) before setting
+         the new is_main=True.
+    """
+    from sqlalchemy.exc import IntegrityError
+
+    root, main_branch = _make_root(db, "integrity-test")
+    side_branch = create_branch(db, root.id, name="side", created_by="human")
+    db.commit()
+
+    # This must not raise IntegrityError.
+    try:
+        promoted = adopt_branch(db, side_branch.id)
+        db.commit()
+    except IntegrityError as exc:
+        pytest.fail(
+            f"adopt_branch raised IntegrityError (gh-912 regression): {exc}"
+        )
+
+    # Exactly one is_main=True for this root.
+    main_count = (
+        db.query(BranchModel)
+        .filter(
+            BranchModel.root_id == root.id,
+            BranchModel.is_main == True,  # noqa: E712
+        )
+        .count()
+    )
+    assert main_count == 1, f"Expected 1 main branch, got {main_count}"
+
+    # It is the adopted branch.
+    db.refresh(promoted)
+    assert promoted.is_main is True
+    assert promoted.id == side_branch.id
+
+    # The old main is demoted.
+    db.refresh(main_branch)
+    assert main_branch.is_main is False
+
+
+def test_adopt_branch_round_trip(db: Session):
+    """Adopting back the original branch after promoting a side branch works.
+
+    Verifies that the demote-first flush is idempotent across two adoption
+    cycles (A→B, then B→A).
+    """
+    from sqlalchemy.exc import IntegrityError
+
+    root, main_branch = _make_root(db, "round-trip-test")
+    side_branch = create_branch(db, root.id, name="alt", created_by="human")
+    db.commit()
+
+    # First adoption: promote side_branch.
+    try:
+        adopt_branch(db, side_branch.id)
+        db.commit()
+    except IntegrityError as exc:
+        pytest.fail(f"First adopt_branch raised IntegrityError: {exc}")
+
+    db.refresh(main_branch)
+    db.refresh(side_branch)
+    assert side_branch.is_main is True
+    assert main_branch.is_main is False
+
+    # Second adoption: promote main_branch again (reverse).
+    try:
+        adopt_branch(db, main_branch.id)
+        db.commit()
+    except IntegrityError as exc:
+        pytest.fail(f"Second adopt_branch raised IntegrityError: {exc}")
+
+    db.refresh(main_branch)
+    db.refresh(side_branch)
+    assert main_branch.is_main is True
+    assert side_branch.is_main is False
+
+    # Still exactly one main branch.
+    main_count = (
+        db.query(BranchModel)
+        .filter(
+            BranchModel.root_id == root.id,
+            BranchModel.is_main == True,  # noqa: E712
+        )
+        .count()
+    )
+    assert main_count == 1
+
+
 # ---------------------------------------------------------------------------
 # 4. discard_branch
 # ---------------------------------------------------------------------------
