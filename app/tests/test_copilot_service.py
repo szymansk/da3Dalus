@@ -743,6 +743,92 @@ class TestTruncatedFlag:
 
 
 # ---------------------------------------------------------------------------
+# _history_to_openai — multi-turn tool-result reconstruction (gh-922)
+# ---------------------------------------------------------------------------
+
+
+class TestHistoryToOpenaiToolResultReconstruction:
+    """Replaying a tool-bearing history must keep tool_use/tool_result
+    adjacency. The real hub (Anthropic via Vertex/litellm) rejects an
+    assistant ``tool_use`` that has no following ``tool_result`` with a 400 —
+    this broke every copilot turn after the first tool use (gh-922).
+    """
+
+    @staticmethod
+    def _msg(role, content, *, tool_calls=None, tool_results=None, i=1):
+        from datetime import datetime, timezone
+
+        return CopilotMessageRead(
+            id=i,
+            role=role,
+            content=content,
+            tool_calls=tool_calls,
+            tool_results=tool_results,
+            parent_id=None,
+            created_at=datetime.now(timezone.utc),
+        )
+
+    def _tool_bearing_history(self):
+        tool_calls = [
+            {
+                "id": "call_abc",
+                "type": "function",
+                "function": {"name": "get_design_snapshot", "arguments": "{}"},
+            }
+        ]
+        tool_results = [
+            {"tool_call_id": "call_abc", "name": "get_design_snapshot", "result": {"span": 1.5}}
+        ]
+        return [
+            self._msg("user", "Give me an overview", i=1),
+            self._msg(
+                "assistant",
+                "Here is your overview.",
+                tool_calls=tool_calls,
+                tool_results=tool_results,
+                i=2,
+            ),
+            self._msg("user", "Is the static margin healthy?", i=3),
+        ]
+
+    def test_no_orphaned_tool_use_in_replayed_history(self):
+        """Every assistant tool_call id must be answered by a tool message."""
+        from app.services.copilot_service import _history_to_openai
+
+        out = _history_to_openai(self._tool_bearing_history())
+
+        called = [
+            tc["id"]
+            for m in out
+            if m["role"] == "assistant"
+            for tc in (m.get("tool_calls") or [])
+        ]
+        answered = [m["tool_call_id"] for m in out if m["role"] == "tool"]
+        assert called, "expected the assistant message to carry tool_calls"
+        assert set(called) <= set(answered), (
+            f"orphaned tool_use (would 400 on the real hub): "
+            f"called={called} answered={answered} messages={out}"
+        )
+
+    def test_assistant_tool_calls_immediately_followed_by_tool_messages(self):
+        """The tool messages must come right after the assistant message, in id order."""
+        from app.services.copilot_service import _history_to_openai
+
+        out = _history_to_openai(self._tool_bearing_history())
+
+        for idx, m in enumerate(out):
+            if m["role"] == "assistant" and m.get("tool_calls"):
+                ids = [tc["id"] for tc in m["tool_calls"]]
+                following = out[idx + 1 : idx + 1 + len(ids)]
+                assert all(f["role"] == "tool" for f in following), (
+                    f"assistant tool_calls not immediately followed by tool messages: {out}"
+                )
+                assert [f["tool_call_id"] for f in following] == ids, (
+                    f"tool_call ids {ids} not matched in order by {following}"
+                )
+
+
+# ---------------------------------------------------------------------------
 # _sanitize_error unit tests
 # ---------------------------------------------------------------------------
 
