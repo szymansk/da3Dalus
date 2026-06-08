@@ -357,6 +357,50 @@ class TestGetVersionTree:
 # ---------------------------------------------------------------------------
 
 
+class TestDragBreakdown:
+    """Deterministic induced/parasitic split (gh-925) — the LLM is unreliable
+    at this arithmetic, so the tool computes it.
+    """
+
+    def test_split_is_correct_for_ehawk_best_glide(self):
+        from app.services.copilot_tools import _drag_breakdown
+
+        # eHawk best-glide point from the real polar (the case the LLM got
+        # wrong by 10x): CL 0.552, CD 0.02302, AR 11.3, e 0.7916.
+        bd = _drag_breakdown(cl=0.552, cd_total=0.02302, ar=11.3, e=0.7916)
+        assert bd is not None and "note" not in bd
+        # CD_i = 0.552^2 / (pi * 11.3 * 0.7916) ≈ 0.01084 (NOT 0.00108)
+        assert bd["cd_induced"] == pytest.approx(0.01084, abs=2e-4)
+        assert bd["cd_parasite"] == pytest.approx(0.02302 - 0.01084, abs=2e-4)
+        # induced is ~47% of total — well above the ~5% the model hallucinated
+        assert bd["induced_fraction"] == pytest.approx(0.47, abs=0.03)
+        # components are physical
+        assert 0 < bd["cd_induced"] < bd["cd_total"]
+        assert 0 < bd["cd_parasite"] < bd["cd_total"]
+
+    def test_components_sum_to_total(self):
+        from app.services.copilot_tools import _drag_breakdown
+
+        bd = _drag_breakdown(cl=0.5, cd_total=0.03, ar=10.0, e=0.8)
+        assert bd["cd_induced"] + bd["cd_parasite"] == pytest.approx(0.03, abs=1e-9)
+
+    def test_inconsistent_split_returns_note_not_wrong_numbers(self):
+        from app.services.copilot_tools import _drag_breakdown
+
+        # CD_i would exceed total → must NOT fabricate a negative parasitic
+        bd = _drag_breakdown(cl=1.5, cd_total=0.01, ar=5.0, e=0.7)
+        assert bd is not None
+        assert "note" in bd
+        assert "cd_parasite" not in bd
+
+    def test_missing_inputs_return_none(self):
+        from app.services.copilot_tools import _drag_breakdown
+
+        assert _drag_breakdown(cl=0.5, cd_total=0.03, ar=None, e=0.8) is None
+        assert _drag_breakdown(cl=None, cd_total=0.03, ar=10, e=0.8) is None
+        assert _drag_breakdown(cl=0.5, cd_total=0.03, ar=0, e=0.8) is None
+
+
 class TestToolRegistry:
     def test_registry_has_three_tools(self):
         assert len(tools_module.TOOL_REGISTRY) == 3

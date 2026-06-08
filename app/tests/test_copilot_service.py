@@ -829,6 +829,53 @@ class TestHistoryToOpenaiToolResultReconstruction:
 
 
 # ---------------------------------------------------------------------------
+# System-prompt hardening guards (gh-925, from the 3-persona UAT)
+# ---------------------------------------------------------------------------
+
+
+class TestSystemPromptHardening:
+    """Guard the answer-quality directives added after the UAT — regression
+    guard only; real verification is the re-run UAT against the hub.
+    """
+
+    def test_prompt_forbids_mixing_snapshot_and_polar(self):
+        from app.services.copilot_service import SYSTEM_PROMPT
+
+        low = SYSTEM_PROMPT.lower()
+        assert "do not mix data sources" in low
+        # the specific failure mode: cd0 (snapshot) vs polar total
+        assert "cd_parasite" in low or "cd_parasite = cd_total" in low
+
+    def test_prompt_requires_drag_sanity_check(self):
+        from app.services.copilot_service import SYSTEM_PROMPT
+
+        low = SYSTEM_PROMPT.lower()
+        assert "< cd_total" in low or "parasitic ever comes out" in low
+
+    def test_prompt_has_static_margin_direction_rule(self):
+        from app.services.copilot_service import SYSTEM_PROMPT
+
+        low = SYSTEM_PROMPT.lower()
+        assert "moving the wing aft" in low
+        assert "(x_np" in low or "x_np − x_cg" in low
+
+    def test_prompt_requires_glide_ratio_translation(self):
+        from app.services.copilot_service import SYSTEM_PROMPT
+
+        assert "glide ratio" in SYSTEM_PROMPT.lower()
+
+    def test_prompt_answers_question_asked(self):
+        from app.services.copilot_service import SYSTEM_PROMPT
+
+        assert "Answer the question that was asked" in SYSTEM_PROMPT
+
+    def test_prompt_glosses_jargon(self):
+        from app.services.copilot_service import SYSTEM_PROMPT
+
+        assert "Gloss jargon on first use" in SYSTEM_PROMPT
+
+
+# ---------------------------------------------------------------------------
 # _sanitize_error unit tests
 # ---------------------------------------------------------------------------
 
