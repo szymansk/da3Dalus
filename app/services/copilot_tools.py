@@ -174,6 +174,48 @@ def _drag_breakdown(
     }
 
 
+def _polar_drag_breakdown(
+    db: Session, aeroplane_uuid: str, cl_values, cd_values
+) -> dict | None:
+    """Best-glide drag split for a polar sweep, using AR/e from the snapshot.
+
+    Pulls AR and Oswald e from the design snapshot's computation context (the
+    same source as the polar's `e`), picks the max-L/D point from the sweep,
+    and delegates the arithmetic to :func:`_drag_breakdown`. Best-effort: any
+    failure (missing context, empty arrays) returns ``None`` and the polar
+    summary simply omits the breakdown.
+    """
+    import numpy as np
+
+    if cl_values is None or cd_values is None:
+        return None
+    try:
+        ratio = cl_values / np.where(cd_values > 0, cd_values, np.nan)
+        idx = int(np.nanargmax(ratio))
+        from app.models.aeroplanemodel import AeroplaneModel
+        from app.services.aeroplane_version_service import _metrics_payload
+
+        node = (
+            db.query(AeroplaneModel)
+            .filter(AeroplaneModel.uuid == aeroplane_uuid)
+            .first()
+        )
+        ctx = (
+            (_metrics_payload(node) or {}).get("assumption_computation_context", {})
+            if node is not None
+            else {}
+        )
+        return _drag_breakdown(
+            cl=float(cl_values[idx]),
+            cd_total=float(cd_values[idx]),
+            ar=ctx.get("aspect_ratio"),
+            e=ctx.get("e_oswald"),
+        )
+    except Exception:  # noqa: BLE001 — breakdown is best-effort
+        logger.debug("drag_breakdown computation skipped", exc_info=True)
+        return None
+
+
 async def _run_polar_async(db: Session, aeroplane_uuid: str) -> dict:
     """Run an AeroBuildup alpha sweep and return key polar numbers."""
     import numpy as np
@@ -233,29 +275,9 @@ async def _run_polar_async(db: Session, aeroplane_uuid: str) -> dict:
 
         # Deterministic drag breakdown at the best-glide (max L/D) point, so
         # the model reports it instead of doing the error-prone arithmetic.
-        try:
-            idx = int(np.nanargmax(ratio))
-            from app.models.aeroplanemodel import AeroplaneModel
-            from app.services.aeroplane_version_service import _metrics_payload
-
-            node = (
-                db.query(AeroplaneModel)
-                .filter(AeroplaneModel.uuid == aeroplane_uuid)
-                .first()
-            )
-            ctx = (_metrics_payload(node) or {}).get(
-                "assumption_computation_context", {}
-            ) if node is not None else {}
-            breakdown = _drag_breakdown(
-                cl=float(cl_values[idx]),
-                cd_total=float(cd_values[idx]),
-                ar=ctx.get("aspect_ratio"),
-                e=ctx.get("e_oswald"),
-            )
-            if breakdown:
-                summary["drag_breakdown"] = breakdown
-        except Exception:  # noqa: BLE001 — breakdown is best-effort
-            logger.debug("drag_breakdown computation skipped", exc_info=True)
+        breakdown = _polar_drag_breakdown(db, aeroplane_uuid, cl_values, cd_values)
+        if breakdown:
+            summary["drag_breakdown"] = breakdown
 
     # Include key characteristic points (rename keys for LLM clarity)
     _char_map = {
