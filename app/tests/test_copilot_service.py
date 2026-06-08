@@ -874,6 +874,20 @@ class TestSystemPromptHardening:
 
         assert "Gloss jargon on first use" in SYSTEM_PROMPT
 
+    def test_prompt_flags_snapshot_ld_as_estimate(self):
+        from app.services.copilot_service import SYSTEM_PROMPT
+
+        low = SYSTEM_PROMPT.lower()
+        assert "ld_max" in low and "estimate" in low
+        assert "polar value as authoritative" in low
+
+    def test_prompt_has_min_sink_at_stall_warning(self):
+        from app.services.copilot_service import SYSTEM_PROMPT
+
+        low = SYSTEM_PROMPT.lower()
+        assert "v_min_sink" in low and "v_stall" in low
+        assert "no margin" in low or "edge of stall" in low
+
 
 # ---------------------------------------------------------------------------
 # _sanitize_error unit tests
