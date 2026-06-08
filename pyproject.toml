@@ -40,6 +40,7 @@ package-mode = false
 
 [tool.poetry.dependencies]
 python = ">=3.11,<3.13" # because of vtk9.3.1 not in py3.13 yet
+openai = "^2.41"
 
 [tool.poetry.group.binary.dependencies]
 nlopt = ">=2.9,<3.0"
