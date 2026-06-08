@@ -1,4 +1,5 @@
-from sqlalchemy import Column, Integer, String, Float, Boolean, ForeignKey, JSON, Text, UniqueConstraint
+from sqlalchemy import Column, Integer, String, Float, Boolean, ForeignKey, JSON, Text, UniqueConstraint, Index
+from sqlalchemy import text
 from sqlalchemy.orm import relationship
 import uuid
 from sqlalchemy.dialects.postgresql import UUID
@@ -537,6 +538,19 @@ class BranchModel(Base):
     """
 
     __tablename__ = "branches"
+
+    # Partial unique index: exactly one is_main=True per lineage root (gh-903).
+    # Mirrored here from the Alembic migration so create_all (used in tests)
+    # produces a schema identical to a migrated production database.
+    __table_args__ = (
+        Index(
+            "uq_branches_one_main_per_root",
+            "root_id",
+            unique=True,
+            sqlite_where=text("is_main = 1"),
+            postgresql_where=text("is_main = true"),
+        ),
+    )
 
     # FK declared with use_alter to break the circular dependency between
     # aeroplanes ↔ branches (aeroplanes.branch_id → branches.id and

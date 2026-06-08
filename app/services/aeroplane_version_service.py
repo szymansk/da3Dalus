@@ -264,6 +264,7 @@ def adopt_branch(db: Session, branch_id: int) -> BranchModel:
     )
     if current_main is not None:
         current_main.is_main = False
+        db.flush()  # demote FIRST so the partial unique index never sees two is_main=True
 
     branch.is_main = True
     db.flush()
