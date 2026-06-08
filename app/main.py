@@ -205,6 +205,9 @@ def create_app() -> FastAPI:
     )
     app.include_router(health.router, prefix="", tags=["health"])
     app.include_router(endurance.router, prefix="", tags=["endurance"])
+    # Versioning router BEFORE the aeroplane base router so the static route
+    # /aeroplanes/compare is matched ahead of /aeroplanes/{aeroplane_id} (gh-914).
+    app.include_router(versioning_v2.router, prefix="", tags=["versioning"])
     app.include_router(aeroplane_v2.router, prefix="", tags=[])
     app.include_router(openvsp_import.router, prefix="/api/v2", tags=["import"])
     app.include_router(components.router, prefix="", tags=["components"])
@@ -216,7 +219,6 @@ def create_app() -> FastAPI:
     app.include_router(construction_templates.router, prefix="", tags=["construction-templates"])
     app.include_router(flight_profiles.router, prefix="", tags=["flight-profiles"])
     app.include_router(fuselage_slice.router, prefix="", tags=["fuselages"])
-    app.include_router(versioning_v2.router, prefix="", tags=["versioning"])
     if _cad_router is not None:
         app.include_router(_cad_router, prefix="", tags=["cad"])
     if _aeroanalysis_router is not None:
