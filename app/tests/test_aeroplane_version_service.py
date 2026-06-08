@@ -162,6 +162,71 @@ def test_snapshot_not_found_raises(db: Session):
         snapshot(db, 99999, label="nope")
 
 
+def test_snapshot_root_id_is_set(db: Session):
+    """Snapshot node must carry the correct root_id (gh-910).
+
+    Before the fix, ``snapshot()`` passed ``head.root_id`` directly to the
+    clone — which is NULL on the lineage root itself — resulting in the snapshot
+    node having ``root_id=NULL``.  The fix resolves it to ``head.id`` when
+    ``head.root_id`` is NULL.
+    """
+    head, branch = _make_root(db, "root-id-test")
+
+    # Verify the fixture: root node has root_id == its own id (set by _make_root).
+    assert head.root_id == head.id
+
+    snap = snapshot(db, head.id, label="v1")
+    db.commit()
+
+    # The snapshot must inherit the root_id, not carry NULL.
+    assert snap.root_id is not None, (
+        "Snapshot node must NOT have root_id=NULL (gh-910)"
+    )
+    assert snap.root_id == head.root_id, (
+        f"Snapshot root_id={snap.root_id} must equal head.root_id={head.root_id}"
+    )
+
+
+def test_snapshot_root_id_is_set_when_head_root_id_is_none(db: Session):
+    """Snapshot root_id is correctly set even if head.root_id is NULL.
+
+    Simulates a legacy or improperly-backfilled node where root_id was not set.
+    The service must fall back to head.id.
+    """
+    # Manually create a node WITHOUT setting root_id (simulates pre-backfill state).
+    node = AeroplaneModel(
+        uuid=__import__("uuid").uuid4(),
+        name="no-root-id",
+        is_immutable=False,
+        root_id=None,  # intentionally NULL
+    )
+    db.add(node)
+    db.flush()
+
+    branch = BranchModel(
+        root_id=node.id,
+        head_id=node.id,
+        name="main",
+        is_main=True,
+        created_by="human",
+    )
+    db.add(branch)
+    db.flush()
+    node.branch_id = branch.id
+    db.commit()
+
+    snap = snapshot(db, node.id, label="fallback-root")
+    db.commit()
+
+    assert snap.root_id is not None, (
+        "Snapshot must NOT inherit NULL root_id — should fall back to head.id"
+    )
+    assert snap.root_id == node.id, (
+        f"Snapshot root_id={snap.root_id} must equal head.id={node.id} when "
+        "head.root_id is NULL"
+    )
+
+
 # ---------------------------------------------------------------------------
 # 2. create_branch
 # ---------------------------------------------------------------------------

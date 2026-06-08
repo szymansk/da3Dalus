@@ -159,8 +159,10 @@ function renderPanel(overrides: {
   rootId?: number | null;
   currentHeadId?: number | null;
   aeroplaneId?: number | null;
-  treeOverride?: Partial<{ tree: TreeOut | undefined; isLoading: boolean; error: Error | undefined }>;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  treeOverride?: Partial<{ tree: TreeOut | undefined; isLoading: boolean; error: Error | undefined; mutate: any }>;
   actionsOverride?: Partial<typeof DEFAULT_ACTIONS>;
+  onSwitchAeroplane?: (uuid: string) => void;
 } = {}) {
   const {
     rootId = 10,
@@ -168,13 +170,14 @@ function renderPanel(overrides: {
     aeroplaneId = 10,
     treeOverride = {},
     actionsOverride = {},
+    onSwitchAeroplane,
   } = overrides;
 
   mockUseLineageTree.mockReturnValue({
     tree: FAKE_TREE,
     isLoading: false,
     error: undefined,
-    mutate: vi.fn().mockResolvedValue(undefined),
+    mutate: vi.fn().mockResolvedValue(FAKE_TREE),
     ...treeOverride,
   });
 
@@ -186,6 +189,7 @@ function renderPanel(overrides: {
       currentHeadId={currentHeadId}
       aeroplaneId={aeroplaneId}
       onClose={vi.fn()}
+      onSwitchAeroplane={onSwitchAeroplane}
     />,
   );
 }
@@ -487,5 +491,134 @@ describe("VersionHistoryPanel (gh-907)", () => {
 
     await user.click(screen.getByRole("button", { name: /close history panel/i }));
     expect(onClose).toHaveBeenCalledOnce();
+  });
+
+  // -------------------------------------------------------------------------
+  // gh-910: onSwitchAeroplane called after branch ops
+  // -------------------------------------------------------------------------
+  describe("gh-910: onSwitchAeroplane after branch operations", () => {
+    /**
+     * FAKE_TREE has:
+     *   nodes: [{id:10, uuid:"aaa"}, {id:11, uuid:"bbb"}, {id:20, uuid:"ccc"}]
+     *   branches: [{id:1, head_id:10}, {id:2, head_id:20}]
+     *
+     * createBranch/adopt/restore all return a BranchOut with head_id.
+     * The mutate() returns the fresh tree so the panel can look up the UUID.
+     */
+
+    it("createBranch: calls onSwitchAeroplane with the new head UUID", async () => {
+      const user = userEvent.setup();
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const switchSpy = vi.fn() as any as (uuid: string) => void;
+
+      // createBranch returns a BranchOut whose head_id=10 → uuid="aaa"
+      const createBranch = vi.fn().mockResolvedValue({ id: 3, root_id: 10, head_id: 10, name: "exp", is_main: false, created_by: "human", created_at: "" });
+      renderPanel({ actionsOverride: { createBranch }, onSwitchAeroplane: switchSpy });
+
+      const branchBtns = screen.getAllByRole("button", { name: /fork a new branch/i });
+      await user.click(branchBtns[0]);
+      const input = screen.getByRole("textbox", { name: /branch name/i });
+      await user.type(input, "exp");
+      await user.click(screen.getByRole("button", { name: /confirm branch name/i }));
+
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      await waitFor(() => expect(switchSpy as any).toHaveBeenCalledOnce());
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      expect(switchSpy as any).toHaveBeenCalledWith("aaa");
+    });
+
+    it("adoptBranch: calls onSwitchAeroplane with the adopted head UUID", async () => {
+      const user = userEvent.setup();
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const switchSpy = vi.fn() as any as (uuid: string) => void;
+
+      // adoptBranch returns a BranchOut whose head_id=20 → uuid="ccc"
+      const adoptBranch = vi.fn().mockResolvedValue({ id: 2, root_id: 10, head_id: 20, name: "ai/winglet-v1", is_main: true, created_by: "ai", created_at: "" });
+      renderPanel({ actionsOverride: { adoptBranch }, onSwitchAeroplane: switchSpy });
+
+      const adoptBtns = screen.getAllByRole("button", { name: /promote branch/i });
+      await user.click(adoptBtns[0]);
+
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      await waitFor(() => expect(switchSpy as any).toHaveBeenCalledOnce());
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      expect(switchSpy as any).toHaveBeenCalledWith("ccc");
+    });
+
+    it("restore: calls onSwitchAeroplane with the restored head UUID", async () => {
+      const user = userEvent.setup();
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const switchSpy = vi.fn() as any as (uuid: string) => void;
+
+      // restore returns a BranchOut whose head_id=10 → uuid="aaa"
+      const restore = vi.fn().mockResolvedValue({ id: 5, root_id: 10, head_id: 10, name: "restored", is_main: false, created_by: "human", created_at: "" });
+      renderPanel({ actionsOverride: { restore }, onSwitchAeroplane: switchSpy });
+
+      const restoreBtns = screen.getAllByRole("button", { name: /restore this snapshot/i });
+      await user.click(restoreBtns[0]);
+      const input = screen.getByRole("textbox", { name: /branch name/i });
+      await user.type(input, "restored-v1");
+      await user.click(screen.getByRole("button", { name: /confirm branch name/i }));
+
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      await waitFor(() => expect(switchSpy as any).toHaveBeenCalledOnce());
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      expect(switchSpy as any).toHaveBeenCalledWith("aaa");
+    });
+
+    it("does not call onSwitchAeroplane when prop is absent", async () => {
+      const user = userEvent.setup();
+      const createBranch = vi.fn().mockResolvedValue({ id: 3, root_id: 10, head_id: 10, name: "exp", is_main: false, created_by: "human", created_at: "" });
+      // No onSwitchAeroplane prop — must not throw
+      renderPanel({ actionsOverride: { createBranch } });
+
+      const branchBtns = screen.getAllByRole("button", { name: /fork a new branch/i });
+      await user.click(branchBtns[0]);
+      const input = screen.getByRole("textbox", { name: /branch name/i });
+      await user.type(input, "exp");
+      await user.click(screen.getByRole("button", { name: /confirm branch name/i }));
+
+      await waitFor(() => expect(createBranch).toHaveBeenCalledOnce());
+      // Just verify no error was thrown — test passes if no exception
+    });
+  });
+
+  // -------------------------------------------------------------------------
+  // gh-910 polish: is_main badge is visually distinct from the branch name
+  // -------------------------------------------------------------------------
+  describe("gh-910: is_main badge visual distinction", () => {
+    it("renders 'active main' badge (not just 'main') for the is_main branch", () => {
+      renderPanel();
+      // The is_main badge must contain "active main" so it is distinct from
+      // a branch merely NAMED "main"
+      expect(screen.getByLabelText("Active main branch")).toBeDefined();
+    });
+
+    it("a non-main branch with a name containing 'main' does not show the active-main badge", () => {
+      const treeWithMainNamedBranch = {
+        ...FAKE_TREE,
+        branches: [
+          { ...FAKE_TREE.branches[0], name: "not-main-branch", is_main: false },
+          { ...FAKE_TREE.branches[1], name: "main-variant", is_main: true },
+        ],
+      };
+      mockUseLineageTree.mockReturnValue({
+        tree: treeWithMainNamedBranch,
+        isLoading: false,
+        error: undefined,
+        mutate: vi.fn().mockResolvedValue(treeWithMainNamedBranch),
+      });
+      mockUseVersionActions.mockReturnValue(makeActions());
+      render(
+        <VersionHistoryPanel
+          rootId={10}
+          currentHeadId={10}
+          aeroplaneId={10}
+          onClose={vi.fn()}
+        />,
+      );
+      // Only one "Active main branch" aria-label should exist
+      expect(screen.getAllByLabelText("Active main branch").length).toBe(1);
+    });
   });
 });

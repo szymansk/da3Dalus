@@ -348,8 +348,12 @@ function BranchSection({
           {branch.name}
         </span>
         {branch.is_main && (
-          <span className="rounded-full bg-primary/20 px-1.5 py-0.5 text-[9px] font-medium text-primary">
-            main
+          <span
+            className="inline-flex items-center gap-0.5 rounded-full bg-primary/20 px-1.5 py-0.5 text-[9px] font-semibold text-primary ring-1 ring-primary/50"
+            title="This branch is the active main — it appears in the aeroplane picker"
+            aria-label="Active main branch"
+          >
+            ★ active main
           </span>
         )}
         {isAiBranch && (
@@ -544,6 +548,8 @@ export interface VersionHistoryPanelProps {
   currentHeadId: number | null;
   aeroplaneId: number | null;
   onClose: () => void;
+  /** Called after a branch operation lands — argument is the new head's UUID. */
+  onSwitchAeroplane?: (uuid: string) => void;
 }
 
 export function VersionHistoryPanel({
@@ -551,6 +557,7 @@ export function VersionHistoryPanel({
   currentHeadId,
   aeroplaneId,
   onClose,
+  onSwitchAeroplane,
 }: VersionHistoryPanelProps) {
   const { tree, isLoading, error, mutate } = useLineageTree(rootId);
   const actions = useVersionActions(aeroplaneId, rootId);
@@ -573,6 +580,40 @@ export function VersionHistoryPanel({
   } = useCompareNodes(
     compareOpen ? compareIdA : null,
     compareOpen ? compareIdB : null,
+  );
+
+  /**
+   * Run a branch action, revalidate the tree, then switch the active aeroplane
+   * to the new branch head.
+   *
+   * `getHeadId` extracts the new head's integer PK from the action's return
+   * value.  We look the UUID up in the freshly-revalidated tree so the context
+   * always gets a UUID, never a stale or missing value.
+   */
+  const runBranchOp = useCallback(
+    async <T,>(
+      fn: () => Promise<T>,
+      getHeadId: (result: T) => number,
+    ) => {
+      setBusy(true);
+      setActionError(null);
+      try {
+        const result = await fn();
+        const freshTree = await mutate();
+        if (onSwitchAeroplane && freshTree) {
+          const headId = getHeadId(result);
+          const headNode = freshTree.nodes.find((n) => n.id === headId);
+          if (headNode) {
+            onSwitchAeroplane(headNode.uuid);
+          }
+        }
+      } catch (err) {
+        setActionError(err instanceof Error ? err.message : "Action failed.");
+      } finally {
+        setBusy(false);
+      }
+    },
+    [mutate, onSwitchAeroplane],
   );
 
   const run = useCallback(async (fn: () => Promise<unknown>) => {
@@ -602,23 +643,32 @@ export function VersionHistoryPanel({
 
   const handleBranchFrom = useCallback(
     async (nodeId: number, name: string) => {
-      await run(() => actions.createBranch(nodeId, { name }));
+      await runBranchOp(
+        () => actions.createBranch(nodeId, { name }),
+        (branch) => branch.head_id,
+      );
     },
-    [run, actions],
+    [runBranchOp, actions],
   );
 
   const handleRestore = useCallback(
     async (snapshotId: number, name: string) => {
-      await run(() => actions.restore(snapshotId, { name }));
+      await runBranchOp(
+        () => actions.restore(snapshotId, { name }),
+        (branch) => branch.head_id,
+      );
     },
-    [run, actions],
+    [runBranchOp, actions],
   );
 
   const handleAdopt = useCallback(
     async (branchId: number) => {
-      await run(() => actions.adoptBranch(branchId));
+      await runBranchOp(
+        () => actions.adoptBranch(branchId),
+        (branch) => branch.head_id,
+      );
     },
-    [run, actions],
+    [runBranchOp, actions],
   );
 
   const handleDiscard = useCallback(
