@@ -1,21 +1,129 @@
+/**
+ * Unit tests for CopilotStrip (gh-919).
+ *
+ * Strategy:
+ * - Mock useAeroplaneContext to control aeroplaneId.
+ * - Mock useCopilot to control history, streamingText, activeToolLabel, etc.
+ * - Assert rendering of message bubbles, streaming text, tool chips, errors,
+ *   and disabled state when no aeroplane is selected.
+ */
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi, beforeEach } from "vitest";
+
+// ---------------------------------------------------------------------------
+// Mocks — must be declared before the component import so vi.mock hoists them
+// ---------------------------------------------------------------------------
+
+vi.mock("@/components/workbench/AeroplaneContext", () => ({
+  useAeroplaneContext: vi.fn(),
+}));
+
+vi.mock("@/hooks/useCopilot", () => ({
+  useCopilot: vi.fn(),
+  toolLabel: (name: string) => `tool:${name}`,
+}));
+
+import { useAeroplaneContext } from "@/components/workbench/AeroplaneContext";
+import { useCopilot } from "@/hooks/useCopilot";
+import type { UseCopilotReturn, CopilotHistory } from "@/hooks/useCopilot";
 import { CopilotStrip } from "@/components/workbench/CopilotStrip";
 
-describe("CopilotStrip", () => {
-  it("renders the slim bar with 'Ask the copilot…' label", () => {
+// ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
+
+const AEROPLANE_CTX_DEFAULT = {
+  aeroplaneId: "aero-1" as string | null,
+  hydrated: true,
+  selectedWing: null,
+  selectedXsecIndex: null,
+  selectedFuselage: null,
+  selectedFuselageXsecIndex: null,
+  treeMode: "wingconfig" as const,
+  pickerOpen: false,
+  lastImportWarnings: null,
+  setAeroplaneId: vi.fn(),
+  selectWing: vi.fn(),
+  selectXsec: vi.fn(),
+  selectFuselage: vi.fn(),
+  selectFuselageXsec: vi.fn(),
+  setTreeMode: vi.fn(),
+  openPicker: vi.fn(),
+  closePicker: vi.fn(),
+  setLastImportWarnings: vi.fn(),
+};
+
+const COPILOT_DEFAULT: UseCopilotReturn = {
+  history: undefined,
+  historyLoading: false,
+  historyError: null,
+  streamingText: "",
+  activeToolLabel: null,
+  errorMessage: null,
+  isSending: false,
+  sendMessage: vi.fn().mockResolvedValue(undefined),
+  clearError: vi.fn(),
+};
+
+const FAKE_HISTORY: CopilotHistory = {
+  messages: [
+    {
+      id: 1,
+      role: "user",
+      content: "What is my wing loading?",
+      tool_calls: null,
+      tool_results: null,
+      parent_id: null,
+      created_at: "2026-06-08T10:00:00Z",
+    },
+    {
+      id: 2,
+      role: "assistant",
+      content: "Your wing loading is 42 N/m².",
+      tool_calls: null,
+      tool_results: null,
+      parent_id: null,
+      created_at: "2026-06-08T10:00:02Z",
+    },
+  ],
+};
+
+function mockCtx(overrides: Partial<typeof AEROPLANE_CTX_DEFAULT> = {}) {
+  vi.mocked(useAeroplaneContext).mockReturnValue({
+    ...AEROPLANE_CTX_DEFAULT,
+    ...overrides,
+  });
+}
+
+function mockCopilot(overrides: Partial<UseCopilotReturn> = {}) {
+  vi.mocked(useCopilot).mockReturnValue({
+    ...COPILOT_DEFAULT,
+    ...overrides,
+  });
+}
+
+// ---------------------------------------------------------------------------
+// Baseline structural tests (drawer + disclosure pattern, preserved from prior)
+// ---------------------------------------------------------------------------
+
+describe("CopilotStrip — structural", () => {
+  beforeEach(() => {
+    mockCtx();
+    mockCopilot();
+  });
+
+  it("renders the slim bar with 'Ask the copilot…' label when an aeroplane is selected", () => {
     render(<CopilotStrip />);
     expect(screen.getByText("Ask the copilot…")).toBeInTheDocument();
   });
 
   it("renders a Send button in the slim bar and a toggle button", () => {
     render(<CopilotStrip />);
-    // The slim-bar Send button has aria-label="Send"
-    const sendBtns = screen.getAllByRole("button", { name: "Send" });
-    expect(sendBtns.length).toBeGreaterThanOrEqual(1);
+    // slim-bar Send button has aria-label="Send"
+    expect(screen.getByRole("button", { name: "Send" })).toBeInTheDocument();
     expect(
-      screen.getByRole("button", { name: "Expand copilot panel" })
+      screen.getByRole("button", { name: "Expand copilot panel" }),
     ).toBeInTheDocument();
   });
 
@@ -23,37 +131,30 @@ describe("CopilotStrip", () => {
     render(<CopilotStrip />);
     const toggleBtn = screen.getByRole("button", { name: "Expand copilot panel" });
     const panel = screen.getByTestId("copilot-panel");
-    // The panel must have an id attribute.
     expect(panel).toHaveAttribute("id");
-    // aria-controls on the toggle must reference the same id.
     expect(toggleBtn).toHaveAttribute("aria-controls", panel.getAttribute("id"));
   });
 
-  it("starts collapsed: panel is present in DOM but visually hidden (grid-rows-[0fr])", () => {
+  it("starts collapsed (grid-rows-[0fr])", () => {
     render(<CopilotStrip />);
-    // The toggle button has aria-expanded=false initially.
     const toggleBtn = screen.getByRole("button", { name: "Expand copilot panel" });
     expect(toggleBtn).toHaveAttribute("aria-expanded", "false");
 
-    // The panel container has the collapsed CSS class.
     const panel = screen.getByTestId("copilot-panel");
     const slideWrapper = panel.parentElement?.parentElement;
     expect(slideWrapper?.className).toContain("grid-rows-[0fr]");
   });
 
-  it("expands on first click: aria-expanded becomes true and panel is shown", async () => {
+  it("expands on first click", async () => {
     const user = userEvent.setup();
     render(<CopilotStrip />);
 
-    const toggleBtn = screen.getByRole("button", { name: "Expand copilot panel" });
-    await user.click(toggleBtn);
+    await user.click(screen.getByRole("button", { name: "Expand copilot panel" }));
 
-    // Button now reports aria-expanded=true and its label switches.
     expect(
-      screen.getByRole("button", { name: "Collapse copilot panel" })
+      screen.getByRole("button", { name: "Collapse copilot panel" }),
     ).toHaveAttribute("aria-expanded", "true");
 
-    // Slide wrapper now has the open CSS class.
     const panel = screen.getByTestId("copilot-panel");
     const slideWrapper = panel.parentElement?.parentElement;
     expect(slideWrapper?.className).toContain("grid-rows-[1fr]");
@@ -63,28 +164,249 @@ describe("CopilotStrip", () => {
     const user = userEvent.setup();
     render(<CopilotStrip />);
 
-    const expandBtn = screen.getByRole("button", { name: "Expand copilot panel" });
-    await user.click(expandBtn);
-
-    const collapseBtn = screen.getByRole("button", { name: "Collapse copilot panel" });
-    await user.click(collapseBtn);
-
-    const toggleBtn = screen.getByRole("button", { name: "Expand copilot panel" });
-    expect(toggleBtn).toHaveAttribute("aria-expanded", "false");
-
-    const panel = screen.getByTestId("copilot-panel");
-    const slideWrapper = panel.parentElement?.parentElement;
-    expect(slideWrapper?.className).toContain("grid-rows-[0fr]");
-  });
-
-  it("shows textarea placeholder and Send button inside expanded panel", async () => {
-    const user = userEvent.setup();
-    render(<CopilotStrip />);
-
     await user.click(screen.getByRole("button", { name: "Expand copilot panel" }));
+    await user.click(screen.getByRole("button", { name: "Collapse copilot panel" }));
 
     expect(
-      screen.getByPlaceholderText("Ask a design question…")
+      screen.getByRole("button", { name: "Expand copilot panel" }),
+    ).toHaveAttribute("aria-expanded", "false");
+  });
+
+  it("shows textarea placeholder inside expanded panel when aeroplane is selected", async () => {
+    const user = userEvent.setup();
+    render(<CopilotStrip />);
+    await user.click(screen.getByRole("button", { name: "Expand copilot panel" }));
+    expect(
+      screen.getByPlaceholderText("Ask a design question…"),
     ).toBeInTheDocument();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// No-aeroplane disabled state
+// ---------------------------------------------------------------------------
+
+describe("CopilotStrip — no aeroplane selected", () => {
+  beforeEach(() => {
+    mockCtx({ aeroplaneId: null });
+    mockCopilot({ history: undefined });
+  });
+
+  it("shows 'Select an aeroplane to use the copilot' label in the slim bar", () => {
+    render(<CopilotStrip />);
+    expect(
+      screen.getByText("Select an aeroplane to use the copilot"),
+    ).toBeInTheDocument();
+  });
+
+  it("textarea placeholder says 'Select an aeroplane'", async () => {
+    const user = userEvent.setup();
+    render(<CopilotStrip />);
+    await user.click(screen.getByRole("button", { name: "Expand copilot panel" }));
+    expect(screen.getByPlaceholderText("Select an aeroplane")).toBeInTheDocument();
+  });
+
+  it("textarea is disabled when no aeroplane is selected", async () => {
+    const user = userEvent.setup();
+    render(<CopilotStrip />);
+    await user.click(screen.getByRole("button", { name: "Expand copilot panel" }));
+    expect(screen.getByRole("textbox", { name: "Copilot input" })).toBeDisabled();
+  });
+
+  it("Send message button is disabled when no aeroplane is selected", async () => {
+    const user = userEvent.setup();
+    render(<CopilotStrip />);
+    await user.click(screen.getByRole("button", { name: "Expand copilot panel" }));
+    expect(screen.getByRole("button", { name: "Send message" })).toBeDisabled();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Thread rendering
+// ---------------------------------------------------------------------------
+
+describe("CopilotStrip — thread rendering", () => {
+  beforeEach(() => {
+    mockCtx();
+    mockCopilot({ history: FAKE_HISTORY });
+  });
+
+  it("renders user and assistant bubbles from history", async () => {
+    const user = userEvent.setup();
+    render(<CopilotStrip />);
+    await user.click(screen.getByRole("button", { name: "Expand copilot panel" }));
+
+    expect(screen.getByTestId("copilot-thread")).toBeInTheDocument();
+    expect(screen.getByText("What is my wing loading?")).toBeInTheDocument();
+    expect(screen.getByText("Your wing loading is 42 N/m².")).toBeInTheDocument();
+  });
+
+  it("renders a user-bubble for user messages and assistant-bubble for assistant messages", async () => {
+    const user = userEvent.setup();
+    render(<CopilotStrip />);
+    await user.click(screen.getByRole("button", { name: "Expand copilot panel" }));
+
+    const userBubbles = screen.getAllByTestId("user-bubble");
+    const assistantBubbles = screen.getAllByTestId("assistant-bubble");
+    expect(userBubbles).toHaveLength(1);
+    expect(assistantBubbles).toHaveLength(1);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Streaming text
+// ---------------------------------------------------------------------------
+
+describe("CopilotStrip — streaming assistant text", () => {
+  it("renders the streaming text as an assistant bubble while isSending=true", async () => {
+    mockCtx();
+    mockCopilot({
+      history: undefined,
+      streamingText: "This is streaming…",
+      isSending: true,
+    });
+
+    const user = userEvent.setup();
+    render(<CopilotStrip />);
+    await user.click(screen.getByRole("button", { name: "Expand copilot panel" }));
+
+    const assistantBubble = screen.getByTestId("assistant-bubble");
+    expect(assistantBubble).toHaveTextContent("This is streaming…");
+  });
+
+  it("shows 'Copilot is responding…' status text while isSending", async () => {
+    mockCtx();
+    mockCopilot({ isSending: true, streamingText: "…" });
+
+    const user = userEvent.setup();
+    render(<CopilotStrip />);
+    await user.click(screen.getByRole("button", { name: "Expand copilot panel" }));
+
+    expect(screen.getByText("Copilot is responding…")).toBeInTheDocument();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Tool activity chip
+// ---------------------------------------------------------------------------
+
+describe("CopilotStrip — tool activity chip", () => {
+  it("renders a tool chip with the activeToolLabel when set", async () => {
+    mockCtx();
+    mockCopilot({
+      activeToolLabel: "Reading design snapshot…",
+    });
+
+    const user = userEvent.setup();
+    render(<CopilotStrip />);
+    await user.click(screen.getByRole("button", { name: "Expand copilot panel" }));
+
+    const chip = screen.getByTestId("tool-chip");
+    expect(chip).toBeInTheDocument();
+    expect(chip).toHaveTextContent("Reading design snapshot…");
+  });
+
+  it("does not render a tool chip when activeToolLabel is null", async () => {
+    mockCtx();
+    mockCopilot({ activeToolLabel: null });
+
+    const user = userEvent.setup();
+    render(<CopilotStrip />);
+    await user.click(screen.getByRole("button", { name: "Expand copilot panel" }));
+
+    expect(screen.queryByTestId("tool-chip")).toBeNull();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Error display
+// ---------------------------------------------------------------------------
+
+describe("CopilotStrip — error display", () => {
+  it("renders the error banner when errorMessage is set", async () => {
+    const clearError = vi.fn();
+    mockCtx();
+    mockCopilot({ errorMessage: "Hub connection error", clearError });
+
+    const user = userEvent.setup();
+    render(<CopilotStrip />);
+    await user.click(screen.getByRole("button", { name: "Expand copilot panel" }));
+
+    const banner = screen.getByTestId("copilot-error");
+    expect(banner).toBeInTheDocument();
+    expect(banner).toHaveTextContent("Hub connection error");
+  });
+
+  it("calls clearError when the dismiss button is clicked", async () => {
+    const clearError = vi.fn();
+    mockCtx();
+    mockCopilot({ errorMessage: "oops", clearError });
+
+    const user = userEvent.setup();
+    render(<CopilotStrip />);
+    await user.click(screen.getByRole("button", { name: "Expand copilot panel" }));
+
+    await user.click(screen.getByRole("button", { name: "Dismiss error" }));
+    expect(clearError).toHaveBeenCalledOnce();
+  });
+
+  it("does not render the error banner when errorMessage is null", async () => {
+    mockCtx();
+    mockCopilot({ errorMessage: null });
+
+    const user = userEvent.setup();
+    render(<CopilotStrip />);
+    await user.click(screen.getByRole("button", { name: "Expand copilot panel" }));
+
+    expect(screen.queryByTestId("copilot-error")).toBeNull();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Send interaction
+// ---------------------------------------------------------------------------
+
+describe("CopilotStrip — send interaction", () => {
+  it("calls sendMessage with the typed text when Send message button is clicked", async () => {
+    const sendMessage = vi.fn().mockResolvedValue(undefined);
+    mockCtx();
+    mockCopilot({ sendMessage });
+
+    const user = userEvent.setup();
+    render(<CopilotStrip />);
+    await user.click(screen.getByRole("button", { name: "Expand copilot panel" }));
+
+    const textarea = screen.getByRole("textbox", { name: "Copilot input" });
+    await user.type(textarea, "What is my static margin?");
+    await user.click(screen.getByRole("button", { name: "Send message" }));
+
+    expect(sendMessage).toHaveBeenCalledWith("What is my static margin?");
+  });
+
+  it("clears the textarea after sending", async () => {
+    const sendMessage = vi.fn().mockResolvedValue(undefined);
+    mockCtx();
+    mockCopilot({ sendMessage });
+
+    const user = userEvent.setup();
+    render(<CopilotStrip />);
+    await user.click(screen.getByRole("button", { name: "Expand copilot panel" }));
+
+    const textarea = screen.getByRole("textbox", { name: "Copilot input" });
+    await user.type(textarea, "test question");
+    await user.click(screen.getByRole("button", { name: "Send message" }));
+
+    expect(textarea).toHaveValue("");
+  });
+
+  it("Send message button is disabled while isSending=true", async () => {
+    mockCtx();
+    mockCopilot({ isSending: true });
+
+    const user = userEvent.setup();
+    render(<CopilotStrip />);
+    await user.click(screen.getByRole("button", { name: "Expand copilot panel" }));
+
+    expect(screen.getByRole("button", { name: "Send message" })).toBeDisabled();
   });
 });
