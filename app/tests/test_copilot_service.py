@@ -173,7 +173,7 @@ class TestRunTurnTextOnly:
             with patch.object(svc_module, "_make_openai_client", return_value=fake_client):
                 import asyncio
 
-                events = asyncio.get_event_loop().run_until_complete(
+                events = asyncio.run(
                     _collect_events(
                         run_turn(
                             db=db,
@@ -204,7 +204,7 @@ class TestRunTurnTextOnly:
             with patch.object(svc_module, "_make_openai_client", return_value=fake_client):
                 import asyncio
 
-                events = asyncio.get_event_loop().run_until_complete(
+                events = asyncio.run(
                     _collect_events(
                         run_turn(
                             db=db,
@@ -243,7 +243,7 @@ class TestRunTurnWithToolCall:
                 ) as mock_execute:
                     import asyncio
 
-                    events = asyncio.get_event_loop().run_until_complete(
+                    events = asyncio.run(
                         _collect_events(
                             run_turn(
                                 db=db,
@@ -282,7 +282,7 @@ class TestRunTurnWithToolCall:
                 with patch("app.services.copilot_tools.execute", return_value={"status": "ok"}):
                     import asyncio
 
-                    events = asyncio.get_event_loop().run_until_complete(
+                    events = asyncio.run(
                         _collect_events(
                             run_turn(db=db, aeroplane_id=aeroplane.id, history=history)
                         )
@@ -311,7 +311,7 @@ class TestRunTurnWithToolCall:
                 with patch("app.services.copilot_tools.execute", return_value=stub_result):
                     import asyncio
 
-                    events = asyncio.get_event_loop().run_until_complete(
+                    events = asyncio.run(
                         _collect_events(
                             run_turn(db=db, aeroplane_id=aeroplane.id, history=history)
                         )
@@ -341,7 +341,7 @@ class TestRunTurnWithToolCall:
                 ):
                     import asyncio
 
-                    events = asyncio.get_event_loop().run_until_complete(
+                    events = asyncio.run(
                         _collect_events(
                             run_turn(db=db, aeroplane_id=aeroplane.id, history=history)
                         )
@@ -384,7 +384,7 @@ class TestMaxIterationsGuard:
                 ):
                     import asyncio
 
-                    events = asyncio.get_event_loop().run_until_complete(
+                    events = asyncio.run(
                         _collect_events(
                             run_turn(db=db, aeroplane_id=aeroplane.id, history=history)
                         )
@@ -416,7 +416,7 @@ class TestHubError:
             with patch.object(svc_module, "_make_openai_client", return_value=client):
                 import asyncio
 
-                events = asyncio.get_event_loop().run_until_complete(
+                events = asyncio.run(
                     _collect_events(
                         run_turn(db=db, aeroplane_id=aeroplane.id, history=history)
                     )
@@ -450,7 +450,7 @@ class TestHubError:
                 original_key = cfg_mod.settings.COPILOT_API_KEY
                 cfg_mod.settings.COPILOT_API_KEY = SecretStr("sk-secret-key-value")
                 try:
-                    events = asyncio.get_event_loop().run_until_complete(
+                    events = asyncio.run(
                         _collect_events(
                             run_turn(db=db, aeroplane_id=aeroplane.id, history=history)
                         )
@@ -517,7 +517,7 @@ class TestRunAnalysisViaToThread:
                 with patch.object(tools_module, "_run_polar_async", _instant_polar):
                     # Run on a live event loop — this is what raises if the
                     # asyncio.new_event_loop().run_until_complete() bug exists.
-                    events = asyncio.get_event_loop().run_until_complete(
+                    events = asyncio.run(
                         _collect_events(
                             run_turn(
                                 db=db,
@@ -572,7 +572,7 @@ class TestRunAnalysisViaToThread:
                     )
             return result
 
-        result = asyncio.get_event_loop().run_until_complete(_run())
+        result = asyncio.run(_run())
         # Must not raise; must return the mocked polar result
         assert result.get("status") == "ok"
         assert result.get("kind") == "polar"
@@ -614,7 +614,7 @@ class TestApiKeyNotLeakedInSseEvents:
             cfg_mod.settings.COPILOT_API_KEY = SecretStr(fake_key)
             try:
                 with patch.object(svc_module, "_make_openai_client", return_value=client):
-                    events = asyncio.get_event_loop().run_until_complete(
+                    events = asyncio.run(
                         _collect_events(
                             run_turn(db=db, aeroplane_id=aeroplane.id, history=history)
                         )
@@ -659,7 +659,7 @@ class TestApiKeyNotLeakedInSseEvents:
             cfg_mod.settings.COPILOT_API_KEY = SecretStr(fake_key)
             try:
                 with patch.object(svc_module, "_make_openai_client", return_value=client):
-                    events = asyncio.get_event_loop().run_until_complete(
+                    events = asyncio.run(
                         _collect_events(
                             run_turn(db=db, aeroplane_id=aeroplane.id, history=history)
                         )
@@ -708,7 +708,7 @@ class TestTruncatedFlag:
                 with patch(
                     "app.services.copilot_tools.execute", return_value={"data": "ok"}
                 ):
-                    events = asyncio.get_event_loop().run_until_complete(
+                    events = asyncio.run(
                         _collect_events(
                             run_turn(db=db, aeroplane_id=aeroplane.id, history=history)
                         )
@@ -730,7 +730,7 @@ class TestTruncatedFlag:
             fake_client = _fake_client_for_text("All done cleanly.")
 
             with patch.object(svc_module, "_make_openai_client", return_value=fake_client):
-                events = asyncio.get_event_loop().run_until_complete(
+                events = asyncio.run(
                     _collect_events(
                         run_turn(db=db, aeroplane_id=aeroplane.id, history=history)
                     )
