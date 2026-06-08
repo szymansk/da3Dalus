@@ -193,6 +193,28 @@ def _history_to_openai(messages) -> list[dict[str, Any]]:
             if m.tool_calls:
                 msg["tool_calls"] = m.tool_calls
             result.append(msg)
+            # Anthropic's strict tool protocol (and OpenAI's) requires every
+            # assistant ``tool_use``/``tool_call`` to be immediately followed by
+            # a matching ``tool`` result message. We persist the turn as a single
+            # assistant row carrying both tool_calls and tool_results (no separate
+            # ``tool`` rows), so reconstruct the result messages here — otherwise
+            # the replayed history has an orphaned tool_use and the hub 400s on
+            # every turn after the first tool use (gh-922).
+            if m.tool_calls:
+                results_by_id = {
+                    tr.get("tool_call_id", ""): tr for tr in (m.tool_results or [])
+                }
+                for tc in m.tool_calls:
+                    tc_id = tc.get("id", "")
+                    tr = results_by_id.get(tc_id)
+                    content = (
+                        json.dumps(tr.get("result", tr))
+                        if tr is not None
+                        else json.dumps({"error": "tool result unavailable"})
+                    )
+                    result.append(
+                        {"role": "tool", "tool_call_id": tc_id, "content": content}
+                    )
         elif m.role == "tool":
             # Tool result messages: one message per tool result
             if m.tool_results:
