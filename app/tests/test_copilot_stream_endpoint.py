@@ -75,6 +75,18 @@ async def _gen_text_only(*_, **__) -> AsyncGenerator[dict, None]:
     yield {"type": "done", "final_text": "Hello!", "tool_calls": [], "tool_results": []}
 
 
+async def _gen_truncated(*_, **__) -> AsyncGenerator[dict, None]:
+    """Turn cut off at MAX_LOOP_ITERATIONS — service sets truncated=True."""
+    yield {"type": "token", "text": "Partial..."}
+    yield {
+        "type": "done",
+        "final_text": "Partial...",
+        "tool_calls": [],
+        "tool_results": [],
+        "truncated": True,
+    }
+
+
 # ---------------------------------------------------------------------------
 # Tests
 # ---------------------------------------------------------------------------
@@ -179,6 +191,44 @@ class TestCopilotStreamEndpoint:
         assert len(assistant_msg.tool_calls) == 1
         assert assistant_msg.tool_results is not None
         assert len(assistant_msg.tool_results) == 1
+
+    def test_done_event_forwards_truncated_flag(self, client_and_db):
+        """When the service cuts the turn off, the SSE done event must carry truncated."""
+        client, SessionLocal = client_and_db
+
+        with SessionLocal() as db:
+            aeroplane = make_aeroplane(db)
+
+        with patch("app.services.copilot_service.run_turn", new=_gen_truncated):
+            resp = client.post(
+                f"/aeroplanes/{aeroplane.uuid}/copilot/stream",
+                json={"message": "loop forever"},
+            )
+
+        events = _parse_sse(resp.text)
+        done_data = next(d for t, d in events if t == "done")
+        assert done_data.get("truncated") is True, (
+            f"Expected truncated=True in done event, got: {done_data}"
+        )
+
+    def test_done_event_omits_truncated_on_clean_stop(self, client_and_db):
+        """A clean stop must NOT carry truncated (frontend treats it as info)."""
+        client, SessionLocal = client_and_db
+
+        with SessionLocal() as db:
+            aeroplane = make_aeroplane(db)
+
+        with patch("app.services.copilot_service.run_turn", new=_gen_text_only):
+            resp = client.post(
+                f"/aeroplanes/{aeroplane.uuid}/copilot/stream",
+                json={"message": "hello"},
+            )
+
+        events = _parse_sse(resp.text)
+        done_data = next(d for t, d in events if t == "done")
+        assert "truncated" not in done_data, (
+            f"truncated must be absent on clean stop, got: {done_data}"
+        )
 
     def test_error_event_in_sse_stream(self, client_and_db):
         client, SessionLocal = client_and_db

@@ -150,7 +150,13 @@ async def copilot_stream(
                         )
                     except Exception as persist_exc:
                         logger.error("Failed to persist assistant message: %s", persist_exc)
-                    yield _sse_format("done", {"status": "ok"})
+                    done_data: dict = {"status": "ok"}
+                    # Forward the max-iterations cut-off flag so the client can
+                    # tell the user the turn was truncated (the service sets it
+                    # only when the loop hit MAX_LOOP_ITERATIONS).
+                    if event.get("truncated"):
+                        done_data["truncated"] = True
+                    yield _sse_format("done", done_data)
 
                 elif event_type == "error":
                     yield _sse_format("error", {"message": event.get("message", "Unknown error")})
