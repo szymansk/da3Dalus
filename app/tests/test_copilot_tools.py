@@ -483,3 +483,41 @@ class TestToolRegistry:
     def test_each_entry_has_impl_callable(self):
         for entry in tools_module.TOOL_REGISTRY.values():
             assert callable(entry.impl)
+
+
+class TestStabilityNeutralPointSingleSource:
+    """gh-924: the copilot stability tool must report the ONE authoritative
+    neutral point (the dashboard's cruise value from the design context), not a
+    second divergent value from a fresh off-design run."""
+
+    def test_reports_context_neutral_point_not_run_value(self, client_and_db):
+        import asyncio
+        from unittest.mock import patch
+        from types import SimpleNamespace
+
+        _, SessionLocal = client_and_db
+        with SessionLocal() as db:
+            plane = make_aeroplane(db)
+            plane.assumption_computation_context = {"x_np_m": 0.0802, "v_cruise_mps": 18.0}
+            db.flush()
+            uuid = str(plane.uuid)
+
+            # A fresh run would yield a DIFFERENT (divergent) neutral point
+            async def _fake_summary(*a, **k):
+                return SimpleNamespace(
+                    static_margin_pct=30.0, stability_class="stable",
+                    neutral_point_x=0.109, cg_x=0.066, Cma=-0.5, Cnb=0.1, Clb=-0.05,
+                    is_statically_stable=True, is_directionally_stable=True,
+                    is_laterally_stable=True, mac=0.14,
+                    cg_range_forward=0.05, cg_range_aft=0.07,
+                )
+
+            with patch(
+                "app.services.stability_service.get_stability_summary", _fake_summary
+            ):
+                out = asyncio.run(tools_module._run_stability_async(db, uuid))
+
+        # The authoritative context NP (0.0802) wins over the run's 0.109
+        assert out["neutral_point_x_m"] == 0.0802
+        # static margin recomputed consistently against the SAME (context) NP
+        assert out["static_margin_pct"] == pytest.approx((0.0802 - 0.066) / 0.14 * 100, abs=0.1)

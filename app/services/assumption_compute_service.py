@@ -200,6 +200,26 @@ def recompute_assumptions(db: Session, aeroplane_uuid) -> None:
     )
     # -----------------------------------------------------------------------
 
+    # gh-924: publish the SELF-CONSISTENT (L/D)max from the single-source
+    # parabolic scalars (E_max = ½·√(π·AR·e/CD0), Scholz eq. 5.39) rather than
+    # the raw flattened-sweep argmax, which mixes Reynolds bands and lands on a
+    # spurious high-CL sample (eHawk: 18.8 @ CL 0.98 vs the correct 23.4 @ CL
+    # 0.55). With the corrected parasite CD0 + Trefftz e this matches the clean
+    # single-velocity cruise sweep. Falls back to the measured argmax only when
+    # the parabolic scalars are unavailable.
+    ld_max_pub = ld_max_clean
+    cl_at_ld_max_pub = cl_at_ld_max_clean
+    if (
+        cd0 is not None
+        and cd0 > 0
+        and e_oswald_final is not None
+        and aspect_ratio is not None
+        and aspect_ratio > 0
+    ):
+        ld_max_pub = 0.5 * math.sqrt(math.pi * aspect_ratio * e_oswald_final / cd0)
+        # CL at best glide = √(CD0·π·AR·e) = √(CD0/k)
+        cl_at_ld_max_pub = math.sqrt(cd0 * math.pi * aspect_ratio * e_oswald_final)
+
     # --- gh-526 / epic gh-525 C1: per-configuration parabolic polar -------
     # Run AeroBuildup once per high-lift configuration so V_s0 (landing)
     # and V_s1 (clean) reflect physics instead of the 0.95 / 0.90 heuristic
@@ -213,8 +233,8 @@ def recompute_assumptions(db: Session, aeroplane_uuid) -> None:
         flap_deflection_deg=0.0,
         provenance="aerobuildup",
         rejection=polar_rejection,
-        ld_max=round(ld_max_clean, 2) if ld_max_clean is not None else None,
-        cl_at_ld_max=round(cl_at_ld_max_clean, 3) if cl_at_ld_max_clean is not None else None,
+        ld_max=round(ld_max_pub, 2) if ld_max_pub is not None else None,
+        cl_at_ld_max=round(cl_at_ld_max_pub, 3) if cl_at_ld_max_pub is not None else None,
         e_oswald_provenance=e_oswald_provenance_clean,
         auto_refined=polar_auto_refined,
     )
@@ -334,6 +354,20 @@ def recompute_assumptions(db: Session, aeroplane_uuid) -> None:
         from app.schemas.polar_re_table import PolarReTableRow
 
         polar_re_table = [PolarReTableRow(**row).model_dump() for row in polar_re_table]
+
+        # gh-924: when a band's fit is rejected (laminar bubble at low Re), its
+        # cd0/e are None and the Re-table lookups fall back to a HARD-CODED
+        # 0.03 / 0.8 that disagrees with the authoritative cruise values
+        # (eHawk: 0.03 vs the real parasite 0.013). Backfill fallback rows with
+        # the single-source parasite cd0 + Trefftz e so every Re-dependent
+        # consumer (speed polar, V-speed Picard refine) reads the SAME
+        # physically-correct value instead of the magic constant.
+        for _row in polar_re_table:
+            if _row.get("fallback_used") or _row.get("cd0") is None:
+                if cd0 is not None and cd0 > 0:
+                    _row["cd0"] = round(float(cd0), 5)
+                if e_oswald_final is not None:
+                    _row["e_oswald"] = round(float(e_oswald_final), 4)
     except Exception:
         logger.exception(
             "Re-table build failed for aircraft %s — skipping (non-fatal)", aeroplane_uuid
@@ -930,28 +964,61 @@ def _select_main_wing(asb_airplane):
 def _stability_run_at_cruise(asb_airplane, v_cruise: float) -> tuple[float, float, float, float]:
     """Returns (x_np, MAC, CD0, S_ref).
 
-    Uses analyse_aerodynamics → AnalysisModel for x_np and CD0 (same
-    path as stability_service, keeps NP consistent across the app).
+    CD0 is the **zero-lift (parasite) drag coefficient**, NOT the total drag at
+    cruise. AeroBuildup's ``coefficients.CD`` is the *total* drag at the
+    operating point; on a cambered wing α=0 already carries lift (CL≈0.55 for a
+    glider), so the total CD includes a full dose of induced drag. The parabolic
+    drag polar's intercept is the parasite term only:
 
-    For MAC and S_ref, takes the **main wing** (largest planform area)
-    rather than ASB's reference. The reference may point at a tail or
-    rudder for unusual wing orderings.
+        CD0 = CD_total − CD_induced,    CD_induced = CL² / (π·AR·e)
+
+    using AeroBuildup's own span efficiency ``e`` (oswalds_efficiency) at the
+    same run. Publishing total-CD-as-CD0 double-counts induced drag and collapses
+    (L/D)max (e.g. 17 instead of 24 for a high-AR glider) — gh-924. Confirmed
+    against Anderson §6.7.2 (at (L/D)max induced drag = parasite drag) and
+    ratified by the Scholz/Sadraey + aerodynamics experts.
+
+    Uses analyse_aerodynamics → AnalysisModel for x_np (same path as
+    stability_service, keeps NP consistent across the app). For MAC and S_ref,
+    takes the **main wing** (largest planform area) rather than ASB's reference.
     """
     xyz_ref = list(asb_airplane.xyz_ref) if asb_airplane.xyz_ref is not None else [0.0, 0.0, 0.0]
     op_schema = OperatingPointSchema(velocity=v_cruise, alpha=0.0, xyz_ref=xyz_ref)
     result, _ = analyse_aerodynamics(AnalysisToolUrlType.AEROBUILDUP, op_schema, asb_airplane)
     x_np = _scalar(result.reference.Xnp)
-    cd0 = _scalar(result.coefficients.CD)
+    cd_total = _scalar(result.coefficients.CD)
+    cl_cruise = _scalar(result.coefficients.CL)
+    e_cruise = _scalar(getattr(result.coefficients, "e", None))
 
     main_wing = _select_main_wing(asb_airplane)
     if main_wing is None:
         raise ValueError("Cannot compute MAC: no wings on aircraft")
     mac = float(main_wing.mean_aerodynamic_chord())
     s_ref = float(main_wing.area())
+    ar = _main_wing_aspect_ratio(asb_airplane)
 
-    if x_np is None or cd0 is None or mac <= 0 or s_ref <= 0:
+    if x_np is None or cd_total is None or mac <= 0 or s_ref <= 0:
         raise ValueError("AeroBuildup returned NULL or non-positive values")
-    return float(x_np), mac, float(cd0), s_ref
+
+    cd0 = _parasite_cd0(float(cd_total), cl_cruise, ar, e_cruise)
+    return float(x_np), mac, cd0, s_ref
+
+
+def _parasite_cd0(
+    cd_total: float, cl: float | None, ar: float | None, e: float | None
+) -> float:
+    """Zero-lift (parasite) drag = total CD − induced CD (gh-924).
+
+    CD_induced = CL² / (π·AR·e). Subtracts the induced component so the
+    published CD0 is the parabolic-polar intercept, not the total drag at a
+    lifting α. Guards: only subtracts when CL/AR/e are sane AND the result
+    stays positive — otherwise returns the (conservative) total CD unchanged.
+    """
+    if cl is None or ar is None or e is None or ar <= 0 or e <= 0:
+        return float(cd_total)
+    cd_induced = float(cl) ** 2 / (math.pi * float(ar) * float(e))
+    cd0_parasite = float(cd_total) - cd_induced
+    return cd0_parasite if cd0_parasite > 0 else float(cd_total)
 
 
 def _coarse_alpha_sweep(
