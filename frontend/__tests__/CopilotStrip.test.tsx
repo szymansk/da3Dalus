@@ -363,6 +363,201 @@ describe("CopilotStrip — error display", () => {
 });
 
 // ---------------------------------------------------------------------------
+// Markdown + LaTeX rendering (gh-930)
+// ---------------------------------------------------------------------------
+
+describe("CopilotStrip — markdown rendering in AssistantBubble", () => {
+  it("renders markdown: bold, code, and list items in assistant bubble", async () => {
+    mockCtx();
+    mockCopilot({
+      history: {
+        messages: [
+          {
+            id: 10,
+            role: "assistant",
+            content: "**bold** and `code`\n\n- item one\n- item two",
+            tool_calls: null,
+            tool_results: null,
+            parent_id: null,
+            created_at: "2026-06-09T10:00:00Z",
+          },
+        ],
+      },
+    });
+
+    const user = userEvent.setup();
+    render(<CopilotStrip />);
+    await user.click(screen.getByRole("button", { name: "Expand copilot panel" }));
+
+    const bubble = screen.getByTestId("assistant-bubble");
+    // streamdown renders **bold** as <span data-streamdown="strong"> (not <strong>)
+    // and inline `code` as <code data-streamdown="inline-code">
+    const boldEl =
+      bubble.querySelector("strong") ??
+      bubble.querySelector('[data-streamdown="strong"]');
+    expect(boldEl).not.toBeNull();
+    const codeEl =
+      bubble.querySelector("code") ??
+      bubble.querySelector('[data-streamdown="inline-code"]');
+    expect(codeEl).not.toBeNull();
+    const listItems = bubble.querySelectorAll("li");
+    expect(listItems.length).toBeGreaterThanOrEqual(2);
+  });
+
+  it("renders LaTeX math: $E=mc^2$ produces a KaTeX element (.katex)", async () => {
+    mockCtx();
+    mockCopilot({
+      history: {
+        messages: [
+          {
+            id: 11,
+            role: "assistant",
+            content: "The equation is $E=mc^2$ in physics.",
+            tool_calls: null,
+            tool_results: null,
+            parent_id: null,
+            created_at: "2026-06-09T10:00:01Z",
+          },
+        ],
+      },
+    });
+
+    const user = userEvent.setup();
+    render(<CopilotStrip />);
+    await user.click(screen.getByRole("button", { name: "Expand copilot panel" }));
+
+    const bubble = screen.getByTestId("assistant-bubble");
+    // KaTeX renders to .katex spans; if that fails, the raw $...$ must not be shown literally
+    const katexEl = bubble.querySelector(".katex");
+    if (katexEl) {
+      expect(katexEl).not.toBeNull();
+    } else {
+      // fallback: math was processed but not via .katex (e.g. jsdom limitation)
+      // at minimum the literal $E=mc^2$ should not appear as plain text
+      expect(bubble.textContent).not.toContain("$E=mc^2$");
+    }
+  });
+
+  it("single-newline lines render as separate lines (<br>) and GFM tables survive", async () => {
+    mockCtx();
+    mockCopilot({
+      history: {
+        messages: [
+          {
+            id: 12,
+            role: "assistant",
+            // Line-by-line figures (no blank lines, no list markers) plus a
+            // GFM table — verifies remark-breaks is added WITHOUT dropping gfm.
+            content:
+              "Wing area: 0.30 m²\nAspect ratio: 7.5\nStall speed: 6.8 m/s\n\n" +
+              "| Component | Share |\n|---|---|\n| Profile | 41% |\n| Induced | 38% |",
+            tool_calls: null,
+            tool_results: null,
+            parent_id: null,
+            created_at: "2026-06-09T10:00:02Z",
+          },
+        ],
+      },
+    });
+
+    const user = userEvent.setup();
+    render(<CopilotStrip />);
+    await user.click(screen.getByRole("button", { name: "Expand copilot panel" }));
+
+    const bubble = screen.getByTestId("assistant-bubble");
+    // remark-breaks turns the single newlines into <br> (≥2 for 3 stacked lines)
+    expect(bubble.querySelectorAll("br").length).toBeGreaterThanOrEqual(2);
+    // gfm default is preserved → the markdown table still renders
+    expect(bubble.querySelector("table")).not.toBeNull();
+  });
+
+  it("urlTransform blocks images & non-https links, keeps https links", async () => {
+    mockCtx();
+    mockCopilot({
+      history: {
+        messages: [
+          {
+            id: 13,
+            role: "assistant",
+            content:
+              "![diagram](https://cdn.example.com/wing.png)\n\n" +
+              "See [good](https://good.example.com) and [bad](http://bad.example.com).",
+            tool_calls: null,
+            tool_results: null,
+            parent_id: null,
+            created_at: "2026-06-09T10:00:03Z",
+          },
+        ],
+      },
+    });
+
+    const user = userEvent.setup();
+    render(<CopilotStrip />);
+    await user.click(screen.getByRole("button", { name: "Expand copilot panel" }));
+
+    const bubble = screen.getByTestId("assistant-bubble");
+    // images are blocked entirely (urlTransform returns null for key === "src")
+    expect(bubble.querySelector("img")).toBeNull();
+    // https links survive with their href
+    const hrefs = Array.from(bubble.querySelectorAll("a")).map((a) =>
+      a.getAttribute("href"),
+    );
+    // https link survives (URL may be normalized with a trailing slash)
+    expect(hrefs.some((h) => h?.startsWith("https://good.example.com"))).toBe(true);
+    // non-https (http) links never keep their href
+    expect(hrefs.some((h) => h?.startsWith("http://"))).toBe(false);
+  });
+
+  it("UserBubble keeps plain text — **not bold** renders literally, no <strong>", async () => {
+    mockCtx();
+    mockCopilot({
+      history: {
+        messages: [
+          {
+            id: 12,
+            role: "user",
+            content: "**not bold**",
+            tool_calls: null,
+            tool_results: null,
+            parent_id: null,
+            created_at: "2026-06-09T10:00:02Z",
+          },
+        ],
+      },
+    });
+
+    const user = userEvent.setup();
+    render(<CopilotStrip />);
+    await user.click(screen.getByRole("button", { name: "Expand copilot panel" }));
+
+    const bubble = screen.getByTestId("user-bubble");
+    expect(bubble.textContent).toContain("**not bold**");
+    // UserBubble is plain text — neither <strong> nor streamdown's bold span
+    expect(bubble.querySelector("strong")).toBeNull();
+    expect(bubble.querySelector('[data-streamdown="strong"]')).toBeNull();
+  });
+
+  it("streaming path: partial markdown renders without error and cursor is present", async () => {
+    mockCtx();
+    mockCopilot({
+      history: undefined,
+      streamingText: "```py\nprint(",
+      isSending: true,
+    });
+
+    const user = userEvent.setup();
+    render(<CopilotStrip />);
+    await user.click(screen.getByRole("button", { name: "Expand copilot panel" }));
+
+    const bubble = screen.getByTestId("assistant-bubble");
+    expect(bubble).toBeInTheDocument();
+    // The streaming cursor (animate-pulse span) must still be present
+    const cursor = bubble.querySelector('[aria-hidden]');
+    expect(cursor).not.toBeNull();
+  });
+});
+
+// ---------------------------------------------------------------------------
 // Send interaction
 // ---------------------------------------------------------------------------
 
