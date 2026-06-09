@@ -79,8 +79,14 @@ def _get_aeroplane(db: Session, aeroplane_id: UUID4) -> AeroplaneModel:
     return plane
 
 
-def _extract_polar_inputs(plane: AeroplaneModel) -> dict[str, float | None]:
-    """Pull mass_kg, s_ref_m2, ar, e_oswald, cd0 from the computation context."""
+def _extract_polar_inputs(plane: AeroplaneModel) -> dict[str, Any]:
+    """Pull the parabolic-polar parameters from the computation context.
+
+    Beyond the legacy fixed cd0/e, also pulls the Reynolds cd0/e table, MAC,
+    and CL_max so the polar uses the SAME model as the characteristic-speed
+    chips (gh-924): the curve and the V_md / V_min_sink markers then match the
+    chips instead of diverging.
+    """
     ctx: dict[str, Any] = cast(dict[str, Any], plane.assumption_computation_context or {})
     return {
         "mass_kg": _safe_float(ctx.get("mass_kg")),
@@ -88,7 +94,26 @@ def _extract_polar_inputs(plane: AeroplaneModel) -> dict[str, float | None]:
         "ar": _safe_float(ctx.get("aspect_ratio")),
         "e_oswald": _safe_float(ctx.get("e_oswald")),
         "cd0": _safe_float(ctx.get("cd0")),
+        "polar_re_table": ctx.get("polar_re_table") or None,
+        "mac_m": _safe_float(ctx.get("mac_m")),
+        "cl_max": _extract_cl_max(ctx),
     }
+
+
+def _extract_cl_max(ctx: dict[str, Any]) -> float | None:
+    """Clean-config CL_max (stall) — clamps the sweep + markers at V_stall.
+
+    Prefers the clean polar config, falling back to the first Reynolds-table
+    row, then a top-level ``cl_max`` field.
+    """
+    clean = (ctx.get("polar_by_config") or {}).get("clean") or {}
+    candidate = clean.get("cl_max")
+    if candidate is None:
+        table = ctx.get("polar_re_table") or []
+        candidate = table[0].get("cl_max") if table else None
+    if candidate is None:
+        candidate = ctx.get("cl_max")
+    return _safe_float(candidate)
 
 
 def _safe_float(value: Any) -> float | None:

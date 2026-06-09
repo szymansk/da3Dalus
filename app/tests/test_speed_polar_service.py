@@ -281,3 +281,89 @@ class TestComputeSpeedPolar:
         assert isinstance(result_alt, SpeedPolarResult)
         # Lower density → higher speed for same CL
         assert result_alt.best_glide.v_mps > result_sl.best_glide.v_mps
+
+
+# ---------------------------------------------------------------------------
+# Reynolds mode (gh-924) — polar markers must match the characteristic-speed
+# chips: cd0(V)/e(V) from the polar_re_table, CL_max clamp, sweep truncation.
+# ---------------------------------------------------------------------------
+
+
+def _fallback_table(cl_max: float = 1.256) -> list[dict]:
+    """All-fallback Re table → lookup_cd0_at_v returns 0.03, e returns 0.8."""
+    return [
+        {"re": 85000, "v_mps": 9.0, "cd0": None, "e_oswald": None,
+         "cl_max": cl_max, "fallback_used": True},
+        {"re": 170000, "v_mps": 18.0, "cd0": None, "e_oswald": None,
+         "cl_max": cl_max, "fallback_used": True},
+    ]
+
+
+class TestComputeSpeedPolarReynolds:
+    # eHawk-like high-AR glider: scalar cd0/e differ from the fallback table
+    EH = dict(mass_kg=1.5, s_ref_m2=0.1999, ar=11.3, e_oswald=0.7916, cd0=0.02364)
+    MAC = 0.1398
+    CL_MAX = 1.256
+
+    def test_uses_reynolds_cd0_not_passed_cd0(self):
+        """Best-glide uses cd0(V)=0.03 from the fallback table, NOT cd0=0.02364."""
+        res = compute_speed_polar(
+            **self.EH, polar_re_table=_fallback_table(self.CL_MAX),
+            mac_m=self.MAC, cl_max=self.CL_MAX,
+        )
+        assert isinstance(res, SpeedPolarResult)
+        # Closed-form best-glide with the FALLBACK cd0=0.03, e=0.8:
+        k = _induced_drag_factor(11.3, 0.8)
+        cl_bg = _cl_best_glide(0.03, k)
+        v_bg = _velocity(1.5 * G, RHO, 0.1999, cl_bg)
+        assert res.best_glide.v_mps == pytest.approx(v_bg, abs=0.05)
+        # And distinctly NOT the value the passed cd0=0.02364 would give
+        v_bg_passed = _velocity(
+            1.5 * G, RHO, 0.1999,
+            _cl_best_glide(0.02364, _induced_drag_factor(11.3, 0.7916)),
+        )
+        assert abs(res.best_glide.v_mps - v_bg_passed) > 0.3
+
+    def test_min_sink_clamped_to_v_stall(self):
+        """CL_min_sink > CL_max → min-sink marker sits at V_stall, not sub-stall."""
+        res = compute_speed_polar(
+            **self.EH, polar_re_table=_fallback_table(self.CL_MAX),
+            mac_m=self.MAC, cl_max=self.CL_MAX,
+        )
+        assert isinstance(res, SpeedPolarResult)
+        v_stall = _velocity(1.5 * G, RHO, 0.1999, self.CL_MAX)
+        assert res.min_sink.v_mps == pytest.approx(v_stall, abs=0.05)
+        assert res.min_sink.cl == pytest.approx(self.CL_MAX, abs=1e-3)
+
+    def test_sweep_does_not_go_below_v_stall(self):
+        """Curve is truncated at CL_max — nothing plotted past stall."""
+        res = compute_speed_polar(
+            **self.EH, polar_re_table=_fallback_table(self.CL_MAX),
+            mac_m=self.MAC, cl_max=self.CL_MAX,
+        )
+        assert isinstance(res, SpeedPolarResult)
+        v_stall = _velocity(1.5 * G, RHO, 0.1999, self.CL_MAX)
+        assert min(res.v_mps) >= v_stall - 0.05
+        assert max(res.cl) <= self.CL_MAX + 1e-6
+
+    def test_markers_match_chip_speeds_ehawk(self):
+        """Regression for the reported bug: polar V_md/V_min_sink == the chips."""
+        res = compute_speed_polar(
+            **self.EH, polar_re_table=_fallback_table(self.CL_MAX),
+            mac_m=self.MAC, cl_max=self.CL_MAX,
+        )
+        assert isinstance(res, SpeedPolarResult)
+        # The chips (assumption_compute_service) report 11.4 / 9.8 for eHawk
+        assert res.best_glide.v_mps == pytest.approx(11.4, abs=0.1)
+        assert res.min_sink.v_mps == pytest.approx(9.8, abs=0.1)
+
+    def test_legacy_mode_unchanged_without_table(self):
+        """No polar_re_table → identical to the legacy closed-form path."""
+        legacy = compute_speed_polar(**self.EH)
+        with_clmax_only = compute_speed_polar(**self.EH)  # still legacy
+        assert isinstance(legacy, SpeedPolarResult)
+        # Legacy best-glide uses the PASSED cd0/e (no Reynolds override, no clamp)
+        k = _induced_drag_factor(11.3, 0.7916)
+        v_bg = _velocity(1.5 * G, RHO, 0.1999, _cl_best_glide(0.02364, k))
+        assert legacy.best_glide.v_mps == pytest.approx(v_bg, abs=0.05)
+        assert legacy.best_glide.v_mps == with_clmax_only.best_glide.v_mps
