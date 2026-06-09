@@ -438,6 +438,39 @@ describe("CopilotStrip — markdown rendering in AssistantBubble", () => {
     }
   });
 
+  it("single-newline lines render as separate lines (<br>) and GFM tables survive", async () => {
+    mockCtx();
+    mockCopilot({
+      history: {
+        messages: [
+          {
+            id: 12,
+            role: "assistant",
+            // Line-by-line figures (no blank lines, no list markers) plus a
+            // GFM table — verifies remark-breaks is added WITHOUT dropping gfm.
+            content:
+              "Wing area: 0.30 m²\nAspect ratio: 7.5\nStall speed: 6.8 m/s\n\n" +
+              "| Component | Share |\n|---|---|\n| Profile | 41% |\n| Induced | 38% |",
+            tool_calls: null,
+            tool_results: null,
+            parent_id: null,
+            created_at: "2026-06-09T10:00:02Z",
+          },
+        ],
+      },
+    });
+
+    const user = userEvent.setup();
+    render(<CopilotStrip />);
+    await user.click(screen.getByRole("button", { name: "Expand copilot panel" }));
+
+    const bubble = screen.getByTestId("assistant-bubble");
+    // remark-breaks turns the single newlines into <br> (≥2 for 3 stacked lines)
+    expect(bubble.querySelectorAll("br").length).toBeGreaterThanOrEqual(2);
+    // gfm default is preserved → the markdown table still renders
+    expect(bubble.querySelector("table")).not.toBeNull();
+  });
+
   it("UserBubble keeps plain text — **not bold** renders literally, no <strong>", async () => {
     mockCtx();
     mockCopilot({

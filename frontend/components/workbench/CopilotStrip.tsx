@@ -5,9 +5,11 @@ import { Send, ChevronUp, ChevronDown, Bot, User, AlertCircle } from "lucide-rea
 import { useAeroplaneContext } from "@/components/workbench/AeroplaneContext";
 import { useCopilot } from "@/hooks/useCopilot";
 import type { CopilotMessageRead } from "@/hooks/useCopilot";
-import { Streamdown } from "streamdown";
+import { Streamdown, defaultRemarkPlugins } from "streamdown";
 import type { MathPlugin, PluginConfig, UrlTransform } from "streamdown";
+import type { PluggableList } from "unified";
 import remarkMath from "remark-math";
+import remarkBreaks from "remark-breaks";
 import rehypeKatex from "rehype-katex";
 
 // ---------------------------------------------------------------------------
@@ -22,6 +24,15 @@ const mathPlugin: MathPlugin = {
 };
 
 const streamdownPlugins: PluginConfig = { math: mathPlugin };
+
+// Keep streamdown's GFM defaults (tables, etc.) but add remark-breaks so a
+// single newline renders as a line break. The copilot often emits key figures
+// one per line without list markers; without this they collapse into one run.
+const copilotRemarkPlugins: PluggableList = [
+  defaultRemarkPlugins.gfm,
+  defaultRemarkPlugins.codeMeta,
+  remarkBreaks,
+];
 
 /** Block images entirely; allow only https links. */
 const copilotUrlTransform: UrlTransform = (url, key) => {
@@ -55,6 +66,7 @@ function AssistantBubble({
       <div className="max-w-[80%] rounded-lg rounded-tl-sm bg-card px-3 py-2 text-[13px] text-foreground">
         <Streamdown
           plugins={streamdownPlugins}
+          remarkPlugins={copilotRemarkPlugins}
           urlTransform={copilotUrlTransform}
           parseIncompleteMarkdown
           linkSafety={{ enabled: false }}
