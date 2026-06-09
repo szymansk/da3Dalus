@@ -5,6 +5,30 @@ import { Send, ChevronUp, ChevronDown, Bot, User, AlertCircle } from "lucide-rea
 import { useAeroplaneContext } from "@/components/workbench/AeroplaneContext";
 import { useCopilot } from "@/hooks/useCopilot";
 import type { CopilotMessageRead } from "@/hooks/useCopilot";
+import { Streamdown } from "streamdown";
+import type { MathPlugin, PluginConfig, UrlTransform } from "streamdown";
+import remarkMath from "remark-math";
+import rehypeKatex from "rehype-katex";
+
+// ---------------------------------------------------------------------------
+// Streamdown math plugin + security config (module-level — never recreated)
+// ---------------------------------------------------------------------------
+
+const mathPlugin: MathPlugin = {
+  name: "katex",
+  type: "math",
+  remarkPlugin: remarkMath,
+  rehypePlugin: rehypeKatex,
+};
+
+const streamdownPlugins: PluginConfig = { math: mathPlugin };
+
+/** Block images entirely; allow only https links. */
+const copilotUrlTransform: UrlTransform = (url, key) => {
+  if (key === "src") return null; // block all images
+  if (url.startsWith("https://")) return url;
+  return null;
+};
 
 // ---------------------------------------------------------------------------
 // Message bubble helpers
@@ -28,8 +52,14 @@ function AssistantBubble({
   return (
     <div className="flex items-start gap-2" data-testid="assistant-bubble">
       <Bot size={16} className="mt-0.5 shrink-0 text-primary" />
-      <div className="max-w-[80%] rounded-lg rounded-tl-sm bg-card px-3 py-2 text-[13px] text-foreground whitespace-pre-wrap">
-        {content}
+      <div className="max-w-[80%] rounded-lg rounded-tl-sm bg-card px-3 py-2 text-[13px] text-foreground">
+        <Streamdown
+          plugins={streamdownPlugins}
+          urlTransform={copilotUrlTransform}
+          parseIncompleteMarkdown
+        >
+          {content}
+        </Streamdown>
         {isStreaming && (
           <span className="ml-0.5 inline-block h-3 w-0.5 animate-pulse bg-current" aria-hidden />
         )}

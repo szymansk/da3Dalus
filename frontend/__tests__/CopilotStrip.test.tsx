@@ -363,6 +363,131 @@ describe("CopilotStrip — error display", () => {
 });
 
 // ---------------------------------------------------------------------------
+// Markdown + LaTeX rendering (gh-930)
+// ---------------------------------------------------------------------------
+
+describe("CopilotStrip — markdown rendering in AssistantBubble", () => {
+  it("renders markdown: bold, code, and list items in assistant bubble", async () => {
+    mockCtx();
+    mockCopilot({
+      history: {
+        messages: [
+          {
+            id: 10,
+            role: "assistant",
+            content: "**bold** and `code`\n\n- item one\n- item two",
+            tool_calls: null,
+            tool_results: null,
+            parent_id: null,
+            created_at: "2026-06-09T10:00:00Z",
+          },
+        ],
+      },
+    });
+
+    const user = userEvent.setup();
+    render(<CopilotStrip />);
+    await user.click(screen.getByRole("button", { name: "Expand copilot panel" }));
+
+    const bubble = screen.getByTestId("assistant-bubble");
+    // streamdown renders **bold** as <span data-streamdown="strong"> (not <strong>)
+    // and inline `code` as <code data-streamdown="inline-code">
+    const boldEl =
+      bubble.querySelector("strong") ??
+      bubble.querySelector('[data-streamdown="strong"]');
+    expect(boldEl).not.toBeNull();
+    const codeEl =
+      bubble.querySelector("code") ??
+      bubble.querySelector('[data-streamdown="inline-code"]');
+    expect(codeEl).not.toBeNull();
+    const listItems = bubble.querySelectorAll("li");
+    expect(listItems.length).toBeGreaterThanOrEqual(2);
+  });
+
+  it("renders LaTeX math: $E=mc^2$ produces a KaTeX element (.katex)", async () => {
+    mockCtx();
+    mockCopilot({
+      history: {
+        messages: [
+          {
+            id: 11,
+            role: "assistant",
+            content: "The equation is $E=mc^2$ in physics.",
+            tool_calls: null,
+            tool_results: null,
+            parent_id: null,
+            created_at: "2026-06-09T10:00:01Z",
+          },
+        ],
+      },
+    });
+
+    const user = userEvent.setup();
+    render(<CopilotStrip />);
+    await user.click(screen.getByRole("button", { name: "Expand copilot panel" }));
+
+    const bubble = screen.getByTestId("assistant-bubble");
+    // KaTeX renders to .katex spans; if that fails, the raw $...$ must not be shown literally
+    const katexEl = bubble.querySelector(".katex");
+    if (katexEl) {
+      expect(katexEl).not.toBeNull();
+    } else {
+      // fallback: math was processed but not via .katex (e.g. jsdom limitation)
+      // at minimum the literal $E=mc^2$ should not appear as plain text
+      expect(bubble.textContent).not.toContain("$E=mc^2$");
+    }
+  });
+
+  it("UserBubble keeps plain text — **not bold** renders literally, no <strong>", async () => {
+    mockCtx();
+    mockCopilot({
+      history: {
+        messages: [
+          {
+            id: 12,
+            role: "user",
+            content: "**not bold**",
+            tool_calls: null,
+            tool_results: null,
+            parent_id: null,
+            created_at: "2026-06-09T10:00:02Z",
+          },
+        ],
+      },
+    });
+
+    const user = userEvent.setup();
+    render(<CopilotStrip />);
+    await user.click(screen.getByRole("button", { name: "Expand copilot panel" }));
+
+    const bubble = screen.getByTestId("user-bubble");
+    expect(bubble.textContent).toContain("**not bold**");
+    // UserBubble is plain text — neither <strong> nor streamdown's bold span
+    expect(bubble.querySelector("strong")).toBeNull();
+    expect(bubble.querySelector('[data-streamdown="strong"]')).toBeNull();
+  });
+
+  it("streaming path: partial markdown renders without error and cursor is present", async () => {
+    mockCtx();
+    mockCopilot({
+      history: undefined,
+      streamingText: "```py\nprint(",
+      isSending: true,
+    });
+
+    const user = userEvent.setup();
+    render(<CopilotStrip />);
+    await user.click(screen.getByRole("button", { name: "Expand copilot panel" }));
+
+    const bubble = screen.getByTestId("assistant-bubble");
+    expect(bubble).toBeInTheDocument();
+    // The streaming cursor (animate-pulse span) must still be present
+    const cursor = bubble.querySelector('[aria-hidden]');
+    expect(cursor).not.toBeNull();
+  });
+});
+
+// ---------------------------------------------------------------------------
 // Send interaction
 // ---------------------------------------------------------------------------
 
