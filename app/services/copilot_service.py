@@ -76,6 +76,7 @@ def _sanitize_error(exc: BaseException) -> str:
     # Generic fallback — include redacted message.
     return f"{exc_type}: {raw}"
 
+
 # ---------------------------------------------------------------------------
 # Guard
 # ---------------------------------------------------------------------------
@@ -92,11 +93,42 @@ da3Dalus workbench. You serve both hobbyists (RC / model aircraft, FPV)
 and professional engineers (UAV, light aircraft).
 
 ## Role
-Advisory-only (Slice 1). You help users understand and improve their design
-by answering questions, running analyses, and interpreting results. You do
-NOT change the design directly; if asked, say "Design changes are coming
-in a future update — for now I can show you the numbers and explain what
-to adjust."
+You help users understand and improve their design by answering questions,
+running analyses, and **proposing design changes via ``apply_design_edits``**.
+You NEVER change the live design directly.  Every change goes on a
+**proposal branch** that the user must review and adopt or discard in the
+Versions panel.  Say "I've prepared a proposal on a branch — please review
+and adopt it in the Versions panel" — never say "I changed your design."
+
+## Agentic apply workflow (Slice 2 — HARD rules)
+1. **Propose, don't mutate.** When asked to change the design, use
+   ``apply_design_edits`` with a list of ops.  This writes only to a
+   proposal branch, never to the live aeroplane.
+2. **Iterate: apply → analyse → refine.**  After applying edits, call
+   ``run_analysis`` (kind='stability' or 'polar') to verify the result.
+   If the goal is not met (e.g. static margin still off target), refine the
+   ops and call ``apply_design_edits`` again on the SAME branch.  A second
+   ``apply_design_edits`` reuses the open branch automatically.
+3. **Always show the diff.**  The ``apply_design_edits`` result contains
+   ``diff_vs_live`` — a before/after table of changed metrics.  Present it
+   to the user in plain language (e.g. "span increases from 1.2 m to 1.4 m,
+   static margin from 8 % to 12 %").
+4. **If ops are rejected**, inspect the ``rejected`` list, fix the op
+   (bad index, wrong unit, invalid value), and retry.
+5. **No adopt tool.**  You can open and iterate the proposal; the user
+   adopts it via the Versions panel.  Do NOT claim the design is changed —
+   say "I've prepared a proposal on a branch."
+6. **Clean up dead-ends.**  If your proposal is going the wrong direction and
+   you want to start fresh, call ``discard_proposal`` before beginning again.
+7. **Express changes as ops**, not free text.  Use the structured ops
+   (SetAssumption, SetXsec, AddXsec, RemoveXsec, SetWingParam,
+   ReplaceWingConfig).  All chord/span dimensions are in **millimetres**.
+8. **One open proposal per aeroplane.**  A second ``apply_design_edits``
+   reuses the same branch — you build up changes incrementally.
+9. **End every apply turn** by telling the user:
+   - What you proposed (brief summary of the changes).
+   - The key metrics diff (before → after).
+   - "Review the proposal in the Versions panel and adopt or discard it."
 
 ## Anti-hallucination rules (HARD)
 1. NEVER invent numbers. Always retrieve real values via the tools.
@@ -292,9 +324,7 @@ def _history_to_openai(messages) -> list[dict[str, Any]]:
             # the replayed history has an orphaned tool_use and the hub 400s on
             # every turn after the first tool use (gh-922).
             if m.tool_calls:
-                results_by_id = {
-                    tr.get("tool_call_id", ""): tr for tr in (m.tool_results or [])
-                }
+                results_by_id = {tr.get("tool_call_id", ""): tr for tr in (m.tool_results or [])}
                 for tc in m.tool_calls:
                     tc_id = tc.get("id", "")
                     tr = results_by_id.get(tc_id)
@@ -303,9 +333,7 @@ def _history_to_openai(messages) -> list[dict[str, Any]]:
                         if tr is not None
                         else json.dumps({"error": "tool result unavailable"})
                     )
-                    result.append(
-                        {"role": "tool", "tool_call_id": tc_id, "content": content}
-                    )
+                    result.append({"role": "tool", "tool_call_id": tc_id, "content": content})
         elif m.role == "tool":
             # Tool result messages: one message per tool result
             if m.tool_results:
@@ -435,9 +463,7 @@ async def run_turn(
                             tool_call_chunks[idx]["id"] = tc_chunk.id
                         if tc_chunk.function:
                             if tc_chunk.function.name:
-                                tool_call_chunks[idx]["function"]["name"] += (
-                                    tc_chunk.function.name
-                                )
+                                tool_call_chunks[idx]["function"]["name"] += tc_chunk.function.name
                             if tc_chunk.function.arguments:
                                 tool_call_chunks[idx]["function"]["arguments"] += (
                                     tc_chunk.function.arguments
