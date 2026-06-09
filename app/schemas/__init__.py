@@ -12,6 +12,7 @@ from app.schemas.aeroplaneschema import WingXSecReadSchema
 from app.schemas.aeroplaneschema import WingXSecGeometryWriteSchema
 from app.schemas.aeroplaneschema import WingUnitsSchema
 from app.schemas.aeroplaneschema import SpareDetailSchema
+from app.schemas.aeroplaneschema import TurbulatorDetailSchema
 from app.schemas.aeroplaneschema import TrailingEdgeDeviceDetailSchema
 from app.schemas.aeroplaneschema import TrailingEdgeDevicePatchSchema
 from app.schemas.aeroplaneschema import TrailingEdgeServoSchema

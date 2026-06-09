@@ -6,6 +6,7 @@ from pydantic import PositiveFloat, PositiveInt, NonNegativeFloat
 from cad_designer.airplane.aircraft_topology.wing.Airfoil import Airfoil
 from cad_designer.airplane.aircraft_topology.wing.Spare import Spare
 from cad_designer.airplane.aircraft_topology.wing.TrailingEdgeDevice import TrailingEdgeDevice
+from cad_designer.airplane.aircraft_topology.wing.Turbulator import Turbulator
 from cad_designer.airplane.types import WingSegmentType, TipType
 
 
@@ -41,7 +42,8 @@ class WingSegment:
                  trailing_edge_device: Optional[TrailingEdgeDevice] = None,
                  number_interpolation_points: Optional[PositiveInt] = None,
                  tip_type: Optional[TipType] = None,
-                 wing_segment_type: WingSegmentType = 'segment'):
+                 wing_segment_type: WingSegmentType = 'segment',
+                 turbulator: Optional[Turbulator] = None):
         """
         Initializes a WingSegment instance.
 
@@ -80,6 +82,7 @@ class WingSegment:
 
         self.spare_list = spare_list
         self.trailing_edge_device = trailing_edge_device
+        self.turbulator = turbulator
         self.number_interpolation_points = number_interpolation_points
         self.tip_type = tip_type
         self.wing_segment_type = wing_segment_type
@@ -97,6 +100,8 @@ class WingSegment:
             elif key == 'spare_list':
                 data[key] = [spare.__getstate__() for spare in value] if value is not None else None
             elif key == 'trailing_edge_device':
+                data[key] = value.__getstate__() if value else None
+            elif key == 'turbulator':
                 data[key] = value.__getstate__() if value else None
             else:
                 data[key] = value
@@ -116,6 +121,7 @@ class WingSegment:
         from cad_designer.airplane.aircraft_topology.wing.Airfoil import Airfoil
         from cad_designer.airplane.aircraft_topology.wing.Spare import Spare
         from cad_designer.airplane.aircraft_topology.wing.TrailingEdgeDevice import TrailingEdgeDevice
+        from cad_designer.airplane.aircraft_topology.wing.Turbulator import Turbulator
 
         # Create root_airfoil and tip_airfoil objects
         root_airfoil = Airfoil.from_json_dict(data.get('root_airfoil')) if data.get('root_airfoil') else None
@@ -131,6 +137,11 @@ class WingSegment:
         if data.get('trailing_edge_device'):
             trailing_edge_device = TrailingEdgeDevice.from_json_dict(data.get('trailing_edge_device'))
 
+        # Create turbulator
+        turbulator = None
+        if data.get('turbulator'):
+            turbulator = Turbulator.from_json_dict(data.get('turbulator'))
+
         # Create and return the WingSegment
         return WingSegment(
             root_airfoil=root_airfoil,
@@ -142,5 +153,6 @@ class WingSegment:
             trailing_edge_device=trailing_edge_device,
             number_interpolation_points=data.get('number_interpolation_points'),
             tip_type=data.get('tip_type'),
-            wing_segment_type=data.get('wing_segment_type', 'segment')
+            wing_segment_type=data.get('wing_segment_type', 'segment'),
+            turbulator=turbulator
         )

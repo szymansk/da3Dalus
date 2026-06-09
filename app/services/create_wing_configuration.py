@@ -5,10 +5,12 @@ from cad_designer.airplane.aircraft_topology.wing import (
     Spare,
 )
 from cad_designer.airplane.aircraft_topology.wing import Airfoil
+from cad_designer.airplane.aircraft_topology.wing.Turbulator import Turbulator
 from app.schemas.wing import Wing as WingModel
 from app.schemas.wing import Airfoil as AirfoilModel
 from app.schemas.wing import Segment as SegmentModel
 from app.schemas.wing import TrailingEdgeDevice as TrailingEdgeDeviceModel
+from app.schemas.wing import Turbulator as TurbulatorModel
 from app.schemas.wing import Servo as ServoModel
 from app.schemas.wing import Spare as SpareModel
 from pathlib import Path
@@ -114,6 +116,19 @@ def create_trailing_edge_device(ted_model: TrailingEdgeDeviceModel) -> TrailingE
     return TrailingEdgeDevice(**initialization_dict)
 
 
+def create_turbulator(turbulator_model: TurbulatorModel | None) -> Turbulator | None:
+    """Convert a schema Turbulator (app.schemas.wing.Turbulator) to a topology Turbulator."""
+    if turbulator_model is None:
+        return None
+    return Turbulator(
+        form=turbulator_model.form,
+        height_mm=turbulator_model.height_mm,
+        position_root=turbulator_model.position_root,
+        position_tip=turbulator_model.position_tip,
+        enabled=turbulator_model.enabled,
+    )
+
+
 def create_spare(spare_model: SpareModel) -> Spare | None:
     return Spare(**spare_model.__dict__.copy()) if spare_model is not None else None
 
@@ -134,6 +149,9 @@ def create_segment(segment_model: SegmentModel) -> dict | None:
         create_trailing_edge_device(segment_model.trailing_edge_device)
         if segment_model.trailing_edge_device is not None
         else None
+    )
+    initialization_dict["turbulator"] = create_turbulator(
+        getattr(segment_model, "turbulator", None)
     )
 
     del initialization_dict["root_airfoil"]
@@ -161,6 +179,7 @@ def create_tip_segment(segment_model: SegmentModel) -> dict | None:
     del initialization_dict["root_airfoil"]
     del initialization_dict["spare_list"]
     del initialization_dict["trailing_edge_device"]
+    initialization_dict.pop("turbulator", None)
     initialization_dict.pop("wing_segment_type", None)
 
     return initialization_dict
@@ -242,6 +261,7 @@ def create_root_segment(wing_model: WingModel) -> dict:
         if root_segment.trailing_edge_device is not None
         else None
     )
+    initialization_dict["turbulator"] = create_turbulator(getattr(root_segment, "turbulator", None))
 
     del initialization_dict["tip_type"]
     initialization_dict.pop("wing_segment_type", None)

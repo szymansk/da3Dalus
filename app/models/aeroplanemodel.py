@@ -1,4 +1,15 @@
-from sqlalchemy import Column, Integer, String, Float, Boolean, ForeignKey, JSON, Text, UniqueConstraint, Index
+from sqlalchemy import (
+    Column,
+    Integer,
+    String,
+    Float,
+    Boolean,
+    ForeignKey,
+    JSON,
+    Text,
+    UniqueConstraint,
+    Index,
+)
 from sqlalchemy import text
 from sqlalchemy.orm import relationship
 import uuid
@@ -69,6 +80,22 @@ class ProjectedControlSurface:
         self.deflection = deflection
 
 
+class WingXSecTurbulatorModel(Base):
+    """One-to-one optional turbulator per wing cross-section detail (gh-934)."""
+
+    __tablename__ = "wing_xsec_turbulators"
+    wing_xsec_detail_id = Column(
+        Integer, ForeignKey("wing_xsec_details.id", ondelete="CASCADE"), nullable=False, unique=True
+    )
+    form = Column(String, nullable=True)
+    height_mm = Column(Float, nullable=True)
+    position_root = Column(Float, nullable=True)
+    position_tip = Column(Float, nullable=True)
+    enabled = Column(Boolean, nullable=False, default=True, server_default="1")
+
+    detail = relationship("WingXSecDetailModel", back_populates="turbulator")
+
+
 class WingXSecDetailModel(Base):
     __tablename__ = "wing_xsec_details"
     wing_xsec_id = Column(
@@ -87,6 +114,12 @@ class WingXSecDetailModel(Base):
     )
     trailing_edge_device = relationship(
         "WingXSecTrailingEdgeDeviceModel",
+        back_populates="detail",
+        uselist=False,
+        cascade=_CASCADE_ALL_DELETE_ORPHAN,
+    )
+    turbulator = relationship(
+        "WingXSecTurbulatorModel",
         back_populates="detail",
         uselist=False,
         cascade=_CASCADE_ALL_DELETE_ORPHAN,
@@ -217,6 +250,10 @@ class WingXSecModel(Base):
     @property
     def trailing_edge_device(self):
         return self.detail.trailing_edge_device if self.detail else None
+
+    @property
+    def turbulator(self):
+        return self.detail.turbulator if self.detail else None
 
     @property
     def control_surface(self):
@@ -353,6 +390,19 @@ class WingModel(Base):
         return ted
 
     @classmethod
+    def _build_turbulator_model(cls, turbulator: Any):
+        """Build a WingXSecTurbulatorModel from a turbulator payload dict or None."""
+        turb_payload = cls._as_payload(turbulator)
+        if not turb_payload:
+            return None
+
+        turb_payload = turb_payload.copy()
+        turb_payload.pop("id", None)
+        turb_payload.pop("wing_xsec_detail_id", None)
+        turb_payload.pop("detail", None)
+        return WingXSecTurbulatorModel(**turb_payload)
+
+    @classmethod
     def _extract_xsec_segment_fields(cls, xsec_payload: dict):
         """Pop segment-specific fields from xsec_payload; return them as a tuple."""
         control_surface = cls._as_payload(xsec_payload.pop("control_surface", None))
@@ -366,11 +416,18 @@ class WingModel(Base):
             xsec_payload.pop("x_sec_type", None),
             xsec_payload.pop("tip_type", None),
             xsec_payload.pop("number_interpolation_points", None),
+            xsec_payload.pop("turbulator", None),
         )
 
     @classmethod
     def _build_xsec_detail(
-        cls, x_sec_type, tip_type, number_interpolation_points, trailing_edge_device, spare_list
+        cls,
+        x_sec_type,
+        tip_type,
+        number_interpolation_points,
+        trailing_edge_device,
+        spare_list,
+        turbulator=None,
     ):
         """Build a WingXSecDetailModel if any segment field is non-None, else return None."""
         has_detail = any(
@@ -381,6 +438,7 @@ class WingModel(Base):
                 number_interpolation_points,
                 trailing_edge_device,
                 spare_list,
+                turbulator,
             ]
         )
         if not has_detail:
@@ -400,6 +458,10 @@ class WingModel(Base):
         if ted_model is not None:
             detail.trailing_edge_device = ted_model
 
+        turbulator_model = cls._build_turbulator_model(turbulator)
+        if turbulator_model is not None:
+            detail.turbulator = turbulator_model
+
         return detail
 
     @classmethod
@@ -414,11 +476,11 @@ class WingModel(Base):
             xsec_payload = (cls._as_payload(raw_xsec) or {}).copy()
             is_terminal = index == len(xsec_dicts) - 1
 
-            ted, spare_list, x_sec_type, tip_type, n_interp = cls._extract_xsec_segment_fields(
-                xsec_payload
+            ted, spare_list, x_sec_type, tip_type, n_interp, turbulator = (
+                cls._extract_xsec_segment_fields(xsec_payload)
             )
             if is_terminal:
-                ted = spare_list = x_sec_type = tip_type = n_interp = None
+                ted = spare_list = x_sec_type = tip_type = n_interp = turbulator = None
 
             if "airfoil" in xsec_payload:
                 from app.converters.model_schema_converters import (
@@ -432,7 +494,9 @@ class WingModel(Base):
             if "sort_index" not in xsec_payload:
                 xsec_payload["sort_index"] = index
             xsec = WingXSecModel(**xsec_payload)
-            xsec.detail = cls._build_xsec_detail(x_sec_type, tip_type, n_interp, ted, spare_list)
+            xsec.detail = cls._build_xsec_detail(
+                x_sec_type, tip_type, n_interp, ted, spare_list, turbulator
+            )
 
             wing.x_secs.append(xsec)
         return wing
@@ -771,7 +835,6 @@ class CopilotMessageModel(Base):
         back_populates="copilot_messages",
         foreign_keys=[aeroplane_id],
     )
-
 
 
 class DesignAssumptionModel(Base):

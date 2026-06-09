@@ -23,6 +23,7 @@ from scipy.interpolate import interp1d
 
 from cad_designer.airplane.aircraft_topology.wing.Spare import Spare
 from cad_designer.airplane.aircraft_topology.wing.TrailingEdgeDevice import TrailingEdgeDevice
+from cad_designer.airplane.aircraft_topology.wing.Turbulator import Turbulator
 from cad_designer.airplane.aircraft_topology.wing.WingSegment import WingSegment
 from cad_designer.airplane.aircraft_topology.wing.Airfoil import Airfoil
 from cad_designer.airplane.types import Factor, TipType, CoordinateSystemBase
@@ -76,6 +77,7 @@ class WingConfiguration:
                  number_interpolation_points: PositiveInt | None = None,
                  spare_list: list[Spare] | None = None,
                  trailing_edge_device: TrailingEdgeDevice | None = None,
+                 turbulator: Turbulator | None = None,
                  symmetric: bool = True,
                  parameters: Literal["relative", "aerosandbox"] = "relative") -> T:
         self.segments: list[WingSegment] | None = None
@@ -92,6 +94,7 @@ class WingConfiguration:
         root_segment = WingSegment(root_airfoil=root_airfoil, length=length, sweep=sweep, sweep_is_angle=sweep_is_angle,
                                    tip_airfoil=tip_airfoil,
                                    spare_list=spare_list, trailing_edge_device=trailing_edge_device,
+                                   turbulator=turbulator,
                                    number_interpolation_points=number_interpolation_points, wing_segment_type='root')
 
         self.segments: list[WingSegment] = [root_segment]
@@ -238,7 +241,8 @@ class WingConfiguration:
                     tip_airfoil: Airfoil | None = None,
                     number_interpolation_points: PositiveInt | None = None,
                     spare_list: list[Spare] | None = None,
-                    trailing_edge_device: TrailingEdgeDevice | None = None
+                    trailing_edge_device: TrailingEdgeDevice | None = None,
+                    turbulator: Turbulator | None = None
                     ) -> T:
         """
         Adds a new segment to the wing configuration.
@@ -279,6 +283,7 @@ class WingConfiguration:
         segment = WingSegment(root_airfoil=root_airfoil, length=length, sweep=sweep, sweep_is_angle=sweep_is_angle,
                               tip_airfoil=tip_airfoil,
                               spare_list=spare_list, trailing_edge_device=trailing_edge_device,
+                              turbulator=turbulator,
                               number_interpolation_points=nip, tip_type=None, wing_segment_type='segment')
         self.segments.append(segment)
 
@@ -833,6 +838,7 @@ class WingConfiguration:
         from cad_designer.airplane.aircraft_topology.wing.Airfoil import Airfoil
         from cad_designer.airplane.aircraft_topology.wing.Spare import Spare
         from cad_designer.airplane.aircraft_topology.wing.TrailingEdgeDevice import TrailingEdgeDevice
+        from cad_designer.airplane.aircraft_topology.wing.Turbulator import Turbulator
 
         # Get airfoil data from the first segment if available
         first_segment = data.get('segments', [])[0] if data.get('segments') else {}
@@ -843,6 +849,7 @@ class WingConfiguration:
         spare_list_data = first_segment.get('spare_list', []) if first_segment else data.get('spare_list', [])
         trailing_edge_device_data = first_segment.get('trailing_edge_device', {}) if first_segment else data.get(
             'trailing_edge_device', {})
+        turbulator_data = first_segment.get('turbulator') if first_segment else data.get('turbulator')
 
         # Get length and sweep from first segment if available
         length = first_segment.get('length', data.get('length', 0)) if first_segment else data.get('length', 0)
@@ -858,6 +865,8 @@ class WingConfiguration:
                                              spare_list_data] if spare_list_data else None,
                                  trailing_edge_device=TrailingEdgeDevice.from_json_dict(
                                      trailing_edge_device_data) if trailing_edge_device_data else None,
+                                 turbulator=Turbulator.from_json_dict(
+                                     turbulator_data) if turbulator_data else None,
                                  symmetric=data.get('symmetric', True))
 
         # Restore segments if they exist
