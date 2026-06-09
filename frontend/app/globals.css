@@ -1,7 +1,10 @@
 @import "tailwindcss";
 @import "katex/dist/katex.min.css";
 
-@source "../node_modules/streamdown/dist/index.js";
+/* Scan the whole dist dir: streamdown's utility classes live in chunk files,
+   not the re-export barrel (index.js), so pointing at index.js alone would let
+   Tailwind purge them. */
+@source "../node_modules/streamdown/dist";
 
 /* Ensure native <dialog> stays hidden when closed, even with Tailwind positioning classes */
 dialog:not([open]) {

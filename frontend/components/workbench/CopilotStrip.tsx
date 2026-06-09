@@ -57,6 +57,7 @@ function AssistantBubble({
           plugins={streamdownPlugins}
           urlTransform={copilotUrlTransform}
           parseIncompleteMarkdown
+          linkSafety={{ enabled: false }}
         >
           {content}
         </Streamdown>
