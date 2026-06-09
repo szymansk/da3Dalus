@@ -303,14 +303,26 @@ async def _run_polar_async(db: Session, aeroplane_uuid: str) -> dict:
 
 async def _run_stability_async(db: Session, aeroplane_uuid: str) -> dict:
     """Run AeroBuildup stability analysis and return key stability numbers."""
+    from app.models.aeroplanemodel import AeroplaneModel
     from app.schemas.aeroanalysisschema import OperatingPointSchema
     from app.schemas.AeroplaneRequest import AnalysisToolUrlType
     from app.services.stability_service import get_stability_summary
 
+    # gh-924: evaluate stability at the SAME cruise design point (α=0, V_cruise)
+    # as the authoritative neutral point computed by assumption_compute_service.
+    # The neutral point is a configuration property (dC_m/dα = 0, α-independent
+    # in the linear range — Anderson §4.9); evaluating it at an arbitrary
+    # off-design point (the old α=2°, V=20 m/s) gave a second, divergent x_np
+    # (0.109 m vs the dashboard's 0.080 m). One op-point → one neutral point.
+    plane = (
+        db.query(AeroplaneModel).filter(AeroplaneModel.uuid == aeroplane_uuid).first()
+    )
+    ctx = (plane.assumption_computation_context or {}) if plane is not None else {}
+    v_cruise = ctx.get("v_cruise_mps")
     operating_point = OperatingPointSchema(
         altitude=0.0,
-        velocity=20.0,
-        alpha=2.0,
+        velocity=float(v_cruise) if v_cruise and v_cruise > 0 else 20.0,
+        alpha=0.0,
     )
 
     summary = await get_stability_summary(
@@ -320,12 +332,23 @@ async def _run_stability_async(db: Session, aeroplane_uuid: str) -> dict:
         analysis_tool=AnalysisToolUrlType.AEROBUILDUP,
     )
 
+    # gh-924: report the single authoritative neutral point — the one the
+    # dashboard shows (assumption_compute_service, cruise design point with the
+    # main-wing reference). The two stability paths normalise x_np against
+    # different reference chords, so a fresh run here would otherwise surface a
+    # second, divergent value. One neutral point across the app.
+    ctx_xnp = ctx.get("x_np_m")
+    neutral_point = ctx_xnp if ctx_xnp is not None else summary.neutral_point_x
+    static_margin = summary.static_margin_pct
+    if ctx_xnp is not None and summary.cg_x is not None and summary.mac:
+        static_margin = (ctx_xnp - summary.cg_x) / summary.mac * 100.0
+
     return {
         "status": "ok",
         "kind": "stability",
-        "static_margin_pct": summary.static_margin_pct,
+        "static_margin_pct": static_margin,
         "stability_class": summary.stability_class,
-        "neutral_point_x_m": summary.neutral_point_x,
+        "neutral_point_x_m": neutral_point,
         "cg_x_m": summary.cg_x,
         "Cma": summary.Cma,
         "Cnb": summary.Cnb,

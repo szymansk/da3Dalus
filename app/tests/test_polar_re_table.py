@@ -1262,3 +1262,27 @@ class TestPerfBenchmark:
         assert elapsed_ms < 200.0, (
             f"build_re_table took {elapsed_ms:.1f} ms on 120-sample sweep (limit: 200 ms)"
         )
+
+
+def test_lookup_e_oswald_uses_backfilled_rows_before_constant():
+    """gh-924: when all rows are fallback but carry a backfilled e (the
+    authoritative cruise Trefftz e), the lookup must return that, not 0.8."""
+    from app.services.polar_re_table_service import lookup_e_oswald_at_v
+
+    table = [
+        {"re": 8e4, "v_mps": 9.0, "cd0": 0.013, "e_oswald": 0.7916,
+         "cl_max": 1.2, "fallback_used": True},
+        {"re": 1.7e5, "v_mps": 18.0, "cd0": 0.013, "e_oswald": 0.7916,
+         "cl_max": 1.2, "fallback_used": True},
+    ]
+    assert lookup_e_oswald_at_v(15.0, table) == __import__("pytest").approx(0.7916, abs=1e-6)
+
+
+def test_lookup_e_oswald_still_falls_back_to_constant_when_empty():
+    from app.services.polar_re_table_service import lookup_e_oswald_at_v, _FALLBACK_E_OSWALD
+
+    table = [
+        {"re": 8e4, "v_mps": 9.0, "cd0": None, "e_oswald": None,
+         "cl_max": 1.2, "fallback_used": True},
+    ]
+    assert lookup_e_oswald_at_v(15.0, table) == _FALLBACK_E_OSWALD

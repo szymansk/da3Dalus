@@ -204,9 +204,13 @@ def lookup_e_oswald_at_v(
         for r in table
         if not r.get("fallback_used", True) and r.get("e_oswald") is not None
     ]
-    if not valid_e:
-        return _FALLBACK_E_OSWALD
-    return float(sum(valid_e) / len(valid_e))
+    if valid_e:
+        return float(sum(valid_e) / len(valid_e))
+    # gh-924: no fitted rows — use any e present on the table (recompute
+    # backfills fallback rows with the authoritative cruise Trefftz e) before
+    # the hard-coded constant, so consumers see the real span efficiency.
+    any_e = [r.get("e_oswald") for r in table if r.get("e_oswald") is not None]
+    return float(sum(any_e) / len(any_e)) if any_e else _FALLBACK_E_OSWALD
 
 
 # ---------------------------------------------------------------------------

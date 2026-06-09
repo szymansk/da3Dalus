@@ -10,6 +10,7 @@ from types import SimpleNamespace
 from unittest.mock import patch
 
 import numpy as np
+import pytest
 
 from app.models.aeroplanemodel import DesignAssumptionModel
 from app.services.assumption_compute_service import recompute_assumptions
@@ -1023,3 +1024,57 @@ def _enter_patches_no_fine_sweep(flap_ted_max: float | None = None):
                 continue
             stack.enter_context(patcher)
         yield
+
+
+# ---------------------------------------------------------------------------
+# gh-924: parasite CD0 = total CD − induced CD (single source of truth)
+# ---------------------------------------------------------------------------
+
+
+class TestParasiteCd0:
+    """The published CD0 must be the zero-lift (parasite) intercept, not the
+    total drag at a lifting α. Anderson §6.7.2: at (L/D)max induced = parasite.
+    """
+
+    def test_subtracts_induced_drag(self):
+        import math
+
+        from app.services.assumption_compute_service import _parasite_cd0
+
+        # eHawk cruise point: CD_total=0.02364 at CL=0.552, e=0.827, AR=11.3
+        cd0 = _parasite_cd0(0.02364, cl=0.552, ar=11.3, e=0.827)
+        expected = 0.02364 - 0.552**2 / (math.pi * 11.3 * 0.827)
+        assert cd0 == pytest.approx(expected, abs=1e-6)
+        assert cd0 == pytest.approx(0.0133, abs=5e-4)
+        # crucially: NOT the total drag (the old bug)
+        assert cd0 < 0.02364
+
+    def test_symmetric_wing_at_zero_lift_unchanged(self):
+        # CL=0 (symmetric airfoil at α=0) → no induced drag → CD0 == total
+        from app.services.assumption_compute_service import _parasite_cd0
+
+        assert _parasite_cd0(0.018, cl=0.0, ar=8.0, e=0.85) == pytest.approx(0.018)
+
+    def test_guards_return_total_on_bad_inputs(self):
+        from app.services.assumption_compute_service import _parasite_cd0
+
+        assert _parasite_cd0(0.02, cl=None, ar=8.0, e=0.8) == 0.02
+        assert _parasite_cd0(0.02, cl=0.5, ar=0.0, e=0.8) == 0.02
+        assert _parasite_cd0(0.02, cl=0.5, ar=8.0, e=0.0) == 0.02
+
+    def test_never_returns_negative(self):
+        # Pathological: huge CL would over-subtract → guard keeps total CD
+        from app.services.assumption_compute_service import _parasite_cd0
+
+        out = _parasite_cd0(0.02, cl=3.0, ar=4.0, e=0.6)
+        assert out == 0.02  # fell back to total, not negative
+
+    def test_emax_self_consistent_with_parasite_cd0(self):
+        """(L/D)max = ½√(πAe/CD0) must land in the physical band with parasite CD0."""
+        import math
+
+        from app.services.assumption_compute_service import _parasite_cd0
+
+        cd0 = _parasite_cd0(0.02364, cl=0.552, ar=11.3, e=0.7916)
+        e_max = 0.5 * math.sqrt(math.pi * 11.3 * 0.7916 / cd0)
+        assert e_max == pytest.approx(23.0, abs=1.0)  # NOT the wrong 17
