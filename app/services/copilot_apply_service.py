@@ -466,8 +466,26 @@ def apply_edits(
 
                     segs.insert(seg_before_idx + 1, new_segment)
                 else:
-                    # Adding a new tip segment beyond the last existing one
-                    last_tip = segs[-1]["tip_airfoil"] if segs else new_xsec_airfoil
+                    # Adding a new tip segment beyond the last existing one.
+                    #
+                    # IMPORTANT: strip tip_type from ALL trailing segments that
+                    # carry tip_type (e.g. "flat").  create_wing_configuration()
+                    # splits segments into two passes: middle (tip_type is None)
+                    # and tip (tip_type is not None).  If the original last
+                    # segment keeps tip_type="flat" while the new winglet has
+                    # tip_type=None, the middle-pass processes the NEW winglet
+                    # BEFORE the tip-pass processes the old tip segment.  This
+                    # reorders the segments in the WingConfiguration, scrambling
+                    # the physical xsec positions.
+                    # Clearing tip_type on the old last segment(s) makes them
+                    # plain middle segments, so create_wing_configuration
+                    # processes all segments root→tip in the correct order.
+                    for existing_seg in segs:
+                        if existing_seg.get("tip_type") is not None:
+                            existing_seg["tip_type"] = None
+                            existing_seg.pop("wing_segment_type", None)
+
+                    last_tip = segs[-1]["tip_airfoil"].copy() if segs else new_xsec_airfoil
                     new_segment = {
                         "root_airfoil": last_tip if segs else new_xsec_airfoil,
                         "tip_airfoil": new_xsec_airfoil,

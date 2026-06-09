@@ -920,3 +920,194 @@ class TestDiscardAfterWingEditRegression:
             db.close()
 
 
+# ---------------------------------------------------------------------------
+# Regression: gh-937 AddXsec produces valid winglet at tip (Bug 2)
+# ---------------------------------------------------------------------------
+
+
+class TestAddXsecWingletRegression:
+    """Regression tests for gh-937 Bug 2: AddXsec at at_index=n_segs+1
+    (append beyond last segment) was producing incorrect geometry because
+    create_wing_configuration() processes middle segments (tip_type=None)
+    before tip segments (tip_type="flat"), causing the winglet to be inserted
+    in the wrong position in the WingConfiguration.
+
+    Fix: strip tip_type from all existing segments before appending the winglet,
+    so create_wing_configuration processes segments in root-to-tip order.
+    """
+
+    def test_add_xsec_at_tip_correct_segment_count(self, client_and_db):
+        """AddXsec at n_segs+1 increases segment count by exactly 1."""
+        db = _make_session(client_and_db)
+        try:
+            plane = _create_plane_with_wc_wing(db)
+            branch = get_or_open_proposal(db, plane.id)
+            db.commit()
+
+            proposal_node = (
+                db.query(AeroplaneModel).filter(AeroplaneModel.id == branch.head_id).first()
+            )
+
+            from app.services.wing_service import get_wing_as_wingconfig
+
+            n_segs_before = len(
+                get_wing_as_wingconfig(db, str(proposal_node.uuid), "main_wing")["segments"]
+            )
+
+            with patch(_RECOMPUTE_PATH):
+                result = apply_edits(
+                    db,
+                    str(proposal_node.uuid),
+                    [
+                        AddXsec(
+                            wing="main_wing",
+                            at_index=n_segs_before + 1,
+                            chord=40.0,
+                            span=80.0,
+                            dihedral=45.0,
+                        )
+                    ],
+                )
+            db.commit()
+
+            assert result["applied"] == ["AddXsec"], f"Not applied: {result}"
+            assert not result["rejected"]
+
+            # Expire stale ORM state before re-read
+            db.expire_all()
+            wc_after = get_wing_as_wingconfig(db, str(proposal_node.uuid), "main_wing")
+            n_segs_after = len(wc_after["segments"])
+
+            assert n_segs_after == n_segs_before + 1, (
+                f"Expected {n_segs_before + 1} segments, got {n_segs_after}"
+            )
+        finally:
+            db.close()
+
+    def test_add_xsec_at_tip_correct_winglet_params(self, client_and_db):
+        """AddXsec at n_segs+1 appends the winglet as the last segment with
+        the specified chord and span parameters."""
+        db = _make_session(client_and_db)
+        try:
+            plane = _create_plane_with_wc_wing(db)
+            branch = get_or_open_proposal(db, plane.id)
+            db.commit()
+
+            proposal_node = (
+                db.query(AeroplaneModel).filter(AeroplaneModel.id == branch.head_id).first()
+            )
+
+            from app.services.wing_service import get_wing_as_wingconfig
+
+            wc_before = get_wing_as_wingconfig(db, str(proposal_node.uuid), "main_wing")
+            n_segs = len(wc_before["segments"])
+            original_last_tip_chord = wc_before["segments"][-1]["tip_airfoil"]["chord"]
+
+            winglet_chord = 35.0  # mm
+            winglet_span = 90.0  # mm
+
+            with patch(_RECOMPUTE_PATH):
+                result = apply_edits(
+                    db,
+                    str(proposal_node.uuid),
+                    [
+                        AddXsec(
+                            wing="main_wing",
+                            at_index=n_segs + 1,
+                            chord=winglet_chord,
+                            span=winglet_span,
+                            dihedral=30.0,
+                        )
+                    ],
+                )
+            db.commit()
+
+            assert result["applied"] == ["AddXsec"]
+            assert not result["rejected"]
+
+            db.expire_all()
+            wc_after = get_wing_as_wingconfig(db, str(proposal_node.uuid), "main_wing")
+            new_last = wc_after["segments"][-1]
+
+            # The new last segment must have the right tip chord
+            assert new_last["tip_airfoil"]["chord"] == pytest.approx(winglet_chord, abs=1.0), (
+                f"Winglet tip chord: expected ~{winglet_chord}, "
+                f"got {new_last['tip_airfoil']['chord']}"
+            )
+
+            # Its root chord must match the old tip chord
+            assert new_last["root_airfoil"]["chord"] == pytest.approx(
+                original_last_tip_chord, abs=1.0
+            ), (
+                f"Winglet root chord: expected ~{original_last_tip_chord}, "
+                f"got {new_last['root_airfoil']['chord']}"
+            )
+
+            # Its span (length) must match op.span
+            assert new_last["length"] == pytest.approx(winglet_span, rel=0.05), (
+                f"Winglet span: expected ~{winglet_span}, got {new_last['length']}"
+            )
+        finally:
+            db.close()
+
+    def test_add_xsec_at_tip_winglet_xsec_beyond_original_tip(self, client_and_db):
+        """The winglet tip xsec must be at a Y-position strictly beyond the
+        original tip, confirming no segment-order scramble in the DB."""
+        db = _make_session(client_and_db)
+        try:
+            plane = _create_plane_with_wc_wing(db)
+            branch = get_or_open_proposal(db, plane.id)
+            db.commit()
+
+            proposal_node = (
+                db.query(AeroplaneModel).filter(AeroplaneModel.id == branch.head_id).first()
+            )
+            from app.models.aeroplanemodel import WingModel
+            from app.services.wing_service import get_wing_as_wingconfig
+
+            # Record the original tip Y position
+            db.expire_all()
+            orig_wing = next(
+                (w for w in proposal_node.wings if w.name == "main_wing"), None
+            )
+            assert orig_wing is not None
+            orig_tip_y = orig_wing.x_secs[-1].xyz_le[1]  # original tip Y (metres)
+            n_segs = len(orig_wing.x_secs) - 1  # n xsecs = n_segs + 1
+
+            with patch(_RECOMPUTE_PATH):
+                result = apply_edits(
+                    db,
+                    str(proposal_node.uuid),
+                    [
+                        AddXsec(
+                            wing="main_wing",
+                            at_index=n_segs + 1,
+                            chord=40.0,
+                            span=80.0,
+                            dihedral=30.0,
+                        )
+                    ],
+                )
+            db.commit()
+
+            assert result["applied"] == ["AddXsec"]
+
+            db.expire_all()
+            db.refresh(proposal_node)
+            new_wing = next(
+                (w for w in proposal_node.wings if w.name == "main_wing"), None
+            )
+            assert new_wing is not None
+
+            # New wing should have 1 extra xsec
+            assert len(new_wing.x_secs) == n_segs + 2, (
+                f"Expected {n_segs + 2} xsecs, got {len(new_wing.x_secs)}"
+            )
+
+            # The new last xsec Y must be > original tip Y (winglet projects outward)
+            new_tip_y = new_wing.x_secs[-1].xyz_le[1]
+            assert new_tip_y > orig_tip_y, (
+                f"Winglet tip Y ({new_tip_y:.4f}m) must exceed original tip Y ({orig_tip_y:.4f}m)"
+            )
+        finally:
+            db.close()
