@@ -109,6 +109,94 @@ def recompute_assumptions(db: Session, aeroplane_uuid) -> None:
 
     old_cg = _get_current_calculated_value(db, aircraft.id, "cg_x")
 
+    # gh-935 Part D: if the main wing has an enabled turbulator with a set
+    # position, add the area-weighted ΔCD0 to the raw parasite cd0.  This
+    # keeps the turbulator effect self-consistent with the normal analysis
+    # path: AeroBuildup gives the natural-transition baseline; we add the
+    # turbulator delta on top without touching AeroBuildup internals.
+    _xtr_root, _xtr_tip, _turb_enabled = _extract_main_wing_turbulator_xtr(aircraft)
+    if _turb_enabled and _xtr_root is not None and _xtr_tip is not None:
+        try:
+            from app.services.turbulator_optimizer_service import WingSectionData
+            from app.services.section_aoa_service import compute_section_aoa
+
+            _asb_op_turb = None
+            try:
+                import aerosandbox as _asb_mod
+
+                _asb_op_turb = _asb_mod.OperatingPoint(velocity=v_cruise, alpha=3.0)
+            except Exception:
+                pass
+
+            if _asb_op_turb is not None:
+                _main_wing_asb = max(asb_airplane.wings, key=lambda w: float(w.area()))
+                _wing_name_turb = getattr(_main_wing_asb, "name", None) or "main_wing"
+                _section_entries = compute_section_aoa(
+                    asb_airplane, _asb_op_turb, wing_name=_wing_name_turb
+                )
+                _nu = 1.5e-5
+                _xsecs = _main_wing_asb.xsecs
+                import numpy as _np_turb
+
+                _xsec_y = _np_turb.array(
+                    [float(_np_turb.atleast_1d(xs.xyz_le)[1]) for xs in _xsecs]
+                )
+                _xsec_airfoils = []
+                for _xs in _xsecs:
+                    try:
+                        _af_name = getattr(_xs.airfoil, "name", None) or "naca0012"
+                    except Exception:
+                        _af_name = "naca0012"
+                    _xsec_airfoils.append(_af_name)
+
+                _n_sec = len(_section_entries)
+                _y_arr = _np_turb.array([e.y_m for e in _section_entries])
+                _c_arr = _np_turb.array([e.chord_m for e in _section_entries])
+                _s_areas = _np_turb.zeros(_n_sec)
+                for _i in range(_n_sec):
+                    _left = (_y_arr[_i] - _y_arr[_i - 1]) / 2.0 if _i > 0 else 0.0
+                    _right = (_y_arr[_i + 1] - _y_arr[_i]) / 2.0 if _i < _n_sec - 1 else 0.0
+                    _s_areas[_i] = _c_arr[_i] * (_left + _right)
+                _total_s = float(_np_turb.sum(_s_areas))
+                if _total_s > 0 and s_ref > 0:
+                    _s_areas *= (s_ref / 2.0) / _total_s
+
+                _wing_sections: list[WingSectionData] = []
+                for _i, _e in enumerate(_section_entries):
+                    if len(_xsec_y) >= 2:
+                        _sidx = int(_np_turb.clip(
+                            _np_turb.searchsorted(_xsec_y, _e.y_m, side="right") - 1,
+                            0, len(_xsec_airfoils) - 1
+                        ))
+                        _af_n = _xsec_airfoils[_sidx]
+                    else:
+                        _af_n = _xsec_airfoils[0] if _xsec_airfoils else "naca0012"
+                    _wing_sections.append(WingSectionData(
+                        y_m=_e.y_m, chord_m=_e.chord_m, cl=_e.cl,
+                        re_local=max(v_cruise * _e.chord_m / _nu, 1e4),
+                        airfoil_name=_af_n,
+                        section_area_m2=float(_s_areas[_i]),
+                    ))
+
+                cd0 = apply_turbulator_delta_to_cd0(
+                    raw_cd0=cd0,
+                    wing_sections=_wing_sections,
+                    xtr_root=_xtr_root,
+                    xtr_tip=_xtr_tip,
+                    s_ref=s_ref,
+                )
+                logger.info(
+                    "gh-935: turbulator ΔCD0 applied for aircraft %s; "
+                    "cd0=%.5f after adjustment (xtr_root=%.3f, xtr_tip=%.3f)",
+                    aeroplane_uuid, cd0, _xtr_root, _xtr_tip,
+                )
+        except Exception:
+            logger.warning(
+                "gh-935: turbulator ΔCD0 injection failed for aircraft %s — "
+                "using raw AeroBuildup cd0=%.5f",
+                aeroplane_uuid, cd0, exc_info=True,
+            )
+
     update_calculated_value(
         db,
         aeroplane_uuid,
@@ -541,6 +629,18 @@ def recompute_assumptions(db: Session, aeroplane_uuid) -> None:
         v_md = max(v_md, v_stall)
     if v_min_sink is not None and v_stall is not None:
         v_min_sink = max(v_min_sink, v_stall)
+
+    # gh-935: publish design_speed_mps (operating point for turbulator optimizer).
+    # Defaults to V_md (best-glide); user may override via the ESTIMATE path.
+    if v_md is not None:
+        update_calculated_value(
+            db,
+            aeroplane_uuid,
+            "design_speed_mps",
+            round(v_md, 2),
+            "best_glide_v_md",
+            auto_switch_source=True,
+        )
 
     # If the user hasn't set a flight profile, suggest V_md as the
     # cruise speed (best L/D = best range for prop aircraft). Once the
@@ -1998,3 +2098,110 @@ def _cache_context(db: Session, aircraft: AeroplaneModel, context: dict[str, Any
     """Write computation context JSON to the aeroplane row."""
     aircraft.assumption_computation_context = context
     db.flush()
+
+
+# ---------------------------------------------------------------------------
+# gh-935 Part D: turbulator ΔCD0 injection
+# ---------------------------------------------------------------------------
+
+
+def apply_turbulator_delta_to_cd0(
+    *,
+    raw_cd0: float,
+    wing_sections: list,
+    xtr_root: float | None,
+    xtr_tip: float | None,
+    s_ref: float,
+) -> float:
+    """Apply turbulator ΔCD0 on top of AeroBuildup's raw parasite cd0.
+
+    Called from recompute_assumptions when the main wing has an enabled
+    turbulator with a set position.  Returns the adjusted cd0.
+
+    Parameters
+    ----------
+    raw_cd0 : float
+        Parasite drag coefficient from the AeroBuildup stability run.
+    wing_sections : list[WingSectionData]
+        Per-section data.  Empty list → ΔCD0 = 0.
+    xtr_root, xtr_tip : float | None
+        Turbulator position at root / tip.  None → disabled / not set → 0 delta.
+    s_ref : float
+        Reference wing area [m²].
+
+    Returns
+    -------
+    float
+        Adjusted cd0 = raw_cd0 + ΔCD0.  Never negative (clamped to a small
+        positive value so callers can safely use it in polar formulas).
+    """
+    if not wing_sections or xtr_root is None or xtr_tip is None or s_ref <= 0:
+        return raw_cd0
+
+    try:
+        from app.services.turbulator_optimizer_service import (
+            compute_delta_cd0_from_turbulator_position,
+        )
+
+        delta_cd0, warnings = compute_delta_cd0_from_turbulator_position(
+            wing_sections,
+            xtr_root=float(xtr_root),
+            xtr_tip=float(xtr_tip),
+            s_ref=s_ref,
+        )
+        for w in warnings:
+            logger.warning("gh-935 turbulator ΔCD0 warning: %s", w)
+    except Exception:
+        logger.exception(
+            "gh-935: turbulator ΔCD0 computation failed — using raw cd0=%.5f", raw_cd0
+        )
+        return raw_cd0
+
+    adjusted = raw_cd0 + delta_cd0
+    # Guard: cd0 must be positive for polar formulas.
+    if adjusted <= 0:
+        logger.warning(
+            "gh-935: turbulator ΔCD0=%.5f would make cd0=%.5f non-positive — "
+            "clamping to raw cd0=%.5f",
+            delta_cd0,
+            adjusted,
+            raw_cd0,
+        )
+        return raw_cd0
+
+    return adjusted
+
+
+def _extract_main_wing_turbulator_xtr(
+    aircraft: AeroplaneModel,
+) -> tuple[float | None, float | None, bool]:
+    """Return (xtr_root, xtr_tip, enabled) for the main wing's turbulator.
+
+    Walks the wing with the largest number of xsecs (heuristic for main wing
+    in the model layer, which has no planform-area sorting at this level).
+    Returns (None, None, False) when no enabled turbulator exists.
+    """
+    best_wing = None
+    best_count = -1
+    for wing in getattr(aircraft, "wings", []) or []:
+        n = len(getattr(wing, "x_secs", []) or [])
+        if n > best_count:
+            best_count = n
+            best_wing = wing
+
+    if best_wing is None:
+        return None, None, False
+
+    # Collect xsec turbulators from the main wing
+    for xsec in getattr(best_wing, "x_secs", []) or []:
+        turb = getattr(xsec, "turbulator", None)
+        if turb is None:
+            continue
+        if not getattr(turb, "enabled", False):
+            return None, None, False
+        pos_root = getattr(turb, "position_root", None)
+        pos_tip = getattr(turb, "position_tip", None)
+        if pos_root is not None and pos_tip is not None:
+            return float(pos_root), float(pos_tip), True
+
+    return None, None, False

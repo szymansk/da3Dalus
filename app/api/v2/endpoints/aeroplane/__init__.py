@@ -25,6 +25,7 @@ from .matching_chart import router as matching_chart_router
 from .sm_suggestions import router as sm_suggestions_router
 from .forward_cg import router as forward_cg_router
 from .speed_polar import router as speed_polar_router
+from .turbulator_optimizer import router as turbulator_optimizer_router
 
 # Include the routers
 router.include_router(base_router)
@@ -47,3 +48,4 @@ router.include_router(matching_chart_router)
 router.include_router(sm_suggestions_router)
 router.include_router(forward_cg_router)
 router.include_router(speed_polar_router)
+router.include_router(turbulator_optimizer_router)

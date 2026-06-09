@@ -25,6 +25,8 @@ VALID_PARAMETERS = Literal[
     "motor_continuous_power_w",
     # Static thrust — gh-489
     "t_static_N",
+    # Design operating speed — gh-935; defaults to V_md (best-glide), user-overridable.
+    "design_speed_mps",
 ]
 ACTIVE_SOURCE = Literal["ESTIMATE", "CALCULATED"]
 DIVERGENCE_LEVEL = Literal["none", "info", "warning", "alert"]
@@ -63,6 +65,8 @@ PARAMETER_UNITS: dict[str, str] = {
     "motor_continuous_power_w": "W",
     # Static thrust — gh-489
     "t_static_N": "N",
+    # Design operating speed — gh-935
+    "design_speed_mps": "m/s",
 }
 
 PARAMETER_DEFAULTS: dict[str, float] = {
@@ -97,6 +101,10 @@ PARAMETER_DEFAULTS: dict[str, float] = {
     # Static thrust at zero velocity (gh-489 takeoff field length).
     # Default = 0 (glider / unknown). User MUST override for powered runway takeoff.
     "t_static_N": 0.0,
+    # Design operating speed — gh-935. Defaults to 15 m/s; recompute overwrites
+    # with V_md (best-glide speed) via the CALCULATED path.  User may override
+    # by switching active_source to ESTIMATE.
+    "design_speed_mps": 15.0,
 }
 
 
