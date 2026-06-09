@@ -1,10 +1,47 @@
 from typing import List, Optional, Literal
-from pydantic import AliasChoices, BaseModel, PositiveFloat, Field
+from pydantic import AliasChoices, BaseModel, NonNegativeFloat, PositiveFloat, Field
 
 from app.schemas.Servo import Servo
 
 # --- Shared literal constant (S1192) ---
 _DEFAULT_AIRFOIL_RG15 = "./components/airfoils/rg15.dat"
+
+
+class Turbulator(BaseModel):
+    """Optional upper-surface turbulator strip for a wing segment (gh-934).
+
+    A turbulator trips the boundary layer to delay flow separation and
+    reduce profile drag at low Reynolds numbers. One turbulator per
+    segment, upper surface only.
+    """
+
+    form: Literal["zigzag", "dots", "thread"] = Field(
+        default="zigzag",
+        description="Build form of the turbulator strip: 'zigzag' tape, 'dots', or adhesive 'thread'.",
+    )
+    height_mm: NonNegativeFloat = Field(
+        default=0.3,
+        description="Strip/thread height in millimetres (non-negative).",
+    )
+    position_root: float = Field(
+        ...,
+        ge=0.0,
+        le=1.0,
+        description="Chordwise x/c position (0–1) of the turbulator at the segment root.",
+    )
+    position_tip: Optional[float] = Field(
+        default=None,
+        ge=0.0,
+        le=1.0,
+        description=(
+            "Chordwise x/c position (0–1) at the segment tip. "
+            "Defaults to position_root when None (flat strip, no taper)."
+        ),
+    )
+    enabled: bool = Field(
+        default=True,
+        description="Whether the turbulator is rendered in CAD output.",
+    )
 
 
 class TrailingEdgeDevice(BaseModel):
@@ -172,6 +209,10 @@ class Segment(BaseModel):
     )
     trailing_edge_device: Optional[TrailingEdgeDevice] = Field(
         default=None, description="Control surface attached to the trailing edge of the segment"
+    )
+    turbulator: Optional[Turbulator] = Field(
+        default=None,
+        description="Optional upper-surface turbulator strip for this segment (gh-934).",
     )
     number_interpolation_points: Optional[int] = Field(
         default=None,

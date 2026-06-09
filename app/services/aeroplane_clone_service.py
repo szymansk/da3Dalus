@@ -74,6 +74,7 @@ CLONED_TABLES: frozenset[str] = frozenset(
         "wing_xsec_details",  # owned by wing_xsec_id FK
         "wing_xsec_spares",  # owned by wing_xsec_detail_id FK
         "wing_xsec_trailing_edge_devices",  # owned by wing_xsec_detail_id FK
+        "wing_xsec_turbulators",  # owned by wing_xsec_detail_id FK (gh-934)
         "wing_xsec_ted_servos",  # owned by ted_id FK; component_id is a shared ref
         "fuselages",  # owned by aeroplane_id FK; step_path/solid_step_path nulled
         "fuselage_xsecs",  # owned by fuselage_id FK

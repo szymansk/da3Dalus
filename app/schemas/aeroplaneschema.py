@@ -230,6 +230,41 @@ class ControlSurfaceCadDetailsPatchSchema(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
 
+class TurbulatorDetailSchema(BaseModel):
+    """Turbulator strip detail for a wing cross-section (gh-934).
+
+    Stored one-to-one with ``WingXSecDetailModel``, upper surface only.
+    Positions are dimensionless x/c ratios (0–1) — no unit conversion needed.
+    """
+
+    form: Literal["zigzag", "dots", "thread"] = Field(
+        default="zigzag",
+        description="Build form of the turbulator strip.",
+    )
+    height_mm: float = Field(
+        default=0.3,
+        ge=0.0,
+        description="Strip/thread height in millimetres (non-negative).",
+    )
+    position_root: float = Field(
+        ...,
+        ge=0.0,
+        le=1.0,
+        description="Chordwise x/c position (0–1) at the segment root.",
+    )
+    position_tip: Optional[float] = Field(
+        default=None,
+        ge=0.0,
+        le=1.0,
+        description="Chordwise x/c position (0–1) at the segment tip; defaults to position_root.",
+    )
+    enabled: bool = Field(
+        default=True, description="Whether the turbulator is rendered in CAD output."
+    )
+
+    model_config = ConfigDict(from_attributes=True)
+
+
 class SpareDetailSchema(BaseModel):
     spare_support_dimension_width: float = Field(..., description="Spar support width in meters")
     spare_support_dimension_height: float = Field(..., description="Spar support height in meters")
@@ -531,6 +566,10 @@ class WingXSecSchema(BaseModel):
     trailing_edge_device: Optional[TrailingEdgeDeviceDetailSchema] = Field(
         None,
         description="Detailed trailing-edge device definition for the outgoing segment at this x-section",
+    )
+    turbulator: Optional["TurbulatorDetailSchema"] = Field(
+        None,
+        description="Optional upper-surface turbulator strip for the outgoing segment at this x-section (gh-934).",
     )
 
     model_config = ConfigDict(from_attributes=True)

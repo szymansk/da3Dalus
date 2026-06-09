@@ -285,6 +285,11 @@ Details in `.claude/rules/python-conventions.md`.
   **New Creators** (subclasses of `AbstractShapeCreator`) may be
   added. Use `cad_designer/airplane/creator/_creator_template.py`
   as the starting point.
+  **Approved exception (gh-934):** `Turbulator` is a new per-segment
+  optional element (analogous to `TrailingEdgeDevice`/`Spare`). Its
+  introduction required extending `WingSegment` and `WingConfiguration`
+  to accept a `turbulator` parameter — this is the one permitted
+  addition to existing topology classes for this domain object.
 - **Units: mm in WingConfig, meters in DB/ASB.** The WingConfig
   schemas and topology classes use **millimetres**. The database and
   Aerosandbox integration use **metres**. Conversion happens in the

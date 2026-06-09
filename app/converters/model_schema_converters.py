@@ -24,6 +24,7 @@ from cad_designer.airplane.aircraft_topology.wing import (
     TrailingEdgeDevice,
     WingConfiguration,
 )
+from cad_designer.airplane.aircraft_topology.wing.Turbulator import Turbulator
 
 logger = logging.getLogger(__name__)
 
@@ -300,6 +301,36 @@ def _trailing_edge_device_schema_to_wing_ted(
         0.0 if ted_schema.deflection_deg is None else float(ted_schema.deflection_deg)
     )
     return ted
+
+
+def _turbulator_to_schema(
+    turbulator: Turbulator,
+) -> schemas.TurbulatorDetailSchema:
+    """Convert a topology Turbulator to its ``TurbulatorDetailSchema`` representation.
+
+    Positions (position_root/tip) are dimensionless x/c ratios — no unit conversion.
+    height_mm stays in mm.
+    """
+    return schemas.TurbulatorDetailSchema(
+        form=turbulator.form,
+        height_mm=turbulator.height_mm,
+        position_root=turbulator.position_root,
+        position_tip=turbulator.position_tip,
+        enabled=turbulator.enabled,
+    )
+
+
+def _turbulator_schema_to_wing_turbulator(
+    turbulator_schema: schemas.TurbulatorDetailSchema,
+) -> Turbulator:
+    """Convert a ``TurbulatorDetailSchema`` to a topology ``Turbulator`` instance."""
+    return Turbulator(
+        form=turbulator_schema.form,
+        height_mm=turbulator_schema.height_mm,
+        position_root=turbulator_schema.position_root,
+        position_tip=turbulator_schema.position_tip,  # None → defaults to position_root in __init__
+        enabled=turbulator_schema.enabled,
+    )
 
 
 def _control_surface_from_ted(
@@ -614,6 +645,12 @@ def _hydrate_segment_from_xsec(
         _trailing_edge_device_schema_to_wing_ted(ted_schema) if ted_schema is not None else None
     )
 
+    turb_raw = _to_payload(root_x_sec.turbulator)
+    turb_schema = schemas.TurbulatorDetailSchema.model_validate(turb_raw) if turb_raw else None
+    segment.turbulator = (
+        _turbulator_schema_to_wing_turbulator(turb_schema) if turb_schema is not None else None
+    )
+
     if root_x_sec.spare_list is not None:
         segment.spare_list = [_spare_schema_to_spare(s) for s in root_x_sec.spare_list]
 
@@ -815,6 +852,7 @@ def wing_model_to_asb_wing_schema(wing: WingModel) -> schemas.AsbWingSchema:
         last["x_sec_type"] = None
         last["tip_type"] = None
         last["number_interpolation_points"] = None
+        last["turbulator"] = None
 
     return schemas.AsbWingSchema.model_validate(
         {
@@ -878,7 +916,7 @@ def _resolve_airfoil_ref_for_index(index, section_data, x_sec):
 
 
 def _build_segment_details(segment):
-    """Extract TED, spare list, and segment metadata from a WingConfiguration segment.
+    """Extract TED, spare list, turbulator, and segment metadata from a WingConfiguration segment.
 
     Both TED and control_surface are derived solely from the segment's
     own trailing_edge_device. The caller overwrites the x_sec-derived
@@ -892,6 +930,7 @@ def _build_segment_details(segment):
     trailing_edge_device = None
     control_surface = None
     spare_list = None
+    turbulator = None
 
     if segment.trailing_edge_device is not None:
         trailing_edge_device = _trailing_edge_device_to_schema(segment.trailing_edge_device)
@@ -900,6 +939,9 @@ def _build_segment_details(segment):
     if segment.spare_list is not None:
         spare_list = [_spare_to_schema(spare) for spare in segment.spare_list]
 
+    if getattr(segment, "turbulator", None) is not None:
+        turbulator = _turbulator_to_schema(segment.turbulator)
+
     return (
         trailing_edge_device,
         spare_list,
@@ -907,6 +949,7 @@ def _build_segment_details(segment):
         segment.wing_segment_type,
         segment.tip_type,
         segment.number_interpolation_points,
+        turbulator,
     )
 
 
@@ -934,6 +977,7 @@ def wing_config_to_asb_wing_schema(
         x_sec_type = None
         tip_type = None
         number_interpolation_points = None
+        turbulator = None
 
         segment = wing_config.segments[index] if index < len(wing_config.segments) else None
         if segment is not None:
@@ -944,6 +988,7 @@ def wing_config_to_asb_wing_schema(
                 x_sec_type,
                 tip_type,
                 number_interpolation_points,
+                turbulator,
             ) = _build_segment_details(segment)
 
         x_secs.append(
@@ -958,6 +1003,7 @@ def wing_config_to_asb_wing_schema(
                 number_interpolation_points=number_interpolation_points,
                 spare_list=spare_list,
                 trailing_edge_device=trailing_edge_device,
+                turbulator=turbulator,
             )
         )
 
