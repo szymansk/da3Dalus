@@ -55,7 +55,7 @@ function WorkbenchInner({
         <div className="shrink-0 px-4 pb-2">
           <MetricsDashboardContainer />
         </div>
-        <CopilotStrip />
+        <CopilotStrip onOpenHistory={handleOpenHistory} />
       </div>
       <UnsavedChangesModal />
       <AeroplanePickerHost />
