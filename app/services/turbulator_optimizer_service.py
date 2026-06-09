@@ -7,6 +7,9 @@ For each wing section at its operating point (local CL, local Re):
 3D effect → additive ΔCD0, area-weighted:
   ΔCD0 = Σ_sections (cd_tripped_i − cd_clean_i) * (S_i / S_ref)
 
+For symmetric wings the turbulator sits on BOTH half-spans: ΔCD0 is
+multiplied by 2 when wing_symmetric=True (MAJOR 1 fix, gh-935).
+
 Non-convergence (NaN cd, no interior minimum, or low NeuralFoil confidence)
 emits a per-section WARNING in the result — NOT a silent fallback.
 
@@ -27,6 +30,7 @@ optimize_section_xtr(...)     — sweep + argmin for one section
 compute_turbulator_delta_cd0  — area-weighted ΔCD0
 compute_ld_summary            — L/D clean + tripped from ΔCD0
 run_turbulator_optimizer(...)  — full wing run
+build_wing_section_data(...)  — shared helper: section_aoa entries → WingSectionData list
 """
 
 from __future__ import annotations
@@ -126,8 +130,11 @@ def _cd_at_cl_xtr(
     Calls ``airfoil.get_aero_from_neuralfoil`` over a fixed alpha grid,
     interpolates to find cd at ``cl_target``.
 
-    Returns NaN on NeuralFoil failure or if CL range does not bracket
-    ``cl_target`` (prevents silent extrapolation).
+    Falls back to the nearest-neighbour cd when ``cl_target`` lies outside
+    the CL range covered by the finite NeuralFoil results.  A debug message
+    is emitted in that case so the fallback is traceable.
+
+    Returns NaN on NeuralFoil failure (exception or all-NaN outputs).
     """
     try:
         aero = airfoil.get_aero_from_neuralfoil(
@@ -153,10 +160,16 @@ def _cd_at_cl_xtr(
         cl_sorted = cl_valid[sort_idx]
         cd_sorted = cd_valid[sort_idx]
 
-        # Only interpolate within the CL range (no extrapolation)
+        # Only interpolate within the CL range; fall back to nearest-neighbour
+        # when cl_target lies outside the finite CL band (NIT 6: log it).
         if cl_target < cl_sorted[0] or cl_target > cl_sorted[-1]:
-            # Fall back to nearest-neighbour cd
             nearest = int(np.argmin(np.abs(cl_sorted - cl_target)))
+            logger.debug(
+                "_cd_at_cl_xtr: cl_target=%.3f outside CL range [%.3f, %.3f] at "
+                "Re=%.0f xtr_upper=%.3f — using nearest-neighbour cd=%.5f",
+                cl_target, cl_sorted[0], cl_sorted[-1], re, xtr_upper,
+                float(cd_sorted[nearest]),
+            )
             return float(cd_sorted[nearest])
 
         return float(np.interp(cl_target, cl_sorted, cd_sorted))
@@ -281,23 +294,41 @@ def optimize_section_xtr(
 def compute_turbulator_delta_cd0(
     section_results: list[SectionOptimizerResult],
     s_ref: float,
+    wing_symmetric: bool = False,
 ) -> float:
     """Area-weighted 3-D ΔCD0 from per-section results.
 
-    ΔCD0 = Σ (cd_tripped_i − cd_clean_i) * S_i / S_ref
+    For a symmetric wing (``wing_symmetric=True``) the turbulator sits on
+    **both** half-spans, but ``section_aoa_service`` only returns half-span
+    sections (areas summing to ~S_ref/2).  The area-weighted sum must be
+    multiplied by 2 to account for the mirrored half:
+
+        ΔCD0 = 2 × Σ_half (Δcd_i · S_i) / S_ref   (symmetric wing)
+        ΔCD0 = Σ (Δcd_i · S_i) / S_ref             (non-symmetric wing)
 
     Sections with NaN delta_cd (failed optimizer) are skipped.
     Returns 0.0 if no valid sections or s_ref ≤ 0.
+
+    Parameters
+    ----------
+    section_results:
+        Per-section optimizer output (half-span for symmetric wings).
+    s_ref:
+        Reference wing area [m²] — the FULL planform (both half-spans).
+    wing_symmetric:
+        True when the wing is symmetric (``asb.Wing.symmetric == True``).
+        Default False preserves the original single-sided behaviour.
     """
     if s_ref <= 0:
         return 0.0
 
-    delta_cd0 = 0.0
+    half_span_sum = 0.0
     for sec in section_results:
         if math.isfinite(sec.delta_cd) and sec.section_area_m2 > 0:
-            delta_cd0 += sec.delta_cd * sec.section_area_m2 / s_ref
+            half_span_sum += sec.delta_cd * sec.section_area_m2 / s_ref
 
-    return delta_cd0
+    symmetry_factor = 2.0 if wing_symmetric else 1.0
+    return symmetry_factor * half_span_sum
 
 
 def compute_ld_summary(
@@ -322,6 +353,102 @@ def compute_ld_summary(
 
 
 # ---------------------------------------------------------------------------
+# Shared helper: section_aoa entries → WingSectionData list
+# ---------------------------------------------------------------------------
+
+
+def build_wing_section_data(
+    asb_airplane,
+    section_entries: list,
+    velocity: float,
+    s_ref: float,
+) -> list[WingSectionData]:
+    """Convert per-section LiftingLine output into ``WingSectionData`` inputs.
+
+    Shared by the optimizer endpoint and the recompute_assumptions turbulator
+    block (MINOR 4/5, gh-935): eliminates ~85 lines of duplicated section-
+    building logic.
+
+    Parameters
+    ----------
+    asb_airplane:
+        The AeroSandbox airplane model.  The main wing (largest planform area)
+        is used to resolve airfoil names from xsecs.
+    section_entries:
+        List of section-aoa entries from ``compute_section_aoa`` — objects with
+        ``.y_m``, ``.chord_m``, ``.cl`` attributes.
+    velocity:
+        Operating velocity [m/s] for local Reynolds number calculation.
+    s_ref:
+        Reference wing area [m²] (FULL planform, both half-spans for symmetric
+        wings).  Section areas are normalised so their sum equals ``s_ref / 2``.
+
+    Returns
+    -------
+    list[WingSectionData]
+        Ready to pass to ``run_turbulator_optimizer`` or
+        ``compute_delta_cd0_from_turbulator_position``.  Empty list if
+        ``section_entries`` is empty.
+    """
+    if not section_entries:
+        return []
+
+    nu = 1.5e-5  # kinematic viscosity [m²/s]
+
+    # Pick main wing (largest planform area) for xsec/airfoil lookup.
+    main_wing = max(asb_airplane.wings, key=lambda w: float(w.area()))
+    xsecs = main_wing.xsecs
+    xsec_y = np.array([float(np.atleast_1d(xs.xyz_le)[1]) for xs in xsecs])
+    xsec_airfoils: list[str] = []
+    for xs in xsecs:
+        try:
+            af_name = getattr(xs.airfoil, "name", None) or "naca0012"
+        except Exception:
+            af_name = "naca0012"
+        xsec_airfoils.append(af_name)
+
+    # Trapezoidal section areas along the half-span.
+    y_arr = np.array([e.y_m for e in section_entries])
+    chord_arr = np.array([e.chord_m for e in section_entries])
+    n = len(y_arr)
+    section_areas = np.zeros(n)
+    for i in range(n):
+        left = (y_arr[i] - y_arr[i - 1]) / 2.0 if i > 0 else 0.0
+        right = (y_arr[i + 1] - y_arr[i]) / 2.0 if i < n - 1 else 0.0
+        section_areas[i] = chord_arr[i] * (left + right)
+
+    # Normalise so Σ S_i = s_ref / 2.  section_aoa covers one half-span.
+    total_area = float(np.sum(section_areas))
+    if total_area > 0 and s_ref > 0:
+        section_areas *= (s_ref / 2.0) / total_area
+
+    result: list[WingSectionData] = []
+    for i, entry in enumerate(section_entries):
+        if len(xsec_y) >= 2:
+            xsec_idx = int(np.clip(
+                np.searchsorted(xsec_y, entry.y_m, side="right") - 1,
+                0,
+                len(xsec_airfoils) - 1,
+            ))
+            af_name = xsec_airfoils[xsec_idx]
+        else:
+            af_name = xsec_airfoils[0] if xsec_airfoils else "naca0012"
+
+        result.append(
+            WingSectionData(
+                y_m=entry.y_m,
+                chord_m=entry.chord_m,
+                cl=entry.cl,
+                re_local=max(velocity * entry.chord_m / nu, 1e4),
+                airfoil_name=af_name,
+                section_area_m2=float(section_areas[i]),
+            )
+        )
+
+    return result
+
+
+# ---------------------------------------------------------------------------
 # Full wing optimizer
 # ---------------------------------------------------------------------------
 
@@ -331,6 +458,7 @@ def run_turbulator_optimizer(
     s_ref: float,
     scope: Literal["section", "segment", "whole"] = "section",
     xtr_grid: np.ndarray | None = None,
+    wing_symmetric: bool = False,
 ) -> TurbulatorOptimizerResult:
     """Run the turbulator optimizer over all sections.
 
@@ -339,13 +467,17 @@ def run_turbulator_optimizer(
     sections:
         Per-section input data (y_m, chord_m, cl, re_local, airfoil_name, section_area_m2).
     s_ref:
-        Reference wing area [m²] for ΔCD0 area-weighting.
+        Reference wing area [m²] for ΔCD0 area-weighting (FULL planform).
     scope:
         "section" → per-section optima (independent xtr per section).
         "segment" → per-segment (group by segment; one xtr per group).
         "whole"   → single xtr for all sections at the CL-weighted mean Re.
     xtr_grid:
         Override the default XTR_GRID (useful for testing).
+    wing_symmetric:
+        True when the main wing is symmetric (``asb.Wing.symmetric == True``).
+        When True, ``sections`` covers only one half-span and the ΔCD0
+        aggregation multiplies by 2 to account for the mirrored half.
 
     Returns
     -------
@@ -467,7 +599,7 @@ def run_turbulator_optimizer(
                     )
 
     # --- 3-D summary --------------------------------------------------------
-    delta_cd0 = compute_turbulator_delta_cd0(section_results, s_ref)
+    delta_cd0 = compute_turbulator_delta_cd0(section_results, s_ref, wing_symmetric=wing_symmetric)
 
     # CL for L/D: use area-weighted average of section CLs
     if sections:
@@ -511,6 +643,7 @@ def compute_delta_cd0_from_turbulator_position(
     xtr_root: float,
     xtr_tip: float,
     s_ref: float,
+    wing_symmetric: bool = False,
 ) -> tuple[float, list[str]]:
     """Compute ΔCD0 using the turbulator's CURRENT position (not the optimizer).
 
@@ -525,7 +658,10 @@ def compute_delta_cd0_from_turbulator_position(
     xtr_root, xtr_tip:
         The turbulator's CURRENT x/c positions at root and tip.
     s_ref:
-        Reference wing area.
+        Reference wing area (FULL planform for symmetric wings).
+    wing_symmetric:
+        True when the wing is symmetric — sections cover one half-span and
+        ΔCD0 is multiplied by 2 to account for the mirrored half.
 
     Returns
     -------
@@ -584,5 +720,5 @@ def compute_delta_cd0_from_turbulator_position(
             )
         )
 
-    delta_cd0 = compute_turbulator_delta_cd0(section_results, s_ref)
+    delta_cd0 = compute_turbulator_delta_cd0(section_results, s_ref, wing_symmetric=wing_symmetric)
     return delta_cd0, all_warnings

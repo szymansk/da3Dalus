@@ -114,16 +114,28 @@ def recompute_assumptions(db: Session, aeroplane_uuid) -> None:
     # keeps the turbulator effect self-consistent with the normal analysis
     # path: AeroBuildup gives the natural-transition baseline; we add the
     # turbulator delta on top without touching AeroBuildup internals.
+    #
+    # MAJOR 2 fix: preserve raw_cd0 so the parabolic-fit sanity gate
+    # (|cd0_fit − cd0_stability| / cd0_stability ≤ 0.20) always compares
+    # against the natural-transition baseline — not the turbulator-adjusted
+    # value.  The fit's sweep data is natural-transition, so comparing against
+    # the turbulator-adjusted cd0 would produce a spurious rejection when
+    # ΔCD0 is meaningful (> 20%).  The turbulator delta is applied to the
+    # stored cd0 AFTER the fit.
+    raw_cd0 = cd0  # preserved for the polar-fit gate (MAJOR 2)
+
     _xtr_root, _xtr_tip, _turb_enabled = _extract_main_wing_turbulator_xtr(aircraft)
     if _turb_enabled and _xtr_root is not None and _xtr_tip is not None:
         try:
-            from app.services.turbulator_optimizer_service import WingSectionData
             from app.services.section_aoa_service import compute_section_aoa
 
             _asb_op_turb = None
             try:
                 import aerosandbox as _asb_mod
 
+                # alpha=3.0 is a representative cruise value.  LiftingLine
+                # re-solves the circulation at the true condition; only the
+                # CL-distribution shape depends on the seed alpha here.
                 _asb_op_turb = _asb_mod.OperatingPoint(velocity=v_cruise, alpha=3.0)
             except Exception:
                 pass
@@ -131,52 +143,22 @@ def recompute_assumptions(db: Session, aeroplane_uuid) -> None:
             if _asb_op_turb is not None:
                 _main_wing_asb = max(asb_airplane.wings, key=lambda w: float(w.area()))
                 _wing_name_turb = getattr(_main_wing_asb, "name", None) or "main_wing"
+                # MAJOR 1 fix: detect symmetry so ΔCD0 aggregation applies the
+                # factor-of-2 when the turbulator covers both half-spans.
+                _wing_symmetric_flag = getattr(_main_wing_asb, "symmetric", False)
                 _section_entries = compute_section_aoa(
                     asb_airplane, _asb_op_turb, wing_name=_wing_name_turb
                 )
-                _nu = 1.5e-5
-                _xsecs = _main_wing_asb.xsecs
-                import numpy as _np_turb
 
-                _xsec_y = _np_turb.array(
-                    [float(_np_turb.atleast_1d(xs.xyz_le)[1]) for xs in _xsecs]
+                # MINOR 4/5: use shared helper instead of duplicated section-
+                # building block (endpoint has the canonical copy).
+                from app.services.turbulator_optimizer_service import build_wing_section_data
+                _wing_sections = build_wing_section_data(
+                    asb_airplane=asb_airplane,
+                    section_entries=_section_entries,
+                    velocity=v_cruise,
+                    s_ref=s_ref,
                 )
-                _xsec_airfoils = []
-                for _xs in _xsecs:
-                    try:
-                        _af_name = getattr(_xs.airfoil, "name", None) or "naca0012"
-                    except Exception:
-                        _af_name = "naca0012"
-                    _xsec_airfoils.append(_af_name)
-
-                _n_sec = len(_section_entries)
-                _y_arr = _np_turb.array([e.y_m for e in _section_entries])
-                _c_arr = _np_turb.array([e.chord_m for e in _section_entries])
-                _s_areas = _np_turb.zeros(_n_sec)
-                for _i in range(_n_sec):
-                    _left = (_y_arr[_i] - _y_arr[_i - 1]) / 2.0 if _i > 0 else 0.0
-                    _right = (_y_arr[_i + 1] - _y_arr[_i]) / 2.0 if _i < _n_sec - 1 else 0.0
-                    _s_areas[_i] = _c_arr[_i] * (_left + _right)
-                _total_s = float(_np_turb.sum(_s_areas))
-                if _total_s > 0 and s_ref > 0:
-                    _s_areas *= (s_ref / 2.0) / _total_s
-
-                _wing_sections: list[WingSectionData] = []
-                for _i, _e in enumerate(_section_entries):
-                    if len(_xsec_y) >= 2:
-                        _sidx = int(_np_turb.clip(
-                            _np_turb.searchsorted(_xsec_y, _e.y_m, side="right") - 1,
-                            0, len(_xsec_airfoils) - 1
-                        ))
-                        _af_n = _xsec_airfoils[_sidx]
-                    else:
-                        _af_n = _xsec_airfoils[0] if _xsec_airfoils else "naca0012"
-                    _wing_sections.append(WingSectionData(
-                        y_m=_e.y_m, chord_m=_e.chord_m, cl=_e.cl,
-                        re_local=max(v_cruise * _e.chord_m / _nu, 1e4),
-                        airfoil_name=_af_n,
-                        section_area_m2=float(_s_areas[_i]),
-                    ))
 
                 cd0 = apply_turbulator_delta_to_cd0(
                     raw_cd0=cd0,
@@ -184,6 +166,7 @@ def recompute_assumptions(db: Session, aeroplane_uuid) -> None:
                     xtr_root=_xtr_root,
                     xtr_tip=_xtr_tip,
                     s_ref=s_ref,
+                    wing_symmetric=_wing_symmetric_flag,
                 )
                 logger.info(
                     "gh-935: turbulator ΔCD0 applied for aircraft %s; "
@@ -227,6 +210,14 @@ def recompute_assumptions(db: Session, aeroplane_uuid) -> None:
     # derived Oswald efficiency e in the assumption_computation_context so
     # that _min_drag_speed / _min_sink_speed use aircraft-specific e instead
     # of the fallback constant 0.8.
+    #
+    # MAJOR 2 fix (gh-935): pass raw_cd0 (natural-transition baseline) as
+    # cd0_stability, NOT the turbulator-adjusted cd0.  The sweep data was
+    # produced with natural transition; comparing the fit against the
+    # turbulator-adjusted cd0 would spuriously trigger the 20% gate when
+    # ΔCD0 is meaningful.  The turbulator delta was already applied to the
+    # DB-stored cd0 (above); the fit gate is a consistency check against the
+    # sweep baseline only.
     aspect_ratio = _main_wing_aspect_ratio(asb_airplane)
     cl_max_effective_for_fit = _load_effective_assumption(db, aircraft.id, "cl_max")
     _cd0_fit, e_oswald_fit, e_r2, polar_rejection, polar_auto_refined = (
@@ -238,7 +229,7 @@ def recompute_assumptions(db: Session, aeroplane_uuid) -> None:
             config=config,
             aspect_ratio=aspect_ratio if aspect_ratio is not None else 0.0,
             cl_max_for_fit=cl_max_effective_for_fit,
-            cd0_stability=cd0,
+            cd0_stability=raw_cd0,  # MAJOR 2: always the natural-transition baseline
             cl=np.asarray(sweep_cl_arr, dtype=float),
             cd=np.asarray(sweep_cd_arr, dtype=float),
         )
@@ -369,7 +360,7 @@ def recompute_assumptions(db: Session, aeroplane_uuid) -> None:
                 v_max=v_max,
                 config=config,
                 aspect_ratio=aspect_ratio,
-                cd0_stability=cd0,
+                cd0_stability=raw_cd0,  # MAJOR 2: use natural-transition baseline
                 cl_max_effective_for_fit=cl_max_effective_for_fit,
             )
         except Exception:
@@ -389,7 +380,7 @@ def recompute_assumptions(db: Session, aeroplane_uuid) -> None:
                 v_max=v_max,
                 config=config,
                 aspect_ratio=aspect_ratio,
-                cd0_stability=cd0,
+                cd0_stability=raw_cd0,  # MAJOR 2: use natural-transition baseline
                 cl_max_effective_for_fit=cl_max_effective_for_fit,
             )
         except Exception:
@@ -2112,6 +2103,7 @@ def apply_turbulator_delta_to_cd0(
     xtr_root: float | None,
     xtr_tip: float | None,
     s_ref: float,
+    wing_symmetric: bool = False,
 ) -> float:
     """Apply turbulator ΔCD0 on top of AeroBuildup's raw parasite cd0.
 
@@ -2127,13 +2119,16 @@ def apply_turbulator_delta_to_cd0(
     xtr_root, xtr_tip : float | None
         Turbulator position at root / tip.  None → disabled / not set → 0 delta.
     s_ref : float
-        Reference wing area [m²].
+        Reference wing area [m²] (FULL planform).
+    wing_symmetric : bool
+        True when the wing is symmetric — sections cover one half-span and
+        the ΔCD0 is multiplied by 2 to account for the mirrored half.
 
     Returns
     -------
     float
-        Adjusted cd0 = raw_cd0 + ΔCD0.  Never negative (clamped to a small
-        positive value so callers can safely use it in polar formulas).
+        Adjusted cd0 = raw_cd0 + ΔCD0.  Never negative (clamped to raw_cd0
+        so callers can safely use it in polar formulas).
     """
     if not wing_sections or xtr_root is None or xtr_tip is None or s_ref <= 0:
         return raw_cd0
@@ -2148,6 +2143,7 @@ def apply_turbulator_delta_to_cd0(
             xtr_root=float(xtr_root),
             xtr_tip=float(xtr_tip),
             s_ref=s_ref,
+            wing_symmetric=wing_symmetric,
         )
         for w in warnings:
             logger.warning("gh-935 turbulator ΔCD0 warning: %s", w)
@@ -2172,21 +2168,59 @@ def apply_turbulator_delta_to_cd0(
     return adjusted
 
 
+def _wing_orm_planform_area(wing) -> float:
+    """Compute a half-span planform area from ORM WingModel xsecs.
+
+    Uses trapezoidal integration over sorted xsec y-positions (mm) and chord
+    values (mm). The units cancel in the ratio comparison, so the absolute
+    value does not matter — only the relative ordering between wings.
+
+    Returns 0.0 when there are fewer than two xsecs (degenerate wing).
+    """
+    xsecs = getattr(wing, "x_secs", None) or []
+    if len(xsecs) < 2:
+        return 0.0
+    # xyz_le is stored as [x, y, z] in mm (WingConfig units)
+    pts = []
+    for xs in xsecs:
+        xyz_le = getattr(xs, "xyz_le", None)
+        chord = getattr(xs, "chord", None)
+        if xyz_le is None or chord is None:
+            continue
+        try:
+            y = float(xyz_le[1]) if hasattr(xyz_le, "__getitem__") else 0.0
+            pts.append((y, float(chord)))
+        except (TypeError, IndexError):
+            continue
+    if len(pts) < 2:
+        return 0.0
+    pts.sort(key=lambda p: p[0])
+    area = 0.0
+    for i in range(len(pts) - 1):
+        dy = abs(pts[i + 1][0] - pts[i][0])
+        area += 0.5 * (pts[i][1] + pts[i + 1][1]) * dy
+    return area
+
+
 def _extract_main_wing_turbulator_xtr(
     aircraft: AeroplaneModel,
 ) -> tuple[float | None, float | None, bool]:
     """Return (xtr_root, xtr_tip, enabled) for the main wing's turbulator.
 
-    Walks the wing with the largest number of xsecs (heuristic for main wing
-    in the model layer, which has no planform-area sorting at this level).
+    MINOR 3 fix (gh-935): selects the main wing by the largest half-span
+    planform area (trapezoidal integral over ORM xsec y/chord values in mm).
+    This is consistent with _select_main_wing which uses ASB Wing.area().
+    The previous implementation used xsec COUNT which does not correlate
+    with actual wing size.
+
     Returns (None, None, False) when no enabled turbulator exists.
     """
     best_wing = None
-    best_count = -1
+    best_area = -1.0
     for wing in getattr(aircraft, "wings", []) or []:
-        n = len(getattr(wing, "x_secs", []) or [])
-        if n > best_count:
-            best_count = n
+        area = _wing_orm_planform_area(wing)
+        if area > best_area:
+            best_area = area
             best_wing = wing
 
     if best_wing is None:

@@ -1078,3 +1078,225 @@ class TestParasiteCd0:
         cd0 = _parasite_cd0(0.02364, cl=0.552, ar=11.3, e=0.7916)
         e_max = 0.5 * math.sqrt(math.pi * 11.3 * 0.7916 / cd0)
         assert e_max == pytest.approx(23.0, abs=1.0)  # NOT the wrong 17
+
+
+# ---------------------------------------------------------------------------
+# gh-935 MAJOR 2: turbulator-adjusted cd0 must NOT contaminate polar-fit gate
+# ---------------------------------------------------------------------------
+
+
+class TestTurbulatorCd0FitDecoupling:
+    """gh-935 MAJOR 2: the parabolic fit's sanity gate (|cd0_fit - cd0_stability|
+    / cd0_stability ≤ 0.20) must use the RAW (pre-turbulator) cd0, not the
+    turbulator-adjusted one.
+
+    Scenario: raw cd0 = 0.020, turbulator reduces drag by 25% → cd0_adjusted
+    = 0.015.  The polar fit (natural-transition sweep) yields cd0_fit ≈ 0.020
+    (consistent with the raw cd0).  With the BUG, cd0_stability = 0.015 → the
+    gate flags |0.020 - 0.015| / 0.015 = 33% > 20% → spurious rejection.
+    With the FIX, cd0_stability = 0.020 (raw) → gate passes.
+
+    These tests are written to FAIL on the current code and PASS after the fix.
+    """
+
+    def _make_parabolic_polar_data(self, cd0_base: float = 0.020):
+        """Create realistic CL/CD arrays that fit a parabolic polar with cd0≈cd0_base."""
+        cl = np.linspace(0.10, 1.20, 30)
+        # CD = cd0 + CL²/(π*e*AR),  e=0.85, AR=8
+        e, ar = 0.85, 8.0
+        cd = cd0_base + cl**2 / (np.pi * e * ar)
+        return cl, cd
+
+    def test_large_turbulator_delta_does_not_spuriously_reject_polar_fit(self):
+        """gh-935 MAJOR 2: a large ΔCD0 (−25%) must NOT trigger cd0_stability_mismatch.
+
+        The polar fit receives NATURAL-TRANSITION data (cd0≈0.020); the turbulator
+        reduces raw_cd0=0.020 to cd0_adjusted=0.015 (25% reduction). The gate must
+        compare against raw_cd0=0.020, not cd0_adjusted=0.015.
+
+        This test was written to FAIL on the old code (gate uses adjusted cd0) and
+        PASS after the fix (gate uses raw cd0).
+        """
+        from app.services.assumption_compute_service import _fit_parabolic_polar
+
+        raw_cd0 = 0.020
+        turbulator_delta = -0.005  # 25% reduction
+        cd0_adjusted = raw_cd0 + turbulator_delta  # = 0.015
+
+        cl, cd = self._make_parabolic_polar_data(cd0_base=raw_cd0)
+
+        # With the FIX: pass raw_cd0 as cd0_stability → gate passes
+        cd0_fit, e_oswald, r2, rejection_raw = _fit_parabolic_polar(
+            cl=cl, cd=cd, ar=8.0, cl_max=1.35, cd0_stability=raw_cd0
+        )
+        # With the BUG (old behavior): passing adjusted cd0 → gate may reject
+        _cd0_fit_bug, _e_bug, _r2_bug, rejection_adjusted = _fit_parabolic_polar(
+            cl=cl, cd=cd, ar=8.0, cl_max=1.35, cd0_stability=cd0_adjusted
+        )
+
+        # Fix: passing raw_cd0 must succeed (no rejection)
+        assert rejection_raw is None, (
+            f"Polar fit rejected with raw_cd0={raw_cd0}: gate={getattr(rejection_raw, 'gate', '?')}"
+        )
+        assert cd0_fit is not None
+        assert e_oswald is not None
+
+        # Bug confirmation: passing adjusted cd0 triggers the gate
+        # (deviation = |0.020 - 0.015| / 0.015 ≈ 33% > 20%)
+        assert rejection_adjusted is not None, (
+            "Expected cd0_stability_mismatch rejection when turbulator-adjusted cd0 "
+            f"is passed (cd0_stability={cd0_adjusted}, cd0_fit≈{cd0_fit})"
+        )
+        assert rejection_adjusted.gate == "cd0_stability_mismatch"
+
+    def test_stored_cd0_reflects_turbulator_delta(self, client_and_db):
+        """gh-935 MAJOR 2: the DB-stored cd0 must reflect the turbulator delta,
+        while the polar fit receives the raw (pre-turbulator) cd0.
+
+        Setup: raw cd0=0.025 from stability run; apply_turbulator_delta_to_cd0
+               injects a 20% reduction → adjusted cd0=0.020. The stored value
+               in the DB must be 0.020, and the polar fit must NOT be called
+               with the adjusted 0.020 (which would make the gate flag
+               |0.025 - 0.020| / 0.020 = 25% > 20%).
+
+        This test is written to FAIL on the old code (turbulator-adjusted cd0
+        contaminating the polar fit stability gate) and PASS after the fix.
+        """
+        from unittest.mock import patch
+
+        from app.models.aeroplanemodel import DesignAssumptionModel
+        from app.services.assumption_compute_service import recompute_assumptions
+        from app.services.design_assumptions_service import seed_defaults
+        from app.tests.conftest import make_aeroplane
+
+        _, SessionLocal = client_and_db
+        with SessionLocal() as db:
+            aeroplane = make_aeroplane(db)
+            seed_defaults(db, str(aeroplane.uuid))
+            db.commit()
+            aeroplane_uuid = str(aeroplane.uuid)
+            aeroplane_id = aeroplane.id
+
+        # Build CL/CD data consistent with raw_cd0=0.025 so the polar fit passes.
+        raw_cd0 = 0.025
+        adjusted_cd0 = 0.020  # turbulator reduces by 20%
+        cl_arr = np.linspace(0.10, 1.20, 30)
+        cd_arr = raw_cd0 + cl_arr**2 / (np.pi * 0.85 * 8.0)
+        v_arr = np.linspace(9.0, 28.0, len(cl_arr))
+        cdi_arr = cl_arr**2 / (np.pi * 0.85 * 8.0)
+
+        # Capture what cd0_stability value _fit_parabolic_polar_with_refinement receives.
+        fit_calls_cd0_stability: list[float] = []
+        original_fit = __import__(
+            "app.services.assumption_compute_service",
+            fromlist=["_fit_parabolic_polar_with_refinement"],
+        )._fit_parabolic_polar_with_refinement
+
+        def _spy_fit(**kwargs):
+            fit_calls_cd0_stability.append(kwargs.get("cd0_stability", float("nan")))
+            return original_fit(**kwargs)
+
+        with _enter_patches():
+            # Bypass the turbulator section-building entirely: patch
+            # apply_turbulator_delta_to_cd0 at module level AND patch the
+            # entire turbulator injection block by stubbing
+            # _extract_main_wing_turbulator_xtr to enable it, and providing a
+            # fake ASB airplane whose xsecs have xyz_le so the block runs to
+            # completion.  The key observable is what cd0_stability value the
+            # polar fit receives.
+            import numpy as _np_test
+            from types import SimpleNamespace as _SN
+
+            fake_xsec = _SN(
+                xyz_le=_np_test.array([0.0, 0.25, 0.0]),
+                airfoil=_SN(name="naca0012"),
+                control_surfaces=[],
+            )
+            fake_wing_turb = _SN(
+                area=lambda: 0.30,
+                mean_aerodynamic_chord=lambda: 0.20,
+                span=lambda: 1.5,
+                xsecs=[fake_xsec],
+                name="main_wing",
+            )
+            fake_plane_turb = _SN(
+                wings=[fake_wing_turb],
+                xyz_ref=[0.08, 0.0, 0.0],
+                s_ref=0.30,
+                c_ref=0.20,
+                b_ref=1.5,
+                _deflection_calls=[],
+            )
+            fake_plane_turb.with_control_deflections = lambda m: fake_plane_turb
+
+            with (
+                patch(
+                    "app.services.assumption_compute_service._build_asb_airplane",
+                    return_value=fake_plane_turb,
+                ),
+                patch(
+                    "app.services.assumption_compute_service._stability_run_at_cruise",
+                    return_value=(0.085, 0.20, raw_cd0, 0.30),
+                ),
+                patch(
+                    "app.services.assumption_compute_service._coarse_alpha_sweep",
+                    return_value=15.0,
+                ),
+                patch(
+                    "app.services.assumption_compute_service._fine_sweep_cl_max",
+                    return_value=(1.35, cl_arr, cd_arr, v_arr, cdi_arr),
+                ),
+                patch(
+                    "app.services.assumption_compute_service._extract_cl_alpha_from_linear_sweep",
+                    return_value=(5.7, -2.3),
+                ),
+                patch(
+                    "app.services.assumption_compute_service._load_flight_profile_speeds",
+                    return_value=(18.0, 28.0, True),
+                ),
+                patch(
+                    "app.services.assumption_compute_service._extract_flap_ted_max",
+                    return_value=None,
+                ),
+                patch(
+                    "app.services.assumption_compute_service.apply_turbulator_delta_to_cd0",
+                    return_value=adjusted_cd0,
+                ),
+                patch(
+                    "app.services.assumption_compute_service._extract_main_wing_turbulator_xtr",
+                    return_value=(0.4, 0.6, True),  # turbulator enabled
+                ),
+                patch(
+                    "app.services.section_aoa_service.compute_section_aoa",
+                    return_value=[],  # empty section list → _wing_sections=[] → apply_turbulator called with empty sections
+                ),
+                patch(
+                    "app.services.assumption_compute_service._fit_parabolic_polar_with_refinement",
+                    side_effect=_spy_fit,
+                ),
+                SessionLocal() as db,
+            ):
+                recompute_assumptions(db, aeroplane_uuid)
+                db.commit()
+
+        with SessionLocal() as db:
+            rows = {
+                r.parameter_name: r
+                for r in db.query(DesignAssumptionModel)
+                .filter(DesignAssumptionModel.aeroplane_id == aeroplane_id)
+                .all()
+            }
+            # MAJOR 2 fix: the STORED cd0 must reflect the turbulator delta (= 0.020)
+            assert rows["cd0"].calculated_value == pytest.approx(adjusted_cd0, abs=1e-5), (
+                f"Expected stored cd0={adjusted_cd0} (turbulator-adjusted), "
+                f"got {rows['cd0'].calculated_value}"
+            )
+
+        # MAJOR 2 fix: the polar fit must have been called with RAW cd0 (0.025),
+        # NOT the turbulator-adjusted cd0 (0.020).  Passing 0.020 would cause
+        # |0.025 - 0.020| / 0.020 = 25% > 20% → spurious cd0_stability_mismatch.
+        assert len(fit_calls_cd0_stability) >= 1, "Expected _fit_parabolic_polar_with_refinement to be called"
+        assert fit_calls_cd0_stability[0] == pytest.approx(raw_cd0, abs=1e-6), (
+            f"Polar fit should receive raw_cd0={raw_cd0}, got cd0_stability={fit_calls_cd0_stability[0]:.5f}. "
+            "The turbulator-adjusted cd0 must be applied AFTER the fit, not before."
+        )

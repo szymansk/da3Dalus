@@ -64,17 +64,19 @@ def _call_optimizer(
     Operating-point resolution:
     1. Read design_speed_mps assumption (defaults to 15 m/s).
     2. Run LiftingLine via section_aoa_service to get per-section (y, chord, cl, Re, airfoil).
-    3. Compute section_area_m2 as chord × dy (trapezoidal).
+    3. Pass to build_wing_section_data (shared helper, MINOR 4/5) → WingSectionData list.
     4. Pass to turbulator_optimizer_service.run_turbulator_optimizer.
     """
     import aerosandbox as asb
-    import numpy as np
 
     from app.converters.model_schema_converters import aeroplane_schema_to_asb_airplane_async
     from app.services.analysis_service import get_aeroplane_schema_or_raise
     from app.services.design_assumptions_service import get_effective_assumption
     from app.services.section_aoa_service import compute_section_aoa
-    from app.services.turbulator_optimizer_service import WingSectionData, run_turbulator_optimizer
+    from app.services.turbulator_optimizer_service import (
+        build_wing_section_data,
+        run_turbulator_optimizer,
+    )
 
     # --- Resolve aeroplane --------------------------------------------------
     aircraft = db.query(AeroplaneModel).filter(AeroplaneModel.uuid == str(aeroplane_id)).first()
@@ -97,11 +99,15 @@ def _call_optimizer(
     main_wing = max(asb_airplane.wings, key=lambda w: float(w.area()))
     wing_name = getattr(main_wing, "name", None) or "main_wing"
     s_ref = float(main_wing.area())
+    wing_symmetric = getattr(main_wing, "symmetric", False)
 
     # --- Build operating point ----------------------------------------------
+    # alpha=3.0 is a representative cruise value; LiftingLine re-solves the
+    # circulation at the true condition, so only the CL-distribution shape
+    # depends on this seed alpha.
     asb_op = asb.OperatingPoint(
         velocity=design_speed,
-        alpha=3.0,  # representative cruise alpha
+        alpha=3.0,
     )
 
     # --- Get per-section data from LiftingLine ------------------------------
@@ -117,64 +123,21 @@ def _call_optimizer(
             message="No spanwise sections could be computed for this wing."
         )
 
-    # --- Build WingSectionData list -----------------------------------------
-    # Determine airfoil name per panel y position by interpolating from xsecs
-    nu = 1.5e-5  # kinematic viscosity [m²/s]
-
-    # Build (y_xsec, airfoil_name) lookup from main wing xsecs
-    xsecs = main_wing.xsecs
-    xsec_y = np.array([float(np.atleast_1d(xs.xyz_le)[1]) for xs in xsecs])
-    xsec_airfoils: list[str] = []
-    for xs in xsecs:
-        try:
-            af = xs.airfoil
-            af_name = getattr(af, "name", None) or "naca0012"
-        except Exception:
-            af_name = "naca0012"
-        xsec_airfoils.append(af_name)
-
-    # Compute section areas (trapezoidal between consecutive panels)
-    y_arr = np.array([e.y_m for e in section_entries])
-    chord_arr = np.array([e.chord_m for e in section_entries])
-    n = len(y_arr)
-    section_areas = np.zeros(n)
-    for i in range(n):
-        left = (y_arr[i] - y_arr[i - 1]) / 2.0 if i > 0 else 0.0
-        right = (y_arr[i + 1] - y_arr[i]) / 2.0 if i < n - 1 else 0.0
-        dy = left + right
-        section_areas[i] = chord_arr[i] * dy
-
-    # Normalise so Σ S_i = S_ref / 2 for a symmetric wing
-    # (section_aoa only covers one half-span due to symmetric=True)
-    total_section_area = float(np.sum(section_areas))
-    if total_section_area > 0 and s_ref > 0:
-        section_areas *= (s_ref / 2.0) / total_section_area
-
-    wing_data: list[WingSectionData] = []
-    for i, entry in enumerate(section_entries):
-        # Interpolate airfoil name at this y position
-        if len(xsec_y) >= 2:
-            xsec_idx = int(np.searchsorted(xsec_y, entry.y_m, side="right") - 1)
-            xsec_idx = int(np.clip(xsec_idx, 0, len(xsec_airfoils) - 1))
-            af_name = xsec_airfoils[xsec_idx]
-        else:
-            af_name = xsec_airfoils[0] if xsec_airfoils else "naca0012"
-
-        re_local = max(design_speed * entry.chord_m / nu, 1e4)
-
-        wing_data.append(
-            WingSectionData(
-                y_m=entry.y_m,
-                chord_m=entry.chord_m,
-                cl=entry.cl,
-                re_local=re_local,
-                airfoil_name=af_name,
-                section_area_m2=float(section_areas[i]),
-            )
-        )
+    # --- Build WingSectionData list (shared helper, MINOR 4/5) --------------
+    wing_data = build_wing_section_data(
+        asb_airplane=asb_airplane,
+        section_entries=section_entries,
+        velocity=design_speed,
+        s_ref=s_ref,
+    )
 
     # --- Run optimizer ------------------------------------------------------
-    return run_turbulator_optimizer(sections=wing_data, s_ref=s_ref, scope=scope)
+    return run_turbulator_optimizer(
+        sections=wing_data,
+        s_ref=s_ref,
+        scope=scope,
+        wing_symmetric=wing_symmetric,
+    )
 
 
 def _result_to_response(result: TurbulatorOptimizerResult) -> TurbulatorOptimizerResponse:

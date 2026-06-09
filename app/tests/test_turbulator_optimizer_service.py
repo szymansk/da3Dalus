@@ -240,7 +240,11 @@ class TestOptimizeSectionXtr:
 class TestComputeTurbulatorDeltaCd0:
     """compute_turbulator_delta_cd0(section_results, s_ref) → delta_cd0
 
-    ΔCD0 = Σ (cd_tripped_i − cd_clean_i) * S_i / S_ref
+    For a symmetric wing the turbulator sits on BOTH half-spans, so the
+    area-weighted sum (half-span sections) must be multiplied by 2:
+
+        ΔCD0 = 2 × Σ_half (cd_tripped_i − cd_clean_i) * S_i / S_ref   (symmetric)
+        ΔCD0 = Σ (cd_tripped_i − cd_clean_i) * S_i / S_ref             (non-symmetric)
     """
 
     def test_single_section_delta(self):
@@ -264,8 +268,8 @@ class TestComputeTurbulatorDeltaCd0:
             )
         ]
         s_ref = 0.4
-        delta = compute_turbulator_delta_cd0(results, s_ref)
-        # ΔCD0 = (0.020 - 0.030) * 0.1 / 0.4 = -0.010 * 0.25 = -0.0025
+        # Non-symmetric (default): ΔCD0 = (0.020 - 0.030) * 0.1 / 0.4 = -0.0025
+        delta = compute_turbulator_delta_cd0(results, s_ref, wing_symmetric=False)
         assert delta == pytest.approx(-0.0025, abs=1e-9)
 
     def test_two_sections_weighted(self):
@@ -287,7 +291,7 @@ class TestComputeTurbulatorDeltaCd0:
             ),
         ]
         s_ref = 0.4
-        delta = compute_turbulator_delta_cd0(results, s_ref)
+        delta = compute_turbulator_delta_cd0(results, s_ref, wing_symmetric=False)
         expected = (-0.010 * 0.1 + -0.007 * 0.08) / 0.4
         assert delta == pytest.approx(expected, rel=1e-6)
 
@@ -312,9 +316,94 @@ class TestComputeTurbulatorDeltaCd0:
             ),
         ]
         s_ref = 0.4
-        delta = compute_turbulator_delta_cd0(results, s_ref)
+        delta = compute_turbulator_delta_cd0(results, s_ref, wing_symmetric=False)
         # Only first section contributes
         assert delta == pytest.approx(-0.010 * 0.1 / 0.4, rel=1e-6)
+
+    # --- MAJOR 1: symmetry factor -----------------------------------------
+
+    def test_symmetric_wing_doubles_delta_cd0(self):
+        """gh-935 MAJOR 1 fix: symmetric wing → 2× multiplier.
+
+        section_aoa_service returns half-span sections whose areas sum to
+        ~S_ref/2.  The turbulator sits on BOTH half-spans, so the
+        area-weighted sum must be multiplied by 2 when wing_symmetric=True.
+
+        This test was written to FAIL on the old code (no multiplier) and
+        PASS after the fix.
+        """
+        from app.services.turbulator_optimizer_service import (
+            SectionOptimizerResult,
+            compute_turbulator_delta_cd0,
+        )
+
+        # Two half-span sections with areas that sum to S_ref/2 (0.20 m²),
+        # full S_ref = 0.40 m².
+        s_ref = 0.40
+        results = [
+            SectionOptimizerResult(
+                y_m=0.1, chord_m=0.2, re_local=200_000, cl=0.6,
+                xtr_opt=0.4, cd_clean=0.030, cd_tripped=0.020, delta_cd=-0.010,
+                warnings=[], section_area_m2=0.12,
+            ),
+            SectionOptimizerResult(
+                y_m=0.3, chord_m=0.15, re_local=150_000, cl=0.5,
+                xtr_opt=0.4, cd_clean=0.025, cd_tripped=0.018, delta_cd=-0.007,
+                warnings=[], section_area_m2=0.08,
+            ),
+        ]
+        # half-sum = (-0.010 * 0.12 + -0.007 * 0.08) / 0.40
+        half_sum = (-0.010 * 0.12 + -0.007 * 0.08) / s_ref
+        delta_sym = compute_turbulator_delta_cd0(results, s_ref, wing_symmetric=True)
+        delta_asym = compute_turbulator_delta_cd0(results, s_ref, wing_symmetric=False)
+
+        # Symmetric wing: result must equal 2 × the half-span sum
+        assert delta_sym == pytest.approx(2.0 * half_sum, rel=1e-9), (
+            f"Symmetric ΔCD0={delta_sym:.6f} should be 2×{half_sum:.6f}={2*half_sum:.6f}"
+        )
+        # Non-symmetric: unchanged (turbulator on one side only)
+        assert delta_asym == pytest.approx(half_sum, rel=1e-9)
+        # Symmetry doubles the effect
+        assert abs(delta_sym) == pytest.approx(2.0 * abs(delta_asym), rel=1e-9)
+
+    def test_non_symmetric_wing_no_doubling(self):
+        """Non-symmetric (flying wing / one-sided turbulator) → no factor-of-2."""
+        from app.services.turbulator_optimizer_service import (
+            SectionOptimizerResult,
+            compute_turbulator_delta_cd0,
+        )
+
+        s_ref = 0.40
+        results = [
+            SectionOptimizerResult(
+                y_m=0.2, chord_m=0.2, re_local=200_000, cl=0.6,
+                xtr_opt=0.4, cd_clean=0.030, cd_tripped=0.020, delta_cd=-0.010,
+                warnings=[], section_area_m2=0.20,
+            ),
+        ]
+        expected = -0.010 * 0.20 / s_ref
+        delta = compute_turbulator_delta_cd0(results, s_ref, wing_symmetric=False)
+        assert delta == pytest.approx(expected, rel=1e-9)
+
+    def test_default_wing_symmetric_is_false(self):
+        """Old callers that don't pass wing_symmetric get the original behaviour."""
+        from app.services.turbulator_optimizer_service import (
+            SectionOptimizerResult,
+            compute_turbulator_delta_cd0,
+        )
+
+        s_ref = 0.40
+        results = [
+            SectionOptimizerResult(
+                y_m=0.2, chord_m=0.2, re_local=200_000, cl=0.6,
+                xtr_opt=0.4, cd_clean=0.030, cd_tripped=0.020, delta_cd=-0.010,
+                warnings=[], section_area_m2=0.20,
+            ),
+        ]
+        # Default (no wing_symmetric kwarg) must behave as wing_symmetric=False
+        delta_default = compute_turbulator_delta_cd0(results, s_ref)
+        delta_explicit_false = compute_turbulator_delta_cd0(results, s_ref, wing_symmetric=False)
+        assert delta_default == pytest.approx(delta_explicit_false, rel=1e-9)
 
 
 # ---------------------------------------------------------------------------
