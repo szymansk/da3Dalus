@@ -406,25 +406,62 @@ def apply_edits(
 
                 segs = wc.get("segments", [])
                 n = len(segs)
+                n_xsecs = n + 1  # total cross-sections: root + one per segment tip
 
-                # at_index is 1-based: the new xsec becomes the tip of segment[at_index-1]
-                if op.at_index < 1 or op.at_index > n + 1:
+                # gh-938 Bug B fix: clamp any at_index >= n_xsecs to tip-append.
+                # The LLM may pass at_index == n_xsecs (correct for tip) OR any
+                # larger value if it over-estimates the count — both are safe tip-appends.
+                effective_at_index = op.at_index
+                if effective_at_index >= n_xsecs:
+                    # Force to the known-safe tip-append path.
+                    effective_at_index = n + 1  # one beyond the last segment (tip)
+                    logger.debug(
+                        "AddXsec: clamping at_index %s → %s (tip-append) for wing '%s' "
+                        "(n_segs=%s, n_xsecs=%s)",
+                        op.at_index,
+                        effective_at_index,
+                        op.wing,
+                        n,
+                        n_xsecs,
+                    )
+
+                # Reject mid-wing insertion (not yet supported).
+                # Interior at_index (1 <= at_index < n_xsecs-1) would splice into a
+                # segment with follow-mode spares, which is not robust — reject cleanly.
+                if effective_at_index < n_xsecs and effective_at_index < n + 1:
+                    # This means an at_index strictly inside the wing (not at the tip).
                     rejected.append(
                         {
                             "op": op.model_dump(),
-                            "error": f"at_index {op.at_index} out of range (1..{n + 1}) for wing '{op.wing}'.",
+                            "error": (
+                                f"Inserting mid-wing (at_index={op.at_index}, "
+                                f"n_xsecs={n_xsecs} for '{op.wing}') is not yet supported. "
+                                f"To add a winglet, append at the TIP: use at_index={n_xsecs}."
+                            ),
+                        }
+                    )
+                    continue
+
+                # Basic range check (at this point effective_at_index == n + 1, i.e. tip)
+                if effective_at_index < 1:
+                    rejected.append(
+                        {
+                            "op": op.model_dump(),
+                            "error": f"at_index must be >= 1 for wing '{op.wing}'.",
                         }
                     )
                     continue
 
                 # Determine the airfoil at the insertion point from the previous xsec
-                seg_before_idx = op.at_index - 1  # 0-based segment index before the new xsec
-                if seg_before_idx < n:
-                    prev_tip_airfoil_str = segs[seg_before_idx]["tip_airfoil"]["airfoil"]
+                seg_before_idx = effective_at_index - 1  # 0-based segment index before the new xsec
+                if seg_before_idx < n and segs[seg_before_idx].get("tip_airfoil"):
+                    prev_tip_airfoil_str = segs[seg_before_idx]["tip_airfoil"].get(
+                        "airfoil", "./components/airfoils/rg15.dat"
+                    )
                 else:
                     prev_tip_airfoil_str = (
-                        segs[-1]["tip_airfoil"]["airfoil"]
-                        if segs
+                        segs[-1]["tip_airfoil"].get("airfoil", "./components/airfoils/rg15.dat")
+                        if segs and segs[-1].get("tip_airfoil")
                         else "./components/airfoils/rg15.dat"
                     )
 
@@ -441,26 +478,23 @@ def apply_edits(
                 }
 
                 if seg_before_idx < n:
-                    # Split the existing segment: the OLD segment now ends at the new xsec.
-                    # A new segment is inserted from the new xsec to the old tip.
+                    # NOTE: this path is currently only reachable for tip-append when
+                    # n==0 (empty wing) — mid-wing is rejected above.  Keep the code for
+                    # completeness but it won't run for non-empty wings.
                     old_seg = segs[seg_before_idx]
                     old_tip = old_seg["tip_airfoil"]
                     old_length = old_seg.get("length", op.span)
                     old_sweep = old_seg.get("sweep", 0.0)
 
-                    # The new segment (from new xsec to old tip) carries half the remaining
-                    # length and sweep as a neutral default — the caller can refine via SetXsec.
-                    # We use op.span for the NEW segment's length as specified.
                     new_segment = {
                         "root_airfoil": new_xsec_airfoil.copy(),
                         "tip_airfoil": old_tip,
-                        "length": old_length,  # keep old length for continuation
+                        "length": old_length,
                         "sweep": old_sweep,
                         "number_interpolation_points": old_seg.get("number_interpolation_points"),
                         "tip_type": old_seg.get("tip_type"),
                     }
 
-                    # Modify the segment BEFORE the insertion to end at the new xsec
                     old_seg["tip_airfoil"] = new_xsec_airfoil
                     old_seg["length"] = op.span
 
@@ -613,14 +647,8 @@ def apply_edits(
             )
         except Exception as exc:  # noqa: BLE001
             logger.error("apply_edits: failed to write wing '%s': %s", wing_name, exc)
-            # Retroactively move the wing ops to rejected
-            new_rejected = []
-            new_applied = []
-            for a in applied:
-                # Move all wing-related ops for this wing to rejected
-                # (we can only do this at a coarse level since applied doesn't track wing)
-                new_applied.append(a)
-            applied = new_applied
+            # Record the wing-write failure as a rejected op so the caller
+            # always gets a clean result dict — never propagate the exception.
             rejected.append(
                 {
                     "op": {"type": "WingWrite", "wing": wing_name},

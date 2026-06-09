@@ -133,6 +133,21 @@ class TestGetDesignSnapshot:
             result = execute("get_design_snapshot", db, aeroplane_id=plane.id)
         assert "wing_count" in result
 
+    def test_wings_field_with_n_xsecs(self, client_and_db):
+        """gh-938 Bug A: snapshot must return 'wings' list with n_xsecs per wing."""
+        _, SessionLocal = client_and_db
+        with SessionLocal() as db:
+            plane = make_aeroplane(db)
+            result = execute("get_design_snapshot", db, aeroplane_id=plane.id)
+        # 'wings' key must be present (even if empty for a bare aeroplane)
+        assert "wings" in result, "'wings' key missing from snapshot"
+        assert isinstance(result["wings"], list)
+        # Each entry must have 'name' and 'n_xsecs'
+        for entry in result["wings"]:
+            assert "name" in entry
+            assert "n_xsecs" in entry
+            assert isinstance(entry["n_xsecs"], int)
+
 
 # ---------------------------------------------------------------------------
 # run_analysis — unknown kind

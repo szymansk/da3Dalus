@@ -74,6 +74,13 @@ class AddXsec(BaseModel):
     The new x-sec is spliced in: segment[at_index-1] gets a new tip and a
     new segment[at_index] is inserted before the existing one.
     Use dihedral to model a winglet (dihedral knee at the tip).
+
+    To add a WINGLET (append at tip): set at_index = n_xsecs, where n_xsecs
+    is the cross-section count from get_design_snapshot.wings[i].n_xsecs.
+    Example: if n_xsecs=13 for main_wing, use at_index=13 to append at the tip.
+    Any at_index >= n_xsecs is automatically clamped to a tip-append.
+    Mid-wing insertion (at_index < n_xsecs) is not yet supported and will be
+    rejected with a helpful message.
     """
 
     type: Literal["AddXsec"] = "AddXsec"
@@ -83,7 +90,10 @@ class AddXsec(BaseModel):
         ge=1,
         description=(
             "Position at which to insert the new cross-section (1-based from root). "
-            "The new x-sec becomes the tip of the segment at at_index-1."
+            "To append at the TIP (winglet), use at_index = n_xsecs from "
+            "get_design_snapshot.wings[i].n_xsecs. "
+            "Any at_index >= n_xsecs is treated as a tip-append. "
+            "Mid-wing insert (at_index < n_xsecs) is rejected — always use tip-append for winglets."
         ),
     )
     chord: float = Field(..., gt=0, description="Chord of the new x-sec in mm.")
@@ -174,3 +184,44 @@ EditOp = Annotated[
     ],
     Field(discriminator="type"),
 ]
+
+_OP_MODELS = [
+    SetAssumption,
+    SetXsec,
+    AddXsec,
+    RemoveXsec,
+    SetWingParam,
+    ReplaceWingConfig,
+]
+
+
+def edit_ops_array_schema() -> dict:
+    """JSON schema for the ``ops`` array that exposes EVERY op type's full field
+    set (gh-938).
+
+    The LLM needs the per-op fields (chord, span, dihedral, at_index, param, …)
+    in the tool schema — without them it guesses field names (span_mm, cant_deg,
+    wing_index, …) and the ops get rejected. We build an ``anyOf`` of each op
+    model's self-contained JSON schema (the op models are flat — no nested
+    BaseModels — so each ``model_json_schema()`` inlines cleanly).
+    """
+    variants: list[dict] = []
+    for model in _OP_MODELS:
+        schema = model.model_json_schema()
+        schema.pop("title", None)
+        variants.append(schema)
+    return {
+        "type": "array",
+        "description": (
+            "Edit operations applied IN ORDER to a proposal branch. Each item is "
+            "one of the op variants below — pick it via its 'type' field. Wing "
+            "identifiers are wing NAMES from get_design_snapshot.wing_names "
+            "(e.g. 'main_wing'), never an index. Chord/span are in millimetres; "
+            "angles in degrees. "
+            "To add a winglet: use AddXsec with at_index = n_xsecs (the "
+            "cross-section count from get_design_snapshot.wings[i].n_xsecs) and "
+            "a dihedral angle (e.g. 70-85 degrees) for the winglet knee. "
+            "ALWAYS call get_design_snapshot first to get the current n_xsecs value."
+        ),
+        "items": {"anyOf": variants},
+    }

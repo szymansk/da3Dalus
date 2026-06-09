@@ -29,6 +29,8 @@ from typing import Any, Callable
 
 from sqlalchemy.orm import Session
 
+from app.schemas.copilot_edits import edit_ops_array_schema
+
 logger = logging.getLogger(__name__)
 
 # ---------------------------------------------------------------------------
@@ -612,42 +614,16 @@ _SCHEMA_APPLY_DESIGN_EDITS = {
             "proposal in the Versions panel and adopts or discards it.  "
             "Returns the branch id, applied/rejected ops, and a before/after "
             "metrics diff so you can show the user what changed.  "
-            "Supported op types: SetAssumption, SetXsec, AddXsec, RemoveXsec, "
-            "SetWingParam, ReplaceWingConfig.  "
-            "All chord/span units are millimetres.  "
-            "Call run_analysis after applying edits to verify the result."
+            "FIRST call get_design_snapshot to get: (1) wing names (wing_names), "
+            "(2) per-wing cross-section counts (wings[i].n_xsecs). "
+            "Wing identifiers in ops are NAMES e.g. 'main_wing'.  "
+            "To add a winglet: AddXsec with at_index = n_xsecs and a dihedral knee.  "
+            "All chord/span units are millimetres; angles in degrees.  "
+            "Call run_analysis after applying to verify, then iterate if needed."
         ),
         "parameters": {
             "type": "object",
-            "properties": {
-                "ops": {
-                    "type": "array",
-                    "description": (
-                        "List of edit operations.  Each op must have a 'type' field "
-                        "that is one of: SetAssumption, SetXsec, AddXsec, RemoveXsec, "
-                        "SetWingParam, ReplaceWingConfig.  "
-                        'Example: [{"type": "SetAssumption", "param": "mass", "value": 2.5}]'
-                    ),
-                    "items": {
-                        "type": "object",
-                        "properties": {
-                            "type": {
-                                "type": "string",
-                                "enum": [
-                                    "SetAssumption",
-                                    "SetXsec",
-                                    "AddXsec",
-                                    "RemoveXsec",
-                                    "SetWingParam",
-                                    "ReplaceWingConfig",
-                                ],
-                                "description": "Discriminator: which kind of edit operation.",
-                            }
-                        },
-                        "required": ["type"],
-                    },
-                }
-            },
+            "properties": {"ops": edit_ops_array_schema()},
             "required": ["ops"],
         },
     },

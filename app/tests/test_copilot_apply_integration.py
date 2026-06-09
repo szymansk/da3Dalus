@@ -1111,3 +1111,217 @@ class TestAddXsecWingletRegression:
             )
         finally:
             db.close()
+
+
+# ---------------------------------------------------------------------------
+# gh-938 Bug A/B regression tests
+# ---------------------------------------------------------------------------
+
+
+class TestGh938Regressions:
+    """Regression tests for gh-938 Bugs A and B:
+
+    Bug A: get_design_snapshot did not surface per-wing n_xsecs, so the LLM
+           could not pick a valid AddXsec at_index.
+    Bug B: AddXsec at a mid-wing index crashed with NoneType instead of
+           rejecting cleanly.  Any at_index >= n_xsecs must tip-append;
+           mid-wing must reject with a helpful message (no exception).
+    """
+
+    # --- Bug A: snapshot includes per-wing n_xsecs ---
+
+    def test_snapshot_includes_wings_with_n_xsecs(self, client_and_db):
+        """_metrics_payload must include a 'wings' list with name and n_xsecs."""
+        db = _make_session(client_and_db)
+        try:
+            plane = _create_plane_with_wc_wing(db)
+            metrics = _metrics_payload(plane)
+
+            assert "wings" in metrics, "snapshot must have 'wings' key"
+            assert isinstance(metrics["wings"], list)
+            assert len(metrics["wings"]) >= 1
+
+            wing_entry = next((w for w in metrics["wings"] if w["name"] == "main_wing"), None)
+            assert wing_entry is not None, "'main_wing' missing from wings list"
+            assert "n_xsecs" in wing_entry, "wing entry must have 'n_xsecs'"
+            assert wing_entry["n_xsecs"] > 0
+        finally:
+            db.close()
+
+    def test_snapshot_n_xsecs_matches_actual_xsec_count(self, client_and_db):
+        """The n_xsecs value in the snapshot must equal the actual DB xsec count."""
+        db = _make_session(client_and_db)
+        try:
+            plane = _create_plane_with_wc_wing(db)
+            metrics = _metrics_payload(plane)
+
+            wing_entry = next((w for w in metrics["wings"] if w["name"] == "main_wing"), None)
+            assert wing_entry is not None
+
+            # Get the actual xsec count from the ORM
+            main_wing = next((w for w in plane.wings if w.name == "main_wing"), None)
+            assert main_wing is not None
+            assert wing_entry["n_xsecs"] == len(main_wing.x_secs)
+        finally:
+            db.close()
+
+    def test_snapshot_wing_names_still_present(self, client_and_db):
+        """wing_names must still be present alongside the new 'wings' list."""
+        db = _make_session(client_and_db)
+        try:
+            plane = _create_plane_with_wc_wing(db)
+            metrics = _metrics_payload(plane)
+            assert "wing_names" in metrics
+            assert "main_wing" in metrics["wing_names"]
+        finally:
+            db.close()
+
+    # --- Bug B: at_index >= n_xsecs clamps to tip-append ---
+
+    def test_add_xsec_at_index_equals_n_xsecs_tip_appends(self, client_and_db):
+        """AddXsec with at_index == n_xsecs (the exact tip value) must succeed."""
+        db = _make_session(client_and_db)
+        try:
+            plane = _create_plane_with_wc_wing(db)
+            branch = get_or_open_proposal(db, plane.id)
+            db.commit()
+
+            proposal_node = (
+                db.query(AeroplaneModel).filter(AeroplaneModel.id == branch.head_id).first()
+            )
+
+            from app.services.wing_service import get_wing_as_wingconfig
+
+            wc = get_wing_as_wingconfig(db, str(proposal_node.uuid), "main_wing")
+            n_segs = len(wc["segments"])
+            n_xsecs = n_segs + 1  # correct tip-append index
+
+            with patch(_RECOMPUTE_PATH):
+                result = apply_edits(
+                    db,
+                    str(proposal_node.uuid),
+                    [AddXsec(wing="main_wing", at_index=n_xsecs, chord=35.0, span=60.0, dihedral=75.0)],
+                )
+            db.commit()
+
+            assert result["applied"] == ["AddXsec"], f"Expected applied, got: {result}"
+            assert not result["rejected"], f"Unexpected rejection: {result['rejected']}"
+
+            db.expire_all()
+            wc_after = get_wing_as_wingconfig(db, str(proposal_node.uuid), "main_wing")
+            assert len(wc_after["segments"]) == n_segs + 1
+        finally:
+            db.close()
+
+    def test_add_xsec_at_index_beyond_n_xsecs_clamped_to_tip(self, client_and_db):
+        """AddXsec with at_index > n_xsecs is silently clamped to tip-append (no crash, no reject)."""
+        db = _make_session(client_and_db)
+        try:
+            plane = _create_plane_with_wc_wing(db)
+            branch = get_or_open_proposal(db, plane.id)
+            db.commit()
+
+            proposal_node = (
+                db.query(AeroplaneModel).filter(AeroplaneModel.id == branch.head_id).first()
+            )
+
+            from app.services.wing_service import get_wing_as_wingconfig
+
+            wc = get_wing_as_wingconfig(db, str(proposal_node.uuid), "main_wing")
+            n_segs = len(wc["segments"])
+            n_xsecs = n_segs + 1
+            # LLM over-estimates: passes n_xsecs + 10 (e.g. 23 for a 13-xsec wing)
+            over_estimated_index = n_xsecs + 10
+
+            with patch(_RECOMPUTE_PATH):
+                result = apply_edits(
+                    db,
+                    str(proposal_node.uuid),
+                    [AddXsec(wing="main_wing", at_index=over_estimated_index, chord=30.0, span=50.0, dihedral=80.0)],
+                )
+            db.commit()
+
+            # Must be applied (clamped), never rejected
+            assert result["applied"] == ["AddXsec"], f"Expected tip-append, got: {result}"
+            assert not result["rejected"], f"Unexpected rejection: {result['rejected']}"
+
+            db.expire_all()
+            wc_after = get_wing_as_wingconfig(db, str(proposal_node.uuid), "main_wing")
+            assert len(wc_after["segments"]) == n_segs + 1
+        finally:
+            db.close()
+
+    def test_add_xsec_mid_wing_rejected_cleanly(self, client_and_db):
+        """AddXsec at a mid-wing index (< n_xsecs) is rejected with a clear message — no exception."""
+        db = _make_session(client_and_db)
+        try:
+            plane = _create_plane_with_wc_wing(db)
+            branch = get_or_open_proposal(db, plane.id)
+            db.commit()
+
+            proposal_node = (
+                db.query(AeroplaneModel).filter(AeroplaneModel.id == branch.head_id).first()
+            )
+
+            from app.services.wing_service import get_wing_as_wingconfig
+
+            wc = get_wing_as_wingconfig(db, str(proposal_node.uuid), "main_wing")
+            n_segs = len(wc["segments"])
+
+            if n_segs < 2:
+                pytest.skip("Fixture has too few segments for mid-wing rejection test")
+
+            # at_index=2 is a mid-wing index for any wing with >= 3 xsecs
+            with patch(_RECOMPUTE_PATH):
+                result = apply_edits(
+                    db,
+                    str(proposal_node.uuid),
+                    [AddXsec(wing="main_wing", at_index=2, chord=60.0, span=100.0)],
+                )
+
+            # Must be rejected, not raised, not applied
+            assert len(result["rejected"]) == 1, f"Expected rejection, got: {result}"
+            assert not result["applied"], f"Expected no applied ops, got: {result['applied']}"
+            err = result["rejected"][0]["error"]
+            # Error must mention mid-wing is not supported AND give the tip hint
+            assert "not yet supported" in err or "tip" in err.lower(), (
+                f"Error should explain mid-wing limitation: {err}"
+            )
+        finally:
+            db.close()
+
+    def test_add_xsec_mid_wing_does_not_corrupt_wing(self, client_and_db):
+        """After a mid-wing rejection the wing config must be unchanged."""
+        db = _make_session(client_and_db)
+        try:
+            plane = _create_plane_with_wc_wing(db)
+            branch = get_or_open_proposal(db, plane.id)
+            db.commit()
+
+            proposal_node = (
+                db.query(AeroplaneModel).filter(AeroplaneModel.id == branch.head_id).first()
+            )
+
+            from app.services.wing_service import get_wing_as_wingconfig
+
+            wc_before = get_wing_as_wingconfig(db, str(proposal_node.uuid), "main_wing")
+            n_segs_before = len(wc_before["segments"])
+
+            if n_segs_before < 2:
+                pytest.skip("Fixture has too few segments for this test")
+
+            with patch(_RECOMPUTE_PATH):
+                apply_edits(
+                    db,
+                    str(proposal_node.uuid),
+                    [AddXsec(wing="main_wing", at_index=2, chord=60.0, span=100.0)],
+                )
+
+            # The wing config must be unchanged (no segments added)
+            db.expire_all()
+            wc_after = get_wing_as_wingconfig(db, str(proposal_node.uuid), "main_wing")
+            assert len(wc_after["segments"]) == n_segs_before, (
+                "Mid-wing rejection must not alter the segment count"
+            )
+        finally:
+            db.close()
