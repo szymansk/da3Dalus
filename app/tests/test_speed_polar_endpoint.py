@@ -38,6 +38,45 @@ _FULL_CTX = {
 # ---------------------------------------------------------------------------
 
 
+_REYNOLDS_CTX = {
+    # eHawk-like high-AR glider with a Reynolds table + clean CL_max (gh-924)
+    "mass_kg": 1.5,
+    "s_ref_m2": 0.1999,
+    "aspect_ratio": 11.3,
+    "e_oswald": 0.7916,
+    "cd0": 0.02364,
+    "mac_m": 0.1398,
+    "v_md_mps": 11.4,
+    "v_min_sink_mps": 9.8,
+    "v_stall_mps": 9.8,
+    "polar_by_config": {"clean": {"cl_max": 1.256}},
+    "polar_re_table": [
+        {"re": 85000, "v_mps": 9.0, "cd0": None, "e_oswald": None,
+         "cl_max": 1.256, "fallback_used": True},
+        {"re": 170000, "v_mps": 18.0, "cd0": None, "e_oswald": None,
+         "cl_max": 1.256, "fallback_used": True},
+    ],
+}
+
+
+class TestSpeedPolarEndpointReynolds:
+    """gh-924: with a Reynolds table the polar markers must equal the chips."""
+
+    def test_markers_match_chip_speeds(self, client_and_db):
+        client, SessionLocal = client_and_db
+        with SessionLocal() as db:
+            plane = _make_aeroplane_with_context(db, ctx=_REYNOLDS_CTX)
+            uid = str(plane.uuid)
+
+        data = client.get(f"/aeroplanes/{uid}/speed-polar").json()
+        # Polar special points must equal the characteristic-speed chips
+        assert data["best_glide"]["v_mps"] == pytest.approx(_REYNOLDS_CTX["v_md_mps"], abs=0.1)
+        assert data["min_sink"]["v_mps"] == pytest.approx(_REYNOLDS_CTX["v_min_sink_mps"], abs=0.1)
+        # Curve must not extend below V_stall (no past-stall plotting)
+        assert min(data["v_mps"]) >= _REYNOLDS_CTX["v_stall_mps"] - 0.1
+        assert data["inputs"]["reynolds_mode"] is True
+
+
 class TestSpeedPolarEndpointHappyPath:
     def test_returns_200(self, client_and_db):
         client, SessionLocal = client_and_db
