@@ -471,6 +471,43 @@ describe("CopilotStrip — markdown rendering in AssistantBubble", () => {
     expect(bubble.querySelector("table")).not.toBeNull();
   });
 
+  it("urlTransform blocks images & non-https links, keeps https links", async () => {
+    mockCtx();
+    mockCopilot({
+      history: {
+        messages: [
+          {
+            id: 13,
+            role: "assistant",
+            content:
+              "![diagram](https://cdn.example.com/wing.png)\n\n" +
+              "See [good](https://good.example.com) and [bad](http://bad.example.com).",
+            tool_calls: null,
+            tool_results: null,
+            parent_id: null,
+            created_at: "2026-06-09T10:00:03Z",
+          },
+        ],
+      },
+    });
+
+    const user = userEvent.setup();
+    render(<CopilotStrip />);
+    await user.click(screen.getByRole("button", { name: "Expand copilot panel" }));
+
+    const bubble = screen.getByTestId("assistant-bubble");
+    // images are blocked entirely (urlTransform returns null for key === "src")
+    expect(bubble.querySelector("img")).toBeNull();
+    // https links survive with their href
+    const hrefs = Array.from(bubble.querySelectorAll("a")).map((a) =>
+      a.getAttribute("href"),
+    );
+    // https link survives (URL may be normalized with a trailing slash)
+    expect(hrefs.some((h) => h?.startsWith("https://good.example.com"))).toBe(true);
+    // non-https (http) links never keep their href
+    expect(hrefs.some((h) => h?.startsWith("http://"))).toBe(false);
+  });
+
   it("UserBubble keeps plain text — **not bold** renders literally, no <strong>", async () => {
     mockCtx();
     mockCopilot({
