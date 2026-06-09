@@ -239,7 +239,10 @@ class TestGh903Migration:
         _seed_db_to_prev_head(tmp_db)
         _insert_aeroplanes(tmp_db, count=2)
         _run_alembic(f"sqlite:///{tmp_db}", "upgrade head")
-        _run_alembic(f"sqlite:///{tmp_db}", "downgrade -1")
+        # Downgrade to the revision *before* gh-903 rather than a relative
+        # "-1": the gh-903 migration is no longer guaranteed to be head once
+        # later migrations are added, so target the stable named revision.
+        _run_alembic(f"sqlite:///{tmp_db}", f"downgrade {PREV_REVISION}")
 
         conn = sqlite3.connect(tmp_db)
         try:
@@ -272,7 +275,9 @@ class TestGh903Migration:
         _seed_db_to_prev_head(tmp_db)
         # No aeroplanes inserted
         _run_alembic(f"sqlite:///{tmp_db}", "upgrade head")
-        _run_alembic(f"sqlite:///{tmp_db}", "downgrade -1")
+        # Downgrade to the revision *before* gh-903 (stable named revision)
+        # instead of a relative "-1", which assumed gh-903 was head.
+        _run_alembic(f"sqlite:///{tmp_db}", f"downgrade {PREV_REVISION}")
 
         conn = sqlite3.connect(tmp_db)
         try:
