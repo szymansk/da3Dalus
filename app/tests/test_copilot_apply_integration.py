@@ -794,3 +794,129 @@ class TestToolRegistryExtended:
         props = schema["function"]["parameters"]["properties"]
         assert "ops" in props
         assert props["ops"]["type"] == "array"
+
+
+# ---------------------------------------------------------------------------
+# Regression: gh-938 discard crash after in-session wing write (Bug 1)
+# ---------------------------------------------------------------------------
+
+
+class TestDiscardAfterWingEditRegression:
+    """Regression tests for gh-938 Bug 1: discard_proposal crashes when called
+    in the same session that already ran put_wing_as_wingconfig (apply_edits
+    with a wing-geometry op).
+
+    Root cause: put_wing_as_wingconfig calls db.delete(existing_wing) then
+    re-inserts, leaving stale WingXSecSpareModel instances in the session
+    identity map.  discard_branch's cascade-delete later tries to attach
+    those same instances and hits:
+        InvalidRequestError: Can't attach instance <WingXSecSpareModel ...>;
+        another instance with key (...) is already present in this session.
+
+    Fix: discard_open_proposal flushes + expunge_all before calling
+    discard_branch so the session identity map is clean.
+    """
+
+    def test_discard_after_wing_edit_no_crash(self, client_and_db):
+        """discard_proposal must not crash after a wing-geometry apply in the
+        same session.  After discard: 0 copilot branches remain."""
+        db = _make_session(client_and_db)
+        try:
+            plane = _create_plane_with_wc_wing(db)
+
+            # Step 1: apply a wing geometry op (triggers the problematic
+            # delete-then-reinsert path in put_wing_as_wingconfig).
+            with patch(_RECOMPUTE_PATH):
+                apply_result = execute(
+                    "apply_design_edits",
+                    db,
+                    plane.id,
+                    ops=[
+                        {
+                            "type": "SetXsec",
+                            "wing": "main_wing",
+                            "index": 0,
+                            "chord": 155.0,
+                        }
+                    ],
+                )
+            db.commit()
+
+            assert "error" not in apply_result, f"apply failed: {apply_result.get('error')}"
+            assert apply_result.get("applied") == ["SetXsec"]
+
+            # Step 2: discard — this used to crash with InvalidRequestError.
+            discard_result = execute("discard_proposal", db, plane.id)
+            db.commit()
+
+            assert discard_result.get("discarded") is True, (
+                f"Expected discarded=True, got: {discard_result}"
+            )
+
+            # Step 3: confirm no copilot branches remain.
+            from app.services.copilot_apply_service import _find_open_proposal, _get_lineage_root_id
+
+            root_id = _get_lineage_root_id(db, plane.id)
+            assert _find_open_proposal(db, root_id) is None, (
+                "Copilot proposal branch still exists after discard"
+            )
+        finally:
+            db.close()
+
+    def test_discard_after_addxsec_no_crash(self, client_and_db):
+        """discard_proposal must not crash after AddXsec (also a wing write)."""
+        db = _make_session(client_and_db)
+        try:
+            plane = _create_plane_with_wc_wing(db)
+
+            from app.services.wing_service import get_wing_as_wingconfig
+
+            # Get initial segment count to compute at_index
+            branch_prep = get_or_open_proposal(db, plane.id)
+            db.commit()
+            proposal_node_prep = (
+                db.query(AeroplaneModel).filter(AeroplaneModel.id == branch_prep.head_id).first()
+            )
+            wc_before = get_wing_as_wingconfig(db, str(proposal_node_prep.uuid), "main_wing")
+            n_segs = len(wc_before["segments"])
+
+            # Discard the prep branch so apply creates a fresh one
+            from app.services.copilot_apply_service import discard_open_proposal as _discard
+
+            _discard(db, plane.id)
+            db.commit()
+
+            with patch(_RECOMPUTE_PATH):
+                apply_result = execute(
+                    "apply_design_edits",
+                    db,
+                    plane.id,
+                    ops=[
+                        {
+                            "type": "AddXsec",
+                            "wing": "main_wing",
+                            "at_index": n_segs + 1,
+                            "chord": 40.0,
+                            "span": 80.0,
+                            "dihedral": 45.0,
+                        }
+                    ],
+                )
+            db.commit()
+
+            assert "error" not in apply_result, f"apply failed: {apply_result.get('error')}"
+
+            # Discard must not raise
+            discard_result = execute("discard_proposal", db, plane.id)
+            db.commit()
+
+            assert discard_result.get("discarded") is True
+
+            from app.services.copilot_apply_service import _find_open_proposal, _get_lineage_root_id
+
+            root_id = _get_lineage_root_id(db, plane.id)
+            assert _find_open_proposal(db, root_id) is None
+        finally:
+            db.close()
+
+

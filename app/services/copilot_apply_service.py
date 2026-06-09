@@ -200,16 +200,43 @@ def discard_open_proposal(db: Session, live_aeroplane_id: int) -> bool:
     -------
     bool
         True if a proposal was found and discarded, False if none existed.
+
+    Notes
+    -----
+    The ``apply_edits`` path calls ``put_wing_as_wingconfig`` which does
+    ``db.delete(old_wing)`` + re-insert inside the SAME session.  The
+    deleted-but-not-expunged ORM instances (WingXSecSpareModel etc.) remain
+    in the session's identity map.  When ``discard_branch`` subsequently
+    asks SQLAlchemy to cascade-delete the proposal node's wings it tries to
+    attach those stale instances for deletion, hitting:
+
+        InvalidRequestError: Can't attach instance <WingXSecSpareModel …>;
+        another instance with key (…) is already present in this session.
+
+    Fix: expunge the entire identity map before querying for the branch,
+    so we start from a clean slate.  The live aeroplane is re-fetched by PK
+    (cheap, single-row query) to keep the session healthy after the expunge.
     """
     from app.services.aeroplane_version_service import discard_branch
+
+    # Flush any pending writes so the DB is consistent before we expunge.
+    db.flush()
+
+    # Expunge all tracked ORM instances to clear stale wing/xsec/spare
+    # entries left behind by put_wing_as_wingconfig's delete-then-insert
+    # cycle.  After expunge, re-derive the lineage root_id and branch
+    # from fresh queries (all DB state is preserved; only the session
+    # identity map is cleared).
+    db.expunge_all()
 
     root_id = _get_lineage_root_id(db, live_aeroplane_id)
     existing = _find_open_proposal(db, root_id)
     if existing is None:
         return False
 
-    discard_branch(db, existing.id)
-    logger.info("discard_open_proposal: discarded branch %s for root %s", existing.id, root_id)
+    branch_id = existing.id
+    discard_branch(db, branch_id)
+    logger.info("discard_open_proposal: discarded branch %s for root %s", branch_id, root_id)
     return True
 
 
