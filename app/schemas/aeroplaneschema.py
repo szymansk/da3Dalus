@@ -535,6 +535,16 @@ class WingXSecSchema(BaseModel):
         description="Twist angle of the cross-section in degrees",
         examples=[5, 2, 0],
     )
+    dihedral: Optional[float] = Field(
+        None,
+        description=(
+            "Local-x rotation (dihedral) of this rib in degrees, persisted "
+            "explicitly so the terminal rib's rotation survives the round-trip "
+            "(it is not encoded in xyz_le). None for legacy rows, which fall "
+            "back to the geometry-derived dihedral (gh-951)."
+        ),
+        examples=[0, 3, -3],
+    )
     airfoil: str | HttpUrl = Field(
         ...,
         description="Airfoil dat file location of the cross-section (file or URL)",

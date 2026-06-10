@@ -632,6 +632,16 @@ def _hydrate_segment_from_xsec(
     segment.root_airfoil.airfoil = str(root_x_sec.airfoil)
     segment.tip_airfoil.airfoil = str(tip_x_sec.airfoil)
 
+    # Prefer the explicitly persisted dihedral over the value
+    # WingConfiguration.from_asb reconstructs from xyz_le geometry. The
+    # stored value is exact and also recovers the terminal rib's rotation,
+    # which leaves no trace in the geometry (gh-951). Legacy rows have
+    # dihedral=None and keep the geometry-derived reconstruction.
+    if root_x_sec.dihedral is not None:
+        segment.root_airfoil.dihedral_as_rotation_in_degrees = float(root_x_sec.dihedral)
+    if tip_x_sec.dihedral is not None:
+        segment.tip_airfoil.dihedral_as_rotation_in_degrees = float(tip_x_sec.dihedral)
+
     if root_x_sec.x_sec_type is not None:
         segment.wing_segment_type = root_x_sec.x_sec_type
     if root_x_sec.tip_type is not None:
@@ -953,6 +963,26 @@ def _build_segment_details(segment):
     )
 
 
+def _station_dihedral(wing_config: WingConfiguration, index: int) -> Optional[float]:
+    """Return the dihedral (deg) of the airfoil at cross-section ``index``.
+
+    An ASB wing has N+1 cross-sections for N segments. Station ``i`` is the
+    *root* airfoil of segment ``i`` for ``i < N`` and the *tip* airfoil of
+    the last segment for ``i == N`` (the terminal rib). The value is the
+    airfoil's own local-x rotation, persisted so it round-trips even when it
+    leaves no trace in the xyz_le geometry (gh-951).
+    """
+    segments = wing_config.segments or []
+    if not segments:
+        return None
+    if index < len(segments):
+        airfoil = segments[index].root_airfoil
+    else:
+        airfoil = segments[-1].tip_airfoil
+    value = getattr(airfoil, "dihedral_as_rotation_in_degrees", None)
+    return None if value is None else float(value)
+
+
 def wing_config_to_asb_wing_schema(
     wing_config: WingConfiguration,
     wing_name: str,
@@ -991,11 +1021,18 @@ def wing_config_to_asb_wing_schema(
                 turbulator,
             ) = _build_segment_details(segment)
 
+        # Persist the rib's own local-x rotation (dihedral) explicitly so it
+        # survives the round-trip even for the terminal rib, whose rotation
+        # is not encoded in xyz_le (gh-951). Station i's airfoil is the root
+        # of segment i for i < N, and the tip of the last segment for i == N.
+        dihedral = _station_dihedral(wing_config, index)
+
         x_secs.append(
             schemas.WingXSecSchema(
                 xyz_le=[float(value) for value in x_sec.xyz_le],
                 chord=float(x_sec.chord),
                 twist=float(x_sec.twist),
+                dihedral=dihedral,
                 airfoil=_normalize_airfoil_reference_for_schema(section_airfoil_ref),
                 control_surface=control_surface,
                 x_sec_type=x_sec_type,

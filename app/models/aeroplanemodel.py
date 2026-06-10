@@ -216,6 +216,13 @@ class WingXSecModel(Base):
     xyz_le = Column(JSON, nullable=False)  # Store as JSON array
     chord = Column(Float, nullable=False)
     twist = Column(Float, nullable=False)
+    # Local-x rotation (dihedral) of this rib, in degrees. Persisted
+    # explicitly — like ``twist`` — because the terminal rib's rotation is
+    # NOT encoded in the ASB ``xyz_le`` geometry (it moves no outboard
+    # station), so it cannot be reconstructed from positions (gh-951).
+    # Nullable: legacy rows predate the column and fall back to the
+    # geometry-derived dihedral on read.
+    dihedral = Column(Float, nullable=True, default=None)
     airfoil = Column(String, nullable=False)  # Store path or URL as string
 
     # Relationship with Wing
