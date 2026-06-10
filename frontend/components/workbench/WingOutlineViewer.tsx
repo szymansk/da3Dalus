@@ -131,7 +131,7 @@ const COLOR_SPANWISE = "#FF840060";
 const COLOR_SELECTED = "#E5484D";    // selected xsec/segment: red
 const COLOR_TED = "#30A46C";
 const COLOR_SPAR = "#6E56CF";        // purple
-const COLOR_TURBULATOR = "#F5A623";  // amber — distinct from TED green / spar purple
+const COLOR_TURBULATOR = "#22D3EE";  // bright cyan — deliberately far from airfoil orange / TED green / spar purple / selected red
 
 /** Shorthand for a scatter3d trace. */
 function scatter3d(
@@ -143,6 +143,22 @@ function scatter3d(
     mode: "lines",
     x, y, z,
     line: { color, width, ...(dash ? { dash } : {}) },
+    showlegend: false,
+    hoverinfo: "skip",
+  };
+}
+
+/** Dotted scatter3d trace (evenly spaced markers). scatter3d lines do not
+ *  support a `dash` style, so a dotted look is rendered as small markers. */
+function scatter3dDots(
+  x: number[], y: number[], z: number[],
+  color: string, size = 2.5,
+): PlotlyData {
+  return {
+    type: "scatter3d",
+    mode: "markers",
+    x, y, z,
+    marker: { color, size },
     showlegend: false,
     hoverinfo: "skip",
   };
@@ -337,10 +353,15 @@ function buildTEDTraces(ctx: WingTraceCtx): PlotlyData[] {
   return traces;
 }
 
-/** Turbulator strip outline — spanwise line on the upper surface at x/c position. */
+/** Number of dots drawn along a turbulator strip (dotted spanwise line). */
+const N_TURBULATOR_DOTS = 24;
+
+/** Turbulator strip — dotted spanwise line on the wing UPPER surface at the
+ *  x/c position. Drawn as markers (scatter3d lines cannot be dashed) in a
+ *  bright colour that stands out from the airfoil / TED / spar lines. */
 export function buildTurbulatorTraces(ctx: WingTraceCtx): PlotlyData[] {
   const traces: PlotlyData[] = [];
-  const { xsecs, dihedrals } = ctx;
+  const { xsecs, airfoils, dihedrals } = ctx;
 
   for (let i = 0; i < xsecs.length - 1; i++) {
     const turb = xsecs[i].turbulator as Record<string, unknown> | null | undefined;
@@ -352,16 +373,28 @@ export function buildTurbulatorTraces(ctx: WingTraceCtx): PlotlyData[] {
     // position_tip defaults to position_root (flat strip) when not set
     const posTip = (turb.position_tip as number | null | undefined) ?? posRoot;
 
-    // Sample upper surface at x/c = posRoot (root xsec) and x/c = posTip (tip xsec)
-    // Upper surface: y-coordinate is positive at a given x/c on the upper side.
-    // We use transformProfile with z-ordinate 0 (camber line approximation) which
-    // is sufficient for a visual indicator line.
-    const p1 = transformProfile([posRoot], [0], xsecs[i].chord, xsecs[i].twist, xsecs[i].xyz_le, dihedrals[i]);
-    const p2 = transformProfile([posTip], [0], xsecs[i + 1].chord, xsecs[i + 1].twist, xsecs[i + 1].xyz_le, dihedrals[i + 1]);
+    // Place the strip on the UPPER surface: look up the airfoil's upper-surface
+    // ordinate at the chordwise position and feed it as the profile z-ordinate
+    // (same pattern as the upper quarter-chord reference line). Falls back to
+    // the camber line (0) when airfoil coordinates are unavailable.
+    const afRoot = airfoils[i];
+    const afTip = airfoils[i + 1];
+    const zRoot = afRoot ? lerpLookup(afRoot.upper_x, afRoot.upper_y, posRoot) : 0;
+    const zTip = afTip ? lerpLookup(afTip.upper_x, afTip.upper_y, posTip) : 0;
 
-    traces.push(
-      scatter3d([p1.x[0], p2.x[0]], [p1.y[0], p2.y[0]], [p1.z[0], p2.z[0]], COLOR_TURBULATOR, 2.5),
-    );
+    const p1 = transformProfile([posRoot], [zRoot], xsecs[i].chord, xsecs[i].twist, xsecs[i].xyz_le, dihedrals[i]);
+    const p2 = transformProfile([posTip], [zTip], xsecs[i + 1].chord, xsecs[i + 1].twist, xsecs[i + 1].xyz_le, dihedrals[i + 1]);
+
+    // Evenly spaced dots from root to tip → dotted appearance.
+    const dx: number[] = [], dy: number[] = [], dz: number[] = [];
+    for (let k = 0; k <= N_TURBULATOR_DOTS; k++) {
+      const t = k / N_TURBULATOR_DOTS;
+      dx.push(p1.x[0] + (p2.x[0] - p1.x[0]) * t);
+      dy.push(p1.y[0] + (p2.y[0] - p1.y[0]) * t);
+      dz.push(p1.z[0] + (p2.z[0] - p1.z[0]) * t);
+    }
+
+    traces.push(scatter3dDots(dx, dy, dz, COLOR_TURBULATOR));
   }
 
   return traces;

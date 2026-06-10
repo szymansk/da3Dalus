@@ -61,16 +61,19 @@ describe("buildTurbulatorTraces", () => {
     expect(traces).toHaveLength(1);
   });
 
-  it("each trace is a scatter3d with two points (spanwise line)", () => {
+  it("each trace is a dotted scatter3d (markers) along the spanwise line", () => {
     const ctx = makeCtx([
       makeXsec({ turbulator: { form: "zigzag", height_mm: 0.3, position_root: 0.1, enabled: true } }),
       makeXsec({ xyz_le: [0, 0.3, 0], chord: 0.18, twist: 0, airfoil: "naca0012" }),
     ]);
     const [trace] = buildTurbulatorTraces(ctx);
     expect(trace.type).toBe("scatter3d");
-    expect(trace.x).toHaveLength(2);
-    expect(trace.y).toHaveLength(2);
-    expect(trace.z).toHaveLength(2);
+    // Dotted appearance: rendered as markers (scatter3d lines cannot be dashed).
+    expect(trace.mode).toBe("markers");
+    // Evenly spaced dots root→tip (N + 1 points).
+    expect(trace.x.length).toBeGreaterThan(2);
+    expect(trace.y).toHaveLength(trace.x.length);
+    expect(trace.z).toHaveLength(trace.x.length);
   });
 
   it("trace x-coordinates reflect position_root on root xsec", () => {
@@ -93,8 +96,9 @@ describe("buildTurbulatorTraces", () => {
       makeXsec({ xyz_le: [0, 1, 0], chord: 1.0, twist: 0, airfoil: "naca0012" }),
     ]);
     const [trace] = buildTurbulatorTraces(ctx);
-    // Tip xsec: xyz_le=[0,1,0], chord=1, position_tip=0.2 → x = 0 + 0.2*1 = 0.2
-    expect(trace.x[1]).toBeCloseTo(0.2, 5);
+    // Tip xsec: xyz_le=[0,1,0], chord=1, position_tip=0.2 → x = 0 + 0.2*1 = 0.2.
+    // The tip station is the LAST dot of the strip.
+    expect(trace.x.at(-1)).toBeCloseTo(0.2, 5);
   });
 
   it("falls back to position_root for tip when position_tip is not set", () => {
@@ -104,8 +108,8 @@ describe("buildTurbulatorTraces", () => {
       makeXsec({ xyz_le: [0, 1, 0], chord: 1.0, twist: 0, airfoil: "naca0012" }),
     ]);
     const [trace] = buildTurbulatorTraces(ctx);
-    // Tip uses position_root (0.15) as fallback
-    expect(trace.x[1]).toBeCloseTo(0.15, 5);
+    // Tip uses position_root (0.15) as fallback → last dot at 0.15
+    expect(trace.x.at(-1)).toBeCloseTo(0.15, 5);
   });
 
   it("falls back to position_root when position_tip is null", () => {
@@ -115,7 +119,7 @@ describe("buildTurbulatorTraces", () => {
       makeXsec({ xyz_le: [0, 1, 0], chord: 1.0, twist: 0, airfoil: "naca0012" }),
     ]);
     const [trace] = buildTurbulatorTraces(ctx);
-    expect(trace.x[1]).toBeCloseTo(0.12, 5);
+    expect(trace.x.at(-1)).toBeCloseTo(0.12, 5);
   });
 
   it("skips segment when turbulator has no position_root", () => {
@@ -151,14 +155,36 @@ describe("buildTurbulatorTraces", () => {
     expect(buildTurbulatorTraces(ctx)).toHaveLength(0);
   });
 
-  it("trace uses the amber turbulator color (line.color starts with #F)", () => {
+  it("trace uses a distinct cyan marker colour (not the airfoil orange)", () => {
     const ctx = makeCtx([
       makeXsec({ turbulator: { form: "zigzag", height_mm: 0.3, position_root: 0.1, enabled: true } }),
       makeXsec(),
     ]);
     const [trace] = buildTurbulatorTraces(ctx);
-    // COLOR_TURBULATOR = "#F5A623" — amber, distinct from TED green (#30A46C) / spar purple (#6E56CF)
-    expect((trace.line.color as string).toUpperCase().startsWith("#F")).toBe(true);
+    // COLOR_TURBULATOR = "#22D3EE" — bright cyan, deliberately far from the
+    // airfoil orange (#FF8400) / TED green (#30A46C) / spar purple (#6E56CF).
+    const color = (trace.marker.color as string).toUpperCase();
+    expect(color).toBe("#22D3EE");
+    expect(color).not.toBe("#FF8400");
+  });
+
+  it("draws the strip on the upper surface (z follows the airfoil upper ordinate)", () => {
+    // Provide an airfoil whose upper surface at x/c=0.3 is well above the chord
+    // line; the dots must sit at that height, not on the camber line (z=0).
+    const upperAf = {
+      x: [0, 0.3, 1], y: [0, 0.1, 0],
+      upper_x: [0, 0.3, 1], upper_y: [0, 0.1, 0],
+    };
+    const ctx = makeCtx(
+      [
+        makeXsec({ chord: 1.0, turbulator: { form: "zigzag", height_mm: 0.3, position_root: 0.3, enabled: true } }),
+        makeXsec({ xyz_le: [0, 1, 0], chord: 1.0 }),
+      ],
+      { airfoils: [upperAf, upperAf] as unknown as WingTraceCtx["airfoils"] },
+    );
+    const [trace] = buildTurbulatorTraces(ctx);
+    // upper_y(0.3) = 0.1, chord 1 → z ≈ 0.1 (not 0)
+    expect(trace.z[0]).toBeCloseTo(0.1, 5);
   });
 
   it("trace has showlegend: false and hoverinfo: skip", () => {
