@@ -131,6 +131,7 @@ const COLOR_SPANWISE = "#FF840060";
 const COLOR_SELECTED = "#E5484D";    // selected xsec/segment: red
 const COLOR_TED = "#30A46C";
 const COLOR_SPAR = "#6E56CF";        // purple
+const COLOR_TURBULATOR = "#F5A623";  // amber — distinct from TED green / spar purple
 
 /** Shorthand for a scatter3d trace. */
 function scatter3d(
@@ -330,6 +331,36 @@ function buildTEDTraces(ctx: WingTraceCtx): PlotlyData[] {
         [h1.z[0], te1.z[0], te2.z[0], h2.z[0], h1.z[0]],
         COLOR_TED, 1.5,
       ),
+    );
+  }
+
+  return traces;
+}
+
+/** Turbulator strip outline — spanwise line on the upper surface at x/c position. */
+function buildTurbulatorTraces(ctx: WingTraceCtx): PlotlyData[] {
+  const traces: PlotlyData[] = [];
+  const { xsecs, dihedrals } = ctx;
+
+  for (let i = 0; i < xsecs.length - 1; i++) {
+    const turb = xsecs[i].turbulator as Record<string, unknown> | null | undefined;
+    if (!turb) continue;
+
+    const posRoot = turb.position_root as number | undefined;
+    if (posRoot == null) continue;
+
+    // position_tip defaults to position_root (flat strip) when not set
+    const posTip = (turb.position_tip as number | null | undefined) ?? posRoot;
+
+    // Sample upper surface at x/c = posRoot (root xsec) and x/c = posTip (tip xsec)
+    // Upper surface: y-coordinate is positive at a given x/c on the upper side.
+    // We use transformProfile with z-ordinate 0 (camber line approximation) which
+    // is sufficient for a visual indicator line.
+    const p1 = transformProfile([posRoot], [0], xsecs[i].chord, xsecs[i].twist, xsecs[i].xyz_le, dihedrals[i]);
+    const p2 = transformProfile([posTip], [0], xsecs[i + 1].chord, xsecs[i + 1].twist, xsecs[i + 1].xyz_le, dihedrals[i + 1]);
+
+    traces.push(
+      scatter3d([p1.x[0], p2.x[0]], [p1.y[0], p2.y[0]], [p1.z[0], p2.z[0]], COLOR_TURBULATOR, 2.5),
     );
   }
 
@@ -669,6 +700,7 @@ async function buildAllWingTraces(
     ...(showQC ? buildQuarterChordTraces(ctx) : []),
     ...buildEdgeTraces(ctx),
     ...buildTEDTraces(ctx),
+    ...buildTurbulatorTraces(ctx),
     ...buildSparTraces(ctx),
   ];
 

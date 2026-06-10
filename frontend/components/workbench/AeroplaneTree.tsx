@@ -56,8 +56,11 @@ interface BuildNodeCallbacks {
   onDeleteSpar?: (wingName: string, xsecIndex: number, sparIndex: number) => void;
   onEditTed?: (wingName: string, xsecIndex: number, data: Record<string, unknown>) => void;
   onDeleteTed?: (wingName: string, xsecIndex: number) => void;
+  onEditTurbulator?: (wingName: string, xsecIndex: number, data: Record<string, unknown>) => void;
+  onDeleteTurbulator?: (wingName: string, xsecIndex: number) => void;
   onAddSpar?: (wingName: string, xsecIndex: number) => void;
   onAddTed?: (wingName: string, xsecIndex: number) => void;
+  onAddTurbulator?: (wingName: string, xsecIndex: number) => void;
   onAddMenu?: (wingName: string, xsecIndex: number, hasTed: boolean, x: number, y: number) => void;
   onAddSegment?: (wn: string) => void;
   onInsertXsec?: (wn: string, i: number) => void;
@@ -131,6 +134,40 @@ function buildTedNode(
     onDelete: callbacks.onDeleteTed ? () => {
       if (confirm(`Delete control surface "${tedDisplay}"?`)) callbacks.onDeleteTed!(wingName, xsecIndex);
     } : undefined,
+  };
+}
+
+function buildTurbulatorNode(
+  id: string,
+  wingName: string,
+  xsecIndex: number,
+  xsec: XSec,
+  callbacks: BuildNodeCallbacks,
+): TreeNode | null {
+  const turb = xsec.turbulator;
+  if (!turb || typeof turb !== "object") return null;
+
+  const turbObj = turb as Record<string, unknown>;
+  const form = (turbObj.form as string) ?? "zigzag";
+  const posRoot = typeof turbObj.position_root === "number"
+    ? (turbObj.position_root as number).toFixed(2)
+    : "?";
+  const display = `x/c ${posRoot}`;
+
+  return {
+    id: `${id}-turbulator`,
+    label: `〰 ${display}`,
+    level: 3,
+    leaf: true,
+    chip: form.toUpperCase(),
+    onEdit: callbacks.onEditTurbulator
+      ? () => callbacks.onEditTurbulator!(wingName, xsecIndex, turbObj)
+      : undefined,
+    onDelete: callbacks.onDeleteTurbulator
+      ? () => {
+          if (confirm("Delete this turbulator?")) callbacks.onDeleteTurbulator!(wingName, xsecIndex);
+        }
+      : undefined,
   };
 }
 
@@ -217,6 +254,9 @@ function buildExpandedSegmentDetails(
 
   const tedNode = buildTedNode(segId, wingName, segIdx, root, callbacks);
   if (tedNode) nodes.push(tedNode);
+
+  const turbulatorNode = buildTurbulatorNode(segId, wingName, segIdx, root, callbacks);
+  if (turbulatorNode) nodes.push(turbulatorNode);
 
   nodes.push(...buildSparNodes(segId, wingName, segIdx, root, callbacks));
   return nodes;
@@ -460,8 +500,11 @@ interface BuildCallbacksOptions {
   onDeleteSpar?: (wingName: string, xsecIndex: number, sparIndex: number) => void;
   onEditTed?: (wingName: string, xsecIndex: number, data: Record<string, unknown>) => void;
   onDeleteTed?: (wingName: string, xsecIndex: number) => void;
+  onEditTurbulator?: (wingName: string, xsecIndex: number, data: Record<string, unknown>) => void;
+  onDeleteTurbulator?: (wingName: string, xsecIndex: number) => void;
   onAddSpar?: (wingName: string, xsecIndex: number) => void;
   onAddTed?: (wingName: string, xsecIndex: number) => void;
+  onAddTurbulator?: (wingName: string, xsecIndex: number) => void;
 }
 
 function buildCallbacks(opts: BuildCallbacksOptions): BuildNodeCallbacks {
@@ -486,8 +529,11 @@ function buildCallbacks(opts: BuildCallbacksOptions): BuildNodeCallbacks {
     onDeleteSpar: opts.onDeleteSpar,
     onEditTed: opts.onEditTed,
     onDeleteTed: opts.onDeleteTed,
+    onEditTurbulator: opts.onEditTurbulator,
+    onDeleteTurbulator: opts.onDeleteTurbulator,
     onAddSpar: opts.onAddSpar,
     onAddTed: opts.onAddTed,
+    onAddTurbulator: opts.onAddTurbulator,
     onAddMenu: (wn, xi, hasTed, cx, cy) => opts.setSegAddMenu({ wingName: wn, xsecIndex: xi, hasTed, x: cx, y: cy }),
     onAddSegment: opts.handleAddSegment,
     onInsertXsec: opts.handleInsertXsec,
@@ -674,14 +720,17 @@ interface AeroplaneTreeProps {
   onDeleteSpar?: (wingName: string, xsecIndex: number, sparIndex: number) => void;
   onEditTed?: (wingName: string, xsecIndex: number, data: Record<string, unknown>) => void;
   onDeleteTed?: (wingName: string, xsecIndex: number) => void;
+  onEditTurbulator?: (wingName: string, xsecIndex: number, data: Record<string, unknown>) => void;
+  onDeleteTurbulator?: (wingName: string, xsecIndex: number) => void;
   onAddSpar?: (wingName: string, xsecIndex: number) => void;
   onAddTed?: (wingName: string, xsecIndex: number) => void;
+  onAddTurbulator?: (wingName: string, xsecIndex: number) => void;
 }
 
 // ── Component ───────────────────────────────────────────────────
 
 export function AeroplaneTree(props: Readonly<AeroplaneTreeProps>) {
-  const { aeroplaneId, wingNames, fuselageNames = [], aeroplaneName, isWingVisible, isWingLoading, onTogglePreview, onToggleAllPreview, isFuselageVisible, onToggleFuselagePreview, onCollapseTree, onNodeEdit, onWingSaved, onFuselageSaved, onEditSpar, onDeleteSpar, onEditTed, onDeleteTed, onAddSpar, onAddTed } = props;
+  const { aeroplaneId, wingNames, fuselageNames = [], aeroplaneName, isWingVisible, isWingLoading, onTogglePreview, onToggleAllPreview, isFuselageVisible, onToggleFuselagePreview, onCollapseTree, onNodeEdit, onWingSaved, onFuselageSaved, onEditSpar, onDeleteSpar, onEditTed, onDeleteTed, onEditTurbulator, onDeleteTurbulator, onAddSpar, onAddTed, onAddTurbulator } = props;
   const { selectedWing, selectedXsecIndex, selectWing, selectXsec, selectedFuselage, selectedFuselageXsecIndex, selectFuselage, selectFuselageXsec, treeMode, setTreeMode } =
     useAeroplaneContext();
   const { wing, isLoading, mutate: mutateWing } = useWing(aeroplaneId, selectedWing);
@@ -828,7 +877,7 @@ export function AeroplaneTree(props: Readonly<AeroplaneTreeProps>) {
     selectWing, selectXsec,
     handleDeleteXsec, handleAddSegment, handleInsertXsec,
     setSegAddMenu,
-    onNodeEdit, onEditSpar, onDeleteSpar, onEditTed, onDeleteTed, onAddSpar, onAddTed,
+    onNodeEdit, onEditSpar, onDeleteSpar, onEditTed, onDeleteTed, onEditTurbulator, onDeleteTurbulator, onAddSpar, onAddTed, onAddTurbulator,
   });
 
   // Pitch-control capability is an aeroplane-wide property: any wing with an
@@ -955,10 +1004,19 @@ export function AeroplaneTree(props: Readonly<AeroplaneTreeProps>) {
             {!segAddMenu.hasTed && (
               <button
                 onClick={() => { onAddTed?.(segAddMenu.wingName, segAddMenu.xsecIndex); setSegAddMenu(null); }}
-                className="flex w-full items-center gap-2 px-3 py-2 text-[12px] text-foreground hover:bg-sidebar-accent rounded-b-xl"
+                className="flex w-full items-center gap-2 px-3 py-2 text-[12px] text-foreground hover:bg-sidebar-accent"
               >
                 <Plus size={12} />
                 Add Control Surface
+              </button>
+            )}
+            {!wing?.x_secs[segAddMenu.xsecIndex]?.turbulator && (
+              <button
+                onClick={() => { onAddTurbulator?.(segAddMenu.wingName, segAddMenu.xsecIndex); setSegAddMenu(null); }}
+                className="flex w-full items-center gap-2 px-3 py-2 text-[12px] text-foreground hover:bg-sidebar-accent rounded-b-xl"
+              >
+                <Plus size={12} />
+                Add Turbulator
               </button>
             )}
           </div>
