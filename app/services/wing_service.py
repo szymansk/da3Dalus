@@ -22,6 +22,7 @@ from app.models.aeroplanemodel import (
     WingXSecSpareModel,
     WingXSecTrailingEdgeDeviceModel,
     WingXSecTedServoModel,
+    WingXSecTurbulatorModel,
 )
 from app.schemas.Servo import Servo as ServoSchema
 from app.schemas.wing import Wing as WingConfigurationSchema
@@ -36,6 +37,7 @@ logger = logging.getLogger(__name__)
 # --- Shared error messages (S1192) ---
 _ERR_XSEC_NOT_FOUND = "Cross-section not found"
 _ERR_TED_NOT_FOUND = "Trailing-edge device not found on this cross-section."
+_ERR_TURBULATOR_NOT_FOUND = "Turbulator not found on this cross-section."
 
 # --- Unit conversion constant (mm → m) ---
 _MM_TO_M = 0.001
@@ -1488,4 +1490,96 @@ def delete_trailing_edge_servo(
         raise
     except SQLAlchemyError as e:
         logger.error(f"Database error when deleting trailing-edge servo: {e}")
+        raise InternalError(message=f"Database error: {e}")
+
+
+# ── Turbulator CRUD (gh-936) ────────────────────────────────────────────────
+
+
+def get_turbulator(
+    db: Session,
+    aeroplane_uuid,
+    wing_name: str,
+    xsec_index: int,
+) -> schemas.TurbulatorDetailSchema:
+    """Return the turbulator for a given cross-section, or raise 404."""
+    try:
+        aeroplane = get_aeroplane_or_raise(db, aeroplane_uuid)
+        wing = get_wing_or_raise(aeroplane, wing_name)
+        x_sec = _get_xsec_or_raise(wing, xsec_index)
+        _assert_non_terminal_xsec_or_raise(xsec_index, len(wing.x_secs))
+        turb = x_sec.detail.turbulator if x_sec.detail is not None else None
+        if turb is None:
+            raise NotFoundError(
+                message=_ERR_TURBULATOR_NOT_FOUND,
+                details={"index": xsec_index, "wing_name": wing_name},
+            )
+        return schemas.TurbulatorDetailSchema.model_validate(turb, from_attributes=True)
+    except (NotFoundError, ValidationError):
+        raise
+    except SQLAlchemyError as e:
+        logger.error(f"Database error when getting turbulator: {e}")
+        raise InternalError(message=f"Database error: {e}")
+
+
+def upsert_turbulator(
+    db: Session,
+    aeroplane_uuid,
+    wing_name: str,
+    xsec_index: int,
+    payload: schemas.TurbulatorDetailSchema,
+) -> schemas.TurbulatorDetailSchema:
+    """Upsert turbulator fields on a cross-section (create or update)."""
+    try:
+        aeroplane = get_aeroplane_or_raise(db, aeroplane_uuid)
+        wing = get_wing_or_raise(aeroplane, wing_name)
+        x_sec = _get_xsec_or_raise(wing, xsec_index)
+        detail = _ensure_segment_detail_or_raise(x_sec, xsec_index, len(wing.x_secs))
+
+        turb = detail.turbulator
+        if turb is None:
+            turb = WingXSecTurbulatorModel(wing_xsec_detail_id=detail.id)
+            detail.turbulator = turb
+
+        patch_payload = payload.model_dump(exclude_none=False)
+        for key, value in patch_payload.items():
+            setattr(turb, key, value)
+
+        db.add(turb)
+        db.flush()
+        db.refresh(turb)
+        aeroplane.updated_at = datetime.now()
+        return schemas.TurbulatorDetailSchema.model_validate(turb, from_attributes=True)
+    except (NotFoundError, ValidationError):
+        raise
+    except SQLAlchemyError as e:
+        logger.error(f"Database error when upserting turbulator: {e}")
+        raise InternalError(message=f"Database error: {e}")
+
+
+def delete_turbulator(
+    db: Session,
+    aeroplane_uuid,
+    wing_name: str,
+    xsec_index: int,
+) -> None:
+    """Delete the turbulator on the given cross-section."""
+    try:
+        aeroplane = get_aeroplane_or_raise(db, aeroplane_uuid)
+        wing = get_wing_or_raise(aeroplane, wing_name)
+        x_sec = _get_xsec_or_raise(wing, xsec_index)
+        _assert_non_terminal_xsec_or_raise(xsec_index, len(wing.x_secs))
+        turb = x_sec.detail.turbulator if x_sec.detail is not None else None
+        if turb is None:
+            raise NotFoundError(
+                message=_ERR_TURBULATOR_NOT_FOUND,
+                details={"index": xsec_index, "wing_name": wing_name},
+            )
+        db.delete(turb)
+        aeroplane.updated_at = datetime.now()
+        db.flush()
+    except (NotFoundError, ValidationError):
+        raise
+    except SQLAlchemyError as e:
+        logger.error(f"Database error when deleting turbulator: {e}")
         raise InternalError(message=f"Database error: {e}")

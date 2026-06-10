@@ -3,6 +3,14 @@
 import useSWR from "swr";
 import { fetcher, API_BASE } from "@/lib/fetcher";
 
+export interface Turbulator {
+  form: "zigzag" | "dots" | "thread";
+  height_mm: number;
+  position_root: number;
+  position_tip?: number | null;
+  enabled: boolean;
+}
+
 export interface XSec {
   xyz_le: number[];
   chord: number;
@@ -14,6 +22,7 @@ export interface XSec {
   spare_list?: unknown[];
   trailing_edge_device?: Record<string, unknown> | null;
   control_surface?: Record<string, unknown> | null;
+  turbulator?: Turbulator | null;
 }
 
 export interface Wing {

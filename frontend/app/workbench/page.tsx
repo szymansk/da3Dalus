@@ -11,6 +11,7 @@ import { useWingConfig } from "@/hooks/useWingConfig";
 import { AeroplaneTree } from "@/components/workbench/AeroplaneTree";
 import { SparEditDialog } from "@/components/workbench/SparEditDialog";
 import { TedEditDialog } from "@/components/workbench/TedEditDialog";
+import { TurbulatorEditDialog } from "@/components/workbench/TurbulatorEditDialog";
 import { WingOutlineViewer } from "@/components/workbench/WingOutlineViewer";
 import { StabilityOverlay } from "@/components/workbench/stability-overlay/StabilityOverlay";
 import { useAeroplaneContext } from "@/components/workbench/AeroplaneContext";
@@ -79,6 +80,9 @@ export default function WorkbenchPage() {
     wingName: string; xsecIndex: number; sparIndex?: number; data?: Record<string, unknown>;
   } | null>(null);
   const [tedDialog, setTedDialog] = useState<{
+    wingName: string; xsecIndex: number; isNew: boolean; data?: Record<string, unknown>;
+  } | null>(null);
+  const [turbulatorDialog, setTurbulatorDialog] = useState<{
     wingName: string; xsecIndex: number; isNew: boolean; data?: Record<string, unknown>;
   } | null>(null);
 
@@ -267,6 +271,16 @@ export default function WorkbenchPage() {
               }}
               onAddSpar={(wn, xi) => setSparDialog({ wingName: wn, xsecIndex: xi })}
               onAddTed={(wn, xi) => setTedDialog({ wingName: wn, xsecIndex: xi, isNew: true })}
+              onEditTurbulator={(wn, xi, data) => setTurbulatorDialog({ wingName: wn, xsecIndex: xi, isNew: false, data })}
+              onDeleteTurbulator={async (wn, xi) => {
+                if (!aeroplaneId) return;
+                const res = await fetch(
+                  `${API_BASE}/aeroplanes/${aeroplaneId}/wings/${wn}/cross_sections/${xi}/turbulator`,
+                  { method: "DELETE" },
+                );
+                if (res.ok) { mutateSelectedWing(); mutateAllWings(); }
+              }}
+              onAddTurbulator={(wn, xi) => setTurbulatorDialog({ wingName: wn, xsecIndex: xi, isNew: true })}
             />
           </div>
         )}
@@ -386,6 +400,20 @@ export default function WorkbenchPage() {
           xsecIndex={tedDialog.xsecIndex}
           isNew={tedDialog.isNew}
           initialData={tedDialog.data}
+          onSaved={() => { mutateSelectedWing(); mutateAllWings(); }}
+        />
+      )}
+
+      {/* Turbulator Edit/Add Dialog */}
+      {turbulatorDialog && aeroplaneId && (
+        <TurbulatorEditDialog
+          open
+          onClose={() => setTurbulatorDialog(null)}
+          aeroplaneId={aeroplaneId}
+          wingName={turbulatorDialog.wingName}
+          xsecIndex={turbulatorDialog.xsecIndex}
+          isNew={turbulatorDialog.isNew}
+          initialData={turbulatorDialog.data}
           onSaved={() => { mutateSelectedWing(); mutateAllWings(); }}
         />
       )}

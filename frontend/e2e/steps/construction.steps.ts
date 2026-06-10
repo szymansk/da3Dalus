@@ -560,3 +560,24 @@ Given(
     }
   },
 );
+
+// ── Turbulator steps (gh-936) ────────────────────────────────────
+
+When(
+  "I fill position root {string} in the turbulator dialog",
+  async ({ page }, posRoot: string) => {
+    const dialog = page.locator("dialog").first();
+    const input = dialog.getByLabel("Position root (x/c)");
+    await input.fill(posRoot);
+  },
+);
+
+Then(
+  "segment {int} shows a {string} turbulator chip in the tree",
+  async ({ page }, _segIdx: number, chipLabel: string) => {
+    // Look for the turbulator chip text visible in the tree
+    await expect(
+      page.getByText(chipLabel, { exact: true }).first(),
+    ).toBeVisible({ timeout: 5000 });
+  },
+);

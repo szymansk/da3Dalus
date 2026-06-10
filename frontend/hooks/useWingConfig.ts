@@ -22,6 +22,7 @@ export interface WingConfigSegment {
   tip_type?: string;
   spare_list?: unknown[];
   trailing_edge_device?: Record<string, unknown> | null;
+  turbulator?: Record<string, unknown> | null;
 }
 
 export interface WingConfig {

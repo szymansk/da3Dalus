@@ -970,3 +970,70 @@ async def delete_aeroplane_wing_cross_section_control_surface_cad_details_servo_
         status="ok",
         operation="delete_wing_cross_section_control_surface_cad_details_servo_details",
     )
+
+
+# ── Turbulator CRUD endpoints (gh-936) ───────────────────────────────────────
+
+
+@router.get(
+    "/aeroplanes/{aeroplane_id}/wings/{wing_name}/cross_sections/{cross_section_index}/turbulator",
+    status_code=status.HTTP_200_OK,
+    tags=["turbulators"],
+    operation_id="get_wing_cross_section_turbulator",
+)
+async def get_wing_cross_section_turbulator(
+    aeroplane_id: Annotated[AeroPlaneID, Path(..., description=_DESC_AEROPLANE_ID)],
+    wing_name: Annotated[str, Path(..., description=_DESC_WING_NAME)],
+    cross_section_index: Annotated[int, Path(..., description=_DESC_XSEC_INDEX)],
+    db: Annotated[Session, Depends(get_db)],
+) -> schemas.TurbulatorDetailSchema:
+    """Returns the turbulator strip for the given cross-section, or 404."""
+    return _call_service(
+        wing_service.get_turbulator, db, aeroplane_id, wing_name, cross_section_index
+    )
+
+
+@router.put(
+    "/aeroplanes/{aeroplane_id}/wings/{wing_name}/cross_sections/{cross_section_index}/turbulator",
+    status_code=status.HTTP_200_OK,
+    tags=["turbulators"],
+    operation_id="put_wing_cross_section_turbulator",
+)
+async def put_wing_cross_section_turbulator(
+    aeroplane_id: Annotated[AeroPlaneID, Path(..., description=_DESC_AEROPLANE_ID)],
+    wing_name: Annotated[str, Path(..., description=_DESC_WING_NAME)],
+    cross_section_index: Annotated[int, Path(..., description=_DESC_XSEC_INDEX)],
+    request: Annotated[schemas.TurbulatorDetailSchema, Body(...)],
+    db: Annotated[Session, Depends(get_db)],
+) -> schemas.TurbulatorDetailSchema:
+    """Upsert (create or update) the turbulator on the given cross-section."""
+    result = _call_service(
+        wing_service.upsert_turbulator,
+        db,
+        aeroplane_id,
+        wing_name,
+        cross_section_index,
+        request,
+    )
+    on_wing_changed(db, aeroplane_id, wing_name)
+    return result
+
+
+@router.delete(
+    "/aeroplanes/{aeroplane_id}/wings/{wing_name}/cross_sections/{cross_section_index}/turbulator",
+    status_code=status.HTTP_200_OK,
+    tags=["turbulators"],
+    operation_id="delete_wing_cross_section_turbulator",
+)
+async def delete_wing_cross_section_turbulator(
+    aeroplane_id: Annotated[AeroPlaneID, Path(..., description=_DESC_AEROPLANE_ID)],
+    wing_name: Annotated[str, Path(..., description=_DESC_WING_NAME)],
+    cross_section_index: Annotated[int, Path(..., description=_DESC_XSEC_INDEX)],
+    db: Annotated[Session, Depends(get_db)],
+) -> OperationStatusResponse:
+    """Deletes the turbulator on the given cross-section."""
+    _call_service(
+        wing_service.delete_turbulator, db, aeroplane_id, wing_name, cross_section_index
+    )
+    on_wing_changed(db, aeroplane_id, wing_name)
+    return OperationStatusResponse(status="deleted", operation="delete_wing_cross_section_turbulator")
