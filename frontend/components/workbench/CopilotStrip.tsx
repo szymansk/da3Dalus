@@ -1,10 +1,11 @@
 "use client";
 
 import { useRef, useState, useEffect, useCallback } from "react";
-import { Send, ChevronUp, ChevronDown, Bot, User, AlertCircle } from "lucide-react";
+import { Send, ChevronUp, ChevronDown, Bot, User, AlertCircle, Settings, Star, Trash2 } from "lucide-react";
 import { useAeroplaneContext } from "@/components/workbench/AeroplaneContext";
 import { useCopilot } from "@/hooks/useCopilot";
 import type { CopilotMessageRead } from "@/hooks/useCopilot";
+import { useCopilotProposal } from "@/hooks/useCopilotProposal";
 import { Streamdown, defaultRemarkPlugins } from "streamdown";
 import type { MathPlugin, PluginConfig, UrlTransform } from "streamdown";
 import type { PluggableList } from "unified";
@@ -130,10 +131,88 @@ function ErrorBanner({
 }
 
 // ---------------------------------------------------------------------------
+// CopilotProposalBanner
+// ---------------------------------------------------------------------------
+
+interface CopilotProposalBannerProps {
+  branchName: string;
+  onReview?: () => void;
+  onAdopt: () => void;
+  onDiscard: () => void;
+  busy: boolean;
+}
+
+function CopilotProposalBanner({
+  branchName,
+  onReview,
+  onAdopt,
+  onDiscard,
+  busy,
+}: CopilotProposalBannerProps) {
+  return (
+    <div
+      className="flex items-center gap-2 border-t border-primary/30 bg-primary/5 px-6 py-1.5"
+      role="status"
+      aria-label="Copilot proposal pending"
+      data-testid="copilot-proposal-banner"
+    >
+      <Settings size={12} className="shrink-0 text-primary" aria-hidden />
+      <span className="flex-1 truncate text-[11px] font-medium text-primary">
+        Copilot proposal pending
+      </span>
+      <span className="hidden max-w-[120px] truncate text-[10px] text-muted-foreground sm:block">
+        {branchName}
+      </span>
+      <div className="flex shrink-0 items-center gap-1">
+        {onReview && (
+          <button
+            type="button"
+            onClick={onReview}
+            disabled={busy}
+            aria-label="Review copilot proposal"
+            className="rounded px-2 py-0.5 text-[10px] font-medium text-primary ring-1 ring-primary/40 hover:bg-primary/10 disabled:opacity-50"
+          >
+            Review
+          </button>
+        )}
+        <button
+          type="button"
+          onClick={() => { void onAdopt(); }}
+          disabled={busy}
+          aria-label="Adopt copilot proposal"
+          className="flex items-center gap-1 rounded bg-primary px-2 py-0.5 text-[10px] font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
+        >
+          <Star size={9} aria-hidden />
+          Adopt
+        </button>
+        <button
+          type="button"
+          onClick={() => { void onDiscard(); }}
+          disabled={busy}
+          aria-label="Discard copilot proposal"
+          className="flex items-center gap-1 rounded px-2 py-0.5 text-[10px] text-destructive ring-1 ring-destructive/30 hover:bg-destructive/10 disabled:opacity-50"
+        >
+          <Trash2 size={9} aria-hidden />
+          Discard
+        </button>
+      </div>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
 // CopilotStrip
 // ---------------------------------------------------------------------------
 
-export function CopilotStrip() {
+interface CopilotStripProps {
+  /**
+   * Called when the user clicks "Review" on a pending copilot proposal.
+   * If not provided, the Review button is hidden.
+   */
+  onOpenHistory?: () => void;
+}
+
+export function CopilotStrip({ onOpenHistory }: CopilotStripProps = {}) {
   const { aeroplaneId } = useAeroplaneContext();
   const {
     history,
@@ -145,6 +224,9 @@ export function CopilotStrip() {
     clearError,
   } = useCopilot(aeroplaneId);
 
+  const { proposal } = useCopilotProposal(aeroplaneId);
+
+  const [proposalBusy, setProposalBusy] = useState(false);
   const [open, setOpen] = useState(false);
   const [inputText, setInputText] = useState("");
   const threadEndRef = useRef<HTMLDivElement>(null);
@@ -173,6 +255,26 @@ export function CopilotStrip() {
     [handleSend],
   );
 
+  const handleProposalAdopt = useCallback(async () => {
+    if (!proposal) return;
+    setProposalBusy(true);
+    try {
+      await proposal.adopt();
+    } finally {
+      setProposalBusy(false);
+    }
+  }, [proposal]);
+
+  const handleProposalDiscard = useCallback(async () => {
+    if (!proposal) return;
+    setProposalBusy(true);
+    try {
+      await proposal.discard();
+    } finally {
+      setProposalBusy(false);
+    }
+  }, [proposal]);
+
   const noAeroplane = !aeroplaneId;
   const messages = history?.messages ?? [];
   const hasContent =
@@ -180,6 +282,16 @@ export function CopilotStrip() {
 
   return (
     <footer className="shrink-0 border-t border-border bg-sidebar">
+      {/* Copilot proposal pending banner (gh-939) */}
+      {proposal && (
+        <CopilotProposalBanner
+          branchName={proposal.branch.name}
+          onReview={onOpenHistory}
+          onAdopt={handleProposalAdopt}
+          onDiscard={handleProposalDiscard}
+          busy={proposalBusy}
+        />
+      )}
       {/* Slim handle bar — always visible */}
       <div className="flex h-10 items-center gap-3 px-6">
         <span className="text-[13px] text-subtle-foreground">
