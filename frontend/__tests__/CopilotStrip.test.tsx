@@ -7,7 +7,7 @@
  * - Assert rendering of message bubbles, streaming text, tool chips, errors,
  *   and disabled state when no aeroplane is selected.
  */
-import { render, screen } from "@testing-library/react";
+import { render, screen, fireEvent } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
@@ -603,5 +603,184 @@ describe("CopilotStrip — send interaction", () => {
     await user.click(screen.getByRole("button", { name: "Expand copilot panel" }));
 
     expect(screen.getByRole("button", { name: "Send message" })).toBeDisabled();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Enter key toggle (gh-952)
+// ---------------------------------------------------------------------------
+
+describe("CopilotStrip — Enter key toggle", () => {
+  beforeEach(() => {
+    localStorage.clear();
+    mockCtx();
+    mockCopilot({ sendMessage: vi.fn().mockResolvedValue(undefined) });
+  });
+
+  // Helper: open panel and return textarea + fresh sendMessage mock
+  async function openPanel() {
+    const sendMessage = vi.fn().mockResolvedValue(undefined);
+    mockCopilot({ sendMessage });
+    const user = userEvent.setup();
+    render(<CopilotStrip />);
+    await user.click(screen.getByRole("button", { name: "Expand copilot panel" }));
+    const textarea = screen.getByRole("textbox", { name: "Copilot input" });
+    return { user, textarea, sendMessage };
+  }
+
+  // ---- Default mode (enterToSend = true, localStorage unset) ---------------
+
+  it("default mode: Enter sends the message", async () => {
+    const { user, textarea, sendMessage } = await openPanel();
+    await user.type(textarea, "my question");
+    // clear the send calls from typing then fire Enter
+    sendMessage.mockClear();
+    await user.keyboard("{Enter}");
+    expect(sendMessage).toHaveBeenCalledWith("my question");
+  });
+
+  it("default mode: Shift+Enter does NOT send", async () => {
+    const { user, textarea, sendMessage } = await openPanel();
+    await user.type(textarea, "multiline");
+    sendMessage.mockClear();
+    await user.keyboard("{Shift>}{Enter}{/Shift}");
+    expect(sendMessage).not.toHaveBeenCalled();
+  });
+
+  it("default mode: Cmd+Enter sends", async () => {
+    const { user, textarea, sendMessage } = await openPanel();
+    await user.type(textarea, "cmd test");
+    sendMessage.mockClear();
+    await user.keyboard("{Meta>}{Enter}{/Meta}");
+    expect(sendMessage).toHaveBeenCalledWith("cmd test");
+  });
+
+  it("default mode: Ctrl+Enter sends", async () => {
+    const { user, textarea, sendMessage } = await openPanel();
+    await user.type(textarea, "ctrl test");
+    sendMessage.mockClear();
+    await user.keyboard("{Control>}{Enter}{/Control}");
+    expect(sendMessage).toHaveBeenCalledWith("ctrl test");
+  });
+
+  // ---- Alternative mode (enterToSend = false) ------------------------------
+
+  it("alt mode (localStorage false): Enter does NOT send", async () => {
+    localStorage.setItem("copilot:enter-to-send", "false");
+    const { user, textarea, sendMessage } = await openPanel();
+    await user.type(textarea, "alt question");
+    sendMessage.mockClear();
+    await user.keyboard("{Enter}");
+    expect(sendMessage).not.toHaveBeenCalled();
+  });
+
+  it("alt mode (localStorage false): Cmd+Enter sends", async () => {
+    localStorage.setItem("copilot:enter-to-send", "false");
+    const { user, textarea, sendMessage } = await openPanel();
+    await user.type(textarea, "cmd alt test");
+    sendMessage.mockClear();
+    await user.keyboard("{Meta>}{Enter}{/Meta}");
+    expect(sendMessage).toHaveBeenCalledWith("cmd alt test");
+  });
+
+  it("alt mode (localStorage false): Send button sends", async () => {
+    localStorage.setItem("copilot:enter-to-send", "false");
+    const { user, textarea, sendMessage } = await openPanel();
+    await user.type(textarea, "button test");
+    sendMessage.mockClear();
+    await user.click(screen.getByRole("button", { name: "Send message" }));
+    expect(sendMessage).toHaveBeenCalledWith("button test");
+  });
+
+  // ---- Toggle button -------------------------------------------------------
+
+  it("toggle button has aria-label and aria-pressed reflecting default state", async () => {
+    await openPanel();
+    const toggleBtn = screen.getByRole("button", { name: "Enter sends message" });
+    expect(toggleBtn).toHaveAttribute("aria-pressed", "true");
+    expect(toggleBtn).toHaveAttribute("aria-label");
+  });
+
+  it("clicking toggle flips aria-pressed", async () => {
+    const { user } = await openPanel();
+    const toggleBtn = screen.getByRole("button", { name: "Enter sends message" });
+    await user.click(toggleBtn);
+    // After toggle, Enter inserts newline — label and pressed state change
+    expect(screen.getByRole("button", { name: "Enter inserts newline" })).toHaveAttribute(
+      "aria-pressed",
+      "false",
+    );
+  });
+
+  it("clicking toggle writes copilot:enter-to-send to localStorage", async () => {
+    const { user } = await openPanel();
+    const toggleBtn = screen.getByRole("button", { name: "Enter sends message" });
+    await user.click(toggleBtn);
+    expect(localStorage.getItem("copilot:enter-to-send")).toBe("false");
+  });
+
+  it("clicking toggle twice restores original state and updates localStorage", async () => {
+    const { user } = await openPanel();
+    const btn1 = screen.getByRole("button", { name: "Enter sends message" });
+    await user.click(btn1);
+    const btn2 = screen.getByRole("button", { name: "Enter inserts newline" });
+    await user.click(btn2);
+    expect(screen.getByRole("button", { name: "Enter sends message" })).toHaveAttribute(
+      "aria-pressed",
+      "true",
+    );
+    expect(localStorage.getItem("copilot:enter-to-send")).toBe("true");
+  });
+
+  it("mounting with localStorage=false starts in alt mode (aria-pressed=false)", async () => {
+    localStorage.setItem("copilot:enter-to-send", "false");
+    await openPanel();
+    expect(
+      screen.getByRole("button", { name: "Enter inserts newline" }),
+    ).toHaveAttribute("aria-pressed", "false");
+  });
+
+  it("mounting with localStorage=true starts in default mode (aria-pressed=true)", async () => {
+    localStorage.setItem("copilot:enter-to-send", "true");
+    await openPanel();
+    expect(
+      screen.getByRole("button", { name: "Enter sends message" }),
+    ).toHaveAttribute("aria-pressed", "true");
+  });
+
+  // ---- Toggle via click then Enter behavior --------------------------------
+
+  it("after clicking toggle to alt mode, Enter does NOT send", async () => {
+    const { user, textarea, sendMessage } = await openPanel();
+    const toggleBtn = screen.getByRole("button", { name: "Enter sends message" });
+    await user.click(toggleBtn);
+    await user.type(textarea, "no send");
+    sendMessage.mockClear();
+    await user.keyboard("{Enter}");
+    expect(sendMessage).not.toHaveBeenCalled();
+  });
+
+  // ---- IME composition guard -----------------------------------------------
+
+  it("IME: Enter with isComposing=true does NOT send in default mode", async () => {
+    const { textarea, sendMessage } = await openPanel();
+    await userEvent.type(textarea, "kanji");
+    sendMessage.mockClear();
+    // userEvent can't set isComposing; use fireEvent directly
+    fireEvent.keyDown(textarea, { key: "Enter", isComposing: true });
+    expect(sendMessage).not.toHaveBeenCalled();
+  });
+
+  // ---- Hint text -----------------------------------------------------------
+
+  it("default mode shows 'Enter to send' hint text", async () => {
+    await openPanel();
+    expect(screen.getByText(/Enter to send/)).toBeInTheDocument();
+  });
+
+  it("alt mode shows 'Cmd+Enter to send' hint text", async () => {
+    localStorage.setItem("copilot:enter-to-send", "false");
+    await openPanel();
+    expect(screen.getByText(/Cmd\+Enter to send/)).toBeInTheDocument();
   });
 });
