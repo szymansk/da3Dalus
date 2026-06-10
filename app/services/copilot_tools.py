@@ -526,9 +526,18 @@ def _apply_design_edits(db: Session, aeroplane_id: int, *, ops: list) -> dict:
         List of edit-op dicts, each with a ``type`` discriminator field.
         Supported types: SetAssumption, SetXsec, AddXsec, RemoveXsec,
         SetWingParam, ReplaceWingConfig.
-    """
-    from typing import get_args
 
+    Diff accuracy note
+    ------------------
+    ``diff_proposal_branch`` compares the proposal's metrics BEFORE this call
+    (pre-edit baseline) against AFTER (post-edit, fresh recompute).  Both
+    baselines come from the proposal branch itself — never from the live node's
+    possibly-stale stored context — so the diff reflects only what THIS call
+    changed, without recompute-drift artifacts.
+
+    Do NOT use this diff for authoritative performance numbers (L/D, speeds).
+    Instead call ``run_analysis`` before and after the edit for those.
+    """
     from pydantic import TypeAdapter
 
     from app.schemas.copilot_edits import EditOp
@@ -547,11 +556,10 @@ def _apply_design_edits(db: Session, aeroplane_id: int, *, ops: list) -> dict:
     except Exception as exc:  # noqa: BLE001
         return {"error": f"Invalid ops payload: {exc}"}
 
-    # 2. Get live metrics for the diff baseline
+    # 2. Verify live node exists
     live_node = db.query(AeroplaneModel).filter(AeroplaneModel.id == aeroplane_id).first()
     if live_node is None:
         return {"error": f"Aeroplane {aeroplane_id} not found"}
-    live_metrics = _metrics_payload(live_node)
 
     # 3. Open (or reuse) the proposal branch
     try:
@@ -565,21 +573,35 @@ def _apply_design_edits(db: Session, aeroplane_id: int, *, ops: list) -> dict:
         return {"error": "Proposal branch head not found"}
     proposal_uuid = str(proposal_node.uuid)
 
-    # 4. Apply edits to the PROPOSAL (never to the live head)
+    # 4. Capture the proposal's PRE-EDIT baseline metrics (fresh from the branch
+    #    clone, not from the live node's possibly-stale stored context).
+    #    This ensures diff_proposal_branch reflects only what this call changes —
+    #    recompute-drift between a stale live context and a fresh proposal context
+    #    never pollutes the diff.
+    pre_edit_metrics = _metrics_payload(proposal_node)
+
+    # 5. Apply edits to the PROPOSAL (never to the live head)
     try:
         result = apply_edits(db, proposal_uuid, validated_ops)
     except Exception as exc:  # noqa: BLE001
         logger.exception("_apply_design_edits: apply_edits failed")
         return {"error": f"Failed to apply edits: {exc}"}
 
-    # 5. Compute diff
-    diff = compute_metrics_diff(live_metrics, result.get("metrics", {}))
+    # 6. Compute diff: pre-edit proposal → post-edit proposal (both fresh)
+    diff = compute_metrics_diff(pre_edit_metrics, result.get("metrics", {}))
 
     return {
         "branch_id": branch.id,
         "branch_uuid": str(proposal_node.uuid),  # proposal head uuid
         "applied": result.get("applied", []),
         "rejected": result.get("rejected", []),
+        # diff_proposal_branch: what changed on the proposal branch in this call.
+        # Both sides are fresh (pre-edit clone vs post-edit recompute) — no
+        # stale-context drift.  For authoritative performance numbers (L/D,
+        # speeds, stall) call run_analysis before and after instead.
+        "diff_proposal_branch": diff,
+        # Legacy field alias kept for backward compat — same value, but note
+        # that this is the proposal's own before/after, not live vs proposal.
         "diff_vs_live": diff,
     }
 
@@ -612,8 +634,12 @@ _SCHEMA_APPLY_DESIGN_EDITS = {
             "Propose design changes by applying a list of edit operations to a "
             "PROPOSAL BRANCH — never to the live design.  The user reviews the "
             "proposal in the Versions panel and adopts or discards it.  "
-            "Returns the branch id, applied/rejected ops, and a before/after "
-            "metrics diff so you can show the user what changed.  "
+            "Returns the branch id, applied/rejected ops, and diff_proposal_branch "
+            "(pre-edit vs post-edit on the proposal, both fresh — safe for geometry "
+            "changes like mass/chord/span).  "
+            "IMPORTANT: do NOT use diff_proposal_branch for performance comparisons "
+            "(L/D, v_stall, v_cruise, v_min_sink) — call run_analysis before and "
+            "after for those.  "
             "FIRST call get_design_snapshot to get: (1) wing names (wing_names), "
             "(2) per-wing cross-section counts (wings[i].n_xsecs). "
             "Wing identifiers in ops are NAMES e.g. 'main_wing'.  "
