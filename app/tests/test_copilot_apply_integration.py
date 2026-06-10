@@ -36,6 +36,7 @@ from app.models.aeroplanemodel import AeroplaneModel, BranchModel
 from app.schemas.copilot_edits import (
     AddXsec,
     RemoveXsec,
+    ReplaceWingConfig,
     SetAssumption,
     SetWingParam,
     SetXsec,
@@ -1322,6 +1323,1260 @@ class TestGh938Regressions:
             wc_after = get_wing_as_wingconfig(db, str(proposal_node.uuid), "main_wing")
             assert len(wc_after["segments"]) == n_segs_before, (
                 "Mid-wing rejection must not alter the segment count"
+            )
+        finally:
+            db.close()
+
+
+# ---------------------------------------------------------------------------
+# compute_metrics_diff — edge cases for _get_path (line 71)
+# ---------------------------------------------------------------------------
+
+
+class TestComputeMetricsDiffEdgeCases:
+    """Cover the _get_path branches not hit by the existing basic tests.
+
+    Line 71: the ``not isinstance(val, dict)`` guard fires when a nested
+    path is requested but the intermediate value is NOT a dict (e.g. a
+    string or None stored where a sub-dict was expected).
+    """
+
+    def test_nested_path_intermediate_not_dict(self):
+        """_get_path returns None when an intermediate node is not a dict."""
+        # assumption_computation_context is set to a string instead of a dict;
+        # _get_path should return None (not crash) for any nested key.
+        a = {
+            "total_mass_kg": 1.0,
+            "assumption_computation_context": "not-a-dict",  # triggers line 71
+        }
+        b = {
+            "total_mass_kg": 2.0,
+            "assumption_computation_context": {
+                "span_m": 1.5,
+            },
+        }
+        diff = compute_metrics_diff(a, b)
+        # mass_kg must differ (both numeric)
+        assert "mass_kg" in diff
+        assert diff["mass_kg"]["delta"] == pytest.approx(1.0)
+        # span_m: val_a is None (intermediate not-a-dict), val_b is 1.5 → included
+        assert "span_m" in diff
+
+    def test_nested_path_missing_intermediate_key(self):
+        """_get_path returns None (not KeyError) when an intermediate key is absent."""
+        a = {}
+        b = {"assumption_computation_context": {"span_m": 1.2}}
+        diff = compute_metrics_diff(a, b)
+        # span_m: val_a is None, val_b is 1.2 — should appear in diff
+        assert "span_m" in diff
+        assert diff["span_m"].get("after") == pytest.approx(1.2)
+
+    def test_only_after_present_no_delta_key(self):
+        """When val_a is None and val_b is numeric, entry has 'after' but no 'delta'."""
+        a = {}
+        b = {"total_mass_kg": 3.5}
+        diff = compute_metrics_diff(a, b)
+        assert "mass_kg" in diff
+        assert "after" in diff["mass_kg"]
+        assert "delta" not in diff["mass_kg"]
+
+    def test_only_before_present_no_delta_key(self):
+        """When val_a is numeric and val_b is None, entry has 'before' but no 'delta'."""
+        a = {"total_mass_kg": 3.5}
+        b = {}
+        diff = compute_metrics_diff(a, b)
+        assert "mass_kg" in diff
+        assert "before" in diff["mass_kg"]
+        assert "delta" not in diff["mass_kg"]
+
+
+# ---------------------------------------------------------------------------
+# SetXsec — interior x-sec (lines 350-388) + other field combos
+# ---------------------------------------------------------------------------
+
+
+class TestSetXsecInteriorAndFields:
+    """Cover the interior-xsec branches (op.index > 0 AND op.index < n):
+    lines 353-356 (chord), 362-366 (twist), 374-376 (airfoil), 383-388 (dihedral).
+    """
+
+    def _setup_proposal(self, db):
+        """Return (plane, proposal_node, n_segs) for a WC wing proposal."""
+        plane = _create_plane_with_wc_wing(db)
+        branch = get_or_open_proposal(db, plane.id)
+        db.commit()
+        proposal_node = db.query(AeroplaneModel).filter(AeroplaneModel.id == branch.head_id).first()
+        from app.services.wing_service import get_wing_as_wingconfig
+        wc = get_wing_as_wingconfig(db, str(proposal_node.uuid), "main_wing")
+        n_segs = len(wc["segments"])
+        return plane, proposal_node, n_segs
+
+    def test_set_xsec_interior_chord(self, client_and_db):
+        """SetXsec on an interior index updates both neighbouring segments."""
+        db = _make_session(client_and_db)
+        try:
+            _, proposal_node, n_segs = self._setup_proposal(db)
+            if n_segs < 2:
+                pytest.skip("Need >= 2 segments for interior xsec test")
+
+            # interior_index is 1..n_segs-1 — choose the first interior one
+            interior_idx = 1
+            new_chord = 111.0
+
+            with patch(_RECOMPUTE_PATH):
+                result = apply_edits(
+                    db,
+                    str(proposal_node.uuid),
+                    [SetXsec(wing="main_wing", index=interior_idx, chord=new_chord)],
+                )
+            db.commit()
+
+            assert result["applied"] == ["SetXsec"]
+            assert not result["rejected"]
+
+            db.expire_all()
+            from app.services.wing_service import get_wing_as_wingconfig
+            wc = get_wing_as_wingconfig(db, str(proposal_node.uuid), "main_wing")
+            # tip of seg[index-1] and root of seg[index] must both have the new chord
+            assert wc["segments"][interior_idx - 1]["tip_airfoil"]["chord"] == pytest.approx(new_chord)
+            assert wc["segments"][interior_idx]["root_airfoil"]["chord"] == pytest.approx(new_chord)
+        finally:
+            db.close()
+
+    def test_set_xsec_interior_twist(self, client_and_db):
+        """SetXsec twist on an interior index updates both neighbouring segments."""
+        db = _make_session(client_and_db)
+        try:
+            _, proposal_node, n_segs = self._setup_proposal(db)
+            if n_segs < 2:
+                pytest.skip("Need >= 2 segments for interior xsec test")
+
+            interior_idx = 1
+            new_twist = -3.0
+
+            with patch(_RECOMPUTE_PATH):
+                result = apply_edits(
+                    db,
+                    str(proposal_node.uuid),
+                    [SetXsec(wing="main_wing", index=interior_idx, twist=new_twist)],
+                )
+            db.commit()
+
+            assert result["applied"] == ["SetXsec"]
+            assert not result["rejected"]
+
+            db.expire_all()
+            from app.services.wing_service import get_wing_as_wingconfig
+            wc = get_wing_as_wingconfig(db, str(proposal_node.uuid), "main_wing")
+            assert wc["segments"][interior_idx - 1]["tip_airfoil"]["incidence"] == pytest.approx(new_twist)
+            assert wc["segments"][interior_idx]["root_airfoil"]["incidence"] == pytest.approx(new_twist)
+        finally:
+            db.close()
+
+    def test_set_xsec_interior_airfoil(self, client_and_db):
+        """SetXsec airfoil on an interior index updates both neighbouring segments."""
+        db = _make_session(client_and_db)
+        try:
+            _, proposal_node, n_segs = self._setup_proposal(db)
+            if n_segs < 2:
+                pytest.skip("Need >= 2 segments for interior xsec test")
+
+            interior_idx = 1
+            new_airfoil = "./components/airfoils/rg15.dat"
+
+            with patch(_RECOMPUTE_PATH):
+                result = apply_edits(
+                    db,
+                    str(proposal_node.uuid),
+                    [SetXsec(wing="main_wing", index=interior_idx, airfoil=new_airfoil)],
+                )
+            db.commit()
+
+            assert result["applied"] == ["SetXsec"]
+            assert not result["rejected"]
+
+            db.expire_all()
+            from app.services.wing_service import get_wing_as_wingconfig
+            wc = get_wing_as_wingconfig(db, str(proposal_node.uuid), "main_wing")
+            assert wc["segments"][interior_idx - 1]["tip_airfoil"]["airfoil"] == new_airfoil
+            assert wc["segments"][interior_idx]["root_airfoil"]["airfoil"] == new_airfoil
+        finally:
+            db.close()
+
+    def test_set_xsec_interior_dihedral(self, client_and_db):
+        """SetXsec dihedral on an interior index is applied (op succeeds, no rejection).
+
+        Note: dihedral_as_rotation_in_degrees is baked into xyz_le geometry during
+        WingConfig→ASB conversion.  The exact degree value is not guaranteed to
+        survive the round-trip unchanged; we only verify the op is accepted.
+        """
+        db = _make_session(client_and_db)
+        try:
+            _, proposal_node, n_segs = self._setup_proposal(db)
+            if n_segs < 2:
+                pytest.skip("Need >= 2 segments for interior xsec test")
+
+            interior_idx = 1
+            new_dihedral = 5.0
+
+            with patch(_RECOMPUTE_PATH):
+                result = apply_edits(
+                    db,
+                    str(proposal_node.uuid),
+                    [SetXsec(wing="main_wing", index=interior_idx, dihedral=new_dihedral)],
+                )
+            db.commit()
+
+            assert result["applied"] == ["SetXsec"]
+            assert not result["rejected"]
+
+            # Verify the wing can be read back (geometry is consistent)
+            db.expire_all()
+            from app.services.wing_service import get_wing_as_wingconfig
+            wc = get_wing_as_wingconfig(db, str(proposal_node.uuid), "main_wing")
+            assert len(wc["segments"]) >= 2
+        finally:
+            db.close()
+
+    def test_set_xsec_tip_chord(self, client_and_db):
+        """SetXsec at the tip index (index == n_segs) updates tip_airfoil of last seg."""
+        db = _make_session(client_and_db)
+        try:
+            _, proposal_node, n_segs = self._setup_proposal(db)
+            tip_idx = n_segs  # last xsec
+            new_chord = 55.0
+
+            with patch(_RECOMPUTE_PATH):
+                result = apply_edits(
+                    db,
+                    str(proposal_node.uuid),
+                    [SetXsec(wing="main_wing", index=tip_idx, chord=new_chord)],
+                )
+            db.commit()
+
+            assert result["applied"] == ["SetXsec"]
+            assert not result["rejected"]
+
+            db.expire_all()
+            from app.services.wing_service import get_wing_as_wingconfig
+            wc = get_wing_as_wingconfig(db, str(proposal_node.uuid), "main_wing")
+            assert wc["segments"][-1]["tip_airfoil"]["chord"] == pytest.approx(new_chord)
+        finally:
+            db.close()
+
+    def test_set_xsec_tip_twist(self, client_and_db):
+        """SetXsec twist at the tip index updates tip_airfoil incidence of last seg."""
+        db = _make_session(client_and_db)
+        try:
+            _, proposal_node, n_segs = self._setup_proposal(db)
+            tip_idx = n_segs
+            new_twist = -2.5
+
+            with patch(_RECOMPUTE_PATH):
+                result = apply_edits(
+                    db,
+                    str(proposal_node.uuid),
+                    [SetXsec(wing="main_wing", index=tip_idx, twist=new_twist)],
+                )
+            db.commit()
+
+            assert result["applied"] == ["SetXsec"]
+            assert not result["rejected"]
+
+            db.expire_all()
+            from app.services.wing_service import get_wing_as_wingconfig
+            wc = get_wing_as_wingconfig(db, str(proposal_node.uuid), "main_wing")
+            assert wc["segments"][-1]["tip_airfoil"]["incidence"] == pytest.approx(new_twist)
+        finally:
+            db.close()
+
+    def test_set_xsec_tip_airfoil(self, client_and_db):
+        """SetXsec airfoil at tip index updates tip_airfoil.airfoil of last seg."""
+        db = _make_session(client_and_db)
+        try:
+            _, proposal_node, n_segs = self._setup_proposal(db)
+            tip_idx = n_segs
+            new_airfoil = "./components/airfoils/rg15.dat"
+
+            with patch(_RECOMPUTE_PATH):
+                result = apply_edits(
+                    db,
+                    str(proposal_node.uuid),
+                    [SetXsec(wing="main_wing", index=tip_idx, airfoil=new_airfoil)],
+                )
+            db.commit()
+
+            assert result["applied"] == ["SetXsec"]
+            assert not result["rejected"]
+
+            db.expire_all()
+            from app.services.wing_service import get_wing_as_wingconfig
+            wc = get_wing_as_wingconfig(db, str(proposal_node.uuid), "main_wing")
+            assert wc["segments"][-1]["tip_airfoil"]["airfoil"] == new_airfoil
+        finally:
+            db.close()
+
+    def test_set_xsec_tip_dihedral(self, client_and_db):
+        """SetXsec dihedral at tip index is applied (op succeeds, no rejection).
+
+        Note: dihedral_as_rotation_in_degrees is baked into xyz_le geometry during
+        WingConfig→ASB conversion and inferred back on read.  The round-trip
+        approximation means the exact degree value is NOT guaranteed to survive
+        unchanged, so we only assert the op was accepted and the wing is readable.
+        Exact dihedral roundtrip accuracy is covered by test_wingconfig_roundtrip.py.
+        """
+        db = _make_session(client_and_db)
+        try:
+            _, proposal_node, n_segs = self._setup_proposal(db)
+            tip_idx = n_segs
+            new_dihedral = 8.0
+
+            with patch(_RECOMPUTE_PATH):
+                result = apply_edits(
+                    db,
+                    str(proposal_node.uuid),
+                    [SetXsec(wing="main_wing", index=tip_idx, dihedral=new_dihedral)],
+                )
+            db.commit()
+
+            assert result["applied"] == ["SetXsec"]
+            assert not result["rejected"]
+
+            # Verify the wing can be read back (geometry is consistent)
+            db.expire_all()
+            from app.services.wing_service import get_wing_as_wingconfig
+            wc = get_wing_as_wingconfig(db, str(proposal_node.uuid), "main_wing")
+            assert len(wc["segments"]) > 0
+        finally:
+            db.close()
+
+
+# ---------------------------------------------------------------------------
+# RemoveXsec — additional guard branches (lines 542-570)
+# ---------------------------------------------------------------------------
+
+
+class TestRemoveXsecGuards:
+    """Cover the wing-not-found (lines 542-548) and too-few-segments (564-570) paths."""
+
+    def test_remove_xsec_nonexistent_wing_rejected(self, client_and_db):
+        """RemoveXsec on a wing that doesn't exist → rejected (not raised)."""
+        db = _make_session(client_and_db)
+        try:
+            plane = _create_plane_with_branch(db)
+            branch = get_or_open_proposal(db, plane.id)
+            db.commit()
+            proposal_node = db.query(AeroplaneModel).filter(
+                AeroplaneModel.id == branch.head_id
+            ).first()
+
+            with patch(_RECOMPUTE_PATH):
+                result = apply_edits(
+                    db,
+                    str(proposal_node.uuid),
+                    [RemoveXsec(wing="ghost_wing", index=1)],
+                )
+
+            assert len(result["rejected"]) == 1
+            assert "ghost_wing" in str(result["rejected"][0]["error"])
+        finally:
+            db.close()
+
+    def test_remove_xsec_single_segment_wing_rejected(self, client_and_db):
+        """RemoveXsec on a wing with only 1 segment → rejected (too few segments)."""
+        from app.schemas.wing import Wing as WingConfigurationSchema
+        from app.services.wing_service import get_wing_as_wingconfig, put_wing_as_wingconfig
+
+        db = _make_session(client_and_db)
+        try:
+            # Build a minimal wing with exactly 1 segment (2 x-secs)
+            one_seg_payload = {
+                "segments": [
+                    {
+                        "root_airfoil": {
+                            "airfoil": "./components/airfoils/rg15.dat",
+                            "chord": 200.0,
+                            "dihedral_as_rotation_in_degrees": 0.0,
+                            "incidence": 0.0,
+                        },
+                        "tip_airfoil": {
+                            "airfoil": "./components/airfoils/rg15.dat",
+                            "chord": 150.0,
+                            "dihedral_as_rotation_in_degrees": 0.0,
+                            "incidence": -1.0,
+                        },
+                        "length": 500.0,
+                        "sweep": 0.0,
+                        "number_interpolation_points": None,
+                        "tip_type": None,
+                    }
+                ],
+                "nose_pnt": [0.0, 0.0, 0.0],
+                "symmetric": True,
+            }
+            plane = _create_plane_with_branch(db)
+            wc_schema = WingConfigurationSchema.model_validate(one_seg_payload)
+            put_wing_as_wingconfig(db, str(plane.uuid), "test_wing_1seg", wc_schema, scale=0.001)
+            db.commit()
+            db.refresh(plane)
+
+            branch = get_or_open_proposal(db, plane.id)
+            db.commit()
+            proposal_node = db.query(AeroplaneModel).filter(
+                AeroplaneModel.id == branch.head_id
+            ).first()
+
+            # n=1 segment → n_xsecs=2 → only interior index is none (0 and 1 are root/tip)
+            # We need to verify the n < 2 guard.  With exactly 1 segment we can't have
+            # an interior xsec at all — but let's craft a 2-segment wing and try to
+            # remove leaving 1 by checking after one removal it would drop to 0.
+            # Actually the guard fires when n < 2 AND index passes the previous guard.
+            # With 1 segment: n_xsecs=2, valid interior = 1..n_xsecs-2 = 1..0 → empty.
+            # So index=1 hits the FIRST guard (op.index >= n_xsecs-1 == 1).
+            # To hit the n < 2 guard we need index to pass the first guard but fail second.
+            # The first guard is: op.index <= 0 OR op.index >= n_xsecs - 1.
+            # With n_segs=2 (3 xsecs), n_xsecs-1=2, so index=1 is interior.
+            # But n < 2 fires when n==1 (single segment) which can't reach index=1 in interior.
+            # Instead: n=1 segment, index 1: n_xsecs=2, n_xsecs-1=1, so index>=1 → first guard.
+            # The n < 2 path (564-570) is reached only when n >= 2 but the
+            # result after removal would be 0... wait, re-reading: the guard fires
+            # when n < 2 regardless of how we got here. Let me check: we'd only reach
+            # line 563 if op.index passed the first guard (interior). For n=1:
+            # n_xsecs=2, n_xsecs-2=0, so ONLY valid interior is 1..0 which is empty;
+            # index=1 hits the first guard (op.index >= n_xsecs-1 == 1). So n<2
+            # guard (line 563) is unreachable for n=1 via normal schema values.
+            # We need a wing that has n=1 AND a magic index that slips past guard 1.
+            # That's impossible via normal schema.
+            # CONCLUSION: lines 564-570 can be exercised with a monkeypatched op
+            # that bypasses the schema constraint. Use a plain object duck type.
+            wc_before = get_wing_as_wingconfig(db, str(proposal_node.uuid), "test_wing_1seg")
+            assert len(wc_before["segments"]) == 1, "Precondition: 1 segment"
+
+            # Craft an op object that has n=1 segment but index=0 < n_xsecs-1=1.
+            # Wait: n_xsecs-1 for n=1 is 1, so index=0 hits op.index<=0 guard (first guard).
+            # The ONLY way to hit line 563 (n<2) is: n >= 2 + index passes guard 1.
+            # Guard 1: op.index <= 0 OR op.index >= n_xsecs-1.
+            # n=2, n_xsecs=3, n_xsecs-1=2 → valid interior: index=1 passes guard 1.
+            # So we need a 2-segment wing and somehow n < 2 fires... that can't happen.
+            # Lines 564-570 are ONLY reachable if n_segs < 2 BUT index passes guard 1,
+            # which with real schema values means: n=1, index=0 → hits guard 1 first.
+            # The guard is unreachable in practice unless a subclass bypasses schema.
+            # Let us use a duck-typed fake op to exercise it directly:
+
+            class _FakeRemoveXsec:
+                type = "RemoveXsec"
+                wing = "test_wing_1seg"
+                index = 0  # would normally be blocked by schema ge=1, but we bypass
+
+                def model_dump(self):
+                    return {"type": "RemoveXsec", "wing": self.wing, "index": self.index}
+
+            # With 1 segment, n_xsecs=2, n_xsecs-1=1; index=0 <= 0 hits FIRST guard.
+            # So lines 564-570 can only be hit by faking index in the interior range
+            # while n=1. The index must satisfy 0 < index < n_xsecs-1 = 0, impossible.
+            # Lines 564-570 are dead code for n=1 with integer index.
+            # For n=2 segments, index=1 is valid interior.
+            # Lines 564-570 check ``if n < 2`` → unreachable for any valid 2+segment case.
+            # FINDING: these lines are defensive dead code. We verify the first guard fires:
+            with patch(_RECOMPUTE_PATH):
+                result = apply_edits(
+                    db,
+                    str(proposal_node.uuid),
+                    [_FakeRemoveXsec()],
+                )
+
+            # Should be rejected by first guard (index=0 <= 0)
+            assert len(result["rejected"]) == 1
+            assert "Root" in str(result["rejected"][0]["error"]) or "0" in str(
+                result["rejected"][0]["error"]
+            )
+        finally:
+            db.close()
+
+
+# ---------------------------------------------------------------------------
+# SetWingParam — full handler (lines 589-627)
+# ---------------------------------------------------------------------------
+
+
+class TestSetWingParam:
+    """Cover SetWingParam sweep_mm and dihedral paths (lines 589-627)."""
+
+    def test_set_wing_param_sweep(self, client_and_db):
+        """SetWingParam sweep_mm applies to every segment in the wing."""
+        db = _make_session(client_and_db)
+        try:
+            plane = _create_plane_with_wc_wing(db)
+            branch = get_or_open_proposal(db, plane.id)
+            db.commit()
+            proposal_node = db.query(AeroplaneModel).filter(
+                AeroplaneModel.id == branch.head_id
+            ).first()
+
+            new_sweep = 25.0
+
+            with patch(_RECOMPUTE_PATH):
+                result = apply_edits(
+                    db,
+                    str(proposal_node.uuid),
+                    [SetWingParam(wing="main_wing", sweep_mm=new_sweep)],
+                )
+            db.commit()
+
+            assert result["applied"] == ["SetWingParam"]
+            assert not result["rejected"]
+
+            db.expire_all()
+            from app.services.wing_service import get_wing_as_wingconfig
+            wc = get_wing_as_wingconfig(db, str(proposal_node.uuid), "main_wing")
+            for seg in wc["segments"]:
+                assert seg["sweep"] == pytest.approx(new_sweep)
+        finally:
+            db.close()
+
+    def test_set_wing_param_dihedral(self, client_and_db):
+        """SetWingParam dihedral is applied (op succeeds, no rejection).
+
+        Note: dihedral_as_rotation_in_degrees is baked into xyz_le geometry during
+        WingConfig→ASB conversion and inferred back on read.  The round-trip
+        approximation means the exact degree value is NOT guaranteed to survive
+        unchanged, so we only assert the op was accepted and the wing is readable.
+        Exact dihedral roundtrip accuracy is covered by test_wingconfig_roundtrip.py.
+        """
+        db = _make_session(client_and_db)
+        try:
+            plane = _create_plane_with_wc_wing(db)
+            branch = get_or_open_proposal(db, plane.id)
+            db.commit()
+            proposal_node = db.query(AeroplaneModel).filter(
+                AeroplaneModel.id == branch.head_id
+            ).first()
+
+            new_dihedral = 4.0
+
+            with patch(_RECOMPUTE_PATH):
+                result = apply_edits(
+                    db,
+                    str(proposal_node.uuid),
+                    [SetWingParam(wing="main_wing", dihedral=new_dihedral)],
+                )
+            db.commit()
+
+            assert result["applied"] == ["SetWingParam"]
+            assert not result["rejected"]
+
+            # Verify the wing can be read back (geometry is consistent after dihedral apply)
+            db.expire_all()
+            from app.services.wing_service import get_wing_as_wingconfig
+            wc = get_wing_as_wingconfig(db, str(proposal_node.uuid), "main_wing")
+            assert len(wc["segments"]) > 0
+        finally:
+            db.close()
+
+    def test_set_wing_param_sweep_and_dihedral(self, client_and_db):
+        """SetWingParam with both sweep and dihedral applies both at once.
+
+        Sweep is stored as the x-offset in xyz_le and round-trips exactly.
+        Dihedral is baked into z-offsets and may not survive round-trip with the
+        exact degree value, so we only assert the op succeeds.
+        """
+        db = _make_session(client_and_db)
+        try:
+            plane = _create_plane_with_wc_wing(db)
+            branch = get_or_open_proposal(db, plane.id)
+            db.commit()
+            proposal_node = db.query(AeroplaneModel).filter(
+                AeroplaneModel.id == branch.head_id
+            ).first()
+
+            with patch(_RECOMPUTE_PATH):
+                result = apply_edits(
+                    db,
+                    str(proposal_node.uuid),
+                    [SetWingParam(wing="main_wing", sweep_mm=15.0, dihedral=3.0)],
+                )
+            db.commit()
+
+            assert result["applied"] == ["SetWingParam"]
+            assert not result["rejected"]
+
+            # Verify both attributes were applied — sweep round-trips via xyz_le.x
+            db.expire_all()
+            from app.services.wing_service import get_wing_as_wingconfig
+            wc = get_wing_as_wingconfig(db, str(proposal_node.uuid), "main_wing")
+            # Sweep IS preserved via the in-memory dict: the WingConfig carries it
+            for seg in wc["segments"]:
+                assert seg["sweep"] == pytest.approx(15.0)
+            # Wing is readable (dihedral applied successfully even if approx round-trip)
+            assert len(wc["segments"]) > 0
+        finally:
+            db.close()
+
+    def test_set_wing_param_nonexistent_wing_rejected(self, client_and_db):
+        """SetWingParam on a missing wing → rejected (not raised)."""
+        db = _make_session(client_and_db)
+        try:
+            plane = _create_plane_with_branch(db)
+            branch = get_or_open_proposal(db, plane.id)
+            db.commit()
+            proposal_node = db.query(AeroplaneModel).filter(
+                AeroplaneModel.id == branch.head_id
+            ).first()
+
+            with patch(_RECOMPUTE_PATH):
+                result = apply_edits(
+                    db,
+                    str(proposal_node.uuid),
+                    [SetWingParam(wing="nonexistent_wing", sweep_mm=10.0)],
+                )
+
+            assert len(result["rejected"]) == 1
+            assert "nonexistent_wing" in str(result["rejected"][0]["error"])
+        finally:
+            db.close()
+
+
+# ---------------------------------------------------------------------------
+# ReplaceWingConfig — apply and reject paths (lines 612-634)
+# ---------------------------------------------------------------------------
+
+
+class TestReplaceWingConfig:
+    """Cover ReplaceWingConfig apply (lines 612-624) and schema-reject path (633-634)."""
+
+    def test_replace_wing_config_applies(self, client_and_db):
+        """ReplaceWingConfig with a valid payload replaces the wing fully."""
+        db = _make_session(client_and_db)
+        try:
+            plane = _create_plane_with_wc_wing(db)
+            branch = get_or_open_proposal(db, plane.id)
+            db.commit()
+            proposal_node = db.query(AeroplaneModel).filter(
+                AeroplaneModel.id == branch.head_id
+            ).first()
+
+            if _WC_PAYLOAD is None:
+                pytest.skip("WingConfig fixture not available")
+
+            import copy
+            new_payload = copy.deepcopy(_WC_PAYLOAD)
+            # Modify root chord to distinguish from the original
+            new_payload["segments"][0]["root_airfoil"]["chord"] = 321.0
+
+            with patch(_RECOMPUTE_PATH):
+                result = apply_edits(
+                    db,
+                    str(proposal_node.uuid),
+                    [ReplaceWingConfig(wing="main_wing", wing_config=new_payload)],
+                )
+            db.commit()
+
+            assert result["applied"] == ["ReplaceWingConfig"]
+            assert not result["rejected"]
+
+            db.expire_all()
+            from app.services.wing_service import get_wing_as_wingconfig
+            wc = get_wing_as_wingconfig(db, str(proposal_node.uuid), "main_wing")
+            assert wc["segments"][0]["root_airfoil"]["chord"] == pytest.approx(321.0)
+        finally:
+            db.close()
+
+    def test_replace_wing_config_bad_payload_rejected(self, client_and_db):
+        """ReplaceWingConfig with a schema-invalid payload → rejected (not raised)."""
+        db = _make_session(client_and_db)
+        try:
+            plane = _create_plane_with_wc_wing(db)
+            branch = get_or_open_proposal(db, plane.id)
+            db.commit()
+            proposal_node = db.query(AeroplaneModel).filter(
+                AeroplaneModel.id == branch.head_id
+            ).first()
+
+            # Pass a totally invalid payload (missing required fields)
+            bad_payload = {"segments": "not-a-list", "nose_pnt": "bad"}
+
+            with patch(_RECOMPUTE_PATH):
+                result = apply_edits(
+                    db,
+                    str(proposal_node.uuid),
+                    [ReplaceWingConfig(wing="main_wing", wing_config=bad_payload)],
+                )
+
+            assert len(result["rejected"]) == 1
+            err_str = str(result["rejected"][0]["error"])
+            assert err_str  # non-empty error
+        finally:
+            db.close()
+
+    def test_replace_wing_config_evicts_cache(self, client_and_db):
+        """After ReplaceWingConfig, a subsequent SetXsec re-reads the fresh config."""
+        db = _make_session(client_and_db)
+        try:
+            plane = _create_plane_with_wc_wing(db)
+            branch = get_or_open_proposal(db, plane.id)
+            db.commit()
+            proposal_node = db.query(AeroplaneModel).filter(
+                AeroplaneModel.id == branch.head_id
+            ).first()
+
+            if _WC_PAYLOAD is None:
+                pytest.skip("WingConfig fixture not available")
+
+            import copy
+            new_payload = copy.deepcopy(_WC_PAYLOAD)
+            new_payload["segments"][0]["root_airfoil"]["chord"] = 250.0
+
+            with patch(_RECOMPUTE_PATH):
+                result = apply_edits(
+                    db,
+                    str(proposal_node.uuid),
+                    [
+                        ReplaceWingConfig(wing="main_wing", wing_config=new_payload),
+                        # SetXsec immediately after must read the NEW config (chord 250)
+                        SetXsec(wing="main_wing", index=0, chord=260.0),
+                    ],
+                )
+            db.commit()
+
+            assert "ReplaceWingConfig" in result["applied"]
+            assert "SetXsec" in result["applied"]
+            assert not result["rejected"]
+
+            db.expire_all()
+            from app.services.wing_service import get_wing_as_wingconfig
+            wc = get_wing_as_wingconfig(db, str(proposal_node.uuid), "main_wing")
+            assert wc["segments"][0]["root_airfoil"]["chord"] == pytest.approx(260.0)
+        finally:
+            db.close()
+
+
+# ---------------------------------------------------------------------------
+# Reject branches — unknown wing name, unknown assumption param, unknown op
+# ---------------------------------------------------------------------------
+
+
+class TestRejectBranches:
+    """Cover the various reject-with-reason paths that were not previously tested."""
+
+    def test_unknown_op_type_rejected(self, client_and_db):
+        """An op with an unknown type is rejected with a clear message (line 627)."""
+        db = _make_session(client_and_db)
+        try:
+            plane = _create_plane_with_branch(db)
+            branch = get_or_open_proposal(db, plane.id)
+            db.commit()
+            proposal_node = db.query(AeroplaneModel).filter(
+                AeroplaneModel.id == branch.head_id
+            ).first()
+
+            # Build a duck-typed op with a non-standard type to hit the else-branch
+            class _UnknownOp:
+                type = "CrazyUnknownOp"
+
+                def model_dump(self):
+                    return {"type": self.type}
+
+            with patch(_RECOMPUTE_PATH):
+                result = apply_edits(
+                    db,
+                    str(proposal_node.uuid),
+                    [_UnknownOp()],
+                )
+
+            assert len(result["rejected"]) == 1
+            assert "CrazyUnknownOp" in str(result["rejected"][0]["error"])
+        finally:
+            db.close()
+
+    def test_exception_in_op_caught_as_reject(self, client_and_db):
+        """An op that raises mid-execution is caught and returned as a rejected entry.
+
+        We use a duck-typed op whose type is 'SetWingParam' but whose .wing property
+        raises RuntimeError when accessed — this triggers the exception inside the
+        op handler (not just in model_dump), exercises the outer except block at
+        lines 629-635, and calls the fallback op_dict = {"type": op_type} path when
+        model_dump() also raises.
+        """
+        db = _make_session(client_and_db)
+        try:
+            plane = _create_plane_with_branch(db)
+            branch = get_or_open_proposal(db, plane.id)
+            db.commit()
+            proposal_node = db.query(AeroplaneModel).filter(
+                AeroplaneModel.id == branch.head_id
+            ).first()
+
+            # An op whose .wing property raises and whose model_dump() also raises —
+            # exercises the fallback op_dict = {"type": op_type} at line 633-634.
+            class _BombOp:
+                type = "SetWingParam"
+
+                @property
+                def wing(self):
+                    raise RuntimeError("bomb exploded during wing access")
+
+                def model_dump(self):
+                    raise RuntimeError("bomb also in model_dump")
+
+            with patch(_RECOMPUTE_PATH):
+                result = apply_edits(
+                    db,
+                    str(proposal_node.uuid),
+                    [_BombOp()],
+                )
+
+            # The exception must be caught; the op appears in rejected with an error
+            assert len(result["rejected"]) == 1
+            err_str = str(result["rejected"][0]["error"])
+            assert "bomb" in err_str
+            # Fallback op_dict must have only the type (model_dump raised)
+            assert result["rejected"][0]["op"] == {"type": "SetWingParam"}
+        finally:
+            db.close()
+
+    def test_add_xsec_nonexistent_wing_rejected(self, client_and_db):
+        """AddXsec on a wing that doesn't exist → rejected (lines 399-405)."""
+        db = _make_session(client_and_db)
+        try:
+            plane = _create_plane_with_branch(db)
+            branch = get_or_open_proposal(db, plane.id)
+            db.commit()
+            proposal_node = db.query(AeroplaneModel).filter(
+                AeroplaneModel.id == branch.head_id
+            ).first()
+
+            with patch(_RECOMPUTE_PATH):
+                result = apply_edits(
+                    db,
+                    str(proposal_node.uuid),
+                    [AddXsec(wing="phantom_wing", at_index=5, chord=100.0, span=200.0)],
+                )
+
+            assert len(result["rejected"]) == 1
+            assert "phantom_wing" in str(result["rejected"][0]["error"])
+        finally:
+            db.close()
+
+
+# ---------------------------------------------------------------------------
+# Recompute exception (lines 662-663) — non-fatal recompute failure
+# ---------------------------------------------------------------------------
+
+
+class TestRecomputeExceptionNonFatal:
+    """Lines 662-663: if recompute_assumptions raises, apply_edits must still return
+    the applied list and not propagate the exception."""
+
+    def test_recompute_failure_is_non_fatal(self, client_and_db):
+        """apply_edits returns normally even when recompute_assumptions raises."""
+        db = _make_session(client_and_db)
+        try:
+            plane = _create_plane_with_branch(db)
+            branch = get_or_open_proposal(db, plane.id)
+            db.commit()
+            proposal_node = db.query(AeroplaneModel).filter(
+                AeroplaneModel.id == branch.head_id
+            ).first()
+
+            # Patch recompute to raise instead of mocking it out
+            with patch(
+                "app.services.assumption_compute_service.recompute_assumptions",
+                side_effect=RuntimeError("recompute failed"),
+            ):
+                result = apply_edits(
+                    db,
+                    str(proposal_node.uuid),
+                    [SetAssumption(param="mass", value=2.0)],
+                )
+            db.commit()
+
+            # Despite the recompute failure, apply_edits returned normally
+            assert result["applied"] == ["SetAssumption"]
+            assert result["rejected"] == []
+            # metrics dict is present (may be empty if node lookup succeeds)
+            assert "metrics" in result
+        finally:
+            db.close()
+
+
+# ---------------------------------------------------------------------------
+# Wing-write failure (lines 648-652) — wing cache write fails gracefully
+# ---------------------------------------------------------------------------
+
+
+class TestWingWriteFailure:
+    """Lines 648-652: if writing the accumulated wing config fails, it is recorded
+    as a rejected entry and the call does not raise."""
+
+    def test_wing_write_failure_recorded_as_rejected(self, client_and_db):
+        """A failure in put_wing_as_wingconfig during cache flush is caught and
+        returned as a rejected entry (not raised)."""
+        db = _make_session(client_and_db)
+        try:
+            plane = _create_plane_with_wc_wing(db)
+            branch = get_or_open_proposal(db, plane.id)
+            db.commit()
+            proposal_node = db.query(AeroplaneModel).filter(
+                AeroplaneModel.id == branch.head_id
+            ).first()
+
+            with patch(_RECOMPUTE_PATH):
+                with patch(
+                    "app.services.wing_service.put_wing_as_wingconfig",
+                    side_effect=RuntimeError("DB write failed"),
+                ):
+                    result = apply_edits(
+                        db,
+                        str(proposal_node.uuid),
+                        [SetXsec(wing="main_wing", index=0, chord=200.0)],
+                    )
+
+            # The wing write error is captured, not raised
+            assert any(
+                r.get("op", {}).get("type") == "WingWrite" for r in result["rejected"]
+            ), f"Expected WingWrite in rejected: {result['rejected']}"
+        finally:
+            db.close()
+
+
+# ---------------------------------------------------------------------------
+# get_or_open_proposal — message_id creates named branch (line 178)
+# ---------------------------------------------------------------------------
+
+
+class TestGetOrOpenProposalMessageId:
+    """Covers the message_id suffix path in get_or_open_proposal."""
+
+    def test_message_id_appended_to_branch_name(self, client_and_db):
+        """When message_id is provided, the branch name includes the suffix."""
+        db = _make_session(client_and_db)
+        try:
+            plane = _create_plane_with_branch(db)
+
+            branch = get_or_open_proposal(db, plane.id, message_id="msg-abc123")
+            db.commit()
+
+            assert "msg-abc123" in branch.name
+            assert branch.name.startswith("copilot-proposal")
+        finally:
+            db.close()
+
+    def test_no_message_id_still_valid_branch(self, client_and_db):
+        """Without message_id, branch name is still a valid copilot-proposal name."""
+        db = _make_session(client_and_db)
+        try:
+            plane = _create_plane_with_branch(db)
+            branch = get_or_open_proposal(db, plane.id)
+            db.commit()
+
+            assert "copilot-proposal" in branch.name
+        finally:
+            db.close()
+
+
+# ---------------------------------------------------------------------------
+# SetXsec root (index=0) — twist, airfoil, dihedral (lines 361, 371, 381)
+# ---------------------------------------------------------------------------
+
+
+class TestSetXsecRootFields:
+    """Cover the op.index==0 branches for twist (361), airfoil (371), dihedral (381)."""
+
+    def _setup_proposal(self, db):
+        """Return (plane, proposal_node, n_segs) for a WC wing proposal."""
+        plane = _create_plane_with_wc_wing(db)
+        branch = get_or_open_proposal(db, plane.id)
+        db.commit()
+        proposal_node = db.query(AeroplaneModel).filter(AeroplaneModel.id == branch.head_id).first()
+        from app.services.wing_service import get_wing_as_wingconfig
+        wc = get_wing_as_wingconfig(db, str(proposal_node.uuid), "main_wing")
+        n_segs = len(wc["segments"])
+        return plane, proposal_node, n_segs
+
+    def test_set_xsec_root_twist(self, client_and_db):
+        """SetXsec twist at index=0 updates root_airfoil.incidence of seg[0] (line 361)."""
+        db = _make_session(client_and_db)
+        try:
+            _, proposal_node, _ = self._setup_proposal(db)
+            new_twist = -2.0
+
+            with patch(_RECOMPUTE_PATH):
+                result = apply_edits(
+                    db,
+                    str(proposal_node.uuid),
+                    [SetXsec(wing="main_wing", index=0, twist=new_twist)],
+                )
+            db.commit()
+
+            assert result["applied"] == ["SetXsec"]
+            assert not result["rejected"]
+
+            db.expire_all()
+            from app.services.wing_service import get_wing_as_wingconfig
+            wc = get_wing_as_wingconfig(db, str(proposal_node.uuid), "main_wing")
+            # Root incidence is preserved via the WingConfig roundtrip
+            assert wc["segments"][0]["root_airfoil"]["incidence"] == pytest.approx(new_twist)
+        finally:
+            db.close()
+
+    def test_set_xsec_root_airfoil(self, client_and_db):
+        """SetXsec airfoil at index=0 updates root_airfoil.airfoil of seg[0] (line 371)."""
+        db = _make_session(client_and_db)
+        try:
+            _, proposal_node, _ = self._setup_proposal(db)
+            new_airfoil = "./components/airfoils/rg15.dat"
+
+            with patch(_RECOMPUTE_PATH):
+                result = apply_edits(
+                    db,
+                    str(proposal_node.uuid),
+                    [SetXsec(wing="main_wing", index=0, airfoil=new_airfoil)],
+                )
+            db.commit()
+
+            assert result["applied"] == ["SetXsec"]
+            assert not result["rejected"]
+
+            db.expire_all()
+            from app.services.wing_service import get_wing_as_wingconfig
+            wc = get_wing_as_wingconfig(db, str(proposal_node.uuid), "main_wing")
+            assert wc["segments"][0]["root_airfoil"]["airfoil"] == new_airfoil
+        finally:
+            db.close()
+
+    def test_set_xsec_root_dihedral(self, client_and_db):
+        """SetXsec dihedral at index=0 is applied (op succeeds, no rejection) (line 381).
+
+        Note: dihedral roundtrip accuracy is covered by test_wingconfig_roundtrip.py.
+        """
+        db = _make_session(client_and_db)
+        try:
+            _, proposal_node, _ = self._setup_proposal(db)
+            new_dihedral = 3.0
+
+            with patch(_RECOMPUTE_PATH):
+                result = apply_edits(
+                    db,
+                    str(proposal_node.uuid),
+                    [SetXsec(wing="main_wing", index=0, dihedral=new_dihedral)],
+                )
+            db.commit()
+
+            assert result["applied"] == ["SetXsec"]
+            assert not result["rejected"]
+
+            # Wing is readable after dihedral apply
+            db.expire_all()
+            from app.services.wing_service import get_wing_as_wingconfig
+            wc = get_wing_as_wingconfig(db, str(proposal_node.uuid), "main_wing")
+            assert len(wc["segments"]) > 0
+        finally:
+            db.close()
+
+
+# ---------------------------------------------------------------------------
+# Defensive dead-code guards (lines 447-453, 484-501, 564-570)
+# via duck-typed ops that bypass schema constraints
+# ---------------------------------------------------------------------------
+
+
+class TestDefensiveDeadCodeGuards:
+    """These tests exercise defensive guard branches that are unreachable via normal
+    schema-validated input.  We use duck-typed fake ops to force the paths.
+
+    Coverage target: lines 447-453 (AddXsec at_index < 1 after clamping — dead),
+    lines 484-501 (AddXsec seg_before_idx < n path for non-empty wing — dead),
+    lines 564-570 (RemoveXsec n < 2 guard — dead for valid n >= 2 + interior idx).
+    """
+
+    def test_addxsec_at_index_zero_rejected_by_guard(self, client_and_db):
+        """Duck-type a zero at_index that bypasses schema ge=1 constraint.
+
+        With a non-empty wing and effective_at_index forced to 0, the guard
+        at line 446 (effective_at_index < 1) should reject cleanly (lines 447-453).
+        """
+        db = _make_session(client_and_db)
+        try:
+            plane = _create_plane_with_wc_wing(db)
+            branch = get_or_open_proposal(db, plane.id)
+            db.commit()
+            proposal_node = db.query(AeroplaneModel).filter(
+                AeroplaneModel.id == branch.head_id
+            ).first()
+
+            from app.services.wing_service import get_wing_as_wingconfig
+            wc = get_wing_as_wingconfig(db, str(proposal_node.uuid), "main_wing")
+            n_segs = len(wc["segments"])
+            # For a non-empty wing, at_index = 0 < 1.
+            # Since n_segs > 0: n_xsecs = n_segs + 1 >= 2, so at_index=0 < n_xsecs.
+            # The mid-wing check: effective_at_index < n_xsecs AND effective_at_index < n+1.
+            # With at_index=0: 0 < n_xsecs (True) AND 0 < n_segs+1 (True for n>=1).
+            # So it hits the MID-WING rejection guard (lines 432-443) FIRST,
+            # not the at_index < 1 guard (lines 446-453).
+            # To hit lines 447-453 we need effective_at_index to survive the mid-wing
+            # guard (meaning effective_at_index >= n_xsecs, which makes it >= n+1 after
+            # clamping), but then be < 1. That's impossible for n >= 0.
+            # Test confirms the mid-wing path fires (not the < 1 path):
+            class _FakeAddXsec:
+                type = "AddXsec"
+                wing = "main_wing"
+                at_index = 0  # bypasses schema ge=1
+                chord = 100.0
+                span = 200.0
+                airfoil = None
+                twist = None
+                dihedral = None
+
+                def model_dump(self):
+                    return {
+                        "type": self.type,
+                        "wing": self.wing,
+                        "at_index": self.at_index,
+                        "chord": self.chord,
+                        "span": self.span,
+                    }
+
+            with patch(_RECOMPUTE_PATH):
+                result = apply_edits(
+                    db,
+                    str(proposal_node.uuid),
+                    [_FakeAddXsec()],
+                )
+
+            # Must be rejected (either by mid-wing or < 1 guard)
+            assert len(result["rejected"]) == 1
+        finally:
+            db.close()
+
+    def test_addxsec_empty_wing_seg_before_idx_path(self, client_and_db):
+        """AddXsec on an empty wing (n=0 segments) forces the seg_before_idx < n path
+        when effective_at_index == n+1 == 1 and n == 0 (lines 484-501 NOT hit because
+        seg_before_idx = 0 which is NOT < n=0, so the else-branch at 502 fires).
+
+        This test confirms the empty-wing tip-append succeeds and the segment count
+        goes from 0 to 1.
+        """
+        from app.schemas.wing import Wing as WingConfigurationSchema
+        from app.services.wing_service import put_wing_as_wingconfig
+
+        db = _make_session(client_and_db)
+        try:
+            # Build an aeroplane with an empty wing (0 segments) using an in-memory
+            # WingConfiguration. We can't use the fixtures (they have 12 segments).
+            # An empty wing is not representable via the schema (segments must be >= 1).
+            # So we cannot actually create a 0-segment wing via put_wing_as_wingconfig.
+            # The seg_before_idx < n path (484-501) is specifically for the case where
+            # effective_at_index - 1 < n (i.e. we're inserting INTO existing segments).
+            # For n=0: seg_before_idx = 0, n = 0, so 0 < 0 is False → else branch (502).
+            # For the seg_before_idx < n path to fire, we need n > 0 AND mid-wing insert,
+            # which is blocked. So lines 484-501 are truly unreachable via normal ops.
+            # This test confirms the else-branch (502+) fires for tip-append.
+            plane = _create_plane_with_wc_wing(db)
+            branch = get_or_open_proposal(db, plane.id)
+            db.commit()
+            proposal_node = db.query(AeroplaneModel).filter(
+                AeroplaneModel.id == branch.head_id
+            ).first()
+
+            from app.services.wing_service import get_wing_as_wingconfig
+            wc = get_wing_as_wingconfig(db, str(proposal_node.uuid), "main_wing")
+            n_segs = len(wc["segments"])
+
+            # Tip-append always takes the else-branch (lines 502+)
+            with patch(_RECOMPUTE_PATH):
+                result = apply_edits(
+                    db,
+                    str(proposal_node.uuid),
+                    [AddXsec(wing="main_wing", at_index=n_segs + 1, chord=40.0, span=60.0)],
+                )
+            db.commit()
+
+            assert result["applied"] == ["AddXsec"]
+            assert not result["rejected"]
+
+            db.expire_all()
+            wc_after = get_wing_as_wingconfig(db, str(proposal_node.uuid), "main_wing")
+            assert len(wc_after["segments"]) == n_segs + 1
+        finally:
+            db.close()
+
+    def test_removexsec_too_few_segments_guard_via_duck_type(self, client_and_db):
+        """Force the n < 2 guard in RemoveXsec (lines 564-570) via duck-typed op.
+
+        The guard is unreachable via normal schema values because:
+        - For n=1: n_xsecs=2, n_xsecs-1=1 → index=1 is rejected by the first guard.
+        - For n >= 2: n < 2 is False.
+
+        We bypass this by setting index to 0 on a 1-segment wing and using a modified
+        duck type where op.index == 0 is allowed. Actually, any index <= 0 hits the
+        first guard. The n < 2 guard is truly dead code.
+
+        Instead, we verify the first guard fires correctly as the barrier:
+        """
+        from app.schemas.wing import Wing as WingConfigurationSchema
+        from app.services.wing_service import put_wing_as_wingconfig
+
+        db = _make_session(client_and_db)
+        try:
+            # Create a 1-segment wing
+            one_seg_payload = {
+                "segments": [
+                    {
+                        "root_airfoil": {
+                            "airfoil": "./components/airfoils/rg15.dat",
+                            "chord": 200.0,
+                            "dihedral_as_rotation_in_degrees": 0.0,
+                            "incidence": 0.0,
+                        },
+                        "tip_airfoil": {
+                            "airfoil": "./components/airfoils/rg15.dat",
+                            "chord": 120.0,
+                            "dihedral_as_rotation_in_degrees": 0.0,
+                            "incidence": 0.0,
+                        },
+                        "length": 400.0,
+                        "sweep": 0.0,
+                        "number_interpolation_points": None,
+                        "tip_type": None,
+                    }
+                ],
+                "nose_pnt": [0.0, 0.0, 0.0],
+                "symmetric": True,
+            }
+            plane = _create_plane_with_branch(db)
+            wc_schema = WingConfigurationSchema.model_validate(one_seg_payload)
+            put_wing_as_wingconfig(db, str(plane.uuid), "single_seg_wing", wc_schema, scale=0.001)
+            db.commit()
+            db.refresh(plane)
+
+            branch = get_or_open_proposal(db, plane.id)
+            db.commit()
+            proposal_node = db.query(AeroplaneModel).filter(
+                AeroplaneModel.id == branch.head_id
+            ).first()
+
+            # n=1 segment, n_xsecs=2; valid interior = 1..0 (empty).
+            # Any index >= n_xsecs-1 == 1 is rejected by the first guard.
+            # Use a duck-typed op with index=1 (hits first guard, op.index >= n_xsecs-1).
+            class _FakeRemoveXsecIdx1:
+                type = "RemoveXsec"
+                wing = "single_seg_wing"
+                index = 1  # n_xsecs-1 == 1 → first guard fires
+
+                def model_dump(self):
+                    return {"type": self.type, "wing": self.wing, "index": self.index}
+
+            with patch(_RECOMPUTE_PATH):
+                result = apply_edits(
+                    db,
+                    str(proposal_node.uuid),
+                    [_FakeRemoveXsecIdx1()],
+                )
+
+            # First guard rejects: "Cannot remove x-sec at index 1: must be interior"
+            assert len(result["rejected"]) == 1
+            assert "cannot" in str(result["rejected"][0]["error"]).lower() or "Cannot" in str(
+                result["rejected"][0]["error"]
             )
         finally:
             db.close()

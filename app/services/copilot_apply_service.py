@@ -619,8 +619,14 @@ def apply_edits(
                     wc_schema,
                     scale=0.001,
                 )
-                # Evict from cache so any subsequent ops re-read the new state
+                # Evict from cache so any subsequent ops re-read the new state.
+                # Also expire the session identity map so stale WingModel instances
+                # (deleted-then-reinserted by put_wing_as_wingconfig) cannot cause
+                # "Can't attach instance … already present in this session" errors
+                # when a subsequent op re-loads the wing and the end-of-loop flush
+                # calls put_wing_as_wingconfig again.
                 wing_config_cache.pop(op.wing, None)
+                db.expire_all()
                 applied.append(op_type)
 
             else:
