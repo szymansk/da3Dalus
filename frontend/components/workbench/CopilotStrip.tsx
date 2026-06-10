@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef, useState, useEffect, useCallback } from "react";
-import { Send, ChevronUp, ChevronDown, Bot, User, AlertCircle, Settings, Star, Trash2 } from "lucide-react";
+import { Send, ChevronUp, ChevronDown, Bot, User, AlertCircle, Settings, Star, Trash2, CornerDownLeft } from "lucide-react";
 import { useAeroplaneContext } from "@/components/workbench/AeroplaneContext";
 import { useCopilot } from "@/hooks/useCopilot";
 import type { CopilotMessageRead } from "@/hooks/useCopilot";
@@ -201,6 +201,45 @@ function CopilotProposalBanner({
 }
 
 // ---------------------------------------------------------------------------
+// useEnterToSend — persists the "Enter sends" vs "Enter = newline" preference
+// ---------------------------------------------------------------------------
+
+const ENTER_TO_SEND_KEY = "copilot:enter-to-send";
+
+function readEnterToSend(): boolean {
+  if (typeof window === "undefined") return true;
+  try {
+    const stored = localStorage.getItem(ENTER_TO_SEND_KEY);
+    if (stored !== null) return stored === "true";
+  } catch {
+    // localStorage unavailable (SSR, private mode, etc.)
+  }
+  return true;
+}
+
+function useEnterToSend() {
+  // Lazy initializer: reads localStorage once on mount. SSR-safe because the
+  // guard is inside readEnterToSend(). No useEffect needed → no set-state-in-effect lint.
+  const [enterToSend, setEnterToSend] = useState<boolean>(readEnterToSend);
+
+  const toggle = useCallback(() => {
+    setEnterToSend((prev) => {
+      const next = !prev;
+      try {
+        if (typeof window !== "undefined") {
+          localStorage.setItem(ENTER_TO_SEND_KEY, String(next));
+        }
+      } catch {
+        // ignore
+      }
+      return next;
+    });
+  }, []);
+
+  return { enterToSend, toggle };
+}
+
+// ---------------------------------------------------------------------------
 // CopilotStrip
 // ---------------------------------------------------------------------------
 
@@ -223,6 +262,8 @@ export function CopilotStrip({ onOpenHistory }: CopilotStripProps = {}) {
     sendMessage,
     clearError,
   } = useCopilot(aeroplaneId);
+
+  const { enterToSend, toggle: toggleEnterToSend } = useEnterToSend();
 
   const { proposal } = useCopilotProposal(aeroplaneId);
 
@@ -247,12 +288,19 @@ export function CopilotStrip({ onOpenHistory }: CopilotStripProps = {}) {
 
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-      if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
+      if (e.key !== "Enter") return;
+      // Never interfere with IME composition (CJK, etc.)
+      if (e.nativeEvent.isComposing) return;
+      // Shift+Enter always inserts newline — let browser handle it
+      if (e.shiftKey) return;
+      // Cmd/Ctrl+Enter sends in both modes; plain Enter sends only in default mode
+      if (e.metaKey || e.ctrlKey || enterToSend) {
         e.preventDefault();
         void handleSend();
       }
+      // Alt mode: plain Enter falls through to browser default (newline)
     },
-    [handleSend],
+    [handleSend, enterToSend],
   );
 
   const handleProposalAdopt = useCallback(async () => {
@@ -279,6 +327,12 @@ export function CopilotStrip({ onOpenHistory }: CopilotStripProps = {}) {
   const messages = history?.messages ?? [];
   const hasContent =
     messages.length > 0 || streamingText.length > 0 || !!activeToolLabel;
+
+  // Hint text depends on current mode; "responding" takes precedence
+  let inputHint = enterToSend
+    ? "Enter to send · Shift+Enter for newline"
+    : "Shift+Enter / Enter for newline · Cmd+Enter to send";
+  if (isSending) inputHint = "Copilot is responding…";
 
   return (
     <footer className="shrink-0 border-t border-border bg-sidebar">
@@ -374,20 +428,32 @@ export function CopilotStrip({ onOpenHistory }: CopilotStripProps = {}) {
               aria-label="Copilot input"
             />
 
-            <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between gap-2">
               <span className="text-[11px] text-muted-foreground">
-                {isSending ? "Copilot is responding…" : "Cmd+Enter to send"}
+                {inputHint}
               </span>
-              <button
-                type="button"
-                onClick={() => { void handleSend(); }}
-                disabled={noAeroplane || isSending || !inputText.trim()}
-                aria-label="Send message"
-                className="flex items-center gap-1.5 rounded-lg border border-border bg-card-muted px-3 py-1.5 text-[12px] text-foreground hover:bg-sidebar-accent disabled:opacity-40"
-              >
-                <Send size={12} />
-                Send
-              </button>
+              <div className="flex shrink-0 items-center gap-1.5">
+                <button
+                  type="button"
+                  onClick={toggleEnterToSend}
+                  aria-pressed={enterToSend}
+                  aria-label={enterToSend ? "Enter sends message" : "Enter inserts newline"}
+                  title={enterToSend ? "Enter sends message (click to switch)" : "Enter inserts newline (click to switch)"}
+                  className="flex h-7 w-7 items-center justify-center rounded-lg border border-border bg-card-muted text-muted-foreground hover:bg-sidebar-accent aria-pressed:text-primary"
+                >
+                  <CornerDownLeft size={12} />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => { void handleSend(); }}
+                  disabled={noAeroplane || isSending || !inputText.trim()}
+                  aria-label="Send message"
+                  className="flex items-center gap-1.5 rounded-lg border border-border bg-card-muted px-3 py-1.5 text-[12px] text-foreground hover:bg-sidebar-accent disabled:opacity-40"
+                >
+                  <Send size={12} />
+                  Send
+                </button>
+              </div>
             </div>
           </div>
         </div>
