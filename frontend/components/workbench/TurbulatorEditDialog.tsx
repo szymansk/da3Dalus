@@ -5,6 +5,7 @@ import { X } from "lucide-react";
 import { API_BASE } from "@/lib/fetcher";
 import { useDialog } from "@/hooks/useDialog";
 import { DialogField } from "@/components/workbench/DialogField";
+import { safeStr, optFloat } from "@/lib/dialogValues";
 
 const TURBULATOR_FORMS = ["zigzag", "dots", "thread"] as const;
 type TurbulatorForm = (typeof TURBULATOR_FORMS)[number];
@@ -47,20 +48,6 @@ export interface TurbulatorEditDialogProps {
   onSaved: () => void;
 }
 
-/** Safely convert a value to string, avoiding [object Object]. */
-function safeStr(v: unknown, fallback = ""): string {
-  if (v == null) return fallback;
-  if (typeof v === "string") return v;
-  if (typeof v === "number" || typeof v === "boolean") return String(v);
-  return JSON.stringify(v);
-}
-
-function optFloat(v: string): number | undefined {
-  const trimmed = v.trim();
-  if (!trimmed) return undefined;
-  const n = Number.parseFloat(trimmed);
-  return Number.isFinite(n) ? n : undefined;
-}
 
 export function TurbulatorEditDialog({
   open,
