@@ -29,6 +29,8 @@ from typing import Any, Callable
 
 from sqlalchemy.orm import Session
 
+from app.schemas.copilot_edits import edit_ops_array_schema
+
 logger = logging.getLogger(__name__)
 
 # ---------------------------------------------------------------------------
@@ -83,9 +85,7 @@ def _run_analysis(db: Session, aeroplane_id: int, kind: str = "polar") -> dict:
     """
     kind = kind.lower()
     if kind not in ("polar", "stability"):
-        return {
-            "error": f"Unsupported kind {kind!r}. Supported: 'polar', 'stability'."
-        }
+        return {"error": f"Unsupported kind {kind!r}. Supported: 'polar', 'stability'."}
 
     from app.models.aeroplanemodel import AeroplaneModel
 
@@ -108,9 +108,7 @@ def _run_analysis(db: Session, aeroplane_id: int, kind: str = "polar") -> dict:
         else:
             coro = _run_stability_async(db, aeroplane_uuid)
 
-        result = asyncio.run(
-            asyncio.wait_for(coro, timeout=DEFAULT_ANALYSIS_TIMEOUT_S)
-        )
+        result = asyncio.run(asyncio.wait_for(coro, timeout=DEFAULT_ANALYSIS_TIMEOUT_S))
         return result
     except asyncio.TimeoutError:
         return {
@@ -122,9 +120,7 @@ def _run_analysis(db: Session, aeroplane_id: int, kind: str = "polar") -> dict:
             ),
         }
     except Exception as exc:
-        logger.exception(
-            "_run_analysis(%s) failed for aeroplane_id=%s", kind, aeroplane_id
-        )
+        logger.exception("_run_analysis(%s) failed for aeroplane_id=%s", kind, aeroplane_id)
         return {"error": str(exc)}
 
 
@@ -174,9 +170,7 @@ def _drag_breakdown(
     }
 
 
-def _polar_drag_breakdown(
-    db: Session, aeroplane_uuid: str, cl_values, cd_values
-) -> dict | None:
+def _polar_drag_breakdown(db: Session, aeroplane_uuid: str, cl_values, cd_values) -> dict | None:
     """Best-glide drag split for a polar sweep, using AR/e from the snapshot.
 
     Pulls AR and Oswald e from the design snapshot's computation context (the
@@ -195,11 +189,7 @@ def _polar_drag_breakdown(
         from app.models.aeroplanemodel import AeroplaneModel
         from app.services.aeroplane_version_service import _metrics_payload
 
-        node = (
-            db.query(AeroplaneModel)
-            .filter(AeroplaneModel.uuid == aeroplane_uuid)
-            .first()
-        )
+        node = db.query(AeroplaneModel).filter(AeroplaneModel.uuid == aeroplane_uuid).first()
         ctx = (
             (_metrics_payload(node) or {}).get("assumption_computation_context", {})
             if node is not None
@@ -243,7 +233,9 @@ async def _run_polar_async(db: Session, aeroplane_uuid: str) -> dict:
     operating_point = OperatingPointSchema(
         altitude=sweep_request.altitude,
         velocity=sweep_request.velocity,
-        alpha=np.linspace(sweep_request.alpha_start, sweep_request.alpha_end, sweep_request.alpha_num),
+        alpha=np.linspace(
+            sweep_request.alpha_start, sweep_request.alpha_end, sweep_request.alpha_num
+        ),
         beta=sweep_request.beta,
         p=sweep_request.p,
         q=sweep_request.q,
@@ -251,9 +243,7 @@ async def _run_polar_async(db: Session, aeroplane_uuid: str) -> dict:
         xyz_ref=sweep_request.xyz_ref,
     )
 
-    result, _ = analyse_aerodynamics(
-        AnalysisToolUrlType.AEROBUILDUP, operating_point, asb_airplane
-    )
+    result, _ = analyse_aerodynamics(AnalysisToolUrlType.AEROBUILDUP, operating_point, asb_airplane)
 
     alpha_array, cl_values, cd_values, cm_values = _extract_alpha_sweep_arrays(
         result, sweep_request
@@ -314,9 +304,7 @@ async def _run_stability_async(db: Session, aeroplane_uuid: str) -> dict:
     # in the linear range — Anderson §4.9); evaluating it at an arbitrary
     # off-design point (the old α=2°, V=20 m/s) gave a second, divergent x_np
     # (0.109 m vs the dashboard's 0.080 m). One op-point → one neutral point.
-    plane = (
-        db.query(AeroplaneModel).filter(AeroplaneModel.uuid == aeroplane_uuid).first()
-    )
+    plane = db.query(AeroplaneModel).filter(AeroplaneModel.uuid == aeroplane_uuid).first()
     ctx = (plane.assumption_computation_context or {}) if plane is not None else {}
     v_cruise = ctx.get("v_cruise_mps")
     operating_point = OperatingPointSchema(
@@ -481,6 +469,212 @@ _SCHEMA_GET_VERSION_TREE = {
 }
 
 # ---------------------------------------------------------------------------
+# Read-retargeting helper (gh-938)
+# ---------------------------------------------------------------------------
+
+
+def _effective_target_id(db: Session, aeroplane_id: int) -> int:
+    """Return the OPEN proposal head id if one exists for this aeroplane's lineage.
+
+    While the copilot has an open proposal branch, read tools
+    (``get_design_snapshot``, ``run_analysis``) auto-target the proposal head
+    so the copilot sees its own edits.  ``get_version_tree`` always targets the
+    live lineage and is NOT retargeted.
+
+    Parameters
+    ----------
+    db:
+        SQLAlchemy session.
+    aeroplane_id:
+        The live aeroplane PK (from the copilot loop).
+
+    Returns
+    -------
+    int
+        Proposal head PK if an open proposal exists, else ``aeroplane_id``.
+    """
+    try:
+        from app.services.copilot_apply_service import (
+            _find_open_proposal,
+            _get_lineage_root_id,
+        )
+
+        root_id = _get_lineage_root_id(db, aeroplane_id)
+        proposal = _find_open_proposal(db, root_id)
+        if proposal is not None:
+            return proposal.head_id
+    except Exception:  # noqa: BLE001
+        pass
+    return aeroplane_id
+
+
+# ---------------------------------------------------------------------------
+# New write-tool implementations (gh-937/938)
+# ---------------------------------------------------------------------------
+
+
+def _apply_design_edits(db: Session, aeroplane_id: int, *, ops: list) -> dict:
+    """Apply a list of edit-ops to the copilot proposal branch.
+
+    Opens (or reuses) the copilot proposal branch for the live aeroplane,
+    applies the ops to the PROPOSAL head (never to the live head), and
+    returns the result plus a before/after metrics diff.
+
+    Parameters
+    ----------
+    ops:
+        List of edit-op dicts, each with a ``type`` discriminator field.
+        Supported types: SetAssumption, SetXsec, AddXsec, RemoveXsec,
+        SetWingParam, ReplaceWingConfig.
+
+    Diff accuracy note
+    ------------------
+    ``diff_proposal_branch`` compares the proposal's metrics BEFORE this call
+    (pre-edit baseline) against AFTER (post-edit, fresh recompute).  Both
+    baselines come from the proposal branch itself — never from the live node's
+    possibly-stale stored context — so the diff reflects only what THIS call
+    changed, without recompute-drift artifacts.
+
+    Do NOT use this diff for authoritative performance numbers (L/D, speeds).
+    Instead call ``run_analysis`` before and after the edit for those.
+    """
+    from pydantic import TypeAdapter
+
+    from app.schemas.copilot_edits import EditOp
+    from app.services.aeroplane_version_service import _metrics_payload
+    from app.services.copilot_apply_service import (
+        apply_edits,
+        compute_metrics_diff,
+        get_or_open_proposal,
+    )
+    from app.models.aeroplanemodel import AeroplaneModel
+
+    # 1. Validate ops via the discriminated union
+    adapter = TypeAdapter(list[EditOp])
+    try:
+        validated_ops = adapter.validate_python(ops)
+    except Exception as exc:  # noqa: BLE001
+        return {"error": f"Invalid ops payload: {exc}"}
+
+    # 2. Verify live node exists
+    live_node = db.query(AeroplaneModel).filter(AeroplaneModel.id == aeroplane_id).first()
+    if live_node is None:
+        return {"error": f"Aeroplane {aeroplane_id} not found"}
+
+    # 3. Open (or reuse) the proposal branch
+    try:
+        branch = get_or_open_proposal(db, aeroplane_id)
+    except Exception as exc:  # noqa: BLE001
+        logger.exception("_apply_design_edits: get_or_open_proposal failed")
+        return {"error": f"Failed to open proposal branch: {exc}"}
+
+    proposal_node = db.query(AeroplaneModel).filter(AeroplaneModel.id == branch.head_id).first()
+    if proposal_node is None:
+        return {"error": "Proposal branch head not found"}
+    proposal_uuid = str(proposal_node.uuid)
+
+    # 4. Capture the proposal's PRE-EDIT baseline metrics (fresh from the branch
+    #    clone, not from the live node's possibly-stale stored context).
+    #    This ensures diff_proposal_branch reflects only what this call changes —
+    #    recompute-drift between a stale live context and a fresh proposal context
+    #    never pollutes the diff.
+    pre_edit_metrics = _metrics_payload(proposal_node)
+
+    # 5. Apply edits to the PROPOSAL (never to the live head)
+    try:
+        result = apply_edits(db, proposal_uuid, validated_ops)
+    except Exception as exc:  # noqa: BLE001
+        logger.exception("_apply_design_edits: apply_edits failed")
+        return {"error": f"Failed to apply edits: {exc}"}
+
+    # 6. Compute diff: pre-edit proposal → post-edit proposal (both fresh)
+    diff = compute_metrics_diff(pre_edit_metrics, result.get("metrics", {}))
+
+    return {
+        "branch_id": branch.id,
+        "branch_uuid": str(proposal_node.uuid),  # proposal head uuid
+        "applied": result.get("applied", []),
+        "rejected": result.get("rejected", []),
+        # diff_proposal_branch: what changed on the proposal branch in this call.
+        # Both sides are fresh (pre-edit clone vs post-edit recompute) — no
+        # stale-context drift.  For authoritative performance numbers (L/D,
+        # speeds, stall) call run_analysis before and after instead.
+        "diff_proposal_branch": diff,
+        # Legacy field alias kept for backward compat — same value, but note
+        # that this is the proposal's own before/after, not live vs proposal.
+        "diff_vs_live": diff,
+    }
+
+
+def _discard_proposal(db: Session, aeroplane_id: int) -> dict:
+    """Discard the open copilot proposal branch for this aeroplane's lineage.
+
+    Returns ``{"discarded": true}`` if a proposal was found and discarded,
+    ``{"discarded": false}`` if none existed.
+    """
+    from app.services.copilot_apply_service import discard_open_proposal
+
+    try:
+        discarded = discard_open_proposal(db, aeroplane_id)
+        return {"discarded": discarded}
+    except Exception as exc:  # noqa: BLE001
+        logger.exception("_discard_proposal failed for aeroplane_id=%s", aeroplane_id)
+        return {"error": str(exc)}
+
+
+# ---------------------------------------------------------------------------
+# OpenAI function-calling schemas — new write tools
+# ---------------------------------------------------------------------------
+
+_SCHEMA_APPLY_DESIGN_EDITS = {
+    "type": "function",
+    "function": {
+        "name": "apply_design_edits",
+        "description": (
+            "Propose design changes by applying a list of edit operations to a "
+            "PROPOSAL BRANCH — never to the live design.  The user reviews the "
+            "proposal in the Versions panel and adopts or discards it.  "
+            "Returns the branch id, applied/rejected ops, and diff_proposal_branch "
+            "(pre-edit vs post-edit on the proposal, both fresh — safe for geometry "
+            "changes like mass/chord/span).  "
+            "IMPORTANT: do NOT use diff_proposal_branch for performance comparisons "
+            "(L/D, v_stall, v_cruise, v_min_sink) — call run_analysis before and "
+            "after for those.  "
+            "FIRST call get_design_snapshot to get: (1) wing names (wing_names), "
+            "(2) per-wing cross-section counts (wings[i].n_xsecs). "
+            "Wing identifiers in ops are NAMES e.g. 'main_wing'.  "
+            "To add a winglet: AddXsec with at_index = n_xsecs and a dihedral knee.  "
+            "All chord/span units are millimetres; angles in degrees.  "
+            "Call run_analysis after applying to verify, then iterate if needed."
+        ),
+        "parameters": {
+            "type": "object",
+            "properties": {"ops": edit_ops_array_schema()},
+            "required": ["ops"],
+        },
+    },
+}
+
+_SCHEMA_DISCARD_PROPOSAL = {
+    "type": "function",
+    "function": {
+        "name": "discard_proposal",
+        "description": (
+            "Discard the current copilot proposal branch (if any).  "
+            "Use this when your current working branch has led to a dead end "
+            "and you want to start fresh.  The user can also discard proposals "
+            "from the Versions panel.  "
+            "Returns {discarded: true} if a proposal was found and removed."
+        ),
+        "parameters": {
+            "type": "object",
+            "properties": {},
+            "required": [],
+        },
+    },
+}
+
+# ---------------------------------------------------------------------------
 # Registry
 # ---------------------------------------------------------------------------
 
@@ -497,6 +691,14 @@ TOOL_REGISTRY: dict[str, ToolEntry] = {
         schema=_SCHEMA_GET_VERSION_TREE,
         impl=_get_version_tree,
     ),
+    "apply_design_edits": ToolEntry(
+        schema=_SCHEMA_APPLY_DESIGN_EDITS,
+        impl=_apply_design_edits,
+    ),
+    "discard_proposal": ToolEntry(
+        schema=_SCHEMA_DISCARD_PROPOSAL,
+        impl=_discard_proposal,
+    ),
 }
 
 
@@ -512,6 +714,12 @@ def list_schemas() -> list[dict]:
 
 def execute(name: str, db: Session, aeroplane_id: int, **kwargs: Any) -> dict:
     """Execute a registered tool by name.
+
+    Read tools (``get_design_snapshot``, ``run_analysis``) are retargeted to
+    the open proposal head when one exists — so the copilot reads its own edits
+    while iterating.  ``get_version_tree`` is always on the live lineage.
+    Write tools (``apply_design_edits``, ``discard_proposal``) always receive
+    the live ``aeroplane_id`` so they can find/open the proposal branch.
 
     Parameters
     ----------
@@ -533,4 +741,11 @@ def execute(name: str, db: Session, aeroplane_id: int, **kwargs: Any) -> dict:
     if entry is None:
         known = ", ".join(sorted(TOOL_REGISTRY))
         return {"error": f"Unknown tool {name!r}. Known tools: {known}"}
-    return entry.impl(db, aeroplane_id, **kwargs)
+
+    # Read-retargeting: resolve to proposal head for read tools when a proposal is open.
+    _READ_RETARGETED_TOOLS = {"get_design_snapshot", "run_analysis"}
+    effective_id = (
+        _effective_target_id(db, aeroplane_id) if name in _READ_RETARGETED_TOOLS else aeroplane_id
+    )
+
+    return entry.impl(db, effective_id, **kwargs)

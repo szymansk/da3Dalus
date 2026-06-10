@@ -32,13 +32,20 @@ def _make_db(client_and_db):
 
 
 class TestListSchemas:
-    def test_returns_three_schemas(self):
+    def test_returns_five_schemas(self):
         schemas = list_schemas()
-        assert len(schemas) == 3
+        assert len(schemas) == 5
 
     def test_schema_names(self):
         names = {s["function"]["name"] for s in list_schemas()}
-        assert names == {"get_design_snapshot", "run_analysis", "get_version_tree"}
+        # Slice 1 tools + Slice 2 write tools (gh-937/938)
+        assert names == {
+            "get_design_snapshot",
+            "run_analysis",
+            "get_version_tree",
+            "apply_design_edits",
+            "discard_proposal",
+        }
 
     def test_each_schema_has_required_keys(self):
         for s in list_schemas():
@@ -125,6 +132,21 @@ class TestGetDesignSnapshot:
             plane = make_aeroplane(db)
             result = execute("get_design_snapshot", db, aeroplane_id=plane.id)
         assert "wing_count" in result
+
+    def test_wings_field_with_n_xsecs(self, client_and_db):
+        """gh-938 Bug A: snapshot must return 'wings' list with n_xsecs per wing."""
+        _, SessionLocal = client_and_db
+        with SessionLocal() as db:
+            plane = make_aeroplane(db)
+            result = execute("get_design_snapshot", db, aeroplane_id=plane.id)
+        # 'wings' key must be present (even if empty for a bare aeroplane)
+        assert "wings" in result, "'wings' key missing from snapshot"
+        assert isinstance(result["wings"], list)
+        # Each entry must have 'name' and 'n_xsecs'
+        for entry in result["wings"]:
+            assert "name" in entry
+            assert "n_xsecs" in entry
+            assert isinstance(entry["n_xsecs"], int)
 
 
 # ---------------------------------------------------------------------------
@@ -473,8 +495,10 @@ class TestPolarDragBreakdownWiring:
 
 
 class TestToolRegistry:
-    def test_registry_has_three_tools(self):
-        assert len(tools_module.TOOL_REGISTRY) == 3
+    def test_registry_has_five_tools(self):
+        # Slice 1: get_design_snapshot, run_analysis, get_version_tree
+        # Slice 2 (gh-937/938): apply_design_edits, discard_proposal
+        assert len(tools_module.TOOL_REGISTRY) == 5
 
     def test_registry_keys_match_schema_names(self):
         for key, entry in tools_module.TOOL_REGISTRY.items():

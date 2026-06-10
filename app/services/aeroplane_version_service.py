@@ -92,6 +92,16 @@ def _metrics_payload(node: AeroplaneModel) -> dict[str, Any]:
 
     # Basic geometry summary
     payload["wing_count"] = len(node.wings or [])
+    # gh-938: surface the exact wing NAMES so the copilot's edit-ops target the
+    # right wing (the LLM otherwise guesses indices/ids).
+    payload["wing_names"] = [w.name for w in (node.wings or [])]
+    # gh-938 (Bug A): surface per-wing cross-section count so the copilot can pick
+    # a valid at_index for AddXsec.  n_xsecs = len(x_secs); to APPEND at the tip
+    # use at_index = n_xsecs (1-based, beyond the last existing xsec).
+    payload["wings"] = [
+        {"name": w.name, "n_xsecs": len(w.x_secs or [])}
+        for w in (node.wings or [])
+    ]
     payload["fuselage_count"] = len(node.fuselages or [])
 
     # Stability summary (latest result)
