@@ -331,7 +331,7 @@ export function CopilotStrip({ onOpenHistory }: CopilotStripProps = {}) {
   // Hint text depends on current mode; "responding" takes precedence
   let inputHint = enterToSend
     ? "Enter to send · Shift+Enter for newline"
-    : "Shift+Enter / Enter for newline · Cmd+Enter to send";
+    : "Shift+Enter / Enter for newline · Ctrl/Cmd+Enter to send";
   if (isSending) inputHint = "Copilot is responding…";
 
   return (
@@ -429,7 +429,10 @@ export function CopilotStrip({ onOpenHistory }: CopilotStripProps = {}) {
             />
 
             <div className="flex items-center justify-between gap-2">
-              <span className="text-[11px] text-muted-foreground">
+              {/* suppressHydrationWarning: initial value is read from localStorage
+                  on the client, so it intentionally differs from the server's
+                  default render for users who switched to alt mode. */}
+              <span className="text-[11px] text-muted-foreground" suppressHydrationWarning>
                 {inputHint}
               </span>
               <div className="flex shrink-0 items-center gap-1.5">
@@ -440,6 +443,7 @@ export function CopilotStrip({ onOpenHistory }: CopilotStripProps = {}) {
                   aria-label={enterToSend ? "Enter sends message" : "Enter inserts newline"}
                   title={enterToSend ? "Enter sends message (click to switch)" : "Enter inserts newline (click to switch)"}
                   className="flex h-7 w-7 items-center justify-center rounded-lg border border-border bg-card-muted text-muted-foreground hover:bg-sidebar-accent aria-pressed:text-primary"
+                  suppressHydrationWarning
                 >
                   <CornerDownLeft size={12} />
                 </button>
