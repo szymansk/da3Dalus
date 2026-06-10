@@ -86,10 +86,12 @@ def _assert_airfoil_match(
 ):
     """Assert that airfoil parameters survive the roundtrip within tolerance.
 
-    Terminal tip dihedral is inherently lossy: the ASB model stores only
-    xyz_le positions, and the last cross-section has no successor segment
-    to derive a dihedral direction from. WingConfiguration.from_asb sets
-    cum_d[n-1] = cum_d[n-2], making the terminal delta always 0.
+    The terminal tip dihedral used to be lossy (the ASB model stores only
+    xyz_le positions and the last cross-section has no outboard station to
+    derive a direction from). It is now persisted explicitly per rib — like
+    twist — so it round-trips exactly, including the terminal rib's own
+    local-x rotation (gh-951). The ``is_terminal_tip`` flag is kept for
+    signature compatibility but no longer relaxes any assertion.
     """
     assert roundtripped.incidence == pytest.approx(original.incidence, abs=tol_angle), (
         f"{label}: incidence {roundtripped.incidence} != {original.incidence}"
@@ -99,12 +101,11 @@ def _assert_airfoil_match(
         f"{label}: chord {roundtripped.chord} != {original.chord}"
     )
 
-    if not is_terminal_tip:
-        assert roundtripped.dihedral_as_rotation_in_degrees == pytest.approx(
-            original.dihedral_as_rotation_in_degrees, abs=0.1
-        ), (
-            f"{label}: dihedral {roundtripped.dihedral_as_rotation_in_degrees} != {original.dihedral_as_rotation_in_degrees}"
-        )
+    assert roundtripped.dihedral_as_rotation_in_degrees == pytest.approx(
+        original.dihedral_as_rotation_in_degrees, abs=0.1
+    ), (
+        f"{label}: dihedral {roundtripped.dihedral_as_rotation_in_degrees} != {original.dihedral_as_rotation_in_degrees}"
+    )
 
 
 def _assert_segment_match(orig_seg, rt_seg, seg_idx, *, total_segments=None):
@@ -289,6 +290,26 @@ class TestDihedralRoundtrip:
         wc, wc2 = _roundtrip(wing)
         for i in range(2):
             _assert_segment_match(wc.segments[i], wc2.segments[i], i, total_segments=2)
+
+    def test_terminal_tip_dihedral_roundtrips(self):
+        """The outermost rib's own local-x rotation (dihedral) must survive
+        the round-trip (gh-951).
+
+        In cad_designer a station's dihedral rotates the airfoil about its
+        local x-axis; for the terminal rib this is a real, meaningful
+        rotation (e.g. a rotated wing-cap mounted on the last rib) even
+        though it moves no outboard station and therefore is NOT encoded in
+        the ASB xyz_le geometry. It is persisted explicitly (like twist),
+        so it must come back unchanged.
+        """
+        wing = _wing(
+            _seg(root_dihedral=0, tip_dihedral=0, length=100),
+            _seg(root_dihedral=0, tip_dihedral=30, length=100),
+        )
+        _, wc2 = _roundtrip(wing)
+        assert wc2.segments[-1].tip_airfoil.dihedral_as_rotation_in_degrees == pytest.approx(
+            30.0, abs=0.1
+        )
 
 
 # ═══════════════════════════════════════════════════════════════════
