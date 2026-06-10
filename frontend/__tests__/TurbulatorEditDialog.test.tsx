@@ -353,3 +353,56 @@ describe("TurbulatorEditDialog optimize", () => {
     expect(body.scope).toBe("segment");
   });
 });
+
+// ── Client-side validation (gh-936 review) ─────────────────────────
+
+describe("TurbulatorEditDialog validation", () => {
+  let fetchSpy: ReturnType<typeof vi.spyOn>;
+
+  beforeEach(() => {
+    fetchSpy = vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      new Response(JSON.stringify({}), { status: 200 }),
+    );
+  });
+
+  afterEach(() => {
+    fetchSpy.mockRestore();
+  });
+
+  async function renderAndSaveWith(
+    field: string,
+    value: string,
+  ): Promise<void> {
+    const user = userEvent.setup();
+    render(
+      <TurbulatorEditDialog
+        {...defaultProps}
+        isNew={false}
+        initialData={{ form: "zigzag", height_mm: 0.3, position_root: 0.1, enabled: true }}
+      />,
+    );
+    const input = screen.getByLabelText(field) as HTMLInputElement;
+    await user.clear(input);
+    if (value !== "") await user.type(input, value);
+    await user.click(screen.getByText("Save"));
+  }
+
+  it("rejects position root outside [0,1] and does not call PUT", async () => {
+    await renderAndSaveWith("Position root (x/c)", "1.5");
+    expect(screen.getByText(/Position root must be between 0 and 1/i)).toBeTruthy();
+    const put = fetchSpy.mock.calls.find(
+      (c: Parameters<typeof fetch>) => (c[1] as RequestInit | undefined)?.method === "PUT",
+    );
+    expect(put).toBeFalsy();
+  });
+
+  it("rejects position tip outside [0,1]", async () => {
+    await renderAndSaveWith("Position tip (x/c)", "1.4");
+    expect(screen.getByText(/Position tip must be between 0 and 1/i)).toBeTruthy();
+  });
+
+  it("rejects negative height", async () => {
+    await renderAndSaveWith("Height (mm)", "-0.2");
+    expect(screen.getByText(/Height must be non-negative/i)).toBeTruthy();
+  });
+});
