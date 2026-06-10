@@ -760,11 +760,15 @@ def compute_chart(
     defaults = _mode_defaults(mode)
 
     # --- gh-956: Resolve Oswald factor ONCE (before any branch that reads e) -
-    # When no computed e_oswald is available, surface a design warning instead
-    # of silently defaulting (gh-924 single-source-of-truth policy).
+    # Treat a missing OR non-physical (<= 0) value as "not computed": fall back
+    # to the default AND surface a design warning instead of silently defaulting
+    # (gh-924 single-source-of-truth policy). Guarding <= 0 here — not just at the
+    # endpoint — keeps compute_chart robust for any direct caller (k = 1/(pi*AR*e)
+    # would otherwise blow up to inf/nan when e == 0).
+    e: float
     _e_provided = aircraft.get("e_oswald", aircraft.get("e"))
-    if _e_provided is None:
-        e: float = DEFAULT_E_OSWALD
+    if _e_provided is None or float(_e_provided) <= 0:
+        e = DEFAULT_E_OSWALD
         warnings.append(
             "Oswald factor e not computed — using default 0.8. "
             "Run assumption recompute for an accurate induced-drag estimate."

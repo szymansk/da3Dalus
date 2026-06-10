@@ -101,8 +101,8 @@ def _resolve_aircraft_params(
     }
     # gh-956: pass e_oswald only when a real computed value is available.
     # When absent, the service will emit a design warning and fall back to 0.8.
-    if e_oswald is not None and e_oswald > 0:
-        aircraft["e_oswald"] = e_oswald
+    if e_oswald is not None and float(e_oswald) > 0:
+        aircraft["e_oswald"] = float(e_oswald)
     if s_ref_m2 is not None and s_ref_m2 > 0:
         aircraft["s_ref_m2"] = s_ref_m2
     if b_ref_m is not None:

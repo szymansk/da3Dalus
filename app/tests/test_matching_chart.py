@@ -1561,10 +1561,41 @@ class TestOswaldEWarning:
             # No v_cruise_mps either — triggers v_cruise estimation branch too
         }
         chart = compute_chart(aircraft_no_e, mode="uav_runway")
+        # Match the exact Oswald-fallback phrasing; the v_cruise-estimate warning
+        # also fires here but formats a velocity, never "using default 0.8".
         oswald_warnings = [
             w for w in chart["warnings"]
-            if "oswald" in w.lower() or "0.8" in w
+            if "using default 0.8" in w
         ]
         assert len(oswald_warnings) <= 1, (
             f"Oswald warning must appear at most once; got: {oswald_warnings}"
         )
+
+    def test_nonphysical_e_oswald_emits_warning_and_defaults(self):
+        """A direct caller passing e_oswald <= 0 (uncomputed sentinel) must get
+        the design warning + 0.8 fallback, not a blown-up e=0 model."""
+        compute_chart = _service()
+        base = {
+            "mass_kg": 1088.0,
+            "t_static_N": 1900.0,
+            "s_ref_m2": 16.17,
+            "ar": 7.32,
+            "cd0": 0.031,
+            "cl_max_clean": 1.6,
+            "cl_max_takeoff": 1.6,
+            "cl_max_landing": 2.1,
+            "v_cruise_mps": 55.0,
+        }
+        chart_08 = compute_chart({**base, "e_oswald": 0.8}, mode="uav_runway")
+        for bad_e in (0.0, -0.3):
+            chart = compute_chart({**base, "e_oswald": bad_e}, mode="uav_runway")
+            oswald_warnings = [w for w in chart["warnings"] if "using default 0.8" in w]
+            assert len(oswald_warnings) == 1, (
+                f"e_oswald={bad_e} must trigger the Oswald fallback warning; "
+                f"got: {chart['warnings']}"
+            )
+            # e<=0 must be treated exactly like the 0.8 default: identical
+            # e-dependent constraint curves and design point (no inf/nan from
+            # k = 1/(pi*AR*e) blowing up at e == 0).
+            assert chart["constraints"] == chart_08["constraints"]
+            assert chart["design_point"] == chart_08["design_point"]
