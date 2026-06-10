@@ -406,3 +406,115 @@ describe("TurbulatorEditDialog validation", () => {
     expect(screen.getByText(/Height must be non-negative/i)).toBeTruthy();
   });
 });
+
+// ── Delete path (gh-936 coverage) ─────────────────────────────────
+
+describe("TurbulatorEditDialog delete", () => {
+  let fetchSpy: ReturnType<typeof vi.spyOn>;
+  let confirmSpy: ReturnType<typeof vi.spyOn>;
+  const onSaved = vi.fn();
+  const onClose = vi.fn();
+
+  beforeEach(() => {
+    fetchSpy = vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      new Response(JSON.stringify({}), { status: 200 }),
+    );
+    confirmSpy = vi.spyOn(globalThis, "window", "get").mockReturnValue({
+      ...window,
+      confirm: () => true,
+    } as Window & typeof globalThis);
+    onSaved.mockClear();
+    onClose.mockClear();
+  });
+
+  afterEach(() => {
+    fetchSpy.mockRestore();
+    confirmSpy.mockRestore();
+  });
+
+  it("Delete calls DELETE /turbulator endpoint", async () => {
+    const user = userEvent.setup();
+    // Provide confirm as true
+    vi.spyOn(globalThis, "confirm").mockReturnValue(true);
+    render(
+      <TurbulatorEditDialog
+        {...defaultProps}
+        onSaved={onSaved}
+        onClose={onClose}
+        isNew={false}
+        initialData={{ form: "zigzag", height_mm: 0.3, position_root: 0.1, enabled: true }}
+      />,
+    );
+
+    await user.click(screen.getByText("Delete"));
+
+    const call = fetchSpy.mock.calls.find(
+      (c: Parameters<typeof fetch>) => typeof c[0] === "string" && c[0].includes("/turbulator"),
+    );
+    expect(call).toBeTruthy();
+    expect((call![1] as RequestInit).method).toBe("DELETE");
+  });
+
+  it("shows error message when DELETE fails", async () => {
+    vi.spyOn(globalThis, "confirm").mockReturnValue(true);
+    fetchSpy.mockResolvedValueOnce(new Response("Not found", { status: 404 }));
+    const user = userEvent.setup();
+    render(
+      <TurbulatorEditDialog
+        {...defaultProps}
+        isNew={false}
+        initialData={{ form: "zigzag", height_mm: 0.3, position_root: 0.1, enabled: true }}
+      />,
+    );
+    await user.click(screen.getByText("Delete"));
+    expect(await screen.findByText(/404/)).toBeTruthy();
+  });
+});
+
+// ── Enabled checkbox toggle (gh-936 coverage) ─────────────────────
+
+describe("TurbulatorEditDialog enabled toggle", () => {
+  it("toggles enabled checkbox", async () => {
+    const user = userEvent.setup();
+    render(<TurbulatorEditDialog {...defaultProps} />);
+    const checkbox = screen.getByLabelText("Enabled") as HTMLInputElement;
+    expect(checkbox.checked).toBe(true); // default
+    await user.click(checkbox);
+    expect(checkbox.checked).toBe(false);
+  });
+});
+
+// ── Optimize warnings (gh-936 coverage) ───────────────────────────
+
+describe("TurbulatorEditDialog optimize warnings", () => {
+  let fetchSpy: ReturnType<typeof vi.spyOn>;
+
+  beforeEach(() => {
+    fetchSpy = vi.spyOn(globalThis, "fetch");
+  });
+
+  afterEach(() => {
+    fetchSpy.mockRestore();
+  });
+
+  it("shows section warnings when optimize result has warnings", async () => {
+    const resultWithWarnings = {
+      sections: [
+        {
+          y_m: 0.2, chord_m: 0.2, re_local: 150_000, cl: 0.7,
+          xtr_opt: 0.3, cd_clean: 0.04, cd_tripped: 0.03, delta_cd: -0.01,
+          warnings: ["Low Re: transition may be unreliable"],
+        },
+      ],
+      summary: { delta_cd0: -0.001, l_d_clean: 18.0, l_d_tripped: 19.0, delta_l_d: 1.0 },
+      scope: "section",
+    };
+    fetchSpy.mockResolvedValueOnce(
+      new Response(JSON.stringify(resultWithWarnings), { status: 200 }),
+    );
+    const user = userEvent.setup();
+    render(<TurbulatorEditDialog {...defaultProps} />);
+    await user.click(screen.getByText("Optimize"));
+    expect(await screen.findByText(/Low Re/i)).toBeTruthy();
+  });
+});

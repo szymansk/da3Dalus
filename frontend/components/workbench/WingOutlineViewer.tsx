@@ -121,7 +121,7 @@ function lerpStation(a: XSec, b: XSec, t: number): { xyz_le: number[]; chord: nu
 // ── Trace builders ───────────────────────────────────────────────
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Plotly trace shape varies
-type PlotlyData = Record<string, any>;
+export type PlotlyData = Record<string, any>;
 
 const COLOR_AIRFOIL = "#FF8400";     // all airfoils: orange, thick
 const COLOR_INTERP = "#FF8400";      // interpolated: same orange
@@ -150,7 +150,7 @@ function scatter3d(
 
 // ── Wing trace context shared across sub-builders ────────────────
 
-interface WingTraceCtx {
+export interface WingTraceCtx {
   xsecs: XSec[];
   airfoils: (AirfoilCoords | null)[];
   dihedrals: number[];
@@ -338,7 +338,7 @@ function buildTEDTraces(ctx: WingTraceCtx): PlotlyData[] {
 }
 
 /** Turbulator strip outline — spanwise line on the upper surface at x/c position. */
-function buildTurbulatorTraces(ctx: WingTraceCtx): PlotlyData[] {
+export function buildTurbulatorTraces(ctx: WingTraceCtx): PlotlyData[] {
   const traces: PlotlyData[] = [];
   const { xsecs, dihedrals } = ctx;
 

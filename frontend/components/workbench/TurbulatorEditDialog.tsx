@@ -1,9 +1,10 @@
 "use client";
 
-import { useState, useEffect, useId } from "react";
+import { useState, useEffect } from "react";
 import { X } from "lucide-react";
 import { API_BASE } from "@/lib/fetcher";
 import { useDialog } from "@/hooks/useDialog";
+import { DialogField } from "@/components/workbench/DialogField";
 
 const TURBULATOR_FORMS = ["zigzag", "dots", "thread"] as const;
 type TurbulatorForm = (typeof TURBULATOR_FORMS)[number];
@@ -277,17 +278,17 @@ export function TurbulatorEditDialog({
                 ))}
               </select>
             </div>
-            <TurbulatorField label="Height (mm)" value={heightMm} onChange={setHeightMm} />
+            <DialogField label="Height (mm)" value={heightMm} onChange={setHeightMm} />
           </div>
 
           <div className="flex gap-3">
-            <TurbulatorField
+            <DialogField
               label="Position root (x/c)"
               value={positionRoot}
               onChange={setPositionRoot}
               placeholder="0.1"
             />
-            <TurbulatorField
+            <DialogField
               label="Position tip (x/c)"
               value={positionTip}
               onChange={setPositionTip}
@@ -407,32 +408,3 @@ export function TurbulatorEditDialog({
   );
 }
 
-function TurbulatorField({
-  label,
-  value,
-  onChange,
-  placeholder,
-}: Readonly<{
-  label: string;
-  value: string;
-  onChange: (v: string) => void;
-  placeholder?: string;
-}>) {
-  const id = useId();
-  return (
-    <div className="flex flex-1 flex-col gap-1">
-      <label htmlFor={id} className="text-[11px] text-muted-foreground">{label}</label>
-      <div className="flex items-center gap-2 rounded-xl border border-border bg-input px-3 py-2">
-        <input
-          id={id}
-          type="number"
-          step="any"
-          value={value}
-          onChange={(e) => onChange(e.target.value)}
-          placeholder={placeholder}
-          className="w-full bg-transparent text-[13px] text-foreground outline-none [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
-        />
-      </div>
-    </div>
-  );
-}
