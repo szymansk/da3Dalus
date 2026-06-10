@@ -61,19 +61,21 @@ describe("buildTurbulatorTraces", () => {
     expect(traces).toHaveLength(1);
   });
 
-  it("each trace is a dotted scatter3d (markers) along the spanwise line", () => {
+  it("each trace is a dotted scatter3d line (root → tip)", () => {
     const ctx = makeCtx([
       makeXsec({ turbulator: { form: "zigzag", height_mm: 0.3, position_root: 0.1, enabled: true } }),
       makeXsec({ xyz_le: [0, 0.3, 0], chord: 0.18, twist: 0, airfoil: "naca0012" }),
     ]);
     const [trace] = buildTurbulatorTraces(ctx);
     expect(trace.type).toBe("scatter3d");
-    // Dotted appearance: rendered as markers (scatter3d lines cannot be dashed).
-    expect(trace.mode).toBe("markers");
-    // Evenly spaced dots root→tip (N + 1 points).
-    expect(trace.x.length).toBeGreaterThan(2);
-    expect(trace.y).toHaveLength(trace.x.length);
-    expect(trace.z).toHaveLength(trace.x.length);
+    expect(trace.mode).toBe("lines");
+    // Dotted appearance via line.dash (scatter3d supports dash, as the spar
+    // edge lines do) — not individual markers.
+    expect(trace.line.dash).toBe("dot");
+    // Single 2-point spanwise line.
+    expect(trace.x).toHaveLength(2);
+    expect(trace.y).toHaveLength(2);
+    expect(trace.z).toHaveLength(2);
   });
 
   it("trace x-coordinates reflect position_root on root xsec", () => {
@@ -163,7 +165,7 @@ describe("buildTurbulatorTraces", () => {
     const [trace] = buildTurbulatorTraces(ctx);
     // COLOR_TURBULATOR = "#22D3EE" — bright cyan, deliberately far from the
     // airfoil orange (#FF8400) / TED green (#30A46C) / spar purple (#6E56CF).
-    const color = (trace.marker.color as string).toUpperCase();
+    const color = (trace.line.color as string).toUpperCase();
     expect(color).toBe("#22D3EE");
     expect(color).not.toBe("#FF8400");
   });

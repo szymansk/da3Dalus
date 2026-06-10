@@ -148,21 +148,6 @@ function scatter3d(
   };
 }
 
-/** Dotted scatter3d trace (evenly spaced markers). scatter3d lines do not
- *  support a `dash` style, so a dotted look is rendered as small markers. */
-function scatter3dDots(
-  x: number[], y: number[], z: number[],
-  color: string, size = 2.5,
-): PlotlyData {
-  return {
-    type: "scatter3d",
-    mode: "markers",
-    x, y, z,
-    marker: { color, size },
-    showlegend: false,
-    hoverinfo: "skip",
-  };
-}
 
 // ── Wing trace context shared across sub-builders ────────────────
 
@@ -353,12 +338,10 @@ function buildTEDTraces(ctx: WingTraceCtx): PlotlyData[] {
   return traces;
 }
 
-/** Number of dots drawn along a turbulator strip (dotted spanwise line). */
-const N_TURBULATOR_DOTS = 24;
-
-/** Turbulator strip — dotted spanwise line on the wing UPPER surface at the
- *  x/c position. Drawn as markers (scatter3d lines cannot be dashed) in a
- *  bright colour that stands out from the airfoil / TED / spar lines. */
+/** Turbulator strip — a dotted spanwise line on the wing UPPER surface at the
+ *  x/c position, in a bright colour that stands out from the airfoil / TED /
+ *  spar lines. Rendered as a dotted line (scatter3d `line.dash`, same as the
+ *  spar edge lines), not individual markers. */
 export function buildTurbulatorTraces(ctx: WingTraceCtx): PlotlyData[] {
   const traces: PlotlyData[] = [];
   const { xsecs, airfoils, dihedrals } = ctx;
@@ -385,16 +368,9 @@ export function buildTurbulatorTraces(ctx: WingTraceCtx): PlotlyData[] {
     const p1 = transformProfile([posRoot], [zRoot], xsecs[i].chord, xsecs[i].twist, xsecs[i].xyz_le, dihedrals[i]);
     const p2 = transformProfile([posTip], [zTip], xsecs[i + 1].chord, xsecs[i + 1].twist, xsecs[i + 1].xyz_le, dihedrals[i + 1]);
 
-    // Evenly spaced dots from root to tip → dotted appearance.
-    const dx: number[] = [], dy: number[] = [], dz: number[] = [];
-    for (let k = 0; k <= N_TURBULATOR_DOTS; k++) {
-      const t = k / N_TURBULATOR_DOTS;
-      dx.push(p1.x[0] + (p2.x[0] - p1.x[0]) * t);
-      dy.push(p1.y[0] + (p2.y[0] - p1.y[0]) * t);
-      dz.push(p1.z[0] + (p2.z[0] - p1.z[0]) * t);
-    }
-
-    traces.push(scatter3dDots(dx, dy, dz, COLOR_TURBULATOR));
+    traces.push(
+      scatter3d([p1.x[0], p2.x[0]], [p1.y[0], p2.y[0]], [p1.z[0], p2.z[0]], COLOR_TURBULATOR, 2.5, "dot"),
+    );
   }
 
   return traces;
