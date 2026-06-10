@@ -72,6 +72,10 @@ _WS_MIN: float = 10.0  # N/m² — lower bound for W/S sweep
 _WS_MAX: float = 1500.0  # N/m² — upper bound
 _WS_STEPS: int = 200  # number of points in W/S sweep
 
+# gh-956: default Oswald factor used when no computed value is available.
+# Consumers should surface a design warning rather than silently using this.
+DEFAULT_E_OSWALD: float = 0.8
+
 # ---------------------------------------------------------------------------
 # Constraint colors (Tailwind-compatible hex — matches frontend dark theme)
 # ---------------------------------------------------------------------------
@@ -755,6 +759,23 @@ def compute_chart(
     warnings: list[str] = []
     defaults = _mode_defaults(mode)
 
+    # --- gh-956: Resolve Oswald factor ONCE (before any branch that reads e) -
+    # Treat a missing OR non-physical (<= 0) value as "not computed": fall back
+    # to the default AND surface a design warning instead of silently defaulting
+    # (gh-924 single-source-of-truth policy). Guarding <= 0 here — not just at the
+    # endpoint — keeps compute_chart robust for any direct caller (k = 1/(pi*AR*e)
+    # would otherwise blow up to inf/nan when e == 0).
+    e: float
+    _e_provided = aircraft.get("e_oswald", aircraft.get("e"))
+    if _e_provided is None or float(_e_provided) <= 0:
+        e = DEFAULT_E_OSWALD
+        warnings.append(
+            "Oswald factor e not computed — using default 0.8. "
+            "Run assumption recompute for an accurate induced-drag estimate."
+        )
+    else:
+        e = float(_e_provided)
+
     # --- Resolve parameters -------------------------------------------------
     s_rwy: float = s_runway if s_runway is not None else defaults["s_runway"]
     v_s: float = v_s_target if v_s_target is not None else defaults["v_s_target"]
@@ -768,12 +789,11 @@ def compute_chart(
     elif "v_md_mps" in aircraft and aircraft["v_md_mps"]:
         v_cruise = float(aircraft["v_md_mps"])
     else:
-        # Estimate cruise as V_md from polar parameters
-        cd0 = float(aircraft.get("cd0", 0.03))
-        e = float(aircraft.get("e_oswald", 0.8))
-        ar = float(aircraft.get("ar", 7.0))
+        # Estimate cruise as V_md from polar parameters; reuse the already-resolved e
+        cd0_for_est = float(aircraft.get("cd0", 0.03))
+        ar_for_est = float(aircraft.get("ar", aircraft.get("aspect_ratio", 7.0)))
         # V_md at an approximate midpoint W/S = 500 N/m²
-        v_cruise = _v_md(500.0, cd0=cd0, e=e, ar=ar, rho=rho)
+        v_cruise = _v_md(500.0, cd0=cd0_for_est, e=e, ar=ar_for_est, rho=rho)
         warnings.append(
             f"v_cruise_mps not specified — estimated from polar as {v_cruise:.1f} m/s. "
             "Set v_cruise_mps in aircraft dict for accurate cruise constraint."
@@ -781,7 +801,7 @@ def compute_chart(
 
     # --- Extract polar parameters -------------------------------------------
     cd0: float = float(aircraft.get("cd0", 0.03))
-    e: float = float(aircraft.get("e_oswald", aircraft.get("e", 0.8)))
+    # e is already resolved above (with design warning if absent)
     ar: float = float(aircraft.get("ar", aircraft.get("aspect_ratio", 7.0)))
 
     cl_max_clean: float = float(aircraft.get("cl_max_clean", aircraft.get("cl_max", 1.4)))

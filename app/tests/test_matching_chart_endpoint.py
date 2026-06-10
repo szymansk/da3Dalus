@@ -381,3 +381,140 @@ class TestMatchingChartEndpointAdditional:
         with pytest.raises(HTTPException) as exc_info:
             _raise_http_from_domain(ServiceException("generic"))
         assert exc_info.value.status_code == 422
+
+
+# ===========================================================================
+# gh-956: _resolve_aircraft_params Oswald e passthrough
+# ===========================================================================
+
+
+class TestResolveAircraftParamsOswald:
+    """_resolve_aircraft_params must pass e_oswald through when present and omit
+    it when absent, so compute_chart's warning logic fires correctly.
+    """
+
+    def _make_plane_with_context(self, session, ctx: dict) -> "AeroplaneModel":
+        """Create aeroplane with a given assumption_computation_context."""
+        plane = make_aeroplane(session, name=f"oswald-test-{uuid.uuid4().hex[:6]}")
+        _seed_assumption(session, plane.id, "mass", 500.0)
+        _seed_assumption(session, plane.id, "cl_max", 1.4)
+        _seed_assumption(session, plane.id, "cd0", 0.032)
+        _seed_assumption(session, plane.id, "t_static_N", 800.0)
+        plane.assumption_computation_context = ctx
+        session.flush()
+        session.commit()
+        return plane
+
+    # --- Test C: no e_oswald in context → key absent in returned dict ---------
+
+    def test_no_e_oswald_in_context_key_absent_in_aircraft_dict(self, client_and_db):
+        """When assumption_computation_context has no e_oswald, the key must be
+        ABSENT from the aircraft dict returned by _resolve_aircraft_params — NOT
+        silently defaulted to 0.8.
+        """
+        from app.api.v2.endpoints.aeroplane.matching_chart import _resolve_aircraft_params
+
+        _client, SessionLocal = client_and_db
+        with SessionLocal() as db:
+            # Context without e_oswald
+            plane = self._make_plane_with_context(db, {
+                "s_ref_m2": 1.5,
+                "aspect_ratio": 7.0,
+                "v_md_mps": 20.0,
+                # deliberately no e_oswald
+            })
+            aircraft = _resolve_aircraft_params(db, plane, v_cruise_override=None)
+
+        assert "e_oswald" not in aircraft, (
+            f"e_oswald must be absent when context has no e_oswald; "
+            f"got aircraft['e_oswald'] = {aircraft.get('e_oswald')!r}"
+        )
+
+    def test_e_oswald_in_context_passed_through(self, client_and_db):
+        """When context has e_oswald=0.62, the returned dict must have e_oswald=0.62."""
+        from app.api.v2.endpoints.aeroplane.matching_chart import _resolve_aircraft_params
+
+        _client, SessionLocal = client_and_db
+        with SessionLocal() as db:
+            plane = self._make_plane_with_context(db, {
+                "s_ref_m2": 1.5,
+                "aspect_ratio": 7.0,
+                "e_oswald": 0.62,
+                "v_md_mps": 20.0,
+            })
+            aircraft = _resolve_aircraft_params(db, plane, v_cruise_override=None)
+
+        assert "e_oswald" in aircraft, "e_oswald must be present when context provides it"
+        assert aircraft["e_oswald"] == pytest.approx(0.62, abs=1e-9)
+
+    def test_zero_or_negative_e_oswald_treated_as_absent(self, client_and_db):
+        """A zero or negative e_oswald in context is treated as uncomputed (key absent)."""
+        from app.api.v2.endpoints.aeroplane.matching_chart import _resolve_aircraft_params
+
+        _client, SessionLocal = client_and_db
+        with SessionLocal() as db:
+            plane = self._make_plane_with_context(db, {
+                "s_ref_m2": 1.5,
+                "aspect_ratio": 7.0,
+                "e_oswald": 0.0,  # invalid / uncomputed
+                "v_md_mps": 20.0,
+            })
+            aircraft = _resolve_aircraft_params(db, plane, v_cruise_override=None)
+
+        assert "e_oswald" not in aircraft, (
+            f"e_oswald=0.0 (uncomputed sentinel) must not be forwarded; "
+            f"got aircraft['e_oswald'] = {aircraft.get('e_oswald')!r}"
+        )
+
+    # --- End-to-end: endpoint emits Oswald warning when context has no e ------
+
+    def test_endpoint_emits_oswald_warning_when_context_missing_e(self, client_and_db):
+        """GET matching-chart on a plane with no e_oswald in context → Oswald warning
+        in response JSON warnings list.
+        """
+        client, SessionLocal = client_and_db
+        with SessionLocal() as db:
+            plane = self._make_plane_with_context(db, {
+                "s_ref_m2": 1.5,
+                "aspect_ratio": 7.0,
+                "v_cruise_mps": 20.0,
+                # no e_oswald
+            })
+            aeroplane_uuid = str(plane.uuid)
+
+        resp = client.get(f"/aeroplanes/{aeroplane_uuid}/matching-chart")
+        assert resp.status_code == 200, resp.text
+        data = resp.json()
+        oswald_warnings = [
+            w for w in data.get("warnings", [])
+            if "oswald" in w.lower() or "0.8" in w
+        ]
+        assert len(oswald_warnings) >= 1, (
+            f"Expected an Oswald design warning in response; got warnings: {data.get('warnings')}"
+        )
+
+    def test_endpoint_no_oswald_warning_when_e_provided(self, client_and_db):
+        """GET matching-chart on a plane with e_oswald=0.75 → no Oswald fallback warning."""
+        client, SessionLocal = client_and_db
+        with SessionLocal() as db:
+            plane = self._make_plane_with_context(db, {
+                "s_ref_m2": 1.5,
+                "aspect_ratio": 7.0,
+                "e_oswald": 0.75,
+                "v_cruise_mps": 20.0,
+            })
+            aeroplane_uuid = str(plane.uuid)
+
+        resp = client.get(f"/aeroplanes/{aeroplane_uuid}/matching-chart")
+        assert resp.status_code == 200, resp.text
+        data = resp.json()
+        oswald_warnings = [
+            w for w in data.get("warnings", [])
+            if "oswald" in w.lower() or (
+                "0.8" in w and ("default" in w.lower() or "using" in w.lower())
+            )
+        ]
+        assert len(oswald_warnings) == 0, (
+            f"No Oswald warning expected when e_oswald=0.75 is in context; "
+            f"got: {oswald_warnings}"
+        )

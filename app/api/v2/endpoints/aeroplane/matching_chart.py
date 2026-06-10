@@ -94,12 +94,15 @@ def _resolve_aircraft_params(
         "mass_kg": mass_kg,
         "t_static_N": t_static_n,
         "cd0": cd0,
-        "e_oswald": e_oswald if e_oswald else 0.8,
         "ar": ar if ar else 7.0,
         "cl_max_clean": cl_max,
         "cl_max_takeoff": cl_max,  # clean CL_max for TO (conservative)
         "cl_max_landing": cl_max * 1.3,  # rough flaps factor for landing
     }
+    # gh-956: pass e_oswald only when a real computed value is available.
+    # When absent, the service will emit a design warning and fall back to 0.8.
+    if e_oswald is not None and float(e_oswald) > 0:
+        aircraft["e_oswald"] = float(e_oswald)
     if s_ref_m2 is not None and s_ref_m2 > 0:
         aircraft["s_ref_m2"] = s_ref_m2
     if b_ref_m is not None:
