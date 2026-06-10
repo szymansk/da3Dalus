@@ -212,9 +212,14 @@ function buildAddHandler(
   if (!callbacks.onAddSpar && !callbacks.onAddTed) return undefined;
 
   const hasTed = getTedData(xsec) !== null;
+  const hasTurbulator = (xsec.turbulator ?? null) !== null;
 
   return (e: React.MouseEvent) => {
-    if (hasTed) {
+    // Shortcut straight to "Add Spar" only when nothing else can be added
+    // (a control surface AND a turbulator already exist). Otherwise open the
+    // menu so the turbulator (and/or control surface) stays reachable even on
+    // a segment that already has a control surface.
+    if (hasTed && hasTurbulator) {
       callbacks.onAddSpar?.(wingName, index);
     } else {
       callbacks.onAddMenu?.(wingName, index, hasTed, e.clientX, e.clientY);

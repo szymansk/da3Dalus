@@ -240,6 +240,47 @@ describe("AeroplaneTree — Add Turbulator menu entry (gh-936)", () => {
     }
   });
 
+  it("'Add Turbulator' is still reachable when the segment has a control surface but no turbulator (gh-936 UAT)", async () => {
+    const user = userEvent.setup();
+    const onAddTurbulator = vi.fn();
+    // Segment HAS a trailing-edge device but NO turbulator: clicking Add must
+    // still open the menu (the turbulator is independent of the control surface).
+    mockWingData = {
+      name: "Main Wing",
+      symmetric: true,
+      design_model: "wc",
+      x_secs: [
+        makeXsec({ trailing_edge_device: { role: "other", rel_chord_root: 0.7 } }),
+        makeXsec({ xyz_le: [0, 0.3, 0] }),
+      ],
+    };
+    const { container } = render(
+      <AeroplaneTree
+        {...baseProps}
+        onAddSpar={vi.fn()}
+        onAddTed={vi.fn()}
+        onAddTurbulator={onAddTurbulator}
+      />,
+    );
+
+    const allButtons = Array.from(container.querySelectorAll("button"));
+    let found = false;
+    for (const btn of allButtons) {
+      if (!btn.getAttribute("aria-label") && !btn.getAttribute("title")?.includes("Collapse")) {
+        await user.click(btn);
+        if (screen.queryByText("Add Turbulator")) {
+          found = true;
+          break;
+        }
+        const overlay = container.querySelector('[aria-hidden="true"]');
+        if (overlay) fireEvent.click(overlay);
+      }
+    }
+    // Regression guard: with the old shortcut (hasTed → Add Spar directly) the
+    // menu never opened, so "Add Turbulator" was unreachable for such segments.
+    expect(found).toBe(true);
+  });
+
   it("calls onAddTurbulator when 'Add Turbulator' menu entry is clicked", async () => {
     const user = userEvent.setup();
     const onAddTurbulator = vi.fn();
