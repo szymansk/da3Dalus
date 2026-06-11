@@ -89,3 +89,65 @@ class TestGetWingGeometry:
         assert "get_wing_geometry" in copilot_tools.TOOL_REGISTRY
         names = [s["function"]["name"] for s in copilot_tools.list_schemas()]
         assert "get_wing_geometry" in names
+
+
+_RECOMPUTE = "app.services.assumption_compute_service.recompute_assumptions"
+
+
+class TestSetSegment:
+    def _proposal(self, db, plane):
+        from app.models.aeroplanemodel import AeroplaneModel
+        from app.services.copilot_apply_service import get_or_open_proposal
+
+        branch = get_or_open_proposal(db, plane.id)
+        db.commit()
+        node = db.query(AeroplaneModel).filter(AeroplaneModel.id == branch.head_id).first()
+        return branch, node
+
+    def test_relative_edit_applies_on_proposal(self, client_and_db):
+        from unittest.mock import patch
+
+        from app.schemas.copilot_edits import SetSegment
+        from app.services.copilot_apply_service import apply_edits
+
+        db = _make_session(client_and_db)
+        plane = _plane_with_wing(db)
+        branch, node = self._proposal(db, plane)
+
+        with patch(_RECOMPUTE):
+            res = apply_edits(
+                db,
+                str(node.uuid),
+                [SetSegment(wing="main_wing", seg_index=0, incidence_deg=-2.5, sweep_mm=12.0)],
+            )
+        db.commit()
+
+        assert res["applied"] == ["SetSegment"], res
+        assert res["rejected"] == []
+        geo = copilot_tools.execute("get_wing_geometry", db, branch.head_id, wing="main_wing")
+        assert geo["editable"][0]["incidence_deg"] == pytest.approx(-2.5, abs=0.05)
+        assert geo["editable"][0]["sweep_mm"] == pytest.approx(12.0, abs=0.05)
+
+    def test_out_of_range_rejected_not_raised(self, client_and_db):
+        from unittest.mock import patch
+
+        from app.schemas.copilot_edits import SetSegment
+        from app.services.copilot_apply_service import apply_edits
+
+        db = _make_session(client_and_db)
+        plane = _plane_with_wing(db)
+        _, node = self._proposal(db, plane)
+
+        with patch(_RECOMPUTE):
+            res = apply_edits(
+                db, str(node.uuid), [SetSegment(wing="main_wing", seg_index=999, length_mm=50.0)]
+            )
+        assert res["applied"] == []
+        assert res["rejected"] and "out of range" in res["rejected"][0]["error"]
+
+    def test_in_apply_design_edits_schema(self):
+        from app.schemas.copilot_edits import edit_ops_array_schema
+
+        schema = edit_ops_array_schema()
+        blob = str(schema)
+        assert "SetSegment" in blob and "dihedral_rel_deg" in blob

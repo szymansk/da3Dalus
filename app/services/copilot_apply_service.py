@@ -608,6 +608,44 @@ def apply_edits(
                 wing_config_cache[op.wing] = wc
                 applied.append(op_type)
 
+            # --- SetSegment (per-segment relative) ---------------------------
+            elif op_type == "SetSegment":
+                wc = _load_wing(op.wing)
+                if wc is None:
+                    rejected.append(
+                        {
+                            "op": op.model_dump(),
+                            "error": f"Wing '{op.wing}' not found or cannot be loaded as WingConfig.",
+                        }
+                    )
+                    continue
+
+                segs = wc.get("segments", [])
+                n = len(segs)
+                if not (0 <= op.seg_index < n):
+                    rejected.append(
+                        {
+                            "op": op.model_dump(),
+                            "error": f"seg_index {op.seg_index} out of range (0..{n - 1}) for wing '{op.wing}'.",
+                        }
+                    )
+                    continue
+
+                seg = segs[op.seg_index]
+                if op.length_mm is not None:
+                    seg["length"] = op.length_mm
+                if op.sweep_mm is not None:
+                    seg["sweep"] = op.sweep_mm
+                if op.chord_tip_mm is not None:
+                    seg["tip_airfoil"]["chord"] = op.chord_tip_mm
+                if op.dihedral_rel_deg is not None:
+                    seg["tip_airfoil"]["dihedral_as_rotation_in_degrees"] = op.dihedral_rel_deg
+                if op.incidence_deg is not None:
+                    seg["tip_airfoil"]["incidence"] = op.incidence_deg
+
+                wing_config_cache[op.wing] = wc
+                applied.append(op_type)
+
             # --- ReplaceWingConfig -------------------------------------------
             elif op_type == "ReplaceWingConfig":
                 # Validate via schema before writing
@@ -661,6 +699,14 @@ def apply_edits(
                     "error": f"Failed to persist wing '{wing_name}': {exc}",
                 }
             )
+
+    # put_wing_as_wingconfig deletes-then-reinserts the wing, leaving stale
+    # WingModel instances in the session identity map. Expire them so the
+    # metrics payload below AND any subsequent same-session read (e.g. the
+    # copilot calling get_wing_geometry right after apply in one turn) reload
+    # the fresh geometry (mirrors the ReplaceWingConfig handling).
+    if wing_config_cache:
+        db.expire_all()
 
     # --- Recompute assumptions synchronously --------------------------------
     try:
