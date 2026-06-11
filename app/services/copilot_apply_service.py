@@ -622,6 +622,11 @@ def apply_edits(
 
                 segs = wc.get("segments", [])
                 n = len(segs)
+                if n == 0:
+                    rejected.append(
+                        {"op": op.model_dump(), "error": f"Wing '{op.wing}' has no segments."}
+                    )
+                    continue
                 if not (0 <= op.seg_index < n):
                     rejected.append(
                         {

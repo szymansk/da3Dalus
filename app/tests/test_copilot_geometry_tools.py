@@ -72,6 +72,33 @@ class TestGetWingGeometry:
         for k in ("xyz_le_mm", "chord_mm", "accumulated_dihedral_deg", "te_x_mm"):
             assert k in st, f"missing derived field {k}"
 
+    def test_derived_xyz_matches_persisted_xsecs(self, client_and_db):
+        """The derived absolute block must equal the PERSISTED cross-section
+        positions (what the 3D viewer / ASB consume) — including dihedral.
+
+        gh-958 review: the original hand-rolled LE walk diverged from the
+        canonical geometry on any wing with dihedral (ignored root dihedral +
+        off-by-one). Reading the persisted xsecs eliminates the divergence.
+        """
+        from app.models.aeroplanemodel import AeroplaneModel
+
+        db = _make_session(client_and_db)
+        plane = _plane_with_wing(db)
+        node = db.query(AeroplaneModel).filter(AeroplaneModel.id == plane.id).first()
+        wing_model = next(w for w in node.wings if w.name == "main_wing")
+
+        res = copilot_tools.execute("get_wing_geometry", db, plane.id, wing="main_wing")
+        ps = res["derived"]["per_station"]
+        assert len(ps) == len(wing_model.x_secs)
+        for st, xs in zip(ps, wing_model.x_secs):
+            for got, persisted in zip(st["xyz_le_mm"], xs.xyz_le):
+                assert got == pytest.approx(float(persisted) * 1000.0, abs=1e-2)
+        # the fixture carries dihedral, so z must be non-trivial somewhere —
+        # this is the case the old hand-walk got wrong.
+        assert any(abs(st["xyz_le_mm"][2]) > 0.1 for st in ps), (
+            "fixture should exercise dihedral (non-zero z) to cover the regression"
+        )
+
     def test_te_x_equals_le_x_plus_chord(self, client_and_db):
         db = _make_session(client_and_db)
         plane = _plane_with_wing(db)

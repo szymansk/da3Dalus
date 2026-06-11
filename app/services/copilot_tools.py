@@ -7,7 +7,9 @@ the tools that are safe, fast, and meaningful for an advisory interaction.
 Tool contract
 -------------
 - Each tool impl has the signature ``fn(db, aeroplane_id, **kwargs) -> dict``.
-- Return value must be JSON-serializable (all SI/m units — no mm).
+- Return value must be JSON-serializable. Metrics tools use SI/m; the
+  ``get_wing_geometry`` tool is an intentional exception that returns
+  mm/degrees to mirror the WingConfig edit-op units.
 - Errors are returned as ``{"error": "<message>"}`` — never raised raw.
 - ``run_analysis`` has a configurable timeout; on expiry it returns a status
   dict so the copilot can tell the user to check the Analysis tab.
@@ -76,78 +78,88 @@ def _get_wing_geometry(db: Session, aeroplane_id: int, wing: str = "main_wing") 
     """Hybrid geometry read for one wing (gh-958).
 
     Returns BOTH (a) the editable RELATIVE per-segment fields the geometry
-    edit-ops change, and (b) a read-only DERIVED ABSOLUTE block (per-station
-    xyz_le, accumulated dihedral, TE_x = LE_x + chord, projected span) for
+    edit-ops change, and (b) a read-only DERIVED ABSOLUTE block per station for
     spatial reasoning. Units are mm / degrees (WingConfig units), matching the
-    edit-ops. The wing-local LE walk: x aft (sweep), y span
-    (length*cos(accumulated cant)), z up (length*sin(...)).
+    edit-ops.
+
+    The derived block is read from the PERSISTED cross-section positions
+    (``WingXSecModel.xyz_le`` in metres, scaled to mm) — the exact geometry the
+    3D viewer and AeroSandbox consume — NOT a re-derived walk, so it never
+    diverges from the canonical cad_designer frame (which seeds the dihedral
+    accumulator with the root-airfoil dihedral and applies each segment's offset
+    before adding its own tip dihedral; gh-958 review).
     """
     import math
 
     try:
+        from app.core.exceptions import NotFoundError
         from app.models.aeroplanemodel import AeroplaneModel
         from app.services.wing_service import get_wing_as_wingconfig
 
         node = db.query(AeroplaneModel).filter(AeroplaneModel.id == aeroplane_id).first()
         if node is None:
             return {"error": f"Aeroplane {aeroplane_id} not found"}
+
+        wing_model = next((w for w in (node.wings or []) if w.name == wing), None)
+        if wing_model is None:
+            available = [w.name for w in (node.wings or [])]
+            return {"error": f"Wing {wing!r} not found. Available wings: {available}"}
+
+        # Editable RELATIVE block — the validated WingConfig (mm).
         try:
             wc = get_wing_as_wingconfig(db, str(node.uuid), wing)
+        except NotFoundError:
+            return {"error": f"Wing {wing!r} not found on aeroplane {aeroplane_id}."}
         except Exception as exc:
-            return {"error": f"Wing {wing!r} not found ({exc})"}
+            logger.exception("get_wing_geometry: wing %r could not be loaded", wing)
+            return {"error": f"Wing {wing!r} could not be loaded as WingConfig: {exc}"}
         segs = (wc or {}).get("segments") or []
-        if not segs:
-            return {"error": f"Wing {wing!r} has no segments"}
 
-        def _dih(s: dict) -> float:
-            return float(s["tip_airfoil"].get("dihedral_as_rotation_in_degrees", 0) or 0)
-
-        def _inc(s: dict) -> float:
-            return float(s["tip_airfoil"].get("incidence", 0) or 0)
+        def _f(v) -> float:
+            return float(v or 0)
 
         editable = [
             {
                 "index": i,
-                "chord_root_mm": float(s["root_airfoil"]["chord"]),
-                "chord_tip_mm": float(s["tip_airfoil"]["chord"]),
-                "length_mm": float(s["length"]),
-                "sweep_mm": float(s["sweep"]),
-                "dihedral_rel_deg": _dih(s),
-                "incidence_deg": _inc(s),
+                "chord_root_mm": _f(s["root_airfoil"]["chord"]),
+                "chord_tip_mm": _f(s["tip_airfoil"]["chord"]),
+                "length_mm": _f(s["length"]),
+                "sweep_mm": _f(s["sweep"]),
+                "dihedral_rel_deg": _f(s["tip_airfoil"].get("dihedral_as_rotation_in_degrees")),
+                "incidence_deg": _f(s["tip_airfoil"].get("incidence")),
                 "airfoil": s["tip_airfoil"].get("airfoil"),
             }
             for i, s in enumerate(segs)
         ]
 
-        # Derived absolute walk (wing-local mm).
-        chord0 = float(segs[0]["root_airfoil"]["chord"])
-        per_station = [
-            {
-                "index": 0,
-                "xyz_le_mm": [0.0, 0.0, 0.0],
-                "chord_mm": chord0,
-                "accumulated_dihedral_deg": 0.0,
-                "te_x_mm": chord0,
-            }
-        ]
-        x = y = z = acc = 0.0
-        for i, s in enumerate(segs):
-            acc += _dih(s)
-            rad = math.radians(acc)
-            x += float(s["sweep"])
-            y += float(s["length"]) * math.cos(rad)
-            z += float(s["length"]) * math.sin(rad)
-            chord = float(s["tip_airfoil"]["chord"])
+        # Derived ABSOLUTE block — read the PERSISTED xsec positions (metres ->
+        # mm). Single source of truth; accumulated cant is recovered from the
+        # geometry itself (atan2 of the LE delta), matching from_asb.
+        per_station = []
+        prev = None
+        for i, xs in enumerate(wing_model.x_secs):
+            le = [round(_f(v) * 1000.0, 4) for v in (xs.xyz_le or [0.0, 0.0, 0.0])]
+            chord_mm = round(_f(xs.chord) * 1000.0, 4)
+            if prev is None:
+                cant = 0.0
+            else:
+                dy, dz = le[1] - prev[1], le[2] - prev[2]
+                cant = (
+                    math.degrees(math.atan2(dz, dy)) if (abs(dy) > 1e-9 or abs(dz) > 1e-9) else 0.0
+                )
             per_station.append(
                 {
-                    "index": i + 1,
-                    "xyz_le_mm": [round(x, 4), round(y, 4), round(z, 4)],
-                    "chord_mm": chord,
-                    "accumulated_dihedral_deg": round(acc, 4),
-                    "te_x_mm": round(x, 4) + chord,
+                    "index": i,
+                    "xyz_le_mm": le,
+                    "chord_mm": chord_mm,
+                    "twist_deg": round(_f(xs.twist), 4),
+                    "accumulated_dihedral_deg": round(cant, 4),
+                    "te_x_mm": round(le[0] + chord_mm, 4),
                 }
             )
+            prev = le
 
+        tip = per_station[-1]["xyz_le_mm"] if per_station else [0.0, 0.0, 0.0]
         return {
             "wing": wing,
             "units": "mm / degrees (WingConfig units)",
@@ -156,13 +168,16 @@ def _get_wing_geometry(db: Session, aeroplane_id: int, wing: str = "main_wing") 
             "derived": {
                 "per_station": per_station,
                 "wing_level": {
-                    "projected_semi_span_mm": round(y, 4),
-                    "total_arc_length_mm": round(sum(float(s["length"]) for s in segs), 4),
-                    "tip_xyz_le_mm": [round(x, 4), round(y, 4), round(z, 4)],
+                    "projected_semi_span_mm": tip[1],
+                    "tip_xyz_le_mm": tip,
                     "note": (
-                        "DERIVED / read-only — computed from the editable relative "
-                        "fields; TE_x = LE_x + chord. Edit via the relative geometry "
-                        "ops (SetSegment / SetXsec) or exact placement (SetXsecAbsolute)."
+                        "DERIVED / read-only — the actual persisted cross-section "
+                        "positions (what the viewer/ASB use); TE_x = LE_x + chord. "
+                        "Edit via the relative ops (SetSegment / SetXsec); for a full "
+                        "rebuild use ReplaceWingConfig. NOTE: 'chord_root_mm' in the "
+                        "editable block is read-only — a segment's root chord follows "
+                        "the previous segment's tip chord (continuity); set "
+                        "chord_tip_mm to taper."
                     ),
                 },
             },
@@ -656,8 +671,8 @@ def _apply_design_edits(db: Session, aeroplane_id: int, *, ops: list) -> dict:
     ----------
     ops:
         List of edit-op dicts, each with a ``type`` discriminator field.
-        Supported types: SetAssumption, SetXsec, AddXsec, RemoveXsec,
-        SetWingParam, ReplaceWingConfig.
+        Supported types: SetAssumption, SetXsec, SetSegment, AddXsec,
+        RemoveXsec, SetWingParam, ReplaceWingConfig.
 
     Diff accuracy note
     ------------------
