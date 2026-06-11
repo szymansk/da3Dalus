@@ -72,6 +72,106 @@ def _get_design_snapshot(db: Session, aeroplane_id: int) -> dict:
         return {"error": str(exc)}
 
 
+def _get_wing_geometry(db: Session, aeroplane_id: int, wing: str = "main_wing") -> dict:
+    """Hybrid geometry read for one wing (gh-958).
+
+    Returns BOTH (a) the editable RELATIVE per-segment fields the geometry
+    edit-ops change, and (b) a read-only DERIVED ABSOLUTE block (per-station
+    xyz_le, accumulated dihedral, TE_x = LE_x + chord, projected span) for
+    spatial reasoning. Units are mm / degrees (WingConfig units), matching the
+    edit-ops. The wing-local LE walk: x aft (sweep), y span
+    (length*cos(accumulated cant)), z up (length*sin(...)).
+    """
+    import math
+
+    try:
+        from app.models.aeroplanemodel import AeroplaneModel
+        from app.services.wing_service import get_wing_as_wingconfig
+
+        node = db.query(AeroplaneModel).filter(AeroplaneModel.id == aeroplane_id).first()
+        if node is None:
+            return {"error": f"Aeroplane {aeroplane_id} not found"}
+        try:
+            wc = get_wing_as_wingconfig(db, str(node.uuid), wing)
+        except Exception as exc:
+            return {"error": f"Wing {wing!r} not found ({exc})"}
+        segs = (wc or {}).get("segments") or []
+        if not segs:
+            return {"error": f"Wing {wing!r} has no segments"}
+
+        def _dih(s: dict) -> float:
+            return float(s["tip_airfoil"].get("dihedral_as_rotation_in_degrees", 0) or 0)
+
+        def _inc(s: dict) -> float:
+            return float(s["tip_airfoil"].get("incidence", 0) or 0)
+
+        editable = [
+            {
+                "index": i,
+                "chord_root_mm": float(s["root_airfoil"]["chord"]),
+                "chord_tip_mm": float(s["tip_airfoil"]["chord"]),
+                "length_mm": float(s["length"]),
+                "sweep_mm": float(s["sweep"]),
+                "dihedral_rel_deg": _dih(s),
+                "incidence_deg": _inc(s),
+                "airfoil": s["tip_airfoil"].get("airfoil"),
+            }
+            for i, s in enumerate(segs)
+        ]
+
+        # Derived absolute walk (wing-local mm).
+        chord0 = float(segs[0]["root_airfoil"]["chord"])
+        per_station = [
+            {
+                "index": 0,
+                "xyz_le_mm": [0.0, 0.0, 0.0],
+                "chord_mm": chord0,
+                "accumulated_dihedral_deg": 0.0,
+                "te_x_mm": chord0,
+            }
+        ]
+        x = y = z = acc = 0.0
+        for i, s in enumerate(segs):
+            acc += _dih(s)
+            rad = math.radians(acc)
+            x += float(s["sweep"])
+            y += float(s["length"]) * math.cos(rad)
+            z += float(s["length"]) * math.sin(rad)
+            chord = float(s["tip_airfoil"]["chord"])
+            per_station.append(
+                {
+                    "index": i + 1,
+                    "xyz_le_mm": [round(x, 4), round(y, 4), round(z, 4)],
+                    "chord_mm": chord,
+                    "accumulated_dihedral_deg": round(acc, 4),
+                    "te_x_mm": round(x, 4) + chord,
+                }
+            )
+
+        return {
+            "wing": wing,
+            "units": "mm / degrees (WingConfig units)",
+            "n_segments": len(segs),
+            "editable": editable,
+            "derived": {
+                "per_station": per_station,
+                "wing_level": {
+                    "projected_semi_span_mm": round(y, 4),
+                    "total_arc_length_mm": round(sum(float(s["length"]) for s in segs), 4),
+                    "tip_xyz_le_mm": [round(x, 4), round(y, 4), round(z, 4)],
+                    "note": (
+                        "DERIVED / read-only — computed from the editable relative "
+                        "fields; TE_x = LE_x + chord. Edit via the relative geometry "
+                        "ops (SetSegment / SetXsec) or exact placement (SetXsecAbsolute)."
+                    ),
+                },
+            },
+        }
+    except Exception as exc:
+        logger.exception("get_wing_geometry failed for aeroplane_id=%s", aeroplane_id)
+        return {"error": str(exc)}
+
+
 def _run_analysis(db: Session, aeroplane_id: int, kind: str = "polar") -> dict:
     """Trigger a fast analysis and return a concise summary dict.
 
@@ -450,6 +550,38 @@ _SCHEMA_RUN_ANALYSIS = {
     },
 }
 
+_SCHEMA_GET_WING_GEOMETRY = {
+    "type": "function",
+    "function": {
+        "name": "get_wing_geometry",
+        "description": (
+            "Read one wing's geometry in a HYBRID form. Returns 'editable' (the "
+            "RELATIVE per-segment fields the geometry edit-ops change: "
+            "chord_root_mm, chord_tip_mm, length_mm, sweep_mm, dihedral_rel_deg "
+            "[per-segment cant], incidence_deg, airfoil) AND 'derived' (READ-ONLY "
+            "absolute context per station: xyz_le_mm, chord_mm, "
+            "accumulated_dihedral_deg, te_x_mm = LE_x + chord, plus wing-level "
+            "projected span). Use 'derived' to reason about absolute shape (where "
+            "the LE/TE sit, how cant accumulates); edit only via the relative "
+            "fields. Units: mm / degrees. Call this before editing wing geometry."
+        ),
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "wing": {
+                    "type": "string",
+                    "description": (
+                        "Wing name (from get_design_snapshot.wing_names, e.g. "
+                        "'main_wing'). Defaults to 'main_wing'."
+                    ),
+                }
+            },
+            "required": [],
+        },
+    },
+}
+
+
 _SCHEMA_GET_VERSION_TREE = {
     "type": "function",
     "function": {
@@ -683,6 +815,10 @@ TOOL_REGISTRY: dict[str, ToolEntry] = {
         schema=_SCHEMA_GET_DESIGN_SNAPSHOT,
         impl=_get_design_snapshot,
     ),
+    "get_wing_geometry": ToolEntry(
+        schema=_SCHEMA_GET_WING_GEOMETRY,
+        impl=_get_wing_geometry,
+    ),
     "run_analysis": ToolEntry(
         schema=_SCHEMA_RUN_ANALYSIS,
         impl=_run_analysis,
@@ -743,7 +879,7 @@ def execute(name: str, db: Session, aeroplane_id: int, **kwargs: Any) -> dict:
         return {"error": f"Unknown tool {name!r}. Known tools: {known}"}
 
     # Read-retargeting: resolve to proposal head for read tools when a proposal is open.
-    _READ_RETARGETED_TOOLS = {"get_design_snapshot", "run_analysis"}
+    _READ_RETARGETED_TOOLS = {"get_design_snapshot", "get_wing_geometry", "run_analysis"}
     effective_id = (
         _effective_target_id(db, aeroplane_id) if name in _READ_RETARGETED_TOOLS else aeroplane_id
     )

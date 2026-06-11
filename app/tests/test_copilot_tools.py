@@ -32,15 +32,16 @@ def _make_db(client_and_db):
 
 
 class TestListSchemas:
-    def test_returns_five_schemas(self):
+    def test_returns_six_schemas(self):
         schemas = list_schemas()
-        assert len(schemas) == 5
+        assert len(schemas) == 6
 
     def test_schema_names(self):
         names = {s["function"]["name"] for s in list_schemas()}
-        # Slice 1 tools + Slice 2 write tools (gh-937/938)
+        # Slice 1 tools + Slice 2 write tools (gh-937/938) + geometry read (gh-958)
         assert names == {
             "get_design_snapshot",
+            "get_wing_geometry",
             "run_analysis",
             "get_version_tree",
             "apply_design_edits",
@@ -495,10 +496,11 @@ class TestPolarDragBreakdownWiring:
 
 
 class TestToolRegistry:
-    def test_registry_has_five_tools(self):
+    def test_registry_has_six_tools(self):
         # Slice 1: get_design_snapshot, run_analysis, get_version_tree
         # Slice 2 (gh-937/938): apply_design_edits, discard_proposal
-        assert len(tools_module.TOOL_REGISTRY) == 5
+        # Geometry read (gh-958): get_wing_geometry
+        assert len(tools_module.TOOL_REGISTRY) == 6
 
     def test_registry_keys_match_schema_names(self):
         for key, entry in tools_module.TOOL_REGISTRY.items():
