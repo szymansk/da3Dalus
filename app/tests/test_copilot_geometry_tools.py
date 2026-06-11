@@ -90,8 +90,8 @@ class TestGetWingGeometry:
         res = copilot_tools.execute("get_wing_geometry", db, plane.id, wing="main_wing")
         ps = res["derived"]["per_station"]
         assert len(ps) == len(wing_model.x_secs)
-        for st, xs in zip(ps, wing_model.x_secs):
-            for got, persisted in zip(st["xyz_le_mm"], xs.xyz_le):
+        for st, xs in zip(ps, wing_model.x_secs, strict=True):
+            for got, persisted in zip(st["xyz_le_mm"], xs.xyz_le, strict=True):
                 assert got == pytest.approx(float(persisted) * 1000.0, abs=1e-2)
         # the fixture carries dihedral, so z must be non-trivial somewhere —
         # this is the case the old hand-walk got wrong.
