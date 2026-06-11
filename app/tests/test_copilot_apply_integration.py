@@ -684,9 +684,7 @@ class TestApplyDesignEditsTool:
             with patch(_RECOMPUTE_PATH) as mock_recompute:
                 # After the mock recompute, inject fresh context on the proposal
                 def _fresh_recompute(db_s, uuid_s):
-                    node = db_s.query(AeroplaneModel).filter(
-                        AeroplaneModel.uuid == uuid_s
-                    ).first()
+                    node = db_s.query(AeroplaneModel).filter(AeroplaneModel.uuid == uuid_s).first()
                     if node is not None:
                         node.assumption_computation_context = {
                             "mass_kg": 1.2,
@@ -836,11 +834,12 @@ class TestReadRetargeting:
 
 
 class TestToolRegistryExtended:
-    def test_five_schemas_registered(self):
+    def test_six_schemas_registered(self):
         from app.services.copilot_tools import list_schemas
 
         schemas = list_schemas()
-        assert len(schemas) == 5
+        # +get_wing_geometry (gh-958)
+        assert len(schemas) == 6
 
     def test_new_tools_registered(self):
         from app.services.copilot_tools import list_schemas
@@ -1129,9 +1128,7 @@ class TestAddXsecWingletRegression:
 
             # Record the original tip Y position
             db.expire_all()
-            orig_wing = next(
-                (w for w in proposal_node.wings if w.name == "main_wing"), None
-            )
+            orig_wing = next((w for w in proposal_node.wings if w.name == "main_wing"), None)
             assert orig_wing is not None
             orig_tip_y = orig_wing.x_secs[-1].xyz_le[1]  # original tip Y (metres)
             n_segs = len(orig_wing.x_secs) - 1  # n xsecs = n_segs + 1
@@ -1156,9 +1153,7 @@ class TestAddXsecWingletRegression:
 
             db.expire_all()
             db.refresh(proposal_node)
-            new_wing = next(
-                (w for w in proposal_node.wings if w.name == "main_wing"), None
-            )
+            new_wing = next((w for w in proposal_node.wings if w.name == "main_wing"), None)
             assert new_wing is not None
 
             # New wing should have 1 extra xsec
@@ -1262,7 +1257,11 @@ class TestGh938Regressions:
                 result = apply_edits(
                     db,
                     str(proposal_node.uuid),
-                    [AddXsec(wing="main_wing", at_index=n_xsecs, chord=35.0, span=60.0, dihedral=75.0)],
+                    [
+                        AddXsec(
+                            wing="main_wing", at_index=n_xsecs, chord=35.0, span=60.0, dihedral=75.0
+                        )
+                    ],
                 )
             db.commit()
 
@@ -1299,7 +1298,15 @@ class TestGh938Regressions:
                 result = apply_edits(
                     db,
                     str(proposal_node.uuid),
-                    [AddXsec(wing="main_wing", at_index=over_estimated_index, chord=30.0, span=50.0, dihedral=80.0)],
+                    [
+                        AddXsec(
+                            wing="main_wing",
+                            at_index=over_estimated_index,
+                            chord=30.0,
+                            span=50.0,
+                            dihedral=80.0,
+                        )
+                    ],
                 )
             db.commit()
 
@@ -1468,6 +1475,7 @@ class TestSetXsecInteriorAndFields:
         db.commit()
         proposal_node = db.query(AeroplaneModel).filter(AeroplaneModel.id == branch.head_id).first()
         from app.services.wing_service import get_wing_as_wingconfig
+
         wc = get_wing_as_wingconfig(db, str(proposal_node.uuid), "main_wing")
         n_segs = len(wc["segments"])
         return plane, proposal_node, n_segs
@@ -1497,9 +1505,12 @@ class TestSetXsecInteriorAndFields:
 
             db.expire_all()
             from app.services.wing_service import get_wing_as_wingconfig
+
             wc = get_wing_as_wingconfig(db, str(proposal_node.uuid), "main_wing")
             # tip of seg[index-1] and root of seg[index] must both have the new chord
-            assert wc["segments"][interior_idx - 1]["tip_airfoil"]["chord"] == pytest.approx(new_chord)
+            assert wc["segments"][interior_idx - 1]["tip_airfoil"]["chord"] == pytest.approx(
+                new_chord
+            )
             assert wc["segments"][interior_idx]["root_airfoil"]["chord"] == pytest.approx(new_chord)
         finally:
             db.close()
@@ -1528,9 +1539,14 @@ class TestSetXsecInteriorAndFields:
 
             db.expire_all()
             from app.services.wing_service import get_wing_as_wingconfig
+
             wc = get_wing_as_wingconfig(db, str(proposal_node.uuid), "main_wing")
-            assert wc["segments"][interior_idx - 1]["tip_airfoil"]["incidence"] == pytest.approx(new_twist)
-            assert wc["segments"][interior_idx]["root_airfoil"]["incidence"] == pytest.approx(new_twist)
+            assert wc["segments"][interior_idx - 1]["tip_airfoil"]["incidence"] == pytest.approx(
+                new_twist
+            )
+            assert wc["segments"][interior_idx]["root_airfoil"]["incidence"] == pytest.approx(
+                new_twist
+            )
         finally:
             db.close()
 
@@ -1558,6 +1574,7 @@ class TestSetXsecInteriorAndFields:
 
             db.expire_all()
             from app.services.wing_service import get_wing_as_wingconfig
+
             wc = get_wing_as_wingconfig(db, str(proposal_node.uuid), "main_wing")
             assert wc["segments"][interior_idx - 1]["tip_airfoil"]["airfoil"] == new_airfoil
             assert wc["segments"][interior_idx]["root_airfoil"]["airfoil"] == new_airfoil
@@ -1594,6 +1611,7 @@ class TestSetXsecInteriorAndFields:
             # Verify the wing can be read back (geometry is consistent)
             db.expire_all()
             from app.services.wing_service import get_wing_as_wingconfig
+
             wc = get_wing_as_wingconfig(db, str(proposal_node.uuid), "main_wing")
             assert len(wc["segments"]) >= 2
         finally:
@@ -1620,6 +1638,7 @@ class TestSetXsecInteriorAndFields:
 
             db.expire_all()
             from app.services.wing_service import get_wing_as_wingconfig
+
             wc = get_wing_as_wingconfig(db, str(proposal_node.uuid), "main_wing")
             assert wc["segments"][-1]["tip_airfoil"]["chord"] == pytest.approx(new_chord)
         finally:
@@ -1646,6 +1665,7 @@ class TestSetXsecInteriorAndFields:
 
             db.expire_all()
             from app.services.wing_service import get_wing_as_wingconfig
+
             wc = get_wing_as_wingconfig(db, str(proposal_node.uuid), "main_wing")
             assert wc["segments"][-1]["tip_airfoil"]["incidence"] == pytest.approx(new_twist)
         finally:
@@ -1672,6 +1692,7 @@ class TestSetXsecInteriorAndFields:
 
             db.expire_all()
             from app.services.wing_service import get_wing_as_wingconfig
+
             wc = get_wing_as_wingconfig(db, str(proposal_node.uuid), "main_wing")
             assert wc["segments"][-1]["tip_airfoil"]["airfoil"] == new_airfoil
         finally:
@@ -1706,6 +1727,7 @@ class TestSetXsecInteriorAndFields:
             # Verify the wing can be read back (geometry is consistent)
             db.expire_all()
             from app.services.wing_service import get_wing_as_wingconfig
+
             wc = get_wing_as_wingconfig(db, str(proposal_node.uuid), "main_wing")
             assert len(wc["segments"]) > 0
         finally:
@@ -1727,9 +1749,9 @@ class TestRemoveXsecGuards:
             plane = _create_plane_with_branch(db)
             branch = get_or_open_proposal(db, plane.id)
             db.commit()
-            proposal_node = db.query(AeroplaneModel).filter(
-                AeroplaneModel.id == branch.head_id
-            ).first()
+            proposal_node = (
+                db.query(AeroplaneModel).filter(AeroplaneModel.id == branch.head_id).first()
+            )
 
             with patch(_RECOMPUTE_PATH):
                 result = apply_edits(
@@ -1783,9 +1805,9 @@ class TestRemoveXsecGuards:
 
             branch = get_or_open_proposal(db, plane.id)
             db.commit()
-            proposal_node = db.query(AeroplaneModel).filter(
-                AeroplaneModel.id == branch.head_id
-            ).first()
+            proposal_node = (
+                db.query(AeroplaneModel).filter(AeroplaneModel.id == branch.head_id).first()
+            )
 
             # n=1 segment → n_xsecs=2 → only interior index is none (0 and 1 are root/tip)
             # We need to verify the n < 2 guard.  With exactly 1 segment we can't have
@@ -1870,9 +1892,9 @@ class TestSetWingParam:
             plane = _create_plane_with_wc_wing(db)
             branch = get_or_open_proposal(db, plane.id)
             db.commit()
-            proposal_node = db.query(AeroplaneModel).filter(
-                AeroplaneModel.id == branch.head_id
-            ).first()
+            proposal_node = (
+                db.query(AeroplaneModel).filter(AeroplaneModel.id == branch.head_id).first()
+            )
 
             new_sweep = 25.0
 
@@ -1889,6 +1911,7 @@ class TestSetWingParam:
 
             db.expire_all()
             from app.services.wing_service import get_wing_as_wingconfig
+
             wc = get_wing_as_wingconfig(db, str(proposal_node.uuid), "main_wing")
             for seg in wc["segments"]:
                 assert seg["sweep"] == pytest.approx(new_sweep)
@@ -1909,9 +1932,9 @@ class TestSetWingParam:
             plane = _create_plane_with_wc_wing(db)
             branch = get_or_open_proposal(db, plane.id)
             db.commit()
-            proposal_node = db.query(AeroplaneModel).filter(
-                AeroplaneModel.id == branch.head_id
-            ).first()
+            proposal_node = (
+                db.query(AeroplaneModel).filter(AeroplaneModel.id == branch.head_id).first()
+            )
 
             new_dihedral = 4.0
 
@@ -1929,6 +1952,7 @@ class TestSetWingParam:
             # Verify the wing can be read back (geometry is consistent after dihedral apply)
             db.expire_all()
             from app.services.wing_service import get_wing_as_wingconfig
+
             wc = get_wing_as_wingconfig(db, str(proposal_node.uuid), "main_wing")
             assert len(wc["segments"]) > 0
         finally:
@@ -1946,9 +1970,9 @@ class TestSetWingParam:
             plane = _create_plane_with_wc_wing(db)
             branch = get_or_open_proposal(db, plane.id)
             db.commit()
-            proposal_node = db.query(AeroplaneModel).filter(
-                AeroplaneModel.id == branch.head_id
-            ).first()
+            proposal_node = (
+                db.query(AeroplaneModel).filter(AeroplaneModel.id == branch.head_id).first()
+            )
 
             with patch(_RECOMPUTE_PATH):
                 result = apply_edits(
@@ -1964,6 +1988,7 @@ class TestSetWingParam:
             # Verify both attributes were applied — sweep round-trips via xyz_le.x
             db.expire_all()
             from app.services.wing_service import get_wing_as_wingconfig
+
             wc = get_wing_as_wingconfig(db, str(proposal_node.uuid), "main_wing")
             # Sweep IS preserved via the in-memory dict: the WingConfig carries it
             for seg in wc["segments"]:
@@ -1980,9 +2005,9 @@ class TestSetWingParam:
             plane = _create_plane_with_branch(db)
             branch = get_or_open_proposal(db, plane.id)
             db.commit()
-            proposal_node = db.query(AeroplaneModel).filter(
-                AeroplaneModel.id == branch.head_id
-            ).first()
+            proposal_node = (
+                db.query(AeroplaneModel).filter(AeroplaneModel.id == branch.head_id).first()
+            )
 
             with patch(_RECOMPUTE_PATH):
                 result = apply_edits(
@@ -2012,14 +2037,15 @@ class TestReplaceWingConfig:
             plane = _create_plane_with_wc_wing(db)
             branch = get_or_open_proposal(db, plane.id)
             db.commit()
-            proposal_node = db.query(AeroplaneModel).filter(
-                AeroplaneModel.id == branch.head_id
-            ).first()
+            proposal_node = (
+                db.query(AeroplaneModel).filter(AeroplaneModel.id == branch.head_id).first()
+            )
 
             if _WC_PAYLOAD is None:
                 pytest.skip("WingConfig fixture not available")
 
             import copy
+
             new_payload = copy.deepcopy(_WC_PAYLOAD)
             # Modify root chord to distinguish from the original
             new_payload["segments"][0]["root_airfoil"]["chord"] = 321.0
@@ -2037,6 +2063,7 @@ class TestReplaceWingConfig:
 
             db.expire_all()
             from app.services.wing_service import get_wing_as_wingconfig
+
             wc = get_wing_as_wingconfig(db, str(proposal_node.uuid), "main_wing")
             assert wc["segments"][0]["root_airfoil"]["chord"] == pytest.approx(321.0)
         finally:
@@ -2049,9 +2076,9 @@ class TestReplaceWingConfig:
             plane = _create_plane_with_wc_wing(db)
             branch = get_or_open_proposal(db, plane.id)
             db.commit()
-            proposal_node = db.query(AeroplaneModel).filter(
-                AeroplaneModel.id == branch.head_id
-            ).first()
+            proposal_node = (
+                db.query(AeroplaneModel).filter(AeroplaneModel.id == branch.head_id).first()
+            )
 
             # Pass a totally invalid payload (missing required fields)
             bad_payload = {"segments": "not-a-list", "nose_pnt": "bad"}
@@ -2076,14 +2103,15 @@ class TestReplaceWingConfig:
             plane = _create_plane_with_wc_wing(db)
             branch = get_or_open_proposal(db, plane.id)
             db.commit()
-            proposal_node = db.query(AeroplaneModel).filter(
-                AeroplaneModel.id == branch.head_id
-            ).first()
+            proposal_node = (
+                db.query(AeroplaneModel).filter(AeroplaneModel.id == branch.head_id).first()
+            )
 
             if _WC_PAYLOAD is None:
                 pytest.skip("WingConfig fixture not available")
 
             import copy
+
             new_payload = copy.deepcopy(_WC_PAYLOAD)
             new_payload["segments"][0]["root_airfoil"]["chord"] = 250.0
 
@@ -2105,6 +2133,7 @@ class TestReplaceWingConfig:
 
             db.expire_all()
             from app.services.wing_service import get_wing_as_wingconfig
+
             wc = get_wing_as_wingconfig(db, str(proposal_node.uuid), "main_wing")
             assert wc["segments"][0]["root_airfoil"]["chord"] == pytest.approx(260.0)
         finally:
@@ -2126,9 +2155,9 @@ class TestRejectBranches:
             plane = _create_plane_with_branch(db)
             branch = get_or_open_proposal(db, plane.id)
             db.commit()
-            proposal_node = db.query(AeroplaneModel).filter(
-                AeroplaneModel.id == branch.head_id
-            ).first()
+            proposal_node = (
+                db.query(AeroplaneModel).filter(AeroplaneModel.id == branch.head_id).first()
+            )
 
             # Build a duck-typed op with a non-standard type to hit the else-branch
             class _UnknownOp:
@@ -2163,9 +2192,9 @@ class TestRejectBranches:
             plane = _create_plane_with_branch(db)
             branch = get_or_open_proposal(db, plane.id)
             db.commit()
-            proposal_node = db.query(AeroplaneModel).filter(
-                AeroplaneModel.id == branch.head_id
-            ).first()
+            proposal_node = (
+                db.query(AeroplaneModel).filter(AeroplaneModel.id == branch.head_id).first()
+            )
 
             # An op whose .wing property raises and whose model_dump() also raises —
             # exercises the fallback op_dict = {"type": op_type} at line 633-634.
@@ -2202,9 +2231,9 @@ class TestRejectBranches:
             plane = _create_plane_with_branch(db)
             branch = get_or_open_proposal(db, plane.id)
             db.commit()
-            proposal_node = db.query(AeroplaneModel).filter(
-                AeroplaneModel.id == branch.head_id
-            ).first()
+            proposal_node = (
+                db.query(AeroplaneModel).filter(AeroplaneModel.id == branch.head_id).first()
+            )
 
             with patch(_RECOMPUTE_PATH):
                 result = apply_edits(
@@ -2235,9 +2264,9 @@ class TestRecomputeExceptionNonFatal:
             plane = _create_plane_with_branch(db)
             branch = get_or_open_proposal(db, plane.id)
             db.commit()
-            proposal_node = db.query(AeroplaneModel).filter(
-                AeroplaneModel.id == branch.head_id
-            ).first()
+            proposal_node = (
+                db.query(AeroplaneModel).filter(AeroplaneModel.id == branch.head_id).first()
+            )
 
             # Patch recompute to raise instead of mocking it out
             with patch(
@@ -2277,9 +2306,9 @@ class TestWingWriteFailure:
             plane = _create_plane_with_wc_wing(db)
             branch = get_or_open_proposal(db, plane.id)
             db.commit()
-            proposal_node = db.query(AeroplaneModel).filter(
-                AeroplaneModel.id == branch.head_id
-            ).first()
+            proposal_node = (
+                db.query(AeroplaneModel).filter(AeroplaneModel.id == branch.head_id).first()
+            )
 
             with patch(_RECOMPUTE_PATH):
                 with patch(
@@ -2293,9 +2322,9 @@ class TestWingWriteFailure:
                     )
 
             # The wing write error is captured, not raised
-            assert any(
-                r.get("op", {}).get("type") == "WingWrite" for r in result["rejected"]
-            ), f"Expected WingWrite in rejected: {result['rejected']}"
+            assert any(r.get("op", {}).get("type") == "WingWrite" for r in result["rejected"]), (
+                f"Expected WingWrite in rejected: {result['rejected']}"
+            )
         finally:
             db.close()
 
@@ -2350,6 +2379,7 @@ class TestSetXsecRootFields:
         db.commit()
         proposal_node = db.query(AeroplaneModel).filter(AeroplaneModel.id == branch.head_id).first()
         from app.services.wing_service import get_wing_as_wingconfig
+
         wc = get_wing_as_wingconfig(db, str(proposal_node.uuid), "main_wing")
         n_segs = len(wc["segments"])
         return plane, proposal_node, n_segs
@@ -2374,6 +2404,7 @@ class TestSetXsecRootFields:
 
             db.expire_all()
             from app.services.wing_service import get_wing_as_wingconfig
+
             wc = get_wing_as_wingconfig(db, str(proposal_node.uuid), "main_wing")
             # Root incidence is preserved via the WingConfig roundtrip
             assert wc["segments"][0]["root_airfoil"]["incidence"] == pytest.approx(new_twist)
@@ -2400,6 +2431,7 @@ class TestSetXsecRootFields:
 
             db.expire_all()
             from app.services.wing_service import get_wing_as_wingconfig
+
             wc = get_wing_as_wingconfig(db, str(proposal_node.uuid), "main_wing")
             assert wc["segments"][0]["root_airfoil"]["airfoil"] == new_airfoil
         finally:
@@ -2429,6 +2461,7 @@ class TestSetXsecRootFields:
             # Wing is readable after dihedral apply
             db.expire_all()
             from app.services.wing_service import get_wing_as_wingconfig
+
             wc = get_wing_as_wingconfig(db, str(proposal_node.uuid), "main_wing")
             assert len(wc["segments"]) > 0
         finally:
@@ -2461,13 +2494,15 @@ class TestDefensiveDeadCodeGuards:
             plane = _create_plane_with_wc_wing(db)
             branch = get_or_open_proposal(db, plane.id)
             db.commit()
-            proposal_node = db.query(AeroplaneModel).filter(
-                AeroplaneModel.id == branch.head_id
-            ).first()
+            proposal_node = (
+                db.query(AeroplaneModel).filter(AeroplaneModel.id == branch.head_id).first()
+            )
 
             from app.services.wing_service import get_wing_as_wingconfig
+
             wc = get_wing_as_wingconfig(db, str(proposal_node.uuid), "main_wing")
             n_segs = len(wc["segments"])
+
             # For a non-empty wing, at_index = 0 < 1.
             # Since n_segs > 0: n_xsecs = n_segs + 1 >= 2, so at_index=0 < n_xsecs.
             # The mid-wing check: effective_at_index < n_xsecs AND effective_at_index < n+1.
@@ -2535,11 +2570,12 @@ class TestDefensiveDeadCodeGuards:
             plane = _create_plane_with_wc_wing(db)
             branch = get_or_open_proposal(db, plane.id)
             db.commit()
-            proposal_node = db.query(AeroplaneModel).filter(
-                AeroplaneModel.id == branch.head_id
-            ).first()
+            proposal_node = (
+                db.query(AeroplaneModel).filter(AeroplaneModel.id == branch.head_id).first()
+            )
 
             from app.services.wing_service import get_wing_as_wingconfig
+
             wc = get_wing_as_wingconfig(db, str(proposal_node.uuid), "main_wing")
             n_segs = len(wc["segments"])
 
@@ -2612,9 +2648,9 @@ class TestDefensiveDeadCodeGuards:
 
             branch = get_or_open_proposal(db, plane.id)
             db.commit()
-            proposal_node = db.query(AeroplaneModel).filter(
-                AeroplaneModel.id == branch.head_id
-            ).first()
+            proposal_node = (
+                db.query(AeroplaneModel).filter(AeroplaneModel.id == branch.head_id).first()
+            )
 
             # n=1 segment, n_xsecs=2; valid interior = 1..0 (empty).
             # Any index >= n_xsecs-1 == 1 is rejected by the first guard.

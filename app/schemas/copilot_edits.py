@@ -150,6 +150,46 @@ class SetWingParam(BaseModel):
     )
 
 
+class SetSegment(BaseModel):
+    """Set the RELATIVE fields of ONE segment, addressed by SEGMENT index.
+
+    This is the per-SEGMENT relative editor (distinct from SetXsec, which
+    addresses a STATION and touches both neighbouring segments' airfoils).
+    PREFER THIS for parametric shaping expressed per segment: washout/twist,
+    a dihedral (cant) break, taper by tip chord, segment length, sweep. Only
+    the fields you pass are changed. Units: mm / degrees. The cad_designer
+    continuity rule means a segment's root chord follows the previous
+    segment's tip chord, so set chord_tip_mm to taper.
+    """
+
+    type: Literal["SetSegment"] = "SetSegment"
+    wing: str = Field(..., description="Wing name (e.g. 'main_wing').")
+    seg_index: int = Field(
+        ...,
+        ge=0,
+        description="Zero-based SEGMENT index (0 = innermost segment at the root).",
+    )
+    length_mm: Optional[float] = Field(
+        None, gt=0, description="Spanwise length of this segment in mm."
+    )
+    sweep_mm: Optional[float] = Field(
+        None, ge=0, description="Sweep of this segment (tip aft of root) in mm, >= 0."
+    )
+    chord_tip_mm: Optional[float] = Field(
+        None,
+        gt=0,
+        description="Tip chord of this segment in mm; also becomes the next segment's root chord.",
+    )
+    dihedral_rel_deg: Optional[float] = Field(
+        None,
+        description="Per-segment dihedral/cant in degrees, RELATIVE to the previous segment (positive = up).",
+    )
+    incidence_deg: Optional[float] = Field(
+        None,
+        description="Incidence/twist of this segment's tip airfoil in degrees (negative outboard = washout).",
+    )
+
+
 class ReplaceWingConfig(BaseModel):
     """Replace the entire WingConfiguration for a wing (escape hatch for exotic geometry).
 
@@ -177,6 +217,7 @@ EditOp = Annotated[
     Union[
         SetAssumption,
         SetXsec,
+        SetSegment,
         AddXsec,
         RemoveXsec,
         SetWingParam,
@@ -188,6 +229,7 @@ EditOp = Annotated[
 _OP_MODELS = [
     SetAssumption,
     SetXsec,
+    SetSegment,
     AddXsec,
     RemoveXsec,
     SetWingParam,

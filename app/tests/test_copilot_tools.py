@@ -32,15 +32,16 @@ def _make_db(client_and_db):
 
 
 class TestListSchemas:
-    def test_returns_five_schemas(self):
+    def test_returns_six_schemas(self):
         schemas = list_schemas()
-        assert len(schemas) == 5
+        assert len(schemas) == 6
 
     def test_schema_names(self):
         names = {s["function"]["name"] for s in list_schemas()}
-        # Slice 1 tools + Slice 2 write tools (gh-937/938)
+        # Slice 1 tools + Slice 2 write tools (gh-937/938) + geometry read (gh-958)
         assert names == {
             "get_design_snapshot",
+            "get_wing_geometry",
             "run_analysis",
             "get_version_tree",
             "apply_design_edits",
@@ -56,9 +57,7 @@ class TestListSchemas:
             assert "parameters" in fn
 
     def test_run_analysis_schema_has_kind_param(self):
-        schema = next(
-            s for s in list_schemas() if s["function"]["name"] == "run_analysis"
-        )
+        schema = next(s for s in list_schemas() if s["function"]["name"] == "run_analysis")
         props = schema["function"]["parameters"]["properties"]
         assert "kind" in props
         assert props["kind"]["enum"] == ["polar", "stability"]
@@ -472,10 +471,7 @@ class TestPolarDragBreakdownWiring:
         _, SessionLocal = client_and_db
         with SessionLocal() as db:
             plane = make_aeroplane(db)
-            assert (
-                tools_module._polar_drag_breakdown(db, str(plane.uuid), None, None)
-                is None
-            )
+            assert tools_module._polar_drag_breakdown(db, str(plane.uuid), None, None) is None
 
     def test_breakdown_swallows_errors_and_returns_none(self, client_and_db):
         import numpy as np
@@ -495,10 +491,11 @@ class TestPolarDragBreakdownWiring:
 
 
 class TestToolRegistry:
-    def test_registry_has_five_tools(self):
+    def test_registry_has_six_tools(self):
         # Slice 1: get_design_snapshot, run_analysis, get_version_tree
         # Slice 2 (gh-937/938): apply_design_edits, discard_proposal
-        assert len(tools_module.TOOL_REGISTRY) == 5
+        # Geometry read (gh-958): get_wing_geometry
+        assert len(tools_module.TOOL_REGISTRY) == 6
 
     def test_registry_keys_match_schema_names(self):
         for key, entry in tools_module.TOOL_REGISTRY.items():
@@ -529,16 +526,22 @@ class TestStabilityNeutralPointSingleSource:
             # A fresh run would yield a DIFFERENT (divergent) neutral point
             async def _fake_summary(*a, **k):
                 return SimpleNamespace(
-                    static_margin_pct=30.0, stability_class="stable",
-                    neutral_point_x=0.109, cg_x=0.066, Cma=-0.5, Cnb=0.1, Clb=-0.05,
-                    is_statically_stable=True, is_directionally_stable=True,
-                    is_laterally_stable=True, mac=0.14,
-                    cg_range_forward=0.05, cg_range_aft=0.07,
+                    static_margin_pct=30.0,
+                    stability_class="stable",
+                    neutral_point_x=0.109,
+                    cg_x=0.066,
+                    Cma=-0.5,
+                    Cnb=0.1,
+                    Clb=-0.05,
+                    is_statically_stable=True,
+                    is_directionally_stable=True,
+                    is_laterally_stable=True,
+                    mac=0.14,
+                    cg_range_forward=0.05,
+                    cg_range_aft=0.07,
                 )
 
-            with patch(
-                "app.services.stability_service.get_stability_summary", _fake_summary
-            ):
+            with patch("app.services.stability_service.get_stability_summary", _fake_summary):
                 out = asyncio.run(tools_module._run_stability_async(db, uuid))
 
         # The authoritative context NP (0.0802) wins over the run's 0.109
