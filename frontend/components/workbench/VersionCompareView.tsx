@@ -31,6 +31,7 @@ import {
   toTail,
 } from "@/lib/metricsAdapters";
 import { renderSymbol } from "@/components/workbench/renderSymbol";
+import { isAgentAuthor, authorLabel } from "@/lib/versionProvenance";
 import type { GaugeData, MetricItem } from "@/components/workbench/metrics-dashboard/metricsTypes";
 
 // ---------------------------------------------------------------------------
@@ -337,12 +338,6 @@ function formatTimestamp(iso: string): string {
   }
 }
 
-/** Human-readable author label. */
-function formatAuthor(createdBy: string | null): string {
-  if (createdBy === "ai") return "ai";
-  if (createdBy === null || createdBy === "") return "unknown";
-  return createdBy;
-}
 
 interface NodeIdentityHeaderProps {
   readonly node: VersionNode;
@@ -363,7 +358,7 @@ interface NodeIdentityHeaderProps {
  *   - timestamp (created_at, formatted)
  */
 function NodeIdentityHeader({ node, side }: NodeIdentityHeaderProps) {
-  const isAi = node.created_by === "ai";
+  const isAi = isAgentAuthor(node.created_by);
   const sideColor =
     side === "A"
       ? { chip: "bg-primary/20 text-primary", dot: "bg-primary" }
@@ -415,7 +410,7 @@ function NodeIdentityHeader({ node, side }: NodeIdentityHeaderProps) {
         </span>
         {/* Author */}
         <span className="rounded bg-muted/60 px-1 py-0.5 font-[family-name:var(--font-geist-mono)] text-[9px] text-muted-foreground">
-          {formatAuthor(node.created_by)}
+          {authorLabel(node.created_by)}
         </span>
       </div>
 

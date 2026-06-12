@@ -13,6 +13,7 @@
 import React from "react";
 import { Bot, User } from "lucide-react";
 import type { GraphRow as GraphRowData } from "@/types/versionGraph";
+import { isAgentAuthor, authorLabel } from "@/lib/versionProvenance";
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -44,7 +45,7 @@ function svgWidth(laneCount: number): number {
 // ---------------------------------------------------------------------------
 
 function NodeAvatar({ createdBy }: { readonly createdBy: string | null }) {
-  const isAi = createdBy === "ai";
+  const isAi = isAgentAuthor(createdBy);
   return (
     <span
       className={`inline-flex h-4 w-4 shrink-0 items-center justify-center rounded-full ${
@@ -188,12 +189,7 @@ export function GraphRow({
   const label = node.version_label ?? node.name;
   const isCurrentHead = node.id === currentHeadId;
 
-  function resolveAuthor(createdBy: string | null): string {
-    if (createdBy === "ai") return "ai";
-    if (createdBy) return createdBy;
-    return "unknown";
-  }
-  const authorText = resolveAuthor(node.created_by);
+  const authorText = authorLabel(node.created_by);
 
   const secondLine = [
     authorText,
