@@ -314,35 +314,86 @@ function MetricRow({ symbol, valA, valB, labelA, labelB, differs }: MetricRowPro
 }
 
 // ---------------------------------------------------------------------------
-// Node header
+// Node identity header (gh-961) — disambiguates even when version_label is
+// shared between both sides.
 // ---------------------------------------------------------------------------
 
-interface NodeHeaderProps {
+/**
+ * Format an ISO timestamp string to a short locale date + time string.
+ * Uses "en-GB" for unambiguous day/month order (e.g. "1 Jan 2026, 08:00").
+ */
+function formatTimestamp(iso: string): string {
+  try {
+    const d = new Date(iso);
+    return d.toLocaleString("en-GB", {
+      day: "numeric",
+      month: "short",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+  } catch {
+    return iso;
+  }
+}
+
+/** Human-readable author label. */
+function formatAuthor(createdBy: string | null): string {
+  if (createdBy === "ai") return "ai";
+  if (createdBy === null || createdBy === "") return "unknown";
+  return createdBy;
+}
+
+interface NodeIdentityHeaderProps {
   readonly node: VersionNode;
   readonly side: "A" | "B";
 }
 
-function NodeHeader({ node, side }: NodeHeaderProps) {
+/**
+ * Rich header for one compare column.
+ *
+ * Always shows (making both sides unambiguous even when `version_label` is
+ * identical):
+ *   - A/B marker chip (orange for A, violet for B)
+ *   - `version_label ?? name` title
+ *   - snapshot / HEAD tag
+ *   - node id pill (#<id>)
+ *   - branch pill (branch <branch_id> | legacy)
+ *   - author chip (created_by)
+ *   - timestamp (created_at, formatted)
+ */
+function NodeIdentityHeader({ node, side }: NodeIdentityHeaderProps) {
   const isAi = node.created_by === "ai";
+  const sideColor =
+    side === "A"
+      ? { chip: "bg-primary/20 text-primary", dot: "bg-primary" }
+      : { chip: "bg-violet-500/20 text-violet-400", dot: "bg-violet-400" };
+
   return (
-    <div className="flex flex-col gap-0.5 px-2">
-      <div className="flex items-center gap-1.5">
+    <div className="flex flex-col gap-1 px-2">
+      {/* Title row: A/B marker + label + snapshot/HEAD tag */}
+      <div className="flex items-center gap-1.5 flex-wrap">
         <span
-          className={`inline-flex h-4 w-4 shrink-0 items-center justify-center rounded-full text-[9px] font-bold ${
-            side === "A"
-              ? "bg-primary/20 text-primary"
-              : "bg-violet-500/20 text-violet-400"
-          }`}
-          aria-hidden="true"
+          className={`inline-flex h-4 w-4 shrink-0 items-center justify-center rounded-full text-[9px] font-bold ${sideColor.chip}`}
+          data-testid={`compare-side-marker-${side}`}
         >
           {side}
         </span>
+        {/* Lane colour dot */}
+        <span
+          className={`inline-block h-2 w-2 shrink-0 rounded-full ${sideColor.dot}`}
+          aria-hidden="true"
+        />
         <span className="truncate font-[family-name:var(--font-jetbrains-mono)] text-[12px] font-semibold text-foreground">
           {nodeLabel(node)}
         </span>
-        {node.is_immutable && (
+        {node.is_immutable ? (
           <span className="rounded-full bg-amber-500/15 px-1 py-0.5 text-[9px] font-medium text-amber-400">
             snapshot
+          </span>
+        ) : (
+          <span className="rounded-full bg-emerald-500/15 px-1 py-0.5 text-[9px] font-medium text-emerald-400">
+            HEAD
           </span>
         )}
         {isAi && (
@@ -351,6 +402,34 @@ function NodeHeader({ node, side }: NodeHeaderProps) {
           </span>
         )}
       </div>
+
+      {/* Identity row: node id + branch + author */}
+      <div className="flex items-center gap-1.5 flex-wrap pl-6">
+        {/* Node id */}
+        <span className="rounded bg-muted/60 px-1 py-0.5 font-[family-name:var(--font-geist-mono)] text-[9px] text-muted-foreground">
+          #{node.id}
+        </span>
+        {/* Branch */}
+        <span className="rounded bg-muted/60 px-1 py-0.5 font-[family-name:var(--font-geist-mono)] text-[9px] text-muted-foreground">
+          {node.branch_id != null ? `branch ${node.branch_id}` : "legacy"}
+        </span>
+        {/* Author */}
+        <span className="rounded bg-muted/60 px-1 py-0.5 font-[family-name:var(--font-geist-mono)] text-[9px] text-muted-foreground">
+          {formatAuthor(node.created_by)}
+        </span>
+      </div>
+
+      {/* Timestamp row */}
+      <div className="pl-6">
+        <time
+          dateTime={node.created_at}
+          className="font-[family-name:var(--font-geist-mono)] text-[9px] text-subtle-foreground"
+        >
+          {formatTimestamp(node.created_at)}
+        </time>
+      </div>
+
+      {/* Optional version note */}
       {node.version_note && (
         <p className="pl-6 text-[10px] text-muted-foreground line-clamp-1">
           {node.version_note}
@@ -415,11 +494,11 @@ export function VersionCompareView({
           <>
             {/* Column headers */}
             <div className="mb-4 grid grid-cols-[1fr_auto_1fr] items-center gap-2">
-              <NodeHeader node={compareOut.node_a} side="A" />
+              <NodeIdentityHeader node={compareOut.node_a} side="A" />
               <div className="flex h-6 w-6 items-center justify-center text-muted-foreground/40">
                 <ArrowLeftRight size={11} />
               </div>
-              <NodeHeader node={compareOut.node_b} side="B" />
+              <NodeIdentityHeader node={compareOut.node_b} side="B" />
             </div>
 
             {/* Column label row */}

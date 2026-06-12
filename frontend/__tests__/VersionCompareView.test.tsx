@@ -413,4 +413,107 @@ describe("VersionCompareView (gh-907)", () => {
     expect(row).not.toBeNull();
     expect(row?.getAttribute("data-differs")).toBe("true");
   });
+
+  // -------------------------------------------------------------------------
+  // 10. Disambiguation: both nodes share the same version_label but differ
+  //     in id, branch_id, created_by, created_at → header must expose all.
+  // -------------------------------------------------------------------------
+  describe("NodeIdentityHeader disambiguation (gh-961)", () => {
+    const SAME_LABEL_A: VersionNode = {
+      id: 11,
+      uuid: "dis-aaa",
+      name: "My Plane",
+      branch_id: 1,
+      predecessor_id: null,
+      root_id: 11,
+      is_immutable: true,
+      version_label: "v1.0",
+      version_note: null,
+      created_by: "human",
+      provenance_message_id: null,
+      preview_png: null,
+      created_at: "2026-01-01T08:00:00Z",
+      updated_at: "2026-01-01T08:00:00Z",
+    };
+
+    const SAME_LABEL_B: VersionNode = {
+      id: 22,
+      uuid: "dis-bbb",
+      name: "My Plane",
+      branch_id: 3,
+      predecessor_id: 11,
+      root_id: 11,
+      is_immutable: true,
+      version_label: "v1.0",
+      version_note: null,
+      created_by: "ai",
+      provenance_message_id: null,
+      preview_png: null,
+      created_at: "2026-02-15T14:30:00Z",
+      updated_at: "2026-02-15T14:30:00Z",
+    };
+
+    function renderSameLabel() {
+      const compareOut: CompareOut = {
+        node_a: SAME_LABEL_A,
+        node_b: SAME_LABEL_B,
+        metrics_a: null,
+        metrics_b: null,
+      };
+      return render(
+        <VersionCompareView
+          compareOut={compareOut}
+          isLoading={false}
+          error={null}
+          onClose={vi.fn()}
+        />,
+      );
+    }
+
+    it("shows A and B marker chips", () => {
+      renderSameLabel();
+      // Both markers must be present even when labels are identical
+      expect(screen.getAllByText("A").length).toBeGreaterThan(0);
+      expect(screen.getAllByText("B").length).toBeGreaterThan(0);
+    });
+
+    it("exposes node id for side A (#11) in the header", () => {
+      renderSameLabel();
+      expect(screen.getByText(/#11/)).toBeDefined();
+    });
+
+    it("exposes node id for side B (#22) in the header", () => {
+      renderSameLabel();
+      expect(screen.getByText(/#22/)).toBeDefined();
+    });
+
+    it("exposes branch ids for both sides (branch 1 and branch 3)", () => {
+      renderSameLabel();
+      expect(screen.getByText(/branch\s+1/i)).toBeDefined();
+      expect(screen.getByText(/branch\s+3/i)).toBeDefined();
+    });
+
+    it("exposes created_by author for both nodes", () => {
+      renderSameLabel();
+      // Side A is human, side B is ai — both must appear
+      expect(screen.getAllByText(/human|you/i).length).toBeGreaterThan(0);
+      // ai label already existed but let's confirm it's from the identity section
+      expect(screen.getAllByText(/ai/i).length).toBeGreaterThan(0);
+    });
+
+    it("exposes timestamps for both nodes", () => {
+      renderSameLabel();
+      // Both created_at dates must be distinguishable in the rendered output
+      const text = document.body.textContent ?? "";
+      // Jan 2026 = 2026-01-01 and Feb 2026 = 2026-02-15
+      expect(text).toMatch(/Jan|01[-/]01|2026-01/i);
+      expect(text).toMatch(/Feb|02[-/]15|2026-02/i);
+    });
+
+    it("still renders the wrapper structure when metrics are null", () => {
+      const { container } = renderSameLabel();
+      const wrapper = container.querySelector('[data-testid="version-compare-view"]');
+      expect(wrapper).not.toBeNull();
+    });
+  });
 });
