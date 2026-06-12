@@ -113,10 +113,10 @@ function buildContext(tree: TreeOut): LayoutContext {
     }
   }
 
-  const mainBranch =
-    tree.branches.find((b) => b.is_main) ??
-    tree.branches.find((b) => b.name === "main") ??
-    null;
+  // is_main is the SOLE authority for which branch is "main" — a branch may be
+  // literally named "main" yet have been superseded by an adopted branch
+  // (is_main=false). Never infer main-ness from the name.
+  const mainBranch = tree.branches.find((b) => b.is_main) ?? null;
 
   return {
     sorted,
@@ -147,7 +147,7 @@ function getForkRowIndex(b: BranchOut, ctx: LayoutContext): number {
 }
 
 function isMainBranch(b: BranchOut): boolean {
-  return b.is_main || b.name === "main";
+  return b.is_main;
 }
 
 function makeBranchColor(): (b: BranchOut) => string {
@@ -293,7 +293,7 @@ function buildPill(
 
   const isMain = isMainBranch(bOut);
   return {
-    text: isMain ? "★ main" : `⎇ ${bOut.name}`,
+    text: `${isMain ? "★" : "⎇"} ${bOut.name}`,
     isMain,
     color: bMeta.color,
   };

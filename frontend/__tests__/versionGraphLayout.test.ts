@@ -530,3 +530,56 @@ describe("main tip pill", () => {
     }
   });
 });
+
+// ---------------------------------------------------------------------------
+// Adopted branch: is_main is the SOLE authority, NOT the branch name.
+//
+// Real-world case (root 8 "Olek"): a `copilot-proposal` branch was adopted as
+// is_main, while the branch literally named "main" is is_main=false. The graph
+// must treat the is_main branch as the active main (lane 0, star pill showing
+// its real name), and the name "main" branch as an ordinary branch.
+// ---------------------------------------------------------------------------
+
+describe("adopted non-'main'-named branch", () => {
+  // branch 2 "main" (is_main FALSE, head 8) ; branch 23 "with segments" (head 43) ;
+  // branch 25 "copilot-proposal" (is_main TRUE, head 45)
+  const TREE_ADOPTED: TreeOut = {
+    root_id: 8,
+    nodes: [
+      node(45, 25, null, "2026-06-11T20:06:00Z", { is_head: true, created_by: "copilot" }),
+      node(43, 23, null, "2026-06-11T07:15:00Z", { is_head: true, created_by: "human" }),
+      node(42, 2, null, "2026-06-11T07:15:00Z", { is_immutable: true, created_by: "human" }),
+      node(8, 2, 42, "2026-04-24T10:48:00Z", { is_head: true }),
+    ],
+    branches: [
+      branch(2, "main", 8, false),
+      branch(23, "with segments", 43, false),
+      branch(25, "copilot-proposal", 45, true),
+    ],
+  };
+
+  it("marks exactly ONE pill as the active main", () => {
+    const layout = computeGraphLayout(TREE_ADOPTED);
+    const mainPills = layout.rows.filter((r) => r.pill?.isMain);
+    expect(mainPills).toHaveLength(1);
+    expect(mainPills[0].node.branch_id).toBe(25); // copilot-proposal, the is_main one
+  });
+
+  it("the is_main branch is the active one even though it is not named 'main'", () => {
+    const layout = computeGraphLayout(TREE_ADOPTED);
+    const copilotTip = layout.rows.find((r) => r.node.id === 45)!;
+    expect(copilotTip.pill?.isMain).toBe(true);
+    expect(copilotTip.pill?.text).toContain("copilot-proposal");
+    expect(copilotTip.lane).toBe(0);
+    expect(copilotTip.color).toBe(LANE_COLORS.main);
+  });
+
+  it("the branch literally named 'main' but not is_main is an ordinary branch", () => {
+    const layout = computeGraphLayout(TREE_ADOPTED);
+    const namedMainTip = layout.rows.find((r) => r.node.id === 8)!;
+    expect(namedMainTip.pill?.isMain).toBe(false);
+    expect(namedMainTip.pill?.text).toContain("main");
+    expect(namedMainTip.lane).not.toBe(0);
+    expect(namedMainTip.color).not.toBe(LANE_COLORS.main);
+  });
+});
