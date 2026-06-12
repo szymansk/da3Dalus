@@ -147,7 +147,9 @@ function buildTurbulatorNode(
   const turb = xsec.turbulator;
   if (!turb || typeof turb !== "object") return null;
 
-  const turbObj = turb as Record<string, unknown>;
+  // `turb` is a typed Turbulator; go through `unknown` to read its dynamic
+  // fields as a record (the runtime type-guards below keep this safe).
+  const turbObj = turb as unknown as Record<string, unknown>;
   const form = (turbObj.form as string) ?? "zigzag";
   const posRoot = typeof turbObj.position_root === "number"
     ? (turbObj.position_root as number).toFixed(2)
