@@ -10,7 +10,6 @@
  *   line 2: <author> · <relative date+time> · <note|state>
  */
 
-import React from "react";
 import { Bot, User } from "lucide-react";
 import type { GraphRow as GraphRowData } from "@/types/versionGraph";
 import { isAgentAuthor, authorLabel } from "@/lib/versionProvenance";
@@ -205,9 +204,16 @@ export function GraphRow({
     <div
       data-testid={`graph-row-${node.id}`}
       role="row"
+      tabIndex={0}
       aria-selected={isSelected}
       onClick={() => onSelect(node.id)}
-      className={`flex cursor-pointer select-none items-center gap-2 px-2 transition-colors ${
+      onKeyDown={(e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          onSelect(node.id);
+        }
+      }}
+      className={`flex cursor-pointer select-none items-center gap-2 px-2 transition-colors focus:outline-none focus-visible:ring-1 focus-visible:ring-primary ${
         isSelected
           ? "border-l-2 border-primary bg-primary/5"
           : "border-l-2 border-transparent hover:bg-sidebar-accent/30"

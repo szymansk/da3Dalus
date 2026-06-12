@@ -397,13 +397,13 @@ function OverlayContent({
 // ---------------------------------------------------------------------------
 
 export interface VersionGraphOverlayProps {
-  rootId: number | null;
-  currentHeadId: number | null;
-  aeroplaneId: number | null;
-  aeroplaneLabel?: string;
-  onClose: () => void;
+  readonly rootId: number | null;
+  readonly currentHeadId: number | null;
+  readonly aeroplaneId: number | null;
+  readonly aeroplaneLabel?: string;
+  readonly onClose: () => void;
   /** Called after a branch operation lands — argument is the new head's UUID. */
-  onSwitchAeroplane?: (uuid: string) => void;
+  readonly onSwitchAeroplane?: (uuid: string) => void;
 }
 
 export function VersionGraphOverlay({
@@ -436,8 +436,10 @@ export function VersionGraphOverlay({
   // Discard confirm
   const [discardPending, setDiscardPending] = useState(false);
 
-  // Derive compare fetch IDs
-  const compareIds = compareSet.size === 2 ? [...compareSet] : null;
+  // Derive compare fetch IDs. Sort so A/B assignment is deterministic (lower
+  // node id = A), independent of the order the user ticked the checkboxes.
+  const compareIds =
+    compareSet.size === 2 ? [...compareSet].sort((a, b) => a - b) : null;
   const compareIdA = compareIds?.[0] ?? null;
   const compareIdB = compareIds?.[1] ?? null;
 
@@ -467,13 +469,21 @@ export function VersionGraphOverlay({
 
   useEffect(() => {
     function handleKeyDown(e: KeyboardEvent) {
-      if (e.key === "Escape") {
+      if (e.key !== "Escape") return;
+      // Dismiss the innermost open layer first, only closing the overlay last.
+      if (activeInput !== null) {
+        setActiveInput(null);
+      } else if (discardPending) {
+        setDiscardPending(false);
+      } else if (compareOpen) {
+        setCompareOpen(false);
+      } else {
         onClose();
       }
     }
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [onClose]);
+  }, [onClose, compareOpen, activeInput, discardPending]);
 
   // ---------------------------------------------------------------------------
   // Orchestration helpers (lifted from VersionHistoryPanel)
@@ -486,11 +496,18 @@ export function VersionGraphOverlay({
       try {
         const result = await fn();
         const freshTree = await mutate();
-        if (onSwitchAeroplane && freshTree) {
+        if (onSwitchAeroplane) {
           const headId = getHeadId(result);
-          const headNode = freshTree.nodes.find((n) => n.id === headId);
+          const headNode = freshTree?.nodes.find((n) => n.id === headId);
           if (headNode) {
             onSwitchAeroplane(headNode.uuid);
+          } else {
+            // The op landed on the backend but we couldn't locate the new head
+            // in the refetched tree — surface it rather than leaving the user
+            // on a stale head with no feedback.
+            setActionError(
+              "Operation succeeded but the workbench could not switch to the new version. Reload to continue editing it.",
+            );
           }
         }
       } catch (err) {
@@ -522,6 +539,15 @@ export function VersionGraphOverlay({
   // Compare handlers
   // ---------------------------------------------------------------------------
 
+  // Selecting a different node clears any stale action error and dismisses the
+  // inline input / discard-confirm that belonged to the previous selection.
+  const handleSelectNode = useCallback((nodeId: number) => {
+    setSelectedNodeId(nodeId);
+    setActionError(null);
+    setActiveInput(null);
+    setDiscardPending(false);
+  }, []);
+
   const handleCheckNode = useCallback((nodeId: number) => {
     setCompareSet((prev) => {
       const next = new Set(prev);
@@ -542,7 +568,10 @@ export function VersionGraphOverlay({
   const handleToolbarActionClick = useCallback(
     (action: "snapshot" | "branchFrom" | "restore" | "adopt" | "discard" | null) => {
       if (action === "adopt") {
-        if (!selectedBranch) return;
+        if (!selectedBranch) {
+          setActionError("No branch selected — cannot adopt.");
+          return;
+        }
         void runBranchOp(
           () => actions.adoptBranch(selectedBranch.id),
           (branch) => branch.head_id,
@@ -562,13 +591,19 @@ export function VersionGraphOverlay({
   const handleNameConfirm = useCallback(
     async (name: string) => {
       if (activeInput === "snapshot") {
-        if (!aeroplaneId) return;
+        if (!aeroplaneId) {
+          setActionError("No aeroplane selected — cannot snapshot.");
+          return;
+        }
         await run(() => actions.snapshot({ label: name }));
         setActiveInput(null);
         return;
       }
       if (activeInput === "branchFrom") {
-        if (!selectedNode) return;
+        if (!selectedNode) {
+          setActionError("No node selected — cannot branch.");
+          return;
+        }
         await runBranchOp(
           () => actions.createBranch(selectedNode.id, { name }),
           (branch) => branch.head_id,
@@ -577,7 +612,10 @@ export function VersionGraphOverlay({
         return;
       }
       if (activeInput === "restore") {
-        if (!selectedNode) return;
+        if (!selectedNode) {
+          setActionError("No node selected — cannot restore.");
+          return;
+        }
         await runBranchOp(
           () => actions.restore(selectedNode.id, { name }),
           (branch) => branch.head_id,
@@ -593,7 +631,10 @@ export function VersionGraphOverlay({
   }, []);
 
   const handleConfirmDiscard = useCallback(() => {
-    if (!selectedBranch) return;
+    if (!selectedBranch) {
+      setActionError("No branch selected — cannot discard.");
+      return;
+    }
     setDiscardPending(false);
     void run(() => actions.discardBranch(selectedBranch.id));
   }, [selectedBranch, actions, run]);
@@ -620,6 +661,7 @@ export function VersionGraphOverlay({
       {/* Modal card — stop propagation so backdrop click doesn't fire on card */}
       <div
         role="dialog"
+        aria-modal="true"
         aria-label="Version graph"
         className="relative flex max-h-[80vh] w-[80vw] max-w-[1100px] flex-col rounded-xl border border-border bg-card shadow-2xl"
         onClick={(e) => e.stopPropagation()}
@@ -685,7 +727,7 @@ export function VersionGraphOverlay({
               currentHeadId={currentHeadId}
               selectedNodeId={selectedNodeId}
               compareSet={compareSet}
-              onSelectNode={setSelectedNodeId}
+              onSelectNode={handleSelectNode}
               onCheckNode={handleCheckNode}
             />
           </div>

@@ -362,6 +362,82 @@ describe("fork renders as branch-off (not merge)", () => {
 });
 
 // ---------------------------------------------------------------------------
+// 4c. Two branches forking from the SAME parent row
+// ---------------------------------------------------------------------------
+//
+//  Both branchA and branchB diverge from the SAME main node (node 2).
+//  Their fork rows coincide. Only ONE curve slot is drawn on the shared fork
+//  row (first-come), but BOTH child lanes must still terminate their vertical
+//  rail one row above the fork row — otherwise the second branch reintroduces
+//  the merge-look bug (vertical stub + no curve).
+//
+//  Timeline (newest first):
+//    node3  main     pred=2   2026-06-10  (main head)        row0
+//    node4  branchA  pred=2   2026-06-09  (branchA tip)      row1
+//    node5  branchB  pred=2   2026-06-08  (branchB tip)      row2
+//    node2  main     pred=1   2026-06-07  (SHARED fork row)  row3
+//    node1  main     pred=null 2026-06-06 (root)             row4
+//
+//  branchA: tipRow=1, forkRow=3 → lane 1, rail rows[1..2]
+//  branchB: tipRow=2, forkRow=3 → lane 2, rail rows[2..2]
+//  On row3 (shared fork): neither lane 1 nor lane 2 has a rail; exactly one fork.
+
+const SAME_PARENT_NODES: TreeNodeOut[] = [
+  node(3, 1, 2, "2026-06-10T00:00:00Z", { is_head: true }),
+  node(4, 2, 2, "2026-06-09T00:00:00Z", { is_head: true }),
+  node(5, 3, 2, "2026-06-08T00:00:00Z", { is_head: true }),
+  node(2, 1, 1, "2026-06-07T00:00:00Z", { is_immutable: true }),
+  node(1, 1, null, "2026-06-06T00:00:00Z", { is_immutable: true }),
+];
+
+const SAME_PARENT_BRANCHES: BranchOut[] = [
+  branch(1, "main", 3, true),
+  branch(2, "feat/branch-A", 4, false),
+  branch(3, "fix/branch-B", 5, false),
+];
+
+const TREE_SAME_PARENT: TreeOut = {
+  root_id: 1,
+  nodes: SAME_PARENT_NODES,
+  branches: SAME_PARENT_BRANCHES,
+};
+
+describe("two branches from the same parent row", () => {
+  it("on the shared fork row, NEITHER child lane has a vertical rail", () => {
+    const layout = computeGraphLayout(TREE_SAME_PARENT);
+    const forkRow = layout.rows.find((r) => r.node.id === 2)!; // shared parent
+    // Only the main backbone lane should remain on the fork row.
+    expect(forkRow.rails.map((r) => r.lane)).toEqual([0]);
+  });
+
+  it("exactly one fork is set on the shared fork row", () => {
+    const layout = computeGraphLayout(TREE_SAME_PARENT);
+    const forkRow = layout.rows.find((r) => r.node.id === 2)!;
+    expect(forkRow.fork).not.toBeNull();
+    expect(forkRow.fork!.parentLane).toBe(0);
+  });
+
+  it("no OTHER row carries a duplicate fork for these branches", () => {
+    const layout = computeGraphLayout(TREE_SAME_PARENT);
+    const rowsWithFork = layout.rows.filter((r) => r.fork !== null);
+    expect(rowsWithFork).toHaveLength(1);
+    expect(rowsWithFork[0].node.id).toBe(2);
+  });
+
+  it("BOTH child tip rails connect downward to the curve (bottom=true)", () => {
+    const layout = computeGraphLayout(TREE_SAME_PARENT);
+    const tipA = layout.rows.find((r) => r.node.id === 4)!; // lane 1
+    const tipB = layout.rows.find((r) => r.node.id === 5)!; // lane 2
+    const railA = tipA.rails.find((r) => r.lane === 1)!;
+    const railB = tipB.rails.find((r) => r.lane === 2)!;
+    expect(railA).toBeDefined();
+    expect(railA.bottom).toBe(true);
+    expect(railB).toBeDefined();
+    expect(railB.bottom).toBe(true);
+  });
+});
+
+// ---------------------------------------------------------------------------
 // 5. Dot style
 // ---------------------------------------------------------------------------
 

@@ -446,6 +446,34 @@ describe("VersionGraphOverlay (gh-961)", () => {
     expect(onClose).toHaveBeenCalledOnce();
   });
 
+  it("pressing Escape with compare open closes compare, not the overlay", async () => {
+    const user = userEvent.setup();
+    const onClose = vi.fn();
+    renderOverlay({ onClose });
+
+    const checkboxes = screen.getAllByRole("checkbox");
+    await user.click(checkboxes[0]);
+    await user.click(checkboxes[1]);
+    await user.click(screen.getByRole("button", { name: /compare \(2\)/i }));
+    expect(screen.getByTestId("version-compare-view")).toBeDefined();
+
+    await user.keyboard("{Escape}");
+
+    expect(screen.queryByTestId("version-compare-view")).toBeNull();
+    expect(onClose).not.toHaveBeenCalled();
+  });
+
+  it("selecting a row via keyboard (Enter) selects it", async () => {
+    const user = userEvent.setup();
+    renderOverlay();
+
+    const headRow = screen.getByTestId("graph-row-10");
+    headRow.focus();
+    await user.keyboard("{Enter}");
+
+    expect(headRow.getAttribute("aria-selected")).toBe("true");
+  });
+
   // -------------------------------------------------------------------------
   // 7. Overlay closes on backdrop click
   // -------------------------------------------------------------------------

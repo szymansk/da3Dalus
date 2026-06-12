@@ -8,7 +8,7 @@
  * the pure layout util.
  */
 
-import React from "react";
+import { useMemo } from "react";
 import { computeGraphLayout } from "@/lib/versionGraphLayout";
 import { GraphRow } from "@/components/workbench/GraphRow";
 import type { TreeOut } from "@/types/versioning";
@@ -30,7 +30,10 @@ export function VersionGraph({
   onSelectNode,
   onCheckNode,
 }: VersionGraphProps) {
-  const layout = computeGraphLayout(tree);
+  // O(n²) worst case — memoise so it doesn't recompute on every parent
+  // re-render (e.g. each compare-checkbox tick). SWR keeps `tree` referentially
+  // stable between unchanged revalidations, so the cache hit rate is high.
+  const layout = useMemo(() => computeGraphLayout(tree), [tree]);
 
   if (layout.rows.length === 0) {
     return (

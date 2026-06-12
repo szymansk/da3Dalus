@@ -387,8 +387,10 @@ function NodeIdentityHeader({ node, side }: NodeIdentityHeaderProps) {
             snapshot
           </span>
         ) : (
+          // VersionNode has no is_head, so we can't claim "HEAD" here — only
+          // that the node is editable (non-immutable).
           <span className="rounded-full bg-emerald-500/15 px-1 py-0.5 text-[9px] font-medium text-emerald-400">
-            HEAD
+            editable
           </span>
         )}
         {isAi && (

@@ -233,9 +233,36 @@ function assignLanes(
 // ---------------------------------------------------------------------------
 
 /**
+ * Resolve a branch's cross-lane fork: the row of its fork-parent (the
+ * predecessor of its oldest node, when that predecessor is on a different
+ * branch) plus that parent's lane. Returns null when the branch has no real
+ * cross-lane fork (main, predecessor missing, or predecessor on same branch).
+ */
+function resolveFork(
+  bid: number,
+  branchMetas: Map<number, BranchMeta>,
+  ctx: LayoutContext,
+): { forkRow: number; parentLane: number } | null {
+  if (ctx.mainBranch && bid === ctx.mainBranch.id) return null;
+
+  const predId = ctx.branchOldestNodePredId.get(bid);
+  if (predId == null) return null;
+
+  const predBranchId = ctx.nodeBranchId.get(predId);
+  if (predBranchId === bid) return null; // same branch, no fork
+
+  const forkRow = ctx.nodeRowIndex.get(predId);
+  if (forkRow === undefined) return null;
+
+  const parentMeta =
+    predBranchId != null ? branchMetas.get(predBranchId) : null;
+  return { forkRow, parentLane: parentMeta ? parentMeta.lane : 0 };
+}
+
+/**
  * Map of parent-row index → fork edge. A fork is drawn on the row of a
- * branch's fork-parent (the predecessor of its oldest node, when on a
- * different branch). At most one fork per row.
+ * branch's fork-parent. At most one curve per row, but EVERY forked child's
+ * meta records `forkParentLane` so its vertical rail terminates one row early.
  */
 function buildForkMap(
   branchMetas: Map<number, BranchMeta>,
@@ -244,30 +271,27 @@ function buildForkMap(
   const forkByRowIndex = new Map<number, GraphFork>();
 
   for (const [bid, meta] of branchMetas) {
-    if (ctx.mainBranch && bid === ctx.mainBranch.id) continue;
+    const resolved = resolveFork(bid, branchMetas, ctx);
+    if (resolved === null) continue;
 
-    const predId = ctx.branchOldestNodePredId.get(bid);
-    if (predId === null || predId === undefined) continue;
-
-    const predBranchId = ctx.nodeBranchId.get(predId);
-    if (predBranchId === bid) continue; // same branch, no fork
-
-    const forkRow = ctx.nodeRowIndex.get(predId);
-    if (forkRow === undefined || forkByRowIndex.has(forkRow)) continue;
-
-    const parentMeta =
-      predBranchId != null ? branchMetas.get(predBranchId) : null;
-    const parentLane = parentMeta ? parentMeta.lane : 0;
+    const { forkRow, parentLane } = resolved;
 
     // Mark this branch as having a real cross-lane fork so `buildRails` stops
     // its vertical rail one row above the fork row (the curve bridges instead).
+    // This MUST happen unconditionally — even when another branch already
+    // claimed the curve slot on a shared fork row — otherwise the second
+    // branch keeps a vertical stub and reads as a merge.
     meta.forkParentLane = parentLane;
 
-    forkByRowIndex.set(forkRow, {
-      childLane: meta.lane,
-      parentLane,
-      color: meta.color,
-    });
+    // The curve slot is first-come-per-row: only one fork bézier is drawn even
+    // when multiple branches diverge from the same parent node/row.
+    if (!forkByRowIndex.has(forkRow)) {
+      forkByRowIndex.set(forkRow, {
+        childLane: meta.lane,
+        parentLane,
+        color: meta.color,
+      });
+    }
   }
 
   return forkByRowIndex;
