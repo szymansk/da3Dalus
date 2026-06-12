@@ -394,15 +394,25 @@ function VersionGraphToolbar({
         />
       )}
       {activeInput === "rename" && (
-        <NameInput
-          placeholder="branch name"
-          ariaLabel="Rename branch"
-          initialValue={selectedBranch?.name ?? ""}
-          confirmAriaLabel="Confirm rename"
-          onConfirm={onNameConfirm}
-          onCancel={onNameCancel}
-          busy={busy}
-        />
+        <div className="flex flex-col gap-1">
+          {/* Name the rename target explicitly so it's unambiguous which branch
+              is affected, regardless of any compare checkboxes that are set. */}
+          <span className="text-[10px] text-muted-foreground">
+            Rename branch{" "}
+            <span className="font-medium text-foreground">
+              &ldquo;{selectedBranch?.name}&rdquo;
+            </span>
+          </span>
+          <NameInput
+            placeholder="branch name"
+            ariaLabel={`Rename branch ${selectedBranch?.name ?? ""}`}
+            initialValue={selectedBranch?.name ?? ""}
+            confirmAriaLabel="Confirm rename"
+            onConfirm={onNameConfirm}
+            onCancel={onNameCancel}
+            busy={busy}
+          />
+        </div>
       )}
     </div>
   );
