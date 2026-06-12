@@ -38,18 +38,26 @@ import type { GaugeData, MetricItem } from "@/components/workbench/metrics-dashb
 // Helpers
 // ---------------------------------------------------------------------------
 
-/** Cast the opaque metrics dict to ComputationContext for the adapters. */
+/**
+ * Cast the opaque metrics dict to ComputationContext for the adapters.
+ *
+ * The backend returns `assumption_computation_context` as a nested field, OR
+ * the dict IS the context directly (flat). Either way we only treat it as a
+ * real context when it carries the geometry the metric adapters require
+ * (`mac_m`); a sparse/empty dict returns null so the adapters render "–" and
+ * the disclosure line warns, instead of crashing on a missing field.
+ */
 function toCtx(metrics: Record<string, unknown> | null): ComputationContext | null {
   if (metrics == null) return null;
-  // The backend returns assumption_computation_context as a nested field in
-  // the metrics dict, OR the dict IS the computation context directly.
-  // Try both shapes, falling back to treating the whole dict as a ctx.
   const nested = metrics["assumption_computation_context"];
-  if (nested != null && typeof nested === "object") {
-    return nested as ComputationContext;
+  const candidate =
+    nested != null && typeof nested === "object"
+      ? (nested as Record<string, unknown>)
+      : metrics;
+  if (typeof candidate["mac_m"] === "number") {
+    return candidate as unknown as ComputationContext;
   }
-  // Treat the metrics dict itself as the computation context.
-  return metrics as unknown as ComputationContext;
+  return null;
 }
 
 function nodeLabel(node: VersionNode): string {
@@ -315,6 +323,72 @@ function MetricRow({ symbol, valA, valB, labelA, labelB, differs }: MetricRowPro
 }
 
 // ---------------------------------------------------------------------------
+// Analysis-context disclosure line (gh-963)
+// ---------------------------------------------------------------------------
+
+interface AnalysisContextLineProps {
+  readonly metrics: Record<string, unknown> | null;
+  readonly side: "A" | "B";
+}
+
+/**
+ * Small muted line disclosing the computation assumptions behind the metrics
+ * column. Sourced from metrics.total_mass_kg and
+ * metrics.assumption_computation_context.
+ *
+ * If assumption_computation_context is absent or empty, renders an amber
+ * warning instead so the reviewer knows the values may not be comparable.
+ */
+function AnalysisContextLine({ metrics, side }: AnalysisContextLineProps) {
+  const testId = `compare-analysis-context-${side}`;
+
+  // Use the same extraction as the metric rows (incl. the flat-payload
+  // fallback) so the disclosure line and the numbers below it never disagree.
+  const ctx = toCtx(metrics);
+
+  // Aero operating-point fields are the real "analysis context". Each is
+  // type-guarded because `ctx` is an unchecked cast — a malformed payload must
+  // not crash the column.
+  const aeroParts: string[] = [];
+  if (ctx != null && typeof ctx.reynolds === "number") {
+    aeroParts.push(`Re≈${Math.round(ctx.reynolds).toLocaleString("en-GB")}`);
+  }
+  if (ctx != null && typeof ctx.v_cruise_mps === "number") {
+    aeroParts.push(`v_cruise ${ctx.v_cruise_mps.toFixed(1)} m/s`);
+  }
+  if (ctx != null && typeof ctx.computed_at === "string" && ctx.computed_at) {
+    const d = new Date(ctx.computed_at);
+    aeroParts.push(
+      Number.isNaN(d.getTime())
+        ? ctx.computed_at
+        : d.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" }),
+    );
+  }
+
+  // No usable operating point → warn, rather than render a blank/misleading
+  // line or mass alone (metrics aren't comparable without the conditions).
+  if (aeroParts.length === 0) {
+    return (
+      <div data-testid={testId} className="pl-6 mt-1 text-[9px] text-amber-400">
+        <span aria-hidden="true">⚠</span> no analysis context — values may not be comparable
+      </div>
+    );
+  }
+
+  const massKg =
+    metrics != null && typeof metrics["total_mass_kg"] === "number"
+      ? (metrics["total_mass_kg"] as number)
+      : null;
+  const parts = massKg != null ? [`${massKg} kg`, ...aeroParts] : aeroParts;
+
+  return (
+    <div data-testid={testId} className="pl-6 mt-1 text-[9px] text-subtle-foreground">
+      {parts.join(" · ")}
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
 // Node identity header (gh-961) — disambiguates even when version_label is
 // shared between both sides.
 // ---------------------------------------------------------------------------
@@ -342,6 +416,8 @@ function formatTimestamp(iso: string): string {
 interface NodeIdentityHeaderProps {
   readonly node: VersionNode;
   readonly side: "A" | "B";
+  readonly branchNameMap?: ReadonlyMap<number, string>;
+  readonly metrics: Record<string, unknown> | null;
 }
 
 /**
@@ -357,7 +433,7 @@ interface NodeIdentityHeaderProps {
  *   - author chip (created_by)
  *   - timestamp (created_at, formatted)
  */
-function NodeIdentityHeader({ node, side }: NodeIdentityHeaderProps) {
+function NodeIdentityHeader({ node, side, branchNameMap, metrics }: NodeIdentityHeaderProps) {
   const isAi = isAgentAuthor(node.created_by);
   const sideColor =
     side === "A"
@@ -406,10 +482,23 @@ function NodeIdentityHeader({ node, side }: NodeIdentityHeaderProps) {
         <span className="rounded bg-muted/60 px-1 py-0.5 font-[family-name:var(--font-geist-mono)] text-[9px] text-muted-foreground">
           #{node.id}
         </span>
-        {/* Branch */}
-        <span className="rounded bg-muted/60 px-1 py-0.5 font-[family-name:var(--font-geist-mono)] text-[9px] text-muted-foreground">
-          {node.branch_id != null ? `branch ${node.branch_id}` : "legacy"}
-        </span>
+        {/* Branch — show name from map when available, raw id as tooltip */}
+        {node.branch_id != null ? (
+          <span
+            data-testid={`compare-branch-pill-${side}`}
+            title={`branch id: ${node.branch_id}`}
+            className="rounded bg-muted/60 px-1 py-0.5 font-[family-name:var(--font-geist-mono)] text-[9px] text-muted-foreground"
+          >
+            {branchNameMap?.get(node.branch_id) ?? `branch ${node.branch_id}`}
+          </span>
+        ) : (
+          <span
+            data-testid={`compare-branch-pill-${side}`}
+            className="rounded bg-muted/60 px-1 py-0.5 font-[family-name:var(--font-geist-mono)] text-[9px] text-muted-foreground"
+          >
+            legacy
+          </span>
+        )}
         {/* Author */}
         <span className="rounded bg-muted/60 px-1 py-0.5 font-[family-name:var(--font-geist-mono)] text-[9px] text-muted-foreground">
           {authorLabel(node.created_by)}
@@ -432,6 +521,9 @@ function NodeIdentityHeader({ node, side }: NodeIdentityHeaderProps) {
           {node.version_note}
         </p>
       )}
+
+      {/* Analysis-context disclosure line */}
+      <AnalysisContextLine metrics={metrics} side={side} />
     </div>
   );
 }
@@ -445,6 +537,8 @@ export interface VersionCompareViewProps {
   readonly isLoading: boolean;
   readonly error: string | null;
   readonly onClose: () => void;
+  /** Map from branch id → branch name, used to display human-readable branch names. */
+  readonly branchNameMap?: ReadonlyMap<number, string>;
 }
 
 export function VersionCompareView({
@@ -452,6 +546,7 @@ export function VersionCompareView({
   isLoading,
   error,
   onClose,
+  branchNameMap,
 }: VersionCompareViewProps) {
   return (
     <div
@@ -491,11 +586,21 @@ export function VersionCompareView({
           <>
             {/* Column headers */}
             <div className="mb-4 grid grid-cols-[1fr_auto_1fr] items-center gap-2">
-              <NodeIdentityHeader node={compareOut.node_a} side="A" />
+              <NodeIdentityHeader
+                node={compareOut.node_a}
+                side="A"
+                branchNameMap={branchNameMap}
+                metrics={compareOut.metrics_a}
+              />
               <div className="flex h-6 w-6 items-center justify-center text-muted-foreground/40">
                 <ArrowLeftRight size={11} />
               </div>
-              <NodeIdentityHeader node={compareOut.node_b} side="B" />
+              <NodeIdentityHeader
+                node={compareOut.node_b}
+                side="B"
+                branchNameMap={branchNameMap}
+                metrics={compareOut.metrics_b}
+              />
             </div>
 
             {/* Column label row */}

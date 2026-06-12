@@ -34,6 +34,7 @@ from app.services.aeroplane_version_service import (
     discard_branch,
     list_aeroplanes_heads_only,
     list_tree,
+    rename_branch,
     restore,
     snapshot,
 )
@@ -711,6 +712,77 @@ def test_create_aeroplane_snapshot_works(db: Session):
     side = create_branch(db, plane.id, name="experiment")
     db.commit()
     assert side.root_id == plane.id
+
+
+# ---------------------------------------------------------------------------
+# 12. rename_branch
+# ---------------------------------------------------------------------------
+
+
+def test_rename_branch_happy_path(db: Session):
+    """rename_branch changes the branch name and returns the updated branch."""
+    root, branch = _make_root(db, "rename-test")
+
+    updated = rename_branch(db, branch.id, "new-name")
+    db.commit()
+    db.refresh(branch)
+
+    assert updated.name == "new-name"
+    assert branch.name == "new-name"
+
+
+def test_rename_branch_not_found_raises(db: Session):
+    """rename_branch raises NotFoundError for an unknown branch_id."""
+    with pytest.raises(NotFoundError):
+        rename_branch(db, 99999, "any-name")
+
+
+def test_rename_branch_empty_name_raises(db: Session):
+    """rename_branch raises ValidationError when the stripped name is empty."""
+    root, branch = _make_root(db, "empty-name-test")
+
+    with pytest.raises(ValidationError):
+        rename_branch(db, branch.id, "   ")
+
+
+def test_rename_branch_whitespace_only_name_raises(db: Session):
+    """rename_branch strips whitespace before validation."""
+    root, branch = _make_root(db, "ws-test")
+
+    with pytest.raises(ValidationError):
+        rename_branch(db, branch.id, "\t\n")
+
+
+def test_rename_branch_conflict_with_sibling_raises(db: Session):
+    """rename_branch raises ConflictError when another branch in the same lineage has the same name."""
+    root, main_branch = _make_root(db, "conflict-test")
+    side = create_branch(db, root.id, name="side")
+    db.commit()
+
+    # Trying to rename 'side' to 'main' (the existing name) must fail.
+    with pytest.raises(ConflictError):
+        rename_branch(db, side.id, "main")
+
+
+def test_rename_branch_same_name_is_allowed(db: Session):
+    """rename_branch to the same name (self) must not raise ConflictError."""
+    root, branch = _make_root(db, "same-name-test")
+
+    # Should not raise — self-rename is idempotent.
+    updated = rename_branch(db, branch.id, "main")
+    db.commit()
+
+    assert updated.name == "main"
+
+
+def test_rename_branch_strips_whitespace(db: Session):
+    """rename_branch strips leading/trailing whitespace from the name."""
+    root, branch = _make_root(db, "strip-test")
+
+    updated = rename_branch(db, branch.id, "  polished  ")
+    db.commit()
+
+    assert updated.name == "polished"
 
 
 # ---------------------------------------------------------------------------

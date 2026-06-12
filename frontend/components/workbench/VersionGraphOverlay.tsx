@@ -15,8 +15,8 @@
  *   onSwitchAeroplane — called after branch operations with the new head UUID
  */
 
-import { useState, useCallback, useEffect } from "react";
-import { X, GitBranch, Camera, GitFork, RotateCcw, Star, Trash2 } from "lucide-react";
+import { useState, useCallback, useEffect, useMemo } from "react";
+import { X, GitBranch, Camera, GitFork, RotateCcw, Star, Trash2, Pencil } from "lucide-react";
 import { useLineageTree, useVersionActions, useCompareNodes } from "@/hooks/useVersioning";
 import { VersionCompareView } from "@/components/workbench/VersionCompareView";
 import { VersionGraph } from "@/components/workbench/VersionGraph";
@@ -29,6 +29,7 @@ import type { TreeOut, TreeNodeOut, BranchOut } from "@/types/versioning";
 interface NameInputProps {
   placeholder?: string;
   ariaLabel?: string;
+  initialValue?: string;
   onConfirm: (name: string) => void;
   onCancel: () => void;
   busy: boolean;
@@ -39,13 +40,14 @@ interface NameInputProps {
 function NameInput({
   placeholder,
   ariaLabel = "Branch name",
+  initialValue = "",
   onConfirm,
   onCancel,
   busy,
   confirmLabel = "OK",
   confirmAriaLabel = "Confirm branch name",
 }: NameInputProps) {
-  const [value, setValue] = useState("");
+  const [value, setValue] = useState(initialValue);
 
   return (
     <div className="flex gap-1.5 mt-1">
@@ -131,7 +133,7 @@ function ToolbarButton({
 // Toolbar
 // ---------------------------------------------------------------------------
 
-type ToolbarAction = "snapshot" | "branchFrom" | "restore" | "adopt" | "discard" | null;
+type ToolbarAction = "snapshot" | "branchFrom" | "restore" | "adopt" | "discard" | "rename" | null;
 
 interface VersionGraphToolbarProps {
   readonly selectedNode: TreeNodeOut | null;
@@ -139,12 +141,15 @@ interface VersionGraphToolbarProps {
   readonly compareSet: Set<number>;
   readonly busy: boolean;
   readonly discardPending: boolean;
+  readonly adoptPending: boolean;
   readonly activeInput: ToolbarAction;
   readonly onActionClick: (action: ToolbarAction) => void;
   readonly onNameConfirm: (name: string) => void;
   readonly onNameCancel: () => void;
   readonly onConfirmDiscard: () => void;
   readonly onCancelDiscard: () => void;
+  readonly onConfirmAdopt: () => void;
+  readonly onCancelAdopt: () => void;
   readonly onOpenCompare: () => void;
 }
 
@@ -154,12 +159,15 @@ function VersionGraphToolbar({
   compareSet,
   busy,
   discardPending,
+  adoptPending,
   activeInput,
   onActionClick,
   onNameConfirm,
   onNameCancel,
   onConfirmDiscard,
   onCancelDiscard,
+  onConfirmAdopt,
+  onCancelAdopt,
   onOpenCompare,
 }: VersionGraphToolbarProps) {
   // Derive enable rules from spec toolbar table
@@ -180,33 +188,49 @@ function VersionGraphToolbar({
   // Adopt / Discard: selected node's branch is not main
   const adoptEnabled = hasSelection && !isOnMain && !busy;
   const discardEnabled = hasSelection && !isOnMain && !busy;
+  // Rename: a branch is selected
+  const renameEnabled = selectedBranch !== null && !busy;
 
   const compareCount = compareSet.size;
   const compareEnabled = compareCount === 2 && !busy;
 
+  const selectedBranchName = selectedBranch?.name ?? "this branch";
+
+  // Plain-language action tooltips (gh-964 §1). When a button is disabled we
+  // surface the reason WHY; otherwise we explain what the action does.
   const getSnapshotTitle = () => {
     if (!hasSelection) return "Select a node first";
     if (isSnapshot) return "Cannot snapshot an immutable node";
     if (!isEditableHead) return "Only the editable head can be snapshotted";
-    return undefined;
+    return "Save an immutable checkpoint of the current design";
+  };
+
+  const getBranchFromTitle = () => {
+    if (!hasSelection) return "Select a node first";
+    return "Start a new variant from the selected version";
   };
 
   const getRestoreTitle = () => {
     if (!hasSelection) return "Select a node first";
     if (!isSnapshot) return "Only snapshot nodes can be restored";
-    return undefined;
+    return "Create a new editable branch from this snapshot";
   };
 
   const getAdoptTitle = () => {
     if (!hasSelection) return "Select a node first";
     if (isOnMain) return "This branch is already main";
-    return undefined;
+    return "Make this branch the active design (main); the current main becomes a normal branch";
   };
 
   const getDiscardTitle = () => {
     if (!hasSelection) return "Select a node first";
     if (isOnMain) return "Cannot discard the main branch";
-    return undefined;
+    return "Delete this branch and its versions — does not affect the active design";
+  };
+
+  const getRenameTitle = () => {
+    if (selectedBranch === null) return "Select a branch first";
+    return "Rename this branch";
   };
 
   return (
@@ -227,7 +251,7 @@ function VersionGraphToolbar({
           icon={<GitFork size={12} />}
           onClick={() => onActionClick("branchFrom")}
           disabled={!branchFromEnabled}
-          title={!hasSelection ? "Select a node first" : undefined}
+          title={getBranchFromTitle()}
         />
 
         {/* Restore */}
@@ -239,19 +263,54 @@ function VersionGraphToolbar({
           title={getRestoreTitle()}
         />
 
+        {/* Rename */}
+        <ToolbarButton
+          label="Rename"
+          icon={<Pencil size={12} />}
+          onClick={() => onActionClick("rename")}
+          disabled={!renameEnabled}
+          title={getRenameTitle()}
+        />
+
         {/* Separator */}
         <div className="h-5 w-px bg-border" />
 
-        {/* Adopt */}
-        <ToolbarButton
-          label="Adopt"
-          icon={<Star size={12} />}
-          onClick={() => onActionClick("adopt")}
-          disabled={!adoptEnabled}
-          title={getAdoptTitle()}
-        />
+        {/* Adopt — two-step confirm naming the branch */}
+        {!adoptPending ? (
+          <ToolbarButton
+            label="Adopt"
+            icon={<Star size={12} />}
+            onClick={() => onActionClick("adopt")}
+            disabled={!adoptEnabled}
+            title={getAdoptTitle()}
+          />
+        ) : (
+          <div className="flex items-center gap-1.5">
+            <span className="text-[11px] font-medium text-foreground" aria-live="polite">
+              Make &quot;{selectedBranchName}&quot; the active design? The current main becomes a normal branch.
+            </span>
+            <button
+              type="button"
+              onClick={onConfirmAdopt}
+              disabled={busy}
+              aria-label="Confirm adopt"
+              className="rounded bg-primary px-2 py-1 text-[11px] font-medium text-primary-foreground disabled:opacity-50"
+            >
+              Yes, adopt
+            </button>
+            <button
+              type="button"
+              onClick={onCancelAdopt}
+              disabled={busy}
+              aria-label="Cancel adopt"
+              className="rounded bg-sidebar-accent px-2 py-1 text-[11px] text-muted-foreground disabled:opacity-50"
+            >
+              Cancel
+            </button>
+          </div>
+        )}
 
-        {/* Discard */}
+        {/* Discard — two-step confirm naming the branch */}
         {!discardPending ? (
           <ToolbarButton
             label="Discard"
@@ -262,9 +321,9 @@ function VersionGraphToolbar({
             destructive
           />
         ) : (
-          <span className="flex items-center gap-1.5">
+          <div className="flex items-center gap-1.5">
             <span className="text-[11px] font-medium text-destructive" aria-live="polite">
-              Delete all nodes?
+              Delete branch &quot;{selectedBranchName}&quot; and its versions? Your active design is not affected.
             </span>
             <button
               type="button"
@@ -284,7 +343,7 @@ function VersionGraphToolbar({
             >
               Cancel
             </button>
-          </span>
+          </div>
         )}
 
         {/* Spacer */}
@@ -333,6 +392,27 @@ function VersionGraphToolbar({
           onCancel={onNameCancel}
           busy={busy}
         />
+      )}
+      {activeInput === "rename" && (
+        <div className="flex flex-col gap-1">
+          {/* Name the rename target explicitly so it's unambiguous which branch
+              is affected, regardless of any compare checkboxes that are set. */}
+          <span className="text-[10px] text-muted-foreground">
+            Rename branch{" "}
+            <span className="font-medium text-foreground">
+              &ldquo;{selectedBranch?.name}&rdquo;
+            </span>
+          </span>
+          <NameInput
+            placeholder="branch name"
+            ariaLabel={`Rename branch ${selectedBranch?.name ?? ""}`}
+            initialValue={selectedBranch?.name ?? ""}
+            confirmAriaLabel="Confirm rename"
+            onConfirm={onNameConfirm}
+            onCancel={onNameCancel}
+            busy={busy}
+          />
+        </div>
       )}
     </div>
   );
@@ -417,6 +497,12 @@ export function VersionGraphOverlay({
   const { tree, isLoading, error, mutate } = useLineageTree(rootId);
   const actions = useVersionActions(aeroplaneId, rootId);
 
+  // Map from branch id → branch name, used in VersionCompareView.
+  const branchNameMap = useMemo(
+    () => new Map((tree?.branches ?? []).map((b) => [b.id, b.name])),
+    [tree],
+  );
+
   // Selection state
   const [selectedNodeId, setSelectedNodeId] = useState<number | null>(null);
 
@@ -430,11 +516,12 @@ export function VersionGraphOverlay({
 
   // Toolbar inline input
   const [activeInput, setActiveInput] = useState<
-    "snapshot" | "branchFrom" | "restore" | null
+    "snapshot" | "branchFrom" | "restore" | "rename" | null
   >(null);
 
-  // Discard confirm
+  // Discard / adopt two-step confirm
   const [discardPending, setDiscardPending] = useState(false);
+  const [adoptPending, setAdoptPending] = useState(false);
 
   // Derive compare fetch IDs. Sort so A/B assignment is deterministic (lower
   // node id = A), independent of the order the user ticked the checkboxes.
@@ -475,6 +562,8 @@ export function VersionGraphOverlay({
         setActiveInput(null);
       } else if (discardPending) {
         setDiscardPending(false);
+      } else if (adoptPending) {
+        setAdoptPending(false);
       } else if (compareOpen) {
         setCompareOpen(false);
       } else {
@@ -483,7 +572,7 @@ export function VersionGraphOverlay({
     }
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [onClose, compareOpen, activeInput, discardPending]);
+  }, [onClose, compareOpen, activeInput, discardPending, adoptPending]);
 
   // ---------------------------------------------------------------------------
   // Orchestration helpers (lifted from VersionHistoryPanel)
@@ -546,6 +635,7 @@ export function VersionGraphOverlay({
     setActionError(null);
     setActiveInput(null);
     setDiscardPending(false);
+    setAdoptPending(false);
   }, []);
 
   const handleCheckNode = useCallback((nodeId: number) => {
@@ -566,26 +656,24 @@ export function VersionGraphOverlay({
   // ---------------------------------------------------------------------------
 
   const handleToolbarActionClick = useCallback(
-    (action: "snapshot" | "branchFrom" | "restore" | "adopt" | "discard" | null) => {
+    (action: "snapshot" | "branchFrom" | "restore" | "adopt" | "discard" | "rename" | null) => {
       if (action === "adopt") {
         if (!selectedBranch) {
           setActionError("No branch selected — cannot adopt.");
           return;
         }
-        void runBranchOp(
-          () => actions.adoptBranch(selectedBranch.id),
-          (branch) => branch.head_id,
-        );
+        // Two-step confirm: show the confirm copy first (mirrors discard).
+        setAdoptPending(true);
         return;
       }
       if (action === "discard") {
         setDiscardPending(true);
         return;
       }
-      // snapshot / branchFrom / restore → show inline input
-      setActiveInput(action as "snapshot" | "branchFrom" | "restore" | null);
+      // snapshot / branchFrom / restore / rename → show inline input
+      setActiveInput(action as "snapshot" | "branchFrom" | "restore" | "rename" | null);
     },
-    [selectedBranch, actions, runBranchOp],
+    [selectedBranch],
   );
 
   const handleNameConfirm = useCallback(
@@ -621,9 +709,18 @@ export function VersionGraphOverlay({
           (branch) => branch.head_id,
         );
         setActiveInput(null);
+        return;
+      }
+      if (activeInput === "rename") {
+        if (!selectedBranch) {
+          setActionError("No branch selected — cannot rename.");
+          return;
+        }
+        await run(() => actions.renameBranch(selectedBranch.id, name));
+        setActiveInput(null);
       }
     },
-    [activeInput, aeroplaneId, selectedNode, actions, run, runBranchOp],
+    [activeInput, aeroplaneId, selectedNode, selectedBranch, actions, run, runBranchOp],
   );
 
   const handleNameCancel = useCallback(() => {
@@ -641,6 +738,22 @@ export function VersionGraphOverlay({
 
   const handleCancelDiscard = useCallback(() => {
     setDiscardPending(false);
+  }, []);
+
+  const handleConfirmAdopt = useCallback(() => {
+    if (!selectedBranch) {
+      setActionError("No branch selected — cannot adopt.");
+      return;
+    }
+    setAdoptPending(false);
+    void runBranchOp(
+      () => actions.adoptBranch(selectedBranch.id),
+      (branch) => branch.head_id,
+    );
+  }, [selectedBranch, actions, runBranchOp]);
+
+  const handleCancelAdopt = useCallback(() => {
+    setAdoptPending(false);
   }, []);
 
   // ---------------------------------------------------------------------------
@@ -696,14 +809,34 @@ export function VersionGraphOverlay({
           compareSet={compareSet}
           busy={busy}
           discardPending={discardPending}
+          adoptPending={adoptPending}
           activeInput={activeInput}
           onActionClick={handleToolbarActionClick}
           onNameConfirm={(name) => { void handleNameConfirm(name); }}
           onNameCancel={handleNameCancel}
           onConfirmDiscard={handleConfirmDiscard}
           onCancelDiscard={handleCancelDiscard}
+          onConfirmAdopt={handleConfirmAdopt}
+          onCancelAdopt={handleCancelAdopt}
           onOpenCompare={() => setCompareOpen(true)}
         />
+
+        {/* Legend + sorted-by-date note (gh-964 §3). The vertical order is by
+            date, NOT causality — lane colour encodes the branch. */}
+        <div
+          data-testid="version-graph-legend"
+          role="note"
+          aria-label="Graph legend"
+          className="flex shrink-0 flex-wrap items-center gap-x-3 gap-y-1 border-b border-border px-4 py-1.5 text-[10px] text-muted-foreground"
+        >
+          <span><span aria-hidden>●</span> snapshot</span>
+          <span><span aria-hidden>○</span> editable head</span>
+          <span><span aria-hidden>★</span> active</span>
+          <span><span aria-hidden>⎇</span> branch</span>
+          <span>colour = branch</span>
+          <span className="flex-1" />
+          <span className="italic">Sorted by date · lane colour = branch</span>
+        </div>
 
         {/* Error banner */}
         {(actionError ?? error) && (
@@ -723,6 +856,7 @@ export function VersionGraphOverlay({
               isLoading={compareLoading}
               error={compareError?.message ?? null}
               onClose={() => setCompareOpen(false)}
+              branchNameMap={branchNameMap}
             />
           </div>
         ) : (

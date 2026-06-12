@@ -35,6 +35,14 @@ class BranchRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
 
+class BranchRenameRequest(BaseModel):
+    """Body for PATCH /branches/{branch_id}."""
+
+    name: str = Field(..., min_length=1, description="New branch name")
+
+    model_config = ConfigDict(extra="forbid")
+
+
 class VersionNode(BaseModel):
     """A single node in the version lineage graph.
 

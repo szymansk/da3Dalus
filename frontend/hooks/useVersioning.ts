@@ -79,6 +79,12 @@ export interface UseVersionActionsResult {
    * Revalidates the lineage tree and the aeroplanes list.
    */
   discardBranch: (branchId: number) => Promise<void>;
+
+  /**
+   * Rename a branch.
+   * Revalidates the lineage tree and the aeroplanes list.
+   */
+  renameBranch: (branchId: number, name: string) => Promise<BranchOut>;
 }
 
 /**
@@ -155,12 +161,22 @@ export function useVersionActions(
     [revalidateAll],
   );
 
+  const renameBranchAction = useCallback(
+    async (branchId: number, name: string): Promise<BranchOut> => {
+      const branch = await api.renameBranch(branchId, name);
+      await revalidateAll();
+      return branch;
+    },
+    [revalidateAll],
+  );
+
   return {
     snapshot: snapshotAction,
     createBranch: createBranchAction,
     adoptBranch: adoptBranchAction,
     restore: restoreAction,
     discardBranch: discardBranchAction,
+    renameBranch: renameBranchAction,
   };
 }
 

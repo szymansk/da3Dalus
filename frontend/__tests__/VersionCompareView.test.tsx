@@ -10,6 +10,10 @@
  * 6. Error state shows the error text.
  * 7. Close button calls onClose.
  * 8. Renders gracefully when metrics_a / metrics_b are null (no crash).
+ * 11. branchNameMap: branch NAME shown instead of "branch <id>".
+ * 12. analysis-context line shows mass / Re / v_cruise when present.
+ * 13. Warning renders when assumption_computation_context is absent.
+ * 14. Metric body still renders with branchNameMap prop (regression).
  */
 
 import { describe, it, expect, vi } from "vitest";
@@ -515,5 +519,346 @@ describe("VersionCompareView (gh-907)", () => {
       const wrapper = container.querySelector('[data-testid="version-compare-view"]');
       expect(wrapper).not.toBeNull();
     });
+  });
+
+  // -------------------------------------------------------------------------
+  // 11. branchNameMap: branch NAME shown instead of "branch <id>"
+  // -------------------------------------------------------------------------
+  describe("branchNameMap (gh-963)", () => {
+    it("shows the branch NAME from branchNameMap instead of 'branch <id>'", () => {
+      const compareOut = makeCompareOut(makeCtx(), makeCtx());
+      // node_a has branch_id=1, node_b has branch_id=2
+      const branchNameMap = new Map([
+        [1, "main"],
+        [2, "winglet-experiment"],
+      ]);
+
+      render(
+        <VersionCompareView
+          compareOut={compareOut}
+          isLoading={false}
+          error={null}
+          onClose={vi.fn()}
+          branchNameMap={branchNameMap}
+        />,
+      );
+
+      // Should show branch names, not raw ids
+      expect(screen.getByText("main")).toBeDefined();
+      expect(screen.getByText("winglet-experiment")).toBeDefined();
+      // Should NOT show "branch 1" or "branch 2" as text
+      expect(screen.queryByText(/^branch\s+1$/i)).toBeNull();
+      expect(screen.queryByText(/^branch\s+2$/i)).toBeNull();
+    });
+
+    it("branch pill has numeric id as title tooltip", () => {
+      const compareOut = makeCompareOut(makeCtx(), makeCtx());
+      const branchNameMap = new Map([[1, "main"], [2, "winglet-experiment"]]);
+
+      const { container } = render(
+        <VersionCompareView
+          compareOut={compareOut}
+          isLoading={false}
+          error={null}
+          onClose={vi.fn()}
+          branchNameMap={branchNameMap}
+        />,
+      );
+
+      // The branch pill carries a self-explanatory id tooltip ("branch id: N").
+      const pills = container.querySelectorAll('[data-testid="compare-branch-pill-A"], [data-testid="compare-branch-pill-B"]');
+      expect(pills.length).toBe(2);
+      const titlesInPills = Array.from(pills).map((el) => el.getAttribute("title"));
+      expect(titlesInPills).toContain("branch id: 1");
+      expect(titlesInPills).toContain("branch id: 2");
+    });
+
+    it("falls back to 'branch <id>' when branch not in branchNameMap", () => {
+      const compareOut = makeCompareOut(makeCtx(), makeCtx());
+      // Provide map for branch 1 only; branch 2 is absent
+      const branchNameMap = new Map([[1, "main"]]);
+
+      render(
+        <VersionCompareView
+          compareOut={compareOut}
+          isLoading={false}
+          error={null}
+          onClose={vi.fn()}
+          branchNameMap={branchNameMap}
+        />,
+      );
+
+      // Branch 1 is named; branch 2 falls back to "branch 2"
+      expect(screen.getByText("main")).toBeDefined();
+      expect(screen.getByText(/branch\s+2/i)).toBeDefined();
+    });
+
+    it("shows 'legacy' when branch_id is null (even with branchNameMap)", () => {
+      const nodeWithNullBranch: VersionNode = { ...BASE_NODE_A, branch_id: null };
+      const compareOut: CompareOut = {
+        node_a: nodeWithNullBranch,
+        node_b: BASE_NODE_B,
+        metrics_a: null,
+        metrics_b: null,
+      };
+      const branchNameMap = new Map([[2, "winglet-experiment"]]);
+
+      render(
+        <VersionCompareView
+          compareOut={compareOut}
+          isLoading={false}
+          error={null}
+          onClose={vi.fn()}
+          branchNameMap={branchNameMap}
+        />,
+      );
+
+      expect(screen.getByText("legacy")).toBeDefined();
+    });
+
+    it("without branchNameMap still shows 'branch <id>' (regression)", () => {
+      const compareOut = makeCompareOut(makeCtx(), makeCtx());
+
+      render(
+        <VersionCompareView
+          compareOut={compareOut}
+          isLoading={false}
+          error={null}
+          onClose={vi.fn()}
+        />,
+      );
+
+      // No branchNameMap → raw id fallback
+      expect(screen.getByText(/branch\s+1/i)).toBeDefined();
+      expect(screen.getByText(/branch\s+2/i)).toBeDefined();
+    });
+  });
+
+  // -------------------------------------------------------------------------
+  // 12. Analysis-context line shows mass / Re / v_cruise when present
+  // -------------------------------------------------------------------------
+  describe("analysis-context disclosure (gh-963)", () => {
+    it("renders analysis-context block for side A with mass, Re, v_cruise", () => {
+      const ctxA = makeCtx({ v_cruise_mps: 18.5, reynolds: 300000 });
+      const compareOut: CompareOut = {
+        node_a: BASE_NODE_A,
+        node_b: BASE_NODE_B,
+        metrics_a: { total_mass_kg: 2.3, assumption_computation_context: ctxA },
+        metrics_b: null,
+      };
+
+      const { container } = render(
+        <VersionCompareView
+          compareOut={compareOut}
+          isLoading={false}
+          error={null}
+          onClose={vi.fn()}
+        />,
+      );
+
+      const ctxBlockA = container.querySelector('[data-testid="compare-analysis-context-A"]');
+      expect(ctxBlockA).not.toBeNull();
+      const text = ctxBlockA?.textContent ?? "";
+      expect(text).toMatch(/2\.3\s*kg/);
+      expect(text).toMatch(/Re/i);
+      expect(text).toMatch(/300.?000|3\.0?e\+?5|300k/i);
+      expect(text).toMatch(/v_cruise.*18\.5|18\.5.*m\/s/i);
+    });
+
+    it("renders analysis-context block for side B with mass, Re, v_cruise", () => {
+      const ctxB = makeCtx({ v_cruise_mps: 22.0, reynolds: 450000 });
+      const compareOut: CompareOut = {
+        node_a: BASE_NODE_A,
+        node_b: BASE_NODE_B,
+        metrics_a: null,
+        metrics_b: { total_mass_kg: 4.1, assumption_computation_context: ctxB },
+      };
+
+      const { container } = render(
+        <VersionCompareView
+          compareOut={compareOut}
+          isLoading={false}
+          error={null}
+          onClose={vi.fn()}
+        />,
+      );
+
+      const ctxBlockB = container.querySelector('[data-testid="compare-analysis-context-B"]');
+      expect(ctxBlockB).not.toBeNull();
+      const text = ctxBlockB?.textContent ?? "";
+      expect(text).toMatch(/4\.1\s*kg/);
+      expect(text).toMatch(/Re/i);
+      expect(text).toMatch(/22\.0|22\s*m\/s/i);
+    });
+
+    it("includes a short date from computed_at in the context line", () => {
+      const ctxA = makeCtx({ computed_at: "2026-03-14T09:00:00Z" });
+      const compareOut: CompareOut = {
+        node_a: BASE_NODE_A,
+        node_b: BASE_NODE_B,
+        metrics_a: { total_mass_kg: 1.0, assumption_computation_context: ctxA },
+        metrics_b: null,
+      };
+
+      const { container } = render(
+        <VersionCompareView
+          compareOut={compareOut}
+          isLoading={false}
+          error={null}
+          onClose={vi.fn()}
+        />,
+      );
+
+      const ctxBlockA = container.querySelector('[data-testid="compare-analysis-context-A"]');
+      const text = ctxBlockA?.textContent ?? "";
+      // Should contain some date-related text for 2026-03-14
+      expect(text).toMatch(/2026|Mar|14/i);
+    });
+
+    it("skips mass part when total_mass_kg is absent", () => {
+      const ctxA = makeCtx({ v_cruise_mps: 15.0, reynolds: 250000 });
+      const compareOut: CompareOut = {
+        node_a: BASE_NODE_A,
+        node_b: BASE_NODE_B,
+        // No total_mass_kg
+        metrics_a: { assumption_computation_context: ctxA },
+        metrics_b: null,
+      };
+
+      const { container } = render(
+        <VersionCompareView
+          compareOut={compareOut}
+          isLoading={false}
+          error={null}
+          onClose={vi.fn()}
+        />,
+      );
+
+      const ctxBlockA = container.querySelector('[data-testid="compare-analysis-context-A"]');
+      const text = ctxBlockA?.textContent ?? "";
+      // Should not mention kg
+      expect(text).not.toMatch(/kg/i);
+      // But should still have Re and v_cruise
+      expect(text).toMatch(/Re/i);
+    });
+  });
+
+  // -------------------------------------------------------------------------
+  // 13. Warning renders when assumption_computation_context is absent
+  // -------------------------------------------------------------------------
+  describe("no-analysis-context warning (gh-963)", () => {
+    it("renders warning for side A when metrics_a has no usable operating point", () => {
+      // Only mass present — no operating-point fields anywhere (no nested
+      // context, no flat reynolds/v_cruise/computed_at). Must warn, not render
+      // mass alone (metrics aren't comparable without the conditions).
+      const compareOut: CompareOut = {
+        node_a: BASE_NODE_A,
+        node_b: BASE_NODE_B,
+        metrics_a: { total_mass_kg: 1.5 },
+        metrics_b: wrapCtx(makeCtx()),
+      };
+
+      const { container } = render(
+        <VersionCompareView
+          compareOut={compareOut}
+          isLoading={false}
+          error={null}
+          onClose={vi.fn()}
+        />,
+      );
+
+      const ctxBlockA = container.querySelector('[data-testid="compare-analysis-context-A"]');
+      expect(ctxBlockA).not.toBeNull();
+      const text = ctxBlockA?.textContent ?? "";
+      expect(text).toMatch(/no analysis context|values may not be comparable/i);
+    });
+
+    it("renders warning when assumption_computation_context is an empty object", () => {
+      // Present-but-empty context: the key exists but carries no operating
+      // point — must warn rather than render a blank line.
+      const compareOut: CompareOut = {
+        node_a: BASE_NODE_A,
+        node_b: BASE_NODE_B,
+        metrics_a: { assumption_computation_context: {}, total_mass_kg: 1.5 },
+        metrics_b: wrapCtx(makeCtx()),
+      };
+
+      const { container } = render(
+        <VersionCompareView
+          compareOut={compareOut}
+          isLoading={false}
+          error={null}
+          onClose={vi.fn()}
+        />,
+      );
+
+      const ctxBlockA = container.querySelector('[data-testid="compare-analysis-context-A"]');
+      const text = ctxBlockA?.textContent ?? "";
+      expect(text).toMatch(/no analysis context|values may not be comparable/i);
+    });
+
+    it("renders warning for side B when metrics_b is null", () => {
+      const compareOut: CompareOut = {
+        node_a: BASE_NODE_A,
+        node_b: BASE_NODE_B,
+        metrics_a: wrapCtx(makeCtx()),
+        metrics_b: null,
+      };
+
+      const { container } = render(
+        <VersionCompareView
+          compareOut={compareOut}
+          isLoading={false}
+          error={null}
+          onClose={vi.fn()}
+        />,
+      );
+
+      const ctxBlockB = container.querySelector('[data-testid="compare-analysis-context-B"]');
+      expect(ctxBlockB).not.toBeNull();
+      const text = ctxBlockB?.textContent ?? "";
+      expect(text).toMatch(/no analysis context|values may not be comparable/i);
+    });
+
+    it("does NOT render warning for side A when assumption_computation_context is present", () => {
+      const compareOut = makeCompareOut(makeCtx(), makeCtx());
+
+      const { container } = render(
+        <VersionCompareView
+          compareOut={compareOut}
+          isLoading={false}
+          error={null}
+          onClose={vi.fn()}
+        />,
+      );
+
+      const ctxBlockA = container.querySelector('[data-testid="compare-analysis-context-A"]');
+      const text = ctxBlockA?.textContent ?? "";
+      expect(text).not.toMatch(/no analysis context/i);
+    });
+  });
+
+  // -------------------------------------------------------------------------
+  // 14. Metric rows still render with branchNameMap prop (regression)
+  // -------------------------------------------------------------------------
+  it("metric rows still render when branchNameMap is provided (regression)", () => {
+    const branchNameMap = new Map([[1, "main"], [2, "feature-x"]]);
+    const ctxA = makeCtx({ v_cruise_mps: 15.0 });
+    const ctxB = makeCtx({ v_cruise_mps: 20.0 });
+    const compareOut = makeCompareOut(ctxA, ctxB);
+
+    const { container } = render(
+      <VersionCompareView
+        compareOut={compareOut}
+        isLoading={false}
+        error={null}
+        onClose={vi.fn()}
+        branchNameMap={branchNameMap}
+      />,
+    );
+
+    const row = container.querySelector('[data-testid="compare-row-V_cruise"]');
+    expect(row).not.toBeNull();
+    expect(row?.getAttribute("data-differs")).toBe("true");
   });
 });
