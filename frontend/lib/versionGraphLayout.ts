@@ -39,6 +39,13 @@ interface BranchMeta {
   tipRowIndex: number;
   /** Row index of the fork-parent row (the row where the branch diverges). */
   forkRowIndex: number;
+  /**
+   * Lane of the parent this branch forks INTO, set only for branches with a
+   * real cross-lane fork (see `buildForkMap`). When non-null, the branch's
+   * vertical rail stops one row above `forkRowIndex` — the fork curve, not a
+   * vertical stub, bridges child → parent (otherwise it reads as a merge).
+   */
+  forkParentLane: number | null;
 }
 
 /** Pre-computed lookups shared across the layout helpers. */
@@ -178,6 +185,7 @@ function assignLanes(
       color: LANE_COLORS.main,
       tipRowIndex: ctx.branchTipRow.get(ctx.mainBranch.id) ?? 0,
       forkRowIndex: ctx.lastRowIndex,
+      forkParentLane: null,
     });
     occupiedLanes.add(0);
   }
@@ -212,6 +220,7 @@ function assignLanes(
       color: branchColor(b),
       tipRowIndex: tipRow,
       forkRowIndex: getForkRowIndex(b, ctx),
+      forkParentLane: null, // set later in buildForkMap if a real fork exists
     });
     occupiedLanes.add(lane);
   }
@@ -248,10 +257,15 @@ function buildForkMap(
 
     const parentMeta =
       predBranchId != null ? branchMetas.get(predBranchId) : null;
+    const parentLane = parentMeta ? parentMeta.lane : 0;
+
+    // Mark this branch as having a real cross-lane fork so `buildRails` stops
+    // its vertical rail one row above the fork row (the curve bridges instead).
+    meta.forkParentLane = parentLane;
 
     forkByRowIndex.set(forkRow, {
       childLane: meta.lane,
-      parentLane: parentMeta ? parentMeta.lane : 0,
+      parentLane,
       color: meta.color,
     });
   }
@@ -308,12 +322,19 @@ function buildRails(
   const railMap = new Map<number, GraphRail>();
 
   for (const meta of branchMetas.values()) {
-    if (rowIndex >= meta.tipRowIndex && rowIndex <= meta.forkRowIndex) {
+    const hasFork = meta.forkParentLane != null;
+    // A forked child's vertical rail stops one row ABOVE the fork row; the
+    // fork curve (not a vertical stub) bridges child → parent on the fork row.
+    const railEnd = hasFork ? meta.forkRowIndex - 1 : meta.forkRowIndex;
+
+    if (rowIndex >= meta.tipRowIndex && rowIndex <= railEnd) {
       railMap.set(meta.lane, {
         lane: meta.lane,
         color: meta.color,
         top: rowIndex > meta.tipRowIndex,
-        bottom: rowIndex < meta.forkRowIndex,
+        // Forked branches always connect downward within their span: the last
+        // rail row meets the curve below. No-fork branches use the plain span.
+        bottom: hasFork ? true : rowIndex < meta.forkRowIndex,
       });
     }
   }

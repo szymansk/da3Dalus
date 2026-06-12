@@ -109,4 +109,11 @@ export const LANE_COLORS = {
  *
  * laneCount = 3. Lane 1 (ai) is occupied rows[1..2]; lane 2 (fix) rows[3..4];
  * once a branch's span ends its lane index may be reused by a later branch.
+ *
+ * NOTE — fork-row rails: a forked child branch's VERTICAL lane rail stops one
+ * row ABOVE its fork row. On the fork row itself (row2 for ai, row4 for fix)
+ * the child lane has NO rail — only the `fork` bézier curve bridges child →
+ * parent. The child's tip rail therefore carries bottom:true so it meets the
+ * curve below. (A vertical child stub on the fork row would read as a MERGE,
+ * two lines converging into the parent, rather than a branch-off.)
  */

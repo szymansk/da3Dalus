@@ -245,16 +245,25 @@ describe("ai branch fork", () => {
     const rail = tipRow.rails.find((r) => r.lane === 1)!;
     expect(rail).toBeDefined();
     expect(rail.top).toBe(false);
+    // The child tip rail connects DOWN to the fork curve (one row below).
     expect(rail.bottom).toBe(true);
   });
 
-  it("ai rail present at parent (v1.1) row (top=true, bottom=false)", () => {
+  it("ai lane rail is ABSENT on the fork (v1.1) row — only the curve bridges", () => {
+    // The child lane rail stops one row above the fork row. On the fork row
+    // itself only the bézier curve connects child → parent; a vertical child
+    // stub there would read as a merge.
     const layout = computeGraphLayout(TREE_WORKED);
     const parentRow = layout.rows.find((r) => r.node.id === 3)!; // v1.1
-    const rail = parentRow.rails.find((r) => r.lane === 1)!;
-    expect(rail).toBeDefined();
-    expect(rail.top).toBe(true);
-    expect(rail.bottom).toBe(false);
+    const childRail = parentRow.rails.find((r) => r.lane === 1);
+    expect(childRail).toBeUndefined();
+  });
+
+  it("fork row contains ONLY the main lane rail (lane 0) plus the fork curve", () => {
+    const layout = computeGraphLayout(TREE_WORKED);
+    const parentRow = layout.rows.find((r) => r.node.id === 3)!; // v1.1
+    expect(parentRow.rails.map((r) => r.lane)).toEqual([0]);
+    expect(parentRow.fork).not.toBeNull();
   });
 
   it("fork is set on the parent (v1.1) row with correct childLane/parentLane", () => {
@@ -299,10 +308,56 @@ describe("fix branch", () => {
     expect(parentRow.fork!.color).toBe(LANE_COLORS.palette[0]);
   });
 
+  it("fix fork row (v1.0) has ONLY the main lane rail — no lane-2 child stub", () => {
+    const layout = computeGraphLayout(TREE_WORKED);
+    const parentRow = layout.rows.find((r) => r.node.id === 2)!; // v1.0
+    expect(parentRow.rails.map((r) => r.lane)).toEqual([0]);
+  });
+
+  it("fix tip row (washout) rail connects DOWN to the fork curve (bottom=true)", () => {
+    const layout = computeGraphLayout(TREE_WORKED);
+    const tipRow = layout.rows.find((r) => r.node.id === 6)!; // washout
+    const rail = tipRow.rails.find((r) => r.lane === 2)!;
+    expect(rail).toBeDefined();
+    expect(rail.bottom).toBe(true);
+  });
+
   it("fix tip pill text is ⎇ fix/stall", () => {
     const layout = computeGraphLayout(TREE_WORKED);
     const row = layout.rows.find((r) => r.node.id === 6)!;
     expect(row.pill!.text).toBe("⎇ fix/stall");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// 4b. Fork connector reads as branch-off, not merge
+// ---------------------------------------------------------------------------
+
+describe("fork renders as branch-off (not merge)", () => {
+  it("on every fork row, the child lane has NO rail but the fork is set", () => {
+    const layout = computeGraphLayout(TREE_WORKED);
+    for (const row of layout.rows) {
+      if (row.fork === null) continue;
+      const childLane = row.fork.childLane;
+      const childRail = row.rails.find((r) => r.lane === childLane);
+      // No vertical child stub on the fork row — only the curve bridges.
+      expect(childRail).toBeUndefined();
+      expect(row.fork).not.toBeNull();
+    }
+  });
+
+  it("each forked branch's tip rail connects downward to its curve (bottom=true)", () => {
+    const layout = computeGraphLayout(TREE_WORKED);
+    // ai tip (node 5, lane 1) and fix tip (node 6, lane 2) both fork from main.
+    for (const [nodeId, lane] of [
+      [5, 1],
+      [6, 2],
+    ] as const) {
+      const tipRow = layout.rows.find((r) => r.node.id === nodeId)!;
+      const rail = tipRow.rails.find((r) => r.lane === lane)!;
+      expect(rail).toBeDefined();
+      expect(rail.bottom).toBe(true);
+    }
   });
 });
 
