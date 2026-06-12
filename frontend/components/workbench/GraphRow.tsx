@@ -122,17 +122,19 @@ function GraphSvgCell({ row, laneCount }: GraphSvgCellProps) {
         );
       })}
 
-      {/* Fork bézier curve (child lane → parent lane, on parent row) */}
+      {/* Fork bézier curve (child lane → parent lane, on parent row).
+          The child branch comes straight down its own lane then sweeps into
+          the parent node — a clear "branched-from-here" connector. */}
       {row.fork && (() => {
         const cx = laneX(row.fork.childLane);
         const px = laneX(row.fork.parentLane);
-        // Curve from top-of-row at childLane down to midY at parentLane
-        const d = `M ${cx} 0 C ${cx} ${midY * 0.6} ${px} ${midY * 0.4} ${px} ${midY}`;
+        const d = `M ${cx} 0 C ${cx} ${midY * 0.9} ${px} ${midY * 0.45} ${px} ${midY}`;
         return (
           <path
+            data-testid="graph-fork"
             d={d}
             stroke={row.fork.color}
-            strokeWidth={2}
+            strokeWidth={2.5}
             fill="none"
           />
         );
