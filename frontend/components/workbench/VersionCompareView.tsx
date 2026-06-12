@@ -315,6 +315,90 @@ function MetricRow({ symbol, valA, valB, labelA, labelB, differs }: MetricRowPro
 }
 
 // ---------------------------------------------------------------------------
+// Analysis-context disclosure line (gh-963)
+// ---------------------------------------------------------------------------
+
+interface AnalysisContextLineProps {
+  readonly metrics: Record<string, unknown> | null;
+  readonly side: "A" | "B";
+}
+
+/**
+ * Small muted line disclosing the computation assumptions behind the metrics
+ * column. Sourced from metrics.total_mass_kg and
+ * metrics.assumption_computation_context.
+ *
+ * If assumption_computation_context is absent or empty, renders an amber
+ * warning instead so the reviewer knows the values may not be comparable.
+ */
+function AnalysisContextLine({ metrics, side }: AnalysisContextLineProps) {
+  const testId = `compare-analysis-context-${side}`;
+
+  // Extract computation context from metrics
+  const ctx =
+    metrics != null &&
+    metrics["assumption_computation_context"] != null &&
+    typeof metrics["assumption_computation_context"] === "object"
+      ? (metrics["assumption_computation_context"] as ComputationContext)
+      : null;
+
+  const hasContext = ctx != null;
+
+  if (!hasContext) {
+    return (
+      <div
+        data-testid={testId}
+        className="pl-6 mt-1 text-[9px] text-amber-400"
+      >
+        ⚠ no analysis context — values may not be comparable
+      </div>
+    );
+  }
+
+  // Build the disclosure parts
+  const parts: string[] = [];
+
+  const massKg =
+    metrics != null && typeof metrics["total_mass_kg"] === "number"
+      ? (metrics["total_mass_kg"] as number)
+      : null;
+  if (massKg != null) {
+    parts.push(`${massKg} kg`);
+  }
+
+  if (ctx.reynolds != null) {
+    parts.push(`Re≈${Math.round(ctx.reynolds).toLocaleString("en-GB")}`);
+  }
+
+  if (ctx.v_cruise_mps != null) {
+    parts.push(`v_cruise ${ctx.v_cruise_mps.toFixed(1)} m/s`);
+  }
+
+  if (ctx.computed_at) {
+    try {
+      const d = new Date(ctx.computed_at);
+      const shortDate = d.toLocaleDateString("en-GB", {
+        day: "numeric",
+        month: "short",
+        year: "numeric",
+      });
+      parts.push(shortDate);
+    } catch {
+      parts.push(ctx.computed_at);
+    }
+  }
+
+  return (
+    <div
+      data-testid={testId}
+      className="pl-6 mt-1 text-[9px] text-subtle-foreground"
+    >
+      {parts.join(" · ")}
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
 // Node identity header (gh-961) — disambiguates even when version_label is
 // shared between both sides.
 // ---------------------------------------------------------------------------
@@ -342,6 +426,8 @@ function formatTimestamp(iso: string): string {
 interface NodeIdentityHeaderProps {
   readonly node: VersionNode;
   readonly side: "A" | "B";
+  readonly branchNameMap?: ReadonlyMap<number, string>;
+  readonly metrics: Record<string, unknown> | null;
 }
 
 /**
@@ -357,7 +443,7 @@ interface NodeIdentityHeaderProps {
  *   - author chip (created_by)
  *   - timestamp (created_at, formatted)
  */
-function NodeIdentityHeader({ node, side }: NodeIdentityHeaderProps) {
+function NodeIdentityHeader({ node, side, branchNameMap, metrics }: NodeIdentityHeaderProps) {
   const isAi = isAgentAuthor(node.created_by);
   const sideColor =
     side === "A"
@@ -406,10 +492,23 @@ function NodeIdentityHeader({ node, side }: NodeIdentityHeaderProps) {
         <span className="rounded bg-muted/60 px-1 py-0.5 font-[family-name:var(--font-geist-mono)] text-[9px] text-muted-foreground">
           #{node.id}
         </span>
-        {/* Branch */}
-        <span className="rounded bg-muted/60 px-1 py-0.5 font-[family-name:var(--font-geist-mono)] text-[9px] text-muted-foreground">
-          {node.branch_id != null ? `branch ${node.branch_id}` : "legacy"}
-        </span>
+        {/* Branch — show name from map when available, raw id as tooltip */}
+        {node.branch_id != null ? (
+          <span
+            data-testid={`compare-branch-pill-${side}`}
+            title={String(node.branch_id)}
+            className="rounded bg-muted/60 px-1 py-0.5 font-[family-name:var(--font-geist-mono)] text-[9px] text-muted-foreground"
+          >
+            {branchNameMap?.get(node.branch_id) ?? `branch ${node.branch_id}`}
+          </span>
+        ) : (
+          <span
+            data-testid={`compare-branch-pill-${side}`}
+            className="rounded bg-muted/60 px-1 py-0.5 font-[family-name:var(--font-geist-mono)] text-[9px] text-muted-foreground"
+          >
+            legacy
+          </span>
+        )}
         {/* Author */}
         <span className="rounded bg-muted/60 px-1 py-0.5 font-[family-name:var(--font-geist-mono)] text-[9px] text-muted-foreground">
           {authorLabel(node.created_by)}
@@ -432,6 +531,9 @@ function NodeIdentityHeader({ node, side }: NodeIdentityHeaderProps) {
           {node.version_note}
         </p>
       )}
+
+      {/* Analysis-context disclosure line */}
+      <AnalysisContextLine metrics={metrics} side={side} />
     </div>
   );
 }
@@ -445,6 +547,8 @@ export interface VersionCompareViewProps {
   readonly isLoading: boolean;
   readonly error: string | null;
   readonly onClose: () => void;
+  /** Map from branch id → branch name, used to display human-readable branch names. */
+  readonly branchNameMap?: ReadonlyMap<number, string>;
 }
 
 export function VersionCompareView({
@@ -452,6 +556,7 @@ export function VersionCompareView({
   isLoading,
   error,
   onClose,
+  branchNameMap,
 }: VersionCompareViewProps) {
   return (
     <div
@@ -491,11 +596,21 @@ export function VersionCompareView({
           <>
             {/* Column headers */}
             <div className="mb-4 grid grid-cols-[1fr_auto_1fr] items-center gap-2">
-              <NodeIdentityHeader node={compareOut.node_a} side="A" />
+              <NodeIdentityHeader
+                node={compareOut.node_a}
+                side="A"
+                branchNameMap={branchNameMap}
+                metrics={compareOut.metrics_a}
+              />
               <div className="flex h-6 w-6 items-center justify-center text-muted-foreground/40">
                 <ArrowLeftRight size={11} />
               </div>
-              <NodeIdentityHeader node={compareOut.node_b} side="B" />
+              <NodeIdentityHeader
+                node={compareOut.node_b}
+                side="B"
+                branchNameMap={branchNameMap}
+                metrics={compareOut.metrics_b}
+              />
             </div>
 
             {/* Column label row */}

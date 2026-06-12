@@ -126,3 +126,24 @@ export async function getLineageTree(rootId: number): Promise<TreeOut> {
 export async function compareNodes(a: number, b: number): Promise<CompareOut> {
   return getJson<CompareOut>(`/aeroplanes/compare?a=${a}&b=${b}`);
 }
+
+/**
+ * PATCH /branches/{id}
+ * Rename a branch. Returns the updated BranchOut.
+ * 404 — unknown branch; 409 — duplicate name in lineage; 422 — empty name.
+ */
+export async function renameBranch(
+  branchId: number,
+  name: string,
+): Promise<BranchOut> {
+  const res = await fetch(`${API_BASE}/branches/${branchId}`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ name }),
+  });
+  if (!res.ok) {
+    const text = await res.text().catch(() => "");
+    throw new Error(`PATCH /branches/${branchId} failed: ${res.status} ${res.statusText}: ${text}`);
+  }
+  return res.json() as Promise<BranchOut>;
+}

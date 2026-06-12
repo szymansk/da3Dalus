@@ -43,6 +43,7 @@ vi.mock("lucide-react", () => {
     Camera: icon,
     GitMerge: icon,
     ChevronDown: icon,
+    Pencil: icon,
   };
 });
 
@@ -205,6 +206,7 @@ const DEFAULT_ACTIONS = {
   adoptBranch: vi.fn().mockResolvedValue({ id: 2, head_id: 30, is_main: true }),
   restore: vi.fn().mockResolvedValue({ id: 5, head_id: 20, name: "restored" }),
   discardBranch: vi.fn().mockResolvedValue(undefined),
+  renameBranch: vi.fn().mockResolvedValue({ id: 2, name: "new-name" }),
 };
 
 // ---------------------------------------------------------------------------
@@ -558,7 +560,7 @@ describe("VersionGraphOverlay (gh-961)", () => {
 
     await user.click(screen.getByRole("button", { name: /discard/i }));
 
-    expect(screen.getByText(/delete all nodes/i)).toBeDefined();
+    expect(screen.getByText(/active design is not affected/i)).toBeDefined();
     expect(discardBranch).not.toHaveBeenCalled();
   });
 
@@ -640,5 +642,227 @@ describe("VersionGraphOverlay (gh-961)", () => {
     await user.click(screen.getByRole("button", { name: /confirm snapshot/i }));
 
     await waitFor(() => expect(snapshot).toHaveBeenCalledOnce());
+  });
+
+  // -------------------------------------------------------------------------
+  // gh-964 § 1: Plain-language tooltips on every toolbar button
+  // -------------------------------------------------------------------------
+  describe("gh-964 §1 — plain-language tooltips", () => {
+    it("Snapshot button has a tooltip when disabled (no selection)", () => {
+      renderOverlay();
+      const btn = screen.getByRole("button", { name: /snapshot/i });
+      expect(btn.getAttribute("title")).toBeTruthy();
+    });
+
+    it("Snapshot enabled on editable head has action tooltip", async () => {
+      const user = userEvent.setup();
+      renderOverlay();
+      const row = screen.getByTestId("graph-row-10");
+      await user.click(row);
+      const btn = screen.getByRole("button", { name: /snapshot/i });
+      expect(btn.hasAttribute("disabled")).toBe(false);
+      expect(btn.getAttribute("title")).toMatch(/checkpoint/i);
+    });
+
+    it("Branch from enabled has action tooltip", async () => {
+      const user = userEvent.setup();
+      renderOverlay();
+      const row = screen.getByTestId("graph-row-10");
+      await user.click(row);
+      const btn = screen.getByRole("button", { name: /branch from/i });
+      expect(btn.hasAttribute("disabled")).toBe(false);
+      expect(btn.getAttribute("title")).toMatch(/variant/i);
+    });
+
+    it("Restore enabled on snapshot has action tooltip", async () => {
+      const user = userEvent.setup();
+      renderOverlay();
+      // select snapshot v1.1 (id 20)
+      const row = screen.getByTestId("graph-row-20");
+      await user.click(row);
+      const btn = screen.getByRole("button", { name: /restore/i });
+      expect(btn.hasAttribute("disabled")).toBe(false);
+      expect(btn.getAttribute("title")).toMatch(/branch/i);
+    });
+
+    it("Adopt enabled has action tooltip", async () => {
+      const user = userEvent.setup();
+      renderOverlay();
+      // select non-main branch head (winglet draft, id 30)
+      const row = screen.getByTestId("graph-row-30");
+      await user.click(row);
+      const btn = screen.getByRole("button", { name: /adopt/i });
+      expect(btn.hasAttribute("disabled")).toBe(false);
+      expect(btn.getAttribute("title")).toMatch(/active/i);
+    });
+
+    it("Discard enabled has action tooltip", async () => {
+      const user = userEvent.setup();
+      renderOverlay();
+      const row = screen.getByTestId("graph-row-30");
+      await user.click(row);
+      const btn = screen.getByRole("button", { name: /discard/i });
+      expect(btn.hasAttribute("disabled")).toBe(false);
+      expect(btn.getAttribute("title")).toMatch(/delete/i);
+    });
+  });
+
+  // -------------------------------------------------------------------------
+  // gh-964 § 2: Clearer confirmations
+  // -------------------------------------------------------------------------
+  describe("gh-964 §2 — clearer confirmations", () => {
+    it("discard confirm copy includes the branch name", async () => {
+      const user = userEvent.setup();
+      renderOverlay();
+      // Select winglet-exp branch head (non-main)
+      const row = screen.getByTestId("graph-row-30");
+      await user.click(row);
+      await user.click(screen.getByRole("button", { name: /discard/i }));
+      // Confirm copy names the branch and reassures the active design is safe
+      const confirm = screen.getByText(/active design is not affected/i);
+      expect(confirm.textContent).toMatch(/ai\/winglet-exp/i);
+    });
+
+    it("adopt has a two-step confirm naming the branch", async () => {
+      const user = userEvent.setup();
+      const adoptBranch = vi.fn().mockResolvedValue({ id: 2, head_id: 30, is_main: true });
+      renderOverlay({ actionsOverride: { adoptBranch } });
+
+      const row = screen.getByTestId("graph-row-30");
+      await user.click(row);
+
+      // First click should show confirm step, NOT call adoptBranch yet
+      await user.click(screen.getByRole("button", { name: /adopt/i }));
+      expect(adoptBranch).not.toHaveBeenCalled();
+
+      // The confirm copy should name the branch and mention the active design
+      const confirm = screen.getByText(/the active design\?/i);
+      expect(confirm.textContent).toMatch(/ai\/winglet-exp/i);
+      expect(confirm.textContent).toMatch(/main/i);
+    });
+
+    it("confirming adopt calls adoptBranch with the correct branchId", async () => {
+      const user = userEvent.setup();
+      const adoptBranch = vi.fn().mockResolvedValue({ id: 2, head_id: 30, is_main: true });
+      renderOverlay({ actionsOverride: { adoptBranch } });
+
+      const row = screen.getByTestId("graph-row-30");
+      await user.click(row);
+
+      await user.click(screen.getByRole("button", { name: /adopt/i }));
+      await user.click(screen.getByRole("button", { name: /confirm adopt/i }));
+
+      await waitFor(() => expect(adoptBranch).toHaveBeenCalledOnce());
+      expect(adoptBranch).toHaveBeenCalledWith(2);
+    });
+
+    it("cancelling adopt confirm does not call adoptBranch", async () => {
+      const user = userEvent.setup();
+      const adoptBranch = vi.fn().mockResolvedValue({ id: 2, head_id: 30, is_main: true });
+      renderOverlay({ actionsOverride: { adoptBranch } });
+
+      const row = screen.getByTestId("graph-row-30");
+      await user.click(row);
+
+      await user.click(screen.getByRole("button", { name: /adopt/i }));
+      await user.click(screen.getByRole("button", { name: /cancel adopt/i }));
+
+      expect(adoptBranch).not.toHaveBeenCalled();
+    });
+  });
+
+  // -------------------------------------------------------------------------
+  // gh-964 § 3: Legend + sorted-by-date note
+  // -------------------------------------------------------------------------
+  describe("gh-964 §3 — legend and sorted-by-date note", () => {
+    it("renders the version graph legend element", () => {
+      renderOverlay();
+      expect(screen.getByTestId("version-graph-legend")).toBeDefined();
+    });
+
+    it("legend contains snapshot glyph and editable head glyph", () => {
+      renderOverlay();
+      const legend = screen.getByTestId("version-graph-legend");
+      expect(legend.textContent).toMatch(/snapshot/i);
+      expect(legend.textContent).toMatch(/editable/i);
+    });
+
+    it("sorted-by-date note is present near the legend", () => {
+      renderOverlay();
+      expect(screen.getByText(/sorted by date/i)).toBeDefined();
+    });
+  });
+
+  // -------------------------------------------------------------------------
+  // gh-964 § 4: Branch rename
+  // -------------------------------------------------------------------------
+  describe("gh-964 §4 — branch rename", () => {
+    it("Rename button is disabled when no branch is selected", () => {
+      renderOverlay();
+      expect(screen.getByRole("button", { name: /rename/i }).hasAttribute("disabled")).toBe(true);
+    });
+
+    it("Rename button is enabled when a non-main branch is selected", async () => {
+      const user = userEvent.setup();
+      renderOverlay();
+      const row = screen.getByTestId("graph-row-30");
+      await user.click(row);
+      expect(screen.getByRole("button", { name: /rename/i }).hasAttribute("disabled")).toBe(false);
+    });
+
+    it("clicking Rename shows the name input pre-filled with current branch name", async () => {
+      const user = userEvent.setup();
+      renderOverlay();
+      const row = screen.getByTestId("graph-row-30");
+      await user.click(row);
+      await user.click(screen.getByRole("button", { name: /rename/i }));
+      const input = screen.getByRole("textbox", { name: /rename branch/i });
+      expect(input).toBeDefined();
+      // Should be pre-filled with current branch name
+      expect((input as HTMLInputElement).value).toBe("ai/winglet-exp");
+    });
+
+    it("confirming rename calls renameBranch with (branchId, newName)", async () => {
+      const user = userEvent.setup();
+      const renameBranch = vi.fn().mockResolvedValue({ id: 2, name: "new-name" });
+      renderOverlay({ actionsOverride: { renameBranch } });
+      const row = screen.getByTestId("graph-row-30");
+      await user.click(row);
+      await user.click(screen.getByRole("button", { name: /rename/i }));
+
+      const input = screen.getByRole("textbox", { name: /rename branch/i });
+      await user.clear(input);
+      await user.type(input, "new-name");
+      await user.click(screen.getByRole("button", { name: /confirm rename/i }));
+
+      await waitFor(() => expect(renameBranch).toHaveBeenCalledOnce());
+      expect(renameBranch).toHaveBeenCalledWith(2, "new-name");
+    });
+
+    it("Escape while rename input is open closes input, not the overlay", async () => {
+      const user = userEvent.setup();
+      const onClose = vi.fn();
+      renderOverlay({ onClose });
+
+      const row = screen.getByTestId("graph-row-30");
+      await user.click(row);
+      await user.click(screen.getByRole("button", { name: /rename/i }));
+      expect(screen.getByRole("textbox", { name: /rename branch/i })).toBeDefined();
+
+      await user.keyboard("{Escape}");
+
+      expect(screen.queryByRole("textbox", { name: /rename branch/i })).toBeNull();
+      expect(onClose).not.toHaveBeenCalled();
+    });
+
+    it("Rename button has an action tooltip", async () => {
+      const user = userEvent.setup();
+      renderOverlay();
+      const row = screen.getByTestId("graph-row-30");
+      await user.click(row);
+      const btn = screen.getByRole("button", { name: /rename/i });
+      expect(btn.hasAttribute("disabled")).toBe(false);
+      expect(btn.getAttribute("title")).toMatch(/rename/i);
+    });
   });
 });

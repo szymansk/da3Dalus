@@ -28,6 +28,7 @@ from app.core.exceptions import (
 from app.db.session import get_db
 from app.schemas.versioning import (
     BranchOut,
+    BranchRenameRequest,
     BranchRequest,
     CompareOut,
     SnapshotRequest,
@@ -230,6 +231,31 @@ async def discard_branch(
     lineage root.
     """
     _call(svc.discard_branch, db, branch_id)
+
+
+@router.patch(
+    "/branches/{branch_id}",
+    status_code=status.HTTP_200_OK,
+    tags=_TAGS_VERSIONING,
+    operation_id="rename_branch",
+    responses={
+        404: {"description": "Branch not found"},
+        409: {"description": "Branch name already used in this lineage"},
+        422: {"description": "Validation error — e.g. empty name"},
+    },
+)
+async def rename_branch(
+    branch_id: Annotated[int, Path(..., description="Integer PK of the branch to rename")],
+    body: Annotated[BranchRenameRequest, Body(...)],
+    db: Annotated[Session, Depends(get_db)],
+) -> BranchOut:
+    """Rename a branch within its lineage.
+
+    The name is stripped of leading/trailing whitespace.  Returns 409 if
+    another branch in the same lineage already has the target name.
+    """
+    branch = _call(svc.rename_branch, db, branch_id, body.name)
+    return _branch_to_schema(branch)
 
 
 @router.get(

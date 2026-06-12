@@ -456,6 +456,62 @@ def list_tree(
     return nodes, branches
 
 
+def rename_branch(db: Session, branch_id: int, name: str) -> BranchModel:
+    """Rename a branch within its lineage.
+
+    Strips *name*; raises ValidationError if the result is empty.  Raises
+    ConflictError if another branch with the same ``root_id`` already has that
+    name (uniqueness enforced at the application level — no DB migration
+    required).
+
+    Returns the updated branch.
+
+    Raises
+    ------
+    NotFoundError
+        If *branch_id* does not exist.
+    ValidationError
+        If the stripped *name* is empty.
+    ConflictError
+        If a **different** branch in the same lineage already uses that name.
+    """
+    branch = _get_branch(db, branch_id)
+
+    stripped = name.strip()
+    if not stripped:
+        raise ValidationError(
+            message="Branch name must not be empty",
+            details={"branch_id": branch_id, "name": name},
+        )
+
+    # Uniqueness check within the lineage (app-level, no DB constraint).
+    conflict = (
+        db.query(BranchModel)
+        .filter(
+            BranchModel.root_id == branch.root_id,
+            BranchModel.name == stripped,
+            BranchModel.id != branch_id,
+        )
+        .first()
+    )
+    if conflict is not None:
+        raise ConflictError(
+            message="A branch with that name already exists in this lineage",
+            details={"branch_id": branch_id, "conflicting_branch_id": conflict.id, "name": stripped},
+        )
+
+    branch.name = stripped
+    db.flush()
+
+    logger.info(
+        "rename_branch: branch %s renamed to %r (root_id=%s)",
+        branch_id,
+        stripped,
+        branch.root_id,
+    )
+    return branch
+
+
 def list_aeroplanes_heads_only(db: Session) -> list[AeroplaneModel]:
     """Return only branch-head aeroplane nodes (``heads_only=True`` mode).
 
