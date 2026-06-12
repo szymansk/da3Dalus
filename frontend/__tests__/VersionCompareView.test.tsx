@@ -565,12 +565,12 @@ describe("VersionCompareView (gh-907)", () => {
         />,
       );
 
-      // The branch pill for node_a (branch_id=1) must carry title="1"
+      // The branch pill carries a self-explanatory id tooltip ("branch id: N").
       const pills = container.querySelectorAll('[data-testid="compare-branch-pill-A"], [data-testid="compare-branch-pill-B"]');
       expect(pills.length).toBe(2);
       const titlesInPills = Array.from(pills).map((el) => el.getAttribute("title"));
-      expect(titlesInPills).toContain("1");
-      expect(titlesInPills).toContain("2");
+      expect(titlesInPills).toContain("branch id: 1");
+      expect(titlesInPills).toContain("branch id: 2");
     });
 
     it("falls back to 'branch <id>' when branch not in branchNameMap", () => {
@@ -747,17 +747,14 @@ describe("VersionCompareView (gh-907)", () => {
   // 13. Warning renders when assumption_computation_context is absent
   // -------------------------------------------------------------------------
   describe("no-analysis-context warning (gh-963)", () => {
-    it("renders warning for side A when metrics_a has no assumption_computation_context", () => {
-      // metrics_a without assumption_computation_context key, but with
-      // enough fields that the fallback toCtx() path works for the metric rows.
-      const flatCtx = makeCtx() as unknown as Record<string, unknown>;
-      const metricsWithoutCtxKey: Record<string, unknown> = { ...flatCtx, total_mass_kg: 1.5 };
-      // Explicitly remove assumption_computation_context if present
-      delete metricsWithoutCtxKey["assumption_computation_context"];
+    it("renders warning for side A when metrics_a has no usable operating point", () => {
+      // Only mass present — no operating-point fields anywhere (no nested
+      // context, no flat reynolds/v_cruise/computed_at). Must warn, not render
+      // mass alone (metrics aren't comparable without the conditions).
       const compareOut: CompareOut = {
         node_a: BASE_NODE_A,
         node_b: BASE_NODE_B,
-        metrics_a: metricsWithoutCtxKey,
+        metrics_a: { total_mass_kg: 1.5 },
         metrics_b: wrapCtx(makeCtx()),
       };
 
@@ -772,7 +769,30 @@ describe("VersionCompareView (gh-907)", () => {
 
       const ctxBlockA = container.querySelector('[data-testid="compare-analysis-context-A"]');
       expect(ctxBlockA).not.toBeNull();
-      // Should contain a warning about no analysis context
+      const text = ctxBlockA?.textContent ?? "";
+      expect(text).toMatch(/no analysis context|values may not be comparable/i);
+    });
+
+    it("renders warning when assumption_computation_context is an empty object", () => {
+      // Present-but-empty context: the key exists but carries no operating
+      // point — must warn rather than render a blank line.
+      const compareOut: CompareOut = {
+        node_a: BASE_NODE_A,
+        node_b: BASE_NODE_B,
+        metrics_a: { assumption_computation_context: {}, total_mass_kg: 1.5 },
+        metrics_b: wrapCtx(makeCtx()),
+      };
+
+      const { container } = render(
+        <VersionCompareView
+          compareOut={compareOut}
+          isLoading={false}
+          error={null}
+          onClose={vi.fn()}
+        />,
+      );
+
+      const ctxBlockA = container.querySelector('[data-testid="compare-analysis-context-A"]');
       const text = ctxBlockA?.textContent ?? "";
       expect(text).toMatch(/no analysis context|values may not be comparable/i);
     });

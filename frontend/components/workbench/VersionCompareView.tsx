@@ -38,18 +38,26 @@ import type { GaugeData, MetricItem } from "@/components/workbench/metrics-dashb
 // Helpers
 // ---------------------------------------------------------------------------
 
-/** Cast the opaque metrics dict to ComputationContext for the adapters. */
+/**
+ * Cast the opaque metrics dict to ComputationContext for the adapters.
+ *
+ * The backend returns `assumption_computation_context` as a nested field, OR
+ * the dict IS the context directly (flat). Either way we only treat it as a
+ * real context when it carries the geometry the metric adapters require
+ * (`mac_m`); a sparse/empty dict returns null so the adapters render "–" and
+ * the disclosure line warns, instead of crashing on a missing field.
+ */
 function toCtx(metrics: Record<string, unknown> | null): ComputationContext | null {
   if (metrics == null) return null;
-  // The backend returns assumption_computation_context as a nested field in
-  // the metrics dict, OR the dict IS the computation context directly.
-  // Try both shapes, falling back to treating the whole dict as a ctx.
   const nested = metrics["assumption_computation_context"];
-  if (nested != null && typeof nested === "object") {
-    return nested as ComputationContext;
+  const candidate =
+    nested != null && typeof nested === "object"
+      ? (nested as Record<string, unknown>)
+      : metrics;
+  if (typeof candidate["mac_m"] === "number") {
+    return candidate as unknown as ComputationContext;
   }
-  // Treat the metrics dict itself as the computation context.
-  return metrics as unknown as ComputationContext;
+  return null;
 }
 
 function nodeLabel(node: VersionNode): string {
@@ -334,65 +342,47 @@ interface AnalysisContextLineProps {
 function AnalysisContextLine({ metrics, side }: AnalysisContextLineProps) {
   const testId = `compare-analysis-context-${side}`;
 
-  // Extract computation context from metrics
-  const ctx =
-    metrics != null &&
-    metrics["assumption_computation_context"] != null &&
-    typeof metrics["assumption_computation_context"] === "object"
-      ? (metrics["assumption_computation_context"] as ComputationContext)
-      : null;
+  // Use the same extraction as the metric rows (incl. the flat-payload
+  // fallback) so the disclosure line and the numbers below it never disagree.
+  const ctx = toCtx(metrics);
 
-  const hasContext = ctx != null;
-
-  if (!hasContext) {
-    return (
-      <div
-        data-testid={testId}
-        className="pl-6 mt-1 text-[9px] text-amber-400"
-      >
-        ⚠ no analysis context — values may not be comparable
-      </div>
+  // Aero operating-point fields are the real "analysis context". Each is
+  // type-guarded because `ctx` is an unchecked cast — a malformed payload must
+  // not crash the column.
+  const aeroParts: string[] = [];
+  if (ctx != null && typeof ctx.reynolds === "number") {
+    aeroParts.push(`Re≈${Math.round(ctx.reynolds).toLocaleString("en-GB")}`);
+  }
+  if (ctx != null && typeof ctx.v_cruise_mps === "number") {
+    aeroParts.push(`v_cruise ${ctx.v_cruise_mps.toFixed(1)} m/s`);
+  }
+  if (ctx != null && typeof ctx.computed_at === "string" && ctx.computed_at) {
+    const d = new Date(ctx.computed_at);
+    aeroParts.push(
+      Number.isNaN(d.getTime())
+        ? ctx.computed_at
+        : d.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" }),
     );
   }
 
-  // Build the disclosure parts
-  const parts: string[] = [];
+  // No usable operating point → warn, rather than render a blank/misleading
+  // line or mass alone (metrics aren't comparable without the conditions).
+  if (aeroParts.length === 0) {
+    return (
+      <div data-testid={testId} className="pl-6 mt-1 text-[9px] text-amber-400">
+        <span aria-hidden="true">⚠</span> no analysis context — values may not be comparable
+      </div>
+    );
+  }
 
   const massKg =
     metrics != null && typeof metrics["total_mass_kg"] === "number"
       ? (metrics["total_mass_kg"] as number)
       : null;
-  if (massKg != null) {
-    parts.push(`${massKg} kg`);
-  }
-
-  if (ctx.reynolds != null) {
-    parts.push(`Re≈${Math.round(ctx.reynolds).toLocaleString("en-GB")}`);
-  }
-
-  if (ctx.v_cruise_mps != null) {
-    parts.push(`v_cruise ${ctx.v_cruise_mps.toFixed(1)} m/s`);
-  }
-
-  if (ctx.computed_at) {
-    try {
-      const d = new Date(ctx.computed_at);
-      const shortDate = d.toLocaleDateString("en-GB", {
-        day: "numeric",
-        month: "short",
-        year: "numeric",
-      });
-      parts.push(shortDate);
-    } catch {
-      parts.push(ctx.computed_at);
-    }
-  }
+  const parts = massKg != null ? [`${massKg} kg`, ...aeroParts] : aeroParts;
 
   return (
-    <div
-      data-testid={testId}
-      className="pl-6 mt-1 text-[9px] text-subtle-foreground"
-    >
+    <div data-testid={testId} className="pl-6 mt-1 text-[9px] text-subtle-foreground">
       {parts.join(" · ")}
     </div>
   );
@@ -496,7 +486,7 @@ function NodeIdentityHeader({ node, side, branchNameMap, metrics }: NodeIdentity
         {node.branch_id != null ? (
           <span
             data-testid={`compare-branch-pill-${side}`}
-            title={String(node.branch_id)}
+            title={`branch id: ${node.branch_id}`}
             className="rounded bg-muted/60 px-1 py-0.5 font-[family-name:var(--font-geist-mono)] text-[9px] text-muted-foreground"
           >
             {branchNameMap?.get(node.branch_id) ?? `branch ${node.branch_id}`}

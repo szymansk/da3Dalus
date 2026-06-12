@@ -285,7 +285,7 @@ function VersionGraphToolbar({
             title={getAdoptTitle()}
           />
         ) : (
-          <span className="flex items-center gap-1.5">
+          <div className="flex items-center gap-1.5">
             <span className="text-[11px] font-medium text-foreground" aria-live="polite">
               Make &quot;{selectedBranchName}&quot; the active design? The current main becomes a normal branch.
             </span>
@@ -307,7 +307,7 @@ function VersionGraphToolbar({
             >
               Cancel
             </button>
-          </span>
+          </div>
         )}
 
         {/* Discard — two-step confirm naming the branch */}
@@ -321,7 +321,7 @@ function VersionGraphToolbar({
             destructive
           />
         ) : (
-          <span className="flex items-center gap-1.5">
+          <div className="flex items-center gap-1.5">
             <span className="text-[11px] font-medium text-destructive" aria-live="polite">
               Delete branch &quot;{selectedBranchName}&quot; and its versions? Your active design is not affected.
             </span>
@@ -343,7 +343,7 @@ function VersionGraphToolbar({
             >
               Cancel
             </button>
-          </span>
+          </div>
         )}
 
         {/* Spacer */}
@@ -825,6 +825,8 @@ export function VersionGraphOverlay({
             date, NOT causality — lane colour encodes the branch. */}
         <div
           data-testid="version-graph-legend"
+          role="note"
+          aria-label="Graph legend"
           className="flex shrink-0 flex-wrap items-center gap-x-3 gap-y-1 border-b border-border px-4 py-1.5 text-[10px] text-muted-foreground"
         >
           <span><span aria-hidden>●</span> snapshot</span>
