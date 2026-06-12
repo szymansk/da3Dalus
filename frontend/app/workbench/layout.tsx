@@ -10,7 +10,7 @@ import { UnsavedChangesProvider } from "@/components/workbench/UnsavedChangesCon
 import { UnsavedChangesModal } from "@/components/workbench/UnsavedChangesModal";
 import { AeroplanePickerHost } from "@/components/workbench/AeroplanePickerHost";
 import { WorkbenchImportWarningBanner } from "@/components/workbench/WorkbenchImportWarningBanner";
-import { VersionHistoryPanel } from "@/components/workbench/VersionHistoryPanel";
+import { VersionGraphOverlay } from "@/components/workbench/VersionGraphOverlay";
 import { useAeroplaneContext } from "@/components/workbench/AeroplaneContext";
 import { useAeroplanes } from "@/hooks/useAeroplanes";
 
@@ -41,16 +41,17 @@ function WorkbenchInner({
         </div>
         <main className="flex min-h-0 flex-1 overflow-hidden p-4 gap-4">
           {children}
-          {historyOpen && (
-            <VersionHistoryPanel
-              rootId={rootId}
-              currentHeadId={intId}
-              aeroplaneId={intId}
-              onClose={handleCloseHistory}
-              onSwitchAeroplane={setAeroplaneId}
-            />
-          )}
         </main>
+        {historyOpen && (
+          <VersionGraphOverlay
+            rootId={rootId}
+            currentHeadId={intId}
+            aeroplaneId={intId}
+            aeroplaneLabel={currentAeroplane?.name}
+            onClose={handleCloseHistory}
+            onSwitchAeroplane={setAeroplaneId}
+          />
+        )}
         {/* gh-881: global metrics panel, docked above the copilot strip on every tab */}
         <div className="shrink-0 px-4 pb-2">
           <MetricsDashboardContainer />
