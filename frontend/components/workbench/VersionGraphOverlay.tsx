@@ -653,18 +653,25 @@ export function VersionGraphOverlay({
 
   return (
     /* Backdrop */
-    <div
-      data-testid="version-graph-backdrop"
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm"
-      onClick={onClose}
-    >
-      {/* Modal card — stop propagation so backdrop click doesn't fire on card */}
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
+      {/* Native button covers the backdrop so click-outside-to-close is keyboard-
+          accessible without putting handlers on non-interactive divs. Not a tab
+          stop (Escape and the × button are the keyboard paths). */}
+      <button
+        type="button"
+        data-testid="version-graph-backdrop"
+        aria-label="Dismiss version graph"
+        tabIndex={-1}
+        onClick={onClose}
+        className="absolute inset-0 cursor-default"
+      />
+      {/* Modal card — sits above the backdrop button; clicks on it never reach
+          the button, so no stopPropagation handler is needed. */}
       <div
         role="dialog"
         aria-modal="true"
         aria-label="Version graph"
         className="relative flex max-h-[80vh] w-[80vw] max-w-[1100px] flex-col rounded-xl border border-border bg-card shadow-2xl"
-        onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
         <div className="flex shrink-0 items-center gap-2 border-b border-border px-4 py-3">
