@@ -143,7 +143,11 @@ const MOCK_ERROR_500 = {
 // Import component after mocks are set up
 // ---------------------------------------------------------------------------
 
-import { PowertrainTab } from "@/components/workbench/PowertrainTab";
+import {
+  PowertrainTab,
+  conservativeSpec,
+  conservativeMotorW,
+} from "@/components/workbench/PowertrainTab";
 
 // ---------------------------------------------------------------------------
 // Hook query-string tests (import the real hook function, bypass SWR)
@@ -233,13 +237,14 @@ describe("PowertrainTab", () => {
     expect(screen.getByTestId("solution-row-6")).toBeInTheDocument();
   });
 
-  it("column Peak-A filter reduces visible rows", () => {
-    // 2S: i_peak_a = 40/2 = 20A; 3S ≈ 13.3A; 4S = 10A; 6S ≈ 6.7A
+  it("column Peak-A filter reduces visible rows (conservative i_peak_a_hi)", () => {
+    // Filters compare against the CONSERVATIVE worst-case Peak A = i_peak_a_hi.
+    // 2S: 44/2 = 22A; 3S ≈ 14.67A; 4S = 11A; 6S ≈ 7.33A
     hookReturn = MOCK_OK;
     render(<PowertrainTab aeroplaneId="test-id" />);
 
     const filterInput = screen.getByTestId("filter-peak-a");
-    // Filter to Peak A ≤ 15 → hides 2S (20A) but keeps 3S (~13.3A), 4S, 6S
+    // Filter to Peak A ≤ 15 → hides 2S (22A) but keeps 3S (~14.67A), 4S, 6S
     fireEvent.change(filterInput, { target: { value: "15" } });
 
     expect(screen.queryByTestId("solution-row-2")).not.toBeInTheDocument();
@@ -248,14 +253,15 @@ describe("PowertrainTab", () => {
     expect(screen.getByTestId("solution-row-6")).toBeInTheDocument();
   });
 
-  it("mAh filter reduces visible rows", () => {
-    // 2S: capacity_mah_min = 2000/2 = 1000; 3S ≈ 667; 4S = 500; 6S ≈ 333
+  it("mAh filter reduces visible rows (conservative ceil(capacity_mah_min_hi))", () => {
+    // Conservative mAh min = ceil(capacity_mah_min_hi = 2200/cell):
+    // 2S = 1100; 3S = ceil(733.3) = 734; 4S = 550; 6S = ceil(366.7) = 367
     hookReturn = MOCK_OK;
     render(<PowertrainTab aeroplaneId="test-id" />);
 
     const filterInput = screen.getByTestId("filter-mah");
-    // Filter mAh ≤ 350 → show only 6S (≈333); hide 2S/3S/4S
-    fireEvent.change(filterInput, { target: { value: "350" } });
+    // Filter mAh ≤ 400 → show only 6S (367); hide 2S/3S/4S
+    fireEvent.change(filterInput, { target: { value: "400" } });
 
     expect(screen.queryByTestId("solution-row-2")).not.toBeInTheDocument();
     expect(screen.queryByTestId("solution-row-3")).not.toBeInTheDocument();
@@ -312,16 +318,23 @@ describe("PowertrainTab", () => {
     expect(specLine4S).toHaveTextContent("4S");
   });
 
-  it("shopping spec shows correct values for selected row", () => {
+  it("shopping spec shows CONSERVATIVE rounded-up values for selected row", () => {
     hookReturn = MOCK_OK;
     render(<PowertrainTab aeroplaneId="test-id" />);
 
-    // First row is 2S, auto-selected
+    // First row is 2S, auto-selected. Conservative (worst-case, rounded-up):
+    //   ESC   = ceil(esc_min_a_hi = 62/2 = 31)            = 31 A
+    //   mAh   = ceil(capacity_mah_min_hi = 2200/2 = 1100) = 1100 mAh
+    //   C     = ceil(c_min_hi = 9/2 = 4.5)                = 5 C
+    //   Motor = ceil(p_aero_top_w / eta_prop_lo = 250/0.65) = 385 W
+    //   V_nom = 7.4 V, KV = 600 (from shopping spec)
     const spec = screen.getByTestId("shopping-spec-line");
-    // 2S: battery_min_mah = 2000/2=1000, esc_min_a=56/2=28, battery_v_nom=7.4
-    expect(spec).toHaveTextContent("1000");
-    expect(spec).toHaveTextContent("28");
+    expect(spec).toHaveTextContent("ESC ≥ 31 A");
+    expect(spec).toHaveTextContent("1100 mAh");
+    expect(spec).toHaveTextContent("≥5C");
+    expect(spec).toHaveTextContent("385 W");
     expect(spec).toHaveTextContent("7.4");
+    expect(spec).toHaveTextContent("600");
   });
 
   it("shows warnings banner when warnings are present", () => {
@@ -402,6 +415,14 @@ describe("FeasibleRegionPlot — Plotly call structure", () => {
     expect(cellCounts).toContain(3);
     expect(cellCounts).toContain(4);
     expect(cellCounts).toContain(6);
+
+    // Markers must sit at the CONSERVATIVE worst-case point
+    // (ceil(capacity_mah_min_hi), ceil(c_min_hi)). For 2S:
+    //   x = ceil(2200/2) = 1100, y = ceil(9/2 = 4.5) = 5
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const marker2S = markerTraces.find((t: any) => t.customdata[0] === 2);
+    expect(marker2S.x[0]).toBe(1100);
+    expect(marker2S.y[0]).toBe(5);
   });
 
   it("highlights the auto-selected (first) cell count with star marker on initial render", async () => {
@@ -576,5 +597,139 @@ describe("PowertrainTab — selection + input edge cases", () => {
     fireEvent.change(tTarget, { target: { value: "" } });
 
     expect((screen.getByTestId("t-target-input") as HTMLInputElement).value).toBe("15");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Conservative (worst-case, rounded-up) minimum specs — pure functions
+// ---------------------------------------------------------------------------
+
+describe("conservativeSpec / conservativeMotorW", () => {
+  it("uses _hi band and rounds UP so a part bought at the value is sufficient", () => {
+    // 2S mock row: i_peak_a_hi=22, esc_min_a_hi=31, c_min_hi=4.5, cap_hi=1100
+    const row = mkRow(2);
+    const spec = conservativeSpec(row, 250, 0.65);
+    expect(spec.peakA).toBe(22); // i_peak_a_hi, not the mid i_peak_a (=20)
+    expect(spec.escMinA).toBe(31); // ceil(31)
+    expect(spec.minC).toBe(5); // ceil(4.5)
+    expect(spec.mahMin).toBe(1100); // ceil(1100)
+    expect(spec.motorW).toBe(385); // ceil(250 / 0.65)
+  });
+
+  it("does NOT divide mAh by DoD (DoD already in energy_wh upstream)", () => {
+    // capacity_mah_min_hi is already the rated pack capacity; ceil only.
+    const row = mkRow(4); // cap_hi = 2200/4 = 550
+    const spec = conservativeSpec(row, 250, 0.65);
+    expect(spec.mahMin).toBe(550);
+  });
+
+  it("rounds a fractional ceil example up (5.46A → 6A) like the real UAT data", () => {
+    const row = mkRow(2, { esc_min_a_hi: 5.46 });
+    const spec = conservativeSpec(row, 250, 0.65);
+    expect(spec.escMinA).toBe(6);
+  });
+
+  it("conservativeMotorW = ceil(pAeroTop / etaPropLo); degrades gracefully at eta<=0", () => {
+    expect(conservativeMotorW(250, 0.65)).toBe(385);
+    expect(conservativeMotorW(250, 0)).toBe(250); // no divide-by-zero
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Table renders the conservative values (not the mid band)
+// ---------------------------------------------------------------------------
+
+describe("SolutionTable — conservative cell values", () => {
+  beforeEach(() => {
+    plotlyReactMock.mockClear();
+  });
+
+  it("shows conservative ESC / mAh / Min C-rating / Peak A / Motor in the 2S row", () => {
+    hookReturn = MOCK_OK;
+    render(<PowertrainTab aeroplaneId="test-id" />);
+
+    const row2S = screen.getByTestId("solution-row-2");
+    // Conservative 2S: Peak 22.0, ESC 31, mAh 1100, Min C 5, Motor 385.
+    expect(row2S).toHaveTextContent("22.0");
+    expect(row2S).toHaveTextContent("31");
+    expect(row2S).toHaveTextContent("1100");
+    expect(row2S).toHaveTextContent("5");
+    expect(row2S).toHaveTextContent("385");
+  });
+
+  it("renames the C-min header to 'Min C-rating' with a guidance tooltip", () => {
+    hookReturn = MOCK_OK;
+    render(<PowertrainTab aeroplaneId="test-id" />);
+    const header = screen.getByText("Min C-rating");
+    expect(header).toBeInTheDocument();
+    expect(header).toHaveAttribute("title", "minimum battery C-rating you need");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Hobbyist labels / guidance + Scholz scope note
+// ---------------------------------------------------------------------------
+
+describe("PowertrainTab — labels, guidance, scope note", () => {
+  beforeEach(() => {
+    plotlyReactMock.mockClear();
+  });
+
+  it("renders the Phase-1 scope disclaimer", () => {
+    hookReturn = MOCK_OK;
+    render(<PowertrainTab aeroplaneId="test-id" />);
+    const note = screen.getByTestId("powertrain-scope-note");
+    expect(note).toHaveTextContent(/Phase 1/i);
+    expect(note).toHaveTextContent(/static-thrust/i);
+    expect(note).toHaveTextContent(/Phase 2/i);
+  });
+
+  it("renders the hobbyist how-to callout above the table", () => {
+    hookReturn = MOCK_OK;
+    render(<PowertrainTab aeroplaneId="test-id" />);
+    const callout = screen.getByTestId("powertrain-table-callout");
+    expect(callout).toHaveTextContent(/Pick a cell count, then shop/i);
+    expect(callout).toHaveTextContent(/ESC ≥ ESC min/i);
+  });
+
+  it("labels the assumption controls for hobbyists (Prop efficiency, DoD tooltip)", () => {
+    hookReturn = MOCK_OK;
+    render(<PowertrainTab aeroplaneId="test-id" />);
+    expect(screen.getByText("Prop efficiency [lo / hi]")).toBeInTheDocument();
+    const dod = screen.getByText("DoD");
+    expect(dod).toHaveAttribute("title", "Depth of discharge — usable battery %");
+  });
+
+  it("marks the invariants row as 'Computed from mission'", () => {
+    hookReturn = MOCK_OK;
+    render(<PowertrainTab aeroplaneId="test-id" />);
+    expect(screen.getByTestId("invariants-source-label")).toHaveTextContent(
+      /Computed from mission/i
+    );
+  });
+
+  it("shows the V_top '(from Mission)' hint when v_top is auto-derived", () => {
+    hookReturn = MOCK_OK;
+    render(<PowertrainTab aeroplaneId="test-id" />);
+    // assumptions start with no v_top_mps → auto-derived.
+    expect(screen.getByTestId("v-top-from-mission")).toBeInTheDocument();
+
+    // Setting V_top removes the hint.
+    fireEvent.change(screen.getByTestId("v-top-input"), { target: { value: "25" } });
+    expect(screen.queryByTestId("v-top-from-mission")).not.toBeInTheDocument();
+  });
+
+  it("adds the 'on/above the curve' feasibility annotation to the plot", async () => {
+    hookReturn = MOCK_OK;
+    render(<PowertrainTab aeroplaneId="test-id" />);
+    await new Promise((r) => setTimeout(r, 50));
+
+    const [, , layout] = plotlyReactMock.mock.calls[0];
+    const annotations = layout.annotations ?? [];
+    const feasNote = annotations.find(
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (a: any) => typeof a.text === "string" && a.text.includes("on/above the curve")
+    );
+    expect(feasNote).toBeDefined();
   });
 });

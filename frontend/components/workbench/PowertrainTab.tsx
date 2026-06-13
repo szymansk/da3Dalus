@@ -51,6 +51,54 @@ function cellColor(idx: number): string {
 }
 
 // ---------------------------------------------------------------------------
+// Conservative (worst-case, low-η) minimum specs
+// ---------------------------------------------------------------------------
+//
+// The table / plot / shopping-spec columns are MINIMUM specs to buy: a part
+// bought at the shown value must be guaranteed sufficient across the whole
+// η_prop band. So we take the WORST case (the `_hi` band, which corresponds to
+// low prop efficiency → more current / capacity / C-rate) and round UP, so a
+// part chosen at the displayed number is never under-spec.
+//
+// NOTE on mAh: do NOT divide by DoD. DoD is already applied upstream in
+// `energy_wh` (E = P·t / DoD), so `capacity_mah_min_hi` is already the rated
+// pack capacity — dividing again would double-count it.
+
+export interface ConservativeSpec {
+  /** Worst-case peak current [A] (low-η end of the band). */
+  peakA: number;
+  /** Minimum ESC current rating [A], rounded up. */
+  escMinA: number;
+  /** Minimum battery C-rating, rounded up. */
+  minC: number;
+  /** Minimum (rated pack) capacity [mAh], rounded up. */
+  mahMin: number;
+  /** Conservative shaft (motor) power [W], rounded up. */
+  motorW: number;
+}
+
+/** Conservative shaft power [W] = aero power at top speed / lowest prop η. */
+export function conservativeMotorW(pAeroTopW: number, etaPropLo: number): number {
+  if (etaPropLo <= 0 || Number.isNaN(etaPropLo)) return Math.ceil(pAeroTopW);
+  return Math.ceil(pAeroTopW / etaPropLo);
+}
+
+/** Build the conservative, rounded-up minimum specs for one solution row. */
+export function conservativeSpec(
+  row: SolutionRow,
+  pAeroTopW: number,
+  etaPropLo: number
+): ConservativeSpec {
+  return {
+    peakA: row.i_peak_a_hi,
+    escMinA: Math.ceil(row.esc_min_a_hi),
+    minC: Math.ceil(row.c_min_hi),
+    mahMin: Math.ceil(row.capacity_mah_min_hi),
+    motorW: conservativeMotorW(pAeroTopW, etaPropLo),
+  };
+}
+
+// ---------------------------------------------------------------------------
 // Trace builders (module-level to avoid sonar nested-functions violations)
 // ---------------------------------------------------------------------------
 
@@ -103,9 +151,14 @@ function buildMarkerTrace(
   color: string,
   isSelected: boolean
 ): PlotlyTrace {
+  // Marker sits at the CONSERVATIVE worst-case point (capacity_mah_min_hi,
+  // c_min_hi) so it lines up with the rounded-up minimum specs in the table
+  // and shopping spec. The worst case is the low-η end of the band.
+  const markerMah = Math.ceil(row.capacity_mah_min_hi);
+  const markerC = Math.ceil(row.c_min_hi);
   return {
-    x: [row.capacity_mah_min],
-    y: [row.c_min],
+    x: [markerMah],
+    y: [markerC],
     type: "scatter",
     mode: "markers+text",
     name: `${region.cell_count}S`,
@@ -121,8 +174,8 @@ function buildMarkerTrace(
     },
     hovertemplate:
       `<b>${region.cell_count}S</b><br>` +
-      `Capacity: ${row.capacity_mah_min.toFixed(0)} mAh<br>` +
-      `Min C-rate: ${row.c_min.toFixed(1)}C<extra></extra>`,
+      `Capacity ≥ ${markerMah} mAh<br>` +
+      `Min C-rating ≥ ${markerC}C<extra></extra>`,
     customdata: [region.cell_count],
   };
 }
@@ -148,6 +201,12 @@ function buildRegionAnnotations(
       xanchor: "right", yanchor: "bottom", showarrow: false,
       font: { color: "#52525B", size: 9 },
       text: "Feasible region: ↗ (more mAh or higher C-rate = OK)",
+    },
+    {
+      x: 0.99, y: 0.10, xref: "paper", yref: "paper",
+      xanchor: "right", yanchor: "bottom", showarrow: false,
+      font: { color: "#52525B", size: 9 },
+      text: "Feasible = on/above the curve (battery can supply enough current)",
     },
   ];
 }
@@ -334,8 +393,15 @@ function FeasibleRegionPlot({
 
 function ShoppingSpecLine({
   spec,
-}: Readonly<{ spec: ShoppingSpec | undefined }>) {
-  if (!spec) return null;
+  conservative,
+}: Readonly<{
+  spec: ShoppingSpec | undefined;
+  conservative: ConservativeSpec | undefined;
+}>) {
+  if (!spec || !conservative) return null;
+  // ESC / battery mAh / C-rating / motor W all use the CONSERVATIVE worst-case,
+  // rounded-up figures so a part bought at these values is never under-spec.
+  // Cell count, nominal voltage and KV come from the matching shopping spec.
   return (
     <div
       className="flex flex-wrap items-center gap-2 rounded-lg border border-border bg-card px-4 py-3 font-[family-name:var(--font-jetbrains-mono)] text-[12px]"
@@ -345,15 +411,15 @@ function ShoppingSpecLine({
         Shopping spec ({spec.cell_count}S @ {spec.battery_v_nom.toFixed(1)} V):
       </span>
       <span className="text-orange-400">
-        ESC ≥ {spec.esc_min_a.toFixed(0)} A
+        ESC ≥ {conservative.escMinA} A
       </span>
       <span className="text-muted-foreground">·</span>
       <span className="text-blue-400">
-        Battery ≥ {spec.battery_min_mah.toFixed(0)} mAh @ ≥{spec.battery_min_c.toFixed(1)}C
+        Battery ≥ {conservative.mahMin} mAh @ ≥{conservative.minC}C
       </span>
       <span className="text-muted-foreground">·</span>
       <span className="text-emerald-400">
-        Motor ≥ {spec.motor_min_peak_w.toFixed(0)} W
+        Motor ≥ {conservative.motorW} W
         {spec.kv_approx != null ? `, KV ≈ ${spec.kv_approx.toFixed(0)}` : ""}
       </span>
     </div>
@@ -369,6 +435,10 @@ interface SolutionTableProps {
   readonly filters: ColumnFilters;
   readonly selectedCellCount: number | null;
   readonly onSelectRow: (cellCount: number) => void;
+  /** Aero power at top speed [W] — feeds the conservative motor-W column. */
+  readonly pAeroTopW: number;
+  /** Low end of the prop-efficiency band — feeds the conservative motor-W. */
+  readonly etaPropLo: number;
 }
 
 function SolutionTable({
@@ -376,17 +446,22 @@ function SolutionTable({
   filters,
   selectedCellCount,
   onSelectRow,
+  pAeroTopW,
+  etaPropLo,
 }: SolutionTableProps) {
   const maxPeakA = filters.maxPeakA !== "" ? parseFloat(filters.maxPeakA) : null;
   const maxMah = filters.maxMah !== "" ? parseFloat(filters.maxMah) : null;
   const maxEscA = filters.maxEscA !== "" ? parseFloat(filters.maxEscA) : null;
 
+  // Filters compare against the CONSERVATIVE displayed values (the same numbers
+  // the user sees and shops against), not the mid-band internals.
   const filtered = rows.filter((r) => {
     if (filters.catalogOnly && !r.has_motor_match && !r.has_battery_match && !r.has_esc_match)
       return false;
-    if (maxPeakA != null && r.i_peak_a > maxPeakA) return false;
-    if (maxMah != null && r.capacity_mah_min > maxMah) return false;
-    if (maxEscA != null && r.esc_min_a > maxEscA) return false;
+    const spec = conservativeSpec(r, pAeroTopW, etaPropLo);
+    if (maxPeakA != null && spec.peakA > maxPeakA) return false;
+    if (maxMah != null && spec.mahMin > maxMah) return false;
+    if (maxEscA != null && spec.escMinA > maxEscA) return false;
     return true;
   });
 
@@ -401,10 +476,20 @@ function SolutionTable({
             <th scope="col" className="py-2 pr-3">Peak A</th>
             <th scope="col" className="py-2 pr-3">ESC min (A)</th>
             <th scope="col" className="py-2 pr-3">mAh min</th>
-            <th scope="col" className="py-2 pr-3">C min</th>
+            <th
+              scope="col"
+              className="py-2 pr-3"
+              title="minimum battery C-rating you need"
+            >
+              Min C-rating
+            </th>
             <th scope="col" className="py-2 pr-3">Wh</th>
-            <th scope="col" className="py-2 pr-3">KV</th>
-            <th scope="col" className="py-2">Catalog</th>
+            <th scope="col" className="py-2 pr-3" title="(pick nearest standard KV)">
+              KV
+            </th>
+            <th scope="col" className="py-2" title="(coming soon — parts DB)">
+              Catalog
+            </th>
           </tr>
         </thead>
         <tbody>
@@ -423,6 +508,7 @@ function SolutionTable({
             const isSelected = row.cell_count === selectedCellCount;
             const hasCatalog =
               row.has_motor_match || row.has_battery_match || row.has_esc_match;
+            const spec = conservativeSpec(row, pAeroTopW, etaPropLo);
             return (
               <tr
                 key={row.cell_count}
@@ -440,19 +526,19 @@ function SolutionTable({
                   {row.v_nom_v.toFixed(1)}
                 </td>
                 <td className="py-2 pr-3 text-foreground">
-                  {row.motor_peak_w.toFixed(0)}
+                  {spec.motorW}
                 </td>
                 <td className="py-2 pr-3 text-foreground">
-                  {row.i_peak_a.toFixed(1)}
+                  {spec.peakA.toFixed(1)}
                 </td>
                 <td className="py-2 pr-3 text-foreground">
-                  {row.esc_min_a.toFixed(0)}
+                  {spec.escMinA}
                 </td>
                 <td className="py-2 pr-3 text-foreground">
-                  {row.capacity_mah_min.toFixed(0)}
+                  {spec.mahMin}
                 </td>
                 <td className="py-2 pr-3 text-foreground">
-                  {row.c_min.toFixed(1)}
+                  {spec.minC}
                 </td>
                 <td className="py-2 pr-3 text-foreground">
                   {row.energy_wh.toFixed(1)}
@@ -517,6 +603,8 @@ const PROP_PD_PRESETS = [
 interface AssumptionControlsProps {
   readonly assumptions: SolutionSpaceAssumptions;
   readonly onChange: (next: SolutionSpaceAssumptions) => void;
+  /** True when V_top is not user-set and is derived from the mission instead. */
+  readonly vTopAutoDerived: boolean;
 }
 
 /** A single numeric assumption input.
@@ -560,7 +648,11 @@ function NumField({
   );
 }
 
-function AssumptionControls({ assumptions, onChange }: AssumptionControlsProps) {
+function AssumptionControls({
+  assumptions,
+  onChange,
+  vTopAutoDerived,
+}: AssumptionControlsProps) {
   const cellCounts = assumptions.cell_counts ?? DEFAULT_CELL_COUNTS;
 
   function toggleCellCount(s: number) {
@@ -602,8 +694,11 @@ function AssumptionControls({ assumptions, onChange }: AssumptionControlsProps) 
 
       {/* η_prop band */}
       <div className="flex flex-col gap-1">
-        <span className="font-[family-name:var(--font-geist-sans)] text-[10px] text-muted-foreground">
-          η_prop [lo / hi]
+        <span
+          className="font-[family-name:var(--font-geist-sans)] text-[10px] text-muted-foreground"
+          title="Propeller efficiency band (low / high). Conservative minimum specs use the low end."
+        >
+          Prop efficiency [lo / hi]
         </span>
         <div className="flex items-center gap-1">
           <NumField
@@ -626,7 +721,10 @@ function AssumptionControls({ assumptions, onChange }: AssumptionControlsProps) 
 
       {/* DoD */}
       <div className="flex flex-col gap-1">
-        <span className="font-[family-name:var(--font-geist-sans)] text-[10px] text-muted-foreground">
+        <span
+          className="font-[family-name:var(--font-geist-sans)] text-[10px] text-muted-foreground"
+          title="Depth of discharge — usable battery %"
+        >
           DoD
         </span>
         <NumField
@@ -714,6 +812,11 @@ function AssumptionControls({ assumptions, onChange }: AssumptionControlsProps) 
       <div className="flex flex-col gap-1">
         <span className="font-[family-name:var(--font-geist-sans)] text-[10px] text-muted-foreground">
           V_top (m/s)
+          {vTopAutoDerived && (
+            <span className="ml-1 text-[9px] text-subtle-foreground" data-testid="v-top-from-mission">
+              (from Mission)
+            </span>
+          )}
         </span>
         <input
           type="number"
@@ -829,24 +932,33 @@ function InvariantsRow({
   tTargetMin,
 }: InvariantsRowProps) {
   return (
-    <div className="flex flex-wrap gap-4 rounded-xl border border-border bg-card px-4 py-3">
-      {[
-        { label: "V_cruise", value: `${vCruiseMps.toFixed(1)} m/s` },
-        { label: "V_top", value: `${vTopMps.toFixed(1)} m/s` },
-        { label: "t_target", value: `${tTargetMin.toFixed(0)} min` },
-        { label: "P_aero cruise", value: `${pAeroCruiseW.toFixed(0)} W` },
-        { label: "P_aero top", value: `${pAeroTopW.toFixed(0)} W` },
-        { label: "Energy (DoD-adj)", value: `${energyWh.toFixed(1)} Wh` },
-      ].map(({ label, value }) => (
-        <div key={label} className="flex flex-col gap-0.5">
-          <span className="font-[family-name:var(--font-geist-sans)] text-[10px] text-muted-foreground">
-            {label}
-          </span>
-          <span className="font-[family-name:var(--font-jetbrains-mono)] text-[13px] font-semibold text-foreground">
-            {value}
-          </span>
-        </div>
-      ))}
+    <div className="flex flex-col gap-2 rounded-xl border border-border bg-card px-4 py-3">
+      {/* Dim label so these read as derived values, not editable inputs. */}
+      <span
+        className="font-[family-name:var(--font-geist-sans)] text-[9px] uppercase tracking-wider text-subtle-foreground"
+        data-testid="invariants-source-label"
+      >
+        Computed from mission
+      </span>
+      <div className="flex flex-wrap gap-4">
+        {[
+          { label: "V_cruise", value: `${vCruiseMps.toFixed(1)} m/s` },
+          { label: "V_top", value: `${vTopMps.toFixed(1)} m/s` },
+          { label: "t_target", value: `${tTargetMin.toFixed(0)} min` },
+          { label: "P_aero cruise", value: `${pAeroCruiseW.toFixed(0)} W` },
+          { label: "P_aero top", value: `${pAeroTopW.toFixed(0)} W` },
+          { label: "Energy (DoD-adj)", value: `${energyWh.toFixed(1)} Wh` },
+        ].map(({ label, value }) => (
+          <div key={label} className="flex flex-col gap-0.5">
+            <span className="font-[family-name:var(--font-geist-sans)] text-[10px] text-muted-foreground">
+              {label}
+            </span>
+            <span className="font-[family-name:var(--font-jetbrains-mono)] text-[13px] font-semibold text-foreground">
+              {value}
+            </span>
+          </div>
+        ))}
+      </div>
     </div>
   );
 }
@@ -891,23 +1003,50 @@ export function PowertrainTab({ aeroplaneId }: Props) {
     [data, effectiveSelection]
   );
 
+  // Conservative (worst-case, rounded-up) figures for the selected row — used by
+  // the shopping-spec line so it shows the same minimums as the table/plot.
+  const etaPropLo = data?.assumptions_used.eta_prop_lo ?? 0.65;
+  const pAeroTopW = data?.p_aero_top_w ?? 0;
+  const selectedConservative = useMemo(() => {
+    const row = data?.rows.find((r) => r.cell_count === effectiveSelection);
+    return row ? conservativeSpec(row, pAeroTopW, etaPropLo) : undefined;
+  }, [data, effectiveSelection, pAeroTopW, etaPropLo]);
+
+  // V_top is auto-derived from the mission when the user hasn't set it.
+  const vTopAutoDerived = assumptions.v_top_mps == null;
+
   return (
     <div
       className="flex flex-1 flex-col gap-4 overflow-auto bg-card-muted p-4"
       data-testid="powertrain-tab"
     >
       {/* Header */}
-      <div className="flex items-center gap-3">
-        <span className="font-[family-name:var(--font-jetbrains-mono)] text-[13px] text-foreground">
-          Powertrain Solution Space
-        </span>
-        <span className="font-[family-name:var(--font-geist-sans)] text-[10px] text-muted-foreground">
-          Capacity × C-rate feasible region · Shopping specs per cell count
+      <div className="flex flex-col gap-1">
+        <div className="flex items-center gap-3">
+          <span className="font-[family-name:var(--font-jetbrains-mono)] text-[13px] text-foreground">
+            Powertrain Solution Space
+          </span>
+          <span className="font-[family-name:var(--font-geist-sans)] text-[10px] text-muted-foreground">
+            Capacity × C-rate feasible region · Shopping specs per cell count
+          </span>
+        </div>
+        {/* Scholz scope note — Phase 1 limitations are explicit, not implied. */}
+        <span
+          className="font-[family-name:var(--font-geist-sans)] text-[9px] text-subtle-foreground"
+          data-testid="powertrain-scope-note"
+        >
+          Phase 1: peak sizing from top speed only (static-thrust &amp; climb not
+          checked). Prop efficiency is an assumption band — APC prop model comes
+          in Phase 2.
         </span>
       </div>
 
       {/* Assumption controls */}
-      <AssumptionControls assumptions={assumptions} onChange={setAssumptions} />
+      <AssumptionControls
+        assumptions={assumptions}
+        onChange={setAssumptions}
+        vTopAutoDerived={vTopAutoDerived}
+      />
 
       {/* Loading state */}
       {isLoading && (
@@ -979,6 +1118,15 @@ export function PowertrainTab({ aeroplaneId }: Props) {
             </div>
           )}
 
+          {/* Hobbyist how-to callout above the table. */}
+          <p
+            className="font-[family-name:var(--font-geist-sans)] text-[11px] text-muted-foreground"
+            data-testid="powertrain-table-callout"
+          >
+            Pick a cell count, then shop: motor ≈ the KV shown, ESC ≥ ESC min (A),
+            battery ≥ mAh min at ≥ Min C-rating.
+          </p>
+
           {/* Filter bar + solution table */}
           <FilterBar filters={filters} onChange={setFilters} />
           <SolutionTable
@@ -986,10 +1134,12 @@ export function PowertrainTab({ aeroplaneId }: Props) {
             filters={filters}
             selectedCellCount={effectiveSelection}
             onSelectRow={setSelectedCellCount}
+            pAeroTopW={data.p_aero_top_w}
+            etaPropLo={etaPropLo}
           />
 
           {/* Shopping spec for selected row */}
-          <ShoppingSpecLine spec={selectedSpec} />
+          <ShoppingSpecLine spec={selectedSpec} conservative={selectedConservative} />
         </>
       )}
     </div>
