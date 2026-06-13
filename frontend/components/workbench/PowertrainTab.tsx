@@ -184,7 +184,8 @@ function buildFeasibleRegionLayout(
     paper_bgcolor: "transparent",
     plot_bgcolor: "transparent",
     font: { color: "#A1A1AA", family: "JetBrains Mono, monospace", size: 10 },
-    margin: { l: 55, r: 15, t: 45, b: 50 },
+    // b:70 so the bottom mission-metadata annotation (y:-0.13) is fully visible.
+    margin: { l: 55, r: 15, t: 45, b: 70 },
     title: {
       text: "Capacity × C-rate feasible region",
       font: { color: "#E4E4E7", size: 12 },
@@ -240,6 +241,9 @@ function FeasibleRegionPlot({
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const plotlyRef = useRef<any>(null);
 
+  // Draw effect: (re)render the figure. Depends on selectedCellCount so the
+  // marker re-styles (star ↔ circle) on selection — but this effect must NOT
+  // bind the click listener (that would accumulate handlers on every redraw).
   useEffect(() => {
     const node = containerRef.current;
     if (!node || regions.length === 0) return;
@@ -258,8 +262,29 @@ function FeasibleRegionPlot({
         responsive: true,
         displayModeBar: false,
       });
+    })();
 
-      // Click listener to select cell count from marker.
+    return () => {
+      disposed = true;
+    };
+  }, [regions, rows, selectedCellCount, vCruiseMps, vTopMps, tTargetMin]);
+
+  // Click effect: bind the marker → cell-count selection handler exactly once
+  // per (rows, onSelectCellCount) identity. It deliberately does NOT depend on
+  // selectedCellCount, so selecting a cell does not re-bind the listener.
+  // Cleanup removes the listener to prevent accumulation / leaks.
+  useEffect(() => {
+    const node = containerRef.current;
+    if (!node) return;
+
+    let disposed = false;
+
+    (async () => {
+      // Ensure Plotly has attached its event emitter to the node before we bind.
+      const Plotly = plotlyRef.current ?? (await import("plotly.js-gl3d-dist-min"));
+      plotlyRef.current = Plotly;
+      if (disposed) return;
+
       // Plotly attaches `.on()` to the container div — guard for jsdom / SSR.
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const plotNode = node as any;
@@ -275,11 +300,15 @@ function FeasibleRegionPlot({
 
     return () => {
       disposed = true;
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const plotNode = node as any;
+      if (typeof plotNode.removeAllListeners === "function") {
+        plotNode.removeAllListeners("plotly_click");
+      }
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [regions, rows, selectedCellCount, vCruiseMps, vTopMps, tTargetMin]);
+  }, [rows, onSelectCellCount]);
 
-  // Cleanup
+  // Cleanup: purge the Plotly figure on unmount.
   useEffect(() => {
     const node = containerRef.current;
     return () => {
@@ -292,7 +321,7 @@ function FeasibleRegionPlot({
   return (
     <div
       ref={containerRef}
-      className="h-full min-h-0 w-full"
+      className="w-full"
       style={{ height: 320 }}
       data-testid="powertrain-feasible-region-plot"
     />
@@ -370,7 +399,7 @@ function SolutionTable({
             <th scope="col" className="py-2 pr-3">V_nom (V)</th>
             <th scope="col" className="py-2 pr-3">Motor (W)</th>
             <th scope="col" className="py-2 pr-3">Peak A</th>
-            <th scope="col" className="py-2 pr-3">ESC ≥A</th>
+            <th scope="col" className="py-2 pr-3">ESC min (A)</th>
             <th scope="col" className="py-2 pr-3">mAh min</th>
             <th scope="col" className="py-2 pr-3">C min</th>
             <th scope="col" className="py-2 pr-3">Wh</th>
@@ -434,7 +463,11 @@ function SolutionTable({
                 <td
                   className={`py-2 ${hasCatalog ? "text-emerald-400" : "text-muted-foreground"}`}
                 >
-                  {hasCatalog ? "✓" : "—"}
+                  {hasCatalog ? (
+                    <span aria-label="catalog match available">✓</span>
+                  ) : (
+                    "—"
+                  )}
                   {row.has_motor_match && (
                     <span
                       className="ml-1 text-[9px] text-emerald-400"
@@ -486,6 +519,47 @@ interface AssumptionControlsProps {
   readonly onChange: (next: SolutionSpaceAssumptions) => void;
 }
 
+/** A single numeric assumption input.
+ *
+ * Module-level (not re-created each render) so React keeps a stable element
+ * identity. Clearing the input yields `parseFloat("") === NaN`; we coerce that
+ * to `undefined` so the key is omitted from the assumptions object rather than
+ * serialized as `null` (which would mislead the backend into the "recompute
+ * first" path). Same omission semantics as the v_top_mps field.
+ */
+function NumField({
+  assumptions,
+  fieldKey,
+  value,
+  defaultVal,
+  onChange,
+  testId,
+}: Readonly<{
+  assumptions: SolutionSpaceAssumptions;
+  fieldKey: keyof SolutionSpaceAssumptions;
+  value: number | undefined;
+  defaultVal: number;
+  onChange: (next: SolutionSpaceAssumptions) => void;
+  testId?: string;
+}>) {
+  return (
+    <input
+      type="number"
+      value={value ?? defaultVal}
+      step={0.01}
+      onChange={(e) => {
+        const raw = e.target.value;
+        const parsed = parseFloat(raw);
+        const next: number | undefined =
+          raw === "" || Number.isNaN(parsed) ? undefined : parsed;
+        onChange({ ...assumptions, [fieldKey]: next });
+      }}
+      className="w-20 rounded border border-border bg-card-muted px-2 py-1 font-[family-name:var(--font-geist-sans)] text-[11px] text-foreground"
+      data-testid={testId}
+    />
+  );
+}
+
 function AssumptionControls({ assumptions, onChange }: AssumptionControlsProps) {
   const cellCounts = assumptions.cell_counts ?? DEFAULT_CELL_COUNTS;
 
@@ -494,24 +568,6 @@ function AssumptionControls({ assumptions, onChange }: AssumptionControlsProps) 
       ? cellCounts.filter((c) => c !== s)
       : [...cellCounts, s].sort((a, b) => a - b);
     onChange({ ...assumptions, cell_counts: next });
-  }
-
-  function numField(
-    key: keyof SolutionSpaceAssumptions,
-    value: number | undefined,
-    defaultVal: number
-  ) {
-    return (
-      <input
-        type="number"
-        value={value ?? defaultVal}
-        step={0.01}
-        onChange={(e) =>
-          onChange({ ...assumptions, [key]: parseFloat(e.target.value) })
-        }
-        className="w-20 rounded border border-border bg-card-muted px-2 py-1 font-[family-name:var(--font-geist-sans)] text-[11px] text-foreground"
-      />
-    );
   }
 
   return (
@@ -550,9 +606,21 @@ function AssumptionControls({ assumptions, onChange }: AssumptionControlsProps) 
           η_prop [lo / hi]
         </span>
         <div className="flex items-center gap-1">
-          {numField("eta_prop_lo", assumptions.eta_prop_lo, 0.65)}
+          <NumField
+            assumptions={assumptions}
+            fieldKey="eta_prop_lo"
+            value={assumptions.eta_prop_lo}
+            defaultVal={0.65}
+            onChange={onChange}
+          />
           <span className="text-muted-foreground">/</span>
-          {numField("eta_prop_hi", assumptions.eta_prop_hi, 0.78)}
+          <NumField
+            assumptions={assumptions}
+            fieldKey="eta_prop_hi"
+            value={assumptions.eta_prop_hi}
+            defaultVal={0.78}
+            onChange={onChange}
+          />
         </div>
       </div>
 
@@ -561,7 +629,13 @@ function AssumptionControls({ assumptions, onChange }: AssumptionControlsProps) 
         <span className="font-[family-name:var(--font-geist-sans)] text-[10px] text-muted-foreground">
           DoD
         </span>
-        {numField("dod", assumptions.dod, 0.8)}
+        <NumField
+          assumptions={assumptions}
+          fieldKey="dod"
+          value={assumptions.dod}
+          defaultVal={0.8}
+          onChange={onChange}
+        />
       </div>
 
       {/* ESC margin */}
@@ -569,7 +643,13 @@ function AssumptionControls({ assumptions, onChange }: AssumptionControlsProps) 
         <span className="font-[family-name:var(--font-geist-sans)] text-[10px] text-muted-foreground">
           ESC margin ×
         </span>
-        {numField("esc_margin", assumptions.esc_margin, 1.4)}
+        <NumField
+          assumptions={assumptions}
+          fieldKey="esc_margin"
+          value={assumptions.esc_margin}
+          defaultVal={1.4}
+          onChange={onChange}
+        />
       </div>
 
       {/* C margin */}
@@ -577,7 +657,13 @@ function AssumptionControls({ assumptions, onChange }: AssumptionControlsProps) 
         <span className="font-[family-name:var(--font-geist-sans)] text-[10px] text-muted-foreground">
           C margin ×
         </span>
-        {numField("c_margin", assumptions.c_margin, 1.25)}
+        <NumField
+          assumptions={assumptions}
+          fieldKey="c_margin"
+          value={assumptions.c_margin}
+          defaultVal={1.25}
+          onChange={onChange}
+        />
       </div>
 
       {/* Prop P/D preset */}
@@ -611,9 +697,14 @@ function AssumptionControls({ assumptions, onChange }: AssumptionControlsProps) 
           value={assumptions.t_target_min ?? 15}
           min={1}
           step={1}
-          onChange={(e) =>
-            onChange({ ...assumptions, t_target_min: parseFloat(e.target.value) })
-          }
+          onChange={(e) => {
+            const raw = e.target.value;
+            const parsed = parseFloat(raw);
+            onChange({
+              ...assumptions,
+              t_target_min: raw === "" || Number.isNaN(parsed) ? undefined : parsed,
+            });
+          }}
           className="w-20 rounded border border-border bg-card-muted px-2 py-1 font-[family-name:var(--font-geist-sans)] text-[11px] text-foreground"
           data-testid="t-target-input"
         />
@@ -778,6 +869,19 @@ export function PowertrainTab({ aeroplaneId }: Props) {
 
   const { data, isLoading, error } = usePowertrainSolutionSpace(aeroplaneId, assumptions);
 
+  // Reset an orphaned selection: if the selected cell-count no longer exists in
+  // the new rows (e.g. after an assumptions change removed it), clear it so the
+  // auto-select fallback (first row) takes over instead of pointing at nothing.
+  // Done during render (not in a useEffect) per the React 19 "adjust state when
+  // data changes" pattern — avoids the react-hooks/set-state-in-effect cascade.
+  if (
+    selectedCellCount != null &&
+    data != null &&
+    !data.rows.some((r) => r.cell_count === selectedCellCount)
+  ) {
+    setSelectedCellCount(null);
+  }
+
   // Auto-select the first row when data arrives and nothing is selected yet
   const firstCellCount = data?.rows[0]?.cell_count ?? null;
   const effectiveSelection = selectedCellCount ?? firstCellCount;
@@ -839,9 +943,9 @@ export function PowertrainTab({ aeroplaneId }: Props) {
               className="rounded-lg border border-orange-500/30 bg-orange-900/30 px-3 py-2"
               data-testid="powertrain-warnings"
             >
-              {data.warnings.map((w, i) => (
+              {data.warnings.map((w) => (
                 <p
-                  key={i}
+                  key={w}
                   className="font-[family-name:var(--font-geist-sans)] text-[10px] text-orange-400"
                 >
                   ⚠ {w}

@@ -441,4 +441,140 @@ describe("FeasibleRegionPlot — Plotly call structure", () => {
     expect(missionAnnotation.text).toContain("V_top");
     expect(missionAnnotation.text).toContain("14.0 m/s"); // v_cruise_mps from MOCK_DATA
   });
+
+  it("reserves bottom margin so the metadata annotation is not clipped", async () => {
+    hookReturn = MOCK_OK;
+    render(<PowertrainTab aeroplaneId="test-id" />);
+    await new Promise((r) => setTimeout(r, 50));
+
+    const [, , layout] = plotlyReactMock.mock.calls[0];
+    // Bottom annotation sits at y:-0.13; margin.b must be generous (>= 65)
+    // to keep it fully visible.
+    expect(layout.margin.b).toBeGreaterThanOrEqual(65);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// plotly_click listener: bind once, clean up on unmount (no accumulation)
+// ---------------------------------------------------------------------------
+
+describe("FeasibleRegionPlot — plotly_click listener lifecycle", () => {
+  beforeEach(() => {
+    plotlyReactMock.mockClear();
+  });
+
+  it("binds the click listener once and removes it on cleanup", async () => {
+    // Patch the jsdom container so it exposes Plotly's `.on()` / `.removeAllListeners()`.
+    const onSpy = vi.fn();
+    const removeAllSpy = vi.fn();
+    const origCreate = document.createElement.bind(document);
+    const createSpy = vi
+      .spyOn(document, "createElement")
+      .mockImplementation((tag: string, opts?: ElementCreationOptions) => {
+        const el = origCreate(tag, opts);
+        if (tag === "div") {
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          (el as any).on = onSpy;
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          (el as any).removeAllListeners = removeAllSpy;
+        }
+        return el;
+      });
+
+    hookReturn = MOCK_OK;
+    const { unmount } = render(<PowertrainTab aeroplaneId="test-id" />);
+    await new Promise((r) => setTimeout(r, 50));
+
+    // The click handler is bound exactly once for plotly_click.
+    const clickBinds = onSpy.mock.calls.filter((c) => c[0] === "plotly_click");
+    expect(clickBinds.length).toBe(1);
+
+    unmount();
+    expect(removeAllSpy).toHaveBeenCalledWith("plotly_click");
+
+    createSpy.mockRestore();
+  });
+
+  it("does not re-bind the click listener when the selection changes", async () => {
+    const onSpy = vi.fn();
+    const removeAllSpy = vi.fn();
+    const origCreate = document.createElement.bind(document);
+    const createSpy = vi
+      .spyOn(document, "createElement")
+      .mockImplementation((tag: string, opts?: ElementCreationOptions) => {
+        const el = origCreate(tag, opts);
+        if (tag === "div") {
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          (el as any).on = onSpy;
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          (el as any).removeAllListeners = removeAllSpy;
+        }
+        return el;
+      });
+
+    hookReturn = MOCK_OK;
+    render(<PowertrainTab aeroplaneId="test-id" />);
+    await new Promise((r) => setTimeout(r, 50));
+
+    const bindsBefore = onSpy.mock.calls.filter((c) => c[0] === "plotly_click").length;
+    expect(bindsBefore).toBe(1);
+
+    // Change the selection by clicking a different table row.
+    fireEvent.click(screen.getByTestId("solution-row-4"));
+    await new Promise((r) => setTimeout(r, 50));
+
+    // Selection change re-draws the figure (marker re-style) but must NOT
+    // re-bind the click listener — the effect that binds it does not depend
+    // on selectedCellCount.
+    const bindsAfter = onSpy.mock.calls.filter((c) => c[0] === "plotly_click").length;
+    expect(bindsAfter).toBe(1);
+
+    createSpy.mockRestore();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Orphaned-selection reset + NaN-guarded numeric inputs
+// ---------------------------------------------------------------------------
+
+describe("PowertrainTab — selection + input edge cases", () => {
+  beforeEach(() => {
+    plotlyReactMock.mockClear();
+  });
+
+  it("resets the selection when the selected cell-count disappears from new data", () => {
+    hookReturn = MOCK_OK;
+    const { rerender } = render(<PowertrainTab aeroplaneId="test-id" />);
+
+    // Select 6S explicitly.
+    fireEvent.click(screen.getByTestId("solution-row-6"));
+    expect(screen.getByTestId("shopping-spec-line")).toHaveTextContent("6S");
+
+    // New data no longer contains 6S → selection must fall back to first row (3S).
+    const dataWithout6S: PowertrainSolutionSpaceResponse = {
+      ...MOCK_DATA,
+      rows: [mkRow(3), mkRow(4)],
+      feasible_regions: [mkRegion(3), mkRegion(4)],
+      shopping_specs: [mkSpec(3), mkSpec(4)],
+    };
+    hookReturn = { data: dataWithout6S, error: null, isLoading: false, mutate: vi.fn() };
+    rerender(<PowertrainTab aeroplaneId="test-id" />);
+
+    // Shopping spec now reflects the first available row (3S), not the orphaned 6S.
+    expect(screen.getByTestId("shopping-spec-line")).toHaveTextContent("3S");
+    expect(screen.queryByTestId("solution-row-6")).not.toBeInTheDocument();
+  });
+
+  it("clearing a numeric assumption input omits it (no NaN serialized)", () => {
+    hookReturn = MOCK_OK;
+    render(<PowertrainTab aeroplaneId="test-id" />);
+
+    const tTarget = screen.getByTestId("t-target-input") as HTMLInputElement;
+    // Clearing the field must NOT throw and must not leave a NaN; the value
+    // becomes undefined and the input falls back to its default on re-render
+    // (undefined → `assumptions.t_target_min ?? 15`).
+    fireEvent.change(tTarget, { target: { value: "" } });
+
+    expect((screen.getByTestId("t-target-input") as HTMLInputElement).value).toBe("15");
+  });
 });

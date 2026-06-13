@@ -932,6 +932,11 @@ export function AnalysisViewerPanel({
     setMaximizedChart((prev) => (prev === id ? null : id));
   }
 
+  // gh-976/gh-977: "Powertrain" is intentionally NOT in this set. Unlike the
+  // aero tabs, powertrain sizing does not require wings to have an aero
+  // analysis run — the backend returns a design warning when mission/aero
+  // context is missing, and PowertrainTab surfaces those via its warnings
+  // banner. So it must render even without wings (no hard wing-gate block).
   const COMPUTATION_TABS = new Set<Tab>([
     "Polar",
     "Trefftz Plane",
@@ -939,7 +944,6 @@ export function AnalysisViewerPanel({
     "Envelope",
     "Operating Points",
     "Sizing",
-    "Powertrain",
   ]);
   const showWingGate = !hasWings && COMPUTATION_TABS.has(activeTab);
 
