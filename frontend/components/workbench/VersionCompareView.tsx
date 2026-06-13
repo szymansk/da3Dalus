@@ -94,10 +94,11 @@ function contextsDiverge(
   const reB = numField(ctxB as unknown as Record<string, unknown> | null, "reynolds");
   if (reA != null && reB != null && relDiff(reA, reB) > 0.01) return true;
 
-  // cruise speed — >0.1 m/s absolute
+  // cruise speed — >1% relative (scale-invariant: an absolute threshold would
+  // misfire at high UAV airspeeds, ~ok at RC speeds).
   const vA = numField(ctxA as unknown as Record<string, unknown> | null, "v_cruise_mps");
   const vB = numField(ctxB as unknown as Record<string, unknown> | null, "v_cruise_mps");
-  if (vA != null && vB != null && Math.abs(vA - vB) > 0.1) return true;
+  if (vA != null && vB != null && relDiff(vA, vB) > 0.01) return true;
 
   return false;
 }
