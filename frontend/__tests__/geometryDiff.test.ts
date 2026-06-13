@@ -391,7 +391,7 @@ describe("computeGeometryDiff — sub-element flags", () => {
     const diff = computeGeometryDiff(a, b);
     const ted = diff.wings[0].sections[0].flags.find((f) => f.key === "control_surface");
     expect(ted).toBeDefined();
-    expect(ted!.kind).toBe("changed");
+    expect(ted!.kind).toBe("removed");
     expect(ted!.a).toBe("aileron");
     expect(ted!.b).toBe("—");
   });
@@ -402,7 +402,7 @@ describe("computeGeometryDiff — sub-element flags", () => {
     const diff = computeGeometryDiff(a, b);
     const turb = diff.wings[0].sections[0].flags.find((f) => f.key === "turbulator");
     expect(turb).toBeDefined();
-    expect(turb!.kind).toBe("changed");
+    expect(turb!.kind).toBe("added");
     expect(turb!.a).toBe("—");
     expect(turb!.b).toBe("on");
   });
@@ -534,5 +534,542 @@ describe("computeGeometryDiff — changes-only vs show-all", () => {
     expect(diff.hasAnyChange).toBe(false);
     expect(diff.wings).toHaveLength(1);
     expect(diff.wings[0].sections[0].params.length).toBeGreaterThan(0);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// GH #972 — field-level sub-element diff: spar fields
+// Spar dimensional values (width/height/start/length) are in METRES (API converts
+// mm → m). The diff multiplies by 1000 before formatting and tolerance comparison.
+// ---------------------------------------------------------------------------
+
+/**
+ * A typed spar object matching the expected spare_list item shape.
+ * Dimensional fields are in METRES (as returned by the wingconfig API).
+ */
+function spar(overrides: Record<string, unknown> = {}): Record<string, unknown> {
+  return {
+    spare_position_factor: 0.25,
+    spare_support_dimension_width: 0.010,   // 10 mm in metres
+    spare_support_dimension_height: 0.015,  // 15 mm in metres
+    spare_start: 0.050,                     // 50 mm in metres
+    spare_length: 0.400,                    // 400 mm in metres
+    spare_mode: "C",
+    ...overrides,
+  };
+}
+
+describe("computeGeometryDiff — gh-972 spar field-level diff", () => {
+  it("emits fields with changed spar position_factor (changes-only)", () => {
+    const a = [wing("main", [segment({ spare_list: [spar({ spare_position_factor: 0.3 })] })])];
+    const b = [wing("main", [segment({ spare_list: [spar({ spare_position_factor: 0.4 })] })])];
+    const diff = computeGeometryDiff(a, b);
+    const sparFlag = diff.wings[0].sections[0].flags.find((f) => f.key === "spar");
+    expect(sparFlag).toBeDefined();
+    expect(sparFlag!.fields).toBeDefined();
+    const posField = sparFlag!.fields!.find((f) => f.key === "spar 1 position");
+    expect(posField).toBeDefined();
+    expect(posField!.a).toBe("0.3");
+    expect(posField!.b).toBe("0.4");
+  });
+
+  it("emits changed width/height dimension fields for a spar (metres → mm conversion)", () => {
+    // API returns metres; diff should display in mm
+    const a = [wing("main", [segment({ spare_list: [spar({ spare_support_dimension_width: 0.010, spare_support_dimension_height: 0.015 })] })])];
+    const b = [wing("main", [segment({ spare_list: [spar({ spare_support_dimension_width: 0.012, spare_support_dimension_height: 0.020 })] })])];
+    const diff = computeGeometryDiff(a, b);
+    const sparFlag = diff.wings[0].sections[0].flags.find((f) => f.key === "spar");
+    expect(sparFlag!.fields).toBeDefined();
+    const wField = sparFlag!.fields!.find((f) => f.key === "spar 1 width");
+    expect(wField).toBeDefined();
+    expect(wField!.a).toBe("10 mm");
+    expect(wField!.b).toBe("12 mm");
+    const hField = sparFlag!.fields!.find((f) => f.key === "spar 1 height");
+    expect(hField).toBeDefined();
+    expect(hField!.a).toBe("15 mm");
+    expect(hField!.b).toBe("20 mm");
+  });
+
+  it("emits changed start/length fields for a spar (metres → mm conversion)", () => {
+    const a = [wing("main", [segment({ spare_list: [spar({ spare_start: 0.050, spare_length: 0.400 })] })])];
+    const b = [wing("main", [segment({ spare_list: [spar({ spare_start: 0.060, spare_length: 0.350 })] })])];
+    const diff = computeGeometryDiff(a, b);
+    const sparFlag = diff.wings[0].sections[0].flags.find((f) => f.key === "spar");
+    expect(sparFlag!.fields).toBeDefined();
+    const startField = sparFlag!.fields!.find((f) => f.key === "spar 1 start");
+    expect(startField).toBeDefined();
+    expect(startField!.a).toBe("50 mm");
+    expect(startField!.b).toBe("60 mm");
+    const lenField = sparFlag!.fields!.find((f) => f.key === "spar 1 length");
+    expect(lenField).toBeDefined();
+    expect(lenField!.a).toBe("400 mm");
+    expect(lenField!.b).toBe("350 mm");
+  });
+
+  it("detects a width change that would be missed without metres→mm conversion", () => {
+    // 0.00442 m and 0.00500 m differ by 0.00058 m — below the raw 0.05 tolerance,
+    // but in mm they are 4.42 mm vs 5.00 mm → Δ=0.58 mm > tolerance → should be reported.
+    const a = [wing("main", [segment({ spare_list: [spar({ spare_support_dimension_width: 0.00442 })] })])];
+    const b = [wing("main", [segment({ spare_list: [spar({ spare_support_dimension_width: 0.00500 })] })])];
+    const diff = computeGeometryDiff(a, b);
+    const sparFlag = diff.wings[0].sections[0].flags.find((f) => f.key === "spar");
+    expect(sparFlag).toBeDefined();
+    expect(sparFlag!.fields).toBeDefined();
+    const wField = sparFlag!.fields!.find((f) => f.key === "spar 1 width");
+    expect(wField).toBeDefined();
+    expect(wField!.a).toBe("4.42 mm");
+    expect(wField!.b).toBe("5 mm");
+  });
+
+  it("emits 'added' kind for a spar that exists only in B (count 0→1)", () => {
+    const a = [wing("main", [segment({ spare_list: [] })])];
+    const b = [wing("main", [segment({ spare_list: [spar()] })])];
+    const diff = computeGeometryDiff(a, b);
+    const sparFlag = diff.wings[0].sections[0].flags.find((f) => f.key === "spar");
+    expect(sparFlag).toBeDefined();
+    expect(sparFlag!.kind).toBe("added");
+  });
+
+  it("emits 'removed' kind for a spar that exists only in A (count 1→0)", () => {
+    const a = [wing("main", [segment({ spare_list: [spar()] })])];
+    const b = [wing("main", [segment({ spare_list: [] })])];
+    const diff = computeGeometryDiff(a, b);
+    const sparFlag = diff.wings[0].sections[0].flags.find((f) => f.key === "spar");
+    expect(sparFlag).toBeDefined();
+    expect(sparFlag!.kind).toBe("removed");
+  });
+
+  it("count differs (1→2): shows count change, NO field sub-rows", () => {
+    // A has 1 spar, B has 2 — positional pairing is unsafe, so no field rows
+    const a = [wing("main", [segment({ spare_list: [spar({ spare_support_dimension_width: 0.010 })] })])];
+    const b = [wing("main", [segment({ spare_list: [spar({ spare_support_dimension_width: 0.010 }), spar({ spare_support_dimension_width: 0.012 })] })])];
+    const diff = computeGeometryDiff(a, b);
+    const sparFlag = diff.wings[0].sections[0].flags.find((f) => f.key === "spar");
+    expect(sparFlag).toBeDefined();
+    expect(sparFlag!.a).toBe("1 spar");
+    expect(sparFlag!.b).toBe("2 spars");
+    // No field sub-rows when count differs
+    expect(sparFlag!.fields == null || sparFlag!.fields.length === 0).toBe(true);
+  });
+
+  it("showAll emits all spar fields even when unchanged", () => {
+    const a = [wing("main", [segment({ spare_list: [spar()], root_airfoil: { airfoil: "naca2412", chord: 200, incidence: 1 } })])];
+    const b = [wing("main", [segment({ spare_list: [spar()], root_airfoil: { airfoil: "naca2412", chord: 200, incidence: 2 } })])];
+    const diff = computeGeometryDiff(a, b, { showAll: true });
+    const sparFlag = diff.wings[0].sections[0].flags.find((f) => f.key === "spar");
+    expect(sparFlag).toBeDefined();
+    expect(sparFlag!.fields).toBeDefined();
+    // All 6 fields should be present
+    const fieldKeys = sparFlag!.fields!.map((f) => f.key);
+    expect(fieldKeys).toContain("spar 1 position");
+    expect(fieldKeys).toContain("spar 1 width");
+    expect(fieldKeys).toContain("spar 1 height");
+    expect(fieldKeys).toContain("spar 1 start");
+    expect(fieldKeys).toContain("spar 1 length");
+    expect(fieldKeys).toContain("spar 1 mode");
+  });
+
+  it("changes-only emits fields only for changed spar fields", () => {
+    // position changes, width/height/start/length/mode unchanged
+    const a = [wing("main", [segment({ spare_list: [spar({ spare_position_factor: 0.25 })] })])];
+    const b = [wing("main", [segment({ spare_list: [spar({ spare_position_factor: 0.35 })] })])];
+    const diff = computeGeometryDiff(a, b);
+    const sparFlag = diff.wings[0].sections[0].flags.find((f) => f.key === "spar");
+    expect(sparFlag!.fields).toBeDefined();
+    const fieldKeys = sparFlag!.fields!.map((f) => f.key);
+    expect(fieldKeys).toContain("spar 1 position");
+    // width/height/start/length/mode are unchanged → NOT emitted in changes-only
+    expect(fieldKeys).not.toContain("spar 1 width");
+    expect(fieldKeys).not.toContain("spar 1 height");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// GH #972 — spare_position_factor tight tolerance (0.005, not 0.05)
+// ---------------------------------------------------------------------------
+
+describe("computeGeometryDiff — spare_position_factor tight tolerance", () => {
+  it("detects a 0.006 change in position_factor (above 0.005 tight tolerance)", () => {
+    const a = [wing("main", [segment({ spare_list: [spar({ spare_position_factor: 0.300 })] })])];
+    const b = [wing("main", [segment({ spare_list: [spar({ spare_position_factor: 0.306 })] })])];
+    const diff = computeGeometryDiff(a, b);
+    const sparFlag = diff.wings[0].sections[0].flags.find((f) => f.key === "spar");
+    expect(sparFlag!.fields).toBeDefined();
+    const posField = sparFlag!.fields!.find((f) => f.key === "spar 1 position");
+    expect(posField).toBeDefined();
+  });
+
+  it("treats a 0.004 change in position_factor as noise (below 0.005 tight tolerance)", () => {
+    // Only difference is position_factor changes by 0.004 — should be noise, no change
+    const a = [wing("main", [segment({ spare_list: [spar({ spare_position_factor: 0.300 })] })])];
+    const b = [wing("main", [segment({ spare_list: [spar({ spare_position_factor: 0.304 })] })])];
+    const diff = computeGeometryDiff(a, b);
+    // No other changes → no section change detected → wings is empty in changes-only mode
+    expect(diff.hasAnyChange).toBe(false);
+    expect(diff.wings).toHaveLength(0);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// GH #972 — field-level sub-element diff: TED (trailing edge device) fields
+// ---------------------------------------------------------------------------
+
+describe("computeGeometryDiff — gh-972 TED field-level diff", () => {
+  it("emits changed hinge_type and deflection_deg fields for TED", () => {
+    const a = [wing("main", [segment({ trailing_edge_device: {
+      name: "aileron", role: "aileron", rel_chord_root: 0.25, rel_chord_tip: 0.25,
+      positive_deflection_deg: 20, negative_deflection_deg: -15,
+      hinge_type: "plain", servo_placement: "wing", servo_index: 0,
+    } })])];
+    const b = [wing("main", [segment({ trailing_edge_device: {
+      name: "aileron", role: "aileron", rel_chord_root: 0.25, rel_chord_tip: 0.25,
+      positive_deflection_deg: 25, negative_deflection_deg: -20,
+      hinge_type: "slotted", servo_placement: "wing", servo_index: 0,
+    } })])];
+    const diff = computeGeometryDiff(a, b);
+    const tedFlag = diff.wings[0].sections[0].flags.find((f) => f.key === "control_surface");
+    expect(tedFlag).toBeDefined();
+    expect(tedFlag!.fields).toBeDefined();
+    const hingeField = tedFlag!.fields!.find((f) => f.key === "control surface hinge_type");
+    expect(hingeField).toBeDefined();
+    expect(hingeField!.a).toBe("plain");
+    expect(hingeField!.b).toBe("slotted");
+    const posDefField = tedFlag!.fields!.find((f) => f.key === "control surface positive_deflection_deg");
+    expect(posDefField).toBeDefined();
+    expect(posDefField!.a).toBe("20");
+    expect(posDefField!.b).toBe("25");
+  });
+
+  it("emits only the name field changed when TED is renamed but otherwise identical", () => {
+    const baseTed = {
+      name: "aileron", role: "aileron", rel_chord_root: 0.25, rel_chord_tip: 0.25,
+      positive_deflection_deg: 20, negative_deflection_deg: -15,
+      hinge_type: "plain", servo_placement: "wing", servo_index: 0,
+    };
+    const a = [wing("main", [segment({ trailing_edge_device: baseTed })])];
+    const b = [wing("main", [segment({ trailing_edge_device: { ...baseTed, name: "flap" } })])];
+    const diff = computeGeometryDiff(a, b);
+    const tedFlag = diff.wings[0].sections[0].flags.find((f) => f.key === "control_surface");
+    expect(tedFlag!.fields).toBeDefined();
+    const nameField = tedFlag!.fields!.find((f) => f.key === "control surface name");
+    expect(nameField).toBeDefined();
+    expect(nameField!.a).toBe("aileron");
+    expect(nameField!.b).toBe("flap");
+    // All other fields unchanged → not in changes-only fields list
+    const fieldKeys = tedFlag!.fields!.map((f) => f.key);
+    expect(fieldKeys.filter((k) => k !== "control surface name")).toHaveLength(0);
+  });
+
+  it("emits moved-but-same-name TED fields (rel_chord changed)", () => {
+    const baseTed = {
+      name: "aileron", role: "aileron", rel_chord_root: 0.25, rel_chord_tip: 0.25,
+      positive_deflection_deg: 20, negative_deflection_deg: -15,
+      hinge_type: "plain", servo_placement: "wing", servo_index: 0,
+    };
+    const a = [wing("main", [segment({ trailing_edge_device: baseTed })])];
+    const b = [wing("main", [segment({ trailing_edge_device: { ...baseTed, rel_chord_root: 0.35, rel_chord_tip: 0.35 } })])];
+    const diff = computeGeometryDiff(a, b);
+    const tedFlag = diff.wings[0].sections[0].flags.find((f) => f.key === "control_surface");
+    expect(tedFlag!.fields).toBeDefined();
+    const rootField = tedFlag!.fields!.find((f) => f.key === "control surface rel_chord_root");
+    expect(rootField).toBeDefined();
+    expect(rootField!.a).toBe("0.25");
+    expect(rootField!.b).toBe("0.35");
+  });
+
+  it("showAll emits all TED fields even when unchanged (one-sided unchanged TED)", () => {
+    const ted = {
+      name: "aileron", role: "aileron", rel_chord_root: 0.25, rel_chord_tip: 0.25,
+      positive_deflection_deg: 20, negative_deflection_deg: -15,
+      hinge_type: "plain", servo_placement: "wing", servo_index: 0,
+    };
+    // make a non-TED change so section is matched and shown
+    const a = [wing("main", [segment({ trailing_edge_device: ted, root_airfoil: { airfoil: "naca2412", chord: 200, incidence: 1 } })])];
+    const b = [wing("main", [segment({ trailing_edge_device: ted, root_airfoil: { airfoil: "naca2412", chord: 200, incidence: 2 } })])];
+    const diff = computeGeometryDiff(a, b, { showAll: true });
+    const tedFlag = diff.wings[0].sections[0].flags.find((f) => f.key === "control_surface");
+    expect(tedFlag!.fields).toBeDefined();
+    const fieldKeys = tedFlag!.fields!.map((f) => f.key);
+    expect(fieldKeys).toContain("control surface name");
+    expect(fieldKeys).toContain("control surface hinge_type");
+    expect(fieldKeys).toContain("control surface positive_deflection_deg");
+  });
+
+  it("kind='added' when TED is only on side B", () => {
+    const a = [wing("main", [segment({ trailing_edge_device: null })])];
+    const b = [wing("main", [segment({ trailing_edge_device: { name: "aileron" } })])];
+    const diff = computeGeometryDiff(a, b);
+    const tedFlag = diff.wings[0].sections[0].flags.find((f) => f.key === "control_surface");
+    expect(tedFlag).toBeDefined();
+    expect(tedFlag!.kind).toBe("added");
+  });
+
+  it("kind='removed' when TED is only on side A", () => {
+    const a = [wing("main", [segment({ trailing_edge_device: { name: "aileron" } })])];
+    const b = [wing("main", [segment({ trailing_edge_device: null })])];
+    const diff = computeGeometryDiff(a, b);
+    const tedFlag = diff.wings[0].sections[0].flags.find((f) => f.key === "control_surface");
+    expect(tedFlag).toBeDefined();
+    expect(tedFlag!.kind).toBe("removed");
+  });
+
+  it("kind='changed' when TED is present on both sides", () => {
+    const baseTed = { name: "aileron", hinge_type: "plain" };
+    const a = [wing("main", [segment({ trailing_edge_device: baseTed })])];
+    const b = [wing("main", [segment({ trailing_edge_device: { ...baseTed, hinge_type: "slotted" } })])];
+    const diff = computeGeometryDiff(a, b);
+    const tedFlag = diff.wings[0].sections[0].flags.find((f) => f.key === "control_surface");
+    expect(tedFlag).toBeDefined();
+    expect(tedFlag!.kind).toBe("changed");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// GH #972 — field-level sub-element diff: turbulator fields
+// ---------------------------------------------------------------------------
+
+describe("computeGeometryDiff — gh-972 turbulator field-level diff", () => {
+  it("emits changed turbulator fields (form, height_mm, position_root)", () => {
+    const a = [wing("main", [segment({ turbulator: {
+      form: "wire", height_mm: 1.0, position_root: 0.2, position_tip: 0.2, enabled: true,
+    } })])];
+    const b = [wing("main", [segment({ turbulator: {
+      form: "tape", height_mm: 1.5, position_root: 0.3, position_tip: 0.2, enabled: true,
+    } })])];
+    const diff = computeGeometryDiff(a, b);
+    const turbFlag = diff.wings[0].sections[0].flags.find((f) => f.key === "turbulator");
+    expect(turbFlag).toBeDefined();
+    expect(turbFlag!.fields).toBeDefined();
+    const formField = turbFlag!.fields!.find((f) => f.key === "turbulator form");
+    expect(formField).toBeDefined();
+    expect(formField!.a).toBe("wire");
+    expect(formField!.b).toBe("tape");
+    const heightField = turbFlag!.fields!.find((f) => f.key === "turbulator height_mm");
+    expect(heightField).toBeDefined();
+    expect(heightField!.a).toBe("1");
+    expect(heightField!.b).toBe("1.5");
+    const rootPosField = turbFlag!.fields!.find((f) => f.key === "turbulator position_root");
+    expect(rootPosField).toBeDefined();
+    expect(rootPosField!.a).toBe("0.2");
+    expect(rootPosField!.b).toBe("0.3");
+  });
+
+  it("emits changed turbulator enabled field (true → false)", () => {
+    const a = [wing("main", [segment({ turbulator: { form: "wire", height_mm: 1.0, position_root: 0.2, position_tip: 0.2, enabled: true } })])];
+    const b = [wing("main", [segment({ turbulator: { form: "wire", height_mm: 1.0, position_root: 0.2, position_tip: 0.2, enabled: false } })])];
+    const diff = computeGeometryDiff(a, b);
+    const turbFlag = diff.wings[0].sections[0].flags.find((f) => f.key === "turbulator");
+    expect(turbFlag!.fields).toBeDefined();
+    const enabledField = turbFlag!.fields!.find((f) => f.key === "turbulator enabled");
+    expect(enabledField).toBeDefined();
+    expect(enabledField!.a).toBe("true");
+    expect(enabledField!.b).toBe("false");
+  });
+
+  it("showAll emits all turbulator fields even when unchanged", () => {
+    const turb = { form: "wire", height_mm: 1.0, position_root: 0.2, position_tip: 0.2, enabled: true };
+    const a = [wing("main", [segment({ turbulator: turb, root_airfoil: { airfoil: "naca2412", chord: 200, incidence: 1 } })])];
+    const b = [wing("main", [segment({ turbulator: turb, root_airfoil: { airfoil: "naca2412", chord: 200, incidence: 2 } })])];
+    const diff = computeGeometryDiff(a, b, { showAll: true });
+    const turbFlag = diff.wings[0].sections[0].flags.find((f) => f.key === "turbulator");
+    expect(turbFlag!.fields).toBeDefined();
+    const fieldKeys = turbFlag!.fields!.map((f) => f.key);
+    expect(fieldKeys).toContain("turbulator form");
+    expect(fieldKeys).toContain("turbulator height_mm");
+    expect(fieldKeys).toContain("turbulator position_root");
+    expect(fieldKeys).toContain("turbulator position_tip");
+    expect(fieldKeys).toContain("turbulator enabled");
+  });
+
+  it("kind='added' when turbulator is only on side B", () => {
+    const a = [wing("main", [segment({ turbulator: null })])];
+    const b = [wing("main", [segment({ turbulator: { form: "wire" } })])];
+    const diff = computeGeometryDiff(a, b);
+    const turbFlag = diff.wings[0].sections[0].flags.find((f) => f.key === "turbulator");
+    expect(turbFlag).toBeDefined();
+    expect(turbFlag!.kind).toBe("added");
+  });
+
+  it("kind='removed' when turbulator is only on side A", () => {
+    const a = [wing("main", [segment({ turbulator: { form: "wire" } })])];
+    const b = [wing("main", [segment({ turbulator: null })])];
+    const diff = computeGeometryDiff(a, b);
+    const turbFlag = diff.wings[0].sections[0].flags.find((f) => f.key === "turbulator");
+    expect(turbFlag).toBeDefined();
+    expect(turbFlag!.kind).toBe("removed");
+  });
+
+  it("kind='changed' when turbulator is present on both sides", () => {
+    const a = [wing("main", [segment({ turbulator: { form: "wire" } })])];
+    const b = [wing("main", [segment({ turbulator: { form: "tape" } })])];
+    const diff = computeGeometryDiff(a, b);
+    const turbFlag = diff.wings[0].sections[0].flags.find((f) => f.key === "turbulator");
+    expect(turbFlag).toBeDefined();
+    expect(turbFlag!.kind).toBe("changed");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// GH #972 — guard: missing/null sub-elements must not throw
+// ---------------------------------------------------------------------------
+
+describe("computeGeometryDiff — gh-972 null/missing sub-element guards", () => {
+  it("does not throw when spare_list items have no fields (empty objects)", () => {
+    const a = [wing("main", [segment({ spare_list: [{}] })])];
+    const b = [wing("main", [segment({ spare_list: [{}] })])];
+    expect(() => computeGeometryDiff(a, b, { showAll: true })).not.toThrow();
+  });
+
+  it("does not throw when trailing_edge_device is null on both sides", () => {
+    const a = [wing("main", [segment({ trailing_edge_device: null })])];
+    const b = [wing("main", [segment({ trailing_edge_device: null })])];
+    expect(() => computeGeometryDiff(a, b, { showAll: true })).not.toThrow();
+  });
+
+  it("does not throw when turbulator is null on both sides", () => {
+    const a = [wing("main", [segment({ turbulator: null })])];
+    const b = [wing("main", [segment({ turbulator: null })])];
+    expect(() => computeGeometryDiff(a, b, { showAll: true })).not.toThrow();
+  });
+
+  it("does not throw when spare_list is missing entirely", () => {
+    const aSegNoList = { ...segment() };
+    delete (aSegNoList as Partial<WingConfigSegment>).spare_list;
+    const a = [wing("main", [aSegNoList as WingConfigSegment])];
+    const b = [wing("main", [segment()])];
+    expect(() => computeGeometryDiff(a, b)).not.toThrow();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// GH #973 — hints embedded in GeometryDiff (computed from raw values per section)
+// ---------------------------------------------------------------------------
+
+describe("computeGeometryDiff — gh-973 hints (raw per-section, no string parsing)", () => {
+  it("diff.hints is an array (always present)", () => {
+    const a = [wing("main", [segment()])];
+    const b = [wing("main", [segment()])];
+    const diff = computeGeometryDiff(a, b);
+    expect(Array.isArray(diff.hints)).toBe(true);
+  });
+
+  it("returns empty hints array when there are no changes", () => {
+    const a = [wing("main", [segment()])];
+    const b = [wing("main", [segment()])];
+    const diff = computeGeometryDiff(a, b);
+    expect(diff.hints).toEqual([]);
+  });
+
+  it("taper hint: tip chord decreased, root chord ~unchanged", () => {
+    // tip chord not in LCS signature, so sections match and we can diff
+    const a = [wing("main", [segment({ tip_airfoil: { airfoil: "naca2412", chord: 150 } })])];
+    const b = [wing("main", [segment({ tip_airfoil: { airfoil: "naca2412", chord: 100 } })])];
+    const diff = computeGeometryDiff(a, b);
+    expect(diff.hints.some((h) => /taper/i.test(h))).toBe(true);
+  });
+
+  it("taper hint works in changes-only mode (uses raw values, not params list)", () => {
+    // The tip chord change IS emitted in changes-only, but the hint must come from
+    // raw values inside computeGeometryDiff, not from searching diff.wings[].sections[].params
+    const a = [wing("main", [segment({ tip_airfoil: { airfoil: "naca2412", chord: 150 } })])];
+    const b = [wing("main", [segment({ tip_airfoil: { airfoil: "naca2412", chord: 100 } })])];
+    const diff = computeGeometryDiff(a, b, { showAll: false });
+    expect(diff.hints.some((h) => /taper/i.test(h))).toBe(true);
+  });
+
+  it("does NOT emit taper hint when root chord also decreased significantly", () => {
+    // root chord is in LCS signature; change it → sections appear as add+remove, not matched.
+    // Use incidence change on root to force the match, then also change root chord via showAll test.
+    // Simplest: use showAll so the section is present; but raw values show root also dropped.
+    // We use the same-sig trick: keep chord/length/airfoil the same in sig, only change
+    // incidence and also supply a separate root_chord via showAll mode is not needed here.
+    // Actually, use tip chord changes while keeping root chord sig stable, but ALSO change
+    // root chord to simulate both dropping. Since root chord IS in signature, we must use
+    // a segment that has the same sig but a different root chord... which is impossible by design.
+    // INSTEAD: use a multi-section wing where one section's tip decreases but root also decreases.
+    // We use the `accumulateSectionHints` path directly by changing tip chord while ALSO having
+    // root chord change (we override root_airfoil chord — that will change the sig, so sections
+    // appear as added+removed, not matched → no hint accumulated from matchedPairs).
+    // The simplest test: a segment where tip_chord goes down by 50mm but root_chord also goes
+    // down by 50mm (same proportion → NOT more taper). Since root chord is in sig, changing it
+    // means sections DON'T match in LCS → they appear as added+removed → no taper hint.
+    const a = [wing("main", [segment({ root_airfoil: { airfoil: "naca2412", chord: 200 }, tip_airfoil: { airfoil: "naca2412", chord: 150 } })])];
+    const b = [wing("main", [segment({ root_airfoil: { airfoil: "naca2412", chord: 160 }, tip_airfoil: { airfoil: "naca2412", chord: 110 } })])];
+    const diff = computeGeometryDiff(a, b);
+    // Sections don't match by sig (root chord changed) → added+removed, not taper
+    expect(diff.hints.some((h) => /taper/i.test(h))).toBe(false);
+  });
+
+  it("washout hint: ONLY the outermost section's tip incidence decreased", () => {
+    // 2-section wing; only the last (outermost) section's tip incidence decreases
+    const s1a = segment({ root_airfoil: { airfoil: "naca2412", chord: 200, incidence: 1 }, length: 500, tip_airfoil: { airfoil: "naca2412", chord: 150, incidence: 1 } });
+    const s1b = segment({ root_airfoil: { airfoil: "naca2412", chord: 200, incidence: 1 }, length: 500, tip_airfoil: { airfoil: "naca2412", chord: 150, incidence: 1 } });
+    const s2a = segment({ root_airfoil: { airfoil: "naca2412", chord: 160 }, length: 400, tip_airfoil: { airfoil: "naca2412", chord: 120, incidence: 2 } });
+    const s2b = segment({ root_airfoil: { airfoil: "naca2412", chord: 160 }, length: 400, tip_airfoil: { airfoil: "naca2412", chord: 120, incidence: -1 } });
+    const a = [wing("main", [s1a, s2a])];
+    const b = [wing("main", [s1b, s2b])];
+    const diff = computeGeometryDiff(a, b);
+    expect(diff.hints.some((h) => /washout/i.test(h))).toBe(true);
+  });
+
+  it("does NOT emit washout hint when only a non-tip section's incidence decreases", () => {
+    // 2-section wing; first (non-tip) section tip incidence decreases, last unchanged
+    const s1a = segment({ root_airfoil: { airfoil: "naca2412", chord: 200, incidence: 1 }, length: 500, tip_airfoil: { airfoil: "naca2412", chord: 150, incidence: 2 } });
+    const s1b = segment({ root_airfoil: { airfoil: "naca2412", chord: 200, incidence: 1 }, length: 500, tip_airfoil: { airfoil: "naca2412", chord: 150, incidence: -1 } });
+    const s2 = segment({ root_airfoil: { airfoil: "naca2412", chord: 160 }, length: 400 }); // unchanged
+    const a = [wing("main", [s1a, s2])];
+    const b = [wing("main", [s1b, s2])];
+    const diff = computeGeometryDiff(a, b);
+    // Washout only from the outermost section (s2 here), which is unchanged
+    expect(diff.hints.some((h) => /washout/i.test(h))).toBe(false);
+  });
+
+  it("span hint: last section added at the tip", () => {
+    const s1 = segment({ root_airfoil: { airfoil: "naca2412", chord: 200 }, length: 500 });
+    const sNew = segment({ root_airfoil: { airfoil: "naca2412", chord: 160 }, length: 400 });
+    const a = [wing("main", [s1])];
+    const b = [wing("main", [s1, sNew])];
+    const diff = computeGeometryDiff(a, b);
+    expect(diff.hints.some((h) => /span/i.test(h) || /tip section/i.test(h))).toBe(true);
+  });
+
+  it("dihedral hint: a section's dihedral increased", () => {
+    // root dihedral NOT in LCS signature, so sections match
+    const a = [wing("main", [segment({ root_airfoil: { airfoil: "naca2412", chord: 200, dihedral_as_rotation_in_degrees: 3 } })])];
+    const b = [wing("main", [segment({ root_airfoil: { airfoil: "naca2412", chord: 200, dihedral_as_rotation_in_degrees: 7 } })])];
+    const diff = computeGeometryDiff(a, b);
+    expect(diff.hints.some((h) => /dihedral/i.test(h))).toBe(true);
+  });
+
+  it("airfoil changed hint: tip airfoil change triggers re-run polar", () => {
+    // tip airfoil not in LCS signature, so sections match and hint fires
+    const a = [wing("main", [segment({ tip_airfoil: { airfoil: "naca2412", chord: 150 } })])];
+    const b = [wing("main", [segment({ tip_airfoil: { airfoil: "clark-y", chord: 150 } })])];
+    const diff = computeGeometryDiff(a, b);
+    expect(diff.hints.some((h) => /airfoil/i.test(h) && /polar/i.test(h))).toBe(true);
+  });
+
+  it("no cross-entity hint: a root chord change on one section should NOT create a taper hint if tip chord on SAME section is unchanged", () => {
+    // Root chord changes (different LCS sig → add+remove, not change) — but tip unchanged.
+    // Taper hint must NOT fire because tip didn't decrease relative to root of SAME section.
+    const a = [wing("main", [segment({ root_airfoil: { airfoil: "naca2412", chord: 200 }, tip_airfoil: { airfoil: "naca2412", chord: 150 } })])];
+    const b = [wing("main", [segment({ root_airfoil: { airfoil: "naca2412", chord: 180 }, tip_airfoil: { airfoil: "naca2412", chord: 150 } })])];
+    // Root chord in sig → sections don't match → appears as add+remove, not matched
+    // accumulateSectionHints is only called for matched pairs → no taper
+    const diff = computeGeometryDiff(a, b);
+    expect(diff.hints.some((h) => /taper/i.test(h))).toBe(false);
+  });
+
+  it("max 5 hints", () => {
+    // Create a scenario that would trigger multiple hints simultaneously
+    // tip chord decreases (taper), dihedral increases, airfoil changes, add a tip section (span)
+    // We need 2-section wing with both sections changing for washout+taper
+    const s1a = segment({ root_airfoil: { airfoil: "naca2412", chord: 200, dihedral_as_rotation_in_degrees: 3 }, length: 500, tip_airfoil: { airfoil: "naca2412", chord: 150, incidence: 0 } });
+    const s1b = segment({ root_airfoil: { airfoil: "clark-y", chord: 200, dihedral_as_rotation_in_degrees: 7 }, length: 500, tip_airfoil: { airfoil: "clark-y", chord: 100, incidence: -2 } });
+    const sNew = segment({ root_airfoil: { airfoil: "naca2412", chord: 160 }, length: 400 });
+    const a = [wing("main", [s1a])];
+    const b = [wing("main", [s1b, sNew])];
+    const diff = computeGeometryDiff(a, b);
+    expect(diff.hints.length).toBeLessThanOrEqual(5);
   });
 });
