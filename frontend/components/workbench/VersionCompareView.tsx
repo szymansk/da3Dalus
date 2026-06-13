@@ -19,7 +19,7 @@
  *   error       — error message string, or null
  */
 
-import React from "react";
+import React, { useMemo } from "react";
 import { X, ArrowLeftRight } from "lucide-react";
 import type { CompareOut, VersionNode } from "@/types/versioning";
 import type { ComputationContext } from "@/hooks/useComputationContext";
@@ -31,6 +31,7 @@ import {
   toTail,
 } from "@/lib/metricsAdapters";
 import { renderSymbol } from "@/components/workbench/renderSymbol";
+import { GeometryDiffSection } from "@/components/workbench/GeometryDiffSection";
 import { isAgentAuthor, authorLabel } from "@/lib/versionProvenance";
 import type { GaugeData, MetricItem } from "@/components/workbench/metrics-dashboard/metricsTypes";
 
@@ -105,6 +106,21 @@ function contextsDiverge(
 
 function nodeLabel(node: VersionNode): string {
   return node.version_label ?? node.name;
+}
+
+/** Wing names from a metrics dict (`wing_names: string[]`), or [] if absent. */
+function wingNamesOf(metrics: Record<string, unknown> | null): string[] {
+  const v = metrics?.["wing_names"];
+  if (!Array.isArray(v)) return [];
+  return v.filter((n): n is string => typeof n === "string");
+}
+
+/** Stable, de-duplicated union of both sides' wing names. */
+function unionWingNames(
+  metricsA: Record<string, unknown> | null,
+  metricsB: Record<string, unknown> | null,
+): string[] {
+  return Array.from(new Set([...wingNamesOf(metricsA), ...wingNamesOf(metricsB)]));
 }
 
 // ---------------------------------------------------------------------------
@@ -591,6 +607,12 @@ export function VersionCompareView({
   onClose,
   branchNameMap,
 }: VersionCompareViewProps) {
+  // Memoize the wing-name union so it isn't a new array on every render.
+  const wingNames = useMemo(
+    () => unionWingNames(compareOut?.metrics_a ?? null, compareOut?.metrics_b ?? null),
+    [compareOut?.metrics_a, compareOut?.metrics_b],
+  );
+
   return (
     <div
       aria-label="Version compare"
@@ -682,6 +704,13 @@ export function VersionCompareView({
                   <GeometryCompareRows ctxA={ctxA} ctxB={ctxB} labelA={labelA} labelB={labelB} />
                   <QualityCompareRows ctxA={ctxA} ctxB={ctxB} labelA={labelA} labelB={labelB} />
                   <TailCompareRows ctxA={ctxA} ctxB={ctxB} labelA={labelA} labelB={labelB} />
+                  <GeometryDiffSection
+                    nodeAUuid={compareOut.node_a.uuid}
+                    nodeBUuid={compareOut.node_b.uuid}
+                    wingNames={wingNames}
+                    labelA={labelA}
+                    labelB={labelB}
+                  />
                 </>
               );
             })()}
