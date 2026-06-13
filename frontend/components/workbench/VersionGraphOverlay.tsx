@@ -412,6 +412,9 @@ function VersionGraphToolbar({
             onCancel={onNameCancel}
             busy={busy}
           />
+          <span className="text-[9px] text-subtle-foreground">
+            Must be unique within this aircraft.
+          </span>
         </div>
       )}
     </div>
