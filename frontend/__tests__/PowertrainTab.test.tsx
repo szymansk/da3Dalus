@@ -1,0 +1,444 @@
+/**
+ * Unit tests for PowertrainTab + usePowertrainSolutionSpace hook (gh-976, gh-977).
+ * Mocks: SWR hook, plotly.js-gl3d-dist-min, lucide-react.
+ */
+import { describe, it, expect, vi, beforeEach } from "vitest";
+import { render, screen, fireEvent } from "@testing-library/react";
+import React from "react";
+import type {
+  PowertrainSolutionSpaceResponse,
+  SolutionSpaceAssumptions,
+} from "@/hooks/usePowertrainSolutionSpace";
+
+// ---------------------------------------------------------------------------
+// Mocks
+// ---------------------------------------------------------------------------
+
+vi.mock("lucide-react", () => {
+  const icon = (props: Record<string, unknown>) =>
+    React.createElement("span", { ...props, "data-testid": "icon" });
+  return {
+    AlertTriangle: icon,
+    Loader2: icon,
+  };
+});
+
+// Plotly dynamic import — stub that records calls
+const plotlyReactMock = vi.fn().mockResolvedValue(undefined);
+vi.mock("plotly.js-gl3d-dist-min", () => ({
+  react: plotlyReactMock,
+  purge: vi.fn(),
+}));
+
+// SWR hook mock — mutable via the let-binding pattern
+let hookReturn: {
+  data: PowertrainSolutionSpaceResponse | null | undefined;
+  error: unknown;
+  isLoading: boolean;
+  mutate: ReturnType<typeof vi.fn>;
+};
+
+vi.mock("@/hooks/usePowertrainSolutionSpace", async (importActual) => {
+  const actual = await importActual<typeof import("@/hooks/usePowertrainSolutionSpace")>();
+  return {
+    ...actual,
+    usePowertrainSolutionSpace: () => hookReturn,
+  };
+});
+
+// ---------------------------------------------------------------------------
+// Test data
+// ---------------------------------------------------------------------------
+
+function mkRow(
+  cell_count: number,
+  overrides: Partial<PowertrainSolutionSpaceResponse["rows"][number]> = {}
+): PowertrainSolutionSpaceResponse["rows"][number] {
+  return {
+    cell_count,
+    v_nom_v: cell_count * 3.7,
+    v_sag_v: cell_count * 3.5,
+    p_cruise_w: 100,
+    p_top_w: 300,
+    p_cruise_lo_w: 90,
+    p_cruise_hi_w: 110,
+    p_top_lo_w: 270,
+    p_top_hi_w: 330,
+    energy_wh: 20,
+    capacity_mah_min: 2000 / cell_count,
+    capacity_mah_min_lo: 1800 / cell_count,
+    capacity_mah_min_hi: 2200 / cell_count,
+    i_peak_a: 40 / cell_count,
+    i_peak_a_lo: 36 / cell_count,
+    i_peak_a_hi: 44 / cell_count,
+    c_min: 8 / cell_count,
+    c_min_lo: 7 / cell_count,
+    c_min_hi: 9 / cell_count,
+    esc_min_a: 56 / cell_count,
+    esc_min_a_lo: 50 / cell_count,
+    esc_min_a_hi: 62 / cell_count,
+    motor_peak_w: 300,
+    motor_cont_w: 100,
+    kv_approx: 1200 / cell_count,
+    has_motor_match: false,
+    has_battery_match: false,
+    has_esc_match: false,
+    ...overrides,
+  };
+}
+
+function mkRegion(cell_count: number): PowertrainSolutionSpaceResponse["feasible_regions"][number] {
+  return {
+    cell_count,
+    capacity_floor_mah: 1500 / cell_count,
+    i_peak_a: 40 / cell_count,
+    capacity_curve_mah: [500, 1000, 2000, 4000],
+    c_rate_curve: [20, 10, 5, 2.5],
+  };
+}
+
+function mkSpec(cell_count: number): PowertrainSolutionSpaceResponse["shopping_specs"][number] {
+  return {
+    cell_count,
+    battery_min_mah: 2000 / cell_count,
+    battery_min_c: 8 / cell_count,
+    battery_v_nom: cell_count * 3.7,
+    esc_min_a: 56 / cell_count,
+    motor_min_peak_w: 300,
+    motor_cont_w: 100,
+    kv_approx: 1200 / cell_count,
+  };
+}
+
+const MOCK_DATA: PowertrainSolutionSpaceResponse = {
+  rows: [mkRow(2), mkRow(3), mkRow(4), mkRow(6)],
+  feasible_regions: [mkRegion(2), mkRegion(3), mkRegion(4), mkRegion(6)],
+  shopping_specs: [mkSpec(2), mkSpec(3), mkSpec(4), mkSpec(6)],
+  p_aero_cruise_w: 80,
+  p_aero_top_w: 250,
+  energy_wh: 18.5,
+  v_cruise_mps: 14.0,
+  v_top_mps: 22.0,
+  t_target_min: 15,
+  assumptions_used: {},
+  warnings: [],
+};
+
+const MOCK_OK = { data: MOCK_DATA, error: null, isLoading: false, mutate: vi.fn() };
+const MOCK_LOADING = { data: undefined, error: null, isLoading: true, mutate: vi.fn() };
+const MOCK_ERROR_422 = {
+  data: null,
+  error: Object.assign(new Error("422"), { status: 422 }),
+  isLoading: false,
+  mutate: vi.fn(),
+};
+const MOCK_ERROR_500 = {
+  data: null,
+  error: Object.assign(new Error("500"), { status: 500 }),
+  isLoading: false,
+  mutate: vi.fn(),
+};
+
+// ---------------------------------------------------------------------------
+// Import component after mocks are set up
+// ---------------------------------------------------------------------------
+
+import { PowertrainTab } from "@/components/workbench/PowertrainTab";
+
+// ---------------------------------------------------------------------------
+// Hook query-string tests (import the real hook function, bypass SWR)
+// ---------------------------------------------------------------------------
+
+// Import the exported URL builder directly for pure unit tests (no hooks needed)
+import { buildSolutionSpaceUrl } from "@/hooks/usePowertrainSolutionSpace";
+
+describe("usePowertrainSolutionSpace — URL construction (buildSolutionSpaceUrl)", () => {
+  it("builds URL with cell_counts as repeated params", () => {
+    const assumptions: SolutionSpaceAssumptions = {
+      cell_counts: [2, 4, 6],
+      eta_prop_lo: 0.65,
+      eta_prop_hi: 0.78,
+      dod: 0.8,
+    };
+    const url = buildSolutionSpaceUrl("test-id", assumptions);
+
+    expect(url).not.toBeNull();
+    expect(url).toContain("cell_counts=2");
+    expect(url).toContain("cell_counts=4");
+    expect(url).toContain("cell_counts=6");
+    expect(url).toContain("eta_prop_lo=0.65");
+    expect(url).toContain("eta_prop_hi=0.78");
+    expect(url).toContain("dod=0.8");
+
+    // Verify all three cell counts present (repeated param pattern)
+    const qs = url!.split("?")[1];
+    const allParams = new URLSearchParams(qs);
+    expect(allParams.getAll("cell_counts")).toEqual(["2", "4", "6"]);
+
+    // Unused assumptions must not appear
+    expect(url).not.toContain("rho=");
+    expect(url).not.toContain("g=");
+  });
+
+  it("returns null when aeroplaneId is null", () => {
+    const url = buildSolutionSpaceUrl(null, { cell_counts: [3] });
+    expect(url).toBeNull();
+  });
+
+  it("encodes aeroplaneId correctly", () => {
+    const url = buildSolutionSpaceUrl("abc-123", {});
+    expect(url).toBe("/aeroplanes/abc-123/powertrain/solution-space");
+  });
+
+  it("omits query string when no assumptions are set", () => {
+    const url = buildSolutionSpaceUrl("my-plane", {});
+    expect(url).not.toContain("?");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// PowertrainTab rendering tests
+// ---------------------------------------------------------------------------
+
+describe("PowertrainTab", () => {
+  beforeEach(() => {
+    hookReturn = MOCK_LOADING;
+    plotlyReactMock.mockClear();
+  });
+
+  it("shows loading spinner", () => {
+    hookReturn = MOCK_LOADING;
+    render(<PowertrainTab aeroplaneId="test-id" />);
+    expect(screen.getByText(/computing powertrain solution space/i)).toBeInTheDocument();
+  });
+
+  it("shows 422 error with recompute hint", () => {
+    hookReturn = MOCK_ERROR_422;
+    render(<PowertrainTab aeroplaneId="test-id" />);
+    expect(screen.getByText(/assumption recompute first/i)).toBeInTheDocument();
+  });
+
+  it("shows generic error for 500", () => {
+    hookReturn = MOCK_ERROR_500;
+    render(<PowertrainTab aeroplaneId="test-id" />);
+    expect(screen.getByText(/powertrain solution space unavailable/i)).toBeInTheDocument();
+  });
+
+  it("renders all cell-count rows from mock data", () => {
+    hookReturn = MOCK_OK;
+    render(<PowertrainTab aeroplaneId="test-id" />);
+    expect(screen.getByTestId("solution-row-2")).toBeInTheDocument();
+    expect(screen.getByTestId("solution-row-3")).toBeInTheDocument();
+    expect(screen.getByTestId("solution-row-4")).toBeInTheDocument();
+    expect(screen.getByTestId("solution-row-6")).toBeInTheDocument();
+  });
+
+  it("column Peak-A filter reduces visible rows", () => {
+    // 2S: i_peak_a = 40/2 = 20A; 3S ≈ 13.3A; 4S = 10A; 6S ≈ 6.7A
+    hookReturn = MOCK_OK;
+    render(<PowertrainTab aeroplaneId="test-id" />);
+
+    const filterInput = screen.getByTestId("filter-peak-a");
+    // Filter to Peak A ≤ 15 → hides 2S (20A) but keeps 3S (~13.3A), 4S, 6S
+    fireEvent.change(filterInput, { target: { value: "15" } });
+
+    expect(screen.queryByTestId("solution-row-2")).not.toBeInTheDocument();
+    expect(screen.getByTestId("solution-row-3")).toBeInTheDocument();
+    expect(screen.getByTestId("solution-row-4")).toBeInTheDocument();
+    expect(screen.getByTestId("solution-row-6")).toBeInTheDocument();
+  });
+
+  it("mAh filter reduces visible rows", () => {
+    // 2S: capacity_mah_min = 2000/2 = 1000; 3S ≈ 667; 4S = 500; 6S ≈ 333
+    hookReturn = MOCK_OK;
+    render(<PowertrainTab aeroplaneId="test-id" />);
+
+    const filterInput = screen.getByTestId("filter-mah");
+    // Filter mAh ≤ 350 → show only 6S (≈333); hide 2S/3S/4S
+    fireEvent.change(filterInput, { target: { value: "350" } });
+
+    expect(screen.queryByTestId("solution-row-2")).not.toBeInTheDocument();
+    expect(screen.queryByTestId("solution-row-3")).not.toBeInTheDocument();
+    expect(screen.queryByTestId("solution-row-4")).not.toBeInTheDocument();
+    expect(screen.getByTestId("solution-row-6")).toBeInTheDocument();
+  });
+
+  it("catalog-only toggle hides rows with no matches", () => {
+    // All rows in MOCK_DATA have has_motor_match/battery/esc = false
+    hookReturn = MOCK_OK;
+    render(<PowertrainTab aeroplaneId="test-id" />);
+
+    const toggle = screen.getByTestId("filter-catalog-only");
+    fireEvent.click(toggle);
+
+    // All rows should be hidden — empty message appears
+    expect(screen.getByTestId("solution-table-empty")).toBeInTheDocument();
+    expect(screen.queryByTestId("solution-row-2")).not.toBeInTheDocument();
+  });
+
+  it("catalog-only toggle keeps rows with at least one match", () => {
+    const dataWithMatch: PowertrainSolutionSpaceResponse = {
+      ...MOCK_DATA,
+      rows: [
+        mkRow(3, { has_motor_match: true }),
+        mkRow(4, { has_battery_match: false, has_motor_match: false, has_esc_match: false }),
+      ],
+      shopping_specs: [mkSpec(3), mkSpec(4)],
+      feasible_regions: [mkRegion(3), mkRegion(4)],
+    };
+    hookReturn = { data: dataWithMatch, error: null, isLoading: false, mutate: vi.fn() };
+    render(<PowertrainTab aeroplaneId="test-id" />);
+
+    const toggle = screen.getByTestId("filter-catalog-only");
+    fireEvent.click(toggle);
+
+    expect(screen.getByTestId("solution-row-3")).toBeInTheDocument();
+    expect(screen.queryByTestId("solution-row-4")).not.toBeInTheDocument();
+  });
+
+  it("clicking a row selects it and updates shopping spec", () => {
+    hookReturn = MOCK_OK;
+    render(<PowertrainTab aeroplaneId="test-id" />);
+
+    // Initially, 2S is auto-selected (first row)
+    const specLine2S = screen.getByTestId("shopping-spec-line");
+    expect(specLine2S).toHaveTextContent("2S");
+
+    // Click the 4S row
+    fireEvent.click(screen.getByTestId("solution-row-4"));
+
+    // Shopping spec should now show 4S
+    const specLine4S = screen.getByTestId("shopping-spec-line");
+    expect(specLine4S).toHaveTextContent("4S");
+  });
+
+  it("shopping spec shows correct values for selected row", () => {
+    hookReturn = MOCK_OK;
+    render(<PowertrainTab aeroplaneId="test-id" />);
+
+    // First row is 2S, auto-selected
+    const spec = screen.getByTestId("shopping-spec-line");
+    // 2S: battery_min_mah = 2000/2=1000, esc_min_a=56/2=28, battery_v_nom=7.4
+    expect(spec).toHaveTextContent("1000");
+    expect(spec).toHaveTextContent("28");
+    expect(spec).toHaveTextContent("7.4");
+  });
+
+  it("shows warnings banner when warnings are present", () => {
+    const dataWithWarnings: PowertrainSolutionSpaceResponse = {
+      ...MOCK_DATA,
+      warnings: ["Mission speed not set — using defaults.", "No polar data found."],
+    };
+    hookReturn = { data: dataWithWarnings, error: null, isLoading: false, mutate: vi.fn() };
+    render(<PowertrainTab aeroplaneId="test-id" />);
+
+    const banner = screen.getByTestId("powertrain-warnings");
+    expect(banner).toBeInTheDocument();
+    expect(banner).toHaveTextContent("Mission speed not set");
+    expect(banner).toHaveTextContent("No polar data found");
+  });
+
+  it("does not show warnings banner when warnings array is empty", () => {
+    hookReturn = MOCK_OK;
+    render(<PowertrainTab aeroplaneId="test-id" />);
+    expect(screen.queryByTestId("powertrain-warnings")).not.toBeInTheDocument();
+  });
+
+  it("renders the feasible-region plot container", () => {
+    hookReturn = MOCK_OK;
+    render(<PowertrainTab aeroplaneId="test-id" />);
+    expect(screen.getByTestId("powertrain-feasible-region-plot")).toBeInTheDocument();
+  });
+
+  it("renders assumption controls", () => {
+    hookReturn = MOCK_OK;
+    render(<PowertrainTab aeroplaneId="test-id" />);
+    expect(screen.getByTestId("assumption-controls")).toBeInTheDocument();
+  });
+
+  it("renders mission invariants when data is loaded", () => {
+    hookReturn = MOCK_OK;
+    render(<PowertrainTab aeroplaneId="test-id" />);
+    // V_cruise, V_top, t_target from MOCK_DATA
+    expect(screen.getByText("14.0 m/s")).toBeInTheDocument();
+    expect(screen.getByText("22.0 m/s")).toBeInTheDocument();
+    expect(screen.getByText("15 min")).toBeInTheDocument();
+    expect(screen.getByText("80 W")).toBeInTheDocument(); // p_aero_cruise_w
+  });
+});
+
+// ---------------------------------------------------------------------------
+// FeasibleRegionPlot: Plotly trace construction (structural test)
+// ---------------------------------------------------------------------------
+
+describe("FeasibleRegionPlot — Plotly call structure", () => {
+  beforeEach(() => {
+    plotlyReactMock.mockClear();
+  });
+
+  it("calls Plotly.react with traces for each region", async () => {
+    hookReturn = MOCK_OK;
+    render(<PowertrainTab aeroplaneId="test-id" />);
+
+    // Wait for async Plotly import in useEffect
+    await new Promise((r) => setTimeout(r, 50));
+
+    // plotlyReactMock is called once by FeasibleRegionPlot
+    expect(plotlyReactMock).toHaveBeenCalled();
+
+    const [, traces] = plotlyReactMock.mock.calls[0];
+    // Should have traces for 4 regions: floor curve + vertical line + marker = 3 per region
+    expect(traces.length).toBeGreaterThanOrEqual(4 * 3);
+
+    // Verify marker traces have customdata (cell_count) for click selection
+    const markerTraces = traces.filter(
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (t: any) => t.mode === "markers+text" && t.customdata != null
+    );
+    expect(markerTraces.length).toBe(4);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const cellCounts = markerTraces.map((t: any) => t.customdata[0]);
+    expect(cellCounts).toContain(2);
+    expect(cellCounts).toContain(3);
+    expect(cellCounts).toContain(4);
+    expect(cellCounts).toContain(6);
+  });
+
+  it("highlights the auto-selected (first) cell count with star marker on initial render", async () => {
+    // On initial render, first row (2S) is auto-selected.
+    // Plotly should render the 2S marker as star and others as circle.
+    hookReturn = MOCK_OK;
+    render(<PowertrainTab aeroplaneId="test-id" />);
+    await new Promise((r) => setTimeout(r, 50));
+
+    expect(plotlyReactMock).toHaveBeenCalled();
+    const [, traces] = plotlyReactMock.mock.calls[0];
+
+    // 2S marker → selected → star
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const markerFor2S = traces.find((t: any) => t.customdata?.[0] === 2);
+    expect(markerFor2S?.marker?.symbol).toBe("star");
+
+    // 4S marker → not selected → circle
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const markerFor4S = traces.find((t: any) => t.customdata?.[0] === 4);
+    expect(markerFor4S?.marker?.symbol).toBe("circle");
+  });
+
+  it("layout annotation contains mission metadata inside figure", async () => {
+    hookReturn = MOCK_OK;
+    render(<PowertrainTab aeroplaneId="test-id" />);
+    await new Promise((r) => setTimeout(r, 50));
+
+    const [, , layout] = plotlyReactMock.mock.calls[0];
+    // Per project convention: mission params go INSIDE the figure (annotation)
+    const annotations = layout.annotations ?? [];
+    const missionAnnotation = annotations.find(
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (a: any) => typeof a.text === "string" && a.text.includes("V_cruise")
+    );
+    expect(missionAnnotation).toBeDefined();
+    expect(missionAnnotation.text).toContain("V_top");
+    expect(missionAnnotation.text).toContain("14.0 m/s"); // v_cruise_mps from MOCK_DATA
+  });
+});

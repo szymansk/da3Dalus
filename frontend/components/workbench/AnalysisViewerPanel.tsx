@@ -11,10 +11,11 @@ import { buildSpeedPolarLayout } from "@/lib/speedPolarLayout";
 import type { StoredOperatingPoint, AVLTrimResult, AeroBuildupTrimResult, TrimConstraint, ControlSurface } from "@/hooks/useOperatingPoints";
 import { OperatingPointsPanel } from "@/components/workbench/OperatingPointsPanel";
 import { MatchingChartTab } from "@/components/workbench/MatchingChartTab";
+import { PowertrainTab } from "@/components/workbench/PowertrainTab";
 import { AnalysisStatusIndicator } from "./AnalysisStatusIndicator";
 import type { AnalysisStatus } from "@/hooks/useAnalysisStatus";
 
-const TABS = ["Assumptions", "Operating Points", "Polar", "Trefftz Plane", "Streamlines", "Envelope", "Sizing"] as const;
+const TABS = ["Assumptions", "Operating Points", "Polar", "Trefftz Plane", "Streamlines", "Envelope", "Sizing", "Powertrain"] as const;
 export type Tab = (typeof TABS)[number];
 export { TABS };
 
@@ -938,6 +939,7 @@ export function AnalysisViewerPanel({
     "Envelope",
     "Operating Points",
     "Sizing",
+    "Powertrain",
   ]);
   const showWingGate = !hasWings && COMPUTATION_TABS.has(activeTab);
 
@@ -1189,6 +1191,18 @@ export function AnalysisViewerPanel({
         <div className="flex flex-1 items-center justify-center bg-card-muted">
           <span className="font-[family-name:var(--font-jetbrains-mono)] text-[13px] text-muted-foreground">
             Select an aeroplane to show the matching chart
+          </span>
+        </div>
+      )}
+
+      {activeTab === "Powertrain" && aeroplaneId && (
+        <PowertrainTab aeroplaneId={aeroplaneId} />
+      )}
+
+      {activeTab === "Powertrain" && !aeroplaneId && (
+        <div className="flex flex-1 items-center justify-center bg-card-muted">
+          <span className="font-[family-name:var(--font-jetbrains-mono)] text-[13px] text-muted-foreground">
+            Select an aeroplane to show the powertrain solution space
           </span>
         </div>
       )}

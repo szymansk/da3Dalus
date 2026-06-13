@@ -26,6 +26,7 @@ describe("AnalysisViewerPanel TABS (gh-567)", () => {
       "Streamlines",
       "Envelope",
       "Sizing",
+      "Powertrain",
     ]);
   });
 });
