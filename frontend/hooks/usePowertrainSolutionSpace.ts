@@ -22,14 +22,14 @@ export interface SolutionRow {
   capacity_mah_min_lo: number;
   capacity_mah_min_hi: number;
   i_peak_a: number;
-  i_peak_a_lo: number;
-  i_peak_a_hi: number;
+  i_peak_lo_a: number;
+  i_peak_hi_a: number;
   c_min: number;
   c_min_lo: number;
   c_min_hi: number;
   esc_min_a: number;
-  esc_min_a_lo: number;
-  esc_min_a_hi: number;
+  esc_min_lo_a: number;
+  esc_min_hi_a: number;
   motor_peak_w: number;
   motor_cont_w: number;
   kv_approx: number | null;

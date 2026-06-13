@@ -69,14 +69,14 @@ function mkRow(
     capacity_mah_min_lo: 1800 / cell_count,
     capacity_mah_min_hi: 2200 / cell_count,
     i_peak_a: 40 / cell_count,
-    i_peak_a_lo: 36 / cell_count,
-    i_peak_a_hi: 44 / cell_count,
+    i_peak_lo_a: 36 / cell_count,
+    i_peak_hi_a: 44 / cell_count,
     c_min: 8 / cell_count,
     c_min_lo: 7 / cell_count,
     c_min_hi: 9 / cell_count,
     esc_min_a: 56 / cell_count,
-    esc_min_a_lo: 50 / cell_count,
-    esc_min_a_hi: 62 / cell_count,
+    esc_min_lo_a: 50 / cell_count,
+    esc_min_hi_a: 62 / cell_count,
     motor_peak_w: 300,
     motor_cont_w: 100,
     kv_approx: 1200 / cell_count,
@@ -237,8 +237,8 @@ describe("PowertrainTab", () => {
     expect(screen.getByTestId("solution-row-6")).toBeInTheDocument();
   });
 
-  it("column Peak-A filter reduces visible rows (conservative i_peak_a_hi)", () => {
-    // Filters compare against the CONSERVATIVE worst-case Peak A = i_peak_a_hi.
+  it("column Peak-A filter reduces visible rows (conservative i_peak_hi_a)", () => {
+    // Filters compare against the CONSERVATIVE worst-case Peak A = i_peak_hi_a.
     // 2S: 44/2 = 22A; 3S ≈ 14.67A; 4S = 11A; 6S ≈ 7.33A
     hookReturn = MOCK_OK;
     render(<PowertrainTab aeroplaneId="test-id" />);
@@ -323,7 +323,7 @@ describe("PowertrainTab", () => {
     render(<PowertrainTab aeroplaneId="test-id" />);
 
     // First row is 2S, auto-selected. Conservative (worst-case, rounded-up):
-    //   ESC   = ceil(esc_min_a_hi = 62/2 = 31)            = 31 A
+    //   ESC   = ceil(esc_min_hi_a = 62/2 = 31)            = 31 A
     //   mAh   = ceil(capacity_mah_min_hi = 2200/2 = 1100) = 1100 mAh
     //   C     = ceil(c_min_hi = 9/2 = 4.5)                = 5 C
     //   Motor = ceil(p_aero_top_w / eta_prop_lo = 250/0.65) = 385 W
@@ -605,26 +605,27 @@ describe("PowertrainTab — selection + input edge cases", () => {
 // ---------------------------------------------------------------------------
 
 describe("conservativeSpec / conservativeMotorW", () => {
-  it("uses _hi band and rounds UP so a part bought at the value is sufficient", () => {
-    // 2S mock row: i_peak_a_hi=22, esc_min_a_hi=31, c_min_hi=4.5, cap_hi=1100
+  it("uses the worst-case _hi band and rounds UP so a part bought at the value is sufficient", () => {
+    // 2S mock row (real field names): i_peak_hi_a=22, esc_min_hi_a=31,
+    // c_min_hi=4.5, capacity_mah_min_hi=1100
     const row = mkRow(2);
     const spec = conservativeSpec(row, 250, 0.65);
-    expect(spec.peakA).toBe(22); // i_peak_a_hi, not the mid i_peak_a (=20)
-    expect(spec.escMinA).toBe(31); // ceil(31)
-    expect(spec.minC).toBe(5); // ceil(4.5)
-    expect(spec.mahMin).toBe(1100); // ceil(1100)
+    expect(spec.peakA).toBe(22); // i_peak_hi_a, not the mid i_peak_a (=20)
+    expect(spec.escMinA).toBe(31); // ceil(esc_min_hi_a = 31)
+    expect(spec.minC).toBe(5); // ceil(c_min_hi = 4.5)
+    expect(spec.mahMin).toBe(1100); // ceil(capacity_mah_min_hi = 1100)
     expect(spec.motorW).toBe(385); // ceil(250 / 0.65)
   });
 
   it("does NOT divide mAh by DoD (DoD already in energy_wh upstream)", () => {
     // capacity_mah_min_hi is already the rated pack capacity; ceil only.
-    const row = mkRow(4); // cap_hi = 2200/4 = 550
+    const row = mkRow(4); // capacity_mah_min_hi = 2200/4 = 550
     const spec = conservativeSpec(row, 250, 0.65);
     expect(spec.mahMin).toBe(550);
   });
 
   it("rounds a fractional ceil example up (5.46A → 6A) like the real UAT data", () => {
-    const row = mkRow(2, { esc_min_a_hi: 5.46 });
+    const row = mkRow(2, { esc_min_hi_a: 5.46 });
     const spec = conservativeSpec(row, 250, 0.65);
     expect(spec.escMinA).toBe(6);
   });
@@ -632,6 +633,33 @@ describe("conservativeSpec / conservativeMotorW", () => {
   it("conservativeMotorW = ceil(pAeroTop / etaPropLo); degrades gracefully at eta<=0", () => {
     expect(conservativeMotorW(250, 0.65)).toBe(385);
     expect(conservativeMotorW(250, 0)).toBe(250); // no divide-by-zero
+  });
+
+  it("falls back to the mid value when the _hi band field is absent (contract drift)", () => {
+    // Simulate a backend that dropped the band fields: only mid values present.
+    // Strip the band keys via an unknown cast (object-literal @ts-expect-error
+    // can't target individual properties).
+    const base = mkRow(2) as unknown as Record<string, unknown>;
+    delete base.i_peak_hi_a;
+    delete base.esc_min_hi_a;
+    delete base.c_min_hi;
+    delete base.capacity_mah_min_hi;
+    const row = base as unknown as PowertrainSolutionSpaceResponse["rows"][number];
+    const spec = conservativeSpec(row, 250, 0.65);
+    // Falls back to mid: i_peak_a=20, esc_min_a=28→28, c_min=4→4, cap=1000→1000
+    expect(spec.peakA).toBe(20);
+    expect(spec.escMinA).toBe(28);
+    expect(spec.minC).toBe(4);
+    expect(spec.mahMin).toBe(1000);
+  });
+
+  it("returns null (renders '—') when neither band nor mid value is usable", () => {
+    const base = mkRow(2) as unknown as Record<string, unknown>;
+    delete base.i_peak_hi_a;
+    delete base.i_peak_a;
+    const row = base as unknown as PowertrainSolutionSpaceResponse["rows"][number];
+    const spec = conservativeSpec(row, 250, 0.65);
+    expect(spec.peakA).toBeNull();
   });
 });
 

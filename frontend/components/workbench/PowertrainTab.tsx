@@ -65,37 +65,75 @@ function cellColor(idx: number): string {
 // pack capacity — dividing again would double-count it.
 
 export interface ConservativeSpec {
-  /** Worst-case peak current [A] (low-η end of the band). */
-  peakA: number;
-  /** Minimum ESC current rating [A], rounded up. */
-  escMinA: number;
-  /** Minimum battery C-rating, rounded up. */
-  minC: number;
-  /** Minimum (rated pack) capacity [mAh], rounded up. */
-  mahMin: number;
-  /** Conservative shaft (motor) power [W], rounded up. */
-  motorW: number;
+  /** Worst-case peak current [A] (low-η end of the band); null if unavailable. */
+  peakA: number | null;
+  /** Minimum ESC current rating [A], rounded up; null if unavailable. */
+  escMinA: number | null;
+  /** Minimum battery C-rating, rounded up; null if unavailable. */
+  minC: number | null;
+  /** Minimum (rated pack) capacity [mAh], rounded up; null if unavailable. */
+  mahMin: number | null;
+  /** Conservative shaft (motor) power [W], rounded up; null if unavailable. */
+  motorW: number | null;
 }
 
-/** Conservative shaft power [W] = aero power at top speed / lowest prop η. */
-export function conservativeMotorW(pAeroTopW: number, etaPropLo: number): number {
-  if (etaPropLo <= 0 || Number.isNaN(etaPropLo)) return Math.ceil(pAeroTopW);
+/** First finite number from the candidates, or null if none is usable.
+ *
+ * Lets each conservative field degrade gracefully: prefer the worst-case `_hi`
+ * band, fall back to the mid value if the band field is absent (contract
+ * drift), then render "—" rather than crashing the tab.
+ */
+function firstFinite(...candidates: Array<number | null | undefined>): number | null {
+  for (const v of candidates) {
+    if (typeof v === "number" && Number.isFinite(v)) return v;
+  }
+  return null;
+}
+
+/** Math.ceil that tolerates null/undefined/non-finite, returning null. */
+function ceilOrNull(value: number | null): number | null {
+  return value == null ? null : Math.ceil(value);
+}
+
+/** Conservative shaft power [W] = aero power at top speed / lowest prop η.
+ *
+ * Returns null when the inputs are not usable so the caller can render "—".
+ */
+export function conservativeMotorW(
+  pAeroTopW: number | null | undefined,
+  etaPropLo: number | null | undefined
+): number | null {
+  if (pAeroTopW == null || !Number.isFinite(pAeroTopW)) return null;
+  if (etaPropLo == null || !Number.isFinite(etaPropLo) || etaPropLo <= 0) {
+    return Math.ceil(pAeroTopW);
+  }
   return Math.ceil(pAeroTopW / etaPropLo);
 }
 
-/** Build the conservative, rounded-up minimum specs for one solution row. */
+/** Build the conservative, rounded-up minimum specs for one solution row.
+ *
+ * Band field names match the backend SolutionRow schema EXACTLY:
+ *   i_peak_hi_a, esc_min_hi_a, c_min_hi, capacity_mah_min_hi.
+ * Each access falls back to the mid value (i_peak_a, esc_min_a, …) and finally
+ * to null, so a contract drift degrades to "—" instead of white-screening.
+ */
 export function conservativeSpec(
   row: SolutionRow,
-  pAeroTopW: number,
-  etaPropLo: number
+  pAeroTopW: number | null | undefined,
+  etaPropLo: number | null | undefined
 ): ConservativeSpec {
   return {
-    peakA: row.i_peak_a_hi,
-    escMinA: Math.ceil(row.esc_min_a_hi),
-    minC: Math.ceil(row.c_min_hi),
-    mahMin: Math.ceil(row.capacity_mah_min_hi),
+    peakA: firstFinite(row.i_peak_hi_a, row.i_peak_a),
+    escMinA: ceilOrNull(firstFinite(row.esc_min_hi_a, row.esc_min_a)),
+    minC: ceilOrNull(firstFinite(row.c_min_hi, row.c_min)),
+    mahMin: ceilOrNull(firstFinite(row.capacity_mah_min_hi, row.capacity_mah_min)),
     motorW: conservativeMotorW(pAeroTopW, etaPropLo),
   };
+}
+
+/** Format a possibly-null conservative number, rendering "—" when missing. */
+function fmtSpec(value: number | null, digits = 0): string {
+  return value == null ? "—" : value.toFixed(digits);
 }
 
 // ---------------------------------------------------------------------------
@@ -151,11 +189,14 @@ function buildMarkerTrace(
   color: string,
   isSelected: boolean
 ): PlotlyTrace {
-  // Marker sits at the CONSERVATIVE worst-case point (capacity_mah_min_hi,
-  // c_min_hi) so it lines up with the rounded-up minimum specs in the table
-  // and shopping spec. The worst case is the low-η end of the band.
-  const markerMah = Math.ceil(row.capacity_mah_min_hi);
-  const markerC = Math.ceil(row.c_min_hi);
+  // Marker sits at the CONSERVATIVE worst-case point (ceil(capacity_mah_min_hi),
+  // ceil(c_min_hi)) so it lines up with the rounded-up minimum specs in the
+  // table and shopping spec. Shares conservativeSpec() so the correct backend
+  // field names + null guards apply consistently. Plot inputs are not used here,
+  // so motorW is irrelevant to the marker (null pAeroTopW is fine).
+  const spec = conservativeSpec(row, null, null);
+  const markerMah = spec.mahMin;
+  const markerC = spec.minC;
   return {
     x: [markerMah],
     y: [markerC],
@@ -174,8 +215,8 @@ function buildMarkerTrace(
     },
     hovertemplate:
       `<b>${region.cell_count}S</b><br>` +
-      `Capacity ≥ ${markerMah} mAh<br>` +
-      `Min C-rating ≥ ${markerC}C<extra></extra>`,
+      `Capacity ≥ ${fmtSpec(markerMah)} mAh<br>` +
+      `Min C-rating ≥ ${fmtSpec(markerC)}C<extra></extra>`,
     customdata: [region.cell_count],
   };
 }
@@ -411,15 +452,15 @@ function ShoppingSpecLine({
         Shopping spec ({spec.cell_count}S @ {spec.battery_v_nom.toFixed(1)} V):
       </span>
       <span className="text-orange-400">
-        ESC ≥ {conservative.escMinA} A
+        ESC ≥ {fmtSpec(conservative.escMinA)} A
       </span>
       <span className="text-muted-foreground">·</span>
       <span className="text-blue-400">
-        Battery ≥ {conservative.mahMin} mAh @ ≥{conservative.minC}C
+        Battery ≥ {fmtSpec(conservative.mahMin)} mAh @ ≥{fmtSpec(conservative.minC)}C
       </span>
       <span className="text-muted-foreground">·</span>
       <span className="text-emerald-400">
-        Motor ≥ {conservative.motorW} W
+        Motor ≥ {fmtSpec(conservative.motorW)} W
         {spec.kv_approx != null ? `, KV ≈ ${spec.kv_approx.toFixed(0)}` : ""}
       </span>
     </div>
@@ -454,14 +495,16 @@ function SolutionTable({
   const maxEscA = filters.maxEscA !== "" ? parseFloat(filters.maxEscA) : null;
 
   // Filters compare against the CONSERVATIVE displayed values (the same numbers
-  // the user sees and shops against), not the mid-band internals.
+  // the user sees and shops against), not the mid-band internals. A null spec
+  // value (missing band field) is treated as "not excluded" so the row still
+  // shows (and renders "—") rather than silently vanishing.
   const filtered = rows.filter((r) => {
     if (filters.catalogOnly && !r.has_motor_match && !r.has_battery_match && !r.has_esc_match)
       return false;
     const spec = conservativeSpec(r, pAeroTopW, etaPropLo);
-    if (maxPeakA != null && spec.peakA > maxPeakA) return false;
-    if (maxMah != null && spec.mahMin > maxMah) return false;
-    if (maxEscA != null && spec.escMinA > maxEscA) return false;
+    if (maxPeakA != null && spec.peakA != null && spec.peakA > maxPeakA) return false;
+    if (maxMah != null && spec.mahMin != null && spec.mahMin > maxMah) return false;
+    if (maxEscA != null && spec.escMinA != null && spec.escMinA > maxEscA) return false;
     return true;
   });
 
@@ -526,19 +569,19 @@ function SolutionTable({
                   {row.v_nom_v.toFixed(1)}
                 </td>
                 <td className="py-2 pr-3 text-foreground">
-                  {spec.motorW}
+                  {fmtSpec(spec.motorW)}
                 </td>
                 <td className="py-2 pr-3 text-foreground">
-                  {spec.peakA.toFixed(1)}
+                  {fmtSpec(spec.peakA, 1)}
                 </td>
                 <td className="py-2 pr-3 text-foreground">
-                  {spec.escMinA}
+                  {fmtSpec(spec.escMinA)}
                 </td>
                 <td className="py-2 pr-3 text-foreground">
-                  {spec.mahMin}
+                  {fmtSpec(spec.mahMin)}
                 </td>
                 <td className="py-2 pr-3 text-foreground">
-                  {spec.minC}
+                  {fmtSpec(spec.minC)}
                 </td>
                 <td className="py-2 pr-3 text-foreground">
                   {row.energy_wh.toFixed(1)}
