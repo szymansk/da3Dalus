@@ -123,7 +123,7 @@ def _per_cell(
     load_rpm_factor: float,
     v_top_mps: float,
     prop_pd: float,
-) -> dict[str, float | None]:
+) -> dict[str, float]:
     """Derive per-cell-count specs.  Returns a plain dict (used for both mid and band).
 
     ``p_top_elec_w`` is the *battery* electrical power at V_top
@@ -151,9 +151,12 @@ def _per_cell(
     # KV approximation (Phase 1, documented approximate)
     # RPM_target ≈ V_top / (D × pitch/D) × 60  where D is Phase-1 estimate
     # KV = RPM_target / (V_nom × load_rpm_factor)
+    # v_nom = S · 3.7 is always > 0 for any valid cell count S ≥ 1, so kv_approx
+    # is always a float; the defensive fallback (0.0) only guards a degenerate
+    # zero-voltage case that real inputs never reach.
     prop_d = _PHASE1_PROP_DIAMETER_M
     rpm_target = (v_top_mps / (prop_d * prop_pd)) * 60.0  # rev/min
-    kv_approx = rpm_target / (v_nom * load_rpm_factor) if v_nom > 0 else None
+    kv_approx = rpm_target / (v_nom * load_rpm_factor) if v_nom > 0 else 0.0
 
     return {
         "v_nom": v_nom,
