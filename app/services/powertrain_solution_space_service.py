@@ -116,28 +116,34 @@ def _p_elec(p_aero_w: float, eta_prop: float, eta_motor: float, eta_esc: float) 
 def _per_cell(
     *,
     s: int,
-    p_cruise_elec_w: float,
     p_top_elec_w: float,
     energy_wh: float,
-    eta_motor: float,
-    eta_esc: float,
     esc_margin: float,
+    c_margin: float,
     load_rpm_factor: float,
     v_top_mps: float,
     prop_pd: float,
-) -> dict[str, float]:
-    """Derive per-cell-count specs.  Returns a plain dict (used for both mid and band)."""
+) -> dict[str, float | None]:
+    """Derive per-cell-count specs.  Returns a plain dict (used for both mid and band).
+
+    ``p_top_elec_w`` is the *battery* electrical power at V_top
+    (already P_aero / (η_prop·η_motor·η_esc)).  Battery current is therefore
+    simply ``I = P_bat / V_sag`` — no further division by η_motor·η_esc
+    (that would double-count the efficiencies, gh-978 BLOCKER).
+    """
     v_nom = s * CELL_V_NOM
     v_sag = s * CELL_V_SAG
 
-    # Peak current drawn from battery at top speed
-    i_peak = p_top_elec_w / (v_sag * eta_motor * eta_esc)
+    # Peak battery current drawn at top speed.  P_top_elec is already battery
+    # power, so current = power / sag-voltage (no extra efficiency division).
+    i_peak = p_top_elec_w / v_sag
 
     # Capacity (energy budget)
     cap_mah = energy_wh / v_nom * 1000.0
 
-    # C-rate floor
-    c_min = i_peak / (cap_mah / 1000.0) if cap_mah > 0 else float("inf")
+    # Required C-rate the designer must shop for: raw physical C × margin.
+    raw_c = i_peak / (cap_mah / 1000.0) if cap_mah > 0 else float("inf")
+    c_min = raw_c * c_margin
 
     # ESC minimum rating
     esc_min = i_peak * esc_margin
@@ -180,11 +186,12 @@ def _build_hyperbola(
 # ---------------------------------------------------------------------------
 
 
-def _catalog_motor_match(db: Session, motor_peak_w: float) -> bool:
-    """Return True if any brushless_motor in the catalog meets motor_peak_w.
+def _catalog_motor_match(db: Session, motor_shaft_peak_w: float) -> bool:
+    """Return True if any brushless_motor can deliver the required shaft power.
 
-    Checks specs.max_power_w; falls back to specs.kv_rpm_v presence as an
-    existence check only when max_power_w is absent.
+    ``motor_shaft_peak_w`` is the required mechanical shaft power
+    (P_aero / η_prop), not the aerodynamic power.  Motor catalog ratings
+    (max_power_w) are shaft-power ratings, so the comparison is apples-to-apples.
     """
     motors = (
         db.query(ComponentModel).filter(ComponentModel.component_type == "brushless_motor").all()
@@ -192,7 +199,7 @@ def _catalog_motor_match(db: Session, motor_peak_w: float) -> bool:
     for m in motors:
         specs: dict[str, Any] = m.specs or {}
         max_power = specs.get("max_power_w") or specs.get("max_continuous_power_w")
-        if max_power is not None and float(max_power) >= motor_peak_w:
+        if max_power is not None and float(max_power) >= motor_shaft_peak_w:
             return True
     return False
 
@@ -298,16 +305,18 @@ def compute_solution_space(
     else:
         mass_kg = float(mass_kg_raw)
 
-    # Also read cd0 from design assumptions (fallback to context, then default)
-    cd0_raw = get_effective_assumption(db, plane_id, "cd0")
-    if cd0_raw is not None and float(cd0_raw) > 0:
-        cd0 = float(cd0_raw)
+    # cd0: gh-924 single source of truth — read from the computation context
+    # first (where e/AR/s_ref also come from), fall back to the design
+    # assumption, then warn if neither is available.
+    cd0_ctx = ctx.get("cd0")
+    if cd0_ctx is not None and float(cd0_ctx) > 0:
+        cd0 = float(cd0_ctx)
     else:
-        cd0_ctx = ctx.get("cd0")
-        if cd0_ctx is not None and float(cd0_ctx) > 0:
-            cd0 = float(cd0_ctx)
+        cd0_raw = get_effective_assumption(db, plane_id, "cd0")
+        if cd0_raw is not None and float(cd0_raw) > 0:
+            cd0 = float(cd0_raw)
         else:
-            warnings.append("cd0 not set in design assumptions or context. Using fallback 0.03.")
+            warnings.append("cd0 not set in context or design assumptions. Using fallback 0.03.")
             cd0 = float(PARAMETER_DEFAULTS.get("cd0", 0.03))
 
     v_cruise_mps = v_cruise_ctx
@@ -372,12 +381,10 @@ def compute_solution_space(
         # Mid-η values
         mid = _per_cell(
             s=s,
-            p_cruise_elec_w=p_cruise_mid,
             p_top_elec_w=p_top_mid,
             energy_wh=energy_wh,
-            eta_motor=assumptions.eta_motor,
-            eta_esc=assumptions.eta_esc,
             esc_margin=assumptions.esc_margin,
+            c_margin=assumptions.c_margin,
             load_rpm_factor=assumptions.load_rpm_factor,
             v_top_mps=v_top_mps,
             prop_pd=assumptions.prop_pd,
@@ -386,12 +393,10 @@ def compute_solution_space(
         # Low-η band extreme (lo η_prop → higher currents/more capacity needed)
         lo_band = _per_cell(
             s=s,
-            p_cruise_elec_w=p_cruise_lo_e,
             p_top_elec_w=p_top_lo_e,
             energy_wh=p_cruise_lo_e * t_target_h / assumptions.dod,
-            eta_motor=assumptions.eta_motor,
-            eta_esc=assumptions.eta_esc,
             esc_margin=assumptions.esc_margin,
+            c_margin=assumptions.c_margin,
             load_rpm_factor=assumptions.load_rpm_factor,
             v_top_mps=v_top_mps,
             prop_pd=assumptions.prop_pd,
@@ -400,19 +405,21 @@ def compute_solution_space(
         # High-η band extreme (hi η_prop → lower currents/less capacity needed)
         hi_band = _per_cell(
             s=s,
-            p_cruise_elec_w=p_cruise_hi_e,
             p_top_elec_w=p_top_hi_e,
             energy_wh=p_cruise_hi_e * t_target_h / assumptions.dod,
-            eta_motor=assumptions.eta_motor,
-            eta_esc=assumptions.eta_esc,
             esc_margin=assumptions.esc_margin,
+            c_margin=assumptions.c_margin,
             load_rpm_factor=assumptions.load_rpm_factor,
             v_top_mps=v_top_mps,
             prop_pd=assumptions.prop_pd,
         )
 
+        # Required motor SHAFT power (P_aero / η_prop), not aerodynamic power.
+        motor_peak_shaft_w = p_aero_top / eta_mid
+        motor_cont_shaft_w = p_aero_cruise / eta_mid
+
         # Catalog matches
-        has_motor = _catalog_motor_match(db, p_aero_top)
+        has_motor = _catalog_motor_match(db, motor_peak_shaft_w)
         has_batt = _catalog_battery_match(db, mid["cap_mah"], mid["c_min"])
         has_esc = _catalog_esc_match(db, mid["esc_min"])
 
@@ -440,8 +447,8 @@ def compute_solution_space(
             esc_min_a=mid["esc_min"],
             esc_min_lo_a=hi_band["esc_min"],
             esc_min_hi_a=lo_band["esc_min"],
-            motor_peak_w=p_aero_top,
-            motor_cont_w=p_aero_cruise,
+            motor_peak_w=motor_peak_shaft_w,
+            motor_cont_w=motor_cont_shaft_w,
             kv_approx=mid["kv_approx"],
             has_motor_match=has_motor,
             has_battery_match=has_batt,
@@ -469,8 +476,8 @@ def compute_solution_space(
                 battery_min_c=mid["c_min"],
                 battery_v_nom=mid["v_nom"],
                 esc_min_a=mid["esc_min"],
-                motor_min_peak_w=p_aero_top,
-                motor_cont_w=p_aero_cruise,
+                motor_min_peak_w=motor_peak_shaft_w,
+                motor_cont_w=motor_cont_shaft_w,
                 kv_approx=mid["kv_approx"],
             )
         )

@@ -12,7 +12,7 @@ cell_counts is a multi-value Query param (e.g. ?cell_counts=2&cell_counts=4).
 from __future__ import annotations
 
 import logging
-from typing import Annotated, NoReturn, cast
+from typing import Annotated, NoReturn
 
 from fastapi import APIRouter, Depends, HTTPException, Path, Query, status
 from pydantic import UUID4
@@ -55,6 +55,7 @@ def _get_aeroplane(db: Session, aeroplane_id: UUID4) -> AeroplaneModel:
 @router.get(
     "/aeroplanes/{aeroplane_id}/powertrain/solution-space",
     operation_id="get_powertrain_solution_space",
+    response_model=PowertrainSolutionSpaceResponse,
     tags=["powertrain"],
     summary="Compute powertrain required-spec solution space from mission + aero",
     responses={

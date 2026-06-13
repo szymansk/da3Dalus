@@ -482,6 +482,187 @@ class TestBandInvariant:
 
 
 # ===========================================================================
+# 8b. I_peak absolute hand-calc (no double-counting of efficiencies)
+# ===========================================================================
+
+
+class TestIPeakHandCalc:
+    """I_peak must be battery current = P_battery / V_sag.
+
+    P_top_elec is ALREADY battery electrical power (P_aero / (η_prop·η_motor·η_esc)).
+    Battery current is simply I = P_bat / V_sag — dividing again by η_motor·η_esc
+    double-counts the efficiencies and underestimates the current by that factor.
+    """
+
+    def test_i_peak_absolute_value(self, client_and_db):
+        _, SessionLocal = client_and_db
+        with SessionLocal() as db:
+            plane = _make_rc_plane(db)
+            assumptions = _default_assumptions()
+            result = compute_solution_space(db, plane, assumptions)
+
+        # Reconstruct the mid-η battery power at V_top from the response.
+        eta_mid = (assumptions.eta_prop_lo + assumptions.eta_prop_hi) / 2.0
+        p_aero_top = result.p_aero_top_w
+        p_bat_top = _p_elec(p_aero_top, eta_mid, assumptions.eta_motor, assumptions.eta_esc)
+
+        for row in result.rows:
+            v_sag = row.cell_count * 3.5
+            expected_i = p_bat_top / v_sag
+            assert row.i_peak_a == pytest.approx(expected_i, rel=1e-6), (
+                f"S={row.cell_count}: i_peak {row.i_peak_a:.3f} ≠ "
+                f"P_bat/V_sag {expected_i:.3f}"
+            )
+
+    def test_esc_min_follows_i_peak(self, client_and_db):
+        """esc_min must equal i_peak × esc_margin (with the corrected i_peak)."""
+        _, SessionLocal = client_and_db
+        with SessionLocal() as db:
+            plane = _make_rc_plane(db)
+            assumptions = _default_assumptions()
+            result = compute_solution_space(db, plane, assumptions)
+
+        for row in result.rows:
+            assert row.esc_min_a == pytest.approx(
+                row.i_peak_a * assumptions.esc_margin, rel=1e-6
+            )
+
+    def test_region_c_floor_uses_corrected_i_peak(self, client_and_db):
+        """Feasible-region i_peak must match the (corrected) row i_peak."""
+        _, SessionLocal = client_and_db
+        with SessionLocal() as db:
+            plane = _make_rc_plane(db)
+            assumptions = _default_assumptions()
+            result = compute_solution_space(db, plane, assumptions)
+
+        by_cells = {fr.cell_count: fr for fr in result.feasible_regions}
+        for row in result.rows:
+            fr = by_cells[row.cell_count]
+            assert fr.i_peak_a == pytest.approx(row.i_peak_a, rel=1e-6)
+
+
+# ===========================================================================
+# 8c. c_margin is applied to the required c_min
+# ===========================================================================
+
+
+class TestCMarginApplied:
+    def test_c_min_includes_margin(self, client_and_db):
+        """Required c_min = (I_peak / (cap_mAh/1000)) × c_margin."""
+        _, SessionLocal = client_and_db
+        with SessionLocal() as db:
+            plane = _make_rc_plane(db)
+            assumptions = _default_assumptions(c_margin=1.25)
+            result = compute_solution_space(db, plane, assumptions)
+
+        for row in result.rows:
+            raw_c = row.i_peak_a / (row.capacity_mah_min / 1000.0)
+            assert row.c_min == pytest.approx(raw_c * 1.25, rel=1e-6), (
+                f"S={row.cell_count}: c_min {row.c_min:.3f} should include 1.25× margin"
+            )
+
+    def test_c_margin_scales_c_min(self, client_and_db):
+        """Increasing c_margin must increase the reported c_min proportionally."""
+        _, SessionLocal = client_and_db
+        with SessionLocal() as db:
+            plane = _make_rc_plane(db)
+            res_a = compute_solution_space(db, plane, _default_assumptions(c_margin=1.0))
+            res_b = compute_solution_space(db, plane, _default_assumptions(c_margin=2.0))
+
+        c_a = {r.cell_count: r.c_min for r in res_a.rows}
+        c_b = {r.cell_count: r.c_min for r in res_b.rows}
+        for s in c_a:
+            assert c_b[s] == pytest.approx(c_a[s] * 2.0, rel=1e-6)
+
+    def test_shopping_spec_c_includes_margin(self, client_and_db):
+        """ShoppingSpec.battery_min_c must carry the margin too."""
+        _, SessionLocal = client_and_db
+        with SessionLocal() as db:
+            plane = _make_rc_plane(db)
+            assumptions = _default_assumptions(c_margin=1.25)
+            result = compute_solution_space(db, plane, assumptions)
+
+        by_cells = {r.cell_count: r for r in result.rows}
+        for spec in result.shopping_specs:
+            assert spec.battery_min_c == pytest.approx(by_cells[spec.cell_count].c_min, rel=1e-6)
+
+
+# ===========================================================================
+# 8d. motor_peak_w is shaft power (P_aero / eta_prop), not P_aero
+# ===========================================================================
+
+
+class TestMotorShaftPower:
+    def test_motor_peak_is_shaft_power(self, client_and_db):
+        """motor_peak_w = P_aero(V_top) / eta_prop_mid (required shaft power)."""
+        _, SessionLocal = client_and_db
+        with SessionLocal() as db:
+            plane = _make_rc_plane(db)
+            assumptions = _default_assumptions()
+            result = compute_solution_space(db, plane, assumptions)
+
+        eta_mid = (assumptions.eta_prop_lo + assumptions.eta_prop_hi) / 2.0
+        expected = result.p_aero_top_w / eta_mid
+        for row in result.rows:
+            assert row.motor_peak_w == pytest.approx(expected, rel=1e-6), (
+                f"motor_peak_w {row.motor_peak_w:.2f} ≠ shaft power {expected:.2f}"
+            )
+
+    def test_motor_cont_is_shaft_power(self, client_and_db):
+        """motor_cont_w = P_aero(V_cruise) / eta_prop_mid."""
+        _, SessionLocal = client_and_db
+        with SessionLocal() as db:
+            plane = _make_rc_plane(db)
+            assumptions = _default_assumptions()
+            result = compute_solution_space(db, plane, assumptions)
+
+        eta_mid = (assumptions.eta_prop_lo + assumptions.eta_prop_hi) / 2.0
+        expected = result.p_aero_cruise_w / eta_mid
+        for row in result.rows:
+            assert row.motor_cont_w == pytest.approx(expected, rel=1e-6)
+
+    def test_shopping_spec_motor_is_shaft_power(self, client_and_db):
+        _, SessionLocal = client_and_db
+        with SessionLocal() as db:
+            plane = _make_rc_plane(db)
+            assumptions = _default_assumptions()
+            result = compute_solution_space(db, plane, assumptions)
+
+        eta_mid = (assumptions.eta_prop_lo + assumptions.eta_prop_hi) / 2.0
+        expected = result.p_aero_top_w / eta_mid
+        for spec in result.shopping_specs:
+            assert spec.motor_min_peak_w == pytest.approx(expected, rel=1e-6)
+
+    def test_motor_match_compares_against_shaft_power(self, client_and_db):
+        """A motor that beats P_aero but NOT shaft power must NOT match."""
+        _, SessionLocal = client_and_db
+        with SessionLocal() as db:
+            plane = _make_rc_plane(db)
+            assumptions = _default_assumptions()
+            pre = compute_solution_space(db, plane, assumptions)
+            eta_mid = (assumptions.eta_prop_lo + assumptions.eta_prop_hi) / 2.0
+            p_aero_top = pre.p_aero_top_w
+            shaft = p_aero_top / eta_mid
+            # Motor between P_aero and shaft power → insufficient for shaft demand.
+            mid_power = (p_aero_top + shaft) / 2.0
+            _seed_brushless_motor(db, max_power_w=mid_power)
+            db.commit()
+
+        with SessionLocal() as db:
+            plane2 = (
+                db.query(AeroplaneModel)
+                .filter(AeroplaneModel.name == "sol-space-test")
+                .first()
+            )
+            result = compute_solution_space(db, plane2, assumptions)
+
+        for row in result.rows:
+            assert row.has_motor_match is False, (
+                "Motor below shaft-power requirement must not match"
+            )
+
+
+# ===========================================================================
 # 9. Shopping spec
 # ===========================================================================
 

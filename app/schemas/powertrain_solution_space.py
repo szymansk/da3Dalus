@@ -136,20 +136,22 @@ class SolutionRow(BaseModel):
     i_peak_lo_a: float = Field(description="Peak current — low side of band [A]")
     i_peak_hi_a: float = Field(description="Peak current — high side of band [A]")
 
-    # C-rate
-    c_min: float = Field(description="Minimum C-rate required (mid η)")
-    c_min_lo: float = Field(description="Minimum C-rate — low side of band")
-    c_min_hi: float = Field(description="Minimum C-rate — high side of band")
+    # C-rate (includes the c_margin safety factor — the value to shop for)
+    c_min: float = Field(description="Required C-rate incl. c_margin (mid η)")
+    c_min_lo: float = Field(description="Required C-rate incl. c_margin — low side of band")
+    c_min_hi: float = Field(description="Required C-rate incl. c_margin — high side of band")
 
     # ESC
     esc_min_a: float = Field(description="Minimum ESC continuous current rating [A] (mid η)")
     esc_min_lo_a: float = Field(description="ESC minimum — low side of band [A]")
     esc_min_hi_a: float = Field(description="ESC minimum — high side of band [A]")
 
-    # Motor
-    motor_peak_w: float = Field(description="Motor peak power required [W] (= P_aero at V_top)")
+    # Motor — required mechanical SHAFT power (P_aero / η_prop), not aerodynamic power
+    motor_peak_w: float = Field(
+        description="Motor peak shaft power required [W] (= P_aero(V_top) / η_prop_mid)"
+    )
     motor_cont_w: float = Field(
-        description="Motor continuous power required [W] (≈ P_aero at V_cruise)"
+        description="Motor continuous shaft power required [W] (= P_aero(V_cruise) / η_prop_mid)"
     )
 
     # KV (approximate; Phase 1 — marked approximate per spec)
@@ -164,7 +166,8 @@ class SolutionRow(BaseModel):
 
     # Catalog match flags
     has_motor_match: bool = Field(
-        default=False, description="True if a catalog motor meets motor_peak_w"
+        default=False,
+        description="True if a catalog motor's shaft-power rating meets motor_peak_w",
     )
     has_battery_match: bool = Field(
         default=False,
@@ -204,11 +207,15 @@ class ShoppingSpec(BaseModel):
 
     cell_count: int
     battery_min_mah: float
-    battery_min_c: float
+    battery_min_c: float = Field(description="Required C-rate incl. c_margin")
     battery_v_nom: float
     esc_min_a: float
-    motor_min_peak_w: float
-    motor_cont_w: float
+    motor_min_peak_w: float = Field(
+        description="Required motor peak SHAFT power [W] (P_aero / η_prop_mid)"
+    )
+    motor_cont_w: float = Field(
+        description="Required motor continuous SHAFT power [W] (P_aero / η_prop_mid)"
+    )
     kv_approx: float | None
 
 
