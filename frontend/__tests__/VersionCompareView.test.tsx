@@ -27,7 +27,15 @@ import React from "react";
 vi.mock("lucide-react", () => {
   const icon = (props: Record<string, unknown>) =>
     React.createElement("span", { "data-icon": "true", ...props });
-  return { X: icon, ArrowLeftRight: icon };
+  // ChevronRight/ChevronDown/Loader2 are used by the child GeometryDiffSection
+  // (gh-971) which VersionCompareView now renders below the metric rows.
+  return {
+    X: icon,
+    ArrowLeftRight: icon,
+    ChevronRight: icon,
+    ChevronDown: icon,
+    Loader2: icon,
+  };
 });
 
 // metricsAdapters — use REAL adapters (not mocked); they are pure functions.
