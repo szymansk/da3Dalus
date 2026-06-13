@@ -132,15 +132,22 @@ export function useGeometryDiff(
     { shouldRetryOnError: false },
   );
 
-  const diff = useMemo<GeometryDiff | null>(() => {
-    if (!data) return null;
-    const { wingsA, wingsB } = toDiffInputs(data);
-    return computeGeometryDiff(wingsA, wingsB, { showAll });
+  // Compute diff and any parse error together in one memo — avoids calling
+  // setState from a memo (which triggers an infinite loop lint error).
+  const [diff, diffError] = useMemo<[GeometryDiff | null, Error | null]>(() => {
+    if (!data) return [null, null];
+    try {
+      const { wingsA, wingsB } = toDiffInputs(data);
+      return [computeGeometryDiff(wingsA, wingsB, { showAll }), null];
+    } catch (err) {
+      const e = err instanceof Error ? err : new Error(String(err));
+      return [null, e];
+    }
   }, [data, showAll]);
 
   return {
     diff,
     isLoading: swrKey != null && isLoading,
-    error: error ?? null,
+    error: diffError ?? error ?? null,
   };
 }

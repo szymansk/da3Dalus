@@ -21,7 +21,6 @@ import React, { useState } from "react";
 import { ChevronRight, ChevronDown, Loader2 } from "lucide-react";
 
 import { useGeometryDiff } from "@/hooks/useGeometryDiff";
-import { geometryDiffHints } from "@/lib/geometryDiff";
 import type {
   GeometryDiff,
   WingDiff,
@@ -120,7 +119,7 @@ function SubFieldRow({ paramKey, a, b }: { readonly paramKey: string; readonly a
   return (
     <div
       className={`grid grid-cols-[1fr_auto_1fr] items-center gap-2 rounded pl-6 pr-2 py-0.5 font-[family-name:var(--font-geist-mono)] text-[10px] ${
-        differs ? "bg-amber-500/8" : ""
+        differs ? "bg-amber-500/10" : ""
       }`}
       data-testid={`geometry-diff-subrow-${paramKey}`}
       data-differs={differs ? "true" : undefined}
@@ -195,10 +194,12 @@ function WingBlock({ wing }: { readonly wing: WingDiff }) {
 
 /** Conservative geometry hints block (gh-973). */
 function HintsBlock({ diff }: { readonly diff: GeometryDiff }) {
-  const hints = geometryDiffHints(diff);
+  const hints = diff.hints;
   if (hints.length === 0) return null;
   return (
     <div
+      role="note"
+      aria-label="Geometry observations"
       data-testid="geometry-diff-hints"
       className="mt-3 rounded border border-border/50 bg-sidebar-accent/30 px-3 py-2 text-[10px] text-muted-foreground"
     >

@@ -16,6 +16,15 @@
  * Section alignment is performed by SIGNATURE (root_chord|length|root_airfoil)
  * using an LCS (Longest Common Subsequence) algorithm so that inserting a
  * section in the middle does NOT cascade false "changed" on downstream sections.
+ *
+ * gh-402: spar dimensional fields (width/height/start/length) come from the API
+ * in METRES (the API converts mm→m). They are multiplied by 1000 before both
+ * display formatting and tolerance comparison so the diff works in mm.
+ * spare_position_factor (0–1 fraction) and spare_mode (string) are NOT converted.
+ *
+ * Hints (gh-973) are computed per-section from RAW numeric values inside
+ * computeGeometryDiff, deduped, and stored in GeometryDiff.hints. No
+ * string-parsing needed; the old geometryDiffHints() export is removed.
  */
 
 import type { WingConfig, WingConfigSegment } from "@/hooks/useWingConfig";
@@ -63,6 +72,8 @@ export interface GeometryDiff {
     sectionsRemoved: number;
   };
   hasAnyChange: boolean;
+  /** Conservative per-section geometric observations. Max 5, deduped. */
+  hints: string[];
 }
 
 /** One named wing's full geometry, the unit the diff aligns by name. */
@@ -79,6 +90,9 @@ export interface GeometryDiffOptions {
 
 /** |Δ| at or below this (mm or degrees) is float noise, not a change. */
 const NUMERIC_TOLERANCE = 0.05;
+
+/** Tight tolerance for spare_position_factor (0–1 fraction, not mm). */
+const POSITION_FACTOR_TOLERANCE = 0.005;
 
 // --- Formatting helpers -----------------------------------------------------
 
@@ -258,10 +272,10 @@ function turbulatorLabel(
 
 // --- Field-level helpers for numeric tolerance comparison -------------------
 
-function numericFieldChanged(a: unknown, b: unknown): boolean {
+function numericFieldChanged(a: unknown, b: unknown, tol: number = NUMERIC_TOLERANCE): boolean {
   if (typeof a === "number" && typeof b === "number") {
     if (!Number.isFinite(a) || !Number.isFinite(b)) return a !== b;
-    return Math.abs(a - b) > NUMERIC_TOLERANCE;
+    return Math.abs(a - b) > tol;
   }
   return String(a ?? "") !== String(b ?? "");
 }
@@ -279,6 +293,12 @@ function formatFieldValue(value: unknown, unit?: "mm"): string {
 
 // --- Spar field-level diff --------------------------------------------------
 
+/**
+ * gh-402: spar dimensional fields arrive from the API in metres (mm stored in
+ * DB but converted to m by the API layer). Multiply by 1000 before display and
+ * tolerance comparison so everything is in mm. spare_position_factor (0–1) and
+ * spare_mode (string) are NOT converted.
+ */
 function sparFieldDiff(
   sparA: Record<string, unknown>,
   sparB: Record<string, unknown>,
@@ -286,18 +306,55 @@ function sparFieldDiff(
   showAll: boolean,
 ): ParamChange[] {
   const n = sparIndex + 1;
-  const fields: Array<{ key: string; aVal: unknown; bVal: unknown; unit?: "mm" }> = [
-    { key: `spar ${n} position`, aVal: sparA["spare_position_factor"], bVal: sparB["spare_position_factor"] },
-    { key: `spar ${n} width`, aVal: sparA["spare_support_dimension_width"], bVal: sparB["spare_support_dimension_width"], unit: "mm" },
-    { key: `spar ${n} height`, aVal: sparA["spare_support_dimension_height"], bVal: sparB["spare_support_dimension_height"], unit: "mm" },
-    { key: `spar ${n} start`, aVal: sparA["spare_start"], bVal: sparB["spare_start"], unit: "mm" },
-    { key: `spar ${n} length`, aVal: sparA["spare_length"], bVal: sparB["spare_length"], unit: "mm" },
+
+  // Dimensional fields: metres → mm conversion factor
+  const M_TO_MM = 1000;
+
+  const widthA = typeof sparA["spare_support_dimension_width"] === "number"
+    ? sparA["spare_support_dimension_width"] * M_TO_MM
+    : sparA["spare_support_dimension_width"];
+  const widthB = typeof sparB["spare_support_dimension_width"] === "number"
+    ? sparB["spare_support_dimension_width"] * M_TO_MM
+    : sparB["spare_support_dimension_width"];
+
+  const heightA = typeof sparA["spare_support_dimension_height"] === "number"
+    ? sparA["spare_support_dimension_height"] * M_TO_MM
+    : sparA["spare_support_dimension_height"];
+  const heightB = typeof sparB["spare_support_dimension_height"] === "number"
+    ? sparB["spare_support_dimension_height"] * M_TO_MM
+    : sparB["spare_support_dimension_height"];
+
+  const startA = typeof sparA["spare_start"] === "number"
+    ? sparA["spare_start"] * M_TO_MM
+    : sparA["spare_start"];
+  const startB = typeof sparB["spare_start"] === "number"
+    ? sparB["spare_start"] * M_TO_MM
+    : sparB["spare_start"];
+
+  const lengthA = typeof sparA["spare_length"] === "number"
+    ? sparA["spare_length"] * M_TO_MM
+    : sparA["spare_length"];
+  const lengthB = typeof sparB["spare_length"] === "number"
+    ? sparB["spare_length"] * M_TO_MM
+    : sparB["spare_length"];
+
+  const fields: Array<{ key: string; aVal: unknown; bVal: unknown; unit?: "mm"; tol?: number }> = [
+    {
+      key: `spar ${n} position`,
+      aVal: sparA["spare_position_factor"],
+      bVal: sparB["spare_position_factor"],
+      tol: POSITION_FACTOR_TOLERANCE,
+    },
+    { key: `spar ${n} width`, aVal: widthA, bVal: widthB, unit: "mm" },
+    { key: `spar ${n} height`, aVal: heightA, bVal: heightB, unit: "mm" },
+    { key: `spar ${n} start`, aVal: startA, bVal: startB, unit: "mm" },
+    { key: `spar ${n} length`, aVal: lengthA, bVal: lengthB, unit: "mm" },
     { key: `spar ${n} mode`, aVal: sparA["spare_mode"], bVal: sparB["spare_mode"] },
   ];
 
   const result: ParamChange[] = [];
   for (const f of fields) {
-    const changed = numericFieldChanged(f.aVal, f.bVal);
+    const changed = numericFieldChanged(f.aVal, f.bVal, f.tol ?? NUMERIC_TOLERANCE);
     if (showAll || changed) {
       result.push({
         key: f.key,
@@ -327,7 +384,13 @@ function sparFlags(
   else if (countA > 0 && countB === 0) kind = "removed";
 
   if (!showAll && labelA === labelB) {
-    // Count unchanged; still check fields to see if any changed
+    // Count unchanged; still check fields to see if any changed.
+    // Only emit field diffs when counts are equal (index alignment is safe).
+    if (countA !== countB) {
+      // Counts differ but labels happen to be equal — shouldn't happen with
+      // sparLabel, but guard anyway.
+      return { key: "spar", kind, a: labelA, b: labelB };
+    }
     const fields: ParamChange[] = [];
     const sharedCount = Math.min(countA, countB);
     for (let i = 0; i < sharedCount; i++) {
@@ -339,6 +402,21 @@ function sparFlags(
     return { key: "spar", kind, a: labelA, b: labelB, fields };
   }
 
+  // showAll=true OR label changed (count changed).
+  // When counts differ, do NOT emit positional field sub-rows — pairing by
+  // index is unsafe (an insert at position k would corrupt every spar after k).
+  if (countA !== countB) {
+    return {
+      key: "spar",
+      kind,
+      a: labelA,
+      b: labelB,
+      // fields deliberately empty/undefined — count mismatch makes positional
+      // field-pairing meaningless.
+    };
+  }
+
+  // Counts equal — safe to pair by index.
   const fields: ParamChange[] = [];
   const sharedCount = Math.min(countA, countB);
   for (let i = 0; i < sharedCount; i++) {
@@ -404,7 +482,10 @@ function tedFlag(
   const bothPresent = tedA != null && tedB != null;
   const labelChanged = labelA !== labelB;
 
-  if (!showAll && !labelChanged && !bothPresent) return null;
+  // Determine kind from presence
+  let kind: ChangeKind = "changed";
+  if (tedA == null && tedB != null) kind = "added";
+  else if (tedA != null && tedB == null) kind = "removed";
 
   if (!showAll && !labelChanged && !bothPresent) return null;
 
@@ -417,7 +498,7 @@ function tedFlag(
 
   return {
     key: "control_surface",
-    kind: "changed",
+    kind,
     a: labelA,
     b: labelB,
     fields: fields.length > 0 ? fields : undefined,
@@ -467,6 +548,11 @@ function turbulatorFlag(
   const labelChanged = labelA !== labelB;
   const bothPresent = turbA != null && turbB != null;
 
+  // Determine kind from presence
+  let kind: ChangeKind = "changed";
+  if (turbA == null && turbB != null) kind = "added";
+  else if (turbA != null && turbB == null) kind = "removed";
+
   const fields: ParamChange[] = bothPresent
     ? turbulatorFieldDiff(turbA as Record<string, unknown>, turbB as Record<string, unknown>, showAll)
     : [];
@@ -475,7 +561,7 @@ function turbulatorFlag(
 
   return {
     key: "turbulator",
-    kind: "changed",
+    kind,
     a: labelA,
     b: labelB,
     fields: fields.length > 0 ? fields : undefined,
@@ -547,6 +633,68 @@ function diffPresentSection(
   };
 }
 
+// --- Per-section hint accumulation (gh-973) ---------------------------------
+
+/**
+ * Accumulate geometric hints from a matched section pair using raw numeric
+ * values. Called during section alignment inside diffWing so hints are based
+ * on the same data used for the diff — not re-parsed from formatted strings.
+ *
+ * Rules (conservative, per-section):
+ *   - taper: tip chord decreased while root chord ~unchanged (≤5 mm shift)
+ *   - dihedral: a section's dihedral increased
+ *   - airfoil changed: any airfoil changed → "re-run the polar"
+ *
+ * Washout and span are evaluated at the wing level (after alignment), not here.
+ */
+function accumulateSectionHints(
+  a: WingConfigSegment,
+  b: WingConfigSegment,
+  hints: Set<string>,
+): void {
+  if (hints.size >= 5) return;
+
+  const afA = a.root_airfoil ?? {};
+  const afB = b.root_airfoil ?? {};
+  const tafA = a.tip_airfoil ?? {};
+  const tafB = b.tip_airfoil ?? {};
+
+  const rootChordA = (afA as { chord?: number }).chord ?? 0;
+  const rootChordB = (afB as { chord?: number }).chord ?? 0;
+  const tipChordA = (tafA as { chord?: number }).chord ?? 0;
+  const tipChordB = (tafB as { chord?: number }).chord ?? 0;
+
+  // Taper: tip chord decreased while root chord roughly unchanged (≤5 mm)
+  const rootUnchanged = Math.abs(rootChordA - rootChordB) <= NUMERIC_TOLERANCE * 100; // 5 mm
+  const tipDecreased = tipChordB < tipChordA - NUMERIC_TOLERANCE;
+  if (rootUnchanged && tipDecreased) {
+    hints.add("More taper (tip chord ↓)");
+  }
+
+  if (hints.size >= 5) return;
+
+  // Dihedral increased
+  const dihA = (afA as { dihedral_as_rotation_in_degrees?: number }).dihedral_as_rotation_in_degrees ?? 0;
+  const dihB = (afB as { dihedral_as_rotation_in_degrees?: number }).dihedral_as_rotation_in_degrees ?? 0;
+  if (dihB > dihA + NUMERIC_TOLERANCE) {
+    hints.add("More dihedral");
+  }
+
+  if (hints.size >= 5) return;
+
+  // Airfoil changed (root or tip)
+  const rootAirfoilA = stripDat((afA as { airfoil?: string }).airfoil ?? "");
+  const rootAirfoilB = stripDat((afB as { airfoil?: string }).airfoil ?? "");
+  const tipAirfoilA = stripDat((tafA as { airfoil?: string }).airfoil ?? "");
+  const tipAirfoilB = stripDat((tafB as { airfoil?: string }).airfoil ?? "");
+  if (
+    (rootAirfoilA !== rootAirfoilB && rootAirfoilA !== "" && rootAirfoilB !== "") ||
+    (tipAirfoilA !== tipAirfoilB && tipAirfoilA !== "" && tipAirfoilB !== "")
+  ) {
+    hints.add("Airfoil changed — re-run the polar");
+  }
+}
+
 // --- Wing diff --------------------------------------------------------------
 
 interface WingDiffResult {
@@ -555,6 +703,88 @@ interface WingDiffResult {
   sectionsAdded: number;
   sectionsRemoved: number;
   changed: boolean;
+  hints: Set<string>;
+}
+
+/** Check whether any spar, TED, or turbulator field-level diff exists. */
+function subElementHasFieldChange(
+  a: WingConfigSegment,
+  b: WingConfigSegment,
+): boolean {
+  // Field-level changes in spars (only when counts match — safe to pair by index)
+  const listA = (a.spare_list ?? []) as Record<string, unknown>[];
+  const listB = (b.spare_list ?? []) as Record<string, unknown>[];
+  if (listA.length === listB.length) {
+    for (let i = 0; i < listA.length; i++) {
+      const f = sparFieldDiff(listA[i] ?? {}, listB[i] ?? {}, i, false);
+      if (f.length > 0) return true;
+    }
+  }
+  // Field-level changes in TED
+  if (a.trailing_edge_device != null && b.trailing_edge_device != null) {
+    const f = tedFieldDiff(
+      a.trailing_edge_device as Record<string, unknown>,
+      b.trailing_edge_device as Record<string, unknown>,
+      false,
+    );
+    if (f.length > 0) return true;
+  }
+  // Field-level changes in turbulator
+  if (a.turbulator != null && b.turbulator != null) {
+    const f = turbulatorFieldDiff(
+      a.turbulator as Record<string, unknown>,
+      b.turbulator as Record<string, unknown>,
+      false,
+    );
+    if (f.length > 0) return true;
+  }
+  return false;
+}
+
+function sectionHasRealChange(
+  a: WingConfigSegment,
+  b: WingConfigSegment,
+): boolean {
+  const paramsA = coreParams(a);
+  const paramsB = coreParams(b);
+  if (paramsA.some((pa, i) => paramChanged(pa, paramsB[i]))) return true;
+
+  // Count-level changes
+  const sparCountChange = (a.spare_list?.length ?? 0) !== (b.spare_list?.length ?? 0);
+  const tedLabelChange = tedName(a.trailing_edge_device) !== tedName(b.trailing_edge_device);
+  const turbLabelChange = turbulatorLabel(a.turbulator) !== turbulatorLabel(b.turbulator);
+  if (sparCountChange || tedLabelChange || turbLabelChange) return true;
+
+  return subElementHasFieldChange(a, b);
+}
+
+/** Accumulate wing-level hints (washout from outermost section, span from tip addition). */
+function accumulateWingHints(
+  aligned: Array<[WingConfigSegment | null, WingConfigSegment | null]>,
+  hints: Set<string>,
+): void {
+  // Washout: ONLY the outermost (last) matched section's tip incidence decreased.
+  const matchedPairs: Array<[WingConfigSegment, WingConfigSegment]> = [];
+  for (const [segA, segB] of aligned) {
+    if (segA && segB) matchedPairs.push([segA, segB]);
+  }
+  if (matchedPairs.length > 0 && hints.size < 5) {
+    const [lastA, lastB] = matchedPairs[matchedPairs.length - 1];
+    const tafA = lastA.tip_airfoil ?? {};
+    const tafB = lastB.tip_airfoil ?? {};
+    const tipIncA = (tafA as { incidence?: number }).incidence ?? 0;
+    const tipIncB = (tafB as { incidence?: number }).incidence ?? 0;
+    if (tipIncB < tipIncA - NUMERIC_TOLERANCE) {
+      hints.add("More washout at the tip");
+    }
+  }
+  // Span: last section in the aligned list was added at the tip.
+  if (aligned.length > 0 && hints.size < 5) {
+    const [lastA, lastB] = aligned[aligned.length - 1];
+    if (!lastA && lastB) {
+      hints.add("Longer span (tip section added)");
+    }
+  }
 }
 
 function diffWing(
@@ -574,93 +804,39 @@ function diffWing(
   let sectionsChanged = 0;
   let sectionsAdded = 0;
   let sectionsRemoved = 0;
+  const hints = new Set<string>();
 
   for (let i = 0; i < aligned.length; i++) {
     const [segA, segB] = aligned[i];
-
     if (segA && segB) {
       const changed = sectionHasRealChange(segA, segB);
-      if (changed) sectionsChanged++;
+      if (changed) {
+        sectionsChanged++;
+        accumulateSectionHints(segA, segB, hints);
+      }
       if (showAll || changed) {
         sections.push(diffPresentSection(i, totalSections, segA, segB, showAll));
       }
-    } else if (segB && !segA) {
+    } else if (segB) {
       sectionsAdded++;
-      sections.push({
-        index: i,
-        kind: "added",
-        label: sectionLabel(i, totalSections),
-        params: [],
-        flags: [],
-      });
-    } else if (segA && !segB) {
+      sections.push({ index: i, kind: "added", label: sectionLabel(i, totalSections), params: [], flags: [] });
+    } else if (segA) {
       sectionsRemoved++;
-      sections.push({
-        index: i,
-        kind: "removed",
-        label: sectionLabel(i, totalSections),
-        params: [],
-        flags: [],
-      });
+      sections.push({ index: i, kind: "removed", label: sectionLabel(i, totalSections), params: [], flags: [] });
     }
   }
 
-  const changed =
-    sectionsChanged > 0 || sectionsAdded > 0 || sectionsRemoved > 0;
+  accumulateWingHints(aligned, hints);
 
+  const changed = sectionsChanged > 0 || sectionsAdded > 0 || sectionsRemoved > 0;
   return {
     diff: { name, kind: "changed", sections },
     sectionsChanged,
     sectionsAdded,
     sectionsRemoved,
     changed,
+    hints,
   };
-}
-
-function sectionHasRealChange(
-  a: WingConfigSegment,
-  b: WingConfigSegment,
-): boolean {
-  const paramsA = coreParams(a);
-  const paramsB = coreParams(b);
-  const paramChange = paramsA.some((pa, i) => paramChanged(pa, paramsB[i]));
-  if (paramChange) return true;
-
-  // Count-level changes
-  const sparCountChange = (a.spare_list?.length ?? 0) !== (b.spare_list?.length ?? 0);
-  const tedLabelChange = tedName(a.trailing_edge_device) !== tedName(b.trailing_edge_device);
-  const turbLabelChange = turbulatorLabel(a.turbulator) !== turbulatorLabel(b.turbulator);
-  if (sparCountChange || tedLabelChange || turbLabelChange) return true;
-
-  // Field-level changes in spars
-  const listA = (a.spare_list ?? []) as Record<string, unknown>[];
-  const listB = (b.spare_list ?? []) as Record<string, unknown>[];
-  for (let i = 0; i < Math.min(listA.length, listB.length); i++) {
-    const f = sparFieldDiff(listA[i] ?? {}, listB[i] ?? {}, i, false);
-    if (f.length > 0) return true;
-  }
-
-  // Field-level changes in TED (when both present and label same)
-  if (a.trailing_edge_device != null && b.trailing_edge_device != null) {
-    const f = tedFieldDiff(
-      a.trailing_edge_device as Record<string, unknown>,
-      b.trailing_edge_device as Record<string, unknown>,
-      false,
-    );
-    if (f.length > 0) return true;
-  }
-
-  // Field-level changes in turbulator (when both present and label same)
-  if (a.turbulator != null && b.turbulator != null) {
-    const f = turbulatorFieldDiff(
-      a.turbulator as Record<string, unknown>,
-      b.turbulator as Record<string, unknown>,
-      false,
-    );
-    if (f.length > 0) return true;
-  }
-
-  return false;
 }
 
 // --- Top-level diff ---------------------------------------------------------
@@ -702,6 +878,33 @@ function presenceWing(
   };
 }
 
+interface DiffAccumulator {
+  wings: WingDiff[];
+  sectionsChanged: number;
+  sectionsAdded: number;
+  sectionsRemoved: number;
+  hasAnyChange: boolean;
+  allHints: Set<string>;
+}
+
+function processMatchedWing(
+  name: string,
+  a: DiffWingInput,
+  b: DiffWingInput,
+  showAll: boolean,
+  acc: DiffAccumulator,
+): void {
+  const res = diffWing(name, a.config, b.config, showAll);
+  acc.sectionsChanged += res.sectionsChanged;
+  acc.sectionsAdded += res.sectionsAdded;
+  acc.sectionsRemoved += res.sectionsRemoved;
+  if (res.changed) acc.hasAnyChange = true;
+  if (showAll || res.changed) acc.wings.push(res.diff);
+  for (const h of res.hints) {
+    if (acc.allHints.size < 5) acc.allHints.add(h);
+  }
+}
+
 export function computeGeometryDiff(
   wingsA: DiffWingInput[],
   wingsB: DiffWingInput[],
@@ -712,150 +915,36 @@ export function computeGeometryDiff(
   const byNameA = new Map(wingsA.map((w) => [w.name, w]));
   const byNameB = new Map(wingsB.map((w) => [w.name, w]));
 
-  const wings: WingDiff[] = [];
-  let sectionsChanged = 0;
-  let sectionsAdded = 0;
-  let sectionsRemoved = 0;
-  let hasAnyChange = false;
+  const acc: DiffAccumulator = {
+    wings: [],
+    sectionsChanged: 0,
+    sectionsAdded: 0,
+    sectionsRemoved: 0,
+    hasAnyChange: false,
+    allHints: new Set<string>(),
+  };
 
   for (const name of orderedWingNames(wingsA, wingsB)) {
     const a = byNameA.get(name);
     const b = byNameB.get(name);
 
     if (a && b) {
-      const res = diffWing(name, a.config, b.config, showAll);
-      sectionsChanged += res.sectionsChanged;
-      sectionsAdded += res.sectionsAdded;
-      sectionsRemoved += res.sectionsRemoved;
-      if (res.changed) hasAnyChange = true;
-      if (showAll || res.changed) {
-        wings.push(res.diff);
-      }
-    } else if (b && !a) {
-      hasAnyChange = true;
-      sectionsAdded += b.config.segments?.length ?? 0;
-      wings.push(presenceWing(name, "added", b.config));
-    } else if (a && !b) {
-      hasAnyChange = true;
-      sectionsRemoved += a.config.segments?.length ?? 0;
-      wings.push(presenceWing(name, "removed", a.config));
+      processMatchedWing(name, a, b, showAll, acc);
+    } else if (b) {
+      acc.hasAnyChange = true;
+      acc.sectionsAdded += b.config.segments?.length ?? 0;
+      acc.wings.push(presenceWing(name, "added", b.config));
+    } else if (a) {
+      acc.hasAnyChange = true;
+      acc.sectionsRemoved += a.config.segments?.length ?? 0;
+      acc.wings.push(presenceWing(name, "removed", a.config));
     }
   }
 
   return {
-    wings,
-    counts: { sectionsChanged, sectionsAdded, sectionsRemoved },
-    hasAnyChange,
+    wings: acc.wings,
+    counts: { sectionsChanged: acc.sectionsChanged, sectionsAdded: acc.sectionsAdded, sectionsRemoved: acc.sectionsRemoved },
+    hasAnyChange: acc.hasAnyChange,
+    hints: Array.from(acc.allHints),
   };
-}
-
-// --- GH #973: Plain-language geometry hints ---------------------------------
-
-/**
- * Parse a display value like "200 mm" → 200, or "2 deg" → 2.
- * Returns null if not parseable.
- */
-function parseDisplayNum(display: string | null): number | null {
-  if (display == null || display === "—") return null;
-  const n = parseFloat(display);
-  return Number.isFinite(n) ? n : null;
-}
-
-/**
- * Find a param by key across all sections of all wings in the diff.
- * Returns all matched ParamChange entries.
- */
-function allParams(diff: GeometryDiff, key: string): Array<{ a: string | null; b: string | null }> {
-  const result: Array<{ a: string | null; b: string | null }> = [];
-  for (const wing of diff.wings) {
-    for (const section of wing.sections) {
-      for (const p of section.params) {
-        if (p.key === key) result.push(p);
-      }
-    }
-  }
-  return result;
-}
-
-/**
- * Returns a small set of conservative, geometric hints derived from the diff.
- * NOT aerodynamic predictions — only geometric observations.
- * At most 5 hints. Only emits when clearly true from the diff data.
- */
-export function geometryDiffHints(diff: GeometryDiff): string[] {
-  const hints: string[] = [];
-
-  // Rule 1: tip chord decreased while root chord roughly unchanged → more taper
-  const rootChords = allParams(diff, "root chord");
-  const tipChords = allParams(diff, "tip chord");
-  const rootUnchanged = rootChords.every((p) => {
-    const a = parseDisplayNum(p.a);
-    const b = parseDisplayNum(p.b);
-    if (a == null || b == null) return false;
-    return Math.abs(a - b) <= NUMERIC_TOLERANCE * 10; // allow ~0.5 mm
-  });
-  const tipDecreased = tipChords.some((p) => {
-    const a = parseDisplayNum(p.a);
-    const b = parseDisplayNum(p.b);
-    if (a == null || b == null) return false;
-    return b < a - NUMERIC_TOLERANCE;
-  });
-  if (rootChords.length > 0 && rootUnchanged && tipDecreased) {
-    hints.push("More taper (tip chord ↓)");
-  }
-
-  if (hints.length >= 5) return hints;
-
-  // Rule 2: tip incidence decreased / more negative than root → washout
-  const tipIncidences = allParams(diff, "tip incidence");
-  const tipIncDecreased = tipIncidences.some((p) => {
-    const a = parseDisplayNum(p.a);
-    const b = parseDisplayNum(p.b);
-    if (a == null || b == null) return false;
-    return b < a - NUMERIC_TOLERANCE;
-  });
-  if (tipIncDecreased) {
-    hints.push("More washout at the tip");
-  }
-
-  if (hints.length >= 5) return hints;
-
-  // Rule 3: section added at the last position → longer span
-  for (const wing of diff.wings) {
-    const sections = wing.sections;
-    if (sections.length === 0) continue;
-    const last = sections[sections.length - 1];
-    if (last.kind === "added") {
-      hints.push("Longer span (tip section added)");
-      break;
-    }
-  }
-
-  if (hints.length >= 5) return hints;
-
-  // Rule 4: dihedral increased
-  const dihedrals = allParams(diff, "root dihedral");
-  const dihedralIncreased = dihedrals.some((p) => {
-    const a = parseDisplayNum(p.a);
-    const b = parseDisplayNum(p.b);
-    if (a == null || b == null) return false;
-    return b > a + NUMERIC_TOLERANCE;
-  });
-  if (dihedralIncreased) {
-    hints.push("More dihedral");
-  }
-
-  if (hints.length >= 5) return hints;
-
-  // Rule 5: any airfoil changed → re-run polar
-  const rootAirfoils = allParams(diff, "root airfoil");
-  const tipAirfoils = allParams(diff, "tip airfoil");
-  const anyAirfoilChanged = [...rootAirfoils, ...tipAirfoils].some(
-    (p) => p.a !== p.b && p.a != null && p.b != null,
-  );
-  if (anyAirfoilChanged) {
-    hints.push("Airfoil changed — re-run the polar");
-  }
-
-  return hints;
 }

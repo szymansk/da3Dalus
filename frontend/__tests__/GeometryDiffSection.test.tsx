@@ -79,12 +79,14 @@ const CHANGED_DIFF: GeometryDiff = {
   ],
   counts: { sectionsChanged: 1, sectionsAdded: 1, sectionsRemoved: 1 },
   hasAnyChange: true,
+  hints: [],
 };
 
 const EMPTY_DIFF: GeometryDiff = {
   wings: [],
   counts: { sectionsChanged: 0, sectionsAdded: 0, sectionsRemoved: 0 },
   hasAnyChange: false,
+  hints: [],
 };
 
 function result(over: Partial<UseGeometryDiffResult> = {}): UseGeometryDiffResult {
@@ -275,8 +277,10 @@ const DIFF_WITH_SPAR_FIELDS: GeometryDiff = {
   ],
   counts: { sectionsChanged: 1, sectionsAdded: 0, sectionsRemoved: 0 },
   hasAnyChange: true,
+  hints: [],
 };
 
+/** DIFF_WITH_HINTS: pre-computed hints embedded in the diff object (gh-973). */
 const DIFF_WITH_HINTS: GeometryDiff = {
   wings: [
     {
@@ -298,6 +302,7 @@ const DIFF_WITH_HINTS: GeometryDiff = {
   ],
   counts: { sectionsChanged: 1, sectionsAdded: 0, sectionsRemoved: 0 },
   hasAnyChange: true,
+  hints: ["More taper (tip chord ↓)"],
 };
 
 describe("GeometryDiffSection — gh-972 sub-element field sub-rows", () => {
@@ -344,7 +349,7 @@ describe("GeometryDiffSection — gh-972 sub-element field sub-rows", () => {
 });
 
 // ---------------------------------------------------------------------------
-// GH #973 — hint block renders with hedge text
+// GH #973 — hint block renders with hedge text and aria attributes
 // ---------------------------------------------------------------------------
 
 describe("GeometryDiffSection — gh-973 hints block", () => {
@@ -359,6 +364,22 @@ describe("GeometryDiffSection — gh-973 hints block", () => {
     expect(screen.getByTestId("geometry-diff-hints")).toBeDefined();
   });
 
+  it("hint block has role='note'", () => {
+    useGeometryDiffMock.mockReturnValue(result({ diff: DIFF_WITH_HINTS }));
+    render(<GeometryDiffSection {...PROPS} />);
+    fireEvent.click(screen.getByTestId("geometry-diff-header"));
+    const hintsBlock = screen.getByTestId("geometry-diff-hints");
+    expect(hintsBlock.getAttribute("role")).toBe("note");
+  });
+
+  it("hint block has aria-label='Geometry observations'", () => {
+    useGeometryDiffMock.mockReturnValue(result({ diff: DIFF_WITH_HINTS }));
+    render(<GeometryDiffSection {...PROPS} />);
+    fireEvent.click(screen.getByTestId("geometry-diff-header"));
+    const hintsBlock = screen.getByTestId("geometry-diff-hints");
+    expect(hintsBlock.getAttribute("aria-label")).toBe("Geometry observations");
+  });
+
   it("hint block contains the hedge prefix text", () => {
     useGeometryDiffMock.mockReturnValue(result({ diff: DIFF_WITH_HINTS }));
     render(<GeometryDiffSection {...PROPS} />);
@@ -367,7 +388,17 @@ describe("GeometryDiffSection — gh-973 hints block", () => {
     expect(hintsBlock.textContent ?? "").toMatch(/rough guide|verify with analysis/i);
   });
 
-  it("hint block is NOT rendered when there are no hints (e.g. no changes)", () => {
+  it("hint block renders diff.hints (from the diff object, not derived separately)", () => {
+    // DIFF_WITH_HINTS has hints: ["More taper (tip chord ↓)"] pre-computed
+    useGeometryDiffMock.mockReturnValue(result({ diff: DIFF_WITH_HINTS }));
+    render(<GeometryDiffSection {...PROPS} />);
+    fireEvent.click(screen.getByTestId("geometry-diff-header"));
+    const hintsBlock = screen.getByTestId("geometry-diff-hints");
+    expect(hintsBlock.textContent ?? "").toMatch(/taper/i);
+  });
+
+  it("hint block is NOT rendered when diff.hints is empty", () => {
+    // EMPTY_DIFF has hints: []
     useGeometryDiffMock.mockReturnValue(result({ diff: EMPTY_DIFF }));
     render(<GeometryDiffSection {...PROPS} />);
     fireEvent.click(screen.getByTestId("geometry-diff-header"));
@@ -381,11 +412,16 @@ describe("GeometryDiffSection — gh-973 hints block", () => {
     expect(screen.queryByTestId("geometry-diff-hints")).toBeNull();
   });
 
-  it("taper hint text visible in hints block", () => {
-    useGeometryDiffMock.mockReturnValue(result({ diff: DIFF_WITH_HINTS }));
+  it("hints from diff with no change params shows no hint block (hints:[])", () => {
+    const diffNoHints: GeometryDiff = {
+      wings: [{ name: "main", kind: "changed", sections: [{ index: 0, kind: "changed", label: "Section 1 · root", params: [], flags: [] }] }],
+      counts: { sectionsChanged: 1, sectionsAdded: 0, sectionsRemoved: 0 },
+      hasAnyChange: true,
+      hints: [],
+    };
+    useGeometryDiffMock.mockReturnValue(result({ diff: diffNoHints }));
     render(<GeometryDiffSection {...PROPS} />);
     fireEvent.click(screen.getByTestId("geometry-diff-header"));
-    const hintsBlock = screen.getByTestId("geometry-diff-hints");
-    expect(hintsBlock.textContent ?? "").toMatch(/taper/i);
+    expect(screen.queryByTestId("geometry-diff-hints")).toBeNull();
   });
 });
