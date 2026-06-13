@@ -862,3 +862,55 @@ describe("VersionCompareView (gh-907)", () => {
     expect(row?.getAttribute("data-differs")).toBe("true");
   });
 });
+
+// ---------------------------------------------------------------------------
+// gh-968: cross-column analysis-context divergence banner
+// ---------------------------------------------------------------------------
+
+describe("context-divergence banner (gh-968)", () => {
+  function renderWith(metricsA: Record<string, unknown> | null, metricsB: Record<string, unknown> | null) {
+    return render(
+      <VersionCompareView
+        compareOut={{ node_a: BASE_NODE_A, node_b: BASE_NODE_B, metrics_a: metricsA, metrics_b: metricsB }}
+        isLoading={false}
+        error={null}
+        onClose={vi.fn()}
+      />,
+    );
+  }
+  const banner = (c: HTMLElement) => c.querySelector('[data-testid="compare-context-divergence"]');
+
+  it("warns when cruise speed differs between the columns", () => {
+    const { container } = renderWith(
+      wrapCtx(makeCtx({ v_cruise_mps: 15.0 })),
+      wrapCtx(makeCtx({ v_cruise_mps: 20.0 })),
+    );
+    expect(banner(container)).not.toBeNull();
+  });
+
+  it("warns when mass differs between the columns", () => {
+    const { container } = renderWith(
+      { total_mass_kg: 1.5, assumption_computation_context: makeCtx() },
+      { total_mass_kg: 4.1, assumption_computation_context: makeCtx() },
+    );
+    expect(banner(container)).not.toBeNull();
+  });
+
+  it("warns when Reynolds differs between the columns", () => {
+    const { container } = renderWith(
+      wrapCtx(makeCtx({ reynolds: 250000 })),
+      wrapCtx(makeCtx({ reynolds: 450000 })),
+    );
+    expect(banner(container)).not.toBeNull();
+  });
+
+  it("does NOT warn when the contexts match (incl. equal mass)", () => {
+    const { container } = renderWith(wrapCtx(makeCtx()), wrapCtx(makeCtx()));
+    expect(banner(container)).toBeNull();
+  });
+
+  it("does NOT warn when one side has no usable context (per-column warning handles it)", () => {
+    const { container } = renderWith(wrapCtx(makeCtx()), { total_mass_kg: 1.5 });
+    expect(banner(container)).toBeNull();
+  });
+});

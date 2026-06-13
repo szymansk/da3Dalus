@@ -60,6 +60,48 @@ function toCtx(metrics: Record<string, unknown> | null): ComputationContext | nu
   return null;
 }
 
+/** A number if `metrics[key]` is a finite number, else null. */
+function numField(metrics: Record<string, unknown> | null, key: string): number | null {
+  const v = metrics?.[key];
+  return typeof v === "number" && Number.isFinite(v) ? v : null;
+}
+
+/**
+ * True when the two columns were computed under materially different
+ * ASSUMPTIONS — mass, Reynolds, or cruise speed — so a metric delta may
+ * reflect the changed condition, not the design (gh-968, rigor-persona
+ * concern). Only fields present on BOTH sides are compared (a missing side is
+ * already flagged per-column by AnalysisContextLine). `computed_at` is
+ * intentionally excluded: a different timestamp is normal between snapshots and
+ * is not an assumption.
+ */
+function contextsDiverge(
+  metricsA: Record<string, unknown> | null,
+  metricsB: Record<string, unknown> | null,
+): boolean {
+  const ctxA = toCtx(metricsA);
+  const ctxB = toCtx(metricsB);
+
+  const relDiff = (a: number, b: number) => Math.abs(a - b) / Math.max(Math.abs(a), Math.abs(b), 1e-9);
+
+  // mass (top-level) — >0.5% relative
+  const massA = numField(metricsA, "total_mass_kg");
+  const massB = numField(metricsB, "total_mass_kg");
+  if (massA != null && massB != null && relDiff(massA, massB) > 0.005) return true;
+
+  // Reynolds — >1% relative
+  const reA = numField(ctxA as unknown as Record<string, unknown> | null, "reynolds");
+  const reB = numField(ctxB as unknown as Record<string, unknown> | null, "reynolds");
+  if (reA != null && reB != null && relDiff(reA, reB) > 0.01) return true;
+
+  // cruise speed — >0.1 m/s absolute
+  const vA = numField(ctxA as unknown as Record<string, unknown> | null, "v_cruise_mps");
+  const vB = numField(ctxB as unknown as Record<string, unknown> | null, "v_cruise_mps");
+  if (vA != null && vB != null && Math.abs(vA - vB) > 0.1) return true;
+
+  return false;
+}
+
 function nodeLabel(node: VersionNode): string {
   return node.version_label ?? node.name;
 }
@@ -612,6 +654,20 @@ export function VersionCompareView({
               <span className="min-w-[56px] text-center">metric</span>
               <span className="text-left">{nodeLabel(compareOut.node_b)}</span>
             </div>
+
+            {/* Cross-column assumption-divergence banner (gh-968): the deltas
+                below may reflect a changed analysis condition, not the design. */}
+            {contextsDiverge(compareOut.metrics_a, compareOut.metrics_b) && (
+              <div
+                role="alert"
+                data-testid="compare-context-divergence"
+                className="mb-3 rounded border border-amber-500/40 bg-amber-500/10 px-2 py-1.5 text-[10px] text-amber-400"
+              >
+                <span aria-hidden="true">⚠</span> Analysis conditions differ between the two
+                variants — deltas may reflect changed assumptions (mass / Reynolds / cruise
+                speed), not the design itself.
+              </div>
+            )}
 
             {/* Metric rows */}
             {(() => {
