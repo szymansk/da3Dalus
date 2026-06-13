@@ -241,3 +241,151 @@ describe("GeometryDiffSection (gh-971)", () => {
     expect(lastCall[4]).toBe(true);
   });
 });
+
+// ---------------------------------------------------------------------------
+// GH #972 — sub-element field sub-rows render under a flag
+// ---------------------------------------------------------------------------
+
+const DIFF_WITH_SPAR_FIELDS: GeometryDiff = {
+  wings: [
+    {
+      name: "main_wing",
+      kind: "changed",
+      sections: [
+        {
+          index: 0,
+          kind: "changed",
+          label: "Section 1 · root",
+          params: [],
+          flags: [
+            {
+              key: "spar",
+              kind: "changed",
+              a: "1 spar",
+              b: "1 spar",
+              fields: [
+                { key: "spar 1 position", a: "0.3", b: "0.4" },
+                { key: "spar 1 width", a: "10 mm", b: "12 mm" },
+              ],
+            },
+          ],
+        },
+      ],
+    },
+  ],
+  counts: { sectionsChanged: 1, sectionsAdded: 0, sectionsRemoved: 0 },
+  hasAnyChange: true,
+};
+
+const DIFF_WITH_HINTS: GeometryDiff = {
+  wings: [
+    {
+      name: "main_wing",
+      kind: "changed",
+      sections: [
+        {
+          index: 0,
+          kind: "changed",
+          label: "Section 1 · root",
+          params: [
+            { key: "root chord", a: "200 mm", b: "200 mm" },
+            { key: "tip chord", a: "150 mm", b: "100 mm" },
+          ],
+          flags: [],
+        },
+      ],
+    },
+  ],
+  counts: { sectionsChanged: 1, sectionsAdded: 0, sectionsRemoved: 0 },
+  hasAnyChange: true,
+};
+
+describe("GeometryDiffSection — gh-972 sub-element field sub-rows", () => {
+  beforeEach(() => {
+    useGeometryDiffMock.mockReset();
+  });
+
+  it("renders spar field sub-rows beneath the flag row when expanded", () => {
+    useGeometryDiffMock.mockReturnValue(result({ diff: DIFF_WITH_SPAR_FIELDS }));
+    render(<GeometryDiffSection {...PROPS} />);
+    fireEvent.click(screen.getByTestId("geometry-diff-header"));
+    // The spar flag row renders
+    expect(screen.getByTestId("geometry-diff-row-spar")).toBeDefined();
+    // Sub-rows render with testids for the fields
+    expect(screen.getByTestId("geometry-diff-subrow-spar 1 position")).toBeDefined();
+    expect(screen.getByTestId("geometry-diff-subrow-spar 1 width")).toBeDefined();
+  });
+
+  it("sub-row shows the from→to values", () => {
+    useGeometryDiffMock.mockReturnValue(result({ diff: DIFF_WITH_SPAR_FIELDS }));
+    render(<GeometryDiffSection {...PROPS} />);
+    fireEvent.click(screen.getByTestId("geometry-diff-header"));
+    const posRow = screen.getByTestId("geometry-diff-subrow-spar 1 position");
+    const text = posRow.textContent ?? "";
+    expect(text).toMatch(/0\.3/);
+    expect(text).toMatch(/0\.4/);
+  });
+
+  it("sub-row is marked data-differs=true when values differ", () => {
+    useGeometryDiffMock.mockReturnValue(result({ diff: DIFF_WITH_SPAR_FIELDS }));
+    render(<GeometryDiffSection {...PROPS} />);
+    fireEvent.click(screen.getByTestId("geometry-diff-header"));
+    const posRow = screen.getByTestId("geometry-diff-subrow-spar 1 position");
+    expect(posRow.getAttribute("data-differs")).toBe("true");
+  });
+
+  it("no sub-rows when flags have no fields array", () => {
+    useGeometryDiffMock.mockReturnValue(result({ diff: CHANGED_DIFF }));
+    render(<GeometryDiffSection {...PROPS} />);
+    fireEvent.click(screen.getByTestId("geometry-diff-header"));
+    // CHANGED_DIFF has control_surface flag with no fields → no subrow testid present
+    expect(screen.queryByTestId(/geometry-diff-subrow/)).toBeNull();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// GH #973 — hint block renders with hedge text
+// ---------------------------------------------------------------------------
+
+describe("GeometryDiffSection — gh-973 hints block", () => {
+  beforeEach(() => {
+    useGeometryDiffMock.mockReset();
+  });
+
+  it("renders geometry-diff-hints block when hints are present + section expanded", () => {
+    useGeometryDiffMock.mockReturnValue(result({ diff: DIFF_WITH_HINTS }));
+    render(<GeometryDiffSection {...PROPS} />);
+    fireEvent.click(screen.getByTestId("geometry-diff-header"));
+    expect(screen.getByTestId("geometry-diff-hints")).toBeDefined();
+  });
+
+  it("hint block contains the hedge prefix text", () => {
+    useGeometryDiffMock.mockReturnValue(result({ diff: DIFF_WITH_HINTS }));
+    render(<GeometryDiffSection {...PROPS} />);
+    fireEvent.click(screen.getByTestId("geometry-diff-header"));
+    const hintsBlock = screen.getByTestId("geometry-diff-hints");
+    expect(hintsBlock.textContent ?? "").toMatch(/rough guide|verify with analysis/i);
+  });
+
+  it("hint block is NOT rendered when there are no hints (e.g. no changes)", () => {
+    useGeometryDiffMock.mockReturnValue(result({ diff: EMPTY_DIFF }));
+    render(<GeometryDiffSection {...PROPS} />);
+    fireEvent.click(screen.getByTestId("geometry-diff-header"));
+    expect(screen.queryByTestId("geometry-diff-hints")).toBeNull();
+  });
+
+  it("hint block is NOT rendered when section is collapsed", () => {
+    useGeometryDiffMock.mockReturnValue(result({ diff: DIFF_WITH_HINTS }));
+    render(<GeometryDiffSection {...PROPS} />);
+    // do NOT click to expand
+    expect(screen.queryByTestId("geometry-diff-hints")).toBeNull();
+  });
+
+  it("taper hint text visible in hints block", () => {
+    useGeometryDiffMock.mockReturnValue(result({ diff: DIFF_WITH_HINTS }));
+    render(<GeometryDiffSection {...PROPS} />);
+    fireEvent.click(screen.getByTestId("geometry-diff-header"));
+    const hintsBlock = screen.getByTestId("geometry-diff-hints");
+    expect(hintsBlock.textContent ?? "").toMatch(/taper/i);
+  });
+});

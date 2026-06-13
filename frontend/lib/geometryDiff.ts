@@ -37,6 +37,8 @@ export interface SubElementFlag {
   kind: ChangeKind;
   a: string | null;
   b: string | null;
+  /** Field-level detail: changed (or all, in showAll mode) fields of this sub-element. */
+  fields?: ParamChange[];
 }
 
 export interface SectionDiff {
@@ -254,6 +256,232 @@ function turbulatorLabel(
   return turb == null ? "—" : "on";
 }
 
+// --- Field-level helpers for numeric tolerance comparison -------------------
+
+function numericFieldChanged(a: unknown, b: unknown): boolean {
+  if (typeof a === "number" && typeof b === "number") {
+    if (!Number.isFinite(a) || !Number.isFinite(b)) return a !== b;
+    return Math.abs(a - b) > NUMERIC_TOLERANCE;
+  }
+  return String(a ?? "") !== String(b ?? "");
+}
+
+function formatFieldValue(value: unknown, unit?: "mm"): string {
+  if (value == null) return "—";
+  if (typeof value === "number") {
+    if (!Number.isFinite(value)) return "—";
+    const rounded = Math.round(value * 100) / 100;
+    const s = String(rounded);
+    return unit === "mm" ? `${s} mm` : s;
+  }
+  return String(value);
+}
+
+// --- Spar field-level diff --------------------------------------------------
+
+function sparFieldDiff(
+  sparA: Record<string, unknown>,
+  sparB: Record<string, unknown>,
+  sparIndex: number,
+  showAll: boolean,
+): ParamChange[] {
+  const n = sparIndex + 1;
+  const fields: Array<{ key: string; aVal: unknown; bVal: unknown; unit?: "mm" }> = [
+    { key: `spar ${n} position`, aVal: sparA["spare_position_factor"], bVal: sparB["spare_position_factor"] },
+    { key: `spar ${n} width`, aVal: sparA["spare_support_dimension_width"], bVal: sparB["spare_support_dimension_width"], unit: "mm" },
+    { key: `spar ${n} height`, aVal: sparA["spare_support_dimension_height"], bVal: sparB["spare_support_dimension_height"], unit: "mm" },
+    { key: `spar ${n} start`, aVal: sparA["spare_start"], bVal: sparB["spare_start"], unit: "mm" },
+    { key: `spar ${n} length`, aVal: sparA["spare_length"], bVal: sparB["spare_length"], unit: "mm" },
+    { key: `spar ${n} mode`, aVal: sparA["spare_mode"], bVal: sparB["spare_mode"] },
+  ];
+
+  const result: ParamChange[] = [];
+  for (const f of fields) {
+    const changed = numericFieldChanged(f.aVal, f.bVal);
+    if (showAll || changed) {
+      result.push({
+        key: f.key,
+        a: formatFieldValue(f.aVal, f.unit),
+        b: formatFieldValue(f.bVal, f.unit),
+      });
+    }
+  }
+  return result;
+}
+
+function sparFlags(
+  a: WingConfigSegment,
+  b: WingConfigSegment,
+  showAll: boolean,
+): SubElementFlag | null {
+  const listA = (a.spare_list ?? []) as Record<string, unknown>[];
+  const listB = (b.spare_list ?? []) as Record<string, unknown>[];
+  const countA = listA.length;
+  const countB = listB.length;
+  const labelA = sparLabel(countA);
+  const labelB = sparLabel(countB);
+
+  // Determine overall kind
+  let kind: ChangeKind = "changed";
+  if (countA === 0 && countB > 0) kind = "added";
+  else if (countA > 0 && countB === 0) kind = "removed";
+
+  if (!showAll && labelA === labelB) {
+    // Count unchanged; still check fields to see if any changed
+    const fields: ParamChange[] = [];
+    const sharedCount = Math.min(countA, countB);
+    for (let i = 0; i < sharedCount; i++) {
+      const sparA = listA[i] ?? {};
+      const sparB = listB[i] ?? {};
+      fields.push(...sparFieldDiff(sparA, sparB, i, false));
+    }
+    if (fields.length === 0) return null;
+    return { key: "spar", kind, a: labelA, b: labelB, fields };
+  }
+
+  const fields: ParamChange[] = [];
+  const sharedCount = Math.min(countA, countB);
+  for (let i = 0; i < sharedCount; i++) {
+    const sparA = listA[i] ?? {};
+    const sparB = listB[i] ?? {};
+    fields.push(...sparFieldDiff(sparA, sparB, i, showAll));
+  }
+
+  return {
+    key: "spar",
+    kind,
+    a: labelA,
+    b: labelB,
+    fields: fields.length > 0 ? fields : undefined,
+  };
+}
+
+// --- TED field-level diff ---------------------------------------------------
+
+const TED_FIELDS: Array<{ key: string; prop: string }> = [
+  { key: "control surface name", prop: "name" },
+  { key: "control surface role", prop: "role" },
+  { key: "control surface rel_chord_root", prop: "rel_chord_root" },
+  { key: "control surface rel_chord_tip", prop: "rel_chord_tip" },
+  { key: "control surface positive_deflection_deg", prop: "positive_deflection_deg" },
+  { key: "control surface negative_deflection_deg", prop: "negative_deflection_deg" },
+  { key: "control surface hinge_type", prop: "hinge_type" },
+  { key: "control surface servo_placement", prop: "servo_placement" },
+  { key: "control surface servo_index", prop: "servo_index" },
+];
+
+function tedFieldDiff(
+  tedA: Record<string, unknown>,
+  tedB: Record<string, unknown>,
+  showAll: boolean,
+): ParamChange[] {
+  const result: ParamChange[] = [];
+  for (const f of TED_FIELDS) {
+    const aVal = tedA[f.prop];
+    const bVal = tedB[f.prop];
+    const changed = numericFieldChanged(aVal, bVal);
+    if (showAll || changed) {
+      result.push({
+        key: f.key,
+        a: formatFieldValue(aVal),
+        b: formatFieldValue(bVal),
+      });
+    }
+  }
+  return result;
+}
+
+function tedFlag(
+  a: WingConfigSegment,
+  b: WingConfigSegment,
+  showAll: boolean,
+): SubElementFlag | null {
+  const tedA = a.trailing_edge_device;
+  const tedB = b.trailing_edge_device;
+  const labelA = tedName(tedA);
+  const labelB = tedName(tedB);
+
+  const bothPresent = tedA != null && tedB != null;
+  const labelChanged = labelA !== labelB;
+
+  if (!showAll && !labelChanged && !bothPresent) return null;
+
+  if (!showAll && !labelChanged && !bothPresent) return null;
+
+  const fields: ParamChange[] = bothPresent
+    ? tedFieldDiff(tedA as Record<string, unknown>, tedB as Record<string, unknown>, showAll)
+    : [];
+
+  // In changes-only mode: if label is same AND no field changes → skip
+  if (!showAll && !labelChanged && fields.length === 0) return null;
+
+  return {
+    key: "control_surface",
+    kind: "changed",
+    a: labelA,
+    b: labelB,
+    fields: fields.length > 0 ? fields : undefined,
+  };
+}
+
+// --- Turbulator field-level diff --------------------------------------------
+
+const TURBULATOR_FIELDS: Array<{ key: string; prop: string }> = [
+  { key: "turbulator form", prop: "form" },
+  { key: "turbulator height_mm", prop: "height_mm" },
+  { key: "turbulator position_root", prop: "position_root" },
+  { key: "turbulator position_tip", prop: "position_tip" },
+  { key: "turbulator enabled", prop: "enabled" },
+];
+
+function turbulatorFieldDiff(
+  turbA: Record<string, unknown>,
+  turbB: Record<string, unknown>,
+  showAll: boolean,
+): ParamChange[] {
+  const result: ParamChange[] = [];
+  for (const f of TURBULATOR_FIELDS) {
+    const aVal = turbA[f.prop];
+    const bVal = turbB[f.prop];
+    const changed = numericFieldChanged(aVal, bVal);
+    if (showAll || changed) {
+      result.push({
+        key: f.key,
+        a: formatFieldValue(aVal),
+        b: formatFieldValue(bVal),
+      });
+    }
+  }
+  return result;
+}
+
+function turbulatorFlag(
+  a: WingConfigSegment,
+  b: WingConfigSegment,
+  showAll: boolean,
+): SubElementFlag | null {
+  const turbA = a.turbulator;
+  const turbB = b.turbulator;
+  const labelA = turbulatorLabel(turbA);
+  const labelB = turbulatorLabel(turbB);
+  const labelChanged = labelA !== labelB;
+  const bothPresent = turbA != null && turbB != null;
+
+  const fields: ParamChange[] = bothPresent
+    ? turbulatorFieldDiff(turbA as Record<string, unknown>, turbB as Record<string, unknown>, showAll)
+    : [];
+
+  if (!showAll && !labelChanged && fields.length === 0) return null;
+
+  return {
+    key: "turbulator",
+    kind: "changed",
+    a: labelA,
+    b: labelB,
+    fields: fields.length > 0 ? fields : undefined,
+  };
+}
+
 function subElementFlags(
   a: WingConfigSegment,
   b: WingConfigSegment,
@@ -261,38 +489,14 @@ function subElementFlags(
 ): SubElementFlag[] {
   const flags: SubElementFlag[] = [];
 
-  const sparA = sparLabel(a.spare_list?.length ?? 0);
-  const sparB = sparLabel(b.spare_list?.length ?? 0);
-  if (showAll || sparA !== sparB) {
-    flags.push({
-      key: "spar",
-      kind: "changed",
-      a: sparA,
-      b: sparB,
-    });
-  }
+  const spar = sparFlags(a, b, showAll);
+  if (spar != null) flags.push(spar);
 
-  const tedA = tedName(a.trailing_edge_device);
-  const tedB = tedName(b.trailing_edge_device);
-  if (showAll || tedA !== tedB) {
-    flags.push({
-      key: "control_surface",
-      kind: "changed",
-      a: tedA,
-      b: tedB,
-    });
-  }
+  const ted = tedFlag(a, b, showAll);
+  if (ted != null) flags.push(ted);
 
-  const turbA = turbulatorLabel(a.turbulator);
-  const turbB = turbulatorLabel(b.turbulator);
-  if (showAll || turbA !== turbB) {
-    flags.push({
-      key: "turbulator",
-      kind: "changed",
-      a: turbA,
-      b: turbB,
-    });
-  }
+  const turb = turbulatorFlag(a, b, showAll);
+  if (turb != null) flags.push(turb);
 
   return flags;
 }
@@ -420,11 +624,43 @@ function sectionHasRealChange(
   const paramsA = coreParams(a);
   const paramsB = coreParams(b);
   const paramChange = paramsA.some((pa, i) => paramChanged(pa, paramsB[i]));
-  const flagChange =
-    (a.spare_list?.length ?? 0) !== (b.spare_list?.length ?? 0) ||
-    tedName(a.trailing_edge_device) !== tedName(b.trailing_edge_device) ||
-    turbulatorLabel(a.turbulator) !== turbulatorLabel(b.turbulator);
-  return paramChange || flagChange;
+  if (paramChange) return true;
+
+  // Count-level changes
+  const sparCountChange = (a.spare_list?.length ?? 0) !== (b.spare_list?.length ?? 0);
+  const tedLabelChange = tedName(a.trailing_edge_device) !== tedName(b.trailing_edge_device);
+  const turbLabelChange = turbulatorLabel(a.turbulator) !== turbulatorLabel(b.turbulator);
+  if (sparCountChange || tedLabelChange || turbLabelChange) return true;
+
+  // Field-level changes in spars
+  const listA = (a.spare_list ?? []) as Record<string, unknown>[];
+  const listB = (b.spare_list ?? []) as Record<string, unknown>[];
+  for (let i = 0; i < Math.min(listA.length, listB.length); i++) {
+    const f = sparFieldDiff(listA[i] ?? {}, listB[i] ?? {}, i, false);
+    if (f.length > 0) return true;
+  }
+
+  // Field-level changes in TED (when both present and label same)
+  if (a.trailing_edge_device != null && b.trailing_edge_device != null) {
+    const f = tedFieldDiff(
+      a.trailing_edge_device as Record<string, unknown>,
+      b.trailing_edge_device as Record<string, unknown>,
+      false,
+    );
+    if (f.length > 0) return true;
+  }
+
+  // Field-level changes in turbulator (when both present and label same)
+  if (a.turbulator != null && b.turbulator != null) {
+    const f = turbulatorFieldDiff(
+      a.turbulator as Record<string, unknown>,
+      b.turbulator as Record<string, unknown>,
+      false,
+    );
+    if (f.length > 0) return true;
+  }
+
+  return false;
 }
 
 // --- Top-level diff ---------------------------------------------------------
@@ -511,4 +747,115 @@ export function computeGeometryDiff(
     counts: { sectionsChanged, sectionsAdded, sectionsRemoved },
     hasAnyChange,
   };
+}
+
+// --- GH #973: Plain-language geometry hints ---------------------------------
+
+/**
+ * Parse a display value like "200 mm" → 200, or "2 deg" → 2.
+ * Returns null if not parseable.
+ */
+function parseDisplayNum(display: string | null): number | null {
+  if (display == null || display === "—") return null;
+  const n = parseFloat(display);
+  return Number.isFinite(n) ? n : null;
+}
+
+/**
+ * Find a param by key across all sections of all wings in the diff.
+ * Returns all matched ParamChange entries.
+ */
+function allParams(diff: GeometryDiff, key: string): Array<{ a: string | null; b: string | null }> {
+  const result: Array<{ a: string | null; b: string | null }> = [];
+  for (const wing of diff.wings) {
+    for (const section of wing.sections) {
+      for (const p of section.params) {
+        if (p.key === key) result.push(p);
+      }
+    }
+  }
+  return result;
+}
+
+/**
+ * Returns a small set of conservative, geometric hints derived from the diff.
+ * NOT aerodynamic predictions — only geometric observations.
+ * At most 5 hints. Only emits when clearly true from the diff data.
+ */
+export function geometryDiffHints(diff: GeometryDiff): string[] {
+  const hints: string[] = [];
+
+  // Rule 1: tip chord decreased while root chord roughly unchanged → more taper
+  const rootChords = allParams(diff, "root chord");
+  const tipChords = allParams(diff, "tip chord");
+  const rootUnchanged = rootChords.every((p) => {
+    const a = parseDisplayNum(p.a);
+    const b = parseDisplayNum(p.b);
+    if (a == null || b == null) return false;
+    return Math.abs(a - b) <= NUMERIC_TOLERANCE * 10; // allow ~0.5 mm
+  });
+  const tipDecreased = tipChords.some((p) => {
+    const a = parseDisplayNum(p.a);
+    const b = parseDisplayNum(p.b);
+    if (a == null || b == null) return false;
+    return b < a - NUMERIC_TOLERANCE;
+  });
+  if (rootChords.length > 0 && rootUnchanged && tipDecreased) {
+    hints.push("More taper (tip chord ↓)");
+  }
+
+  if (hints.length >= 5) return hints;
+
+  // Rule 2: tip incidence decreased / more negative than root → washout
+  const tipIncidences = allParams(diff, "tip incidence");
+  const tipIncDecreased = tipIncidences.some((p) => {
+    const a = parseDisplayNum(p.a);
+    const b = parseDisplayNum(p.b);
+    if (a == null || b == null) return false;
+    return b < a - NUMERIC_TOLERANCE;
+  });
+  if (tipIncDecreased) {
+    hints.push("More washout at the tip");
+  }
+
+  if (hints.length >= 5) return hints;
+
+  // Rule 3: section added at the last position → longer span
+  for (const wing of diff.wings) {
+    const sections = wing.sections;
+    if (sections.length === 0) continue;
+    const last = sections[sections.length - 1];
+    if (last.kind === "added") {
+      hints.push("Longer span (tip section added)");
+      break;
+    }
+  }
+
+  if (hints.length >= 5) return hints;
+
+  // Rule 4: dihedral increased
+  const dihedrals = allParams(diff, "root dihedral");
+  const dihedralIncreased = dihedrals.some((p) => {
+    const a = parseDisplayNum(p.a);
+    const b = parseDisplayNum(p.b);
+    if (a == null || b == null) return false;
+    return b > a + NUMERIC_TOLERANCE;
+  });
+  if (dihedralIncreased) {
+    hints.push("More dihedral");
+  }
+
+  if (hints.length >= 5) return hints;
+
+  // Rule 5: any airfoil changed → re-run polar
+  const rootAirfoils = allParams(diff, "root airfoil");
+  const tipAirfoils = allParams(diff, "tip airfoil");
+  const anyAirfoilChanged = [...rootAirfoils, ...tipAirfoils].some(
+    (p) => p.a !== p.b && p.a != null && p.b != null,
+  );
+  if (anyAirfoilChanged) {
+    hints.push("Airfoil changed — re-run the polar");
+  }
+
+  return hints;
 }

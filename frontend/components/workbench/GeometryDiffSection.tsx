@@ -21,11 +21,13 @@ import React, { useState } from "react";
 import { ChevronRight, ChevronDown, Loader2 } from "lucide-react";
 
 import { useGeometryDiff } from "@/hooks/useGeometryDiff";
+import { geometryDiffHints } from "@/lib/geometryDiff";
 import type {
   GeometryDiff,
   WingDiff,
   SectionDiff,
   ChangeKind,
+  SubElementFlag,
 } from "@/lib/geometryDiff";
 
 export interface GeometryDiffSectionProps {
@@ -111,6 +113,52 @@ function SectionSubheader({ section }: { readonly section: SectionDiff }) {
   );
 }
 
+/** Indented sub-row for field-level detail beneath a sub-element flag row. */
+function SubFieldRow({ paramKey, a, b }: { readonly paramKey: string; readonly a: string | null; readonly b: string | null }) {
+  const dash = "—";
+  const differs = a !== b;
+  return (
+    <div
+      className={`grid grid-cols-[1fr_auto_1fr] items-center gap-2 rounded pl-6 pr-2 py-0.5 font-[family-name:var(--font-geist-mono)] text-[10px] ${
+        differs ? "bg-amber-500/8" : ""
+      }`}
+      data-testid={`geometry-diff-subrow-${paramKey}`}
+      data-differs={differs ? "true" : undefined}
+    >
+      <span className={`text-right ${differs ? "font-medium text-foreground/80" : "text-muted-foreground/70"}`}>
+        {a ?? dash}
+      </span>
+      <span className="min-w-[72px] text-center text-[9px] text-subtle-foreground/70">{paramKey}</span>
+      <span className={`text-left ${differs ? "font-medium text-foreground/80" : "text-muted-foreground/70"}`}>
+        {b ?? dash}
+      </span>
+    </div>
+  );
+}
+
+function FlagWithFields({ flagItem, sectionIndex }: { readonly flagItem: SubElementFlag; readonly sectionIndex: number }) {
+  return (
+    <>
+      <DiffRow
+        key={`${sectionIndex}-f-${flagItem.key}`}
+        paramKey={flagItem.key}
+        a={flagItem.a}
+        b={flagItem.b}
+        differs={flagItem.a !== flagItem.b}
+        kind={flagItem.kind}
+      />
+      {flagItem.fields?.map((field) => (
+        <SubFieldRow
+          key={`${sectionIndex}-sf-${field.key}`}
+          paramKey={field.key}
+          a={field.a}
+          b={field.b}
+        />
+      ))}
+    </>
+  );
+}
+
 function WingBlock({ wing }: { readonly wing: WingDiff }) {
   return (
     <div className="mb-3">
@@ -132,18 +180,34 @@ function WingBlock({ wing }: { readonly wing: WingDiff }) {
               />
             ))}
             {section.flags.map((f) => (
-              <DiffRow
+              <FlagWithFields
                 key={`${section.index}-f-${f.key}`}
-                paramKey={f.key}
-                a={f.a}
-                b={f.b}
-                differs={f.a !== f.b}
-                kind={f.kind}
+                flagItem={f}
+                sectionIndex={section.index}
               />
             ))}
           </div>
         ))}
       </div>
+    </div>
+  );
+}
+
+/** Conservative geometry hints block (gh-973). */
+function HintsBlock({ diff }: { readonly diff: GeometryDiff }) {
+  const hints = geometryDiffHints(diff);
+  if (hints.length === 0) return null;
+  return (
+    <div
+      data-testid="geometry-diff-hints"
+      className="mt-3 rounded border border-border/50 bg-sidebar-accent/30 px-3 py-2 text-[10px] text-muted-foreground"
+    >
+      <span className="font-medium text-subtle-foreground">Rough guide (verify with analysis):</span>
+      <ul className="mt-1 list-inside list-disc space-y-0.5">
+        {hints.map((h) => (
+          <li key={h}>{h}</li>
+        ))}
+      </ul>
     </div>
   );
 }
@@ -211,6 +275,7 @@ function DiffBody({ diff, isLoading, error, showAll, onToggleShowAll }: DiffBody
           <WingBlock key={wing.name} wing={wing} />
         ))}
       </div>
+      <HintsBlock diff={diff} />
     </div>
   );
 }
