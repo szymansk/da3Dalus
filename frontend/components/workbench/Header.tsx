@@ -17,12 +17,13 @@ import { useAeroplanes } from "@/hooks/useAeroplanes";
 import { useVersionActions } from "@/hooks/useVersioning";
 import { SnapshotDialog } from "./SnapshotDialog";
 
-const STEPS = [
+export const STEPS = [
   { num: 1, label: "Mission", href: "/workbench/mission" },
   { num: 2, label: "Construction", href: "/workbench" },
   { num: 3, label: "Analysis", href: "/workbench/analysis" },
-  { num: 4, label: "Components", href: "/workbench/components" },
-  { num: 5, label: "Plans", href: "/workbench/construction-plans" },
+  { num: 4, label: "Powertrain", href: "/workbench/powertrain" },
+  { num: 5, label: "Components", href: "/workbench/components" },
+  { num: 6, label: "Plans", href: "/workbench/construction-plans" },
 ] as const;
 
 function branchIndicatorClass(isAiBranch: boolean, isMainBranch: boolean | null): string {

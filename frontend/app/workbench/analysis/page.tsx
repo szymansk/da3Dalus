@@ -67,7 +67,6 @@ export default function AnalysisPage() {
     "Envelope": "Flight Envelope",
     "Operating Points": "Operating Points",
     "Sizing": "Sizing",
-    "Powertrain": "Powertrain Solution Space",
   };
   const modalTitle = modalTitleByTab[activeTab];
 
