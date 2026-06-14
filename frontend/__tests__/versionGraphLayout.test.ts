@@ -714,3 +714,110 @@ describe("adopted non-'main'-named branch", () => {
     expect(namedMainTip.color).not.toBe(LANE_COLORS.main);
   });
 });
+
+// ---------------------------------------------------------------------------
+// 12. Branch filter (gh-981): optional visibleBranchIds
+//
+// The pure layout accepts an optional `{ visibleBranchIds }` set. When present,
+// only nodes whose branch_id is in the set survive (legacy null-branch nodes
+// are always kept). The existing lane/fork/LCS logic then runs on the filtered
+// subset, so lanes/forks/pills are correct for that subset — a fork whose
+// parent node was filtered out must NOT produce a dangling fork edge.
+//
+// Reuses TREE_WORKED:
+//   main(b1,lane0): root(1)→v1.0(2)→v1.1(3)→working(4)
+//   ai(b2):  winglet(5)  forked from v1.1(3)
+//   fix(b3): washout(6)  forked from v1.0(2)
+// ---------------------------------------------------------------------------
+
+describe("branch filter (visibleBranchIds)", () => {
+  it("undefined opts === all branches (identical to today)", () => {
+    const withUndefined = computeGraphLayout(TREE_WORKED);
+    const withEmptyOpts = computeGraphLayout(TREE_WORKED, {});
+    expect(withEmptyOpts).toEqual(withUndefined);
+  });
+
+  it("hiding a branch removes its rows", () => {
+    // Show main + ai only; fix/stall (b3, node 6) must disappear.
+    const layout = computeGraphLayout(TREE_WORKED, {
+      visibleBranchIds: new Set([1, 2]),
+    });
+    const ids = layout.rows.map((r) => r.node.id);
+    expect(ids).not.toContain(6); // washout (fix) gone
+    expect(ids).toContain(4); // working (main) kept
+    expect(ids).toContain(5); // winglet (ai) kept
+    expect(ids).toContain(3); // v1.1 (main) kept
+    expect(ids).toContain(2); // v1.0 (main) kept
+    expect(ids).toContain(1); // root (main) kept
+  });
+
+  it("remaining branches keep correct lanes after a branch is hidden", () => {
+    // Hide ai (b2); main stays lane 0, fix keeps a positive lane + its fork.
+    const layout = computeGraphLayout(TREE_WORKED, {
+      visibleBranchIds: new Set([1, 3]),
+    });
+    const mainHead = layout.rows.find((r) => r.node.id === 4)!;
+    expect(mainHead.lane).toBe(0);
+    expect(mainHead.color).toBe(LANE_COLORS.main);
+
+    const fixTip = layout.rows.find((r) => r.node.id === 6)!; // washout
+    expect(fixTip.lane).toBeGreaterThan(0);
+
+    // The ai node is gone entirely.
+    expect(layout.rows.find((r) => r.node.id === 5)).toBeUndefined();
+
+    // fix still forks from v1.0(2); that fork must survive.
+    const forkRow = layout.rows.find((r) => r.node.id === 2)!;
+    expect(forkRow.fork).not.toBeNull();
+    expect(forkRow.fork!.childLane).toBe(fixTip.lane);
+    expect(forkRow.fork!.parentLane).toBe(0);
+  });
+
+  it("a fork whose parent node is hidden does NOT produce a dangling fork edge", () => {
+    // ai (b2) forks from v1.1(3) which is on main(b1). Hide main entirely and
+    // show only ai. ai's fork-parent v1.1 is filtered out → ai becomes a normal
+    // root of its lane, no fork edge anywhere.
+    const layout = computeGraphLayout(TREE_WORKED, {
+      visibleBranchIds: new Set([2]),
+    });
+    const ids = layout.rows.map((r) => r.node.id);
+    expect(ids).toEqual([5]); // only the ai node survives
+    expect(layout.rows.every((r) => r.fork === null)).toBe(true);
+    // The surviving ai node still gets a lane and renders without crashing.
+    const aiRow = layout.rows[0];
+    expect(aiRow.node.branch_id).toBe(2);
+  });
+
+  it("legacy (null-branch) nodes are always kept regardless of the set", () => {
+    const TREE_MIXED: TreeOut = {
+      root_id: 1,
+      nodes: [
+        node(4, 1, 3, "2026-06-10T00:00:00Z", { is_head: true }),
+        node(3, 1, 2, "2026-06-09T00:00:00Z", { is_immutable: true }),
+        node(2, null, 1, "2026-06-08T00:00:00Z", { is_immutable: true }),
+        node(1, null, null, "2026-06-07T00:00:00Z", { is_immutable: true }),
+      ],
+      branches: [branch(1, "main", 4, true)],
+    };
+    // Filter to a set that does NOT include any real branch → only legacy left.
+    const layout = computeGraphLayout(TREE_MIXED, {
+      visibleBranchIds: new Set<number>([999]),
+    });
+    const ids = layout.rows.map((r) => r.node.id);
+    expect(ids).toContain(2); // legacy kept
+    expect(ids).toContain(1); // legacy kept
+    expect(ids).not.toContain(4); // main hidden
+    expect(ids).not.toContain(3); // main hidden
+    for (const row of layout.rows) {
+      expect(row.color).toBe(LANE_COLORS.legacy);
+    }
+  });
+
+  it("empty visibleBranchIds keeps only legacy nodes (no branches shown)", () => {
+    const layout = computeGraphLayout(TREE_WORKED, {
+      visibleBranchIds: new Set<number>(),
+    });
+    expect(layout.rows).toHaveLength(0); // worked example has no legacy nodes
+    expect(layout.laneCount).toBe(0);
+  });
+});

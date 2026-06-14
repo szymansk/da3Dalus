@@ -44,6 +44,7 @@ function WorkbenchInner({
         </main>
         {historyOpen && (
           <VersionGraphOverlay
+            key={rootId ?? "none"}
             rootId={rootId}
             currentHeadId={intId}
             aeroplaneId={intId}
