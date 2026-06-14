@@ -20,6 +20,11 @@ export interface VersionGraphProps {
   readonly compareSet: Set<number>;
   readonly onSelectNode: (nodeId: number) => void;
   readonly onCheckNode: (nodeId: number) => void;
+  /**
+   * When provided, only nodes whose branch id is in this set are laid out
+   * (legacy null-branch nodes are always kept). Undefined = show all branches.
+   */
+  readonly visibleBranchIds?: ReadonlySet<number>;
 }
 
 export function VersionGraph({
@@ -29,16 +34,20 @@ export function VersionGraph({
   compareSet,
   onSelectNode,
   onCheckNode,
+  visibleBranchIds,
 }: VersionGraphProps) {
   // O(n²) worst case — memoise so it doesn't recompute on every parent
   // re-render (e.g. each compare-checkbox tick). SWR keeps `tree` referentially
   // stable between unchanged revalidations, so the cache hit rate is high.
-  const layout = useMemo(() => computeGraphLayout(tree), [tree]);
+  const layout = useMemo(
+    () => computeGraphLayout(tree, { visibleBranchIds }),
+    [tree, visibleBranchIds],
+  );
 
   if (layout.rows.length === 0) {
     return (
       <p className="px-4 py-4 text-[12px] text-muted-foreground">
-        No version history yet. Use the Save button to create your first snapshot.
+        No branches selected.
       </p>
     );
   }

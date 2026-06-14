@@ -15,11 +15,15 @@
  *   onSwitchAeroplane — called after branch operations with the new head UUID
  */
 
-import { useState, useCallback, useEffect, useMemo } from "react";
-import { X, GitBranch, Camera, GitFork, RotateCcw, Star, Trash2, Pencil } from "lucide-react";
+import { useState, useCallback, useEffect, useMemo, useRef, useLayoutEffect } from "react";
+import { X, GitBranch, Camera, GitFork, RotateCcw, Star, Trash2, Pencil, ChevronDown, ListFilter } from "lucide-react";
 import { useLineageTree, useVersionActions, useCompareNodes } from "@/hooks/useVersioning";
 import { VersionCompareView } from "@/components/workbench/VersionCompareView";
 import { VersionGraph } from "@/components/workbench/VersionGraph";
+import {
+  getVersionGraphViewState,
+  patchVersionGraphViewState,
+} from "@/lib/versionGraphViewState";
 import type { TreeOut, TreeNodeOut, BranchOut } from "@/types/versioning";
 
 // ---------------------------------------------------------------------------
@@ -422,6 +426,105 @@ function VersionGraphToolbar({
 }
 
 // ---------------------------------------------------------------------------
+// Branch filter (gh-981) — dropdown of branch checkboxes
+// ---------------------------------------------------------------------------
+
+interface BranchFilterProps {
+  readonly branches: readonly BranchOut[];
+  readonly visibleBranchIds: ReadonlySet<number>;
+  readonly onToggleBranch: (branchId: number) => void;
+  readonly onToggleAll: () => void;
+  /**
+   * Controlled open state. Owned by the parent overlay so the Escape chain
+   * can close the dropdown before closing the overlay itself.
+   */
+  readonly open: boolean;
+  /** Called when the dropdown requests to open or close. */
+  readonly onOpenChange: (open: boolean) => void;
+}
+
+function BranchFilter({ branches, visibleBranchIds, onToggleBranch, onToggleAll, open, onOpenChange }: BranchFilterProps) {
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  // Close on outside click so the dropdown doesn't linger.
+  useEffect(() => {
+    if (!open) return;
+    function handleClick(e: MouseEvent) {
+      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
+        onOpenChange(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClick);
+    return () => document.removeEventListener("mousedown", handleClick);
+  }, [open, onOpenChange]);
+
+  const total = branches.length;
+  const shown = branches.filter((b) => visibleBranchIds.has(b.id)).length;
+  const someHidden = shown < total;
+  const allVisible = shown === total;
+  const PANEL_ID = "branch-filter-panel";
+
+  return (
+    <div ref={containerRef} data-testid="branch-filter" className="relative">
+      <button
+        type="button"
+        onClick={() => onOpenChange(!open)}
+        aria-expanded={open}
+        aria-haspopup="true"
+        aria-controls={PANEL_ID}
+        aria-label="Filter branches"
+        className="flex items-center gap-1 rounded bg-sidebar-accent px-2 py-1 text-[10px] font-medium text-muted-foreground transition-colors hover:bg-sidebar-accent/80 hover:text-foreground"
+      >
+        <ListFilter size={11} className="shrink-0" />
+        Show branches
+        {someHidden && (
+          <span className="text-subtle-foreground">
+            ({shown} of {total} branches)
+          </span>
+        )}
+        <ChevronDown size={11} className="shrink-0" />
+      </button>
+
+      {open && (
+        <div
+          id={PANEL_ID}
+          role="group"
+          aria-label="Branch visibility"
+          className="absolute left-0 top-full z-10 mt-1 flex max-h-64 min-w-[180px] flex-col gap-0.5 overflow-y-auto rounded border border-border bg-card p-1.5 shadow-xl"
+        >
+          {/* All / None quick toggle (gh-981 hobbyist P1) */}
+          <div className="flex items-center gap-1.5 border-b border-border pb-1 mb-0.5">
+            <button
+              type="button"
+              onClick={onToggleAll}
+              aria-label={allVisible ? "Hide all branches" : "Show all branches"}
+              className="rounded px-2 py-0.5 text-[10px] font-medium text-primary hover:bg-sidebar-accent"
+            >
+              {allVisible ? "None" : "All"}
+            </button>
+          </div>
+          {branches.map((b) => (
+            <label
+              key={b.id}
+              className="flex cursor-pointer items-center gap-2 rounded px-1.5 py-1 text-[11px] text-foreground hover:bg-sidebar-accent"
+            >
+              <input
+                type="checkbox"
+                checked={visibleBranchIds.has(b.id)}
+                onChange={() => onToggleBranch(b.id)}
+                aria-label={b.name}
+                className="accent-primary"
+              />
+              <span className="truncate">{b.name}</span>
+            </label>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
 // Panel content (handles null root / loading / empty states)
 // ---------------------------------------------------------------------------
 
@@ -432,6 +535,8 @@ interface OverlayContentProps {
   readonly currentHeadId: number | null;
   readonly selectedNodeId: number | null;
   readonly compareSet: Set<number>;
+  /** Undefined means "show all" — passes through to VersionGraph's fast-path. */
+  readonly visibleBranchIds?: ReadonlySet<number>;
   readonly onSelectNode: (nodeId: number) => void;
   readonly onCheckNode: (nodeId: number) => void;
 }
@@ -443,6 +548,7 @@ function OverlayContent({
   currentHeadId,
   selectedNodeId,
   compareSet,
+  visibleBranchIds,
   onSelectNode,
   onCheckNode,
 }: OverlayContentProps) {
@@ -469,6 +575,7 @@ function OverlayContent({
       currentHeadId={currentHeadId}
       selectedNodeId={selectedNodeId}
       compareSet={compareSet}
+      visibleBranchIds={visibleBranchIds}
       onSelectNode={onSelectNode}
       onCheckNode={onCheckNode}
     />
@@ -500,14 +607,22 @@ export function VersionGraphOverlay({
   const { tree, isLoading, error, mutate } = useLineageTree(rootId);
   const actions = useVersionActions(aeroplaneId, rootId);
 
+  // gh-981 §3 — restore view state (scroll/selection/filter) saved when the
+  // overlay was last closed for THIS lineage root. The overlay unmounts on
+  // close, so the state lives in a module-level cache keyed by rootId. Read
+  // once at mount time; `null` rootId (no aeroplane) has no cached entry.
+  const cachedViewState = rootId !== null ? getVersionGraphViewState(rootId) : undefined;
+
   // Map from branch id → branch name, used in VersionCompareView.
   const branchNameMap = useMemo(
     () => new Map((tree?.branches ?? []).map((b) => [b.id, b.name])),
     [tree],
   );
 
-  // Selection state
-  const [selectedNodeId, setSelectedNodeId] = useState<number | null>(null);
+  // Selection state — restored from the view-state cache on mount.
+  const [selectedNodeId, setSelectedNodeId] = useState<number | null>(
+    () => cachedViewState?.selectedNodeId ?? null,
+  );
 
   // Compare state
   const [compareSet, setCompareSet] = useState<Set<number>>(new Set());
@@ -525,6 +640,107 @@ export function VersionGraphOverlay({
   // Discard / adopt two-step confirm
   const [discardPending, setDiscardPending] = useState(false);
   const [adoptPending, setAdoptPending] = useState(false);
+
+  // Branch filter (gh-981). hiddenBranchIds is initialised DIRECTLY from the
+  // cache (which now stores hidden ids) — no dependency on `tree` or
+  // `allBranchIds`. This fixes the SWR cold-load race: even when tree is
+  // undefined at mount we can restore the correct filter state immediately.
+  const [hiddenBranchIds, setHiddenBranchIds] = useState<Set<number>>(
+    () => new Set(cachedViewState?.hiddenBranchIds ?? []),
+  );
+
+  // Lift filter-dropdown open state so the Escape handler can close it first.
+  const [filterOpen, setFilterOpen] = useState(false);
+
+  const allBranchIds = useMemo(
+    () => (tree?.branches ?? []).map((b) => b.id),
+    [tree],
+  );
+
+  // When nothing is hidden, pass undefined to VersionGraph so the
+  // applyBranchFilter fast-path (=== undefined → return tree unchanged) fires.
+  const visibleBranchIds = useMemo((): ReadonlySet<number> | undefined => {
+    if (hiddenBranchIds.size === 0) return undefined;
+    return new Set(allBranchIds.filter((id) => !hiddenBranchIds.has(id)));
+  }, [allBranchIds, hiddenBranchIds]);
+
+  const handleToggleBranch = useCallback((branchId: number) => {
+    setHiddenBranchIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(branchId)) {
+        next.delete(branchId);
+      } else {
+        next.add(branchId);
+      }
+      return next;
+    });
+  }, []);
+
+  const handleToggleAll = useCallback(() => {
+    setHiddenBranchIds((prev) => {
+      // If anything is hidden, restore all; if all visible, hide all.
+      if (prev.size > 0) return new Set();
+      return new Set(allBranchIds);
+    });
+  }, [allBranchIds]);
+
+  // gh-981 §3 — scroll container ref. Restore the saved scroll position after
+  // the graph paints. Because SWR may deliver the tree after mount (cold load),
+  // we re-run whenever `isLoading` flips to false AND the container is actually
+  // scrollable. A one-shot ref prevents fighting the user's later scrolling.
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const scrollRestoredRef = useRef<number | null>(null); // tracks which rootId we restored for
+
+  useLayoutEffect(() => {
+    if (rootId === null) return;
+    if (isLoading) return;
+    // Only restore once per rootId across re-renders (tree arrives async).
+    if (scrollRestoredRef.current === rootId) return;
+    const el = scrollRef.current;
+    const saved = getVersionGraphViewState(rootId)?.scrollTop;
+    if (el && saved !== undefined && saved > 0) {
+      // Restore even when scrollHeight === 0 (jsdom/SSR): the browser will
+      // silently clamp to the max valid value, so setting it is always safe.
+      el.scrollTop = saved;
+      scrollRestoredRef.current = rootId;
+    } else if (el) {
+      // saved=0 or no saved state: nothing to restore; mark done anyway.
+      scrollRestoredRef.current = rootId;
+    }
+  // Include isLoading so the effect re-fires when SWR data arrives after cold mount.
+  }, [rootId, isLoading]);
+
+  const handleScroll = useCallback(() => {
+    if (rootId === null) return;
+    const el = scrollRef.current;
+    if (el) {
+      patchVersionGraphViewState(rootId, { scrollTop: el.scrollTop });
+    }
+  }, [rootId]);
+
+  // gh-981 §3 — persist selection + filter to the view-state cache whenever
+  // they change, so a close→reopen for the same root restores them. Store the
+  // explicit hidden-branch list (empty array = "show all"). Storing HIDDEN ids
+  // (not visible ids) means restoration works immediately at mount, even when
+  // tree is still loading (no dependency on allBranchIds at restore time).
+  useEffect(() => {
+    if (rootId === null) return;
+    patchVersionGraphViewState(rootId, {
+      selectedNodeId,
+      hiddenBranchIds: [...hiddenBranchIds],
+    });
+  }, [rootId, selectedNodeId, hiddenBranchIds]);
+
+  // gh-981 §4 — Tombstone clearing: if the cached selectedNodeId references a
+  // node that no longer exists in the loaded tree, clear the selection so we
+  // don't persist a stale pointer indefinitely.
+  useEffect(() => {
+    if (!tree || selectedNodeId === null) return;
+    const nodeExists = tree.nodes.some((n) => n.id === selectedNodeId);
+    if (!nodeExists) {
+      setSelectedNodeId(null);
+    }
+  }, [tree, selectedNodeId]);
 
   // Derive compare fetch IDs. Sort so A/B assignment is deterministic (lower
   // node id = A), independent of the order the user ticked the checkboxes.
@@ -567,6 +783,9 @@ export function VersionGraphOverlay({
         setDiscardPending(false);
       } else if (adoptPending) {
         setAdoptPending(false);
+      } else if (filterOpen) {
+        // Close the branch filter dropdown before closing the overlay (Issue 5).
+        setFilterOpen(false);
       } else if (compareOpen) {
         setCompareOpen(false);
       } else {
@@ -575,7 +794,7 @@ export function VersionGraphOverlay({
     }
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [onClose, compareOpen, activeInput, discardPending, adoptPending]);
+  }, [onClose, compareOpen, filterOpen, activeInput, discardPending, adoptPending]);
 
   // ---------------------------------------------------------------------------
   // Orchestration helpers (lifted from VersionHistoryPanel)
@@ -832,6 +1051,16 @@ export function VersionGraphOverlay({
           aria-label="Graph legend"
           className="flex shrink-0 flex-wrap items-center gap-x-3 gap-y-1 border-b border-border px-4 py-1.5 text-[10px] text-muted-foreground"
         >
+          {(tree?.branches.length ?? 0) > 0 && (
+            <BranchFilter
+              branches={tree?.branches ?? []}
+              visibleBranchIds={visibleBranchIds ?? new Set(allBranchIds)}
+              onToggleBranch={handleToggleBranch}
+              onToggleAll={handleToggleAll}
+              open={filterOpen}
+              onOpenChange={setFilterOpen}
+            />
+          )}
           <span><span aria-hidden>●</span> snapshot</span>
           <span><span aria-hidden>○</span> editable head</span>
           <span><span aria-hidden>★</span> active</span>
@@ -863,7 +1092,12 @@ export function VersionGraphOverlay({
             />
           </div>
         ) : (
-          <div className="min-h-0 flex-1 overflow-y-auto">
+          <div
+            ref={scrollRef}
+            data-testid="version-graph-scroll"
+            onScroll={handleScroll}
+            className="min-h-0 flex-1 overflow-y-auto"
+          >
             <OverlayContent
               rootId={rootId}
               isLoading={isLoading}
@@ -871,6 +1105,7 @@ export function VersionGraphOverlay({
               currentHeadId={currentHeadId}
               selectedNodeId={selectedNodeId}
               compareSet={compareSet}
+              visibleBranchIds={visibleBranchIds}
               onSelectNode={handleSelectNode}
               onCheckNode={handleCheckNode}
             />

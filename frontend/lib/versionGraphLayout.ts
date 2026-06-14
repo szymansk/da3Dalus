@@ -64,15 +64,34 @@ interface LayoutContext {
 // Public API
 // ---------------------------------------------------------------------------
 
-export function computeGraphLayout(tree: TreeOut): GraphLayout {
-  if (tree.nodes.length === 0) {
+/** Optional behaviour switches for {@link computeGraphLayout}. */
+export interface GraphLayoutOptions {
+  /**
+   * When provided, only nodes whose `branch_id` is in this set are laid out.
+   * Legacy (null-branch) nodes are ALWAYS kept regardless of the set. The full
+   * lane/fork/LCS logic then runs on the filtered subset, so a fork whose
+   * parent node was filtered out becomes a normal lane root (no dangling edge).
+   * When omitted, behaviour is identical to showing every branch.
+   */
+  visibleBranchIds?: ReadonlySet<number>;
+}
+
+export function computeGraphLayout(
+  tree: TreeOut,
+  opts?: GraphLayoutOptions,
+): GraphLayout {
+  // Filter to the visible subset first; every downstream helper (lane
+  // assignment, fork resolution, pills) then operates only on what survives.
+  const view = applyBranchFilter(tree, opts?.visibleBranchIds);
+
+  if (view.nodes.length === 0) {
     return { rows: [], laneCount: 0 };
   }
 
-  const ctx = buildContext(tree);
-  const branchMetas = assignLanes(tree, ctx);
+  const ctx = buildContext(view);
+  const branchMetas = assignLanes(view, ctx);
   const forkByRowIndex = buildForkMap(branchMetas, ctx);
-  const nodeTipBranchId = buildTipMap(tree);
+  const nodeTipBranchId = buildTipMap(view);
 
   const rows: GraphRow[] = ctx.sorted.map((n, rowIndex) =>
     buildRow(n, rowIndex, {
@@ -84,6 +103,35 @@ export function computeGraphLayout(tree: TreeOut): GraphLayout {
   );
 
   return { rows, laneCount: computeLaneCount(branchMetas, ctx.sorted) };
+}
+
+// ---------------------------------------------------------------------------
+// Branch filter (gh-981)
+// ---------------------------------------------------------------------------
+
+/**
+ * Project `tree` onto the visible branch subset. Nodes whose `branch_id` is not
+ * in `visibleBranchIds` are dropped; legacy (null-branch) nodes are always kept.
+ * Branches outside the set are dropped too, so the lane/fork/pill helpers see a
+ * hidden fork-parent as simply absent — a fork into a filtered-out parent
+ * resolves to no edge (the child becomes a normal lane root), never a dangling
+ * curve. When `visibleBranchIds` is undefined the original tree is returned
+ * unchanged (identical behaviour to showing every branch).
+ */
+function applyBranchFilter(
+  tree: TreeOut,
+  visibleBranchIds: ReadonlySet<number> | undefined,
+): TreeOut {
+  if (visibleBranchIds === undefined) return tree;
+
+  const isVisible = (branchId: number | null): boolean =>
+    branchId === null || visibleBranchIds.has(branchId);
+
+  return {
+    ...tree,
+    nodes: tree.nodes.filter((n) => isVisible(n.branch_id)),
+    branches: tree.branches.filter((b) => visibleBranchIds.has(b.id)),
+  };
 }
 
 // ---------------------------------------------------------------------------

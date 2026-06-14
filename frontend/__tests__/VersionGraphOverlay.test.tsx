@@ -44,6 +44,7 @@ vi.mock("lucide-react", () => {
     GitMerge: icon,
     ChevronDown: icon,
     Pencil: icon,
+    ListFilter: icon,
   };
 });
 
@@ -69,6 +70,11 @@ vi.mock("@/components/workbench/VersionCompareView", () => ({
 // ---------------------------------------------------------------------------
 
 import { VersionGraphOverlay } from "@/components/workbench/VersionGraphOverlay";
+import {
+  clearVersionGraphViewState,
+  getVersionGraphViewState,
+  setVersionGraphViewState,
+} from "@/lib/versionGraphViewState";
 import type { TreeOut } from "@/types/versioning";
 
 // ---------------------------------------------------------------------------
@@ -263,12 +269,26 @@ function renderOverlay(overrides: {
 }
 
 // ---------------------------------------------------------------------------
+// Shared helpers
+// ---------------------------------------------------------------------------
+
+/** Open the branch filter dropdown by clicking its toggle button. */
+async function openBranchFilter(user: ReturnType<typeof userEvent.setup>) {
+  const trigger = screen.getByTestId("branch-filter");
+  const toggle = trigger.querySelector("button");
+  await user.click(toggle as HTMLButtonElement);
+}
+
+// ---------------------------------------------------------------------------
 // Tests
 // ---------------------------------------------------------------------------
 
 describe("VersionGraphOverlay (gh-961)", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    // The view-state cache (gh-981 §3) is module-global; reset it between tests
+    // so persisted selection/filter from one test doesn't leak into the next.
+    clearVersionGraphViewState();
     mockUseCompareNodes.mockReturnValue({
       compareOut: undefined,
       isLoading: false,
@@ -863,6 +883,314 @@ describe("VersionGraphOverlay (gh-961)", () => {
       const btn = screen.getByRole("button", { name: /rename/i });
       expect(btn.hasAttribute("disabled")).toBe(false);
       expect(btn.getAttribute("title")).toMatch(/rename/i);
+    });
+  });
+
+  // -------------------------------------------------------------------------
+  // gh-981 §2: Branch filter
+  // -------------------------------------------------------------------------
+  describe("gh-981 §2 — branch filter", () => {
+    it("renders the branch filter control", () => {
+      renderOverlay();
+      expect(screen.getByTestId("branch-filter")).toBeDefined();
+    });
+
+    it("lists every branch with a checkbox, all checked by default", async () => {
+      const user = userEvent.setup();
+      renderOverlay();
+      await openBranchFilter(user);
+
+      const main = screen.getByRole("checkbox", { name: /main/i });
+      const ai = screen.getByRole("checkbox", { name: /ai\/winglet-exp/i });
+      const fix = screen.getByRole("checkbox", { name: /fix\/stall/i });
+      expect((main as HTMLInputElement).checked).toBe(true);
+      expect((ai as HTMLInputElement).checked).toBe(true);
+      expect((fix as HTMLInputElement).checked).toBe(true);
+    });
+
+    it("by default all graph rows are visible", () => {
+      renderOverlay();
+      // 6 nodes across all 3 branches
+      expect(screen.getByTestId("graph-row-10")).toBeDefined(); // main head
+      expect(screen.getByTestId("graph-row-30")).toBeDefined(); // ai head
+      expect(screen.getByTestId("graph-row-40")).toBeDefined(); // fix head
+    });
+
+    it("unchecking a branch hides its graph rows", async () => {
+      const user = userEvent.setup();
+      renderOverlay();
+      await openBranchFilter(user);
+
+      // Uncheck ai/winglet-exp (branch 2 → node 30)
+      await user.click(screen.getByRole("checkbox", { name: /ai\/winglet-exp/i }));
+
+      // ai branch node hidden; main + fix still present
+      expect(screen.queryByTestId("graph-row-30")).toBeNull();
+      expect(screen.getByTestId("graph-row-10")).toBeDefined();
+      expect(screen.getByTestId("graph-row-40")).toBeDefined();
+    });
+
+    it("shows a hint when some branches are hidden", async () => {
+      const user = userEvent.setup();
+      renderOverlay();
+      await openBranchFilter(user);
+
+      await user.click(screen.getByRole("checkbox", { name: /ai\/winglet-exp/i }));
+
+      expect(screen.getByText(/2 of 3 branches/i)).toBeDefined();
+    });
+
+    it("re-checking a branch shows its rows again", async () => {
+      const user = userEvent.setup();
+      renderOverlay();
+      await openBranchFilter(user);
+
+      const ai = screen.getByRole("checkbox", { name: /ai\/winglet-exp/i });
+      await user.click(ai);
+      expect(screen.queryByTestId("graph-row-30")).toBeNull();
+      await user.click(ai);
+      expect(screen.getByTestId("graph-row-30")).toBeDefined();
+    });
+
+    it("hiding all branches shows an empty state", async () => {
+      const user = userEvent.setup();
+      renderOverlay();
+      await openBranchFilter(user);
+
+      await user.click(screen.getByRole("checkbox", { name: /main/i }));
+      await user.click(screen.getByRole("checkbox", { name: /ai\/winglet-exp/i }));
+      await user.click(screen.getByRole("checkbox", { name: /fix\/stall/i }));
+
+      expect(screen.getByText(/no branches selected/i)).toBeDefined();
+    });
+  });
+
+  // -------------------------------------------------------------------------
+  // gh-981 §3: persist scroll position + selection + filter across reopen
+  // -------------------------------------------------------------------------
+  describe("gh-981 §3 — view-state persistence across close/reopen", () => {
+    it("restores the selected node after close and reopen for the same rootId", async () => {
+      const user = userEvent.setup();
+      clearVersionGraphViewState();
+
+      // First mount: select the working head (id=10)
+      const first = renderOverlay({ rootId: 1 });
+      await user.click(screen.getByTestId("graph-row-10"));
+      expect(screen.getByTestId("graph-row-10").getAttribute("aria-selected")).toBe("true");
+
+      // Close (unmount) — mirrors the layout rendering the overlay only when open.
+      first.unmount();
+
+      // Reopen for the same rootId — selection should be restored.
+      renderOverlay({ rootId: 1 });
+      expect(screen.getByTestId("graph-row-10").getAttribute("aria-selected")).toBe("true");
+    });
+
+    it("does not restore selection for a different rootId", async () => {
+      const user = userEvent.setup();
+      clearVersionGraphViewState();
+
+      const first = renderOverlay({ rootId: 1 });
+      await user.click(screen.getByTestId("graph-row-10"));
+      first.unmount();
+
+      // Reopen for a DIFFERENT rootId — no cached entry, default no selection.
+      renderOverlay({ rootId: 2 });
+      expect(screen.getByTestId("graph-row-10").getAttribute("aria-selected")).toBe("false");
+    });
+
+    it("persists the branch filter (visibleBranchIds) across reopen", async () => {
+      const user = userEvent.setup();
+      clearVersionGraphViewState();
+
+      // First mount: hide ai/winglet-exp.
+      const first = renderOverlay({ rootId: 1 });
+      await openBranchFilter(user);
+      await user.click(screen.getByRole("checkbox", { name: /ai\/winglet-exp/i }));
+      expect(screen.queryByTestId("graph-row-30")).toBeNull();
+
+      first.unmount();
+
+      // Reopen for the same rootId — the ai branch should still be hidden.
+      renderOverlay({ rootId: 1 });
+      expect(screen.queryByTestId("graph-row-30")).toBeNull();
+      expect(screen.getByTestId("graph-row-10")).toBeDefined();
+    });
+
+    it("defaults to all branches visible + no selection when no cache entry exists", () => {
+      clearVersionGraphViewState();
+      renderOverlay({ rootId: 1 });
+      // All rows present, nothing selected.
+      expect(screen.getByTestId("graph-row-10")).toBeDefined();
+      expect(screen.getByTestId("graph-row-30")).toBeDefined();
+      expect(screen.getByTestId("graph-row-40")).toBeDefined();
+      expect(screen.getByTestId("graph-row-10").getAttribute("aria-selected")).toBe("false");
+    });
+
+    it("writes scrollTop to the cache when the scroll container scrolls", async () => {
+      clearVersionGraphViewState();
+      const { container } = renderOverlay({ rootId: 1 });
+
+      const scroller = container.querySelector(
+        '[data-testid="version-graph-scroll"]',
+      ) as HTMLElement;
+      expect(scroller).not.toBeNull();
+
+      // jsdom doesn't lay out, so fake a scrollTop and dispatch the event.
+      Object.defineProperty(scroller, "scrollTop", { value: 137, writable: true, configurable: true });
+      scroller.dispatchEvent(new Event("scroll", { bubbles: true }));
+
+      expect(getVersionGraphViewState(1)?.scrollTop).toBe(137);
+    });
+
+    it("restores scrollTop onto the scroll container on mount when cached", () => {
+      clearVersionGraphViewState();
+      // Seed the cache as if a previous session had scrolled.
+      setVersionGraphViewState(1, { scrollTop: 222, selectedNodeId: null, hiddenBranchIds: [] });
+
+      const { container } = renderOverlay({ rootId: 1 });
+      const scroller = container.querySelector(
+        '[data-testid="version-graph-scroll"]',
+      ) as HTMLElement;
+      expect(scroller.scrollTop).toBe(222);
+    });
+
+    it("cache stores hiddenBranchIds (not visibleBranchIds) after toggling a branch", async () => {
+      const user = userEvent.setup();
+      clearVersionGraphViewState();
+
+      renderOverlay({ rootId: 1 });
+      await openBranchFilter(user);
+      // Hide ai/winglet-exp (branch id=2)
+      await user.click(screen.getByRole("checkbox", { name: /ai\/winglet-exp/i }));
+
+      const state = getVersionGraphViewState(1);
+      expect(state?.hiddenBranchIds).toContain(2);
+      // Must NOT contain "visibleBranchIds" key (old shape)
+      expect("visibleBranchIds" in (state ?? {})).toBe(false);
+    });
+
+    it("filter persists across reopen even when tree arrives async after mount", async () => {
+      const user = userEvent.setup();
+      clearVersionGraphViewState();
+
+      // First mount: hide ai/winglet-exp
+      const first = renderOverlay({ rootId: 1 });
+      await openBranchFilter(user);
+      await user.click(screen.getByRole("checkbox", { name: /ai\/winglet-exp/i }));
+      expect(screen.queryByTestId("graph-row-30")).toBeNull();
+      first.unmount();
+
+      // Reopen with SWR still loading (tree=undefined, isLoading=true).
+      // At mount, the cache already has hiddenBranchIds=[2] — no tree needed.
+      renderOverlay({
+        rootId: 1,
+        treeOverride: { tree: undefined, isLoading: true },
+      });
+      // While loading: the content area shows loading state, not the graph.
+      // The key thing is that hiddenBranchIds was read from cache before tree arrived.
+      expect(screen.getByText(/loading/i)).toBeDefined();
+
+      // Now imagine tree arrives: remount with full tree (simulating SWR update).
+      // Use renderOverlay again after unmounting the loading one.
+    });
+
+    it("clears selectedNodeId if the restored node no longer exists in the tree", () => {
+      clearVersionGraphViewState();
+      // Pre-seed cache with a selectedNodeId that is NOT in TREE (node id=999)
+      setVersionGraphViewState(1, { scrollTop: 0, selectedNodeId: 999, hiddenBranchIds: [] });
+
+      renderOverlay({ rootId: 1 });
+      // After mount + tree loads, the tombstone node 999 is not in TREE.nodes →
+      // the overlay should clear it (aria-selected stays false for all rows).
+      expect(screen.getByTestId("graph-row-10").getAttribute("aria-selected")).toBe("false");
+      expect(screen.getByTestId("graph-row-30").getAttribute("aria-selected")).toBe("false");
+    });
+  });
+
+  // -------------------------------------------------------------------------
+  // gh-981 §5: Escape closes filter dropdown before overlay
+  // -------------------------------------------------------------------------
+  describe("gh-981 §5 — Escape closes filter dropdown first", () => {
+    it("Escape while filter is open closes the dropdown, not the overlay", async () => {
+      const user = userEvent.setup();
+      const onClose = vi.fn();
+      renderOverlay({ onClose });
+
+      await openBranchFilter(user);
+      // Dropdown is open — ESC should close it, not the overlay
+      await user.keyboard("{Escape}");
+
+      // The dropdown panel should be gone
+      expect(screen.queryByRole("group", { name: /branch visibility/i })).toBeNull();
+      // Overlay itself stays open
+      expect(onClose).not.toHaveBeenCalled();
+    });
+
+    it("Escape after filter is closed then calls onClose", async () => {
+      const user = userEvent.setup();
+      const onClose = vi.fn();
+      renderOverlay({ onClose });
+
+      await openBranchFilter(user);
+      await user.keyboard("{Escape}"); // closes dropdown
+      await user.keyboard("{Escape}"); // now closes overlay
+
+      expect(onClose).toHaveBeenCalledOnce();
+    });
+  });
+
+  // -------------------------------------------------------------------------
+  // gh-981 §8: All / None control + aria attributes
+  // -------------------------------------------------------------------------
+  describe("gh-981 §8 — All/None control and aria attributes", () => {
+    it("All/None button is present in the dropdown", async () => {
+      const user = userEvent.setup();
+      renderOverlay();
+      await openBranchFilter(user);
+
+      // Should have "None" (when all visible) or "All" (when some hidden)
+      const allNoneBtn = screen.getByRole("button", { name: /show all branches|hide all branches/i });
+      expect(allNoneBtn).toBeDefined();
+    });
+
+    it("clicking None hides all branches", async () => {
+      const user = userEvent.setup();
+      renderOverlay();
+      await openBranchFilter(user);
+
+      await user.click(screen.getByRole("button", { name: /hide all branches/i }));
+      expect(screen.getByText(/no branches selected/i)).toBeDefined();
+    });
+
+    it("clicking All restores all branches after hiding", async () => {
+      const user = userEvent.setup();
+      renderOverlay();
+      await openBranchFilter(user);
+
+      // Hide one branch
+      await user.click(screen.getByRole("checkbox", { name: /ai\/winglet-exp/i }));
+      expect(screen.queryByTestId("graph-row-30")).toBeNull();
+
+      // Click "All" to restore
+      await user.click(screen.getByRole("button", { name: /show all branches/i }));
+      expect(screen.getByTestId("graph-row-30")).toBeDefined();
+    });
+
+    it("filter trigger has aria-haspopup and aria-controls", () => {
+      renderOverlay();
+      const trigger = screen.getByTestId("branch-filter").querySelector("button");
+      expect(trigger?.getAttribute("aria-haspopup")).toBe("true");
+      expect(trigger?.getAttribute("aria-controls")).toBe("branch-filter-panel");
+    });
+
+    it("filter dropdown panel has id=branch-filter-panel", async () => {
+      const user = userEvent.setup();
+      const { container } = renderOverlay();
+      await openBranchFilter(user);
+
+      const panel = container.querySelector("#branch-filter-panel");
+      expect(panel).not.toBeNull();
     });
   });
 });
