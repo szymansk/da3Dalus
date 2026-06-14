@@ -148,7 +148,6 @@ export function Header({ onOpenHistory }: HeaderProps) {
             className="flex items-center gap-1.5 rounded-full border border-border bg-card-muted px-3 py-2 text-[13px] text-foreground hover:bg-sidebar-accent"
           >
             <History size={14} />
-            <span className="font-[family-name:var(--font-geist-sans)]">v3</span>
             <ChevronDown size={12} className="text-muted-foreground" />
           </button>
           <button
