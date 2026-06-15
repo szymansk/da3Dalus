@@ -20,7 +20,6 @@ import json
 import logging
 import re
 import sys
-import tempfile
 from pathlib import Path
 
 logger = logging.getLogger(__name__)
@@ -149,7 +148,6 @@ def _extract_al_motors(pdf_path: Path) -> list[dict]:
 
     records: list[dict] = []
     warnings: list[str] = []
-    header_seen = False
 
     try:
         with pdfplumber.open(pdf_path) as pdf:
@@ -302,7 +300,12 @@ def _extract_ddrive_motors(pdf_path: Path) -> list[dict]:
                             "shaft_diameter_mm": shaft_mm,
                             "static_thrust_g": None,  # per-prop, not summarised
                             "art_no": art_no,
-                            "gear_ratio": float(name.split(":")[-1]) if ":" in name else None,
+                            # '... 3.7:1' → 3.7 (ratio is the value BEFORE the colon)
+                            "gear_ratio": (
+                                _parse_float(name.split(":")[0].split()[-1])
+                                if ":" in name
+                                else None
+                            ),
                             "efficiency_pct": eta_pct,
                         },
                     }
@@ -587,7 +590,7 @@ def _extract_antares_escs(pdf_path: Path) -> list[dict]:
 # ──────────────────────────────────────────────────────────────────────────────
 
 
-def parse_all(pdf_dir: Path = PDF_DIR, output_path: Path = OUTPUT_PATH) -> list[dict]:
+def parse_all(pdf_dir: Path = PDF_DIR) -> list[dict]:
     """Parse all D-Power PDFs and return the combined record list."""
     all_records: list[dict] = []
 

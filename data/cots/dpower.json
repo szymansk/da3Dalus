@@ -549,7 +549,7 @@
       "shaft_diameter_mm": 6.0,
       "static_thrust_g": null,
       "art_no": "DPDDIL36371",
-      "gear_ratio": 1.0,
+      "gear_ratio": 3.7,
       "efficiency_pct": 80.0
     }
   },
@@ -574,7 +574,7 @@
       "shaft_diameter_mm": 6.0,
       "static_thrust_g": null,
       "art_no": "DPDDIL3651",
-      "gear_ratio": 1.0,
+      "gear_ratio": 5.0,
       "efficiency_pct": 80.0
     }
   },
