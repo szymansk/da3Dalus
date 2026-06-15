@@ -24,8 +24,28 @@ vi.mock("lucide-react", () => {
     Box: icon, Lock: icon, Unlock: icon, Upload: icon,
     FolderPlus: icon, Check: icon, GripVertical: icon,
     Pencil: icon, Scale: icon,
+    // gh-197: PowertrainSizingModal uses Zap, ExternalLink, AlertTriangle
+    Zap: icon, ExternalLink: icon, AlertTriangle: icon,
   };
 });
+
+vi.mock("@/hooks/usePowertrainSizingModal", () => ({
+  usePowertrainModalParams: () => ({
+    data: null,
+    error: null,
+    isLoading: false,
+    mutate: vi.fn(),
+  }),
+  runPowertrainSizing: vi.fn().mockResolvedValue({ recommendations: [], warnings: [] }),
+}));
+
+vi.mock("@/hooks/useMissionObjectives", () => ({
+  useMissionObjectives: () => ({
+    data: null,
+    error: null,
+    isLoading: false,
+  }),
+}));
 
 // Stub SWR-backed hooks so the page can render without a real backend.
 vi.mock("@/hooks/useComponents", () => ({
