@@ -70,7 +70,7 @@ def _motor_to_suggestion(m: ComponentModel) -> MotorSuggestion:
     # D-Drive motors store gear_ratio in specs (gh-986); the KV shown in the
     # modal is the raw motor KV from specs (before any gearing) — the designer
     # is picking the motor, not the propulsion output shaft.
-    raw_kv = specs.get("kv")
+    raw_kv = specs.get("kv_rpm_per_volt", specs.get("kv"))
     kv = float(raw_kv) if raw_kv is not None else None
 
     raw_power = specs.get("max_power_w") or specs.get("max_continuous_power_w")

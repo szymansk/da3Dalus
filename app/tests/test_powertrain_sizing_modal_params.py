@@ -177,6 +177,27 @@ class TestGetModalParams:
         assert m.efficiency_pct == pytest.approx(82.0)
         assert m.max_power_w == pytest.approx(320.0)
 
+    def test_kv_read_from_real_gh986_specs_key(self):
+        """Regression (gh-990): real catalog data stores KV under
+        'kv_rpm_per_volt' (gh-986 schema), not 'kv'. The modal must read it,
+        otherwise every motor shows KV=null in the UI."""
+        plane = _make_aeroplane(ctx={"cd0": 0.03, "s_ref_m2": 0.5})
+        motor = _make_motor(
+            motor_id=37,
+            name="AL 28-09",
+            specs={
+                "kv_rpm_per_volt": 980,
+                "io_no_load_a": 0.7,
+                "continuous_current_a": 12.0,
+                "max_current_a": 14.0,
+            },
+        )
+        db = _make_db(aeroplane=plane, motors=[motor])
+
+        result = get_modal_params(db, plane.uuid)
+
+        assert result.motors[0].kv == pytest.approx(980.0)
+
     def test_motors_without_efficiency_use_default(self):
         plane = _make_aeroplane(ctx={"cd0": 0.03, "s_ref_m2": 0.5})
         motor = _make_motor(motor_id=5, specs={})  # no efficiency_pct in specs
