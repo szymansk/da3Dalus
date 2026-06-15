@@ -54,3 +54,10 @@ class PowertrainSizingResponse(BaseModel):
         default_factory=list,
         description="Powertrain candidates sorted by confidence descending",
     )
+    warnings: list[str] = Field(
+        default_factory=list,
+        description=(
+            "Informational notes about assumptions made during sizing, e.g. when "
+            "aerodynamic parameters were not provided and RC-typical defaults were used."
+        ),
+    )

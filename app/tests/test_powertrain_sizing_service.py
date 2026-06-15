@@ -17,6 +17,10 @@ from app.schemas.powertrain_sizing import (
 )
 from app.services.powertrain_sizing_service import (
     AIR_DENSITY_SEA_LEVEL,
+    _DEFAULT_AR,
+    _DEFAULT_CD0,
+    _DEFAULT_E_OSWALD,
+    _DEFAULT_S_REF_M2,
     _air_density,
     _compute_confidence,
     _evaluate_motor_battery_combo,
@@ -24,6 +28,21 @@ from app.services.powertrain_sizing_service import (
     _required_power_w,
     size_powertrain,
 )
+
+
+# Convenience wrapper: call _evaluate_motor_battery_combo with RC defaults for
+# tests that don't exercise the aero-param resolution path.
+def _eval_combo_defaults(motor, battery, escs, request):
+    return _evaluate_motor_battery_combo(
+        motor,
+        battery,
+        escs,
+        request,
+        cd0=_DEFAULT_CD0,
+        e_oswald=_DEFAULT_E_OSWALD,
+        ar=_DEFAULT_AR,
+        s_ref_m2=_DEFAULT_S_REF_M2,
+    )
 
 
 # --------------------------------------------------------------------------- #
@@ -219,7 +238,7 @@ class TestEvaluateMotorBatteryCombo:
         escs = [_make_esc(max_continuous_a=50.0)]
         request = _default_request()
 
-        result = _evaluate_motor_battery_combo(motor, battery, escs, request)
+        result = _eval_combo_defaults(motor, battery, escs, request)
 
         assert result is not None
         assert isinstance(result, PowertrainCandidate)
@@ -234,33 +253,33 @@ class TestEvaluateMotorBatteryCombo:
     def test_zero_capacity_battery_returns_none(self):
         motor = _make_motor()
         battery = _make_battery(capacity_mah=0)
-        result = _evaluate_motor_battery_combo(motor, battery, [], _default_request())
+        result = _eval_combo_defaults(motor, battery, [], _default_request())
         assert result is None
 
     def test_zero_voltage_battery_returns_none(self):
         motor = _make_motor()
         battery = _make_battery(voltage=0)
-        result = _evaluate_motor_battery_combo(motor, battery, [], _default_request())
+        result = _eval_combo_defaults(motor, battery, [], _default_request())
         assert result is None
 
     def test_negative_capacity_returns_none(self):
         motor = _make_motor()
         battery = _make_battery(capacity_mah=-100)
-        result = _evaluate_motor_battery_combo(motor, battery, [], _default_request())
+        result = _eval_combo_defaults(motor, battery, [], _default_request())
         assert result is None
 
     def test_current_exceeds_max_returns_none(self):
         motor = _make_motor()
         battery = _make_battery()
         request = _default_request(max_current_draw_a=0.1)  # very low limit
-        result = _evaluate_motor_battery_combo(motor, battery, [], request)
+        result = _eval_combo_defaults(motor, battery, [], request)
         assert result is None
 
     def test_no_max_current_constraint(self):
         motor = _make_motor()
         battery = _make_battery()
         request = _default_request(max_current_draw_a=None)
-        result = _evaluate_motor_battery_combo(motor, battery, [], request)
+        result = _eval_combo_defaults(motor, battery, [], request)
         assert result is not None
 
     def test_esc_matched_when_available(self):
@@ -269,7 +288,7 @@ class TestEvaluateMotorBatteryCombo:
         esc = _make_esc(esc_id=99, name="BigESC", max_continuous_a=100.0)
         request = _default_request()
 
-        result = _evaluate_motor_battery_combo(motor, battery, [esc], request)
+        result = _eval_combo_defaults(motor, battery, [esc], request)
         assert result is not None
         assert result.esc_id == 99
         assert result.esc_name == "BigESC"
@@ -280,7 +299,7 @@ class TestEvaluateMotorBatteryCombo:
         esc = _make_esc(max_continuous_a=0.001)  # too small
         request = _default_request()
 
-        result = _evaluate_motor_battery_combo(motor, battery, [esc], request)
+        result = _eval_combo_defaults(motor, battery, [esc], request)
         assert result is not None
         assert result.esc_id is None
         assert result.esc_name is None
@@ -288,13 +307,13 @@ class TestEvaluateMotorBatteryCombo:
     def test_motor_with_no_mass(self):
         motor = _make_motor(mass_g=0.0)
         battery = _make_battery()
-        result = _evaluate_motor_battery_combo(motor, battery, [], _default_request())
+        result = _eval_combo_defaults(motor, battery, [], _default_request())
         assert result is not None
 
     def test_motor_with_none_mass(self):
         motor = SimpleNamespace(id=1, name="NoMass", mass_g=None)
         battery = _make_battery()
-        result = _evaluate_motor_battery_combo(motor, battery, [], _default_request())
+        result = _eval_combo_defaults(motor, battery, [], _default_request())
         assert result is not None
 
     def test_battery_uses_nominal_voltage_fallback(self):
@@ -306,7 +325,7 @@ class TestEvaluateMotorBatteryCombo:
             specs={"capacity_mah": 2200, "nominal_voltage": 14.8},
         )
         motor = _make_motor()
-        result = _evaluate_motor_battery_combo(motor, battery, [], _default_request())
+        result = _eval_combo_defaults(motor, battery, [], _default_request())
         assert result is not None
         assert result.estimated_cruise_power_w > 0
 
@@ -314,7 +333,7 @@ class TestEvaluateMotorBatteryCombo:
         motor = _make_motor()
         battery = _make_battery()
         request = _default_request(target_top_speed_ms=33.3)
-        result = _evaluate_motor_battery_combo(motor, battery, [], request)
+        result = _eval_combo_defaults(motor, battery, [], request)
         assert result is not None
         assert result.estimated_top_speed_ms == pytest.approx(33.3, abs=0.1)
 
