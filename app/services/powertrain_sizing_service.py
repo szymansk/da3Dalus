@@ -4,13 +4,19 @@ Refactored for gh-490 (Model A): the catalog sweep logic is preserved, but the
 power-required physics are now delegated to endurance_service._power_required
 instead of relying on hardcoded geometry constants.
 
-The hardcoded geometry constants and the simplified power helper have been
-replaced by a call to endurance_service._power_required with per-combo
-aerodynamic parameters (gh-490 Model A).
+gh-960: when aerodynamic parameters (cd0, e_oswald, AR, S_ref) are not supplied
+in the request, the service now:
+  1. Prefers values from the aeroplane's assumption_computation_context
+     (single source of truth, gh-924).
+  2. Falls back to RC-typical defaults when neither request nor context provides
+     a value, and appends a descriptive warning to the response.
 """
+
+from __future__ import annotations
 
 import logging
 import math
+from typing import Any
 
 from sqlalchemy.orm import Session
 
@@ -33,6 +39,12 @@ from app.services.endurance_service import (
 logger = logging.getLogger(__name__)
 
 AIR_DENSITY_SEA_LEVEL = RHO_SEA_LEVEL  # kept for backward compat with existing tests
+
+# RC-typical defaults used when neither request nor aeroplane context provides a value.
+_DEFAULT_CD0 = 0.03
+_DEFAULT_E_OSWALD = 0.8
+_DEFAULT_AR = 8.0
+_DEFAULT_S_REF_M2 = 0.5
 
 
 def _air_density(altitude_m: float) -> float:
@@ -107,13 +119,89 @@ def _compute_confidence(flight_time_min: float, target_flight_time_min: float) -
     return confidence
 
 
+def _resolve_aero_params(
+    request: PowertrainSizingRequest,
+    context: dict[str, Any] | None,
+) -> tuple[float, float, float, float, list[str]]:
+    """Resolve aerodynamic parameters with a 3-tier priority (gh-960).
+
+    Priority order per parameter:
+      1. Explicit request field (user-supplied → most trusted)
+      2. aeroplane.assumption_computation_context (computed from analysis, gh-924)
+      3. RC-typical default → emits a warning note
+
+    Returns
+    -------
+    (cd0, e_oswald, ar, s_ref_m2, warnings)
+    """
+    ctx = context or {}
+    warnings: list[str] = []
+
+    def _pick(
+        request_val: float | None,
+        ctx_key: str,
+        default: float,
+        label: str,
+        param_name: str,
+    ) -> float:
+        if request_val is not None:
+            return request_val
+        ctx_val = ctx.get(ctx_key)
+        if ctx_val is not None:
+            return float(ctx_val)
+        warnings.append(
+            f"{label} not provided — assumed {default} (RC-typical). "
+            f"Provide {param_name} in the request or run an aerodynamic analysis "
+            f"to get an accurate power estimate."
+        )
+        return default
+
+    cd0 = _pick(
+        request.cd0,
+        "cd0",
+        _DEFAULT_CD0,
+        "Zero-lift drag coefficient (cd0)",
+        "cd0",
+    )
+    e_oswald = _pick(
+        request.e_oswald,
+        "e_oswald",
+        _DEFAULT_E_OSWALD,
+        "Oswald efficiency factor (e_oswald)",
+        "e_oswald",
+    )
+    ar = _pick(
+        request.aspect_ratio,
+        "aspect_ratio",
+        _DEFAULT_AR,
+        "Wing aspect ratio (aspect_ratio)",
+        "aspect_ratio",
+    )
+    s_ref_m2 = _pick(
+        request.s_ref_m2,
+        "s_ref_m2",
+        _DEFAULT_S_REF_M2,
+        "Wing reference area (s_ref_m2)",
+        "s_ref_m2",
+    )
+
+    return cd0, e_oswald, ar, s_ref_m2, warnings
+
+
 def _evaluate_motor_battery_combo(
-    motor, battery, escs: list, request: PowertrainSizingRequest
+    motor,
+    battery,
+    escs: list,
+    request: PowertrainSizingRequest,
+    cd0: float,
+    e_oswald: float,
+    ar: float,
+    s_ref_m2: float,
 ) -> PowertrainCandidate | None:
     """Evaluate a single motor+battery combination; return a candidate or None.
 
-    Aerodynamic geometry (cd0, e_oswald, ar, s_ref) comes from the request
-    or reasonable RC defaults.  Physics are computed via endurance_service.
+    Aerodynamic geometry (cd0, e_oswald, ar, s_ref) are resolved once by the
+    caller via _resolve_aero_params and passed in — no per-combo resolution.
     """
     motor_mass_kg = (motor.mass_g or 0) / 1000.0
     battery_mass_kg = (battery.mass_g or 0) / 1000.0
@@ -126,11 +214,6 @@ def _evaluate_motor_battery_combo(
 
     total_mass = request.airframe_mass_kg + motor_mass_kg + battery_mass_kg
 
-    # Pull aerodynamic geometry from request fields (Optional; fall back to RC-typical defaults)
-    cd0: float = request.cd0 if request.cd0 is not None else 0.03
-    e_oswald: float = request.e_oswald if request.e_oswald is not None else 0.8
-    ar: float = request.aspect_ratio if request.aspect_ratio is not None else 8.0
-    s_ref_m2: float = request.s_ref_m2 if request.s_ref_m2 is not None else 0.5
     eta_prop: float = request.eta_prop if request.eta_prop is not None else DEFAULT_ETA_PROP
     eta_motor: float = request.eta_motor if request.eta_motor is not None else DEFAULT_ETA_MOTOR
     eta_esc: float = request.eta_esc if request.eta_esc is not None else DEFAULT_ETA_ESC
@@ -185,14 +268,20 @@ def size_powertrain(
     escs = db.query(ComponentModel).filter(ComponentModel.component_type == "esc").all()
 
     if not motors or not batteries:
-        return PowertrainSizingResponse(recommendations=[])
+        return PowertrainSizingResponse(recommendations=[], warnings=[])
+
+    # Resolve aero params once; collect warnings (gh-960)
+    ctx = getattr(aeroplane, "assumption_computation_context", None) or {}
+    cd0, e_oswald, ar, s_ref_m2, warnings = _resolve_aero_params(request, ctx)
 
     candidates: list[PowertrainCandidate] = []
     for motor in motors:
         for battery in batteries:
-            candidate = _evaluate_motor_battery_combo(motor, battery, escs, request)
+            candidate = _evaluate_motor_battery_combo(
+                motor, battery, escs, request, cd0, e_oswald, ar, s_ref_m2
+            )
             if candidate is not None:
                 candidates.append(candidate)
 
     candidates.sort(key=lambda c: c.confidence, reverse=True)
-    return PowertrainSizingResponse(recommendations=candidates[:10])
+    return PowertrainSizingResponse(recommendations=candidates[:10], warnings=warnings)
