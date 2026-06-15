@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Package, Search, Plus, Settings, Trash2, Box } from "lucide-react";
+import { Package, Search, Plus, Settings, Trash2, Box, Zap } from "lucide-react";
 import { PillToggle, type PillToggleOption } from "@/components/ui/PillToggle";
 import { WorkbenchTwoPanel } from "@/components/workbench/WorkbenchTwoPanel";
 import { ComponentTree } from "@/components/workbench/ComponentTree";
@@ -10,6 +10,7 @@ import { ConstructionPartsGrid } from "@/components/workbench/ConstructionPartsG
 import { ConstructionPartUploadDialog } from "@/components/workbench/ConstructionPartUploadDialog";
 import { NodePropertyPanel } from "@/components/workbench/NodePropertyPanel";
 import { ComponentTypeManagementDialog } from "@/components/workbench/ComponentTypeManagementDialog";
+import { PowertrainSizingModal } from "@/components/workbench/PowertrainSizingModal";
 import { useAeroplaneContext } from "@/components/workbench/AeroplaneContext";
 import { useComponents, deleteComponent, type Component } from "@/hooks/useComponents";
 import {
@@ -42,6 +43,7 @@ export default function ComponentsPage() {
   const [editDialog, setEditDialog] = useState<{ open: boolean; component: Component | null }>({ open: false, component: null });
   const [typesDialog, setTypesDialog] = useState(false);
   const [uploadOpen, setUploadOpen] = useState(false);
+  const [sizingModalOpen, setSizingModalOpen] = useState(false);
   const { mutate: mutateParts } = useConstructionParts(aeroplaneId);
 
   // The pencil icon on each tree row opens a property-edit modal. We keep
@@ -100,6 +102,17 @@ export default function ComponentsPage() {
             {total} items
           </span>
           <span className="flex-1" />
+          {aeroplaneId && (
+            <button
+              onClick={() => setSizingModalOpen(true)}
+              className="flex items-center gap-1.5 rounded-full border border-border bg-card-muted px-3 py-2 text-[13px] text-foreground hover:bg-sidebar-accent"
+              title="Open Powertrain Sizing wizard"
+              data-testid="powertrain-sizing-btn"
+            >
+              <Zap size={14} className="text-orange-400" />
+              Powertrain Sizing
+            </button>
+          )}
           <button
             onClick={() => setTypesDialog(true)}
             className="flex items-center gap-1.5 rounded-full border border-border bg-card-muted px-3 py-2 text-[13px] text-foreground hover:bg-sidebar-accent"
@@ -269,6 +282,15 @@ export default function ComponentsPage() {
       open={typesDialog}
       onClose={() => setTypesDialog(false)}
     />
+
+    {sizingModalOpen && aeroplaneId && (
+      <PowertrainSizingModal
+        open={sizingModalOpen}
+        aeroplaneId={aeroplaneId}
+        onClose={() => setSizingModalOpen(false)}
+        onTreeMutate={() => mutateTree()}
+      />
+    )}
     </>
   );
 }

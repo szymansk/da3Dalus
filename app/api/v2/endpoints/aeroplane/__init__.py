@@ -27,6 +27,7 @@ from .forward_cg import router as forward_cg_router
 from .speed_polar import router as speed_polar_router
 from .turbulator_optimizer import router as turbulator_optimizer_router
 from .powertrain_solution_space import router as powertrain_solution_space_router
+from .powertrain_sizing_modal import router as powertrain_sizing_modal_router
 
 # Include the routers
 router.include_router(base_router)
@@ -51,3 +52,4 @@ router.include_router(forward_cg_router)
 router.include_router(speed_polar_router)
 router.include_router(turbulator_optimizer_router)
 router.include_router(powertrain_solution_space_router)
+router.include_router(powertrain_sizing_modal_router)
