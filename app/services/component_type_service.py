@@ -392,8 +392,22 @@ DEFAULT_SEED_TYPES: list[dict[str, Any]] = [
                 "unit": "RPM/V",
                 "required": True,
             },
-            {"name": "max_current_a", "label": "Max Strom", "type": "number", "unit": "A"},
+            {"name": "max_current_a", "label": "Max Strom (kurz)", "type": "number", "unit": "A"},
             {"name": "shaft_diameter_mm", "label": "Wellen-Ø", "type": "number", "unit": "mm"},
+            # gh-986: D-Power fields (additive)
+            {"name": "continuous_current_a", "label": "Dauerstrom", "type": "number", "unit": "A"},
+            {"name": "io_no_load_a", "label": "Leerlaufstrom Io", "type": "number", "unit": "A"},
+            {"name": "cells_lipo_min", "label": "LiPo Zellen min", "type": "number"},
+            {"name": "cells_lipo_max", "label": "LiPo Zellen max", "type": "number"},
+            {"name": "static_thrust_g", "label": "Statischer Schub", "type": "number", "unit": "g"},
+            {"name": "art_no", "label": "Art.-Nr.", "type": "string"},
+            {"name": "max_power_w", "label": "Max. Leistung", "type": "number", "unit": "W"},
+            {
+                "name": "max_continuous_power_w",
+                "label": "Dauerleistung",
+                "type": "number",
+                "unit": "W",
+            },
         ],
     },
     {
@@ -421,7 +435,7 @@ DEFAULT_SEED_TYPES: list[dict[str, Any]] = [
         "schema": [
             {
                 "name": "max_current_a",
-                "label": "Max Strom",
+                "label": "Max Strom (kurz)",
                 "type": "number",
                 "unit": "A",
                 "required": True,
@@ -435,6 +449,12 @@ DEFAULT_SEED_TYPES: list[dict[str, Any]] = [
                 "type": "enum",
                 "options": ["pwm", "oneshot", "dshot150", "dshot300", "dshot600"],
             },
+            # gh-986: D-Power fields (additive)
+            {"name": "continuous_current_a", "label": "Dauerstrom", "type": "number", "unit": "A"},
+            {"name": "cells_lipo_min", "label": "LiPo Zellen min", "type": "number"},
+            {"name": "cells_lipo_max", "label": "LiPo Zellen max", "type": "number"},
+            {"name": "bec_output", "label": "BEC Ausgang", "type": "string"},
+            {"name": "art_no", "label": "Art.-Nr.", "type": "string"},
         ],
     },
     {
