@@ -166,6 +166,13 @@ function MotorRow({ motor, isSelected, onSelect }: MotorRowProps) {
 // CandidateRow — one row in the results table
 // ---------------------------------------------------------------------------
 
+/** Map a confidence 0–100 value to a Tailwind class string for the badge. */
+function confidenceClass(conf: number): string {
+  if (conf >= 60) return "bg-emerald-900/40 text-emerald-400";
+  if (conf >= 30) return "bg-orange-900/40 text-orange-400";
+  return "bg-zinc-800 text-muted-foreground";
+}
+
 interface CandidateRowProps {
   readonly candidate: PowertrainCandidate;
   readonly isSelected: boolean;
@@ -197,13 +204,7 @@ function CandidateRow({ candidate, isSelected, onSelect }: CandidateRowProps) {
       </td>
       <td className="py-1.5">
         <span
-          className={`inline-block rounded-full px-2 py-0.5 text-[9px] ${
-            conf >= 60
-              ? "bg-emerald-900/40 text-emerald-400"
-              : conf >= 30
-              ? "bg-orange-900/40 text-orange-400"
-              : "bg-zinc-800 text-muted-foreground"
-          }`}
+          className={`inline-block rounded-full px-2 py-0.5 text-[9px] ${confidenceClass(conf)}`}
         >
           {conf}%
         </span>
