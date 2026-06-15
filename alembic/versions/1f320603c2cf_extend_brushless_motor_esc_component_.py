@@ -70,7 +70,7 @@ def upgrade() -> None:
         ("esc", _ESC_NEW_FIELDS),
     ]:
         row = conn.execute(
-            sa.text("SELECT schema_def FROM component_types WHERE name = :n"),
+            sa.text('SELECT "schema" FROM component_types WHERE name = :n'),
             {"n": type_name},
         ).fetchone()
 
@@ -80,7 +80,7 @@ def upgrade() -> None:
 
         new_schema = _extend_schema(row[0], new_fields)
         conn.execute(
-            sa.text("UPDATE component_types SET schema_def = :s WHERE name = :n"),
+            sa.text('UPDATE component_types SET "schema" = :s WHERE name = :n'),
             {"s": new_schema, "n": type_name},
         )
 
@@ -97,7 +97,7 @@ def downgrade() -> None:
         ("esc", esc_remove),
     ]:
         row = conn.execute(
-            sa.text("SELECT schema_def FROM component_types WHERE name = :n"),
+            sa.text('SELECT "schema" FROM component_types WHERE name = :n'),
             {"n": type_name},
         ).fetchone()
 
@@ -107,6 +107,6 @@ def downgrade() -> None:
         existing: list[dict] = json.loads(row[0]) if row[0] else []
         pruned = [f for f in existing if f["name"] not in remove_names]
         conn.execute(
-            sa.text("UPDATE component_types SET schema_def = :s WHERE name = :n"),
+            sa.text('UPDATE component_types SET "schema" = :s WHERE name = :n'),
             {"s": json.dumps(pruned), "n": type_name},
         )
