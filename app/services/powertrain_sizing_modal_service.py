@@ -67,8 +67,9 @@ def _motor_to_suggestion(m: ComponentModel) -> MotorSuggestion:
     raw_eff = specs.get("efficiency_pct")
     efficiency_pct = float(raw_eff) if raw_eff is not None else DEFAULT_MOTOR_ETA * 100.0
 
-    # Normalise gear_ratio: D-Drive motors store gear_ratio in specs (gh-986).
-    # The KV displayed in the modal is the motor's raw KV (before gearing).
+    # D-Drive motors store gear_ratio in specs (gh-986); the KV shown in the
+    # modal is the raw motor KV from specs (before any gearing) — the designer
+    # is picking the motor, not the propulsion output shaft.
     raw_kv = specs.get("kv")
     kv = float(raw_kv) if raw_kv is not None else None
 

@@ -383,7 +383,6 @@ export function PowertrainSizingModal({
   // ---------------------------------------------------------------------------
   const allWarnings = [
     ...(defaults?.warnings ?? []),
-    ...(initialized ? [] : []),
     ...sizingWarnings,
   ];
 
