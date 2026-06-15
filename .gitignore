@@ -292,3 +292,10 @@ db/
 components/aircraft/vsp/*.vsp3
 components/airfoils/vsp_imported_*.dat
 components/airfoils/vsp_morph_*.dat
+
+# local ngrok/Caddy/oauth2-proxy deployment (infra + secrets — never commit)
+/deploy/
+
+# D-Power (and future COTS) PDF datasheets — copyrighted, local only.
+# Only the extracted JSON snapshot (data/cots/*.json) is committed.
+components/cots-assets/
