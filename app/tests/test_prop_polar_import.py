@@ -1,4 +1,4 @@
-"""Tests for app.services.prop_polar_import (gh-995).
+"""Tests for app.services.prop_polar_import (gh-995, gh-999).
 
 All tests run against in-memory SQLite — no network, no real DB required.
 """
@@ -20,8 +20,9 @@ from app.db.base import Base
 from app.models.prop_polar import PropellerPolarModel, PropellerPolarSampleModel
 from app.services.prop_polar_import import (
     ImportResult,
-    import_prop_polars,
     _validate_prop_record,
+    import_prop_polars,
+    load_snapshot,
 )
 
 
@@ -59,6 +60,7 @@ SAMPLE_POLAR_RECORD = {
     "specs": {
         "diameter_in": 9.0,
         "pitch_in": 6.0,
+        "variant": "",
         "blades": 2,
     },
     "polars": [
@@ -166,6 +168,7 @@ SECOND_PROP_RECORD = {
     "specs": {
         "diameter_in": 12.0,
         "pitch_in": 6.0,
+        "variant": "",
         "blades": 2,
     },
     "polars": [
@@ -462,3 +465,156 @@ class TestRecordsEqual:
         result = import_prop_polars(session, [changed_ver])
         session.commit()
         assert result.updated == 1
+
+
+# ──────────────────────────────────────────────────────────────────────────────
+# Variant field (gh-999)
+# ──────────────────────────────────────────────────────────────────────────────
+
+VARIANT_E_RECORD = {
+    "manufacturer": "APC",
+    "name": "APC 10x10E",
+    "component_type": "propeller",
+    "model_ref": "apc/10x10E",
+    "source_url": "https://www.apcprop.com/files/PER3_10x10E.dat",
+    "source_version": "v2022-0915",
+    "specs": {
+        "diameter_in": 10.0,
+        "pitch_in": 10.0,
+        "variant": "E",
+        "blades": 2,
+    },
+    "polars": [
+        {
+            "rpm": 5000,
+            "samples": [
+                {
+                    "J": 0.0,
+                    "Ct": 0.1200,
+                    "Cp": 0.0500,
+                    "Pe": 0.0,
+                    "PWR_W": 100.0,
+                    "Torque_Nm": 0.100,
+                    "Thrust_N": 5.0,
+                },
+            ],
+        }
+    ],
+}
+
+DECIMAL_DIA_RECORD = {
+    "manufacturer": "APC",
+    "name": "APC 10.5x4.5",
+    "component_type": "propeller",
+    "model_ref": "apc/10p5x4p5",
+    "source_url": "https://www.apcprop.com/files/PER3_105x45.dat",
+    "source_version": "v2022-0915",
+    "specs": {
+        "diameter_in": 10.5,
+        "pitch_in": 4.5,
+        "variant": "",
+        "blades": 2,
+    },
+    "polars": [
+        {
+            "rpm": 3000,
+            "samples": [
+                {
+                    "J": 0.0,
+                    "Ct": 0.0740,
+                    "Cp": 0.0388,
+                    "Pe": 0.0,
+                    "PWR_W": 0.297,
+                    "Torque_Nm": 0.003,
+                    "Thrust_N": 0.127,
+                },
+            ],
+        }
+    ],
+}
+
+
+class TestVariantField:
+    """Variant field is stored and retrieved correctly."""
+
+    def test_variant_stored_for_E_prop(self, session):
+        import_prop_polars(session, [VARIANT_E_RECORD])
+        session.commit()
+
+        prop = session.query(PropellerPolarModel).filter_by(name="APC 10x10E").first()
+        assert prop is not None
+        assert prop.variant == "E"
+
+    def test_variant_empty_for_plain_prop(self, session):
+        import_prop_polars(session, [SAMPLE_POLAR_RECORD])
+        session.commit()
+
+        prop = session.query(PropellerPolarModel).filter_by(name="APC 9x6").first()
+        assert prop.variant == ""
+
+    def test_decimal_diameter_stored_correctly(self, session):
+        import_prop_polars(session, [DECIMAL_DIA_RECORD])
+        session.commit()
+
+        prop = session.query(PropellerPolarModel).filter_by(name="APC 10.5x4.5").first()
+        assert prop is not None
+        assert prop.diameter_in == pytest.approx(10.5)
+        assert prop.pitch_in == pytest.approx(4.5)
+
+    def test_variant_updated_on_force(self, session):
+        """Variant is updated when a record is force-reimported."""
+        import_prop_polars(session, [VARIANT_E_RECORD])
+        session.commit()
+
+        updated = {**VARIANT_E_RECORD, "specs": {**VARIANT_E_RECORD["specs"], "variant": "E-3"}}
+        import_prop_polars(session, [updated], force=True)
+        session.commit()
+
+        prop = session.query(PropellerPolarModel).filter_by(name="APC 10x10E").first()
+        assert prop.variant == "E-3"
+
+
+# ──────────────────────────────────────────────────────────────────────────────
+# load_snapshot (gh-999: reads .gz and plain .json)
+# ──────────────────────────────────────────────────────────────────────────────
+
+
+class TestLoadSnapshot:
+    def test_load_gz_snapshot(self, tmp_path):
+        """load_snapshot reads a gzip-compressed JSON file."""
+        import gzip
+        import json
+
+        records = [SAMPLE_POLAR_RECORD]
+        gz_path = tmp_path / "apc_props.json.gz"
+        with gzip.open(gz_path, "wt", encoding="utf-8") as fh:
+            fh.write(json.dumps(records))
+
+        loaded = load_snapshot(gz_path)
+        assert len(loaded) == 1
+        assert loaded[0]["name"] == "APC 9x6"
+
+    def test_load_plain_json_snapshot(self, tmp_path):
+        """load_snapshot reads a plain JSON file (backwards compat)."""
+        import json
+
+        records = [SAMPLE_POLAR_RECORD]
+        json_path = tmp_path / "apc_props.json"
+        json_path.write_text(json.dumps(records), encoding="utf-8")
+
+        loaded = load_snapshot(json_path)
+        assert len(loaded) == 1
+        assert loaded[0]["name"] == "APC 9x6"
+
+    def test_load_snapshot_preserves_variant(self, tmp_path):
+        """load_snapshot round-trips the variant field correctly."""
+        import gzip
+        import json
+
+        records = [VARIANT_E_RECORD]
+        gz_path = tmp_path / "apc_props.json.gz"
+        with gzip.open(gz_path, "wt", encoding="utf-8") as fh:
+            fh.write(json.dumps(records))
+
+        loaded = load_snapshot(gz_path)
+        assert loaded[0]["specs"]["variant"] == "E"

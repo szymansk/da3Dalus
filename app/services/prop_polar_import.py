@@ -1,16 +1,22 @@
-"""Propeller polar import service (gh-995).
+"""Propeller polar import service (gh-995, gh-999).
 
-Reads a versioned factual snapshot (data/cots/apc_props.json) and upserts
+Reads a versioned factual snapshot (data/cots/apc_props.json.gz) and upserts
 propeller polar records into the DB by (manufacturer, name).
 
 Pattern mirrors cots_import.py: single transaction, result report,
 no network required. The snapshot is the durable reimport source.
+
+As of gh-999 the snapshot is gzip-compressed (.json.gz).  The service reads
+both .gz and plain .json for backwards compatibility.
 """
 
 from __future__ import annotations
 
+import gzip
+import json
 import logging
 from dataclasses import dataclass, field
+from pathlib import Path
 from typing import Any
 
 from sqlalchemy.orm import Session
@@ -32,6 +38,18 @@ class ImportResult:
             f"imported={self.imported}, updated={self.updated}, "
             f"skipped={self.skipped}, errors={len(self.errors)}"
         )
+
+
+def load_snapshot(path: Path) -> list[dict[str, Any]]:
+    """Load a propeller snapshot from a .json.gz or .json file.
+
+    Supports both gzip-compressed and plain JSON for backwards compatibility.
+    """
+    if path.suffix == ".gz":
+        with gzip.open(path, "rt", encoding="utf-8") as fh:
+            return json.loads(fh.read())
+    else:
+        return json.loads(path.read_text(encoding="utf-8"))
 
 
 def _validate_prop_record(record: dict[str, Any]) -> str | None:
@@ -107,7 +125,8 @@ def import_prop_polars(
     db:
         SQLAlchemy session. The caller must commit after a successful return.
     records:
-        List of propeller dicts in the snapshot format (see data/cots/apc_props.json).
+        List of propeller dicts in the snapshot format
+        (see data/cots/apc_props.json.gz).
     force:
         When True, overwrite all fields and replace samples even if the version
         matches. Default False: skip rows where source_version already matches.
@@ -144,6 +163,7 @@ def import_prop_polars(
                 source_version=record.get("source_version"),
                 diameter_in=specs.get("diameter_in"),
                 pitch_in=specs.get("pitch_in"),
+                variant=specs.get("variant", ""),
                 blades=specs.get("blades", 2),
             )
             db.add(prop)
@@ -162,6 +182,7 @@ def import_prop_polars(
             existing.source_version = record.get("source_version")
             existing.diameter_in = specs.get("diameter_in")
             existing.pitch_in = specs.get("pitch_in")
+            existing.variant = specs.get("variant", "")
             existing.blades = specs.get("blades", 2)
             db.flush()
             _upsert_samples(db, existing, polars)
