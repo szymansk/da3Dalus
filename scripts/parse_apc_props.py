@@ -290,6 +290,44 @@ def parse_apc_dat_file(path: Path) -> ParsedPropFile:
 
 
 # ──────────────────────────────────────────────────────────────────────────────
+# Blade-count derivation (gh-1004)
+# ──────────────────────────────────────────────────────────────────────────────
+
+# APC encodes 3- and 4-blade props with a trailing ``-N`` token in the
+# designation/variant (e.g. ``28x20-4`` → variant ``-4``; ``4x4E-3`` →
+# variant ``E-3``). The token is a hyphen followed by the blade count as a
+# single digit at the *end* of the variant string. Letter-suffixed hyphen
+# tokens (marine ``M-JK``, ``MRF-RH``, ``P-LH``, ``R-RH`` …) are NOT blade
+# counts and must remain the 2-blade default.
+_BLADE_COUNT_RE = re.compile(r"-([3-9])$")
+
+DEFAULT_BLADES = 2  # APC standard 2-blade prop
+
+
+def derive_blades(variant: str) -> int:
+    """Derive the blade count from a propeller variant suffix.
+
+    The trailing ``-N`` token (``-3``, ``-4``, also as composites such as
+    ``E-3``/``E-4``) encodes the blade count. Absent that token the prop is
+    the standard 2-blade APC propeller.
+
+    Examples::
+
+        derive_blades("")     → 2
+        derive_blades("E")    → 2
+        derive_blades("-4")   → 4
+        derive_blades("E-3")  → 3
+        derive_blades("M-JK") → 2   (letter suffix, not a blade count)
+    """
+    if not variant:
+        return DEFAULT_BLADES
+    m = _BLADE_COUNT_RE.search(variant)
+    if m:
+        return int(m.group(1))
+    return DEFAULT_BLADES
+
+
+# ──────────────────────────────────────────────────────────────────────────────
 # Snapshot record builder
 # ──────────────────────────────────────────────────────────────────────────────
 
@@ -335,7 +373,7 @@ def build_snapshot_record(parsed: ParsedPropFile, filename: str) -> dict[str, An
             "diameter_in": parsed.diameter_in,
             "pitch_in": parsed.pitch_in,
             "variant": variant,
-            "blades": 2,  # APC standard 2-blade; no other info in file
+            "blades": derive_blades(variant),  # from trailing -N token (gh-1004)
         },
         "polars": polars,
     }
