@@ -101,6 +101,75 @@ describe("AnalysisConfigPanel numeric inputs (gh-787)", () => {
   });
 });
 
+describe("AnalysisConfigPanel Spanwise Loads tab (gh-1002)", () => {
+  it("renders the spanwise-loads config inputs", () => {
+    render(
+      <AnalysisConfigPanel
+        activeTab="Spanwise Loads"
+        analysis={makeAnalysis()}
+        {...BASE}
+      />,
+    );
+
+    expect(screen.getByLabelText("alpha")).toBeTruthy();
+    expect(screen.getByLabelText("velocity")).toBeTruthy();
+    expect(screen.getByLabelText("altitude")).toBeTruthy();
+  });
+
+  it("runs spanwise loads with the configured operating-point params", () => {
+    const onRunSpanwiseLoads = vi.fn();
+    render(
+      <AnalysisConfigPanel
+        activeTab="Spanwise Loads"
+        analysis={makeAnalysis()}
+        onRunSpanwiseLoads={onRunSpanwiseLoads}
+        {...BASE}
+      />,
+    );
+
+    fireEvent.click(runButton());
+
+    expect(onRunSpanwiseLoads).toHaveBeenCalledTimes(1);
+    // Defaults: velocity 14, alpha 5, beta 0, altitude 100 (all finite → kept).
+    expect(onRunSpanwiseLoads.mock.calls[0][0]).toMatchObject({
+      velocity: 14,
+      alpha: 5,
+      beta: 0,
+      altitude: 100,
+    });
+  });
+
+  it("disables the run button while spanwise loads are running (getIsRunning)", () => {
+    render(
+      <AnalysisConfigPanel
+        activeTab="Spanwise Loads"
+        analysis={makeAnalysis()}
+        spanwiseLoadsRunning={true}
+        {...BASE}
+      />,
+    );
+
+    // While running the label switches to "Running…" and the button is disabled.
+    const btn = screen.getByRole("button", { name: /Running/ });
+    expect(btn.hasAttribute("disabled")).toBe(true);
+  });
+
+  it("surfaces a spanwise-loads error message (getCurrentError)", () => {
+    render(
+      <AnalysisConfigPanel
+        activeTab="Spanwise Loads"
+        analysis={makeAnalysis()}
+        spanwiseLoadsError="Spanwise loads — invalid request: bad OP"
+        {...BASE}
+      />,
+    );
+
+    expect(
+      screen.getByText(/Spanwise loads — invalid request: bad OP/),
+    ).toBeTruthy();
+  });
+});
+
 describe("AnalysisConfigPanel honest Polar selectors (gh-786)", () => {
   it("no longer renders the decorative sweep_var / solver / flight-profile selectors", () => {
     render(<AnalysisConfigPanel activeTab="Polar" analysis={makeAnalysis()} {...BASE} />);

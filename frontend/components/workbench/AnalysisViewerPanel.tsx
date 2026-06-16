@@ -875,6 +875,108 @@ export function buildSpanwiseLoadsAnnotationText(loads: SpanwiseLoadsResult): st
   ].join("<br>");
 }
 
+/**
+ * Pure transform: spanwise-loads response → Plotly traces + annotations.
+ *
+ * For each surface it emits two line traces (V(y) on the primary y-axis,
+ * M(y) on the secondary y-axis), mirroring the port half to negative Y so
+ * the full span is plotted left-to-right. The first surface (main wing)
+ * also gets root bending-moment / shear arrow annotations anchored at the
+ * innermost plotted strip, plus the compute-parameter annotation.
+ *
+ * Exported and Plotly-free so it can be unit-tested directly in jsdom.
+ */
+export function buildSpanwiseLoadsTracesAndAnnotations(
+  loads: SpanwiseLoadsResult,
+): { traces: unknown[]; annotations: unknown[] } {
+  const traces: unknown[] = [];
+
+  for (const surf of loads.surfaces) {
+    const sbEntries = [...surf.starboard].sort((a, b) => a.y_m - b.y_m);
+    const ptEntries = [...surf.port].sort((a, b) => a.y_m - b.y_m).map((e) => ({ ...e, y_m: -e.y_m }));
+    const allEntries = [...ptEntries.reverse(), ...sbEntries];
+    const ys = allEntries.map((e) => e.y_m);
+    const shears = allEntries.map((e) => e.shear_N);
+    const bms = allEntries.map((e) => e.bending_moment_Nm);
+
+    traces.push({
+      x: ys,
+      y: shears,
+      type: "scatter",
+      mode: "lines",
+      name: `V(y) — ${surf.surface_name}`,
+      line: { color: "#FF8400", width: 2 },
+      yaxis: "y",
+    });
+    traces.push({
+      x: ys,
+      y: bms,
+      type: "scatter",
+      mode: "lines",
+      name: `M(y) — ${surf.surface_name}`,
+      line: { color: "#3B82F6", width: 2 },
+      yaxis: "y2",
+    });
+  }
+
+  // Root BM annotation from the first surface (main wing)
+  const mainSurf = loads.surfaces[0];
+  const annotations: unknown[] = [];
+  if (mainSurf) {
+    const rootBm = mainSurf.root_bending_moment_Nm_starboard;
+    const rootShear = mainSurf.root_shear_N_starboard;
+    // Anchor the root annotations at the innermost plotted strip rather than
+    // x=0 — surfaces that don't reach the centreline (e.g. boom-mounted tail)
+    // would otherwise have the arrow point off-chart into blank space.
+    const innerX = mainSurf.starboard.length
+      ? Math.min(...mainSurf.starboard.map((p) => p.y_m))
+      : 0.0;
+    annotations.push({
+      x: innerX,
+      y: rootBm,
+      xref: "x",
+      yref: "y2",
+      text: `Root BM: ${rootBm.toFixed(0)} N·m`,
+      showarrow: true,
+      arrowhead: 2,
+      arrowcolor: "#3B82F6",
+      font: { color: "#3B82F6", family: "JetBrains Mono, monospace", size: 11 },
+      bgcolor: "rgba(0,0,0,0.5)",
+      bordercolor: "#3B82F6",
+      borderwidth: 1,
+    });
+    annotations.push({
+      x: innerX,
+      y: rootShear,
+      xref: "x",
+      yref: "y",
+      text: `Root V: ${rootShear.toFixed(0)} N`,
+      showarrow: true,
+      arrowhead: 2,
+      arrowcolor: "#FF8400",
+      font: { color: "#FF8400", family: "JetBrains Mono, monospace", size: 11 },
+      bgcolor: "rgba(0,0,0,0.5)",
+      bordercolor: "#FF8400",
+      borderwidth: 1,
+    });
+  }
+  // Compute-parameter annotation (per project convention: inputs inside figure)
+  annotations.push({
+    x: 0.01,
+    y: 0.98,
+    xref: "paper",
+    yref: "paper",
+    xanchor: "left",
+    yanchor: "top",
+    showarrow: false,
+    align: "left",
+    font: { color: "#71717A", family: "JetBrains Mono, monospace", size: 10 },
+    text: buildSpanwiseLoadsAnnotationText(loads),
+  });
+
+  return { traces, annotations };
+}
+
 function SpanwiseLoadsChart({
   loads,
 }: Readonly<{ loads: SpanwiseLoadsResult }>) {
@@ -891,90 +993,7 @@ function SpanwiseLoadsChart({
       PlotlyRef = await import("plotly.js-gl3d-dist-min");
       if (disposed || !node) return;
 
-      const traces: unknown[] = [];
-
-      for (const surf of loads.surfaces) {
-        const sbEntries = [...surf.starboard].sort((a, b) => a.y_m - b.y_m);
-        const ptEntries = [...surf.port].sort((a, b) => a.y_m - b.y_m).map((e) => ({ ...e, y_m: -e.y_m }));
-        const allEntries = [...ptEntries.reverse(), ...sbEntries];
-        const ys = allEntries.map((e) => e.y_m);
-        const shears = allEntries.map((e) => e.shear_N);
-        const bms = allEntries.map((e) => e.bending_moment_Nm);
-
-        traces.push({
-          x: ys,
-          y: shears,
-          type: "scatter",
-          mode: "lines",
-          name: `V(y) — ${surf.surface_name}`,
-          line: { color: "#FF8400", width: 2 },
-          yaxis: "y",
-        });
-        traces.push({
-          x: ys,
-          y: bms,
-          type: "scatter",
-          mode: "lines",
-          name: `M(y) — ${surf.surface_name}`,
-          line: { color: "#3B82F6", width: 2 },
-          yaxis: "y2",
-        });
-      }
-
-      // Root BM annotation from the first surface (main wing)
-      const mainSurf = loads.surfaces[0];
-      const annotations: unknown[] = [];
-      if (mainSurf) {
-        const rootBm = mainSurf.root_bending_moment_Nm_starboard;
-        const rootShear = mainSurf.root_shear_N_starboard;
-        // Anchor the root annotations at the innermost plotted strip rather than
-        // x=0 — surfaces that don't reach the centreline (e.g. boom-mounted tail)
-        // would otherwise have the arrow point off-chart into blank space.
-        const innerX = mainSurf.starboard.length
-          ? Math.min(...mainSurf.starboard.map((p) => p.y_m))
-          : 0.0;
-        annotations.push({
-          x: innerX,
-          y: rootBm,
-          xref: "x",
-          yref: "y2",
-          text: `Root BM: ${rootBm.toFixed(0)} N·m`,
-          showarrow: true,
-          arrowhead: 2,
-          arrowcolor: "#3B82F6",
-          font: { color: "#3B82F6", family: "JetBrains Mono, monospace", size: 11 },
-          bgcolor: "rgba(0,0,0,0.5)",
-          bordercolor: "#3B82F6",
-          borderwidth: 1,
-        });
-        annotations.push({
-          x: innerX,
-          y: rootShear,
-          xref: "x",
-          yref: "y",
-          text: `Root V: ${rootShear.toFixed(0)} N`,
-          showarrow: true,
-          arrowhead: 2,
-          arrowcolor: "#FF8400",
-          font: { color: "#FF8400", family: "JetBrains Mono, monospace", size: 11 },
-          bgcolor: "rgba(0,0,0,0.5)",
-          bordercolor: "#FF8400",
-          borderwidth: 1,
-        });
-      }
-      // Compute-parameter annotation (per project convention: inputs inside figure)
-      annotations.push({
-        x: 0.01,
-        y: 0.98,
-        xref: "paper",
-        yref: "paper",
-        xanchor: "left",
-        yanchor: "top",
-        showarrow: false,
-        align: "left",
-        font: { color: "#71717A", family: "JetBrains Mono, monospace", size: 10 },
-        text: buildSpanwiseLoadsAnnotationText(loads),
-      });
+      const { traces, annotations } = buildSpanwiseLoadsTracesAndAnnotations(loads);
 
       const layout = {
         paper_bgcolor: "transparent",
