@@ -128,8 +128,11 @@ class TestParseApcDatFile7x4:
             js = [s["J"] for s in block.samples]
             assert js == sorted(js), f"J not sorted in RPM {block.rpm} block"
 
-    def test_efficiency_between_0_and_1(self):
-        """Pe (propulsive efficiency) must be in [0, 1] for all non-static samples."""
+    def test_efficiency_in_thrust_region(self):
+        """In the thrust-producing region the fixtures cover (J up to ~0.7),
+        propulsive efficiency Pe stays in [0, 1]. NOTE: real APC data at high J
+        (past the thrust-producing region) legitimately has Pe < 0 — the prop
+        windmills/brakes — so this bound holds for the fixtures, not universally."""
         for block in self.result.rpm_blocks:
             for s in block.samples:
                 if s["J"] > 0.01:  # skip near-static where Pe is near 0
@@ -323,3 +326,23 @@ class TestParseAll:
         assert records == []
         assert fetched == []
         assert skipped == []
+
+
+# ──────────────────────────────────────────────────────────────────────────────
+# Committed snapshot validity (gh-986 spec §9: validate the committed snapshot)
+# ──────────────────────────────────────────────────────────────────────────────
+
+
+class TestCommittedSnapshot:
+    def test_committed_snapshot_is_valid(self):
+        """The committed data/cots/apc_props.json must stay importable: every
+        record passes validation and carries at least one polar sample."""
+        import json
+
+        from app.services.prop_polar_import import _validate_prop_record
+
+        data = json.loads((REPO_ROOT / "data" / "cots" / "apc_props.json").read_text())
+        assert len(data) == 22
+        for record in data:
+            assert _validate_prop_record(record) is None, record.get("name")
+            assert len(record["polars"]) > 0

@@ -53,6 +53,10 @@ def _records_equal(existing: PropellerPolarModel, record: dict[str, Any]) -> boo
     We compare source_version as the proxy for data freshness.
     If source_version differs we always re-import. Exact sample equality
     comparison is too expensive to run on every row.
+
+    Limitation: if APC corrects polar data WITHOUT bumping source_version,
+    the change is silently skipped — run the importer with ``force=True`` to
+    re-import regardless.
     """
     if existing.source_version != record.get("source_version"):
         return False

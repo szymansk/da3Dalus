@@ -11,7 +11,6 @@ the data can be queried efficiently by propeller or by RPM.
 """
 
 from datetime import datetime, timezone
-from typing import Optional
 
 from sqlalchemy import Column, DateTime, Float, ForeignKey, Integer, String, func
 from sqlalchemy.orm import relationship
