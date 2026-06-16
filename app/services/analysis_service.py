@@ -2057,6 +2057,7 @@ async def analyze_airplane_spanwise_loads(
         result_with_meta["velocity_mps"] = float(resolved_op.velocity)
         result_with_meta["altitude_m"] = float(resolved_op.altitude)
         result_with_meta["alpha"] = float(resolved_op.alpha)
+        result_with_meta["beta"] = float(resolved_op.beta)
 
         spanwise_response = compute_spanwise_loads(
             strip_forces_result=result_with_meta,
@@ -2112,7 +2113,6 @@ def _compute_spar_sizing_for_surfaces(
     Raises ValidationError when the material is not found or has no σ_allow.
     """
     from app.models.component import ComponentModel
-    from app.schemas.spar_sizing import SparSizingParams
     from app.services.spar_sizing import compute_spar_sizing
     from app.services.design_assumptions_service import get_effective_assumption
     from app.core.exceptions import ValidationError
@@ -2132,14 +2132,19 @@ def _compute_spar_sizing_for_surfaces(
             details={"material_id": spar_params.material_id},
         )
     material_specs = material.specs or {}
-    if (
-        spar_params.sigma_allow_mpa_override is None
-        and "allowable_bending_stress_mpa" not in material_specs
-    ):
+    # Resolve the effective allowable stress and reject non-positive values. The
+    # material schema permits allowable_bending_stress_mpa=0 (min=0), which would
+    # make required_section_modulus divide by zero → 500. Surface a clear 422
+    # instead (gh-1008 review).
+    sigma_allow = spar_params.sigma_allow_mpa_override
+    if sigma_allow is None:
+        sigma_allow = material_specs.get("allowable_bending_stress_mpa")
+    if sigma_allow is None or sigma_allow <= 0:
         raise ValidationError(
             message=(
-                f"Material '{material.name}' has no allowable_bending_stress_mpa. "
-                "Provide sigma_allow_mpa_override or choose a structural material."
+                f"Material '{material.name}' has no positive allowable_bending_stress_mpa "
+                f"(got {sigma_allow}). Provide a positive sigma_allow_mpa_override or choose "
+                "a structural material."
             ),
             details={"material_id": spar_params.material_id, "name": material.name},
         )

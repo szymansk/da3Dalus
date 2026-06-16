@@ -79,7 +79,12 @@ def required_section_modulus(m_design_Nm: float, sigma_allow_mpa: float) -> floa
     """Compute the required section modulus erf_W (mm³).
 
     erf_W = M_design [N·m] × 1000 [mm/m] / σ_allow [N/mm²]
+
+    Raises ValueError on σ_allow ≤ 0 (callers resolve σ from a material whose
+    schema permits 0; guard here so we never divide by zero — gh-1008 review).
     """
+    if sigma_allow_mpa <= 0:
+        raise ValueError(f"sigma_allow must be positive, got {sigma_allow_mpa}")
     return m_design_Nm * 1000.0 / sigma_allow_mpa
 
 

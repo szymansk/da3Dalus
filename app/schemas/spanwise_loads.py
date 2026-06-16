@@ -10,6 +10,8 @@ from typing import Optional
 
 from pydantic import BaseModel, Field
 
+from app.schemas.spar_sizing import SparSizingResult
+
 
 class SpanwiseLoadEntry(BaseModel):
     """Per-strip structural loads referenced to the wing root."""
@@ -69,6 +71,14 @@ class SpanwiseLoadsResponse(BaseModel):
     """Full spanwise shear + bending-moment response for one operating point (gh-1002)."""
 
     alpha: float = Field(..., description="Angle of attack used for the run (deg)")
+    beta: float = Field(
+        0.0,
+        description=(
+            "Sideslip angle used for the run (deg). Echoed so a follow-up spar-sizing "
+            "request reuses the same operating point (sideslip changes the spanwise "
+            "lift distribution)."
+        ),
+    )
     velocity_mps: float = Field(..., description="Freestream velocity (m/s)")
     altitude_m: float = Field(..., description="Altitude (m)")
     dynamic_pressure_Pa: float = Field(
@@ -85,13 +95,9 @@ class SpanwiseLoadsWithSizingResponse(SpanwiseLoadsResponse):
     Returned by the endpoint when ``spar_params`` are supplied in the request body.
     Each element in ``spar_sizing`` corresponds to one surface in ``surfaces``
     (by position and ``surface_name``).
-
-    Import note: SparSizingResult is imported inline to avoid circular imports
-    between spanwise_loads and spar_sizing schemas.
     """
 
-    # Use Any to avoid import-time circular dependency; validated at runtime.
-    spar_sizing: Optional[list] = Field(
+    spar_sizing: Optional[list[SparSizingResult]] = Field(
         None,
         description=(
             "Per-surface spar-sizing results (list of SparSizingResult). "

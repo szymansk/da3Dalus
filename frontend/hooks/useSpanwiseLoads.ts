@@ -28,6 +28,7 @@ export interface SurfaceSpanwiseLoads {
 
 export interface SpanwiseLoadsResult {
   alpha: number;
+  beta: number;
   velocity_mps: number;
   altitude_m: number;
   dynamic_pressure_Pa: number;

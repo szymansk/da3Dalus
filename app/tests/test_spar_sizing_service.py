@@ -98,6 +98,16 @@ class TestRequiredSectionModulus:
         w = required_section_modulus(m_design_Nm=100.0, sigma_allow_mpa=39.0)
         assert w == pytest.approx(100.0 * 1000.0 / 39.0, rel=1e-5)
 
+    def test_zero_sigma_raises_not_divides_by_zero(self):
+        """σ_allow=0 (the material schema permits min=0) must raise ValueError,
+        not ZeroDivisionError → caller maps to a 422 (gh-1008 review)."""
+        from app.services.spar_sizing import required_section_modulus
+
+        with pytest.raises(ValueError, match="sigma_allow must be positive"):
+            required_section_modulus(m_design_Nm=100.0, sigma_allow_mpa=0.0)
+        with pytest.raises(ValueError):
+            required_section_modulus(m_design_Nm=100.0, sigma_allow_mpa=-5.0)
+
 
 # ---------------------------------------------------------------------------
 # solve_dimension — Rectangular

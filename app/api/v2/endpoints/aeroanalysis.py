@@ -478,7 +478,9 @@ async def get_airplane_spanwise_loads_with_sizing(
         Literal["vlm", "avl"],
         Query(description="Strip-force solver: 'vlm' (default, in-process) or 'avl' (subprocess)"),
     ] = "vlm",
-    material_id: Annotated[int, Query(description="Material component ID for spar sizing")] = None,
+    material_id: Annotated[
+        int | None, Query(description="Material component ID for spar sizing")
+    ] = None,
     shape: Annotated[
         Literal["tube", "rod", "rectangular", "capped"],
         Query(description="Spar cross-section shape"),

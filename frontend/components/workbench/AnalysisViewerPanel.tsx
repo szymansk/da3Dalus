@@ -1079,11 +1079,14 @@ export function SpanwiseLoadsTabContent({
     if (!spanwiseLoads) return;
     const sizingParams = toSizingParams(inputs);
     if (!sizingParams) return;
-    // Use the same op params that produced the current spanwise loads
+    // Use the SAME op that produced the displayed loads so the spar is sized on
+    // the same M(y). beta matters (sideslip changes the spanwise lift
+    // distribution); xyz_ref does NOT (root bending moment is referenced to the
+    // wing root via |Yle|, and cl(y) is independent of the moment ref point).
     const opParams = {
       velocity: spanwiseLoads.velocity_mps,
       alpha: spanwiseLoads.alpha,
-      beta: 0,
+      beta: spanwiseLoads.beta,
       altitude: spanwiseLoads.altitude_m,
       xyz_ref: [0, 0, 0],
     };

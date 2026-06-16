@@ -70,6 +70,7 @@ vi.mock("plotly.js-gl3d-dist-min", () => ({
 function makeLoads(overrides: Partial<SpanwiseLoadsResult> = {}): SpanwiseLoadsResult {
   return {
     alpha: 2.0,
+    beta: 0.0,
     velocity_mps: 30.0,
     altitude_m: 0.0,
     dynamic_pressure_Pa: 551.25,
