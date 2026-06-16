@@ -17,6 +17,10 @@ export interface Component {
   specs: Record<string, unknown>;
   created_at: string;
   updated_at: string;
+  /** True when a performance polar matches this component (by model_ref). */
+  has_polar?: boolean;
+  /** ID of the matching propeller performance polar, if any. */
+  polar_id?: number | null;
 }
 
 interface ComponentList {
