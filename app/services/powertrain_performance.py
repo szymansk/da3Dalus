@@ -277,17 +277,12 @@ def interpolate_ct_cp_pe(
         result = (0.0, 0.0, 0.0)
         return result + (True,) if return_warning else result
 
-    # Group by RPM, pick the RPM group with the most samples (or first)
-    # When all samples are at one RPM (common for single-RPM mocked tests), use all.
-    rpms = sorted({s.rpm for s in samples})
-    if len(rpms) == 1:
-        rows = samples
-    else:
-        # Use all rows — interpolation treats J as continuous across RPMs
-        # The APC format gives one J-sweep per RPM; Ct(J) is nearly RPM-independent
-        # for standard props. We pick the RPM group closest to the actual operating RPM.
-        # When actual RPM is unknown (this helper is J-only), use all data merged.
-        rows = samples
+    # Use all rows regardless of RPM — Ct(J) is nearly RPM-independent for standard
+    # APC props, so merging across RPMs gives a better-sampled interpolation grid.
+    # When actual RPM is unknown (this helper is J-only), merging is the right choice.
+    # compute_prop_operating_point and compute_performance_curve each pre-filter by
+    # nearest RPM before calling this helper when they know the operating RPM.
+    rows = samples
 
     # Sort by J
     rows_sorted = sorted(rows, key=lambda r: r.J)
