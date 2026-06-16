@@ -618,3 +618,40 @@ class TestLoadSnapshot:
 
         loaded = load_snapshot(gz_path)
         assert loaded[0]["specs"]["variant"] == "E"
+
+
+# ──────────────────────────────────────────────────────────────────────────────
+# gh-1000 — PE0 enrichment fields persist through the importer
+# ──────────────────────────────────────────────────────────────────────────────
+
+
+class TestImportPersistsEnrichment:
+    def _enriched_record(self) -> dict:
+        rec = dict(SAMPLE_POLAR_RECORD)
+        rec["specs"] = dict(rec["specs"])
+        rec["specs"]["weight_g"] = 43.3
+        rec["specs"]["inertia_kg_m2"] = 0.000124
+        rec["geometry"] = [{"station_in": 0.0, "chord_in": 1.0}]
+        return rec
+
+    def test_insert_persists_weight_inertia_geometry(self, session):
+        import_prop_polars(session, [self._enriched_record()])
+        session.commit()
+        prop = session.query(PropellerPolarModel).filter_by(name="APC 9x6").one()
+        assert prop.weight_g == 43.3
+        assert prop.inertia_kg_m2 == 0.000124
+        assert prop.geometry[0]["chord_in"] == 1.0
+
+    def test_reimport_backfills_enrichment_when_version_matches(self, session):
+        # First import the plain (un-enriched) record.
+        import_prop_polars(session, [SAMPLE_POLAR_RECORD])
+        session.commit()
+        prop = session.query(PropellerPolarModel).filter_by(name="APC 9x6").one()
+        assert prop.weight_g is None
+
+        # Re-import the SAME version but now carrying PE0 enrichment — must update.
+        result = import_prop_polars(session, [self._enriched_record()])
+        session.commit()
+        assert result.updated == 1
+        prop = session.query(PropellerPolarModel).filter_by(name="APC 9x6").one()
+        assert prop.weight_g == 43.3
