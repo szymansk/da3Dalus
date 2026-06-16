@@ -26,7 +26,6 @@ FIXTURES_DIR = Path(__file__).parent / "fixtures" / "apc_props"
 
 from scripts.parse_apc_props import (  # noqa: E402
     ParsedPropFile,
-    RpmBlock,
     build_snapshot_record,
     parse_apc_dat_file,
     parse_filename,

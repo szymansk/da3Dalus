@@ -80,6 +80,10 @@ def _records_equal(existing: PropellerPolarModel, record: dict[str, Any]) -> boo
         return False
     if existing.source_url != record.get("source_url"):
         return False
+    # Backfill the variant onto pre-gh-999 rows even when version/url match
+    # (otherwise an existing variant=NULL row would never gain its value).
+    if (existing.variant or "") != (record.get("specs", {}).get("variant") or ""):
+        return False
     return True
 
 

@@ -329,7 +329,7 @@ def build_snapshot_record(parsed: ParsedPropFile, filename: str) -> dict[str, An
         "name": name,
         "component_type": "propeller",
         "model_ref": f"apc/{slug}",
-        "source_url": f"{SOURCE_URL_BASE}/PER3_{Path(filename).stem}.dat",
+        "source_url": f"{SOURCE_URL_BASE}/{Path(filename).name}",
         "source_version": parsed.source_version or "unknown",
         "specs": {
             "diameter_in": parsed.diameter_in,
