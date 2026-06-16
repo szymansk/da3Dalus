@@ -299,8 +299,9 @@ class TestSizePowertrainWarnings:
         assert len(result.warnings) == 2
         assert all(any(key in w for w in result.warnings) for key in ("aspect_ratio", "s_ref_m2"))
 
-    def test_empty_catalog_returns_empty_with_no_warnings(self):
-        """When no motors/batteries, warnings are empty (no sizing performed)."""
+    def test_empty_catalog_returns_empty_with_explanatory_warnings(self):
+        """When no motors/batteries, the result must explain why instead of being
+        a silent empty table (gh-992: surfaced by UAT of #197)."""
         plane = self._make_plane(context=None)
         db = _mock_db_session(aeroplane=plane, motors=[], batteries=[])
         request = _default_request()
@@ -308,4 +309,5 @@ class TestSizePowertrainWarnings:
         result = size_powertrain(db, plane.uuid, request)
 
         assert result.recommendations == []
-        assert result.warnings == []
+        assert any("motor" in w.lower() for w in result.warnings)
+        assert any("batter" in w.lower() for w in result.warnings)

@@ -105,18 +105,24 @@ def _find_matching_esc(escs: list, min_current_a: float):
     """Return the first ESC that can handle the required current, or None."""
     for esc in escs:
         esc_specs = esc.specs or {}
-        if esc_specs.get("max_continuous_a", 0) >= min_current_a:
+        # gh-986 catalog stores continuous current under continuous_current_a;
+        # fall back to legacy max_continuous_a for older entries (gh-992).
+        cont_a = esc_specs.get("continuous_current_a", esc_specs.get("max_continuous_a", 0)) or 0
+        if cont_a >= min_current_a:
             return esc
     return None
 
 
 def _compute_confidence(flight_time_min: float, target_flight_time_min: float) -> float:
-    """Compute a confidence score for a motor+battery combo based on flight time."""
-    time_ratio = min(flight_time_min / target_flight_time_min, 1.5)
-    confidence = min(time_ratio / 1.5, 1.0)
-    if flight_time_min < target_flight_time_min * 0.5:
-        confidence *= 0.3
-    return confidence
+    """Confidence that a motor+battery combo meets the flight-time target.
+
+    Smoothly scales with achieved/target ratio: meeting the target → 1.0,
+    falling linearly toward 0 as flight time drops. No discontinuity
+    (gh-992: the old /1.5 scaling capped an on-target combo at 0.667 and had a
+    3.3x cliff at 50% of target)."""
+    if target_flight_time_min <= 0:
+        return 0.0
+    return min(flight_time_min / target_flight_time_min, 1.0)
 
 
 def _resolve_aero_params(
@@ -207,7 +213,19 @@ def _evaluate_motor_battery_combo(
     battery_mass_kg = (battery.mass_g or 0) / 1000.0
     battery_specs = battery.specs or {}
     capacity_mah = battery_specs.get("capacity_mah", 0)
-    voltage = battery_specs.get("voltage", battery_specs.get("nominal_voltage", 11.1))
+    # The battery component_type schema stores nominal voltage as voltage_v
+    # (gh-992); fall back to legacy keys, then derive from cell count (3.7 V/cell
+    # nominal), then a 3S default — so a schema-valid battery isn't mis-read as 11.1 V.
+    cells = battery_specs.get("cells")
+    voltage = battery_specs.get("voltage_v")
+    if voltage is None:
+        voltage = battery_specs.get("voltage")
+    if voltage is None:
+        voltage = battery_specs.get("nominal_voltage")
+    if voltage is None and cells:
+        voltage = cells * 3.7
+    if voltage is None:
+        voltage = 11.1
 
     if capacity_mah <= 0 or voltage <= 0:
         return None
@@ -268,7 +286,20 @@ def size_powertrain(
     escs = db.query(ComponentModel).filter(ComponentModel.component_type == "esc").all()
 
     if not motors or not batteries:
-        return PowertrainSizingResponse(recommendations=[], warnings=[])
+        # gh-992: never return a silent empty table — explain why so the UI can
+        # tell the user what is missing instead of looking broken.
+        empty_warnings: list[str] = []
+        if not motors:
+            empty_warnings.append(
+                "No brushless motors in the component catalog — add motors "
+                "(e.g. import the D-Power catalog) to size a powertrain."
+            )
+        if not batteries:
+            empty_warnings.append(
+                "No batteries in the component catalog — add LiPo batteries to "
+                "compute flight time and current draw."
+            )
+        return PowertrainSizingResponse(recommendations=[], warnings=empty_warnings)
 
     # Resolve aero params once; collect warnings (gh-960)
     ctx = getattr(aeroplane, "assumption_computation_context", None) or {}
