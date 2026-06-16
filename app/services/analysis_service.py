@@ -1982,3 +1982,82 @@ async def analyze_wing_strip_forces(
     except Exception as e:
         logger.error(f"Error analyzing wing strip forces: {e}")
         raise InternalError(message=f"Strip forces analysis error: {e}")
+
+
+async def analyze_airplane_spanwise_loads(
+    db: Session,
+    aeroplane_uuid,
+    operating_point: OperatingPointSchema,
+    solver: str = "vlm",
+):
+    """Integrate strip forces into spanwise shear + bending-moment distribution (gh-1002).
+
+    Reuses the strip-forces computation path and then applies the pure
+    ``compute_spanwise_loads`` integrator.  No new aerodynamic model.
+
+    Returns:
+        SpanwiseLoadsResponse with per-surface shear/BM distributions.
+
+    Raises:
+        NotFoundError: If the aeroplane does not exist.
+        InternalError: If the strip-forces or integration step fails.
+    """
+    import aerosandbox as asb
+
+    from app.schemas.spanwise_loads import SpanwiseLoadsResponse
+    from app.services.spanwise_loads import compute_spanwise_loads
+
+    aircraft = get_aeroplane_or_raise(db, aeroplane_uuid)
+    plane_schema = get_aeroplane_schema_or_raise(db, aeroplane_uuid)
+    resolved_op = operating_point_resolver.resolve_operating_point(
+        db,
+        operating_point,
+        aircraft_pk=aircraft.id,
+    )
+
+    try:
+        asb_airplane: Airplane = aeroplane_schema_to_asb_airplane_async(plane_schema=plane_schema)
+        asb_airplane.xyz_ref = resolved_op.xyz_ref
+
+        atmosphere = asb.Atmosphere(altitude=resolved_op.altitude)
+        op_point = asb.OperatingPoint(
+            velocity=resolved_op.velocity,
+            alpha=resolved_op.alpha,
+            beta=resolved_op.beta,
+            p=resolved_op.p,
+            q=resolved_op.q,
+            r=resolved_op.r,
+            atmosphere=atmosphere,
+        )
+
+        if solver == "avl":
+            result = _run_avl_strip_forces(
+                db, aeroplane_uuid, plane_schema, resolved_op, asb_airplane, op_point, timeout=60
+            )
+        else:
+            from app.services.vlm_strip_forces import compute_vlm_strip_forces
+
+            result = compute_vlm_strip_forces(asb_airplane, op_point, xyz_ref=resolved_op.xyz_ref)
+
+        # Dynamic pressure from the operating point atmosphere
+        rho = float(atmosphere.density())
+        q_dyn = 0.5 * rho * float(resolved_op.velocity) ** 2
+
+        # Inject velocity/altitude into result for the integrator metadata
+        result_with_meta = dict(result)
+        result_with_meta["velocity_mps"] = float(resolved_op.velocity)
+        result_with_meta["altitude_m"] = float(resolved_op.altitude)
+        result_with_meta["alpha"] = float(resolved_op.alpha)
+
+        return compute_spanwise_loads(
+            strip_forces_result=result_with_meta,
+            q=q_dyn,
+        )
+    except ServiceException:
+        raise
+    except Exception as e:
+        logger.exception(
+            "Error computing spanwise loads for aeroplane %s",
+            aeroplane_uuid,
+        )
+        raise InternalError(message=f"Spanwise loads error: {e}") from e

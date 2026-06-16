@@ -13,8 +13,9 @@ import { OperatingPointsPanel } from "@/components/workbench/OperatingPointsPane
 import { MatchingChartTab } from "@/components/workbench/MatchingChartTab";
 import { AnalysisStatusIndicator } from "./AnalysisStatusIndicator";
 import type { AnalysisStatus } from "@/hooks/useAnalysisStatus";
+import type { SpanwiseLoadsResult } from "@/hooks/useSpanwiseLoads";
 
-const TABS = ["Assumptions", "Operating Points", "Polar", "Trefftz Plane", "Streamlines", "Envelope", "Sizing"] as const;
+const TABS = ["Assumptions", "Operating Points", "Polar", "Trefftz Plane", "Spanwise Loads", "Streamlines", "Envelope", "Sizing"] as const;
 export type Tab = (typeof TABS)[number];
 export { TABS };
 
@@ -58,6 +59,8 @@ interface Props {
   readonly lastRunDurationMs?: number | null;
   readonly stripForces?: StripForcesResult | null;
   readonly stripForcesLoading?: boolean;
+  readonly spanwiseLoads?: SpanwiseLoadsResult | null;
+  readonly spanwiseLoadsLoading?: boolean;
   readonly streamlinesFigure?: unknown;
   readonly streamlinesLoading?: boolean;
   readonly activeTab: Tab;
@@ -856,6 +859,216 @@ export function TrefftzPlaneTabContent({
   );
 }
 
+// -- Spanwise Loads Chart (gh-1002) ----------------------------------------
+
+/**
+ * Build the Plotly annotation text for the spanwise-loads chart.
+ * Echoes all compute inputs inside the figure (per project Plotly-metadata convention).
+ * Exported for direct unit testing.
+ */
+export function buildSpanwiseLoadsAnnotationText(loads: SpanwiseLoadsResult): string {
+  const fmtFixed = (value: number | undefined | null, digits: number, fallback = "—") =>
+    value == null || Number.isNaN(value) ? fallback : value.toFixed(digits);
+  return [
+    `α = ${fmtFixed(loads.alpha, 2)}°  V = ${fmtFixed(loads.velocity_mps, 1)} m/s  Alt = ${fmtFixed(loads.altitude_m, 0)} m`,
+    `q = ${fmtFixed(loads.dynamic_pressure_Pa, 1)} Pa`,
+  ].join("<br>");
+}
+
+function SpanwiseLoadsChart({
+  loads,
+}: Readonly<{ loads: SpanwiseLoadsResult }>) {
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const node = containerRef.current;
+    if (!node || loads.surfaces.length === 0) return;
+    let disposed = false;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    let PlotlyRef: any = null;
+
+    (async () => {
+      PlotlyRef = await import("plotly.js-gl3d-dist-min");
+      if (disposed || !node) return;
+
+      const traces: unknown[] = [];
+
+      for (const surf of loads.surfaces) {
+        const sbEntries = [...surf.starboard].sort((a, b) => a.y_m - b.y_m);
+        const ptEntries = [...surf.port].sort((a, b) => a.y_m - b.y_m).map((e) => ({ ...e, y_m: -e.y_m }));
+        const allEntries = [...ptEntries.reverse(), ...sbEntries];
+        const ys = allEntries.map((e) => e.y_m);
+        const shears = allEntries.map((e) => e.shear_N);
+        const bms = allEntries.map((e) => e.bending_moment_Nm);
+
+        traces.push({
+          x: ys,
+          y: shears,
+          type: "scatter",
+          mode: "lines",
+          name: `V(y) — ${surf.surface_name}`,
+          line: { color: "#FF8400", width: 2 },
+          yaxis: "y",
+        });
+        traces.push({
+          x: ys,
+          y: bms,
+          type: "scatter",
+          mode: "lines",
+          name: `M(y) — ${surf.surface_name}`,
+          line: { color: "#3B82F6", width: 2 },
+          yaxis: "y2",
+        });
+      }
+
+      // Root BM annotation from the first surface (main wing)
+      const mainSurf = loads.surfaces[0];
+      const annotations: unknown[] = [];
+      if (mainSurf) {
+        const rootBm = mainSurf.root_bending_moment_Nm_starboard;
+        const rootShear = mainSurf.root_shear_N_starboard;
+        annotations.push({
+          x: 0.0,
+          y: rootBm,
+          xref: "x",
+          yref: "y2",
+          text: `Root BM: ${rootBm.toFixed(0)} N·m`,
+          showarrow: true,
+          arrowhead: 2,
+          arrowcolor: "#3B82F6",
+          font: { color: "#3B82F6", family: "JetBrains Mono, monospace", size: 11 },
+          bgcolor: "rgba(0,0,0,0.5)",
+          bordercolor: "#3B82F6",
+          borderwidth: 1,
+        });
+        annotations.push({
+          x: 0.0,
+          y: rootShear,
+          xref: "x",
+          yref: "y",
+          text: `Root V: ${rootShear.toFixed(0)} N`,
+          showarrow: true,
+          arrowhead: 2,
+          arrowcolor: "#FF8400",
+          font: { color: "#FF8400", family: "JetBrains Mono, monospace", size: 11 },
+          bgcolor: "rgba(0,0,0,0.5)",
+          bordercolor: "#FF8400",
+          borderwidth: 1,
+        });
+      }
+      // Compute-parameter annotation (per project convention: inputs inside figure)
+      annotations.push({
+        x: 0.01,
+        y: 0.98,
+        xref: "paper",
+        yref: "paper",
+        xanchor: "left",
+        yanchor: "top",
+        showarrow: false,
+        align: "left",
+        font: { color: "#71717A", family: "JetBrains Mono, monospace", size: 10 },
+        text: buildSpanwiseLoadsAnnotationText(loads),
+      });
+
+      const layout = {
+        paper_bgcolor: "transparent",
+        plot_bgcolor: "transparent",
+        font: { color: "#A1A1AA", family: "JetBrains Mono, monospace", size: 10 },
+        margin: { l: 60, r: 60, t: 30, b: 45 },
+        xaxis: {
+          title: { text: "Y [m]", font: { size: 11 } },
+          gridcolor: "#27272A",
+          zerolinecolor: "#3F3F46",
+        },
+        yaxis: {
+          title: { text: "Shear V(y) [N]", font: { size: 11, color: "#FF8400" } },
+          gridcolor: "#27272A",
+          zerolinecolor: "#3F3F46",
+          tickfont: { color: "#FF8400" },
+        },
+        yaxis2: {
+          title: { text: "Bending Moment M(y) [N·m]", font: { size: 11, color: "#3B82F6" } },
+          overlaying: "y",
+          side: "right",
+          gridcolor: "transparent",
+          zerolinecolor: "#3F3F46",
+          tickfont: { color: "#3B82F6" },
+        },
+        legend: {
+          x: 0.98,
+          y: 0.98,
+          xanchor: "right",
+          yanchor: "top",
+          bgcolor: "rgba(0,0,0,0.4)",
+          bordercolor: "#3F3F46",
+          borderwidth: 1,
+          font: { size: 10, color: "#A1A1AA" },
+        },
+        showlegend: true,
+        autosize: true,
+        annotations,
+      };
+
+      await PlotlyRef.react(node, traces, layout, {
+        responsive: true,
+        displayModeBar: true,
+        modeBarButtonsToRemove: ["toImage", "sendDataToCloud"],
+      });
+    })();
+
+    return () => {
+      disposed = true;
+      if (node && PlotlyRef) PlotlyRef.purge(node);
+    };
+  }, [loads]);
+
+  return (
+    <div className="flex flex-1 flex-col overflow-hidden bg-card-muted">
+      <div ref={containerRef} className="min-h-0 flex-1" />
+    </div>
+  );
+}
+
+/** Tab content for the Spanwise Loads tab (gh-1002). Exported for unit testing. */
+export function SpanwiseLoadsTabContent({
+  spanwiseLoadsLoading,
+  spanwiseLoads,
+}: Readonly<{
+  spanwiseLoadsLoading?: boolean;
+  spanwiseLoads?: SpanwiseLoadsResult | null;
+}>) {
+  if (spanwiseLoadsLoading) {
+    return (
+      <div className="flex flex-1 items-center justify-center">
+        <div
+          className="flex items-center gap-2 text-muted-foreground"
+          data-testid="spanwise-loads-spinner"
+        >
+          <Loader2 size={14} className="animate-spin" />
+          <span className="font-[family-name:var(--font-jetbrains-mono)] text-[13px]">
+            Computing spanwise loads…
+          </span>
+        </div>
+      </div>
+    );
+  }
+  if ((spanwiseLoads?.surfaces.length ?? 0) > 0) {
+    return <SpanwiseLoadsChart loads={spanwiseLoads!} />;
+  }
+  return (
+    <div className="flex flex-1 flex-col items-center justify-center gap-4">
+      <span className="font-[family-name:var(--font-jetbrains-mono)] text-[14px] text-muted-foreground">
+        Run an analysis to see the spanwise load distribution
+      </span>
+      <span className="text-[12px] text-subtle-foreground">
+        Configure parameters and click &quot;Configure &amp; Run&quot;
+      </span>
+    </div>
+  );
+}
+
+// -- Streamlines Tab -------------------------------------------------------
+
 function StreamlinesTabContent({
   streamlinesLoading,
   streamlinesFigure,
@@ -894,6 +1107,8 @@ export function AnalysisViewerPanel({
   lastRunDurationMs: _lastRunDurationMs,
   stripForces,
   stripForcesLoading,
+  spanwiseLoads,
+  spanwiseLoadsLoading,
   streamlinesFigure,
   streamlinesLoading,
   activeTab,
@@ -1140,6 +1355,15 @@ export function AnalysisViewerPanel({
             stripForces={stripForces}
             wingXSecs={wingXSecs}
             wingSymmetric={wingSymmetric}
+          />
+        </div>
+      )}
+
+      {!showWingGate && activeTab === "Spanwise Loads" && (
+        <div className="flex flex-1 flex-col gap-4 overflow-auto bg-card-muted p-6">
+          <SpanwiseLoadsTabContent
+            spanwiseLoadsLoading={spanwiseLoadsLoading}
+            spanwiseLoads={spanwiseLoads}
           />
         </div>
       )}

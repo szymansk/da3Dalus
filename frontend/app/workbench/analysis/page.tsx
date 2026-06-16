@@ -6,6 +6,7 @@ import { useDialog } from "@/hooks/useDialog";
 import { useAeroplaneContext } from "@/components/workbench/AeroplaneContext";
 import { useAnalysis } from "@/hooks/useAnalysis";
 import { useStripForces } from "@/hooks/useStripForces";
+import { useSpanwiseLoads } from "@/hooks/useSpanwiseLoads";
 import { useStreamlines } from "@/hooks/useStreamlines";
 import { useWings, useAllWingData, useWing } from "@/hooks/useWings";
 import { useFlightEnvelope } from "@/hooks/useFlightEnvelope";
@@ -21,6 +22,7 @@ export default function AnalysisPage() {
   const { aeroplaneId, hydrated, selectedWing, openPicker } = useAeroplaneContext();
   const analysis = useAnalysis(aeroplaneId);
   const stripForces = useStripForces(aeroplaneId);
+  const spanwiseLoads = useSpanwiseLoads(aeroplaneId);
   const streamlines = useStreamlines(aeroplaneId);
   const envelope = useFlightEnvelope(aeroplaneId);
   const ops = useOperatingPoints(aeroplaneId);
@@ -63,6 +65,7 @@ export default function AnalysisPage() {
     "Assumptions": "Assumptions",
     "Polar": "Polar Configuration",
     "Trefftz Plane": "Trefftz Plane Configuration",
+    "Spanwise Loads": "Spanwise Loads Configuration",
     "Streamlines": "Streamlines Configuration",
     "Envelope": "Flight Envelope",
     "Operating Points": "Operating Points",
@@ -96,6 +99,8 @@ export default function AnalysisPage() {
             lastRunDurationMs={analysis.lastRunDurationMs}
             stripForces={stripForces.result}
             stripForcesLoading={stripForces.isRunning}
+            spanwiseLoads={spanwiseLoads.result}
+            spanwiseLoadsLoading={spanwiseLoads.isRunning}
             streamlinesFigure={streamlines.figure}
             streamlinesLoading={streamlines.isComputing}
             activeTab={activeTab}
@@ -159,6 +164,11 @@ export default function AnalysisPage() {
               }}
               stripForcesRunning={stripForces.isRunning}
               stripForcesError={stripForces.error}
+              onRunSpanwiseLoads={(params) => {
+                spanwiseLoads.run(params);
+              }}
+              spanwiseLoadsRunning={spanwiseLoads.isRunning}
+              spanwiseLoadsError={spanwiseLoads.error}
               onRunStreamlines={(params) => {
                 streamlines.computeStreamlines(params);
               }}
