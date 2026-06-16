@@ -14,6 +14,9 @@ import { MatchingChartTab } from "@/components/workbench/MatchingChartTab";
 import { AnalysisStatusIndicator } from "./AnalysisStatusIndicator";
 import type { AnalysisStatus } from "@/hooks/useAnalysisStatus";
 import type { SpanwiseLoadsResult } from "@/hooks/useSpanwiseLoads";
+import { SparSizingPanel, toSizingParams } from "@/components/workbench/SparSizingPanel";
+import type { SparSizingInputs } from "@/components/workbench/SparSizingPanel";
+import { useSparSizing } from "@/hooks/useSparSizing";
 
 const TABS = ["Assumptions", "Operating Points", "Polar", "Trefftz Plane", "Spanwise Loads", "Streamlines", "Envelope", "Sizing"] as const;
 export type Tab = (typeof TABS)[number];
@@ -1054,14 +1057,39 @@ function SpanwiseLoadsChart({
   );
 }
 
-/** Tab content for the Spanwise Loads tab (gh-1002). Exported for unit testing. */
+/** Tab content for the Spanwise Loads tab (gh-1002, gh-1008). Exported for unit testing. */
 export function SpanwiseLoadsTabContent({
   spanwiseLoadsLoading,
   spanwiseLoads,
+  aeroplaneId,
 }: Readonly<{
   spanwiseLoadsLoading?: boolean;
   spanwiseLoads?: SpanwiseLoadsResult | null;
+  aeroplaneId?: string | null;
 }>) {
+  const { result: sizingResult, isRunning: sizingRunning, error: sizingError, run: runSizing } =
+    useSparSizing(aeroplaneId ?? null);
+
+  // g_limit comes from the first spar sizing result (after first compute)
+  const firstSizing = sizingResult?.spar_sizing?.[0] ?? null;
+  const gLimit = firstSizing?.g_limit ?? null;
+  const gLimitFallback = firstSizing?.g_limit_fallback ?? false;
+
+  const handleSparCompute = (inputs: SparSizingInputs) => {
+    if (!spanwiseLoads) return;
+    const sizingParams = toSizingParams(inputs);
+    if (!sizingParams) return;
+    // Use the same op params that produced the current spanwise loads
+    const opParams = {
+      velocity: spanwiseLoads.velocity_mps,
+      alpha: spanwiseLoads.alpha,
+      beta: 0,
+      altitude: spanwiseLoads.altitude_m,
+      xyz_ref: [0, 0, 0],
+    };
+    runSizing(opParams, sizingParams);
+  };
+
   if (spanwiseLoadsLoading) {
     return (
       <div className="flex flex-1 items-center justify-center">
@@ -1078,7 +1106,20 @@ export function SpanwiseLoadsTabContent({
     );
   }
   if ((spanwiseLoads?.surfaces.length ?? 0) > 0) {
-    return <SpanwiseLoadsChart loads={spanwiseLoads!} />;
+    return (
+      <div className="flex flex-1 flex-col gap-4">
+        <SpanwiseLoadsChart loads={spanwiseLoads!} />
+        {/* gh-1008: Spar Sizing collapsible panel below the V/M chart */}
+        <SparSizingPanel
+          sizingResults={sizingResult?.spar_sizing ?? null}
+          isRunning={sizingRunning}
+          error={sizingError}
+          onCompute={handleSparCompute}
+          gLimit={gLimit}
+          gLimitFallback={gLimitFallback}
+        />
+      </div>
+    );
   }
   return (
     <div className="flex flex-1 flex-col items-center justify-center gap-4">
@@ -1389,6 +1430,7 @@ export function AnalysisViewerPanel({
           <SpanwiseLoadsTabContent
             spanwiseLoadsLoading={spanwiseLoadsLoading}
             spanwiseLoads={spanwiseLoads}
+            aeroplaneId={aeroplaneId}
           />
         </div>
       )}

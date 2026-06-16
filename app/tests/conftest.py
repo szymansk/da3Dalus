@@ -46,7 +46,7 @@ from app.models.aeroplanemodel import (
 )
 from app.models.analysismodels import OperatingPointModel
 from app.services import cad_service
-from app.services.component_type_service import seed_default_types
+from app.services.component_type_service import seed_default_types, seed_structural_materials
 from app.services.mission_objective_service import seed_mission_presets
 
 
@@ -144,6 +144,7 @@ def client_and_db() -> Tuple[TestClient, sessionmaker]:
     _seed_session = TestingSessionLocal()
     try:
         seed_default_types(_seed_session)
+        seed_structural_materials(_seed_session)  # gh-1008: Pine + Carbon Fiber
         seed_mission_presets(_seed_session)
         _seed_session.commit()
     finally:

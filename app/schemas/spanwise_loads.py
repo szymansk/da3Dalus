@@ -1,6 +1,12 @@
-"""Pydantic schemas for spanwise shear + bending-moment distribution (gh-1002)."""
+"""Pydantic schemas for spanwise shear + bending-moment distribution (gh-1002).
+
+gh-1008: Extended with SpanwiseLoadsWithSizingResponse for the optional
+spar-sizing block returned when sizing params are supplied to the endpoint.
+"""
 
 from __future__ import annotations
+
+from typing import Optional
 
 from pydantic import BaseModel, Field
 
@@ -70,4 +76,25 @@ class SpanwiseLoadsResponse(BaseModel):
     )
     surfaces: list[SurfaceSpanwiseLoads] = Field(
         ..., description="Per-surface spanwise load distributions"
+    )
+
+
+class SpanwiseLoadsWithSizingResponse(SpanwiseLoadsResponse):
+    """Spanwise loads response extended with per-surface spar-sizing results (gh-1008).
+
+    Returned by the endpoint when ``spar_params`` are supplied in the request body.
+    Each element in ``spar_sizing`` corresponds to one surface in ``surfaces``
+    (by position and ``surface_name``).
+
+    Import note: SparSizingResult is imported inline to avoid circular imports
+    between spanwise_loads and spar_sizing schemas.
+    """
+
+    # Use Any to avoid import-time circular dependency; validated at runtime.
+    spar_sizing: Optional[list] = Field(
+        None,
+        description=(
+            "Per-surface spar-sizing results (list of SparSizingResult). "
+            "Present only when spar_params were supplied."
+        ),
     )
