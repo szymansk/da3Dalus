@@ -89,6 +89,10 @@ interface AnalysisConfigPanelProps {
   readonly onRunStripForces?: (params: StripForcesAllParams) => void;
   readonly stripForcesRunning?: boolean;
   readonly stripForcesError?: string | null;
+  // Spanwise Loads (gh-1002) — same OP params as strip forces
+  readonly onRunSpanwiseLoads?: (params: StripForcesAllParams) => void;
+  readonly spanwiseLoadsRunning?: boolean;
+  readonly spanwiseLoadsError?: string | null;
   // Streamlines
   readonly onRunStreamlines?: (params: StreamlinesParams) => void;
   readonly streamlinesRunning?: boolean;
@@ -108,16 +112,33 @@ interface AnalysisConfigPanelProps {
   readonly onClose?: () => void;
 }
 
-function getIsRunning(activeTab: Tab, analysis: UseAnalysisReturn, stripForcesRunning: boolean | undefined, streamlinesRunning: boolean | undefined): boolean {
+function getIsRunning(activeTab: Tab, analysis: UseAnalysisReturn, stripForcesRunning: boolean | undefined, streamlinesRunning: boolean | undefined, spanwiseLoadsRunning?: boolean): boolean {
   if (activeTab === "Polar") return analysis.isRunning;
   if (activeTab === "Trefftz Plane") return stripForcesRunning ?? false;
+  if (activeTab === "Spanwise Loads") return spanwiseLoadsRunning ?? false;
   return streamlinesRunning ?? false;
 }
 
-function getCurrentError(activeTab: Tab, analysis: UseAnalysisReturn, stripForcesError: string | null | undefined, streamlinesError: string | null | undefined): string | null {
+function getCurrentError(activeTab: Tab, analysis: UseAnalysisReturn, stripForcesError: string | null | undefined, streamlinesError: string | null | undefined, spanwiseLoadsError?: string | null): string | null {
   if (activeTab === "Polar") return analysis.error;
   if (activeTab === "Trefftz Plane") return stripForcesError ?? null;
+  if (activeTab === "Spanwise Loads") return spanwiseLoadsError ?? null;
   return streamlinesError ?? null;
+}
+
+function selectRunHandler(
+  activeTab: Tab,
+  handlers: {
+    polar: () => void;
+    stripForces: () => void;
+    spanwiseLoads: () => void;
+    streamlines: () => void;
+  },
+): () => void {
+  if (activeTab === "Polar") return handlers.polar;
+  if (activeTab === "Trefftz Plane") return handlers.stripForces;
+  if (activeTab === "Spanwise Loads") return handlers.spanwiseLoads;
+  return handlers.streamlines;
 }
 
 /**
@@ -288,6 +309,9 @@ export function AnalysisConfigPanel({
   onRunStripForces,
   stripForcesRunning,
   stripForcesError,
+  onRunSpanwiseLoads,
+  spanwiseLoadsRunning,
+  spanwiseLoadsError,
   onRunStreamlines,
   streamlinesRunning,
   streamlinesError,
@@ -378,6 +402,19 @@ export function AnalysisConfigPanel({
     onClose?.();
   };
 
+  // ── Spanwise Loads handlers (gh-1002) — same OP config as Trefftz Plane ──
+  const handleRunSpanwiseLoads = () => {
+    onRunSpanwiseLoads?.({
+      velocity: finiteOr(velocity, 14),
+      alpha: finiteOr(trefftzAlpha, 5),
+      beta: finiteOr(beta, 0),
+      altitude: finiteOr(altitude, 100),
+      xyz_ref: parseXyzRef(),
+      operating_point_id: useTrimmedOp ? effectiveOpId : null,
+    });
+    onClose?.();
+  };
+
   // ── Streamlines handlers ──
   const handleRunStreamlines = () => {
     onRunStreamlines?.({
@@ -405,13 +442,16 @@ export function AnalysisConfigPanel({
   };
 
   // Determine running/error state for active tab
-  const isRunning = getIsRunning(activeTab, analysis, stripForcesRunning, streamlinesRunning);
+  const isRunning = getIsRunning(activeTab, analysis, stripForcesRunning, streamlinesRunning, spanwiseLoadsRunning);
 
-  const currentError = getCurrentError(activeTab, analysis, stripForcesError, streamlinesError);
+  const currentError = getCurrentError(activeTab, analysis, stripForcesError, streamlinesError, spanwiseLoadsError);
 
-  let handleRun = handleRunStreamlines;
-  if (activeTab === "Polar") handleRun = handleRunPolar;
-  else if (activeTab === "Trefftz Plane") handleRun = handleRunStripForces;
+  const handleRun = selectRunHandler(activeTab, {
+    polar: handleRunPolar,
+    stripForces: handleRunStripForces,
+    spanwiseLoads: handleRunSpanwiseLoads,
+    streamlines: handleRunStreamlines,
+  });
 
   // Two scope-specific selectors so the footnote is honest about which
   // solver actually consumes the deflections (VLM streamlines: yes;
@@ -849,6 +889,77 @@ export function AnalysisConfigPanel({
                 </div>
               </div>
             )}
+          </div>
+          </div>
+        </>
+      )}
+
+      {/* ══════════════════════════════════════════════════════════════════ */}
+      {/* SPANWISE LOADS TAB CONFIG (gh-1002)                             */}
+      {/* ══════════════════════════════════════════════════════════════════ */}
+      {activeTab === "Spanwise Loads" && (
+        <>
+          {opBasisSelectorAvl}
+          <div
+            className={`flex flex-col gap-3 rounded-xl border border-border bg-card p-4 ${
+              useTrimmedOp ? "opacity-50" : ""
+            }`}
+          >
+          <span className="font-[family-name:var(--font-jetbrains-mono)] text-[12px] text-muted-foreground">
+            Spanwise Loads {useTrimmedOp ? "— overridden by trimmed OP" : ""}
+          </span>
+          <div className="flex flex-col gap-1">
+            <label htmlFor="spanwise-alpha" className="font-[family-name:var(--font-geist-sans)] text-[11px] text-muted-foreground">
+              alpha
+            </label>
+            <div className="relative">
+              <input
+                id="spanwise-alpha"
+                type="text"
+                value={trefftzAlpha}
+                onChange={(e) => setTrefftzAlpha(e.target.value)}
+                className="w-full rounded-xl border border-border bg-input px-3 py-2 pr-8 font-[family-name:var(--font-geist-sans)] text-[13px] text-foreground"
+              />
+              <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 font-[family-name:var(--font-geist-sans)] text-[11px] text-muted-foreground">
+                &deg;
+              </span>
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="flex flex-col gap-1">
+              <label htmlFor="spanwise-velocity" className="font-[family-name:var(--font-geist-sans)] text-[11px] text-muted-foreground">
+                velocity
+              </label>
+              <div className="relative">
+                <input
+                  id="spanwise-velocity"
+                  type="text"
+                  value={velocity}
+                  onChange={(e) => setVelocity(e.target.value)}
+                  className="w-full rounded-xl border border-border bg-input px-3 py-2 pr-10 font-[family-name:var(--font-geist-sans)] text-[13px] text-foreground"
+                />
+                <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 font-[family-name:var(--font-geist-sans)] text-[11px] text-muted-foreground">
+                  m/s
+                </span>
+              </div>
+            </div>
+            <div className="flex flex-col gap-1">
+              <label htmlFor="spanwise-altitude" className="font-[family-name:var(--font-geist-sans)] text-[11px] text-muted-foreground">
+                altitude
+              </label>
+              <div className="relative">
+                <input
+                  id="spanwise-altitude"
+                  type="text"
+                  value={altitude}
+                  onChange={(e) => setAltitude(e.target.value)}
+                  className="w-full rounded-xl border border-border bg-input px-3 py-2 pr-8 font-[family-name:var(--font-geist-sans)] text-[13px] text-foreground"
+                />
+                <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 font-[family-name:var(--font-geist-sans)] text-[11px] text-muted-foreground">
+                  m
+                </span>
+              </div>
+            </div>
           </div>
           </div>
         </>

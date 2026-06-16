@@ -22,6 +22,7 @@ from app.db.session import get_db
 from app.schemas.AeroplaneRequest import AnalysisToolUrlType, AlphaSweepRequest, SimpleSweepRequest
 from app.schemas.api_responses import StaticUrlResponse
 from app.schemas.aeroanalysisschema import OperatingPointSchema
+from app.schemas.spanwise_loads import SpanwiseLoadsResponse
 from app.schemas.stability import StabilitySummaryResponse, StabilityResultRead
 from app.schemas.strip_forces import StripForcesResponse
 from app.services import analysis_service
@@ -418,6 +419,42 @@ async def get_streamlines_three_view_url(
             settings=settings,
         )
         return StaticUrlResponse(url=image_url)
+    except ServiceException as exc:
+        _raise_http_from_domain(exc)
+    except Exception as exc:  # pragma: no cover - defensive fallback
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Unexpected error: {exc}"
+        ) from exc
+
+
+@router.post(
+    "/aeroplanes/{aeroplane_id}/spanwise_loads",
+    response_model=SpanwiseLoadsResponse,
+    tags=["analysis"],
+    operation_id="get_airplane_spanwise_loads",
+)
+async def get_airplane_spanwise_loads(
+    aeroplane_id: Annotated[AeroPlaneID, Path(..., description=_DESC_AEROPLANE_ID)],
+    operating_point: Annotated[OperatingPointSchema, Body(..., description="The operating point")],
+    db: Annotated[Session, Depends(get_db)],
+    solver: Annotated[
+        Literal["vlm", "avl"],
+        Query(description="Strip-force solver: 'vlm' (default, in-process) or 'avl' (subprocess)"),
+    ] = "vlm",
+) -> SpanwiseLoadsResponse:
+    """Return spanwise shear and bending-moment distributions for all surfaces (gh-1002).
+
+    Integrates the Trefftz-Plane strip forces into running shear V(y) and bending
+    moment M(y) referenced to the wing root.  The root bending moment is the
+    headline value for carbon-spar sizing on 3D-printed wings.
+
+    Pure post-processing over the strip-forces computation — no new aerodynamic
+    model.  Uses the same VLM/AVL solver as ``strip_forces``.
+    """
+    try:
+        return await analysis_service.analyze_airplane_spanwise_loads(
+            db, aeroplane_id, operating_point, solver=solver
+        )
     except ServiceException as exc:
         _raise_http_from_domain(exc)
     except Exception as exc:  # pragma: no cover - defensive fallback

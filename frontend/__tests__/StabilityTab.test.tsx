@@ -23,9 +23,14 @@ describe("AnalysisViewerPanel TABS (gh-567)", () => {
       "Operating Points",
       "Polar",
       "Trefftz Plane",
+      "Spanwise Loads",
       "Streamlines",
       "Envelope",
       "Sizing",
     ]);
+  });
+
+  it("includes Spanwise Loads tab (gh-1002)", () => {
+    expect(TABS).toContain("Spanwise Loads");
   });
 });
