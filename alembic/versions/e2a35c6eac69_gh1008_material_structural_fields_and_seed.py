@@ -24,7 +24,7 @@ from typing import Sequence, Union
 import sqlalchemy as sa
 from alembic import op
 
-revision: str = "a1b2c3d4e5f6"
+revision: str = "e2a35c6eac69"
 down_revision: Union[str, None] = "ee9fd32e8e90"
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
@@ -105,7 +105,7 @@ def upgrade() -> None:
 
     # 1. Extend the 'material' ComponentType schema additively
     row = conn.execute(
-        sa.text("SELECT id, schema_def FROM component_types WHERE name = 'material'")
+        sa.text("SELECT id, \"schema\" FROM component_types WHERE name = 'material'")
     ).fetchone()
 
     if row is not None:
@@ -127,7 +127,7 @@ def upgrade() -> None:
                 current_schema.append(prop)
 
         conn.execute(
-            sa.text("UPDATE component_types SET schema_def = :schema WHERE id = :id"),
+            sa.text("UPDATE component_types SET \"schema\" = :schema WHERE id = :id"),
             {"schema": json.dumps(current_schema), "id": type_id},
         )
 
@@ -168,7 +168,7 @@ def downgrade() -> None:
 
     # Remove added props from material schema
     row = conn.execute(
-        sa.text("SELECT id, schema_def FROM component_types WHERE name = 'material'")
+        sa.text("SELECT id, \"schema\" FROM component_types WHERE name = 'material'")
     ).fetchone()
     if row is not None:
         type_id, raw_schema = row[0], row[1]
@@ -182,6 +182,6 @@ def downgrade() -> None:
 
         pruned = [p for p in current_schema if p.get("name") not in _NEW_PROP_NAMES]
         conn.execute(
-            sa.text("UPDATE component_types SET schema_def = :schema WHERE id = :id"),
+            sa.text("UPDATE component_types SET \"schema\" = :schema WHERE id = :id"),
             {"schema": json.dumps(pruned), "id": type_id},
         )

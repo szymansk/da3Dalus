@@ -5,7 +5,7 @@
 
 import React from "react";
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect, vi } from "vitest";
 import { SparSizingPanel } from "@/components/workbench/SparSizingPanel";
 import type { SparSizingResult, SparSizingStation } from "@/hooks/useSparSizing";
 import type { SparSizingPanelProps } from "@/components/workbench/SparSizingPanel";

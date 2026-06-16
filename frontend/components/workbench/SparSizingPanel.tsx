@@ -62,10 +62,8 @@ function parsePositiveFloat(s: string, fallback: number): number {
 
 function StationRow({
   station,
-  solvedLabel,
 }: {
   station: SparSizingStation;
-  solvedLabel: string;
 }) {
   const feasOk = station.feasible;
   return (
@@ -141,7 +139,7 @@ function SizingResultCard({ result }: { result: SparSizingResult }) {
             {[...result.stations]
               .sort((a, b) => a.y_m - b.y_m) // root first (ascending y)
               .map((st, idx) => (
-                <StationRow key={idx} station={st} solvedLabel={solvedLabel} />
+                <StationRow key={idx} station={st} />
               ))}
           </tbody>
         </table>
