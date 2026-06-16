@@ -762,6 +762,8 @@
       "max_current_a": 80.0,
       "cells_lipo_min": 6,
       "cells_lipo_max": 14,
+      "cells_nixx_min": null,
+      "cells_nixx_max": null,
       "art_no": "DPAC065HV",
       "bec_voltage_5v": true,
       "bec_current_a": 8
@@ -783,6 +785,8 @@
       "max_current_a": 150.0,
       "cells_lipo_min": 6,
       "cells_lipo_max": 14,
+      "cells_nixx_min": null,
+      "cells_nixx_max": null,
       "art_no": "DPAC125HV",
       "bec_voltage_5v": true,
       "bec_current_a": 8
@@ -804,6 +808,8 @@
       "max_current_a": 160.0,
       "cells_lipo_min": 6,
       "cells_lipo_max": 14,
+      "cells_nixx_min": null,
+      "cells_nixx_max": null,
       "art_no": "DPAC130HV",
       "bec_voltage_5v": true,
       "bec_current_a": 8
