@@ -27,6 +27,7 @@ FIXTURES_DIR = Path(__file__).parent / "fixtures" / "apc_props"
 from scripts.parse_apc_props import (  # noqa: E402
     ParsedPropFile,
     build_snapshot_record,
+    derive_blades,
     parse_apc_dat_file,
     parse_filename,
     parse_header_designation,
@@ -648,3 +649,95 @@ class TestCommittedSnapshot:
             assert "variant" in record.get("specs", {}), (
                 f"Missing 'variant' in specs for {record.get('name')}"
             )
+
+
+# ──────────────────────────────────────────────────────────────────────────────
+# derive_blades — blade count from variant suffix (gh-1004)
+# ──────────────────────────────────────────────────────────────────────────────
+
+
+class TestDeriveBlades:
+    """Blade count is encoded in the trailing -N token of the variant.
+
+    APC designations carry a trailing ``-3`` / ``-4`` token for 3- and
+    4-blade props (also as composites like ``E-3``, ``E-4``). Everything
+    else (plain, ``E``, marine ``M-JK``, ``MRF-RH`` …) is the standard
+    2-blade prop.
+    """
+
+    def test_plain_is_two(self):
+        assert derive_blades("") == 2
+
+    def test_electric_is_two(self):
+        assert derive_blades("E") == 2
+
+    def test_trailing_dash_4(self):
+        assert derive_blades("-4") == 4
+
+    def test_trailing_dash_3(self):
+        assert derive_blades("-3") == 3
+
+    def test_composite_E_dash_3(self):
+        assert derive_blades("E-3") == 3
+
+    def test_composite_E_dash_4(self):
+        assert derive_blades("E-4") == 4
+
+    def test_marine_letter_suffix_stays_two(self):
+        # M-JK, M-LH, MRF-RH, P-LH, R-RH end in letters, not a blade count.
+        assert derive_blades("M-JK") == 2
+        assert derive_blades("M-LH") == 2
+        assert derive_blades("MRF-RH") == 2
+        assert derive_blades("P-LH") == 2
+        assert derive_blades("R-RH") == 2
+
+    def test_parenthesised_variant_stays_two(self):
+        assert derive_blades("EP(F2B)") == 2
+        assert derive_blades("(F1-GT)") == 2
+
+
+class TestBuildSnapshotRecordBladeCount:
+    """build_snapshot_record derives blades from the parsed variant."""
+
+    def _record(self, variant: str) -> dict:
+        parsed = ParsedPropFile(
+            diameter_in=10.0,
+            pitch_in=6.0,
+            variant=variant,
+            source_version="test",
+            rpm_blocks=[],
+        )
+        return build_snapshot_record(parsed, "test.dat")
+
+    def test_default_two_blades(self):
+        assert self._record("")["specs"]["blades"] == 2
+
+    def test_four_blade_variant(self):
+        assert self._record("-4")["specs"]["blades"] == 4
+
+    def test_three_blade_composite(self):
+        assert self._record("E-3")["specs"]["blades"] == 3
+
+
+class TestSnapshotBladeCounts:
+    """The committed snapshot must encode real blade counts for -3/-4 props."""
+
+    def _load(self) -> list[dict]:
+        snapshot_path = REPO_ROOT / "data" / "cots" / "apc_props.json.gz"
+        with gzip.open(snapshot_path, "rt", encoding="utf-8") as fh:
+            return json.loads(fh.read())
+
+    def test_known_multi_blade_props(self):
+        data = {r["name"]: r for r in self._load()}
+        assert data["APC 28x20-4"]["specs"]["blades"] == 4
+        assert data["APC 4x4E-3"]["specs"]["blades"] == 3
+        assert data["APC 15.75x13-3"]["specs"]["blades"] == 3
+
+    def test_plain_prop_two_blades(self):
+        data = {r["name"]: r for r in self._load()}
+        assert data["APC 9x6"]["specs"]["blades"] == 2
+
+    def test_seventeen_multiblade_records(self):
+        data = self._load()
+        multi = [r for r in data if r["specs"]["blades"] != 2]
+        assert len(multi) == 17, f"expected 17 multi-blade props, got {len(multi)}"
