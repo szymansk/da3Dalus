@@ -618,7 +618,7 @@ def _patch_material_structural_fields(db: Session, full_schema: list[dict[str, A
 _STRUCTURAL_MATERIAL_SEEDS: list[dict[str, Any]] = [
     {
         "name": "Pine (structural)",
-        "description": "Kiefer Güte A — structural spar material. σ_allow = 39 MPa (compression).",
+        "description": "Pine, Grade A — structural spar material. σ_allow = 39 MPa (compression).",
         "specs": {
             "density_kg_m3": 500.0,
             "allowable_bending_stress_mpa": 39.0,
