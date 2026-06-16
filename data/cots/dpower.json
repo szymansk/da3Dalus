@@ -594,8 +594,12 @@
       "max_current_a": 30.0,
       "cells_lipo_min": 2,
       "cells_lipo_max": 4,
-      "bec_output": "5V/6V 4A",
-      "art_no": "DPAC020"
+      "art_no": "DPAC020",
+      "bec_voltage_5v": true,
+      "bec_voltage_6v": true,
+      "bec_current_a": 4,
+      "cells_nixx_min": 5,
+      "cells_nixx_max": 12
     }
   },
   {
@@ -614,8 +618,12 @@
       "max_current_a": 40.0,
       "cells_lipo_min": 2,
       "cells_lipo_max": 4,
-      "bec_output": "5V/6V 4A",
-      "art_no": "DPAC030"
+      "art_no": "DPAC030",
+      "bec_voltage_5v": true,
+      "bec_voltage_6v": true,
+      "bec_current_a": 4,
+      "cells_nixx_min": 5,
+      "cells_nixx_max": 12
     }
   },
   {
@@ -634,8 +642,12 @@
       "max_current_a": 55.0,
       "cells_lipo_min": 2,
       "cells_lipo_max": 4,
-      "bec_output": "5V/6V 4A",
-      "art_no": "DPAC040"
+      "art_no": "DPAC040",
+      "bec_voltage_5v": true,
+      "bec_voltage_6v": true,
+      "bec_current_a": 4,
+      "cells_nixx_min": 5,
+      "cells_nixx_max": 12
     }
   },
   {
@@ -654,8 +666,12 @@
       "max_current_a": 65.0,
       "cells_lipo_min": 2,
       "cells_lipo_max": 4,
-      "bec_output": "5V/6V 4A",
-      "art_no": "DPAC050"
+      "art_no": "DPAC050",
+      "bec_voltage_5v": true,
+      "bec_voltage_6v": true,
+      "bec_current_a": 4,
+      "cells_nixx_min": 5,
+      "cells_nixx_max": 12
     }
   },
   {
@@ -674,8 +690,12 @@
       "max_current_a": 80.0,
       "cells_lipo_min": 2,
       "cells_lipo_max": 6,
-      "bec_output": "5V/6V 8A",
-      "art_no": "DPAC060"
+      "art_no": "DPAC060",
+      "bec_voltage_5v": true,
+      "bec_voltage_6v": true,
+      "bec_current_a": 8,
+      "cells_nixx_min": 5,
+      "cells_nixx_max": 12
     }
   },
   {
@@ -694,8 +714,12 @@
       "max_current_a": 100.0,
       "cells_lipo_min": 2,
       "cells_lipo_max": 6,
-      "bec_output": "5V/6V 8A",
-      "art_no": "DPAC080"
+      "art_no": "DPAC080",
+      "bec_voltage_5v": true,
+      "bec_voltage_6v": true,
+      "bec_current_a": 8,
+      "cells_nixx_min": 5,
+      "cells_nixx_max": 12
     }
   },
   {
@@ -714,8 +738,12 @@
       "max_current_a": 120.0,
       "cells_lipo_min": 2,
       "cells_lipo_max": 6,
-      "bec_output": "5V/6V 8A",
-      "art_no": "DPAC100"
+      "art_no": "DPAC100",
+      "bec_voltage_5v": true,
+      "bec_voltage_6v": true,
+      "bec_current_a": 8,
+      "cells_nixx_min": 5,
+      "cells_nixx_max": 12
     }
   },
   {
@@ -734,8 +762,11 @@
       "max_current_a": 80.0,
       "cells_lipo_min": 6,
       "cells_lipo_max": 14,
-      "bec_output": "5V / 8A",
-      "art_no": "DPAC065HV"
+      "cells_nixx_min": null,
+      "cells_nixx_max": null,
+      "art_no": "DPAC065HV",
+      "bec_voltage_5v": true,
+      "bec_current_a": 8
     }
   },
   {
@@ -754,8 +785,11 @@
       "max_current_a": 150.0,
       "cells_lipo_min": 6,
       "cells_lipo_max": 14,
-      "bec_output": "5V / 8A",
-      "art_no": "DPAC125HV"
+      "cells_nixx_min": null,
+      "cells_nixx_max": null,
+      "art_no": "DPAC125HV",
+      "bec_voltage_5v": true,
+      "bec_current_a": 8
     }
   },
   {
@@ -774,8 +808,11 @@
       "max_current_a": 160.0,
       "cells_lipo_min": 6,
       "cells_lipo_max": 14,
-      "bec_output": "5V / 8A",
-      "art_no": "DPAC130HV"
+      "cells_nixx_min": null,
+      "cells_nixx_max": null,
+      "art_no": "DPAC130HV",
+      "bec_voltage_5v": true,
+      "bec_current_a": 8
     }
   },
   {
@@ -794,8 +831,9 @@
       "max_current_a": 8.0,
       "cells_lipo_min": 2,
       "cells_lipo_max": 3,
-      "bec_output": "5V / 1A",
-      "art_no": null
+      "art_no": null,
+      "bec_voltage_5v": true,
+      "bec_current_a": 1
     }
   },
   {
@@ -814,8 +852,9 @@
       "max_current_a": 16.0,
       "cells_lipo_min": 2,
       "cells_lipo_max": 4,
-      "bec_output": "5V / 1A",
-      "art_no": null
+      "art_no": null,
+      "bec_voltage_5v": true,
+      "bec_current_a": 1
     }
   },
   {
@@ -834,8 +873,9 @@
       "max_current_a": 35.0,
       "cells_lipo_min": 2,
       "cells_lipo_max": 4,
-      "bec_output": "5V / 2A",
-      "art_no": null
+      "art_no": null,
+      "bec_voltage_5v": true,
+      "bec_current_a": 2
     }
   },
   {
@@ -854,8 +894,11 @@
       "max_current_a": 65.0,
       "cells_lipo_min": 2,
       "cells_lipo_max": 6,
-      "bec_output": "5.0V, 5.5V, 6V einstellbar - 5A",
-      "art_no": null
+      "art_no": null,
+      "bec_voltage_5v": true,
+      "bec_voltage_5_5v": true,
+      "bec_voltage_6v": true,
+      "bec_current_a": 5
     }
   },
   {
@@ -874,8 +917,11 @@
       "max_current_a": 85.0,
       "cells_lipo_min": 2,
       "cells_lipo_max": 6,
-      "bec_output": "5.0V, 5.5V, 6V einstellbar - 5A",
-      "art_no": null
+      "art_no": null,
+      "bec_voltage_5v": true,
+      "bec_voltage_5_5v": true,
+      "bec_voltage_6v": true,
+      "bec_current_a": 5
     }
   },
   {
@@ -894,8 +940,11 @@
       "max_current_a": 100.0,
       "cells_lipo_min": 2,
       "cells_lipo_max": 6,
-      "bec_output": "5.0V, 5.5V, 6V einstellbar - 5A",
-      "art_no": null
+      "art_no": null,
+      "bec_voltage_5v": true,
+      "bec_voltage_5_5v": true,
+      "bec_voltage_6v": true,
+      "bec_current_a": 5
     }
   },
   {
@@ -914,7 +963,6 @@
       "max_current_a": 100.0,
       "cells_lipo_min": 2,
       "cells_lipo_max": 6,
-      "bec_output": null,
       "art_no": null
     }
   },
@@ -934,7 +982,6 @@
       "max_current_a": 100.0,
       "cells_lipo_min": 6,
       "cells_lipo_max": 12,
-      "bec_output": null,
       "art_no": null
     }
   },
@@ -954,7 +1001,6 @@
       "max_current_a": 180.0,
       "cells_lipo_min": 6,
       "cells_lipo_max": 12,
-      "bec_output": null,
       "art_no": null
     }
   }

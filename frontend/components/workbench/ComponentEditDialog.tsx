@@ -104,6 +104,15 @@ export function ComponentEditDialog({
   const [massG, setMassG] = useState(
     component?.mass_g == null ? "" : String(component.mass_g),
   );
+  const [bboxX, setBboxX] = useState(
+    component?.bbox_x_mm == null ? "" : String(component.bbox_x_mm),
+  );
+  const [bboxY, setBboxY] = useState(
+    component?.bbox_y_mm == null ? "" : String(component.bbox_y_mm),
+  );
+  const [bboxZ, setBboxZ] = useState(
+    component?.bbox_z_mm == null ? "" : String(component.bbox_z_mm),
+  );
   const [specs, setSpecs] = useState<Record<string, SpecValue>>(
     { ...(component?.specs as Record<string, SpecValue>) },
   );
@@ -167,9 +176,9 @@ export function ComponentEditDialog({
         manufacturer: manufacturer.trim() || null,
         description: description.trim() || null,
         mass_g: massG ? Number.parseFloat(massG) : null,
-        bbox_x_mm: null,
-        bbox_y_mm: null,
-        bbox_z_mm: null,
+        bbox_x_mm: bboxX ? Number.parseFloat(bboxX) : null,
+        bbox_y_mm: bboxY ? Number.parseFloat(bboxY) : null,
+        bbox_z_mm: bboxZ ? Number.parseFloat(bboxZ) : null,
         model_ref: null,
         specs: buildOutSpecs(),
       };
@@ -262,6 +271,43 @@ export function ComponentEditDialog({
               className="rounded-xl border border-border bg-input px-3 py-2 text-[13px] text-foreground"
             />
           </div>
+
+          <div className="flex gap-3">
+            <div className="flex min-w-0 flex-1 flex-col gap-1">
+              <label htmlFor="ce-bbox-x" className="text-[11px] text-muted-foreground">Length (mm)</label>
+              <input
+                id="ce-bbox-x"
+                data-bbox="bbox_x_mm"
+                type="number"
+                value={bboxX}
+                onChange={(e) => setBboxX(e.target.value)}
+                className="w-full rounded-xl border border-border bg-input px-3 py-2 text-[13px] text-foreground"
+              />
+            </div>
+            <div className="flex min-w-0 flex-1 flex-col gap-1">
+              <label htmlFor="ce-bbox-y" className="text-[11px] text-muted-foreground">Width (mm)</label>
+              <input
+                id="ce-bbox-y"
+                data-bbox="bbox_y_mm"
+                type="number"
+                value={bboxY}
+                onChange={(e) => setBboxY(e.target.value)}
+                className="w-full rounded-xl border border-border bg-input px-3 py-2 text-[13px] text-foreground"
+              />
+            </div>
+            <div className="flex min-w-0 flex-1 flex-col gap-1">
+              <label htmlFor="ce-bbox-z" className="text-[11px] text-muted-foreground">Height (mm)</label>
+              <input
+                id="ce-bbox-z"
+                data-bbox="bbox_z_mm"
+                type="number"
+                value={bboxZ}
+                onChange={(e) => setBboxZ(e.target.value)}
+                className="w-full rounded-xl border border-border bg-input px-3 py-2 text-[13px] text-foreground"
+              />
+            </div>
+          </div>
+
           <div className="flex flex-col gap-1">
             <label htmlFor="ce-description" className="text-[11px] text-muted-foreground">Description</label>
             <textarea
