@@ -44,7 +44,14 @@ schema cleanup plus a data migration** — **no change** to the
 | `cells_lipo_min` / `cells_lipo_max` | LiPo Cells Min / Max | number | S | |
 | `cells_nixx_min` / `cells_nixx_max` | NiXX Cells Min / Max | number | cells | **new** |
 | `cells_liion_min` / `cells_liion_max` | Li-Ion/LiHV Cells Min / Max | number | S | **new** |
-| `bec_voltage_min_v` / `bec_voltage_max_v` | BEC Voltage Min / Max | number | V | replaces scalar + free string |
+| `bec_voltage_5v` | BEC 5.0 V | boolean | — | selectable BEC output |
+| `bec_voltage_5_5v` | BEC 5.5 V | boolean | — | selectable BEC output |
+| `bec_voltage_6v` | BEC 6.0 V | boolean | — | selectable BEC output |
+| `bec_voltage_6_5v` | BEC 6.5 V | boolean | — | selectable BEC output |
+| `bec_voltage_7_4v` | BEC 7.4 V | boolean | — | selectable BEC output |
+| `bec_voltage_8_4v` | BEC 8.4 V | boolean | — | selectable BEC output |
+| `bec_voltage_9v` | BEC 9.0 V | boolean | — | selectable BEC output |
+| `bec_voltage_12v` | BEC 12.0 V | boolean | — | selectable BEC output |
 | `bec_current_a` | BEC Current | number | A | |
 | `protocol` | Protocol | enum | — | options unchanged |
 | `art_no` | Article No. | string | — | was "Art.-Nr." |
@@ -52,10 +59,19 @@ schema cleanup plus a data migration** — **no change** to the
 **Removed & migrated:** `cells` (legacy single), `bec_voltage_v`
 (scalar), `bec_output` (free string).
 
-> **Note (design decision):** BEC voltage is modeled as a **min/max
-> range**, not a discrete selectable set. AVICON's `"5V/6V"` is
-> physically a discrete switch (5V *or* 6V), so for AVICON
-> `min=5, max=6`. This was an explicit choice over a multi-value list.
+> **Note (design decision):** BEC voltage is modeled as a **discrete
+> set of selectable standard voltages**, each a `boolean` toggle
+> (true = the ESC can output that voltage). This matches how real
+> BECs expose jumper/app-selectable steps. AVICON's `"5V/6V"` →
+> `bec_voltage_5v=true`, `bec_voltage_6v=true`, rest false.
+>
+> The standard set (5–12 V) is grounded in the `rc-aircraft-designer`
+> RC-Network material: the 5/6 V receiver tier (`rcn-bec`) and the
+> 6 V→8.4 V HV-servo tier (`rcn-servo`), extended with standard
+> programmable-UBEC steps up to 12 V:
+> **5.0, 5.5, 6.0, 6.5, 7.4, 8.4, 9.0, 12.0 V**.
+> (7.2 V and 10/11 V deliberately excluded — pack-nominal /
+> continuous-adjust only, not standard discrete toggles.)
 
 ## Dimensions
 
@@ -70,13 +86,17 @@ already populates them.
    (`DEFAULT_SEED_TYPES`) and the `component_types` DB row to the
    canonical set above.
 2. Migrate existing component `specs`:
-   - `bec_output "5V/6V 4A"` → `bec_voltage_min_v=5`,
-     `bec_voltage_max_v=6`, `bec_current_a=4` (parse defensively;
-     leave unparseable strings untouched and log).
-   - `bec_voltage_v=x` → `bec_voltage_min_v = bec_voltage_max_v = x`.
+   - `bec_output "5V/6V 4A"` → set the matching `bec_voltage_*`
+     toggles true (`bec_voltage_5v`, `bec_voltage_6v`) +
+     `bec_current_a=4` (parse defensively; snap each parsed voltage to
+     the nearest standard value, leave unparseable strings untouched
+     and log).
+   - `bec_voltage_v=x` → set the matching standard `bec_voltage_*`
+     toggle true.
    - drop legacy `cells`.
 3. Update `data/cots/dpower.json` AVICON entries to add
-   `cells_nixx_min/max` and structured `bec_voltage_min/max_v` +
+   `cells_nixx_min/max`, the selected `bec_voltage_*` boolean toggles
+   (e.g. `bec_voltage_5v=true`, `bec_voltage_6v=true`), and
    `bec_current_a`, then re-import via the existing COTS import path.
 
 ## Acceptance criteria
@@ -86,9 +106,10 @@ already populates them.
 - [ ] Alembic migration updates seed + DB row and migrates existing
       ESC specs (BEC parse, scalar→range, drop `cells`); downgrade
       restores the prior schema.
-- [ ] `data/cots/dpower.json` AVICON ESCs carry NiXX cell range and
-      structured BEC voltage min/max + current; re-import is
-      idempotent and yields the new fields.
+- [ ] `data/cots/dpower.json` AVICON ESCs carry NiXX cell range, the
+      correct `bec_voltage_*` toggles (5 V + 6 V true), and
+      `bec_current_a`; re-import is idempotent and yields the new
+      fields.
 - [ ] Edit Component dialog renders `bbox_x/y/z_mm` as L/W/H plus the
       new spec fields, all English-labeled.
 - [ ] Tests: registry validation (new fields accepted, removed fields
@@ -101,4 +122,5 @@ already populates them.
 - SQLAlchemy column changes to the `components` table.
 - MCP tooling for components (none exists today).
 - Any non-ESC component type.
-- Discrete multi-value BEC representation (range chosen instead).
+- Continuous-adjust / arbitrary BEC voltages (only the standard
+  discrete set 5.0–12.0 V is offered as toggles).
