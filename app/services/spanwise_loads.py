@@ -102,7 +102,15 @@ def compute_spanwise_loads(
     Returns:
         `SpanwiseLoadsResponse` with per-surface shear/BM distributions.
     """
-    raw_surfaces: list[dict[str, Any]] = strip_forces_result.get("surfaces", [])
+    # The serialized StripForcesResponse uses "surfaces"; the RAW VLM/AVL solver
+    # result (what analyze_airplane_spanwise_loads passes) puts them under
+    # "strip_forces" (see analysis_service._strip_surfaces_from_result). Accept
+    # both so the live endpoint isn't silently empty (gh-1002 regression).
+    raw_surfaces: list[dict[str, Any]] = (
+        strip_forces_result.get("surfaces")
+        or strip_forces_result.get("strip_forces")
+        or []
+    )
     alpha = float(strip_forces_result.get("alpha", 0.0))
     velocity_mps = float(strip_forces_result.get("velocity_mps", 0.0))
     altitude_m = float(strip_forces_result.get("altitude_m", 0.0))

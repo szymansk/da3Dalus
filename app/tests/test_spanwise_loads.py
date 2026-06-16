@@ -136,6 +136,35 @@ class TestComputeSpanwiseLoads:
         outermost = sb[0]
         assert math.isclose(outermost.bending_moment_Nm, 0.0, abs_tol=1e-9)
 
+
+class TestRealSolverResultShape:
+    """Regression: the raw VLM/AVL result (what analyze_airplane_spanwise_loads
+    actually passes) carries the surfaces under the ``"strip_forces"`` key, NOT
+    ``"surfaces"``. The earlier mocks used ``"surfaces"`` so this divergence was
+    never exercised → the live endpoint returned an empty surfaces list."""
+
+    def test_strip_forces_key_is_consumed(self):
+        from app.services.spanwise_loads import compute_spanwise_loads
+
+        strips = [
+            _make_strip(1, -0.5, 0.5, 0.1, 1000.0),
+            _make_strip(2, 0.5, 0.5, 0.1, 1000.0),
+        ]
+        # Raw solver shape: container key is "strip_forces", no "surfaces".
+        raw_result = {
+            "alpha": 2.0,
+            "velocity_mps": 30.0,
+            "altitude_m": 0.0,
+            "strip_forces": [_make_surface("main_wing", strips)],
+        }
+        result = compute_spanwise_loads(strip_forces_result=raw_result, q=1.0)
+        assert len(result.surfaces) == 1, "raw 'strip_forces' key must be consumed"
+        surf = result.surfaces[0]
+        assert surf.surface_name == "main_wing"
+        # q=1, area=0.1, cl=1000 → lift=100 N per half; root BM = 100·0.5 = 50.
+        assert math.isclose(surf.root_bending_moment_Nm_starboard, 50.0, rel_tol=1e-6)
+        assert math.isclose(surf.root_bending_moment_Nm_port, 50.0, rel_tol=1e-6)
+
     def test_root_bm_matches_hand_calculation(self):
         """Three strips; verify root BM against pencil-and-paper calculation.
 
