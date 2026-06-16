@@ -129,9 +129,16 @@ export function CotsPickerDialog({
                       {comp.component_type}
                     </span>
                     {comp.manufacturer && <span>{comp.manufacturer}</span>}
-                    {comp.mass_g != null && (
+                    {comp.mass_g != null ? (
                       <span className="font-[family-name:var(--font-jetbrains-mono)] text-foreground">
                         {comp.mass_g}g
+                      </span>
+                    ) : (
+                      <span
+                        className="italic text-amber-500/80"
+                        title="No mass on record for this component — excluded from weight totals until set."
+                      >
+                        Mass unknown
                       </span>
                     )}
                   </div>

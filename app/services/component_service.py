@@ -8,13 +8,29 @@ from sqlalchemy.orm import Session
 
 from app.core.exceptions import InternalError, NotFoundError
 from app.models.component import ComponentModel
+from app.models.prop_polar import PropellerPolarModel
 from app.schemas.component import ComponentList, ComponentRead, ComponentWrite
 from app.services import component_type_service as type_svc
 
 logger = logging.getLogger(__name__)
 
 
-def _to_schema(m: ComponentModel) -> ComponentRead:
+def _resolve_polar_id(db: Session, model_ref: Optional[str]) -> Optional[int]:
+    """Resolve the performance polar matching a component's model_ref (gh-1012).
+
+    Component and polar share the ``model_ref`` key, so a seeded propeller
+    component can be bridged to its performance data. Returns None when no
+    polar matches (e.g. non-propeller components).
+    """
+    if not model_ref:
+        return None
+    row = (
+        db.query(PropellerPolarModel.id).filter(PropellerPolarModel.model_ref == model_ref).first()
+    )
+    return row[0] if row else None
+
+
+def _to_schema(m: ComponentModel, polar_id: Optional[int] = None) -> ComponentRead:
     return ComponentRead(
         id=m.id,
         name=m.name,
@@ -29,6 +45,8 @@ def _to_schema(m: ComponentModel) -> ComponentRead:
         specs=m.specs or {},
         created_at=m.created_at,
         updated_at=m.updated_at,
+        has_polar=polar_id is not None,
+        polar_id=polar_id,
     )
 
 
@@ -46,8 +64,20 @@ def list_components(
         )
     query = query.order_by(ComponentModel.component_type, ComponentModel.name)
     rows = query.all()
+
+    # Batch-resolve polar links by model_ref to avoid an N+1 query.
+    refs = {r.model_ref for r in rows if r.model_ref}
+    polar_by_ref: dict[str, int] = {}
+    if refs:
+        for pid, ref in (
+            db.query(PropellerPolarModel.id, PropellerPolarModel.model_ref)
+            .filter(PropellerPolarModel.model_ref.in_(refs))
+            .all()
+        ):
+            polar_by_ref.setdefault(ref, pid)
+
     return ComponentList(
-        items=[_to_schema(r) for r in rows],
+        items=[_to_schema(r, polar_by_ref.get(r.model_ref)) for r in rows],
         total=len(rows),
     )
 
@@ -60,7 +90,7 @@ def create_component(db: Session, data: ComponentWrite) -> ComponentRead:
         db.add(comp)
         db.flush()
         db.refresh(comp)
-        return _to_schema(comp)
+        return _to_schema(comp, _resolve_polar_id(db, comp.model_ref))
     except SQLAlchemyError as exc:
         logger.error("DB error in create_component: %s", exc)
         raise InternalError(message=f"Database error: {exc}") from exc
@@ -70,7 +100,7 @@ def get_component(db: Session, component_id: int) -> ComponentRead:
     comp = db.query(ComponentModel).filter(ComponentModel.id == component_id).first()
     if comp is None:
         raise NotFoundError(entity="Component", resource_id=component_id)
-    return _to_schema(comp)
+    return _to_schema(comp, _resolve_polar_id(db, comp.model_ref))
 
 
 def update_component(db: Session, component_id: int, data: ComponentWrite) -> ComponentRead:
@@ -84,7 +114,7 @@ def update_component(db: Session, component_id: int, data: ComponentWrite) -> Co
             setattr(comp, key, value)
         db.flush()
         db.refresh(comp)
-        return _to_schema(comp)
+        return _to_schema(comp, _resolve_polar_id(db, comp.model_ref))
     except NotFoundError:
         raise
     except SQLAlchemyError as exc:

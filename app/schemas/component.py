@@ -30,6 +30,14 @@ class ComponentRead(ComponentWrite):
     id: int = Field(..., description="Component ID")
     created_at: datetime
     updated_at: datetime
+    has_polar: bool = Field(
+        False,
+        description="True if a performance polar exists for this component (matched by model_ref).",
+    )
+    polar_id: Optional[int] = Field(
+        None,
+        description="ID of the matching propeller performance polar, if any (matched by model_ref).",
+    )
 
 
 class ComponentList(BaseModel):
