@@ -44,6 +44,7 @@ import app.models.stability_result
 import app.models.flight_envelope_model
 import app.models.mission_objective
 import app.models.mission_preset
+import app.models.prop_polar
 
 target_metadata = Base.metadata
 
