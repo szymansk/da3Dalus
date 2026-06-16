@@ -84,6 +84,10 @@ def _records_equal(existing: PropellerPolarModel, record: dict[str, Any]) -> boo
     # (otherwise an existing variant=NULL row would never gain its value).
     if (existing.variant or "") != (record.get("specs", {}).get("variant") or ""):
         return False
+    # gh-1000: re-import when PE0 enrichment appears in the snapshot but the row
+    # still lacks weight (otherwise enrichment would be silently skipped).
+    if existing.weight_g is None and record.get("specs", {}).get("weight_g") is not None:
+        return False
     return True
 
 
@@ -169,6 +173,10 @@ def import_prop_polars(
                 pitch_in=specs.get("pitch_in"),
                 variant=specs.get("variant", ""),
                 blades=specs.get("blades", 2),
+                # gh-1000 PE0 enrichment (nullable until backfilled)
+                weight_g=specs.get("weight_g"),
+                inertia_kg_m2=specs.get("inertia_kg_m2"),
+                geometry=record.get("geometry"),
             )
             db.add(prop)
             db.flush()  # get prop.id before inserting samples
@@ -188,6 +196,10 @@ def import_prop_polars(
             existing.pitch_in = specs.get("pitch_in")
             existing.variant = specs.get("variant", "")
             existing.blades = specs.get("blades", 2)
+            # gh-1000 PE0 enrichment
+            existing.weight_g = specs.get("weight_g")
+            existing.inertia_kg_m2 = specs.get("inertia_kg_m2")
+            existing.geometry = record.get("geometry")
             db.flush()
             _upsert_samples(db, existing, polars)
             logger.info("Update: %s / %s (%d RPM blocks)", manufacturer, name, len(polars))

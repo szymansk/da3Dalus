@@ -12,7 +12,7 @@ the data can be queried efficiently by propeller or by RPM.
 
 from datetime import datetime, timezone
 
-from sqlalchemy import Column, DateTime, Float, ForeignKey, Integer, String, func
+from sqlalchemy import JSON, Column, DateTime, Float, ForeignKey, Integer, String, func
 from sqlalchemy.orm import relationship
 
 from app.db.base import Base
@@ -37,6 +37,13 @@ class PropellerPolarModel(Base):
     pitch_in = Column(Float, nullable=True)  # inches
     variant = Column(String, nullable=True, default="")  # e.g. "E", "M-JK", "" for standard
     blades = Column(Integer, nullable=True, default=2)
+
+    # Mass / inertia / blade geometry (gh-1000, sourced from APC PE0 files).
+    # PE0 reports kg and kg-m**2; weight is normalised to grams, inertia kept
+    # in kg-m**2. geometry is a JSON list of per-station blade rows.
+    weight_g = Column(Float, nullable=True)  # total prop mass [g]
+    inertia_kg_m2 = Column(Float, nullable=True)  # moment of inertia [kg·m²]
+    geometry = Column(JSON, nullable=True)  # per-station blade geometry
 
     created_at = Column(
         DateTime(timezone=True),
