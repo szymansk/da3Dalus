@@ -1,7 +1,7 @@
 """gh-1000: add weight/inertia/geometry to propeller_polars
 
 Revision ID: b7d4e2a91c33
-Revises: e2a35c6eac69
+Revises: a3f8c1d2e4b5
 Create Date: 2026-06-17 00:30:00.000000
 
 Additive migration enriching propeller_polars with mass / inertia / blade
@@ -20,7 +20,7 @@ from alembic import op
 
 # revision identifiers, used by Alembic.
 revision: str = "b7d4e2a91c33"
-down_revision: Union[str, None] = "e2a35c6eac69"
+down_revision: Union[str, None] = "a3f8c1d2e4b5"
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 
