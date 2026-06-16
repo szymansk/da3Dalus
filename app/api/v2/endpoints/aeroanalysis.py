@@ -22,7 +22,8 @@ from app.db.session import get_db
 from app.schemas.AeroplaneRequest import AnalysisToolUrlType, AlphaSweepRequest, SimpleSweepRequest
 from app.schemas.api_responses import StaticUrlResponse
 from app.schemas.aeroanalysisschema import OperatingPointSchema
-from app.schemas.spanwise_loads import SpanwiseLoadsResponse
+from app.schemas.spar_sizing import SparSizingParams
+from app.schemas.spanwise_loads import SpanwiseLoadsResponse, SpanwiseLoadsWithSizingResponse
 from app.schemas.stability import StabilitySummaryResponse, StabilityResultRead
 from app.schemas.strip_forces import StripForcesResponse
 from app.services import analysis_service
@@ -454,6 +455,79 @@ async def get_airplane_spanwise_loads(
     try:
         return await analysis_service.analyze_airplane_spanwise_loads(
             db, aeroplane_id, operating_point, solver=solver
+        )
+    except ServiceException as exc:
+        _raise_http_from_domain(exc)
+    except Exception as exc:  # pragma: no cover - defensive fallback
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Unexpected error: {exc}"
+        ) from exc
+
+
+@router.post(
+    "/aeroplanes/{aeroplane_id}/spanwise_loads_with_sizing",
+    response_model=SpanwiseLoadsWithSizingResponse,
+    tags=["analysis"],
+    operation_id="get_airplane_spanwise_loads_with_spar_sizing",
+)
+async def get_airplane_spanwise_loads_with_sizing(
+    aeroplane_id: Annotated[AeroPlaneID, Path(..., description=_DESC_AEROPLANE_ID)],
+    operating_point: Annotated[OperatingPointSchema, Body(..., description="The operating point")],
+    db: Annotated[Session, Depends(get_db)],
+    solver: Annotated[
+        Literal["vlm", "avl"],
+        Query(description="Strip-force solver: 'vlm' (default, in-process) or 'avl' (subprocess)"),
+    ] = "vlm",
+    material_id: Annotated[
+        int | None, Query(description="Material component ID for spar sizing")
+    ] = None,
+    shape: Annotated[
+        Literal["tube", "rod", "rectangular", "capped"],
+        Query(description="Spar cross-section shape"),
+    ] = "tube",
+    safety_factor_j: Annotated[
+        float, Query(gt=0, description="Safety factor j (default 1.5)")
+    ] = 1.5,
+    packing_factor: Annotated[
+        float, Query(gt=0, le=1.0, description="Packing factor (default 0.8)")
+    ] = 0.8,
+    sigma_allow_mpa_override: Annotated[
+        float | None,
+        Query(gt=0, description="Override σ_allow (MPa). If omitted, material value used."),
+    ] = None,
+    cap_width_mm: Annotated[
+        float | None, Query(gt=0, description="Cap/flange width b (mm) — required for shape=capped")
+    ] = None,
+) -> SpanwiseLoadsWithSizingResponse:
+    """Return spanwise loads + spar-sizing results for all surfaces (gh-1008).
+
+    Extends the spanwise-loads endpoint with per-surface spar dimensioning.
+    The spar is sized at each strip station using the design bending moment
+    M_design = |M(y)| · g_limit · j, where g_limit comes from the aeroplane's
+    design assumptions (fallback: 3.0 with a warning).
+
+    Shapes: tube (Da=outer → solve wall), rod (solve d), rectangular (h=outer → solve b),
+    capped (H=outer, cap_width_mm=b → solve gurt thickness).
+
+    The material must be a Component of type 'material' with
+    allowable_bending_stress_mpa set.
+    """
+    if material_id is None:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="material_id is required for spar sizing",
+        )
+    spar_params = SparSizingParams(
+        material_id=material_id,
+        shape=shape,
+        safety_factor_j=safety_factor_j,
+        packing_factor=packing_factor,
+        sigma_allow_mpa_override=sigma_allow_mpa_override,
+        cap_width_mm=cap_width_mm,
+    )
+    try:
+        return await analysis_service.analyze_airplane_spanwise_loads(
+            db, aeroplane_id, operating_point, solver=solver, spar_params=spar_params
         )
     except ServiceException as exc:
         _raise_http_from_domain(exc)

@@ -33,8 +33,31 @@ vi.mock("lucide-react", () => {
     RefreshCw: icon,
     Square: icon,
     ArrowLeftRight: icon,
+    // gh-1008: SparSizingPanel uses these icons
+    ChevronDown: icon,
+    ChevronRight: icon,
   };
 });
+
+// gh-1008: Mock useSparSizing and SparSizingPanel so existing tests don't need
+// to deal with the spar-sizing hook and component tree.
+vi.mock("@/hooks/useSparSizing", () => ({
+  useSparSizing: () => ({
+    result: null,
+    isRunning: false,
+    error: null,
+    run: vi.fn(),
+  }),
+}));
+
+vi.mock("@/hooks/useComponents", () => ({
+  useComponents: () => ({ components: [], total: 0, error: null, isLoading: false, mutate: vi.fn() }),
+}));
+
+vi.mock("@/components/workbench/SparSizingPanel", () => ({
+  SparSizingPanel: () => React.createElement("div", { "data-testid": "spar-sizing-panel-stub" }),
+  toSizingParams: () => null,
+}));
 
 const plotlyReact = vi.fn().mockResolvedValue(undefined);
 const plotlyPurge = vi.fn();
@@ -47,6 +70,7 @@ vi.mock("plotly.js-gl3d-dist-min", () => ({
 function makeLoads(overrides: Partial<SpanwiseLoadsResult> = {}): SpanwiseLoadsResult {
   return {
     alpha: 2.0,
+    beta: 0.0,
     velocity_mps: 30.0,
     altitude_m: 0.0,
     dynamic_pressure_Pa: 551.25,

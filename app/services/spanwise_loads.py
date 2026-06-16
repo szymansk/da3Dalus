@@ -112,6 +112,7 @@ def compute_spanwise_loads(
         or []
     )
     alpha = float(strip_forces_result.get("alpha", 0.0))
+    beta = float(strip_forces_result.get("beta", 0.0))
     velocity_mps = float(strip_forces_result.get("velocity_mps", 0.0))
     altitude_m = float(strip_forces_result.get("altitude_m", 0.0))
 
@@ -156,6 +157,7 @@ def compute_spanwise_loads(
 
     return SpanwiseLoadsResponse(
         alpha=alpha,
+        beta=beta,
         velocity_mps=velocity_mps,
         altitude_m=altitude_m,
         dynamic_pressure_Pa=q,

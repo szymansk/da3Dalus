@@ -1,8 +1,16 @@
-"""Pydantic schemas for spanwise shear + bending-moment distribution (gh-1002)."""
+"""Pydantic schemas for spanwise shear + bending-moment distribution (gh-1002).
+
+gh-1008: Extended with SpanwiseLoadsWithSizingResponse for the optional
+spar-sizing block returned when sizing params are supplied to the endpoint.
+"""
 
 from __future__ import annotations
 
+from typing import Optional
+
 from pydantic import BaseModel, Field
+
+from app.schemas.spar_sizing import SparSizingResult
 
 
 class SpanwiseLoadEntry(BaseModel):
@@ -63,6 +71,14 @@ class SpanwiseLoadsResponse(BaseModel):
     """Full spanwise shear + bending-moment response for one operating point (gh-1002)."""
 
     alpha: float = Field(..., description="Angle of attack used for the run (deg)")
+    beta: float = Field(
+        0.0,
+        description=(
+            "Sideslip angle used for the run (deg). Echoed so a follow-up spar-sizing "
+            "request reuses the same operating point (sideslip changes the spanwise "
+            "lift distribution)."
+        ),
+    )
     velocity_mps: float = Field(..., description="Freestream velocity (m/s)")
     altitude_m: float = Field(..., description="Altitude (m)")
     dynamic_pressure_Pa: float = Field(
@@ -70,4 +86,21 @@ class SpanwiseLoadsResponse(BaseModel):
     )
     surfaces: list[SurfaceSpanwiseLoads] = Field(
         ..., description="Per-surface spanwise load distributions"
+    )
+
+
+class SpanwiseLoadsWithSizingResponse(SpanwiseLoadsResponse):
+    """Spanwise loads response extended with per-surface spar-sizing results (gh-1008).
+
+    Returned by the endpoint when ``spar_params`` are supplied in the request body.
+    Each element in ``spar_sizing`` corresponds to one surface in ``surfaces``
+    (by position and ``surface_name``).
+    """
+
+    spar_sizing: Optional[list[SparSizingResult]] = Field(
+        None,
+        description=(
+            "Per-surface spar-sizing results (list of SparSizingResult). "
+            "Present only when spar_params were supplied."
+        ),
     )

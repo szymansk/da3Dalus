@@ -1989,17 +1989,27 @@ async def analyze_airplane_spanwise_loads(
     aeroplane_uuid,
     operating_point: OperatingPointSchema,
     solver: str = "vlm",
+    spar_params=None,
 ):
     """Integrate strip forces into spanwise shear + bending-moment distribution (gh-1002).
 
     Reuses the strip-forces computation path and then applies the pure
     ``compute_spanwise_loads`` integrator.  No new aerodynamic model.
 
+    When ``spar_params`` (a ``SparSizingParams``) are provided, the response is
+    extended with per-surface spar-sizing results (gh-1008).
+
+    Args:
+        spar_params: Optional SparSizingParams.  When supplied, returns a
+            ``SpanwiseLoadsWithSizingResponse``; otherwise a plain
+            ``SpanwiseLoadsResponse``.
+
     Returns:
-        SpanwiseLoadsResponse with per-surface shear/BM distributions.
+        SpanwiseLoadsResponse (no spar_params) or SpanwiseLoadsWithSizingResponse.
 
     Raises:
         NotFoundError: If the aeroplane does not exist.
+        ValidationError: If the material_id is not found in the Component DB.
         InternalError: If the strip-forces or integration step fails.
     """
     import aerosandbox as asb
@@ -2047,11 +2057,30 @@ async def analyze_airplane_spanwise_loads(
         result_with_meta["velocity_mps"] = float(resolved_op.velocity)
         result_with_meta["altitude_m"] = float(resolved_op.altitude)
         result_with_meta["alpha"] = float(resolved_op.alpha)
+        result_with_meta["beta"] = float(resolved_op.beta)
 
-        return compute_spanwise_loads(
+        spanwise_response = compute_spanwise_loads(
             strip_forces_result=result_with_meta,
             q=q_dyn,
         )
+
+        if spar_params is None:
+            return spanwise_response
+
+        # gh-1008: compute spar sizing for each surface
+        from app.schemas.spanwise_loads import SpanwiseLoadsWithSizingResponse
+
+        spar_results = _compute_spar_sizing_for_surfaces(
+            db=db,
+            aeroplane_id=aircraft.id,
+            spanwise_response=spanwise_response,
+            spar_params=spar_params,
+        )
+        return SpanwiseLoadsWithSizingResponse(
+            **spanwise_response.model_dump(),
+            spar_sizing=spar_results,
+        )
+
     except ServiceException:
         raise
     except Exception as e:
@@ -2060,3 +2089,133 @@ async def analyze_airplane_spanwise_loads(
             aeroplane_uuid,
         )
         raise InternalError(message=f"Spanwise loads error: {e}") from e
+
+
+# ---------------------------------------------------------------------------
+# gh-1008: spar sizing orchestration helpers
+# ---------------------------------------------------------------------------
+
+#: Default g_limit (manoeuvre load factor) when no design assumption is set.
+_G_LIMIT_DEFAULT = 3.0
+#: Fallback t/c ratio when section airfoil data is unavailable.
+_TC_FALLBACK = 0.12
+
+
+def _compute_spar_sizing_for_surfaces(
+    db: Session,
+    aeroplane_id: int,
+    spanwise_response,
+    spar_params,
+) -> list:
+    """Resolve material, g_limit, t/c, and run compute_spar_sizing per surface.
+
+    Returns a list of SparSizingResult (one per surface).
+    Raises ValidationError when the material is not found or has no σ_allow.
+    """
+    from app.models.component import ComponentModel
+    from app.services.spar_sizing import compute_spar_sizing
+    from app.services.design_assumptions_service import get_effective_assumption
+    from app.core.exceptions import ValidationError
+
+    # --- Material lookup ---
+    material = (
+        db.query(ComponentModel)
+        .filter(
+            ComponentModel.id == spar_params.material_id,
+            ComponentModel.component_type == "material",
+        )
+        .first()
+    )
+    if material is None:
+        raise ValidationError(
+            message=f"Material component ID={spar_params.material_id} not found.",
+            details={"material_id": spar_params.material_id},
+        )
+    material_specs = material.specs or {}
+    # Resolve the effective allowable stress and reject non-positive values. The
+    # material schema permits allowable_bending_stress_mpa=0 (min=0), which would
+    # make required_section_modulus divide by zero → 500. Surface a clear 422
+    # instead (gh-1008 review).
+    sigma_allow = spar_params.sigma_allow_mpa_override
+    if sigma_allow is None:
+        sigma_allow = material_specs.get("allowable_bending_stress_mpa")
+    if sigma_allow is None or sigma_allow <= 0:
+        raise ValidationError(
+            message=(
+                f"Material '{material.name}' has no positive allowable_bending_stress_mpa "
+                f"(got {sigma_allow}). Provide a positive sigma_allow_mpa_override or choose "
+                "a structural material."
+            ),
+            details={"material_id": spar_params.material_id, "name": material.name},
+        )
+
+    # --- g_limit from design assumptions (gh-960 pattern) ---
+    g_limit_raw = get_effective_assumption(db, aeroplane_id, "g_limit")
+    if g_limit_raw is None:
+        logger.warning(
+            "No g_limit assumption for aeroplane %s — using default %.1f",
+            aeroplane_id,
+            _G_LIMIT_DEFAULT,
+        )
+        g_limit = _G_LIMIT_DEFAULT
+        g_limit_fallback = True
+    else:
+        g_limit = float(g_limit_raw)
+        g_limit_fallback = False
+
+    results = []
+    for surface in spanwise_response.surfaces:
+        # Build station list from the starboard half (primary design loads)
+        # Use the half with the larger root BM (max of starboard / port)
+        stations = _surface_to_stations(surface)
+        if not stations:
+            continue
+
+        # t/c lookup: use starboard strips' chord as a proxy for y positions
+        tc_by_y = _get_tc_by_y_for_surface(surface)
+
+        spar_result = compute_spar_sizing(
+            stations=stations,
+            tc_by_y=tc_by_y,
+            material_specs=material_specs,
+            material_name=material.name,
+            params=spar_params,
+            g_limit=g_limit,
+            g_limit_fallback=g_limit_fallback,
+            surface_name=surface.surface_name,
+        )
+        results.append(spar_result)
+
+    return results
+
+
+def _surface_to_stations(surface) -> list[dict]:
+    """Convert a SurfaceSpanwiseLoads into station dicts for compute_spar_sizing.
+
+    Uses the half-span with the larger root bending moment.
+    Size on max(|M_sb|, |M_pt|) per spec §5.
+    """
+    if abs(surface.root_bending_moment_Nm_starboard) >= abs(surface.root_bending_moment_Nm_port):
+        entries = surface.starboard
+    else:
+        entries = surface.port
+
+    return [
+        {
+            "y_m": e.y_m,
+            "chord_m": e.chord_m,
+            "bending_moment_Nm": e.bending_moment_Nm,
+        }
+        for e in entries
+    ]
+
+
+def _get_tc_by_y_for_surface(surface) -> dict[float, float]:
+    """Build a t/c lookup dict from strip data.
+
+    gh-1008 §8: (t/c) should come from wing-section airfoil max-thickness.
+    That data isn't yet in the spanwise strip result, so we return an empty
+    dict here → the spar-sizing service applies the 0.12 fallback with a
+    warning.  A future ticket can wire in the airfoil DB t/c.
+    """
+    return {}

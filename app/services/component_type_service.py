@@ -315,6 +315,25 @@ DEFAULT_SEED_TYPES: list[dict[str, Any]] = [
                 "options": ["volume", "surface"],
                 "default": "volume",
             },
+            # gh-1008: additive structural spar-sizing fields (both optional)
+            {
+                "name": "allowable_bending_stress_mpa",
+                "label": "Allowable Bending Stress",
+                "type": "number",
+                "unit": "MPa",
+                "required": False,
+                "min": 0.0,
+                "description": "σ_allow for spar sizing (MPa). Compression governs for wood.",
+            },
+            {
+                "name": "youngs_modulus_gpa",
+                "label": "Young's Modulus",
+                "type": "number",
+                "unit": "GPa",
+                "required": False,
+                "min": 0.0,
+                "description": "E for future deflection checks (GPa).",
+            },
         ],
     },
     {
@@ -548,10 +567,16 @@ def seed_default_types(db: Session) -> None:
 
     Idempotent — safe to call multiple times (used by the test DB fixture).
     Seeded types carry deletable=False so users cannot remove them.
+
+    Also updates the 'material' type schema to add gh-1008 structural fields
+    if they aren't already present in the existing schema.
     """
     existing = {row[0] for row in db.query(ComponentTypeModel.name).all()}
     for seed in DEFAULT_SEED_TYPES:
         if seed["name"] in existing:
+            # gh-1008: patch in structural fields for the material type if missing
+            if seed["name"] == "material":
+                _patch_material_structural_fields(db, seed["schema"])
             continue
         db.add(
             ComponentTypeModel(
@@ -562,3 +587,77 @@ def seed_default_types(db: Session) -> None:
                 deletable=False,
             )
         )
+
+
+def _patch_material_structural_fields(db: Session, full_schema: list[dict[str, Any]]) -> None:
+    """Ensure the 'material' ComponentType has gh-1008 structural fields.
+
+    Adds allowable_bending_stress_mpa and youngs_modulus_gpa if missing.
+    Idempotent. Called from seed_default_types so existing test DBs get
+    the new fields without a full DB rebuild.
+    """
+    row = db.query(ComponentTypeModel).filter(ComponentTypeModel.name == "material").first()
+    if row is None:
+        return
+    current = _normalize_schema(row.schema_def)
+    existing_names = {p.get("name") for p in current if isinstance(p, dict)}
+    changed = False
+    for prop in full_schema:
+        if isinstance(prop, dict) and prop.get("name") not in existing_names:
+            current.append(prop)
+            changed = True
+    if changed:
+        row.schema_def = current
+        db.flush()
+
+
+# ---------------------------------------------------------------------------
+# Structural materials seed (gh-1008)
+# ---------------------------------------------------------------------------
+
+_STRUCTURAL_MATERIAL_SEEDS: list[dict[str, Any]] = [
+    {
+        "name": "Pine (structural)",
+        "description": "Pine, Grade A — structural spar material. σ_allow = 39 MPa (compression).",
+        "specs": {
+            "density_kg_m3": 500.0,
+            "allowable_bending_stress_mpa": 39.0,
+            "youngs_modulus_gpa": 11.0,
+        },
+    },
+    {
+        "name": "Carbon Fiber (structural)",
+        "description": "Carbon fiber tube/spar — conservative σ_allow=500 MPa (buckling-aware).",
+        "specs": {
+            "density_kg_m3": 1600.0,
+            "allowable_bending_stress_mpa": 500.0,
+            "youngs_modulus_gpa": 120.0,
+        },
+    },
+]
+
+
+def seed_structural_materials(db: Session) -> None:
+    """Seed Pine and Carbon Fiber structural materials if not already present.
+
+    Idempotent — safe to call multiple times.  Used by the test DB fixture
+    and the Alembic migration (gh-1008).
+    """
+    for mat in _STRUCTURAL_MATERIAL_SEEDS:
+        existing = (
+            db.query(ComponentModel)
+            .filter(
+                ComponentModel.name == mat["name"],
+                ComponentModel.component_type == "material",
+            )
+            .first()
+        )
+        if existing is None:
+            db.add(
+                ComponentModel(
+                    name=mat["name"],
+                    component_type="material",
+                    description=mat["description"],
+                    specs=mat["specs"],
+                )
+            )
