@@ -15,6 +15,7 @@ import {
 
 const FAKE_RESULT: SpanwiseLoadsResult = {
   alpha: 5.0,
+  beta: 0.0,
   velocity_mps: 20.0,
   altitude_m: 100.0,
   dynamic_pressure_Pa: 242.0,
