@@ -1,4 +1,4 @@
-"""Propeller performance polar models (gh-995).
+"""Propeller performance polar models (gh-995, gh-999).
 
 Two tables:
   - propeller_polars: one row per propeller (APC 9x6 etc.) — metadata +
@@ -35,6 +35,7 @@ class PropellerPolarModel(Base):
     # Propeller geometry
     diameter_in = Column(Float, nullable=True)  # inches
     pitch_in = Column(Float, nullable=True)  # inches
+    variant = Column(String, nullable=True, default="")  # e.g. "E", "M-JK", "" for standard
     blades = Column(Integer, nullable=True, default=2)
 
     created_at = Column(

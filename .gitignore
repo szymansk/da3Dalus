@@ -299,3 +299,6 @@ components/airfoils/vsp_morph_*.dat
 # D-Power (and future COTS) PDF datasheets — copyrighted, local only.
 # Only the extracted JSON snapshot (data/cots/*.json) is committed.
 components/cots-assets/
+
+# APC PER3 raw .dat files — local only; reimport from data/cots/apc_props.json.gz
+data/apc_raw/
