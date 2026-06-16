@@ -285,3 +285,43 @@ class TestImportResult:
         assert "updated=1" in s
         assert "skipped=5" in s
         assert "errors=0" in s
+
+
+# ──────────────────────────────────────────────────────────────────────────────
+# Committed COTS snapshots are valid + importable (gh-986 spec §9)
+# ──────────────────────────────────────────────────────────────────────────────
+
+
+class TestCommittedSnapshots:
+    """Guard the committed data/cots/*.json snapshots (reimport sources)."""
+
+    def _load(self, name: str) -> list[dict]:
+        import json
+        from pathlib import Path
+
+        repo_root = Path(__file__).resolve().parents[2]
+        return json.loads((repo_root / "data" / "cots" / name).read_text(encoding="utf-8"))
+
+    def test_spektrum_avian_snapshot_valid_and_imports(self, session):
+        """Spektrum Avian (gh-997): 16 brushless motors with power-in-watts;
+        every record validates and imports cleanly with no errors."""
+        records = self._load("spektrum_avian.json")
+        assert len(records) == 16
+        for rec in records:
+            assert rec["component_type"] == "brushless_motor"
+            assert _validate_record(rec) is None, rec.get("name")
+            # Spektrum publishes power (W), not current — the solver's keys.
+            assert rec["specs"]["max_power_w"] > rec["specs"]["max_continuous_power_w"] - 1
+            assert rec["specs"]["kv_rpm_per_volt"] > 0
+
+        result = import_snapshot(session, records)
+        assert result.imported == 16
+        assert not result.errors
+
+    def test_generic_batteries_snapshot_valid(self, session):
+        """LiPo battery seed (gh-993) imports cleanly."""
+        records = self._load("generic_batteries.json")
+        assert len(records) >= 1
+        result = import_snapshot(session, records)
+        assert result.imported == len(records)
+        assert not result.errors
