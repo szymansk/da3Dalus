@@ -9,7 +9,13 @@ class SpanwiseLoadEntry(BaseModel):
     """Per-strip structural loads referenced to the wing root."""
 
     y_m: float = Field(
-        ..., description="Spanwise position of this strip's centre (m), from wing root"
+        ...,
+        description=(
+            "Absolute spanwise distance from the wing root to this strip's centre (m). "
+            "Always >= 0 for BOTH starboard and port entries — port strips have a "
+            "negative physical Yle, but the absolute value is stored here (negate for "
+            "physical coordinates)."
+        ),
     )
     chord_m: float = Field(..., description="Local chord at this strip (m)")
     shear_N: float = Field(

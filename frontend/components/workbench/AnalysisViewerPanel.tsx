@@ -927,8 +927,14 @@ function SpanwiseLoadsChart({
       if (mainSurf) {
         const rootBm = mainSurf.root_bending_moment_Nm_starboard;
         const rootShear = mainSurf.root_shear_N_starboard;
+        // Anchor the root annotations at the innermost plotted strip rather than
+        // x=0 — surfaces that don't reach the centreline (e.g. boom-mounted tail)
+        // would otherwise have the arrow point off-chart into blank space.
+        const innerX = mainSurf.starboard.length
+          ? Math.min(...mainSurf.starboard.map((p) => p.y_m))
+          : 0.0;
         annotations.push({
-          x: 0.0,
+          x: innerX,
           y: rootBm,
           xref: "x",
           yref: "y2",
@@ -942,7 +948,7 @@ function SpanwiseLoadsChart({
           borderwidth: 1,
         });
         annotations.push({
-          x: 0.0,
+          x: innerX,
           y: rootShear,
           xref: "x",
           yref: "y",

@@ -2004,7 +2004,6 @@ async def analyze_airplane_spanwise_loads(
     """
     import aerosandbox as asb
 
-    from app.schemas.spanwise_loads import SpanwiseLoadsResponse
     from app.services.spanwise_loads import compute_spanwise_loads
 
     aircraft = get_aeroplane_or_raise(db, aeroplane_uuid)

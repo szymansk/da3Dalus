@@ -8,7 +8,6 @@ tier (no aerosandbox, no network).  The integrator is a *pure* function
 from __future__ import annotations
 
 import math
-import pytest
 
 # ---------------------------------------------------------------------------
 # Fixtures / helpers
