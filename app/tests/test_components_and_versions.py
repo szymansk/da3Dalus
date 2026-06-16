@@ -47,14 +47,19 @@ class TestComponentLibraryCRUD:
         assert "id" in body
 
     def test_list_components(self, client: TestClient):
+        # The components table is not empty at baseline: gh-1008 seeds the
+        # structural materials (Pine + Carbon Fiber) into every DB. Assert
+        # relative to that baseline rather than assuming an empty table.
+        baseline = client.get("/components").json()["total"]
+
         client.post("/components", json=MOTOR_PAYLOAD)
 
         resp = client.get("/components")
         assert resp.status_code == 200
         body = resp.json()
         assert "items" in body
-        assert body["total"] == 1
-        assert body["items"][0]["name"] == "Motor X"
+        assert body["total"] == baseline + 1
+        assert any(item["name"] == "Motor X" for item in body["items"])
 
     def test_list_components_filtered_by_type(self, client: TestClient):
         client.post("/components", json=MOTOR_PAYLOAD)
