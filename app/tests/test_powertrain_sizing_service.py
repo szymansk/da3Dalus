@@ -181,6 +181,14 @@ class TestFindMatchingEsc:
         result = _find_matching_esc([esc_empty], 5.0)
         assert result is None
 
+    def test_matches_real_gh986_continuous_current_a_key(self):
+        """Regression (gh-992): the gh-986 catalog stores ESC continuous current
+        under 'continuous_current_a', not 'max_continuous_a'. The matcher must
+        read it, otherwise every candidate gets esc=None."""
+        esc = SimpleNamespace(id=9, name="AVICON 20A", specs={"continuous_current_a": 20.0})
+        assert _find_matching_esc([esc], 18.0) is esc
+        assert _find_matching_esc([esc], 25.0) is None
+
 
 # --------------------------------------------------------------------------- #
 # _compute_confidence
@@ -188,42 +196,43 @@ class TestFindMatchingEsc:
 
 
 class TestComputeConfidence:
-    def test_exact_target_returns_two_thirds(self):
-        """When flight_time == target, ratio = 1.0, confidence = 1.0/1.5 ~ 0.667."""
-        conf = _compute_confidence(10.0, 10.0)
-        assert conf == pytest.approx(1.0 / 1.5, abs=1e-6)
+    """gh-992: confidence scales smoothly with achieved/target flight time —
+    meeting the target → 1.0, falling linearly toward 0, with no discontinuity.
+    (Previously /1.5 scaling capped on-target at 0.667 with a 3.3x cliff at 50%.)"""
 
-    def test_one_and_a_half_times_target_returns_one(self):
-        """When flight_time == 1.5 * target, ratio capped at 1.5, confidence = 1.0."""
-        conf = _compute_confidence(15.0, 10.0)
-        assert conf == pytest.approx(1.0)
+    def test_exact_target_returns_full_confidence(self):
+        """Meeting the flight-time target exactly must score ~1.0, not 0.667."""
+        assert _compute_confidence(10.0, 10.0) == pytest.approx(1.0)
 
-    def test_over_1_5x_target_still_capped_at_one(self):
-        conf = _compute_confidence(20.0, 10.0)
-        assert conf == pytest.approx(1.0)
+    def test_above_target_capped_at_one(self):
+        assert _compute_confidence(15.0, 10.0) == pytest.approx(1.0)
+        assert _compute_confidence(20.0, 10.0) == pytest.approx(1.0)
 
-    def test_half_target_applies_penalty(self):
-        """At exactly half the target, the 0.3 penalty applies."""
-        conf = _compute_confidence(5.0, 10.0)
-        base = min((5.0 / 10.0) / 1.5, 1.0)  # 0.333...
-        # flight_time < target * 0.5 is False (5.0 < 5.0 is False)
-        assert conf == pytest.approx(base, abs=1e-6)
+    def test_below_target_scales_linearly(self):
+        assert _compute_confidence(5.0, 10.0) == pytest.approx(0.5)
+        assert _compute_confidence(4.0, 10.0) == pytest.approx(0.4)
 
-    def test_below_half_target_applies_penalty(self):
-        """Below half the target, confidence is penalized by 0.3."""
-        conf = _compute_confidence(4.0, 10.0)
-        base = min((4.0 / 10.0) / 1.5, 1.0)
-        expected = base * 0.3
-        assert conf == pytest.approx(expected, abs=1e-6)
+    def test_no_discontinuity_at_half_target(self):
+        """The old 50%-boundary 3.3x cliff must be gone: values are continuous."""
+        just_below = _compute_confidence(4.99, 10.0)
+        at_half = _compute_confidence(5.0, 10.0)
+        just_above = _compute_confidence(5.01, 10.0)
+        assert at_half - just_below < 0.01
+        assert just_above - at_half < 0.01
+
+    def test_monotonic_increasing(self):
+        prev = -1.0
+        for t in [1.0, 3.0, 5.0, 7.0, 9.0, 10.0]:
+            c = _compute_confidence(t, 10.0)
+            assert c >= prev
+            prev = c
 
     def test_very_small_flight_time_low_confidence(self):
-        conf = _compute_confidence(0.5, 10.0)
-        assert conf < 0.1
+        assert _compute_confidence(0.5, 10.0) < 0.1
 
-    def test_zero_target_raises(self):
-        """Zero target causes ZeroDivisionError (production should guard)."""
-        with pytest.raises(ZeroDivisionError):
-            _compute_confidence(10.0, 0.0)
+    def test_zero_target_returns_zero(self):
+        """Zero/negative target is guarded (no ZeroDivisionError) → 0.0 (gh-992)."""
+        assert _compute_confidence(10.0, 0.0) == 0.0
 
 
 # --------------------------------------------------------------------------- #
@@ -337,6 +346,36 @@ class TestEvaluateMotorBatteryCombo:
         assert result is not None
         assert result.estimated_top_speed_ms == pytest.approx(33.3, abs=0.1)
 
+    def test_battery_uses_voltage_v_schema_key(self):
+        """Regression (gh-992): the battery component_type schema stores nominal
+        voltage as 'voltage_v'. A 6S pack (22.2 V) must not be mis-read as the
+        11.1 V default — that would 2x the cruise current and halve flight time."""
+        cap = 5000
+        b_22v = SimpleNamespace(
+            id=11, name="6S", mass_g=700.0, specs={"capacity_mah": cap, "voltage_v": 22.2}
+        )
+        b_default = SimpleNamespace(
+            id=12, name="noV", mass_g=700.0, specs={"capacity_mah": cap}
+        )
+        motor = _make_motor()
+        req = _default_request()
+        r_22v = _eval_combo_defaults(motor, b_22v, [], req)
+        r_default = _eval_combo_defaults(motor, b_default, [], req)
+        assert r_22v is not None and r_default is not None
+        # Higher pack voltage → lower cruise current → longer flight time than the
+        # 11.1 V default fallback, proving voltage_v was actually read.
+        assert r_22v.estimated_flight_time_min > r_default.estimated_flight_time_min
+
+    def test_battery_voltage_derived_from_cells(self):
+        """When only 'cells' is present, voltage derives as cells x 3.7 V (gh-992)."""
+        battery = SimpleNamespace(
+            id=13, name="cellsOnly", mass_g=400.0, specs={"capacity_mah": 3000, "cells": 4}
+        )
+        motor = _make_motor()
+        result = _eval_combo_defaults(motor, battery, [], _default_request())
+        assert result is not None
+        assert result.estimated_cruise_power_w > 0
+
 
 # --------------------------------------------------------------------------- #
 # size_powertrain (integration with mocked DB)
@@ -394,6 +433,8 @@ class TestSizePowertrain:
         result = size_powertrain(db, aeroplane.uuid, request)
         assert isinstance(result, PowertrainSizingResponse)
         assert result.recommendations == []
+        # gh-992: empty result must explain itself, not be silent.
+        assert any("motor" in w.lower() for w in result.warnings)
 
     def test_no_batteries_returns_empty(self):
         aeroplane = SimpleNamespace(uuid=uuid.uuid4())
@@ -403,6 +444,8 @@ class TestSizePowertrain:
 
         result = size_powertrain(db, aeroplane.uuid, request)
         assert result.recommendations == []
+        # gh-992: tell the user the battery catalog is empty instead of a silent table.
+        assert any("batter" in w.lower() for w in result.warnings)
 
     def test_single_valid_combo_returns_one_candidate(self):
         aeroplane = SimpleNamespace(uuid=uuid.uuid4())
