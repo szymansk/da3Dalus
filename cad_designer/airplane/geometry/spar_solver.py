@@ -86,6 +86,7 @@ class SparPiece:
     shape: str
     governing_y: float
     utilisation: float
+    length: float = 0.0  # mm, root→tip span of this straight piece (#1032)
     joint_to_next: str | None = None  # "telescoping" between consecutive pieces
 
     @property
@@ -103,6 +104,7 @@ class SparPiece:
             "shape": self.shape,
             "governing_y": self.governing_y,
             "utilisation": self.utilisation,
+            "length": self.length,
             "joint_to_next": self.joint_to_next,
         }
 
@@ -284,7 +286,9 @@ def _piece_from_run_with_od(
     root = run[0]
     tip = run[-1]
     origin = (0.0, root.y_mm, root.center_z)
-    vector = _unit_vector(origin, (0.0, tip.y_mm, tip.center_z))
+    tip_point = (0.0, tip.y_mm, tip.center_z)
+    vector = _unit_vector(origin, tip_point)
+    length = math.dist(origin, tip_point)
     tightest = _max_od_for_run(run)
     utilisation = min(1.0, od / tightest) if tightest > 0 else 1.0
     return SparPiece(
@@ -296,6 +300,7 @@ def _piece_from_run_with_od(
         shape=spec.shape,
         governing_y=governing.y_mm,
         utilisation=utilisation,
+        length=length,
     )
 
 
@@ -375,6 +380,7 @@ def _reinforcement_piece(
         shape=spec.shape,
         governing_y=0.0,
         utilisation=1.0,
+        length=2.0 * reach,  # spans symmetrically across the root (y=-reach → +reach)
     )
 
 
