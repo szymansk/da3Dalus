@@ -116,10 +116,12 @@ class TestTelescopingSplit:
         ]
         pieces = plan_spar(stations, SparSpec(role=SparRole.FRONT))
         assert len(pieces) >= 2
-        # telescoping: outer piece OD == inner piece ID
+        # telescoping: the tip-side (outer) piece must slide INTO the root-side
+        # (inner) piece's bore — OD_outer <= ID_inner (gh-1037: the old
+        # equal-OD/ID convention let a fat tip into a narrow bore).
         inner, outer = pieces[0], pieces[1]
         assert inner.joint_to_next == "telescoping"
-        assert outer.outer_d == pytest.approx(inner.inner_d, abs=1e-6)
+        assert outer.outer_d <= inner.inner_d + 1e-9
         # strength beats part-count: each piece's OD still meets its governing station
         assert inner.outer_d >= 30.0 - 1e-9
 
@@ -270,6 +272,179 @@ class TestEdgeCases:
         assert len(pieces) == 1
         # a hollow tube: bore strictly between 0 and OD
         assert 0.0 < pieces[0].inner_d < pieces[0].outer_d
+
+
+# ---------------------------------------------------------------------------
+# Fast: gh-1037 — assemblable telescoping, no zero-length, honest infeasibility
+# ---------------------------------------------------------------------------
+
+
+def _telescoping_joints(pieces):
+    """Yield (inner, outer) consecutive piece pairs joined telescoping."""
+    for inner, outer in zip(pieces, pieces[1:], strict=False):
+        if inner.joint_to_next == "telescoping":
+            yield inner, outer
+
+
+class TestTelescopingAssemblable:
+    """gh-1037 #1: a telescoping joint needs OD_outer <= ID_inner - clearance.
+
+    The tip-side piece must physically slide INTO the root-side bore. The old
+    ``max(prev_inner, strength_od)`` rule produced the inverse (fat tip into a
+    narrow bore), which cannot be assembled.
+    """
+
+    def test_outer_od_fits_inside_inner_bore_with_clearance(self):
+        # A monotonic taper that forces multiple telescoping splits. Both
+        # adjacent pieces have strong required OD (> 0.6 * OD_prev).
+        stations = [
+            _station(0.0, y_mm=0.0, band=(-60.0, 60.0), required_od=80.0),
+            _station(0.33, y_mm=300.0, band=(-30.0, 30.0), required_od=55.0),
+            _station(0.66, y_mm=600.0, band=(-15.0, 15.0), required_od=28.0),
+            _station(1.0, y_mm=900.0, band=(-8.0, 8.0), required_od=14.0),
+        ]
+        pieces = plan_spar(stations, SparSpec(role=SparRole.FRONT))
+        joints = list(_telescoping_joints(pieces))
+        assert joints, "expected at least one telescoping joint"
+        for inner, outer in joints:
+            # the UAT falsification criterion
+            assert outer.outer_d <= inner.inner_d + 1e-9, (
+                f"telescoping joint inverted: outer OD {outer.outer_d:.2f} > "
+                f"inner ID {inner.inner_d:.2f}"
+            )
+
+    def test_od_non_increasing_outboard(self):
+        # Root piece OD >= tip piece OD: no load-path inversion (M(y) decreases).
+        stations = [
+            _station(0.0, y_mm=0.0, band=(-60.0, 60.0), required_od=80.0),
+            _station(0.33, y_mm=300.0, band=(-30.0, 30.0), required_od=55.0),
+            _station(0.66, y_mm=600.0, band=(-15.0, 15.0), required_od=28.0),
+            _station(1.0, y_mm=900.0, band=(-8.0, 8.0), required_od=14.0),
+        ]
+        pieces = plan_spar(stations, SparSpec(role=SparRole.FRONT))
+        ods = [p.outer_d for p in pieces]
+        assert ods == sorted(ods, reverse=True), f"OD not non-increasing outboard: {ods}"
+
+    def test_single_root_partition_borrows_tipward_no_zero_length(self):
+        # The root interval alone cannot hold the root OD (tip band collapses
+        # immediately), so the root partition is a single station. It must
+        # borrow the next station tipward rather than emit a zero-length piece.
+        stations = [
+            _station(0.0, y_mm=0.0, band=(-50.0, 50.0), required_od=60.0),
+            _station(0.5, y_mm=250.0, band=(-8.0, 8.0), required_od=14.0),
+            _station(1.0, y_mm=500.0, band=(-7.0, 7.0), required_od=12.0),
+        ]
+        pieces = plan_spar(stations, SparSpec(role=SparRole.FRONT))
+        assert pieces
+        for p in pieces:
+            assert p.length > 0.0
+        # root piece governed by the root station's required OD
+        assert pieces[0].outer_d >= 60.0 - 1e-9
+
+    def test_no_zero_length_piece_emitted(self):
+        # gh-1037 #2: per-station over-splitting must never emit length==0 pieces.
+        stations = [
+            _station(0.0, y_mm=0.0, band=(-60.0, 60.0), required_od=80.0),
+            _station(0.25, y_mm=200.0, band=(-40.0, 40.0), required_od=60.0),
+            _station(0.5, y_mm=400.0, band=(-22.0, 22.0), required_od=40.0),
+            _station(0.75, y_mm=600.0, band=(-12.0, 12.0), required_od=22.0),
+            _station(1.0, y_mm=800.0, band=(-6.0, 6.0), required_od=11.0),
+        ]
+        pieces = plan_spar(stations, SparSpec(role=SparRole.FRONT))
+        assert pieces
+        for p in pieces:
+            assert p.length > 0.0, f"zero-length piece emitted: {p}"
+
+
+class TestInfeasibilityReporting:
+    """gh-1037 #3: when no round tube strong enough fits, report infeasible."""
+
+    def test_section_too_shallow_for_required_od_is_infeasible(self):
+        # required OD ~96 mm into a ~37 mm depth band: physically impossible.
+        stations = [
+            _station(0.0, y_mm=0.0, band=(-18.5, 18.5), required_od=96.5),
+            _station(1.0, y_mm=500.0, band=(-12.0, 12.0), required_od=40.0),
+        ]
+        pieces = plan_spar(stations, SparSpec(role=SparRole.FRONT))
+        assert pieces
+        root = pieces[0]
+        assert root.feasible is False
+        assert root.infeasibility_reason is not None
+        assert "exceeds" in root.infeasibility_reason.lower()
+        # honest reporting: utilisation may exceed 1 on an impossible section,
+        # never a fake 1.0.
+        assert root.utilisation > 1.0
+
+    def test_plan_marks_infeasible_when_any_piece_infeasible(self):
+        left = [
+            _station(0.0, y_mm=0.0, band=(-18.5, 18.5), required_od=96.5),
+            _station(1.0, y_mm=-500.0, band=(-12.0, 12.0), required_od=40.0),
+        ]
+        right = [
+            _station(0.0, y_mm=0.0, band=(-18.5, 18.5), required_od=96.5),
+            _station(1.0, y_mm=500.0, band=(-12.0, 12.0), required_od=40.0),
+        ]
+        plan = solve_spar_plan(front_left=left, front_right=right)
+        assert plan.feasible is False
+        assert plan.infeasibility_reason is not None
+
+    def test_feasible_plan_reports_feasible(self):
+        plan = solve_spar_plan(front_left=_uniform_stations(), front_right=_uniform_stations())
+        assert plan.feasible is True
+        assert plan.infeasibility_reason is None
+        for p in plan.front_pieces:
+            assert p.feasible is True
+            assert p.utilisation <= 1.0 + 1e-9
+
+
+class TestDegenerateRootSliceGuard:
+    """gh-1037 #4: a zero-thickness slice at y_span=0 must not poison the
+    governing (root) station. Sample at y_span=eps instead."""
+
+    def test_epsilon_guard_skips_degenerate_root_slice(self):
+        from cad_designer.airplane.geometry import spar_solver
+
+        class _Pt:
+            def __init__(self, y_span, thickness, center_z=0.0):
+                self.y_span = y_span
+                self.x_c = 0.4
+                self.thickness = thickness
+                self.center_z = center_z
+                self.bottom_z = center_z - thickness / 2.0
+                self.top_z = center_z + thickness / 2.0
+
+        class _FakeGeometry:
+            # half-span used by _half_span_mm
+            _segment_lengths = [500.0]
+
+            def at_max_thickness(self, y_span):
+                # y=0 is a pinched, zero-thickness slice; everything outboard
+                # is a healthy linearly-tapering section.
+                if y_span <= 0.0:
+                    return _Pt(0.0, 0.0)
+                return _Pt(y_span, thickness=40.0 * (1.0 - 0.5 * y_span))
+
+        stations = spar_solver.build_stations_from_geometry(
+            _FakeGeometry(),
+            moment_fn=lambda y: 100.0 * (1.0 - y),
+            sigma_allow_mpa=300.0,
+            n_span=5,
+        )
+        assert stations, "expected sampled stations"
+        # the governing (most-inboard) station must come from a valid,
+        # non-degenerate slice — its band must have positive depth.
+        root = stations[0]
+        assert root.band_hi - root.band_lo > 0.0
+        assert root.required_od > 0.0
+        # The governing station stays at the ROOT (the max-moment station): the
+        # solver must sample at y_span≈eps rather than discard the root slice and
+        # let an outboard station become governing. eps is small (<0.05).
+        assert root.y_span < 0.05, (
+            f"root station drifted outboard to y_span={root.y_span}; degenerate "
+            "root slice was dropped instead of eps-sampled"
+        )
+        # the eps-sampled root must carry the highest moment-driven OD
+        assert root.required_od == max(s.required_od for s in stations)
 
 
 # ---------------------------------------------------------------------------

@@ -127,11 +127,22 @@ class SparPieceOut(BaseModel):
     )
     utilisation: float = Field(
         ...,
-        description="Fraction of the local containment band the piece OD uses (0..1).",
+        description=(
+            "Fraction of the local containment band the piece OD uses. A value "
+            ">1 means no round tube strong enough fits the section (see feasible)."
+        ),
     )
     joint_to_next: Optional[str] = Field(
         None,
         description="Joint to the next (tip-side) piece, e.g. 'telescoping'. None if last.",
+    )
+    feasible: bool = Field(
+        True,
+        description="False when the section cannot contain a round tube strong enough.",
+    )
+    infeasibility_reason: Optional[str] = Field(
+        None,
+        description="Human-readable reason when the piece is infeasible; None otherwise.",
     )
 
 
@@ -160,4 +171,16 @@ class SparPlanResponse(BaseModel):
             "Short collinear root reinforcement piece, present when the front "
             "halves cannot be a single collinear carry-through."
         ),
+    )
+    feasible: bool = Field(
+        True,
+        description=(
+            "False when any spar piece cannot contain a round tube strong enough "
+            "(see infeasibility_reason). A feasible=False plan is not buildable "
+            "as-is."
+        ),
+    )
+    infeasibility_reason: Optional[str] = Field(
+        None,
+        description="Reason for the first infeasible piece, or None when the plan is feasible.",
     )
