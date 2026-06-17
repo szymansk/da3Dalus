@@ -59,6 +59,22 @@ class SectionPoint:
     center_z: float
 
 
+@dataclass(frozen=True)
+class _SlicedSection:
+    """A single section-plane cut, reusable across many ``x_c`` samples.
+
+    ``outline`` is the cut expressed in local ``(chord_u, height_v)`` (mm).
+    ``le_anchor`` + ``chord_unit`` recover the world chord line; ``up_z`` is the
+    section up-vector's world-z component (carries dihedral tilt into world z).
+    """
+
+    outline: list[tuple[float, float]]
+    chord_len: float
+    le_anchor: np.ndarray
+    chord_unit: np.ndarray
+    up_z: float
+
+
 # ---------------------------------------------------------------------------
 # Pure helpers (fast tier — no CAD)
 # ---------------------------------------------------------------------------
@@ -205,10 +221,10 @@ class SectionGeometry:
         chord_dir: np.ndarray,
         up_dir: np.ndarray,
         span_dir: np.ndarray,
-    ) -> tuple[list[tuple[float, float]], float, np.ndarray, np.ndarray]:
+    ) -> _SlicedSection:
         """Cut the solid with the section plane and return the outline expressed
-        in local ``(chord_u, height_v)`` coordinates, the chord length, and the
-        LE point + chord unit vector (world) needed to rebuild world ``z``.
+        in local ``(chord_u, height_v)`` coordinates plus the metadata needed to
+        rebuild world ``z`` at any chord ordinate.
         """
         from cad_designer.aerosandbox.slicing import _section_outline_edges
 
@@ -218,7 +234,7 @@ class SectionGeometry:
             tuple(float(c) for c in span_dir),
         )
         if not edges:
-            return [], 0.0, origin, chord_dir
+            return _SlicedSection([], 0.0, origin, chord_dir, float(up_dir[2]))
 
         pts_world: list[np.ndarray] = []
         for e in edges:
@@ -237,69 +253,54 @@ class SectionGeometry:
         le_anchor = origin + u_min * chord_dir
 
         outline = list(zip(u_all.tolist(), v_all.tolist(), strict=True))
-        return outline, chord_len, le_anchor, chord_dir
-
-    def _point_at(self, y_span: float, x_c: float) -> SectionPoint:
-        origin, chord_dir, span_dir, up_dir = self._station_frame(y_span)
-        outline, chord_len, le_anchor, chord_unit = self._slice_outline(
-            origin, chord_dir, up_dir, span_dir
+        return _SlicedSection(
+            outline=outline,
+            chord_len=chord_len,
+            le_anchor=le_anchor,
+            chord_unit=chord_dir,
+            up_z=float(up_dir[2]),
         )
-        if chord_len <= 0.0:
-            return SectionPoint(y_span, x_c, 0.0, 0.0, 0.0, 0.0)
 
-        top_v, bottom_v = _outline_to_top_bottom(outline, x_c, chord_len)
-        # Convert local v back to world z at the sampled chord ordinate.
-        chord_point = le_anchor + (x_c * chord_len) * chord_unit
+    def _section(self, y_span: float) -> _SlicedSection:
+        """Slice the solid at ``y_span`` and return the reusable section data."""
+        origin, chord_dir, span_dir, up_dir = self._station_frame(y_span)
+        return self._slice_outline(origin, chord_dir, up_dir, span_dir)
+
+    @staticmethod
+    def _point_from_section(section: _SlicedSection, y_span: float, x_c: float) -> SectionPoint:
+        """Read a SectionPoint off an already-sliced section at chord ``x_c``.
+
+        The local upper/lower heights ``v`` are projected into world ``z`` about
+        the chord-line z at that ordinate (``up_z`` carries the dihedral tilt).
+        """
+        if section.chord_len <= 0.0:
+            return SectionPoint(y_span, x_c, 0.0, 0.0, 0.0, 0.0)
+        top_v, bottom_v = _outline_to_top_bottom(section.outline, x_c, section.chord_len)
+        chord_point = section.le_anchor + (x_c * section.chord_len) * section.chord_unit
         base_z = float(chord_point[2])
-        # up_dir z-component scales the local v into world z.
-        up_z = float(up_dir[2])
-        top_z = base_z + top_v * up_z
-        bottom_z = base_z + bottom_v * up_z
-        thickness = abs(top_z - bottom_z)
-        center_z = (top_z + bottom_z) / 2.0
+        top_z = base_z + top_v * section.up_z
+        bottom_z = base_z + bottom_v * section.up_z
         return SectionPoint(
             y_span=y_span,
             x_c=x_c,
-            thickness=thickness,
+            thickness=abs(top_z - bottom_z),
             top_z=max(top_z, bottom_z),
             bottom_z=min(top_z, bottom_z),
-            center_z=center_z,
+            center_z=(top_z + bottom_z) / 2.0,
         )
 
     # -- public API --------------------------------------------------------
 
     def at(self, y_span: float, x_c: float) -> SectionPoint:
         """Section geometry at a single ``(y/span, x/c)`` location."""
-        return self._point_at(y_span, x_c)
+        return self._point_from_section(self._section(y_span), y_span, x_c)
 
     def sample(self, y_spans: list[float], x_cs: list[float]) -> list[SectionPoint]:
         """Sample a grid: slice each unique ``y_span`` once, read all ``x_c``."""
         points: list[SectionPoint] = []
         for y in y_spans:
-            origin, chord_dir, span_dir, up_dir = self._station_frame(y)
-            outline, chord_len, le_anchor, chord_unit = self._slice_outline(
-                origin, chord_dir, up_dir, span_dir
-            )
-            up_z = float(up_dir[2])
-            for x in x_cs:
-                if chord_len <= 0.0:
-                    points.append(SectionPoint(y, x, 0.0, 0.0, 0.0, 0.0))
-                    continue
-                top_v, bottom_v = _outline_to_top_bottom(outline, x, chord_len)
-                chord_point = le_anchor + (x * chord_len) * chord_unit
-                base_z = float(chord_point[2])
-                top_z = base_z + top_v * up_z
-                bottom_z = base_z + bottom_v * up_z
-                points.append(
-                    SectionPoint(
-                        y_span=y,
-                        x_c=x,
-                        thickness=abs(top_z - bottom_z),
-                        top_z=max(top_z, bottom_z),
-                        bottom_z=min(top_z, bottom_z),
-                        center_z=(top_z + bottom_z) / 2.0,
-                    )
-                )
+            section = self._section(y)
+            points.extend(self._point_from_section(section, y, x) for x in x_cs)
         return points
 
     def at_max_thickness(self, y_span: float) -> SectionPoint:
@@ -308,32 +309,12 @@ class SectionGeometry:
         Scans a chord grid and returns the point with the greatest thickness —
         the natural spar-placement reference.
         """
-        candidates = np.linspace(0.05, 0.6, 23)
-        best: SectionPoint | None = None
-        origin, chord_dir, span_dir, up_dir = self._station_frame(y_span)
-        outline, chord_len, le_anchor, chord_unit = self._slice_outline(
-            origin, chord_dir, up_dir, span_dir
-        )
-        up_z = float(up_dir[2])
-        if chord_len <= 0.0:
+        section = self._section(y_span)
+        if section.chord_len <= 0.0:
             return SectionPoint(y_span, 0.0, 0.0, 0.0, 0.0, 0.0)
-        for x in candidates:
-            top_v, bottom_v = _outline_to_top_bottom(outline, float(x), chord_len)
-            chord_point = le_anchor + (float(x) * chord_len) * chord_unit
-            base_z = float(chord_point[2])
-            top_z = base_z + top_v * up_z
-            bottom_z = base_z + bottom_v * up_z
-            thickness = abs(top_z - bottom_z)
-            if best is None or thickness > best.thickness:
-                best = SectionPoint(
-                    y_span=y_span,
-                    x_c=float(x),
-                    thickness=thickness,
-                    top_z=max(top_z, bottom_z),
-                    bottom_z=min(top_z, bottom_z),
-                    center_z=(top_z + bottom_z) / 2.0,
-                )
-        return best if best is not None else SectionPoint(y_span, 0.0, 0.0, 0.0, 0.0, 0.0)
+        candidates = np.linspace(0.05, 0.6, 23)
+        points = (self._point_from_section(section, y_span, float(x)) for x in candidates)
+        return max(points, key=lambda p: p.thickness)
 
     def per_segment(self, n_span: int, n_chord: int) -> dict[int, list[SectionPoint]]:
         """Grid of section points per segment.
