@@ -22,11 +22,13 @@ from app.db.session import get_db
 from app.schemas.AeroplaneRequest import AnalysisToolUrlType, AlphaSweepRequest, SimpleSweepRequest
 from app.schemas.api_responses import StaticUrlResponse
 from app.schemas.aeroanalysisschema import OperatingPointSchema
+from app.schemas.section_geometry import SectionGeometryRequest, SectionGeometryResponse
 from app.schemas.spar_sizing import SparSizingParams
 from app.schemas.spanwise_loads import SpanwiseLoadsResponse, SpanwiseLoadsWithSizingResponse
 from app.schemas.stability import StabilitySummaryResponse, StabilityResultRead
 from app.schemas.strip_forces import StripForcesResponse
 from app.services import analysis_service
+from app.services import section_geometry_service
 from app.services import stability_service
 from app.services.wing_service import get_aeroplane_or_raise
 from app.settings import Settings, get_settings
@@ -456,6 +458,41 @@ async def get_airplane_spanwise_loads(
         return await analysis_service.analyze_airplane_spanwise_loads(
             db, aeroplane_id, operating_point, solver=solver
         )
+    except ServiceException as exc:
+        _raise_http_from_domain(exc)
+    except Exception as exc:  # pragma: no cover - defensive fallback
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Unexpected error: {exc}"
+        ) from exc
+
+
+@router.post(
+    "/aeroplanes/{aeroplane_id}/section-geometry",
+    response_model=SectionGeometryResponse,
+    tags=["analysis"],
+    operation_id="get_airplane_section_geometry",
+)
+def get_airplane_section_geometry(
+    aeroplane_id: Annotated[AeroPlaneID, Path(..., description=_DESC_AEROPLANE_ID)],
+    request: Annotated[
+        SectionGeometryRequest,
+        Body(..., description="Section-geometry sampling request (all fields optional)"),
+    ],
+    db: Annotated[Session, Depends(get_db)],
+) -> SectionGeometryResponse:
+    """Sample the built section geometry of a wing (gh-1021).
+
+    Slices the real lofted CAD solid at parametric ``(y/span, x/c)`` locations
+    and returns thickness, upper/lower surface heights, and mid-height
+    (spar-placement reference) in **metres**. When the sample arrays are
+    omitted, an evenly spaced default grid is used. Set ``per_segment=true`` to
+    additionally receive a per-segment grid.
+
+    Returns 422 when section geometry is unavailable on this platform (cadquery
+    excluded on ``linux/aarch64``).
+    """
+    try:
+        return section_geometry_service.compute_section_geometry(db, aeroplane_id, request)
     except ServiceException as exc:
         _raise_http_from_domain(exc)
     except Exception as exc:  # pragma: no cover - defensive fallback
