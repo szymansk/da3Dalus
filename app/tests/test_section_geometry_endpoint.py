@@ -194,6 +194,36 @@ class TestComputeSectionGeometryService:
         assert resp.segments is None
         assert geom.per_segment_calls == []
 
+    def test_request_mode_forwarded_to_build(self, plane_id):
+        """gh-1046: the request's mode reaches the build seam (analytic default)."""
+        aeroplane = _aeroplane_with_wings(["main_wing"])
+        geom = _StubGeometry()
+        seen = {}
+
+        def _capture_build(wing_config, mode="analytic"):
+            seen["mode"] = mode
+            return geom
+
+        with (
+            patch.object(
+                section_geometry_service, "get_aeroplane_or_raise", return_value=aeroplane
+            ),
+            patch.object(
+                section_geometry_service, "wing_model_to_wing_config", return_value=object()
+            ),
+            patch.object(section_geometry_service, "_build_section_geometry", _capture_build),
+        ):
+            section_geometry_service.compute_section_geometry(
+                db=None, aeroplane_uuid=plane_id, request=SectionGeometryRequest()
+            )
+            assert seen["mode"] == "analytic"
+            section_geometry_service.compute_section_geometry(
+                db=None,
+                aeroplane_uuid=plane_id,
+                request=SectionGeometryRequest(mode="solid"),
+            )
+            assert seen["mode"] == "solid"
+
     def test_named_wing_is_selected(self, plane_id):
         aeroplane = _aeroplane_with_wings(["main_wing", "h_tail"])
         geom = _StubGeometry()
@@ -285,6 +315,24 @@ class TestBuildSectionGeometryBoundary:
         with patch.object(sg, "SectionGeometry", lambda *a, **k: sentinel):
             result = section_geometry_service._build_section_geometry(object())
         assert result is sentinel
+
+    def test_passes_mode_to_section_geometry(self):
+        """gh-1046: the seam forwards the requested mode (analytic default)."""
+        import cad_designer.airplane.geometry.section_geometry as sg
+
+        seen = {}
+
+        def _capture(wing_config, mode="analytic"):
+            seen["mode"] = mode
+            return object()
+
+        with patch.object(sg, "SectionGeometry", _capture):
+            section_geometry_service._build_section_geometry(object())
+        assert seen["mode"] == "analytic"
+
+        with patch.object(sg, "SectionGeometry", _capture):
+            section_geometry_service._build_section_geometry(object(), mode="solid")
+        assert seen["mode"] == "solid"
 
 
 # --------------------------------------------------------------------------
