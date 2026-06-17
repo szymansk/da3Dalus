@@ -68,6 +68,13 @@ class SparSizingStation(BaseModel):
         False,
         description="True when t/c fell back to the 0.12 default (no airfoil data).",
     )
+    center_z_mm: Optional[float] = Field(
+        None,
+        description=(
+            "Section mid-height (wing-local frame, mm) from the built CAD section "
+            "— spar-placement reference. None when section geometry is unavailable."
+        ),
+    )
     m_design_Nm: float = Field(..., description="Design bending moment M_design = |M|·n·j (N·m)")
     required_W_mm3: float = Field(
         ..., description="Required section modulus erf_W = M_design / σ_allow (mm³)"

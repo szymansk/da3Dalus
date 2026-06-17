@@ -266,6 +266,7 @@ def compute_spar_sizing(
     g_limit: float,
     g_limit_fallback: bool,
     surface_name: str,
+    center_z_by_y: dict[float, float] | None = None,
 ) -> SparSizingResult:
     """Size the spar at each spanwise station.
 
@@ -281,10 +282,14 @@ def compute_spar_sizing(
         g_limit: Limit load factor from design assumptions.
         g_limit_fallback: True if g_limit is a default fallback.
         surface_name: Name of the aerodynamic surface being sized.
+        center_z_by_y: Optional mapping {y_m: section mid-height (mm)} from the
+            built CAD section (gh-1022) — surfaced per-station as
+            ``center_z_mm`` for spar placement. Missing keys leave it None.
 
     Returns:
         SparSizingResult with per-station and aggregate results.
     """
+    center_z_by_y = center_z_by_y or {}
     # Resolve σ_allow
     sigma_allow = (
         params.sigma_allow_mpa_override
@@ -333,6 +338,7 @@ def compute_spar_sizing(
                 outer_mm=outer_mm,
                 tc_ratio=tc_ratio,
                 tc_fallback=tc_fallback,
+                center_z_mm=_lookup_center_z(center_z_by_y, y_m),
                 m_design_Nm=m_design,
                 required_W_mm3=erf_w,
                 solved_mm=sol.get("solved_mm"),
@@ -395,6 +401,22 @@ def _get_tc(tc_by_y: dict[float, float], y_m: float) -> tuple[float, bool]:
 
     logger.warning("No t/c data for y=%.3f m — using fallback t/c=%.2f", y_m, _TC_FALLBACK)
     return _TC_FALLBACK, True
+
+
+def _lookup_center_z(center_z_by_y: dict[float, float], y_m: float) -> float | None:
+    """Return the section mid-height (mm) at ``y_m``, or None when unavailable.
+
+    Mirrors :func:`_get_tc`'s nearest-key tolerance so the same station keys
+    resolve consistently across both maps.
+    """
+    if not center_z_by_y:
+        return None
+    if y_m in center_z_by_y:
+        return center_z_by_y[y_m]
+    nearest = min(center_z_by_y.keys(), key=lambda k: abs(k - y_m), default=None)
+    if nearest is not None and abs(nearest - y_m) < 0.01:
+        return center_z_by_y[nearest]
+    return None
 
 
 def _zero_station() -> SparSizingStation:

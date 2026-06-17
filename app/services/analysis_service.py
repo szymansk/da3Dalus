@@ -2171,8 +2171,15 @@ def _compute_spar_sizing_for_surfaces(
         if not stations:
             continue
 
-        # t/c lookup: use starboard strips' chord as a proxy for y positions
-        tc_by_y = _get_tc_by_y_for_surface(surface)
+        # Real local t/c from the built CAD section (gh-1022). Falls back to the
+        # documented 0.12 inside compute_spar_sizing for any station the geometry
+        # query couldn't resolve.
+        tc_by_y, center_z_by_y = _get_tc_by_y_for_surface(
+            db=db,
+            aeroplane_id=aeroplane_id,
+            surface=surface,
+            stations=stations,
+        )
 
         spar_result = compute_spar_sizing(
             stations=stations,
@@ -2183,6 +2190,7 @@ def _compute_spar_sizing_for_surfaces(
             g_limit=g_limit,
             g_limit_fallback=g_limit_fallback,
             surface_name=surface.surface_name,
+            center_z_by_y=center_z_by_y,
         )
         results.append(spar_result)
 
@@ -2210,12 +2218,44 @@ def _surface_to_stations(surface) -> list[dict]:
     ]
 
 
-def _get_tc_by_y_for_surface(surface) -> dict[float, float]:
-    """Build a t/c lookup dict from strip data.
+def _get_tc_by_y_for_surface(
+    db: Session,
+    aeroplane_id: int,
+    surface,
+    stations: list[dict],
+) -> tuple[dict[float, float], dict[float, float]]:
+    """Build ``(tc_by_y, center_z_by_y)`` from the real built section (gh-1022).
 
-    gh-1008 §8: (t/c) should come from wing-section airfoil max-thickness.
-    That data isn't yet in the spanwise strip result, so we return an empty
-    dict here → the spar-sizing service applies the 0.12 fallback with a
-    warning.  A future ticket can wire in the airfoil DB t/c.
+    Resolves the surface's wing, builds a ``SectionGeometry`` once, and queries
+    the *max-thickness* chord location at every load station. The local built
+    thickness (mm) is divided by the station's own chord (mm) to produce a t/c
+    the spar service consumes unchanged — so ``profile_thickness_mm`` reproduces
+    the real thickness and ``outer_mm = thickness · packing``.
+
+    Stations the geometry couldn't resolve (cadquery unavailable, wing not
+    found, degenerate section) are simply omitted → the spar service applies its
+    documented ``t/c = 0.12`` fallback with a warning. Never raises.
     """
-    return {}
+    from app.services.section_thickness import build_thickness_maps_for_surface
+
+    station_ys = [float(st["y_m"]) for st in stations]
+    thickness_by_y, center_z_by_y = build_thickness_maps_for_surface(
+        db=db,
+        aeroplane_id=aeroplane_id,
+        surface_name=surface.surface_name,
+        station_ys_m=station_ys,
+    )
+    if not thickness_by_y:
+        return {}, {}
+
+    # Convert built thickness (mm) → t/c against each station's own chord (mm),
+    # so compute_spar_sizing's profile_thickness_mm == the real built thickness.
+    chord_mm_by_y = {float(st["y_m"]): float(st["chord_m"]) * 1000.0 for st in stations}
+    tc_by_y: dict[float, float] = {}
+    for y_m, thickness_mm in thickness_by_y.items():
+        chord_mm = chord_mm_by_y.get(y_m, 0.0)
+        if chord_mm <= 0.0:
+            continue
+        tc_by_y[y_m] = thickness_mm / chord_mm
+
+    return tc_by_y, center_z_by_y
