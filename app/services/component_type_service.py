@@ -416,6 +416,15 @@ DEFAULT_SEED_TYPES: list[dict[str, Any]] = [
             # gh-986: D-Power fields (additive)
             {"name": "continuous_current_a", "label": "Dauerstrom", "type": "number", "unit": "A"},
             {"name": "io_no_load_a", "label": "Leerlaufstrom Io", "type": "number", "unit": "A"},
+            # gh-1006: winding resistance enables the QPROP 3-param torque-balance
+            # motor model. Optional/nullable — falls back to fixed-RPM when absent.
+            {
+                "name": "rm_ohm",
+                "label": "Wicklungswiderstand Rm",
+                "type": "number",
+                "unit": "Ω",
+                "min": 0,
+            },
             {"name": "cells_lipo_min", "label": "LiPo Zellen min", "type": "number"},
             {"name": "cells_lipo_max", "label": "LiPo Zellen max", "type": "number"},
             {"name": "static_thrust_g", "label": "Statischer Schub", "type": "number", "unit": "g"},
@@ -611,9 +620,10 @@ def seed_default_types(db: Session) -> None:
     existing = {row[0] for row in db.query(ComponentTypeModel.name).all()}
     for seed in DEFAULT_SEED_TYPES:
         if seed["name"] in existing:
-            # gh-1008: patch in structural fields for the material type if missing
-            if seed["name"] == "material":
-                _patch_material_structural_fields(db, seed["schema"])
+            # gh-1008 / gh-1006: additively patch new schema fields onto existing
+            # ComponentTypes so already-seeded DBs gain them without a rebuild.
+            if seed["name"] in ("material", "brushless_motor"):
+                _patch_schema_fields(db, seed["name"], seed["schema"])
             continue
         db.add(
             ComponentTypeModel(
@@ -626,14 +636,15 @@ def seed_default_types(db: Session) -> None:
         )
 
 
-def _patch_material_structural_fields(db: Session, full_schema: list[dict[str, Any]]) -> None:
-    """Ensure the 'material' ComponentType has gh-1008 structural fields.
+def _patch_schema_fields(db: Session, type_name: str, full_schema: list[dict[str, Any]]) -> None:
+    """Additively merge any missing schema fields onto an existing ComponentType.
 
-    Adds allowable_bending_stress_mpa and youngs_modulus_gpa if missing.
-    Idempotent. Called from seed_default_types so existing test DBs get
-    the new fields without a full DB rebuild.
+    Used to roll forward seeded schemas for already-present types (gh-1008
+    material structural fields, gh-1006 brushless_motor rm_ohm). Idempotent —
+    only appends fields whose ``name`` is not already present. Never removes
+    or reorders existing fields, so user data and prior schemas are preserved.
     """
-    row = db.query(ComponentTypeModel).filter(ComponentTypeModel.name == "material").first()
+    row = db.query(ComponentTypeModel).filter(ComponentTypeModel.name == type_name).first()
     if row is None:
         return
     current = _normalize_schema(row.schema_def)
@@ -646,6 +657,15 @@ def _patch_material_structural_fields(db: Session, full_schema: list[dict[str, A
     if changed:
         row.schema_def = current
         db.flush()
+
+
+def _patch_material_structural_fields(db: Session, full_schema: list[dict[str, Any]]) -> None:
+    """Backward-compatible wrapper for the gh-1008 material patch (now generic).
+
+    Retained so existing callers/tests keep working after the patcher was
+    generalised to :func:`_patch_schema_fields` (gh-1006).
+    """
+    _patch_schema_fields(db, "material", full_schema)
 
 
 # ---------------------------------------------------------------------------

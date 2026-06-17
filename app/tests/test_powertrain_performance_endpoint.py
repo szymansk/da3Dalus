@@ -471,3 +471,38 @@ class TestPowertrainPerformanceEndpoint:
         assert resp.status_code == 200
         for s in resp.json()["samples"]:
             assert s["estimated"] is True
+
+    def test_qprop_path_when_rm_present(self, client_and_db):
+        """gh-1006: motor with rm_ohm in specs → QPROP 3-param path.
+
+        Samples are physics-solved (estimated=False), RPM is load-dependent
+        (varies across the sweep), and the notes mention QPROP/Rm.
+        """
+        client, SessionLocal = client_and_db
+        db = SessionLocal()
+        try:
+            plane = _make_aeroplane(db)
+            motor = _make_motor(db, rm_ohm=0.1, io_no_load_a=0.8, max_current_a=40.0)
+            battery = _make_battery(db)
+            polar = _make_prop_polar(db)
+        finally:
+            db.close()
+
+        resp = self._post(
+            client,
+            plane.uuid,
+            {
+                "motor_component_id": motor.id,
+                "battery_component_id": battery.id,
+                "propeller_polar_id": polar.id,
+                "v_min_ms": 0.0,
+                "v_max_ms": 20.0,
+                "n_points": 8,
+            },
+        )
+        assert resp.status_code == 200, resp.text
+        data = resp.json()
+        assert all(s["estimated"] is False for s in data["samples"])
+        rpms = {round(s["rpm"], 1) for s in data["samples"]}
+        assert len(rpms) > 1  # load-dependent, not a single fixed RPM
+        assert "qprop" in data["notes"].lower() or "rm" in data["notes"].lower()
