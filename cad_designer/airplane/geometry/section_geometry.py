@@ -100,8 +100,9 @@ def _y_span_to_segment(y_span: float, segment_lengths: list[float]) -> tuple[int
             rel = (target - acc) / seg_len
             return idx, min(max(rel, 0.0), 1.0)
         acc += seg_len
-    # fall through (all-zero lengths handled above)
-    return len(segment_lengths) - 1, 1.0
+    # Unreachable: total > 0 guarantees the last positive segment returns above;
+    # an all-zero list is handled by the total <= 0 guard. Defensive only.
+    return len(segment_lengths) - 1, 1.0  # pragma: no cover
 
 
 def _outline_to_top_bottom(
@@ -158,7 +159,7 @@ class SectionGeometry:
 
     # -- build -------------------------------------------------------------
 
-    def _build_solid(self):
+    def _build_solid(self):  # pragma: no cover - cadquery boundary, covered by requires_cadquery slow tests
         """Build the starboard (RIGHT) half loft once and return its shape.
 
         RIGHT half keeps ``y >= 0`` so the span maps monotonically to ``y/span``.
@@ -213,7 +214,7 @@ class SectionGeometry:
 
     # -- slicing -----------------------------------------------------------
 
-    def _slice_outline(
+    def _slice_outline(  # pragma: no cover - cadquery boundary, covered by requires_cadquery slow tests
         self,
         origin: np.ndarray,
         chord_dir: np.ndarray,
@@ -259,7 +260,7 @@ class SectionGeometry:
             up_z=float(up_dir[2]),
         )
 
-    def _section(self, y_span: float) -> _SlicedSection:
+    def _section(self, y_span: float) -> _SlicedSection:  # pragma: no cover - cadquery boundary (slow tests + mocked in fast)
         """Slice the solid at ``y_span`` and return the reusable section data."""
         origin, chord_dir, span_dir, up_dir = self._station_frame(y_span)
         return self._slice_outline(origin, chord_dir, up_dir, span_dir)

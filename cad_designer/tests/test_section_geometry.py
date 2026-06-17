@@ -79,6 +79,16 @@ class TestYSpanToSegment:
         assert idx == 1
         assert rel == pytest.approx(1.0)
 
+    def test_all_zero_lengths_return_root(self):
+        # total <= 0 guard
+        assert _y_span_to_segment(0.5, [0.0, 0.0]) == (0, 0.0)
+
+    def test_skips_zero_length_segment(self):
+        # a leading zero-length segment is skipped; the station lands in seg 1
+        idx, rel = _y_span_to_segment(0.0, [0.0, 100.0])
+        assert idx == 1
+        assert rel == pytest.approx(0.0)
+
 
 # ---------------------------------------------------------------------------
 # Fast: outline -> top/bottom sampling
@@ -382,3 +392,36 @@ class TestStationFrameMath:
         sg._wing_config = self._wing_with_planes([root, tip])
         _, _, span_dir, _ = sg._station_frame(0.5)
         assert span_dir == pytest.approx([0.0, 1.0, 0.0])
+
+
+class TestOutlineToTopBottomEdges:
+    def test_no_crossings_returns_zeros(self):
+        # empty outline -> no edge crossings -> (0, 0)
+        assert _outline_to_top_bottom([], 0.5, 100.0) == (0.0, 0.0)
+
+    def test_chord_ordinate_outside_outline_returns_zeros(self):
+        outline = [(0.0, 5.0), (10.0, 5.0), (10.0, -5.0), (0.0, -5.0)]
+        # x_c * chord_len = 0.99 * 1.0 = 0.99 mm, well below the 0..10 outline span
+        assert _outline_to_top_bottom(outline, 50.0, 1.0) == (0.0, 0.0)
+
+
+class TestInitWithMockedCad:
+    """__init__ happy path with the CAD build mocked out (fast tier)."""
+
+    def test_init_sets_attributes_and_clamps_points_per_edge(self, monkeypatch):
+        import cad_designer.airplane.geometry.section_geometry as mod
+
+        monkeypatch.setattr(mod, "_HAS_CADQUERY", True)
+        monkeypatch.setattr(mod.SectionGeometry, "_build_solid", lambda self: "SOLID")
+
+        class _Seg:
+            def __init__(self, length):
+                self.length = length
+
+        class _Cfg:
+            segments = [_Seg(300.0), _Seg(700.0)]
+
+        sg = mod.SectionGeometry(_Cfg(), points_per_edge=99999)
+        assert sg._solid_shape == "SOLID"
+        assert sg._segment_lengths == [300.0, 700.0]
+        assert sg._points_per_edge == 4096  # clamped to the upper bound
