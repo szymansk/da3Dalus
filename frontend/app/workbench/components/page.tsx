@@ -251,6 +251,13 @@ export default function ComponentsPage() {
      * child — WorkbenchTwoPanel only renders its first two children and
      * silently drops the rest. See gh#57-fav regression tests.
      */}
+    {/*
+     * Conditionally mounted (not just `open={false}`): the dialog seeds all
+     * its state — name, mass, bbox dimensions, specs — once on mount, so it
+     * MUST be unmounted on close and remounted fresh per edit. Do not change
+     * this to keep it always-mounted, or fields will show the previously
+     * edited component's stale values. See ComponentEditDialog mount contract.
+     */}
     {editDialog.open && (
       <ComponentEditDialog
         open={editDialog.open}

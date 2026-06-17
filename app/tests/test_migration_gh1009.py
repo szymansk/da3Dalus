@@ -8,12 +8,10 @@ a single Python file with plain SQLAlchemy calls via op.get_bind()).
 
 from __future__ import annotations
 
-import importlib
+import importlib.util
 import json
-import re
 
 import pytest
-import sqlalchemy as sa
 from sqlalchemy import create_engine, text
 from sqlalchemy.pool import StaticPool
 
@@ -162,21 +160,6 @@ def _get_component_specs(conn, row_id: int) -> dict:
 
 
 # ──────────────────────────────────────────────────────────────────────────────
-# Fake Alembic op.get_bind() shim
-# ──────────────────────────────────────────────────────────────────────────────
-
-
-class _FakeOp:
-    """Minimal shim so migration functions can call op.get_bind()."""
-
-    def __init__(self, conn):
-        self._conn = conn
-
-    def get_bind(self):
-        return self._conn
-
-
-# ──────────────────────────────────────────────────────────────────────────────
 # Pure-function unit tests (no Alembic runner)
 # ──────────────────────────────────────────────────────────────────────────────
 
@@ -207,6 +190,12 @@ class TestParseBecOutput:
         assert result.get("bec_voltage_5v") is True
         assert result.get("bec_voltage_6v") is True
         assert result.get("bec_current_a") == 4
+
+    def test_decimal_current_is_not_truncated(self, migration):
+        # Regression (gh-1009 review): "1.5A" must parse to 1.5, not 5.0.
+        result = migration._parse_bec_output("5V / 1.5A")
+        assert result.get("bec_voltage_5v") is True
+        assert result.get("bec_current_a") == 1.5
 
     def test_single_voltage_5v_8a(self, migration):
         result = migration._parse_bec_output("5V / 8A")
