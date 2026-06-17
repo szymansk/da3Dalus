@@ -167,6 +167,8 @@ def _piece_to_out(piece) -> SparPieceOut:
         governing_y=piece.governing_y * _MM_TO_M,
         utilisation=piece.utilisation,
         joint_to_next=piece.joint_to_next,
+        feasible=piece.feasible,
+        infeasibility_reason=piece.infeasibility_reason,
     )
 
 
@@ -223,4 +225,6 @@ def compute_spar_plan(
         front_joint=plan.front_joint,
         rear_joint=plan.rear_joint,
         reinforcement=_piece_to_out(plan.reinforcement) if plan.reinforcement else None,
+        feasible=plan.feasible,
+        infeasibility_reason=plan.infeasibility_reason,
     )

@@ -141,6 +141,31 @@ class TestComputeSparPlanService:
         assert resp.front_joint == "continuous"
         assert resp.rear_joint == "continuous"
         assert resp.reinforcement is None
+        # gh-1037: a feasible plan reports feasible truthfully.
+        assert resp.feasible is True
+        assert resp.infeasibility_reason is None
+        assert resp.front_pieces[0].feasible is True
+
+    def test_infeasible_plan_propagates_to_response(self, plane_id):
+        # gh-1037: when the solver marks a piece/plan infeasible, the API must
+        # report it (not return a fake feasible plan).
+        aeroplane = _aeroplane_with_wings(["main_wing"])
+        plan = _stub_plan()
+        plan.front_pieces[0].feasible = False
+        plan.front_pieces[0].infeasibility_reason = "required OD 96.5 mm exceeds section depth"
+        plan.front_pieces[0].utilisation = 2.6
+        plan.feasible = False
+        plan.infeasibility_reason = plan.front_pieces[0].infeasibility_reason
+        resp = _run(
+            _patch_full(aeroplane, plan),
+            lambda: spar_plan_service.compute_spar_plan(
+                db=None, aeroplane_uuid=plane_id, request=_basic_request()
+            ),
+        )
+        assert resp.feasible is False
+        assert "exceeds section depth" in resp.infeasibility_reason
+        assert resp.front_pieces[0].feasible is False
+        assert resp.front_pieces[0].utilisation == pytest.approx(2.6)
 
     def test_mm_to_m_conversion(self, plane_id):
         aeroplane = _aeroplane_with_wings(["main_wing"])

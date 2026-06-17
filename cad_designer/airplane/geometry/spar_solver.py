@@ -36,6 +36,11 @@ from app.services.spar_sizing import required_section_modulus, solve_dimension
 # than this absolute slack (mm) forces a split. Small float tolerance.
 _FIT_TOL_MM = 1e-6
 
+# Span fraction used to sample the root station instead of the degenerate
+# y_span=0 slice (gh-1037 #4). Small enough to still represent the max-moment
+# root, large enough to land on a valid (non-pinched) section.
+_ROOT_EPS = 1e-3
+
 
 class SparRole(str, Enum):
     """Which structural spar a plan/piece belongs to."""
@@ -72,6 +77,10 @@ class SparSpec:
     role: SparRole
     shape: str = "tube"  # round tube (telescoping- and bent-pin-friendly)
     wall_factor: float = 0.6  # piece ID = wall_factor * OD when no strength ID given
+    #: Radial clearance (mm) at a telescoping joint: the tip-side piece OD must
+    #: be at least this much smaller than the root-side piece bore so it can
+    #: slide in (glue gap / slip fit). gh-1037.
+    telescope_clearance_mm: float = 0.5
 
 
 @dataclass
@@ -88,6 +97,8 @@ class SparPiece:
     utilisation: float
     length: float = 0.0  # mm, root→tip span of this straight piece (#1032)
     joint_to_next: str | None = None  # "telescoping" between consecutive pieces
+    feasible: bool = True  # gh-1037: False when no round tube strong enough fits
+    infeasibility_reason: str | None = None
 
     @property
     def wall(self) -> float:
@@ -106,6 +117,8 @@ class SparPiece:
             "utilisation": self.utilisation,
             "length": self.length,
             "joint_to_next": self.joint_to_next,
+            "feasible": self.feasible,
+            "infeasibility_reason": self.infeasibility_reason,
         }
 
 
@@ -118,6 +131,8 @@ class SparPlan:
     front_joint: str = "continuous"  # continuous | reinforcement+joiner
     rear_joint: str = "continuous"  # continuous | bent-pin
     reinforcement: SparPiece | None = None
+    feasible: bool = True  # gh-1037: False when any piece cannot contain a strong tube
+    infeasibility_reason: str | None = None
 
     def to_dict(self) -> dict:
         return {
@@ -126,6 +141,8 @@ class SparPlan:
             "front_joint": self.front_joint,
             "rear_joint": self.rear_joint,
             "reinforcement": self.reinforcement.to_dict() if self.reinforcement else None,
+            "feasible": self.feasible,
+            "infeasibility_reason": self.infeasibility_reason,
         }
 
 
@@ -197,72 +214,133 @@ def _unit_vector(
 # ---------------------------------------------------------------------------
 
 
+@dataclass
+class _Run:
+    """A straight-piece run during fitting.
+
+    ``stations`` are every station the straight tube physically covers (used for
+    containment fit and length). ``governing`` are the stations whose strength
+    drives the piece's OD/bore — this *excludes* a station borrowed from an
+    inboard neighbour as a telescoping overlap, since the inner piece reinforces
+    the spar there.
+    """
+
+    stations: list[StationData]
+    governing: list[StationData]
+
+
+def _split_into_runs(stations: list[StationData]) -> list[_Run]:
+    """Break the station list into straight-piece runs (root→tip).
+
+    Partition the stations greedily: extend a run while a straight tube of the
+    run's governing OD (the most-inboard, highest-moment station it covers)
+    stays inside EVERY covered station's band; on failure start the next run at
+    the breaking station. This yields a clean partition (no station appears in
+    two runs).
+
+    A partition run may collapse to a single station — physically a zero-length
+    piece, which is not a structural object (gh-1037 #2). We repair that by
+    overlapping such a run **rootward** into the previous run's tip station: the
+    telescoping joint *is* an overlap region, so a piece legitimately reaches
+    back to its inboard neighbour's boundary. The borrowed root station extends
+    the piece's geometry but does not drive its governing OD.
+    """
+    partitions: list[list[StationData]] = []
+    run: list[StationData] = [stations[0]]
+    for st in stations[1:]:
+        candidate = run + [st]
+        if _run_fits(_governing_od(candidate), candidate):
+            run = candidate
+            continue
+        partitions.append(run)
+        run = [st]
+    partitions.append(run)
+
+    runs: list[_Run] = []
+    for idx, part in enumerate(partitions):
+        if len(part) == 1 and idx > 0:
+            # borrow the inboard neighbour's tip as a rootward overlap
+            runs.append(_Run(stations=[partitions[idx - 1][-1], *part], governing=list(part)))
+        elif len(part) == 1 and len(partitions) > 1:
+            # single root partition: borrow the next neighbour's root tipward
+            runs.append(_Run(stations=[*part, partitions[idx + 1][0]], governing=list(part)))
+        else:
+            runs.append(_Run(stations=list(part), governing=list(part)))
+    return runs
+
+
 def plan_spar(stations: list[StationData], spec: SparSpec) -> list[SparPiece]:
     """Greedy root→tip fit into straight telescoping pieces.
 
-    Extend a piece while a straight tube of the piece's governing OD (the
-    most-inboard, highest-moment station it covers) stays inside EVERY covered
-    station's band. On failure → close the piece, start the next; the joint is
-    **telescoping** (next piece OD = this piece ID).
+    Split the stations into straight runs (:func:`_split_into_runs`), then size
+    each piece. The telescoping relation runs **inboard**: the tip-side (outer)
+    piece must slide INTO the root-side (inner) piece's bore, so
 
-    Confirmed priority rule: keep a piece going only while its strength-required
-    OD fits the local section at every covered station. Otherwise split +
-    telescope. **Strength beats part-count.**
+        ``OD_outer ≤ ID_inner − clearance``
+
+    and OD is **non-increasing outboard** (root ≥ tip), consistent with the
+    bending moment M(y). We size the pieces tip→root: each piece's OD is its own
+    strength-required OD, then each inner (root-side) piece's bore is grown to
+    admit the adjacent outer piece's OD plus clearance, and the inner OD grows
+    to keep a sane wall around that bore (gh-1037 #1). When a piece's required OD
+    cannot be contained by its section, it is marked infeasible with a reason
+    rather than emitting a fake feasible plan (gh-1037 #3).
+
+    Confirmed priority rule: keep a piece continuous only while its
+    strength-required OD fits the local section at every covered station.
+    Otherwise split + telescope. **Strength beats part-count.**
     """
     if not stations:
         return []
 
-    pieces: list[SparPiece] = []
-    run: list[StationData] = [stations[0]]
+    runs = _split_into_runs(stations)
 
-    for st in stations[1:]:
-        candidate = run + [st]
-        governing_od = _governing_od(candidate)
-        # A straight tube of the governing OD must stay inside every covered
-        # station's band along the candidate's own straight root→tip axis.
-        if _run_fits(governing_od, candidate):
-            run = candidate
-            continue
-        # Close the current run, telescope into the next.
-        pieces.append(run)  # placeholder, filled below
-        run = [st]
+    # Base OD per piece = the piece's own strength-required (governing) OD.
+    ods = [_governing_od(r.governing) for r in runs]
 
-    pieces.append(run)
+    # Propagate the bore demand INBOARD (tip→root): each inner piece must admit
+    # the outer piece's OD plus clearance through its bore. The inner bore sets a
+    # floor on the inner OD (bore + a minimal wall), so the root piece grows to
+    # satisfy the whole telescoping stack. This also enforces OD non-increasing
+    # outboard.
+    bores: list[float] = [0.0] * len(runs)
+    # tip piece (last): bore is purely strength-driven.
+    bores[-1] = _bore_for(runs[-1], spec, ods[-1])
+    # inner pieces (root→tip order, processed tip→root): each must admit the
+    # adjacent outer piece's OD plus clearance through its bore, AND keep at
+    # least the strength-required bore, AND a minimal wall around the bore.
+    for i in range(len(runs) - 2, -1, -1):
+        telescope_bore = ods[i + 1] + 2.0 * spec.telescope_clearance_mm
+        strength_bore = _bore_for(runs[i], spec, ods[i])
+        bore = max(telescope_bore, strength_bore)
+        min_od_for_bore = bore + 2.0 * spec.telescope_clearance_mm
+        if ods[i] < min_od_for_bore:
+            ods[i] = min_od_for_bore
+        bores[i] = bore
 
-    # Convert station-runs to SparPieces, wiring telescoping IDs.
     built: list[SparPiece] = []
-    prev_inner: float | None = None
-    for idx, run_stations in enumerate(pieces):
-        od = _governing_od(run_stations)
-        if prev_inner is not None:
-            # telescoping: this (outer/tip-side) piece OD = previous piece ID.
-            # If strength needs more than the previous bore, the previous piece
-            # was sized too small — but strength beats part-count, so this OD is
-            # max(prev_inner, strength OD). Keep the bore relation by widening.
-            od = max(prev_inner, od)
-        inner_d = _bore_for(run_stations, spec, od)
-        piece = _piece_from_run_with_od(run_stations, spec, od, inner_d)
-        built.append(piece)
-        if idx < len(pieces) - 1:
+    for idx, run in enumerate(runs):
+        piece = _piece_from_run_with_od(run, spec, ods[idx], bores[idx])
+        if idx < len(runs) - 1:
             piece.joint_to_next = "telescoping"
-        prev_inner = inner_d
+        built.append(piece)
     return built
 
 
-def _bore_for(run: list[StationData], spec: SparSpec, od: float) -> float:
+def _bore_for(run: _Run, spec: SparSpec, od: float) -> float:
     """Strength-driven bore for a tube of outer diameter ``od``.
 
     Uses #1008 tube sizing at the governing station so the bore reflects the
     real load; falls back to a fixed wall fraction when sizing can't solve a
     feasible bore (e.g. strength wants a solid).
     """
-    governing = run[0]
-    # Reconstruct a required section modulus consistent with the station's
-    # required_od (the strength OD already encodes the moment). The bore is the
-    # largest inner diameter that still meets strength at this OD.
+    governing_od = _governing_od(run.governing)
+    # Reconstruct a required section modulus consistent with the governing
+    # station's required_od (the strength OD already encodes the moment). The
+    # bore is the largest inner diameter that still meets strength at this OD.
     # required_od was sized as a *rod-equivalent*; for a tube of larger OD we
     # can hollow it. Use solve_dimension's tube path with the governing W.
-    erf_w = required_section_modulus_from_od(governing.required_od)
+    erf_w = required_section_modulus_from_od(governing_od)
     sol = solve_dimension(shape="tube", erf_w=erf_w, outer_mm=od)
     if sol["feasible"] and sol["inner_mm"] is not None:
         return float(sol["inner_mm"])
@@ -279,18 +357,32 @@ def required_section_modulus_from_od(od: float) -> float:
     return od**3 / 10.0
 
 
-def _piece_from_run_with_od(
-    run: list[StationData], spec: SparSpec, od: float, inner_d: float
-) -> SparPiece:
-    governing = run[0]
-    root = run[0]
-    tip = run[-1]
+def _piece_from_run_with_od(run: _Run, spec: SparSpec, od: float, inner_d: float) -> SparPiece:
+    governing = run.governing[0]
+    root = run.stations[0]
+    tip = run.stations[-1]
     origin = (0.0, root.y_mm, root.center_z)
     tip_point = (0.0, tip.y_mm, tip.center_z)
     vector = _unit_vector(origin, tip_point)
     length = math.dist(origin, tip_point)
-    tightest = _max_od_for_run(run)
-    utilisation = min(1.0, od / tightest) if tightest > 0 else 1.0
+    tightest = _max_od_for_run(run.stations)
+    # Honest utilisation (gh-1037 #3): the fraction of the tightest containment
+    # band the piece OD uses. It may exceed 1 when no round tube strong enough
+    # fits — we report that truthfully instead of clamping to a fake 1.0. When
+    # the band has literally no room (tightest == 0) we floor the denominator to
+    # a tiny value so the ratio is large-but-finite (JSON-serialisable) and
+    # still clearly signals infeasibility.
+    utilisation = od / max(tightest, _FIT_TOL_MM)
+    feasible = od <= tightest + _FIT_TOL_MM and tightest > 0
+    reason: str | None = None
+    if not feasible:
+        depth = max(0.0, governing.band_hi - governing.band_lo)
+        reason = (
+            f"required OD {od:.1f} mm exceeds section depth {depth:.1f} mm at "
+            f"y={governing.y_mm:.0f} mm; increase root depth/chord or reduce "
+            "design load — a round tube is the least efficient bending member, "
+            "consider a capped/box spar"
+        )
     return SparPiece(
         role=spec.role,
         spare_origin=origin,
@@ -301,6 +393,8 @@ def _piece_from_run_with_od(
         governing_y=governing.y_mm,
         utilisation=utilisation,
         length=length,
+        feasible=feasible,
+        infeasibility_reason=reason,
     )
 
 
@@ -420,6 +514,15 @@ def solve_spar_plan(
         else:
             plan.rear_joint = "bent-pin"
 
+    # --- feasibility roll-up (gh-1037 #3) ---
+    all_pieces = [*plan.front_pieces, *plan.rear_pieces]
+    if plan.reinforcement is not None:
+        all_pieces.append(plan.reinforcement)
+    infeasible = [p for p in all_pieces if not p.feasible]
+    if infeasible:
+        plan.feasible = False
+        plan.infeasibility_reason = infeasible[0].infeasibility_reason
+
     return plan
 
 
@@ -451,6 +554,13 @@ def build_stations_from_geometry(
     import numpy as np
 
     y_spans = np.linspace(0.0, 1.0, max(2, n_span)).tolist()
+    # gh-1037 #4: the slice at y_span=0 is degenerate on a real loft (pinched,
+    # zero-thickness centreline section) and would poison the governing
+    # (max-moment) root station. Sample the root at y_span=eps instead so the
+    # root sizing uses a valid section while still representing the highest
+    # moment.
+    if y_spans and y_spans[0] <= 0.0:
+        y_spans[0] = _ROOT_EPS
     stations: list[StationData] = []
     for y_span in y_spans:
         if x_c is None:
