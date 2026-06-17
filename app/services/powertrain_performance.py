@@ -101,6 +101,34 @@ class MotorSpec(BaseModel):
     continuous_current_a: Optional[float] = Field(
         None, gt=0, description="Continuous current rating [A]"
     )
+    rm_ohm: Optional[float] = Field(
+        None,
+        gt=0,
+        description=(
+            "Motor winding (terminal-to-terminal) resistance Rm [Ω]. "
+            "When provided, enables the QPROP 3-parameter torque-balance model "
+            "(gh-1006); when absent the simplified fixed-RPM model is used."
+        ),
+    )
+
+    @property
+    def uses_qprop_model(self) -> bool:
+        """True when enough data is present for the QPROP 3-param model.
+
+        Requires winding resistance Rm. Io defaults to 0 A if not provided
+        (an ideal-loss-free no-load assumption), so Rm alone is sufficient
+        to unlock the torque-balance solver.
+        """
+        return self.rm_ohm is not None and self.rm_ohm > 0
+
+    @property
+    def kv_si(self) -> float:
+        """Motor speed constant in SI: output-shaft rad/s per volt of back-EMF.
+
+        Kv_si = output_kv [rpm/V] × 2π/60. In SI the torque constant Kt = 1/Kv_si
+        [Nm/A], which is the basis of the QPROP torque relation Q = (I − I0)/Kv_si.
+        """
+        return self.output_kv * 2.0 * math.pi / 60.0
 
     @property
     def output_kv(self) -> float:
@@ -391,6 +419,184 @@ def compute_prop_operating_point(
 
 
 # ---------------------------------------------------------------------------
+# QPROP 3-parameter motor model (gh-1006)
+# ---------------------------------------------------------------------------
+
+
+@dataclass
+class QpropOperatingPoint:
+    """Solved torque-balance operating point for the QPROP 3-param motor model.
+
+    All quantities are at the (gear-aware) output shaft.
+    """
+
+    rpm: float  # operating speed [rpm]
+    current_a: float  # motor terminal current I [A]
+    torque_nm: float  # shaft torque Q [Nm]
+    p_shaft_w: float  # shaft mechanical power Q·ω [W]
+    eta_motor: float  # motor electrical→mechanical efficiency (0..1)
+
+
+def _prop_torque_demand(
+    samples: list[PropellerPolarRow],
+    rpm: float,
+    V_airspeed: float,
+    D_m: float,
+    rho: float,
+) -> float:
+    """Propeller absorbed torque [Nm] at a given shaft RPM and airspeed.
+
+    Q_prop = P_prop / ω = Cp·ρ·n³·D⁵ / (2π·n) = Cp·ρ·n²·D⁵ / (2π).
+    Cp is interpolated at the advance ratio J = V/(n·D), using the polar
+    rows nearest the requested RPM (consistent with compute_prop_operating_point).
+    """
+    n_rps = rpm / 60.0
+    if n_rps <= 0 or D_m <= 0:
+        return 0.0
+
+    J = V_airspeed / (n_rps * D_m)
+
+    if samples:
+        rpms = sorted({s.rpm for s in samples})
+        nearest_rpm = min(rpms, key=lambda r: abs(r - rpm))
+        rpm_rows = [s for s in samples if s.rpm == nearest_rpm]
+    else:
+        rpm_rows = samples
+
+    _ct, cp, _pe = interpolate_ct_cp_pe(rpm_rows, J)
+    p_prop = cp * rho * (n_rps**3) * (D_m**5)
+    omega = 2.0 * math.pi * n_rps
+    if omega <= 0:
+        return 0.0
+    return p_prop / omega
+
+
+def solve_qprop_operating_point(
+    motor: MotorSpec,
+    samples: list[PropellerPolarRow],
+    V_terminal: float,
+    V_airspeed: float,
+    D_m: float,
+    altitude_m: float = 0.0,
+    max_current_a: Optional[float] = None,
+) -> QpropOperatingPoint:
+    """Solve Drela's QPROP 3-parameter torque balance for the operating RPM.
+
+    Model (output-shaft frame, Kv_si in rad/s per volt, Kt = 1/Kv_si):
+
+        back-EMF / speed:   ω/Kv_si = V_terminal − I·Rm
+        motor torque:       Q_motor(I) = (I − I0) / Kv_si
+        prop demand:        Q_prop(n) = Cp·ρ·n²·D⁵ / (2π)
+        torque balance:     Q_motor(I) = Q_prop(n)        at the solution
+
+    Eliminating I via the back-EMF relation gives a single monotone equation in
+    n; we bracket and bisect on RPM. Motor efficiency at the solution is the
+    QPROP form η = (V_terminal − I·Rm)·(I − I0) / (V_terminal·I).
+
+    Parameters
+    ----------
+    motor : MotorSpec
+        Must have rm_ohm set (uses_qprop_model True). Io defaults to 0 A.
+    samples : list[PropellerPolarRow]
+        Propeller polar rows (all RPMs).
+    V_terminal : float
+        Voltage at the motor terminals [V] (battery × throttle).
+    V_airspeed : float
+        Airspeed [m/s] for advance-ratio-dependent torque demand.
+    D_m : float
+        Propeller diameter [m].
+    altitude_m : float
+        Operating altitude for air density [m].
+    max_current_a : float, optional
+        Hard current ceiling [A]; the back-EMF floor caps the search RPM so the
+        solution never demands more than this current.
+
+    Returns
+    -------
+    QpropOperatingPoint
+    """
+    rm = motor.rm_ohm
+    if rm is None or rm <= 0:
+        raise ValueError("solve_qprop_operating_point requires motor.rm_ohm > 0")
+
+    kv_si = motor.kv_si  # rad/s per volt
+    i0 = motor.io_no_load_a or 0.0
+    rho = _air_density(altitude_m)
+
+    def current_for_rpm(rpm: float) -> float:
+        """Terminal current implied by the back-EMF relation at this RPM."""
+        omega = rpm * 2.0 * math.pi / 60.0
+        back_emf = omega / kv_si
+        return (V_terminal - back_emf) / rm
+
+    def residual(rpm: float) -> float:
+        """Q_motor − Q_prop at this RPM (root → torque balance)."""
+        i = current_for_rpm(rpm)
+        q_motor = (i - i0) / kv_si
+        q_prop = _prop_torque_demand(samples, rpm, V_airspeed, D_m, rho)
+        return q_motor - q_prop
+
+    # Upper RPM bound: free-running speed (I=0) where back-EMF == V_terminal.
+    rpm_free = V_terminal * kv_si * 60.0 / (2.0 * math.pi)
+
+    # If a current ceiling is set, the back-EMF floor caps the minimum RPM the
+    # motor will run at; current rises as RPM falls (more I·Rm drop).
+    rpm_lo = 0.0
+    if max_current_a is not None:
+        # RPM where current_for_rpm == max_current_a
+        # back_emf = V_terminal − max_current_a·rm ; rpm = back_emf·kv_si·60/2π
+        back_emf_floor = V_terminal - max_current_a * rm
+        rpm_at_imax = max(back_emf_floor, 0.0) * kv_si * 60.0 / (2.0 * math.pi)
+        rpm_lo = rpm_at_imax
+
+    rpm_hi = rpm_free
+
+    if rpm_hi <= rpm_lo:
+        # Degenerate (V_terminal too low or current ceiling binds everywhere).
+        rpm_sol = max(rpm_lo, 0.0)
+    else:
+        # At rpm_hi (free run) I→0 so Q_motor<0<Q_prop → residual<0.
+        # At rpm_lo (no/low speed) Q_motor is large and Q_prop→0 → residual>0.
+        r_lo = residual(rpm_lo)
+        r_hi = residual(rpm_hi)
+        if r_lo <= 0:
+            # Even at the lowest RPM the motor cannot match prop demand.
+            rpm_sol = rpm_lo
+        elif r_hi >= 0:
+            # Motor over-powers even at free-run bound (no current headroom hit).
+            rpm_sol = rpm_hi
+        else:
+            for _ in range(80):
+                rpm_mid = 0.5 * (rpm_lo + rpm_hi)
+                r_mid = residual(rpm_mid)
+                if r_mid > 0:
+                    rpm_lo = rpm_mid
+                else:
+                    rpm_hi = rpm_mid
+            rpm_sol = 0.5 * (rpm_lo + rpm_hi)
+
+    current = max(current_for_rpm(rpm_sol), 0.0)
+    omega = rpm_sol * 2.0 * math.pi / 60.0
+    torque = max((current - i0) / kv_si, 0.0)
+    p_shaft = max(torque * omega, 0.0)
+
+    # QPROP motor efficiency η = (V − I·Rm)(I − I0)/(V·I)
+    if V_terminal > 0 and current > 0:
+        eta = (V_terminal - current * rm) * (current - i0) / (V_terminal * current)
+        eta = float(min(max(eta, 0.0), 1.0))
+    else:
+        eta = 0.0
+
+    return QpropOperatingPoint(
+        rpm=rpm_sol,
+        current_a=current,
+        torque_nm=torque,
+        p_shaft_w=p_shaft,
+        eta_motor=eta,
+    )
+
+
+# ---------------------------------------------------------------------------
 # Main curve computation
 # ---------------------------------------------------------------------------
 
@@ -489,6 +695,14 @@ def compute_performance_curve(
     rho = _air_density(request.altitude_m)
     n_rps = prop_rpm / 60.0
 
+    # gh-1006: when winding resistance Rm is available, solve the QPROP
+    # 3-parameter torque balance per velocity point (RPM is load-dependent)
+    # instead of the fixed-RPM approximation.  V_terminal = battery × throttle.
+    use_qprop = motor.uses_qprop_model
+    v_terminal = V_bat * request.throttle
+    # Current ceiling for the back-EMF floor (motor burst limit if known).
+    i_ceiling = motor.max_current_a
+
     samples_out: list[PerformanceSample] = []
 
     # Extrapolation tracking
@@ -497,13 +711,31 @@ def compute_performance_curve(
     for V in velocities:
         V_f = float(V)
 
-        # Advance ratio
-        J = V_f / (n_rps * D_m) if (n_rps > 0 and D_m > 0) else 0.0
+        if use_qprop:
+            op = solve_qprop_operating_point(
+                motor=motor,
+                samples=request.polar_samples,
+                V_terminal=v_terminal,
+                V_airspeed=V_f,
+                D_m=D_m,
+                altitude_m=request.altitude_m,
+                max_current_a=i_ceiling,
+            )
+            point_rpm = op.rpm
+            point_n_rps = point_rpm / 60.0
+            estimated_flag = False
+        else:
+            point_rpm = prop_rpm
+            point_n_rps = n_rps
+            estimated_flag = True
+
+        # Advance ratio at the (possibly load-dependent) operating RPM
+        J = V_f / (point_n_rps * D_m) if (point_n_rps > 0 and D_m > 0) else 0.0
 
         # Get coefficients from polar, selecting closest RPM group
         if request.polar_samples:
             rpms = sorted({s.rpm for s in request.polar_samples})
-            nearest_rpm = min(rpms, key=lambda r: abs(r - prop_rpm))
+            nearest_rpm = min(rpms, key=lambda r: abs(r - point_rpm))
             rpm_rows = [s for s in request.polar_samples if s.rpm == nearest_rpm]
         else:
             rpm_rows = request.polar_samples
@@ -513,11 +745,16 @@ def compute_performance_curve(
             extrapolation_seen = True
 
         # Thrust: T = Ct · ρ · n² · D⁴  (clamped ≥ 0)
-        thrust_n = max(Ct * rho * (n_rps**2) * (D_m**4), 0.0)
+        thrust_n = max(Ct * rho * (point_n_rps**2) * (D_m**4), 0.0)
 
-        # Shaft power from Cp: P = Cp · ρ · n³ · D⁵  (clamped ≤ P_shaft_max)
-        p_shaft_uncapped = Cp * rho * (n_rps**3) * (D_m**5)
-        p_shaft_w = float(np.clip(p_shaft_uncapped, 0.0, p_shaft_max))
+        if use_qprop:
+            # Shaft power comes from the solved torque balance (Q·ω); already
+            # consistent with Cp·ρ·n³·D⁵ at the solution RPM.
+            p_shaft_w = float(max(op.p_shaft_w, 0.0))
+        else:
+            # Shaft power from Cp: P = Cp · ρ · n³ · D⁵  (clamped ≤ P_shaft_max)
+            p_shaft_uncapped = Cp * rho * (point_n_rps**3) * (D_m**5)
+            p_shaft_w = float(np.clip(p_shaft_uncapped, 0.0, p_shaft_max))
 
         # η_prop from Pe (J-dependent — NOT the flat 0.65 scalar)
         eta_prop = float(np.clip(Pe, 0.0, 1.0))
@@ -529,8 +766,8 @@ def compute_performance_curve(
                 p_shaft_w=round(p_shaft_w, 4),
                 eta_prop=round(eta_prop, 4),
                 J=round(J, 6),
-                rpm=round(prop_rpm, 1),
-                estimated=True,
+                rpm=round(point_rpm, 1),
+                estimated=estimated_flag,
             )
         )
 
@@ -540,13 +777,23 @@ def compute_performance_curve(
             "polar dataset range. Results at those points are less reliable."
         )
 
-    notes = (
-        "Motor power values are ESTIMATED from max_current_a × 3.7 V/cell × cells_lipo_max "
-        "(loaded voltage, not 4.2 V peak). "
-        f"Motor η = {motor.eta_motor:.2f} ({'from efficiency_pct' if motor.efficiency_pct is not None else 'default 0.85'}). "
-        "RPM model: output_kv × V_battery × throttle (simplified; no Rm torque-balance). "
-        "See follow-up ticket for QPROP 3-param refinement with winding resistance."
-    )
+    if use_qprop:
+        notes = (
+            "Motor model: QPROP 3-parameter torque balance (gh-1006) — "
+            f"Kv={motor.output_kv:.0f} rpm/V, Rm={motor.rm_ohm:.4g} Ω, "
+            f"Io={motor.io_no_load_a or 0.0:.3g} A. "
+            "Operating RPM solved per velocity from V_terminal = I·Rm + ω/Kv with "
+            "shaft torque Q = (I − Io)/Kv and motor η = (V−I·Rm)(I−Io)/(V·I). "
+            "These values are physics-solved (not current×voltage estimates)."
+        )
+    else:
+        notes = (
+            "Motor power values are ESTIMATED from max_current_a × 3.7 V/cell × cells_lipo_max "
+            "(loaded voltage, not 4.2 V peak). "
+            f"Motor η = {motor.eta_motor:.2f} ({'from efficiency_pct' if motor.efficiency_pct is not None else 'default 0.85'}). "
+            "RPM model: output_kv × V_battery × throttle (simplified; no Rm torque-balance). "
+            "Provide winding resistance (rm_ohm) to enable the QPROP 3-param refinement."
+        )
 
     return PowertrainPerformanceResponse(
         samples=samples_out,

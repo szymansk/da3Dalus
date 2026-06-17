@@ -153,6 +153,25 @@ class TestImportSnapshotHappyPath:
         assert row.specs["max_current_a"] == 45.0
         assert row.specs["art_no"] == "AL4206"
 
+    def test_motor_rm_ohm_ingested_when_present(self, session):
+        """gh-1006: winding resistance Rm is ingested when the source provides it."""
+        record = {**MOTOR_RECORD, "name": "AL 42-06 (with Rm)"}
+        record["specs"] = {**MOTOR_RECORD["specs"], "rm_ohm": 0.045}
+        result = import_snapshot(session, [record])
+        session.commit()
+        assert result.errors == []
+        row = session.query(ComponentModel).filter_by(name="AL 42-06 (with Rm)").first()
+        assert row is not None
+        assert row.specs["rm_ohm"] == 0.045
+
+    def test_motor_without_rm_ohm_has_no_key(self, session):
+        """Backward compat: no rm_ohm in source → key absent in stored specs."""
+        result = import_snapshot(session, [MOTOR_RECORD])
+        session.commit()
+        assert result.errors == []
+        row = session.query(ComponentModel).filter_by(name="AL 42-06").first()
+        assert "rm_ohm" not in row.specs
+
     def test_single_esc_imported(self, session):
         result = import_snapshot(session, [ESC_RECORD])
         session.commit()

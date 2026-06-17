@@ -98,6 +98,8 @@ def _resolve_motor(motor_row: ComponentModel) -> MotorSpec:
         io_no_load_a=specs.get("io_no_load_a"),
         max_current_a=specs.get("max_current_a"),
         continuous_current_a=specs.get("continuous_current_a"),
+        # gh-1006: enables the QPROP 3-param torque-balance model when present
+        rm_ohm=specs.get("rm_ohm"),
     )
 
 
