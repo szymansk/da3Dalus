@@ -200,3 +200,185 @@ class TestPlatformGuard:
         monkeypatch.setattr(mod, "_HAS_CADQUERY", False)
         with pytest.raises(SectionGeometryUnavailableError):
             SectionGeometry(single_segment_flat())
+
+
+# ---------------------------------------------------------------------------
+# Fast: orchestration with the CAD slicing boundary mocked
+#
+# These exercise at()/sample()/at_max_thickness()/per_segment() and the
+# world-z reconstruction WITHOUT building any CAD, so the orchestration lines
+# are covered on the no-cadquery CI fast tier (protects the new_coverage gate).
+# ---------------------------------------------------------------------------
+
+
+from cad_designer.airplane.geometry.section_geometry import _SlicedSection  # noqa: E402
+
+
+def _bare_section_geometry(segment_lengths: list[float]) -> SectionGeometry:
+    """A SectionGeometry that skips __init__ (no CAD build)."""
+    sg = object.__new__(SectionGeometry)
+    sg._wing_config = None
+    sg._points_per_edge = 80
+    sg._segment_lengths = segment_lengths
+    sg._solid_shape = None
+    return sg
+
+
+def _flat_section(chord_len: float = 100.0) -> _SlicedSection:
+    """A flat-plate section: +-10 height over the whole chord, z up == 1."""
+    outline = [
+        (0.0, 10.0),
+        (chord_len, 10.0),
+        (chord_len, -10.0),
+        (0.0, -10.0),
+    ]
+    return _SlicedSection(
+        outline=outline,
+        chord_len=chord_len,
+        le_anchor=np.array([0.0, 0.0, 0.0]),
+        chord_unit=np.array([1.0, 0.0, 0.0]),
+        up_z=1.0,
+    )
+
+
+class TestPointFromSection:
+    def test_basic_thickness_and_center(self):
+        pt = SectionGeometry._point_from_section(_flat_section(), 0.3, 0.5)
+        assert pt.thickness == pytest.approx(20.0)
+        assert pt.top_z == pytest.approx(10.0)
+        assert pt.bottom_z == pytest.approx(-10.0)
+        assert pt.center_z == pytest.approx(0.0)
+        assert pt.x_c == 0.5
+        assert pt.y_span == 0.3
+
+    def test_empty_section_returns_zeros(self):
+        empty = _SlicedSection([], 0.0, np.zeros(3), np.array([1.0, 0, 0]), 1.0)
+        pt = SectionGeometry._point_from_section(empty, 0.1, 0.4)
+        assert pt.thickness == 0.0
+        assert pt.top_z == 0.0
+        assert pt.bottom_z == 0.0
+
+    def test_dihedral_up_z_lifts_world_z(self):
+        # chord line rising in world z (le_anchor.z varies via chord_unit)
+        section = _SlicedSection(
+            outline=[(0.0, 5.0), (100.0, 5.0), (100.0, -5.0), (0.0, -5.0)],
+            chord_len=100.0,
+            le_anchor=np.array([0.0, 0.0, 50.0]),  # whole section lifted 50mm
+            chord_unit=np.array([1.0, 0.0, 0.0]),
+            up_z=1.0,
+        )
+        pt = SectionGeometry._point_from_section(section, 0.9, 0.5)
+        assert pt.center_z == pytest.approx(50.0)
+
+
+class TestOrchestrationMocked:
+    def test_at_uses_section(self, monkeypatch):
+        sg = _bare_section_geometry([100.0])
+        monkeypatch.setattr(sg, "_section", lambda y: _flat_section())
+        pt = sg.at(0.5, 0.4)
+        assert pt.thickness == pytest.approx(20.0)
+
+    def test_sample_grid_cardinality(self, monkeypatch):
+        sg = _bare_section_geometry([100.0])
+        monkeypatch.setattr(sg, "_section", lambda y: _flat_section())
+        pts = sg.sample([0.2, 0.5, 0.8], [0.25, 0.5])
+        assert len(pts) == 6
+        assert all(p.thickness == pytest.approx(20.0) for p in pts)
+
+    def test_at_max_thickness_picks_deepest(self, monkeypatch):
+        # outline thicker in the middle so the scan must find the peak
+        def _tapered(_y):
+            return _SlicedSection(
+                outline=[(0.0, 0.0), (50.0, 30.0), (100.0, 0.0), (50.0, -30.0)],
+                chord_len=100.0,
+                le_anchor=np.array([0.0, 0.0, 0.0]),
+                chord_unit=np.array([1.0, 0.0, 0.0]),
+                up_z=1.0,
+            )
+
+        sg = _bare_section_geometry([100.0])
+        monkeypatch.setattr(sg, "_section", _tapered)
+        pt = sg.at_max_thickness(0.5)
+        # deepest is at chord 0.5 -> thickness 60
+        assert pt.thickness == pytest.approx(60.0, abs=6.0)
+        assert pt.x_c == pytest.approx(0.5, abs=0.06)
+
+    def test_at_max_thickness_empty_section(self, monkeypatch):
+        sg = _bare_section_geometry([100.0])
+        empty = _SlicedSection([], 0.0, np.zeros(3), np.array([1.0, 0, 0]), 1.0)
+        monkeypatch.setattr(sg, "_section", lambda y: empty)
+        pt = sg.at_max_thickness(0.5)
+        assert pt.thickness == 0.0
+
+    def test_per_segment_global_y_and_cardinality(self, monkeypatch):
+        sg = _bare_section_geometry([300.0, 700.0])
+        seen_y: list[float] = []
+
+        def _record(y):
+            seen_y.append(y)
+            return _flat_section()
+
+        monkeypatch.setattr(sg, "_section", _record)
+        grid = sg.per_segment(n_span=2, n_chord=3)
+        assert set(grid.keys()) == {0, 1}
+        assert len(grid[0]) == 6 and len(grid[1]) == 6
+        # global y for seg 1 tip must be 1.0 (whole-surface fraction)
+        assert max(seen_y) == pytest.approx(1.0)
+        # seg 0 root is 0.0
+        assert min(seen_y) == pytest.approx(0.0)
+
+
+class TestStationFrameMath:
+    """_station_frame with mocked workplanes (no CAD build)."""
+
+    def _fake_plane(self, origin, xdir, ydir, zdir):
+        class _V:
+            def __init__(self, t):
+                self._t = t
+
+            def toTuple(self):
+                return self._t
+
+        class _Plane:
+            pass
+
+        p = _Plane()
+        p.origin = _V(origin)
+        p.xDir = _V(xdir)
+        p.yDir = _V(ydir)
+        p.zDir = _V(zdir)
+        return p
+
+    def _wing_with_planes(self, planes):
+        class _WC:
+            def __init__(self, planes):
+                self._planes = planes
+
+            def get_wing_workplane(self, idx):
+                class _WP:
+                    def __init__(self, plane):
+                        self.plane = plane
+
+                return _WP(self._planes[idx])
+
+        return _WC(planes)
+
+    def test_flat_frame_span_is_y(self):
+        sg = _bare_section_geometry([500.0])
+        root = self._fake_plane((0, 0, 0), (1, 0, 0), (0, 1, 0), (0, 0, 1))
+        tip = self._fake_plane((0, 500, 0), (1, 0, 0), (0, 1, 0), (0, 0, 1))
+        sg._wing_config = self._wing_with_planes([root, tip])
+        origin, chord_dir, span_dir, up_dir = sg._station_frame(0.5)
+        assert origin == pytest.approx([0.0, 250.0, 0.0])
+        assert span_dir == pytest.approx([0.0, 1.0, 0.0])
+        assert chord_dir == pytest.approx([1.0, 0.0, 0.0])
+        assert up_dir == pytest.approx([0.0, 0.0, 1.0])
+
+    def test_degenerate_span_falls_back_to_ydir(self):
+        sg = _bare_section_geometry([500.0])
+        # root and tip share the same origin -> span vector is zero
+        root = self._fake_plane((0, 0, 0), (1, 0, 0), (0, 1, 0), (0, 0, 1))
+        tip = self._fake_plane((0, 0, 0), (1, 0, 0), (0, 1, 0), (0, 0, 1))
+        sg._wing_config = self._wing_with_planes([root, tip])
+        _, _, span_dir, _ = sg._station_frame(0.5)
+        assert span_dir == pytest.approx([0.0, 1.0, 0.0])
