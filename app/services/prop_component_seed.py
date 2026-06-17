@@ -9,10 +9,15 @@ Key design points
 * **Keyed on ``model_ref``** — both ``PropellerPolarModel`` and
   ``ComponentModel`` already carry a ``model_ref`` column, so no migration
   is needed. The seed is idempotent: re-runs upsert by ``model_ref``.
-* **``mass_g`` stays NULL** — real masses arrive via #1000 (PROP-DATA xlsx).
-  No silent 0-fallback; the BoM marks such nodes as *mass unknown*.
+* **``mass_g`` is populated from the polar weight** — #1000 (PROP-DATA xlsx)
+  is done, so ``propeller_polars.weight_g`` now carries real prop masses in
+  grams. On create the component's ``mass_g`` is set from ``weight_g``; on
+  reseed a NULL ``mass_g`` is backfilled once the polar gains a weight.
+  ``weight_g`` and ``mass_g`` are both grams — no unit conversion.
+* **``mass_g`` stays NULL only when the polar has no weight** — there is no
+  silent 0-fallback; the BoM marks such nodes as *mass unknown*.
 * **User-entered mass is preserved** — a reseed never overwrites a non-null
-  ``mass_g`` back to NULL.
+  ``mass_g`` (neither back to NULL nor with the polar weight).
 
 The performance bridge (powertrain_performance) resolves a chosen propeller
 component back to its polar via the shared ``model_ref``.
@@ -57,6 +62,16 @@ def _specs_from_polar(polar: PropellerPolarModel) -> dict[str, object]:
     }
 
 
+def _mass_from_polar(polar: PropellerPolarModel) -> float | None:
+    """Prop mass in grams from the polar weight (#1000). May be ``None``.
+
+    ``weight_g`` and ``mass_g`` are both grams — no unit conversion. Returns
+    ``None`` when the polar has no weight; the caller keeps ``mass_g`` NULL
+    (no silent 0-fallback) so the BoM can mark the node *mass unknown*.
+    """
+    return polar.weight_g
+
+
 def seed_propeller_components(db: Session) -> SeedResult:
     """Upsert one ``propeller`` ComponentModel per propeller polar.
 
@@ -81,13 +96,17 @@ def seed_propeller_components(db: Session) -> SeedResult:
             .first()
         )
 
+        mass_g = _mass_from_polar(polar)
+
         if existing is None:
             comp = ComponentModel(
                 name=polar.name,
                 component_type=COMPONENT_TYPE,
                 manufacturer=polar.manufacturer,
                 description=None,
-                mass_g=None,  # real masses via #1000; no silent 0-fallback
+                # Populated from the polar weight (#1000); stays NULL when the
+                # polar has no weight — no silent 0-fallback.
+                mass_g=mass_g,
                 model_ref=polar.model_ref,
                 specs=specs,
             )
@@ -95,17 +114,22 @@ def seed_propeller_components(db: Session) -> SeedResult:
             result.created += 1
             continue
 
-        # Upsert: refresh catalog metadata from the polar, but never clobber a
-        # user-entered mass back to NULL and never touch a non-null mass.
+        # Upsert: refresh catalog metadata from the polar. Backfill a NULL mass
+        # from the polar weight, but never clobber a user-entered (non-null)
+        # mass — neither back to NULL nor with the polar weight.
+        backfill_mass = existing.mass_g is None and mass_g is not None
         changed = (
             existing.name != polar.name
             or existing.manufacturer != polar.manufacturer
             or (existing.specs or {}) != specs
+            or backfill_mass
         )
         if changed:
             existing.name = polar.name
             existing.manufacturer = polar.manufacturer
             existing.specs = specs
+            if backfill_mass:
+                existing.mass_g = mass_g
             result.updated += 1
         else:
             result.skipped += 1
