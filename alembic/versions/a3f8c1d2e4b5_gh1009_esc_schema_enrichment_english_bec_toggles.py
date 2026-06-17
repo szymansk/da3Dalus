@@ -94,8 +94,8 @@ def _parse_bec_output(raw: str | None) -> dict[str, bool | float]:
                 raw,
             )
 
-    # Extract current token: e.g. "4A", "8A"
-    current_match = re.search(r"(\d+)\s*[Aa]", raw)
+    # Extract current token: e.g. "4A", "8A", "1.5A" (decimals must not truncate)
+    current_match = re.search(r"(\d+\.?\d*)\s*[Aa]", raw)
     if current_match:
         result["bec_current_a"] = float(current_match.group(1))
 
@@ -166,8 +166,18 @@ _NEW_ESC_SCHEMA: list[dict] = [
     },
     {"name": "cells_lipo_min", "label": "LiPo Cells Min", "type": "number", "unit": "S"},
     {"name": "cells_lipo_max", "label": "LiPo Cells Max", "type": "number", "unit": "S"},
-    {"name": "cells_nixx_min", "label": "NiXX Cells Min", "type": "number", "unit": "cells"},
-    {"name": "cells_nixx_max", "label": "NiXX Cells Max", "type": "number", "unit": "cells"},
+    {
+        "name": "cells_nixx_min",
+        "label": "NiXX (NiCd/NiMH) Cells Min",
+        "type": "number",
+        "unit": "cells",
+    },
+    {
+        "name": "cells_nixx_max",
+        "label": "NiXX (NiCd/NiMH) Cells Max",
+        "type": "number",
+        "unit": "cells",
+    },
     {"name": "cells_liion_min", "label": "Li-Ion/LiHV Cells Min", "type": "number", "unit": "S"},
     {"name": "cells_liion_max", "label": "Li-Ion/LiHV Cells Max", "type": "number", "unit": "S"},
     {"name": "bec_voltage_5v", "label": "BEC 5.0 V", "type": "boolean"},

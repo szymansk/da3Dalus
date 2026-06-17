@@ -279,6 +279,7 @@ export function ComponentEditDialog({
                 id="ce-bbox-x"
                 data-bbox="bbox_x_mm"
                 type="number"
+                min={0}
                 value={bboxX}
                 onChange={(e) => setBboxX(e.target.value)}
                 className="w-full rounded-xl border border-border bg-input px-3 py-2 text-[13px] text-foreground"
@@ -290,6 +291,7 @@ export function ComponentEditDialog({
                 id="ce-bbox-y"
                 data-bbox="bbox_y_mm"
                 type="number"
+                min={0}
                 value={bboxY}
                 onChange={(e) => setBboxY(e.target.value)}
                 className="w-full rounded-xl border border-border bg-input px-3 py-2 text-[13px] text-foreground"
@@ -301,6 +303,7 @@ export function ComponentEditDialog({
                 id="ce-bbox-z"
                 data-bbox="bbox_z_mm"
                 type="number"
+                min={0}
                 value={bboxZ}
                 onChange={(e) => setBboxZ(e.target.value)}
                 className="w-full rounded-xl border border-border bg-input px-3 py-2 text-[13px] text-foreground"

@@ -38,7 +38,9 @@ def _load_dpower() -> list[dict]:
 
 def _avicon_escs(records: list[dict]) -> list[dict]:
     """Return all ESC records whose name starts with 'AVICON'."""
-    return [r for r in records if r.get("component_type") == "esc" and r["name"].startswith("AVICON")]
+    return [
+        r for r in records if r.get("component_type") == "esc" and r["name"].startswith("AVICON")
+    ]
 
 
 # ──────────────────────────────────────────────────────────────────────────────
@@ -81,47 +83,25 @@ class TestDpowerAviconEscSnapshot:
 
     def test_every_avicon_esc_has_cells_nixx_min(self):
         """Every AVICON ESC record must have cells_nixx_min in its specs."""
-        missing = [
-            r["name"]
-            for r in self.avicon_escs
-            if "cells_nixx_min" not in r["specs"]
-        ]
-        assert not missing, (
-            f"AVICON ESC entries missing cells_nixx_min: {missing}"
-        )
+        missing = [r["name"] for r in self.avicon_escs if "cells_nixx_min" not in r["specs"]]
+        assert not missing, f"AVICON ESC entries missing cells_nixx_min: {missing}"
 
     def test_every_avicon_esc_has_cells_nixx_max(self):
         """Every AVICON ESC record must have cells_nixx_max in its specs."""
-        missing = [
-            r["name"]
-            for r in self.avicon_escs
-            if "cells_nixx_max" not in r["specs"]
-        ]
-        assert not missing, (
-            f"AVICON ESC entries missing cells_nixx_max: {missing}"
-        )
+        missing = [r["name"] for r in self.avicon_escs if "cells_nixx_max" not in r["specs"]]
+        assert not missing, f"AVICON ESC entries missing cells_nixx_max: {missing}"
 
     def test_every_avicon_esc_has_bec_current_a(self):
         """Every AVICON ESC record must have bec_current_a in its specs."""
-        missing = [
-            r["name"]
-            for r in self.avicon_escs
-            if "bec_current_a" not in r["specs"]
-        ]
-        assert not missing, (
-            f"AVICON ESC entries missing bec_current_a: {missing}"
-        )
+        missing = [r["name"] for r in self.avicon_escs if "bec_current_a" not in r["specs"]]
+        assert not missing, f"AVICON ESC entries missing bec_current_a: {missing}"
 
     def test_every_avicon_esc_bec_voltage_5v_is_true(self):
         """Every AVICON ESC must have bec_voltage_5v=True (AVICON BEC supports 5V)."""
         non_compliant = [
-            r["name"]
-            for r in self.avicon_escs
-            if r["specs"].get("bec_voltage_5v") is not True
+            r["name"] for r in self.avicon_escs if r["specs"].get("bec_voltage_5v") is not True
         ]
-        assert not non_compliant, (
-            f"AVICON ESC entries without bec_voltage_5v=True: {non_compliant}"
-        )
+        assert not non_compliant, f"AVICON ESC entries without bec_voltage_5v=True: {non_compliant}"
 
     def test_no_esc_entry_has_removed_keys(self):
         """No ESC spec in dpower.json may contain bec_output, bec_voltage_v, or cells."""
@@ -131,9 +111,7 @@ class TestDpowerAviconEscSnapshot:
             found = REMOVED_KEYS & set(r["specs"].keys())
             if found:
                 violators[r["name"]] = sorted(found)
-        assert not violators, (
-            f"ESC entries still contain removed keys: {violators}"
-        )
+        assert not violators, f"ESC entries still contain removed keys: {violators}"
 
     def test_avicon_standard_series_cells_nixx_range(self):
         """AVICON standard series (not PRO) must have cells_nixx_min=5, cells_nixx_max=12."""
@@ -143,9 +121,7 @@ class TestDpowerAviconEscSnapshot:
             for r in standard
             if r["specs"].get("cells_nixx_min") != 5 or r["specs"].get("cells_nixx_max") != 12
         ]
-        assert not wrong, (
-            f"AVICON standard ESC entries with wrong NiXX range: {wrong}"
-        )
+        assert not wrong, f"AVICON standard ESC entries with wrong NiXX range: {wrong}"
 
 
 # ──────────────────────────────────────────────────────────────────────────────
@@ -223,5 +199,7 @@ class TestDpowerSnapshotImport:
         assert total_after_first == total_after_second, (
             "Row count changed on second import — not idempotent"
         )
-        assert result2.imported == 0, f"Second import should have imported=0, got {result2.imported}"
+        assert result2.imported == 0, (
+            f"Second import should have imported=0, got {result2.imported}"
+        )
         assert result2.errors == [], f"Second import errors: {result2.errors}"

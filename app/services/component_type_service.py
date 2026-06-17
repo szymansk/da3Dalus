@@ -473,13 +473,13 @@ DEFAULT_SEED_TYPES: list[dict[str, Any]] = [
             {"name": "cells_lipo_max", "label": "LiPo Cells Max", "type": "number", "unit": "S"},
             {
                 "name": "cells_nixx_min",
-                "label": "NiXX Cells Min",
+                "label": "NiXX (NiCd/NiMH) Cells Min",
                 "type": "number",
                 "unit": "cells",
             },
             {
                 "name": "cells_nixx_max",
-                "label": "NiXX Cells Max",
+                "label": "NiXX (NiCd/NiMH) Cells Max",
                 "type": "number",
                 "unit": "cells",
             },
