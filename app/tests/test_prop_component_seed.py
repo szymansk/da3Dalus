@@ -47,6 +47,7 @@ def _add_polar(
     pitch_in: float = 6.0,
     variant: str = "",
     blades: int = 2,
+    weight_g: float | None = None,
 ) -> PropellerPolarModel:
     p = PropellerPolarModel(
         manufacturer="APC",
@@ -56,6 +57,7 @@ def _add_polar(
         pitch_in=pitch_in,
         variant=variant,
         blades=blades,
+        weight_g=weight_g,
     )
     db.add(p)
     db.flush()
@@ -141,16 +143,71 @@ class TestSeedIdempotent:
 
     def test_does_not_clobber_user_set_mass(self, session: Session):
         """A user-entered mass must survive a reseed (only null masses stay null)."""
-        _add_polar(session, name="APC 9x6", model_ref="apc/9x6")
+        # Polar carries a weight (#1000) — the reseed must still NOT overwrite a
+        # user-entered mass with the polar weight.
+        _add_polar(session, name="APC 9x6", model_ref="apc/9x6", weight_g=42.0)
         seed_propeller_components(session)
         session.flush()
         comp = session.query(ComponentModel).filter_by(model_ref="apc/9x6").one()
-        comp.mass_g = 42.0
+        comp.mass_g = 99.0
         session.flush()
+        seed_propeller_components(session)
+        session.flush()
+        comp = session.query(ComponentModel).filter_by(model_ref="apc/9x6").one()
+        assert comp.mass_g == 99.0
+
+
+# ──────────────────────────────────────────────────────────────────────────────
+# Mass backfill from polar weight (#1000 done → weight_g populated)
+# ──────────────────────────────────────────────────────────────────────────────
+
+
+class TestMassFromPolarWeight:
+    def test_create_sets_mass_from_polar_weight(self, session: Session):
+        """On CREATE, mass_g is seeded from the polar's weight_g (grams, no conversion)."""
+        _add_polar(session, name="APC 9x6", model_ref="apc/9x6", weight_g=42.0)
         seed_propeller_components(session)
         session.flush()
         comp = session.query(ComponentModel).filter_by(model_ref="apc/9x6").one()
         assert comp.mass_g == 42.0
+
+    def test_upsert_preserves_user_mass_over_polar_weight(self, session: Session):
+        """A non-null (user) mass is never clobbered by the polar weight on reseed."""
+        _add_polar(session, name="APC 9x6", model_ref="apc/9x6", weight_g=42.0)
+        seed_propeller_components(session)
+        session.flush()
+        comp = session.query(ComponentModel).filter_by(model_ref="apc/9x6").one()
+        comp.mass_g = 99.0
+        session.flush()
+        seed_propeller_components(session)
+        session.flush()
+        comp = session.query(ComponentModel).filter_by(model_ref="apc/9x6").one()
+        assert comp.mass_g == 99.0
+
+    def test_upsert_backfills_null_mass_from_polar_weight(self, session: Session):
+        """A NULL mass is backfilled from the polar weight and counted as updated."""
+        # Seed first with no weight → component mass stays NULL.
+        polar = _add_polar(session, name="APC 9x6", model_ref="apc/9x6", weight_g=None)
+        seed_propeller_components(session)
+        session.flush()
+        comp = session.query(ComponentModel).filter_by(model_ref="apc/9x6").one()
+        assert comp.mass_g is None
+        # Polar weight arrives (#1000 import) → reseed backfills the NULL mass.
+        polar.weight_g = 42.0
+        session.flush()
+        result = seed_propeller_components(session)
+        session.flush()
+        assert result.updated == 1
+        comp = session.query(ComponentModel).filter_by(model_ref="apc/9x6").one()
+        assert comp.mass_g == 42.0
+
+    def test_mass_stays_null_when_polar_has_no_weight(self, session: Session):
+        """No silent 0-fallback — mass stays NULL when the polar has no weight."""
+        _add_polar(session, name="APC 9x6", model_ref="apc/9x6", weight_g=None)
+        seed_propeller_components(session)
+        session.flush()
+        comp = session.query(ComponentModel).filter_by(model_ref="apc/9x6").one()
+        assert comp.mass_g is None
 
 
 # ──────────────────────────────────────────────────────────────────────────────
