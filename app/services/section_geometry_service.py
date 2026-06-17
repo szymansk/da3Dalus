@@ -58,10 +58,12 @@ def _to_out(point) -> SectionPointOut:
     )
 
 
-def _build_section_geometry(wing_config):
+def _build_section_geometry(wing_config, mode: str = "analytic"):
     """Construct the SectionGeometry primitive, translating the platform guard.
 
     Kept as a thin seam so fast tests can monkeypatch the cadquery boundary.
+    ``mode`` selects the analytic blend (default, fast) or the solid slice
+    (gh-1046).
     """
     from cad_designer.airplane.geometry.section_geometry import (
         SectionGeometry,
@@ -69,7 +71,7 @@ def _build_section_geometry(wing_config):
     )
 
     try:
-        return SectionGeometry(wing_config)
+        return SectionGeometry(wing_config, mode=mode)
     except SectionGeometryUnavailableError as exc:
         raise ValidationError(
             message=f"Section geometry is unavailable on this platform: {exc}",
@@ -102,7 +104,7 @@ def compute_section_geometry(
     # WingConfiguration / SectionGeometry work in millimetres (scale=1000.0).
     wing_config = wing_model_to_wing_config(wing, scale=1000.0)
 
-    geometry = _build_section_geometry(wing_config)
+    geometry = _build_section_geometry(wing_config, mode=request.mode)
 
     y_spans = request.y_over_span or _default_grid(_DEFAULT_N_SPAN)
     x_cs = request.x_over_chord or _default_grid(_DEFAULT_N_CHORD)

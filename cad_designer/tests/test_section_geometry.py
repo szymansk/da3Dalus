@@ -224,10 +224,16 @@ class TestPlatformGuard:
 from cad_designer.airplane.geometry.section_geometry import _SlicedSection  # noqa: E402
 
 
-def _bare_section_geometry(segment_lengths: list[float]) -> SectionGeometry:
-    """A SectionGeometry that skips __init__ (no CAD build)."""
+def _bare_section_geometry(segment_lengths: list[float], mode: str = "solid") -> SectionGeometry:
+    """A SectionGeometry that skips __init__ (no CAD build).
+
+    Defaults to ``mode="solid"`` because the orchestration-mocked tests below
+    monkeypatch the ``_section`` (solid-slice) seam. The analytic path (gh-1046)
+    has its own dedicated tests.
+    """
     sg = object.__new__(SectionGeometry)
     sg._wing_config = None
+    sg._mode = mode
     sg._points_per_edge = 80
     sg._segment_lengths = segment_lengths
     sg._solid_shape = None
@@ -421,7 +427,198 @@ class TestInitWithMockedCad:
         class _Cfg:
             segments = [_Seg(300.0), _Seg(700.0)]
 
-        sg = mod.SectionGeometry(_Cfg(), points_per_edge=99999)
+        sg = mod.SectionGeometry(_Cfg(), points_per_edge=99999, mode="solid")
         assert sg._solid_shape == "SOLID"
         assert sg._segment_lengths == [300.0, 700.0]
         assert sg._points_per_edge == 4096  # clamped to the upper bound
+
+
+# ---------------------------------------------------------------------------
+# Fast: analytic mode (gh-1046) — no CAD loft built, get_points_on_surface
+# blended. We drive it with a tiny fake WingConfiguration so the path runs on
+# the no-cadquery fast tier (protects the coverage gate) and prove it NEVER
+# touches the solid build.
+# ---------------------------------------------------------------------------
+
+
+class _Vec:
+    """Minimal stand-in for cadquery's Vector with a ``z`` we read."""
+
+    def __init__(self, z: float):
+        self.z = z
+
+
+class _FakeWingConfig:
+    """Returns deterministic (top, bottom) world points keyed by the call.
+
+    ``thickness_at(rel_chord, rel_length)`` and ``center_at(...)`` define the
+    surface so tests can assert the analytic SectionPoint arithmetic without any
+    real airfoil/loft. Records every call for the no-loft assertion.
+    """
+
+    def __init__(self, segment_lengths):
+        self.segments = [type("S", (), {"length": ln})() for ln in segment_lengths]
+        self.calls: list[tuple[int, float, float, str]] = []
+
+    def get_points_on_surface(
+        self, segment, relative_chord, relative_length, coordinate_system="world"
+    ):
+        self.calls.append((segment, relative_chord, relative_length, coordinate_system))
+        # A simple deterministic section: half-thickness shrinks toward the
+        # chord ends (peak at 0.5) and grows with rel_length-driven dihedral.
+        center = 100.0 * relative_length  # dihedral-like lift
+        half = 10.0 * (1.0 - abs(relative_chord - 0.5))  # peak at mid-chord
+        return _Vec(center + half), _Vec(center - half)
+
+
+def _analytic_geometry(segment_lengths, fake_cfg=None) -> SectionGeometry:
+    """A SectionGeometry in analytic mode wired to a fake WingConfiguration."""
+    sg = object.__new__(SectionGeometry)
+    sg._wing_config = fake_cfg if fake_cfg is not None else _FakeWingConfig(segment_lengths)
+    sg._mode = "analytic"
+    sg._points_per_edge = 80
+    sg._segment_lengths = segment_lengths
+    sg._solid_shape = None
+    return sg
+
+
+class TestAnalyticMode:
+    def test_at_blends_surface_points(self):
+        cfg = _FakeWingConfig([500.0])
+        sg = _analytic_geometry([500.0], cfg)
+        pt = sg.at(0.5, 0.5)
+        # rel_length=0.5 -> center 50; mid-chord half-thickness 10 -> thickness 20
+        assert pt.thickness == pytest.approx(20.0)
+        assert pt.center_z == pytest.approx(50.0)
+        assert pt.top_z == pytest.approx(60.0)
+        assert pt.bottom_z == pytest.approx(40.0)
+        # called with world frame, mapped (segment 0, rel_length 0.5)
+        assert cfg.calls[-1] == (0, 0.5, 0.5, "world")
+
+    def test_at_maps_y_span_to_segment_and_rel_length(self):
+        cfg = _FakeWingConfig([300.0, 700.0])
+        sg = _analytic_geometry([300.0, 700.0], cfg)
+        sg.at(0.5, 0.3)  # 0.5*1000=500mm -> seg 1 at (500-300)/700
+        seg, rel_chord, rel_len, _ = cfg.calls[-1]
+        assert seg == 1
+        assert rel_chord == pytest.approx(0.3)
+        assert rel_len == pytest.approx(200.0 / 700.0)
+
+    def test_sample_grid_cardinality(self):
+        sg = _analytic_geometry([500.0])
+        pts = sg.sample([0.2, 0.5, 0.8], [0.25, 0.5])
+        assert len(pts) == 6
+        assert all(p.thickness > 0 for p in pts)
+
+    def test_at_max_thickness_finds_peak(self):
+        sg = _analytic_geometry([500.0])
+        pt = sg.at_max_thickness(0.5)
+        # half-thickness peaks at mid-chord (0.5) in the fake config
+        assert pt.x_c == pytest.approx(0.5, abs=0.06)
+        assert pt.thickness == pytest.approx(20.0, abs=0.5)
+
+    def test_per_segment_uses_analytic(self):
+        sg = _analytic_geometry([300.0, 700.0])
+        grid = sg.per_segment(n_span=2, n_chord=3)
+        assert set(grid.keys()) == {0, 1}
+        assert len(grid[0]) == 6 and len(grid[1]) == 6
+
+    def test_analytic_never_builds_solid(self, monkeypatch):
+        """The analytic path must NOT touch the CAD slice/loft seams."""
+        called = {"section": False, "slice": False, "solid": False}
+        monkeypatch.setattr(
+            SectionGeometry,
+            "_section",
+            lambda self, y: called.__setitem__("section", True),
+        )
+        monkeypatch.setattr(
+            SectionGeometry,
+            "_build_solid",
+            lambda self: called.__setitem__("solid", True),
+        )
+        sg = _analytic_geometry([500.0])
+        sg.at(0.4, 0.3)
+        sg.sample([0.2, 0.6], [0.3, 0.4])
+        sg.at_max_thickness(0.5)
+        sg.per_segment(2, 2)
+        assert called == {"section": False, "slice": False, "solid": False}
+
+
+class TestModeSelection:
+    def test_default_mode_is_analytic(self, monkeypatch):
+        import cad_designer.airplane.geometry.section_geometry as mod
+
+        monkeypatch.setattr(mod, "_HAS_CADQUERY", True)
+        # If the default mode built a solid this lambda would flag it.
+        built = {"solid": False}
+        monkeypatch.setattr(
+            mod.SectionGeometry, "_build_solid", lambda self: built.__setitem__("solid", True)
+        )
+
+        class _Cfg:
+            segments = [type("S", (), {"length": 500.0})()]
+
+        sg = mod.SectionGeometry(_Cfg())
+        assert sg._mode == "analytic"
+        assert sg._solid_shape is None
+        assert built["solid"] is False
+
+    def test_unknown_mode_raises(self):
+        import cad_designer.airplane.geometry.section_geometry as mod
+
+        class _Cfg:
+            segments = [type("S", (), {"length": 500.0})()]
+
+        with pytest.raises(ValueError, match="unknown section-geometry mode"):
+            mod.SectionGeometry(_Cfg(), mode="bogus")
+
+
+# ---------------------------------------------------------------------------
+# Slow / requires_cadquery: analytic ↔ solid equivalence (gh-1046)
+#
+# The proof the swap is safe: on a representative wing (taper + twist +
+# dihedral) the analytic blend and the real solid slice must agree on
+# thickness and center_z to within a few percent, because the loft is
+# loft(ruled=True) — both are ruled-linear.
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.slow
+@pytest.mark.requires_cadquery
+class TestAnalyticSolidEquivalence:
+    @pytest.mark.parametrize(
+        "factory",
+        [
+            single_segment_flat,
+            single_segment_with_twist,
+            single_segment_with_dihedral,
+            single_segment_with_twist_and_dihedral,
+        ],
+    )
+    def test_analytic_matches_solid(self, factory):
+        wing = factory()
+        analytic = SectionGeometry(wing, mode="analytic")
+        solid = SectionGeometry(wing, mode="solid")
+        for y_span in (0.05, 0.3, 0.5, 0.7, 0.95):
+            for x_c in (0.2, 0.3, 0.5):
+                a = analytic.at(y_span, x_c)
+                s = solid.at(y_span, x_c)
+                # thickness within 3% (both ruled-linear; slice has discretisation)
+                assert a.thickness == pytest.approx(s.thickness, rel=0.03), (
+                    f"thickness mismatch at y={y_span} x={x_c}: {a.thickness} vs {s.thickness}"
+                )
+                # center_z within 0.5 mm OR 3% of the local thickness
+                tol = max(0.5, 0.03 * s.thickness)
+                assert a.center_z == pytest.approx(s.center_z, abs=tol), (
+                    f"center_z mismatch at y={y_span} x={x_c}: {a.center_z} vs {s.center_z}"
+                )
+
+    def test_max_thickness_equivalence(self):
+        wing = single_segment_with_twist_and_dihedral()
+        analytic = SectionGeometry(wing, mode="analytic")
+        solid = SectionGeometry(wing, mode="solid")
+        for y_span in (0.05, 0.5, 0.95):
+            a = analytic.at_max_thickness(y_span)
+            s = solid.at_max_thickness(y_span)
+            assert a.thickness == pytest.approx(s.thickness, rel=0.03)
+            assert a.center_z == pytest.approx(s.center_z, abs=max(0.5, 0.03 * s.thickness))

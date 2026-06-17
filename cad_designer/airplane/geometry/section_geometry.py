@@ -1,24 +1,41 @@
-"""Section-geometry primitive (gh-1020).
+"""Section-geometry primitive (gh-1020, gh-1046).
 
-Slice the **real lofted CAD solid** of a wing to recover, at a parametric
-location ``(y/span, x/c)``:
+Recover, at a parametric location ``(y/span, x/c)``:
 
 * ``thickness`` — vertical extent of the built section at that chord location
 * ``top_z`` / ``bottom_z`` — upper / lower surface heights
 * ``center_z`` — section mid-height (spar-placement reference)
 
-Why slice the solid (rather than blend two airfoils analytically): the loft
-built by :class:`WingLoftCreator` already encodes every relative rotation
-(dihedral via R_x, incidence/twist via R_y, sweep via the plane origin) and the
-ruled loft between sections. Slicing gives the exact *built* geometry.
+Two evaluation modes (gh-1046):
+
+* ``mode="analytic"`` (**default**) — blend the two segment airfoils
+  analytically via :meth:`WingConfiguration.get_points_on_surface`. The loft is
+  ``loft(ruled=True)`` (straight generators between airfoils), so an intermediate
+  section is a *linear blend* of root and tip airfoils — exactly what
+  ``get_points_on_surface`` returns from the cached, fully-transformed segment
+  planes (twist + dihedral + sweep included). No solid is built, so this is
+  ~1000× faster than slicing and is the path the interactive spar-sizing /
+  spar-plan / section-geometry endpoints use. It still touches lightweight
+  cadquery ``Plane``/``Vector`` math (milliseconds), but never
+  :class:`WingLoftCreator`.
+* ``mode="solid"`` — build the **real lofted CAD solid** with
+  :class:`WingLoftCreator` and slice it. This is the slow (~6–13 s) path, kept
+  reachable for true built-geometry fidelity (construction plans / STEP export).
+  The loft encodes every relative rotation (dihedral via R_x, incidence/twist
+  via R_y, sweep via the plane origin); slicing gives the exact *built* geometry.
+
+The two modes agree to within a fraction of a percent on thickness and a
+fraction of a mm on ``center_z`` on representative wings (both are ruled-linear),
+which the ``requires_cadquery`` equivalence test asserts.
 
 Frame: wing-local, origin at the wing-root LE, ``z`` vertical (the world frame
 the loft is built in). Internally **millimetres** — the service layer converts
 to metres for the API (project convention).
 
-Platform guard: ``cadquery`` is excluded on ``linux/aarch64``. The import is
-lazy and a clear :class:`SectionGeometryUnavailableError` is raised when it is
-unavailable, so callers can return a 503/422 rather than crashing.
+Platform guard: ``cadquery`` is excluded on ``linux/aarch64``. Both modes need
+it (analytic for ``Plane`` math, solid for the loft); a clear
+:class:`SectionGeometryUnavailableError` is raised when it is unavailable, so
+callers can return a 503/422 rather than crashing.
 """
 
 from __future__ import annotations
@@ -141,25 +158,47 @@ def _outline_to_top_bottom(
 
 
 class SectionGeometry:
-    """Build a wing's lofted solid once and slice it on demand.
+    """Recover section geometry of a wing at parametric ``(y/span, x/c)`` points.
 
-    ``sample`` groups requests by ``y_span`` so each section plane is cut once
-    and all ``x_c`` are read off the same outline.
+    Two modes (gh-1046):
+
+    * ``mode="analytic"`` (default) — blend the segment airfoils analytically via
+      :meth:`WingConfiguration.get_points_on_surface`; no solid is built.
+    * ``mode="solid"`` — build the lofted CAD solid once and slice it on demand.
+      ``sample`` groups requests by ``y_span`` so each section plane is cut once
+      and all ``x_c`` are read off the same outline.
+
+    Both expose the same ``at`` / ``sample`` / ``at_max_thickness`` /
+    ``per_segment`` interface, so consumers are mode-agnostic.
     """
 
-    def __init__(self, wing_config: WingConfiguration, points_per_edge: int = 80):
+    def __init__(
+        self,
+        wing_config: WingConfiguration,
+        points_per_edge: int = 80,
+        mode: str = "analytic",
+    ):
         if not _HAS_CADQUERY:
             raise SectionGeometryUnavailableError(
                 "cadquery is not available on this platform; section geometry cannot be computed."
             )
+        if mode not in ("analytic", "solid"):
+            raise ValueError(
+                f"unknown section-geometry mode {mode!r}; expected 'analytic' or 'solid'"
+            )
         self._wing_config = wing_config
+        self._mode = mode
         self._points_per_edge = max(8, min(int(points_per_edge), 4096))
         self._segment_lengths = [float(s.length) for s in wing_config.segments]
-        self._solid_shape = self._build_solid()
+        # The solid is built lazily only in solid mode — the analytic path
+        # (gh-1046) must NOT invoke WingLoftCreator (the ~13 s bottleneck).
+        self._solid_shape = self._build_solid() if mode == "solid" else None
 
     # -- build -------------------------------------------------------------
 
-    def _build_solid(self):  # pragma: no cover - cadquery boundary, covered by requires_cadquery slow tests
+    def _build_solid(
+        self,
+    ):  # pragma: no cover - cadquery boundary, covered by requires_cadquery slow tests
         """Build the starboard (RIGHT) half loft once and return its shape.
 
         RIGHT half keeps ``y >= 0`` so the span maps monotonically to ``y/span``.
@@ -260,7 +299,9 @@ class SectionGeometry:
             up_z=float(up_dir[2]),
         )
 
-    def _section(self, y_span: float) -> _SlicedSection:  # pragma: no cover - cadquery boundary (slow tests + mocked in fast)
+    def _section(
+        self, y_span: float
+    ) -> _SlicedSection:  # pragma: no cover - cadquery boundary (slow tests + mocked in fast)
         """Slice the solid at ``y_span`` and return the reusable section data."""
         origin, chord_dir, span_dir, up_dir = self._station_frame(y_span)
         return self._slice_outline(origin, chord_dir, up_dir, span_dir)
@@ -288,14 +329,57 @@ class SectionGeometry:
             center_z=(top_z + bottom_z) / 2.0,
         )
 
+    # -- analytic evaluation (gh-1046, default) ----------------------------
+
+    def _analytic_point(self, y_span: float, x_c: float) -> SectionPoint:
+        """SectionPoint at ``(y/span, x/c)`` via the analytic airfoil blend.
+
+        Maps ``y_span`` → ``(segment, relative_length)`` with the same
+        accumulated-length logic the solid path uses, then reads the upper /
+        lower surface points from
+        :meth:`WingConfiguration.get_points_on_surface` in the **world** frame
+        (origin root-LE, z up — the same frame the solid slice returns). Because
+        the loft is ruled, this linear root↔tip blend equals the built section.
+        Twist / dihedral / sweep are baked into the segment workplanes, so they
+        appear in the placement exactly as for the slice.
+
+        ``thickness`` is the vertical (world-z) extent between the surfaces and
+        ``center_z`` their midpoint — matching the solid-slice semantics.
+        """
+        idx, rel = _y_span_to_segment(y_span, self._segment_lengths)
+        top, bottom = self._wing_config.get_points_on_surface(
+            segment=idx,
+            relative_chord=float(x_c),
+            relative_length=float(rel),
+            coordinate_system="world",
+        )
+        top_z = float(top.z)
+        bottom_z = float(bottom.z)
+        return SectionPoint(
+            y_span=y_span,
+            x_c=x_c,
+            thickness=abs(top_z - bottom_z),
+            top_z=max(top_z, bottom_z),
+            bottom_z=min(top_z, bottom_z),
+            center_z=(top_z + bottom_z) / 2.0,
+        )
+
     # -- public API --------------------------------------------------------
 
     def at(self, y_span: float, x_c: float) -> SectionPoint:
         """Section geometry at a single ``(y/span, x/c)`` location."""
+        if self._mode == "analytic":
+            return self._analytic_point(y_span, x_c)
         return self._point_from_section(self._section(y_span), y_span, x_c)
 
     def sample(self, y_spans: list[float], x_cs: list[float]) -> list[SectionPoint]:
-        """Sample a grid: slice each unique ``y_span`` once, read all ``x_c``."""
+        """Sample a grid.
+
+        Analytic: evaluate every ``(y, x)`` directly. Solid: slice each unique
+        ``y_span`` once and read all ``x_c`` off the same outline.
+        """
+        if self._mode == "analytic":
+            return [self._analytic_point(y, x) for y in y_spans for x in x_cs]
         points: list[SectionPoint] = []
         for y in y_spans:
             section = self._section(y)
@@ -308,10 +392,13 @@ class SectionGeometry:
         Scans a chord grid and returns the point with the greatest thickness —
         the natural spar-placement reference.
         """
+        candidates = np.linspace(0.05, 0.6, 23)
+        if self._mode == "analytic":
+            points = (self._analytic_point(y_span, float(x)) for x in candidates)
+            return max(points, key=lambda p: p.thickness)
         section = self._section(y_span)
         if section.chord_len <= 0.0:
             return SectionPoint(y_span, 0.0, 0.0, 0.0, 0.0, 0.0)
-        candidates = np.linspace(0.05, 0.6, 23)
         points = (self._point_from_section(section, y_span, float(x)) for x in candidates)
         return max(points, key=lambda p: p.thickness)
 

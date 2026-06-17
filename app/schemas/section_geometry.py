@@ -7,7 +7,7 @@ works in **millimetres** (wing-local frame). This API exposes lengths in
 
 from __future__ import annotations
 
-from typing import Optional
+from typing import Literal, Optional
 
 from pydantic import BaseModel, Field
 
@@ -41,6 +41,15 @@ class SectionGeometryRequest(BaseModel):
         None,
         description=(
             "Name of the wing to query. When omitted, the aeroplane's first wing is used."
+        ),
+    )
+    mode: Literal["analytic", "solid"] = Field(
+        "analytic",
+        description=(
+            "Evaluation mode (gh-1046). 'analytic' (default) blends the segment "
+            "airfoils — fast (~ms), no CAD loft built. 'solid' builds and slices "
+            "the real lofted CAD solid for true built-geometry fidelity (slow, "
+            "~seconds); use only when exact built geometry is required."
         ),
     )
 
