@@ -23,6 +23,7 @@ unavailable, so callers can return a 503/422 rather than crashing.
 
 from __future__ import annotations
 
+import importlib.util
 from dataclasses import dataclass
 
 import numpy as np
@@ -31,12 +32,9 @@ from cad_designer.airplane.aircraft_topology.wing.WingConfiguration import (
     WingConfiguration,
 )
 
-try:  # platform guard — cadquery is excluded on linux/aarch64
-    import cadquery as cq  # noqa: F401
-
-    _HAS_CADQUERY = True
-except ImportError:  # pragma: no cover - platform dependent
-    _HAS_CADQUERY = False
+# Platform guard — cadquery is excluded on linux/aarch64. Probe without binding
+# an unused module-level name (keeps the import section lint-clean).
+_HAS_CADQUERY = importlib.util.find_spec("cadquery") is not None
 
 
 class SectionGeometryUnavailableError(RuntimeError):
