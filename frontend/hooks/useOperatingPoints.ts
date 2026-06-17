@@ -231,7 +231,12 @@ export function useOperatingPoints(
     setIsLoading(true);
     setError(null);
     try {
-      const url = new URL(`${API_BASE}/operating_points`);
+      // API_BASE may be a relative path prefix on the multi-stage deploy
+      // (e.g. "/main/backend"), which is not an absolute URL — new URL() needs
+      // a base to resolve it. An absolute API_BASE ignores the base. (gh-1042)
+      const urlBase =
+        typeof window === "undefined" ? "http://localhost" : window.location.origin;
+      const url = new URL(`${API_BASE}/operating_points`, urlBase);
       url.searchParams.set("aircraft_id", aeroplaneId);
       const res = await fetch(url);
       if (res.status === 404) {
