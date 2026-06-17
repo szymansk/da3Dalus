@@ -397,6 +397,63 @@ class TestInfeasibilityReporting:
             assert p.utilisation <= 1.0 + 1e-9
 
 
+class TestRearTorsionDistinctFromFront:
+    """gh-1038: when the rear stations are sized from a (smaller) torsion-derived
+    OD, the rear spar must come out DIFFERENT from the bending-driven front — not
+    a near-twin. The service builds the rear stations from T(y)/spacing; here we
+    feed the solver the resulting (smaller) required_od directly."""
+
+    def test_torsion_sized_rear_is_smaller_than_bending_front(self):
+        # Front: bending-driven fat root OD.
+        front = [
+            _station(0.0, y_mm=0.0, band=(-50.0, 50.0), required_od=40.0),
+            _station(1.0, y_mm=500.0, band=(-50.0, 50.0), required_od=10.0),
+        ]
+        # Rear: torsion couple is a fraction of bending -> markedly smaller OD.
+        rear = [
+            _station(0.0, y_mm=0.0, band=(-50.0, 50.0), required_od=12.0),
+            _station(1.0, y_mm=500.0, band=(-50.0, 50.0), required_od=4.0),
+        ]
+        plan = solve_spar_plan(
+            front_left=[_mirror(s) for s in front],
+            front_right=front,
+            rear_left=[_mirror(s) for s in rear],
+            rear_right=rear,
+        )
+        front_root_od = plan.front_pieces[0].outer_d
+        rear_root_od = plan.rear_pieces[0].outer_d
+        assert rear_root_od < front_root_od
+        # The rear OD tracks the torsion-derived station, not the bending one.
+        assert rear_root_od == pytest.approx(12.0)
+
+    def test_zero_torsion_rear_is_minimal(self):
+        """Zero torsion (+ no secondary bending) -> a minimal rear member."""
+        rear = [
+            _station(0.0, y_mm=0.0, band=(-50.0, 50.0), required_od=0.0),
+            _station(1.0, y_mm=500.0, band=(-50.0, 50.0), required_od=0.0),
+        ]
+        plan = solve_spar_plan(
+            front_left=_uniform_stations(),
+            front_right=_uniform_stations(),
+            rear_left=[_mirror(s) for s in rear],
+            rear_right=rear,
+        )
+        assert plan.rear_pieces[0].outer_d == pytest.approx(0.0)
+        assert plan.feasible is True
+
+
+def _mirror(s: StationData) -> StationData:
+    return StationData(
+        y_span=s.y_span,
+        y_mm=-s.y_mm,
+        x_c=s.x_c,
+        center_z=s.center_z,
+        band_lo=s.band_lo,
+        band_hi=s.band_hi,
+        required_od=s.required_od,
+    )
+
+
 class TestDegenerateRootSliceGuard:
     """gh-1037 #4: a zero-thickness slice at y_span=0 must not poison the
     governing (root) station. Sample at y_span=eps instead."""

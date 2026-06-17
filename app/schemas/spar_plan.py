@@ -32,6 +32,27 @@ class MomentSample(BaseModel):
     )
 
 
+class TorsionSample(BaseModel):
+    """One spanwise torsion sample for the rear (torsion) spar (gh-1038).
+
+    ``torsion_moment_Nm`` is the section torsion T(y) about the front-spar line
+    (the wing's pitching moment carried into the structure). The rear spar
+    reacts this couple over the front–rear spar spacing — see
+    :func:`app.services.spar_plan_service._make_rear_moment_fn`.
+    """
+
+    y_span: float = Field(
+        ...,
+        ge=0.0,
+        le=1.0,
+        description="Span fraction 0..1 across the semi-span (root=0, tip=1).",
+    )
+    torsion_moment_Nm: float = Field(
+        ...,
+        description="Section torsion magnitude T(y) about the front spar line (N·m).",
+    )
+
+
 class SparPlanRequest(BaseModel):
     """Request body for ``POST /aeroplanes/{id}/spar-plan``.
 
@@ -39,6 +60,14 @@ class SparPlanRequest(BaseModel):
     spanwise-loads endpoint; the material + sizing knobs mirror #1008 spar
     sizing. Layout knobs (``front_x_over_chord`` / ``rear_x_over_chord`` /
     sampling ``n_span``) and clearance (``packing_factor``) are optional.
+
+    gh-1038: the **rear** spar is sized from TORSION, not the primary bending
+    moment. Supply ``torsion_moments`` (T(y) about the front spar) and the rear
+    spar is sized for the couple T(y) reacted over the front–rear spar spacing
+    (plus ``rear_secondary_bending_fraction`` of the bending moment). When no
+    torsion distribution is given, a documented proxy
+    T(y) ≈ ``pitching_moment_proxy_ratio`` · M(y) is used. The front spar stays
+    bending-driven via ``moments``.
     """
 
     material_id: int = Field(
@@ -101,6 +130,37 @@ class SparPlanRequest(BaseModel):
         description=(
             "Override allowable bending stress (MPa). When None, the material's "
             "allowable_bending_stress_mpa is used."
+        ),
+    )
+    torsion_moments: Optional[list[TorsionSample]] = Field(
+        None,
+        description=(
+            "gh-1038: Spanwise torsion distribution T(y) about the front spar "
+            "(N·m). The REAR spar is sized for this couple reacted over the "
+            "front–rear spar spacing. When omitted, a documented proxy "
+            "T(y) ≈ pitching_moment_proxy_ratio · M(y) is used instead."
+        ),
+    )
+    rear_secondary_bending_fraction: float = Field(
+        0.0,
+        ge=0.0,
+        le=1.0,
+        description=(
+            "gh-1038: Fraction of the bending moment M(y) the rear spar also "
+            "carries as genuine secondary bending, added on top of the torsion "
+            "reaction. Default 0 (rear is torsion-only)."
+        ),
+    )
+    pitching_moment_proxy_ratio: float = Field(
+        0.10,
+        ge=0.0,
+        description=(
+            "gh-1038: Used ONLY when torsion_moments is not supplied. Proxy "
+            "ratio T(y)/M(y) ≈ |Cm|/|CL| · 1 representing the section torsion "
+            "as a fraction of the bending moment. Default 0.10 (a typical "
+            "cambered-airfoil pitching-moment-to-bending ratio). Replace with a "
+            "real T(y) from the strip pitching moments when available "
+            "(follow-up #1002 extension)."
         ),
     )
 
