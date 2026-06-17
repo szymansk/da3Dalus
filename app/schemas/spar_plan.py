@@ -1,0 +1,163 @@
+"""Pydantic request/response schemas for the spar-plan endpoint (gh-1031).
+
+The solver core (gh-1030,
+:mod:`cad_designer.airplane.geometry.spar_solver`) produces a ``SparPlan`` in
+**millimetres** (wing-local frame). This API exposes lengths in **metres**
+(project convention) — the service converts mm -> m (x0.001).
+
+The request carries the spar-layout knobs plus the spanwise bending-moment
+distribution (from the #1002 spanwise-loads endpoint) and the #1008 material /
+sizing inputs the solver needs to compute strength-required diameters.
+"""
+
+from __future__ import annotations
+
+from typing import Optional
+
+from pydantic import BaseModel, Field
+
+
+class MomentSample(BaseModel):
+    """One spanwise bending-moment sample (from #1002 spanwise loads)."""
+
+    y_span: float = Field(
+        ...,
+        ge=0.0,
+        le=1.0,
+        description="Span fraction 0..1 across the semi-span (root=0, tip=1).",
+    )
+    bending_moment_Nm: float = Field(
+        ...,
+        description="Bending moment magnitude reference at this station (N·m).",
+    )
+
+
+class SparPlanRequest(BaseModel):
+    """Request body for ``POST /aeroplanes/{id}/spar-plan``.
+
+    The spanwise moment distribution (``moments``) comes from the #1002
+    spanwise-loads endpoint; the material + sizing knobs mirror #1008 spar
+    sizing. Layout knobs (``front_x_over_chord`` / ``rear_x_over_chord`` /
+    sampling ``n_span``) and clearance (``packing_factor``) are optional.
+    """
+
+    material_id: int = Field(
+        ...,
+        description=(
+            "ID of a Component with component_type='material' and "
+            "allowable_bending_stress_mpa set (used for strength sizing)."
+        ),
+    )
+    moments: list[MomentSample] = Field(
+        ...,
+        min_length=1,
+        description=(
+            "Spanwise bending-moment distribution (root->tip) used to size the "
+            "strength-required spar diameter at each station."
+        ),
+    )
+    wing_name: Optional[str] = Field(
+        None,
+        description=("Name of the wing to plan. When omitted, the aeroplane's first wing is used."),
+    )
+    front_x_over_chord: Optional[float] = Field(
+        None,
+        gt=0.0,
+        lt=1.0,
+        description=(
+            "Chord fraction for the front (bending) spar. When omitted, the "
+            "section's max-thickness location is used."
+        ),
+    )
+    rear_x_over_chord: float = Field(
+        0.65,
+        gt=0.0,
+        lt=1.0,
+        description="Chord fraction for the rear (torsion) spar. Default 0.65.",
+    )
+    n_span: int = Field(
+        6,
+        ge=2,
+        le=200,
+        description="Number of spanwise sample stations per half (root->tip).",
+    )
+    packing_factor: float = Field(
+        0.8,
+        gt=0.0,
+        le=1.0,
+        description=(
+            "Fraction of the local section depth the spar may occupy; the "
+            "remainder is skin/glue clearance. Default 0.8."
+        ),
+    )
+    safety_factor_j: float = Field(
+        1.5,
+        gt=0.0,
+        description="Safety factor applied to M_design = |M|·g_limit·j.",
+    )
+    sigma_allow_mpa_override: Optional[float] = Field(
+        None,
+        gt=0.0,
+        description=(
+            "Override allowable bending stress (MPa). When None, the material's "
+            "allowable_bending_stress_mpa is used."
+        ),
+    )
+
+
+class SparPieceOut(BaseModel):
+    """One straight spar piece. Lengths in **metres**, wing-local frame."""
+
+    role: str = Field(..., description="Structural role: 'front' (bending) or 'rear' (torsion).")
+    spare_origin: list[float] = Field(
+        ...,
+        description="Piece root origin (x, y, z) in the wing-local frame (m).",
+    )
+    spare_vector: list[float] = Field(
+        ...,
+        description="Unit direction vector the piece runs along (dimensionless).",
+    )
+    outer_d: float = Field(..., description="Outer diameter (m).")
+    inner_d: float = Field(..., description="Inner diameter / bore (m); 0 for a solid rod.")
+    wall: float = Field(..., description="Wall thickness = (outer_d - inner_d)/2 (m).")
+    shape: str = Field(..., description="Cross-section shape (e.g. 'tube').")
+    governing_y: float = Field(
+        ...,
+        description="Spanwise position of the governing (highest-moment) station (m).",
+    )
+    utilisation: float = Field(
+        ...,
+        description="Fraction of the local containment band the piece OD uses (0..1).",
+    )
+    joint_to_next: Optional[str] = Field(
+        None,
+        description="Joint to the next (tip-side) piece, e.g. 'telescoping'. None if last.",
+    )
+
+
+class SparPlanResponse(BaseModel):
+    """Response for ``POST /aeroplanes/{id}/spar-plan`` (gh-1031). Lengths in metres."""
+
+    front_pieces: list[SparPieceOut] = Field(
+        ...,
+        description="Front (bending) spar pieces, root->tip.",
+    )
+    rear_pieces: list[SparPieceOut] = Field(
+        ...,
+        description="Rear (torsion) spar pieces, root->tip.",
+    )
+    front_joint: str = Field(
+        ...,
+        description="Front root joint: 'continuous' | 'reinforcement+joiner'.",
+    )
+    rear_joint: str = Field(
+        ...,
+        description="Rear root joint: 'continuous' | 'bent-pin'.",
+    )
+    reinforcement: Optional[SparPieceOut] = Field(
+        None,
+        description=(
+            "Short collinear root reinforcement piece, present when the front "
+            "halves cannot be a single collinear carry-through."
+        ),
+    )

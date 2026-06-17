@@ -23,12 +23,14 @@ from app.schemas.AeroplaneRequest import AnalysisToolUrlType, AlphaSweepRequest,
 from app.schemas.api_responses import StaticUrlResponse
 from app.schemas.aeroanalysisschema import OperatingPointSchema
 from app.schemas.section_geometry import SectionGeometryRequest, SectionGeometryResponse
+from app.schemas.spar_plan import SparPlanRequest, SparPlanResponse
 from app.schemas.spar_sizing import SparSizingParams
 from app.schemas.spanwise_loads import SpanwiseLoadsResponse, SpanwiseLoadsWithSizingResponse
 from app.schemas.stability import StabilitySummaryResponse, StabilityResultRead
 from app.schemas.strip_forces import StripForcesResponse
 from app.services import analysis_service
 from app.services import section_geometry_service
+from app.services import spar_plan_service
 from app.services import stability_service
 from app.services.wing_service import get_aeroplane_or_raise
 from app.settings import Settings, get_settings
@@ -493,6 +495,42 @@ def get_airplane_section_geometry(
     """
     try:
         return section_geometry_service.compute_section_geometry(db, aeroplane_id, request)
+    except ServiceException as exc:
+        _raise_http_from_domain(exc)
+    except Exception as exc:  # pragma: no cover - defensive fallback
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Unexpected error: {exc}"
+        ) from exc
+
+
+@router.post(
+    "/aeroplanes/{aeroplane_id}/spar-plan",
+    response_model=SparPlanResponse,
+    tags=["analysis"],
+    operation_id="get_airplane_spar_plan",
+)
+def get_airplane_spar_plan(
+    aeroplane_id: Annotated[AeroPlaneID, Path(..., description=_DESC_AEROPLANE_ID)],
+    request: Annotated[
+        SparPlanRequest,
+        Body(..., description="Spar-plan request: material + sizing + spanwise moments"),
+    ],
+    db: Annotated[Session, Depends(get_db)],
+) -> SparPlanResponse:
+    """Solve the buildable spar plan for a wing (gh-1031).
+
+    Reads the real lofted section envelope, the supplied spanwise bending-moment
+    distribution (#1002) and the #1008 material/sizing inputs, then returns the
+    front (bending) + rear (torsion) spar layout: each straight piece's origin,
+    direction, outer/inner diameter, governing station, utilisation, and the
+    joint type between pieces / across the root. **Lengths in metres.**
+
+    Returns 404 when the aeroplane / wing does not exist, and 422 when section
+    geometry is unavailable on this platform (cadquery excluded on
+    ``linux/aarch64``) or the material/strength inputs are invalid.
+    """
+    try:
+        return spar_plan_service.compute_spar_plan(db, aeroplane_id, request)
     except ServiceException as exc:
         _raise_http_from_domain(exc)
     except Exception as exc:  # pragma: no cover - defensive fallback
