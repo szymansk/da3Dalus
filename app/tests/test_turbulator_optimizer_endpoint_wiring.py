@@ -38,6 +38,27 @@ import pytest
 # ---------------------------------------------------------------------------
 
 
+def _stub_operating_point(monkeypatch):
+    """Patch ``aerosandbox.OperatingPoint`` to build a lightweight SimpleNamespace.
+
+    Uses ``monkeypatch`` so the original attribute (and a stub aerosandbox
+    module, if one had to be created) is *always* restored at test teardown.
+    A raw ``sys.modules["aerosandbox"].OperatingPoint = ...`` assignment leaks
+    across tests and corrupts every later aerosandbox consumer in the same
+    process (gh-1027).
+    """
+    import sys
+    import types as _types
+
+    fake_op = lambda **kw: SimpleNamespace(**kw)  # noqa: E731
+    if "aerosandbox" not in sys.modules:
+        asb_mod = _types.ModuleType("aerosandbox")
+        asb_mod.OperatingPoint = fake_op
+        monkeypatch.setitem(sys.modules, "aerosandbox", asb_mod)
+    else:
+        monkeypatch.setattr(sys.modules["aerosandbox"], "OperatingPoint", fake_op, raising=False)
+
+
 def _make_stub_optimizer_result():
     from app.services.turbulator_optimizer_service import (
         SectionOptimizerResult,
@@ -47,9 +68,16 @@ def _make_stub_optimizer_result():
 
     sections = [
         SectionOptimizerResult(
-            y_m=0.1, chord_m=0.2, re_local=200_000, cl=0.6,
-            xtr_opt=0.4, cd_clean=0.030, cd_tripped=0.020, delta_cd=-0.010,
-            warnings=[], section_area_m2=0.10,
+            y_m=0.1,
+            chord_m=0.2,
+            re_local=200_000,
+            cl=0.6,
+            xtr_opt=0.4,
+            cd_clean=0.030,
+            cd_tripped=0.020,
+            delta_cd=-0.010,
+            warnings=[],
+            section_area_m2=0.10,
         )
     ]
     summary = TurbulatorOptimizerSummary(
@@ -63,8 +91,12 @@ def _make_stub_wsd():
 
     return [
         WingSectionData(
-            y_m=0.1, chord_m=0.2, cl=0.6, re_local=200_000,
-            airfoil_name="naca0012", section_area_m2=0.10,
+            y_m=0.1,
+            chord_m=0.2,
+            cl=0.6,
+            re_local=200_000,
+            airfoil_name="naca0012",
+            section_area_m2=0.10,
         )
     ]
 
@@ -244,30 +276,33 @@ class TestCallOptimizerWiring:
         stub_section_entry = SimpleNamespace(y_m=0.1, chord_m=0.2, cl=0.6)
 
         with (
-            patch("app.services.analysis_service.get_aeroplane_schema_or_raise",
-                  return_value=SimpleNamespace()),
-            patch("app.converters.model_schema_converters.aeroplane_schema_to_asb_airplane_async",
-                  return_value=stub_airplane),
-            patch("app.services.design_assumptions_service.get_effective_assumption",
-                  return_value=18.0),
-            patch("app.services.section_aoa_service.compute_section_aoa",
-                  return_value=[stub_section_entry]),
-            patch("app.services.turbulator_optimizer_service.build_wing_section_data",
-                  return_value=stub_wsd),
-            patch("app.services.turbulator_optimizer_service.run_turbulator_optimizer",
-                  return_value=stub_result),
+            patch(
+                "app.services.analysis_service.get_aeroplane_schema_or_raise",
+                return_value=SimpleNamespace(),
+            ),
+            patch(
+                "app.converters.model_schema_converters.aeroplane_schema_to_asb_airplane_async",
+                return_value=stub_airplane,
+            ),
+            patch(
+                "app.services.design_assumptions_service.get_effective_assumption",
+                return_value=18.0,
+            ),
+            patch(
+                "app.services.section_aoa_service.compute_section_aoa",
+                return_value=[stub_section_entry],
+            ),
+            patch(
+                "app.services.turbulator_optimizer_service.build_wing_section_data",
+                return_value=stub_wsd,
+            ),
+            patch(
+                "app.services.turbulator_optimizer_service.run_turbulator_optimizer",
+                return_value=stub_result,
+            ),
         ):
             # Also need to patch aerosandbox.OperatingPoint
-            import sys
-            import types as _types
-
-            if "aerosandbox" not in sys.modules:
-                asb_mod = _types.ModuleType("aerosandbox")
-                asb_mod.OperatingPoint = lambda **kw: SimpleNamespace(**kw)
-                sys.modules["aerosandbox"] = asb_mod
-            else:
-                original_op = sys.modules["aerosandbox"].__dict__.get("OperatingPoint")
-                sys.modules["aerosandbox"].OperatingPoint = lambda **kw: SimpleNamespace(**kw)
+            _stub_operating_point(monkeypatch)
 
             response = client.post(
                 f"/aeroplanes/{aeroplane.uuid}/turbulator/optimize",
@@ -290,20 +325,20 @@ class TestCallOptimizerWiring:
         empty_airplane = SimpleNamespace(wings=[])
 
         with (
-            patch("app.services.analysis_service.get_aeroplane_schema_or_raise",
-                  return_value=SimpleNamespace()),
-            patch("app.converters.model_schema_converters.aeroplane_schema_to_asb_airplane_async",
-                  return_value=empty_airplane),
-            patch("app.services.design_assumptions_service.get_effective_assumption",
-                  return_value=15.0),
+            patch(
+                "app.services.analysis_service.get_aeroplane_schema_or_raise",
+                return_value=SimpleNamespace(),
+            ),
+            patch(
+                "app.converters.model_schema_converters.aeroplane_schema_to_asb_airplane_async",
+                return_value=empty_airplane,
+            ),
+            patch(
+                "app.services.design_assumptions_service.get_effective_assumption",
+                return_value=15.0,
+            ),
         ):
-            import sys
-            import types as _types
-
-            if "aerosandbox" not in sys.modules:
-                asb_mod = _types.ModuleType("aerosandbox")
-                asb_mod.OperatingPoint = lambda **kw: SimpleNamespace(**kw)
-                sys.modules["aerosandbox"] = asb_mod
+            _stub_operating_point(monkeypatch)
 
             response = client.post(
                 f"/aeroplanes/{aeroplane.uuid}/turbulator/optimize",
@@ -323,24 +358,24 @@ class TestCallOptimizerWiring:
         stub_airplane = self._make_stub_asb_airplane()
 
         with (
-            patch("app.services.analysis_service.get_aeroplane_schema_or_raise",
-                  return_value=SimpleNamespace()),
-            patch("app.converters.model_schema_converters.aeroplane_schema_to_asb_airplane_async",
-                  return_value=stub_airplane),
-            patch("app.services.design_assumptions_service.get_effective_assumption",
-                  return_value=15.0),
-            patch("app.services.section_aoa_service.compute_section_aoa",
-                  side_effect=RuntimeError("AoA computation failed")),
+            patch(
+                "app.services.analysis_service.get_aeroplane_schema_or_raise",
+                return_value=SimpleNamespace(),
+            ),
+            patch(
+                "app.converters.model_schema_converters.aeroplane_schema_to_asb_airplane_async",
+                return_value=stub_airplane,
+            ),
+            patch(
+                "app.services.design_assumptions_service.get_effective_assumption",
+                return_value=15.0,
+            ),
+            patch(
+                "app.services.section_aoa_service.compute_section_aoa",
+                side_effect=RuntimeError("AoA computation failed"),
+            ),
         ):
-            import sys
-            import types as _types
-
-            if "aerosandbox" not in sys.modules:
-                asb_mod = _types.ModuleType("aerosandbox")
-                asb_mod.OperatingPoint = lambda **kw: SimpleNamespace(**kw)
-                sys.modules["aerosandbox"] = asb_mod
-            else:
-                sys.modules["aerosandbox"].OperatingPoint = lambda **kw: SimpleNamespace(**kw)
+            _stub_operating_point(monkeypatch)
 
             response = client.post(
                 f"/aeroplanes/{aeroplane.uuid}/turbulator/optimize",
@@ -360,24 +395,23 @@ class TestCallOptimizerWiring:
         stub_airplane = self._make_stub_asb_airplane()
 
         with (
-            patch("app.services.analysis_service.get_aeroplane_schema_or_raise",
-                  return_value=SimpleNamespace()),
-            patch("app.converters.model_schema_converters.aeroplane_schema_to_asb_airplane_async",
-                  return_value=stub_airplane),
-            patch("app.services.design_assumptions_service.get_effective_assumption",
-                  return_value=15.0),
-            patch("app.services.section_aoa_service.compute_section_aoa",
-                  return_value=[]),  # empty → ValidationDomainError
+            patch(
+                "app.services.analysis_service.get_aeroplane_schema_or_raise",
+                return_value=SimpleNamespace(),
+            ),
+            patch(
+                "app.converters.model_schema_converters.aeroplane_schema_to_asb_airplane_async",
+                return_value=stub_airplane,
+            ),
+            patch(
+                "app.services.design_assumptions_service.get_effective_assumption",
+                return_value=15.0,
+            ),
+            patch(
+                "app.services.section_aoa_service.compute_section_aoa", return_value=[]
+            ),  # empty → ValidationDomainError
         ):
-            import sys
-            import types as _types
-
-            if "aerosandbox" not in sys.modules:
-                asb_mod = _types.ModuleType("aerosandbox")
-                asb_mod.OperatingPoint = lambda **kw: SimpleNamespace(**kw)
-                sys.modules["aerosandbox"] = asb_mod
-            else:
-                sys.modules["aerosandbox"].OperatingPoint = lambda **kw: SimpleNamespace(**kw)
+            _stub_operating_point(monkeypatch)
 
             response = client.post(
                 f"/aeroplanes/{aeroplane.uuid}/turbulator/optimize",
@@ -407,28 +441,32 @@ class TestCallOptimizerWiring:
         stub_section_entry = SimpleNamespace(y_m=0.1, chord_m=0.2, cl=0.6)
 
         with (
-            patch("app.services.analysis_service.get_aeroplane_schema_or_raise",
-                  return_value=SimpleNamespace()),
-            patch("app.converters.model_schema_converters.aeroplane_schema_to_asb_airplane_async",
-                  return_value=stub_airplane),
-            patch("app.services.design_assumptions_service.get_effective_assumption",
-                  return_value=None),  # None → fallback to 15.0
-            patch("app.services.section_aoa_service.compute_section_aoa",
-                  return_value=[stub_section_entry]),
-            patch("app.services.turbulator_optimizer_service.build_wing_section_data",
-                  side_effect=_capture_build_wsd),
-            patch("app.services.turbulator_optimizer_service.run_turbulator_optimizer",
-                  return_value=stub_result),
+            patch(
+                "app.services.analysis_service.get_aeroplane_schema_or_raise",
+                return_value=SimpleNamespace(),
+            ),
+            patch(
+                "app.converters.model_schema_converters.aeroplane_schema_to_asb_airplane_async",
+                return_value=stub_airplane,
+            ),
+            patch(
+                "app.services.design_assumptions_service.get_effective_assumption",
+                return_value=None,
+            ),  # None → fallback to 15.0
+            patch(
+                "app.services.section_aoa_service.compute_section_aoa",
+                return_value=[stub_section_entry],
+            ),
+            patch(
+                "app.services.turbulator_optimizer_service.build_wing_section_data",
+                side_effect=_capture_build_wsd,
+            ),
+            patch(
+                "app.services.turbulator_optimizer_service.run_turbulator_optimizer",
+                return_value=stub_result,
+            ),
         ):
-            import sys
-            import types as _types
-
-            if "aerosandbox" not in sys.modules:
-                asb_mod = _types.ModuleType("aerosandbox")
-                asb_mod.OperatingPoint = lambda **kw: SimpleNamespace(**kw)
-                sys.modules["aerosandbox"] = asb_mod
-            else:
-                sys.modules["aerosandbox"].OperatingPoint = lambda **kw: SimpleNamespace(**kw)
+            _stub_operating_point(monkeypatch)
 
             response = client.post(
                 f"/aeroplanes/{aeroplane.uuid}/turbulator/optimize",
