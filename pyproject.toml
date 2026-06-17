@@ -77,12 +77,12 @@ pydeps = "^3.0.3"
 pyright = "^1.1.409"
 
 [tool.pytest.ini_options]
-# `.claude` holds worktrees from in-flight feature work whose test
-# files have the same basenames as those in the main checkout. Under
-# pytest-xdist that causes "import file mismatch" collection errors.
-# Excluding here so local runs are robust; CI uses fresh clones with
-# no such pollution.
-norecursedirs = ["external", ".claude"]
+# `.claude` and `.worktrees` hold sibling git worktrees from in-flight
+# feature work whose test files share basenames with the main checkout.
+# A root-level `pytest` recurses into them and trips "import file
+# mismatch" collection errors (worse under pytest-xdist). Excluding here
+# keeps local runs robust; CI uses fresh clones with no such pollution.
+norecursedirs = ["external", ".claude", ".worktrees"]
 addopts = "--ignore=docker_smoke_test.py"
 # Ensure the project root is on sys.path so `from app.*` works in
 # non-installed layouts (poetry package-mode=false).
