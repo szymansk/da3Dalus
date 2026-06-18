@@ -42,6 +42,7 @@ from app.models.aeroplanemodel import (
     WingXSecSpareModel,
     WingXSecTedServoModel,
     WingXSecTrailingEdgeDeviceModel,
+    WingXSecTurbulatorModel,
 )
 from app.models.component_tree import ComponentTreeNodeModel
 from app.models.computation_config import AircraftComputationConfigModel
@@ -51,6 +52,7 @@ from app.services.aeroplane_clone_service import clone_aeroplane_subgraph
 
 # Import all models so Base.metadata is complete
 import app.models.analysismodels  # noqa: F401
+
 # avl_geometry_events is event-listener code, not a model with its own table
 import app.models.avl_geometry_file  # noqa: F401
 import app.models.component  # noqa: F401
@@ -109,9 +111,7 @@ def _build_source(db: Session) -> AeroplaneModel:
     db.flush()
 
     # Wing + xsec + detail + spare + TED + servo
-    wing = WingModel(
-        aeroplane_id=src.id, name="main_wing", symmetric=True, design_model="flat"
-    )
+    wing = WingModel(aeroplane_id=src.id, name="main_wing", symmetric=True, design_model="flat")
     db.add(wing)
     db.flush()
 
@@ -175,6 +175,18 @@ def _build_source(db: Session) -> AeroplaneModel:
     db.add(servo)
     db.flush()
 
+    # Turbulator (gh-934) — per-cross-section optional element
+    turbulator = WingXSecTurbulatorModel(
+        wing_xsec_detail_id=detail.id,
+        form="zigzag",
+        height_mm=0.3,
+        position_root=0.07,
+        position_tip=0.1,
+        enabled=True,
+    )
+    db.add(turbulator)
+    db.flush()
+
     # Fuselage + xsec with step paths
     fus = FuselageModel(
         aeroplane_id=src.id,
@@ -213,9 +225,7 @@ def _build_source(db: Session) -> AeroplaneModel:
         aircraft_class="rc_trainer",
         component_overrides={
             "toggles": [{"component_uuid": str(wi.id), "enabled": True}],
-            "mass_overrides": [
-                {"component_uuid": str(wi.id), "mass_kg_override": 0.35}
-            ],
+            "mass_overrides": [{"component_uuid": str(wi.id), "mass_kg_override": 0.35}],
             "position_overrides": [],
             "adhoc_items": [],
         },
@@ -366,9 +376,7 @@ class TestCloneAeroplaneSubgraph:
         db_session.flush()
 
         # There should be exactly one wing on the clone
-        clone_wings = (
-            db_session.query(WingModel).filter(WingModel.aeroplane_id == clone.id).all()
-        )
+        clone_wings = db_session.query(WingModel).filter(WingModel.aeroplane_id == clone.id).all()
         assert len(clone_wings) == 1
         clone_wing = clone_wings[0]
 
@@ -377,9 +385,7 @@ class TestCloneAeroplaneSubgraph:
         db_session.flush()
 
         # Source wing unchanged
-        src_wings = (
-            db_session.query(WingModel).filter(WingModel.aeroplane_id == src.id).all()
-        )
+        src_wings = db_session.query(WingModel).filter(WingModel.aeroplane_id == src.id).all()
         assert src_wings[0].name == "main_wing"
 
     def test_wings_have_new_ids_and_point_to_clone(self, db_session):
@@ -414,9 +420,7 @@ class TestCloneAeroplaneSubgraph:
 
         src_xsec_ids = {
             x.id
-            for x in db_session.query(WingXSecModel).filter(
-                WingXSecModel.wing_id.in_(src_wing_ids)
-            )
+            for x in db_session.query(WingXSecModel).filter(WingXSecModel.wing_id.in_(src_wing_ids))
         }
         clone_xsec_ids = {
             x.id
@@ -489,6 +493,125 @@ class TestCloneAeroplaneSubgraph:
         assert src_servo_ids.isdisjoint(clone_servo_ids)
         assert len(clone_servo_ids) == 1
 
+    def test_turbulator_is_cloned_with_matching_fields(self, db_session):
+        """gh-1069: a turbulator (gh-934) on the source xsec detail must be
+        deep-copied onto the cloned detail with all fields preserved and a
+        new PK reparented to the clone's detail."""
+        src = _build_source(db_session)
+        clone = clone_aeroplane_subgraph(
+            db_session, src, immutable=False, branch_id=None, predecessor_id=None, root_id=None
+        )
+        db_session.flush()
+
+        # Resolve clone detail ids
+        clone_wing_ids = [
+            w.id for w in db_session.query(WingModel).filter(WingModel.aeroplane_id == clone.id)
+        ]
+        clone_xsec_ids = {
+            x.id
+            for x in db_session.query(WingXSecModel).filter(
+                WingXSecModel.wing_id.in_(clone_wing_ids)
+            )
+        }
+        clone_detail_ids = {
+            d.id
+            for d in db_session.query(WingXSecDetailModel).filter(
+                WingXSecDetailModel.wing_xsec_id.in_(clone_xsec_ids)
+            )
+        }
+
+        clone_turbs = (
+            db_session.query(WingXSecTurbulatorModel)
+            .filter(WingXSecTurbulatorModel.wing_xsec_detail_id.in_(clone_detail_ids))
+            .all()
+        )
+        assert len(clone_turbs) == 1, "Turbulator must survive the clone (gh-1069)"
+        turb = clone_turbs[0]
+        assert turb.form == "zigzag"
+        assert turb.height_mm == pytest.approx(0.3)
+        assert turb.position_root == pytest.approx(0.07)
+        assert turb.position_tip == pytest.approx(0.1)
+        assert turb.enabled is True
+
+    def test_turbulator_has_new_pk_and_independent(self, db_session):
+        """The cloned turbulator must be a distinct row from the source one."""
+        src = _build_source(db_session)
+        clone = clone_aeroplane_subgraph(
+            db_session, src, immutable=False, branch_id=None, predecessor_id=None, root_id=None
+        )
+        db_session.flush()
+
+        src_turb = (
+            db_session.query(WingXSecTurbulatorModel)
+            .join(
+                WingXSecDetailModel,
+                WingXSecTurbulatorModel.wing_xsec_detail_id == WingXSecDetailModel.id,
+            )
+            .join(WingXSecModel, WingXSecDetailModel.wing_xsec_id == WingXSecModel.id)
+            .join(WingModel, WingXSecModel.wing_id == WingModel.id)
+            .filter(WingModel.aeroplane_id == src.id)
+            .all()
+        )
+        clone_turb = (
+            db_session.query(WingXSecTurbulatorModel)
+            .join(
+                WingXSecDetailModel,
+                WingXSecTurbulatorModel.wing_xsec_detail_id == WingXSecDetailModel.id,
+            )
+            .join(WingXSecModel, WingXSecDetailModel.wing_xsec_id == WingXSecModel.id)
+            .join(WingModel, WingXSecModel.wing_id == WingModel.id)
+            .filter(WingModel.aeroplane_id == clone.id)
+            .all()
+        )
+        assert len(src_turb) == len(clone_turb) == 1
+        assert src_turb[0].id != clone_turb[0].id, "Clone turbulator must have a new PK"
+        assert src_turb[0].wing_xsec_detail_id != clone_turb[0].wing_xsec_detail_id, (
+            "Clone turbulator must be reparented to the clone's detail"
+        )
+
+    def test_clone_without_turbulator_is_fine(self, db_session):
+        """A detail with no turbulator must clone without creating one."""
+        src = _build_source(db_session)
+        # Remove the source turbulator before cloning
+        src_detail = (
+            db_session.query(WingXSecDetailModel)
+            .join(WingXSecModel, WingXSecDetailModel.wing_xsec_id == WingXSecModel.id)
+            .join(WingModel, WingXSecModel.wing_id == WingModel.id)
+            .filter(WingModel.aeroplane_id == src.id)
+            .first()
+        )
+        db_session.query(WingXSecTurbulatorModel).filter(
+            WingXSecTurbulatorModel.wing_xsec_detail_id == src_detail.id
+        ).delete()
+        db_session.flush()
+
+        clone = clone_aeroplane_subgraph(
+            db_session, src, immutable=False, branch_id=None, predecessor_id=None, root_id=None
+        )
+        db_session.flush()
+
+        clone_wing_ids = [
+            w.id for w in db_session.query(WingModel).filter(WingModel.aeroplane_id == clone.id)
+        ]
+        clone_xsec_ids = {
+            x.id
+            for x in db_session.query(WingXSecModel).filter(
+                WingXSecModel.wing_id.in_(clone_wing_ids)
+            )
+        }
+        clone_detail_ids = {
+            d.id
+            for d in db_session.query(WingXSecDetailModel).filter(
+                WingXSecDetailModel.wing_xsec_id.in_(clone_xsec_ids)
+            )
+        }
+        clone_turbs = (
+            db_session.query(WingXSecTurbulatorModel)
+            .filter(WingXSecTurbulatorModel.wing_xsec_detail_id.in_(clone_detail_ids))
+            .all()
+        )
+        assert clone_turbs == [], "No turbulator should be created when source has none"
+
     def test_fuselage_step_paths_are_nulled(self, db_session):
         src = _build_source(db_session)
         clone = clone_aeroplane_subgraph(
@@ -552,12 +675,12 @@ class TestCloneAeroplaneSubgraph:
         )
         db_session.flush()
 
-        src_wi = db_session.query(WeightItemModel).filter(
-            WeightItemModel.aeroplane_id == src.id
-        ).all()
-        clone_wi = db_session.query(WeightItemModel).filter(
-            WeightItemModel.aeroplane_id == clone.id
-        ).all()
+        src_wi = (
+            db_session.query(WeightItemModel).filter(WeightItemModel.aeroplane_id == src.id).all()
+        )
+        clone_wi = (
+            db_session.query(WeightItemModel).filter(WeightItemModel.aeroplane_id == clone.id).all()
+        )
 
         assert len(clone_wi) == len(src_wi)
         src_ids = {w.id for w in src_wi}
@@ -573,9 +696,9 @@ class TestCloneAeroplaneSubgraph:
         src = _build_source(db_session)
 
         # Capture the old weight-item id before cloning
-        src_wi = db_session.query(WeightItemModel).filter(
-            WeightItemModel.aeroplane_id == src.id
-        ).first()
+        src_wi = (
+            db_session.query(WeightItemModel).filter(WeightItemModel.aeroplane_id == src.id).first()
+        )
         old_wi_id_str = str(src_wi.id)
 
         clone = clone_aeroplane_subgraph(
@@ -584,15 +707,19 @@ class TestCloneAeroplaneSubgraph:
         db_session.flush()
 
         # New weight item id
-        new_wi = db_session.query(WeightItemModel).filter(
-            WeightItemModel.aeroplane_id == clone.id
-        ).first()
+        new_wi = (
+            db_session.query(WeightItemModel)
+            .filter(WeightItemModel.aeroplane_id == clone.id)
+            .first()
+        )
         new_wi_id_str = str(new_wi.id)
 
         # Loading scenario on the clone
-        clone_ls = db_session.query(LoadingScenarioModel).filter(
-            LoadingScenarioModel.aeroplane_id == clone.id
-        ).first()
+        clone_ls = (
+            db_session.query(LoadingScenarioModel)
+            .filter(LoadingScenarioModel.aeroplane_id == clone.id)
+            .first()
+        )
         assert clone_ls is not None
 
         overrides = clone_ls.component_overrides
@@ -656,8 +783,7 @@ class TestCloneAeroplaneSubgraph:
 
         # child.parent_id must point to the clone's root node (not the source's)
         assert child.parent_id == root_node.id, (
-            f"child.parent_id={child.parent_id} should equal "
-            f"clone root node id={root_node.id}"
+            f"child.parent_id={child.parent_id} should equal clone root node id={root_node.id}"
         )
 
     def test_component_tree_aeroplane_id_updated(self, db_session):
@@ -687,12 +813,16 @@ class TestCloneAeroplaneSubgraph:
 
         from app.models.aeroplanemodel import DesignAssumptionModel
 
-        src_das = db_session.query(DesignAssumptionModel).filter(
-            DesignAssumptionModel.aeroplane_id == src.id
-        ).all()
-        clone_das = db_session.query(DesignAssumptionModel).filter(
-            DesignAssumptionModel.aeroplane_id == clone.id
-        ).all()
+        src_das = (
+            db_session.query(DesignAssumptionModel)
+            .filter(DesignAssumptionModel.aeroplane_id == src.id)
+            .all()
+        )
+        clone_das = (
+            db_session.query(DesignAssumptionModel)
+            .filter(DesignAssumptionModel.aeroplane_id == clone.id)
+            .all()
+        )
 
         assert len(clone_das) == len(src_das) == 1
         assert clone_das[0].parameter_name == "cl_max"
@@ -705,12 +835,16 @@ class TestCloneAeroplaneSubgraph:
         )
         db_session.flush()
 
-        src_srs = db_session.query(StabilityResultModel).filter(
-            StabilityResultModel.aeroplane_id == src.id
-        ).all()
-        clone_srs = db_session.query(StabilityResultModel).filter(
-            StabilityResultModel.aeroplane_id == clone.id
-        ).all()
+        src_srs = (
+            db_session.query(StabilityResultModel)
+            .filter(StabilityResultModel.aeroplane_id == src.id)
+            .all()
+        )
+        clone_srs = (
+            db_session.query(StabilityResultModel)
+            .filter(StabilityResultModel.aeroplane_id == clone.id)
+            .all()
+        )
 
         assert len(clone_srs) == len(src_srs) == 1
         assert clone_srs[0].solver == "aerosandbox"
@@ -723,12 +857,16 @@ class TestCloneAeroplaneSubgraph:
         )
         db_session.flush()
 
-        src_mo = db_session.query(MissionObjectiveModel).filter(
-            MissionObjectiveModel.aeroplane_id == src.id
-        ).first()
-        clone_mo = db_session.query(MissionObjectiveModel).filter(
-            MissionObjectiveModel.aeroplane_id == clone.id
-        ).first()
+        src_mo = (
+            db_session.query(MissionObjectiveModel)
+            .filter(MissionObjectiveModel.aeroplane_id == src.id)
+            .first()
+        )
+        clone_mo = (
+            db_session.query(MissionObjectiveModel)
+            .filter(MissionObjectiveModel.aeroplane_id == clone.id)
+            .first()
+        )
 
         assert clone_mo is not None
         assert clone_mo.mission_type == "trainer"
@@ -741,12 +879,16 @@ class TestCloneAeroplaneSubgraph:
         )
         db_session.flush()
 
-        src_cc = db_session.query(AircraftComputationConfigModel).filter(
-            AircraftComputationConfigModel.aeroplane_id == src.id
-        ).first()
-        clone_cc = db_session.query(AircraftComputationConfigModel).filter(
-            AircraftComputationConfigModel.aeroplane_id == clone.id
-        ).first()
+        src_cc = (
+            db_session.query(AircraftComputationConfigModel)
+            .filter(AircraftComputationConfigModel.aeroplane_id == src.id)
+            .first()
+        )
+        clone_cc = (
+            db_session.query(AircraftComputationConfigModel)
+            .filter(AircraftComputationConfigModel.aeroplane_id == clone.id)
+            .first()
+        )
 
         assert clone_cc is not None
         assert clone_cc.coarse_alpha_step_deg == pytest.approx(1.0)
@@ -766,7 +908,9 @@ class TestCloneAeroplaneSubgraph:
 
         db_session.expire(src)
         db_session.refresh(src)
-        assert src.xyz_ref == [0.1, 0.0, 0.0], "Source xyz_ref must not be affected by clone mutation"
+        assert src.xyz_ref == [0.1, 0.0, 0.0], (
+            "Source xyz_ref must not be affected by clone mutation"
+        )
 
     def test_fuselage_xsecs_independent(self, db_session):
         src = _build_source(db_session)
@@ -775,19 +919,23 @@ class TestCloneAeroplaneSubgraph:
         )
         db_session.flush()
 
-        src_fus = db_session.query(FuselageModel).filter(
-            FuselageModel.aeroplane_id == src.id
-        ).first()
-        clone_fus = db_session.query(FuselageModel).filter(
-            FuselageModel.aeroplane_id == clone.id
-        ).first()
+        src_fus = (
+            db_session.query(FuselageModel).filter(FuselageModel.aeroplane_id == src.id).first()
+        )
+        clone_fus = (
+            db_session.query(FuselageModel).filter(FuselageModel.aeroplane_id == clone.id).first()
+        )
 
-        src_xsecs = db_session.query(FuselageXSecSuperEllipseModel).filter(
-            FuselageXSecSuperEllipseModel.fuselage_id == src_fus.id
-        ).all()
-        clone_xsecs = db_session.query(FuselageXSecSuperEllipseModel).filter(
-            FuselageXSecSuperEllipseModel.fuselage_id == clone_fus.id
-        ).all()
+        src_xsecs = (
+            db_session.query(FuselageXSecSuperEllipseModel)
+            .filter(FuselageXSecSuperEllipseModel.fuselage_id == src_fus.id)
+            .all()
+        )
+        clone_xsecs = (
+            db_session.query(FuselageXSecSuperEllipseModel)
+            .filter(FuselageXSecSuperEllipseModel.fuselage_id == clone_fus.id)
+            .all()
+        )
 
         assert len(clone_xsecs) == len(src_xsecs) == 1
         src_xsec_ids = {x.id for x in src_xsecs}
