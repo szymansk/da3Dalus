@@ -36,6 +36,8 @@ function piece(over: Partial<SparPieceOut> = {}): SparPieceOut {
     joint_to_next: null,
     feasible: true,
     infeasibility_reason: null,
+    y_start: 0,
+    y_end: 0.75,
     ...over,
   };
 }
@@ -93,6 +95,8 @@ function previewResult(): SparInsertResult {
     warnings: ["telescoping overlap modelled as butt joint"],
     feasible: true,
     infeasibility_reason: null,
+    snapshot_id: null,
+    planned_segment_lengths: [0.75, 0.45],
   };
 }
 
@@ -125,6 +129,45 @@ describe("BuiltSparSection (gh-1050)", () => {
     expect(screen.getByTestId("built-spar-infeasible")).toHaveTextContent(
       "no tube fits at root",
     );
+  });
+
+  // gh-1060: spanwise extent + telescoping joint position --------------------
+
+  it("shows each piece's spanwise extent in mm", () => {
+    const plan = feasiblePlan();
+    plan.front_pieces = [
+      piece({ joint_to_next: "telescoping", y_start: 0, y_end: 0.75 }),
+      piece({ joint_to_next: null, y_start: 0.7, y_end: 1.2 }),
+    ];
+    render(<BuiltSparSection plan={plan} />);
+    const rows = screen.getAllByTestId("built-spar-piece");
+    expect(rows[0]).toHaveTextContent("span 0 → 750 mm");
+    expect(rows[1]).toHaveTextContent("span 700 → 1200 mm");
+  });
+
+  it("shows the telescoping joint position from the next piece's y_start", () => {
+    const plan = feasiblePlan();
+    plan.front_pieces = [
+      piece({ joint_to_next: "telescoping", y_start: 0, y_end: 0.75 }),
+      piece({ joint_to_next: null, y_start: 0.7, y_end: 1.2 }),
+    ];
+    render(<BuiltSparSection plan={plan} />);
+    const rows = screen.getAllByTestId("built-spar-piece");
+    // joint position = next piece's y_start (the overlap region) = 700 mm
+    expect(rows[0]).toHaveTextContent("Telescoping @ 700 mm");
+  });
+
+  it("labels the last piece 'to tip — no joint'", () => {
+    const plan = feasiblePlan();
+    plan.front_pieces = [
+      piece({ joint_to_next: "telescoping", y_start: 0, y_end: 0.75 }),
+      piece({ joint_to_next: null, y_start: 0.7, y_end: 1.2 }),
+    ];
+    render(<BuiltSparSection plan={plan} />);
+    const rows = screen.getAllByTestId("built-spar-piece");
+    expect(rows[1]).toHaveTextContent("to tip — no joint");
+    // the old "Continuous" wording is gone for the last piece
+    expect(rows[1]).not.toHaveTextContent("Continuous");
   });
 });
 
@@ -242,5 +285,155 @@ describe("AddSparToWingFlow (gh-1050)", () => {
     fireEvent.click(screen.getByTestId("add-spar-cancel"));
     expect(screen.queryByTestId("add-spar-preview-modal")).toBeNull();
     expect(onInsert).toHaveBeenCalledTimes(1); // only the preview
+  });
+});
+
+// gh-1060: segment-split preview + snapshot/revert ---------------------------
+
+describe("AddSparToWingFlow — split preview + snapshot/revert (gh-1060)", () => {
+  it("preview shows the segment split note when planned_segment_lengths splits", async () => {
+    const onInsert = vi.fn().mockResolvedValue(previewResult());
+    render(<AddSparToWingFlow plan={feasiblePlan()} onInsert={onInsert} />);
+    fireEvent.click(screen.getByTestId("add-spar-to-wing-button"));
+    await waitFor(() =>
+      expect(screen.getByTestId("add-spar-preview-modal")).toBeInTheDocument(),
+    );
+    const split = screen.getByTestId("add-spar-split-note");
+    expect(split).toHaveTextContent(/Main spar telescopes/i);
+    expect(split).toHaveTextContent(/split into 2 sub-segments/i);
+    expect(split).toHaveTextContent("750");
+    expect(split).toHaveTextContent("450");
+    expect(split).toHaveTextContent(/snapshot/i);
+  });
+
+  it("preview omits the split note when the front spar is single-piece", async () => {
+    const onInsert = vi
+      .fn()
+      .mockResolvedValue({ ...previewResult(), planned_segment_lengths: [0.75] });
+    render(<AddSparToWingFlow plan={feasiblePlan()} onInsert={onInsert} />);
+    fireEvent.click(screen.getByTestId("add-spar-to-wing-button"));
+    await waitFor(() =>
+      expect(screen.getByTestId("add-spar-preview-modal")).toBeInTheDocument(),
+    );
+    expect(screen.queryByTestId("add-spar-split-note")).toBeNull();
+  });
+
+  it("commit surfaces snapshot_id with a Revert button", async () => {
+    const onInsert = vi
+      .fn()
+      .mockResolvedValueOnce(previewResult())
+      .mockResolvedValueOnce({
+        ...previewResult(),
+        dry_run: false,
+        committed: true,
+        snapshot_id: 77,
+      });
+    render(<AddSparToWingFlow plan={feasiblePlan()} onInsert={onInsert} />);
+    fireEvent.click(screen.getByTestId("add-spar-to-wing-button"));
+    await waitFor(() =>
+      expect(screen.getByTestId("add-spar-confirm")).toBeInTheDocument(),
+    );
+    fireEvent.click(screen.getByTestId("add-spar-confirm"));
+    await waitFor(() =>
+      expect(screen.getByTestId("add-spar-success")).toBeInTheDocument(),
+    );
+    expect(screen.getByTestId("add-spar-success")).toHaveTextContent(
+      "Snapshot #77 created",
+    );
+    expect(screen.getByTestId("add-spar-revert-button")).toBeInTheDocument();
+  });
+
+  it("Revert calls onRevert with the snapshot id and refreshes on success", async () => {
+    const onInsert = vi
+      .fn()
+      .mockResolvedValueOnce(previewResult())
+      .mockResolvedValueOnce({
+        ...previewResult(),
+        dry_run: false,
+        committed: true,
+        snapshot_id: 77,
+      });
+    const onRevert = vi.fn().mockResolvedValue(undefined);
+    const onCommitted = vi.fn();
+    render(
+      <AddSparToWingFlow
+        plan={feasiblePlan()}
+        onInsert={onInsert}
+        onRevert={onRevert}
+        onCommitted={onCommitted}
+      />,
+    );
+    fireEvent.click(screen.getByTestId("add-spar-to-wing-button"));
+    await waitFor(() =>
+      expect(screen.getByTestId("add-spar-confirm")).toBeInTheDocument(),
+    );
+    fireEvent.click(screen.getByTestId("add-spar-confirm"));
+    await waitFor(() =>
+      expect(screen.getByTestId("add-spar-revert-button")).toBeInTheDocument(),
+    );
+    fireEvent.click(screen.getByTestId("add-spar-revert-button"));
+    await waitFor(() => expect(onRevert).toHaveBeenCalledWith(77));
+    await waitFor(() =>
+      expect(screen.getByTestId("add-spar-reverted")).toBeInTheDocument(),
+    );
+  });
+
+  it("surfaces a revert error", async () => {
+    const onInsert = vi
+      .fn()
+      .mockResolvedValueOnce(previewResult())
+      .mockResolvedValueOnce({
+        ...previewResult(),
+        dry_run: false,
+        committed: true,
+        snapshot_id: 77,
+      });
+    const onRevert = vi
+      .fn()
+      .mockRejectedValue(new Error("restore failed (422): not a snapshot"));
+    render(
+      <AddSparToWingFlow
+        plan={feasiblePlan()}
+        onInsert={onInsert}
+        onRevert={onRevert}
+      />,
+    );
+    fireEvent.click(screen.getByTestId("add-spar-to-wing-button"));
+    await waitFor(() =>
+      expect(screen.getByTestId("add-spar-confirm")).toBeInTheDocument(),
+    );
+    fireEvent.click(screen.getByTestId("add-spar-confirm"));
+    await waitFor(() =>
+      expect(screen.getByTestId("add-spar-revert-button")).toBeInTheDocument(),
+    );
+    fireEvent.click(screen.getByTestId("add-spar-revert-button"));
+    await waitFor(() =>
+      expect(screen.getByTestId("add-spar-revert-error")).toHaveTextContent(
+        "not a snapshot",
+      ),
+    );
+  });
+
+  it("does not show a Revert button when commit returns no snapshot_id", async () => {
+    const onInsert = vi
+      .fn()
+      .mockResolvedValueOnce({ ...previewResult(), planned_segment_lengths: [0.75] })
+      .mockResolvedValueOnce({
+        ...previewResult(),
+        dry_run: false,
+        committed: true,
+        snapshot_id: null,
+        planned_segment_lengths: [0.75],
+      });
+    render(<AddSparToWingFlow plan={feasiblePlan()} onInsert={onInsert} />);
+    fireEvent.click(screen.getByTestId("add-spar-to-wing-button"));
+    await waitFor(() =>
+      expect(screen.getByTestId("add-spar-confirm")).toBeInTheDocument(),
+    );
+    fireEvent.click(screen.getByTestId("add-spar-confirm"));
+    await waitFor(() =>
+      expect(screen.getByTestId("add-spar-success")).toBeInTheDocument(),
+    );
+    expect(screen.queryByTestId("add-spar-revert-button")).toBeNull();
   });
 });

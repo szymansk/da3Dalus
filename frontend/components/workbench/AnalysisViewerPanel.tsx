@@ -1074,7 +1074,12 @@ export function SpanwiseLoadsTabContent({
     useSparSizing(aeroplaneId ?? null);
 
   // gh-1050: buildable two-spar plan + preview→commit insert into the wing.
-  const { plan, run: runPlan, insert: insertPlan } = useSparPlan(aeroplaneId ?? null);
+  const {
+    plan,
+    run: runPlan,
+    insert: insertPlan,
+    restoreSnapshot,
+  } = useSparPlan(aeroplaneId ?? null);
   const { mutate } = useSWRConfig();
   // Remember the sizing inputs the user last computed with so the plan + insert
   // reuse the SAME material / safety / packing / sigma knobs.
@@ -1140,6 +1145,19 @@ export function SpanwiseLoadsTabContent({
     mutate(`/aeroplanes/${aeroplaneId}/wings/${planWingName}`);
   }, [aeroplaneId, planWingName, mutate]);
 
+  // gh-1060: revert a destructive commit by restoring its pre-insert snapshot,
+  // then refresh the wing/construction so the tree + CAD reflect the rollback.
+  const handleSparRevert = useCallback(
+    async (snapshotId: number) => {
+      await restoreSnapshot(snapshotId);
+      if (aeroplaneId && planWingName) {
+        mutate(`/aeroplanes/${aeroplaneId}/wings/${planWingName}/wingconfig`);
+        mutate(`/aeroplanes/${aeroplaneId}/wings/${planWingName}`);
+      }
+    },
+    [restoreSnapshot, aeroplaneId, planWingName, mutate],
+  );
+
   if (spanwiseLoadsLoading) {
     return (
       <div className="flex flex-1 items-center justify-center">
@@ -1170,6 +1188,7 @@ export function SpanwiseLoadsTabContent({
           plan={plan}
           onInsert={handleInsert}
           onSparInserted={handleSparInserted}
+          onRevert={handleSparRevert}
         />
       </div>
     );

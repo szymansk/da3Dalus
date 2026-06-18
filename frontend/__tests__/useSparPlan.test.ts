@@ -27,6 +27,8 @@ const FAKE_PLAN: SparPlanResult = {
       wall: 0.0024,
       shape: "tube",
       governing_y: 0,
+      y_start: 0,
+      y_end: 0.75,
       utilisation: 0.5,
       joint_to_next: "telescoping",
       feasible: true,
@@ -64,6 +66,8 @@ const FAKE_INSERT: SparInsertResult = {
   warnings: [],
   feasible: true,
   infeasibility_reason: null,
+  snapshot_id: null,
+  planned_segment_lengths: null,
 };
 
 const BASE: SparPlanParams = {
@@ -214,6 +218,38 @@ describe("useSparPlan (gh-1050)", () => {
     const { result } = renderHook(() => useSparPlan(null));
     await expect(result.current.insert(BASE, true)).rejects.toThrow(
       /No aeroplane/,
+    );
+  });
+
+  // gh-1060: snapshot revert ------------------------------------------------
+
+  it("restoreSnapshot POSTs to /aeroplanes/{snapshot_id}/restore with a name", async () => {
+    const fetchSpy = vi
+      .spyOn(global, "fetch")
+      .mockResolvedValue(okResponse({ id: 99, name: "revert" }));
+    const { result } = renderHook(() => useSparPlan("aero-1"));
+    await act(async () => {
+      await result.current.restoreSnapshot(55);
+    });
+    const [url, options] = fetchSpy.mock.calls[0];
+    const u = new URL(String(url), "http://x");
+    expect(u.pathname).toContain("/aeroplanes/55/restore");
+    expect(options).toMatchObject({ method: "POST" });
+    const body = JSON.parse(options!.body as string);
+    expect(typeof body.name).toBe("string");
+    expect(body.name.length).toBeGreaterThan(0);
+  });
+
+  it("restoreSnapshot throws readably on a non-ok response", async () => {
+    vi.spyOn(global, "fetch").mockResolvedValue(
+      new Response(JSON.stringify({ error: { message: "not a snapshot" } }), {
+        status: 422,
+        headers: { "Content-Type": "application/json" },
+      }),
+    );
+    const { result } = renderHook(() => useSparPlan("aero-1"));
+    await expect(result.current.restoreSnapshot(55)).rejects.toThrow(
+      /not a snapshot/,
     );
   });
 });

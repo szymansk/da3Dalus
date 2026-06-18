@@ -32,6 +32,10 @@ import {
   sparGroupLabel,
   jointLabel,
   pieceDimsLabel,
+  pieceExtentLabel,
+  pieceJointLabel,
+  splitNote,
+  snapshotNote,
   mToMm,
   replaceWarning,
 } from "@/lib/sparPlanHelpers";
@@ -72,6 +76,11 @@ export interface SparSizingPanelProps {
   onInsert?: (dryRun: boolean) => Promise<SparInsertResult>;
   /** gh-1050: called after a successful commit so the parent can refresh the tree. */
   onSparInserted?: () => void;
+  /**
+   * gh-1060: revert a destructive commit by restoring its pre-insert snapshot.
+   * When omitted, the Revert affordance is hidden.
+   */
+  onRevert?: (snapshotId: number) => Promise<void>;
 }
 
 // ---- Helpers ---------------------------------------------------------------
@@ -171,12 +180,18 @@ function SizingResultCard({ result }: { result: SparSizingResult }) {
 
 // ---- Built-spar display (gh-1050) ------------------------------------------
 
-/** One buildable piece row: dims (OD×ID×wall), joint, feasibility. */
+/**
+ * One buildable piece row: dims (OD×ID×wall), spanwise extent, joint,
+ * feasibility. gh-1060: the joint position for a telescoping piece is the
+ * NEXT piece's y_start; the last piece (no next) reads "to tip — no joint".
+ */
 function BuiltSparPieceRow({
   piece,
+  next,
   index,
 }: {
   piece: SparPieceOut;
+  next: SparPieceOut | null;
   index: number;
 }) {
   return (
@@ -186,8 +201,11 @@ function BuiltSparPieceRow({
     >
       <span className="text-muted-foreground">#{index + 1}</span>
       <span className="tabular-nums text-foreground">{pieceDimsLabel(piece)}</span>
+      <span className="tabular-nums text-muted-foreground">
+        {pieceExtentLabel(piece)}
+      </span>
       <span className="text-muted-foreground">
-        joint: {jointLabel(piece.joint_to_next)}
+        joint: {pieceJointLabel(piece, next)}
       </span>
       <span className={piece.feasible ? "text-green-400" : "text-yellow-400"}>
         {piece.feasible ? "OK" : (piece.infeasibility_reason ?? "infeasible")}
@@ -215,7 +233,12 @@ function BuiltSparGroup({
         {sparGroupLabel(group)}
       </p>
       {pieces.map((p, i) => (
-        <BuiltSparPieceRow key={i} piece={p} index={i} />
+        <BuiltSparPieceRow
+          key={i}
+          piece={p}
+          next={pieces[i + 1] ?? null}
+          index={i}
+        />
       ))}
     </div>
   );
@@ -263,6 +286,12 @@ export interface AddSparToWingFlowProps {
   onInsert: (dryRun: boolean) => Promise<SparInsertResult>;
   /** Called after a successful commit so the parent can refresh the wing/tree. */
   onCommitted?: () => void;
+  /**
+   * gh-1060: revert a destructive commit by restoring its pre-insert snapshot.
+   * Called with the snapshot id surfaced on the commit result; should refresh
+   * the wing/construction data on success. Throws on error.
+   */
+  onRevert?: (snapshotId: number) => Promise<void>;
 }
 
 /**
@@ -274,16 +303,25 @@ export function AddSparToWingFlow({
   plan,
   onInsert,
   onCommitted,
+  onRevert,
 }: AddSparToWingFlowProps) {
   const [preview, setPreview] = useState<SparInsertResult | null>(null);
   const [busy, setBusy] = useState(false);
   const [committed, setCommitted] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // gh-1060: snapshot id surfaced on a destructive commit, the revert state,
+  // and any revert error.
+  const [snapshotId, setSnapshotId] = useState<number | null>(null);
+  const [reverted, setReverted] = useState(false);
+  const [revertError, setRevertError] = useState<string | null>(null);
 
   const openPreview = useCallback(async () => {
     setBusy(true);
     setError(null);
     setCommitted(false);
+    setSnapshotId(null);
+    setReverted(false);
+    setRevertError(null);
     try {
       const res = await onInsert(true);
       setPreview(res);
@@ -298,8 +336,9 @@ export function AddSparToWingFlow({
     setBusy(true);
     setError(null);
     try {
-      await onInsert(false);
+      const res = await onInsert(false);
       setCommitted(true);
+      setSnapshotId(res.snapshot_id ?? null);
       setPreview(null);
       onCommitted?.();
     } catch (err) {
@@ -309,12 +348,28 @@ export function AddSparToWingFlow({
     }
   }, [onInsert, onCommitted]);
 
+  const revert = useCallback(async () => {
+    if (snapshotId == null || !onRevert) return;
+    setBusy(true);
+    setRevertError(null);
+    try {
+      await onRevert(snapshotId);
+      setReverted(true);
+    } catch (err) {
+      setRevertError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setBusy(false);
+    }
+  }, [snapshotId, onRevert]);
+
   const close = useCallback(() => {
     setPreview(null);
     setError(null);
   }, []);
 
   const warning = preview ? replaceWarning(preview.planned_spares) : null;
+  const previewSplit = preview ? splitNote(preview.planned_segment_lengths) : null;
+  const committedSnapshot = snapshotNote(snapshotId);
 
   return (
     <div className="space-y-2">
@@ -331,12 +386,40 @@ export function AddSparToWingFlow({
       </button>
 
       {committed && (
-        <p
-          className="rounded bg-green-900/30 px-2 py-1 text-[12px] text-green-400 font-[family-name:var(--font-jetbrains-mono)]"
+        <div
+          className="rounded bg-green-900/30 px-2 py-1.5 text-[12px] text-green-400 font-[family-name:var(--font-jetbrains-mono)] space-y-1"
           data-testid="add-spar-success"
         >
-          Spar added to the wing.
-        </p>
+          <p>
+            Spar added to the wing.
+            {committedSnapshot && (
+              <span className="ml-1 text-foreground">{committedSnapshot}.</span>
+            )}
+          </p>
+          {snapshotId != null && !reverted && (
+            <button
+              className="rounded border border-border px-2 py-0.5 text-[11px] text-foreground hover:bg-card-muted/50 disabled:opacity-50"
+              onClick={revert}
+              disabled={busy || !onRevert}
+              data-testid="add-spar-revert-button"
+            >
+              Revert
+            </button>
+          )}
+          {reverted && (
+            <p className="text-foreground" data-testid="add-spar-reverted">
+              Reverted to the pre-insert snapshot.
+            </p>
+          )}
+          {revertError && (
+            <p
+              className="text-red-400"
+              data-testid="add-spar-revert-error"
+            >
+              {revertError}
+            </p>
+          )}
+        </div>
       )}
 
       {error && !preview && (
@@ -365,6 +448,16 @@ export function AddSparToWingFlow({
               >
                 <AlertTriangle size={14} className="mt-0.5 shrink-0" />
                 <span>{warning}</span>
+              </div>
+            )}
+
+            {previewSplit && (
+              <div
+                className="flex items-start gap-1 rounded bg-[#FF8400]/10 px-2 py-1.5 text-[12px] text-[#FF8400]"
+                data-testid="add-spar-split-note"
+              >
+                <AlertTriangle size={14} className="mt-0.5 shrink-0" />
+                <span>{previewSplit}</span>
               </div>
             )}
 
@@ -471,6 +564,7 @@ export function SparSizingPanel({
   plan = null,
   onInsert,
   onSparInserted,
+  onRevert,
 }: SparSizingPanelProps) {
   const [open, setOpen] = useState(false);
   const [inputs, setInputs] = useState<SparSizingInputs>({
@@ -699,6 +793,7 @@ export function SparSizingPanel({
                   plan={plan}
                   onInsert={onInsert}
                   onCommitted={onSparInserted}
+                  onRevert={onRevert}
                 />
               )}
             </div>

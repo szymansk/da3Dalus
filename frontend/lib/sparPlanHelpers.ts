@@ -104,6 +104,62 @@ export function pieceDimsLabel(piece: SparPieceOut): string {
   return `OD ${od} × ID ${id} (wall ${wallStr}) mm`;
 }
 
+// ---- Built-spar spanwise extent + telescoping joint (gh-1060) ---------------
+
+/**
+ * The piece's spanwise extent in mm (root=0): "span 0 → 750 mm". Uses the
+ * gh-1057 y_start/y_end fields. Extents are rounded to whole mm.
+ */
+export function pieceExtentLabel(piece: SparPieceOut): string {
+  return `span ${mToMm(piece.y_start, 0)} → ${mToMm(piece.y_end, 0)} mm`;
+}
+
+/**
+ * The joint label for a built piece. For an intermediate piece, the joint
+ * position is the NEXT piece's y_start (the telescoping overlap region begins
+ * there): e.g. "Telescoping @ 700 mm". The last piece (no next) runs to the
+ * tip with no joint → "to tip — no joint".
+ */
+export function pieceJointLabel(
+  piece: SparPieceOut,
+  next: SparPieceOut | null | undefined,
+): string {
+  if (next == null) return "to tip — no joint";
+  return `${jointLabel(piece.joint_to_next)} @ ${mToMm(next.y_start, 0)} mm`;
+}
+
+// ---- Insert-preview: segment split + snapshot notes (gh-1060) ---------------
+
+/**
+ * A note describing the planned main-spar segment split, or null when there is
+ * no split. A split exists only when the host segment is divided into >1
+ * sub-segment (the main spar telescopes). Lengths are shown in mm and the note
+ * mentions the auto-snapshot the commit takes.
+ */
+export function splitNote(
+  plannedSegmentLengths: number[] | null | undefined,
+): string | null {
+  if (plannedSegmentLengths == null) return null;
+  const n = plannedSegmentLengths.length;
+  if (n <= 1) return null;
+  const lengths = plannedSegmentLengths.map((l) => mToMm(l, 0)).join(", ");
+  return (
+    `Main spar telescopes → the segment will be split into ${n} sub-segments ` +
+    `(lengths ${lengths} mm); a snapshot will be taken so you can revert.`
+  );
+}
+
+/**
+ * "Snapshot #N created" for a committed insert, or null when there is no
+ * snapshot id (dry-run, or a non-destructive commit that took none).
+ */
+export function snapshotNote(
+  snapshotId: number | null | undefined,
+): string | null {
+  if (snapshotId == null) return null;
+  return `Snapshot #${snapshotId} created`;
+}
+
 // ---- Insert-preview: REPLACE warning ---------------------------------------
 
 /**
