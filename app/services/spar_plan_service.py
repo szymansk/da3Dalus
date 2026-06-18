@@ -254,6 +254,8 @@ def _piece_to_out(piece) -> SparPieceOut:
         wall=piece.wall * _MM_TO_M,
         shape=piece.shape,
         governing_y=piece.governing_y * _MM_TO_M,
+        # gh-1072: x/c is a dimensionless chord fraction — pass through unscaled.
+        x_over_chord=piece.x_over_chord,
         y_start=y_start_mm * _MM_TO_M,
         y_end=y_end_mm * _MM_TO_M,
         utilisation=piece.utilisation,

@@ -185,6 +185,16 @@ class SparPieceOut(BaseModel):
         ...,
         description="Spanwise position of the governing (highest-moment) station (m).",
     )
+    x_over_chord: float = Field(
+        ...,
+        ge=0.0,
+        le=1.0,
+        description=(
+            "gh-1072: chordwise location (x/c, 0..1) this piece was placed at. "
+            "Front (main) ≈ the section max-thickness location; rear (torsion) = "
+            "the requested rear x/c clamped forward of the control-surface hinge."
+        ),
+    )
     y_start: float = Field(
         ...,
         description=(

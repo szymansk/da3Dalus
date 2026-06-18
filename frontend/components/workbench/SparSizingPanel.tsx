@@ -38,6 +38,8 @@ import {
   snapshotNote,
   mToMm,
   replaceWarning,
+  pieceXcLabel,
+  groupXcSuffix,
 } from "@/lib/sparPlanHelpers";
 
 // ---- Types -----------------------------------------------------------------
@@ -189,10 +191,13 @@ function BuiltSparPieceRow({
   piece,
   next,
   index,
+  showXc,
 }: {
   piece: SparPieceOut;
   next: SparPieceOut | null;
   index: number;
+  /** gh-1072: show this piece's % chord inline (the group's x/c varies). */
+  showXc: boolean;
 }) {
   return (
     <div
@@ -201,6 +206,11 @@ function BuiltSparPieceRow({
     >
       <span className="text-muted-foreground">#{index + 1}</span>
       <span className="tabular-nums text-foreground">{pieceDimsLabel(piece)}</span>
+      {showXc && (
+        <span className="tabular-nums text-muted-foreground">
+          {pieceXcLabel(piece)}
+        </span>
+      )}
       <span className="tabular-nums text-muted-foreground">
         {pieceExtentLabel(piece)}
       </span>
@@ -223,6 +233,9 @@ function BuiltSparGroup({
   pieces: SparPieceOut[];
 }) {
   if (pieces.length === 0) return null;
+  // gh-1072: when every piece shares the same chordwise position, show it once
+  // on the group label; otherwise show it per piece (xcSuffix is null).
+  const xcSuffix = groupXcSuffix(pieces);
   return (
     <div className="space-y-0.5" data-testid={`built-spar-group-${group}`}>
       <p
@@ -231,6 +244,7 @@ function BuiltSparGroup({
         }`}
       >
         {sparGroupLabel(group)}
+        {xcSuffix}
       </p>
       {pieces.map((p, i) => (
         <BuiltSparPieceRow
@@ -238,6 +252,7 @@ function BuiltSparGroup({
           piece={p}
           next={pieces[i + 1] ?? null}
           index={i}
+          showXc={xcSuffix == null}
         />
       ))}
     </div>

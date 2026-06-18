@@ -27,6 +27,7 @@ const FAKE_PLAN: SparPlanResult = {
       wall: 0.0024,
       shape: "tube",
       governing_y: 0,
+      x_over_chord: 0.3,
       y_start: 0,
       y_end: 0.75,
       utilisation: 0.5,

@@ -95,6 +95,10 @@ class SparPiece:
     shape: str
     governing_y: float
     utilisation: float
+    #: gh-1072: chordwise location (x/c, 0..1) this piece was placed at — the
+    #: governing (root-side) station's ``x_c``. Front ≈ section max-thickness;
+    #: rear = the requested rear x/c clamped forward of the control surface.
+    x_over_chord: float = 0.0
     length: float = 0.0  # mm, root→tip span of this straight piece (#1032)
     joint_to_next: str | None = None  # "telescoping" between consecutive pieces
     feasible: bool = True  # gh-1037: False when no round tube strong enough fits
@@ -115,6 +119,7 @@ class SparPiece:
             "shape": self.shape,
             "governing_y": self.governing_y,
             "utilisation": self.utilisation,
+            "x_over_chord": self.x_over_chord,
             "length": self.length,
             "joint_to_next": self.joint_to_next,
             "feasible": self.feasible,
@@ -458,6 +463,7 @@ def _piece_from_run_with_od(run: _Run, spec: SparSpec, od: float, inner_d: float
         shape=spec.shape,
         governing_y=governing.y_mm,
         utilisation=utilisation,
+        x_over_chord=governing.x_c,
         length=length,
         feasible=feasible,
         infeasibility_reason=reason,
@@ -540,6 +546,7 @@ def _reinforcement_piece(
         shape=spec.shape,
         governing_y=0.0,
         utilisation=1.0,
+        x_over_chord=left[0].x_c,
         length=2.0 * reach,  # spans symmetrically across the root (y=-reach → +reach)
     )
 

@@ -43,6 +43,9 @@ export interface SparPieceOut {
   wall: number; // m
   shape: string;
   governing_y: number; // m
+  // gh-1072: chordwise location (x/c, 0..1) this piece was placed at. Front
+  // (main) ≈ section max-thickness; rear (torsion) = clamped rear x/c.
+  x_over_chord: number;
   // gh-1057/gh-1060: spanwise extent of this piece (metres, root=0). For a
   // telescoping run the NEXT piece's y_start is the telescoping joint position.
   y_start: number; // m

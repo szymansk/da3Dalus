@@ -230,6 +230,26 @@ class TestComputeSparPlanService:
         assert p0.y_end > p0.y_start
         assert p1.y_end > p1.y_start
 
+    def test_x_over_chord_carried_to_out(self, plane_id):
+        # gh-1072: the chordwise location each piece was placed at flows through
+        # to the API verbatim (dimensionless fraction, not converted mm->m).
+        aeroplane = _aeroplane_with_wings(["main_wing"])
+        plan = SparPlan(
+            front_pieces=[_piece(role=SparRole.FRONT, x_over_chord=0.30)],
+            rear_pieces=[_piece(role=SparRole.REAR, outer_d=10.0, inner_d=6.0, x_over_chord=0.62)],
+            front_joint="continuous",
+            rear_joint="continuous",
+        )
+        resp = _run(
+            _patch_full(aeroplane, plan),
+            lambda: spar_plan_service.compute_spar_plan(
+                db=None, aeroplane_uuid=plane_id, request=_basic_request()
+            ),
+        )
+        # front sits at ~max-thickness x/c; rear at the clamped rear x/c.
+        assert resp.front_pieces[0].x_over_chord == pytest.approx(0.30)
+        assert resp.rear_pieces[0].x_over_chord == pytest.approx(0.62)
+
     def test_reinforcement_converted_when_present(self, plane_id):
         aeroplane = _aeroplane_with_wings(["main_wing"])
         resp = _run(

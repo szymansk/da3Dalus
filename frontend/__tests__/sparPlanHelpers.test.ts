@@ -14,6 +14,9 @@ import {
   pieceJointLabel,
   splitNote,
   snapshotNote,
+  formatXOverChord,
+  pieceXcLabel,
+  groupXcSuffix,
 } from "@/lib/sparPlanHelpers";
 import type { SpanwiseLoadsResult } from "@/hooks/useSpanwiseLoads";
 import type { PlannedSpareOut, SparPieceOut } from "@/hooks/useSparPlan";
@@ -98,6 +101,7 @@ describe("formatting helpers", () => {
       wall: 0.0024,
       shape: "tube",
       governing_y: 0,
+      x_over_chord: 0.3,
       y_start: 0,
       y_end: 0.75,
       utilisation: 0.5,
@@ -141,6 +145,7 @@ function gh1060Piece(over: Partial<SparPieceOut>): SparPieceOut {
     wall: 0.0024,
     shape: "tube",
     governing_y: 0,
+    x_over_chord: 0.3,
     utilisation: 0.5,
     joint_to_next: null,
     feasible: true,
@@ -213,6 +218,47 @@ describe("snapshotNote (gh-1060)", () => {
 
   it("formats the snapshot id", () => {
     expect(snapshotNote(42)).toBe("Snapshot #42 created");
+  });
+});
+
+// gh-1072: chordwise position (% chord) of each spar -------------------------
+
+describe("formatXOverChord (gh-1072)", () => {
+  it("renders a 0..1 fraction as a whole-percent chord", () => {
+    expect(formatXOverChord(0.3)).toBe("30% c");
+    expect(formatXOverChord(0.62)).toBe("62% c");
+  });
+
+  it("rounds to a whole percent", () => {
+    expect(formatXOverChord(0.305)).toBe("31% c");
+    expect(formatXOverChord(0.624)).toBe("62% c");
+  });
+});
+
+describe("pieceXcLabel (gh-1072)", () => {
+  const p = gh1060Piece;
+
+  it("shows the piece's chordwise position as a percent", () => {
+    expect(pieceXcLabel(p({ x_over_chord: 0.3 }))).toBe("@ 30% c");
+    expect(pieceXcLabel(p({ x_over_chord: 0.62 }))).toBe("@ 62% c");
+  });
+});
+
+describe("groupXcSuffix (gh-1072)", () => {
+  const p = gh1060Piece;
+
+  it("returns a single suffix when every piece shares the same x/c", () => {
+    const pieces = [p({ x_over_chord: 0.3 }), p({ x_over_chord: 0.3 })];
+    expect(groupXcSuffix(pieces)).toBe(" · @ 30% c");
+  });
+
+  it("returns null when the x/c varies between pieces (shown per piece)", () => {
+    const pieces = [p({ x_over_chord: 0.3 }), p({ x_over_chord: 0.4 })];
+    expect(groupXcSuffix(pieces)).toBeNull();
+  });
+
+  it("returns null for an empty group", () => {
+    expect(groupXcSuffix([])).toBeNull();
   });
 });
 
