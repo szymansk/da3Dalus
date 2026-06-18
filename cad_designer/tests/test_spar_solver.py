@@ -40,12 +40,13 @@ def _station(
     center_z: float = 0.0,
     band: tuple[float, float] = (-50.0, 50.0),
     required_od: float = 10.0,
+    x_c: float = 0.4,
 ) -> StationData:
     """A single station with explicit containment band + required strength OD."""
     return StationData(
         y_span=y_span,
         y_mm=y_mm,
-        x_c=0.4,
+        x_c=x_c,
         center_z=center_z,
         band_lo=band[0],
         band_hi=band[1],
@@ -664,3 +665,51 @@ class TestSparSolverRealBuild:
         ]
         plan = solve_spar_plan(front_left=left, front_right=right, rear_left=left, rear_right=right)
         assert plan.rear_joint == "bent-pin"
+
+
+# ---------------------------------------------------------------------------
+# Fast: x_over_chord carried onto each piece (gh-1072)
+# ---------------------------------------------------------------------------
+
+
+class TestPieceCarriesXOverChord:
+    """Each built piece records the chordwise x/c of its governing station."""
+
+    def test_continuous_piece_takes_governing_station_x_c(self):
+        stations = [
+            _station(i / 4, y_mm=i * 100.0, band=(-50.0, 50.0), required_od=10.0, x_c=0.30)
+            for i in range(5)
+        ]
+        pieces = plan_spar(stations, SparSpec(role=SparRole.FRONT))
+        assert len(pieces) == 1
+        # front spar sits at the section max-thickness location (~0.30c here).
+        assert pieces[0].x_over_chord == pytest.approx(0.30)
+
+    def test_rear_piece_takes_clamped_x_c(self):
+        # rear/torsion spar pulled forward of a hinge → clamped x/c (e.g. 0.62)
+        stations = [
+            _station(i / 4, y_mm=i * 100.0, band=(-50.0, 50.0), required_od=10.0, x_c=0.62)
+            for i in range(5)
+        ]
+        pieces = plan_spar(stations, SparSpec(role=SparRole.REAR))
+        assert len(pieces) == 1
+        assert pieces[0].x_over_chord == pytest.approx(0.62)
+
+    def test_x_over_chord_in_to_dict(self):
+        stations = _uniform_stations(5)
+        piece = plan_spar(stations, SparSpec(role=SparRole.FRONT))[0]
+        d = piece.to_dict()
+        assert d["x_over_chord"] == pytest.approx(piece.x_over_chord)
+
+    def test_reinforcement_piece_carries_root_x_c(self):
+        left = [
+            _station(0.0, y_mm=0.0, center_z=0.0, band=(-50.0, 50.0), x_c=0.31),
+            _station(0.5, y_mm=-200.0, center_z=0.0, band=(-50.0, 50.0), x_c=0.31),
+        ]
+        right = [
+            _station(0.0, y_mm=0.0, center_z=40.0, band=(-50.0, 50.0), x_c=0.31),
+            _station(0.5, y_mm=200.0, center_z=40.0, band=(-50.0, 50.0), x_c=0.31),
+        ]
+        plan = solve_spar_plan(front_left=left, front_right=right)
+        assert plan.reinforcement is not None
+        assert plan.reinforcement.x_over_chord == pytest.approx(0.31)

@@ -128,6 +128,41 @@ export function pieceJointLabel(
   return `${jointLabel(piece.joint_to_next)} @ ${mToMm(next.y_start, 0)} mm`;
 }
 
+// ---- Built-spar chordwise position (% chord) (gh-1072) ----------------------
+
+/**
+ * Format a chordwise fraction (x/c, 0..1) as a whole-percent chord label,
+ * e.g. 0.30 → "30% c". Rounded to the nearest percent (a sub-percent
+ * difference between stations is not meaningful for placement display).
+ */
+export function formatXOverChord(xOverChord: number): string {
+  return `${Math.round(xOverChord * 100)}% c`;
+}
+
+/**
+ * Per-piece chordwise-position label, e.g. "@ 30% c". Used when the x/c
+ * varies between pieces of a spar so each row carries its own position.
+ */
+export function pieceXcLabel(piece: SparPieceOut): string {
+  return `@ ${formatXOverChord(piece.x_over_chord)}`;
+}
+
+/**
+ * Group-level chordwise suffix appended to the spar group label when every
+ * piece in the group shares the same (rounded) chordwise position, e.g.
+ * " · @ 30% c". Returns null when the group is empty or the position varies
+ * between pieces — in that case the per-piece {@link pieceXcLabel} is shown.
+ */
+export function groupXcSuffix(pieces: SparPieceOut[]): string | null {
+  if (pieces.length === 0) return null;
+  const first = Math.round(pieces[0].x_over_chord * 100);
+  const constant = pieces.every(
+    (p) => Math.round(p.x_over_chord * 100) === first,
+  );
+  if (!constant) return null;
+  return ` · @ ${formatXOverChord(pieces[0].x_over_chord)}`;
+}
+
 // ---- Insert-preview: segment split + snapshot notes (gh-1060) ---------------
 
 /**

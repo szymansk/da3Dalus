@@ -32,6 +32,7 @@ function piece(over: Partial<SparPieceOut> = {}): SparPieceOut {
     wall: 0.0024,
     shape: "tube",
     governing_y: 0,
+    x_over_chord: 0.3,
     utilisation: 0.5,
     joint_to_next: null,
     feasible: true,
@@ -119,6 +120,45 @@ describe("BuiltSparSection (gh-1050)", () => {
     expect(rows[0]).toHaveTextContent("ID 24.0");
     expect(rows[0]).toHaveTextContent("wall 2.4");
     expect(rows[0]).toHaveTextContent(/Telescoping/);
+  });
+
+  it("shows the chordwise position (% chord) per spar (gh-1072)", () => {
+    const plan: SparPlanResult = {
+      front_pieces: [piece({ x_over_chord: 0.3, joint_to_next: null })],
+      rear_pieces: [piece({ role: "rear", x_over_chord: 0.62 })],
+      front_joint: "continuous",
+      rear_joint: "continuous",
+      reinforcement: null,
+      feasible: true,
+      infeasibility_reason: null,
+    };
+    render(<BuiltSparSection plan={plan} />);
+    // constant x/c → shown once on the group label.
+    expect(screen.getByTestId("built-spar-group-front")).toHaveTextContent(
+      "30% c",
+    );
+    expect(screen.getByTestId("built-spar-group-rear")).toHaveTextContent(
+      "62% c",
+    );
+  });
+
+  it("shows per-piece % chord when the front spar's x/c varies (gh-1072)", () => {
+    const plan: SparPlanResult = {
+      front_pieces: [
+        piece({ x_over_chord: 0.28, joint_to_next: "telescoping" }),
+        piece({ x_over_chord: 0.34, joint_to_next: null }),
+      ],
+      rear_pieces: [],
+      front_joint: "continuous",
+      rear_joint: "continuous",
+      reinforcement: null,
+      feasible: true,
+      infeasibility_reason: null,
+    };
+    render(<BuiltSparSection plan={plan} />);
+    const rows = screen.getAllByTestId("built-spar-piece");
+    expect(rows[0]).toHaveTextContent("28% c");
+    expect(rows[1]).toHaveTextContent("34% c");
   });
 
   it("renders an infeasible banner when the plan is not buildable", () => {
