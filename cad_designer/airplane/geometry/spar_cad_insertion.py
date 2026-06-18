@@ -138,9 +138,17 @@ def insert_spar_plan(
 
 
 def _emit_pieces(pieces: list[SparPiece], role_label: str, result: SparInsertionResult) -> None:
-    """Append one Spare per piece; warn (once) if the run is telescoping."""
+    """Append one Spare per piece; warn (once) if the run is telescoping.
+
+    gh-1045/#1057: skip any degenerate Ø0 piece — a zero-diameter tube is not a
+    physical structural object, so it must never reach the BOM / CAD build as a
+    phantom zero-size Spare. The solver already drops Ø0 pieces; this guard keeps
+    the insertion step safe for any caller that hands one in directly.
+    """
     telescoping = False
     for piece in pieces:
+        if piece.outer_d <= 0.0:
+            continue
         result.spares.append(spar_piece_to_spare(piece))
         if piece.joint_to_next == "telescoping":
             telescoping = True
@@ -148,7 +156,8 @@ def _emit_pieces(pieces: list[SparPiece], role_label: str, result: SparInsertion
         result.warnings.append(
             f"{role_label.capitalize()} spar is telescoping (multi-piece): each "
             "piece is emitted as its own Spare, but the telescoping overlap "
-            "(outer OD = inner ID) is plan metadata and is not modelled as a Spare."
+            "(OD_outer <= ID_inner - clearance) is plan metadata and is not "
+            "modelled as a Spare."
         )
 
 

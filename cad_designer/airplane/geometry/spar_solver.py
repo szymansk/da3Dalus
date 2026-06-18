@@ -324,7 +324,35 @@ def plan_spar(stations: list[StationData], spec: SparSpec) -> list[SparPiece]:
         if idx < len(runs) - 1:
             piece.joint_to_next = "telescoping"
         built.append(piece)
-    return built
+    return _drop_zero_od_tip(built)
+
+
+def _drop_zero_od_tip(pieces: list[SparPiece]) -> list[SparPiece]:
+    """Drop degenerate Ø0 trailing pieces (gh-1045/#1057).
+
+    At the tip the bending moment M(y)->0, so the strength-required OD rounds to
+    0. A Ø0 tube is not a physical structural object — you cannot cut, order, or
+    glue it (the skin / D-tube closes the tip). Drop every trailing piece whose
+    ``outer_d <= 0`` and extend the new last real piece to the wing tip so the
+    remaining pieces stay contiguous root->tip. The previous piece no longer
+    telescopes into a non-existent piece, so its joint becomes continuous (None).
+    """
+    kept: list[SparPiece] = [p for p in pieces if p.outer_d > 0.0]
+    if not kept or len(kept) == len(pieces):
+        # all-zero -> no structural spar; or nothing to drop -> unchanged.
+        return kept if not kept else pieces
+
+    # The last real piece must run to the tip of the original (now-dropped) run.
+    dropped_tip = pieces[-1]
+    tip_y = dropped_tip.spare_origin[1] + dropped_tip.length * dropped_tip.spare_vector[1]
+    tip_z = dropped_tip.spare_origin[2] + dropped_tip.length * dropped_tip.spare_vector[2]
+    last = kept[-1]
+    origin = last.spare_origin
+    tip_point = (origin[0], tip_y, tip_z)
+    last.spare_vector = _unit_vector(origin, tip_point)
+    last.length = math.dist(origin, tip_point)
+    last.joint_to_next = None
+    return kept
 
 
 def _bore_for(run: _Run, spec: SparSpec, od: float) -> float:

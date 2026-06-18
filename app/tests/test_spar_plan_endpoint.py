@@ -188,6 +188,48 @@ class TestComputeSparPlanService:
         assert fp.spare_vector == [0.0, 1.0, 0.0]
         assert fp.role == "front"
 
+    def test_y_start_end_populated_and_in_metres(self, plane_id):
+        # gh-1057: each piece exposes its spanwise extent (y_start..y_end, m) so
+        # the UI can show where the piece runs. Derived from spare_origin.y +
+        # length*vector.y, then converted mm->m.
+        aeroplane = _aeroplane_with_wings(["main_wing"])
+        plan = SparPlan(
+            front_pieces=[
+                _piece(
+                    role=SparRole.FRONT,
+                    spare_origin=(0.0, 0.0, 5.0),
+                    spare_vector=(0.0, 1.0, 0.0),
+                    length=300.0,
+                ),
+                _piece(
+                    role=SparRole.FRONT,
+                    spare_origin=(0.0, 300.0, 4.0),
+                    spare_vector=(0.0, 1.0, 0.0),
+                    length=600.0,
+                    joint_to_next=None,
+                ),
+            ],
+            rear_pieces=[],
+            front_joint="continuous",
+            rear_joint="continuous",
+        )
+        resp = _run(
+            _patch_full(aeroplane, plan),
+            lambda: spar_plan_service.compute_spar_plan(
+                db=None, aeroplane_uuid=plane_id, request=_basic_request()
+            ),
+        )
+        p0, p1 = resp.front_pieces
+        # mm->m: 0..300 mm -> 0..0.3 m ; 300..900 mm -> 0.3..0.9 m
+        assert p0.y_start == pytest.approx(0.0)
+        assert p0.y_end == pytest.approx(0.3)
+        assert p1.y_start == pytest.approx(0.3)
+        assert p1.y_end == pytest.approx(0.9)
+        # contiguous + monotonic
+        assert p0.y_end == pytest.approx(p1.y_start)
+        assert p0.y_end > p0.y_start
+        assert p1.y_end > p1.y_start
+
     def test_reinforcement_converted_when_present(self, plane_id):
         aeroplane = _aeroplane_with_wings(["main_wing"])
         resp = _run(
