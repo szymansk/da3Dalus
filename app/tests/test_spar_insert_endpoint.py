@@ -155,6 +155,21 @@ class TestSegmentResolution:
         # negative (mirror) clamps to the root segment
         assert spar_insert_service._segment_for_y(-10.0, lengths) == 0
 
+    def test_empty_segment_lengths_returns_root(self):
+        assert spar_insert_service._segment_for_y(123.0, []) == 0
+
+    def test_piece_locate_y_prefers_origin_then_governing(self):
+        piece = _piece(role=SparRole.FRONT, y=250.0, governing_y=900.0)
+        # origin y wins when present
+        assert spar_insert_service._piece_locate_y(piece) == pytest.approx(250.0)
+
+        # falls back to governing_y when origin is absent / too short
+        class _NoOrigin:
+            spare_origin = None
+            governing_y = 777.0
+
+        assert spar_insert_service._piece_locate_y(_NoOrigin()) == pytest.approx(777.0)
+
 
 # --------------------------------------------------------------------------
 # HARD spar_index invariant
