@@ -146,9 +146,47 @@ class SparPlan:
         }
 
 
+# Default chordwise margin (fraction of chord) a COMPUTED rear/torsion spar
+# keeps in front of a control-surface hinge line so it never overlaps the
+# movable surface. gh-1059.
+_REAR_CLEARANCE_FRACTION = 0.03
+
+# Smallest chordwise location a clamped rear spar may take (never at/forward of
+# the LE). gh-1059.
+_MIN_REAR_X_C = 0.05
+
+
 # ---------------------------------------------------------------------------
 # Geometry helpers (pure)
 # ---------------------------------------------------------------------------
+
+
+def rear_spar_x_c_with_clearance(
+    requested_x_c: float,
+    *,
+    control_surface_hinge_x_c: float | None,
+    clearance: float = _REAR_CLEARANCE_FRACTION,
+) -> float:
+    """Constrain a COMPUTED rear/torsion spar to stay forward of a control
+    surface (gh-1059).
+
+    A control surface is the movable region *behind* its hinge line
+    (``control_surface_hinge_x_c``, x/c). A solver-placed spar must never
+    overlap it, so the rear spar's chordwise location is pulled forward to
+    ``hinge - clearance`` when the request would sit at or behind the hinge.
+    A request already forward of the clearance line is kept unchanged, and a
+    wing with no control surface keeps its requested ``x_c``.
+
+    The result is floored at :data:`_MIN_REAR_X_C` so a control surface whose
+    hinge sits near the LE cannot push the spar onto/forward of the leading
+    edge. This guard applies ONLY to computed spars — a designer may still
+    place a reinforcing spar inside a control surface manually.
+    """
+    if control_surface_hinge_x_c is None:
+        return requested_x_c
+    limit = control_surface_hinge_x_c - clearance
+    safe = min(requested_x_c, limit)
+    return max(safe, _MIN_REAR_X_C)
 
 
 def _axis_z_at(run: list[StationData], station: StationData) -> float:
@@ -570,6 +608,7 @@ def build_stations_from_geometry(
     packing_factor: float = 0.8,
     safety_factor_j: float = 1.5,
     g_limit: float = 3.0,
+    control_surface_hinge_x_c: float | None = None,
 ) -> list[StationData]:
     """Sample a :class:`SectionGeometry` into solver-ready :class:`StationData`.
 
@@ -578,8 +617,16 @@ def build_stations_from_geometry(
     contained band ``[bottom_z + clr, top_z - clr]`` (clr from ``packing_factor``)
     and ``center_z``, and compute the strength-required OD from #1008 sizing
     using the station's design moment ``M_design = |M| · g · j``.
+
+    When ``x_c`` and ``control_surface_hinge_x_c`` are both given (the
+    rear/torsion-spar path), the chordwise location is first pulled forward of
+    the control surface via :func:`rear_spar_x_c_with_clearance` so a computed
+    spar never overlaps the movable surface (gh-1059).
     """
     import numpy as np
+
+    if x_c is not None and control_surface_hinge_x_c is not None:
+        x_c = rear_spar_x_c_with_clearance(x_c, control_surface_hinge_x_c=control_surface_hinge_x_c)
 
     y_spans = np.linspace(0.0, 1.0, max(2, n_span)).tolist()
     # gh-1037 #4: the slice at y_span=0 is degenerate on a real loft (pinched,
