@@ -23,6 +23,7 @@ from app.schemas.AeroplaneRequest import AnalysisToolUrlType, AlphaSweepRequest,
 from app.schemas.api_responses import StaticUrlResponse
 from app.schemas.aeroanalysisschema import OperatingPointSchema
 from app.schemas.section_geometry import SectionGeometryRequest, SectionGeometryResponse
+from app.schemas.spar_insert import SparInsertRequest, SparInsertResponse
 from app.schemas.spar_plan import SparPlanRequest, SparPlanResponse
 from app.schemas.spar_sizing import SparSizingParams
 from app.schemas.spanwise_loads import SpanwiseLoadsResponse, SpanwiseLoadsWithSizingResponse
@@ -30,6 +31,7 @@ from app.schemas.stability import StabilitySummaryResponse, StabilityResultRead
 from app.schemas.strip_forces import StripForcesResponse
 from app.services import analysis_service
 from app.services import section_geometry_service
+from app.services import spar_insert_service
 from app.services import spar_plan_service
 from app.services import stability_service
 from app.services.wing_service import get_aeroplane_or_raise
@@ -531,6 +533,45 @@ def get_airplane_spar_plan(
     """
     try:
         return spar_plan_service.compute_spar_plan(db, aeroplane_id, request)
+    except ServiceException as exc:
+        _raise_http_from_domain(exc)
+    except Exception as exc:  # pragma: no cover - defensive fallback
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Unexpected error: {exc}"
+        ) from exc
+
+
+@router.post(
+    "/aeroplanes/{aeroplane_id}/spar-plan/insert",
+    response_model=SparInsertResponse,
+    tags=["analysis"],
+    operation_id="insert_airplane_spar_plan",
+)
+def insert_airplane_spar_plan(
+    aeroplane_id: Annotated[AeroPlaneID, Path(..., description=_DESC_AEROPLANE_ID)],
+    request: Annotated[
+        SparInsertRequest,
+        Body(..., description="Spar-insert request: spar-plan inputs + dry_run flag"),
+    ],
+    db: Annotated[Session, Depends(get_db)],
+) -> SparInsertResponse:
+    """Insert a computed spar plan into the wing as persisted spares (gh-1049).
+
+    Computes the buildable spar plan (#1031), maps each piece to a ``Spare``,
+    resolves its target segment from its spanwise span, and assigns the
+    ``spar_index`` invariant (front=0 in every segment, rear=1, reinforcement=2;
+    the same logical spar keeps its index across segments).
+
+    With ``dry_run=true`` (default) the planned insertions are returned WITHOUT
+    writing. With ``dry_run=false`` each spar piece is persisted, REPLACING any
+    existing spares in the target segments so the front spar lands at index 0.
+
+    Returns 404 when the aeroplane / wing does not exist, and 422 when section
+    geometry is unavailable, the material/strength inputs are invalid, or the
+    plan is infeasible (an infeasible plan is refused, not built).
+    """
+    try:
+        return spar_insert_service.insert_spar_plan(db, aeroplane_id, request)
     except ServiceException as exc:
         _raise_http_from_domain(exc)
     except Exception as exc:  # pragma: no cover - defensive fallback

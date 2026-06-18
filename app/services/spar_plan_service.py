@@ -252,12 +252,22 @@ def _piece_to_out(piece) -> SparPieceOut:
     )
 
 
-def compute_spar_plan(
+def compute_spar_plan_object(
     db,
     aeroplane_uuid,
     request: SparPlanRequest,
-) -> SparPlanResponse:
-    """Solve the buildable spar plan for an aeroplane's wing (gh-1031).
+    wing=None,
+):
+    """Solve the buildable spar plan and return the in-memory ``SparPlan`` (mm).
+
+    Shared core of :func:`compute_spar_plan` (gh-1031) and the spar-insert
+    service (gh-1049). Returns the solver's millimetre :class:`SparPlan` so
+    callers can either serialise it (mm→m) or map it into ``Spare`` objects.
+
+    Args:
+        wing: when supplied, skip wing resolution (the insert service resolves
+            the wing itself for unit + segment work). Otherwise resolve via the
+            request.
 
     Raises:
         NotFoundError: aeroplane or wing does not exist (-> 404).
@@ -270,7 +280,8 @@ def compute_spar_plan(
     )
 
     aeroplane = get_aeroplane_or_raise(db, aeroplane_uuid)
-    wing = _resolve_wing(aeroplane, request)
+    if wing is None:
+        wing = _resolve_wing(aeroplane, request)
 
     sigma_allow = _resolve_sigma_allow(db, request)
     g_limit = _resolve_g_limit(db, aeroplane_uuid)
@@ -300,12 +311,27 @@ def compute_spar_plan(
         geometry, x_c=request.rear_x_over_chord, moment_fn=rear_moment_fn, **common
     )
 
-    plan = solve_spar_plan(
+    return solve_spar_plan(
         front_left=_mirror_to_left(front_right),
         front_right=front_right,
         rear_left=_mirror_to_left(rear_right),
         rear_right=rear_right,
     )
+
+
+def compute_spar_plan(
+    db,
+    aeroplane_uuid,
+    request: SparPlanRequest,
+) -> SparPlanResponse:
+    """Solve the buildable spar plan for an aeroplane's wing (gh-1031).
+
+    Raises:
+        NotFoundError: aeroplane or wing does not exist (-> 404).
+        ValidationError: section geometry unavailable, or material/strength
+            inputs invalid (-> 422).
+    """
+    plan = compute_spar_plan_object(db, aeroplane_uuid, request)
 
     return SparPlanResponse(
         front_pieces=[_piece_to_out(p) for p in plan.front_pieces],
