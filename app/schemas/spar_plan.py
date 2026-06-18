@@ -185,6 +185,21 @@ class SparPieceOut(BaseModel):
         ...,
         description="Spanwise position of the governing (highest-moment) station (m).",
     )
+    y_start: float = Field(
+        ...,
+        description=(
+            "Spanwise position where this piece starts (root-side, m; root=0). "
+            "Equals the piece's spare_origin y (gh-1057)."
+        ),
+    )
+    y_end: float = Field(
+        ...,
+        description=(
+            "Spanwise position where this piece ends (tip-side, m). For a "
+            "telescoping run, the next piece's y_start equals this value, and "
+            "that is the telescoping joint position (gh-1057)."
+        ),
+    )
     utilisation: float = Field(
         ...,
         description=(

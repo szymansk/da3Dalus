@@ -125,6 +125,20 @@ def test_plan_to_spares_empty_plan_yields_no_spares_no_warnings():
     assert result.warnings == []
 
 
+def test_plan_to_spares_skips_zero_od_phantom_piece():
+    # gh-1045/#1057: a Ø0 piece is not a physical part — it must never become a
+    # Spare on the BOM / CAD build, even if handed in directly.
+    plan = SparPlan(
+        front_pieces=[
+            _piece(role=SparRole.FRONT, outer_d=14.0),
+            _piece(role=SparRole.FRONT, outer_d=0.0, inner_d=0.0),
+        ]
+    )
+    result = spar_plan_to_spares(plan)
+    assert len(result.spares) == 1
+    assert all(s.spare_support_dimension_width > 0.0 for s in result.spares)
+
+
 def test_plan_to_spares_warns_on_telescoping_joint():
     plan = SparPlan(
         front_pieces=[

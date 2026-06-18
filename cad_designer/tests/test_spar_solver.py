@@ -426,8 +426,13 @@ class TestRearTorsionDistinctFromFront:
         # The rear OD tracks the torsion-derived station, not the bending one.
         assert rear_root_od == pytest.approx(12.0)
 
-    def test_zero_torsion_rear_is_minimal(self):
-        """Zero torsion (+ no secondary bending) -> a minimal rear member."""
+    def test_zero_torsion_rear_emits_no_pieces(self):
+        """Zero torsion (+ no secondary bending) -> no physical rear member.
+
+        gh-1045/#1057: a Ø0 rear spar is not a structural object. Rather than
+        emit a phantom Ø0 piece (the old behaviour), the solver emits no rear
+        pieces at all, and the plan stays feasible.
+        """
         rear = [
             _station(0.0, y_mm=0.0, band=(-50.0, 50.0), required_od=0.0),
             _station(1.0, y_mm=500.0, band=(-50.0, 50.0), required_od=0.0),
@@ -438,8 +443,90 @@ class TestRearTorsionDistinctFromFront:
             rear_left=[_mirror(s) for s in rear],
             rear_right=rear,
         )
-        assert plan.rear_pieces[0].outer_d == pytest.approx(0.0)
+        assert plan.rear_pieces == []
         assert plan.feasible is True
+
+
+class TestZeroOdTipPieceSuppressed:
+    """gh-1045/#1057: the solver must NOT emit a Ø0 terminal tip piece.
+
+    At the tip the bending moment M(y)->0, so the strength-required OD rounds to
+    0. The old solver emitted that as a feasible Ø0 piece — a phantom part you
+    cannot cut, order, or glue. The fix drops the degenerate trailing piece and
+    runs the previous (last real) piece to the tip with a continuous joint.
+    """
+
+    def _tapered_to_zero_tip(self) -> list[StationData]:
+        # required OD decays to 0 at the very tip (the normal physical case).
+        return [
+            _station(0.0, y_mm=0.0, band=(-60.0, 60.0), required_od=80.0),
+            _station(0.33, y_mm=300.0, band=(-30.0, 30.0), required_od=55.0),
+            _station(0.66, y_mm=600.0, band=(-15.0, 15.0), required_od=28.0),
+            _station(1.0, y_mm=900.0, band=(-8.0, 8.0), required_od=0.0),
+        ]
+
+    def test_no_zero_od_piece_emitted(self):
+        pieces = plan_spar(self._tapered_to_zero_tip(), SparSpec(role=SparRole.FRONT))
+        assert pieces
+        for p in pieces:
+            assert p.outer_d > 0.0, f"Ø0 piece emitted: {p}"
+
+    def test_pieces_cover_root_to_tip_without_gap(self):
+        # The remaining pieces must still cover the whole span root->tip with no
+        # gap. Telescoping pieces overlap rootward (a joint IS an overlap region),
+        # so the invariant is coverage, not abutment: the next piece must start at
+        # or before the previous piece's tip, and the union reaches the tip.
+        pieces = plan_spar(self._tapered_to_zero_tip(), SparSpec(role=SparRole.FRONT))
+        covered_to = pieces[0].spare_origin[1] + pieces[0].length * pieces[0].spare_vector[1]
+        for outer in pieces[1:]:
+            assert outer.spare_origin[1] <= covered_to + 1e-9, (
+                f"gap before piece starting at {outer.spare_origin[1]} "
+                f"(covered only to {covered_to})"
+            )
+            covered_to = max(
+                covered_to,
+                outer.spare_origin[1] + outer.length * outer.spare_vector[1],
+            )
+        assert pieces[0].spare_origin[1] == pytest.approx(0.0)  # starts at root
+        assert covered_to == pytest.approx(900.0)  # union reaches the tip
+
+    def test_last_piece_runs_to_the_tip(self):
+        # After dropping the Ø0 tip piece, the new last real piece must reach the
+        # wing tip (y=900), not stop short where the Ø0 run began.
+        pieces = plan_spar(self._tapered_to_zero_tip(), SparSpec(role=SparRole.FRONT))
+        last = pieces[-1]
+        last_tip_y = last.spare_origin[1] + last.length * last.spare_vector[1]
+        assert last_tip_y == pytest.approx(900.0)
+
+    def test_last_piece_joint_is_continuous(self):
+        # The previous piece no longer telescopes into a non-existent piece.
+        pieces = plan_spar(self._tapered_to_zero_tip(), SparSpec(role=SparRole.FRONT))
+        assert pieces[-1].joint_to_next is None
+
+    def test_all_zero_od_yields_no_pieces(self):
+        # A spar whose every station needs Ø0 (e.g. zero torsion rear) is not a
+        # structural object at all — emit nothing rather than a phantom part.
+        stations = [
+            _station(0.0, y_mm=0.0, band=(-50.0, 50.0), required_od=0.0),
+            _station(1.0, y_mm=500.0, band=(-50.0, 50.0), required_od=0.0),
+        ]
+        pieces = plan_spar(stations, SparSpec(role=SparRole.FRONT))
+        assert pieces == []
+
+    def test_plan_has_no_zero_od_rear_pieces(self):
+        rear = [
+            _station(0.0, y_mm=0.0, band=(-50.0, 50.0), required_od=12.0),
+            _station(0.5, y_mm=250.0, band=(-50.0, 50.0), required_od=4.0),
+            _station(1.0, y_mm=500.0, band=(-50.0, 50.0), required_od=0.0),
+        ]
+        plan = solve_spar_plan(
+            front_left=_uniform_stations(),
+            front_right=_uniform_stations(),
+            rear_left=[_mirror(s) for s in rear],
+            rear_right=rear,
+        )
+        for p in plan.rear_pieces:
+            assert p.outer_d > 0.0
 
 
 def _mirror(s: StationData) -> StationData:

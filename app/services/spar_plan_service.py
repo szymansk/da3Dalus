@@ -235,7 +235,16 @@ def _mirror_to_left(stations):
 
 
 def _piece_to_out(piece) -> SparPieceOut:
-    """Convert a millimetre SparPiece to a metre SparPieceOut."""
+    """Convert a millimetre SparPiece to a metre SparPieceOut.
+
+    gh-1057: expose the piece's spanwise extent (``y_start``/``y_end``, m) so the
+    UI can show where each piece runs and where the telescoping joint sits. The
+    extent is derived from the piece's own geometry — the root is its
+    ``spare_origin`` y, the tip is that plus the piece length along its span
+    direction (``spare_vector`` y) — then converted mm->m.
+    """
+    y_start_mm = piece.spare_origin[1]
+    y_end_mm = y_start_mm + piece.length * piece.spare_vector[1]
     return SparPieceOut(
         role=piece.role.value,
         spare_origin=[c * _MM_TO_M for c in piece.spare_origin],
@@ -245,6 +254,8 @@ def _piece_to_out(piece) -> SparPieceOut:
         wall=piece.wall * _MM_TO_M,
         shape=piece.shape,
         governing_y=piece.governing_y * _MM_TO_M,
+        y_start=y_start_mm * _MM_TO_M,
+        y_end=y_end_mm * _MM_TO_M,
         utilisation=piece.utilisation,
         joint_to_next=piece.joint_to_next,
         feasible=piece.feasible,
