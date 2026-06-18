@@ -125,3 +125,15 @@ class SparInsertResponse(BaseModel):
             "None on a dry-run preview (nothing was mutated, so nothing was snapshotted)."
         ),
     )
+    planned_segment_lengths: Optional[list[float]] = Field(
+        None,
+        description=(
+            "gh-1063: when the solved front (main) spar telescopes, the host wing "
+            "segment is SPLIT at each joint so every sub-segment carries exactly "
+            "one main piece at spar_index 0 (VaseMode invariant). This lists the "
+            "resulting per-sub-segment spanwise lengths (m) for the split host "
+            "segment, in root→tip order — the planned post-split segment list a "
+            "dry-run previews and a commit materialises (new wing cross-section "
+            "rows). None when the front spar is single-piece (no split)."
+        ),
+    )
