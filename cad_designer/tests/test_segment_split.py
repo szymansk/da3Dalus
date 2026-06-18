@@ -152,13 +152,44 @@ class TestSplitMath:
         assert out.segments[0].sweep == pytest.approx(10.0)
 
     def test_incidence_delta_split_sums(self):
+        # The cumulative twist root->tip is always preserved across the split.
         # original tip incidence delta = -4 (relative to root).
         wc = _single_segment(tip_incidence=-4.0, length=500.0)
         out = split_segment(wc, 0, [0.25])
         boundary_i = out.segments[0].tip_airfoil.incidence
         second_tip_i = out.segments[1].tip_airfoil.incidence
         assert boundary_i + second_tip_i == pytest.approx(-4.0)
-        assert boundary_i == pytest.approx(-1.0)
+
+    def test_incidence_split_near_linear_when_untapered(self):
+        # gh-1068: without taper the chord-weighted twist split is ~the plain
+        # linear split (boundary at fraction 0.25 of -4 ~= -1.0). It is the
+        # blended-up-vector value rather than the linear angle, so it differs by
+        # a sub-0.01deg sin-arc term — geometrically correct, not a regression.
+        wc = _single_segment(root_chord=180.0, tip_chord=180.0, tip_incidence=-4.0, length=500.0)
+        out = split_segment(wc, 0, [0.25])
+        assert out.segments[0].tip_airfoil.incidence == pytest.approx(-1.0, abs=0.01)
+
+    def test_incidence_split_is_chord_weighted_when_tapered(self):
+        # gh-1068: with taper the per-sub-segment twist is NOT the linear split
+        # (-1.0) but the chord-weighted value that keeps the built ruled loft's
+        # center_z unchanged (the section's world-z carries a chord*sin(twist)
+        # term that is nonlinear for a tapered host). Sum is still preserved.
+        wc = _single_segment(root_chord=200.0, tip_chord=150.0, tip_incidence=-4.0, length=500.0)
+        out = split_segment(wc, 0, [0.25])
+        boundary_i = out.segments[0].tip_airfoil.incidence
+        second_tip_i = out.segments[1].tip_airfoil.incidence
+        assert boundary_i + second_tip_i == pytest.approx(-4.0)
+        assert boundary_i != pytest.approx(-1.0)  # not the buggy linear split
+        assert boundary_i == pytest.approx(-0.79977, abs=1e-4)
+
+    def test_boundary_twist_cumulative_degenerate_zero_chord(self):
+        # gh-1068: the chord-weighting falls back to a plain linear twist blend
+        # when the (degenerate) ruled chord at a boundary is zero, so the helper
+        # never divides by zero.
+        from cad_designer.airplane.geometry.segment_split import _boundary_twist_cumulative
+
+        out = _boundary_twist_cumulative([0.0, 0.5, 1.0], 0.0, -4.0, 0.0, 0.0)
+        assert out == pytest.approx([0.0, -2.0, -4.0])
 
     def test_dihedral_delta_carried_on_last_subsegment(self):
         # Dihedral rotates the spanwise translation; splitting the delta
@@ -457,6 +488,45 @@ class TestSpareRehome:
         assert s_in in out.segments[0].spare_list
         assert s_out in out.segments[1].spare_list
 
+    def test_exactly_root_y_spare_survives_on_first_subsegment(self):
+        # gh-1067: a spare at exactly y=0 (segment root) must not be dropped.
+        s_root = self._spare_at_y(0.0)
+        wc = _single_segment(length=500.0, spare_list=[s_root])
+        out = split_segment(wc, 0, [0.4])
+        assert s_root in (out.segments[0].spare_list or [])
+        assert s_root not in (out.segments[1].spare_list or [])
+
+    def test_negative_root_y_spare_survives_on_first_subsegment(self):
+        # gh-1067 (DATA LOSS): the DB round-trip reconstructs a manual root spare
+        # with a slightly negative local y (e.g. -0.6mm from dihedral geometry).
+        # That spare is the most load-critical (main joiner tube at the root) and
+        # must clamp to the root sub-segment, never be silently dropped.
+        s_neg = self._spare_at_y(-0.6266)
+        wc = _single_segment(length=500.0, spare_list=[s_neg])
+        out = split_segment(wc, 0, [0.4])
+        assert s_neg in (out.segments[0].spare_list or [])
+        assert s_neg not in (out.segments[1].spare_list or [])
+
+    def test_no_spare_is_lost_across_split(self):
+        # gh-1067: total spare count must be conserved across a split (no silent
+        # drop), including a negative-y root spare alongside ordinary ones.
+        s_neg = self._spare_at_y(-0.6266)
+        s_mid = self._spare_at_y(150.0)
+        s_out = self._spare_at_y(400.0)
+        wc = _single_segment(length=500.0, spare_list=[s_neg, s_mid, s_out])
+        out = split_segment(wc, 0, [0.4])
+        rehomed = [sp for seg in out.segments for sp in (seg.spare_list or [])]
+        for s in (s_neg, s_mid, s_out):
+            assert s in rehomed
+
+    def test_rehome_helper_keeps_negative_root_y(self):
+        # gh-1067 minimal repro from the ticket: _rehome_spares must not drop a
+        # spare whose local origin y is slightly negative for the first sub-span.
+        from cad_designer.airplane.geometry.segment_split import _rehome_spares
+
+        s = self._spare_at_y(-0.6266)
+        assert len(_rehome_spares([s], 0.0, 200.0)) == 1
+
 
 # ---------------------------------------------------------------------------
 # Fast: differing-airfoil split uses the injected morph seam (gh-796 reuse)
@@ -593,6 +663,45 @@ class TestLoftUnchangedAcrossSplit:
         # Analytic ground truth: a sub-1.5mm twist×taper residual on a 600mm
         # wing (~0.25% of span). Documented, not silently widened.
         assert self._max_section_diff(before, after, mode="analytic") < 1.5
+
+    def test_twist_taper_washout_split_center_z_unchanged(self):
+        """gh-1068: a twist+taper (washout) host split must keep intermediate
+        section center_z on the original ruled loft.
+
+        The bug: incidence was split *linearly*, but a section's world-z carries
+        a ``chord·sin(twist)`` term that is nonlinear for a tapered host, so the
+        inserted intermediate wire drifted the center_z by up to ~0.7-0.9mm. The
+        chord-weighted twist split keeps it within µm-class tolerance.
+        """
+        before = _single_segment(
+            root_chord=200.0,
+            tip_chord=120.0,  # taper — the bug needs taper AND twist
+            length=1200.0,
+            sweep=0.0,
+            tip_dihedral=5.0,
+            tip_incidence=-4.0,  # 4 deg washout root->tip
+            root_af=AIRFOIL,
+            tip_af=AIRFOIL,
+        )
+        after = split_segment(before, 0, [533.0 / 1200.0])
+        assert len(after.segments) == 2
+        # center_z must match pre-split within a tight tolerance (was ~0.7mm).
+        assert self._max_section_diff(before, after, mode="analytic") <= 0.1
+
+    def test_twist_taper_washout_split_center_z_unchanged_solid(self):
+        """gh-1068: confirmed in the REAL solid ruled loft, not just analytic."""
+        before = _single_segment(
+            root_chord=200.0,
+            tip_chord=120.0,
+            length=1200.0,
+            sweep=0.0,
+            tip_dihedral=5.0,
+            tip_incidence=-4.0,
+            root_af=AIRFOIL,
+            tip_af=AIRFOIL,
+        )
+        after = split_segment(before, 0, [533.0 / 1200.0])
+        assert self._max_section_diff(before, after, mode="solid") <= 0.1
 
     def test_solid_loft_unchanged_within_slicer_noise(self):
         """The real CAD solid lofts the same across the split (slicer-noise tol)."""

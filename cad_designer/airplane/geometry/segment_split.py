@@ -12,8 +12,13 @@ transparent**: the built loft is unchanged. That holds because the loft is
 *ruled* (``loft(ruled=True)`` — a straight, linear blend between the root and
 tip airfoils), so an intermediate section is fully determined by:
 
-* the **linearly interpolated** chord / twist (incidence) / dihedral / sweep /
-  length at the split fraction, and
+* the **linearly interpolated** chord / sweep / length at the split fraction,
+* the **dihedral** carried on the last sub-segment (intermediate boundaries get
+  zero) so every intermediate origin stays on the original straight ruled line,
+* the **twist (incidence)** split so each boundary's chord-weighted twist matches
+  the original ruled blend — a plain linear twist split drifts a tapered host's
+  section center_z by ~0.7mm (gh-1068), so the per-sub-segment delta is the
+  difference of ``_boundary_twist_cumulative`` instead, and
 * the **airfoil shape** at the split fraction — the same file when root and tip
   share an airfoil, otherwise a Kulfan/CST morph (gh-796) supplied via the
   injected ``airfoil_morph_fn`` seam.
@@ -45,6 +50,7 @@ Units: **millimetres**, wing-local frame — same as the topology classes.
 
 from __future__ import annotations
 
+import math
 from typing import Callable, Optional
 
 from cad_designer.airplane.aircraft_topology.wing.Airfoil import Airfoil
@@ -67,6 +73,53 @@ _FRACTION_TOL = 1e-9
 
 def _lerp(a: float, b: float, t: float) -> float:
     return a + (b - a) * t
+
+
+def _boundary_twist_cumulative(
+    boundaries: list[float],
+    root_twist_cum: float,
+    tip_twist_cum: float,
+    root_chord: float,
+    tip_chord: float,
+) -> list[float]:
+    """Cumulative twist (deg) at each split boundary that keeps the built ruled
+    loft unchanged for a tapered+twisted host (gh-1068).
+
+    ``root_twist_cum`` / ``tip_twist_cum`` are the host root/tip wires' *absolute*
+    cumulative twist (``theta_accum`` in the loft frame — the host root's value
+    plus, for the tip, the host's own incidence delta).
+
+    The host loft is a *ruled* (point-wise linear) blend of its root and tip
+    wires. A surface point's world-z carries a ``chord · sin(twist)`` term from
+    the chordwise offset of the twisted section. Over the span that term blends
+    **linearly** between the two end wires:
+
+        z_term(t) ∝ (1 - t) · c_root · sin(θ_root) + t · c_tip · sin(θ_tip)
+
+    where ``c(t) = lerp(c_root, c_tip, t)`` is the (linear) ruled chord. An
+    inserted intermediate wire at fraction ``t`` has its own ``c(t) · sin(θ)``,
+    so to reproduce the blend exactly its twist must satisfy
+
+        sin(θ(t)) = [ (1-t)·c_root·sin(θ_root) + t·c_tip·sin(θ_tip) ] / c(t)
+
+    For an untapered host this is the blended-up-vector twist (within a sub-0.01°
+    sin-arc of the plain linear split); for a tapered host it removes the ~0.7mm
+    center_z drift the linear split caused. The per-sub-segment incidence delta
+    is the difference of consecutive returned values, so a constant inboard-chain
+    twist offset cancels and does not affect the result.
+    """
+    s_root = root_chord * math.sin(math.radians(root_twist_cum))
+    s_tip = tip_chord * math.sin(math.radians(tip_twist_cum))
+    out: list[float] = []
+    for t in boundaries:
+        chord = _lerp(root_chord, tip_chord, t)
+        if chord <= 0.0:
+            out.append(_lerp(root_twist_cum, tip_twist_cum, t))
+            continue
+        s = _lerp(s_root, s_tip, t) / chord
+        s = max(-1.0, min(1.0, s))
+        out.append(math.degrees(math.asin(s)))
+    return out
 
 
 def _validate_fractions(fractions: list[float]) -> None:
@@ -210,20 +263,43 @@ def _split_turbulator(turb: Turbulator, t0: float, t1: float) -> Turbulator:
     )
 
 
-def _rehome_spares(spares: list[Spare] | None, sub_y_lo: float, sub_y_hi: float) -> list[Spare]:
+def _rehome_spares(
+    spares: list[Spare] | None,
+    sub_y_lo: float,
+    sub_y_hi: float,
+    *,
+    is_first: bool | None = None,
+    is_last: bool = False,
+) -> list[Spare]:
     """Return the existing spares whose (segment-local) origin y falls in the
-    sub-span ``[sub_y_lo, sub_y_hi)`` (inclusive at the outermost boundary).
+    sub-span ``[sub_y_lo, sub_y_hi)``.
 
-    A spare with no origin (defensive) homes to the first sub-span.
+    No spare may ever be lost by a split (gh-1067 — data loss). A spare's local
+    origin y can land slightly **below the segment root** (e.g. ``-0.6mm`` after
+    a DB round-trip reconstructs a manual root spare from the dihedral geometry),
+    or exactly at ``0``. Such root-side spares — the most load-critical location
+    (the main joiner tube at the root) — clamp to the **first** sub-span. A spare
+    at or beyond the outermost tip clamps to the **last** sub-span. A spare with
+    no origin (defensive) homes to the first sub-span.
+
+    ``is_first`` / ``is_last`` mark the root-most / tip-most sub-spans so the
+    out-of-range clamps only fire once and no spare is double-counted or dropped.
+    When ``is_first`` is not given it defaults to ``sub_y_lo == 0`` (the root).
     """
+    if is_first is None:
+        is_first = abs(sub_y_lo) <= _FRACTION_TOL  # this sub-span starts at root
     rehomed: list[Spare] = []
     for spare in spares or []:
         origin = spare.spare_origin
         y = float(origin.y) if origin is not None else 0.0
-        if sub_y_lo - _FRACTION_TOL <= y < sub_y_hi - _FRACTION_TOL:
-            rehomed.append(spare)
-        elif abs(y - sub_y_hi) <= _FRACTION_TOL and abs(sub_y_hi) > 0:
-            # exactly on the outer boundary -> belongs to this (the last) sub-span
+        in_span = sub_y_lo - _FRACTION_TOL <= y < sub_y_hi - _FRACTION_TOL
+        on_outer = abs(y - sub_y_hi) <= _FRACTION_TOL and abs(sub_y_hi) > 0
+        # Clamp a root-side (< root) spare onto the first sub-span and a
+        # past-the-tip (>= outer) spare onto the last sub-span, so neither is
+        # ever dropped by falling through every sub-span (gh-1067).
+        below_root_to_first = is_first and y < sub_y_lo
+        beyond_tip_to_last = is_last and y >= sub_y_hi
+        if in_span or on_outer or below_root_to_first or beyond_tip_to_last:
             rehomed.append(spare)
     return rehomed
 
@@ -386,6 +462,23 @@ def _emit_subsegments(
     d_incidence = tip_af.incidence
     d_dihedral = tip_af.dihedral_as_rotation_in_degrees
 
+    # gh-1068: cumulative twist (R_y) at each split boundary that keeps the
+    # *built ruled loft unchanged* even when the host is tapered. See
+    # :func:`_boundary_twist_cumulative` for the why (a plain linear twist split
+    # drifts the section center_z by ~0.7mm on a washout+taper wing).
+    # The loft rotates each wire by the *cumulative* twist (theta_accum): the
+    # host root wire by ``root_af.incidence`` and the host tip wire by
+    # ``root_af.incidence + tip_af.incidence``. The chord-weighting below needs
+    # those absolute cumulative angles; the inboard-chain offset cancels in the
+    # per-sub-segment deltas.
+    twist_cum = _boundary_twist_cumulative(
+        boundaries,
+        root_af.incidence,
+        root_af.incidence + tip_af.incidence,
+        root_af.chord,
+        tip_af.chord,
+    )
+
     n_sub = len(boundaries) - 1
     for i in range(n_sub):
         t0, t1 = boundaries[i], boundaries[i + 1]
@@ -400,8 +493,13 @@ def _emit_subsegments(
             outer_af = _interp_airfoil(root_af, tip_af, t1, airfoil_morph_fn)
 
         # Incidence (twist about the chord axis) does not move the spanwise
-        # position, so its delta splits linearly across the sub-segments.
-        outer_af.incidence = d_incidence * (t1 - t0)
+        # position, but for a *tapered* host the section's world-z is driven by
+        # ``chord · sin(twist)``, which is nonlinear in the span fraction. The
+        # per-sub-segment incidence delta is therefore the difference of the
+        # chord-weighted cumulative twist at the two boundaries (not a plain
+        # linear split), so the inserted intermediate wire reproduces the
+        # original ruled blend of the two end wires (gh-1068).
+        outer_af.incidence = twist_cum[i + 1] - twist_cum[i]
 
         # Dihedral rotates the spanwise translation about x. Splitting it
         # linearly would bend the intermediate station origins OFF the original
@@ -423,7 +521,13 @@ def _emit_subsegments(
         sub_turb = (
             _split_turbulator(host.turbulator, t0, t1) if host.turbulator is not None else None
         )
-        rehomed = _rehome_spares(host.spare_list, t0 * seg_len, t1 * seg_len)
+        rehomed = _rehome_spares(
+            host.spare_list,
+            t0 * seg_len,
+            t1 * seg_len,
+            is_first=(i == 0),
+            is_last=(i == n_sub - 1),
+        )
         sub_spares = _assemble_spare_list(
             main_pieces_per_subsegment[i] if main_pieces_per_subsegment else None,
             rehomed,
