@@ -10,6 +10,10 @@ import {
   pieceDimsLabel,
   touchedSegments,
   replaceWarning,
+  pieceExtentLabel,
+  pieceJointLabel,
+  splitNote,
+  snapshotNote,
 } from "@/lib/sparPlanHelpers";
 import type { SpanwiseLoadsResult } from "@/hooks/useSpanwiseLoads";
 import type { PlannedSpareOut, SparPieceOut } from "@/hooks/useSparPlan";
@@ -94,6 +98,8 @@ describe("formatting helpers", () => {
       wall: 0.0024,
       shape: "tube",
       governing_y: 0,
+      y_start: 0,
+      y_end: 0.75,
       utilisation: 0.5,
       joint_to_next: null,
       feasible: true,
@@ -120,6 +126,93 @@ describe("formatting helpers", () => {
       infeasibility_reason: null,
     } as unknown as SparPieceOut;
     expect(pieceDimsLabel(piece)).toContain("wall 5.0");
+  });
+});
+
+// gh-1060: spanwise extent + telescoping joint + split / snapshot notes -------
+
+function gh1060Piece(over: Partial<SparPieceOut>): SparPieceOut {
+  return {
+    role: "front",
+    spare_origin: [0, 0, 0],
+    spare_vector: [0, 1, 0],
+    outer_d: 0.0288,
+    inner_d: 0.024,
+    wall: 0.0024,
+    shape: "tube",
+    governing_y: 0,
+    utilisation: 0.5,
+    joint_to_next: null,
+    feasible: true,
+    infeasibility_reason: null,
+    y_start: 0,
+    y_end: 0.75,
+    ...over,
+  } as SparPieceOut;
+}
+
+describe("pieceExtentLabel (gh-1060)", () => {
+  const p = gh1060Piece;
+
+  it("shows the spanwise extent in mm (root=0)", () => {
+    expect(pieceExtentLabel(p({ y_start: 0, y_end: 0.75 }))).toBe(
+      "span 0 → 750 mm",
+    );
+  });
+
+  it("rounds extents to whole mm", () => {
+    expect(pieceExtentLabel(p({ y_start: 0.75, y_end: 1.2 }))).toBe(
+      "span 750 → 1200 mm",
+    );
+  });
+});
+
+describe("pieceJointLabel (gh-1060)", () => {
+  const p = gh1060Piece;
+
+  it("shows the telescoping joint position from the next piece's y_start", () => {
+    const piece = p({ joint_to_next: "telescoping", y_end: 0.75 });
+    const next = p({ y_start: 0.7 }); // overlap rootward → joint = next.y_start
+    expect(pieceJointLabel(piece, next)).toBe("Telescoping @ 700 mm");
+  });
+
+  it("falls back to the readable joint label when there is a next piece but no telescoping", () => {
+    const piece = p({ joint_to_next: "bent-pin" });
+    const next = p({ y_start: 0.9 });
+    expect(pieceJointLabel(piece, next)).toBe("Bent-pin @ 900 mm");
+  });
+
+  it("shows 'to tip — no joint' for the last piece", () => {
+    const piece = p({ joint_to_next: null });
+    expect(pieceJointLabel(piece, undefined)).toBe("to tip — no joint");
+  });
+});
+
+describe("splitNote (gh-1060)", () => {
+  it("returns null when there is no split (single-piece front spar)", () => {
+    expect(splitNote(null)).toBeNull();
+    expect(splitNote([])).toBeNull();
+    expect(splitNote([0.75])).toBeNull(); // single sub-segment = no split
+  });
+
+  it("describes the split with sub-segment count + lengths in mm", () => {
+    const note = splitNote([0.75, 0.45]);
+    expect(note).toContain("Main spar telescopes");
+    expect(note).toContain("split into 2 sub-segments");
+    expect(note).toContain("750");
+    expect(note).toContain("450");
+    expect(note).toContain("snapshot");
+  });
+});
+
+describe("snapshotNote (gh-1060)", () => {
+  it("returns null when there is no snapshot id", () => {
+    expect(snapshotNote(null)).toBeNull();
+    expect(snapshotNote(undefined)).toBeNull();
+  });
+
+  it("formats the snapshot id", () => {
+    expect(snapshotNote(42)).toBe("Snapshot #42 created");
   });
 });
 

@@ -43,6 +43,10 @@ export interface SparPieceOut {
   wall: number; // m
   shape: string;
   governing_y: number; // m
+  // gh-1057/gh-1060: spanwise extent of this piece (metres, root=0). For a
+  // telescoping run the NEXT piece's y_start is the telescoping joint position.
+  y_start: number; // m
+  y_end: number; // m
   utilisation: number;
   joint_to_next: string | null;
   feasible: boolean;
@@ -84,6 +88,13 @@ export interface SparInsertResult {
   warnings: string[];
   feasible: boolean;
   infeasibility_reason: string | null;
+  // gh-1058: PK of the auto-snapshot taken BEFORE the destructive commit so the
+  // user can one-click revert. Null on a dry-run (nothing was mutated).
+  snapshot_id: number | null;
+  // gh-1063: when the main (front) spar telescopes the host segment is SPLIT at
+  // each joint; these are the resulting per-sub-segment spanwise lengths (m),
+  // root→tip. Null/single-element when no split happens.
+  planned_segment_lengths: number[] | null;
 }
 
 // ---- Body builder (shared by run + insert) ---------------------------------
@@ -169,5 +180,29 @@ export function useSparPlan(aeroplaneId: string | null) {
     [aeroplaneId],
   );
 
-  return { plan, isRunning, error, run, insert };
+  // gh-1060: revert a destructive insert-commit by restoring its pre-insert
+  // snapshot. POST /aeroplanes/{snapshot_id}/restore forks an editable head
+  // from the immutable snapshot (BranchRequest body: name + created_by).
+  // Throws readably on a non-ok response so the caller can surface the error.
+  const restoreSnapshot = useCallback(
+    async (snapshotId: number): Promise<void> => {
+      const res = await fetch(
+        `${API_BASE}/aeroplanes/${snapshotId}/restore`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            name: "Revert spar insert",
+            created_by: "human",
+          }),
+        },
+      );
+      if (!res.ok) {
+        throw new Error(await parseApiError(res, "Snapshot restore"));
+      }
+    },
+    [],
+  );
+
+  return { plan, isRunning, error, run, insert, restoreSnapshot };
 }

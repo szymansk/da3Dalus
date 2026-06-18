@@ -279,6 +279,8 @@ describe("SparSizingPanel", () => {
           wall: 0.0024,
           shape: "tube",
           governing_y: 0,
+          y_start: 0,
+          y_end: 0.75,
           utilisation: 0.5,
           joint_to_next: null,
           feasible: true,
