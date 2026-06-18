@@ -6,8 +6,13 @@ from typing import Any, List, Optional
 import aerosandbox as asb
 import numpy as np
 from aerosandbox import FuselageXSec
+from cadquery import Vector
 
 from app import schemas
+from app.converters.spare_origin_preservation import (
+    scale_db_origin_to_config,
+    should_preserve_normal_spare,
+)
 from app.models import AeroplaneModel, WingModel
 from app.models.aeroplanemodel import FuselageModel
 from app.schemas import AeroplaneSchema
@@ -668,6 +673,7 @@ def _hydrate_segment_from_xsec(
 def _hydrate_wing_configuration_details(
     wing_config: WingConfiguration,
     wing_schema: schemas.AsbWingSchema,
+    scale: float = 1.0,
 ) -> None:
     for segment_index, segment in enumerate(wing_config.segments or []):
         if segment_index >= len(wing_schema.x_secs) - 1:
@@ -678,7 +684,7 @@ def _hydrate_wing_configuration_details(
             wing_schema.x_secs[segment_index + 1],
         )
 
-    _resolve_spare_vectors_and_origins(wing_config)
+    _resolve_spare_vectors_and_origins(wing_config, scale=scale)
 
 
 def _can_follow_previous_spare(
@@ -711,9 +717,35 @@ def _resolve_single_spare(
         wing_config._set_standard_spare_origin_vector(segment_index, spare)
 
 
-def _resolve_spare_vectors_and_origins(wing_config: WingConfiguration) -> None:
+def _preserve_normal_spare_geometry(spare, scale: float) -> None:
+    """Honour a ``normal``-mode spare's solved origin/vector verbatim (gh-1053).
+
+    The spar-insert solver writes an explicit, solved ``spare_origin`` (DB mm)
+    and ``spare_vector`` (dimensionless) with ``spare_mode="normal"``. The DB
+    origin is rescaled into the config's geometry ``scale`` (mm→m at scale=1.0,
+    verbatim mm at scale=1000.0); the vector is normalised but never scaled.
+    """
+    origin_mm = spare.spare_origin.toTuple()
+    spare.spare_origin = Vector(scale_db_origin_to_config(origin_mm, scale))
+    spare.spare_vector = spare.spare_vector.normalized()
+
+
+def _resolve_spare_vectors_and_origins(wing_config: WingConfiguration, scale: float = 1.0) -> None:
     for segment_index, segment in enumerate(wing_config.segments or []):
         for spare_index, spare in enumerate(segment.spare_list or []):
+            # gh-1053: a ``normal``-mode spare carrying an explicit solved
+            # origin + vector (the spar-insert solver's output) is preserved
+            # verbatim — clearing + recomputing it would collapse the solved
+            # front/rear couple onto the forced 0.25c default. The unit-leak
+            # guard below still applies to every other spare.
+            if should_preserve_normal_spare(
+                spare.spare_mode,
+                None if spare.spare_origin is None else spare.spare_origin.toTuple(),
+                None if spare.spare_vector is None else spare.spare_vector.toTuple(),
+            ):
+                _preserve_normal_spare_geometry(spare, scale)
+                continue
+
             # Always recompute from the current geometry so the result
             # matches whatever scale the WingConfiguration was built with.
             # Clear both vector and origin: a DB-cached origin (meters)
@@ -888,7 +920,7 @@ def asb_wing_schema_to_wing_config(
         geometry_scaled_schema, wing_key=getattr(asb_wing, "name", "w") or "w"
     )
     wing_config = WingConfiguration.from_asb(xsecs, geometry_scaled_schema.symmetric)
-    _hydrate_wing_configuration_details(wing_config, asb_wing)
+    _hydrate_wing_configuration_details(wing_config, asb_wing, scale=scale)
     return wing_config
 
 
