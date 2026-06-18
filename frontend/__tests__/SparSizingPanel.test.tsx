@@ -265,4 +265,54 @@ describe("SparSizingPanel", () => {
     await waitFor(() => screen.getByTestId("spar-compute-button"));
     expect(screen.getByTestId("spar-compute-button")).toHaveTextContent("Computing…");
   });
+
+  // gh-1050: built-spar block + add-to-wing wiring inside the panel.
+  it("renders the built-spar block when a plan is provided", async () => {
+    const plan = {
+      front_pieces: [
+        {
+          role: "front",
+          spare_origin: [0, 0, 0],
+          spare_vector: [0, 1, 0],
+          outer_d: 0.0288,
+          inner_d: 0.024,
+          wall: 0.0024,
+          shape: "tube",
+          governing_y: 0,
+          utilisation: 0.5,
+          joint_to_next: null,
+          feasible: true,
+          infeasibility_reason: null,
+        },
+      ],
+      rear_pieces: [],
+      front_joint: "continuous",
+      rear_joint: "continuous",
+      reinforcement: null,
+      feasible: true,
+      infeasibility_reason: null,
+    };
+    const onInsert = vi.fn();
+    renderPanel({ plan, onInsert });
+    fireEvent.click(screen.getByTestId("spar-sizing-toggle"));
+    await waitFor(() => screen.getByTestId("built-spar-block"));
+    expect(screen.getByTestId("built-spar-section")).toBeInTheDocument();
+    expect(screen.getByTestId("add-spar-to-wing-button")).toBeInTheDocument();
+  });
+
+  it("hides the add-to-wing button when no onInsert handler is given", async () => {
+    const plan = {
+      front_pieces: [],
+      rear_pieces: [],
+      front_joint: "continuous",
+      rear_joint: "continuous",
+      reinforcement: null,
+      feasible: true,
+      infeasibility_reason: null,
+    };
+    renderPanel({ plan });
+    fireEvent.click(screen.getByTestId("spar-sizing-toggle"));
+    await waitFor(() => screen.getByTestId("built-spar-block"));
+    expect(screen.queryByTestId("add-spar-to-wing-button")).toBeNull();
+  });
 });

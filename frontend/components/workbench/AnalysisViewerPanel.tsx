@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo, useRef, useEffect } from "react";
+import { useState, useMemo, useRef, useEffect, useCallback } from "react";
 import { AlertTriangle, Loader2, Maximize2, Minimize2, Settings } from "lucide-react";
 import type { AnalysisResult } from "@/hooks/useAnalysis";
 import type { StripForcesResult } from "@/hooks/useStripForces";
@@ -17,6 +17,9 @@ import type { SpanwiseLoadsResult } from "@/hooks/useSpanwiseLoads";
 import { SparSizingPanel, toSizingParams } from "@/components/workbench/SparSizingPanel";
 import type { SparSizingInputs } from "@/components/workbench/SparSizingPanel";
 import { useSparSizing } from "@/hooks/useSparSizing";
+import { useSparPlan, type SparPlanParams } from "@/hooks/useSparPlan";
+import { buildMomentsFromLoads } from "@/lib/sparPlanHelpers";
+import { useSWRConfig } from "swr";
 
 const TABS = ["Assumptions", "Operating Points", "Polar", "Trefftz Plane", "Spanwise Loads", "Streamlines", "Envelope", "Sizing"] as const;
 export type Tab = (typeof TABS)[number];
@@ -1070,10 +1073,19 @@ export function SpanwiseLoadsTabContent({
   const { result: sizingResult, isRunning: sizingRunning, error: sizingError, run: runSizing } =
     useSparSizing(aeroplaneId ?? null);
 
+  // gh-1050: buildable two-spar plan + preview→commit insert into the wing.
+  const { plan, run: runPlan, insert: insertPlan } = useSparPlan(aeroplaneId ?? null);
+  const { mutate } = useSWRConfig();
+  // Remember the sizing inputs the user last computed with so the plan + insert
+  // reuse the SAME material / safety / packing / sigma knobs.
+  const lastSizingParamsRef = useRef<SparPlanParams | null>(null);
+
   // g_limit comes from the first spar sizing result (after first compute)
   const firstSizing = sizingResult?.spar_sizing?.[0] ?? null;
   const gLimit = firstSizing?.g_limit ?? null;
   const gLimitFallback = firstSizing?.g_limit_fallback ?? false;
+  // The wing the plan/insert targets — the first surface (main wing).
+  const planWingName = spanwiseLoads?.surfaces?.[0]?.surface_name ?? null;
 
   const handleSparCompute = (inputs: SparSizingInputs) => {
     if (!spanwiseLoads) return;
@@ -1091,7 +1103,42 @@ export function SpanwiseLoadsTabContent({
       xyz_ref: [0, 0, 0],
     };
     runSizing(opParams, sizingParams);
+
+    // gh-1050: also compute the buildable plan from the SAME inputs. The
+    // moments distribution comes from the already-displayed spanwise loads
+    // M(y) — normalised to a 0..1 span fraction (buildMomentsFromLoads).
+    const moments = buildMomentsFromLoads(spanwiseLoads);
+    if (moments) {
+      const planParams: SparPlanParams = {
+        material_id: sizingParams.material_id,
+        moments,
+        wing_name: planWingName,
+        safety_factor_j: sizingParams.safety_factor_j,
+        packing_factor: sizingParams.packing_factor,
+        sigma_allow_mpa_override: sizingParams.sigma_allow_mpa_override ?? null,
+      };
+      lastSizingParamsRef.current = planParams;
+      runPlan(planParams);
+    }
   };
+
+  const handleInsert = useCallback(
+    (dryRun: boolean) => {
+      const params = lastSizingParamsRef.current;
+      if (!params) {
+        return Promise.reject(new Error("Compute the spar plan first"));
+      }
+      return insertPlan(params, dryRun);
+    },
+    [insertPlan],
+  );
+
+  const handleSparInserted = useCallback(() => {
+    // Refresh the wing construction so the new spares show in the tree / CAD.
+    if (!aeroplaneId || !planWingName) return;
+    mutate(`/aeroplanes/${aeroplaneId}/wings/${planWingName}/wingconfig`);
+    mutate(`/aeroplanes/${aeroplaneId}/wings/${planWingName}`);
+  }, [aeroplaneId, planWingName, mutate]);
 
   if (spanwiseLoadsLoading) {
     return (
@@ -1120,6 +1167,9 @@ export function SpanwiseLoadsTabContent({
           onCompute={handleSparCompute}
           gLimit={gLimit}
           gLimitFallback={gLimitFallback}
+          plan={plan}
+          onInsert={handleInsert}
+          onSparInserted={handleSparInserted}
         />
       </div>
     );
