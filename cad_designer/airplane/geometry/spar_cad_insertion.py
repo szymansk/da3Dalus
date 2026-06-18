@@ -71,6 +71,33 @@ def spar_piece_to_spare(piece: SparPiece) -> Spare:
     )
 
 
+def secondary_spare_option_b(piece: SparPiece, *, segment_root_y: float) -> Spare:
+    """Map a secondary (rear / torsion / reinforcement) :class:`SparPiece` to a
+    partial-span ``Spare`` — Option B (gh-1059).
+
+    Unlike the main (front) spar — which triggers a *segment split* so each
+    telescoping diameter gets its own segment with the main piece at index 0
+    (Option A) — secondary spars stay in the host segment as **partial-span**
+    spares: ``spare_start`` is how far the piece begins from the segment root
+    (mm, never negative) and ``spare_length`` is the piece's spanwise extent.
+    The construction already builds partial-span spares
+    (``extrude_length = spare.spare_length`` at ``.workplane(offset=spare_start)``),
+    so no split is needed. Caller assigns the persisted ``spar_index`` (rear root
+    = 1, further pieces = next free ids).
+    """
+    vector = _unit(piece.spare_vector)
+    spare_start = max(0.0, float(piece.spare_origin[1]) - float(segment_root_y))
+    return Spare(
+        spare_support_dimension_width=float(piece.outer_d),
+        spare_support_dimension_height=float(piece.outer_d),
+        spare_length=float(piece.length),
+        spare_start=spare_start,
+        spare_origin=tuple(float(c) for c in piece.spare_origin),
+        spare_vector=vector,
+        spare_mode="normal",
+    )
+
+
 def spar_plan_to_spares(plan: SparPlan) -> SparInsertionResult:
     """Turn a whole :class:`SparPlan` into ``Spare`` objects + warnings.
 
