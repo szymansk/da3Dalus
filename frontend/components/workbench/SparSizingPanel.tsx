@@ -11,9 +11,14 @@
  */
 
 import { useState, useCallback } from "react";
-import { ChevronDown, ChevronRight, AlertTriangle } from "lucide-react";
+import { ChevronDown, ChevronRight, AlertTriangle, Loader2 } from "lucide-react";
 
 import type { SparShape, SparSizingResult, SparSizingStation } from "@/hooks/useSparSizing";
+import type {
+  SparPlanResult,
+  SparPieceOut,
+  SparInsertResult,
+} from "@/hooks/useSparPlan";
 import { useComponents } from "@/hooks/useComponents";
 import {
   filterStructuralMaterials,
@@ -23,6 +28,13 @@ import {
   buildRootHeadline,
   buildMassSummary,
 } from "@/lib/sparSizingHelpers";
+import {
+  sparGroupLabel,
+  jointLabel,
+  pieceDimsLabel,
+  mToMm,
+  replaceWarning,
+} from "@/lib/sparPlanHelpers";
 
 // ---- Types -----------------------------------------------------------------
 
@@ -51,6 +63,15 @@ export interface SparSizingPanelProps {
   gLimit?: number | null;
   /** True when g_limit is a fallback default. */
   gLimitFallback?: boolean;
+  /** gh-1050: buildable spar plan (front/rear/reinforcement), or null. */
+  plan?: SparPlanResult | null;
+  /**
+   * gh-1050: insert the plan into the wing. dry_run=true → preview,
+   * dry_run=false → commit. When omitted, the "Add spar to wing" UI is hidden.
+   */
+  onInsert?: (dryRun: boolean) => Promise<SparInsertResult>;
+  /** gh-1050: called after a successful commit so the parent can refresh the tree. */
+  onSparInserted?: () => void;
 }
 
 // ---- Helpers ---------------------------------------------------------------
@@ -148,6 +169,295 @@ function SizingResultCard({ result }: { result: SparSizingResult }) {
   );
 }
 
+// ---- Built-spar display (gh-1050) ------------------------------------------
+
+/** One buildable piece row: dims (OD×ID×wall), joint, feasibility. */
+function BuiltSparPieceRow({
+  piece,
+  index,
+}: {
+  piece: SparPieceOut;
+  index: number;
+}) {
+  return (
+    <div
+      className="flex flex-wrap items-center gap-x-3 gap-y-0.5 border-b border-border/20 px-2 py-1 text-[12px] font-[family-name:var(--font-jetbrains-mono)]"
+      data-testid="built-spar-piece"
+    >
+      <span className="text-muted-foreground">#{index + 1}</span>
+      <span className="tabular-nums text-foreground">{pieceDimsLabel(piece)}</span>
+      <span className="text-muted-foreground">
+        joint: {jointLabel(piece.joint_to_next)}
+      </span>
+      <span className={piece.feasible ? "text-green-400" : "text-yellow-400"}>
+        {piece.feasible ? "OK" : (piece.infeasibility_reason ?? "infeasible")}
+      </span>
+    </div>
+  );
+}
+
+/** A spar group (front / rear / reinforcement) with its labelled pieces. */
+function BuiltSparGroup({
+  group,
+  pieces,
+}: {
+  group: "front" | "rear" | "reinforcement";
+  pieces: SparPieceOut[];
+}) {
+  if (pieces.length === 0) return null;
+  return (
+    <div className="space-y-0.5" data-testid={`built-spar-group-${group}`}>
+      <p
+        className={`text-[12px] font-[family-name:var(--font-jetbrains-mono)] ${
+          group === "front" ? "text-[#FF8400]" : "text-muted-foreground"
+        }`}
+      >
+        {sparGroupLabel(group)}
+      </p>
+      {pieces.map((p, i) => (
+        <BuiltSparPieceRow key={i} piece={p} index={i} />
+      ))}
+    </div>
+  );
+}
+
+/**
+ * Buildable-spar display: the two-spar plan grouped Front (main, index 0) /
+ * Rear / Reinforcement, each piece as OD × ID (wall) × length in mm, with
+ * joint type + feasibility. Exported for direct unit testing.
+ */
+export function BuiltSparSection({ plan }: { plan: SparPlanResult }) {
+  return (
+    <div
+      className="rounded border border-border/40 bg-card p-3 text-[13px] space-y-3"
+      data-testid="built-spar-section"
+    >
+      <p className="font-[family-name:var(--font-jetbrains-mono)] text-xs text-foreground">
+        Built spar (buildable pieces)
+      </p>
+      {!plan.feasible && (
+        <div
+          className="flex items-start gap-1 rounded bg-yellow-900/20 px-2 py-1 text-xs text-yellow-400"
+          data-testid="built-spar-infeasible"
+        >
+          <AlertTriangle size={12} className="mt-0.5 shrink-0" />
+          <span>{plan.infeasibility_reason ?? "Plan is not buildable as-is."}</span>
+        </div>
+      )}
+      <BuiltSparGroup group="front" pieces={plan.front_pieces} />
+      <BuiltSparGroup group="rear" pieces={plan.rear_pieces} />
+      <BuiltSparGroup
+        group="reinforcement"
+        pieces={plan.reinforcement ? [plan.reinforcement] : []}
+      />
+    </div>
+  );
+}
+
+// ---- Add-spar-to-wing preview → confirm flow (gh-1050) ---------------------
+
+export interface AddSparToWingFlowProps {
+  /** The buildable plan. Button is disabled when the plan is infeasible. */
+  plan: SparPlanResult;
+  /** dry_run=true → preview; dry_run=false → commit. Returns the result or throws. */
+  onInsert: (dryRun: boolean) => Promise<SparInsertResult>;
+  /** Called after a successful commit so the parent can refresh the wing/tree. */
+  onCommitted?: () => void;
+}
+
+/**
+ * "Add spar to wing" button → dry-run preview modal (per planned spare:
+ * segment, spar_index, dims, placement, joint) with a REPLACE warning →
+ * user confirm → commit. Exported for direct unit testing.
+ */
+export function AddSparToWingFlow({
+  plan,
+  onInsert,
+  onCommitted,
+}: AddSparToWingFlowProps) {
+  const [preview, setPreview] = useState<SparInsertResult | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [committed, setCommitted] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const openPreview = useCallback(async () => {
+    setBusy(true);
+    setError(null);
+    setCommitted(false);
+    try {
+      const res = await onInsert(true);
+      setPreview(res);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setBusy(false);
+    }
+  }, [onInsert]);
+
+  const confirm = useCallback(async () => {
+    setBusy(true);
+    setError(null);
+    try {
+      await onInsert(false);
+      setCommitted(true);
+      setPreview(null);
+      onCommitted?.();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setBusy(false);
+    }
+  }, [onInsert, onCommitted]);
+
+  const close = useCallback(() => {
+    setPreview(null);
+    setError(null);
+  }, []);
+
+  const warning = preview ? replaceWarning(preview.planned_spares) : null;
+
+  return (
+    <div className="space-y-2">
+      <button
+        className="rounded border border-[#FF8400] px-3 py-1.5 text-[12px] font-[family-name:var(--font-jetbrains-mono)] text-[#FF8400] hover:bg-[#FF8400]/10 disabled:opacity-40"
+        onClick={openPreview}
+        disabled={!plan.feasible || busy}
+        data-testid="add-spar-to-wing-button"
+        title={
+          plan.feasible ? undefined : "Plan is infeasible — cannot add to wing"
+        }
+      >
+        {busy && !preview ? "Loading preview…" : "Add spar to wing"}
+      </button>
+
+      {committed && (
+        <p
+          className="rounded bg-green-900/30 px-2 py-1 text-[12px] text-green-400 font-[family-name:var(--font-jetbrains-mono)]"
+          data-testid="add-spar-success"
+        >
+          Spar added to the wing.
+        </p>
+      )}
+
+      {error && !preview && (
+        <p
+          className="rounded bg-red-900/30 px-2 py-1 text-[12px] text-red-400 font-[family-name:var(--font-jetbrains-mono)]"
+          data-testid="add-spar-error"
+        >
+          {error}
+        </p>
+      )}
+
+      {preview && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4"
+          data-testid="add-spar-preview-modal"
+        >
+          <div className="max-h-[80vh] w-full max-w-2xl overflow-auto rounded-lg border border-border bg-card p-5 space-y-4">
+            <h3 className="font-[family-name:var(--font-jetbrains-mono)] text-[14px] text-foreground">
+              Add spar to {preview.wing_name}
+            </h3>
+
+            {warning && (
+              <div
+                className="flex items-start gap-1 rounded bg-yellow-900/20 px-2 py-1.5 text-[12px] text-yellow-400"
+                data-testid="add-spar-replace-warning"
+              >
+                <AlertTriangle size={14} className="mt-0.5 shrink-0" />
+                <span>{warning}</span>
+              </div>
+            )}
+
+            {preview.warnings.length > 0 && (
+              <ul className="space-y-0.5" data-testid="add-spar-warnings">
+                {preview.warnings.map((w, i) => (
+                  <li
+                    key={i}
+                    className="text-[11px] text-yellow-400 font-[family-name:var(--font-jetbrains-mono)]"
+                  >
+                    • {w}
+                  </li>
+                ))}
+              </ul>
+            )}
+
+            <div className="overflow-x-auto">
+              <table className="w-full min-w-[520px] border-collapse text-left">
+                <thead>
+                  <tr className="border-b border-border/50 text-[11px] text-muted-foreground font-[family-name:var(--font-jetbrains-mono)]">
+                    <th className="px-2 py-1">segment</th>
+                    <th className="px-2 py-1">spar_index</th>
+                    <th className="px-2 py-1">role</th>
+                    <th className="px-2 py-1">OD × ID (mm)</th>
+                    <th className="px-2 py-1">length (mm)</th>
+                    <th className="px-2 py-1">joint</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {preview.planned_spares.map((sp, i) => (
+                    <tr
+                      key={i}
+                      className="border-b border-border/30 font-[family-name:var(--font-jetbrains-mono)] text-[12px]"
+                      data-testid="planned-spare-row"
+                    >
+                      <td className="px-2 py-1 tabular-nums">{sp.segment_index}</td>
+                      <td
+                        className={`px-2 py-1 tabular-nums ${
+                          sp.spar_index === 0 ? "font-bold text-[#FF8400]" : ""
+                        }`}
+                      >
+                        {sp.spar_index}
+                        {sp.spar_index === 0 ? " (main)" : ""}
+                      </td>
+                      <td className="px-2 py-1">{sp.role}</td>
+                      <td className="px-2 py-1 tabular-nums">
+                        {mToMm(sp.outer_d)} × {mToMm(sp.inner_d)}
+                      </td>
+                      <td className="px-2 py-1 tabular-nums">
+                        {mToMm(sp.spare_length, 0)}
+                      </td>
+                      <td className="px-2 py-1">{jointLabel(sp.joint_note)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            {error && (
+              <p
+                className="rounded bg-red-900/30 px-2 py-1 text-[12px] text-red-400 font-[family-name:var(--font-jetbrains-mono)]"
+                data-testid="add-spar-preview-error"
+              >
+                {error}
+              </p>
+            )}
+
+            <div className="flex items-center justify-end gap-2">
+              <button
+                className="rounded border border-border px-3 py-1.5 text-[12px] font-[family-name:var(--font-jetbrains-mono)] text-foreground hover:bg-card-muted/50"
+                onClick={close}
+                disabled={busy}
+                data-testid="add-spar-cancel"
+              >
+                Cancel
+              </button>
+              <button
+                className="flex items-center gap-1.5 rounded bg-[#FF8400] px-3 py-1.5 text-[12px] font-[family-name:var(--font-jetbrains-mono)] text-black hover:bg-[#FF8400]/80 disabled:opacity-50"
+                onClick={confirm}
+                disabled={busy || !preview.feasible}
+                data-testid="add-spar-confirm"
+              >
+                {busy && <Loader2 size={12} className="animate-spin" />}
+                Confirm &amp; add
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ---- Main Component --------------------------------------------------------
 
 /** Exported for unit testing (pure display layer). */
@@ -158,6 +468,9 @@ export function SparSizingPanel({
   onCompute,
   gLimit,
   gLimitFallback = false,
+  plan = null,
+  onInsert,
+  onSparInserted,
 }: SparSizingPanelProps) {
   const [open, setOpen] = useState(false);
   const [inputs, setInputs] = useState<SparSizingInputs>({
@@ -374,6 +687,20 @@ export function SparSizingPanel({
               {sizingResults.map((r, i) => (
                 <SizingResultCard key={i} result={r} />
               ))}
+            </div>
+          )}
+
+          {/* gh-1050: Built spar (buildable pieces) + Add to wing */}
+          {plan && (
+            <div className="space-y-3" data-testid="built-spar-block">
+              <BuiltSparSection plan={plan} />
+              {onInsert && (
+                <AddSparToWingFlow
+                  plan={plan}
+                  onInsert={onInsert}
+                  onCommitted={onSparInserted}
+                />
+              )}
             </div>
           )}
         </div>
