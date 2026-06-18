@@ -184,6 +184,11 @@ def _build_planned_pieces(plan, segment_lengths_mm: list[float]) -> list[_Planne
     bent-pin, reinforcement+joiner, dropped bore) stay faithful. We rebuild the
     Spare list in invariant order and pair each Spare with its source piece.
     """
+    # NOTE (gh-1053 adjacent / owned by gh-1045): the solver can emit a Ø0
+    # terminal tip piece (outer_d == 0) at the zero-moment tip. That phantom
+    # zero-size Spare is tracked and fixed in gh-1045 ("spar solver emits a Ø0
+    # terminal tip piece"); it is deliberately NOT suppressed here to avoid two
+    # competing fixes for the same defect.
     mapping = spar_plan_to_spares(plan)
     spares = list(mapping.spares)
     ordered = list(_plan_pieces_in_invariant_order(plan))

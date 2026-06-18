@@ -142,3 +142,106 @@ def test_spar_insert_commit_roundtrip_front_spar_index_zero(client_and_db):
         assert main_spar["spare_support_dimension_height"] == pytest.approx(
             planned_front["outer_d"], rel=1e-6, abs=1e-9
         )
+
+
+@pytest.mark.slow
+@pytest.mark.requires_cadquery
+def test_spar_insert_commit_preserves_solved_origin_and_vector_gh1053(client_and_db):
+    """gh-1053: the committed front AND rear spars must land where the SOLVER
+    placed them — at DISTINCT chordwise stations — not both collapsed onto the
+    forced 0.25c default by the standard recompute.
+
+    Asserts the persisted ``spare_origin`` / ``spare_vector`` equal the planned
+    (preview) values within mm tolerance, for the front AND the rear spar, in
+    every segment that carries both. Before the fix the rear spar's origin is
+    overwritten with the front's quarter-chord origin (stacked), so this fails.
+    """
+    test_client, session_local = client_and_db
+    wing_name = "main_wing"
+
+    create_plane = test_client.post("/aeroplanes", params={"name": "spar insert origin RT"})
+    assert create_plane.status_code == 201, create_plane.text
+    aeroplane_id = create_plane.json()["id"]
+
+    create_wing = test_client.post(
+        f"/aeroplanes/{aeroplane_id}/wings/{wing_name}/from-wingconfig",
+        json=_build_ehawk_wingconfig_payload(),
+    )
+    assert create_wing.status_code == 201, create_wing.text
+
+    material_id = _first_material_id(session_local)
+    request_body = {
+        "material_id": material_id,
+        "wing_name": wing_name,
+        "moments": [
+            {"y_span": 0.0, "bending_moment_Nm": 4.0},
+            {"y_span": 0.5, "bending_moment_Nm": 1.5},
+            {"y_span": 1.0, "bending_moment_Nm": 0.0},
+        ],
+        "sigma_allow_mpa_override": 600.0,
+        "n_span": 6,
+        "packing_factor": 0.9,
+    }
+
+    commit = test_client.post(
+        f"/aeroplanes/{aeroplane_id}/spar-plan/insert",
+        json={**request_body, "dry_run": False},
+    )
+    assert commit.status_code == 200, commit.text
+    commit_json = commit.json()
+    assert commit_json["committed"] is True
+
+    planned = commit_json["planned_spares"]
+    front_by_seg = {p["segment_index"]: p for p in planned if p["role"] == "front"}
+    rear_by_seg = {p["segment_index"]: p for p in planned if p["role"] == "rear"}
+    # We need at least one segment carrying BOTH a front and a rear spar so the
+    # "distinct chordwise station" invariant is meaningful.
+    shared_segments = sorted(set(front_by_seg) & set(rear_by_seg))
+    assert shared_segments, "expected at least one segment with both a front and rear spar"
+
+    wing_after = test_client.get(f"/aeroplanes/{aeroplane_id}/wings/{wing_name}").json()
+
+    def _assert_origin_vector(persisted, planned_piece, label):
+        po = persisted["spare_origin"]
+        plo = planned_piece["spare_origin"]
+        assert po is not None, f"{label}: persisted origin is None"
+        for axis, (got, want) in enumerate(zip(po, plo, strict=True)):
+            assert got == pytest.approx(want, abs=1e-3), (
+                f"{label}: origin axis {axis} persisted {got} != planned {want}"
+            )
+        pv = persisted["spare_vector"]
+        plv = planned_piece["spare_vector"]
+        assert pv is not None, f"{label}: persisted vector is None"
+        for axis, (got, want) in enumerate(zip(pv, plv, strict=True)):
+            assert got == pytest.approx(want, abs=1e-3), (
+                f"{label}: vector axis {axis} persisted {got} != planned {want}"
+            )
+
+    for seg_idx in shared_segments:
+        spare_list = wing_after["x_secs"][seg_idx].get("spare_list") or []
+        # Invariant: front = sort_index 0, rear = sort_index 1.
+        assert len(spare_list) >= 2, f"segment {seg_idx} should carry front + rear"
+        front_persisted = spare_list[0]
+        rear_persisted = spare_list[1]
+
+        _assert_origin_vector(front_persisted, front_by_seg[seg_idx], f"seg{seg_idx} front")
+        _assert_origin_vector(rear_persisted, rear_by_seg[seg_idx], f"seg{seg_idx} rear")
+
+        # The whole point of the two-spar plan: front and rear stay at the
+        # solver's DISTINCT stations, NOT stacked on the same 0.25c origin.
+        # The persisted front↔rear separation must equal the SOLVED separation
+        # (before the fix the rear was overwritten with the front's 0.25c
+        # origin, so the persisted separation collapsed to ~0).
+        fo = front_persisted["spare_origin"]
+        ro = rear_persisted["spare_origin"]
+        pfo = front_by_seg[seg_idx]["spare_origin"]
+        pro = rear_by_seg[seg_idx]["spare_origin"]
+        persisted_sep = max(abs(fo[i] - ro[i]) for i in range(3))
+        planned_sep = max(abs(pfo[i] - pro[i]) for i in range(3))
+        assert planned_sep > 1e-6, (
+            f"seg{seg_idx}: solver itself produced no front/rear separation — bad fixture"
+        )
+        assert persisted_sep == pytest.approx(planned_sep, abs=1e-3), (
+            f"seg{seg_idx}: persisted front/rear separation {persisted_sep} != "
+            f"solved separation {planned_sep} (front {fo}, rear {ro})"
+        )
