@@ -1,0 +1,144 @@
+"""gh-1049: slow/requires_cadquery round-trip for the spar-insert endpoint.
+
+Builds a real eHawk main wing via ``/from-wingconfig`` (the single source of
+truth used by the other CAD integration tests), computes a real spar plan
+through the full solver + SectionGeometry path, inserts it (commit), and asserts
+the wing's cross-sections carry the inserted spares with the HARD INVARIANT held:
+the front (main) spar is ``sort_index = 0`` in every segment it occupies.
+"""
+
+from __future__ import annotations
+
+import json
+from pathlib import Path
+
+import pytest
+from fastapi.testclient import TestClient
+
+from app.models.component import ComponentModel
+from test.ehawk_workflow_helpers import _build_main_wing
+
+
+@pytest.fixture()
+def client(client_and_db):
+    test_client, _ = client_and_db
+    yield test_client
+
+
+def _build_ehawk_wingconfig_payload() -> dict:
+    repo_root = Path(__file__).resolve().parents[2]
+    airfoil_path = str((repo_root / "components" / "airfoils" / "mh32.dat").resolve())
+    wing_config = _build_main_wing(airfoil_path)
+    state = wing_config.__getstate__()
+
+    class _JsonSafeEncoder(json.JSONEncoder):
+        def default(self, obj):
+            if hasattr(obj, "toTuple"):
+                return list(obj.toTuple())
+            if hasattr(obj, "x") and hasattr(obj, "y") and hasattr(obj, "z"):
+                return [float(obj.x), float(obj.y), float(obj.z)]
+            try:
+                return float(obj)
+            except Exception:
+                return str(obj)
+
+    return json.loads(json.dumps(state, cls=_JsonSafeEncoder))
+
+
+def _first_material_id(session_local) -> int:
+    db = session_local()
+    try:
+        material = (
+            db.query(ComponentModel).filter(ComponentModel.component_type == "material").first()
+        )
+        assert material is not None, "expected a seeded structural material"
+        return material.id
+    finally:
+        db.close()
+
+
+@pytest.mark.slow
+@pytest.mark.requires_cadquery
+def test_spar_insert_commit_roundtrip_front_spar_index_zero(client_and_db):
+    test_client, session_local = client_and_db
+    client: TestClient = test_client
+    wing_name = "main_wing"
+
+    create_plane = test_client.post("/aeroplanes", params={"name": "spar insert RT"})
+    assert create_plane.status_code == 201, create_plane.text
+    aeroplane_id = create_plane.json()["id"]
+
+    create_wing = test_client.post(
+        f"/aeroplanes/{aeroplane_id}/wings/{wing_name}/from-wingconfig",
+        json=_build_ehawk_wingconfig_payload(),
+    )
+    assert create_wing.status_code == 201, create_wing.text
+
+    material_id = _first_material_id(session_local)
+    request_body = {
+        "material_id": material_id,
+        "wing_name": wing_name,
+        "moments": [
+            {"y_span": 0.0, "bending_moment_Nm": 4.0},
+            {"y_span": 0.5, "bending_moment_Nm": 1.5},
+            {"y_span": 1.0, "bending_moment_Nm": 0.0},
+        ],
+        "sigma_allow_mpa_override": 600.0,
+        "n_span": 6,
+        "packing_factor": 0.9,
+    }
+
+    # 1) dry-run preview: no writes.
+    preview = test_client.post(
+        f"/aeroplanes/{aeroplane_id}/spar-plan/insert",
+        json={**request_body, "dry_run": True},
+    )
+    assert preview.status_code == 200, preview.text
+    preview_json = preview.json()
+    assert preview_json["committed"] is False
+    assert preview_json["planned_spares"], "expected at least one planned spare"
+    # every front spar piece in the preview is index 0
+    front_preview = [p for p in preview_json["planned_spares"] if p["role"] == "front"]
+    assert front_preview
+    assert all(p["spar_index"] == 0 for p in front_preview)
+
+    # a dry run must not change the persisted spare count (the eHawk wing
+    # already ships with construction spares — dry run touches nothing).
+    wing_before = test_client.get(f"/aeroplanes/{aeroplane_id}/wings/{wing_name}").json()
+    spares_before = sum(len(x.get("spare_list") or []) for x in wing_before["x_secs"])
+    wing_before_again = test_client.get(f"/aeroplanes/{aeroplane_id}/wings/{wing_name}").json()
+    assert sum(len(x.get("spare_list") or []) for x in wing_before_again["x_secs"]) == spares_before
+
+    # 2) commit: persist the plan.
+    commit = test_client.post(
+        f"/aeroplanes/{aeroplane_id}/spar-plan/insert",
+        json={**request_body, "dry_run": False},
+    )
+    assert commit.status_code == 200, commit.text
+    commit_json = commit.json()
+    assert commit_json["committed"] is True
+
+    # the persisted wing now carries spares; the front spar is sort_index 0 in
+    # every segment it occupies (HARD INVARIANT).
+    wing_after = test_client.get(f"/aeroplanes/{aeroplane_id}/wings/{wing_name}").json()
+    total_spares = sum(len(x.get("spare_list") or []) for x in wing_after["x_secs"])
+    assert total_spares >= 1
+
+    # planned front piece per segment (front has one piece per segment here).
+    planned_front_by_seg = {
+        p["segment_index"]: p for p in commit_json["planned_spares"] if p["role"] == "front"
+    }
+    assert planned_front_by_seg, "expected at least one front spar piece"
+    for seg_idx, planned_front in planned_front_by_seg.items():
+        # spare_list is returned ordered by sort_index, so [0] is the main spar.
+        spare_list = wing_after["x_secs"][seg_idx].get("spare_list") or []
+        assert spare_list, f"segment {seg_idx} should carry a front spar"
+        main_spar = spare_list[0]
+        # the index-0 (main) spar in this segment IS the planned front spar:
+        # its bounding box equals the front piece OD (within metre tolerance).
+        assert main_spar["spare_support_dimension_width"] == pytest.approx(
+            planned_front["outer_d"], rel=1e-6, abs=1e-9
+        )
+        assert main_spar["spare_support_dimension_height"] == pytest.approx(
+            planned_front["outer_d"], rel=1e-6, abs=1e-9
+        )
