@@ -93,8 +93,8 @@ def _wing(name="main_wing", segment_lengths_mm=(500.0,)):
     return SimpleNamespace(name=name, x_secs=x_secs, _segments=segments)
 
 
-def _aeroplane(wings):
-    return SimpleNamespace(wings=wings, uuid=uuid.uuid4())
+def _aeroplane(wings, node_id=42):
+    return SimpleNamespace(wings=wings, uuid=uuid.uuid4(), id=node_id)
 
 
 def _request(**overrides):
@@ -252,6 +252,11 @@ class TestDryRunVsCommit:
         with (
             patch.object(spar_insert_service, "create_spare", side_effect=fake_create_spare),
             patch.object(spar_insert_service, "_clear_plan_spares") as mock_clear,
+            patch.object(
+                spar_insert_service.aeroplane_version_service,
+                "snapshot",
+                return_value=SimpleNamespace(id=1),
+            ),
         ):
             resp = _run(
                 _patch_service(aeroplane, _single_segment_plan()),
@@ -293,6 +298,11 @@ class TestReplaceExistingSpares:
                 "_clear_plan_spares",
                 side_effect=lambda db, wing, seg_idx: cleared_segments.append(seg_idx),
             ),
+            patch.object(
+                spar_insert_service.aeroplane_version_service,
+                "snapshot",
+                return_value=SimpleNamespace(id=1),
+            ),
         ):
             _run(
                 _patch_service(aeroplane, _two_segment_plan()),
@@ -302,6 +312,85 @@ class TestReplaceExistingSpares:
             )
         # both target segments cleared exactly once (no double-corruption)
         assert sorted(set(cleared_segments)) == [0, 1]
+
+
+# --------------------------------------------------------------------------
+# Auto-snapshot before destructive commit (gh-1058)
+# --------------------------------------------------------------------------
+
+
+class TestAutoSnapshotBeforeCommit:
+    def test_commit_snapshots_once_before_persisting(self, plane_id):
+        """On commit a snapshot is taken EXACTLY ONCE, BEFORE any spare is
+        written, and its id is returned."""
+        aeroplane = _aeroplane([_wing(segment_lengths_mm=(500.0,))], node_id=99)
+        call_order: list[str] = []
+
+        def fake_snapshot(db, node_id, label, *args, **kwargs):
+            call_order.append("snapshot")
+            # snapshot() must run before any spare is persisted
+            assert "persist" not in call_order
+            assert node_id == 99
+            return SimpleNamespace(id=777)
+
+        def fake_persist(*args, **kwargs):
+            call_order.append("persist")
+
+        with (
+            patch.object(
+                spar_insert_service.aeroplane_version_service,
+                "snapshot",
+                side_effect=fake_snapshot,
+            ) as mock_snapshot,
+            patch.object(spar_insert_service, "_persist_spares", side_effect=fake_persist),
+        ):
+            resp = _run(
+                _patch_service(aeroplane, _single_segment_plan()),
+                lambda: spar_insert_service.insert_spar_plan(
+                    db=None, aeroplane_uuid=plane_id, request=_request(dry_run=False)
+                ),
+            )
+
+        mock_snapshot.assert_called_once()
+        assert call_order == ["snapshot", "persist"]
+        assert resp.committed is True
+        assert resp.snapshot_id == 777
+
+    def test_dry_run_does_not_snapshot(self, plane_id):
+        """A dry-run preview takes NO snapshot and returns snapshot_id=None."""
+        aeroplane = _aeroplane([_wing(segment_lengths_mm=(500.0,))])
+        with patch.object(
+            spar_insert_service.aeroplane_version_service, "snapshot"
+        ) as mock_snapshot:
+            resp = _run(
+                _patch_service(aeroplane, _single_segment_plan()),
+                lambda: spar_insert_service.insert_spar_plan(
+                    db=None, aeroplane_uuid=plane_id, request=_request(dry_run=True)
+                ),
+            )
+        mock_snapshot.assert_not_called()
+        assert resp.snapshot_id is None
+
+    def test_snapshot_failure_aborts_commit_without_mutating(self, plane_id):
+        """If snapshotting fails, the whole commit fails and NO spare is written
+        (don't mutate without a snapshot)."""
+        aeroplane = _aeroplane([_wing(segment_lengths_mm=(500.0,))])
+        with (
+            patch.object(
+                spar_insert_service.aeroplane_version_service,
+                "snapshot",
+                side_effect=RuntimeError("snapshot boom"),
+            ),
+            patch.object(spar_insert_service, "_persist_spares") as mock_persist,
+        ):
+            with pytest.raises(RuntimeError):
+                _run(
+                    _patch_service(aeroplane, _single_segment_plan()),
+                    lambda: spar_insert_service.insert_spar_plan(
+                        db=None, aeroplane_uuid=plane_id, request=_request(dry_run=False)
+                    ),
+                )
+        mock_persist.assert_not_called()
 
 
 # --------------------------------------------------------------------------
