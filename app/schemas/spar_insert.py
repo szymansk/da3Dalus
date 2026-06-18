@@ -89,7 +89,9 @@ class SparInsertResponse(BaseModel):
     """Response for ``POST /aeroplanes/{id}/spar-plan/insert`` (gh-1049).
 
     Lengths in metres. ``committed`` is false for a dry-run preview, true once
-    the spares have been persisted.
+    the spares have been persisted. On commit (gh-1058) an immutable snapshot is
+    auto-created before the destructive REPLACE and its id is returned in
+    ``snapshot_id`` so the user can one-click revert; it is None on a dry-run.
     """
 
     dry_run: bool = Field(..., description="Echo of the request dry_run flag.")
@@ -112,4 +114,14 @@ class SparInsertResponse(BaseModel):
     feasible: bool = Field(..., description="The plan's overall feasibility.")
     infeasibility_reason: Optional[str] = Field(
         None, description="Reason when the plan is infeasible; None otherwise."
+    )
+    snapshot_id: Optional[int] = Field(
+        None,
+        description=(
+            "Integer PK of the immutable snapshot auto-created BEFORE the "
+            "destructive commit (gh-1058). The commit REPLACEs existing spares in "
+            "each touched segment; this snapshot captures the pre-insert state so "
+            "the user can one-click revert via POST /aeroplanes/{snapshot_id}/restore. "
+            "None on a dry-run preview (nothing was mutated, so nothing was snapshotted)."
+        ),
     )

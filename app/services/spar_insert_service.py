@@ -40,6 +40,7 @@ from app.schemas.spar_insert import (
     SparInsertRequest,
     SparInsertResponse,
 )
+from app.services import aeroplane_version_service
 from app.services.spar_plan_service import _resolve_wing, compute_spar_plan_object
 from app.services.wing_service import create_spare, get_aeroplane_or_raise
 from cad_designer.airplane.geometry.spar_cad_insertion import spar_plan_to_spares
@@ -47,6 +48,11 @@ from cad_designer.airplane.geometry.spar_cad_insertion import spar_plan_to_spare
 logger = logging.getLogger(__name__)
 
 _MM_TO_M = 0.001
+
+#: Version-label for the auto-snapshot taken before a destructive spar insert
+#: commit (gh-1058). The commit REPLACEs existing spares in each touched
+#: segment, so the head is frozen first to enable a one-click revert.
+_AUTOSNAPSHOT_LABEL = "Before spar insert"
 
 #: Per-invariant spar_index assignment by structural role / piece kind.
 _FRONT_INDEX = 0
@@ -252,6 +258,11 @@ def insert_spar_plan(
 ) -> SparInsertResponse:
     """Compute a spar plan and insert it into the wing (dry-run or commit).
 
+    On commit (``dry_run=false``) the wing is mutated destructively — existing
+    spares in every touched segment are REPLACEd. Before any mutation the head is
+    frozen as an immutable snapshot (gh-1058) so the user can one-click revert;
+    the snapshot id is returned in the response. A dry-run takes no snapshot.
+
     Raises:
         NotFoundError: aeroplane or wing does not exist (-> 404).
         ValidationError: section geometry unavailable, material/strength inputs
@@ -275,7 +286,19 @@ def insert_spar_plan(
     planned = _build_planned_pieces(plan, segment_lengths_mm)
 
     committed = False
+    snapshot_id: int | None = None
     if not request.dry_run:
+        # gh-1058: a commit REPLACEs (clears) existing spares in every touched
+        # segment — destructive. Freeze the current head as an immutable
+        # snapshot BEFORE mutating anything so the user can one-click revert.
+        # If snapshotting fails we abort the whole commit (never mutate without
+        # a recovery point); the exception propagates and get_db() rolls back.
+        snapshot_node = aeroplane_version_service.snapshot(
+            db,
+            aeroplane.id,
+            _AUTOSNAPSHOT_LABEL,
+        )
+        snapshot_id = snapshot_node.id
         _persist_spares(db, aeroplane_uuid, wing, planned)
         committed = True
 
@@ -288,4 +311,5 @@ def insert_spar_plan(
         warnings=mapping.warnings,
         feasible=plan.feasible,
         infeasibility_reason=plan.infeasibility_reason,
+        snapshot_id=snapshot_id,
     )

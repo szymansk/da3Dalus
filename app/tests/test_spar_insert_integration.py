@@ -15,6 +15,7 @@ from pathlib import Path
 import pytest
 from fastapi.testclient import TestClient
 
+from app.models.aeroplanemodel import AeroplaneModel
 from app.models.component import ComponentModel
 from test.ehawk_workflow_helpers import _build_main_wing
 
@@ -55,6 +56,38 @@ def _first_material_id(session_local) -> int:
         return material.id
     finally:
         db.close()
+
+
+def _node_uuid(session_local, node_id: int) -> str:
+    """Resolve an aeroplane node's UUID from its integer PK."""
+    db = session_local()
+    try:
+        node = db.query(AeroplaneModel).filter(AeroplaneModel.id == node_id).first()
+        assert node is not None, f"node {node_id} not found"
+        return str(node.uuid)
+    finally:
+        db.close()
+
+
+def _spare_signature(wing_json: dict) -> list[tuple]:
+    """A comparable signature of a wing's spares across all cross-sections.
+
+    Uses the dimensional fields + origin/vector so two wings with the same spar
+    layout compare equal regardless of DB ids.
+    """
+    sig: list[tuple] = []
+    for x in wing_json["x_secs"]:
+        for s in x.get("spare_list") or []:
+            sig.append(
+                (
+                    round(s["spare_support_dimension_width"], 6),
+                    round(s["spare_support_dimension_height"], 6),
+                    round((s.get("spare_length") or 0.0), 6),
+                    tuple(round(c, 6) for c in (s.get("spare_origin") or [])),
+                    tuple(round(c, 6) for c in (s.get("spare_vector") or [])),
+                )
+            )
+    return sig
 
 
 @pytest.mark.slow
@@ -245,3 +278,84 @@ def test_spar_insert_commit_preserves_solved_origin_and_vector_gh1053(client_and
             f"seg{seg_idx}: persisted front/rear separation {persisted_sep} != "
             f"solved separation {planned_sep} (front {fo}, rear {ro})"
         )
+
+
+@pytest.mark.slow
+@pytest.mark.requires_cadquery
+def test_spar_insert_commit_autosnapshots_and_restore_recovers_pre_insert_gh1058(client_and_db):
+    """gh-1058: the destructive insert-commit auto-snapshots the head FIRST, and
+    restoring that snapshot recovers the EXACT pre-insert spares.
+
+    A dry-run must NOT snapshot (snapshot_id is null); a commit returns the
+    snapshot id, and POST /aeroplanes/{snapshot_id}/restore yields a head whose
+    spares match the pre-insert state byte-for-byte (within metre tolerance).
+    """
+    test_client, session_local = client_and_db
+    wing_name = "main_wing"
+
+    create_plane = test_client.post("/aeroplanes", params={"name": "spar insert autosnap RT"})
+    assert create_plane.status_code == 201, create_plane.text
+    aeroplane_id = create_plane.json()["id"]
+
+    create_wing = test_client.post(
+        f"/aeroplanes/{aeroplane_id}/wings/{wing_name}/from-wingconfig",
+        json=_build_ehawk_wingconfig_payload(),
+    )
+    assert create_wing.status_code == 201, create_wing.text
+
+    material_id = _first_material_id(session_local)
+    request_body = {
+        "material_id": material_id,
+        "wing_name": wing_name,
+        "moments": [
+            {"y_span": 0.0, "bending_moment_Nm": 4.0},
+            {"y_span": 0.5, "bending_moment_Nm": 1.5},
+            {"y_span": 1.0, "bending_moment_Nm": 0.0},
+        ],
+        "sigma_allow_mpa_override": 600.0,
+        "n_span": 6,
+        "packing_factor": 0.9,
+    }
+
+    # Capture the pre-insert spare layout (the eHawk wing ships construction
+    # spares that the destructive commit would REPLACE).
+    wing_pre = test_client.get(f"/aeroplanes/{aeroplane_id}/wings/{wing_name}").json()
+    pre_signature = _spare_signature(wing_pre)
+
+    # 1) dry-run preview must NOT snapshot.
+    preview = test_client.post(
+        f"/aeroplanes/{aeroplane_id}/spar-plan/insert",
+        json={**request_body, "dry_run": True},
+    )
+    assert preview.status_code == 200, preview.text
+    assert preview.json()["snapshot_id"] is None
+
+    # 2) commit auto-snapshots BEFORE mutating; returns the snapshot id.
+    commit = test_client.post(
+        f"/aeroplanes/{aeroplane_id}/spar-plan/insert",
+        json={**request_body, "dry_run": False},
+    )
+    assert commit.status_code == 200, commit.text
+    commit_json = commit.json()
+    assert commit_json["committed"] is True
+    snapshot_id = commit_json["snapshot_id"]
+    assert isinstance(snapshot_id, int), "commit must return an integer snapshot id"
+
+    # The head changed (spares were replaced by the inserted plan).
+    wing_post = test_client.get(f"/aeroplanes/{aeroplane_id}/wings/{wing_name}").json()
+    post_signature = _spare_signature(wing_post)
+    assert post_signature != pre_signature, "commit should have changed the spare layout"
+
+    # 3) restore the auto-snapshot → a new head carrying the PRE-insert spares.
+    restore = test_client.post(
+        f"/aeroplanes/{snapshot_id}/restore",
+        json={"name": "revert spar insert"},
+    )
+    assert restore.status_code == 201, restore.text
+    restored_head_id = restore.json()["head_id"]
+    restored_uuid = _node_uuid(session_local, restored_head_id)
+
+    wing_restored = test_client.get(f"/aeroplanes/{restored_uuid}/wings/{wing_name}").json()
+    assert _spare_signature(wing_restored) == pre_signature, (
+        "restoring the auto-snapshot must recover the exact pre-insert spares"
+    )

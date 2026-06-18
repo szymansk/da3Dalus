@@ -565,6 +565,10 @@ def insert_airplane_spar_plan(
     With ``dry_run=true`` (default) the planned insertions are returned WITHOUT
     writing. With ``dry_run=false`` each spar piece is persisted, REPLACING any
     existing spares in the target segments so the front spar lands at index 0.
+    Because that commit is destructive, an immutable snapshot of the head is
+    auto-created beforehand (gh-1058) and its id returned in ``snapshot_id`` so
+    the user can one-click revert via ``POST /aeroplanes/{snapshot_id}/restore``;
+    a dry-run takes no snapshot and returns ``snapshot_id = null``.
 
     Returns 404 when the aeroplane / wing does not exist, and 422 when section
     geometry is unavailable, the material/strength inputs are invalid, or the
