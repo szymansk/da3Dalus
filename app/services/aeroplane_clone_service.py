@@ -36,6 +36,7 @@ from app.models.aeroplanemodel import (
     WingXSecSpareModel,
     WingXSecTedServoModel,
     WingXSecTrailingEdgeDeviceModel,
+    WingXSecTurbulatorModel,
 )
 from app.models.component_tree import ComponentTreeNodeModel
 from app.models.computation_config import AircraftComputationConfigModel
@@ -105,9 +106,7 @@ EXCLUDED_TABLES: dict[str, str] = {
     # ── versioning meta (managed by caller, not cloned into child) ───────────
     "branches": "versioning meta; managed by the versioning service",
     # ── construction artefacts (string FK, not int-FK cascade) ───────────────
-    "construction_plans": (
-        "soft string FK to aeroplanes; template-style, not per-version-copy"
-    ),
+    "construction_plans": ("soft string FK to aeroplanes; template-style, not per-version-copy"),
     "construction_parts": (
         "string aeroplane_id (no int FK); per-aeroplane but file-backed — "
         "not cloned to avoid stale file references"
@@ -209,7 +208,7 @@ def clone_aeroplane_subgraph(
     # We build an old-id → new-id map so loading_scenarios can remap
     # component_overrides (which store str(weight_item.id) as component_uuid).
     weight_id_map: dict[str, str] = {}  # str(old_id) → str(new_id)
-    for wi in (source.weight_items or []):
+    for wi in source.weight_items or []:
         new_wi = WeightItemModel(
             aeroplane_id=clone.id,
             name=wi.name,
@@ -225,7 +224,7 @@ def clone_aeroplane_subgraph(
         weight_id_map[str(wi.id)] = str(new_wi.id)
 
     # ── 3. Wings → xsecs → details → spares + TEDs + servos ─────────────────
-    for wing in (source.wings or []):
+    for wing in source.wings or []:
         new_wing = WingModel(
             aeroplane_id=clone.id,
             name=wing.name,
@@ -235,7 +234,7 @@ def clone_aeroplane_subgraph(
         db.add(new_wing)
         db.flush()
 
-        for xsec in (wing.x_secs or []):
+        for xsec in wing.x_secs or []:
             new_xsec = WingXSecModel(
                 wing_id=new_wing.id,
                 xyz_le=copy.deepcopy(xsec.xyz_le),
@@ -259,7 +258,7 @@ def clone_aeroplane_subgraph(
                 db.flush()
 
                 # Spares
-                for spare in (detail.spares or []):
+                for spare in detail.spares or []:
                     new_spare = WingXSecSpareModel(
                         wing_xsec_detail_id=new_detail.id,
                         sort_index=spare.sort_index,
@@ -273,6 +272,19 @@ def clone_aeroplane_subgraph(
                         spare_origin=copy.deepcopy(spare.spare_origin),
                     )
                     db.add(new_spare)
+
+                # Turbulator (gh-934) — optional one-to-one per detail (gh-1069)
+                turbulator = detail.turbulator
+                if turbulator is not None:
+                    new_turbulator = WingXSecTurbulatorModel(
+                        wing_xsec_detail_id=new_detail.id,
+                        form=turbulator.form,
+                        height_mm=turbulator.height_mm,
+                        position_root=turbulator.position_root,
+                        position_tip=turbulator.position_tip,
+                        enabled=turbulator.enabled,
+                    )
+                    db.add(new_turbulator)
 
                 # TED + servo
                 ted = detail.trailing_edge_device
@@ -325,7 +337,7 @@ def clone_aeroplane_subgraph(
                         db.add(new_servo)
 
     # ── 4. Fuselages → xsecs (null STEP paths) ───────────────────────────────
-    for fus in (source.fuselages or []):
+    for fus in source.fuselages or []:
         new_fus = FuselageModel(
             aeroplane_id=clone.id,
             name=fus.name,
@@ -336,7 +348,7 @@ def clone_aeroplane_subgraph(
         db.add(new_fus)
         db.flush()
 
-        for xsec in (fus.x_secs or []):
+        for xsec in fus.x_secs or []:
             new_xsec = FuselageXSecSuperEllipseModel(
                 fuselage_id=new_fus.id,
                 xyz=copy.deepcopy(xsec.xyz),
@@ -371,7 +383,7 @@ def clone_aeroplane_subgraph(
         db.add(new_mo)
 
     # ── 6. Design assumptions ─────────────────────────────────────────────────
-    for da in (source.design_assumptions or []):
+    for da in source.design_assumptions or []:
         new_da = DesignAssumptionModel(
             aeroplane_id=clone.id,
             parameter_name=da.parameter_name,
@@ -399,7 +411,7 @@ def clone_aeroplane_subgraph(
         db.add(new_cc)
 
     # ── 8. Stability results ──────────────────────────────────────────────────
-    for sr in (source.stability_results or []):
+    for sr in source.stability_results or []:
         new_sr = StabilityResultModel(
             aeroplane_id=clone.id,
             solver=sr.solver,
@@ -425,7 +437,7 @@ def clone_aeroplane_subgraph(
         db.add(new_sr)
 
     # ── 9. Loading scenarios (remap weight_item id refs in component_overrides)
-    for ls in (source.loading_scenarios or []):
+    for ls in source.loading_scenarios or []:
         new_overrides = _remap_component_overrides(ls.component_overrides, weight_id_map)
         new_ls = LoadingScenarioModel(
             aeroplane_id=clone.id,
