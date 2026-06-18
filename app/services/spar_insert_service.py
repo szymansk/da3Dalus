@@ -43,11 +43,15 @@ from app.schemas.spar_insert import (
 from app.services import aeroplane_version_service
 from app.services.spar_plan_service import _resolve_wing, compute_spar_plan_object
 from app.services.wing_service import create_spare, get_aeroplane_or_raise
-from cad_designer.airplane.geometry.spar_cad_insertion import spar_plan_to_spares
+from cad_designer.airplane.geometry.spar_cad_insertion import (
+    spar_piece_to_spare,
+    spar_plan_to_spares,
+)
 
 logger = logging.getLogger(__name__)
 
 _MM_TO_M = 0.001
+_FRACTION_TOL = 1e-6
 
 #: Version-label for the auto-snapshot taken before a destructive spar insert
 #: commit (gh-1058). The commit REPLACEs existing spares in each touched
@@ -251,6 +255,183 @@ def _persist_spares(db, aeroplane_uuid, wing, planned: list[_PlannedPiece]) -> N
         )
 
 
+# ---------------------------------------------------------------------------
+# gh-1063: main-spar segment split persistence (front spar telescopes).
+#
+# When the solved FRONT (main) spar is multi-piece (telescopes), each diameter
+# needs its own segment with the main piece at spar_index 0 (the VaseMode
+# invariant). We split the host segment at each joint y, place each main piece in
+# its sub-segment, carry the children (control surface duplicated, turbulator
+# carried, existing spares re-homed) via the gh-1064 split helper, and persist by
+# rebuilding the wing's cross-section rows from the post-split WingConfiguration.
+# Secondary spars (rear/reinforcement) stay in the host segment as Option-B
+# partial-span spares (no split) and are written by the existing spare path.
+# ---------------------------------------------------------------------------
+
+
+def _real_front_pieces(plan) -> list:
+    """Front pieces that actually become a Spare (drop degenerate Ø0 tips).
+
+    The solver can emit a Ø0 terminal tip piece (gh-1045); a zero-diameter tube
+    is not a physical structural object and never reaches the build, so it must
+    not count toward telescoping detection or create a phantom split.
+    """
+    return [p for p in plan.front_pieces if p.outer_d > 0.0]
+
+
+def _front_telescopes(plan) -> bool:
+    """True when the front (main) spar is multi-piece → a segment split is needed."""
+    return len(_real_front_pieces(plan)) > 1
+
+
+def _front_split_plan(plan, segment_lengths_mm: list[float]) -> tuple[int, list[float]]:
+    """Resolve the host segment + the segment-local joint lengths (mm) for the
+    telescoping front spar.
+
+    All front pieces of one telescoping spar run continuously root→tip inside a
+    single host segment; the host is resolved from the first front piece's root
+    y. Each subsequent piece's root y is a joint — converted to a segment-local
+    length (joint_y - host_root_y), clamped strictly inside the segment.
+    """
+    pieces = _real_front_pieces(plan)
+    host_index = _segment_for_y(_piece_locate_y(pieces[0]), segment_lengths_mm)
+    host_root_y = float(sum(segment_lengths_mm[:host_index]))
+    host_len = float(segment_lengths_mm[host_index]) if segment_lengths_mm else 0.0
+
+    split_lengths: list[float] = []
+    for piece in pieces[1:]:
+        local = float(_piece_locate_y(piece)) - host_root_y
+        # Keep strictly inside the host segment so the split helper accepts it.
+        if _FRACTION_TOL * host_len < local < host_len - _FRACTION_TOL * host_len:
+            split_lengths.append(local)
+    return host_index, split_lengths
+
+
+def _main_pieces_per_subsegment(plan) -> list[list]:
+    """One front-spar Spare per sub-segment, in root→tip order (index-0 invariant).
+
+    The split produces ``len(real_front_pieces)`` sub-segments; the i-th
+    sub-segment gets the i-th front piece as its sole main spar at ``spar_list[0]``.
+    """
+    return [[spar_piece_to_spare(piece)] for piece in _real_front_pieces(plan)]
+
+
+def _apply_front_split_to_config(wing_config, host_index: int, split_lengths: list[float], plan):
+    """Return a new WingConfiguration with the host segment split (gh-1064 helper).
+
+    Reuses ``split_segment_at_lengths`` so the loft is geometrically unchanged;
+    injects ``morph_airfoils`` so differing-airfoil hosts get a real morphed
+    boundary, and places each front piece at ``spar_list[0]`` of its sub-segment.
+    """
+    from app.converters.openvsp_airfoil import morph_airfoils
+    from cad_designer.airplane.geometry.segment_split import split_segment_at_lengths
+
+    return split_segment_at_lengths(
+        wing_config,
+        host_index,
+        split_lengths,
+        airfoil_morph_fn=morph_airfoils,
+        main_pieces_per_subsegment=_main_pieces_per_subsegment(plan),
+    )
+
+
+def _wing_to_config_mm(wing):
+    """Build the wing's millimetre WingConfiguration (seam for fast tests)."""
+    from app.converters.model_schema_converters import wing_model_to_wing_config
+
+    return wing_model_to_wing_config(wing, scale=1000.0)
+
+
+def _persist_wing_config(db, aeroplane_uuid, wing, new_wing_config) -> None:
+    """Materialise the post-split WingConfiguration into the wing's DB rows.
+
+    Rebuilds the wing's cross-section rows from ``new_wing_config`` via the
+    round-trip converter: this inserts the new ``WingXSecModel`` rows at the
+    split boundaries, re-indexes ``sort_index`` contiguously, and transfers each
+    sub-segment's detail (duplicated control surface, carried turbulator,
+    re-homed + main-piece spares). Replaces the wing's ``x_secs`` in place so the
+    wing identity (and component-tree group) is preserved. All within the caller's
+    transaction (get_db commits/rolls back).
+    """
+    from app.converters.model_schema_converters import wing_config_to_wing_model
+    from app.services.wing_service import _recompute_spare_vectors
+
+    rebuilt = wing_config_to_wing_model(
+        wing_config=new_wing_config,
+        wing_name=wing.name,
+        scale=_MM_TO_M,
+    )
+    # Detach the rebuilt cross-sections from their transient parent so they have
+    # exactly one owner. Reassigning ``wing.x_secs`` wholesale lets the
+    # ``all, delete-orphan`` cascade delete the wing's previous ribs and adopt
+    # the rebuilt ones in a single step — inserting the new split boundary rows,
+    # keeping contiguous sort_index (0..N), and carrying each sub-segment's
+    # transferred detail (duplicated control surface, carried turbulator,
+    # re-homed + main-piece spares). The wing identity (and its component-tree
+    # group) is preserved.
+    new_xsecs = list(rebuilt.x_secs)
+    rebuilt.x_secs = []
+    wing.x_secs = new_xsecs
+    db.flush()
+    _recompute_spare_vectors(wing)
+
+
+def _persist_front_split(db, aeroplane_uuid, wing, plan, segment_lengths_mm: list[float]):
+    """Persist a telescoping front spar as a materialised segment split.
+
+    Returns the planned per-sub-segment lengths (m) for the split host segment.
+    Secondary (rear/reinforcement) spares are appended to the FIRST sub-segment
+    as Option-B partial-span spares after the split.
+    """
+    host_index, split_lengths = _front_split_plan(plan, segment_lengths_mm)
+    if not split_lengths:
+        # Defensive: telescoping detected but every joint clamped out of range —
+        # fall back to the spare-only path rather than emit a no-op split.
+        _persist_spares(db, aeroplane_uuid, wing, _build_planned_pieces(plan, segment_lengths_mm))
+        return None
+
+    wing_config = _wing_to_config_mm(wing)
+    new_wing_config = _apply_front_split_to_config(wing_config, host_index, split_lengths, plan)
+    _add_secondary_spares_to_first_subsegment(new_wing_config, host_index, plan)
+    _persist_wing_config(db, aeroplane_uuid, wing, new_wing_config)
+
+    sub_lengths_mm = [
+        float(new_wing_config.segments[host_index + i].length)
+        for i in range(len(split_lengths) + 1)
+    ]
+    return [length * _MM_TO_M for length in sub_lengths_mm]
+
+
+def _add_secondary_spares_to_first_subsegment(new_wing_config, host_index: int, plan) -> None:
+    """Append rear/reinforcement spares as Option-B partial-span spares (no split).
+
+    Secondary spars stay in the host segment (now the FIRST sub-segment) with
+    ``spare_start``/``spare_length`` set so they span the joint(s) without
+    forcing another split. They follow the index-0 main piece (rear root = 1,
+    reinforcement = next).
+    """
+    from cad_designer.airplane.geometry.spar_cad_insertion import secondary_spare_option_b
+
+    first_sub = new_wing_config.segments[host_index]
+    segment_root_y = float(_subsegment_root_y(new_wing_config, host_index))
+    secondaries = list(plan.rear_pieces)
+    if plan.reinforcement is not None:
+        secondaries.append(plan.reinforcement)
+    if not secondaries:
+        return
+    if first_sub.spare_list is None:
+        first_sub.spare_list = []
+    for piece in secondaries:
+        if piece.outer_d <= 0.0:
+            continue
+        first_sub.spare_list.append(secondary_spare_option_b(piece, segment_root_y=segment_root_y))
+
+
+def _subsegment_root_y(wing_config, segment_index: int) -> float:
+    """Spanwise root y (mm) of a segment = sum of preceding segment lengths."""
+    return sum(float(seg.length) for seg in wing_config.segments[:segment_index])
+
+
 def insert_spar_plan(
     db,
     aeroplane_uuid,
@@ -285,21 +466,39 @@ def insert_spar_plan(
     segment_lengths_mm = _segment_lengths_mm(wing)
     planned = _build_planned_pieces(plan, segment_lengths_mm)
 
+    # gh-1063: a telescoping front spar materialises a SEGMENT SPLIT (new
+    # cross-section rows) rather than writing multiple index-0 spares into one
+    # segment; a single-piece front spar takes the existing spare-only path.
+    splits = _front_telescopes(plan)
+    planned_segment_lengths: list[float] | None = None
+    if splits:
+        host_index, split_lengths = _front_split_plan(plan, segment_lengths_mm)
+        planned_segment_lengths = _preview_subsegment_lengths_m(
+            segment_lengths_mm, host_index, split_lengths
+        )
+
     committed = False
     snapshot_id: int | None = None
     if not request.dry_run:
-        # gh-1058: a commit REPLACEs (clears) existing spares in every touched
-        # segment — destructive. Freeze the current head as an immutable
-        # snapshot BEFORE mutating anything so the user can one-click revert.
-        # If snapshotting fails we abort the whole commit (never mutate without
-        # a recovery point); the exception propagates and get_db() rolls back.
+        # gh-1058: a commit mutates structure destructively (segment split, or a
+        # REPLACE of existing spares). Freeze the current head as an immutable
+        # snapshot BEFORE mutating anything so the user can one-click revert. If
+        # snapshotting fails we abort the whole commit (never mutate without a
+        # recovery point); the exception propagates and get_db() rolls back.
         snapshot_node = aeroplane_version_service.snapshot(
             db,
             aeroplane.id,
             _AUTOSNAPSHOT_LABEL,
         )
         snapshot_id = snapshot_node.id
-        _persist_spares(db, aeroplane_uuid, wing, planned)
+        if splits:
+            persisted_lengths = _persist_front_split(
+                db, aeroplane_uuid, wing, plan, segment_lengths_mm
+            )
+            if persisted_lengths is not None:
+                planned_segment_lengths = persisted_lengths
+        else:
+            _persist_spares(db, aeroplane_uuid, wing, planned)
         committed = True
 
     mapping = spar_plan_to_spares(plan)
@@ -312,4 +511,16 @@ def insert_spar_plan(
         feasible=plan.feasible,
         infeasibility_reason=plan.infeasibility_reason,
         snapshot_id=snapshot_id,
+        planned_segment_lengths=planned_segment_lengths,
     )
+
+
+def _preview_subsegment_lengths_m(
+    segment_lengths_mm: list[float], host_index: int, split_lengths: list[float]
+) -> list[float] | None:
+    """Planned per-sub-segment lengths (m) for a previewed split (no DB write)."""
+    if not split_lengths:
+        return None
+    host_len = float(segment_lengths_mm[host_index])
+    boundaries = [0.0, *split_lengths, host_len]
+    return [(boundaries[i + 1] - boundaries[i]) * _MM_TO_M for i in range(len(boundaries) - 1)]
