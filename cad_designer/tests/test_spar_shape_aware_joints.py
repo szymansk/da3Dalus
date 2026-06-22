@@ -91,36 +91,38 @@ class TestTubeJoints:
 
 
 # ---------------------------------------------------------------------------
-# gh-1075: rod spec → intermediate joints must NOT be 'telescoping'
+# gh-1075: non-tube specs → intermediate joints must NOT be 'telescoping'
 # They must be 'joiner' (the agreed token per spec validation comment).
+# Parametrised over rod, rectangular and capped — all lack a bore to telescope.
 # ---------------------------------------------------------------------------
 
 
-class TestRodJoints:
-    def test_single_piece_rod_has_no_joint(self) -> None:
-        spec = SparSpec(role=SparRole.FRONT, shape="rod")
+@pytest.mark.parametrize("shape", ["rod", "rectangular", "capped"])
+class TestNonTubeJoints:
+    def test_single_piece_non_tube_has_no_joint(self, shape: str) -> None:
+        spec = SparSpec(role=SparRole.FRONT, shape=shape)
         pieces = plan_spar(_uniform_stations(), spec)
         assert len(pieces) == 1
         assert pieces[0].joint_to_next is None
 
-    def test_multi_piece_rod_intermediate_joint_is_joiner(self) -> None:
-        """Core of gh-1075: a solid rod cannot telescope → joint must be 'joiner'."""
-        spec = SparSpec(role=SparRole.FRONT, shape="rod")
+    def test_multi_piece_non_tube_intermediate_joint_is_joiner(self, shape: str) -> None:
+        """Core of gh-1075: non-tube shapes cannot telescope → joint must be 'joiner'."""
+        spec = SparSpec(role=SparRole.FRONT, shape=shape)
         pieces = plan_spar(_multi_piece_stations(), spec)
-        assert len(pieces) >= 2, "expected at least two pieces from tight outboard band"
+        assert len(pieces) >= 2, f"expected at least two pieces for shape={shape!r}"
         # every intermediate piece must be 'joiner', never 'telescoping'
         for p in pieces[:-1]:
             assert p.joint_to_next == "joiner", (
-                f"rod piece at y={p.governing_y} should be 'joiner', got {p.joint_to_next!r}"
+                f"{shape!r} piece at y={p.governing_y} should be 'joiner', got {p.joint_to_next!r}"
             )
         # last piece has no joint
         assert pieces[-1].joint_to_next is None
 
-    def test_rod_piece_joint_is_never_telescoping(self) -> None:
-        """No rod piece (at any position) may carry joint_to_next='telescoping'."""
-        spec = SparSpec(role=SparRole.FRONT, shape="rod")
+    def test_non_tube_piece_joint_is_never_telescoping(self, shape: str) -> None:
+        """No non-tube piece (at any position) may carry joint_to_next='telescoping'."""
+        spec = SparSpec(role=SparRole.FRONT, shape=shape)
         pieces = plan_spar(_multi_piece_stations(), spec)
         for p in pieces:
             assert p.joint_to_next != "telescoping", (
-                f"rod piece at y={p.governing_y} must not be 'telescoping'"
+                f"{shape!r} piece at y={p.governing_y} must not be 'telescoping'"
             )

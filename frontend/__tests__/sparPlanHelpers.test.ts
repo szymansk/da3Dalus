@@ -304,18 +304,29 @@ describe("pieceDimsLabel — shape-aware (gh-1075)", () => {
     expect(pieceDimsLabel(piece)).not.toContain("wall 0");
   });
 
-  it("unknown shape — graceful fallback using Ø form, never blank or crash", () => {
+  it("unknown shape — graceful fallback: exact Ø label, never blank or crash", () => {
+    // 'hexagonal' is genuinely unrecognised — not a known deferred shape.
+    // Must produce "Ø 15.0 mm" (outer_d only), never blank.
+    const piece = makePiece({ shape: "hexagonal", outer_d: 0.015, inner_d: 0, wall: 0 });
+    expect(pieceDimsLabel(piece)).toBe("Ø 15.0 mm");
+  });
+
+  it("capped shape (deferred to #1080) — falls back to Ø form, no b×h invented", () => {
+    // rectangular/capped lack width/height fields in SparPieceOut; must not
+    // fabricate b×h from outer_d. Graceful Ø fallback is correct for B2.
     const piece = makePiece({ shape: "capped", outer_d: 0.015, inner_d: 0.010, wall: 0.0025 });
-    const label = pieceDimsLabel(piece);
-    expect(label.length).toBeGreaterThan(0);
-    // must contain outer_d in mm
-    expect(label).toContain("15.0");
+    expect(pieceDimsLabel(piece)).toBe("Ø 15.0 mm");
+    expect(pieceDimsLabel(piece)).not.toContain("ID");
   });
 });
 
 describe("jointLabel — joiner token (gh-1075)", () => {
   it("maps 'joiner' to 'Joiner'", () => {
     expect(jointLabel("joiner")).toBe("Joiner");
+  });
+
+  it("'telescoping' still maps to 'Telescoping' (switch-order regression guard)", () => {
+    expect(jointLabel("telescoping")).toBe("Telescoping");
   });
 
   it("falling-back unknown token returns the token itself", () => {
