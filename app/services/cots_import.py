@@ -20,7 +20,19 @@ from app.models.component import ComponentModel
 logger = logging.getLogger(__name__)
 
 # Allowed component_type values
-_VALID_COMPONENT_TYPES = {"brushless_motor", "esc", "battery", "propeller", "servo", "receiver"}
+_VALID_COMPONENT_TYPES = {
+    "brushless_motor",
+    "esc",
+    "battery",
+    "propeller",
+    "servo",
+    "receiver",
+    # gh-1083: Höllein wood construction stock
+    "veneer",
+    "strip",
+    "triangular_strip",
+    "grooved_strip",
+}
 
 
 @dataclass
