@@ -81,27 +81,47 @@ export function jointLabel(joint: string | null | undefined): string {
       return "Bent-pin";
     case "reinforcement+joiner":
       return "Reinforcement + joiner";
+    // gh-1075: non-tube intermediate joint (solid rod, rectangular, capped —
+    // shapes without a bore cannot telescope, so the solver emits 'joiner').
+    case "joiner":
+      return "Joiner";
     default:
       return joint;
   }
 }
 
 /**
- * One-line dimension summary for a buildable piece:
- * "OD 28.8 × ID 24.0 (wall 2.4) × L 750 mm".
- * Wall is computed from OD/ID when the piece's wall is absent.
+ * One-line dimension summary for a buildable piece, branching on shape:
+ *
+ * - `tube` → "OD 28.8 × ID 24.0 (wall 2.4) mm"  (byte-identical to the
+ *   pre-gh-1075 label — regression guard for the common case).
+ * - `rod`  → "Ø 8.0 mm"  (no ID / wall — a solid rod has no bore, so both
+ *   inner_d=0 and wall=d/2 are meaningless to a builder; gh-1075).
+ * - anything else → graceful "Ø <od> mm" fallback (rectangular / capped /
+ *   unknown — their b×h fields are deferred to #1080 and must not be faked).
+ *
+ * Wall is computed from OD/ID when the piece's `wall` field is absent.
  */
 export function pieceDimsLabel(piece: SparPieceOut): string {
   const od = mToMm(piece.outer_d);
-  const id = mToMm(piece.inner_d);
-  const wall =
-    piece.wall != null && Number.isFinite(piece.wall)
-      ? piece.wall
-      : (piece.outer_d - piece.inner_d) / 2;
-  const wallStr = mToMm(wall);
-  // length is the run-length along spare_vector; not on the piece schema, so
-  // pieces show OD/ID/wall only (length lives on the planned-spare preview).
-  return `OD ${od} × ID ${id} (wall ${wallStr}) mm`;
+
+  if (piece.shape === "tube") {
+    const id = mToMm(piece.inner_d);
+    const wall =
+      piece.wall != null && Number.isFinite(piece.wall)
+        ? piece.wall
+        : (piece.outer_d - piece.inner_d) / 2;
+    const wallStr = mToMm(wall);
+    // length is the run-length along spare_vector; not on the piece schema, so
+    // pieces show OD/ID/wall only (length lives on the planned-spare preview).
+    return `OD ${od} × ID ${id} (wall ${wallStr}) mm`;
+  }
+
+  // rod and all other shapes: show outer diameter only.
+  // rectangular / capped labels (b×h, cap_width) are deferred to #1080 — the
+  // SparPieceOut schema carries no width/height fields yet, so we must not
+  // invent numbers from outer_d.
+  return `Ø ${od} mm`;
 }
 
 // ---- Built-spar spanwise extent + telescoping joint (gh-1060) ---------------

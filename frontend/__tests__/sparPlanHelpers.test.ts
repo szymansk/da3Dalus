@@ -262,6 +262,67 @@ describe("groupXcSuffix (gh-1072)", () => {
   });
 });
 
+// gh-1075: shape-aware pieceDimsLabel + joiner joint label -----------------
+
+describe("pieceDimsLabel — shape-aware (gh-1075)", () => {
+  function makePiece(overrides: Partial<SparPieceOut>): SparPieceOut {
+    return {
+      role: "front",
+      spare_origin: [0, 0, 0],
+      spare_vector: [0, 1, 0],
+      outer_d: 0.0288,
+      inner_d: 0.024,
+      wall: 0.0024,
+      shape: "tube",
+      governing_y: 0,
+      x_over_chord: 0.3,
+      y_start: 0,
+      y_end: 0.75,
+      utilisation: 0.5,
+      joint_to_next: null,
+      feasible: true,
+      infeasibility_reason: null,
+      ...overrides,
+    };
+  }
+
+  it("tube — byte-identical to previous label (regression guard)", () => {
+    const piece = makePiece({ shape: "tube", outer_d: 0.0288, inner_d: 0.024, wall: 0.0024 });
+    expect(pieceDimsLabel(piece)).toBe("OD 28.8 × ID 24.0 (wall 2.4) mm");
+  });
+
+  it("rod — shows only Ø <d> mm, no ID, no wall fragment", () => {
+    const piece = makePiece({ shape: "rod", outer_d: 0.008, inner_d: 0, wall: 0.004 });
+    expect(pieceDimsLabel(piece)).toBe("Ø 8.0 mm");
+    expect(pieceDimsLabel(piece)).not.toContain("ID");
+    expect(pieceDimsLabel(piece)).not.toContain("wall");
+  });
+
+  it("rod — 'ID 0' must never appear", () => {
+    const piece = makePiece({ shape: "rod", outer_d: 0.012, inner_d: 0, wall: 0 });
+    expect(pieceDimsLabel(piece)).not.toContain("ID 0");
+    expect(pieceDimsLabel(piece)).not.toContain("wall 0");
+  });
+
+  it("unknown shape — graceful fallback using Ø form, never blank or crash", () => {
+    const piece = makePiece({ shape: "capped", outer_d: 0.015, inner_d: 0.010, wall: 0.0025 });
+    const label = pieceDimsLabel(piece);
+    expect(label.length).toBeGreaterThan(0);
+    // must contain outer_d in mm
+    expect(label).toContain("15.0");
+  });
+});
+
+describe("jointLabel — joiner token (gh-1075)", () => {
+  it("maps 'joiner' to 'Joiner'", () => {
+    expect(jointLabel("joiner")).toBe("Joiner");
+  });
+
+  it("falling-back unknown token returns the token itself", () => {
+    expect(jointLabel("weird-token")).toBe("weird-token");
+  });
+});
+
 describe("touchedSegments + replaceWarning", () => {
   function planned(seg: number): PlannedSpareOut {
     return {

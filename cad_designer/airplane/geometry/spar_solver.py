@@ -365,7 +365,10 @@ def plan_spar(stations: list[StationData], spec: SparSpec) -> list[SparPiece]:
     for idx, run in enumerate(runs):
         piece = _piece_from_run_with_od(run, spec, ods[idx], bores[idx])
         if idx < len(runs) - 1:
-            piece.joint_to_next = "telescoping"
+            # gh-1075: only round tubes can physically telescope (they have a bore
+            # to slide into). Non-tube shapes (rod, rectangular, capped) must use
+            # a discrete joiner instead. Fix at the SOURCE per Iron Law #4.
+            piece.joint_to_next = "telescoping" if spec.shape == "tube" else "joiner"
         built.append(piece)
     return _drop_zero_od_tip(built)
 
