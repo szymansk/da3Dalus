@@ -375,3 +375,86 @@ describe("touchedSegments + replaceWarning", () => {
     expect(touchedSegments([])).toEqual([]);
   });
 });
+
+// gh-1080: rectangular/capped dims in pieceDimsLabel + SparPieceOut fields ----
+
+describe("pieceDimsLabel — rectangular/capped (gh-1080)", () => {
+  function makePiece(overrides: Partial<SparPieceOut>): SparPieceOut {
+    return {
+      role: "front",
+      spare_origin: [0, 0, 0],
+      spare_vector: [0, 1, 0],
+      outer_d: 0.015,
+      inner_d: 0,
+      wall: 0,
+      shape: "rectangular",
+      governing_y: 0,
+      x_over_chord: 0.3,
+      y_start: 0,
+      y_end: 0.5,
+      utilisation: 0.6,
+      joint_to_next: null,
+      feasible: true,
+      infeasibility_reason: null,
+      ...overrides,
+    };
+  }
+
+  it("rectangular — shows b × h when width + height are present", () => {
+    const piece = makePiece({
+      shape: "rectangular",
+      width: 0.005,
+      height: 0.012,
+    });
+    const label = pieceDimsLabel(piece);
+    // 5.0 × 12.0 mm
+    expect(label).toBe("5.0 × 12.0 mm");
+    expect(label).not.toContain("OD");
+    expect(label).not.toContain("ID");
+  });
+
+  it("rectangular — falls back to Ø when width/height are absent (solver not yet populating)", () => {
+    // The current solver does not populate width/height — this is the live state.
+    const piece = makePiece({ shape: "rectangular", outer_d: 0.015 });
+    expect(pieceDimsLabel(piece)).toBe("Ø 15.0 mm");
+    expect(pieceDimsLabel(piece)).not.toContain("×");
+  });
+
+  it("rectangular — falls back to Ø when only width is present (height missing)", () => {
+    const piece = makePiece({ shape: "rectangular", width: 0.005 });
+    expect(pieceDimsLabel(piece)).toBe("Ø 15.0 mm");
+  });
+
+  it("capped — shows cap + H when cap_width + height are present", () => {
+    const piece = makePiece({
+      shape: "capped",
+      cap_width: 0.008,
+      height: 0.015,
+    });
+    const label = pieceDimsLabel(piece);
+    expect(label).toContain("8.0");
+    expect(label).toContain("15.0");
+    expect(label).not.toContain("OD");
+    expect(label).not.toContain("ID");
+  });
+
+  it("capped — falls back to Ø when cap_width/height are absent", () => {
+    const piece = makePiece({ shape: "capped", outer_d: 0.015 });
+    expect(pieceDimsLabel(piece)).toBe("Ø 15.0 mm");
+  });
+
+  it("tube regression — still byte-identical after rectangular/capped additions", () => {
+    const piece = makePiece({
+      shape: "tube",
+      outer_d: 0.0288,
+      inner_d: 0.024,
+      wall: 0.0024,
+    });
+    expect(pieceDimsLabel(piece)).toBe("OD 28.8 × ID 24.0 (wall 2.4) mm");
+  });
+
+  it("rod regression — still Ø only after rectangular/capped additions", () => {
+    const piece = makePiece({ shape: "rod", outer_d: 0.008, inner_d: 0, wall: 0 });
+    expect(pieceDimsLabel(piece)).toBe("Ø 8.0 mm");
+  });
+});

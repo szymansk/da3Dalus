@@ -97,8 +97,12 @@ export function jointLabel(joint: string | null | undefined): string {
  *   pre-gh-1075 label — regression guard for the common case).
  * - `rod`  → "Ø 8.0 mm"  (no ID / wall — a solid rod has no bore, so both
  *   inner_d=0 and wall=d/2 are meaningless to a builder; gh-1075).
- * - anything else → graceful "Ø <od> mm" fallback (rectangular / capped /
- *   unknown — their b×h fields are deferred to #1080 and must not be faked).
+ * - `rectangular` → "b × h mm" when the backend provides width+height (gh-1080);
+ *   falls back to "Ø <od> mm" when those fields are absent (solver has not yet
+ *   populated them — do NOT invent numbers from outer_d).
+ * - `capped` → "b × H (cap b mm) mm" when width+height+cap_width are present;
+ *   falls back to "Ø <od> mm" otherwise.
+ * - anything else → graceful "Ø <od> mm" fallback (unknown shapes).
  *
  * Wall is computed from OD/ID when the piece's `wall` field is absent.
  */
@@ -117,10 +121,27 @@ export function pieceDimsLabel(piece: SparPieceOut): string {
     return `OD ${od} × ID ${id} (wall ${wallStr}) mm`;
   }
 
-  // rod and all other shapes: show outer diameter only.
-  // rectangular / capped labels (b×h, cap_width) are deferred to #1080 — the
-  // SparPieceOut schema carries no width/height fields yet, so we must not
-  // invent numbers from outer_d.
+  if (piece.shape === "rectangular") {
+    // gh-1080: show b × h when the backend has populated width + height.
+    // When absent (solver not yet emitting these), fall through to Ø fallback —
+    // never fabricate dimensions from outer_d.
+    if (piece.width != null && piece.height != null) {
+      return `${mToMm(piece.width)} × ${mToMm(piece.height)} mm`;
+    }
+    return `Ø ${od} mm`;
+  }
+
+  if (piece.shape === "capped") {
+    // gh-1080: show flange width + outer height when present.
+    if (piece.cap_width != null && piece.height != null) {
+      const capStr = mToMm(piece.cap_width);
+      const hStr = mToMm(piece.height);
+      return `cap ${capStr} × H ${hStr} mm`;
+    }
+    return `Ø ${od} mm`;
+  }
+
+  // rod and all unknown shapes: show outer diameter only.
   return `Ø ${od} mm`;
 }
 

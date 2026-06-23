@@ -1121,6 +1121,8 @@ export function SpanwiseLoadsTabContent({
         safety_factor_j: sizingParams.safety_factor_j,
         packing_factor: sizingParams.packing_factor,
         sigma_allow_mpa_override: sizingParams.sigma_allow_mpa_override ?? null,
+        // gh-1080: forward the user's chosen shape so the plan uses rod/tube/etc.
+        shape: inputs.shape,
       };
       lastSizingParamsRef.current = planParams;
       runPlan(planParams);

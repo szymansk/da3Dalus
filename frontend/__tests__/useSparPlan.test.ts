@@ -222,6 +222,44 @@ describe("useSparPlan (gh-1050)", () => {
     );
   });
 
+  // gh-1080: shape field plumbed through to the request body -----------------
+
+  it("sends shape='rod' in the request body when specified", async () => {
+    const fetchSpy = vi
+      .spyOn(global, "fetch")
+      .mockResolvedValue(okResponse(FAKE_PLAN));
+    const { result } = renderHook(() => useSparPlan("aero-1"));
+    await act(async () => {
+      await result.current.run({ ...BASE, shape: "rod" });
+    });
+    const body = JSON.parse(fetchSpy.mock.calls[0][1]!.body as string);
+    expect(body.shape).toBe("rod");
+  });
+
+  it("omits shape from the request body when not specified (backend defaults to tube)", async () => {
+    const fetchSpy = vi
+      .spyOn(global, "fetch")
+      .mockResolvedValue(okResponse(FAKE_PLAN));
+    const { result } = renderHook(() => useSparPlan("aero-1"));
+    await act(async () => {
+      await result.current.run(BASE);
+    });
+    const body = JSON.parse(fetchSpy.mock.calls[0][1]!.body as string);
+    expect(body).not.toHaveProperty("shape");
+  });
+
+  it("sends shape='tube' when explicitly set", async () => {
+    const fetchSpy = vi
+      .spyOn(global, "fetch")
+      .mockResolvedValue(okResponse(FAKE_PLAN));
+    const { result } = renderHook(() => useSparPlan("aero-1"));
+    await act(async () => {
+      await result.current.run({ ...BASE, shape: "tube" });
+    });
+    const body = JSON.parse(fetchSpy.mock.calls[0][1]!.body as string);
+    expect(body.shape).toBe("tube");
+  });
+
   // gh-1060: snapshot revert ------------------------------------------------
 
   it("restoreSnapshot POSTs to /aeroplanes/{snapshot_id}/restore with a name", async () => {
