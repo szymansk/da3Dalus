@@ -20,9 +20,8 @@ Coverage targets:
 from __future__ import annotations
 
 import math
-from dataclasses import dataclass
 from types import SimpleNamespace
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
 import pytest
 from pydantic import ValidationError as PydanticValidationError
@@ -86,29 +85,29 @@ def _uniform_stations(n: int = 3, *, required_od: float = 10.0) -> list[StationD
 
 
 def _basic_request(**overrides):
-    body = dict(
-        material_id=7,
-        moments=[
+    body = {
+        "material_id": 7,
+        "moments": [
             MomentSample(y_span=0.0, bending_moment_Nm=10.0),
             MomentSample(y_span=1.0, bending_moment_Nm=0.0),
         ],
-    )
+    }
     body.update(overrides)
     return SparPlanRequest(**body)
 
 
 def _piece(role=SparRole.FRONT, **kw):
-    defaults = dict(
-        role=role,
-        spare_origin=(0.0, 0.0, 5.0),
-        spare_vector=(0.0, 1.0, 0.0),
-        outer_d=10.0,
-        inner_d=0.0,
-        shape="rod",
-        governing_y=0.0,
-        utilisation=0.8,
-        length=300.0,
-    )
+    defaults = {
+        "role": role,
+        "spare_origin": (0.0, 0.0, 5.0),
+        "spare_vector": (0.0, 1.0, 0.0),
+        "outer_d": 10.0,
+        "inner_d": 0.0,
+        "shape": "rod",
+        "governing_y": 0.0,
+        "utilisation": 0.8,
+        "length": 300.0,
+    }
     defaults.update(kw)
     return SparPiece(**defaults)
 
@@ -735,3 +734,193 @@ class TestRodEndToEnd:
         assert resp.feasible is False
         assert resp.infeasibility_reason is not None
         assert "stock" in resp.infeasibility_reason.lower()
+
+
+# ---------------------------------------------------------------------------
+# 6. BLOCKER fix: _reinforcement_piece must not give a rod inner_d > 0
+# ---------------------------------------------------------------------------
+
+
+class TestReinforcementPieceShape:
+    """gh-1080 blocker: _reinforcement_piece called solve_dimension(shape='tube')
+    unconditionally, producing inner_d > 0 even for rod spars.
+
+    A non-collinear root (z-offset between left/right root stations) triggers
+    the reinforcement path.  With shape='rod', the reinforcement must be solid
+    (inner_d=0).
+    """
+
+    def _noncollinear_stations(self, z_offset: float = 20.0):
+        """Left/right root stations at different z heights — fails _inboard_collinear."""
+        left = [
+            StationData(
+                y_span=0.0,
+                y_mm=-100.0,
+                x_c=0.3,
+                center_z=z_offset,  # elevated
+                band_lo=-50.0 + z_offset,
+                band_hi=50.0 + z_offset,
+                required_od=10.0,
+            ),
+            StationData(
+                y_span=1.0,
+                y_mm=-500.0,
+                x_c=0.3,
+                center_z=z_offset,
+                band_lo=-50.0 + z_offset,
+                band_hi=50.0 + z_offset,
+                required_od=5.0,
+            ),
+        ]
+        right = [
+            StationData(
+                y_span=0.0,
+                y_mm=100.0,
+                x_c=0.3,
+                center_z=0.0,  # different z from left root → non-collinear
+                band_lo=-50.0,
+                band_hi=50.0,
+                required_od=10.0,
+            ),
+            StationData(
+                y_span=1.0,
+                y_mm=500.0,
+                x_c=0.3,
+                center_z=0.0,
+                band_lo=-50.0,
+                band_hi=50.0,
+                required_od=5.0,
+            ),
+        ]
+        return left, right
+
+    def test_rod_reinforcement_has_zero_inner_d(self):
+        """BLOCKER: a rod spar on a non-collinear root must produce
+        plan.reinforcement.inner_d == 0 (solid, no bore)."""
+        from cad_designer.airplane.geometry.spar_solver import solve_spar_plan
+
+        left, right = self._noncollinear_stations(z_offset=20.0)
+        front_spec = SparSpec(role=SparRole.FRONT, shape="rod")
+        plan = solve_spar_plan(
+            front_left=left,
+            front_right=right,
+            front_spec=front_spec,
+        )
+        # The z-offset should trigger the reinforcement path.
+        assert plan.front_joint == "reinforcement+joiner", (
+            "expected non-collinear root to produce 'reinforcement+joiner'; "
+            f"got {plan.front_joint!r} — check z-offset magnitude or tolerance"
+        )
+        assert plan.reinforcement is not None
+        assert plan.reinforcement.inner_d == pytest.approx(0.0), (
+            f"rod reinforcement must be solid (inner_d=0), got {plan.reinforcement.inner_d}"
+        )
+        assert plan.reinforcement.shape == "rod"
+
+    def test_tube_reinforcement_still_has_positive_inner_d(self):
+        """Regression: tube spars on a non-collinear root still get a hollow reinforcement."""
+        from cad_designer.airplane.geometry.spar_solver import solve_spar_plan
+
+        left, right = self._noncollinear_stations(z_offset=20.0)
+        front_spec = SparSpec(role=SparRole.FRONT, shape="tube")
+        plan = solve_spar_plan(
+            front_left=left,
+            front_right=right,
+            front_spec=front_spec,
+        )
+        if plan.reinforcement is not None:
+            assert plan.reinforcement.inner_d > 0.0, (
+                "tube reinforcement should have positive inner_d"
+            )
+
+
+# ---------------------------------------------------------------------------
+# 7. HIGH 1 fix: mixed stock — rod piece must snap to rod stock, not tube
+# ---------------------------------------------------------------------------
+
+
+class TestSnapSolidHollowFilter:
+    """snap_piece_to_stock must not let a solid (rod) piece snap to hollow (tube)
+    stock even when the tube stock is also adequate by section modulus."""
+
+    def test_rod_piece_selects_rod_stock_from_mixed_catalog(self, db_session):
+        """When both rod and tube stock are adequate, a rod piece must select
+        rod stock (inner_d=0) — never a tube (which would give inner_d > 0
+        for a rod shape, structurally inconsistent)."""
+        # Both have W >> erf_W=1.0 mm³.
+        _seed_rod_stock(db_session, outer_d_mm=8.0, name="Rod 8mm")
+        _seed_tube_stock(db_session, outer_d_mm=10.0, inner_d_mm=8.0, name="Tube OD10/ID8")
+        db_session.commit()
+
+        piece = _piece(shape="rod", outer_d=5.0, inner_d=0.0)
+        result = spar_plan_service.snap_piece_to_stock(db_session, piece, erf_w=1.0)
+
+        assert result.inner_d == pytest.approx(0.0), (
+            f"rod piece must snap to solid stock; got inner_d={result.inner_d}"
+        )
+        assert result.outer_d == pytest.approx(8.0)  # the rod stock
+
+    def test_tube_piece_selects_tube_stock_from_mixed_catalog(self, db_session):
+        """Symmetrically, a hollow tube piece must not snap to solid rod stock."""
+        _seed_rod_stock(db_session, outer_d_mm=8.0, name="Rod 8mm")
+        _seed_tube_stock(db_session, outer_d_mm=10.0, inner_d_mm=8.0, name="Tube OD10/ID8")
+        db_session.commit()
+
+        piece = _piece(shape="tube", outer_d=5.0, inner_d=3.0)
+        result = spar_plan_service.snap_piece_to_stock(db_session, piece, erf_w=1.0)
+
+        assert result.inner_d > 0.0, "tube piece must snap to hollow stock"
+        assert result.outer_d == pytest.approx(10.0)  # the tube stock
+
+
+# ---------------------------------------------------------------------------
+# 8. HIGH 2 fix: containment-band filter — oversized stock → infeasible
+# ---------------------------------------------------------------------------
+
+
+class TestContainmentBandFilter:
+    """snap_piece_to_stock must reject stock whose OD exceeds the airfoil
+    containment band, even if it is structurally adequate."""
+
+    def test_oversized_stock_rejected_with_band_reason(self, db_session):
+        """The only strong-enough stock has OD > max_od_mm → infeasible with band reason."""
+        # Only large tube available — OD 20 mm
+        _seed_tube_stock(db_session, outer_d_mm=20.0, inner_d_mm=18.0, name="BigTube OD20/ID18")
+        db_session.commit()
+
+        piece = _piece(shape="tube", outer_d=15.0, inner_d=12.0)
+        # Band only allows up to 15 mm OD (e.g. thin section)
+        result = spar_plan_service.snap_piece_to_stock(db_session, piece, erf_w=1.0, max_od_mm=15.0)
+
+        assert result.feasible is False
+        assert result.infeasibility_reason is not None
+        assert "band" in result.infeasibility_reason.lower(), (
+            f"expected 'band' in reason, got: {result.infeasibility_reason!r}"
+        )
+
+    def test_stock_within_band_still_snaps(self, db_session):
+        """Stock that fits the band and meets strength snaps successfully."""
+        _seed_tube_stock(db_session, outer_d_mm=10.0, inner_d_mm=8.0, name="Tube OD10/ID8")
+        db_session.commit()
+
+        piece = _piece(shape="tube", outer_d=8.0, inner_d=6.0)
+        result = spar_plan_service.snap_piece_to_stock(
+            db_session,
+            piece,
+            erf_w=1.0,
+            max_od_mm=12.0,  # band allows up to 12 mm
+        )
+
+        assert result.feasible is True
+        assert result.outer_d == pytest.approx(10.0)
+
+    def test_no_max_od_skips_band_filter(self, db_session):
+        """When max_od_mm is None, the band filter is skipped (backwards-compatible)."""
+        _seed_tube_stock(db_session, outer_d_mm=30.0, inner_d_mm=28.0, name="HugeTube")
+        db_session.commit()
+
+        piece = _piece(shape="tube", outer_d=15.0, inner_d=12.0)
+        result = spar_plan_service.snap_piece_to_stock(db_session, piece, erf_w=1.0, max_od_mm=None)
+        # Without the band filter the huge tube is selected
+        assert result.feasible is True
+        assert result.outer_d == pytest.approx(30.0)

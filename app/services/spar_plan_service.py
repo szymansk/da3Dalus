@@ -51,9 +51,9 @@ _MIN_SPAR_SPACING = 0.05
 # gh-1080: Stock snapping — select lightest adequate real stock
 # ---------------------------------------------------------------------------
 
-#: Print/assembly radial clearance (mm) around geometry-incomplete or non-spar
-#: records — purely used to sanity-check inner_d filtering.
-_SNAP_TOL_MM = 1e-9
+#: Float-equality tolerance (mm³) for W_stock ≥ erf_W comparisons.
+#: Avoids rejecting stock whose W equals erf_W up to floating-point rounding.
+_W_EQ_TOL = 1e-9
 
 
 def _w_stock(outer_d_mm: float, inner_d_mm: float | None) -> float:
@@ -88,22 +88,35 @@ def _linear_mass(outer_d_mm: float, inner_d_mm: float | None, density_kg_m3: flo
     return density_kg_m3 * area_m2
 
 
-def snap_piece_to_stock(db, piece, *, erf_w: float):
+def snap_piece_to_stock(db, piece, *, erf_w: float, max_od_mm: float | None = None):
     """Snap a ``SparPiece`` to the lightest adequate stock from the Component Library.
 
     Queries all ``spar_tube`` rows where ``role_use='spar'`` and
     ``geometry_complete=True``, then selects the stock item with the smallest
-    linear mass (ρ·A per unit length) whose section modulus W_stock(Da,Di)
-    satisfies W_stock ≥ erf_w.
+    linear mass (ρ·A per unit length) that passes three hard filters:
+
+    1. **Solid/hollow match**: a solid piece (``inner_d == 0``) only snaps to
+       solid stock (``inner_d_mm == 0``); a hollow piece only snaps to hollow
+       stock.  Mixing would produce a rod piece with inner_d > 0 — structurally
+       inconsistent.
+    2. **Containment-band fit**: the stock OD must fit inside the airfoil
+       channel at the governing station: ``Da ≤ max_od_mm`` (the band depth at
+       that station minus print-clearance, pre-computed by the caller).  When
+       ``max_od_mm`` is None the band filter is skipped (backwards-compatible
+       for callers that can't provide the band).
+    3. **Strength**: ``W_stock(Da, Di) ≥ erf_w``.
 
     Section-modulus comparison (gh-1080 spec validation):
     - Tube stock:  W = π·(Da⁴ − Di⁴) / (32·Da)
-    - Rod stock:   W = d³ / 10   (Di = 0)
+    - Rod stock:   W = d³ / 10   (Di = 0; same formula as upstream sizing)
 
     Args:
         db: SQLAlchemy session (real or in-memory test session).
-        piece: A ``SparPiece`` instance to snap.
+        piece: A ``SparPiece`` instance to snap (mutated in-place).
         erf_w: Required section modulus (mm³) the chosen stock must satisfy.
+        max_od_mm: Maximum allowable outer diameter (mm) from the governing
+            station's containment band.  Stock whose OD exceeds this is
+            rejected as geometrically infeasible (won't fit the printed channel).
 
     Returns:
         The original ``piece`` mutated in-place with snapped dimensions
@@ -114,28 +127,56 @@ def snap_piece_to_stock(db, piece, *, erf_w: float):
 
     rows = db.query(ComponentModel).filter(ComponentModel.component_type == "spar_tube").all()
 
-    # Filter: spar-eligible + geometry-complete only.
+    # Determine whether this piece is solid (rod) or hollow (tube).
+    piece_is_solid = piece.inner_d <= 0.0
+
+    # Filter: spar-eligible + geometry-complete + solid/hollow match.
     candidates = [
         r
         for r in rows
         if r.specs.get("role_use") == "spar"
         and r.specs.get("geometry_complete", False)
         and r.specs.get("outer_d_mm") is not None
+        and (
+            (piece_is_solid and (r.specs.get("inner_d_mm") or 0.0) <= 0.0)
+            or (not piece_is_solid and (r.specs.get("inner_d_mm") or 0.0) > 0.0)
+        )
     ]
 
-    # Compute section modulus for each candidate and keep those that meet erf_w.
+    # Hard filters: containment band + strength.  Build (linear_mass, Da, Di, name)
+    # tuples for adequate candidates.
     adequate = []
     for row in candidates:
         da = float(row.specs["outer_d_mm"])
         di_raw = row.specs.get("inner_d_mm")
         di = float(di_raw) if di_raw is not None else 0.0
+
+        # Containment-band filter (gh-1080 AC): stock OD must fit the printed channel.
+        if max_od_mm is not None and da > max_od_mm + _W_EQ_TOL:
+            continue
+
         w = _w_stock(da, di)
-        if w >= erf_w - _SNAP_TOL_MM:
+        if w >= erf_w - _W_EQ_TOL:
             density = float(row.specs.get("density_kg_m3", 1550.0))
             lm = _linear_mass(da, di, density)
             adequate.append((lm, da, di, row.name))
 
     if not adequate:
+        # Distinguish the infeasibility mode for better diagnostics.
+        if max_od_mm is not None:
+            # Check whether any stock would fit the band (ignoring strength).
+            band_fits = [
+                r for r in candidates if float(r.specs["outer_d_mm"]) <= max_od_mm + _W_EQ_TOL
+            ]
+            if not band_fits:
+                piece.feasible = False
+                piece.infeasibility_reason = (
+                    f"no stock fits band: all available spar_tube stock ODs exceed "
+                    f"the containment band max_od={max_od_mm:.1f} mm at the governing "
+                    "station; increase chord/thickness or choose a narrower spar type"
+                )
+                return piece
+
         piece.feasible = False
         piece.infeasibility_reason = (
             f"no stock: strongest available spar_tube stock (W_max) is below the "
@@ -147,7 +188,7 @@ def snap_piece_to_stock(db, piece, *, erf_w: float):
     # Pick lightest (minimum ρ·A); tie-break by smallest OD, then by name for
     # determinism in tests.
     adequate.sort(key=lambda t: (t[0], t[1], t[3]))
-    _lm, best_da, best_di, best_name = adequate[0]
+    best_lm, best_da, best_di, best_name = adequate[0]
 
     piece.outer_d = best_da
     piece.inner_d = best_di
@@ -167,20 +208,47 @@ def snap_piece_to_stock(db, piece, *, erf_w: float):
 def _erf_w_for_piece(piece) -> float:
     """Infer the required section modulus (mm³) for a SparPiece.
 
-    The solver stored required_od indirectly in outer_d (the strength-required
-    OD before any stock snap).  We reconstruct erf_W = outer_d³/10 (the
-    solid-rod equivalent used in build_stations_from_geometry), which is the
-    conservative required W the piece was sized for.
+    The solver recorded required_od indirectly in outer_d (the
+    strength-required OD before any stock snap).  We reconstruct
+    erf_W = outer_d³/10 — the same solid-rod formula used in
+    build_stations_from_geometry.  This is ~1.8 % conservative vs the exact
+    solid-circular W = π·d³/32; the upstream sizing intentionally uses d³/10
+    throughout, so staying consistent here avoids a unit inconsistency.
     """
     return piece.outer_d**3 / 10.0
 
 
-def apply_stock_snap_to_plan(db, plan) -> None:
+def _max_od_from_stations(stations, governing_y_mm: float) -> float | None:
+    """Return the containment-band half-depth (mm) at the governing station.
+
+    The governing station is the one whose ``y_mm`` is closest to
+    ``governing_y_mm``.  The band half-depth ``(band_hi - band_lo) / 2``
+    is the maximum OD a spar centred on ``center_z`` can have without
+    breaching the packing clearance — i.e. the hard upper bound on OD.
+
+    Returns None when the station list is empty (band filter disabled).
+    """
+    if not stations:
+        return None
+    closest = min(stations, key=lambda s: abs(s.y_mm - governing_y_mm))
+    return max(0.0, closest.band_hi - closest.band_lo)
+
+
+def apply_stock_snap_to_plan(db, plan, stations=None) -> None:
     """Apply stock snapping in-place to every piece in ``plan`` (gh-1080).
 
     Iterates all front + rear + reinforcement pieces and calls
     :func:`snap_piece_to_stock` for each. Infeasibility roll-up is refreshed
     afterwards so ``plan.feasible`` reflects the post-snap state.
+
+    Args:
+        db: SQLAlchemy session.
+        plan: ``SparPlan`` instance to snap in-place.
+        stations: Optional combined station list (front_right + rear_right) used
+            to derive the containment-band ``max_od_mm`` for each piece.  When
+            provided, stock whose OD exceeds the governing station's band depth is
+            rejected as geometrically infeasible (won't fit the printed channel).
+            When None the band filter is skipped (backwards-compatible).
 
     Mutates ``plan`` in-place; returns None.
     """
@@ -190,7 +258,8 @@ def apply_stock_snap_to_plan(db, plan) -> None:
 
     for piece in all_pieces:
         erf_w = _erf_w_for_piece(piece)
-        snap_piece_to_stock(db, piece, erf_w=erf_w)
+        max_od = _max_od_from_stations(stations, piece.governing_y) if stations else None
+        snap_piece_to_stock(db, piece, erf_w=erf_w, max_od_mm=max_od)
 
     # Refresh feasibility roll-up.
     infeasible = [p for p in all_pieces if not p.feasible]
@@ -503,10 +572,15 @@ def compute_spar_plan_object(
 
     # gh-1080: snap every piece to the lightest adequate real stock from the
     # Component Library (W_stock(Da,Di) ≥ erf_W; minimum ρ·A objective).
+    # Pass the combined station list so the band filter can reject stock that
+    # won't fit the printed channel at the governing station.
     # Only when a real DB session is provided (fast tests patch the solver
     # boundary and may pass db=None to skip).
     if db is not None:
-        apply_stock_snap_to_plan(db, plan)
+        # Merge front + rear starboard stations for band lookup (both halves
+        # have the same band depths; starboard is the canonical list).
+        all_stations = list(front_right) + list(rear_right)
+        apply_stock_snap_to_plan(db, plan, stations=all_stations)
 
     return plan
 

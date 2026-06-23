@@ -549,12 +549,18 @@ def _reinforcement_piece(
     origin = (0.0, -reach, root_z)
     vector = (0.0, 1.0, 0.0)  # collinear through y=0
     erf_w = required_section_modulus_from_od(root_od)
-    sol = solve_dimension(shape="tube", erf_w=erf_w, outer_mm=root_od)
-    inner_d = (
-        float(sol["inner_mm"])
-        if sol["feasible"] and sol["inner_mm"]
-        else root_od * spec.wall_factor
-    )
+    # gh-1080: bore only for tube-shaped spars.  A rod reinforcement is solid
+    # (inner_d=0); solving solve_dimension with shape="tube" then assigning the
+    # hollow bore to a rod would produce a rod piece with inner_d > 0 — wrong.
+    if spec.shape == "tube":
+        sol = solve_dimension(shape="tube", erf_w=erf_w, outer_mm=root_od)
+        inner_d = (
+            float(sol["inner_mm"])
+            if sol["feasible"] and sol["inner_mm"]
+            else root_od * spec.wall_factor
+        )
+    else:
+        inner_d = 0.0
     return SparPiece(
         role=SparRole.FRONT,
         spare_origin=origin,
