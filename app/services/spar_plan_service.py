@@ -16,6 +16,7 @@ so the endpoint returns a clean 422 instead of crashing.
 from __future__ import annotations
 
 import logging
+import math
 
 from app.converters.model_schema_converters import wing_model_to_wing_config
 from app.core.exceptions import NotFoundError, ValidationError
@@ -44,6 +45,161 @@ _DEFAULT_FRONT_X_C = 0.30
 #: Smallest front–rear spacing fraction we will divide by, so a degenerate
 #: layout (front≈rear) cannot produce an infinite torsion reaction.
 _MIN_SPAR_SPACING = 0.05
+
+
+# ---------------------------------------------------------------------------
+# gh-1080: Stock snapping — select lightest adequate real stock
+# ---------------------------------------------------------------------------
+
+#: Print/assembly radial clearance (mm) around geometry-incomplete or non-spar
+#: records — purely used to sanity-check inner_d filtering.
+_SNAP_TOL_MM = 1e-9
+
+
+def _w_stock(outer_d_mm: float, inner_d_mm: float | None) -> float:
+    """Section modulus (mm³) of a real stock item.
+
+    Tube:  W = π·(Da⁴ − Di⁴) / (32·Da)   [Sadraey eq. 10.x / Anderson ch.5]
+    Rod:   W = d³ / 10   (solid round, Di=0)
+
+    The formula unifies because a solid rod is a tube with Di=0:
+      π·(Da⁴ − 0) / (32·Da) = π·Da³/32 ≠ Da³/10.
+    For a rod the standard formula (solid circular) W = π·d³/32 ≈ d³/10.05 ≈
+    d³/10 (the 1/10 approximation is from d³·π/32 with π/32≈0.0982≈1/10.18 but
+    the solver uses d³/10 throughout; we stay consistent with that convention).
+    """
+    di = inner_d_mm if inner_d_mm is not None else 0.0
+    if di <= 0.0:
+        # Solid rod: use the same formula the solver uses for required OD sizing.
+        return outer_d_mm**3 / 10.0
+    # Hollow tube: exact section-modulus formula.
+    return math.pi * (outer_d_mm**4 - di**4) / (32.0 * outer_d_mm)
+
+
+def _linear_mass(outer_d_mm: float, inner_d_mm: float | None, density_kg_m3: float) -> float:
+    """Linear mass ρ·A (kg/m) of a stock cross-section.
+
+    A = π/4·(Da² − Di²)  [mm²], converted to m² before multiplying by density.
+    Used as the ranking objective: minimum ρ·A = lightest per unit length.
+    """
+    di = inner_d_mm if inner_d_mm is not None else 0.0
+    area_mm2 = math.pi / 4.0 * (outer_d_mm**2 - max(0.0, di) ** 2)
+    area_m2 = area_mm2 * 1e-6
+    return density_kg_m3 * area_m2
+
+
+def snap_piece_to_stock(db, piece, *, erf_w: float):
+    """Snap a ``SparPiece`` to the lightest adequate stock from the Component Library.
+
+    Queries all ``spar_tube`` rows where ``role_use='spar'`` and
+    ``geometry_complete=True``, then selects the stock item with the smallest
+    linear mass (ρ·A per unit length) whose section modulus W_stock(Da,Di)
+    satisfies W_stock ≥ erf_w.
+
+    Section-modulus comparison (gh-1080 spec validation):
+    - Tube stock:  W = π·(Da⁴ − Di⁴) / (32·Da)
+    - Rod stock:   W = d³ / 10   (Di = 0)
+
+    Args:
+        db: SQLAlchemy session (real or in-memory test session).
+        piece: A ``SparPiece`` instance to snap.
+        erf_w: Required section modulus (mm³) the chosen stock must satisfy.
+
+    Returns:
+        The original ``piece`` mutated in-place with snapped dimensions
+        (outer_d, inner_d updated to the selected stock values), or with
+        feasible=False and an infeasibility_reason when no stock fits.
+    """
+    from app.models.component import ComponentModel
+
+    rows = db.query(ComponentModel).filter(ComponentModel.component_type == "spar_tube").all()
+
+    # Filter: spar-eligible + geometry-complete only.
+    candidates = [
+        r
+        for r in rows
+        if r.specs.get("role_use") == "spar"
+        and r.specs.get("geometry_complete", False)
+        and r.specs.get("outer_d_mm") is not None
+    ]
+
+    # Compute section modulus for each candidate and keep those that meet erf_w.
+    adequate = []
+    for row in candidates:
+        da = float(row.specs["outer_d_mm"])
+        di_raw = row.specs.get("inner_d_mm")
+        di = float(di_raw) if di_raw is not None else 0.0
+        w = _w_stock(da, di)
+        if w >= erf_w - _SNAP_TOL_MM:
+            density = float(row.specs.get("density_kg_m3", 1550.0))
+            lm = _linear_mass(da, di, density)
+            adequate.append((lm, da, di, row.name))
+
+    if not adequate:
+        piece.feasible = False
+        piece.infeasibility_reason = (
+            f"no stock: strongest available spar_tube stock (W_max) is below the "
+            f"required section modulus erf_W={erf_w:.1f} mm³; "
+            "add stronger/larger stock to the Component Library or reduce design load"
+        )
+        return piece
+
+    # Pick lightest (minimum ρ·A); tie-break by smallest OD, then by name for
+    # determinism in tests.
+    adequate.sort(key=lambda t: (t[0], t[1], t[3]))
+    _lm, best_da, best_di, best_name = adequate[0]
+
+    piece.outer_d = best_da
+    piece.inner_d = best_di
+    piece.feasible = True
+    piece.infeasibility_reason = None
+    logger.debug(
+        "snap_piece_to_stock: snapped to %s (OD=%.1f ID=%.1f W=%.1f mm³ ≥ erf_W=%.1f)",
+        best_name,
+        best_da,
+        best_di,
+        _w_stock(best_da, best_di),
+        erf_w,
+    )
+    return piece
+
+
+def _erf_w_for_piece(piece) -> float:
+    """Infer the required section modulus (mm³) for a SparPiece.
+
+    The solver stored required_od indirectly in outer_d (the strength-required
+    OD before any stock snap).  We reconstruct erf_W = outer_d³/10 (the
+    solid-rod equivalent used in build_stations_from_geometry), which is the
+    conservative required W the piece was sized for.
+    """
+    return piece.outer_d**3 / 10.0
+
+
+def apply_stock_snap_to_plan(db, plan) -> None:
+    """Apply stock snapping in-place to every piece in ``plan`` (gh-1080).
+
+    Iterates all front + rear + reinforcement pieces and calls
+    :func:`snap_piece_to_stock` for each. Infeasibility roll-up is refreshed
+    afterwards so ``plan.feasible`` reflects the post-snap state.
+
+    Mutates ``plan`` in-place; returns None.
+    """
+    all_pieces = list(plan.front_pieces) + list(plan.rear_pieces)
+    if plan.reinforcement is not None:
+        all_pieces.append(plan.reinforcement)
+
+    for piece in all_pieces:
+        erf_w = _erf_w_for_piece(piece)
+        snap_piece_to_stock(db, piece, erf_w=erf_w)
+
+    # Refresh feasibility roll-up.
+    infeasible = [p for p in all_pieces if not p.feasible]
+    if infeasible:
+        plan.feasible = False
+        plan.infeasibility_reason = infeasible[0].infeasibility_reason
+    else:
+        plan.feasible = True
+        plan.infeasibility_reason = None
 
 
 def _resolve_wing(aeroplane, request: SparPlanRequest):
@@ -262,6 +418,10 @@ def _piece_to_out(piece) -> SparPieceOut:
         joint_to_next=piece.joint_to_next,
         feasible=piece.feasible,
         infeasibility_reason=piece.infeasibility_reason,
+        # gh-1080: extended dims for rectangular/capped; None for tube/rod.
+        width=piece.width * _MM_TO_M if piece.width is not None else None,
+        height=piece.height * _MM_TO_M if piece.height is not None else None,
+        cap_width=piece.cap_width * _MM_TO_M if piece.cap_width is not None else None,
     )
 
 
@@ -288,6 +448,8 @@ def compute_spar_plan_object(
             inputs invalid (-> 422).
     """
     from cad_designer.airplane.geometry.spar_solver import (
+        SparRole,
+        SparSpec,
         build_stations_from_geometry,
         solve_spar_plan,
     )
@@ -324,12 +486,29 @@ def compute_spar_plan_object(
         geometry, x_c=request.rear_x_over_chord, moment_fn=rear_moment_fn, **common
     )
 
-    return solve_spar_plan(
+    # gh-1080: shape chosen by the user flows into both spar specs so the
+    # solver produces the right cross-section (rod → solid, no bore; tube →
+    # hollow, telescoping-capable; etc.).
+    front_spec = SparSpec(role=SparRole.FRONT, shape=request.shape)
+    rear_spec = SparSpec(role=SparRole.REAR, shape=request.shape)
+
+    plan = solve_spar_plan(
         front_left=_mirror_to_left(front_right),
         front_right=front_right,
         rear_left=_mirror_to_left(rear_right),
         rear_right=rear_right,
+        front_spec=front_spec,
+        rear_spec=rear_spec,
     )
+
+    # gh-1080: snap every piece to the lightest adequate real stock from the
+    # Component Library (W_stock(Da,Di) ≥ erf_W; minimum ρ·A objective).
+    # Only when a real DB session is provided (fast tests patch the solver
+    # boundary and may pass db=None to skip).
+    if db is not None:
+        apply_stock_snap_to_plan(db, plan)
+
+    return plan
 
 
 def compute_spar_plan(

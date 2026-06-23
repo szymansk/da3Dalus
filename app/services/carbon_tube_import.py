@@ -31,8 +31,6 @@ from typing import Any
 
 _VALID_ROLE_USE = {"spar", "boom", "pushrod", "shaft"}
 
-_VALID_FIBER_ORIENTATIONS = {"UD-axial", "0/90", "±45", "+/-45", "braided"}
-
 # Physical-bounds guard (Sadraey Table 10.6 + RC materials practice)
 _SIGMA_ALLOW_MIN_MPA = 10.0
 _SIGMA_ALLOW_MAX_MPA = 1500.0

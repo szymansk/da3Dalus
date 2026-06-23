@@ -103,6 +103,10 @@ class SparPiece:
     joint_to_next: str | None = None  # "telescoping" between consecutive pieces
     feasible: bool = True  # gh-1037: False when no round tube strong enough fits
     infeasibility_reason: str | None = None
+    # gh-1080: extended dims for rectangular/capped; None for tube/rod.
+    width: float | None = None  # mm, web/flange width for rectangular
+    height: float | None = None  # mm, profile height for rectangular (= band depth)
+    cap_width: float | None = None  # mm, flange width for capped (I/C-beam)
 
     @property
     def wall(self) -> float:
@@ -124,6 +128,10 @@ class SparPiece:
             "joint_to_next": self.joint_to_next,
             "feasible": self.feasible,
             "infeasibility_reason": self.infeasibility_reason,
+            # gh-1080: extended dims (None for tube/rod)
+            "width": self.width,
+            "height": self.height,
+            "cap_width": self.cap_width,
         }
 
 
@@ -346,20 +354,27 @@ def plan_spar(stations: list[StationData], spec: SparSpec) -> list[SparPiece]:
     # floor on the inner OD (bore + a minimal wall), so the root piece grows to
     # satisfy the whole telescoping stack. This also enforces OD non-increasing
     # outboard.
+    #
+    # gh-1080: bore-propagation is TUBE-ONLY. Non-tube shapes (rod/rectangular/
+    # capped) connect via discrete joiners — they have no hollow bore to
+    # telescope into, so clearance-driven bore growth is meaningless and would
+    # wrongly over-dimension inner pieces. Rods are solid (inner_d=0) throughout.
     bores: list[float] = [0.0] * len(runs)
-    # tip piece (last): bore is purely strength-driven.
-    bores[-1] = _bore_for(runs[-1], spec, ods[-1])
-    # inner pieces (root→tip order, processed tip→root): each must admit the
-    # adjacent outer piece's OD plus clearance through its bore, AND keep at
-    # least the strength-required bore, AND a minimal wall around the bore.
-    for i in range(len(runs) - 2, -1, -1):
-        telescope_bore = ods[i + 1] + 2.0 * spec.telescope_clearance_mm
-        strength_bore = _bore_for(runs[i], spec, ods[i])
-        bore = max(telescope_bore, strength_bore)
-        min_od_for_bore = bore + 2.0 * spec.telescope_clearance_mm
-        if ods[i] < min_od_for_bore:
-            ods[i] = min_od_for_bore
-        bores[i] = bore
+    if spec.shape == "tube":
+        # tip piece (last): bore is purely strength-driven.
+        bores[-1] = _bore_for(runs[-1], spec, ods[-1])
+        # inner pieces (root→tip order, processed tip→root): each must admit the
+        # adjacent outer piece's OD plus clearance through its bore, AND keep at
+        # least the strength-required bore, AND a minimal wall around the bore.
+        for i in range(len(runs) - 2, -1, -1):
+            telescope_bore = ods[i + 1] + 2.0 * spec.telescope_clearance_mm
+            strength_bore = _bore_for(runs[i], spec, ods[i])
+            bore = max(telescope_bore, strength_bore)
+            min_od_for_bore = bore + 2.0 * spec.telescope_clearance_mm
+            if ods[i] < min_od_for_bore:
+                ods[i] = min_od_for_bore
+            bores[i] = bore
+    # For non-tube shapes bores stays all-zero (solid sections).
 
     built: list[SparPiece] = []
     for idx, run in enumerate(runs):
