@@ -63,7 +63,7 @@ describe("speedPolarTraces (S7727 map wrapper)", () => {
       curve({ mass_kg: 3.0 }),
     ]);
     // 2 line traces + 1 marker trace for the base curve.
-    expect(traces.length).toBe(3);
+    expect(traces).toHaveLength(3);
     // The forwarded index means the second (non-base) curve is not orange.
     expect((traces[1].line as { color: string }).color).not.toBe("#FF8400");
   });
@@ -73,7 +73,7 @@ describe("speedPolarTraces (S7727 map wrapper)", () => {
     // array), the trace builder would still only read c and i, so behaviour
     // is unchanged — this simply pins the one-trace-per-curve contract.
     const traces = speedPolarTraces([curve({ v_min_sink: null, v_best_glide: null })]);
-    expect(traces.length).toBe(1);
+    expect(traces).toHaveLength(1);
   });
 });
 
