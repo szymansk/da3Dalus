@@ -284,6 +284,50 @@ def list_type_names(db: Session) -> list[str]:
 # replaying old migrations isn't tied to the current application code).
 # --------------------------------------------------------------------------- #
 
+
+def _wood_stock_schema(*, pack: bool = False, groove: bool = False) -> list[dict[str, Any]]:
+    """Schema shared by the Höllein wood construction-stock types (gh-1083).
+
+    ``material`` references a material component (e.g. ``Pine (structural)``)
+    that carries ``density_kg_m3`` — mass is derived downstream from the bbox
+    dimensions × that density, so it is not stored on the stock item itself.
+    """
+    schema: list[dict[str, Any]] = [
+        {
+            "name": "material",
+            "label": "Material",
+            "type": "enum",
+            "options": ["Pine (structural)", "Abachi"],
+            "required": True,
+            "description": "Referenced material component carrying the density for mass estimation.",
+        },
+        {"name": "price_eur", "label": "Price", "type": "number", "unit": "EUR", "min": 0.0},
+        {"name": "sku", "label": "SKU / Art.-No.", "type": "string"},
+        {"name": "source_url", "label": "Source URL", "type": "string"},
+    ]
+    if pack:
+        schema.append(
+            {
+                "name": "pack_qty",
+                "label": "Pack quantity",
+                "type": "number",
+                "min": 1,
+                "description": "Units per pack (VE).",
+            }
+        )
+    if groove:
+        schema.append(
+            {
+                "name": "groove_mm",
+                "label": "Groove size",
+                "type": "number",
+                "unit": "mm",
+                "min": 0.0,
+            }
+        )
+    return schema
+
+
 DEFAULT_SEED_TYPES: list[dict[str, Any]] = [
     {
         "name": "material",
@@ -605,6 +649,33 @@ DEFAULT_SEED_TYPES: list[dict[str, Any]] = [
         "description": "Free-form type with no structured schema",
         "schema": [],
     },
+    # gh-1083: Höllein wood construction stock. Cross-section + length live in
+    # the bbox_x/y/z_mm columns; `material` references a density-bearing
+    # material component so mass derives from dimensions × density.
+    {
+        "name": "veneer",
+        "label": "Veneer",
+        "description": "Sheet veneer stock (e.g. Abachi facing). bbox: height × width × length (mm).",
+        "schema": _wood_stock_schema(),
+    },
+    {
+        "name": "strip",
+        "label": "Strip",
+        "description": "Rectangular wood strip / Leiste. bbox: height × width × length (mm).",
+        "schema": _wood_stock_schema(pack=True),
+    },
+    {
+        "name": "triangular_strip",
+        "label": "Triangular Strip",
+        "description": "Triangular wood strip / Dreikantleiste. bbox: leg × leg × length (mm).",
+        "schema": _wood_stock_schema(pack=True),
+    },
+    {
+        "name": "grooved_strip",
+        "label": "Grooved Strip",
+        "description": "Grooved wood strip / Nutleiste. bbox: height × width × length (mm).",
+        "schema": _wood_stock_schema(pack=True, groove=True),
+    },
 ]
 
 
@@ -689,6 +760,14 @@ _STRUCTURAL_MATERIAL_SEEDS: list[dict[str, Any]] = [
             "density_kg_m3": 1600.0,
             "allowable_bending_stress_mpa": 500.0,
             "youngs_modulus_gpa": 120.0,
+        },
+    },
+    # gh-1083: light construction wood referenced by Höllein veneer/strip stock.
+    {
+        "name": "Abachi",
+        "description": "Abachi (Obeche) — light construction veneer/strip wood. Density ≈ 390 kg/m³.",
+        "specs": {
+            "density_kg_m3": 390.0,
         },
     },
 ]
