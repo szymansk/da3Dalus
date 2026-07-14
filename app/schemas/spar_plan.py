@@ -12,7 +12,7 @@ sizing inputs the solver needs to compute strength-required diameters.
 
 from __future__ import annotations
 
-from typing import Optional
+from typing import Literal, Optional
 
 from pydantic import BaseModel, Field
 
@@ -163,6 +163,16 @@ class SparPlanRequest(BaseModel):
             "(follow-up #1002 extension)."
         ),
     )
+    shape: Literal["tube", "rod", "rectangular", "capped"] = Field(
+        "tube",
+        description=(
+            "gh-1080: Cross-section shape for both spars. "
+            "'tube' (default) — hollow round tube, telescoping-capable; "
+            "'rod' — solid round, no bore, joiner connections; "
+            "'rectangular' — solid rectangular box; "
+            "'capped' — I/C beam with flanges."
+        ),
+    )
 
 
 class SparPieceOut(BaseModel):
@@ -228,6 +238,28 @@ class SparPieceOut(BaseModel):
     infeasibility_reason: Optional[str] = Field(
         None,
         description="Human-readable reason when the piece is infeasible; None otherwise.",
+    )
+    # gh-1080: extended dims for rectangular/capped shapes; None for tube/rod.
+    width: Optional[float] = Field(
+        None,
+        description=(
+            "gh-1080: Flange/web width (m) for a rectangular cross-section. None for tube and rod."
+        ),
+    )
+    height: Optional[float] = Field(
+        None,
+        description=(
+            "gh-1080: Profile height (m) for a rectangular cross-section — "
+            "equals the contained-band depth at the governing station. "
+            "None for tube and rod."
+        ),
+    )
+    cap_width: Optional[float] = Field(
+        None,
+        description=(
+            "gh-1080: Flange width (m) for a capped (I/C-beam) cross-section. "
+            "None for tube, rod, and rectangular."
+        ),
     )
 
 

@@ -19,7 +19,10 @@ from app.models.component import ComponentModel
 
 logger = logging.getLogger(__name__)
 
-# Allowed component_type values
+# Allowed component_type values.
+# gh-1081: 'spar_tube' added for carbon-fibre tube stock; validated separately
+# by app.services.carbon_tube_import.validate_spar_tube_record.
+# 'material' is the existing seed type (Pine / Carbon Fiber structural defaults).
 _VALID_COMPONENT_TYPES = {
     "brushless_motor",
     "esc",
@@ -27,6 +30,8 @@ _VALID_COMPONENT_TYPES = {
     "propeller",
     "servo",
     "receiver",
+    "spar_tube",
+    "material",
     # gh-1083: Höllein wood construction stock
     "veneer",
     "strip",

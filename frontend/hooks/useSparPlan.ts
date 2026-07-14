@@ -30,6 +30,10 @@ export interface SparPlanParams {
   packing_factor?: number;
   safety_factor_j?: number;
   sigma_allow_mpa_override?: number | null;
+  // gh-1080: cross-section shape for both spars (mirrors SparPlanRequest.shape).
+  // Default 'tube' when omitted (backend default). Choosing 'rod' drives the
+  // solver to produce solid pieces (inner_d=0, joiner joints, stock snap).
+  shape?: "tube" | "rod" | "rectangular" | "capped";
 }
 
 // ---- Response types: spar-plan (buildable pieces, metres) -------------------
@@ -54,6 +58,10 @@ export interface SparPieceOut {
   joint_to_next: string | null;
   feasible: boolean;
   infeasibility_reason: string | null;
+  // gh-1080: extended dims for rectangular/capped (metres); null/absent for tube/rod.
+  width?: number | null; // m — web/flange width for rectangular
+  height?: number | null; // m — profile height for rectangular (= band depth)
+  cap_width?: number | null; // m — flange width for capped (I/C-beam)
 }
 
 export interface SparPlanResult {
@@ -118,6 +126,9 @@ function buildPlanBody(params: SparPlanParams): Record<string, unknown> {
     body.safety_factor_j = params.safety_factor_j;
   if (params.sigma_allow_mpa_override != null)
     body.sigma_allow_mpa_override = params.sigma_allow_mpa_override;
+  // gh-1080: send shape when explicitly set; omitting lets the backend default
+  // to 'tube', which keeps the wire protocol backwards-compatible.
+  if (params.shape != null) body.shape = params.shape;
   return body;
 }
 

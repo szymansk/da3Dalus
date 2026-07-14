@@ -81,27 +81,68 @@ export function jointLabel(joint: string | null | undefined): string {
       return "Bent-pin";
     case "reinforcement+joiner":
       return "Reinforcement + joiner";
+    // gh-1075: non-tube intermediate joint (solid rod, rectangular, capped —
+    // shapes without a bore cannot telescope, so the solver emits 'joiner').
+    case "joiner":
+      return "Joiner";
     default:
       return joint;
   }
 }
 
 /**
- * One-line dimension summary for a buildable piece:
- * "OD 28.8 × ID 24.0 (wall 2.4) × L 750 mm".
- * Wall is computed from OD/ID when the piece's wall is absent.
+ * One-line dimension summary for a buildable piece, branching on shape:
+ *
+ * - `tube` → "OD 28.8 × ID 24.0 (wall 2.4) mm"  (byte-identical to the
+ *   pre-gh-1075 label — regression guard for the common case).
+ * - `rod`  → "Ø 8.0 mm"  (no ID / wall — a solid rod has no bore, so both
+ *   inner_d=0 and wall=d/2 are meaningless to a builder; gh-1075).
+ * - `rectangular` → "b × h mm" when the backend provides width+height (gh-1080);
+ *   falls back to "Ø <od> mm" when those fields are absent (solver has not yet
+ *   populated them — do NOT invent numbers from outer_d).
+ * - `capped` → "b × H (cap b mm) mm" when width+height+cap_width are present;
+ *   falls back to "Ø <od> mm" otherwise.
+ * - anything else → graceful "Ø <od> mm" fallback (unknown shapes).
+ *
+ * Wall is computed from OD/ID when the piece's `wall` field is absent.
  */
 export function pieceDimsLabel(piece: SparPieceOut): string {
   const od = mToMm(piece.outer_d);
-  const id = mToMm(piece.inner_d);
-  const wall =
-    piece.wall != null && Number.isFinite(piece.wall)
-      ? piece.wall
-      : (piece.outer_d - piece.inner_d) / 2;
-  const wallStr = mToMm(wall);
-  // length is the run-length along spare_vector; not on the piece schema, so
-  // pieces show OD/ID/wall only (length lives on the planned-spare preview).
-  return `OD ${od} × ID ${id} (wall ${wallStr}) mm`;
+
+  if (piece.shape === "tube") {
+    const id = mToMm(piece.inner_d);
+    const wall =
+      piece.wall != null && Number.isFinite(piece.wall)
+        ? piece.wall
+        : (piece.outer_d - piece.inner_d) / 2;
+    const wallStr = mToMm(wall);
+    // length is the run-length along spare_vector; not on the piece schema, so
+    // pieces show OD/ID/wall only (length lives on the planned-spare preview).
+    return `OD ${od} × ID ${id} (wall ${wallStr}) mm`;
+  }
+
+  if (piece.shape === "rectangular") {
+    // gh-1080: show b × h when the backend has populated width + height.
+    // When absent (solver not yet emitting these), fall through to Ø fallback —
+    // never fabricate dimensions from outer_d.
+    if (piece.width != null && piece.height != null) {
+      return `${mToMm(piece.width)} × ${mToMm(piece.height)} mm`;
+    }
+    return `Ø ${od} mm`;
+  }
+
+  if (piece.shape === "capped") {
+    // gh-1080: show flange width + outer height when present.
+    if (piece.cap_width != null && piece.height != null) {
+      const capStr = mToMm(piece.cap_width);
+      const hStr = mToMm(piece.height);
+      return `cap ${capStr} × H ${hStr} mm`;
+    }
+    return `Ø ${od} mm`;
+  }
+
+  // rod and all unknown shapes: show outer diameter only.
+  return `Ø ${od} mm`;
 }
 
 // ---- Built-spar spanwise extent + telescoping joint (gh-1060) ---------------

@@ -103,6 +103,10 @@ class SparPiece:
     joint_to_next: str | None = None  # "telescoping" between consecutive pieces
     feasible: bool = True  # gh-1037: False when no round tube strong enough fits
     infeasibility_reason: str | None = None
+    # gh-1080: extended dims for rectangular/capped; None for tube/rod.
+    width: float | None = None  # mm, web/flange width for rectangular
+    height: float | None = None  # mm, profile height for rectangular (= band depth)
+    cap_width: float | None = None  # mm, flange width for capped (I/C-beam)
 
     @property
     def wall(self) -> float:
@@ -124,6 +128,10 @@ class SparPiece:
             "joint_to_next": self.joint_to_next,
             "feasible": self.feasible,
             "infeasibility_reason": self.infeasibility_reason,
+            # gh-1080: extended dims (None for tube/rod)
+            "width": self.width,
+            "height": self.height,
+            "cap_width": self.cap_width,
         }
 
 
@@ -346,26 +354,36 @@ def plan_spar(stations: list[StationData], spec: SparSpec) -> list[SparPiece]:
     # floor on the inner OD (bore + a minimal wall), so the root piece grows to
     # satisfy the whole telescoping stack. This also enforces OD non-increasing
     # outboard.
+    #
+    # gh-1080: bore-propagation is TUBE-ONLY. Non-tube shapes (rod/rectangular/
+    # capped) connect via discrete joiners — they have no hollow bore to
+    # telescope into, so clearance-driven bore growth is meaningless and would
+    # wrongly over-dimension inner pieces. Rods are solid (inner_d=0) throughout.
     bores: list[float] = [0.0] * len(runs)
-    # tip piece (last): bore is purely strength-driven.
-    bores[-1] = _bore_for(runs[-1], spec, ods[-1])
-    # inner pieces (root→tip order, processed tip→root): each must admit the
-    # adjacent outer piece's OD plus clearance through its bore, AND keep at
-    # least the strength-required bore, AND a minimal wall around the bore.
-    for i in range(len(runs) - 2, -1, -1):
-        telescope_bore = ods[i + 1] + 2.0 * spec.telescope_clearance_mm
-        strength_bore = _bore_for(runs[i], spec, ods[i])
-        bore = max(telescope_bore, strength_bore)
-        min_od_for_bore = bore + 2.0 * spec.telescope_clearance_mm
-        if ods[i] < min_od_for_bore:
-            ods[i] = min_od_for_bore
-        bores[i] = bore
+    if spec.shape == "tube":
+        # tip piece (last): bore is purely strength-driven.
+        bores[-1] = _bore_for(runs[-1], spec, ods[-1])
+        # inner pieces (root→tip order, processed tip→root): each must admit the
+        # adjacent outer piece's OD plus clearance through its bore, AND keep at
+        # least the strength-required bore, AND a minimal wall around the bore.
+        for i in range(len(runs) - 2, -1, -1):
+            telescope_bore = ods[i + 1] + 2.0 * spec.telescope_clearance_mm
+            strength_bore = _bore_for(runs[i], spec, ods[i])
+            bore = max(telescope_bore, strength_bore)
+            min_od_for_bore = bore + 2.0 * spec.telescope_clearance_mm
+            if ods[i] < min_od_for_bore:
+                ods[i] = min_od_for_bore
+            bores[i] = bore
+    # For non-tube shapes bores stays all-zero (solid sections).
 
     built: list[SparPiece] = []
     for idx, run in enumerate(runs):
         piece = _piece_from_run_with_od(run, spec, ods[idx], bores[idx])
         if idx < len(runs) - 1:
-            piece.joint_to_next = "telescoping"
+            # gh-1075: only round tubes can physically telescope (they have a bore
+            # to slide into). Non-tube shapes (rod, rectangular, capped) must use
+            # a discrete joiner instead. Fix at the SOURCE per Iron Law #4.
+            piece.joint_to_next = "telescoping" if spec.shape == "tube" else "joiner"
         built.append(piece)
     return _drop_zero_od_tip(built)
 
@@ -531,12 +549,18 @@ def _reinforcement_piece(
     origin = (0.0, -reach, root_z)
     vector = (0.0, 1.0, 0.0)  # collinear through y=0
     erf_w = required_section_modulus_from_od(root_od)
-    sol = solve_dimension(shape="tube", erf_w=erf_w, outer_mm=root_od)
-    inner_d = (
-        float(sol["inner_mm"])
-        if sol["feasible"] and sol["inner_mm"]
-        else root_od * spec.wall_factor
-    )
+    # gh-1080: bore only for tube-shaped spars.  A rod reinforcement is solid
+    # (inner_d=0); solving solve_dimension with shape="tube" then assigning the
+    # hollow bore to a rod would produce a rod piece with inner_d > 0 — wrong.
+    if spec.shape == "tube":
+        sol = solve_dimension(shape="tube", erf_w=erf_w, outer_mm=root_od)
+        inner_d = (
+            float(sol["inner_mm"])
+            if sol["feasible"] and sol["inner_mm"]
+            else root_od * spec.wall_factor
+        )
+    else:
+        inner_d = 0.0
     return SparPiece(
         role=SparRole.FRONT,
         spare_origin=origin,
