@@ -5,7 +5,6 @@
 // (compact, equal-width column) · "large" (full width). The band height stays
 // constant (~20vh) in every mode; content scrolls if it overflows.
 
-import type { KeyboardEvent } from "react";
 import { Maximize2, X } from "lucide-react";
 
 export type ColumnMode = "tab" | "tile" | "large";
@@ -45,21 +44,20 @@ export function MetricColumn({
   }
 
   const isLarge = mode === "large";
+  // When clickable (tile/collapsed) the column renders as a real <button>
+  // — native keyboard activation, no role="button" on a non-interactive
+  // element. In "large" mode it holds a nested collapse <button>, so it
+  // must stay a <section>.
+  const Tag = isLarge ? "section" : "button";
+  const interactiveProps = isLarge
+    ? {}
+    : { type: "button" as const, onClick: onActivate, "aria-label": `Expand ${title}` };
   return (
-    <section
-      className={`flex h-full min-w-0 flex-col rounded-b-lg border bg-card ${isLarge ? "flex-1 border-border-strong" : "flex-1 cursor-pointer hover:border-border-strong"} border-border transition-colors`}
+    <Tag
+      className={`flex h-full min-w-0 flex-col rounded-b-lg border bg-card text-left ${isLarge ? "flex-1 border-border-strong" : "flex-1 cursor-pointer hover:border-border-strong"} border-border transition-colors`}
       data-testid={`metric-col-${title.toLowerCase()}`}
       data-mode={mode}
-      onClick={isLarge ? undefined : onActivate}
-      {...(!isLarge && {
-        tabIndex: 0,
-        role: "button",
-        "aria-label": `Expand ${title}`,
-        onKeyDown: (e: KeyboardEvent<HTMLElement>) => {
-          if (e.key === "Enter") { onActivate(); }
-          if (e.key === " ") { e.preventDefault(); onActivate(); }
-        },
-      })}
+      {...interactiveProps}
     >
       <header className="flex shrink-0 items-center gap-1.5 px-2.5 py-1.5">
         <Icon size={13} className="text-primary" />
@@ -82,6 +80,6 @@ export function MetricColumn({
       <div className="min-h-0 flex-1 overflow-visible px-2.5 pb-2">
         {isLarge ? large : tile}
       </div>
-    </section>
+    </Tag>
   );
 }
