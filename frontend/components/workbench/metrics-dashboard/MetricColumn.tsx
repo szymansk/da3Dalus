@@ -51,15 +51,17 @@ export function MetricColumn({
       data-testid={`metric-col-${title.toLowerCase()}`}
       data-mode={mode}
       onClick={isLarge ? undefined : onActivate}
-      {...(!isLarge && {
-        tabIndex: 0,
-        role: "button",
-        "aria-label": `Expand ${title}`,
-        onKeyDown: (e: KeyboardEvent<HTMLElement>) => {
-          if (e.key === "Enter") { onActivate(); }
-          if (e.key === " ") { e.preventDefault(); onActivate(); }
-        },
-      })}
+      onKeyDown={
+        isLarge
+          ? undefined
+          : (e: KeyboardEvent<HTMLElement>) => {
+              if (e.key === "Enter") { onActivate(); }
+              if (e.key === " ") { e.preventDefault(); onActivate(); }
+            }
+      }
+      tabIndex={isLarge ? undefined : 0}
+      role={isLarge ? undefined : "button"}
+      aria-label={isLarge ? undefined : `Expand ${title}`}
     >
       <header className="flex shrink-0 items-center gap-1.5 px-2.5 py-1.5">
         <Icon size={13} className="text-primary" />

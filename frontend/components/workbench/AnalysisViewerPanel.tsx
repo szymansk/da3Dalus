@@ -310,7 +310,7 @@ function speedPolarMarkerTrace(base: SpeedPolarCurve): PlotlyTrace | null {
 }
 
 function speedPolarTraces(curves: SpeedPolarCurve[]): PlotlyTrace[] {
-  const traces = curves.map(speedPolarLineTrace);
+  const traces = curves.map((d, i) => speedPolarLineTrace(d, i));
   const base = curves.find((c) => c.is_base) ?? curves[0];
   const markers = speedPolarMarkerTrace(base);
   if (markers) traces.push(markers);

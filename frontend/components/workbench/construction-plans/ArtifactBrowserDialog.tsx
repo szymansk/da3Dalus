@@ -203,11 +203,27 @@ export function ArtifactBrowserDialog({
               )}
               {selectedExecution && files.length > 0 && (
                 <div className="flex flex-col gap-1">
-                  {files.map((f) => (
+                  {files.map((f) => {
+                    const enterDir = f.is_dir
+                      ? () => setCurrentPath(currentPath ? `${currentPath}/${f.name}` : f.name)
+                      : undefined;
+                    return (
                     <div
                       key={f.name}
                       className={`group flex items-center gap-3 rounded-lg px-3 py-2 hover:bg-sidebar-accent ${f.is_dir ? "cursor-pointer" : ""}`}
-                      onClick={f.is_dir ? () => setCurrentPath(currentPath ? `${currentPath}/${f.name}` : f.name) : undefined}
+                      onClick={enterDir}
+                      role={f.is_dir ? "button" : undefined}
+                      tabIndex={f.is_dir ? 0 : undefined}
+                      onKeyDown={
+                        f.is_dir
+                          ? (e) => {
+                              if (e.key === "Enter" || e.key === " ") {
+                                e.preventDefault();
+                                enterDir?.();
+                              }
+                            }
+                          : undefined
+                      }
                     >
                       {f.is_dir ? (
                         <FolderOpen size={12} className="text-primary" />
@@ -243,7 +259,8 @@ export function ArtifactBrowserDialog({
                         </button>
                       )}
                     </div>
-                  ))}
+                    );
+                  })}
                 </div>
               )}
             </div>

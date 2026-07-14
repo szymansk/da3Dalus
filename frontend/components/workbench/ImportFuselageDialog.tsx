@@ -5,6 +5,11 @@ import { Upload, X, Check, Loader2, Maximize2, Minimize2, Plus, Trash2, Play } f
 import { API_BASE } from "@/lib/fetcher";
 import { useDialog } from "@/hooks/useDialog";
 
+/** Tolerant float equality — avoids exact `===` on floating-point scale factors. */
+function approxEq(a: number, b: number, eps: number = 1e-9): boolean {
+  return Math.abs(a - b) < eps;
+}
+
 /** Build Plotly Surface3d traces for a fuselage from xsec dicts */
 function buildFuselageSurface(
   xsecs: XSec[],
@@ -607,13 +612,13 @@ function renderUploadPhase(p: UploadPhaseProps) {
             />
             <button
               onClick={() => { p.setScaleFactor(0.001); p.setScaleInput("0.001"); }}
-              className={`rounded-full px-2 py-1 text-[10px] ${p.scaleFactor === 0.001 ? "bg-primary text-primary-foreground" : "bg-card-muted text-muted-foreground hover:text-foreground"}`}
+              className={`rounded-full px-2 py-1 text-[10px] ${approxEq(p.scaleFactor, 0.001) ? "bg-primary text-primary-foreground" : "bg-card-muted text-muted-foreground hover:text-foreground"}`}
             >
               mm→m
             </button>
             <button
               onClick={() => { p.setScaleFactor(0.01); p.setScaleInput("0.01"); }}
-              className={`rounded-full px-2 py-1 text-[10px] ${p.scaleFactor === 0.01 ? "bg-primary text-primary-foreground" : "bg-card-muted text-muted-foreground hover:text-foreground"}`}
+              className={`rounded-full px-2 py-1 text-[10px] ${approxEq(p.scaleFactor, 0.01) ? "bg-primary text-primary-foreground" : "bg-card-muted text-muted-foreground hover:text-foreground"}`}
             >
               cm→m
             </button>
