@@ -281,6 +281,19 @@ class TestDispatchRegisteredHandler:
     Here we verify the dispatch contract by registering fakes.
     """
 
+    @pytest.fixture(autouse=True)
+    def _real_handlers_loaded(self):
+        """Register the real handlers *before* each test's monkeypatch.
+
+        ``import_vsp3`` lazily calls ``_ensure_handlers_loaded()`` on first
+        use. When a test in this class runs in isolation, that first call
+        happens *after* the test's ``monkeypatch.setitem`` override and
+        clobbers the fake handler with the real one (→ ``AttributeError``
+        deep in real geometry code). Forcing the load here makes the
+        override order-independent, so these tests pass in isolation too.
+        """
+        openvsp_importer._ensure_handlers_loaded()
+
     def test_wing_handler_is_invoked(self, tmp_path, monkeypatch):
         f = tmp_path / "x.vsp3"
         f.write_text("")
