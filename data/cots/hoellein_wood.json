@@ -1,0 +1,856 @@
+[
+  {
+    "manufacturer": "Aero-naut",
+    "name": "Abachifurnier 1000x100x0.6mm",
+    "component_type": "veneer",
+    "mass_g": null,
+    "bbox_x_mm": 0.6,
+    "bbox_y_mm": 100,
+    "bbox_z_mm": 1000,
+    "model_ref": "hoellein/7520-21",
+    "source_url": "https://hoelleinshop.com/collections/werkstoffe-holz-kiefer-abachileisten?sort_by=title-ascending",
+    "source_version": "hoellein 2026-06-22",
+    "specs": {
+      "material": "Abachi",
+      "price_eur": 3.0,
+      "sku": "7520/21"
+    }
+  },
+  {
+    "manufacturer": "Aero-naut",
+    "name": "Abachifurnier 1000x100x1.0mm",
+    "component_type": "veneer",
+    "mass_g": null,
+    "bbox_x_mm": 1.0,
+    "bbox_y_mm": 100,
+    "bbox_z_mm": 1000,
+    "model_ref": "hoellein/7520-22",
+    "source_url": "https://hoelleinshop.com/collections/werkstoffe-holz-kiefer-abachileisten?sort_by=title-ascending",
+    "source_version": "hoellein 2026-06-22",
+    "specs": {
+      "material": "Abachi",
+      "price_eur": 3.2,
+      "sku": "7520/22"
+    }
+  },
+  {
+    "manufacturer": "Aero-naut",
+    "name": "Abachifurnier 1000x100x1.5mm",
+    "component_type": "veneer",
+    "mass_g": null,
+    "bbox_x_mm": 1.5,
+    "bbox_y_mm": 100,
+    "bbox_z_mm": 1000,
+    "model_ref": "hoellein/7520-23",
+    "source_url": "https://hoelleinshop.com/collections/werkstoffe-holz-kiefer-abachileisten?sort_by=title-ascending",
+    "source_version": "hoellein 2026-06-22",
+    "specs": {
+      "material": "Abachi",
+      "price_eur": 3.3,
+      "sku": "7520/23"
+    }
+  },
+  {
+    "manufacturer": "Aero-naut",
+    "name": "Abachifurnier 1000x250x1.0mm",
+    "component_type": "veneer",
+    "mass_g": null,
+    "bbox_x_mm": 1.0,
+    "bbox_y_mm": 250,
+    "bbox_z_mm": 1000,
+    "model_ref": "hoellein/752042",
+    "source_url": "https://hoelleinshop.com/collections/werkstoffe-holz-kiefer-abachileisten?sort_by=title-ascending",
+    "source_version": "hoellein 2026-06-22",
+    "specs": {
+      "material": "Abachi",
+      "price_eur": 6.4,
+      "sku": "752042"
+    }
+  },
+  {
+    "manufacturer": "Aero-naut",
+    "name": "Abachifurnier 1000x250x1.5mm",
+    "component_type": "veneer",
+    "mass_g": null,
+    "bbox_x_mm": 1.5,
+    "bbox_y_mm": 250,
+    "bbox_z_mm": 1000,
+    "model_ref": "hoellein/752043",
+    "source_url": "https://hoelleinshop.com/collections/werkstoffe-holz-kiefer-abachileisten?sort_by=title-ascending",
+    "source_version": "hoellein 2026-06-22",
+    "specs": {
+      "material": "Abachi",
+      "price_eur": 7.6,
+      "sku": "752043"
+    }
+  },
+  {
+    "manufacturer": "Aero-naut",
+    "name": "Abachileiste 3x10x1000mm",
+    "component_type": "strip",
+    "mass_g": null,
+    "bbox_x_mm": 3,
+    "bbox_y_mm": 10,
+    "bbox_z_mm": 1000,
+    "model_ref": "hoellein/755935",
+    "source_url": "https://hoelleinshop.com/collections/werkstoffe-holz-kiefer-abachileisten?sort_by=title-ascending",
+    "source_version": "hoellein 2026-06-22",
+    "specs": {
+      "material": "Abachi",
+      "price_eur": 0.9,
+      "sku": "755935",
+      "pack_qty": 10
+    }
+  },
+  {
+    "manufacturer": "Modellbau Klein",
+    "name": "Kiefer-Dreikantleiste 6x6x1000mm",
+    "component_type": "triangular_strip",
+    "mass_g": null,
+    "bbox_x_mm": 6,
+    "bbox_y_mm": 6,
+    "bbox_z_mm": 1000,
+    "model_ref": "hoellein/kiefer-dreikantleiste-6x6x1000mm",
+    "source_url": "https://hoelleinshop.com/collections/werkstoffe-holz-kiefer-abachileisten?sort_by=title-ascending",
+    "source_version": "hoellein 2026-06-22",
+    "specs": {
+      "material": "Pine (structural)",
+      "price_eur": 0.9
+    }
+  },
+  {
+    "manufacturer": "Höllein",
+    "name": "Kiefernleiste 10x10x1000mm",
+    "component_type": "strip",
+    "mass_g": null,
+    "bbox_x_mm": 10,
+    "bbox_y_mm": 10,
+    "bbox_z_mm": 1000,
+    "model_ref": "hoellein/kiefernleiste-10x10x1000mm",
+    "source_url": "https://hoelleinshop.com/collections/werkstoffe-holz-kiefer-abachileisten?sort_by=title-ascending",
+    "source_version": "hoellein 2026-06-22",
+    "specs": {
+      "material": "Pine (structural)",
+      "price_eur": 1.8
+    }
+  },
+  {
+    "manufacturer": "Aero-naut",
+    "name": "Kiefernleiste 10x10x1500mm",
+    "component_type": "strip",
+    "mass_g": null,
+    "bbox_x_mm": 10,
+    "bbox_y_mm": 10,
+    "bbox_z_mm": 1500,
+    "model_ref": "hoellein/755652",
+    "source_url": "https://hoelleinshop.com/collections/werkstoffe-holz-kiefer-abachileisten?sort_by=title-ascending",
+    "source_version": "hoellein 2026-06-22",
+    "specs": {
+      "material": "Pine (structural)",
+      "price_eur": 3.0,
+      "sku": "755652"
+    }
+  },
+  {
+    "manufacturer": "Höllein",
+    "name": "Kiefernleiste 10x15x1000mm",
+    "component_type": "strip",
+    "mass_g": null,
+    "bbox_x_mm": 10,
+    "bbox_y_mm": 15,
+    "bbox_z_mm": 1000,
+    "model_ref": "hoellein/kiefernleiste-10x15x1000mm",
+    "source_url": "https://hoelleinshop.com/collections/werkstoffe-holz-kiefer-abachileisten?sort_by=title-ascending",
+    "source_version": "hoellein 2026-06-22",
+    "specs": {
+      "material": "Pine (structural)",
+      "price_eur": 2.84
+    }
+  },
+  {
+    "manufacturer": "Aero-naut",
+    "name": "Kiefernleiste 10x15x1500mm",
+    "component_type": "strip",
+    "mass_g": null,
+    "bbox_x_mm": 10,
+    "bbox_y_mm": 15,
+    "bbox_z_mm": 1500,
+    "model_ref": "hoellein/7556-54",
+    "source_url": "https://hoelleinshop.com/collections/werkstoffe-holz-kiefer-abachileisten?sort_by=title-ascending",
+    "source_version": "hoellein 2026-06-22",
+    "specs": {
+      "material": "Pine (structural)",
+      "price_eur": 3.9,
+      "sku": "7556/54"
+    }
+  },
+  {
+    "manufacturer": "Höllein",
+    "name": "Kiefernleiste 10x20x1000mm",
+    "component_type": "strip",
+    "mass_g": null,
+    "bbox_x_mm": 10,
+    "bbox_y_mm": 20,
+    "bbox_z_mm": 1000,
+    "model_ref": "hoellein/kiefernleiste-10x20x1000mm",
+    "source_url": "https://hoelleinshop.com/collections/werkstoffe-holz-kiefer-abachileisten?sort_by=title-ascending",
+    "source_version": "hoellein 2026-06-22",
+    "specs": {
+      "material": "Pine (structural)",
+      "price_eur": 3.4
+    }
+  },
+  {
+    "manufacturer": "Höllein",
+    "name": "Kiefernleiste 12x12x1000mm",
+    "component_type": "strip",
+    "mass_g": null,
+    "bbox_x_mm": 12,
+    "bbox_y_mm": 12,
+    "bbox_z_mm": 1000,
+    "model_ref": "hoellein/kiefernleiste-12x12x1000mm",
+    "source_url": "https://hoelleinshop.com/collections/werkstoffe-holz-kiefer-abachileisten?sort_by=title-ascending",
+    "source_version": "hoellein 2026-06-22",
+    "specs": {
+      "material": "Pine (structural)",
+      "price_eur": 2.65
+    }
+  },
+  {
+    "manufacturer": "Höllein",
+    "name": "Kiefernleiste 15x15x1000mm",
+    "component_type": "strip",
+    "mass_g": null,
+    "bbox_x_mm": 15,
+    "bbox_y_mm": 15,
+    "bbox_z_mm": 1000,
+    "model_ref": "hoellein/kiefernleiste-15x15x1000mm",
+    "source_url": "https://hoelleinshop.com/collections/werkstoffe-holz-kiefer-abachileisten?sort_by=title-ascending",
+    "source_version": "hoellein 2026-06-22",
+    "specs": {
+      "material": "Pine (structural)",
+      "price_eur": 4.0
+    }
+  },
+  {
+    "manufacturer": "Aero-naut",
+    "name": "Kiefernleiste 15x15x1500mm",
+    "component_type": "strip",
+    "mass_g": null,
+    "bbox_x_mm": 15,
+    "bbox_y_mm": 15,
+    "bbox_z_mm": 1500,
+    "model_ref": "hoellein/7556-61",
+    "source_url": "https://hoelleinshop.com/collections/werkstoffe-holz-kiefer-abachileisten?sort_by=title-ascending",
+    "source_version": "hoellein 2026-06-22",
+    "specs": {
+      "material": "Pine (structural)",
+      "price_eur": 4.61,
+      "sku": "7556/61"
+    }
+  },
+  {
+    "manufacturer": "Höllein",
+    "name": "Kiefernleiste 1x10x1000mm",
+    "component_type": "strip",
+    "mass_g": null,
+    "bbox_x_mm": 1,
+    "bbox_y_mm": 10,
+    "bbox_z_mm": 1000,
+    "model_ref": "hoellein/kiefernleiste-1x10x1000mm",
+    "source_url": "https://hoelleinshop.com/collections/werkstoffe-holz-kiefer-abachileisten?sort_by=title-ascending",
+    "source_version": "hoellein 2026-06-22",
+    "specs": {
+      "material": "Pine (structural)",
+      "price_eur": 2.2
+    }
+  },
+  {
+    "manufacturer": "Aero-naut",
+    "name": "Kiefernleiste 1x1x1000mm",
+    "component_type": "strip",
+    "mass_g": null,
+    "bbox_x_mm": 1,
+    "bbox_y_mm": 1,
+    "bbox_z_mm": 1000,
+    "model_ref": "hoellein/755506",
+    "source_url": "https://hoelleinshop.com/collections/werkstoffe-holz-kiefer-abachileisten?sort_by=title-ascending",
+    "source_version": "hoellein 2026-06-22",
+    "specs": {
+      "material": "Pine (structural)",
+      "price_eur": 1.4,
+      "sku": "755506"
+    }
+  },
+  {
+    "manufacturer": "Höllein",
+    "name": "Kiefernleiste 1x3x1000mm",
+    "component_type": "strip",
+    "mass_g": null,
+    "bbox_x_mm": 1,
+    "bbox_y_mm": 3,
+    "bbox_z_mm": 1000,
+    "model_ref": "hoellein/kiefernleiste-1x3x1000mm",
+    "source_url": "https://hoelleinshop.com/collections/werkstoffe-holz-kiefer-abachileisten?sort_by=title-ascending",
+    "source_version": "hoellein 2026-06-22",
+    "specs": {
+      "material": "Pine (structural)",
+      "price_eur": 1.5
+    }
+  },
+  {
+    "manufacturer": "Höllein",
+    "name": "Kiefernleiste 2x10x1000mm",
+    "component_type": "strip",
+    "mass_g": null,
+    "bbox_x_mm": 2,
+    "bbox_y_mm": 10,
+    "bbox_z_mm": 1000,
+    "model_ref": "hoellein/kiefernleiste-2x10x1000mm",
+    "source_url": "https://hoelleinshop.com/collections/werkstoffe-holz-kiefer-abachileisten?sort_by=title-ascending",
+    "source_version": "hoellein 2026-06-22",
+    "specs": {
+      "material": "Pine (structural)",
+      "price_eur": 1.0
+    }
+  },
+  {
+    "manufacturer": "Höllein",
+    "name": "Kiefernleiste 2x2x1000mm",
+    "component_type": "strip",
+    "mass_g": null,
+    "bbox_x_mm": 2,
+    "bbox_y_mm": 2,
+    "bbox_z_mm": 1000,
+    "model_ref": "hoellein/kiefernleiste-2x2x1000mm",
+    "source_url": "https://hoelleinshop.com/collections/werkstoffe-holz-kiefer-abachileisten?sort_by=title-ascending",
+    "source_version": "hoellein 2026-06-22",
+    "specs": {
+      "material": "Pine (structural)",
+      "price_eur": 0.75
+    }
+  },
+  {
+    "manufacturer": "Höllein",
+    "name": "Kiefernleiste 2x3x1000mm",
+    "component_type": "strip",
+    "mass_g": null,
+    "bbox_x_mm": 2,
+    "bbox_y_mm": 3,
+    "bbox_z_mm": 1000,
+    "model_ref": "hoellein/kiefernleiste-2x3x1000mm",
+    "source_url": "https://hoelleinshop.com/collections/werkstoffe-holz-kiefer-abachileisten?sort_by=title-ascending",
+    "source_version": "hoellein 2026-06-22",
+    "specs": {
+      "material": "Pine (structural)",
+      "price_eur": 0.75
+    }
+  },
+  {
+    "manufacturer": "Höllein",
+    "name": "Kiefernleiste 2x4x1000mm",
+    "component_type": "strip",
+    "mass_g": null,
+    "bbox_x_mm": 2,
+    "bbox_y_mm": 4,
+    "bbox_z_mm": 1000,
+    "model_ref": "hoellein/kiefernleiste-2x4x1000mm",
+    "source_url": "https://hoelleinshop.com/collections/werkstoffe-holz-kiefer-abachileisten?sort_by=title-ascending",
+    "source_version": "hoellein 2026-06-22",
+    "specs": {
+      "material": "Pine (structural)",
+      "price_eur": 0.8
+    }
+  },
+  {
+    "manufacturer": "Höllein",
+    "name": "Kiefernleiste 2x5x1000mm",
+    "component_type": "strip",
+    "mass_g": null,
+    "bbox_x_mm": 2,
+    "bbox_y_mm": 5,
+    "bbox_z_mm": 1000,
+    "model_ref": "hoellein/kiefernleiste-2x5x1000mm",
+    "source_url": "https://hoelleinshop.com/collections/werkstoffe-holz-kiefer-abachileisten?sort_by=title-ascending",
+    "source_version": "hoellein 2026-06-22",
+    "specs": {
+      "material": "Pine (structural)",
+      "price_eur": 0.8
+    }
+  },
+  {
+    "manufacturer": "Höllein",
+    "name": "Kiefernleiste 2x6x1000mm",
+    "component_type": "strip",
+    "mass_g": null,
+    "bbox_x_mm": 2,
+    "bbox_y_mm": 6,
+    "bbox_z_mm": 1000,
+    "model_ref": "hoellein/kiefernleiste-2x6x1000mm",
+    "source_url": "https://hoelleinshop.com/collections/werkstoffe-holz-kiefer-abachileisten?sort_by=title-ascending",
+    "source_version": "hoellein 2026-06-22",
+    "specs": {
+      "material": "Pine (structural)",
+      "price_eur": 0.9
+    }
+  },
+  {
+    "manufacturer": "Höllein",
+    "name": "Kiefernleiste 2x7x1000mm",
+    "component_type": "strip",
+    "mass_g": null,
+    "bbox_x_mm": 2,
+    "bbox_y_mm": 7,
+    "bbox_z_mm": 1000,
+    "model_ref": "hoellein/kiefernleiste-2x7x1000mm",
+    "source_url": "https://hoelleinshop.com/collections/werkstoffe-holz-kiefer-abachileisten?sort_by=title-ascending",
+    "source_version": "hoellein 2026-06-22",
+    "specs": {
+      "material": "Pine (structural)",
+      "price_eur": 0.9
+    }
+  },
+  {
+    "manufacturer": "Höllein",
+    "name": "Kiefernleiste 2x8x1000mm",
+    "component_type": "strip",
+    "mass_g": null,
+    "bbox_x_mm": 2,
+    "bbox_y_mm": 8,
+    "bbox_z_mm": 1000,
+    "model_ref": "hoellein/kiefernleiste-2x8x1000mm",
+    "source_url": "https://hoelleinshop.com/collections/werkstoffe-holz-kiefer-abachileisten?sort_by=title-ascending",
+    "source_version": "hoellein 2026-06-22",
+    "specs": {
+      "material": "Pine (structural)",
+      "price_eur": 0.9
+    }
+  },
+  {
+    "manufacturer": "Höllein",
+    "name": "Kiefernleiste 3x10x1000mm",
+    "component_type": "strip",
+    "mass_g": null,
+    "bbox_x_mm": 3,
+    "bbox_y_mm": 10,
+    "bbox_z_mm": 1000,
+    "model_ref": "hoellein/kiefernleiste-3x10x1000mm",
+    "source_url": "https://hoelleinshop.com/collections/werkstoffe-holz-kiefer-abachileisten?sort_by=title-ascending",
+    "source_version": "hoellein 2026-06-22",
+    "specs": {
+      "material": "Pine (structural)",
+      "price_eur": 1.0
+    }
+  },
+  {
+    "manufacturer": "Höllein",
+    "name": "Kiefernleiste 3x15x1000mm",
+    "component_type": "strip",
+    "mass_g": null,
+    "bbox_x_mm": 3,
+    "bbox_y_mm": 15,
+    "bbox_z_mm": 1000,
+    "model_ref": "hoellein/kiefernleiste-3x15x1000mm",
+    "source_url": "https://hoelleinshop.com/collections/werkstoffe-holz-kiefer-abachileisten?sort_by=title-ascending",
+    "source_version": "hoellein 2026-06-22",
+    "specs": {
+      "material": "Pine (structural)",
+      "price_eur": 1.59
+    }
+  },
+  {
+    "manufacturer": "Aero-naut",
+    "name": "Kiefernleiste 3x15x1500mm",
+    "component_type": "strip",
+    "mass_g": null,
+    "bbox_x_mm": 3,
+    "bbox_y_mm": 15,
+    "bbox_z_mm": 1500,
+    "model_ref": "hoellein/7556-36",
+    "source_url": "https://hoelleinshop.com/collections/werkstoffe-holz-kiefer-abachileisten?sort_by=title-ascending",
+    "source_version": "hoellein 2026-06-22",
+    "specs": {
+      "material": "Pine (structural)",
+      "price_eur": 2.4,
+      "sku": "7556/36"
+    }
+  },
+  {
+    "manufacturer": "Höllein",
+    "name": "Kiefernleiste 3x20x1000mm",
+    "component_type": "strip",
+    "mass_g": null,
+    "bbox_x_mm": 3,
+    "bbox_y_mm": 20,
+    "bbox_z_mm": 1000,
+    "model_ref": "hoellein/kiefernleiste-3x20x1000mm",
+    "source_url": "https://hoelleinshop.com/collections/werkstoffe-holz-kiefer-abachileisten?sort_by=title-ascending",
+    "source_version": "hoellein 2026-06-22",
+    "specs": {
+      "material": "Pine (structural)",
+      "price_eur": 1.9
+    }
+  },
+  {
+    "manufacturer": "Höllein",
+    "name": "Kiefernleiste 3x3x1000mm",
+    "component_type": "strip",
+    "mass_g": null,
+    "bbox_x_mm": 3,
+    "bbox_y_mm": 3,
+    "bbox_z_mm": 1000,
+    "model_ref": "hoellein/kiefernleiste-3x3x1000mm",
+    "source_url": "https://hoelleinshop.com/collections/werkstoffe-holz-kiefer-abachileisten?sort_by=title-ascending",
+    "source_version": "hoellein 2026-06-22",
+    "specs": {
+      "material": "Pine (structural)",
+      "price_eur": 0.8
+    }
+  },
+  {
+    "manufacturer": "Höllein",
+    "name": "Kiefernleiste 3x5x1000mm",
+    "component_type": "strip",
+    "mass_g": null,
+    "bbox_x_mm": 3,
+    "bbox_y_mm": 5,
+    "bbox_z_mm": 1000,
+    "model_ref": "hoellein/kiefernleiste-3x5x1000mm",
+    "source_url": "https://hoelleinshop.com/collections/werkstoffe-holz-kiefer-abachileisten?sort_by=title-ascending",
+    "source_version": "hoellein 2026-06-22",
+    "specs": {
+      "material": "Pine (structural)",
+      "price_eur": 0.8
+    }
+  },
+  {
+    "manufacturer": "Höllein",
+    "name": "Kiefernleiste 3x7x1000mm",
+    "component_type": "strip",
+    "mass_g": null,
+    "bbox_x_mm": 3,
+    "bbox_y_mm": 7,
+    "bbox_z_mm": 1000,
+    "model_ref": "hoellein/kiefernleiste-3x7x1000mm",
+    "source_url": "https://hoelleinshop.com/collections/werkstoffe-holz-kiefer-abachileisten?sort_by=title-ascending",
+    "source_version": "hoellein 2026-06-22",
+    "specs": {
+      "material": "Pine (structural)",
+      "price_eur": 0.9
+    }
+  },
+  {
+    "manufacturer": "Höllein",
+    "name": "Kiefernleiste 3x8x1000mm",
+    "component_type": "strip",
+    "mass_g": null,
+    "bbox_x_mm": 3,
+    "bbox_y_mm": 8,
+    "bbox_z_mm": 1000,
+    "model_ref": "hoellein/kiefernleiste-3x8x1000mm",
+    "source_url": "https://hoelleinshop.com/collections/werkstoffe-holz-kiefer-abachileisten?sort_by=title-ascending",
+    "source_version": "hoellein 2026-06-22",
+    "specs": {
+      "material": "Pine (structural)",
+      "price_eur": 0.95
+    }
+  },
+  {
+    "manufacturer": "Höllein",
+    "name": "Kiefernleiste 4x10x1000mm",
+    "component_type": "strip",
+    "mass_g": null,
+    "bbox_x_mm": 4,
+    "bbox_y_mm": 10,
+    "bbox_z_mm": 1000,
+    "model_ref": "hoellein/kiefernleiste-4x10x1000mm",
+    "source_url": "https://hoelleinshop.com/collections/werkstoffe-holz-kiefer-abachileisten?sort_by=title-ascending",
+    "source_version": "hoellein 2026-06-22",
+    "specs": {
+      "material": "Pine (structural)",
+      "price_eur": 1.2
+    }
+  },
+  {
+    "manufacturer": "Höllein",
+    "name": "Kiefernleiste 4x12x1000mm",
+    "component_type": "strip",
+    "mass_g": null,
+    "bbox_x_mm": 4,
+    "bbox_y_mm": 12,
+    "bbox_z_mm": 1000,
+    "model_ref": "hoellein/kiefernleiste-4x12x1000mm",
+    "source_url": "https://hoelleinshop.com/collections/werkstoffe-holz-kiefer-abachileisten?sort_by=title-ascending",
+    "source_version": "hoellein 2026-06-22",
+    "specs": {
+      "material": "Pine (structural)",
+      "price_eur": 1.25
+    }
+  },
+  {
+    "manufacturer": "Höllein",
+    "name": "Kiefernleiste 4x4x1000mm",
+    "component_type": "strip",
+    "mass_g": null,
+    "bbox_x_mm": 4,
+    "bbox_y_mm": 4,
+    "bbox_z_mm": 1000,
+    "model_ref": "hoellein/kiefernleiste-4x4x1000mm",
+    "source_url": "https://hoelleinshop.com/collections/werkstoffe-holz-kiefer-abachileisten?sort_by=title-ascending",
+    "source_version": "hoellein 2026-06-22",
+    "specs": {
+      "material": "Pine (structural)",
+      "price_eur": 0.8
+    }
+  },
+  {
+    "manufacturer": "Aero-naut",
+    "name": "Kiefernleiste 4x4x1500mm",
+    "component_type": "strip",
+    "mass_g": null,
+    "bbox_x_mm": 4,
+    "bbox_y_mm": 4,
+    "bbox_z_mm": 1500,
+    "model_ref": "hoellein/7556-38",
+    "source_url": "https://hoelleinshop.com/collections/werkstoffe-holz-kiefer-abachileisten?sort_by=title-ascending",
+    "source_version": "hoellein 2026-06-22",
+    "specs": {
+      "material": "Pine (structural)",
+      "price_eur": 1.3,
+      "sku": "7556/38"
+    }
+  },
+  {
+    "manufacturer": "Höllein",
+    "name": "Kiefernleiste 4x8x1000mm",
+    "component_type": "strip",
+    "mass_g": null,
+    "bbox_x_mm": 4,
+    "bbox_y_mm": 8,
+    "bbox_z_mm": 1000,
+    "model_ref": "hoellein/kiefernleiste-4x8x1000mm",
+    "source_url": "https://hoelleinshop.com/collections/werkstoffe-holz-kiefer-abachileisten?sort_by=title-ascending",
+    "source_version": "hoellein 2026-06-22",
+    "specs": {
+      "material": "Pine (structural)",
+      "price_eur": 1.2
+    }
+  },
+  {
+    "manufacturer": "Höllein",
+    "name": "Kiefernleiste 5x10x1000mm",
+    "component_type": "strip",
+    "mass_g": null,
+    "bbox_x_mm": 5,
+    "bbox_y_mm": 10,
+    "bbox_z_mm": 1000,
+    "model_ref": "hoellein/kiefernleiste-5x10x1000mm",
+    "source_url": "https://hoelleinshop.com/collections/werkstoffe-holz-kiefer-abachileisten?sort_by=title-ascending",
+    "source_version": "hoellein 2026-06-22",
+    "specs": {
+      "material": "Pine (structural)",
+      "price_eur": 1.5
+    }
+  },
+  {
+    "manufacturer": "Aero-naut",
+    "name": "Kiefernleiste 5x10x1500mm",
+    "component_type": "strip",
+    "mass_g": null,
+    "bbox_x_mm": 5,
+    "bbox_y_mm": 10,
+    "bbox_z_mm": 1500,
+    "model_ref": "hoellein/7556-43",
+    "source_url": "https://hoelleinshop.com/collections/werkstoffe-holz-kiefer-abachileisten?sort_by=title-ascending",
+    "source_version": "hoellein 2026-06-22",
+    "specs": {
+      "material": "Pine (structural)",
+      "price_eur": 2.09,
+      "sku": "7556/43"
+    }
+  },
+  {
+    "manufacturer": "Höllein",
+    "name": "Kiefernleiste 5x15x1000mm",
+    "component_type": "strip",
+    "mass_g": null,
+    "bbox_x_mm": 5,
+    "bbox_y_mm": 15,
+    "bbox_z_mm": 1000,
+    "model_ref": "hoellein/kiefernleiste-5x15x1000mm",
+    "source_url": "https://hoelleinshop.com/collections/werkstoffe-holz-kiefer-abachileisten?sort_by=title-ascending",
+    "source_version": "hoellein 2026-06-22",
+    "specs": {
+      "material": "Pine (structural)",
+      "price_eur": 1.55
+    }
+  },
+  {
+    "manufacturer": "Aero-naut",
+    "name": "Kiefernleiste 5x15x1500mm",
+    "component_type": "strip",
+    "mass_g": null,
+    "bbox_x_mm": 5,
+    "bbox_y_mm": 15,
+    "bbox_z_mm": 1500,
+    "model_ref": "hoellein/7556-44",
+    "source_url": "https://hoelleinshop.com/collections/werkstoffe-holz-kiefer-abachileisten?sort_by=title-ascending",
+    "source_version": "hoellein 2026-06-22",
+    "specs": {
+      "material": "Pine (structural)",
+      "price_eur": 2.59,
+      "sku": "7556/44"
+    }
+  },
+  {
+    "manufacturer": "Höllein",
+    "name": "Kiefernleiste 5x20x1000mm",
+    "component_type": "strip",
+    "mass_g": null,
+    "bbox_x_mm": 5,
+    "bbox_y_mm": 20,
+    "bbox_z_mm": 1000,
+    "model_ref": "hoellein/kiefernleiste-5x20x1000mm",
+    "source_url": "https://hoelleinshop.com/collections/werkstoffe-holz-kiefer-abachileisten?sort_by=title-ascending",
+    "source_version": "hoellein 2026-06-22",
+    "specs": {
+      "material": "Pine (structural)",
+      "price_eur": 1.9
+    }
+  },
+  {
+    "manufacturer": "Höllein",
+    "name": "Kiefernleiste 5x5x1000mm",
+    "component_type": "strip",
+    "mass_g": null,
+    "bbox_x_mm": 5,
+    "bbox_y_mm": 5,
+    "bbox_z_mm": 1000,
+    "model_ref": "hoellein/kiefernleiste-5x5x1000mm",
+    "source_url": "https://hoelleinshop.com/collections/werkstoffe-holz-kiefer-abachileisten?sort_by=title-ascending",
+    "source_version": "hoellein 2026-06-22",
+    "specs": {
+      "material": "Pine (structural)",
+      "price_eur": 0.95
+    }
+  },
+  {
+    "manufacturer": "Aero-naut",
+    "name": "Kiefernleiste 5x5x1500mm",
+    "component_type": "strip",
+    "mass_g": null,
+    "bbox_x_mm": 5,
+    "bbox_y_mm": 5,
+    "bbox_z_mm": 1500,
+    "model_ref": "hoellein/7556-40",
+    "source_url": "https://hoelleinshop.com/collections/werkstoffe-holz-kiefer-abachileisten?sort_by=title-ascending",
+    "source_version": "hoellein 2026-06-22",
+    "specs": {
+      "material": "Pine (structural)",
+      "price_eur": 1.5,
+      "sku": "7556/40"
+    }
+  },
+  {
+    "manufacturer": "Höllein",
+    "name": "Kiefernleiste 5x8x1000mm",
+    "component_type": "strip",
+    "mass_g": null,
+    "bbox_x_mm": 5,
+    "bbox_y_mm": 8,
+    "bbox_z_mm": 1000,
+    "model_ref": "hoellein/kiefernleiste-5x8x1000mm",
+    "source_url": "https://hoelleinshop.com/collections/werkstoffe-holz-kiefer-abachileisten?sort_by=title-ascending",
+    "source_version": "hoellein 2026-06-22",
+    "specs": {
+      "material": "Pine (structural)",
+      "price_eur": 1.09
+    }
+  },
+  {
+    "manufacturer": "Höllein",
+    "name": "Kiefernleiste 6x6x1000mm",
+    "component_type": "strip",
+    "mass_g": null,
+    "bbox_x_mm": 6,
+    "bbox_y_mm": 6,
+    "bbox_z_mm": 1000,
+    "model_ref": "hoellein/kiefernleiste-6x6x1000mm",
+    "source_url": "https://hoelleinshop.com/collections/werkstoffe-holz-kiefer-abachileisten?sort_by=title-ascending",
+    "source_version": "hoellein 2026-06-22",
+    "specs": {
+      "material": "Pine (structural)",
+      "price_eur": 1.09
+    }
+  },
+  {
+    "manufacturer": "Höllein",
+    "name": "Kiefernleiste 8x8x1000mm",
+    "component_type": "strip",
+    "mass_g": null,
+    "bbox_x_mm": 8,
+    "bbox_y_mm": 8,
+    "bbox_z_mm": 1000,
+    "model_ref": "hoellein/kiefernleiste-8x8x1000mm",
+    "source_url": "https://hoelleinshop.com/collections/werkstoffe-holz-kiefer-abachileisten?sort_by=title-ascending",
+    "source_version": "hoellein 2026-06-22",
+    "specs": {
+      "material": "Pine (structural)",
+      "price_eur": 1.5
+    }
+  },
+  {
+    "manufacturer": "Aero-naut",
+    "name": "Nutleiste Abachi 10x25x1000mm - Nut 4x4mm",
+    "component_type": "grooved_strip",
+    "mass_g": null,
+    "bbox_x_mm": 10,
+    "bbox_y_mm": 25,
+    "bbox_z_mm": 1000,
+    "model_ref": "hoellein/7596-02",
+    "source_url": "https://hoelleinshop.com/collections/werkstoffe-holz-kiefer-abachileisten?sort_by=title-ascending",
+    "source_version": "hoellein 2026-06-22",
+    "specs": {
+      "material": "Abachi",
+      "price_eur": 2.8,
+      "sku": "7596/02",
+      "groove_mm": 4.0
+    }
+  },
+  {
+    "manufacturer": "Aero-naut",
+    "name": "Nutleiste Abachi 10x25x1000mm - Nut 5x5mm",
+    "component_type": "grooved_strip",
+    "mass_g": null,
+    "bbox_x_mm": 10,
+    "bbox_y_mm": 25,
+    "bbox_z_mm": 1000,
+    "model_ref": "hoellein/7596-03",
+    "source_url": "https://hoelleinshop.com/collections/werkstoffe-holz-kiefer-abachileisten?sort_by=title-ascending",
+    "source_version": "hoellein 2026-06-22",
+    "specs": {
+      "material": "Abachi",
+      "price_eur": 2.8,
+      "sku": "7596/03",
+      "groove_mm": 5.0
+    }
+  },
+  {
+    "manufacturer": "Aero-naut",
+    "name": "Nutleiste Abachi 8x20x1000mm - Nut 3x3mm",
+    "component_type": "grooved_strip",
+    "mass_g": null,
+    "bbox_x_mm": 8,
+    "bbox_y_mm": 20,
+    "bbox_z_mm": 1000,
+    "model_ref": "hoellein/7596-01",
+    "source_url": "https://hoelleinshop.com/collections/werkstoffe-holz-kiefer-abachileisten?sort_by=title-ascending",
+    "source_version": "hoellein 2026-06-22",
+    "specs": {
+      "material": "Abachi",
+      "price_eur": 2.2,
+      "sku": "7596/01",
+      "groove_mm": 3.0
+    }
+  }
+]

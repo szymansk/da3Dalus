@@ -32,6 +32,11 @@ _VALID_COMPONENT_TYPES = {
     "receiver",
     "spar_tube",
     "material",
+    # gh-1083: Höllein wood construction stock
+    "veneer",
+    "strip",
+    "triangular_strip",
+    "grooved_strip",
 }
 
 

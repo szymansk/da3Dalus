@@ -44,7 +44,7 @@ class TestRowCountInvariants:
 
     def test_seed_produces_exactly_9_rows(self, client_and_db):
         _, sf = client_and_db
-        assert _count_types_in_db(sf) == 10
+        assert _count_types_in_db(sf) == 14
 
     def test_create_adds_exactly_one_row(self, client_and_db):
         client, sf = client_and_db
@@ -182,8 +182,8 @@ class TestLifecycleRoundTrip:
         # GET after DELETE → 404
         assert client.get(f"/component-types/{created['id']}").status_code == 404
 
-        # DB state: 9 seeded types, user type gone
-        assert _count_types_in_db(sf) == 10
+        # DB state: 14 seeded types, user type gone
+        assert _count_types_in_db(sf) == 14
 
 
 # --------------------------------------------------------------------------- #
@@ -291,7 +291,7 @@ class TestMultipleMutations:
             created_ids.append(r.json()["id"])
 
         before = _count_types_in_db(sf)
-        assert before == 10 + 5
+        assert before == 14 + 5
 
         # Delete just one
         res = client.delete(f"/component-types/{created_ids[2]}")

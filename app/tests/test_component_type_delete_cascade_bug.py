@@ -17,10 +17,10 @@ class TestDeleteDoesNotCascade:
     def test_deleting_one_user_type_leaves_all_others_intact(self, client_and_db):
         client, _ = client_and_db
 
-        # Baseline: 9 seeded types
+        # Baseline: 14 seeded types (gh-1083 added 4 wood-stock types)
         before = client.get("/component-types").json()
         seeded_ids = {t["id"] for t in before}
-        assert len(seeded_ids) == 10
+        assert len(seeded_ids) == 14
 
         # Create two user types
         ut1 = client.post(
@@ -41,7 +41,7 @@ class TestDeleteDoesNotCascade:
         ).json()
 
         mid = client.get("/component-types").json()
-        assert len(mid) == 12
+        assert len(mid) == 16  # 14 seeded + 2 user
 
         # Delete the second user type
         res = client.delete(f"/component-types/{ut2['id']}")
@@ -51,8 +51,8 @@ class TestDeleteDoesNotCascade:
         after = client.get("/component-types").json()
         remaining_ids = {t["id"] for t in after}
 
-        assert len(after) == 11, (
-            f"Expected 11 types after deleting one, got {len(after)}. "
+        assert len(after) == 15, (
+            f"Expected 15 types after deleting one, got {len(after)}. "
             f"Remaining: {[t['name'] for t in after]}"
         )
         assert ut1["id"] in remaining_ids

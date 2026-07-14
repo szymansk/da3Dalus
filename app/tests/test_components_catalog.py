@@ -16,7 +16,7 @@ class TestComponentTypes:
         assert "material" in types
         assert "propeller" in types
         assert "generic" in types
-        assert len(types) == 10
+        assert len(types) == 14  # gh-1083: + veneer/strip/triangular_strip/grooved_strip
 
 
 class TestComponentCRUDExtended:
