@@ -25,7 +25,10 @@ def _sym(thick: float) -> list[tuple[float, float]]:
 
 
 def test_coords_hash_deterministic_and_distinct():
-    assert oa._coords_hash(_sym(0.06)) == oa._coords_hash(_sym(0.06))
+    # Same geometry produced by two independent list instances must hash equal.
+    coords_a = _sym(0.06)
+    coords_b = _sym(0.06)
+    assert oa._coords_hash(coords_a) == oa._coords_hash(coords_b)
     assert oa._coords_hash(_sym(0.06)) != oa._coords_hash(_sym(0.09))
 
 

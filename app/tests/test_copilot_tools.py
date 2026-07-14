@@ -7,6 +7,7 @@ aerosandbox/network call.  The hub is never reached.
 from __future__ import annotations
 
 import asyncio
+import math
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -268,7 +269,7 @@ class TestRunAnalysisPolarMocked:
 
         for key in ("cl_max", "cd_min", "cl_cd_max"):
             assert isinstance(result[key], float)
-            assert result[key] == result[key]  # not NaN
+            assert not math.isnan(result[key])
 
 
 # ---------------------------------------------------------------------------

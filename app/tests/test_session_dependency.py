@@ -53,8 +53,6 @@ class TestGetDbTransactionManagement:
         with pytest.raises(ValueError, match="boom"):
             gen.throw(ValueError("boom"))
         with _patched_session.connect() as conn:
-            try:
-                row = conn.execute(text("SELECT id FROM _txn_test2")).fetchone()
-                assert row is None
-            except Exception:
-                pass
+            # The rollback undid the INSERT, so the row must not be visible.
+            row = conn.execute(text("SELECT id FROM _txn_test2")).fetchone()
+            assert row is None
