@@ -6,7 +6,7 @@ import { API_BASE } from "@/lib/fetcher";
 import { useDialog } from "@/hooks/useDialog";
 
 /** Tolerant float equality — avoids exact `===` on floating-point scale factors. */
-function approxEq(a: number, b: number, eps: number = 1e-9): boolean {
+export function approxEq(a: number, b: number, eps: number = 1e-9): boolean {
   return Math.abs(a - b) < eps;
 }
 

@@ -955,7 +955,7 @@ export function WingOutlineViewer({
 
       // Restore saved camera
       if (savedCamera.current) {
-        try { await Plotly.relayout(node, { "scene.camera": savedCamera.current }); } catch { /* ok */ }
+        try { Plotly.relayout(node, { "scene.camera": savedCamera.current }); } catch { /* ok */ }
       }
 
       // Track camera changes from user interaction

@@ -263,7 +263,7 @@ function negate(w: number): number {
 }
 
 /** Build the line trace for one mass curve. */
-function speedPolarLineTrace(c: SpeedPolarCurve, i: number): PlotlyTrace {
+export function speedPolarLineTrace(c: SpeedPolarCurve, i: number): PlotlyTrace {
   return {
     x: c.V,
     y: c.w.map(negate),
@@ -309,7 +309,7 @@ function speedPolarMarkerTrace(base: SpeedPolarCurve): PlotlyTrace | null {
   };
 }
 
-function speedPolarTraces(curves: SpeedPolarCurve[]): PlotlyTrace[] {
+export function speedPolarTraces(curves: SpeedPolarCurve[]): PlotlyTrace[] {
   const traces = curves.map((d, i) => speedPolarLineTrace(d, i));
   const base = curves.find((c) => c.is_base) ?? curves[0];
   const markers = speedPolarMarkerTrace(base);
