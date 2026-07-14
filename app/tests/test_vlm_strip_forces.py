@@ -11,6 +11,7 @@ own aggregate CL/CD.
 
 from __future__ import annotations
 
+import math
 from unittest.mock import MagicMock, patch
 
 import numpy as np
@@ -91,7 +92,7 @@ class TestComputeVlmStripForces:
                 # inviscid VLM → no viscous drag component
                 assert entry.cdv == 0.0
                 # induced angle and derived products are finite
-                assert entry.ai == entry.ai  # not NaN
+                assert not math.isnan(entry.ai)
                 assert entry.c_cl == pytest.approx(entry.chord * entry.cl, rel=1e-6)
 
     def test_reconstruction_matches_aggregate_cl(self):

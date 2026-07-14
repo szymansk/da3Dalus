@@ -329,9 +329,9 @@ def _anchor_u_position(vsp: ModuleType, gid: str, anchor_index: int, n_xsec: int
         return -1.0  # sentinel: caller falls back to empirical probe
     cap_min = 1 if max(raw_min, 0) > 0 else 0
     cap_max = 1 if max(raw_max, 0) > 0 else 0
+    # n_xsec >= 2 here (early return above) so (n_xsec - 1) >= 1, and
+    # cap_min/cap_max are each 0 or 1 → total_segments >= 1 always.
     total_segments = (n_xsec - 1) + cap_min + cap_max
-    if total_segments <= 0:
-        return 0.0
     return (anchor_index + cap_min) / total_segments
 
 
