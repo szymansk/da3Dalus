@@ -270,13 +270,18 @@ def _persist_spares(db, aeroplane_uuid, wing, planned: list[_PlannedPiece]) -> N
 
 
 def _real_front_pieces(plan) -> list:
-    """Front pieces that actually become a Spare (drop degenerate Ø0 tips).
+    """Front pieces that actually become a Spare (drop sub-buildable tips).
 
-    The solver can emit a Ø0 terminal tip piece (gh-1045); a zero-diameter tube
-    is not a physical structural object and never reaches the build, so it must
-    not count toward telescoping detection or create a phantom split.
+    The solver already drops sub-floor terminal tip pieces (gh-1045/#1076); a
+    tube below the buildable floor is not a physical structural object and never
+    reaches the build, so it must not count toward telescoping detection or
+    create a phantom split. This guard mirrors the solver's floor so a plan that
+    reaches this path without going through ``plan_spar`` (e.g. deserialized)
+    stays coherent with it.
     """
-    return [p for p in plan.front_pieces if p.outer_d > 0.0]
+    from cad_designer.airplane.geometry.spar_solver import NEGLIGIBLE_OD_FLOOR_MM
+
+    return [p for p in plan.front_pieces if p.outer_d >= NEGLIGIBLE_OD_FLOOR_MM]
 
 
 def _front_telescopes(plan) -> bool:

@@ -266,6 +266,14 @@ function BuiltSparGroup({
  * joint type + feasibility. Exported for direct unit testing.
  */
 export function BuiltSparSection({ plan }: { plan: SparPlanResult }) {
+  const frontNoSparLabel = noSparRegionLabel(
+    plan.front_no_spar_from_y,
+    plan.front_pieces.length === 0,
+  );
+  const rearNoSparLabel = noSparRegionLabel(
+    plan.rear_no_spar_from_y,
+    plan.rear_pieces.length === 0,
+  );
   return (
     <div
       className="rounded border border-border/40 bg-card p-3 text-[13px] space-y-3"
@@ -284,33 +292,21 @@ export function BuiltSparSection({ plan }: { plan: SparPlanResult }) {
         </div>
       )}
       <BuiltSparGroup group="front" pieces={plan.front_pieces} />
-      {noSparRegionLabel(
-        plan.front_no_spar_from_y,
-        plan.front_pieces.length === 0,
-      ) && (
+      {frontNoSparLabel && (
         <p
           className="px-2 py-1 text-[11px] font-[family-name:var(--font-jetbrains-mono)] text-muted-foreground"
           data-testid="front-no-spar-label"
         >
-          {noSparRegionLabel(
-            plan.front_no_spar_from_y,
-            plan.front_pieces.length === 0,
-          )}
+          {frontNoSparLabel}
         </p>
       )}
       <BuiltSparGroup group="rear" pieces={plan.rear_pieces} />
-      {noSparRegionLabel(
-        plan.rear_no_spar_from_y,
-        plan.rear_pieces.length === 0,
-      ) && (
+      {rearNoSparLabel && (
         <p
           className="px-2 py-1 text-[11px] font-[family-name:var(--font-jetbrains-mono)] text-muted-foreground"
           data-testid="rear-no-spar-label"
         >
-          {noSparRegionLabel(
-            plan.rear_no_spar_from_y,
-            plan.rear_pieces.length === 0,
-          )}
+          {rearNoSparLabel}
         </p>
       )}
       <BuiltSparGroup
