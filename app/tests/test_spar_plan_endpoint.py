@@ -188,6 +188,22 @@ class TestComputeSparPlanService:
         assert fp.spare_vector == [0.0, 1.0, 0.0]
         assert fp.role == "front"
 
+    def test_no_spar_from_y_converted_to_metres(self, plane_id):
+        # gh-1076: the tip-most no-spar region marker is exposed on the response,
+        # converted mm->m, so the UI can render "No spar required — span X -> tip".
+        aeroplane = _aeroplane_with_wings(["main_wing"])
+        plan = _stub_plan()
+        plan.front_no_spar_from_y = 600.0  # mm
+        plan.rear_no_spar_from_y = None  # rear spar runs to the tip
+        resp = _run(
+            _patch_full(aeroplane, plan),
+            lambda: spar_plan_service.compute_spar_plan(
+                db=None, aeroplane_uuid=plane_id, request=_basic_request()
+            ),
+        )
+        assert resp.front_no_spar_from_y == pytest.approx(0.6)  # 600 mm -> 0.6 m
+        assert resp.rear_no_spar_from_y is None
+
     def test_y_start_end_populated_and_in_metres(self, plane_id):
         # gh-1057: each piece exposes its spanwise extent (y_start..y_end, m) so
         # the UI can show where the piece runs. Derived from spare_origin.y +

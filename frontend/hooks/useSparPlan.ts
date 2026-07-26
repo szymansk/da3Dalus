@@ -72,6 +72,10 @@ export interface SparPlanResult {
   reinforcement: SparPieceOut | null;
   feasible: boolean;
   infeasibility_reason: string | null;
+  // gh-1076: spanwise position (metres) where the tip-most no-spar region
+  // begins (negligible load outboard). null = spar runs to the tip.
+  front_no_spar_from_y: number | null;
+  rear_no_spar_from_y: number | null;
 }
 
 // ---- Response types: insert (planned spares, metres) -----------------------

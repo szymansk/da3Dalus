@@ -32,6 +32,7 @@ import {
   sparGroupLabel,
   jointLabel,
   pieceDimsLabel,
+  noSparRegionLabel,
   pieceExtentLabel,
   pieceJointLabel,
   splitNote,
@@ -283,7 +284,35 @@ export function BuiltSparSection({ plan }: { plan: SparPlanResult }) {
         </div>
       )}
       <BuiltSparGroup group="front" pieces={plan.front_pieces} />
+      {noSparRegionLabel(
+        plan.front_no_spar_from_y,
+        plan.front_pieces.length === 0,
+      ) && (
+        <p
+          className="px-2 py-1 text-[11px] font-[family-name:var(--font-jetbrains-mono)] text-muted-foreground"
+          data-testid="front-no-spar-label"
+        >
+          {noSparRegionLabel(
+            plan.front_no_spar_from_y,
+            plan.front_pieces.length === 0,
+          )}
+        </p>
+      )}
       <BuiltSparGroup group="rear" pieces={plan.rear_pieces} />
+      {noSparRegionLabel(
+        plan.rear_no_spar_from_y,
+        plan.rear_pieces.length === 0,
+      ) && (
+        <p
+          className="px-2 py-1 text-[11px] font-[family-name:var(--font-jetbrains-mono)] text-muted-foreground"
+          data-testid="rear-no-spar-label"
+        >
+          {noSparRegionLabel(
+            plan.rear_no_spar_from_y,
+            plan.rear_pieces.length === 0,
+          )}
+        </p>
+      )}
       <BuiltSparGroup
         group="reinforcement"
         pieces={plan.reinforcement ? [plan.reinforcement] : []}

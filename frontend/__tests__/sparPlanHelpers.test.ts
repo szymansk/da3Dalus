@@ -8,6 +8,7 @@ import {
   sparGroupLabel,
   jointLabel,
   pieceDimsLabel,
+  noSparRegionLabel,
   touchedSegments,
   replaceWarning,
   pieceExtentLabel,
@@ -456,5 +457,100 @@ describe("pieceDimsLabel — rectangular/capped (gh-1080)", () => {
   it("rod regression — still Ø only after rectangular/capped additions", () => {
     const piece = makePiece({ shape: "rod", outer_d: 0.008, inner_d: 0, wall: 0 });
     expect(pieceDimsLabel(piece)).toBe("Ø 8.0 mm");
+  });
+});
+
+// gh-1076: pieceDimsLabel — thin-wall tube must never show "wall 0" ----------
+// Reuses gh1060Piece (defined above) to avoid a duplicate factory.
+
+describe("pieceDimsLabel — thin-wall tube (gh-1076)", () => {
+  const p = gh1060Piece;
+
+  it("tube with sub-0.1 mm wall (OD>0) never shows 'wall 0' or 'wall 0.0'", () => {
+    // OD 10 mm, ID 9.96 mm → wall = 0.02 mm → rounds to 0.0 at 1 decimal → must NOT show "wall 0.0"
+    const piece = p({ outer_d: 0.010, inner_d: 0.00996, wall: 0.00002 });
+    const label = pieceDimsLabel(piece);
+    expect(label).not.toContain("wall 0.0");
+    expect(label).not.toContain("wall 0)");
+    // Must use the sub-precision marker instead
+    expect(label).toContain("<0.1");
+  });
+
+  it("tube with wall that rounds to 0.0 (from OD/ID fallback) uses <0.1 marker", () => {
+    // wall field absent; computed from OD/ID: (0.010 - 0.00996)/2 = 0.00002 m = 0.02 mm → rounds to 0.0
+    const piece = {
+      role: "front",
+      spare_origin: [0, 0, 0],
+      spare_vector: [0, 1, 0],
+      outer_d: 0.010,
+      inner_d: 0.00996,
+      shape: "tube",
+      governing_y: 0,
+      x_over_chord: 0.3,
+      y_start: 0,
+      y_end: 0.5,
+      utilisation: 0.5,
+      joint_to_next: null,
+      feasible: true,
+      infeasibility_reason: null,
+    } as unknown as SparPieceOut;
+    const label = pieceDimsLabel(piece);
+    expect(label).not.toContain("wall 0.0");
+    expect(label).toContain("<0.1");
+  });
+
+  it("normal tube (OD 28.8 × ID 24.0, wall 2.4 mm) is byte-identical to before (regression)", () => {
+    const piece = p({ outer_d: 0.0288, inner_d: 0.024, wall: 0.0024 });
+    expect(pieceDimsLabel(piece)).toBe("OD 28.8 × ID 24.0 (wall 2.4) mm");
+  });
+
+  it("tube with wall exactly 0.1 mm renders '0.1' (boundary — not <0.1)", () => {
+    // wall = 0.0001 m = 0.1 mm — rounds to "0.1", NOT sub-precision
+    const piece = p({ outer_d: 0.010, inner_d: 0.0098, wall: 0.0001 });
+    const label = pieceDimsLabel(piece);
+    expect(label).toContain("wall 0.1");
+    expect(label).not.toContain("<0.1");
+  });
+});
+
+// gh-1076: noSparRegionLabel ---------------------------------------------------
+
+describe("noSparRegionLabel (gh-1076)", () => {
+  it("returns null when fromY is null (spar runs all the way to the tip)", () => {
+    expect(noSparRegionLabel(null, false)).toBeNull();
+    expect(noSparRegionLabel(null, true)).toBeNull();
+  });
+
+  it("returns 'loads negligible' message when the whole span is negligible (piecesEmpty=true)", () => {
+    const label = noSparRegionLabel(0, true);
+    expect(label).not.toBeNull();
+    expect(label).toContain("No spar required");
+    expect(label).toContain("negligible");
+  });
+
+  it("returns span-position message when there is a normal no-spar tip region (piecesEmpty=false)", () => {
+    // fromY = 0.75 m → 750 mm; spar runs to 750 mm then tip region is negligible
+    const label = noSparRegionLabel(0.75, false);
+    expect(label).not.toBeNull();
+    expect(label).toContain("No spar required");
+    expect(label).toContain("negligible");
+    expect(label).toContain("750");
+    expect(label).toContain("mm");
+    expect(label).toContain("tip");
+  });
+
+  it("span position uses the same mToMm rounding as pieceExtentLabel (0 decimals for extents)", () => {
+    // fromY = 0.7777 m → pieceExtentLabel uses mToMm(y, 0) → "778 mm"; we match that style
+    const label = noSparRegionLabel(0.7777, false);
+    expect(label).toContain("778");
+  });
+
+  it("piecesEmpty=false with fromY=0 (root=0 but not whole-span) renders the span position", () => {
+    // This case doesn't happen in practice, but the contract is: piecesEmpty drives the message,
+    // not fromY===0. With piecesEmpty=false, always show the span label.
+    const label = noSparRegionLabel(0, false);
+    expect(label).not.toBeNull();
+    expect(label).toContain("0");
+    expect(label).toContain("mm");
   });
 });
