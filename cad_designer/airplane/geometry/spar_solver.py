@@ -641,9 +641,15 @@ def solve_spar_plan(
     plan.front_no_spar_from_y = _no_spar_from_y(front_right, plan.front_pieces)
     if _inboard_collinear(front_left, front_right):
         plan.front_joint = "continuous"
-    else:
+    elif front_left and front_right:
         plan.front_joint = "reinforcement+joiner"
         plan.reinforcement = _reinforcement_piece(front_left, front_right, front_spec)
+    else:
+        # gh-1091: a single-half surface (e.g. a vertical stabiliser) has no
+        # symmetric opposite half, so there is no cross-root join to reinforce.
+        # Return the single half's pieces with a continuous joint rather than
+        # indexing into the empty half (_reinforcement_piece needs both roots).
+        plan.front_joint = "continuous"
 
     # --- rear ---
     if rear_left and rear_right:

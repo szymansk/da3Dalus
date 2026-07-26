@@ -670,6 +670,32 @@ class TestNegligibleLoadNoSparRegion:
         assert "rear_no_spar_from_y" in d
 
 
+class TestSingleHalfSurface:
+    """gh-1091: a single-half surface (e.g. a vertical stabiliser) has no
+    symmetric port/starboard halves — one station list is empty. There is no
+    cross-root join, so no reinforcement is possible; the plan must return the
+    single half's pieces with a continuous joint, NOT crash with IndexError.
+    """
+
+    def test_empty_left_half_does_not_crash_and_has_no_reinforcement(self):
+        # front_left empty (vertical fin): _inboard_collinear is False, but a
+        # reinforcement needs BOTH halves — must not index into the empty list.
+        plan = solve_spar_plan(
+            front_left=[],
+            front_right=_uniform_stations(required_od=12.0),
+        )
+        assert plan.front_joint == "continuous"
+        assert plan.reinforcement is None
+        assert plan.front_pieces  # the single half still produced buildable pieces
+
+    def test_empty_right_half_does_not_crash(self):
+        plan = solve_spar_plan(
+            front_left=_uniform_stations(required_od=12.0),
+            front_right=[],
+        )
+        assert plan.reinforcement is None
+
+
 class TestDegenerateRootSliceGuard:
     """gh-1037 #4: a zero-thickness slice at y_span=0 must not poison the
     governing (root) station. Sample at y_span=eps instead."""
