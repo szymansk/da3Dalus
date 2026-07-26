@@ -41,6 +41,30 @@ export function buildMomentsFromLoads(
   }));
 }
 
+/**
+ * gh-1092: index of the main structural surface — the one carrying the largest
+ * root bending moment (|root_bending_moment_Nm_starboard|). A multi-surface
+ * aircraft's solver order can put a stabiliser first, so the built-spar plan
+ * must not blindly use surfaces[0]. Defaults to 0 for null / empty / single
+ * surface.
+ */
+export function mainSurfaceIndex(
+  loads: SpanwiseLoadsResult | null | undefined,
+): number {
+  const surfaces = loads?.surfaces;
+  if (!surfaces || surfaces.length === 0) return 0;
+  let best = 0;
+  let bestM = -Infinity;
+  surfaces.forEach((s, i) => {
+    const m = Math.abs(s.root_bending_moment_Nm_starboard ?? 0);
+    if (m > bestM) {
+      bestM = m;
+      best = i;
+    }
+  });
+  return best;
+}
+
 // ---- Built-spar piece formatting -------------------------------------------
 
 /** Metres → millimetres, rounded for display. */

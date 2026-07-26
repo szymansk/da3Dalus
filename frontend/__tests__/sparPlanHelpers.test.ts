@@ -4,6 +4,7 @@
 import { describe, it, expect } from "vitest";
 import {
   buildMomentsFromLoads,
+  mainSurfaceIndex,
   mToMm,
   sparGroupLabel,
   jointLabel,
@@ -68,6 +69,46 @@ describe("buildMomentsFromLoads", () => {
       { y_m: 0, chord_m: 0.3, shear_N: 0, bending_moment_Nm: 10 },
     ];
     expect(buildMomentsFromLoads(l)).toBeNull();
+  });
+});
+
+describe("mainSurfaceIndex (gh-1092)", () => {
+  function surf(name: string, rootM: number) {
+    return {
+      surface_name: name,
+      starboard: [
+        { y_m: 0.0, chord_m: 0.3, shear_N: 10, bending_moment_Nm: rootM },
+        { y_m: 1.0, chord_m: 0.1, shear_N: 0, bending_moment_Nm: 0 },
+      ],
+      port: [],
+      root_shear_N_starboard: 10,
+      root_shear_N_port: 10,
+      root_bending_moment_Nm_starboard: rootM,
+      root_bending_moment_Nm_port: rootM,
+    };
+  }
+
+  it("picks the surface with the largest root bending moment (the main wing)", () => {
+    // solver order puts a stabiliser first (like the eHawk: v-stab, main_wing, h-stab)
+    const l: SpanwiseLoadsResult = {
+      ...loads(),
+      surfaces: [surf("v-stabilizer", 3), surf("main_wing", 70), surf("h-stabilizer", 8)],
+    };
+    expect(mainSurfaceIndex(l)).toBe(1);
+  });
+
+  it("uses |M| so a negative-moment surface still wins by magnitude", () => {
+    const l: SpanwiseLoadsResult = {
+      ...loads(),
+      surfaces: [surf("a", 5), surf("main", -90)],
+    };
+    expect(mainSurfaceIndex(l)).toBe(1);
+  });
+
+  it("defaults to 0 for null / empty / single-surface", () => {
+    expect(mainSurfaceIndex(null)).toBe(0);
+    expect(mainSurfaceIndex({ ...loads(), surfaces: [] })).toBe(0);
+    expect(mainSurfaceIndex(loads())).toBe(0); // single surface
   });
 });
 
