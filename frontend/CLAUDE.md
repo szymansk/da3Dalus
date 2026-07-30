@@ -16,14 +16,21 @@
 ## Commands
 
 ```bash
+nvm use 22           # REQUIRED: Node ≥24 breaks jsdom localStorage (spurious test fails)
 npm run dev          # Start dev server (Next.js)
 npm run build        # Production build
 npm run lint         # ESLint
+npx tsc --noEmit     # Type check — CI gate; vitest/eslint do NOT catch type errors
 npm run test:unit    # Vitest unit tests
 npm run test:e2e     # Playwright-BDD end-to-end tests
 npm run deps:check   # Dependency-cruiser architecture checks
 npm run bdd:missing  # List feature steps without implementations (gh-564)
 ```
+
+**Before pushing frontend changes** run `npx tsc --noEmit && npm run lint &&
+npm run test:unit` (with `nvm use 22`). The CI `frontend` job fails on `tsc`
+errors that vitest passes — e.g. adding a required field to a response
+interface breaks existing test-fixture object literals.
 
 ### BDD step inventory (gh-564)
 

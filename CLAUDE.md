@@ -128,9 +128,18 @@ equivalent frontend command.
 | Backend integration | pytest | `app/tests/test_*_integration.py` | `poetry run pytest -m "not slow"` |
 | Backend slow/CAD | pytest | `app/tests/test_*_integration.py` | `poetry run pytest -m slow` |
 | Frontend unit | vitest | `frontend/__tests__/` | `cd frontend && npm run test:unit` |
+| Frontend types | tsc | `frontend/` | `cd frontend && npx tsc --noEmit` |
+| Frontend lint | eslint | `frontend/` | `cd frontend && npm run lint` |
 | Frontend deps | dependency-cruiser | `frontend/.dependency-cruiser.cjs` | `cd frontend && npm run deps:check` |
 | Frontend E2E | playwright-bdd | `frontend/e2e/features/*.feature` | `cd frontend && npm run test:e2e` |
 | cad_designer | pytest | `cad_designer/tests/test_*.py` | `poetry run pytest cad_designer/tests/` |
+
+> **Frontend CI gate:** the `frontend` job runs `npx tsc --noEmit` **and**
+> `npm run lint` in addition to `test:unit`. `tsc` catches type errors that
+> vitest/eslint miss (e.g. adding a required field to a response interface
+> breaks existing test-fixture literals) — run it locally before pushing.
+> Frontend tests/typecheck need **Node 22** (`nvm use 22`); Node ≥24 breaks
+> jsdom localStorage with spurious failures.
 
 
 
