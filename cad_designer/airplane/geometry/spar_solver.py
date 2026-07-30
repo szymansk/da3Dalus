@@ -41,6 +41,17 @@ _FIT_TOL_MM = 1e-6
 # root, large enough to land on a valid (non-pinched) section.
 _ROOT_EPS = 1e-3
 
+# gh-1076: buildable-minimum spar outer diameter (mm). A tip station whose
+# design-moment-driven required OD falls below this floor carries negligible
+# bending load — no orderable/cuttable carbon spar exists that small, and the
+# D-box skin + ribs carry the tip. Such trailing stations are reported as an
+# explicit *no-spar region* on the plan (see :func:`solve_spar_plan`) rather
+# than emitted as a degenerate Ø≈0 piece whose wall rounds to 0. The threshold
+# is applied on ``required_od``, which is already the design moment (M·g·j)
+# sizing produced upstream in :func:`build_stations_from_geometry`. Tie to the
+# real CF-pin stock floor (#1081) when that lands.
+NEGLIGIBLE_OD_FLOOR_MM = 1.0
+
 
 class SparRole(str, Enum):
     """Which structural spar a plan/piece belongs to."""
@@ -146,6 +157,12 @@ class SparPlan:
     reinforcement: SparPiece | None = None
     feasible: bool = True  # gh-1037: False when any piece cannot contain a strong tube
     infeasibility_reason: str | None = None
+    # gh-1076: spanwise |y| (mm, starboard half) where the tip-most no-spar
+    # region begins — the load-bearing span ends here and the D-box skin + ribs
+    # carry the rest to the tip. ``None`` means the spar runs to the tip; the
+    # root y means the whole span is negligible (no spar at all).
+    front_no_spar_from_y: float | None = None
+    rear_no_spar_from_y: float | None = None
 
     def to_dict(self) -> dict:
         return {
@@ -156,6 +173,8 @@ class SparPlan:
             "reinforcement": self.reinforcement.to_dict() if self.reinforcement else None,
             "feasible": self.feasible,
             "infeasibility_reason": self.infeasibility_reason,
+            "front_no_spar_from_y": self.front_no_spar_from_y,
+            "rear_no_spar_from_y": self.rear_no_spar_from_y,
         }
 
 
@@ -389,31 +408,53 @@ def plan_spar(stations: list[StationData], spec: SparSpec) -> list[SparPiece]:
 
 
 def _drop_zero_od_tip(pieces: list[SparPiece]) -> list[SparPiece]:
-    """Drop degenerate Ø0 trailing pieces (gh-1045/#1057).
+    """Drop degenerate sub-floor trailing tip pieces (gh-1045/#1057, gh-1076).
 
-    At the tip the bending moment M(y)->0, so the strength-required OD rounds to
-    0. A Ø0 tube is not a physical structural object — you cannot cut, order, or
-    glue it (the skin / D-tube closes the tip). Drop every trailing piece whose
-    ``outer_d <= 0`` and extend the new last real piece to the wing tip so the
-    remaining pieces stay contiguous root->tip. The previous piece no longer
-    telescopes into a non-existent piece, so its joint becomes continuous (None).
+    Toward the tip the bending moment M(y)->0, so the strength-required OD falls
+    below :data:`NEGLIGIBLE_OD_FLOOR_MM` — no orderable/cuttable carbon spar that
+    small exists and the D-box skin + ribs carry the tip. Such a trailing piece
+    is not a physical structural object (a Ø≈0 tube whose wall rounds to 0 is the
+    gh-1076 symptom); drop every trailing piece below the floor.
+
+    gh-1076 Option A: the remaining last real piece KEEPS its natural length — it
+    ends where load ceased to be structurally relevant — and its joint becomes
+    continuous (``None``). The tip-most no-spar region is reported explicitly on
+    the plan (see :func:`solve_spar_plan`) rather than swallowed by extending the
+    last piece to the tip (which was gh-1057's behaviour, now superseded).
+
+    Because spar dimensions are non-increasing root->tip, sub-floor stations are
+    always tip-most; popping from the tail keeps the kept run contiguous.
     """
-    kept: list[SparPiece] = [p for p in pieces if p.outer_d > 0.0]
-    if not kept or len(kept) == len(pieces):
-        # all-zero -> no structural spar; or nothing to drop -> unchanged.
-        return kept if not kept else pieces
-
-    # The last real piece must run to the tip of the original (now-dropped) run.
-    dropped_tip = pieces[-1]
-    tip_y = dropped_tip.spare_origin[1] + dropped_tip.length * dropped_tip.spare_vector[1]
-    tip_z = dropped_tip.spare_origin[2] + dropped_tip.length * dropped_tip.spare_vector[2]
-    last = kept[-1]
-    origin = last.spare_origin
-    tip_point = (origin[0], tip_y, tip_z)
-    last.spare_vector = _unit_vector(origin, tip_point)
-    last.length = math.dist(origin, tip_point)
-    last.joint_to_next = None
+    kept = list(pieces)
+    while kept and kept[-1].outer_d < NEGLIGIBLE_OD_FLOOR_MM:
+        kept.pop()
+    if not kept:
+        # every station negligible -> no structural spar at all.
+        return []
+    kept[-1].joint_to_next = None
     return kept
+
+
+def _no_spar_from_y(stations: list[StationData], pieces: list[SparPiece]) -> float | None:
+    """Spanwise |y| (mm) where the tip-most no-spar region begins, else ``None``.
+
+    gh-1076 Option A. When trailing negligible-load stations produced no
+    buildable piece, the region from the last real piece's tip to the wing tip
+    carries no spar. Returns the ``|y|`` where that region starts (the root ``y``
+    when the whole span is negligible), or ``None`` when the spar runs to the
+    tip. ``y_mm`` is signed by half (port negative); the plan is symmetric, so we
+    report the starboard-half magnitude.
+    """
+    if not stations:
+        return None
+    tip_y = max(abs(s.y_mm) for s in stations)
+    if not pieces:
+        return min(abs(s.y_mm) for s in stations)  # whole span negligible
+    last = pieces[-1]
+    last_tip_y = abs(last.spare_origin[1] + last.length * last.spare_vector[1])
+    if last_tip_y < tip_y - _FIT_TOL_MM:
+        return last_tip_y
+    return None
 
 
 def _bore_for(run: _Run, spec: SparSpec, od: float) -> float:
@@ -597,15 +638,23 @@ def solve_spar_plan(
 
     # --- front ---
     plan.front_pieces = plan_spar(front_right, front_spec)
+    plan.front_no_spar_from_y = _no_spar_from_y(front_right, plan.front_pieces)
     if _inboard_collinear(front_left, front_right):
         plan.front_joint = "continuous"
-    else:
+    elif front_left and front_right:
         plan.front_joint = "reinforcement+joiner"
         plan.reinforcement = _reinforcement_piece(front_left, front_right, front_spec)
+    else:
+        # gh-1091: a single-half surface (e.g. a vertical stabiliser) has no
+        # symmetric opposite half, so there is no cross-root join to reinforce.
+        # Return the single half's pieces with a continuous joint rather than
+        # indexing into the empty half (_reinforcement_piece needs both roots).
+        plan.front_joint = "continuous"
 
     # --- rear ---
     if rear_left and rear_right:
         plan.rear_pieces = plan_spar(rear_right, rear_spec)
+        plan.rear_no_spar_from_y = _no_spar_from_y(rear_right, plan.rear_pieces)
         if _straight_collinear_in_envelope(rear_left, rear_right):
             plan.rear_joint = "continuous"
         else:

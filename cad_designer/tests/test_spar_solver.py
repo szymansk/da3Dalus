@@ -16,11 +16,13 @@ from __future__ import annotations
 import pytest
 
 from cad_designer.airplane.geometry.spar_solver import (
+    NEGLIGIBLE_OD_FLOOR_MM,
     SparPiece,
     SparPlan,
     SparRole,
     SparSpec,
     StationData,
+    _drop_zero_od_tip,
     _inboard_collinear,
     _straight_collinear_in_envelope,
     plan_spar,
@@ -449,16 +451,24 @@ class TestRearTorsionDistinctFromFront:
 
 
 class TestZeroOdTipPieceSuppressed:
-    """gh-1045/#1057: the solver must NOT emit a Ø0 terminal tip piece.
+    """gh-1045/#1057 + gh-1076: the solver must NOT emit a degenerate sub-floor
+    tip piece.
 
-    At the tip the bending moment M(y)->0, so the strength-required OD rounds to
-    0. The old solver emitted that as a feasible Ø0 piece — a phantom part you
-    cannot cut, order, or glue. The fix drops the degenerate trailing piece and
-    runs the previous (last real) piece to the tip with a continuous joint.
+    At the tip the bending moment M(y)->0, so the strength-required OD falls
+    below ``NEGLIGIBLE_OD_FLOOR_MM`` — no orderable/cuttable carbon spar that
+    small exists; the D-box skin + ribs carry the tip. The old solver emitted
+    that as a feasible Ø≈0 piece (whose wall rounds to 0 — the gh-1076 symptom).
+
+    gh-1076 Option A supersedes gh-1057's "extend the last real piece to the
+    tip": the last real piece now ENDS at the last load-bearing station, and the
+    tip-most no-spar region is reported explicitly on the plan (see
+    :class:`TestNegligibleLoadNoSparRegion`) instead of being swallowed by an
+    over-long piece.
     """
 
     def _tapered_to_zero_tip(self) -> list[StationData]:
         # required OD decays to 0 at the very tip (the normal physical case).
+        # Last load-bearing station is y=600 (od=28); the y=900 tip is negligible.
         return [
             _station(0.0, y_mm=0.0, band=(-60.0, 60.0), required_od=80.0),
             _station(0.33, y_mm=300.0, band=(-30.0, 30.0), required_od=55.0),
@@ -466,17 +476,18 @@ class TestZeroOdTipPieceSuppressed:
             _station(1.0, y_mm=900.0, band=(-8.0, 8.0), required_od=0.0),
         ]
 
-    def test_no_zero_od_piece_emitted(self):
+    def test_no_sub_floor_piece_emitted(self):
         pieces = plan_spar(self._tapered_to_zero_tip(), SparSpec(role=SparRole.FRONT))
         assert pieces
         for p in pieces:
-            assert p.outer_d > 0.0, f"Ø0 piece emitted: {p}"
+            assert p.outer_d >= NEGLIGIBLE_OD_FLOOR_MM, f"sub-floor piece emitted: {p}"
 
-    def test_pieces_cover_root_to_tip_without_gap(self):
-        # The remaining pieces must still cover the whole span root->tip with no
-        # gap. Telescoping pieces overlap rootward (a joint IS an overlap region),
-        # so the invariant is coverage, not abutment: the next piece must start at
-        # or before the previous piece's tip, and the union reaches the tip.
+    def test_pieces_cover_root_to_last_load_bearing_station_without_gap(self):
+        # gh-1076 Option A: the kept pieces cover root -> the last LOAD-BEARING
+        # station (y=600), NOT the tip. Telescoping pieces overlap rootward (a
+        # joint IS an overlap region), so the invariant is coverage, not
+        # abutment: the next piece must start at or before the previous piece's
+        # tip, and the union reaches the last load-bearing station.
         pieces = plan_spar(self._tapered_to_zero_tip(), SparSpec(role=SparRole.FRONT))
         covered_to = pieces[0].spare_origin[1] + pieces[0].length * pieces[0].spare_vector[1]
         for outer in pieces[1:]:
@@ -489,15 +500,16 @@ class TestZeroOdTipPieceSuppressed:
                 outer.spare_origin[1] + outer.length * outer.spare_vector[1],
             )
         assert pieces[0].spare_origin[1] == pytest.approx(0.0)  # starts at root
-        assert covered_to == pytest.approx(900.0)  # union reaches the tip
+        assert covered_to == pytest.approx(600.0)  # ends at last load-bearing station
 
-    def test_last_piece_runs_to_the_tip(self):
-        # After dropping the Ø0 tip piece, the new last real piece must reach the
-        # wing tip (y=900), not stop short where the Ø0 run began.
+    def test_last_piece_ends_at_last_load_bearing_station(self):
+        # gh-1076 Option A: the last real piece ends where load ceased to be
+        # structurally relevant (y=600), NOT at the wing tip (y=900). The tip
+        # region is reported as a no-spar region on the plan, not covered here.
         pieces = plan_spar(self._tapered_to_zero_tip(), SparSpec(role=SparRole.FRONT))
         last = pieces[-1]
         last_tip_y = last.spare_origin[1] + last.length * last.spare_vector[1]
-        assert last_tip_y == pytest.approx(900.0)
+        assert last_tip_y == pytest.approx(600.0)
 
     def test_last_piece_joint_is_continuous(self):
         # The previous piece no longer telescopes into a non-existent piece.
@@ -540,6 +552,148 @@ def _mirror(s: StationData) -> StationData:
         band_hi=s.band_hi,
         required_od=s.required_od,
     )
+
+
+class TestNegligibleLoadNoSparRegion:
+    """gh-1076: the tip-most region where the design-moment-driven required OD
+    falls below ``NEGLIGIBLE_OD_FLOOR_MM`` is reported as an explicit *no-spar*
+    region on the plan — answering the user's real question ("do I need a spar
+    here?") instead of emitting a contradictory Ø>0 / wall≈0 piece.
+    """
+
+    def _tapered_to_zero_tip(self) -> list[StationData]:
+        return [
+            _station(0.0, y_mm=0.0, band=(-60.0, 60.0), required_od=80.0),
+            _station(0.33, y_mm=300.0, band=(-30.0, 30.0), required_od=55.0),
+            _station(0.66, y_mm=600.0, band=(-15.0, 15.0), required_od=28.0),
+            _station(1.0, y_mm=900.0, band=(-8.0, 8.0), required_od=0.0),
+        ]
+
+    def test_floor_constant_is_a_positive_buildable_minimum(self):
+        # A stated, testable threshold — not an implicit ``<= 0`` (gh-1076 AC).
+        assert NEGLIGIBLE_OD_FLOOR_MM > 0.0
+
+    def test_no_spar_region_reported_for_negligible_tip(self):
+        # The load-bearing span ends at y=600; y=600 -> tip (900) is no-spar.
+        front = self._tapered_to_zero_tip()
+        plan = solve_spar_plan(
+            front_left=[_mirror(s) for s in front],
+            front_right=front,
+        )
+        assert plan.front_no_spar_from_y == pytest.approx(600.0)
+
+    def test_spar_running_to_the_tip_has_no_no_spar_region(self):
+        # A generously-thick straight wing needs a spar all the way out.
+        plan = solve_spar_plan(
+            front_left=[_mirror(s) for s in _uniform_stations(required_od=20.0)],
+            front_right=_uniform_stations(required_od=20.0),
+        )
+        assert plan.front_no_spar_from_y is None
+
+    def test_all_negligible_reports_no_spar_from_root(self):
+        # Every station below the floor (e.g. a tiny stabiliser): no pieces AND
+        # the no-spar region starts at the root — never a blank/phantom group.
+        stations = [
+            _station(0.0, y_mm=0.0, band=(-50.0, 50.0), required_od=0.0),
+            _station(1.0, y_mm=500.0, band=(-50.0, 50.0), required_od=0.0),
+        ]
+        plan = solve_spar_plan(
+            front_left=[_mirror(s) for s in stations],
+            front_right=stations,
+        )
+        assert plan.front_pieces == []
+        assert plan.front_no_spar_from_y == pytest.approx(0.0)
+
+    def test_no_spar_region_is_tip_most_and_contiguous(self):
+        # Pieces cover root -> from_y with no interior gap; from_y -> tip is the
+        # single, tip-most no-spar region (never a gap between two real pieces).
+        front = self._tapered_to_zero_tip()
+        plan = solve_spar_plan(
+            front_left=[_mirror(s) for s in front],
+            front_right=front,
+        )
+        from_y = plan.front_no_spar_from_y
+        assert from_y is not None
+        last = plan.front_pieces[-1]
+        last_tip = last.spare_origin[1] + last.length * last.spare_vector[1]
+        assert last_tip == pytest.approx(from_y)  # region begins exactly at the last piece tip
+
+    def _piece(self, *, outer_d: float, y0: float, y1: float) -> SparPiece:
+        return SparPiece(
+            role=SparRole.FRONT,
+            spare_origin=(0.0, y0, 0.0),
+            spare_vector=(0.0, 1.0, 0.0),
+            outer_d=outer_d,
+            inner_d=0.0,
+            shape="tube",
+            governing_y=y0,
+            utilisation=0.5,
+            length=y1 - y0,
+            joint_to_next="telescoping",
+        )
+
+    def test_drop_floor_keeps_above_and_drops_below(self):
+        # The threshold is a stated buildable floor, not an implicit ``<= 0``: a
+        # trailing tip piece just below the floor is dropped; one at/above the
+        # floor is kept. This is the fix for the contradictory Ø>0 / wall≈0 piece.
+        kept = _drop_zero_od_tip(
+            [
+                self._piece(outer_d=20.0, y0=0.0, y1=300.0),
+                self._piece(outer_d=NEGLIGIBLE_OD_FLOOR_MM + 0.1, y0=300.0, y1=600.0),
+                self._piece(outer_d=NEGLIGIBLE_OD_FLOOR_MM - 0.1, y0=600.0, y1=900.0),
+            ]
+        )
+        assert [round(p.outer_d, 3) for p in kept] == [20.0, round(NEGLIGIBLE_OD_FLOOR_MM + 0.1, 3)]
+        assert kept[-1].joint_to_next is None  # no longer telescopes into a dropped piece
+
+    def test_drop_floor_does_not_extend_last_piece_to_tip(self):
+        # gh-1076 Option A: the last kept piece keeps its natural length (ends at
+        # y=600), it is NOT stretched to the dropped tip run's end (y=900).
+        kept = _drop_zero_od_tip(
+            [
+                self._piece(outer_d=20.0, y0=0.0, y1=600.0),
+                self._piece(outer_d=0.4, y0=600.0, y1=900.0),
+            ]
+        )
+        last = kept[-1]
+        assert last.length == pytest.approx(600.0)
+        assert last.spare_origin[1] + last.length * last.spare_vector[1] == pytest.approx(600.0)
+
+    def test_no_spar_region_serialised_in_plan_dict(self):
+        front = self._tapered_to_zero_tip()
+        plan = solve_spar_plan(
+            front_left=[_mirror(s) for s in front],
+            front_right=front,
+        )
+        d = plan.to_dict()
+        assert d["front_no_spar_from_y"] == pytest.approx(600.0)
+        assert "rear_no_spar_from_y" in d
+
+
+class TestSingleHalfSurface:
+    """gh-1091: a single-half surface (e.g. a vertical stabiliser) has no
+    symmetric port/starboard halves — one station list is empty. There is no
+    cross-root join, so no reinforcement is possible; the plan must return the
+    single half's pieces with a continuous joint, NOT crash with IndexError.
+    """
+
+    def test_empty_left_half_does_not_crash_and_has_no_reinforcement(self):
+        # front_left empty (vertical fin): _inboard_collinear is False, but a
+        # reinforcement needs BOTH halves — must not index into the empty list.
+        plan = solve_spar_plan(
+            front_left=[],
+            front_right=_uniform_stations(required_od=12.0),
+        )
+        assert plan.front_joint == "continuous"
+        assert plan.reinforcement is None
+        assert plan.front_pieces  # the single half still produced buildable pieces
+
+    def test_empty_right_half_does_not_crash(self):
+        plan = solve_spar_plan(
+            front_left=_uniform_stations(required_od=12.0),
+            front_right=[],
+        )
+        assert plan.reinforcement is None
 
 
 class TestDegenerateRootSliceGuard:

@@ -41,6 +41,30 @@ export function buildMomentsFromLoads(
   }));
 }
 
+/**
+ * gh-1092: index of the main structural surface — the one carrying the largest
+ * root bending moment (|root_bending_moment_Nm_starboard|). A multi-surface
+ * aircraft's solver order can put a stabiliser first, so the built-spar plan
+ * must not blindly use surfaces[0]. Defaults to 0 for null / empty / single
+ * surface.
+ */
+export function mainSurfaceIndex(
+  loads: SpanwiseLoadsResult | null | undefined,
+): number {
+  const surfaces = loads?.surfaces;
+  if (!surfaces || surfaces.length === 0) return 0;
+  let best = 0;
+  let bestM = -Infinity;
+  surfaces.forEach((s, i) => {
+    const m = Math.abs(s.root_bending_moment_Nm_starboard ?? 0);
+    if (m > bestM) {
+      bestM = m;
+      best = i;
+    }
+  });
+  return best;
+}
+
 // ---- Built-spar piece formatting -------------------------------------------
 
 /** Metres → millimetres, rounded for display. */
@@ -115,7 +139,13 @@ export function pieceDimsLabel(piece: SparPieceOut): string {
       piece.wall != null && Number.isFinite(piece.wall)
         ? piece.wall
         : (piece.outer_d - piece.inner_d) / 2;
-    const wallStr = mToMm(wall);
+    // gh-1076: a tube with OD>0 must never display "wall 0" or "wall 0.0".
+    // mToMm rounds to 1 decimal (0.1 mm resolution). If the wall is positive
+    // but rounds to "0.0", show "<0.1" instead to avoid the contradictory label.
+    const wallStr =
+      piece.outer_d > 0 && wall > 0 && parseFloat(mToMm(wall)) === 0
+        ? "<0.1"
+        : mToMm(wall);
     // length is the run-length along spare_vector; not on the piece schema, so
     // pieces show OD/ID/wall only (length lives on the planned-spare preview).
     return `OD ${od} × ID ${id} (wall ${wallStr}) mm`;
@@ -223,6 +253,25 @@ export function splitNote(
     `Main spar telescopes → the segment will be split into ${n} sub-segments ` +
     `(lengths ${lengths} mm); a snapshot will be taken so you can revert.`
   );
+}
+
+// ---- No-spar tip region (gh-1076) -------------------------------------------
+
+/**
+ * gh-1076: human label for a spar's tip-most no-spar region. Inputs are in
+ * METRES (as the API returns). `fromY` is where the region begins; `piecesEmpty`
+ * true means no buildable piece exists at all. Returns null when there is no
+ * no-spar region (fromY == null → spar runs to the tip).
+ */
+export function noSparRegionLabel(
+  fromY: number | null,
+  piecesEmpty: boolean,
+): string | null {
+  if (fromY == null) return null;
+  if (piecesEmpty) {
+    return "No spar required — loads negligible";
+  }
+  return `No spar required (negligible bending load) — span ${mToMm(fromY, 0)} mm → tip`;
 }
 
 /**

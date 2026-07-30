@@ -301,3 +301,21 @@ class SparPlanResponse(BaseModel):
         None,
         description="Reason for the first infeasible piece, or None when the plan is feasible.",
     )
+    front_no_spar_from_y: Optional[float] = Field(
+        None,
+        description=(
+            "Spanwise position (metres, starboard half) where the front spar's "
+            "tip-most no-spar region begins: outboard of this the bending load is "
+            "negligible and the D-box skin + ribs carry the tip, so no spar is "
+            "required. None when the front spar runs to the tip; the root y when "
+            "the whole span is negligible (no spar at all). gh-1076."
+        ),
+    )
+    rear_no_spar_from_y: Optional[float] = Field(
+        None,
+        description=(
+            "Spanwise position (metres, starboard half) where the rear spar's "
+            "tip-most no-spar region begins (negligible torsion outboard). None "
+            "when the rear spar runs to the tip. gh-1076."
+        ),
+    )

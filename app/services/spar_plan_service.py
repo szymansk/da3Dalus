@@ -607,4 +607,10 @@ def compute_spar_plan(
         reinforcement=_piece_to_out(plan.reinforcement) if plan.reinforcement else None,
         feasible=plan.feasible,
         infeasibility_reason=plan.infeasibility_reason,
+        front_no_spar_from_y=(
+            plan.front_no_spar_from_y * _MM_TO_M if plan.front_no_spar_from_y is not None else None
+        ),
+        rear_no_spar_from_y=(
+            plan.rear_no_spar_from_y * _MM_TO_M if plan.rear_no_spar_from_y is not None else None
+        ),
     )

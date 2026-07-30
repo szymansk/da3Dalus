@@ -18,7 +18,7 @@ import { SparSizingPanel, toSizingParams } from "@/components/workbench/SparSizi
 import type { SparSizingInputs } from "@/components/workbench/SparSizingPanel";
 import { useSparSizing } from "@/hooks/useSparSizing";
 import { useSparPlan, type SparPlanParams } from "@/hooks/useSparPlan";
-import { buildMomentsFromLoads } from "@/lib/sparPlanHelpers";
+import { buildMomentsFromLoads, mainSurfaceIndex } from "@/lib/sparPlanHelpers";
 import { useSWRConfig } from "swr";
 
 const TABS = ["Assumptions", "Operating Points", "Polar", "Trefftz Plane", "Spanwise Loads", "Streamlines", "Envelope", "Sizing"] as const;
@@ -1089,8 +1089,12 @@ export function SpanwiseLoadsTabContent({
   const firstSizing = sizingResult?.spar_sizing?.[0] ?? null;
   const gLimit = firstSizing?.g_limit ?? null;
   const gLimitFallback = firstSizing?.g_limit_fallback ?? false;
-  // The wing the plan/insert targets — the first surface (main wing).
-  const planWingName = spanwiseLoads?.surfaces?.[0]?.surface_name ?? null;
+  // The wing the plan/insert targets — the MAIN structural surface (largest
+  // root bending moment), not blindly surfaces[0] which the solver may order as
+  // a stabiliser (gh-1092).
+  const planSurfaceIndex = mainSurfaceIndex(spanwiseLoads);
+  const planWingName =
+    spanwiseLoads?.surfaces?.[planSurfaceIndex]?.surface_name ?? null;
 
   const handleSparCompute = (inputs: SparSizingInputs) => {
     if (!spanwiseLoads) return;
@@ -1112,7 +1116,7 @@ export function SpanwiseLoadsTabContent({
     // gh-1050: also compute the buildable plan from the SAME inputs. The
     // moments distribution comes from the already-displayed spanwise loads
     // M(y) — normalised to a 0..1 span fraction (buildMomentsFromLoads).
-    const moments = buildMomentsFromLoads(spanwiseLoads);
+    const moments = buildMomentsFromLoads(spanwiseLoads, planSurfaceIndex);
     if (moments) {
       const planParams: SparPlanParams = {
         material_id: sizingParams.material_id,
