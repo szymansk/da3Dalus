@@ -55,6 +55,8 @@ function feasiblePlan(): SparPlanResult {
     reinforcement: piece({ role: "front", outer_d: 0.03, inner_d: 0.0 }),
     feasible: true,
     infeasibility_reason: null,
+    front_no_spar_from_y: null,
+    rear_no_spar_from_y: null,
   };
 }
 
@@ -131,6 +133,8 @@ describe("BuiltSparSection (gh-1050)", () => {
       reinforcement: null,
       feasible: true,
       infeasibility_reason: null,
+      front_no_spar_from_y: null,
+      rear_no_spar_from_y: null,
     };
     render(<BuiltSparSection plan={plan} />);
     // constant x/c → shown once on the group label.
@@ -154,6 +158,8 @@ describe("BuiltSparSection (gh-1050)", () => {
       reinforcement: null,
       feasible: true,
       infeasibility_reason: null,
+      front_no_spar_from_y: null,
+      rear_no_spar_from_y: null,
     };
     render(<BuiltSparSection plan={plan} />);
     const rows = screen.getAllByTestId("built-spar-piece");

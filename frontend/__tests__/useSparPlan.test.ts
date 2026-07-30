@@ -42,6 +42,8 @@ const FAKE_PLAN: SparPlanResult = {
   reinforcement: null,
   feasible: true,
   infeasibility_reason: null,
+  front_no_spar_from_y: null,
+  rear_no_spar_from_y: null,
 };
 
 const FAKE_INSERT: SparInsertResult = {

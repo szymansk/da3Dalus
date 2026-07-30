@@ -294,6 +294,8 @@ describe("SparSizingPanel", () => {
       reinforcement: null,
       feasible: true,
       infeasibility_reason: null,
+      front_no_spar_from_y: null,
+      rear_no_spar_from_y: null,
     };
     const onInsert = vi.fn();
     renderPanel({ plan, onInsert });
@@ -312,6 +314,8 @@ describe("SparSizingPanel", () => {
       reinforcement: null,
       feasible: true,
       infeasibility_reason: null,
+      front_no_spar_from_y: null,
+      rear_no_spar_from_y: null,
     };
     renderPanel({ plan });
     fireEvent.click(screen.getByTestId("spar-sizing-toggle"));
