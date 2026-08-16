@@ -427,6 +427,42 @@ nicht die komplizierten, die **nicht-lokalen**. #762 ist der Musterfall — der 
 zwei Zeilen aus und verschiebt jede Einbaute im Flügel.
 
 
+### #57 — umgeschnitten · 2026-08-16 · **Maintainer-Entwurf ersetzt den Vorschlag von April**
+
+Das Ticket (2026-04-15) entstand **einen Tag nach** der ersten Erweiterung der
+`components`-Tabelle und **vor** ADR 0013 (Typ-Schema) und ADR 0014 (Snapshots). Es schlägt
+vor, beides zu bauen, weil es beides nicht gab.
+
+**Teil A** (AC-01/02/03/04/17/18/20) ist damit weitgehend erledigt: `PropertyDefinition`
+trägt `min`/`max`/`options`/`default`, `validate_specs` prüft Pflicht/Typ/Bereich, und
+AC-18 — das Carbon-Rohr mit Maximallänge — ist reine Schema-Validierung, **kein Codepfad**.
+
+**Teil B** neu geschnitten (Maintainer): statt Code in der DB und Browser-Editor wird eine
+**`.py`-Datei mit einer CadQuery-Funktion hochgeladen**. Parameter = die COTS-Parameter,
+Rückgabe = `cadquery.Workplane`, **Nullpunkt und Hauptachsen festgelegt und dokumentiert**,
+damit ein Creator das Teil richtig einbauen kann.
+
+Das komponiert, statt zu konkurrieren: ein `ParametricComponentCreator` ist die exakte
+Entsprechung zu `ComponentImporterCreator` — statt `step_importer(file)` ruft er die
+Funktion mit den `specs` auf, danach greift dieselbe Platzierung
+(`ScaleRotateTranslateCreator.transform_by` mit `rot_*`/`trans_*` aus
+`ComponentInformation`). **ADR 0002 §2 bleibt unangetastet**: der Creator bleibt der
+Erweiterungspunkt, die `.py` ist sein Eingangsartefakt wie heute die STEP-Datei. Damit
+entfallen Redis (ADR 0014, Offline-Build), der Editor und die Docker-Isolation als Kern
+(ADR 0024: der Einzelplatznutzer führt eigenen Code aus; ADR 0005 verlangt für CAD ohnehin
+einen gespawnten Prozess).
+
+Der Bezugsrahmen existiert implizit: `ComponentInformation.get_corner_point()` liefert
+`(trans_x, trans_y, trans_z)` — **der Nullpunkt ist die Ecke, nicht die Mitte**. Nicht als
+Referenz taugt `get_middle_point()`: ohne Produktionsaufrufer, und die z-Komponente rechnet
+mit `length/2` statt `height/2` — nach ADR 0002 §1 dokumentiert, nicht repariert.
+
+**Nebenbefund mit sofortiger Wirkung → #1129:** Der Importer aus #1081 ist gemergt, aber nie
+gelaufen. Snapshot deklariert `spar_tube`, die DB kennt `carbon_tube`, und es gibt **0
+Komponenten von beiden**. Das erklärt vermutlich **#1089** — die Holm-Tests sind nicht rot,
+weil das Stock zu groß ist, sondern weil keines existiert.
+
+
 ## Das Muster hinter den bearbeiteten Fällen
 
 Fünfmal an einem Tag dieselbe Struktur — **richtige Logik hinter einer Eingabe, die niemand
