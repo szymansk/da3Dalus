@@ -1528,7 +1528,12 @@ via `P-WARN-0`, not something to paper over). Leaving it inert was excluded by
 control surface fouls the hinge line.
 
 
-**Soll → #1106** (① echte Shape-Dimensionen) · **#1096** (② Hinge-Clearance-Guard) — entschieden, noch nicht gebaut.
+**Soll → #1106** (① echte Shape-Dimensionen) — entschieden, noch nicht gebaut.
+
+**Ist** (② Hinge-Clearance-Guard) — gebaut in #1096 / PR #1123, gemergt 2026-08-16
+(`608fce87`). Klemm-Reihenfolge: `spar_solver.py:233-247`; Verdrahtung:
+`spar_plan_service.py:274-294` und `:583-590`. Siehe
+[`addenda/gh-1096-hinge-clearance-guard.md`](addenda/gh-1096-hinge-clearance-guard.md).
 
 ---
 
