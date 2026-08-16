@@ -1,0 +1,89 @@
+# Reversa — Configuração do Projeto
+# Este arquivo é gerenciado pelo instalador. Para customizações, edite config.user.toml
+
+[project]
+name = "cad-modelling-service"
+version = "1.0.0"
+
+[user]
+name = "Szymi"
+chat_language = "de-de"
+doc_language = "English"
+
+[output]
+folder = "_reversa_sdd"
+
+[agents]
+installed = [
+  "reversa",
+  "reversa-autonomous",
+  "reversa-scout",
+  "reversa-archaeologist",
+  "reversa-detective",
+  "reversa-architect",
+  "reversa-writer",
+  "reversa-reviewer",
+  "reversa-visor",
+  "reversa-data-master",
+  "reversa-design-system",
+  "reversa-agents-help",
+  "reversa-reconstructor",
+  "reversa-debugger",
+  "reversa-debugger-fix",
+  "reversa-debugger-debate",
+  "reversa-depth-inspection",
+  "reversa-debugger-graph",
+  "reversa-forward",
+  "reversa-requirements",
+  "reversa-clarify",
+  "reversa-plan",
+  "reversa-to-do",
+  "reversa-audit",
+  "reversa-quality",
+  "reversa-coding",
+  "reversa-sync",
+  "reversa-principles",
+  "reversa-resume",
+  "reversa-pricing-profile",
+  "reversa-pricing-size",
+  "reversa-pricing-estimate",
+  "reversa-docs",
+  "reversa-docs-mapper",
+  "reversa-docs-analyst",
+  "reversa-docs-storyteller",
+  "reversa-docs-publisher",
+  "reversa-arquitetura-3d",
+  "reversa-selo-generativo",
+  "reversa-highcharts-visualizer",
+  "reversa-especialista-d3",
+  "reversa-image-prompt-json",
+  "reversa-refactor",
+  "reversa-restructure",
+  "reversa-modularize",
+  "reversa-decouple",
+  "reversa-optimize",
+  "reversa-simplify",
+  "reversa-standardize",
+  "reversa-prune"
+]
+
+[engines]
+installed = [
+  "claude-code",
+  "codex"
+]
+
+[analysis]
+answer_mode = "file"
+doc_level = "completo"
+
+# Organização das specs geradas pelos agentes.
+# Esta seção é preenchida pelo Reversa após o Scout sugerir uma estrutura
+# e o usuário confirmar a escolha no menu (logo após a pergunta de doc_level).
+# Para reapresentar o menu, remova a seção [specs] inteira e rode o Reversa de novo.
+[specs]
+layout = "feature-folder"   # constante "feature-folder" após a primeira execução
+granularity = "hybrid"      # module | use-case | endpoint | hybrid | feature | custom
+custom_folders = []         # preenchido apenas quando granularity == "custom"
+scout_suggestion = "hybrid" # registro da sugestão original do Scout, imutável após a 1a execução
+decided_at = "2026-07-30T17:47:58Z"  # timestamp ISO 8601 da escolha do usuário

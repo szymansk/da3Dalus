@@ -1,0 +1,401 @@
+{
+  "generated_at": "2026-07-30T00:00:00Z",
+  "project_root": "/Users/szymanski/Projects/da3Dalus/cad-modelling-service",
+  "project_name": "da3Dalus / cad-modelling-service",
+  "doc_language": "English",
+  "doc_level": "completo",
+  "languages": [
+    { "name": "Python", "extensions": [".py"], "file_count": 781 },
+    { "name": "TypeScript", "extensions": [".ts", ".tsx"], "file_count": 396 },
+    { "name": "Markdown", "extensions": [".md"], "file_count": 149 },
+    { "name": "YAML", "extensions": [".yml", ".yaml"], "file_count": 376 },
+    { "name": "JSON", "extensions": [".json"], "file_count": 60 },
+    { "name": "Shell", "extensions": [".sh"], "file_count": 15 },
+    { "name": "Gherkin", "extensions": [".feature"], "file_count": 10 },
+    { "name": "AsciiDoc", "extensions": [".adoc"], "file_count": 8 },
+    { "name": "Fortran", "extensions": [".f", ".inc", ".INC"], "file_count": 85 },
+    { "name": "C", "extensions": [".c", ".h"], "file_count": 36 }
+  ],
+  "primary_language": "Python",
+  "secondary_language": "TypeScript",
+  "frameworks": [
+    { "name": "FastAPI", "version": "0.136.1", "source": "poetry.lock" },
+    { "name": "Starlette", "version": "1.0.0", "source": "poetry.lock" },
+    { "name": "Uvicorn", "version": "0.46.0", "source": "poetry.lock" },
+    { "name": "FastMCP", "version": "3.2.4", "source": "poetry.lock" },
+    { "name": "mcp", "version": "1.27.0", "source": "poetry.lock" },
+    { "name": "Pydantic", "version": "2.13.3", "source": "poetry.lock" },
+    { "name": "pydantic-settings", "version": "2.14.0", "source": "poetry.lock" },
+    { "name": "SQLAlchemy", "version": "2.0.49", "source": "poetry.lock" },
+    { "name": "Alembic", "version": "1.18.4", "source": "poetry.lock" },
+    { "name": "CadQuery", "version": "2.7.0", "source": "poetry.lock" },
+    { "name": "cadquery-ocp (OCCT)", "version": "7.8.1.1.post1", "source": "poetry.lock" },
+    { "name": "AeroSandbox", "version": "4.2.9", "source": "poetry.lock" },
+    { "name": "NeuralFoil", "version": "0.3.2", "source": "poetry.lock" },
+    { "name": "CasADi", "version": "3.7.2", "source": "poetry.lock" },
+    { "name": "Shapely", "version": "2.1.2", "source": "poetry.lock" },
+    { "name": "VTK", "version": "9.3.1", "source": "poetry.lock" },
+    { "name": "Plotly (server-side) + Kaleido", "version": "6.7.0 / 1.2.0", "source": "poetry.lock" },
+    { "name": "avl-binary (AVL Fortran executable)", "version": "1.0.0", "source": "pyproject.toml" },
+    { "name": "openai SDK", "version": "^2.41 (declared, NOT in poetry.lock)", "source": "pyproject.toml" },
+    { "name": "pytest", "version": "9.0.3", "source": "poetry.lock" },
+    { "name": "ruff", "version": "0.15.12", "source": "poetry.lock" },
+    { "name": "Next.js", "version": "16.2.1-canary.33", "source": "frontend/package.json" },
+    { "name": "React", "version": "19.2.5", "source": "frontend/package.json" },
+    { "name": "SWR", "version": "2.4.1", "source": "frontend/package-lock.json" },
+    { "name": "Tailwind CSS", "version": "4.2.2", "source": "frontend/package-lock.json" },
+    { "name": "three", "version": "0.183.2", "source": "frontend/package-lock.json" },
+    { "name": "three-cad-viewer", "version": "4.3.7", "source": "frontend/package-lock.json" },
+    { "name": "plotly.js-gl3d-dist-min", "version": "3.5.0", "source": "frontend/package-lock.json" },
+    { "name": "TypeScript", "version": "5.9.3", "source": "frontend/package-lock.json" },
+    { "name": "Vitest", "version": "4.1.5", "source": "frontend/package-lock.json" },
+    { "name": "Playwright + playwright-bdd", "version": "1.59.1 / 8.5.0", "source": "frontend/package-lock.json" }
+  ],
+  "package_manager": "poetry (backend) + npm (frontend)",
+  "runtime": {
+    "python": ">=3.11,<3.14 (Poetry group narrows to <3.13 due to VTK 9.3.1)",
+    "node": "22 (Node >=24 breaks jsdom localStorage)"
+  },
+  "entry_points": [
+    { "path": "app/main.py", "type": "app_entry", "detail": "create_app() — FastAPI app, ~20 routers, /static /assets /mcp mounts, combined lifespan, exception handlers" },
+    { "path": "app/mcp_server.py", "type": "mcp_entry", "detail": "create_mcp_http_app() — FastMCP server, 76 @mcp_tool tools + image/data resources" },
+    { "path": "app/settings.py", "type": "config_entry" },
+    { "path": "app/logging_config.py", "type": "config_entry" },
+    { "path": "frontend/app/layout.tsx", "type": "app_entry" },
+    { "path": "frontend/app/page.tsx", "type": "app_entry" },
+    { "path": "frontend/app/workbench/layout.tsx", "type": "app_entry" },
+    { "path": "frontend/app/workbench/page.tsx", "type": "app_entry" },
+    { "path": "alembic/env.py", "type": "migration_entry" },
+    { "path": "Dockerfile", "type": "container_entry", "detail": "CMD uvicorn app.main:app --host 0.0.0.0 --port 8000" },
+    { "path": "docker_smoke_test.py", "type": "smoke_test" },
+    { "path": "scripts/import_cots.py", "type": "cli_entry" },
+    { "path": "scripts/import_apc_props.py", "type": "cli_entry" },
+    { "path": "scripts/import_carbon_tubes.py", "type": "cli_entry" },
+    { "path": "scripts/seed_propeller_components.py", "type": "cli_entry" },
+    { "path": "scripts/backfill_airfoil_low_re.py", "type": "cli_entry" },
+    { "path": "scripts/parse_dpower_pdfs.py", "type": "cli_entry" },
+    { "path": "scripts/openvsp_import_trace.py", "type": "cli_entry" },
+    { "path": "scripts/uat_copilot_driver.py", "type": "cli_entry" },
+    { "path": "scripts/build_avl.py", "type": "cli_entry" }
+  ],
+  "runtime_urls": {
+    "rest_api_dev": "http://localhost:8001",
+    "swagger": "/docs",
+    "redoc": "/redoc",
+    "openapi": "/openapi.json",
+    "mcp": "/mcp",
+    "frontend_dev": "http://localhost:3000",
+    "docker_compose": "http://localhost:8086"
+  },
+  "config_files": [
+    "pyproject.toml",
+    "poetry.lock",
+    "alembic.ini",
+    ".env.example",
+    "app/core/config.py",
+    "app/settings.py",
+    "sonar-project.properties",
+    "pyrightconfig.json",
+    "toolchain.yaml",
+    ".container-use.yaml",
+    ".mcp.json",
+    ".dockerignore",
+    ".gitignore",
+    "Makefile",
+    "frontend/package.json",
+    "frontend/package-lock.json",
+    "frontend/tsconfig.json",
+    "frontend/next.config.ts",
+    "frontend/eslint.config.mjs",
+    "frontend/postcss.config.mjs",
+    "frontend/vitest.config.ts",
+    "frontend/playwright.config.ts",
+    "frontend/e2e/playwright.polar-design-warning.config.ts",
+    "frontend/.dependency-cruiser.cjs"
+  ],
+  "ci_cd": [
+    ".github/workflows/test.yml",
+    ".github/workflows/claude-code-review.yml.disabled",
+    ".github/workflows/claude.yml.disabled",
+    "azure-pipelines.yml"
+  ],
+  "ci_jobs": [
+    { "name": "changes", "detail": "dorny/paths-filter — backend vs frontend path detection" },
+    { "name": "fast", "detail": "Python 3.12, ruff check, pytest excluding slow/e2e/requires_cadquery/requires_aerosandbox/requires_avl, xdist, --cov-fail-under=70" },
+    { "name": "full", "detail": "opt-in via ci-full label — adds CAD/ASB/AVL tests" },
+    { "name": "nightly", "detail": "cron 03:00 UTC, full suite all markers, Python 3.11 + 3.12, sequential" },
+    { "name": "frontend", "detail": "Node 22, npm ci, eslint, tsc --noEmit, vitest --coverage" },
+    { "name": "sonarcloud", "detail": "SonarCloud scan consuming both coverage artefacts" }
+  ],
+  "docker": {
+    "dockerfile": "Dockerfile",
+    "compose": "docker-compose.yml",
+    "detail": "Two-stage: arm64v8/ubuntu:22.04 compiles vendored AVL Fortran; mambaorg/micromamba runtime with conda py311 + Poetry + pinned CadQuery/VTK/OCP via pip --no-deps + headless Chromium. Compose maps 8086:8000."
+  },
+  "database_hints": [
+    { "path": "app/db/session.py", "type": "sqlalchemy_engine_session", "detail": "SQLite default sqlite:///./db/test.db, WAL + busy_timeout, get_db() owns the transaction boundary" },
+    { "path": "app/db/base.py", "type": "declarative_base" },
+    { "path": "app/db/repository.py", "type": "repository_layer" },
+    { "path": "app/models/", "type": "orm_models_dir", "detail": "21 modules, 35 __tablename__ declarations" },
+    { "path": "alembic/versions/", "type": "migrations_dir", "detail": "62 revisions, single head d8015f98814c" },
+    { "path": "alembic/env.py", "type": "migration_env" },
+    { "path": "alembic.ini", "type": "migration_config" },
+    { "path": "db/test.db", "type": "sqlite_database_file" }
+  ],
+  "database": {
+    "present": true,
+    "kind": "SQLite (default, file-based, WAL mode) via SQLAlchemy ORM; PostgreSQL supported via SQLALCHEMY_DATABASE_URL override",
+    "orm": "SQLAlchemy 2.0.49",
+    "migrations": "Alembic 1.18.4 — 62 revisions, head d8015f98814c",
+    "table_count": 35,
+    "tables": [
+      "aeroplanes", "aircraft_computation_config", "airfoil_geometry",
+      "airfoil_low_re_polar", "airfoils", "avl_geometry_files", "branches",
+      "component_tree", "component_types", "components", "construction_parts",
+      "construction_plans", "copilot_messages", "design_assumptions",
+      "flight_envelopes", "fuselage_xsecs", "fuselages", "loading_scenarios",
+      "mission_objectives", "mission_presets", "operating_points",
+      "operating_pointsets", "propeller_polar_samples", "propeller_polars",
+      "rc_flight_profiles", "stability_results", "tessellation_cache",
+      "weight_items", "wing_xsec_details", "wing_xsec_spares",
+      "wing_xsec_ted_servos", "wing_xsec_trailing_edge_devices",
+      "wing_xsec_turbulators", "wing_xsecs", "wings"
+    ]
+  },
+  "api_surface": {
+    "style": "REST v2 (no v1 present despite docs referencing it) + MCP tool server",
+    "rest_route_count": 230,
+    "rest_endpoint_modules": 45,
+    "mcp_tool_count": 76,
+    "router_root": "app/api/v2/endpoints/",
+    "openapi": "/openapi.json"
+  },
+  "test_framework": "pytest (backend) + vitest (frontend unit) + playwright-bdd (frontend E2E)",
+  "test_file_count": 516,
+  "test_breakdown": {
+    "backend_pytest": 300,
+    "backend_integration": 15,
+    "cad_designer_pytest": 26,
+    "legacy_root_test_dir": 8,
+    "frontend_vitest": 180,
+    "frontend_gherkin_features": 10,
+    "frontend_e2e_step_modules": 4
+  },
+  "test_markers": ["unit", "integration", "slow", "e2e", "requires_cadquery", "requires_aerosandbox", "requires_avl"],
+  "coverage_signal": {
+    "target": "> 80% (project convention)",
+    "ci_hard_floor": "70% (--cov-fail-under=70 on the fast tier)",
+    "python_report": "coverage.xml",
+    "js_report": "frontend/coverage/lcov.info",
+    "quality_gate": "SonarCloud, project key szymansk_da3Dalus",
+    "caveat": "cad_designer/** excluded from SonarCloud analysis and from ruff; CI fast tier runs without CadQuery/AeroSandbox/AVL so those code paths need mocked fast tests to be counted"
+  },
+  "external_integrations": [
+    { "name": "AVL (Athena Vortex Lattice)", "type": "vendored_native_binary", "evidence": ["Avl/", "avl-binary/", "app/services/avl_runner.py", "app/services/avl_geometry_service.py", "app/services/avl_artefact_service.py", "app/services/avl_strip_forces.py", "app/avl/"] },
+    { "name": "AeroSandbox + NeuralFoil (aerodynamic solver stack)", "type": "python_library_engine", "evidence": ["app/services/analysis_service.py", "app/services/vlm_strip_forces.py", "app/services/neuralfoil_cdcl_service.py", "app/services/airfoil_low_re_service.py", "cad_designer/aerosandbox/"] },
+    { "name": "CadQuery / OCCT geometry kernel", "type": "python_library_engine", "evidence": ["cad_designer/", "app/services/cad_service.py", "app/services/tessellation_service.py"] },
+    { "name": "OpenVSP (out-of-tree optional .vsp3 importer)", "type": "optional_external_tool", "evidence": ["app/converters/openvsp_adapter.py", "app/converters/openvsp_importer.py", "app/services/openvsp_import_service.py", "vendor/openvsp", "docs/md/openvsp-import-setup.md"] },
+    { "name": "VSPAERO (benchmark cross-validation)", "type": "optional_external_binary", "evidence": ["scripts/vspaero_benchmark"] },
+    { "name": "LiteLLM / OpenAI-compatible AI hub (Copilot LLM)", "type": "http_llm_service", "evidence": ["app/services/copilot_service.py", "app/core/config.py", ".env.example"] },
+    { "name": "ocp-vscode CAD viewer (dev-time socket bridge)", "type": "dev_tool_socket", "evidence": ["external/ocp-vscode", "cad_designer/cq_plugins/display/display.py", "docker-compose.yml"] },
+    { "name": "Headless Chromium (Plotly/Kaleido image export)", "type": "system_binary", "evidence": ["Dockerfile", ".env.example"] },
+    { "name": "SonarCloud (quality gate)", "type": "saas_ci", "evidence": ["sonar-project.properties", ".github/workflows/test.yml"] },
+    { "name": "GitHub Actions + GitHub Issues (CI and issue tracking)", "type": "saas_ci", "evidence": [".github/workflows/test.yml", ".github/ISSUE_TEMPLATE/"] },
+    { "name": "Azure Container Registry (legacy/stale image push)", "type": "saas_registry", "evidence": ["azure-pipelines.yml"] },
+    { "name": "COTS supplier data snapshots (APC, D-Power, Spektrum, Hoellein, carbon tubes)", "type": "offline_data_feed", "evidence": ["data/cots/", "data/apc_raw/", "scripts/import_cots.py", "scripts/parse_dpower_pdfs.py", "scripts/parse_apc_props.py"] },
+    { "name": "MCP clients (the service exposes itself as an MCP server)", "type": "exposed_protocol_surface", "evidence": ["app/mcp_server.py", "app/main.py"] }
+  ],
+  "external_integration_count": 13,
+  "modules": [
+    "aeroplane-core",
+    "wing-design",
+    "fuselage-design",
+    "airfoil-catalog",
+    "cad-generation",
+    "cad-designer-topology",
+    "aero-analysis",
+    "avl-integration",
+    "mass-and-balance",
+    "powertrain",
+    "mission-and-sizing",
+    "construction-plans",
+    "openvsp-import",
+    "versioning",
+    "ai-copilot",
+    "mcp-server",
+    "platform-core",
+    "frontend-workbench"
+  ],
+  "module_details": [
+    {
+      "name": "aeroplane-core",
+      "summary": "Aeroplane/project aggregate root: CRUD, component tree wiring, total mass, base entity lifecycle.",
+      "paths": ["app/api/v2/endpoints/aeroplane/base.py", "app/api/v2/endpoints/aeroplane/component_tree.py", "app/services/aeroplane_service.py", "app/services/component_tree_service.py", "app/models/aeroplanemodel.py", "app/models/component_tree.py", "app/schemas/aeroplaneschema.py"]
+    },
+    {
+      "name": "wing-design",
+      "summary": "Wings, cross-sections, spars, trailing-edge devices, servos, turbulators, section geometry and thickness.",
+      "paths": ["app/api/v2/endpoints/aeroplane/wings.py", "app/api/v2/endpoints/section_aoa.py", "app/services/wing_service.py", "app/services/create_wing_configuration.py", "app/services/spar_sizing.py", "app/services/spar_insert_service.py", "app/services/section_geometry_service.py", "app/services/section_thickness.py", "app/services/control_surface_mixing.py", "app/services/turbulator_optimizer_service.py", "app/schemas/wing.py", "app/schemas/spar_sizing.py"]
+    },
+    {
+      "name": "fuselage-design",
+      "summary": "Fuselages, superellipse cross-sections, slicing, STEP-based precise geometry.",
+      "paths": ["app/api/v2/endpoints/aeroplane/fuselages.py", "app/api/v2/endpoints/fuselage_slice.py", "app/services/fuselage_service.py", "app/services/fuselage_slice_service.py", "app/schemas/fuselage_slice.py", "cad_designer/airplane/aircraft_topology/fuselage/"]
+    },
+    {
+      "name": "airfoil-catalog",
+      "summary": "Airfoil library (1665 .dat files), geometry ingestion, low-Re polar backfill, NeuralFoil cd/cl surrogate, suitability scoring, tags.",
+      "paths": ["app/api/v2/endpoints/airfoils.py", "app/services/airfoil_service.py", "app/services/airfoil_low_re_service.py", "app/services/suitability_service.py", "app/services/neuralfoil_cdcl_service.py", "app/services/polar_re_table_service.py", "app/services/airfoil_tags.py", "app/models/airfoil.py", "app/models/airfoil_low_re.py", "components/airfoils/", "scripts/backfill_airfoil_low_re.py"]
+    },
+    {
+      "name": "cad-generation",
+      "summary": "CadQuery orchestration: creator gallery, CAD build process pool, tessellation + cache, STEP/STL/3MF/IGES exports, artifacts.",
+      "paths": ["app/api/v2/endpoints/cad.py", "app/services/cad_service.py", "app/services/tessellation_service.py", "app/services/tessellation_cache_service.py", "app/services/tessellation_hooks.py", "app/services/artifact_service.py", "app/models/tessellation_cache.py"]
+    },
+    {
+      "name": "cad-designer-topology",
+      "summary": "Read-only CadQuery topology library: Airfoil, WingSegment, WingConfiguration, Spare, TrailingEdgeDevice, Turbulator, Servo, shape creators, cq_plugins, spar solver. Excluded from ruff and SonarCloud by policy.",
+      "paths": ["cad_designer/"]
+    },
+    {
+      "name": "aero-analysis",
+      "summary": "Aerodynamic analysis pipeline: VLM/AeroBuildup, operating points and sets, trim/retrim, stability, strip forces, spanwise loads, speed polar, flight envelope, turn kinematics, invalidation-driven recompute.",
+      "paths": ["app/api/v2/endpoints/aeroanalysis.py", "app/api/v2/endpoints/operating_points.py", "app/api/v2/endpoints/aeroplane/flight_envelope.py", "app/api/v2/endpoints/aeroplane/speed_polar.py", "app/services/analysis_service.py", "app/services/aerobuildup_trim_service.py", "app/services/operating_point_generator_service.py", "app/services/operating_point_resolver.py", "app/services/retrim_service.py", "app/services/stability_service.py", "app/services/vlm_strip_forces.py", "app/services/spanwise_loads.py", "app/services/speed_polar_service.py", "app/services/flight_envelope_service.py", "app/services/turn_kinematics.py", "app/services/trim_enrichment_service.py", "app/models/analysismodels.py", "app/models/stability_result.py"]
+    },
+    {
+      "name": "avl-integration",
+      "summary": "AVL geometry file generation, vortex spacing, subprocess runner, artefact persistence, strip forces, elevator authority.",
+      "paths": ["app/avl/geometry.py", "app/avl/spacing.py", "app/api/v2/endpoints/aeroplane/avl_geometry.py", "app/services/avl_geometry_service.py", "app/services/avl_runner.py", "app/services/avl_artefact_service.py", "app/services/avl_strip_forces.py", "app/services/avl_trim_service.py", "app/services/elevator_authority_service.py", "app/models/avl_geometry_file.py", "app/models/avl_geometry_events.py", "Avl/"]
+    },
+    {
+      "name": "mass-and-balance",
+      "summary": "Components and component types, weight items, loading scenarios and templates, mass/CG computation, forward CG, COTS/carbon-tube import.",
+      "paths": ["app/api/v2/endpoints/components.py", "app/api/v2/endpoints/component_types.py", "app/api/v2/endpoints/aeroplane/mass_cg.py", "app/api/v2/endpoints/aeroplane/weight_items.py", "app/api/v2/endpoints/aeroplane/loading_scenarios.py", "app/api/v2/endpoints/aeroplane/forward_cg.py", "app/services/component_service.py", "app/services/component_type_service.py", "app/services/weight_items_service.py", "app/services/loading_scenario_service.py", "app/services/loading_template_service.py", "app/services/mass_cg_service.py", "app/services/cots_import.py", "app/services/carbon_tube_import.py", "app/models/component.py", "app/models/component_type.py"]
+    },
+    {
+      "name": "powertrain",
+      "summary": "Motor/ESC/battery/propeller sizing, powertrain performance and solution space, propeller polars and enrichment, endurance.",
+      "paths": ["app/api/v2/endpoints/aeroplane/powertrain_sizing.py", "app/api/v2/endpoints/aeroplane/powertrain_sizing_modal.py", "app/api/v2/endpoints/aeroplane/powertrain_performance.py", "app/api/v2/endpoints/aeroplane/powertrain_solution_space.py", "app/api/v2/endpoints/endurance.py", "app/services/powertrain_sizing_service.py", "app/services/powertrain_performance.py", "app/services/powertrain_solution_space_service.py", "app/services/prop_polar_import.py", "app/services/prop_polar_enrich.py", "app/services/prop_component_seed.py", "app/services/endurance_service.py", "app/models/prop_polar.py", "data/cots/", "scripts/import_apc_props.py"]
+    },
+    {
+      "name": "mission-and-sizing",
+      "summary": "Mission objectives/presets/KPIs, flight profiles, design assumptions and recompute, matching chart, tail sizing, static-margin sizing, field length.",
+      "paths": ["app/api/v2/endpoints/aeroplane/mission_objectives.py", "app/api/v2/endpoints/aeroplane/matching_chart.py", "app/api/v2/endpoints/aeroplane/tail_sizing.py", "app/api/v2/endpoints/aeroplane/sm_suggestions.py", "app/api/v2/endpoints/aeroplane/field_lengths.py", "app/api/v2/endpoints/aeroplane/design_assumptions.py", "app/api/v2/endpoints/flight_profiles.py", "app/services/mission_objective_service.py", "app/services/mission_kpi_service.py", "app/services/mission_preset_seed.py", "app/services/matching_chart_service.py", "app/services/tail_sizing_service.py", "app/services/sm_sizing_service.py", "app/services/field_length_service.py", "app/services/design_assumptions_service.py", "app/services/assumption_compute_service.py", "app/services/flight_profile_service.py", "app/models/mission_objective.py", "app/models/mission_preset.py", "app/models/flightprofilemodel.py"]
+    },
+    {
+      "name": "construction-plans",
+      "summary": "Construction plans, parts, templates, spar plans and inserts, build artefacts for 3D printing.",
+      "paths": ["app/api/v2/endpoints/construction_plans.py", "app/api/v2/endpoints/aeroplane_construction_plans.py", "app/api/v2/endpoints/construction_templates.py", "app/api/v2/endpoints/aeroplane/construction_parts.py", "app/services/construction_plan_service.py", "app/services/construction_part_service.py", "app/services/spar_plan_service.py", "app/models/construction_plan.py", "app/models/construction_part.py"]
+    },
+    {
+      "name": "openvsp-import",
+      "summary": "OpenVSP .vsp3 import pipeline: adapter probing, wing/fuselage/blank/custom handlers, control-surface mapping, airfoil generation, solid sewing, STEP export, streaming progress.",
+      "paths": ["app/api/v2/endpoints/openvsp_import.py", "app/converters/openvsp_adapter.py", "app/converters/openvsp_importer.py", "app/converters/openvsp_wing_handler.py", "app/converters/openvsp_fuselage_handler.py", "app/converters/openvsp_blank_handler.py", "app/converters/openvsp_custom_handler.py", "app/converters/openvsp_ss_control.py", "app/converters/openvsp_airfoil.py", "app/converters/openvsp_validation.py", "app/services/openvsp_import_service.py", "app/services/openvsp_solid_sewing_service.py", "app/services/openvsp_step_export_service.py"]
+    },
+    {
+      "name": "versioning",
+      "summary": "Aircraft design versioning and branching: snapshots, clone, compare, geometry diff, branch/main semantics.",
+      "paths": ["app/api/v2/endpoints/versioning.py", "app/api/v2/endpoints/aeroplane/design_versions.py", "app/services/aeroplane_version_service.py", "app/services/design_version_service.py", "app/services/aeroplane_clone_service.py", "app/schemas/versioning.py", "app/schemas/design_version.py", "frontend/types/versioning.ts", "frontend/lib/versioning-api.ts"]
+    },
+    {
+      "name": "ai-copilot",
+      "summary": "In-app AI copilot: LLM hub client, deterministic domain tools, conversation history, SSE streaming, proposal apply flow.",
+      "paths": ["app/api/v2/endpoints/aeroplane/copilot_stream.py", "app/api/v2/endpoints/aeroplane/copilot_history.py", "app/services/copilot_service.py", "app/services/copilot_tools.py", "app/services/copilot_history_service.py", "app/services/copilot_apply_service.py", "app/schemas/copilot_edits.py", "app/schemas/copilot_history.py", "frontend/components/workbench/CopilotStrip.tsx", "frontend/hooks/useCopilot.ts"]
+    },
+    {
+      "name": "mcp-server",
+      "summary": "FastMCP tool surface — 76 tools plus image/data resources delegating to the v2 endpoint functions; mounted at /mcp.",
+      "paths": ["app/mcp_server.py"]
+    },
+    {
+      "name": "platform-core",
+      "summary": "Cross-cutting infrastructure: pydantic-settings config, DB session/transaction boundary, repository helpers, exception hierarchy and HTTP mapping, domain events, invalidation, background job tracker, platform capability probes, logging.",
+      "paths": ["app/core/config.py", "app/core/exceptions.py", "app/core/events.py", "app/core/background_jobs.py", "app/core/platform.py", "app/core/security.py", "app/core/json_safe.py", "app/db/session.py", "app/db/base.py", "app/db/repository.py", "app/services/invalidation_service.py", "app/settings.py", "app/logging_config.py", "app/main.py", "alembic/"]
+    },
+    {
+      "name": "frontend-workbench",
+      "summary": "Next.js 16 App Router design workbench: workbench shell + 6 domain routes (analysis, components, construction-plans, mission, powertrain, airfoil-preview), 121 components, 48 SWR hooks, three-cad-viewer 3D viewer, Plotly charts, playwright-bdd E2E.",
+      "paths": ["frontend/app/", "frontend/components/", "frontend/hooks/", "frontend/lib/", "frontend/types/", "frontend/__tests__/", "frontend/e2e/"]
+    }
+  ],
+  "total_files": 1797,
+  "total_source_files_python": 781,
+  "total_source_files_typescript": 396,
+  "approx_loc": { "python_app": 182325, "python_cad_designer": 22338, "typescript_frontend": 49585 },
+  "organization_suggestion": {
+    "granularity": "hybrid",
+    "rationale": "Three signals carry comparable weight — a centralized router registry with 230 REST routes plus 76 MCP tools, domain-named top-level folders in both the frontend workbench and the cad_designer topology library, and ten behaviour-oriented Gherkin feature files — so specs should be organized by domain module with endpoint-level and use-case-level specs nested inside.",
+    "signals": [
+      {
+        "type": "centralized_routing",
+        "evidence": [
+          "app/main.py",
+          "app/api/v2/endpoints/",
+          "app/api/v2/endpoints/aeroplane/",
+          "app/api/v2/endpoints/aeroanalysis.py",
+          "app/api/v2/endpoints/operating_points.py",
+          "app/api/v2/endpoints/aeroplane/wings.py",
+          "app/mcp_server.py"
+        ]
+      },
+      {
+        "type": "top_level_domain_folders",
+        "evidence": [
+          "frontend/app/workbench/analysis/",
+          "frontend/app/workbench/components/",
+          "frontend/app/workbench/construction-plans/",
+          "frontend/app/workbench/mission/",
+          "frontend/app/workbench/powertrain/",
+          "frontend/app/workbench/airfoil-preview/",
+          "cad_designer/airplane/aircraft_topology/wing/",
+          "cad_designer/airplane/aircraft_topology/fuselage/",
+          "cad_designer/airplane/aircraft_topology/components/",
+          "cad_designer/airplane/creator/wing/",
+          "cad_designer/airplane/creator/fuselage/"
+        ]
+      },
+      {
+        "type": "behaviour_specs_gherkin",
+        "evidence": [
+          "frontend/e2e/features/airfoil-suitability.feature",
+          "frontend/e2e/features/analysis-status.feature",
+          "frontend/e2e/features/component-types.feature",
+          "frontend/e2e/features/ehawk-construction.feature",
+          "frontend/e2e/features/navigation.feature",
+          "frontend/e2e/features/operating-points.feature",
+          "frontend/e2e/features/polar-design-warning.feature",
+          "frontend/e2e/features/ted-role-ui.feature",
+          "frontend/e2e/features/trim-interpretation.feature",
+          "frontend/e2e/features/turbulator-ui.feature"
+        ]
+      },
+      {
+        "type": "layered_service_modules",
+        "evidence": [
+          "app/services/",
+          "app/schemas/",
+          "app/models/",
+          "app/converters/",
+          ".claude/rules/python-conventions.md"
+        ]
+      }
+    ],
+    "features": []
+  },
+  "anomalies": [
+    { "id": "no-v1-api", "severity": "medium", "detail": "CLAUDE.md and app/CLAUDE.md describe a legacy app/api/v1/ surface that does not exist in the tree — only app/api/utils.py and app/api/v2/.", "evidence": ["app/api/", "CLAUDE.md", "app/CLAUDE.md"] },
+    { "id": "openai-declared-not-locked", "severity": "high", "detail": "openai ^2.41 is declared under [tool.poetry.dependencies] but is absent from [project].dependencies and from poetry.lock, so a clean poetry install never installs it. The copilot imports it lazily, so the app starts but the copilot fails at first use in CI/Docker.", "evidence": ["pyproject.toml", "poetry.lock", "app/services/copilot_service.py"] },
+    { "id": "docker-overrides-lock", "severity": "high", "detail": "Dockerfile force-installs CadQuery 2.6.1 / cadquery-ocp 7.9.3.0 / VTK 9.5.2 via pip --no-deps and re-runs poetry lock --regenerate, while poetry.lock resolves CadQuery 2.7.0 / cadquery-ocp 7.8.1.1 / VTK 9.3.1. Container and local geometry kernels differ.", "evidence": ["Dockerfile", "poetry.lock"] },
+    { "id": "stale-azure-pipeline", "severity": "medium", "detail": "azure-pipelines.yml references docker/Dockerfile.client.amd64.dockerfile (missing) and triggers on a master branch while the default branch is main. GitHub Actions test.yml is the live pipeline.", "evidence": ["azure-pipelines.yml", ".github/workflows/test.yml"] },
+    { "id": "docker-arch-mismatch", "severity": "medium", "detail": "The AVL build stage pins arm64v8/ubuntu:22.04 while the Azure pipeline targets an amd64 Dockerfile path.", "evidence": ["Dockerfile", "azure-pipelines.yml"] },
+    { "id": "dual-settings-classes", "severity": "medium", "detail": "Two independent pydantic-settings Settings classes (app/core/config.py, app/settings.py) both read .env with overlapping concerns; app/db/session.py additionally reads SQLALCHEMY_DATABASE_URL via raw os.getenv, contradicting the project's own 'all config through core/config.py' rule.", "evidence": ["app/core/config.py", "app/settings.py", "app/db/session.py", ".claude/rules/python-conventions.md"] },
+    { "id": "open-cors", "severity": "medium", "detail": "CORSMiddleware uses allow_origins=['*'] together with allow_credentials=True, annotated in-code as copied from another backend.", "evidence": ["app/main.py"] },
+    { "id": "cad-designer-unanalysed", "severity": "medium", "detail": "cad_designer/ (~22k LOC) is excluded from SonarCloud analysis and from ruff, and is read-only by project policy — effectively unlinted and unmeasured.", "evidence": ["sonar-project.properties", "pyproject.toml", "CLAUDE.md"] },
+    { "id": "german-api-strings", "severity": "low", "detail": "Backend error handlers emit hard-coded German user-facing strings ('name existiert bereits', 'Ungültige Eingabedaten') while the frontend is English-only by convention.", "evidence": ["app/main.py"] },
+    { "id": "committed-database", "severity": "low", "detail": "A live SQLite database plus two dated backups and WAL files are committed and copied into the Docker image.", "evidence": ["db/test.db", "Dockerfile"] },
+    { "id": "next-canary-pin", "severity": "medium", "detail": "Next.js and eslint-config-next are pinned to the exact pre-release build 16.2.1-canary.33; the repo's own frontend/AGENTS.md warns that only node_modules/next/dist/docs/ is authoritative.", "evidence": ["frontend/package.json", "frontend/AGENTS.md"] },
+    { "id": "node-version-unenforced", "severity": "low", "detail": "Node 22 is mandatory (Node >=24 breaks jsdom localStorage) and hard-coded in CI, but there is no engines field and no .nvmrc.", "evidence": ["frontend/package.json", ".github/workflows/test.yml"] },
+    { "id": "stray-root-package-json", "severity": "low", "detail": "A root package.json declaring only react-resizable-panels exists alongside a root package-lock.json and node_modules/, unused by the frontend build.", "evidence": ["package.json", "package-lock.json"] },
+    { "id": "root-artefact-pollution", "severity": "low", "detail": "The repository root carries substantial runtime and agent artefacts (tmp/, exports/, test-results/, playwright-report/, claude-auto-resume.log, coverage.xml, db backups, .worktrees/, .ralph/, .superpowers/), inflating the apparent surface.", "evidence": ["tmp/", "exports/", "coverage.xml", ".worktrees/"] }
+  ]
+}

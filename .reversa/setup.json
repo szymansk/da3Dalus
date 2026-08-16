@@ -1,0 +1,24 @@
+{
+  "schema-version": 1,
+  "reversa-version": "1.2.56",
+  "installed-at": "2026-07-30T17:24:50.771Z",
+  "project-name": "cad-modelling-service",
+  "prefix-format": "sequencial",
+  "language": "en-us",
+  "watch": {
+    "archive-after": 3,
+    "block-on-red": false
+  },
+  "paths": {
+    "sdd-dir": "_reversa_sdd",
+    "forward-dir": "_reversa_forward",
+    "config-dir": ".reversa"
+  },
+  "principles": {
+    "enabled": true,
+    "auto-load-into-plan": true
+  },
+  "telemetry": {
+    "enabled": false
+  }
+}
