@@ -282,9 +282,33 @@ Bandtabelle.
 
 ---
 
-## Das Muster hinter den ersten drei bearbeiteten Fällen
+### #616 — umgeschrieben · 2026-08-16 · **das Vorhandene ist da und defekt**
 
-Dreimal an einem Tag dieselbe Struktur — **richtige Logik hinter einer Eingabe, die niemand
+Audit-Einordnung *„eigener `P_required` + eigene V-n-Kurve — es gibt beides schon"*:
+
+| | |
+|---|---|
+| `P_required` | **stimmt** — `endurance_service._power_required` (:77), `powertrain_sizing_service:92` delegiert bereits dorthin (BR-PT30 🟢) |
+| V-n-Hüllkurve | **existiert und ist defekt** |
+| Blocker #615 | **geschlossen** — die Blocker-Zeile im Ticket ist veraltet |
+
+`flight_envelope_service.py:604-606` setzt `n = 1.0` für **jeden** Betriebspunkt, mit der
+Begründung *„Without stored CL, we cannot derive actual load factor"*. Der Wert ist
+gespeichert — im `description`-Freitext derselben Zeile: `turn_60` trägt `target_n=2.00`,
+dazu `q=0.43083`, `r=0.24874`. Das höchstbelastete Manöver des Standardsatzes erscheint im
+V-n-Diagramm auf der Horizontalfluglinie. → **#1126**
+
+Ursache dahinter: ein numerischer Auslegungswert lebt in Prosa statt in einer Spalte. Der
+Generator schreibt ihn, der Konsument kann ihn nicht sehen, und der Kommentar erklärt die
+Blindheit zur Naturgesetzlichkeit.
+
+**#616 konsumiert danach**, statt B.3 selbst zu bauen — sonst zeigte der neue Reiter
+dieselbe falsche Aussage, nur prominenter.
+
+
+## Das Muster hinter den bearbeiteten Fällen
+
+Viermal an einem Tag dieselbe Struktur — **richtige Logik hinter einer Eingabe, die niemand
 liefert**:
 
 | | Mechanismus | wodurch abgeschaltet |
@@ -292,6 +316,7 @@ liefert**:
 | **#1096** | Hinge-Clearance-Guard | Default eines optionalen Parameters, den kein Aufrufer setzt |
 | **#1124** | Ausschlags-Sättigungsprüfung | greift je Steuervariable statt je physischer Fläche |
 | **#1125** | klassenabhängige Leitwerksbänder | Quellfeld ist in der gesamten DB leer |
+| **#1126** | V-n-Hüllkurve mit Lastvielfachen-Markern | Marker hartkodiert auf 1.0, Wert steckt im Freitext |
 
 Das ist keine Nachlässigkeit beim Extrahieren, sondern eine Eigenschaft dieser Codebasis:
 sie ist reich an differenzierter Logik, die auf Konfiguration wartet, die nie ankommt.
