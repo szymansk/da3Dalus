@@ -5209,10 +5209,31 @@ and making those failures untestable at the service level.
 (altitude, mission), or should the route move out of the aeroplane namespace?
 **Impact:** Three contract rows.
 
-**Answer:** _(derived — not a maintainer decision)_ **Keep the route in the aeroplane namespace — aircraft-level state now genuinely enters the computation — and a wrong component *type* becomes 422, not 404.**
+**Answer:** **ANSWERED by the maintainer, 2026-08-15** (option b) — **the route stays in the aeroplane namespace: aircraft-level state (altitude, mission) is expected to enter the computation. The anchor is declared intent, not ceremony.**
 
-Follows from three endorsed powertrain rulings taken together: **Q-PT-9** makes `temperature_deviation_k` a **design assumption** and requires `atmo.density_altitude()` in the powertrain response; **Q-PT-3** sizes the propeller diameter from the design speed and returns the selected propeller; and **Q-PT-1** defines `I_design` as the largest sustained current *in the mission*. Altitude, temperature and mission are aircraft state, so the docstring's *"anchoring the request to a valid design context"* becomes literally true, the 404 stops being ceremony, and the computation is correctly unreachable without an aircraft. On the status code, **Q-CC-3** plus the maintainer's own reading in **Q-PT-13 ①** and **Q-WD-9 ①** settles it: passing a battery id as `motor_component_id` is user-correctable input, so it raises a `ValidationDomainError → 422` rather than a 404 claiming the id does not exist — and the helpers `_resolve_motor` / `_resolve_battery` / `_load_polar_rows` stop raising `HTTPException` directly, which Q-CC-3 already required.
+**Why this is not a leak under ADR 0019.** The concern was that the UUID is pure ceremony — a 404 that guards nothing. It is not: the powertrain performance model is *meant* to be evaluated in the aircraft's operating context, and altitude alone changes air density and therefore thrust and endurance materially at UAV altitudes. A route that computed motor performance context-free would be the wrong contract, and moving it to `/powertrain/performance` would have to be undone.
 
+**And the intent is already load-bearing, not aspirational.** `Q-PT-9` makes
+`temperature_deviation_k` a **design assumption**, and `design_assumptions` carries an
+`aeroplane_id` column (`app/models/aeroplanemodel.py:848-857`) — it is per-aeroplane by
+construction. `Q-PT-9` further names `powertrain_performance.py:346-348` as one of the
+density code paths it deletes, and that path is on **this** endpoint
+(`app/api/v2/endpoints/aeroplane/powertrain_performance.py:187`). Computing density
+correctly therefore *requires* the aeroplane the route already takes. `Q-PT-3` (prop
+diameter from design speed) and `Q-PT-1` (`I_design` from the most demanding mission
+segment) pull the same way. The anchor stops being ceremony as soon as `Q-PT-9` lands.
+
+**The remaining intent must still be recorded, not assumed.** Today no aeroplane data enters the computation, so the spec states plainly: *the aeroplane anchor is reserved for atmospheric and mission state not yet wired.* An unexplained inert parameter is indistinguishable from a forgotten one — this is the same reasoning that made `Q-AF-7 ②` document an absence.
+
+---
+
+**Two sub-findings, derived and independent of the option chosen:**
+
+**① A wrong component *type* must return 422, not 404.** Passing a battery id as `motor_component_id` currently reports 404 — *"the id does not exist"* — when the id exists perfectly well and is the wrong kind of part. The client cannot distinguish a typo from a mis-wired form, and the message actively misleads. This is a `ValidationDomainError → 422` naming both the expected and the actual component type. Note this does **not** conflict with `Q-FD-1`: nothing in persisted state is in conflict here; the payload itself is wrong.
+
+**② `_resolve_motor` / `_resolve_battery` / `_load_polar_rows` stop raising `HTTPException`.** Raising transport-layer exceptions from the service bypasses the domain layer, which means (a) the single error envelope of `Q-CC-3` is circumvented, and (b) these failures are untestable at the service level — the test has to construct a request context to observe a domain condition. They raise domain exceptions and let the global handler translate, like every other service.
+
+Both are recorded as defects against `powertrain/performance-model/contracts.md`.
 ---
 
 ## Q-PT-12 — Propeller-polar data integrity (bundle)
@@ -5385,32 +5406,16 @@ field all exist; no code path generates a thumbnail).
 thumbnail generation deferred — to which layer (CAD tessellation)?
 **Impact:** Compounded by the copilot, which clones a full subgraph per proposal.
 
-**Answer:** **ANSWERED by the maintainer, 2026-08-15** (option b) — **the route stays in the aeroplane namespace: aircraft-level state (altitude, mission) is expected to enter the computation. The anchor is declared intent, not ceremony.**
+**Answer:** 🔴 **UNANSWERED — this question was never put to the maintainer.**
 
-**Why this is not a leak under ADR 0019.** The concern was that the UUID is pure ceremony — a 404 that guards nothing. It is not: the powertrain performance model is *meant* to be evaluated in the aircraft's operating context, and altitude alone changes air density and therefore thrust and endurance materially at UAV altitudes. A route that computed motor performance context-free would be the wrong contract, and moving it to `/powertrain/performance` would have to be undone.
+This slot previously held the maintainer's answer to `Q-PT-11` (powertrain route
+namespace). It was misfiled here by an edit that matched a generic `**Answer:**`
+anchor instead of the question id — the same failure that once wrote `Q-AC-2`'s
+confirmation into `Q-CC-16`. The text has been moved to `Q-PT-11`, where it belongs.
 
-**And the intent is already load-bearing, not aspirational.** `Q-PT-9` makes
-`temperature_deviation_k` a **design assumption**, and `design_assumptions` carries an
-`aeroplane_id` column (`app/models/aeroplanemodel.py:848-857`) — it is per-aeroplane by
-construction. `Q-PT-9` further names `powertrain_performance.py:346-348` as one of the
-density code paths it deletes, and that path is on **this** endpoint
-(`app/api/v2/endpoints/aeroplane/powertrain_performance.py:187`). Computing density
-correctly therefore *requires* the aeroplane the route already takes. `Q-PT-3` (prop
-diameter from design speed) and `Q-PT-1` (`I_design` from the most demanding mission
-segment) pull the same way. The anchor stops being ceremony as soon as `Q-PT-9` lands.
+Corrected 2026-08-16, found by the GH-issue audit via #906.
 
-**The remaining intent must still be recorded, not assumed.** Today no aeroplane data enters the computation, so the spec states plainly: *the aeroplane anchor is reserved for atmospheric and mission state not yet wired.* An unexplained inert parameter is indistinguishable from a forgotten one — this is the same reasoning that made `Q-AF-7 ②` document an absence.
-
----
-
-**Two sub-findings, derived and independent of the option chosen:**
-
-**① A wrong component *type* must return 422, not 404.** Passing a battery id as `motor_component_id` currently reports 404 — *"the id does not exist"* — when the id exists perfectly well and is the wrong kind of part. The client cannot distinguish a typo from a mis-wired form, and the message actively misleads. This is a `ValidationDomainError → 422` naming both the expected and the actual component type. Note this does **not** conflict with `Q-FD-1`: nothing in persisted state is in conflict here; the payload itself is wrong.
-
-**② `_resolve_motor` / `_resolve_battery` / `_load_polar_rows` stop raising `HTTPException`.** Raising transport-layer exceptions from the service bypasses the domain layer, which means (a) the single error envelope of `Q-CC-3` is circumvented, and (b) these failures are untestable at the service level — the test has to construct a request context to observe a domain condition. They raise domain exceptions and let the global handler translate, like every other service.
-
-Both are recorded as defects against `powertrain/performance-model/contracts.md`.
-
+<!-- fill in here -->
 ---
 
 ## Q-VS-3 — What should the five dead `design-versions` routes return?

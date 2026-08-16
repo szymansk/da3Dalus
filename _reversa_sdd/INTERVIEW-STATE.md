@@ -53,7 +53,7 @@ matching `## Q-id` section, then fold them into the specs.
 
 | | |
 |---|---|
-| Questions | **206 / 206 answered** (192 round 1 + 14 round 2) |
+| Questions | **205 / 206 answered** (192 round 1 + 14 round 2). `Q-VS-2` is **open** — see below |
 | Confidence | **84,9 %** (was 74,2 %) — 🟢 8 536 · 🟡 1 777 · 🔴 794 |
 | Fold-back | complete: 18 modules, 62 units, both matrices |
 | Critical / structural gaps | **0 / 0** |
@@ -61,6 +61,22 @@ matching `## Q-id` section, then fold them into the specs.
 
 **Round 2 lives in [`questions-round2.md`](questions-round2.md)** (R2-01…R2-14), separate
 from round 1's `questions.md`.
+
+### `Q-VS-2` is open — and the way it was lost matters
+
+`Q-VS-2` (long-term growth bound for snapshots; which layer generates `preview_png`)
+**was never put to the maintainer.** Its answer slot held the maintainer's answer to
+`Q-PT-11` instead, misfiled by an edit that matched a generic `**Answer:**` anchor rather
+than the question id — the same failure that once wrote `Q-AC-2`'s confirmation into
+`Q-CC-16`. Corrected 2026-08-16; the text now sits in `Q-PT-11`, which is thereby
+upgraded from *derived* to *maintainer-answered*.
+
+**Why it is worth recording:** the spec asserted an answer that did not exist, in the
+confident form (`ANSWERED by the maintainer, 2026-08-15`). GH #906 would have been built
+against it. A misfiled answer is more dangerous than a missing one, because nothing about
+it looks wrong. It was found not by re-reading the extraction but by an **outside
+consumer** — the GH-issue audit — which is the argument for auditing against the spec
+rather than only within it.
 
 ### What is NOT done
 
