@@ -490,6 +490,28 @@ in die leere, stillgelegte Tabelle. Gehört mit #1101 aufgeräumt.
 ein Argument gegen die Löschung.
 
 
+## ⚠️ Beweiskraft der Messungen — Korrektur vom 2026-08-16
+
+**Der Datenbestand in `db/test.db` ist ein reiner Testbestand** (Maintainer). Den
+Flugzeugen dort fehlen Merkmale, die im realen Betrieb vorhanden wären.
+
+Damit gilt für jede Messung in diesem Dokument: **eine leere oder gleichförmige Spalte ist
+kein Beleg für Abwesenheit.** Wo *„heute nicht auslösbar"* steht, ist *„im Testbestand
+nicht auslösbar"* gemeint.
+
+| Aussage stützt sich auf | Beispiel | betroffen |
+|---|---|---|
+| **Code** | `n = 1.0` hartkodiert · `usage_fraction` je Steuervariable · `classify_stability(static_margin_pct)` liest eine Achse · `max(cl_max, 0.5)` ohne Warnung | **nein** — der Defekt steht |
+| **Daten** | „0 von 27 unter der Klemmschwelle" · „9 von 15 gegen das falsche Band" · „nur 2 Flügel mit gedrehter Tip-Rippe" | **ja** — sagt nichts über den realen Betrieb |
+
+**Eine Messung kann belegen, dass ein Defekt existiert — nie, dass er harmlos ist.**
+Dringlichkeitsaussagen brauchen den Maintainer, nicht die Datenbank.
+
+Korrigiert in #1124, #1125, #1127 und #762. Am stärksten betroffen ist **#1125**, dessen
+Prämisse (`loading_scenarios: 0 Zeilen`) selbst datenbasiert war; der Defekt — stiller
+Rückfall auf `rc_trainer` ohne Warnung — bleibt davon unberührt.
+
+
 ## Das Muster hinter den bearbeiteten Fällen
 
 Fünfmal an einem Tag dieselbe Struktur — **richtige Logik hinter einer Eingabe, die niemand
