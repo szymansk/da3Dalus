@@ -306,6 +306,42 @@ Blindheit zur Naturgesetzlichkeit.
 dieselbe falsche Aussage, nur prominenter.
 
 
+### #675 — geschlossen · 2026-08-16 · **die Prämisse hält der Messung nicht stand**
+
+Das Ticket nimmt an, `V_stall` sei ein gespeicherter Wert, der gegenüber `mass`, `S` und
+`CL_max` veralten kann. **Gemessen: `v_stall` wird nirgends persistiert** — keine Spalte,
+kein `design_assumptions`-Eintrag. Jeder Konsument leitet es zur Anfragezeit her
+(`flight_envelope_service.py:314`). Es gibt keinen Cache, der veralten könnte.
+
+Der reale Fund ist ein anderer: **drei Implementierungen derselben Formel**, eine davon mit
+stiller Klemmung `cl_max_safe = max(cl_max, 0.5)` (`assumption_compute_service:1758`).
+Bei `cl_max < 0.5` liefert sie eine niedrigere — optimistischere — Stallgeschwindigkeit
+als die beiden anderen. Heute nicht auslösbar (0 von 27 Flugzeugen unter 0.5, Minimum
+1.011), scharf in genau dem Fall, für den die Klemmung gebaut wurde. → **#1127**
+
+### Epic #669 — Kontext geklärt · 2026-08-16
+
+Drei der sechs Sub-Issues sind geliefert (#670, #672, #674). Die drei offenen hängen alle
+an derselben überholten Annahme: *„R-W4 etabliert das `RuleResult`-Schema"*, begründet
+„analog zum etablierten `PolarRejection`".
+
+**ADR 0020 nennt `PolarRejection` namentlich als eine der zwei Formen, die es
+zusammenführt.** Ein `RuleResult` wäre die dritte. Es existiert im Code nicht — es ist
+nichts zurückzubauen, nur nicht anzufangen.
+
+Der naheliegende Einwand — der `DesignWarning`-Kanal sei für *degradierte Zahlen*, nicht
+für Designurteile — trägt nicht: `DesignWarning.category` ist ein **freier String**, und
+die heute vergebenen Werte sind `'authority'` und `'trim_quality'`, beides Designurteile.
+Die 35 Regeln des Working Papers brauchen eine eigene `category`, kein eigenes Schema und
+keinen eigenen Endpunkt.
+
+| Sub-Issue | neu |
+|---|---|
+| #675 | geschlossen → #1127 |
+| #676 | umgeschrieben, blockiert von #1125 |
+| #673 | kollidiert separat mit `Q-AV-8` (Eigenmoden hinter dem Massenmodell; `Cnr`/`Clr` nur im AVL-Pfad) |
+
+
 ## Das Muster hinter den bearbeiteten Fällen
 
 Viermal an einem Tag dieselbe Struktur — **richtige Logik hinter einer Eingabe, die niemand
