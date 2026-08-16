@@ -542,6 +542,23 @@ eine Referenz, die keine ist. Solche Tickets altern nicht sichtbar; sie lesen si
 Jahr genauso plausibel wie am ersten Tag.
 
 
+### Gruppe 5 — Spec nachziehen · 2026-08-16 · **alle sieben bearbeitet**
+
+Hier hat meist das **Ticket** recht und die Spec muss nachziehen — das Gegenteil von Gruppe 4.
+
+| # | Konflikt | Auflösung |
+|---|---|---|
+| **1079** | `n_max ≥ 6` (Kunstflug) gegen Spec-Band **1.5–2** | **Ticket hat vermutlich recht.** Sadraey Tab. 10.9 führt *„remote-controlled models"* als **eine Zeile** und wirft Trainer und 3D-Kunstflug zusammen. `spar_solver.py:764` multipliziert `g_limit` **linear** ins Auslegungsmoment — Faktor 3 im Holm. `Q-MS-13b` braucht kategorieabhängige Bänder mit Quelle je Zeile (ADR 0023); Experten befragen |
+| **797** | REST-Route gegen `Q-AF-6` (CLI, ADR 0024) | Bedürfnis gültig, Kanal falsch → CLI + getrackter `Job`; zusätzlich ADR 0019 (Pfad adressiert Speicherzustand) |
+| **814** | *„der Solid ist der CAD-Download"* | Prämisse vom Maintainer korrigiert: **Konsument ist der Creator**. Gemessen: `solid_step_path` nur bei **20 von 32** gesetzt, und ein `NULL` sagt nicht warum → `solid_status ∈ {ok, unusable, absent}` |
+| **745** | BDD-Steps zementieren deutsche Seed-Labels | Reihenfolge: blockiert von **#1118**. Ein grüner Test wäre sonst später ein Einwand gegen die beschlossene Migration |
+| **199** | direkte Datenquellen + eigenes `Propeller`-Modell | gegen ADR 0014/0013; die Fit-Engine mit persistierten Koeffizienten wäre zusätzlich ein zweiter `Ct(J)`-Speicher (ADR 0022). Mehrwert ist der **Auswahl-/Ranking-Teil** auf #1108 |
+| **561** | 8-Achsen-Hybrid gegen RF-12; Mission-Versionierung gegen ADR 0006 | **feste größere Achsenmenge** + BR-MS37 (*„a missing axis is a hole with a reason, not a zero"*) erfüllt beides; Versionierungspunkt streichen |
+| **902** | Epic-Körper ist Stand 2026-06-07 | gebaut / überholt / unspezifiziert sauber trennen; sechs `Q-CO-*`-Entscheidungen nachtragen; `COPILOT_EMBEDDING_MODEL` ist toter Konfigurationswert (ADR 0021) |
+
+**Muster dieser Gruppe:** Die Kollision entsteht meist, weil die Spec **später** entschieden hat als das Ticket geschrieben wurde — und zwar richtig für den allgemeinen Fall, aber ohne den Sonderfall zu kennen, den das Ticket adressiert. `n_max` ist der Musterfall: das Band stimmt für Trainer und ist für Kunstflug methodisch falsch.
+
+
 ## Das Muster hinter den bearbeiteten Fällen
 
 Fünfmal an einem Tag dieselbe Struktur — **richtige Logik hinter einer Eingabe, die niemand
