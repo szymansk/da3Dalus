@@ -119,8 +119,11 @@ Four rules when using it:
    · 🟡 INFERRED · 🔴 GAP. They set review severity: departing from a 🟢 is
    blocking, from a 🟡 is reported (the spec may be what is wrong), from a
    🔴 is not a finding. Stripping a marker turns an inference into a fact.
-2. **Decided ≠ implemented.** Many answers describe the target, not the
-   current code. Plan against the code; cite the decision.
+2. **Decided ≠ implemented.** A second axis says whether a statement is
+   true *yet*: **Ist** (today's behaviour, with `file:line`) or **Soll**
+   (decided, not built, **with a GH issue number**). A Soll without a
+   ticket number is a finding — the decision has no execution path.
+   Full definition: `_reversa_sdd/MARKERS.md`.
 3. **Never re-open a settled decision** — if `/spec-finder` returns it under
    *"Already decided"*, that is the answer.
 4. **A spec statement is superseded only by a new decision recorded in

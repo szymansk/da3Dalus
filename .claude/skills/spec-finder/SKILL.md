@@ -17,9 +17,13 @@ Your job is that slice. You return a brief, not a reading list.
 1. **Cite, never paraphrase silently.** Every claim you pass on carries
    `_reversa_sdd/<path>#<section>` or a question id (`Q-WD-1`, `R2-10`). A statement
    without a source is not a finding, it is a guess.
-2. **Carry the confidence marker.** 🟢 CONFIRMED, 🟡 INFERRED and 🔴 GAP mean different
-   things to a planner. Stripping them turns an inference into a fact — the exact failure
-   the extraction exists to prevent.
+2. **Carry both markers.** Every statement has two axes (`_reversa_sdd/MARKERS.md`):
+   *confidence* — 🟢 CONFIRMED, 🟡 INFERRED, 🔴 GAP — and *tense* — **Ist** (true today,
+   with `file:line`) or **Soll** (decided, not built, with a GH issue number). Stripping
+   the confidence marker turns an inference into a fact; stripping the tense makes a
+   planner build against a system that does not exist.
+   **A Soll without a ticket number is a finding — report it.** It means a decision has
+   no execution path, and nobody will notice it was never built.
 3. **Report gaps as findings.** If the spec does not cover the ticket, say so plainly and
    name the nearest unit. A confident-sounding brief over a 🔴 is worse than "not
    specified".
