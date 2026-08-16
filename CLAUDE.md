@@ -96,6 +96,40 @@ Entry points:
 - **`/supercycle-implement #N`** — Issue is clear, skip brainstorming
 - **`/supercycle-review`, `/supercycle-fix`, `/supercycle-merge`** — PR lifecycle
 
+### The specification — `_reversa_sdd/`
+
+`_reversa_sdd/` is the **maintained specification of this system**: 18 modules,
+62 use-case units, 25 binding ADRs, and 206 answered validation questions.
+Work starts from what is already decided, not from a blank page.
+
+**Never read it whole** — 347 files, and `questions.md` alone is 560 KB.
+**`/spec-finder`** resolves a ticket or a set of changed files to the units
+that govern it and returns a compact, citable brief. That is the only
+intended way in.
+
+It is wired into the supercycle at three points:
+
+| ① filing | `/supercycle-ticket`, `/supercycle-bug` fill the issue template's `## Spec-Anker` |
+| ② building | the plan carries `## Spec-Anker`; implementers inherit it; review checks the diff against it |
+| ③ merging | `/supercycle-merge` writes `_reversa_sdd/addenda/gh-<N>-<slug>.md` |
+
+Four rules when using it:
+
+1. **Carry the confidence markers.** 🟢 CONFIRMED (read from the code)
+   · 🟡 INFERRED · 🔴 GAP. They set review severity: departing from a 🟢 is
+   blocking, from a 🟡 is reported (the spec may be what is wrong), from a
+   🔴 is not a finding. Stripping a marker turns an inference into a fact.
+2. **Decided ≠ implemented.** Many answers describe the target, not the
+   current code. Plan against the code; cite the decision.
+3. **Never re-open a settled decision** — if `/spec-finder` returns it under
+   *"Already decided"*, that is the answer.
+4. **A spec statement is superseded only by a new decision recorded in
+   `_reversa_sdd/`** — never by an implementation that quietly departs from
+   it. Same rule the ADRs follow.
+
+"The spec does not cover this" is a valid, useful answer. An invented anchor
+is worse than none, because everything downstream cites it.
+
 ### Iron Laws
 
 1. **No production code without a failing test first**
