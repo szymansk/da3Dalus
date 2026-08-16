@@ -368,6 +368,29 @@ Einordnung als „Ausnahme von BR-FE36" ging von einem falschen Ist-Zustand aus.
 jetzt Sub-Issue von #61.
 
 
+### Gruppe 2 — die Freeze-Grenze · 2026-08-16
+
+**#941 war nie blockiert.** ADR 0002 §1 friert `aircraft_topology/` und
+`GeneralJSONEncoderDecoder.py` ein; `VaseModeWingCreator.py` liegt in
+`airplane/creator/wing/` und steht in **keiner** der Listen. Das Schwesterdokument liest
+das richtig (`cad-designer-topology/design.md:11`: *„`creator/**` … are open"*), zwei
+Traceability-Zeilen behaupteten das Gegenteil **unter Berufung auf dieselbe ADR**. Beide
+korrigiert (`ef0b3cef`). Die teurere Sorte Spec-Fehler: er stoppt erlaubte Arbeit, und
+niemand widerspricht einer ADR.
+
+**#283 umgeschrieben.** Kern ADR-konform; präzisiert wurde die Klausel *„Bugs found →
+separate bug ticket"*, die für die eingefrorene Zone dem ADR widerspricht
+(*„deliberately not fixed"*). Neu: Funde in `aircraft_topology/` werden
+**Charakterisierungstests** — ausdrücklich als *dokumentiertes* Verhalten gekennzeichnet,
+sonst wird der Test zum Argument gegen eine spätere Korrektur (Beispiel
+`_main_wing_index = 0`, die schlafende ≈8×-Referenzflächenverwechslung). Alles außerhalb
+ist reguläres Bug-Ticket. Zusätzlich: die Spec führt mit TT-01…TT-25 einen präziseren
+Wellenschnitt als die LOC-Wellen des Tickets.
+
+**Offen und maintainer-pflichtig:** #762 (echt im Freeze — Präzedenz gh-934) und #57
+(zweiter Erzeugungspfad neben „neuer Creator").
+
+
 ## Das Muster hinter den bearbeiteten Fällen
 
 Fünfmal an einem Tag dieselbe Struktur — **richtige Logik hinter einer Eingabe, die niemand
