@@ -81,7 +81,14 @@ descriptions alone when visual references exist.
 **`_reversa_sdd/` is the maintained specification of this system. Brainstorming
 starts from what is already known and decided, not from a blank page.**
 
-Invoke `/spec-finder` with the issue title and body. It returns a compact
+**If the issue body already carries a `## Spec-Anker` section** (seam ① — filled at
+filing time), start from it rather than deriving a second one. Re-invoke
+`/spec-finder` only to *refresh* it: the ticket may have sat for weeks, and merges
+since then leave addenda the original anchor never saw. Report what changed. Two
+independently derived anchors for one ticket is the failure ADR 0022 describes —
+one authority per quantity, and the anchor is a quantity.
+
+Otherwise invoke `/spec-finder` with the issue title and body. It returns a compact
 `## Spec-Anker` brief: the governing units, the blast radius, the rules that apply
 **with their confidence markers**, and — most importantly — the decisions already
 taken in the 206-question validation interview.

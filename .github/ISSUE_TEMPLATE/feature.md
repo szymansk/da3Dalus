@@ -9,10 +9,19 @@ labels: enhancement
 
 <!-- What problem does this feature solve? Why is it needed? -->
 
-## Proposal
+## Spec-Anker
 
-<!-- Describe the proposed solution. Include API endpoints, UI changes, 
-     data models, or architectural decisions as applicable. -->
+<!-- Run /spec-finder on the problem above and paste its brief here — the units
+     that govern this area, the rules that constrain it (with their 🟢/🟡/🔴
+     markers), and above all what is ALREADY DECIDED.
+
+     Fill this before writing the proposal, not after. Its main job is to stop a
+     ticket that re-opens a settled question: if the answer is already in
+     _reversa_sdd/, this issue should cite it rather than re-decide it.
+
+     "The spec does not cover this" is a valid and useful answer — say so and
+     name the nearest unit. Leave the section out entirely only for work with no
+     production-code footprint. -->
 
 ## Acceptance Criteria
 

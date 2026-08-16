@@ -64,6 +64,19 @@ asked in conversation only until the issue is created in TRACK.
 <phase name="brainstorming" order="1">
 <description>Explore the problem space and produce a design spec.</description>
 
+<step name="consult-specs">
+**Before brainstorming.** Invoke `/spec-finder` with the user's description.
+`_reversa_sdd/` is the maintained specification of this system — a ticket starts
+from what is already decided, not from a blank page.
+
+The brief's *"Already decided"* section is the reason this step runs first: if the
+idea is settled there, the right outcome may be **no ticket at all**, or a much
+narrower one that cites the decision instead of re-opening it. Say that to the user
+plainly before spending a brainstorm on it.
+
+Keep the brief — it goes into the issue verbatim at `create-gh-issue`.
+</step>
+
 <step name="download-linked-assets">
 If the user provided images (wireframes, screenshots, diagrams) or
 documents (PDFs, design files) as part of their input, use `WebFetch`
@@ -103,6 +116,12 @@ gh issue create \
   --body "<spec formatted as issue template>" \
   --label "<type-label>"
 ```
+
+**Fill the template's `## Spec-Anker` section** with the brief from
+`consult-specs` — seam ① of the Reversa integration. Carry the confidence
+markers; stripping them turns an inference into a fact. If the area is
+unspecified, write that and name the nearest unit — an honest "not specified"
+is worth more than an invented anchor, because everything downstream cites it.
 </step>
 
 <step name="post-step-comment-and-labels">

@@ -83,6 +83,16 @@ gh issue create \
   --body "<structured body with root cause>" \
   --label "bug"
 ```
+
+**Fill the template's `## Spec-Anker`** (seam ①) by invoking `/spec-finder` on the
+root cause. For a bug it is triage, not paperwork — it settles whether this is a
+bug at all:
+
+| the violated rule is | what it means |
+|---|---|
+| 🟢 CONFIRMED | a real defect — the code contradicts confirmed behaviour |
+| 🟡 INFERRED | the **spec** may be what is wrong; say which you believe and why |
+| 🔴 / nothing found | the behaviour was never specified. Probably a feature request or a gap — reframe it with the user rather than "fixing" it |
 </step>
 
 <step name="set-status">
