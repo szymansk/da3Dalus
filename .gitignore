@@ -107,6 +107,12 @@ ENV/
 [Ss]cripts
 !/scripts/
 !/frontend/e2e/scripts/
+# The venv rule above matches ANY directory named scripts/, at any depth, and
+# git then never descends into it — so the files vanish without a warning from
+# `git add`. Re-include the ones that are project content, not a virtualenv:
+!/.reversa/scripts/
+!/.claude/skills/*/scripts/
+!/.agents/skills/*/scripts/
 pyvenv.cfg
 .venv
 pip-selfcheck.json
