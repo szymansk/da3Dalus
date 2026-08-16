@@ -342,9 +342,35 @@ keinen eigenen Endpunkt.
 | #673 | kollidiert separat mit `Q-AV-8` (Eigenmoden hinter dem Massenmodell; `Cnr`/`Clr` nur im AVL-Pfad) |
 
 
+### #61 / #62 — umgeschrieben · 2026-08-16 · **das Urteil prüft nur eine von drei Achsen**
+
+Das Audit zitierte `stability_service.get_stability_summary` als alleinige Autorität.
+**Diese Funktion existiert nicht** — sie war im Audit erfunden. Real ist
+`classify_stability(static_margin_pct)` (`stability_service.py:70`), und sie beruht
+ausschließlich auf der statischen Reserve:
+
+> `>5% → stable, 0-5% → neutral, <0% → unstable`
+
+`Cnb` und `Clb` werden berechnet, in `stability_results` gespeichert — und für das Urteil
+nie gelesen. Gemessen über 13 Zeilen: Flugzeuge 8 und 42 tragen `Cnb = −0.0014`, also das
+falsche Vorzeichen für Wetterfahnenstabilität, und heißen `stable`. Flugzeug 47 zeigt eine
+statische Reserve von **119 %** des MAC. Der Benutzer sieht davon nur `Stability: stable`
+(`MarkerDetailBox.tsx:72`).
+
+`BR-AA14` 🟢 **beschreibt alle drei Tests** (`Cma < 0`, `Cnb > 0`, `Clb < 0`) — der Code
+setzt einen um. **#61 hat also recht, dass sie fehlen**, und unrecht nur darin, sie im
+Frontend herzuleiten. → **#1128** als Vorbedingung.
+
+**Vom Maintainer korrigiert:** die Spider-Web-Ansicht aus §6 D existiert für Stabilität
+nicht. `RadarChart.tsx` wird ausschließlich von `MissionCompliancePanel.tsx` im
+Mission-Bereich genutzt. Der Punkt ist Neuentwicklung, kein zu bewahrender Bestand — meine
+Einordnung als „Ausnahme von BR-FE36" ging von einem falschen Ist-Zustand aus. #62 ist
+jetzt Sub-Issue von #61.
+
+
 ## Das Muster hinter den bearbeiteten Fällen
 
-Viermal an einem Tag dieselbe Struktur — **richtige Logik hinter einer Eingabe, die niemand
+Fünfmal an einem Tag dieselbe Struktur — **richtige Logik hinter einer Eingabe, die niemand
 liefert**:
 
 | | Mechanismus | wodurch abgeschaltet |
@@ -353,6 +379,7 @@ liefert**:
 | **#1124** | Ausschlags-Sättigungsprüfung | greift je Steuervariable statt je physischer Fläche |
 | **#1125** | klassenabhängige Leitwerksbänder | Quellfeld ist in der gesamten DB leer |
 | **#1126** | V-n-Hüllkurve mit Lastvielfachen-Markern | Marker hartkodiert auf 1.0, Wert steckt im Freitext |
+| **#1128** | Stabilitätsurteil | prüft nur die Längsachse; `Cnb`/`Clb` gespeichert und ungelesen |
 
 Das ist keine Nachlässigkeit beim Extrahieren, sondern eine Eigenschaft dieser Codebasis:
 sie ist reich an differenzierter Logik, die auf Konfiguration wartet, die nie ankommt.
