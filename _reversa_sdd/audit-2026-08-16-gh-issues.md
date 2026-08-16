@@ -391,6 +391,42 @@ Wellenschnitt als die LOC-Wellen des Tickets.
 (zweiter Erzeugungspfad neben „neuer Creator").
 
 
+### #762 — Scope gemessen · 2026-08-16 · **Carve-out nötig, aber aus einem anderen Grund**
+
+Die Rotation liegt im **offenen** Layer (`cq_plugins/wing/wing_segment.py:32`), und
+`.airfoil(...)` wird ausschließlich dort aufgerufen. Für den Loft allein bräuchte es keinen
+Carve-out.
+
+**Aber die Profilhöhe wird außerhalb des Lofts erneut gelesen** — von Methoden der
+eingefrorenen `WingConfiguration`: `get_camber_y_at_rel_chord` (Holm-Ursprung offsetet
+entlang `zDir` um Camber, `:165-176`), `get_points_on_surface` (→ `VaseModeWingCreator`,
+`ted_sketch_creators`, `geometry/section_geometry.py`) und
+`get_trailing_edge_device_planes`. Streckt man nur beim Loft, **entkoppelt sich die Schale
+von allem, was in ihr sitzt** — Holmbohrung, Rippenschlitze, TED-Ausschnitte, Servotaschen
+blieben auf der alten Höhe. Schlechter als heute, wo wenigstens alles konsistent zu dünn
+ist.
+
+**Maintainer-Entscheidung:** Flag auf `WingConfiguration` (Carve-out nach ADR 0002 §6,
+Muster gh-934); die einzelnen `WingCreator` lesen es und entscheiden über die Weitergabe.
+
+**Zwei Domänenkorrekturen vom Maintainer, beide im Code belegt:**
+- Die Verzerrung hängt am **`tip_dihedral` allein**, nicht an Δ zwischen Wurzel und Spitze —
+  `tip_plane` ist der rotierte Wurzelplane. Die Wurzelrippe ist nie betroffen.
+- Ein Seitenleitwerk `[90.0, 0.0]` ist **korrekt**: normaler Flügel mit 90° gedrehter
+  Wurzelrippe. Eine Δ-basierte Regel würde ein einwandfreies Leitwerk kaputtrechnen.
+
+Meine erste Messung las `NULL` als `0.0` und meldete zwei „zu 100 % kollabierte"
+Seitenleitwerke. Richtig gemessen: **2 Hauptflügel mit 4.25° Tip-Dihedral → 0.28 %**, sonst
+nichts. Der Defekt zählt für Winglets und geknickte Segler (45° → 29 %, 60° → 50 %), heute
+löst ihn kein Entwurf aus.
+
+**Warum die Sperre existiert** — Maintainer: *„da es hier auf 3D-Konstruktion ankommt und
+räumlicher Vorstellung im gesamten Konstruktionskonzept."* Das ist schärfer als die
+„fragiler Code"-Begründung in ADR 0002 und sagt voraus, welche Änderungen gefährlich sind:
+nicht die komplizierten, die **nicht-lokalen**. #762 ist der Musterfall — der Fix sieht nach
+zwei Zeilen aus und verschiebt jede Einbaute im Flügel.
+
+
 ## Das Muster hinter den bearbeiteten Fällen
 
 Fünfmal an einem Tag dieselbe Struktur — **richtige Logik hinter einer Eingabe, die niemand
