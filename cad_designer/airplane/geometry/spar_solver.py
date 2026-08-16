@@ -188,6 +188,21 @@ _REAR_CLEARANCE_FRACTION = 0.03
 _MIN_REAR_X_C = 0.05
 
 
+class RearSparClearanceInfeasible(ValueError):
+    """No chordwise position clears the control surface AND stays off the LE.
+
+    Raised when ``hinge - clearance`` falls forward of :data:`_MIN_REAR_X_C`, i.e.
+    when the control surface reaches so far forward that a computed rear spar
+    would have to sit on the leading edge to avoid it.
+
+    This is reported rather than clamped. Clamping to the floor was the gh-1096
+    defect: it produced a chordwise location *behind* the hinge — a spar inside
+    the movable surface — and returned it as a valid answer. Per RF-SP-20 an
+    infeasible layout is reported with its governing numbers, never quietly
+    turned into something that merely looks buildable (ADR 0012, ADR 0020).
+    """
+
+
 # ---------------------------------------------------------------------------
 # Geometry helpers (pure)
 # ---------------------------------------------------------------------------
@@ -209,16 +224,35 @@ def rear_spar_x_c_with_clearance(
     A request already forward of the clearance line is kept unchanged, and a
     wing with no control surface keeps its requested ``x_c``.
 
-    The result is floored at :data:`_MIN_REAR_X_C` so a control surface whose
-    hinge sits near the LE cannot push the spar onto/forward of the leading
-    edge. This guard applies ONLY to computed spars — a designer may still
-    place a reinforcing spar inside a control surface manually.
+    The clearance line always wins. If honouring it would put the spar at or
+    forward of :data:`_MIN_REAR_X_C` — a control surface reaching so far forward
+    that no position both clears it and stays off the leading edge — the layout
+    is infeasible and :class:`RearSparClearanceInfeasible` is raised.
+
+    Until gh-1096 the floor was applied *after* the clamp
+    (``max(safe, _MIN_REAR_X_C)``), so a hinge near the LE silently produced a
+    spar **behind** the hinge, inside the movable surface. ``Q-WD-8`` ② records
+    that order as a confirmed defect.
+
+    This guard applies ONLY to computed spars — a designer may still place a
+    reinforcing spar inside a control surface manually.
+
+    Raises:
+        RearSparClearanceInfeasible: the clearance line and the LE floor cannot
+            both be honoured.
     """
     if control_surface_hinge_x_c is None:
         return requested_x_c
     limit = control_surface_hinge_x_c - clearance
-    safe = min(requested_x_c, limit)
-    return max(safe, _MIN_REAR_X_C)
+    if limit < _MIN_REAR_X_C:
+        raise RearSparClearanceInfeasible(
+            f"A computed rear spar cannot clear the control surface: its hinge "
+            f"sits at x/c {control_surface_hinge_x_c:.3f} and the required "
+            f"clearance is {clearance:.3f}, leaving x/c {limit:.3f} — forward of "
+            f"the {_MIN_REAR_X_C:.3f} leading-edge limit. Move the hinge aft, "
+            f"reduce the clearance, or place the rear spar manually."
+        )
+    return min(requested_x_c, limit)
 
 
 def _axis_z_at(run: list[StationData], station: StationData) -> float:

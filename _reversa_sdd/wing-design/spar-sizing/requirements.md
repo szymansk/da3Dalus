@@ -25,6 +25,9 @@ by the person cutting carbon tube. 🟢
 - Sample station data (chord, thickness, containment band, design moment) across
   the half-span, nudging the pinched root slice off `y_span = 0`. 🟢
 - Keep a **computed** rear spar clear of the movable surface's hinge line. 🟢
+  *(Marked 🟢 before gh-1096 on the strength of the function alone — no caller
+  reached it. A definition read in isolation is not confirmed behaviour; the
+  call graph is part of the evidence.)*
 - Solve a buildable layout per half-span: greedy straight-piece fit, telescoping
   runs, front/rear joint type, bore, and utilisation. 🟢
 - Report infeasibility honestly — never clamp, never silently shrink. 🟢
@@ -82,14 +85,32 @@ building the CAD solid (→ `cad-generation`), and the frozen topology classes
   would poison the governing max-moment root station (gh-1037 #4). Station
   sampling therefore uses `y_spans = linspace(0, 1, n_span)` with
   `y_spans[0] → _ROOT_EPS`.
-- **BR-W8 — A computed rear spar must clear the movable surface (gh-1059).** 🟢
+- **BR-W8 — A computed rear spar must clear the movable surface (gh-1059, gh-1096).** 🟢
 
   ```
   rear_spar_x_c_with_clearance(requested, hinge_x_c, clearance = 0.03):
       if hinge_x_c is None:
           return requested
-      return max( min(requested, hinge_x_c − 0.03), 0.05 )
+      limit = hinge_x_c − clearance
+      if limit < 0.05:                      # LE floor and clearance conflict
+          raise RearSparClearanceInfeasible # reported, never clamped (RF-SP-20)
+      return min(requested, limit)
   ```
+
+  **The clearance line wins over the LE floor.** Until gh-1096 the floor was
+  applied last — `max( min(requested, hinge_x_c − 0.03), 0.05 )` — so a hinge
+  near the LE produced a spar *behind* it, inside the movable surface, and
+  returned it as a valid answer. `Q-WD-8` ② records that order as a confirmed
+  defect; when the two cannot both be honoured the layout is infeasible.
+
+  **This guard was unreachable in production until gh-1096.** The function and
+  its `build_stations_from_geometry` seam were correct from gh-1059, but
+  `spar_plan_service` called the station builder without
+  `control_surface_hinge_x_c`, so it defaulted to `None` and every production
+  path skipped the guard. The wing's binding hinge is the **most forward** one
+  across its cross-sections (`_wing_hinge_x_c`) — a computed rear spar must
+  clear every control surface, not just the first. The **front** spar is
+  deliberately left unconstrained.
 
   `_REAR_CLEARANCE_FRACTION = 0.03`, `_MIN_REAR_X_C = 0.05`
   (`cad_designer/airplane/geometry/spar_solver.py:181-221`). The guard is

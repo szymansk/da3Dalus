@@ -18,6 +18,7 @@ from __future__ import annotations
 import pytest
 
 from cad_designer.airplane.geometry.spar_solver import (
+    RearSparClearanceInfeasible,
     SparPiece,
     SparRole,
     rear_spar_x_c_with_clearance,
@@ -51,10 +52,29 @@ class TestRearSparClearance:
         x_c = rear_spar_x_c_with_clearance(0.85, control_surface_hinge_x_c=None)
         assert x_c == pytest.approx(0.85)
 
-    def test_never_returns_negative_or_zero(self):
-        # pathological: hinge right at the LE -> clamp to a small positive x_c.
-        x_c = rear_spar_x_c_with_clearance(0.5, control_surface_hinge_x_c=0.02, clearance=0.10)
-        assert x_c > 0.0
+    def test_hinge_near_the_le_is_infeasible_not_floored(self):
+        """gh-1096: the LE floor must NOT override the control-surface clearance.
+
+        This test previously asserted only ``x_c > 0.0``, which the old
+        ``max(safe, _MIN_REAR_X_C)`` satisfied by returning 0.05 — *behind* a
+        hinge at 0.02. That put the spar inside the control surface and called
+        it success. ``Q-WD-8`` ② records the clamp order as a confirmed defect.
+
+        When the clearance line and the LE floor cannot both be honoured there
+        is no buildable position, and per RF-SP-20 the verdict is reported, not
+        clamped to something that merely looks buildable.
+        """
+        with pytest.raises(RearSparClearanceInfeasible) as exc:
+            rear_spar_x_c_with_clearance(0.5, control_surface_hinge_x_c=0.02, clearance=0.10)
+        # the message is read by a builder: it must name the numbers involved.
+        msg = str(exc.value)
+        assert "0.02" in msg and "0.10" in msg
+
+    def test_clearance_wins_over_the_floor_when_both_fit(self):
+        """A hinge that leaves room still yields the clearance line, not the floor."""
+        x_c = rear_spar_x_c_with_clearance(0.5, control_surface_hinge_x_c=0.10, clearance=0.03)
+        assert x_c == pytest.approx(0.07)
+        assert x_c < 0.10, "the spar must sit forward of the hinge"
 
     def test_exactly_at_hinge_pulled_forward(self):
         x_c = rear_spar_x_c_with_clearance(0.75, control_surface_hinge_x_c=0.75, clearance=0.03)

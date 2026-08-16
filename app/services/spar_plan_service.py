@@ -271,6 +271,29 @@ def apply_stock_snap_to_plan(db, plan, stations=None) -> None:
         plan.infeasibility_reason = None
 
 
+def _wing_hinge_x_c(wing) -> float | None:
+    """The most forward control-surface hinge on ``wing``, as x/c (gh-1096).
+
+    A computed rear spar must clear **every** control surface on the wing, so
+    the binding one is the most forward hinge — not the first one found.
+
+    ``rel_chord_root`` is the hinge x/c: it is populated from AeroSandbox's
+    ``hinge_point`` when a control surface is projected onto a cross-section
+    (``app/models/aeroplanemodel.py:320-324``).
+
+    Returns ``None`` for a wing with no control surfaces, which leaves the
+    solver's requested chordwise location untouched.
+    """
+    hinges = [
+        ted.rel_chord_root
+        for xsec in getattr(wing, "x_secs", None) or []
+        if (detail := getattr(xsec, "detail", None)) is not None
+        if (ted := getattr(detail, "trailing_edge_device", None)) is not None
+        if getattr(ted, "rel_chord_root", None) is not None
+    ]
+    return min(hinges) if hinges else None
+
+
 def _resolve_wing(aeroplane, request: SparPlanRequest):
     """Pick the requested wing (by name) or the aeroplane's first wing."""
     if request.wing_name is not None:
@@ -517,6 +540,7 @@ def compute_spar_plan_object(
             inputs invalid (-> 422).
     """
     from cad_designer.airplane.geometry.spar_solver import (
+        RearSparClearanceInfeasible,
         SparRole,
         SparSpec,
         build_stations_from_geometry,
@@ -551,9 +575,24 @@ def compute_spar_plan_object(
     front_right = build_stations_from_geometry(
         geometry, x_c=request.front_x_over_chord, moment_fn=front_moment_fn, **common
     )
-    rear_right = build_stations_from_geometry(
-        geometry, x_c=request.rear_x_over_chord, moment_fn=rear_moment_fn, **common
-    )
+    # gh-1096: the control-surface clearance guard (gh-1059) had never been
+    # reached in production — this call omitted the hinge, so it defaulted to
+    # None and a computed rear spar could land inside a control surface. The
+    # FRONT spar is deliberately left unconstrained: it sits far forward of any
+    # hinge, so constraining it would move a spar that has no reason to move.
+    try:
+        rear_right = build_stations_from_geometry(
+            geometry,
+            x_c=request.rear_x_over_chord,
+            moment_fn=rear_moment_fn,
+            control_surface_hinge_x_c=_wing_hinge_x_c(wing),
+            **common,
+        )
+    except RearSparClearanceInfeasible as exc:
+        # RF-SP-20: an infeasible layout is reported, never clamped into
+        # something that merely looks buildable. The message names the hinge,
+        # the clearance and the remedies, so it is actionable by a builder.
+        raise ValidationError(message=str(exc)) from exc
 
     # gh-1080: shape chosen by the user flows into both spar specs so the
     # solver produces the right cross-section (rod → solid, no bore; tube →
