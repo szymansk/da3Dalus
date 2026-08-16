@@ -128,6 +128,12 @@ extend-exclude = [
     "exports",
     "docker_smoke_test.py",
     ".claude",
+    # Same reason as ".claude": vendored agent skills, updated by `npx reversa
+    # update`, so any fix here is lost on the next update.
+    ".agents",
+    # Specification and analysis output, not application code. The few scripts
+    # embedded in it are illustrations of a result, not shipped behaviour.
+    "_reversa_sdd",
 ]
 
 [tool.ruff.lint]
