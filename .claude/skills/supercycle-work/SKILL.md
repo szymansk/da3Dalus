@@ -77,9 +77,33 @@ These visual assets are critical context — never brainstorm from text
 descriptions alone when visual references exist.
 </step>
 
+<step name="consult-specs">
+**`_reversa_sdd/` is the maintained specification of this system. Brainstorming
+starts from what is already known and decided, not from a blank page.**
+
+Invoke `/spec-finder` with the issue title and body. It returns a compact
+`## Spec-Anker` brief: the governing units, the blast radius, the rules that apply
+**with their confidence markers**, and — most importantly — the decisions already
+taken in the 206-question validation interview.
+
+Two rules on using it:
+
+- **Never re-open a settled decision.** If the brief's *"Already decided"* section
+  covers the ticket, that is the answer; brainstorming explores what is still open.
+  Re-deciding produces a plan that contradicts the spec and fails review.
+- **Distinguish decided from implemented.** Many answers are *"decided, not yet
+  implemented"*. Planning against a decision as though it were current behaviour
+  produces work that does not fit the code that exists.
+
+If `/spec-finder` reports the area is unspecified, say so in the spec file. A
+genuinely new area is a normal outcome — silently inventing an anchor is not.
+</step>
+
 <step name="invoke-brainstorming">
 Invoke `/brainstorming` with:
 - Full issue body (if existing) or user's free-text description
+- The **`## Spec-Anker` brief** from `consult-specs` — existing rules, prior
+  decisions, known gaps
 - Downloaded images/documents as visual context
 - SonarQube findings (if any)
 - Instruction that this feeds into `/writing-plans` next
@@ -108,14 +132,78 @@ re-read from the spec file or use `read-step-comments` with filter
 </phase>
 
 <phase name="planning" order="3">
-<description>Produce a detailed implementation plan with TDD-structured tasks.</description>
+<description>Produce a detailed implementation plan with TDD-structured tasks,
+binding it to the architecture decisions that govern the change.</description>
+
+<step name="consult-adrs">
+**The planner owns architectural conformance — implementers only execute the plan.**
+
+1. Read the ADR index `_reversa_sdd/adrs/README.md` (one line per ADR).
+2. Read **in full** only the ADRs this change actually touches.
+3. Two are **always** applicable and must be considered for every change:
+   - **ADR 0019** — implementation details must not leak into the public API
+     (no storage/mechanism markers in paths, no internal paths as field values,
+     one response contract per endpoint).
+   - **ADR 0022** — one authority per user-facing quantity (never add a second
+     producer of a number a user can see).
+4. If the change would violate an ADR, **stop and raise it with the user** before
+   planning further. An ADR is superseded by a new ADR, never by an
+   implementation that quietly departs from it.
+</step>
+
+<step name="carry-spec-anchor">
+Carry the `## Spec-Anker` brief from Phase 2 into the plan, refreshed if planning
+revealed units the brainstorm did not touch (re-invoke `/spec-finder` with the
+concrete files the plan will change — Route A is the most precise).
+
+**The plan file MUST contain a `## Spec-Anker` section** in the same shape as
+`## Binding ADRs`: per unit, the concrete rule that constrains *this* feature, with
+its citation and marker. Implementers inherit it through the plan and need no spec
+access of their own.
+
+```markdown
+## Spec-Anker
+- `wing-design/spar-sizing/` — 🟡 `moment_fn` carries **un-factored** M(y);
+  `g_limit`/`j` are applied once at `spar_solver.py:730` (`Q-WD-8`). Do not
+  re-apply them in the new caller.
+- `aero-analysis/` — 🟢 the cruise point is the single source of `cd0`, `e` and
+  `L/D` (`Q-AA-1`, gh-924). Read the context; do not recompute.
+- ⚠ **Decided, not implemented:** `Q-WD-8 ②` fixes the `_MIN_REAR_X_C` clamp
+  order. The current code still has the defect — plan against the code, and note
+  whether this ticket should carry the fix.
+```
+
+**A spec statement is superseded only by a new decision recorded in
+`_reversa_sdd/`, never by an implementation that quietly departs from it** — the
+same rule ADRs follow. If the ticket requires departing from the spec, raise it
+with the user; the outcome is a spec update, not an undocumented exception.
+</step>
 
 <step name="invoke-planning">
 Invoke `/writing-plans` with:
 - The approved spec from Phase 2
 - TDD directives: every implementation task must follow RED-GREEN-REFACTOR
+- The **binding ADRs** identified in `consult-adrs`
+- The **`## Spec-Anker`** from `carry-spec-anchor`
 - If `detect-frontend` is true: include `/vercel-react-best-practices`
   and `/vercel-composition-patterns` as directives for frontend tasks
+
+The plan file MUST contain a **`## Binding ADRs`** section listing, per ADR, the
+**concrete constraint on this feature** — not the general rule. Example:
+
+```
+## Binding ADRs
+- ADR 0019 — the new endpoint is `/airfoils/{name}/polars`; no `db/` or
+  storage marker in the path.
+- ADR 0022 — mass stays produced solely by the component tree; this feature
+  reads it and must not write `design_assumptions["mass"]`.
+- ADR 0020 — the Re-clamp fallback emits a `DesignWarning`
+  (`category: substituted_assumption`, `severity: notice`), never a silent default.
+```
+
+Implementers receive these constraints through the plan and need no ADR access
+of their own — which also prevents two parallel implementers from interpreting
+the same ADR differently.
 </step>
 
 <step name="commit-plan">
@@ -220,6 +308,10 @@ Do NOT proceed until the user explicitly confirms.
 <phase name="finish" order="7">
 <action>Invoke `/finishing-a-development-branch`</action>
 <action>Use `rotate-status` → `status:merged`</action>
+<action>Run the `write-spec-addendum` step of `/supercycle-merge` — this path
+merges without going through that skill, and the addendum is what keeps
+`_reversa_sdd/` readable until the next re-extraction. Follow the step there
+rather than repeating it here.</action>
 </phase>
 
 </delegate>

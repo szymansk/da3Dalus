@@ -96,13 +96,59 @@ poetry run pytest -m "not slow"
 ```
 </step>
 
+<step name="write-spec-addendum">
+The extraction in `_reversa_sdd/` is now one merge out of date. Close that
+interval with an **addendum** — seam ③ of the Reversa integration.
+
+**Format authority: `_reversa_sdd/addenda/README.md`.** Read it; do not
+reconstruct the format from this step.
+
+**Decide whether one is owed.** Skip — and say so in the report — when the PR
+carried no `## Spec-Anker`, or changed no production code (docs, tests, chore,
+lint). `/spec-finder` reads every current addendum on every future ticket, so an
+empty one is a tax on every future plan.
+
+**Sources**, all already on the issue:
+
+```bash
+gh issue view $ISSUE --json comments \
+  --jq '.comments[] | select(.body | test("has-plan|has-review")) | .body'
+gh pr view $PR --json mergeCommit,files,title
+```
+
+The plan's `## Spec-Anker` names the units; the diff says which of them actually
+moved. Write `_reversa_sdd/addenda/gh-<N>-<slug>.md` per the template.
+
+**The one hard rule: an addendum points at decisions, it never holds them.** If
+the change departs from a cited spec rule, the departure needs an ADR or a
+`questions.md` entry to point at. If it has none, the departure was never
+authorised — that is a review escape. Stop, report it, and resolve it with the
+user before writing the addendum. Do not let the addendum become the only record
+of a decision, because retirement then loses it.
+
+Fill `## Decisions now implemented` from the ⚠ *decided, not implemented* entries
+in the Spec-Anker that this PR made real — with `file:line`. That is the section
+that pays for the rest.
+
+**Never write the supersession line.** A new addendum is current, full stop.
+
+Addenda are docs — commit them straight to `main`, no PR:
+
+```bash
+git add _reversa_sdd/addenda/ && \
+  git commit -m "docs(gh-$ISSUE): spec addendum for #$ISSUE" && \
+  git push github main
+```
+</step>
+
 <step name="report">
 Report:
 
-| PR | Issue | Title | Status |
-|----|-------|-------|--------|
+| PR | Issue | Title | Status | Addendum |
+|----|-------|-------|--------|----------|
 
-Test results summary included.
+Test results summary included. The **Addendum** column carries the path, or the
+reason none was owed.
 </step>
 
 </track>

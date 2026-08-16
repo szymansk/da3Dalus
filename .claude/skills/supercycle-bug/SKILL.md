@@ -167,6 +167,10 @@ After fixing:
 
 <phase name="finish" order="8">
 <action>Invoke `/finishing-a-development-branch`</action>
+<action>Run the `write-spec-addendum` step of `/supercycle-merge`. A bug fix
+usually owes none — it restores behaviour the spec already describes. It owes one
+when the fix **changed** a rule rather than restoring it, which is exactly the
+case a later reader would otherwise miss.</action>
 </phase>
 
 </delegate>

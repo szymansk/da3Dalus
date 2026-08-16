@@ -58,9 +58,54 @@ after answer.
 Invoke `/pr-review-toolkit:review-pr` with:
 - Context: spec + plan from step comments so reviewers know
   what was intended, not just what was built
+- The plan's **`## Binding ADRs`** section as an explicit review lens
 - If `detect-frontend` is true: add `/vercel-react-best-practices`
   and `/vercel-composition-patterns` as review lenses
 - Dispatches applicable specialized agents automatically
+</step>
+
+<step name="spec-conformance">
+Check the diff against the plan's **`## Spec-Anker`** section, if present.
+
+A departure from a cited spec rule is a **finding**, at a severity that follows the
+marker:
+
+| marker on the cited rule | severity of a departure |
+|---|---|
+| 🟢 CONFIRMED | **blocking** — the rule was read from the code and confirmed by the maintainer |
+| 🟡 INFERRED | **report it** — the spec may be the thing that is wrong; say which you believe and why |
+| 🔴 GAP | not a finding — the area is unspecified; note that the change now defines it |
+
+**A spec statement is superseded only by a new decision recorded in `_reversa_sdd/`.**
+If this change is right and the spec is wrong, the resolution is a spec update — never
+an implementation that quietly departs from it.
+</step>
+
+<step name="adr-conformance">
+**An ADR violation is a BLOCKING finding.** It is reported at the highest
+severity and must be fixed before merge — it is never downgraded to a note.
+
+Check the diff against:
+1. Every ADR named in the plan's `## Binding ADRs` section.
+2. **Always, regardless of the plan** — these catch defects that are invisible
+   while writing and only surface on re-reading:
+   - **ADR 0019** — implementation details in the public API: a storage or
+     mechanism marker in a path (`db/`, `cache/`), an internal filesystem path
+     as a field value, a static path segment colliding with a sibling path
+     parameter, or a second error-envelope shape.
+   - **ADR 0022** — a second producer of a quantity the user can see. Ask
+     directly: *does this change write a number that another code path already
+     writes?*
+   - **ADR 0020** — a new fallback, clamp, retry, truncation or swallowed
+     exception that does not emit a `DesignWarning`.
+   - **ADR 0021** — code added complete but unreachable, or an existing
+     unreachable mechanism left untouched ("inert" is forbidden).
+   - **ADR 0023** — a new engineering constant, default or correlation without
+     its source and without a statement that it is valid at RC/UAV scale.
+
+If the change is genuinely right and the ADR is wrong, the resolution is a **new
+ADR superseding the old one** — proposed to the user, not an undocumented
+exception.
 </step>
 </phase>
 

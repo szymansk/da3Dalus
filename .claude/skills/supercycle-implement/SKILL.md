@@ -56,9 +56,45 @@ Use `kill-orphaned-workers` from `../supercycle-common/tracking.md`
 before running any tests.
 </step>
 
+<step name="consult-adrs">
+This flow has no separate planning phase, so **architectural conformance is
+decided here, once, before any subagent starts** — never by the subagents
+themselves.
+
+1. Read the ADR index `_reversa_sdd/adrs/README.md`.
+2. Read **in full** only the ADRs this change touches. Always consider
+   **ADR 0019** (no implementation details in the public API) and **ADR 0022**
+   (one authority per user-facing quantity).
+3. Derive a **binding-ADR list**: per ADR, the concrete constraint on *this*
+   change, not the general rule.
+4. If the change would violate an ADR, **stop and raise it with the user**. An
+   ADR is superseded by a new ADR, never by an implementation that quietly
+   departs from it.
+</step>
+
+<step name="carry-spec-anchor">
+If the plan carries a **`## Spec-Anker`** section, pass it **verbatim to every
+subagent**, exactly as the binding ADRs are passed. It states, per unit, the concrete
+rule that constrains this feature, with its citation and confidence marker.
+
+Two things implementers must not do with it:
+
+- **Do not re-derive it.** The planner resolved the anchor; an implementer who
+  re-reads the spec and reaches a different conclusion has found a planning error to
+  raise, not a licence to proceed on their own reading.
+- **Do not treat 🟡 as 🟢.** An INFERRED rule is a best reading of the code, not a
+  guarantee. If the implementation contradicts one, that is a finding worth reporting
+  — it may mean the spec is wrong.
+
+Items marked *"decided, not implemented"* describe the **target**, not the current
+code. Implement against what exists unless the plan says this ticket carries the change.
+</step>
+
 <step name="invoke-implementation">
 Invoke `/subagent-driven-development` with:
 - Context: spec + plan from step comments passed to subagents
+- **The binding-ADR list from `consult-adrs`, passed verbatim to every subagent**
+  (so parallel subagents cannot interpret the same ADR differently)
 - Subagents invoke `/test-driven-development` internally
 - Per-task review via `/requesting-code-review`
 - If `detect-frontend` is true: frontend subagents follow
