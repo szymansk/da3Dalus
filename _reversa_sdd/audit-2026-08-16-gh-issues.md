@@ -463,6 +463,33 @@ Komponenten von beiden**. Das erklärt vermutlich **#1089** — die Holm-Tests s
 weil das Stock zu groß ist, sondern weil keines existiert.
 
 
+### Gruppe 3 — Bezug auf Stillgelegtes · 2026-08-16 · **alle drei bestätigt**
+
+Anders als in Gruppe 1 und 2 hielt die Audit-Einordnung hier durchweg stand — die
+Entscheidungen folgen aus bereits getroffenen.
+
+| # | Befund | Folge |
+|---|---|---|
+| **696** | drei AC skalieren `WeightItem.x_m/y_m/z_m` — Einheit trägt das RETIRED-Banner, Tabelle hat **0 Zeilen** | umgeschrieben auf `component_tree.pos_x/y/z` (**mm**), nach #1101 |
+| **746** | `operating-points.feature:32` verifiziert: `Given weight items exist with total CG at 0.30m` | ein Step umschreiben, ~24 übrige unverändert |
+| **278** | alle drei Coverage-Ziele im Deletion-Register, alle drei Dateien existieren noch | aus den Wellen streichen; `mcp_server.py` bleibt (ADR 0025: *„Not deferred"*) |
+
+**Zwei Nebenbefunde:**
+
+**Namenskollision bei „Variante B".** In #696 ist es eine Massenskalierungs-**Strategie**; in
+ADR 0018 die Scope-Entscheidung von gh-640, die besagt *„Scaling never touches angles or
+**masses**"* — mit Pflichtwarnung, dass Massen unangetastet blieben. Dasselbe Etikett,
+entgegengesetzte Aussage. Sachlich kein Widerspruch (Import vs. nachgelagertes Werkzeug),
+aber eine Falle für den nächsten Leser.
+
+**`_scale_aeroplane_lengths` skaliert bereits `weight-item x_m/y_m/z_m`** (BR-75) — also
+in die leere, stillgelegte Tabelle. Gehört mit #1101 aufgeräumt.
+
+**`design_version_service.py` ist der klarste Fall des Epics:** fünf Stubs, die ausnahmslos
+`NotFoundError` werfen, bei 43 % Coverage. Ein Test dagegen testet nichts — und wäre später
+ein Argument gegen die Löschung.
+
+
 ## Das Muster hinter den bearbeiteten Fällen
 
 Fünfmal an einem Tag dieselbe Struktur — **richtige Logik hinter einer Eingabe, die niemand
