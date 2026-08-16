@@ -256,3 +256,48 @@ Vermerkt in beiden Tickets.
 Hypothese, keine Feststellung. Wo sie *„das gibt es schon"* sagt, gehört nachgemessen, ob
 das Vorhandene denselben Fall abdeckt — bei #781 tat es das nicht, und der Unterschied war
 sicherheitsrelevant.
+
+### #676 — umgeschrieben · 2026-08-16 · **Ticket und Audit lagen beide daneben**
+
+| Behauptung | Befund |
+|---|---|
+| Ticket: *„die Schwellen sind statisch"* | **falsch** — `AIRCRAFT_CLASS_TARGETS` führt 7 Klassen mit eigenen V_H/V_V-Bändern |
+| Audit: *„klassifiziert bereits klassenabhängig"* | **formal richtig, praktisch falsch** |
+| Wirklichkeit | Die Tabelle wird **nie mit etwas anderem als dem Default erreicht** |
+
+`aircraft_class` kommt aus dem `is_default` Loading Scenario. **`loading_scenarios` hat null
+Zeilen.** Gemessen: 9 von 15 Flugzeugen mit Mission sind `sailplane` und werden gegen das
+Trainer-Band 0.55–0.70 bewertet statt 0.40–0.55 — ein Segler mit V_H = 0.45 erscheint als
+`below_range`, obwohl er im Soll liegt. `flying_wing` hat im Klassenvokabular gar keine
+Entsprechung.
+
+Ursache ist eine **Vokabeltrennung**: die Mission steht in `mission_objectives.mission_type`
+(`trainer`/`sailplane`/`flying_wing`), das Band hängt an `loading_scenarios.aircraft_class`
+(`rc_trainer`/`glider`/…). Zweiter, bislang unbemerkter Konsument derselben Zeile:
+`loading_template_service.get_templates_for_class`.
+
+→ **#1125** (Ursache: Klasse wird nie gesetzt), **#676** umgeschrieben auf das, was wirklich
+fehlt — die richtungsabhängige Begründung über den `DesignWarning`-Kanal statt einer zweiten
+Bandtabelle.
+
+---
+
+## Das Muster hinter den ersten drei bearbeiteten Fällen
+
+Dreimal an einem Tag dieselbe Struktur — **richtige Logik hinter einer Eingabe, die niemand
+liefert**:
+
+| | Mechanismus | wodurch abgeschaltet |
+|---|---|---|
+| **#1096** | Hinge-Clearance-Guard | Default eines optionalen Parameters, den kein Aufrufer setzt |
+| **#1124** | Ausschlags-Sättigungsprüfung | greift je Steuervariable statt je physischer Fläche |
+| **#1125** | klassenabhängige Leitwerksbänder | Quellfeld ist in der gesamten DB leer |
+
+Das ist keine Nachlässigkeit beim Extrahieren, sondern eine Eigenschaft dieser Codebasis:
+sie ist reich an differenzierter Logik, die auf Konfiguration wartet, die nie ankommt.
+
+**Weder ein Aufrufgraph noch ein Lesedurchgang findet das.** Alle drei Fälle wurden erst
+durch eine **Messung gegen echte Daten** sichtbar — beim Implementieren (#1096) oder beim
+Nachprüfen einer Audit-Behauptung (#1124, #1125). Für die verbleibenden Kollisionen heißt
+das: wo das Audit *„das gibt es schon"* schreibt, ist die Frage nicht, ob der Code existiert,
+sondern **ob er je mit echten Daten läuft**.
