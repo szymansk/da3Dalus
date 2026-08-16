@@ -81,7 +81,7 @@ einen Besitzer hat.
 | # | rechnet neu, was schon existiert |
 |---|---|
 | 61, 62 | Static Margin / Stabilitätstests im Frontend-ViewModel — `stability_service.get_stability_summary` ist alleinige Autorität; BR-FE36 🟢 „the frontend never computes a displayed number" |
-| 781 | Sättigungswarnung in der Mixer-Card — Backend erzeugt sie bereits (BR-AA24 🟢) |
+| ~~781~~ | **✅ erledigt 2026-08-16 — und das Audit lag hier falsch.** Siehe unten. |
 | 616 | eigener `P_required` + eigene V-n-Kurve — BR-PT30 🟢 „one drag polar in the codebase" |
 | 675 | Triangle-Check meldet Divergenz statt einen Produzenten zu bestimmen — genau die von ADR 0022 §Rejected verworfene Option |
 | 676 | zweite V_H-Bandtabelle — `/tail-sizing` klassifiziert bereits klassenabhängig |
@@ -218,3 +218,41 @@ Nach Umfang, größtes zuerst.
    gemergten PR existiert ein Adendum, obwohl Naht ③ das vorsieht.
 6. **#955 ist in der Spec breiter als im Ticket:** ADR 0008 nennt drei divergierende
    Konsumenten, das Ticket adressiert einen.
+
+---
+
+## Bearbeitung der Kollisionen
+
+### #781 — aufgeteilt · 2026-08-16 · **das Audit hatte unrecht**
+
+Das Audit schrieb: *„Backend erzeugt sie bereits (BR-AA24 🟢)"* — also sei die vom Ticket
+geforderte Sättigungswarnung ein Duplikat. **Nachgemessen stimmt das nicht.**
+
+```python
+# app/services/trim_enrichment_service.py:412-420
+usage = abs(deflection_deg) / limit     # je STEUERVARIABLE
+```
+
+Seit gh-772 hat eine gemischte Fläche **zwei** Steuervariablen. Physisch schlägt sie um
+`δ_sym + δ_anti` aus. Beide Achsen können unter 80 % liegen, während die Fläche bei 120 %
+steht. Der kombinierte Wert wird sogar berechnet (`:323-324`) und kommt in der ganzen
+Datei **sonst nicht mehr vor**.
+
+**Das Ticket hatte die Lücke korrekt gefunden und nur in der falschen Schicht repariert.**
+
+| | |
+|---|---|
+| #781 bleibt | Anzeige von L/R-Ausschlag, Differential, Solver-Badge, vorhandenen Warnungen |
+| **#1124** neu | kombinierte Reserve je *physischer* Fläche statt je Steuervariable |
+
+**Die Messung lieferte statt Dringlichkeit eine Reihenfolge.** Von 85 Operating Points mit
+`deflection_reserves` hat **keiner** eine gemischte Fläche mit zwei Achsen: es gibt 39×
+`[ruddervator]pitch_v-tail_0` und **0×** `…yaw_…`, daneben 39× den rohen TED-Namen. Das ist
+**#955**. Der Defekt ist real, aber heute nicht auslösbar — und **#955 schaltet ihn scharf**.
+Landet #955 allein, überschreiten gemischte Flächen ab dem ersten Trim still ihr Limit.
+Vermerkt in beiden Tickets.
+
+**Was daraus für die restlichen Kollisionen folgt:** die Audit-Einordnung ist eine
+Hypothese, keine Feststellung. Wo sie *„das gibt es schon"* sagt, gehört nachgemessen, ob
+das Vorhandene denselben Fall abdeckt — bei #781 tat es das nicht, und der Unterschied war
+sicherheitsrelevant.
