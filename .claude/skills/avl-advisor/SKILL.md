@@ -9,10 +9,23 @@ Answer questions about **AVL 3.40** (Athena Vortex Lattice) by Mark Drela & Haro
 
 ## Source Documents (Read tool)
 
+Both documents ship **inside this skill**, so they resolve regardless of the working
+directory or whether the repository is present. Paths are relative to this `SKILL.md`.
+
 | Priority | Path | Content |
 |----------|------|---------|
-| **1 (primary)** | `Avl/avl_doc.txt` | Official AVL 3.40 User Primer (2354 lines) |
-| **2 (secondary)** | `Avl/doc/TextBudziak.md` | HAW Hamburg thesis: VLM theory, Oswald factor study, box wing analysis (~1375 lines) |
+| **1 (primary)** | `assets/avl_doc.txt` | Official AVL 3.40 User Primer (2354 lines) |
+| **2 (secondary)** | `assets/TextBudziak.md` | HAW Hamburg thesis: VLM theory, Oswald factor study, box wing analysis (~1375 lines) |
+
+> The repository copies at `Avl/avl_doc.txt` and `Avl/doc/TextBudziak.md` are the
+> upstream originals. If they are ever updated, re-copy them into `assets/`.
+
+**When the primer and the shipped AVL source disagree, the source wins** — the primer
+predates several changes. Known instances: the primer documents `MA` for both Mach number
+and `dCM_a` (the code uses `MN` for Mach); its `Ixz` definitions at lines 1245-1247 are
+copy-paste errors (the tensor diagram just below is correct); and the machine-readable
+`MRF` output command is absent from the primer's OPER menu entirely. If `Avl/src/*.f` is
+available, verify against it and say so.
 
 ## How to Answer
 
