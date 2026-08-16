@@ -78,3 +78,34 @@ finding. This failure class is mechanically detectable and worth a sweep of its 
 - Review: two independent passes, no blocking findings; both verified the ADR 0002
   boundary and the changed-test argument rather than accepting them
 - Merge commit `608fce87`
+
+## Nachtrag 2026-08-16 — der Sweep, der daraus folgte
+
+Der Befund oben legte einen Verdacht nahe: Wie viele weitere 🟢-Aussagen beschreiben Code,
+den niemand aufruft? Der Sweep lief — und **widerlegte seine eigene Prämisse.**
+
+**Er hätte gh-1096 nie gefunden.** Gemessen: `rear_spar_x_c_with_clearance` hat **2**
+Produktionsreferenzen, `build_stations_from_geometry` **5**. Beide waren voll erreichbar.
+Abgeschaltet war der Guard durch `control_surface_hinge_x_c: float | None = None` — den
+**Default-Wert eines optionalen Parameters**, den kein Produktionsaufrufer je setzte. Ein
+Aufrufgraph kann das nicht sehen.
+
+Die Regel ist damit enger und unbequemer als zuerst formuliert: Bei einem Guard, einer
+Klemmung oder einer Korrektur zählt nicht *„wird die Funktion aufgerufen"*, sondern
+**„welcher Produktionsaufrufer setzt ihr aktivierendes Argument"**.
+
+**Ergebnis des Sweeps selbst — 13 Kandidaten, davon 0 neu:**
+
+| | |
+|---|---|
+| bereits als **TD-25** in `architecture.md` verzeichnet | 4 (u. a. `compute_recommended_cg`, dort korrekt als zweite Implementierung der CG-Regel benannt) |
+| in eingefrorenem `cad_designer/` — unaufgerufen ist dort Politik (ADR 0002) | 8 |
+| `reset_for_tests` — Testaffordanz laut Name | 1 |
+
+Die Extraktion hatte die erreichbaren Fälle also bereits gefunden. Der Sweep ist erledigt
+und braucht keine Wiederholung; was bleibt, ist die schärfere Frage nach dem aktivierenden
+Argument.
+
+**Methodenhinweis für künftige Sweeps:** Diese Codebasis übergibt Services als **bloße
+Referenz** an `_call_service(...)`. Wer `name(` zählt, übersieht fast jeden Aufruf — die
+erste Fassung des Sweeps meldete deshalb 404 Treffer, von denen keiner stimmte.
