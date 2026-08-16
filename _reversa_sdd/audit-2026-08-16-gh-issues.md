@@ -512,6 +512,36 @@ Prämisse (`loading_scenarios: 0 Zeilen`) selbst datenbasiert war; der Defekt �
 Rückfall auf `rc_trainer` ohne Warnung — bleibt davon unberührt.
 
 
+### Gruppe 4 — falsche Prämissen · 2026-08-16 · **alle sechs bearbeitet**
+
+| # | Prämisse des Tickets | gemessen |
+|---|---|---|
+| **1089** | „Katalog hat kein kleines Rohr" | Test-DB seedet **gar keinen** Stock, und die Meldung unterscheidet leer nicht von zu-groß (`spar_plan_service.py:164-176`) — **die Meldung hat die Diagnose erzeugt** |
+| **1080** | „Stock-Snapping läuft nicht" | läuft auf 100 % der Pfade; Rest ist `Q-WD-8` ① → **#1106** |
+| **654** | „erweitert bestehendes Pattern" | **vier erfundene Argumente**, `.create()` gibt es nicht, `frozen_components` 0 Fundstellen — **und die STEP-Export-Hälfte ist gebaut** (`openvsp_step_export_service.py`) |
+| **791** | „ΔC_L0 ≈ 0.43, VSPAERO als Referenz" | wahres `C_L0` 0.48–0.63 gegen ASB 0.44 und VSPAERO 0.87 — **VSPAERO überschießt stärker**; Importeranteil 0.10–0.17 |
+| **586** | „`_pick_deflections` entfernen" | Regel ist **aktiv**: 35 von 35 Overrides koexistieren mit Solver-Ausgabe; der Empty-Dict-Guard braucht einen Ersatz |
+| **673** | „AeroBuildup liefert 30 Felder" | gegen das Paket geprüft: `Cnr`/`Clr` **nicht in `AeroBuildup`** — liefe unbemerkt gegen ADR 0003 |
+
+**Zwei neue Defekte:**
+
+**#1130 — Einstellwinkel geht beim Import verloren.** `openvsp_wing_handler.py:916` hartkodiert
+`twist=0.0`, `:1033-1036` wendet die Geom-`XForm` nur auf `xs.xyz_le` an. Ein Modell mit
+Einstellwinkel über `Y_Rotation` — die übliche OpenVSP-Praxis — kommt mit 0° an und erzeugt
+**denselben Fingerabdruck wie Wölbungsverlust**. Blockiert #791, das sonst zwei Ursachen als
+eine misst.
+
+**Bei #654 fiel eine Einheiten-Falle auf:** `_set_step_export_length_unit_metres` erzwingt
+`STEPSettings.LenUnit = LEN_M`, weil `FindParm` in OpenVSP 3.50 **still** fehlschlägt. Ein
+naiv neu geschriebener Export liefert die falsche Einheit ohne Fehlermeldung — genau das,
+was der Vorschlag getan hätte.
+
+**Muster dieser Gruppe:** In vier von sechs Fällen war die Prämisse nicht *veraltet*, sondern
+**von Anfang an falsch** — gegen eine Codebasis geschrieben, die es nicht gab, oder gegen
+eine Referenz, die keine ist. Solche Tickets altern nicht sichtbar; sie lesen sich nach einem
+Jahr genauso plausibel wie am ersten Tag.
+
+
 ## Das Muster hinter den bearbeiteten Fällen
 
 Fünfmal an einem Tag dieselbe Struktur — **richtige Logik hinter einer Eingabe, die niemand
