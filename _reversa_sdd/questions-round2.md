@@ -262,6 +262,9 @@ your API while the tunnel is up. That is a real exposure, not a theoretical one.
 
 **Incidental finding, worth recording:** with `allow_origins=["*"]`, `allow_credentials=True` is **ignored by the browser** — the spec forbids the combination. So today's configuration is less exposed than it reads, by accident rather than design. Narrowing the origins makes `allow_credentials` meaningful again, so it must be set deliberately at that point.
 
+
+**Soll → #1111** — entschieden, noch nicht gebaut (Audit 2026-08-16).
+
 ---
 
 ## R2-11 — A cross-thread schedule that times out after 2 s is dropped silently.
@@ -320,6 +323,9 @@ default is removal.
 Declared, never imported; the charts use `plotly.js-gl3d-dist-min` directly. `P-DEAD-0`'s default is deletion, and there is no retention argument — no planned migration to the React wrapper was named.
 
 > **Separate observation, deliberately not folded into this answer.** `plotly.js-gl3d-dist-min` is the **3D** build. If the 2D charts — polars, V-n diagram, matching chart — render through it, the workbench carries WebGL weight for plots that do not need it, and each WebGL context counts against the browser's hard limit (the same limit that makes `CadViewer` disposal load-bearing, `Q-FW-5`). Whether the 2D charts could use a lighter build is a **new** question, not an implication of this one. Recorded here so it is not lost, not answered.
+
+
+**Soll → #1121** — entschieden, noch nicht gebaut (Audit 2026-08-16).
 
 ---
 

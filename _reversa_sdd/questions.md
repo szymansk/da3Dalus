@@ -329,6 +329,9 @@ user error, entirely different feedback (this is the cost recorded in `Q-MS-8`).
 `Q-VS-3`, `Q-MC-4`, `Q-FW-2` — those now reduce to "which status code", not "which
 shape".
 
+
+**Soll → #1102** — entschieden, noch nicht gebaut (Audit 2026-08-16).
+
 ---
 
 ## Q-CC-4 — Two `Settings` classes and three version strings: which is canonical?
@@ -377,6 +380,9 @@ documented as a deliberate bootstrap exception rather than an oversight.
 **Related:** the `base_url` 8000-vs-8001 defect is a symptom of the same missing
 ownership and should be re-checked once the merge lands.
 
+
+**Soll → #1105** — entschieden, noch nicht gebaut (Audit 2026-08-16).
+
 ---
 
 ## Q-CC-5 — Should the German user-facing strings be translated?
@@ -415,6 +421,9 @@ Scope:
   document, which is now a spec artefact, so they are in scope too.
 
 Domain terms are translated by meaning rather than transliterated.
+
+
+**Soll → #1118** — entschieden, noch nicht gebaut (Audit 2026-08-16).
 
 ---
 
@@ -664,6 +673,9 @@ indistinguishable from fresh), `Q-MS-8` (`assumptions_snapshot` records only
 
 **Related:** the shared model should live in one owned location — feeds `Q-CC-15`
 (the five ownerless schema files).
+
+
+**Soll → #1103** — entschieden, noch nicht gebaut (Audit 2026-08-16).
 
 ---
 
@@ -917,6 +929,9 @@ nothing in the tree.
 **Answer:** _(derived — not a maintainer decision)_ **Delete both files.**
 
 Follows from **P-DEAD-0**: the policy's own context names `Q-CC-16` among the items that "have no retention argument at all", and rule 3 makes deletion the default for anything that is neither a switched-off safety mechanism nor ticketed scaffolding. `app/db/exceptions.py` and `app/services/example.py` are removed and recorded in the spec as deleted; a one-off check for dynamic resolution (`importlib`, `getattr` on a module object) is a verification step before deleting, not a reason to keep them inert.
+
+
+**Soll → #1120** — entschieden, noch nicht gebaut (Audit 2026-08-16).
 
 ---
 
@@ -1511,6 +1526,9 @@ overrides the clearance (when the two conflict, that is an infeasibility to repo
 via `P-WARN-0`, not something to paper over). Leaving it inert was excluded by
 `P-DEAD-0` in any case — and it is a **safety** guard: a rear spar inside the
 control surface fouls the hinge line.
+
+
+**Soll → #1106** (① echte Shape-Dimensionen) · **#1096** (② Hinge-Clearance-Guard) — entschieden, noch nicht gebaut.
 
 ---
 
@@ -2514,6 +2532,9 @@ geometry-hash placeholder, the tessellation cache race and its missing timeout, 
 the already-decided `Q-CG-3` (`bb` removal) — which concerned this same dead
 endpoint.
 
+
+**Soll → #1100** — entschieden, noch nicht gebaut (Audit 2026-08-16).
+
 ---
 
 ## Q-CG-5 — Are fuselage tessellation and the cache unique constraint planned?
@@ -2754,6 +2775,7 @@ not a scope change.
 
 # construction-plans
 
+**Soll → #1119** — entschieden, noch nicht gebaut (Audit 2026-08-16).
 ## Q-CP-1 — Should plan execution move into the CAD process pool, or is ADR 0005 wrong?
 
 **Context:** `cad_service`'s module docstring records the root cause verbatim:
@@ -3190,6 +3212,9 @@ than needing a new mechanism.
 Required by `P-DEAD-0` in any case: leaving a finished confidence mechanism inert was
 not an available option.
 
+
+**Soll → #1114** — entschieden, noch nicht gebaut (Audit 2026-08-16).
+
 ---
 
 ## Q-VI-3 — Should a feet-unit model without a fuselage be detectable?
@@ -3468,6 +3493,9 @@ yet" beats an invisible "computed for a different aircraft".
 diverge again, only more quietly; this is precisely the pattern ADR 0004 exists
 to prevent. (c) keeping it with a divergence warning — leaves the value
 ambiguous.
+
+
+**Soll → #1099** — entschieden, noch nicht gebaut (Audit 2026-08-16).
 
 ---
 
@@ -3843,6 +3871,9 @@ persists or verifies an artefact.**
 **`Q-AV-4` is lifted out of the deferred Tier 2 set for this reason** and decided
 together with this question.
 
+
+**Soll → #1112** — entschieden, noch nicht gebaut (Audit 2026-08-16).
+
 ---
 
 ## Q-AV-4 — Should a successful regenerate clear `avl_geometry_files.is_dirty`?
@@ -3914,6 +3945,9 @@ sound and only the object was wrong.*
 _Original framing:_ **it was the open item** — its only reference is from the unreached artefact service, so the live strip-force path takes the index map but **not** the sign map. Whether mirrored-surface forces are therefore summed with a wrong sign into spar loads is carried forward as a separate defect investigation; it must be resolved **before** deleting the function.
 
 **Two operational notes for the implementation.** Prefer the **`MRF`** machine-readable output (`src/aoper.f:103, 693-698`) — it is `ES23.15`, whereas the text `FN` format is `F8.4` and quantises small RC-scale coefficients; `MRF` is absent from the primer. And **parse the axis-orientation line**: `LSA` flips the sign of `Cl` and `Cn` on output via `DIR = ∓1` (`src/aoutput.f:1669-1675`), and it is printed at the head of every `FN`/`FS`/`FB` block. Per-surface force signs need **no** correction — AVL applies `IMAGS` internally.
+
+
+**Soll → #1112** — entschieden, noch nicht gebaut (Audit 2026-08-16).
 
 ---
 
@@ -4112,6 +4146,9 @@ Therefore: publish `landing_field_length_m` as *the* landing distance; keep Rosk
 Disagreement: none between the authorities — Scholz/Sadraey and RC practice both point away from the certified-transport method at this scale; the conflict is between the code's two implementations.
 
 _Full reasoning: [`expert-consensus-sizing.md`](expert-consensus-sizing.md)_
+
+
+**Soll → #1116** — entschieden, noch nicht gebaut (Audit 2026-08-16).
 
 ---
 
@@ -4629,6 +4666,9 @@ designed feature later supersedes.
 (c) sum both with a dedup key — no longer needed once point masses live in the tree;
 (d) warn on divergence — leaves the number order-dependent.
 
+
+**Soll → #1101** — entschieden, noch nicht gebaut (Audit 2026-08-16).
+
 ---
 
 ## Q-MB-2 — Is `compute_recommended_cg` the intended home of the top-down CG rule?
@@ -4857,6 +4897,9 @@ tree sync never touches the column. Two numbers with the same name, free to drif
 
 Instance of ADR 0022 (one authority per user-facing quantity).
 
+
+**Soll → #1104** — entschieden, noch nicht gebaut (Audit 2026-08-16).
+
 ---
 
 ## Q-MB-8 — Should `GRAVITY` and `RHO` live in one physical-constants module?
@@ -4960,6 +5003,9 @@ Disagreement: none on substance. The only tension is the margin value — RC pra
 
 _Full reasoning: [`expert-consensus-powertrain.md`](expert-consensus-powertrain.md)_
 
+
+**Soll → #1109** — entschieden, noch nicht gebaut (Audit 2026-08-16).
+
 ---
 
 ## Q-PT-2 — Should propeller mass enter the sizing total?
@@ -4985,6 +5031,9 @@ Disagreement: none. Scholz and RC practice agree; they differ only on whether an
 
 _Full reasoning: [`expert-consensus-powertrain.md`](expert-consensus-powertrain.md)_
 
+
+**Soll → #1110** — entschieden, noch nicht gebaut (Audit 2026-08-16).
+
 ---
 
 ## Q-PT-3 — Should the solution-space KV now use the APC polar database?
@@ -5007,6 +5056,9 @@ Correct chain, all quantities already available: **(1)** size the diameter from 
 Disagreement: mild, on the tip-speed ceiling — Sadraey says **150 m/s** for RC plastic props while ROXXY practice says Ma ≈ 0.4–0.6 (**130–200 m/s**). Resolved in favour of Scholz per the authority hierarchy: cap at **150 m/s** (≈ Ma 0.44), which sits inside the RC band anyway, and use the RC upper end only as a "you are past the recommended limit" warning threshold, never as the gate.
 
 _Full reasoning: [`expert-consensus-powertrain.md`](expert-consensus-powertrain.md)_
+
+
+**Soll → #1108** — entschieden, noch nicht gebaut (Audit 2026-08-16).
 
 ---
 
@@ -5272,6 +5324,9 @@ Disagreement: none.
 
 _Full reasoning: [`expert-consensus-powertrain.md`](expert-consensus-powertrain.md)_
 
+
+**Soll → #1117** — entschieden, noch nicht gebaut (Audit 2026-08-16).
+
 ---
 
 ## Q-PT-13 — COTS component lifecycle (bundle)
@@ -5347,6 +5402,7 @@ orphans the file. Independent of everything above and to be fixed.
 
 # versioning
 
+**Soll → #1107** — entschieden, noch nicht gebaut (Audit 2026-08-16).
 ## Q-VS-1 — Snapshots are not actually immutable: should the guard cover every write path?
 
 **Context:** Verified during review. `_guard_immutable` is defined at
@@ -5390,6 +5446,9 @@ ordinary wing / fuselage / spar CRUD routes.
 (copilot proposes, human adopts) assumes the base state cannot move underneath a
 proposal. The guarantee is currently a convention checked by a single code path —
 and epic #901/#902 is being built on top of it.
+
+
+**Soll → #1098** — entschieden, noch nicht gebaut (Audit 2026-08-16).
 
 ---
 
@@ -5435,6 +5494,9 @@ a misleading answer — 410 or 501 would be honest.
 **Answer:** _(derived — not a maintainer decision)_ **Remove all five routes and the stub service.**
 
 Follows from **P-DEAD-0** and **Q-MB-1**: the routes can only raise, gh-905 shipped the `/lineages` + `/branches` surface in their place, and they are UUID-addressed in a way the new service does not support — so there is nothing to re-point them at, and 410/501 would only be an honest way of keeping dead surface alive. Q-MB-1's git archaeology identifies them as leftovers of the 2026-04-12 wireframe bulk scaffold (`1bq`), superseded by the real versioning model, which is exactly rule 3's "delete, and record it in the spec as removed". Withdrawing published routes is client-visible and acceptable per **Q-CC-1**.
+
+
+**Soll → #1113** — entschieden, noch nicht gebaut (Audit 2026-08-16).
 
 ---
 
@@ -5612,6 +5674,9 @@ Should the copilot start supplying the message id?
 **So the work is smaller than the finding suggests:** supply the id at the one call site, and add the resolution — *"show me the chat that produced this version"*. The branch name becomes meaningful as a side effect, because it can carry the turn reference.
 
 **Connects to `Q-CO-5`:** conversation branching is planned there, mirroring aeroplane branching. Once a chat can itself branch, a version pointing at a *turn* rather than at a conversation is what keeps the link unambiguous across branches.
+
+
+**Soll → #1115** — entschieden, noch nicht gebaut (Audit 2026-08-16).
 
 ---
 
@@ -6257,6 +6322,9 @@ per-tool review of 40 tools, and layer ③ already makes the damage reversible.
 genuinely reachable. `Q-CC-1`'s loopback-by-default exposure guard is what makes that
 acceptable.
 
+
+**Soll → #1097** — entschieden, noch nicht gebaut (Audit 2026-08-16).
+
 ---
 
 ## Q-MC-2 — Is the MCP surface intentionally frozen at the geometry/analysis core?
@@ -6772,6 +6840,9 @@ underlying `Q-FW-2` (one HTTP client), `Q-FW-3` (global `SWRConfig`) and
 `Q-CC-11` (generated TypeScript client); removes the wildcard-CORS finding from
 `Q-CC-1`'s residual risk.
 
+
+**Soll → #1111** — entschieden, noch nicht gebaut (Audit 2026-08-16).
+
 ---
 
 ## Q-FW-2 — Should the hooks migrate onto one HTTP client?
@@ -7047,6 +7118,9 @@ _Full detail: [`wave3-lookups.md`](wave3-lookups.md) §P_
    confusing at worst — the app would briefly restore a mode it immediately leaves.
    Only `fuselage` is a genuine user choice, and that is bound to the selection,
    which decision 2 already keeps out of the URL.
+
+**Soll → #1121** — entschieden, noch nicht gebaut (Audit 2026-08-16).
+
 ---
 
 ## Q-FW-9 — Should the two copilot write tools get explicit labels?

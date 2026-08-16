@@ -128,10 +128,51 @@ Creator, nicht der Download), #902 (Epic-Körper ist Stand 2026-06-07), #1079
 
 ---
 
-## 3. Entschieden, nicht gebaut, kein Ticket
+## 3. Entschieden, nicht gebaut — jetzt getickt ✅
 
 Die Gegenrichtung — der Rückstand, den das Interview erzeugt hat. Jede Zeile gegen den
-Code geprüft; kein offenes Ticket deckt sie ab. Nach Umfang, größtes zuerst.
+Code geprüft. **Am 2026-08-16 in 27 Tickets überführt (#1096–#1122)**, und jede
+zugehörige Entscheidung in `questions.md` trägt jetzt ihre `**Soll → #N**`-Marke. Damit
+ist die Verriegelung aus [`MARKERS.md`](MARKERS.md) zum ersten Mal geschlossen.
+
+### Ticketzuordnung
+
+| Ticket | Entscheidung | |
+|---|---|---|
+| **#1096** | `Q-WD-8` ② Hinge-Clearance-Guard | 🐞 **sicherheitsrelevant** |
+| **#1097** | `Q-MC-1` MCP-Transaktionsgrenze | 🐞 ~40 Write-Tools schreiben nichts |
+| **#1098** | `Q-VS-1` Immutability-Guard | 🐞 **ADR 0007 ruht darauf** |
+| **#1099** | `Q-AA-1` zweiter `cd0`-Produzent | 🐞 |
+| #1100 | `Q-CG-4` Tessellations-Subsystem löschen | groß |
+| #1101 | `Q-MB-1` Component-Tree als alleinige Massenautorität | groß |
+| #1102 | `Q-CC-3` eine Fehler-Hülle | groß |
+| #1103 | `Q-CC-10` typisierter Computation-Context | groß |
+| #1104 | `Q-MB-7` `total_mass_kg` als abgeleitete Sicht | |
+| #1105 | `Q-CC-4` eine `Settings`-Klasse, eine Version | Vorbedingung für #1095 |
+| #1106 | `Q-WD-8` ① rechteckige/gekappte Holme rechnen | |
+| #1107 | `Q-PT-13` ①–④ COTS-Lebenszyklus | |
+| #1108 | `Q-PT-3` Kv/Propeller aus der Polardatenbank | |
+| #1109 | `Q-PT-1` ESC auf Peak-Strom bei Sag-Spannung | |
+| #1110 | `Q-PT-2` Propellermasse in `total_mass` | |
+| #1111 | `Q-FW-1`/`R2-10` CORS-Allowlist | |
+| #1112 | `Q-AV-3`/`Q-AV-4` AVL-Replay-Artefakt löschen | Spec sagt „gelöscht", Code existiert |
+| #1113 | `Q-VS-3` fünf tote `design-versions`-Routen | |
+| #1114 | `Q-VI-2` `validate_geometry` verdrahten | |
+| #1115 | `Q-CO-1` Copilot-Audit-Trail | |
+| #1116 | `Q-MS-2`/`Q-MS-13` ④ ein Landedistanz-Produzent | |
+| #1117 | `Q-PT-12` Prop-Polar-Spalten + Skip-Report | |
+| #1118 | `Q-CC-5` deutsche UI-Strings übersetzen | **blockiert #745** |
+| #1119 | `Q-CT-5` Guard für unimplementierte Hinge-Typen | |
+| #1120 | `Q-CC-16` zwei importlose Dateien löschen | trivial |
+| #1121 | `Q-FW-8`/`R2-13` `react-plotly.js` entfernen | trivial |
+| #1122 | Servo-/Receiver-/FC-Katalog | aus der Schließung von #38; **keine `Q-id`** |
+
+**#1122 trägt bewusst keine Soll-Marke.** Es ist eine Datenlücke, keine protokollierte
+Entscheidung — die Regel gilt für Entscheidungen, nicht für alles.
+
+### Die ursprüngliche Aufstellung
+
+Nach Umfang, größtes zuerst.
 
 | Entscheidung | Was der Code heute tut | Umfang |
 |---|---|---|
