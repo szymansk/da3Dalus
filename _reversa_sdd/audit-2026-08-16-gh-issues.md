@@ -33,6 +33,23 @@ kommentiert, gelabelt oder geschlossen.
 **#202 besser umschreiben statt schließen:** Q-CG-4 enthält eine vollständige, protokollierte,
 aber ungebaute Löschliste — und dafür existiert kein Ticket. Siehe Abschnitt 3.
 
+> **Zwei Präzisierungen zu #202, unabhängig von zwei Agenten bestätigt.**
+>
+> **① Die Löschung ist eine Produktentscheidung, keine technische Kapitulation.** Der
+> Code-Lookup ergab das Gegenteil der TODO-Begründung: *„Both blockers named in the TODO
+> are already solved in the same repo … the wiring is roughly six lines plus one
+> decision"*. Belegt wurde die Löschung mit **null Consumern** für `useTessellation.ts`
+> (205 Z.), `usePreviewState.ts` (207 Z.) und `ViewerPanel.tsx`. Wer beim Schließen
+> „zu aufwendig" notiert, protokolliert den falschen Grund.
+>
+> **② Beim Löschticket muss der Nicht-lösch-Teil mitreisen, sonst reißt der Live-3D-Pfad
+> mit.** Ausdrücklich **nicht** gelöscht: `construction_plan_service._tessellate_shapes`
+> und die `ocp_tessellate`-Nutzung, die `ExecutionResultDialog` speist (der lebende Pfad),
+> sowie der CAD-**Export** (`cad_service`) samt Zip-Download — ein anderes Subsystem.
+>
+> Miterledigt („rendered moot"): `Q-CG-5`, `Q-FW-5`, `Q-CG-3`, der
+> `"manual"`-geometry-hash-Platzhalter und der Cache-Race.
+
 **#38 und #198 ersetzen, nicht ersatzlos schließen:** bei #38 bleibt die Datenlücke Servo /
 Receiver / Flight-Controller; bei #198 bleiben Q-PT-1/2/3 als Umsetzungstickets.
 
