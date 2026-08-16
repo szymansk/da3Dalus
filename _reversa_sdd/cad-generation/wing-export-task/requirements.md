@@ -301,7 +301,7 @@ Feature: Status and download
 | `app/schemas/AeroplaneRequest.py` | `CreatorUrlType` (l.44), `ExporterUrlType` (l.55, incl. the unmapped `amf`) | 🟢 |
 | `app/tests/test_cad_service_extended.py` | l.130 — the assertion that pins the 3MF defect | 🟢 |
 | `app/converters/model_schema_converters.py` | `wing_model_to_asb_wing_schema`, `asb_wing_schema_to_wing_config` | 🟢 |
-| `cad_designer/airplane/creator/wing/` | `WingLoftCreator`, `VaseModeWingCreator` | 🟢 read-only (ADR 0002) |
+| `cad_designer/airplane/creator/wing/` | `WingLoftCreator`, `VaseModeWingCreator` | 🟢 **open** — ADR 0002 §1 freezes `aircraft_topology/`, **not** the Creators (corrected 2026-08-16, gh-941) |
 | `cad_designer/airplane/creator/export_import/` | `ExportToStlCreator`, `ExportToStepCreator`, `ExportToIgesCreator`, `ExportTo3mfCreator` (l.10 — the real spelling) | 🟢 read-only (ADR 0002) |
 | `cad_designer/airplane/GeneralJSONEncoderDecoder.py` | `GeneralJSONDecoder` — resolves `$TYPE` via `getattr` | 🟢 read-only; contract in `cad-designer-topology` |
 | `app/main.py` | conditional router mount (l.222-223), `/static` → `tmp/` (l.242-245) | 🟢 |

@@ -453,4 +453,4 @@ Feature: Artefact storage
 | `app/schemas/construction_plan.py` | `ArtifactFile`, `ArtifactDirectory` | 🟢 |
 | `alembic/versions/04b8c856eab9_add_tessellation_cache 🟢 (deleted, `Q-CG-4`)_table.py` | the cache DDL (FK + two indexes, **no unique constraint**) | 🟢 |
 | `app/main.py` | conditional CAD router mount (l.222-223), lifespan `shutdown_executor` (l.193), `/static` → `tmp/` mount (l.242-245) | 🟢 |
-| `cad_designer/airplane/creator/**` | `WingLoftCreator`, `VaseModeWingCreator`, the four exporters | 🟢 read-only (ADR 0002) — see `cad-designer-topology` |
+| `cad_designer/airplane/creator/**` | `WingLoftCreator`, `VaseModeWingCreator`, the four exporters | 🟢 **open** — ADR 0002 §1 freezes `aircraft_topology/` and `GeneralJSONEncoderDecoder.py`, **not** the Creators (corrected 2026-08-16, gh-941) |
