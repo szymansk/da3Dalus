@@ -32,6 +32,8 @@ by the person cutting carbon tube. 🟢
   runs, front/rear joint type, bore, and utilisation. 🟢
 - Report infeasibility honestly — never clamp, never silently shrink. 🟢
 - Emit **no piece** for a negligible-load tip and report where the spar stops. 🟢
+  🔴 **Soll (gh-1137)** — this responsibility is being retired: a load-carrying span
+  always receives an orderable section, over-dimensioned if need be (BR-W19).
 - Provide the `(y/span, x/c)` section-geometry seam in an analytic default mode
   and an optional solid-slicing mode. 🟢
 - Persist the solved plan back onto the wing's spars. 🟢
@@ -99,11 +101,10 @@ building the CAD solid (→ `cad-generation`), and the frozen topology classes
   > one who assumed a bonded shell would look for a joint that does not exist.
   > **Both misreadings are already in the tree**: the no-spar tip region is justified
   > in four places — one of them the *public* API schema — by *"the D-box skin + ribs
-  > carry the tip"* (**gh-1136**). No behaviour depends on it, but removing the wrong
-  > reason exposes a real question: a printed shell can carry a near-zero tip moment
-  > incidentally, a film covering cannot, so the no-spar region may be
-  > **printed-wing-only**. 🔴 **Soll** — to be answered in this rule before the rib
-  > Creator lands (gh-1136 Part B).
+  > carry the tip"* (**gh-1136**). The question that wording raised — whether a spar-less
+  > outer region is legitimate when a film covering cannot carry the residual moment —
+  > is **answered and moot**: a load-carrying span always receives an orderable section
+  > (BR-W19), so no such region is produced in either route.
 
 - **BR-W17 — The margin is a two-sided partial-factor format, and the total is hidden.**
   🟡 *(module-level BR-W17; this use case is its owner.)* **Ist** — established with the
