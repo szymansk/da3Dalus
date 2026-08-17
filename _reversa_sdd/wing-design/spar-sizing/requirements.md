@@ -212,6 +212,34 @@ building the CAD solid (→ `cad-generation`), and the frozen topology classes
   resolved — *"one Ø8 tube reaches 0.62 half-span; reaching the tip needs Ø5, which fails
   strength at the root."*
 
+- **BR-W21 — A telescoping joint is a nesting fit, not a gap.** 🔴 **Soll (gh-1138)** —
+  maintainer decision 2026-08-17. Carbon tube comes as a nesting series, so the outer
+  piece's **OD equals the inner piece's ID**: 8/6 → 6/4 → 4/2. A tube that merely fits
+  loosely — a 4 OD inside a 6 ID — **cannot be fastened**: there is no bearing surface.
+
+  ```
+  OD_outer = ID_inner            (fit left to stock tolerance)
+  NOT  OD_outer ≤ ID_inner − clearance
+  ```
+
+  Today it is the inequality, implemented as an additive gap:
+  `telescope_bore = OD_outer + 2 · telescope_clearance_mm` with
+  `telescope_clearance_mm = 0.5` (`spar_solver.py:91-94, 423`) — a 1 mm diametral sleeve
+  that *guarantees* a bore no nesting series provides (a 6 OD outer forces a 7.0 bore,
+  i.e. an 8/7 tube).
+
+  **And the chain is not preserved.** `apply_stock_snap_to_plan`
+  (`spar_plan_service.py:237-262`) snaps **each piece independently** to the lightest
+  adequate catalogue item; nothing re-checks the joint afterwards. A plan can be reported
+  `feasible = True`, be persisted, and still not assemble. That is an undeclared
+  substitution (ADR 0020), not a missing feature.
+
+  **Consequence for the algorithm.** Stock selection becomes a **chain search** over the
+  catalogue — a path `(OD₀, ID₀) → (OD₁ = ID₀, ID₁) → …` where every link satisfies
+  strength at its governing station, containment in its tightest band, **and** nesting with
+  its inboard neighbour. Per-piece "lightest adequate" cannot produce such a path. With
+  BR-W20 the objective is the **shortest** valid chain first, lightest second.
+
 - **BR-W5 — Section-modulus sizing is the strength law (gh-1008).** 🟢
   *(module-level BR-W5; this use case is its owner.)* Reference: *kirch
   Hauptholm*. Units are fixed and load-bearing: `M` in **N·m**, `σ` in **MPa**

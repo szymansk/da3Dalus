@@ -195,6 +195,12 @@ decision (BR-W18).
   a joint is a weak point and telescoped pieces must overlap, so per-piece weight
   optimisation is not a global optimum. Splitting stays a containment-forced fallback that
   names the station which forced it.
+- **BR-W21 — A telescoping joint is a nesting fit, not a gap.** 🔴 **Soll (gh-1138)** —
+  `OD_outer = ID_inner` (8/6 → 6/4 → 4/2); a loosely fitting tube cannot be fastened.
+  Today the solver models a 1 mm diametral gap, and stock snapping then replaces each
+  piece independently without re-checking the joint — so a plan can be `feasible = True`,
+  persisted, and still not assemble (ADR 0020). Selection must become a chain search over
+  the catalogue.
 - **BR-W5 — Section-modulus sizing is the strength law (gh-1008).** 🟢 Units: `M`
   in N·m, `σ` in MPa (= N/mm²), dimensions in mm, `W` in mm³, mass in kg. All
   formulas in `design.md` §Structural pipeline.
