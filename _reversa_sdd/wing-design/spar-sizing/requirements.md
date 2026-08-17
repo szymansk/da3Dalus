@@ -171,6 +171,46 @@ building the CAD solid (→ `cad-generation`), and the frozen topology classes
   **Adding a deflection limit or a minimum-`EI` floor is a new decision**, recorded here
   or in an ADR — not an enhancement an implementer may fold into a spar ticket.
 
+- **BR-W19 — The plan always yields an orderable section, and says how over-dimensioned
+  it is.** 🔴 **Soll (gh-1137)** — maintainer decision 2026-08-17. *"Ich erwarte einen
+  bestellbaren Holm-Querschnitt. Das kann auch ein überdimensionierter sein, das muss dann
+  angezeigt werden, inwieweit er überdimensioniert ist."*
+
+  A span that carries load gets a **piece**, never nothing. Where strength asks for less
+  than the smallest stock, the smallest stock is chosen and the surplus is reported — this
+  replaces the sub-floor drop (BR-W10) and with it the grid artefact measured there.
+  `NEGLIGIBLE_OD_FLOOR_MM` keeps a feasibility statement (*"the load here is below anything
+  orderable"*) attached to a piece that exists.
+
+  **The surplus is a new quantity.** `SparPiece.utilisation` is `od / tightest_band`
+  (`spar_solver.py:533-539`) — *does the tube fit inside the airfoil*, not *how much of its
+  strength is used*. What is asked for is the **strength reserve**:
+
+  ```
+  reserve = W_stock(Da, Di) / erf_W        ≥ 1 = reserve, 1.0 = exactly sized
+  ```
+
+  Both inputs exist (`spar_plan_service.py:59-88`); only the reporting is missing.
+  ⚠️ **ADR 0022** — two numbers that both invite the name "utilisation", pulling in
+  opposite directions (band fit wants ≤ 1, reserve wants ≥ 1). They must be named and
+  described so they cannot be conflated.
+
+- **BR-W20 — One continuous section is the preferred plan; splitting is a fallback that
+  states its reason.** 🔴 **Soll (gh-1137)** — maintainer decision 2026-08-17. Two grounds,
+  both structural rather than aesthetic:
+
+  - **a joint is a weak point** — the module's recorded *minimise part count* principle,
+    applied to the spar itself;
+  - **telescoped pieces must overlap** to slide into one another, so the weight saved by
+    thinning outboard is spent again on the overlap. The local per-piece weight optimum in
+    `snap_piece_to_stock` ("lightest adequate stock") is therefore not the global optimum.
+
+  Splitting today is **forced by containment**, not chosen for weight (`_split_into_runs`:
+  a run's governing OD must fit every covered station's band), so on a tapered wing a single
+  section may be genuinely impossible. That trade-off is to be **presented**, not silently
+  resolved — *"one Ø8 tube reaches 0.62 half-span; reaching the tip needs Ø5, which fails
+  strength at the root."*
+
 - **BR-W5 — Section-modulus sizing is the strength law (gh-1008).** 🟢
   *(module-level BR-W5; this use case is its owner.)* Reference: *kirch
   Hauptholm*. Units are fixed and load-bearing: `M` in **N·m**, `σ` in **MPa**

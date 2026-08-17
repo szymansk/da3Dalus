@@ -186,6 +186,15 @@ decision (BR-W18).
   *does not break*, never *stiff enough*. Adding a deflection limit or a minimum-`EI`
   floor is a **new decision**, not an enhancement. Full statement in
   [`spar-sizing/requirements.md`](spar-sizing/requirements.md).
+- **BR-W19 — The plan always yields an orderable section, and says how over-dimensioned
+  it is.** 🔴 **Soll (gh-1137)** — a load-carrying span always gets a piece; where strength
+  asks for less than the smallest stock, the smallest stock is chosen and the **strength
+  reserve** `W_stock / erf_W` is reported. That reserve is a *new* quantity — the existing
+  `utilisation` measures containment-band fit, not strength (ADR 0022).
+- **BR-W20 — One continuous section is the preferred plan.** 🔴 **Soll (gh-1137)** —
+  a joint is a weak point and telescoped pieces must overlap, so per-piece weight
+  optimisation is not a global optimum. Splitting stays a containment-forced fallback that
+  names the station which forced it.
 - **BR-W5 — Section-modulus sizing is the strength law (gh-1008).** 🟢 Units: `M`
   in N·m, `σ` in MPa (= N/mm²), dimensions in mm, `W` in mm³, mass in kg. All
   formulas in `design.md` §Structural pipeline.
