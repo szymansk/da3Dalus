@@ -201,6 +201,15 @@ decision (BR-W18).
   piece independently without re-checking the joint — so a plan can be `feasible = True`,
   persisted, and still not assemble (ADR 0020). Selection must become a chain search over
   the catalogue.
+- **BR-W22 — The spar plan is a proposal for a designer, not an optimum.** 🔴 **Soll
+  (gh-1139, gh-1140)** — good guess → adjust → *"does what I chose hold?"*. Rules out a
+  global optimiser and automatic re-sizing. Today verification runs one way only
+  (compute → persist); checking a chosen layout has no entry point.
+- **BR-W23 — The good guess is a greedy root-out procedure.** 🔴 **Soll (gh-1137,
+  gh-1138)** — start at the root with the required diameter, accept that everything
+  outboard is over-dimensioned, step down to the next nesting tube where containment
+  fails, then pull the insertion point inboard until the inner tube holds at the joint.
+  Not "shortest chain then lightest".
 - **BR-W5 — Section-modulus sizing is the strength law (gh-1008).** 🟢 Units: `M`
   in N·m, `σ` in MPa (= N/mm²), dimensions in mm, `W` in mm³, mass in kg. All
   formulas in `design.md` §Structural pipeline.

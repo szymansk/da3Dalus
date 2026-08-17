@@ -240,6 +240,51 @@ building the CAD solid (→ `cad-generation`), and the frozen topology classes
   its inboard neighbour. Per-piece "lightest adequate" cannot produce such a path. With
   BR-W20 the objective is the **shortest** valid chain first, lightest second.
 
+- **BR-W22 — The spar plan is a proposal for a designer, not an optimum.** 🔴 **Soll
+  (gh-1139, gh-1140)** — maintainer decision 2026-08-17. *"Eine komplette Automatisierung
+  und Optimierung halte ich nicht für zielführend. Eine Unterstützung des Designers wäre
+  wichtiger."*
+
+  The product owes three things, in this order:
+
+  1. a **good guess** — a plausible starting layout (BR-W23),
+  2. the ability to **adjust it**, since spars are editable afterwards anyway,
+  3. an answer to **"does what I chose hold?"** — demand against capacity along the span,
+     with the pieces distinguishable (gh-1139 delivers the numbers, gh-1140 the picture).
+
+  **This rules things out.** No search for a global optimum, no automatic re-sizing behind
+  the designer's back, and no treating the solver's answer as *the* answer. A future
+  "optimise the spar plan" feature contradicts this rule and needs a new decision, not an
+  implementation.
+
+  Verification runs today in one direction only — compute from the load, persist — so
+  *"check the layout I chose"* has no entry point at all (gh-1139).
+
+- **BR-W23 — The good guess is a greedy root-out procedure, and outboard over-dimensioning
+  is accepted.** 🔴 **Soll (gh-1137, gh-1138)** — the maintainer's own build procedure,
+  stated 2026-08-17:
+
+  1. Start at the **root** with the required diameter.
+  2. **Everything outboard is then over-dimensioned by construction** — that is accepted,
+     not minimised. *"Das muss ich als Modellbauer erstmal hinnehmen."*
+  3. See **how far that tube fits** into the wing (containment band).
+  4. Where it stops fitting, take the **next tube that slides into the current one**
+     (BR-W21's nesting relation) and ask whether *it* reaches the tip.
+  5. Repeat.
+  6. Then **move the insertion point back toward the root** until the inner tube is strong
+     enough *at the joint station*, overlap included.
+
+  So the objective is **not** "shortest chain, then lightest" — that framing was wrong.
+  Over-dimensioning outboard is the expected picture, and the interesting quantity is the
+  **step in capacity at each joint**, which is what says whether the insertion point sits
+  far enough inboard.
+
+  **The wing centre is a special case.** `_reinforcement_piece` already models a short
+  collinear rod through `y = 0`, sized to the root moment, but only when the halves are not
+  collinear (`spar_solver.py:608-625`). The maintainer expects a centre joiner rod
+  regardless, carrying load there. 🔴 **GAP** — whether it should always exist is open, not
+  decided.
+
 - **BR-W5 — Section-modulus sizing is the strength law (gh-1008).** 🟢
   *(module-level BR-W5; this use case is its owner.)* Reference: *kirch
   Hauptholm*. Units are fixed and load-bearing: `M` in **N·m**, `σ` in **MPa**
