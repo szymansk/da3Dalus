@@ -262,14 +262,37 @@ building the CAD solid (→ `cad-generation`), and the frozen topology classes
 
   1. The reason given in four places, one of them the **public** schema
      (`app/schemas/spar_plan.py:309`), is a **D-box that neither route builds**.
-  2. **The reported region is a sampling artefact.** Stations are
-     `linspace(0, 1, n_span)` (`spar_solver.py:745`), `n_span = 6` by default and
-     caller-settable 2–200 (`app/schemas/spar_plan.py:107`). The last station sits at
-     `y_span = 1.0`, where an integrated bending moment is zero, so it always falls
-     below the floor and is always dropped — putting the region's start at **80 % of
-     half-span** by default and at 99.5 % with `n_span = 200`. A number the user sees
-     moves with a discretisation parameter. 🟡 read from the code, not yet measured
-     against a real wing.
+  2. **The reported region is a sampling artefact — measured, not inferred.** 🟢
+     Stations are `linspace(0, 1, n_span)` (`spar_solver.py:745`), `n_span = 6` by
+     default, caller-settable 2–200 (`app/schemas/spar_plan.py:107`). Swept over
+     `ehawk_main_wing` (750 mm half-span, 12 segments) with an elliptic-lift-integrated
+     `M(y)` at `M_root ∈ {30, 8, 2}` N·m:
+
+     | `n_span` | 6 | 8 | 12 | 16 | 25 | 50 |
+     |---|---|---|---|---|---|---|
+     | region starts at | 80.0 % | 85.7 % | 90.9 % | 93.3 % | 95.8 % | 98.0 % |
+     | `(n−2)/(n−1)` | 80.0 % | 85.7 % | 90.9 % | 93.3 % | 95.8 % | 98.0 % |
+
+     An exact match at every resolution, and **identical for all three load levels** —
+     the reported boundary is a function of `n_span` alone, not of the wing or the load.
+
+     Worse, on `configurator_wing` (3 equal segments) the region's **existence** flips:
+     at `n_span = 6` it appears at 80 % for `M_root = 30` and `2` but not for `8`, and
+     from `n_span = 8` upward it disappears entirely. Same wing, same load — refining a
+     numerical parameter turns *"the outer 20 % needs no spar"* into *"the spar runs to
+     the tip"*, non-monotonically in both `n_span` and load.
+
+     The mechanism is not the one first assumed. The tip station at `y_span = 1.0` does
+     always carry `required_od = 0` (measured), but a *piece* takes its **run's governing
+     (most-inboard) OD** (`plan_spar`, l.403), so a sub-floor tip station alone drops
+     nothing — on a single-run wing (`single_segment_flat`) no region ever appears at any
+     resolution or load. The region emerges only when run-splitting puts a whole outer run
+     below the floor, and **run boundaries move with the station grid**.
+
+     **Collision with topology, concretely.** `ehawk_main_wing`'s tip segments begin at
+     705 mm (94 %). At the default `n_span = 6` the plan reports no spar from **600 mm
+     (80 %)** — declaring ~105 mm of *structural* segments spar-free, which is exactly
+     what gh-361 forbids at construction time.
   3. The floor keeps one legitimate job: a **feasibility check** — *"no orderable
      section this small"* — never the decision of where the spar stops.
 - **BR-W11 — Single-half surfaces force a continuous front joint (gh-1091).** 🟢
