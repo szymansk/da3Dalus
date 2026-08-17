@@ -285,6 +285,35 @@ building the CAD solid (→ `cad-generation`), and the frozen topology classes
   regardless, carrying load there. 🔴 **GAP** — whether it should always exist is open, not
   decided.
 
+- **BR-W24 — The centre reinforcement is a build choice, with geometry as an override.**
+  🔴 **Soll (gh-1141)** — maintainer decision 2026-08-17. A joiner rod through `y = 0` is
+  **common practice**; the exception is a wing built as one continuous surface.
+
+  | wing | reinforcement |
+  |---|---|
+  | built as **two halves** that plug together | **yes — default on** |
+  | built as **one continuous surface** | no — the spar runs through |
+  | half-spars **not collinear** (dihedral) | **forced on**, the flag cannot override |
+
+  **Today it is decided by geometry alone** (`spar_solver.py:674-687`):
+  `_inboard_collinear(front_left, front_right)` → `continuous` and no reinforcement,
+  otherwise `reinforcement+joiner`. So a **flat wing built in two halves** — the ordinary,
+  transportable case — is collinear, gets `continuous`, and receives **no joiner at all**.
+  The plan reads a manufacturing choice off a geometry test and silently assumes a one-piece
+  wing whenever the dihedral is zero.
+
+  Two questions are conflated: *is the wing split at the centre* (a build decision) and *do
+  the half-spars line up* (geometry). Only the second is knowable from today's model.
+
+  The reinforcement is also **front-spar only** — the rear path picks `continuous` /
+  `bent-pin` and never emits one (`spar_solver.py:689-695`). 🔴 **GAP** — whether the
+  torsion spar needs a centre piece is not decided.
+
+  🔴 **GAP — where the flag lives.** A `SparPlanRequest` field is cheap but leaves the
+  persisted spars without a record of which assumption produced them; a persisted wing
+  property costs a migration and makes the plan explainable later. Recommendation:
+  persisted. Open.
+
 - **BR-W5 — Section-modulus sizing is the strength law (gh-1008).** 🟢
   *(module-level BR-W5; this use case is its owner.)* Reference: *kirch
   Hauptholm*. Units are fixed and load-bearing: `M` in **N·m**, `σ` in **MPa**

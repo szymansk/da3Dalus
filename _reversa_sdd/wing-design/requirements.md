@@ -210,6 +210,11 @@ decision (BR-W18).
   outboard is over-dimensioned, step down to the next nesting tube where containment
   fails, then pull the insertion point inboard until the inner tube holds at the joint.
   Not "shortest chain then lightest".
+- **BR-W24 — The centre reinforcement is a build choice, with geometry as an override.**
+  🔴 **Soll (gh-1141)** — two halves → joiner on by default; one continuous surface → none;
+  non-collinear half-spars → forced on. Today it is decided by collinearity alone, so a
+  **flat wing built in two halves gets no joiner** — a manufacturing choice read off a
+  geometry test.
 - **BR-W5 — Section-modulus sizing is the strength law (gh-1008).** 🟢 Units: `M`
   in N·m, `σ` in MPa (= N/mm²), dimensions in mm, `W` in mm³, mass in kg. All
   formulas in `design.md` §Structural pipeline.
