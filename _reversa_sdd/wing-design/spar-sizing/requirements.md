@@ -69,6 +69,16 @@ building the CAD solid (→ `cad-generation`), and the frozen topology classes
   **DXF cutting file rather than a modelled component** ([`../requirements.md`](../requirements.md),
   *minimise part count*).
 
+  **The tip is always attached to the spar.** Depending on the planform the wing end
+  is either a **rib** — which must be joined to the rest of the wing, so the spar runs
+  through it — or a **wingtip / winglet**, printed as a shell or sanded from balsa,
+  which is **fastened to** the spar. A fully printed wing may have a **spar-less tip
+  segment**, and that is a *declared construction property, not a strength result*:
+  `wing_segment_type == 'tip'` is explicitly exempt from `VaseModeWingCreator`'s rule
+  that every segment carries at least one spar, because a tip cap is a wing-end cap
+  and not a structural bay (gh-361, `VaseModeWingCreator.py:703-735`).
+  **Where the spar ends is therefore topology, not a computation** — see BR-W10.
+
   Two consequences that are load-bearing for the whole sizing method:
 
   **Neither route has a stressed skin.** Shell and covering contribute nothing to
@@ -133,6 +143,27 @@ building the CAD solid (→ `cad-generation`), and the frozen topology classes
   practice reasons in — *"this wing takes 15 g"* — and the only quantity in the chain
   that can be verified on a bench: invert the wing, support at the joiner, load to
   `n_break × m_total`. Both domain experts arrived at this independently.
+
+- **🔴 GAP — Strength is the only sizing criterion; stiffness is never checked.**
+  The whole chain sizes from `erf_W = M_design / σ_allow` (BR-W5) — a section that does
+  not *break*. Nothing computes deflection, and **no material record carries an
+  E-modulus**: `allowable_bending_stress_mpa` and density are the only structural
+  properties in the contract (`app/schemas/spar_sizing.py:114-115`), so a stiffness
+  criterion is not merely absent, it is **not computable from today's data**.
+
+  Two points the maintainer named (2026-08-17):
+
+  - *"Als Konstrukteur achte ich darauf, dass die Fläche eine gewisse Steifigkeit durch
+    den Holm bekommt."* A tube can pass strength sizing and still be unacceptably soft;
+    in this class deflection and flutter often govern the tube choice before break
+    strength does.
+  - **1 g acts at V = 0.** The wing carries its own weight standing still, producing no
+    lift — a case the aero-derived `M(y)` cannot contain, because it is integrated from
+    a lift distribution.
+
+  Open: whether stiffness enters sizing at all, and if so as a deflection limit or a
+  minimum-`EI` floor. 🔴 **GAP, not Soll** — no decision recorded, no ticket. Raise it
+  with the maintainer before the next spar change lands (see gh-1079's ordering).
 
 - **BR-W5 — Section-modulus sizing is the strength law (gh-1008).** 🟢
   *(module-level BR-W5; this use case is its owner.)* Reference: *kirch
@@ -219,10 +250,22 @@ building the CAD solid (→ `cad-generation`), and the frozen topology classes
   1 mm yields **no piece**, and the region is reported as `front_no_spar_from_y`
   / `rear_no_spar_from_y` rather than a degenerate Ø≈0 tube
   (`spar_solver.py:44-53, 438-457`).
-  🔴 **Soll (gh-1136)** — the *reason* given for the rule, in four places including the
-  public schema, is a D-box that neither route builds (BR-W16). The buildability reason
-  stands on its own; what is genuinely open is whether a no-spar tip region is legitimate
-  for a **built-up** wing, whose film covering cannot carry the residual moment.
+  🔴 **Soll (gh-1136) — the rule has the wrong authority.** Where the spar ends is a
+  construction property (`wing_segment_type == 'tip'`, BR-W16), not something to infer
+  from a strength threshold. Three findings:
+
+  1. The reason given in four places, one of them the **public** schema
+     (`app/schemas/spar_plan.py:309`), is a **D-box that neither route builds**.
+  2. **The reported region is a sampling artefact.** Stations are
+     `linspace(0, 1, n_span)` (`spar_solver.py:745`), `n_span = 6` by default and
+     caller-settable 2–200 (`app/schemas/spar_plan.py:107`). The last station sits at
+     `y_span = 1.0`, where an integrated bending moment is zero, so it always falls
+     below the floor and is always dropped — putting the region's start at **80 % of
+     half-span** by default and at 99.5 % with `n_span = 200`. A number the user sees
+     moves with a discretisation parameter. 🟡 read from the code, not yet measured
+     against a real wing.
+  3. The floor keeps one legitimate job: a **feasibility check** — *"no orderable
+     section this small"* — never the decision of where the spar stops.
 - **BR-W11 — Single-half surfaces force a continuous front joint (gh-1091).** 🟢
   A vertical stabiliser has one half, so `_inboard_collinear` must not index
   into the empty half; the front joint is forced to `"continuous"`.

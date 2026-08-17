@@ -177,6 +177,12 @@ decomposition; and — critically — the **millimetre ↔ metre conversion boun
   **resistance**. `g_limit` is consumed pre-multiplied by `j·k ≈ 3.75`, so the field
   name misstates what it means; `n_break` is the quantity to display (gh-1079).
   Full statement in [`spar-sizing/requirements.md`](spar-sizing/requirements.md).
+- **🔴 GAP — Strength is the only sizing criterion; stiffness is never checked.** No
+  deflection is computed anywhere and no material record carries an E-modulus, so a
+  stiffness criterion is not computable from today's data. The maintainer sizes for
+  stiffness in practice, including the 1 g case at V = 0 that an aero-integrated `M(y)`
+  cannot contain. Open, undecided, no ticket — full statement in
+  [`spar-sizing/requirements.md`](spar-sizing/requirements.md).
 - **BR-W5 — Section-modulus sizing is the strength law (gh-1008).** 🟢 Units: `M`
   in N·m, `σ` in MPa (= N/mm²), dimensions in mm, `W` in mm³, mass in kg. All
   formulas in `design.md` §Structural pipeline.
@@ -206,9 +212,11 @@ decomposition; and — critically — the **millimetre ↔ metre conversion boun
   `NEGLIGIBLE_OD_FLOOR_MM = 1.0`; a tip station whose required OD falls below
   1 mm yields **no piece**, and the region is reported as
   `front_no_spar_from_y` / `rear_no_spar_from_y` rather than a degenerate Ø≈0
-  tube (`spar_solver.py:44-53, 438-457`). 🔴 **Soll (gh-1136)** — the reason given
-  for the rule names a D-box that neither route builds (BR-W16); open whether the
-  region is legitimate for a built-up wing at all.
+  tube (`spar_solver.py:44-53, 438-457`). 🔴 **Soll (gh-1136) — wrong authority.**
+  Where the spar ends is topology (`wing_segment_type == 'tip'`, BR-W16), not a
+  strength inference; the stated reason names a D-box neither route builds; and the
+  region's start is a sampling artefact of `n_span`. Details in
+  [`spar-sizing/requirements.md`](spar-sizing/requirements.md).
 - **BR-W11 — Single-half surfaces force a continuous front joint (gh-1091).** 🟢 A
   vertical stabiliser has one half, so `_inboard_collinear` must not index into
   the empty half.
