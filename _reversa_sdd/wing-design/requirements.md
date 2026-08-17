@@ -37,7 +37,9 @@ decomposition; and — critically — the **millimetre ↔ metre conversion boun
 **Explicitly NOT this module's responsibility:** building the actual CAD solid
 (→ `cad-generation`), running the aerodynamic solvers (→ `aero-analysis`,
 `avl-integration`), the frozen topology classes themselves
-(→ `cad-designer-topology`, read-only per ADR 0002).
+(→ `cad-designer-topology`, read-only per ADR 0002), and **any stiffness,
+deflection or flutter criterion** — spar sizing answers strength only, by
+decision (BR-W18).
 
 ## Business Rules
 
@@ -177,11 +179,12 @@ decomposition; and — critically — the **millimetre ↔ metre conversion boun
   **resistance**. `g_limit` is consumed pre-multiplied by `j·k ≈ 3.75`, so the field
   name misstates what it means; `n_break` is the quantity to display (gh-1079).
   Full statement in [`spar-sizing/requirements.md`](spar-sizing/requirements.md).
-- **🔴 GAP — Strength is the only sizing criterion; stiffness is never checked.** No
-  deflection is computed anywhere and no material record carries an E-modulus, so a
-  stiffness criterion is not computable from today's data. The maintainer sizes for
-  stiffness in practice, including the 1 g case at V = 0 that an aero-integrated `M(y)`
-  cannot contain. Open, undecided, no ticket — full statement in
+- **BR-W18 — Sizing is strength-only by decision; stiffness stays with the designer.** 🟢
+  Maintainer decision, 2026-08-17. No deflection is computed and no material record needs
+  an E-modulus. Accepted consequences: a tube can pass sizing and still be too soft, the
+  1 g case at V = 0 is out of scope, flutter is out of scope — so `feasible = True` means
+  *does not break*, never *stiff enough*. Adding a deflection limit or a minimum-`EI`
+  floor is a **new decision**, not an enhancement. Full statement in
   [`spar-sizing/requirements.md`](spar-sizing/requirements.md).
 - **BR-W5 — Section-modulus sizing is the strength law (gh-1008).** 🟢 Units: `M`
   in N·m, `σ` in MPa (= N/mm²), dimensions in mm, `W` in mm³, mass in kg. All

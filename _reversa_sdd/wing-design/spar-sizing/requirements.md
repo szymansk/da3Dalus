@@ -144,26 +144,32 @@ building the CAD solid (→ `cad-generation`), and the frozen topology classes
   that can be verified on a bench: invert the wing, support at the joiner, load to
   `n_break × m_total`. Both domain experts arrived at this independently.
 
-- **🔴 GAP — Strength is the only sizing criterion; stiffness is never checked.**
-  The whole chain sizes from `erf_W = M_design / σ_allow` (BR-W5) — a section that does
-  not *break*. Nothing computes deflection, and **no material record carries an
-  E-modulus**: `allowable_bending_stress_mpa` and density are the only structural
-  properties in the contract (`app/schemas/spar_sizing.py:114-115`), so a stiffness
-  criterion is not merely absent, it is **not computable from today's data**.
+- **BR-W18 — Sizing is strength-only *by decision*; stiffness stays with the designer.** 🟢
+  *(module-level BR-W18; this use case is its owner.)* **Ist** — maintainer decision,
+  2026-08-17. The chain sizes from `erf_W = M_design / σ_allow` (BR-W5): a section that
+  does not **break**. Deflection is nowhere computed, and that is a **deliberate scope
+  boundary, not a gap**.
 
-  Two points the maintainer named (2026-08-17):
+  **What the boundary buys.** No E-modulus is required in the material record —
+  `allowable_bending_stress_mpa` and density remain the only structural properties in
+  the contract (`app/schemas/spar_sizing.py:114-115`), and the COTS carbon-tube
+  snapshots need no new field. Stiffness is exercised where the maintainer already
+  exercises it: in choosing the tube.
 
-  - *"Als Konstrukteur achte ich darauf, dass die Fläche eine gewisse Steifigkeit durch
-    den Holm bekommt."* A tube can pass strength sizing and still be unacceptably soft;
-    in this class deflection and flutter often govern the tube choice before break
-    strength does.
+  **What the boundary costs — state it, don't paper over it.**
+
+  - A tube can pass sizing and still be unacceptably soft. The tool will not say so.
   - **1 g acts at V = 0.** The wing carries its own weight standing still, producing no
-    lift — a case the aero-derived `M(y)` cannot contain, because it is integrated from
-    a lift distribution.
+    lift — a case an aero-integrated `M(y)` cannot contain, because it comes from a lift
+    distribution. It is out of scope, not merely unmodelled.
+  - Flutter is outside the scope entirely.
+  - Therefore **`feasible = True` means "does not break", never "stiff enough"**, and
+    `n_break` is a strength number. Anyone wording these for the UI must not let them
+    read as a verdict on the wing (the app also serves designers who are not the
+    maintainer — see the module's audience note).
 
-  Open: whether stiffness enters sizing at all, and if so as a deflection limit or a
-  minimum-`EI` floor. 🔴 **GAP, not Soll** — no decision recorded, no ticket. Raise it
-  with the maintainer before the next spar change lands (see gh-1079's ordering).
+  **Adding a deflection limit or a minimum-`EI` floor is a new decision**, recorded here
+  or in an ADR — not an enhancement an implementer may fold into a spar ticket.
 
 - **BR-W5 — Section-modulus sizing is the strength law (gh-1008).** 🟢
   *(module-level BR-W5; this use case is its owner.)* Reference: *kirch
