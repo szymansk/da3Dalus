@@ -15,6 +15,43 @@ kommentiert, gelabelt oder geschlossen.
 
 ---
 
+---
+
+## Status — abgeschlossen 2026-08-17
+
+| | |
+|---|---|
+| Issues geprüft | **82 / 82** |
+| Kollisionen bearbeitet | **28 / 28** |
+| geschlossen | 13 |
+| Tickets aus dem Interview-Rückstand | #1096–#1122 (27) |
+| **neue Defekte aus dem Audit** | **#1124–#1134 (12)** |
+| Spec-Fehler korrigiert | 4 (`Q-VS-2`, zwei Freeze-Zeilen, BR-W8) |
+
+### Vier Maintainer-Entscheidungen bleiben offen
+
+1. **`n_max`-Bänder je Kategorie** (#1079) — Spec führt 1.5–2, die realen Flugzeuge tragen
+   `g_limit` 3.0 / 5.0 / 5.3. Das Band liegt **unter der gelebten Praxis**. Vor der
+   Festlegung Domänenexperten befragen (Scholz führend, RC-Praxis ergänzend).
+2. **Carve-out für #762** als ADR-0002-§6-Amendment festschreiben (Muster gh-934).
+3. **#57 Teil B** — `.py`-Upload jetzt oder bei Bedarf. Entwurf steht.
+4. **#902 `run_python`-Sandbox** — dieselbe Klasse wie der verworfene Teil von #57.
+
+### Abhängigkeitskette im Manöver-Strang
+
+**#1126 → #1134 → #1079.** #1126 löst die Hartkodierung `n = 1.0` in den V-n-Markern;
+#1134 macht `n` zur Eingabe von Manöver-Betriebspunkten und löst nach V auf (heute wird V
+vorgegeben und die App **warnt** nur, dass sie zu niedrig ist) und ergänzt `V_A` als siebte
+KPI; #1079 fügt danach die Hochlast-Punkte hinzu.
+
+### Zwei Defekte unabhängig davon vorziehen
+
+- **#1098** — Immutability nicht durchgesetzt; **ADR 0007 ruht darauf**.
+- **#1132** — vordere CG-Grenze fällt still auf den 0.30·MAC-Stub zurück und treibt über
+  `sm_max_fwd` die Empfehlung *„Flügel nach vorn"*. Vorbedingung für #1131.
+
+---
+
 ## 1. Überholt — Kandidaten zum Schließen (12)
 
 | # | Grund | Beleg |
