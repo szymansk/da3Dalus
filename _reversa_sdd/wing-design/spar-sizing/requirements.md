@@ -77,6 +77,44 @@ building the CAD solid (→ `cad-generation`), and the frozen topology classes
   > who assumed a stressed-skin wing would judge this method too conservative;
   > one who assumed a bonded shell would look for a joint that does not exist.
 
+- **BR-W4b — The margin is a two-sided partial-factor format, and the total is hidden.**
+  🟡 **Ist** — established with the domain experts 2026-08-17, recorded here because
+  the code carries the factors without naming what each one guards against.
+
+  ```
+  M_break = M(1g) · n_limit · j · k        with  j = 1.5  and  k = σ-record's SF
+  ```
+
+  | factor | sits on | guards against |
+  |---|---|---|
+  | **`j = 1.5`** (`safety_factor_j`) | the **load** | the service load being exceeded — gust, misjudgement, more stick than planned. *Sicherheitszahl*, hence the German-notation name `j`. Limit load → ultimate load: nothing deforms permanently below limit, nothing breaks below ultimate. CS-23.303 / CS-25.303; Sadraey Eq. (10.4). |
+  | **`k`** (`sigma_allow_sf` in the material record) | the **resistance** | the datasheet strength not being what the part delivers — fibre waviness, voids, moisture, scatter |
+
+  `j` asks *how much more load than planned*; `k` asks *how much less strength than
+  promised*. **They are not double-counting.** In CS-23/CS-25 the 1.5 sits on top of an
+  **A- or B-basis allowable** — a statistical lower bound from a coupon programme, so
+  the statistics live *inside* `σ_allow` and are invisible in the 1.5. No one sizing a
+  0.5–15 kg airframe will ever have A/B-basis allowables; **`k` is the substitute for the
+  statistical basis this class cannot produce**, not extra padding.
+
+  ⚠️ **Three interface defects follow from this and are not yet fixed** (→ gh-1079):
+
+  1. **`g_limit` is not a load factor as consumed.** It is multiplied by `j · k` ≈ 3.75
+     before it means anything, so a field named `g_limit = 3` describes a wing that
+     breaks at **11.3 g**. Every reader misreads it (ADR 0019, ADR 0022).
+  2. **`j` is unreadable without German strength-of-materials literature**, and the
+     schema defines it circularly: *"Safety factor applied to M_design = |M|·g_limit·j."*
+  3. **`k` is a property of the supplier record, not a design choice** — it is
+     pre-divided into `allowable_bending_stress_mpa`, so two snapshots with different
+     SF would not be noticed. (The current data *is* process-differentiated: 2.5 for
+     roll-wrapped twill, 2.0 for pultruded — with one pultruded entry inconsistently
+     at 2.5.)
+
+  **`n_break = n_limit · j · k` is the number to display.** It is the language RC
+  practice reasons in — *"this wing takes 15 g"* — and the only quantity in the chain
+  that can be verified on a bench: invert the wing, support at the joiner, load to
+  `n_break × m_total`. Both domain experts arrived at this independently.
+
 - **BR-W5 — Section-modulus sizing is the strength law (gh-1008).** 🟢
   *(module-level BR-W5; this use case is its owner.)* Reference: *kirch
   Hauptholm*. Units are fixed and load-bearing: `M` in **N·m**, `σ` in **MPa**
