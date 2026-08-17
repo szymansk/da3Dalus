@@ -305,14 +305,44 @@ building the CAD solid (→ `cad-generation`), and the frozen topology classes
   Two questions are conflated: *is the wing split at the centre* (a build decision) and *do
   the half-spars line up* (geometry). Only the second is knowable from today's model.
 
-  The reinforcement is also **front-spar only** — the rear path picks `continuous` /
-  `bent-pin` and never emits one (`spar_solver.py:689-695`). 🔴 **GAP** — whether the
-  torsion spar needs a centre piece is not decided.
+  **The rear spar has one too** (maintainer, 2026-08-17) — *"schon allein zur Verbindung
+  und als Führung"*. Today only the front path can emit a reinforcement; the rear picks
+  `continuous` / `bent-pin` and never emits one (`spar_solver.py:689-695`). Both halves are
+  joined at the root by an **internally plugged spar**, so the centre piece is what makes
+  the wing one wing.
 
   🔴 **GAP — where the flag lives.** A `SparPlanRequest` field is cheap but leaves the
   persisted spars without a record of which assumption produced them; a persisted wing
   property costs a migration and makes the plan explainable later. Recommendation:
   persisted. Open.
+
+- **BR-W25 — The centre joint carries shear, and shear is nowhere checked.** 🔴 **Soll
+  (gh-1141)** — maintainer, 2026-08-17: *"Wir verbinden beide Wurzeln mit einem innen
+  gesteckten Holm. **Der darf auch nicht abscheeren.**"*
+
+  The centre piece does two jobs at once:
+
+  - **load transfer** — the half-wing's whole lift crosses the centre through it;
+  - **alignment** — it is the *Führung* that locates the two halves against each other.
+
+  The second is why it exists even on a wing that would not structurally need it, and why
+  both spars get one.
+
+  **The criterion is missing.** The entire chain sizes on bending — `erf_W = M_design/σ_allow`
+  (BR-W5) — and nothing anywhere computes a shear stress. Sizing a joiner only for bending
+  answers the wrong failure mode: a plugged rod fails in **shear at the interface**, not by
+  bending in its middle.
+
+  **The data already exists and is thrown away.** gh-1002 computes `shear_N` per station
+  plus `root_shear_N_starboard` / `root_shear_N_port` — *"peak shear at the root"*, exactly
+  the load the centre joiner sees (`app/schemas/spanwise_loads.py:29-60`). The spar plan's
+  own input contract carries **only** `bending_moment_Nm` (`app/schemas/spar_plan.py:20-32`),
+  so `V(y)` is dropped at that boundary. Carrying it through is a plumbing change, not new
+  physics.
+
+  Shear is present at **every** joint, the centre one being the critical case (highest `V`,
+  and the section is interrupted there). Bending governs elsewhere on a slender spar, which
+  is why the omission has gone unnoticed.
 
 - **BR-W5 — Section-modulus sizing is the strength law (gh-1008).** 🟢
   *(module-level BR-W5; this use case is its owner.)* Reference: *kirch

@@ -214,7 +214,12 @@ decision (BR-W18).
   🔴 **Soll (gh-1141)** — two halves → joiner on by default; one continuous surface → none;
   non-collinear half-spars → forced on. Today it is decided by collinearity alone, so a
   **flat wing built in two halves gets no joiner** — a manufacturing choice read off a
-  geometry test.
+  geometry test. Applies to **both** spars; only the front path can emit one today.
+- **BR-W25 — The centre joint carries shear, and shear is nowhere checked.** 🔴 **Soll
+  (gh-1141)** — both roots are joined by an internally plugged spar that transfers the
+  half-wing's lift and aligns the halves; it must not shear off. Sizing is bending-only, and
+  gh-1002 already computes `shear_N` and the peak root shear — the spar plan's input
+  contract carries only `bending_moment_Nm`, so `V(y)` is dropped at that boundary.
 - **BR-W5 — Section-modulus sizing is the strength law (gh-1008).** 🟢 Units: `M`
   in N·m, `σ` in MPa (= N/mm²), dimensions in mm, `W` in mm³, mass in kg. All
   formulas in `design.md` §Structural pipeline.
