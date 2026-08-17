@@ -46,6 +46,37 @@ building the CAD solid (→ `cad-generation`), and the frozen topology classes
 
 > IDs are inherited verbatim from [`../requirements.md`](../requirements.md).
 
+- **BR-W4 — The structural model is a two-spar wing with a non-structural shell.** 🟢
+  **Ist** — maintainer-stated 2026-08-17, and the reason every rule below is
+  shaped the way it is.
+
+  | member | carries |
+  |---|---|
+  | front spar | the primary **bending** moment, alone |
+  | rear spar | the **torsion** couple, reacted over the front–rear chordwise spacing |
+  | printed shell | aerodynamic shape and air-load transfer — **not** a structural member |
+
+  Two consequences that are load-bearing for the whole sizing method:
+
+  **The shell is not stressed skin.** It contributes nothing to bending stiffness,
+  so the spar is sized as if it stood alone — which it does. A conventional
+  built-up wing would let a bonded D-box carry torsion and part of the bending;
+  this one does not.
+
+  **The spar is deliberately not bonded to the shell**, so the two can move
+  relative to each other. There is therefore no adhesive joint to size between
+  them — the transfer path is bearing at the ribs, not a bond line.
+
+  This is why `_make_rear_moment_fn` sizes the rear member from `T(y)/spacing`
+  rather than from the bending moment (gh-1038): with no torsion-carrying skin,
+  the front–rear pair **is** the torsion structure. Were the shell bonded and
+  stressed, that model would be wrong and the front spar over-sized.
+
+  > Recorded because the assumption was previously implicit in the code and
+  > nowhere in the specification, while every spar result depends on it. A reader
+  > who assumed a stressed-skin wing would judge this method too conservative;
+  > one who assumed a bonded shell would look for a joint that does not exist.
+
 - **BR-W5 — Section-modulus sizing is the strength law (gh-1008).** 🟢
   *(module-level BR-W5; this use case is its owner.)* Reference: *kirch
   Hauptholm*. Units are fixed and load-bearing: `M` in **N·m**, `σ` in **MPa**
