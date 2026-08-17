@@ -46,40 +46,59 @@ building the CAD solid (→ `cad-generation`), and the frozen topology classes
 
 > IDs are inherited verbatim from [`../requirements.md`](../requirements.md).
 
-- **BR-W4 — The structural model is a two-spar wing with a non-structural shell.** 🟢
-  **Ist** — maintainer-stated 2026-08-17, and the reason every rule below is
-  shaped the way it is.
+- **BR-W16 — The structural model is a two-spar wing whose skin carries no load.** 🟢
+  *(module-level BR-W16; this use case is its owner.)* **Ist** — maintainer-stated
+  2026-08-17, and the reason every rule below is shaped the way it is. It holds for
+  **both** manufacturing routes.
 
   | member | carries |
   |---|---|
   | front spar | the primary **bending** moment, alone |
   | rear spar | the **torsion** couple, reacted over the front–rear chordwise spacing |
-  | printed shell | aerodynamic shape and air-load transfer — **not** a structural member |
+  | skin — printed shell *or* film covering | aerodynamic shape and air-load transfer — **not** a structural member |
+  | rib (built-up wing) | transfers the local air load **into** the spar — carries none of it onward |
+
+  **Printed wing.** The shell is printed around the spars and deliberately **not
+  bonded** to them, so the two can move relative to each other. There is no
+  adhesive joint to size between spar and shell.
+
+  **Built-up (wooden-rib) wing.** The ribs are fixed to the spar, and the wing is
+  covered with a **film that conforms to the load** rather than resisting it. A rib
+  is a shape-holder and a transfer path into the spar; it is not sized for load
+  itself. This is the structural reason behind the part-count rule that makes ribs a
+  **DXF cutting file rather than a modelled component** ([`../requirements.md`](../requirements.md),
+  *minimise part count*).
 
   Two consequences that are load-bearing for the whole sizing method:
 
-  **The shell is not stressed skin.** It contributes nothing to bending stiffness,
-  so the spar is sized as if it stood alone — which it does. A conventional
-  built-up wing would let a bonded D-box carry torsion and part of the bending;
-  this one does not.
+  **Neither route has a stressed skin.** Shell and covering contribute nothing to
+  bending stiffness, so the spar is sized as if it stood alone — which it does. A
+  conventional built-up wing lets a bonded **D-box** carry torsion and part of the
+  bending; **neither route here builds one**, and a film covering cannot form a
+  torsion box at all.
 
-  **The spar is deliberately not bonded to the shell**, so the two can move
-  relative to each other. There is therefore no adhesive joint to size between
-  them — the transfer path is bearing at the ribs, not a bond line.
-
-  This is why `_make_rear_moment_fn` sizes the rear member from `T(y)/spacing`
-  rather than from the bending moment (gh-1038): with no torsion-carrying skin,
-  the front–rear pair **is** the torsion structure. Were the shell bonded and
-  stressed, that model would be wrong and the front spar over-sized.
+  **Torsion is therefore always the second spar's job.** This is why
+  `_make_rear_moment_fn` sizes the rear member from `T(y)/spacing` rather than from
+  the bending moment (gh-1038): with no torsion-carrying skin, the front–rear pair
+  **is** the torsion structure. Were the skin bonded and stressed, that model would
+  be wrong and the front spar over-sized.
 
   > Recorded because the assumption was previously implicit in the code and
   > nowhere in the specification, while every spar result depends on it. A reader
   > who assumed a stressed-skin wing would judge this method too conservative;
   > one who assumed a bonded shell would look for a joint that does not exist.
+  > **Both misreadings are already in the tree**: the no-spar tip region is justified
+  > in four places — one of them the *public* API schema — by *"the D-box skin + ribs
+  > carry the tip"* (**gh-1136**). No behaviour depends on it, but removing the wrong
+  > reason exposes a real question: a printed shell can carry a near-zero tip moment
+  > incidentally, a film covering cannot, so the no-spar region may be
+  > **printed-wing-only**. 🔴 **Soll** — to be answered in this rule before the rib
+  > Creator lands (gh-1136 Part B).
 
-- **BR-W4b — The margin is a two-sided partial-factor format, and the total is hidden.**
-  🟡 **Ist** — established with the domain experts 2026-08-17, recorded here because
-  the code carries the factors without naming what each one guards against.
+- **BR-W17 — The margin is a two-sided partial-factor format, and the total is hidden.**
+  🟡 *(module-level BR-W17; this use case is its owner.)* **Ist** — established with the
+  domain experts 2026-08-17, recorded here because the code carries the factors without
+  naming what each one guards against.
 
   ```
   M_break = M(1g) · n_limit · j · k        with  j = 1.5  and  k = σ-record's SF
@@ -200,6 +219,10 @@ building the CAD solid (→ `cad-generation`), and the frozen topology classes
   1 mm yields **no piece**, and the region is reported as `front_no_spar_from_y`
   / `rear_no_spar_from_y` rather than a degenerate Ø≈0 tube
   (`spar_solver.py:44-53, 438-457`).
+  🔴 **Soll (gh-1136)** — the *reason* given for the rule, in four places including the
+  public schema, is a D-box that neither route builds (BR-W16). The buildability reason
+  stands on its own; what is genuinely open is whether a no-spar tip region is legitimate
+  for a **built-up** wing, whose film covering cannot carry the residual moment.
 - **BR-W11 — Single-half surfaces force a continuous front joint (gh-1091).** 🟢
   A vertical stabiliser has one half, so `_inboard_collinear` must not index
   into the empty half; the front joint is forced to `"continuous"`.

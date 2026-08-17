@@ -165,6 +165,18 @@ decomposition; and — critically — the **millimetre ↔ metre conversion boun
 
 ### Structure
 
+- **BR-W16 — The structural model is a two-spar wing whose skin carries no load.** 🟢
+  Front spar takes bending alone, rear spar takes torsion over the chordwise spacing.
+  Neither route has a stressed skin: the printed shell is deliberately **unbonded**,
+  and a built-up wing's ribs transfer load **into** the spar under a film covering
+  that conforms to load rather than resisting it. **No D-box exists in either route.**
+  Premise of every rule below — full statement and consequences in
+  [`spar-sizing/requirements.md`](spar-sizing/requirements.md).
+- **BR-W17 — The margin is a two-sided partial-factor format.** 🟡
+  `M_break = M(1g) · n_limit · j · k`, with `j = 1.5` on the **load** and `k` on the
+  **resistance**. `g_limit` is consumed pre-multiplied by `j·k ≈ 3.75`, so the field
+  name misstates what it means; `n_break` is the quantity to display (gh-1079).
+  Full statement in [`spar-sizing/requirements.md`](spar-sizing/requirements.md).
 - **BR-W5 — Section-modulus sizing is the strength law (gh-1008).** 🟢 Units: `M`
   in N·m, `σ` in MPa (= N/mm²), dimensions in mm, `W` in mm³, mass in kg. All
   formulas in `design.md` §Structural pipeline.
@@ -194,7 +206,9 @@ decomposition; and — critically — the **millimetre ↔ metre conversion boun
   `NEGLIGIBLE_OD_FLOOR_MM = 1.0`; a tip station whose required OD falls below
   1 mm yields **no piece**, and the region is reported as
   `front_no_spar_from_y` / `rear_no_spar_from_y` rather than a degenerate Ø≈0
-  tube (`spar_solver.py:44-53, 438-457`).
+  tube (`spar_solver.py:44-53, 438-457`). 🔴 **Soll (gh-1136)** — the reason given
+  for the rule names a D-box that neither route builds (BR-W16); open whether the
+  region is legitimate for a built-up wing at all.
 - **BR-W11 — Single-half surfaces force a continuous front joint (gh-1091).** 🟢 A
   vertical stabiliser has one half, so `_inboard_collinear` must not index into
   the empty half.
