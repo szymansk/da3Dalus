@@ -1,8 +1,53 @@
-# Ein prüfbarer Rechenkernel
-
-**Konzept und erster Durchstich**
-*Stand 2026-08-18 · Pfad 1 „Geschwindigkeiten" · alle Einträge `status: draft`*
-
+---
+title: "Ein prüfbarer Rechenkernel"
+subtitle: "Konzept und erster Durchstich"
+author: |
+  | da3Dalus — Rechenkanon
+  | Pfad 1 „Geschwindigkeiten“ · alle Einträge `status: draft`
+date: "18. August 2026"
+lang: de
+documentclass: scrartcl
+classoption:
+  - 11pt
+  - DIV=11
+  - parskip=half-
+geometry:
+  - a4paper
+  - margin=2.4cm
+  - headsep=1em
+mainfont: "STIX Two Text"
+mainfontoptions:
+  - Numbers=OldStyle
+monofont: "Menlo"
+monofontoptions:
+  - Scale=0.80
+colorlinks: true
+linkcolor: akzent
+urlcolor: akzent
+toccolor: black
+toc: true
+toc-depth: 2
+numbersections: false
+header-includes: |
+  \usepackage{xcolor}
+  \usepackage{amssymb}
+  \usepackage{booktabs}
+  \usepackage{longtable}
+  \usepackage{microtype}
+  \definecolor{okgreen}{HTML}{1B7F3B}
+  \definecolor{midamber}{HTML}{B4690E}
+  \definecolor{badred}{HTML}{B02A21}
+  \definecolor{neutral}{HTML}{8A8F98}
+  \definecolor{akzent}{HTML}{1F4E79}
+  \newcommand{\statusok}{\textcolor{okgreen}{$\bullet$}}
+  \newcommand{\statusmid}{\textcolor{midamber}{$\bullet$}}
+  \newcommand{\statusbad}{\textcolor{badred}{$\bullet$}}
+  \newcommand{\statusna}{\textcolor{neutral}{$\circ$}}
+  \newcommand{\statusyes}{\textcolor{okgreen}{$\checkmark$}}
+  \newcommand{\statuswarn}{\textcolor{midamber}{\textbf{!}}}
+  \setlength{\emergencystretch}{2em}
+  \usepackage{sectsty}
+  \allsectionsfont{\normalfont\sffamily\bfseries\color{akzent}}
 ---
 
 ## 1. Das Problem
