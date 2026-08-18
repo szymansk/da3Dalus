@@ -60,6 +60,7 @@ Two different laws for the same quantity. field_length_service applies a flap-ty
 - [ ] **Scale** — holds at 0.5–15 kg, or the limitation is written down (ADR 0023)
 - [ ] **Dimensions** — the check balances
 - [ ] **Implementations** — all agree, or each deviation is declared and justified
+- [ ] **Preconditions** — every binding condition holds, or the violation is ticketed
 - [ ] **Inputs approved** — no formula is approvable before its inputs are
 
 > While `status: draft` this entry **cites nothing and decides nothing**.

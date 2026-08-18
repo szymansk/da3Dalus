@@ -49,6 +49,7 @@ RC-Network tabulates MJ/kg; the app uses Wh/kg. 1 MJ = 0.2778 kWh, so 0.55 MJ/kg
 - [ ] **Scale** — holds at 0.5–15 kg, or the limitation is written down (ADR 0023)
 - [ ] **Dimensions** — the check balances
 - [ ] **Implementations** — all agree, or each deviation is declared and justified
+- [ ] **Preconditions** — every binding condition holds, or the violation is ticketed
 - [ ] **Inputs approved** — no formula is approvable before its inputs are
 
 > While `status: draft` this entry **cites nothing and decides nothing**.

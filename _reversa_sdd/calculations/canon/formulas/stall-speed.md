@@ -39,6 +39,48 @@ Three genuinely different laws produce V_S across six producers. (a) Lift balanc
 > Two or more implementations use **genuinely different laws** for this quantity.
 > This is the entry that must be decided, not merely read.
 
+## Applications (3)
+
+One law, bound differently. Each application is approved separately, **after** the formula.
+
+| application | binds | exists when | implementations |
+|---|---|---|---|
+| `v_stall_clean_mps` | `cl_max` = [[cl_max_clean]], `rho` = [[air_density_at_altitude]] | always | [[fe_v_stall]] · [[v-stall]] |
+| `v_stall_takeoff_mps` | `cl_max` = [[cl_max_takeoff]], `rho` = [[air_density_at_altitude]] | the wing carries a flap | [[v-stall-to-fl]] |
+| `v_stall_landing_mps` | `cl_max` = [[cl_max_landing]], `rho` = [[air_density_at_altitude]] | the wing carries a flap | [[v-stall-ldg-fl]] |
+
+## Preconditions on the bindings
+
+The formula is exact. These are the conditions its **inputs** must satisfy for an
+application of it to mean what it claims. A violated precondition is a defect of the
+path, not of the law.
+
+### `cl_max` — 🔴 **violated**
+
+**Requirement.** Evaluated at the Reynolds number of the stall condition itself, not at cruise and not from a 2D table at Re ~ 1e6.
+
+**Why it decides the answer.** C_L,max is a function of Reynolds number, steeply so in the model range: at low Re the boundary layer stays laminar further aft, separates against the adverse gradient and forms a laminar separation bubble that caps the suction peak. Lennon (Basics of R/C Model Aircraft Design, ch. 1-3) documents NACA 0012 falling from C_L,max 1.55 to 0.83 across the model Re range, with the stall angle dropping 17 deg to 10 deg. Since V_S ~ C_L,max^-0.5, the binding decides the answer.
+
+**Consequence.** V_stall is therefore an IMPLICIT equation at model scale: V_S depends on C_L,max(Re) and Re depends on V_S. It needs a fixed point, or a C_L,max evaluated at the stall condition and said so.
+
+**In the code.** _fine_sweep_cl_max (app/services/assumption_compute_service.py:1141-1209) sweeps a velocity x alpha grid from v_stall_approx = max(v_cruise*0.5, 3.0) to v_max and then takes cl_max = float(np.max(cl_arr)) — the maximum over ALL velocities. AeroBuildup gets its section data from NeuralFoil, which IS Reynolds dependent, so the low-speed samples genuinely carry a lower C_L. Taking the max picks the FASTEST sample and uses it to compute the speed at the SLOWEST point of the envelope.
+
+**Direction.** UNSAFE — C_L,max too high, so V_stall is reported too low: the aircraft stalls sooner than the app says.
+
+**Also.** The sampled range often misses the point entirely. A typical trainer has V_cruise/V_stall ~ 2.2, so V_stall ~ 0.45*V_cruise — just below the grid's lower bound.
+
+**Test that settles it.** Sweep C_L,max(V) instead of max-over-all and compare the value at the low end of the range against the high end. If they diverge, the fixed-point iteration is required; if they do not, today's simplification is evidenced rather than assumed.
+
+### `rho` — 🔴 **violated**
+
+**Requirement.** The density of the altitude the speed is evaluated at.
+
+**Why it decides the answer.** The V-n curve and the speed polar otherwise report two different stall speeds for one aircraft above sea level.
+
+**In the code.** compute_vn_curve(rho: float = 1.225) — the only caller never passes rho (flight_envelope_service.py:288, :689).
+
+**Direction.** The V-n envelope is always a sea-level result, silently.
+
 ## Implementations (7)
 
 | node | claimed | verified | deviation |
@@ -57,6 +99,7 @@ Three genuinely different laws produce V_S across six producers. (a) Lift balanc
 - [ ] **Scale** — holds at 0.5–15 kg, or the limitation is written down (ADR 0023)
 - [ ] **Dimensions** — the check balances
 - [ ] **Implementations** — all agree, or each deviation is declared and justified
+- [ ] **Preconditions** — every binding condition holds, or the violation is ticketed
 - [ ] **Inputs approved** — no formula is approvable before its inputs are
 
 > While `status: draft` this entry **cites nothing and decides nothing**.

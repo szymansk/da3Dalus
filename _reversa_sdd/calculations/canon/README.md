@@ -148,6 +148,29 @@ Three gates before `approved`:
 3. **Implementations** — every implementing node either agrees, or its deviation is
    declared and justified.
 
+### Preconditions belong to the binding
+
+A formula can be exact and its application still wrong, because the inputs bound to it do
+not mean what the law assumes. Those conditions are recorded **on the application**, not
+in a separate list of findings — the whole point of the canon is that a finding lives
+where it binds the calculation.
+
+The stall speed is the case that made this necessary. `V_S = sqrt(2W/(rho·S·C_L,max))` is
+exact. But `C_L,max` is a function of Reynolds number, steeply so in the model range: at
+low Re the boundary layer stays laminar further aft, separates against the adverse
+gradient, and forms a laminar separation bubble that caps the suction peak. So the law
+only means "stall speed" if `C_L,max` was evaluated **at the stall condition** — which
+makes `V_S` an implicit equation, since Re depends on `V_S` in turn.
+
+The application therefore carries the requirement, its consequence, whether the code holds
+it (🟢 held · 🔴 violated · ⚪ unchecked), and **the test that settles it**. A violated
+precondition is a defect of the path, not of the law.
+
+This is what turns the canon into a computation kernel rather than a document: the
+formulas say what is true, the applications say under which bindings, and the
+preconditions say what has to hold for the binding to mean anything. Each of the three is
+separately approvable and separately testable.
+
 ### Two stages
 
 Approval happens twice, and the order matters.

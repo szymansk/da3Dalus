@@ -49,6 +49,7 @@ Sadraey §5.6 is explicit that AR = b^2/S is "only valid when area equals span x
 - [ ] **Scale** — holds at 0.5–15 kg, or the limitation is written down (ADR 0023)
 - [ ] **Dimensions** — the check balances
 - [ ] **Implementations** — all agree, or each deviation is declared and justified
+- [ ] **Preconditions** — every binding condition holds, or the violation is ticketed
 - [ ] **Inputs approved** — no formula is approvable before its inputs are
 
 > While `status: draft` this entry **cites nothing and decides nothing**.
