@@ -1,0 +1,378 @@
+---
+title: "Pfad 3 — Masse, Schwerpunkt, Stabilitätsreserve"
+subtitle: "Der Rechenpfad mit Herkunftsnachweis"
+author: |
+  | da3Dalus — Rechenkanon
+  | 61 Größen · 46 Formeln · alle Einträge `status: draft`
+date: "18. August 2026"
+lang: de
+documentclass: scrartcl
+classoption:
+  - 11pt
+  - DIV=11
+  - parskip=half-
+geometry:
+  - a4paper
+  - margin=2.3cm
+mainfont: "STIX Two Text"
+monofont: "Menlo"
+monofontoptions:
+  - Scale=0.78
+colorlinks: true
+linkcolor: akzent
+urlcolor: akzent
+toc: true
+toc-depth: 2
+numbersections: false
+header-includes: |
+  \usepackage{xcolor}
+  \usepackage{amssymb}
+  \usepackage{booktabs}
+  \usepackage{longtable}
+  \usepackage{microtype}
+  \usepackage{graphicx}
+  \definecolor{okgreen}{HTML}{1B7F3B}
+  \definecolor{midamber}{HTML}{B4690E}
+  \definecolor{badred}{HTML}{B02A21}
+  \definecolor{neutral}{HTML}{8A8F98}
+  \definecolor{akzent}{HTML}{1F4E79}
+  \newcommand{\statusok}{\textcolor{okgreen}{$\bullet$}}
+  \newcommand{\statusmid}{\textcolor{midamber}{$\bullet$}}
+  \newcommand{\statusbad}{\textcolor{badred}{$\bullet$}}
+  \newcommand{\statusna}{\textcolor{neutral}{$\circ$}}
+  \newcommand{\statusyes}{\textcolor{okgreen}{$\checkmark$}}
+  \newcommand{\statuswarn}{\textcolor{midamber}{\textbf{!}}}
+  \setlength{\emergencystretch}{2em}
+  \usepackage{sectsty}
+  \allsectionsfont{\normalfont\sffamily\bfseries\color{akzent}}
+---
+
+## 1. Warum dieser Pfad zuerst
+
+Er liegt **stromaufwärts von allem anderen.** Die Masse geht in jede veröffentlichte
+Geschwindigkeit ein, der Schwerpunkt in jede Stabilitätsaussage, und beide in die Frage,
+wo der Flügel sitzen muss.
+
+Bei der Freigabe von Pfad 1 habe ich `aircraft-mass` als Eingangsgröße abgehakt, ohne den
+Erzeuger zu prüfen. Die eigene Regel des Kanons — *eine Formel ist erst freigebbar, wenn
+ihre Eingänge freigegeben sind* — war damit verletzt. Dieses Dokument holt das nach.
+
+**61 kanonische Größen, 46 Formeln**, aus 110 Registerknoten zusammengezogen. 18 Knoten
+stehen ausdrücklich außerhalb des Gerüsts, jeder mit typisierter Begründung.
+
+### Was hier nicht als Befund gilt
+
+Nach **ADR 0011** ist der Schwerpunkt ein **Auslegungsziel von oben**, keine Summe von
+unten: Der Konstrukteur wählt die Stabilitätsreserve, der Schwerpunkt folgt daraus. Kein
+Flugzeug in der Datenbank ist detailliert genug für eine Komponenten-CG-Rechnung, und das
+ist der normale Zustand eines iterativen Entwurfs.
+
+*„Der Komponentenbaum hat keine Positionen"* ist deshalb **kein Fund**, sondern eine
+Beschreibung, wo die Iteration gerade steht.
+
+---
+
+## 2. Der Pfad
+
+```mermaid
+flowchart TD
+  classDef inp fill:#eef3f8,stroke:#5a7fa6,color:#173a5e
+  classDef drv fill:#ffffff,stroke:#8a8f98,color:#222
+  classDef out fill:#eaf5ee,stroke:#3d8a5a,color:#14432a
+  classDef bad fill:#fdecea,stroke:#b02a21,stroke-width:2px,color:#7d1d16
+  classDef dead fill:#f2f2f2,stroke:#aaaaaa,stroke-dasharray:5 4,color:#666
+
+  MI["Komponenten m_i, n"]:::inp
+  RHO["Dichte, Volumen, Flaeche"]:::inp
+  TW["Wandstaerke t_wall<br/>0.4 mm ersetzt"]:::bad
+  MOWN["m_own je Knoten<br/>Vorrangkette"]:::drv
+  MSUM["m_total = Sum m_i<br/>drei Indexmengen"]:::bad
+  MEFF["m effektiv<br/>1.5 kg vs 1.0 kg"]:::bad
+  W["W = m g"]:::drv
+
+  SOLV["AeroBuildup"]:::inp
+  XNP["x_NP<br/>zwei Laeufe"]:::bad
+  MAC["MAC<br/>Hauptfluegel vs c_ref"]:::bad
+  SMT["SM_target<br/>0.12 / 0.10 / 0.08"]:::bad
+
+  SM["SM = (x_NP - x_cg) / MAC"]:::out
+  SMD["SM = -Cm_a / CL_a"]:::out
+  CGD["x_cg = x_NP - SM MAC"]:::out
+
+  LI["Ladefaelle m_i, x_i"]:::inp
+  CGS["x_cg je Ladefall"]:::drv
+  CGFA["x_cg vorn / hinten"]:::out
+  CGFWD["Vorderes CG-Limit<br/>0.30 MAC Stub"]:::dead
+  ENV["CG-Huellkurve<br/>+ Klassifikation"]:::out
+
+  SH["S_H, l_H<br/>kommen nie an"]:::bad
+  AVH["a_VH = 0.10 immer"]:::dead
+  DSM["dSM/dx, dSM/dS_H"]:::dead
+  SUG["Fluegelversatz<br/>Leitwerksskalierung"]:::bad
+
+  MI --> MOWN
+  RHO --> MOWN
+  TW --> MOWN
+  MOWN --> MSUM --> MEFF --> W
+  MEFF --> CGS
+
+  SOLV --> XNP
+  SOLV --> MAC
+  SOLV --> SMD
+  XNP --> SM
+  MAC --> SM
+  XNP --> CGD
+  MAC --> CGD
+  SMT --> CGD
+  SMT --> ENV
+
+  LI --> CGS --> CGFA --> ENV
+  CGD --> ENV
+  CGFWD --> ENV
+  SM --> ENV
+
+  SH --> AVH --> DSM --> SUG
+  MAC --> DSM
+  SM --> SUG
+```
+
+\statusbad{} rot: eine Größe mit auseinandergelaufenen Kopien oder verletzter
+Vorbedingung. Grau gestrichelt: erreicht die Physik nie.
+
+Die Kette hat drei Stränge, die erst ganz rechts zusammenlaufen: **Masse** aus dem
+Komponentenbaum, **Aerodynamik** aus dem Solver, **Ladefälle** aus den Gewichtsposten. Der
+vierte Strang — die Korrekturvorschläge unten — hängt an Leitwerksgeometrie, die den
+Dienst nie erreicht.
+
+---
+
+## 3. Die Kette im Einzelnen
+
+### 3.1 Vom Bauteil zur Masse
+
+**`node-own-weight-precedence`** · `rating` · Vorrangkette
+`m_own = erster definierter Wert aus [ Handeingabe, Katalogmasse, CAD-Masse ]`
+
+Kein Naturgesetz, sondern eine **Reihung nach Direktheit** — Sadraey §10.4 ordnet die
+Gewichtsquellen so: gemessene und veröffentlichte Daten vor Volumen × Dichte. Die
+Freigabefrage lautet hier nicht *„stimmt die Formel"*, sondern *„ist das deine Reihung"*.
+
+**`cad-shape-mass-from-density`** · `law` · \statusmid{} PARTIAL
+`m = ρ · V · k_scale`, mit `V = V_solid` oder `V = A · t_wall`
+
+Sadraey §10.4, Quelle 1: Masse = Volumen × Dichte, mit dem dimensionslosen Dichtefaktor
+`K_ρ` — hier `node-scale-factor` — der Infill, Stützen und Extrusionsfehler aufnimmt.
+
+> \statusbad{} **`t_wall` wird still durch 0,4 mm ersetzt**, wenn der Materialdatensatz
+> keine Druckauflösung führt. 0,4 mm ist **eine** Extrusionsbahn an einer 0,4-mm-Düse;
+> reale Schalen auf diesem Projekt haben zwei bis drei Perimeter. Die Schalenmasse ist
+> linear in `t_wall`, also ist die Masse um **Faktor 2 bis 3 zu niedrig** — und sie wandert
+> in die `mass`-Annahme und von dort in jede Geschwindigkeit. Keine Quelle, keine
+> Deklaration (ADR 0020).
+
+**`mass-sum`** · `law` · \statusok{} SOURCED · `duplicate`, Kopien stimmen überein
+`m_total = Σ m_i` über eine **erklärte Indexmenge**
+
+Sadraey §11.2 Gl. (11.1)–(11.3): `ΣW_i = W_TO`, aufgeschlüsselt nach Baugruppen.
+Maßstabsurteil: **validiert** — eine Summe ist skalenfrei.
+
+> \statusbad{} **Drei Indexmengen, nie abgeglichen.** Der Komponentenbaum summiert alle
+> Wurzelknoten und schreibt die `mass`-Annahme; der Ladefall-Dienst summiert die
+> Gewichtsposten nach Schaltern und Übersteuerungen als CG-Nenner. Beide stehen für „die
+> Masse des Flugzeugs" und können beliebig auseinanderliegen — nichts vergleicht sie.
+>
+> Und die eigentliche Gefahr ist nicht die Arithmetik, sondern die **Vollständigkeit**:
+> `get_aircraft_total_weight_kg` liefert `None` nur für einen *leeren* Baum, nie für einen
+> unvollständigen. Eine Summe über eine Teilmenge ist eine wohlgeformte Zahl. Sadraey §11.2
+> und Scholz verlangen beide, eine noch nicht detaillierte Gruppe zu **schätzen, nie
+> wegzulassen**. Das Vollständigkeitssignal existiert — und die Summe fragt es nicht ab.
+
+**`weight-force`** · `law` · \statusok{} SOURCED · `W = m · g`
+
+Newton, und Sadraey §11.2 behandelt `W` und `m·g` ausdrücklich als austauschbar.
+Maßstab: **validiert**, `g` schwankt weltweit unter 0,3 %.
+
+---
+
+### 3.2 Vom Solver zur Stabilitätsreserve
+
+**`static-margin`** · `law` · \statusok{} SOURCED · `duplicate`, **Kopien auseinander**
+`SM = (x_NP − x_cg) / c̄`
+
+Sadraey §11.6.2 Gl. (11.18). Maßstab: **validiert bei 0,5–15 kg** — die RC-Quellen
+benutzen dieselbe Beziehung wörtlich, in derselben dimensionslosen Form. *Die Definition
+importiert keinen Maßstab; jedes Maßstabsproblem dieser Kette sitzt in den Eingängen.*
+
+> \statusbad{} **Vier lebende Erzeuger** derselben Zahl, mit verschiedenen Beziehungen und
+> verschiedenen Eingängen. Dazu ein fünfter Anzeigepfad, der das **Ziel** als erreichten
+> Wert beschriftet.
+
+**`static-margin-from-derivatives`** · `law` · \statusok{} SOURCED
+`SM = −C_mα / C_Lα`
+
+Der Ableitungsweg. **Algebraisch äquivalent — aber nur**, wenn beide Ableitungen um
+denselben Momentenbezugspunkt genommen werden und die Auftriebskurve dort linear ist. Hier
+stammen sie aus einer Trimmlösung an einem beliebigen Betriebspunkt, während die
+geometrische Form den Reiseflug-Neutralpunkt benutzt.
+
+**`cg-from-static-margin`** · `law` · \statusok{} SOURCED
+`x_cg = x_NP − SM · c̄`
+
+Dieselbe Gleichung, invertiert — und **die eigentliche Konstruktion nach ADR 0011**: Erst
+den Neutralpunkt schätzen, dann den Schwerpunkt um die gewählte Reserve davor legen. Genau
+das schreiben die RC-Quellen vor. Maßstab: **validiert**.
+
+**`mean-aerodynamic-chord`** · `law` · \statusok{} SOURCED · `duplicate`, **auseinander**
+`c̄ = (2/S)·∫ c(y)² dy`
+
+Scholz *07_WingDesign* §7.1. Maßstab: **vollständig validiert** — reine Geometrie, kein
+Reynolds, keine Masse.
+
+> \statusbad{} **Zwei mittlere aerodynamische Flügeltiefen**: die des Hauptflügels und die
+> Referenzsehne des Solvers. Damit liegt jede mit der einen normierte Stabilitätsreserve
+> auf **einer anderen Skala** als jede mit der anderen normierte.
+
+**`neutral-point`** · `procedure` · \statusmid{} PARTIAL · `duplicate`, **auseinander**
+
+Beziehung belegt (Sadraey §11.6.2 Gl. 11.17), **Methode nicht bei RC-Maßstab validiert**.
+Zwei AeroBuildup-Läufe, zwei Neutralpunkte, beide veröffentlicht — und die Abweichung ist
+**im Code selbst dokumentiert**.
+
+---
+
+### 3.3 Die Ziel-Stabilitätsreserve
+
+**`target-static-margin`** · `rating` · \statusmid{} PARTIAL · `duplicate`, **auseinander**
+
+Ein reiner Auslegungswert; wird nie berechnet. Der **Begriff** ist überall belegt — Sadraey
+§11.6.2, Lennon Kap. 6, die RC-Missionstabelle.
+
+> \statusbad{} **Vier Vorgabewerte für einen Parameter:** `0.12` in jedes neue Flugzeug
+> gesät · `0.08` vom Ladefall-Dienst ersetzt, wenn die Zeile fehlt · `0.10` als
+> Funktionsvorgabe der Korrekturvorschläge · `0.075` im Docstring. **Ein Flugzeug ohne
+> gespeicherte Zeile bekommt ein anderes Auslegungsziel, je nachdem welcher Dienst fragt.**
+
+> \statuswarn{} **Und der Wert selbst liegt außerhalb der RC-Bandbreite für jede Mission
+> außer einer.** Die missionskonsistente Tabelle (% MAC): Trainer 5/10/15 · Sport 3/4/5 ·
+> Kunstflug 0/1,5/3. Der gesäte Vorgabewert von **12 %** liegt am oberen Rand des Trainers
+> und **über** allem, was für Sport und Kunstflug vorgesehen ist. ADR 0023.
+
+---
+
+### 3.4 Der Korrekturzweig — und warum er nichts misst
+
+**`alpha-vh`**, **`dsm-dx-wing`**, **`dsm-dsh`** → **`wing-shift-lever`**,
+**`htail-chord-scale`**
+
+Aus diesen Formeln entsteht die Empfehlung *„verschiebe den Flügel 34 mm nach hinten"* oder
+*„skaliere die Leitwerkstiefe um 12 %"*.
+
+> \statusbad{} **Die Leitwerksgeometrie erreicht den Dienst nie.** `sm_sizing_service`
+> liest `s_h_m2` und `l_h_m` aus dem Annahmenkontext; **niemand schreibt sie dorthin.** Die
+> einzige Zuweisung steht in `tail_sizing_service`, in dessen eigenes Rückgabeobjekt.
+>
+> Folge auf jedem realen Flugzeug: `a_VH` liefert immer den Rückfallwert **0,10**, der
+> Momentenarm ist immer **2,0 × MAC**, die Leitwerksfläche **0,08 m²**. Ein kompakter
+> Pusher und ein Langrumpfsegler bekommen dieselben Annahmen — und daraus eine
+> millimetergenaue Empfehlung.
+>
+> Die Tests setzen `ctx["s_h_m2"] = 0.08` **selbst** und prüfen damit genau den Zweig, den
+> die Produktion nie erreicht. → **gh-1145**
+
+Dazu die eigene Sicherung des Moduls: `_MAX_X_WING_SHIFT_MAC = 5.0`, ausdrücklich als
+*safety clip* kommentiert — und **nirgends referenziert**. Die Inversion
+`Δx = ΔSM / (∂SM/∂x)` ist erster Ordnung; die Klemme existiert, weil die Steigung über
+einen beliebigen Versatz nicht konstant bleibt (ADR 0021).
+
+---
+
+### 3.5 Die CG-Hüllkurve
+
+**`cg-envelope-containment`**, **`cg-envelope-classification`**
+
+> \statusna{} **Das vordere Grenzlimit ist immer der 0,30·MAC-Ersatzwert.**
+> `elevator_authority_service` liest Annahmezeilen namens `x_np`, `mac`, `v_cruise`,
+> `stall_alpha` — die niemand schreibt. Jeder Aufruf wirft, bevor Physik läuft. Der Ersatz
+> ist damit nicht der Rückfall, sondern der **einzige Erzeuger**. → **gh-1132**
+
+---
+
+## 4. Herkunftsbilanz
+
+| | Formeln |
+|---|---|
+| \statusok{} **SOURCED** — spezifische Zitation | **13** |
+| \statusmid{} **PARTIAL** — Methode belegt, Wert oder Maßstab nicht | **22** |
+| \statusbad{} **NO SOURCE FOUND** | **11** |
+
+Die elf ohne Quelle sind **fast durchweg Rückfallwerte und Schwellen**: 0,4 mm Wandstärke,
+1,0 kg Ersatzmasse, 0,0 m Ersatz-Schwerpunkt, 0,08 m² Leitwerk, der 0,30-MAC-Ersatz, die
+Klassifikationsgrenzen.
+
+Das ist ein Muster und keine Nachlässigkeit: **Was hergeleitet ist, hat eine Quelle. Was
+eingesprungen ist, hat keine.** Der Kanon macht genau diese Trennung sichtbar, weil er nach
+der Quelle jeder einzelnen Größe fragt und nicht nach der des Verfahrens.
+
+---
+
+## 5. Die zehn Duplikate
+
+| Größe | Kopien einig? | |
+|---|---|---|
+| `mass-sum` | ja | drei Indexmengen, gleiche Arithmetik |
+| `cg-aggregate` | ja | |
+| `sm-elevator-authority-limit` | ja | 0,30 ersetzt eine Physik, die nicht läuft |
+| `base-mass-fallback` | **nein** | 1,5 kg gesät gegen 1,0 kg im Ladefall-Dienst |
+| `base-cg-x-fallback` | **nein** | 0,15 m gegen **0,0 m** — der Nasenbezugspunkt |
+| `target-static-margin` | **nein** | 0,12 / 0,10 / 0,08 |
+| `static-margin` | **nein** | vier lebende Erzeuger |
+| `neutral-point` | **nein** | zwei Solverläufe, beide veröffentlicht |
+| `mean-aerodynamic-chord` | **nein** | zwei Sehnen, zwei Skalen |
+| `predicted-sm-after-lever` | **nein** | die Vorderleitwerks-Variante widerspricht den anderen |
+
+**Sechs von zehn sind auseinandergelaufen.** Ein Duplikat mit einigen Kopien ist
+Wartungsschuld; eines mit auseinandergelaufenen ist ein Defekt mit wartender Reproduktion.
+
+---
+
+## 6. Verletzte Vorbedingungen
+
+Aus einem **eigenen Durchgang** erhoben — sechs Agenten, je eine Quelldatei, mit der Regel
+*„VERLETZT nur mit konkreter Reproduktion, sonst UNBEKANNT"*. Ergebnis: 18 Vorbedingungen,
+**11 verletzt, alle 11 mit Reproduktion**, 3 unbekannt, 4 gehalten.
+
+| Formel | Eingabe | bricht wann |
+|---|---|---|
+| `tail-efficiency-factor` | `S_H` | auf **jedem** realen Flugzeug — der Schlüssel wird nie geschrieben |
+| `sm-sensitivity-htail-area` | `l_H` | ebenso; immer 2,0 × MAC |
+| `lever-from-sm-shortfall` | `ΔSM` | Δx über der eigenen 5·MAC-Klemme, die nicht angeschlossen ist |
+| `cg-from-static-margin` | `cg_stability_fwd_m` | der Ersatzwert überschreibt ein berechnetes Limit |
+| `mass-weighted-cg` | Komponenten | leere Gewichtspostenliste bei aktiven Übersteuerungen |
+| `sm-severity-classification` | `target_sm` | `target_sm > 0,20` — dann bewertet die Klassifikation den eigenen Zielpunkt als Fehler |
+| `mass-sum` | `m_own` | CAD-Knoten ohne Material trägt still 0 g bei |
+| `weight-force` | `m` | `m ≤ 0` ist über die Schema-Validierung erreichbar |
+| `static-margin-percent` | `SM` | Momentenbezugspunkt ist nicht der Schwerpunkt |
+| `stability-class` | `SM %` | dieselbe Ursache |
+| `static-margin-from-derivatives` | `C_mα`, `C_Lα` | Betriebspunkt ohne `xyz_ref` |
+
+Drei davon — die letzten drei — haben **eine gemeinsame Wurzel**: Der Momentenbezugspunkt
+ist voreingestellt der Ursprung, nicht der Schwerpunkt. Gemessen: **27 von 29 Flugzeugen
+tragen `xyz_ref = [0,0,0]`.**
+
+---
+
+## 7. Was das für die Freigabe heißt
+
+**Freigebbar, sobald gelesen** — Beziehung exakt, Quelle spezifisch, Maßstab validiert:
+`weight-force` · `static-margin` · `cg-from-static-margin` · `mean-aerodynamic-chord` ·
+`mass-sum` · `scenario-cg` · `cg-envelope-containment` · `sm-shortfall`.
+
+**Erst nach einer Entscheidung:** `target-static-margin` — der gesäte Vorgabewert von 12 %
+liegt außerhalb der RC-Bandbreite für Sport und Kunstflug. Das ist deine Wahl, nicht meine.
+
+**Nicht freigebbar, solange die Vorbedingung verletzt ist:** der gesamte Korrekturzweig.
+Eine Formel, deren Eingänge den Dienst nie erreichen, kann kein Orakel sein.
+
+Die Reihenfolge bleibt die des Kanons: **erst die Eingänge, dann die Formel.** In dieser
+Kette heißt das — Massensumme und mittlere Flügeltiefe vor der Stabilitätsreserve, und die
+Stabilitätsreserve vor allem, was daraus einen Schwerpunkt ableitet.
