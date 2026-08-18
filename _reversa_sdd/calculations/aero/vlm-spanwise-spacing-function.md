@@ -6,11 +6,13 @@ unit: n/a
 cluster: aero-strips
 user_visible: false
 source_status: PARTIAL
+code_audit: CONFIRMED
 node_class: unclassified-parameter
 tags:
   - cluster/aero-strips
   - class/unclassified-parameter
   - source/partial
+  - audit/confirmed
   - flag/divergence
   - solver-adjacent/vlm
 ---
@@ -32,6 +34,8 @@ spanwise_spacing_function=np.linspace,
 **Inputs.** — *(leaf: a constant or an external input)*
 
 **Produced by.** `app/services/vlm_strip_forces.py:210` — `compute_vlm_strip_forces`
+
+🟢 **Verified against the code** — an independent reviewer read this line and confirmed the formula, unit and value (2026-08-18 audit).
 
 **Consumed by.**
 

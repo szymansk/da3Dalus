@@ -6,11 +6,13 @@ unit: m²/s
 cluster: aero-polars
 user_visible: false
 source_status: SOURCED
+code_audit: CONFIRMED
 node_class: physical-constant
 tags:
   - cluster/aero-polars
   - class/physical-constant
   - source/sourced
+  - audit/confirmed
   - flag/anomaly
   - flag/divergence
   - flag/physical
@@ -34,6 +36,8 @@ _NU = 1.46e-5  # kinematic viscosity m²/s at 15°C
 **Inputs.** — *(leaf: a constant or an external input)*
 
 **Produced by.** `app/services/suitability_service.py:377` — `search_suitability (inner)`
+
+🟢 **Verified against the code** — an independent reviewer read this line and confirmed the formula, unit and value (2026-08-18 audit).
 
 **Consumed by.**
 

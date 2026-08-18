@@ -1,15 +1,17 @@
 ---
 name: default_target_turn_n
 kind: constant
-unit: g
+unit: dimensionless
 cluster: perf-oppoints
 user_visible: false
 source_status: PARTIAL
+code_audit: WRONG_UNIT
 node_class: unclassified-constant
 tags:
   - cluster/perf-oppoints
   - class/unclassified-constant
   - source/partial
+  - audit/wrong-unit
   - flag/anomaly
   - flag/divergence
 ---
@@ -31,6 +33,8 @@ tags:
 **Inputs.** — *(leaf: a constant or an external input)*
 
 **Produced by.** `app/services/operating_point_generator_service.py:209` — `_default_profile`
+
+🟠 **Corrected by the audit** — the extraction claimed `WRONG_UNIT`. Original unit was `g`. Target load factor is dimensionless, not g
 
 **Consumed by.**
 

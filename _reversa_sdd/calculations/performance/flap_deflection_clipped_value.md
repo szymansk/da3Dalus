@@ -5,12 +5,14 @@ unit: deg
 cluster: perf-oppoints
 user_visible: true
 source_status: PARTIAL
+code_audit: CONFIRMED
 node_class: derived
 tags:
   - cluster/perf-oppoints
   - class/derived
   - source/partial
   - surface/user-visible
+  - audit/confirmed
   - flag/divergence
 ---
 
@@ -33,6 +35,8 @@ clipped_value = max(-max_neg, min(requested, max_pos))
 - [[target_flap_landing_deg|Landing flap deflection target]]
 
 **Produced by.** `app/services/operating_point_generator_service.py:98` — `_clip_flap_to_ted_limit`
+
+🟢 **Verified against the code** — an independent reviewer read this line and confirmed the formula, unit and value (2026-08-18 audit).
 
 **Consumed by.**
 

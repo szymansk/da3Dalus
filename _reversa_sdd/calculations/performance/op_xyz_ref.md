@@ -5,12 +5,14 @@ unit: m
 cluster: perf-oppoints
 user_visible: true
 source_status: PARTIAL
+code_audit: CONFIRMED
 node_class: derived
 tags:
   - cluster/perf-oppoints
   - class/derived
   - source/partial
   - surface/user-visible
+  - audit/confirmed
   - flag/anomaly
   - flag/divergence
 ---
@@ -32,6 +34,8 @@ xyz_ref=[design_cg_x, 0.0, 0.0]
 - [[design_cg_x|Design CG x-position]]
 
 **Produced by.** `app/services/operating_point_generator_service.py:1027` — `_op_model_from_point`
+
+🟢 **Verified against the code** — an independent reviewer read this line and confirmed the formula, unit and value (2026-08-18 audit).
 
 **Consumed by.**
 

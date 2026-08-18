@@ -5,12 +5,14 @@ unit: dimensionless
 cluster: structure
 user_visible: true
 source_status: NO_SOURCE_FOUND
+code_audit: NOT_VERIFIED
 node_class: unclassified-parameter
 tags:
   - cluster/structure
   - class/unclassified-parameter
   - source/no-source-found
   - surface/user-visible
+  - audit/not-verified
   - flag/anomaly
 ---
 
@@ -39,6 +41,8 @@ packing_factor: float = Field(
 **Inputs.** — *(leaf: a constant or an external input)*
 
 **Produced by.** `app/schemas/spar_sizing.py:38` — `SparSizingParams.packing_factor`
+
+⚪ **Not verified.** This node was not covered by the audit pass; treat its line and formula as extracted-but-unchecked.
 
 **Consumed by.**
 

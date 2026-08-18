@@ -6,11 +6,13 @@ unit: – (dimensionless)
 cluster: stability
 user_visible: false
 source_status: NO_SOURCE_FOUND
+code_audit: CONFIRMED
 node_class: unclassified-constant
 tags:
   - cluster/stability
   - class/unclassified-constant
   - source/no-source-found
+  - audit/confirmed
   - flag/anomaly
   - flag/divergence
 ---
@@ -34,6 +36,8 @@ velocity=v_cruise * 0.6,  # near-stall approach speed
 - [[v-cruise-fallback|Cruise speed fallback]]  — *⤵ fallback*
 
 **Produced by.** `app/services/elevator_authority_service.py:621` — `_compute_forward_cg_limit_asb`
+
+🟢 **Verified against the code** — an independent reviewer read this line and confirmed the formula, unit and value (2026-08-18 audit).
 
 **Consumed by.**
 

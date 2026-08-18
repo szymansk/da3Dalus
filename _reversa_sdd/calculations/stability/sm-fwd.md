@@ -6,12 +6,14 @@ unit: – (fraction of MAC)
 cluster: stability
 user_visible: true
 source_status: SOURCED
+code_audit: CONFIRMED
 node_class: derived
 tags:
   - cluster/stability
   - class/derived
   - source/sourced
   - surface/user-visible
+  - audit/confirmed
   - flag/anomaly
 ---
 
@@ -32,6 +34,8 @@ sm_fwd: float = (x_np_m - cg_fwd_actual) / mac_m
 - [[mac-m-fallback|MAC fallback]]  — *⤵ fallback*
 
 **Produced by.** `app/services/sm_sizing_service.py:508` — `_suggest_corrections_fwd`
+
+🟢 **Verified against the code** — an independent reviewer read this line and confirmed the formula, unit and value (2026-08-18 audit).
 
 **Consumed by.**
 

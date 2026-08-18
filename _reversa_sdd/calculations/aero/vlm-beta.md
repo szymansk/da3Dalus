@@ -6,12 +6,14 @@ unit: deg
 cluster: aero-strips
 user_visible: true
 source_status: SOURCED
+code_audit: CONFIRMED
 node_class: derived
 tags:
   - cluster/aero-strips
   - class/derived
   - source/sourced
   - surface/user-visible
+  - audit/confirmed
   - flag/divergence
   - solver-adjacent/vlm
 ---
@@ -31,6 +33,8 @@ tags:
 **Inputs.** — *(leaf: a constant or an external input)*
 
 **Produced by.** `app/services/vlm_strip_forces.py:316` — `compute_vlm_strip_forces`
+
+🟢 **Verified against the code** — an independent reviewer read this line and confirmed the formula, unit and value (2026-08-18 audit).
 
 **Consumed by.**
 

@@ -6,12 +6,14 @@ unit: dimensionless
 cluster: aero-polars
 user_visible: true
 source_status: PARTIAL
+code_audit: WRONG_LINE
 node_class: derived
 tags:
   - cluster/aero-polars
   - class/derived
   - source/partial
   - surface/user-visible
+  - audit/wrong-line
   - flag/anomaly
   - flag/divergence
 ---
@@ -37,7 +39,9 @@ return re, False
 - [[sui-re-root|Root-chord Reynolds number]]
 - [[low-re-grid|Absolute low-Re grid]]
 
-**Produced by.** `app/services/suitability_service.py:128` — `_clamp_re_to_grid`
+**Produced by.** `app/services/suitability_service.py:129` — `_clamp_re_to_grid`
+
+🟠 **Corrected by the audit** — the extraction claimed `WRONG_LINE`. Original line was `128`. 
 
 **Consumed by.**
 

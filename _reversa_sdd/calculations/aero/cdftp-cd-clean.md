@@ -6,11 +6,13 @@ unit: dimensionless
 cluster: aero-strips
 user_visible: false
 source_status: SOURCED
+code_audit: CONFIRMED
 node_class: derived
 tags:
   - cluster/aero-strips
   - class/derived
   - source/sourced
+  - audit/confirmed
 ---
 
 # Clean section drag (installed-turbulator path)
@@ -30,6 +32,8 @@ cd_clean = _cd_at_cl_xtr(airfoil, sec.cl, sec.re_local, xtr_upper=1.0)
 - [[tos-cd-at-cl|Section cd at a target CL and trip position]]
 
 **Produced by.** `app/services/turbulator_optimizer_service.py:693` — `compute_delta_cd0_from_turbulator_position`
+
+🟢 **Verified against the code** — an independent reviewer read this line and confirmed the formula, unit and value (2026-08-18 audit).
 
 **Consumed by.**
 

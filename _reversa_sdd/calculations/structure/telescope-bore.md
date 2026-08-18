@@ -5,11 +5,13 @@ unit: mm
 cluster: structure
 user_visible: false
 source_status: PARTIAL
+code_audit: CONFIRMED
 node_class: derived
 tags:
   - cluster/structure
   - class/derived
   - source/partial
+  - audit/confirmed
   - flag/divergence
 ---
 
@@ -31,6 +33,8 @@ telescope_bore = ods[i + 1] + 2.0 * spec.telescope_clearance_mm
 - [[telescope-clearance-mm|Telescoping radial clearance]]
 
 **Produced by.** `cad_designer/airplane/geometry/spar_solver.py:423` — `plan_spar`
+
+🟢 **Verified against the code** — an independent reviewer read this line and confirmed the formula, unit and value (2026-08-18 audit).
 
 **Consumed by.**
 

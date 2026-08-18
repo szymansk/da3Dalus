@@ -5,11 +5,13 @@ unit: deg
 cluster: perf-oppoints
 user_visible: false
 source_status: PARTIAL
+code_audit: CONFIRMED
 node_class: derived
 tags:
   - cluster/perf-oppoints
   - class/derived
   - source/partial
+  - audit/confirmed
   - flag/divergence
 ---
 
@@ -30,6 +32,8 @@ flap_limits = (min(flap_pos_limits), min(flap_neg_limits))
 - [[flap_roles|Flap control role set]]
 
 **Produced by.** `app/services/operating_point_generator_service.py:93` — `_clip_flap_to_ted_limit`
+
+🟢 **Verified against the code** — an independent reviewer read this line and confirmed the formula, unit and value (2026-08-18 audit).
 
 **Consumed by.**
 

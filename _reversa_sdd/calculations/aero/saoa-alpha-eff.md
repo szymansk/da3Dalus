@@ -6,12 +6,14 @@ unit: deg
 cluster: aero-strips
 user_visible: true
 source_status: SOURCED
+code_audit: CONFIRMED
 node_class: derived
 tags:
   - cluster/aero-strips
   - class/derived
   - source/sourced
   - surface/user-visible
+  - audit/confirmed
   - flag/divergence
 ---
 
@@ -34,6 +36,8 @@ alpha_eff_arr = np.degrees(cl_arr / _A0_RAD) + alpha_L0_at_y
 - [[saoa-alpha-l0-at-y|Interpolated zero-lift angle at panel y]]
 
 **Produced by.** `app/services/section_aoa_service.py:300` — `compute_section_aoa`
+
+🟢 **Verified against the code** — an independent reviewer read this line and confirmed the formula, unit and value (2026-08-18 audit).
 
 **Consumed by.**
 

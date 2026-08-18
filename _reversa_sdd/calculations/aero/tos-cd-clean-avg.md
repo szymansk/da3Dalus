@@ -6,11 +6,13 @@ unit: dimensionless
 cluster: aero-strips
 user_visible: false
 source_status: PARTIAL
+code_audit: CONFIRMED
 node_class: derived
 tags:
   - cluster/aero-strips
   - class/derived
   - source/partial
+  - audit/confirmed
   - flag/anomaly
   - flag/divergence
 ---
@@ -33,6 +35,8 @@ cd_clean_avg = sum(cd * a for cd, a in valid_clean) / total_valid_area if total_
 - [[bwsd-section-area-normalised|Normalised section area]]
 
 **Produced by.** `app/services/turbulator_optimizer_service.py:623` — `run_turbulator_optimizer`
+
+🟢 **Verified against the code** — an independent reviewer read this line and confirmed the formula, unit and value (2026-08-18 audit).
 
 **Consumed by.**
 

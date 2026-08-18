@@ -6,11 +6,13 @@ unit: 1/m
 cluster: stability
 user_visible: false
 source_status: PARTIAL
+code_audit: CONFIRMED
 node_class: derived
 tags:
   - cluster/stability
   - class/derived
   - source/partial
+  - audit/confirmed
   - flag/anomaly
   - flag/divergence
 ---
@@ -33,6 +35,8 @@ return (1.0 - a_vh) / mac_m
 - [[mac-m-fallback|MAC fallback]]  — *⤵ fallback*
 
 **Produced by.** `app/services/sm_sizing_service.py:140` — `_dsm_dx_wing`
+
+🟢 **Verified against the code** — an independent reviewer read this line and confirmed the formula, unit and value (2026-08-18 audit).
 
 **Consumed by.**
 

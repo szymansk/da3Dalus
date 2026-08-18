@@ -5,12 +5,14 @@ unit: mixed (deg, -, -)
 cluster: aero-spanwise
 user_visible: true
 source_status: SOURCED
+code_audit: CONFIRMED
 node_class: derived
 tags:
   - cluster/aero-spanwise
   - class/derived
   - source/sourced
   - surface/user-visible
+  - audit/confirmed
   - flag/divergence
 ---
 
@@ -34,6 +36,8 @@ t = 0.0 if abs(cm1 - cm0) <= 1e-12 else -cm0 / (cm1 - cm0); alpha_deg = alpha[i]
 - [[alpha-array|Alpha sweep array]]
 
 **Produced by.** `app/services/analysis_service.py:198` — `_compute_trim_point`
+
+🟢 **Verified against the code** — an independent reviewer read this line and confirmed the formula, unit and value (2026-08-18 audit).
 
 **Consumed by.**
 

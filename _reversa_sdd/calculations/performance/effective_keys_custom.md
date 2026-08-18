@@ -6,12 +6,14 @@ unit: n/a
 cluster: perf-matching
 user_visible: true
 source_status: NO_SOURCE_FOUND
+code_audit: CONFIRMED
 node_class: derived
 tags:
   - cluster/perf-matching
   - class/derived
   - source/no-source-found
   - surface/user-visible
+  - audit/confirmed
   - flag/anomaly
   - flag/divergence
 ---
@@ -34,6 +36,8 @@ effective_keys: list[str] = (list(_PROFILE_CONSTRAINT_MAP.get(profile_key, [])) 
 - [[mission_min_tw_table|Mission-min T/W table]]  — *⊣ limit*
 
 **Produced by.** `app/services/matching_chart_service.py:1074` — `_build_rc_additive_constraints`
+
+🟢 **Verified against the code** — an independent reviewer read this line and confirmed the formula, unit and value (2026-08-18 audit).
 
 **Consumed by.**
 

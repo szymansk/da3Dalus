@@ -6,12 +6,14 @@ unit: dimensionless
 cluster: aero-strips
 user_visible: true
 source_status: PARTIAL
+code_audit: WRONG_LINE
 node_class: derived
 tags:
   - cluster/aero-strips
   - class/derived
   - source/partial
   - surface/user-visible
+  - audit/wrong-line
   - flag/anomaly
   - flag/divergence
 ---
@@ -34,7 +36,9 @@ half_span_sum += sec.delta_cd * sec.section_area_m2 / s_ref; return symmetry_fac
 - [[bwsd-section-area-normalised|Normalised section area]]
 - [[tos-symmetry-factor|Symmetric-wing doubling factor]]
 
-**Produced by.** `app/services/turbulator_optimizer_service.py:328` — `compute_turbulator_delta_cd0`
+**Produced by.** `app/services/turbulator_optimizer_service.py:331` — `compute_turbulator_delta_cd0`
+
+🟠 **Corrected by the audit** — the extraction claimed `WRONG_LINE`. Original line was `328`. 
 
 **Consumed by.**
 

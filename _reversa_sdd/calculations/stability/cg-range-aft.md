@@ -6,12 +6,14 @@ unit: m
 cluster: stability
 user_visible: true
 source_status: SOURCED
+code_audit: CONFIRMED
 node_class: derived
 tags:
   - cluster/stability
   - class/derived
   - source/sourced
   - surface/user-visible
+  - audit/confirmed
   - flag/anomaly
 ---
 
@@ -34,6 +36,8 @@ aft = np_x - (min_margin / 100) * mac
 - [[min-static-margin-pct-default|Minimum static margin (CG-range default)]]  — *⤵ fallback*
 
 **Produced by.** `app/services/stability_service.py:98` — `compute_cg_range`
+
+🟢 **Verified against the code** — an independent reviewer read this line and confirmed the formula, unit and value (2026-08-18 audit).
 
 **Consumed by.**
 

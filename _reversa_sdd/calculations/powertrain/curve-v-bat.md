@@ -6,11 +6,13 @@ unit: V
 cluster: powertrain
 user_visible: false
 source_status: SOURCED
+code_audit: CONFIRMED
 node_class: derived
 tags:
   - cluster/powertrain
   - class/derived
   - source/sourced
+  - audit/confirmed
 ---
 
 # Battery voltage used for the curve
@@ -30,6 +32,8 @@ V_bat = battery.nominal_voltage_v  # cells × 3.7 V
 - [[battery-nominal-voltage|Nominal pack voltage]]
 
 **Produced by.** `app/services/powertrain_performance.py:640` — `compute_performance_curve`
+
+🟢 **Verified against the code** — an independent reviewer read this line and confirmed the formula, unit and value (2026-08-18 audit).
 
 **Consumed by.**
 

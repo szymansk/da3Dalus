@@ -6,12 +6,14 @@ unit: W
 cluster: powertrain
 user_visible: true
 source_status: SOURCED
+code_audit: CONFIRMED
 node_class: derived
 tags:
   - cluster/powertrain
   - class/derived
   - source/sourced
   - surface/user-visible
+  - audit/confirmed
 ---
 
 # Estimated cruise power
@@ -37,6 +39,8 @@ actual_cruise_power = _combo_required_power_w(speed_ms=request.target_cruise_spe
 - [[resolved-s-ref|Resolved wing reference area]]
 
 **Produced by.** `app/services/powertrain_sizing_service.py:240` — `_evaluate_motor_battery_combo`
+
+🟢 **Verified against the code** — an independent reviewer read this line and confirmed the formula, unit and value (2026-08-18 audit).
 
 **Consumed by.**
 

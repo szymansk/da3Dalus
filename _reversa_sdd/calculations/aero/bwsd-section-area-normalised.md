@@ -6,11 +6,13 @@ unit: m²
 cluster: aero-strips
 user_visible: false
 source_status: PARTIAL
+code_audit: CONFIRMED
 node_class: derived
 tags:
   - cluster/aero-strips
   - class/derived
   - source/partial
+  - audit/confirmed
   - flag/anomaly
   - flag/divergence
 ---
@@ -32,6 +34,8 @@ section_areas *= (s_ref / 2.0) / total_area
 - [[bwsd-section-area-raw|Raw trapezoidal section area]]
 
 **Produced by.** `app/services/turbulator_optimizer_service.py:423` — `build_wing_section_data`
+
+🟢 **Verified against the code** — an independent reviewer read this line and confirmed the formula, unit and value (2026-08-18 audit).
 
 **Consumed by.**
 

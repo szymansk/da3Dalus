@@ -5,11 +5,13 @@ unit: dimensionless
 cluster: perf-oppoints
 user_visible: false
 source_status: NO_SOURCE_FOUND
+code_audit: CONFIRMED
 node_class: unclassified-constant
 tags:
   - cluster/perf-oppoints
   - class/unclassified-constant
   - source/no-source-found
+  - audit/confirmed
   - flag/divergence
 ---
 
@@ -32,6 +34,8 @@ min_margin_clean = max(1.05, float(goals.get("min_speed_margin_vs_clean", 1.20))
 - [[default_min_speed_margin_vs_clean|Default clean stall margin]]  — *⤵ fallback*
 
 **Produced by.** `app/services/operating_point_generator_service.py:336` — `_estimate_reference_speeds`
+
+🟢 **Verified against the code** — an independent reviewer read this line and confirmed the formula, unit and value (2026-08-18 audit).
 
 **Consumed by.**
 

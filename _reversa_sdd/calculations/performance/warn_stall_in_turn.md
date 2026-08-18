@@ -5,12 +5,14 @@ unit: dimensionless
 cluster: perf-oppoints
 user_visible: true
 source_status: PARTIAL
+code_audit: CONFIRMED
 node_class: derived
 tags:
   - cluster/perf-oppoints
   - class/derived
   - source/partial
   - surface/user-visible
+  - audit/confirmed
   - flag/divergence
 ---
 
@@ -31,6 +33,8 @@ if velocity < v_stall_turn: ... point.status = OperatingPointStatus.LIMIT_REACHE
 - [[v_stall_turn|Stall speed in the turn]]
 
 **Produced by.** `app/services/operating_point_generator_service.py:171` — `_apply_turn_feasibility`
+
+🟢 **Verified against the code** — an independent reviewer read this line and confirmed the formula, unit and value (2026-08-18 audit).
 
 **Consumed by.**
 

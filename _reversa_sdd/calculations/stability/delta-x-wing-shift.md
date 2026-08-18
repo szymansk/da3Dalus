@@ -6,12 +6,14 @@ unit: m
 cluster: stability
 user_visible: true
 source_status: PARTIAL
+code_audit: CONFIRMED
 node_class: derived
 tags:
   - cluster/stability
   - class/derived
   - source/partial
   - surface/user-visible
+  - audit/confirmed
   - flag/anomaly
   - flag/divergence
 ---
@@ -34,6 +36,8 @@ delta_x = delta_needed / dsm_dx  # metres (negative = move wing fwd)
 - [[dsm-dx-wing|SM sensitivity to wing longitudinal shift]]
 
 **Produced by.** `app/services/sm_sizing_service.py:412` — `suggest_corrections`
+
+🟢 **Verified against the code** — an independent reviewer read this line and confirmed the formula, unit and value (2026-08-18 audit).
 
 **Consumed by.**
 

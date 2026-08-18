@@ -6,12 +6,14 @@ unit: – (set of strings)
 cluster: stability
 user_visible: true
 source_status: SOURCED
+code_audit: CONFIRMED
 node_class: unclassified-constant
 tags:
   - cluster/stability
   - class/unclassified-constant
   - source/sourced
   - surface/user-visible
+  - audit/confirmed
   - solver-adjacent/aerobuildup
 ---
 
@@ -26,6 +28,8 @@ tags:
 **Inputs.** — *(leaf: a constant or an external input)*
 
 **Produced by.** `app/services/aerobuildup_trim_service.py:22` — `_AERO_COEFF_KEYS`
+
+🟢 **Verified against the code** — an independent reviewer read this line and confirmed the formula, unit and value (2026-08-18 audit).
 
 **Consumed by.**
 

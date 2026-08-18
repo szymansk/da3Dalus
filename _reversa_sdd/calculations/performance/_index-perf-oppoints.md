@@ -46,7 +46,7 @@ Cross-cutting findings (all file:line verified in app/services/operating_point_g
 | [[default_max_level_speed_mps\|Default maximum level speed]] | constant | m/s | ✓ | 🔴 | divergence |
 | [[default_min_speed_margin_vs_clean\|Default clean stall margin]] | constant | dimensionless | ✓ | 🟢 | anomaly, divergence |
 | [[default_takeoff_speed_margin_vs_to\|Default takeoff margin]] | constant | dimensionless | ✓ | 🟡 | divergence |
-| [[default_target_turn_n\|Default target turn load factor]] | constant | g |  | 🟡 | anomaly, divergence |
+| [[default_target_turn_n\|Default target turn load factor]] | constant | dimensionless |  | 🟡 | anomaly, divergence |
 | [[default_wind_mps\|Default wind speed]] | constant | m/s |  | 🔴 | anomaly, divergence |
 | [[dutch_roll_beta_deg\|Dutch-roll start sideslip]] | constant | deg | ✓ | 🔴 | anomaly, divergence |
 | [[fallback_speed_factors\|Grid-search velocity factors]] | constant | dimensionless |  | 🔴 | anomaly, divergence |
@@ -72,12 +72,12 @@ Cross-cutting findings (all file:line verified in app/services/operating_point_g
 | [[yaw_roles\|Yaw control role set]] | constant | dimensionless |  | 🟢 | divergence |
 | [[alpha_bounds_opti\|Opti alpha bounds and initial guess]] | parameter | deg |  | 🔴 | anomaly, divergence |
 | [[opg_worker_cap\|OP-generation worker cap]] | parameter | processes |  | 🔴 | divergence |
-| [[opti_solver_budget\|Opti solver budget]] | parameter | iterations / s |  | 🔴 | anomaly, divergence |
+| [[opti_solver_budget\|Opti solver budget]] | parameter | mixed (iterati |  | 🔴 | anomaly, divergence |
 | [[aero_coefficients_at_trim\|Aero coefficients at the trimmed point]] | quantity | dimensionless | ✓ | 🟢 | divergence |
 | [[air_density_rho\|Air density at the operating altitude]] | quantity | kg/m³ |  | 🟢 | divergence |
-| [[alpha_trimmed\|Trimmed angle of attack]] | quantity | rad (stored) / | ✓ | 🟢 | divergence |
+| [[alpha_trimmed\|Trimmed angle of attack]] | quantity | rad | ✓ | 🟢 | divergence |
 | [[beta_candidates\|Sideslip candidate list]] | quantity | deg |  | 🔴 | divergence |
-| [[beta_trimmed\|Trimmed sideslip angle]] | quantity | rad (stored) / | ✓ | 🟢 | divergence |
+| [[beta_trimmed\|Trimmed sideslip angle]] | quantity | rad | ✓ | 🟢 | divergence |
 | [[cl_target\|Target lift coefficient]] | quantity | dimensionless |  | 🟢 | divergence |
 | [[control_capabilities\|Control capability flags]] | quantity | dimensionless | ✓ | 🟡 | anomaly, divergence |
 | [[cruise_speed_resolved\|Resolved cruise speed]] | quantity | m/s | ✓ | 🟡 | divergence |
@@ -96,8 +96,8 @@ Cross-cutting findings (all file:line verified in app/services/operating_point_g
 | [[trim_objective\|Opti trim objective]] | quantity | dimensionless |  | 🔴 | anomaly, divergence |
 | [[trim_residuals\|Trim residual record]] | quantity | mixed (dimensi | ✓ | 🔴 | anomaly, divergence |
 | [[trim_score\|Trim score]] | quantity | dimensionless | ✓ | ⚪ | anomaly |
-| [[turn_load_factor_n\|Turn load factor]] | quantity | g | ✓ | 🟢 | divergence |
-| [[turn_n_target\|Turn target load factor]] | quantity | g | ✓ | 🟢 | anomaly, divergence |
+| [[turn_load_factor_n\|Turn load factor]] | quantity | dimensionless | ✓ | 🟢 | divergence |
+| [[turn_n_target\|Turn target load factor]] | quantity | dimensionless | ✓ | 🟢 | anomaly, divergence |
 | [[v_approach\|approach_landing target speed]] | quantity | m/s | ✓ | 🟢 | divergence, scale |
 | [[v_best_angle_climb_vx\|Vx target speed]] | quantity | m/s | ✓ | 🔴 | anomaly, divergence |
 | [[v_best_rate_climb_vy\|Vy target speed]] | quantity | m/s | ✓ | 🟡 | anomaly, divergence |

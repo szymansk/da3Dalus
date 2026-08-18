@@ -6,12 +6,14 @@ unit: rpm/V
 cluster: powertrain
 user_visible: true
 source_status: SOURCED
+code_audit: CONFIRMED
 node_class: derived
 tags:
   - cluster/powertrain
   - class/derived
   - source/sourced
   - surface/user-visible
+  - audit/confirmed
   - flag/divergence
 ---
 
@@ -33,6 +35,8 @@ return self.kv_rpm_per_volt / (self.gear_ratio or 1.0)
 - [[motor-gear-ratio-input|Gearbox reduction ratio]]
 
 **Produced by.** `app/services/powertrain_performance.py:140` — `MotorSpec.output_kv`
+
+🟢 **Verified against the code** — an independent reviewer read this line and confirmed the formula, unit and value (2026-08-18 audit).
 
 **Consumed by.**
 

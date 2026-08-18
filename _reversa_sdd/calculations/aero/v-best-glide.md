@@ -6,12 +6,14 @@ unit: m/s
 cluster: aero-spanwise
 user_visible: true
 source_status: SOURCED
+code_audit: CONFIRMED
 node_class: derived
 tags:
   - cluster/aero-spanwise
   - class/derived
   - source/sourced
   - surface/user-visible
+  - audit/confirmed
   - flag/divergence
 ---
 
@@ -33,6 +35,8 @@ v_best_glide=float(v[i_best])
 - [[i-best-glide|Best-glide index]]
 
 **Produced by.** `app/services/analysis_service.py:545` — `_compute_speed_polar`
+
+🟢 **Verified against the code** — an independent reviewer read this line and confirmed the formula, unit and value (2026-08-18 audit).
 
 **Consumed by.**
 

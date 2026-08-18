@@ -6,12 +6,14 @@ unit: deg
 cluster: aero-strips
 user_visible: true
 source_status: SOURCED
+code_audit: CONFIRMED
 node_class: derived
 tags:
   - cluster/aero-strips
   - class/derived
   - source/sourced
   - surface/user-visible
+  - audit/confirmed
   - flag/divergence
   - solver-adjacent/aerobuildup
 ---
@@ -33,6 +35,8 @@ alpha_trimmed = brentq(_cl_at_alpha, -5.0, 15.0, xtol=0.05, maxiter=30)
 - [[lfop-cl-target-clip|Target CL clamp]]  — *⊣ limit*
 
 **Produced by.** `app/services/section_aoa_service.py:526` — `_resolve_level_flight_op`
+
+🟢 **Verified against the code** — an independent reviewer read this line and confirmed the formula, unit and value (2026-08-18 audit).
 
 **Consumed by.**
 

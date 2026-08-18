@@ -6,12 +6,14 @@ unit: m/s
 cluster: powertrain
 user_visible: true
 source_status: NO_SOURCE_FOUND
+code_audit: CONFIRMED
 node_class: derived
 tags:
   - cluster/powertrain
   - class/derived
   - source/no-source-found
   - surface/user-visible
+  - audit/confirmed
   - flag/anomaly
   - flag/divergence
 ---
@@ -31,6 +33,8 @@ estimated_top_speed_ms=round(request.target_top_speed_ms, 1)
 **Inputs.** — *(leaf: a constant or an external input)*
 
 **Produced by.** `app/services/powertrain_sizing_service.py:270` — `_evaluate_motor_battery_combo`
+
+🟢 **Verified against the code** — an independent reviewer read this line and confirmed the formula, unit and value (2026-08-18 audit).
 
 **Consumed by.**
 

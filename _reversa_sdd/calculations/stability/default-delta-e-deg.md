@@ -6,11 +6,13 @@ unit: deg
 cluster: stability
 user_visible: false
 source_status: SOURCED
+code_audit: CONFIRMED
 node_class: unclassified-constant
 tags:
   - cluster/stability
   - class/unclassified-constant
   - source/sourced
+  - audit/confirmed
   - flag/anomaly
   - flag/divergence
   - flag/scale
@@ -27,6 +29,8 @@ tags:
 **Inputs.** — *(leaf: a constant or an external input)*
 
 **Produced by.** `app/services/elevator_authority_service.py:86` — `_DEFAULT_DELTA_E_DEG`
+
+🟢 **Verified against the code** — an independent reviewer read this line and confirmed the formula, unit and value (2026-08-18 audit).
 
 **Consumed by.**
 

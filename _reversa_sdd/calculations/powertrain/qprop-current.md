@@ -6,11 +6,13 @@ unit: A
 cluster: powertrain
 user_visible: false
 source_status: SOURCED
+code_audit: CONFIRMED
 node_class: derived
 tags:
   - cluster/powertrain
   - class/derived
   - source/sourced
+  - audit/confirmed
   - flag/anomaly
 ---
 
@@ -32,6 +34,8 @@ current = max(current_for_rpm(rpm_sol), 0.0)
 - [[qprop-current-for-rpm|Terminal current at a candidate RPM]]
 
 **Produced by.** `app/services/powertrain_performance.py:578` — `solve_qprop_operating_point`
+
+🟢 **Verified against the code** — an independent reviewer read this line and confirmed the formula, unit and value (2026-08-18 audit).
 
 **Consumed by.**
 

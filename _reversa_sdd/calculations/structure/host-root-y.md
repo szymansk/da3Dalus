@@ -5,11 +5,13 @@ unit: mm
 cluster: structure
 user_visible: false
 source_status: NO_SOURCE_FOUND
+code_audit: CONFIRMED
 node_class: derived
 tags:
   - cluster/structure
   - class/derived
   - source/no-source-found
+  - audit/confirmed
   - flag/anomaly
 ---
 
@@ -31,6 +33,8 @@ host_root_y = float(sum(segment_lengths_mm[:host_index]))
 - [[segment-for-y|Spanwise position to segment index]]  — *⊣ limit*
 
 **Produced by.** `app/services/spar_insert_service.py:303` — `_front_split_plan`
+
+🟢 **Verified against the code** — an independent reviewer read this line and confirmed the formula, unit and value (2026-08-18 audit).
 
 **Consumed by.**
 

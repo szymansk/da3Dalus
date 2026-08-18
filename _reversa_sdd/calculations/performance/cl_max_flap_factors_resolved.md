@@ -6,11 +6,13 @@ unit: dimensionless
 cluster: perf-matching
 user_visible: false
 source_status: NO_SOURCE_FOUND
+code_audit: CONFIRMED
 node_class: derived
 tags:
   - cluster/perf-matching
   - class/derived
   - source/no-source-found
+  - audit/confirmed
   - flag/anomaly
   - flag/divergence
 ---
@@ -32,6 +34,8 @@ key = flap_type.lower() if isinstance(flap_type, str) else None; return _FLAP_FA
 - [[flap_factors|Flap CL_max multiplier table]]  — *⊣ limit*
 
 **Produced by.** `app/services/field_length_service.py:158` — `detect_cl_max_flap_factors`
+
+🟢 **Verified against the code** — an independent reviewer read this line and confirmed the formula, unit and value (2026-08-18 audit).
 
 **Consumed by.**
 

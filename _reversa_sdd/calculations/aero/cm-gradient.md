@@ -5,12 +5,14 @@ unit: 1/deg
 cluster: aero-spanwise
 user_visible: true
 source_status: SOURCED
+code_audit: CONFIRMED
 node_class: derived
 tags:
   - cluster/aero-spanwise
   - class/derived
   - source/sourced
   - surface/user-visible
+  - audit/confirmed
   - flag/divergence
 ---
 
@@ -32,6 +34,8 @@ cm_grad = np.gradient(cm_curve, alpha_cm) if len(cm_curve) > 1 else np.array([np
 - [[alpha-array|Alpha sweep array]]
 
 **Produced by.** `app/services/analysis_service.py:1109` — `_plot_cm_stability`
+
+🟢 **Verified against the code** — an independent reviewer read this line and confirmed the formula, unit and value (2026-08-18 audit).
 
 **Consumed by.**
 

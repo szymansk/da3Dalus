@@ -6,12 +6,14 @@ unit: N/m^2
 cluster: perf-matching
 user_visible: true
 source_status: NO_SOURCE_FOUND
+code_audit: CONFIRMED
 node_class: derived
 tags:
   - cluster/perf-matching
   - class/derived
   - source/no-source-found
   - surface/user-visible
+  - audit/confirmed
   - flag/anomaly
   - flag/divergence
 ---
@@ -35,6 +37,8 @@ base = (wcl_lb * _LENNON_LB_FT_TO_SI) ** (2.0 / 3.0); ar_factor = max(ar, 1.0) *
 - [[ar_resolved|Resolved aspect ratio]]  — *⤵ fallback*
 
 **Produced by.** `app/services/matching_chart_service.py:531` — `_wcl_constraint`
+
+🟢 **Verified against the code** — an independent reviewer read this line and confirmed the formula, unit and value (2026-08-18 audit).
 
 **Consumed by.**
 

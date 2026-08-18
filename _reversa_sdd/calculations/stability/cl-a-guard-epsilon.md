@@ -6,11 +6,13 @@ unit: 1/rad
 cluster: stability
 user_visible: false
 source_status: NO_SOURCE_FOUND
+code_audit: CONFIRMED
 node_class: numerical-tolerance
 tags:
   - cluster/stability
   - class/numerical-tolerance
   - source/no-source-found
+  - audit/confirmed
   - flag/anomaly
   - flag/divergence
 ---
@@ -32,6 +34,8 @@ if has_cm_a and abs(cl_a) > 1e-6:
 **Inputs.** — *(leaf: a constant or an external input)*
 
 **Produced by.** `app/services/trim_enrichment_service.py:145` — `classify_stability`
+
+🟢 **Verified against the code** — an independent reviewer read this line and confirmed the formula, unit and value (2026-08-18 audit).
 
 **Consumed by.**
 

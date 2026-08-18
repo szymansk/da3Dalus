@@ -6,12 +6,14 @@ unit: enum
 cluster: aero-polars
 user_visible: true
 source_status: NO_SOURCE_FOUND
+code_audit: CONFIRMED
 node_class: derived
 tags:
   - cluster/aero-polars
   - class/derived
   - source/no-source-found
   - surface/user-visible
+  - audit/confirmed
   - flag/divergence
 ---
 
@@ -34,6 +36,8 @@ if has_mission: active_lens = "mission" ... elif has_cruise: active_lens = "targ
 - [[alr-score-re-agnostic|re_agnostic suitability score]]  — *⊣ limit*
 
 **Produced by.** `app/services/suitability_service.py:628` — `search_suitability`
+
+🟢 **Verified against the code** — an independent reviewer read this line and confirmed the formula, unit and value (2026-08-18 audit).
 
 **Consumed by.**
 

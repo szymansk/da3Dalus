@@ -6,11 +6,13 @@ unit: dimensionless
 cluster: aero-polars
 user_visible: false
 source_status: NO_SOURCE_FOUND
+code_audit: CONFIRMED
 node_class: derived
 tags:
   - cluster/aero-polars
   - class/derived
   - source/no-source-found
+  - audit/confirmed
   - flag/anomaly
   - flag/divergence
 ---
@@ -34,6 +36,8 @@ result["cl_valid_hi"] = float(np.max(cl_f))
 - [[alr-confidence-gate|NeuralFoil confidence gate]]
 
 **Produced by.** `app/services/airfoil_low_re_service.py:673` — `_extract_metrics`
+
+🟢 **Verified against the code** — an independent reviewer read this line and confirmed the formula, unit and value (2026-08-18 audit).
 
 **Consumed by.**
 

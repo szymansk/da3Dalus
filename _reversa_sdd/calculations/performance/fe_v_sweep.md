@@ -6,12 +6,14 @@ unit: m/s
 cluster: perf-envelope
 user_visible: true
 source_status: SOURCED
+code_audit: CONFIRMED
 node_class: derived
 tags:
   - cluster/perf-envelope
   - class/derived
   - source/sourced
   - surface/user-visible
+  - audit/confirmed
 ---
 
 # Velocity sweep points
@@ -33,6 +35,8 @@ v = v_stall + (v_dive - v_stall) * i / (n_points - 1)
 - [[fe_n_points|V-n sampling resolution]]  — *⊣ limit*
 
 **Produced by.** `app/services/flight_envelope_service.py:324` — `compute_vn_curve / _build_gust_lines`
+
+🟢 **Verified against the code** — an independent reviewer read this line and confirmed the formula, unit and value (2026-08-18 audit).
 
 **Consumed by.**
 

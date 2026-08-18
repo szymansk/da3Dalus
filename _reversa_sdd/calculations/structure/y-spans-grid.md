@@ -5,11 +5,13 @@ unit: dimensionless (span fraction)
 cluster: structure
 user_visible: false
 source_status: NO_SOURCE_FOUND
+code_audit: CONFIRMED
 node_class: derived
 tags:
   - cluster/structure
   - class/derived
   - source/no-source-found
+  - audit/confirmed
 ---
 
 # Spanwise sampling grid
@@ -33,6 +35,8 @@ if y_spans and y_spans[0] <= 0.0:
 - [[root-eps|Root sampling epsilon]]
 
 **Produced by.** `cad_designer/airplane/geometry/spar_solver.py:745` — `build_stations_from_geometry`
+
+🟢 **Verified against the code** — an independent reviewer read this line and confirmed the formula, unit and value (2026-08-18 audit).
 
 **Consumed by.**
 

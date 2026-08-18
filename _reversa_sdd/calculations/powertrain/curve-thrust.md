@@ -6,12 +6,14 @@ unit: N
 cluster: powertrain
 user_visible: true
 source_status: SOURCED
+code_audit: CONFIRMED
 node_class: derived
 tags:
   - cluster/powertrain
   - class/derived
   - source/sourced
   - surface/user-visible
+  - audit/confirmed
   - flag/anomaly
 ---
 
@@ -36,6 +38,8 @@ thrust_n = max(Ct * rho * (point_n_rps**2) * (D_m**4), 0.0)
 - [[curve-diameter-m|Propeller diameter in metres]]
 
 **Produced by.** `app/services/powertrain_performance.py:748` — `compute_performance_curve`
+
+🟢 **Verified against the code** — an independent reviewer read this line and confirmed the formula, unit and value (2026-08-18 audit).
 
 **Consumed by.**
 

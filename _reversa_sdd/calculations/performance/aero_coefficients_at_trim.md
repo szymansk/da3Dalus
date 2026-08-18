@@ -6,12 +6,14 @@ unit: dimensionless
 cluster: perf-oppoints
 user_visible: true
 source_status: SOURCED
+code_audit: CONFIRMED
 node_class: solver-output
 tags:
   - cluster/perf-oppoints
   - class/solver-output
   - source/sourced
   - surface/user-visible
+  - audit/confirmed
   - flag/divergence
   - solver/aerobuildup
 ---
@@ -38,6 +40,8 @@ result = asb.AeroBuildup(airplane=airplane, op_point=op, xyz_ref=airplane.xyz_re
 - [[default_altitude_m|Default environment altitude]]  — *ε tolerance*
 
 **Produced by.** `app/services/operating_point_generator_service.py:772` — `_aero_coefficients_at`
+
+🟢 **Verified against the code** — an independent reviewer read this line and confirmed the formula, unit and value (2026-08-18 audit).
 
 **Consumed by.**
 

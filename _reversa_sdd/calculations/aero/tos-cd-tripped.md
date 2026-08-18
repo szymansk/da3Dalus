@@ -6,12 +6,14 @@ unit: dimensionless
 cluster: aero-strips
 user_visible: true
 source_status: SOURCED
+code_audit: CONFIRMED
 node_class: derived
 tags:
   - cluster/aero-strips
   - class/derived
   - source/sourced
   - surface/user-visible
+  - audit/confirmed
 ---
 
 # Tripped section drag
@@ -32,6 +34,8 @@ cd_tripped = float(cd_values[i_opt])
 - [[tos-xtr-opt|Optimal trip position]]
 
 **Produced by.** `app/services/turbulator_optimizer_service.py:258` — `optimize_section_xtr`
+
+🟢 **Verified against the code** — an independent reviewer read this line and confirmed the formula, unit and value (2026-08-18 audit).
 
 **Consumed by.**
 

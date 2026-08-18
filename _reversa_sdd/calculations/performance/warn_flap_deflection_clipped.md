@@ -5,12 +5,14 @@ unit: dimensionless
 cluster: perf-oppoints
 user_visible: true
 source_status: NO_SOURCE_FOUND
+code_audit: CONFIRMED
 node_class: derived
 tags:
   - cluster/perf-oppoints
   - class/derived
   - source/no-source-found
   - surface/user-visible
+  - audit/confirmed
   - flag/divergence
 ---
 
@@ -31,6 +33,8 @@ warnings.append("FLAP_DEFLECTION_CLIPPED")
 - [[flap_deflection_clipped_value|Clipped flap deflection]]  — *⊣ limit*
 
 **Produced by.** `app/services/operating_point_generator_service.py:105` — `_clip_flap_to_ted_limit`
+
+🟢 **Verified against the code** — an independent reviewer read this line and confirmed the formula, unit and value (2026-08-18 audit).
 
 **Consumed by.**
 

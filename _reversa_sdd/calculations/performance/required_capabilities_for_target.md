@@ -5,11 +5,13 @@ unit: dimensionless
 cluster: perf-oppoints
 user_visible: false
 source_status: PARTIAL
+code_audit: CONFIRMED
 node_class: derived
 tags:
   - cluster/perf-oppoints
   - class/derived
   - source/partial
+  - audit/confirmed
   - flag/anomaly
   - flag/divergence
 ---
@@ -29,6 +31,8 @@ if target_name.startswith("turn_"): return {"has_roll_control|has_yaw_control"};
 **Inputs.** — *(leaf: a constant or an external input)*
 
 **Produced by.** `app/services/operating_point_generator_service.py:557` — `_required_capabilities_for_target`
+
+🟢 **Verified against the code** — an independent reviewer read this line and confirmed the formula, unit and value (2026-08-18 audit).
 
 **Consumed by.**
 

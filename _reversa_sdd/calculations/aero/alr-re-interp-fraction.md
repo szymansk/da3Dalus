@@ -6,11 +6,13 @@ unit: dimensionless
 cluster: aero-polars
 user_visible: false
 source_status: SOURCED
+code_audit: CONFIRMED
 node_class: derived
 tags:
   - cluster/aero-polars
   - class/derived
   - source/sourced
+  - audit/confirmed
   - flag/anomaly
   - flag/divergence
 ---
@@ -32,6 +34,8 @@ t = (math.log(re_query) - math.log(lo)) / (math.log(hi) - math.log(lo))
 - [[low-re-grid|Absolute low-Re grid]]
 
 **Produced by.** `app/services/airfoil_low_re_service.py:351` — `interpolate_polar_at_re`
+
+🟢 **Verified against the code** — an independent reviewer read this line and confirmed the formula, unit and value (2026-08-18 audit).
 
 **Consumed by.**
 

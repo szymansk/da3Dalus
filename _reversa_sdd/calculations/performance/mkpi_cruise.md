@@ -6,12 +6,14 @@ unit: m/s
 cluster: perf-envelope
 user_visible: true
 source_status: SOURCED
+code_audit: WRONG_LINE
 node_class: derived
 tags:
   - cluster/perf-envelope
   - class/derived
   - source/sourced
   - surface/user-visible
+  - audit/wrong-line
   - flag/divergence
 ---
 
@@ -29,7 +31,9 @@ v = _ctx_get(ctx, "v_cruise_mps")
 
 **Inputs.** — *(leaf: a constant or an external input)*
 
-**Produced by.** `app/services/mission_kpi_service.py:236` — `_kpi_cruise`
+**Produced by.** `app/services/mission_kpi_service.py:229` — `_kpi_cruise`
+
+🟠 **Corrected by the audit** — the extraction claimed `WRONG_LINE`. Original line was `236`. 
 
 **Consumed by.**
 

@@ -6,11 +6,13 @@ unit: mm
 cluster: structure
 user_visible: false
 source_status: PARTIAL
+code_audit: CONFIRMED
 node_class: derived
 tags:
   - cluster/structure
   - class/derived
   - source/partial
+  - audit/confirmed
   - flag/anomaly
 ---
 
@@ -31,6 +33,8 @@ root_z = (left[0].center_z + right[0].center_z) / 2.0
 - [[station-center-z|Station centre height]]
 
 **Produced by.** `cad_designer/airplane/geometry/spar_solver.py:601` — `_straight_collinear_in_envelope`
+
+🟢 **Verified against the code** — an independent reviewer read this line and confirmed the formula, unit and value (2026-08-18 audit).
 
 **Consumed by.**
 

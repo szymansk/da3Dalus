@@ -6,11 +6,13 @@ unit: – (count)
 cluster: stability
 user_visible: false
 source_status: NO_SOURCE_FOUND
+code_audit: CONFIRMED
 node_class: derived
 tags:
   - cluster/stability
   - class/derived
   - source/no-source-found
+  - audit/confirmed
   - flag/anomaly
   - flag/divergence
 ---
@@ -30,6 +32,8 @@ ctx["sm_apply_count"] = int(ctx.get("sm_apply_count") or 0) + 1
 **Inputs.** — *(leaf: a constant or an external input)*
 
 **Produced by.** `app/services/sm_sizing_service.py:300` — `_update_convergence_counter`
+
+🟢 **Verified against the code** — an independent reviewer read this line and confirmed the formula, unit and value (2026-08-18 audit).
 
 **Consumed by.**
 

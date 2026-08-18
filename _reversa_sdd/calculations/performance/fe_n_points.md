@@ -6,11 +6,13 @@ unit: -
 cluster: perf-envelope
 user_visible: false
 source_status: NO_SOURCE_FOUND
+code_audit: ANOMALY_REFUTED
 node_class: unclassified-constant
 tags:
   - cluster/perf-envelope
   - class/unclassified-constant
   - source/no-source-found
+  - audit/anomaly-refuted
   - flag/anomaly
   - flag/divergence
 ---
@@ -32,6 +34,8 @@ n_points = 60  # > 50 as required
 **Inputs.** — *(leaf: a constant or an external input)*
 
 **Produced by.** `app/services/flight_envelope_service.py:318` — `compute_vn_curve`
+
+🟠 **Corrected by the audit** — the extraction claimed `ANOMALY_REFUTED`. 
 
 **Consumed by.**
 

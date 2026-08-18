@@ -6,11 +6,13 @@ unit: rpm
 cluster: powertrain
 user_visible: false
 source_status: NO_SOURCE_FOUND
+code_audit: CONFIRMED
 node_class: derived
 tags:
   - cluster/powertrain
   - class/derived
   - source/no-source-found
+  - audit/confirmed
   - flag/anomaly
   - flag/divergence
 ---
@@ -33,6 +35,8 @@ rpms = sorted({s.rpm for s in request.polar_samples}) ; nearest_rpm = min(rpms, 
 - [[qprop-rpm-solution|Solved operating RPM]]  — *⊣ limit*
 
 **Produced by.** `app/services/powertrain_performance.py:738` — `compute_performance_curve`
+
+🟢 **Verified against the code** — an independent reviewer read this line and confirmed the formula, unit and value (2026-08-18 audit).
 
 **Consumed by.**
 

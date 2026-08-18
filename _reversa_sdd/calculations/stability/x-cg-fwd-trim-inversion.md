@@ -6,12 +6,14 @@ unit: m
 cluster: stability
 user_visible: true
 source_status: PARTIAL
+code_audit: CONFIRMED
 node_class: derived
 tags:
   - cluster/stability
   - class/derived
   - source/partial
   - surface/user-visible
+  - audit/confirmed
   - flag/anomaly
   - flag/divergence
 ---
@@ -34,6 +36,8 @@ return x_np_m - net_pitch_up * c_ref_m / cl_max_landing
 - [[cl-max-landing|Landing CL_max]]  — *⊣ limit*
 
 **Produced by.** `app/services/elevator_authority_service.py:237` — `_trim_inversion`
+
+🟢 **Verified against the code** — an independent reviewer read this line and confirmed the formula, unit and value (2026-08-18 audit).
 
 **Consumed by.**
 

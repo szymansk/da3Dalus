@@ -6,12 +6,14 @@ unit: m/s
 cluster: perf-matching
 user_visible: true
 source_status: PARTIAL
+code_audit: CONFIRMED
 node_class: derived
 tags:
   - cluster/perf-matching
   - class/derived
   - source/partial
   - surface/user-visible
+  - audit/confirmed
   - flag/anomaly
   - flag/divergence
 ---
@@ -33,6 +35,8 @@ return math.sqrt(2.0 * e_stored / mass_kg)
 - [[bungee_energy_stored|Bungee stored energy]]
 
 **Produced by.** `app/services/field_length_service.py:177` — `compute_bungee_release_speed`
+
+🟢 **Verified against the code** — an independent reviewer read this line and confirmed the formula, unit and value (2026-08-18 audit).
 
 **Consumed by.**
 

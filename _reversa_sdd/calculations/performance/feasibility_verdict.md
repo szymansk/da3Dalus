@@ -6,12 +6,14 @@ unit: enum
 cluster: perf-matching
 user_visible: true
 source_status: PARTIAL
+code_audit: CONFIRMED
 node_class: derived
 tags:
   - cluster/perf-matching
   - class/derived
   - source/partial
   - surface/user-visible
+  - audit/confirmed
   - flag/anomaly
   - flag/divergence
 ---
@@ -36,6 +38,8 @@ feasibility = "infeasible_below_constraints" if infeasible else "feasible"
 - [[tol_vert_binding|Vertical-constraint binding tolerance]]
 
 **Produced by.** `app/services/matching_chart_service.py:687` — `_check_feasibility`
+
+🟢 **Verified against the code** — an independent reviewer read this line and confirmed the formula, unit and value (2026-08-18 audit).
 
 **Consumed by.**
 

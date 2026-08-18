@@ -6,12 +6,14 @@ unit: A
 cluster: powertrain
 user_visible: true
 source_status: NO_SOURCE_FOUND
+code_audit: CONFIRMED
 node_class: unclassified-constant
 tags:
   - cluster/powertrain
   - class/unclassified-constant
   - source/no-source-found
   - surface/user-visible
+  - audit/confirmed
   - flag/anomaly
   - flag/scale
 ---
@@ -33,6 +35,8 @@ battery.max_current_a if not math.isinf(battery.max_current_a) else 100.0
 **Inputs.** — *(leaf: a constant or an external input)*
 
 **Produced by.** `app/services/powertrain_performance.py:657` — `compute_performance_curve`
+
+🟢 **Verified against the code** — an independent reviewer read this line and confirmed the formula, unit and value (2026-08-18 audit).
 
 **Consumed by.**
 

@@ -6,11 +6,13 @@ unit: rpm
 cluster: powertrain
 user_visible: false
 source_status: PARTIAL
+code_audit: CONFIRMED
 node_class: derived
 tags:
   - cluster/powertrain
   - class/derived
   - source/partial
+  - audit/confirmed
   - flag/anomaly
   - flag/divergence
 ---
@@ -34,6 +36,8 @@ rpm_target = (v_top_mps / (prop_d * prop_pd)) * 60.0  # rev/min
 - [[ss-v-top|Top speed used for peak sizing]]
 
 **Produced by.** `app/services/powertrain_solution_space_service.py:158` — `_per_cell`
+
+🟢 **Verified against the code** — an independent reviewer read this line and confirmed the formula, unit and value (2026-08-18 audit).
 
 **Consumed by.**
 

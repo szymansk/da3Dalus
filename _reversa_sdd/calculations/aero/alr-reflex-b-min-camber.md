@@ -6,11 +6,13 @@ unit: % chord
 cluster: aero-polars
 user_visible: false
 source_status: NO_SOURCE_FOUND
+code_audit: CONFIRMED
 node_class: unclassified-parameter
 tags:
   - cluster/aero-polars
   - class/unclassified-parameter
   - source/no-source-found
+  - audit/confirmed
   - flag/divergence
 ---
 
@@ -31,6 +33,8 @@ _REFLEX_B_MIN_CAMBER_PCT = 2.0
 **Inputs.** — *(leaf: a constant or an external input)*
 
 **Produced by.** `app/services/airfoil_low_re_service.py:88` — `_REFLEX_B_MIN_CAMBER_PCT`
+
+🟢 **Verified against the code** — an independent reviewer read this line and confirmed the formula, unit and value (2026-08-18 audit).
 
 **Consumed by.**
 

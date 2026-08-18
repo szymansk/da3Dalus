@@ -6,12 +6,14 @@ unit: dimensionless
 cluster: perf-matching
 user_visible: true
 source_status: PARTIAL
+code_audit: CONFIRMED
 node_class: derived
 tags:
   - cluster/perf-matching
   - class/derived
   - source/partial
   - surface/user-visible
+  - audit/confirmed
   - flag/anomaly
   - flag/divergence
   - flag/scale
@@ -40,6 +42,8 @@ return (_C_TO * _K_TO_50FT * ws) / (rho * g * cl_max_to * s_runway)
 - [[k_to_50ft|Takeoff 50-ft obstacle factor]]
 
 **Produced by.** `app/services/matching_chart_service.py:310` — `_takeoff_constraint`
+
+🟢 **Verified against the code** — an independent reviewer read this line and confirmed the formula, unit and value (2026-08-18 audit).
 
 **Consumed by.**
 

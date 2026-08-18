@@ -6,11 +6,13 @@ unit: mm
 cluster: structure
 user_visible: false
 source_status: SOURCED
+code_audit: CONFIRMED
 node_class: derived
 tags:
   - cluster/structure
   - class/derived
   - source/sourced
+  - audit/confirmed
 ---
 
 # Capped-spar inner gap height
@@ -30,6 +32,8 @@ h = inner_cube ** (1.0 / 3.0)
 - [[capped-inner-cube|Capped-spar inner-height cube]]
 
 **Produced by.** `app/services/spar_sizing.py:208` — `_solve_capped`
+
+🟢 **Verified against the code** — an independent reviewer read this line and confirmed the formula, unit and value (2026-08-18 audit).
 
 **Consumed by.**
 

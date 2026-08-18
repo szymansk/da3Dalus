@@ -6,11 +6,13 @@ unit: 1/rad
 cluster: perf-envelope
 user_visible: false
 source_status: PARTIAL
+code_audit: CONFIRMED
 node_class: derived
 tags:
   - cluster/perf-envelope
   - class/derived
   - source/partial
+  - audit/confirmed
   - flag/anomaly
   - flag/divergence
 ---
@@ -32,6 +34,8 @@ return 2.0 * math.pi * ar / (ar + 2.0)
 - [[fe_aspect_ratio|Aspect ratio (gust path)]]  — *⤵ fallback*
 
 **Produced by.** `app/services/flight_envelope_service.py:67` — `_helmbold_cl_alpha`
+
+🟢 **Verified against the code** — an independent reviewer read this line and confirmed the formula, unit and value (2026-08-18 audit).
 
 **Consumed by.**
 

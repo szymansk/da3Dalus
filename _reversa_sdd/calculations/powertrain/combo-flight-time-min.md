@@ -6,12 +6,14 @@ unit: min
 cluster: powertrain
 user_visible: true
 source_status: PARTIAL
+code_audit: CONFIRMED
 node_class: derived
 tags:
   - cluster/powertrain
   - class/derived
   - source/partial
   - surface/user-visible
+  - audit/confirmed
 ---
 
 # Estimated flight time
@@ -31,6 +33,8 @@ flight_time_min = flight_time_h * 60
 - [[combo-flight-time-h|Estimated flight time (hours)]]
 
 **Produced by.** `app/services/powertrain_sizing_service.py:257` — `_evaluate_motor_battery_combo`
+
+🟢 **Verified against the code** — an independent reviewer read this line and confirmed the formula, unit and value (2026-08-18 audit).
 
 **Consumed by.**
 

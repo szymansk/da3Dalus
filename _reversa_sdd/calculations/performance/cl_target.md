@@ -6,11 +6,13 @@ unit: dimensionless
 cluster: perf-oppoints
 user_visible: false
 source_status: SOURCED
+code_audit: WRONG_LINE
 node_class: derived
 tags:
   - cluster/perf-oppoints
   - class/derived
   - source/sourced
+  - audit/wrong-line
   - flag/divergence
 ---
 
@@ -35,7 +37,9 @@ q_dyn = 0.5 * rho * max(candidate_velocity_mps, 1e-3) ** 2; if q_dyn <= 1e-6: re
 - [[n_target_level|Level-flight target load factor]]
 - [[gravity_g|Gravitational acceleration]]
 
-**Produced by.** `app/services/operating_point_generator_service.py:794` — `_cl_target_for_velocity`
+**Produced by.** `app/services/operating_point_generator_service.py:797` — `_cl_target_for_velocity`
+
+🟠 **Corrected by the audit** — the extraction claimed `WRONG_LINE`. Original line was `794`. Line 794 computes q_dyn; line 797 returns cl_target
 
 **Consumed by.**
 

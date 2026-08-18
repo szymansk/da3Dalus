@@ -6,12 +6,14 @@ unit: dimensionless
 cluster: structure
 user_visible: true
 source_status: SOURCED
+code_audit: NOT_VERIFIED
 node_class: unclassified-parameter
 tags:
   - cluster/structure
   - class/unclassified-parameter
   - source/sourced
   - surface/user-visible
+  - audit/not-verified
   - flag/anomaly
   - flag/divergence
   - flag/scale
@@ -38,6 +40,8 @@ safety_factor_j: float = Field(
 **Inputs.** — *(leaf: a constant or an external input)*
 
 **Produced by.** `app/schemas/spar_sizing.py:33` — `SparSizingParams.safety_factor_j`
+
+⚪ **Not verified.** This node was not covered by the audit pass; treat its line and formula as extracted-but-unchecked.
 
 **Consumed by.**
 

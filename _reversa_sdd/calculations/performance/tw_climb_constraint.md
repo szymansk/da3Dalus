@@ -6,12 +6,14 @@ unit: dimensionless
 cluster: perf-matching
 user_visible: true
 source_status: SOURCED
+code_audit: CONFIRMED
 node_class: derived
 tags:
   - cluster/perf-matching
   - class/derived
   - source/sourced
   - surface/user-visible
+  - audit/confirmed
   - flag/divergence
 ---
 
@@ -36,6 +38,8 @@ gamma_rad = math.radians(gamma_deg); q = 0.5 * rho * v_climb * v_climb; k = 1.0 
 - [[rho_sl|Sea-level ISA density]]  — *⤵ fallback*
 
 **Produced by.** `app/services/matching_chart_service.py:413` — `_climb_constraint`
+
+🟢 **Verified against the code** — an independent reviewer read this line and confirmed the formula, unit and value (2026-08-18 audit).
 
 **Consumed by.**
 

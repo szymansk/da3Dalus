@@ -6,11 +6,13 @@ unit: m/in
 cluster: powertrain
 user_visible: false
 source_status: PARTIAL
+code_audit: CONFIRMED
 node_class: unclassified-constant
 tags:
   - cluster/powertrain
   - class/unclassified-constant
   - source/partial
+  - audit/confirmed
 ---
 
 # Inch-to-metre conversion factor
@@ -30,6 +32,8 @@ D_m = request.propeller_diameter_in * 0.0254  # inches → metres
 **Inputs.** — *(leaf: a constant or an external input)*
 
 **Produced by.** `app/services/powertrain_performance.py:646` — `compute_performance_curve`
+
+🟢 **Verified against the code** — an independent reviewer read this line and confirmed the formula, unit and value (2026-08-18 audit).
 
 **Consumed by.**
 

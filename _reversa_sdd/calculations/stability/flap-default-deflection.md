@@ -6,11 +6,13 @@ unit: deg
 cluster: stability
 user_visible: false
 source_status: SOURCED
+code_audit: CONFIRMED
 node_class: unclassified-constant
 tags:
   - cluster/stability
   - class/unclassified-constant
   - source/sourced
+  - audit/confirmed
   - flag/anomaly
   - flag/divergence
   - flag/scale
@@ -33,6 +35,8 @@ flap_deg = getattr(ted, "positive_deflection_deg", None) or 30.0
 **Inputs.** — *(leaf: a constant or an external input)*
 
 **Produced by.** `app/services/elevator_authority_service.py:869` — `_run_flap_analysis`
+
+🟢 **Verified against the code** — an independent reviewer read this line and confirmed the formula, unit and value (2026-08-18 audit).
 
 **Consumed by.**
 

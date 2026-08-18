@@ -6,12 +6,14 @@ unit: m
 cluster: mass
 user_visible: true
 source_status: SOURCED
+code_audit: CONFIRMED
 node_class: derived
 tags:
   - cluster/mass
   - class/derived
   - source/sourced
   - surface/user-visible
+  - audit/confirmed
   - flag/anomaly
   - flag/divergence
 ---
@@ -35,6 +37,8 @@ cg_stability_aft_m = x_np - target_sm * mac
 - [[target-static-margin|Target static margin]]
 
 **Produced by.** `app/services/loading_scenario_service.py:112` — `compute_stability_envelope`
+
+🟢 **Verified against the code** — an independent reviewer read this line and confirmed the formula, unit and value (2026-08-18 audit).
 
 **Consumed by.**
 

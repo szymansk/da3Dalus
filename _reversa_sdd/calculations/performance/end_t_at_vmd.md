@@ -6,11 +6,13 @@ unit: s
 cluster: perf-envelope
 user_visible: false
 source_status: PARTIAL
+code_audit: CONFIRMED
 node_class: derived
 tags:
   - cluster/perf-envelope
   - class/derived
   - source/partial
+  - audit/confirmed
   - flag/divergence
 ---
 
@@ -33,6 +35,8 @@ t_at_vmd_s = (capacity_wh_val * 3600.0) / p_req_vmd
 - [[end_p_req_vmd|Power required at V_md]]
 
 **Produced by.** `app/services/endurance_service.py:411` — `compute_endurance`
+
+🟢 **Verified against the code** — an independent reviewer read this line and confirmed the formula, unit and value (2026-08-18 audit).
 
 **Consumed by.**
 

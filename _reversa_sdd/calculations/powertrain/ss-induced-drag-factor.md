@@ -6,11 +6,13 @@ unit: dimensionless
 cluster: powertrain
 user_visible: false
 source_status: SOURCED
+code_audit: CONFIRMED
 node_class: derived
 tags:
   - cluster/powertrain
   - class/derived
   - source/sourced
+  - audit/confirmed
 ---
 
 # Induced-drag factor
@@ -31,6 +33,8 @@ k = 1.0 / (math.pi * e * ar)
 - [[ss-ar|Aspect ratio (solution space)]]  — *⤵ fallback*
 
 **Produced by.** `app/services/powertrain_solution_space_service.py:104` — `_p_aero`
+
+🟢 **Verified against the code** — an independent reviewer read this line and confirmed the formula, unit and value (2026-08-18 audit).
 
 **Consumed by.**
 

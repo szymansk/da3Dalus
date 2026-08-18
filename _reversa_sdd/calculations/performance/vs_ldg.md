@@ -6,12 +6,14 @@ unit: m/s
 cluster: perf-oppoints
 user_visible: true
 source_status: PARTIAL
+code_audit: CONFIRMED
 node_class: derived
 tags:
   - cluster/perf-oppoints
   - class/derived
   - source/partial
   - surface/user-visible
+  - audit/confirmed
   - flag/divergence
 ---
 
@@ -32,6 +34,8 @@ vs_ldg = _pick("v_s0_mps") or vs_clean ... "vs_ldg": max(2.0, vs_ldg)
 - [[vs_clean|Clean stall speed reference]]
 
 **Produced by.** `app/services/operating_point_generator_service.py:356` — `_estimate_reference_speeds`
+
+🟢 **Verified against the code** — an independent reviewer read this line and confirmed the formula, unit and value (2026-08-18 audit).
 
 **Consumed by.**
 

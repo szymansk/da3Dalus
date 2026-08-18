@@ -6,11 +6,13 @@ unit: – (count)
 cluster: stability
 user_visible: false
 source_status: PARTIAL
+code_audit: CONFIRMED
 node_class: unclassified-constant
 tags:
   - cluster/stability
   - class/unclassified-constant
   - source/partial
+  - audit/confirmed
   - flag/anomaly
   - flag/divergence
   - solver-adjacent/aerobuildup
@@ -33,6 +35,8 @@ trimmed_deflection = brentq(residual, lower, upper, xtol=1e-6, maxiter=50)
 **Inputs.** — *(leaf: a constant or an external input)*
 
 **Produced by.** `app/services/aerobuildup_trim_service.py:214` — `trim_with_aerobuildup`
+
+🟢 **Verified against the code** — an independent reviewer read this line and confirmed the formula, unit and value (2026-08-18 audit).
 
 **Consumed by.**
 

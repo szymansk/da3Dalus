@@ -6,12 +6,14 @@ unit: m/s
 cluster: perf-oppoints
 user_visible: true
 source_status: PARTIAL
+code_audit: CONFIRMED
 node_class: derived
 tags:
   - cluster/perf-oppoints
   - class/derived
   - source/partial
   - surface/user-visible
+  - audit/confirmed
   - flag/divergence
 ---
 
@@ -32,6 +34,8 @@ vs_clean_ctx = _pick("v_s1_mps") or _pick("v_stall_mps"); if vs_clean_ctx is Non
 - [[cruise_speed_resolved|Resolved cruise speed]]
 
 **Produced by.** `app/services/operating_point_generator_service.py:346` — `_estimate_reference_speeds`
+
+🟢 **Verified against the code** — an independent reviewer read this line and confirmed the formula, unit and value (2026-08-18 audit).
 
 **Consumed by.**
 

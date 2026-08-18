@@ -5,11 +5,13 @@ unit: mm³
 cluster: structure
 user_visible: false
 source_status: SOURCED
+code_audit: CONFIRMED
 node_class: derived
 tags:
   - cluster/structure
   - class/derived
   - source/sourced
+  - audit/confirmed
 ---
 
 # Capped-spar inner-height cube
@@ -31,6 +33,8 @@ inner_cube = H**3 - 6.0 * H * erf_w / b
 - [[cap-width-mm|Cap/flange width]]
 
 **Produced by.** `app/services/spar_sizing.py:196` — `_solve_capped`
+
+🟢 **Verified against the code** — an independent reviewer read this line and confirmed the formula, unit and value (2026-08-18 audit).
 
 **Consumed by.**
 

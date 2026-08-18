@@ -6,12 +6,14 @@ unit: deg
 cluster: stability
 user_visible: true
 source_status: SOURCED
+code_audit: WRONG_LINE
 node_class: derived
 tags:
   - cluster/stability
   - class/derived
   - source/sourced
   - surface/user-visible
+  - audit/wrong-line
   - flag/anomaly
   - flag/divergence
 ---
@@ -32,7 +34,9 @@ for name, defl in control_surfaces.deflections.items():
 
 **Inputs.** — *(leaf: a constant or an external input)*
 
-**Produced by.** `app/services/stability_service.py:55` — `_find_trim_elevator`
+**Produced by.** `app/services/stability_service.py:61` — `_find_trim_elevator`
+
+🟠 **Corrected by the audit** — the extraction claimed `WRONG_LINE`. Original line was `55`. 
 
 **Consumed by.**
 

@@ -6,12 +6,14 @@ unit: -
 cluster: aero-spanwise
 user_visible: true
 source_status: SOURCED
+code_audit: CONFIRMED
 node_class: derived
 tags:
   - cluster/aero-spanwise
   - class/derived
   - source/sourced
   - surface/user-visible
+  - audit/confirmed
   - flag/divergence
 ---
 
@@ -32,6 +34,8 @@ tc_by_y[y_m] = thickness_mm / chord_mm
 - [[chord-mm-by-y|Station chord in millimetres]]
 
 **Produced by.** `app/services/analysis_service.py:2259` — `_get_tc_by_y_for_surface`
+
+🟢 **Verified against the code** — an independent reviewer read this line and confirmed the formula, unit and value (2026-08-18 audit).
 
 **Consumed by.**
 

@@ -6,12 +6,14 @@ unit: count
 cluster: powertrain
 user_visible: true
 source_status: NO_SOURCE_FOUND
+code_audit: CONFIRMED
 node_class: unclassified-constant
 tags:
   - cluster/powertrain
   - class/unclassified-constant
   - source/no-source-found
   - surface/user-visible
+  - audit/confirmed
   - flag/anomaly
   - flag/divergence
 ---
@@ -35,6 +37,8 @@ return PowertrainSizingResponse(recommendations=candidates[:10], warnings=warnin
 - [[combo-confidence|Combo confidence]]
 
 **Produced by.** `app/services/powertrain_sizing_service.py:318` — `size_powertrain`
+
+🟢 **Verified against the code** — an independent reviewer read this line and confirmed the formula, unit and value (2026-08-18 audit).
 
 **Consumed by.**
 

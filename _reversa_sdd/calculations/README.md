@@ -158,6 +158,31 @@ is cited. Removing that marker turns a lead into a claim.
 What **is** confirmed already lives in the tickets it belongs to — the root cause of
 gh-1132 was found this way.
 
+## The provenance audit — 2026-08-18
+
+Every node was re-checked by an independent reviewer swarm (25 agents, one per source
+file), instructed to **refute rather than confirm**: read the cited line, compare the
+formula character by character, check the unit and the literal value.
+
+| verdict | nodes |
+|---|---|
+| 🟢 CONFIRMED | **1043** |
+| 🟠 corrected — wrong line | 26 |
+| 🟠 corrected — wrong formula | 6 |
+| 🟠 corrected — wrong unit | 4 |
+| 🟠 misdescribed | 2 |
+| ⚪ not verified | 30 |
+
+**96 % stood; the 38 defects were all small** — a guard line cited instead of the return
+line beneath it, an assignment cited instead of its condition, a load factor labelled `g`
+instead of dimensionless. All corrections are applied, and every note now carries
+`code_audit:` in its frontmatter plus the original value where it was changed.
+
+**What this audit did NOT establish.** It confirmed *where* things are and *what* they
+compute. Of the 639 anomaly claims it refuted exactly one — which is not a plausible
+confirmation rate, it means the anomalies were largely not tested. They remain 🟡, and
+**refactoring must not be derived from them until they have their own adversarial pass.**
+
 ## The solver boundary
 
 Roughly a seventh of the graph's nodes are **not computed here at all** — they come out of

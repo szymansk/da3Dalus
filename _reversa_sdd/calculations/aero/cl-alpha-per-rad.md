@@ -6,11 +6,13 @@ unit: 1/rad
 cluster: aero-spanwise
 user_visible: false
 source_status: SOURCED
+code_audit: CONFIRMED
 node_class: unclassified-parameter
 tags:
   - cluster/aero-spanwise
   - class/unclassified-parameter
   - source/sourced
+  - audit/confirmed
   - flag/divergence
 ---
 
@@ -29,6 +31,8 @@ raw_cl_alpha = ctx.get("cl_alpha_per_rad"); cl_alpha_from_ctx = float(raw_cl_alp
 **Inputs.** — *(leaf: a constant or an external input)*
 
 **Produced by.** `app/services/analysis_service.py:643` — `_build_speed_polar`
+
+🟢 **Verified against the code** — an independent reviewer read this line and confirmed the formula, unit and value (2026-08-18 audit).
 
 **Consumed by.**
 

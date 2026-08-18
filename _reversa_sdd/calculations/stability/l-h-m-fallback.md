@@ -6,11 +6,13 @@ unit: m
 cluster: stability
 user_visible: false
 source_status: SOURCED
+code_audit: CONFIRMED
 node_class: derived
 tags:
   - cluster/stability
   - class/derived
   - source/sourced
+  - audit/confirmed
   - flag/anomaly
   - flag/divergence
 ---
@@ -32,6 +34,8 @@ l_h_m = 2.0 * mac_m
 - [[mac-m-fallback|MAC fallback]]  — *⤵ fallback*
 
 **Produced by.** `app/services/sm_sizing_service.py:160` — `_dsm_dsh`
+
+🟢 **Verified against the code** — an independent reviewer read this line and confirmed the formula, unit and value (2026-08-18 audit).
 
 **Consumed by.**
 

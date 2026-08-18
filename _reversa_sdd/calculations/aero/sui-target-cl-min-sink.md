@@ -6,12 +6,14 @@ unit: dimensionless
 cluster: aero-polars
 user_visible: true
 source_status: PARTIAL
+code_audit: CONFIRMED
 node_class: derived
 tags:
   - cluster/aero-polars
   - class/derived
   - source/partial
   - surface/user-visible
+  - audit/confirmed
   - flag/divergence
 ---
 
@@ -32,6 +34,8 @@ effective_target_cl_min_sink = _level_flight_cl(mass_kg, v_min_sink_mps, s_ref_m
 - [[alr-level-flight-cl|Level-flight lift coefficient]]
 
 **Produced by.** `app/services/suitability_service.py:356` — `search_suitability`
+
+🟢 **Verified against the code** — an independent reviewer read this line and confirmed the formula, unit and value (2026-08-18 audit).
 
 **Consumed by.**
 

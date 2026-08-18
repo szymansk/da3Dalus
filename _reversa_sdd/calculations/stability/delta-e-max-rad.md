@@ -6,11 +6,13 @@ unit: rad
 cluster: stability
 user_visible: false
 source_status: SOURCED
+code_audit: CONFIRMED
 node_class: derived
 tags:
   - cluster/stability
   - class/derived
   - source/sourced
+  - audit/confirmed
 ---
 
 # Maximum elevator deflection (radians)
@@ -30,6 +32,8 @@ return abs(float(negative_deflection_deg)) * math.pi / 180.0
 - [[default-delta-e-deg|Default maximum elevator deflection]]  — *⤵ fallback*
 
 **Produced by.** `app/services/elevator_authority_service.py:123` — `_delta_e_max_rad`
+
+🟢 **Verified against the code** — an independent reviewer read this line and confirmed the formula, unit and value (2026-08-18 audit).
 
 **Consumed by.**
 

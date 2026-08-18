@@ -6,12 +6,14 @@ unit: dimensionless (0..1)
 cluster: aero-polars
 user_visible: true
 source_status: NO_SOURCE_FOUND
+code_audit: CONFIRMED
 node_class: derived
 tags:
   - cluster/aero-polars
   - class/derived
   - source/no-source-found
   - surface/user-visible
+  - audit/confirmed
   - flag/divergence
 ---
 
@@ -34,6 +36,8 @@ return float(min(max(score, 0.0), 1.0))
 - [[alr-efficiency|Efficiency component of score_target_cl]]
 
 **Produced by.** `app/services/airfoil_low_re_service.py:1085` — `score_target_cl`
+
+🟢 **Verified against the code** — an independent reviewer read this line and confirmed the formula, unit and value (2026-08-18 audit).
 
 **Consumed by.**
 

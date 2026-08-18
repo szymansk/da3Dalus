@@ -6,11 +6,13 @@ unit: dimensionless
 cluster: aero-strips
 user_visible: false
 source_status: PARTIAL
+code_audit: CONFIRMED
 node_class: derived
 tags:
   - cluster/aero-strips
   - class/derived
   - source/partial
+  - audit/confirmed
   - flag/divergence
   - solver-adjacent/vlm
 ---
@@ -32,6 +34,8 @@ a, b = 1.0 - frac, frac   /   _blend_xsec(xa, xb, i / n)
 - [[vlm-panels-per-segment|Panels allotted to a wing segment]]  — *⊣ limit*
 
 **Produced by.** `app/services/vlm_strip_forces.py:97` — `_blend_xsec`
+
+🟢 **Verified against the code** — an independent reviewer read this line and confirmed the formula, unit and value (2026-08-18 audit).
 
 **Consumed by.**
 

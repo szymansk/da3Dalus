@@ -6,11 +6,13 @@ unit: dimensionless
 cluster: aero-polars
 user_visible: false
 source_status: NO_SOURCE_FOUND
+code_audit: CONFIRMED
 node_class: unclassified-parameter
 tags:
   - cluster/aero-polars
   - class/unclassified-parameter
   - source/no-source-found
+  - audit/confirmed
   - flag/anomaly
   - flag/divergence
 ---
@@ -32,6 +34,8 @@ low_re_tip_re_rel_drop: float = 50_000.0
 **Inputs.** — *(leaf: a constant or an external input)*
 
 **Produced by.** `app/settings.py:114` — `Settings.low_re_tip_re_rel_drop`
+
+🟢 **Verified against the code** — an independent reviewer read this line and confirmed the formula, unit and value (2026-08-18 audit).
 
 **Consumed by.**
 

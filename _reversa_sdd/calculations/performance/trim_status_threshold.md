@@ -5,12 +5,14 @@ unit: dimensionless
 cluster: perf-oppoints
 user_visible: true
 source_status: NO_SOURCE_FOUND
+code_audit: CONFIRMED
 node_class: unclassified-constant
 tags:
   - cluster/perf-oppoints
   - class/unclassified-constant
   - source/no-source-found
   - surface/user-visible
+  - audit/confirmed
   - flag/anomaly
   - flag/divergence
 ---
@@ -34,6 +36,8 @@ trim_status = (OperatingPointStatus.TRIMMED if best_score < 0.35 else OperatingP
 - [[trim_score|Trim score]]
 
 **Produced by.** `app/services/operating_point_generator_service.py:854` — `_apply_limit_warnings`
+
+🟢 **Verified against the code** — an independent reviewer read this line and confirmed the formula, unit and value (2026-08-18 audit).
 
 **Consumed by.**
 

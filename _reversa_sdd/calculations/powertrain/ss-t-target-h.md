@@ -6,11 +6,13 @@ unit: h
 cluster: powertrain
 user_visible: false
 source_status: PARTIAL
+code_audit: CONFIRMED
 node_class: derived
 tags:
   - cluster/powertrain
   - class/derived
   - source/partial
+  - audit/confirmed
 ---
 
 # Target flight time in hours
@@ -30,6 +32,8 @@ t_target_h = t_target_min / 60.0
 - [[ss-t-target-min|Target flight time]]  — *⊣ limit*
 
 **Produced by.** `app/services/powertrain_solution_space_service.py:352` — `compute_solution_space`
+
+🟢 **Verified against the code** — an independent reviewer read this line and confirmed the formula, unit and value (2026-08-18 audit).
 
 **Consumed by.**
 

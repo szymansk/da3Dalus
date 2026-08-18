@@ -6,12 +6,14 @@ unit: V
 cluster: powertrain
 user_visible: true
 source_status: PARTIAL
+code_audit: CONFIRMED
 node_class: unclassified-constant
 tags:
   - cluster/powertrain
   - class/unclassified-constant
   - source/partial
   - surface/user-visible
+  - audit/confirmed
   - flag/anomaly
   - flag/divergence
 ---
@@ -33,6 +35,8 @@ if voltage is None: voltage = 11.1
 **Inputs.** — *(leaf: a constant or an external input)*
 
 **Produced by.** `app/services/powertrain_sizing_service.py:228` — `_evaluate_motor_battery_combo`
+
+🟢 **Verified against the code** — an independent reviewer read this line and confirmed the formula, unit and value (2026-08-18 audit).
 
 **Consumed by.**
 

@@ -6,11 +6,13 @@ unit: -
 cluster: perf-envelope
 user_visible: false
 source_status: SOURCED
+code_audit: CONFIRMED
 node_class: derived
 tags:
   - cluster/perf-envelope
   - class/derived
   - source/sourced
+  - audit/confirmed
   - flag/anomaly
   - flag/divergence
 ---
@@ -30,6 +32,8 @@ blob = json.dumps(ctx, sort_keys=True, default=str).encode("utf-8"); return hash
 **Inputs.** — *(leaf: a constant or an external input)*
 
 **Produced by.** `app/services/mission_kpi_service.py:395` — `_hash_context`
+
+🟢 **Verified against the code** — an independent reviewer read this line and confirmed the formula, unit and value (2026-08-18 audit).
 
 **Consumed by.**
 

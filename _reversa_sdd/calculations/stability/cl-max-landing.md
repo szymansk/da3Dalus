@@ -6,12 +6,14 @@ unit: – (dimensionless)
 cluster: stability
 user_visible: true
 source_status: SOURCED
+code_audit: CONFIRMED
 node_class: derived
 tags:
   - cluster/stability
   - class/derived
   - source/sourced
   - surface/user-visible
+  - audit/confirmed
   - flag/anomaly
   - flag/divergence
   - flag/scale
@@ -36,6 +38,8 @@ cl_max_landing = cl_max_clean + (_ROSKAM_FLAP_CL_BONUS if has_flap else 0.0)
 - [[cl-max-landing-flap|Swept flapped CL_max]]  — *⊣ limit*
 
 **Produced by.** `app/services/elevator_authority_service.py:361` — `_build_stub_result`
+
+🟢 **Verified against the code** — an independent reviewer read this line and confirmed the formula, unit and value (2026-08-18 audit).
 
 **Consumed by.**
 

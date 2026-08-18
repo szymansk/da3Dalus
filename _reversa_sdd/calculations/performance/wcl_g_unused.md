@@ -6,11 +6,13 @@ unit: m/s^2
 cluster: perf-matching
 user_visible: false
 source_status: NO_SOURCE_FOUND
+code_audit: CONFIRMED
 node_class: unclassified-parameter
 tags:
   - cluster/perf-matching
   - class/unclassified-parameter
   - source/no-source-found
+  - audit/confirmed
   - flag/anomaly
   - flag/divergence
 ---
@@ -34,6 +36,8 @@ _ = g
 - [[g_gravity|Standard gravity]]
 
 **Produced by.** `app/services/matching_chart_service.py:527` — `_wcl_constraint`
+
+🟢 **Verified against the code** — an independent reviewer read this line and confirmed the formula, unit and value (2026-08-18 audit).
 
 **Consumed by.**
 

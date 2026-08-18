@@ -5,11 +5,13 @@ unit: count
 cluster: structure
 user_visible: false
 source_status: NO_SOURCE_FOUND
+code_audit: CONFIRMED
 node_class: unclassified-constant
 tags:
   - cluster/structure
   - class/unclassified-constant
   - source/no-source-found
+  - audit/confirmed
   - flag/anomaly
 ---
 
@@ -30,6 +32,8 @@ self._points_per_edge = max(8, min(int(points_per_edge), 4096))
 **Inputs.** — *(leaf: a constant or an external input)*
 
 **Produced by.** `cad_designer/airplane/geometry/section_geometry.py:191` — `SectionGeometry.__init__`
+
+🟢 **Verified against the code** — an independent reviewer read this line and confirmed the formula, unit and value (2026-08-18 audit).
 
 **Consumed by.**
 

@@ -6,12 +6,14 @@ unit: m
 cluster: mass
 user_visible: true
 source_status: SOURCED
+code_audit: NOT_VERIFIED
 node_class: derived
 tags:
   - cluster/mass
   - class/derived
   - source/sourced
   - surface/user-visible
+  - audit/not-verified
   - flag/anomaly
   - flag/divergence
 ---
@@ -35,6 +37,8 @@ cg_x = x_np - target_sm * mac
 - [[mac|Mean aerodynamic chord (main wing)]]
 
 **Produced by.** `app/services/assumption_compute_service.py:108` — `recompute_assumptions`
+
+⚪ **Not verified.** This node was not covered by the audit pass; treat its line and formula as extracted-but-unchecked.
 
 **Consumed by.**
 

@@ -6,12 +6,14 @@ unit: V
 cluster: powertrain
 user_visible: true
 source_status: SOURCED
+code_audit: CONFIRMED
 node_class: derived
 tags:
   - cluster/powertrain
   - class/derived
   - source/sourced
   - surface/user-visible
+  - audit/confirmed
 ---
 
 # Pack nominal voltage (solution space)
@@ -32,6 +34,8 @@ v_nom = s * CELL_V_NOM
 - [[ss-cell-counts|Evaluated cell counts]]
 
 **Produced by.** `app/services/powertrain_solution_space_service.py:134` — `_per_cell`
+
+🟢 **Verified against the code** — an independent reviewer read this line and confirmed the formula, unit and value (2026-08-18 audit).
 
 **Consumed by.**
 

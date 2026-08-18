@@ -6,11 +6,13 @@ unit: m
 cluster: powertrain
 user_visible: false
 source_status: PARTIAL
+code_audit: CONFIRMED
 node_class: derived
 tags:
   - cluster/powertrain
   - class/derived
   - source/partial
+  - audit/confirmed
 ---
 
 # Propeller diameter in metres
@@ -31,6 +33,8 @@ D_m = request.propeller_diameter_in * 0.0254
 - [[request-propeller-diameter-in|Propeller diameter input]]
 
 **Produced by.** `app/services/powertrain_performance.py:646` — `compute_performance_curve`
+
+🟢 **Verified against the code** — an independent reviewer read this line and confirmed the formula, unit and value (2026-08-18 audit).
 
 **Consumed by.**
 

@@ -5,11 +5,13 @@ unit: m/mm
 cluster: structure
 user_visible: false
 source_status: SOURCED
+code_audit: CONFIRMED
 node_class: unclassified-constant
 tags:
   - cluster/structure
   - class/unclassified-constant
   - source/sourced
+  - audit/confirmed
   - flag/anomaly
 ---
 
@@ -30,6 +32,8 @@ _MM_TO_M = 0.001
 **Inputs.** — *(leaf: a constant or an external input)*
 
 **Produced by.** `app/services/spar_plan_service.py:32` — `_MM_TO_M`
+
+🟢 **Verified against the code** — an independent reviewer read this line and confirmed the formula, unit and value (2026-08-18 audit).
 
 **Consumed by.**
 

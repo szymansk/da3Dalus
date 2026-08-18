@@ -6,12 +6,14 @@ unit: m/s
 cluster: perf-matching
 user_visible: true
 source_status: PARTIAL
+code_audit: CONFIRMED
 node_class: derived
 tags:
   - cluster/perf-matching
   - class/derived
   - source/partial
   - surface/user-visible
+  - audit/confirmed
   - flag/anomaly
   - flag/divergence
   - flag/scale
@@ -37,6 +39,8 @@ v_cruise = _v_md(500.0, cd0=cd0_for_est, e=e, ar=ar_for_est, rho=rho)
 - [[ar_resolved|Resolved aspect ratio]]  — *⤵ fallback*
 
 **Produced by.** `app/services/matching_chart_service.py:785` — `compute_chart`
+
+🟢 **Verified against the code** — an independent reviewer read this line and confirmed the formula, unit and value (2026-08-18 audit).
 
 **Consumed by.**
 

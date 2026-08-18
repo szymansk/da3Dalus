@@ -6,12 +6,14 @@ unit: mAh
 cluster: powertrain
 user_visible: true
 source_status: PARTIAL
+code_audit: CONFIRMED
 node_class: derived
 tags:
   - cluster/powertrain
   - class/derived
   - source/partial
   - surface/user-visible
+  - audit/confirmed
   - flag/anomaly
   - flag/divergence
 ---
@@ -34,6 +36,8 @@ cap_mah = energy_wh / v_nom * 1000.0
 - [[ss-v-nom|Pack nominal voltage (solution space)]]
 
 **Produced by.** `app/services/powertrain_solution_space_service.py:142` — `_per_cell`
+
+🟢 **Verified against the code** — an independent reviewer read this line and confirmed the formula, unit and value (2026-08-18 audit).
 
 **Consumed by.**
 

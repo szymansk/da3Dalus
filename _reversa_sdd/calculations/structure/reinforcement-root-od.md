@@ -5,12 +5,14 @@ unit: mm
 cluster: structure
 user_visible: true
 source_status: PARTIAL
+code_audit: CONFIRMED
 node_class: derived
 tags:
   - cluster/structure
   - class/derived
   - source/partial
   - surface/user-visible
+  - audit/confirmed
   - flag/anomaly
   - flag/divergence
 ---
@@ -32,6 +34,8 @@ root_od = max(left[0].required_od, right[0].required_od)
 - [[station-required-od|Station strength-required OD]]
 
 **Produced by.** `cad_designer/airplane/geometry/spar_solver.py:617` — `_reinforcement_piece`
+
+🟢 **Verified against the code** — an independent reviewer read this line and confirmed the formula, unit and value (2026-08-18 audit).
 
 **Consumed by.**
 

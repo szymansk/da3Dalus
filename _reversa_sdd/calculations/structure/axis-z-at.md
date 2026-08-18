@@ -6,11 +6,13 @@ unit: mm
 cluster: structure
 user_visible: false
 source_status: PARTIAL
+code_audit: CONFIRMED
 node_class: derived
 tags:
   - cluster/structure
   - class/derived
   - source/partial
+  - audit/confirmed
 ---
 
 # Straight-piece axis height at a station
@@ -35,6 +37,8 @@ return root.center_z + t * (tip.center_z - root.center_z)
 - [[station-center-z|Station centre height]]
 
 **Produced by.** `cad_designer/airplane/geometry/spar_solver.py:271` — `_axis_z_at`
+
+🟢 **Verified against the code** — an independent reviewer read this line and confirmed the formula, unit and value (2026-08-18 audit).
 
 **Consumed by.**
 

@@ -6,12 +6,14 @@ unit: W
 cluster: powertrain
 user_visible: true
 source_status: SOURCED
+code_audit: CONFIRMED
 node_class: derived
 tags:
   - cluster/powertrain
   - class/derived
   - source/sourced
   - surface/user-visible
+  - audit/confirmed
   - flag/anomaly
   - flag/divergence
 ---
@@ -39,6 +41,8 @@ if speed_ms <= 0: return 0.0 ; rho = _air_density(altitude_m) ; return _power_re
 - [[combo-eta-total|Combo total propulsive efficiency]]  — *⤵ fallback*
 
 **Produced by.** `app/services/powertrain_sizing_service.py:92` — `_combo_required_power_w`
+
+🟢 **Verified against the code** — an independent reviewer read this line and confirmed the formula, unit and value (2026-08-18 audit).
 
 **Consumed by.**
 

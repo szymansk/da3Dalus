@@ -6,11 +6,13 @@ unit: kg/m^3
 cluster: powertrain
 user_visible: false
 source_status: SOURCED
+code_audit: CONFIRMED
 node_class: unclassified-constant
 tags:
   - cluster/powertrain
   - class/unclassified-constant
   - source/sourced
+  - audit/confirmed
   - flag/anomaly
 ---
 
@@ -31,6 +33,8 @@ AIR_DENSITY_SEA_LEVEL = RHO_SEA_LEVEL  # kept for backward compat with existing 
 **Inputs.** — *(leaf: a constant or an external input)*
 
 **Produced by.** `app/services/powertrain_sizing_service.py:41` — `AIR_DENSITY_SEA_LEVEL`
+
+🟢 **Verified against the code** — an independent reviewer read this line and confirmed the formula, unit and value (2026-08-18 audit).
 
 **Consumed by.**
 

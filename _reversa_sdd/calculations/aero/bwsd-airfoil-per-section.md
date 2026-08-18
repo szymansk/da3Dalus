@@ -6,11 +6,13 @@ unit: n/a
 cluster: aero-strips
 user_visible: false
 source_status: PARTIAL
+code_audit: WRONG_LINE
 node_class: derived
 tags:
   - cluster/aero-strips
   - class/derived
   - source/partial
+  - audit/wrong-line
   - flag/anomaly
   - flag/divergence
 ---
@@ -32,7 +34,9 @@ xsec_idx = int(np.clip(np.searchsorted(xsec_y, entry.y_m, side="right") - 1, 0, 
 - [[bwsd-main-wing|Main wing selection]]
 - [[saoa-y|Panel spanwise position]]
 
-**Produced by.** `app/services/turbulator_optimizer_service.py:428` — `build_wing_section_data`
+**Produced by.** `app/services/turbulator_optimizer_service.py:433` — `build_wing_section_data`
+
+🟠 **Corrected by the audit** — the extraction claimed `WRONG_LINE`. Original line was `428`. 
 
 **Consumed by.**
 

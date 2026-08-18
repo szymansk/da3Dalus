@@ -6,11 +6,13 @@ unit: dimensionless (unit conversion)
 cluster: mass
 user_visible: false
 source_status: PARTIAL
+code_audit: CONFIRMED
 node_class: unclassified-constant
 tags:
   - cluster/mass
   - class/unclassified-constant
   - source/partial
+  - audit/confirmed
 ---
 
 # g → kg divisor
@@ -24,6 +26,8 @@ tags:
 **Inputs.** — *(leaf: a constant or an external input)*
 
 **Produced by.** `app/services/component_tree_service.py:403` — `get_aircraft_total_weight_kg`
+
+🟢 **Verified against the code** — an independent reviewer read this line and confirmed the formula, unit and value (2026-08-18 audit).
 
 **Consumed by.**
 

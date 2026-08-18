@@ -6,12 +6,14 @@ unit: -
 cluster: perf-envelope
 user_visible: true
 source_status: NO_SOURCE_FOUND
+code_audit: CONFIRMED
 node_class: derived
 tags:
   - cluster/perf-envelope
   - class/derived
   - source/no-source-found
   - surface/user-visible
+  - audit/confirmed
   - flag/divergence
 ---
 
@@ -33,6 +35,8 @@ margin > 0.20 -> 'comfortable'; margin > 0.0 -> 'feasible but tight'; else 'infe
 - [[end_p_margin_comfortable|Comfortable power-margin threshold]]  — *⊣ limit*
 
 **Produced by.** `app/services/endurance_service.py:146` — `_classify_p_margin`
+
+🟢 **Verified against the code** — an independent reviewer read this line and confirmed the formula, unit and value (2026-08-18 audit).
 
 **Consumed by.**
 

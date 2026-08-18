@@ -6,11 +6,13 @@ unit: – (fraction of MAC)
 cluster: stability
 user_visible: false
 source_status: NO_SOURCE_FOUND
+code_audit: CONFIRMED
 node_class: derived
 tags:
   - cluster/stability
   - class/derived
   - source/no-source-found
+  - audit/confirmed
   - flag/anomaly
   - flag/divergence
 ---
@@ -33,6 +35,8 @@ sm_deficit = sm_fwd - sm_max_fwd  # positive excess above limit
 - [[sm-max-fwd|Maximum forward-CG static margin]]  — *⊣ limit*
 
 **Produced by.** `app/services/sm_sizing_service.py:556` — `_suggest_corrections_fwd`
+
+🟢 **Verified against the code** — an independent reviewer read this line and confirmed the formula, unit and value (2026-08-18 audit).
 
 **Consumed by.**
 

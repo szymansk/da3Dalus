@@ -6,11 +6,13 @@ unit: N
 cluster: perf-envelope
 user_visible: false
 source_status: SOURCED
+code_audit: CONFIRMED
 node_class: derived
 tags:
   - cluster/perf-envelope
   - class/derived
   - source/sourced
+  - audit/confirmed
 ---
 
 # Aircraft weight
@@ -31,6 +33,8 @@ weight = mass_kg * GRAVITY
 - [[fe_gravity|Gravitational acceleration (flight envelope)]]
 
 **Produced by.** `app/services/flight_envelope_service.py:313` — `compute_vn_curve`
+
+🟢 **Verified against the code** — an independent reviewer read this line and confirmed the formula, unit and value (2026-08-18 audit).
 
 **Consumed by.**
 

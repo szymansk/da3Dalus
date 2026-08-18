@@ -6,12 +6,14 @@ unit: kg
 cluster: perf-envelope
 user_visible: true
 source_status: SOURCED
+code_audit: CONFIRMED
 node_class: user-input
 tags:
   - cluster/perf-envelope
   - class/user-input
   - source/sourced
   - surface/user-visible
+  - audit/confirmed
   - flag/divergence
 ---
 
@@ -30,6 +32,8 @@ mass = ctx.get("mass_kg"); if not isinstance(mass, (int, float)) or mass <= 0: m
 **Inputs.** — *(leaf: a constant or an external input)*
 
 **Produced by.** `app/services/mission_kpi_service.py:452` — `compute_mission_kpis`
+
+🟢 **Verified against the code** — an independent reviewer read this line and confirmed the formula, unit and value (2026-08-18 audit).
 
 **Consumed by.**
 

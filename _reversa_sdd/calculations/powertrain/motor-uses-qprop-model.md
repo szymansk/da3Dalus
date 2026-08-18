@@ -6,12 +6,14 @@ unit: boolean
 cluster: powertrain
 user_visible: true
 source_status: SOURCED
+code_audit: CONFIRMED
 node_class: derived
 tags:
   - cluster/powertrain
   - class/derived
   - source/sourced
   - surface/user-visible
+  - audit/confirmed
   - flag/anomaly
   - flag/divergence
 ---
@@ -33,6 +35,8 @@ return self.rm_ohm is not None and self.rm_ohm > 0
 - [[motor-rm-ohm-input|Winding resistance]]
 
 **Produced by.** `app/services/powertrain_performance.py:122` — `MotorSpec.uses_qprop_model`
+
+🟢 **Verified against the code** — an independent reviewer read this line and confirmed the formula, unit and value (2026-08-18 audit).
 
 **Consumed by.**
 

@@ -6,11 +6,13 @@ unit: m / m / m²
 cluster: aero-strips
 user_visible: false
 source_status: NO_SOURCE_FOUND
+code_audit: CONFIRMED
 node_class: numerical-tolerance
 tags:
   - cluster/aero-strips
   - class/numerical-tolerance
   - source/no-source-found
+  - audit/confirmed
   - flag/anomaly
   - flag/divergence
 ---
@@ -32,6 +34,8 @@ y_m=0.0, chord_m=0.0, … section_area_m2=0.0,
 **Inputs.** — *(leaf: a constant or an external input)*
 
 **Produced by.** `app/services/turbulator_optimizer_service.py:276` — `optimize_section_xtr`
+
+🟢 **Verified against the code** — an independent reviewer read this line and confirmed the formula, unit and value (2026-08-18 audit).
 
 **Consumed by.**
 

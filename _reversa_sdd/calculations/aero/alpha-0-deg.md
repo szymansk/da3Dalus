@@ -6,11 +6,13 @@ unit: deg
 cluster: aero-spanwise
 user_visible: false
 source_status: SOURCED
+code_audit: CONFIRMED
 node_class: unclassified-parameter
 tags:
   - cluster/aero-spanwise
   - class/unclassified-parameter
   - source/sourced
+  - audit/confirmed
 ---
 
 # Zero-lift angle from context
@@ -28,6 +30,8 @@ raw_alpha_0 = ctx.get("alpha_0_deg"); alpha_0_from_ctx = float(raw_alpha_0) if r
 **Inputs.** — *(leaf: a constant or an external input)*
 
 **Produced by.** `app/services/analysis_service.py:650` — `_build_speed_polar`
+
+🟢 **Verified against the code** — an independent reviewer read this line and confirmed the formula, unit and value (2026-08-18 audit).
 
 **Consumed by.**
 

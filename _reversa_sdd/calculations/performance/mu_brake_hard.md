@@ -6,11 +6,13 @@ unit: dimensionless
 cluster: perf-matching
 user_visible: false
 source_status: PARTIAL
+code_audit: CONFIRMED
 node_class: unclassified-constant
 tags:
   - cluster/perf-matching
   - class/unclassified-constant
   - source/partial
+  - audit/confirmed
   - flag/divergence
 ---
 
@@ -31,6 +33,8 @@ _MU_BRAKE_HARD: float = 0.4
 **Inputs.** — *(leaf: a constant or an external input)*
 
 **Produced by.** `app/services/field_length_service.py:88` — `_MU_BRAKE_HARD`
+
+🟢 **Verified against the code** — an independent reviewer read this line and confirmed the formula, unit and value (2026-08-18 audit).
 
 **Consumed by.**
 

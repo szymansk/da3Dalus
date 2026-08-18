@@ -6,11 +6,13 @@ unit: kg/m^3
 cluster: perf-envelope
 user_visible: false
 source_status: SOURCED
+code_audit: CONFIRMED
 node_class: physical-constant
 tags:
   - cluster/perf-envelope
   - class/physical-constant
   - source/sourced
+  - audit/confirmed
   - flag/anomaly
   - flag/scale
   - flag/physical
@@ -34,6 +36,8 @@ RHO_SEA_LEVEL = 1.225  # kg/m³
 **Inputs.** — *(leaf: a constant or an external input)*
 
 **Produced by.** `app/services/endurance_service.py:50` — `RHO_SEA_LEVEL`
+
+🟢 **Verified against the code** — an independent reviewer read this line and confirmed the formula, unit and value (2026-08-18 audit).
 
 **Consumed by.**
 

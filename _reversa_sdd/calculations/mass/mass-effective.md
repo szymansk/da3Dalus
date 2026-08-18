@@ -6,12 +6,14 @@ unit: kg
 cluster: mass
 user_visible: true
 source_status: SOURCED
+code_audit: NOT_VERIFIED
 node_class: derived
 tags:
   - cluster/mass
   - class/derived
   - source/sourced
   - surface/user-visible
+  - audit/not-verified
   - flag/anomaly
   - flag/divergence
 ---
@@ -35,6 +37,8 @@ if row.active_source == "CALCULATED" and row.calculated_value is not None: retur
 - [[aircraft-total-weight-kg|Aircraft total weight from component tree]]
 
 **Produced by.** `app/services/assumption_compute_service.py:531` — `recompute_assumptions (_load_effective_assumption, def at line 1709)`
+
+⚪ **Not verified.** This node was not covered by the audit pass; treat its line and formula as extracted-but-unchecked.
 
 **Consumed by.**
 

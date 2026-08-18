@@ -6,12 +6,14 @@ unit: -
 cluster: perf-envelope
 user_visible: true
 source_status: SOURCED
+code_audit: CONFIRMED
 node_class: derived
 tags:
   - cluster/perf-envelope
   - class/derived
   - source/sourced
   - surface/user-visible
+  - audit/confirmed
   - flag/anomaly
   - flag/divergence
 ---
@@ -33,6 +35,8 @@ if hi <= lo: return 0.0; score = (value - lo) / (hi - lo); return max(0.0, min(1
 - [[mkpi_axis_ranges|Mission axis ranges]]  — *⊣ limit*
 
 **Produced by.** `app/services/mission_kpi_service.py:65` — `_normalise_score`
+
+🟢 **Verified against the code** — an independent reviewer read this line and confirmed the formula, unit and value (2026-08-18 audit).
 
 **Consumed by.**
 

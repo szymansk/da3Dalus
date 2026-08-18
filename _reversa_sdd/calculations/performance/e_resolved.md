@@ -6,12 +6,14 @@ unit: dimensionless
 cluster: perf-matching
 user_visible: true
 source_status: PARTIAL
+code_audit: CONFIRMED
 node_class: derived
 tags:
   - cluster/perf-matching
   - class/derived
   - source/partial
   - surface/user-visible
+  - audit/confirmed
   - flag/divergence
   - flag/scale
 ---
@@ -33,6 +35,8 @@ _e_provided = aircraft.get("e_oswald", aircraft.get("e")); if _e_provided is Non
 - [[default_e_oswald_mc|Default Oswald factor (matching chart)]]  — *⤵ fallback*
 
 **Produced by.** `app/services/matching_chart_service.py:768` — `compute_chart`
+
+🟢 **Verified against the code** — an independent reviewer read this line and confirmed the formula, unit and value (2026-08-18 audit).
 
 **Consumed by.**
 

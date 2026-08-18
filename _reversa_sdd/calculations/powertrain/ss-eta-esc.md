@@ -6,12 +6,14 @@ unit: dimensionless (0..1)
 cluster: powertrain
 user_visible: true
 source_status: NO_SOURCE_FOUND
+code_audit: NOT_VERIFIED
 node_class: unclassified-parameter
 tags:
   - cluster/powertrain
   - class/unclassified-parameter
   - source/no-source-found
   - surface/user-visible
+  - audit/not-verified
   - flag/divergence
 ---
 
@@ -26,6 +28,8 @@ tags:
 **Inputs.** — *(leaf: a constant or an external input)*
 
 **Produced by.** `app/schemas/powertrain_solution_space.py:47` — `SolutionSpaceAssumptions.eta_esc`
+
+⚪ **Not verified.** This node was not covered by the audit pass; treat its line and formula as extracted-but-unchecked.
 
 **Consumed by.**
 

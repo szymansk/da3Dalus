@@ -6,12 +6,14 @@ unit: m
 cluster: mass
 user_visible: true
 source_status: SOURCED
+code_audit: NOT_VERIFIED
 node_class: solver-output
 tags:
   - cluster/mass
   - class/solver-output
   - source/sourced
   - surface/user-visible
+  - audit/not-verified
   - flag/anomaly
   - flag/divergence
   - solver/aerobuildup
@@ -35,6 +37,8 @@ x_np = _scalar(result.reference.Xnp)
 **Inputs.** — *(leaf: a constant or an external input)*
 
 **Produced by.** `app/services/assumption_compute_service.py:1079` — `_stability_run_at_cruise`
+
+⚪ **Not verified.** This node was not covered by the audit pass; treat its line and formula as extracted-but-unchecked.
 
 **Consumed by.**
 

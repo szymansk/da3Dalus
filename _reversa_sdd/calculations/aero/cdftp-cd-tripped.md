@@ -6,11 +6,13 @@ unit: dimensionless
 cluster: aero-strips
 user_visible: false
 source_status: SOURCED
+code_audit: CONFIRMED
 node_class: derived
 tags:
   - cluster/aero-strips
   - class/derived
   - source/sourced
+  - audit/confirmed
 ---
 
 # Tripped section drag (installed-turbulator path)
@@ -31,6 +33,8 @@ cd_tripped = _cd_at_cl_xtr(airfoil, sec.cl, sec.re_local, xtr_upper=xtr_sec)
 - [[cdftp-xtr-sec|Section trip position from the installed turbulator]]
 
 **Produced by.** `app/services/turbulator_optimizer_service.py:694` — `compute_delta_cd0_from_turbulator_position`
+
+🟢 **Verified against the code** — an independent reviewer read this line and confirmed the formula, unit and value (2026-08-18 audit).
 
 **Consumed by.**
 

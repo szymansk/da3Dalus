@@ -6,12 +6,14 @@ unit: dimensionless
 cluster: perf-matching
 user_visible: true
 source_status: PARTIAL
+code_audit: CONFIRMED
 node_class: derived
 tags:
   - cluster/perf-matching
   - class/derived
   - source/partial
   - surface/user-visible
+  - audit/confirmed
   - flag/anomaly
   - flag/divergence
   - flag/scale
@@ -35,6 +37,8 @@ if polar_re_table and mac_m and float(mac_m) > 0: from app.services.polar_re_tab
 - [[rho_sl|Sea-level ISA density]]  — *⤵ fallback*
 
 **Produced by.** `app/services/matching_chart_service.py:817` — `_cd0_at_v`
+
+🟢 **Verified against the code** — an independent reviewer read this line and confirmed the formula, unit and value (2026-08-18 audit).
 
 **Consumed by.**
 

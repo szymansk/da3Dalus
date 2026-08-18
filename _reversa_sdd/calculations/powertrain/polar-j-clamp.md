@@ -6,11 +6,13 @@ unit: dimensionless
 cluster: powertrain
 user_visible: false
 source_status: PARTIAL
+code_audit: CONFIRMED
 node_class: derived
 tags:
   - cluster/powertrain
   - class/derived
   - source/partial
+  - audit/confirmed
   - flag/anomaly
   - flag/divergence
 ---
@@ -32,6 +34,8 @@ J_clamp = float(np.clip(J, J_min, J_max))
 - [[curve-advance-ratio|Advance ratio per velocity sample]]
 
 **Produced by.** `app/services/powertrain_performance.py:326` — `interpolate_ct_cp_pe`
+
+🟢 **Verified against the code** — an independent reviewer read this line and confirmed the formula, unit and value (2026-08-18 audit).
 
 **Consumed by.**
 

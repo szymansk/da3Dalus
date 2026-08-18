@@ -6,12 +6,14 @@ unit: % chord
 cluster: aero-polars
 user_visible: true
 source_status: PARTIAL
+code_audit: CONFIRMED
 node_class: unclassified-parameter
 tags:
   - cluster/aero-polars
   - class/unclassified-parameter
   - source/partial
   - surface/user-visible
+  - audit/confirmed
   - flag/divergence
 ---
 
@@ -32,6 +34,8 @@ _SEMI_SYMMETRIC_MAX_CAMBER_PCT = 2.0
 **Inputs.** — *(leaf: a constant or an external input)*
 
 **Produced by.** `app/services/airfoil_low_re_service.py:44` — `_SEMI_SYMMETRIC_MAX_CAMBER_PCT`
+
+🟢 **Verified against the code** — an independent reviewer read this line and confirmed the formula, unit and value (2026-08-18 audit).
 
 **Consumed by.**
 

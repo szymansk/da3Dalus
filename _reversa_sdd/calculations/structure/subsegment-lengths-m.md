@@ -5,12 +5,14 @@ unit: m
 cluster: structure
 user_visible: true
 source_status: NO_SOURCE_FOUND
+code_audit: CONFIRMED
 node_class: derived
 tags:
   - cluster/structure
   - class/derived
   - source/no-source-found
   - surface/user-visible
+  - audit/confirmed
   - flag/anomaly
 ---
 
@@ -35,6 +37,8 @@ return [(boundaries[i + 1] - boundaries[i]) * _MM_TO_M for i in range(len(bounda
 - [[mm-to-m-factor|Millimetre-to-metre conversion factor]]  — *× unit*
 
 **Produced by.** `app/services/spar_insert_service.py:531` — `_preview_subsegment_lengths_m`
+
+🟢 **Verified against the code** — an independent reviewer read this line and confirmed the formula, unit and value (2026-08-18 audit).
 
 **Consumed by.**
 

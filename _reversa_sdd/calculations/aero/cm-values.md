@@ -6,12 +6,14 @@ unit: -
 cluster: aero-spanwise
 user_visible: true
 source_status: SOURCED
+code_audit: CONFIRMED
 node_class: solver-output
 tags:
   - cluster/aero-spanwise
   - class/solver-output
   - source/sourced
   - surface/user-visible
+  - audit/confirmed
   - solver/aerobuildup
 ---
 
@@ -33,6 +35,8 @@ np.atleast_1d(np.asarray(result.coefficients.Cm, dtype=float))
 **Inputs.** — *(leaf: a constant or an external input)*
 
 **Produced by.** `app/services/analysis_service.py:98` — `_extract_alpha_sweep_arrays`
+
+🟢 **Verified against the code** — an independent reviewer read this line and confirmed the formula, unit and value (2026-08-18 audit).
 
 **Consumed by.**
 

@@ -6,11 +6,13 @@ unit: dimensionless
 cluster: aero-polars
 user_visible: false
 source_status: NO_SOURCE_FOUND
+code_audit: CONFIRMED
 node_class: numerical-tolerance
 tags:
   - cluster/aero-polars
   - class/numerical-tolerance
   - source/no-source-found
+  - audit/confirmed
   - flag/divergence
 ---
 
@@ -32,6 +34,8 @@ if abs(denom) < 1e-15:
 **Inputs.** — *(leaf: a constant or an external input)*
 
 **Produced by.** `app/services/polar_re_table_service.py:172` — `lookup_cd0_at_v`
+
+🟢 **Verified against the code** — an independent reviewer read this line and confirmed the formula, unit and value (2026-08-18 audit).
 
 **Consumed by.**
 

@@ -6,11 +6,13 @@ unit: -
 cluster: perf-envelope
 user_visible: false
 source_status: NO_SOURCE_FOUND
+code_audit: CONFIRMED
 node_class: unclassified-constant
 tags:
   - cluster/perf-envelope
   - class/unclassified-constant
   - source/no-source-found
+  - audit/confirmed
   - flag/anomaly
   - flag/divergence
 ---
@@ -32,6 +34,8 @@ cd0: float = float(da.get("cd0", 0.03))
 **Inputs.** — *(leaf: a constant or an external input)*
 
 **Produced by.** `app/services/endurance_service.py:270` — `compute_endurance`
+
+🟢 **Verified against the code** — an independent reviewer read this line and confirmed the formula, unit and value (2026-08-18 audit).
 
 **Consumed by.**
 

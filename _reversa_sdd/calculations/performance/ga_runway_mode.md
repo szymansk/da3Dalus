@@ -6,11 +6,13 @@ unit: n/a
 cluster: perf-matching
 user_visible: false
 source_status: PARTIAL
+code_audit: CONFIRMED
 node_class: unclassified-parameter
 tags:
   - cluster/perf-matching
   - class/unclassified-parameter
   - source/partial
+  - audit/confirmed
   - flag/anomaly
   - flag/divergence
   - flag/scale
@@ -33,6 +35,8 @@ tags:
 **Inputs.** — *(leaf: a constant or an external input)*
 
 **Produced by.** `app/services/matching_chart_service.py:233` — `_mode_defaults`
+
+🟢 **Verified against the code** — an independent reviewer read this line and confirmed the formula, unit and value (2026-08-18 audit).
 
 **Consumed by.**
 

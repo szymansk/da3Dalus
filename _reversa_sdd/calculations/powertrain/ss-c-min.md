@@ -6,12 +6,14 @@ unit: 1/h (C)
 cluster: powertrain
 user_visible: true
 source_status: NO_SOURCE_FOUND
+code_audit: CONFIRMED
 node_class: derived
 tags:
   - cluster/powertrain
   - class/derived
   - source/no-source-found
   - surface/user-visible
+  - audit/confirmed
   - flag/anomaly
   - flag/divergence
 ---
@@ -34,6 +36,8 @@ c_min = raw_c * c_margin
 - [[ss-c-margin|Battery C-rate margin]]
 
 **Produced by.** `app/services/powertrain_solution_space_service.py:146` — `_per_cell`
+
+🟢 **Verified against the code** — an independent reviewer read this line and confirmed the formula, unit and value (2026-08-18 audit).
 
 **Consumed by.**
 

@@ -6,12 +6,14 @@ unit: dimensionless (0..1)
 cluster: powertrain
 user_visible: true
 source_status: SOURCED
+code_audit: CONFIRMED
 node_class: derived
 tags:
   - cluster/powertrain
   - class/derived
   - source/sourced
   - surface/user-visible
+  - audit/confirmed
   - flag/anomaly
   - flag/divergence
 ---
@@ -35,6 +37,8 @@ if Cp_interp > 0 and J_clamp > 0: Pe_interp = Ct_interp * J_clamp / Cp_interp ; 
 - [[polar-j-clamp|Clamped advance ratio for interpolation]]  — *⊣ limit*
 
 **Produced by.** `app/services/powertrain_performance.py:336` — `interpolate_ct_cp_pe`
+
+🟢 **Verified against the code** — an independent reviewer read this line and confirmed the formula, unit and value (2026-08-18 audit).
 
 **Consumed by.**
 

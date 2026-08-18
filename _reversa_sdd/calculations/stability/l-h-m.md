@@ -6,12 +6,14 @@ unit: m
 cluster: stability
 user_visible: true
 source_status: SOURCED
+code_audit: CONFIRMED
 node_class: derived
 tags:
   - cluster/stability
   - class/derived
   - source/sourced
   - surface/user-visible
+  - audit/confirmed
   - flag/anomaly
   - flag/divergence
 ---
@@ -34,6 +36,8 @@ l_h = x_htail_ac_m - x_wing_ac_m
 - [[x-wing-ac-m|Wing aerodynamic centre x]]
 
 **Produced by.** `app/services/tail_sizing_service.py:200` — `compute_tail_volumes`
+
+🟢 **Verified against the code** — an independent reviewer read this line and confirmed the formula, unit and value (2026-08-18 audit).
 
 **Consumed by.**
 

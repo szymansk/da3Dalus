@@ -6,12 +6,14 @@ unit: dimensionless
 cluster: structure
 user_visible: true
 source_status: SOURCED
+code_audit: CONFIRMED
 node_class: derived
 tags:
   - cluster/structure
   - class/derived
   - source/sourced
   - surface/user-visible
+  - audit/confirmed
   - flag/divergence
 ---
 
@@ -33,6 +35,8 @@ tc_ratio, tc_fallback = _get_tc(tc_by_y, y_m)
 - [[tc-nearest-key-tolerance|t/c nearest-key lookup tolerance]]
 
 **Produced by.** `app/services/spar_sizing.py:310` — `compute_spar_sizing`
+
+🟢 **Verified against the code** — an independent reviewer read this line and confirmed the formula, unit and value (2026-08-18 audit).
 
 **Consumed by.**
 

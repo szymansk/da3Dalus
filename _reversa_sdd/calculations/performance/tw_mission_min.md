@@ -6,12 +6,14 @@ unit: dimensionless
 cluster: perf-matching
 user_visible: true
 source_status: PARTIAL
+code_audit: CONFIRMED
 node_class: derived
 tags:
   - cluster/perf-matching
   - class/derived
   - source/partial
   - surface/user-visible
+  - audit/confirmed
   - flag/anomaly
   - flag/divergence
 ---
@@ -33,6 +35,8 @@ return _MISSION_MIN_TW_BY_PROFILE.get(profile_key)
 - [[mission_min_tw_table|Mission-min T/W table]]  — *⊣ limit*
 
 **Produced by.** `app/services/matching_chart_service.py:494` — `_mission_min_tw_constraint`
+
+🟢 **Verified against the code** — an independent reviewer read this line and confirmed the formula, unit and value (2026-08-18 audit).
 
 **Consumed by.**
 

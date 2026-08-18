@@ -6,11 +6,13 @@ unit: kg
 cluster: aero-strips
 user_visible: false
 source_status: NO_SOURCE_FOUND
+code_audit: CONFIRMED
 node_class: unclassified-constant
 tags:
   - cluster/aero-strips
   - class/unclassified-constant
   - source/no-source-found
+  - audit/confirmed
   - flag/anomaly
   - flag/divergence
 ---
@@ -32,6 +34,8 @@ mass_kg: float = getattr(plane_schema, "total_mass_kg", None) or 1.5
 **Inputs.** — *(leaf: a constant or an external input)*
 
 **Produced by.** `app/services/section_aoa_service.py:485` — `_resolve_level_flight_op`
+
+🟢 **Verified against the code** — an independent reviewer read this line and confirmed the formula, unit and value (2026-08-18 audit).
 
 **Consumed by.**
 

@@ -6,12 +6,14 @@ unit: boolean
 cluster: powertrain
 user_visible: true
 source_status: SOURCED
+code_audit: CONFIRMED
 node_class: derived
 tags:
   - cluster/powertrain
   - class/derived
   - source/sourced
   - surface/user-visible
+  - audit/confirmed
   - flag/anomaly
   - flag/divergence
 ---
@@ -33,6 +35,8 @@ max_a = specs.get("max_current_a") or specs.get("continuous_current_a") ; if max
 - [[ss-esc-min|Minimum ESC current rating]]  — *⊣ limit*
 
 **Produced by.** `app/services/powertrain_solution_space_service.py:229` — `_catalog_esc_match`
+
+🟢 **Verified against the code** — an independent reviewer read this line and confirmed the formula, unit and value (2026-08-18 audit).
 
 **Consumed by.**
 

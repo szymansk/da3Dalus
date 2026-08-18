@@ -6,12 +6,14 @@ unit: kg/m³
 cluster: aero-spanwise
 user_visible: true
 source_status: SOURCED
+code_audit: CONFIRMED
 node_class: derived
 tags:
   - cluster/aero-spanwise
   - class/derived
   - source/sourced
   - surface/user-visible
+  - audit/confirmed
   - solver-adjacent/aerobuildup
 ---
 
@@ -32,6 +34,8 @@ rho = float(asb.Atmosphere(altitude=altitude).density())
 - [[altitude-speed-polar|Speed-polar altitude]]  — *⤵ fallback*
 
 **Produced by.** `app/services/analysis_service.py:626` — `_build_speed_polar`
+
+🟢 **Verified against the code** — an independent reviewer read this line and confirmed the formula, unit and value (2026-08-18 audit).
 
 **Consumed by.**
 

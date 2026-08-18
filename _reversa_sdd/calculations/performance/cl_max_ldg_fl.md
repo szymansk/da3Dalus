@@ -6,11 +6,13 @@ unit: dimensionless
 cluster: perf-matching
 user_visible: false
 source_status: PARTIAL
+code_audit: CONFIRMED
 node_class: derived
 tags:
   - cluster/perf-matching
   - class/derived
   - source/partial
+  - audit/confirmed
   - flag/divergence
   - flag/scale
 ---
@@ -33,6 +35,8 @@ cl_max_ldg: float = float(aircraft.get("cl_max_landing") or cl_max_base * ldg_fa
 - [[cl_max_flap_factors_resolved|Resolved flap factors]]  — *⤵ fallback*
 
 **Produced by.** `app/services/field_length_service.py:361` — `compute_field_lengths`
+
+🟢 **Verified against the code** — an independent reviewer read this line and confirmed the formula, unit and value (2026-08-18 audit).
 
 **Consumed by.**
 

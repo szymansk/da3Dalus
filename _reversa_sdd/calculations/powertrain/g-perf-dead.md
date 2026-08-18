@@ -6,11 +6,13 @@ unit: m/s^2
 cluster: powertrain
 user_visible: false
 source_status: PARTIAL
+code_audit: CONFIRMED
 node_class: physical-constant
 tags:
   - cluster/powertrain
   - class/physical-constant
   - source/partial
+  - audit/confirmed
   - flag/anomaly
   - flag/divergence
   - flag/physical
@@ -28,6 +30,8 @@ tags:
 **Inputs.** — *(leaf: a constant or an external input)*
 
 **Produced by.** `app/services/powertrain_performance.py:49` — `G`
+
+🟢 **Verified against the code** — an independent reviewer read this line and confirmed the formula, unit and value (2026-08-18 audit).
 
 **Consumed by.**
 

@@ -6,11 +6,13 @@ unit: – (bool)
 cluster: stability
 user_visible: false
 source_status: SOURCED
+code_audit: CONFIRMED
 node_class: derived
 tags:
   - cluster/stability
   - class/derived
   - source/sourced
+  - audit/confirmed
   - flag/anomaly
   - flag/divergence
 ---
@@ -30,6 +32,8 @@ is_tailless = htail is None and not is_canard
 **Inputs.** — *(leaf: a constant or an external input)*
 
 **Produced by.** `app/services/tail_sizing_service.py:416` — `build_tail_sizing_context_from_aeroplane`
+
+🟢 **Verified against the code** — an independent reviewer read this line and confirmed the formula, unit and value (2026-08-18 audit).
 
 **Consumed by.**
 

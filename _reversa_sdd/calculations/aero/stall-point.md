@@ -5,12 +5,14 @@ unit: mixed (deg, -, -)
 cluster: aero-spanwise
 user_visible: true
 source_status: SOURCED
+code_audit: CONFIRMED
 node_class: derived
 tags:
   - cluster/aero-spanwise
   - class/derived
   - source/sourced
   - surface/user-visible
+  - audit/confirmed
   - flag/divergence
 ---
 
@@ -33,6 +35,8 @@ if cl[i] < cl[i - 1] and cd[i] > cd[i - 1]: i_stall = i
 - [[max-cl-point|Maximum lift coefficient point]]  — *⊣ limit*
 
 **Produced by.** `app/services/analysis_service.py:173` — `_find_stall_point`
+
+🟢 **Verified against the code** — an independent reviewer read this line and confirmed the formula, unit and value (2026-08-18 audit).
 
 **Consumed by.**
 

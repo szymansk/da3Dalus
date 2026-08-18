@@ -5,12 +5,14 @@ unit: mm
 cluster: aero-spanwise
 user_visible: true
 source_status: NO_SOURCE_FOUND
+code_audit: CONFIRMED
 node_class: derived
 tags:
   - cluster/aero-spanwise
   - class/derived
   - source/no-source-found
   - surface/user-visible
+  - audit/confirmed
 ---
 
 # Section centre-Z map
@@ -28,6 +30,8 @@ thickness_by_y, center_z_by_y = build_thickness_maps_for_surface(db=db, aeroplan
 **Inputs.** — *(leaf: a constant or an external input)*
 
 **Produced by.** `app/services/analysis_service.py:2242` — `_get_tc_by_y_for_surface`
+
+🟢 **Verified against the code** — an independent reviewer read this line and confirmed the formula, unit and value (2026-08-18 audit).
 
 **Consumed by.**
 

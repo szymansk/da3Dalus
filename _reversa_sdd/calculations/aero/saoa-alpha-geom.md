@@ -6,12 +6,14 @@ unit: deg
 cluster: aero-strips
 user_visible: true
 source_status: SOURCED
+code_audit: CONFIRMED
 node_class: derived
 tags:
   - cluster/aero-strips
   - class/derived
   - source/sourced
   - surface/user-visible
+  - audit/confirmed
   - flag/anomaly
   - flag/divergence
 ---
@@ -33,6 +35,8 @@ alpha_geom_arr = op_alpha_deg + twist_at_y  # [deg]
 - [[saoa-twist-at-y|Interpolated twist at panel y]]
 
 **Produced by.** `app/services/section_aoa_service.py:326` — `compute_section_aoa`
+
+🟢 **Verified against the code** — an independent reviewer read this line and confirmed the formula, unit and value (2026-08-18 audit).
 
 **Consumed by.**
 

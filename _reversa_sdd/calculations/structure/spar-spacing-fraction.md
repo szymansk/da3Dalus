@@ -6,11 +6,13 @@ unit: dimensionless (fraction of chord)
 cluster: structure
 user_visible: false
 source_status: PARTIAL
+code_audit: CONFIRMED
 node_class: derived
 tags:
   - cluster/structure
   - class/derived
   - source/partial
+  - audit/confirmed
   - flag/anomaly
   - flag/divergence
   - flag/scale
@@ -39,6 +41,8 @@ return max(abs(spacing), _MIN_SPAR_SPACING)
 - [[rear-x-over-chord|Rear-spar chord fraction (requested)]]
 
 **Produced by.** `app/services/spar_plan_service.py:413` — `_spar_spacing_fraction`
+
+🟢 **Verified against the code** — an independent reviewer read this line and confirmed the formula, unit and value (2026-08-18 audit).
 
 **Consumed by.**
 

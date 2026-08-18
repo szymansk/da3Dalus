@@ -6,12 +6,14 @@ unit: W
 cluster: perf-envelope
 user_visible: true
 source_status: SOURCED
+code_audit: CONFIRMED
 node_class: unclassified-parameter
 tags:
   - cluster/perf-envelope
   - class/unclassified-parameter
   - source/sourced
   - surface/user-visible
+  - audit/confirmed
   - flag/scale
 ---
 
@@ -32,6 +34,8 @@ motor_w_val = float(_motor_w_raw) if (_motor_w_raw is not None and _motor_w_raw 
 **Inputs.** — *(leaf: a constant or an external input)*
 
 **Produced by.** `app/services/endurance_service.py:549` — `compute_endurance_for_aeroplane`
+
+🟢 **Verified against the code** — an independent reviewer read this line and confirmed the formula, unit and value (2026-08-18 audit).
 
 **Consumed by.**
 

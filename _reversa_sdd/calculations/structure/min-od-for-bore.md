@@ -5,11 +5,13 @@ unit: mm
 cluster: structure
 user_visible: false
 source_status: NO_SOURCE_FOUND
+code_audit: CONFIRMED
 node_class: derived
 tags:
   - cluster/structure
   - class/derived
   - source/no-source-found
+  - audit/confirmed
   - flag/anomaly
 ---
 
@@ -33,6 +35,8 @@ if ods[i] < min_od_for_bore:
 - [[telescope-clearance-mm|Telescoping radial clearance]]
 
 **Produced by.** `cad_designer/airplane/geometry/spar_solver.py:426` — `plan_spar`
+
+🟢 **Verified against the code** — an independent reviewer read this line and confirmed the formula, unit and value (2026-08-18 audit).
 
 **Consumed by.**
 

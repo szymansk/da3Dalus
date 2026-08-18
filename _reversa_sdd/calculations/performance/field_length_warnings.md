@@ -6,12 +6,14 @@ unit: list[str]
 cluster: perf-matching
 user_visible: true
 source_status: NO_SOURCE_FOUND
+code_audit: WRONG_LINE
 node_class: derived
 tags:
   - cluster/perf-matching
   - class/derived
   - source/no-source-found
   - surface/user-visible
+  - audit/wrong-line
   - flag/anomaly
   - flag/divergence
 ---
@@ -32,7 +34,9 @@ warnings.append(f"Throw speed ... insufficient climb-out margin. Aim for v_throw
 
 - [[hand_throw_warn|Hand-launch climb-out margin threshold]]  — *⊣ limit*
 
-**Produced by.** `app/services/field_length_service.py:352` — `compute_field_lengths`
+**Produced by.** `app/services/field_length_service.py:392` — `compute_field_lengths`
+
+🟠 **Corrected by the audit** — the extraction claimed `WRONG_LINE`. Original line was `352`. Claim cites line 352 (initialization: warnings: list[str] = []), but the formula describes the append operation at lines 392-395.
 
 **Consumed by.**
 

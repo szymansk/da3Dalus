@@ -6,11 +6,13 @@ unit: – (coefficient units)
 cluster: stability
 user_visible: false
 source_status: SOURCED
+code_audit: CONFIRMED
 node_class: derived
 tags:
   - cluster/stability
   - class/derived
   - source/sourced
+  - audit/confirmed
   - flag/divergence
   - solver-adjacent/aerobuildup
 ---
@@ -30,6 +32,8 @@ return _to_scalar(coeff_val) - target_val
 **Inputs.** — *(leaf: a constant or an external input)*
 
 **Produced by.** `app/services/aerobuildup_trim_service.py:164` — `trim_with_aerobuildup.residual`
+
+🟢 **Verified against the code** — an independent reviewer read this line and confirmed the formula, unit and value (2026-08-18 audit).
 
 **Consumed by.**
 

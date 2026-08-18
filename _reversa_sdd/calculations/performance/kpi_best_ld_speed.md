@@ -6,12 +6,14 @@ unit: m/s
 cluster: perf-envelope
 user_visible: true
 source_status: PARTIAL
+code_audit: CONFIRMED
 node_class: derived
 tags:
   - cluster/perf-envelope
   - class/derived
   - source/partial
   - surface/user-visible
+  - audit/confirmed
   - flag/anomaly
   - flag/divergence
 ---
@@ -34,6 +36,8 @@ marker.velocity_mps | v_md_polar_mps | 1.4 * stall_speed_mps
 - [[kpi_best_ld_heuristic|Best-L/D heuristic factor]]
 
 **Produced by.** `app/services/flight_envelope_service.py:410` — `derive_performance_kpis`
+
+🟢 **Verified against the code** — an independent reviewer read this line and confirmed the formula, unit and value (2026-08-18 audit).
 
 **Consumed by.**
 

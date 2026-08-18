@@ -5,11 +5,13 @@ unit: index
 cluster: aero-spanwise
 user_visible: false
 source_status: PARTIAL
+code_audit: CONFIRMED
 node_class: derived
 tags:
   - cluster/aero-spanwise
   - class/derived
   - source/partial
+  - audit/confirmed
   - flag/divergence
 ---
 
@@ -30,6 +32,8 @@ i_min_sink = int(np.argmin(w))
 - [[speed-polar-w|Sink rate]]
 
 **Produced by.** `app/services/analysis_service.py:521` — `_compute_speed_polar`
+
+🟢 **Verified against the code** — an independent reviewer read this line and confirmed the formula, unit and value (2026-08-18 audit).
 
 **Consumed by.**
 

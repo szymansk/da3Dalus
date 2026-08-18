@@ -6,11 +6,13 @@ unit: mm³
 cluster: structure
 user_visible: false
 source_status: SOURCED
+code_audit: CONFIRMED
 node_class: derived
 tags:
   - cluster/structure
   - class/derived
   - source/sourced
+  - audit/confirmed
   - flag/anomaly
   - flag/divergence
 ---
@@ -34,6 +36,8 @@ erf_w = required_section_modulus(m_design, sigma_allow_mpa)
 - [[required-section-modulus|Required section modulus]]
 
 **Produced by.** `cad_designer/airplane/geometry/spar_solver.py:765` — `build_stations_from_geometry`
+
+🟢 **Verified against the code** — an independent reviewer read this line and confirmed the formula, unit and value (2026-08-18 audit).
 
 **Consumed by.**
 

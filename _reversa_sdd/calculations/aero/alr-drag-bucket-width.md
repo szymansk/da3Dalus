@@ -6,12 +6,14 @@ unit: dimensionless (ΔCL)
 cluster: aero-polars
 user_visible: true
 source_status: PARTIAL
+code_audit: CONFIRMED
 node_class: derived
 tags:
   - cluster/aero-polars
   - class/derived
   - source/partial
   - surface/user-visible
+  - audit/confirmed
   - flag/divergence
 ---
 
@@ -34,6 +36,8 @@ result["drag_bucket_width"] = float(np.max(bucket_cl) - np.min(bucket_cl))
 - [[alr-drag-bucket-factor|Drag-bucket CD threshold factor]]  — *⊣ limit*
 
 **Produced by.** `app/services/airfoil_low_re_service.py:642` — `_extract_metrics`
+
+🟢 **Verified against the code** — an independent reviewer read this line and confirmed the formula, unit and value (2026-08-18 audit).
 
 **Consumed by.**
 

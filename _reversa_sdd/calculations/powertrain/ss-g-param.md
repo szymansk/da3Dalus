@@ -6,12 +6,14 @@ unit: m/s^2
 cluster: powertrain
 user_visible: true
 source_status: PARTIAL
+code_audit: NOT_VERIFIED
 node_class: unclassified-parameter
 tags:
   - cluster/powertrain
   - class/unclassified-parameter
   - source/partial
   - surface/user-visible
+  - audit/not-verified
   - flag/anomaly
   - flag/divergence
 ---
@@ -33,6 +35,8 @@ g = assumptions.g
 **Inputs.** — *(leaf: a constant or an external input)*
 
 **Produced by.** `app/schemas/powertrain_solution_space.py:98` — `SolutionSpaceAssumptions.g`
+
+⚪ **Not verified.** This node was not covered by the audit pass; treat its line and formula as extracted-but-unchecked.
 
 **Consumed by.**
 

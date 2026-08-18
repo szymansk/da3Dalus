@@ -6,11 +6,13 @@ unit: dimensionless
 cluster: perf-matching
 user_visible: false
 source_status: NO_SOURCE_FOUND
+code_audit: CONFIRMED
 node_class: derived
 tags:
   - cluster/perf-matching
   - class/derived
   - source/no-source-found
+  - audit/confirmed
   - flag/divergence
 ---
 
@@ -32,6 +34,8 @@ if landing_mode == "belly_land": mu_brake = _MU_BELLY  else: mu_brake = _MU_BRAK
 - [[mu_brake_hard|Braking friction, hard runway]]
 
 **Produced by.** `app/services/field_length_service.py:430` — `compute_field_lengths`
+
+🟢 **Verified against the code** — an independent reviewer read this line and confirmed the formula, unit and value (2026-08-18 audit).
 
 **Consumed by.**
 

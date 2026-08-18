@@ -6,11 +6,13 @@ unit: – (fraction of MAC)
 cluster: stability
 user_visible: false
 source_status: SOURCED
+code_audit: CONFIRMED
 node_class: derived
 tags:
   - cluster/stability
   - class/derived
   - source/sourced
+  - audit/confirmed
 ---
 
 # SM shortfall to target
@@ -31,6 +33,8 @@ delta_needed = target_sm - sm_at_aft
 - [[sm-at-aft|Static margin at aft CG]]
 
 **Produced by.** `app/services/sm_sizing_service.py:411` — `suggest_corrections`
+
+🟢 **Verified against the code** — an independent reviewer read this line and confirmed the formula, unit and value (2026-08-18 audit).
 
 **Consumed by.**
 

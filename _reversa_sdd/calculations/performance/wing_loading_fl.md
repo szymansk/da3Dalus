@@ -6,11 +6,13 @@ unit: N/m^2
 cluster: perf-matching
 user_visible: false
 source_status: SOURCED
+code_audit: CONFIRMED
 node_class: derived
 tags:
   - cluster/perf-matching
   - class/derived
   - source/sourced
+  - audit/confirmed
 ---
 
 # Wing loading (field length)
@@ -30,6 +32,8 @@ wing_loading = weight_n / s_ref_m2
 - [[weight_n_fl|Aircraft weight]]
 
 **Produced by.** `app/services/field_length_service.py:200` — `_compute_s_to_ground`
+
+🟢 **Verified against the code** — an independent reviewer read this line and confirmed the formula, unit and value (2026-08-18 audit).
 
 **Consumed by.**
 

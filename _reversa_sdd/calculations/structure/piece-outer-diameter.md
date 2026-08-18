@@ -6,12 +6,14 @@ unit: mm
 cluster: structure
 user_visible: true
 source_status: PARTIAL
+code_audit: CONFIRMED
 node_class: derived
 tags:
   - cluster/structure
   - class/derived
   - source/partial
   - surface/user-visible
+  - audit/confirmed
   - flag/anomaly
   - flag/divergence
 ---
@@ -34,6 +36,8 @@ ods = [_governing_od(r.governing) for r in runs]
 - [[min-od-for-bore|Minimum OD to carry a bore]]  — *⊣ limit*
 
 **Produced by.** `cad_designer/airplane/geometry/spar_solver.py:403` — `plan_spar`
+
+🟢 **Verified against the code** — an independent reviewer read this line and confirmed the formula, unit and value (2026-08-18 audit).
 
 **Consumed by.**
 

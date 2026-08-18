@@ -6,12 +6,14 @@ unit: m/s
 cluster: perf-matching
 user_visible: true
 source_status: NO_SOURCE_FOUND
+code_audit: CONFIRMED
 node_class: derived
 tags:
   - cluster/perf-matching
   - class/derived
   - source/no-source-found
   - surface/user-visible
+  - audit/confirmed
   - flag/anomaly
   - flag/divergence
 ---
@@ -33,6 +35,8 @@ v_climb_vc = max(v_cruise, 1.0)
 - [[v_cruise_resolved|Resolved cruise speed]]
 
 **Produced by.** `app/services/matching_chart_service.py:1157` — `_build_rc_additive_constraints`
+
+🟢 **Verified against the code** — an independent reviewer read this line and confirmed the formula, unit and value (2026-08-18 audit).
 
 **Consumed by.**
 

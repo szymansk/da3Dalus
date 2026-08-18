@@ -6,12 +6,14 @@ unit: V
 cluster: powertrain
 user_visible: true
 source_status: SOURCED
+code_audit: CONFIRMED
 node_class: derived
 tags:
   - cluster/powertrain
   - class/derived
   - source/sourced
   - surface/user-visible
+  - audit/confirmed
   - flag/anomaly
 ---
 
@@ -33,6 +35,8 @@ return self.cells * _VOLTS_PER_LIPO_CELL
 - [[volts-per-lipo-cell|Loaded LiPo cell voltage]]
 
 **Produced by.** `app/services/powertrain_performance.py:184` — `BatterySpec.nominal_voltage_v`
+
+🟢 **Verified against the code** — an independent reviewer read this line and confirmed the formula, unit and value (2026-08-18 audit).
 
 **Consumed by.**
 

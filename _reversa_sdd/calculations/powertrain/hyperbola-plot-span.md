@@ -6,12 +6,14 @@ unit: dimensionless
 cluster: powertrain
 user_visible: true
 source_status: NO_SOURCE_FOUND
+code_audit: CONFIRMED
 node_class: unclassified-constant
 tags:
   - cluster/powertrain
   - class/unclassified-constant
   - source/no-source-found
   - surface/user-visible
+  - audit/confirmed
   - flag/divergence
 ---
 
@@ -34,6 +36,8 @@ cap_max = cap_floor_mah * 4.0
 - [[ss-cap-mah|Minimum battery capacity]]  — *⊣ limit*
 
 **Produced by.** `app/services/powertrain_solution_space_service.py:181` — `_build_hyperbola`
+
+🟢 **Verified against the code** — an independent reviewer read this line and confirmed the formula, unit and value (2026-08-18 audit).
 
 **Consumed by.**
 

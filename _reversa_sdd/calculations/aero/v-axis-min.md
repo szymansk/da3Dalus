@@ -5,12 +5,14 @@ unit: m/s
 cluster: aero-spanwise
 user_visible: true
 source_status: PARTIAL
+code_audit: CONFIRMED
 node_class: derived
 tags:
   - cluster/aero-spanwise
   - class/derived
   - source/partial
   - surface/user-visible
+  - audit/confirmed
   - flag/divergence
 ---
 
@@ -32,6 +34,8 @@ v_axis_min: float | None = 0.7 * min(v_stall_values)
 - [[v-axis-min-factor|Lower axis-bound factor]]  — *⊣ limit*
 
 **Produced by.** `app/services/analysis_service.py:556` — `_compute_speed_polar`
+
+🟢 **Verified against the code** — an independent reviewer read this line and confirmed the formula, unit and value (2026-08-18 audit).
 
 **Consumed by.**
 

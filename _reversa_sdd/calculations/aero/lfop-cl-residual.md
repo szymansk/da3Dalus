@@ -6,11 +6,13 @@ unit: dimensionless
 cluster: aero-strips
 user_visible: false
 source_status: PARTIAL
+code_audit: CONFIRMED
 node_class: solver-output
 tags:
   - cluster/aero-strips
   - class/solver-output
   - source/partial
+  - audit/confirmed
   - flag/anomaly
   - flag/divergence
   - solver/aerobuildup
@@ -36,6 +38,8 @@ return float(np.atleast_1d(result.get("CL", 0.0))[0]) - cl_target
 - [[lfop-cl-target-clip|Target CL clamp]]  — *⊣ limit*
 
 **Produced by.** `app/services/section_aoa_service.py:521` — `_cl_at_alpha`
+
+🟢 **Verified against the code** — an independent reviewer read this line and confirmed the formula, unit and value (2026-08-18 audit).
 
 **Consumed by.**
 

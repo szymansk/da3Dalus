@@ -6,12 +6,14 @@ unit: n/a
 cluster: aero-strips
 user_visible: true
 source_status: PARTIAL
+code_audit: CONFIRMED
 node_class: derived
 tags:
   - cluster/aero-strips
   - class/derived
   - source/partial
   - surface/user-visible
+  - audit/confirmed
   - flag/divergence
 ---
 
@@ -32,6 +34,8 @@ if i_opt == 0 or i_opt == len(xtr_grid) - 1: warnings.append(…)
 - [[tos-xtr-opt|Optimal trip position]]
 
 **Produced by.** `app/services/turbulator_optimizer_service.py:263` — `optimize_section_xtr`
+
+🟢 **Verified against the code** — an independent reviewer read this line and confirmed the formula, unit and value (2026-08-18 audit).
 
 **Consumed by.**
 

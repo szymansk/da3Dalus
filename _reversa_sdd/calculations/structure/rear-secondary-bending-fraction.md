@@ -5,12 +5,14 @@ unit: dimensionless
 cluster: structure
 user_visible: true
 source_status: NO_SOURCE_FOUND
+code_audit: CONFIRMED
 node_class: unclassified-parameter
 tags:
   - cluster/structure
   - class/unclassified-parameter
   - source/no-source-found
   - surface/user-visible
+  - audit/confirmed
   - flag/anomaly
 ---
 
@@ -36,6 +38,8 @@ rear_secondary_bending_fraction: float = Field(
 **Inputs.** — *(leaf: a constant or an external input)*
 
 **Produced by.** `app/schemas/spar_plan.py:144` — `SparPlanRequest.rear_secondary_bending_fraction`
+
+🟢 **Verified against the code** — an independent reviewer read this line and confirmed the formula, unit and value (2026-08-18 audit).
 
 **Consumed by.**
 

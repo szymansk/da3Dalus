@@ -6,11 +6,13 @@ unit: 1/deg
 cluster: aero-polars
 user_visible: false
 source_status: NO_SOURCE_FOUND
+code_audit: CONFIRMED
 node_class: unclassified-constant
 tags:
   - cluster/aero-polars
   - class/unclassified-constant
   - source/no-source-found
+  - audit/confirmed
   - flag/anomaly
   - flag/divergence
 ---
@@ -34,6 +36,8 @@ gentleness_score = max(0.0, min(1.0, 1.0 + stall / 0.15))
 - [[alr-stall-gentleness|Stall gentleness]]  — *⊣ limit*
 
 **Produced by.** `app/services/airfoil_low_re_service.py:875` — `score_re_agnostic`
+
+🟢 **Verified against the code** — an independent reviewer read this line and confirmed the formula, unit and value (2026-08-18 audit).
 
 **Consumed by.**
 

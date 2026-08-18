@@ -6,11 +6,13 @@ unit: -
 cluster: perf-envelope
 user_visible: false
 source_status: SOURCED
+code_audit: CONFIRMED
 node_class: derived
 tags:
   - cluster/perf-envelope
   - class/derived
   - source/sourced
+  - audit/confirmed
   - flag/anomaly
   - flag/divergence
 ---
@@ -33,6 +35,8 @@ ar = (b_ref_m**2) / wing_area_m2
 - [[fe_wing_area|Reference wing area]]  — *× unit*
 
 **Produced by.** `app/services/flight_envelope_service.py:343` — `compute_vn_curve`
+
+🟢 **Verified against the code** — an independent reviewer read this line and confirmed the formula, unit and value (2026-08-18 audit).
 
 **Consumed by.**
 

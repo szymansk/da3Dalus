@@ -6,12 +6,14 @@ unit: g
 cluster: aero-spanwise
 user_visible: true
 source_status: SOURCED
+code_audit: CONFIRMED
 node_class: derived
 tags:
   - cluster/aero-spanwise
   - class/derived
   - source/sourced
   - surface/user-visible
+  - audit/confirmed
   - flag/divergence
   - flag/scale
 ---
@@ -33,6 +35,8 @@ g_limit_raw = get_effective_assumption(db, aeroplane_id, "g_limit"); g_limit = _
 - [[aero-spanwise--g-limit-default|Default manoeuvre load factor]]  — *⤵ fallback*
 
 **Produced by.** `app/services/analysis_service.py:2153` — `_compute_spar_sizing_for_surfaces`
+
+🟢 **Verified against the code** — an independent reviewer read this line and confirmed the formula, unit and value (2026-08-18 audit).
 
 **Consumed by.**
 

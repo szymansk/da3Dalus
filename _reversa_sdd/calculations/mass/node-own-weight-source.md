@@ -6,12 +6,14 @@ unit: enum (dimensionless)
 cluster: mass
 user_visible: true
 source_status: NO_SOURCE_FOUND
+code_audit: CONFIRMED
 node_class: derived
 tags:
   - cluster/mass
   - class/derived
   - source/no-source-found
   - surface/user-visible
+  - audit/confirmed
 ---
 
 # Own weight provenance
@@ -31,6 +33,8 @@ returned as the second tuple element of _calculate_own_weight: "override" | "cot
 - [[node-own-weight|Node own weight]]
 
 **Produced by.** `app/services/component_tree_service.py:461` — `_calculate_own_weight`
+
+🟢 **Verified against the code** — an independent reviewer read this line and confirmed the formula, unit and value (2026-08-18 audit).
 
 **Consumed by.**
 

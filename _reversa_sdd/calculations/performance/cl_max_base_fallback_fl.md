@@ -6,12 +6,14 @@ unit: dimensionless
 cluster: perf-matching
 user_visible: true
 source_status: PARTIAL
+code_audit: CONFIRMED
 node_class: unclassified-parameter
 tags:
   - cluster/perf-matching
   - class/unclassified-parameter
   - source/partial
   - surface/user-visible
+  - audit/confirmed
   - flag/anomaly
   - flag/divergence
   - flag/scale
@@ -34,6 +36,8 @@ cl_max_base: float = float(cl_max_raw) if cl_max_raw is not None else 1.4
 **Inputs.** — *(leaf: a constant or an external input)*
 
 **Produced by.** `app/services/field_length_service.py:356` — `cl_max_base`
+
+🟢 **Verified against the code** — an independent reviewer read this line and confirmed the formula, unit and value (2026-08-18 audit).
 
 **Consumed by.**
 

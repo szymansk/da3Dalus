@@ -6,12 +6,14 @@ unit: m
 cluster: mass
 user_visible: true
 source_status: SOURCED
+code_audit: CONFIRMED
 node_class: derived
 tags:
   - cluster/mass
   - class/derived
   - source/sourced
   - surface/user-visible
+  - audit/confirmed
 ---
 
 # Aggregate CG (default scenario)
@@ -33,6 +35,8 @@ return compute_scenario_cg(base_mass_kg=base_mass, base_cg_x=base_cg_x, adhoc_it
 - [[base-cg-x-default|Fallback base CG_x for scenario CG]]  — *ε tolerance*
 
 **Produced by.** `app/services/loading_scenario_service.py:345` — `compute_cg_agg_for_aeroplane`
+
+🟢 **Verified against the code** — an independent reviewer read this line and confirmed the formula, unit and value (2026-08-18 audit).
 
 **Consumed by.**
 

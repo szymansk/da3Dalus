@@ -5,12 +5,14 @@ unit: -
 cluster: aero-spanwise
 user_visible: true
 source_status: NO_SOURCE_FOUND
+code_audit: NOT_VERIFIED
 node_class: unclassified-parameter
 tags:
   - cluster/aero-spanwise
   - class/unclassified-parameter
   - source/no-source-found
   - surface/user-visible
+  - audit/not-verified
   - flag/scale
 ---
 
@@ -31,6 +33,8 @@ packing_factor: Annotated[float, Query(gt=0, le=1.0, description="Packing factor
 **Inputs.** — *(leaf: a constant or an external input)*
 
 **Produced by.** `app/api/v2/endpoints/aeroanalysis.py:612` — `get_airplane_spanwise_loads_with_sizing`
+
+⚪ **Not verified.** This node was not covered by the audit pass; treat its line and formula as extracted-but-unchecked.
 
 **Consumed by.**
 

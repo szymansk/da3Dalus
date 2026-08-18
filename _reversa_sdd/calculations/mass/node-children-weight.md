@@ -6,12 +6,14 @@ unit: g
 cluster: mass
 user_visible: true
 source_status: SOURCED
+code_audit: CONFIRMED
 node_class: derived
 tags:
   - cluster/mass
   - class/derived
   - source/sourced
   - surface/user-visible
+  - audit/confirmed
   - flag/anomaly
 ---
 
@@ -32,6 +34,8 @@ total += (own or 0) + children_sum
 - [[node-own-weight|Node own weight]]
 
 **Produced by.** `app/services/component_tree_service.py:477` — `_calculate_children_weight`
+
+🟢 **Verified against the code** — an independent reviewer read this line and confirmed the formula, unit and value (2026-08-18 audit).
 
 **Consumed by.**
 

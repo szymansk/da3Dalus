@@ -6,11 +6,13 @@ unit: dimensionless (CL)
 cluster: aero-polars
 user_visible: false
 source_status: PARTIAL
+code_audit: CONFIRMED
 node_class: unclassified-parameter
 tags:
   - cluster/aero-polars
   - class/unclassified-parameter
   - source/partial
+  - audit/confirmed
   - flag/divergence
 ---
 
@@ -31,6 +33,8 @@ cl_hi = 0.85 * cl_max
 **Inputs.** — *(leaf: a constant or an external input)*
 
 **Produced by.** `app/services/polar_re_table_service.py:341` — `_fit_polar_ols`
+
+🟢 **Verified against the code** — an independent reviewer read this line and confirmed the formula, unit and value (2026-08-18 audit).
 
 **Consumed by.**
 

@@ -6,11 +6,13 @@ unit: deg
 cluster: aero-polars
 user_visible: false
 source_status: PARTIAL
+code_audit: CONFIRMED
 node_class: unclassified-parameter
 tags:
   - cluster/aero-polars
   - class/unclassified-parameter
   - source/partial
+  - audit/confirmed
   - flag/anomaly
   - flag/divergence
 ---
@@ -32,6 +34,8 @@ alpha_deg = np.arange(alpha_start, alpha_end + alpha_step * 0.5, alpha_step)
 **Inputs.** — *(leaf: a constant or an external input)*
 
 **Produced by.** `app/services/airfoil_low_re_service.py:464` — `compute_airfoil_low_re`
+
+🟢 **Verified against the code** — an independent reviewer read this line and confirmed the formula, unit and value (2026-08-18 audit).
 
 **Consumed by.**
 

@@ -6,11 +6,13 @@ unit: – (dimensionless)
 cluster: stability
 user_visible: false
 source_status: PARTIAL
+code_audit: CONFIRMED
 node_class: derived
 tags:
   - cluster/stability
   - class/derived
   - source/partial
+  - audit/confirmed
   - flag/anomaly
   - flag/divergence
 ---
@@ -37,6 +39,8 @@ return max(0.01, min(0.20, a_vh))
 - [[s-ref-m2-fallback|Reference area fallback]]  — *⤵ fallback*
 
 **Produced by.** `app/services/sm_sizing_service.py:122` — `_alpha_vh`
+
+🟢 **Verified against the code** — an independent reviewer read this line and confirmed the formula, unit and value (2026-08-18 audit).
 
 **Consumed by.**
 

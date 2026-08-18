@@ -6,11 +6,13 @@ unit: dimensionless
 cluster: aero-polars
 user_visible: false
 source_status: PARTIAL
+code_audit: CONFIRMED
 node_class: derived
 tags:
   - cluster/aero-polars
   - class/derived
   - source/partial
+  - audit/confirmed
   - flag/divergence
 ---
 
@@ -32,6 +34,8 @@ r = cd_at_target / cd0  # relative drag rise; r=1 at CL_min, r>1 away from it
 - [[alr-polar-cd0|Airfoil cd0 (parabolic fit vertex)]]
 
 **Produced by.** `app/services/airfoil_low_re_service.py:1046` — `score_target_cl`
+
+🟢 **Verified against the code** — an independent reviewer read this line and confirmed the formula, unit and value (2026-08-18 audit).
 
 **Consumed by.**
 

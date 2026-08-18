@@ -1,15 +1,17 @@
 ---
 name: opti_solver_budget
 kind: parameter
-unit: iterations / s
+unit: mixed (iterations and seconds)
 cluster: perf-oppoints
 user_visible: false
 source_status: NO_SOURCE_FOUND
+code_audit: WRONG_UNIT
 node_class: unclassified-parameter
 tags:
   - cluster/perf-oppoints
   - class/unclassified-parameter
   - source/no-source-found
+  - audit/wrong-unit
   - flag/anomaly
   - flag/divergence
 ---
@@ -31,6 +33,8 @@ solution = opti.solve(verbose=False, max_iter=120, max_runtime=0.35, behavior_on
 **Inputs.** — *(leaf: a constant or an external input)*
 
 **Produced by.** `app/services/operating_point_generator_service.py:685` — `_solve_trim_candidate_with_opti`
+
+🟠 **Corrected by the audit** — the extraction claimed `WRONG_UNIT`. Original unit was `iterations / s`. max_iter in iterations, max_runtime in seconds; unit 'iterations / s' is invalid
 
 **Consumed by.**
 

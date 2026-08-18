@@ -6,12 +6,14 @@ unit: kg
 cluster: mass
 user_visible: true
 source_status: SOURCED
+code_audit: CONFIRMED
 node_class: derived
 tags:
   - cluster/mass
   - class/derived
   - source/sourced
   - surface/user-visible
+  - audit/confirmed
   - flag/anomaly
   - flag/divergence
 ---
@@ -35,6 +37,8 @@ total_g += (own or 0.0) + _calculate_children_weight(db, aeroplane_id, r.id)  ..
 - [[grams-to-kg-divisor|g → kg divisor]]  — *× unit*
 
 **Produced by.** `app/services/component_tree_service.py:381` — `get_aircraft_total_weight_kg`
+
+🟢 **Verified against the code** — an independent reviewer read this line and confirmed the formula, unit and value (2026-08-18 audit).
 
 **Consumed by.**
 

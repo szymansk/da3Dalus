@@ -6,12 +6,14 @@ unit: N/m^2
 cluster: perf-matching
 user_visible: true
 source_status: PARTIAL
+code_audit: CONFIRMED
 node_class: derived
 tags:
   - cluster/perf-matching
   - class/derived
   - source/partial
   - surface/user-visible
+  - audit/confirmed
   - flag/divergence
   - flag/scale
 ---
@@ -35,6 +37,8 @@ ws_range = [_WS_MIN + (_WS_MAX - _WS_MIN) * i / (_WS_STEPS - 1) for i in range(_
 - [[ws_sweep_steps|W/S sweep resolution]]
 
 **Produced by.** `app/services/matching_chart_service.py:838` — `compute_chart`
+
+🟢 **Verified against the code** — an independent reviewer read this line and confirmed the formula, unit and value (2026-08-18 audit).
 
 **Consumed by.**
 

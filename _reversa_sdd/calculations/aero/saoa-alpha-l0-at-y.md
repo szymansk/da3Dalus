@@ -6,11 +6,13 @@ unit: deg
 cluster: aero-strips
 user_visible: false
 source_status: PARTIAL
+code_audit: CONFIRMED
 node_class: derived
 tags:
   - cluster/aero-strips
   - class/derived
   - source/partial
+  - audit/confirmed
   - flag/anomaly
   - flag/divergence
 ---
@@ -33,6 +35,8 @@ alpha_L0_at_y = np.interp(y_arr, alpha_L0_per_section[0], alpha_L0_per_section[1
 - [[saoa-y|Panel spanwise position]]
 
 **Produced by.** `app/services/section_aoa_service.py:298` — `compute_section_aoa`
+
+🟢 **Verified against the code** — an independent reviewer read this line and confirmed the formula, unit and value (2026-08-18 audit).
 
 **Consumed by.**
 

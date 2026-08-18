@@ -6,12 +6,14 @@ unit: m/s
 cluster: aero-strips
 user_visible: true
 source_status: NO_SOURCE_FOUND
+code_audit: CONFIRMED
 node_class: unclassified-constant
 tags:
   - cluster/aero-strips
   - class/unclassified-constant
   - source/no-source-found
   - surface/user-visible
+  - audit/confirmed
   - flag/divergence
 ---
 
@@ -32,6 +34,8 @@ cruise_v = 15.0  # m/s — safe guess for RC/UAV models
 **Inputs.** — *(leaf: a constant or an external input)*
 
 **Produced by.** `app/services/section_aoa_service.py:502` — `_resolve_level_flight_op`
+
+🟢 **Verified against the code** — an independent reviewer read this line and confirmed the formula, unit and value (2026-08-18 audit).
 
 **Consumed by.**
 

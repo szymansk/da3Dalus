@@ -6,11 +6,13 @@ unit: dimensionless (x/c)
 cluster: structure
 user_visible: false
 source_status: SOURCED
+code_audit: CONFIRMED
 node_class: unclassified-constant
 tags:
   - cluster/structure
   - class/unclassified-constant
   - source/sourced
+  - audit/confirmed
   - flag/anomaly
   - flag/divergence
   - flag/scale
@@ -33,6 +35,8 @@ _DEFAULT_FRONT_X_C = 0.30
 **Inputs.** — *(leaf: a constant or an external input)*
 
 **Produced by.** `app/services/spar_plan_service.py:43` — `_DEFAULT_FRONT_X_C`
+
+🟢 **Verified against the code** — an independent reviewer read this line and confirmed the formula, unit and value (2026-08-18 audit).
 
 **Consumed by.**
 

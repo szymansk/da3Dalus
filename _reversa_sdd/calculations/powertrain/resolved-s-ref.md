@@ -6,12 +6,14 @@ unit: m^2
 cluster: powertrain
 user_visible: true
 source_status: NO_SOURCE_FOUND
+code_audit: CONFIRMED
 node_class: derived
 tags:
   - cluster/powertrain
   - class/derived
   - source/no-source-found
   - surface/user-visible
+  - audit/confirmed
   - flag/divergence
 ---
 
@@ -32,6 +34,8 @@ s_ref_m2 = _pick(request.s_ref_m2, "s_ref_m2", _DEFAULT_S_REF_M2, "Wing referenc
 - [[default-s-ref-sizing|Default wing reference area (sizing)]]  — *⤵ fallback*
 
 **Produced by.** `app/services/powertrain_sizing_service.py:186` — `_resolve_aero_params`
+
+🟢 **Verified against the code** — an independent reviewer read this line and confirmed the formula, unit and value (2026-08-18 audit).
 
 **Consumed by.**
 

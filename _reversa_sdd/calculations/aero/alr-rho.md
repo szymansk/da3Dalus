@@ -6,11 +6,13 @@ unit: kg/m³
 cluster: aero-polars
 user_visible: false
 source_status: SOURCED
+code_audit: CONFIRMED
 node_class: physical-constant
 tags:
   - cluster/aero-polars
   - class/physical-constant
   - source/sourced
+  - audit/confirmed
   - flag/divergence
   - flag/physical
 ---
@@ -33,6 +35,8 @@ RHO = 1.225  # kg/m³  (ISA sea-level)
 **Inputs.** — *(leaf: a constant or an external input)*
 
 **Produced by.** `app/services/airfoil_low_re_service.py:40` — `RHO`
+
+🟢 **Verified against the code** — an independent reviewer read this line and confirmed the formula, unit and value (2026-08-18 audit).
 
 **Consumed by.**
 

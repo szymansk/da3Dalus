@@ -6,11 +6,13 @@ unit: deg / iterations
 cluster: aero-strips
 user_visible: false
 source_status: PARTIAL
+code_audit: CONFIRMED
 node_class: unclassified-constant
 tags:
   - cluster/aero-strips
   - class/unclassified-constant
   - source/partial
+  - audit/confirmed
   - flag/divergence
 ---
 
@@ -31,6 +33,8 @@ brentq(_cl_at_alpha, -5.0, 15.0, xtol=0.05, maxiter=30)
 **Inputs.** — *(leaf: a constant or an external input)*
 
 **Produced by.** `app/services/section_aoa_service.py:526` — `_resolve_level_flight_op`
+
+🟢 **Verified against the code** — an independent reviewer read this line and confirmed the formula, unit and value (2026-08-18 audit).
 
 **Consumed by.**
 

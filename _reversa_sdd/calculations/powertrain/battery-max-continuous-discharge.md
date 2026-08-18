@@ -6,12 +6,14 @@ unit: W
 cluster: powertrain
 user_visible: true
 source_status: PARTIAL
+code_audit: CONFIRMED
 node_class: derived
 tags:
   - cluster/powertrain
   - class/derived
   - source/partial
   - surface/user-visible
+  - audit/confirmed
 ---
 
 # Battery maximum continuous discharge power
@@ -33,6 +35,8 @@ if self.c_rate is None: return float("inf") ; capacity_ah = self.capacity_mah / 
 - [[battery-nominal-voltage|Nominal pack voltage]]
 
 **Produced by.** `app/services/powertrain_performance.py:195` — `BatterySpec.max_continuous_discharge_w`
+
+🟢 **Verified against the code** — an independent reviewer read this line and confirmed the formula, unit and value (2026-08-18 audit).
 
 **Consumed by.**
 

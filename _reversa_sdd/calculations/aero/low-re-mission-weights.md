@@ -6,12 +6,14 @@ unit: mixed
 cluster: aero-polars
 user_visible: true
 source_status: PARTIAL
+code_audit: CONFIRMED
 node_class: unclassified-parameter
 tags:
   - cluster/aero-polars
   - class/unclassified-parameter
   - source/partial
   - surface/user-visible
+  - audit/confirmed
   - flag/anomaly
   - flag/divergence
   - flag/scale
@@ -34,6 +36,8 @@ low_re_mission_weights: dict[str, dict[str, Any]] = Field(default_factory=lambda
 **Inputs.** — *(leaf: a constant or an external input)*
 
 **Produced by.** `app/settings.py:116` — `Settings.low_re_mission_weights`
+
+🟢 **Verified against the code** — an independent reviewer read this line and confirmed the formula, unit and value (2026-08-18 audit).
 
 **Consumed by.**
 

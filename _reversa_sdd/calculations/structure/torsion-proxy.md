@@ -6,11 +6,13 @@ unit: N·m
 cluster: structure
 user_visible: false
 source_status: NO_SOURCE_FOUND
+code_audit: CONFIRMED
 node_class: derived
 tags:
   - cluster/structure
   - class/derived
   - source/no-source-found
+  - audit/confirmed
   - flag/anomaly
 ---
 
@@ -33,6 +35,8 @@ def torsion_fn(y_span: float) -> float:
 - [[front-moment-fn|Front-spar bending moment interpolator]]  — *⊣ limit*
 
 **Produced by.** `app/services/spar_plan_service.py:450` — `_make_rear_moment_fn`
+
+🟢 **Verified against the code** — an independent reviewer read this line and confirmed the formula, unit and value (2026-08-18 audit).
 
 **Consumed by.**
 

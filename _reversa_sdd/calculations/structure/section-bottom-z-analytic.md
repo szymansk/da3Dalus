@@ -6,12 +6,14 @@ unit: mm
 cluster: structure
 user_visible: true
 source_status: PARTIAL
+code_audit: CONFIRMED
 node_class: derived
 tags:
   - cluster/structure
   - class/derived
   - source/partial
   - surface/user-visible
+  - audit/confirmed
 ---
 
 # Section lower surface height (analytic)
@@ -31,6 +33,8 @@ bottom_z=min(top_z, bottom_z),
 - [[y-span-to-segment|Span fraction to segment mapping]]  — *⊣ limit*
 
 **Produced by.** `cad_designer/airplane/geometry/section_geometry.py:363` — `SectionGeometry._analytic_point`
+
+🟢 **Verified against the code** — an independent reviewer read this line and confirmed the formula, unit and value (2026-08-18 audit).
 
 **Consumed by.**
 

@@ -5,12 +5,14 @@ unit: 1/deg
 cluster: aero-spanwise
 user_visible: true
 source_status: PARTIAL
+code_audit: CONFIRMED
 node_class: unclassified-constant
 tags:
   - cluster/aero-spanwise
   - class/unclassified-constant
   - source/partial
   - surface/user-visible
+  - audit/confirmed
   - flag/anomaly
   - flag/divergence
   - flag/scale
@@ -33,6 +35,8 @@ if slope < -0.01: Stable; if slope <= 0.01: Neutral; else Unstable
 **Inputs.** — *(leaf: a constant or an external input)*
 
 **Produced by.** `app/services/analysis_service.py:827` — `_classify_longitudinal_stability`
+
+🟢 **Verified against the code** — an independent reviewer read this line and confirmed the formula, unit and value (2026-08-18 audit).
 
 **Consumed by.**
 

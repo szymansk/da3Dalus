@@ -6,12 +6,14 @@ unit: V
 cluster: powertrain
 user_visible: true
 source_status: SOURCED
+code_audit: WRONG_LINE
 node_class: derived
 tags:
   - cluster/powertrain
   - class/derived
   - source/sourced
   - surface/user-visible
+  - audit/wrong-line
   - flag/anomaly
   - flag/divergence
 ---
@@ -37,7 +39,9 @@ if voltage is None: voltage = 11.1
 - [[volts-per-cell-sizing|Volts per cell (sizing)]]
 - [[default-pack-voltage-11v1|Default pack voltage]]  — *⤵ fallback*
 
-**Produced by.** `app/services/powertrain_sizing_service.py:228` — `_evaluate_motor_battery_combo`
+**Produced by.** `app/services/powertrain_sizing_service.py:220` — `_evaluate_motor_battery_combo`
+
+🟠 **Corrected by the audit** — the extraction claimed `WRONG_LINE`. Original line was `228`. Voltage resolution chain begins at line 220 (voltage_v lookup), not line 228 (final fallback). Claim formula correctly shows full chain but producer_line points to only the last branch.
 
 **Consumed by.**
 

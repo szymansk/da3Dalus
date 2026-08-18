@@ -6,12 +6,14 @@ unit: – (dimensionless)
 cluster: stability
 user_visible: true
 source_status: SOURCED
+code_audit: CONFIRMED
 node_class: derived
 tags:
   - cluster/stability
   - class/derived
   - source/sourced
   - surface/user-visible
+  - audit/confirmed
   - flag/anomaly
   - flag/divergence
   - solver-adjacent/aerobuildup
@@ -35,6 +37,8 @@ if f_lower * f_upper > 0:
 - [[deflection-bounds|Trim search bounds]]  — *⊣ limit*
 
 **Produced by.** `app/services/aerobuildup_trim_service.py:186` — `trim_with_aerobuildup`
+
+🟢 **Verified against the code** — an independent reviewer read this line and confirmed the formula, unit and value (2026-08-18 audit).
 
 **Consumed by.**
 

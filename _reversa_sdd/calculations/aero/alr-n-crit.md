@@ -6,11 +6,13 @@ unit: dimensionless
 cluster: aero-polars
 user_visible: false
 source_status: SOURCED
+code_audit: WRONG_LINE
 node_class: unclassified-parameter
 tags:
   - cluster/aero-polars
   - class/unclassified-parameter
   - source/sourced
+  - audit/wrong-line
   - flag/anomaly
   - flag/divergence
   - flag/scale
@@ -33,7 +35,9 @@ n_crit: float = 9.0
 
 **Inputs.** — *(leaf: a constant or an external input)*
 
-**Produced by.** `app/services/airfoil_low_re_service.py:414` — `compute_airfoil_low_re`
+**Produced by.** `app/services/airfoil_low_re_service.py:412` — `compute_airfoil_low_re`
+
+🟠 **Corrected by the audit** — the extraction claimed `WRONG_LINE`. Original line was `414`. 
 
 **Consumed by.**
 

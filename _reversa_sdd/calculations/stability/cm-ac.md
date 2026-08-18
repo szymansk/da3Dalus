@@ -6,11 +6,13 @@ unit: – (dimensionless)
 cluster: stability
 user_visible: false
 source_status: SOURCED
+code_audit: CONFIRMED
 node_class: derived
 tags:
   - cluster/stability
   - class/derived
   - source/sourced
+  - audit/confirmed
   - flag/anomaly
   - flag/divergence
 ---
@@ -32,6 +34,8 @@ cm_ac = cm_baseline
 - [[cm-baseline|Baseline pitching moment (zero deflection)]]
 
 **Produced by.** `app/services/elevator_authority_service.py:731` — `_compute_forward_cg_limit_asb`
+
+🟢 **Verified against the code** — an independent reviewer read this line and confirmed the formula, unit and value (2026-08-18 audit).
 
 **Consumed by.**
 

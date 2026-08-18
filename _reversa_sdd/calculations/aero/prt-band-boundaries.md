@@ -6,11 +6,13 @@ unit: m/s
 cluster: aero-polars
 user_visible: false
 source_status: PARTIAL
+code_audit: CONFIRMED
 node_class: derived
 tags:
   - cluster/aero-polars
   - class/derived
   - source/partial
+  - audit/confirmed
   - flag/divergence
 ---
 
@@ -31,6 +33,8 @@ v_lo = (v_sorted[idx - 1] + v_sorted[idx]) / 2.0 ; v_hi = (v_sorted[idx] + v_sor
 - [[prt-v-bin-half-width|V-bin half-width fraction]]
 
 **Produced by.** `app/services/polar_re_table_service.py:248` — `_band_boundaries`
+
+🟢 **Verified against the code** — an independent reviewer read this line and confirmed the formula, unit and value (2026-08-18 audit).
 
 **Consumed by.**
 

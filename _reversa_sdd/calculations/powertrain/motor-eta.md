@@ -6,12 +6,14 @@ unit: dimensionless (0..1)
 cluster: powertrain
 user_visible: true
 source_status: SOURCED
+code_audit: CONFIRMED
 node_class: derived
 tags:
   - cluster/powertrain
   - class/derived
   - source/sourced
   - surface/user-visible
+  - audit/confirmed
   - flag/divergence
 ---
 
@@ -33,6 +35,8 @@ if self.efficiency_pct is not None: return self.efficiency_pct / 100.0 ; return 
 - [[default-eta-motor-perf|Default motor efficiency (performance module)]]  — *⤵ fallback*
 
 **Produced by.** `app/services/powertrain_performance.py:147` — `MotorSpec.eta_motor`
+
+🟢 **Verified against the code** — an independent reviewer read this line and confirmed the formula, unit and value (2026-08-18 audit).
 
 **Consumed by.**
 

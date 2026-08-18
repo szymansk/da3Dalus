@@ -5,11 +5,13 @@ unit: mm
 cluster: structure
 user_visible: false
 source_status: NO_SOURCE_FOUND
+code_audit: CONFIRMED
 node_class: unclassified-constant
 tags:
   - cluster/structure
   - class/unclassified-constant
   - source/no-source-found
+  - audit/confirmed
   - flag/anomaly
 ---
 
@@ -33,6 +35,8 @@ sol = solve_dimension(shape="rod", erf_w=erf_w, outer_mm=max(band_hi - band_lo, 
 - [[band-hi|Contained band upper bound]]  — *⊣ limit*
 
 **Produced by.** `cad_designer/airplane/geometry/spar_solver.py:767` — `build_stations_from_geometry`
+
+🟢 **Verified against the code** — an independent reviewer read this line and confirmed the formula, unit and value (2026-08-18 audit).
 
 **Consumed by.**
 

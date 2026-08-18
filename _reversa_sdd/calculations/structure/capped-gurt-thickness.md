@@ -6,12 +6,14 @@ unit: mm
 cluster: structure
 user_visible: true
 source_status: SOURCED
+code_audit: CONFIRMED
 node_class: derived
 tags:
   - cluster/structure
   - class/derived
   - source/sourced
   - surface/user-visible
+  - audit/confirmed
 ---
 
 # Capped-spar flange (gurt) thickness
@@ -32,6 +34,8 @@ gurt = (H - h) / 2.0
 - [[spar-outer-dimension|Spar outer dimension]]
 
 **Produced by.** `app/services/spar_sizing.py:209` — `_solve_capped`
+
+🟢 **Verified against the code** — an independent reviewer read this line and confirmed the formula, unit and value (2026-08-18 audit).
 
 **Consumed by.**
 

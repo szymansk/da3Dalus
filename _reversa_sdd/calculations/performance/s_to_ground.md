@@ -6,12 +6,14 @@ unit: m
 cluster: perf-matching
 user_visible: true
 source_status: PARTIAL
+code_audit: CONFIRMED
 node_class: derived
 tags:
   - cluster/perf-matching
   - class/derived
   - source/partial
   - surface/user-visible
+  - audit/confirmed
   - flag/divergence
 ---
 
@@ -37,6 +39,8 @@ return _C_TO * wing_loading / (rho * g * cl_max_to * t_over_w)
 - [[t_over_w_fl|Thrust-to-weight (field length)]]
 
 **Produced by.** `app/services/field_length_service.py:203` — `_compute_s_to_ground`
+
+🟢 **Verified against the code** — an independent reviewer read this line and confirmed the formula, unit and value (2026-08-18 audit).
 
 **Consumed by.**
 

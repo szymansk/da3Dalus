@@ -6,12 +6,14 @@ unit: m
 cluster: perf-envelope
 user_visible: true
 source_status: PARTIAL
+code_audit: WRONG_LINE
 node_class: derived
 tags:
   - cluster/perf-envelope
   - class/derived
   - source/partial
   - surface/user-visible
+  - audit/wrong-line
   - flag/scale
 ---
 
@@ -32,7 +34,9 @@ formula = "max(s_TO_50ft, s_LDG_50ft); score = target / effective"
 - [[mkpi_effective_field_length|Effective field length]]
 - [[mkpi_field_score|Field-friendliness score]]
 
-**Produced by.** `app/services/mission_kpi_service.py:340` — `_kpi_field_friendliness`
+**Produced by.** `app/services/mission_kpi_service.py:339` — `_kpi_field_friendliness`
+
+🟠 **Corrected by the audit** — the extraction claimed `WRONG_LINE`. Original line was `340`. 
 
 **Consumed by.**
 

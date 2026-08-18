@@ -5,12 +5,14 @@ unit: dimensionless (unit vector)
 cluster: structure
 user_visible: true
 source_status: PARTIAL
+code_audit: CONFIRMED
 node_class: derived
 tags:
   - cluster/structure
   - class/derived
   - source/partial
   - surface/user-visible
+  - audit/confirmed
   - flag/anomaly
 ---
 
@@ -36,6 +38,8 @@ return (dx / n, dy / n, dz / n)
 - [[station-center-z|Station centre height]]
 
 **Produced by.** `cad_designer/airplane/geometry/spar_solver.py:313` — `_unit_vector`
+
+🟢 **Verified against the code** — an independent reviewer read this line and confirmed the formula, unit and value (2026-08-18 audit).
 
 **Consumed by.**
 

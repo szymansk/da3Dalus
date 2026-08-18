@@ -6,11 +6,13 @@ unit: m/s
 cluster: perf-matching
 user_visible: false
 source_status: SOURCED
+code_audit: CONFIRMED
 node_class: derived
 tags:
   - cluster/perf-matching
   - class/derived
   - source/sourced
+  - audit/confirmed
 ---
 
 # Landing-configuration stall speed
@@ -28,6 +30,8 @@ v_stall_ldg: float = float(aircraft.get("v_s0_mps") or v_stall)
 **Inputs.** — *(leaf: a constant or an external input)*
 
 **Produced by.** `app/services/field_length_service.py:368` — `compute_field_lengths`
+
+🟢 **Verified against the code** — an independent reviewer read this line and confirmed the formula, unit and value (2026-08-18 audit).
 
 **Consumed by.**
 

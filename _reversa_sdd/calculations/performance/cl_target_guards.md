@@ -5,11 +5,13 @@ unit: m/s and Pa
 cluster: perf-oppoints
 user_visible: false
 source_status: NO_SOURCE_FOUND
+code_audit: WRONG_LINE
 node_class: unclassified-constant
 tags:
   - cluster/perf-oppoints
   - class/unclassified-constant
   - source/no-source-found
+  - audit/wrong-line
   - flag/divergence
 ---
 
@@ -29,7 +31,9 @@ q_dyn = 0.5 * rho * max(candidate_velocity_mps, 1e-3) ** 2; if q_dyn <= 1e-6: re
 
 **Inputs.** — *(leaf: a constant or an external input)*
 
-**Produced by.** `app/services/operating_point_generator_service.py:794` — `_cl_target_for_velocity`
+**Produced by.** `app/services/operating_point_generator_service.py:792` — `_cl_target_for_velocity`
+
+🟠 **Corrected by the audit** — the extraction claimed `WRONG_LINE`. Original line was `794`. Guard conditions on lines 792 and 795-796, not 794
 
 **Consumed by.**
 

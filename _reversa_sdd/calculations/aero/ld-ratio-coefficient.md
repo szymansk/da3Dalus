@@ -6,12 +6,14 @@ unit: -
 cluster: aero-spanwise
 user_visible: true
 source_status: SOURCED
+code_audit: CONFIRMED
 node_class: derived
 tags:
   - cluster/aero-spanwise
   - class/derived
   - source/sourced
   - surface/user-visible
+  - audit/confirmed
 ---
 
 # Lift-to-drag ratio (coefficient form)
@@ -33,6 +35,8 @@ ld = np.where(np.abs(cd) > 1e-12, cl / cd, np.nan)
 - [[divide-guard-epsilon|Division guard epsilon]]  — *ε tolerance*
 
 **Produced by.** `app/services/analysis_service.py:108` — `_compute_cl_cd_points`
+
+🟢 **Verified against the code** — an independent reviewer read this line and confirmed the formula, unit and value (2026-08-18 audit).
 
 **Consumed by.**
 

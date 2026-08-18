@@ -5,11 +5,13 @@ unit: dimensionless (span fraction)
 cluster: structure
 user_visible: false
 source_status: NO_SOURCE_FOUND
+code_audit: WRONG_LINE
 node_class: unclassified-constant
 tags:
   - cluster/structure
   - class/unclassified-constant
   - source/no-source-found
+  - audit/wrong-line
 ---
 
 # Root sampling epsilon
@@ -28,7 +30,9 @@ _ROOT_EPS = 1e-3
 
 **Inputs.** — *(leaf: a constant or an external input)*
 
-**Produced by.** `cad_designer/airplane/geometry/spar_solver.py:44` — `_ROOT_EPS`
+**Produced by.** `cad_designer/airplane/geometry/spar_solver.py:42` — `_ROOT_EPS`
+
+🟠 **Corrected by the audit** — the extraction claimed `WRONG_LINE`. Original line was `44`. 
 
 **Consumed by.**
 

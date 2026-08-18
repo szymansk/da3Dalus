@@ -6,11 +6,13 @@ unit: dimensionless
 cluster: aero-polars
 user_visible: false
 source_status: NO_SOURCE_FOUND
+code_audit: CONFIRMED
 node_class: unclassified-parameter
 tags:
   - cluster/aero-polars
   - class/unclassified-parameter
   - source/no-source-found
+  - audit/confirmed
   - flag/divergence
 ---
 
@@ -31,6 +33,8 @@ _V_BIN_HALF_WIDTH_FRACTION: float = 0.5
 **Inputs.** — *(leaf: a constant or an external input)*
 
 **Produced by.** `app/services/polar_re_table_service.py:56` — `_V_BIN_HALF_WIDTH_FRACTION`
+
+🟢 **Verified against the code** — an independent reviewer read this line and confirmed the formula, unit and value (2026-08-18 audit).
 
 **Consumed by.**
 

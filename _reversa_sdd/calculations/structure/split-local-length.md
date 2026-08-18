@@ -5,12 +5,14 @@ unit: mm
 cluster: structure
 user_visible: true
 source_status: PARTIAL
+code_audit: CONFIRMED
 node_class: derived
 tags:
   - cluster/structure
   - class/derived
   - source/partial
   - surface/user-visible
+  - audit/confirmed
   - flag/divergence
 ---
 
@@ -36,6 +38,8 @@ if _FRACTION_TOL * host_len < local < host_len - _FRACTION_TOL * host_len:
 - [[piece-y-start|Spar piece root spanwise position]]
 
 **Produced by.** `app/services/spar_insert_service.py:308` — `_front_split_plan`
+
+🟢 **Verified against the code** — an independent reviewer read this line and confirmed the formula, unit and value (2026-08-18 audit).
 
 **Consumed by.**
 

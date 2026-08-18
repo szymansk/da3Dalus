@@ -6,11 +6,13 @@ unit: dimensionless
 cluster: aero-strips
 user_visible: false
 source_status: PARTIAL
+code_audit: CONFIRMED
 node_class: unclassified-constant
 tags:
   - cluster/aero-strips
   - class/unclassified-constant
   - source/partial
+  - audit/confirmed
   - flag/anomaly
   - flag/divergence
   - solver-adjacent/neuralfoil
@@ -33,6 +35,8 @@ max(velocity * chord / nu, 1e4)
 **Inputs.** — *(leaf: a constant or an external input)*
 
 **Produced by.** `app/services/section_aoa_service.py:162` — `_compute_alpha_l0_per_section`
+
+🟢 **Verified against the code** — an independent reviewer read this line and confirmed the formula, unit and value (2026-08-18 audit).
 
 **Consumed by.**
 

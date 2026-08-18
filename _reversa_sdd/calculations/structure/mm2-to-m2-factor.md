@@ -5,11 +5,13 @@ unit: m²/mm²
 cluster: structure
 user_visible: false
 source_status: SOURCED
+code_audit: CONFIRMED
 node_class: numerical-tolerance
 tags:
   - cluster/structure
   - class/numerical-tolerance
   - source/sourced
+  - audit/confirmed
 ---
 
 # Square-millimetre to square-metre factor
@@ -29,6 +31,8 @@ avg_area_m2 = avg_area_mm2 * 1e-6  # mm² → m²
 **Inputs.** — *(leaf: a constant or an external input)*
 
 **Produced by.** `app/services/spar_sizing.py:248` — `spar_mass_half_kg`
+
+🟢 **Verified against the code** — an independent reviewer read this line and confirmed the formula, unit and value (2026-08-18 audit).
 
 **Consumed by.**
 

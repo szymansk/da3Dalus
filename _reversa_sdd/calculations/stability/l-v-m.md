@@ -6,11 +6,13 @@ unit: m
 cluster: stability
 user_visible: false
 source_status: SOURCED
+code_audit: CONFIRMED
 node_class: derived
 tags:
   - cluster/stability
   - class/derived
   - source/sourced
+  - audit/confirmed
   - flag/anomaly
   - flag/divergence
 ---
@@ -34,6 +36,8 @@ l_v = x_vtail_ac_m - x_wing_ac_m
 - [[vtail-mac-approx|Vertical tail MAC (mean chord approximation)]]
 
 **Produced by.** `app/services/tail_sizing_service.py:224` — `compute_tail_volumes`
+
+🟢 **Verified against the code** — an independent reviewer read this line and confirmed the formula, unit and value (2026-08-18 audit).
 
 **Consumed by.**
 

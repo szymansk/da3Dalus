@@ -6,12 +6,14 @@ unit: A
 cluster: powertrain
 user_visible: true
 source_status: PARTIAL
+code_audit: CONFIRMED
 node_class: derived
 tags:
   - cluster/powertrain
   - class/derived
   - source/partial
   - surface/user-visible
+  - audit/confirmed
 ---
 
 # Battery maximum continuous discharge current
@@ -32,6 +34,8 @@ if self.c_rate is None: return float("inf") ; return (self.capacity_mah / 1000.0
 - [[battery-c-rate-input|Battery C-rate]]
 
 **Produced by.** `app/services/powertrain_performance.py:202` — `BatterySpec.max_current_a`
+
+🟢 **Verified against the code** — an independent reviewer read this line and confirmed the formula, unit and value (2026-08-18 audit).
 
 **Consumed by.**
 

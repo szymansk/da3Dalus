@@ -6,12 +6,14 @@ unit: dimensionless
 cluster: aero-polars
 user_visible: true
 source_status: SOURCED
+code_audit: CONFIRMED
 node_class: derived
 tags:
   - cluster/aero-polars
   - class/derived
   - source/sourced
   - surface/user-visible
+  - audit/confirmed
   - flag/anomaly
   - flag/divergence
 ---
@@ -34,6 +36,8 @@ result["ld_max"] = float(np.nanmax(ld))
 - [[alr-alpha-sweep|Alpha sweep bounds and step]]  — *⊣ limit*
 
 **Produced by.** `app/services/airfoil_low_re_service.py:635` — `_extract_metrics`
+
+🟢 **Verified against the code** — an independent reviewer read this line and confirmed the formula, unit and value (2026-08-18 audit).
 
 **Consumed by.**
 

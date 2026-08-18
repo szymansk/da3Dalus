@@ -6,11 +6,13 @@ unit: strips
 cluster: aero-strips
 user_visible: false
 source_status: PARTIAL
+code_audit: CONFIRMED
 node_class: derived
 tags:
   - cluster/aero-strips
   - class/derived
   - source/partial
+  - audit/confirmed
   - flag/anomaly
   - flag/divergence
   - solver-adjacent/vlm
@@ -33,6 +35,8 @@ n = segments * spanwise_resolution * (2 if wing.symmetric else 1)
 - [[vlm-spanwise-resolution-fixed|VLM spanwise_resolution literal]]
 
 **Produced by.** `app/services/vlm_strip_forces.py:53` — `_wing_strip_counts`
+
+🟢 **Verified against the code** — an independent reviewer read this line and confirmed the formula, unit and value (2026-08-18 audit).
 
 **Consumed by.**
 

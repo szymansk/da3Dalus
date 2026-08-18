@@ -6,11 +6,13 @@ unit: m
 cluster: aero-strips
 user_visible: false
 source_status: NO_SOURCE_FOUND
+code_audit: CONFIRMED
 node_class: derived
 tags:
   - cluster/aero-strips
   - class/derived
   - source/no-source-found
+  - audit/confirmed
   - flag/anomaly
   - flag/divergence
 ---
@@ -32,6 +34,8 @@ y_span = y_max - y_min if y_max > y_min else 1.0
 - [[saoa-y|Panel spanwise position]]
 
 **Produced by.** `app/services/turbulator_optimizer_service.py:680` — `compute_delta_cd0_from_turbulator_position`
+
+🟢 **Verified against the code** — an independent reviewer read this line and confirmed the formula, unit and value (2026-08-18 audit).
 
 **Consumed by.**
 

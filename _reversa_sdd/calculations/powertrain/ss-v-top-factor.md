@@ -6,12 +6,14 @@ unit: dimensionless
 cluster: powertrain
 user_visible: true
 source_status: SOURCED
+code_audit: WRONG_FORMULA
 node_class: unclassified-constant
 tags:
   - cluster/powertrain
   - class/unclassified-constant
   - source/sourced
   - surface/user-visible
+  - audit/wrong-formula
   - flag/anomaly
   - flag/divergence
   - flag/scale
@@ -28,12 +30,14 @@ tags:
 **Formula — as the code writes it.**
 
 ```
-if v_top_mps is None: v_top_mps = v_cruise_mps * 1.4  # spec default
+v_top_mps = v_cruise_mps * 1.4
 ```
 
 **Inputs.** — *(leaf: a constant or an external input)*
 
 **Produced by.** `app/services/powertrain_solution_space_service.py:336` — `compute_solution_space`
+
+🟠 **Corrected by the audit** — the extraction claimed `WRONG_FORMULA`. Line 336 is the assignment only; the if is on line 335
 
 **Consumed by.**
 

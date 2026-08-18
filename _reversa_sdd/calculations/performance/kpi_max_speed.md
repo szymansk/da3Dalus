@@ -6,12 +6,14 @@ unit: m/s
 cluster: perf-envelope
 user_visible: true
 source_status: PARTIAL
+code_audit: CONFIRMED
 node_class: derived
 tags:
   - cluster/perf-envelope
   - class/derived
   - source/partial
   - surface/user-visible
+  - audit/confirmed
   - flag/divergence
 ---
 
@@ -32,6 +34,8 @@ value=round(v_max_mps, 4)
 - [[fe_v_max|Maximum level speed]]  — *⤵ fallback*
 
 **Produced by.** `app/services/flight_envelope_service.py:486` — `derive_performance_kpis`
+
+🟢 **Verified against the code** — an independent reviewer read this line and confirmed the formula, unit and value (2026-08-18 audit).
 
 **Consumed by.**
 

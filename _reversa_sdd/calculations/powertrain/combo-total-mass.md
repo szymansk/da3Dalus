@@ -6,11 +6,13 @@ unit: kg
 cluster: powertrain
 user_visible: false
 source_status: NO_SOURCE_FOUND
+code_audit: CONFIRMED
 node_class: derived
 tags:
   - cluster/powertrain
   - class/derived
   - source/no-source-found
+  - audit/confirmed
   - flag/anomaly
   - flag/divergence
 ---
@@ -33,6 +35,8 @@ total_mass = request.airframe_mass_kg + motor_mass_kg + battery_mass_kg
 - [[combo-battery-mass|Battery mass]]
 
 **Produced by.** `app/services/powertrain_sizing_service.py:233` — `_evaluate_motor_battery_combo`
+
+🟢 **Verified against the code** — an independent reviewer read this line and confirmed the formula, unit and value (2026-08-18 audit).
 
 **Consumed by.**
 

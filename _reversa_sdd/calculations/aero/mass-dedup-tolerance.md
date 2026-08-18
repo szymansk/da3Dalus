@@ -5,11 +5,13 @@ unit: kg
 cluster: aero-spanwise
 user_visible: false
 source_status: NO_SOURCE_FOUND
+code_audit: CONFIRMED
 node_class: numerical-tolerance
 tags:
   - cluster/aero-spanwise
   - class/numerical-tolerance
   - source/no-source-found
+  - audit/confirmed
 ---
 
 # Mass de-duplication tolerance
@@ -29,6 +31,8 @@ tol = 1e-9
 **Inputs.** — *(leaf: a constant or an external input)*
 
 **Produced by.** `app/services/analysis_service.py:470` — `_compute_speed_polar`
+
+🟢 **Verified against the code** — an independent reviewer read this line and confirmed the formula, unit and value (2026-08-18 audit).
 
 **Consumed by.**
 

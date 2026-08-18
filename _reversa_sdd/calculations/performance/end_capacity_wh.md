@@ -6,12 +6,14 @@ unit: Wh
 cluster: perf-envelope
 user_visible: true
 source_status: SOURCED
+code_audit: CONFIRMED
 node_class: unclassified-parameter
 tags:
   - cluster/perf-envelope
   - class/unclassified-parameter
   - source/sourced
   - surface/user-visible
+  - audit/confirmed
 ---
 
 # Battery capacity
@@ -31,6 +33,8 @@ capacity_val = float(_capacity_raw) if (_capacity_raw is not None and _capacity_
 **Inputs.** — *(leaf: a constant or an external input)*
 
 **Produced by.** `app/services/endurance_service.py:543` — `compute_endurance_for_aeroplane`
+
+🟢 **Verified against the code** — an independent reviewer read this line and confirmed the formula, unit and value (2026-08-18 audit).
 
 **Consumed by.**
 

@@ -5,11 +5,13 @@ unit: dimensionless
 cluster: perf-oppoints
 user_visible: false
 source_status: NO_SOURCE_FOUND
+code_audit: CONFIRMED
 node_class: unclassified-constant
 tags:
   - cluster/perf-oppoints
   - class/unclassified-constant
   - source/no-source-found
+  - audit/confirmed
   - flag/divergence
 ---
 
@@ -32,6 +34,8 @@ if best_score > 0.35:
 - [[trim_score|Trim score]]
 
 **Produced by.** `app/services/operating_point_generator_service.py:935` — `_trim_or_estimate_point`
+
+🟢 **Verified against the code** — an independent reviewer read this line and confirmed the formula, unit and value (2026-08-18 audit).
 
 **Consumed by.**
 

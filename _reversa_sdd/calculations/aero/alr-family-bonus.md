@@ -6,12 +6,14 @@ unit: dimensionless
 cluster: aero-polars
 user_visible: true
 source_status: NO_SOURCE_FOUND
+code_audit: CONFIRMED
 node_class: unclassified-constant
 tags:
   - cluster/aero-polars
   - class/unclassified-constant
   - source/no-source-found
   - surface/user-visible
+  - audit/confirmed
   - flag/anomaly
   - flag/divergence
 ---
@@ -36,6 +38,8 @@ family_bonus = 1.0 if family in preferred_families else 0.7
 - [[low-re-mission-weights|Mission weighting table]]
 
 **Produced by.** `app/services/airfoil_low_re_service.py:918` — `score_mission`
+
+🟢 **Verified against the code** — an independent reviewer read this line and confirmed the formula, unit and value (2026-08-18 audit).
 
 **Consumed by.**
 

@@ -6,12 +6,14 @@ unit: N/m^2
 cluster: perf-matching
 user_visible: true
 source_status: SOURCED
+code_audit: CONFIRMED
 node_class: derived
 tags:
   - cluster/perf-matching
   - class/derived
   - source/sourced
   - surface/user-visible
+  - audit/confirmed
   - flag/anomaly
   - flag/divergence
 ---
@@ -33,6 +35,8 @@ if "ws_n_m2" in aircraft: ws = float(aircraft["ws_n_m2"]) elif "s_ref_m2" in air
 - [[g_gravity|Standard gravity]]
 
 **Produced by.** `app/services/matching_chart_service.py:625` — `_design_point_from_aircraft`
+
+🟢 **Verified against the code** — an independent reviewer read this line and confirmed the formula, unit and value (2026-08-18 audit).
 
 **Consumed by.**
 

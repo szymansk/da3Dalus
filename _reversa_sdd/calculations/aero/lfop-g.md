@@ -6,11 +6,13 @@ unit: m/s²
 cluster: aero-strips
 user_visible: false
 source_status: SOURCED
+code_audit: CONFIRMED
 node_class: physical-constant
 tags:
   - cluster/aero-strips
   - class/physical-constant
   - source/sourced
+  - audit/confirmed
   - flag/physical
 ---
 
@@ -32,6 +34,8 @@ g = 9.80665
 **Inputs.** — *(leaf: a constant or an external input)*
 
 **Produced by.** `app/services/section_aoa_service.py:487` — `_resolve_level_flight_op`
+
+🟢 **Verified against the code** — an independent reviewer read this line and confirmed the formula, unit and value (2026-08-18 audit).
 
 **Consumed by.**
 

@@ -6,11 +6,13 @@ unit: A
 cluster: powertrain
 user_visible: false
 source_status: PARTIAL
+code_audit: CONFIRMED
 node_class: derived
 tags:
   - cluster/powertrain
   - class/derived
   - source/partial
+  - audit/confirmed
   - flag/anomaly
   - flag/divergence
 ---
@@ -33,6 +35,8 @@ cruise_current_a = actual_cruise_power / voltage if voltage > 0 else 999
 - [[combo-battery-voltage|Resolved battery voltage (sizing)]]  — *⤵ fallback*
 
 **Produced by.** `app/services/powertrain_sizing_service.py:251` — `_evaluate_motor_battery_combo`
+
+🟢 **Verified against the code** — an independent reviewer read this line and confirmed the formula, unit and value (2026-08-18 audit).
 
 **Consumed by.**
 

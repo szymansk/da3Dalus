@@ -6,12 +6,14 @@ unit: dimensionless
 cluster: perf-matching
 user_visible: true
 source_status: PARTIAL
+code_audit: CONFIRMED
 node_class: derived
 tags:
   - cluster/perf-matching
   - class/derived
   - source/partial
   - surface/user-visible
+  - audit/confirmed
   - flag/divergence
 ---
 
@@ -35,6 +37,8 @@ return p_over_m * eta_prop / (g * v_climb)
 - [[v_climb_power_loading|Climb speed for power loading]]  — *⊣ limit*
 
 **Produced by.** `app/services/matching_chart_service.py:564` — `_power_loading_constraint`
+
+🟢 **Verified against the code** — an independent reviewer read this line and confirmed the formula, unit and value (2026-08-18 audit).
 
 **Consumed by.**
 

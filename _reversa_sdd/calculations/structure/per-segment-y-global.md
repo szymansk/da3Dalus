@@ -5,12 +5,14 @@ unit: dimensionless (span fraction)
 cluster: structure
 user_visible: true
 source_status: NO_SOURCE_FOUND
+code_audit: CONFIRMED
 node_class: derived
 tags:
   - cluster/structure
   - class/derived
   - source/no-source-found
   - surface/user-visible
+  - audit/confirmed
 ---
 
 # Global span fraction per segment station
@@ -30,6 +32,8 @@ y_globals = [(acc + f * seg_len) / total if total > 0 else 0.0 for f in local_fr
 - [[segment-lengths|Per-segment spanwise lengths]]
 
 **Produced by.** `cad_designer/airplane/geometry/section_geometry.py:420` — `SectionGeometry.per_segment`
+
+🟢 **Verified against the code** — an independent reviewer read this line and confirmed the formula, unit and value (2026-08-18 audit).
 
 **Consumed by.**
 

@@ -2,16 +2,18 @@
 name: alpha_trimmed
 symbol: α
 kind: quantity
-unit: rad (stored) / deg (solved)
+unit: rad
 cluster: perf-oppoints
 user_visible: true
 source_status: SOURCED
+code_audit: MISDESCRIBED
 node_class: derived
 tags:
   - cluster/perf-oppoints
   - class/derived
   - source/sourced
   - surface/user-visible
+  - audit/misdescribed
   - flag/divergence
 ---
 
@@ -34,6 +36,8 @@ alpha_rad=math.radians(best_alpha)
 - [[alpha_bounds_opti|Opti alpha bounds and initial guess]]  — *⊣ limit*
 
 **Produced by.** `app/services/operating_point_generator_service.py:990` — `_trim_or_estimate_point`
+
+🟠 **Corrected by the audit** — the extraction claimed `MISDESCRIBED`. Original unit was `rad (stored) / deg (solved)`. Stored exclusively as radians; mixed 'stored/solved' unit description is misleading
 
 **Consumed by.**
 

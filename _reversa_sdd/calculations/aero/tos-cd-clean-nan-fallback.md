@@ -6,12 +6,14 @@ unit: dimensionless
 cluster: aero-strips
 user_visible: true
 source_status: NO_SOURCE_FOUND
+code_audit: CONFIRMED
 node_class: derived
 tags:
   - cluster/aero-strips
   - class/derived
   - source/no-source-found
   - surface/user-visible
+  - audit/confirmed
   - flag/anomaly
   - flag/divergence
 ---
@@ -34,6 +36,8 @@ if not math.isfinite(cd_clean): cd_clean = cd_tripped  # fallback — can't comp
 - [[tos-cd-tripped|Tripped section drag]]
 
 **Produced by.** `app/services/turbulator_optimizer_service.py:271` — `optimize_section_xtr`
+
+🟢 **Verified against the code** — an independent reviewer read this line and confirmed the formula, unit and value (2026-08-18 audit).
 
 **Consumed by.**
 

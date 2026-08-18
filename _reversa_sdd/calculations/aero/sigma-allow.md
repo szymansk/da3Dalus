@@ -6,12 +6,14 @@ unit: MPa
 cluster: aero-spanwise
 user_visible: true
 source_status: PARTIAL
+code_audit: CONFIRMED
 node_class: derived
 tags:
   - cluster/aero-spanwise
   - class/derived
   - source/partial
   - surface/user-visible
+  - audit/confirmed
   - flag/divergence
 ---
 
@@ -30,6 +32,8 @@ sigma_allow = spar_params.sigma_allow_mpa_override; if sigma_allow is None: sigm
 **Inputs.** — *(leaf: a constant or an external input)*
 
 **Produced by.** `app/services/analysis_service.py:2139` — `_compute_spar_sizing_for_surfaces`
+
+🟢 **Verified against the code** — an independent reviewer read this line and confirmed the formula, unit and value (2026-08-18 audit).
 
 **Consumed by.**
 

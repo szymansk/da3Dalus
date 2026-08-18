@@ -6,12 +6,14 @@ unit: mm
 cluster: structure
 user_visible: true
 source_status: NO_SOURCE_FOUND
+code_audit: CONFIRMED
 node_class: derived
 tags:
   - cluster/structure
   - class/derived
   - source/no-source-found
   - surface/user-visible
+  - audit/confirmed
 ---
 
 # Station spanwise position
@@ -32,6 +34,8 @@ y_mm=pt.y_span * _half_span_mm(geometry),
 - [[y-spans-grid|Spanwise sampling grid]]
 
 **Produced by.** `cad_designer/airplane/geometry/spar_solver.py:772` — `build_stations_from_geometry`
+
+🟢 **Verified against the code** — an independent reviewer read this line and confirmed the formula, unit and value (2026-08-18 audit).
 
 **Consumed by.**
 

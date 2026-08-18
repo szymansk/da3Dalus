@@ -6,12 +6,14 @@ unit: fraction of MAC (UI label '% MAC')
 cluster: mass
 user_visible: true
 source_status: PARTIAL
+code_audit: NOT_VERIFIED
 node_class: user-input
 tags:
   - cluster/mass
   - class/user-input
   - source/partial
   - surface/user-visible
+  - audit/not-verified
   - flag/anomaly
   - flag/divergence
 ---
@@ -27,6 +29,8 @@ tags:
 **Inputs.** — *(leaf: a constant or an external input)*
 
 **Produced by.** `app/services/assumption_compute_service.py:107` — `recompute_assumptions (_load_effective_assumption)`
+
+⚪ **Not verified.** This node was not covered by the audit pass; treat its line and formula as extracted-but-unchecked.
 
 **Consumed by.**
 

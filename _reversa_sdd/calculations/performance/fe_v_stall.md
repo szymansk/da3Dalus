@@ -6,12 +6,14 @@ unit: m/s
 cluster: perf-envelope
 user_visible: true
 source_status: SOURCED
+code_audit: CONFIRMED
 node_class: derived
 tags:
   - cluster/perf-envelope
   - class/derived
   - source/sourced
   - surface/user-visible
+  - audit/confirmed
   - flag/anomaly
   - flag/divergence
 ---
@@ -36,6 +38,8 @@ v_stall = math.sqrt(2 * weight / (rho * wing_area_m2 * cl_max))
 - [[fe_cl_max|Maximum lift coefficient (envelope)]]  — *⤵ fallback*
 
 **Produced by.** `app/services/flight_envelope_service.py:314` — `compute_vn_curve`
+
+🟢 **Verified against the code** — an independent reviewer read this line and confirmed the formula, unit and value (2026-08-18 audit).
 
 **Consumed by.**
 

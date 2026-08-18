@@ -6,12 +6,14 @@ unit: dimensionless
 cluster: perf-oppoints
 user_visible: true
 source_status: NOT_ASSESSED
+code_audit: CONFIRMED
 node_class: derived
 tags:
   - cluster/perf-oppoints
   - class/derived
   - source/not-assessed
   - surface/user-visible
+  - audit/confirmed
   - flag/anomaly
 ---
 
@@ -32,6 +34,8 @@ score = abs(cm) + 0.5 * abs(cy); if cl_target is not None: score += 0.3 * abs(cl
 - [[cl_target|Target lift coefficient]]
 
 **Produced by.** `app/services/operating_point_generator_service.py:193` — `_compute_trim_score`
+
+🟢 **Verified against the code** — an independent reviewer read this line and confirmed the formula, unit and value (2026-08-18 audit).
 
 **Consumed by.**
 

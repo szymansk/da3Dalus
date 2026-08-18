@@ -6,12 +6,14 @@ unit: W
 cluster: powertrain
 user_visible: true
 source_status: PARTIAL
+code_audit: CONFIRMED
 node_class: derived
 tags:
   - cluster/powertrain
   - class/derived
   - source/partial
   - surface/user-visible
+  - audit/confirmed
   - flag/anomaly
   - flag/divergence
 ---
@@ -37,6 +39,8 @@ p_available_elec = min(p_motor_max_elec, p_battery_max) ; if math.isinf(p_availa
 - [[battery-current-fallback-100a|Unknown-battery current fallback]]  — *⤵ fallback*
 
 **Produced by.** `app/services/powertrain_performance.py:653` — `compute_performance_curve`
+
+🟢 **Verified against the code** — an independent reviewer read this line and confirmed the formula, unit and value (2026-08-18 audit).
 
 **Consumed by.**
 

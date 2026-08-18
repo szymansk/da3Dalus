@@ -5,12 +5,14 @@ unit: m (for Xnp)
 cluster: aero-spanwise
 user_visible: true
 source_status: NO_SOURCE_FOUND
+code_audit: CONFIRMED
 node_class: derived
 tags:
   - cluster/aero-spanwise
   - class/derived
   - source/no-source-found
   - surface/user-visible
+  - audit/confirmed
 ---
 
 # Series span
@@ -31,6 +33,8 @@ span = float(np.max(values) - np.min(values))
 - [[xnp-lat-values|Lateral neutral point array]]
 
 **Produced by.** `app/services/analysis_service.py:845` — `_classify_variation`
+
+🟢 **Verified against the code** — an independent reviewer read this line and confirmed the formula, unit and value (2026-08-18 audit).
 
 **Consumed by.**
 

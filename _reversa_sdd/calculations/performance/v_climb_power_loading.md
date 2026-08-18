@@ -6,12 +6,14 @@ unit: m/s
 cluster: perf-matching
 user_visible: true
 source_status: PARTIAL
+code_audit: CONFIRMED
 node_class: derived
 tags:
   - cluster/perf-matching
   - class/derived
   - source/partial
   - surface/user-visible
+  - audit/confirmed
   - flag/anomaly
   - flag/divergence
 ---
@@ -33,6 +35,8 @@ v_climb = max(1.3 * max(v_stall, 1.0), 1.0)
 - [[mode_default_v_s_target|Mode default stall-speed target]]  — *⤵ fallback*
 
 **Produced by.** `app/services/matching_chart_service.py:563` — `_power_loading_constraint`
+
+🟢 **Verified against the code** — an independent reviewer read this line and confirmed the formula, unit and value (2026-08-18 audit).
 
 **Consumed by.**
 

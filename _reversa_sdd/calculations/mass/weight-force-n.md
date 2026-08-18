@@ -6,11 +6,13 @@ unit: N
 cluster: mass
 user_visible: false
 source_status: SOURCED
+code_audit: NOT_VERIFIED
 node_class: derived
 tags:
   - cluster/mass
   - class/derived
   - source/sourced
+  - audit/not-verified
   - flag/anomaly
   - flag/divergence
 ---
@@ -33,6 +35,8 @@ weight_n = mass_kg * g
 - [[gravity-constant|Gravitational acceleration]]
 
 **Produced by.** `app/services/assumption_compute_service.py:1774` — `_stall_speed (also _max_level_speed:1901, _min_drag_speed:1942, _min_sink_speed:1968)`
+
+⚪ **Not verified.** This node was not covered by the audit pass; treat its line and formula as extracted-but-unchecked.
 
 **Consumed by.**
 

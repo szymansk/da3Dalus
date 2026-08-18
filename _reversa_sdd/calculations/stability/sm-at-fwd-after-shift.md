@@ -6,11 +6,13 @@ unit: – (fraction of MAC)
 cluster: stability
 user_visible: false
 source_status: SOURCED
+code_audit: CONFIRMED
 node_class: derived
 tags:
   - cluster/stability
   - class/derived
   - source/sourced
+  - audit/confirmed
 ---
 
 # Forward-CG SM after wing shift
@@ -31,6 +33,8 @@ sm_at_fwd_after_shift = (x_np_new - cg_fwd_m) / mac_m
 - [[mac-m-fallback|MAC fallback]]  — *⤵ fallback*
 
 **Produced by.** `app/services/sm_sizing_service.py:426` — `suggest_corrections`
+
+🟢 **Verified against the code** — an independent reviewer read this line and confirmed the formula, unit and value (2026-08-18 audit).
 
 **Consumed by.**
 

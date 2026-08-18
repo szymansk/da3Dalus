@@ -6,12 +6,14 @@ unit: dimensionless (0..1)
 cluster: powertrain
 user_visible: true
 source_status: SOURCED
+code_audit: CONFIRMED
 node_class: derived
 tags:
   - cluster/powertrain
   - class/derived
   - source/sourced
   - surface/user-visible
+  - audit/confirmed
   - flag/anomaly
   - flag/divergence
 ---
@@ -35,6 +37,8 @@ eta_total = eta_prop * eta_motor * eta_esc
 - [[default-eta-esc-endurance|Default ESC efficiency]]  — *⤵ fallback*
 
 **Produced by.** `app/services/powertrain_sizing_service.py:238` — `_evaluate_motor_battery_combo`
+
+🟢 **Verified against the code** — an independent reviewer read this line and confirmed the formula, unit and value (2026-08-18 audit).
 
 **Consumed by.**
 

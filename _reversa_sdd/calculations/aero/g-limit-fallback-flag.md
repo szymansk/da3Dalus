@@ -5,12 +5,14 @@ unit: -
 cluster: aero-spanwise
 user_visible: true
 source_status: NO_SOURCE_FOUND
+code_audit: CONFIRMED
 node_class: derived
 tags:
   - cluster/aero-spanwise
   - class/derived
   - source/no-source-found
   - surface/user-visible
+  - audit/confirmed
 ---
 
 # g_limit fallback flag
@@ -30,6 +32,8 @@ g_limit_fallback = True / g_limit_fallback = False
 - [[g-limit-effective|Effective manoeuvre load factor]]  — *⤵ fallback*
 
 **Produced by.** `app/services/analysis_service.py:2161` — `_compute_spar_sizing_for_surfaces`
+
+🟢 **Verified against the code** — an independent reviewer read this line and confirmed the formula, unit and value (2026-08-18 audit).
 
 **Consumed by.**
 

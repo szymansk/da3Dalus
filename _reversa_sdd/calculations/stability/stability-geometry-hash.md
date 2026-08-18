@@ -6,11 +6,13 @@ unit: – (hex string)
 cluster: stability
 user_visible: false
 source_status: NO_SOURCE_FOUND
+code_audit: CONFIRMED
 node_class: derived
 tags:
   - cluster/stability
   - class/derived
   - source/no-source-found
+  - audit/confirmed
   - flag/anomaly
   - flag/divergence
 ---
@@ -31,6 +33,8 @@ return hashlib.sha256(raw.encode()).hexdigest()[:16]
 **Inputs.** — *(leaf: a constant or an external input)*
 
 **Produced by.** `app/services/stability_service.py:141` — `compute_geometry_hash`
+
+🟢 **Verified against the code** — an independent reviewer read this line and confirmed the formula, unit and value (2026-08-18 audit).
 
 **Consumed by.**
 

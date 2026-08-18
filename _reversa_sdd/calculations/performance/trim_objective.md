@@ -5,11 +5,13 @@ unit: dimensionless
 cluster: perf-oppoints
 user_visible: false
 source_status: NO_SOURCE_FOUND
+code_audit: CONFIRMED
 node_class: derived
 tags:
   - cluster/perf-oppoints
   - class/derived
   - source/no-source-found
+  - audit/confirmed
   - flag/anomaly
   - flag/divergence
 ---
@@ -31,6 +33,8 @@ objective = 50.0 * cm**2 + 3.0 * cy**2; if cl_target is not None: objective += 1
 - [[cl_target|Target lift coefficient]]
 
 **Produced by.** `app/services/operating_point_generator_service.py:674` — `_solve_trim_candidate_with_opti`
+
+🟢 **Verified against the code** — an independent reviewer read this line and confirmed the formula, unit and value (2026-08-18 audit).
 
 **Consumed by.**
 

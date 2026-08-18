@@ -6,11 +6,13 @@ unit: n/a
 cluster: aero-strips
 user_visible: false
 source_status: NO_SOURCE_FOUND
+code_audit: CONFIRMED
 node_class: derived
 tags:
   - cluster/aero-strips
   - class/derived
   - source/no-source-found
+  - audit/confirmed
   - flag/anomaly
   - flag/divergence
 ---
@@ -33,6 +35,8 @@ msg = f"Turbulator ΔCD0: NaN cd at y={sec.y_m:.3f}m (Re={sec.re_local:.0f}, CL=
 - [[cdftp-cd-tripped|Tripped section drag (installed-turbulator path)]]
 
 **Produced by.** `app/services/turbulator_optimizer_service.py:702` — `compute_delta_cd0_from_turbulator_position`
+
+🟢 **Verified against the code** — an independent reviewer read this line and confirmed the formula, unit and value (2026-08-18 audit).
 
 **Consumed by.**
 

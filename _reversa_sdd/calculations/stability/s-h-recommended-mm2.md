@@ -6,12 +6,14 @@ unit: mm²
 cluster: stability
 user_visible: true
 source_status: SOURCED
+code_audit: CONFIRMED
 node_class: derived
 tags:
   - cluster/stability
   - class/derived
   - source/sourced
   - surface/user-visible
+  - audit/confirmed
   - flag/anomaly
   - flag/divergence
 ---
@@ -35,6 +37,8 @@ result.s_h_recommended_mm2 = round(v_h_mid * s_ref_m2 * mac_m / l_h * 1e6, 0)
 - [[l-h-m|Horizontal tail moment arm]]
 
 **Produced by.** `app/services/tail_sizing_service.py:259` — `compute_tail_volumes`
+
+🟢 **Verified against the code** — an independent reviewer read this line and confirmed the formula, unit and value (2026-08-18 audit).
 
 **Consumed by.**
 

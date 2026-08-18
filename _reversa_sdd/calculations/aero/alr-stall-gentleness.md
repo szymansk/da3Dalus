@@ -6,12 +6,14 @@ unit: 1/deg
 cluster: aero-polars
 user_visible: true
 source_status: PARTIAL
+code_audit: CONFIRMED
 node_class: derived
 tags:
   - cluster/aero-polars
   - class/derived
   - source/partial
   - surface/user-visible
+  - audit/confirmed
   - flag/anomaly
   - flag/divergence
 ---
@@ -37,6 +39,8 @@ result["stall_gentleness"] = float(coeffs[0])
 - [[alr-alpha-sweep|Alpha sweep bounds and step]]  — *⊣ limit*
 
 **Produced by.** `app/services/airfoil_low_re_service.py:624` — `_extract_metrics`
+
+🟢 **Verified against the code** — an independent reviewer read this line and confirmed the formula, unit and value (2026-08-18 audit).
 
 **Consumed by.**
 

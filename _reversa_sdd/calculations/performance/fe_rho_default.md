@@ -6,11 +6,13 @@ unit: kg/m^3
 cluster: perf-envelope
 user_visible: false
 source_status: SOURCED
+code_audit: WRONG_LINE
 node_class: physical-constant
 tags:
   - cluster/perf-envelope
   - class/physical-constant
   - source/sourced
+  - audit/wrong-line
   - flag/anomaly
   - flag/divergence
   - flag/physical
@@ -33,7 +35,9 @@ rho: float = 1.225
 
 **Inputs.** — *(leaf: a constant or an external input)*
 
-**Produced by.** `app/services/flight_envelope_service.py:74` — `_compute_mu_g / _build_gust_lines / compute_vn_curve default arg`
+**Produced by.** `app/services/flight_envelope_service.py:75` — `_compute_mu_g / _build_gust_lines / compute_vn_curve default arg`
+
+🟠 **Corrected by the audit** — the extraction claimed `WRONG_LINE`. Original line was `74`. 
 
 **Consumed by.**
 

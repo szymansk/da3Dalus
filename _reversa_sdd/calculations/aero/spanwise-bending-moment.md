@@ -6,12 +6,14 @@ unit: N·m
 cluster: aero-spanwise
 user_visible: true
 source_status: PARTIAL
+code_audit: CONFIRMED
 node_class: derived
 tags:
   - cluster/aero-spanwise
   - class/derived
   - source/partial
   - surface/user-visible
+  - audit/confirmed
   - flag/divergence
 ---
 
@@ -33,6 +35,8 @@ bending_moment_Nm: float = Field(..., description="Running bending moment M(y): 
 - [[spanwise-y-m|Strip spanwise station]]
 
 **Produced by.** `app/schemas/spanwise_loads.py:32` — `SpanwiseLoadEntry.bending_moment_Nm`
+
+🟢 **Verified against the code** — an independent reviewer read this line and confirmed the formula, unit and value (2026-08-18 audit).
 
 **Consumed by.**
 

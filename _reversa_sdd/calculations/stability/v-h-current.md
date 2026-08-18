@@ -6,12 +6,14 @@ unit: – (dimensionless)
 cluster: stability
 user_visible: true
 source_status: SOURCED
+code_audit: CONFIRMED
 node_class: derived
 tags:
   - cluster/stability
   - class/derived
   - source/sourced
   - surface/user-visible
+  - audit/confirmed
   - flag/divergence
 ---
 
@@ -33,6 +35,8 @@ v_h = (s_h_m2 * l_h) / (s_ref_m2 * mac_m)
 - [[l-h-m|Horizontal tail moment arm]]
 
 **Produced by.** `app/services/tail_sizing_service.py:227` — `compute_tail_volumes`
+
+🟢 **Verified against the code** — an independent reviewer read this line and confirmed the formula, unit and value (2026-08-18 audit).
 
 **Consumed by.**
 

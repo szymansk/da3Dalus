@@ -6,11 +6,13 @@ unit: % chord
 cluster: aero-polars
 user_visible: false
 source_status: SOURCED
+code_audit: CONFIRMED
 node_class: derived
 tags:
   - cluster/aero-polars
   - class/derived
   - source/sourced
+  - audit/confirmed
   - flag/anomaly
   - flag/divergence
 ---
@@ -33,6 +35,8 @@ max_camber_pct = max_camber * 100.0
 - [[alr-camber-line|Mean camber line]]
 
 **Produced by.** `app/services/airfoil_low_re_service.py:214` — `classify_family`
+
+🟢 **Verified against the code** — an independent reviewer read this line and confirmed the formula, unit and value (2026-08-18 audit).
 
 **Consumed by.**
 

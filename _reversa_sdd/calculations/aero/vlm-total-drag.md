@@ -6,11 +6,13 @@ unit: N
 cluster: aero-strips
 user_visible: false
 source_status: NO_SOURCE_FOUND
+code_audit: CONFIRMED
 node_class: derived
 tags:
   - cluster/aero-strips
   - class/derived
   - source/no-source-found
+  - audit/confirmed
   - flag/anomaly
   - flag/divergence
   - solver-adjacent/vlm
@@ -33,6 +35,8 @@ total_drag += drag
 - [[vlm-strip-drag|Strip drag force]]
 
 **Produced by.** `app/services/vlm_strip_forces.py:267` — `compute_vlm_strip_forces`
+
+🟢 **Verified against the code** — an independent reviewer read this line and confirmed the formula, unit and value (2026-08-18 audit).
 
 **Consumed by.**
 

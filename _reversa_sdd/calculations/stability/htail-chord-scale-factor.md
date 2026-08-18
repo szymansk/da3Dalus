@@ -6,11 +6,13 @@ unit: – (dimensionless)
 cluster: stability
 user_visible: false
 source_status: SOURCED
+code_audit: CONFIRMED
 node_class: derived
 tags:
   - cluster/stability
   - class/derived
   - source/sourced
+  - audit/confirmed
   - flag/divergence
 ---
 
@@ -31,6 +33,8 @@ scale = 1.0 + delta_pct
 - [[delta-pct-htail|Horizontal tail chord-scale fraction]]
 
 **Produced by.** `app/services/sm_sizing_service.py:982` — `apply_htail_scale`
+
+🟢 **Verified against the code** — an independent reviewer read this line and confirmed the formula, unit and value (2026-08-18 audit).
 
 **Consumed by.**
 

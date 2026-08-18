@@ -6,12 +6,14 @@ unit: kg
 cluster: structure
 user_visible: true
 source_status: PARTIAL
+code_audit: CONFIRMED
 node_class: derived
 tags:
   - cluster/structure
   - class/derived
   - source/partial
   - surface/user-visible
+  - audit/confirmed
   - flag/anomaly
   - flag/divergence
   - flag/scale
@@ -43,6 +45,8 @@ total_mass += density_kg_m3 * volume_m3
 - [[mm2-to-m2-factor|Square-millimetre to square-metre factor]]  — *ε tolerance*
 
 **Produced by.** `app/services/spar_sizing.py:250` — `spar_mass_half_kg`
+
+🟢 **Verified against the code** — an independent reviewer read this line and confirmed the formula, unit and value (2026-08-18 audit).
 
 **Consumed by.**
 

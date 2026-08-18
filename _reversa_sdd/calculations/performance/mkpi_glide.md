@@ -6,12 +6,14 @@ unit: -
 cluster: perf-envelope
 user_visible: true
 source_status: SOURCED
+code_audit: CONFIRMED
 node_class: derived
 tags:
   - cluster/perf-envelope
   - class/derived
   - source/sourced
   - surface/user-visible
+  - audit/confirmed
   - flag/anomaly
   - flag/divergence
 ---
@@ -33,6 +35,8 @@ value = float(ld_emp) if ld_emp is not None else 0.5 * math.sqrt(math.pi * e * a
 - [[mkpi_resolve_polar|Clean-polar provenance chain]]  — *⤵ fallback*
 
 **Produced by.** `app/services/mission_kpi_service.py:182` — `_kpi_glide`
+
+🟢 **Verified against the code** — an independent reviewer read this line and confirmed the formula, unit and value (2026-08-18 audit).
 
 **Consumed by.**
 

@@ -5,11 +5,13 @@ unit: mm
 cluster: structure
 user_visible: false
 source_status: PARTIAL
+code_audit: WRONG_LINE
 node_class: unclassified-constant
 tags:
   - cluster/structure
   - class/unclassified-constant
   - source/partial
+  - audit/wrong-line
   - flag/anomaly
   - flag/divergence
 ---
@@ -30,7 +32,9 @@ telescope_clearance_mm: float = 0.5
 
 **Inputs.** — *(leaf: a constant or an external input)*
 
-**Produced by.** `cad_designer/airplane/geometry/spar_solver.py:95` — `SparSpec.telescope_clearance_mm`
+**Produced by.** `cad_designer/airplane/geometry/spar_solver.py:94` — `SparSpec.telescope_clearance_mm`
+
+🟠 **Corrected by the audit** — the extraction claimed `WRONG_LINE`. Original line was `95`. 
 
 **Consumed by.**
 

@@ -6,12 +6,14 @@ unit: – (dimensionless residual)
 cluster: stability
 user_visible: true
 source_status: NO_SOURCE_FOUND
+code_audit: CONFIRMED
 node_class: unclassified-constant
 tags:
   - cluster/stability
   - class/unclassified-constant
   - source/no-source-found
   - surface/user-visible
+  - audit/confirmed
   - flag/anomaly
   - flag/divergence
 ---
@@ -33,6 +35,8 @@ elif trim_score > 0.1:
 **Inputs.** — *(leaf: a constant or an external input)*
 
 **Produced by.** `app/services/trim_enrichment_service.py:461` — `compute_enrichment`
+
+🟢 **Verified against the code** — an independent reviewer read this line and confirmed the formula, unit and value (2026-08-18 audit).
 
 **Consumed by.**
 

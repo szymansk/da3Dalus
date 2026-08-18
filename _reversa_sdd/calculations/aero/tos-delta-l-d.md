@@ -6,12 +6,14 @@ unit: dimensionless
 cluster: aero-strips
 user_visible: true
 source_status: PARTIAL
+code_audit: CONFIRMED
 node_class: derived
 tags:
   - cluster/aero-strips
   - class/derived
   - source/partial
   - surface/user-visible
+  - audit/confirmed
   - flag/divergence
 ---
 
@@ -33,6 +35,8 @@ delta_l_d = l_d_tripped - l_d_clean if math.isfinite(l_d_tripped) and math.isfin
 - [[tos-l-d-clean|Clean lift-to-drag ratio]]
 
 **Produced by.** `app/services/turbulator_optimizer_service.py:346` — `compute_ld_summary`
+
+🟢 **Verified against the code** — an independent reviewer read this line and confirmed the formula, unit and value (2026-08-18 audit).
 
 **Consumed by.**
 

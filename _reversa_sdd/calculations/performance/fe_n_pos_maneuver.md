@@ -6,12 +6,14 @@ unit: g
 cluster: perf-envelope
 user_visible: true
 source_status: SOURCED
+code_audit: CONFIRMED
 node_class: derived
 tags:
   - cluster/perf-envelope
   - class/derived
   - source/sourced
   - surface/user-visible
+  - audit/confirmed
   - flag/scale
 ---
 
@@ -36,6 +38,8 @@ n_pos = min(q * wing_area_m2 * cl_max / weight, g_limit)
 - [[fe_g_limit|Structural limit load factor]]  — *⤵ fallback*
 
 **Produced by.** `app/services/flight_envelope_service.py:327` — `compute_vn_curve`
+
+🟢 **Verified against the code** — an independent reviewer read this line and confirmed the formula, unit and value (2026-08-18 audit).
 
 **Consumed by.**
 

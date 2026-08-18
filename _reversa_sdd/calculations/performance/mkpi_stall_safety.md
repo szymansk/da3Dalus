@@ -6,12 +6,14 @@ unit: -
 cluster: perf-envelope
 user_visible: true
 source_status: PARTIAL
+code_audit: CONFIRMED
 node_class: derived
 tags:
   - cluster/perf-envelope
   - class/derived
   - source/partial
   - surface/user-visible
+  - audit/confirmed
   - flag/scale
 ---
 
@@ -30,6 +32,8 @@ value = v_cruise / v_s1
 **Inputs.** — *(leaf: a constant or an external input)*
 
 **Produced by.** `app/services/mission_kpi_service.py:117` — `_kpi_stall_safety`
+
+🟢 **Verified against the code** — an independent reviewer read this line and confirmed the formula, unit and value (2026-08-18 audit).
 
 **Consumed by.**
 

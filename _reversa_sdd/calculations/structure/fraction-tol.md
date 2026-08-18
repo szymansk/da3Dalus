@@ -5,11 +5,13 @@ unit: dimensionless (fraction of segment length)
 cluster: structure
 user_visible: false
 source_status: NO_SOURCE_FOUND
+code_audit: CONFIRMED
 node_class: numerical-tolerance
 tags:
   - cluster/structure
   - class/numerical-tolerance
   - source/no-source-found
+  - audit/confirmed
   - flag/anomaly
 ---
 
@@ -30,6 +32,8 @@ _FRACTION_TOL = 1e-6
 **Inputs.** — *(leaf: a constant or an external input)*
 
 **Produced by.** `app/services/spar_insert_service.py:54` — `_FRACTION_TOL`
+
+🟢 **Verified against the code** — an independent reviewer read this line and confirmed the formula, unit and value (2026-08-18 audit).
 
 **Consumed by.**
 

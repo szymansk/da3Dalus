@@ -6,11 +6,13 @@ unit: dimensionless
 cluster: aero-strips
 user_visible: false
 source_status: SOURCED
+code_audit: CONFIRMED
 node_class: unclassified-constant
 tags:
   - cluster/aero-strips
   - class/unclassified-constant
   - source/sourced
+  - audit/confirmed
   - flag/divergence
 ---
 
@@ -31,6 +33,8 @@ symmetry_factor = 2.0 if wing_symmetric else 1.0
 **Inputs.** — *(leaf: a constant or an external input)*
 
 **Produced by.** `app/services/turbulator_optimizer_service.py:330` — `compute_turbulator_delta_cd0`
+
+🟢 **Verified against the code** — an independent reviewer read this line and confirmed the formula, unit and value (2026-08-18 audit).
 
 **Consumed by.**
 

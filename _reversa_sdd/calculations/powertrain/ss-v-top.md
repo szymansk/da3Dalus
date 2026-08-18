@@ -6,12 +6,14 @@ unit: m/s
 cluster: powertrain
 user_visible: true
 source_status: SOURCED
+code_audit: CONFIRMED
 node_class: derived
 tags:
   - cluster/powertrain
   - class/derived
   - source/sourced
   - surface/user-visible
+  - audit/confirmed
   - flag/divergence
   - flag/scale
 ---
@@ -34,6 +36,8 @@ v_top_mps = assumptions.v_top_mps ; if v_top_mps is None: v_top_mps = v_cruise_m
 - [[ss-v-top-factor|Top-speed derivation factor]]
 
 **Produced by.** `app/services/powertrain_solution_space_service.py:334` — `compute_solution_space`
+
+🟢 **Verified against the code** — an independent reviewer read this line and confirmed the formula, unit and value (2026-08-18 audit).
 
 **Consumed by.**
 

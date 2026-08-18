@@ -6,12 +6,14 @@ unit: dimensionless
 cluster: powertrain
 user_visible: true
 source_status: NO_SOURCE_FOUND
+code_audit: NOT_VERIFIED
 node_class: unclassified-parameter
 tags:
   - cluster/powertrain
   - class/unclassified-parameter
   - source/no-source-found
   - surface/user-visible
+  - audit/not-verified
   - flag/anomaly
   - flag/divergence
 ---
@@ -33,6 +35,8 @@ c_min = raw_c * c_margin
 **Inputs.** — *(leaf: a constant or an external input)*
 
 **Produced by.** `app/schemas/powertrain_solution_space.py:64` — `SolutionSpaceAssumptions.c_margin`
+
+⚪ **Not verified.** This node was not covered by the audit pass; treat its line and formula as extracted-but-unchecked.
 
 **Consumed by.**
 

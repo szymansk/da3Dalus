@@ -5,11 +5,13 @@ unit: dimensionless
 cluster: structure
 user_visible: false
 source_status: NO_SOURCE_FOUND
+code_audit: CONFIRMED
 node_class: unclassified-constant
 tags:
   - cluster/structure
   - class/unclassified-constant
   - source/no-source-found
+  - audit/confirmed
   - flag/anomaly
 ---
 
@@ -30,6 +32,8 @@ wall_factor: float = 0.6  # piece ID = wall_factor * OD when no strength ID give
 **Inputs.** — *(leaf: a constant or an external input)*
 
 **Produced by.** `cad_designer/airplane/geometry/spar_solver.py:90` — `SparSpec.wall_factor`
+
+🟢 **Verified against the code** — an independent reviewer read this line and confirmed the formula, unit and value (2026-08-18 audit).
 
 **Consumed by.**
 

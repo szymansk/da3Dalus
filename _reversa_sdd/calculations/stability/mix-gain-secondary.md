@@ -6,12 +6,14 @@ unit: – (dimensionless)
 cluster: stability
 user_visible: true
 source_status: PARTIAL
+code_audit: CONFIRMED
 node_class: unclassified-parameter
 tags:
   - cluster/stability
   - class/unclassified-parameter
   - source/partial
   - surface/user-visible
+  - audit/confirmed
   - flag/anomaly
   - flag/divergence
 ---
@@ -33,6 +35,8 @@ gs = float(getattr(ted, "mix_gain_secondary", 1.0) or 1.0)
 **Inputs.** — *(leaf: a constant or an external input)*
 
 **Produced by.** `app/services/trim_enrichment_service.py:251` — `build_mix_params_from_schema`
+
+🟢 **Verified against the code** — an independent reviewer read this line and confirmed the formula, unit and value (2026-08-18 audit).
 
 **Consumed by.**
 

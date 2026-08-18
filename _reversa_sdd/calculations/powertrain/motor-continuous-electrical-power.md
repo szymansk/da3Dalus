@@ -6,11 +6,13 @@ unit: W
 cluster: powertrain
 user_visible: false
 source_status: PARTIAL
+code_audit: CONFIRMED
 node_class: derived
 tags:
   - cluster/powertrain
   - class/derived
   - source/partial
+  - audit/confirmed
   - flag/anomaly
   - flag/divergence
 ---
@@ -35,6 +37,8 @@ i_cont = self.continuous_current_a or self.max_current_a ; if i_cont is None: re
 - [[motor-cells-lipo-max-input|Maximum LiPo cell count]]  — *⊣ limit*
 
 **Produced by.** `app/services/powertrain_performance.py:171` — `MotorSpec.continuous_electrical_power_w`
+
+🟢 **Verified against the code** — an independent reviewer read this line and confirmed the formula, unit and value (2026-08-18 audit).
 
 **Consumed by.**
 

@@ -6,12 +6,14 @@ unit: -
 cluster: perf-envelope
 user_visible: true
 source_status: SOURCED
+code_audit: CONFIRMED
 node_class: derived
 tags:
   - cluster/perf-envelope
   - class/derived
   - source/sourced
   - surface/user-visible
+  - audit/confirmed
   - flag/divergence
 ---
 
@@ -32,6 +34,8 @@ value = (3.0 * math.pi * e * ar) ** 0.75 / (4.0 * cd0**0.25)
 - [[mkpi_resolve_polar|Clean-polar provenance chain]]  — *⤵ fallback*
 
 **Produced by.** `app/services/mission_kpi_service.py:213` — `_kpi_climb_energy`
+
+🟢 **Verified against the code** — an independent reviewer read this line and confirmed the formula, unit and value (2026-08-18 audit).
 
 **Consumed by.**
 

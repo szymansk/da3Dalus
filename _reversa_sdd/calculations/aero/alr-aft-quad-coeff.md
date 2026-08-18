@@ -6,11 +6,13 @@ unit: 1/chord
 cluster: aero-polars
 user_visible: false
 source_status: NO_SOURCE_FOUND
+code_audit: CONFIRMED
 node_class: derived
 tags:
   - cluster/aero-polars
   - class/derived
   - source/no-source-found
+  - audit/confirmed
   - flag/divergence
 ---
 
@@ -32,6 +34,8 @@ aft_quad_coeff = float(abs(p_aft[0]))
 - [[alr-flat-bottom-aft-x-lo|Flat-bottom aft window start]]
 
 **Produced by.** `app/services/airfoil_low_re_service.py:246` — `classify_family`
+
+🟢 **Verified against the code** — an independent reviewer read this line and confirmed the formula, unit and value (2026-08-18 audit).
 
 **Consumed by.**
 

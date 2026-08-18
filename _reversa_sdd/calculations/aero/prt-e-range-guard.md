@@ -6,11 +6,13 @@ unit: dimensionless
 cluster: aero-polars
 user_visible: false
 source_status: PARTIAL
+code_audit: CONFIRMED
 node_class: unclassified-parameter
 tags:
   - cluster/aero-polars
   - class/unclassified-parameter
   - source/partial
+  - audit/confirmed
   - flag/anomaly
   - flag/divergence
   - flag/scale
@@ -35,6 +37,8 @@ if not (0.4 < e_oswald <= 1.0):
 - [[prt-e-oswald-band|Band Oswald efficiency]]
 
 **Produced by.** `app/services/polar_re_table_service.py:284` — `_fit_band_with_ar`
+
+🟢 **Verified against the code** — an independent reviewer read this line and confirmed the formula, unit and value (2026-08-18 audit).
 
 **Consumed by.**
 

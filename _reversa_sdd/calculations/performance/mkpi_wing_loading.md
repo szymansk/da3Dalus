@@ -6,12 +6,14 @@ unit: N/m^2
 cluster: perf-envelope
 user_visible: true
 source_status: SOURCED
+code_audit: CONFIRMED
 node_class: derived
 tags:
   - cluster/perf-envelope
   - class/derived
   - source/sourced
   - surface/user-visible
+  - audit/confirmed
   - flag/anomaly
   - flag/divergence
 ---
@@ -34,6 +36,8 @@ value = mass_kg * 9.81 / s_ref
 - [[mkpi_gravity_inline|Gravity (mission KPI, inline)]]
 
 **Produced by.** `app/services/mission_kpi_service.py:273` — `_kpi_wing_loading`
+
+🟢 **Verified against the code** — an independent reviewer read this line and confirmed the formula, unit and value (2026-08-18 audit).
 
 **Consumed by.**
 

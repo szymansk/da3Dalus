@@ -6,12 +6,14 @@ unit: dimensionless (ΔCL)
 cluster: aero-polars
 user_visible: true
 source_status: PARTIAL
+code_audit: CONFIRMED
 node_class: derived
 tags:
   - cluster/aero-polars
   - class/derived
   - source/partial
   - surface/user-visible
+  - audit/confirmed
   - flag/anomaly
   - flag/divergence
   - flag/scale
@@ -37,6 +39,8 @@ cl_max_margin = cl_max_val - max(target_cls)
 - [[sui-target-cl-min-sink|target_cl_min_sink]]
 
 **Produced by.** `app/services/suitability_service.py:531` — `search_suitability`
+
+🟢 **Verified against the code** — an independent reviewer read this line and confirmed the formula, unit and value (2026-08-18 audit).
 
 **Consumed by.**
 

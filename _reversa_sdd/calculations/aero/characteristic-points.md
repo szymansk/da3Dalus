@@ -5,12 +5,14 @@ unit: -
 cluster: aero-spanwise
 user_visible: true
 source_status: PARTIAL
+code_audit: CONFIRMED
 node_class: derived
 tags:
   - cluster/aero-spanwise
   - class/derived
   - source/partial
   - surface/user-visible
+  - audit/confirmed
   - flag/anomaly
   - flag/divergence
 ---
@@ -37,6 +39,8 @@ points = {"maximum_lift_to_drag_ratio_point": None, "minimum_drag_coefficient_po
 - [[trim-point-cm-zero|Trim point (Cm = 0)]]
 
 **Produced by.** `app/services/analysis_service.py:219` — `_compute_alpha_sweep_characteristic_points`
+
+🟢 **Verified against the code** — an independent reviewer read this line and confirmed the formula, unit and value (2026-08-18 audit).
 
 **Consumed by.**
 

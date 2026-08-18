@@ -6,11 +6,13 @@ unit: m
 cluster: mass
 user_visible: false
 source_status: NO_SOURCE_FOUND
+code_audit: NOT_VERIFIED
 node_class: numerical-tolerance
 tags:
   - cluster/mass
   - class/numerical-tolerance
   - source/no-source-found
+  - audit/not-verified
   - flag/anomaly
 ---
 
@@ -33,6 +35,8 @@ if old_cg is None or abs(cg_x - old_cg) > 1e-6:
 - [[cg-x-design|Design CG_x (aerodynamic CG target)]]
 
 **Produced by.** `app/services/assumption_compute_service.py:802` — `recompute_assumptions`
+
+⚪ **Not verified.** This node was not covered by the audit pass; treat its line and formula as extracted-but-unchecked.
 
 **Consumed by.**
 

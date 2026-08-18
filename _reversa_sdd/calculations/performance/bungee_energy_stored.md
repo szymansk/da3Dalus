@@ -6,11 +6,13 @@ unit: J
 cluster: perf-matching
 user_visible: false
 source_status: PARTIAL
+code_audit: CONFIRMED
 node_class: derived
 tags:
   - cluster/perf-matching
   - class/derived
   - source/partial
+  - audit/confirmed
   - flag/divergence
 ---
 
@@ -29,6 +31,8 @@ e_stored = 0.5 * bungee_force_N * stretch_m
 **Inputs.** — *(leaf: a constant or an external input)*
 
 **Produced by.** `app/services/field_length_service.py:176` — `compute_bungee_release_speed`
+
+🟢 **Verified against the code** — an independent reviewer read this line and confirmed the formula, unit and value (2026-08-18 audit).
 
 **Consumed by.**
 

@@ -6,12 +6,14 @@ unit: W
 cluster: powertrain
 user_visible: true
 source_status: SOURCED
+code_audit: CONFIRMED
 node_class: derived
 tags:
   - cluster/powertrain
   - class/derived
   - source/sourced
   - surface/user-visible
+  - audit/confirmed
   - flag/anomaly
 ---
 
@@ -33,6 +35,8 @@ p_shaft = max(torque * omega, 0.0)
 - [[qprop-rpm-solution|Solved operating RPM]]  — *⊣ limit*
 
 **Produced by.** `app/services/powertrain_performance.py:581` — `solve_qprop_operating_point`
+
+🟢 **Verified against the code** — an independent reviewer read this line and confirmed the formula, unit and value (2026-08-18 audit).
 
 **Consumed by.**
 

@@ -6,11 +6,13 @@ unit: m/s
 cluster: stability
 user_visible: false
 source_status: NO_SOURCE_FOUND
+code_audit: CONFIRMED
 node_class: unclassified-constant
 tags:
   - cluster/stability
   - class/unclassified-constant
   - source/no-source-found
+  - audit/confirmed
   - flag/anomaly
   - flag/divergence
 ---
@@ -32,6 +34,8 @@ v_cruise = float(v_cruise_raw) if v_cruise_raw is not None else 15.0
 **Inputs.** — *(leaf: a constant or an external input)*
 
 **Produced by.** `app/services/elevator_authority_service.py:590` — `_compute_forward_cg_limit_asb`
+
+🟢 **Verified against the code** — an independent reviewer read this line and confirmed the formula, unit and value (2026-08-18 audit).
 
 **Consumed by.**
 

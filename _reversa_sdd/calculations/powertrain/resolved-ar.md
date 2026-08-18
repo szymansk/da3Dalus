@@ -6,12 +6,14 @@ unit: dimensionless
 cluster: powertrain
 user_visible: true
 source_status: SOURCED
+code_audit: CONFIRMED
 node_class: derived
 tags:
   - cluster/powertrain
   - class/derived
   - source/sourced
   - surface/user-visible
+  - audit/confirmed
   - flag/divergence
 ---
 
@@ -32,6 +34,8 @@ ar = _pick(request.aspect_ratio, "aspect_ratio", _DEFAULT_AR, "Wing aspect ratio
 - [[default-ar-sizing|Default aspect ratio (sizing)]]  — *⤵ fallback*
 
 **Produced by.** `app/services/powertrain_sizing_service.py:179` — `_resolve_aero_params`
+
+🟢 **Verified against the code** — an independent reviewer read this line and confirmed the formula, unit and value (2026-08-18 audit).
 
 **Consumed by.**
 

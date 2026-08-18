@@ -6,12 +6,14 @@ unit: m/s
 cluster: aero-spanwise
 user_visible: true
 source_status: SOURCED
+code_audit: CONFIRMED
 node_class: derived
 tags:
   - cluster/aero-spanwise
   - class/derived
   - source/sourced
   - surface/user-visible
+  - audit/confirmed
   - flag/anomaly
   - flag/divergence
 ---
@@ -36,6 +38,8 @@ v_stall = float(np.sqrt(2.0 * weight_n / (rho * s_ref_m2 * cl_max))) if cl_max >
 - [[cl-max-speed-polar|CL max for stall speed]]  — *⊣ limit*
 
 **Produced by.** `app/services/analysis_service.py:524` — `_compute_speed_polar`
+
+🟢 **Verified against the code** — an independent reviewer read this line and confirmed the formula, unit and value (2026-08-18 audit).
 
 **Consumed by.**
 

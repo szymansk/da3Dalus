@@ -6,12 +6,14 @@ unit: m
 cluster: perf-matching
 user_visible: true
 source_status: NO_SOURCE_FOUND
+code_audit: CONFIRMED
 node_class: derived
 tags:
   - cluster/perf-matching
   - class/derived
   - source/no-source-found
   - surface/user-visible
+  - audit/confirmed
   - flag/divergence
 ---
 
@@ -33,6 +35,8 @@ eff = max(result.get("s_to_50ft_m", 0), result.get("s_ldg_50ft_m", 0))
 - [[s_ldg_50ft|Landing distance from 50 ft]]
 
 **Produced by.** `app/services/mission_kpi_service.py:324` — `_compute_field_length_score`
+
+🟢 **Verified against the code** — an independent reviewer read this line and confirmed the formula, unit and value (2026-08-18 audit).
 
 **Consumed by.**
 

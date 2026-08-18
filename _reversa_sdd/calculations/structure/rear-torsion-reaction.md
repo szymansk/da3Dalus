@@ -5,11 +5,13 @@ unit: N·m (see anomaly)
 cluster: structure
 user_visible: false
 source_status: PARTIAL
+code_audit: CONFIRMED
 node_class: derived
 tags:
   - cluster/structure
   - class/derived
   - source/partial
+  - audit/confirmed
   - flag/anomaly
   - flag/divergence
 ---
@@ -32,6 +34,8 @@ reaction = torsion_fn(y_span) / spacing
 - [[spar-spacing-fraction|Front–rear spar chordwise spacing]]
 
 **Produced by.** `app/services/spar_plan_service.py:453` — `_make_rear_moment_fn`
+
+🟢 **Verified against the code** — an independent reviewer read this line and confirmed the formula, unit and value (2026-08-18 audit).
 
 **Consumed by.**
 

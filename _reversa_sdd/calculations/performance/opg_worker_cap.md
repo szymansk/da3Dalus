@@ -5,11 +5,13 @@ unit: processes
 cluster: perf-oppoints
 user_visible: false
 source_status: NO_SOURCE_FOUND
+code_audit: CONFIRMED
 node_class: unclassified-parameter
 tags:
   - cluster/perf-oppoints
   - class/unclassified-parameter
   - source/no-source-found
+  - audit/confirmed
   - flag/divergence
 ---
 
@@ -30,6 +32,8 @@ cpu = os.cpu_count() or 1; return max(1, min(4, cpu - 1))
 **Inputs.** — *(leaf: a constant or an external input)*
 
 **Produced by.** `app/services/operating_point_generator_service.py:1204` — `_opg_worker_count`
+
+🟢 **Verified against the code** — an independent reviewer read this line and confirmed the formula, unit and value (2026-08-18 audit).
 
 **Consumed by.**
 

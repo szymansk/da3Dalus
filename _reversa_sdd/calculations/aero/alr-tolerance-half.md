@@ -6,11 +6,13 @@ unit: dimensionless (ΔCL)
 cluster: aero-polars
 user_visible: false
 source_status: NO_SOURCE_FOUND
+code_audit: CONFIRMED
 node_class: derived
 tags:
   - cluster/aero-polars
   - class/derived
   - source/no-source-found
+  - audit/confirmed
   - flag/anomaly
   - flag/divergence
 ---
@@ -33,6 +35,8 @@ tolerance_half = (bucket_width / max(bucket_ref, 1e-9)) * 0.5
 - [[low-re-bucket-tolerance-ref|Bucket tolerance reference width]]
 
 **Produced by.** `app/services/airfoil_low_re_service.py:1049` — `score_target_cl`
+
+🟢 **Verified against the code** — an independent reviewer read this line and confirmed the formula, unit and value (2026-08-18 audit).
 
 **Consumed by.**
 

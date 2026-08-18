@@ -6,12 +6,14 @@ unit: kg
 cluster: perf-oppoints
 user_visible: true
 source_status: PARTIAL
+code_audit: WRONG_LINE
 node_class: derived
 tags:
   - cluster/perf-oppoints
   - class/derived
   - source/partial
   - surface/user-visible
+  - audit/wrong-line
   - flag/divergence
 ---
 
@@ -29,7 +31,9 @@ if row.active_source == "CALCULATED" and row.calculated_value is not None: retur
 
 **Inputs.** — *(leaf: a constant or an external input)*
 
-**Produced by.** `app/services/operating_point_generator_service.py:266` — `_load_effective_mass_kg`
+**Produced by.** `app/services/operating_point_generator_service.py:267` — `_load_effective_mass_kg`
+
+🟠 **Corrected by the audit** — the extraction claimed `WRONG_LINE`. Original line was `266`. Line 266 is a guard, lines 267/268 return values
 
 **Consumed by.**
 

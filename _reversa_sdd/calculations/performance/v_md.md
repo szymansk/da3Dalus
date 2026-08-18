@@ -6,12 +6,14 @@ unit: m/s
 cluster: perf-matching
 user_visible: true
 source_status: SOURCED
+code_audit: CONFIRMED
 node_class: derived
 tags:
   - cluster/perf-matching
   - class/derived
   - source/sourced
   - surface/user-visible
+  - audit/confirmed
   - flag/anomaly
   - flag/divergence
   - flag/scale
@@ -38,6 +40,8 @@ return math.sqrt(2.0 * ws / (rho * math.sqrt(cd0 / k)))
 - [[rho_sl|Sea-level ISA density]]  — *⤵ fallback*
 
 **Produced by.** `app/services/matching_chart_service.py:270` — `_v_md`
+
+🟢 **Verified against the code** — an independent reviewer read this line and confirmed the formula, unit and value (2026-08-18 audit).
 
 **Consumed by.**
 

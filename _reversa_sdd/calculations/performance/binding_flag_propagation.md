@@ -6,12 +6,14 @@ unit: bool
 cluster: perf-matching
 user_visible: true
 source_status: NO_SOURCE_FOUND
+code_audit: CONFIRMED
 node_class: derived
 tags:
   - cluster/perf-matching
   - class/derived
   - source/no-source-found
   - surface/user-visible
+  - audit/confirmed
   - flag/anomaly
   - flag/divergence
 ---
@@ -33,6 +35,8 @@ match = next((cc for cc in _checked_subset if cc["name"] == c["name"] and cc.get
 - [[feasibility_verdict|Feasibility verdict]]
 
 **Produced by.** `app/services/matching_chart_service.py:1015` — `compute_chart`
+
+🟢 **Verified against the code** — an independent reviewer read this line and confirmed the formula, unit and value (2026-08-18 audit).
 
 **Consumed by.**
 

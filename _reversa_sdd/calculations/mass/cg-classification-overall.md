@@ -6,12 +6,14 @@ unit: enum (dimensionless)
 cluster: mass
 user_visible: true
 source_status: PARTIAL
+code_audit: CONFIRMED
 node_class: derived
 tags:
   - cluster/mass
   - class/derived
   - source/partial
   - surface/user-visible
+  - audit/confirmed
   - flag/anomaly
   - flag/divergence
 ---
@@ -35,6 +37,8 @@ _rank = {"error": 3, "warn": 2, "ok": 1, "unknown": 0}; if _rank[classification_
 - [[sm-classification|Static-margin classification]]
 
 **Produced by.** `app/services/loading_scenario_service.py:604` — `get_cg_envelope`
+
+🟢 **Verified against the code** — an independent reviewer read this line and confirmed the formula, unit and value (2026-08-18 audit).
 
 **Consumed by.**
 

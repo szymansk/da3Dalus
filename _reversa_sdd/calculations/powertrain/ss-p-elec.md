@@ -6,12 +6,14 @@ unit: W
 cluster: powertrain
 user_visible: true
 source_status: SOURCED
+code_audit: CONFIRMED
 node_class: derived
 tags:
   - cluster/powertrain
   - class/derived
   - source/sourced
   - surface/user-visible
+  - audit/confirmed
 ---
 
 # Electrical power required
@@ -35,6 +37,8 @@ eta = eta_prop * eta_motor * eta_esc ; if eta <= 0: return float("inf") ; return
 - [[ss-eta-esc|ESC efficiency (solution space)]]
 
 **Produced by.** `app/services/powertrain_solution_space_service.py:113` — `_p_elec`
+
+🟢 **Verified against the code** — an independent reviewer read this line and confirmed the formula, unit and value (2026-08-18 audit).
 
 **Consumed by.**
 

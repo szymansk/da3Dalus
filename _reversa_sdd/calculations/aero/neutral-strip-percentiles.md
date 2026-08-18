@@ -5,12 +5,14 @@ unit: -
 cluster: aero-spanwise
 user_visible: true
 source_status: NO_SOURCE_FOUND
+code_audit: CONFIRMED
 node_class: unclassified-constant
 tags:
   - cluster/aero-spanwise
   - class/unclassified-constant
   - source/no-source-found
   - surface/user-visible
+  - audit/confirmed
   - flag/anomaly
 ---
 
@@ -33,6 +35,8 @@ low_thr = float(np.percentile(valid, 50)); high_thr = float(np.percentile(valid,
 - [[neutral-combined-metric|Neutral-point sensitivity metric]]
 
 **Produced by.** `app/services/analysis_service.py:1257` — `_compute_neutral_strip_colors`
+
+🟢 **Verified against the code** — an independent reviewer read this line and confirmed the formula, unit and value (2026-08-18 audit).
 
 **Consumed by.**
 

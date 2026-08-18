@@ -5,12 +5,14 @@ unit: MPa
 cluster: aero-spanwise
 user_visible: true
 source_status: NO_SOURCE_FOUND
+code_audit: CONFIRMED
 node_class: numerical-tolerance
 tags:
   - cluster/aero-spanwise
   - class/numerical-tolerance
   - source/no-source-found
   - surface/user-visible
+  - audit/confirmed
 ---
 
 # σ_allow positivity guard
@@ -32,6 +34,8 @@ if sigma_allow is None or sigma_allow <= 0: raise ValidationError
 - [[sigma-allow|Allowable bending stress]]
 
 **Produced by.** `app/services/analysis_service.py:2142` — `_compute_spar_sizing_for_surfaces`
+
+🟢 **Verified against the code** — an independent reviewer read this line and confirmed the formula, unit and value (2026-08-18 audit).
 
 **Consumed by.**
 

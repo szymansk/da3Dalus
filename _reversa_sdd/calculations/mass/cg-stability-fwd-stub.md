@@ -6,12 +6,14 @@ unit: m
 cluster: mass
 user_visible: true
 source_status: PARTIAL
+code_audit: CONFIRMED
 node_class: derived
 tags:
   - cluster/mass
   - class/derived
   - source/partial
   - surface/user-visible
+  - audit/confirmed
   - flag/anomaly
   - flag/divergence
   - flag/scale
@@ -36,6 +38,8 @@ cg_stability_fwd_m = x_np - _SM_ELEVATOR_LIMIT * mac
 - [[sm-elevator-limit|Static-margin elevator-authority limit]]  — *⊣ limit*
 
 **Produced by.** `app/services/loading_scenario_service.py:116` — `compute_stability_envelope`
+
+🟢 **Verified against the code** — an independent reviewer read this line and confirmed the formula, unit and value (2026-08-18 audit).
 
 **Consumed by.**
 

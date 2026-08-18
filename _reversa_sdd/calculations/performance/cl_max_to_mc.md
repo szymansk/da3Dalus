@@ -6,11 +6,13 @@ unit: dimensionless
 cluster: perf-matching
 user_visible: false
 source_status: PARTIAL
+code_audit: CONFIRMED
 node_class: unclassified-parameter
 tags:
   - cluster/perf-matching
   - class/unclassified-parameter
   - source/partial
+  - audit/confirmed
   - flag/anomaly
   - flag/divergence
   - flag/scale
@@ -33,6 +35,8 @@ cl_max_to: float = float(aircraft.get("cl_max_takeoff", cl_max_clean))
 - [[cl_max_clean_mc|Clean CL_max (matching chart)]]  — *⊣ limit*
 
 **Produced by.** `app/services/matching_chart_service.py:808` — `compute_chart`
+
+🟢 **Verified against the code** — an independent reviewer read this line and confirmed the formula, unit and value (2026-08-18 audit).
 
 **Consumed by.**
 

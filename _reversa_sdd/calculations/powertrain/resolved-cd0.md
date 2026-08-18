@@ -6,12 +6,14 @@ unit: dimensionless
 cluster: powertrain
 user_visible: true
 source_status: SOURCED
+code_audit: CONFIRMED
 node_class: derived
 tags:
   - cluster/powertrain
   - class/derived
   - source/sourced
   - surface/user-visible
+  - audit/confirmed
   - flag/divergence
   - flag/scale
 ---
@@ -33,6 +35,8 @@ cd0 = _pick(request.cd0, "cd0", _DEFAULT_CD0, "Zero-lift drag coefficient (cd0)"
 - [[default-cd0-sizing|Default zero-lift drag coefficient (sizing)]]  — *⤵ fallback*
 
 **Produced by.** `app/services/powertrain_sizing_service.py:165` — `_resolve_aero_params`
+
+🟢 **Verified against the code** — an independent reviewer read this line and confirmed the formula, unit and value (2026-08-18 audit).
 
 **Consumed by.**
 

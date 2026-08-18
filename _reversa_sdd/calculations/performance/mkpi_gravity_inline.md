@@ -6,12 +6,14 @@ unit: m/s^2
 cluster: perf-envelope
 user_visible: true
 source_status: PARTIAL
+code_audit: CONFIRMED
 node_class: physical-constant
 tags:
   - cluster/perf-envelope
   - class/physical-constant
   - source/partial
   - surface/user-visible
+  - audit/confirmed
   - flag/anomaly
   - flag/divergence
   - flag/physical
@@ -35,6 +37,8 @@ value = mass_kg * 9.81 / s_ref
 **Inputs.** — *(leaf: a constant or an external input)*
 
 **Produced by.** `app/services/mission_kpi_service.py:273` — `_kpi_wing_loading`
+
+🟢 **Verified against the code** — an independent reviewer read this line and confirmed the formula, unit and value (2026-08-18 audit).
 
 **Consumed by.**
 

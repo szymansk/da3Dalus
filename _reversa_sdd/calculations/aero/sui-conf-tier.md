@@ -6,12 +6,14 @@ unit: ordinal
 cluster: aero-polars
 user_visible: true
 source_status: NO_SOURCE_FOUND
+code_audit: CONFIRMED
 node_class: derived
 tags:
   - cluster/aero-polars
   - class/derived
   - source/no-source-found
   - surface/user-visible
+  - audit/confirmed
   - flag/divergence
 ---
 
@@ -33,6 +35,8 @@ return 0 if item.min_analysis_confidence >= low_conf_flag else 1
 - [[low-re-low-confidence-flag|Low-confidence flag threshold]]  — *⊣ limit*
 
 **Produced by.** `app/services/suitability_service.py:625` — `_conf_tier`
+
+🟢 **Verified against the code** — an independent reviewer read this line and confirmed the formula, unit and value (2026-08-18 audit).
 
 **Consumed by.**
 

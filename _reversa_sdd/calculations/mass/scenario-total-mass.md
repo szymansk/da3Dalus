@@ -6,11 +6,13 @@ unit: kg
 cluster: mass
 user_visible: false
 source_status: SOURCED
+code_audit: CONFIRMED
 node_class: derived
 tags:
   - cluster/mass
   - class/derived
   - source/sourced
+  - audit/confirmed
   - flag/anomaly
   - flag/divergence
 ---
@@ -32,6 +34,8 @@ total_mass += m  (per component, line 177)  ...  total_mass += m  (per adhoc ite
 - [[base-mass-default|Fallback base mass for scenario CG]]  — *⤵ fallback*
 
 **Produced by.** `app/services/loading_scenario_service.py:177` — `compute_scenario_cg`
+
+🟢 **Verified against the code** — an independent reviewer read this line and confirmed the formula, unit and value (2026-08-18 audit).
 
 **Consumed by.**
 

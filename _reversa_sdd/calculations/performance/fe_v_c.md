@@ -6,11 +6,13 @@ unit: m/s
 cluster: perf-envelope
 user_visible: false
 source_status: NO_SOURCE_FOUND
+code_audit: CONFIRMED
 node_class: derived
 tags:
   - cluster/perf-envelope
   - class/derived
   - source/no-source-found
+  - audit/confirmed
   - flag/anomaly
   - flag/divergence
 ---
@@ -33,6 +35,8 @@ v_c = v_dive / 1.4
 - [[fe_dive_factor|Dive-speed factor]]
 
 **Produced by.** `app/services/flight_envelope_service.py:190` — `_build_gust_lines`
+
+🟢 **Verified against the code** — an independent reviewer read this line and confirmed the formula, unit and value (2026-08-18 audit).
 
 **Consumed by.**
 

@@ -6,11 +6,13 @@ unit: 1/chord
 cluster: aero-polars
 user_visible: false
 source_status: NO_SOURCE_FOUND
+code_audit: WRONG_LINE
 node_class: derived
 tags:
   - cluster/aero-polars
   - class/derived
   - source/no-source-found
+  - audit/wrong-line
   - flag/divergence
 ---
 
@@ -31,7 +33,9 @@ aft_concavity = float(p_aft_c[0])
 
 - [[alr-camber-line|Mean camber line]]
 
-**Produced by.** `app/services/airfoil_low_re_service.py:234` — `classify_family`
+**Produced by.** `app/services/airfoil_low_re_service.py:235` — `classify_family`
+
+🟠 **Corrected by the audit** — the extraction claimed `WRONG_LINE`. Original line was `234`. 
 
 **Consumed by.**
 

@@ -6,12 +6,14 @@ unit: enum
 cluster: aero-polars
 user_visible: true
 source_status: PARTIAL
+code_audit: CONFIRMED
 node_class: derived
 tags:
   - cluster/aero-polars
   - class/derived
   - source/partial
   - surface/user-visible
+  - audit/confirmed
   - flag/divergence
   - flag/scale
 ---
@@ -37,6 +39,8 @@ if reflex_signal_a or reflex_signal_b: return "reflexed" ... return "cambered"
 - [[alr-aft-quad-coeff|Aft lower-surface quadratic coefficient]]
 
 **Produced by.** `app/services/airfoil_low_re_service.py:267` — `classify_family`
+
+🟢 **Verified against the code** — an independent reviewer read this line and confirmed the formula, unit and value (2026-08-18 audit).
 
 **Consumed by.**
 

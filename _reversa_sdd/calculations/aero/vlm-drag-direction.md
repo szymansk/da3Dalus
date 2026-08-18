@@ -6,11 +6,13 @@ unit: dimensionless
 cluster: aero-strips
 user_visible: false
 source_status: SOURCED
+code_audit: CONFIRMED
 node_class: derived
 tags:
   - cluster/aero-strips
   - class/derived
   - source/sourced
+  - audit/confirmed
   - solver-adjacent/vlm
 ---
 
@@ -29,6 +31,8 @@ d_hat = np.asarray(vlm.steady_freestream_direction, dtype=float); d_hat = d_hat 
 **Inputs.** — *(leaf: a constant or an external input)*
 
 **Produced by.** `app/services/vlm_strip_forces.py:227` — `compute_vlm_strip_forces`
+
+🟢 **Verified against the code** — an independent reviewer read this line and confirmed the formula, unit and value (2026-08-18 audit).
 
 **Consumed by.**
 

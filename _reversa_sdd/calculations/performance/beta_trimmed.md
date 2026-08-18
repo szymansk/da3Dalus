@@ -2,16 +2,18 @@
 name: beta_trimmed
 symbol: β
 kind: quantity
-unit: rad (stored) / deg (solved)
+unit: rad
 cluster: perf-oppoints
 user_visible: true
 source_status: SOURCED
+code_audit: MISDESCRIBED
 node_class: derived
 tags:
   - cluster/perf-oppoints
   - class/derived
   - source/sourced
   - surface/user-visible
+  - audit/misdescribed
   - flag/divergence
 ---
 
@@ -32,6 +34,8 @@ beta_rad=math.radians(best_beta)
 - [[beta_candidates|Sideslip candidate list]]
 
 **Produced by.** `app/services/operating_point_generator_service.py:991` — `_trim_or_estimate_point`
+
+🟠 **Corrected by the audit** — the extraction claimed `MISDESCRIBED`. Original unit was `rad (stored) / deg (solved)`. Stored exclusively as radians; mixed unit description is misleading
 
 **Consumed by.**
 

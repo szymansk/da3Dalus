@@ -6,11 +6,13 @@ unit: dimensionless
 cluster: aero-strips
 user_visible: false
 source_status: PARTIAL
+code_audit: CONFIRMED
 node_class: derived
 tags:
   - cluster/aero-strips
   - class/derived
   - source/partial
+  - audit/confirmed
   - flag/divergence
 ---
 
@@ -32,6 +34,8 @@ cd_values = np.array([_cd_at_cl_xtr(airfoil, cl, re, float(xtr)) for xtr in xtr_
 - [[tos-xtr-grid|Turbulator trip-position sweep grid]]
 
 **Produced by.** `app/services/turbulator_optimizer_service.py:210` — `optimize_section_xtr`
+
+🟢 **Verified against the code** — an independent reviewer read this line and confirmed the formula, unit and value (2026-08-18 audit).
 
 **Consumed by.**
 

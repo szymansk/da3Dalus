@@ -6,11 +6,13 @@ unit: x/c
 cluster: aero-strips
 user_visible: false
 source_status: NO_SOURCE_FOUND
+code_audit: CONFIRMED
 node_class: derived
 tags:
   - cluster/aero-strips
   - class/derived
   - source/no-source-found
+  - audit/confirmed
   - flag/anomaly
   - flag/divergence
   - solver-adjacent/neuralfoil
@@ -33,6 +35,8 @@ xtr_upper=float(xtr_grid[len(xtr_grid) // 2]),
 - [[tos-xtr-grid|Turbulator trip-position sweep grid]]
 
 **Produced by.** `app/services/turbulator_optimizer_service.py:218` — `optimize_section_xtr`
+
+🟢 **Verified against the code** — an independent reviewer read this line and confirmed the formula, unit and value (2026-08-18 audit).
 
 **Consumed by.**
 

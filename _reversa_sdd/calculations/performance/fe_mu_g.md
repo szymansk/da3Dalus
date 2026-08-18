@@ -6,12 +6,14 @@ unit: -
 cluster: perf-envelope
 user_visible: true
 source_status: SOURCED
+code_audit: CONFIRMED
 node_class: derived
 tags:
   - cluster/perf-envelope
   - class/derived
   - source/sourced
   - surface/user-visible
+  - audit/confirmed
   - flag/scale
 ---
 
@@ -36,6 +38,8 @@ return 2.0 * wing_loading / (rho * c_mgc * cl_alpha * g)
 - [[fe_gravity|Gravitational acceleration (flight envelope)]]
 
 **Produced by.** `app/services/flight_envelope_service.py:89` — `_compute_mu_g`
+
+🟢 **Verified against the code** — an independent reviewer read this line and confirmed the formula, unit and value (2026-08-18 audit).
 
 **Consumed by.**
 

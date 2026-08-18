@@ -6,11 +6,13 @@ unit: m/s²
 cluster: aero-spanwise
 user_visible: false
 source_status: PARTIAL
+code_audit: WRONG_LINE
 node_class: physical-constant
 tags:
   - cluster/aero-spanwise
   - class/physical-constant
   - source/partial
+  - audit/wrong-line
   - flag/anomaly
   - flag/divergence
   - flag/physical
@@ -33,7 +35,9 @@ g: float = 9.81
 
 **Inputs.** — *(leaf: a constant or an external input)*
 
-**Produced by.** `app/services/analysis_service.py:439` — `_compute_speed_polar`
+**Produced by.** `app/services/analysis_service.py:438` — `_compute_speed_polar`
+
+🟠 **Corrected by the audit** — the extraction claimed `WRONG_LINE`. Original line was `439`. 
 
 **Consumed by.**
 

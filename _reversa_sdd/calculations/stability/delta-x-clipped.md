@@ -6,12 +6,14 @@ unit: m
 cluster: stability
 user_visible: true
 source_status: PARTIAL
+code_audit: CONFIRMED
 node_class: derived
 tags:
   - cluster/stability
   - class/derived
   - source/partial
   - surface/user-visible
+  - audit/confirmed
   - flag/anomaly
   - flag/divergence
 ---
@@ -35,6 +37,8 @@ delta_x = (_SM_FORWARD_CLIP_LIMIT * mac_m + cg_fwd_m - x_np_m) / (1.0 - a_vh)
 - [[alpha-vh|Tail efficiency factor]]
 
 **Produced by.** `app/services/sm_sizing_service.py:431` — `suggest_corrections`
+
+🟢 **Verified against the code** — an independent reviewer read this line and confirmed the formula, unit and value (2026-08-18 audit).
 
 **Consumed by.**
 

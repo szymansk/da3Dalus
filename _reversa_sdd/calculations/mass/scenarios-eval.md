@@ -6,11 +6,13 @@ unit: m (list)
 cluster: mass
 user_visible: false
 source_status: PARTIAL
+code_audit: CONFIRMED
 node_class: derived
 tags:
   - cluster/mass
   - class/derived
   - source/partial
+  - audit/confirmed
   - flag/anomaly
   - flag/divergence
 ---
@@ -32,6 +34,8 @@ tags:
 - [[scenario-cg-x|Loading-scenario CG_x]]
 
 **Produced by.** `app/services/loading_scenario_service.py:447` — `compute_loading_envelope_for_aeroplane`
+
+🟢 **Verified against the code** — an independent reviewer read this line and confirmed the formula, unit and value (2026-08-18 audit).
 
 **Consumed by.**
 

@@ -6,11 +6,13 @@ unit: dimensionless (0..1)
 cluster: aero-polars
 user_visible: false
 source_status: NO_SOURCE_FOUND
+code_audit: CONFIRMED
 node_class: derived
 tags:
   - cluster/aero-polars
   - class/derived
   - source/no-source-found
+  - audit/confirmed
   - flag/anomaly
   - flag/divergence
 ---
@@ -41,6 +43,8 @@ if tolerance_half > 0 and distance_from_sweet_spot < tolerance_half:
 - [[low-re-cl-max-safety-band|CL_max safety band]]  — *⤵ fallback*
 
 **Produced by.** `app/services/airfoil_low_re_service.py:1071` — `score_target_cl`
+
+🟢 **Verified against the code** — an independent reviewer read this line and confirmed the formula, unit and value (2026-08-18 audit).
 
 **Consumed by.**
 

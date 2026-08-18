@@ -6,12 +6,14 @@ unit: – (coefficient units)
 cluster: stability
 user_visible: true
 source_status: SOURCED
+code_audit: CONFIRMED
 node_class: solver-output
 tags:
   - cluster/stability
   - class/solver-output
   - source/sourced
   - surface/user-visible
+  - audit/confirmed
   - flag/anomaly
   - flag/divergence
   - solver/aerobuildup
@@ -39,6 +41,8 @@ achieved_value=round(achieved, 8),
 - [[trimmed-deflection|Trimmed control deflection]]
 
 **Produced by.** `app/services/aerobuildup_trim_service.py:276` — `trim_with_aerobuildup`
+
+🟢 **Verified against the code** — an independent reviewer read this line and confirmed the formula, unit and value (2026-08-18 audit).
 
 **Consumed by.**
 

@@ -6,11 +6,13 @@ unit: x/c
 cluster: aero-strips
 user_visible: false
 source_status: SOURCED
+code_audit: CONFIRMED
 node_class: unclassified-parameter
 tags:
   - cluster/aero-strips
   - class/unclassified-parameter
   - source/sourced
+  - audit/confirmed
   - flag/anomaly
   - flag/divergence
 ---
@@ -32,6 +34,8 @@ xtr_lower: float = 1.0
 **Inputs.** — *(leaf: a constant or an external input)*
 
 **Produced by.** `app/services/turbulator_optimizer_service.py:125` — `_cd_at_cl_xtr`
+
+🟢 **Verified against the code** — an independent reviewer read this line and confirmed the formula, unit and value (2026-08-18 audit).
 
 **Consumed by.**
 

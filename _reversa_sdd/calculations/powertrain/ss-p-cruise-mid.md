@@ -6,12 +6,14 @@ unit: W
 cluster: powertrain
 user_visible: true
 source_status: SOURCED
+code_audit: CONFIRMED
 node_class: derived
 tags:
   - cluster/powertrain
   - class/derived
   - source/sourced
   - surface/user-visible
+  - audit/confirmed
   - flag/anomaly
 ---
 
@@ -36,6 +38,8 @@ p_cruise_mid = _p_elec(p_aero_cruise, eta_mid, assumptions.eta_motor, assumption
 - [[ss-eta-esc|ESC efficiency (solution space)]]
 
 **Produced by.** `app/services/powertrain_solution_space_service.py:360` — `compute_solution_space`
+
+🟢 **Verified against the code** — an independent reviewer read this line and confirmed the formula, unit and value (2026-08-18 audit).
 
 **Consumed by.**
 

@@ -6,12 +6,14 @@ unit: m
 cluster: stability
 user_visible: true
 source_status: PARTIAL
+code_audit: CONFIRMED
 node_class: derived
 tags:
   - cluster/stability
   - class/derived
   - source/partial
   - surface/user-visible
+  - audit/confirmed
   - flag/anomaly
   - flag/divergence
 ---
@@ -35,6 +37,8 @@ forward = np_x - (max_margin / 100) * mac
 - [[max-static-margin-pct-default|Maximum static margin (CG-range default)]]  — *⤵ fallback*
 
 **Produced by.** `app/services/stability_service.py:97` — `compute_cg_range`
+
+🟢 **Verified against the code** — an independent reviewer read this line and confirmed the formula, unit and value (2026-08-18 audit).
 
 **Consumed by.**
 

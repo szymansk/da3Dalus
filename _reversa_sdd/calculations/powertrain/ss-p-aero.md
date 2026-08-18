@@ -6,12 +6,14 @@ unit: W
 cluster: powertrain
 user_visible: true
 source_status: SOURCED
+code_audit: CONFIRMED
 node_class: derived
 tags:
   - cluster/powertrain
   - class/derived
   - source/sourced
   - surface/user-visible
+  - audit/confirmed
   - flag/anomaly
   - flag/divergence
 ---
@@ -35,6 +37,8 @@ if v <= 0: return float("inf") ; q = 0.5 * rho * v * v ; cl = (mass_kg * g) / (q
 - [[ss-s-ref|Wing reference area (solution space)]]  — *⤵ fallback*
 
 **Produced by.** `app/services/powertrain_solution_space_service.py:105` — `_p_aero`
+
+🟢 **Verified against the code** — an independent reviewer read this line and confirmed the formula, unit and value (2026-08-18 audit).
 
 **Consumed by.**
 

@@ -6,11 +6,13 @@ unit: -
 cluster: perf-envelope
 user_visible: false
 source_status: SOURCED
+code_audit: CONFIRMED
 node_class: derived
 tags:
   - cluster/perf-envelope
   - class/derived
   - source/sourced
+  - audit/confirmed
   - flag/divergence
 ---
 
@@ -36,6 +38,8 @@ return 0.5 * rho * v * cl_alpha * u_gust * k_g / wing_loading
 - [[fe_wing_loading|Wing loading (gust path)]]
 
 **Produced by.** `app/services/flight_envelope_service.py:136` — `_compute_delta_n`
+
+🟢 **Verified against the code** — an independent reviewer read this line and confirmed the formula, unit and value (2026-08-18 audit).
 
 **Consumed by.**
 

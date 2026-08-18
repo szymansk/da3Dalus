@@ -6,11 +6,13 @@ unit: m
 cluster: stability
 user_visible: false
 source_status: NO_SOURCE_FOUND
+code_audit: CONFIRMED
 node_class: unclassified-constant
 tags:
   - cluster/stability
   - class/unclassified-constant
   - source/no-source-found
+  - audit/confirmed
   - flag/anomaly
   - flag/divergence
 ---
@@ -32,6 +34,8 @@ mac_m: float = float(mac_m_raw) if mac_m_raw and float(mac_m_raw) > 0 else 0.30
 **Inputs.** — *(leaf: a constant or an external input)*
 
 **Produced by.** `app/services/sm_sizing_service.py:138` — `_dsm_dx_wing`
+
+🟢 **Verified against the code** — an independent reviewer read this line and confirmed the formula, unit and value (2026-08-18 audit).
 
 **Consumed by.**
 

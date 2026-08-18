@@ -6,12 +6,14 @@ unit: N/m^2
 cluster: perf-matching
 user_visible: true
 source_status: PARTIAL
+code_audit: CONFIRMED
 node_class: derived
 tags:
   - cluster/perf-matching
   - class/derived
   - source/partial
   - surface/user-visible
+  - audit/confirmed
   - flag/anomaly
   - flag/divergence
   - flag/scale
@@ -38,6 +40,8 @@ return (s_runway * rho * cl_max_l) / (_K_LDG_HARD * _K_LDG_50FT)
 - [[k_ldg_50ft|Landing 50-ft obstacle factor]]
 
 **Produced by.** `app/services/matching_chart_service.py:341` — `_landing_constraint`
+
+🟢 **Verified against the code** — an independent reviewer read this line and confirmed the formula, unit and value (2026-08-18 audit).
 
 **Consumed by.**
 

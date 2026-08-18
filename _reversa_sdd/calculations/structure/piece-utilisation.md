@@ -5,12 +5,14 @@ unit: dimensionless
 cluster: structure
 user_visible: true
 source_status: NO_SOURCE_FOUND
+code_audit: CONFIRMED
 node_class: derived
 tags:
   - cluster/structure
   - class/derived
   - source/no-source-found
   - surface/user-visible
+  - audit/confirmed
   - flag/anomaly
 ---
 
@@ -33,6 +35,8 @@ utilisation = od / max(tightest, _FIT_TOL_MM)
 - [[fit-tol-mm|Containment fit tolerance]]  — *ε tolerance*
 
 **Produced by.** `cad_designer/airplane/geometry/spar_solver.py:539` — `_piece_from_run_with_od`
+
+🟢 **Verified against the code** — an independent reviewer read this line and confirmed the formula, unit and value (2026-08-18 audit).
 
 **Consumed by.**
 

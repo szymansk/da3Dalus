@@ -6,12 +6,14 @@ unit: g
 cluster: perf-envelope
 user_visible: true
 source_status: PARTIAL
+code_audit: CONFIRMED
 node_class: derived
 tags:
   - cluster/perf-envelope
   - class/derived
   - source/partial
   - surface/user-visible
+  - audit/confirmed
   - flag/anomaly
   - flag/divergence
 ---
@@ -34,6 +36,8 @@ max_turn_marker.load_factor | round(g_limit, 4)
 - [[fe_marker_load_factor|Operating-point marker load factor]]
 
 **Produced by.** `app/services/flight_envelope_service.py:494` — `derive_performance_kpis`
+
+🟢 **Verified against the code** — an independent reviewer read this line and confirmed the formula, unit and value (2026-08-18 audit).
 
 **Consumed by.**
 

@@ -6,11 +6,13 @@ unit: W
 cluster: powertrain
 user_visible: false
 source_status: SOURCED
+code_audit: CONFIRMED
 node_class: derived
 tags:
   - cluster/powertrain
   - class/derived
   - source/sourced
+  - audit/confirmed
   - flag/anomaly
 ---
 
@@ -32,6 +34,8 @@ p_shaft_max = p_available_elec * motor.eta_motor
 - [[motor-eta|Motor + gearbox efficiency]]  — *⤵ fallback*
 
 **Produced by.** `app/services/powertrain_performance.py:663` — `compute_performance_curve`
+
+🟢 **Verified against the code** — an independent reviewer read this line and confirmed the formula, unit and value (2026-08-18 audit).
 
 **Consumed by.**
 

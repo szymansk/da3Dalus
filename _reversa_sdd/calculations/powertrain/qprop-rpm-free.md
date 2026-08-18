@@ -6,11 +6,13 @@ unit: rpm
 cluster: powertrain
 user_visible: false
 source_status: SOURCED
+code_audit: CONFIRMED
 node_class: derived
 tags:
   - cluster/powertrain
   - class/derived
   - source/sourced
+  - audit/confirmed
 ---
 
 # Free-running RPM
@@ -31,6 +33,8 @@ rpm_free = V_terminal * kv_si * 60.0 / (2.0 * math.pi)
 - [[motor-kv-si|Motor speed constant in SI]]
 
 **Produced by.** `app/services/powertrain_performance.py:540` — `solve_qprop_operating_point`
+
+🟢 **Verified against the code** — an independent reviewer read this line and confirmed the formula, unit and value (2026-08-18 audit).
 
 **Consumed by.**
 

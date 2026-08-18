@@ -6,11 +6,13 @@ unit: m²
 cluster: stability
 user_visible: false
 source_status: NO_SOURCE_FOUND
+code_audit: CONFIRMED
 node_class: unclassified-constant
 tags:
   - cluster/stability
   - class/unclassified-constant
   - source/no-source-found
+  - audit/confirmed
   - flag/anomaly
   - flag/divergence
 ---
@@ -32,6 +34,8 @@ s_ref_m2: float = float(s_ref_raw) if s_ref_raw and float(s_ref_raw) > 0 else 0.
 **Inputs.** — *(leaf: a constant or an external input)*
 
 **Produced by.** `app/services/sm_sizing_service.py:156` — `_dsm_dsh`
+
+🟢 **Verified against the code** — an independent reviewer read this line and confirmed the formula, unit and value (2026-08-18 audit).
 
 **Consumed by.**
 

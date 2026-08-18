@@ -6,11 +6,13 @@ unit: panels
 cluster: aero-strips
 user_visible: false
 source_status: NO_SOURCE_FOUND
+code_audit: CONFIRMED
 node_class: unclassified-constant
 tags:
   - cluster/aero-strips
   - class/unclassified-constant
   - source/no-source-found
+  - audit/confirmed
   - flag/divergence
   - solver-adjacent/vlm
 ---
@@ -32,6 +34,8 @@ _MIN_PANELS_PER_SEGMENT = 2
 **Inputs.** — *(leaf: a constant or an external input)*
 
 **Produced by.** `app/services/vlm_strip_forces.py:60` — `_MIN_PANELS_PER_SEGMENT`
+
+🟢 **Verified against the code** — an independent reviewer read this line and confirmed the formula, unit and value (2026-08-18 audit).
 
 **Consumed by.**
 

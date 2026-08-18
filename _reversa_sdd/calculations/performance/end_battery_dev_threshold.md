@@ -6,12 +6,14 @@ unit: -
 cluster: perf-envelope
 user_visible: true
 source_status: NO_SOURCE_FOUND
+code_audit: CONFIRMED
 node_class: unclassified-constant
 tags:
   - cluster/perf-envelope
   - class/unclassified-constant
   - source/no-source-found
   - surface/user-visible
+  - audit/confirmed
 ---
 
 # Battery-mass deviation threshold
@@ -31,6 +33,8 @@ BATTERY_MASS_DEVIATION_THRESHOLD = 0.30  # 30%
 **Inputs.** — *(leaf: a constant or an external input)*
 
 **Produced by.** `app/services/endurance_service.py:69` — `BATTERY_MASS_DEVIATION_THRESHOLD`
+
+🟢 **Verified against the code** — an independent reviewer read this line and confirmed the formula, unit and value (2026-08-18 audit).
 
 **Consumed by.**
 

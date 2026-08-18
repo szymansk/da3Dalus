@@ -6,12 +6,14 @@ unit: N·m
 cluster: structure
 user_visible: true
 source_status: PARTIAL
+code_audit: CONFIRMED
 node_class: derived
 tags:
   - cluster/structure
   - class/derived
   - source/partial
   - surface/user-visible
+  - audit/confirmed
   - flag/anomaly
   - flag/divergence
   - flag/scale
@@ -35,6 +37,8 @@ m_design = abs(bm) * g_limit * params.safety_factor_j
 - [[structure--safety-factor-j|Safety factor j]]  — *⊣ limit*
 
 **Produced by.** `app/services/spar_sizing.py:315` — `compute_spar_sizing`
+
+🟢 **Verified against the code** — an independent reviewer read this line and confirmed the formula, unit and value (2026-08-18 audit).
 
 **Consumed by.**
 

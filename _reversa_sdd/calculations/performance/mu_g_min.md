@@ -6,12 +6,14 @@ unit: -
 cluster: perf-envelope
 user_visible: true
 source_status: NO_SOURCE_FOUND
+code_audit: CONFIRMED
 node_class: regulatory-constant
 tags:
   - cluster/perf-envelope
   - class/regulatory-constant
   - source/no-source-found
   - surface/user-visible
+  - audit/confirmed
   - flag/divergence
 ---
 
@@ -32,6 +34,8 @@ _MU_G_MIN: float = 3.0
 **Inputs.** — *(leaf: a constant or an external input)*
 
 **Produced by.** `app/services/flight_envelope_service.py:47` — `_MU_G_MIN`
+
+🟢 **Verified against the code** — an independent reviewer read this line and confirmed the formula, unit and value (2026-08-18 audit).
 
 **Consumed by.**
 

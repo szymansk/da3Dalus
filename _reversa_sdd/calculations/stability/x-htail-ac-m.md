@@ -6,11 +6,13 @@ unit: m
 cluster: stability
 user_visible: false
 source_status: SOURCED
+code_audit: CONFIRMED
 node_class: derived
 tags:
   - cluster/stability
   - class/derived
   - source/sourced
+  - audit/confirmed
   - flag/divergence
 ---
 
@@ -31,6 +33,8 @@ x_htail_ac_m = x_htail_le_m + 0.25 * htail_mac_m
 - [[htail-mac-approx|Horizontal tail MAC (mean chord approximation)]]
 
 **Produced by.** `app/services/tail_sizing_service.py:197` — `compute_tail_volumes`
+
+🟢 **Verified against the code** — an independent reviewer read this line and confirmed the formula, unit and value (2026-08-18 audit).
 
 **Consumed by.**
 

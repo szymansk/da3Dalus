@@ -6,12 +6,14 @@ unit: mm
 cluster: structure
 user_visible: true
 source_status: PARTIAL
+code_audit: CONFIRMED
 node_class: derived
 tags:
   - cluster/structure
   - class/derived
   - source/partial
   - surface/user-visible
+  - audit/confirmed
   - flag/anomaly
   - flag/divergence
 ---
@@ -34,6 +36,8 @@ return max(0.0, (self.outer_d - self.inner_d) / 2.0)
 - [[piece-bore|Spar piece inner diameter]]
 
 **Produced by.** `cad_designer/airplane/geometry/spar_solver.py:124` — `SparPiece.wall`
+
+🟢 **Verified against the code** — an independent reviewer read this line and confirmed the formula, unit and value (2026-08-18 audit).
 
 **Consumed by.**
 

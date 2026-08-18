@@ -5,12 +5,14 @@ unit: MPa
 cluster: structure
 user_visible: true
 source_status: PARTIAL
+code_audit: CONFIRMED
 node_class: numerical-tolerance
 tags:
   - cluster/structure
   - class/numerical-tolerance
   - source/partial
   - surface/user-visible
+  - audit/confirmed
   - flag/divergence
 ---
 
@@ -33,6 +35,8 @@ if sigma_allow_mpa <= 0:
 - [[sigma-allow-mpa|Allowable bending stress (sizing path)]]
 
 **Produced by.** `app/services/spar_sizing.py:86` — `required_section_modulus`
+
+🟢 **Verified against the code** — an independent reviewer read this line and confirmed the formula, unit and value (2026-08-18 audit).
 
 **Consumed by.**
 

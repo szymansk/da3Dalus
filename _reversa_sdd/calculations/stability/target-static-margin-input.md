@@ -6,12 +6,14 @@ unit: – (fraction of MAC)
 cluster: stability
 user_visible: true
 source_status: SOURCED
+code_audit: WRONG_FORMULA
 node_class: unclassified-parameter
 tags:
   - cluster/stability
   - class/unclassified-parameter
   - source/sourced
   - surface/user-visible
+  - audit/wrong-formula
   - flag/anomaly
   - flag/divergence
 ---
@@ -27,12 +29,14 @@ tags:
 **Formula — as the code writes it.**
 
 ```
-target_sm = ctx.get("target_static_margin", 0.10)
+target_sm: float = 0.10  # parameter default
 ```
 
 **Inputs.** — *(leaf: a constant or an external input)*
 
 **Produced by.** `app/services/sm_sizing_service.py:311` — `suggest_corrections`
+
+🟠 **Corrected by the audit** — the extraction claimed `WRONG_FORMULA`. Line 311 is a parameter default (target_sm: float = 0.10,), not a ctx.get pattern
 
 **Consumed by.**
 

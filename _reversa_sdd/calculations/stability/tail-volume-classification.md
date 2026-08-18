@@ -6,12 +6,14 @@ unit: – (enum string)
 cluster: stability
 user_visible: true
 source_status: PARTIAL
+code_audit: CONFIRMED
 node_class: derived
 tags:
   - cluster/stability
   - class/derived
   - source/partial
   - surface/user-visible
+  - audit/confirmed
   - flag/divergence
 ---
 
@@ -44,6 +46,8 @@ return "in_range"
 - [[aircraft-class-tail-targets|Tail-volume target ranges by aircraft class]]
 
 **Produced by.** `app/services/tail_sizing_service.py:316` — `_classify_volume`
+
+🟢 **Verified against the code** — an independent reviewer read this line and confirmed the formula, unit and value (2026-08-18 audit).
 
 **Consumed by.**
 

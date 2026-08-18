@@ -6,12 +6,14 @@ unit: W
 cluster: powertrain
 user_visible: true
 source_status: SOURCED
+code_audit: CONFIRMED
 node_class: derived
 tags:
   - cluster/powertrain
   - class/derived
   - source/sourced
   - surface/user-visible
+  - audit/confirmed
   - flag/anomaly
   - flag/divergence
 ---
@@ -39,6 +41,8 @@ p_shaft_uncapped = Cp * rho * (point_n_rps**3) * (D_m**5) ; p_shaft_w = float(np
 - [[qprop-p-shaft|Solved shaft power (QPROP)]]
 
 **Produced by.** `app/services/powertrain_performance.py:757` — `compute_performance_curve`
+
+🟢 **Verified against the code** — an independent reviewer read this line and confirmed the formula, unit and value (2026-08-18 audit).
 
 **Consumed by.**
 

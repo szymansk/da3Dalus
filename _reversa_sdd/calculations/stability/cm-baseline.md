@@ -6,11 +6,13 @@ unit: – (dimensionless)
 cluster: stability
 user_visible: false
 source_status: SOURCED
+code_audit: CONFIRMED
 node_class: derived
 tags:
   - cluster/stability
   - class/derived
   - source/sourced
+  - audit/confirmed
   - flag/anomaly
   - flag/divergence
 ---
@@ -34,6 +36,8 @@ cm_baseline = _extract_cm(result_baseline)
 - [[alpha-stall-landing|Landing stall alpha]]  — *⊣ limit*
 
 **Produced by.** `app/services/elevator_authority_service.py:692` — `_compute_forward_cg_limit_asb`
+
+🟢 **Verified against the code** — an independent reviewer read this line and confirmed the formula, unit and value (2026-08-18 audit).
 
 **Consumed by.**
 

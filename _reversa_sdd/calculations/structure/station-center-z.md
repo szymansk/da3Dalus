@@ -6,12 +6,14 @@ unit: mm
 cluster: structure
 user_visible: true
 source_status: PARTIAL
+code_audit: CONFIRMED
 node_class: derived
 tags:
   - cluster/structure
   - class/derived
   - source/partial
   - surface/user-visible
+  - audit/confirmed
 ---
 
 # Station centre height
@@ -31,6 +33,8 @@ center_z=pt.center_z,
 - [[section-center-z-analytic|Section mid-height (analytic)]]
 
 **Produced by.** `cad_designer/airplane/geometry/spar_solver.py:775` — `build_stations_from_geometry`
+
+🟢 **Verified against the code** — an independent reviewer read this line and confirmed the formula, unit and value (2026-08-18 audit).
 
 **Consumed by.**
 

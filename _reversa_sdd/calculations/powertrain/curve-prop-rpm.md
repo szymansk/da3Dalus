@@ -6,12 +6,14 @@ unit: rpm
 cluster: powertrain
 user_visible: true
 source_status: SOURCED
+code_audit: CONFIRMED
 node_class: derived
 tags:
   - cluster/powertrain
   - class/derived
   - source/sourced
   - surface/user-visible
+  - audit/confirmed
   - flag/anomaly
   - flag/divergence
 ---
@@ -35,6 +37,8 @@ prop_rpm = motor.output_kv * V_bat * request.throttle
 - [[request-throttle|Throttle fraction]]
 
 **Produced by.** `app/services/powertrain_performance.py:643` — `compute_performance_curve`
+
+🟢 **Verified against the code** — an independent reviewer read this line and confirmed the formula, unit and value (2026-08-18 audit).
 
 **Consumed by.**
 

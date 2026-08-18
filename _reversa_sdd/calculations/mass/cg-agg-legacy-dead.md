@@ -6,11 +6,13 @@ unit: m
 cluster: mass
 user_visible: false
 source_status: SOURCED
+code_audit: NOT_VERIFIED
 node_class: derived
 tags:
   - cluster/mass
   - class/derived
   - source/sourced
+  - audit/not-verified
   - flag/anomaly
   - flag/divergence
 ---
@@ -30,6 +32,8 @@ items = [{"mass_kg": r.mass_kg, "x_m": r.x_m, "y_m": r.y_m, "z_m": r.z_m} for r 
 **Inputs.** — *(leaf: a constant or an external input)*
 
 **Produced by.** `app/services/assumption_compute_service.py:1739` — `_load_cg_agg`
+
+⚪ **Not verified.** This node was not covered by the audit pass; treat its line and formula as extracted-but-unchecked.
 
 **Consumed by.**
 

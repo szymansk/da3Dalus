@@ -6,12 +6,14 @@ unit: m/s
 cluster: perf-envelope
 user_visible: true
 source_status: PARTIAL
+code_audit: CONFIRMED
 node_class: unclassified-parameter
 tags:
   - cluster/perf-envelope
   - class/unclassified-parameter
   - source/partial
   - surface/user-visible
+  - audit/confirmed
 ---
 
 # Maximum level speed
@@ -31,6 +33,8 @@ v = goals.get("max_level_speed_mps"); return float(v) if v is not None else 28.0
 - [[fe_v_max_default|Default maximum level speed]]  — *⤵ fallback*
 
 **Produced by.** `app/services/flight_envelope_service.py:580` — `_get_v_max`
+
+🟢 **Verified against the code** — an independent reviewer read this line and confirmed the formula, unit and value (2026-08-18 audit).
 
 **Consumed by.**
 

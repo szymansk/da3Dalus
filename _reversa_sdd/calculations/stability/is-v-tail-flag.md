@@ -6,11 +6,13 @@ unit: – (bool)
 cluster: stability
 user_visible: false
 source_status: NO_SOURCE_FOUND
+code_audit: CONFIRMED
 node_class: unclassified-constant
 tags:
   - cluster/stability
   - class/unclassified-constant
   - source/no-source-found
+  - audit/confirmed
   - flag/anomaly
   - flag/divergence
 ---
@@ -32,6 +34,8 @@ is_v_tail = False  # V-tail decomposition is out-of-scope (gh-491)
 **Inputs.** — *(leaf: a constant or an external input)*
 
 **Produced by.** `app/services/tail_sizing_service.py:417` — `build_tail_sizing_context_from_aeroplane`
+
+🟢 **Verified against the code** — an independent reviewer read this line and confirmed the formula, unit and value (2026-08-18 audit).
 
 **Consumed by.**
 

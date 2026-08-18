@@ -6,11 +6,13 @@ unit: kg/m
 cluster: structure
 user_visible: false
 source_status: PARTIAL
+code_audit: CONFIRMED
 node_class: derived
 tags:
   - cluster/structure
   - class/derived
   - source/partial
+  - audit/confirmed
   - flag/anomaly
 ---
 
@@ -35,6 +37,8 @@ return density_kg_m3 * area_m2
 - [[mm2-to-m2-factor|Square-millimetre to square-metre factor]]  — *ε tolerance*
 
 **Produced by.** `app/services/spar_plan_service.py:88` — `_linear_mass`
+
+🟢 **Verified against the code** — an independent reviewer read this line and confirmed the formula, unit and value (2026-08-18 audit).
 
 **Consumed by.**
 

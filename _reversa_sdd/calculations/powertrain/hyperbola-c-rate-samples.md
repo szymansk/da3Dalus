@@ -6,12 +6,14 @@ unit: 1/h (C)
 cluster: powertrain
 user_visible: true
 source_status: PARTIAL
+code_audit: CONFIRMED
 node_class: derived
 tags:
   - cluster/powertrain
   - class/derived
   - source/partial
   - surface/user-visible
+  - audit/confirmed
   - flag/anomaly
   - flag/divergence
 ---
@@ -34,6 +36,8 @@ c_rates = [i_peak / (c / 1000.0) for c in caps]
 - [[hyperbola-capacity-samples|Hyperbola capacity samples]]  — *⊣ limit*
 
 **Produced by.** `app/services/powertrain_solution_space_service.py:183` — `_build_hyperbola`
+
+🟢 **Verified against the code** — an independent reviewer read this line and confirmed the formula, unit and value (2026-08-18 audit).
 
 **Consumed by.**
 

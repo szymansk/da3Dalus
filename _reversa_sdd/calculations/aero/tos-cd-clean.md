@@ -6,12 +6,14 @@ unit: dimensionless
 cluster: aero-strips
 user_visible: true
 source_status: SOURCED
+code_audit: CONFIRMED
 node_class: derived
 tags:
   - cluster/aero-strips
   - class/derived
   - source/sourced
   - surface/user-visible
+  - audit/confirmed
 ---
 
 # Natural-transition section drag
@@ -31,6 +33,8 @@ cd_clean = _cd_at_cl_xtr(airfoil, cl, re, xtr_upper=1.0)
 - [[tos-cd-at-cl|Section cd at a target CL and trip position]]
 
 **Produced by.** `app/services/turbulator_optimizer_service.py:232` — `optimize_section_xtr`
+
+🟢 **Verified against the code** — an independent reviewer read this line and confirmed the formula, unit and value (2026-08-18 audit).
 
 **Consumed by.**
 

@@ -6,12 +6,14 @@ unit: dimensionless
 cluster: powertrain
 user_visible: true
 source_status: SOURCED
+code_audit: WRONG_FORMULA
 node_class: unclassified-constant
 tags:
   - cluster/powertrain
   - class/unclassified-constant
   - source/sourced
   - surface/user-visible
+  - audit/wrong-formula
   - flag/anomaly
   - flag/divergence
   - flag/scale
@@ -25,9 +27,17 @@ tags:
 
 **Value.** `0.03`
 
+**Formula — as the code writes it.**
+
+```
+_DEFAULT_CD0 = 0.03
+```
+
 **Inputs.** — *(leaf: a constant or an external input)*
 
 **Produced by.** `app/services/powertrain_sizing_service.py:44` — `_DEFAULT_CD0`
+
+🟠 **Corrected by the audit** — the extraction claimed `WRONG_FORMULA`. 
 
 **Consumed by.**
 

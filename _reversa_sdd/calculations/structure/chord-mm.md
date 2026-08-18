@@ -6,11 +6,13 @@ unit: mm
 cluster: structure
 user_visible: false
 source_status: SOURCED
+code_audit: CONFIRMED
 node_class: derived
 tags:
   - cluster/structure
   - class/derived
   - source/sourced
+  - audit/confirmed
 ---
 
 # Local chord in millimetres
@@ -28,6 +30,8 @@ chord_mm = chord_m * 1000.0
 **Inputs.** — *(leaf: a constant or an external input)*
 
 **Produced by.** `app/services/spar_sizing.py:321` — `compute_spar_sizing`
+
+🟢 **Verified against the code** — an independent reviewer read this line and confirmed the formula, unit and value (2026-08-18 audit).
 
 **Consumed by.**
 

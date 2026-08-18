@@ -6,12 +6,14 @@ unit: dimensionless
 cluster: aero-polars
 user_visible: true
 source_status: NO_SOURCE_FOUND
+code_audit: CONFIRMED
 node_class: derived
 tags:
   - cluster/aero-polars
   - class/derived
   - source/no-source-found
   - surface/user-visible
+  - audit/confirmed
   - flag/anomaly
   - flag/divergence
 ---
@@ -35,6 +37,8 @@ cl_bonus = (1.0 - cl_max_weight) + cl_max_weight * cl_norm
 - [[alr-cl-max-weight-default|Mission cl_max_weight default]]  — *⤵ fallback*
 
 **Produced by.** `app/services/airfoil_low_re_service.py:937` — `score_mission`
+
+🟢 **Verified against the code** — an independent reviewer read this line and confirmed the formula, unit and value (2026-08-18 audit).
 
 **Consumed by.**
 

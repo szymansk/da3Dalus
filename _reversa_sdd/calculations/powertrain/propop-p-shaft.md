@@ -6,11 +6,13 @@ unit: W
 cluster: powertrain
 user_visible: false
 source_status: SOURCED
+code_audit: CONFIRMED
 node_class: derived
 tags:
   - cluster/powertrain
   - class/derived
   - source/sourced
+  - audit/confirmed
   - flag/anomaly
   - flag/divergence
 ---
@@ -34,6 +36,8 @@ p_shaft_w = Cp * rho * (n_rps**3) * (D_m**5) ; p_shaft_w = max(p_shaft_w, 0.0)
 - [[propop-n-rps|Propeller rotational speed (operating point)]]
 
 **Produced by.** `app/services/powertrain_performance.py:411` — `compute_prop_operating_point`
+
+🟢 **Verified against the code** — an independent reviewer read this line and confirmed the formula, unit and value (2026-08-18 audit).
 
 **Consumed by.**
 

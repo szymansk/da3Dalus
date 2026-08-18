@@ -6,12 +6,14 @@ unit: m/s
 cluster: perf-oppoints
 user_visible: true
 source_status: SOURCED
+code_audit: CONFIRMED
 node_class: derived
 tags:
   - cluster/perf-oppoints
   - class/derived
   - source/sourced
   - surface/user-visible
+  - audit/confirmed
   - flag/divergence
 ---
 
@@ -33,6 +35,8 @@ v_stall_turn = vs_clean * (n**0.5)
 - [[turn_load_factor_n|Turn load factor]]
 
 **Produced by.** `app/services/operating_point_generator_service.py:170` — `_apply_turn_feasibility`
+
+🟢 **Verified against the code** — an independent reviewer read this line and confirmed the formula, unit and value (2026-08-18 audit).
 
 **Consumed by.**
 

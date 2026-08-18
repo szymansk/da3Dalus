@@ -6,12 +6,14 @@ unit: dimensionless
 cluster: aero-polars
 user_visible: true
 source_status: PARTIAL
+code_audit: CONFIRMED
 node_class: derived
 tags:
   - cluster/aero-polars
   - class/derived
   - source/partial
   - surface/user-visible
+  - audit/confirmed
   - flag/divergence
 ---
 
@@ -34,6 +36,8 @@ return float(cd0_lo + t * (cd0_hi - cd0_lo))
 - [[prt-re-aircraft|Aircraft-level Reynolds number (V-band label)]]
 
 **Produced by.** `app/services/polar_re_table_service.py:176` — `lookup_cd0_at_v`
+
+🟢 **Verified against the code** — an independent reviewer read this line and confirmed the formula, unit and value (2026-08-18 audit).
 
 **Consumed by.**
 

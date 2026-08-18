@@ -6,11 +6,13 @@ unit: m²/s
 cluster: aero-strips
 user_visible: false
 source_status: PARTIAL
+code_audit: CONFIRMED
 node_class: physical-constant
 tags:
   - cluster/aero-strips
   - class/physical-constant
   - source/partial
+  - audit/confirmed
   - flag/anomaly
   - flag/divergence
   - flag/scale
@@ -35,6 +37,8 @@ nu = 1.5e-5  # kinematic viscosity [m²/s]
 **Inputs.** — *(leaf: a constant or an external input)*
 
 **Produced by.** `app/services/turbulator_optimizer_service.py:396` — `build_wing_section_data`
+
+🟢 **Verified against the code** — an independent reviewer read this line and confirmed the formula, unit and value (2026-08-18 audit).
 
 **Consumed by.**
 

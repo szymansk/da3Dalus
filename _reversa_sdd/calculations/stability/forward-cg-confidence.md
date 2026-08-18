@@ -6,12 +6,14 @@ unit: – (enum)
 cluster: stability
 user_visible: true
 source_status: NO_SOURCE_FOUND
+code_audit: CONFIRMED
 node_class: derived
 tags:
   - cluster/stability
   - class/derived
   - source/no-source-found
   - surface/user-visible
+  - audit/confirmed
   - flag/anomaly
   - flag/divergence
 ---
@@ -39,6 +41,8 @@ else:
 - [[pitch-roles|Pitch-control roles]]
 
 **Produced by.** `app/services/elevator_authority_service.py:165` — `_determine_confidence_tier`
+
+🟢 **Verified against the code** — an independent reviewer read this line and confirmed the formula, unit and value (2026-08-18 audit).
 
 **Consumed by.**
 

@@ -6,11 +6,13 @@ unit: deg
 cluster: aero-strips
 user_visible: false
 source_status: NO_SOURCE_FOUND
+code_audit: CONFIRMED
 node_class: numerical-tolerance
 tags:
   - cluster/aero-strips
   - class/numerical-tolerance
   - source/no-source-found
+  - audit/confirmed
   - flag/anomaly
   - flag/divergence
   - flag/scale
@@ -34,6 +36,8 @@ alpha_l0 = 0.0  # NeuralFoil unavailable or failed
 **Inputs.** — *(leaf: a constant or an external input)*
 
 **Produced by.** `app/services/section_aoa_service.py:190` — `_compute_alpha_l0_per_section`
+
+🟢 **Verified against the code** — an independent reviewer read this line and confirmed the formula, unit and value (2026-08-18 audit).
 
 **Consumed by.**
 

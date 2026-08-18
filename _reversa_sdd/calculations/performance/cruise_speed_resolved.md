@@ -6,12 +6,14 @@ unit: m/s
 cluster: perf-oppoints
 user_visible: true
 source_status: PARTIAL
+code_audit: CONFIRMED
 node_class: derived
 tags:
   - cluster/perf-oppoints
   - class/derived
   - source/partial
   - surface/user-visible
+  - audit/confirmed
   - flag/divergence
 ---
 
@@ -32,6 +34,8 @@ cruise_from_goals = float(goals.get("cruise_speed_mps", 18.0)); if source_profil
 - [[default_cruise_speed_mps|Default cruise speed]]  — *⤵ fallback*
 
 **Produced by.** `app/services/operating_point_generator_service.py:277` — `_resolve_cruise_speed_with_md_fallback`
+
+🟢 **Verified against the code** — an independent reviewer read this line and confirmed the formula, unit and value (2026-08-18 audit).
 
 **Consumed by.**
 

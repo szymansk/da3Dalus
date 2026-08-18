@@ -6,12 +6,14 @@ unit: -
 cluster: perf-envelope
 user_visible: true
 source_status: PARTIAL
+code_audit: CONFIRMED
 node_class: derived
 tags:
   - cluster/perf-envelope
   - class/derived
   - source/partial
   - surface/user-visible
+  - audit/confirmed
 ---
 
 # Resolved Oswald efficiency
@@ -31,6 +33,8 @@ e_oswald: float = e_oswald_raw if e_oswald_raw is not None else FALLBACK_E_OSWAL
 - [[end_fallback_e|Oswald fallback]]  — *⤵ fallback*
 
 **Produced by.** `app/services/endurance_service.py:301` — `compute_endurance`
+
+🟢 **Verified against the code** — an independent reviewer read this line and confirmed the formula, unit and value (2026-08-18 audit).
 
 **Consumed by.**
 

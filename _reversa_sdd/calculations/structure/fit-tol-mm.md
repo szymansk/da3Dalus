@@ -5,11 +5,13 @@ unit: mm
 cluster: structure
 user_visible: false
 source_status: NO_SOURCE_FOUND
+code_audit: WRONG_LINE
 node_class: numerical-tolerance
 tags:
   - cluster/structure
   - class/numerical-tolerance
   - source/no-source-found
+  - audit/wrong-line
   - flag/anomaly
 ---
 
@@ -29,7 +31,9 @@ _FIT_TOL_MM = 1e-6
 
 **Inputs.** — *(leaf: a constant or an external input)*
 
-**Produced by.** `cad_designer/airplane/geometry/spar_solver.py:38` — `_FIT_TOL_MM`
+**Produced by.** `cad_designer/airplane/geometry/spar_solver.py:37` — `_FIT_TOL_MM`
+
+🟠 **Corrected by the audit** — the extraction claimed `WRONG_LINE`. Original line was `38`. 
 
 **Consumed by.**
 

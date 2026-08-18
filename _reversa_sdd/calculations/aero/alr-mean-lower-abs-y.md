@@ -6,11 +6,13 @@ unit: chord fraction
 cluster: aero-polars
 user_visible: false
 source_status: NO_SOURCE_FOUND
+code_audit: CONFIRMED
 node_class: derived
 tags:
   - cluster/aero-polars
   - class/derived
   - source/no-source-found
+  - audit/confirmed
   - flag/divergence
 ---
 
@@ -29,6 +31,8 @@ mean_lower_abs_y = float(np.mean(np.abs(y_lower)))
 **Inputs.** — *(leaf: a constant or an external input)*
 
 **Produced by.** `app/services/airfoil_low_re_service.py:238` — `classify_family`
+
+🟢 **Verified against the code** — an independent reviewer read this line and confirmed the formula, unit and value (2026-08-18 audit).
 
 **Consumed by.**
 

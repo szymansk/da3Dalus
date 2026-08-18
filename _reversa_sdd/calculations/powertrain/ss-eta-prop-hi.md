@@ -6,12 +6,14 @@ unit: dimensionless (0..1)
 cluster: powertrain
 user_visible: true
 source_status: SOURCED
+code_audit: NOT_VERIFIED
 node_class: unclassified-parameter
 tags:
   - cluster/powertrain
   - class/unclassified-parameter
   - source/sourced
   - surface/user-visible
+  - audit/not-verified
   - flag/anomaly
   - flag/divergence
   - flag/scale
@@ -28,6 +30,8 @@ tags:
 **Inputs.** — *(leaf: a constant or an external input)*
 
 **Produced by.** `app/schemas/powertrain_solution_space.py:35` — `SolutionSpaceAssumptions.eta_prop_hi`
+
+⚪ **Not verified.** This node was not covered by the audit pass; treat its line and formula as extracted-but-unchecked.
 
 **Consumed by.**
 

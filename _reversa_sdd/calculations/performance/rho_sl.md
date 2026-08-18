@@ -6,11 +6,13 @@ unit: kg/m^3
 cluster: perf-matching
 user_visible: false
 source_status: SOURCED
+code_audit: CONFIRMED
 node_class: physical-constant
 tags:
   - cluster/perf-matching
   - class/physical-constant
   - source/sourced
+  - audit/confirmed
   - flag/anomaly
   - flag/divergence
   - flag/physical
@@ -34,6 +36,8 @@ _RHO_SL: float = 1.225
 **Inputs.** — *(leaf: a constant or an external input)*
 
 **Produced by.** `app/services/field_length_service.py:68` — `_RHO_SL`
+
+🟢 **Verified against the code** — an independent reviewer read this line and confirmed the formula, unit and value (2026-08-18 audit).
 
 **Consumed by.**
 

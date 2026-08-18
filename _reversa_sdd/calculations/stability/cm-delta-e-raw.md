@@ -6,12 +6,14 @@ unit: 1/rad
 cluster: stability
 user_visible: true
 source_status: SOURCED
+code_audit: CONFIRMED
 node_class: derived
 tags:
   - cluster/stability
   - class/derived
   - source/sourced
   - surface/user-visible
+  - audit/confirmed
   - flag/anomaly
   - flag/divergence
   - flag/scale
@@ -36,6 +38,8 @@ cm_delta_e_raw = (cm_deflected - cm_baseline) / delta_e_max_rad
 - [[delta-e-neg-deg|TE-UP deflection command]]
 
 **Produced by.** `app/services/elevator_authority_service.py:709` — `_compute_forward_cg_limit_asb`
+
+🟢 **Verified against the code** — an independent reviewer read this line and confirmed the formula, unit and value (2026-08-18 audit).
 
 **Consumed by.**
 

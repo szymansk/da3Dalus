@@ -6,11 +6,13 @@ unit: deg
 cluster: aero-polars
 user_visible: false
 source_status: PARTIAL
+code_audit: CONFIRMED
 node_class: derived
 tags:
   - cluster/aero-polars
   - class/derived
   - source/partial
+  - audit/confirmed
   - flag/anomaly
   - flag/divergence
 ---
@@ -35,6 +37,8 @@ result["alpha_attached_hi"] = float(attached_alpha[-1])
 - [[alr-alpha-sweep|Alpha sweep bounds and step]]  — *⊣ limit*
 
 **Produced by.** `app/services/airfoil_low_re_service.py:649` — `_extract_metrics`
+
+🟢 **Verified against the code** — an independent reviewer read this line and confirmed the formula, unit and value (2026-08-18 audit).
 
 **Consumed by.**
 

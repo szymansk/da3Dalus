@@ -6,12 +6,14 @@ unit: dimensionless
 cluster: powertrain
 user_visible: true
 source_status: SOURCED
+code_audit: CONFIRMED
 node_class: derived
 tags:
   - cluster/powertrain
   - class/derived
   - source/sourced
   - surface/user-visible
+  - audit/confirmed
 ---
 
 # Propeller power coefficient
@@ -32,6 +34,8 @@ Cp_interp = float(np.interp(J_clamp, Js, Cps))
 - [[polar-samples-input|Propeller polar rows]]
 
 **Produced by.** `app/services/powertrain_performance.py:329` — `interpolate_ct_cp_pe`
+
+🟢 **Verified against the code** — an independent reviewer read this line and confirmed the formula, unit and value (2026-08-18 audit).
 
 **Consumed by.**
 

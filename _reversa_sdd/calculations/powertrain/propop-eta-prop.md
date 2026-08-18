@@ -6,11 +6,13 @@ unit: dimensionless (0..1)
 cluster: powertrain
 user_visible: false
 source_status: SOURCED
+code_audit: CONFIRMED
 node_class: derived
 tags:
   - cluster/powertrain
   - class/derived
   - source/sourced
+  - audit/confirmed
   - flag/anomaly
 ---
 
@@ -31,6 +33,8 @@ eta_prop = Pe ; eta_prop = max(eta_prop, 0.0)
 - [[polar-pe|Propeller efficiency from polar]]  — *⊣ limit*
 
 **Produced by.** `app/services/powertrain_performance.py:415` — `compute_prop_operating_point`
+
+🟢 **Verified against the code** — an independent reviewer read this line and confirmed the formula, unit and value (2026-08-18 audit).
 
 **Consumed by.**
 

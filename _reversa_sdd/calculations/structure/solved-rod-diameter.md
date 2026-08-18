@@ -6,12 +6,14 @@ unit: mm
 cluster: structure
 user_visible: true
 source_status: PARTIAL
+code_audit: CONFIRMED
 node_class: derived
 tags:
   - cluster/structure
   - class/derived
   - source/partial
   - surface/user-visible
+  - audit/confirmed
   - flag/divergence
 ---
 
@@ -32,6 +34,8 @@ d = (10.0 * erf_w) ** (1.0 / 3.0)
 - [[required-section-modulus|Required section modulus]]
 
 **Produced by.** `app/services/spar_sizing.py:159` — `_solve_rod`
+
+🟢 **Verified against the code** — an independent reviewer read this line and confirmed the formula, unit and value (2026-08-18 audit).
 
 **Consumed by.**
 

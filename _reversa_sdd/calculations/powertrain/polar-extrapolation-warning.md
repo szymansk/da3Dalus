@@ -6,12 +6,14 @@ unit: boolean
 cluster: powertrain
 user_visible: true
 source_status: NO_SOURCE_FOUND
+code_audit: CONFIRMED
 node_class: derived
 tags:
   - cluster/powertrain
   - class/derived
   - source/no-source-found
   - surface/user-visible
+  - audit/confirmed
 ---
 
 # Advance-ratio extrapolation flag
@@ -31,6 +33,8 @@ extrapolation_warning = (J < J_min) or (J > J_max)
 - [[curve-advance-ratio|Advance ratio per velocity sample]]
 
 **Produced by.** `app/services/powertrain_performance.py:323` — `interpolate_ct_cp_pe`
+
+🟢 **Verified against the code** — an independent reviewer read this line and confirmed the formula, unit and value (2026-08-18 audit).
 
 **Consumed by.**
 

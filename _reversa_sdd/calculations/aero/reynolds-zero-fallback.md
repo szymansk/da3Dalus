@@ -5,12 +5,14 @@ unit: -
 cluster: aero-spanwise
 user_visible: true
 source_status: NO_SOURCE_FOUND
+code_audit: WRONG_LINE
 node_class: numerical-tolerance
 tags:
   - cluster/aero-spanwise
   - class/numerical-tolerance
   - source/no-source-found
   - surface/user-visible
+  - audit/wrong-line
   - flag/anomaly
 ---
 
@@ -30,7 +32,9 @@ return 0.0
 
 **Inputs.** — *(leaf: a constant or an external input)*
 
-**Produced by.** `app/services/analysis_service.py:1723` — `_reynolds_from_atmosphere`
+**Produced by.** `app/services/analysis_service.py:1724` — `_reynolds_from_atmosphere`
+
+🟠 **Corrected by the audit** — the extraction claimed `WRONG_LINE`. Original line was `1723`. 
 
 **Consumed by.**
 

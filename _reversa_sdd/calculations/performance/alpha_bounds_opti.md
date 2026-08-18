@@ -5,11 +5,13 @@ unit: deg
 cluster: perf-oppoints
 user_visible: false
 source_status: NO_SOURCE_FOUND
+code_audit: CONFIRMED
 node_class: unclassified-parameter
 tags:
   - cluster/perf-oppoints
   - class/unclassified-parameter
   - source/no-source-found
+  - audit/confirmed
   - flag/anomaly
   - flag/divergence
 ---
@@ -33,6 +35,8 @@ alpha_lower = -8.0; alpha_upper = max(alpha_lower + 1.0, max_alpha); alpha_deg =
 - [[default_max_alpha_deg|Default maximum angle of attack]]  — *⤵ fallback*
 
 **Produced by.** `app/services/operating_point_generator_service.py:597` — `_solve_trim_candidate_with_opti`
+
+🟢 **Verified against the code** — an independent reviewer read this line and confirmed the formula, unit and value (2026-08-18 audit).
 
 **Consumed by.**
 

@@ -6,11 +6,13 @@ unit: dimensionless (ΔCL)
 cluster: aero-polars
 user_visible: false
 source_status: NO_SOURCE_FOUND
+code_audit: CONFIRMED
 node_class: unclassified-parameter
 tags:
   - cluster/aero-polars
   - class/unclassified-parameter
   - source/no-source-found
+  - audit/confirmed
   - flag/divergence
 ---
 
@@ -31,6 +33,8 @@ low_re_score_cl_max_safety_band: float = 0.30
 **Inputs.** — *(leaf: a constant or an external input)*
 
 **Produced by.** `app/settings.py:107` — `Settings.low_re_score_cl_max_safety_band`
+
+🟢 **Verified against the code** — an independent reviewer read this line and confirmed the formula, unit and value (2026-08-18 audit).
 
 **Consumed by.**
 

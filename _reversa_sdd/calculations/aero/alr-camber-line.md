@@ -6,11 +6,13 @@ unit: chord fraction
 cluster: aero-polars
 user_visible: false
 source_status: SOURCED
+code_audit: CONFIRMED
 node_class: derived
 tags:
   - cluster/aero-polars
   - class/derived
   - source/sourced
+  - audit/confirmed
   - flag/divergence
 ---
 
@@ -29,6 +31,8 @@ camber = (y_upper + y_lower) / 2.0
 **Inputs.** — *(leaf: a constant or an external input)*
 
 **Produced by.** `app/services/airfoil_low_re_service.py:211` — `classify_family`
+
+🟢 **Verified against the code** — an independent reviewer read this line and confirmed the formula, unit and value (2026-08-18 audit).
 
 **Consumed by.**
 

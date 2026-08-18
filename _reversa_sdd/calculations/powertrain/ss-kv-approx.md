@@ -6,12 +6,14 @@ unit: rpm/V
 cluster: powertrain
 user_visible: true
 source_status: PARTIAL
+code_audit: CONFIRMED
 node_class: derived
 tags:
   - cluster/powertrain
   - class/derived
   - source/partial
   - surface/user-visible
+  - audit/confirmed
   - flag/anomaly
   - flag/divergence
 ---
@@ -35,6 +37,8 @@ kv_approx = rpm_target / (v_nom * load_rpm_factor) if v_nom > 0 else 0.0
 - [[ss-load-rpm-factor|Under-load RPM factor]]
 
 **Produced by.** `app/services/powertrain_solution_space_service.py:159` — `_per_cell`
+
+🟢 **Verified against the code** — an independent reviewer read this line and confirmed the formula, unit and value (2026-08-18 audit).
 
 **Consumed by.**
 

@@ -6,12 +6,14 @@ unit: boolean
 cluster: powertrain
 user_visible: true
 source_status: PARTIAL
+code_audit: CONFIRMED
 node_class: derived
 tags:
   - cluster/powertrain
   - class/derived
   - source/partial
   - surface/user-visible
+  - audit/confirmed
   - flag/anomaly
 ---
 
@@ -33,6 +35,8 @@ cap = specs.get("capacity_mah") ; c_rating = specs.get("c_rating") or specs.get(
 - [[ss-c-min|Required battery C-rate]]  — *⊣ limit*
 
 **Produced by.** `app/services/powertrain_solution_space_service.py:218` — `_catalog_battery_match`
+
+🟢 **Verified against the code** — an independent reviewer read this line and confirmed the formula, unit and value (2026-08-18 audit).
 
 **Consumed by.**
 

@@ -6,12 +6,14 @@ unit: m
 cluster: aero-spanwise
 user_visible: true
 source_status: SOURCED
+code_audit: CONFIRMED
 node_class: derived
 tags:
   - cluster/aero-spanwise
   - class/derived
   - source/sourced
   - surface/user-visible
+  - audit/confirmed
 ---
 
 # Local strip chord
@@ -29,6 +31,8 @@ chord_m: float = Field(..., description="Local chord at this strip (m)")
 **Inputs.** — *(leaf: a constant or an external input)*
 
 **Produced by.** `app/schemas/spanwise_loads.py:28` — `SpanwiseLoadEntry.chord_m`
+
+🟢 **Verified against the code** — an independent reviewer read this line and confirmed the formula, unit and value (2026-08-18 audit).
 
 **Consumed by.**
 

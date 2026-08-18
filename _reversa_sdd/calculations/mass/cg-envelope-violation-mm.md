@@ -6,12 +6,14 @@ unit: mm
 cluster: mass
 user_visible: true
 source_status: PARTIAL
+code_audit: CONFIRMED
 node_class: derived
 tags:
   - cluster/mass
   - class/derived
   - source/partial
   - surface/user-visible
+  - audit/confirmed
   - flag/anomaly
   - flag/divergence
 ---
@@ -38,6 +40,8 @@ excess_mm = round((cg_loading_aft_m - cg_stability_aft_m) * 1000, 1)   # forward
 - [[cg-stability-fwd-stub|Forward CG stability limit (0.30·MAC stub)]]  — *⊣ limit*
 
 **Produced by.** `app/services/loading_scenario_service.py:211` — `validate_cg_envelope`
+
+🟢 **Verified against the code** — an independent reviewer read this line and confirmed the formula, unit and value (2026-08-18 audit).
 
 **Consumed by.**
 

@@ -6,12 +6,14 @@ unit: Pa
 cluster: aero-spanwise
 user_visible: true
 source_status: SOURCED
+code_audit: CONFIRMED
 node_class: derived
 tags:
   - cluster/aero-spanwise
   - class/derived
   - source/sourced
   - surface/user-visible
+  - audit/confirmed
   - flag/divergence
 ---
 
@@ -32,6 +34,8 @@ q_dyn = 0.5 * rho * float(resolved_op.velocity) ** 2
 - [[rho-spanwise|Air density (spanwise loads)]]
 
 **Produced by.** `app/services/analysis_service.py:2053` — `analyze_airplane_spanwise_loads`
+
+🟢 **Verified against the code** — an independent reviewer read this line and confirmed the formula, unit and value (2026-08-18 audit).
 
 **Consumed by.**
 

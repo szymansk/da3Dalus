@@ -6,12 +6,14 @@ unit: mm³
 cluster: structure
 user_visible: true
 source_status: SOURCED
+code_audit: CONFIRMED
 node_class: derived
 tags:
   - cluster/structure
   - class/derived
   - source/sourced
   - surface/user-visible
+  - audit/confirmed
   - flag/divergence
 ---
 
@@ -34,6 +36,8 @@ return m_design_Nm * 1000.0 / sigma_allow_mpa
 - [[mm-per-metre-factor|Metre-to-millimetre conversion factor]]  — *× unit*
 
 **Produced by.** `app/services/spar_sizing.py:88` — `required_section_modulus`
+
+🟢 **Verified against the code** — an independent reviewer read this line and confirmed the formula, unit and value (2026-08-18 audit).
 
 **Consumed by.**
 

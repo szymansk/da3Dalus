@@ -6,11 +6,13 @@ unit: m/s
 cluster: aero-spanwise
 user_visible: false
 source_status: NO_SOURCE_FOUND
+code_audit: CONFIRMED
 node_class: unclassified-parameter
 tags:
   - cluster/aero-spanwise
   - class/unclassified-parameter
   - source/no-source-found
+  - audit/confirmed
   - flag/scale
 ---
 
@@ -29,6 +31,8 @@ raw = context.get("v_dive_mps"); return float(raw)
 **Inputs.** — *(leaf: a constant or an external input)*
 
 **Produced by.** `app/services/analysis_service.py:595` — `_resolve_v_dive_from_context`
+
+🟢 **Verified against the code** — an independent reviewer read this line and confirmed the formula, unit and value (2026-08-18 audit).
 
 **Consumed by.**
 

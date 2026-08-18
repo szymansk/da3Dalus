@@ -2,16 +2,18 @@
 name: turn_load_factor_n
 symbol: n
 kind: quantity
-unit: g
+unit: dimensionless
 cluster: perf-oppoints
 user_visible: true
 source_status: SOURCED
+code_audit: WRONG_UNIT
 node_class: derived
 tags:
   - cluster/perf-oppoints
   - class/derived
   - source/sourced
   - surface/user-visible
+  - audit/wrong-unit
   - flag/divergence
 ---
 
@@ -30,6 +32,8 @@ n = turn_kinematics(bank_deg=float(bank_deg), velocity=float(velocity)).n
 **Inputs.** — *(leaf: a constant or an external input)*
 
 **Produced by.** `app/services/operating_point_generator_service.py:169` — `_apply_turn_feasibility`
+
+🟠 **Corrected by the audit** — the extraction claimed `WRONG_UNIT`. Original unit was `g`. Load factor n is dimensionless, not acceleration g
 
 **Consumed by.**
 

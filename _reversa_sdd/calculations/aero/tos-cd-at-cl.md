@@ -6,11 +6,13 @@ unit: dimensionless
 cluster: aero-strips
 user_visible: false
 source_status: PARTIAL
+code_audit: CONFIRMED
 node_class: derived
 tags:
   - cluster/aero-strips
   - class/derived
   - source/partial
+  - audit/confirmed
   - flag/divergence
   - solver-adjacent/neuralfoil
 ---
@@ -36,6 +38,8 @@ return float(np.interp(cl_target, cl_sorted, cd_sorted))
 - [[saoa-cl|Section lift coefficient (Kutta-Joukowski)]]
 
 **Produced by.** `app/services/turbulator_optimizer_service.py:175` — `_cd_at_cl_xtr`
+
+🟢 **Verified against the code** — an independent reviewer read this line and confirmed the formula, unit and value (2026-08-18 audit).
 
 **Consumed by.**
 

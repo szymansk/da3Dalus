@@ -6,12 +6,14 @@ unit: dimensionless
 cluster: powertrain
 user_visible: true
 source_status: SOURCED
+code_audit: CONFIRMED
 node_class: derived
 tags:
   - cluster/powertrain
   - class/derived
   - source/sourced
   - surface/user-visible
+  - audit/confirmed
 ---
 
 # Advance ratio per velocity sample
@@ -33,6 +35,8 @@ J = V_f / (point_n_rps * D_m) if (point_n_rps > 0 and D_m > 0) else 0.0
 - [[curve-diameter-m|Propeller diameter in metres]]
 
 **Produced by.** `app/services/powertrain_performance.py:733` — `compute_performance_curve`
+
+🟢 **Verified against the code** — an independent reviewer read this line and confirmed the formula, unit and value (2026-08-18 audit).
 
 **Consumed by.**
 

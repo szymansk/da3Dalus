@@ -6,11 +6,13 @@ unit: dimensionless (0..1)
 cluster: powertrain
 user_visible: false
 source_status: SOURCED
+code_audit: CONFIRMED
 node_class: derived
 tags:
   - cluster/powertrain
   - class/derived
   - source/sourced
+  - audit/confirmed
   - flag/anomaly
   - flag/divergence
 ---
@@ -35,6 +37,8 @@ eta = (V_terminal - current * rm) * (current - i0) / (V_terminal * current) ; et
 - [[motor-io-input|No-load current]]  — *⤵ fallback*
 
 **Produced by.** `app/services/powertrain_performance.py:585` — `solve_qprop_operating_point`
+
+🟢 **Verified against the code** — an independent reviewer read this line and confirmed the formula, unit and value (2026-08-18 audit).
 
 **Consumed by.**
 

@@ -6,11 +6,13 @@ unit: m/s²
 cluster: mass
 user_visible: false
 source_status: SOURCED
+code_audit: NOT_VERIFIED
 node_class: physical-constant
 tags:
   - cluster/mass
   - class/physical-constant
   - source/sourced
+  - audit/not-verified
   - flag/anomaly
   - flag/divergence
   - flag/physical
@@ -28,6 +30,8 @@ tags:
 **Inputs.** — *(leaf: a constant or an external input)*
 
 **Produced by.** `app/services/assumption_compute_service.py:1763` — `_stall_speed default argument (repeated at :1804, :1871, :1923, :1953, :1978)`
+
+⚪ **Not verified.** This node was not covered by the audit pass; treat its line and formula as extracted-but-unchecked.
 
 **Consumed by.**
 

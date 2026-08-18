@@ -6,12 +6,14 @@ unit: N/m^2
 cluster: perf-matching
 user_visible: true
 source_status: NO_SOURCE_FOUND
+code_audit: CONFIRMED
 node_class: unclassified-constant
 tags:
   - cluster/perf-matching
   - class/unclassified-constant
   - source/no-source-found
   - surface/user-visible
+  - audit/confirmed
   - flag/divergence
 ---
 
@@ -32,6 +34,8 @@ _WS_MIN: float = 10.0
 **Inputs.** — *(leaf: a constant or an external input)*
 
 **Produced by.** `app/services/matching_chart_service.py:71` — `_WS_MIN`
+
+🟢 **Verified against the code** — an independent reviewer read this line and confirmed the formula, unit and value (2026-08-18 audit).
 
 **Consumed by.**
 

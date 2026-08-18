@@ -6,11 +6,13 @@ unit: dimensionless
 cluster: aero-polars
 user_visible: false
 source_status: SOURCED
+code_audit: CONFIRMED
 node_class: numerical-tolerance
 tags:
   - cluster/aero-polars
   - class/numerical-tolerance
   - source/sourced
+  - audit/confirmed
   - flag/divergence
   - solver-adjacent/neuralfoil
 ---
@@ -32,6 +34,8 @@ mach=0.0
 **Inputs.** — *(leaf: a constant or an external input)*
 
 **Produced by.** `app/services/airfoil_low_re_service.py:472` — `compute_airfoil_low_re`
+
+🟢 **Verified against the code** — an independent reviewer read this line and confirmed the formula, unit and value (2026-08-18 audit).
 
 **Consumed by.**
 

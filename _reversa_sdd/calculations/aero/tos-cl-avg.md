@@ -6,11 +6,13 @@ unit: dimensionless
 cluster: aero-strips
 user_visible: false
 source_status: SOURCED
+code_audit: CONFIRMED
 node_class: derived
 tags:
   - cluster/aero-strips
   - class/derived
   - source/sourced
+  - audit/confirmed
   - flag/divergence
 ---
 
@@ -32,6 +34,8 @@ cl_avg = sum(s.cl * s.section_area_m2 for s in sections) / total_area if total_a
 - [[bwsd-section-area-normalised|Normalised section area]]
 
 **Produced by.** `app/services/turbulator_optimizer_service.py:607` — `run_turbulator_optimizer`
+
+🟢 **Verified against the code** — an independent reviewer read this line and confirmed the formula, unit and value (2026-08-18 audit).
 
 **Consumed by.**
 

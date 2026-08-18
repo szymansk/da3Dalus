@@ -6,11 +6,13 @@ unit: m²
 cluster: stability
 user_visible: false
 source_status: SOURCED
+code_audit: CONFIRMED
 node_class: derived
 tags:
   - cluster/stability
   - class/derived
   - source/sourced
+  - audit/confirmed
   - flag/anomaly
   - flag/divergence
 ---
@@ -33,6 +35,8 @@ return total * (2.0 if symmetric else 1.0)
 **Inputs.** — *(leaf: a constant or an external input)*
 
 **Produced by.** `app/services/tail_sizing_service.py:476` — `_wing_area_approx`
+
+🟢 **Verified against the code** — an independent reviewer read this line and confirmed the formula, unit and value (2026-08-18 audit).
 
 **Consumed by.**
 

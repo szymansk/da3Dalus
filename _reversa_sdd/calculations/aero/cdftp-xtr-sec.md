@@ -6,11 +6,13 @@ unit: x/c
 cluster: aero-strips
 user_visible: false
 source_status: PARTIAL
+code_audit: WRONG_LINE
 node_class: derived
 tags:
   - cluster/aero-strips
   - class/derived
   - source/partial
+  - audit/wrong-line
   - flag/divergence
 ---
 
@@ -30,7 +32,9 @@ xtr_sec = xtr_root + frac * (xtr_tip - xtr_root); xtr_sec = float(np.clip(xtr_se
 
 - [[cdftp-frac|Span fraction of a section]]
 
-**Produced by.** `app/services/turbulator_optimizer_service.py:688` — `compute_delta_cd0_from_turbulator_position`
+**Produced by.** `app/services/turbulator_optimizer_service.py:689` — `compute_delta_cd0_from_turbulator_position`
+
+🟠 **Corrected by the audit** — the extraction claimed `WRONG_LINE`. Original line was `688`. 
 
 **Consumed by.**
 

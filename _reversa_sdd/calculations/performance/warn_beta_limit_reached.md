@@ -5,12 +5,14 @@ unit: dimensionless
 cluster: perf-oppoints
 user_visible: true
 source_status: PARTIAL
+code_audit: CONFIRMED
 node_class: derived
 tags:
   - cluster/perf-oppoints
   - class/derived
   - source/partial
   - surface/user-visible
+  - audit/confirmed
   - flag/divergence
 ---
 
@@ -32,6 +34,8 @@ if max_beta is not None and abs(best_beta) > float(max_beta): trim_status = Oper
 - [[default_max_beta_deg|Default maximum sideslip]]  — *⤵ fallback*
 
 **Produced by.** `app/services/operating_point_generator_service.py:865` — `_apply_limit_warnings`
+
+🟢 **Verified against the code** — an independent reviewer read this line and confirmed the formula, unit and value (2026-08-18 audit).
 
 **Consumed by.**
 

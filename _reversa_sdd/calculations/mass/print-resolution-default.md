@@ -6,11 +6,13 @@ unit: mm
 cluster: mass
 user_visible: false
 source_status: NO_SOURCE_FOUND
+code_audit: CONFIRMED
 node_class: unclassified-constant
 tags:
   - cluster/mass
   - class/unclassified-constant
   - source/no-source-found
+  - audit/confirmed
   - flag/anomaly
 ---
 
@@ -25,6 +27,8 @@ tags:
 **Inputs.** — *(leaf: a constant or an external input)*
 
 **Produced by.** `app/services/component_tree_service.py:454` — `_weight_from_cad_shape`
+
+🟢 **Verified against the code** — an independent reviewer read this line and confirmed the formula, unit and value (2026-08-18 audit).
 
 **Consumed by.**
 

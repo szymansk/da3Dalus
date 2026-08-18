@@ -6,11 +6,13 @@ unit: enum
 cluster: aero-polars
 user_visible: false
 source_status: SOURCED
+code_audit: WRONG_LINE
 node_class: unclassified-parameter
 tags:
   - cluster/aero-polars
   - class/unclassified-parameter
   - source/sourced
+  - audit/wrong-line
   - flag/anomaly
   - flag/divergence
   - solver-adjacent/neuralfoil
@@ -32,7 +34,9 @@ model_size: str = "xxxlarge"
 
 **Inputs.** — *(leaf: a constant or an external input)*
 
-**Produced by.** `app/services/airfoil_low_re_service.py:413` — `compute_airfoil_low_re`
+**Produced by.** `app/services/airfoil_low_re_service.py:411` — `compute_airfoil_low_re`
+
+🟠 **Corrected by the audit** — the extraction claimed `WRONG_LINE`. Original line was `413`. 
 
 **Consumed by.**
 

@@ -6,11 +6,13 @@ unit: panels
 cluster: aero-strips
 user_visible: false
 source_status: NO_SOURCE_FOUND
+code_audit: CONFIRMED
 node_class: unclassified-constant
 tags:
   - cluster/aero-strips
   - class/unclassified-constant
   - source/no-source-found
+  - audit/confirmed
   - flag/anomaly
   - flag/divergence
   - solver-adjacent/vlm
@@ -35,6 +37,8 @@ return [max(min_per_segment, 1) for _ in spans]
 - [[vlm-min-panels-per-segment|Minimum panels per wing segment]]  — *⊣ limit*
 
 **Produced by.** `app/services/vlm_strip_forces.py:73` — `_panels_per_segment`
+
+🟢 **Verified against the code** — an independent reviewer read this line and confirmed the formula, unit and value (2026-08-18 audit).
 
 **Consumed by.**
 

@@ -6,11 +6,13 @@ unit: N
 cluster: perf-matching
 user_visible: false
 source_status: NO_SOURCE_FOUND
+code_audit: CONFIRMED
 node_class: derived
 tags:
   - cluster/perf-matching
   - class/derived
   - source/no-source-found
+  - audit/confirmed
   - flag/divergence
 ---
 
@@ -31,6 +33,8 @@ t_mean = _T_STATIC_MEAN_FACTOR * t_static_N
 - [[t_static_mean_factor|Static-thrust de-rate factor]]
 
 **Produced by.** `app/services/field_length_service.py:201` — `_compute_s_to_ground`
+
+🟢 **Verified against the code** — an independent reviewer read this line and confirmed the formula, unit and value (2026-08-18 audit).
 
 **Consumed by.**
 

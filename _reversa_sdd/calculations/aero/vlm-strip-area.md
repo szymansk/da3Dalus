@@ -6,12 +6,14 @@ unit: m²
 cluster: aero-strips
 user_visible: true
 source_status: SOURCED
+code_audit: CONFIRMED
 node_class: derived
 tags:
   - cluster/aero-strips
   - class/derived
   - source/sourced
   - surface/user-visible
+  - audit/confirmed
   - flag/divergence
   - solver-adjacent/vlm
 ---
@@ -33,6 +35,8 @@ area = float(areas[sl].sum())
 - [[vlm-strip-index-ranges|Panel index ranges per strip]]  — *⊣ limit*
 
 **Produced by.** `app/services/vlm_strip_forces.py:259` — `compute_vlm_strip_forces`
+
+🟢 **Verified against the code** — an independent reviewer read this line and confirmed the formula, unit and value (2026-08-18 audit).
 
 **Consumed by.**
 

@@ -6,11 +6,13 @@ unit: m
 cluster: stability
 user_visible: false
 source_status: SOURCED
+code_audit: CONFIRMED
 node_class: derived
 tags:
   - cluster/stability
   - class/derived
   - source/sourced
+  - audit/confirmed
   - flag/anomaly
   - flag/divergence
 ---
@@ -32,6 +34,8 @@ vtail_mac_m = _wing_mac_approx(vtail)
 - [[htail-mac-approx|Horizontal tail MAC (mean chord approximation)]]
 
 **Produced by.** `app/services/tail_sizing_service.py:446` — `build_tail_sizing_context_from_aeroplane`
+
+🟢 **Verified against the code** — an independent reviewer read this line and confirmed the formula, unit and value (2026-08-18 audit).
 
 **Consumed by.**
 

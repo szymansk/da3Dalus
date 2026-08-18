@@ -6,12 +6,14 @@ unit: dimensionless
 cluster: aero-polars
 user_visible: true
 source_status: PARTIAL
+code_audit: CONFIRMED
 node_class: unclassified-constant
 tags:
   - cluster/aero-polars
   - class/unclassified-constant
   - source/partial
   - surface/user-visible
+  - audit/confirmed
   - flag/anomaly
   - flag/divergence
   - flag/scale
@@ -34,6 +36,8 @@ _FALLBACK_E_OSWALD: float = 0.8
 **Inputs.** — *(leaf: a constant or an external input)*
 
 **Produced by.** `app/services/polar_re_table_service.py:59` — `_FALLBACK_E_OSWALD`
+
+🟢 **Verified against the code** — an independent reviewer read this line and confirmed the formula, unit and value (2026-08-18 audit).
 
 **Consumed by.**
 

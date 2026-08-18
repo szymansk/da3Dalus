@@ -6,12 +6,14 @@ unit: dimensionless
 cluster: aero-strips
 user_visible: true
 source_status: PARTIAL
+code_audit: CONFIRMED
 node_class: unclassified-constant
 tags:
   - cluster/aero-strips
   - class/unclassified-constant
   - source/partial
   - surface/user-visible
+  - audit/confirmed
   - flag/divergence
   - solver-adjacent/neuralfoil
 ---
@@ -33,6 +35,8 @@ return float("nan")
 **Inputs.** — *(leaf: a constant or an external input)*
 
 **Produced by.** `app/services/turbulator_optimizer_service.py:179` — `_cd_at_cl_xtr`
+
+🟢 **Verified against the code** — an independent reviewer read this line and confirmed the formula, unit and value (2026-08-18 audit).
 
 **Consumed by.**
 

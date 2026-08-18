@@ -6,11 +6,13 @@ unit: Nm
 cluster: powertrain
 user_visible: false
 source_status: SOURCED
+code_audit: CONFIRMED
 node_class: derived
 tags:
   - cluster/powertrain
   - class/derived
   - source/sourced
+  - audit/confirmed
 ---
 
 # Propeller absorbed torque
@@ -31,6 +33,8 @@ p_prop = cp * rho * (n_rps**3) * (D_m**5) ; omega = 2.0 * math.pi * n_rps ; retu
 - [[air-density-perf|Air density at altitude (performance)]]
 
 **Produced by.** `app/services/powertrain_performance.py:471` — `_prop_torque_demand`
+
+🟢 **Verified against the code** — an independent reviewer read this line and confirmed the formula, unit and value (2026-08-18 audit).
 
 **Consumed by.**
 

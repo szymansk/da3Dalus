@@ -2,16 +2,18 @@
 name: turn_n_target
 symbol: n
 kind: quantity
-unit: g
+unit: dimensionless
 cluster: perf-oppoints
 user_visible: true
 source_status: SOURCED
+code_audit: WRONG_UNIT
 node_class: derived
 tags:
   - cluster/perf-oppoints
   - class/derived
   - source/sourced
   - surface/user-visible
+  - audit/wrong-unit
   - flag/anomaly
   - flag/divergence
 ---
@@ -33,6 +35,8 @@ tags:
 - [[turn_bank_angles|Default turn bank angles]]  — *⤵ fallback*
 
 **Produced by.** `app/services/operating_point_generator_service.py:497` — `_build_target_definitions`
+
+🟠 **Corrected by the audit** — the extraction claimed `WRONG_UNIT`. Original unit was `g`. Calculated from 1.0/cos(), which is dimensionless
 
 **Consumed by.**
 

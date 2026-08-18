@@ -6,12 +6,14 @@ unit: dimensionless
 cluster: mass
 user_visible: true
 source_status: SOURCED
+code_audit: CONFIRMED
 node_class: unclassified-parameter
 tags:
   - cluster/mass
   - class/unclassified-parameter
   - source/sourced
   - surface/user-visible
+  - audit/confirmed
   - flag/anomaly
   - flag/divergence
   - flag/scale
@@ -28,6 +30,8 @@ tags:
 **Inputs.** — *(leaf: a constant or an external input)*
 
 **Produced by.** `app/services/component_tree_service.py:455` — `_weight_from_cad_shape (consumer); DB default in app/models/component_tree.py:61`
+
+🟢 **Verified against the code** — an independent reviewer read this line and confirmed the formula, unit and value (2026-08-18 audit).
 
 **Consumed by.**
 

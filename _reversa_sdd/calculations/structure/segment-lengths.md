@@ -5,11 +5,13 @@ unit: mm
 cluster: structure
 user_visible: false
 source_status: NO_SOURCE_FOUND
+code_audit: CONFIRMED
 node_class: derived
 tags:
   - cluster/structure
   - class/derived
   - source/no-source-found
+  - audit/confirmed
   - flag/anomaly
 ---
 
@@ -28,6 +30,8 @@ self._segment_lengths = [float(s.length) for s in wing_config.segments]
 **Inputs.** — *(leaf: a constant or an external input)*
 
 **Produced by.** `cad_designer/airplane/geometry/section_geometry.py:192` — `SectionGeometry.__init__`
+
+🟢 **Verified against the code** — an independent reviewer read this line and confirmed the formula, unit and value (2026-08-18 audit).
 
 **Consumed by.**
 

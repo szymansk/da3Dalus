@@ -6,12 +6,14 @@ unit: decimals
 cluster: aero-strips
 user_visible: true
 source_status: NO_SOURCE_FOUND
+code_audit: WRONG_LINE
 node_class: unclassified-constant
 tags:
   - cluster/aero-strips
   - class/unclassified-constant
   - source/no-source-found
   - surface/user-visible
+  - audit/wrong-line
   - flag/divergence
 ---
 
@@ -31,7 +33,9 @@ round(float(y_arr[i]), 6) … round(float(alpha_geom_arr[i]), 4)
 
 **Inputs.** — *(leaf: a constant or an external input)*
 
-**Produced by.** `app/services/section_aoa_service.py:346` — `compute_section_aoa`
+**Produced by.** `app/services/section_aoa_service.py:347` — `compute_section_aoa`
+
+🟠 **Corrected by the audit** — the extraction claimed `WRONG_LINE`. Original line was `346`. Producer line should be 347 where y_m rounding begins, not 346 which is the constructor call
 
 **Consumed by.**
 

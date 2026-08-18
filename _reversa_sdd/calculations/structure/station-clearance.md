@@ -6,11 +6,13 @@ unit: mm
 cluster: structure
 user_visible: false
 source_status: NO_SOURCE_FOUND
+code_audit: CONFIRMED
 node_class: derived
 tags:
   - cluster/structure
   - class/derived
   - source/no-source-found
+  - audit/confirmed
 ---
 
 # Station packing clearance
@@ -31,6 +33,8 @@ clr = (1.0 - packing_factor) / 2.0 * pt.thickness
 - [[section-thickness-analytic|Section thickness (analytic)]]
 
 **Produced by.** `cad_designer/airplane/geometry/spar_solver.py:761` — `build_stations_from_geometry`
+
+🟢 **Verified against the code** — an independent reviewer read this line and confirmed the formula, unit and value (2026-08-18 audit).
 
 **Consumed by.**
 

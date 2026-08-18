@@ -6,12 +6,14 @@ unit: m
 cluster: structure
 user_visible: true
 source_status: NO_SOURCE_FOUND
+code_audit: CONFIRMED
 node_class: derived
 tags:
   - cluster/structure
   - class/derived
   - source/no-source-found
   - surface/user-visible
+  - audit/confirmed
 ---
 
 # Spar piece root spanwise position
@@ -31,6 +33,8 @@ y_start_mm = piece.spare_origin[1]
 - [[mm-to-m-factor|Millimetre-to-metre conversion factor]]  — *× unit*
 
 **Produced by.** `app/services/spar_plan_service.py:494` — `_piece_to_out`
+
+🟢 **Verified against the code** — an independent reviewer read this line and confirmed the formula, unit and value (2026-08-18 audit).
 
 **Consumed by.**
 

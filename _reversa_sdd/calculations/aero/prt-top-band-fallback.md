@@ -6,11 +6,13 @@ unit: boolean
 cluster: aero-polars
 user_visible: false
 source_status: NO_SOURCE_FOUND
+code_audit: CONFIRMED
 node_class: derived
 tags:
   - cluster/aero-polars
   - class/derived
   - source/no-source-found
+  - audit/confirmed
   - flag/anomaly
   - flag/divergence
 ---
@@ -32,6 +34,8 @@ top_band_fallback = True  ... return table, False
 - [[prt-min-samples-per-band|Minimum samples per V-band / per OLS window]]
 
 **Produced by.** `app/services/polar_re_table_service.py:476` — `build_re_table`
+
+🟢 **Verified against the code** — an independent reviewer read this line and confirmed the formula, unit and value (2026-08-18 audit).
 
 **Consumed by.**
 

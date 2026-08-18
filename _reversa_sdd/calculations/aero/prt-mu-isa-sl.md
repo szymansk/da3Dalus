@@ -6,11 +6,13 @@ unit: Pa·s
 cluster: aero-polars
 user_visible: false
 source_status: PARTIAL
+code_audit: CONFIRMED
 node_class: physical-constant
 tags:
   - cluster/aero-polars
   - class/physical-constant
   - source/partial
+  - audit/confirmed
   - flag/divergence
   - flag/physical
 ---
@@ -33,6 +35,8 @@ _MU_ISA_SL: float = 1.81e-5
 **Inputs.** — *(leaf: a constant or an external input)*
 
 **Produced by.** `app/services/polar_re_table_service.py:46` — `_MU_ISA_SL`
+
+🟢 **Verified against the code** — an independent reviewer read this line and confirmed the formula, unit and value (2026-08-18 audit).
 
 **Consumed by.**
 

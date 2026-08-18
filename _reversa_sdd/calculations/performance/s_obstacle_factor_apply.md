@@ -6,12 +6,14 @@ unit: m
 cluster: perf-matching
 user_visible: true
 source_status: PARTIAL
+code_audit: CONFIRMED
 node_class: derived
 tags:
   - cluster/perf-matching
   - class/derived
   - source/partial
   - surface/user-visible
+  - audit/confirmed
   - flag/divergence
 ---
 
@@ -35,6 +37,8 @@ return k * s_ground
 - [[k_ldg_50ft|Landing 50-ft obstacle factor]]
 
 **Produced by.** `app/services/field_length_service.py:142` — `_apply_obstacle_factor`
+
+🟢 **Verified against the code** — an independent reviewer read this line and confirmed the formula, unit and value (2026-08-18 audit).
 
 **Consumed by.**
 

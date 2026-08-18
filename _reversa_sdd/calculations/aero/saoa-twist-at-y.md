@@ -6,11 +6,13 @@ unit: deg
 cluster: aero-strips
 user_visible: false
 source_status: SOURCED
+code_audit: CONFIRMED
 node_class: derived
 tags:
   - cluster/aero-strips
   - class/derived
   - source/sourced
+  - audit/confirmed
 ---
 
 # Interpolated twist at panel y
@@ -31,6 +33,8 @@ twist_at_y = np.interp(y_arr, xsec_y, xsec_twist)
 - [[saoa-y|Panel spanwise position]]
 
 **Produced by.** `app/services/section_aoa_service.py:324` — `compute_section_aoa`
+
+🟢 **Verified against the code** — an independent reviewer read this line and confirmed the formula, unit and value (2026-08-18 audit).
 
 **Consumed by.**
 

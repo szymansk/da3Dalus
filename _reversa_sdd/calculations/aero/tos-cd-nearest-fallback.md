@@ -6,11 +6,13 @@ unit: dimensionless
 cluster: aero-strips
 user_visible: false
 source_status: NO_SOURCE_FOUND
+code_audit: CONFIRMED
 node_class: derived
 tags:
   - cluster/aero-strips
   - class/derived
   - source/no-source-found
+  - audit/confirmed
   - flag/anomaly
   - flag/divergence
 ---
@@ -32,6 +34,8 @@ nearest = int(np.argmin(np.abs(cl_sorted - cl_target))); return float(cd_sorted[
 - [[tos-cd-at-cl|Section cd at a target CL and trip position]]
 
 **Produced by.** `app/services/turbulator_optimizer_service.py:173` — `_cd_at_cl_xtr`
+
+🟢 **Verified against the code** — an independent reviewer read this line and confirmed the formula, unit and value (2026-08-18 audit).
 
 **Consumed by.**
 

@@ -6,12 +6,14 @@ unit: mm²
 cluster: structure
 user_visible: true
 source_status: PARTIAL
+code_audit: CONFIRMED
 node_class: derived
 tags:
   - cluster/structure
   - class/derived
   - source/partial
   - surface/user-visible
+  - audit/confirmed
   - flag/anomaly
 ---
 
@@ -32,6 +34,8 @@ area = math.pi * d**2 / 4.0
 - [[solved-rod-diameter|Solved rod diameter]]
 
 **Produced by.** `app/services/spar_sizing.py:170` — `_solve_rod`
+
+🟢 **Verified against the code** — an independent reviewer read this line and confirmed the formula, unit and value (2026-08-18 audit).
 
 **Consumed by.**
 

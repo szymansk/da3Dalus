@@ -6,11 +6,13 @@ unit: – (dimensionless)
 cluster: stability
 user_visible: false
 source_status: PARTIAL
+code_audit: CONFIRMED
 node_class: derived
 tags:
   - cluster/stability
   - class/derived
   - source/partial
+  - audit/confirmed
   - flag/anomaly
   - flag/divergence
 ---
@@ -35,6 +37,8 @@ net_pitch_up = cm_ac + cm_delta_e * delta_e_max_rad + delta_cm_flap
 - [[delta-cm-flap|Flap-induced pitching moment]]  — *⊣ limit*
 
 **Produced by.** `app/services/elevator_authority_service.py:236` — `_trim_inversion`
+
+🟢 **Verified against the code** — an independent reviewer read this line and confirmed the formula, unit and value (2026-08-18 audit).
 
 **Consumed by.**
 

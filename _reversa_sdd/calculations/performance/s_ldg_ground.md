@@ -6,12 +6,14 @@ unit: m
 cluster: perf-matching
 user_visible: true
 source_status: PARTIAL
+code_audit: CONFIRMED
 node_class: derived
 tags:
   - cluster/perf-matching
   - class/derived
   - source/partial
   - surface/user-visible
+  - audit/confirmed
   - flag/anomaly
   - flag/divergence
   - flag/scale
@@ -37,6 +39,8 @@ return k_ldg * wing_loading / (rho * cl_max_ldg)
 - [[cl_max_ldg_fl|Landing CL_max (field length)]]  — *⊣ limit*
 
 **Produced by.** `app/services/field_length_service.py:264` — `_compute_s_ldg_ground`
+
+🟢 **Verified against the code** — an independent reviewer read this line and confirmed the formula, unit and value (2026-08-18 audit).
 
 **Consumed by.**
 

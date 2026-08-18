@@ -6,12 +6,14 @@ unit: kg/m^3
 cluster: powertrain
 user_visible: true
 source_status: NO_SOURCE_FOUND
+code_audit: CONFIRMED
 node_class: derived
 tags:
   - cluster/powertrain
   - class/derived
   - source/no-source-found
   - surface/user-visible
+  - audit/confirmed
   - flag/anomaly
   - flag/divergence
 ---
@@ -35,6 +37,8 @@ return RHO_SEA_LEVEL * math.exp(-altitude_m / 8500.0)
 - [[request-altitude-m|Operating altitude (performance)]]
 
 **Produced by.** `app/services/powertrain_performance.py:348` — `_air_density`
+
+🟢 **Verified against the code** — an independent reviewer read this line and confirmed the formula, unit and value (2026-08-18 audit).
 
 **Consumed by.**
 

@@ -6,12 +6,14 @@ unit: – (dimensionless)
 cluster: stability
 user_visible: true
 source_status: NO_SOURCE_FOUND
+code_audit: CONFIRMED
 node_class: derived
 tags:
   - cluster/stability
   - class/derived
   - source/no-source-found
   - surface/user-visible
+  - audit/confirmed
   - flag/anomaly
   - flag/divergence
   - solver-adjacent/aerobuildup
@@ -34,6 +36,8 @@ if cd0_val is None:
 **Inputs.** — *(leaf: a constant or an external input)*
 
 **Produced by.** `app/services/stability_service.py:262` — `_auto_populate_cd0`
+
+🟢 **Verified against the code** — an independent reviewer read this line and confirmed the formula, unit and value (2026-08-18 audit).
 
 **Consumed by.**
 

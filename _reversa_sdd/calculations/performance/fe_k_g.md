@@ -6,11 +6,13 @@ unit: -
 cluster: perf-envelope
 user_visible: false
 source_status: SOURCED
+code_audit: CONFIRMED
 node_class: derived
 tags:
   - cluster/perf-envelope
   - class/derived
   - source/sourced
+  - audit/confirmed
   - flag/scale
 ---
 
@@ -32,6 +34,8 @@ return 0.88 * mu_g / (5.3 + mu_g)
 - [[fe_k_g_coeffs|Pratt gust-alleviation coefficients]]
 
 **Produced by.** `app/services/flight_envelope_service.py:112` — `_compute_k_g`
+
+🟢 **Verified against the code** — an independent reviewer read this line and confirmed the formula, unit and value (2026-08-18 audit).
 
 **Consumed by.**
 

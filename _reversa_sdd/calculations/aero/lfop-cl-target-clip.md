@@ -6,11 +6,13 @@ unit: dimensionless
 cluster: aero-strips
 user_visible: false
 source_status: NO_SOURCE_FOUND
+code_audit: CONFIRMED
 node_class: unclassified-constant
 tags:
   - cluster/aero-strips
   - class/unclassified-constant
   - source/no-source-found
+  - audit/confirmed
   - flag/anomaly
   - flag/divergence
   - flag/scale
@@ -35,6 +37,8 @@ cl_target = float(np.clip(cl_target, 0.1, 2.0))
 - [[lfop-cl-target|Level-flight target lift coefficient]]
 
 **Produced by.** `app/services/section_aoa_service.py:504` — `_resolve_level_flight_op`
+
+🟢 **Verified against the code** — an independent reviewer read this line and confirmed the formula, unit and value (2026-08-18 audit).
 
 **Consumed by.**
 

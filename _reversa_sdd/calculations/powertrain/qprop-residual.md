@@ -6,11 +6,13 @@ unit: Nm
 cluster: powertrain
 user_visible: false
 source_status: SOURCED
+code_audit: CONFIRMED
 node_class: derived
 tags:
   - cluster/powertrain
   - class/derived
   - source/sourced
+  - audit/confirmed
 ---
 
 # Torque-balance residual
@@ -31,6 +33,8 @@ return q_motor - q_prop
 - [[prop-torque-demand|Propeller absorbed torque]]
 
 **Produced by.** `app/services/powertrain_performance.py:537` — `solve_qprop_operating_point.residual`
+
+🟢 **Verified against the code** — an independent reviewer read this line and confirmed the formula, unit and value (2026-08-18 audit).
 
 **Consumed by.**
 

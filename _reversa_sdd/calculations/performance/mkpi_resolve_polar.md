@@ -6,11 +6,13 @@ unit: -
 cluster: perf-envelope
 user_visible: false
 source_status: SOURCED
+code_audit: CONFIRMED
 node_class: derived
 tags:
   - cluster/perf-envelope
   - class/derived
   - source/sourced
+  - audit/confirmed
   - flag/divergence
 ---
 
@@ -29,6 +31,8 @@ polar = ctx['polar_by_config']['clean']; ld_emp = polar['ld_max'] if > 0; cd0 = 
 **Inputs.** — *(leaf: a constant or an external input)*
 
 **Produced by.** `app/services/mission_kpi_service.py:165` — `_resolve_polar_inputs`
+
+🟢 **Verified against the code** — an independent reviewer read this line and confirmed the formula, unit and value (2026-08-18 audit).
 
 **Consumed by.**
 

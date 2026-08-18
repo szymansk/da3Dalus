@@ -6,11 +6,13 @@ unit: dimensionless (0..1)
 cluster: aero-polars
 user_visible: false
 source_status: NO_SOURCE_FOUND
+code_audit: CONFIRMED
 node_class: derived
 tags:
   - cluster/aero-polars
   - class/derived
   - source/no-source-found
+  - audit/confirmed
   - flag/divergence
 ---
 
@@ -32,6 +34,8 @@ efficiency = min(re_cd0_reference / cd0, 1.0)
 - [[alr-polar-cd0|Airfoil cd0 (parabolic fit vertex)]]
 
 **Produced by.** `app/services/airfoil_low_re_service.py:1081` — `score_target_cl`
+
+🟢 **Verified against the code** — an independent reviewer read this line and confirmed the formula, unit and value (2026-08-18 audit).
 
 **Consumed by.**
 

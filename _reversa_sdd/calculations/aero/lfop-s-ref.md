@@ -6,11 +6,13 @@ unit: m²
 cluster: aero-strips
 user_visible: false
 source_status: PARTIAL
+code_audit: WRONG_LINE
 node_class: derived
 tags:
   - cluster/aero-strips
   - class/derived
   - source/partial
+  - audit/wrong-line
   - flag/anomaly
   - flag/divergence
 ---
@@ -29,7 +31,9 @@ for w in asb_airplane.wings: if getattr(w, "symmetric", False): s_ref = float(w.
 
 **Inputs.** — *(leaf: a constant or an external input)*
 
-**Produced by.** `app/services/section_aoa_service.py:495` — `_resolve_level_flight_op`
+**Produced by.** `app/services/section_aoa_service.py:494` — `_resolve_level_flight_op`
+
+🟠 **Corrected by the audit** — the extraction claimed `WRONG_LINE`. Original line was `495`. Producer line should be 494 where s_ref is assigned, not 495 which is the loop break
 
 **Consumed by.**
 

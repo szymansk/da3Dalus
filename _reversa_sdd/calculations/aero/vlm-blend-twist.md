@@ -6,11 +6,13 @@ unit: deg
 cluster: aero-strips
 user_visible: false
 source_status: SOURCED
+code_audit: CONFIRMED
 node_class: derived
 tags:
   - cluster/aero-strips
   - class/derived
   - source/sourced
+  - audit/confirmed
   - solver-adjacent/vlm
 ---
 
@@ -31,6 +33,8 @@ float(xa.twist) * a + float(xb.twist) * b
 - [[vlm-blend-fraction|Inserted-section blend fraction]]  — *⊣ limit*
 
 **Produced by.** `app/services/vlm_strip_forces.py:112` — `_blend_xsec`
+
+🟢 **Verified against the code** — an independent reviewer read this line and confirmed the formula, unit and value (2026-08-18 audit).
 
 **Consumed by.**
 

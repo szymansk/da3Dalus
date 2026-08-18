@@ -6,12 +6,14 @@ unit: deg
 cluster: aero-spanwise
 user_visible: true
 source_status: SOURCED
+code_audit: CONFIRMED
 node_class: derived
 tags:
   - cluster/aero-spanwise
   - class/derived
   - source/sourced
   - surface/user-visible
+  - audit/confirmed
   - flag/anomaly
   - flag/divergence
 ---
@@ -35,6 +37,8 @@ alpha_stall_deg_val = _cl_to_alpha_deg(cl_max, cl_alpha_per_rad, alpha_0_deg)
 - [[alpha-0-deg|Zero-lift angle from context]]
 
 **Produced by.** `app/services/analysis_service.py:488` — `_compute_speed_polar`
+
+🟢 **Verified against the code** — an independent reviewer read this line and confirmed the formula, unit and value (2026-08-18 audit).
 
 **Consumed by.**
 

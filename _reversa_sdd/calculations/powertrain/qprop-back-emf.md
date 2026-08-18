@@ -6,11 +6,13 @@ unit: V
 cluster: powertrain
 user_visible: false
 source_status: SOURCED
+code_audit: CONFIRMED
 node_class: derived
 tags:
   - cluster/powertrain
   - class/derived
   - source/sourced
+  - audit/confirmed
 ---
 
 # Motor back-EMF
@@ -30,6 +32,8 @@ omega = rpm * 2.0 * math.pi / 60.0 ; back_emf = omega / kv_si
 - [[motor-kv-si|Motor speed constant in SI]]
 
 **Produced by.** `app/services/powertrain_performance.py:529` — `solve_qprop_operating_point.current_for_rpm`
+
+🟢 **Verified against the code** — an independent reviewer read this line and confirmed the formula, unit and value (2026-08-18 audit).
 
 **Consumed by.**
 

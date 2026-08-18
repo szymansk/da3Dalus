@@ -6,12 +6,14 @@ unit: A
 cluster: powertrain
 user_visible: true
 source_status: PARTIAL
+code_audit: WRONG_LINE
 node_class: derived
 tags:
   - cluster/powertrain
   - class/derived
   - source/partial
   - surface/user-visible
+  - audit/wrong-line
   - flag/anomaly
   - flag/divergence
 ---
@@ -33,7 +35,9 @@ i_peak = p_top_elec_w / v_sag
 - [[ss-p-elec|Electrical power required]]
 - [[ss-v-sag|Pack voltage under load]]
 
-**Produced by.** `app/services/powertrain_solution_space_service.py:140` — `_per_cell`
+**Produced by.** `app/services/powertrain_solution_space_service.py:139` — `_per_cell`
+
+🟠 **Corrected by the audit** — the extraction claimed `WRONG_LINE`. Original line was `140`. 
 
 **Consumed by.**
 

@@ -6,11 +6,13 @@ unit: 1/h (C)
 cluster: powertrain
 user_visible: false
 source_status: PARTIAL
+code_audit: CONFIRMED
 node_class: derived
 tags:
   - cluster/powertrain
   - class/derived
   - source/partial
+  - audit/confirmed
 ---
 
 # Raw required C-rate
@@ -31,6 +33,8 @@ raw_c = i_peak / (cap_mah / 1000.0) if cap_mah > 0 else float("inf")
 - [[ss-cap-mah|Minimum battery capacity]]  — *⊣ limit*
 
 **Produced by.** `app/services/powertrain_solution_space_service.py:145` — `_per_cell`
+
+🟢 **Verified against the code** — an independent reviewer read this line and confirmed the formula, unit and value (2026-08-18 audit).
 
 **Consumed by.**
 

@@ -6,11 +6,13 @@ unit: m
 cluster: stability
 user_visible: false
 source_status: SOURCED
+code_audit: CONFIRMED
 node_class: derived
 tags:
   - cluster/stability
   - class/derived
   - source/sourced
+  - audit/confirmed
   - flag/anomaly
 ---
 
@@ -32,6 +34,8 @@ envelope_m = (_SM_TAILLESS_FWD_CG - _SM_TAILLESS_AFT_CG) * mac_m
 - [[sm-tailless-aft-cg|Tailless aft CG limit (SM)]]  — *⊣ limit*
 
 **Produced by.** `app/services/sm_sizing_service.py:232` — `_tailless_recommendation`
+
+🟢 **Verified against the code** — an independent reviewer read this line and confirmed the formula, unit and value (2026-08-18 audit).
 
 **Consumed by.**
 

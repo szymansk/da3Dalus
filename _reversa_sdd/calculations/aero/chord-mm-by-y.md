@@ -5,11 +5,13 @@ unit: mm
 cluster: aero-spanwise
 user_visible: false
 source_status: NO_SOURCE_FOUND
+code_audit: CONFIRMED
 node_class: derived
 tags:
   - cluster/aero-spanwise
   - class/derived
   - source/no-source-found
+  - audit/confirmed
 ---
 
 # Station chord in millimetres
@@ -29,6 +31,8 @@ chord_mm_by_y = {float(st["y_m"]): float(st["chord_m"]) * 1000.0 for st in stati
 - [[spanwise-chord-m|Local strip chord]]
 
 **Produced by.** `app/services/analysis_service.py:2253` — `_get_tc_by_y_for_surface`
+
+🟢 **Verified against the code** — an independent reviewer read this line and confirmed the formula, unit and value (2026-08-18 audit).
 
 **Consumed by.**
 

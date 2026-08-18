@@ -6,12 +6,14 @@ unit: fraction of MAC
 cluster: mass
 user_visible: true
 source_status: SOURCED
+code_audit: CONFIRMED
 node_class: derived
 tags:
   - cluster/mass
   - class/derived
   - source/sourced
   - surface/user-visible
+  - audit/confirmed
   - flag/anomaly
   - flag/divergence
 ---
@@ -35,6 +37,8 @@ sm_at_fwd = round((x_np - cg_loading_fwd_m) / mac, 4)
 - [[mac|Mean aerodynamic chord (main wing)]]
 
 **Produced by.** `app/services/loading_scenario_service.py:259` — `enrich_context_with_cg_envelope`
+
+🟢 **Verified against the code** — an independent reviewer read this line and confirmed the formula, unit and value (2026-08-18 audit).
 
 **Consumed by.**
 
