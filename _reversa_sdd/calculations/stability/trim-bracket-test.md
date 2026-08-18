@@ -14,6 +14,7 @@ tags:
   - surface/user-visible
   - flag/anomaly
   - flag/divergence
+  - solver-adjacent/aerobuildup
 ---
 
 # Root bracketing test

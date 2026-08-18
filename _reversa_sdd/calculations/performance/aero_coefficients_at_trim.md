@@ -6,20 +6,24 @@ unit: dimensionless
 cluster: perf-oppoints
 user_visible: true
 source_status: SOURCED
-node_class: derived
+node_class: solver-output
 tags:
   - cluster/perf-oppoints
-  - class/derived
+  - class/solver-output
   - source/sourced
   - surface/user-visible
   - flag/divergence
+  - solver/aerobuildup
 ---
 
 # Aero coefficients at the trimmed point
 
 **Definition.** CL, CD and Cm from one extra AeroBuildup evaluation at the final trim state.
 
-**Derived quantity.** Computed from the inputs below.
+**Solver output — a boundary of this graph.** The value is produced by an external solver, not by this application. There is no formula to source and no arithmetic to test here: the solver is trusted.
+
+**What must be tested is what was handed in.** Every defect this application can commit at this boundary is an input defect — a wrong reference area, the wrong wing, an operating point that does not match the geometry, a unit that was not converted. See [[_solver-boundaries]] for the input set of each solver.
+*Solver: **aerobuildup**.*
 
 **Formula — as the code writes it.**
 

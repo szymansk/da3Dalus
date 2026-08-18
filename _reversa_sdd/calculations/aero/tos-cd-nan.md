@@ -13,6 +13,7 @@ tags:
   - source/partial
   - surface/user-visible
   - flag/divergence
+  - solver-adjacent/neuralfoil
 ---
 
 # NaN cd on NeuralFoil failure

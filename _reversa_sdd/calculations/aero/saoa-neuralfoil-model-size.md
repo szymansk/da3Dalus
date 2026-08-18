@@ -12,6 +12,7 @@ tags:
   - class/unclassified-parameter
   - source/partial
   - flag/divergence
+  - solver-adjacent/neuralfoil
 ---
 
 # NeuralFoil model size (alpha_L0)

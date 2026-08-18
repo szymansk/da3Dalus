@@ -13,6 +13,7 @@ tags:
   - source/partial
   - surface/user-visible
   - flag/divergence
+  - solver-adjacent/vlm
 ---
 
 # Spanwise strip count per surface

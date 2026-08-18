@@ -13,6 +13,7 @@ tags:
   - source/partial
   - flag/divergence
   - flag/scale
+  - solver-adjacent/neuralfoil
 ---
 
 # NeuralFoil model size (optimiser)

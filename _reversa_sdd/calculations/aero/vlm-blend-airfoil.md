@@ -13,6 +13,7 @@ tags:
   - source/sourced
   - flag/anomaly
   - flag/divergence
+  - solver-adjacent/vlm
 ---
 
 # Blended section airfoil

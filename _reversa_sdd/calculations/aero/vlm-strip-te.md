@@ -12,6 +12,7 @@ tags:
   - class/derived
   - source/partial
   - flag/divergence
+  - solver-adjacent/vlm
 ---
 
 # Strip trailing-edge point

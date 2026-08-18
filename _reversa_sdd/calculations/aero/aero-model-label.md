@@ -11,6 +11,7 @@ tags:
   - class/derived
   - source/no-source-found
   - surface/user-visible
+  - solver-adjacent/avl
 ---
 
 # Aerodynamic model label

@@ -13,6 +13,7 @@ tags:
   - source/partial
   - flag/anomaly
   - flag/divergence
+  - solver-adjacent/liftingline
 ---
 
 # LiftingLine spanwise resolution

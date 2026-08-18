@@ -12,6 +12,7 @@ tags:
   - class/derived
   - source/partial
   - flag/divergence
+  - solver-adjacent/neuralfoil
 ---
 
 # Section cd at a target CL and trip position

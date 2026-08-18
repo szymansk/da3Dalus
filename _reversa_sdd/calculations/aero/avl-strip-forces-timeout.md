@@ -11,6 +11,7 @@ tags:
   - class/unclassified-parameter
   - source/no-source-found
   - flag/anomaly
+  - solver-adjacent/avl
 ---
 
 # AVL strip-forces timeout

@@ -13,6 +13,7 @@ tags:
   - source/sourced
   - surface/user-visible
   - flag/divergence
+  - solver-adjacent/vlm
 ---
 
 # Reference area echoed to the response

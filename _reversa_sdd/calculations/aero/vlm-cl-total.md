@@ -13,6 +13,7 @@ tags:
   - source/sourced
   - flag/anomaly
   - flag/divergence
+  - solver-adjacent/vlm
 ---
 
 # Whole-airplane lift coefficient (VLM run)

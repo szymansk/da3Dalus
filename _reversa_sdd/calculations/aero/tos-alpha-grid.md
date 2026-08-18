@@ -12,6 +12,7 @@ tags:
   - class/unclassified-constant
   - source/no-source-found
   - flag/divergence
+  - solver-adjacent/neuralfoil
 ---
 
 # Alpha grid for cd lookup

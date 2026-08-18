@@ -14,6 +14,7 @@ tags:
   - flag/anomaly
   - flag/divergence
   - flag/scale
+  - solver-adjacent/neuralfoil
 ---
 
 # Alpha sweep for zero-lift angle

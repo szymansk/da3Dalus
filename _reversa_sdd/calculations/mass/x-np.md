@@ -6,21 +6,25 @@ unit: m
 cluster: mass
 user_visible: true
 source_status: SOURCED
-node_class: derived
+node_class: solver-output
 tags:
   - cluster/mass
-  - class/derived
+  - class/solver-output
   - source/sourced
   - surface/user-visible
   - flag/anomaly
   - flag/divergence
+  - solver/aerobuildup
 ---
 
 # Neutral point
 
 **Definition.** Longitudinal position of the aircraft's neutral point from the AeroBuildup stability run at cruise; the datum for every CG limit and static margin in this cluster.
 
-**Derived quantity.** Computed from the inputs below.
+**Solver output — a boundary of this graph.** The value is produced by an external solver, not by this application. There is no formula to source and no arithmetic to test here: the solver is trusted.
+
+**What must be tested is what was handed in.** Every defect this application can commit at this boundary is an input defect — a wrong reference area, the wrong wing, an operating point that does not match the geometry, a unit that was not converted. See [[_solver-boundaries]] for the input set of each solver.
+*Solver: **aerobuildup**.*
 
 **Formula — as the code writes it.**
 

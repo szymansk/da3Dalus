@@ -13,6 +13,7 @@ tags:
   - source/no-source-found
   - surface/user-visible
   - flag/divergence
+  - solver-adjacent/vlm
 ---
 
 # Strip leading-edge moment coefficient

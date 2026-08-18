@@ -158,6 +158,20 @@ is cited. Removing that marker turns a lead into a claim.
 What **is** confirmed already lives in the tickets it belongs to — the root cause of
 gh-1132 was found this way.
 
+## The solver boundary
+
+Roughly a seventh of the graph's nodes are **not computed here at all** — they come out of
+AeroBuildup, VLM, LiftingLine, NeuralFoil or AVL. Those have no formula to source and no
+arithmetic to test: the solver is trusted.
+
+That trust is exactly why [`_solver-boundaries.md`](_solver-boundaries.md) exists. It records
+every call site with its **complete input set**, each input classified by origin —
+`app-derived` (the bug-prone class: this application did arithmetic before handing over),
+`user-input`, `hardcoded`, `passed-through`, or `solver-default` (**never passed at all**, so
+the solver's own default silently applies).
+
+44 call sites, 417 inputs, 142 of them app-derived and 104 never passed.
+
 ## Layout
 
 ```

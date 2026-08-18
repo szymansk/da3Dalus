@@ -14,6 +14,7 @@ tags:
   - surface/user-visible
   - flag/divergence
   - flag/scale
+  - solver-adjacent/neuralfoil
 ---
 
 # NeuralFoil confidence threshold

@@ -15,6 +15,7 @@ tags:
   - flag/anomaly
   - flag/divergence
   - flag/scale
+  - solver-adjacent/vlm
 ---
 
 # Strip viscous drag coefficient

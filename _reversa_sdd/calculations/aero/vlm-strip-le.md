@@ -12,6 +12,7 @@ tags:
   - class/derived
   - source/sourced
   - surface/user-visible
+  - solver-adjacent/vlm
 ---
 
 # Strip leading-edge point

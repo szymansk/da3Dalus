@@ -12,6 +12,7 @@ tags:
   - class/unclassified-constant
   - source/partial
   - flag/divergence
+  - solver-adjacent/vlm
 ---
 
 # VLM spanwise_resolution literal

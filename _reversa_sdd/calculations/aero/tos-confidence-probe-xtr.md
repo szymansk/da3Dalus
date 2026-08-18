@@ -13,6 +13,7 @@ tags:
   - source/no-source-found
   - flag/anomaly
   - flag/divergence
+  - solver-adjacent/neuralfoil
 ---
 
 # Confidence-probe trip position

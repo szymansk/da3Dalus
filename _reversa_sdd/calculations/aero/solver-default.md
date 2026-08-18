@@ -12,6 +12,7 @@ tags:
   - source/partial
   - surface/user-visible
   - flag/divergence
+  - solver-adjacent/vlm
 ---
 
 # Strip-force solver default

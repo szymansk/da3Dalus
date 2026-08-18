@@ -12,6 +12,7 @@ tags:
   - class/numerical-tolerance
   - source/sourced
   - flag/divergence
+  - solver-adjacent/neuralfoil
 ---
 
 # Mach number for NeuralFoil calls

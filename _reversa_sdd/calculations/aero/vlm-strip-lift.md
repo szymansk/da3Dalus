@@ -12,6 +12,7 @@ tags:
   - class/derived
   - source/sourced
   - flag/divergence
+  - solver-adjacent/vlm
 ---
 
 # Strip lift force

@@ -13,6 +13,7 @@ tags:
   - source/no-source-found
   - flag/anomaly
   - flag/divergence
+  - solver-adjacent/vlm
 ---
 
 # Spanwise panel budget per half-wing

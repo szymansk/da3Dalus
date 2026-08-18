@@ -13,6 +13,7 @@ tags:
   - source/sourced
   - surface/user-visible
   - flag/divergence
+  - solver-adjacent/vlm
 ---
 
 # Echoed sideslip angle

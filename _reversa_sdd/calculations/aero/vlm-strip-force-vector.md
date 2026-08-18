@@ -11,6 +11,7 @@ tags:
   - cluster/aero-strips
   - class/derived
   - source/sourced
+  - solver-adjacent/vlm
 ---
 
 # Per-strip force vector

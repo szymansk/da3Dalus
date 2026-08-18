@@ -13,6 +13,7 @@ tags:
   - source/partial
   - flag/anomaly
   - flag/divergence
+  - solver-adjacent/aerobuildup
 ---
 
 # Brent root-finder tolerance

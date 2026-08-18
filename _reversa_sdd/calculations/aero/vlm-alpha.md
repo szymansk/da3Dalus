@@ -12,6 +12,7 @@ tags:
   - class/derived
   - source/sourced
   - surface/user-visible
+  - solver-adjacent/vlm
 ---
 
 # Echoed angle of attack

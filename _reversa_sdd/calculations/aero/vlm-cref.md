@@ -12,6 +12,7 @@ tags:
   - class/derived
   - source/sourced
   - surface/user-visible
+  - solver-adjacent/vlm
 ---
 
 # Reference chord echoed to the response

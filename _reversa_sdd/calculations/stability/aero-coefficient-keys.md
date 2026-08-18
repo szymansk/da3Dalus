@@ -12,6 +12,7 @@ tags:
   - class/unclassified-constant
   - source/sourced
   - surface/user-visible
+  - solver-adjacent/aerobuildup
 ---
 
 # Reported aero coefficient whitelist

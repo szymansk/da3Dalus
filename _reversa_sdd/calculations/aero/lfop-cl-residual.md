@@ -6,20 +6,24 @@ unit: dimensionless
 cluster: aero-strips
 user_visible: false
 source_status: PARTIAL
-node_class: derived
+node_class: solver-output
 tags:
   - cluster/aero-strips
-  - class/derived
+  - class/solver-output
   - source/partial
   - flag/anomaly
   - flag/divergence
+  - solver/aerobuildup
 ---
 
 # CL residual for the root search
 
 **Definition.** AeroBuildup CL at a trial alpha minus the target CL.
 
-**Derived quantity.** Computed from the inputs below.
+**Solver output — a boundary of this graph.** The value is produced by an external solver, not by this application. There is no formula to source and no arithmetic to test here: the solver is trusted.
+
+**What must be tested is what was handed in.** Every defect this application can commit at this boundary is an input defect — a wrong reference area, the wrong wing, an operating point that does not match the geometry, a unit that was not converted. See [[_solver-boundaries]] for the input set of each solver.
+*Solver: **aerobuildup**.*
 
 **Formula — as the code writes it.**
 

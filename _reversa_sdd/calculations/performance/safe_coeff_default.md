@@ -12,6 +12,7 @@ tags:
   - source/no-source-found
   - flag/anomaly
   - flag/divergence
+  - solver-adjacent/aerobuildup
 ---
 
 # Coefficient extraction default
