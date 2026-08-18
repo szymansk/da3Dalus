@@ -4,7 +4,7 @@ kind: quantity
 symbol: V_S
 unit: m/s
 role: output
-status: draft
+status: approved
 tags:
   - canon/quantity
   - role/output

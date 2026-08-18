@@ -13,6 +13,7 @@ tags:
   - dim/mismatch
   - shape/law
   - kind/law
+  - status/draft
 ---
 
 # Load-factor increment from a discrete vertical gust

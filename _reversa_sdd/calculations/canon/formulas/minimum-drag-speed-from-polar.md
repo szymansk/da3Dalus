@@ -13,6 +13,7 @@ tags:
   - dim/procedural
   - shape/route
   - kind/procedure
+  - status/draft
 ---
 
 # Minimum-drag speed as the argmax of the computed glide ratio

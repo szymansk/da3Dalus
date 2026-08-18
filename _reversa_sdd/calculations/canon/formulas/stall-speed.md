@@ -3,7 +3,7 @@ canon: stall-speed
 entry: formula
 kind: law
 shape: law
-status: draft
+status: approved
 output: stall-speed
 source_status: SOURCED
 dimensional_check: BALANCES
@@ -13,6 +13,7 @@ tags:
   - dim/balances
   - shape/law
   - kind/law
+  - status/approved
   - flag/conflict
 ---
 
@@ -112,5 +113,5 @@ path, not of the law.
 - [ ] **Preconditions** — every binding condition holds, or the violation is ticketed
 - [ ] **Inputs approved** — no formula is approvable before its inputs are
 
-> While `status: draft` this entry **cites nothing and decides nothing**.
+> **Approved.** This is the relation the implementations are measured against.
 

@@ -4,7 +4,7 @@ kind: quantity
 symbol: m
 unit: kg
 role: input
-status: draft
+status: approved
 tags:
   - canon/quantity
   - role/input

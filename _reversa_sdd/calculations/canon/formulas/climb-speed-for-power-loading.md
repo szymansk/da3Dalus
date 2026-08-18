@@ -13,6 +13,7 @@ tags:
   - dim/unparseable
   - shape/approximation
   - kind/law
+  - status/draft
 ---
 
 # Climb speed assumed by the power-loading constraint

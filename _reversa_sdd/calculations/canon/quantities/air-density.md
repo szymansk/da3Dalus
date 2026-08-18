@@ -4,7 +4,7 @@ kind: quantity
 symbol: rho
 unit: kg/m^3
 role: derived
-status: draft
+status: approved
 tags:
   - canon/quantity
   - role/derived

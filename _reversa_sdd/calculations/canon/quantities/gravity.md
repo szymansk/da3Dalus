@@ -4,7 +4,7 @@ kind: quantity
 symbol: g
 unit: m/s^2
 role: input
-status: draft
+status: approved
 tags:
   - canon/quantity
   - role/input

@@ -4,7 +4,7 @@ kind: quantity
 symbol: C_L,max
 unit: dimensionless
 role: input
-status: draft
+status: approved
 tags:
   - canon/quantity
   - role/input

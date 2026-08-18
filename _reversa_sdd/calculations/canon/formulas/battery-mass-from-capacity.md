@@ -13,6 +13,7 @@ tags:
   - dim/balances
   - shape/law
   - kind/law
+  - status/draft
 ---
 
 # Battery mass implied by capacity and specific energy

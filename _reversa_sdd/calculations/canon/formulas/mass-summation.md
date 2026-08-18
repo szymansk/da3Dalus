@@ -13,6 +13,7 @@ tags:
   - dim/unparseable
   - shape/law
   - kind/law
+  - status/draft
 ---
 
 # Aircraft mass as the sum of component masses

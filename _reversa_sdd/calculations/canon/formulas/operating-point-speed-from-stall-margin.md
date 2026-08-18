@@ -13,6 +13,7 @@ tags:
   - dim/procedural
   - shape/approximation
   - kind/rating
+  - status/draft
 ---
 
 # Operating-point speed as a fixed margin over a stall speed

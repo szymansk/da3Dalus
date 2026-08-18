@@ -13,6 +13,7 @@ tags:
   - dim/balances
   - shape/route
   - kind/law
+  - status/draft
 ---
 
 # Minimum-drag speed from the parabolic polar

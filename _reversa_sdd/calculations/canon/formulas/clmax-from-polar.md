@@ -13,6 +13,7 @@ tags:
   - dim/procedural
   - shape/law
   - kind/procedure
+  - status/draft
 ---
 
 # Maximum lift coefficient as the peak of the computed polar

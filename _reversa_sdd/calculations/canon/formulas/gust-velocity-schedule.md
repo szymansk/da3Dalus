@@ -13,6 +13,7 @@ tags:
   - dim/procedural
   - shape/law
   - kind/fit
+  - status/draft
 ---
 
 # Design gust velocity scheduled against airspeed

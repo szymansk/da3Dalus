@@ -13,6 +13,7 @@ tags:
   - dim/balances
   - shape/law
   - kind/law
+  - status/draft
 ---
 
 # Maximum wing loading permitted by a stall-speed requirement

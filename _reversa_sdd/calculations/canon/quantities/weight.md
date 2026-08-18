@@ -4,7 +4,7 @@ kind: quantity
 symbol: W
 unit: N
 role: derived
-status: draft
+status: approved
 tags:
   - canon/quantity
   - role/derived

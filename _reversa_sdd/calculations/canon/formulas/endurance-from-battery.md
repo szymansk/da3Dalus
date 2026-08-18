@@ -13,6 +13,7 @@ tags:
   - dim/balances
   - shape/law
   - kind/law
+  - status/draft
 ---
 
 # Flight time from pack energy and power draw

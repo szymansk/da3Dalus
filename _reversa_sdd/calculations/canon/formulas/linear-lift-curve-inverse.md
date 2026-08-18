@@ -13,6 +13,7 @@ tags:
   - dim/procedural
   - shape/law
   - kind/law
+  - status/draft
 ---
 
 # Angle of attack from lift coefficient via the linear lift curve

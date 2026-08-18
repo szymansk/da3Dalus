@@ -13,6 +13,7 @@ tags:
   - dim/balances
   - shape/law
   - kind/law
+  - status/draft
 ---
 
 # Wing loading

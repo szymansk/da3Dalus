@@ -13,6 +13,7 @@ tags:
   - dim/balances
   - shape/law
   - kind/law
+  - status/draft
 ---
 
 # Thrust-to-weight required for level flight at a given speed

@@ -13,6 +13,7 @@ tags:
   - dim/procedural
   - shape/law
   - kind/procedure
+  - status/draft
 ---
 
 # Stall onset from the shape of the computed polar

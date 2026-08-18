@@ -3,7 +3,7 @@ canon: air-density-isa
 entry: formula
 kind: law
 shape: law
-status: draft
+status: approved
 output: air-density
 source_status: SOURCED
 dimensional_check: PROCEDURAL
@@ -13,6 +13,7 @@ tags:
   - dim/procedural
   - shape/law
   - kind/law
+  - status/approved
 ---
 
 # ISA air density at altitude
@@ -65,5 +66,5 @@ Scholz does not write rho(h) directly; he writes T(h) and derives p(h), then use
 - [ ] **Preconditions** — every binding condition holds, or the violation is ticketed
 - [ ] **Inputs approved** — no formula is approvable before its inputs are
 
-> While `status: draft` this entry **cites nothing and decides nothing**.
+> **Approved.** This is the relation the implementations are measured against.
 

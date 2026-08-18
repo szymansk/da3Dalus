@@ -13,6 +13,7 @@ tags:
   - dim/balances
   - shape/approximation
   - kind/law
+  - status/draft
 ---
 
 # Minimum-sink speed as a fixed multiple of the stall speed
