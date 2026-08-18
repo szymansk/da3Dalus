@@ -1,0 +1,49 @@
+---
+name: sui-rho
+symbol: ρ
+kind: constant
+unit: kg/m³
+cluster: aero-polars
+user_visible: false
+source_status: SOURCED
+---
+
+# ISA sea-level density (suitability)
+
+**Definition.** Density used for the root/tip Reynolds computation.
+
+**Value.** `1.225`
+
+**Formula — as the code writes it.**
+
+```
+_RHO = 1.225  # kg/m³
+```
+
+**Inputs.** — *(leaf: a constant or an external input)*
+
+**Produced by.** `app/services/suitability_service.py:74` — `_RHO`
+
+**Consumed by.**
+
+- in this graph: [[sui-re-root|Root-chord Reynolds number]]
+- outside it: `_compute_re:121`
+
+**Source.** 🟢 SOURCED
+
+> ICAO Standard Atmosphere / ISO 2533:1975, sea level
+
+**The source states it as.**
+
+```
+ρ_SL = 1.225 kg/m³
+```
+
+**⚠️ Divergence from the source.** Exact; third of three declarations of this constant (ADR 0022).
+
+🟡 *Reported by the extraction pass, not independently verified.*
+
+**Cited in the code itself.** `_RHO = 1.225  # kg/m³`
+
+---
+*Cluster [[_index-aero-polars|aero-polars]] · generated from the 2026-08-18 extraction.*

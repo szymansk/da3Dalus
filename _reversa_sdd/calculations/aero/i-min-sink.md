@@ -1,0 +1,45 @@
+---
+name: i-min-sink
+kind: quantity
+unit: index
+cluster: aero-spanwise
+user_visible: false
+source_status: PARTIAL
+---
+
+# Minimum-sink index
+
+**Definition.** Index of the lowest sink rate on the sorted curve.
+
+**Formula — as the code writes it.**
+
+```
+i_min_sink = int(np.argmin(w))
+```
+
+**Inputs.** [[speed-polar-w|Sink rate]]
+
+**Produced by.** `app/services/analysis_service.py:521` — `_compute_speed_polar`
+
+**Consumed by.**
+
+- in this graph: [[alpha-min-sink-deg|Alpha at minimum sink]] · [[v-min-sink|Minimum-sink speed]] · [[w-min|Minimum sink rate]]
+
+**Source.** 🟡 PARTIAL
+
+> RC-Network Wiki 'Gleitzahl' establishes the speed-dependent polar with distinct optima; no page read gives the minimum-sink point explicitly.
+>
+> — via `rc-aircraft-designer`
+
+**The source states it as.**
+
+```
+polar optimum: E = E(V), maximum at one specific speed
+```
+
+**⚠️ Divergence from the source.** Minimum-sink (min w) and best-glide (max V/w) are distinct polar points; the code correctly computes them separately, but no consulted source was found stating the min-sink definition.
+
+🟡 *Reported by the extraction pass, not independently verified.*
+
+---
+*Cluster [[_index-aero-spanwise|aero-spanwise]] · generated from the 2026-08-18 extraction.*

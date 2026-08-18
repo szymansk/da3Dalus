@@ -1,0 +1,54 @@
+---
+name: alr-g
+symbol: g
+kind: constant
+unit: m/s²
+cluster: aero-polars
+user_visible: false
+source_status: SOURCED
+---
+
+# Standard gravity
+
+**Definition.** Gravitational acceleration used for level-flight CL.
+
+**Value.** `9.80665`
+
+**Formula — as the code writes it.**
+
+```
+G = 9.80665  # m/s²
+```
+
+**Inputs.** — *(leaf: a constant or an external input)*
+
+**Produced by.** `app/services/airfoil_low_re_service.py:39` — `G`
+
+**Consumed by.**
+
+- in this graph: [[alr-level-flight-cl|Level-flight lift coefficient]]
+- outside it: `_level_flight_cl:707`
+
+**Source.** 🟢 SOURCED
+
+> Standard gravity g_n = 9.80665 m/s², 3rd CGPM (1901); ISO 80000-3
+
+**The source states it as.**
+
+```
+g_n = 9.80665 m/s²
+```
+
+**⚠️ Divergence from the source.** Exact match. Duplicated by hand from endurance_service ('keep in sync') rather than imported — ADR 0022.
+
+🟡 *Reported by the extraction pass, not independently verified.*
+
+**⚠️ Anomaly.** Comment says 'reuse values from endurance_service — keep in sync' — a manually-synchronised duplicate rather than one source.
+
+🟡 *Reported by the extraction pass, not independently verified. Do not cite as a
+defect until confirmed against the code.*
+
+**Cited in the code itself.** `G = 9.80665  # m/s²`
+
+---
+*Cluster [[_index-aero-polars|aero-polars]] · generated from the 2026-08-18 extraction.*

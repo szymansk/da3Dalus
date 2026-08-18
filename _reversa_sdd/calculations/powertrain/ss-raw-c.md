@@ -1,0 +1,45 @@
+---
+name: ss-raw-c
+symbol: raw_c
+kind: quantity
+unit: 1/h (C)
+cluster: powertrain
+user_visible: false
+source_status: PARTIAL
+---
+
+# Raw required C-rate
+
+**Definition.** Physically required discharge rate before any safety margin: peak current over capacity in Ah.
+
+**Formula — as the code writes it.**
+
+```
+raw_c = i_peak / (cap_mah / 1000.0) if cap_mah > 0 else float("inf")
+```
+
+**Inputs.** [[ss-i-peak|Peak battery current]] · [[ss-cap-mah|Minimum battery capacity]]
+
+**Produced by.** `app/services/powertrain_solution_space_service.py:145` — `_per_cell`
+
+**Consumed by.**
+
+- in this graph: [[ss-c-min|Required battery C-rate]]
+- outside it: `app/services/powertrain_solution_space_service.py:146`
+
+**Source.** 🟡 PARTIAL
+
+> C-rate as discharge current divided by rated capacity in Ah is standard battery-industry terminology. It is not defined in any of the three expert vaults consulted.
+>
+> — via `rc-aircraft-designer`
+
+**The source states it as.**
+
+```
+C = I / capacity_Ah
+```
+
+**Cited in the code itself.** `module docstring: "C_min   = I_peak / (cap_mAh / 1000)"`
+
+---
+*Cluster [[_index-powertrain|powertrain]] · generated from the 2026-08-18 extraction.*

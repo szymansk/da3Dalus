@@ -1,0 +1,49 @@
+---
+name: alr-rho
+symbol: ρ
+kind: constant
+unit: kg/m³
+cluster: aero-polars
+user_visible: false
+source_status: SOURCED
+---
+
+# ISA sea-level density (low-Re module)
+
+**Definition.** Air density used for the level-flight CL helper.
+
+**Value.** `1.225`
+
+**Formula — as the code writes it.**
+
+```
+RHO = 1.225  # kg/m³  (ISA sea-level)
+```
+
+**Inputs.** — *(leaf: a constant or an external input)*
+
+**Produced by.** `app/services/airfoil_low_re_service.py:40` — `RHO`
+
+**Consumed by.**
+
+- in this graph: [[alr-level-flight-cl|Level-flight lift coefficient]]
+- outside it: `_level_flight_cl:706`
+
+**Source.** 🟢 SOURCED
+
+> ICAO Standard Atmosphere / ISO 2533:1975, sea level
+
+**The source states it as.**
+
+```
+ρ_SL = 1.225 kg/m³
+```
+
+**⚠️ Divergence from the source.** Exact match; third declaration of the same constant (ADR 0022).
+
+🟡 *Reported by the extraction pass, not independently verified.*
+
+**Cited in the code itself.** `RHO = 1.225  # kg/m³  (ISA sea-level)`
+
+---
+*Cluster [[_index-aero-polars|aero-polars]] · generated from the 2026-08-18 extraction.*

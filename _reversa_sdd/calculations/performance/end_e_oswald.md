@@ -1,0 +1,36 @@
+---
+name: end_e_oswald
+symbol: e
+kind: quantity
+unit: -
+cluster: perf-envelope
+user_visible: true
+source_status: PARTIAL
+---
+
+# Resolved Oswald efficiency
+
+**Definition.** Cached polar Oswald factor, else the 0.8 fallback.
+
+**Formula — as the code writes it.**
+
+```
+e_oswald: float = e_oswald_raw if e_oswald_raw is not None else FALLBACK_E_OSWALD
+```
+
+**Inputs.** [[end_fallback_e|Oswald fallback]]
+
+**Produced by.** `app/services/endurance_service.py:301` — `compute_endurance`
+
+**Consumed by.**
+
+- in this graph: [[end_k_induced|Induced-drag factor]]
+
+**Source.** 🟡 PARTIAL
+
+> Fitted value when available; otherwise inherits end_fallback_e (0.8, transport/GA bands only).
+>
+> — via `aero`
+
+---
+*Cluster [[_index-perf-envelope|perf-envelope]] · generated from the 2026-08-18 extraction.*

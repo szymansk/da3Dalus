@@ -132,6 +132,32 @@ gets cited. Two mechanisms:
 
 Neither catches every semantic drift. Both catch the drift that actually happens.
 
+## State — first full pass, 2026-08-18
+
+**1112 nodes** extracted from 30 service modules by a 22-agent team, in two stages per
+domain: read the code, then ask the domain experts for a citable source.
+
+| | |
+|---|---|
+| nodes | **1112** — 285 constants, 697 reaching an API response or the UI |
+| provenance | 🟢 443 sourced · 🟡 358 partial · 🔴 **310 with no attributable source** |
+| citation check | **1007 of 1007 file:line references exist**; 96 % also resolve to the named symbol's scope |
+| flagged | 639 anomalies · 834 divergences · 147 scale warnings — **all 🟡, none independently verified** |
+
+Two things about those numbers.
+
+**The provenance check is the strong result.** Not one fabricated path, not one line
+outside its file. The extraction can be trusted about *where* things are.
+
+**The flags are not findings yet.** 639 anomalies across 1112 nodes is an over-reporting
+rate, not a defect rate; 834 divergences is implausible as "the code contradicts the
+literature" and mostly means "the source writes it differently". Every one is marked
+🟡 *reported, not verified* in its note, and must be confirmed against the code before it
+is cited. Removing that marker turns a lead into a claim.
+
+What **is** confirmed already lives in the tickets it belongs to — the root cause of
+gh-1132 was found this way.
+
 ## Layout
 
 ```

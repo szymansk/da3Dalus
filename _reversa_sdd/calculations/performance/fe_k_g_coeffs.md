@@ -1,0 +1,46 @@
+---
+name: fe_k_g_coeffs
+symbol: 0.88 / 5.3
+kind: constant
+unit: -
+cluster: perf-envelope
+user_visible: false
+source_status: SOURCED
+---
+
+# Pratt gust-alleviation coefficients
+
+**Definition.** Numerator and denominator constants of the Pratt K_g regression.
+
+**Value.** `0.88, 5.3`
+
+**Formula — as the code writes it.**
+
+```
+0.88 * mu_g / (5.3 + mu_g)
+```
+
+**Inputs.** — *(leaf: a constant or an external input)*
+
+**Produced by.** `app/services/flight_envelope_service.py:112` — `_compute_k_g`
+
+**Consumed by.**
+
+- in this graph: [[fe_k_g|Gust alleviation factor]]
+
+**Source.** 🟢 SOURCED
+
+> FAR 25.341(c) / CS-25.341(c) state K_g = 0.88*mu_g/(5.3+mu_g) verbatim; regression origin Pratt & Walker, NACA TN 2964 (1953).
+>
+> — via `scholz`
+
+**The source states it as.**
+
+```
+0.88 and 5.3
+```
+
+**Cited in the code itself.** `"Sources: FAR-25.341(a)(2); CS-VLA.333; NACA TN 2964."`
+
+---
+*Cluster [[_index-perf-envelope|perf-envelope]] · generated from the 2026-08-18 extraction.*

@@ -1,0 +1,48 @@
+---
+name: vlm-wing-strip-counts
+symbol: wing_counts
+kind: quantity
+unit: strips
+cluster: aero-strips
+user_visible: false
+source_status: PARTIAL
+---
+
+# Expected strips per wing
+
+**Definition.** Expected spanwise strip count per wing = segments × spanwise_resolution × (2 if symmetric).
+
+**Formula — as the code writes it.**
+
+```
+n = segments * spanwise_resolution * (2 if wing.symmetric else 1)
+```
+
+**Inputs.** [[vlm-spanwise-resolution-fixed|VLM spanwise_resolution literal]]
+
+**Produced by.** `app/services/vlm_strip_forces.py:53` — `_wing_strip_counts`
+
+**Consumed by.**
+
+- in this graph: [[vlm-n-spanwise|Spanwise strip count per surface]]
+- outside it: `app/services/vlm_strip_forces.py:compute_vlm_strip_forces (surface attribution)`
+
+**Source.** 🟡 PARTIAL
+
+> AVL 3.40 source, Avl/src/aoutput.f:211 ('# Chordwise', '# Spanwise', 'First strip' per surface)
+>
+> — via `avl-advisor`
+
+**⚠️ Divergence from the source.** Counting strips per surface is AVL's own reporting model. The collapse-to-one-surface fallback on mismatch has no source.
+
+🟡 *Reported by the extraction pass, not independently verified.*
+
+**⚠️ Anomaly.** Undeclared fallback: on a count mismatch all strips collapse into one aggregate surface (lines 239-241) with no warning emitted (ADR 0020).
+
+🟡 *Reported by the extraction pass, not independently verified. Do not cite as a
+defect until confirmed against the code.*
+
+**Cited in the code itself.** `app/services/vlm_strip_forces.py:52-53`
+
+---
+*Cluster [[_index-aero-strips|aero-strips]] · generated from the 2026-08-18 extraction.*

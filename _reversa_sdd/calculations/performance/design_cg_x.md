@@ -1,0 +1,46 @@
+---
+name: design_cg_x
+symbol: x_cg
+kind: quantity
+unit: m
+cluster: perf-oppoints
+user_visible: true
+source_status: PARTIAL
+---
+
+# Design CG x-position
+
+**Definition.** Longitudinal CG used as the moment reference for every trim solve.
+
+**Formula — as the code writes it.**
+
+```
+if row.active_source == "CALCULATED" and row.calculated_value is not None: return float(row.calculated_value); return float(row.estimate_value)
+```
+
+**Inputs.** — *(leaf: a constant or an external input)*
+
+**Produced by.** `app/services/operating_point_generator_service.py:244` — `_load_design_cg_x`
+
+**Consumed by.**
+
+- in this graph: [[op_xyz_ref|Operating-point moment reference]]
+- outside it: `app/services/operating_point_generator_service.py:1116 (asb_airplane.xyz_ref)` · `app/services/operating_point_generator_service.py:1027, 1582 (xyz_ref field)`
+
+**Source.** 🟡 PARTIAL
+
+> Sadraey §11 (CG range) and AeroSandbox Airplane reference — xyz_ref is the moment reference point; aircraft moments are taken about the CG
+>
+> — via `aircraft-design-scholz, aerosandbox-expert`
+
+**⚠️ Divergence from the source.** Using the CG as the moment reference is the correct and sourced convention. The 0.0 fallback when no cg_x assumption exists is not: it silently places the moment reference at the nose, which changes Cm by (x_cg/c̄)·CL — a first-order error reported as a valid trim. Undeclared fallback (ADR 0020).
+
+🟡 *Reported by the extraction pass, not independently verified.*
+
+**⚠️ Anomaly.** Silent 0.0 fallback when no cg_x assumption row exists (line 243), which places the moment reference at the nose with no DesignWarning (ADR 0020).
+
+🟡 *Reported by the extraction pass, not independently verified. Do not cite as a
+defect until confirmed against the code.*
+
+---
+*Cluster [[_index-perf-oppoints|perf-oppoints]] · generated from the 2026-08-18 extraction.*
