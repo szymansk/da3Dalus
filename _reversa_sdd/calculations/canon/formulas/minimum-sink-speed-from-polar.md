@@ -25,17 +25,21 @@ V_mp = V( argmin_i w_i ),  w_min = min_i w_i
 
 **Produces** [[minimum-sink-speed]]  ·  **from** [[flight-speed]] · [[sink-rate]]
 
-**Kind: a procedure.** There is no closed form, so an algorithm stands in its place. Approval asks two different questions: **under which assumptions does it hold**, and **when does it converge** — including what it returns when it does not.
+**Kind: a procedure.** There is no closed form, so an algorithm stands in its place. Source and scale are asked as of any entry — a procedure is not source-free: it either implements a published standard or solves a stated equation. **On top of that** it must say **under which assumptions it holds** and **when it converges**, including what it returns when it does not.
 
-### Assumptions and convergence
+### The procedure
 
-> A procedure exists because no closed solution does. What replaces the source is the
-> statement of **what must hold for it to be valid** and **when it terminates**. Both
-> are required before approval.
+> A procedure is not invented here. It has **two origins**, and both are citable:
+> the **relation** it solves, and the **method** it solves it with. Its assumptions and
+> its convergence behaviour are then properties of that method — published, not chosen.
 
-**Assumptions.** 🔴 not yet stated — required for approval.
+**Relation solved.** 🔴 not yet stated — which equation or standard does this implement?
 
-**Convergence.** 🔴 not yet stated — required for approval.
+**Method.** 🔴 not yet named — bisection, Brent, Newton, Picard, an interior-point solver, a tabulated standard?
+
+**Assumptions.** 🔴 not yet stated — bracketing, continuity, monotonicity, validity range. These follow from the method; they are not a matter of taste.
+
+**Convergence.** 🔴 not yet stated — tolerance, iteration cap, and the guarantee the method actually offers.
 
 **On failure.** 🔴 not yet stated — what is returned when it does not converge, and is it declared? (ADR 0020)
 
@@ -67,7 +71,10 @@ Sadraey gives the closed form; the proposal's argmin over computed sink rate is 
 
 ## Approval
 
-- [ ] **Assumptions** — the conditions under which the procedure is valid are stated
+- [ ] **Source** — citation real, or absence stated and adopted on the maintainer's authority
+- [ ] **Scale** — holds at 0.5–15 kg, or the limitation is written down (ADR 0023)
+- [ ] **Relation and method** — which equation it solves, and by which named method
+- [ ] **Assumptions** — the conditions the method requires (bracketing, continuity, range)
 - [ ] **Convergence** — the criterion, and what is returned and declared on failure
 - [ ] **Dimensions** — the check balances
 - [ ] **Implementations** — all agree, or each deviation is declared and justified

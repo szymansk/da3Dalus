@@ -86,17 +86,33 @@ confidence and the Ist/Soll axis separately (`../MARKERS.md`).
 
 **`kind`** — what sort of statement it is. This decides **what approval asks**.
 
-| kind | why it exists | approval asks |
-|---|---|---|
-| **law** | a closed-form relation | the **source** · validity at 0.5–15 kg |
-| **procedure** | *because no closed solution exists* | the **assumptions** under which it holds · **when it converges** · what it returns when it does not |
-| **fit** | a regression over computed points, not a derivation | the fitted model · its **domain of validity** · its **rejection criteria** |
-| **rating** | a preference, not physics | whose preference. There is nothing to cite: the weighting is a **decision**, not a fact |
+**Source and scale are asked of every entry.** Nothing here is source-free: a procedure
+implements a published standard or solves an equation that has one, and a fit has an
+origin for its fitted model. The kind decides what is asked **in addition**.
 
-The procedure row is the one that had to be added. A procedure is used precisely because
-there is no formula, so "what is the source" is the wrong question. What replaces it is
-the pair the maintainer named: **under which assumptions is it valid, and when does it
-converge.** Without both, a procedure is not approvable — it is only running.
+| kind | why it exists | asked *in addition* to source and scale |
+|---|---|---|
+| **law** | a closed-form relation | — |
+| **procedure** | *because no closed solution exists* | the **assumptions** under which it holds · **when it converges** · what it returns when it does not |
+| **fit** | a regression over computed points, not a derivation | its **domain of validity** · its **rejection criteria** |
+| **rating** | a preference, not physics | whether **this** weighting is the one you want — that part is a decision, not a fact |
+
+The procedure row is the one that had to be added — and it is the one most easily
+misread. **A procedure is not invented here.** It has two origins, and both are citable:
+
+- the **relation** it solves — an equation, or a published standard such as the U.S. 1976
+  atmosphere;
+- the **method** it solves it with — bisection, Brent, Newton, Picard, an interior-point
+  solver.
+
+Its assumptions and its convergence behaviour then follow from that method. Brent's method
+converges when the root is bracketed and the function is continuous on the interval; that
+is a published property, not a preference. So "under which assumptions, and when does it
+converge" is a question with a **literature answer**, exactly like the source of a law.
+
+Which is what makes an undeclared failure return a defect rather than a style choice: the
+method offers a guarantee, and the code either honours it or silently returns something
+the method never promised.
 
 That gate finds things immediately. The trim solver runs with `max_iter=120`,
 `max_runtime=0.35` and `behavior_on_failure="return_last"`

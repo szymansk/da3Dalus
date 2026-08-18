@@ -25,7 +25,7 @@ C_D0(V), e(V) = interp( table, Re(V) ),  Re = rho * V * c_MAC / mu
 
 **Produces** [[zero-lift-drag-coefficient]]  ·  **from** [[flight-speed]] · [[air-density]] · [[mean-aerodynamic-chord]] · [[zero-lift-drag-coefficient]] · [[oswald-efficiency]]
 
-**Kind: a fit.** A regression over computed points, not a derivation. Approval asks for the fitted model, its **domain of validity** and its **rejection criteria**.
+**Kind: a fit.** A regression over computed points, not a derivation. Source and scale still apply — the fitted *model* has an origin. **On top:** its **domain of validity** and its **rejection criteria**.
 
 **Dimensional check.** ⚪ procedural — not an algebraic law
 
@@ -51,7 +51,9 @@ RC-scale sanity-check forms of the same quantity: Lennon Ch. 1-3, Rn = speed(mph
 
 ## Approval
 
-- [ ] **Model and domain** — the fitted form and where it may be evaluated are stated
+- [ ] **Source** — citation real, or absence stated and adopted on the maintainer's authority
+- [ ] **Scale** — holds at 0.5–15 kg, or the limitation is written down (ADR 0023)
+- [ ] **Model and domain** — the fitted form and where it may be evaluated
 - [ ] **Rejection** — when the fit is refused rather than used
 - [ ] **Dimensions** — the check balances
 - [ ] **Implementations** — all agree, or each deviation is declared and justified
