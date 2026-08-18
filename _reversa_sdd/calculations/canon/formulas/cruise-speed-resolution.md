@@ -1,7 +1,7 @@
 ---
 canon: cruise-speed-resolution
 entry: formula
-kind: procedure
+kind: substitution
 shape: law
 status: draft
 output: cruise-speed
@@ -12,7 +12,7 @@ tags:
   - source/no-source-found
   - dim/procedural
   - shape/law
-  - kind/procedure
+  - kind/substitution
   - flag/conflict
 ---
 
@@ -26,23 +26,16 @@ V_cruise := V_md   (substitution, not a physical law)
 
 **Produces** [[cruise-speed]]  ·  **from** [[minimum-drag-speed]] · [[max-level-speed]] · [[dive-speed]]
 
-**Kind: a procedure.** There is no closed form, so an algorithm stands in its place. Source and scale are asked as of any entry — a procedure is not source-free: it either implements a published standard or solves a stated equation. **On top of that** it must say **under which assumptions it holds** and **when it converges**, including what it returns when it does not.
 
-### The procedure
 
-> A procedure is not invented here. It has **two origins**, and both are citable:
-> the **relation** it solves, and the **method** it solves it with. Its assumptions and
-> its convergence behaviour are then properties of that method — published, not chosen.
+ℹ️ **Reclassified** from `procedure` by the trial of 2026-08-18. Not a procedure and not a law — three priority ladders that assign one already-computed quantity to the name of a different quantity. No equation is solved: operating_point_generator_service.py:271-284 returns ctx['v_md_mps'] as the cruise speed; matching_chart_service.py:786-800 is an if/elif chain ending in a literal; flight_envelope_service.py:190 is a division by a constant that the same module put there.
 
-**Relation solved.** 🔴 not yet stated — which equation or standard does this implement?
-
-**Method.** 🔴 not yet named — bisection, Brent, Newton, Picard, an interior-point solver, a tabulated standard?
-
-**Assumptions.** 🔴 not yet stated — bracketing, continuity, monotonicity, validity range. These follow from the method; they are not a matter of taste.
-
-**Convergence.** 🔴 not yet stated — tolerance, iteration cap, and the guarantee the method actually offers.
-
-**On failure.** 🔴 not yet stated — what is returned when it does not converge, and is it declared? (ADR 0020)
+> 🔴 **An assumption of this entry is broken in the code.**
+>
+> Three, all real:
+> (1) app/services/matching_chart_service.py:796 — `_v_md(500.0, ...)` pins the estimate to W/S = 500 N/m^2. The service's own sweep spans _WS_MIN=10 .. _WS_MAX=1500 N/m^2 (lines 71-72), and the 0.5-15 kg RC/UAV band this app targets sits near 30-150 N/m^2. Since V_md ~ sqrt(W/S), the estimated cruise speed is roughly 1.8-4x too high for a real RC model, and is IDENTICAL for every aircraft sharing cd0/e/AR regardless of mass or size. The emitted warning says only 'estimated from polar', hiding the constant. Also ADR 0023: a constant with no source, not validated at RC/UAV scale.
+> (2) app/services/flight_envelope_service.py:190 sets v_c = v_dive/1.4 while flight_envelope_service.py:315 (and assumption_compute_service.py:956, `_compute_v_dive`) sets v_dive = 1.4*v_max. The two cancel exactly: V_C == V_max identically. Consequence: the gust-line interpolation between U_vc = 15.24 m/s and U_vd = 7.62 m/s (lines 232-236) has its low-speed anchor at V_max, so the constant U_vc is applied over the whole envelope from V_stall to V_max and the interpolation only ever runs on [V_max, 1.4*V_max]. `_compute_v_dive`'s own docstring (assumption_compute_service.py:951-953) records that the audit prefers anchoring V_D on V_C — i.e. the circularity is known internally and invisible externally.
+> (3) app/services/operating_point_generator_service.py:277 — the terminal literal 18.0 m/s is returned as a cruise speed for an aircraft with no profile and no cached V_md, undeclared, and is then written into the profile goals (line 1101) where it drives every operating point.
 
 **Dimensional check.** ⚪ procedural — not an algebraic law
 
@@ -77,9 +70,6 @@ Three incompatible definitions of V_cruise coexist. (1) A mission goal read from
 
 - [ ] **Source** — citation real, or absence stated and adopted on the maintainer's authority
 - [ ] **Scale** — holds at 0.5–15 kg, or the limitation is written down (ADR 0023)
-- [ ] **Relation and method** — which equation it solves, and by which named method
-- [ ] **Assumptions** — the conditions the method requires (bracketing, continuity, range)
-- [ ] **Convergence** — the criterion, and what is returned and declared on failure
 - [ ] **Dimensions** — the check balances
 - [ ] **Implementations** — all agree, or each deviation is declared and justified
 - [ ] **Preconditions** — every binding condition holds, or the violation is ticketed

@@ -27,21 +27,25 @@ V_mp = V( argmin_i w_i ),  w_min = min_i w_i
 
 **Kind: a procedure.** There is no closed form, so an algorithm stands in its place. Source and scale are asked as of any entry — a procedure is not source-free: it either implements a published standard or solves a stated equation. **On top of that** it must say **under which assumptions it holds** and **when it converges**, including what it returns when it does not.
 
+> 🔴 **An assumption of this entry is broken in the code.**
+>
+> 1) analysis_service.py:514-515 with :685-702 - same defect as V_md and worse here: the polar is computed once at a single velocity (default 10 m/s) and then re-used across the whole speed range, and the min-sink point sits at the lowest speed of the characteristic points (V_ms ~= 0.76*V_md), i.e. where the relative Reynolds error against the 10 m/s polar is largest. The sink rate being minimised is built from CD values that do not belong to the speed they are multiplied by. 2) ADR 0022 - three producers again: the argmin here (:521,543-544), speed_polar_service.py:156-158 plus 178-182 (closed form + Picard, served at api/v2/endpoints/aeroplane/speed_polar.py:170), and assumption_compute_service.py:1946-1969. 3) speed_polar_service.py:163-171 clamps CL_ms to cl_max and V_min_sink to V_stall when the closed-form optimum exceeds CL_max (high-AR / low-CD0 gliders - the RC/UAV thermal-glider case this app targets) and emits no DesignWarning; the sampled path cannot clamp because CL_max bounds its samples by construction. For that whole aircraft class the two authorities differ systematically and neither declares it.
+
 ### The procedure
 
 > A procedure is not invented here. It has **two origins**, and both are citable:
 > the **relation** it solves, and the **method** it solves it with. Its assumptions and
 > its convergence behaviour are then properties of that method — published, not chosen.
 
-**Relation solved.** 🔴 not yet stated — which equation or standard does this implement?
+**Relation solved.** Minimum of the steady-glide sink rate w = V*CD/CL; at minimum power the induced drag is three times the parasite drag, giving CL_mp = sqrt(3*pi*e*AR*CD0). Cited in-code as 'Anderson section 6.7.2' at assumption_compute_service.py:1957-1959 and restated at speed_polar_service.py:11-12. Citation passed through as written in the code; not independently verified.
 
-**Method.** 🔴 not yet named — bisection, Brent, Newton, Picard, an interior-point solver, a tabulated standard?
+**Method.** Exhaustive search over a sampled discretisation: i_min_sink = int(np.argmin(w)) at analysis_service.py:521, over w = v*(cd_pos/cl_pos) computed at :515 for the positive-CL alpha-sweep samples, co-sorted by V at :517-519. v_min_sink and w_min are read out at that index (:543-544).
 
-**Assumptions.** 🔴 not yet stated — bracketing, continuity, monotonicity, validity range. These follow from the method; they are not a matter of taste.
+**Assumptions.** (1) The sampled CL range brackets CL_ms = sqrt(3)*CL_md - unchecked. CL_ms sits close to CL_max, so this is a demand on the high-CL (low-speed) end of the alpha sweep specifically. (2) The polar is still physically valid there: with the default alpha_end = 20 deg the samples run past CL_max, so the argmin is taken over a set that includes post-stall points, where AeroBuildup/NeuralFoil is least reliable and where no steady glide exists. (3) The spacing resolves a minimum that is flatter than the L/D maximum in CL, while V ~ CL^(-1/2) - so, as for V_md, grid error is first-order in the published speed. (4) CD(CL) valid at the speed it is assigned to - see violation.
 
-**Convergence.** 🔴 not yet stated — tolerance, iteration cap, and the guarantee the method actually offers.
+**Convergence.** None. Exhaustive search: exact on the 36-sample grid, blind between grid points, single pass, no tolerance, no refinement. Note the contrast with the sibling implementation, which does have an iterative scheme - one Picard pass, _PICARD_PASSES = 1 at speed_polar_service.py:34, itself a fixed pass count with no convergence test.
 
-**On failure.** 🔴 not yet stated — what is returned when it does not converge, and is it declared? (ADR 0020)
+**On failure.** argmin always returns an index; an endpoint minimum (the sweep stopped before the sink minimum) is reported as v_min_sink/w_min with nothing in the response to distinguish it. Empty curve with v_min_sink = None only for the degenerate-geometry branch at :493-512. Whole polar returned as null on any exception (:667-669). No DesignWarning in the file - undeclared, ADR 0020.
 
 **Shape: a route.** This is one of several ways to the same quantity. The canon does not choose between them — it requires that they **agree**.
 

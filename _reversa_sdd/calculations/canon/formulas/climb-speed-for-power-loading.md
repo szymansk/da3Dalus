@@ -1,7 +1,7 @@
 ---
 canon: climb-speed-for-power-loading
 entry: formula
-kind: procedure
+kind: law
 shape: approximation
 status: draft
 output: climb-speed
@@ -12,7 +12,7 @@ tags:
   - source/partial
   - dim/unparseable
   - shape/approximation
-  - kind/procedure
+  - kind/law
 ---
 
 # Climb speed assumed by the power-loading constraint
@@ -25,23 +25,21 @@ V_climb = max(1.3 * V_S,target, 1 m/s)
 
 **Produces** [[climb-speed]]  ·  **from** [[stall-speed-target]]
 
-**Kind: a procedure.** There is no closed form, so an algorithm stands in its place. Source and scale are asked as of any entry — a procedure is not source-free: it either implements a published standard or solves a stated equation. **On top of that** it must say **under which assumptions it holds** and **when it converges**, including what it returns when it does not.
+**Kind: a law.** A closed-form relation. Approval asks for its **source** and its **validity at 0.5–15 kg**.
 
-### The procedure
+ℹ️ **Reclassified** from `procedure` by the trial of 2026-08-18. One line of scalar arithmetic with a clamp: `v_climb = max(1.3 * max(v_stall, 1.0), 1.0)` (app/services/matching_chart_service.py:563), consumed by the closed form `p_over_m * eta_prop / (g * v_climb)` (line 564). A coefficient times an input, clamped — a law, not a procedure.
 
-> A procedure is not invented here. It has **two origins**, and both are citable:
-> the **relation** it solves, and the **method** it solves it with. Its assumptions and
-> its convergence behaviour are then properties of that method — published, not chosen.
+> 🔴 **An assumption of this entry is broken in the code.**
+>
+> Two:
+> (1) app/services/matching_chart_service.py:1133 and 1135 pass `v_stall=v_s`, and `v_s` is resolved at line 781 as `v_s_target if v_s_target is not None else defaults['v_s_target']` — the mission's maximum ACCEPTABLE stall speed (e.g. 7.0 m/s for trainer, 12.0 for sport, 27.7 for GA; lines 209-236), never the aircraft's computed stall speed. Consequence: the power-loading floor is drawn for the requirement, not for the design. Two aircraft on the same mission get the identical T/W floor however different their actual stall speeds are, and an aircraft that misses its stall target gets a floor corresponding to a speed it cannot fly. Because the floor is a constant T/W independent of W/S, the error displaces the whole design point vertically.
+> (2) app/services/matching_chart_service.py:563 — the inner `max(v_stall, 1.0)` silently replaces any stall speed below 1 m/s with 1 m/s, raising T/W by the ratio 1.0/v_stall with no DesignWarning (ADR 0020). The outer `max(..., 1.0)` is unreachable: 1.3 * (something >= 1.0) is always >= 1.3 > 1.0 — inert code, ADR 0021.
 
-**Relation solved.** 🔴 not yet stated — which equation or standard does this implement?
+**Evaluated by.** None — scalar evaluation. The result is emitted as a horizontal line, the same T/W repeated across the whole W/S sweep (`[pl_tw] * len(ws_range)`, matching_chart_service.py:1141).
 
-**Method.** 🔴 not yet named — bisection, Brent, Newton, Picard, an interior-point solver, a tabulated standard?
+**Accuracy.** Not applicable — no iteration, no tolerance. The lookup is exact on its four keys and undefined off them; there is no interpolation between mission profiles.
 
-**Assumptions.** 🔴 not yet stated — bracketing, continuity, monotonicity, validity range. These follow from the method; they are not a matter of taste.
-
-**Convergence.** 🔴 not yet stated — tolerance, iteration cap, and the guarantee the method actually offers.
-
-**On failure.** 🔴 not yet stated — what is returned when it does not converge, and is it declared? (ADR 0020)
+**On failure.** Returns None when profile_key is None or the key is absent from the table (matching_chart_service.py:558-562); the constraint is then simply omitted from the chart with no warning. For a custom mode the caller silently substitutes the 'sport' band: `_power_loading_constraint('sport', v_stall=v_s)` (matching_chart_service.py:1135) — an undeclared substitution, ADR 0020. The hover text (line 1152) declares 'V_climb=1.3*V_s, eta_prop=0.7' but not that V_s is the target, not the clamp, and not the 'sport' fallback.
 
 ⚠️ **Shape: an approximation.** A rule of thumb standing where a law belongs. It may be the right thing to show, but it is never approved *as* the law for this quantity.
 
@@ -71,9 +69,6 @@ Sadraey's form is the min-power speed for props. V_climb = 1.3*V_S,target has no
 
 - [ ] **Source** — citation real, or absence stated and adopted on the maintainer's authority
 - [ ] **Scale** — holds at 0.5–15 kg, or the limitation is written down (ADR 0023)
-- [ ] **Relation and method** — which equation it solves, and by which named method
-- [ ] **Assumptions** — the conditions the method requires (bracketing, continuity, range)
-- [ ] **Convergence** — the criterion, and what is returned and declared on failure
 - [ ] **Dimensions** — the check balances
 - [ ] **Implementations** — all agree, or each deviation is declared and justified
 - [ ] **Preconditions** — every binding condition holds, or the violation is ticketed

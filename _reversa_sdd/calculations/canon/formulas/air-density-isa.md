@@ -1,7 +1,7 @@
 ---
 canon: air-density-isa
 entry: formula
-kind: procedure
+kind: law
 shape: law
 status: draft
 output: air-density
@@ -12,7 +12,7 @@ tags:
   - source/sourced
   - dim/procedural
   - shape/law
-  - kind/procedure
+  - kind/law
 ---
 
 # ISA air density at altitude
@@ -25,23 +25,15 @@ rho = rho_ISA(h)   [U.S. 1976 COESA standard atmosphere]
 
 **Produces** [[air-density]]  ·  **from** [[altitude]]
 
-**Kind: a procedure.** There is no closed form, so an algorithm stands in its place. Source and scale are asked as of any entry — a procedure is not source-free: it either implements a published standard or solves a stated equation. **On top of that** it must say **under which assumptions it holds** and **when it converges**, including what it returns when it does not.
+**Kind: a law.** A closed-form relation. Approval asks for its **source** and its **validity at 0.5–15 kg**.
 
-### The procedure
+ℹ️ **Reclassified** from `procedure` by the trial of 2026-08-18. Not a procedure. rho_ISA(h) is a closed form — the barometric formula over a piecewise-linear lapse-rate table, closed with the ideal gas law. AeroSandbox even ships that exact closed form (`method='isa'`, _isa_atmo_functions.py:62). It was classified as a procedure only because the formula sits behind a library call the parser could not read. Caveat worth keeping in the canon: no call site in this repo passes `method=`, so every rho in the app comes from the *default* `method='differentiable'` path, which is a cubic-B-spline surrogate of that law, not the law itself — see `method` and `convergence` below.
 
-> A procedure is not invented here. It has **two origins**, and both are citable:
-> the **relation** it solves, and the **method** it solves it with. Its assumptions and
-> its convergence behaviour are then properties of that method — published, not chosen.
+**Evaluated by.** Cubic B-spline interpolation over a fixed knot table (a table lookup with a named interpolation scheme). aerosandbox/atmosphere/_diff_atmo_functions.py:10-44 builds 38 knot altitudes spanning −5.0e6 … +2.087e6 m, evaluates the exact ISA at each, and fits `InterpolatedModel` to T(h) and to log p(h); pressure_differentiable = exp(spline(log p)). density() then divides. Selected by `method='differentiable'`, the constructor default (atmosphere.py:32) — and every one of the 15 call sites in this repo (app/api/utils.py:26, app/services/analysis_service.py:626 and :1728, app/services/operating_point_generator_service.py:661/717/769/884, mass_cg_service.py:280, section_aoa_service.py:451/506, neuralfoil_cdcl_service.py:21, avl_trim_service.py:99, aerobuildup_trim_service.py:100) constructs `asb.Atmosphere(altitude=...)` with no `method` argument, so the exact-ISA path is never taken.
 
-**Relation solved.** 🔴 not yet stated — which equation or standard does this implement?
+**Accuracy.** No iteration and therefore no convergence criterion — a single direct evaluation. The guarantee is: exact at the knots, spline truncation error between them. Measured in this venv (poetry run, differentiable vs method='isa'): 0 ppm at h = 0, 5000 and 10000 m (all knots); −61 ppm at 100 m; −339 ppm at 500 m; −739 ppm at 1000 m; −1535 ppm at 2000 m; −1987 ppm (−0.20%) at 3000 m; +7943 ppm (+0.79%) at 7500 m. Note the library's 0.02% figure is for *pressure*; density is roughly ten times worse at 3 km because the p and T interpolation errors do not cancel in p/(R·T). At RC/UAV altitude the consequence on any speed is ≤0.1% (V ∝ rho^−1/2), which is far inside the uncertainty of every other input in this register.
 
-**Method.** 🔴 not yet named — bisection, Brent, Newton, Picard, an interior-point solver, a tabulated standard?
-
-**Assumptions.** 🔴 not yet stated — bracketing, continuity, monotonicity, validity range. These follow from the method; they are not a matter of taste.
-
-**Convergence.** 🔴 not yet stated — tolerance, iteration cap, and the guarantee the method actually offers.
-
-**On failure.** 🔴 not yet stated — what is returned when it does not converge, and is it declared? (ADR 0020)
+**On failure.** Silent NaN outside the knot hull — measured: `asb.Atmosphere(altitude=3e6).density()` → nan, `-6e6` → nan, no exception raised. Silent number outside the class's own declared valid range — `Atmosphere(altitude=100000).density()` returns 4.34e-07 with `_valid_altitude_range == (0, 80000)`. Neither case is declared: no DesignWarning is emitted at any of the 15 call sites, and the app validates altitude on only one schema field (app/schemas/aeroanalysisschema.py:159, `ge=0.0`); :249, :352 and :418 are unbounded floats. Reachability is the mitigating fact — the hull is ±2000 km, so no plausible user input reaches NaN.
 
 **Dimensional check.** ⚪ procedural — not an algebraic law
 
@@ -68,9 +60,6 @@ Scholz does not write rho(h) directly; he writes T(h) and derives p(h), then use
 
 - [ ] **Source** — citation real, or absence stated and adopted on the maintainer's authority
 - [ ] **Scale** — holds at 0.5–15 kg, or the limitation is written down (ADR 0023)
-- [ ] **Relation and method** — which equation it solves, and by which named method
-- [ ] **Assumptions** — the conditions the method requires (bracketing, continuity, range)
-- [ ] **Convergence** — the criterion, and what is returned and declared on failure
 - [ ] **Dimensions** — the check balances
 - [ ] **Implementations** — all agree, or each deviation is declared and justified
 - [ ] **Preconditions** — every binding condition holds, or the violation is ticketed

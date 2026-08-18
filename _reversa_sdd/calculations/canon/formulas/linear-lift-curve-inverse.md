@@ -1,7 +1,7 @@
 ---
 canon: linear-lift-curve-inverse
 entry: formula
-kind: procedure
+kind: law
 shape: law
 status: draft
 output: characteristic-angle-of-attack
@@ -12,7 +12,7 @@ tags:
   - source/sourced
   - dim/procedural
   - shape/law
-  - kind/procedure
+  - kind/law
 ---
 
 # Angle of attack from lift coefficient via the linear lift curve
@@ -25,23 +25,19 @@ alpha = alpha_0 + C_L / C_Lalpha   (converted to degrees)
 
 **Produces** [[characteristic-angle-of-attack]]  ·  **from** [[lift-coefficient]] · [[lift-curve-slope]] · [[zero-lift-angle]]
 
-**Kind: a procedure.** There is no closed form, so an algorithm stands in its place. Source and scale are asked as of any entry — a procedure is not source-free: it either implements a published standard or solves a stated equation. **On top of that** it must say **under which assumptions it holds** and **when it converges**, including what it returns when it does not.
+**Kind: a law.** A closed-form relation. Approval asks for its **source** and its **validity at 0.5–15 kg**.
 
-### The procedure
+ℹ️ **Reclassified** from `procedure` by the trial of 2026-08-18. It is the algebraic inverse of a linear relation, written as one expression: `alpha_rad = alpha_0_rad + cl / cl_alpha_per_rad` (app/services/assumption_compute_service.py:2021-2023). No iteration, no search, no bracketing — the parser failed on it, not the maths. Its COEFFICIENTS come from a fit (that fit is a separate node), but the relation itself is closed form.
 
-> A procedure is not invented here. It has **two origins**, and both are citable:
-> the **relation** it solves, and the **method** it solves it with. Its assumptions and
-> its convergence behaviour are then properties of that method — published, not chosen.
+> 🔴 **An assumption of this entry is broken in the code.**
+>
+> app/services/analysis_service.py:488 and app/services/assumption_compute_service.py:664 evaluate the inverse at CL = CL_max to report alpha_stall. CL_max lies by definition in the nonlinear region, and outside the alpha in [-2°, +6°] window the coefficients were fitted and R^2-gated on (assumption_compute_service.py:1214-1219). The code applies no extrapolation guard and attaches no marker. Consequence: alpha_stall is a straight-line extrapolation of the pre-stall slope into the region where the real curve has already flattened, so the reported stall angle is systematically LOW (optimistic) — typically several degrees for a cambered RC section — and is presented to the user as a computed stall angle indistinguishable from an in-range value.
 
-**Relation solved.** 🔴 not yet stated — which equation or standard does this implement?
+**Evaluated by.** None for the inverse itself (direct algebraic evaluation, assumption_compute_service.py:2003-2023). The coefficients CL_alpha and alpha_0 come from ordinary least squares (`np.linalg.lstsq` on the design matrix [alpha, 1], assumption_compute_service.py:1267-1271) over an AeroBuildup alpha-sweep sampled at 1° steps on alpha in [-2°, +6°] (9 points, assumption_compute_service.py:1239-1247), with alpha_0 = -CL_0/CL_alpha (line 1302).
 
-**Method.** 🔴 not yet named — bisection, Brent, Newton, Picard, an interior-point solver, a tabulated standard?
+**Accuracy.** Not applicable to the inverse — closed form, exact. The OLS fit does not converge either: it is a single exact solve of the normal equations. The criterion as configured is not a tolerance but an acceptance test: R^2 >= 0.995 on the 9-point grid (assumption_compute_service.py:1219, 1280-1289); below that the coefficients are discarded entirely.
 
-**Assumptions.** 🔴 not yet stated — bracketing, continuity, monotonicity, validity range. These follow from the method; they are not a matter of taste.
-
-**Convergence.** 🔴 not yet stated — tolerance, iteration cap, and the guarantee the method actually offers.
-
-**On failure.** 🔴 not yet stated — what is returned when it does not converge, and is it declared? (ADR 0020)
+**On failure.** _cl_to_alpha_deg returns None when CL_alpha or alpha_0 is absent, or CL_alpha <= 0 (assumption_compute_service.py:2017-2020). Upstream returns (None, None) on <3 finite points, on R^2 < 0.995, or on fitted CL_alpha <= 0 (lines 1257, 1281, 1293) — each with a `logger.warning` only. The alpha_stall_deg / alpha_min_sink_deg / alpha_best_glide_deg fields then serialise as None (analysis_service.py:507-509) and simply disappear from the UI. NOT declared as a DesignWarning: ADR 0020 is not satisfied — the user cannot tell 'no lift curve could be fitted' from 'not computed yet'.
 
 **Dimensional check.** ⚪ procedural — not an algebraic law
 
@@ -69,9 +65,6 @@ Sources write the forward relation C_L = a*(alpha - alpha_0); the proposal inver
 
 - [ ] **Source** — citation real, or absence stated and adopted on the maintainer's authority
 - [ ] **Scale** — holds at 0.5–15 kg, or the limitation is written down (ADR 0023)
-- [ ] **Relation and method** — which equation it solves, and by which named method
-- [ ] **Assumptions** — the conditions the method requires (bracketing, continuity, range)
-- [ ] **Convergence** — the criterion, and what is returned and declared on failure
 - [ ] **Dimensions** — the check balances
 - [ ] **Implementations** — all agree, or each deviation is declared and justified
 - [ ] **Preconditions** — every binding condition holds, or the violation is ticketed
