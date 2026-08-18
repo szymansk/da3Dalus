@@ -1,6 +1,7 @@
 ---
 canon: induced-drag-factor
 kind: formula
+shape: law
 status: draft
 output: induced-drag-factor
 source_status: SOURCED
@@ -9,6 +10,7 @@ tags:
   - canon/formula
   - source/sourced
   - dim/balances
+  - shape/law
 ---
 
 # Induced-drag factor of the parabolic polar

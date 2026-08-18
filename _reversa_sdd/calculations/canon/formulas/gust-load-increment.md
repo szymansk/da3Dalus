@@ -1,6 +1,7 @@
 ---
 canon: gust-load-increment
 kind: formula
+shape: law
 status: draft
 output: gust-load-increment
 source_status: SOURCED
@@ -9,6 +10,7 @@ tags:
   - canon/formula
   - source/sourced
   - dim/mismatch
+  - shape/law
 ---
 
 # Load-factor increment from a discrete vertical gust

@@ -1,14 +1,16 @@
 ---
 canon: stall-onset-detection
 kind: formula
+shape: law
 status: draft
-output: characteristic-angle-of-attack
+output: stall-onset-index
 source_status: PARTIAL
 dimensional_check: PROCEDURAL
 tags:
   - canon/formula
   - source/partial
   - dim/procedural
+  - shape/law
 ---
 
 # Stall onset from the shape of the computed polar
@@ -19,7 +21,9 @@ tags:
 i_stall = first i > i(C_L,max) with C_L_i < C_L_(i-1) and C_D_i > C_D_(i-1)
 ```
 
-**Produces** [[characteristic-angle-of-attack]]  ·  **from** [[lift-coefficient]] · [[drag-coefficient]] · [[angle-of-attack]]
+**Produces** [[stall-onset-index]]  ·  **from** [[lift-coefficient]] · [[drag-coefficient]] · [[angle-of-attack]]
+
+ℹ️ **Reclassified.** Was recorded as a second producer of another quantity. It produces its own: a design limit, not the actual value.
 
 **Dimensional check.** ⚪ procedural — not an algebraic law
 

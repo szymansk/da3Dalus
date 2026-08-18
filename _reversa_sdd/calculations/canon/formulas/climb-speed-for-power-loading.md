@@ -1,6 +1,7 @@
 ---
 canon: climb-speed-for-power-loading
 kind: formula
+shape: approximation
 status: draft
 output: climb-speed
 source_status: PARTIAL
@@ -9,6 +10,7 @@ tags:
   - canon/formula
   - source/partial
   - dim/unparseable
+  - shape/approximation
 ---
 
 # Climb speed assumed by the power-loading constraint
@@ -20,6 +22,10 @@ V_climb = max(1.3 * V_S,target, 1 m/s)
 ```
 
 **Produces** [[climb-speed]]  ·  **from** [[stall-speed-target]]
+
+⚠️ **Shape: an approximation.** A rule of thumb standing where a law belongs. It may be the right thing to show, but it is never approved *as* the law for this quantity.
+
+> A fixed multiple of the target stall speed, not a climb-performance result.
 
 **Dimensional check.** ⚪ not machine-checkable as written
 

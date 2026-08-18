@@ -1,6 +1,7 @@
 ---
 canon: aspect-ratio
 kind: formula
+shape: law
 status: draft
 output: aspect-ratio
 source_status: SOURCED
@@ -9,6 +10,7 @@ tags:
   - canon/formula
   - source/sourced
   - dim/balances
+  - shape/law
 ---
 
 # Aspect ratio from span and area

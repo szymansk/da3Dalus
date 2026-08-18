@@ -1,6 +1,7 @@
 ---
 canon: max-lift-to-drag-parabolic
 kind: formula
+shape: law
 status: draft
 output: max-lift-to-drag-ratio
 source_status: SOURCED
@@ -9,6 +10,7 @@ tags:
   - canon/formula
   - source/sourced
   - dim/balances
+  - shape/law
   - flag/conflict
 ---
 

@@ -1,6 +1,7 @@
 ---
 canon: endurance-from-battery
 kind: formula
+shape: law
 status: draft
 output: endurance-time
 source_status: PARTIAL
@@ -9,6 +10,7 @@ tags:
   - canon/formula
   - source/partial
   - dim/balances
+  - shape/law
 ---
 
 # Flight time from pack energy and power draw

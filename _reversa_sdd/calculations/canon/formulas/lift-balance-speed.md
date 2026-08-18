@@ -1,6 +1,7 @@
 ---
 canon: lift-balance-speed
 kind: formula
+shape: law
 status: draft
 output: flight-speed
 source_status: SOURCED
@@ -9,6 +10,7 @@ tags:
   - canon/formula
   - source/sourced
   - dim/balances
+  - shape/law
 ---
 
 # Speed from the steady lift balance

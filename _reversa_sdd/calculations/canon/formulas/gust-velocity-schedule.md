@@ -1,6 +1,7 @@
 ---
 canon: gust-velocity-schedule
 kind: formula
+shape: law
 status: draft
 output: gust-velocity
 source_status: SOURCED
@@ -9,6 +10,7 @@ tags:
   - canon/formula
   - source/sourced
   - dim/procedural
+  - shape/law
 ---
 
 # Design gust velocity scheduled against airspeed

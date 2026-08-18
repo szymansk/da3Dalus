@@ -16,8 +16,5 @@ Installed thrust per unit weight; the y-axis of the matching chart and the drive
 
 **Unit.** `dimensionless`
 
-**Produced by.** [[thrust-to-weight]] · [[cruise-thrust-constraint]]
-
-> ⚠️ **2 formulas produce this one quantity.** That is the shape ADR 0022
-> forbids unless one is derived from the others. Resolve during approval.
+**Produced by.** [[thrust-to-weight]]
 

@@ -1,6 +1,7 @@
 ---
 canon: sink-rate
 kind: formula
+shape: law
 status: draft
 output: sink-rate
 source_status: PARTIAL
@@ -9,6 +10,7 @@ tags:
   - canon/formula
   - source/partial
   - dim/unparseable
+  - shape/law
 ---
 
 # Steady-glide sink rate

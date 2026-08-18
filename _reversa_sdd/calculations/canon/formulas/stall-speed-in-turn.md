@@ -1,6 +1,7 @@
 ---
 canon: stall-speed-in-turn
 kind: formula
+shape: law
 status: draft
 output: stall-speed-in-turn
 source_status: SOURCED
@@ -9,6 +10,7 @@ tags:
   - canon/formula
   - source/sourced
   - dim/balances
+  - shape/law
 ---
 
 # Stall speed in a banked turn

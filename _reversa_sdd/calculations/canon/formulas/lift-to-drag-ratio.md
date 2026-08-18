@@ -1,6 +1,7 @@
 ---
 canon: lift-to-drag-ratio
 kind: formula
+shape: law
 status: draft
 output: lift-to-drag-ratio
 source_status: SOURCED
@@ -9,6 +10,7 @@ tags:
   - canon/formula
   - source/sourced
   - dim/balances
+  - shape/law
 ---
 
 # Lift-to-drag ratio

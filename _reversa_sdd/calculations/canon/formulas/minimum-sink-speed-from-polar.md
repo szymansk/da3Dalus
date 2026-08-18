@@ -1,6 +1,7 @@
 ---
 canon: minimum-sink-speed-from-polar
 kind: formula
+shape: route
 status: draft
 output: minimum-sink-speed
 source_status: SOURCED
@@ -9,6 +10,7 @@ tags:
   - canon/formula
   - source/sourced
   - dim/procedural
+  - shape/route
 ---
 
 # Minimum-sink speed as the argmin of the computed sink rate
@@ -20,6 +22,10 @@ V_mp = V( argmin_i w_i ),  w_min = min_i w_i
 ```
 
 **Produces** [[minimum-sink-speed]]  ·  **from** [[flight-speed]] · [[sink-rate]]
+
+**Shape: a route.** This is one of several ways to the same quantity. The canon does not choose between them — it requires that they **agree**.
+
+**Test that follows.** Both routes claim the same quantity by different means; they must agree. Where they do not, the polar is not parabolic — which is a statement about the aircraft, not a defect.
 
 **Dimensional check.** ⚪ procedural — not an algebraic law
 

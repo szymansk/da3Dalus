@@ -1,6 +1,7 @@
 ---
 canon: minimum-drag-speed-heuristic
 kind: formula
+shape: approximation
 status: draft
 output: minimum-drag-speed
 source_status: NO_SOURCE_FOUND
@@ -9,7 +10,7 @@ tags:
   - canon/formula
   - source/no-source-found
   - dim/balances
-  - flag/conflict
+  - shape/approximation
 ---
 
 # Minimum-drag speed as a fixed multiple of the stall speed
@@ -21,6 +22,10 @@ V_md = 1.4 * V_S
 ```
 
 **Produces** [[minimum-drag-speed]]  ·  **from** [[stall-speed]]
+
+⚠️ **Shape: an approximation.** A rule of thumb standing where a law belongs. It may be the right thing to show, but it is never approved *as* the law for this quantity.
+
+> V_md = 1.4·V_S carries no polar information — no C_D0, no e, no AR — so it cannot tell a glider from an aerobatic model.
 
 **Dimensional check.** 🟢 balances
 
@@ -35,13 +40,6 @@ What the sources DO fix is the physics: V_md/V_S = sqrt(C_L,max/C_L,md) with C_L
 ```
 
 **Validity at 0.5–15 kg.** Unattributed at any scale, including RC. Note it is also mutually inconsistent with the sourced Sadraey ratio V_mp = V_md/3^0.25 = V_md/1.316: pairing V_md = 1.4 V_S with V_mp = 1.2 V_S implies V_md/V_mp = 1.167, where Sadraey requires 1.316. The two heuristics cannot both be right. Recommend deriving both from the polar and deleting the fixed multiples, or emitting a DesignWarning when the heuristic path is taken (ADR 0020).
-
-## ⚠️ Conflict
-
-Third of three independent laws for V_md. 1.4*V_S contains no polar information at all -- no C_D0, no e, no AR -- so it cannot distinguish a clean sailplane from a draggy trainer of the same stall speed. Worse, kpi_best_ld_speed switches between this heuristic and the polar-derived value inside one user-visible KPI depending only on whether a cached polar happens to exist, so the same aircraft reports different best-glide speeds before and after an analysis run, with no indication which law produced the number.
-
-> Two or more implementations use **genuinely different laws** for this quantity.
-> This is the entry that must be decided, not merely read.
 
 ## Implementations (2)
 

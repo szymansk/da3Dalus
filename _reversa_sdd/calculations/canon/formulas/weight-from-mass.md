@@ -1,6 +1,7 @@
 ---
 canon: weight-from-mass
 kind: formula
+shape: law
 status: draft
 output: weight
 source_status: SOURCED
@@ -9,6 +10,7 @@ tags:
   - canon/formula
   - source/sourced
   - dim/balances
+  - shape/law
 ---
 
 # Weight from mass

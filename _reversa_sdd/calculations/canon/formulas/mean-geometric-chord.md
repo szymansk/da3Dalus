@@ -1,6 +1,7 @@
 ---
 canon: mean-geometric-chord
 kind: formula
+shape: law
 status: draft
 output: mean-geometric-chord
 source_status: SOURCED
@@ -9,6 +10,7 @@ tags:
   - canon/formula
   - source/sourced
   - dim/balances
+  - shape/law
 ---
 
 # Mean geometric chord

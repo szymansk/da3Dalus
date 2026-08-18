@@ -1,6 +1,7 @@
 ---
 canon: power-required-electrical
 kind: formula
+shape: law
 status: draft
 output: power-required
 source_status: SOURCED
@@ -9,6 +10,7 @@ tags:
   - canon/formula
   - source/sourced
   - dim/balances
+  - shape/law
 ---
 
 # Electrical power required for level flight

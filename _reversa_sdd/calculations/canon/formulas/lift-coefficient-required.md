@@ -1,6 +1,7 @@
 ---
 canon: lift-coefficient-required
 kind: formula
+shape: law
 status: draft
 output: lift-coefficient
 source_status: SOURCED
@@ -9,6 +10,7 @@ tags:
   - canon/formula
   - source/sourced
   - dim/balances
+  - shape/law
 ---
 
 # Lift coefficient demanded by the level-flight balance at a load factor

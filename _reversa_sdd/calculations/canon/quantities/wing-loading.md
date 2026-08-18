@@ -16,10 +16,7 @@ Weight per reference area; produced independently in three places (flight envelo
 
 **Unit.** `N/m^2`
 
-**Produced by.** [[wing-loading]] · [[stall-wing-loading-limit]]
-
-> ⚠️ **2 formulas produce this one quantity.** That is the shape ADR 0022
-> forbids unless one is derived from the others. Resolve during approval.
+**Produced by.** [[wing-loading]]
 
 **Used by.** [[minimum-drag-speed-closed-form]] · [[gust-mass-ratio]] · [[gust-load-increment]] · [[cruise-thrust-constraint]]
 

@@ -1,6 +1,7 @@
 ---
 canon: battery-mass-from-capacity
 kind: formula
+shape: law
 status: draft
 output: predicted-battery-mass
 source_status: PARTIAL
@@ -9,6 +10,7 @@ tags:
   - canon/formula
   - source/partial
   - dim/balances
+  - shape/law
 ---
 
 # Battery mass implied by capacity and specific energy

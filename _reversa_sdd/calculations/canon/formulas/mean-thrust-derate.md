@@ -1,6 +1,7 @@
 ---
 canon: mean-thrust-derate
 kind: formula
+shape: law
 status: draft
 output: mean-thrust
 source_status: PARTIAL
@@ -9,6 +10,7 @@ tags:
   - canon/formula
   - source/partial
   - dim/unknown_symbol
+  - shape/law
 ---
 
 # Effective mean thrust over the ground roll

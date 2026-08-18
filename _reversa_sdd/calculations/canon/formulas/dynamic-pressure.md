@@ -1,6 +1,7 @@
 ---
 canon: dynamic-pressure
 kind: formula
+shape: law
 status: draft
 output: dynamic-pressure
 source_status: SOURCED
@@ -9,6 +10,7 @@ tags:
   - canon/formula
   - source/sourced
   - dim/balances
+  - shape/law
 ---
 
 # Dynamic pressure

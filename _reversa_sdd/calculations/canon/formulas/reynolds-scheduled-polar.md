@@ -1,6 +1,7 @@
 ---
 canon: reynolds-scheduled-polar
 kind: formula
+shape: law
 status: draft
 output: zero-lift-drag-coefficient
 source_status: PARTIAL
@@ -9,6 +10,7 @@ tags:
   - canon/formula
   - source/partial
   - dim/procedural
+  - shape/law
 ---
 
 # Polar coefficient interpolated against speed through the Reynolds number

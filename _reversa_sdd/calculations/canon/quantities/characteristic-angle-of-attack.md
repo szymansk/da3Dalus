@@ -16,8 +16,5 @@ Angle of attack reported for a named condition (stall, best glide, minimum sink)
 
 **Unit.** `deg`
 
-**Produced by.** [[linear-lift-curve-inverse]] · [[stall-onset-detection]]
-
-> ⚠️ **2 formulas produce this one quantity.** That is the shape ADR 0022
-> forbids unless one is derived from the others. Resolve during approval.
+**Produced by.** [[linear-lift-curve-inverse]]
 

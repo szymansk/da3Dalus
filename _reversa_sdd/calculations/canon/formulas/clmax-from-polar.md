@@ -1,6 +1,7 @@
 ---
 canon: clmax-from-polar
 kind: formula
+shape: law
 status: draft
 output: max-lift-coefficient
 source_status: PARTIAL
@@ -9,6 +10,7 @@ tags:
   - canon/formula
   - source/partial
   - dim/procedural
+  - shape/law
 ---
 
 # Maximum lift coefficient as the peak of the computed polar

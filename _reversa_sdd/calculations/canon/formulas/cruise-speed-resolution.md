@@ -1,6 +1,7 @@
 ---
 canon: cruise-speed-resolution
 kind: formula
+shape: law
 status: draft
 output: cruise-speed
 source_status: NO_SOURCE_FOUND
@@ -9,6 +10,7 @@ tags:
   - canon/formula
   - source/no-source-found
   - dim/procedural
+  - shape/law
   - flag/conflict
 ---
 

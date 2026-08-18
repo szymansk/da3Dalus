@@ -1,6 +1,7 @@
 ---
 canon: mass-summation
 kind: formula
+shape: law
 status: draft
 output: aircraft-mass
 source_status: SOURCED
@@ -9,6 +10,7 @@ tags:
   - canon/formula
   - source/sourced
   - dim/unparseable
+  - shape/law
 ---
 
 # Aircraft mass as the sum of component masses

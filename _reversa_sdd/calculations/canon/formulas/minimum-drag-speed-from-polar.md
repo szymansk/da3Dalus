@@ -1,6 +1,7 @@
 ---
 canon: minimum-drag-speed-from-polar
 kind: formula
+shape: route
 status: draft
 output: minimum-drag-speed
 source_status: SOURCED
@@ -9,7 +10,7 @@ tags:
   - canon/formula
   - source/sourced
   - dim/procedural
-  - flag/conflict
+  - shape/route
 ---
 
 # Minimum-drag speed as the argmax of the computed glide ratio
@@ -21,6 +22,10 @@ V_md = V( argmax_i (C_L_i / C_D_i) )
 ```
 
 **Produces** [[minimum-drag-speed]]  ·  **from** [[flight-speed]] · [[lift-to-drag-ratio]]
+
+**Shape: a route.** This is one of several ways to the same quantity. The canon does not choose between them — it requires that they **agree**.
+
+**Test that follows.** Both routes claim the same quantity by different means; they must agree. Where they do not, the polar is not parabolic — which is a statement about the aircraft, not a defect.
 
 **Dimensional check.** ⚪ procedural — not an algebraic law
 
@@ -35,13 +40,6 @@ Sources define the condition; the discrete argmax over sweep points is the imple
 ```
 
 **Validity at 0.5–15 kg.** Valid, and at 0.5-15 kg this is the PREFERRED route over the closed form, precisely because the low-Re polar is not parabolic. RC-Network also gives the weight dependence that validates the app's behaviour: heavier aircraft reach best glide ratio at higher speed (the ballast argument). Resolution caveat: the argmax is only as good as the alpha/speed grid - a coarse sweep will quantise V_md.
-
-## ⚠️ Conflict
-
-Second of three independent laws for V_md (see minimum-drag-speed-closed-form). This one is polar-shape-free and therefore correct for a non-parabolic polar, but its resolution is limited to the alpha grid of the sweep -- it can only return a speed that was actually sampled.
-
-> Two or more implementations use **genuinely different laws** for this quantity.
-> This is the entry that must be decided, not merely read.
 
 ## Implementations (2)
 

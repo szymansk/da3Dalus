@@ -1,6 +1,7 @@
 ---
 canon: gust-mass-ratio
 kind: formula
+shape: law
 status: draft
 output: gust-mass-ratio
 source_status: SOURCED
@@ -9,6 +10,7 @@ tags:
   - canon/formula
   - source/sourced
   - dim/mismatch
+  - shape/law
 ---
 
 # Gust mass ratio

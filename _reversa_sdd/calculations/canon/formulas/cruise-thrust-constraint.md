@@ -1,14 +1,16 @@
 ---
 canon: cruise-thrust-constraint
 kind: formula
+shape: law
 status: draft
-output: thrust-to-weight
+output: thrust-to-weight-required-cruise
 source_status: SOURCED
 dimensional_check: BALANCES
 tags:
   - canon/formula
   - source/sourced
   - dim/balances
+  - shape/law
 ---
 
 # Thrust-to-weight required for level flight at a given speed
@@ -19,7 +21,9 @@ tags:
 T/W = q * C_D0 / (W/S) + k * (W/S) / q
 ```
 
-**Produces** [[thrust-to-weight]]  ·  **from** [[dynamic-pressure]] · [[zero-lift-drag-coefficient]] · [[wing-loading]] · [[induced-drag-factor]]
+**Produces** [[thrust-to-weight-required-cruise]]  ·  **from** [[dynamic-pressure]] · [[zero-lift-drag-coefficient]] · [[wing-loading]] · [[induced-drag-factor]]
+
+ℹ️ **Reclassified.** Was recorded as a second producer of another quantity. It produces its own: a design limit, not the actual value.
 
 **Dimensional check.** 🟢 balances
 

@@ -1,6 +1,7 @@
 ---
 canon: inverted-max-lift-coefficient
 kind: formula
+shape: law
 status: draft
 output: inverted-max-lift-coefficient
 source_status: NO_SOURCE_FOUND
@@ -9,6 +10,7 @@ tags:
   - canon/formula
   - source/no-source-found
   - dim/balances
+  - shape/law
 ---
 
 # Negative maximum lift coefficient

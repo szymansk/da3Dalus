@@ -1,6 +1,7 @@
 ---
 canon: turn-load-factor
 kind: formula
+shape: law
 status: draft
 output: load-factor
 source_status: SOURCED
@@ -9,6 +10,7 @@ tags:
   - canon/formula
   - source/sourced
   - dim/balances
+  - shape/law
 ---
 
 # Load factor of a steady coordinated level turn

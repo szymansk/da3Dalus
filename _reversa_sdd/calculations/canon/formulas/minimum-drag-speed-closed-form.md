@@ -1,6 +1,7 @@
 ---
 canon: minimum-drag-speed-closed-form
 kind: formula
+shape: route
 status: draft
 output: minimum-drag-speed
 source_status: SOURCED
@@ -9,7 +10,7 @@ tags:
   - canon/formula
   - source/sourced
   - dim/balances
-  - flag/conflict
+  - shape/route
 ---
 
 # Minimum-drag speed from the parabolic polar
@@ -21,6 +22,10 @@ V_md = sqrt( 2*(W/S) / (rho * sqrt(C_D0 / k)) )
 ```
 
 **Produces** [[minimum-drag-speed]]  ·  **from** [[wing-loading]] · [[air-density]] · [[zero-lift-drag-coefficient]] · [[induced-drag-factor]]
+
+**Shape: a route.** This is one of several ways to the same quantity. The canon does not choose between them — it requires that they **agree**.
+
+**Test that follows.** Both routes claim the same quantity by different means; they must agree. Where they do not, the polar is not parabolic — which is a statement about the aircraft, not a defect.
 
 **Dimensional check.** 🟢 balances
 
@@ -35,13 +40,6 @@ Identical to the proposal once W/S is factored (Sadraey writes 2W/(rho*S) groupe
 ```
 
 **Validity at 0.5–15 kg.** Valid at RC scale as an algebraic consequence of the parabolic polar, with the same caveat as max-lift-to-drag-parabolic: at Re 5e4-3e5 the polar is offset-parabolic, so C_D0 and k must be fitted over the C_L range of interest, not anchored at C_L = 0 (see zero-lift-drag-from-sweep). Do not let this closed form and the argmax-of-polar route both be authoritative - ADR 0022.
-
-## ⚠️ Conflict
-
-V_md is produced by three mutually independent laws in this application -- see also minimum-drag-speed-from-polar and minimum-drag-speed-heuristic. This one assumes a parabolic polar and depends on C_D0 and k; the second measures argmax(C_L/C_D) on the real computed polar; the third is a flat 1.4*V_S with no polar in it. They coincide only by accident. This producer additionally inherits the C_D0 ambiguity (see zero-lift-drag-from-sweep).
-
-> Two or more implementations use **genuinely different laws** for this quantity.
-> This is the entry that must be decided, not merely read.
 
 ## Implementations (1)
 

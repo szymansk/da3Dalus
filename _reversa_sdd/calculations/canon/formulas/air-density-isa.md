@@ -1,6 +1,7 @@
 ---
 canon: air-density-isa
 kind: formula
+shape: law
 status: draft
 output: air-density
 source_status: SOURCED
@@ -9,6 +10,7 @@ tags:
   - canon/formula
   - source/sourced
   - dim/procedural
+  - shape/law
 ---
 
 # ISA air density at altitude

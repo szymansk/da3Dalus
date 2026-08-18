@@ -1,6 +1,7 @@
 ---
 canon: negative-limit-load-factor
 kind: formula
+shape: law
 status: draft
 output: negative-limit-load-factor
 source_status: PARTIAL
@@ -9,6 +10,7 @@ tags:
   - canon/formula
   - source/partial
   - dim/balances
+  - shape/law
 ---
 
 # Negative limit load factor

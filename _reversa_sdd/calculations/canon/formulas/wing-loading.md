@@ -1,6 +1,7 @@
 ---
 canon: wing-loading
 kind: formula
+shape: law
 status: draft
 output: wing-loading
 source_status: SOURCED
@@ -9,6 +10,7 @@ tags:
   - canon/formula
   - source/sourced
   - dim/balances
+  - shape/law
 ---
 
 # Wing loading

@@ -1,6 +1,7 @@
 ---
 canon: relative-mass-deviation
 kind: formula
+shape: law
 status: draft
 output: battery-mass-deviation
 source_status: NO_SOURCE_FOUND
@@ -9,6 +10,7 @@ tags:
   - canon/formula
   - source/no-source-found
   - dim/balances
+  - shape/law
 ---
 
 # Relative deviation between predicted and entered battery mass

@@ -1,6 +1,7 @@
 ---
 canon: dive-speed
 kind: formula
+shape: law
 status: draft
 output: dive-speed
 source_status: PARTIAL
@@ -9,6 +10,7 @@ tags:
   - canon/formula
   - source/partial
   - dim/balances
+  - shape/law
 ---
 
 # Design dive speed from maximum level speed

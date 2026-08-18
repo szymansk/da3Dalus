@@ -79,16 +79,33 @@ duplication, and it can be detected by a join rather than by reading.
 condition. A wing with no flap has one stall speed, not three identical ones — and
 certainly not three that disagree because one of them fell back to the clean value.
 
-### Application versus conflict
+### The four shapes
 
-| shape | meaning | verdict |
+Collapsing the speed chain showed that "two producers of one quantity" hides four
+different situations, and only the last is a decision.
+
+| shape | what it is | verdict |
 |---|---|---|
-| same formula, different input binding | an application | ✅ expected — record it |
-| different formulas, same output quantity | a conflict | ⚠️ decide it |
+| **law** | one relation, applied wherever it is needed | approve it once |
+| **route** | the same quantity reached two ways — a closed form and a numerical search | ✅ legitimate, and it **generates a test**: they must agree |
+| **approximation** | a rule of thumb standing where a law belongs | ⚠️ label it; never approve it *as* a law |
+| **conflict** | two different laws claiming one quantity | ⚠️ decide it |
 
-This is the discriminator the register lacked. The three stall speeds are applications.
-The three static margins — `(X_np − x_ref)/c_ref`, `(x_np − cg_x)/mac·100` and
-`−C_mα/C_Lα` — are a conflict: different laws claiming one quantity.
+A fifth situation is not about the canon at all but about the code: one law, implemented
+inconsistently across several call sites. That is an **implementation conflict**, and the
+application concept is what resolves it — the stall speed is the example.
+
+**The route shape is the one worth dwelling on.** `V_md` is reached both in closed form,
+`sqrt(2(W/S) / (rho·sqrt(C_D0/k)))`, and numerically as `V(argmax C_L/C_D)`. Those are not
+rivals; they are the same statement under a parabolic-polar assumption. So the canon does
+not choose between them — it records that **they must agree**, and where they do not, the
+polar is not parabolic. That is a fact about the aircraft, not a defect, and it is exactly
+the kind of assertion a *fachlicher* test can carry.
+
+The approximations are the opposite. `V_md = 1.4·V_S` contains no `C_D0`, no `e`, no aspect
+ratio; it cannot distinguish a glider from an aerobatic model. It may still be the right
+thing to show at cold start — but it is labelled as an approximation, and it never becomes
+the approved law for the quantity.
 
 ## Naming
 
@@ -130,6 +147,24 @@ Three gates before `approved`:
    Low Reynolds number, low wing loading and hand launch are where it usually bites.
 3. **Implementations** — every implementing node either agrees, or its deviation is
    declared and justified.
+
+### Two stages
+
+Approval happens twice, and the order matters.
+
+**First the formula** — the law itself. Is the relation right, does it have a source, does
+it hold at 0.5–15 kg, do the dimensions balance? This is approved once and inherited by
+every application.
+
+**Then the application** — the law bound to a specific problem: which `cl_max`, which
+density, under which condition. Applications chained together are the **computation
+paths**, and those are what can be drawn and checked.
+
+The order reflects where the defects actually are. **Almost every defect found in this
+codebase is an application defect, not a formula defect.** The contradiction in
+`field_length_service` was never a wrong stall-speed formula — the formula is correct.
+What was wrong was which `cl_max` got bound to it. That is why the code reads as
+unremarkable: every individual line is right, and only the path shows the error.
 
 **One rule orders the work: a formula is only approvable once its inputs are approved.**
 Otherwise approval rests on unapproved ground. That is what makes the traversal run

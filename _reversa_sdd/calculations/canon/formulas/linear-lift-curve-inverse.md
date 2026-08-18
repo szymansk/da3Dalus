@@ -1,6 +1,7 @@
 ---
 canon: linear-lift-curve-inverse
 kind: formula
+shape: law
 status: draft
 output: characteristic-angle-of-attack
 source_status: SOURCED
@@ -9,6 +10,7 @@ tags:
   - canon/formula
   - source/sourced
   - dim/procedural
+  - shape/law
 ---
 
 # Angle of attack from lift coefficient via the linear lift curve

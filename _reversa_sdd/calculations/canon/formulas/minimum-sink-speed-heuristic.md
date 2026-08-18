@@ -1,6 +1,7 @@
 ---
 canon: minimum-sink-speed-heuristic
 kind: formula
+shape: approximation
 status: draft
 output: minimum-sink-speed
 source_status: NO_SOURCE_FOUND
@@ -9,7 +10,7 @@ tags:
   - canon/formula
   - source/no-source-found
   - dim/balances
-  - flag/conflict
+  - shape/approximation
 ---
 
 # Minimum-sink speed as a fixed multiple of the stall speed
@@ -21,6 +22,10 @@ V_mp = 1.2 * V_S
 ```
 
 **Produces** [[minimum-sink-speed]]  ·  **from** [[stall-speed]]
+
+⚠️ **Shape: an approximation.** A rule of thumb standing where a law belongs. It may be the right thing to show, but it is never approved *as* the law for this quantity.
+
+> V_mp = 1.2·V_S likewise contains no polar information.
 
 **Dimensional check.** 🟢 balances
 
@@ -35,13 +40,6 @@ n/a - no source form exists.
 ```
 
 **Validity at 0.5–15 kg.** Unattributed. Additionally inconsistent with the companion heuristic (see minimum-drag-speed-heuristic): 1.4/1.2 = 1.167 where Sadraey requires V_md/V_mp = 1.316. Worse for RC than for transports because minimum-sink speed is a headline number for the glider/thermal end of the 0.5-15 kg range, where users will compare it against measured sink polars.
-
-## ⚠️ Conflict
-
-V_mp has two independent producers -- argmin of the computed sink rate, and this flat 1.2*V_S -- and the parabolic-polar result V_mp = V_md / 3^(1/4) (about 0.76 V_md) is used by neither, so the two speeds V_md and V_mp are not even constrained to the correct ratio to each other. A third, incompatible value for the same physical speed exists in operating_point_generator_service:434: for a propeller aircraft the best-rate-of-climb speed V_y IS the minimum-power speed, yet it is set there to max(1.50*V_S1, 0.95*V_cruise).
-
-> Two or more implementations use **genuinely different laws** for this quantity.
-> This is the entry that must be decided, not merely read.
 
 ## Implementations (2)
 

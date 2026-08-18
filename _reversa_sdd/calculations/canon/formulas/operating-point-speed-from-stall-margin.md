@@ -1,6 +1,7 @@
 ---
 canon: operating-point-speed-from-stall-margin
 kind: formula
+shape: approximation
 status: draft
 output: operating-point-speed
 source_status: SOURCED
@@ -9,7 +10,7 @@ tags:
   - canon/formula
   - source/sourced
   - dim/procedural
-  - flag/conflict
+  - shape/approximation
 ---
 
 # Operating-point speed as a fixed margin over a stall speed
@@ -21,6 +22,10 @@ V_op = k_op * V_S,cfg   (optionally floored by a fraction of V_cruise or an abso
 ```
 
 **Produces** [[operating-point-speed]]  ·  **from** [[stall-speed]] · [[cruise-speed]]
+
+⚠️ **Shape: an approximation.** A rule of thumb standing where a law belongs. It may be the right thing to show, but it is never approved *as* the law for this quantity.
+
+> V_x and V_y are labelled best-angle and best-rate-of-climb but contain no climb relation — no thrust, no excess power.
 
 **Dimensional check.** ⚪ procedural — not an algebraic law
 
@@ -35,13 +40,6 @@ Sources give named speeds with named factors, each tied to a certification requi
 ```
 
 **Validity at 0.5–15 kg.** The factors are manned-aircraft certification minima. Two RC-specific cautions. (1) A 1.3 margin over a stall speed whose C_L,max is uncertain by 30-45% at model Reynolds number (see stall-speed) is thinner than the same 1.3 on a certified aircraft with a flight-tested V_S - at model scale the margin should arguably be larger, not equal. (2) Vx/Vy for a propeller model are properly the minimum-drag and minimum-power speeds (Sadraey Eq. 4.80/4.85), not multiples of V_S; and hand-launched models have no V_LOF or ground roll at all, so takeoff-derived operating points are undefined for that launch mode.
-
-## ⚠️ Conflict
-
-V_x and V_y are labelled best-angle and best-rate-of-climb speeds but contain no climb relation at all -- no thrust, no drag polar, no excess power. They are fixed multiples of the stall speed floored by fractions of the cruise speed. Since V_cruise may itself have been set to V_md, and V_S1 may itself have been set to V_cruise/1.20, V_x and V_y can degenerate into pure functions of V_md with no aerodynamic content. In addition V_y and the minimum-sink speed V_mp are the same physical speed for a propeller aircraft, yet the two are produced by unrelated laws (1.50*V_S1 here, argmin of sink rate or 1.2*V_S elsewhere).
-
-> Two or more implementations use **genuinely different laws** for this quantity.
-> This is the entry that must be decided, not merely read.
 
 ## Implementations (5)
 

@@ -1,6 +1,7 @@
 ---
 canon: gust-alleviation-factor
 kind: formula
+shape: law
 status: draft
 output: gust-alleviation-factor
 source_status: SOURCED
@@ -9,6 +10,7 @@ tags:
   - canon/formula
   - source/sourced
   - dim/balances
+  - shape/law
 ---
 
 # Pratt-Walker gust alleviation factor
