@@ -1,6 +1,7 @@
 ---
 canon: lift-coefficient-required
-kind: formula
+entry: formula
+kind: law
 shape: law
 status: draft
 output: lift-coefficient
@@ -11,6 +12,7 @@ tags:
   - source/sourced
   - dim/balances
   - shape/law
+  - kind/law
 ---
 
 # Lift coefficient demanded by the level-flight balance at a load factor
@@ -22,6 +24,8 @@ C_L,req = n * m * g / (q * S_ref)
 ```
 
 **Produces** [[lift-coefficient]]  ·  **from** [[aircraft-mass]] · [[gravity]] · [[load-factor]] · [[dynamic-pressure]] · [[wing-reference-area]]
+
+**Kind: a law.** A closed-form relation. Approval asks for its **source** and its **validity at 0.5–15 kg**.
 
 **Dimensional check.** 🟢 balances
 

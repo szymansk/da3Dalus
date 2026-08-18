@@ -1,6 +1,7 @@
 ---
 canon: cruise-speed-resolution
-kind: formula
+entry: formula
+kind: procedure
 shape: law
 status: draft
 output: cruise-speed
@@ -11,6 +12,7 @@ tags:
   - source/no-source-found
   - dim/procedural
   - shape/law
+  - kind/procedure
   - flag/conflict
 ---
 
@@ -23,6 +25,20 @@ V_cruise := V_md   (substitution, not a physical law)
 ```
 
 **Produces** [[cruise-speed]]  ·  **from** [[minimum-drag-speed]] · [[max-level-speed]] · [[dive-speed]]
+
+**Kind: a procedure.** There is no closed form, so an algorithm stands in its place. Approval asks two different questions: **under which assumptions does it hold**, and **when does it converge** — including what it returns when it does not.
+
+### Assumptions and convergence
+
+> A procedure exists because no closed solution does. What replaces the source is the
+> statement of **what must hold for it to be valid** and **when it terminates**. Both
+> are required before approval.
+
+**Assumptions.** 🔴 not yet stated — required for approval.
+
+**Convergence.** 🔴 not yet stated — required for approval.
+
+**On failure.** 🔴 not yet stated — what is returned when it does not converge, and is it declared? (ADR 0020)
 
 **Dimensional check.** ⚪ procedural — not an algebraic law
 
@@ -55,8 +71,8 @@ Three incompatible definitions of V_cruise coexist. (1) A mission goal read from
 
 ## Approval
 
-- [ ] **Source** — citation real, or absence stated and adopted on the maintainer's authority
-- [ ] **Scale** — holds at 0.5–15 kg, or the limitation is written down (ADR 0023)
+- [ ] **Assumptions** — the conditions under which the procedure is valid are stated
+- [ ] **Convergence** — the criterion, and what is returned and declared on failure
 - [ ] **Dimensions** — the check balances
 - [ ] **Implementations** — all agree, or each deviation is declared and justified
 - [ ] **Preconditions** — every binding condition holds, or the violation is ticketed

@@ -1,6 +1,7 @@
 ---
 canon: endurance-from-battery
-kind: formula
+entry: formula
+kind: law
 shape: law
 status: draft
 output: endurance-time
@@ -11,6 +12,7 @@ tags:
   - source/partial
   - dim/balances
   - shape/law
+  - kind/law
 ---
 
 # Flight time from pack energy and power draw
@@ -22,6 +24,8 @@ t = 3600 * E_bat / P_req
 ```
 
 **Produces** [[endurance-time]]  ·  **from** [[battery-capacity]] · [[power-required]]
+
+**Kind: a law.** A closed-form relation. Approval asks for its **source** and its **validity at 0.5–15 kg**.
 
 **Dimensional check.** 🟢 balances
 

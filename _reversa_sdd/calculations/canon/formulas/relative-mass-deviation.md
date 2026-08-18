@@ -1,6 +1,7 @@
 ---
 canon: relative-mass-deviation
-kind: formula
+entry: formula
+kind: law
 shape: law
 status: draft
 output: battery-mass-deviation
@@ -11,6 +12,7 @@ tags:
   - source/no-source-found
   - dim/balances
   - shape/law
+  - kind/law
 ---
 
 # Relative deviation between predicted and entered battery mass
@@ -22,6 +24,8 @@ dev = |m_bat,pred - m_bat| / m_bat
 ```
 
 **Produces** [[battery-mass-deviation]]  ·  **from** [[predicted-battery-mass]] · [[battery-mass]]
+
+**Kind: a law.** A closed-form relation. Approval asks for its **source** and its **validity at 0.5–15 kg**.
 
 **Dimensional check.** 🟢 balances
 

@@ -1,6 +1,7 @@
 ---
 canon: weight-from-mass
-kind: formula
+entry: formula
+kind: law
 shape: law
 status: draft
 output: weight
@@ -11,6 +12,7 @@ tags:
   - source/sourced
   - dim/balances
   - shape/law
+  - kind/law
 ---
 
 # Weight from mass
@@ -22,6 +24,8 @@ W = m * g
 ```
 
 **Produces** [[weight]]  ·  **from** [[aircraft-mass]] · [[gravity]]
+
+**Kind: a law.** A closed-form relation. Approval asks for its **source** and its **validity at 0.5–15 kg**.
 
 **Dimensional check.** 🟢 balances
 

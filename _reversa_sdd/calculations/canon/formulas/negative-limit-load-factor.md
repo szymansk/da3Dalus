@@ -1,6 +1,7 @@
 ---
 canon: negative-limit-load-factor
-kind: formula
+entry: formula
+kind: law
 shape: law
 status: draft
 output: negative-limit-load-factor
@@ -11,6 +12,7 @@ tags:
   - source/partial
   - dim/balances
   - shape/law
+  - kind/law
 ---
 
 # Negative limit load factor
@@ -22,6 +24,8 @@ n_neg = -0.4 * n_lim
 ```
 
 **Produces** [[negative-limit-load-factor]]  ·  **from** [[limit-load-factor]]
+
+**Kind: a law.** A closed-form relation. Approval asks for its **source** and its **validity at 0.5–15 kg**.
 
 **Dimensional check.** 🟢 balances
 

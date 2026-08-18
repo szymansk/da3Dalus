@@ -1,6 +1,7 @@
 ---
 canon: dive-speed
-kind: formula
+entry: formula
+kind: law
 shape: law
 status: draft
 output: dive-speed
@@ -11,6 +12,7 @@ tags:
   - source/partial
   - dim/balances
   - shape/law
+  - kind/law
 ---
 
 # Design dive speed from maximum level speed
@@ -22,6 +24,8 @@ V_D = 1.4 * V_max
 ```
 
 **Produces** [[dive-speed]]  ·  **from** [[max-level-speed]]
+
+**Kind: a law.** A closed-form relation. Approval asks for its **source** and its **validity at 0.5–15 kg**.
 
 **Dimensional check.** 🟢 balances
 

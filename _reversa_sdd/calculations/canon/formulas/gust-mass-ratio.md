@@ -1,6 +1,7 @@
 ---
 canon: gust-mass-ratio
-kind: formula
+entry: formula
+kind: law
 shape: law
 status: draft
 output: gust-mass-ratio
@@ -11,6 +12,7 @@ tags:
   - source/sourced
   - dim/mismatch
   - shape/law
+  - kind/law
 ---
 
 # Gust mass ratio
@@ -22,6 +24,8 @@ mu_g = 2 * (W/S) / (rho * c_bar * C_Lalpha * g)
 ```
 
 **Produces** [[gust-mass-ratio]]  ·  **from** [[wing-loading]] · [[air-density]] · [[mean-geometric-chord]] · [[lift-curve-slope]] · [[gravity]]
+
+**Kind: a law.** A closed-form relation. Approval asks for its **source** and its **validity at 0.5–15 kg**.
 
 **Dimensional check.** 🔴 does not balance
 

@@ -1,6 +1,7 @@
 ---
 canon: minimum-drag-speed-heuristic
-kind: formula
+entry: formula
+kind: law
 shape: approximation
 status: draft
 output: minimum-drag-speed
@@ -11,6 +12,7 @@ tags:
   - source/no-source-found
   - dim/balances
   - shape/approximation
+  - kind/law
 ---
 
 # Minimum-drag speed as a fixed multiple of the stall speed
@@ -22,6 +24,8 @@ V_md = 1.4 * V_S
 ```
 
 **Produces** [[minimum-drag-speed]]  ·  **from** [[stall-speed]]
+
+**Kind: a law.** A closed-form relation. Approval asks for its **source** and its **validity at 0.5–15 kg**.
 
 ⚠️ **Shape: an approximation.** A rule of thumb standing where a law belongs. It may be the right thing to show, but it is never approved *as* the law for this quantity.
 

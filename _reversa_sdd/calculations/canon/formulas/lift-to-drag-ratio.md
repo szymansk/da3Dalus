@@ -1,6 +1,7 @@
 ---
 canon: lift-to-drag-ratio
-kind: formula
+entry: formula
+kind: law
 shape: law
 status: draft
 output: lift-to-drag-ratio
@@ -11,6 +12,7 @@ tags:
   - source/sourced
   - dim/balances
   - shape/law
+  - kind/law
 ---
 
 # Lift-to-drag ratio
@@ -22,6 +24,8 @@ E = C_L / C_D = L / D
 ```
 
 **Produces** [[lift-to-drag-ratio]]  ·  **from** [[lift-coefficient]] · [[drag-coefficient]] · [[lift-force]] · [[drag-force]]
+
+**Kind: a law.** A closed-form relation. Approval asks for its **source** and its **validity at 0.5–15 kg**.
 
 **Dimensional check.** 🟢 balances
 

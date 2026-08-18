@@ -1,6 +1,7 @@
 ---
 canon: stall-speed
-kind: formula
+entry: formula
+kind: law
 shape: law
 status: draft
 output: stall-speed
@@ -11,6 +12,7 @@ tags:
   - source/sourced
   - dim/balances
   - shape/law
+  - kind/law
   - flag/conflict
 ---
 
@@ -23,6 +25,8 @@ V_S = sqrt(2 * m * g / (rho * S_ref * C_L,max))
 ```
 
 **Produces** [[stall-speed]]  ·  **from** [[weight]] · [[air-density]] · [[wing-reference-area]] · [[max-lift-coefficient]]
+
+**Kind: a law.** A closed-form relation. Approval asks for its **source** and its **validity at 0.5–15 kg**.
 
 **Dimensional check.** 🟢 balances
 

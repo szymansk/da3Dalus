@@ -1,6 +1,7 @@
 ---
 canon: max-lift-to-drag-parabolic
-kind: formula
+entry: formula
+kind: law
 shape: law
 status: draft
 output: max-lift-to-drag-ratio
@@ -11,6 +12,7 @@ tags:
   - source/sourced
   - dim/balances
   - shape/law
+  - kind/law
   - flag/conflict
 ---
 
@@ -23,6 +25,8 @@ E_max = 0.5 * sqrt(pi * e * AR / C_D0)
 ```
 
 **Produces** [[max-lift-to-drag-ratio]]  ·  **from** [[oswald-efficiency]] · [[aspect-ratio]] · [[zero-lift-drag-coefficient]]
+
+**Kind: a law.** A closed-form relation. Approval asks for its **source** and its **validity at 0.5–15 kg**.
 
 **Dimensional check.** 🟢 balances
 

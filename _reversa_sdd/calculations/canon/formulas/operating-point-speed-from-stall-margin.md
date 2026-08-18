@@ -1,6 +1,7 @@
 ---
 canon: operating-point-speed-from-stall-margin
-kind: formula
+entry: formula
+kind: rating
 shape: approximation
 status: draft
 output: operating-point-speed
@@ -11,6 +12,7 @@ tags:
   - source/sourced
   - dim/procedural
   - shape/approximation
+  - kind/rating
 ---
 
 # Operating-point speed as a fixed margin over a stall speed
@@ -22,6 +24,8 @@ V_op = k_op * V_S,cfg   (optionally floored by a fraction of V_cruise or an abso
 ```
 
 **Produces** [[operating-point-speed]]  ·  **from** [[stall-speed]] · [[cruise-speed]]
+
+**Kind: a rating.** A preference, not physics. There is nothing to cite. Approval asks whether **this** weighting is the one you want — it is a decision, not a fact.
 
 ⚠️ **Shape: an approximation.** A rule of thumb standing where a law belongs. It may be the right thing to show, but it is never approved *as* the law for this quantity.
 
@@ -53,8 +57,8 @@ Sources give named speeds with named factors, each tied to a certification requi
 
 ## Approval
 
-- [ ] **Source** — citation real, or absence stated and adopted on the maintainer's authority
-- [ ] **Scale** — holds at 0.5–15 kg, or the limitation is written down (ADR 0023)
+- [ ] **Ownership** — the weighting is the maintainer's decision, recorded as such
+- [ ] **Scale** — the references suit 0.5–15 kg aircraft
 - [ ] **Dimensions** — the check balances
 - [ ] **Implementations** — all agree, or each deviation is declared and justified
 - [ ] **Preconditions** — every binding condition holds, or the violation is ticketed

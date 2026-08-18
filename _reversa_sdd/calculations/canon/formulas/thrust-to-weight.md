@@ -1,6 +1,7 @@
 ---
 canon: thrust-to-weight
-kind: formula
+entry: formula
+kind: law
 shape: law
 status: draft
 output: thrust-to-weight
@@ -11,6 +12,7 @@ tags:
   - source/sourced
   - dim/balances
   - shape/law
+  - kind/law
 ---
 
 # Thrust-to-weight ratio
@@ -22,6 +24,8 @@ T/W = T_mean / W
 ```
 
 **Produces** [[thrust-to-weight]]  ·  **from** [[mean-thrust]] · [[weight]]
+
+**Kind: a law.** A closed-form relation. Approval asks for its **source** and its **validity at 0.5–15 kg**.
 
 **Dimensional check.** 🟢 balances
 

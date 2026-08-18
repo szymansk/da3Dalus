@@ -1,6 +1,7 @@
 ---
 canon: mean-thrust-derate
-kind: formula
+entry: formula
+kind: law
 shape: law
 status: draft
 output: mean-thrust
@@ -11,6 +12,7 @@ tags:
   - source/partial
   - dim/unknown_symbol
   - shape/law
+  - kind/law
 ---
 
 # Effective mean thrust over the ground roll
@@ -22,6 +24,8 @@ T_mean = f_T * T_static
 ```
 
 **Produces** [[mean-thrust]]  ·  **from** [[static-thrust]]
+
+**Kind: a law.** A closed-form relation. Approval asks for its **source** and its **validity at 0.5–15 kg**.
 
 **Dimensional check.** ⚪ symbol not in the register
 

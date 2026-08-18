@@ -1,6 +1,7 @@
 ---
 canon: power-required-electrical
-kind: formula
+entry: formula
+kind: law
 shape: law
 status: draft
 output: power-required
@@ -11,6 +12,7 @@ tags:
   - source/sourced
   - dim/balances
   - shape/law
+  - kind/law
 ---
 
 # Electrical power required for level flight
@@ -22,6 +24,8 @@ P_req(V) = 0.5 * rho * V^3 * S_ref * (C_D0 + k * C_L^2) / eta_total,  with C_L =
 ```
 
 **Produces** [[power-required]]  ·  **from** [[air-density]] · [[flight-speed]] · [[wing-reference-area]] · [[zero-lift-drag-coefficient]] · [[induced-drag-factor]] · [[aircraft-mass]] · [[gravity]] · [[propulsive-efficiency]]
+
+**Kind: a law.** A closed-form relation. Approval asks for its **source** and its **validity at 0.5–15 kg**.
 
 **Dimensional check.** 🟢 balances
 

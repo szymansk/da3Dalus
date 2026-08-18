@@ -1,6 +1,7 @@
 ---
 canon: air-density-isa
-kind: formula
+entry: formula
+kind: procedure
 shape: law
 status: draft
 output: air-density
@@ -11,6 +12,7 @@ tags:
   - source/sourced
   - dim/procedural
   - shape/law
+  - kind/procedure
 ---
 
 # ISA air density at altitude
@@ -22,6 +24,20 @@ rho = rho_ISA(h)   [U.S. 1976 COESA standard atmosphere]
 ```
 
 **Produces** [[air-density]]  ·  **from** [[altitude]]
+
+**Kind: a procedure.** There is no closed form, so an algorithm stands in its place. Approval asks two different questions: **under which assumptions does it hold**, and **when does it converge** — including what it returns when it does not.
+
+### Assumptions and convergence
+
+> A procedure exists because no closed solution does. What replaces the source is the
+> statement of **what must hold for it to be valid** and **when it terminates**. Both
+> are required before approval.
+
+**Assumptions.** 🔴 not yet stated — required for approval.
+
+**Convergence.** 🔴 not yet stated — required for approval.
+
+**On failure.** 🔴 not yet stated — what is returned when it does not converge, and is it declared? (ADR 0020)
 
 **Dimensional check.** ⚪ procedural — not an algebraic law
 
@@ -46,8 +62,8 @@ Scholz does not write rho(h) directly; he writes T(h) and derives p(h), then use
 
 ## Approval
 
-- [ ] **Source** — citation real, or absence stated and adopted on the maintainer's authority
-- [ ] **Scale** — holds at 0.5–15 kg, or the limitation is written down (ADR 0023)
+- [ ] **Assumptions** — the conditions under which the procedure is valid are stated
+- [ ] **Convergence** — the criterion, and what is returned and declared on failure
 - [ ] **Dimensions** — the check balances
 - [ ] **Implementations** — all agree, or each deviation is declared and justified
 - [ ] **Preconditions** — every binding condition holds, or the violation is ticketed

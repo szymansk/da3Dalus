@@ -1,6 +1,7 @@
 ---
 canon: wing-loading
-kind: formula
+entry: formula
+kind: law
 shape: law
 status: draft
 output: wing-loading
@@ -11,6 +12,7 @@ tags:
   - source/sourced
   - dim/balances
   - shape/law
+  - kind/law
 ---
 
 # Wing loading
@@ -22,6 +24,8 @@ W/S = m * g / S_ref
 ```
 
 **Produces** [[wing-loading]]  ·  **from** [[aircraft-mass]] · [[gravity]] · [[wing-reference-area]]
+
+**Kind: a law.** A closed-form relation. Approval asks for its **source** and its **validity at 0.5–15 kg**.
 
 **Dimensional check.** 🟢 balances
 

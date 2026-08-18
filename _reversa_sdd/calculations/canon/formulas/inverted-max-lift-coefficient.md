@@ -1,6 +1,7 @@
 ---
 canon: inverted-max-lift-coefficient
-kind: formula
+entry: formula
+kind: law
 shape: law
 status: draft
 output: inverted-max-lift-coefficient
@@ -11,6 +12,7 @@ tags:
   - source/no-source-found
   - dim/balances
   - shape/law
+  - kind/law
 ---
 
 # Negative maximum lift coefficient
@@ -22,6 +24,8 @@ C_L,min = -0.8 * C_L,max
 ```
 
 **Produces** [[inverted-max-lift-coefficient]]  ·  **from** [[max-lift-coefficient]]
+
+**Kind: a law.** A closed-form relation. Approval asks for its **source** and its **validity at 0.5–15 kg**.
 
 **Dimensional check.** 🟢 balances
 

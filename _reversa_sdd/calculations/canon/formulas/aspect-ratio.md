@@ -1,6 +1,7 @@
 ---
 canon: aspect-ratio
-kind: formula
+entry: formula
+kind: law
 shape: law
 status: draft
 output: aspect-ratio
@@ -11,6 +12,7 @@ tags:
   - source/sourced
   - dim/balances
   - shape/law
+  - kind/law
 ---
 
 # Aspect ratio from span and area
@@ -22,6 +24,8 @@ AR = b_ref^2 / S_ref
 ```
 
 **Produces** [[aspect-ratio]]  ·  **from** [[wing-span]] · [[wing-reference-area]]
+
+**Kind: a law.** A closed-form relation. Approval asks for its **source** and its **validity at 0.5–15 kg**.
 
 **Dimensional check.** 🟢 balances
 

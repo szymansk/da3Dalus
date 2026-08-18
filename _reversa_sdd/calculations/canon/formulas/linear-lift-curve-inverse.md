@@ -1,6 +1,7 @@
 ---
 canon: linear-lift-curve-inverse
-kind: formula
+entry: formula
+kind: procedure
 shape: law
 status: draft
 output: characteristic-angle-of-attack
@@ -11,6 +12,7 @@ tags:
   - source/sourced
   - dim/procedural
   - shape/law
+  - kind/procedure
 ---
 
 # Angle of attack from lift coefficient via the linear lift curve
@@ -22,6 +24,20 @@ alpha = alpha_0 + C_L / C_Lalpha   (converted to degrees)
 ```
 
 **Produces** [[characteristic-angle-of-attack]]  ·  **from** [[lift-coefficient]] · [[lift-curve-slope]] · [[zero-lift-angle]]
+
+**Kind: a procedure.** There is no closed form, so an algorithm stands in its place. Approval asks two different questions: **under which assumptions does it hold**, and **when does it converge** — including what it returns when it does not.
+
+### Assumptions and convergence
+
+> A procedure exists because no closed solution does. What replaces the source is the
+> statement of **what must hold for it to be valid** and **when it terminates**. Both
+> are required before approval.
+
+**Assumptions.** 🔴 not yet stated — required for approval.
+
+**Convergence.** 🔴 not yet stated — required for approval.
+
+**On failure.** 🔴 not yet stated — what is returned when it does not converge, and is it declared? (ADR 0020)
 
 **Dimensional check.** ⚪ procedural — not an algebraic law
 
@@ -47,8 +63,8 @@ Sources write the forward relation C_L = a*(alpha - alpha_0); the proposal inver
 
 ## Approval
 
-- [ ] **Source** — citation real, or absence stated and adopted on the maintainer's authority
-- [ ] **Scale** — holds at 0.5–15 kg, or the limitation is written down (ADR 0023)
+- [ ] **Assumptions** — the conditions under which the procedure is valid are stated
+- [ ] **Convergence** — the criterion, and what is returned and declared on failure
 - [ ] **Dimensions** — the check balances
 - [ ] **Implementations** — all agree, or each deviation is declared and justified
 - [ ] **Preconditions** — every binding condition holds, or the violation is ticketed

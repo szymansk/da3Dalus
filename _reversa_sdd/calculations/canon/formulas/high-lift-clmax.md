@@ -1,6 +1,7 @@
 ---
 canon: high-lift-clmax
-kind: formula
+entry: formula
+kind: law
 shape: law
 status: draft
 output: max-lift-coefficient-config
@@ -11,6 +12,7 @@ tags:
   - source/partial
   - dim/balances
   - shape/law
+  - kind/law
   - flag/conflict
 ---
 
@@ -23,6 +25,8 @@ C_L,max,cfg = f_cfg * C_L,max,clean
 ```
 
 **Produces** [[max-lift-coefficient-config]]  ·  **from** [[max-lift-coefficient]] · [[flap-clmax-factor]]
+
+**Kind: a law.** A closed-form relation. Approval asks for its **source** and its **validity at 0.5–15 kg**.
 
 **Dimensional check.** 🟢 balances
 

@@ -1,6 +1,7 @@
 ---
 canon: lift-balance-speed
-kind: formula
+entry: formula
+kind: law
 shape: law
 status: draft
 output: flight-speed
@@ -11,6 +12,7 @@ tags:
   - source/sourced
   - dim/balances
   - shape/law
+  - kind/law
 ---
 
 # Speed from the steady lift balance
@@ -22,6 +24,8 @@ V = sqrt(2 * m * g / (rho * S_ref * C_L))
 ```
 
 **Produces** [[flight-speed]]  ·  **from** [[weight]] · [[air-density]] · [[wing-reference-area]] · [[lift-coefficient]]
+
+**Kind: a law.** A closed-form relation. Approval asks for its **source** and its **validity at 0.5–15 kg**.
 
 **Dimensional check.** 🟢 balances
 

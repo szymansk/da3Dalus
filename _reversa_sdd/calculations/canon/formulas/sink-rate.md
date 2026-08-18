@@ -1,6 +1,7 @@
 ---
 canon: sink-rate
-kind: formula
+entry: formula
+kind: procedure
 shape: law
 status: draft
 output: sink-rate
@@ -11,6 +12,7 @@ tags:
   - source/partial
   - dim/unparseable
   - shape/law
+  - kind/procedure
 ---
 
 # Steady-glide sink rate
@@ -22,6 +24,20 @@ w = V * C_D / C_L   (small glide-angle form of w = V * sin(gamma), tan(gamma) = 
 ```
 
 **Produces** [[sink-rate]]  ·  **from** [[flight-speed]] · [[lift-coefficient]] · [[drag-coefficient]]
+
+**Kind: a procedure.** There is no closed form, so an algorithm stands in its place. Approval asks two different questions: **under which assumptions does it hold**, and **when does it converge** — including what it returns when it does not.
+
+### Assumptions and convergence
+
+> A procedure exists because no closed solution does. What replaces the source is the
+> statement of **what must hold for it to be valid** and **when it terminates**. Both
+> are required before approval.
+
+**Assumptions.** 🔴 not yet stated — required for approval.
+
+**Convergence.** 🔴 not yet stated — required for approval.
+
+**On failure.** 🔴 not yet stated — what is returned when it does not converge, and is it declared? (ADR 0020)
 
 **Dimensional check.** ⚪ not machine-checkable as written
 
@@ -45,8 +61,8 @@ The sourced relation is the glide-angle one, tan(gamma) = C_D/C_L, from which w 
 
 ## Approval
 
-- [ ] **Source** — citation real, or absence stated and adopted on the maintainer's authority
-- [ ] **Scale** — holds at 0.5–15 kg, or the limitation is written down (ADR 0023)
+- [ ] **Assumptions** — the conditions under which the procedure is valid are stated
+- [ ] **Convergence** — the criterion, and what is returned and declared on failure
 - [ ] **Dimensions** — the check balances
 - [ ] **Implementations** — all agree, or each deviation is declared and justified
 - [ ] **Preconditions** — every binding condition holds, or the violation is ticketed

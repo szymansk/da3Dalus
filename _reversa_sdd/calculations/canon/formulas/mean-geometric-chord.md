@@ -1,6 +1,7 @@
 ---
 canon: mean-geometric-chord
-kind: formula
+entry: formula
+kind: law
 shape: law
 status: draft
 output: mean-geometric-chord
@@ -11,6 +12,7 @@ tags:
   - source/sourced
   - dim/balances
   - shape/law
+  - kind/law
 ---
 
 # Mean geometric chord
@@ -22,6 +24,8 @@ c_bar = S_ref / b_ref
 ```
 
 **Produces** [[mean-geometric-chord]]  ·  **from** [[wing-reference-area]] · [[wing-span]]
+
+**Kind: a law.** A closed-form relation. Approval asks for its **source** and its **validity at 0.5–15 kg**.
 
 **Dimensional check.** 🟢 balances
 

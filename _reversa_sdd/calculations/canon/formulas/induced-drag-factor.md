@@ -1,6 +1,7 @@
 ---
 canon: induced-drag-factor
-kind: formula
+entry: formula
+kind: law
 shape: law
 status: draft
 output: induced-drag-factor
@@ -11,6 +12,7 @@ tags:
   - source/sourced
   - dim/balances
   - shape/law
+  - kind/law
 ---
 
 # Induced-drag factor of the parabolic polar
@@ -22,6 +24,8 @@ k = 1 / (pi * e * AR)
 ```
 
 **Produces** [[induced-drag-factor]]  ·  **from** [[oswald-efficiency]] · [[aspect-ratio]]
+
+**Kind: a law.** A closed-form relation. Approval asks for its **source** and its **validity at 0.5–15 kg**.
 
 **Dimensional check.** 🟢 balances
 

@@ -1,6 +1,7 @@
 ---
 canon: minimum-drag-speed-closed-form
-kind: formula
+entry: formula
+kind: law
 shape: route
 status: draft
 output: minimum-drag-speed
@@ -11,6 +12,7 @@ tags:
   - source/sourced
   - dim/balances
   - shape/route
+  - kind/law
 ---
 
 # Minimum-drag speed from the parabolic polar
@@ -22,6 +24,8 @@ V_md = sqrt( 2*(W/S) / (rho * sqrt(C_D0 / k)) )
 ```
 
 **Produces** [[minimum-drag-speed]]  ·  **from** [[wing-loading]] · [[air-density]] · [[zero-lift-drag-coefficient]] · [[induced-drag-factor]]
+
+**Kind: a law.** A closed-form relation. Approval asks for its **source** and its **validity at 0.5–15 kg**.
 
 **Shape: a route.** This is one of several ways to the same quantity. The canon does not choose between them — it requires that they **agree**.
 

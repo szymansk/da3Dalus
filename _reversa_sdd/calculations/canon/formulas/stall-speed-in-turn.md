@@ -1,6 +1,7 @@
 ---
 canon: stall-speed-in-turn
-kind: formula
+entry: formula
+kind: law
 shape: law
 status: draft
 output: stall-speed-in-turn
@@ -11,6 +12,7 @@ tags:
   - source/sourced
   - dim/balances
   - shape/law
+  - kind/law
 ---
 
 # Stall speed in a banked turn
@@ -22,6 +24,8 @@ V_S,turn = V_S1 * sqrt(n)
 ```
 
 **Produces** [[stall-speed-in-turn]]  ·  **from** [[stall-speed]] · [[load-factor]]
+
+**Kind: a law.** A closed-form relation. Approval asks for its **source** and its **validity at 0.5–15 kg**.
 
 **Dimensional check.** 🟢 balances
 

@@ -1,6 +1,7 @@
 ---
 canon: gust-alleviation-factor
-kind: formula
+entry: formula
+kind: law
 shape: law
 status: draft
 output: gust-alleviation-factor
@@ -11,6 +12,7 @@ tags:
   - source/sourced
   - dim/balances
   - shape/law
+  - kind/law
 ---
 
 # Pratt-Walker gust alleviation factor
@@ -22,6 +24,8 @@ K_g = 0.88 * mu_g / (5.3 + mu_g)
 ```
 
 **Produces** [[gust-alleviation-factor]]  ·  **from** [[gust-mass-ratio]]
+
+**Kind: a law.** A closed-form relation. Approval asks for its **source** and its **validity at 0.5–15 kg**.
 
 **Dimensional check.** 🟢 balances
 

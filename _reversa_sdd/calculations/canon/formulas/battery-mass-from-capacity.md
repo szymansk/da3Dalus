@@ -1,6 +1,7 @@
 ---
 canon: battery-mass-from-capacity
-kind: formula
+entry: formula
+kind: law
 shape: law
 status: draft
 output: predicted-battery-mass
@@ -11,6 +12,7 @@ tags:
   - source/partial
   - dim/balances
   - shape/law
+  - kind/law
 ---
 
 # Battery mass implied by capacity and specific energy
@@ -22,6 +24,8 @@ m_bat,pred = E_bat / E_star
 ```
 
 **Produces** [[predicted-battery-mass]]  ·  **from** [[battery-capacity]] · [[battery-specific-energy]]
+
+**Kind: a law.** A closed-form relation. Approval asks for its **source** and its **validity at 0.5–15 kg**.
 
 **Dimensional check.** 🟢 balances
 

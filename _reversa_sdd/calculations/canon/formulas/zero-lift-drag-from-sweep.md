@@ -1,6 +1,7 @@
 ---
 canon: zero-lift-drag-from-sweep
-kind: formula
+entry: formula
+kind: fit
 shape: law
 status: draft
 output: zero-lift-drag-coefficient
@@ -11,6 +12,7 @@ tags:
   - source/partial
   - dim/procedural
   - shape/law
+  - kind/fit
   - flag/conflict
 ---
 
@@ -23,6 +25,8 @@ C_D0 := C_D at the C_L = 0 crossing, by linear interpolation between the two bra
 ```
 
 **Produces** [[zero-lift-drag-coefficient]]  ·  **from** [[lift-coefficient]] · [[drag-coefficient]] · [[angle-of-attack]]
+
+**Kind: a fit.** A regression over computed points, not a derivation. Approval asks for the fitted model, its **domain of validity** and its **rejection criteria**.
 
 **Dimensional check.** ⚪ procedural — not an algebraic law
 
@@ -53,8 +57,8 @@ Two genuinely different laws produce a number labelled C_D0. Here it is the solv
 
 ## Approval
 
-- [ ] **Source** — citation real, or absence stated and adopted on the maintainer's authority
-- [ ] **Scale** — holds at 0.5–15 kg, or the limitation is written down (ADR 0023)
+- [ ] **Model and domain** — the fitted form and where it may be evaluated are stated
+- [ ] **Rejection** — when the fit is refused rather than used
 - [ ] **Dimensions** — the check balances
 - [ ] **Implementations** — all agree, or each deviation is declared and justified
 - [ ] **Preconditions** — every binding condition holds, or the violation is ticketed

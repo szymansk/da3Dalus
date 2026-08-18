@@ -79,6 +79,36 @@ duplication, and it can be detected by a join rather than by reading.
 condition. A wing with no flap has one stall speed, not three identical ones — and
 certainly not three that disagree because one of them fell back to the clean value.
 
+### Two axes, not one
+
+An entry carries two independent classifications, the way the register already carries
+confidence and the Ist/Soll axis separately (`../MARKERS.md`).
+
+**`kind`** — what sort of statement it is. This decides **what approval asks**.
+
+| kind | why it exists | approval asks |
+|---|---|---|
+| **law** | a closed-form relation | the **source** · validity at 0.5–15 kg |
+| **procedure** | *because no closed solution exists* | the **assumptions** under which it holds · **when it converges** · what it returns when it does not |
+| **fit** | a regression over computed points, not a derivation | the fitted model · its **domain of validity** · its **rejection criteria** |
+| **rating** | a preference, not physics | whose preference. There is nothing to cite: the weighting is a **decision**, not a fact |
+
+The procedure row is the one that had to be added. A procedure is used precisely because
+there is no formula, so "what is the source" is the wrong question. What replaces it is
+the pair the maintainer named: **under which assumptions is it valid, and when does it
+converge.** Without both, a procedure is not approvable — it is only running.
+
+That gate finds things immediately. The trim solver runs with `max_iter=120`,
+`max_runtime=0.35` and `behavior_on_failure="return_last"`
+(`operating_point_generator_service.py:685-687`): a non-converged iterate is returned
+**silently**, and because the budget is wall-clock, the same aircraft can trim differently
+on a loaded machine. No criterion is declared and no warning is emitted (ADR 0020).
+
+Path 1 splits **32 laws · 10 procedures · 3 fits · 1 rating**.
+
+**`shape`** — how the entry relates to the others. This decides **whether there is
+anything to decide**.
+
 ### The four shapes
 
 Collapsing the speed chain showed that "two producers of one quantity" hides four

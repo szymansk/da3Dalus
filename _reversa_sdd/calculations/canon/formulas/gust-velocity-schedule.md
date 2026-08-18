@@ -1,6 +1,7 @@
 ---
 canon: gust-velocity-schedule
-kind: formula
+entry: formula
+kind: fit
 shape: law
 status: draft
 output: gust-velocity
@@ -11,6 +12,7 @@ tags:
   - source/sourced
   - dim/procedural
   - shape/law
+  - kind/fit
 ---
 
 # Design gust velocity scheduled against airspeed
@@ -22,6 +24,8 @@ U(V) = U_C for V <= V_C;  U(V) = U_C + (V - V_C)/(V_D - V_C) * (U_D - U_C) for V
 ```
 
 **Produces** [[gust-velocity]]  ·  **from** [[flight-speed]] · [[cruise-speed]] · [[dive-speed]]
+
+**Kind: a fit.** A regression over computed points, not a derivation. Approval asks for the fitted model, its **domain of validity** and its **rejection criteria**.
 
 **Dimensional check.** ⚪ procedural — not an algebraic law
 
@@ -45,8 +49,8 @@ The regulation schedules the gust against the design speeds V_C and V_D and spec
 
 ## Approval
 
-- [ ] **Source** — citation real, or absence stated and adopted on the maintainer's authority
-- [ ] **Scale** — holds at 0.5–15 kg, or the limitation is written down (ADR 0023)
+- [ ] **Model and domain** — the fitted form and where it may be evaluated are stated
+- [ ] **Rejection** — when the fit is refused rather than used
 - [ ] **Dimensions** — the check balances
 - [ ] **Implementations** — all agree, or each deviation is declared and justified
 - [ ] **Preconditions** — every binding condition holds, or the violation is ticketed

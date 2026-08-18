@@ -1,6 +1,7 @@
 ---
 canon: stall-wing-loading-limit
-kind: formula
+entry: formula
+kind: law
 shape: law
 status: draft
 output: wing-loading-limit-stall
@@ -11,6 +12,7 @@ tags:
   - source/sourced
   - dim/balances
   - shape/law
+  - kind/law
 ---
 
 # Maximum wing loading permitted by a stall-speed requirement
@@ -22,6 +24,8 @@ tags:
 ```
 
 **Produces** [[wing-loading-limit-stall]]  ·  **from** [[air-density]] · [[stall-speed-target]] · [[max-lift-coefficient]]
+
+**Kind: a law.** A closed-form relation. Approval asks for its **source** and its **validity at 0.5–15 kg**.
 
 ℹ️ **Reclassified.** Was recorded as a second producer of another quantity. It produces its own: a design limit, not the actual value.
 

@@ -1,6 +1,7 @@
 ---
 canon: stall-margin-ratio
-kind: formula
+entry: formula
+kind: law
 shape: law
 status: draft
 output: stall-margin-ratio
@@ -11,6 +12,7 @@ tags:
   - source/partial
   - dim/balances
   - shape/law
+  - kind/law
 ---
 
 # Stall safety ratio
@@ -22,6 +24,8 @@ V_cruise / V_S1
 ```
 
 **Produces** [[stall-margin-ratio]]  ·  **from** [[cruise-speed]] · [[stall-speed]]
+
+**Kind: a law.** A closed-form relation. Approval asks for its **source** and its **validity at 0.5–15 kg**.
 
 **Dimensional check.** 🟢 balances
 

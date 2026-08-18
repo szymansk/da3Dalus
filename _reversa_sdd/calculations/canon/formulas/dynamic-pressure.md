@@ -1,6 +1,7 @@
 ---
 canon: dynamic-pressure
-kind: formula
+entry: formula
+kind: law
 shape: law
 status: draft
 output: dynamic-pressure
@@ -11,6 +12,7 @@ tags:
   - source/sourced
   - dim/balances
   - shape/law
+  - kind/law
 ---
 
 # Dynamic pressure
@@ -22,6 +24,8 @@ q = 0.5 * rho * V^2
 ```
 
 **Produces** [[dynamic-pressure]]  ·  **from** [[air-density]] · [[flight-speed]]
+
+**Kind: a law.** A closed-form relation. Approval asks for its **source** and its **validity at 0.5–15 kg**.
 
 **Dimensional check.** 🟢 balances
 

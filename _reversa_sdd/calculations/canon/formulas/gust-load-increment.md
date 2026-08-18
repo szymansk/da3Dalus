@@ -1,6 +1,7 @@
 ---
 canon: gust-load-increment
-kind: formula
+entry: formula
+kind: law
 shape: law
 status: draft
 output: gust-load-increment
@@ -11,6 +12,7 @@ tags:
   - source/sourced
   - dim/mismatch
   - shape/law
+  - kind/law
 ---
 
 # Load-factor increment from a discrete vertical gust
@@ -22,6 +24,8 @@ delta_n = 0.5 * rho * V * C_Lalpha * U_de * K_g / (W/S)
 ```
 
 **Produces** [[gust-load-increment]]  ·  **from** [[air-density]] · [[flight-speed]] · [[lift-curve-slope]] · [[gust-velocity]] · [[gust-alleviation-factor]] · [[wing-loading]]
+
+**Kind: a law.** A closed-form relation. Approval asks for its **source** and its **validity at 0.5–15 kg**.
 
 **Dimensional check.** 🔴 does not balance
 
