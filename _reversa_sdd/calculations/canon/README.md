@@ -46,6 +46,69 @@ the point.
 
 **Identity is the quantity, not the expression.**
 
+## One formula, several applications
+
+A formula can be applied more than once with different inputs. That is not duplication
+and it is not a conflict — it is the normal shape of a design calculation, and the canon
+has to say so, or it cannot tell the two apart.
+
+**Stall speed is the worked example.** There is one law:
+
+```
+v_stall = sqrt(2 · m · g / (rho · S_ref · cl_max))
+```
+
+and three **applications** of it, differing only in which `cl_max` is bound:
+
+| application | binds `cl_max` | exists when |
+|---|---|---|
+| `v_stall_clean_mps` | `cl_max_clean` | always |
+| `v_stall_takeoff_mps` | `cl_max_takeoff` | the wing has a flap |
+| `v_stall_landing_mps` | `cl_max_landing` | the wing has a flap |
+
+Three **quantities** — they have different values. One **formula**. Three
+**applications** binding one input differently.
+
+Two consequences follow, and both are mechanical:
+
+**In the code there should be three calls to one function**, not three implementations of
+one law. Three separate implementations where the canon declares one formula is
+duplication, and it can be detected by a join rather than by reading.
+
+**A configuration that does not exist is not computed.** The application carries a
+condition. A wing with no flap has one stall speed, not three identical ones — and
+certainly not three that disagree because one of them fell back to the clean value.
+
+### Application versus conflict
+
+| shape | meaning | verdict |
+|---|---|---|
+| same formula, different input binding | an application | ✅ expected — record it |
+| different formulas, same output quantity | a conflict | ⚠️ decide it |
+
+This is the discriminator the register lacked. The three stall speeds are applications.
+The three static margins — `(X_np − x_ref)/c_ref`, `(x_np − cg_x)/mac·100` and
+`−C_mα/C_Lα` — are a conflict: different laws claiming one quantity.
+
+## Naming
+
+One readable scheme, `<quantity>_<configuration>_<unit>`:
+
+```
+v_stall_clean_mps      v_stall_takeoff_mps      v_stall_landing_mps
+cl_max_clean           cl_max_takeoff           cl_max_landing
+```
+
+Spelled out. **No regulatory shorthand** (`V_S0`, `V_S1`) and no abbreviations (`to`,
+`ldg`) — those are readable only to someone who already knows the convention, which is
+the opposite of what a canon is for. The unit suffix stays: in a codebase carrying
+millimetres inside a metre model (ADR 0001) it is a guard, and `mass_kg` and
+`wing_area_m2` already do it.
+
+The scheme is not new. `field_length_service` already writes `cl_max_landing` on line 361
+and `v_s0_mps` on line 368 — seven lines apart, in one function. One of the two
+conventions already exists and is the right one; it only has to win.
+
 ## Approval
 
 Each formula carries a `status`:
