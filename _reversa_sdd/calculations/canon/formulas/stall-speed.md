@@ -66,7 +66,7 @@ The formula is exact. These are the conditions its **inputs** must satisfy for a
 application of it to mean what it claims. A violated precondition is a defect of the
 path, not of the law.
 
-### `cl_max` — 🔴 **violated**
+### `cl_max` — ⚪
 
 **Requirement.** Evaluated at the Reynolds number of the stall condition itself, not at cruise and not from a 2D table at Re ~ 1e6.
 
@@ -78,7 +78,11 @@ path, not of the law.
 
 **Direction.** UNSAFE — C_L,max too high, so V_stall is reported too low: the aircraft stalls sooner than the app says.
 
-**Also.** The sampled range often misses the point entirely. A typical trainer has V_cruise/V_stall ~ 2.2, so V_stall ~ 0.45*V_cruise — just below the grid's lower bound.
+**Also.** MEASURED across the fleet, 2026-08-18 (scripts/measure_clmax_reynolds_spread.py, 26 aircraft): every single spread is POSITIVE — the reported stall speed is always the low one. Median 2.9 %, maximum 33.2 %, above the 2 % tolerance in 20 of 26.
+
+The governing factor is whether the velocity grid brackets the stall point. Within the 0.5-15 kg class (18 measurements): where it brackets (7), median +2.3 %, worst +4.2 %; where it does not (11), median +4.2 %, worst +33.2 %.
+
+And it misses often because the lower bound is not a property of the aircraft: grid_lo = max(v_cruise*0.5, 3.0) evaluated to 9.00 m/s for EVERY aircraft measured, i.e. the default cruise speed of 18 m/s. A slow model — saal_flug stalls at 3.7 m/s, negatiV at 8.2 m/s — has its stall point entirely outside the sampled range.
 
 **Test that settles it.** Sweep C_L,max(V) instead of max-over-all and compare the value at the low end of the range against the high end. If they diverge, the fixed-point iteration is required; if they do not, today's simplification is evidenced rather than assumed.
 
