@@ -5,11 +5,20 @@ unit: dimensionless
 cluster: perf-oppoints
 user_visible: false
 source_status: PARTIAL
+node_class: derived
+tags:
+  - cluster/perf-oppoints
+  - class/derived
+  - source/partial
+  - flag/anomaly
+  - flag/divergence
 ---
 
 # Required capabilities per target
 
 **Definition.** Capability flags a named target requires before it may be solved.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 

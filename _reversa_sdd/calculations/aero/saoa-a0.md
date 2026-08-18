@@ -6,11 +6,20 @@ unit: 1/rad
 cluster: aero-strips
 user_visible: false
 source_status: SOURCED
+node_class: unclassified-constant
+tags:
+  - cluster/aero-strips
+  - class/unclassified-constant
+  - source/sourced
+  - flag/divergence
+  - flag/scale
 ---
 
 # Thin-airfoil lift-curve slope
 
 **Definition.** 2π per radian section lift-curve slope used to invert cl into an effective AoA.
+
+⚪ **Unclassified constant.** Not yet decided whether this is a rule of thumb, a calibration or a physical value. Classifying it is open work — it is deliberately not guessed.
 
 **Value.** `2.0 * math.pi`
 
@@ -26,7 +35,8 @@ _A0_RAD = 2.0 * math.pi  # thin-airfoil section lift-curve slope [/rad]
 
 **Consumed by.**
 
-- in this graph: [[saoa-alpha-eff|Effective angle of attack]]
+- in this graph: `Effective angle of attack`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 
 **Source.** 🟢 SOURCED
 

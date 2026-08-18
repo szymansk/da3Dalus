@@ -5,11 +5,19 @@ unit: index
 cluster: aero-spanwise
 user_visible: false
 source_status: PARTIAL
+node_class: derived
+tags:
+  - cluster/aero-spanwise
+  - class/derived
+  - source/partial
+  - flag/divergence
 ---
 
 # Minimum-sink index
 
 **Definition.** Index of the lowest sink rate on the sorted curve.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -17,13 +25,16 @@ source_status: PARTIAL
 i_min_sink = int(np.argmin(w))
 ```
 
-**Inputs.** [[speed-polar-w|Sink rate]]
+**Inputs.**
+
+- [[speed-polar-w|Sink rate]]
 
 **Produced by.** `app/services/analysis_service.py:521` — `_compute_speed_polar`
 
 **Consumed by.**
 
-- in this graph: [[alpha-min-sink-deg|Alpha at minimum sink]] · [[v-min-sink|Minimum-sink speed]] · [[w-min|Minimum sink rate]]
+- in this graph: `Alpha at minimum sink` · `Minimum-sink speed` · `Minimum sink rate`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 
 **Source.** 🟡 PARTIAL
 

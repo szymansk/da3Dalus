@@ -6,11 +6,20 @@ unit: % chord
 cluster: aero-polars
 user_visible: false
 source_status: SOURCED
+node_class: derived
+tags:
+  - cluster/aero-polars
+  - class/derived
+  - source/sourced
+  - flag/anomaly
+  - flag/divergence
 ---
 
 # Max camber (classifier-internal)
 
 **Definition.** Peak signed camber-line value expressed as percent of chord.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -19,13 +28,16 @@ max_camber = float(np.max(camber))
 max_camber_pct = max_camber * 100.0
 ```
 
-**Inputs.** [[alr-camber-line|Mean camber line]]
+**Inputs.**
+
+- [[alr-camber-line|Mean camber line]]
 
 **Produced by.** `app/services/airfoil_low_re_service.py:214` — `classify_family`
 
 **Consumed by.**
 
-- in this graph: [[alr-aft-camber-ratio|Aft camber ratio (reflex Signal A)]] · [[alr-family|Airfoil family label]]
+- in this graph: `Aft camber ratio (reflex Signal A)` · `Airfoil family label`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `classify_family:226,261,265,274,292`
 
 **Source.** 🟢 SOURCED

@@ -6,11 +6,21 @@ unit: kg/m^3
 cluster: powertrain
 user_visible: true
 source_status: NO_SOURCE_FOUND
+node_class: derived
+tags:
+  - cluster/powertrain
+  - class/derived
+  - source/no-source-found
+  - surface/user-visible
+  - flag/anomaly
+  - flag/divergence
 ---
 
 # Air density at altitude (performance)
 
 **Definition.** Air density from an isothermal exponential atmosphere with 8500 m scale height.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -18,13 +28,18 @@ source_status: NO_SOURCE_FOUND
 return RHO_SEA_LEVEL * math.exp(-altitude_m / 8500.0)
 ```
 
-**Inputs.** [[rho-sea-level-perf|Sea-level air density (performance module)]] · [[atmosphere-scale-height-perf|Isothermal atmosphere scale height (performance)]] · [[request-altitude-m|Operating altitude (performance)]]
+**Inputs.**
+
+- [[rho-sea-level-perf|Sea-level air density (performance module)]]
+- [[atmosphere-scale-height-perf|Isothermal atmosphere scale height (performance)]]
+- [[request-altitude-m|Operating altitude (performance)]]
 
 **Produced by.** `app/services/powertrain_performance.py:348` — `_air_density`
 
 **Consumed by.**
 
-- in this graph: [[curve-p-shaft|Shaft power per velocity sample]] · [[curve-thrust|Thrust per velocity sample]] · [[prop-torque-demand|Propeller absorbed torque]] · [[propop-p-shaft|Propeller shaft power (operating-point helper)]] · [[propop-thrust|Propeller thrust (operating-point helper)]]
+- in this graph: `Shaft power per velocity sample` · `Thrust per velocity sample` · `Propeller absorbed torque` · `Propeller shaft power (operating-point helper)` · `Propeller thrust (operating-point helper)`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `app/services/powertrain_performance.py:385` · `app/services/powertrain_performance.py:524` · `app/services/powertrain_performance.py:695`
 
 **Source.** 🔴 NO SOURCE FOUND

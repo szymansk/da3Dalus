@@ -6,11 +6,20 @@ unit: x/c
 cluster: aero-strips
 user_visible: false
 source_status: NO_SOURCE_FOUND
+node_class: derived
+tags:
+  - cluster/aero-strips
+  - class/derived
+  - source/no-source-found
+  - flag/anomaly
+  - flag/divergence
 ---
 
 # Confidence-probe trip position
 
 **Definition.** Mid-grid xtr at which NeuralFoil's analysis_confidence is sampled.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -18,13 +27,16 @@ source_status: NO_SOURCE_FOUND
 xtr_upper=float(xtr_grid[len(xtr_grid) // 2]),
 ```
 
-**Inputs.** [[tos-xtr-grid|Turbulator trip-position sweep grid]]
+**Inputs.**
+
+- [[tos-xtr-grid|Turbulator trip-position sweep grid]]
 
 **Produced by.** `app/services/turbulator_optimizer_service.py:218` — `optimize_section_xtr`
 
 **Consumed by.**
 
-- in this graph: [[tos-conf-mean|Mean NeuralFoil analysis confidence]]
+- in this graph: `Mean NeuralFoil analysis confidence`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 
 **Source.** 🔴 NO SOURCE FOUND
 

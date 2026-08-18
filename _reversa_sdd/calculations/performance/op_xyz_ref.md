@@ -5,11 +5,21 @@ unit: m
 cluster: perf-oppoints
 user_visible: true
 source_status: PARTIAL
+node_class: derived
+tags:
+  - cluster/perf-oppoints
+  - class/derived
+  - source/partial
+  - surface/user-visible
+  - flag/anomaly
+  - flag/divergence
 ---
 
 # Operating-point moment reference
 
 **Definition.** Moment reference point persisted with each operating point.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -17,7 +27,9 @@ source_status: PARTIAL
 xyz_ref=[design_cg_x, 0.0, 0.0]
 ```
 
-**Inputs.** [[design_cg_x|Design CG x-position]]
+**Inputs.**
+
+- [[design_cg_x|Design CG x-position]]
 
 **Produced by.** `app/services/operating_point_generator_service.py:1027` — `_op_model_from_point`
 

@@ -5,11 +5,20 @@ unit: m/s
 cluster: perf-oppoints
 user_visible: true
 source_status: SOURCED
+node_class: derived
+tags:
+  - cluster/perf-oppoints
+  - class/derived
+  - source/sourced
+  - surface/user-visible
+  - flag/divergence
 ---
 
 # stall_near_clean target speed
 
 **Definition.** Speed of the near-stall clean operating point.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -17,7 +26,10 @@ source_status: SOURCED
 stall_near = float(goals.get("min_speed_margin_vs_clean", 1.20)) * refs["vs_clean"]
 ```
 
-**Inputs.** [[default_min_speed_margin_vs_clean|Default clean stall margin]] · [[vs_clean|Clean stall speed reference]]
+**Inputs.**
+
+- [[default_min_speed_margin_vs_clean|Default clean stall margin]]  — *⤵ fallback*
+- [[vs_clean|Clean stall speed reference]]
 
 **Produced by.** `app/services/operating_point_generator_service.py:401` — `_build_target_definitions`
 

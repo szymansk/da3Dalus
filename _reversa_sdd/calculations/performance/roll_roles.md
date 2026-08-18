@@ -5,11 +5,19 @@ unit: dimensionless
 cluster: perf-oppoints
 user_visible: false
 source_status: SOURCED
+node_class: unclassified-constant
+tags:
+  - cluster/perf-oppoints
+  - class/unclassified-constant
+  - source/sourced
+  - flag/divergence
 ---
 
 # Roll control role set
 
 **Definition.** Role tags counted as roll-capable control surfaces.
+
+⚪ **Unclassified constant.** Not yet decided whether this is a rule of thumb, a calibration or a physical value. Classifying it is open work — it is deliberately not guessed.
 
 **Value.** `{aileron, elevon, flaperon}`
 
@@ -25,7 +33,8 @@ ROLL_ROLES = {"aileron", "elevon", "flaperon"}
 
 **Consumed by.**
 
-- in this graph: [[control_capabilities|Control capability flags]]
+- in this graph: `Control capability flags`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `app/services/operating_point_generator_service.py:615` · `app/services/operating_point_generator_service.py:550`
 
 **Source.** 🟢 SOURCED

@@ -5,11 +5,20 @@ unit: m
 cluster: aero-spanwise
 user_visible: true
 source_status: NO_SOURCE_FOUND
+node_class: derived
+tags:
+  - cluster/aero-spanwise
+  - class/derived
+  - source/no-source-found
+  - surface/user-visible
+  - flag/anomaly
 ---
 
 # Xnp_lat outlier deviation
 
 **Definition.** Absolute deviation of Xnp_lat from its median; the argmax is labelled as an outlier.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -17,7 +26,9 @@ source_status: NO_SOURCE_FOUND
 median_lat = float(np.nanmedian(lat_curve)); deviation_lat = np.abs(lat_curve - median_lat); outlier_idx = int(np.nanargmax(deviation_lat))
 ```
 
-**Inputs.** [[xnp-lat-values|Lateral neutral point array]]
+**Inputs.**
+
+- [[xnp-lat-values|Lateral neutral point array]]
 
 **Produced by.** `app/services/analysis_service.py:1218` — `_collect_xnp_lat_labels`
 

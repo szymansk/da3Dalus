@@ -5,11 +5,19 @@ unit: m
 cluster: aero-spanwise
 user_visible: true
 source_status: NO_SOURCE_FOUND
+node_class: derived
+tags:
+  - cluster/aero-spanwise
+  - class/derived
+  - source/no-source-found
+  - surface/user-visible
 ---
 
 # Xnp_lat jump
 
 **Definition.** Largest step-to-step change in Xnp_lat, labelled as a jump.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -17,7 +25,9 @@ source_status: NO_SOURCE_FOUND
 jumps = np.abs(np.diff(lat_curve)); jump_idx = int(np.nanargmax(jumps)) + 1
 ```
 
-**Inputs.** [[xnp-lat-values|Lateral neutral point array]]
+**Inputs.**
+
+- [[xnp-lat-values|Lateral neutral point array]]
 
 **Produced by.** `app/services/analysis_service.py:1234` — `_collect_xnp_lat_labels`
 

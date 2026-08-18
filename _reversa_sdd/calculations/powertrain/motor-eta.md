@@ -6,11 +6,20 @@ unit: dimensionless (0..1)
 cluster: powertrain
 user_visible: true
 source_status: SOURCED
+node_class: derived
+tags:
+  - cluster/powertrain
+  - class/derived
+  - source/sourced
+  - surface/user-visible
+  - flag/divergence
 ---
 
 # Motor + gearbox efficiency
 
 **Definition.** Combined motor and gearbox electrical-to-shaft efficiency, from the datasheet percentage when available, else the 0.85 default.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -18,13 +27,17 @@ source_status: SOURCED
 if self.efficiency_pct is not None: return self.efficiency_pct / 100.0 ; return _DEFAULT_ETA_MOTOR
 ```
 
-**Inputs.** [[motor-efficiency-pct-input|Datasheet motor efficiency]] · [[default-eta-motor-perf|Default motor efficiency (performance module)]]
+**Inputs.**
+
+- [[motor-efficiency-pct-input|Datasheet motor efficiency]]
+- [[default-eta-motor-perf|Default motor efficiency (performance module)]]  — *⤵ fallback*
 
 **Produced by.** `app/services/powertrain_performance.py:147` — `MotorSpec.eta_motor`
 
 **Consumed by.**
 
-- in this graph: [[curve-p-shaft-max|Shaft power ceiling]]
+- in this graph: `Shaft power ceiling`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `app/services/powertrain_performance.py:663` · `app/services/powertrain_performance.py:793`
 
 **Source.** 🟢 SOURCED

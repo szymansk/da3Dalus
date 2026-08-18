@@ -6,11 +6,22 @@ unit: kg/m^3
 cluster: perf-envelope
 user_visible: false
 source_status: SOURCED
+node_class: physical-constant
+tags:
+  - cluster/perf-envelope
+  - class/physical-constant
+  - source/sourced
+  - flag/anomaly
+  - flag/scale
+  - flag/physical
 ---
 
 # Sea-level air density
 
 **Definition.** ISA sea-level density; endurance is evaluated only at sea level.
+
+**Physical constant.** A value of nature. It must be identical everywhere it appears — a second definition is a defect by construction, not a judgement call.
+*Identified as: sea-level air density.*
 
 **Value.** `1.225`
 
@@ -26,7 +37,8 @@ RHO_SEA_LEVEL = 1.225  # kg/m³
 
 **Consumed by.**
 
-- in this graph: [[end_cd0_at_v|Speed-specific C_D0]] · [[end_q|Dynamic pressure (endurance)]]
+- in this graph: `Speed-specific C_D0` · `Dynamic pressure (endurance)`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `powertrain_sizing_service.AIR_DENSITY_SEA_LEVEL`
 
 **Source.** 🟢 SOURCED

@@ -6,11 +6,19 @@ unit: dimensionless
 cluster: aero-polars
 user_visible: false
 source_status: PARTIAL
+node_class: derived
+tags:
+  - cluster/aero-polars
+  - class/derived
+  - source/partial
+  - flag/divergence
 ---
 
 # Relative drag-rise ratio r
 
 **Definition.** Ratio of CD at the target CL to cd0.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -18,13 +26,17 @@ source_status: PARTIAL
 r = cd_at_target / cd0  # relative drag rise; r=1 at CL_min, r>1 away from it
 ```
 
-**Inputs.** [[alr-cd-at-target|CD at target CL]] · [[alr-polar-cd0|Airfoil cd0 (parabolic fit vertex)]]
+**Inputs.**
+
+- [[alr-cd-at-target|CD at target CL]]
+- [[alr-polar-cd0|Airfoil cd0 (parabolic fit vertex)]]
 
 **Produced by.** `app/services/airfoil_low_re_service.py:1046` — `score_target_cl`
 
 **Consumed by.**
 
-- in this graph: [[alr-match|Match component of score_target_cl]]
+- in this graph: `Match component of score_target_cl`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `score_target_cl:1052,1055,1071`
 
 **Source.** 🟡 PARTIAL

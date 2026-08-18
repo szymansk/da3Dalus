@@ -6,11 +6,20 @@ unit: W
 cluster: powertrain
 user_visible: false
 source_status: SOURCED
+node_class: derived
+tags:
+  - cluster/powertrain
+  - class/derived
+  - source/sourced
+  - flag/anomaly
+  - flag/divergence
 ---
 
 # Propeller shaft power (operating-point helper)
 
 **Definition.** Shaft power absorbed by the propeller at a prescribed RPM, taken from the power coefficient rather than from the stored torque column.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -18,7 +27,11 @@ source_status: SOURCED
 p_shaft_w = Cp * rho * (n_rps**3) * (D_m**5) ; p_shaft_w = max(p_shaft_w, 0.0)
 ```
 
-**Inputs.** [[polar-cp|Propeller power coefficient]] · [[air-density-perf|Air density at altitude (performance)]] · [[propop-n-rps|Propeller rotational speed (operating point)]]
+**Inputs.**
+
+- [[polar-cp|Propeller power coefficient]]  — *⊣ limit*
+- [[air-density-perf|Air density at altitude (performance)]]
+- [[propop-n-rps|Propeller rotational speed (operating point)]]
 
 **Produced by.** `app/services/powertrain_performance.py:411` — `compute_prop_operating_point`
 

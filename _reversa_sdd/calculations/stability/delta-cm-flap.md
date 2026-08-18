@@ -6,11 +6,20 @@ unit: – (dimensionless)
 cluster: stability
 user_visible: false
 source_status: SOURCED
+node_class: derived
+tags:
+  - cluster/stability
+  - class/derived
+  - source/sourced
+  - flag/anomaly
+  - flag/divergence
 ---
 
 # Flap-induced pitching moment
 
 **Definition.** Change in pitching moment coefficient caused by deploying the flaps, evaluated at the flapped CL_max point.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -18,13 +27,17 @@ source_status: SOURCED
 delta_cm_flap = cm_at_cl_max - cm_baseline
 ```
 
-**Inputs.** [[cm-baseline|Baseline pitching moment (zero deflection)]] · [[cl-max-landing-flap|Swept flapped CL_max]]
+**Inputs.**
+
+- [[cm-baseline|Baseline pitching moment (zero deflection)]]
+- [[cl-max-landing-flap|Swept flapped CL_max]]  — *⊣ limit*
 
 **Produced by.** `app/services/elevator_authority_service.py:896` — `_run_flap_analysis`
 
 **Consumed by.**
 
-- in this graph: [[net-pitch-up|Net nose-up moment coefficient]]
+- in this graph: `Net nose-up moment coefficient`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `app/services/elevator_authority_service.py:646,236,310,753,767,788`
 
 **Source.** 🟢 SOURCED

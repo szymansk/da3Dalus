@@ -5,11 +5,21 @@ unit: deg
 cluster: aero-spanwise
 user_visible: true
 source_status: SOURCED
+node_class: derived
+tags:
+  - cluster/aero-spanwise
+  - class/derived
+  - source/sourced
+  - surface/user-visible
+  - flag/anomaly
+  - flag/divergence
 ---
 
 # Alpha at best glide
 
 **Definition.** Angle of attack at the best-glide CL via the linear lift curve.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -17,7 +27,12 @@ source_status: SOURCED
 alpha_best_glide_deg_val = _cl_to_alpha_deg(float(cl_s[i_best]), cl_alpha_per_rad, alpha_0_deg)
 ```
 
-**Inputs.** [[cl-values|Lift coefficient array]] · [[i-best-glide|Best-glide index]] · [[cl-alpha-per-rad|Lift-curve slope from context]] · [[alpha-0-deg|Zero-lift angle from context]]
+**Inputs.**
+
+- [[cl-values|Lift coefficient array]]
+- [[i-best-glide|Best-glide index]]
+- [[cl-alpha-per-rad|Lift-curve slope from context]]
+- [[alpha-0-deg|Zero-lift angle from context]]
 
 **Produced by.** `app/services/analysis_service.py:530` — `_compute_speed_polar`
 

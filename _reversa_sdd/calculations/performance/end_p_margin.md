@@ -6,11 +6,21 @@ unit: -
 cluster: perf-envelope
 user_visible: true
 source_status: PARTIAL
+node_class: derived
+tags:
+  - cluster/perf-envelope
+  - class/derived
+  - source/partial
+  - surface/user-visible
+  - flag/anomaly
+  - flag/divergence
 ---
 
 # Power margin
 
 **Definition.** Fraction of continuous motor power left unused in cruise at V_md.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -18,13 +28,17 @@ source_status: PARTIAL
 margin = (p_motor - p_req) / p_motor
 ```
 
-**Inputs.** [[end_motor_w|Motor continuous power]] · [[end_p_req_vmd|Power required at V_md]]
+**Inputs.**
+
+- [[end_motor_w|Motor continuous power]]
+- [[end_p_req_vmd|Power required at V_md]]
 
 **Produced by.** `app/services/endurance_service.py:145` — `_classify_p_margin`
 
 **Consumed by.**
 
-- in this graph: [[end_p_margin_class|Power-margin classification]]
+- in this graph: `Power-margin classification`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `EnduranceCard.tsx` · `metricsAdapters.toPMarginGauge`
 
 **Source.** 🟡 PARTIAL

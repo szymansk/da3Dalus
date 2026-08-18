@@ -5,11 +5,22 @@ unit: m (applied to Xnp)
 cluster: aero-spanwise
 user_visible: true
 source_status: NO_SOURCE_FOUND
+node_class: unclassified-constant
+tags:
+  - cluster/aero-spanwise
+  - class/unclassified-constant
+  - source/no-source-found
+  - surface/user-visible
+  - flag/anomaly
+  - flag/divergence
+  - flag/scale
 ---
 
 # Variation classification thresholds
 
 **Definition.** Span bands separating robust / moderate / volatile.
+
+⚪ **Unclassified constant.** Not yet decided whether this is a rule of thumb, a calibration or a physical value. Classifying it is open work — it is deliberately not guessed.
 
 **Value.** `0.5 / 2.0`
 

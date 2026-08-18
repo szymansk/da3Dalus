@@ -5,11 +5,20 @@ unit: 1/deg
 cluster: aero-spanwise
 user_visible: true
 source_status: SOURCED
+node_class: derived
+tags:
+  - cluster/aero-spanwise
+  - class/derived
+  - source/sourced
+  - surface/user-visible
+  - flag/divergence
 ---
 
 # Local Cm gradient
 
 **Definition.** Numerical derivative of Cm with respect to alpha along the sweep.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -17,13 +26,17 @@ source_status: SOURCED
 cm_grad = np.gradient(cm_curve, alpha_cm) if len(cm_curve) > 1 else np.array([np.nan])
 ```
 
-**Inputs.** [[cm-values|Pitching-moment coefficient array]] · [[alpha-array|Alpha sweep array]]
+**Inputs.**
+
+- [[cm-values|Pitching-moment coefficient array]]
+- [[alpha-array|Alpha sweep array]]
 
 **Produced by.** `app/services/analysis_service.py:1109` — `_plot_cm_stability`
 
 **Consumed by.**
 
-- in this graph: [[cm-strip-colors|Cm-gradient stability colours]]
+- in this graph: `Cm-gradient stability colours`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 
 **Source.** 🟢 SOURCED
 

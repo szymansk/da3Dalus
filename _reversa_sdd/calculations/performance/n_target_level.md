@@ -5,11 +5,20 @@ unit: g
 cluster: perf-oppoints
 user_visible: true
 source_status: SOURCED
+node_class: unclassified-constant
+tags:
+  - cluster/perf-oppoints
+  - class/unclassified-constant
+  - source/sourced
+  - surface/user-visible
+  - flag/divergence
 ---
 
 # Level-flight target load factor
 
 **Definition.** Load factor assigned to every non-turn operating point.
+
+⚪ **Unclassified constant.** Not yet decided whether this is a rule of thumb, a calibration or a physical value. Classifying it is open work — it is deliberately not guessed.
 
 **Value.** `1.0`
 
@@ -25,7 +34,8 @@ source_status: SOURCED
 
 **Consumed by.**
 
-- in this graph: [[cl_target|Target lift coefficient]]
+- in this graph: `Target lift coefficient`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `app/services/operating_point_generator_service.py:886, 894`
 
 **Source.** 🟢 SOURCED

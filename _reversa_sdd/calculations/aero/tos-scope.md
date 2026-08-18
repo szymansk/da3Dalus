@@ -6,11 +6,21 @@ unit: n/a
 cluster: aero-strips
 user_visible: true
 source_status: NO_SOURCE_FOUND
+node_class: unclassified-parameter
+tags:
+  - cluster/aero-strips
+  - class/unclassified-parameter
+  - source/no-source-found
+  - surface/user-visible
+  - flag/anomaly
+  - flag/divergence
 ---
 
 # Optimiser scope
 
 **Definition.** Selects per-section, per-segment or whole-wing trip optimisation.
+
+⚪ **Unclassified parameter.** Not yet decided whether this is a user input or an internal tuning value.
 
 **Value.** `"section" (default)`
 

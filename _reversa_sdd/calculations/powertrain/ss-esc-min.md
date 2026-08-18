@@ -6,11 +6,20 @@ unit: A
 cluster: powertrain
 user_visible: true
 source_status: PARTIAL
+node_class: derived
+tags:
+  - cluster/powertrain
+  - class/derived
+  - source/partial
+  - surface/user-visible
+  - flag/divergence
 ---
 
 # Minimum ESC current rating
 
 **Definition.** Required ESC continuous current rating: peak current times the ESC margin.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -18,13 +27,17 @@ source_status: PARTIAL
 esc_min = i_peak * esc_margin
 ```
 
-**Inputs.** [[ss-i-peak|Peak battery current]] · [[ss-esc-margin|ESC current margin]]
+**Inputs.**
+
+- [[ss-i-peak|Peak battery current]]
+- [[ss-esc-margin|ESC current margin]]
 
 **Produced by.** `app/services/powertrain_solution_space_service.py:149` — `_per_cell`
 
 **Consumed by.**
 
-- in this graph: [[ss-catalog-esc-match|Catalog ESC match flag]]
+- in this graph: `Catalog ESC match flag`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `app/services/powertrain_solution_space_service.py:427` · `app/services/powertrain_solution_space_service.py:450` · `app/services/powertrain_solution_space_service.py:480` · `frontend/components/workbench/PowertrainTab.tsx:127`
 
 **Source.** 🟡 PARTIAL

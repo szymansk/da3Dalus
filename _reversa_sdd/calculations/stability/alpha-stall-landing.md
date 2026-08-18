@@ -6,11 +6,19 @@ unit: deg
 cluster: stability
 user_visible: false
 source_status: SOURCED
+node_class: derived
+tags:
+  - cluster/stability
+  - class/derived
+  - source/sourced
+  - flag/divergence
 ---
 
 # Landing stall alpha
 
 **Definition.** Angle of attack at which the flapped CL_max occurs; the operating point at which Cm_δe is then evaluated.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -18,13 +26,18 @@ source_status: SOURCED
 alpha_at_cl_max = float(alpha)
 ```
 
-**Inputs.** [[cl-max-landing-flap|Swept flapped CL_max]] · [[flap-alpha-sweep|Flap CL_max alpha sweep]] · [[stall-alpha-fallback|Stall alpha fallback]]
+**Inputs.**
+
+- [[cl-max-landing-flap|Swept flapped CL_max]]  — *⊣ limit*
+- [[flap-alpha-sweep|Flap CL_max alpha sweep]]  — *⊣ limit*
+- [[stall-alpha-fallback|Stall alpha fallback]]  — *⤵ fallback*
 
 **Produced by.** `app/services/elevator_authority_service.py:893` — `_run_flap_analysis`
 
 **Consumed by.**
 
-- in this graph: [[cm-baseline|Baseline pitching moment (zero deflection)]]
+- in this graph: `Baseline pitching moment (zero deflection)`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `app/services/elevator_authority_service.py:646,658,683 (op_stall_landing alpha)`
 
 **Source.** 🟢 SOURCED

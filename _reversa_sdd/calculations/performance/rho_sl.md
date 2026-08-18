@@ -6,11 +6,22 @@ unit: kg/m^3
 cluster: perf-matching
 user_visible: false
 source_status: SOURCED
+node_class: physical-constant
+tags:
+  - cluster/perf-matching
+  - class/physical-constant
+  - source/sourced
+  - flag/anomaly
+  - flag/divergence
+  - flag/physical
 ---
 
 # Sea-level ISA density
 
 **Definition.** Air density used as the default for every field-length and matching-chart formula.
+
+**Physical constant.** A value of nature. It must be identical everywhere it appears — a second definition is a defect by construction, not a judgement call.
+*Identified as: sea-level air density.*
 
 **Value.** `1.225`
 
@@ -26,7 +37,8 @@ _RHO_SL: float = 1.225
 
 **Consumed by.**
 
-- in this graph: [[cd0_at_v|Reynolds-dependent CD0]] · [[q_dynamic_pressure|Dynamic pressure]] · [[s_ldg_ground|Landing ground roll]] · [[s_to_ground|Takeoff ground roll]] · [[tw_climb_constraint|Climb constraint T/W]] · [[tw_cruise_constraint|Cruise constraint T/W]] · [[tw_takeoff_constraint|Takeoff constraint T/W]] · [[tw_vertical_climb|Vertical-climb T/W]] · [[v_md|Minimum-drag speed]] · [[ws_landing_constraint|Landing constraint W/S_max]] · [[ws_stall_constraint|Stall constraint W/S_max]]
+- in this graph: `Reynolds-dependent CD0` · `Dynamic pressure` · `Landing ground roll` · `Takeoff ground roll` · `Climb constraint T/W` · `Cruise constraint T/W` · `Takeoff constraint T/W` · `Vertical-climb T/W` · `Minimum-drag speed` · `Landing constraint W/S_max` · `Stall constraint W/S_max`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `field_length_service (all helpers)` · `matching_chart_service.py:41 (imported)` · `compute_chart default rho`
 
 **Source.** 🟢 SOURCED

@@ -5,11 +5,20 @@ unit: mm
 cluster: structure
 user_visible: true
 source_status: NO_SOURCE_FOUND
+node_class: unclassified-constant
+tags:
+  - cluster/structure
+  - class/unclassified-constant
+  - source/no-source-found
+  - surface/user-visible
+  - flag/anomaly
 ---
 
 # Root collinearity tolerance
 
 **Definition.** Maximum difference in root-station centreline height between the two wing halves for which a single straight carry-through beam through y=0 is accepted; above it a reinforcement is required.
+
+⚪ **Unclassified constant.** Not yet decided whether this is a rule of thumb, a calibration or a physical value. Classifying it is open work — it is deliberately not guessed.
 
 **Value.** `5.0`
 

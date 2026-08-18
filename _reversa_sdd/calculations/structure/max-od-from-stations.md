@@ -6,11 +6,20 @@ unit: mm
 cluster: structure
 user_visible: false
 source_status: PARTIAL
+node_class: derived
+tags:
+  - cluster/structure
+  - class/derived
+  - source/partial
+  - flag/anomaly
+  - flag/divergence
 ---
 
 # Containment-band OD limit at governing station
 
 **Definition.** Hard geometric upper bound on the outer diameter a snapped stock item may have: the contained z-band depth at the station nearest the piece's governing y.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -19,7 +28,10 @@ closest = min(stations, key=lambda s: abs(s.y_mm - governing_y_mm))
 return max(0.0, closest.band_hi - closest.band_lo)
 ```
 
-**Inputs.** [[band-lo|Contained band lower bound]] · [[band-hi|Contained band upper bound]]
+**Inputs.**
+
+- [[band-lo|Contained band lower bound]]  — *⊣ limit*
+- [[band-hi|Contained band upper bound]]  — *⊣ limit*
 
 **Produced by.** `app/services/spar_plan_service.py:234` — `_max_od_from_stations`
 

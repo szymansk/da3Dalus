@@ -6,11 +6,21 @@ unit: mm²
 cluster: stability
 user_visible: true
 source_status: SOURCED
+node_class: derived
+tags:
+  - cluster/stability
+  - class/derived
+  - source/sourced
+  - surface/user-visible
+  - flag/anomaly
+  - flag/divergence
 ---
 
 # Recommended vertical tail area
 
 **Definition.** Vertical tail area that would place V_V at the midpoint of the class target band, converted to mm².
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -19,7 +29,10 @@ v_v_mid = (v_v_range[0] + v_v_range[1]) / 2.0
 result.s_v_recommended_mm2 = round(v_v_mid * s_ref_m2 * b_ref_m / l_v * 1e6, 0)
 ```
 
-**Inputs.** [[aircraft-class-tail-targets|Tail-volume target ranges by aircraft class]] · [[l-v-m|Vertical tail moment arm]]
+**Inputs.**
+
+- [[aircraft-class-tail-targets|Tail-volume target ranges by aircraft class]]
+- [[l-v-m|Vertical tail moment arm]]
 
 **Produced by.** `app/services/tail_sizing_service.py:263` — `compute_tail_volumes`
 

@@ -5,11 +5,21 @@ unit: m/s
 cluster: perf-oppoints
 user_visible: true
 source_status: PARTIAL
+node_class: derived
+tags:
+  - cluster/perf-oppoints
+  - class/derived
+  - source/partial
+  - surface/user-visible
+  - flag/anomaly
+  - flag/divergence
 ---
 
 # Turn target speed
 
 **Definition.** Speed used for all three default bank-angle turn points.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -17,7 +27,10 @@ source_status: PARTIAL
 "velocity": max(cruise, 1.3 * refs["vs_clean"])
 ```
 
-**Inputs.** [[cruise_speed_resolved|Resolved cruise speed]] · [[vs_clean|Clean stall speed reference]]
+**Inputs.**
+
+- [[cruise_speed_resolved|Resolved cruise speed]]
+- [[vs_clean|Clean stall speed reference]]
 
 **Produced by.** `app/services/operating_point_generator_service.py:493` — `_build_target_definitions`
 

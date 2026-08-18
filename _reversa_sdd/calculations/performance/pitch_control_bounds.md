@@ -5,11 +5,21 @@ unit: deg
 cluster: perf-oppoints
 user_visible: true
 source_status: PARTIAL
+node_class: unclassified-constant
+tags:
+  - cluster/perf-oppoints
+  - class/unclassified-constant
+  - source/partial
+  - surface/user-visible
+  - flag/anomaly
+  - flag/divergence
 ---
 
 # Pitch control deflection bounds
 
 **Definition.** Bounds on the pitch-surface deflection variable in the Opti solve.
+
+⚪ **Unclassified constant.** Not yet decided whether this is a rule of thumb, a calibration or a physical value. Classifying it is open work — it is deliberately not guessed.
 
 **Value.** `±25.0`
 

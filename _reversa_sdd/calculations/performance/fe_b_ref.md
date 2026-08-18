@@ -6,11 +6,20 @@ unit: m
 cluster: perf-envelope
 user_visible: false
 source_status: SOURCED
+node_class: derived
+tags:
+  - cluster/perf-envelope
+  - class/derived
+  - source/sourced
+  - flag/anomaly
+  - flag/divergence
 ---
 
 # Reference span
 
 **Definition.** Reference span from the ASB airplane, or None when conversion fails.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -24,7 +33,8 @@ b = asb_airplane.b_ref; return float(b) if b is not None and b > 0 else None
 
 **Consumed by.**
 
-- in this graph: [[fe_aspect_ratio|Aspect ratio (gust path)]] · [[fe_c_mgc|Mean geometric chord]]
+- in this graph: `Aspect ratio (gust path)` · `Mean geometric chord`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 
 **Source.** 🟢 SOURCED
 

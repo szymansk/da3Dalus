@@ -6,11 +6,22 @@ unit: m/s
 cluster: perf-matching
 user_visible: true
 source_status: NO_SOURCE_FOUND
+node_class: unclassified-parameter
+tags:
+  - cluster/perf-matching
+  - class/unclassified-parameter
+  - source/no-source-found
+  - surface/user-visible
+  - flag/anomaly
+  - flag/divergence
+  - flag/scale
 ---
 
 # Mode default stall-speed target
 
 **Definition.** Per-mode maximum acceptable stall speed driving the stall constraint.
+
+⚪ **Unclassified parameter.** Not yet decided whether this is a user input or an internal tuning value.
 
 **Value.** `rc_runway:7.0; rc_hand_launch:7.0; uav_runway:12.0; uav_belly_land:12.0; ga_runway:27.7`
 
@@ -26,7 +37,8 @@ defaults[mode]["v_s_target"]
 
 **Consumed by.**
 
-- in this graph: [[v_climb_power_loading|Climb speed for power loading]] · [[ws_stall_constraint|Stall constraint W/S_max]]
+- in this graph: `Climb speed for power loading` · `Stall constraint W/S_max`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `compute_chart:781` · `_stall_constraint:868` · `_power_loading_constraint:1133` · `hover_text:952`
 
 **Source.** 🔴 NO SOURCE FOUND

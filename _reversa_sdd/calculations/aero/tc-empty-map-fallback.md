@@ -5,11 +5,20 @@ unit: -
 cluster: aero-spanwise
 user_visible: true
 source_status: NO_SOURCE_FOUND
+node_class: unclassified-constant
+tags:
+  - cluster/aero-spanwise
+  - class/unclassified-constant
+  - source/no-source-found
+  - surface/user-visible
+  - flag/anomaly
 ---
 
 # Empty thickness-map fallback
 
 **Definition.** When no station thickness resolves, empty maps are returned so the spar service applies its own t/c fallback.
+
+⚪ **Unclassified constant.** Not yet decided whether this is a rule of thumb, a calibration or a physical value. Classifying it is open work — it is deliberately not guessed.
 
 **Formula — as the code writes it.**
 

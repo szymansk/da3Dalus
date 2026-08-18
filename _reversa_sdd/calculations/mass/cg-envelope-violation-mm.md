@@ -6,11 +6,21 @@ unit: mm
 cluster: mass
 user_visible: true
 source_status: PARTIAL
+node_class: derived
+tags:
+  - cluster/mass
+  - class/derived
+  - source/partial
+  - surface/user-visible
+  - flag/anomaly
+  - flag/divergence
 ---
 
 # CG envelope violation distance
 
 **Definition.** How far the loading CG lies outside the stability envelope, converted to millimetres for the warning text.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Value.** `1000 (m→mm factor, lines 211 and 218)`
 
@@ -20,7 +30,12 @@ source_status: PARTIAL
 excess_mm = round((cg_loading_aft_m - cg_stability_aft_m) * 1000, 1)   # forward branch: excess_mm = round((cg_stability_fwd_m - cg_loading_fwd_m) * 1000, 1)
 ```
 
-**Inputs.** [[cg-loading-aft|Aft loading CG]] · [[cg-stability-aft|Aft CG stability limit]] · [[cg-loading-fwd|Forward loading CG]] · [[cg-stability-fwd-stub|Forward CG stability limit (0.30·MAC stub)]]
+**Inputs.**
+
+- [[cg-loading-aft|Aft loading CG]]
+- [[cg-stability-aft|Aft CG stability limit]]  — *⊣ limit*
+- [[cg-loading-fwd|Forward loading CG]]
+- [[cg-stability-fwd-stub|Forward CG stability limit (0.30·MAC stub)]]  — *⊣ limit*
 
 **Produced by.** `app/services/loading_scenario_service.py:211` — `validate_cg_envelope`
 

@@ -6,11 +6,21 @@ unit: deg
 cluster: stability
 user_visible: true
 source_status: NO_SOURCE_FOUND
+node_class: derived
+tags:
+  - cluster/stability
+  - class/derived
+  - source/no-source-found
+  - surface/user-visible
+  - flag/anomaly
+  - flag/divergence
 ---
 
 # Trim angle of attack
 
 **Definition.** Angle of attack of the analysed flight condition, echoed into the stability summary.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 

@@ -5,11 +5,20 @@ unit: deg
 cluster: perf-oppoints
 user_visible: false
 source_status: NO_SOURCE_FOUND
+node_class: unclassified-parameter
+tags:
+  - cluster/perf-oppoints
+  - class/unclassified-parameter
+  - source/no-source-found
+  - flag/anomaly
+  - flag/divergence
 ---
 
 # Opti alpha bounds and initial guess
 
 **Definition.** Search bounds and starting value for the angle of attack in the Opti trim solve.
+
+⚪ **Unclassified parameter.** Not yet decided whether this is a user input or an internal tuning value.
 
 **Value.** `lower -8.0, init 3.0, upper = max_alpha_deg (default 25.0)`
 
@@ -19,13 +28,16 @@ source_status: NO_SOURCE_FOUND
 alpha_lower = -8.0; alpha_upper = max(alpha_lower + 1.0, max_alpha); alpha_deg = opti.variable(init_guess=min(max(3.0, alpha_lower), alpha_upper), lower_bound=alpha_lower, upper_bound=alpha_upper)
 ```
 
-**Inputs.** [[default_max_alpha_deg|Default maximum angle of attack]]
+**Inputs.**
+
+- [[default_max_alpha_deg|Default maximum angle of attack]]  — *⤵ fallback*
 
 **Produced by.** `app/services/operating_point_generator_service.py:597` — `_solve_trim_candidate_with_opti`
 
 **Consumed by.**
 
-- in this graph: [[alpha_trimmed|Trimmed angle of attack]]
+- in this graph: `Trimmed angle of attack`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `app/services/operating_point_generator_service.py:690 (solved_alpha)`
 
 **Source.** 🔴 NO SOURCE FOUND

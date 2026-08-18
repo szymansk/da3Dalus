@@ -6,11 +6,20 @@ unit: dimensionless
 cluster: aero-strips
 user_visible: false
 source_status: SOURCED
+node_class: derived
+tags:
+  - cluster/aero-strips
+  - class/derived
+  - source/sourced
+  - flag/anomaly
+  - flag/divergence
 ---
 
 # Unit lift direction
 
 **Definition.** Lift direction constructed by rotating the freestream direction 90° in the x–z plane only.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -18,13 +27,16 @@ source_status: SOURCED
 l_hat = np.array([-d_hat[2], 0.0, d_hat[0]]); l_hat = l_hat / np.linalg.norm(l_hat)
 ```
 
-**Inputs.** [[vlm-drag-direction|Unit freestream (drag) direction]]
+**Inputs.**
+
+- [[vlm-drag-direction|Unit freestream (drag) direction]]
 
 **Produced by.** `app/services/vlm_strip_forces.py:229` — `compute_vlm_strip_forces`
 
 **Consumed by.**
 
-- in this graph: [[vlm-strip-lift|Strip lift force]]
+- in this graph: `Strip lift force`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 
 **Source.** 🟢 SOURCED
 

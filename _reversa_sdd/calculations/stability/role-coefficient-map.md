@@ -6,11 +6,20 @@ unit: – (mapping)
 cluster: stability
 user_visible: false
 source_status: SOURCED
+node_class: unclassified-constant
+tags:
+  - cluster/stability
+  - class/unclassified-constant
+  - source/sourced
+  - flag/anomaly
+  - flag/divergence
 ---
 
 # Role → primary coefficient map
 
 **Definition.** Maps each control-surface role to the aerodynamic coefficient it primarily drives.
+
+⚪ **Unclassified constant.** Not yet decided whether this is a rule of thumb, a calibration or a physical value. Classifying it is open work — it is deliberately not guessed.
 
 **Value.** `{elevator: Cm, stabilator: Cm, aileron: Cl, rudder: Cn, elevon: Cm, flaperon: Cl, ruddervator: Cm, flap: CL}`
 
@@ -20,7 +29,8 @@ source_status: SOURCED
 
 **Consumed by.**
 
-- in this graph: [[control-effectiveness-derivative|Control effectiveness (state-derivative proxy)]]
+- in this graph: `Control effectiveness (state-derivative proxy)`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `app/services/trim_enrichment_service.py:201`
 
 **Source.** 🟢 SOURCED

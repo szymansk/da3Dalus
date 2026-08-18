@@ -6,11 +6,20 @@ unit: kg
 cluster: powertrain
 user_visible: false
 source_status: NO_SOURCE_FOUND
+node_class: derived
+tags:
+  - cluster/powertrain
+  - class/derived
+  - source/no-source-found
+  - flag/anomaly
+  - flag/divergence
 ---
 
 # Combo total mass
 
 **Definition.** All-up mass for this combo: user-supplied airframe mass plus motor and battery masses. No ESC, no propeller, no receiver.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -18,13 +27,17 @@ source_status: NO_SOURCE_FOUND
 total_mass = request.airframe_mass_kg + motor_mass_kg + battery_mass_kg
 ```
 
-**Inputs.** [[combo-motor-mass|Motor mass]] · [[combo-battery-mass|Battery mass]]
+**Inputs.**
+
+- [[combo-motor-mass|Motor mass]]
+- [[combo-battery-mass|Battery mass]]
 
 **Produced by.** `app/services/powertrain_sizing_service.py:233` — `_evaluate_motor_battery_combo`
 
 **Consumed by.**
 
-- in this graph: [[combo-cruise-power|Estimated cruise power]] · [[combo-required-power|Power required for a motor+battery combo]]
+- in this graph: `Estimated cruise power` · `Power required for a motor+battery combo`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `app/services/powertrain_sizing_service.py:242`
 
 **Source.** 🔴 NO SOURCE FOUND

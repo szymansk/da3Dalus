@@ -6,11 +6,18 @@ unit: rpm
 cluster: powertrain
 user_visible: false
 source_status: SOURCED
+node_class: derived
+tags:
+  - cluster/powertrain
+  - class/derived
+  - source/sourced
 ---
 
 # RPM at the current ceiling
 
 **Definition.** Lower bracket of the RPM search: the speed at which the motor would draw exactly max_current_a.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -18,13 +25,17 @@ source_status: SOURCED
 rpm_at_imax = max(back_emf_floor, 0.0) * kv_si * 60.0 / (2.0 * math.pi)
 ```
 
-**Inputs.** [[qprop-back-emf-floor|Back-EMF floor at the current ceiling]] · [[motor-kv-si|Motor speed constant in SI]]
+**Inputs.**
+
+- [[qprop-back-emf-floor|Back-EMF floor at the current ceiling]]  — *⊣ limit*
+- [[motor-kv-si|Motor speed constant in SI]]
 
 **Produced by.** `app/services/powertrain_performance.py:549` — `solve_qprop_operating_point`
 
 **Consumed by.**
 
-- in this graph: [[qprop-rpm-solution|Solved operating RPM]]
+- in this graph: `Solved operating RPM`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `app/services/powertrain_performance.py:550`
 
 **Source.** 🟢 SOURCED

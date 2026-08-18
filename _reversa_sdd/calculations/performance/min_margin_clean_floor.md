@@ -5,11 +5,19 @@ unit: dimensionless
 cluster: perf-oppoints
 user_visible: false
 source_status: NO_SOURCE_FOUND
+node_class: unclassified-constant
+tags:
+  - cluster/perf-oppoints
+  - class/unclassified-constant
+  - source/no-source-found
+  - flag/divergence
 ---
 
 # Clean-margin floor
 
 **Definition.** Lower clamp on the clean stall margin used for the cold-start V_s estimate.
+
+⚪ **Unclassified constant.** Not yet decided whether this is a rule of thumb, a calibration or a physical value. Classifying it is open work — it is deliberately not guessed.
 
 **Value.** `1.05`
 
@@ -19,7 +27,9 @@ source_status: NO_SOURCE_FOUND
 min_margin_clean = max(1.05, float(goals.get("min_speed_margin_vs_clean", 1.20)))
 ```
 
-**Inputs.** [[default_min_speed_margin_vs_clean|Default clean stall margin]]
+**Inputs.**
+
+- [[default_min_speed_margin_vs_clean|Default clean stall margin]]  — *⤵ fallback*
 
 **Produced by.** `app/services/operating_point_generator_service.py:336` — `_estimate_reference_speeds`
 

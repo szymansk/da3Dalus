@@ -6,11 +6,21 @@ unit: kg
 cluster: mass
 user_visible: true
 source_status: SOURCED
+node_class: derived
+tags:
+  - cluster/mass
+  - class/derived
+  - source/sourced
+  - surface/user-visible
+  - flag/anomaly
+  - flag/divergence
 ---
 
 # Aircraft total weight from component tree
 
 **Definition.** Total aircraft mass obtained by summing every root node's own weight plus its recursive children weight, converted from grams to kilograms. This is the authority that writes the 'mass' design assumption when the user builds via the component tree.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -18,13 +28,18 @@ source_status: SOURCED
 total_g += (own or 0.0) + _calculate_children_weight(db, aeroplane_id, r.id)  ...  return total_g / 1000.0 if total_g > 0 else None
 ```
 
-**Inputs.** [[node-own-weight|Node own weight]] · [[node-children-weight|Node children weight (recursive)]] · [[grams-to-kg-divisor|g → kg divisor]]
+**Inputs.**
+
+- [[node-own-weight|Node own weight]]
+- [[node-children-weight|Node children weight (recursive)]]
+- [[grams-to-kg-divisor|g → kg divisor]]  — *× unit*
 
 **Produced by.** `app/services/component_tree_service.py:381` — `get_aircraft_total_weight_kg`
 
 **Consumed by.**
 
-- in this graph: [[mass-effective|Effective aircraft mass]]
+- in this graph: `Effective aircraft mass`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `app/services/mass_cg_service.py:160 (sync_component_tree_to_mass → mass.calculated_value)` · `app/services/component_tree_service.py:372 (_sync_aircraft_mass, called from add/update/delete node)`
 
 **Source.** 🟢 SOURCED

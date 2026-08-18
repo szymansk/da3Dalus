@@ -5,11 +5,20 @@ unit: m
 cluster: structure
 user_visible: true
 source_status: NO_SOURCE_FOUND
+node_class: derived
+tags:
+  - cluster/structure
+  - class/derived
+  - source/no-source-found
+  - surface/user-visible
+  - flag/anomaly
 ---
 
 # Post-split sub-segment lengths
 
 **Definition.** Spanwise length of each sub-segment produced by splitting the host segment at the telescoping joints, in metres for the API response.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -19,7 +28,11 @@ boundaries = [0.0, *split_lengths, host_len]
 return [(boundaries[i + 1] - boundaries[i]) * _MM_TO_M for i in range(len(boundaries) - 1)]
 ```
 
-**Inputs.** [[split-local-length|Segment-local split position]] · [[segment-lengths|Per-segment spanwise lengths]] · [[mm-to-m-factor|Millimetre-to-metre conversion factor]]
+**Inputs.**
+
+- [[split-local-length|Segment-local split position]]
+- [[segment-lengths|Per-segment spanwise lengths]]
+- [[mm-to-m-factor|Millimetre-to-metre conversion factor]]  — *× unit*
 
 **Produced by.** `app/services/spar_insert_service.py:531` — `_preview_subsegment_lengths_m`
 

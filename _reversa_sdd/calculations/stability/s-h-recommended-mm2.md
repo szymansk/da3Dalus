@@ -6,11 +6,21 @@ unit: mm²
 cluster: stability
 user_visible: true
 source_status: SOURCED
+node_class: derived
+tags:
+  - cluster/stability
+  - class/derived
+  - source/sourced
+  - surface/user-visible
+  - flag/anomaly
+  - flag/divergence
 ---
 
 # Recommended horizontal tail area
 
 **Definition.** Horizontal tail area that would place V_H at the midpoint of the class target band, converted to mm².
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -19,7 +29,10 @@ v_h_mid = (v_h_range[0] + v_h_range[1]) / 2.0
 result.s_h_recommended_mm2 = round(v_h_mid * s_ref_m2 * mac_m / l_h * 1e6, 0)
 ```
 
-**Inputs.** [[aircraft-class-tail-targets|Tail-volume target ranges by aircraft class]] · [[l-h-m|Horizontal tail moment arm]]
+**Inputs.**
+
+- [[aircraft-class-tail-targets|Tail-volume target ranges by aircraft class]]
+- [[l-h-m|Horizontal tail moment arm]]
 
 **Produced by.** `app/services/tail_sizing_service.py:259` — `compute_tail_volumes`
 

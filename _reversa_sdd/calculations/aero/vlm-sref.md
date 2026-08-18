@@ -6,11 +6,20 @@ unit: m²
 cluster: aero-strips
 user_visible: true
 source_status: SOURCED
+node_class: derived
+tags:
+  - cluster/aero-strips
+  - class/derived
+  - source/sourced
+  - surface/user-visible
+  - flag/divergence
 ---
 
 # Reference area echoed to the response
 
 **Definition.** Airplane reference area copied straight from the (un-remeshed) ASB airplane.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 

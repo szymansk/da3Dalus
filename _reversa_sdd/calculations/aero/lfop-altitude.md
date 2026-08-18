@@ -6,11 +6,20 @@ unit: m
 cluster: aero-strips
 user_visible: true
 source_status: PARTIAL
+node_class: numerical-tolerance
+tags:
+  - cluster/aero-strips
+  - class/numerical-tolerance
+  - source/partial
+  - surface/user-visible
+  - flag/divergence
 ---
 
 # Fallback altitude
 
 **Definition.** The fallback operating point is always at sea level.
+
+**Numerical tolerance.** A solver or comparison epsilon, not a domain value. ADR 0023 does not apply.
 
 **Value.** `0.0`
 

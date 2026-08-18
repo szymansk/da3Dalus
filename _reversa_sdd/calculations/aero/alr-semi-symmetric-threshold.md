@@ -6,11 +6,20 @@ unit: % chord
 cluster: aero-polars
 user_visible: true
 source_status: PARTIAL
+node_class: unclassified-parameter
+tags:
+  - cluster/aero-polars
+  - class/unclassified-parameter
+  - source/partial
+  - surface/user-visible
+  - flag/divergence
 ---
 
 # Semi-symmetric camber threshold
 
 **Definition.** Max camber below which an airfoil is labelled semi_symmetric.
+
+⚪ **Unclassified parameter.** Not yet decided whether this is a user input or an internal tuning value.
 
 **Value.** `2.0`
 

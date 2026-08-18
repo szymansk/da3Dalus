@@ -6,11 +6,20 @@ unit: dimensionless
 cluster: perf-matching
 user_visible: false
 source_status: PARTIAL
+node_class: derived
+tags:
+  - cluster/perf-matching
+  - class/derived
+  - source/partial
+  - flag/divergence
+  - flag/scale
 ---
 
 # Landing CL_max (field length)
 
 **Definition.** CL_max in landing configuration, from the polar or from base CL_max times the flap factor.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -18,13 +27,17 @@ source_status: PARTIAL
 cl_max_ldg: float = float(aircraft.get("cl_max_landing") or cl_max_base * ldg_factor)
 ```
 
-**Inputs.** [[cl_max_base_fallback_fl|Base CL_max fallback (field length)]] · [[cl_max_flap_factors_resolved|Resolved flap factors]]
+**Inputs.**
+
+- [[cl_max_base_fallback_fl|Base CL_max fallback (field length)]]  — *⤵ fallback*
+- [[cl_max_flap_factors_resolved|Resolved flap factors]]  — *⤵ fallback*
 
 **Produced by.** `app/services/field_length_service.py:361` — `compute_field_lengths`
 
 **Consumed by.**
 
-- in this graph: [[s_ldg_ground|Landing ground roll]]
+- in this graph: `Landing ground roll`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `_compute_s_ldg_ground:435`
 
 **Source.** 🟡 PARTIAL

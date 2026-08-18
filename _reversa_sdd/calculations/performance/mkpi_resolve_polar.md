@@ -6,11 +6,19 @@ unit: -
 cluster: perf-envelope
 user_visible: false
 source_status: SOURCED
+node_class: derived
+tags:
+  - cluster/perf-envelope
+  - class/derived
+  - source/sourced
+  - flag/divergence
 ---
 
 # Clean-polar provenance chain
 
 **Definition.** Resolves the clean-configuration polar inputs across the fit-rejection fallback chain.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -24,7 +32,8 @@ polar = ctx['polar_by_config']['clean']; ld_emp = polar['ld_max'] if > 0; cd0 = 
 
 **Consumed by.**
 
-- in this graph: [[mkpi_climb_energy|KPI: climb-energy figure]] · [[mkpi_glide|KPI: maximum glide ratio]]
+- in this graph: `KPI: climb-energy figure` · `KPI: maximum glide ratio`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 
 **Source.** 🟢 SOURCED
 

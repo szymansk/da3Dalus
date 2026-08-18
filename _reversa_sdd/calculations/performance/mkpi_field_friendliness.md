@@ -6,11 +6,20 @@ unit: m
 cluster: perf-envelope
 user_visible: true
 source_status: PARTIAL
+node_class: derived
+tags:
+  - cluster/perf-envelope
+  - class/derived
+  - source/partial
+  - surface/user-visible
+  - flag/scale
 ---
 
 # KPI: field friendliness
 
 **Definition.** Composite take-off plus landing field-length axis.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -18,7 +27,10 @@ source_status: PARTIAL
 formula = "max(s_TO_50ft, s_LDG_50ft); score = target / effective"
 ```
 
-**Inputs.** [[mkpi_effective_field_length|Effective field length]] · [[mkpi_field_score|Field-friendliness score]]
+**Inputs.**
+
+- [[mkpi_effective_field_length|Effective field length]]
+- [[mkpi_field_score|Field-friendliness score]]
 
 **Produced by.** `app/services/mission_kpi_service.py:340` — `_kpi_field_friendliness`
 

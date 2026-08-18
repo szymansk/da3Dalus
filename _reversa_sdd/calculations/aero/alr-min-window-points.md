@@ -6,11 +6,19 @@ unit: count
 cluster: aero-polars
 user_visible: false
 source_status: NO_SOURCE_FOUND
+node_class: unclassified-constant
+tags:
+  - cluster/aero-polars
+  - class/unclassified-constant
+  - source/no-source-found
+  - flag/divergence
 ---
 
 # Minimum points for windowed confidence
 
 **Definition.** Window must contain at least this many finite points or the whole-sweep min is used.
+
+⚪ **Unclassified constant.** Not yet decided whether this is a rule of thumb, a calibration or a physical value. Classifying it is open work — it is deliberately not guessed.
 
 **Value.** `4`
 

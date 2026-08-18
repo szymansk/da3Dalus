@@ -6,11 +6,20 @@ unit: dimensionless
 cluster: perf-matching
 user_visible: false
 source_status: NO_SOURCE_FOUND
+node_class: derived
+tags:
+  - cluster/perf-matching
+  - class/derived
+  - source/no-source-found
+  - flag/anomaly
+  - flag/divergence
 ---
 
 # Resolved flap factors
 
 **Definition.** Flap multipliers looked up for the aircraft's flap type, defaulting to (1.0, 1.0).
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -18,13 +27,16 @@ source_status: NO_SOURCE_FOUND
 key = flap_type.lower() if isinstance(flap_type, str) else None; return _FLAP_FACTORS.get(key, (1.0, 1.0))
 ```
 
-**Inputs.** [[flap_factors|Flap CL_max multiplier table]]
+**Inputs.**
+
+- [[flap_factors|Flap CL_max multiplier table]]  — *⊣ limit*
 
 **Produced by.** `app/services/field_length_service.py:158` — `detect_cl_max_flap_factors`
 
 **Consumed by.**
 
-- in this graph: [[cl_max_ldg_fl|Landing CL_max (field length)]] · [[cl_max_to_fl|Takeoff CL_max (field length)]]
+- in this graph: `Landing CL_max (field length)` · `Takeoff CL_max (field length)`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `compute_field_lengths:358`
 
 **Source.** 🔴 NO SOURCE FOUND

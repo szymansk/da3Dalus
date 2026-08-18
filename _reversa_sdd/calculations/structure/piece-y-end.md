@@ -6,11 +6,19 @@ unit: m
 cluster: structure
 user_visible: true
 source_status: NO_SOURCE_FOUND
+node_class: derived
+tags:
+  - cluster/structure
+  - class/derived
+  - source/no-source-found
+  - surface/user-visible
 ---
 
 # Spar piece tip spanwise position
 
 **Definition.** Where a straight spar piece ends on the span, derived from its origin plus its length along the span component of its direction vector. For a telescoping run this is the next piece's y_start, i.e. the joint position.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -18,7 +26,12 @@ source_status: NO_SOURCE_FOUND
 y_end_mm = y_start_mm + piece.length * piece.spare_vector[1]
 ```
 
-**Inputs.** [[piece-y-start|Spar piece root spanwise position]] · [[piece-length|Spar piece length]] · [[piece-direction-vector|Spar piece direction unit vector]] · [[mm-to-m-factor|Millimetre-to-metre conversion factor]]
+**Inputs.**
+
+- [[piece-y-start|Spar piece root spanwise position]]
+- [[piece-length|Spar piece length]]
+- [[piece-direction-vector|Spar piece direction unit vector]]
+- [[mm-to-m-factor|Millimetre-to-metre conversion factor]]  — *× unit*
 
 **Produced by.** `app/services/spar_plan_service.py:495` — `_piece_to_out`
 

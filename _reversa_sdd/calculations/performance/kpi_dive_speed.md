@@ -6,11 +6,21 @@ unit: m/s
 cluster: perf-envelope
 user_visible: true
 source_status: NO_SOURCE_FOUND
+node_class: derived
+tags:
+  - cluster/perf-envelope
+  - class/derived
+  - source/no-source-found
+  - surface/user-visible
+  - flag/anomaly
+  - flag/divergence
 ---
 
 # KPI: dive speed
 
 **Definition.** Dive-speed KPI recomputed from V_max rather than read from the curve.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -18,7 +28,10 @@ source_status: NO_SOURCE_FOUND
 value=round(1.4 * v_max_mps, 4)
 ```
 
-**Inputs.** [[fe_v_max|Maximum level speed]] · [[fe_dive_factor|Dive-speed factor]]
+**Inputs.**
+
+- [[fe_v_max|Maximum level speed]]  — *⤵ fallback*
+- [[fe_dive_factor|Dive-speed factor]]
 
 **Produced by.** `app/services/flight_envelope_service.py:523` — `derive_performance_kpis`
 

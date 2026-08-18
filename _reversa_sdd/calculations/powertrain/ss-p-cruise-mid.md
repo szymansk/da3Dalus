@@ -6,11 +6,20 @@ unit: W
 cluster: powertrain
 user_visible: true
 source_status: SOURCED
+node_class: derived
+tags:
+  - cluster/powertrain
+  - class/derived
+  - source/sourced
+  - surface/user-visible
+  - flag/anomaly
 ---
 
 # Electrical cruise power (mid band)
 
 **Definition.** Battery-side power at cruise using the mid-band propeller efficiency; drives the energy budget.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -18,13 +27,20 @@ source_status: SOURCED
 p_cruise_mid = _p_elec(p_aero_cruise, eta_mid, assumptions.eta_motor, assumptions.eta_esc)
 ```
 
-**Inputs.** [[ss-p-elec|Electrical power required]] · [[ss-p-aero-cruise|Aerodynamic power at cruise]] · [[ss-eta-mid|Mid-band propeller efficiency]] · [[ss-eta-motor|Motor efficiency (solution space)]] · [[ss-eta-esc|ESC efficiency (solution space)]]
+**Inputs.**
+
+- [[ss-p-elec|Electrical power required]]
+- [[ss-p-aero-cruise|Aerodynamic power at cruise]]
+- [[ss-eta-mid|Mid-band propeller efficiency]]
+- [[ss-eta-motor|Motor efficiency (solution space)]]
+- [[ss-eta-esc|ESC efficiency (solution space)]]
 
 **Produced by.** `app/services/powertrain_solution_space_service.py:360` — `compute_solution_space`
 
 **Consumed by.**
 
-- in this graph: [[ss-energy-wh|Required mission energy]]
+- in this graph: `Required mission energy`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `app/services/powertrain_solution_space_service.py:377` · `app/services/powertrain_solution_space_service.py:433`
 
 **Source.** 🟢 SOURCED

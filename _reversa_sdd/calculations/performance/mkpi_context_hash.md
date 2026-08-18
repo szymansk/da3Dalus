@@ -6,11 +6,20 @@ unit: -
 cluster: perf-envelope
 user_visible: false
 source_status: SOURCED
+node_class: derived
+tags:
+  - cluster/perf-envelope
+  - class/derived
+  - source/sourced
+  - flag/anomaly
+  - flag/divergence
 ---
 
 # Context hash
 
 **Definition.** SHA-256 of the computation context for client-side cache validation.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 

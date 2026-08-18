@@ -6,11 +6,19 @@ unit: J
 cluster: perf-matching
 user_visible: false
 source_status: PARTIAL
+node_class: derived
+tags:
+  - cluster/perf-matching
+  - class/derived
+  - source/partial
+  - flag/divergence
 ---
 
 # Bungee stored energy
 
 **Definition.** Elastic energy stored in the bungee, using an average-force approximation.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -24,7 +32,8 @@ e_stored = 0.5 * bungee_force_N * stretch_m
 
 **Consumed by.**
 
-- in this graph: [[v_release_bungee|Bungee release speed]]
+- in this graph: `Bungee release speed`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `v_release_bungee:177`
 
 **Source.** 🟡 PARTIAL

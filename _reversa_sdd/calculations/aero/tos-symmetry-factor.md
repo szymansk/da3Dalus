@@ -6,11 +6,19 @@ unit: dimensionless
 cluster: aero-strips
 user_visible: false
 source_status: SOURCED
+node_class: unclassified-constant
+tags:
+  - cluster/aero-strips
+  - class/unclassified-constant
+  - source/sourced
+  - flag/divergence
 ---
 
 # Symmetric-wing doubling factor
 
 **Definition.** Factor of 2 applied to the half-span area-weighted sum for symmetric wings.
+
+⚪ **Unclassified constant.** Not yet decided whether this is a rule of thumb, a calibration or a physical value. Classifying it is open work — it is deliberately not guessed.
 
 **Value.** `2.0`
 
@@ -26,7 +34,8 @@ symmetry_factor = 2.0 if wing_symmetric else 1.0
 
 **Consumed by.**
 
-- in this graph: [[cdftp-delta-cd0|Installed-turbulator 3D drag increment]] · [[tos-delta-cd0|Area-weighted 3D drag increment]]
+- in this graph: `Installed-turbulator 3D drag increment` · `Area-weighted 3D drag increment`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 
 **Source.** 🟢 SOURCED
 

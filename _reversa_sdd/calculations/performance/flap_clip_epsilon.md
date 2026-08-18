@@ -5,11 +5,19 @@ unit: deg
 cluster: perf-oppoints
 user_visible: false
 source_status: NO_SOURCE_FOUND
+node_class: numerical-tolerance
+tags:
+  - cluster/perf-oppoints
+  - class/numerical-tolerance
+  - source/no-source-found
+  - flag/divergence
 ---
 
 # Flap-clip warning tolerance
 
 **Definition.** Tolerance before a clip is reported as a warning.
+
+**Numerical tolerance.** A solver or comparison epsilon, not a domain value. ADR 0023 does not apply.
 
 **Value.** `1e-6`
 

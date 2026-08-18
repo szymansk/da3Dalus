@@ -6,11 +6,21 @@ unit: – (dimensionless)
 cluster: stability
 user_visible: true
 source_status: SOURCED
+node_class: derived
+tags:
+  - cluster/stability
+  - class/derived
+  - source/sourced
+  - surface/user-visible
+  - flag/anomaly
+  - flag/divergence
 ---
 
 # Vertical tail volume coefficient
 
 **Definition.** Non-dimensional measure of vertical tail effectiveness: fin area × arm, normalised by wing area × span.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -18,13 +28,17 @@ source_status: SOURCED
 v_v = (s_v_m2 * l_v) / (s_ref_m2 * b_ref_m)
 ```
 
-**Inputs.** [[s-v-area-approx|Vertical tail area (trapezoidal approximation)]] · [[l-v-m|Vertical tail moment arm]]
+**Inputs.**
+
+- [[s-v-area-approx|Vertical tail area (trapezoidal approximation)]]
+- [[l-v-m|Vertical tail moment arm]]
 
 **Produced by.** `app/services/tail_sizing_service.py:232` — `compute_tail_volumes`
 
 **Consumed by.**
 
-- in this graph: [[tail-volume-classification|Tail volume classification]]
+- in this graph: `Tail volume classification`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `app/services/tail_sizing_service.py:233,253,284,288,293` · `app/api/v2/endpoints/aeroplane/tail_sizing.py:82` · `frontend/hooks/useTailSizing.ts`
 
 **Source.** 🟢 SOURCED

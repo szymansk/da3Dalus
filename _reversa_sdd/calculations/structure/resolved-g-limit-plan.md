@@ -6,11 +6,20 @@ unit: g
 cluster: structure
 user_visible: false
 source_status: PARTIAL
+node_class: unclassified-parameter
+tags:
+  - cluster/structure
+  - class/unclassified-parameter
+  - source/partial
+  - flag/anomaly
+  - flag/divergence
 ---
 
 # Limit load factor (plan path)
 
 **Definition.** Limit load factor resolved from the design assumptions for the plan endpoint, falling back to 3.0 with a log warning.
+
+⚪ **Unclassified parameter.** Not yet decided whether this is a user input or an internal tuning value.
 
 **Formula — as the code writes it.**
 
@@ -18,13 +27,16 @@ source_status: PARTIAL
 return float(g_limit_raw)
 ```
 
-**Inputs.** [[structure--g-limit-default|Default manoeuvre limit load factor]]
+**Inputs.**
+
+- [[structure--g-limit-default|Default manoeuvre limit load factor]]  — *⤵ fallback*
 
 **Produced by.** `app/services/spar_plan_service.py:359` — `_resolve_g_limit`
 
 **Consumed by.**
 
-- in this graph: [[station-design-moment|Station design moment (plan path)]]
+- in this graph: `Station design moment (plan path)`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `app/services/spar_plan_service.py:555` · `app/services/spar_plan_service.py:572` · `cad_designer/airplane/geometry/spar_solver.py:764`
 
 **Source.** 🟡 PARTIAL

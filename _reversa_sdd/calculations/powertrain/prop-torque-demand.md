@@ -6,11 +6,18 @@ unit: Nm
 cluster: powertrain
 user_visible: false
 source_status: SOURCED
+node_class: derived
+tags:
+  - cluster/powertrain
+  - class/derived
+  - source/sourced
 ---
 
 # Propeller absorbed torque
 
 **Definition.** Torque the propeller absorbs at a given shaft RPM and airspeed — the load side of the QPROP torque balance.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -18,13 +25,17 @@ source_status: SOURCED
 p_prop = cp * rho * (n_rps**3) * (D_m**5) ; omega = 2.0 * math.pi * n_rps ; return p_prop / omega
 ```
 
-**Inputs.** [[polar-cp|Propeller power coefficient]] · [[air-density-perf|Air density at altitude (performance)]]
+**Inputs.**
+
+- [[polar-cp|Propeller power coefficient]]  — *⊣ limit*
+- [[air-density-perf|Air density at altitude (performance)]]
 
 **Produced by.** `app/services/powertrain_performance.py:471` — `_prop_torque_demand`
 
 **Consumed by.**
 
-- in this graph: [[qprop-residual|Torque-balance residual]]
+- in this graph: `Torque-balance residual`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `app/services/powertrain_performance.py:536`
 
 **Source.** 🟢 SOURCED

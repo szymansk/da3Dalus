@@ -6,11 +6,21 @@ unit: dimensionless
 cluster: perf-matching
 user_visible: true
 source_status: NO_SOURCE_FOUND
+node_class: unclassified-constant
+tags:
+  - cluster/perf-matching
+  - class/unclassified-constant
+  - source/no-source-found
+  - surface/user-visible
+  - flag/anomaly
+  - flag/divergence
 ---
 
 # Hand-launch physics floor
 
 **Definition.** Minimum throw speed as a multiple of V_S below which hand launch is rejected.
+
+⚪ **Unclassified constant.** Not yet decided whether this is a rule of thumb, a calibration or a physical value. Classifying it is open work — it is deliberately not guessed.
 
 **Value.** `1.10`
 
@@ -26,7 +36,8 @@ _HAND_THROW_FLOOR: float = 1.10
 
 **Consumed by.**
 
-- in this graph: [[v_throw_floor|Hand-launch minimum throw speed]]
+- in this graph: `Hand-launch minimum throw speed`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `compute_field_lengths:378,384 (raises ServiceException)`
 
 **Source.** 🔴 NO SOURCE FOUND

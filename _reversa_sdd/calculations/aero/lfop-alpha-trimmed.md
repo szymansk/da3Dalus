@@ -6,11 +6,20 @@ unit: deg
 cluster: aero-strips
 user_visible: true
 source_status: SOURCED
+node_class: derived
+tags:
+  - cluster/aero-strips
+  - class/derived
+  - source/sourced
+  - surface/user-visible
+  - flag/divergence
 ---
 
 # Trimmed alpha from CL-target solve
 
 **Definition.** Alpha at which AeroBuildup CL equals the level-flight target, found by Brent root-finding.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -18,7 +27,9 @@ source_status: SOURCED
 alpha_trimmed = brentq(_cl_at_alpha, -5.0, 15.0, xtol=0.05, maxiter=30)
 ```
 
-**Inputs.** [[lfop-cl-target-clip|Target CL clamp]]
+**Inputs.**
+
+- [[lfop-cl-target-clip|Target CL clamp]]  — *⊣ limit*
 
 **Produced by.** `app/services/section_aoa_service.py:526` — `_resolve_level_flight_op`
 

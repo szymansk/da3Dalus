@@ -6,11 +6,21 @@ unit: -
 cluster: perf-envelope
 user_visible: true
 source_status: NO_SOURCE_FOUND
+node_class: regulatory-constant
+tags:
+  - cluster/perf-envelope
+  - class/regulatory-constant
+  - source/no-source-found
+  - surface/user-visible
+  - flag/anomaly
+  - flag/divergence
 ---
 
 # Dive-speed factor
 
 **Definition.** Multiplier converting maximum level speed into design dive speed.
+
+**Regulatory constant.** Taken from a standard. It carries the clause *and* the class of aircraft that clause applies to.
 
 **Value.** `1.4`
 
@@ -26,7 +36,8 @@ v_dive = 1.4 * v_max_mps
 
 **Consumed by.**
 
-- in this graph: [[fe_v_c|Cruise speed (back-derived)]] · [[fe_v_dive|Dive speed]] · [[kpi_dive_speed|KPI: dive speed]]
+- in this graph: `Cruise speed (back-derived)` · `Dive speed` · `KPI: dive speed`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 
 **Source.** 🔴 NO SOURCE FOUND
 

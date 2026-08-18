@@ -6,11 +6,20 @@ unit: kg
 cluster: powertrain
 user_visible: false
 source_status: PARTIAL
+node_class: derived
+tags:
+  - cluster/powertrain
+  - class/derived
+  - source/partial
+  - flag/anomaly
+  - flag/divergence
 ---
 
 # Battery mass
 
 **Definition.** Battery mass from the catalog, grams to kilograms; a missing mass becomes zero.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -24,7 +33,8 @@ battery_mass_kg = (battery.mass_g or 0) / 1000.0
 
 **Consumed by.**
 
-- in this graph: [[combo-total-mass|Combo total mass]]
+- in this graph: `Combo total mass`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `app/services/powertrain_sizing_service.py:233`
 
 **Source.** 🟡 PARTIAL

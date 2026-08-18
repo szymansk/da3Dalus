@@ -6,11 +6,19 @@ unit: deg
 cluster: aero-strips
 user_visible: false
 source_status: NO_SOURCE_FOUND
+node_class: unclassified-constant
+tags:
+  - cluster/aero-strips
+  - class/unclassified-constant
+  - source/no-source-found
+  - flag/divergence
 ---
 
 # Alpha grid for cd lookup
 
 **Definition.** 37-point alpha grid from -4° to 14° on which NeuralFoil polars are evaluated.
+
+⚪ **Unclassified constant.** Not yet decided whether this is a rule of thumb, a calibration or a physical value. Classifying it is open work — it is deliberately not guessed.
 
 **Value.** `np.linspace(-4.0, 14.0, 37)`
 
@@ -26,7 +34,8 @@ _ALPHA_GRID = np.linspace(-4.0, 14.0, 37)
 
 **Consumed by.**
 
-- in this graph: [[tos-cd-at-cl|Section cd at a target CL and trip position]] · [[tos-conf-mean|Mean NeuralFoil analysis confidence]]
+- in this graph: `Section cd at a target CL and trip position` · `Mean NeuralFoil analysis confidence`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `app/services/turbulator_optimizer_service.py:_cd_at_cl_xtr` · `app/services/turbulator_optimizer_service.py:optimize_section_xtr`
 
 **Source.** 🔴 NO SOURCE FOUND

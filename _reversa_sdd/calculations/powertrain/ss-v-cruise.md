@@ -6,11 +6,21 @@ unit: m/s
 cluster: powertrain
 user_visible: true
 source_status: NO_SOURCE_FOUND
+node_class: derived
+tags:
+  - cluster/powertrain
+  - class/derived
+  - source/no-source-found
+  - surface/user-visible
+  - flag/anomaly
+  - flag/divergence
 ---
 
 # Cruise speed (solution space)
 
 **Definition.** Cruise speed from the computation context, preferring v_cruise_mps and falling back to v_md_mps (minimum-drag speed), then to a hardcoded 15 m/s with a warning.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -24,7 +34,8 @@ v_cruise_ctx: float | None = ctx.get("v_cruise_mps") or ctx.get("v_md_mps") ; if
 
 **Consumed by.**
 
-- in this graph: [[ss-p-aero-cruise|Aerodynamic power at cruise]] · [[ss-v-top|Top speed used for peak sizing]]
+- in this graph: `Aerodynamic power at cruise` · `Top speed used for peak sizing`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `app/services/powertrain_solution_space_service.py:325` · `app/services/powertrain_solution_space_service.py:336` · `app/services/powertrain_solution_space_service.py:349` · `frontend/components/workbench/PowertrainTab.tsx:1144`
 
 **Source.** 🔴 NO SOURCE FOUND

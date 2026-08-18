@@ -6,11 +6,21 @@ unit: dimensionless
 cluster: perf-matching
 user_visible: false
 source_status: NO_SOURCE_FOUND
+node_class: unclassified-constant
+tags:
+  - cluster/perf-matching
+  - class/unclassified-constant
+  - source/no-source-found
+  - flag/anomaly
+  - flag/divergence
+  - flag/scale
 ---
 
 # Static-thrust de-rate factor
 
 **Definition.** Multiplier applied to supplied static thrust before computing T/W in the ground roll.
+
+⚪ **Unclassified constant.** Not yet decided whether this is a rule of thumb, a calibration or a physical value. Classifying it is open work — it is deliberately not guessed.
 
 **Value.** `1.0`
 
@@ -26,7 +36,8 @@ _T_STATIC_MEAN_FACTOR: float = 1.0  # T as supplied (factor encoded in 1.21 cons
 
 **Consumed by.**
 
-- in this graph: [[t_mean_fl|Effective mean thrust]]
+- in this graph: `Effective mean thrust`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `_compute_s_to_ground:201`
 
 **Source.** 🔴 NO SOURCE FOUND

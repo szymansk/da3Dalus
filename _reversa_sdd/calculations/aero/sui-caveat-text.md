@@ -6,11 +6,20 @@ unit: text
 cluster: aero-polars
 user_visible: true
 source_status: SOURCED
+node_class: derived
+tags:
+  - cluster/aero-polars
+  - class/derived
+  - source/sourced
+  - surface/user-visible
+  - flag/divergence
 ---
 
 # Suitability caveat block
 
 **Definition.** Fixed disclaimer text plus an XFoil recommendation when any item is low-confidence.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -18,7 +27,10 @@ source_status: SOURCED
 caveat_text = ("Relative ranking only. " "No hysteresis or laminar-bubble modelling. " "Section CL ≈ wing CL (ideal elliptic, untwisted). " "Tip-Re CL_max collapse not modelled — check tip_re_flag and cl_max_margin.")
 ```
 
-**Inputs.** [[alr-min-analysis-confidence|Windowed min analysis confidence]] · [[low-re-low-confidence-flag|Low-confidence flag threshold]]
+**Inputs.**
+
+- [[alr-min-analysis-confidence|Windowed min analysis confidence]]  — *⤵ fallback*
+- [[low-re-low-confidence-flag|Low-confidence flag threshold]]  — *⊣ limit*
 
 **Produced by.** `app/services/suitability_service.py:673` — `search_suitability`
 

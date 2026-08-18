@@ -6,11 +6,20 @@ unit: – (fraction of MAC)
 cluster: stability
 user_visible: false
 source_status: NO_SOURCE_FOUND
+node_class: derived
+tags:
+  - cluster/stability
+  - class/derived
+  - source/no-source-found
+  - flag/anomaly
+  - flag/divergence
 ---
 
 # Predicted SM change per apply
 
 **Definition.** Predicted static-margin change of the current apply iteration; fed to the convergence guard and stored as history.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -18,7 +27,10 @@ source_status: NO_SOURCE_FOUND
 delta_sm = predicted_sm - sm_at_aft
 ```
 
-**Inputs.** [[predicted-sm-wing-shift|Predicted SM after wing shift]] · [[sm-at-aft|Static margin at aft CG]]
+**Inputs.**
+
+- [[predicted-sm-wing-shift|Predicted SM after wing shift]]
+- [[sm-at-aft|Static margin at aft CG]]
 
 **Produced by.** `app/services/sm_sizing_service.py:884` — `apply_wing_shift`
 

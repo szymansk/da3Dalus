@@ -6,11 +6,21 @@ unit: m/s
 cluster: powertrain
 user_visible: true
 source_status: NO_SOURCE_FOUND
+node_class: derived
+tags:
+  - cluster/powertrain
+  - class/derived
+  - source/no-source-found
+  - surface/user-visible
+  - flag/anomaly
+  - flag/divergence
 ---
 
 # Estimated top speed
 
 **Definition.** Reported as the combo's achievable top speed.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 

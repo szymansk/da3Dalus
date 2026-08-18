@@ -6,11 +6,21 @@ unit: kg/m³
 cluster: aero-polars
 user_visible: false
 source_status: SOURCED
+node_class: physical-constant
+tags:
+  - cluster/aero-polars
+  - class/physical-constant
+  - source/sourced
+  - flag/divergence
+  - flag/physical
 ---
 
 # ISA sea-level density (low-Re module)
 
 **Definition.** Air density used for the level-flight CL helper.
+
+**Physical constant.** A value of nature. It must be identical everywhere it appears — a second definition is a defect by construction, not a judgement call.
+*Identified as: sea-level air density.*
 
 **Value.** `1.225`
 
@@ -26,7 +36,8 @@ RHO = 1.225  # kg/m³  (ISA sea-level)
 
 **Consumed by.**
 
-- in this graph: [[alr-level-flight-cl|Level-flight lift coefficient]]
+- in this graph: `Level-flight lift coefficient`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `_level_flight_cl:706`
 
 **Source.** 🟢 SOURCED

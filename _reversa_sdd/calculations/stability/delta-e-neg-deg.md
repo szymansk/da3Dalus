@@ -6,11 +6,20 @@ unit: deg
 cluster: stability
 user_visible: false
 source_status: SOURCED
+node_class: derived
+tags:
+  - cluster/stability
+  - class/derived
+  - source/sourced
+  - flag/anomaly
+  - flag/divergence
 ---
 
 # TE-UP deflection command
 
 **Definition.** Negative (trailing-edge-up) elevator deflection sent to the solver for the finite-difference Cm_δe run.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -18,13 +27,16 @@ source_status: SOURCED
 delta_e_neg_deg = -abs(float(delta_e_max_rad * 180.0 / math.pi))
 ```
 
-**Inputs.** [[delta-e-max-rad|Maximum elevator deflection (radians)]]
+**Inputs.**
+
+- [[delta-e-max-rad|Maximum elevator deflection (radians)]]
 
 **Produced by.** `app/services/elevator_authority_service.py:611` — `_compute_forward_cg_limit_asb`
 
 **Consumed by.**
 
-- in this graph: [[cm-delta-e-raw|Elevator authority (finite difference)]]
+- in this graph: `Elevator authority (finite difference)`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `app/services/elevator_authority_service.py:696 (with_control_deflections)` · `app/services/elevator_authority_service.py:1016,1055,1085 (AVL twin)`
 
 **Source.** 🟢 SOURCED

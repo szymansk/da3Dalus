@@ -6,11 +6,19 @@ unit: dimensionless
 cluster: powertrain
 user_visible: true
 source_status: SOURCED
+node_class: derived
+tags:
+  - cluster/powertrain
+  - class/derived
+  - source/sourced
+  - surface/user-visible
 ---
 
 # Advance ratio per velocity sample
 
 **Definition.** Advance ratio at each swept velocity, using whichever RPM the active motor model produced.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -18,13 +26,18 @@ source_status: SOURCED
 J = V_f / (point_n_rps * D_m) if (point_n_rps > 0 and D_m > 0) else 0.0
 ```
 
-**Inputs.** [[curve-prop-rpm|Fixed operating RPM (non-QPROP branch)]] · [[qprop-rpm-solution|Solved operating RPM]] · [[curve-diameter-m|Propeller diameter in metres]]
+**Inputs.**
+
+- [[curve-prop-rpm|Fixed operating RPM (non-QPROP branch)]]
+- [[qprop-rpm-solution|Solved operating RPM]]  — *⊣ limit*
+- [[curve-diameter-m|Propeller diameter in metres]]
 
 **Produced by.** `app/services/powertrain_performance.py:733` — `compute_performance_curve`
 
 **Consumed by.**
 
-- in this graph: [[polar-extrapolation-warning|Advance-ratio extrapolation flag]] · [[polar-j-clamp|Clamped advance ratio for interpolation]]
+- in this graph: `Advance-ratio extrapolation flag` · `Clamped advance ratio for interpolation`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `app/services/powertrain_performance.py:743` · `app/services/powertrain_performance.py:768`
 
 **Source.** 🟢 SOURCED

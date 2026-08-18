@@ -6,11 +6,19 @@ unit: % chord
 cluster: aero-polars
 user_visible: false
 source_status: NO_SOURCE_FOUND
+node_class: unclassified-parameter
+tags:
+  - cluster/aero-polars
+  - class/unclassified-parameter
+  - source/no-source-found
+  - flag/divergence
 ---
 
 # Reflex Signal B camber guard
 
 **Definition.** Signal B only fires above this max camber, preventing symmetric false positives.
+
+⚪ **Unclassified parameter.** Not yet decided whether this is a user input or an internal tuning value.
 
 **Value.** `2.0`
 

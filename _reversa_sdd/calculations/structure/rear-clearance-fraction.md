@@ -5,11 +5,21 @@ unit: dimensionless (fraction of chord)
 cluster: structure
 user_visible: false
 source_status: PARTIAL
+node_class: unclassified-constant
+tags:
+  - cluster/structure
+  - class/unclassified-constant
+  - source/partial
+  - flag/anomaly
+  - flag/divergence
+  - flag/scale
 ---
 
 # Rear-spar control-surface clearance
 
 **Definition.** Chordwise margin a COMPUTED rear/torsion spar keeps in front of the control-surface hinge line so it never overlaps the movable surface.
+
+⚪ **Unclassified constant.** Not yet decided whether this is a rule of thumb, a calibration or a physical value. Classifying it is open work — it is deliberately not guessed.
 
 **Value.** `0.03`
 
@@ -25,7 +35,8 @@ _REAR_CLEARANCE_FRACTION = 0.03
 
 **Consumed by.**
 
-- in this graph: [[rear-spar-x-c-clamped|Clamped rear-spar chord location]]
+- in this graph: `Clamped rear-spar chord location`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `cad_designer/airplane/geometry/spar_solver.py:215` · `cad_designer/airplane/geometry/spar_solver.py:246`
 
 **Source.** 🟡 PARTIAL

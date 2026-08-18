@@ -6,11 +6,19 @@ unit: deg
 cluster: stability
 user_visible: true
 source_status: SOURCED
+node_class: derived
+tags:
+  - cluster/stability
+  - class/derived
+  - source/sourced
+  - surface/user-visible
 ---
 
 # Mixer antisymmetric component
 
 **Definition.** Antisymmetric (roll or yaw) component of a mixed control surface's deflection, after the secondary mix gain.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -18,13 +26,16 @@ source_status: SOURCED
 d_anti = gs * secondary_val
 ```
 
-**Inputs.** [[mix-gain-secondary|Secondary mix gain]]
+**Inputs.**
+
+- [[mix-gain-secondary|Secondary mix gain]]
 
 **Produced by.** `app/services/trim_enrichment_service.py:305` — `decompose_dual_role`
 
 **Consumed by.**
 
-- in this graph: [[mixer-left-right-deflection|Mixer left/right physical deflections]]
+- in this graph: `Mixer left/right physical deflections`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `app/services/trim_enrichment_service.py:313,314,322` · `frontend/components/workbench/trim-interpretation/MixerValuesCard.tsx`
 
 **Source.** 🟢 SOURCED

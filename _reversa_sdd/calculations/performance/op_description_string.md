@@ -5,11 +5,20 @@ unit: dimensionless
 cluster: perf-oppoints
 user_visible: true
 source_status: NO_SOURCE_FOUND
+node_class: derived
+tags:
+  - cluster/perf-oppoints
+  - class/derived
+  - source/no-source-found
+  - surface/user-visible
+  - flag/divergence
 ---
 
 # Operating-point description
 
 **Definition.** Human-readable summary of the point's configuration, load factor, speed and altitude.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -17,7 +26,10 @@ source_status: NO_SOURCE_FOUND
 f"config={target['config']}, target_n={target.get('n_target', 1.0):.2f}, V={velocity:.2f}mps, altitude={altitude:.1f}m"
 ```
 
-**Inputs.** [[turn_n_target|Turn target load factor]] · [[default_altitude_m|Default environment altitude]]
+**Inputs.**
+
+- [[turn_n_target|Turn target load factor]]  — *⤵ fallback*
+- [[default_altitude_m|Default environment altitude]]  — *ε tolerance*
 
 **Produced by.** `app/services/operating_point_generator_service.py:983` — `_trim_or_estimate_point`
 

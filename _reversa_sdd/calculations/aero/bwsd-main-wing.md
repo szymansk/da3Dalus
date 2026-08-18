@@ -6,11 +6,19 @@ unit: n/a
 cluster: aero-strips
 user_visible: false
 source_status: SOURCED
+node_class: derived
+tags:
+  - cluster/aero-strips
+  - class/derived
+  - source/sourced
+  - flag/divergence
 ---
 
 # Main wing selection
 
 **Definition.** The wing with the largest planform area is taken as the main wing for airfoil lookup.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -24,7 +32,8 @@ main_wing = max(asb_airplane.wings, key=lambda w: float(w.area()))
 
 **Consumed by.**
 
-- in this graph: [[bwsd-airfoil-per-section|Per-section airfoil name]]
+- in this graph: `Per-section airfoil name`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 
 **Source.** 🟢 SOURCED
 

@@ -6,11 +6,20 @@ unit: deg
 cluster: stability
 user_visible: false
 source_status: NO_SOURCE_FOUND
+node_class: unclassified-constant
+tags:
+  - cluster/stability
+  - class/unclassified-constant
+  - source/no-source-found
+  - flag/anomaly
+  - flag/divergence
 ---
 
 # Stall alpha fallback
 
 **Definition.** Angle of attack assumed for the near-stall operating point when the stall_alpha assumption row is absent.
+
+⚪ **Unclassified constant.** Not yet decided whether this is a rule of thumb, a calibration or a physical value. Classifying it is open work — it is deliberately not guessed.
 
 **Value.** `12.0`
 
@@ -26,7 +35,8 @@ stall_alpha_deg = float(stall_alpha_raw) if stall_alpha_raw is not None else 12.
 
 **Consumed by.**
 
-- in this graph: [[alpha-stall-landing|Landing stall alpha]]
+- in this graph: `Landing stall alpha`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `app/services/elevator_authority_service.py:623,632,999,1034`
 
 **Source.** 🔴 NO SOURCE FOUND

@@ -6,11 +6,21 @@ unit: – (ratio)
 cluster: stability
 user_visible: true
 source_status: SOURCED
+node_class: unclassified-parameter
+tags:
+  - cluster/stability
+  - class/unclassified-parameter
+  - source/sourced
+  - surface/user-visible
+  - flag/anomaly
+  - flag/divergence
 ---
 
 # Aileron differential ratio
 
 **Definition.** Ratio by which the up-going side's throw is scaled relative to the down-going side.
+
+⚪ **Unclassified parameter.** Not yet decided whether this is a user input or an internal tuning value.
 
 **Value.** `1.0`
 
@@ -26,7 +36,8 @@ diff = float(getattr(ted, "differential_ratio", 1.0) or 1.0)
 
 **Consumed by.**
 
-- in this graph: [[mixer-left-right-deflection|Mixer left/right physical deflections]]
+- in this graph: `Mixer left/right physical deflections`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `app/services/trim_enrichment_service.py:255,260,303,315,317,325`
 
 **Source.** 🟢 SOURCED

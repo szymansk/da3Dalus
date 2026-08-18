@@ -6,11 +6,20 @@ unit: dimensionless
 cluster: powertrain
 user_visible: true
 source_status: SOURCED
+node_class: derived
+tags:
+  - cluster/powertrain
+  - class/derived
+  - source/sourced
+  - surface/user-visible
+  - flag/scale
 ---
 
 # Resolved Oswald efficiency
 
 **Definition.** Oswald efficiency resolved by the same three-tier priority.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -18,13 +27,16 @@ source_status: SOURCED
 e_oswald = _pick(request.e_oswald, "e_oswald", _DEFAULT_E_OSWALD, "Oswald efficiency factor (e_oswald)", "e_oswald")
 ```
 
-**Inputs.** [[default-e-oswald-sizing|Default Oswald efficiency (sizing)]]
+**Inputs.**
+
+- [[default-e-oswald-sizing|Default Oswald efficiency (sizing)]]  — *⤵ fallback*
 
 **Produced by.** `app/services/powertrain_sizing_service.py:174` — `_resolve_aero_params`
 
 **Consumed by.**
 
-- in this graph: [[combo-cruise-power|Estimated cruise power]] · [[combo-required-power|Power required for a motor+battery combo]]
+- in this graph: `Estimated cruise power` · `Power required for a motor+battery combo`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `app/services/powertrain_sizing_service.py:246` · `app/services/powertrain_sizing_service.py:312`
 
 **Source.** 🟢 SOURCED

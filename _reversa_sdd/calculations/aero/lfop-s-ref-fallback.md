@@ -6,11 +6,20 @@ unit: m²
 cluster: aero-strips
 user_visible: false
 source_status: NO_SOURCE_FOUND
+node_class: unclassified-constant
+tags:
+  - cluster/aero-strips
+  - class/unclassified-constant
+  - source/no-source-found
+  - flag/anomaly
+  - flag/divergence
 ---
 
 # Reference area fallback
 
 **Definition.** Reference area used when no symmetric wing area could be computed.
+
+⚪ **Unclassified constant.** Not yet decided whether this is a rule of thumb, a calibration or a physical value. Classifying it is open work — it is deliberately not guessed.
 
 **Value.** `0.3`
 

@@ -5,11 +5,21 @@ unit: dimensionless
 cluster: perf-oppoints
 user_visible: true
 source_status: NO_SOURCE_FOUND
+node_class: unclassified-constant
+tags:
+  - cluster/perf-oppoints
+  - class/unclassified-constant
+  - source/no-source-found
+  - surface/user-visible
+  - flag/anomaly
+  - flag/divergence
 ---
 
 # NO_CONTROL_TRIM_MVP warning
 
 **Definition.** Warning pre-stamped on the dutch-roll target.
+
+⚪ **Unclassified constant.** Not yet decided whether this is a rule of thumb, a calibration or a physical value. Classifying it is open work — it is deliberately not guessed.
 
 **Value.** `NO_CONTROL_TRIM_MVP`
 

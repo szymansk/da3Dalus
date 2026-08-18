@@ -6,11 +6,19 @@ unit: dimensionless
 cluster: perf-matching
 user_visible: false
 source_status: PARTIAL
+node_class: unclassified-constant
+tags:
+  - cluster/perf-matching
+  - class/unclassified-constant
+  - source/partial
+  - flag/divergence
 ---
 
 # Braking friction, hard runway
 
 **Definition.** Wheel-braking friction coefficient on a dry hard runway.
+
+⚪ **Unclassified constant.** Not yet decided whether this is a rule of thumb, a calibration or a physical value. Classifying it is open work — it is deliberately not guessed.
 
 **Value.** `0.4`
 
@@ -26,7 +34,8 @@ _MU_BRAKE_HARD: float = 0.4
 
 **Consumed by.**
 
-- in this graph: [[k_ldg_adjusted|Friction-adjusted landing coefficient]] · [[mu_brake_selected|Selected braking friction]]
+- in this graph: `Friction-adjusted landing coefficient` · `Selected braking friction`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `_compute_s_ldg_ground default:239` · `_compute_s_ldg_ground:263 (numerator of ratio)` · `compute_field_lengths:433`
 
 **Source.** 🟡 PARTIAL

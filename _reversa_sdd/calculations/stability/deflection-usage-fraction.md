@@ -6,11 +6,21 @@ unit: – (fraction)
 cluster: stability
 user_visible: true
 source_status: SOURCED
+node_class: derived
+tags:
+  - cluster/stability
+  - class/derived
+  - source/sourced
+  - surface/user-visible
+  - flag/anomaly
+  - flag/divergence
 ---
 
 # Deflection usage fraction
 
 **Definition.** Fraction of the available mechanical deflection consumed at this trim point.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -18,13 +28,16 @@ source_status: SOURCED
 usage = abs(deflection_deg) / limit if limit > 0 else 0.0
 ```
 
-**Inputs.** [[deflection-limit-default|Default control-surface deflection limit]]
+**Inputs.**
+
+- [[deflection-limit-default|Default control-surface deflection limit]]  — *⤵ fallback*
 
 **Produced by.** `app/services/trim_enrichment_service.py:415` — `compute_enrichment`
 
 **Consumed by.**
 
-- in this graph: [[pitch-reserve-pct|Elevator reserve percentage (summary text)]]
+- in this graph: `Elevator reserve percentage (summary text)`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `app/services/trim_enrichment_service.py:420,426,438,348` · `frontend/components/workbench/trim-interpretation/ControlAuthorityChart.tsx` · `frontend/components/workbench/trim-interpretation/OpComparisonTable.tsx`
 
 **Source.** 🟢 SOURCED

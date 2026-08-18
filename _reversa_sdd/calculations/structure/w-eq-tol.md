@@ -5,11 +5,19 @@ unit: mm³ (also reused as mm)
 cluster: structure
 user_visible: false
 source_status: NO_SOURCE_FOUND
+node_class: numerical-tolerance
+tags:
+  - cluster/structure
+  - class/numerical-tolerance
+  - source/no-source-found
+  - flag/anomaly
 ---
 
 # Section-modulus float-equality tolerance
 
 **Definition.** Tolerance used both for W_stock ≥ erf_W acceptance and for the containment-band OD comparison, so float rounding does not reject an exactly-adequate stock item.
+
+**Numerical tolerance.** A solver or comparison epsilon, not a domain value. ADR 0023 does not apply.
 
 **Value.** `1e-9`
 

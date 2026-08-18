@@ -6,11 +6,19 @@ unit: m
 cluster: stability
 user_visible: false
 source_status: NO_SOURCE_FOUND
+node_class: unclassified-constant
+tags:
+  - cluster/stability
+  - class/unclassified-constant
+  - source/no-source-found
+  - flag/divergence
 ---
 
 # Minimum usable CG envelope
 
 **Definition.** Absolute CG travel below which a tailless configuration is considered unusable in practice.
+
+⚪ **Unclassified constant.** Not yet decided whether this is a rule of thumb, a calibration or a physical value. Classifying it is open work — it is deliberately not guessed.
 
 **Value.** `0.005`
 

@@ -6,11 +6,21 @@ unit: dimensionless
 cluster: perf-matching
 user_visible: true
 source_status: PARTIAL
+node_class: derived
+tags:
+  - cluster/perf-matching
+  - class/derived
+  - source/partial
+  - surface/user-visible
+  - flag/anomaly
+  - flag/divergence
 ---
 
 # Mission-min T/W floor
 
 **Definition.** Horizontal T/W floor line from the mission profile's convention.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -18,7 +28,9 @@ source_status: PARTIAL
 return _MISSION_MIN_TW_BY_PROFILE.get(profile_key)
 ```
 
-**Inputs.** [[mission_min_tw_table|Mission-min T/W table]]
+**Inputs.**
+
+- [[mission_min_tw_table|Mission-min T/W table]]  — *⊣ limit*
 
 **Produced by.** `app/services/matching_chart_service.py:494` — `_mission_min_tw_constraint`
 

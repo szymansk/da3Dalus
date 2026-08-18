@@ -6,11 +6,21 @@ unit: dimensionless
 cluster: aero-polars
 user_visible: true
 source_status: NO_SOURCE_FOUND
+node_class: unclassified-parameter
+tags:
+  - cluster/aero-polars
+  - class/unclassified-parameter
+  - source/no-source-found
+  - surface/user-visible
+  - flag/anomaly
+  - flag/divergence
 ---
 
 # Low-confidence flag threshold
 
 **Definition.** min_analysis_confidence below which an item is caveated and demoted in the sort.
+
+⚪ **Unclassified parameter.** Not yet decided whether this is a user input or an internal tuning value.
 
 **Value.** `0.85`
 
@@ -26,7 +36,8 @@ low_re_low_confidence_flag: float = 0.85
 
 **Consumed by.**
 
-- in this graph: [[sui-caveat-text|Suitability caveat block]] · [[sui-conf-tier|Confidence sort tier]]
+- in this graph: `Suitability caveat block` · `Confidence sort tier`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `suitability_service:256,537,543,625`
 
 **Source.** 🔴 NO SOURCE FOUND

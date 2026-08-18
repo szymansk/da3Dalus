@@ -6,11 +6,18 @@ unit: deg
 cluster: aero-spanwise
 user_visible: false
 source_status: SOURCED
+node_class: unclassified-parameter
+tags:
+  - cluster/aero-spanwise
+  - class/unclassified-parameter
+  - source/sourced
 ---
 
 # Zero-lift angle from context
 
 **Definition.** Zero-lift angle of attack read out of the cached assumption computation context.
+
+⚪ **Unclassified parameter.** Not yet decided whether this is a user input or an internal tuning value.
 
 **Formula — as the code writes it.**
 
@@ -24,7 +31,8 @@ raw_alpha_0 = ctx.get("alpha_0_deg"); alpha_0_from_ctx = float(raw_alpha_0) if r
 
 **Consumed by.**
 
-- in this graph: [[alpha-best-glide-deg|Alpha at best glide]] · [[alpha-min-sink-deg|Alpha at minimum sink]] · [[alpha-stall-deg|Alpha at stall]]
+- in this graph: `Alpha at best glide` · `Alpha at minimum sink` · `Alpha at stall`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 
 **Source.** 🟢 SOURCED
 

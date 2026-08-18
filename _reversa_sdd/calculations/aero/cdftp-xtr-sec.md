@@ -6,11 +6,19 @@ unit: x/c
 cluster: aero-strips
 user_visible: false
 source_status: PARTIAL
+node_class: derived
+tags:
+  - cluster/aero-strips
+  - class/derived
+  - source/partial
+  - flag/divergence
 ---
 
 # Section trip position from the installed turbulator
 
 **Definition.** Linearly interpolated x/c trip position between the turbulator's root and tip settings.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -18,13 +26,16 @@ source_status: PARTIAL
 xtr_sec = xtr_root + frac * (xtr_tip - xtr_root); xtr_sec = float(np.clip(xtr_sec, 0.0, 1.0))
 ```
 
-**Inputs.** [[cdftp-frac|Span fraction of a section]]
+**Inputs.**
+
+- [[cdftp-frac|Span fraction of a section]]
 
 **Produced by.** `app/services/turbulator_optimizer_service.py:688` — `compute_delta_cd0_from_turbulator_position`
 
 **Consumed by.**
 
-- in this graph: [[cdftp-cd-tripped|Tripped section drag (installed-turbulator path)]]
+- in this graph: `Tripped section drag (installed-turbulator path)`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 
 **Source.** 🟡 PARTIAL
 

@@ -5,11 +5,19 @@ unit: MPa
 cluster: aero-spanwise
 user_visible: true
 source_status: NO_SOURCE_FOUND
+node_class: numerical-tolerance
+tags:
+  - cluster/aero-spanwise
+  - class/numerical-tolerance
+  - source/no-source-found
+  - surface/user-visible
 ---
 
 # σ_allow positivity guard
 
 **Definition.** Non-positive allowable stress is rejected with a 422 rather than dividing by zero.
+
+**Numerical tolerance.** A solver or comparison epsilon, not a domain value. ADR 0023 does not apply.
 
 **Value.** `0`
 
@@ -19,7 +27,9 @@ source_status: NO_SOURCE_FOUND
 if sigma_allow is None or sigma_allow <= 0: raise ValidationError
 ```
 
-**Inputs.** [[sigma-allow|Allowable bending stress]]
+**Inputs.**
+
+- [[sigma-allow|Allowable bending stress]]
 
 **Produced by.** `app/services/analysis_service.py:2142` — `_compute_spar_sizing_for_surfaces`
 

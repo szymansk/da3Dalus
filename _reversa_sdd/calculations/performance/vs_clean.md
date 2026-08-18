@@ -6,11 +6,20 @@ unit: m/s
 cluster: perf-oppoints
 user_visible: true
 source_status: PARTIAL
+node_class: derived
+tags:
+  - cluster/perf-oppoints
+  - class/derived
+  - source/partial
+  - surface/user-visible
+  - flag/divergence
 ---
 
 # Clean stall speed reference
 
 **Definition.** Clean-configuration stall speed used to seed every clean operating point.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -18,13 +27,16 @@ source_status: PARTIAL
 vs_clean_ctx = _pick("v_s1_mps") or _pick("v_stall_mps"); if vs_clean_ctx is None: vs_clean = max(3.0, cruise / min_margin_clean) ... return {"vs_clean": max(3.0, vs_clean), ...}
 ```
 
-**Inputs.** [[cruise_speed_resolved|Resolved cruise speed]]
+**Inputs.**
+
+- [[cruise_speed_resolved|Resolved cruise speed]]
 
 **Produced by.** `app/services/operating_point_generator_service.py:346` — `_estimate_reference_speeds`
 
 **Consumed by.**
 
-- in this graph: [[refs_provenance|Reference-speed provenance]] · [[v_best_angle_climb_vx|Vx target speed]] · [[v_best_rate_climb_vy|Vy target speed]] · [[v_loiter_endurance|loiter_endurance target speed]] · [[v_max_range|max_range target speed]] · [[v_stall_near_clean|stall_near_clean target speed]] · [[v_stall_turn|Stall speed in the turn]] · [[v_turn|Turn target speed]] · [[vs_ldg|Landing-config stall speed reference]] · [[vs_to|Takeoff-config stall speed reference]]
+- in this graph: `Reference-speed provenance` · `Vx target speed` · `Vy target speed` · `loiter_endurance target speed` · `max_range target speed` · `stall_near_clean target speed` · `Stall speed in the turn` · `Turn target speed` · `Landing-config stall speed reference` · `Takeoff-config stall speed reference`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `app/services/operating_point_generator_service.py:401, 426, 434, 450, 458, 493, 504` · `app/services/operating_point_generator_service.py:1154 (_apply_turn_feasibility)` · `app/services/add_turn_service.py:51`
 
 **Source.** 🟡 PARTIAL

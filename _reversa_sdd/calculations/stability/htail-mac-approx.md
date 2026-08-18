@@ -6,11 +6,20 @@ unit: m
 cluster: stability
 user_visible: false
 source_status: SOURCED
+node_class: derived
+tags:
+  - cluster/stability
+  - class/derived
+  - source/sourced
+  - flag/anomaly
+  - flag/divergence
 ---
 
 # Horizontal tail MAC (mean chord approximation)
 
 **Definition.** Stands in for the horizontal tail mean aerodynamic chord.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -27,7 +36,8 @@ return sum(chords) / len(chords)
 
 **Consumed by.**
 
-- in this graph: [[vtail-mac-approx|Vertical tail MAC (mean chord approximation)]] · [[x-htail-ac-m|Horizontal tail aerodynamic centre x]]
+- in this graph: `Vertical tail MAC (mean chord approximation)` · `Horizontal tail aerodynamic centre x`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `app/services/tail_sizing_service.py:435,463` · `app/services/tail_sizing_service.py:197 (x_htail_ac_m)`
 
 **Source.** 🟢 SOURCED

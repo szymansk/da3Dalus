@@ -6,11 +6,20 @@ unit: -
 cluster: aero-spanwise
 user_visible: true
 source_status: SOURCED
+node_class: derived
+tags:
+  - cluster/aero-spanwise
+  - class/derived
+  - source/sourced
+  - surface/user-visible
+  - flag/divergence
 ---
 
 # Drag coefficient array
 
 **Definition.** CD vs alpha from the AeroBuildup solver result (total drag, not parasite only).
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -24,7 +33,8 @@ np.atleast_1d(np.asarray(result.coefficients.CD, dtype=float))
 
 **Consumed by.**
 
-- in this graph: [[drag-at-zero-lift-point|Drag at zero lift point]] · [[ld-ratio-coefficient|Lift-to-drag ratio (coefficient form)]] · [[min-cd-point|Minimum drag coefficient point]] · [[speed-polar-ld|Glide ratio per point]] · [[speed-polar-w|Sink rate]] · [[stall-point|Stall point]] · [[trim-point-cm-zero|Trim point (Cm = 0)]]
+- in this graph: `Drag at zero lift point` · `Lift-to-drag ratio (coefficient form)` · `Minimum drag coefficient point` · `Glide ratio per point` · `Sink rate` · `Stall point` · `Trim point (Cm = 0)`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `_compute_cl_cd_points` · `_build_speed_polar` · `_plot_drag_polar` · `copilot_tools:366` · `frontend useAnalysis`
 
 **Source.** 🟢 SOURCED

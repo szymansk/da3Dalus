@@ -6,11 +6,18 @@ unit: -
 cluster: perf-envelope
 user_visible: false
 source_status: NO_SOURCE_FOUND
+node_class: derived
+tags:
+  - cluster/perf-envelope
+  - class/derived
+  - source/no-source-found
 ---
 
 # Inverted maximum lift coefficient
 
 **Definition.** Maximum negative lift coefficient assumed for inverted flight.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -18,13 +25,17 @@ source_status: NO_SOURCE_FOUND
 cl_min = -0.8 * cl_max
 ```
 
-**Inputs.** [[fe_cl_max|Maximum lift coefficient (envelope)]] · [[fe_cl_min_factor|Negative CL_max ratio]]
+**Inputs.**
+
+- [[fe_cl_max|Maximum lift coefficient (envelope)]]  — *⤵ fallback*
+- [[fe_cl_min_factor|Negative CL_max ratio]]  — *⊣ limit*
 
 **Produced by.** `app/services/flight_envelope_service.py:316` — `compute_vn_curve`
 
 **Consumed by.**
 
-- in this graph: [[fe_n_neg_maneuver|Negative maneuver load factor]]
+- in this graph: `Negative maneuver load factor`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 
 **Source.** 🔴 NO SOURCE FOUND
 

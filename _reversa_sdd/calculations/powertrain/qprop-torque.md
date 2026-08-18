@@ -6,11 +6,19 @@ unit: Nm
 cluster: powertrain
 user_visible: false
 source_status: SOURCED
+node_class: derived
+tags:
+  - cluster/powertrain
+  - class/derived
+  - source/sourced
+  - flag/anomaly
 ---
 
 # Solved shaft torque
 
 **Definition.** Shaft torque at the solved operating point.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -18,13 +26,18 @@ source_status: SOURCED
 torque = max((current - i0) / kv_si, 0.0)
 ```
 
-**Inputs.** [[qprop-current|Solved terminal current]] · [[motor-io-input|No-load current]] · [[motor-kv-si|Motor speed constant in SI]]
+**Inputs.**
+
+- [[qprop-current|Solved terminal current]]  — *⊣ limit*
+- [[motor-io-input|No-load current]]  — *⤵ fallback*
+- [[motor-kv-si|Motor speed constant in SI]]
 
 **Produced by.** `app/services/powertrain_performance.py:580` — `solve_qprop_operating_point`
 
 **Consumed by.**
 
-- in this graph: [[qprop-p-shaft|Solved shaft power (QPROP)]]
+- in this graph: `Solved shaft power (QPROP)`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `app/services/powertrain_performance.py:581` · `app/services/powertrain_performance.py:590`
 
 **Source.** 🟢 SOURCED

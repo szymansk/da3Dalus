@@ -6,11 +6,19 @@ unit: dimensionless (0..1)
 cluster: aero-polars
 user_visible: false
 source_status: NO_SOURCE_FOUND
+node_class: derived
+tags:
+  - cluster/aero-polars
+  - class/derived
+  - source/no-source-found
+  - flag/divergence
 ---
 
 # Efficiency component of score_target_cl
 
 **Definition.** How clean the airfoil is relative to the fleet cd0 reference at the same Re, capped at 1.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -18,13 +26,17 @@ source_status: NO_SOURCE_FOUND
 efficiency = min(re_cd0_reference / cd0, 1.0)
 ```
 
-**Inputs.** [[alr-re-cd0-reference|Per-Re fleet cd0 reference]] · [[alr-polar-cd0|Airfoil cd0 (parabolic fit vertex)]]
+**Inputs.**
+
+- [[alr-re-cd0-reference|Per-Re fleet cd0 reference]]
+- [[alr-polar-cd0|Airfoil cd0 (parabolic fit vertex)]]
 
 **Produced by.** `app/services/airfoil_low_re_service.py:1081` — `score_target_cl`
 
 **Consumed by.**
 
-- in this graph: [[alr-score-target-cl|target-CL suitability score]]
+- in this graph: `target-CL suitability score`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `score_target_cl:1085`
 
 **Source.** 🔴 NO SOURCE FOUND

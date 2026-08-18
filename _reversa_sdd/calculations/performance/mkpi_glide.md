@@ -6,11 +6,21 @@ unit: -
 cluster: perf-envelope
 user_visible: true
 source_status: SOURCED
+node_class: derived
+tags:
+  - cluster/perf-envelope
+  - class/derived
+  - source/sourced
+  - surface/user-visible
+  - flag/anomaly
+  - flag/divergence
 ---
 
 # KPI: maximum glide ratio
 
 **Definition.** Best lift-to-drag ratio, empirical from the sweep when available, else parabolic-polar closed form.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -18,7 +28,9 @@ source_status: SOURCED
 value = float(ld_emp) if ld_emp is not None else 0.5 * math.sqrt(math.pi * e * ar / cd0)
 ```
 
-**Inputs.** [[mkpi_resolve_polar|Clean-polar provenance chain]]
+**Inputs.**
+
+- [[mkpi_resolve_polar|Clean-polar provenance chain]]  — *⤵ fallback*
 
 **Produced by.** `app/services/mission_kpi_service.py:182` — `_kpi_glide`
 

@@ -6,11 +6,19 @@ unit: m
 cluster: perf-envelope
 user_visible: true
 source_status: SOURCED
+node_class: unclassified-parameter
+tags:
+  - cluster/perf-envelope
+  - class/unclassified-parameter
+  - source/sourced
+  - surface/user-visible
 ---
 
 # Target field length
 
 **Definition.** User-declared acceptable field length from the persisted MissionObjective.
+
+⚪ **Unclassified parameter.** Not yet decided whether this is a user input or an internal tuning value.
 
 **Formula — as the code writes it.**
 
@@ -24,7 +32,8 @@ objective.target_field_length_m
 
 **Consumed by.**
 
-- in this graph: [[mkpi_field_score|Field-friendliness score]]
+- in this graph: `Field-friendliness score`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 
 **Source.** 🟢 SOURCED
 

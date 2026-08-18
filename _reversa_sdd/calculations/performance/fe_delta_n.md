@@ -6,11 +6,19 @@ unit: -
 cluster: perf-envelope
 user_visible: false
 source_status: SOURCED
+node_class: derived
+tags:
+  - cluster/perf-envelope
+  - class/derived
+  - source/sourced
+  - flag/divergence
 ---
 
 # Gust load-factor increment
 
 **Definition.** Load-factor increment produced by a discrete sharp-edged vertical gust at speed V.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -18,13 +26,21 @@ source_status: SOURCED
 return 0.5 * rho * v * cl_alpha * u_gust * k_g / wing_loading
 ```
 
-**Inputs.** [[fe_rho_default|Default air density (flight envelope)]] · [[fe_v_sweep|Velocity sweep points]] · [[fe_effective_cl_alpha|Effective lift-curve slope for gust]] · [[fe_u_gust_at_v|Gust velocity schedule]] · [[fe_k_g|Gust alleviation factor]] · [[fe_wing_loading|Wing loading (gust path)]]
+**Inputs.**
+
+- [[fe_rho_default|Default air density (flight envelope)]]  — *⤵ fallback*
+- [[fe_v_sweep|Velocity sweep points]]
+- [[fe_effective_cl_alpha|Effective lift-curve slope for gust]]  — *⤵ fallback*
+- [[fe_u_gust_at_v|Gust velocity schedule]]
+- [[fe_k_g|Gust alleviation factor]]
+- [[fe_wing_loading|Wing loading (gust path)]]
 
 **Produced by.** `app/services/flight_envelope_service.py:136` — `_compute_delta_n`
 
 **Consumed by.**
 
-- in this graph: [[fe_gust_n_neg|Negative gust load factor]] · [[fe_gust_n_pos|Positive gust load factor]]
+- in this graph: `Negative gust load factor` · `Positive gust load factor`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 
 **Source.** 🟢 SOURCED
 

@@ -6,11 +6,18 @@ unit: N/m^2
 cluster: perf-matching
 user_visible: false
 source_status: SOURCED
+node_class: derived
+tags:
+  - cluster/perf-matching
+  - class/derived
+  - source/sourced
 ---
 
 # Wing loading (field length)
 
 **Definition.** Weight per unit wing reference area driving both ground rolls.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -18,13 +25,16 @@ source_status: SOURCED
 wing_loading = weight_n / s_ref_m2
 ```
 
-**Inputs.** [[weight_n_fl|Aircraft weight]]
+**Inputs.**
+
+- [[weight_n_fl|Aircraft weight]]
 
 **Produced by.** `app/services/field_length_service.py:200` — `_compute_s_to_ground`
 
 **Consumed by.**
 
-- in this graph: [[s_ldg_ground|Landing ground roll]] · [[s_to_ground|Takeoff ground roll]]
+- in this graph: `Landing ground roll` · `Takeoff ground roll`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `s_to_ground:203` · `s_ldg_ground:264`
 
 **Source.** 🟢 SOURCED

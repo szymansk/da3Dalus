@@ -6,11 +6,21 @@ unit: m/s
 cluster: perf-envelope
 user_visible: true
 source_status: NO_SOURCE_FOUND
+node_class: unclassified-constant
+tags:
+  - cluster/perf-envelope
+  - class/unclassified-constant
+  - source/no-source-found
+  - surface/user-visible
+  - flag/anomaly
+  - flag/divergence
 ---
 
 # Default maximum level speed
 
 **Definition.** Fallback maximum level speed when the flight profile declares no goal.
+
+⚪ **Unclassified constant.** Not yet decided whether this is a rule of thumb, a calibration or a physical value. Classifying it is open work — it is deliberately not guessed.
 
 **Value.** `28.0`
 
@@ -26,7 +36,8 @@ return 28.0
 
 **Consumed by.**
 
-- in this graph: [[fe_v_max|Maximum level speed]]
+- in this graph: `Maximum level speed`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 
 **Source.** 🔴 NO SOURCE FOUND
 

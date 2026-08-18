@@ -6,11 +6,21 @@ unit: – (fraction of MAC)
 cluster: stability
 user_visible: true
 source_status: PARTIAL
+node_class: unclassified-constant
+tags:
+  - cluster/stability
+  - class/unclassified-constant
+  - source/partial
+  - surface/user-visible
+  - flag/anomaly
+  - flag/divergence
 ---
 
 # SM instability threshold
 
 **Definition.** Static margin below which the design is declared unstable and saving is blocked.
+
+⚪ **Unclassified constant.** Not yet decided whether this is a rule of thumb, a calibration or a physical value. Classifying it is open work — it is deliberately not guessed.
 
 **Value.** `0.02`
 
@@ -20,7 +30,8 @@ source_status: PARTIAL
 
 **Consumed by.**
 
-- in this graph: [[sm-classification|Static-margin classification]]
+- in this graph: `Static-margin classification`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `app/services/sm_sizing_service.py:373,387,516,522,527,539`
 
 **Source.** 🟡 PARTIAL

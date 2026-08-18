@@ -6,11 +6,21 @@ unit: m/s
 cluster: perf-matching
 user_visible: true
 source_status: PARTIAL
+node_class: derived
+tags:
+  - cluster/perf-matching
+  - class/derived
+  - source/partial
+  - surface/user-visible
+  - flag/anomaly
+  - flag/divergence
 ---
 
 # Climb speed for power loading
 
 **Definition.** Climb speed assumed as 1.3·V_stall, clamped to at least 1 m/s.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -18,13 +28,16 @@ source_status: PARTIAL
 v_climb = max(1.3 * max(v_stall, 1.0), 1.0)
 ```
 
-**Inputs.** [[mode_default_v_s_target|Mode default stall-speed target]]
+**Inputs.**
+
+- [[mode_default_v_s_target|Mode default stall-speed target]]  — *⤵ fallback*
 
 **Produced by.** `app/services/matching_chart_service.py:563` — `_power_loading_constraint`
 
 **Consumed by.**
 
-- in this graph: [[tw_power_loading|Power-loading T/W floor]]
+- in this graph: `Power-loading T/W floor`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `tw_power_loading:564`
 
 **Source.** 🟡 PARTIAL

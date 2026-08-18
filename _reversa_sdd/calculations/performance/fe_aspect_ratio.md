@@ -6,11 +6,20 @@ unit: -
 cluster: perf-envelope
 user_visible: false
 source_status: SOURCED
+node_class: derived
+tags:
+  - cluster/perf-envelope
+  - class/derived
+  - source/sourced
+  - flag/anomaly
+  - flag/divergence
 ---
 
 # Aspect ratio (gust path)
 
 **Definition.** Wing aspect ratio derived from reference span and area for the Helmbold fallback.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -18,13 +27,17 @@ source_status: SOURCED
 ar = (b_ref_m**2) / wing_area_m2
 ```
 
-**Inputs.** [[fe_b_ref|Reference span]] · [[fe_wing_area|Reference wing area]]
+**Inputs.**
+
+- [[fe_b_ref|Reference span]]  — *× unit*
+- [[fe_wing_area|Reference wing area]]  — *× unit*
 
 **Produced by.** `app/services/flight_envelope_service.py:343` — `compute_vn_curve`
 
 **Consumed by.**
 
-- in this graph: [[fe_cl_alpha_helmbold|Finite-span lift-curve slope (Helmbold fallback)]]
+- in this graph: `Finite-span lift-curve slope (Helmbold fallback)`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 
 **Source.** 🟢 SOURCED
 

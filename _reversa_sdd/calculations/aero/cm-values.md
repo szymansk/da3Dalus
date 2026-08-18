@@ -6,11 +6,19 @@ unit: -
 cluster: aero-spanwise
 user_visible: true
 source_status: SOURCED
+node_class: derived
+tags:
+  - cluster/aero-spanwise
+  - class/derived
+  - source/sourced
+  - surface/user-visible
 ---
 
 # Pitching-moment coefficient array
 
 **Definition.** Cm vs alpha from the solver result, used for trim and longitudinal-stability classification.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -24,7 +32,8 @@ np.atleast_1d(np.asarray(result.coefficients.Cm, dtype=float))
 
 **Consumed by.**
 
-- in this graph: [[cm-gradient|Local Cm gradient]] · [[dcm-dalpha-slope|Longitudinal stability slope]] · [[trim-fallback-index|Trim nearest-point fallback]] · [[trim-point-cm-zero|Trim point (Cm = 0)]]
+- in this graph: `Local Cm gradient` · `Longitudinal stability slope` · `Trim nearest-point fallback` · `Trim point (Cm = 0)`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `_compute_trim_point` · `_classify_longitudinal_stability` · `_plot_cm_stability` · `frontend useAnalysis`
 
 **Source.** 🟢 SOURCED

@@ -6,11 +6,20 @@ unit: bool
 cluster: perf-matching
 user_visible: true
 source_status: NO_SOURCE_FOUND
+node_class: derived
+tags:
+  - cluster/perf-matching
+  - class/derived
+  - source/no-source-found
+  - surface/user-visible
+  - flag/divergence
 ---
 
 # Profile applicability flag
 
 **Definition.** Whether the constraint is drawn for the active mission profile.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -18,7 +27,9 @@ source_status: NO_SOURCE_FOUND
 if applicable_keys is None: c["applicable_for_profile"] = True else: c["applicable_for_profile"] = c.get("key") in applicable_keys
 ```
 
-**Inputs.** [[profile_constraint_map|Per-profile applicable constraints]]
+**Inputs.**
+
+- [[profile_constraint_map|Per-profile applicable constraints]]
 
 **Produced by.** `app/services/matching_chart_service.py:980` — `compute_chart`
 

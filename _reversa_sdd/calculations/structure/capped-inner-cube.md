@@ -5,11 +5,18 @@ unit: mm³
 cluster: structure
 user_visible: false
 source_status: SOURCED
+node_class: derived
+tags:
+  - cluster/structure
+  - class/derived
+  - source/sourced
 ---
 
 # Capped-spar inner-height cube
 
 **Definition.** Cubed inner gap height of a capped spar; negative means the requested flange width b cannot deliver erf_W at height H.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -17,13 +24,18 @@ source_status: SOURCED
 inner_cube = H**3 - 6.0 * H * erf_w / b
 ```
 
-**Inputs.** [[required-section-modulus|Required section modulus]] · [[spar-outer-dimension|Spar outer dimension]] · [[cap-width-mm|Cap/flange width]]
+**Inputs.**
+
+- [[required-section-modulus|Required section modulus]]
+- [[spar-outer-dimension|Spar outer dimension]]
+- [[cap-width-mm|Cap/flange width]]
 
 **Produced by.** `app/services/spar_sizing.py:196` — `_solve_capped`
 
 **Consumed by.**
 
-- in this graph: [[capped-inner-height|Capped-spar inner gap height]]
+- in this graph: `Capped-spar inner gap height`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `app/services/spar_sizing.py:197` · `app/services/spar_sizing.py:208`
 
 **Source.** 🟢 SOURCED

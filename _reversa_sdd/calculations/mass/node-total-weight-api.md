@@ -6,11 +6,21 @@ unit: g
 cluster: mass
 user_visible: true
 source_status: SOURCED
+node_class: derived
+tags:
+  - cluster/mass
+  - class/derived
+  - source/sourced
+  - surface/user-visible
+  - flag/anomaly
+  - flag/divergence
 ---
 
 # Node total weight (single-node endpoint)
 
 **Definition.** Own weight plus recursive children weight for one node, returned by the per-node weight endpoint.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -18,7 +28,10 @@ source_status: SOURCED
 total_weight_g=(own_weight or 0) + children_weight
 ```
 
-**Inputs.** [[node-own-weight|Node own weight]] · [[node-children-weight|Node children weight (recursive)]]
+**Inputs.**
+
+- [[node-own-weight|Node own weight]]
+- [[node-children-weight|Node children weight (recursive)]]
 
 **Produced by.** `app/services/component_tree_service.py:427` — `calculate_weight`
 

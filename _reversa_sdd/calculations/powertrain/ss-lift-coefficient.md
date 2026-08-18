@@ -6,11 +6,20 @@ unit: dimensionless
 cluster: powertrain
 user_visible: false
 source_status: SOURCED
+node_class: derived
+tags:
+  - cluster/powertrain
+  - class/derived
+  - source/sourced
+  - flag/anomaly
+  - flag/divergence
 ---
 
 # Level-flight lift coefficient
 
 **Definition.** Lift coefficient required to hold level flight at the evaluated speed.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -18,13 +27,19 @@ source_status: SOURCED
 cl = (mass_kg * g) / (q * s_ref)
 ```
 
-**Inputs.** [[ss-dynamic-pressure|Dynamic pressure]] · [[ss-mass|All-up mass (solution space)]] · [[ss-g-param|Gravitational acceleration (solution space input)]] · [[ss-s-ref|Wing reference area (solution space)]]
+**Inputs.**
+
+- [[ss-dynamic-pressure|Dynamic pressure]]
+- [[ss-mass|All-up mass (solution space)]]  — *⤵ fallback*
+- [[ss-g-param|Gravitational acceleration (solution space input)]]
+- [[ss-s-ref|Wing reference area (solution space)]]  — *⤵ fallback*
 
 **Produced by.** `app/services/powertrain_solution_space_service.py:103` — `_p_aero`
 
 **Consumed by.**
 
-- in this graph: [[ss-drag-coefficient|Total drag coefficient]]
+- in this graph: `Total drag coefficient`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `app/services/powertrain_solution_space_service.py:104`
 
 **Source.** 🟢 SOURCED

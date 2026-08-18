@@ -5,11 +5,20 @@ unit: deg
 cluster: perf-oppoints
 user_visible: true
 source_status: PARTIAL
+node_class: derived
+tags:
+  - cluster/perf-oppoints
+  - class/derived
+  - source/partial
+  - surface/user-visible
+  - flag/divergence
 ---
 
 # Clipped flap deflection
 
 **Definition.** Target flap deflection clamped into the governing TED mechanical limits.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -17,13 +26,18 @@ source_status: PARTIAL
 clipped_value = max(-max_neg, min(requested, max_pos))
 ```
 
-**Inputs.** [[flap_limit_most_restrictive|Governing flap deflection limit]] · [[target_flap_takeoff_deg|Takeoff flap deflection target]] · [[target_flap_landing_deg|Landing flap deflection target]]
+**Inputs.**
+
+- [[flap_limit_most_restrictive|Governing flap deflection limit]]  — *⊣ limit*
+- [[target_flap_takeoff_deg|Takeoff flap deflection target]]
+- [[target_flap_landing_deg|Landing flap deflection target]]
 
 **Produced by.** `app/services/operating_point_generator_service.py:98` — `_clip_flap_to_ted_limit`
 
 **Consumed by.**
 
-- in this graph: [[warn_flap_deflection_clipped|FLAP_DEFLECTION_CLIPPED warning]]
+- in this graph: `FLAP_DEFLECTION_CLIPPED warning`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `app/services/operating_point_generator_service.py:639, 647 (with_control_deflections)` · `app/services/operating_point_generator_service.py:972 (controls dict)`
 
 **Source.** 🟡 PARTIAL

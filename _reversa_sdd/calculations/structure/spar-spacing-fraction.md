@@ -6,11 +6,21 @@ unit: dimensionless (fraction of chord)
 cluster: structure
 user_visible: false
 source_status: PARTIAL
+node_class: derived
+tags:
+  - cluster/structure
+  - class/derived
+  - source/partial
+  - flag/anomaly
+  - flag/divergence
+  - flag/scale
 ---
 
 # Front–rear spar chordwise spacing
 
 **Definition.** Chordwise distance between the front and rear spars as a fraction of chord — the lever arm over which the torsion couple is reacted.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -22,13 +32,18 @@ spacing = request.rear_x_over_chord - front_x
 return max(abs(spacing), _MIN_SPAR_SPACING)
 ```
 
-**Inputs.** [[default-front-x-c|Assumed front-spar chord fraction]] · [[min-spar-spacing|Minimum front–rear spar spacing fraction]] · [[rear-x-over-chord|Rear-spar chord fraction (requested)]]
+**Inputs.**
+
+- [[default-front-x-c|Assumed front-spar chord fraction]]  — *⤵ fallback*
+- [[min-spar-spacing|Minimum front–rear spar spacing fraction]]  — *⊣ limit*
+- [[rear-x-over-chord|Rear-spar chord fraction (requested)]]
 
 **Produced by.** `app/services/spar_plan_service.py:413` — `_spar_spacing_fraction`
 
 **Consumed by.**
 
-- in this graph: [[rear-torsion-reaction|Rear-spar torsion reaction]]
+- in this graph: `Rear-spar torsion reaction`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `app/services/spar_plan_service.py:437` · `app/services/spar_plan_service.py:453`
 
 **Source.** 🟡 PARTIAL

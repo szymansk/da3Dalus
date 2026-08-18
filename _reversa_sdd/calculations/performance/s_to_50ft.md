@@ -6,11 +6,20 @@ unit: m
 cluster: perf-matching
 user_visible: true
 source_status: PARTIAL
+node_class: derived
+tags:
+  - cluster/perf-matching
+  - class/derived
+  - source/partial
+  - surface/user-visible
+  - flag/scale
 ---
 
 # Takeoff distance over 50 ft
 
 **Definition.** Total takeoff distance to clear a 50-ft obstacle.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -18,13 +27,17 @@ source_status: PARTIAL
 s_to_50ft = _apply_obstacle_factor(s_to_ground, _K_TO_50FT)
 ```
 
-**Inputs.** [[s_to_ground|Takeoff ground roll]] · [[k_to_50ft|Takeoff 50-ft obstacle factor]]
+**Inputs.**
+
+- [[s_to_ground|Takeoff ground roll]]
+- [[k_to_50ft|Takeoff 50-ft obstacle factor]]
 
 **Produced by.** `app/services/field_length_service.py:425` — `compute_field_lengths`
 
 **Consumed by.**
 
-- in this graph: [[effective_field_length|Effective field length]]
+- in this graph: `Effective field length`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `FieldLengthRead.s_to_50ft_m:440` · `mission_kpi_service.py:324 (field_friendliness)` · `app/api/v2/endpoints/aeroplane/field_lengths.py:209`
 
 **Source.** 🟡 PARTIAL

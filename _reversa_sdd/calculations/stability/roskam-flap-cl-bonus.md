@@ -6,11 +6,22 @@ unit: – (dimensionless)
 cluster: stability
 user_visible: true
 source_status: PARTIAL
+node_class: unclassified-constant
+tags:
+  - cluster/stability
+  - class/unclassified-constant
+  - source/partial
+  - surface/user-visible
+  - flag/anomaly
+  - flag/divergence
+  - flag/scale
 ---
 
 # Flap CL_max increment
 
 **Definition.** Lift-coefficient increment added to the clean CL_max to estimate the landing CL_max when no flap sweep is run.
+
+⚪ **Unclassified constant.** Not yet decided whether this is a rule of thumb, a calibration or a physical value. Classifying it is open work — it is deliberately not guessed.
 
 **Value.** `0.5`
 
@@ -20,7 +31,8 @@ source_status: PARTIAL
 
 **Consumed by.**
 
-- in this graph: [[cl-max-landing|Landing CL_max]]
+- in this graph: `Landing CL_max`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `app/services/elevator_authority_service.py:361,671,1025`
 
 **Source.** 🟡 PARTIAL

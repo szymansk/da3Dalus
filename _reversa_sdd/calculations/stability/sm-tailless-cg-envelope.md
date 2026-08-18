@@ -6,11 +6,19 @@ unit: m
 cluster: stability
 user_visible: false
 source_status: SOURCED
+node_class: derived
+tags:
+  - cluster/stability
+  - class/derived
+  - source/sourced
+  - flag/anomaly
 ---
 
 # Tailless absolute CG envelope width
 
 **Definition.** Absolute travel available between the tailless forward and aft CG limits, used only to raise a narrow-envelope warning.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -18,7 +26,10 @@ source_status: SOURCED
 envelope_m = (_SM_TAILLESS_FWD_CG - _SM_TAILLESS_AFT_CG) * mac_m
 ```
 
-**Inputs.** [[sm-tailless-fwd-cg|Tailless forward CG limit (SM)]] · [[sm-tailless-aft-cg|Tailless aft CG limit (SM)]]
+**Inputs.**
+
+- [[sm-tailless-fwd-cg|Tailless forward CG limit (SM)]]  — *⊣ limit*
+- [[sm-tailless-aft-cg|Tailless aft CG limit (SM)]]  — *⊣ limit*
 
 **Produced by.** `app/services/sm_sizing_service.py:232` — `_tailless_recommendation`
 

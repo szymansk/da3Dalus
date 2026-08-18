@@ -5,11 +5,20 @@ unit: mixed (deg, -, -)
 cluster: aero-spanwise
 user_visible: true
 source_status: SOURCED
+node_class: derived
+tags:
+  - cluster/aero-spanwise
+  - class/derived
+  - source/sourced
+  - surface/user-visible
+  - flag/divergence
 ---
 
 # Stall point
 
 **Definition.** First post-CLmax sweep point where CL drops and CD rises simultaneously.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -17,13 +26,18 @@ source_status: SOURCED
 if cl[i] < cl[i - 1] and cd[i] > cd[i - 1]: i_stall = i
 ```
 
-**Inputs.** [[cl-values|Lift coefficient array]] · [[cd-values|Drag coefficient array]] · [[max-cl-point|Maximum lift coefficient point]]
+**Inputs.**
+
+- [[cl-values|Lift coefficient array]]
+- [[cd-values|Drag coefficient array]]
+- [[max-cl-point|Maximum lift coefficient point]]  — *⊣ limit*
 
 **Produced by.** `app/services/analysis_service.py:173` — `_find_stall_point`
 
 **Consumed by.**
 
-- in this graph: [[characteristic-points|Characteristic points dict]]
+- in this graph: `Characteristic points dict`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `alpha-sweep PNG` · `_render_summary_panel 'Stall-Indiz'` · `copilot_tools 'stall'`
 
 **Source.** 🟢 SOURCED

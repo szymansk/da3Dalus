@@ -6,11 +6,18 @@ unit: V
 cluster: powertrain
 user_visible: false
 source_status: SOURCED
+node_class: derived
+tags:
+  - cluster/powertrain
+  - class/derived
+  - source/sourced
 ---
 
 # Battery voltage used for the curve
 
 **Definition.** Loaded pack voltage entering the RPM and power-ceiling calculations.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -18,13 +25,16 @@ source_status: SOURCED
 V_bat = battery.nominal_voltage_v  # cells × 3.7 V
 ```
 
-**Inputs.** [[battery-nominal-voltage|Nominal pack voltage]]
+**Inputs.**
+
+- [[battery-nominal-voltage|Nominal pack voltage]]
 
 **Produced by.** `app/services/powertrain_performance.py:640` — `compute_performance_curve`
 
 **Consumed by.**
 
-- in this graph: [[curve-p-available-elec|Electrical power ceiling]] · [[curve-prop-rpm|Fixed operating RPM (non-QPROP branch)]] · [[curve-v-terminal|Motor terminal voltage]]
+- in this graph: `Electrical power ceiling` · `Fixed operating RPM (non-QPROP branch)` · `Motor terminal voltage`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `app/services/powertrain_performance.py:643` · `app/services/powertrain_performance.py:656` · `app/services/powertrain_performance.py:702`
 
 **Source.** 🟢 SOURCED

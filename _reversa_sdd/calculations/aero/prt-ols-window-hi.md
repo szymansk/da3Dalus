@@ -6,11 +6,19 @@ unit: dimensionless (CL)
 cluster: aero-polars
 user_visible: false
 source_status: PARTIAL
+node_class: unclassified-parameter
+tags:
+  - cluster/aero-polars
+  - class/unclassified-parameter
+  - source/partial
+  - flag/divergence
 ---
 
 # OLS polar window upper CL bound
 
 **Definition.** Upper CL bound of the OLS window, set at 85% of CL_max to avoid stall contamination.
+
+⚪ **Unclassified parameter.** Not yet decided whether this is a user input or an internal tuning value.
 
 **Value.** `0.85`
 
@@ -26,7 +34,8 @@ cl_hi = 0.85 * cl_max
 
 **Consumed by.**
 
-- in this graph: [[prt-cd0-fit|Band cd0 (fitted intercept)]]
+- in this graph: `Band cd0 (fitted intercept)`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `_fit_polar_ols:343`
 
 **Source.** 🟡 PARTIAL

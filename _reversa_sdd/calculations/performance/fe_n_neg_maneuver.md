@@ -6,11 +6,20 @@ unit: g
 cluster: perf-envelope
 user_visible: true
 source_status: PARTIAL
+node_class: derived
+tags:
+  - cluster/perf-envelope
+  - class/derived
+  - source/partial
+  - surface/user-visible
+  - flag/divergence
 ---
 
 # Negative maneuver load factor
 
 **Definition.** Achievable negative load factor, clipped at -0.4 times the positive g-limit.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -18,7 +27,14 @@ source_status: PARTIAL
 n_neg = max(q * wing_area_m2 * cl_min / weight, -0.4 * g_limit)
 ```
 
-**Inputs.** [[fe_q|Dynamic pressure]] · [[fe_wing_area|Reference wing area]] · [[fe_cl_min|Inverted maximum lift coefficient]] · [[fe_weight|Aircraft weight]] · [[fe_g_limit|Structural limit load factor]] · [[fe_neg_g_factor|Negative g-limit ratio]]
+**Inputs.**
+
+- [[fe_q|Dynamic pressure]]
+- [[fe_wing_area|Reference wing area]]  — *× unit*
+- [[fe_cl_min|Inverted maximum lift coefficient]]  — *⊣ limit*
+- [[fe_weight|Aircraft weight]]
+- [[fe_g_limit|Structural limit load factor]]  — *⤵ fallback*
+- [[fe_neg_g_factor|Negative g-limit ratio]]  — *⊣ limit*
 
 **Produced by.** `app/services/flight_envelope_service.py:328` — `compute_vn_curve`
 

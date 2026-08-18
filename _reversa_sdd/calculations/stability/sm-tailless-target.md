@@ -6,11 +6,21 @@ unit: – (fraction of MAC)
 cluster: stability
 user_visible: true
 source_status: SOURCED
+node_class: unclassified-constant
+tags:
+  - cluster/stability
+  - class/unclassified-constant
+  - source/sourced
+  - surface/user-visible
+  - flag/anomaly
+  - flag/divergence
 ---
 
 # Tailless SM target
 
 **Definition.** Recommended static margin for tailless / flying-wing configurations, taken as the midpoint of the 5–10 % MAC band.
+
+⚪ **Unclassified constant.** Not yet decided whether this is a rule of thumb, a calibration or a physical value. Classifying it is open work — it is deliberately not guessed.
 
 **Value.** `0.075`
 

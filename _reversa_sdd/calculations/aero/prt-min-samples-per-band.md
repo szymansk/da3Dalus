@@ -6,11 +6,20 @@ unit: count
 cluster: aero-polars
 user_visible: false
 source_status: NO_SOURCE_FOUND
+node_class: unclassified-parameter
+tags:
+  - cluster/aero-polars
+  - class/unclassified-parameter
+  - source/no-source-found
+  - flag/anomaly
+  - flag/divergence
 ---
 
 # Minimum samples per V-band / per OLS window
 
 **Definition.** Minimum number of sweep points required before a band is fitted rather than falling back.
+
+⚪ **Unclassified parameter.** Not yet decided whether this is a user input or an internal tuning value.
 
 **Value.** `6`
 
@@ -26,7 +35,8 @@ _MIN_SAMPLES_PER_BAND: int = 6
 
 **Consumed by.**
 
-- in this graph: [[prt-top-band-fallback|top_band_fallback flag (in build_re_table)]]
+- in this graph: `top_band_fallback flag (in build_re_table)`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `_fit_polar_ols:347` · `build_re_table:482`
 
 **Source.** 🔴 NO SOURCE FOUND

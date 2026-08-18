@@ -6,11 +6,19 @@ unit: m/s
 cluster: perf-envelope
 user_visible: true
 source_status: PARTIAL
+node_class: unclassified-parameter
+tags:
+  - cluster/perf-envelope
+  - class/unclassified-parameter
+  - source/partial
+  - surface/user-visible
 ---
 
 # Maximum level speed
 
 **Definition.** Max level speed goal from the flight profile, else the 28 m/s default.
+
+⚪ **Unclassified parameter.** Not yet decided whether this is a user input or an internal tuning value.
 
 **Formula — as the code writes it.**
 
@@ -18,13 +26,16 @@ source_status: PARTIAL
 v = goals.get("max_level_speed_mps"); return float(v) if v is not None else 28.0
 ```
 
-**Inputs.** [[fe_v_max_default|Default maximum level speed]]
+**Inputs.**
+
+- [[fe_v_max_default|Default maximum level speed]]  — *⤵ fallback*
 
 **Produced by.** `app/services/flight_envelope_service.py:580` — `_get_v_max`
 
 **Consumed by.**
 
-- in this graph: [[fe_v_dive|Dive speed]] · [[kpi_dive_speed|KPI: dive speed]] · [[kpi_max_speed|KPI: max speed]]
+- in this graph: `Dive speed` · `KPI: dive speed` · `KPI: max speed`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 
 **Source.** 🟡 PARTIAL
 

@@ -6,11 +6,19 @@ unit: dimensionless
 cluster: aero-polars
 user_visible: false
 source_status: PARTIAL
+node_class: derived
+tags:
+  - cluster/aero-polars
+  - class/derived
+  - source/partial
+  - flag/divergence
 ---
 
 # Airfoil polar curvature k
 
 **Definition.** Quadratic coefficient of the 2D drag polar around cl0.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -18,13 +26,16 @@ source_status: PARTIAL
 k_fit = float(p[0])
 ```
 
-**Inputs.** [[alr-alpha-sweep|Alpha sweep bounds and step]]
+**Inputs.**
+
+- [[alr-alpha-sweep|Alpha sweep bounds and step]]  — *⊣ limit*
 
 **Produced by.** `app/services/airfoil_low_re_service.py:661` — `_extract_metrics`
 
 **Consumed by.**
 
-- in this graph: [[alr-best-ld-cl|CL at maximum L/D (closed form)]] · [[alr-cd-at-target|CD at target CL]]
+- in this graph: `CL at maximum L/D (closed form)` · `CD at target CL`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `AirfoilLowRePolarModel.k` · `best_ld_cl:760` · `score_target_cl:1022,1045`
 
 **Source.** 🟡 PARTIAL

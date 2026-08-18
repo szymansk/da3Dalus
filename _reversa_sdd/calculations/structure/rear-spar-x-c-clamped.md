@@ -6,11 +6,22 @@ unit: dimensionless (x/c)
 cluster: structure
 user_visible: true
 source_status: PARTIAL
+node_class: derived
+tags:
+  - cluster/structure
+  - class/derived
+  - source/partial
+  - surface/user-visible
+  - flag/anomaly
+  - flag/divergence
+  - flag/scale
 ---
 
 # Clamped rear-spar chord location
 
 **Definition.** The chordwise location actually used for the rear spar: the requested x/c pulled forward to hinge − clearance when it would sit at or behind the hinge. Raises RearSparClearanceInfeasible rather than clamping when that would breach the LE floor.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -21,7 +32,12 @@ if limit < _MIN_REAR_X_C:
 return min(requested_x_c, limit)
 ```
 
-**Inputs.** [[rear-x-over-chord|Rear-spar chord fraction (requested)]] · [[wing-hinge-x-c|Most-forward control-surface hinge]] · [[rear-clearance-fraction|Rear-spar control-surface clearance]] · [[min-rear-x-c|Minimum rear-spar chord location]]
+**Inputs.**
+
+- [[rear-x-over-chord|Rear-spar chord fraction (requested)]]
+- [[wing-hinge-x-c|Most-forward control-surface hinge]]
+- [[rear-clearance-fraction|Rear-spar control-surface clearance]]
+- [[min-rear-x-c|Minimum rear-spar chord location]]  — *⊣ limit*
 
 **Produced by.** `cad_designer/airplane/geometry/spar_solver.py:255` — `rear_spar_x_c_with_clearance`
 

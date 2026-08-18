@@ -6,11 +6,21 @@ unit: deg
 cluster: stability
 user_visible: true
 source_status: SOURCED
+node_class: derived
+tags:
+  - cluster/stability
+  - class/derived
+  - source/sourced
+  - surface/user-visible
+  - flag/anomaly
+  - flag/divergence
 ---
 
 # Trimmed control deflection
 
 **Definition.** Control deflection at which the target aerodynamic coefficient is achieved.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -20,13 +30,19 @@ trimmed_deflection = brentq(residual, lower, upper, xtol=1e-6, maxiter=50)
 trimmed_deflection=round(trimmed_deflection, 6),
 ```
 
-**Inputs.** [[aerobuildup-trim-residual|AeroBuildup trim residual]] · [[brentq-xtol|Brent root-finder tolerance]] · [[brentq-maxiter|Brent root-finder iteration cap]] · [[deflection-bounds|Trim search bounds]]
+**Inputs.**
+
+- [[aerobuildup-trim-residual|AeroBuildup trim residual]]
+- [[brentq-xtol|Brent root-finder tolerance]]  — *ε tolerance*
+- [[brentq-maxiter|Brent root-finder iteration cap]]
+- [[deflection-bounds|Trim search bounds]]  — *⊣ limit*
 
 **Produced by.** `app/services/aerobuildup_trim_service.py:214` — `trim_with_aerobuildup`
 
 **Consumed by.**
 
-- in this graph: [[achieved-coefficient|Achieved target coefficient]]
+- in this graph: `Achieved target coefficient`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `app/services/aerobuildup_trim_service.py:236-242 (final re-run), :254, :309, :331` · `app/api/v2/endpoints/operating_points.py:214-216` · `app/services/retrim_service.py:22` · `frontend/hooks/useOperatingPoints.ts`
 
 **Source.** 🟢 SOURCED

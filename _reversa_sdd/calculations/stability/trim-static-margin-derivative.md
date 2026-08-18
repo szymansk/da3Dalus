@@ -6,11 +6,21 @@ unit: – (fraction of MAC)
 cluster: stability
 user_visible: true
 source_status: SOURCED
+node_class: derived
+tags:
+  - cluster/stability
+  - class/derived
+  - source/sourced
+  - surface/user-visible
+  - flag/anomaly
+  - flag/divergence
 ---
 
 # Static margin from derivatives
 
 **Definition.** Static margin inferred at a trim point from the ratio of the pitch and lift alpha-derivatives.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -19,7 +29,9 @@ if has_cm_a and abs(cl_a) > 1e-6:
     static_margin = round(-cm_a / cl_a, 4)
 ```
 
-**Inputs.** [[cl-a-guard-epsilon|CL_alpha division guard]]
+**Inputs.**
+
+- [[cl-a-guard-epsilon|CL_alpha division guard]]  — *ε tolerance*
 
 **Produced by.** `app/services/trim_enrichment_service.py:146` — `classify_stability`
 

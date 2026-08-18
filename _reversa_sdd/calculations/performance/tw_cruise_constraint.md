@@ -6,11 +6,20 @@ unit: dimensionless
 cluster: perf-matching
 user_visible: true
 source_status: SOURCED
+node_class: derived
+tags:
+  - cluster/perf-matching
+  - class/derived
+  - source/sourced
+  - surface/user-visible
+  - flag/divergence
 ---
 
 # Cruise constraint T/W
 
 **Definition.** T/W required for level cruise at V_cruise.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -18,7 +27,12 @@ source_status: SOURCED
 return q * cd0 / ws + ws * k / q
 ```
 
-**Inputs.** [[ws_range_mc|W/S sweep vector]] · [[v_cruise_resolved|Resolved cruise speed]] · [[ar_resolved|Resolved aspect ratio]] · [[rho_sl|Sea-level ISA density]]
+**Inputs.**
+
+- [[ws_range_mc|W/S sweep vector]]
+- [[v_cruise_resolved|Resolved cruise speed]]
+- [[ar_resolved|Resolved aspect ratio]]  — *⤵ fallback*
+- [[rho_sl|Sea-level ISA density]]  — *⤵ fallback*
 
 **Produced by.** `app/services/matching_chart_service.py:374` — `_cruise_constraint`
 

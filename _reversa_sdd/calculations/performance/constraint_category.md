@@ -6,11 +6,21 @@ unit: enum
 cluster: perf-matching
 user_visible: true
 source_status: NO_SOURCE_FOUND
+node_class: derived
+tags:
+  - cluster/perf-matching
+  - class/derived
+  - source/no-source-found
+  - surface/user-visible
+  - flag/anomaly
+  - flag/divergence
 ---
 
 # Constraint category tag
 
 **Definition.** Provenance label classifying each constraint as universal, RC-specific, or CS-25-only.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 

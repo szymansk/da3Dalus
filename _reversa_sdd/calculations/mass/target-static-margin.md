@@ -6,11 +6,21 @@ unit: fraction of MAC (UI label '% MAC')
 cluster: mass
 user_visible: true
 source_status: PARTIAL
+node_class: user-input
+tags:
+  - cluster/mass
+  - class/user-input
+  - source/partial
+  - surface/user-visible
+  - flag/anomaly
+  - flag/divergence
 ---
 
 # Target static margin
 
 **Definition.** User-chosen design static margin as a fraction of MAC. Pure design choice — never auto-calculated (DESIGN_CHOICE_PARAMS).
+
+**User input.** Supplied from outside the calculation (assumption store or request), not derived.
 
 **Value.** `0.12 (app/schemas/design_assumption.py:75)`
 
@@ -20,7 +30,8 @@ source_status: PARTIAL
 
 **Consumed by.**
 
-- in this graph: [[cg-stability-aft|Aft CG stability limit]] · [[cg-x-design|Design CG_x (aerodynamic CG target)]] · [[sm-classification|Static-margin classification]]
+- in this graph: `Aft CG stability limit` · `Design CG_x (aerodynamic CG target)` · `Static-margin classification`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `app/services/assumption_compute_service.py:108 (cg_x)` · `app/services/assumption_compute_service.py:473 (compute_stability_envelope)` · `app/services/assumption_compute_service.py:726 (ctx['target_static_margin'])` · `app/services/loading_scenario_service.py:112 / :585-601` · `app/services/invalidation_service.py:23 (_RECOMPUTE_TRIGGERING_PARAMS)` · `app/api/v2/endpoints/aeroplane/sm_suggestions.py:74` · `app/schemas/mass_cg.py:21` · `frontend design-assumptions panel`
 
 **Source.** 🟡 PARTIAL

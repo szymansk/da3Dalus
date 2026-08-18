@@ -6,11 +6,19 @@ unit: % MAC
 cluster: stability
 user_visible: true
 source_status: SOURCED
+node_class: numerical-tolerance
+tags:
+  - cluster/stability
+  - class/numerical-tolerance
+  - source/sourced
+  - surface/user-visible
 ---
 
 # Neutral/unstable boundary
 
 **Definition.** Static margin percent above which the aircraft is labelled 'neutral' rather than 'unstable'.
+
+**Numerical tolerance.** A solver or comparison epsilon, not a domain value. ADR 0023 does not apply.
 
 **Value.** `0`
 
@@ -20,7 +28,8 @@ source_status: SOURCED
 
 **Consumed by.**
 
-- in this graph: [[stability-class|Stability classification (static margin band)]]
+- in this graph: `Stability classification (static margin band)`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `app/services/stability_service.py:79`
 
 **Source.** 🟢 SOURCED

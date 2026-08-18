@@ -6,11 +6,21 @@ unit: list[str]
 cluster: perf-matching
 user_visible: true
 source_status: NO_SOURCE_FOUND
+node_class: derived
+tags:
+  - cluster/perf-matching
+  - class/derived
+  - source/no-source-found
+  - surface/user-visible
+  - flag/anomaly
+  - flag/divergence
 ---
 
 # Matching-chart design warnings
 
 **Definition.** User-facing warnings emitted for defaulted Oswald factor and estimated cruise speed.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -18,7 +28,10 @@ source_status: NO_SOURCE_FOUND
 warnings.append(...)
 ```
 
-**Inputs.** [[e_resolved|Resolved Oswald factor]] · [[v_cruise_resolved|Resolved cruise speed]]
+**Inputs.**
+
+- [[e_resolved|Resolved Oswald factor]]  — *⤵ fallback*
+- [[v_cruise_resolved|Resolved cruise speed]]
 
 **Produced by.** `app/services/matching_chart_service.py:759` — `compute_chart`
 

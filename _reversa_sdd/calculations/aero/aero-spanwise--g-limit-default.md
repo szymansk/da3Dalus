@@ -6,11 +6,22 @@ unit: g
 cluster: aero-spanwise
 user_visible: true
 source_status: SOURCED
+node_class: unclassified-constant
+tags:
+  - cluster/aero-spanwise
+  - class/unclassified-constant
+  - source/sourced
+  - surface/user-visible
+  - flag/anomaly
+  - flag/divergence
+  - flag/scale
 ---
 
 # Default manoeuvre load factor
 
 **Definition.** Load factor used for spar sizing when the aeroplane has no g_limit design assumption.
+
+⚪ **Unclassified constant.** Not yet decided whether this is a rule of thumb, a calibration or a physical value. Classifying it is open work — it is deliberately not guessed.
 
 **Value.** `3.0`
 
@@ -26,7 +37,8 @@ _G_LIMIT_DEFAULT = 3.0
 
 **Consumed by.**
 
-- in this graph: [[g-limit-effective|Effective manoeuvre load factor]] · [[resolved-g-limit-plan|Limit load factor (plan path)]] · [[structure--g-limit|Manoeuvre limit load factor]]
+- in this graph: `Effective manoeuvre load factor` · `Limit load factor (plan path)` · `Manoeuvre limit load factor`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `compute_spar_sizing`
 
 **Source.** 🟢 SOURCED

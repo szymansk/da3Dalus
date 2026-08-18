@@ -6,11 +6,20 @@ unit: – (dimensionless)
 cluster: stability
 user_visible: false
 source_status: SOURCED
+node_class: derived
+tags:
+  - cluster/stability
+  - class/derived
+  - source/sourced
+  - flag/anomaly
+  - flag/divergence
 ---
 
 # Aerodynamic-centre pitching moment
 
 **Definition.** Baseline (zero-elevator) pitching moment coefficient of the aircraft, intended to be taken about the aerodynamic centre.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -18,13 +27,16 @@ source_status: SOURCED
 cm_ac = cm_baseline
 ```
 
-**Inputs.** [[cm-baseline|Baseline pitching moment (zero deflection)]]
+**Inputs.**
+
+- [[cm-baseline|Baseline pitching moment (zero deflection)]]
 
 **Produced by.** `app/services/elevator_authority_service.py:731` — `_compute_forward_cg_limit_asb`
 
 **Consumed by.**
 
-- in this graph: [[net-pitch-up|Net nose-up moment coefficient]]
+- in this graph: `Net nose-up moment coefficient`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `app/services/elevator_authority_service.py:236,310,753,765,786` · `app/services/elevator_authority_service.py:1072 (AVL twin)`
 
 **Source.** 🟢 SOURCED

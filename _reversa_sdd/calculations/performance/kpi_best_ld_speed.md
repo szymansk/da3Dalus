@@ -6,11 +6,21 @@ unit: m/s
 cluster: perf-envelope
 user_visible: true
 source_status: PARTIAL
+node_class: derived
+tags:
+  - cluster/perf-envelope
+  - class/derived
+  - source/partial
+  - surface/user-visible
+  - flag/anomaly
+  - flag/divergence
 ---
 
 # KPI: best L/D speed
 
 **Definition.** Minimum-drag speed from a trimmed marker, else the cached polar value, else 1.4·V_s.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -18,7 +28,10 @@ source_status: PARTIAL
 marker.velocity_mps | v_md_polar_mps | 1.4 * stall_speed_mps
 ```
 
-**Inputs.** [[fe_v_stall|Stall speed (1 g)]] · [[kpi_best_ld_heuristic|Best-L/D heuristic factor]]
+**Inputs.**
+
+- [[fe_v_stall|Stall speed (1 g)]]  — *⊣ limit*
+- [[kpi_best_ld_heuristic|Best-L/D heuristic factor]]
 
 **Produced by.** `app/services/flight_envelope_service.py:410` — `derive_performance_kpis`
 

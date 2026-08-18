@@ -6,11 +6,20 @@ unit: – (fraction of MAC)
 cluster: stability
 user_visible: true
 source_status: SOURCED
+node_class: derived
+tags:
+  - cluster/stability
+  - class/derived
+  - source/sourced
+  - surface/user-visible
+  - flag/anomaly
 ---
 
 # Static margin at forward CG
 
 **Definition.** Static margin evaluated at the most-forward loading CG.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -18,13 +27,16 @@ source_status: SOURCED
 sm_fwd: float = (x_np_m - cg_fwd_actual) / mac_m
 ```
 
-**Inputs.** [[mac-m-fallback|MAC fallback]]
+**Inputs.**
+
+- [[mac-m-fallback|MAC fallback]]  — *⤵ fallback*
 
 **Produced by.** `app/services/sm_sizing_service.py:508` — `_suggest_corrections_fwd`
 
 **Consumed by.**
 
-- in this graph: [[predicted-sm-fwd-htail|Predicted forward SM after htail scale]] · [[sm-deficit-fwd|Forward-CG SM excess]]
+- in this graph: `Predicted forward SM after htail scale` · `Forward-CG SM excess`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `app/services/sm_sizing_service.py:516,521,527,529,538,552,556,575,576,580`
 
 **Source.** 🟢 SOURCED

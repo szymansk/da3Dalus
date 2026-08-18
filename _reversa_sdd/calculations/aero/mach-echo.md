@@ -6,11 +6,21 @@ unit: -
 cluster: aero-spanwise
 user_visible: true
 source_status: PARTIAL
+node_class: derived
+tags:
+  - cluster/aero-spanwise
+  - class/derived
+  - source/partial
+  - surface/user-visible
+  - flag/anomaly
+  - flag/divergence
 ---
 
 # Mach number echo
 
 **Definition.** Mach number echoed from the solver result, defaulting to 0.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Value.** `0`
 

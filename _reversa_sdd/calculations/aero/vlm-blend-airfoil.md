@@ -6,11 +6,20 @@ unit: n/a
 cluster: aero-strips
 user_visible: false
 source_status: SOURCED
+node_class: derived
+tags:
+  - cluster/aero-strips
+  - class/derived
+  - source/sourced
+  - flag/anomaly
+  - flag/divergence
 ---
 
 # Blended section airfoil
 
 **Definition.** Airfoil of an inserted section, blended between the bounding airfoils.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -18,7 +27,9 @@ source_status: SOURCED
 xa.airfoil.blend_with_another_airfoil(airfoil=xb.airfoil, blend_fraction=b)
 ```
 
-**Inputs.** [[vlm-blend-fraction|Inserted-section blend fraction]]
+**Inputs.**
+
+- [[vlm-blend-fraction|Inserted-section blend fraction]]  — *⊣ limit*
 
 **Produced by.** `app/services/vlm_strip_forces.py:106` — `_blend_xsec`
 

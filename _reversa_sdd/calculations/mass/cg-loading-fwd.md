@@ -6,11 +6,20 @@ unit: m
 cluster: mass
 user_visible: true
 source_status: SOURCED
+node_class: derived
+tags:
+  - cluster/mass
+  - class/derived
+  - source/sourced
+  - surface/user-visible
+  - flag/divergence
 ---
 
 # Forward loading CG
 
 **Definition.** Forward-most CG produced by any user-defined loading scenario.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -18,13 +27,17 @@ source_status: SOURCED
 "cg_loading_fwd_m": min(cg_values)
 ```
 
-**Inputs.** [[scenario-cg-x|Loading-scenario CG_x]] · [[base-cg-x-default|Fallback base CG_x for scenario CG]]
+**Inputs.**
+
+- [[scenario-cg-x|Loading-scenario CG_x]]
+- [[base-cg-x-default|Fallback base CG_x for scenario CG]]  — *ε tolerance*
 
 **Produced by.** `app/services/loading_scenario_service.py:445` — `compute_loading_envelope_for_aeroplane`
 
 **Consumed by.**
 
-- in this graph: [[cg-envelope-violation-mm|CG envelope violation distance]] · [[sm-at-fwd-api|Static margin at forward loading CG (API)]] · [[sm-at-fwd-ctx|Static margin at forward loading CG (cached)]]
+- in this graph: `CG envelope violation distance` · `Static margin at forward loading CG (API)` · `Static margin at forward loading CG (cached)`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `app/services/assumption_compute_service.py:795` · `app/services/loading_scenario_service.py:265 (ctx['cg_forward_m'])` · `app/services/loading_scenario_service.py:575/623 (CgEnvelopeRead)` · `app/services/sm_sizing_service.py:499 (reads ctx['cg_forward_m'])` · `frontend/hooks/useLoadingScenarios.ts:86`
 
 **Source.** 🟢 SOURCED

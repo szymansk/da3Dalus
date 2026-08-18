@@ -6,11 +6,19 @@ unit: dimensionless
 cluster: aero-polars
 user_visible: false
 source_status: PARTIAL
+node_class: derived
+tags:
+  - cluster/aero-polars
+  - class/derived
+  - source/partial
+  - flag/divergence
 ---
 
 # CL at minimum drag (cl0)
 
 **Definition.** CL at the vertex of the fitted parabolic drag polar.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -18,13 +26,16 @@ source_status: PARTIAL
 cl0_fit = -b_fit / (2.0 * k_fit)
 ```
 
-**Inputs.** [[alr-alpha-sweep|Alpha sweep bounds and step]]
+**Inputs.**
+
+- [[alr-alpha-sweep|Alpha sweep bounds and step]]  — *⊣ limit*
 
 **Produced by.** `app/services/airfoil_low_re_service.py:665` — `_extract_metrics`
 
 **Consumed by.**
 
-- in this graph: [[alr-best-ld-cl|CL at maximum L/D (closed form)]] · [[alr-cd-at-target|CD at target CL]]
+- in this graph: `CL at maximum L/D (closed form)` · `CD at target CL`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `AirfoilLowRePolarModel.cl0` · `best_ld_cl:760` · `score_target_cl:1023,1045`
 
 **Source.** 🟡 PARTIAL

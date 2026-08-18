@@ -6,11 +6,21 @@ unit: mixed (deg, -, -)
 cluster: aero-spanwise
 user_visible: true
 source_status: SOURCED
+node_class: derived
+tags:
+  - cluster/aero-spanwise
+  - class/derived
+  - source/sourced
+  - surface/user-visible
+  - flag/anomaly
+  - flag/divergence
 ---
 
 # Minimum drag coefficient point
 
 **Definition.** Sweep point with the smallest CD.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -18,13 +28,17 @@ source_status: SOURCED
 i = int(np.argmin(cd))
 ```
 
-**Inputs.** [[cd-values|Drag coefficient array]] · [[alpha-array|Alpha sweep array]]
+**Inputs.**
+
+- [[cd-values|Drag coefficient array]]
+- [[alpha-array|Alpha sweep array]]
 
 **Produced by.** `app/services/analysis_service.py:120` — `_compute_cl_cd_points`
 
 **Consumed by.**
 
-- in this graph: [[characteristic-points|Characteristic points dict]]
+- in this graph: `Characteristic points dict`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `alpha-sweep PNG` · `copilot_tools 'min_drag'` · `API alpha_sweep response`
 
 **Source.** 🟢 SOURCED

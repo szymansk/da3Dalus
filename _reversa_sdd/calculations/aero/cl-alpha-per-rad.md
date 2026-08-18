@@ -6,11 +6,19 @@ unit: 1/rad
 cluster: aero-spanwise
 user_visible: false
 source_status: SOURCED
+node_class: unclassified-parameter
+tags:
+  - cluster/aero-spanwise
+  - class/unclassified-parameter
+  - source/sourced
+  - flag/divergence
 ---
 
 # Lift-curve slope from context
 
 **Definition.** Lift-curve slope read out of the cached assumption computation context.
+
+⚪ **Unclassified parameter.** Not yet decided whether this is a user input or an internal tuning value.
 
 **Formula — as the code writes it.**
 
@@ -24,7 +32,8 @@ raw_cl_alpha = ctx.get("cl_alpha_per_rad"); cl_alpha_from_ctx = float(raw_cl_alp
 
 **Consumed by.**
 
-- in this graph: [[alpha-best-glide-deg|Alpha at best glide]] · [[alpha-min-sink-deg|Alpha at minimum sink]] · [[alpha-stall-deg|Alpha at stall]]
+- in this graph: `Alpha at best glide` · `Alpha at minimum sink` · `Alpha at stall`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 
 **Source.** 🟢 SOURCED
 

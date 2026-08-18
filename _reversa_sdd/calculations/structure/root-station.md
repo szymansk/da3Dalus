@@ -5,11 +5,21 @@ unit: -
 cluster: structure
 user_visible: true
 source_status: SOURCED
+node_class: derived
+tags:
+  - cluster/structure
+  - class/derived
+  - source/sourced
+  - surface/user-visible
+  - flag/anomaly
+  - flag/divergence
 ---
 
 # Root sizing station
 
 **Definition.** The innermost sized station — the headline (worst-case) result for a typical wing. Taken as the LAST element because the station list is ordered tip-to-root.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 

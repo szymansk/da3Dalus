@@ -6,11 +6,22 @@ unit: dimensionless (ΔCL)
 cluster: aero-polars
 user_visible: true
 source_status: PARTIAL
+node_class: derived
+tags:
+  - cluster/aero-polars
+  - class/derived
+  - source/partial
+  - surface/user-visible
+  - flag/anomaly
+  - flag/divergence
+  - flag/scale
 ---
 
 # cl_max_margin
 
 **Definition.** Section CL_max minus the largest resolved target CL; negative means stall risk.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -18,7 +29,12 @@ source_status: PARTIAL
 cl_max_margin = cl_max_val - max(target_cls)
 ```
 
-**Inputs.** [[alr-cl-max|Section CL_max]] · [[sui-target-cl-cruise|target_cl_cruise]] · [[sui-target-cl-best-glide|target_cl_best_glide]] · [[sui-target-cl-min-sink|target_cl_min_sink]]
+**Inputs.**
+
+- [[alr-cl-max|Section CL_max]]  — *⊣ limit*
+- [[sui-target-cl-cruise|target_cl_cruise]]
+- [[sui-target-cl-best-glide|target_cl_best_glide]]
+- [[sui-target-cl-min-sink|target_cl_min_sink]]
 
 **Produced by.** `app/services/suitability_service.py:531` — `search_suitability`
 

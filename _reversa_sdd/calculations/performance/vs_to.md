@@ -6,11 +6,20 @@ unit: m/s
 cluster: perf-oppoints
 user_visible: true
 source_status: PARTIAL
+node_class: derived
+tags:
+  - cluster/perf-oppoints
+  - class/derived
+  - source/partial
+  - surface/user-visible
+  - flag/divergence
 ---
 
 # Takeoff-config stall speed reference
 
 **Definition.** Takeoff-configuration stall speed, falling back to the clean value.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -18,13 +27,16 @@ source_status: PARTIAL
 vs_to = _pick("v_s_to_mps") or vs_clean ... "vs_to": max(2.5, vs_to)
 ```
 
-**Inputs.** [[vs_clean|Clean stall speed reference]]
+**Inputs.**
+
+- [[vs_clean|Clean stall speed reference]]
 
 **Produced by.** `app/services/operating_point_generator_service.py:355` — `_estimate_reference_speeds`
 
 **Consumed by.**
 
-- in this graph: [[v_takeoff|takeoff_climb target speed]]
+- in this graph: `takeoff_climb target speed`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `app/services/operating_point_generator_service.py:402 (takeoff velocity)`
 
 **Source.** 🟡 PARTIAL

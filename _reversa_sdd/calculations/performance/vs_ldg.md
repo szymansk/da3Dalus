@@ -6,11 +6,20 @@ unit: m/s
 cluster: perf-oppoints
 user_visible: true
 source_status: PARTIAL
+node_class: derived
+tags:
+  - cluster/perf-oppoints
+  - class/derived
+  - source/partial
+  - surface/user-visible
+  - flag/divergence
 ---
 
 # Landing-config stall speed reference
 
 **Definition.** Landing-configuration stall speed, falling back to the clean value.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -18,13 +27,16 @@ source_status: PARTIAL
 vs_ldg = _pick("v_s0_mps") or vs_clean ... "vs_ldg": max(2.0, vs_ldg)
 ```
 
-**Inputs.** [[vs_clean|Clean stall speed reference]]
+**Inputs.**
+
+- [[vs_clean|Clean stall speed reference]]
 
 **Produced by.** `app/services/operating_point_generator_service.py:356` — `_estimate_reference_speeds`
 
 **Consumed by.**
 
-- in this graph: [[v_approach|approach_landing target speed]] · [[v_stall_with_flaps|stall_with_flaps target speed]]
+- in this graph: `approach_landing target speed` · `stall_with_flaps target speed`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `app/services/operating_point_generator_service.py:403 (approach)` · `app/services/operating_point_generator_service.py:483 (stall_with_flaps)`
 
 **Source.** 🟡 PARTIAL

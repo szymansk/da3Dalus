@@ -6,11 +6,21 @@ unit: g
 cluster: mass
 user_visible: true
 source_status: SOURCED
+node_class: derived
+tags:
+  - cluster/mass
+  - class/derived
+  - source/sourced
+  - surface/user-visible
+  - flag/anomaly
+  - flag/divergence
 ---
 
 # CAD shape own weight — solid print
 
 **Definition.** Own weight of a 'cad_shape' node printed solid: shape volume times material density.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -18,13 +28,17 @@ source_status: SOURCED
 node.volume_mm3 * density / 1e6 * node.scale_factor
 ```
 
-**Inputs.** [[mm3-density-to-grams-divisor|mm³·(kg/m³) → g divisor]] · [[node-scale-factor|Node weight scale factor]]
+**Inputs.**
+
+- [[mm3-density-to-grams-divisor|mm³·(kg/m³) → g divisor]]  — *× unit*
+- [[node-scale-factor|Node weight scale factor]]
 
 **Produced by.** `app/services/component_tree_service.py:457` — `_weight_from_cad_shape`
 
 **Consumed by.**
 
-- in this graph: [[node-own-weight|Node own weight]]
+- in this graph: `Node own weight`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `app/services/component_tree_service.py:470 (_calculate_own_weight)` · `app/services/component_tree_service.py:106` · `app/services/component_tree_service.py:401` · `frontend/components/workbench/ComponentTree.tsx:101`
 
 **Source.** 🟢 SOURCED

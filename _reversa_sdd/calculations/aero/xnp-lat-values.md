@@ -6,11 +6,19 @@ unit: m
 cluster: aero-spanwise
 user_visible: true
 source_status: NO_SOURCE_FOUND
+node_class: derived
+tags:
+  - cluster/aero-spanwise
+  - class/derived
+  - source/no-source-found
+  - surface/user-visible
 ---
 
 # Lateral neutral point array
 
 **Definition.** Xnp_lat vs alpha pulled from result.reference.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -24,7 +32,8 @@ np.atleast_1d(np.asarray(result.reference.Xnp_lat, dtype=float))
 
 **Consumed by.**
 
-- in this graph: [[neutral-combined-metric|Neutral-point sensitivity metric]] · [[variation-span|Series span]] · [[xnp-lat-jump|Xnp_lat jump]] · [[xnp-lat-median-deviation|Xnp_lat outlier deviation]]
+- in this graph: `Neutral-point sensitivity metric` · `Series span` · `Xnp_lat jump` · `Xnp_lat outlier deviation`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `_collect_xnp_lat_labels` · `_compute_neutral_strip_colors` · `_classify_variation`
 
 **Source.** 🔴 NO SOURCE FOUND

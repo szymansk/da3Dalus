@@ -6,11 +6,20 @@ unit: -
 cluster: perf-envelope
 user_visible: true
 source_status: SOURCED
+node_class: unclassified-constant
+tags:
+  - cluster/perf-envelope
+  - class/unclassified-constant
+  - source/sourced
+  - surface/user-visible
+  - flag/divergence
 ---
 
 # Soll field-friendliness score
 
 **Definition.** Target polygon's field axis is pinned to full score by construction.
+
+⚪ **Unclassified constant.** Not yet decided whether this is a rule of thumb, a calibration or a physical value. Classifying it is open work — it is deliberately not guessed.
 
 **Value.** `1.0`
 

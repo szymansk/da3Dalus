@@ -6,11 +6,20 @@ unit: panels
 cluster: aero-strips
 user_visible: false
 source_status: NO_SOURCE_FOUND
+node_class: unclassified-constant
+tags:
+  - cluster/aero-strips
+  - class/unclassified-constant
+  - source/no-source-found
+  - flag/anomaly
+  - flag/divergence
 ---
 
 # Spanwise panel budget per half-wing
 
 **Definition.** Target number of spanwise panels distributed over one half-wing before the VLM solve.
+
+⚪ **Unclassified constant.** Not yet decided whether this is a rule of thumb, a calibration or a physical value. Classifying it is open work — it is deliberately not guessed.
 
 **Value.** `40`
 
@@ -26,7 +35,8 @@ _SPANWISE_PANELS_PER_HALF = 40
 
 **Consumed by.**
 
-- in this graph: [[vlm-panels-per-segment|Panels allotted to a wing segment]]
+- in this graph: `Panels allotted to a wing segment`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `app/services/vlm_strip_forces.py:_remesh_airplane` · `app/services/vlm_strip_forces.py:compute_vlm_strip_forces`
 
 **Source.** 🔴 NO SOURCE FOUND

@@ -6,11 +6,21 @@ unit: m²
 cluster: aero-spanwise
 user_visible: true
 source_status: SOURCED
+node_class: derived
+tags:
+  - cluster/aero-spanwise
+  - class/derived
+  - source/sourced
+  - surface/user-visible
+  - flag/anomaly
+  - flag/divergence
 ---
 
 # Reference wing area
 
 **Definition.** Wing reference area taken off the built AeroSandbox airplane.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -24,7 +34,8 @@ s_ref = float(getattr(asb_airplane, "s_ref", 0.0) or 0.0)
 
 **Consumed by.**
 
-- in this graph: [[speed-polar-v|Glide forward speed]] · [[v-stall|Stall speed]]
+- in this graph: `Glide forward speed` · `Stall speed`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `SpeedPolar.s_ref`
 
 **Source.** 🟢 SOURCED

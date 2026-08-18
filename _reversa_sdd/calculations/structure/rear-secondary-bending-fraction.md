@@ -5,11 +5,20 @@ unit: dimensionless
 cluster: structure
 user_visible: true
 source_status: NO_SOURCE_FOUND
+node_class: unclassified-parameter
+tags:
+  - cluster/structure
+  - class/unclassified-parameter
+  - source/no-source-found
+  - surface/user-visible
+  - flag/anomaly
 ---
 
 # Rear secondary bending fraction
 
 **Definition.** Fraction of the bending moment M(y) the rear spar also carries as genuine secondary bending.
+
+⚪ **Unclassified parameter.** Not yet decided whether this is a user input or an internal tuning value.
 
 **Value.** `0.0`
 
@@ -30,7 +39,8 @@ rear_secondary_bending_fraction: float = Field(
 
 **Consumed by.**
 
-- in this graph: [[rear-secondary-bending|Rear-spar secondary bending share]]
+- in this graph: `Rear-spar secondary bending share`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `app/services/spar_plan_service.py:438` · `app/services/spar_plan_service.py:454`
 
 **Source.** 🔴 NO SOURCE FOUND

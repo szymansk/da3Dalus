@@ -6,11 +6,20 @@ unit: N/m^2
 cluster: perf-envelope
 user_visible: false
 source_status: SOURCED
+node_class: derived
+tags:
+  - cluster/perf-envelope
+  - class/derived
+  - source/sourced
+  - flag/anomaly
+  - flag/divergence
 ---
 
 # Wing loading (gust path)
 
 **Definition.** Weight per reference area used in the gust mass ratio and load increment.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -18,13 +27,18 @@ source_status: SOURCED
 wing_loading = mass_kg * g / s_ref
 ```
 
-**Inputs.** [[fe_mass|Design mass (envelope)]] · [[fe_wing_area|Reference wing area]] · [[fe_gravity|Gravitational acceleration (flight envelope)]]
+**Inputs.**
+
+- [[fe_mass|Design mass (envelope)]]  — *⤵ fallback*
+- [[fe_wing_area|Reference wing area]]  — *× unit*
+- [[fe_gravity|Gravitational acceleration (flight envelope)]]
 
 **Produced by.** `app/services/flight_envelope_service.py:88` — `_compute_mu_g`
 
 **Consumed by.**
 
-- in this graph: [[fe_delta_n|Gust load-factor increment]] · [[fe_mu_g|Gust mass ratio]]
+- in this graph: `Gust load-factor increment` · `Gust mass ratio`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 
 **Source.** 🟢 SOURCED
 

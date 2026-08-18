@@ -6,11 +6,20 @@ unit: n/a
 cluster: aero-strips
 user_visible: false
 source_status: NO_SOURCE_FOUND
+node_class: derived
+tags:
+  - cluster/aero-strips
+  - class/derived
+  - source/no-source-found
+  - flag/anomaly
+  - flag/divergence
 ---
 
 # Per-section failure warnings
 
 **Definition.** Warning strings emitted when an airfoil build fails or cd is NaN for a section.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -18,7 +27,10 @@ source_status: NO_SOURCE_FOUND
 msg = f"Turbulator ΔCD0: NaN cd at y={sec.y_m:.3f}m (Re={sec.re_local:.0f}, CL={sec.cl:.3f}, xtr={xtr_sec:.3f})"
 ```
 
-**Inputs.** [[cdftp-cd-clean|Clean section drag (installed-turbulator path)]] · [[cdftp-cd-tripped|Tripped section drag (installed-turbulator path)]]
+**Inputs.**
+
+- [[cdftp-cd-clean|Clean section drag (installed-turbulator path)]]
+- [[cdftp-cd-tripped|Tripped section drag (installed-turbulator path)]]
 
 **Produced by.** `app/services/turbulator_optimizer_service.py:702` — `compute_delta_cd0_from_turbulator_position`
 

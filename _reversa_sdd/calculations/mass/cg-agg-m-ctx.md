@@ -6,11 +6,19 @@ unit: m
 cluster: mass
 user_visible: true
 source_status: SOURCED
+node_class: derived
+tags:
+  - cluster/mass
+  - class/derived
+  - source/sourced
+  - surface/user-visible
 ---
 
 # Published aggregate CG (computation context)
 
 **Definition.** cg-agg cached on the aeroplane row for single-value clients and the stability chip row.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -18,7 +26,9 @@ source_status: SOURCED
 "cg_agg_m": round(cg_agg, 4) if cg_agg is not None else None
 ```
 
-**Inputs.** [[cg-agg|Aggregate CG (default scenario)]]
+**Inputs.**
+
+- [[cg-agg|Aggregate CG (default scenario)]]  — *⤵ fallback*
 
 **Produced by.** `app/services/assumption_compute_service.py:729` — `recompute_assumptions`
 

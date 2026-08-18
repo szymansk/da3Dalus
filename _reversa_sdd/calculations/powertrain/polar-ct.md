@@ -6,11 +6,21 @@ unit: dimensionless
 cluster: powertrain
 user_visible: true
 source_status: SOURCED
+node_class: derived
+tags:
+  - cluster/powertrain
+  - class/derived
+  - source/sourced
+  - surface/user-visible
+  - flag/anomaly
+  - flag/divergence
 ---
 
 # Propeller thrust coefficient
 
 **Definition.** Thrust coefficient T/(rho.n^2.D^4) linearly interpolated over J from the APC PER3 polar rows, then clamped at zero to discard the negative windmilling tail.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -18,13 +28,17 @@ source_status: SOURCED
 Ct_interp = float(np.interp(J_clamp, Js, Cts)) ; Ct_interp = max(Ct_interp, 0.0)
 ```
 
-**Inputs.** [[polar-j-clamp|Clamped advance ratio for interpolation]] · [[polar-samples-input|Propeller polar rows]]
+**Inputs.**
+
+- [[polar-j-clamp|Clamped advance ratio for interpolation]]  — *⊣ limit*
+- [[polar-samples-input|Propeller polar rows]]
 
 **Produced by.** `app/services/powertrain_performance.py:328` — `interpolate_ct_cp_pe`
 
 **Consumed by.**
 
-- in this graph: [[curve-thrust|Thrust per velocity sample]] · [[polar-pe|Propeller efficiency from polar]] · [[propop-thrust|Propeller thrust (operating-point helper)]]
+- in this graph: `Thrust per velocity sample` · `Propeller efficiency from polar` · `Propeller thrust (operating-point helper)`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `app/services/powertrain_performance.py:332` · `app/services/powertrain_performance.py:336` · `app/services/powertrain_performance.py:406` · `app/services/powertrain_performance.py:748`
 
 **Source.** 🟢 SOURCED

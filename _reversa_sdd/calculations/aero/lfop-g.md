@@ -6,11 +6,20 @@ unit: m/s²
 cluster: aero-strips
 user_visible: false
 source_status: SOURCED
+node_class: physical-constant
+tags:
+  - cluster/aero-strips
+  - class/physical-constant
+  - source/sourced
+  - flag/physical
 ---
 
 # Gravitational acceleration
 
 **Definition.** Standard gravity used to convert mass into weight.
+
+**Physical constant.** A value of nature. It must be identical everywhere it appears — a second definition is a defect by construction, not a judgement call.
+*Identified as: gravity.*
 
 **Value.** `9.80665`
 
@@ -26,7 +35,8 @@ g = 9.80665
 
 **Consumed by.**
 
-- in this graph: [[lfop-cl-target|Level-flight target lift coefficient]]
+- in this graph: `Level-flight target lift coefficient`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 
 **Source.** 🟢 SOURCED
 

@@ -6,11 +6,19 @@ unit: deg
 cluster: aero-strips
 user_visible: false
 source_status: PARTIAL
+node_class: derived
+tags:
+  - cluster/aero-strips
+  - class/derived
+  - source/partial
+  - flag/divergence
 ---
 
 # Cross-section twist array
 
 **Definition.** Absolute geometric twist of each cross-section relative to the body x-axis.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -24,7 +32,8 @@ xsec_twist = np.array([float(xs.twist) for xs in xsecs])  # degrees
 
 **Consumed by.**
 
-- in this graph: [[saoa-twist-at-y|Interpolated twist at panel y]]
+- in this graph: `Interpolated twist at panel y`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 
 **Source.** 🟡 PARTIAL
 

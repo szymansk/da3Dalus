@@ -5,11 +5,20 @@ unit: m/s
 cluster: perf-oppoints
 user_visible: true
 source_status: NO_SOURCE_FOUND
+node_class: derived
+tags:
+  - cluster/perf-oppoints
+  - class/derived
+  - source/no-source-found
+  - surface/user-visible
+  - flag/divergence
 ---
 
 # stall_with_flaps target speed
 
 **Definition.** Speed of the flapped near-stall operating point.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -17,7 +26,9 @@ source_status: NO_SOURCE_FOUND
 "velocity": max(2.0, refs["vs_ldg"] * 1.05)
 ```
 
-**Inputs.** [[vs_ldg|Landing-config stall speed reference]]
+**Inputs.**
+
+- [[vs_ldg|Landing-config stall speed reference]]
 
 **Produced by.** `app/services/operating_point_generator_service.py:483` — `_build_target_definitions`
 

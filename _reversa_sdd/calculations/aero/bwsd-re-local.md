@@ -6,11 +6,20 @@ unit: dimensionless
 cluster: aero-strips
 user_visible: true
 source_status: SOURCED
+node_class: derived
+tags:
+  - cluster/aero-strips
+  - class/derived
+  - source/sourced
+  - surface/user-visible
+  - flag/divergence
 ---
 
 # Local section Reynolds number
 
 **Definition.** Chord Reynolds number of a section at the operating velocity, floored at 1e4.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -18,13 +27,17 @@ source_status: SOURCED
 re_local=max(velocity * entry.chord_m / nu, 1e4),
 ```
 
-**Inputs.** [[bwsd-nu|Kinematic viscosity (section builder)]] · [[saoa-chord|Panel chord]]
+**Inputs.**
+
+- [[bwsd-nu|Kinematic viscosity (section builder)]]
+- [[saoa-chord|Panel chord]]
 
 **Produced by.** `app/services/turbulator_optimizer_service.py:442` — `build_wing_section_data`
 
 **Consumed by.**
 
-- in this graph: [[tos-cd-at-cl|Section cd at a target CL and trip position]] · [[tos-re-rep|Representative Reynolds number (whole scope)]]
+- in this graph: `Section cd at a target CL and trip position` · `Representative Reynolds number (whole scope)`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `app/schemas/turbulator_optimizer.py:TurbulatorSectionResult.re_local` · `frontend/components/workbench/TurbulatorEditDialog.tsx`
 
 **Source.** 🟢 SOURCED

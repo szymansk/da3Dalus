@@ -6,11 +6,21 @@ unit: -
 cluster: perf-envelope
 user_visible: true
 source_status: NO_SOURCE_FOUND
+node_class: derived
+tags:
+  - cluster/perf-envelope
+  - class/derived
+  - source/no-source-found
+  - surface/user-visible
+  - flag/anomaly
+  - flag/divergence
 ---
 
 # Field-friendliness score
 
 **Definition.** Achievement ratio of the declared target field length to the computed one, clipped to [0,1].
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -18,13 +28,17 @@ source_status: NO_SOURCE_FOUND
 score = max(0.0, min(1.0, target_field_length_m / eff))
 ```
 
-**Inputs.** [[mkpi_target_field_length|Target field length]] · [[mkpi_effective_field_length|Effective field length]]
+**Inputs.**
+
+- [[mkpi_target_field_length|Target field length]]
+- [[mkpi_effective_field_length|Effective field length]]
 
 **Produced by.** `app/services/mission_kpi_service.py:327` — `_compute_field_length_score`
 
 **Consumed by.**
 
-- in this graph: [[mkpi_field_friendliness|KPI: field friendliness]]
+- in this graph: `KPI: field friendliness`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 
 **Source.** 🔴 NO SOURCE FOUND
 

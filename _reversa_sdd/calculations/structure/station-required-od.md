@@ -6,11 +6,20 @@ unit: mm
 cluster: structure
 user_visible: false
 source_status: PARTIAL
+node_class: derived
+tags:
+  - cluster/structure
+  - class/derived
+  - source/partial
+  - flag/anomaly
+  - flag/divergence
 ---
 
 # Station strength-required OD
 
 **Definition.** The minimum solid-rod diameter at the station that meets the required section modulus — the solver's sole strength input per station.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -18,13 +27,18 @@ source_status: PARTIAL
 required_od = float(sol["solved_mm"]) if sol["solved_mm"] else 0.0
 ```
 
-**Inputs.** [[station-erf-w|Station required section modulus (plan path)]] · [[solved-rod-diameter|Solved rod diameter]] · [[rod-outer-fallback-1mm|Rod sizing outer-dimension floor]]
+**Inputs.**
+
+- [[station-erf-w|Station required section modulus (plan path)]]
+- [[solved-rod-diameter|Solved rod diameter]]
+- [[rod-outer-fallback-1mm|Rod sizing outer-dimension floor]]  — *⤵ fallback*
 
 **Produced by.** `cad_designer/airplane/geometry/spar_solver.py:768` — `build_stations_from_geometry`
 
 **Consumed by.**
 
-- in this graph: [[governing-od|Governing required OD of a piece]] · [[reinforcement-root-od|Reinforcement outer diameter]]
+- in this graph: `Governing required OD of a piece` · `Reinforcement outer diameter`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `cad_designer/airplane/geometry/spar_solver.py:303` · `cad_designer/airplane/geometry/spar_solver.py:617`
 
 **Source.** 🟡 PARTIAL

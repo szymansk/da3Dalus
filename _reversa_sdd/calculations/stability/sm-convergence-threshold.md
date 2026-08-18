@@ -6,11 +6,20 @@ unit: – (fraction of MAC)
 cluster: stability
 user_visible: true
 source_status: NO_SOURCE_FOUND
+node_class: unclassified-constant
+tags:
+  - cluster/stability
+  - class/unclassified-constant
+  - source/no-source-found
+  - surface/user-visible
+  - flag/divergence
 ---
 
 # Apply-loop convergence threshold
 
 **Definition.** Change in predicted SM delta below which the apply loop is judged stalled.
+
+⚪ **Unclassified constant.** Not yet decided whether this is a rule of thumb, a calibration or a physical value. Classifying it is open work — it is deliberately not guessed.
 
 **Value.** `0.005`
 

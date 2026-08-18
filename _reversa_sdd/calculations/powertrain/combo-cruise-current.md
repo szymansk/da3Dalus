@@ -6,11 +6,20 @@ unit: A
 cluster: powertrain
 user_visible: false
 source_status: PARTIAL
+node_class: derived
+tags:
+  - cluster/powertrain
+  - class/derived
+  - source/partial
+  - flag/anomaly
+  - flag/divergence
 ---
 
 # Cruise current draw
 
 **Definition.** Battery current in level cruise: required power over nominal pack voltage. Also the value the ESC must match.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -18,13 +27,17 @@ source_status: PARTIAL
 cruise_current_a = actual_cruise_power / voltage if voltage > 0 else 999
 ```
 
-**Inputs.** [[combo-cruise-power|Estimated cruise power]] · [[combo-battery-voltage|Resolved battery voltage (sizing)]]
+**Inputs.**
+
+- [[combo-cruise-power|Estimated cruise power]]
+- [[combo-battery-voltage|Resolved battery voltage (sizing)]]  — *⤵ fallback*
 
 **Produced by.** `app/services/powertrain_sizing_service.py:251` — `_evaluate_motor_battery_combo`
 
 **Consumed by.**
 
-- in this graph: [[combo-flight-time-h|Estimated flight time (hours)]]
+- in this graph: `Estimated flight time (hours)`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `app/services/powertrain_sizing_service.py:252` · `app/services/powertrain_sizing_service.py:256` · `app/services/powertrain_sizing_service.py:259`
 
 **Source.** 🟡 PARTIAL

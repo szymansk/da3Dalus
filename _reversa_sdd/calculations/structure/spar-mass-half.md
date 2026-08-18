@@ -6,11 +6,22 @@ unit: kg
 cluster: structure
 user_visible: true
 source_status: PARTIAL
+node_class: derived
+tags:
+  - cluster/structure
+  - class/derived
+  - source/partial
+  - surface/user-visible
+  - flag/anomaly
+  - flag/divergence
+  - flag/scale
 ---
 
 # Half-span spar mass
 
 **Definition.** Estimated mass of the spar over one half-span, by trapezoidal integration of the per-station cross-section area against spanwise position and material density.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -22,13 +33,21 @@ volume_m3 = avg_area_m2 * dy
 total_mass += density_kg_m3 * volume_m3
 ```
 
-**Inputs.** [[tube-cross-section-area|Tube cross-section area]] · [[rod-cross-section-area|Rod cross-section area]] · [[rectangular-cross-section-area|Rectangular cross-section area]] · [[capped-cross-section-area|Capped-spar cross-section area]] · [[material-density|Material density]] · [[mm2-to-m2-factor|Square-millimetre to square-metre factor]]
+**Inputs.**
+
+- [[tube-cross-section-area|Tube cross-section area]]
+- [[rod-cross-section-area|Rod cross-section area]]
+- [[rectangular-cross-section-area|Rectangular cross-section area]]
+- [[capped-cross-section-area|Capped-spar cross-section area]]
+- [[material-density|Material density]]
+- [[mm2-to-m2-factor|Square-millimetre to square-metre factor]]  — *ε tolerance*
 
 **Produced by.** `app/services/spar_sizing.py:250` — `spar_mass_half_kg`
 
 **Consumed by.**
 
-- in this graph: [[spar-mass-full|Full-span spar mass]]
+- in this graph: `Full-span spar mass`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `app/services/spar_sizing.py:360` · `app/services/spar_sizing.py:382` · `app/schemas/spar_sizing.py:136` · `frontend/hooks/useSparSizing.ts:43` · `frontend/lib/sparSizingHelpers.ts:104`
 
 **Source.** 🟡 PARTIAL

@@ -6,11 +6,20 @@ unit: – (fraction of MAC)
 cluster: stability
 user_visible: false
 source_status: NO_SOURCE_FOUND
+node_class: derived
+tags:
+  - cluster/stability
+  - class/derived
+  - source/no-source-found
+  - flag/anomaly
+  - flag/divergence
 ---
 
 # Forward-CG SM excess
 
 **Definition.** Amount by which the forward-CG static margin exceeds the elevator-authority limit.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -18,7 +27,10 @@ source_status: NO_SOURCE_FOUND
 sm_deficit = sm_fwd - sm_max_fwd  # positive excess above limit
 ```
 
-**Inputs.** [[sm-fwd|Static margin at forward CG]] · [[sm-max-fwd|Maximum forward-CG static margin]]
+**Inputs.**
+
+- [[sm-fwd|Static margin at forward CG]]
+- [[sm-max-fwd|Maximum forward-CG static margin]]  — *⊣ limit*
 
 **Produced by.** `app/services/sm_sizing_service.py:556` — `_suggest_corrections_fwd`
 

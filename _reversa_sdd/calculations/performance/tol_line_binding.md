@@ -6,11 +6,21 @@ unit: fraction
 cluster: perf-matching
 user_visible: true
 source_status: NO_SOURCE_FOUND
+node_class: unclassified-constant
+tags:
+  - cluster/perf-matching
+  - class/unclassified-constant
+  - source/no-source-found
+  - surface/user-visible
+  - flag/anomaly
+  - flag/divergence
 ---
 
 # Line-constraint binding tolerance
 
 **Definition.** Relative T/W band within which a line constraint counts as binding.
+
+⚪ **Unclassified constant.** Not yet decided whether this is a rule of thumb, a calibration or a physical value. Classifying it is open work — it is deliberately not guessed.
 
 **Value.** `0.03`
 
@@ -26,7 +36,8 @@ TOL_LINE = 0.03
 
 **Consumed by.**
 
-- in this graph: [[feasibility_verdict|Feasibility verdict]]
+- in this graph: `Feasibility verdict`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `_check_feasibility:673,675`
 
 **Source.** 🔴 NO SOURCE FOUND

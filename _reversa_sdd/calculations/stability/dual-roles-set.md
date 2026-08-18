@@ -6,11 +6,20 @@ unit: – (set of strings)
 cluster: stability
 user_visible: false
 source_status: SOURCED
+node_class: unclassified-constant
+tags:
+  - cluster/stability
+  - class/unclassified-constant
+  - source/sourced
+  - flag/anomaly
+  - flag/divergence
 ---
 
 # Dual-role surface set
 
 **Definition.** Roles whose surfaces carry both a symmetric and an antisymmetric control component.
+
+⚪ **Unclassified constant.** Not yet decided whether this is a rule of thumb, a calibration or a physical value. Classifying it is open work — it is deliberately not guessed.
 
 **Value.** `{"elevon", "flaperon", "ruddervator"}`
 

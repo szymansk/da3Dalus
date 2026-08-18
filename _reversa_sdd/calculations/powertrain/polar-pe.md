@@ -6,11 +6,21 @@ unit: dimensionless (0..1)
 cluster: powertrain
 user_visible: true
 source_status: SOURCED
+node_class: derived
+tags:
+  - cluster/powertrain
+  - class/derived
+  - source/sourced
+  - surface/user-visible
+  - flag/anomaly
+  - flag/divergence
 ---
 
 # Propeller efficiency from polar
 
 **Definition.** Propulsive efficiency of the propeller at the interpolated operating point, recomputed from the clamped Ct and Cp rather than read from the stored Pe column. Zero at J=0.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -18,13 +28,18 @@ source_status: SOURCED
 if Cp_interp > 0 and J_clamp > 0: Pe_interp = Ct_interp * J_clamp / Cp_interp ; else: Pe_interp = 0.0
 ```
 
-**Inputs.** [[polar-ct|Propeller thrust coefficient]] · [[polar-cp|Propeller power coefficient]] · [[polar-j-clamp|Clamped advance ratio for interpolation]]
+**Inputs.**
+
+- [[polar-ct|Propeller thrust coefficient]]  — *⊣ limit*
+- [[polar-cp|Propeller power coefficient]]  — *⊣ limit*
+- [[polar-j-clamp|Clamped advance ratio for interpolation]]  — *⊣ limit*
 
 **Produced by.** `app/services/powertrain_performance.py:336` — `interpolate_ct_cp_pe`
 
 **Consumed by.**
 
-- in this graph: [[curve-eta-prop|Propeller efficiency per velocity sample]] · [[propop-eta-prop|Propeller efficiency (operating-point helper)]]
+- in this graph: `Propeller efficiency per velocity sample` · `Propeller efficiency (operating-point helper)`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `app/services/powertrain_performance.py:415` · `app/services/powertrain_performance.py:760`
 
 **Source.** 🟢 SOURCED

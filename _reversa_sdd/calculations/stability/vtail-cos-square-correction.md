@@ -6,11 +6,20 @@ unit: – (dimensionless)
 cluster: stability
 user_visible: false
 source_status: PARTIAL
+node_class: derived
+tags:
+  - cluster/stability
+  - class/derived
+  - source/partial
+  - flag/anomaly
+  - flag/divergence
 ---
 
 # V-tail cos² correction
 
 **Definition.** Reduction factor applied to a flat-tail analytic Cm_δe to account for V-tail dihedral.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 

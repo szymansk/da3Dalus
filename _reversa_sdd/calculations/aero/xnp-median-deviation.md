@@ -5,11 +5,20 @@ unit: m
 cluster: aero-spanwise
 user_visible: true
 source_status: NO_SOURCE_FOUND
+node_class: derived
+tags:
+  - cluster/aero-spanwise
+  - class/derived
+  - source/no-source-found
+  - surface/user-visible
+  - flag/anomaly
 ---
 
 # Xnp outlier deviation
 
 **Definition.** Absolute deviation of Xnp from its median, whose argmax is flagged as an outlier.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -17,7 +26,9 @@ source_status: NO_SOURCE_FOUND
 median_xnp = float(np.nanmedian(xnp_curve)); deviation = np.abs(xnp_curve - median_xnp); outlier_idx = int(np.nanargmax(deviation))
 ```
 
-**Inputs.** [[xnp-values|Longitudinal neutral point array]]
+**Inputs.**
+
+- [[xnp-values|Longitudinal neutral point array]]
 
 **Produced by.** `app/services/analysis_service.py:1188` — `_collect_xnp_outlier_labels`
 

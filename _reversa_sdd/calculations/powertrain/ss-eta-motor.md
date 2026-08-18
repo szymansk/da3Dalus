@@ -6,11 +6,21 @@ unit: dimensionless (0..1)
 cluster: powertrain
 user_visible: true
 source_status: SOURCED
+node_class: unclassified-parameter
+tags:
+  - cluster/powertrain
+  - class/unclassified-parameter
+  - source/sourced
+  - surface/user-visible
+  - flag/anomaly
+  - flag/divergence
 ---
 
 # Motor efficiency (solution space)
 
 **Definition.** Flat motor efficiency assumed for the whole envelope.
+
+⚪ **Unclassified parameter.** Not yet decided whether this is a user input or an internal tuning value.
 
 **Value.** `0.85`
 
@@ -20,7 +30,8 @@ source_status: SOURCED
 
 **Consumed by.**
 
-- in this graph: [[ss-p-cruise-hi-e|Electrical cruise power at high prop efficiency]] · [[ss-p-cruise-lo-e|Electrical cruise power at low prop efficiency]] · [[ss-p-cruise-mid|Electrical cruise power (mid band)]] · [[ss-p-elec|Electrical power required]] · [[ss-p-top-hi-e|Electrical peak power at high prop efficiency]] · [[ss-p-top-lo-e|Electrical peak power at low prop efficiency]] · [[ss-p-top-mid|Electrical peak power (mid band)]]
+- in this graph: `Electrical cruise power at high prop efficiency` · `Electrical cruise power at low prop efficiency` · `Electrical cruise power (mid band)` · `Electrical power required` · `Electrical peak power at high prop efficiency` · `Electrical peak power at low prop efficiency` · `Electrical peak power (mid band)`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `app/services/powertrain_solution_space_service.py:360` · `app/services/powertrain_solution_space_service.py:361`
 
 **Source.** 🟢 SOURCED

@@ -6,11 +6,20 @@ unit: index
 cluster: structure
 user_visible: true
 source_status: PARTIAL
+node_class: unclassified-constant
+tags:
+  - cluster/structure
+  - class/unclassified-constant
+  - source/partial
+  - surface/user-visible
+  - flag/divergence
 ---
 
 # Spar index assignment (hard invariant)
 
 **Definition.** Per-segment sort_index each structural role receives: front (main) spar 0, rear 1, reinforcement 2. spare_list[0] is the main spar — the only one that receives the vase-mode print slot.
+
+⚪ **Unclassified constant.** Not yet decided whether this is a rule of thumb, a calibration or a physical value. Classifying it is open work — it is deliberately not guessed.
 
 **Value.** `_FRONT_INDEX = 0; _REAR_INDEX = 1; _REINFORCEMENT_INDEX = 2`
 

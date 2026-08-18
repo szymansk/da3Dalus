@@ -5,11 +5,19 @@ unit: dimensionless (span fraction)
 cluster: structure
 user_visible: true
 source_status: NO_SOURCE_FOUND
+node_class: derived
+tags:
+  - cluster/structure
+  - class/derived
+  - source/no-source-found
+  - surface/user-visible
 ---
 
 # Global span fraction per segment station
 
 **Definition.** Converts a within-segment sampling fraction into the whole-surface span fraction, by accumulating preceding segment lengths.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -17,7 +25,9 @@ source_status: NO_SOURCE_FOUND
 y_globals = [(acc + f * seg_len) / total if total > 0 else 0.0 for f in local_fracs]
 ```
 
-**Inputs.** [[segment-lengths|Per-segment spanwise lengths]]
+**Inputs.**
+
+- [[segment-lengths|Per-segment spanwise lengths]]
 
 **Produced by.** `cad_designer/airplane/geometry/section_geometry.py:420` — `SectionGeometry.per_segment`
 

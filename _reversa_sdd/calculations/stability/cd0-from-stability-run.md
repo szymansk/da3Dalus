@@ -6,11 +6,21 @@ unit: – (dimensionless)
 cluster: stability
 user_visible: true
 source_status: NO_SOURCE_FOUND
+node_class: derived
+tags:
+  - cluster/stability
+  - class/derived
+  - source/no-source-found
+  - surface/user-visible
+  - flag/anomaly
+  - flag/divergence
 ---
 
 # cd0 auto-populated from stability run
 
 **Definition.** Intended to update the cd0 design assumption from the AeroBuildup drag coefficient after a stability run.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 

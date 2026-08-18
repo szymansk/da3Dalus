@@ -6,11 +6,21 @@ unit: 1/rad
 cluster: stability
 user_visible: true
 source_status: SOURCED
+node_class: derived
+tags:
+  - cluster/stability
+  - class/derived
+  - source/sourced
+  - surface/user-visible
+  - flag/anomaly
+  - flag/divergence
 ---
 
 # Control effectiveness (state-derivative proxy)
 
 **Definition.** Per-surface effectiveness value; for the opti/AeroBuildup path a state derivative is used in place of a true control derivative.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -22,7 +32,9 @@ effectiveness[surface_name] = ControlEffectiveness(
 )
 ```
 
-**Inputs.** [[role-coefficient-map|Role → primary coefficient map]]
+**Inputs.**
+
+- [[role-coefficient-map|Role → primary coefficient map]]
 
 **Produced by.** `app/services/trim_enrichment_service.py:212` — `compute_control_effectiveness`
 

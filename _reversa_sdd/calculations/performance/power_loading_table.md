@@ -6,11 +6,21 @@ unit: W/kg
 cluster: perf-matching
 user_visible: true
 source_status: PARTIAL
+node_class: unclassified-constant
+tags:
+  - cluster/perf-matching
+  - class/unclassified-constant
+  - source/partial
+  - surface/user-visible
+  - flag/divergence
+  - flag/scale
 ---
 
 # Power-loading bands
 
 **Definition.** Per-profile lower-bound specific power used to derive a T/W floor.
+
+⚪ **Unclassified constant.** Not yet decided whether this is a rule of thumb, a calibration or a physical value. Classifying it is open work — it is deliberately not guessed.
 
 **Value.** `trainer:125.0; sport:200.0; wing_racer:275.0; acro_3d:400.0`
 
@@ -26,7 +36,8 @@ _POWER_LOADING_W_PER_KG: dict[str, float] = {"trainer": 125.0, "sport": 200.0, "
 
 **Consumed by.**
 
-- in this graph: [[tw_power_loading|Power-loading T/W floor]]
+- in this graph: `Power-loading T/W floor`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `_power_loading_constraint:560`
 
 **Source.** 🟡 PARTIAL

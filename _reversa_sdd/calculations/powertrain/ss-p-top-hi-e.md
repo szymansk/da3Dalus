@@ -6,11 +6,21 @@ unit: W
 cluster: powertrain
 user_visible: true
 source_status: SOURCED
+node_class: derived
+tags:
+  - cluster/powertrain
+  - class/derived
+  - source/sourced
+  - surface/user-visible
+  - flag/divergence
+  - flag/scale
 ---
 
 # Electrical peak power at high prop efficiency
 
 **Definition.** Peak power at the optimistic end of the efficiency band.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -18,7 +28,13 @@ source_status: SOURCED
 p_top_hi_e = _p_elec(p_aero_top, assumptions.eta_prop_hi, assumptions.eta_motor, assumptions.eta_esc)
 ```
 
-**Inputs.** [[ss-p-elec|Electrical power required]] · [[ss-p-aero-top|Aerodynamic power at top speed]] · [[ss-eta-prop-hi|Propeller efficiency band upper bound]] · [[ss-eta-motor|Motor efficiency (solution space)]] · [[ss-eta-esc|ESC efficiency (solution space)]]
+**Inputs.**
+
+- [[ss-p-elec|Electrical power required]]
+- [[ss-p-aero-top|Aerodynamic power at top speed]]
+- [[ss-eta-prop-hi|Propeller efficiency band upper bound]]  — *⊣ limit*
+- [[ss-eta-motor|Motor efficiency (solution space)]]
+- [[ss-eta-esc|ESC efficiency (solution space)]]
 
 **Produced by.** `app/services/powertrain_solution_space_service.py:372` — `compute_solution_space`
 

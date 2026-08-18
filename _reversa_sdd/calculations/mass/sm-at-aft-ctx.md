@@ -6,11 +6,21 @@ unit: fraction of MAC
 cluster: mass
 user_visible: true
 source_status: SOURCED
+node_class: derived
+tags:
+  - cluster/mass
+  - class/derived
+  - source/sourced
+  - surface/user-visible
+  - flag/anomaly
+  - flag/divergence
 ---
 
 # Static margin at aft loading CG (cached)
 
 **Definition.** Static margin when the aircraft is loaded to its aft-most scenario CG, cached in assumption_computation_context. This is the stability-critical case.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -18,7 +28,11 @@ source_status: SOURCED
 sm_at_aft = round((x_np - cg_loading_aft_m) / mac, 4)
 ```
 
-**Inputs.** [[x-np|Neutral point]] · [[cg-loading-aft|Aft loading CG]] · [[mac|Mean aerodynamic chord (main wing)]]
+**Inputs.**
+
+- [[x-np|Neutral point]]  — *⊣ limit*
+- [[cg-loading-aft|Aft loading CG]]
+- [[mac|Mean aerodynamic chord (main wing)]]
 
 **Produced by.** `app/services/loading_scenario_service.py:260` — `enrich_context_with_cg_envelope`
 

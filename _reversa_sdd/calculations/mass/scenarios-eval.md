@@ -6,11 +6,20 @@ unit: m (list)
 cluster: mass
 user_visible: false
 source_status: PARTIAL
+node_class: derived
+tags:
+  - cluster/mass
+  - class/derived
+  - source/partial
+  - flag/anomaly
+  - flag/divergence
 ---
 
 # Per-scenario CG list
 
 **Definition.** The list of CG values, one per loading scenario, from which the loading envelope min/max are taken.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -18,7 +27,9 @@ source_status: PARTIAL
 "scenarios_eval": cg_values
 ```
 
-**Inputs.** [[scenario-cg-x|Loading-scenario CG_x]]
+**Inputs.**
+
+- [[scenario-cg-x|Loading-scenario CG_x]]
 
 **Produced by.** `app/services/loading_scenario_service.py:447` — `compute_loading_envelope_for_aeroplane`
 

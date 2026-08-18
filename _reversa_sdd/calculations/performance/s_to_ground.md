@@ -6,11 +6,20 @@ unit: m
 cluster: perf-matching
 user_visible: true
 source_status: PARTIAL
+node_class: derived
+tags:
+  - cluster/perf-matching
+  - class/derived
+  - source/partial
+  - surface/user-visible
+  - flag/divergence
 ---
 
 # Takeoff ground roll
 
 **Definition.** Distance from standstill to lift-off on a runway takeoff.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -18,13 +27,21 @@ source_status: PARTIAL
 return _C_TO * wing_loading / (rho * g * cl_max_to * t_over_w)
 ```
 
-**Inputs.** [[c_to_roskam|Roskam takeoff ground-roll coefficient]] · [[wing_loading_fl|Wing loading (field length)]] · [[rho_sl|Sea-level ISA density]] · [[g_gravity|Standard gravity]] · [[cl_max_to_fl|Takeoff CL_max (field length)]] · [[t_over_w_fl|Thrust-to-weight (field length)]]
+**Inputs.**
+
+- [[c_to_roskam|Roskam takeoff ground-roll coefficient]]
+- [[wing_loading_fl|Wing loading (field length)]]
+- [[rho_sl|Sea-level ISA density]]  — *⤵ fallback*
+- [[g_gravity|Standard gravity]]
+- [[cl_max_to_fl|Takeoff CL_max (field length)]]  — *⊣ limit*
+- [[t_over_w_fl|Thrust-to-weight (field length)]]
 
 **Produced by.** `app/services/field_length_service.py:203` — `_compute_s_to_ground`
 
 **Consumed by.**
 
-- in this graph: [[s_obstacle_factor_apply|Obstacle-corrected distance]] · [[s_to_50ft|Takeoff distance over 50 ft]] · [[s_to_bungee_partial|Bungee partial ground roll]]
+- in this graph: `Obstacle-corrected distance` · `Takeoff distance over 50 ft` · `Bungee partial ground roll`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `compute_field_lengths:424` · `_compute_s_to_bungee_partial:225` · `FieldLengthRead.s_to_ground_m:439`
 
 **Source.** 🟡 PARTIAL

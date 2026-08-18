@@ -6,11 +6,20 @@ unit: N·m
 cluster: aero-spanwise
 user_visible: true
 source_status: PARTIAL
+node_class: derived
+tags:
+  - cluster/aero-spanwise
+  - class/derived
+  - source/partial
+  - surface/user-visible
+  - flag/divergence
 ---
 
 # Running bending moment
 
 **Definition.** Sum of L_j·(y_j − y) over all strips outboard of y.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -18,13 +27,17 @@ source_status: PARTIAL
 bending_moment_Nm: float = Field(..., description="Running bending moment M(y): sum of L_j*(y_j - y) for all strips outboard (N·m)")
 ```
 
-**Inputs.** [[q-dyn|Dynamic pressure]] · [[spanwise-y-m|Strip spanwise station]]
+**Inputs.**
+
+- [[q-dyn|Dynamic pressure]]
+- [[spanwise-y-m|Strip spanwise station]]
 
 **Produced by.** `app/schemas/spanwise_loads.py:32` — `SpanwiseLoadEntry.bending_moment_Nm`
 
 **Consumed by.**
 
-- in this graph: [[root-bm-port|Port root bending moment]] · [[root-bm-starboard|Starboard root bending moment]]
+- in this graph: `Port root bending moment` · `Starboard root bending moment`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `_surface_to_stations` · `compute_spar_sizing` · `frontend useSpanwiseLoads.ts:16` · `frontend/lib/sparPlanHelpers.ts:40`
 
 **Source.** 🟡 PARTIAL

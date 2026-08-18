@@ -6,11 +6,21 @@ unit: – (coefficient units)
 cluster: stability
 user_visible: true
 source_status: SOURCED
+node_class: derived
+tags:
+  - cluster/stability
+  - class/derived
+  - source/sourced
+  - surface/user-visible
+  - flag/anomaly
+  - flag/divergence
 ---
 
 # Achieved target coefficient
 
 **Definition.** Value of the target aerodynamic coefficient at the converged deflection.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -20,7 +30,9 @@ achieved = _to_scalar(final_result.get(target_coeff, float("nan")))
 achieved_value=round(achieved, 8),
 ```
 
-**Inputs.** [[trimmed-deflection|Trimmed control deflection]]
+**Inputs.**
+
+- [[trimmed-deflection|Trimmed control deflection]]
 
 **Produced by.** `app/services/aerobuildup_trim_service.py:276` — `trim_with_aerobuildup`
 

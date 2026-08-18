@@ -6,11 +6,20 @@ unit: mm
 cluster: structure
 user_visible: true
 source_status: PARTIAL
+node_class: derived
+tags:
+  - cluster/structure
+  - class/derived
+  - source/partial
+  - surface/user-visible
+  - flag/divergence
 ---
 
 # Solved rod diameter
 
 **Definition.** Minimum solid-round-rod diameter that provides the required section modulus. Inverse of W = d³/10.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -18,13 +27,16 @@ source_status: PARTIAL
 d = (10.0 * erf_w) ** (1.0 / 3.0)
 ```
 
-**Inputs.** [[required-section-modulus|Required section modulus]]
+**Inputs.**
+
+- [[required-section-modulus|Required section modulus]]
 
 **Produced by.** `app/services/spar_sizing.py:159` — `_solve_rod`
 
 **Consumed by.**
 
-- in this graph: [[rod-cross-section-area|Rod cross-section area]] · [[station-required-od|Station strength-required OD]]
+- in this graph: `Rod cross-section area` · `Station strength-required OD`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `app/services/spar_sizing.py:160` · `app/services/spar_sizing.py:167` · `app/services/spar_sizing.py:170` · `cad_designer/airplane/geometry/spar_solver.py:768`
 
 **Source.** 🟡 PARTIAL

@@ -6,11 +6,20 @@ unit: m²
 cluster: aero-strips
 user_visible: false
 source_status: PARTIAL
+node_class: derived
+tags:
+  - cluster/aero-strips
+  - class/derived
+  - source/partial
+  - flag/anomaly
+  - flag/divergence
 ---
 
 # Reference area (level-flight solve)
 
 **Definition.** Planform area of the first symmetric wing found on the airplane.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -24,7 +33,8 @@ for w in asb_airplane.wings: if getattr(w, "symmetric", False): s_ref = float(w.
 
 **Consumed by.**
 
-- in this graph: [[lfop-cl-target|Level-flight target lift coefficient]]
+- in this graph: `Level-flight target lift coefficient`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 
 **Source.** 🟡 PARTIAL
 

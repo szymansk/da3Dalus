@@ -5,11 +5,19 @@ unit: mm
 cluster: aero-spanwise
 user_visible: true
 source_status: NO_SOURCE_FOUND
+node_class: derived
+tags:
+  - cluster/aero-spanwise
+  - class/derived
+  - source/no-source-found
+  - surface/user-visible
 ---
 
 # Section centre-Z map
 
 **Definition.** Per-station vertical centre of the built section, passed through to spar sizing.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 

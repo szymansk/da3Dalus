@@ -6,11 +6,20 @@ unit: mm³
 cluster: structure
 user_visible: false
 source_status: SOURCED
+node_class: derived
+tags:
+  - cluster/structure
+  - class/derived
+  - source/sourced
+  - flag/anomaly
+  - flag/divergence
 ---
 
 # Section modulus, capped (I/C-beam)
 
 **Definition.** Elastic section modulus of a capped spar: flange width b, outer height H, inner gap height h.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 

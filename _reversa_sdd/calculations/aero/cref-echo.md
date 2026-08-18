@@ -6,11 +6,19 @@ unit: m
 cluster: aero-spanwise
 user_visible: true
 source_status: SOURCED
+node_class: derived
+tags:
+  - cluster/aero-spanwise
+  - class/derived
+  - source/sourced
+  - surface/user-visible
 ---
 
 # Reference chord echo
 
 **Definition.** Reference chord read from the solver result and echoed in the strip-forces response.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 

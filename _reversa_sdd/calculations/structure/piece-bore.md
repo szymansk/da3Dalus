@@ -6,11 +6,21 @@ unit: mm
 cluster: structure
 user_visible: true
 source_status: PARTIAL
+node_class: derived
+tags:
+  - cluster/structure
+  - class/derived
+  - source/partial
+  - surface/user-visible
+  - flag/anomaly
+  - flag/divergence
 ---
 
 # Spar piece inner diameter
 
 **Definition.** Final bore of a spar piece: the larger of the telescoping demand and the strength-permitted bore. Zero for non-tube shapes (solid sections).
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -18,13 +28,17 @@ source_status: PARTIAL
 bore = max(telescope_bore, strength_bore)
 ```
 
-**Inputs.** [[telescope-bore|Telescoping bore demand]] · [[strength-bore|Strength-driven bore]]
+**Inputs.**
+
+- [[telescope-bore|Telescoping bore demand]]
+- [[strength-bore|Strength-driven bore]]
 
 **Produced by.** `cad_designer/airplane/geometry/spar_solver.py:425` — `plan_spar`
 
 **Consumed by.**
 
-- in this graph: [[min-od-for-bore|Minimum OD to carry a bore]] · [[piece-wall|Spar piece wall thickness]]
+- in this graph: `Minimum OD to carry a bore` · `Spar piece wall thickness`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `cad_designer/airplane/geometry/spar_solver.py:434` · `cad_designer/airplane/geometry/spar_solver.py:124` · `app/services/spar_plan_service.py:194` · `app/schemas/spar_plan.py:191` · `frontend/hooks/useSparPlan.ts:44`
 
 **Source.** 🟡 PARTIAL

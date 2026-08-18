@@ -6,11 +6,20 @@ unit: dimensionless
 cluster: aero-polars
 user_visible: false
 source_status: NO_SOURCE_FOUND
+node_class: derived
+tags:
+  - cluster/aero-polars
+  - class/derived
+  - source/no-source-found
+  - flag/anomaly
+  - flag/divergence
 ---
 
 # Per-Re fleet cd0 reference
 
 **Definition.** 20th-percentile cd0 across all airfoils interpolated to the query Re.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -19,13 +28,17 @@ cd0_arr = np.array(cd0_values, dtype=float)
 return float(np.percentile(cd0_arr, percentile))
 ```
 
-**Inputs.** [[alr-polar-cd0|Airfoil cd0 (parabolic fit vertex)]] · [[alr-cd0-reference-percentile|Fleet cd0 reference percentile]]
+**Inputs.**
+
+- [[alr-polar-cd0|Airfoil cd0 (parabolic fit vertex)]]
+- [[alr-cd0-reference-percentile|Fleet cd0 reference percentile]]
 
 **Produced by.** `app/services/airfoil_low_re_service.py:823` — `compute_re_cd0_reference`
 
 **Consumed by.**
 
-- in this graph: [[alr-efficiency|Efficiency component of score_target_cl]]
+- in this graph: `Efficiency component of score_target_cl`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `suitability_service:412,415,420,425` · `score_target_cl:1081`
 
 **Source.** 🔴 NO SOURCE FOUND

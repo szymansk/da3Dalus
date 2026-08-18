@@ -6,11 +6,21 @@ unit: fraction of MAC
 cluster: mass
 user_visible: true
 source_status: SOURCED
+node_class: derived
+tags:
+  - cluster/mass
+  - class/derived
+  - source/sourced
+  - surface/user-visible
+  - flag/anomaly
+  - flag/divergence
 ---
 
 # Static margin at forward loading CG (cached)
 
 **Definition.** Static margin when the aircraft is loaded to its forward-most scenario CG, cached in assumption_computation_context.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -18,7 +28,11 @@ source_status: SOURCED
 sm_at_fwd = round((x_np - cg_loading_fwd_m) / mac, 4)
 ```
 
-**Inputs.** [[x-np|Neutral point]] · [[cg-loading-fwd|Forward loading CG]] · [[mac|Mean aerodynamic chord (main wing)]]
+**Inputs.**
+
+- [[x-np|Neutral point]]  — *⊣ limit*
+- [[cg-loading-fwd|Forward loading CG]]
+- [[mac|Mean aerodynamic chord (main wing)]]
 
 **Produced by.** `app/services/loading_scenario_service.py:259` — `enrich_context_with_cg_envelope`
 

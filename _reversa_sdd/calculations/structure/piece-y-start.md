@@ -6,11 +6,19 @@ unit: m
 cluster: structure
 user_visible: true
 source_status: NO_SOURCE_FOUND
+node_class: derived
+tags:
+  - cluster/structure
+  - class/derived
+  - source/no-source-found
+  - surface/user-visible
 ---
 
 # Spar piece root spanwise position
 
 **Definition.** Where a straight spar piece starts on the span (its own origin's y), exposed in metres so the UI can show the piece's extent.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -18,13 +26,16 @@ source_status: NO_SOURCE_FOUND
 y_start_mm = piece.spare_origin[1]
 ```
 
-**Inputs.** [[mm-to-m-factor|Millimetre-to-metre conversion factor]]
+**Inputs.**
+
+- [[mm-to-m-factor|Millimetre-to-metre conversion factor]]  — *× unit*
 
 **Produced by.** `app/services/spar_plan_service.py:494` — `_piece_to_out`
 
 **Consumed by.**
 
-- in this graph: [[piece-y-end|Spar piece tip spanwise position]] · [[split-local-length|Segment-local split position]]
+- in this graph: `Spar piece tip spanwise position` · `Segment-local split position`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `app/schemas/spar_plan.py:208` · `frontend/hooks/useSparPlan.ts:57`
 
 **Source.** 🔴 NO SOURCE FOUND

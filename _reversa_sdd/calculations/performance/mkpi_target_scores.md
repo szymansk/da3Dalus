@@ -6,11 +6,21 @@ unit: -
 cluster: perf-envelope
 user_visible: true
 source_status: SOURCED
+node_class: derived
+tags:
+  - cluster/perf-envelope
+  - class/derived
+  - source/sourced
+  - surface/user-visible
+  - flag/anomaly
+  - flag/divergence
 ---
 
 # Soll polygon scores
 
 **Definition.** Target polygon derived from the user's editable mission objective, normalised with the same axis ranges as the Ist polygon.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -18,7 +28,10 @@ source_status: SOURCED
 _normalise_score(objective.target_stall_safety, *axis_ranges["stall_safety"]) ... target_glide_ld, target_climb_energy, target_cruise_mps, target_maneuver_n, target_wing_loading_n_m2
 ```
 
-**Inputs.** [[mkpi_normalise_score|Axis normalisation]] · [[mkpi_axis_ranges|Mission axis ranges]]
+**Inputs.**
+
+- [[mkpi_normalise_score|Axis normalisation]]
+- [[mkpi_axis_ranges|Mission axis ranges]]  — *⊣ limit*
 
 **Produced by.** `app/services/mission_kpi_service.py:374` — `_objective_target_scores`
 

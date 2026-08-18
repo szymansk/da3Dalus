@@ -6,11 +6,22 @@ unit: x/c
 cluster: aero-strips
 user_visible: true
 source_status: PARTIAL
+node_class: unclassified-constant
+tags:
+  - cluster/aero-strips
+  - class/unclassified-constant
+  - source/partial
+  - surface/user-visible
+  - flag/anomaly
+  - flag/divergence
+  - flag/scale
 ---
 
 # Turbulator trip-position sweep grid
 
 **Definition.** 15-point x/c grid from 0.2 to 0.9 over which the trip position is optimised.
+
+⚪ **Unclassified constant.** Not yet decided whether this is a rule of thumb, a calibration or a physical value. Classifying it is open work — it is deliberately not guessed.
 
 **Value.** `np.linspace(0.2, 0.9, 15)`
 
@@ -26,7 +37,8 @@ XTR_GRID: np.ndarray = np.linspace(0.2, 0.9, 15)
 
 **Consumed by.**
 
-- in this graph: [[tos-cd-values|cd sweep over the trip grid]] · [[tos-confidence-probe-xtr|Confidence-probe trip position]] · [[tos-global-xtr-opt|Whole-wing optimal trip position]] · [[tos-xtr-opt|Optimal trip position]]
+- in this graph: `cd sweep over the trip grid` · `Confidence-probe trip position` · `Whole-wing optimal trip position` · `Optimal trip position`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `app/services/turbulator_optimizer_service.py:optimize_section_xtr` · `app/services/turbulator_optimizer_service.py:run_turbulator_optimizer`
 
 **Source.** 🟡 PARTIAL

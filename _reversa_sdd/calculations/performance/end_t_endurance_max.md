@@ -6,11 +6,22 @@ unit: s
 cluster: perf-envelope
 user_visible: true
 source_status: PARTIAL
+node_class: derived
+tags:
+  - cluster/perf-envelope
+  - class/derived
+  - source/partial
+  - surface/user-visible
+  - flag/anomaly
+  - flag/divergence
+  - flag/scale
 ---
 
 # Maximum endurance
 
 **Definition.** Flight time on a full pack flown at minimum-power speed.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -18,7 +29,11 @@ source_status: PARTIAL
 t_endurance_max_s = (capacity_wh_val * 3600.0) / p_req_vmin
 ```
 
-**Inputs.** [[end_capacity_wh|Battery capacity]] · [[end_seconds_per_hour|Wh-to-Ws conversion]] · [[end_p_req_vmin|Power required at V_min_sink]]
+**Inputs.**
+
+- [[end_capacity_wh|Battery capacity]]
+- [[end_seconds_per_hour|Wh-to-Ws conversion]]  — *× unit*
+- [[end_p_req_vmin|Power required at V_min_sink]]  — *⊣ limit*
 
 **Produced by.** `app/services/endurance_service.py:403` — `compute_endurance`
 

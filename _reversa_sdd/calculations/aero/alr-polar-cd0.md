@@ -6,11 +6,20 @@ unit: dimensionless
 cluster: aero-polars
 user_visible: false
 source_status: PARTIAL
+node_class: derived
+tags:
+  - cluster/aero-polars
+  - class/derived
+  - source/partial
+  - flag/anomaly
+  - flag/divergence
 ---
 
 # Airfoil cd0 (parabolic fit vertex)
 
 **Definition.** Minimum drag coefficient of the fitted 2D parabolic polar CD = cd0 + k(CL−cl0)².
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -21,13 +30,17 @@ cl0_fit = -b_fit / (2.0 * k_fit)
 cd0_fit = c_fit - k_fit * cl0_fit**2
 ```
 
-**Inputs.** [[alr-alpha-sweep|Alpha sweep bounds and step]] · [[alr-confidence-gate|NeuralFoil confidence gate]]
+**Inputs.**
+
+- [[alr-alpha-sweep|Alpha sweep bounds and step]]  — *⊣ limit*
+- [[alr-confidence-gate|NeuralFoil confidence gate]]
 
 **Produced by.** `app/services/airfoil_low_re_service.py:666` — `_extract_metrics`
 
 **Consumed by.**
 
-- in this graph: [[alr-best-ld-cl|CL at maximum L/D (closed form)]] · [[alr-cd-at-target|CD at target CL]] · [[alr-drag-rise-ratio|Relative drag-rise ratio r]] · [[alr-efficiency|Efficiency component of score_target_cl]] · [[alr-re-cd0-reference|Per-Re fleet cd0 reference]]
+- in this graph: `CL at maximum L/D (closed form)` · `CD at target CL` · `Relative drag-rise ratio r` · `Efficiency component of score_target_cl` · `Per-Re fleet cd0 reference`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `AirfoilLowRePolarModel.cd0` · `score_target_cl:1021` · `compute_re_cd0_reference:815` · `best_ld_cl:758`
 
 **Source.** 🟡 PARTIAL

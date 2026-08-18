@@ -6,11 +6,21 @@ unit: dimensionless
 cluster: aero-polars
 user_visible: true
 source_status: SOURCED
+node_class: derived
+tags:
+  - cluster/aero-polars
+  - class/derived
+  - source/sourced
+  - surface/user-visible
+  - flag/anomaly
+  - flag/divergence
 ---
 
 # Level-flight lift coefficient
 
 **Definition.** CL required for level flight at a given mass, speed and wing area.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -19,13 +29,17 @@ q = 0.5 * RHO * v_ms**2
 return (mass_kg * G) / (q * s_ref_m2)
 ```
 
-**Inputs.** [[alr-g|Standard gravity]] · [[alr-rho|ISA sea-level density (low-Re module)]]
+**Inputs.**
+
+- [[alr-g|Standard gravity]]
+- [[alr-rho|ISA sea-level density (low-Re module)]]
 
 **Produced by.** `app/services/airfoil_low_re_service.py:707` — `_level_flight_cl`
 
 **Consumed by.**
 
-- in this graph: [[sui-target-cl-best-glide|target_cl_best_glide]] · [[sui-target-cl-cruise|target_cl_cruise]] · [[sui-target-cl-min-sink|target_cl_min_sink]]
+- in this graph: `target_cl_best_glide` · `target_cl_cruise` · `target_cl_min_sink`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `suitability_service.py:336,346,356 → target_cl_cruise / best_glide / min_sink`
 
 **Source.** 🟢 SOURCED

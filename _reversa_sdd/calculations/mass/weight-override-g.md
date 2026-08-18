@@ -6,11 +6,21 @@ unit: g
 cluster: mass
 user_visible: true
 source_status: PARTIAL
+node_class: unclassified-parameter
+tags:
+  - cluster/mass
+  - class/unclassified-parameter
+  - source/partial
+  - surface/user-visible
+  - flag/anomaly
+  - flag/divergence
 ---
 
 # Manual node weight override
 
 **Definition.** User-entered weight for a component-tree node; takes precedence over both the COTS catalogue mass and the density-derived CAD weight.
+
+⚪ **Unclassified parameter.** Not yet decided whether this is a user input or an internal tuning value.
 
 **Value.** `None (nullable, app/models/component_tree.py:59)`
 
@@ -20,7 +30,8 @@ source_status: PARTIAL
 
 **Consumed by.**
 
-- in this graph: [[node-own-weight|Node own weight]]
+- in this graph: `Node own weight`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `app/services/component_tree_service.py:464 (returned as own weight, source='override')` · `frontend/components/workbench/ComponentTree.tsx:100`
 
 **Source.** 🟡 PARTIAL

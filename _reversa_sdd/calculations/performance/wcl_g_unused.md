@@ -6,11 +6,20 @@ unit: m/s^2
 cluster: perf-matching
 user_visible: false
 source_status: NO_SOURCE_FOUND
+node_class: unclassified-parameter
+tags:
+  - cluster/perf-matching
+  - class/unclassified-parameter
+  - source/no-source-found
+  - flag/anomaly
+  - flag/divergence
 ---
 
 # Unused gravity parameter in WCL
 
 **Definition.** Gravity parameter accepted by _wcl_constraint but explicitly discarded.
+
+⚪ **Unclassified parameter.** Not yet decided whether this is a user input or an internal tuning value.
 
 **Value.** `9.81 (default)`
 
@@ -20,7 +29,9 @@ source_status: NO_SOURCE_FOUND
 _ = g
 ```
 
-**Inputs.** [[g_gravity|Standard gravity]]
+**Inputs.**
+
+- [[g_gravity|Standard gravity]]
 
 **Produced by.** `app/services/matching_chart_service.py:527` — `_wcl_constraint`
 

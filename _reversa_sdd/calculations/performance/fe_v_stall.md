@@ -6,11 +6,21 @@ unit: m/s
 cluster: perf-envelope
 user_visible: true
 source_status: SOURCED
+node_class: derived
+tags:
+  - cluster/perf-envelope
+  - class/derived
+  - source/sourced
+  - surface/user-visible
+  - flag/anomaly
+  - flag/divergence
 ---
 
 # Stall speed (1 g)
 
 **Definition.** One-g stall speed at sea level from CL_max and wing loading.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -18,13 +28,19 @@ source_status: SOURCED
 v_stall = math.sqrt(2 * weight / (rho * wing_area_m2 * cl_max))
 ```
 
-**Inputs.** [[fe_weight|Aircraft weight]] · [[fe_rho_default|Default air density (flight envelope)]] · [[fe_wing_area|Reference wing area]] · [[fe_cl_max|Maximum lift coefficient (envelope)]]
+**Inputs.**
+
+- [[fe_weight|Aircraft weight]]
+- [[fe_rho_default|Default air density (flight envelope)]]  — *⤵ fallback*
+- [[fe_wing_area|Reference wing area]]  — *× unit*
+- [[fe_cl_max|Maximum lift coefficient (envelope)]]  — *⤵ fallback*
 
 **Produced by.** `app/services/flight_envelope_service.py:314` — `compute_vn_curve`
 
 **Consumed by.**
 
-- in this graph: [[fe_v_sweep|Velocity sweep points]] · [[kpi_best_ld_speed|KPI: best L/D speed]] · [[kpi_min_sink_speed|KPI: min sink speed]] · [[kpi_stall_speed|KPI: stall speed]]
+- in this graph: `Velocity sweep points` · `KPI: best L/D speed` · `KPI: min sink speed` · `KPI: stall speed`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `VnDiagram.tsx`
 
 **Source.** 🟢 SOURCED

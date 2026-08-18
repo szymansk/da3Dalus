@@ -6,11 +6,20 @@ unit: dimensionless
 cluster: aero-polars
 user_visible: false
 source_status: SOURCED
+node_class: derived
+tags:
+  - cluster/aero-polars
+  - class/derived
+  - source/sourced
+  - flag/anomaly
+  - flag/divergence
 ---
 
 # ln(Re) interpolation fraction
 
 **Definition.** Blend weight between two Re grid rows, linear in natural log of Re.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -18,7 +27,9 @@ source_status: SOURCED
 t = (math.log(re_query) - math.log(lo)) / (math.log(hi) - math.log(lo))
 ```
 
-**Inputs.** [[low-re-grid|Absolute low-Re grid]]
+**Inputs.**
+
+- [[low-re-grid|Absolute low-Re grid]]
 
 **Produced by.** `app/services/airfoil_low_re_service.py:351` — `interpolate_polar_at_re`
 

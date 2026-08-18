@@ -6,11 +6,21 @@ unit: – (dimensionless residual)
 cluster: stability
 user_visible: true
 source_status: NO_SOURCE_FOUND
+node_class: unclassified-constant
+tags:
+  - cluster/stability
+  - class/unclassified-constant
+  - source/no-source-found
+  - surface/user-visible
+  - flag/anomaly
+  - flag/divergence
 ---
 
 # Trim divergence critical threshold
 
 **Definition.** Trim residual score above which the trim is declared not converged and results unreliable.
+
+⚪ **Unclassified constant.** Not yet decided whether this is a rule of thumb, a calibration or a physical value. Classifying it is open work — it is deliberately not guessed.
 
 **Value.** `0.5`
 

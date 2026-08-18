@@ -6,11 +6,19 @@ unit: kg/m³
 cluster: aero-spanwise
 user_visible: true
 source_status: SOURCED
+node_class: derived
+tags:
+  - cluster/aero-spanwise
+  - class/derived
+  - source/sourced
+  - surface/user-visible
 ---
 
 # Air density (speed polar)
 
 **Definition.** Density from the AeroSandbox standard atmosphere at the sweep altitude.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -18,13 +26,16 @@ source_status: SOURCED
 rho = float(asb.Atmosphere(altitude=altitude).density())
 ```
 
-**Inputs.** [[altitude-speed-polar|Speed-polar altitude]]
+**Inputs.**
+
+- [[altitude-speed-polar|Speed-polar altitude]]  — *⤵ fallback*
 
 **Produced by.** `app/services/analysis_service.py:626` — `_build_speed_polar`
 
 **Consumed by.**
 
-- in this graph: [[speed-polar-v|Glide forward speed]] · [[v-stall|Stall speed]]
+- in this graph: `Glide forward speed` · `Stall speed`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `SpeedPolar.rho`
 
 **Source.** 🟢 SOURCED

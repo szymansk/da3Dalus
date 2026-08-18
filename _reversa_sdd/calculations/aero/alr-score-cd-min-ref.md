@@ -6,11 +6,21 @@ unit: dimensionless
 cluster: aero-polars
 user_visible: true
 source_status: NO_SOURCE_FOUND
+node_class: unclassified-constant
+tags:
+  - cluster/aero-polars
+  - class/unclassified-constant
+  - source/no-source-found
+  - surface/user-visible
+  - flag/divergence
+  - flag/scale
 ---
 
 # CD_min reference for re_agnostic
 
 **Definition.** CD_min that maps to a full 1.0 on the CD_min component.
+
+⚪ **Unclassified constant.** Not yet decided whether this is a rule of thumb, a calibration or a physical value. Classifying it is open work — it is deliberately not guessed.
 
 **Value.** `0.008`
 
@@ -26,7 +36,8 @@ CD_MIN_REF = 0.008  # low CD_min
 
 **Consumed by.**
 
-- in this graph: [[alr-score-re-agnostic|re_agnostic suitability score]]
+- in this graph: `re_agnostic suitability score`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `score_re_agnostic:880`
 
 **Source.** 🔴 NO SOURCE FOUND

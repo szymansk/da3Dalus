@@ -5,11 +5,19 @@ unit: -
 cluster: aero-spanwise
 user_visible: true
 source_status: NO_SOURCE_FOUND
+node_class: derived
+tags:
+  - cluster/aero-spanwise
+  - class/derived
+  - source/no-source-found
+  - surface/user-visible
 ---
 
 # g_limit fallback flag
 
 **Definition.** Boolean telling the spar service that the default load factor was substituted.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -17,7 +25,9 @@ source_status: NO_SOURCE_FOUND
 g_limit_fallback = True / g_limit_fallback = False
 ```
 
-**Inputs.** [[g-limit-effective|Effective manoeuvre load factor]]
+**Inputs.**
+
+- [[g-limit-effective|Effective manoeuvre load factor]]  — *⤵ fallback*
 
 **Produced by.** `app/services/analysis_service.py:2161` — `_compute_spar_sizing_for_surfaces`
 

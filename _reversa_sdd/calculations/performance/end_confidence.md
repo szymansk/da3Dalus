@@ -6,11 +6,21 @@ unit: -
 cluster: perf-envelope
 user_visible: true
 source_status: SOURCED
+node_class: derived
+tags:
+  - cluster/perf-envelope
+  - class/derived
+  - source/sourced
+  - surface/user-visible
+  - flag/anomaly
+  - flag/divergence
 ---
 
 # Endurance confidence
 
 **Definition.** 'estimated' when the polar fit fell back or its quality is poor/unknown, else 'computed'.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 

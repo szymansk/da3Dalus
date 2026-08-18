@@ -6,11 +6,21 @@ unit: fraction of MAC
 cluster: mass
 user_visible: true
 source_status: SOURCED
+node_class: derived
+tags:
+  - cluster/mass
+  - class/derived
+  - source/sourced
+  - surface/user-visible
+  - flag/anomaly
+  - flag/divergence
 ---
 
 # Static margin at aft loading CG (API)
 
 **Definition.** Static margin at the aft loading CG as returned by GET /aeroplanes/{id}/cg-envelope; drives the overall classification and the error warning text.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -18,13 +28,18 @@ source_status: SOURCED
 sm_at_aft: float | None = (x_np - cg_aft) / mac
 ```
 
-**Inputs.** [[x-np|Neutral point]] · [[cg-loading-aft|Aft loading CG]] · [[mac|Mean aerodynamic chord (main wing)]]
+**Inputs.**
+
+- [[x-np|Neutral point]]  — *⊣ limit*
+- [[cg-loading-aft|Aft loading CG]]
+- [[mac|Mean aerodynamic chord (main wing)]]
 
 **Produced by.** `app/services/loading_scenario_service.py:594` — `get_cg_envelope`
 
 **Consumed by.**
 
-- in this graph: [[sm-classification|Static-margin classification]]
+- in this graph: `Static-margin classification`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `app/services/loading_scenario_service.py:601 (classify_sm)` · `app/services/loading_scenario_service.py:620 (warning text)` · `app/services/loading_scenario_service.py:628 (CgEnvelopeRead.sm_at_aft)` · `frontend/components/workbench/LoadingScenariosCard.tsx:84`
 
 **Source.** 🟢 SOURCED

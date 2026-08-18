@@ -6,11 +6,20 @@ unit: h
 cluster: powertrain
 user_visible: false
 source_status: PARTIAL
+node_class: derived
+tags:
+  - cluster/powertrain
+  - class/derived
+  - source/partial
+  - flag/anomaly
+  - flag/divergence
 ---
 
 # Estimated flight time (hours)
 
 **Definition.** Endurance in hours: usable capacity divided by cruise current.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -18,13 +27,18 @@ source_status: PARTIAL
 flight_time_h = (capacity_ah / cruise_current_a) * 0.8 if cruise_current_a > 0 else 0
 ```
 
-**Inputs.** [[combo-capacity-ah|Battery capacity in amp-hours]] · [[combo-cruise-current|Cruise current draw]] · [[usable-capacity-fraction-sizing|Usable capacity fraction (sizing)]]
+**Inputs.**
+
+- [[combo-capacity-ah|Battery capacity in amp-hours]]
+- [[combo-cruise-current|Cruise current draw]]
+- [[usable-capacity-fraction-sizing|Usable capacity fraction (sizing)]]
 
 **Produced by.** `app/services/powertrain_sizing_service.py:256` — `_evaluate_motor_battery_combo`
 
 **Consumed by.**
 
-- in this graph: [[combo-flight-time-min|Estimated flight time]]
+- in this graph: `Estimated flight time`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `app/services/powertrain_sizing_service.py:257`
 
 **Source.** 🟡 PARTIAL

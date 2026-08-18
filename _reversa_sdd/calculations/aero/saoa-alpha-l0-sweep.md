@@ -6,11 +6,21 @@ unit: deg
 cluster: aero-strips
 user_visible: false
 source_status: NO_SOURCE_FOUND
+node_class: unclassified-constant
+tags:
+  - cluster/aero-strips
+  - class/unclassified-constant
+  - source/no-source-found
+  - flag/anomaly
+  - flag/divergence
+  - flag/scale
 ---
 
 # Alpha sweep for zero-lift angle
 
 **Definition.** Alpha grid over which the NeuralFoil polar is evaluated to find CL = 0.
+
+⚪ **Unclassified constant.** Not yet decided whether this is a rule of thumb, a calibration or a physical value. Classifying it is open work — it is deliberately not guessed.
 
 **Value.** `np.linspace(-6.0, 2.0, 40)`
 
@@ -26,7 +36,8 @@ alphas = np.linspace(-6.0, 2.0, 40)
 
 **Consumed by.**
 
-- in this graph: [[saoa-alpha-l0|Section zero-lift angle]]
+- in this graph: `Section zero-lift angle`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 
 **Source.** 🔴 NO SOURCE FOUND
 

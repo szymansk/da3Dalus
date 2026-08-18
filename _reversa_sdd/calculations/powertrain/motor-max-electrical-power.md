@@ -6,11 +6,21 @@ unit: W
 cluster: powertrain
 user_visible: true
 source_status: PARTIAL
+node_class: derived
+tags:
+  - cluster/powertrain
+  - class/derived
+  - source/partial
+  - surface/user-visible
+  - flag/anomaly
+  - flag/divergence
 ---
 
 # Motor maximum electrical input power (estimated)
 
 **Definition.** Estimated peak electrical input power the motor can absorb, derived from the burst current limit at loaded pack voltage. Explicitly tagged ESTIMATED, not a datasheet value. Returns +inf when max_current_a is unknown.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -18,13 +28,18 @@ source_status: PARTIAL
 if self.max_current_a is None: return float("inf") ; return self.max_current_a * _VOLTS_PER_LIPO_CELL * self.cells_lipo_max
 ```
 
-**Inputs.** [[motor-max-current-input|Motor burst current limit]] · [[volts-per-lipo-cell|Loaded LiPo cell voltage]] · [[motor-cells-lipo-max-input|Maximum LiPo cell count]]
+**Inputs.**
+
+- [[motor-max-current-input|Motor burst current limit]]  — *⊣ limit*
+- [[volts-per-lipo-cell|Loaded LiPo cell voltage]]
+- [[motor-cells-lipo-max-input|Maximum LiPo cell count]]  — *⊣ limit*
 
 **Produced by.** `app/services/powertrain_performance.py:159` — `MotorSpec.max_electrical_power_w`
 
 **Consumed by.**
 
-- in this graph: [[curve-p-available-elec|Electrical power ceiling]]
+- in this graph: `Electrical power ceiling`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `app/services/powertrain_performance.py:649`
 
 **Source.** 🟡 PARTIAL

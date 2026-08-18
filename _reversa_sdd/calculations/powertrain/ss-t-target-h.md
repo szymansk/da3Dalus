@@ -6,11 +6,18 @@ unit: h
 cluster: powertrain
 user_visible: false
 source_status: PARTIAL
+node_class: derived
+tags:
+  - cluster/powertrain
+  - class/derived
+  - source/partial
 ---
 
 # Target flight time in hours
 
 **Definition.** Mission duration converted from minutes for the energy budget.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -18,13 +25,16 @@ source_status: PARTIAL
 t_target_h = t_target_min / 60.0
 ```
 
-**Inputs.** [[ss-t-target-min|Target flight time]]
+**Inputs.**
+
+- [[ss-t-target-min|Target flight time]]  — *⊣ limit*
 
 **Produced by.** `app/services/powertrain_solution_space_service.py:352` — `compute_solution_space`
 
 **Consumed by.**
 
-- in this graph: [[ss-band-energy-hi|Mission energy at high prop efficiency]] · [[ss-band-energy-lo|Mission energy at low prop efficiency]] · [[ss-energy-wh|Required mission energy]]
+- in this graph: `Mission energy at high prop efficiency` · `Mission energy at low prop efficiency` · `Required mission energy`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `app/services/powertrain_solution_space_service.py:377` · `app/services/powertrain_solution_space_service.py:400` · `app/services/powertrain_solution_space_service.py:412`
 
 **Source.** 🟡 PARTIAL

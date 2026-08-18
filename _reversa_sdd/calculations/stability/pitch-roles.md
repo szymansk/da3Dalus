@@ -6,11 +6,20 @@ unit: – (set of strings)
 cluster: stability
 user_visible: false
 source_status: PARTIAL
+node_class: unclassified-constant
+tags:
+  - cluster/stability
+  - class/unclassified-constant
+  - source/partial
+  - flag/anomaly
+  - flag/divergence
 ---
 
 # Pitch-control roles
 
 **Definition.** Set of trailing-edge-device roles that count as pitch control for elevator authority.
+
+⚪ **Unclassified constant.** Not yet decided whether this is a rule of thumb, a calibration or a physical value. Classifying it is open work — it is deliberately not guessed.
 
 **Value.** `{"elevator", "ruddervator", "elevon", "flaperon"}`
 
@@ -20,7 +29,8 @@ source_status: PARTIAL
 
 **Consumed by.**
 
-- in this graph: [[forward-cg-confidence|Forward CG confidence tier]]
+- in this graph: `Forward CG confidence tier`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `app/services/elevator_authority_service.py:178,527,535,540`
 
 **Source.** 🟡 PARTIAL

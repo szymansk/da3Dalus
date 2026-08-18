@@ -5,11 +5,20 @@ unit: dimensionless
 cluster: perf-oppoints
 user_visible: false
 source_status: NO_SOURCE_FOUND
+node_class: numerical-tolerance
+tags:
+  - cluster/perf-oppoints
+  - class/numerical-tolerance
+  - source/no-source-found
+  - flag/anomaly
+  - flag/divergence
 ---
 
 # Coefficient extraction default
 
 **Definition.** Value substituted when an AeroBuildup coefficient is missing or an empty array.
+
+**Numerical tolerance.** A solver or comparison epsilon, not a domain value. ADR 0023 does not apply.
 
 **Value.** `0.0`
 

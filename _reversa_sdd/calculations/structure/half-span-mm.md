@@ -5,11 +5,19 @@ unit: mm
 cluster: structure
 user_visible: false
 source_status: NO_SOURCE_FOUND
+node_class: derived
+tags:
+  - cluster/structure
+  - class/derived
+  - source/no-source-found
+  - flag/anomaly
 ---
 
 # Wing half-span
 
 **Definition.** Total half-span of the wing behind a SectionGeometry, as the sum of its segment lengths.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -20,13 +28,16 @@ if not lengths:
 return float(sum(lengths))
 ```
 
-**Inputs.** [[segment-lengths|Per-segment spanwise lengths]]
+**Inputs.**
+
+- [[segment-lengths|Per-segment spanwise lengths]]
 
 **Produced by.** `cad_designer/airplane/geometry/spar_solver.py:787` — `_half_span_mm`
 
 **Consumed by.**
 
-- in this graph: [[station-y-mm|Station spanwise position]]
+- in this graph: `Station spanwise position`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `cad_designer/airplane/geometry/spar_solver.py:772`
 
 **Source.** 🔴 NO SOURCE FOUND

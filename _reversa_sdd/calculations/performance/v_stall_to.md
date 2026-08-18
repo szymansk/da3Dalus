@@ -6,11 +6,18 @@ unit: m/s
 cluster: perf-matching
 user_visible: false
 source_status: SOURCED
+node_class: derived
+tags:
+  - cluster/perf-matching
+  - class/derived
+  - source/sourced
 ---
 
 # Takeoff-configuration stall speed
 
 **Definition.** Stall speed in takeoff configuration, falling back to the clean V_S.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -24,7 +31,8 @@ v_stall_to: float = float(aircraft.get("v_s_to_mps") or v_stall)
 
 **Consumed by.**
 
-- in this graph: [[v_lof|Lift-off speed]]
+- in this graph: `Lift-off speed`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `_v_lof:369`
 
 **Source.** 🟢 SOURCED

@@ -6,11 +6,21 @@ unit: m
 cluster: aero-spanwise
 user_visible: true
 source_status: SOURCED
+node_class: derived
+tags:
+  - cluster/aero-spanwise
+  - class/derived
+  - source/sourced
+  - surface/user-visible
+  - flag/anomaly
+  - flag/divergence
 ---
 
 # Strip spanwise station
 
 **Definition.** Absolute distance from the wing root to the strip centre, positive for both halves.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -24,7 +34,8 @@ y_m: float = Field(...)
 
 **Consumed by.**
 
-- in this graph: [[spanwise-bending-moment|Running bending moment]]
+- in this graph: `Running bending moment`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `_surface_to_stations` · `_get_tc_by_y_for_surface` · `frontend/hooks/useSpanwiseLoads.ts` · `frontend/lib/sparPlanHelpers.ts`
 
 **Source.** 🟢 SOURCED

@@ -6,11 +6,19 @@ unit: m
 cluster: perf-envelope
 user_visible: false
 source_status: SOURCED
+node_class: derived
+tags:
+  - cluster/perf-envelope
+  - class/derived
+  - source/sourced
+  - flag/divergence
 ---
 
 # Mean geometric chord
 
 **Definition.** Reference chord for the gust mass ratio, defined as S/b, deliberately not MAC.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -18,13 +26,17 @@ source_status: SOURCED
 c_mgc = wing_area_m2 / b_ref_m
 ```
 
-**Inputs.** [[fe_wing_area|Reference wing area]] · [[fe_b_ref|Reference span]]
+**Inputs.**
+
+- [[fe_wing_area|Reference wing area]]  — *× unit*
+- [[fe_b_ref|Reference span]]  — *× unit*
 
 **Produced by.** `app/services/flight_envelope_service.py:186` — `_build_gust_lines`
 
 **Consumed by.**
 
-- in this graph: [[fe_mu_g|Gust mass ratio]]
+- in this graph: `Gust mass ratio`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 
 **Source.** 🟢 SOURCED
 

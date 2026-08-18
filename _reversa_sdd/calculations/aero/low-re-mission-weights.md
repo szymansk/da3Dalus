@@ -6,11 +6,22 @@ unit: mixed
 cluster: aero-polars
 user_visible: true
 source_status: PARTIAL
+node_class: unclassified-parameter
+tags:
+  - cluster/aero-polars
+  - class/unclassified-parameter
+  - source/partial
+  - surface/user-visible
+  - flag/anomaly
+  - flag/divergence
+  - flag/scale
 ---
 
 # Mission weighting table
 
 **Definition.** Per-mission preferred families, thickness band and cl_max_weight driving score_mission.
+
+⚪ **Unclassified parameter.** Not yet decided whether this is a user input or an internal tuning value.
 
 **Value.** `slope_soarer: {thickness_min_pct 8.0, thickness_max_pct 12.0, cl_max_weight 0.45, preferred_families [semi_symmetric, cambered]} (+ trainer/sport/aerobatic/glider/flying_wing entries above line 50)`
 
@@ -26,7 +37,8 @@ low_re_mission_weights: dict[str, dict[str, Any]] = Field(default_factory=lambda
 
 **Consumed by.**
 
-- in this graph: [[alr-family-bonus|Mission family bonus]] · [[alr-thickness-match|Mission thickness match multiplier]]
+- in this graph: `Mission family bonus` · `Mission thickness match multiplier`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `suitability_service:255` · `score_mission:911`
 
 **Source.** 🟡 PARTIAL

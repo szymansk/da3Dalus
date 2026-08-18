@@ -6,11 +6,20 @@ unit: count
 cluster: mass
 user_visible: true
 source_status: PARTIAL
+node_class: unclassified-constant
+tags:
+  - cluster/mass
+  - class/unclassified-constant
+  - source/partial
+  - surface/user-visible
+  - flag/divergence
 ---
 
 # Symmetric servo quantity
 
 **Definition.** Quantity assigned to an auto-synced servo node: 2 when the wing section is mirrored to both half-spans, else 1.
+
+⚪ **Unclassified constant.** Not yet decided whether this is a rule of thumb, a calibration or a physical value. Classifying it is open work — it is deliberately not guessed.
 
 **Value.** `2 (symmetric) / 1 (asymmetric); also at line 626 for the create branch`
 

@@ -6,11 +6,22 @@ unit: dimensionless
 cluster: powertrain
 user_visible: true
 source_status: SOURCED
+node_class: unclassified-constant
+tags:
+  - cluster/powertrain
+  - class/unclassified-constant
+  - source/sourced
+  - surface/user-visible
+  - flag/anomaly
+  - flag/divergence
+  - flag/scale
 ---
 
 # Default zero-lift drag coefficient (sizing)
 
 **Definition.** RC-typical parasite drag coefficient used when neither the request nor the aeroplane's computation context supplies cd0.
+
+⚪ **Unclassified constant.** Not yet decided whether this is a rule of thumb, a calibration or a physical value. Classifying it is open work — it is deliberately not guessed.
 
 **Value.** `0.03`
 
@@ -20,7 +31,8 @@ source_status: SOURCED
 
 **Consumed by.**
 
-- in this graph: [[resolved-cd0|Resolved zero-lift drag coefficient]]
+- in this graph: `Resolved zero-lift drag coefficient`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `app/services/powertrain_sizing_service.py:168`
 
 **Source.** 🟢 SOURCED

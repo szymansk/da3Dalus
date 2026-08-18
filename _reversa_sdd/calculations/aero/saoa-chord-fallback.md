@@ -6,11 +6,20 @@ unit: m
 cluster: aero-strips
 user_visible: false
 source_status: NO_SOURCE_FOUND
+node_class: unclassified-constant
+tags:
+  - cluster/aero-strips
+  - class/unclassified-constant
+  - source/no-source-found
+  - flag/anomaly
+  - flag/divergence
 ---
 
 # Chord fallback for Reynolds
 
 **Definition.** Chord used when a cross-section's chord cannot be read.
+
+⚪ **Unclassified constant.** Not yet decided whether this is a rule of thumb, a calibration or a physical value. Classifying it is open work — it is deliberately not guessed.
 
 **Value.** `0.20`
 
@@ -26,7 +35,8 @@ chord = 0.20
 
 **Consumed by.**
 
-- in this graph: [[saoa-re-local|Local chord Reynolds number (alpha_L0 lookup)]]
+- in this graph: `Local chord Reynolds number (alpha_L0 lookup)`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 
 **Source.** 🔴 NO SOURCE FOUND
 

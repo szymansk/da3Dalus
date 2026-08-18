@@ -6,11 +6,22 @@ unit: dimensionless
 cluster: perf-matching
 user_visible: true
 source_status: PARTIAL
+node_class: unclassified-constant
+tags:
+  - cluster/perf-matching
+  - class/unclassified-constant
+  - source/partial
+  - surface/user-visible
+  - flag/anomaly
+  - flag/divergence
+  - flag/scale
 ---
 
 # Roskam takeoff ground-roll coefficient
 
 **Definition.** Simplified-ground-roll regression coefficient in the Roskam takeoff formula.
+
+⚪ **Unclassified constant.** Not yet decided whether this is a rule of thumb, a calibration or a physical value. Classifying it is open work — it is deliberately not guessed.
 
 **Value.** `1.21`
 
@@ -26,7 +37,8 @@ _C_TO: float = 1.21
 
 **Consumed by.**
 
-- in this graph: [[s_to_ground|Takeoff ground roll]] · [[tw_takeoff_constraint|Takeoff constraint T/W]]
+- in this graph: `Takeoff ground roll` · `Takeoff constraint T/W`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `_compute_s_to_ground:203` · `matching_chart_service._takeoff_constraint:310`
 
 **Source.** 🟡 PARTIAL

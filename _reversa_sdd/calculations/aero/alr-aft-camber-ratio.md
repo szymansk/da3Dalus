@@ -6,11 +6,19 @@ unit: dimensionless
 cluster: aero-polars
 user_visible: false
 source_status: NO_SOURCE_FOUND
+node_class: derived
+tags:
+  - cluster/aero-polars
+  - class/derived
+  - source/no-source-found
+  - flag/divergence
 ---
 
 # Aft camber ratio (reflex Signal A)
 
 **Definition.** Ratio of camber at 90% chord to max camber; near zero indicates reflex.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -18,13 +26,17 @@ source_status: NO_SOURCE_FOUND
 aft_camber_ratio = camber_at_te / max(max_camber, 1e-9)
 ```
 
-**Inputs.** [[alr-camber-at-te|camber_at_te (camber at x=0.9)]] · [[alr-max-camber-pct|Max camber (classifier-internal)]]
+**Inputs.**
+
+- [[alr-camber-at-te|camber_at_te (camber at x=0.9)]]
+- [[alr-max-camber-pct|Max camber (classifier-internal)]]  — *⊣ limit*
 
 **Produced by.** `app/services/airfoil_low_re_service.py:226` — `classify_family`
 
 **Consumed by.**
 
-- in this graph: [[alr-family|Airfoil family label]]
+- in this graph: `Airfoil family label`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `classify_family:262`
 
 **Source.** 🔴 NO SOURCE FOUND

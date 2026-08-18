@@ -6,11 +6,21 @@ unit: boolean
 cluster: powertrain
 user_visible: true
 source_status: SOURCED
+node_class: derived
+tags:
+  - cluster/powertrain
+  - class/derived
+  - source/sourced
+  - surface/user-visible
+  - flag/anomaly
+  - flag/divergence
 ---
 
 # Catalog motor match flag
 
 **Definition.** True when at least one catalog brushless_motor's rated power meets the required peak shaft power.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -18,7 +28,9 @@ source_status: SOURCED
 max_power = specs.get("max_power_w") or specs.get("max_continuous_power_w") ; if max_power is not None and float(max_power) >= motor_shaft_peak_w: return True
 ```
 
-**Inputs.** [[ss-motor-peak-shaft|Required motor peak shaft power]]
+**Inputs.**
+
+- [[ss-motor-peak-shaft|Required motor peak shaft power]]
 
 **Produced by.** `app/services/powertrain_solution_space_service.py:205` — `_catalog_motor_match`
 

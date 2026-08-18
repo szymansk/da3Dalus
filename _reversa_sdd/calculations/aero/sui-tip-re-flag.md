@@ -6,11 +6,21 @@ unit: boolean
 cluster: aero-polars
 user_visible: true
 source_status: PARTIAL
+node_class: derived
+tags:
+  - cluster/aero-polars
+  - class/derived
+  - source/partial
+  - surface/user-visible
+  - flag/anomaly
+  - flag/divergence
 ---
 
 # tip_re_flag
 
 **Definition.** True when the tip Reynolds is below an absolute floor or drops far below the root Re.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -21,7 +31,11 @@ tip_re_flag_all = (
 )
 ```
 
-**Inputs.** [[sui-re-root|Root-chord Reynolds number]] · [[low-re-tip-re-abs-floor|Tip-Re absolute floor]] · [[low-re-tip-re-rel-drop|Tip-Re relative drop threshold]]
+**Inputs.**
+
+- [[sui-re-root|Root-chord Reynolds number]]
+- [[low-re-tip-re-abs-floor|Tip-Re absolute floor]]  — *⊣ limit*
+- [[low-re-tip-re-rel-drop|Tip-Re relative drop threshold]]  — *⊣ limit*
 
 **Produced by.** `app/services/suitability_service.py:273` — `search_suitability`
 

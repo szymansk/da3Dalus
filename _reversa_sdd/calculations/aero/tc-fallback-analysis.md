@@ -6,11 +6,20 @@ unit: -
 cluster: aero-spanwise
 user_visible: false
 source_status: PARTIAL
+node_class: unclassified-constant
+tags:
+  - cluster/aero-spanwise
+  - class/unclassified-constant
+  - source/partial
+  - flag/anomaly
+  - flag/divergence
 ---
 
 # t/c fallback constant (analysis_service copy)
 
 **Definition.** Thickness-to-chord ratio nominally used when section airfoil data is unavailable.
+
+⚪ **Unclassified constant.** Not yet decided whether this is a rule of thumb, a calibration or a physical value. Classifying it is open work — it is deliberately not guessed.
 
 **Value.** `0.12`
 

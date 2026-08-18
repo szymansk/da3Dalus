@@ -6,11 +6,20 @@ unit: deg
 cluster: aero-spanwise
 user_visible: true
 source_status: PARTIAL
+node_class: derived
+tags:
+  - cluster/aero-spanwise
+  - class/derived
+  - source/partial
+  - surface/user-visible
+  - flag/divergence
 ---
 
 # Alpha sweep array
 
 **Definition.** Angle-of-attack grid for the sweep, taken from the solver's flight_condition or rebuilt from the request.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -24,7 +33,8 @@ np.linspace(start=sweep_request.alpha_start, stop=sweep_request.alpha_end, num=s
 
 **Consumed by.**
 
-- in this graph: [[cm-gradient|Local Cm gradient]] · [[dcm-dalpha-slope|Longitudinal stability slope]] · [[drag-at-zero-lift-point|Drag at zero lift point]] · [[max-cl-point|Maximum lift coefficient point]] · [[max-ld-point|Maximum L/D point]] · [[min-cd-point|Minimum drag coefficient point]] · [[neutral-combined-metric|Neutral-point sensitivity metric]] · [[trim-point-cm-zero|Trim point (Cm = 0)]]
+- in this graph: `Local Cm gradient` · `Longitudinal stability slope` · `Drag at zero lift point` · `Maximum lift coefficient point` · `Maximum L/D point` · `Minimum drag coefficient point` · `Neutral-point sensitivity metric` · `Trim point (Cm = 0)`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `_compute_alpha_sweep_characteristic_points` · `get_alpha_sweep_diagram_url` · `copilot_tools._run_polar_async:366` · `frontend/hooks/useAnalysis.ts extractResult`
 
 **Source.** 🟡 PARTIAL

@@ -6,11 +6,22 @@ unit: dimensionless (0..1)
 cluster: powertrain
 user_visible: true
 source_status: SOURCED
+node_class: unclassified-parameter
+tags:
+  - cluster/powertrain
+  - class/unclassified-parameter
+  - source/sourced
+  - surface/user-visible
+  - flag/anomaly
+  - flag/divergence
+  - flag/scale
 ---
 
 # Propeller efficiency band upper bound
 
 **Definition.** Optimistic end of the assumed propeller efficiency band.
+
+⚪ **Unclassified parameter.** Not yet decided whether this is a user input or an internal tuning value.
 
 **Value.** `0.78`
 
@@ -20,7 +31,8 @@ source_status: SOURCED
 
 **Consumed by.**
 
-- in this graph: [[ss-eta-mid|Mid-band propeller efficiency]] · [[ss-p-cruise-hi-e|Electrical cruise power at high prop efficiency]] · [[ss-p-elec|Electrical power required]] · [[ss-p-top-hi-e|Electrical peak power at high prop efficiency]]
+- in this graph: `Mid-band propeller efficiency` · `Electrical cruise power at high prop efficiency` · `Electrical power required` · `Electrical peak power at high prop efficiency`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `app/services/powertrain_solution_space_service.py:357` · `app/services/powertrain_solution_space_service.py:368` · `app/services/powertrain_solution_space_service.py:373`
 
 **Source.** 🟢 SOURCED

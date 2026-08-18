@@ -5,11 +5,19 @@ unit: mm
 cluster: structure
 user_visible: false
 source_status: NO_SOURCE_FOUND
+node_class: numerical-tolerance
+tags:
+  - cluster/structure
+  - class/numerical-tolerance
+  - source/no-source-found
+  - flag/anomaly
 ---
 
 # Containment fit tolerance
 
 **Definition.** Absolute slack on the band containment test, and the floor on the utilisation denominator so a zero-room band yields a large-but-finite ratio.
+
+**Numerical tolerance.** A solver or comparison epsilon, not a domain value. ADR 0023 does not apply.
 
 **Value.** `1e-6`
 
@@ -25,7 +33,8 @@ _FIT_TOL_MM = 1e-6
 
 **Consumed by.**
 
-- in this graph: [[no-spar-from-y|No-spar region start]] · [[piece-feasible|Spar piece feasibility]] · [[piece-utilisation|Spar piece utilisation]]
+- in this graph: `No-spar region start` · `Spar piece feasibility` · `Spar piece utilisation`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `cad_designer/airplane/geometry/spar_solver.py:280` · `cad_designer/airplane/geometry/spar_solver.py:282` · `cad_designer/airplane/geometry/spar_solver.py:489` · `cad_designer/airplane/geometry/spar_solver.py:539` · `cad_designer/airplane/geometry/spar_solver.py:540` · `cad_designer/airplane/geometry/spar_solver.py:603` · `cad_designer/airplane/geometry/spar_solver.py:604`
 
 **Source.** 🔴 NO SOURCE FOUND

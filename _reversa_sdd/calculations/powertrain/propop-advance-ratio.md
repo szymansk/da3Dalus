@@ -6,11 +6,18 @@ unit: dimensionless
 cluster: powertrain
 user_visible: false
 source_status: SOURCED
+node_class: derived
+tags:
+  - cluster/powertrain
+  - class/derived
+  - source/sourced
 ---
 
 # Advance ratio (operating point)
 
 **Definition.** Propeller advance ratio V/(n.D) at the given RPM and airspeed; zero if the shaft is stopped or diameter is zero.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -18,7 +25,9 @@ source_status: SOURCED
 if n_rps > 0 and D_m > 0: J = V / (n_rps * D_m) else: J = 0.0
 ```
 
-**Inputs.** [[propop-n-rps|Propeller rotational speed (operating point)]]
+**Inputs.**
+
+- [[propop-n-rps|Propeller rotational speed (operating point)]]
 
 **Produced by.** `app/services/powertrain_performance.py:390` — `compute_prop_operating_point`
 

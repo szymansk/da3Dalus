@@ -6,11 +6,19 @@ unit: kg/m³
 cluster: perf-oppoints
 user_visible: false
 source_status: SOURCED
+node_class: derived
+tags:
+  - cluster/perf-oppoints
+  - class/derived
+  - source/sourced
+  - flag/divergence
 ---
 
 # Air density at the operating altitude
 
 **Definition.** ISA density used for the dynamic pressure in CL_target.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -18,13 +26,16 @@ source_status: SOURCED
 rho = float(asb.Atmosphere(altitude=altitude).density())
 ```
 
-**Inputs.** [[default_altitude_m|Default environment altitude]]
+**Inputs.**
+
+- [[default_altitude_m|Default environment altitude]]  — *ε tolerance*
 
 **Produced by.** `app/services/operating_point_generator_service.py:884` — `_trim_or_estimate_point`
 
 **Consumed by.**
 
-- in this graph: [[cl_target|Target lift coefficient]]
+- in this graph: `Target lift coefficient`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `app/services/operating_point_generator_service.py:894 (cl_target_fn)`
 
 **Source.** 🟢 SOURCED

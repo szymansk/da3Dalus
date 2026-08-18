@@ -6,11 +6,19 @@ unit: dimensionless
 cluster: aero-polars
 user_visible: false
 source_status: NO_SOURCE_FOUND
+node_class: unclassified-parameter
+tags:
+  - cluster/aero-polars
+  - class/unclassified-parameter
+  - source/no-source-found
+  - flag/divergence
 ---
 
 # V-bin half-width fraction
 
 **Definition.** Fraction of the gap to the adjacent anchor used to extend the outermost V-bands.
+
+⚪ **Unclassified parameter.** Not yet decided whether this is a user input or an internal tuning value.
 
 **Value.** `0.5`
 
@@ -26,7 +34,8 @@ _V_BIN_HALF_WIDTH_FRACTION: float = 0.5
 
 **Consumed by.**
 
-- in this graph: [[prt-band-boundaries|V-band lower/upper bounds]]
+- in this graph: `V-band lower/upper bounds`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `_band_boundaries:239` · `_band_boundaries:245`
 
 **Source.** 🔴 NO SOURCE FOUND

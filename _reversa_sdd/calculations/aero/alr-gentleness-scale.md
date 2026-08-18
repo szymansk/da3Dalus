@@ -6,11 +6,20 @@ unit: 1/deg
 cluster: aero-polars
 user_visible: false
 source_status: NO_SOURCE_FOUND
+node_class: unclassified-constant
+tags:
+  - cluster/aero-polars
+  - class/unclassified-constant
+  - source/no-source-found
+  - flag/anomaly
+  - flag/divergence
 ---
 
 # Stall gentleness normalisation scale
 
 **Definition.** dCL/dα magnitude at which the gentleness component reaches 0.
+
+⚪ **Unclassified constant.** Not yet decided whether this is a rule of thumb, a calibration or a physical value. Classifying it is open work — it is deliberately not guessed.
 
 **Value.** `0.15`
 
@@ -20,13 +29,16 @@ source_status: NO_SOURCE_FOUND
 gentleness_score = max(0.0, min(1.0, 1.0 + stall / 0.15))
 ```
 
-**Inputs.** [[alr-stall-gentleness|Stall gentleness]]
+**Inputs.**
+
+- [[alr-stall-gentleness|Stall gentleness]]  — *⊣ limit*
 
 **Produced by.** `app/services/airfoil_low_re_service.py:875` — `score_re_agnostic`
 
 **Consumed by.**
 
-- in this graph: [[alr-score-re-agnostic|re_agnostic suitability score]]
+- in this graph: `re_agnostic suitability score`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `score_re_agnostic:876`
 
 **Source.** 🔴 NO SOURCE FOUND

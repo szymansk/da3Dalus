@@ -6,11 +6,20 @@ unit: rad (stored) / deg (solved)
 cluster: perf-oppoints
 user_visible: true
 source_status: SOURCED
+node_class: derived
+tags:
+  - cluster/perf-oppoints
+  - class/derived
+  - source/sourced
+  - surface/user-visible
+  - flag/divergence
 ---
 
 # Trimmed angle of attack
 
 **Definition.** Final solved angle of attack, stored in radians.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -18,13 +27,18 @@ source_status: SOURCED
 alpha_rad=math.radians(best_alpha)
 ```
 
-**Inputs.** [[trim_objective|Opti trim objective]] · [[grid_alpha_sweep|Grid-search alpha sweep]] · [[alpha_bounds_opti|Opti alpha bounds and initial guess]]
+**Inputs.**
+
+- [[trim_objective|Opti trim objective]]
+- [[grid_alpha_sweep|Grid-search alpha sweep]]  — *⤵ fallback*
+- [[alpha_bounds_opti|Opti alpha bounds and initial guess]]  — *⊣ limit*
 
 **Produced by.** `app/services/operating_point_generator_service.py:990` — `_trim_or_estimate_point`
 
 **Consumed by.**
 
-- in this graph: [[aero_coefficients_at_trim|Aero coefficients at the trimmed point]] · [[warn_alpha_limit_reached|ALPHA_LIMIT_REACHED warning]]
+- in this graph: `Aero coefficients at the trimmed point` · `ALPHA_LIMIT_REACHED warning`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `app/models/analysismodels.py (alpha column)` · `app/services/operating_point_generator_service.py:1164 (compute_enrichment alpha_deg)` · `app/services/section_aoa_service.py` · `app/services/retrim_service.py` · `frontend/components/workbench/OperatingPointsPanel.tsx`
 
 **Source.** 🟢 SOURCED

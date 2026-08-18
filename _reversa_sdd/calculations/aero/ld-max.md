@@ -6,11 +6,21 @@ unit: -
 cluster: aero-spanwise
 user_visible: true
 source_status: SOURCED
+node_class: derived
+tags:
+  - cluster/aero-spanwise
+  - class/derived
+  - source/sourced
+  - surface/user-visible
+  - flag/anomaly
+  - flag/divergence
 ---
 
 # Maximum lift-to-drag ratio
 
 **Definition.** Peak glide ratio of the curve.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -18,7 +28,10 @@ source_status: SOURCED
 ld_max=float(ld[i_best])
 ```
 
-**Inputs.** [[speed-polar-ld|Glide ratio per point]] · [[i-best-glide|Best-glide index]]
+**Inputs.**
+
+- [[speed-polar-ld|Glide ratio per point]]
+- [[i-best-glide|Best-glide index]]
 
 **Produced by.** `app/services/analysis_service.py:546` — `_compute_speed_polar`
 

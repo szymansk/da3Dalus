@@ -6,11 +6,20 @@ unit: m
 cluster: aero-strips
 user_visible: false
 source_status: NO_SOURCE_FOUND
+node_class: derived
+tags:
+  - cluster/aero-strips
+  - class/derived
+  - source/no-source-found
+  - flag/anomaly
+  - flag/divergence
 ---
 
 # Span extent for trip interpolation
 
 **Definition.** Span range over which the turbulator's root-to-tip trip position is interpolated.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -18,13 +27,16 @@ source_status: NO_SOURCE_FOUND
 y_span = y_max - y_min if y_max > y_min else 1.0
 ```
 
-**Inputs.** [[saoa-y|Panel spanwise position]]
+**Inputs.**
+
+- [[saoa-y|Panel spanwise position]]
 
 **Produced by.** `app/services/turbulator_optimizer_service.py:680` — `compute_delta_cd0_from_turbulator_position`
 
 **Consumed by.**
 
-- in this graph: [[cdftp-frac|Span fraction of a section]]
+- in this graph: `Span fraction of a section`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 
 **Source.** 🔴 NO SOURCE FOUND
 

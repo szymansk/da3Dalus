@@ -6,11 +6,19 @@ unit: m
 cluster: aero-spanwise
 user_visible: true
 source_status: SOURCED
+node_class: derived
+tags:
+  - cluster/aero-spanwise
+  - class/derived
+  - source/sourced
+  - surface/user-visible
 ---
 
 # Local strip chord
 
 **Definition.** Chord at the strip station.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -24,7 +32,8 @@ chord_m: float = Field(..., description="Local chord at this strip (m)")
 
 **Consumed by.**
 
-- in this graph: [[chord-mm-by-y|Station chord in millimetres]]
+- in this graph: `Station chord in millimetres`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `_surface_to_stations` · `frontend useSpanwiseLoads`
 
 **Source.** 🟢 SOURCED

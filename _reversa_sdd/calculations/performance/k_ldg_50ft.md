@@ -6,11 +6,22 @@ unit: dimensionless
 cluster: perf-matching
 user_visible: true
 source_status: NO_SOURCE_FOUND
+node_class: regulatory-constant
+tags:
+  - cluster/perf-matching
+  - class/regulatory-constant
+  - source/no-source-found
+  - surface/user-visible
+  - flag/anomaly
+  - flag/divergence
+  - flag/scale
 ---
 
 # Landing 50-ft obstacle factor
 
 **Definition.** Multiplier converting landing ground roll to total distance from a 50-ft obstacle.
+
+**Regulatory constant.** Taken from a standard. It carries the clause *and* the class of aircraft that clause applies to.
 
 **Value.** `2.73`
 
@@ -26,7 +37,8 @@ _K_LDG_50FT: float = (2.73)
 
 **Consumed by.**
 
-- in this graph: [[s_ldg_50ft|Landing distance from 50 ft]] · [[s_obstacle_factor_apply|Obstacle-corrected distance]] · [[ws_landing_constraint|Landing constraint W/S_max]]
+- in this graph: `Landing distance from 50 ft` · `Obstacle-corrected distance` · `Landing constraint W/S_max`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `compute_field_lengths:436` · `matching_chart_service._landing_constraint:341` · `matching_chart hover_text:910`
 
 **Source.** 🔴 NO SOURCE FOUND

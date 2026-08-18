@@ -6,11 +6,22 @@ unit: dimensionless
 cluster: aero-strips
 user_visible: true
 source_status: PARTIAL
+node_class: derived
+tags:
+  - cluster/aero-strips
+  - class/derived
+  - source/partial
+  - surface/user-visible
+  - flag/anomaly
+  - flag/divergence
+  - flag/scale
 ---
 
 # Clean lift-to-drag ratio
 
 **Definition.** CL divided by the area-weighted clean section profile drag.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -18,13 +29,17 @@ source_status: PARTIAL
 l_d_clean = cl / cd_clean if cd_clean > 0 else float("nan")
 ```
 
-**Inputs.** [[tos-cl-avg|Area-weighted mean section CL]] · [[tos-cd-clean-avg|Area-weighted mean clean section drag]]
+**Inputs.**
+
+- [[tos-cl-avg|Area-weighted mean section CL]]
+- [[tos-cd-clean-avg|Area-weighted mean clean section drag]]
 
 **Produced by.** `app/services/turbulator_optimizer_service.py:343` — `compute_ld_summary`
 
 **Consumed by.**
 
-- in this graph: [[tos-delta-l-d|L/D improvement]]
+- in this graph: `L/D improvement`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `app/schemas/turbulator_optimizer.py:TurbulatorOptimizerSummarySchema.l_d_clean` · `frontend/components/workbench/TurbulatorEditDialog.tsx:339`
 
 **Source.** 🟡 PARTIAL

@@ -6,11 +6,21 @@ unit: rpm
 cluster: powertrain
 user_visible: true
 source_status: SOURCED
+node_class: derived
+tags:
+  - cluster/powertrain
+  - class/derived
+  - source/sourced
+  - surface/user-visible
+  - flag/anomaly
+  - flag/divergence
 ---
 
 # Fixed operating RPM (non-QPROP branch)
 
 **Definition.** Propeller RPM in the simplified model: gear-aware KV times pack voltage times throttle, independent of aerodynamic load.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -18,13 +28,18 @@ source_status: SOURCED
 prop_rpm = motor.output_kv * V_bat * request.throttle
 ```
 
-**Inputs.** [[motor-output-kv|Output-shaft KV]] · [[curve-v-bat|Battery voltage used for the curve]] · [[request-throttle|Throttle fraction]]
+**Inputs.**
+
+- [[motor-output-kv|Output-shaft KV]]
+- [[curve-v-bat|Battery voltage used for the curve]]  — *⊣ limit*
+- [[request-throttle|Throttle fraction]]
 
 **Produced by.** `app/services/powertrain_performance.py:643` — `compute_performance_curve`
 
 **Consumed by.**
 
-- in this graph: [[curve-advance-ratio|Advance ratio per velocity sample]] · [[curve-p-shaft|Shaft power per velocity sample]] · [[curve-thrust|Thrust per velocity sample]] · [[nearest-rpm-row-selection|Nearest-RPM polar row group]]
+- in this graph: `Advance ratio per velocity sample` · `Shaft power per velocity sample` · `Thrust per velocity sample` · `Nearest-RPM polar row group`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `app/services/powertrain_performance.py:666` · `app/services/powertrain_performance.py:696` · `app/services/powertrain_performance.py:728`
 
 **Source.** 🟢 SOURCED

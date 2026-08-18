@@ -6,11 +6,20 @@ unit: m
 cluster: aero-strips
 user_visible: true
 source_status: PARTIAL
+node_class: derived
+tags:
+  - cluster/aero-strips
+  - class/derived
+  - source/partial
+  - surface/user-visible
+  - flag/divergence
 ---
 
 # Panel chord
 
 **Definition.** Local chord of each LiftingLine panel.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -24,7 +33,8 @@ chord_arr = np.array(ll.chords).flatten()
 
 **Consumed by.**
 
-- in this graph: [[bwsd-re-local|Local section Reynolds number]] · [[bwsd-section-area-raw|Raw trapezoidal section area]] · [[saoa-cl|Section lift coefficient (Kutta-Joukowski)]]
+- in this graph: `Local section Reynolds number` · `Raw trapezoidal section area` · `Section lift coefficient (Kutta-Joukowski)`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `app/api/v2/endpoints/section_aoa.py:SectionAoaPoint.chord_m` · `app/services/turbulator_optimizer_service.py:build_wing_section_data`
 
 **Source.** 🟡 PARTIAL

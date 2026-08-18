@@ -5,11 +5,20 @@ unit: -
 cluster: aero-spanwise
 user_visible: true
 source_status: NO_SOURCE_FOUND
+node_class: unclassified-constant
+tags:
+  - cluster/aero-spanwise
+  - class/unclassified-constant
+  - source/no-source-found
+  - surface/user-visible
+  - flag/anomaly
 ---
 
 # Neutral-trend percentile thresholds
 
 **Definition.** Self-referential percentile cut-offs colouring the neutral-point trend strip.
+
+⚪ **Unclassified constant.** Not yet decided whether this is a rule of thumb, a calibration or a physical value. Classifying it is open work — it is deliberately not guessed.
 
 **Value.** `50 / 85`
 
@@ -19,7 +28,9 @@ source_status: NO_SOURCE_FOUND
 low_thr = float(np.percentile(valid, 50)); high_thr = float(np.percentile(valid, 85))
 ```
 
-**Inputs.** [[neutral-combined-metric|Neutral-point sensitivity metric]]
+**Inputs.**
+
+- [[neutral-combined-metric|Neutral-point sensitivity metric]]
 
 **Produced by.** `app/services/analysis_service.py:1257` — `_compute_neutral_strip_colors`
 

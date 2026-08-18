@@ -6,11 +6,20 @@ unit: dimensionless
 cluster: aero-strips
 user_visible: true
 source_status: PARTIAL
+node_class: derived
+tags:
+  - cluster/aero-strips
+  - class/derived
+  - source/partial
+  - surface/user-visible
+  - flag/divergence
 ---
 
 # Normalised strip lift coefficient
 
 **Definition.** Strip cl scaled by local chord over reference chord (AVL cl_norm convention).
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -18,7 +27,11 @@ source_status: PARTIAL
 cl_norm = cl * chord / c_ref if c_ref > 0 else 0.0
 ```
 
-**Inputs.** [[vlm-strip-cl|Local strip lift coefficient]] · [[vlm-strip-chord|Local strip chord]] · [[vlm-cref|Reference chord echoed to the response]]
+**Inputs.**
+
+- [[vlm-strip-cl|Local strip lift coefficient]]
+- [[vlm-strip-chord|Local strip chord]]
+- [[vlm-cref|Reference chord echoed to the response]]
 
 **Produced by.** `app/services/vlm_strip_forces.py:277` — `compute_vlm_strip_forces`
 

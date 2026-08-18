@@ -6,11 +6,21 @@ unit: kg
 cluster: mass
 user_visible: true
 source_status: SOURCED
+node_class: derived
+tags:
+  - cluster/mass
+  - class/derived
+  - source/sourced
+  - surface/user-visible
+  - flag/anomaly
+  - flag/divergence
 ---
 
 # Effective aircraft mass
 
 **Definition.** The mass value actually used by the compute pass: the calculated value when active_source == CALCULATED, otherwise the user's estimate; PARAMETER_DEFAULTS when the row is missing.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Value.** `1.5 fallback (PARAMETER_DEFAULTS['mass'], app/schemas/design_assumption.py:73)`
 
@@ -20,13 +30,16 @@ source_status: SOURCED
 if row.active_source == "CALCULATED" and row.calculated_value is not None: return row.calculated_value; return row.estimate_value
 ```
 
-**Inputs.** [[aircraft-total-weight-kg|Aircraft total weight from component tree]]
+**Inputs.**
+
+- [[aircraft-total-weight-kg|Aircraft total weight from component tree]]
 
 **Produced by.** `app/services/assumption_compute_service.py:531` — `recompute_assumptions (_load_effective_assumption, def at line 1709)`
 
 **Consumed by.**
 
-- in this graph: [[mass-kg-ctx|Published aircraft mass (computation context)]] · [[weight-force-n|Weight force]]
+- in this graph: `Published aircraft mass (computation context)` · `Weight force`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `app/services/assumption_compute_service.py:538/545/546 (_stall_speed)` · `app/services/assumption_compute_service.py:548-558 (V_md, V_min_sink, w_min)` · `app/services/assumption_compute_service.py:564 (_max_level_speed)` · `app/services/assumption_compute_service.py:714 (ctx['mass_kg'])` · `app/services/assumption_compute_service.py:772 (_compute_landing_field_length)` · `app/services/mass_cg_service.py:277`
 
 **Source.** 🟢 SOURCED

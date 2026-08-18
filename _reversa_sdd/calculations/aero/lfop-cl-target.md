@@ -6,11 +6,19 @@ unit: dimensionless
 cluster: aero-strips
 user_visible: false
 source_status: SOURCED
+node_class: derived
+tags:
+  - cluster/aero-strips
+  - class/derived
+  - source/sourced
+  - flag/divergence
 ---
 
 # Level-flight target lift coefficient
 
 **Definition.** CL required for weight-equals-lift at the assumed cruise speed.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -18,13 +26,20 @@ source_status: SOURCED
 cl_target = (2.0 * mass_kg * g) / (rho * s_ref * cruise_v**2)
 ```
 
-**Inputs.** [[lfop-mass-fallback|Aircraft mass fallback (level-flight solve)]] · [[lfop-g|Gravitational acceleration]] · [[lfop-rho|Air density (level-flight solve)]] · [[lfop-s-ref|Reference area (level-flight solve)]] · [[lfop-cruise-v|Assumed cruise speed (level-flight solve)]]
+**Inputs.**
+
+- [[lfop-mass-fallback|Aircraft mass fallback (level-flight solve)]]  — *⤵ fallback*
+- [[lfop-g|Gravitational acceleration]]
+- [[lfop-rho|Air density (level-flight solve)]]
+- [[lfop-s-ref|Reference area (level-flight solve)]]
+- [[lfop-cruise-v|Assumed cruise speed (level-flight solve)]]  — *⤵ fallback*
 
 **Produced by.** `app/services/section_aoa_service.py:503` — `_resolve_level_flight_op`
 
 **Consumed by.**
 
-- in this graph: [[lfop-cl-target-clip|Target CL clamp]]
+- in this graph: `Target CL clamp`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 
 **Source.** 🟢 SOURCED
 

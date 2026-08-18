@@ -5,11 +5,19 @@ unit: mm (m in the API)
 cluster: structure
 user_visible: true
 source_status: NO_SOURCE_FOUND
+node_class: derived
+tags:
+  - cluster/structure
+  - class/derived
+  - source/no-source-found
+  - surface/user-visible
 ---
 
 # No-spar region start
 
 **Definition.** Spanwise magnitude (starboard half) where the tip-most no-spar region begins — outboard of it the load is negligible and the D-box skin plus ribs carry the tip. None means the spar runs to the tip; the root y means the whole span is negligible.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -24,7 +32,12 @@ if last_tip_y < tip_y - _FIT_TOL_MM:
 return None
 ```
 
-**Inputs.** [[piece-length|Spar piece length]] · [[piece-direction-vector|Spar piece direction unit vector]] · [[negligible-od-floor-mm|Buildable-minimum spar outer diameter]] · [[fit-tol-mm|Containment fit tolerance]]
+**Inputs.**
+
+- [[piece-length|Spar piece length]]
+- [[piece-direction-vector|Spar piece direction unit vector]]
+- [[negligible-od-floor-mm|Buildable-minimum spar outer diameter]]  — *⊣ limit*
+- [[fit-tol-mm|Containment fit tolerance]]  — *ε tolerance*
 
 **Produced by.** `cad_designer/airplane/geometry/spar_solver.py:488` — `_no_spar_from_y`
 

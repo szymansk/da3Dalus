@@ -6,11 +6,20 @@ unit: -
 cluster: perf-envelope
 user_visible: false
 source_status: NO_SOURCE_FOUND
+node_class: unclassified-constant
+tags:
+  - cluster/perf-envelope
+  - class/unclassified-constant
+  - source/no-source-found
+  - flag/anomaly
+  - flag/divergence
 ---
 
 # V-n sampling resolution
 
 **Definition.** Number of velocity samples on each envelope boundary.
+
+⚪ **Unclassified constant.** Not yet decided whether this is a rule of thumb, a calibration or a physical value. Classifying it is open work — it is deliberately not guessed.
 
 **Value.** `60`
 
@@ -26,7 +35,8 @@ n_points = 60  # > 50 as required
 
 **Consumed by.**
 
-- in this graph: [[fe_v_sweep|Velocity sweep points]]
+- in this graph: `Velocity sweep points`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 
 **Source.** 🔴 NO SOURCE FOUND
 

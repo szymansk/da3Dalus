@@ -6,11 +6,20 @@ unit: W
 cluster: powertrain
 user_visible: true
 source_status: PARTIAL
+node_class: derived
+tags:
+  - cluster/powertrain
+  - class/derived
+  - source/partial
+  - surface/user-visible
+  - flag/anomaly
 ---
 
 # Reported power ceiling
 
 **Definition.** The electrical power ceiling returned to the client, rounded to two decimals.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -18,7 +27,9 @@ source_status: PARTIAL
 p_available_w=round(p_available_elec, 2)
 ```
 
-**Inputs.** [[curve-p-available-elec|Electrical power ceiling]]
+**Inputs.**
+
+- [[curve-p-available-elec|Electrical power ceiling]]  — *⤵ fallback*
 
 **Produced by.** `app/services/powertrain_performance.py:800` — `compute_performance_curve`
 

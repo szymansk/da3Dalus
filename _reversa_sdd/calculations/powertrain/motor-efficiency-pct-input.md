@@ -6,11 +6,20 @@ unit: %
 cluster: powertrain
 user_visible: true
 source_status: SOURCED
+node_class: unclassified-parameter
+tags:
+  - cluster/powertrain
+  - class/unclassified-parameter
+  - source/sourced
+  - surface/user-visible
+  - flag/divergence
 ---
 
 # Datasheet motor efficiency
 
 **Definition.** Combined motor+gearbox efficiency percentage from the datasheet, when the catalog has it.
+
+⚪ **Unclassified parameter.** Not yet decided whether this is a user input or an internal tuning value.
 
 **Inputs.** — *(leaf: a constant or an external input)*
 
@@ -18,7 +27,8 @@ source_status: SOURCED
 
 **Consumed by.**
 
-- in this graph: [[motor-eta|Motor + gearbox efficiency]]
+- in this graph: `Motor + gearbox efficiency`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `app/services/powertrain_performance.py:145` · `app/services/powertrain_performance.py:793`
 
 **Source.** 🟢 SOURCED

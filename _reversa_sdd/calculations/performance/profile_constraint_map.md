@@ -6,11 +6,21 @@ unit: n/a
 cluster: perf-matching
 user_visible: true
 source_status: NO_SOURCE_FOUND
+node_class: unclassified-constant
+tags:
+  - cluster/perf-matching
+  - class/unclassified-constant
+  - source/no-source-found
+  - surface/user-visible
+  - flag/anomaly
+  - flag/divergence
 ---
 
 # Per-profile applicable constraints
 
 **Definition.** Mapping from mission profile to the constraint keys drawn for it.
+
+⚪ **Unclassified constant.** Not yet decided whether this is a rule of thumb, a calibration or a physical value. Classifying it is open work — it is deliberately not guessed.
 
 **Value.** `trainer:[stall,climb,power_loading,wcl]; sport:[stall,climb,mission_min_tw,power_loading,wcl]; wing_racer:[stall,cruise,power_loading]; acro_3d:[stall,mission_min_tw,power_loading,vertical_climb]; stol_bush:[stall,takeoff,landing,climb]; slope_soarer:[stall]; glider:[stall]; sailplane:[stall]; motor_glider:[stall,climb,cruise]; flying_wing:[stall,climb,cruise]`
 
@@ -26,7 +36,8 @@ _PROFILE_CONSTRAINT_MAP: dict[str, list[str]] = {...}
 
 **Consumed by.**
 
-- in this graph: [[applicable_for_profile|Profile applicability flag]] · [[effective_keys_custom|Effective constraint keys (custom fallback)]]
+- in this graph: `Profile applicability flag` · `Effective constraint keys (custom fallback)`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `compute_chart:977` · `_build_rc_additive_constraints:1075` · `ConstraintLine.applicable_for_profile → frontend`
 
 **Source.** 🔴 NO SOURCE FOUND

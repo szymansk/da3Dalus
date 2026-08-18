@@ -5,11 +5,21 @@ unit: -
 cluster: aero-spanwise
 user_visible: true
 source_status: SOURCED
+node_class: derived
+tags:
+  - cluster/aero-spanwise
+  - class/derived
+  - source/sourced
+  - surface/user-visible
+  - flag/anomaly
+  - flag/divergence
 ---
 
 # Glide ratio from forces
 
 **Definition.** L/D computed from dimensional lift and drag for the glide-ratio panel.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -17,13 +27,18 @@ source_status: SOURCED
 ld_curve = np.where(np.abs(drag_curve) > 1e-12, lift_curve / drag_curve, np.nan)
 ```
 
-**Inputs.** [[lift-force-values|Lift force array]] · [[drag-force-values|Drag force array]] · [[divide-guard-epsilon|Division guard epsilon]]
+**Inputs.**
+
+- [[lift-force-values|Lift force array]]
+- [[drag-force-values|Drag force array]]
+- [[divide-guard-epsilon|Division guard epsilon]]  — *ε tolerance*
 
 **Produced by.** `app/services/analysis_service.py:1154` — `_plot_glide_ratio`
 
 **Consumed by.**
 
-- in this graph: [[i-ldmax-force|Sweet-spot index]]
+- in this graph: `Sweet-spot index`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `alpha-sweep PNG panel 4`
 
 **Source.** 🟢 SOURCED

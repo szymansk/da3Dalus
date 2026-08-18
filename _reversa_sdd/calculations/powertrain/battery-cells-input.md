@@ -6,11 +6,19 @@ unit: cells (S)
 cluster: powertrain
 user_visible: true
 source_status: SOURCED
+node_class: unclassified-parameter
+tags:
+  - cluster/powertrain
+  - class/unclassified-parameter
+  - source/sourced
+  - surface/user-visible
 ---
 
 # Battery cell count
 
 **Definition.** LiPo series cell count of the selected pack.
+
+⚪ **Unclassified parameter.** Not yet decided whether this is a user input or an internal tuning value.
 
 **Inputs.** — *(leaf: a constant or an external input)*
 
@@ -18,7 +26,8 @@ source_status: SOURCED
 
 **Consumed by.**
 
-- in this graph: [[battery-nominal-voltage|Nominal pack voltage]]
+- in this graph: `Nominal pack voltage`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `app/services/powertrain_performance.py:184`
 
 **Source.** 🟢 SOURCED

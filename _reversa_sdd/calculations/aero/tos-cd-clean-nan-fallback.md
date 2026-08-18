@@ -6,11 +6,21 @@ unit: dimensionless
 cluster: aero-strips
 user_visible: true
 source_status: NO_SOURCE_FOUND
+node_class: derived
+tags:
+  - cluster/aero-strips
+  - class/derived
+  - source/no-source-found
+  - surface/user-visible
+  - flag/anomaly
+  - flag/divergence
 ---
 
 # cd_clean → cd_tripped fallback
 
 **Definition.** When the clean baseline is non-finite, cd_clean is silently replaced by cd_tripped so delta_cd becomes zero.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -18,7 +28,10 @@ source_status: NO_SOURCE_FOUND
 if not math.isfinite(cd_clean): cd_clean = cd_tripped  # fallback — can't compute delta
 ```
 
-**Inputs.** [[tos-cd-clean|Natural-transition section drag]] · [[tos-cd-tripped|Tripped section drag]]
+**Inputs.**
+
+- [[tos-cd-clean|Natural-transition section drag]]
+- [[tos-cd-tripped|Tripped section drag]]
 
 **Produced by.** `app/services/turbulator_optimizer_service.py:271` — `optimize_section_xtr`
 

@@ -6,11 +6,21 @@ unit: g
 cluster: aero-spanwise
 user_visible: true
 source_status: SOURCED
+node_class: derived
+tags:
+  - cluster/aero-spanwise
+  - class/derived
+  - source/sourced
+  - surface/user-visible
+  - flag/divergence
+  - flag/scale
 ---
 
 # Effective manoeuvre load factor
 
 **Definition.** g_limit resolved from design assumptions, or the 3.0 default with a warning flag.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -18,13 +28,16 @@ source_status: SOURCED
 g_limit_raw = get_effective_assumption(db, aeroplane_id, "g_limit"); g_limit = _G_LIMIT_DEFAULT (fallback) else float(g_limit_raw)
 ```
 
-**Inputs.** [[aero-spanwise--g-limit-default|Default manoeuvre load factor]]
+**Inputs.**
+
+- [[aero-spanwise--g-limit-default|Default manoeuvre load factor]]  — *⤵ fallback*
 
 **Produced by.** `app/services/analysis_service.py:2153` — `_compute_spar_sizing_for_surfaces`
 
 **Consumed by.**
 
-- in this graph: [[g-limit-fallback-flag|g_limit fallback flag]] · [[spar-sizing-block|Per-surface spar sizing block]]
+- in this graph: `g_limit fallback flag` · `Per-surface spar sizing block`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `compute_spar_sizing` · `SparSizingResult`
 
 **Source.** 🟢 SOURCED

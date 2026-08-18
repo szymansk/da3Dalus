@@ -5,11 +5,20 @@ unit: deg
 cluster: perf-oppoints
 user_visible: false
 source_status: NO_SOURCE_FOUND
+node_class: unclassified-constant
+tags:
+  - cluster/perf-oppoints
+  - class/unclassified-constant
+  - source/no-source-found
+  - flag/anomaly
+  - flag/divergence
 ---
 
 # Grid-search alpha sweep
 
 **Definition.** Alpha candidates evaluated by the grid-search fallback.
+
+⚪ **Unclassified constant.** Not yet decided whether this is a rule of thumb, a calibration or a physical value. Classifying it is open work — it is deliberately not guessed.
 
 **Value.** `-4.0 to 20.0 deg, 13 points (2 deg step)`
 
@@ -25,7 +34,8 @@ alpha_candidates = np.linspace(-4.0, 20.0, 13)
 
 **Consumed by.**
 
-- in this graph: [[alpha_trimmed|Trimmed angle of attack]]
+- in this graph: `Trimmed angle of attack`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `app/services/operating_point_generator_service.py:821-830`
 
 **Source.** 🔴 NO SOURCE FOUND

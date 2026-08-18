@@ -6,11 +6,21 @@ unit: – (dimensionless)
 cluster: stability
 user_visible: true
 source_status: PARTIAL
+node_class: unclassified-parameter
+tags:
+  - cluster/stability
+  - class/unclassified-parameter
+  - source/partial
+  - surface/user-visible
+  - flag/anomaly
+  - flag/divergence
 ---
 
 # Primary mix gain
 
 **Definition.** Gain applied to the symmetric (pitch/lift) control component of a mixed surface.
+
+⚪ **Unclassified parameter.** Not yet decided whether this is a user input or an internal tuning value.
 
 **Value.** `1.0`
 
@@ -26,7 +36,8 @@ gp = float(getattr(ted, "mix_gain_primary", 1.0) or 1.0)
 
 **Consumed by.**
 
-- in this graph: [[mixer-symmetric-offset|Mixer symmetric offset]]
+- in this graph: `Mixer symmetric offset`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `app/services/trim_enrichment_service.py:255,303,304`
 
 **Source.** 🟡 PARTIAL

@@ -6,11 +6,20 @@ unit: N
 cluster: powertrain
 user_visible: true
 source_status: SOURCED
+node_class: derived
+tags:
+  - cluster/powertrain
+  - class/derived
+  - source/sourced
+  - surface/user-visible
+  - flag/anomaly
 ---
 
 # Thrust per velocity sample
 
 **Definition.** Propeller thrust at each swept airspeed, from the interpolated thrust coefficient at the operating RPM.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -18,7 +27,13 @@ source_status: SOURCED
 thrust_n = max(Ct * rho * (point_n_rps**2) * (D_m**4), 0.0)
 ```
 
-**Inputs.** [[polar-ct|Propeller thrust coefficient]] · [[air-density-perf|Air density at altitude (performance)]] · [[curve-prop-rpm|Fixed operating RPM (non-QPROP branch)]] · [[qprop-rpm-solution|Solved operating RPM]] · [[curve-diameter-m|Propeller diameter in metres]]
+**Inputs.**
+
+- [[polar-ct|Propeller thrust coefficient]]  — *⊣ limit*
+- [[air-density-perf|Air density at altitude (performance)]]
+- [[curve-prop-rpm|Fixed operating RPM (non-QPROP branch)]]
+- [[qprop-rpm-solution|Solved operating RPM]]  — *⊣ limit*
+- [[curve-diameter-m|Propeller diameter in metres]]
 
 **Produced by.** `app/services/powertrain_performance.py:748` — `compute_performance_curve`
 

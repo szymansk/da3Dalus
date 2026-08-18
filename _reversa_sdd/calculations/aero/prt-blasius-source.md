@@ -6,11 +6,19 @@ unit: n/a
 cluster: aero-polars
 user_visible: false
 source_status: PARTIAL
+node_class: unclassified-constant
+tags:
+  - cluster/aero-polars
+  - class/unclassified-constant
+  - source/partial
+  - flag/divergence
 ---
 
 # Blasius / Schlichting cd0∝Re^(-1/2) scaling rationale
 
 **Definition.** Cited justification for interpolating cd0 linearly in 1/√Re.
+
+⚪ **Unclassified constant.** Not yet decided whether this is a rule of thumb, a calibration or a physical value. Classifying it is open work — it is deliberately not guessed.
 
 **Value.** `Blasius (1908): cf = 0.664/√Re for laminar flat plate → cd0 ∝ 1/√Re; Schlichting (1979): turbulent cf ∝ Re^{-0.2} (Prandtl); Hepperle (2012): electric endurance; e insensitive to Re at sub-stall; Drela (XFOIL framework): span-efficiency dominated by planform, not Re; Anderson (2016): §6.1.2 drag polar, §6.7.2 (L/D)_max`
 

@@ -6,11 +6,18 @@ unit: -
 cluster: perf-envelope
 user_visible: false
 source_status: SOURCED
+node_class: derived
+tags:
+  - cluster/perf-envelope
+  - class/derived
+  - source/sourced
 ---
 
 # Level-flight lift coefficient
 
 **Definition.** Lift coefficient required to sustain level flight at speed V.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -18,13 +25,18 @@ source_status: SOURCED
 cl = (mass * G) / (q * s_ref)
 ```
 
-**Inputs.** [[end_mass|Total aircraft mass (endurance)]] · [[end_g|Gravitational acceleration (endurance)]] · [[end_q|Dynamic pressure (endurance)]]
+**Inputs.**
+
+- [[end_mass|Total aircraft mass (endurance)]]
+- [[end_g|Gravitational acceleration (endurance)]]
+- [[end_q|Dynamic pressure (endurance)]]
 
 **Produced by.** `app/services/endurance_service.py:120` — `_power_required`
 
 **Consumed by.**
 
-- in this graph: [[end_cd_total|Total drag coefficient]]
+- in this graph: `Total drag coefficient`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 
 **Source.** 🟢 SOURCED
 

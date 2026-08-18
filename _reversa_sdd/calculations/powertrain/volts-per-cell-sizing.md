@@ -6,11 +6,19 @@ unit: V/cell
 cluster: powertrain
 user_visible: false
 source_status: SOURCED
+node_class: unclassified-constant
+tags:
+  - cluster/powertrain
+  - class/unclassified-constant
+  - source/sourced
+  - flag/anomaly
 ---
 
 # Volts per cell (sizing)
 
 **Definition.** Nominal LiPo cell voltage used to derive pack voltage from cell count in the sizing sweep.
+
+⚪ **Unclassified constant.** Not yet decided whether this is a rule of thumb, a calibration or a physical value. Classifying it is open work — it is deliberately not guessed.
 
 **Value.** `3.7`
 
@@ -26,7 +34,8 @@ voltage = cells * 3.7
 
 **Consumed by.**
 
-- in this graph: [[combo-battery-voltage|Resolved battery voltage (sizing)]]
+- in this graph: `Resolved battery voltage (sizing)`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `app/services/powertrain_sizing_service.py:228`
 
 **Source.** 🟢 SOURCED

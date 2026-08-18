@@ -6,11 +6,20 @@ unit: kg
 cluster: perf-envelope
 user_visible: true
 source_status: SOURCED
+node_class: user-input
+tags:
+  - cluster/perf-envelope
+  - class/user-input
+  - source/sourced
+  - surface/user-visible
+  - flag/divergence
 ---
 
 # Mass for wing loading
 
 **Definition.** Mass from the cached context, falling back to the aeroplane's total_mass_kg column.
+
+**User input.** Supplied from outside the calculation (assumption store or request), not derived.
 
 **Formula — as the code writes it.**
 
@@ -24,7 +33,8 @@ mass = ctx.get("mass_kg"); if not isinstance(mass, (int, float)) or mass <= 0: m
 
 **Consumed by.**
 
-- in this graph: [[mkpi_wing_loading|KPI: wing loading]]
+- in this graph: `KPI: wing loading`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 
 **Source.** 🟢 SOURCED
 

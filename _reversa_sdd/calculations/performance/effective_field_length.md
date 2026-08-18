@@ -6,11 +6,20 @@ unit: m
 cluster: perf-matching
 user_visible: true
 source_status: NO_SOURCE_FOUND
+node_class: derived
+tags:
+  - cluster/perf-matching
+  - class/derived
+  - source/no-source-found
+  - surface/user-visible
+  - flag/divergence
 ---
 
 # Effective field length
 
 **Definition.** Worse of takeoff and landing 50-ft distances, used as the field-friendliness KPI numerator.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -18,7 +27,10 @@ source_status: NO_SOURCE_FOUND
 eff = max(result.get("s_to_50ft_m", 0), result.get("s_ldg_50ft_m", 0))
 ```
 
-**Inputs.** [[s_to_50ft|Takeoff distance over 50 ft]] · [[s_ldg_50ft|Landing distance from 50 ft]]
+**Inputs.**
+
+- [[s_to_50ft|Takeoff distance over 50 ft]]
+- [[s_ldg_50ft|Landing distance from 50 ft]]
 
 **Produced by.** `app/services/mission_kpi_service.py:324` — `_compute_field_length_score`
 

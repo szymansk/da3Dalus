@@ -5,11 +5,21 @@ unit: mixed (dimensionless coefficients / m/s)
 cluster: perf-oppoints
 user_visible: true
 source_status: NO_SOURCE_FOUND
+node_class: derived
+tags:
+  - cluster/perf-oppoints
+  - class/derived
+  - source/no-source-found
+  - surface/user-visible
+  - flag/anomaly
+  - flag/divergence
 ---
 
 # Trim residual record
 
 **Definition.** Solver diagnostics stored with the point (Opti: cm/cy/cl; grid: residual and both velocities).
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -17,7 +27,10 @@ source_status: NO_SOURCE_FOUND
 best_residuals = dict(opti_solution.get("metrics", {}))  |  best_residuals = {"final_residual": float(gs_score), "grid_velocity_mps": float(gs_velocity), "target_velocity_mps": float(velocity)}
 ```
 
-**Inputs.** [[trim_score|Trim score]] · [[fallback_speed_factors|Grid-search velocity factors]]
+**Inputs.**
+
+- [[trim_score|Trim score]]
+- [[fallback_speed_factors|Grid-search velocity factors]]  — *⤵ fallback*
 
 **Produced by.** `app/services/operating_point_generator_service.py:951` — `_trim_or_estimate_point`
 

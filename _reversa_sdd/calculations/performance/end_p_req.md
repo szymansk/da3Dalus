@@ -6,11 +6,21 @@ unit: W
 cluster: perf-envelope
 user_visible: true
 source_status: SOURCED
+node_class: derived
+tags:
+  - cluster/perf-envelope
+  - class/derived
+  - source/sourced
+  - surface/user-visible
+  - flag/anomaly
+  - flag/divergence
 ---
 
 # Battery power required
 
 **Definition.** Electrical power drawn from the pack for level flight at speed V.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -18,13 +28,17 @@ source_status: SOURCED
 return p_aero / eta_total
 ```
 
-**Inputs.** [[end_p_aero|Aerodynamic power]] · [[end_eta_total|Total propulsion efficiency]]
+**Inputs.**
+
+- [[end_p_aero|Aerodynamic power]]
+- [[end_eta_total|Total propulsion efficiency]]
 
 **Produced by.** `app/services/endurance_service.py:127` — `_power_required`
 
 **Consumed by.**
 
-- in this graph: [[end_p_req_vmd|Power required at V_md]] · [[end_p_req_vmin|Power required at V_min_sink]]
+- in this graph: `Power required at V_md` · `Power required at V_min_sink`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `powertrain_sizing_service.py`
 
 **Source.** 🟢 SOURCED

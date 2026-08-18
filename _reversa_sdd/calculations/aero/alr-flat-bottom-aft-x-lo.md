@@ -6,11 +6,19 @@ unit: chord fraction
 cluster: aero-polars
 user_visible: false
 source_status: NO_SOURCE_FOUND
+node_class: unclassified-parameter
+tags:
+  - cluster/aero-polars
+  - class/unclassified-parameter
+  - source/no-source-found
+  - flag/divergence
 ---
 
 # Flat-bottom aft window start
 
 **Definition.** Chordwise start of the window over which lower-surface linearity is tested.
+
+⚪ **Unclassified parameter.** Not yet decided whether this is a user input or an internal tuning value.
 
 **Value.** `0.30`
 
@@ -26,7 +34,8 @@ _FLAT_BOTTOM_AFT_X_LO = 0.30
 
 **Consumed by.**
 
-- in this graph: [[alr-aft-quad-coeff|Aft lower-surface quadratic coefficient]]
+- in this graph: `Aft lower-surface quadratic coefficient`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `classify_family:242`
 
 **Source.** 🔴 NO SOURCE FOUND

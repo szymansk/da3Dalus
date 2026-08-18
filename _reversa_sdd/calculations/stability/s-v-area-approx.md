@@ -6,11 +6,20 @@ unit: m²
 cluster: stability
 user_visible: false
 source_status: SOURCED
+node_class: derived
+tags:
+  - cluster/stability
+  - class/derived
+  - source/sourced
+  - flag/anomaly
+  - flag/divergence
 ---
 
 # Vertical tail area (trapezoidal approximation)
 
 **Definition.** Planform area of the vertical tail, from the same trapezoidal helper as the horizontal tail.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -18,13 +27,16 @@ source_status: SOURCED
 s_v_m2 = _wing_area_approx(vtail)
 ```
 
-**Inputs.** [[s-h-area-approx|Horizontal tail area (trapezoidal approximation)]]
+**Inputs.**
+
+- [[s-h-area-approx|Horizontal tail area (trapezoidal approximation)]]
 
 **Produced by.** `app/services/tail_sizing_service.py:441` — `build_tail_sizing_context_from_aeroplane`
 
 **Consumed by.**
 
-- in this graph: [[v-v-current|Vertical tail volume coefficient]]
+- in this graph: `Vertical tail volume coefficient`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `app/services/tail_sizing_service.py:466` · `app/services/tail_sizing_service.py:232 (V_V)`
 
 **Source.** 🟢 SOURCED

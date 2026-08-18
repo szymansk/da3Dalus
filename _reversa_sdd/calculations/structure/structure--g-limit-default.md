@@ -5,11 +5,21 @@ unit: g
 cluster: structure
 user_visible: true
 source_status: PARTIAL
+node_class: unclassified-constant
+tags:
+  - cluster/structure
+  - class/unclassified-constant
+  - source/partial
+  - surface/user-visible
+  - flag/anomaly
+  - flag/divergence
 ---
 
 # Default manoeuvre limit load factor
 
 **Definition.** Load factor substituted when no g_limit design assumption exists for the aeroplane. A warning is logged and (sizing path only) g_limit_fallback=True is returned.
+
+⚪ **Unclassified constant.** Not yet decided whether this is a rule of thumb, a calibration or a physical value. Classifying it is open work — it is deliberately not guessed.
 
 **Value.** `3.0`
 
@@ -19,7 +29,8 @@ source_status: PARTIAL
 
 **Consumed by.**
 
-- in this graph: [[g-limit-effective|Effective manoeuvre load factor]] · [[resolved-g-limit-plan|Limit load factor (plan path)]] · [[structure--g-limit|Manoeuvre limit load factor]]
+- in this graph: `Effective manoeuvre load factor` · `Limit load factor (plan path)` · `Manoeuvre limit load factor`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `app/services/spar_plan_service.py:356` · `app/services/spar_plan_service.py:358` · `app/tests/test_spar_plan_endpoint.py:414`
 
 **Source.** 🟡 PARTIAL

@@ -6,11 +6,21 @@ unit: – (rank)
 cluster: stability
 user_visible: true
 source_status: NO_SOURCE_FOUND
+node_class: unclassified-constant
+tags:
+  - cluster/stability
+  - class/unclassified-constant
+  - source/no-source-found
+  - surface/user-visible
+  - flag/anomaly
+  - flag/divergence
 ---
 
 # Classification severity ranking
 
 **Definition.** Severity order used to reduce the per-surface classifications to a single top-level one.
+
+⚪ **Unclassified constant.** Not yet decided whether this is a rule of thumb, a calibration or a physical value. Classifying it is open work — it is deliberately not guessed.
 
 **Value.** `{"in_range": 0, "below_range": 1, "above_range": 1, "out_of_physical_range": 2, "not_applicable": 3}`
 

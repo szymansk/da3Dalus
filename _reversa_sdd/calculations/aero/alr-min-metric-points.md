@@ -6,11 +6,20 @@ unit: count
 cluster: aero-polars
 user_visible: false
 source_status: PARTIAL
+node_class: unclassified-constant
+tags:
+  - cluster/aero-polars
+  - class/unclassified-constant
+  - source/partial
+  - flag/anomaly
+  - flag/divergence
 ---
 
 # Minimum trusted points for metric extraction
 
 **Definition.** Fewer than 4 trusted CL/CD points aborts extraction; fewer than 5 skips the polar fit.
+
+⚪ **Unclassified constant.** Not yet decided whether this is a rule of thumb, a calibration or a physical value. Classifying it is open work — it is deliberately not guessed.
 
 **Value.** `4 / 5`
 

@@ -6,11 +6,19 @@ unit: mm³
 cluster: structure
 user_visible: false
 source_status: PARTIAL
+node_class: derived
+tags:
+  - cluster/structure
+  - class/derived
+  - source/partial
+  - flag/anomaly
 ---
 
 # Section modulus, circular tube
 
 **Definition.** Elastic section modulus of a hollow circular tube, outer diameter Da, inner diameter Di.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 

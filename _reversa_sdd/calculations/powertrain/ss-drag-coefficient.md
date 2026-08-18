@@ -6,11 +6,18 @@ unit: dimensionless
 cluster: powertrain
 user_visible: false
 source_status: SOURCED
+node_class: derived
+tags:
+  - cluster/powertrain
+  - class/derived
+  - source/sourced
 ---
 
 # Total drag coefficient
 
 **Definition.** Parabolic drag polar: parasite plus lift-induced.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -18,13 +25,18 @@ source_status: SOURCED
 cd = cd0 + k * cl * cl
 ```
 
-**Inputs.** [[ss-cd0|Zero-lift drag coefficient (solution space)]] · [[ss-induced-drag-factor|Induced-drag factor]] · [[ss-lift-coefficient|Level-flight lift coefficient]]
+**Inputs.**
+
+- [[ss-cd0|Zero-lift drag coefficient (solution space)]]  — *⤵ fallback*
+- [[ss-induced-drag-factor|Induced-drag factor]]
+- [[ss-lift-coefficient|Level-flight lift coefficient]]
 
 **Produced by.** `app/services/powertrain_solution_space_service.py:104` — `_p_aero`
 
 **Consumed by.**
 
-- in this graph: [[ss-p-aero|Aerodynamic power]]
+- in this graph: `Aerodynamic power`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `app/services/powertrain_solution_space_service.py:105`
 
 **Source.** 🟢 SOURCED

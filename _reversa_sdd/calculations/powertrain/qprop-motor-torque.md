@@ -6,11 +6,19 @@ unit: Nm
 cluster: powertrain
 user_visible: false
 source_status: SOURCED
+node_class: derived
+tags:
+  - cluster/powertrain
+  - class/derived
+  - source/sourced
+  - flag/divergence
 ---
 
 # Motor-produced torque
 
 **Definition.** Shaft torque produced by the motor at a given current, net of the no-load current.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -18,13 +26,18 @@ source_status: SOURCED
 q_motor = (i - i0) / kv_si
 ```
 
-**Inputs.** [[qprop-current-for-rpm|Terminal current at a candidate RPM]] · [[motor-io-input|No-load current]] · [[motor-kv-si|Motor speed constant in SI]]
+**Inputs.**
+
+- [[qprop-current-for-rpm|Terminal current at a candidate RPM]]
+- [[motor-io-input|No-load current]]  — *⤵ fallback*
+- [[motor-kv-si|Motor speed constant in SI]]
 
 **Produced by.** `app/services/powertrain_performance.py:535` — `solve_qprop_operating_point.residual`
 
 **Consumed by.**
 
-- in this graph: [[qprop-residual|Torque-balance residual]]
+- in this graph: `Torque-balance residual`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `app/services/powertrain_performance.py:537`
 
 **Source.** 🟢 SOURCED

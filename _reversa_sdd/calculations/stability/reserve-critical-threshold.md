@@ -6,11 +6,21 @@ unit: – (fraction)
 cluster: stability
 user_visible: true
 source_status: NO_SOURCE_FOUND
+node_class: unclassified-parameter
+tags:
+  - cluster/stability
+  - class/unclassified-parameter
+  - source/no-source-found
+  - surface/user-visible
+  - flag/anomaly
+  - flag/divergence
 ---
 
 # Deflection reserve critical threshold
 
 **Definition.** Usage fraction above which a 'near mechanical limit — redesign needed' critical warning is emitted.
+
+⚪ **Unclassified parameter.** Not yet decided whether this is a user input or an internal tuning value.
 
 **Value.** `0.95`
 

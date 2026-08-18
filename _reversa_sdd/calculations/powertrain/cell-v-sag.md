@@ -6,11 +6,21 @@ unit: V/cell
 cluster: powertrain
 user_visible: true
 source_status: NO_SOURCE_FOUND
+node_class: unclassified-constant
+tags:
+  - cluster/powertrain
+  - class/unclassified-constant
+  - source/no-source-found
+  - surface/user-visible
+  - flag/anomaly
+  - flag/divergence
 ---
 
 # Cell voltage under load
 
 **Definition.** Cell voltage assumed under peak load, used to convert peak power into peak current.
+
+⚪ **Unclassified constant.** Not yet decided whether this is a rule of thumb, a calibration or a physical value. Classifying it is open work — it is deliberately not guessed.
 
 **Value.** `3.5`
 
@@ -20,7 +30,8 @@ source_status: NO_SOURCE_FOUND
 
 **Consumed by.**
 
-- in this graph: [[ss-v-sag|Pack voltage under load]]
+- in this graph: `Pack voltage under load`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `app/services/powertrain_solution_space_service.py:135`
 
 **Source.** 🔴 NO SOURCE FOUND

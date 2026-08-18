@@ -6,11 +6,21 @@ unit: deg
 cluster: perf-oppoints
 user_visible: true
 source_status: NO_SOURCE_FOUND
+node_class: unclassified-constant
+tags:
+  - cluster/perf-oppoints
+  - class/unclassified-constant
+  - source/no-source-found
+  - surface/user-visible
+  - flag/anomaly
+  - flag/divergence
 ---
 
 # Default maximum sideslip
 
 **Definition.** Sideslip limit used for the BETA_LIMIT_REACHED check.
+
+⚪ **Unclassified constant.** Not yet decided whether this is a rule of thumb, a calibration or a physical value. Classifying it is open work — it is deliberately not guessed.
 
 **Value.** `30.0`
 
@@ -26,7 +36,8 @@ source_status: NO_SOURCE_FOUND
 
 **Consumed by.**
 
-- in this graph: [[warn_beta_limit_reached|BETA_LIMIT_REACHED warning]]
+- in this graph: `BETA_LIMIT_REACHED warning`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `app/services/operating_point_generator_service.py:864-867`
 
 **Source.** 🔴 NO SOURCE FOUND

@@ -6,11 +6,21 @@ unit: m
 cluster: aero-strips
 user_visible: true
 source_status: PARTIAL
+node_class: derived
+tags:
+  - cluster/aero-strips
+  - class/derived
+  - source/partial
+  - surface/user-visible
+  - flag/anomaly
+  - flag/divergence
 ---
 
 # Local strip chord
 
 **Definition.** Streamwise chord of the strip taken as the x-distance between LE and TE midpoints.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -18,13 +28,17 @@ source_status: PARTIAL
 chord = float(abs(te_pt[0] - le[0]))
 ```
 
-**Inputs.** [[vlm-strip-le|Strip leading-edge point]] · [[vlm-strip-te|Strip trailing-edge point]]
+**Inputs.**
+
+- [[vlm-strip-le|Strip leading-edge point]]
+- [[vlm-strip-te|Strip trailing-edge point]]
 
 **Produced by.** `app/services/vlm_strip_forces.py:262` — `compute_vlm_strip_forces`
 
 **Consumed by.**
 
-- in this graph: [[vlm-strip-c-cl|Chord × cl product]] · [[vlm-strip-cl-norm|Normalised strip lift coefficient]]
+- in this graph: `Chord × cl product` · `Normalised strip lift coefficient`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `app/services/spanwise_loads.py:75` · `frontend/hooks/useStripForces.ts`
 
 **Source.** 🟡 PARTIAL

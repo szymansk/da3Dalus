@@ -6,11 +6,21 @@ unit: dimensionless
 cluster: aero-strips
 user_visible: false
 source_status: NO_SOURCE_FOUND
+node_class: unclassified-constant
+tags:
+  - cluster/aero-strips
+  - class/unclassified-constant
+  - source/no-source-found
+  - flag/anomaly
+  - flag/divergence
+  - flag/scale
 ---
 
 # Target CL clamp
 
 **Definition.** Target CL is clamped into [0.1, 2.0].
+
+⚪ **Unclassified constant.** Not yet decided whether this is a rule of thumb, a calibration or a physical value. Classifying it is open work — it is deliberately not guessed.
 
 **Value.** `0.1 … 2.0`
 
@@ -20,13 +30,16 @@ source_status: NO_SOURCE_FOUND
 cl_target = float(np.clip(cl_target, 0.1, 2.0))
 ```
 
-**Inputs.** [[lfop-cl-target|Level-flight target lift coefficient]]
+**Inputs.**
+
+- [[lfop-cl-target|Level-flight target lift coefficient]]
 
 **Produced by.** `app/services/section_aoa_service.py:504` — `_resolve_level_flight_op`
 
 **Consumed by.**
 
-- in this graph: [[lfop-alpha-trimmed|Trimmed alpha from CL-target solve]] · [[lfop-cl-residual|CL residual for the root search]]
+- in this graph: `Trimmed alpha from CL-target solve` · `CL residual for the root search`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 
 **Source.** 🔴 NO SOURCE FOUND
 

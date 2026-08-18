@@ -6,11 +6,20 @@ unit: boolean
 cluster: aero-polars
 user_visible: true
 source_status: NO_SOURCE_FOUND
+node_class: derived
+tags:
+  - cluster/aero-polars
+  - class/derived
+  - source/no-source-found
+  - surface/user-visible
+  - flag/divergence
 ---
 
 # polar_re_table_degenerate
 
 **Definition.** True when all V anchors sit at nearly the same speed, so only one band is fitted.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -18,7 +27,10 @@ source_status: NO_SOURCE_FOUND
 degenerate = (re_max / re_min) < _RE_DEGENERACY_RATIO if re_min > 0 else True
 ```
 
-**Inputs.** [[prt-re-aircraft|Aircraft-level Reynolds number (V-band label)]] · [[prt-re-degeneracy-ratio|Re-table degeneracy threshold]]
+**Inputs.**
+
+- [[prt-re-aircraft|Aircraft-level Reynolds number (V-band label)]]
+- [[prt-re-degeneracy-ratio|Re-table degeneracy threshold]]  — *⤵ fallback*
 
 **Produced by.** `app/services/polar_re_table_service.py:454` — `build_re_table`
 

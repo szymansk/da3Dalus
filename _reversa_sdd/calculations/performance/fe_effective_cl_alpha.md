@@ -6,11 +6,20 @@ unit: 1/rad
 cluster: perf-envelope
 user_visible: false
 source_status: NO_SOURCE_FOUND
+node_class: derived
+tags:
+  - cluster/perf-envelope
+  - class/derived
+  - source/no-source-found
+  - flag/anomaly
+  - flag/divergence
 ---
 
 # Effective lift-curve slope for gust
 
 **Definition.** Cached alpha-sweep CL_alpha when available, else the Helmbold fallback.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -18,13 +27,17 @@ source_status: NO_SOURCE_FOUND
 effective_cl_alpha = cl_alpha_per_rad; if None and b_ref>0: _helmbold_cl_alpha(ar)
 ```
 
-**Inputs.** [[ctx_cl_alpha_per_rad|Cached lift-curve slope]] · [[fe_cl_alpha_helmbold|Finite-span lift-curve slope (Helmbold fallback)]]
+**Inputs.**
+
+- [[ctx_cl_alpha_per_rad|Cached lift-curve slope]]
+- [[fe_cl_alpha_helmbold|Finite-span lift-curve slope (Helmbold fallback)]]  — *⤵ fallback*
 
 **Produced by.** `app/services/flight_envelope_service.py:341` — `compute_vn_curve`
 
 **Consumed by.**
 
-- in this graph: [[fe_delta_n|Gust load-factor increment]] · [[fe_mu_g|Gust mass ratio]]
+- in this graph: `Gust load-factor increment` · `Gust mass ratio`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 
 **Source.** 🔴 NO SOURCE FOUND
 

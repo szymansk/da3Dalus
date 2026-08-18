@@ -6,11 +6,22 @@ unit: dimensionless
 cluster: perf-matching
 user_visible: true
 source_status: SOURCED
+node_class: unclassified-parameter
+tags:
+  - cluster/perf-matching
+  - class/unclassified-parameter
+  - source/sourced
+  - surface/user-visible
+  - flag/anomaly
+  - flag/divergence
+  - flag/scale
 ---
 
 # Default propeller efficiency
 
 **Definition.** Propeller efficiency assumed at climb speed for the power-loading constraint.
+
+⚪ **Unclassified parameter.** Not yet decided whether this is a user input or an internal tuning value.
 
 **Value.** `0.7`
 
@@ -26,7 +37,8 @@ eta_prop: float = 0.7
 
 **Consumed by.**
 
-- in this graph: [[tw_power_loading|Power-loading T/W floor]]
+- in this graph: `Power-loading T/W floor`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `_power_loading_constraint:564` · `hover_text:1149`
 
 **Source.** 🟢 SOURCED

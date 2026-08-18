@@ -5,11 +5,20 @@ unit: m/s
 cluster: aero-spanwise
 user_visible: true
 source_status: PARTIAL
+node_class: unclassified-parameter
+tags:
+  - cluster/aero-spanwise
+  - class/unclassified-parameter
+  - source/partial
+  - surface/user-visible
+  - flag/divergence
 ---
 
 # Spanwise-loads velocity echo
 
 **Definition.** Freestream velocity injected into the integrator metadata.
+
+⚪ **Unclassified parameter.** Not yet decided whether this is a user input or an internal tuning value.
 
 **Formula — as the code writes it.**
 

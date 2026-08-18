@@ -6,11 +6,20 @@ unit: x/c
 cluster: aero-strips
 user_visible: false
 source_status: SOURCED
+node_class: unclassified-parameter
+tags:
+  - cluster/aero-strips
+  - class/unclassified-parameter
+  - source/sourced
+  - flag/anomaly
+  - flag/divergence
 ---
 
 # Lower-surface trip position
 
 **Definition.** Lower-surface transition is always left at natural (x/c = 1.0).
+
+⚪ **Unclassified parameter.** Not yet decided whether this is a user input or an internal tuning value.
 
 **Value.** `1.0`
 
@@ -26,7 +35,8 @@ xtr_lower: float = 1.0
 
 **Consumed by.**
 
-- in this graph: [[tos-cd-at-cl|Section cd at a target CL and trip position]]
+- in this graph: `Section cd at a target CL and trip position`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `app/services/turbulator_optimizer_service.py:_cd_at_cl_xtr`
 
 **Source.** 🟢 SOURCED

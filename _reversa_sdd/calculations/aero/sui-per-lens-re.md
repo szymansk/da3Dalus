@@ -6,11 +6,20 @@ unit: dimensionless
 cluster: aero-polars
 user_visible: false
 source_status: SOURCED
+node_class: derived
+tags:
+  - cluster/aero-polars
+  - class/derived
+  - source/sourced
+  - flag/anomaly
+  - flag/divergence
 ---
 
 # Per-lens Reynolds number
 
 **Definition.** Reynolds number for each target-CL lens, from that lens's design speed and the root chord.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -19,7 +28,10 @@ raw = v_mps * chord_m / _NU
 clamped, _ = _clamp_re_to_grid(raw, re_grid)
 ```
 
-**Inputs.** [[sui-nu|Kinematic viscosity for per-lens Re]] · [[low-re-grid|Absolute low-Re grid]]
+**Inputs.**
+
+- [[sui-nu|Kinematic viscosity for per-lens Re]]
+- [[low-re-grid|Absolute low-Re grid]]
 
 **Produced by.** `app/services/suitability_service.py:383` — `_per_lens_re`
 

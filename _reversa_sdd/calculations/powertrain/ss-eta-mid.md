@@ -6,11 +6,21 @@ unit: dimensionless (0..1)
 cluster: powertrain
 user_visible: true
 source_status: NO_SOURCE_FOUND
+node_class: derived
+tags:
+  - cluster/powertrain
+  - class/derived
+  - source/no-source-found
+  - surface/user-visible
+  - flag/anomaly
+  - flag/divergence
 ---
 
 # Mid-band propeller efficiency
 
 **Definition.** Midpoint of the propeller-efficiency band; the value behind every scalar (non-band) field in the response.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -18,13 +28,17 @@ source_status: NO_SOURCE_FOUND
 eta_mid = (assumptions.eta_prop_lo + assumptions.eta_prop_hi) / 2.0
 ```
 
-**Inputs.** [[ss-eta-prop-lo|Propeller efficiency band lower bound]] · [[ss-eta-prop-hi|Propeller efficiency band upper bound]]
+**Inputs.**
+
+- [[ss-eta-prop-lo|Propeller efficiency band lower bound]]  — *⊣ limit*
+- [[ss-eta-prop-hi|Propeller efficiency band upper bound]]  — *⊣ limit*
 
 **Produced by.** `app/services/powertrain_solution_space_service.py:357` — `compute_solution_space`
 
 **Consumed by.**
 
-- in this graph: [[ss-motor-cont-shaft|Required motor continuous shaft power]] · [[ss-motor-peak-shaft|Required motor peak shaft power]] · [[ss-p-cruise-mid|Electrical cruise power (mid band)]] · [[ss-p-top-mid|Electrical peak power (mid band)]]
+- in this graph: `Required motor continuous shaft power` · `Required motor peak shaft power` · `Electrical cruise power (mid band)` · `Electrical peak power (mid band)`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `app/services/powertrain_solution_space_service.py:360` · `app/services/powertrain_solution_space_service.py:361` · `app/services/powertrain_solution_space_service.py:421` · `app/services/powertrain_solution_space_service.py:422`
 
 **Source.** 🔴 NO SOURCE FOUND

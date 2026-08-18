@@ -6,11 +6,20 @@ unit: m/s
 cluster: perf-envelope
 user_visible: true
 source_status: SOURCED
+node_class: derived
+tags:
+  - cluster/perf-envelope
+  - class/derived
+  - source/sourced
+  - surface/user-visible
+  - flag/divergence
 ---
 
 # KPI: cruise speed
 
 **Definition.** Cruise speed passed through from the computation context.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 

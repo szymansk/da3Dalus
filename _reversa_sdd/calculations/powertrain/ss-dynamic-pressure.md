@@ -6,11 +6,18 @@ unit: Pa
 cluster: powertrain
 user_visible: false
 source_status: SOURCED
+node_class: derived
+tags:
+  - cluster/powertrain
+  - class/derived
+  - source/sourced
 ---
 
 # Dynamic pressure
 
 **Definition.** Dynamic pressure at the evaluated flight speed.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -18,13 +25,16 @@ source_status: SOURCED
 q = 0.5 * rho * v * v
 ```
 
-**Inputs.** [[ss-rho-param|Air density (solution space input)]]
+**Inputs.**
+
+- [[ss-rho-param|Air density (solution space input)]]
 
 **Produced by.** `app/services/powertrain_solution_space_service.py:102` — `_p_aero`
 
 **Consumed by.**
 
-- in this graph: [[ss-lift-coefficient|Level-flight lift coefficient]] · [[ss-p-aero|Aerodynamic power]]
+- in this graph: `Level-flight lift coefficient` · `Aerodynamic power`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `app/services/powertrain_solution_space_service.py:103` · `app/services/powertrain_solution_space_service.py:105`
 
 **Source.** 🟢 SOURCED

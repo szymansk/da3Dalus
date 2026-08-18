@@ -6,11 +6,21 @@ unit: – (enum string)
 cluster: stability
 user_visible: true
 source_status: PARTIAL
+node_class: derived
+tags:
+  - cluster/stability
+  - class/derived
+  - source/partial
+  - surface/user-visible
+  - flag/anomaly
+  - flag/divergence
 ---
 
 # Overall stability class (trim point)
 
 **Definition.** Aggregate stable/neutral/unstable label for a trim point, computed only over the axes whose derivatives are present.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 

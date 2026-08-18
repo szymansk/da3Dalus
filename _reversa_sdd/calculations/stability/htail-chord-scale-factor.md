@@ -6,11 +6,19 @@ unit: – (dimensionless)
 cluster: stability
 user_visible: false
 source_status: SOURCED
+node_class: derived
+tags:
+  - cluster/stability
+  - class/derived
+  - source/sourced
+  - flag/divergence
 ---
 
 # Horizontal tail chord scale factor
 
 **Definition.** Multiplier applied to every horizontal-tail cross-section chord on a real apply.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -18,7 +26,9 @@ source_status: SOURCED
 scale = 1.0 + delta_pct
 ```
 
-**Inputs.** [[delta-pct-htail|Horizontal tail chord-scale fraction]]
+**Inputs.**
+
+- [[delta-pct-htail|Horizontal tail chord-scale fraction]]
 
 **Produced by.** `app/services/sm_sizing_service.py:982` — `apply_htail_scale`
 

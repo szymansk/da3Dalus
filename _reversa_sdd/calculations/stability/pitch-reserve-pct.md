@@ -6,11 +6,21 @@ unit: %
 cluster: stability
 user_visible: true
 source_status: SOURCED
+node_class: derived
+tags:
+  - cluster/stability
+  - class/derived
+  - source/sourced
+  - surface/user-visible
+  - flag/anomaly
+  - flag/divergence
 ---
 
 # Elevator reserve percentage (summary text)
 
 **Definition.** Percentage of pitch-control travel still available, rendered into the human-readable trim summary.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -18,7 +28,9 @@ source_status: SOURCED
 reserve_pct = (1 - reserve.usage_fraction) * 100
 ```
 
-**Inputs.** [[deflection-usage-fraction|Deflection usage fraction]]
+**Inputs.**
+
+- [[deflection-usage-fraction|Deflection usage fraction]]
 
 **Produced by.** `app/services/trim_enrichment_service.py:348` — `generate_result_summary`
 

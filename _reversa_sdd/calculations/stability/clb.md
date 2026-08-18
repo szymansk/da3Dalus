@@ -6,11 +6,19 @@ unit: 1/rad
 cluster: stability
 user_visible: true
 source_status: SOURCED
+node_class: derived
+tags:
+  - cluster/stability
+  - class/derived
+  - source/sourced
+  - surface/user-visible
 ---
 
 # Rolling moment derivative w.r.t. beta
 
 **Definition.** dCl/dbeta at the analysed operating point. Negative means laterally stable (dihedral effect).
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -24,7 +32,8 @@ clb = _scalar(result.derivatives.Clb)
 
 **Consumed by.**
 
-- in this graph: [[is-laterally-stable|Lateral stability flag]]
+- in this graph: `Lateral stability flag`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `app/services/stability_service.py:344,347` · `app/services/stability_service.py:172` · `app/services/copilot_tools.py:458`
 
 **Source.** 🟢 SOURCED

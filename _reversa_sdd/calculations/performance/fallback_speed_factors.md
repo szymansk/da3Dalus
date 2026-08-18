@@ -5,11 +5,20 @@ unit: dimensionless
 cluster: perf-oppoints
 user_visible: false
 source_status: NO_SOURCE_FOUND
+node_class: unclassified-constant
+tags:
+  - cluster/perf-oppoints
+  - class/unclassified-constant
+  - source/no-source-found
+  - flag/anomaly
+  - flag/divergence
 ---
 
 # Grid-search velocity factors
 
 **Definition.** Velocity multipliers swept by the grid-search fallback.
+
+⚪ **Unclassified constant.** Not yet decided whether this is a rule of thumb, a calibration or a physical value. Classifying it is open work — it is deliberately not guessed.
 
 **Value.** `[1.0, 0.95, 0.90, 0.85] / [1.0, 1.05, 1.10, 1.15]; floor 2.0 m/s`
 
@@ -25,7 +34,8 @@ if name == "max_level_speed": factors = [1.0, 0.95, 0.90, 0.85] else: factors = 
 
 **Consumed by.**
 
-- in this graph: [[trim_residuals|Trim residual record]]
+- in this graph: `Trim residual record`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `app/services/operating_point_generator_service.py:818 (_grid_search_trim)`
 
 **Source.** 🔴 NO SOURCE FOUND

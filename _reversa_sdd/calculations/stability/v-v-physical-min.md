@@ -6,11 +6,22 @@ unit: – (dimensionless)
 cluster: stability
 user_visible: true
 source_status: PARTIAL
+node_class: unclassified-constant
+tags:
+  - cluster/stability
+  - class/unclassified-constant
+  - source/partial
+  - surface/user-visible
+  - flag/anomaly
+  - flag/divergence
+  - flag/scale
 ---
 
 # V_V physical minimum
 
 **Definition.** Lower bound of physically credible vertical tail volume coefficients.
+
+⚪ **Unclassified constant.** Not yet decided whether this is a rule of thumb, a calibration or a physical value. Classifying it is open work — it is deliberately not guessed.
 
 **Value.** `0.01`
 
@@ -20,7 +31,8 @@ source_status: PARTIAL
 
 **Consumed by.**
 
-- in this graph: [[tail-volume-classification|Tail volume classification]]
+- in this graph: `Tail volume classification`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `app/services/tail_sizing_service.py:254,284`
 
 **Source.** 🟡 PARTIAL

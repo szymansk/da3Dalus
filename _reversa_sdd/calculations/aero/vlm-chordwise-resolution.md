@@ -6,11 +6,20 @@ unit: panels
 cluster: aero-strips
 user_visible: true
 source_status: PARTIAL
+node_class: unclassified-parameter
+tags:
+  - cluster/aero-strips
+  - class/unclassified-parameter
+  - source/partial
+  - surface/user-visible
+  - flag/divergence
 ---
 
 # VLM chordwise panels per strip
 
 **Definition.** Number of chordwise VLM panels making up one spanwise strip.
+
+⚪ **Unclassified parameter.** Not yet decided whether this is a user input or an internal tuning value.
 
 **Value.** `8`
 

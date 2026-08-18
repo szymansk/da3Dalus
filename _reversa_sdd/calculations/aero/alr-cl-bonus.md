@@ -6,11 +6,21 @@ unit: dimensionless
 cluster: aero-polars
 user_visible: true
 source_status: NO_SOURCE_FOUND
+node_class: derived
+tags:
+  - cluster/aero-polars
+  - class/derived
+  - source/no-source-found
+  - surface/user-visible
+  - flag/anomaly
+  - flag/divergence
 ---
 
 # Mission CL_max bonus
 
 **Definition.** Weighted blend between 1.0 and CL_max/1.5, controlled by the mission's cl_max_weight.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -19,13 +29,17 @@ cl_norm = min(cl_max / 1.5, 1.0)
 cl_bonus = (1.0 - cl_max_weight) + cl_max_weight * cl_norm
 ```
 
-**Inputs.** [[alr-cl-max|Section CL_max]] · [[alr-cl-max-weight-default|Mission cl_max_weight default]]
+**Inputs.**
+
+- [[alr-cl-max|Section CL_max]]  — *⊣ limit*
+- [[alr-cl-max-weight-default|Mission cl_max_weight default]]  — *⤵ fallback*
 
 **Produced by.** `app/services/airfoil_low_re_service.py:937` — `score_mission`
 
 **Consumed by.**
 
-- in this graph: [[alr-score-mission|Mission suitability score]]
+- in this graph: `Mission suitability score`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `score_mission:939`
 
 **Source.** 🔴 NO SOURCE FOUND

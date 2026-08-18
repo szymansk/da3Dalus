@@ -6,11 +6,22 @@ unit: dimensionless
 cluster: mass
 user_visible: true
 source_status: SOURCED
+node_class: unclassified-parameter
+tags:
+  - cluster/mass
+  - class/unclassified-parameter
+  - source/sourced
+  - surface/user-visible
+  - flag/anomaly
+  - flag/divergence
+  - flag/scale
 ---
 
 # Node weight scale factor
 
 **Definition.** Per-node empirical multiplier applied to the density-derived CAD weight (infill, support material, print over/under-extrusion).
+
+⚪ **Unclassified parameter.** Not yet decided whether this is a user input or an internal tuning value.
 
 **Value.** `1.0 (SQLAlchemy default, app/models/component_tree.py:61; Pydantic default app/schemas/component_tree.py:57)`
 
@@ -20,7 +31,8 @@ source_status: SOURCED
 
 **Consumed by.**
 
-- in this graph: [[cad-shape-own-weight-surface|CAD shape own weight — surface print]] · [[cad-shape-own-weight-volume|CAD shape own weight — solid print]]
+- in this graph: `CAD shape own weight — surface print` · `CAD shape own weight — solid print`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `app/services/component_tree_service.py:455` · `app/services/component_tree_service.py:457` · `app/schemas/component_tree.py:57` · `frontend/hooks/useComponentTree.ts (node write payload)`
 
 **Source.** 🟢 SOURCED

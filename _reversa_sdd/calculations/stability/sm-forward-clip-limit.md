@@ -6,11 +6,21 @@ unit: – (fraction of MAC)
 cluster: stability
 user_visible: true
 source_status: NO_SOURCE_FOUND
+node_class: unclassified-constant
+tags:
+  - cluster/stability
+  - class/unclassified-constant
+  - source/no-source-found
+  - surface/user-visible
+  - flag/anomaly
+  - flag/divergence
 ---
 
 # Forward-CG SM clip limit
 
 **Definition.** Maximum static margin allowed at the forward CG before a wing shift is clipped.
+
+⚪ **Unclassified constant.** Not yet decided whether this is a rule of thumb, a calibration or a physical value. Classifying it is open work — it is deliberately not guessed.
 
 **Value.** `0.30`
 
@@ -20,7 +30,8 @@ source_status: NO_SOURCE_FOUND
 
 **Consumed by.**
 
-- in this graph: [[delta-x-clipped|Clipped wing shift]]
+- in this graph: `Clipped wing shift`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `app/services/sm_sizing_service.py:427,431,434`
 
 **Source.** 🔴 NO SOURCE FOUND

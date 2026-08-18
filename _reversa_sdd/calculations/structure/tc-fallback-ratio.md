@@ -6,11 +6,22 @@ unit: dimensionless
 cluster: structure
 user_visible: true
 source_status: PARTIAL
+node_class: unclassified-constant
+tags:
+  - cluster/structure
+  - class/unclassified-constant
+  - source/partial
+  - surface/user-visible
+  - flag/anomaly
+  - flag/divergence
+  - flag/scale
 ---
 
 # Thickness-to-chord fallback ratio
 
 **Definition.** Airfoil thickness-to-chord ratio substituted when no real airfoil/section thickness data is available for a station. Its use sets tc_fallback=True and emits a warning.
+
+⚪ **Unclassified constant.** Not yet decided whether this is a rule of thumb, a calibration or a physical value. Classifying it is open work — it is deliberately not guessed.
 
 **Value.** `0.12`
 
@@ -20,7 +31,8 @@ source_status: PARTIAL
 
 **Consumed by.**
 
-- in this graph: [[tc-fallback-warning|t/c fallback warning]] · [[tc-ratio|Thickness-to-chord ratio at station]]
+- in this graph: `t/c fallback warning` · `Thickness-to-chord ratio at station`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `app/services/spar_sizing.py:402` · `app/services/spar_sizing.py:403` · `app/services/spar_sizing.py:429`
 
 **Source.** 🟡 PARTIAL

@@ -6,11 +6,19 @@ unit: -
 cluster: perf-envelope
 user_visible: false
 source_status: SOURCED
+node_class: derived
+tags:
+  - cluster/perf-envelope
+  - class/derived
+  - source/sourced
+  - flag/divergence
 ---
 
 # Speed-specific Oswald factor
 
 **Definition.** Reynolds-interpolated Oswald efficiency at V_md / V_min_sink.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 

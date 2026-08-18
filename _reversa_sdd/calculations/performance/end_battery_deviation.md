@@ -6,11 +6,20 @@ unit: -
 cluster: perf-envelope
 user_visible: true
 source_status: NO_SOURCE_FOUND
+node_class: derived
+tags:
+  - cluster/perf-envelope
+  - class/derived
+  - source/no-source-found
+  - surface/user-visible
+  - flag/divergence
 ---
 
 # Battery-mass deviation
 
 **Definition.** Relative gap between predicted and user-supplied battery component mass.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -18,7 +27,11 @@ source_status: NO_SOURCE_FOUND
 deviation = abs(predicted_kg - battery_mass_kg) / battery_mass_kg
 ```
 
-**Inputs.** [[end_battery_mass_predicted|Capacity-implied battery mass]] · [[end_battery_component_mass|Battery component mass]] · [[end_battery_dev_threshold|Battery-mass deviation threshold]]
+**Inputs.**
+
+- [[end_battery_mass_predicted|Capacity-implied battery mass]]
+- [[end_battery_component_mass|Battery component mass]]
+- [[end_battery_dev_threshold|Battery-mass deviation threshold]]  — *⊣ limit*
 
 **Produced by.** `app/services/endurance_service.py:189` — `_check_battery_mass_consistency`
 

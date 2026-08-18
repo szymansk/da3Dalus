@@ -6,11 +6,22 @@ unit: dimensionless
 cluster: perf-matching
 user_visible: true
 source_status: PARTIAL
+node_class: unclassified-parameter
+tags:
+  - cluster/perf-matching
+  - class/unclassified-parameter
+  - source/partial
+  - surface/user-visible
+  - flag/anomaly
+  - flag/divergence
+  - flag/scale
 ---
 
 # Resolved zero-lift drag
 
 **Definition.** Scalar zero-lift drag coefficient with a hardcoded fallback.
+
+⚪ **Unclassified parameter.** Not yet decided whether this is a user input or an internal tuning value.
 
 **Value.** `0.03 (fallback)`
 
@@ -26,7 +37,8 @@ cd0: float = float(aircraft.get("cd0", 0.03))
 
 **Consumed by.**
 
-- in this graph: [[cd0_at_v|Reynolds-dependent CD0]] · [[tw_vertical_climb|Vertical-climb T/W]] · [[v_cruise_resolved|Resolved cruise speed]] · [[v_md|Minimum-drag speed]]
+- in this graph: `Reynolds-dependent CD0` · `Vertical-climb T/W` · `Resolved cruise speed` · `Minimum-drag speed`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `_v_md:858` · `_climb_tw_at_ws` · `_vertical_climb_constraint:1159` · `hover_text:940`
 
 **Source.** 🟡 PARTIAL

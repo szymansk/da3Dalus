@@ -6,11 +6,20 @@ unit: boolean
 cluster: aero-polars
 user_visible: false
 source_status: NO_SOURCE_FOUND
+node_class: derived
+tags:
+  - cluster/aero-polars
+  - class/derived
+  - source/no-source-found
+  - flag/anomaly
+  - flag/divergence
 ---
 
 # top_band_fallback flag (in build_re_table)
 
 **Definition.** Local flag marking the highest-Re band as unfitted.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -18,7 +27,9 @@ source_status: NO_SOURCE_FOUND
 top_band_fallback = True  ... return table, False
 ```
 
-**Inputs.** [[prt-min-samples-per-band|Minimum samples per V-band / per OLS window]]
+**Inputs.**
+
+- [[prt-min-samples-per-band|Minimum samples per V-band / per OLS window]]
 
 **Produced by.** `app/services/polar_re_table_service.py:476` — `build_re_table`
 

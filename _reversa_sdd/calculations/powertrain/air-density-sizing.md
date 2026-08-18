@@ -6,11 +6,21 @@ unit: kg/m^3
 cluster: powertrain
 user_visible: true
 source_status: NO_SOURCE_FOUND
+node_class: derived
+tags:
+  - cluster/powertrain
+  - class/derived
+  - source/no-source-found
+  - surface/user-visible
+  - flag/anomaly
+  - flag/divergence
 ---
 
 # Air density at altitude (sizing)
 
 **Definition.** Air density from the same isothermal exponential model as the performance module.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -18,13 +28,16 @@ source_status: NO_SOURCE_FOUND
 return RHO_SEA_LEVEL * math.exp(-altitude_m / 8500.0)
 ```
 
-**Inputs.** [[air-density-sea-level-alias|Sea-level density alias (sizing)]]
+**Inputs.**
+
+- [[air-density-sea-level-alias|Sea-level density alias (sizing)]]
 
 **Produced by.** `app/services/powertrain_sizing_service.py:52` — `_air_density`
 
 **Consumed by.**
 
-- in this graph: [[combo-required-power|Power required for a motor+battery combo]]
+- in this graph: `Power required for a motor+battery combo`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `app/services/powertrain_sizing_service.py:91`
 
 **Source.** 🔴 NO SOURCE FOUND

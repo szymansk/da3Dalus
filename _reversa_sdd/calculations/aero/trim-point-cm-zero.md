@@ -5,11 +5,20 @@ unit: mixed (deg, -, -)
 cluster: aero-spanwise
 user_visible: true
 source_status: SOURCED
+node_class: derived
+tags:
+  - cluster/aero-spanwise
+  - class/derived
+  - source/sourced
+  - surface/user-visible
+  - flag/divergence
 ---
 
 # Trim point (Cm = 0)
 
 **Definition.** Alpha/CL/CD interpolated at the first Cm sign change.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -17,13 +26,19 @@ source_status: SOURCED
 t = 0.0 if abs(cm1 - cm0) <= 1e-12 else -cm0 / (cm1 - cm0); alpha_deg = alpha[i] + t * (alpha[i+1] - alpha[i]); CL = cl[i] + t * (cl[i+1] - cl[i]); CD = cd_values[i] + t * (cd_values[i+1] - cd_values[i])
 ```
 
-**Inputs.** [[cm-values|Pitching-moment coefficient array]] · [[cl-values|Lift coefficient array]] · [[cd-values|Drag coefficient array]] · [[alpha-array|Alpha sweep array]]
+**Inputs.**
+
+- [[cm-values|Pitching-moment coefficient array]]
+- [[cl-values|Lift coefficient array]]
+- [[cd-values|Drag coefficient array]]
+- [[alpha-array|Alpha sweep array]]
 
 **Produced by.** `app/services/analysis_service.py:198` — `_compute_trim_point`
 
 **Consumed by.**
 
-- in this graph: [[characteristic-points|Characteristic points dict]]
+- in this graph: `Characteristic points dict`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `alpha-sweep PNG (3 panels)` · `_render_summary_panel` · `API alpha_sweep response`
 
 **Source.** 🟢 SOURCED

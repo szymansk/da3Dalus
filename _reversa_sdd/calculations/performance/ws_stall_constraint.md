@@ -6,11 +6,20 @@ unit: N/m^2
 cluster: perf-matching
 user_visible: true
 source_status: SOURCED
+node_class: derived
+tags:
+  - cluster/perf-matching
+  - class/derived
+  - source/sourced
+  - surface/user-visible
+  - flag/divergence
 ---
 
 # Stall constraint W/S_max
 
 **Definition.** Maximum wing loading that keeps the clean stall speed at or below the target.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -18,7 +27,11 @@ source_status: SOURCED
 return 0.5 * rho * v_s_target * v_s_target * cl_max_clean
 ```
 
-**Inputs.** [[mode_default_v_s_target|Mode default stall-speed target]] · [[cl_max_clean_mc|Clean CL_max (matching chart)]] · [[rho_sl|Sea-level ISA density]]
+**Inputs.**
+
+- [[mode_default_v_s_target|Mode default stall-speed target]]  — *⤵ fallback*
+- [[cl_max_clean_mc|Clean CL_max (matching chart)]]  — *⊣ limit*
+- [[rho_sl|Sea-level ISA density]]  — *⤵ fallback*
 
 **Produced by.** `app/services/matching_chart_service.py:439` — `_stall_constraint`
 

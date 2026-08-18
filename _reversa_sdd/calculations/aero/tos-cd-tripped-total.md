@@ -6,11 +6,20 @@ unit: dimensionless
 cluster: aero-strips
 user_visible: false
 source_status: PARTIAL
+node_class: derived
+tags:
+  - cluster/aero-strips
+  - class/derived
+  - source/partial
+  - flag/anomaly
+  - flag/divergence
 ---
 
 # Tripped total drag coefficient
 
 **Definition.** Clean drag coefficient plus the 3D turbulator drag increment.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -18,13 +27,17 @@ source_status: PARTIAL
 cd_tripped = cd_clean + delta_cd0
 ```
 
-**Inputs.** [[tos-cd-clean-avg|Area-weighted mean clean section drag]] · [[tos-delta-cd0|Area-weighted 3D drag increment]]
+**Inputs.**
+
+- [[tos-cd-clean-avg|Area-weighted mean clean section drag]]
+- [[tos-delta-cd0|Area-weighted 3D drag increment]]
 
 **Produced by.** `app/services/turbulator_optimizer_service.py:344` — `compute_ld_summary`
 
 **Consumed by.**
 
-- in this graph: [[tos-l-d-tripped|Tripped lift-to-drag ratio]]
+- in this graph: `Tripped lift-to-drag ratio`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 
 **Source.** 🟡 PARTIAL
 

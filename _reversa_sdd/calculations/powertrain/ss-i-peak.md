@@ -6,11 +6,21 @@ unit: A
 cluster: powertrain
 user_visible: true
 source_status: PARTIAL
+node_class: derived
+tags:
+  - cluster/powertrain
+  - class/derived
+  - source/partial
+  - surface/user-visible
+  - flag/anomaly
+  - flag/divergence
 ---
 
 # Peak battery current
 
 **Definition.** Battery current at top speed: battery-side electrical power divided by sag voltage. No further efficiency division, because the input power is already battery power.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -18,13 +28,17 @@ source_status: PARTIAL
 i_peak = p_top_elec_w / v_sag
 ```
 
-**Inputs.** [[ss-p-elec|Electrical power required]] · [[ss-v-sag|Pack voltage under load]]
+**Inputs.**
+
+- [[ss-p-elec|Electrical power required]]
+- [[ss-v-sag|Pack voltage under load]]
 
 **Produced by.** `app/services/powertrain_solution_space_service.py:140` — `_per_cell`
 
 **Consumed by.**
 
-- in this graph: [[hyperbola-c-rate-samples|Hyperbola C-rate samples]] · [[ss-esc-min|Minimum ESC current rating]] · [[ss-raw-c|Raw required C-rate]]
+- in this graph: `Hyperbola C-rate samples` · `Minimum ESC current rating` · `Raw required C-rate`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `app/services/powertrain_solution_space_service.py:145` · `app/services/powertrain_solution_space_service.py:149` · `app/services/powertrain_solution_space_service.py:444` · `app/services/powertrain_solution_space_service.py:464` · `frontend/components/workbench/PowertrainTab.tsx:126`
 
 **Source.** 🟡 PARTIAL

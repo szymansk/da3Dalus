@@ -6,11 +6,20 @@ unit: dimensionless
 cluster: aero-strips
 user_visible: false
 source_status: PARTIAL
+node_class: derived
+tags:
+  - cluster/aero-strips
+  - class/derived
+  - source/partial
+  - flag/anomaly
+  - flag/divergence
 ---
 
 # Area-weighted mean clean section drag
 
 **Definition.** Wing-average clean profile drag coefficient over sections with finite cd and positive area.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -18,13 +27,17 @@ source_status: PARTIAL
 cd_clean_avg = sum(cd * a for cd, a in valid_clean) / total_valid_area if total_valid_area > 0 else float("nan")
 ```
 
-**Inputs.** [[tos-cd-clean|Natural-transition section drag]] · [[bwsd-section-area-normalised|Normalised section area]]
+**Inputs.**
+
+- [[tos-cd-clean|Natural-transition section drag]]
+- [[bwsd-section-area-normalised|Normalised section area]]
 
 **Produced by.** `app/services/turbulator_optimizer_service.py:623` — `run_turbulator_optimizer`
 
 **Consumed by.**
 
-- in this graph: [[tos-cd-tripped-total|Tripped total drag coefficient]] · [[tos-l-d-clean|Clean lift-to-drag ratio]]
+- in this graph: `Tripped total drag coefficient` · `Clean lift-to-drag ratio`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 
 **Source.** 🟡 PARTIAL
 

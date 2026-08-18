@@ -6,11 +6,20 @@ unit: – (enum string)
 cluster: stability
 user_visible: true
 source_status: PARTIAL
+node_class: derived
+tags:
+  - cluster/stability
+  - class/derived
+  - source/partial
+  - surface/user-visible
+  - flag/divergence
 ---
 
 # Tail volume classification
 
 **Definition.** Bands a volume coefficient into out_of_physical_range / below_range / above_range / in_range.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -24,7 +33,15 @@ if value > target_max:
 return "in_range"
 ```
 
-**Inputs.** [[v-h-current|Horizontal tail volume coefficient]] · [[v-v-current|Vertical tail volume coefficient]] · [[v-h-physical-min|V_H physical minimum]] · [[v-h-physical-max|V_H physical maximum]] · [[v-v-physical-min|V_V physical minimum]] · [[v-v-physical-max|V_V physical maximum]] · [[aircraft-class-tail-targets|Tail-volume target ranges by aircraft class]]
+**Inputs.**
+
+- [[v-h-current|Horizontal tail volume coefficient]]
+- [[v-v-current|Vertical tail volume coefficient]]
+- [[v-h-physical-min|V_H physical minimum]]  — *⊣ limit*
+- [[v-h-physical-max|V_H physical maximum]]  — *⊣ limit*
+- [[v-v-physical-min|V_V physical minimum]]  — *⊣ limit*
+- [[v-v-physical-max|V_V physical maximum]]  — *⊣ limit*
+- [[aircraft-class-tail-targets|Tail-volume target ranges by aircraft class]]
 
 **Produced by.** `app/services/tail_sizing_service.py:316` — `_classify_volume`
 

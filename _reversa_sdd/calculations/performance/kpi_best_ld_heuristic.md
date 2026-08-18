@@ -6,11 +6,20 @@ unit: -
 cluster: perf-envelope
 user_visible: true
 source_status: PARTIAL
+node_class: unclassified-constant
+tags:
+  - cluster/perf-envelope
+  - class/unclassified-constant
+  - source/partial
+  - surface/user-visible
+  - flag/divergence
 ---
 
 # Best-L/D heuristic factor
 
 **Definition.** Cold-start multiplier estimating best-L/D speed from stall speed.
+
+⚪ **Unclassified constant.** Not yet decided whether this is a rule of thumb, a calibration or a physical value. Classifying it is open work — it is deliberately not guessed.
 
 **Value.** `1.4`
 
@@ -26,7 +35,8 @@ value=round(1.4 * stall_speed_mps, 4)
 
 **Consumed by.**
 
-- in this graph: [[kpi_best_ld_speed|KPI: best L/D speed]]
+- in this graph: `KPI: best L/D speed`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 
 **Source.** 🟡 PARTIAL
 

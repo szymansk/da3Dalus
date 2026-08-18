@@ -6,11 +6,19 @@ unit: dimensionless
 cluster: aero-strips
 user_visible: false
 source_status: SOURCED
+node_class: derived
+tags:
+  - cluster/aero-strips
+  - class/derived
+  - source/sourced
+  - flag/divergence
 ---
 
 # Area-weighted mean section CL
 
 **Definition.** Wing-average lift coefficient used as the numerator of the L/D summary.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -18,13 +26,17 @@ source_status: SOURCED
 cl_avg = sum(s.cl * s.section_area_m2 for s in sections) / total_area if total_area > 0 else sections[0].cl
 ```
 
-**Inputs.** [[saoa-cl|Section lift coefficient (Kutta-Joukowski)]] · [[bwsd-section-area-normalised|Normalised section area]]
+**Inputs.**
+
+- [[saoa-cl|Section lift coefficient (Kutta-Joukowski)]]
+- [[bwsd-section-area-normalised|Normalised section area]]
 
 **Produced by.** `app/services/turbulator_optimizer_service.py:607` — `run_turbulator_optimizer`
 
 **Consumed by.**
 
-- in this graph: [[tos-l-d-clean|Clean lift-to-drag ratio]] · [[tos-l-d-tripped|Tripped lift-to-drag ratio]]
+- in this graph: `Clean lift-to-drag ratio` · `Tripped lift-to-drag ratio`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 
 **Source.** 🟢 SOURCED
 

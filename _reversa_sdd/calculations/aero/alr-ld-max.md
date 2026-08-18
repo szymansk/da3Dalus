@@ -6,11 +6,21 @@ unit: dimensionless
 cluster: aero-polars
 user_visible: true
 source_status: SOURCED
+node_class: derived
+tags:
+  - cluster/aero-polars
+  - class/derived
+  - source/sourced
+  - surface/user-visible
+  - flag/anomaly
+  - flag/divergence
 ---
 
 # Section (L/D)_max
 
 **Definition.** Maximum CL/CD over the trusted sweep at one Re.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -19,13 +29,16 @@ ld = np.where(cd_f > 1e-12, cl_f / cd_f, np.nan)
 result["ld_max"] = float(np.nanmax(ld))
 ```
 
-**Inputs.** [[alr-alpha-sweep|Alpha sweep bounds and step]]
+**Inputs.**
+
+- [[alr-alpha-sweep|Alpha sweep bounds and step]]  — *⊣ limit*
 
 **Produced by.** `app/services/airfoil_low_re_service.py:635` — `_extract_metrics`
 
 **Consumed by.**
 
-- in this graph: [[alr-score-re-agnostic|re_agnostic suitability score]]
+- in this graph: `re_agnostic suitability score`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `AirfoilLowRePolarModel.ld_max` · `score_re_agnostic:848`
 
 **Source.** 🟢 SOURCED

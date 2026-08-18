@@ -6,11 +6,19 @@ unit: 1/rad
 cluster: stability
 user_visible: true
 source_status: SOURCED
+node_class: derived
+tags:
+  - cluster/stability
+  - class/derived
+  - source/sourced
+  - surface/user-visible
 ---
 
 # Pitching moment derivative w.r.t. alpha
 
 **Definition.** dCm/dalpha at the analysed operating point. Negative means longitudinally stable.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -24,7 +32,8 @@ cma = _scalar(result.derivatives.Cma)
 
 **Consumed by.**
 
-- in this graph: [[is-statically-stable|Static stability flag]]
+- in this graph: `Static stability flag`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `app/services/stability_service.py:342,345` · `app/services/stability_service.py:170 (Cma column)` · `app/services/copilot_tools.py:456`
 
 **Source.** 🟢 SOURCED

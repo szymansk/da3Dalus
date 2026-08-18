@@ -6,11 +6,21 @@ unit: A
 cluster: powertrain
 user_visible: true
 source_status: NO_SOURCE_FOUND
+node_class: unclassified-constant
+tags:
+  - cluster/powertrain
+  - class/unclassified-constant
+  - source/no-source-found
+  - surface/user-visible
+  - flag/anomaly
+  - flag/scale
 ---
 
 # Unknown-battery current fallback
 
 **Definition.** Current assumed when neither the motor current limit nor the battery C-rate is known, so a power ceiling can still be produced.
+
+⚪ **Unclassified constant.** Not yet decided whether this is a rule of thumb, a calibration or a physical value. Classifying it is open work — it is deliberately not guessed.
 
 **Value.** `100.0`
 
@@ -26,7 +36,8 @@ battery.max_current_a if not math.isinf(battery.max_current_a) else 100.0
 
 **Consumed by.**
 
-- in this graph: [[curve-p-available-elec|Electrical power ceiling]]
+- in this graph: `Electrical power ceiling`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `app/services/powertrain_performance.py:653`
 
 **Source.** 🔴 NO SOURCE FOUND

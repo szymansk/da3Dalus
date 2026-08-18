@@ -6,11 +6,20 @@ unit: mm
 cluster: structure
 user_visible: true
 source_status: PARTIAL
+node_class: derived
+tags:
+  - cluster/structure
+  - class/derived
+  - source/partial
+  - surface/user-visible
+  - flag/divergence
 ---
 
 # Section mid-height (analytic)
 
 **Definition.** Midpoint between the upper and lower surfaces — the spar-placement height reference.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -18,13 +27,17 @@ source_status: PARTIAL
 center_z=(top_z + bottom_z) / 2.0,
 ```
 
-**Inputs.** [[section-top-z-analytic|Section upper surface height (analytic)]] · [[section-bottom-z-analytic|Section lower surface height (analytic)]]
+**Inputs.**
+
+- [[section-top-z-analytic|Section upper surface height (analytic)]]
+- [[section-bottom-z-analytic|Section lower surface height (analytic)]]
 
 **Produced by.** `cad_designer/airplane/geometry/section_geometry.py:364` — `SectionGeometry._analytic_point`
 
 **Consumed by.**
 
-- in this graph: [[center-z-mm|Section mid-height (spar placement reference)]] · [[station-center-z|Station centre height]]
+- in this graph: `Section mid-height (spar placement reference)` · `Station centre height`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `cad_designer/airplane/geometry/spar_solver.py:775` · `app/services/section_thickness.py:96` · `app/services/section_geometry_service.py:57`
 
 **Source.** 🟡 PARTIAL

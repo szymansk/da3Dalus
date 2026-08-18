@@ -6,11 +6,20 @@ unit: m
 cluster: mass
 user_visible: false
 source_status: SOURCED
+node_class: derived
+tags:
+  - cluster/mass
+  - class/derived
+  - source/sourced
+  - flag/anomaly
+  - flag/divergence
 ---
 
 # Legacy weight-item CG loader (dead)
 
 **Definition.** Mass-weighted CG_x computed directly from the weight-item table, bypassing loading scenarios.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 

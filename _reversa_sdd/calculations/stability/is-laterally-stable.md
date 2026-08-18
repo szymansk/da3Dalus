@@ -6,11 +6,20 @@ unit: – (bool)
 cluster: stability
 user_visible: true
 source_status: SOURCED
+node_class: derived
+tags:
+  - cluster/stability
+  - class/derived
+  - source/sourced
+  - surface/user-visible
+  - flag/anomaly
 ---
 
 # Lateral stability flag
 
 **Definition.** True when Cl_beta is present and negative.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -18,7 +27,9 @@ source_status: SOURCED
 is_laterally_stable=(clb is not None and clb < 0)
 ```
 
-**Inputs.** [[clb|Rolling moment derivative w.r.t. beta]]
+**Inputs.**
+
+- [[clb|Rolling moment derivative w.r.t. beta]]
 
 **Produced by.** `app/services/stability_service.py:347` — `get_stability_summary`
 

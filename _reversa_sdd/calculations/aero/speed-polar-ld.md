@@ -5,11 +5,20 @@ unit: -
 cluster: aero-spanwise
 user_visible: false
 source_status: SOURCED
+node_class: derived
+tags:
+  - cluster/aero-spanwise
+  - class/derived
+  - source/sourced
+  - flag/anomaly
+  - flag/divergence
 ---
 
 # Glide ratio per point
 
 **Definition.** Lift-to-drag ratio along the sorted polar; the code notes it equals V/w.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -17,13 +26,17 @@ source_status: SOURCED
 ld = cl_s / cd_s  # equals V / w
 ```
 
-**Inputs.** [[cl-values|Lift coefficient array]] · [[cd-values|Drag coefficient array]]
+**Inputs.**
+
+- [[cl-values|Lift coefficient array]]
+- [[cd-values|Drag coefficient array]]
 
 **Produced by.** `app/services/analysis_service.py:522` — `_compute_speed_polar`
 
 **Consumed by.**
 
-- in this graph: [[i-best-glide|Best-glide index]] · [[ld-max|Maximum lift-to-drag ratio]]
+- in this graph: `Best-glide index` · `Maximum lift-to-drag ratio`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 
 **Source.** 🟢 SOURCED
 

@@ -6,11 +6,21 @@ unit: dimensionless
 cluster: aero-polars
 user_visible: false
 source_status: SOURCED
+node_class: unclassified-parameter
+tags:
+  - cluster/aero-polars
+  - class/unclassified-parameter
+  - source/sourced
+  - flag/anomaly
+  - flag/divergence
+  - flag/scale
 ---
 
 # Transition criterion n_crit
 
 **Definition.** e^N transition amplification factor passed to NeuralFoil.
+
+⚪ **Unclassified parameter.** Not yet decided whether this is a user input or an internal tuning value.
 
 **Value.** `9.0`
 

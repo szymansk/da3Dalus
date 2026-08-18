@@ -6,11 +6,20 @@ unit: dimensionless
 cluster: aero-polars
 user_visible: false
 source_status: NO_SOURCE_FOUND
+node_class: unclassified-parameter
+tags:
+  - cluster/aero-polars
+  - class/unclassified-parameter
+  - source/no-source-found
+  - flag/anomaly
+  - flag/divergence
 ---
 
 # Tip-Re relative drop threshold
 
 **Definition.** Absolute Re difference root−tip above which the tip is a different regime.
+
+⚪ **Unclassified parameter.** Not yet decided whether this is a user input or an internal tuning value.
 
 **Value.** `50000.0`
 
@@ -26,7 +35,8 @@ low_re_tip_re_rel_drop: float = 50_000.0
 
 **Consumed by.**
 
-- in this graph: [[sui-tip-re-flag|tip_re_flag]]
+- in this graph: `tip_re_flag`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `suitability_service:275`
 
 **Source.** 🔴 NO SOURCE FOUND

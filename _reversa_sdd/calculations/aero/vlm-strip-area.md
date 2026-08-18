@@ -6,11 +6,20 @@ unit: m²
 cluster: aero-strips
 user_visible: true
 source_status: SOURCED
+node_class: derived
+tags:
+  - cluster/aero-strips
+  - class/derived
+  - source/sourced
+  - surface/user-visible
+  - flag/divergence
 ---
 
 # Strip area
 
 **Definition.** Sum of the panel areas in one chordwise strip.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -18,13 +27,16 @@ source_status: SOURCED
 area = float(areas[sl].sum())
 ```
 
-**Inputs.** [[vlm-strip-index-ranges|Panel index ranges per strip]]
+**Inputs.**
+
+- [[vlm-strip-index-ranges|Panel index ranges per strip]]  — *⊣ limit*
 
 **Produced by.** `app/services/vlm_strip_forces.py:259` — `compute_vlm_strip_forces`
 
 **Consumed by.**
 
-- in this graph: [[vlm-strip-cd|Local strip drag coefficient]] · [[vlm-strip-cl|Local strip lift coefficient]] · [[vlm-surface-area|Surface total area]]
+- in this graph: `Local strip drag coefficient` · `Local strip lift coefficient` · `Surface total area`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `app/schemas/strip_forces.py:StripForceEntry.area` · `app/services/spanwise_loads.py:58` · `frontend/hooks/useStripForces.ts`
 
 **Source.** 🟢 SOURCED

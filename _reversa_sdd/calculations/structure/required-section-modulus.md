@@ -6,11 +6,20 @@ unit: mm³
 cluster: structure
 user_visible: true
 source_status: SOURCED
+node_class: derived
+tags:
+  - cluster/structure
+  - class/derived
+  - source/sourced
+  - surface/user-visible
+  - flag/divergence
 ---
 
 # Required section modulus
 
 **Definition.** The section modulus the spar cross-section must provide at a station to keep bending stress at or below the allowable. The 1000.0 converts N·m to N·mm so the result is mm³ against σ in N/mm².
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -18,13 +27,18 @@ source_status: SOURCED
 return m_design_Nm * 1000.0 / sigma_allow_mpa
 ```
 
-**Inputs.** [[design-bending-moment|Design bending moment]] · [[sigma-allow-mpa|Allowable bending stress (sizing path)]] · [[mm-per-metre-factor|Metre-to-millimetre conversion factor]]
+**Inputs.**
+
+- [[design-bending-moment|Design bending moment]]  — *⊣ limit*
+- [[sigma-allow-mpa|Allowable bending stress (sizing path)]]
+- [[mm-per-metre-factor|Metre-to-millimetre conversion factor]]  — *× unit*
 
 **Produced by.** `app/services/spar_sizing.py:88` — `required_section_modulus`
 
 **Consumed by.**
 
-- in this graph: [[capped-inner-cube|Capped-spar inner-height cube]] · [[solved-rectangular-width|Solved rectangular width]] · [[solved-rod-diameter|Solved rod diameter]] · [[station-erf-w|Station required section modulus (plan path)]] · [[tube-solve-discriminant|Tube inner-diameter discriminant]]
+- in this graph: `Capped-spar inner-height cube` · `Solved rectangular width` · `Solved rod diameter` · `Station required section modulus (plan path)` · `Tube inner-diameter discriminant`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `app/services/spar_sizing.py:318` · `cad_designer/airplane/geometry/spar_solver.py:765` · `app/schemas/spar_sizing.py:79` · `frontend/hooks/useSparSizing.ts:24` · `frontend/components/workbench/SparSizingPanel.tsx:107` · `frontend/lib/sparSizingHelpers.ts:91`
 
 **Source.** 🟢 SOURCED

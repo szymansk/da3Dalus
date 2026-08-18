@@ -6,11 +6,20 @@ unit: N
 cluster: aero-strips
 user_visible: false
 source_status: NO_SOURCE_FOUND
+node_class: derived
+tags:
+  - cluster/aero-strips
+  - class/derived
+  - source/no-source-found
+  - flag/anomaly
+  - flag/divergence
 ---
 
 # Accumulated total drag
 
 **Definition.** Running sum of all strip drags over the whole airplane.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -18,7 +27,9 @@ source_status: NO_SOURCE_FOUND
 total_drag += drag
 ```
 
-**Inputs.** [[vlm-strip-drag|Strip drag force]]
+**Inputs.**
+
+- [[vlm-strip-drag|Strip drag force]]
 
 **Produced by.** `app/services/vlm_strip_forces.py:267` — `compute_vlm_strip_forces`
 

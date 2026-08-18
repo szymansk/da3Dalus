@@ -6,11 +6,21 @@ unit: dimensionless
 cluster: aero-strips
 user_visible: true
 source_status: PARTIAL
+node_class: unclassified-constant
+tags:
+  - cluster/aero-strips
+  - class/unclassified-constant
+  - source/partial
+  - surface/user-visible
+  - flag/divergence
+  - flag/scale
 ---
 
 # NeuralFoil confidence threshold
 
 **Definition.** Mean NeuralFoil analysis_confidence below which a warning is emitted.
+
+⚪ **Unclassified constant.** Not yet decided whether this is a rule of thumb, a calibration or a physical value. Classifying it is open work — it is deliberately not guessed.
 
 **Value.** `0.80`
 

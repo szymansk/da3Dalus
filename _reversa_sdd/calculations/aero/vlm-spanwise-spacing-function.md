@@ -6,11 +6,19 @@ unit: n/a
 cluster: aero-strips
 user_visible: false
 source_status: PARTIAL
+node_class: unclassified-parameter
+tags:
+  - cluster/aero-strips
+  - class/unclassified-parameter
+  - source/partial
+  - flag/divergence
 ---
 
 # Spanwise panel spacing function
 
 **Definition.** Uniform (linear) spanwise panel spacing is used instead of cosine clustering.
+
+⚪ **Unclassified parameter.** Not yet decided whether this is a user input or an internal tuning value.
 
 **Value.** `np.linspace`
 

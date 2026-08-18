@@ -6,11 +6,20 @@ unit: dimensionless
 cluster: aero-strips
 user_visible: true
 source_status: SOURCED
+node_class: derived
+tags:
+  - cluster/aero-strips
+  - class/derived
+  - source/sourced
+  - surface/user-visible
+  - flag/divergence
 ---
 
 # Section drag delta
 
 **Definition.** Change in section cd caused by tripping at xtr_opt.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -18,13 +27,17 @@ source_status: SOURCED
 delta_cd = cd_tripped - cd_clean
 ```
 
-**Inputs.** [[tos-cd-tripped|Tripped section drag]] · [[tos-cd-clean|Natural-transition section drag]]
+**Inputs.**
+
+- [[tos-cd-tripped|Tripped section drag]]
+- [[tos-cd-clean|Natural-transition section drag]]
 
 **Produced by.** `app/services/turbulator_optimizer_service.py:273` — `optimize_section_xtr`
 
 **Consumed by.**
 
-- in this graph: [[tos-delta-cd0|Area-weighted 3D drag increment]]
+- in this graph: `Area-weighted 3D drag increment`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `app/schemas/turbulator_optimizer.py:TurbulatorSectionResult.delta_cd`
 
 **Source.** 🟢 SOURCED

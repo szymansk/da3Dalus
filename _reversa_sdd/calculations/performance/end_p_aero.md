@@ -6,11 +6,19 @@ unit: W
 cluster: perf-envelope
 user_visible: false
 source_status: SOURCED
+node_class: derived
+tags:
+  - cluster/perf-envelope
+  - class/derived
+  - source/sourced
+  - flag/divergence
 ---
 
 # Aerodynamic power
 
 **Definition.** Power to overcome drag at the evaluation speed.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -18,13 +26,16 @@ source_status: SOURCED
 p_aero = drag * v
 ```
 
-**Inputs.** [[end_drag|Drag force]]
+**Inputs.**
+
+- [[end_drag|Drag force]]
 
 **Produced by.** `app/services/endurance_service.py:124` — `_power_required`
 
 **Consumed by.**
 
-- in this graph: [[end_p_req|Battery power required]]
+- in this graph: `Battery power required`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 
 **Source.** 🟢 SOURCED
 

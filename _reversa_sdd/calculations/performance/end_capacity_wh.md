@@ -6,11 +6,19 @@ unit: Wh
 cluster: perf-envelope
 user_visible: true
 source_status: SOURCED
+node_class: unclassified-parameter
+tags:
+  - cluster/perf-envelope
+  - class/unclassified-parameter
+  - source/sourced
+  - surface/user-visible
 ---
 
 # Battery capacity
 
 **Definition.** Usable pack energy; 0.0 in the DB means 'not configured' and maps to None.
+
+⚪ **Unclassified parameter.** Not yet decided whether this is a user input or an internal tuning value.
 
 **Value.** `default 0.0 -> None`
 
@@ -26,7 +34,8 @@ capacity_val = float(_capacity_raw) if (_capacity_raw is not None and _capacity_
 
 **Consumed by.**
 
-- in this graph: [[end_battery_mass_predicted|Capacity-implied battery mass]] · [[end_t_at_vmd|Flight time at V_md]] · [[end_t_endurance_max|Maximum endurance]]
+- in this graph: `Capacity-implied battery mass` · `Flight time at V_md` · `Maximum endurance`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 
 **Source.** 🟢 SOURCED
 

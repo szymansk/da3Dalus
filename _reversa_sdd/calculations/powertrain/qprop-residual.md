@@ -6,11 +6,18 @@ unit: Nm
 cluster: powertrain
 user_visible: false
 source_status: SOURCED
+node_class: derived
+tags:
+  - cluster/powertrain
+  - class/derived
+  - source/sourced
 ---
 
 # Torque-balance residual
 
 **Definition.** Difference between motor-produced and propeller-absorbed torque; its root is the operating point.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -18,13 +25,17 @@ source_status: SOURCED
 return q_motor - q_prop
 ```
 
-**Inputs.** [[qprop-motor-torque|Motor-produced torque]] · [[prop-torque-demand|Propeller absorbed torque]]
+**Inputs.**
+
+- [[qprop-motor-torque|Motor-produced torque]]
+- [[prop-torque-demand|Propeller absorbed torque]]
 
 **Produced by.** `app/services/powertrain_performance.py:537` — `solve_qprop_operating_point.residual`
 
 **Consumed by.**
 
-- in this graph: [[qprop-rpm-solution|Solved operating RPM]]
+- in this graph: `Solved operating RPM`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `app/services/powertrain_performance.py:560` · `app/services/powertrain_performance.py:561` · `app/services/powertrain_performance.py:572`
 
 **Source.** 🟢 SOURCED

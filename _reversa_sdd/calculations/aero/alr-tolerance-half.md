@@ -6,11 +6,20 @@ unit: dimensionless (ΔCL)
 cluster: aero-polars
 user_visible: false
 source_status: NO_SOURCE_FOUND
+node_class: derived
+tags:
+  - cluster/aero-polars
+  - class/derived
+  - source/no-source-found
+  - flag/anomaly
+  - flag/divergence
 ---
 
 # Match tolerance half-width
 
 **Definition.** Half-width of the forgiving zone around cl_star, scaled by the airfoil's drag bucket.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -18,13 +27,17 @@ source_status: NO_SOURCE_FOUND
 tolerance_half = (bucket_width / max(bucket_ref, 1e-9)) * 0.5
 ```
 
-**Inputs.** [[alr-drag-bucket-width|Drag bucket width]] · [[low-re-bucket-tolerance-ref|Bucket tolerance reference width]]
+**Inputs.**
+
+- [[alr-drag-bucket-width|Drag bucket width]]
+- [[low-re-bucket-tolerance-ref|Bucket tolerance reference width]]
 
 **Produced by.** `app/services/airfoil_low_re_service.py:1049` — `score_target_cl`
 
 **Consumed by.**
 
-- in this graph: [[alr-match|Match component of score_target_cl]]
+- in this graph: `Match component of score_target_cl`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `score_target_cl:1072,1073`
 
 **Source.** 🔴 NO SOURCE FOUND

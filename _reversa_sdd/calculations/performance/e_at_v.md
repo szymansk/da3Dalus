@@ -6,11 +6,21 @@ unit: dimensionless
 cluster: perf-matching
 user_visible: true
 source_status: PARTIAL
+node_class: derived
+tags:
+  - cluster/perf-matching
+  - class/derived
+  - source/partial
+  - surface/user-visible
+  - flag/anomaly
+  - flag/divergence
 ---
 
 # Reynolds-dependent Oswald factor
 
 **Definition.** Oswald factor looked up at a given speed from the polar Re-table, or the scalar fallback.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -18,7 +28,9 @@ source_status: PARTIAL
 if polar_re_table and mac_m and float(mac_m) > 0: from app.services.polar_re_table_service import lookup_e_oswald_at_v; return lookup_e_oswald_at_v(v_mps=v, table=polar_re_table); return e
 ```
 
-**Inputs.** [[e_resolved|Resolved Oswald factor]]
+**Inputs.**
+
+- [[e_resolved|Resolved Oswald factor]]  — *⤵ fallback*
 
 **Produced by.** `app/services/matching_chart_service.py:825` — `_e_at_v`
 

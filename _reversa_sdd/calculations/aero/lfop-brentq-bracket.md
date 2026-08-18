@@ -6,11 +6,19 @@ unit: deg / iterations
 cluster: aero-strips
 user_visible: false
 source_status: PARTIAL
+node_class: unclassified-constant
+tags:
+  - cluster/aero-strips
+  - class/unclassified-constant
+  - source/partial
+  - flag/divergence
 ---
 
 # Brent bracket and tolerances
 
 **Definition.** Root-search bracket [-5°, 15°] with xtol 0.05° and 30 iterations.
+
+⚪ **Unclassified constant.** Not yet decided whether this is a rule of thumb, a calibration or a physical value. Classifying it is open work — it is deliberately not guessed.
 
 **Value.** `-5.0, 15.0, xtol=0.05, maxiter=30`
 

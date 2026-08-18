@@ -6,11 +6,21 @@ unit: W
 cluster: powertrain
 user_visible: true
 source_status: SOURCED
+node_class: derived
+tags:
+  - cluster/powertrain
+  - class/derived
+  - source/sourced
+  - surface/user-visible
+  - flag/anomaly
+  - flag/divergence
 ---
 
 # Required motor continuous shaft power
 
 **Definition.** Mechanical shaft power the motor must sustain at cruise.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -18,7 +28,10 @@ source_status: SOURCED
 motor_cont_shaft_w = p_aero_cruise / eta_mid
 ```
 
-**Inputs.** [[ss-p-aero-cruise|Aerodynamic power at cruise]] · [[ss-eta-mid|Mid-band propeller efficiency]]
+**Inputs.**
+
+- [[ss-p-aero-cruise|Aerodynamic power at cruise]]
+- [[ss-eta-mid|Mid-band propeller efficiency]]
 
 **Produced by.** `app/services/powertrain_solution_space_service.py:422` — `compute_solution_space`
 

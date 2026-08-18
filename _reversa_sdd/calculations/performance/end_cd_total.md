@@ -6,11 +6,19 @@ unit: -
 cluster: perf-envelope
 user_visible: false
 source_status: SOURCED
+node_class: derived
+tags:
+  - cluster/perf-envelope
+  - class/derived
+  - source/sourced
+  - flag/scale
 ---
 
 # Total drag coefficient
 
 **Definition.** Parabolic-polar drag coefficient at the evaluation speed.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -18,13 +26,18 @@ source_status: SOURCED
 cd = cd0 + k * cl * cl
 ```
 
-**Inputs.** [[end_cd0_at_v|Speed-specific C_D0]] · [[end_k_induced|Induced-drag factor]] · [[end_cl|Level-flight lift coefficient]]
+**Inputs.**
+
+- [[end_cd0_at_v|Speed-specific C_D0]]
+- [[end_k_induced|Induced-drag factor]]
+- [[end_cl|Level-flight lift coefficient]]
 
 **Produced by.** `app/services/endurance_service.py:122` — `_power_required`
 
 **Consumed by.**
 
-- in this graph: [[end_drag|Drag force]]
+- in this graph: `Drag force`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 
 **Source.** 🟢 SOURCED
 

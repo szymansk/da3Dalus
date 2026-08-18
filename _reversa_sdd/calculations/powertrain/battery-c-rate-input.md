@@ -6,11 +6,19 @@ unit: 1/h (C)
 cluster: powertrain
 user_visible: true
 source_status: PARTIAL
+node_class: unclassified-parameter
+tags:
+  - cluster/powertrain
+  - class/unclassified-parameter
+  - source/partial
+  - surface/user-visible
 ---
 
 # Battery C-rate
 
 **Definition.** Discharge rating multiple of capacity.
+
+⚪ **Unclassified parameter.** Not yet decided whether this is a user input or an internal tuning value.
 
 **Inputs.** — *(leaf: a constant or an external input)*
 
@@ -18,7 +26,8 @@ source_status: PARTIAL
 
 **Consumed by.**
 
-- in this graph: [[battery-max-continuous-discharge|Battery maximum continuous discharge power]] · [[battery-max-current|Battery maximum continuous discharge current]]
+- in this graph: `Battery maximum continuous discharge power` · `Battery maximum continuous discharge current`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `app/services/powertrain_performance.py:195` · `app/services/powertrain_performance.py:202`
 
 **Source.** 🟡 PARTIAL

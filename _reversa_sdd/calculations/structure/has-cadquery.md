@@ -5,11 +5,19 @@ unit: boolean
 cluster: structure
 user_visible: true
 source_status: NO_SOURCE_FOUND
+node_class: unclassified-constant
+tags:
+  - cluster/structure
+  - class/unclassified-constant
+  - source/no-source-found
+  - surface/user-visible
 ---
 
 # CadQuery availability flag
 
 **Definition.** Whether cadquery is importable on this platform. False raises SectionGeometryUnavailableError, which the services translate into a 422.
+
+⚪ **Unclassified constant.** Not yet decided whether this is a rule of thumb, a calibration or a physical value. Classifying it is open work — it is deliberately not guessed.
 
 **Formula — as the code writes it.**
 

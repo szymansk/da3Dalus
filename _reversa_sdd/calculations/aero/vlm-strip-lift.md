@@ -6,11 +6,19 @@ unit: N
 cluster: aero-strips
 user_visible: false
 source_status: SOURCED
+node_class: derived
+tags:
+  - cluster/aero-strips
+  - class/derived
+  - source/sourced
+  - flag/divergence
 ---
 
 # Strip lift force
 
 **Definition.** Component of the strip force along the lift direction.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -18,13 +26,17 @@ source_status: SOURCED
 lift = float(np.dot(f_strip, l_hat))
 ```
 
-**Inputs.** [[vlm-strip-force-vector|Per-strip force vector]] · [[vlm-lift-direction|Unit lift direction]]
+**Inputs.**
+
+- [[vlm-strip-force-vector|Per-strip force vector]]
+- [[vlm-lift-direction|Unit lift direction]]
 
 **Produced by.** `app/services/vlm_strip_forces.py:264` — `compute_vlm_strip_forces`
 
 **Consumed by.**
 
-- in this graph: [[vlm-strip-ai|Strip induced angle]] · [[vlm-strip-cl|Local strip lift coefficient]] · [[vlm-total-lift|Accumulated total lift]]
+- in this graph: `Strip induced angle` · `Local strip lift coefficient` · `Accumulated total lift`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 
 **Source.** 🟢 SOURCED
 

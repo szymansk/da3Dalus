@@ -6,11 +6,21 @@ unit: m/s
 cluster: powertrain
 user_visible: true
 source_status: SOURCED
+node_class: derived
+tags:
+  - cluster/powertrain
+  - class/derived
+  - source/sourced
+  - surface/user-visible
+  - flag/divergence
+  - flag/scale
 ---
 
 # Top speed used for peak sizing
 
 **Definition.** The speed at which peak power, peak current, ESC rating and KV are sized. User-supplied or derived from cruise. Must exceed cruise or the request is rejected.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -18,13 +28,17 @@ source_status: SOURCED
 v_top_mps = assumptions.v_top_mps ; if v_top_mps is None: v_top_mps = v_cruise_mps * 1.4 ; if v_top_mps <= v_cruise_mps: raise ValidationDomainError(...)
 ```
 
-**Inputs.** [[ss-v-cruise|Cruise speed (solution space)]] · [[ss-v-top-factor|Top-speed derivation factor]]
+**Inputs.**
+
+- [[ss-v-cruise|Cruise speed (solution space)]]
+- [[ss-v-top-factor|Top-speed derivation factor]]
 
 **Produced by.** `app/services/powertrain_solution_space_service.py:334` — `compute_solution_space`
 
 **Consumed by.**
 
-- in this graph: [[ss-p-aero-top|Aerodynamic power at top speed]] · [[ss-rpm-target|Target propeller RPM]]
+- in this graph: `Aerodynamic power at top speed` · `Target propeller RPM`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `app/services/powertrain_solution_space_service.py:350` · `app/services/powertrain_solution_space_service.py:392` · `app/services/powertrain_solution_space_service.py:158` · `frontend/components/workbench/PowertrainTab.tsx:1145`
 
 **Source.** 🟢 SOURCED

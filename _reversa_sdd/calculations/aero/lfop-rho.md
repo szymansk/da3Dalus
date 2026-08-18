@@ -6,11 +6,21 @@ unit: kg/m³
 cluster: aero-strips
 user_visible: false
 source_status: SOURCED
+node_class: physical-constant
+tags:
+  - cluster/aero-strips
+  - class/physical-constant
+  - source/sourced
+  - flag/divergence
+  - flag/physical
 ---
 
 # Air density (level-flight solve)
 
 **Definition.** Sea-level air density used for the level-flight CL target.
+
+**Physical constant.** A value of nature. It must be identical everywhere it appears — a second definition is a defect by construction, not a judgement call.
+*Identified as: sea-level air density.*
 
 **Value.** `1.225`
 
@@ -26,7 +36,8 @@ rho = 1.225
 
 **Consumed by.**
 
-- in this graph: [[lfop-cl-target|Level-flight target lift coefficient]]
+- in this graph: `Level-flight target lift coefficient`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 
 **Source.** 🟢 SOURCED
 

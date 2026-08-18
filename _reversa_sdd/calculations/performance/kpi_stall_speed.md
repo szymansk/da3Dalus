@@ -6,11 +6,20 @@ unit: m/s
 cluster: perf-envelope
 user_visible: true
 source_status: SOURCED
+node_class: derived
+tags:
+  - cluster/perf-envelope
+  - class/derived
+  - source/sourced
+  - surface/user-visible
+  - flag/divergence
 ---
 
 # KPI: stall speed
 
 **Definition.** Stall-speed KPI card, always confidence 'limit'.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -18,7 +27,9 @@ source_status: SOURCED
 value=round(stall_speed_mps, 4), confidence="limit"
 ```
 
-**Inputs.** [[fe_v_stall|Stall speed (1 g)]]
+**Inputs.**
+
+- [[fe_v_stall|Stall speed (1 g)]]  — *⊣ limit*
 
 **Produced by.** `app/services/flight_envelope_service.py:402` — `derive_performance_kpis`
 

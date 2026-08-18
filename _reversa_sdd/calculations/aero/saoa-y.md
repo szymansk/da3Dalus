@@ -6,11 +6,20 @@ unit: m
 cluster: aero-strips
 user_visible: true
 source_status: PARTIAL
+node_class: derived
+tags:
+  - cluster/aero-strips
+  - class/derived
+  - source/partial
+  - surface/user-visible
+  - flag/divergence
 ---
 
 # Panel spanwise position
 
 **Definition.** y-coordinate of each LiftingLine vortex centre.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -24,7 +33,8 @@ y_arr = np.array(ll.vortex_centers)[:, 1]
 
 **Consumed by.**
 
-- in this graph: [[bwsd-airfoil-per-section|Per-section airfoil name]] · [[bwsd-section-area-raw|Raw trapezoidal section area]] · [[cdftp-frac|Span fraction of a section]] · [[cdftp-y-span|Span extent for trip interpolation]] · [[saoa-alpha-l0-at-y|Interpolated zero-lift angle at panel y]] · [[saoa-twist-at-y|Interpolated twist at panel y]]
+- in this graph: `Per-section airfoil name` · `Raw trapezoidal section area` · `Span fraction of a section` · `Span extent for trip interpolation` · `Interpolated zero-lift angle at panel y` · `Interpolated twist at panel y`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `app/api/v2/endpoints/section_aoa.py:SectionAoaPoint.y_m` · `app/services/turbulator_optimizer_service.py:build_wing_section_data` · `frontend/hooks/useSectionAoa.ts`
 
 **Source.** 🟡 PARTIAL

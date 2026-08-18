@@ -6,11 +6,20 @@ unit: n/a
 cluster: aero-strips
 user_visible: false
 source_status: PARTIAL
+node_class: unclassified-parameter
+tags:
+  - cluster/aero-strips
+  - class/unclassified-parameter
+  - source/partial
+  - flag/divergence
+  - flag/scale
 ---
 
 # NeuralFoil model size (optimiser)
 
 **Definition.** NeuralFoil network size used for every optimiser polar call.
+
+⚪ **Unclassified parameter.** Not yet decided whether this is a user input or an internal tuning value.
 
 **Value.** `"small"`
 
@@ -26,7 +35,8 @@ model_size: str = "small"
 
 **Consumed by.**
 
-- in this graph: [[tos-cd-at-cl|Section cd at a target CL and trip position]]
+- in this graph: `Section cd at a target CL and trip position`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 
 **Source.** 🟡 PARTIAL
 

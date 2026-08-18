@@ -6,11 +6,21 @@ unit: m
 cluster: stability
 user_visible: true
 source_status: PARTIAL
+node_class: derived
+tags:
+  - cluster/stability
+  - class/derived
+  - source/partial
+  - surface/user-visible
+  - flag/anomaly
+  - flag/divergence
 ---
 
 # Clipped wing shift
 
 **Definition.** Wing shift re-solved so the resulting forward-CG static margin exactly equals the clip limit.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -18,7 +28,11 @@ source_status: PARTIAL
 delta_x = (_SM_FORWARD_CLIP_LIMIT * mac_m + cg_fwd_m - x_np_m) / (1.0 - a_vh)
 ```
 
-**Inputs.** [[sm-forward-clip-limit|Forward-CG SM clip limit]] · [[mac-m-fallback|MAC fallback]] · [[alpha-vh|Tail efficiency factor]]
+**Inputs.**
+
+- [[sm-forward-clip-limit|Forward-CG SM clip limit]]  — *⊣ limit*
+- [[mac-m-fallback|MAC fallback]]  — *⤵ fallback*
+- [[alpha-vh|Tail efficiency factor]]
 
 **Produced by.** `app/services/sm_sizing_service.py:431` — `suggest_corrections`
 

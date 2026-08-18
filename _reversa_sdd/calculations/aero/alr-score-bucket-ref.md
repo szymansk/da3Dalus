@@ -6,11 +6,21 @@ unit: dimensionless (ΔCL)
 cluster: aero-polars
 user_visible: true
 source_status: NO_SOURCE_FOUND
+node_class: unclassified-constant
+tags:
+  - cluster/aero-polars
+  - class/unclassified-constant
+  - source/no-source-found
+  - surface/user-visible
+  - flag/anomaly
+  - flag/divergence
 ---
 
 # Drag-bucket reference for re_agnostic
 
 **Definition.** Bucket width that maps to a full 1.0 on the bucket component.
+
+⚪ **Unclassified constant.** Not yet decided whether this is a rule of thumb, a calibration or a physical value. Classifying it is open work — it is deliberately not guessed.
 
 **Value.** `0.8`
 
@@ -26,7 +36,8 @@ BUCKET_REF = 0.8  # wide drag bucket
 
 **Consumed by.**
 
-- in this graph: [[alr-score-re-agnostic|re_agnostic suitability score]]
+- in this graph: `re_agnostic suitability score`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `score_re_agnostic:869`
 
 **Source.** 🔴 NO SOURCE FOUND

@@ -6,11 +6,19 @@ unit: m
 cluster: aero-strips
 user_visible: true
 source_status: SOURCED
+node_class: derived
+tags:
+  - cluster/aero-strips
+  - class/derived
+  - source/sourced
+  - surface/user-visible
 ---
 
 # Reference span echoed to the response
 
 **Definition.** Airplane reference span passed through to the strip-forces response.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 

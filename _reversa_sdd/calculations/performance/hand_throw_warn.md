@@ -6,11 +6,20 @@ unit: dimensionless
 cluster: perf-matching
 user_visible: true
 source_status: NO_SOURCE_FOUND
+node_class: unclassified-constant
+tags:
+  - cluster/perf-matching
+  - class/unclassified-constant
+  - source/no-source-found
+  - surface/user-visible
+  - flag/divergence
 ---
 
 # Hand-launch climb-out margin threshold
 
 **Definition.** Throw-speed multiple of V_S below which a climb-out-margin warning is emitted.
+
+⚪ **Unclassified constant.** Not yet decided whether this is a rule of thumb, a calibration or a physical value. Classifying it is open work — it is deliberately not guessed.
 
 **Value.** `1.20`
 
@@ -26,7 +35,8 @@ _HAND_THROW_WARN: float = 1.20
 
 **Consumed by.**
 
-- in this graph: [[field_length_warnings|Field-length warnings]]
+- in this graph: `Field-length warnings`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `compute_field_lengths:391,393 (warnings list)`
 
 **Source.** 🔴 NO SOURCE FOUND

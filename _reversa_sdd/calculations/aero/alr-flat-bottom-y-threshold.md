@@ -6,11 +6,20 @@ unit: chord fraction
 cluster: aero-polars
 user_visible: true
 source_status: PARTIAL
+node_class: unclassified-parameter
+tags:
+  - cluster/aero-polars
+  - class/unclassified-parameter
+  - source/partial
+  - surface/user-visible
+  - flag/divergence
 ---
 
 # Legacy flat-bottom mean-|y| gate
 
 **Definition.** Mean absolute lower-surface y below which the airfoil is flat_bottom (strict legacy path).
+
+⚪ **Unclassified parameter.** Not yet decided whether this is a user input or an internal tuning value.
 
 **Value.** `0.002`
 

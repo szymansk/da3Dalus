@@ -5,11 +5,20 @@ unit: index
 cluster: aero-spanwise
 user_visible: true
 source_status: NO_SOURCE_FOUND
+node_class: derived
+tags:
+  - cluster/aero-spanwise
+  - class/derived
+  - source/no-source-found
+  - surface/user-visible
+  - flag/anomaly
 ---
 
 # Zero-lift nearest-point fallback
 
 **Definition.** When CL never changes sign, the point of minimum \|CL\| is returned instead of an interpolation.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -17,7 +26,9 @@ source_status: NO_SOURCE_FOUND
 i = int(np.argmin(np.abs(cl)))
 ```
 
-**Inputs.** [[cl-values|Lift coefficient array]]
+**Inputs.**
+
+- [[cl-values|Lift coefficient array]]
 
 **Produced by.** `app/services/analysis_service.py:157` — `_interpolate_zero_crossing`
 

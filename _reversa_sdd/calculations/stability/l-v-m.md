@@ -6,11 +6,20 @@ unit: m
 cluster: stability
 user_visible: false
 source_status: SOURCED
+node_class: derived
+tags:
+  - cluster/stability
+  - class/derived
+  - source/sourced
+  - flag/anomaly
+  - flag/divergence
 ---
 
 # Vertical tail moment arm
 
 **Definition.** Distance from the wing aerodynamic centre to the vertical tail aerodynamic centre.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -19,13 +28,17 @@ x_vtail_ac_m = x_vtail_le_m + 0.25 * vtail_mac_m
 l_v = x_vtail_ac_m - x_wing_ac_m
 ```
 
-**Inputs.** [[x-wing-ac-m|Wing aerodynamic centre x]] · [[vtail-mac-approx|Vertical tail MAC (mean chord approximation)]]
+**Inputs.**
+
+- [[x-wing-ac-m|Wing aerodynamic centre x]]
+- [[vtail-mac-approx|Vertical tail MAC (mean chord approximation)]]
 
 **Produced by.** `app/services/tail_sizing_service.py:224` — `compute_tail_volumes`
 
 **Consumed by.**
 
-- in this graph: [[s-v-recommended-mm2|Recommended vertical tail area]] · [[v-v-current|Vertical tail volume coefficient]]
+- in this graph: `Recommended vertical tail area` · `Vertical tail volume coefficient`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `app/services/tail_sizing_service.py:231,232,261,263`
 
 **Source.** 🟢 SOURCED

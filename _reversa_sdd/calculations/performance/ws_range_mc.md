@@ -6,11 +6,21 @@ unit: N/m^2
 cluster: perf-matching
 user_visible: true
 source_status: PARTIAL
+node_class: derived
+tags:
+  - cluster/perf-matching
+  - class/derived
+  - source/partial
+  - surface/user-visible
+  - flag/divergence
+  - flag/scale
 ---
 
 # W/S sweep vector
 
 **Definition.** Linear W/S sample vector forming the chart's x-axis.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -18,13 +28,18 @@ source_status: PARTIAL
 ws_range = [_WS_MIN + (_WS_MAX - _WS_MIN) * i / (_WS_STEPS - 1) for i in range(_WS_STEPS)]
 ```
 
-**Inputs.** [[ws_sweep_min|W/S sweep lower bound]] · [[ws_sweep_max|W/S sweep upper bound]] · [[ws_sweep_steps|W/S sweep resolution]]
+**Inputs.**
+
+- [[ws_sweep_min|W/S sweep lower bound]]  — *⊣ limit*
+- [[ws_sweep_max|W/S sweep upper bound]]  — *⊣ limit*
+- [[ws_sweep_steps|W/S sweep resolution]]
 
 **Produced by.** `app/services/matching_chart_service.py:838` — `compute_chart`
 
 **Consumed by.**
 
-- in this graph: [[tw_climb_constraint|Climb constraint T/W]] · [[tw_cruise_constraint|Cruise constraint T/W]] · [[tw_takeoff_constraint|Takeoff constraint T/W]] · [[tw_vertical_climb|Vertical-climb T/W]] · [[v_md|Minimum-drag speed]]
+- in this graph: `Climb constraint T/W` · `Cruise constraint T/W` · `Takeoff constraint T/W` · `Vertical-climb T/W` · `Minimum-drag speed`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `all t_w_points lists` · `MatchingChartResponse.ws_range_n_m2` · `frontend/hooks/useMatchingChart.ts` · `frontend/components/workbench/MatchingChartTab.tsx`
 
 **Source.** 🟡 PARTIAL

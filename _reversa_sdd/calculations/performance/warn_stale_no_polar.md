@@ -5,11 +5,20 @@ unit: dimensionless
 cluster: perf-oppoints
 user_visible: true
 source_status: NO_SOURCE_FOUND
+node_class: derived
+tags:
+  - cluster/perf-oppoints
+  - class/derived
+  - source/no-source-found
+  - surface/user-visible
+  - flag/divergence
 ---
 
 # STALE_NO_POLAR warning
 
 **Definition.** Warning stamped on every target when reference speeds are cold-start estimates.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -17,7 +26,9 @@ source_status: NO_SOURCE_FOUND
 if refs.get("provenance") != "cold_start": return targets ... warnings.append("STALE_NO_POLAR")
 ```
 
-**Inputs.** [[refs_provenance|Reference-speed provenance]]
+**Inputs.**
+
+- [[refs_provenance|Reference-speed provenance]]
 
 **Produced by.** `app/services/operating_point_generator_service.py:386` — `_stamp_stale_no_polar`
 

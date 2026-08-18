@@ -6,11 +6,21 @@ unit: – (fraction of MAC)
 cluster: stability
 user_visible: true
 source_status: NO_SOURCE_FOUND
+node_class: derived
+tags:
+  - cluster/stability
+  - class/derived
+  - source/no-source-found
+  - surface/user-visible
+  - flag/anomaly
+  - flag/divergence
 ---
 
 # Predicted forward SM after htail scale
 
 **Definition.** Prediction of the forward-CG static margin limit after enlarging the horizontal tail to gain elevator authority.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -18,7 +28,11 @@ source_status: NO_SOURCE_FOUND
 predicted_sm = sm_fwd_current - dsm_dsh * delta_pct * s_h_m2
 ```
 
-**Inputs.** [[sm-fwd|Static margin at forward CG]] · [[dsm-dsh|SM sensitivity to horizontal tail area]] · [[s-h-m2-fallback|Horizontal tail area fallback]]
+**Inputs.**
+
+- [[sm-fwd|Static margin at forward CG]]
+- [[dsm-dsh|SM sensitivity to horizontal tail area]]
+- [[s-h-m2-fallback|Horizontal tail area fallback]]  — *⤵ fallback*
 
 **Produced by.** `app/services/sm_sizing_service.py:646` — `_htail_scale_fwd_option`
 

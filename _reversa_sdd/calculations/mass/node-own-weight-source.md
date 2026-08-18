@@ -6,11 +6,19 @@ unit: enum (dimensionless)
 cluster: mass
 user_visible: true
 source_status: NO_SOURCE_FOUND
+node_class: derived
+tags:
+  - cluster/mass
+  - class/derived
+  - source/no-source-found
+  - surface/user-visible
 ---
 
 # Own weight provenance
 
 **Definition.** Provenance tag for node_own_weight: one of 'override' \| 'cots' \| 'calculated' \| 'none'.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -18,13 +26,16 @@ source_status: NO_SOURCE_FOUND
 returned as the second tuple element of _calculate_own_weight: "override" | "cots" | "calculated" | "none"
 ```
 
-**Inputs.** [[node-own-weight|Node own weight]]
+**Inputs.**
+
+- [[node-own-weight|Node own weight]]
 
 **Produced by.** `app/services/component_tree_service.py:461` — `_calculate_own_weight`
 
 **Consumed by.**
 
-- in this graph: [[node-weight-status|Node weight completeness status]]
+- in this graph: `Node weight completeness status`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `app/services/component_tree_service.py:101 (_roll_up_weights has_own)` · `app/schemas/component_tree.py:77` · `frontend/components/workbench/ComponentTree.tsx:100`
 
 **Source.** 🔴 NO SOURCE FOUND

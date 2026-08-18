@@ -6,11 +6,22 @@ unit: g
 cluster: structure
 user_visible: true
 source_status: SOURCED
+node_class: user-input
+tags:
+  - cluster/structure
+  - class/user-input
+  - source/sourced
+  - surface/user-visible
+  - flag/anomaly
+  - flag/divergence
+  - flag/scale
 ---
 
 # Manoeuvre limit load factor
 
 **Definition.** Limit load factor from the aeroplane's design assumptions; multiplies the aerodynamic bending moment into the design moment.
+
+**User input.** Supplied from outside the calculation (assumption store or request), not derived.
 
 **Formula — as the code writes it.**
 
@@ -18,13 +29,16 @@ source_status: SOURCED
 g_limit = float(g_limit_raw)
 ```
 
-**Inputs.** [[structure--g-limit-default|Default manoeuvre limit load factor]]
+**Inputs.**
+
+- [[structure--g-limit-default|Default manoeuvre limit load factor]]  — *⤵ fallback*
 
 **Produced by.** `app/services/analysis_service.py:2162` — `_compute_spar_sizing_for_surfaces`
 
 **Consumed by.**
 
-- in this graph: [[design-bending-moment|Design bending moment]] · [[flight-envelope-n-max|Design limit load factor (published)]]
+- in this graph: `Design bending moment` · `Design limit load factor (published)`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `app/services/spar_sizing.py:315` · `app/services/spar_sizing.py:376` · `frontend/lib/sparSizingHelpers.ts:118` · `frontend/components/workbench/SparSizingPanel.tsx:145`
 
 **Source.** 🟢 SOURCED

@@ -6,11 +6,18 @@ unit: dimensionless
 cluster: powertrain
 user_visible: false
 source_status: SOURCED
+node_class: derived
+tags:
+  - cluster/powertrain
+  - class/derived
+  - source/sourced
 ---
 
 # Induced-drag factor
 
 **Definition.** Lift-dependent drag factor of the parabolic polar.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -18,13 +25,17 @@ source_status: SOURCED
 k = 1.0 / (math.pi * e * ar)
 ```
 
-**Inputs.** [[ss-e-oswald|Oswald efficiency (solution space)]] · [[ss-ar|Aspect ratio (solution space)]]
+**Inputs.**
+
+- [[ss-e-oswald|Oswald efficiency (solution space)]]  — *⤵ fallback*
+- [[ss-ar|Aspect ratio (solution space)]]  — *⤵ fallback*
 
 **Produced by.** `app/services/powertrain_solution_space_service.py:104` — `_p_aero`
 
 **Consumed by.**
 
-- in this graph: [[ss-drag-coefficient|Total drag coefficient]]
+- in this graph: `Total drag coefficient`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `app/services/powertrain_solution_space_service.py:104`
 
 **Source.** 🟢 SOURCED

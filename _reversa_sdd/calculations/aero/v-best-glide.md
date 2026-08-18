@@ -6,11 +6,20 @@ unit: m/s
 cluster: aero-spanwise
 user_visible: true
 source_status: SOURCED
+node_class: derived
+tags:
+  - cluster/aero-spanwise
+  - class/derived
+  - source/sourced
+  - surface/user-visible
+  - flag/divergence
 ---
 
 # Best-glide speed
 
 **Definition.** Speed at maximum L/D.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -18,7 +27,10 @@ source_status: SOURCED
 v_best_glide=float(v[i_best])
 ```
 
-**Inputs.** [[speed-polar-v|Glide forward speed]] · [[i-best-glide|Best-glide index]]
+**Inputs.**
+
+- [[speed-polar-v|Glide forward speed]]
+- [[i-best-glide|Best-glide index]]
 
 **Produced by.** `app/services/analysis_service.py:545` — `_compute_speed_polar`
 

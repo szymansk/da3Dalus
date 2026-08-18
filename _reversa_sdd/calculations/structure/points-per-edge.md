@@ -5,11 +5,19 @@ unit: count
 cluster: structure
 user_visible: false
 source_status: NO_SOURCE_FOUND
+node_class: unclassified-constant
+tags:
+  - cluster/structure
+  - class/unclassified-constant
+  - source/no-source-found
+  - flag/anomaly
 ---
 
 # Slice outline sampling density
 
 **Definition.** Number of points sampled per outline edge when discretising a section cut, clamped to [8, 4096]. Solid mode only.
+
+⚪ **Unclassified constant.** Not yet decided whether this is a rule of thumb, a calibration or a physical value. Classifying it is open work — it is deliberately not guessed.
 
 **Value.** `80 (clamped 8..4096)`
 

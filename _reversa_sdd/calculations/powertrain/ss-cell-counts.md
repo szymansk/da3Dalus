@@ -6,11 +6,21 @@ unit: cells (S)
 cluster: powertrain
 user_visible: true
 source_status: PARTIAL
+node_class: unclassified-parameter
+tags:
+  - cluster/powertrain
+  - class/unclassified-parameter
+  - source/partial
+  - surface/user-visible
+  - flag/anomaly
+  - flag/divergence
 ---
 
 # Evaluated cell counts
 
 **Definition.** The LiPo series cell counts for which a solution row is produced.
+
+⚪ **Unclassified parameter.** Not yet decided whether this is a user input or an internal tuning value.
 
 **Value.** `[2, 3, 4, 6]`
 
@@ -26,7 +36,8 @@ for s in assumptions.cell_counts:
 
 **Consumed by.**
 
-- in this graph: [[ss-v-nom|Pack nominal voltage (solution space)]] · [[ss-v-sag|Pack voltage under load]]
+- in this graph: `Pack nominal voltage (solution space)` · `Pack voltage under load`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `app/services/powertrain_solution_space_service.py:383` · `frontend/hooks/usePowertrainSolutionSpace.ts:116`
 
 **Source.** 🟡 PARTIAL

@@ -6,11 +6,20 @@ unit: dimensionless
 cluster: aero-polars
 user_visible: false
 source_status: PARTIAL
+node_class: unclassified-constant
+tags:
+  - cluster/aero-polars
+  - class/unclassified-constant
+  - source/partial
+  - flag/anomaly
+  - flag/divergence
 ---
 
 # Drag-bucket CD threshold factor
 
 **Definition.** CD multiple of CD_min bounding the low-drag bucket.
+
+⚪ **Unclassified constant.** Not yet decided whether this is a rule of thumb, a calibration or a physical value. Classifying it is open work — it is deliberately not guessed.
 
 **Value.** `1.15`
 
@@ -20,13 +29,16 @@ source_status: PARTIAL
 cd_threshold = 1.15 * cd_min
 ```
 
-**Inputs.** [[alr-cd-min|Section CD_min]]
+**Inputs.**
+
+- [[alr-cd-min|Section CD_min]]  — *⊣ limit*
 
 **Produced by.** `app/services/airfoil_low_re_service.py:638` — `_extract_metrics`
 
 **Consumed by.**
 
-- in this graph: [[alr-drag-bucket-width|Drag bucket width]]
+- in this graph: `Drag bucket width`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 
 **Source.** 🟡 PARTIAL
 

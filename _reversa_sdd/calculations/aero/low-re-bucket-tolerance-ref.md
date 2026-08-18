@@ -6,11 +6,20 @@ unit: dimensionless (ΔCL)
 cluster: aero-polars
 user_visible: false
 source_status: NO_SOURCE_FOUND
+node_class: unclassified-parameter
+tags:
+  - cluster/aero-polars
+  - class/unclassified-parameter
+  - source/no-source-found
+  - flag/anomaly
+  - flag/divergence
 ---
 
 # Bucket tolerance reference width
 
 **Definition.** Drag-bucket width earning full tolerance credit in the Match formula.
+
+⚪ **Unclassified parameter.** Not yet decided whether this is a user input or an internal tuning value.
 
 **Value.** `0.6`
 
@@ -26,7 +35,8 @@ low_re_bucket_tolerance_ref: float = 0.6
 
 **Consumed by.**
 
-- in this graph: [[alr-tolerance-half|Match tolerance half-width]]
+- in this graph: `Match tolerance half-width`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `score_target_cl:1034,1049`
 
 **Source.** 🔴 NO SOURCE FOUND

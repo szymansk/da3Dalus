@@ -6,11 +6,21 @@ unit: mAh
 cluster: powertrain
 user_visible: true
 source_status: PARTIAL
+node_class: derived
+tags:
+  - cluster/powertrain
+  - class/derived
+  - source/partial
+  - surface/user-visible
+  - flag/anomaly
+  - flag/divergence
 ---
 
 # Minimum battery capacity
 
 **Definition.** Capacity floor from the energy budget: required energy divided by nominal voltage.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -18,13 +28,17 @@ source_status: PARTIAL
 cap_mah = energy_wh / v_nom * 1000.0
 ```
 
-**Inputs.** [[ss-energy-wh|Required mission energy]] · [[ss-v-nom|Pack nominal voltage (solution space)]]
+**Inputs.**
+
+- [[ss-energy-wh|Required mission energy]]
+- [[ss-v-nom|Pack nominal voltage (solution space)]]
 
 **Produced by.** `app/services/powertrain_solution_space_service.py:142` — `_per_cell`
 
 **Consumed by.**
 
-- in this graph: [[hyperbola-capacity-samples|Hyperbola capacity samples]] · [[hyperbola-plot-span|Hyperbola plot span multiplier]] · [[ss-catalog-battery-match|Catalog battery match flag]] · [[ss-raw-c|Raw required C-rate]]
+- in this graph: `Hyperbola capacity samples` · `Hyperbola plot span multiplier` · `Catalog battery match flag` · `Raw required C-rate`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `app/services/powertrain_solution_space_service.py:145` · `app/services/powertrain_solution_space_service.py:426` · `app/services/powertrain_solution_space_service.py:441` · `app/services/powertrain_solution_space_service.py:463` · `frontend/components/workbench/PowertrainTab.tsx:129`
 
 **Source.** 🟡 PARTIAL

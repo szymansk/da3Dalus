@@ -6,11 +6,21 @@ unit: mm
 cluster: structure
 user_visible: true
 source_status: PARTIAL
+node_class: derived
+tags:
+  - cluster/structure
+  - class/derived
+  - source/partial
+  - surface/user-visible
+  - flag/anomaly
+  - flag/divergence
 ---
 
 # Solved rectangular width
 
 **Definition.** Width of a solid rectangular spar whose height h is fixed by the section depth; the free dimension reported as solved_mm for shape='rectangular'.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -18,13 +28,17 @@ source_status: PARTIAL
 b = 6.0 * erf_w / h**2 if h > 0.0 else 0.0
 ```
 
-**Inputs.** [[required-section-modulus|Required section modulus]] · [[spar-outer-dimension|Spar outer dimension]]
+**Inputs.**
+
+- [[required-section-modulus|Required section modulus]]
+- [[spar-outer-dimension|Spar outer dimension]]
 
 **Produced by.** `app/services/spar_sizing.py:182` — `_solve_rectangular`
 
 **Consumed by.**
 
-- in this graph: [[rectangular-cross-section-area|Rectangular cross-section area]]
+- in this graph: `Rectangular cross-section area`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `app/services/spar_sizing.py:183` · `app/services/spar_sizing.py:344`
 
 **Source.** 🟡 PARTIAL

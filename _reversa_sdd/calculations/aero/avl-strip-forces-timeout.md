@@ -5,11 +5,19 @@ unit: s
 cluster: aero-spanwise
 user_visible: false
 source_status: NO_SOURCE_FOUND
+node_class: unclassified-parameter
+tags:
+  - cluster/aero-spanwise
+  - class/unclassified-parameter
+  - source/no-source-found
+  - flag/anomaly
 ---
 
 # AVL strip-forces timeout
 
 **Definition.** Subprocess timeout for the AVL strip-forces run.
+
+⚪ **Unclassified parameter.** Not yet decided whether this is a user input or an internal tuning value.
 
 **Value.** `60 / 30`
 

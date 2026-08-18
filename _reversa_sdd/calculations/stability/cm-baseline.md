@@ -6,11 +6,20 @@ unit: – (dimensionless)
 cluster: stability
 user_visible: false
 source_status: SOURCED
+node_class: derived
+tags:
+  - cluster/stability
+  - class/derived
+  - source/sourced
+  - flag/anomaly
+  - flag/divergence
 ---
 
 # Baseline pitching moment (zero deflection)
 
 **Definition.** Pitching moment coefficient at the landing-stall alpha with the elevator at zero deflection.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -20,13 +29,16 @@ asb_baseline = asb_airplane.with_control_deflections({elevator_surface_name: 0.0
 cm_baseline = _extract_cm(result_baseline)
 ```
 
-**Inputs.** [[alpha-stall-landing|Landing stall alpha]]
+**Inputs.**
+
+- [[alpha-stall-landing|Landing stall alpha]]  — *⊣ limit*
 
 **Produced by.** `app/services/elevator_authority_service.py:692` — `_compute_forward_cg_limit_asb`
 
 **Consumed by.**
 
-- in this graph: [[cm-ac|Aerodynamic-centre pitching moment]] · [[cm-delta-e-raw|Elevator authority (finite difference)]] · [[delta-cm-flap|Flap-induced pitching moment]]
+- in this graph: `Aerodynamic-centre pitching moment` · `Elevator authority (finite difference)` · `Flap-induced pitching moment`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `app/services/elevator_authority_service.py:709,731` · `app/services/elevator_authority_service.py:1050 (AVL twin)`
 
 **Source.** 🟢 SOURCED

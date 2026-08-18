@@ -6,11 +6,20 @@ unit: – (multiples of MAC)
 cluster: stability
 user_visible: false
 source_status: NO_SOURCE_FOUND
+node_class: unclassified-constant
+tags:
+  - cluster/stability
+  - class/unclassified-constant
+  - source/no-source-found
+  - flag/anomaly
+  - flag/divergence
 ---
 
 # Maximum wing shift clip
 
 **Definition.** Intended safety clip on the per-iteration wing shift, expressed in multiples of MAC.
+
+⚪ **Unclassified constant.** Not yet decided whether this is a rule of thumb, a calibration or a physical value. Classifying it is open work — it is deliberately not guessed.
 
 **Value.** `5.0`
 

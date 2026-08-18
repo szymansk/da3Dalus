@@ -6,11 +6,22 @@ unit: m
 cluster: mass
 user_visible: true
 source_status: PARTIAL
+node_class: derived
+tags:
+  - cluster/mass
+  - class/derived
+  - source/partial
+  - surface/user-visible
+  - flag/anomaly
+  - flag/divergence
+  - flag/scale
 ---
 
 # Forward CG stability limit (0.30·MAC stub)
 
 **Definition.** Conservative forward-CG limit placeholder: the CG at which the static margin reaches the elevator-authority ceiling of 0.30·MAC.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -18,13 +29,18 @@ source_status: PARTIAL
 cg_stability_fwd_m = x_np - _SM_ELEVATOR_LIMIT * mac
 ```
 
-**Inputs.** [[x-np|Neutral point]] · [[mac|Mean aerodynamic chord (main wing)]] · [[sm-elevator-limit|Static-margin elevator-authority limit]]
+**Inputs.**
+
+- [[x-np|Neutral point]]  — *⊣ limit*
+- [[mac|Mean aerodynamic chord (main wing)]]
+- [[sm-elevator-limit|Static-margin elevator-authority limit]]  — *⊣ limit*
 
 **Produced by.** `app/services/loading_scenario_service.py:116` — `compute_stability_envelope`
 
 **Consumed by.**
 
-- in this graph: [[cg-envelope-violation-mm|CG envelope violation distance]]
+- in this graph: `CG envelope violation distance`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `app/services/assumption_compute_service.py:797 (fed into enrich_context, then overwritten at :485 by elevator_authority)` · `app/services/loading_scenario_service.py:217 (validate_cg_envelope)` · `app/services/loading_scenario_service.py:588/625 (CgEnvelopeRead — API response)` · `app/services/sm_sizing_service.py:483 (reads ctx['cg_stability_fwd_m'])` · `frontend/hooks/useLoadingScenarios.ts:88`
 
 **Source.** 🟡 PARTIAL

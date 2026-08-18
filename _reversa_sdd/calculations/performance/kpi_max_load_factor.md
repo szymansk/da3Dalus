@@ -6,11 +6,21 @@ unit: g
 cluster: perf-envelope
 user_visible: true
 source_status: PARTIAL
+node_class: derived
+tags:
+  - cluster/perf-envelope
+  - class/derived
+  - source/partial
+  - surface/user-visible
+  - flag/anomaly
+  - flag/divergence
 ---
 
 # KPI: max load factor
 
 **Definition.** Peak load factor from a 'max_turn' marker, else the g-limit assumption.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -18,7 +28,10 @@ source_status: PARTIAL
 max_turn_marker.load_factor | round(g_limit, 4)
 ```
 
-**Inputs.** [[fe_g_limit|Structural limit load factor]] · [[fe_marker_load_factor|Operating-point marker load factor]]
+**Inputs.**
+
+- [[fe_g_limit|Structural limit load factor]]  — *⤵ fallback*
+- [[fe_marker_load_factor|Operating-point marker load factor]]
 
 **Produced by.** `app/services/flight_envelope_service.py:494` — `derive_performance_kpis`
 

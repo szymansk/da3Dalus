@@ -6,11 +6,19 @@ unit: mm
 cluster: structure
 user_visible: true
 source_status: PARTIAL
+node_class: derived
+tags:
+  - cluster/structure
+  - class/derived
+  - source/partial
+  - surface/user-visible
 ---
 
 # Solved tube inner diameter
 
 **Definition.** Largest bore that still meets the required section modulus at the fixed outer diameter Da.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -18,13 +26,16 @@ source_status: PARTIAL
 Di = discriminant**0.25
 ```
 
-**Inputs.** [[tube-solve-discriminant|Tube inner-diameter discriminant]]
+**Inputs.**
+
+- [[tube-solve-discriminant|Tube inner-diameter discriminant]]
 
 **Produced by.** `app/services/spar_sizing.py:146` — `_solve_tube`
 
 **Consumed by.**
 
-- in this graph: [[bore-for|Strength bore from tube sizing]] · [[solved-tube-wall|Solved tube wall thickness]] · [[tube-cross-section-area|Tube cross-section area]]
+- in this graph: `Strength bore from tube sizing` · `Solved tube wall thickness` · `Tube cross-section area`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `app/services/spar_sizing.py:147` · `app/services/spar_sizing.py:148` · `cad_designer/airplane/geometry/spar_solver.py:510` · `cad_designer/airplane/geometry/spar_solver.py:632`
 
 **Source.** 🟡 PARTIAL

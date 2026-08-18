@@ -6,11 +6,21 @@ unit: – (fraction of MAC)
 cluster: stability
 user_visible: true
 source_status: SOURCED
+node_class: derived
+tags:
+  - cluster/stability
+  - class/derived
+  - source/sourced
+  - surface/user-visible
+  - flag/anomaly
+  - flag/divergence
 ---
 
 # Static margin at aft CG
 
 **Definition.** Static margin evaluated at the most-aft loading CG; the quantity the aft-CG sizing loop drives to target.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -18,13 +28,16 @@ source_status: SOURCED
 sm_at_aft = (x_np_m - cg_aft_m) / mac_m
 ```
 
-**Inputs.** [[mac-m-fallback|MAC fallback]]
+**Inputs.**
+
+- [[mac-m-fallback|MAC fallback]]  — *⤵ fallback*
 
 **Produced by.** `app/services/sm_sizing_service.py:361` — `suggest_corrections`
 
 **Consumed by.**
 
-- in this graph: [[delta-sm-apply|Predicted SM change per apply]] · [[predicted-sm-htail-scale|Predicted SM after htail chord-scale]] · [[predicted-sm-wing-shift|Predicted SM after wing shift]] · [[sm-delta-needed|SM shortfall to target]]
+- in this graph: `Predicted SM change per apply` · `Predicted SM after htail chord-scale` · `Predicted SM after wing shift` · `SM shortfall to target`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `app/services/sm_sizing_service.py:373,374,386,398,402,411,446,447` · `app/services/sm_sizing_service.py:770 (_load_apply_state, duplicate derivation)`
 
 **Source.** 🟢 SOURCED

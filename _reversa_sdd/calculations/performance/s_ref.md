@@ -6,11 +6,20 @@ unit: m²
 cluster: perf-oppoints
 user_visible: false
 source_status: SOURCED
+node_class: derived
+tags:
+  - cluster/perf-oppoints
+  - class/derived
+  - source/sourced
+  - flag/anomaly
+  - flag/divergence
 ---
 
 # Reference wing area
 
 **Definition.** Reference area taken from the ASB airplane for CL_target.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -24,7 +33,8 @@ s_ref = float(getattr(asb_airplane, "s_ref", 0.0) or 0.0)
 
 **Consumed by.**
 
-- in this graph: [[cl_target|Target lift coefficient]]
+- in this graph: `Target lift coefficient`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `app/services/operating_point_generator_service.py:794-797`
 
 **Source.** 🟢 SOURCED

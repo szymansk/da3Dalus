@@ -6,11 +6,19 @@ unit: percent
 cluster: aero-polars
 user_visible: false
 source_status: NO_SOURCE_FOUND
+node_class: unclassified-parameter
+tags:
+  - cluster/aero-polars
+  - class/unclassified-parameter
+  - source/no-source-found
+  - flag/divergence
 ---
 
 # Fleet cd0 reference percentile
 
 **Definition.** Percentile of the fleet cd0 distribution at a given Re used as the efficiency reference.
+
+⚪ **Unclassified parameter.** Not yet decided whether this is a user input or an internal tuning value.
 
 **Value.** `20.0`
 
@@ -26,7 +34,8 @@ percentile: float = 20.0
 
 **Consumed by.**
 
-- in this graph: [[alr-re-cd0-reference|Per-Re fleet cd0 reference]]
+- in this graph: `Per-Re fleet cd0 reference`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `compute_re_cd0_reference:823`
 
 **Source.** 🔴 NO SOURCE FOUND

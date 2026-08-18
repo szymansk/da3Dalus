@@ -5,11 +5,20 @@ unit: dimensionless
 cluster: structure
 user_visible: true
 source_status: NO_SOURCE_FOUND
+node_class: derived
+tags:
+  - cluster/structure
+  - class/derived
+  - source/no-source-found
+  - surface/user-visible
+  - flag/anomaly
 ---
 
 # Spar piece utilisation
 
 **Definition.** Fraction of the tightest containment band the piece's outer diameter uses. Deliberately allowed to exceed 1 to report truthfully that no strong-enough round tube fits.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -17,7 +26,11 @@ source_status: NO_SOURCE_FOUND
 utilisation = od / max(tightest, _FIT_TOL_MM)
 ```
 
-**Inputs.** [[piece-outer-diameter|Spar piece outer diameter]] · [[tightest-band|Tightest containment band for a piece]] · [[fit-tol-mm|Containment fit tolerance]]
+**Inputs.**
+
+- [[piece-outer-diameter|Spar piece outer diameter]]
+- [[tightest-band|Tightest containment band for a piece]]  — *⊣ limit*
+- [[fit-tol-mm|Containment fit tolerance]]  — *ε tolerance*
 
 **Produced by.** `cad_designer/airplane/geometry/spar_solver.py:539` — `_piece_from_run_with_od`
 

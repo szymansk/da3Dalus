@@ -6,11 +6,18 @@ unit: mm
 cluster: structure
 user_visible: false
 source_status: SOURCED
+node_class: derived
+tags:
+  - cluster/structure
+  - class/derived
+  - source/sourced
 ---
 
 # Local chord in millimetres
 
 **Definition.** Station chord converted from the metre-based loads result into the millimetre unit context of the sizing formulas.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -24,7 +31,8 @@ chord_mm = chord_m * 1000.0
 
 **Consumed by.**
 
-- in this graph: [[profile-thickness-mm|Local airfoil profile thickness]]
+- in this graph: `Local airfoil profile thickness`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `app/services/spar_sizing.py:322`
 
 **Source.** 🟢 SOURCED

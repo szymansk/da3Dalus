@@ -6,11 +6,20 @@ unit: mixed
 cluster: powertrain
 user_visible: false
 source_status: SOURCED
+node_class: unclassified-parameter
+tags:
+  - cluster/powertrain
+  - class/unclassified-parameter
+  - source/sourced
+  - flag/anomaly
+  - flag/divergence
 ---
 
 # Propeller polar rows
 
 **Definition.** APC PER3 measurement rows (rpm, J, Ct, Cp, Pe, PWR_W, Torque_Nm, Thrust_N) loaded from propeller_polar_samples.
+
+⚪ **Unclassified parameter.** Not yet decided whether this is a user input or an internal tuning value.
 
 **Inputs.** — *(leaf: a constant or an external input)*
 
@@ -18,7 +27,8 @@ source_status: SOURCED
 
 **Consumed by.**
 
-- in this graph: [[polar-cp|Propeller power coefficient]] · [[polar-ct|Propeller thrust coefficient]]
+- in this graph: `Propeller power coefficient` · `Propeller thrust coefficient`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `app/services/powertrain_performance.py:736` · `app/services/powertrain_performance.py:716` · `app/api/v2/endpoints/aeroplane/powertrain_performance.py:151`
 
 **Source.** 🟢 SOURCED

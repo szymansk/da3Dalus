@@ -6,11 +6,22 @@ unit: m/s^2
 cluster: perf-envelope
 user_visible: false
 source_status: PARTIAL
+node_class: physical-constant
+tags:
+  - cluster/perf-envelope
+  - class/physical-constant
+  - source/partial
+  - flag/anomaly
+  - flag/divergence
+  - flag/physical
 ---
 
 # Gravitational acceleration (flight envelope)
 
 **Definition.** Gravity used for all weight and wing-loading terms in the flight-envelope service.
+
+**Physical constant.** A value of nature. It must be identical everywhere it appears — a second definition is a defect by construction, not a judgement call.
+*Identified as: gravity.*
 
 **Value.** `9.81`
 
@@ -26,7 +37,8 @@ GRAVITY = 9.81
 
 **Consumed by.**
 
-- in this graph: [[fe_mu_g|Gust mass ratio]] · [[fe_weight|Aircraft weight]] · [[fe_wing_loading|Wing loading (gust path)]]
+- in this graph: `Gust mass ratio` · `Aircraft weight` · `Wing loading (gust path)`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 
 **Source.** 🟡 PARTIAL
 

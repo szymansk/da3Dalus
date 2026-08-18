@@ -5,11 +5,21 @@ unit: dimensionless
 cluster: perf-oppoints
 user_visible: true
 source_status: PARTIAL
+node_class: derived
+tags:
+  - cluster/perf-oppoints
+  - class/derived
+  - source/partial
+  - surface/user-visible
+  - flag/anomaly
+  - flag/divergence
 ---
 
 # ALPHA_LIMIT_REACHED warning
 
 **Definition.** Status downgrade when the solved alpha exceeds the profile's alpha limit.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -17,7 +27,10 @@ source_status: PARTIAL
 if max_alpha is not None and abs(best_alpha) > float(max_alpha): trim_status = OperatingPointStatus.LIMIT_REACHED; warnings.append("ALPHA_LIMIT_REACHED")
 ```
 
-**Inputs.** [[alpha_trimmed|Trimmed angle of attack]] · [[default_max_alpha_deg|Default maximum angle of attack]]
+**Inputs.**
+
+- [[alpha_trimmed|Trimmed angle of attack]]
+- [[default_max_alpha_deg|Default maximum angle of attack]]  — *⤵ fallback*
 
 **Produced by.** `app/services/operating_point_generator_service.py:860` — `_apply_limit_warnings`
 

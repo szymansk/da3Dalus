@@ -6,11 +6,20 @@ unit: dimensionless
 cluster: perf-matching
 user_visible: true
 source_status: SOURCED
+node_class: derived
+tags:
+  - cluster/perf-matching
+  - class/derived
+  - source/sourced
+  - surface/user-visible
+  - flag/divergence
 ---
 
 # Climb constraint T/W
 
 **Definition.** T/W required to sustain the target climb gradient at the clean polar.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -18,13 +27,20 @@ source_status: SOURCED
 gamma_rad = math.radians(gamma_deg); q = 0.5 * rho * v_climb * v_climb; k = 1.0 / (math.pi * e * ar); drag_over_weight = q * cd0 / ws + ws * k / q; return math.sin(gamma_rad) + drag_over_weight
 ```
 
-**Inputs.** [[ws_range_mc|W/S sweep vector]] · [[mode_default_gamma_climb|Mode default climb gradient]] · [[v_md|Minimum-drag speed]] · [[ar_resolved|Resolved aspect ratio]] · [[rho_sl|Sea-level ISA density]]
+**Inputs.**
+
+- [[ws_range_mc|W/S sweep vector]]
+- [[mode_default_gamma_climb|Mode default climb gradient]]  — *⤵ fallback*
+- [[v_md|Minimum-drag speed]]
+- [[ar_resolved|Resolved aspect ratio]]  — *⤵ fallback*
+- [[rho_sl|Sea-level ISA density]]  — *⤵ fallback*
 
 **Produced by.** `app/services/matching_chart_service.py:413` — `_climb_constraint`
 
 **Consumed by.**
 
-- in this graph: [[climb_tw_picard|Re-refined climb T/W per W/S]]
+- in this graph: `Re-refined climb T/W per W/S`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `climb_tw:865` · `constraints_raw 'Climb':929` · `MatchingChartResponse.constraints`
 
 **Source.** 🟢 SOURCED

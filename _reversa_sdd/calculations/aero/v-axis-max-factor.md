@@ -5,11 +5,21 @@ unit: -
 cluster: aero-spanwise
 user_visible: false
 source_status: NO_SOURCE_FOUND
+node_class: unclassified-constant
+tags:
+  - cluster/aero-spanwise
+  - class/unclassified-constant
+  - source/no-source-found
+  - flag/anomaly
+  - flag/divergence
+  - flag/scale
 ---
 
 # Upper axis-bound factor
 
 **Definition.** Multiplier on V_dive for the chart's right edge.
+
+⚪ **Unclassified constant.** Not yet decided whether this is a rule of thumb, a calibration or a physical value. Classifying it is open work — it is deliberately not guessed.
 
 **Value.** `1.3`
 
@@ -25,7 +35,8 @@ source_status: NO_SOURCE_FOUND
 
 **Consumed by.**
 
-- in this graph: [[v-axis-max|Speed-polar X-axis upper bound]]
+- in this graph: `Speed-polar X-axis upper bound`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 
 **Source.** 🔴 NO SOURCE FOUND
 

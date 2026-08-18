@@ -6,11 +6,18 @@ unit: deg
 cluster: aero-strips
 user_visible: false
 source_status: SOURCED
+node_class: derived
+tags:
+  - cluster/aero-strips
+  - class/derived
+  - source/sourced
 ---
 
 # Interpolated twist at panel y
 
 **Definition.** Geometric twist linearly interpolated onto panel spanwise positions.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -18,13 +25,17 @@ source_status: SOURCED
 twist_at_y = np.interp(y_arr, xsec_y, xsec_twist)
 ```
 
-**Inputs.** [[saoa-xsec-twist|Cross-section twist array]] · [[saoa-y|Panel spanwise position]]
+**Inputs.**
+
+- [[saoa-xsec-twist|Cross-section twist array]]
+- [[saoa-y|Panel spanwise position]]
 
 **Produced by.** `app/services/section_aoa_service.py:324` — `compute_section_aoa`
 
 **Consumed by.**
 
-- in this graph: [[saoa-alpha-geom|Geometric angle of attack]]
+- in this graph: `Geometric angle of attack`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 
 **Source.** 🟢 SOURCED
 

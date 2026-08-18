@@ -6,11 +6,20 @@ unit: mm³
 cluster: structure
 user_visible: false
 source_status: PARTIAL
+node_class: derived
+tags:
+  - cluster/structure
+  - class/derived
+  - source/partial
+  - flag/anomaly
+  - flag/divergence
 ---
 
 # Section modulus provided by a solid rod
 
 **Definition.** The section modulus a solid rod of the given diameter provides. Used to invert a strength-required OD back into a required W, keeping the solver decoupled from the original moment while staying load-consistent.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -24,7 +33,8 @@ return od**3 / 10.0
 
 **Consumed by.**
 
-- in this graph: [[bore-for|Strength bore from tube sizing]]
+- in this graph: `Strength bore from tube sizing`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `cad_designer/airplane/geometry/spar_solver.py:507` · `cad_designer/airplane/geometry/spar_solver.py:626`
 
 **Source.** 🟡 PARTIAL

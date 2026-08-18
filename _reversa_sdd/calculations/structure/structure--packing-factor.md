@@ -5,11 +5,20 @@ unit: dimensionless
 cluster: structure
 user_visible: true
 source_status: NO_SOURCE_FOUND
+node_class: unclassified-parameter
+tags:
+  - cluster/structure
+  - class/unclassified-parameter
+  - source/no-source-found
+  - surface/user-visible
+  - flag/anomaly
 ---
 
 # Packing factor
 
 **Definition.** Fraction of the local section depth the spar may occupy; the remainder is skin/glue/print clearance.
+
+⚪ **Unclassified parameter.** Not yet decided whether this is a user input or an internal tuning value.
 
 **Value.** `0.8`
 
@@ -33,7 +42,8 @@ packing_factor: float = Field(
 
 **Consumed by.**
 
-- in this graph: [[spar-outer-dimension|Spar outer dimension]] · [[station-clearance|Station packing clearance]]
+- in this graph: `Spar outer dimension` · `Station packing clearance`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `app/services/spar_sizing.py:323` · `app/services/spar_sizing.py:379` · `cad_designer/airplane/geometry/spar_solver.py:761` · `frontend/lib/sparSizingHelpers.ts:118`
 
 **Source.** 🔴 NO SOURCE FOUND

@@ -5,11 +5,21 @@ unit: m/s
 cluster: perf-oppoints
 user_visible: true
 source_status: SOURCED
+node_class: derived
+tags:
+  - cluster/perf-oppoints
+  - class/derived
+  - source/sourced
+  - surface/user-visible
+  - flag/divergence
+  - flag/scale
 ---
 
 # approach_landing target speed
 
 **Definition.** Speed of the landing-approach operating point.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -17,7 +27,10 @@ source_status: SOURCED
 approach = float(goals.get("approach_speed_margin_vs_ldg", 1.30)) * refs["vs_ldg"]
 ```
 
-**Inputs.** [[default_approach_speed_margin_vs_ldg|Default approach margin]] · [[vs_ldg|Landing-config stall speed reference]]
+**Inputs.**
+
+- [[default_approach_speed_margin_vs_ldg|Default approach margin]]  — *⤵ fallback*
+- [[vs_ldg|Landing-config stall speed reference]]
 
 **Produced by.** `app/services/operating_point_generator_service.py:403` — `_build_target_definitions`
 

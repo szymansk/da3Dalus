@@ -6,11 +6,20 @@ unit: m
 cluster: aero-strips
 user_visible: true
 source_status: SOURCED
+node_class: derived
+tags:
+  - cluster/aero-strips
+  - class/derived
+  - source/sourced
+  - surface/user-visible
+  - flag/divergence
 ---
 
 # Chord × cl product
 
 **Definition.** Local chord times local lift coefficient — the spanwise load ordinate.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -18,7 +27,10 @@ source_status: SOURCED
 "c_cl": chord * cl
 ```
 
-**Inputs.** [[vlm-strip-chord|Local strip chord]] · [[vlm-strip-cl|Local strip lift coefficient]]
+**Inputs.**
+
+- [[vlm-strip-chord|Local strip chord]]
+- [[vlm-strip-cl|Local strip lift coefficient]]
 
 **Produced by.** `app/services/vlm_strip_forces.py:287` — `compute_vlm_strip_forces`
 

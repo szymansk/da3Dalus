@@ -5,11 +5,18 @@ unit: m²/mm²
 cluster: structure
 user_visible: false
 source_status: SOURCED
+node_class: numerical-tolerance
+tags:
+  - cluster/structure
+  - class/numerical-tolerance
+  - source/sourced
 ---
 
 # Square-millimetre to square-metre factor
 
 **Definition.** Unit conversion from mm² to m² inside the mass integral.
+
+**Numerical tolerance.** A solver or comparison epsilon, not a domain value. ADR 0023 does not apply.
 
 **Value.** `1e-6`
 
@@ -25,7 +32,8 @@ avg_area_m2 = avg_area_mm2 * 1e-6  # mm² → m²
 
 **Consumed by.**
 
-- in this graph: [[spar-mass-half|Half-span spar mass]] · [[stock-linear-mass|Linear mass of a stock cross-section]]
+- in this graph: `Half-span spar mass` · `Linear mass of a stock cross-section`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `app/services/spar_sizing.py:248` · `app/services/spar_plan_service.py:87`
 
 **Source.** 🟢 SOURCED

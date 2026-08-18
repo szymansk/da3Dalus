@@ -6,11 +6,20 @@ unit: strips
 cluster: aero-strips
 user_visible: true
 source_status: PARTIAL
+node_class: derived
+tags:
+  - cluster/aero-strips
+  - class/derived
+  - source/partial
+  - surface/user-visible
+  - flag/divergence
 ---
 
 # Spanwise strip count per surface
 
 **Definition.** Number of strips actually assigned to a surface.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -18,7 +27,9 @@ source_status: PARTIAL
 "n_spanwise": len(strips),
 ```
 
-**Inputs.** [[vlm-wing-strip-counts|Expected strips per wing]]
+**Inputs.**
+
+- [[vlm-wing-strip-counts|Expected strips per wing]]
 
 **Produced by.** `app/services/vlm_strip_forces.py:305` — `compute_vlm_strip_forces`
 

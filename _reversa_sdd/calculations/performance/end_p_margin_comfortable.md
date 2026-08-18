@@ -6,11 +6,19 @@ unit: -
 cluster: perf-envelope
 user_visible: true
 source_status: NO_SOURCE_FOUND
+node_class: unclassified-constant
+tags:
+  - cluster/perf-envelope
+  - class/unclassified-constant
+  - source/no-source-found
+  - surface/user-visible
 ---
 
 # Comfortable power-margin threshold
 
 **Definition.** Power margin above which the propulsion system is classified 'comfortable'.
+
+⚪ **Unclassified constant.** Not yet decided whether this is a rule of thumb, a calibration or a physical value. Classifying it is open work — it is deliberately not guessed.
 
 **Value.** `0.20`
 
@@ -26,7 +34,8 @@ P_MARGIN_COMFORTABLE = 0.20  # > 20% → comfortable
 
 **Consumed by.**
 
-- in this graph: [[end_p_margin_class|Power-margin classification]]
+- in this graph: `Power-margin classification`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 
 **Source.** 🔴 NO SOURCE FOUND
 

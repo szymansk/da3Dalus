@@ -6,11 +6,21 @@ unit: m
 cluster: mass
 user_visible: true
 source_status: SOURCED
+node_class: derived
+tags:
+  - cluster/mass
+  - class/derived
+  - source/sourced
+  - surface/user-visible
+  - flag/anomaly
+  - flag/divergence
 ---
 
 # Aft CG stability limit
 
 **Definition.** Aft-most longitudinal CG position the aerodynamics permits, i.e. the CG at which the static margin equals the design target.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -18,13 +28,18 @@ source_status: SOURCED
 cg_stability_aft_m = x_np - target_sm * mac
 ```
 
-**Inputs.** [[x-np|Neutral point]] · [[mac|Mean aerodynamic chord (main wing)]] · [[target-static-margin|Target static margin]]
+**Inputs.**
+
+- [[x-np|Neutral point]]  — *⊣ limit*
+- [[mac|Mean aerodynamic chord (main wing)]]
+- [[target-static-margin|Target static margin]]
 
 **Produced by.** `app/services/loading_scenario_service.py:112` — `compute_stability_envelope`
 
 **Consumed by.**
 
-- in this graph: [[cg-envelope-violation-mm|CG envelope violation distance]]
+- in this graph: `CG envelope violation distance`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `app/services/assumption_compute_service.py:798 (→ enrich_context_with_cg_envelope → ctx['cg_stability_aft_m'])` · `app/services/loading_scenario_service.py:210 (validate_cg_envelope)` · `app/services/loading_scenario_service.py:589/626 (CgEnvelopeRead)` · `app/schemas/loading_scenario.py:175` · `frontend/hooks/useLoadingScenarios.ts:89`
 
 **Source.** 🟢 SOURCED

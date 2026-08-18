@@ -5,11 +5,20 @@ unit: mm
 cluster: structure
 user_visible: false
 source_status: PARTIAL
+node_class: derived
+tags:
+  - cluster/structure
+  - class/derived
+  - source/partial
+  - flag/anomaly
+  - flag/divergence
 ---
 
 # Strength bore from tube sizing
 
 **Definition.** Bore for a tube of a given OD, obtained by feeding the governing station's reconstructed erf_W into the tube path of the #1008 solver; falls back to a fixed wall fraction when no feasible bore exists.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -21,13 +30,18 @@ if sol["feasible"] and sol["inner_mm"] is not None:
 return max(0.0, od * spec.wall_factor)
 ```
 
-**Inputs.** [[required-section-modulus-from-od|Section modulus provided by a solid rod]] · [[solved-tube-inner-diameter|Solved tube inner diameter]] · [[wall-factor|Tube wall fraction fallback]]
+**Inputs.**
+
+- [[required-section-modulus-from-od|Section modulus provided by a solid rod]]
+- [[solved-tube-inner-diameter|Solved tube inner diameter]]
+- [[wall-factor|Tube wall fraction fallback]]  — *⤵ fallback*
 
 **Produced by.** `cad_designer/airplane/geometry/spar_solver.py:511` — `_bore_for`
 
 **Consumed by.**
 
-- in this graph: [[strength-bore|Strength-driven bore]]
+- in this graph: `Strength-driven bore`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `cad_designer/airplane/geometry/spar_solver.py:420` · `cad_designer/airplane/geometry/spar_solver.py:424`
 
 **Source.** 🟡 PARTIAL

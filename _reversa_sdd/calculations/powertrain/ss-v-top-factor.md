@@ -6,11 +6,22 @@ unit: dimensionless
 cluster: powertrain
 user_visible: true
 source_status: SOURCED
+node_class: unclassified-constant
+tags:
+  - cluster/powertrain
+  - class/unclassified-constant
+  - source/sourced
+  - surface/user-visible
+  - flag/anomaly
+  - flag/divergence
+  - flag/scale
 ---
 
 # Top-speed derivation factor
 
 **Definition.** Multiplier applied to cruise speed to derive top speed when the user does not supply one.
+
+⚪ **Unclassified constant.** Not yet decided whether this is a rule of thumb, a calibration or a physical value. Classifying it is open work — it is deliberately not guessed.
 
 **Value.** `1.4`
 
@@ -26,7 +37,8 @@ if v_top_mps is None: v_top_mps = v_cruise_mps * 1.4  # spec default
 
 **Consumed by.**
 
-- in this graph: [[ss-v-top|Top speed used for peak sizing]]
+- in this graph: `Top speed used for peak sizing`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `app/services/powertrain_solution_space_service.py:350` · `app/services/powertrain_solution_space_service.py:392`
 
 **Source.** 🟢 SOURCED

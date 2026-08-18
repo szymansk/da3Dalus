@@ -6,11 +6,20 @@ unit: W
 cluster: powertrain
 user_visible: true
 source_status: SOURCED
+node_class: derived
+tags:
+  - cluster/powertrain
+  - class/derived
+  - source/sourced
+  - surface/user-visible
+  - flag/scale
 ---
 
 # Electrical peak power at low prop efficiency
 
 **Definition.** Peak power at the pessimistic end of the efficiency band; produces the worst-case current the UI actually shows.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -18,7 +27,13 @@ source_status: SOURCED
 p_top_lo_e = _p_elec(p_aero_top, assumptions.eta_prop_lo, assumptions.eta_motor, assumptions.eta_esc)
 ```
 
-**Inputs.** [[ss-p-elec|Electrical power required]] · [[ss-p-aero-top|Aerodynamic power at top speed]] · [[ss-eta-prop-lo|Propeller efficiency band lower bound]] · [[ss-eta-motor|Motor efficiency (solution space)]] · [[ss-eta-esc|ESC efficiency (solution space)]]
+**Inputs.**
+
+- [[ss-p-elec|Electrical power required]]
+- [[ss-p-aero-top|Aerodynamic power at top speed]]
+- [[ss-eta-prop-lo|Propeller efficiency band lower bound]]  — *⊣ limit*
+- [[ss-eta-motor|Motor efficiency (solution space)]]
+- [[ss-eta-esc|ESC efficiency (solution space)]]
 
 **Produced by.** `app/services/powertrain_solution_space_service.py:369` — `compute_solution_space`
 

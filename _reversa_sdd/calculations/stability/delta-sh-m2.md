@@ -6,11 +6,19 @@ unit: m²
 cluster: stability
 user_visible: false
 source_status: SOURCED
+node_class: derived
+tags:
+  - cluster/stability
+  - class/derived
+  - source/sourced
+  - flag/divergence
 ---
 
 # Required horizontal tail area change
 
 **Definition.** Change in horizontal tail area needed to reach the target static margin.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -18,13 +26,17 @@ source_status: SOURCED
 delta_sh_m2 = delta_needed / dsm_dsh  # m² (negative = shrink HS)
 ```
 
-**Inputs.** [[sm-delta-needed|SM shortfall to target]] · [[dsm-dsh|SM sensitivity to horizontal tail area]]
+**Inputs.**
+
+- [[sm-delta-needed|SM shortfall to target]]
+- [[dsm-dsh|SM sensitivity to horizontal tail area]]
 
 **Produced by.** `app/services/sm_sizing_service.py:413` — `suggest_corrections`
 
 **Consumed by.**
 
-- in this graph: [[delta-pct-htail|Horizontal tail chord-scale fraction]]
+- in this graph: `Horizontal tail chord-scale fraction`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `app/services/sm_sizing_service.py:414,443`
 
 **Source.** 🟢 SOURCED

@@ -6,11 +6,22 @@ unit: kg/m³
 cluster: aero-polars
 user_visible: false
 source_status: SOURCED
+node_class: physical-constant
+tags:
+  - cluster/aero-polars
+  - class/physical-constant
+  - source/sourced
+  - flag/anomaly
+  - flag/divergence
+  - flag/physical
 ---
 
 # Default air density (ISA SL)
 
 **Definition.** Default density for Re labels and band fits.
+
+**Physical constant.** A value of nature. It must be identical everywhere it appears — a second definition is a defect by construction, not a judgement call.
+*Identified as: sea-level air density.*
 
 **Value.** `1.225`
 
@@ -26,7 +37,8 @@ rho: float = 1.225
 
 **Consumed by.**
 
-- in this graph: [[prt-re-aircraft|Aircraft-level Reynolds number (V-band label)]]
+- in this graph: `Aircraft-level Reynolds number (V-band label)`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `lookup_cd0_at_v:96` · `assumption_compute_service.py:420 (rho=1.225)`
 
 **Source.** 🟢 SOURCED

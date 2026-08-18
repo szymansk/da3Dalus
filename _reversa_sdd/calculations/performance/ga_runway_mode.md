@@ -6,11 +6,21 @@ unit: n/a
 cluster: perf-matching
 user_visible: false
 source_status: PARTIAL
+node_class: unclassified-parameter
+tags:
+  - cluster/perf-matching
+  - class/unclassified-parameter
+  - source/partial
+  - flag/anomaly
+  - flag/divergence
+  - flag/scale
 ---
 
 # GA runway mode
 
 **Definition.** FAR-23.65 Cessna-172-class default set inside _mode_defaults.
+
+⚪ **Unclassified parameter.** Not yet decided whether this is a user input or an internal tuning value.
 
 **Value.** `s_runway=500.0, gamma_climb_deg=1.5, v_s_target=27.7`
 

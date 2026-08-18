@@ -6,11 +6,20 @@ unit: dimensionless (0..1)
 cluster: aero-polars
 user_visible: true
 source_status: NO_SOURCE_FOUND
+node_class: derived
+tags:
+  - cluster/aero-polars
+  - class/derived
+  - source/no-source-found
+  - surface/user-visible
+  - flag/divergence
 ---
 
 # Mission suitability score
 
 **Definition.** re_agnostic multiplied by family, thickness and CL_max mission factors, clamped to [0,1].
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -19,13 +28,19 @@ mission_score = re_agnostic * family_bonus * thickness_match * cl_bonus
 return float(min(max(mission_score, 0.0), 1.0))
 ```
 
-**Inputs.** [[alr-score-re-agnostic|re_agnostic suitability score]] · [[alr-family-bonus|Mission family bonus]] · [[alr-thickness-match|Mission thickness match multiplier]] · [[alr-cl-bonus|Mission CL_max bonus]]
+**Inputs.**
+
+- [[alr-score-re-agnostic|re_agnostic suitability score]]  — *⊣ limit*
+- [[alr-family-bonus|Mission family bonus]]
+- [[alr-thickness-match|Mission thickness match multiplier]]
+- [[alr-cl-bonus|Mission CL_max bonus]]  — *⊣ limit*
 
 **Produced by.** `app/services/airfoil_low_re_service.py:939` — `score_mission`
 
 **Consumed by.**
 
-- in this graph: [[sui-active-lens|active_lens]]
+- in this graph: `active_lens`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `suitability_service:474 → SuitabilityItem.mission` · `suitability_service:629 (ranking)` · `frontend AirfoilSuitabilityCard.tsx`
 
 **Source.** 🔴 NO SOURCE FOUND

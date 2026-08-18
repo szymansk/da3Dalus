@@ -5,11 +5,20 @@ unit: dimensionless (x/c)
 cluster: structure
 user_visible: true
 source_status: NO_SOURCE_FOUND
+node_class: unclassified-constant
+tags:
+  - cluster/structure
+  - class/unclassified-constant
+  - source/no-source-found
+  - surface/user-visible
+  - flag/anomaly
 ---
 
 # Minimum rear-spar chord location
 
 **Definition.** Leading-edge floor: the smallest chordwise location a clamped rear spar may take. If the clearance line would fall forward of it the layout is declared infeasible rather than clamped.
+
+⚪ **Unclassified constant.** Not yet decided whether this is a rule of thumb, a calibration or a physical value. Classifying it is open work — it is deliberately not guessed.
 
 **Value.** `0.05`
 
@@ -25,7 +34,8 @@ _MIN_REAR_X_C = 0.05
 
 **Consumed by.**
 
-- in this graph: [[rear-spar-x-c-clamped|Clamped rear-spar chord location]]
+- in this graph: `Clamped rear-spar chord location`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `cad_designer/airplane/geometry/spar_solver.py:247` · `cad_designer/airplane/geometry/spar_solver.py:252`
 
 **Source.** 🔴 NO SOURCE FOUND

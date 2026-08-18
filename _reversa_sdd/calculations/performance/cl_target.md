@@ -6,11 +6,19 @@ unit: dimensionless
 cluster: perf-oppoints
 user_visible: false
 source_status: SOURCED
+node_class: derived
+tags:
+  - cluster/perf-oppoints
+  - class/derived
+  - source/sourced
+  - flag/divergence
 ---
 
 # Target lift coefficient
 
 **Definition.** Lift coefficient the trim must reach for level (or n-g) flight at the target speed.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -18,13 +26,21 @@ source_status: SOURCED
 q_dyn = 0.5 * rho * max(candidate_velocity_mps, 1e-3) ** 2; if q_dyn <= 1e-6: return None; return float((total_mass_kg * 9.81 * n_target) / (q_dyn * s_ref))
 ```
 
-**Inputs.** [[effective_mass_kg|Effective aircraft mass]] · [[s_ref|Reference wing area]] · [[air_density_rho|Air density at the operating altitude]] · [[turn_n_target|Turn target load factor]] · [[n_target_level|Level-flight target load factor]] · [[gravity_g|Gravitational acceleration]]
+**Inputs.**
+
+- [[effective_mass_kg|Effective aircraft mass]]  — *⤵ fallback*
+- [[s_ref|Reference wing area]]
+- [[air_density_rho|Air density at the operating altitude]]
+- [[turn_n_target|Turn target load factor]]  — *⤵ fallback*
+- [[n_target_level|Level-flight target load factor]]
+- [[gravity_g|Gravitational acceleration]]
 
 **Produced by.** `app/services/operating_point_generator_service.py:794` — `_cl_target_for_velocity`
 
 **Consumed by.**
 
-- in this graph: [[alr-cd-at-target|CD at target CL]] · [[trim_objective|Opti trim objective]] · [[trim_score|Trim score]]
+- in this graph: `CD at target CL` · `Opti trim objective` · `Trim score`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `app/services/operating_point_generator_service.py:676 (objective)` · `app/services/operating_point_generator_service.py:195 (_compute_trim_score)` · `app/services/operating_point_generator_service.py:829 (grid search)`
 
 **Source.** 🟢 SOURCED

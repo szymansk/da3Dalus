@@ -6,11 +6,20 @@ unit: kg
 cluster: aero-strips
 user_visible: false
 source_status: NO_SOURCE_FOUND
+node_class: unclassified-constant
+tags:
+  - cluster/aero-strips
+  - class/unclassified-constant
+  - source/no-source-found
+  - flag/anomaly
+  - flag/divergence
 ---
 
 # Aircraft mass fallback (level-flight solve)
 
 **Definition.** Mass used when the plane schema carries no total_mass_kg.
+
+⚪ **Unclassified constant.** Not yet decided whether this is a rule of thumb, a calibration or a physical value. Classifying it is open work — it is deliberately not guessed.
 
 **Value.** `1.5`
 
@@ -26,7 +35,8 @@ mass_kg: float = getattr(plane_schema, "total_mass_kg", None) or 1.5
 
 **Consumed by.**
 
-- in this graph: [[lfop-cl-target|Level-flight target lift coefficient]]
+- in this graph: `Level-flight target lift coefficient`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 
 **Source.** 🔴 NO SOURCE FOUND
 

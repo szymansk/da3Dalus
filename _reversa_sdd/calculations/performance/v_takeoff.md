@@ -5,11 +5,20 @@ unit: m/s
 cluster: perf-oppoints
 user_visible: true
 source_status: PARTIAL
+node_class: derived
+tags:
+  - cluster/perf-oppoints
+  - class/derived
+  - source/partial
+  - surface/user-visible
+  - flag/divergence
 ---
 
 # takeoff_climb target speed
 
 **Definition.** Speed of the takeoff-climb operating point.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -17,7 +26,10 @@ source_status: PARTIAL
 takeoff = float(goals.get("takeoff_speed_margin_vs_to", 1.25)) * refs["vs_to"]
 ```
 
-**Inputs.** [[default_takeoff_speed_margin_vs_to|Default takeoff margin]] · [[vs_to|Takeoff-config stall speed reference]]
+**Inputs.**
+
+- [[default_takeoff_speed_margin_vs_to|Default takeoff margin]]  — *⤵ fallback*
+- [[vs_to|Takeoff-config stall speed reference]]
 
 **Produced by.** `app/services/operating_point_generator_service.py:402` — `_build_target_definitions`
 

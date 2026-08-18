@@ -6,11 +6,20 @@ unit: m²
 cluster: aero-strips
 user_visible: false
 source_status: PARTIAL
+node_class: derived
+tags:
+  - cluster/aero-strips
+  - class/derived
+  - source/partial
+  - flag/anomaly
+  - flag/divergence
 ---
 
 # Normalised section area
 
 **Definition.** Section areas rescaled so their sum equals half the reference wing area.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -18,13 +27,16 @@ source_status: PARTIAL
 section_areas *= (s_ref / 2.0) / total_area
 ```
 
-**Inputs.** [[bwsd-section-area-raw|Raw trapezoidal section area]]
+**Inputs.**
+
+- [[bwsd-section-area-raw|Raw trapezoidal section area]]
 
 **Produced by.** `app/services/turbulator_optimizer_service.py:423` — `build_wing_section_data`
 
 **Consumed by.**
 
-- in this graph: [[cdftp-delta-cd0|Installed-turbulator 3D drag increment]] · [[tos-cd-clean-avg|Area-weighted mean clean section drag]] · [[tos-cl-avg|Area-weighted mean section CL]] · [[tos-cl-rep|Representative lift coefficient (whole scope)]] · [[tos-delta-cd0|Area-weighted 3D drag increment]] · [[tos-re-rep|Representative Reynolds number (whole scope)]]
+- in this graph: `Installed-turbulator 3D drag increment` · `Area-weighted mean clean section drag` · `Area-weighted mean section CL` · `Representative lift coefficient (whole scope)` · `Area-weighted 3D drag increment` · `Representative Reynolds number (whole scope)`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 
 **Source.** 🟡 PARTIAL
 

@@ -6,11 +6,21 @@ unit: g
 cluster: perf-envelope
 user_visible: true
 source_status: PARTIAL
+node_class: user-input
+tags:
+  - cluster/perf-envelope
+  - class/user-input
+  - source/partial
+  - surface/user-visible
+  - flag/divergence
+  - flag/scale
 ---
 
 # Structural limit load factor
 
 **Definition.** Effective g-limit design assumption, defaulting to 3.0.
+
+**User input.** Supplied from outside the calculation (assumption store or request), not derived.
 
 **Value.** `default 3.0`
 
@@ -26,7 +36,8 @@ _load_assumptions -> PARAMETER_DEFAULTS['g_limit'] = 3.0
 
 **Consumed by.**
 
-- in this graph: [[fe_gust_critical_neg|Negative gust-critical trigger]] · [[fe_gust_critical_pos|Positive gust-critical trigger]] · [[fe_n_neg_maneuver|Negative maneuver load factor]] · [[fe_n_pos_maneuver|Positive maneuver load factor]] · [[kpi_max_load_factor|KPI: max load factor]]
+- in this graph: `Negative gust-critical trigger` · `Positive gust-critical trigger` · `Negative maneuver load factor` · `Positive maneuver load factor` · `KPI: max load factor`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 
 **Source.** 🟡 PARTIAL
 

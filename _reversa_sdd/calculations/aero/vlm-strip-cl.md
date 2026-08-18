@@ -6,11 +6,22 @@ unit: dimensionless
 cluster: aero-strips
 user_visible: true
 source_status: SOURCED
+node_class: derived
+tags:
+  - cluster/aero-strips
+  - class/derived
+  - source/sourced
+  - surface/user-visible
+  - flag/anomaly
+  - flag/divergence
+  - flag/scale
 ---
 
 # Local strip lift coefficient
 
 **Definition.** Strip lift non-dimensionalised by dynamic pressure and strip area.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -18,13 +29,18 @@ source_status: SOURCED
 denom = q * area; cl = lift / denom if denom > 0 else 0.0
 ```
 
-**Inputs.** [[vlm-strip-lift|Strip lift force]] · [[vlm-dynamic-pressure|Freestream dynamic pressure]] · [[vlm-strip-area|Strip area]]
+**Inputs.**
+
+- [[vlm-strip-lift|Strip lift force]]
+- [[vlm-dynamic-pressure|Freestream dynamic pressure]]
+- [[vlm-strip-area|Strip area]]
 
 **Produced by.** `app/services/vlm_strip_forces.py:271` — `compute_vlm_strip_forces`
 
 **Consumed by.**
 
-- in this graph: [[vlm-strip-c-cl|Chord × cl product]] · [[vlm-strip-cl-norm|Normalised strip lift coefficient]]
+- in this graph: `Chord × cl product` · `Normalised strip lift coefficient`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `app/schemas/strip_forces.py:StripForceEntry.cl` · `app/services/spanwise_loads.py:58` · `frontend/components/workbench/AnalysisViewerPanel.tsx:499`
 
 **Source.** 🟢 SOURCED

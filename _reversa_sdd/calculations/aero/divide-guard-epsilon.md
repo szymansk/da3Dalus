@@ -5,11 +5,19 @@ unit: -
 cluster: aero-spanwise
 user_visible: false
 source_status: NO_SOURCE_FOUND
+node_class: numerical-tolerance
+tags:
+  - cluster/aero-spanwise
+  - class/numerical-tolerance
+  - source/no-source-found
+  - flag/anomaly
 ---
 
 # Division guard epsilon
 
 **Definition.** Threshold below which \|CD\| (or \|D\|) is treated as zero so the ratio becomes NaN.
+
+**Numerical tolerance.** A solver or comparison epsilon, not a domain value. ADR 0023 does not apply.
 
 **Value.** `1e-12`
 
@@ -25,7 +33,8 @@ np.abs(cd) > 1e-12
 
 **Consumed by.**
 
-- in this graph: [[drag-at-zero-lift-point|Drag at zero lift point]] · [[ld-ratio-coefficient|Lift-to-drag ratio (coefficient form)]] · [[ld-ratio-force|Glide ratio from forces]]
+- in this graph: `Drag at zero lift point` · `Lift-to-drag ratio (coefficient form)` · `Glide ratio from forces`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 
 **Source.** 🔴 NO SOURCE FOUND
 

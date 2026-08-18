@@ -6,11 +6,20 @@ unit: mm
 cluster: structure
 user_visible: true
 source_status: PARTIAL
+node_class: derived
+tags:
+  - cluster/structure
+  - class/derived
+  - source/partial
+  - surface/user-visible
+  - flag/divergence
 ---
 
 # Section upper surface height (analytic)
 
 **Definition.** World-frame z of the upper surface at (y/span, x/c), from the analytic root-to-tip airfoil blend. Ordered so top_z is always the higher of the two surfaces.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -18,13 +27,16 @@ source_status: PARTIAL
 top_z=max(top_z, bottom_z),
 ```
 
-**Inputs.** [[y-span-to-segment|Span fraction to segment mapping]]
+**Inputs.**
+
+- [[y-span-to-segment|Span fraction to segment mapping]]  — *⊣ limit*
 
 **Produced by.** `cad_designer/airplane/geometry/section_geometry.py:362` — `SectionGeometry._analytic_point`
 
 **Consumed by.**
 
-- in this graph: [[band-hi|Contained band upper bound]] · [[section-center-z-analytic|Section mid-height (analytic)]] · [[section-thickness-analytic|Section thickness (analytic)]]
+- in this graph: `Contained band upper bound` · `Section mid-height (analytic)` · `Section thickness (analytic)`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `cad_designer/airplane/geometry/spar_solver.py:763` · `app/services/section_geometry_service.py:55`
 
 **Source.** 🟡 PARTIAL

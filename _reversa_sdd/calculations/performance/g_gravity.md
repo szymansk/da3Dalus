@@ -6,11 +6,20 @@ unit: m/s^2
 cluster: perf-matching
 user_visible: false
 source_status: SOURCED
+node_class: physical-constant
+tags:
+  - cluster/perf-matching
+  - class/physical-constant
+  - source/sourced
+  - flag/physical
 ---
 
 # Standard gravity
 
 **Definition.** Gravitational acceleration converting mass to weight.
+
+**Physical constant.** A value of nature. It must be identical everywhere it appears — a second definition is a defect by construction, not a judgement call.
+*Identified as: gravity.*
 
 **Value.** `9.81`
 
@@ -26,7 +35,8 @@ _G: float = 9.81
 
 **Consumed by.**
 
-- in this graph: [[design_point_tw|Design-point T/W]] · [[design_point_ws|Design-point W/S]] · [[s_to_ground|Takeoff ground roll]] · [[tw_power_loading|Power-loading T/W floor]] · [[tw_takeoff_constraint|Takeoff constraint T/W]] · [[wcl_g_unused|Unused gravity parameter in WCL]] · [[weight_n_fl|Aircraft weight]]
+- in this graph: `Design-point T/W` · `Design-point W/S` · `Takeoff ground roll` · `Power-loading T/W floor` · `Takeoff constraint T/W` · `Unused gravity parameter in WCL` · `Aircraft weight`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `_compute_s_to_ground` · `_compute_s_ldg_ground` · `matching_chart_service.py:40 (imported)` · `_takeoff_constraint` · `_power_loading_constraint` · `_design_point_from_aircraft`
 
 **Source.** 🟢 SOURCED

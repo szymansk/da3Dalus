@@ -6,11 +6,21 @@ unit: kg/m^3
 cluster: powertrain
 user_visible: false
 source_status: SOURCED
+node_class: physical-constant
+tags:
+  - cluster/powertrain
+  - class/physical-constant
+  - source/sourced
+  - flag/anomaly
+  - flag/physical
 ---
 
 # Air density default (solution space)
 
 **Definition.** Module-level ISA sea-level density, annotated as overridable via assumptions.rho.
+
+**Physical constant.** A value of nature. It must be identical everywhere it appears — a second definition is a defect by construction, not a judgement call.
+*Identified as: sea-level air density.*
 
 **Value.** `1.225`
 

@@ -6,11 +6,20 @@ unit: dimensionless
 cluster: perf-matching
 user_visible: false
 source_status: SOURCED
+node_class: derived
+tags:
+  - cluster/perf-matching
+  - class/derived
+  - source/sourced
+  - flag/anomaly
+  - flag/divergence
 ---
 
 # Thrust-to-weight (field length)
 
 **Definition.** Ratio of effective thrust to weight used in the takeoff ground roll.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -18,13 +27,17 @@ source_status: SOURCED
 t_over_w = t_mean / weight_n
 ```
 
-**Inputs.** [[t_mean_fl|Effective mean thrust]] · [[weight_n_fl|Aircraft weight]]
+**Inputs.**
+
+- [[t_mean_fl|Effective mean thrust]]
+- [[weight_n_fl|Aircraft weight]]
 
 **Produced by.** `app/services/field_length_service.py:202` — `_compute_s_to_ground`
 
 **Consumed by.**
 
-- in this graph: [[s_to_ground|Takeoff ground roll]]
+- in this graph: `Takeoff ground roll`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `s_to_ground:203`
 
 **Source.** 🟢 SOURCED

@@ -6,11 +6,22 @@ unit: N·m
 cluster: structure
 user_visible: true
 source_status: PARTIAL
+node_class: derived
+tags:
+  - cluster/structure
+  - class/derived
+  - source/partial
+  - surface/user-visible
+  - flag/anomaly
+  - flag/divergence
+  - flag/scale
 ---
 
 # Design bending moment
 
 **Definition.** The bending moment the spar is sized to: the magnitude of the aerodynamic bending moment at the station, scaled by the manoeuvre limit load factor and the safety factor.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -18,13 +29,17 @@ source_status: PARTIAL
 m_design = abs(bm) * g_limit * params.safety_factor_j
 ```
 
-**Inputs.** [[structure--g-limit|Manoeuvre limit load factor]] · [[structure--safety-factor-j|Safety factor j]]
+**Inputs.**
+
+- [[structure--g-limit|Manoeuvre limit load factor]]  — *⊣ limit*
+- [[structure--safety-factor-j|Safety factor j]]  — *⊣ limit*
 
 **Produced by.** `app/services/spar_sizing.py:315` — `compute_spar_sizing`
 
 **Consumed by.**
 
-- in this graph: [[required-section-modulus|Required section modulus]]
+- in this graph: `Required section modulus`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `app/services/spar_sizing.py:318` · `app/services/spar_sizing.py:342` · `app/schemas/spar_sizing.py:78` · `frontend/hooks/useSparSizing.ts:23` · `frontend/lib/sparSizingHelpers.ts:90`
 
 **Source.** 🟡 PARTIAL

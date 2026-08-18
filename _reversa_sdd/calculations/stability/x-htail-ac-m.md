@@ -6,11 +6,19 @@ unit: m
 cluster: stability
 user_visible: false
 source_status: SOURCED
+node_class: derived
+tags:
+  - cluster/stability
+  - class/derived
+  - source/sourced
+  - flag/divergence
 ---
 
 # Horizontal tail aerodynamic centre x
 
 **Definition.** Longitudinal position of the horizontal tail aerodynamic centre, at 25 % of the tail MAC aft of its leading edge.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -18,13 +26,16 @@ source_status: SOURCED
 x_htail_ac_m = x_htail_le_m + 0.25 * htail_mac_m
 ```
 
-**Inputs.** [[htail-mac-approx|Horizontal tail MAC (mean chord approximation)]]
+**Inputs.**
+
+- [[htail-mac-approx|Horizontal tail MAC (mean chord approximation)]]
 
 **Produced by.** `app/services/tail_sizing_service.py:197` — `compute_tail_volumes`
 
 **Consumed by.**
 
-- in this graph: [[l-h-eff-from-aft-cg|Effective tail arm from aft CG]] · [[l-h-m|Horizontal tail moment arm]]
+- in this graph: `Effective tail arm from aft CG` · `Horizontal tail moment arm`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `app/services/tail_sizing_service.py:200,213`
 
 **Source.** 🟢 SOURCED

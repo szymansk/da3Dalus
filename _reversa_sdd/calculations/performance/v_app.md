@@ -6,11 +6,21 @@ unit: m/s
 cluster: perf-matching
 user_visible: true
 source_status: SOURCED
+node_class: derived
+tags:
+  - cluster/perf-matching
+  - class/derived
+  - source/sourced
+  - surface/user-visible
+  - flag/anomaly
+  - flag/divergence
 ---
 
 # Approach speed
 
 **Definition.** Approach/touchdown speed used for the landing model.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -18,7 +28,10 @@ source_status: SOURCED
 return _V_APP_FACTOR * v_stall_mps
 ```
 
-**Inputs.** [[v_app_factor|Approach speed factor]] · [[v_stall_ldg|Landing-configuration stall speed]]
+**Inputs.**
+
+- [[v_app_factor|Approach speed factor]]
+- [[v_stall_ldg|Landing-configuration stall speed]]
 
 **Produced by.** `app/services/field_length_service.py:137` — `_v_app`
 

@@ -6,11 +6,20 @@ unit: – (dimensionless)
 cluster: stability
 user_visible: false
 source_status: NO_SOURCE_FOUND
+node_class: unclassified-constant
+tags:
+  - cluster/stability
+  - class/unclassified-constant
+  - source/no-source-found
+  - flag/anomaly
+  - flag/divergence
 ---
 
 # alpha_VH fallback
 
 **Definition.** Value returned for the tail efficiency factor when tail or reference area is missing or non-positive.
+
+⚪ **Unclassified constant.** Not yet decided whether this is a rule of thumb, a calibration or a physical value. Classifying it is open work — it is deliberately not guessed.
 
 **Value.** `0.10`
 

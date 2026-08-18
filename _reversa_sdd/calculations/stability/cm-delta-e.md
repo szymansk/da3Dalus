@@ -6,11 +6,21 @@ unit: 1/rad
 cluster: stability
 user_visible: true
 source_status: SOURCED
+node_class: derived
+tags:
+  - cluster/stability
+  - class/derived
+  - source/sourced
+  - surface/user-visible
+  - flag/anomaly
+  - flag/divergence
 ---
 
 # Elevator authority (sign-enforced)
 
 **Definition.** Elevator authority forced positive per the TE-UP sign convention; the value reported to the API.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -21,13 +31,16 @@ cm_delta_e = _cm_delta_e_for_asb_path(
 )
 ```
 
-**Inputs.** [[cm-delta-e-raw|Elevator authority (finite difference)]]
+**Inputs.**
+
+- [[cm-delta-e-raw|Elevator authority (finite difference)]]
 
 **Produced by.** `app/services/elevator_authority_service.py:724` — `_compute_forward_cg_limit_asb`
 
 **Consumed by.**
 
-- in this graph: [[net-pitch-up|Net nose-up moment coefficient]]
+- in this graph: `Net nose-up moment coefficient`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `app/services/elevator_authority_service.py:749,766,776,786,830 (ForwardCGResult.cm_delta_e)` · `app/schemas/forward_cg.py:64` · `app/api/v2/endpoints/aeroplane/forward_cg.py:99`
 
 **Source.** 🟢 SOURCED

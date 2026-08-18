@@ -6,11 +6,21 @@ unit: enum (dimensionless)
 cluster: mass
 user_visible: true
 source_status: PARTIAL
+node_class: derived
+tags:
+  - cluster/mass
+  - class/derived
+  - source/partial
+  - surface/user-visible
+  - flag/anomaly
+  - flag/divergence
 ---
 
 # Overall CG-envelope classification
 
 **Definition.** Worst of the forward and aft SM classifications, using an explicit severity rank.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Value.** `{"error": 3, "warn": 2, "ok": 1, "unknown": 0}`
 
@@ -20,7 +30,9 @@ source_status: PARTIAL
 _rank = {"error": 3, "warn": 2, "ok": 1, "unknown": 0}; if _rank[classification_fwd] >= _rank[classification_aft]: overall = classification_fwd else: overall = classification_aft
 ```
 
-**Inputs.** [[sm-classification|Static-margin classification]]
+**Inputs.**
+
+- [[sm-classification|Static-margin classification]]
 
 **Produced by.** `app/services/loading_scenario_service.py:604` — `get_cg_envelope`
 

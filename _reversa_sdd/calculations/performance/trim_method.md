@@ -5,11 +5,20 @@ unit: dimensionless
 cluster: perf-oppoints
 user_visible: true
 source_status: NO_SOURCE_FOUND
+node_class: derived
+tags:
+  - cluster/perf-oppoints
+  - class/derived
+  - source/no-source-found
+  - surface/user-visible
+  - flag/divergence
 ---
 
 # Trim solver path label
 
 **Definition.** Which solver produced the point: "opti" or "grid_fallback".
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -17,7 +26,9 @@ source_status: NO_SOURCE_FOUND
 best_method = "opti" / best_method = "grid_fallback"
 ```
 
-**Inputs.** [[grid_fallback_trigger|Grid-fallback trigger threshold]]
+**Inputs.**
+
+- [[grid_fallback_trigger|Grid-fallback trigger threshold]]  — *⤵ fallback*
 
 **Produced by.** `app/services/operating_point_generator_service.py:956` — `_trim_or_estimate_point`
 

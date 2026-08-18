@@ -5,11 +5,19 @@ unit: (index, dimensionless)
 cluster: structure
 user_visible: false
 source_status: NO_SOURCE_FOUND
+node_class: derived
+tags:
+  - cluster/structure
+  - class/derived
+  - source/no-source-found
+  - flag/anomaly
 ---
 
 # Span fraction to segment mapping
 
 **Definition.** Maps a whole-surface span fraction to (segment index, relative position within that segment) by accumulating segment lengths. y_span is clamped to [0,1]; a seam resolves to the end of the lower segment.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -29,13 +37,16 @@ for idx, seg_len in enumerate(segment_lengths):
     acc += seg_len
 ```
 
-**Inputs.** [[segment-lengths|Per-segment spanwise lengths]]
+**Inputs.**
+
+- [[segment-lengths|Per-segment spanwise lengths]]
 
 **Produced by.** `cad_designer/airplane/geometry/section_geometry.py:117` — `_y_span_to_segment`
 
 **Consumed by.**
 
-- in this graph: [[section-bottom-z-analytic|Section lower surface height (analytic)]] · [[section-top-z-analytic|Section upper surface height (analytic)]]
+- in this graph: `Section lower surface height (analytic)` · `Section upper surface height (analytic)`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `cad_designer/airplane/geometry/section_geometry.py:234` · `cad_designer/airplane/geometry/section_geometry.py:349`
 
 **Source.** 🔴 NO SOURCE FOUND

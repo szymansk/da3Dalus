@@ -6,11 +6,20 @@ unit: – (bool)
 cluster: stability
 user_visible: true
 source_status: SOURCED
+node_class: derived
+tags:
+  - cluster/stability
+  - class/derived
+  - source/sourced
+  - surface/user-visible
+  - flag/anomaly
 ---
 
 # Static stability flag
 
 **Definition.** True when Cm_alpha is present and negative.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -18,7 +27,9 @@ source_status: SOURCED
 is_statically_stable=(cma is not None and cma < 0)
 ```
 
-**Inputs.** [[cma|Pitching moment derivative w.r.t. alpha]]
+**Inputs.**
+
+- [[cma|Pitching moment derivative w.r.t. alpha]]
 
 **Produced by.** `app/services/stability_service.py:345` — `get_stability_summary`
 

@@ -6,11 +6,19 @@ unit: kg/m³
 cluster: structure
 user_visible: false
 source_status: NO_SOURCE_FOUND
+node_class: unclassified-constant
+tags:
+  - cluster/structure
+  - class/unclassified-constant
+  - source/no-source-found
+  - flag/anomaly
 ---
 
 # Stock density fallback
 
 **Definition.** Density assumed for a stock item whose specs omit density_kg_m3, used in the lightest-stock ranking.
+
+⚪ **Unclassified constant.** Not yet decided whether this is a rule of thumb, a calibration or a physical value. Classifying it is open work — it is deliberately not guessed.
 
 **Value.** `1550.0`
 
@@ -26,7 +34,8 @@ density = float(row.specs.get("density_kg_m3", 1550.0))
 
 **Consumed by.**
 
-- in this graph: [[stock-linear-mass|Linear mass of a stock cross-section]]
+- in this graph: `Linear mass of a stock cross-section`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `app/services/spar_plan_service.py:161`
 
 **Source.** 🔴 NO SOURCE FOUND

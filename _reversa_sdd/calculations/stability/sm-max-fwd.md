@@ -6,11 +6,21 @@ unit: – (fraction of MAC)
 cluster: stability
 user_visible: true
 source_status: SOURCED
+node_class: derived
+tags:
+  - cluster/stability
+  - class/derived
+  - source/sourced
+  - surface/user-visible
+  - flag/anomaly
+  - flag/divergence
 ---
 
 # Maximum forward-CG static margin
 
 **Definition.** Largest static margin the elevator can still trim at the forward CG, derived from the forward stability limit.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -18,13 +28,17 @@ source_status: SOURCED
 sm_max_fwd: float = (x_np_m - cg_stability_fwd_m) / mac_m
 ```
 
-**Inputs.** [[mac-m-fallback|MAC fallback]] · [[x-cg-fwd-trim-inversion|Forward CG limit (trim inversion)]]
+**Inputs.**
+
+- [[mac-m-fallback|MAC fallback]]  — *⤵ fallback*
+- [[x-cg-fwd-trim-inversion|Forward CG limit (trim inversion)]]  — *⊣ limit*
 
 **Produced by.** `app/services/sm_sizing_service.py:509` — `_suggest_corrections_fwd`
 
 **Consumed by.**
 
-- in this graph: [[sm-deficit-fwd|Forward-CG SM excess]]
+- in this graph: `Forward-CG SM excess`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `app/services/sm_sizing_service.py:516,522,552,556,575,576,581`
 
 **Source.** 🟢 SOURCED

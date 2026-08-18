@@ -6,11 +6,19 @@ unit: N
 cluster: powertrain
 user_visible: false
 source_status: SOURCED
+node_class: derived
+tags:
+  - cluster/powertrain
+  - class/derived
+  - source/sourced
+  - flag/anomaly
 ---
 
 # Propeller thrust (operating-point helper)
 
 **Definition.** Thrust at a prescribed RPM and airspeed from the thrust coefficient.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -18,7 +26,11 @@ source_status: SOURCED
 thrust_n = Ct * rho * (n_rps**2) * (D_m**4) ; thrust_n = max(thrust_n, 0.0)
 ```
 
-**Inputs.** [[polar-ct|Propeller thrust coefficient]] · [[air-density-perf|Air density at altitude (performance)]] · [[propop-n-rps|Propeller rotational speed (operating point)]]
+**Inputs.**
+
+- [[polar-ct|Propeller thrust coefficient]]  — *⊣ limit*
+- [[air-density-perf|Air density at altitude (performance)]]
+- [[propop-n-rps|Propeller rotational speed (operating point)]]
 
 **Produced by.** `app/services/powertrain_performance.py:406` — `compute_prop_operating_point`
 

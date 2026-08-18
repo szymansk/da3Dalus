@@ -6,11 +6,19 @@ unit: -
 cluster: perf-envelope
 user_visible: false
 source_status: SOURCED
+node_class: derived
+tags:
+  - cluster/perf-envelope
+  - class/derived
+  - source/sourced
+  - flag/scale
 ---
 
 # Gust alleviation factor
 
 **Definition.** Factor reducing the sharp-edged gust increment for aircraft inertia and gust penetration.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -18,13 +26,17 @@ source_status: SOURCED
 return 0.88 * mu_g / (5.3 + mu_g)
 ```
 
-**Inputs.** [[fe_mu_g|Gust mass ratio]] · [[fe_k_g_coeffs|Pratt gust-alleviation coefficients]]
+**Inputs.**
+
+- [[fe_mu_g|Gust mass ratio]]
+- [[fe_k_g_coeffs|Pratt gust-alleviation coefficients]]
 
 **Produced by.** `app/services/flight_envelope_service.py:112` — `_compute_k_g`
 
 **Consumed by.**
 
-- in this graph: [[fe_delta_n|Gust load-factor increment]]
+- in this graph: `Gust load-factor increment`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 
 **Source.** 🟢 SOURCED
 

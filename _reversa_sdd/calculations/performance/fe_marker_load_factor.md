@@ -6,11 +6,21 @@ unit: g
 cluster: perf-envelope
 user_visible: true
 source_status: SOURCED
+node_class: unclassified-constant
+tags:
+  - cluster/perf-envelope
+  - class/unclassified-constant
+  - source/sourced
+  - surface/user-visible
+  - flag/anomaly
+  - flag/divergence
 ---
 
 # Operating-point marker load factor
 
 **Definition.** Load factor assigned to every operating-point marker on the V-n diagram.
+
+⚪ **Unclassified constant.** Not yet decided whether this is a rule of thumb, a calibration or a physical value. Classifying it is open work — it is deliberately not guessed.
 
 **Value.** `1.0`
 
@@ -26,7 +36,8 @@ n = 1.0
 
 **Consumed by.**
 
-- in this graph: [[kpi_max_load_factor|KPI: max load factor]]
+- in this graph: `KPI: max load factor`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `VnDiagram.tsx markers`
 
 **Source.** 🟢 SOURCED

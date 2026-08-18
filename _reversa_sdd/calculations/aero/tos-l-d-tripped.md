@@ -6,11 +6,20 @@ unit: dimensionless
 cluster: aero-strips
 user_visible: true
 source_status: PARTIAL
+node_class: derived
+tags:
+  - cluster/aero-strips
+  - class/derived
+  - source/partial
+  - surface/user-visible
+  - flag/divergence
 ---
 
 # Tripped lift-to-drag ratio
 
 **Definition.** CL divided by the turbulator-adjusted drag coefficient.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -18,13 +27,17 @@ source_status: PARTIAL
 l_d_tripped = cl / cd_tripped if cd_tripped > 0 else float("nan")
 ```
 
-**Inputs.** [[tos-cl-avg|Area-weighted mean section CL]] · [[tos-cd-tripped-total|Tripped total drag coefficient]]
+**Inputs.**
+
+- [[tos-cl-avg|Area-weighted mean section CL]]
+- [[tos-cd-tripped-total|Tripped total drag coefficient]]
 
 **Produced by.** `app/services/turbulator_optimizer_service.py:345` — `compute_ld_summary`
 
 **Consumed by.**
 
-- in this graph: [[tos-delta-l-d|L/D improvement]]
+- in this graph: `L/D improvement`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `app/schemas/turbulator_optimizer.py:TurbulatorOptimizerSummarySchema.l_d_tripped` · `frontend/components/workbench/TurbulatorEditDialog.tsx:340`
 
 **Source.** 🟡 PARTIAL

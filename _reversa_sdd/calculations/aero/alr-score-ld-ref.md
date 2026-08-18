@@ -6,11 +6,22 @@ unit: dimensionless
 cluster: aero-polars
 user_visible: true
 source_status: NO_SOURCE_FOUND
+node_class: unclassified-constant
+tags:
+  - cluster/aero-polars
+  - class/unclassified-constant
+  - source/no-source-found
+  - surface/user-visible
+  - flag/anomaly
+  - flag/divergence
+  - flag/scale
 ---
 
 # L/D reference for re_agnostic
 
 **Definition.** L/D that maps to a full 1.0 on the L/D component.
+
+⚪ **Unclassified constant.** Not yet decided whether this is a rule of thumb, a calibration or a physical value. Classifying it is open work — it is deliberately not guessed.
 
 **Value.** `60.0`
 
@@ -26,7 +37,8 @@ LD_REF = 60.0  # excellent L/D at low Re
 
 **Consumed by.**
 
-- in this graph: [[alr-score-re-agnostic|re_agnostic suitability score]]
+- in this graph: `re_agnostic suitability score`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `score_re_agnostic:863`
 
 **Source.** 🔴 NO SOURCE FOUND

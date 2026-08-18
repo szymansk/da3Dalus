@@ -6,11 +6,20 @@ unit: deg
 cluster: aero-strips
 user_visible: true
 source_status: SOURCED
+node_class: derived
+tags:
+  - cluster/aero-strips
+  - class/derived
+  - source/sourced
+  - surface/user-visible
+  - flag/divergence
 ---
 
 # Echoed sideslip angle
 
 **Definition.** Operating-point beta echoed into the strip-forces result.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 

@@ -6,11 +6,21 @@ unit: m
 cluster: stability
 user_visible: true
 source_status: PARTIAL
+node_class: derived
+tags:
+  - cluster/stability
+  - class/derived
+  - source/partial
+  - surface/user-visible
+  - flag/anomaly
+  - flag/divergence
 ---
 
 # Required wing longitudinal shift
 
 **Definition.** Longitudinal displacement of the main wing needed to reach the target static margin (positive = aft).
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -18,13 +28,17 @@ source_status: PARTIAL
 delta_x = delta_needed / dsm_dx  # metres (negative = move wing fwd)
 ```
 
-**Inputs.** [[sm-delta-needed|SM shortfall to target]] · [[dsm-dx-wing|SM sensitivity to wing longitudinal shift]]
+**Inputs.**
+
+- [[sm-delta-needed|SM shortfall to target]]
+- [[dsm-dx-wing|SM sensitivity to wing longitudinal shift]]
 
 **Produced by.** `app/services/sm_sizing_service.py:412` — `suggest_corrections`
 
 **Consumed by.**
 
-- in this graph: [[predicted-sm-wing-shift|Predicted SM after wing shift]] · [[x-np-after-shift|Neutral point after wing shift]]
+- in this graph: `Predicted SM after wing shift` · `Neutral point after wing shift`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `app/services/sm_sizing_service.py:425,431,446` · `app/api/v2/endpoints/aeroplane/sm_suggestions.py:85 (SmOption.delta_value)`
 
 **Source.** 🟡 PARTIAL

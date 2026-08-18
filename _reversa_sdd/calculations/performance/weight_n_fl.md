@@ -6,11 +6,18 @@ unit: N
 cluster: perf-matching
 user_visible: false
 source_status: SOURCED
+node_class: derived
+tags:
+  - cluster/perf-matching
+  - class/derived
+  - source/sourced
 ---
 
 # Aircraft weight
 
 **Definition.** MTOW in newtons from mass and gravity.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -18,13 +25,16 @@ source_status: SOURCED
 weight_n = mass_kg * g
 ```
 
-**Inputs.** [[g_gravity|Standard gravity]]
+**Inputs.**
+
+- [[g_gravity|Standard gravity]]
 
 **Produced by.** `app/services/field_length_service.py:199` — `_compute_s_to_ground`
 
 **Consumed by.**
 
-- in this graph: [[t_over_w_fl|Thrust-to-weight (field length)]] · [[wing_loading_fl|Wing loading (field length)]]
+- in this graph: `Thrust-to-weight (field length)` · `Wing loading (field length)`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `wing_loading_fl:200` · `t_over_w_fl:202` · `_compute_s_ldg_ground:260`
 
 **Source.** 🟢 SOURCED

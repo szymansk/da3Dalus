@@ -6,11 +6,19 @@ unit: W
 cluster: powertrain
 user_visible: true
 source_status: SOURCED
+node_class: derived
+tags:
+  - cluster/powertrain
+  - class/derived
+  - source/sourced
+  - surface/user-visible
 ---
 
 # Aerodynamic power at cruise
 
 **Definition.** Airframe power demand at cruise speed, independent of any powertrain choice.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -18,13 +26,24 @@ source_status: SOURCED
 p_aero_cruise = _p_aero(rho, v_cruise_mps, mass_kg, g, cd0, e_oswald, ar, s_ref_m2)
 ```
 
-**Inputs.** [[ss-p-aero|Aerodynamic power]] · [[ss-v-cruise|Cruise speed (solution space)]] · [[ss-mass|All-up mass (solution space)]] · [[ss-cd0|Zero-lift drag coefficient (solution space)]] · [[ss-e-oswald|Oswald efficiency (solution space)]] · [[ss-ar|Aspect ratio (solution space)]] · [[ss-s-ref|Wing reference area (solution space)]] · [[ss-rho-param|Air density (solution space input)]] · [[ss-g-param|Gravitational acceleration (solution space input)]]
+**Inputs.**
+
+- [[ss-p-aero|Aerodynamic power]]
+- [[ss-v-cruise|Cruise speed (solution space)]]
+- [[ss-mass|All-up mass (solution space)]]  — *⤵ fallback*
+- [[ss-cd0|Zero-lift drag coefficient (solution space)]]  — *⤵ fallback*
+- [[ss-e-oswald|Oswald efficiency (solution space)]]  — *⤵ fallback*
+- [[ss-ar|Aspect ratio (solution space)]]  — *⤵ fallback*
+- [[ss-s-ref|Wing reference area (solution space)]]  — *⤵ fallback*
+- [[ss-rho-param|Air density (solution space input)]]
+- [[ss-g-param|Gravitational acceleration (solution space input)]]
 
 **Produced by.** `app/services/powertrain_solution_space_service.py:349` — `compute_solution_space`
 
 **Consumed by.**
 
-- in this graph: [[ss-motor-cont-shaft|Required motor continuous shaft power]] · [[ss-p-cruise-hi-e|Electrical cruise power at high prop efficiency]] · [[ss-p-cruise-lo-e|Electrical cruise power at low prop efficiency]] · [[ss-p-cruise-mid|Electrical cruise power (mid band)]]
+- in this graph: `Required motor continuous shaft power` · `Electrical cruise power at high prop efficiency` · `Electrical cruise power at low prop efficiency` · `Electrical cruise power (mid band)`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `app/services/powertrain_solution_space_service.py:360` · `app/services/powertrain_solution_space_service.py:363` · `app/services/powertrain_solution_space_service.py:367` · `app/services/powertrain_solution_space_service.py:422` · `app/services/powertrain_solution_space_service.py:492` · `frontend/components/workbench/PowertrainTab.tsx:1141`
 
 **Source.** 🟢 SOURCED

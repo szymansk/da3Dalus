@@ -6,11 +6,21 @@ unit: dimensionless (x/c)
 cluster: structure
 user_visible: false
 source_status: SOURCED
+node_class: unclassified-constant
+tags:
+  - cluster/structure
+  - class/unclassified-constant
+  - source/sourced
+  - flag/anomaly
+  - flag/divergence
+  - flag/scale
 ---
 
 # Assumed front-spar chord fraction
 
 **Definition.** Chord fraction assumed for the front spar SOLELY to derive the front–rear spacing for the rear torsion reaction, when the request leaves front_x_over_chord unset. The front spar itself still samples the real max-thickness location.
+
+⚪ **Unclassified constant.** Not yet decided whether this is a rule of thumb, a calibration or a physical value. Classifying it is open work — it is deliberately not guessed.
 
 **Value.** `0.30`
 
@@ -26,7 +36,8 @@ _DEFAULT_FRONT_X_C = 0.30
 
 **Consumed by.**
 
-- in this graph: [[spar-spacing-fraction|Front–rear spar chordwise spacing]]
+- in this graph: `Front–rear spar chordwise spacing`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `app/services/spar_plan_service.py:411`
 
 **Source.** 🟢 SOURCED

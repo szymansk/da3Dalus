@@ -5,11 +5,20 @@ unit: MPa
 cluster: structure
 user_visible: true
 source_status: PARTIAL
+node_class: numerical-tolerance
+tags:
+  - cluster/structure
+  - class/numerical-tolerance
+  - source/partial
+  - surface/user-visible
+  - flag/divergence
 ---
 
 # Allowable-stress positivity guard
 
 **Definition.** Guard threshold: σ_allow ≤ 0 raises ValueError rather than dividing by zero. Added because the material schema permits allowable_bending_stress_mpa = 0.
+
+**Numerical tolerance.** A solver or comparison epsilon, not a domain value. ADR 0023 does not apply.
 
 **Value.** `0`
 
@@ -19,7 +28,9 @@ source_status: PARTIAL
 if sigma_allow_mpa <= 0:
 ```
 
-**Inputs.** [[sigma-allow-mpa|Allowable bending stress (sizing path)]]
+**Inputs.**
+
+- [[sigma-allow-mpa|Allowable bending stress (sizing path)]]
 
 **Produced by.** `app/services/spar_sizing.py:86` — `required_section_modulus`
 

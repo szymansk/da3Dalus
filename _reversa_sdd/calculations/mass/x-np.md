@@ -6,11 +6,21 @@ unit: m
 cluster: mass
 user_visible: true
 source_status: SOURCED
+node_class: derived
+tags:
+  - cluster/mass
+  - class/derived
+  - source/sourced
+  - surface/user-visible
+  - flag/anomaly
+  - flag/divergence
 ---
 
 # Neutral point
 
 **Definition.** Longitudinal position of the aircraft's neutral point from the AeroBuildup stability run at cruise; the datum for every CG limit and static margin in this cluster.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -24,7 +34,8 @@ x_np = _scalar(result.reference.Xnp)
 
 **Consumed by.**
 
-- in this graph: [[cg-stability-aft|Aft CG stability limit]] · [[cg-stability-fwd-stub|Forward CG stability limit (0.30·MAC stub)]] · [[cg-x-design|Design CG_x (aerodynamic CG target)]] · [[sm-at-aft-api|Static margin at aft loading CG (API)]] · [[sm-at-aft-ctx|Static margin at aft loading CG (cached)]] · [[sm-at-fwd-api|Static margin at forward loading CG (API)]] · [[sm-at-fwd-ctx|Static margin at forward loading CG (cached)]]
+- in this graph: `Aft CG stability limit` · `Forward CG stability limit (0.30·MAC stub)` · `Design CG_x (aerodynamic CG target)` · `Static margin at aft loading CG (API)` · `Static margin at aft loading CG (cached)` · `Static margin at forward loading CG (API)` · `Static margin at forward loading CG (cached)`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `app/services/assumption_compute_service.py:108 (cg_x)` · `app/services/assumption_compute_service.py:473 (compute_stability_envelope)` · `app/services/assumption_compute_service.py:725 (ctx['x_np_m'])` · `app/services/loading_scenario_service.py:112 / :116 / :259 / :260 / :593 / :594` · `app/services/sm_sizing_service.py:354 / :509 / :769` · `app/services/tail_sizing_service.py:179` · `app/services/elevator_authority_service.py:237 / :362 / :497` · `frontend/lib/metricsAdapters.ts:344`
 
 **Source.** 🟢 SOURCED

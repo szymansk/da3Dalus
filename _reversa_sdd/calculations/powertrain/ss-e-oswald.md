@@ -6,11 +6,22 @@ unit: dimensionless
 cluster: powertrain
 user_visible: true
 source_status: SOURCED
+node_class: derived
+tags:
+  - cluster/powertrain
+  - class/derived
+  - source/sourced
+  - surface/user-visible
+  - flag/anomaly
+  - flag/divergence
+  - flag/scale
 ---
 
 # Oswald efficiency (solution space)
 
 **Definition.** Oswald span efficiency from the computation context, or a fallback with a warning.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -24,7 +35,8 @@ e_oswald: float | None = ctx.get("e_oswald") ; if e_oswald is None or e_oswald <
 
 **Consumed by.**
 
-- in this graph: [[ss-induced-drag-factor|Induced-drag factor]] · [[ss-p-aero-cruise|Aerodynamic power at cruise]] · [[ss-p-aero-top|Aerodynamic power at top speed]]
+- in this graph: `Induced-drag factor` · `Aerodynamic power at cruise` · `Aerodynamic power at top speed`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `app/services/powertrain_solution_space_service.py:349` · `app/services/powertrain_solution_space_service.py:350`
 
 **Source.** 🟢 SOURCED

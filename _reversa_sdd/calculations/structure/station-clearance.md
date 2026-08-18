@@ -6,11 +6,18 @@ unit: mm
 cluster: structure
 user_visible: false
 source_status: NO_SOURCE_FOUND
+node_class: derived
+tags:
+  - cluster/structure
+  - class/derived
+  - source/no-source-found
 ---
 
 # Station packing clearance
 
 **Definition.** One-sided skin/glue clearance inset from each surface of the real lofted section, derived from the packing factor.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -18,13 +25,17 @@ source_status: NO_SOURCE_FOUND
 clr = (1.0 - packing_factor) / 2.0 * pt.thickness
 ```
 
-**Inputs.** [[structure--packing-factor|Packing factor]] · [[section-thickness-analytic|Section thickness (analytic)]]
+**Inputs.**
+
+- [[structure--packing-factor|Packing factor]]
+- [[section-thickness-analytic|Section thickness (analytic)]]
 
 **Produced by.** `cad_designer/airplane/geometry/spar_solver.py:761` — `build_stations_from_geometry`
 
 **Consumed by.**
 
-- in this graph: [[band-hi|Contained band upper bound]] · [[band-lo|Contained band lower bound]]
+- in this graph: `Contained band upper bound` · `Contained band lower bound`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `cad_designer/airplane/geometry/spar_solver.py:762` · `cad_designer/airplane/geometry/spar_solver.py:763`
 
 **Source.** 🔴 NO SOURCE FOUND

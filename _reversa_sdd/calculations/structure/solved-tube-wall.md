@@ -6,11 +6,19 @@ unit: mm
 cluster: structure
 user_visible: true
 source_status: PARTIAL
+node_class: derived
+tags:
+  - cluster/structure
+  - class/derived
+  - source/partial
+  - surface/user-visible
 ---
 
 # Solved tube wall thickness
 
 **Definition.** Wall thickness of the sized tube; the free dimension reported as solved_mm for shape='tube'.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -18,7 +26,10 @@ source_status: PARTIAL
 wall = (Da - Di) / 2.0
 ```
 
-**Inputs.** [[solved-tube-inner-diameter|Solved tube inner diameter]] · [[spar-outer-dimension|Spar outer dimension]]
+**Inputs.**
+
+- [[solved-tube-inner-diameter|Solved tube inner diameter]]
+- [[spar-outer-dimension|Spar outer dimension]]
 
 **Produced by.** `app/services/spar_sizing.py:147` — `_solve_tube`
 

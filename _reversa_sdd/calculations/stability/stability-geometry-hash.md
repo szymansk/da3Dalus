@@ -6,11 +6,20 @@ unit: – (hex string)
 cluster: stability
 user_visible: false
 source_status: NO_SOURCE_FOUND
+node_class: derived
+tags:
+  - cluster/stability
+  - class/derived
+  - source/no-source-found
+  - flag/anomaly
+  - flag/divergence
 ---
 
 # Stability geometry hash
 
 **Definition.** Deterministic 16-hex-char digest over the wing/fuselage geometry that affects stability, used to invalidate cached stability results.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 

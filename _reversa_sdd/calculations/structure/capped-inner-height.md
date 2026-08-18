@@ -6,11 +6,18 @@ unit: mm
 cluster: structure
 user_visible: false
 source_status: SOURCED
+node_class: derived
+tags:
+  - cluster/structure
+  - class/derived
+  - source/sourced
 ---
 
 # Capped-spar inner gap height
 
 **Definition.** Inner (web-gap) height of the capped I/C-beam section.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -18,13 +25,16 @@ source_status: SOURCED
 h = inner_cube ** (1.0 / 3.0)
 ```
 
-**Inputs.** [[capped-inner-cube|Capped-spar inner-height cube]]
+**Inputs.**
+
+- [[capped-inner-cube|Capped-spar inner-height cube]]
 
 **Produced by.** `app/services/spar_sizing.py:208` — `_solve_capped`
 
 **Consumed by.**
 
-- in this graph: [[capped-gurt-thickness|Capped-spar flange (gurt) thickness]]
+- in this graph: `Capped-spar flange (gurt) thickness`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `app/services/spar_sizing.py:209` · `app/services/spar_sizing.py:216`
 
 **Source.** 🟢 SOURCED

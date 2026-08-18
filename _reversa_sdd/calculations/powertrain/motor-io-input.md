@@ -6,11 +6,21 @@ unit: A
 cluster: powertrain
 user_visible: true
 source_status: SOURCED
+node_class: unclassified-parameter
+tags:
+  - cluster/powertrain
+  - class/unclassified-parameter
+  - source/sourced
+  - surface/user-visible
+  - flag/anomaly
+  - flag/divergence
 ---
 
 # No-load current
 
 **Definition.** Motor no-load current, the torque-producing current offset in the QPROP model. Defaults to 0 A when absent.
+
+⚪ **Unclassified parameter.** Not yet decided whether this is a user input or an internal tuning value.
 
 **Value.** `0.0 (fallback via `motor.io_no_load_a or 0.0`)`
 
@@ -26,7 +36,8 @@ i0 = motor.io_no_load_a or 0.0
 
 **Consumed by.**
 
-- in this graph: [[qprop-eta-motor|QPROP motor efficiency]] · [[qprop-motor-torque|Motor-produced torque]] · [[qprop-torque|Solved shaft torque]]
+- in this graph: `QPROP motor efficiency` · `Motor-produced torque` · `Solved shaft torque`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `app/services/powertrain_performance.py:535` · `app/services/powertrain_performance.py:580` · `app/services/powertrain_performance.py:585`
 
 **Source.** 🟢 SOURCED

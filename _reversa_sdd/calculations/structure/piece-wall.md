@@ -6,11 +6,21 @@ unit: mm
 cluster: structure
 user_visible: true
 source_status: PARTIAL
+node_class: derived
+tags:
+  - cluster/structure
+  - class/derived
+  - source/partial
+  - surface/user-visible
+  - flag/anomaly
+  - flag/divergence
 ---
 
 # Spar piece wall thickness
 
 **Definition.** Wall thickness of a spar piece, derived from its outer and inner diameters and floored at zero.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -18,7 +28,10 @@ source_status: PARTIAL
 return max(0.0, (self.outer_d - self.inner_d) / 2.0)
 ```
 
-**Inputs.** [[piece-outer-diameter|Spar piece outer diameter]] · [[piece-bore|Spar piece inner diameter]]
+**Inputs.**
+
+- [[piece-outer-diameter|Spar piece outer diameter]]
+- [[piece-bore|Spar piece inner diameter]]
 
 **Produced by.** `cad_designer/airplane/geometry/spar_solver.py:124` — `SparPiece.wall`
 

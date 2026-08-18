@@ -6,11 +6,20 @@ unit: count
 cluster: structure
 user_visible: true
 source_status: NO_SOURCE_FOUND
+node_class: unclassified-parameter
+tags:
+  - cluster/structure
+  - class/unclassified-parameter
+  - source/no-source-found
+  - surface/user-visible
+  - flag/anomaly
 ---
 
 # Number of spanwise stations
 
 **Definition.** Number of spanwise sample stations per half, root-to-tip, that the solver samples the section at.
+
+⚪ **Unclassified parameter.** Not yet decided whether this is a user input or an internal tuning value.
 
 **Value.** `6`
 
@@ -31,7 +40,8 @@ n_span: int = Field(
 
 **Consumed by.**
 
-- in this graph: [[y-spans-grid|Spanwise sampling grid]]
+- in this graph: `Spanwise sampling grid`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `app/services/spar_plan_service.py:569` · `cad_designer/airplane/geometry/spar_solver.py:745` · `frontend/hooks/useSparPlan.ts:30`
 
 **Source.** 🔴 NO SOURCE FOUND

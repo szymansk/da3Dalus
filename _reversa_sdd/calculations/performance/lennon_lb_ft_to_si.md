@@ -6,11 +6,21 @@ unit: claimed N/m^4.5 per lb/ft^4.5
 cluster: perf-matching
 user_visible: true
 source_status: NO_SOURCE_FOUND
+node_class: unclassified-constant
+tags:
+  - cluster/perf-matching
+  - class/unclassified-constant
+  - source/no-source-found
+  - surface/user-visible
+  - flag/anomaly
+  - flag/divergence
 ---
 
 # Lennon WCL conversion factor
 
 **Definition.** Factor applied to convert Lennon's lb/ft^4.5 WCL into an SI-ish quantity.
+
+⚪ **Unclassified constant.** Not yet decided whether this is a rule of thumb, a calibration or a physical value. Classifying it is open work — it is deliberately not guessed.
 
 **Value.** `47.88`
 
@@ -26,7 +36,8 @@ _LENNON_LB_FT_TO_SI: float = 47.88
 
 **Consumed by.**
 
-- in this graph: [[wcl_ws_max|WCL-derived W/S ceiling]]
+- in this graph: `WCL-derived W/S ceiling`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `_wcl_constraint:528`
 
 **Source.** 🔴 NO SOURCE FOUND

@@ -6,11 +6,22 @@ unit: enum (dimensionless)
 cluster: mass
 user_visible: true
 source_status: PARTIAL
+node_class: derived
+tags:
+  - cluster/mass
+  - class/derived
+  - source/partial
+  - surface/user-visible
+  - flag/anomaly
+  - flag/divergence
+  - flag/scale
 ---
 
 # Static-margin classification
 
 **Definition.** 5-tier severity label of a static margin relative to the design target: error \| warn \| ok \| unknown.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -18,13 +29,21 @@ source_status: PARTIAL
 if sm is None: return "unknown"; if sm < _SM_UNSTABLE_LIMIT: return "error"; if sm < target_sm: return "warn"; if sm <= _SM_HEAVY_NOSE_WARN: return "ok"; if sm <= _SM_ELEVATOR_LIMIT: return "warn"; return "error"
 ```
 
-**Inputs.** [[mass--sm-unstable-limit|Static-margin lower (unstable) limit]] · [[mass--sm-heavy-nose-warn|Static-margin heavy-nose warning limit]] · [[sm-elevator-limit|Static-margin elevator-authority limit]] · [[target-static-margin|Target static margin]] · [[sm-at-fwd-api|Static margin at forward loading CG (API)]] · [[sm-at-aft-api|Static margin at aft loading CG (API)]]
+**Inputs.**
+
+- [[mass--sm-unstable-limit|Static-margin lower (unstable) limit]]  — *⊣ limit*
+- [[mass--sm-heavy-nose-warn|Static-margin heavy-nose warning limit]]  — *⊣ limit*
+- [[sm-elevator-limit|Static-margin elevator-authority limit]]  — *⊣ limit*
+- [[target-static-margin|Target static margin]]
+- [[sm-at-fwd-api|Static margin at forward loading CG (API)]]
+- [[sm-at-aft-api|Static margin at aft loading CG (API)]]
 
 **Produced by.** `app/services/loading_scenario_service.py:61` — `classify_sm`
 
 **Consumed by.**
 
-- in this graph: [[cg-classification-overall|Overall CG-envelope classification]]
+- in this graph: `Overall CG-envelope classification`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `app/services/loading_scenario_service.py:600 / :601 (get_cg_envelope)` · `app/schemas/loading_scenario.py:31 (CG_CLASSIFICATION)` · `app/api/v2/endpoints/aeroplane/loading_scenarios.py:165` · `frontend/components/workbench/LoadingScenariosCard.tsx:85`
 
 **Source.** 🟡 PARTIAL

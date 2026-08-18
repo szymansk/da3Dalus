@@ -6,11 +6,22 @@ unit: m/s²
 cluster: mass
 user_visible: false
 source_status: SOURCED
+node_class: physical-constant
+tags:
+  - cluster/mass
+  - class/physical-constant
+  - source/sourced
+  - flag/anomaly
+  - flag/divergence
+  - flag/physical
 ---
 
 # Gravitational acceleration
 
 **Definition.** Standard gravity used to convert mass to weight in every speed formula in this module.
+
+**Physical constant.** A value of nature. It must be identical everywhere it appears — a second definition is a defect by construction, not a judgement call.
+*Identified as: gravity.*
 
 **Value.** `9.81`
 
@@ -20,7 +31,8 @@ source_status: SOURCED
 
 **Consumed by.**
 
-- in this graph: [[weight-force-n|Weight force]]
+- in this graph: `Weight force`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `app/services/assumption_compute_service.py:1774` · `app/services/assumption_compute_service.py:1846 (landing ground roll)` · `app/services/assumption_compute_service.py:1901` · `app/services/assumption_compute_service.py:1942` · `app/services/assumption_compute_service.py:1968`
 
 **Source.** 🟢 SOURCED

@@ -6,11 +6,18 @@ unit: Ah
 cluster: powertrain
 user_visible: false
 source_status: PARTIAL
+node_class: derived
+tags:
+  - cluster/powertrain
+  - class/derived
+  - source/partial
 ---
 
 # Battery capacity in amp-hours
 
 **Definition.** Rated pack capacity converted from mAh.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -24,7 +31,8 @@ capacity_ah = capacity_mah / 1000.0
 
 **Consumed by.**
 
-- in this graph: [[combo-flight-time-h|Estimated flight time (hours)]]
+- in this graph: `Estimated flight time (hours)`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `app/services/powertrain_sizing_service.py:256`
 
 **Source.** 🟡 PARTIAL

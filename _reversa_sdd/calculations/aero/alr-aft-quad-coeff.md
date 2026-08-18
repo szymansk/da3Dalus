@@ -6,11 +6,19 @@ unit: 1/chord
 cluster: aero-polars
 user_visible: false
 source_status: NO_SOURCE_FOUND
+node_class: derived
+tags:
+  - cluster/aero-polars
+  - class/derived
+  - source/no-source-found
+  - flag/divergence
 ---
 
 # Aft lower-surface quadratic coefficient
 
 **Definition.** \|Leading coefficient\| of a 2nd-order fit to the lower surface over the aft chord.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -19,13 +27,16 @@ p_aft = np.polyfit(x_eval[aft_mask], y_lower[aft_mask], 2)
 aft_quad_coeff = float(abs(p_aft[0]))
 ```
 
-**Inputs.** [[alr-flat-bottom-aft-x-lo|Flat-bottom aft window start]]
+**Inputs.**
+
+- [[alr-flat-bottom-aft-x-lo|Flat-bottom aft window start]]
 
 **Produced by.** `app/services/airfoil_low_re_service.py:246` — `classify_family`
 
 **Consumed by.**
 
-- in this graph: [[alr-family|Airfoil family label]]
+- in this graph: `Airfoil family label`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `classify_family:288`
 
 **Source.** 🔴 NO SOURCE FOUND

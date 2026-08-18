@@ -6,11 +6,21 @@ unit: dimensionless
 cluster: perf-matching
 user_visible: true
 source_status: PARTIAL
+node_class: derived
+tags:
+  - cluster/perf-matching
+  - class/derived
+  - source/partial
+  - surface/user-visible
+  - flag/divergence
+  - flag/scale
 ---
 
 # Resolved Oswald factor
 
 **Definition.** Oswald efficiency taken from the aircraft dict or defaulted with a warning.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -18,13 +28,16 @@ source_status: PARTIAL
 _e_provided = aircraft.get("e_oswald", aircraft.get("e")); if _e_provided is None or float(_e_provided) <= 0: e = DEFAULT_E_OSWALD; warnings.append(...) else: e = float(_e_provided)
 ```
 
-**Inputs.** [[default_e_oswald_mc|Default Oswald factor (matching chart)]]
+**Inputs.**
+
+- [[default_e_oswald_mc|Default Oswald factor (matching chart)]]  — *⤵ fallback*
 
 **Produced by.** `app/services/matching_chart_service.py:768` — `compute_chart`
 
 **Consumed by.**
 
-- in this graph: [[chart_warnings|Matching-chart design warnings]] · [[e_at_v|Reynolds-dependent Oswald factor]] · [[induced_drag_factor_k|Induced-drag factor]] · [[tw_vertical_climb|Vertical-climb T/W]] · [[v_cruise_resolved|Resolved cruise speed]] · [[v_md|Minimum-drag speed]]
+- in this graph: `Matching-chart design warnings` · `Reynolds-dependent Oswald factor` · `Induced-drag factor` · `Vertical-climb T/W` · `Resolved cruise speed` · `Minimum-drag speed`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `_v_md:796,858` · `_climb_constraint` · `_vertical_climb_constraint:1159` · `warnings:772` · `hover_text:940`
 
 **Source.** 🟡 PARTIAL

@@ -5,11 +5,19 @@ unit: mm
 cluster: structure
 user_visible: false
 source_status: NO_SOURCE_FOUND
+node_class: unclassified-constant
+tags:
+  - cluster/structure
+  - class/unclassified-constant
+  - source/no-source-found
+  - flag/anomaly
 ---
 
 # Rod sizing outer-dimension floor
 
 **Definition.** Floor on the outer dimension passed to the rod solver when computing the strength-required OD, so a degenerate zero-depth band does not produce a nonsense feasibility verdict.
+
+⚪ **Unclassified constant.** Not yet decided whether this is a rule of thumb, a calibration or a physical value. Classifying it is open work — it is deliberately not guessed.
 
 **Value.** `1.0`
 
@@ -19,13 +27,17 @@ source_status: NO_SOURCE_FOUND
 sol = solve_dimension(shape="rod", erf_w=erf_w, outer_mm=max(band_hi - band_lo, 1.0))
 ```
 
-**Inputs.** [[band-lo|Contained band lower bound]] · [[band-hi|Contained band upper bound]]
+**Inputs.**
+
+- [[band-lo|Contained band lower bound]]  — *⊣ limit*
+- [[band-hi|Contained band upper bound]]  — *⊣ limit*
 
 **Produced by.** `cad_designer/airplane/geometry/spar_solver.py:767` — `build_stations_from_geometry`
 
 **Consumed by.**
 
-- in this graph: [[station-required-od|Station strength-required OD]]
+- in this graph: `Station strength-required OD`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `cad_designer/airplane/geometry/spar_solver.py:768`
 
 **Source.** 🔴 NO SOURCE FOUND

@@ -6,11 +6,20 @@ unit: m/s
 cluster: aero-polars
 user_visible: false
 source_status: NO_SOURCE_FOUND
+node_class: derived
+tags:
+  - cluster/aero-polars
+  - class/derived
+  - source/no-source-found
+  - flag/anomaly
+  - flag/divergence
 ---
 
 # Top anchor clamp to sweep max
 
 **Definition.** Highest V anchor is clamped down to the actual sweep upper bound before binning.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 

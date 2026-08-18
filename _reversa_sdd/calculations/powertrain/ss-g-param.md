@@ -6,11 +6,21 @@ unit: m/s^2
 cluster: powertrain
 user_visible: true
 source_status: PARTIAL
+node_class: unclassified-parameter
+tags:
+  - cluster/powertrain
+  - class/unclassified-parameter
+  - source/partial
+  - surface/user-visible
+  - flag/anomaly
+  - flag/divergence
 ---
 
 # Gravitational acceleration (solution space input)
 
 **Definition.** Standard gravity used in the lift-coefficient relation.
+
+⚪ **Unclassified parameter.** Not yet decided whether this is a user input or an internal tuning value.
 
 **Value.** `9.80665`
 
@@ -26,7 +36,8 @@ g = assumptions.g
 
 **Consumed by.**
 
-- in this graph: [[ss-lift-coefficient|Level-flight lift coefficient]] · [[ss-p-aero-cruise|Aerodynamic power at cruise]] · [[ss-p-aero-top|Aerodynamic power at top speed]]
+- in this graph: `Level-flight lift coefficient` · `Aerodynamic power at cruise` · `Aerodynamic power at top speed`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `app/services/powertrain_solution_space_service.py:344` · `app/services/powertrain_solution_space_service.py:349` · `app/services/powertrain_solution_space_service.py:350`
 
 **Source.** 🟡 PARTIAL

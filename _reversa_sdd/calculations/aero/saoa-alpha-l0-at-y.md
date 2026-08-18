@@ -6,11 +6,20 @@ unit: deg
 cluster: aero-strips
 user_visible: false
 source_status: PARTIAL
+node_class: derived
+tags:
+  - cluster/aero-strips
+  - class/derived
+  - source/partial
+  - flag/anomaly
+  - flag/divergence
 ---
 
 # Interpolated zero-lift angle at panel y
 
 **Definition.** Section zero-lift angle interpolated from xsec positions onto panel y positions.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -18,13 +27,17 @@ source_status: PARTIAL
 alpha_L0_at_y = np.interp(y_arr, alpha_L0_per_section[0], alpha_L0_per_section[1])
 ```
 
-**Inputs.** [[saoa-alpha-l0|Section zero-lift angle]] · [[saoa-y|Panel spanwise position]]
+**Inputs.**
+
+- [[saoa-alpha-l0|Section zero-lift angle]]
+- [[saoa-y|Panel spanwise position]]
 
 **Produced by.** `app/services/section_aoa_service.py:298` — `compute_section_aoa`
 
 **Consumed by.**
 
-- in this graph: [[saoa-alpha-eff|Effective angle of attack]]
+- in this graph: `Effective angle of attack`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 
 **Source.** 🟡 PARTIAL
 

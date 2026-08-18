@@ -6,11 +6,19 @@ unit: chord fraction
 cluster: aero-polars
 user_visible: false
 source_status: SOURCED
+node_class: derived
+tags:
+  - cluster/aero-polars
+  - class/derived
+  - source/sourced
+  - flag/divergence
 ---
 
 # Mean camber line
 
 **Definition.** Mean of the interpolated upper and lower surfaces over 200 chordwise stations.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -24,7 +32,8 @@ camber = (y_upper + y_lower) / 2.0
 
 **Consumed by.**
 
-- in this graph: [[alr-aft-concavity|Aft camber concavity (reflex Signal B)]] · [[alr-camber-at-te|camber_at_te (camber at x=0.9)]] · [[alr-max-camber-pct|Max camber (classifier-internal)]]
+- in this graph: `Aft camber concavity (reflex Signal B)` · `camber_at_te (camber at x=0.9)` · `Max camber (classifier-internal)`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `classify_family:213,221,234`
 
 **Source.** 🟢 SOURCED

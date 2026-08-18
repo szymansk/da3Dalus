@@ -5,11 +5,19 @@ unit: mm
 cluster: structure
 user_visible: false
 source_status: SOURCED
+node_class: derived
+tags:
+  - cluster/structure
+  - class/derived
+  - source/sourced
+  - flag/divergence
 ---
 
 # Governing required OD of a piece
 
 **Definition.** The strength-required outer diameter that governs a whole straight piece: the maximum required_od across the stations it covers, which by the spec is the most inboard (highest-moment) one.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -17,13 +25,16 @@ source_status: SOURCED
 return max(s.required_od for s in stations)
 ```
 
-**Inputs.** [[station-required-od|Station strength-required OD]]
+**Inputs.**
+
+- [[station-required-od|Station strength-required OD]]
 
 **Produced by.** `cad_designer/airplane/geometry/spar_solver.py:303` — `_governing_od`
 
 **Consumed by.**
 
-- in this graph: [[piece-outer-diameter|Spar piece outer diameter]]
+- in this graph: `Spar piece outer diameter`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `cad_designer/airplane/geometry/spar_solver.py:356` · `cad_designer/airplane/geometry/spar_solver.py:403` · `cad_designer/airplane/geometry/spar_solver.py:501`
 
 **Source.** 🟢 SOURCED

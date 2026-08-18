@@ -6,11 +6,22 @@ unit: W
 cluster: powertrain
 user_visible: true
 source_status: SOURCED
+node_class: derived
+tags:
+  - cluster/powertrain
+  - class/derived
+  - source/sourced
+  - surface/user-visible
+  - flag/anomaly
+  - flag/divergence
+  - flag/scale
 ---
 
 # Required motor peak shaft power
 
 **Definition.** Mechanical shaft power the motor must deliver at top speed — aerodynamic power divided by mid-band propeller efficiency only (motor and ESC efficiencies excluded because the rating is a shaft rating).
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -18,13 +29,17 @@ source_status: SOURCED
 motor_peak_shaft_w = p_aero_top / eta_mid
 ```
 
-**Inputs.** [[ss-p-aero-top|Aerodynamic power at top speed]] · [[ss-eta-mid|Mid-band propeller efficiency]]
+**Inputs.**
+
+- [[ss-p-aero-top|Aerodynamic power at top speed]]
+- [[ss-eta-mid|Mid-band propeller efficiency]]
 
 **Produced by.** `app/services/powertrain_solution_space_service.py:421` — `compute_solution_space`
 
 **Consumed by.**
 
-- in this graph: [[ss-catalog-motor-match|Catalog motor match flag]]
+- in this graph: `Catalog motor match flag`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `app/services/powertrain_solution_space_service.py:425` · `app/services/powertrain_solution_space_service.py:453` · `app/services/powertrain_solution_space_service.py:482`
 
 **Source.** 🟢 SOURCED

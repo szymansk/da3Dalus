@@ -5,11 +5,22 @@ unit: 1/deg
 cluster: aero-spanwise
 user_visible: true
 source_status: PARTIAL
+node_class: unclassified-constant
+tags:
+  - cluster/aero-spanwise
+  - class/unclassified-constant
+  - source/partial
+  - surface/user-visible
+  - flag/anomaly
+  - flag/divergence
+  - flag/scale
 ---
 
 # Stability classification thresholds
 
 **Definition.** Slope bands separating Stable / Neutral / Unstable.
+
+⚪ **Unclassified constant.** Not yet decided whether this is a rule of thumb, a calibration or a physical value. Classifying it is open work — it is deliberately not guessed.
 
 **Value.** `-0.01 / 0.01`
 
@@ -25,7 +36,8 @@ if slope < -0.01: Stable; if slope <= 0.01: Neutral; else Unstable
 
 **Consumed by.**
 
-- in this graph: [[cm-strip-colors|Cm-gradient stability colours]]
+- in this graph: `Cm-gradient stability colours`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 
 **Source.** 🟡 PARTIAL
 

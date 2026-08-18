@@ -6,11 +6,21 @@ unit: dimensionless
 cluster: aero-polars
 user_visible: true
 source_status: PARTIAL
+node_class: derived
+tags:
+  - cluster/aero-polars
+  - class/derived
+  - source/partial
+  - surface/user-visible
+  - flag/anomaly
+  - flag/divergence
 ---
 
 # Grid-clamped Reynolds + clamp flag
 
 **Definition.** Query Re clamped to the low-Re grid endpoints, with a flag when clamping occurred.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -22,7 +32,10 @@ if re >= grid[-1]:
 return re, False
 ```
 
-**Inputs.** [[sui-re-root|Root-chord Reynolds number]] · [[low-re-grid|Absolute low-Re grid]]
+**Inputs.**
+
+- [[sui-re-root|Root-chord Reynolds number]]
+- [[low-re-grid|Absolute low-Re grid]]
 
 **Produced by.** `app/services/suitability_service.py:128` — `_clamp_re_to_grid`
 

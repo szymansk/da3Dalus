@@ -6,11 +6,22 @@ unit: -
 cluster: aero-spanwise
 user_visible: true
 source_status: SOURCED
+node_class: unclassified-parameter
+tags:
+  - cluster/aero-spanwise
+  - class/unclassified-parameter
+  - source/sourced
+  - surface/user-visible
+  - flag/anomaly
+  - flag/divergence
+  - flag/scale
 ---
 
 # Safety factor j
 
 **Definition.** Multiplier applied with g_limit to form the design bending moment.
+
+⚪ **Unclassified parameter.** Not yet decided whether this is a user input or an internal tuning value.
 
 **Value.** `1.5`
 
@@ -26,7 +37,8 @@ safety_factor_j: Annotated[float, Query(gt=0, description="Safety factor j (defa
 
 **Consumed by.**
 
-- in this graph: [[design-bending-moment|Design bending moment]] · [[station-design-moment|Station design moment (plan path)]]
+- in this graph: `Design bending moment` · `Station design moment (plan path)`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `compute_spar_sizing via spar_params`
 
 **Source.** 🟢 SOURCED

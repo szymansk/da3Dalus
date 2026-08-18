@@ -5,11 +5,20 @@ unit: mm
 cluster: structure
 user_visible: true
 source_status: PARTIAL
+node_class: derived
+tags:
+  - cluster/structure
+  - class/derived
+  - source/partial
+  - surface/user-visible
+  - flag/divergence
 ---
 
 # Section depth at the governing station
 
 **Definition.** Contained band depth at the governing station, quoted in the infeasibility message so a builder can see how far short the section is.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -17,7 +26,10 @@ source_status: PARTIAL
 depth = max(0.0, governing.band_hi - governing.band_lo)
 ```
 
-**Inputs.** [[band-lo|Contained band lower bound]] · [[band-hi|Contained band upper bound]]
+**Inputs.**
+
+- [[band-lo|Contained band lower bound]]  — *⊣ limit*
+- [[band-hi|Contained band upper bound]]  — *⊣ limit*
 
 **Produced by.** `cad_designer/airplane/geometry/spar_solver.py:543` — `_piece_from_run_with_od`
 

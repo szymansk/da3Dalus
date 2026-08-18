@@ -6,11 +6,21 @@ unit: deg
 cluster: stability
 user_visible: false
 source_status: SOURCED
+node_class: unclassified-constant
+tags:
+  - cluster/stability
+  - class/unclassified-constant
+  - source/sourced
+  - flag/anomaly
+  - flag/divergence
+  - flag/scale
 ---
 
 # Default maximum elevator deflection
 
 **Definition.** Maximum elevator deflection assumed when the TED does not declare negative_deflection_deg.
+
+⚪ **Unclassified constant.** Not yet decided whether this is a rule of thumb, a calibration or a physical value. Classifying it is open work — it is deliberately not guessed.
 
 **Value.** `25.0`
 
@@ -20,7 +30,8 @@ source_status: SOURCED
 
 **Consumed by.**
 
-- in this graph: [[delta-e-max-rad|Maximum elevator deflection (radians)]]
+- in this graph: `Maximum elevator deflection (radians)`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `app/services/elevator_authority_service.py:122`
 
 **Source.** 🟢 SOURCED

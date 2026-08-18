@@ -6,11 +6,21 @@ unit: m
 cluster: mass
 user_visible: true
 source_status: PARTIAL
+node_class: numerical-tolerance
+tags:
+  - cluster/mass
+  - class/numerical-tolerance
+  - source/partial
+  - surface/user-visible
+  - flag/anomaly
+  - flag/divergence
 ---
 
 # Fallback base CG_x for scenario CG
 
 **Definition.** Default used when the 'cg_x' design assumption row is missing; also the value returned by compute_scenario_cg when total mass is zero.
+
+**Numerical tolerance.** A solver or comparison epsilon, not a domain value. ADR 0023 does not apply.
 
 **Value.** `0.0`
 
@@ -20,7 +30,8 @@ source_status: PARTIAL
 
 **Consumed by.**
 
-- in this graph: [[cg-agg|Aggregate CG (default scenario)]] · [[cg-loading-aft|Aft loading CG]] · [[cg-loading-fwd|Forward loading CG]] · [[scenario-cg-x|Loading-scenario CG_x]]
+- in this graph: `Aggregate CG (default scenario)` · `Aft loading CG` · `Forward loading CG` · `Loading-scenario CG_x`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `app/services/loading_scenario_service.py:192 (zero-mass return)` · `app/services/loading_scenario_service.py:422/423 (no-scenario envelope fallback)`
 
 **Source.** 🟡 PARTIAL

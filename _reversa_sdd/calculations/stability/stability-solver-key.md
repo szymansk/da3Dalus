@@ -6,11 +6,20 @@ unit: – (string)
 cluster: stability
 user_visible: false
 source_status: NO_SOURCE_FOUND
+node_class: derived
+tags:
+  - cluster/stability
+  - class/derived
+  - source/no-source-found
+  - flag/anomaly
+  - flag/divergence
 ---
 
 # Stability result solver key
 
 **Definition.** Discriminator column used to upsert one stability row per aeroplane+solver.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 

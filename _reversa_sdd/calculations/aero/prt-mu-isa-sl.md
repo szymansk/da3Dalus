@@ -6,11 +6,21 @@ unit: Pa·s
 cluster: aero-polars
 user_visible: false
 source_status: PARTIAL
+node_class: physical-constant
+tags:
+  - cluster/aero-polars
+  - class/physical-constant
+  - source/partial
+  - flag/divergence
+  - flag/physical
 ---
 
 # ISA sea-level dynamic viscosity
 
 **Definition.** Dynamic viscosity used for all aircraft-level Re labels.
+
+**Physical constant.** A value of nature. It must be identical everywhere it appears — a second definition is a defect by construction, not a judgement call.
+*Identified as: dynamic viscosity of air.*
 
 **Value.** `1.81e-5`
 
@@ -26,7 +36,8 @@ _MU_ISA_SL: float = 1.81e-5
 
 **Consumed by.**
 
-- in this graph: [[prt-re-aircraft|Aircraft-level Reynolds number (V-band label)]]
+- in this graph: `Aircraft-level Reynolds number (V-band label)`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `_reynolds_number_from_v:71` · `lookup_cd0_at_v:97`
 
 **Source.** 🟡 PARTIAL

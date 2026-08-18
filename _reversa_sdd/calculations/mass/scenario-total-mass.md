@@ -6,11 +6,20 @@ unit: kg
 cluster: mass
 user_visible: false
 source_status: SOURCED
+node_class: derived
+tags:
+  - cluster/mass
+  - class/derived
+  - source/sourced
+  - flag/anomaly
+  - flag/divergence
 ---
 
 # Loading-scenario total mass
 
 **Definition.** Total mass of one loading scenario — components (after toggles and mass overrides) plus ad-hoc items. Used only as the denominator of the CG.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -18,7 +27,9 @@ source_status: SOURCED
 total_mass += m  (per component, line 177)  ...  total_mass += m  (per adhoc item, line 188)
 ```
 
-**Inputs.** [[base-mass-default|Fallback base mass for scenario CG]]
+**Inputs.**
+
+- [[base-mass-default|Fallback base mass for scenario CG]]  — *⤵ fallback*
 
 **Produced by.** `app/services/loading_scenario_service.py:177` — `compute_scenario_cg`
 

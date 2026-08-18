@@ -6,11 +6,21 @@ unit: dimensionless
 cluster: powertrain
 user_visible: true
 source_status: NO_SOURCE_FOUND
+node_class: unclassified-parameter
+tags:
+  - cluster/powertrain
+  - class/unclassified-parameter
+  - source/no-source-found
+  - surface/user-visible
+  - flag/anomaly
+  - flag/divergence
 ---
 
 # Battery C-rate margin
 
 **Definition.** Safety multiplier applied to the physically required C-rate.
+
+⚪ **Unclassified parameter.** Not yet decided whether this is a user input or an internal tuning value.
 
 **Value.** `1.25`
 
@@ -26,7 +36,8 @@ c_min = raw_c * c_margin
 
 **Consumed by.**
 
-- in this graph: [[ss-c-min|Required battery C-rate]]
+- in this graph: `Required battery C-rate`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `app/services/powertrain_solution_space_service.py:146` · `app/services/powertrain_solution_space_service.py:390`
 
 **Source.** 🔴 NO SOURCE FOUND

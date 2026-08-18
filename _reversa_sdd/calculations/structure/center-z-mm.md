@@ -6,11 +6,21 @@ unit: mm
 cluster: structure
 user_visible: true
 source_status: PARTIAL
+node_class: derived
+tags:
+  - cluster/structure
+  - class/derived
+  - source/partial
+  - surface/user-visible
+  - flag/anomaly
+  - flag/divergence
 ---
 
 # Section mid-height (spar placement reference)
 
 **Definition.** Mid-height of the built section at the station, in the wing-local frame — the reference height a spar should be centred on.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -18,7 +28,10 @@ source_status: PARTIAL
 center_z_mm=_lookup_center_z(center_z_by_y, y_m),
 ```
 
-**Inputs.** [[section-center-z-analytic|Section mid-height (analytic)]] · [[center-z-nearest-key-tolerance|center_z nearest-key lookup tolerance]]
+**Inputs.**
+
+- [[section-center-z-analytic|Section mid-height (analytic)]]
+- [[center-z-nearest-key-tolerance|center_z nearest-key lookup tolerance]]
 
 **Produced by.** `app/services/spar_sizing.py:341` — `compute_spar_sizing`
 

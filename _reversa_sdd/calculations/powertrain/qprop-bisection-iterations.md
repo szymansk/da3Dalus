@@ -6,11 +6,20 @@ unit: iterations
 cluster: powertrain
 user_visible: false
 source_status: NO_SOURCE_FOUND
+node_class: unclassified-constant
+tags:
+  - cluster/powertrain
+  - class/unclassified-constant
+  - source/no-source-found
+  - flag/anomaly
+  - flag/divergence
 ---
 
 # Bisection iteration count
 
 **Definition.** Fixed number of bisection halvings used to find the torque-balance RPM; there is no convergence tolerance test.
+
+⚪ **Unclassified constant.** Not yet decided whether this is a rule of thumb, a calibration or a physical value. Classifying it is open work — it is deliberately not guessed.
 
 **Value.** `80`
 
@@ -26,7 +35,8 @@ for _ in range(80):
 
 **Consumed by.**
 
-- in this graph: [[qprop-rpm-solution|Solved operating RPM]]
+- in this graph: `Solved operating RPM`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `app/services/powertrain_performance.py:576`
 
 **Source.** 🔴 NO SOURCE FOUND

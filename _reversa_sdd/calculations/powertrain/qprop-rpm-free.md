@@ -6,11 +6,18 @@ unit: rpm
 cluster: powertrain
 user_visible: false
 source_status: SOURCED
+node_class: derived
+tags:
+  - cluster/powertrain
+  - class/derived
+  - source/sourced
 ---
 
 # Free-running RPM
 
 **Definition.** Upper bracket of the RPM search: the no-load speed where back-EMF equals terminal voltage and current is zero.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -18,13 +25,17 @@ source_status: SOURCED
 rpm_free = V_terminal * kv_si * 60.0 / (2.0 * math.pi)
 ```
 
-**Inputs.** [[curve-v-terminal|Motor terminal voltage]] · [[motor-kv-si|Motor speed constant in SI]]
+**Inputs.**
+
+- [[curve-v-terminal|Motor terminal voltage]]
+- [[motor-kv-si|Motor speed constant in SI]]
 
 **Produced by.** `app/services/powertrain_performance.py:540` — `solve_qprop_operating_point`
 
 **Consumed by.**
 
-- in this graph: [[qprop-rpm-solution|Solved operating RPM]]
+- in this graph: `Solved operating RPM`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `app/services/powertrain_performance.py:552`
 
 **Source.** 🟢 SOURCED

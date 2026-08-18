@@ -6,11 +6,21 @@ unit: dimensionless (x/c)
 cluster: structure
 user_visible: false
 source_status: SOURCED
+node_class: derived
+tags:
+  - cluster/structure
+  - class/derived
+  - source/sourced
+  - flag/anomaly
+  - flag/divergence
+  - flag/scale
 ---
 
 # Most-forward control-surface hinge
 
 **Definition.** The most forward control-surface hinge line on the wing, as a chord fraction. Binding constraint for the computed rear spar, which must clear EVERY control surface.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -31,7 +41,8 @@ return min(hinges) if hinges else None
 
 **Consumed by.**
 
-- in this graph: [[rear-spar-x-c-clamped|Clamped rear-spar chord location]]
+- in this graph: `Clamped rear-spar chord location`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `app/services/spar_plan_service.py:588` · `cad_designer/airplane/geometry/spar_solver.py:742`
 
 **Source.** 🟢 SOURCED

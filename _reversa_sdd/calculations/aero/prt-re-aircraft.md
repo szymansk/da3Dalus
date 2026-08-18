@@ -6,11 +6,21 @@ unit: dimensionless
 cluster: aero-polars
 user_visible: true
 source_status: SOURCED
+node_class: derived
+tags:
+  - cluster/aero-polars
+  - class/derived
+  - source/sourced
+  - surface/user-visible
+  - flag/anomaly
+  - flag/divergence
 ---
 
 # Aircraft-level Reynolds number (V-band label)
 
 **Definition.** Reynolds label used to index the V-band polar table, at main-wing MAC and ISA SL.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -18,13 +28,17 @@ source_status: SOURCED
 return rho * v_mps * mac_m / mu
 ```
 
-**Inputs.** [[prt-rho-default|Default air density (ISA SL)]] · [[prt-mu-isa-sl|ISA sea-level dynamic viscosity]]
+**Inputs.**
+
+- [[prt-rho-default|Default air density (ISA SL)]]  — *⤵ fallback*
+- [[prt-mu-isa-sl|ISA sea-level dynamic viscosity]]
 
 **Produced by.** `app/services/polar_re_table_service.py:89` — `_reynolds_number_from_v`
 
 **Consumed by.**
 
-- in this graph: [[prt-cd0-lookup|cd0 at query velocity]] · [[prt-degenerate-flag|polar_re_table_degenerate]]
+- in this graph: `cd0 at query velocity` · `polar_re_table_degenerate`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `polar_re_table_service.lookup_cd0_at_v:129` · `polar_re_table_service._fit_band_with_ar:273` · `polar_re_table_service._fallback_row:308` · `polar_re_table_service.build_re_table:451` · `app/schemas/polar_re_table.py PolarReTableRow.re`
 
 **Source.** 🟢 SOURCED

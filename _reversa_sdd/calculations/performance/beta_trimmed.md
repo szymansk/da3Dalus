@@ -6,11 +6,20 @@ unit: rad (stored) / deg (solved)
 cluster: perf-oppoints
 user_visible: true
 source_status: SOURCED
+node_class: derived
+tags:
+  - cluster/perf-oppoints
+  - class/derived
+  - source/sourced
+  - surface/user-visible
+  - flag/divergence
 ---
 
 # Trimmed sideslip angle
 
 **Definition.** Final solved sideslip angle, stored in radians.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -18,13 +27,16 @@ source_status: SOURCED
 beta_rad=math.radians(best_beta)
 ```
 
-**Inputs.** [[beta_candidates|Sideslip candidate list]]
+**Inputs.**
+
+- [[beta_candidates|Sideslip candidate list]]
 
 **Produced by.** `app/services/operating_point_generator_service.py:991` — `_trim_or_estimate_point`
 
 **Consumed by.**
 
-- in this graph: [[aero_coefficients_at_trim|Aero coefficients at the trimmed point]] · [[warn_beta_limit_reached|BETA_LIMIT_REACHED warning]]
+- in this graph: `Aero coefficients at the trimmed point` · `BETA_LIMIT_REACHED warning`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `app/models/analysismodels.py (beta column)` · `frontend/components/workbench/OperatingPointsPanel.tsx`
 
 **Source.** 🟢 SOURCED

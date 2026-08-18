@@ -6,11 +6,18 @@ unit: kg/m³
 cluster: aero-spanwise
 user_visible: false
 source_status: SOURCED
+node_class: derived
+tags:
+  - cluster/aero-spanwise
+  - class/derived
+  - source/sourced
 ---
 
 # Air density (spanwise loads)
 
 **Definition.** Density from the AeroSandbox atmosphere at the resolved operating-point altitude.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -24,7 +31,8 @@ rho = float(atmosphere.density())
 
 **Consumed by.**
 
-- in this graph: [[q-dyn|Dynamic pressure]]
+- in this graph: `Dynamic pressure`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 
 **Source.** 🟢 SOURCED
 

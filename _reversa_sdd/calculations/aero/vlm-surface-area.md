@@ -6,11 +6,20 @@ unit: m²
 cluster: aero-strips
 user_visible: true
 source_status: PARTIAL
+node_class: derived
+tags:
+  - cluster/aero-strips
+  - class/derived
+  - source/partial
+  - surface/user-visible
+  - flag/divergence
 ---
 
 # Surface total area
 
 **Definition.** Sum of strip areas assigned to one surface.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -18,7 +27,9 @@ source_status: PARTIAL
 surface_area += area
 ```
 
-**Inputs.** [[vlm-strip-area|Strip area]]
+**Inputs.**
+
+- [[vlm-strip-area|Strip area]]
 
 **Produced by.** `app/services/vlm_strip_forces.py:268` — `compute_vlm_strip_forces`
 

@@ -6,11 +6,19 @@ unit: in
 cluster: powertrain
 user_visible: true
 source_status: SOURCED
+node_class: unclassified-parameter
+tags:
+  - cluster/powertrain
+  - class/unclassified-parameter
+  - source/sourced
+  - surface/user-visible
 ---
 
 # Propeller diameter input
 
 **Definition.** Propeller diameter in inches, taken from the propeller_polars header row.
+
+⚪ **Unclassified parameter.** Not yet decided whether this is a user input or an internal tuning value.
 
 **Inputs.** — *(leaf: a constant or an external input)*
 
@@ -18,7 +26,8 @@ source_status: SOURCED
 
 **Consumed by.**
 
-- in this graph: [[curve-diameter-m|Propeller diameter in metres]]
+- in this graph: `Propeller diameter in metres`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `app/services/powertrain_performance.py:646` · `app/api/v2/endpoints/aeroplane/powertrain_performance.py:245`
 
 **Source.** 🟢 SOURCED

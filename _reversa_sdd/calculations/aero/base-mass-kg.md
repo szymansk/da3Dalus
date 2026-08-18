@@ -6,11 +6,20 @@ unit: kg
 cluster: aero-spanwise
 user_visible: true
 source_status: PARTIAL
+node_class: derived
+tags:
+  - cluster/aero-spanwise
+  - class/derived
+  - source/partial
+  - surface/user-visible
+  - flag/divergence
 ---
 
 # Effective design mass
 
 **Definition.** Design mass read from the 'mass' design assumption, used as the base speed-polar curve.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -24,7 +33,8 @@ base_mass = float(get_effective_assumption_value(db, aeroplane_uuid, "mass"))
 
 **Consumed by.**
 
-- in this graph: [[mass-set|Speed-polar mass set]]
+- in this graph: `Speed-polar mass set`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `SpeedPolar.base_mass_kg`
 
 **Source.** 🟡 PARTIAL

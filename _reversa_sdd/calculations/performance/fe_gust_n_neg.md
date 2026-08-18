@@ -6,11 +6,20 @@ unit: g
 cluster: perf-envelope
 user_visible: true
 source_status: SOURCED
+node_class: derived
+tags:
+  - cluster/perf-envelope
+  - class/derived
+  - source/sourced
+  - surface/user-visible
+  - flag/scale
 ---
 
 # Negative gust load factor
 
 **Definition.** Load factor reached by a down-gust at each sweep speed.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -18,13 +27,16 @@ source_status: SOURCED
 n_neg = 1.0 - delta_n
 ```
 
-**Inputs.** [[fe_delta_n|Gust load-factor increment]]
+**Inputs.**
+
+- [[fe_delta_n|Gust load-factor increment]]
 
 **Produced by.** `app/services/flight_envelope_service.py:241` — `_build_gust_lines`
 
 **Consumed by.**
 
-- in this graph: [[fe_gust_critical_neg|Negative gust-critical trigger]]
+- in this graph: `Negative gust-critical trigger`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `VnDiagram.tsx gust_lines_negative`
 
 **Source.** 🟢 SOURCED

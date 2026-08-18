@@ -5,11 +5,21 @@ unit: mm
 cluster: structure
 user_visible: true
 source_status: PARTIAL
+node_class: derived
+tags:
+  - cluster/structure
+  - class/derived
+  - source/partial
+  - surface/user-visible
+  - flag/anomaly
+  - flag/divergence
 ---
 
 # Reinforcement outer diameter
 
 **Definition.** Outer diameter of the short collinear root reinforcement, sized to the larger of the two halves' root strength-required ODs.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -17,13 +27,16 @@ source_status: PARTIAL
 root_od = max(left[0].required_od, right[0].required_od)
 ```
 
-**Inputs.** [[station-required-od|Station strength-required OD]]
+**Inputs.**
+
+- [[station-required-od|Station strength-required OD]]
 
 **Produced by.** `cad_designer/airplane/geometry/spar_solver.py:617` — `_reinforcement_piece`
 
 **Consumed by.**
 
-- in this graph: [[reinforcement-reach|Reinforcement half-reach]]
+- in this graph: `Reinforcement half-reach`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `cad_designer/airplane/geometry/spar_solver.py:621` · `cad_designer/airplane/geometry/spar_solver.py:626` · `cad_designer/airplane/geometry/spar_solver.py:643` · `app/services/spar_plan_service.py:646`
 
 **Source.** 🟡 PARTIAL

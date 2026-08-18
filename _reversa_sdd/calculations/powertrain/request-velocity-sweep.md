@@ -6,11 +6,21 @@ unit: m/s, count
 cluster: powertrain
 user_visible: true
 source_status: NO_SOURCE_FOUND
+node_class: unclassified-parameter
+tags:
+  - cluster/powertrain
+  - class/unclassified-parameter
+  - source/no-source-found
+  - surface/user-visible
+  - flag/anomaly
+  - flag/divergence
 ---
 
 # Velocity sweep range and resolution
 
 **Definition.** Bounds and sample count of the airspeed sweep; np.linspace generates the sample points.
+
+⚪ **Unclassified parameter.** Not yet decided whether this is a user input or an internal tuning value.
 
 **Value.** `v_min_ms=0.0, v_max_ms=30.0, n_points=20 (le=500 in the service schema, le=200 in the endpoint schema)`
 

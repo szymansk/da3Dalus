@@ -6,11 +6,20 @@ unit: mm²
 cluster: structure
 user_visible: true
 source_status: PARTIAL
+node_class: derived
+tags:
+  - cluster/structure
+  - class/derived
+  - source/partial
+  - surface/user-visible
+  - flag/anomaly
 ---
 
 # Rod cross-section area
 
 **Definition.** Circular cross-section area of the solved rod, used for spar mass integration.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -18,13 +27,16 @@ source_status: PARTIAL
 area = math.pi * d**2 / 4.0
 ```
 
-**Inputs.** [[solved-rod-diameter|Solved rod diameter]]
+**Inputs.**
+
+- [[solved-rod-diameter|Solved rod diameter]]
 
 **Produced by.** `app/services/spar_sizing.py:170` — `_solve_rod`
 
 **Consumed by.**
 
-- in this graph: [[spar-mass-half|Half-span spar mass]]
+- in this graph: `Half-span spar mass`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `app/services/spar_sizing.py:347` · `app/services/spar_sizing.py:356`
 
 **Source.** 🟡 PARTIAL

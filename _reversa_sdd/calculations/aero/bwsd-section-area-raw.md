@@ -6,11 +6,19 @@ unit: m²
 cluster: aero-strips
 user_visible: false
 source_status: PARTIAL
+node_class: derived
+tags:
+  - cluster/aero-strips
+  - class/derived
+  - source/partial
+  - flag/divergence
 ---
 
 # Raw trapezoidal section area
 
 **Definition.** Half-panel-width trapezoidal area attributed to each spanwise section.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -18,13 +26,17 @@ source_status: PARTIAL
 left = (y_arr[i] - y_arr[i - 1]) / 2.0 if i > 0 else 0.0; right = (y_arr[i + 1] - y_arr[i]) / 2.0 if i < n - 1 else 0.0; section_areas[i] = chord_arr[i] * (left + right)
 ```
 
-**Inputs.** [[saoa-y|Panel spanwise position]] · [[saoa-chord|Panel chord]]
+**Inputs.**
+
+- [[saoa-y|Panel spanwise position]]
+- [[saoa-chord|Panel chord]]
 
 **Produced by.** `app/services/turbulator_optimizer_service.py:418` — `build_wing_section_data`
 
 **Consumed by.**
 
-- in this graph: [[bwsd-section-area-normalised|Normalised section area]]
+- in this graph: `Normalised section area`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 
 **Source.** 🟡 PARTIAL
 

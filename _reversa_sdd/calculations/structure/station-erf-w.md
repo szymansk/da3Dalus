@@ -6,11 +6,20 @@ unit: mm³
 cluster: structure
 user_visible: false
 source_status: SOURCED
+node_class: derived
+tags:
+  - cluster/structure
+  - class/derived
+  - source/sourced
+  - flag/anomaly
+  - flag/divergence
 ---
 
 # Station required section modulus (plan path)
 
 **Definition.** Required section modulus at a solver station, from the station design moment and the allowable stress.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -18,13 +27,18 @@ source_status: SOURCED
 erf_w = required_section_modulus(m_design, sigma_allow_mpa)
 ```
 
-**Inputs.** [[station-design-moment|Station design moment (plan path)]] · [[resolved-sigma-allow-plan|Allowable bending stress (plan path)]] · [[required-section-modulus|Required section modulus]]
+**Inputs.**
+
+- [[station-design-moment|Station design moment (plan path)]]  — *⊣ limit*
+- [[resolved-sigma-allow-plan|Allowable bending stress (plan path)]]
+- [[required-section-modulus|Required section modulus]]
 
 **Produced by.** `cad_designer/airplane/geometry/spar_solver.py:765` — `build_stations_from_geometry`
 
 **Consumed by.**
 
-- in this graph: [[station-required-od|Station strength-required OD]]
+- in this graph: `Station strength-required OD`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `cad_designer/airplane/geometry/spar_solver.py:767`
 
 **Source.** 🟢 SOURCED

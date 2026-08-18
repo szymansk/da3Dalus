@@ -6,11 +6,19 @@ unit: m
 cluster: stability
 user_visible: false
 source_status: PARTIAL
+node_class: derived
+tags:
+  - cluster/stability
+  - class/derived
+  - source/partial
+  - flag/divergence
 ---
 
 # Neutral point after wing shift
 
 **Definition.** Predicted neutral point position after the main wing is moved by delta_x.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -18,13 +26,17 @@ source_status: PARTIAL
 x_np_new = x_np_m + delta_x * (1.0 - a_vh)
 ```
 
-**Inputs.** [[delta-x-wing-shift|Required wing longitudinal shift]] · [[alpha-vh|Tail efficiency factor]]
+**Inputs.**
+
+- [[delta-x-wing-shift|Required wing longitudinal shift]]
+- [[alpha-vh|Tail efficiency factor]]
 
 **Produced by.** `app/services/sm_sizing_service.py:425` — `suggest_corrections`
 
 **Consumed by.**
 
-- in this graph: [[sm-at-fwd-after-shift|Forward-CG SM after wing shift]]
+- in this graph: `Forward-CG SM after wing shift`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `app/services/sm_sizing_service.py:426`
 
 **Source.** 🟡 PARTIAL

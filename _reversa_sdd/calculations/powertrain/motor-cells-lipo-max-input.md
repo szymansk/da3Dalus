@@ -6,11 +6,20 @@ unit: cells (S)
 cluster: powertrain
 user_visible: true
 source_status: SOURCED
+node_class: unclassified-parameter
+tags:
+  - cluster/powertrain
+  - class/unclassified-parameter
+  - source/sourced
+  - surface/user-visible
+  - flag/divergence
 ---
 
 # Maximum LiPo cell count
 
 **Definition.** Highest cell count the motor is rated for; used as the voltage basis of the estimated power ceilings.
+
+⚪ **Unclassified parameter.** Not yet decided whether this is a user input or an internal tuning value.
 
 **Inputs.** — *(leaf: a constant or an external input)*
 
@@ -18,7 +27,8 @@ source_status: SOURCED
 
 **Consumed by.**
 
-- in this graph: [[motor-continuous-electrical-power|Motor continuous electrical input power (estimated)]] · [[motor-max-electrical-power|Motor maximum electrical input power (estimated)]]
+- in this graph: `Motor continuous electrical input power (estimated)` · `Motor maximum electrical input power (estimated)`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `app/services/powertrain_performance.py:159` · `app/services/powertrain_performance.py:171`
 
 **Source.** 🟢 SOURCED

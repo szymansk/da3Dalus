@@ -6,11 +6,19 @@ unit: W
 cluster: powertrain
 user_visible: true
 source_status: SOURCED
+node_class: derived
+tags:
+  - cluster/powertrain
+  - class/derived
+  - source/sourced
+  - surface/user-visible
 ---
 
 # Estimated cruise power
 
 **Definition.** Electrical power this combo needs at the target cruise speed — the headline number shown per recommendation.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -18,13 +26,22 @@ source_status: SOURCED
 actual_cruise_power = _combo_required_power_w(speed_ms=request.target_cruise_speed_ms, total_mass_kg=total_mass, altitude_m=request.altitude_m, cd0=cd0, e_oswald=e_oswald, ar=ar, s_ref_m2=s_ref_m2, eta_total=eta_total)
 ```
 
-**Inputs.** [[combo-required-power|Power required for a motor+battery combo]] · [[combo-total-mass|Combo total mass]] · [[combo-eta-total|Combo total propulsive efficiency]] · [[resolved-cd0|Resolved zero-lift drag coefficient]] · [[resolved-e-oswald|Resolved Oswald efficiency]] · [[resolved-ar|Resolved aspect ratio]] · [[resolved-s-ref|Resolved wing reference area]]
+**Inputs.**
+
+- [[combo-required-power|Power required for a motor+battery combo]]
+- [[combo-total-mass|Combo total mass]]
+- [[combo-eta-total|Combo total propulsive efficiency]]  — *⤵ fallback*
+- [[resolved-cd0|Resolved zero-lift drag coefficient]]  — *⤵ fallback*
+- [[resolved-e-oswald|Resolved Oswald efficiency]]
+- [[resolved-ar|Resolved aspect ratio]]
+- [[resolved-s-ref|Resolved wing reference area]]
 
 **Produced by.** `app/services/powertrain_sizing_service.py:240` — `_evaluate_motor_battery_combo`
 
 **Consumed by.**
 
-- in this graph: [[combo-cruise-current|Cruise current draw]]
+- in this graph: `Cruise current draw`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `app/services/powertrain_sizing_service.py:251` · `app/services/powertrain_sizing_service.py:269` · `frontend/components/workbench/PowertrainSizingModal.tsx:203`
 
 **Source.** 🟢 SOURCED

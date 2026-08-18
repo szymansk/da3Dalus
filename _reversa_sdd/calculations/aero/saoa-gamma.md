@@ -6,11 +6,18 @@ unit: m²/s
 cluster: aero-strips
 user_visible: false
 source_status: SOURCED
+node_class: derived
+tags:
+  - cluster/aero-strips
+  - class/derived
+  - source/sourced
 ---
 
 # Panel vortex strength
 
 **Definition.** Bound-vortex circulation of each LiftingLine panel.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -24,7 +31,8 @@ gamma_arr = np.array(ll.vortex_strengths).flatten()
 
 **Consumed by.**
 
-- in this graph: [[saoa-cl|Section lift coefficient (Kutta-Joukowski)]]
+- in this graph: `Section lift coefficient (Kutta-Joukowski)`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 
 **Source.** 🟢 SOURCED
 

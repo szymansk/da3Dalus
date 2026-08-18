@@ -6,11 +6,20 @@ unit: Pa
 cluster: aero-strips
 user_visible: false
 source_status: SOURCED
+node_class: derived
+tags:
+  - cluster/aero-strips
+  - class/derived
+  - source/sourced
+  - flag/anomaly
+  - flag/divergence
 ---
 
 # Freestream dynamic pressure
 
 **Definition.** Dynamic pressure used to non-dimensionalise per-strip lift and drag.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -24,7 +33,8 @@ q = float(op_point.dynamic_pressure())
 
 **Consumed by.**
 
-- in this graph: [[vlm-strip-cd|Local strip drag coefficient]] · [[vlm-strip-cl|Local strip lift coefficient]]
+- in this graph: `Local strip drag coefficient` · `Local strip lift coefficient`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 
 **Source.** 🟢 SOURCED
 

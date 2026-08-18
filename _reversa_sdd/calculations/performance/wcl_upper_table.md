@@ -6,11 +6,21 @@ unit: lb/ft^4.5
 cluster: perf-matching
 user_visible: true
 source_status: PARTIAL
+node_class: unclassified-constant
+tags:
+  - cluster/perf-matching
+  - class/unclassified-constant
+  - source/partial
+  - surface/user-visible
+  - flag/anomaly
+  - flag/divergence
 ---
 
 # Lennon WCL upper bounds
 
 **Definition.** Per-profile wing-cube-loading ceilings in Lennon's imperial units.
+
+⚪ **Unclassified constant.** Not yet decided whether this is a rule of thumb, a calibration or a physical value. Classifying it is open work — it is deliberately not guessed.
 
 **Value.** `trainer:6.0; sport:12.0`
 
@@ -26,7 +36,8 @@ _WCL_UPPER_BY_PROFILE_LB_FT45: dict[str, float] = {"trainer": 6.0, "sport": 12.0
 
 **Consumed by.**
 
-- in this graph: [[wcl_ws_max|WCL-derived W/S ceiling]]
+- in this graph: `WCL-derived W/S ceiling`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `_wcl_constraint:517`
 
 **Source.** 🟡 PARTIAL

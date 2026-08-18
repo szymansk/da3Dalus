@@ -6,11 +6,21 @@ unit: m
 cluster: perf-envelope
 user_visible: true
 source_status: SOURCED
+node_class: derived
+tags:
+  - cluster/perf-envelope
+  - class/derived
+  - source/sourced
+  - surface/user-visible
+  - flag/anomaly
+  - flag/scale
 ---
 
 # Effective field length
 
 **Definition.** Longer of the take-off and landing distances over the 50 ft obstacle.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -24,7 +34,8 @@ eff = max(result.get("s_to_50ft_m", 0), result.get("s_ldg_50ft_m", 0))
 
 **Consumed by.**
 
-- in this graph: [[mkpi_field_friendliness|KPI: field friendliness]] · [[mkpi_field_score|Field-friendliness score]]
+- in this graph: `KPI: field friendliness` · `Field-friendliness score`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 
 **Source.** 🟢 SOURCED
 

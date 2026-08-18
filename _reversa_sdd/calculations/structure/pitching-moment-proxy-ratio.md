@@ -6,11 +6,20 @@ unit: dimensionless
 cluster: structure
 user_visible: true
 source_status: NO_SOURCE_FOUND
+node_class: unclassified-parameter
+tags:
+  - cluster/structure
+  - class/unclassified-parameter
+  - source/no-source-found
+  - surface/user-visible
+  - flag/anomaly
 ---
 
 # Pitching-moment proxy ratio
 
 **Definition.** Ratio of section torsion to bending moment assumed when no explicit torsion distribution is given.
+
+⚪ **Unclassified parameter.** Not yet decided whether this is a user input or an internal tuning value.
 
 **Value.** `0.10`
 
@@ -30,7 +39,8 @@ pitching_moment_proxy_ratio: float = Field(
 
 **Consumed by.**
 
-- in this graph: [[torsion-proxy|Torsion proxy from bending moment]]
+- in this graph: `Torsion proxy from bending moment`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `app/services/spar_plan_service.py:447` · `app/services/spar_plan_service.py:450`
 
 **Source.** 🔴 NO SOURCE FOUND

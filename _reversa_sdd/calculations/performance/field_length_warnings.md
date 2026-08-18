@@ -6,11 +6,21 @@ unit: list[str]
 cluster: perf-matching
 user_visible: true
 source_status: NO_SOURCE_FOUND
+node_class: derived
+tags:
+  - cluster/perf-matching
+  - class/derived
+  - source/no-source-found
+  - surface/user-visible
+  - flag/anomaly
+  - flag/divergence
 ---
 
 # Field-length warnings
 
 **Definition.** User-facing warnings from the field-length computation (currently only the hand-launch climb-out margin).
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -18,7 +28,9 @@ source_status: NO_SOURCE_FOUND
 warnings.append(f"Throw speed ... insufficient climb-out margin. Aim for v_throw ≥ 1.20·V_S.")
 ```
 
-**Inputs.** [[hand_throw_warn|Hand-launch climb-out margin threshold]]
+**Inputs.**
+
+- [[hand_throw_warn|Hand-launch climb-out margin threshold]]  — *⊣ limit*
 
 **Produced by.** `app/services/field_length_service.py:352` — `compute_field_lengths`
 

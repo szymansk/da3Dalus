@@ -6,11 +6,20 @@ unit: deg
 cluster: stability
 user_visible: false
 source_status: NO_SOURCE_FOUND
+node_class: unclassified-constant
+tags:
+  - cluster/stability
+  - class/unclassified-constant
+  - source/no-source-found
+  - flag/anomaly
+  - flag/divergence
 ---
 
 # Flap CL_max alpha sweep
 
 **Definition.** Angle-of-attack grid swept to locate CL_max in the flapped configuration.
+
+⚪ **Unclassified constant.** Not yet decided whether this is a rule of thumb, a calibration or a physical value. Classifying it is open work — it is deliberately not guessed.
 
 **Value.** `-5.0, 20.0, 1.0`
 
@@ -26,7 +35,8 @@ alphas = np.arange(-5.0, 20.0, 1.0)
 
 **Consumed by.**
 
-- in this graph: [[alpha-stall-landing|Landing stall alpha]] · [[cl-max-landing-flap|Swept flapped CL_max]]
+- in this graph: `Landing stall alpha` · `Swept flapped CL_max`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `app/services/elevator_authority_service.py:880`
 
 **Source.** 🔴 NO SOURCE FOUND

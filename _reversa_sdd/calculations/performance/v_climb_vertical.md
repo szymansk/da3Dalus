@@ -6,11 +6,21 @@ unit: m/s
 cluster: perf-matching
 user_visible: true
 source_status: NO_SOURCE_FOUND
+node_class: derived
+tags:
+  - cluster/perf-matching
+  - class/derived
+  - source/no-source-found
+  - surface/user-visible
+  - flag/anomaly
+  - flag/divergence
 ---
 
 # Vertical-climb speed
 
 **Definition.** Speed used for the vertical-climb drag term, taken as the cruise speed.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -18,13 +28,16 @@ source_status: NO_SOURCE_FOUND
 v_climb_vc = max(v_cruise, 1.0)
 ```
 
-**Inputs.** [[v_cruise_resolved|Resolved cruise speed]]
+**Inputs.**
+
+- [[v_cruise_resolved|Resolved cruise speed]]
 
 **Produced by.** `app/services/matching_chart_service.py:1157` — `_build_rc_additive_constraints`
 
 **Consumed by.**
 
-- in this graph: [[tw_vertical_climb|Vertical-climb T/W]]
+- in this graph: `Vertical-climb T/W`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `tw_vertical_climb:1159` · `hover_text:1173`
 
 **Source.** 🔴 NO SOURCE FOUND

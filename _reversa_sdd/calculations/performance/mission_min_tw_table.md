@@ -6,11 +6,22 @@ unit: dimensionless
 cluster: perf-matching
 user_visible: true
 source_status: PARTIAL
+node_class: unclassified-constant
+tags:
+  - cluster/perf-matching
+  - class/unclassified-constant
+  - source/partial
+  - surface/user-visible
+  - flag/anomaly
+  - flag/divergence
+  - flag/scale
 ---
 
 # Mission-min T/W table
 
 **Definition.** Fixed T/W floors per mission profile.
+
+⚪ **Unclassified constant.** Not yet decided whether this is a rule of thumb, a calibration or a physical value. Classifying it is open work — it is deliberately not guessed.
 
 **Value.** `acro_3d:1.5; wing_racer:0.8; sport:0.5`
 
@@ -26,7 +37,8 @@ _MISSION_MIN_TW_BY_PROFILE: dict[str, float] = {"acro_3d": 1.5, "wing_racer": 0.
 
 **Consumed by.**
 
-- in this graph: [[effective_keys_custom|Effective constraint keys (custom fallback)]] · [[tw_mission_min|Mission-min T/W floor]]
+- in this graph: `Effective constraint keys (custom fallback)` · `Mission-min T/W floor`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `_mission_min_tw_constraint:494` · `_build_rc_additive_constraints:1074,1086,1088`
 
 **Source.** 🟡 PARTIAL

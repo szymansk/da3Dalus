@@ -6,11 +6,20 @@ unit: -
 cluster: perf-envelope
 user_visible: true
 source_status: PARTIAL
+node_class: derived
+tags:
+  - cluster/perf-envelope
+  - class/derived
+  - source/partial
+  - surface/user-visible
+  - flag/divergence
 ---
 
 # Pratt validity warning
 
 **Definition.** Structured warning emitted when the gust mass ratio leaves the Pratt-validated band.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -18,7 +27,11 @@ source_status: PARTIAL
 if mu_g < _MU_G_MIN: ... elif mu_g > _MU_G_MAX: ...
 ```
 
-**Inputs.** [[fe_mu_g|Gust mass ratio]] · [[mu_g_min|Pratt-Walker validity lower bound]] · [[mu_g_max|Pratt-Walker validity upper bound]]
+**Inputs.**
+
+- [[fe_mu_g|Gust mass ratio]]
+- [[mu_g_min|Pratt-Walker validity lower bound]]  — *⊣ limit*
+- [[mu_g_max|Pratt-Walker validity upper bound]]  — *⊣ limit*
 
 **Produced by.** `app/services/flight_envelope_service.py:199` — `_build_gust_lines`
 

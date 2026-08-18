@@ -5,11 +5,19 @@ unit: m (for Xnp)
 cluster: aero-spanwise
 user_visible: true
 source_status: NO_SOURCE_FOUND
+node_class: derived
+tags:
+  - cluster/aero-spanwise
+  - class/derived
+  - source/no-source-found
+  - surface/user-visible
 ---
 
 # Series span
 
 **Definition.** Max-minus-min range of a series (Xnp / Xnp_lat) used to call it robust/moderate/volatile.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -17,7 +25,10 @@ source_status: NO_SOURCE_FOUND
 span = float(np.max(values) - np.min(values))
 ```
 
-**Inputs.** [[xnp-values|Longitudinal neutral point array]] · [[xnp-lat-values|Lateral neutral point array]]
+**Inputs.**
+
+- [[xnp-values|Longitudinal neutral point array]]
+- [[xnp-lat-values|Lateral neutral point array]]
 
 **Produced by.** `app/services/analysis_service.py:845` — `_classify_variation`
 

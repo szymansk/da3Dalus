@@ -6,11 +6,20 @@ unit: m
 cluster: perf-matching
 user_visible: true
 source_status: PARTIAL
+node_class: derived
+tags:
+  - cluster/perf-matching
+  - class/derived
+  - source/partial
+  - surface/user-visible
+  - flag/divergence
 ---
 
 # Bungee partial ground roll
 
 **Definition.** Remaining ground roll from bungee release speed up to V_LOF.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -18,7 +27,11 @@ source_status: PARTIAL
 frac_remaining = 1.0 - (v_release_mps / v_lof_mps) ** 2; frac_remaining = max(0.0, frac_remaining); return s_full * frac_remaining
 ```
 
-**Inputs.** [[s_to_ground|Takeoff ground roll]] · [[v_release_bungee|Bungee release speed]] · [[v_lof|Lift-off speed]]
+**Inputs.**
+
+- [[s_to_ground|Takeoff ground roll]]
+- [[v_release_bungee|Bungee release speed]]
+- [[v_lof|Lift-off speed]]
 
 **Produced by.** `app/services/field_length_service.py:230` — `_compute_s_to_bungee_partial`
 

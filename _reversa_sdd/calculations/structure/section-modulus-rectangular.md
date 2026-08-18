@@ -6,11 +6,19 @@ unit: mm³
 cluster: structure
 user_visible: false
 source_status: PARTIAL
+node_class: derived
+tags:
+  - cluster/structure
+  - class/derived
+  - source/partial
+  - flag/anomaly
 ---
 
 # Section modulus, solid rectangle
 
 **Definition.** Elastic section modulus of a solid rectangular spar of width b and height h, bending about the horizontal axis.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 

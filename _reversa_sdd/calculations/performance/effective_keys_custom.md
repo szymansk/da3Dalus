@@ -6,11 +6,21 @@ unit: n/a
 cluster: perf-matching
 user_visible: true
 source_status: NO_SOURCE_FOUND
+node_class: derived
+tags:
+  - cluster/perf-matching
+  - class/derived
+  - source/no-source-found
+  - surface/user-visible
+  - flag/anomaly
+  - flag/divergence
 ---
 
 # Effective constraint keys (custom fallback)
 
 **Definition.** Constraint keys treated as active when no known profile is set.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -18,7 +28,10 @@ source_status: NO_SOURCE_FOUND
 effective_keys: list[str] = (list(_PROFILE_CONSTRAINT_MAP.get(profile_key, [])) if profile_key else list(_MISSION_MIN_TW_BY_PROFILE.keys()))
 ```
 
-**Inputs.** [[profile_constraint_map|Per-profile applicable constraints]] · [[mission_min_tw_table|Mission-min T/W table]]
+**Inputs.**
+
+- [[profile_constraint_map|Per-profile applicable constraints]]
+- [[mission_min_tw_table|Mission-min T/W table]]  — *⊣ limit*
 
 **Produced by.** `app/services/matching_chart_service.py:1074` — `_build_rc_additive_constraints`
 

@@ -6,11 +6,22 @@ unit: dimensionless (x/c)
 cluster: structure
 user_visible: true
 source_status: SOURCED
+node_class: unclassified-parameter
+tags:
+  - cluster/structure
+  - class/unclassified-parameter
+  - source/sourced
+  - surface/user-visible
+  - flag/anomaly
+  - flag/divergence
+  - flag/scale
 ---
 
 # Rear-spar chord fraction (requested)
 
 **Definition.** Requested chordwise location for the rear (torsion) spar.
+
+⚪ **Unclassified parameter.** Not yet decided whether this is a user input or an internal tuning value.
 
 **Value.** `0.65`
 
@@ -31,7 +42,8 @@ rear_x_over_chord: float = Field(
 
 **Consumed by.**
 
-- in this graph: [[rear-spar-x-c-clamped|Clamped rear-spar chord location]] · [[spar-spacing-fraction|Front–rear spar chordwise spacing]]
+- in this graph: `Clamped rear-spar chord location` · `Front–rear spar chordwise spacing`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `app/services/spar_plan_service.py:412` · `app/services/spar_plan_service.py:585` · `frontend/hooks/useSparPlan.ts:29`
 
 **Source.** 🟢 SOURCED

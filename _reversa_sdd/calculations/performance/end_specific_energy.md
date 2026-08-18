@@ -6,11 +6,21 @@ unit: Wh/kg
 cluster: perf-envelope
 user_visible: true
 source_status: PARTIAL
+node_class: unclassified-constant
+tags:
+  - cluster/perf-envelope
+  - class/unclassified-constant
+  - source/partial
+  - surface/user-visible
+  - flag/anomaly
+  - flag/divergence
 ---
 
 # Default pack specific energy
 
 **Definition.** Pack-level LiPo energy density used to predict battery mass from capacity.
+
+⚪ **Unclassified constant.** Not yet decided whether this is a rule of thumb, a calibration or a physical value. Classifying it is open work — it is deliberately not guessed.
 
 **Value.** `180.0`
 
@@ -26,7 +36,8 @@ DEFAULT_BATTERY_SPECIFIC_ENERGY_WH_PER_KG = 180.0
 
 **Consumed by.**
 
-- in this graph: [[end_battery_mass_predicted|Capacity-implied battery mass]]
+- in this graph: `Capacity-implied battery mass`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 
 **Source.** 🟡 PARTIAL
 

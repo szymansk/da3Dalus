@@ -6,11 +6,21 @@ unit: V
 cluster: powertrain
 user_visible: true
 source_status: PARTIAL
+node_class: unclassified-constant
+tags:
+  - cluster/powertrain
+  - class/unclassified-constant
+  - source/partial
+  - surface/user-visible
+  - flag/anomaly
+  - flag/divergence
 ---
 
 # Default pack voltage
 
 **Definition.** 3S nominal pack voltage assumed when a battery catalog entry carries no voltage and no cell count.
+
+⚪ **Unclassified constant.** Not yet decided whether this is a rule of thumb, a calibration or a physical value. Classifying it is open work — it is deliberately not guessed.
 
 **Value.** `11.1`
 
@@ -26,7 +36,8 @@ if voltage is None: voltage = 11.1
 
 **Consumed by.**
 
-- in this graph: [[combo-battery-voltage|Resolved battery voltage (sizing)]]
+- in this graph: `Resolved battery voltage (sizing)`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `app/services/powertrain_sizing_service.py:251`
 
 **Source.** 🟡 PARTIAL

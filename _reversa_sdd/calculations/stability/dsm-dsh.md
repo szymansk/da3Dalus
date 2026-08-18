@@ -6,11 +6,19 @@ unit: 1/m²
 cluster: stability
 user_visible: false
 source_status: PARTIAL
+node_class: derived
+tags:
+  - cluster/stability
+  - class/derived
+  - source/partial
+  - flag/divergence
 ---
 
 # SM sensitivity to horizontal tail area
 
 **Definition.** Analytic derivative of static margin with respect to horizontal tail area. Positive: larger tail increases SM.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -18,13 +26,20 @@ source_status: PARTIAL
 return at_over_a * _DE_DA_FACTOR * l_h_m / (s_ref_m2 * mac_m)
 ```
 
-**Inputs.** [[at-over-a-ratio|Tail-to-wing lift-curve-slope ratio]] · [[de-da-factor|Downwash factor (1 − de/dalpha)]] · [[l-h-m-fallback|Tail arm fallback]] · [[s-ref-m2-fallback|Reference area fallback]] · [[mac-m-fallback|MAC fallback]]
+**Inputs.**
+
+- [[at-over-a-ratio|Tail-to-wing lift-curve-slope ratio]]
+- [[de-da-factor|Downwash factor (1 − de/dalpha)]]
+- [[l-h-m-fallback|Tail arm fallback]]  — *⤵ fallback*
+- [[s-ref-m2-fallback|Reference area fallback]]  — *⤵ fallback*
+- [[mac-m-fallback|MAC fallback]]  — *⤵ fallback*
 
 **Produced by.** `app/services/sm_sizing_service.py:162` — `_dsm_dsh`
 
 **Consumed by.**
 
-- in this graph: [[delta-sh-m2|Required horizontal tail area change]] · [[predicted-sm-fwd-htail|Predicted forward SM after htail scale]] · [[predicted-sm-htail-scale|Predicted SM after htail chord-scale]]
+- in this graph: `Required horizontal tail area change` · `Predicted forward SM after htail scale` · `Predicted SM after htail chord-scale`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `app/services/sm_sizing_service.py:376,379,407,413,512,531,565,642,646,708,709,961,963`
 
 **Source.** 🟡 PARTIAL

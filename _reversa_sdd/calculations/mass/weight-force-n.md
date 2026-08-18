@@ -6,11 +6,20 @@ unit: N
 cluster: mass
 user_visible: false
 source_status: SOURCED
+node_class: derived
+tags:
+  - cluster/mass
+  - class/derived
+  - source/sourced
+  - flag/anomaly
+  - flag/divergence
 ---
 
 # Weight force
 
 **Definition.** Aircraft weight in newtons, used wherever a lift/level-flight balance is solved for speed.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -18,7 +27,10 @@ source_status: SOURCED
 weight_n = mass_kg * g
 ```
 
-**Inputs.** [[mass-effective|Effective aircraft mass]] · [[gravity-constant|Gravitational acceleration]]
+**Inputs.**
+
+- [[mass-effective|Effective aircraft mass]]  — *⤵ fallback*
+- [[gravity-constant|Gravitational acceleration]]
 
 **Produced by.** `app/services/assumption_compute_service.py:1774` — `_stall_speed (also _max_level_speed:1901, _min_drag_speed:1942, _min_sink_speed:1968)`
 

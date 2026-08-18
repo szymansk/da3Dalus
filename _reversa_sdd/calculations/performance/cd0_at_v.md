@@ -6,11 +6,22 @@ unit: dimensionless
 cluster: perf-matching
 user_visible: true
 source_status: PARTIAL
+node_class: derived
+tags:
+  - cluster/perf-matching
+  - class/derived
+  - source/partial
+  - surface/user-visible
+  - flag/anomaly
+  - flag/divergence
+  - flag/scale
 ---
 
 # Reynolds-dependent CD0
 
 **Definition.** CD0 looked up at a given speed from the polar Re-table, or the scalar fallback.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -18,7 +29,10 @@ source_status: PARTIAL
 if polar_re_table and mac_m and float(mac_m) > 0: from app.services.polar_re_table_service import lookup_cd0_at_v; return lookup_cd0_at_v(v_mps=v, table=polar_re_table, mac_m=float(mac_m), rho=rho); return cd0
 ```
 
-**Inputs.** [[cd0_resolved|Resolved zero-lift drag]] · [[rho_sl|Sea-level ISA density]]
+**Inputs.**
+
+- [[cd0_resolved|Resolved zero-lift drag]]  — *⤵ fallback*
+- [[rho_sl|Sea-level ISA density]]  — *⤵ fallback*
 
 **Produced by.** `app/services/matching_chart_service.py:817` — `_cd0_at_v`
 

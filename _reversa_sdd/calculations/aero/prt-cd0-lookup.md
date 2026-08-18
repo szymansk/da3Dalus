@@ -6,11 +6,20 @@ unit: dimensionless
 cluster: aero-polars
 user_visible: true
 source_status: PARTIAL
+node_class: derived
+tags:
+  - cluster/aero-polars
+  - class/derived
+  - source/partial
+  - surface/user-visible
+  - flag/divergence
 ---
 
 # cd0 at query velocity
 
 **Definition.** cd0 interpolated between table rows linearly in 1/√Re per Blasius scaling.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -19,7 +28,10 @@ t = (inv_sqrt_query - inv_sqrt_lo) / denom
 return float(cd0_lo + t * (cd0_hi - cd0_lo))
 ```
 
-**Inputs.** [[prt-cd0-fit|Band cd0 (fitted intercept)]] · [[prt-re-aircraft|Aircraft-level Reynolds number (V-band label)]]
+**Inputs.**
+
+- [[prt-cd0-fit|Band cd0 (fitted intercept)]]
+- [[prt-re-aircraft|Aircraft-level Reynolds number (V-band label)]]
 
 **Produced by.** `app/services/polar_re_table_service.py:176` — `lookup_cd0_at_v`
 

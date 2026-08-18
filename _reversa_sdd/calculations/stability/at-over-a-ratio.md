@@ -6,11 +6,20 @@ unit: – (dimensionless)
 cluster: stability
 user_visible: false
 source_status: PARTIAL
+node_class: unclassified-constant
+tags:
+  - cluster/stability
+  - class/unclassified-constant
+  - source/partial
+  - flag/anomaly
+  - flag/divergence
 ---
 
 # Tail-to-wing lift-curve-slope ratio
 
 **Definition.** Ratio of horizontal-tail lift-curve slope to wing lift-curve slope, hardcoded to unity.
+
+⚪ **Unclassified constant.** Not yet decided whether this is a rule of thumb, a calibration or a physical value. Classifying it is open work — it is deliberately not guessed.
 
 **Value.** `1.0`
 
@@ -20,7 +29,8 @@ source_status: PARTIAL
 
 **Consumed by.**
 
-- in this graph: [[alpha-vh|Tail efficiency factor]] · [[dsm-dsh|SM sensitivity to horizontal tail area]]
+- in this graph: `Tail efficiency factor` · `SM sensitivity to horizontal tail area`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `app/services/sm_sizing_service.py:122` · `app/services/sm_sizing_service.py:161,162 (_dsm_dsh, second independent literal)`
 
 **Source.** 🟡 PARTIAL

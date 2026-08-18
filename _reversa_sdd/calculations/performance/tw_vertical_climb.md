@@ -6,11 +6,21 @@ unit: dimensionless
 cluster: perf-matching
 user_visible: true
 source_status: PARTIAL
+node_class: derived
+tags:
+  - cluster/perf-matching
+  - class/derived
+  - source/partial
+  - surface/user-visible
+  - flag/anomaly
+  - flag/divergence
 ---
 
 # Vertical-climb T/W
 
 **Definition.** T/W needed to sustain a vertical climb, weight plus drag.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -18,7 +28,14 @@ source_status: PARTIAL
 q = 0.5 * rho * v_climb * v_climb; k = 1.0 / (math.pi * e * ar); drag_over_weight = q * cd0 / ws + ws * k / q; return 1.0 + drag_over_weight
 ```
 
-**Inputs.** [[ws_range_mc|W/S sweep vector]] · [[cd0_resolved|Resolved zero-lift drag]] · [[e_resolved|Resolved Oswald factor]] · [[ar_resolved|Resolved aspect ratio]] · [[v_climb_vertical|Vertical-climb speed]] · [[rho_sl|Sea-level ISA density]]
+**Inputs.**
+
+- [[ws_range_mc|W/S sweep vector]]
+- [[cd0_resolved|Resolved zero-lift drag]]  — *⤵ fallback*
+- [[e_resolved|Resolved Oswald factor]]  — *⤵ fallback*
+- [[ar_resolved|Resolved aspect ratio]]  — *⤵ fallback*
+- [[v_climb_vertical|Vertical-climb speed]]
+- [[rho_sl|Sea-level ISA density]]  — *⤵ fallback*
 
 **Produced by.** `app/services/matching_chart_service.py:585` — `_vertical_climb_constraint`
 

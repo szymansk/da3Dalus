@@ -6,11 +6,21 @@ unit: dimensionless
 cluster: powertrain
 user_visible: true
 source_status: NO_SOURCE_FOUND
+node_class: unclassified-parameter
+tags:
+  - cluster/powertrain
+  - class/unclassified-parameter
+  - source/no-source-found
+  - surface/user-visible
+  - flag/anomaly
+  - flag/divergence
 ---
 
 # ESC current margin
 
 **Definition.** Safety multiplier applied to peak current to get the minimum ESC rating.
+
+⚪ **Unclassified parameter.** Not yet decided whether this is a user input or an internal tuning value.
 
 **Value.** `1.4`
 
@@ -26,7 +36,8 @@ esc_min = i_peak * esc_margin
 
 **Consumed by.**
 
-- in this graph: [[ss-esc-min|Minimum ESC current rating]]
+- in this graph: `Minimum ESC current rating`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `app/services/powertrain_solution_space_service.py:149` · `app/services/powertrain_solution_space_service.py:389`
 
 **Source.** 🔴 NO SOURCE FOUND

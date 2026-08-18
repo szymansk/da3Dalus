@@ -6,11 +6,19 @@ unit: m
 cluster: aero-strips
 user_visible: true
 source_status: SOURCED
+node_class: derived
+tags:
+  - cluster/aero-strips
+  - class/derived
+  - source/sourced
+  - surface/user-visible
 ---
 
 # Strip leading-edge point
 
 **Definition.** Midpoint of the front-left/front-right vertices of the strip's first panel.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -24,7 +32,8 @@ le = 0.5 * (fl[lo] + fr[lo])
 
 **Consumed by.**
 
-- in this graph: [[vlm-strip-chord|Local strip chord]]
+- in this graph: `Local strip chord`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `Xle/Yle/Zle output fields` · `app/services/spanwise_loads.py:59 (Yle)` · `frontend/components/workbench/AnalysisViewerPanel.tsx`
 
 **Source.** 🟢 SOURCED

@@ -5,11 +5,18 @@ unit: mm
 cluster: structure
 user_visible: false
 source_status: NO_SOURCE_FOUND
+node_class: numerical-tolerance
+tags:
+  - cluster/structure
+  - class/numerical-tolerance
+  - source/no-source-found
 ---
 
 # Rod fit tolerance
 
 **Definition.** Absolute slack added to the profile thickness before declaring a solved rod diameter too large to fit.
+
+**Numerical tolerance.** A solver or comparison epsilon, not a domain value. ADR 0023 does not apply.
 
 **Value.** `1e-9`
 

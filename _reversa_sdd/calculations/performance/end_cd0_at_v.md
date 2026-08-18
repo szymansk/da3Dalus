@@ -6,11 +6,20 @@ unit: -
 cluster: perf-envelope
 user_visible: false
 source_status: SOURCED
+node_class: derived
+tags:
+  - cluster/perf-envelope
+  - class/derived
+  - source/sourced
+  - flag/anomaly
+  - flag/divergence
 ---
 
 # Speed-specific C_D0
 
 **Definition.** Reynolds-interpolated zero-lift drag at V_md / V_min_sink when a Re table is cached.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -18,13 +27,16 @@ source_status: SOURCED
 cd0_at_vmd = lookup_cd0_at_v(v_mps=float(v_md), table=polar_re_table, mac_m=float(mac_m), rho=RHO_SEA_LEVEL)
 ```
 
-**Inputs.** [[end_rho|Sea-level air density]]
+**Inputs.**
+
+- [[end_rho|Sea-level air density]]
 
 **Produced by.** `app/services/endurance_service.py:347` — `compute_endurance`
 
 **Consumed by.**
 
-- in this graph: [[end_cd_total|Total drag coefficient]]
+- in this graph: `Total drag coefficient`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 
 **Source.** 🟢 SOURCED
 

@@ -6,11 +6,20 @@ unit: dimensionless
 cluster: aero-strips
 user_visible: false
 source_status: SOURCED
+node_class: derived
+tags:
+  - cluster/aero-strips
+  - class/derived
+  - source/sourced
+  - flag/anomaly
+  - flag/divergence
 ---
 
 # Whole-airplane drag coefficient (VLM run)
 
 **Definition.** Total CD taken directly from the VLM run dict.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 

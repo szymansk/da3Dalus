@@ -6,11 +6,20 @@ unit: m²
 cluster: aero-spanwise
 user_visible: true
 source_status: SOURCED
+node_class: derived
+tags:
+  - cluster/aero-spanwise
+  - class/derived
+  - source/sourced
+  - surface/user-visible
+  - flag/divergence
 ---
 
 # Reference area echo
 
 **Definition.** Reference area echoed from the solver result, default 0.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Value.** `0`
 

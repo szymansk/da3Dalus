@@ -6,11 +6,21 @@ unit: dimensionless
 cluster: perf-matching
 user_visible: true
 source_status: NO_SOURCE_FOUND
+node_class: unclassified-constant
+tags:
+  - cluster/perf-matching
+  - class/unclassified-constant
+  - source/no-source-found
+  - surface/user-visible
+  - flag/anomaly
+  - flag/divergence
 ---
 
 # Flap CL_max multiplier table
 
 **Definition.** Per-flap-type multipliers applied to the base CL_max for takeoff and landing.
+
+⚪ **Unclassified constant.** Not yet decided whether this is a rule of thumb, a calibration or a physical value. Classifying it is open work — it is deliberately not guessed.
 
 **Value.** `None/none:(1.0,1.0); plain:(1.1,1.3); slotted:(1.1,1.3); fowler:(1.3,1.6); slat:(1.3,1.6); fowler+slat:(1.3,1.6)`
 
@@ -26,7 +36,8 @@ _FLAP_FACTORS: dict[str | None, tuple[float, float]] = {None: (1.0, 1.0), "none"
 
 **Consumed by.**
 
-- in this graph: [[cl_max_flap_factors_resolved|Resolved flap factors]]
+- in this graph: `Resolved flap factors`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `detect_cl_max_flap_factors:158` · `compute_field_lengths:358`
 
 **Source.** 🔴 NO SOURCE FOUND

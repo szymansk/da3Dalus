@@ -6,11 +6,19 @@ unit: m
 cluster: mass
 user_visible: false
 source_status: NO_SOURCE_FOUND
+node_class: numerical-tolerance
+tags:
+  - cluster/mass
+  - class/numerical-tolerance
+  - source/no-source-found
+  - flag/anomaly
 ---
 
 # CG-change detection epsilon
 
 **Definition.** Minimum change in the computed design CG that triggers marking operating points DIRTY and publishing AssumptionChanged(cg_x).
+
+**Numerical tolerance.** A solver or comparison epsilon, not a domain value. ADR 0023 does not apply.
 
 **Value.** `1e-6`
 
@@ -20,7 +28,9 @@ source_status: NO_SOURCE_FOUND
 if old_cg is None or abs(cg_x - old_cg) > 1e-6:
 ```
 
-**Inputs.** [[cg-x-design|Design CG_x (aerodynamic CG target)]]
+**Inputs.**
+
+- [[cg-x-design|Design CG_x (aerodynamic CG target)]]
 
 **Produced by.** `app/services/assumption_compute_service.py:802` — `recompute_assumptions`
 

@@ -6,11 +6,20 @@ unit: kg
 cluster: perf-envelope
 user_visible: true
 source_status: SOURCED
+node_class: user-input
+tags:
+  - cluster/perf-envelope
+  - class/user-input
+  - source/sourced
+  - surface/user-visible
+  - flag/divergence
 ---
 
 # Total aircraft mass (endurance)
 
 **Definition.** Effective mass design assumption; hard failure if absent.
+
+**User input.** Supplied from outside the calculation (assumption store or request), not derived.
 
 **Formula — as the code writes it.**
 
@@ -24,7 +33,8 @@ _mass_raw = da.get("mass"); if _mass_raw is None: raise ValueError(...)
 
 **Consumed by.**
 
-- in this graph: [[end_cl|Level-flight lift coefficient]]
+- in this graph: `Level-flight lift coefficient`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 
 **Source.** 🟢 SOURCED
 

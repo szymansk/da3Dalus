@@ -6,11 +6,20 @@ unit: – (dimensionless)
 cluster: stability
 user_visible: false
 source_status: PARTIAL
+node_class: derived
+tags:
+  - cluster/stability
+  - class/derived
+  - source/partial
+  - flag/anomaly
+  - flag/divergence
 ---
 
 # Net nose-up moment coefficient
 
 **Definition.** Sum of the aerodynamic-centre moment, full elevator authority and flap moment; the numerator of the trim inversion and the subject of the infeasibility guard.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -18,13 +27,19 @@ source_status: PARTIAL
 net_pitch_up = cm_ac + cm_delta_e * delta_e_max_rad + delta_cm_flap
 ```
 
-**Inputs.** [[cm-ac|Aerodynamic-centre pitching moment]] · [[cm-delta-e|Elevator authority (sign-enforced)]] · [[delta-e-max-rad|Maximum elevator deflection (radians)]] · [[delta-cm-flap|Flap-induced pitching moment]]
+**Inputs.**
+
+- [[cm-ac|Aerodynamic-centre pitching moment]]
+- [[cm-delta-e|Elevator authority (sign-enforced)]]
+- [[delta-e-max-rad|Maximum elevator deflection (radians)]]
+- [[delta-cm-flap|Flap-induced pitching moment]]  — *⊣ limit*
 
 **Produced by.** `app/services/elevator_authority_service.py:236` — `_trim_inversion`
 
 **Consumed by.**
 
-- in this graph: [[x-cg-fwd-trim-inversion|Forward CG limit (trim inversion)]]
+- in this graph: `Forward CG limit (trim inversion)`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `app/services/elevator_authority_service.py:237` · `app/services/elevator_authority_service.py:310,311,315,318 (_apply_infeasibility_guard, independent recomputation)`
 
 **Source.** 🟡 PARTIAL

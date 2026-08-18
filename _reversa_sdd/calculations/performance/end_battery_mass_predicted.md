@@ -6,11 +6,21 @@ unit: g
 cluster: perf-envelope
 user_visible: true
 source_status: PARTIAL
+node_class: derived
+tags:
+  - cluster/perf-envelope
+  - class/derived
+  - source/partial
+  - surface/user-visible
+  - flag/anomaly
+  - flag/divergence
 ---
 
 # Capacity-implied battery mass
 
 **Definition.** Battery mass implied by capacity and pack specific energy.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -18,13 +28,17 @@ source_status: PARTIAL
 predicted_kg = capacity_wh / specific_energy_wh_per_kg; predicted_g = predicted_kg * 1000.0
 ```
 
-**Inputs.** [[end_capacity_wh|Battery capacity]] · [[end_specific_energy|Default pack specific energy]]
+**Inputs.**
+
+- [[end_capacity_wh|Battery capacity]]
+- [[end_specific_energy|Default pack specific energy]]  — *⤵ fallback*
 
 **Produced by.** `app/services/endurance_service.py:185` — `_check_battery_mass_consistency`
 
 **Consumed by.**
 
-- in this graph: [[end_battery_deviation|Battery-mass deviation]]
+- in this graph: `Battery-mass deviation`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `metricsAdapters.toPowertrainItems detail.batteryMassPredicted` · `GET /aeroplanes/{id}/endurance`
 
 **Source.** 🟡 PARTIAL

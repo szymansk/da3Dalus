@@ -6,11 +6,20 @@ unit: m/s
 cluster: perf-oppoints
 user_visible: true
 source_status: SOURCED
+node_class: derived
+tags:
+  - cluster/perf-oppoints
+  - class/derived
+  - source/sourced
+  - surface/user-visible
+  - flag/divergence
 ---
 
 # Stall speed in the turn
 
 **Definition.** Clean stall speed scaled by the square root of the turn load factor.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -18,13 +27,17 @@ source_status: SOURCED
 v_stall_turn = vs_clean * (n**0.5)
 ```
 
-**Inputs.** [[vs_clean|Clean stall speed reference]] · [[turn_load_factor_n|Turn load factor]]
+**Inputs.**
+
+- [[vs_clean|Clean stall speed reference]]
+- [[turn_load_factor_n|Turn load factor]]
 
 **Produced by.** `app/services/operating_point_generator_service.py:170` — `_apply_turn_feasibility`
 
 **Consumed by.**
 
-- in this graph: [[warn_stall_in_turn|STALL_IN_TURN warning + LIMIT_REACHED]]
+- in this graph: `STALL_IN_TURN warning + LIMIT_REACHED`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `app/services/operating_point_generator_service.py:171-178 (STALL_IN_TURN)`
 
 **Source.** 🟢 SOURCED

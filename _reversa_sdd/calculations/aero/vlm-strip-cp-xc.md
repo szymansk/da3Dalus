@@ -6,11 +6,21 @@ unit: x/c
 cluster: aero-strips
 user_visible: true
 source_status: PARTIAL
+node_class: unclassified-constant
+tags:
+  - cluster/aero-strips
+  - class/unclassified-constant
+  - source/partial
+  - surface/user-visible
+  - flag/anomaly
+  - flag/divergence
 ---
 
 # Strip centre of pressure x/c
 
 **Definition.** Centre of pressure pinned to the quarter chord on the VLM path.
+
+⚪ **Unclassified constant.** Not yet decided whether this is a rule of thumb, a calibration or a physical value. Classifying it is open work — it is deliberately not guessed.
 
 **Value.** `0.25`
 

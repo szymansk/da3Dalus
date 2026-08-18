@@ -5,11 +5,20 @@ unit: mm
 cluster: structure
 user_visible: false
 source_status: PARTIAL
+node_class: unclassified-constant
+tags:
+  - cluster/structure
+  - class/unclassified-constant
+  - source/partial
+  - flag/anomaly
+  - flag/divergence
 ---
 
 # Telescoping radial clearance
 
 **Definition.** Radial clearance at a telescoping joint: the tip-side piece OD must be this much smaller than the root-side piece bore to slide in (glue gap / slip fit).
+
+⚪ **Unclassified constant.** Not yet decided whether this is a rule of thumb, a calibration or a physical value. Classifying it is open work — it is deliberately not guessed.
 
 **Value.** `0.5`
 
@@ -25,7 +34,8 @@ telescope_clearance_mm: float = 0.5
 
 **Consumed by.**
 
-- in this graph: [[min-od-for-bore|Minimum OD to carry a bore]] · [[telescope-bore|Telescoping bore demand]]
+- in this graph: `Minimum OD to carry a bore` · `Telescoping bore demand`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `cad_designer/airplane/geometry/spar_solver.py:423` · `cad_designer/airplane/geometry/spar_solver.py:426`
 
 **Source.** 🟡 PARTIAL

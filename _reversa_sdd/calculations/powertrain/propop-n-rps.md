@@ -6,11 +6,18 @@ unit: 1/s
 cluster: powertrain
 user_visible: false
 source_status: SOURCED
+node_class: derived
+tags:
+  - cluster/powertrain
+  - class/derived
+  - source/sourced
 ---
 
 # Propeller rotational speed (operating point)
 
 **Definition.** Shaft revolutions per second derived from RPM.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -24,7 +31,8 @@ n_rps = rpm / 60.0
 
 **Consumed by.**
 
-- in this graph: [[propop-advance-ratio|Advance ratio (operating point)]] · [[propop-p-shaft|Propeller shaft power (operating-point helper)]] · [[propop-thrust|Propeller thrust (operating-point helper)]]
+- in this graph: `Advance ratio (operating point)` · `Propeller shaft power (operating-point helper)` · `Propeller thrust (operating-point helper)`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `app/services/powertrain_performance.py:390` · `app/services/powertrain_performance.py:406` · `app/services/powertrain_performance.py:411`
 
 **Source.** 🟢 SOURCED

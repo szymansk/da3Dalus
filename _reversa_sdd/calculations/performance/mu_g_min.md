@@ -6,11 +6,20 @@ unit: -
 cluster: perf-envelope
 user_visible: true
 source_status: NO_SOURCE_FOUND
+node_class: regulatory-constant
+tags:
+  - cluster/perf-envelope
+  - class/regulatory-constant
+  - source/no-source-found
+  - surface/user-visible
+  - flag/divergence
 ---
 
 # Pratt-Walker validity lower bound
 
 **Definition.** Lower bound of the mass-ratio range in which the K_g formula is validated.
+
+**Regulatory constant.** Taken from a standard. It carries the clause *and* the class of aircraft that clause applies to.
 
 **Value.** `3.0`
 
@@ -26,7 +35,8 @@ _MU_G_MIN: float = 3.0
 
 **Consumed by.**
 
-- in this graph: [[fe_gust_validity_warning|Pratt validity warning]]
+- in this graph: `Pratt validity warning`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 
 **Source.** 🔴 NO SOURCE FOUND
 

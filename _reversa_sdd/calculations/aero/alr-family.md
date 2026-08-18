@@ -6,11 +6,21 @@ unit: enum
 cluster: aero-polars
 user_visible: true
 source_status: PARTIAL
+node_class: derived
+tags:
+  - cluster/aero-polars
+  - class/derived
+  - source/partial
+  - surface/user-visible
+  - flag/divergence
+  - flag/scale
 ---
 
 # Airfoil family label
 
 **Definition.** One of reflexed / symmetric / flat_bottom / semi_symmetric / cambered assigned by the geometry heuristic.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -18,13 +28,20 @@ source_status: PARTIAL
 if reflex_signal_a or reflex_signal_b: return "reflexed" ... return "cambered"
 ```
 
-**Inputs.** [[alr-aft-camber-ratio|Aft camber ratio (reflex Signal A)]] · [[alr-aft-concavity|Aft camber concavity (reflex Signal B)]] · [[alr-max-camber-pct|Max camber (classifier-internal)]] · [[alr-mean-lower-abs-y|Mean |y| of lower surface]] · [[alr-aft-quad-coeff|Aft lower-surface quadratic coefficient]]
+**Inputs.**
+
+- [[alr-aft-camber-ratio|Aft camber ratio (reflex Signal A)]]  — *⊣ limit*
+- [[alr-aft-concavity|Aft camber concavity (reflex Signal B)]]
+- [[alr-max-camber-pct|Max camber (classifier-internal)]]  — *⊣ limit*
+- [[alr-mean-lower-abs-y|Mean |y| of lower surface]]
+- [[alr-aft-quad-coeff|Aft lower-surface quadratic coefficient]]
 
 **Produced by.** `app/services/airfoil_low_re_service.py:267` — `classify_family`
 
 **Consumed by.**
 
-- in this graph: [[alr-family-bonus|Mission family bonus]]
+- in this graph: `Mission family bonus`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `app/core/background_jobs.py:361` · `scripts/backfill_airfoil_low_re.py:128` · `suitability_service.py:476,559 (SuitabilityItem.family)` · `score_mission:918` · `frontend AirfoilSuitabilityCard.tsx / AirfoilSuitabilityFilterBar.tsx`
 
 **Source.** 🟡 PARTIAL

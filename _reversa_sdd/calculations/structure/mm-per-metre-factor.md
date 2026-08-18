@@ -5,11 +5,18 @@ unit: mm/m
 cluster: structure
 user_visible: false
 source_status: SOURCED
+node_class: unclassified-constant
+tags:
+  - cluster/structure
+  - class/unclassified-constant
+  - source/sourced
 ---
 
 # Metre-to-millimetre conversion factor
 
 **Definition.** Converts the design bending moment from N·m to N·mm so that dividing by σ in N/mm² yields mm³.
+
+⚪ **Unclassified constant.** Not yet decided whether this is a rule of thumb, a calibration or a physical value. Classifying it is open work — it is deliberately not guessed.
 
 **Value.** `1000.0`
 
@@ -19,7 +26,8 @@ source_status: SOURCED
 
 **Consumed by.**
 
-- in this graph: [[required-section-modulus|Required section modulus]]
+- in this graph: `Required section modulus`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `app/services/spar_sizing.py:88`
 
 **Source.** 🟢 SOURCED

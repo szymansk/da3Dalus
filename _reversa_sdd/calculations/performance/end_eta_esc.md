@@ -6,11 +6,19 @@ unit: -
 cluster: perf-envelope
 user_visible: true
 source_status: NO_SOURCE_FOUND
+node_class: unclassified-constant
+tags:
+  - cluster/perf-envelope
+  - class/unclassified-constant
+  - source/no-source-found
+  - surface/user-visible
 ---
 
 # Default ESC efficiency
 
 **Definition.** Assumed electronic-speed-controller efficiency when no design assumption is set.
+
+⚪ **Unclassified constant.** Not yet decided whether this is a rule of thumb, a calibration or a physical value. Classifying it is open work — it is deliberately not guessed.
 
 **Value.** `0.94`
 
@@ -26,7 +34,8 @@ DEFAULT_ETA_ESC = 0.94  # Modern ESC
 
 **Consumed by.**
 
-- in this graph: [[end_eta_total|Total propulsion efficiency]]
+- in this graph: `Total propulsion efficiency`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `powertrain_sizing_service.py`
 
 **Source.** 🔴 NO SOURCE FOUND

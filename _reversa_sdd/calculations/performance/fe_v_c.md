@@ -6,11 +6,20 @@ unit: m/s
 cluster: perf-envelope
 user_visible: false
 source_status: NO_SOURCE_FOUND
+node_class: derived
+tags:
+  - cluster/perf-envelope
+  - class/derived
+  - source/no-source-found
+  - flag/anomaly
+  - flag/divergence
 ---
 
 # Cruise speed (back-derived)
 
 **Definition.** Cruise speed inferred by dividing dive speed by 1.4.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -18,13 +27,17 @@ source_status: NO_SOURCE_FOUND
 v_c = v_dive / 1.4
 ```
 
-**Inputs.** [[fe_v_dive|Dive speed]] · [[fe_dive_factor|Dive-speed factor]]
+**Inputs.**
+
+- [[fe_v_dive|Dive speed]]  — *⊣ limit*
+- [[fe_dive_factor|Dive-speed factor]]
 
 **Produced by.** `app/services/flight_envelope_service.py:190` — `_build_gust_lines`
 
 **Consumed by.**
 
-- in this graph: [[fe_u_gust_at_v|Gust velocity schedule]]
+- in this graph: `Gust velocity schedule`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 
 **Source.** 🔴 NO SOURCE FOUND
 

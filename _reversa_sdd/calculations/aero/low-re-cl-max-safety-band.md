@@ -6,11 +6,19 @@ unit: dimensionless (ΔCL)
 cluster: aero-polars
 user_visible: false
 source_status: NO_SOURCE_FOUND
+node_class: unclassified-parameter
+tags:
+  - cluster/aero-polars
+  - class/unclassified-parameter
+  - source/no-source-found
+  - flag/divergence
 ---
 
 # CL_max safety band
 
 **Definition.** CL_max − cl_target margin at which the high-CL fallback Match reaches 1.0.
+
+⚪ **Unclassified parameter.** Not yet decided whether this is a user input or an internal tuning value.
 
 **Value.** `0.30`
 
@@ -26,7 +34,8 @@ low_re_score_cl_max_safety_band: float = 0.30
 
 **Consumed by.**
 
-- in this graph: [[alr-match|Match component of score_target_cl]]
+- in this graph: `Match component of score_target_cl`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `score_target_cl:1035,1066`
 
 **Source.** 🔴 NO SOURCE FOUND

@@ -6,11 +6,19 @@ unit: index
 cluster: aero-strips
 user_visible: false
 source_status: PARTIAL
+node_class: derived
+tags:
+  - cluster/aero-strips
+  - class/derived
+  - source/partial
+  - flag/divergence
 ---
 
 # Panel index ranges per strip
 
 **Definition.** [start, end) panel index ranges delimiting each chordwise strip via the trailing-edge flag.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -24,7 +32,8 @@ ranges.append((start, i + 1)); start = i + 1  (for each is_trailing_edge)
 
 **Consumed by.**
 
-- in this graph: [[vlm-strip-area|Strip area]] · [[vlm-strip-force-vector|Per-strip force vector]]
+- in this graph: `Strip area` · `Per-strip force vector`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `app/services/vlm_strip_forces.py:compute_vlm_strip_forces`
 
 **Source.** 🟡 PARTIAL

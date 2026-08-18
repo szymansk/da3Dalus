@@ -6,11 +6,19 @@ unit: m^2
 cluster: perf-envelope
 user_visible: false
 source_status: SOURCED
+node_class: derived
+tags:
+  - cluster/perf-envelope
+  - class/derived
+  - source/sourced
+  - flag/divergence
 ---
 
 # Reference wing area
 
 **Definition.** Reference area taken from the ASB airplane conversion.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -24,7 +32,8 @@ s_ref = asb_airplane.s_ref (raise InternalError if None or <= 0)
 
 **Consumed by.**
 
-- in this graph: [[fe_aspect_ratio|Aspect ratio (gust path)]] · [[fe_c_mgc|Mean geometric chord]] · [[fe_n_neg_maneuver|Negative maneuver load factor]] · [[fe_n_pos_maneuver|Positive maneuver load factor]] · [[fe_v_stall|Stall speed (1 g)]] · [[fe_wing_loading|Wing loading (gust path)]]
+- in this graph: `Aspect ratio (gust path)` · `Mean geometric chord` · `Negative maneuver load factor` · `Positive maneuver load factor` · `Stall speed (1 g)` · `Wing loading (gust path)`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 
 **Source.** 🟢 SOURCED
 

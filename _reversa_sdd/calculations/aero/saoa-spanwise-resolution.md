@@ -6,11 +6,20 @@ unit: panels
 cluster: aero-strips
 user_visible: false
 source_status: PARTIAL
+node_class: unclassified-constant
+tags:
+  - cluster/aero-strips
+  - class/unclassified-constant
+  - source/partial
+  - flag/anomaly
+  - flag/divergence
 ---
 
 # LiftingLine spanwise resolution
 
 **Definition.** Panels per half-span used by the section-AoA LiftingLine run.
+
+⚪ **Unclassified constant.** Not yet decided whether this is a rule of thumb, a calibration or a physical value. Classifying it is open work — it is deliberately not guessed.
 
 **Value.** `8`
 

@@ -6,11 +6,21 @@ unit: enum
 cluster: aero-polars
 user_visible: true
 source_status: NO_SOURCE_FOUND
+node_class: derived
+tags:
+  - cluster/aero-polars
+  - class/derived
+  - source/no-source-found
+  - surface/user-visible
+  - flag/anomaly
+  - flag/divergence
 ---
 
 # target_cl_provenance
 
 **Definition.** Whether the target CLs rest on calculated mass and auto cruise speed, estimates, or a mix.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 

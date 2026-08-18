@@ -6,11 +6,19 @@ unit: m
 cluster: aero-strips
 user_visible: true
 source_status: SOURCED
+node_class: derived
+tags:
+  - cluster/aero-strips
+  - class/derived
+  - source/sourced
+  - surface/user-visible
 ---
 
 # Reference chord echoed to the response
 
 **Definition.** Airplane reference chord, also the denominator of cl_norm.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -24,7 +32,8 @@ c_ref = float(asb_airplane.c_ref)
 
 **Consumed by.**
 
-- in this graph: [[vlm-strip-cl-norm|Normalised strip lift coefficient]]
+- in this graph: `Normalised strip lift coefficient`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `app/services/analysis_service.py:_build_strip_forces_response (Reynolds)` · `frontend/hooks/useStripForces.ts`
 
 **Source.** 🟢 SOURCED

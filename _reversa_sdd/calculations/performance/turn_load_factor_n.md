@@ -6,11 +6,20 @@ unit: g
 cluster: perf-oppoints
 user_visible: true
 source_status: SOURCED
+node_class: derived
+tags:
+  - cluster/perf-oppoints
+  - class/derived
+  - source/sourced
+  - surface/user-visible
+  - flag/divergence
 ---
 
 # Turn load factor
 
 **Definition.** Load factor of a steady coordinated level turn, read from turn_kinematics.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -24,7 +33,8 @@ n = turn_kinematics(bank_deg=float(bank_deg), velocity=float(velocity)).n
 
 **Consumed by.**
 
-- in this graph: [[v_stall_turn|Stall speed in the turn]]
+- in this graph: `Stall speed in the turn`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `app/services/operating_point_generator_service.py:170 (v_stall_turn)` · `app/services/operating_point_generator_service.py:173 (warning text)`
 
 **Source.** 🟢 SOURCED

@@ -6,11 +6,21 @@ unit: dimensionless
 cluster: aero-polars
 user_visible: true
 source_status: NO_SOURCE_FOUND
+node_class: unclassified-parameter
+tags:
+  - cluster/aero-polars
+  - class/unclassified-parameter
+  - source/no-source-found
+  - surface/user-visible
+  - flag/anomaly
+  - flag/divergence
 ---
 
 # Re-table degeneracy threshold
 
 **Definition.** If Re_max/Re_min falls below this, the table collapses to a single fallback row.
+
+⚪ **Unclassified parameter.** Not yet decided whether this is a user input or an internal tuning value.
 
 **Value.** `2.5`
 
@@ -26,7 +36,8 @@ _RE_DEGENERACY_RATIO: float = 2.5
 
 **Consumed by.**
 
-- in this graph: [[prt-degenerate-flag|polar_re_table_degenerate]]
+- in this graph: `polar_re_table_degenerate`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `build_re_table:454` · `build_re_table:460 (log)`
 
 **Source.** 🔴 NO SOURCE FOUND

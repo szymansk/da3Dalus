@@ -6,11 +6,19 @@ unit: ohm
 cluster: powertrain
 user_visible: true
 source_status: SOURCED
+node_class: unclassified-parameter
+tags:
+  - cluster/powertrain
+  - class/unclassified-parameter
+  - source/sourced
+  - surface/user-visible
 ---
 
 # Winding resistance
 
 **Definition.** Terminal-to-terminal motor winding resistance. Its presence alone switches the whole performance model.
+
+⚪ **Unclassified parameter.** Not yet decided whether this is a user input or an internal tuning value.
 
 **Inputs.** — *(leaf: a constant or an external input)*
 
@@ -18,7 +26,8 @@ source_status: SOURCED
 
 **Consumed by.**
 
-- in this graph: [[motor-uses-qprop-model|QPROP model availability flag]] · [[qprop-back-emf-floor|Back-EMF floor at the current ceiling]] · [[qprop-current-for-rpm|Terminal current at a candidate RPM]] · [[qprop-eta-motor|QPROP motor efficiency]]
+- in this graph: `QPROP model availability flag` · `Back-EMF floor at the current ceiling` · `Terminal current at a candidate RPM` · `QPROP motor efficiency`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `app/services/powertrain_performance.py:122` · `app/services/powertrain_performance.py:518` · `app/api/v2/endpoints/aeroplane/powertrain_performance.py:102`
 
 **Source.** 🟢 SOURCED

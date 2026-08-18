@@ -5,11 +5,20 @@ unit: -
 cluster: aero-spanwise
 user_visible: true
 source_status: NO_SOURCE_FOUND
+node_class: derived
+tags:
+  - cluster/aero-spanwise
+  - class/derived
+  - source/no-source-found
+  - surface/user-visible
+  - flag/divergence
 ---
 
 # Design half-span selection
 
 **Definition.** The half-span with the larger absolute root bending moment supplies the sizing stations.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -17,13 +26,17 @@ source_status: NO_SOURCE_FOUND
 if abs(surface.root_bending_moment_Nm_starboard) >= abs(surface.root_bending_moment_Nm_port): entries = surface.starboard else: entries = surface.port
 ```
 
-**Inputs.** [[root-bm-starboard|Starboard root bending moment]] · [[root-bm-port|Port root bending moment]]
+**Inputs.**
+
+- [[root-bm-starboard|Starboard root bending moment]]
+- [[root-bm-port|Port root bending moment]]
 
 **Produced by.** `app/services/analysis_service.py:2206` — `_surface_to_stations`
 
 **Consumed by.**
 
-- in this graph: [[spar-sizing-block|Per-surface spar sizing block]]
+- in this graph: `Per-surface spar sizing block`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `compute_spar_sizing`
 
 **Source.** 🔴 NO SOURCE FOUND

@@ -6,11 +6,21 @@ unit: V
 cluster: powertrain
 user_visible: true
 source_status: SOURCED
+node_class: derived
+tags:
+  - cluster/powertrain
+  - class/derived
+  - source/sourced
+  - surface/user-visible
+  - flag/anomaly
+  - flag/divergence
 ---
 
 # Resolved battery voltage (sizing)
 
 **Definition.** Pack nominal voltage resolved from the catalog by a four-step fallback chain: voltage_v, then voltage, then nominal_voltage, then cells x 3.7, then a 3S default of 11.1 V.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -22,13 +32,17 @@ if voltage is None and cells: voltage = cells * 3.7
 if voltage is None: voltage = 11.1
 ```
 
-**Inputs.** [[volts-per-cell-sizing|Volts per cell (sizing)]] · [[default-pack-voltage-11v1|Default pack voltage]]
+**Inputs.**
+
+- [[volts-per-cell-sizing|Volts per cell (sizing)]]
+- [[default-pack-voltage-11v1|Default pack voltage]]  — *⤵ fallback*
 
 **Produced by.** `app/services/powertrain_sizing_service.py:228` — `_evaluate_motor_battery_combo`
 
 **Consumed by.**
 
-- in this graph: [[combo-cruise-current|Cruise current draw]]
+- in this graph: `Cruise current draw`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `app/services/powertrain_sizing_service.py:251`
 
 **Source.** 🟢 SOURCED

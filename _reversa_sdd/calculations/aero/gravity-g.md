@@ -6,11 +6,22 @@ unit: m/s²
 cluster: aero-spanwise
 user_visible: false
 source_status: PARTIAL
+node_class: physical-constant
+tags:
+  - cluster/aero-spanwise
+  - class/physical-constant
+  - source/partial
+  - flag/anomaly
+  - flag/divergence
+  - flag/physical
 ---
 
 # Gravitational acceleration
 
 **Definition.** Gravity used to turn mass into weight for the speed polar.
+
+**Physical constant.** A value of nature. It must be identical everywhere it appears — a second definition is a defect by construction, not a judgement call.
+*Identified as: gravity.*
 
 **Value.** `9.81`
 
@@ -26,7 +37,8 @@ g: float = 9.81
 
 **Consumed by.**
 
-- in this graph: [[weight-n|Weight]]
+- in this graph: `Weight`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 
 **Source.** 🟡 PARTIAL
 

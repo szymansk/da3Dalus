@@ -6,11 +6,18 @@ unit: A
 cluster: powertrain
 user_visible: false
 source_status: SOURCED
+node_class: derived
+tags:
+  - cluster/powertrain
+  - class/derived
+  - source/sourced
 ---
 
 # Terminal current at a candidate RPM
 
 **Definition.** Motor terminal current implied by the back-EMF relation at a candidate RPM: the voltage left over after back-EMF, divided by winding resistance.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -18,13 +25,18 @@ source_status: SOURCED
 return (V_terminal - back_emf) / rm
 ```
 
-**Inputs.** [[qprop-back-emf|Motor back-EMF]] · [[curve-v-terminal|Motor terminal voltage]] · [[motor-rm-ohm-input|Winding resistance]]
+**Inputs.**
+
+- [[qprop-back-emf|Motor back-EMF]]
+- [[curve-v-terminal|Motor terminal voltage]]
+- [[motor-rm-ohm-input|Winding resistance]]
 
 **Produced by.** `app/services/powertrain_performance.py:530` — `solve_qprop_operating_point.current_for_rpm`
 
 **Consumed by.**
 
-- in this graph: [[qprop-current|Solved terminal current]] · [[qprop-motor-torque|Motor-produced torque]]
+- in this graph: `Solved terminal current` · `Motor-produced torque`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `app/services/powertrain_performance.py:534` · `app/services/powertrain_performance.py:578`
 
 **Source.** 🟢 SOURCED

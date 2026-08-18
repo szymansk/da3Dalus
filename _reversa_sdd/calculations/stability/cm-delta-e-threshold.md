@@ -6,11 +6,22 @@ unit: 1/rad
 cluster: stability
 user_visible: true
 source_status: PARTIAL
+node_class: unclassified-constant
+tags:
+  - cluster/stability
+  - class/unclassified-constant
+  - source/partial
+  - surface/user-visible
+  - flag/anomaly
+  - flag/divergence
+  - flag/scale
 ---
 
 # Elevator authority conditioning threshold
 
 **Definition.** Magnitude of Cm_δe below which elevator authority is deemed critically low and the forward CG envelope is collapsed onto x_NP.
+
+⚪ **Unclassified constant.** Not yet decided whether this is a rule of thumb, a calibration or a physical value. Classifying it is open work — it is deliberately not guessed.
 
 **Value.** `0.005`
 

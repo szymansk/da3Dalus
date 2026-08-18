@@ -6,11 +6,21 @@ unit: – (dimensionless)
 cluster: stability
 user_visible: false
 source_status: PARTIAL
+node_class: unclassified-constant
+tags:
+  - cluster/stability
+  - class/unclassified-constant
+  - source/partial
+  - flag/anomaly
+  - flag/divergence
+  - flag/scale
 ---
 
 # Clean CL_max fallback
 
 **Definition.** Clean-configuration maximum lift coefficient assumed when the cl_max assumption is absent.
+
+⚪ **Unclassified constant.** Not yet decided whether this is a rule of thumb, a calibration or a physical value. Classifying it is open work — it is deliberately not guessed.
 
 **Value.** `1.4`
 
@@ -26,7 +36,8 @@ cl_max_clean = cl_max_raw if cl_max_raw is not None else 1.4
 
 **Consumed by.**
 
-- in this graph: [[cl-max-landing|Landing CL_max]]
+- in this graph: `Landing CL_max`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `app/services/elevator_authority_service.py:507,586,993` · `app/schemas/design_assumption.py:77 (same value as PARAMETER_DEFAULTS['cl_max'])`
 
 **Source.** 🟡 PARTIAL

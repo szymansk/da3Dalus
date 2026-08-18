@@ -6,11 +6,21 @@ unit: W
 cluster: powertrain
 user_visible: true
 source_status: PARTIAL
+node_class: derived
+tags:
+  - cluster/powertrain
+  - class/derived
+  - source/partial
+  - surface/user-visible
+  - flag/anomaly
+  - flag/divergence
 ---
 
 # Electrical power ceiling
 
 **Definition.** The binding electrical power limit: the smaller of the motor's estimated burst-power ceiling and the battery's C-rate discharge ceiling. If both are unknown it is re-derived from the pack voltage times a current fallback.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -18,13 +28,20 @@ source_status: PARTIAL
 p_available_elec = min(p_motor_max_elec, p_battery_max) ; if math.isinf(p_available_elec): p_available_elec = V_bat * (battery.max_current_a if not math.isinf(battery.max_current_a) else 100.0)
 ```
 
-**Inputs.** [[motor-max-electrical-power|Motor maximum electrical input power (estimated)]] · [[battery-max-continuous-discharge|Battery maximum continuous discharge power]] · [[curve-v-bat|Battery voltage used for the curve]] · [[battery-max-current|Battery maximum continuous discharge current]] · [[battery-current-fallback-100a|Unknown-battery current fallback]]
+**Inputs.**
+
+- [[motor-max-electrical-power|Motor maximum electrical input power (estimated)]]  — *⊣ limit*
+- [[battery-max-continuous-discharge|Battery maximum continuous discharge power]]
+- [[curve-v-bat|Battery voltage used for the curve]]  — *⊣ limit*
+- [[battery-max-current|Battery maximum continuous discharge current]]
+- [[battery-current-fallback-100a|Unknown-battery current fallback]]  — *⤵ fallback*
 
 **Produced by.** `app/services/powertrain_performance.py:653` — `compute_performance_curve`
 
 **Consumed by.**
 
-- in this graph: [[curve-p-available-w|Reported power ceiling]] · [[curve-p-shaft-max|Shaft power ceiling]]
+- in this graph: `Reported power ceiling` · `Shaft power ceiling`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `app/services/powertrain_performance.py:663` · `app/services/powertrain_performance.py:800`
 
 **Source.** 🟡 PARTIAL

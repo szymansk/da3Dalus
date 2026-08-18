@@ -6,11 +6,21 @@ unit: mAh
 cluster: powertrain
 user_visible: true
 source_status: NO_SOURCE_FOUND
+node_class: derived
+tags:
+  - cluster/powertrain
+  - class/derived
+  - source/no-source-found
+  - surface/user-visible
+  - flag/anomaly
+  - flag/divergence
 ---
 
 # Hyperbola capacity samples
 
 **Definition.** Capacity abscissae of the feasible-region boundary curve, linearly spaced from the floor to 4x the floor.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -18,13 +28,18 @@ source_status: NO_SOURCE_FOUND
 caps = [cap_floor_mah + (cap_max - cap_floor_mah) * i / (n - 1) for i in range(n)]
 ```
 
-**Inputs.** [[ss-cap-mah|Minimum battery capacity]] · [[hyperbola-plot-span|Hyperbola plot span multiplier]] · [[hyperbola-samples|C-rate hyperbola sample count]]
+**Inputs.**
+
+- [[ss-cap-mah|Minimum battery capacity]]  — *⊣ limit*
+- [[hyperbola-plot-span|Hyperbola plot span multiplier]]  — *⊣ limit*
+- [[hyperbola-samples|C-rate hyperbola sample count]]
 
 **Produced by.** `app/services/powertrain_solution_space_service.py:182` — `_build_hyperbola`
 
 **Consumed by.**
 
-- in this graph: [[hyperbola-c-rate-samples|Hyperbola C-rate samples]]
+- in this graph: `Hyperbola C-rate samples`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `app/services/powertrain_solution_space_service.py:470` · `frontend/components/workbench/PowertrainTab.tsx:149`
 
 **Source.** 🔴 NO SOURCE FOUND

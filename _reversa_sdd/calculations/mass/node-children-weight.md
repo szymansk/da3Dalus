@@ -6,11 +6,20 @@ unit: g
 cluster: mass
 user_visible: true
 source_status: SOURCED
+node_class: derived
+tags:
+  - cluster/mass
+  - class/derived
+  - source/sourced
+  - surface/user-visible
+  - flag/anomaly
 ---
 
 # Node children weight (recursive)
 
 **Definition.** Recursive sum of the own weights of all descendants of a node.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -18,13 +27,16 @@ source_status: SOURCED
 total += (own or 0) + children_sum
 ```
 
-**Inputs.** [[node-own-weight|Node own weight]]
+**Inputs.**
+
+- [[node-own-weight|Node own weight]]
 
 **Produced by.** `app/services/component_tree_service.py:477` — `_calculate_children_weight`
 
 **Consumed by.**
 
-- in this graph: [[aircraft-total-weight-kg|Aircraft total weight from component tree]] · [[node-total-weight-api|Node total weight (single-node endpoint)]]
+- in this graph: `Aircraft total weight from component tree` · `Node total weight (single-node endpoint)`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `app/services/component_tree_service.py:402 (get_aircraft_total_weight_kg)` · `app/services/component_tree_service.py:420 (calculate_weight → WeightResponse.children_weight_g)` · `app/schemas/component_tree.py:109`
 
 **Source.** 🟢 SOURCED

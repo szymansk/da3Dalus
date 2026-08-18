@@ -5,11 +5,21 @@ unit: dimensionless
 cluster: perf-oppoints
 user_visible: true
 source_status: NO_SOURCE_FOUND
+node_class: unclassified-constant
+tags:
+  - cluster/perf-oppoints
+  - class/unclassified-constant
+  - source/no-source-found
+  - surface/user-visible
+  - flag/anomaly
+  - flag/divergence
 ---
 
 # Trim acceptance threshold
 
 **Definition.** Trim score below which an operating point is declared TRIMMED.
+
+⚪ **Unclassified constant.** Not yet decided whether this is a rule of thumb, a calibration or a physical value. Classifying it is open work — it is deliberately not guessed.
 
 **Value.** `0.35`
 
@@ -19,7 +29,9 @@ source_status: NO_SOURCE_FOUND
 trim_status = (OperatingPointStatus.TRIMMED if best_score < 0.35 else OperatingPointStatus.NOT_TRIMMED)
 ```
 
-**Inputs.** [[trim_score|Trim score]]
+**Inputs.**
+
+- [[trim_score|Trim score]]
 
 **Produced by.** `app/services/operating_point_generator_service.py:854` — `_apply_limit_warnings`
 

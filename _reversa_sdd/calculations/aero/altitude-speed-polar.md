@@ -5,11 +5,20 @@ unit: m
 cluster: aero-spanwise
 user_visible: true
 source_status: PARTIAL
+node_class: unclassified-parameter
+tags:
+  - cluster/aero-spanwise
+  - class/unclassified-parameter
+  - source/partial
+  - surface/user-visible
+  - flag/divergence
 ---
 
 # Speed-polar altitude
 
 **Definition.** Altitude echoed from the sweep request, defaulting to 0 m.
+
+⚪ **Unclassified parameter.** Not yet decided whether this is a user input or an internal tuning value.
 
 **Value.** `0.0`
 
@@ -25,7 +34,8 @@ altitude = float(getattr(sweep_request, "altitude", 0.0) or 0.0)
 
 **Consumed by.**
 
-- in this graph: [[rho-speed-polar|Air density (speed polar)]]
+- in this graph: `Air density (speed polar)`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `SpeedPolar.altitude`
 
 **Source.** 🟡 PARTIAL

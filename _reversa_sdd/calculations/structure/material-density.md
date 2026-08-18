@@ -6,11 +6,19 @@ unit: kg/m³
 cluster: structure
 user_visible: true
 source_status: NO_SOURCE_FOUND
+node_class: unclassified-parameter
+tags:
+  - cluster/structure
+  - class/unclassified-parameter
+  - source/no-source-found
+  - surface/user-visible
 ---
 
 # Material density
 
 **Definition.** Density of the spar material, read from the material component's specs; drives the mass integral.
+
+⚪ **Unclassified parameter.** Not yet decided whether this is a user input or an internal tuning value.
 
 **Formula — as the code writes it.**
 
@@ -24,7 +32,8 @@ density = float(material_specs["density_kg_m3"])
 
 **Consumed by.**
 
-- in this graph: [[spar-mass-half|Half-span spar mass]]
+- in this graph: `Half-span spar mass`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `app/services/spar_sizing.py:360` · `app/services/spar_sizing.py:375` · `frontend/lib/sparSizingHelpers.ts:117`
 
 **Source.** 🔴 NO SOURCE FOUND

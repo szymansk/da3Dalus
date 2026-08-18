@@ -6,11 +6,20 @@ unit: m/s
 cluster: stability
 user_visible: false
 source_status: NO_SOURCE_FOUND
+node_class: unclassified-constant
+tags:
+  - cluster/stability
+  - class/unclassified-constant
+  - source/no-source-found
+  - flag/anomaly
+  - flag/divergence
 ---
 
 # Cruise speed fallback
 
 **Definition.** Cruise speed assumed when the v_cruise assumption row is absent.
+
+⚪ **Unclassified constant.** Not yet decided whether this is a rule of thumb, a calibration or a physical value. Classifying it is open work — it is deliberately not guessed.
 
 **Value.** `15.0`
 
@@ -26,7 +35,8 @@ v_cruise = float(v_cruise_raw) if v_cruise_raw is not None else 15.0
 
 **Consumed by.**
 
-- in this graph: [[near-stall-velocity-factor|Near-stall approach speed factor]]
+- in this graph: `Near-stall approach speed factor`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `app/services/elevator_authority_service.py:621,682,997,1033`
 
 **Source.** 🔴 NO SOURCE FOUND

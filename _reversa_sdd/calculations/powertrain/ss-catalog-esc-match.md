@@ -6,11 +6,21 @@ unit: boolean
 cluster: powertrain
 user_visible: true
 source_status: SOURCED
+node_class: derived
+tags:
+  - cluster/powertrain
+  - class/derived
+  - source/sourced
+  - surface/user-visible
+  - flag/anomaly
+  - flag/divergence
 ---
 
 # Catalog ESC match flag
 
 **Definition.** True when at least one catalog ESC meets the minimum current rating.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -18,7 +28,9 @@ source_status: SOURCED
 max_a = specs.get("max_current_a") or specs.get("continuous_current_a") ; if max_a is not None and float(max_a) >= esc_min_a: return True
 ```
 
-**Inputs.** [[ss-esc-min|Minimum ESC current rating]]
+**Inputs.**
+
+- [[ss-esc-min|Minimum ESC current rating]]  — *⊣ limit*
 
 **Produced by.** `app/services/powertrain_solution_space_service.py:229` — `_catalog_esc_match`
 

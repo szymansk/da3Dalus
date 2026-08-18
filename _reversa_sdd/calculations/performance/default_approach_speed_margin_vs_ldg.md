@@ -5,11 +5,22 @@ unit: dimensionless
 cluster: perf-oppoints
 user_visible: true
 source_status: SOURCED
+node_class: unclassified-constant
+tags:
+  - cluster/perf-oppoints
+  - class/unclassified-constant
+  - source/sourced
+  - surface/user-visible
+  - flag/anomaly
+  - flag/divergence
+  - flag/scale
 ---
 
 # Default approach margin
 
 **Definition.** Multiplier over landing-config stall speed for the approach point.
+
+⚪ **Unclassified constant.** Not yet decided whether this is a rule of thumb, a calibration or a physical value. Classifying it is open work — it is deliberately not guessed.
 
 **Value.** `1.30`
 
@@ -25,7 +36,8 @@ source_status: SOURCED
 
 **Consumed by.**
 
-- in this graph: [[v_approach|approach_landing target speed]]
+- in this graph: `approach_landing target speed`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `app/services/operating_point_generator_service.py:403`
 
 **Source.** 🟢 SOURCED

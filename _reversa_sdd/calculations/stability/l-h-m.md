@@ -6,11 +6,21 @@ unit: m
 cluster: stability
 user_visible: true
 source_status: SOURCED
+node_class: derived
+tags:
+  - cluster/stability
+  - class/derived
+  - source/sourced
+  - surface/user-visible
+  - flag/anomaly
+  - flag/divergence
 ---
 
 # Horizontal tail moment arm
 
 **Definition.** Distance from the wing aerodynamic centre to the horizontal tail aerodynamic centre; CG-independent, drives the V_H recommendation.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -18,13 +28,17 @@ source_status: SOURCED
 l_h = x_htail_ac_m - x_wing_ac_m
 ```
 
-**Inputs.** [[x-htail-ac-m|Horizontal tail aerodynamic centre x]] · [[x-wing-ac-m|Wing aerodynamic centre x]]
+**Inputs.**
+
+- [[x-htail-ac-m|Horizontal tail aerodynamic centre x]]
+- [[x-wing-ac-m|Wing aerodynamic centre x]]
 
 **Produced by.** `app/services/tail_sizing_service.py:200` — `compute_tail_volumes`
 
 **Consumed by.**
 
-- in this graph: [[s-h-recommended-mm2|Recommended horizontal tail area]] · [[v-h-current|Horizontal tail volume coefficient]]
+- in this graph: `Recommended horizontal tail area` · `Horizontal tail volume coefficient`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `app/services/tail_sizing_service.py:209,227,259` · `app/api/v2/endpoints/aeroplane/tail_sizing.py:83` · `frontend/hooks/useTailSizing.ts`
 
 **Source.** 🟢 SOURCED

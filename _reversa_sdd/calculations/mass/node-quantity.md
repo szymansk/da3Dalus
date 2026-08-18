@@ -6,11 +6,21 @@ unit: count
 cluster: mass
 user_visible: true
 source_status: PARTIAL
+node_class: unclassified-parameter
+tags:
+  - cluster/mass
+  - class/unclassified-parameter
+  - source/partial
+  - surface/user-visible
+  - flag/anomaly
+  - flag/divergence
 ---
 
 # Node quantity
 
 **Definition.** How many identical instances of a COTS component the node represents.
+
+⚪ **Unclassified parameter.** Not yet decided whether this is a user input or an internal tuning value.
 
 **Value.** `1 (app/models/component_tree.py:36, app/schemas/component_tree.py:28)`
 
@@ -20,7 +30,8 @@ source_status: PARTIAL
 
 **Consumed by.**
 
-- in this graph: [[cots-node-own-weight|COTS node own weight]]
+- in this graph: `COTS node own weight`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `app/services/component_tree_service.py:438` · `app/services/component_tree_service.py:616 / :626 (servo sync sets it)`
 
 **Source.** 🟡 PARTIAL

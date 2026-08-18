@@ -5,11 +5,21 @@ unit: depends on sweep_var
 cluster: aero-spanwise
 user_visible: true
 source_status: NO_SOURCE_FOUND
+node_class: derived
+tags:
+  - cluster/aero-spanwise
+  - class/derived
+  - source/no-source-found
+  - surface/user-visible
+  - flag/anomaly
+  - flag/divergence
 ---
 
 # Simple-sweep variable range
 
 **Definition.** Linear sweep of one operating-point variable from its current value.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 

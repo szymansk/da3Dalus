@@ -6,11 +6,22 @@ unit: dimensionless
 cluster: perf-matching
 user_visible: true
 source_status: PARTIAL
+node_class: derived
+tags:
+  - cluster/perf-matching
+  - class/derived
+  - source/partial
+  - surface/user-visible
+  - flag/anomaly
+  - flag/divergence
+  - flag/scale
 ---
 
 # Re-refined climb T/W per W/S
 
 **Definition.** Climb constraint evaluated at a Reynolds-refined V_md for each W/S sample.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -18,7 +29,10 @@ source_status: PARTIAL
 v_min_drag = _v_md(ws, cd0, e, ar, rho); cd0_vmd = _cd0_at_v(v_min_drag); e_vmd = _e_at_v(v_min_drag); v_min_drag_refined = _v_md(ws, cd0_vmd, e_vmd, ar, rho); return _climb_constraint(ws, gamma, v_min_drag_refined, cd0_vmd, e_vmd, ar, rho)
 ```
 
-**Inputs.** [[v_md|Minimum-drag speed]] · [[tw_climb_constraint|Climb constraint T/W]]
+**Inputs.**
+
+- [[v_md|Minimum-drag speed]]
+- [[tw_climb_constraint|Climb constraint T/W]]
 
 **Produced by.** `app/services/matching_chart_service.py:857` — `_climb_tw_at_ws`
 

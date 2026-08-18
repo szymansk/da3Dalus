@@ -6,11 +6,19 @@ unit: n/a
 cluster: aero-strips
 user_visible: false
 source_status: PARTIAL
+node_class: unclassified-parameter
+tags:
+  - cluster/aero-strips
+  - class/unclassified-parameter
+  - source/partial
+  - flag/divergence
 ---
 
 # NeuralFoil model size (alpha_L0)
 
 **Definition.** NeuralFoil network size used for the zero-lift-angle polar.
+
+⚪ **Unclassified parameter.** Not yet decided whether this is a user input or an internal tuning value.
 
 **Value.** `"small"`
 
@@ -26,7 +34,8 @@ model_size="small",
 
 **Consumed by.**
 
-- in this graph: [[saoa-alpha-l0|Section zero-lift angle]]
+- in this graph: `Section zero-lift angle`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 
 **Source.** 🟡 PARTIAL
 

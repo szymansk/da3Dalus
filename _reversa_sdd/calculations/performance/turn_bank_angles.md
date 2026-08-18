@@ -6,11 +6,20 @@ unit: deg
 cluster: perf-oppoints
 user_visible: true
 source_status: PARTIAL
+node_class: unclassified-constant
+tags:
+  - cluster/perf-oppoints
+  - class/unclassified-constant
+  - source/partial
+  - surface/user-visible
+  - flag/divergence
 ---
 
 # Default turn bank angles
 
 **Definition.** Bank angles for which default turn operating points are generated.
+
+⚪ **Unclassified constant.** Not yet decided whether this is a rule of thumb, a calibration or a physical value. Classifying it is open work — it is deliberately not guessed.
 
 **Value.** `20, 40, 60`
 
@@ -26,7 +35,8 @@ for bank in (20, 40, 60)
 
 **Consumed by.**
 
-- in this graph: [[turn_n_target|Turn target load factor]]
+- in this graph: `Turn target load factor`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `app/services/operating_point_generator_service.py:491-497 (turn_<bank> targets)`
 
 **Source.** 🟡 PARTIAL

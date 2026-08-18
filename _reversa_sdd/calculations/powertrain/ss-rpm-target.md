@@ -6,11 +6,20 @@ unit: rpm
 cluster: powertrain
 user_visible: false
 source_status: PARTIAL
+node_class: derived
+tags:
+  - cluster/powertrain
+  - class/derived
+  - source/partial
+  - flag/anomaly
+  - flag/divergence
 ---
 
 # Target propeller RPM
 
 **Definition.** Shaft speed needed to reach top speed, assuming the propeller advances one geometric pitch per revolution (J = P/D).
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -18,13 +27,18 @@ source_status: PARTIAL
 rpm_target = (v_top_mps / (prop_d * prop_pd)) * 60.0  # rev/min
 ```
 
-**Inputs.** [[phase1-prop-diameter|Phase-1 propeller diameter estimate]] · [[ss-prop-pd|Propeller pitch-to-diameter ratio]] · [[ss-v-top|Top speed used for peak sizing]]
+**Inputs.**
+
+- [[phase1-prop-diameter|Phase-1 propeller diameter estimate]]
+- [[ss-prop-pd|Propeller pitch-to-diameter ratio]]
+- [[ss-v-top|Top speed used for peak sizing]]
 
 **Produced by.** `app/services/powertrain_solution_space_service.py:158` — `_per_cell`
 
 **Consumed by.**
 
-- in this graph: [[ss-kv-approx|Approximate required motor KV]]
+- in this graph: `Approximate required motor KV`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `app/services/powertrain_solution_space_service.py:159`
 
 **Source.** 🟡 PARTIAL

@@ -5,11 +5,20 @@ unit: mm
 cluster: structure
 user_visible: true
 source_status: SOURCED
+node_class: derived
+tags:
+  - cluster/structure
+  - class/derived
+  - source/sourced
+  - surface/user-visible
+  - flag/divergence
 ---
 
 # Local airfoil profile thickness
 
 **Definition.** Vertical depth of the airfoil at the station — chord times t/c. When the real built section is available (gh-1022), t/c is back-computed from it so this reproduces the real built thickness.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -17,13 +26,17 @@ source_status: SOURCED
 profile_thickness_mm = chord_mm * tc_ratio
 ```
 
-**Inputs.** [[chord-mm|Local chord in millimetres]] · [[tc-ratio|Thickness-to-chord ratio at station]]
+**Inputs.**
+
+- [[chord-mm|Local chord in millimetres]]
+- [[tc-ratio|Thickness-to-chord ratio at station]]
 
 **Produced by.** `app/services/spar_sizing.py:322` — `compute_spar_sizing`
 
 **Consumed by.**
 
-- in this graph: [[spar-outer-dimension|Spar outer dimension]]
+- in this graph: `Spar outer dimension`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `app/services/spar_sizing.py:323` · `app/services/spar_sizing.py:337` · `app/schemas/spar_sizing.py:59` · `frontend/hooks/useSparSizing.ts:19`
 
 **Source.** 🟢 SOURCED

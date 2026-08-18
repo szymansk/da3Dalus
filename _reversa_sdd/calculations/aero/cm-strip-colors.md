@@ -5,11 +5,22 @@ unit: -
 cluster: aero-spanwise
 user_visible: true
 source_status: PARTIAL
+node_class: derived
+tags:
+  - cluster/aero-spanwise
+  - class/derived
+  - source/partial
+  - surface/user-visible
+  - flag/anomaly
+  - flag/divergence
+  - flag/scale
 ---
 
 # Cm-gradient stability colours
 
 **Definition.** Per-point stability colour derived from the local dCm/dalpha gradient.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -17,7 +28,10 @@ source_status: PARTIAL
 if g < -0.01: "#4caf50"  # stable / elif g <= 0.01: "#ffb74d"  # marginal / else "#e57373"  # unstable
 ```
 
-**Inputs.** [[cm-gradient|Local Cm gradient]] · [[stability-slope-thresholds|Stability classification thresholds]]
+**Inputs.**
+
+- [[cm-gradient|Local Cm gradient]]
+- [[stability-slope-thresholds|Stability classification thresholds]]  — *⊣ limit*
 
 **Produced by.** `app/services/analysis_service.py:1037` — `_compute_cm_strip_colors`
 

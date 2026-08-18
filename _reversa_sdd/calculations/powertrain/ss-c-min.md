@@ -6,11 +6,21 @@ unit: 1/h (C)
 cluster: powertrain
 user_visible: true
 source_status: NO_SOURCE_FOUND
+node_class: derived
+tags:
+  - cluster/powertrain
+  - class/derived
+  - source/no-source-found
+  - surface/user-visible
+  - flag/anomaly
+  - flag/divergence
 ---
 
 # Required battery C-rate
 
 **Definition.** C-rate the designer must shop for: the physically required rate multiplied by the safety margin.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -18,13 +28,17 @@ source_status: NO_SOURCE_FOUND
 c_min = raw_c * c_margin
 ```
 
-**Inputs.** [[ss-raw-c|Raw required C-rate]] · [[ss-c-margin|Battery C-rate margin]]
+**Inputs.**
+
+- [[ss-raw-c|Raw required C-rate]]
+- [[ss-c-margin|Battery C-rate margin]]
 
 **Produced by.** `app/services/powertrain_solution_space_service.py:146` — `_per_cell`
 
 **Consumed by.**
 
-- in this graph: [[ss-catalog-battery-match|Catalog battery match flag]]
+- in this graph: `Catalog battery match flag`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `app/services/powertrain_solution_space_service.py:426` · `app/services/powertrain_solution_space_service.py:447` · `app/services/powertrain_solution_space_service.py:479` · `frontend/components/workbench/PowertrainTab.tsx:128`
 
 **Source.** 🔴 NO SOURCE FOUND

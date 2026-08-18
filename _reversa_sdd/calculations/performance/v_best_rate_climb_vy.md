@@ -6,11 +6,21 @@ unit: m/s
 cluster: perf-oppoints
 user_visible: true
 source_status: PARTIAL
+node_class: derived
+tags:
+  - cluster/perf-oppoints
+  - class/derived
+  - source/partial
+  - surface/user-visible
+  - flag/anomaly
+  - flag/divergence
 ---
 
 # Vy target speed
 
 **Definition.** Speed assigned to the best-rate-of-climb operating point.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -18,7 +28,10 @@ source_status: PARTIAL
 "velocity": max(1.50 * refs["vs_clean"], cruise * 0.95)
 ```
 
-**Inputs.** [[vs_clean|Clean stall speed reference]] · [[cruise_speed_resolved|Resolved cruise speed]]
+**Inputs.**
+
+- [[vs_clean|Clean stall speed reference]]
+- [[cruise_speed_resolved|Resolved cruise speed]]
 
 **Produced by.** `app/services/operating_point_generator_service.py:434` — `_build_target_definitions`
 

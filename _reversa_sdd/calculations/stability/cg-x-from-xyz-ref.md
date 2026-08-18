@@ -6,11 +6,20 @@ unit: m
 cluster: stability
 user_visible: true
 source_status: SOURCED
+node_class: derived
+tags:
+  - cluster/stability
+  - class/derived
+  - source/sourced
+  - surface/user-visible
+  - flag/divergence
 ---
 
 # CG x used for static margin
 
 **Definition.** Longitudinal CG used as the moment reference; taken as the first component of the operating point's xyz_ref.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -24,7 +33,8 @@ xcg = float(operating_point.xyz_ref[0]) if operating_point.xyz_ref else None
 
 **Consumed by.**
 
-- in this graph: [[static-margin-fraction|Static margin (fraction of MAC)]]
+- in this graph: `Static margin (fraction of MAC)`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `app/services/stability_service.py:328,339` · `app/services/stability_service.py:165 (cg_x_used column)` · `app/services/copilot_tools.py:446,455`
 
 **Source.** 🟢 SOURCED

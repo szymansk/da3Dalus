@@ -6,11 +6,21 @@ unit: A
 cluster: powertrain
 user_visible: true
 source_status: SOURCED
+node_class: unclassified-parameter
+tags:
+  - cluster/powertrain
+  - class/unclassified-parameter
+  - source/sourced
+  - surface/user-visible
+  - flag/anomaly
+  - flag/divergence
 ---
 
 # Motor burst current limit
 
 **Definition.** Burst current limit from the catalog; drives the estimated power ceiling and the QPROP back-EMF floor.
+
+⚪ **Unclassified parameter.** Not yet decided whether this is a user input or an internal tuning value.
 
 **Inputs.** — *(leaf: a constant or an external input)*
 
@@ -18,7 +28,8 @@ source_status: SOURCED
 
 **Consumed by.**
 
-- in this graph: [[motor-continuous-electrical-power|Motor continuous electrical input power (estimated)]] · [[motor-max-electrical-power|Motor maximum electrical input power (estimated)]] · [[qprop-back-emf-floor|Back-EMF floor at the current ceiling]]
+- in this graph: `Motor continuous electrical input power (estimated)` · `Motor maximum electrical input power (estimated)` · `Back-EMF floor at the current ceiling`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `app/services/powertrain_performance.py:159` · `app/services/powertrain_performance.py:704` · `app/services/powertrain_performance.py:548`
 
 **Source.** 🟢 SOURCED

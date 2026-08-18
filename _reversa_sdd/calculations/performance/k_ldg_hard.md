@@ -6,11 +6,22 @@ unit: dimensionless
 cluster: perf-matching
 user_visible: true
 source_status: NO_SOURCE_FOUND
+node_class: unclassified-constant
+tags:
+  - cluster/perf-matching
+  - class/unclassified-constant
+  - source/no-source-found
+  - surface/user-visible
+  - flag/anomaly
+  - flag/divergence
+  - flag/scale
 ---
 
 # Landing ground-roll coefficient
 
 **Definition.** Base landing ground-roll coefficient for a dry hard runway at μ_brake = 0.4.
+
+⚪ **Unclassified constant.** Not yet decided whether this is a rule of thumb, a calibration or a physical value. Classifying it is open work — it is deliberately not guessed.
 
 **Value.** `0.5847`
 
@@ -26,7 +37,8 @@ _K_LDG_HARD: float = 0.5847
 
 **Consumed by.**
 
-- in this graph: [[k_ldg_adjusted|Friction-adjusted landing coefficient]] · [[ws_landing_constraint|Landing constraint W/S_max]]
+- in this graph: `Friction-adjusted landing coefficient` · `Landing constraint W/S_max`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `_compute_s_ldg_ground:263` · `matching_chart_service._landing_constraint:341` · `matching_chart hover_text:910`
 
 **Source.** 🔴 NO SOURCE FOUND

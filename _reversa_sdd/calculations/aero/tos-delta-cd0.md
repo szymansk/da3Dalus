@@ -6,11 +6,21 @@ unit: dimensionless
 cluster: aero-strips
 user_visible: true
 source_status: PARTIAL
+node_class: derived
+tags:
+  - cluster/aero-strips
+  - class/derived
+  - source/partial
+  - surface/user-visible
+  - flag/anomaly
+  - flag/divergence
 ---
 
 # Area-weighted 3D drag increment
 
 **Definition.** Wing-level ΔCD0 from per-section drag deltas weighted by section area over S_ref.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -18,13 +28,18 @@ source_status: PARTIAL
 half_span_sum += sec.delta_cd * sec.section_area_m2 / s_ref; return symmetry_factor * half_span_sum
 ```
 
-**Inputs.** [[tos-delta-cd|Section drag delta]] · [[bwsd-section-area-normalised|Normalised section area]] · [[tos-symmetry-factor|Symmetric-wing doubling factor]]
+**Inputs.**
+
+- [[tos-delta-cd|Section drag delta]]
+- [[bwsd-section-area-normalised|Normalised section area]]
+- [[tos-symmetry-factor|Symmetric-wing doubling factor]]
 
 **Produced by.** `app/services/turbulator_optimizer_service.py:328` — `compute_turbulator_delta_cd0`
 
 **Consumed by.**
 
-- in this graph: [[tos-cd-tripped-total|Tripped total drag coefficient]]
+- in this graph: `Tripped total drag coefficient`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `app/schemas/turbulator_optimizer.py:TurbulatorOptimizerSummarySchema.delta_cd0` · `app/services/assumption_compute_service.py:apply_turbulator_delta_to_cd0 (via compute_delta_cd0_from_turbulator_position)` · `frontend/components/workbench/TurbulatorEditDialog.tsx`
 
 **Source.** 🟡 PARTIAL

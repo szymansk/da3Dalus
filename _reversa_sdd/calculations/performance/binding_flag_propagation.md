@@ -6,11 +6,21 @@ unit: bool
 cluster: perf-matching
 user_visible: true
 source_status: NO_SOURCE_FOUND
+node_class: derived
+tags:
+  - cluster/perf-matching
+  - class/derived
+  - source/no-source-found
+  - surface/user-visible
+  - flag/anomaly
+  - flag/divergence
 ---
 
 # Binding-flag back-propagation
 
 **Definition.** Per-constraint flag saying the design point sits on that constraint.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -18,7 +28,9 @@ source_status: NO_SOURCE_FOUND
 match = next((cc for cc in _checked_subset if cc["name"] == c["name"] and cc.get("category") == c.get("category")), None); c2 = {**c, "binding": match["binding"] if match else c.get("binding", False)}
 ```
 
-**Inputs.** [[feasibility_verdict|Feasibility verdict]]
+**Inputs.**
+
+- [[feasibility_verdict|Feasibility verdict]]
 
 **Produced by.** `app/services/matching_chart_service.py:1015` — `compute_chart`
 

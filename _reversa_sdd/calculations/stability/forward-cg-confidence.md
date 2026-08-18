@@ -6,11 +6,21 @@ unit: – (enum)
 cluster: stability
 user_visible: true
 source_status: NO_SOURCE_FOUND
+node_class: derived
+tags:
+  - cluster/stability
+  - class/derived
+  - source/no-source-found
+  - surface/user-visible
+  - flag/anomaly
+  - flag/divergence
 ---
 
 # Forward CG confidence tier
 
 **Definition.** Six-tier label describing how the forward CG limit was obtained (solver path × configuration × flap availability).
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -24,7 +34,9 @@ else:
     return (ForwardCGConfidence.asb_high_with_flap if has_flap_run else ForwardCGConfidence.asb_high_clean)
 ```
 
-**Inputs.** [[pitch-roles|Pitch-control roles]]
+**Inputs.**
+
+- [[pitch-roles|Pitch-control roles]]
 
 **Produced by.** `app/services/elevator_authority_service.py:165` — `_determine_confidence_tier`
 

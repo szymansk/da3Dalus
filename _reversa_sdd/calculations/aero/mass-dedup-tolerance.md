@@ -5,11 +5,18 @@ unit: kg
 cluster: aero-spanwise
 user_visible: false
 source_status: NO_SOURCE_FOUND
+node_class: numerical-tolerance
+tags:
+  - cluster/aero-spanwise
+  - class/numerical-tolerance
+  - source/no-source-found
 ---
 
 # Mass de-duplication tolerance
 
 **Definition.** Tolerance for treating a requested mass as identical to an already-collected one.
+
+**Numerical tolerance.** A solver or comparison epsilon, not a domain value. ADR 0023 does not apply.
 
 **Value.** `1e-9`
 
@@ -25,7 +32,8 @@ tol = 1e-9
 
 **Consumed by.**
 
-- in this graph: [[mass-set|Speed-polar mass set]]
+- in this graph: `Speed-polar mass set`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `speed-polar-is-base`
 
 **Source.** 🔴 NO SOURCE FOUND

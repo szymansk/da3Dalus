@@ -6,11 +6,20 @@ unit: m
 cluster: stability
 user_visible: false
 source_status: SOURCED
+node_class: derived
+tags:
+  - cluster/stability
+  - class/derived
+  - source/sourced
+  - flag/anomaly
+  - flag/divergence
 ---
 
 # Vertical tail MAC (mean chord approximation)
 
 **Definition.** Stands in for the vertical tail mean aerodynamic chord.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -18,13 +27,16 @@ source_status: SOURCED
 vtail_mac_m = _wing_mac_approx(vtail)
 ```
 
-**Inputs.** [[htail-mac-approx|Horizontal tail MAC (mean chord approximation)]]
+**Inputs.**
+
+- [[htail-mac-approx|Horizontal tail MAC (mean chord approximation)]]
 
 **Produced by.** `app/services/tail_sizing_service.py:446` — `build_tail_sizing_context_from_aeroplane`
 
 **Consumed by.**
 
-- in this graph: [[l-v-m|Vertical tail moment arm]]
+- in this graph: `Vertical tail moment arm`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `app/services/tail_sizing_service.py:467` · `app/services/tail_sizing_service.py:223 (x_vtail_ac_m)`
 
 **Source.** 🟢 SOURCED

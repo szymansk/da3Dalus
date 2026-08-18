@@ -6,11 +6,21 @@ unit: m
 cluster: aero-spanwise
 user_visible: true
 source_status: SOURCED
+node_class: derived
+tags:
+  - cluster/aero-spanwise
+  - class/derived
+  - source/sourced
+  - surface/user-visible
+  - flag/anomaly
+  - flag/divergence
 ---
 
 # Longitudinal neutral point array
 
 **Definition.** Xnp vs alpha pulled from result.reference.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -24,7 +34,8 @@ np.atleast_1d(np.asarray(result.reference.Xnp, dtype=float))
 
 **Consumed by.**
 
-- in this graph: [[neutral-combined-metric|Neutral-point sensitivity metric]] · [[variation-span|Series span]] · [[xnp-median-deviation|Xnp outlier deviation]]
+- in this graph: `Neutral-point sensitivity metric` · `Series span` · `Xnp outlier deviation`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `_plot_neutral_points` · `_classify_variation` · `_render_summary_panel`
 
 **Source.** 🟢 SOURCED

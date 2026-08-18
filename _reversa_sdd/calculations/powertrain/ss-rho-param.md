@@ -6,11 +6,21 @@ unit: kg/m^3
 cluster: powertrain
 user_visible: true
 source_status: SOURCED
+node_class: unclassified-parameter
+tags:
+  - cluster/powertrain
+  - class/unclassified-parameter
+  - source/sourced
+  - surface/user-visible
+  - flag/anomaly
+  - flag/divergence
 ---
 
 # Air density (solution space input)
 
 **Definition.** Air density used for every solution-space computation. Fixed at ISA sea level unless the caller overrides it; there is no altitude input.
+
+⚪ **Unclassified parameter.** Not yet decided whether this is a user input or an internal tuning value.
 
 **Value.** `1.225`
 
@@ -26,7 +36,8 @@ rho = assumptions.rho
 
 **Consumed by.**
 
-- in this graph: [[ss-dynamic-pressure|Dynamic pressure]] · [[ss-p-aero-cruise|Aerodynamic power at cruise]] · [[ss-p-aero-top|Aerodynamic power at top speed]]
+- in this graph: `Dynamic pressure` · `Aerodynamic power at cruise` · `Aerodynamic power at top speed`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `app/services/powertrain_solution_space_service.py:343` · `app/services/powertrain_solution_space_service.py:349` · `app/services/powertrain_solution_space_service.py:350`
 
 **Source.** 🟢 SOURCED

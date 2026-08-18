@@ -6,11 +6,21 @@ unit: W
 cluster: powertrain
 user_visible: true
 source_status: SOURCED
+node_class: derived
+tags:
+  - cluster/powertrain
+  - class/derived
+  - source/sourced
+  - surface/user-visible
+  - flag/anomaly
+  - flag/divergence
 ---
 
 # Shaft power per velocity sample
 
 **Definition.** Shaft power at each swept airspeed. On the QPROP branch it is the solved torque-balance power; otherwise it is the Cp-derived power clipped to the shaft-power ceiling.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -19,7 +29,14 @@ p_shaft_w = float(max(op.p_shaft_w, 0.0))   # QPROP branch
 p_shaft_uncapped = Cp * rho * (point_n_rps**3) * (D_m**5) ; p_shaft_w = float(np.clip(p_shaft_uncapped, 0.0, p_shaft_max))   # fixed-RPM branch
 ```
 
-**Inputs.** [[polar-cp|Propeller power coefficient]] · [[air-density-perf|Air density at altitude (performance)]] · [[curve-prop-rpm|Fixed operating RPM (non-QPROP branch)]] · [[curve-diameter-m|Propeller diameter in metres]] · [[curve-p-shaft-max|Shaft power ceiling]] · [[qprop-p-shaft|Solved shaft power (QPROP)]]
+**Inputs.**
+
+- [[polar-cp|Propeller power coefficient]]  — *⊣ limit*
+- [[air-density-perf|Air density at altitude (performance)]]
+- [[curve-prop-rpm|Fixed operating RPM (non-QPROP branch)]]
+- [[curve-diameter-m|Propeller diameter in metres]]
+- [[curve-p-shaft-max|Shaft power ceiling]]  — *⊣ limit*
+- [[qprop-p-shaft|Solved shaft power (QPROP)]]
 
 **Produced by.** `app/services/powertrain_performance.py:757` — `compute_performance_curve`
 

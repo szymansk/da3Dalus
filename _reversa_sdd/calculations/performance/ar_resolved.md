@@ -6,11 +6,21 @@ unit: dimensionless
 cluster: perf-matching
 user_visible: true
 source_status: NO_SOURCE_FOUND
+node_class: unclassified-parameter
+tags:
+  - cluster/perf-matching
+  - class/unclassified-parameter
+  - source/no-source-found
+  - surface/user-visible
+  - flag/anomaly
+  - flag/divergence
 ---
 
 # Resolved aspect ratio
 
 **Definition.** Wing aspect ratio with a hardcoded fallback.
+
+⚪ **Unclassified parameter.** Not yet decided whether this is a user input or an internal tuning value.
 
 **Value.** `7.0 (fallback)`
 
@@ -26,7 +36,8 @@ ar: float = float(aircraft.get("ar", aircraft.get("aspect_ratio", 7.0)))
 
 **Consumed by.**
 
-- in this graph: [[induced_drag_factor_k|Induced-drag factor]] · [[tw_climb_constraint|Climb constraint T/W]] · [[tw_cruise_constraint|Cruise constraint T/W]] · [[tw_vertical_climb|Vertical-climb T/W]] · [[v_cruise_resolved|Resolved cruise speed]] · [[v_md|Minimum-drag speed]] · [[wcl_ws_max|WCL-derived W/S ceiling]]
+- in this graph: `Induced-drag factor` · `Climb constraint T/W` · `Cruise constraint T/W` · `Vertical-climb T/W` · `Resolved cruise speed` · `Minimum-drag speed` · `WCL-derived W/S ceiling`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `all constraint helpers` · `_wcl_constraint:1110` · `hover_text:925,940`
 
 **Source.** 🔴 NO SOURCE FOUND

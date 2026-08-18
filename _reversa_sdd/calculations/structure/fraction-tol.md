@@ -5,11 +5,19 @@ unit: dimensionless (fraction of segment length)
 cluster: structure
 user_visible: false
 source_status: NO_SOURCE_FOUND
+node_class: numerical-tolerance
+tags:
+  - cluster/structure
+  - class/numerical-tolerance
+  - source/no-source-found
+  - flag/anomaly
 ---
 
 # Split-position boundary tolerance
 
 **Definition.** Relative tolerance keeping a computed segment-split position strictly inside the host segment, so the split helper accepts it.
+
+**Numerical tolerance.** A solver or comparison epsilon, not a domain value. ADR 0023 does not apply.
 
 **Value.** `1e-6`
 
@@ -25,7 +33,8 @@ _FRACTION_TOL = 1e-6
 
 **Consumed by.**
 
-- in this graph: [[split-local-length|Segment-local split position]]
+- in this graph: `Segment-local split position`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `app/services/spar_insert_service.py:310`
 
 **Source.** 🔴 NO SOURCE FOUND

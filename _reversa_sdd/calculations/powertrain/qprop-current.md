@@ -6,11 +6,19 @@ unit: A
 cluster: powertrain
 user_visible: false
 source_status: SOURCED
+node_class: derived
+tags:
+  - cluster/powertrain
+  - class/derived
+  - source/sourced
+  - flag/anomaly
 ---
 
 # Solved terminal current
 
 **Definition.** Motor terminal current at the solved operating point, floored at zero.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -18,13 +26,17 @@ source_status: SOURCED
 current = max(current_for_rpm(rpm_sol), 0.0)
 ```
 
-**Inputs.** [[qprop-rpm-solution|Solved operating RPM]] · [[qprop-current-for-rpm|Terminal current at a candidate RPM]]
+**Inputs.**
+
+- [[qprop-rpm-solution|Solved operating RPM]]  — *⊣ limit*
+- [[qprop-current-for-rpm|Terminal current at a candidate RPM]]
 
 **Produced by.** `app/services/powertrain_performance.py:578` — `solve_qprop_operating_point`
 
 **Consumed by.**
 
-- in this graph: [[qprop-eta-motor|QPROP motor efficiency]] · [[qprop-torque|Solved shaft torque]]
+- in this graph: `QPROP motor efficiency` · `Solved shaft torque`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `app/services/powertrain_performance.py:580` · `app/services/powertrain_performance.py:585` · `app/services/powertrain_performance.py:590`
 
 **Source.** 🟢 SOURCED

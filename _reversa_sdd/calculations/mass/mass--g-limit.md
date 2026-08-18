@@ -6,11 +6,21 @@ unit: g
 cluster: mass
 user_visible: true
 source_status: SOURCED
+node_class: user-input
+tags:
+  - cluster/mass
+  - class/user-input
+  - source/sourced
+  - surface/user-visible
+  - flag/divergence
+  - flag/scale
 ---
 
 # Design load factor limit
 
 **Definition.** User-chosen structural load-factor limit. Pure design choice (DESIGN_CHOICE_PARAMS) — never auto-calculated.
+
+**User input.** Supplied from outside the calculation (assumption store or request), not derived.
 
 **Value.** `3.0 (app/schemas/design_assumption.py:78)`
 
@@ -20,7 +30,8 @@ source_status: SOURCED
 
 **Consumed by.**
 
-- in this graph: [[design-bending-moment|Design bending moment]] · [[flight-envelope-n-max|Design limit load factor (published)]]
+- in this graph: `Design bending moment` · `Design limit load factor (published)`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `app/services/assumption_compute_service.py:646 (_compute_v_a: V_a = V_s1·√n_max)` · `app/services/assumption_compute_service.py:719 (ctx['flight_envelope_n_max'])` · `frontend design-assumptions panel`
 
 **Source.** 🟢 SOURCED

@@ -6,11 +6,19 @@ unit: dimensionless
 cluster: aero-polars
 user_visible: false
 source_status: SOURCED
+node_class: numerical-tolerance
+tags:
+  - cluster/aero-polars
+  - class/numerical-tolerance
+  - source/sourced
+  - flag/divergence
 ---
 
 # Mach number for NeuralFoil calls
 
 **Definition.** Incompressible assumption forced on every low-Re polar evaluation.
+
+**Numerical tolerance.** A solver or comparison epsilon, not a domain value. ADR 0023 does not apply.
 
 **Value.** `0.0`
 

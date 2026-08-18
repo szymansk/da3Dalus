@@ -6,11 +6,18 @@ unit: 1/rad
 cluster: perf-envelope
 user_visible: false
 source_status: SOURCED
+node_class: unclassified-parameter
+tags:
+  - cluster/perf-envelope
+  - class/unclassified-parameter
+  - source/sourced
 ---
 
 # Cached lift-curve slope
 
 **Definition.** Alpha-sweep regression slope read from assumption_computation_context.
+
+⚪ **Unclassified parameter.** Not yet decided whether this is a user input or an internal tuning value.
 
 **Formula — as the code writes it.**
 
@@ -24,7 +31,8 @@ val = ctx.get("cl_alpha_per_rad"); reject non-finite or <= 0
 
 **Consumed by.**
 
-- in this graph: [[fe_effective_cl_alpha|Effective lift-curve slope for gust]]
+- in this graph: `Effective lift-curve slope for gust`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 
 **Source.** 🟢 SOURCED
 

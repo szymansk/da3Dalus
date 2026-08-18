@@ -6,11 +6,19 @@ unit: mm
 cluster: structure
 user_visible: false
 source_status: PARTIAL
+node_class: derived
+tags:
+  - cluster/structure
+  - class/derived
+  - source/partial
+  - flag/anomaly
 ---
 
 # Root centreline height
 
 **Definition.** Mean of the two halves' root-station mid-heights — the height a straight collinear carry-through rod or reinforcement runs at.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -18,7 +26,9 @@ source_status: PARTIAL
 root_z = (left[0].center_z + right[0].center_z) / 2.0
 ```
 
-**Inputs.** [[station-center-z|Station centre height]]
+**Inputs.**
+
+- [[station-center-z|Station centre height]]
 
 **Produced by.** `cad_designer/airplane/geometry/spar_solver.py:601` — `_straight_collinear_in_envelope`
 

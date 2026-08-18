@@ -6,11 +6,20 @@ unit: dimensionless
 cluster: aero-strips
 user_visible: false
 source_status: PARTIAL
+node_class: derived
+tags:
+  - cluster/aero-strips
+  - class/derived
+  - source/partial
+  - flag/anomaly
+  - flag/divergence
 ---
 
 # CL residual for the root search
 
 **Definition.** AeroBuildup CL at a trial alpha minus the target CL.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -18,7 +27,9 @@ source_status: PARTIAL
 return float(np.atleast_1d(result.get("CL", 0.0))[0]) - cl_target
 ```
 
-**Inputs.** [[lfop-cl-target-clip|Target CL clamp]]
+**Inputs.**
+
+- [[lfop-cl-target-clip|Target CL clamp]]  — *⊣ limit*
 
 **Produced by.** `app/services/section_aoa_service.py:521` — `_cl_at_alpha`
 

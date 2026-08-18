@@ -6,11 +6,21 @@ unit: – (dimensionless)
 cluster: stability
 user_visible: true
 source_status: SOURCED
+node_class: derived
+tags:
+  - cluster/stability
+  - class/derived
+  - source/sourced
+  - surface/user-visible
+  - flag/anomaly
+  - flag/divergence
 ---
 
 # Root bracketing test
 
 **Definition.** Sign test on the residual at both deflection bounds; a positive product means the target is unreachable inside the bounds.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -18,7 +28,10 @@ source_status: SOURCED
 if f_lower * f_upper > 0:
 ```
 
-**Inputs.** [[aerobuildup-trim-residual|AeroBuildup trim residual]] · [[deflection-bounds|Trim search bounds]]
+**Inputs.**
+
+- [[aerobuildup-trim-residual|AeroBuildup trim residual]]
+- [[deflection-bounds|Trim search bounds]]  — *⊣ limit*
 
 **Produced by.** `app/services/aerobuildup_trim_service.py:186` — `trim_with_aerobuildup`
 

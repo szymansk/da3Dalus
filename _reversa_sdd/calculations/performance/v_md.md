@@ -6,11 +6,22 @@ unit: m/s
 cluster: perf-matching
 user_visible: true
 source_status: SOURCED
+node_class: derived
+tags:
+  - cluster/perf-matching
+  - class/derived
+  - source/sourced
+  - surface/user-visible
+  - flag/anomaly
+  - flag/divergence
+  - flag/scale
 ---
 
 # Minimum-drag speed
 
 **Definition.** Speed for best L/D at a given wing loading.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -18,13 +29,20 @@ source_status: SOURCED
 return math.sqrt(2.0 * ws / (rho * math.sqrt(cd0 / k)))
 ```
 
-**Inputs.** [[ws_range_mc|W/S sweep vector]] · [[cd0_resolved|Resolved zero-lift drag]] · [[e_resolved|Resolved Oswald factor]] · [[ar_resolved|Resolved aspect ratio]] · [[rho_sl|Sea-level ISA density]]
+**Inputs.**
+
+- [[ws_range_mc|W/S sweep vector]]
+- [[cd0_resolved|Resolved zero-lift drag]]  — *⤵ fallback*
+- [[e_resolved|Resolved Oswald factor]]  — *⤵ fallback*
+- [[ar_resolved|Resolved aspect ratio]]  — *⤵ fallback*
+- [[rho_sl|Sea-level ISA density]]  — *⤵ fallback*
 
 **Produced by.** `app/services/matching_chart_service.py:270` — `_v_md`
 
 **Consumed by.**
 
-- in this graph: [[climb_tw_picard|Re-refined climb T/W per W/S]] · [[tw_climb_constraint|Climb constraint T/W]] · [[v_cruise_resolved|Resolved cruise speed]]
+- in this graph: `Re-refined climb T/W per W/S` · `Climb constraint T/W` · `Resolved cruise speed`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `_climb_tw_at_ws:858,862` · `v_cruise_resolved:796`
 
 **Source.** 🟢 SOURCED

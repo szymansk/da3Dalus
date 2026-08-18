@@ -6,11 +6,20 @@ unit: n/a
 cluster: aero-strips
 user_visible: true
 source_status: PARTIAL
+node_class: derived
+tags:
+  - cluster/aero-strips
+  - class/derived
+  - source/partial
+  - surface/user-visible
+  - flag/divergence
 ---
 
 # Grid-boundary minimum warning
 
 **Definition.** Warning emitted when the optimum falls on the first or last grid point.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -18,7 +27,9 @@ source_status: PARTIAL
 if i_opt == 0 or i_opt == len(xtr_grid) - 1: warnings.append(…)
 ```
 
-**Inputs.** [[tos-xtr-opt|Optimal trip position]]
+**Inputs.**
+
+- [[tos-xtr-opt|Optimal trip position]]
 
 **Produced by.** `app/services/turbulator_optimizer_service.py:263` — `optimize_section_xtr`
 

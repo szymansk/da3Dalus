@@ -6,11 +6,20 @@ unit: W
 cluster: powertrain
 user_visible: true
 source_status: SOURCED
+node_class: derived
+tags:
+  - cluster/powertrain
+  - class/derived
+  - source/sourced
+  - surface/user-visible
+  - flag/divergence
 ---
 
 # Electrical cruise power at high prop efficiency
 
 **Definition.** Cruise power at the optimistic end of the efficiency band — the lower power number.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -18,13 +27,20 @@ source_status: SOURCED
 p_cruise_hi_e = _p_elec(p_aero_cruise, assumptions.eta_prop_hi, assumptions.eta_motor, assumptions.eta_esc)
 ```
 
-**Inputs.** [[ss-p-elec|Electrical power required]] · [[ss-p-aero-cruise|Aerodynamic power at cruise]] · [[ss-eta-prop-hi|Propeller efficiency band upper bound]] · [[ss-eta-motor|Motor efficiency (solution space)]] · [[ss-eta-esc|ESC efficiency (solution space)]]
+**Inputs.**
+
+- [[ss-p-elec|Electrical power required]]
+- [[ss-p-aero-cruise|Aerodynamic power at cruise]]
+- [[ss-eta-prop-hi|Propeller efficiency band upper bound]]  — *⊣ limit*
+- [[ss-eta-motor|Motor efficiency (solution space)]]
+- [[ss-eta-esc|ESC efficiency (solution space)]]
 
 **Produced by.** `app/services/powertrain_solution_space_service.py:367` — `compute_solution_space`
 
 **Consumed by.**
 
-- in this graph: [[ss-band-energy-hi|Mission energy at high prop efficiency]]
+- in this graph: `Mission energy at high prop efficiency`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `app/services/powertrain_solution_space_service.py:412` · `app/services/powertrain_solution_space_service.py:436`
 
 **Source.** 🟢 SOURCED

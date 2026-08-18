@@ -5,11 +5,19 @@ unit: m/deg
 cluster: aero-spanwise
 user_visible: true
 source_status: NO_SOURCE_FOUND
+node_class: derived
+tags:
+  - cluster/aero-spanwise
+  - class/derived
+  - source/no-source-found
+  - surface/user-visible
 ---
 
 # Neutral-point sensitivity metric
 
 **Definition.** Sum of the absolute alpha-gradients of Xnp and Xnp_lat.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -17,13 +25,18 @@ source_status: NO_SOURCE_FOUND
 gx = np.abs(np.gradient(xnp_curve, x_axis)); gy = np.abs(np.gradient(xnp_lat_curve, x_axis)); combined_metric = gx + gy
 ```
 
-**Inputs.** [[xnp-values|Longitudinal neutral point array]] · [[xnp-lat-values|Lateral neutral point array]] · [[alpha-array|Alpha sweep array]]
+**Inputs.**
+
+- [[xnp-values|Longitudinal neutral point array]]
+- [[xnp-lat-values|Lateral neutral point array]]
+- [[alpha-array|Alpha sweep array]]
 
 **Produced by.** `app/services/analysis_service.py:1254` — `_compute_neutral_strip_colors`
 
 **Consumed by.**
 
-- in this graph: [[neutral-strip-percentiles|Neutral-trend percentile thresholds]]
+- in this graph: `Neutral-trend percentile thresholds`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 
 **Source.** 🔴 NO SOURCE FOUND
 

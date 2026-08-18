@@ -5,11 +5,20 @@ unit: N·m (see anomaly)
 cluster: structure
 user_visible: false
 source_status: PARTIAL
+node_class: derived
+tags:
+  - cluster/structure
+  - class/derived
+  - source/partial
+  - flag/anomaly
+  - flag/divergence
 ---
 
 # Rear-spar torsion reaction
 
 **Definition.** The share of the torsion couple the rear spar carries, as a moment: torsion divided by the front–rear spacing fraction.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -17,13 +26,17 @@ source_status: PARTIAL
 reaction = torsion_fn(y_span) / spacing
 ```
 
-**Inputs.** [[torsion-proxy|Torsion proxy from bending moment]] · [[spar-spacing-fraction|Front–rear spar chordwise spacing]]
+**Inputs.**
+
+- [[torsion-proxy|Torsion proxy from bending moment]]
+- [[spar-spacing-fraction|Front–rear spar chordwise spacing]]
 
 **Produced by.** `app/services/spar_plan_service.py:453` — `_make_rear_moment_fn`
 
 **Consumed by.**
 
-- in this graph: [[rear-moment-fn|Rear-spar sizing moment]]
+- in this graph: `Rear-spar sizing moment`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `app/services/spar_plan_service.py:455`
 
 **Source.** 🟡 PARTIAL

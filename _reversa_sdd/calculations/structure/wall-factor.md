@@ -5,11 +5,19 @@ unit: dimensionless
 cluster: structure
 user_visible: false
 source_status: NO_SOURCE_FOUND
+node_class: unclassified-constant
+tags:
+  - cluster/structure
+  - class/unclassified-constant
+  - source/no-source-found
+  - flag/anomaly
 ---
 
 # Tube wall fraction fallback
 
 **Definition.** Fraction of the outer diameter used as the piece inner diameter when strength-based tube sizing cannot solve a feasible bore.
+
+⚪ **Unclassified constant.** Not yet decided whether this is a rule of thumb, a calibration or a physical value. Classifying it is open work — it is deliberately not guessed.
 
 **Value.** `0.6`
 
@@ -25,7 +33,8 @@ wall_factor: float = 0.6  # piece ID = wall_factor * OD when no strength ID give
 
 **Consumed by.**
 
-- in this graph: [[bore-for|Strength bore from tube sizing]]
+- in this graph: `Strength bore from tube sizing`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `cad_designer/airplane/geometry/spar_solver.py:511` · `cad_designer/airplane/geometry/spar_solver.py:635`
 
 **Source.** 🔴 NO SOURCE FOUND

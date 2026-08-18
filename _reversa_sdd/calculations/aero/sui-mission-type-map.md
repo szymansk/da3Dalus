@@ -6,11 +6,21 @@ unit: enum map
 cluster: aero-polars
 user_visible: true
 source_status: PARTIAL
+node_class: unclassified-parameter
+tags:
+  - cluster/aero-polars
+  - class/unclassified-parameter
+  - source/partial
+  - surface/user-visible
+  - flag/anomaly
+  - flag/divergence
 ---
 
 # Mission preset → weighting key map
 
 **Definition.** Maps stored mission preset ids onto the scoring weight categories.
+
+⚪ **Unclassified parameter.** Not yet decided whether this is a user input or an internal tuning value.
 
 **Value.** `trainer,sport,aerobatic,glider,flying_wing 1:1; sailplane/motor_glider/motorglider/thermal/soarer→glider; slope_soarer→slope_soarer; wing_racer/fpv_cruiser→sport; acro_3d/warbird/three_d/3d→aerobatic; stol_bush/stol/bush→trainer`
 

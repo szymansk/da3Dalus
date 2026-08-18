@@ -6,11 +6,19 @@ unit: kg/m
 cluster: structure
 user_visible: false
 source_status: PARTIAL
+node_class: derived
+tags:
+  - cluster/structure
+  - class/derived
+  - source/partial
+  - flag/anomaly
 ---
 
 # Linear mass of a stock cross-section
 
 **Definition.** Mass per unit length of a candidate stock item — the ranking objective when picking the lightest adequate stock.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -21,7 +29,10 @@ area_m2 = area_mm2 * 1e-6
 return density_kg_m3 * area_m2
 ```
 
-**Inputs.** [[stock-density-fallback|Stock density fallback]] · [[mm2-to-m2-factor|Square-millimetre to square-metre factor]]
+**Inputs.**
+
+- [[stock-density-fallback|Stock density fallback]]  — *⤵ fallback*
+- [[mm2-to-m2-factor|Square-millimetre to square-metre factor]]  — *ε tolerance*
 
 **Produced by.** `app/services/spar_plan_service.py:88` — `_linear_mass`
 

@@ -6,11 +6,21 @@ unit: rpm
 cluster: powertrain
 user_visible: true
 source_status: SOURCED
+node_class: derived
+tags:
+  - cluster/powertrain
+  - class/derived
+  - source/sourced
+  - surface/user-visible
+  - flag/anomaly
+  - flag/divergence
 ---
 
 # Solved operating RPM
 
 **Definition.** The RPM at which motor torque equals propeller torque demand, found by bisection between the current-ceiling floor and the free-running bound. Degenerate cases snap to a bracket end.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -18,13 +28,19 @@ source_status: SOURCED
 rpm_mid = 0.5 * (rpm_lo + rpm_hi) ... rpm_sol = 0.5 * (rpm_lo + rpm_hi)
 ```
 
-**Inputs.** [[qprop-residual|Torque-balance residual]] · [[qprop-rpm-free|Free-running RPM]] · [[qprop-rpm-at-imax|RPM at the current ceiling]] · [[qprop-bisection-iterations|Bisection iteration count]]
+**Inputs.**
+
+- [[qprop-residual|Torque-balance residual]]
+- [[qprop-rpm-free|Free-running RPM]]
+- [[qprop-rpm-at-imax|RPM at the current ceiling]]  — *⊣ limit*
+- [[qprop-bisection-iterations|Bisection iteration count]]
 
 **Produced by.** `app/services/powertrain_performance.py:576` — `solve_qprop_operating_point`
 
 **Consumed by.**
 
-- in this graph: [[curve-advance-ratio|Advance ratio per velocity sample]] · [[curve-thrust|Thrust per velocity sample]] · [[nearest-rpm-row-selection|Nearest-RPM polar row group]] · [[qprop-current|Solved terminal current]] · [[qprop-p-shaft|Solved shaft power (QPROP)]]
+- in this graph: `Advance ratio per velocity sample` · `Thrust per velocity sample` · `Nearest-RPM polar row group` · `Solved terminal current` · `Solved shaft power (QPROP)`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `app/services/powertrain_performance.py:578` · `app/services/powertrain_performance.py:579` · `app/services/powertrain_performance.py:590` · `app/services/powertrain_performance.py:724`
 
 **Source.** 🟢 SOURCED

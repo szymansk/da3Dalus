@@ -6,11 +6,19 @@ unit: 1/rad
 cluster: stability
 user_visible: true
 source_status: SOURCED
+node_class: derived
+tags:
+  - cluster/stability
+  - class/derived
+  - source/sourced
+  - surface/user-visible
 ---
 
 # Yawing moment derivative w.r.t. beta
 
 **Definition.** dCn/dbeta at the analysed operating point. Positive means directionally stable.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -24,7 +32,8 @@ cnb = _scalar(result.derivatives.Cnb)
 
 **Consumed by.**
 
-- in this graph: [[is-directionally-stable|Directional stability flag]]
+- in this graph: `Directional stability flag`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `app/services/stability_service.py:343,346` · `app/services/stability_service.py:171` · `app/services/copilot_tools.py:457`
 
 **Source.** 🟢 SOURCED

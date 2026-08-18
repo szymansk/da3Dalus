@@ -6,11 +6,21 @@ unit: dimensionless (0..1]
 cluster: powertrain
 user_visible: true
 source_status: NO_SOURCE_FOUND
+node_class: unclassified-parameter
+tags:
+  - cluster/powertrain
+  - class/unclassified-parameter
+  - source/no-source-found
+  - surface/user-visible
+  - flag/anomaly
+  - flag/divergence
 ---
 
 # Depth of discharge
 
 **Definition.** Usable fraction of rated pack capacity before landing.
+
+⚪ **Unclassified parameter.** Not yet decided whether this is a user input or an internal tuning value.
 
 **Value.** `0.80`
 
@@ -20,7 +30,8 @@ source_status: NO_SOURCE_FOUND
 
 **Consumed by.**
 
-- in this graph: [[ss-band-energy-hi|Mission energy at high prop efficiency]] · [[ss-band-energy-lo|Mission energy at low prop efficiency]] · [[ss-energy-wh|Required mission energy]]
+- in this graph: `Mission energy at high prop efficiency` · `Mission energy at low prop efficiency` · `Required mission energy`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `app/services/powertrain_solution_space_service.py:377` · `app/services/powertrain_solution_space_service.py:400` · `app/services/powertrain_solution_space_service.py:412`
 
 **Source.** 🔴 NO SOURCE FOUND

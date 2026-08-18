@@ -5,11 +5,20 @@ unit: dimensionless
 cluster: perf-oppoints
 user_visible: false
 source_status: NO_SOURCE_FOUND
+node_class: derived
+tags:
+  - cluster/perf-oppoints
+  - class/derived
+  - source/no-source-found
+  - flag/anomaly
+  - flag/divergence
 ---
 
 # Opti trim objective
 
 **Definition.** Weighted least-squares objective minimised by the trim solver.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -17,13 +26,16 @@ source_status: NO_SOURCE_FOUND
 objective = 50.0 * cm**2 + 3.0 * cy**2; if cl_target is not None: objective += 15.0 * (cl - cl_target) ** 2; if target["name"].startswith("turn_"): objective += 2.0 * result["Cl"] ** 2 + 2.0 * result["Cn"] ** 2; for control in control_variables.values(): objective += 0.001 * control**2
 ```
 
-**Inputs.** [[cl_target|Target lift coefficient]]
+**Inputs.**
+
+- [[cl_target|Target lift coefficient]]
 
 **Produced by.** `app/services/operating_point_generator_service.py:674` — `_solve_trim_candidate_with_opti`
 
 **Consumed by.**
 
-- in this graph: [[alpha_trimmed|Trimmed angle of attack]]
+- in this graph: `Trimmed angle of attack`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `app/services/operating_point_generator_service.py:682 (opti.minimize)`
 
 **Source.** 🔴 NO SOURCE FOUND

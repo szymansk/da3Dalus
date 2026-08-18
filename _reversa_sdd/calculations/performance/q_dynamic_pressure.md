@@ -6,11 +6,18 @@ unit: Pa
 cluster: perf-matching
 user_visible: false
 source_status: SOURCED
+node_class: derived
+tags:
+  - cluster/perf-matching
+  - class/derived
+  - source/sourced
 ---
 
 # Dynamic pressure
 
 **Definition.** Dynamic pressure at the relevant flight speed.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -18,7 +25,10 @@ source_status: SOURCED
 q = 0.5 * rho * v_cruise * v_cruise
 ```
 
-**Inputs.** [[rho_sl|Sea-level ISA density]] · [[v_cruise_resolved|Resolved cruise speed]]
+**Inputs.**
+
+- [[rho_sl|Sea-level ISA density]]  — *⤵ fallback*
+- [[v_cruise_resolved|Resolved cruise speed]]
 
 **Produced by.** `app/services/matching_chart_service.py:372` — `_cruise_constraint`
 

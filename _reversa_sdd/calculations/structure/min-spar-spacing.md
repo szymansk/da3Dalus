@@ -5,11 +5,19 @@ unit: dimensionless (fraction of chord)
 cluster: structure
 user_visible: false
 source_status: NO_SOURCE_FOUND
+node_class: unclassified-constant
+tags:
+  - cluster/structure
+  - class/unclassified-constant
+  - source/no-source-found
+  - flag/anomaly
 ---
 
 # Minimum front–rear spar spacing fraction
 
 **Definition.** Floor on the front–rear chordwise spacing used as the torsion couple's lever arm, so a degenerate layout (front ≈ rear) cannot produce an infinite rear reaction.
+
+⚪ **Unclassified constant.** Not yet decided whether this is a rule of thumb, a calibration or a physical value. Classifying it is open work — it is deliberately not guessed.
 
 **Value.** `0.05`
 
@@ -25,7 +33,8 @@ _MIN_SPAR_SPACING = 0.05
 
 **Consumed by.**
 
-- in this graph: [[spar-spacing-fraction|Front–rear spar chordwise spacing]]
+- in this graph: `Front–rear spar chordwise spacing`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `app/services/spar_plan_service.py:413`
 
 **Source.** 🔴 NO SOURCE FOUND

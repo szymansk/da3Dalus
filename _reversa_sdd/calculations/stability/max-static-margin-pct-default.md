@@ -6,11 +6,22 @@ unit: % MAC
 cluster: stability
 user_visible: true
 source_status: PARTIAL
+node_class: unclassified-parameter
+tags:
+  - cluster/stability
+  - class/unclassified-parameter
+  - source/partial
+  - surface/user-visible
+  - flag/anomaly
+  - flag/divergence
+  - flag/scale
 ---
 
 # Maximum static margin (CG-range default)
 
 **Definition.** Upper static-margin bound used to place the forward CG limit. Read from a design_assumptions row named 'max_static_margin', otherwise this default.
+
+⚪ **Unclassified parameter.** Not yet decided whether this is a user input or an internal tuning value.
 
 **Value.** `25.0`
 
@@ -20,7 +31,8 @@ source_status: PARTIAL
 
 **Consumed by.**
 
-- in this graph: [[cg-range-forward|Forward CG limit from margin bounds]]
+- in this graph: `Forward CG limit from margin bounds`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `app/services/stability_service.py:254,331,334` · `app/services/stability_service.py:88 (same literal repeated as compute_cg_range default)`
 
 **Source.** 🟡 PARTIAL

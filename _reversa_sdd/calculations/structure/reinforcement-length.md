@@ -5,11 +5,19 @@ unit: mm
 cluster: structure
 user_visible: true
 source_status: NO_SOURCE_FOUND
+node_class: derived
+tags:
+  - cluster/structure
+  - class/derived
+  - source/no-source-found
+  - surface/user-visible
 ---
 
 # Reinforcement length
 
 **Definition.** Total length of the root reinforcement, spanning symmetrically across y=0 from -reach to +reach.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -17,7 +25,9 @@ source_status: NO_SOURCE_FOUND
 length=2.0 * reach,  # spans symmetrically across the root (y=-reach → +reach)
 ```
 
-**Inputs.** [[reinforcement-reach|Reinforcement half-reach]]
+**Inputs.**
+
+- [[reinforcement-reach|Reinforcement half-reach]]
 
 **Produced by.** `cad_designer/airplane/geometry/spar_solver.py:649` — `_reinforcement_piece`
 

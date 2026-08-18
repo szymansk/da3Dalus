@@ -5,11 +5,19 @@ unit: mm
 cluster: structure
 user_visible: false
 source_status: NO_SOURCE_FOUND
+node_class: derived
+tags:
+  - cluster/structure
+  - class/derived
+  - source/no-source-found
+  - flag/anomaly
 ---
 
 # Host segment root spanwise position
 
 **Definition.** Spanwise start of the segment hosting a telescoping front spar — the sum of preceding segment lengths. Used to convert absolute joint positions into segment-local split lengths.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -17,13 +25,17 @@ source_status: NO_SOURCE_FOUND
 host_root_y = float(sum(segment_lengths_mm[:host_index]))
 ```
 
-**Inputs.** [[segment-lengths|Per-segment spanwise lengths]] · [[segment-for-y|Spanwise position to segment index]]
+**Inputs.**
+
+- [[segment-lengths|Per-segment spanwise lengths]]
+- [[segment-for-y|Spanwise position to segment index]]  — *⊣ limit*
 
 **Produced by.** `app/services/spar_insert_service.py:303` — `_front_split_plan`
 
 **Consumed by.**
 
-- in this graph: [[split-local-length|Segment-local split position]]
+- in this graph: `Segment-local split position`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `app/services/spar_insert_service.py:308`
 
 **Source.** 🔴 NO SOURCE FOUND

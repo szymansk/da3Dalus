@@ -5,11 +5,20 @@ unit: kg
 cluster: aero-spanwise
 user_visible: true
 source_status: SOURCED
+node_class: derived
+tags:
+  - cluster/aero-spanwise
+  - class/derived
+  - source/sourced
+  - surface/user-visible
+  - flag/divergence
 ---
 
 # Speed-polar mass set
 
 **Definition.** Ascending de-duplicated list of masses always containing the effective design mass.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -17,13 +26,17 @@ source_status: SOURCED
 masses: list[float] = [float(base_mass_kg)]; for m in masses_kg or []: mf = float(m); if mf > 0 and all(abs(mf - existing) > tol for existing in masses): masses.append(mf); masses.sort()
 ```
 
-**Inputs.** [[base-mass-kg|Effective design mass]] · [[mass-dedup-tolerance|Mass de-duplication tolerance]]
+**Inputs.**
+
+- [[base-mass-kg|Effective design mass]]
+- [[mass-dedup-tolerance|Mass de-duplication tolerance]]  — *ε tolerance*
 
 **Produced by.** `app/services/analysis_service.py:471` — `_compute_speed_polar`
 
 **Consumed by.**
 
-- in this graph: [[weight-n|Weight]]
+- in this graph: `Weight`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `speed-polar-curves`
 
 **Source.** 🟢 SOURCED

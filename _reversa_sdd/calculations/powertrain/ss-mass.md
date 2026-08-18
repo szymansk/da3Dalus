@@ -6,11 +6,21 @@ unit: kg
 cluster: powertrain
 user_visible: true
 source_status: NO_SOURCE_FOUND
+node_class: derived
+tags:
+  - cluster/powertrain
+  - class/derived
+  - source/no-source-found
+  - surface/user-visible
+  - flag/anomaly
+  - flag/divergence
 ---
 
 # All-up mass (solution space)
 
 **Definition.** Aircraft mass from the design assumptions, or the PARAMETER_DEFAULTS mass with a warning.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -24,7 +34,8 @@ mass_kg_raw = get_effective_assumption(db, plane_id, "mass") ; if mass_kg_raw is
 
 **Consumed by.**
 
-- in this graph: [[ss-lift-coefficient|Level-flight lift coefficient]] · [[ss-p-aero-cruise|Aerodynamic power at cruise]] · [[ss-p-aero-top|Aerodynamic power at top speed]]
+- in this graph: `Level-flight lift coefficient` · `Aerodynamic power at cruise` · `Aerodynamic power at top speed`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `app/services/powertrain_solution_space_service.py:349` · `app/services/powertrain_solution_space_service.py:350`
 
 **Source.** 🔴 NO SOURCE FOUND

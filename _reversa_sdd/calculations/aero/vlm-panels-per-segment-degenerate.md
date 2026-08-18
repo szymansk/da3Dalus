@@ -6,11 +6,20 @@ unit: panels
 cluster: aero-strips
 user_visible: false
 source_status: NO_SOURCE_FOUND
+node_class: unclassified-constant
+tags:
+  - cluster/aero-strips
+  - class/unclassified-constant
+  - source/no-source-found
+  - flag/anomaly
+  - flag/divergence
 ---
 
 # Degenerate-span panel fallback
 
 **Definition.** When total span is non-positive every segment gets max(min_per_segment, 1) panels.
+
+⚪ **Unclassified constant.** Not yet decided whether this is a rule of thumb, a calibration or a physical value. Classifying it is open work — it is deliberately not guessed.
 
 **Value.** `1`
 
@@ -20,7 +29,9 @@ source_status: NO_SOURCE_FOUND
 return [max(min_per_segment, 1) for _ in spans]
 ```
 
-**Inputs.** [[vlm-min-panels-per-segment|Minimum panels per wing segment]]
+**Inputs.**
+
+- [[vlm-min-panels-per-segment|Minimum panels per wing segment]]  — *⊣ limit*
 
 **Produced by.** `app/services/vlm_strip_forces.py:73` — `_panels_per_segment`
 

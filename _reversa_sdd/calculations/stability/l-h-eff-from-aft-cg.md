@@ -6,11 +6,20 @@ unit: m
 cluster: stability
 user_visible: true
 source_status: SOURCED
+node_class: derived
+tags:
+  - cluster/stability
+  - class/derived
+  - source/sourced
+  - surface/user-visible
+  - flag/divergence
 ---
 
 # Effective tail arm from aft CG
 
 **Definition.** Distance from the aft-loading CG to the horizontal tail aerodynamic centre; display-only cross-check against static margin.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -18,7 +27,9 @@ source_status: SOURCED
 result.l_h_eff_from_aft_cg_m = round(x_htail_ac_m - cg_aft_m, 4)
 ```
 
-**Inputs.** [[x-htail-ac-m|Horizontal tail aerodynamic centre x]]
+**Inputs.**
+
+- [[x-htail-ac-m|Horizontal tail aerodynamic centre x]]
 
 **Produced by.** `app/services/tail_sizing_service.py:213` — `compute_tail_volumes`
 

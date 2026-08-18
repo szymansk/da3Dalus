@@ -5,11 +5,20 @@ unit: -
 cluster: aero-spanwise
 user_visible: true
 source_status: PARTIAL
+node_class: unclassified-parameter
+tags:
+  - cluster/aero-spanwise
+  - class/unclassified-parameter
+  - source/partial
+  - surface/user-visible
+  - flag/divergence
 ---
 
 # Strip-force solver default
 
 **Definition.** Default solver for strip forces and spanwise loads is the in-process AeroSandbox VLM.
+
+⚪ **Unclassified parameter.** Not yet decided whether this is a user input or an internal tuning value.
 
 **Value.** `"vlm"`
 

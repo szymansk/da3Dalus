@@ -6,11 +6,20 @@ unit: mm³
 cluster: structure
 user_visible: false
 source_status: PARTIAL
+node_class: derived
+tags:
+  - cluster/structure
+  - class/derived
+  - source/partial
+  - flag/anomaly
+  - flag/divergence
 ---
 
 # Reconstructed required section modulus for a piece
 
 **Definition.** The required section modulus a solved SparPiece must satisfy, reconstructed from the piece's pre-snap outer diameter via the solid-rod relation.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 

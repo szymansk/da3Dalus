@@ -6,11 +6,20 @@ unit: dimensionless (CL)
 cluster: aero-polars
 user_visible: false
 source_status: NO_SOURCE_FOUND
+node_class: unclassified-parameter
+tags:
+  - cluster/aero-polars
+  - class/unclassified-parameter
+  - source/no-source-found
+  - flag/anomaly
+  - flag/divergence
 ---
 
 # OLS polar window lower CL bound
 
 **Definition.** Lower CL bound of the linear polar window used for the parabolic OLS fit.
+
+⚪ **Unclassified parameter.** Not yet decided whether this is a user input or an internal tuning value.
 
 **Value.** `0.10`
 
@@ -26,7 +35,8 @@ cl_lo = max(0.10, 0.10 * cl_max)
 
 **Consumed by.**
 
-- in this graph: [[prt-cd0-fit|Band cd0 (fitted intercept)]]
+- in this graph: `Band cd0 (fitted intercept)`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `_fit_polar_ols:343`
 
 **Source.** 🔴 NO SOURCE FOUND

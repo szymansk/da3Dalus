@@ -6,11 +6,18 @@ unit: V
 cluster: powertrain
 user_visible: false
 source_status: SOURCED
+node_class: derived
+tags:
+  - cluster/powertrain
+  - class/derived
+  - source/sourced
 ---
 
 # Back-EMF floor at the current ceiling
 
 **Definition.** Back-EMF remaining when the motor draws exactly the maximum allowed current — sets the lowest RPM the solver will consider.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -18,13 +25,18 @@ source_status: SOURCED
 back_emf_floor = V_terminal - max_current_a * rm
 ```
 
-**Inputs.** [[curve-v-terminal|Motor terminal voltage]] · [[motor-max-current-input|Motor burst current limit]] · [[motor-rm-ohm-input|Winding resistance]]
+**Inputs.**
+
+- [[curve-v-terminal|Motor terminal voltage]]
+- [[motor-max-current-input|Motor burst current limit]]  — *⊣ limit*
+- [[motor-rm-ohm-input|Winding resistance]]
 
 **Produced by.** `app/services/powertrain_performance.py:548` — `solve_qprop_operating_point`
 
 **Consumed by.**
 
-- in this graph: [[qprop-rpm-at-imax|RPM at the current ceiling]]
+- in this graph: `RPM at the current ceiling`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `app/services/powertrain_performance.py:549`
 
 **Source.** 🟢 SOURCED

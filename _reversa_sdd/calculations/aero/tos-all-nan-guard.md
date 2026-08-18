@@ -6,11 +6,20 @@ unit: n/a
 cluster: aero-strips
 user_visible: true
 source_status: PARTIAL
+node_class: derived
+tags:
+  - cluster/aero-strips
+  - class/derived
+  - source/partial
+  - surface/user-visible
+  - flag/divergence
 ---
 
 # All-NaN sweep guard
 
 **Definition.** When every cd in the sweep is NaN the section returns NaN optima with an explicit warning.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -18,7 +27,9 @@ source_status: PARTIAL
 finite_mask = np.isfinite(cd_values); if not finite_mask.any(): …
 ```
 
-**Inputs.** [[tos-cd-values|cd sweep over the trip grid]]
+**Inputs.**
+
+- [[tos-cd-values|cd sweep over the trip grid]]
 
 **Produced by.** `app/services/turbulator_optimizer_service.py:235` — `optimize_section_xtr`
 

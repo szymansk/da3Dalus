@@ -6,11 +6,19 @@ unit: m
 cluster: aero-strips
 user_visible: false
 source_status: PARTIAL
+node_class: derived
+tags:
+  - cluster/aero-strips
+  - class/derived
+  - source/partial
+  - flag/divergence
 ---
 
 # Strip trailing-edge point
 
 **Definition.** Midpoint of the back-left/back-right vertices of the strip's last panel.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -24,7 +32,8 @@ te_pt = 0.5 * (bl[hi - 1] + br[hi - 1])
 
 **Consumed by.**
 
-- in this graph: [[vlm-strip-chord|Local strip chord]]
+- in this graph: `Local strip chord`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 
 **Source.** 🟡 PARTIAL
 

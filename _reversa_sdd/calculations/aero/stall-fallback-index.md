@@ -5,11 +5,20 @@ unit: index
 cluster: aero-spanwise
 user_visible: true
 source_status: NO_SOURCE_FOUND
+node_class: unclassified-constant
+tags:
+  - cluster/aero-spanwise
+  - class/unclassified-constant
+  - source/no-source-found
+  - surface/user-visible
+  - flag/anomaly
 ---
 
 # Stall fallback index
 
 **Definition.** When no CL-drop/CD-rise pair is found after CLmax, stall is declared at the very next alpha station.
+
+⚪ **Unclassified constant.** Not yet decided whether this is a rule of thumb, a calibration or a physical value. Classifying it is open work — it is deliberately not guessed.
 
 **Value.** `i_clmax + 1`
 
@@ -19,7 +28,9 @@ source_status: NO_SOURCE_FOUND
 i_stall = min(i_clmax + 1, n - 1)
 ```
 
-**Inputs.** [[max-cl-point|Maximum lift coefficient point]]
+**Inputs.**
+
+- [[max-cl-point|Maximum lift coefficient point]]  — *⊣ limit*
 
 **Produced by.** `app/services/analysis_service.py:177` — `_find_stall_point`
 

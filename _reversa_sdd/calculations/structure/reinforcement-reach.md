@@ -5,11 +5,19 @@ unit: mm
 cluster: structure
 user_visible: false
 source_status: NO_SOURCE_FOUND
+node_class: derived
+tags:
+  - cluster/structure
+  - class/derived
+  - source/no-source-found
+  - flag/anomaly
 ---
 
 # Reinforcement half-reach
 
 **Definition.** How far the root reinforcement extends into each half: to the first outboard station of the shorter side, or root y plus the reinforcement OD when a half has only one station.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -20,13 +28,17 @@ reach = min(
 )
 ```
 
-**Inputs.** [[reinforcement-root-od|Reinforcement outer diameter]] · [[station-y-mm|Station spanwise position]]
+**Inputs.**
+
+- [[reinforcement-root-od|Reinforcement outer diameter]]
+- [[station-y-mm|Station spanwise position]]
 
 **Produced by.** `cad_designer/airplane/geometry/spar_solver.py:621` — `_reinforcement_piece`
 
 **Consumed by.**
 
-- in this graph: [[reinforcement-length|Reinforcement length]]
+- in this graph: `Reinforcement length`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `cad_designer/airplane/geometry/spar_solver.py:624` · `cad_designer/airplane/geometry/spar_solver.py:649`
 
 **Source.** 🔴 NO SOURCE FOUND

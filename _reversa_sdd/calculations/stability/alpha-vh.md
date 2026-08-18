@@ -6,11 +6,20 @@ unit: – (dimensionless)
 cluster: stability
 user_visible: false
 source_status: PARTIAL
+node_class: derived
+tags:
+  - cluster/stability
+  - class/derived
+  - source/partial
+  - flag/anomaly
+  - flag/divergence
 ---
 
 # Tail efficiency factor
 
 **Definition.** Dimensionless tail contribution factor combining lift-slope ratio, downwash and area ratio; used in the SM sensitivities.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -20,13 +29,19 @@ a_vh = at_over_a * _DE_DA_FACTOR * (s_h_m2 / s_ref_m2)
 return max(0.01, min(0.20, a_vh))
 ```
 
-**Inputs.** [[at-over-a-ratio|Tail-to-wing lift-curve-slope ratio]] · [[de-da-factor|Downwash factor (1 − de/dalpha)]] · [[s-h-m2-fallback|Horizontal tail area fallback]] · [[s-ref-m2-fallback|Reference area fallback]]
+**Inputs.**
+
+- [[at-over-a-ratio|Tail-to-wing lift-curve-slope ratio]]
+- [[de-da-factor|Downwash factor (1 − de/dalpha)]]
+- [[s-h-m2-fallback|Horizontal tail area fallback]]  — *⤵ fallback*
+- [[s-ref-m2-fallback|Reference area fallback]]  — *⤵ fallback*
 
 **Produced by.** `app/services/sm_sizing_service.py:122` — `_alpha_vh`
 
 **Consumed by.**
 
-- in this graph: [[delta-x-clipped|Clipped wing shift]] · [[dsm-dx-wing|SM sensitivity to wing longitudinal shift]] · [[x-np-after-shift|Neutral point after wing shift]]
+- in this graph: `Clipped wing shift` · `SM sensitivity to wing longitudinal shift` · `Neutral point after wing shift`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `app/services/sm_sizing_service.py:139,140 (_dsm_dx_wing)` · `app/services/sm_sizing_service.py:424,425,431 (forward clip)`
 
 **Source.** 🟡 PARTIAL

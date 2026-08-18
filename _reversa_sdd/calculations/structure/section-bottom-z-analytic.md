@@ -6,11 +6,19 @@ unit: mm
 cluster: structure
 user_visible: true
 source_status: PARTIAL
+node_class: derived
+tags:
+  - cluster/structure
+  - class/derived
+  - source/partial
+  - surface/user-visible
 ---
 
 # Section lower surface height (analytic)
 
 **Definition.** World-frame z of the lower surface at (y/span, x/c), from the analytic airfoil blend.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -18,13 +26,16 @@ source_status: PARTIAL
 bottom_z=min(top_z, bottom_z),
 ```
 
-**Inputs.** [[y-span-to-segment|Span fraction to segment mapping]]
+**Inputs.**
+
+- [[y-span-to-segment|Span fraction to segment mapping]]  — *⊣ limit*
 
 **Produced by.** `cad_designer/airplane/geometry/section_geometry.py:363` — `SectionGeometry._analytic_point`
 
 **Consumed by.**
 
-- in this graph: [[band-lo|Contained band lower bound]] · [[section-center-z-analytic|Section mid-height (analytic)]] · [[section-thickness-analytic|Section thickness (analytic)]]
+- in this graph: `Contained band lower bound` · `Section mid-height (analytic)` · `Section thickness (analytic)`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `cad_designer/airplane/geometry/spar_solver.py:762` · `app/services/section_geometry_service.py:56`
 
 **Source.** 🟡 PARTIAL

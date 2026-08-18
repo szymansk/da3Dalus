@@ -6,11 +6,21 @@ unit: N/m^2
 cluster: perf-matching
 user_visible: true
 source_status: SOURCED
+node_class: derived
+tags:
+  - cluster/perf-matching
+  - class/derived
+  - source/sourced
+  - surface/user-visible
+  - flag/anomaly
+  - flag/divergence
 ---
 
 # Design-point W/S
 
 **Definition.** Aircraft's actual wing loading marking the design point.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -18,13 +28,16 @@ source_status: SOURCED
 if "ws_n_m2" in aircraft: ws = float(aircraft["ws_n_m2"]) elif "s_ref_m2" in aircraft and float(aircraft["s_ref_m2"]) > 0: ws = weight_n / float(aircraft["s_ref_m2"]) else: ws = 0.0; ... round(ws, 2)
 ```
 
-**Inputs.** [[g_gravity|Standard gravity]]
+**Inputs.**
+
+- [[g_gravity|Standard gravity]]
 
 **Produced by.** `app/services/matching_chart_service.py:625` — `_design_point_from_aircraft`
 
 **Consumed by.**
 
-- in this graph: [[feasibility_verdict|Feasibility verdict]]
+- in this graph: `Feasibility verdict`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `_check_feasibility:995` · `MatchingChartResponse.design_point.ws_n_m2` · `frontend MatchingChartTab.tsx`
 
 **Source.** 🟢 SOURCED

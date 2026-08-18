@@ -6,11 +6,21 @@ unit: Wh
 cluster: powertrain
 user_visible: true
 source_status: PARTIAL
+node_class: derived
+tags:
+  - cluster/powertrain
+  - class/derived
+  - source/partial
+  - surface/user-visible
+  - flag/anomaly
+  - flag/divergence
 ---
 
 # Mission energy at high prop efficiency
 
 **Definition.** Energy budget recomputed with the optimistic propeller efficiency — produces capacity_mah_min_lo.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -18,7 +28,11 @@ source_status: PARTIAL
 energy_wh=p_cruise_hi_e * t_target_h / assumptions.dod
 ```
 
-**Inputs.** [[ss-p-cruise-hi-e|Electrical cruise power at high prop efficiency]] · [[ss-t-target-h|Target flight time in hours]] · [[ss-dod|Depth of discharge]]
+**Inputs.**
+
+- [[ss-p-cruise-hi-e|Electrical cruise power at high prop efficiency]]
+- [[ss-t-target-h|Target flight time in hours]]
+- [[ss-dod|Depth of discharge]]
 
 **Produced by.** `app/services/powertrain_solution_space_service.py:412` — `compute_solution_space`
 

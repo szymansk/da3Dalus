@@ -6,11 +6,21 @@ unit: rad/s
 cluster: perf-oppoints
 user_visible: true
 source_status: PARTIAL
+node_class: derived
+tags:
+  - cluster/perf-oppoints
+  - class/derived
+  - source/partial
+  - surface/user-visible
+  - flag/anomaly
+  - flag/divergence
 ---
 
 # Operating-point body rates
 
 **Definition.** Body-axis roll/pitch/yaw rates for a turn target, zeros for non-turns.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 

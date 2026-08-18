@@ -6,11 +6,19 @@ unit: enum (dimensionless)
 cluster: mass
 user_visible: true
 source_status: NO_SOURCE_FOUND
+node_class: derived
+tags:
+  - cluster/mass
+  - class/derived
+  - source/no-source-found
+  - surface/user-visible
 ---
 
 # Node weight completeness status
 
 **Definition.** Whether the weight of a subtree is fully known: 'valid' (own weight present / all children valid), 'partial' (mixed, or own present but all children invalid), 'invalid' (nothing known).
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -18,7 +26,9 @@ source_status: NO_SOURCE_FOUND
 leaf: "valid" if has_own else "invalid"; non-leaf: all_valid → "valid"; all_invalid → "partial" if has_own else "invalid"; else "partial"
 ```
 
-**Inputs.** [[node-own-weight-source|Own weight provenance]]
+**Inputs.**
+
+- [[node-own-weight-source|Own weight provenance]]
 
 **Produced by.** `app/services/component_tree_service.py:108` — `_roll_up_weights`
 

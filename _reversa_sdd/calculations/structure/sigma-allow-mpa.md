@@ -6,11 +6,21 @@ unit: MPa (N/mm²)
 cluster: structure
 user_visible: true
 source_status: PARTIAL
+node_class: unclassified-parameter
+tags:
+  - cluster/structure
+  - class/unclassified-parameter
+  - source/partial
+  - surface/user-visible
+  - flag/anomaly
+  - flag/divergence
 ---
 
 # Allowable bending stress (sizing path)
 
 **Definition.** Allowable bending stress used in erf_W. Taken from the request override if set, else from the material component's specs.
+
+⚪ **Unclassified parameter.** Not yet decided whether this is a user input or an internal tuning value.
 
 **Formula — as the code writes it.**
 
@@ -28,7 +38,8 @@ sigma_allow = (
 
 **Consumed by.**
 
-- in this graph: [[required-section-modulus|Required section modulus]] · [[structure--sigma-allow-positivity-guard|Allowable-stress positivity guard]]
+- in this graph: `Required section modulus` · `Allowable-stress positivity guard`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `app/services/spar_sizing.py:318` · `app/services/spar_sizing.py:374` · `frontend/lib/sparSizingHelpers.ts:117`
 
 **Source.** 🟡 PARTIAL

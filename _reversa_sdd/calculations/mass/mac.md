@@ -6,11 +6,20 @@ unit: m
 cluster: mass
 user_visible: true
 source_status: SOURCED
+node_class: derived
+tags:
+  - cluster/mass
+  - class/derived
+  - source/sourced
+  - surface/user-visible
+  - flag/divergence
 ---
 
 # Mean aerodynamic chord (main wing)
 
 **Definition.** Mean aerodynamic chord of the MAIN wing (largest planform area), used as the length scale that converts CG offsets into static margins.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -24,7 +33,8 @@ mac = float(main_wing.mean_aerodynamic_chord())
 
 **Consumed by.**
 
-- in this graph: [[cg-stability-aft|Aft CG stability limit]] · [[cg-stability-fwd-stub|Forward CG stability limit (0.30·MAC stub)]] · [[cg-x-design|Design CG_x (aerodynamic CG target)]] · [[sm-at-aft-api|Static margin at aft loading CG (API)]] · [[sm-at-aft-ctx|Static margin at aft loading CG (cached)]] · [[sm-at-fwd-api|Static margin at forward loading CG (API)]] · [[sm-at-fwd-ctx|Static margin at forward loading CG (cached)]]
+- in this graph: `Aft CG stability limit` · `Forward CG stability limit (0.30·MAC stub)` · `Design CG_x (aerodynamic CG target)` · `Static margin at aft loading CG (API)` · `Static margin at aft loading CG (cached)` · `Static margin at forward loading CG (API)` · `Static margin at forward loading CG (cached)`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `app/services/assumption_compute_service.py:108 (cg_x)` · `app/services/assumption_compute_service.py:473` · `app/services/assumption_compute_service.py:706 (ctx['mac_m'])` · `app/services/loading_scenario_service.py:112 / :116 / :259 / :260 / :584 / :593-594` · `app/services/sm_sizing_service.py` · `app/services/tail_sizing_service.py` · `frontend/components/workbench/StabilityChipRow.tsx:27` · `frontend/lib/metricsAdapters.ts:234 / :344`
 
 **Source.** 🟢 SOURCED

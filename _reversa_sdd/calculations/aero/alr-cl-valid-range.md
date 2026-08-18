@@ -6,11 +6,20 @@ unit: dimensionless
 cluster: aero-polars
 user_visible: false
 source_status: NO_SOURCE_FOUND
+node_class: derived
+tags:
+  - cluster/aero-polars
+  - class/derived
+  - source/no-source-found
+  - flag/anomaly
+  - flag/divergence
 ---
 
 # Polar-fit validity CL range
 
 **Definition.** CL span covered by trusted data, stored as the parabolic fit's validity window.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -19,7 +28,10 @@ result["cl_valid_lo"] = float(np.min(cl_f))
 result["cl_valid_hi"] = float(np.max(cl_f))
 ```
 
-**Inputs.** [[alr-alpha-sweep|Alpha sweep bounds and step]] · [[alr-confidence-gate|NeuralFoil confidence gate]]
+**Inputs.**
+
+- [[alr-alpha-sweep|Alpha sweep bounds and step]]  — *⊣ limit*
+- [[alr-confidence-gate|NeuralFoil confidence gate]]
 
 **Produced by.** `app/services/airfoil_low_re_service.py:673` — `_extract_metrics`
 

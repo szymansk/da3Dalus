@@ -6,11 +6,20 @@ unit: m
 cluster: stability
 user_visible: false
 source_status: SOURCED
+node_class: derived
+tags:
+  - cluster/stability
+  - class/derived
+  - source/sourced
+  - flag/anomaly
+  - flag/divergence
 ---
 
 # Wing aerodynamic centre x
 
 **Definition.** Longitudinal position of the main wing aerodynamic centre, taken at 25 % MAC aft of the root leading edge.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -24,7 +33,8 @@ x_wing_ac_m = float(root_le[0]) + 0.25 * (mac_m or 0.0)
 
 **Consumed by.**
 
-- in this graph: [[l-h-m|Horizontal tail moment arm]] · [[l-v-m|Vertical tail moment arm]]
+- in this graph: `Horizontal tail moment arm` · `Vertical tail moment arm`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `app/services/tail_sizing_service.py:200,224,460`
 
 **Source.** 🟢 SOURCED

@@ -6,11 +6,20 @@ unit: dimensionless
 cluster: aero-polars
 user_visible: true
 source_status: SOURCED
+node_class: derived
+tags:
+  - cluster/aero-polars
+  - class/derived
+  - source/sourced
+  - surface/user-visible
+  - flag/divergence
 ---
 
 # Root-chord Reynolds number
 
 **Definition.** Query Reynolds number at the root chord and slider speed.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -18,13 +27,17 @@ source_status: SOURCED
 return _RHO * speed_ms * chord_m / _MU
 ```
 
-**Inputs.** [[sui-rho|ISA sea-level density (suitability)]] · [[sui-mu|Dynamic viscosity (suitability)]]
+**Inputs.**
+
+- [[sui-rho|ISA sea-level density (suitability)]]
+- [[sui-mu|Dynamic viscosity (suitability)]]
 
 **Produced by.** `app/services/suitability_service.py:121` — `_compute_re`
 
 **Consumed by.**
 
-- in this graph: [[sui-re-clamped|Grid-clamped Reynolds + clamp flag]] · [[sui-tip-re-flag|tip_re_flag]]
+- in this graph: `Grid-clamped Reynolds + clamp flag` · `tip_re_flag`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `search_suitability:259,272,275` · `SuitabilityQuery.reynolds:688`
 
 **Source.** 🟢 SOURCED

@@ -6,11 +6,20 @@ unit: dimensionless
 cluster: aero-strips
 user_visible: true
 source_status: PARTIAL
+node_class: unclassified-constant
+tags:
+  - cluster/aero-strips
+  - class/unclassified-constant
+  - source/partial
+  - surface/user-visible
+  - flag/divergence
 ---
 
 # NaN cd on NeuralFoil failure
 
 **Definition.** cd is NaN when NeuralFoil raises or returns all-NaN outputs.
+
+⚪ **Unclassified constant.** Not yet decided whether this is a rule of thumb, a calibration or a physical value. Classifying it is open work — it is deliberately not guessed.
 
 **Value.** `float("nan")`
 

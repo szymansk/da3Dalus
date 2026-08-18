@@ -6,11 +6,21 @@ unit: x/c
 cluster: aero-strips
 user_visible: true
 source_status: PARTIAL
+node_class: derived
+tags:
+  - cluster/aero-strips
+  - class/derived
+  - source/partial
+  - surface/user-visible
+  - flag/anomaly
+  - flag/divergence
 ---
 
 # Whole-wing optimal trip position
 
 **Definition.** A single trip position optimised at the representative (cl, Re) and applied to every section.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -18,7 +28,11 @@ source_status: PARTIAL
 rep_result = optimize_section_xtr(rep_airfoil, cl=cl_rep, re=re_rep, xtr_grid=xtr_grid); global_xtr_opt = rep_result.xtr_opt
 ```
 
-**Inputs.** [[tos-re-rep|Representative Reynolds number (whole scope)]] · [[tos-cl-rep|Representative lift coefficient (whole scope)]] · [[tos-xtr-grid|Turbulator trip-position sweep grid]]
+**Inputs.**
+
+- [[tos-re-rep|Representative Reynolds number (whole scope)]]
+- [[tos-cl-rep|Representative lift coefficient (whole scope)]]
+- [[tos-xtr-grid|Turbulator trip-position sweep grid]]
 
 **Produced by.** `app/services/turbulator_optimizer_service.py:559` — `run_turbulator_optimizer`
 

@@ -6,11 +6,20 @@ unit: -
 cluster: perf-envelope
 user_visible: true
 source_status: SOURCED
+node_class: unclassified-constant
+tags:
+  - cluster/perf-envelope
+  - class/unclassified-constant
+  - source/sourced
+  - surface/user-visible
+  - flag/scale
 ---
 
 # Min-sink heuristic factor
 
 **Definition.** Cold-start multiplier estimating minimum-sink speed from stall speed.
+
+⚪ **Unclassified constant.** Not yet decided whether this is a rule of thumb, a calibration or a physical value. Classifying it is open work — it is deliberately not guessed.
 
 **Value.** `1.2`
 
@@ -26,7 +35,8 @@ value=round(1.2 * stall_speed_mps, 4)
 
 **Consumed by.**
 
-- in this graph: [[kpi_min_sink_speed|KPI: min sink speed]]
+- in this graph: `KPI: min sink speed`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 
 **Source.** 🟢 SOURCED
 

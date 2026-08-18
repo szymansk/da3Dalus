@@ -6,11 +6,21 @@ unit: Pa·s
 cluster: aero-polars
 user_visible: false
 source_status: PARTIAL
+node_class: physical-constant
+tags:
+  - cluster/aero-polars
+  - class/physical-constant
+  - source/partial
+  - flag/divergence
+  - flag/physical
 ---
 
 # Dynamic viscosity (suitability)
 
 **Definition.** Dynamic viscosity used for the root/tip Reynolds computation.
+
+**Physical constant.** A value of nature. It must be identical everywhere it appears — a second definition is a defect by construction, not a judgement call.
+*Identified as: dynamic viscosity of air.*
 
 **Value.** `1.81e-5`
 
@@ -26,7 +36,8 @@ _MU = 1.81e-5  # Pa·s  dynamic viscosity
 
 **Consumed by.**
 
-- in this graph: [[sui-re-root|Root-chord Reynolds number]]
+- in this graph: `Root-chord Reynolds number`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `_compute_re:121`
 
 **Source.** 🟡 PARTIAL

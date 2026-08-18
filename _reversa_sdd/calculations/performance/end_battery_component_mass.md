@@ -6,11 +6,21 @@ unit: kg
 cluster: perf-envelope
 user_visible: true
 source_status: SOURCED
+node_class: unclassified-parameter
+tags:
+  - cluster/perf-envelope
+  - class/unclassified-parameter
+  - source/sourced
+  - surface/user-visible
+  - flag/anomaly
+  - flag/divergence
 ---
 
 # Battery component mass
 
 **Definition.** Mass of the first weight item with category 'battery'.
+
+⚪ **Unclassified parameter.** Not yet decided whether this is a user input or an internal tuning value.
 
 **Formula — as the code writes it.**
 
@@ -24,7 +34,8 @@ battery_mass_kg = battery_item.mass_kg if battery_item else None
 
 **Consumed by.**
 
-- in this graph: [[end_battery_deviation|Battery-mass deviation]]
+- in this graph: `Battery-mass deviation`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 
 **Source.** 🟢 SOURCED
 

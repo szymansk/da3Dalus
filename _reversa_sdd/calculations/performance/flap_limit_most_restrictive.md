@@ -5,11 +5,19 @@ unit: deg
 cluster: perf-oppoints
 user_visible: false
 source_status: PARTIAL
+node_class: derived
+tags:
+  - cluster/perf-oppoints
+  - class/derived
+  - source/partial
+  - flag/divergence
 ---
 
 # Governing flap deflection limit
 
 **Definition.** Smallest positive/negative TED deflection limit across all flap-role surfaces (gh-536).
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -17,13 +25,16 @@ source_status: PARTIAL
 flap_limits = (min(flap_pos_limits), min(flap_neg_limits))
 ```
 
-**Inputs.** [[flap_roles|Flap control role set]]
+**Inputs.**
+
+- [[flap_roles|Flap control role set]]
 
 **Produced by.** `app/services/operating_point_generator_service.py:93` — `_clip_flap_to_ted_limit`
 
 **Consumed by.**
 
-- in this graph: [[flap_deflection_clipped_value|Clipped flap deflection]]
+- in this graph: `Clipped flap deflection`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `app/services/operating_point_generator_service.py:98 (clipped_value)`
 
 **Source.** 🟡 PARTIAL

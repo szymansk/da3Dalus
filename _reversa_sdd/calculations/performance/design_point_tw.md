@@ -6,11 +6,20 @@ unit: dimensionless
 cluster: perf-matching
 user_visible: true
 source_status: SOURCED
+node_class: derived
+tags:
+  - cluster/perf-matching
+  - class/derived
+  - source/sourced
+  - surface/user-visible
+  - flag/divergence
 ---
 
 # Design-point T/W
 
 **Definition.** Aircraft's actual static-thrust-to-weight ratio marking the design point.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -18,13 +27,16 @@ source_status: SOURCED
 t_w = t_static / weight_n if weight_n > 0 else 0.0; ... round(t_w, 5)
 ```
 
-**Inputs.** [[g_gravity|Standard gravity]]
+**Inputs.**
+
+- [[g_gravity|Standard gravity]]
 
 **Produced by.** `app/services/matching_chart_service.py:622` — `_design_point_from_aircraft`
 
 **Consumed by.**
 
-- in this graph: [[feasibility_verdict|Feasibility verdict]]
+- in this graph: `Feasibility verdict`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `_check_feasibility:996` · `MatchingChartResponse.design_point.t_w` · `frontend/hooks/useMatchingChart.ts DesignPoint`
 
 **Source.** 🟢 SOURCED

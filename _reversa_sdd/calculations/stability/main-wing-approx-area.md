@@ -6,11 +6,20 @@ unit: m²
 cluster: stability
 user_visible: false
 source_status: SOURCED
+node_class: derived
+tags:
+  - cluster/stability
+  - class/derived
+  - source/sourced
+  - flag/anomaly
+  - flag/divergence
 ---
 
 # Approximate wing area (main-wing selection)
 
 **Definition.** Trapezoidal planform area used only to pick the largest non-tail wing as the main wing.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 

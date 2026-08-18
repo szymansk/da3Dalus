@@ -5,11 +5,20 @@ unit: index
 cluster: aero-spanwise
 user_visible: true
 source_status: SOURCED
+node_class: derived
+tags:
+  - cluster/aero-spanwise
+  - class/derived
+  - source/sourced
+  - surface/user-visible
+  - flag/divergence
 ---
 
 # Sweet-spot index
 
 **Definition.** Alpha index of maximum force-based L/D, annotated as 'Sweet Spot'.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -17,7 +26,9 @@ source_status: SOURCED
 i_ldmax = int(np.nanargmax(ld_curve))
 ```
 
-**Inputs.** [[ld-ratio-force|Glide ratio from forces]]
+**Inputs.**
+
+- [[ld-ratio-force|Glide ratio from forces]]
 
 **Produced by.** `app/services/analysis_service.py:1159` — `_plot_glide_ratio`
 

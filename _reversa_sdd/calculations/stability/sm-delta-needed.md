@@ -6,11 +6,18 @@ unit: – (fraction of MAC)
 cluster: stability
 user_visible: false
 source_status: SOURCED
+node_class: derived
+tags:
+  - cluster/stability
+  - class/derived
+  - source/sourced
 ---
 
 # SM shortfall to target
 
 **Definition.** Static margin change required to reach the target from the current aft-CG value.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -18,13 +25,17 @@ source_status: SOURCED
 delta_needed = target_sm - sm_at_aft
 ```
 
-**Inputs.** [[target-static-margin-input|Target static margin]] · [[sm-at-aft|Static margin at aft CG]]
+**Inputs.**
+
+- [[target-static-margin-input|Target static margin]]
+- [[sm-at-aft|Static margin at aft CG]]
 
 **Produced by.** `app/services/sm_sizing_service.py:411` — `suggest_corrections`
 
 **Consumed by.**
 
-- in this graph: [[delta-sh-m2|Required horizontal tail area change]] · [[delta-x-wing-shift|Required wing longitudinal shift]]
+- in this graph: `Required horizontal tail area change` · `Required wing longitudinal shift`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `app/services/sm_sizing_service.py:412,413` · `app/services/sm_sizing_service.py:374,378,379 (duplicate in the error branch)`
 
 **Source.** 🟢 SOURCED

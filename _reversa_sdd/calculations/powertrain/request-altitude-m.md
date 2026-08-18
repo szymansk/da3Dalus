@@ -6,11 +6,20 @@ unit: m
 cluster: powertrain
 user_visible: true
 source_status: SOURCED
+node_class: unclassified-parameter
+tags:
+  - cluster/powertrain
+  - class/unclassified-parameter
+  - source/sourced
+  - surface/user-visible
+  - flag/divergence
 ---
 
 # Operating altitude (performance)
 
 **Definition.** Altitude used for the density correction of the whole velocity sweep.
+
+⚪ **Unclassified parameter.** Not yet decided whether this is a user input or an internal tuning value.
 
 **Value.** `0.0`
 
@@ -20,7 +29,8 @@ source_status: SOURCED
 
 **Consumed by.**
 
-- in this graph: [[air-density-perf|Air density at altitude (performance)]]
+- in this graph: `Air density at altitude (performance)`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `app/services/powertrain_performance.py:695` · `app/services/powertrain_performance.py:721`
 
 **Source.** 🟢 SOURCED

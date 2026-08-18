@@ -6,11 +6,22 @@ unit: N/m^2
 cluster: perf-matching
 user_visible: true
 source_status: NO_SOURCE_FOUND
+node_class: unclassified-constant
+tags:
+  - cluster/perf-matching
+  - class/unclassified-constant
+  - source/no-source-found
+  - surface/user-visible
+  - flag/anomaly
+  - flag/divergence
+  - flag/scale
 ---
 
 # W/S sweep upper bound
 
 **Definition.** Upper bound of the wing-loading axis of the matching chart.
+
+⚪ **Unclassified constant.** Not yet decided whether this is a rule of thumb, a calibration or a physical value. Classifying it is open work — it is deliberately not guessed.
 
 **Value.** `1500.0`
 
@@ -26,7 +37,8 @@ _WS_MAX: float = 1500.0
 
 **Consumed by.**
 
-- in this graph: [[ws_range_mc|W/S sweep vector]]
+- in this graph: `W/S sweep vector`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `ws_range:838`
 
 **Source.** 🔴 NO SOURCE FOUND

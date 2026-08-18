@@ -6,11 +6,19 @@ unit: dimensionless
 cluster: aero-strips
 user_visible: false
 source_status: PARTIAL
+node_class: derived
+tags:
+  - cluster/aero-strips
+  - class/derived
+  - source/partial
+  - flag/divergence
 ---
 
 # Inserted-section blend fraction
 
 **Definition.** Linear parameter locating an inserted cross-section between the two bounding xsecs.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -18,13 +26,16 @@ source_status: PARTIAL
 a, b = 1.0 - frac, frac   /   _blend_xsec(xa, xb, i / n)
 ```
 
-**Inputs.** [[vlm-panels-per-segment|Panels allotted to a wing segment]]
+**Inputs.**
+
+- [[vlm-panels-per-segment|Panels allotted to a wing segment]]  — *⊣ limit*
 
 **Produced by.** `app/services/vlm_strip_forces.py:97` — `_blend_xsec`
 
 **Consumed by.**
 
-- in this graph: [[vlm-blend-airfoil|Blended section airfoil]] · [[vlm-blend-chord|Blended section chord]] · [[vlm-blend-twist|Blended section twist]] · [[vlm-blend-xyz-le|Blended section leading-edge point]]
+- in this graph: `Blended section airfoil` · `Blended section chord` · `Blended section twist` · `Blended section leading-edge point`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `app/services/vlm_strip_forces.py:_blend_xsec`
 
 **Source.** 🟡 PARTIAL

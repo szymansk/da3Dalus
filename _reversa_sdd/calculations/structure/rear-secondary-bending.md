@@ -5,11 +5,19 @@ unit: N·m
 cluster: structure
 user_visible: false
 source_status: PARTIAL
+node_class: derived
+tags:
+  - cluster/structure
+  - class/derived
+  - source/partial
+  - flag/divergence
 ---
 
 # Rear-spar secondary bending share
 
 **Definition.** Genuine secondary bending the rear spar carries, added on top of the torsion reaction: a user-set fraction of the local bending moment.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -17,13 +25,17 @@ source_status: PARTIAL
 secondary = secondary_fraction * bending_fn(y_span)
 ```
 
-**Inputs.** [[rear-secondary-bending-fraction|Rear secondary bending fraction]] · [[front-moment-fn|Front-spar bending moment interpolator]]
+**Inputs.**
+
+- [[rear-secondary-bending-fraction|Rear secondary bending fraction]]
+- [[front-moment-fn|Front-spar bending moment interpolator]]  — *⊣ limit*
 
 **Produced by.** `app/services/spar_plan_service.py:454` — `_make_rear_moment_fn`
 
 **Consumed by.**
 
-- in this graph: [[rear-moment-fn|Rear-spar sizing moment]]
+- in this graph: `Rear-spar sizing moment`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `app/services/spar_plan_service.py:455`
 
 **Source.** 🟡 PARTIAL

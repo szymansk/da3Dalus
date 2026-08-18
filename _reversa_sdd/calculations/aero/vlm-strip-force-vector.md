@@ -6,11 +6,18 @@ unit: N
 cluster: aero-strips
 user_visible: false
 source_status: SOURCED
+node_class: derived
+tags:
+  - cluster/aero-strips
+  - class/derived
+  - source/sourced
 ---
 
 # Per-strip force vector
 
 **Definition.** Sum of the panel force vectors belonging to one chordwise strip, in geometry axes.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -18,13 +25,16 @@ source_status: SOURCED
 f_strip = forces[sl].sum(axis=0)
 ```
 
-**Inputs.** [[vlm-strip-index-ranges|Panel index ranges per strip]]
+**Inputs.**
+
+- [[vlm-strip-index-ranges|Panel index ranges per strip]]  — *⊣ limit*
 
 **Produced by.** `app/services/vlm_strip_forces.py:258` — `compute_vlm_strip_forces`
 
 **Consumed by.**
 
-- in this graph: [[vlm-strip-drag|Strip drag force]] · [[vlm-strip-lift|Strip lift force]]
+- in this graph: `Strip drag force` · `Strip lift force`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 
 **Source.** 🟢 SOURCED
 

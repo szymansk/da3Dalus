@@ -5,11 +5,20 @@ unit: iterations / s
 cluster: perf-oppoints
 user_visible: false
 source_status: NO_SOURCE_FOUND
+node_class: unclassified-parameter
+tags:
+  - cluster/perf-oppoints
+  - class/unclassified-parameter
+  - source/no-source-found
+  - flag/anomaly
+  - flag/divergence
 ---
 
 # Opti solver budget
 
 **Definition.** Iteration and wall-clock limits for the IPOPT trim solve.
+
+⚪ **Unclassified parameter.** Not yet decided whether this is a user input or an internal tuning value.
 
 **Value.** `max_iter=120, max_runtime=0.35 s`
 

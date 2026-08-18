@@ -6,11 +6,19 @@ unit: dimensionless
 cluster: perf-matching
 user_visible: false
 source_status: PARTIAL
+node_class: derived
+tags:
+  - cluster/perf-matching
+  - class/derived
+  - source/partial
+  - flag/divergence
 ---
 
 # Friction-adjusted landing coefficient
 
 **Definition.** Base landing coefficient rescaled by the ratio of hard-runway to actual braking friction.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -18,13 +26,18 @@ source_status: PARTIAL
 k_ldg = _K_LDG_HARD * (_MU_BRAKE_HARD / mu_brake)
 ```
 
-**Inputs.** [[k_ldg_hard|Landing ground-roll coefficient]] · [[mu_brake_hard|Braking friction, hard runway]] · [[mu_brake_selected|Selected braking friction]]
+**Inputs.**
+
+- [[k_ldg_hard|Landing ground-roll coefficient]]
+- [[mu_brake_hard|Braking friction, hard runway]]
+- [[mu_brake_selected|Selected braking friction]]
 
 **Produced by.** `app/services/field_length_service.py:263` — `_compute_s_ldg_ground`
 
 **Consumed by.**
 
-- in this graph: [[s_ldg_ground|Landing ground roll]]
+- in this graph: `Landing ground roll`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `s_ldg_ground:264`
 
 **Source.** 🟡 PARTIAL

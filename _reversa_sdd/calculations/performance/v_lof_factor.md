@@ -6,11 +6,20 @@ unit: dimensionless
 cluster: perf-matching
 user_visible: true
 source_status: SOURCED
+node_class: unclassified-constant
+tags:
+  - cluster/perf-matching
+  - class/unclassified-constant
+  - source/sourced
+  - surface/user-visible
+  - flag/scale
 ---
 
 # Lift-off speed factor
 
 **Definition.** Ratio of lift-off speed to stall speed.
+
+⚪ **Unclassified constant.** Not yet decided whether this is a rule of thumb, a calibration or a physical value. Classifying it is open work — it is deliberately not guessed.
 
 **Value.** `1.2`
 
@@ -26,7 +35,8 @@ _V_LOF_FACTOR: float = 1.2
 
 **Consumed by.**
 
-- in this graph: [[v_lof|Lift-off speed]]
+- in this graph: `Lift-off speed`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `_v_lof:132`
 
 **Source.** 🟢 SOURCED

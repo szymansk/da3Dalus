@@ -6,11 +6,22 @@ unit: m/s
 cluster: perf-matching
 user_visible: true
 source_status: PARTIAL
+node_class: derived
+tags:
+  - cluster/perf-matching
+  - class/derived
+  - source/partial
+  - surface/user-visible
+  - flag/anomaly
+  - flag/divergence
+  - flag/scale
 ---
 
 # Resolved cruise speed
 
 **Definition.** Cruise speed from override, aircraft dict, V_md, or a polar estimate at a nominal W/S.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -18,13 +29,19 @@ source_status: PARTIAL
 v_cruise = _v_md(500.0, cd0=cd0_for_est, e=e, ar=ar_for_est, rho=rho)
 ```
 
-**Inputs.** [[v_md|Minimum-drag speed]] · [[cd0_resolved|Resolved zero-lift drag]] · [[e_resolved|Resolved Oswald factor]] · [[ar_resolved|Resolved aspect ratio]]
+**Inputs.**
+
+- [[v_md|Minimum-drag speed]]
+- [[cd0_resolved|Resolved zero-lift drag]]  — *⤵ fallback*
+- [[e_resolved|Resolved Oswald factor]]  — *⤵ fallback*
+- [[ar_resolved|Resolved aspect ratio]]  — *⤵ fallback*
 
 **Produced by.** `app/services/matching_chart_service.py:785` — `compute_chart`
 
 **Consumed by.**
 
-- in this graph: [[chart_warnings|Matching-chart design warnings]] · [[q_dynamic_pressure|Dynamic pressure]] · [[tw_cruise_constraint|Cruise constraint T/W]] · [[v_climb_vertical|Vertical-climb speed]]
+- in this graph: `Matching-chart design warnings` · `Dynamic pressure` · `Cruise constraint T/W` · `Vertical-climb speed`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `_cruise_constraint:853` · `v_climb_vertical:1157` · `hover_text:925`
 
 **Source.** 🟡 PARTIAL

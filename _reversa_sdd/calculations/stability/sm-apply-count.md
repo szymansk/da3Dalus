@@ -6,11 +6,20 @@ unit: – (count)
 cluster: stability
 user_visible: false
 source_status: NO_SOURCE_FOUND
+node_class: derived
+tags:
+  - cluster/stability
+  - class/derived
+  - source/no-source-found
+  - flag/anomaly
+  - flag/divergence
 ---
 
 # Apply-loop counter
 
 **Definition.** Number of real (non-dry-run) apply operations performed since the last recompute.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 

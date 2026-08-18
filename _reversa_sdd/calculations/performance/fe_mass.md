@@ -6,11 +6,20 @@ unit: kg
 cluster: perf-envelope
 user_visible: true
 source_status: NO_SOURCE_FOUND
+node_class: user-input
+tags:
+  - cluster/perf-envelope
+  - class/user-input
+  - source/no-source-found
+  - surface/user-visible
+  - flag/scale
 ---
 
 # Design mass (envelope)
 
 **Definition.** Effective mass design assumption, defaulting to 1.5 kg when no row exists.
+
+**User input.** Supplied from outside the calculation (assumption store or request), not derived.
 
 **Value.** `default 1.5`
 
@@ -26,7 +35,8 @@ result[param] = get_effective_assumption_value(db, ...) except NotFoundError: PA
 
 **Consumed by.**
 
-- in this graph: [[fe_weight|Aircraft weight]] · [[fe_wing_loading|Wing loading (gust path)]]
+- in this graph: `Aircraft weight` · `Wing loading (gust path)`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 
 **Source.** 🔴 NO SOURCE FOUND
 

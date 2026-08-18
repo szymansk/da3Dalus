@@ -6,11 +6,20 @@ unit: dimensionless
 cluster: aero-polars
 user_visible: true
 source_status: SOURCED
+node_class: derived
+tags:
+  - cluster/aero-polars
+  - class/derived
+  - source/sourced
+  - surface/user-visible
+  - flag/divergence
 ---
 
 # Section CD_min
 
 **Definition.** Minimum drag coefficient over the trusted sweep at one Re.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -19,13 +28,17 @@ idx_cd_min = int(np.argmin(cd_f))
 cd_min = float(cd_f[idx_cd_min])
 ```
 
-**Inputs.** [[alr-alpha-sweep|Alpha sweep bounds and step]] · [[alr-confidence-gate|NeuralFoil confidence gate]]
+**Inputs.**
+
+- [[alr-alpha-sweep|Alpha sweep bounds and step]]  — *⊣ limit*
+- [[alr-confidence-gate|NeuralFoil confidence gate]]
 
 **Produced by.** `app/services/airfoil_low_re_service.py:628` — `_extract_metrics`
 
 **Consumed by.**
 
-- in this graph: [[alr-drag-bucket-factor|Drag-bucket CD threshold factor]] · [[alr-drag-bucket-width|Drag bucket width]] · [[alr-score-re-agnostic|re_agnostic suitability score]]
+- in this graph: `Drag-bucket CD threshold factor` · `Drag bucket width` · `re_agnostic suitability score`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `AirfoilLowRePolarModel.cd_min` · `score_re_agnostic:852`
 
 **Source.** 🟢 SOURCED

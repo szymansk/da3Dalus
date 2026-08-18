@@ -6,11 +6,20 @@ unit: V
 cluster: powertrain
 user_visible: true
 source_status: SOURCED
+node_class: derived
+tags:
+  - cluster/powertrain
+  - class/derived
+  - source/sourced
+  - surface/user-visible
+  - flag/anomaly
 ---
 
 # Nominal pack voltage
 
 **Definition.** Loaded nominal pack voltage at 3.7 V per cell.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -18,13 +27,17 @@ source_status: SOURCED
 return self.cells * _VOLTS_PER_LIPO_CELL
 ```
 
-**Inputs.** [[battery-cells-input|Battery cell count]] · [[volts-per-lipo-cell|Loaded LiPo cell voltage]]
+**Inputs.**
+
+- [[battery-cells-input|Battery cell count]]
+- [[volts-per-lipo-cell|Loaded LiPo cell voltage]]
 
 **Produced by.** `app/services/powertrain_performance.py:184` — `BatterySpec.nominal_voltage_v`
 
 **Consumed by.**
 
-- in this graph: [[battery-max-continuous-discharge|Battery maximum continuous discharge power]] · [[curve-v-bat|Battery voltage used for the curve]]
+- in this graph: `Battery maximum continuous discharge power` · `Battery voltage used for the curve`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `app/services/powertrain_performance.py:195` · `app/services/powertrain_performance.py:640`
 
 **Source.** 🟢 SOURCED

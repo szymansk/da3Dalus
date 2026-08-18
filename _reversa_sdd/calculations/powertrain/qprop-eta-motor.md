@@ -6,11 +6,20 @@ unit: dimensionless (0..1)
 cluster: powertrain
 user_visible: false
 source_status: SOURCED
+node_class: derived
+tags:
+  - cluster/powertrain
+  - class/derived
+  - source/sourced
+  - flag/anomaly
+  - flag/divergence
 ---
 
 # QPROP motor efficiency
 
 **Definition.** Electrical-to-mechanical efficiency at the solved operating point in Drela's QPROP form, clamped to [0,1].
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -18,7 +27,12 @@ source_status: SOURCED
 eta = (V_terminal - current * rm) * (current - i0) / (V_terminal * current) ; eta = float(min(max(eta, 0.0), 1.0))
 ```
 
-**Inputs.** [[qprop-current|Solved terminal current]] · [[curve-v-terminal|Motor terminal voltage]] · [[motor-rm-ohm-input|Winding resistance]] · [[motor-io-input|No-load current]]
+**Inputs.**
+
+- [[qprop-current|Solved terminal current]]  — *⊣ limit*
+- [[curve-v-terminal|Motor terminal voltage]]
+- [[motor-rm-ohm-input|Winding resistance]]
+- [[motor-io-input|No-load current]]  — *⤵ fallback*
 
 **Produced by.** `app/services/powertrain_performance.py:585` — `solve_qprop_operating_point`
 

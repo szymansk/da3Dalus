@@ -6,11 +6,21 @@ unit: -
 cluster: perf-envelope
 user_visible: true
 source_status: SOURCED
+node_class: derived
+tags:
+  - cluster/perf-envelope
+  - class/derived
+  - source/sourced
+  - surface/user-visible
+  - flag/anomaly
+  - flag/divergence
 ---
 
 # Axis normalisation
 
 **Definition.** Linear mapping of a physical value onto the mission preset's axis range, clipped to [0,1].
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -18,13 +28,16 @@ source_status: SOURCED
 if hi <= lo: return 0.0; score = (value - lo) / (hi - lo); return max(0.0, min(1.0, score))
 ```
 
-**Inputs.** [[mkpi_axis_ranges|Mission axis ranges]]
+**Inputs.**
+
+- [[mkpi_axis_ranges|Mission axis ranges]]  — *⊣ limit*
 
 **Produced by.** `app/services/mission_kpi_service.py:65` — `_normalise_score`
 
 **Consumed by.**
 
-- in this graph: [[mkpi_target_scores|Soll polygon scores]]
+- in this graph: `Soll polygon scores`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `MissionRadarChart.tsx` · `AxisDrawer.tsx`
 
 **Source.** 🟢 SOURCED

@@ -6,11 +6,20 @@ unit: MPa
 cluster: aero-spanwise
 user_visible: true
 source_status: PARTIAL
+node_class: derived
+tags:
+  - cluster/aero-spanwise
+  - class/derived
+  - source/partial
+  - surface/user-visible
+  - flag/divergence
 ---
 
 # Allowable bending stress
 
 **Definition.** Material allowable bending stress, either overridden by the request or read from the material component specs.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -24,7 +33,8 @@ sigma_allow = spar_params.sigma_allow_mpa_override; if sigma_allow is None: sigm
 
 **Consumed by.**
 
-- in this graph: [[aero-spanwise--sigma-allow-positivity-guard|σ_allow positivity guard]] · [[spar-sizing-block|Per-surface spar sizing block]]
+- in this graph: `σ_allow positivity guard` · `Per-surface spar sizing block`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `compute_spar_sizing`
 
 **Source.** 🟡 PARTIAL

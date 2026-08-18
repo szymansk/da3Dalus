@@ -6,11 +6,21 @@ unit: m
 cluster: powertrain
 user_visible: true
 source_status: NO_SOURCE_FOUND
+node_class: unclassified-constant
+tags:
+  - cluster/powertrain
+  - class/unclassified-constant
+  - source/no-source-found
+  - surface/user-visible
+  - flag/anomaly
+  - flag/divergence
 ---
 
 # Phase-1 propeller diameter estimate
 
 **Definition.** A single fixed propeller diameter used for every aircraft when estimating the required motor KV.
+
+⚪ **Unclassified constant.** Not yet decided whether this is a rule of thumb, a calibration or a physical value. Classifying it is open work — it is deliberately not guessed.
 
 **Value.** `0.30`
 
@@ -26,7 +36,8 @@ prop_d = _PHASE1_PROP_DIAMETER_M
 
 **Consumed by.**
 
-- in this graph: [[ss-rpm-target|Target propeller RPM]]
+- in this graph: `Target propeller RPM`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `app/services/powertrain_solution_space_service.py:157`
 
 **Source.** 🔴 NO SOURCE FOUND

@@ -6,11 +6,20 @@ unit: % MAC
 cluster: stability
 user_visible: true
 source_status: SOURCED
+node_class: derived
+tags:
+  - cluster/stability
+  - class/derived
+  - source/sourced
+  - surface/user-visible
+  - flag/anomaly
 ---
 
 # Static margin percent
 
 **Definition.** Static margin expressed in percent of MAC; the value persisted and classified.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -18,13 +27,16 @@ source_status: SOURCED
 static_margin_pct = static_margin * 100 if static_margin is not None else None
 ```
 
-**Inputs.** [[static-margin-fraction|Static margin (fraction of MAC)]]
+**Inputs.**
+
+- [[static-margin-fraction|Static margin (fraction of MAC)]]
 
 **Produced by.** `app/services/stability_service.py:329` — `get_stability_summary`
 
 **Consumed by.**
 
-- in this graph: [[stability-class|Stability classification (static margin band)]]
+- in this graph: `Stability classification (static margin band)`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `app/services/stability_service.py:350 classify_stability` · `app/services/stability_service.py:166 persist (static_margin_pct column)` · `app/services/copilot_tools.py:445,452` · `frontend/components/workbench/MarkerDetailBox.tsx:16 (component never mounted)`
 
 **Source.** 🟢 SOURCED

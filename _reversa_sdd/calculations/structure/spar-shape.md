@@ -5,11 +5,21 @@ unit: -
 cluster: structure
 user_visible: true
 source_status: SOURCED
+node_class: unclassified-parameter
+tags:
+  - cluster/structure
+  - class/unclassified-parameter
+  - source/sourced
+  - surface/user-visible
+  - flag/anomaly
+  - flag/divergence
 ---
 
 # Spar cross-section shape
 
 **Definition.** Cross-section shape requested for both spars in the plan path.
+
+⚪ **Unclassified parameter.** Not yet decided whether this is a user input or an internal tuning value.
 
 **Value.** `"tube"`
 

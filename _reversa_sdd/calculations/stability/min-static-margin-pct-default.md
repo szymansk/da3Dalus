@@ -6,11 +6,20 @@ unit: % MAC
 cluster: stability
 user_visible: true
 source_status: SOURCED
+node_class: unclassified-parameter
+tags:
+  - cluster/stability
+  - class/unclassified-parameter
+  - source/sourced
+  - surface/user-visible
+  - flag/anomaly
 ---
 
 # Minimum static margin (CG-range default)
 
 **Definition.** Lower static-margin bound used to place the aft CG limit. Read from a design_assumptions row named 'min_static_margin', otherwise this default.
+
+⚪ **Unclassified parameter.** Not yet decided whether this is a user input or an internal tuning value.
 
 **Value.** `5.0`
 
@@ -20,7 +29,8 @@ source_status: SOURCED
 
 **Consumed by.**
 
-- in this graph: [[cg-range-aft|Aft CG limit from margin bounds]]
+- in this graph: `Aft CG limit from margin bounds`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `app/services/stability_service.py:254,331,334` · `app/services/stability_service.py:87 (same literal repeated as compute_cg_range default)`
 
 **Source.** 🟢 SOURCED

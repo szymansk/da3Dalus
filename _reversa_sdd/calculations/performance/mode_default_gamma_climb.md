@@ -6,11 +6,21 @@ unit: deg
 cluster: perf-matching
 user_visible: true
 source_status: NO_SOURCE_FOUND
+node_class: unclassified-parameter
+tags:
+  - cluster/perf-matching
+  - class/unclassified-parameter
+  - source/no-source-found
+  - surface/user-visible
+  - flag/anomaly
+  - flag/divergence
 ---
 
 # Mode default climb gradient
 
 **Definition.** Per-mode default climb-gradient target.
+
+⚪ **Unclassified parameter.** Not yet decided whether this is a user input or an internal tuning value.
 
 **Value.** `rc_runway:5.0; rc_hand_launch:5.0; uav_runway:4.0; uav_belly_land:4.0; ga_runway:1.5`
 
@@ -26,7 +36,8 @@ defaults[mode]["gamma_climb_deg"]
 
 **Consumed by.**
 
-- in this graph: [[tw_climb_constraint|Climb constraint T/W]]
+- in this graph: `Climb constraint T/W`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `compute_chart:782` · `_climb_constraint:863` · `hover_text:938`
 
 **Source.** 🔴 NO SOURCE FOUND

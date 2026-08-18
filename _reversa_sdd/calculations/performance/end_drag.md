@@ -6,11 +6,18 @@ unit: N
 cluster: perf-envelope
 user_visible: false
 source_status: SOURCED
+node_class: derived
+tags:
+  - cluster/perf-envelope
+  - class/derived
+  - source/sourced
 ---
 
 # Drag force
 
 **Definition.** Total drag at the evaluation speed.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -18,13 +25,17 @@ source_status: SOURCED
 drag = q * s_ref * cd
 ```
 
-**Inputs.** [[end_q|Dynamic pressure (endurance)]] · [[end_cd_total|Total drag coefficient]]
+**Inputs.**
+
+- [[end_q|Dynamic pressure (endurance)]]
+- [[end_cd_total|Total drag coefficient]]
 
 **Produced by.** `app/services/endurance_service.py:123` — `_power_required`
 
 **Consumed by.**
 
-- in this graph: [[end_p_aero|Aerodynamic power]]
+- in this graph: `Aerodynamic power`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 
 **Source.** 🟢 SOURCED
 

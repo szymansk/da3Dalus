@@ -6,11 +6,20 @@ unit: m/s
 cluster: aero-strips
 user_visible: true
 source_status: NO_SOURCE_FOUND
+node_class: unclassified-constant
+tags:
+  - cluster/aero-strips
+  - class/unclassified-constant
+  - source/no-source-found
+  - surface/user-visible
+  - flag/divergence
 ---
 
 # Assumed cruise speed (level-flight solve)
 
 **Definition.** Representative cruise speed used for the fallback level-flight operating point.
+
+⚪ **Unclassified constant.** Not yet decided whether this is a rule of thumb, a calibration or a physical value. Classifying it is open work — it is deliberately not guessed.
 
 **Value.** `15.0`
 
@@ -26,7 +35,8 @@ cruise_v = 15.0  # m/s — safe guess for RC/UAV models
 
 **Consumed by.**
 
-- in this graph: [[lfop-cl-target|Level-flight target lift coefficient]]
+- in this graph: `Level-flight target lift coefficient`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `OperatingPointSchema.velocity (line 533)`
 
 **Source.** 🔴 NO SOURCE FOUND

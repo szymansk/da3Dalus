@@ -6,11 +6,20 @@ unit: % MAC
 cluster: stability
 user_visible: true
 source_status: SOURCED
+node_class: unclassified-constant
+tags:
+  - cluster/stability
+  - class/unclassified-constant
+  - source/sourced
+  - surface/user-visible
+  - flag/anomaly
 ---
 
 # Stable/neutral boundary
 
 **Definition.** Static margin percent above which the aircraft is labelled 'stable'.
+
+⚪ **Unclassified constant.** Not yet decided whether this is a rule of thumb, a calibration or a physical value. Classifying it is open work — it is deliberately not guessed.
 
 **Value.** `5`
 
@@ -20,7 +29,8 @@ source_status: SOURCED
 
 **Consumed by.**
 
-- in this graph: [[stability-class|Stability classification (static margin band)]]
+- in this graph: `Stability classification (static margin band)`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `app/services/stability_service.py:77`
 
 **Source.** 🟢 SOURCED

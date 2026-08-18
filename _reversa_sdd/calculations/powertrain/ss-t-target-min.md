@@ -6,11 +6,21 @@ unit: min
 cluster: powertrain
 user_visible: true
 source_status: PARTIAL
+node_class: unclassified-parameter
+tags:
+  - cluster/powertrain
+  - class/unclassified-parameter
+  - source/partial
+  - surface/user-visible
+  - flag/anomaly
+  - flag/divergence
 ---
 
 # Target flight time
 
 **Definition.** Mission duration the energy budget must cover. Rejected at <= 0 with a domain error.
+
+⚪ **Unclassified parameter.** Not yet decided whether this is a user input or an internal tuning value.
 
 **Value.** `10.0`
 
@@ -26,7 +36,8 @@ t_target_min = assumptions.t_target_min ; if t_target_min <= 0: raise Validation
 
 **Consumed by.**
 
-- in this graph: [[ss-t-target-h|Target flight time in hours]]
+- in this graph: `Target flight time in hours`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `app/services/powertrain_solution_space_service.py:330` · `app/services/powertrain_solution_space_service.py:352` · `app/services/powertrain_solution_space_service.py:497` · `frontend/components/workbench/PowertrainTab.tsx:838`
 
 **Source.** 🟡 PARTIAL

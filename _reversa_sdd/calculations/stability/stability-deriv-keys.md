@@ -6,11 +6,21 @@ unit: – (set of strings)
 cluster: stability
 user_visible: true
 source_status: SOURCED
+node_class: unclassified-constant
+tags:
+  - cluster/stability
+  - class/unclassified-constant
+  - source/sourced
+  - surface/user-visible
+  - flag/anomaly
+  - flag/divergence
 ---
 
 # Reported stability derivative whitelist
 
 **Definition.** Keys extracted from the AeroBuildup result and reported as stability derivatives; also the input set for enrichment's stability classification.
+
+⚪ **Unclassified constant.** Not yet decided whether this is a rule of thumb, a calibration or a physical value. Classifying it is open work — it is deliberately not guessed.
 
 **Value.** `{"CL_a", "CL_b", "CY_a", "CY_b", "Cm_a", "Cn_b", "Cl_b", "Clb", "Cnr", "Clr", "Cnb"}`
 

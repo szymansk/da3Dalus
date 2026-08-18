@@ -6,11 +6,20 @@ unit: 1/rad
 cluster: stability
 user_visible: false
 source_status: NO_SOURCE_FOUND
+node_class: numerical-tolerance
+tags:
+  - cluster/stability
+  - class/numerical-tolerance
+  - source/no-source-found
+  - flag/anomaly
+  - flag/divergence
 ---
 
 # CL_alpha division guard
 
 **Definition.** Minimum \|CL_alpha\| below which the derivative-based static margin is not computed.
+
+**Numerical tolerance.** A solver or comparison epsilon, not a domain value. ADR 0023 does not apply.
 
 **Value.** `1e-6`
 
@@ -26,7 +35,8 @@ if has_cm_a and abs(cl_a) > 1e-6:
 
 **Consumed by.**
 
-- in this graph: [[trim-static-margin-derivative|Static margin from derivatives]]
+- in this graph: `Static margin from derivatives`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `app/services/trim_enrichment_service.py:145`
 
 **Source.** 🔴 NO SOURCE FOUND

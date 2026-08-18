@@ -6,11 +6,20 @@ unit: -
 cluster: perf-envelope
 user_visible: false
 source_status: NO_SOURCE_FOUND
+node_class: unclassified-constant
+tags:
+  - cluster/perf-envelope
+  - class/unclassified-constant
+  - source/no-source-found
+  - flag/anomaly
+  - flag/divergence
 ---
 
 # Inline C_D0 default
 
 **Definition.** Zero-lift drag coefficient assumed when the assumptions dict has no cd0.
+
+⚪ **Unclassified constant.** Not yet decided whether this is a rule of thumb, a calibration or a physical value. Classifying it is open work — it is deliberately not guessed.
 
 **Value.** `0.03`
 

@@ -6,11 +6,21 @@ unit: dimensionless
 cluster: perf-matching
 user_visible: false
 source_status: PARTIAL
+node_class: unclassified-parameter
+tags:
+  - cluster/perf-matching
+  - class/unclassified-parameter
+  - source/partial
+  - flag/anomaly
+  - flag/divergence
+  - flag/scale
 ---
 
 # Takeoff CL_max (matching chart)
 
 **Definition.** Takeoff CL_max for the takeoff constraint, defaulting to the clean value.
+
+⚪ **Unclassified parameter.** Not yet decided whether this is a user input or an internal tuning value.
 
 **Formula — as the code writes it.**
 
@@ -18,13 +28,16 @@ source_status: PARTIAL
 cl_max_to: float = float(aircraft.get("cl_max_takeoff", cl_max_clean))
 ```
 
-**Inputs.** [[cl_max_clean_mc|Clean CL_max (matching chart)]]
+**Inputs.**
+
+- [[cl_max_clean_mc|Clean CL_max (matching chart)]]  — *⊣ limit*
 
 **Produced by.** `app/services/matching_chart_service.py:808` — `compute_chart`
 
 **Consumed by.**
 
-- in this graph: [[tw_takeoff_constraint|Takeoff constraint T/W]]
+- in this graph: `Takeoff constraint T/W`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `_takeoff_constraint:843`
 
 **Source.** 🟡 PARTIAL

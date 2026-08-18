@@ -6,11 +6,23 @@ unit: m/s^2
 cluster: perf-envelope
 user_visible: true
 source_status: PARTIAL
+node_class: physical-constant
+tags:
+  - cluster/perf-envelope
+  - class/physical-constant
+  - source/partial
+  - surface/user-visible
+  - flag/anomaly
+  - flag/divergence
+  - flag/physical
 ---
 
 # Gravity (mission KPI, inline)
 
 **Definition.** Gravity literal embedded directly in the wing-loading expression.
+
+**Physical constant.** A value of nature. It must be identical everywhere it appears — a second definition is a defect by construction, not a judgement call.
+*Identified as: gravity.*
 
 **Value.** `9.81`
 
@@ -26,7 +38,8 @@ value = mass_kg * 9.81 / s_ref
 
 **Consumed by.**
 
-- in this graph: [[mkpi_wing_loading|KPI: wing loading]]
+- in this graph: `KPI: wing loading`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 
 **Source.** 🟡 PARTIAL
 

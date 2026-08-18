@@ -6,11 +6,19 @@ unit: rpm/V
 cluster: powertrain
 user_visible: true
 source_status: SOURCED
+node_class: unclassified-parameter
+tags:
+  - cluster/powertrain
+  - class/unclassified-parameter
+  - source/sourced
+  - surface/user-visible
 ---
 
 # Raw motor KV
 
 **Definition.** Motor speed constant before any gearbox, read from the brushless_motor catalog specs.
+
+⚪ **Unclassified parameter.** Not yet decided whether this is a user input or an internal tuning value.
 
 **Inputs.** — *(leaf: a constant or an external input)*
 
@@ -18,7 +26,8 @@ source_status: SOURCED
 
 **Consumed by.**
 
-- in this graph: [[motor-output-kv|Output-shaft KV]]
+- in this graph: `Output-shaft KV`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `app/services/powertrain_performance.py:140` · `app/api/v2/endpoints/aeroplane/powertrain_performance.py:94`
 
 **Source.** 🟢 SOURCED

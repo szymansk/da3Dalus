@@ -6,11 +6,20 @@ unit: – (dimensionless)
 cluster: stability
 user_visible: true
 source_status: SOURCED
+node_class: derived
+tags:
+  - cluster/stability
+  - class/derived
+  - source/sourced
+  - surface/user-visible
+  - flag/divergence
 ---
 
 # Horizontal tail volume coefficient
 
 **Definition.** Non-dimensional measure of horizontal tail effectiveness: tail area × arm, normalised by wing area × MAC.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -18,13 +27,17 @@ source_status: SOURCED
 v_h = (s_h_m2 * l_h) / (s_ref_m2 * mac_m)
 ```
 
-**Inputs.** [[s-h-area-approx|Horizontal tail area (trapezoidal approximation)]] · [[l-h-m|Horizontal tail moment arm]]
+**Inputs.**
+
+- [[s-h-area-approx|Horizontal tail area (trapezoidal approximation)]]
+- [[l-h-m|Horizontal tail moment arm]]
 
 **Produced by.** `app/services/tail_sizing_service.py:227` — `compute_tail_volumes`
 
 **Consumed by.**
 
-- in this graph: [[tail-volume-classification|Tail volume classification]]
+- in this graph: `Tail volume classification`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `app/services/tail_sizing_service.py:228,247,268,272,277` · `app/api/v2/endpoints/aeroplane/tail_sizing.py:81` · `frontend/hooks/useTailSizing.ts:19` · `frontend/components/workbench/TailVolumeCard.tsx:239` · `frontend/lib/metricsAdapters.ts:560,581`
 
 **Source.** 🟢 SOURCED

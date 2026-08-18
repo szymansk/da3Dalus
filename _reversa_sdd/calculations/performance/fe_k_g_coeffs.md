@@ -6,11 +6,18 @@ unit: -
 cluster: perf-envelope
 user_visible: false
 source_status: SOURCED
+node_class: regulatory-constant
+tags:
+  - cluster/perf-envelope
+  - class/regulatory-constant
+  - source/sourced
 ---
 
 # Pratt gust-alleviation coefficients
 
 **Definition.** Numerator and denominator constants of the Pratt K_g regression.
+
+**Regulatory constant.** Taken from a standard. It carries the clause *and* the class of aircraft that clause applies to.
 
 **Value.** `0.88, 5.3`
 
@@ -26,7 +33,8 @@ source_status: SOURCED
 
 **Consumed by.**
 
-- in this graph: [[fe_k_g|Gust alleviation factor]]
+- in this graph: `Gust alleviation factor`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 
 **Source.** 🟢 SOURCED
 

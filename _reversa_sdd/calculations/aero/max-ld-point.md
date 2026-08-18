@@ -5,11 +5,20 @@ unit: mixed (deg, -, -)
 cluster: aero-spanwise
 user_visible: true
 source_status: SOURCED
+node_class: derived
+tags:
+  - cluster/aero-spanwise
+  - class/derived
+  - source/sourced
+  - surface/user-visible
+  - flag/divergence
 ---
 
 # Maximum L/D point
 
 **Definition.** Sweep point with the largest CL/CD, reported as best-glide.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -17,13 +26,17 @@ source_status: SOURCED
 i = int(np.nanargmax(ld)); {"alpha_deg": alpha[i], "CL": cl[i], "CD": cd[i], "lift_to_drag_ratio": ld[i]}
 ```
 
-**Inputs.** [[ld-ratio-coefficient|Lift-to-drag ratio (coefficient form)]] · [[alpha-array|Alpha sweep array]]
+**Inputs.**
+
+- [[ld-ratio-coefficient|Lift-to-drag ratio (coefficient form)]]
+- [[alpha-array|Alpha sweep array]]
 
 **Produced by.** `app/services/analysis_service.py:111` — `_compute_cl_cd_points`
 
 **Consumed by.**
 
-- in this graph: [[characteristic-points|Characteristic points dict]]
+- in this graph: `Characteristic points dict`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `alpha-sweep PNG polar panel` · `_render_summary_panel` · `copilot_tools 'best_glide'` · `API alpha_sweep response`
 
 **Source.** 🟢 SOURCED

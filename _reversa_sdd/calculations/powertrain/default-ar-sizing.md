@@ -6,11 +6,21 @@ unit: dimensionless
 cluster: powertrain
 user_visible: true
 source_status: SOURCED
+node_class: unclassified-constant
+tags:
+  - cluster/powertrain
+  - class/unclassified-constant
+  - source/sourced
+  - surface/user-visible
+  - flag/anomaly
+  - flag/divergence
 ---
 
 # Default aspect ratio (sizing)
 
 **Definition.** RC-typical wing aspect ratio used when neither request nor context supplies AR.
+
+⚪ **Unclassified constant.** Not yet decided whether this is a rule of thumb, a calibration or a physical value. Classifying it is open work — it is deliberately not guessed.
 
 **Value.** `8.0`
 
@@ -20,7 +30,8 @@ source_status: SOURCED
 
 **Consumed by.**
 
-- in this graph: [[resolved-ar|Resolved aspect ratio]]
+- in this graph: `Resolved aspect ratio`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `app/services/powertrain_sizing_service.py:182`
 
 **Source.** 🟢 SOURCED

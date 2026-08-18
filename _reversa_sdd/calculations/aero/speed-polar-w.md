@@ -6,11 +6,20 @@ unit: m/s
 cluster: aero-spanwise
 user_visible: true
 source_status: SOURCED
+node_class: derived
+tags:
+  - cluster/aero-spanwise
+  - class/derived
+  - source/sourced
+  - surface/user-visible
+  - flag/divergence
 ---
 
 # Sink rate
 
 **Definition.** Steady-glide sink rate at each speed.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -18,13 +27,18 @@ source_status: SOURCED
 w = v * (cd_pos / cl_pos)
 ```
 
-**Inputs.** [[speed-polar-v|Glide forward speed]] · [[cl-values|Lift coefficient array]] · [[cd-values|Drag coefficient array]]
+**Inputs.**
+
+- [[speed-polar-v|Glide forward speed]]
+- [[cl-values|Lift coefficient array]]
+- [[cd-values|Drag coefficient array]]
 
 **Produced by.** `app/services/analysis_service.py:515` — `_compute_speed_polar`
 
 **Consumed by.**
 
-- in this graph: [[i-min-sink|Minimum-sink index]] · [[w-min|Minimum sink rate]]
+- in this graph: `Minimum-sink index` · `Minimum sink rate`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `SpeedPolarCurve.w` · `frontend speed-polar chart`
 
 **Source.** 🟢 SOURCED

@@ -6,11 +6,21 @@ unit: m/s
 cluster: perf-envelope
 user_visible: true
 source_status: SOURCED
+node_class: regulatory-constant
+tags:
+  - cluster/perf-envelope
+  - class/regulatory-constant
+  - source/sourced
+  - surface/user-visible
+  - flag/anomaly
+  - flag/scale
 ---
 
 # Design gust velocity at cruise speed
 
 **Definition.** Sharp-edged vertical gust velocity (EAS) applied at and below cruise speed.
+
+**Regulatory constant.** Taken from a standard. It carries the clause *and* the class of aircraft that clause applies to.
 
 **Value.** `15.24`
 
@@ -26,7 +36,8 @@ GUST_U_VC_MPS: float = 15.24
 
 **Consumed by.**
 
-- in this graph: [[fe_u_gust_at_v|Gust velocity schedule]]
+- in this graph: `Gust velocity schedule`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 
 **Source.** 🟢 SOURCED
 

@@ -6,11 +6,20 @@ unit: – (bool)
 cluster: stability
 user_visible: true
 source_status: SOURCED
+node_class: derived
+tags:
+  - cluster/stability
+  - class/derived
+  - source/sourced
+  - surface/user-visible
+  - flag/anomaly
 ---
 
 # Directional stability flag
 
 **Definition.** True when Cn_beta is present and positive.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -18,7 +27,9 @@ source_status: SOURCED
 is_directionally_stable=(cnb is not None and cnb > 0)
 ```
 
-**Inputs.** [[cnb|Yawing moment derivative w.r.t. beta]]
+**Inputs.**
+
+- [[cnb|Yawing moment derivative w.r.t. beta]]
 
 **Produced by.** `app/services/stability_service.py:346` — `get_stability_summary`
 

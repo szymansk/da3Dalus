@@ -6,11 +6,19 @@ unit: s
 cluster: perf-envelope
 user_visible: false
 source_status: PARTIAL
+node_class: derived
+tags:
+  - cluster/perf-envelope
+  - class/derived
+  - source/partial
+  - flag/divergence
 ---
 
 # Flight time at V_md
 
 **Definition.** Intermediate flight time at minimum-drag speed used to build the range.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -18,13 +26,18 @@ source_status: PARTIAL
 t_at_vmd_s = (capacity_wh_val * 3600.0) / p_req_vmd
 ```
 
-**Inputs.** [[end_capacity_wh|Battery capacity]] · [[end_seconds_per_hour|Wh-to-Ws conversion]] · [[end_p_req_vmd|Power required at V_md]]
+**Inputs.**
+
+- [[end_capacity_wh|Battery capacity]]
+- [[end_seconds_per_hour|Wh-to-Ws conversion]]  — *× unit*
+- [[end_p_req_vmd|Power required at V_md]]
 
 **Produced by.** `app/services/endurance_service.py:411` — `compute_endurance`
 
 **Consumed by.**
 
-- in this graph: [[end_range_max|Maximum range]]
+- in this graph: `Maximum range`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 
 **Source.** 🟡 PARTIAL
 

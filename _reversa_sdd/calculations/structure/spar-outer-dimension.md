@@ -6,11 +6,21 @@ unit: mm
 cluster: structure
 user_visible: true
 source_status: PARTIAL
+node_class: derived
+tags:
+  - cluster/structure
+  - class/derived
+  - source/partial
+  - surface/user-visible
+  - flag/anomaly
+  - flag/divergence
 ---
 
 # Spar outer dimension
 
 **Definition.** The outer dimension available to the spar at the station: the airfoil profile thickness reduced by the packing factor (the remainder is skin/glue clearance). It fixes the constrained dimension for every shape.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -18,13 +28,17 @@ source_status: PARTIAL
 outer_mm = profile_thickness_mm * params.packing_factor
 ```
 
-**Inputs.** [[profile-thickness-mm|Local airfoil profile thickness]] · [[structure--packing-factor|Packing factor]]
+**Inputs.**
+
+- [[profile-thickness-mm|Local airfoil profile thickness]]
+- [[structure--packing-factor|Packing factor]]
 
 **Produced by.** `app/services/spar_sizing.py:323` — `compute_spar_sizing`
 
 **Consumed by.**
 
-- in this graph: [[capped-gurt-thickness|Capped-spar flange (gurt) thickness]] · [[capped-inner-cube|Capped-spar inner-height cube]] · [[rectangular-cross-section-area|Rectangular cross-section area]] · [[solved-rectangular-width|Solved rectangular width]] · [[solved-tube-wall|Solved tube wall thickness]] · [[tube-cross-section-area|Tube cross-section area]] · [[tube-solve-discriminant|Tube inner-diameter discriminant]]
+- in this graph: `Capped-spar flange (gurt) thickness` · `Capped-spar inner-height cube` · `Rectangular cross-section area` · `Solved rectangular width` · `Solved tube wall thickness` · `Tube cross-section area` · `Tube inner-diameter discriminant`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `app/services/spar_sizing.py:326` · `app/services/spar_sizing.py:338` · `app/schemas/spar_sizing.py:62` · `frontend/components/workbench/SparSizingPanel.tsx:106` · `frontend/lib/sparSizingHelpers.ts:92`
 
 **Source.** 🟡 PARTIAL

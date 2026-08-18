@@ -6,11 +6,18 @@ unit: mm
 cluster: structure
 user_visible: false
 source_status: PARTIAL
+node_class: derived
+tags:
+  - cluster/structure
+  - class/derived
+  - source/partial
 ---
 
 # Straight-piece axis height at a station
 
 **Definition.** Height of a straight spar piece's axis at an interior station — linear interpolation between its root and tip station center_z, NOT the station's own center_z (the piece cannot follow per-station jitter).
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -23,13 +30,16 @@ t = (station.y_mm - root.y_mm) / span
 return root.center_z + t * (tip.center_z - root.center_z)
 ```
 
-**Inputs.** [[station-center-z|Station centre height]]
+**Inputs.**
+
+- [[station-center-z|Station centre height]]
 
 **Produced by.** `cad_designer/airplane/geometry/spar_solver.py:271` — `_axis_z_at`
 
 **Consumed by.**
 
-- in this graph: [[max-od-for-run|Largest containable OD for a run]]
+- in this graph: `Largest containable OD for a run`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `cad_designer/airplane/geometry/spar_solver.py:278` · `cad_designer/airplane/geometry/spar_solver.py:291`
 
 **Source.** 🟡 PARTIAL

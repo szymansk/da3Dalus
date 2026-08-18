@@ -6,11 +6,20 @@ unit: dimensionless
 cluster: perf-oppoints
 user_visible: true
 source_status: SOURCED
+node_class: derived
+tags:
+  - cluster/perf-oppoints
+  - class/derived
+  - source/sourced
+  - surface/user-visible
+  - flag/divergence
 ---
 
 # Aero coefficients at the trimmed point
 
 **Definition.** CL, CD and Cm from one extra AeroBuildup evaluation at the final trim state.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -18,7 +27,11 @@ source_status: SOURCED
 result = asb.AeroBuildup(airplane=airplane, op_point=op, xyz_ref=airplane.xyz_ref).run(); for key in ("CL", "CD", "Cm"): val = _safe_coeff(result, key, default=math.nan); if math.isfinite(val): out[key] = round(val, 6)
 ```
 
-**Inputs.** [[alpha_trimmed|Trimmed angle of attack]] · [[beta_trimmed|Trimmed sideslip angle]] · [[default_altitude_m|Default environment altitude]]
+**Inputs.**
+
+- [[alpha_trimmed|Trimmed angle of attack]]
+- [[beta_trimmed|Trimmed sideslip angle]]
+- [[default_altitude_m|Default environment altitude]]  — *ε tolerance*
 
 **Produced by.** `app/services/operating_point_generator_service.py:772` — `_aero_coefficients_at`
 

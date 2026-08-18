@@ -6,11 +6,20 @@ unit: – (fraction)
 cluster: stability
 user_visible: true
 source_status: PARTIAL
+node_class: derived
+tags:
+  - cluster/stability
+  - class/derived
+  - source/partial
+  - surface/user-visible
+  - flag/divergence
 ---
 
 # Horizontal tail chord-scale fraction
 
 **Definition.** Fractional chord scaling of the horizontal tail equivalent to the required area change (chord-scale preserves span).
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -18,13 +27,17 @@ source_status: PARTIAL
 delta_pct = delta_sh_m2 / s_h_m2  # fraction (negative = shrink)
 ```
 
-**Inputs.** [[delta-sh-m2|Required horizontal tail area change]] · [[s-h-m2-fallback|Horizontal tail area fallback]]
+**Inputs.**
+
+- [[delta-sh-m2|Required horizontal tail area change]]
+- [[s-h-m2-fallback|Horizontal tail area fallback]]  — *⤵ fallback*
 
 **Produced by.** `app/services/sm_sizing_service.py:414` — `suggest_corrections`
 
 **Consumed by.**
 
-- in this graph: [[htail-chord-scale-factor|Horizontal tail chord scale factor]] · [[predicted-sm-htail-scale|Predicted SM after htail chord-scale]]
+- in this graph: `Horizontal tail chord scale factor` · `Predicted SM after htail chord-scale`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `app/services/sm_sizing_service.py:447` · `app/api/v2/endpoints/aeroplane/sm_suggestions.py:85,143`
 
 **Source.** 🟡 PARTIAL

@@ -5,11 +5,20 @@ unit: -
 cluster: aero-spanwise
 user_visible: true
 source_status: NO_SOURCE_FOUND
+node_class: numerical-tolerance
+tags:
+  - cluster/aero-spanwise
+  - class/numerical-tolerance
+  - source/no-source-found
+  - surface/user-visible
+  - flag/anomaly
 ---
 
 # Reynolds zero fallback
 
 **Definition.** Value returned when velocity/cref are non-positive, viscosity is non-positive, or AeroSandbox is unavailable.
+
+**Numerical tolerance.** A solver or comparison epsilon, not a domain value. ADR 0023 does not apply.
 
 **Value.** `0.0`
 

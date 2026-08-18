@@ -6,11 +6,22 @@ unit: m/s²
 cluster: aero-polars
 user_visible: false
 source_status: SOURCED
+node_class: physical-constant
+tags:
+  - cluster/aero-polars
+  - class/physical-constant
+  - source/sourced
+  - flag/anomaly
+  - flag/divergence
+  - flag/physical
 ---
 
 # Standard gravity
 
 **Definition.** Gravitational acceleration used for level-flight CL.
+
+**Physical constant.** A value of nature. It must be identical everywhere it appears — a second definition is a defect by construction, not a judgement call.
+*Identified as: gravity.*
 
 **Value.** `9.80665`
 
@@ -26,7 +37,8 @@ G = 9.80665  # m/s²
 
 **Consumed by.**
 
-- in this graph: [[alr-level-flight-cl|Level-flight lift coefficient]]
+- in this graph: `Level-flight lift coefficient`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `_level_flight_cl:707`
 
 **Source.** 🟢 SOURCED

@@ -6,11 +6,20 @@ unit: -
 cluster: perf-envelope
 user_visible: true
 source_status: NO_SOURCE_FOUND
+node_class: derived
+tags:
+  - cluster/perf-envelope
+  - class/derived
+  - source/no-source-found
+  - surface/user-visible
+  - flag/divergence
 ---
 
 # Power-margin classification
 
 **Definition.** Three-way verdict on propulsion adequacy from the power margin.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -18,7 +27,10 @@ source_status: NO_SOURCE_FOUND
 margin > 0.20 -> 'comfortable'; margin > 0.0 -> 'feasible but tight'; else 'infeasible — motor underpowered'
 ```
 
-**Inputs.** [[end_p_margin|Power margin]] · [[end_p_margin_comfortable|Comfortable power-margin threshold]]
+**Inputs.**
+
+- [[end_p_margin|Power margin]]
+- [[end_p_margin_comfortable|Comfortable power-margin threshold]]  — *⊣ limit*
 
 **Produced by.** `app/services/endurance_service.py:146` — `_classify_p_margin`
 

@@ -6,11 +6,19 @@ unit: kg
 cluster: mass
 user_visible: true
 source_status: SOURCED
+node_class: derived
+tags:
+  - cluster/mass
+  - class/derived
+  - source/sourced
+  - surface/user-visible
 ---
 
 # Published aircraft mass (computation context)
 
 **Definition.** The effective mass republished into assumption_computation_context so downstream consumers do not have to fall back to the frequently-null AeroplaneModel.total_mass_kg column.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -18,7 +26,9 @@ source_status: SOURCED
 "mass_kg": round(mass, 3) if mass is not None and mass > 0 else None
 ```
 
-**Inputs.** [[mass-effective|Effective aircraft mass]]
+**Inputs.**
+
+- [[mass-effective|Effective aircraft mass]]  — *⤵ fallback*
 
 **Produced by.** `app/services/assumption_compute_service.py:714` — `recompute_assumptions`
 

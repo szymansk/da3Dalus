@@ -6,11 +6,21 @@ unit: rpm/V
 cluster: powertrain
 user_visible: true
 source_status: PARTIAL
+node_class: derived
+tags:
+  - cluster/powertrain
+  - class/derived
+  - source/partial
+  - surface/user-visible
+  - flag/anomaly
+  - flag/divergence
 ---
 
 # Approximate required motor KV
 
 **Definition.** Motor KV the designer should shop for: target RPM divided by nominal pack voltage and the under-load RPM factor.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -18,7 +28,11 @@ source_status: PARTIAL
 kv_approx = rpm_target / (v_nom * load_rpm_factor) if v_nom > 0 else 0.0
 ```
 
-**Inputs.** [[ss-rpm-target|Target propeller RPM]] · [[ss-v-nom|Pack nominal voltage (solution space)]] · [[ss-load-rpm-factor|Under-load RPM factor]]
+**Inputs.**
+
+- [[ss-rpm-target|Target propeller RPM]]
+- [[ss-v-nom|Pack nominal voltage (solution space)]]
+- [[ss-load-rpm-factor|Under-load RPM factor]]
 
 **Produced by.** `app/services/powertrain_solution_space_service.py:159` — `_per_cell`
 

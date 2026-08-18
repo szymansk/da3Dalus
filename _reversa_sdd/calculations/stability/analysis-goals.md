@@ -6,11 +6,21 @@ unit: – (mapping)
 cluster: stability
 user_visible: true
 source_status: PARTIAL
+node_class: regulatory-constant
+tags:
+  - cluster/stability
+  - class/regulatory-constant
+  - source/partial
+  - surface/user-visible
+  - flag/anomaly
+  - flag/divergence
 ---
 
 # Operating-point analysis goals
 
 **Definition.** Human-readable question each named operating point is meant to answer.
+
+**Regulatory constant.** Taken from a standard. It carries the clause *and* the class of aircraft that clause applies to.
 
 **Value.** `14 entries: stall_near_clean, takeoff_climb, cruise, loiter_endurance, max_level_speed, approach_landing, turn_20, turn_40, turn_60, dutch_role_start, best_angle_climb_vx, best_rate_climb_vy, max_range, stall_with_flaps`
 

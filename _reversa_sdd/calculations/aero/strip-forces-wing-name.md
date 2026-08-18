@@ -5,11 +5,20 @@ unit: -
 cluster: aero-spanwise
 user_visible: true
 source_status: NO_SOURCE_FOUND
+node_class: derived
+tags:
+  - cluster/aero-spanwise
+  - class/derived
+  - source/no-source-found
+  - surface/user-visible
+  - flag/anomaly
 ---
 
 # Strip-forces wing name
 
 **Definition.** Label identifying which wing the strip forces belong to.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 

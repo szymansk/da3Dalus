@@ -5,11 +5,20 @@ unit: dimensionless
 cluster: perf-oppoints
 user_visible: true
 source_status: PARTIAL
+node_class: derived
+tags:
+  - cluster/perf-oppoints
+  - class/derived
+  - source/partial
+  - surface/user-visible
+  - flag/divergence
 ---
 
 # BETA_LIMIT_REACHED warning
 
 **Definition.** Status downgrade when the solved sideslip exceeds the profile's beta limit.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -17,7 +26,10 @@ source_status: PARTIAL
 if max_beta is not None and abs(best_beta) > float(max_beta): trim_status = OperatingPointStatus.LIMIT_REACHED; warnings.append("BETA_LIMIT_REACHED")
 ```
 
-**Inputs.** [[beta_trimmed|Trimmed sideslip angle]] · [[default_max_beta_deg|Default maximum sideslip]]
+**Inputs.**
+
+- [[beta_trimmed|Trimmed sideslip angle]]
+- [[default_max_beta_deg|Default maximum sideslip]]  — *⤵ fallback*
 
 **Produced by.** `app/services/operating_point_generator_service.py:865` — `_apply_limit_warnings`
 

@@ -6,11 +6,20 @@ unit: -
 cluster: perf-envelope
 user_visible: true
 source_status: SOURCED
+node_class: derived
+tags:
+  - cluster/perf-envelope
+  - class/derived
+  - source/sourced
+  - surface/user-visible
+  - flag/divergence
 ---
 
 # KPI: climb-energy figure
 
 **Definition.** Maximum power-factor of the parabolic polar, proxy for rate of climb and thermalling.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -18,7 +27,9 @@ source_status: SOURCED
 value = (3.0 * math.pi * e * ar) ** 0.75 / (4.0 * cd0**0.25)
 ```
 
-**Inputs.** [[mkpi_resolve_polar|Clean-polar provenance chain]]
+**Inputs.**
+
+- [[mkpi_resolve_polar|Clean-polar provenance chain]]  — *⤵ fallback*
 
 **Produced by.** `app/services/mission_kpi_service.py:213` — `_kpi_climb_energy`
 

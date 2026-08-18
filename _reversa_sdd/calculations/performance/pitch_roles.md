@@ -6,11 +6,20 @@ unit: dimensionless
 cluster: perf-oppoints
 user_visible: false
 source_status: SOURCED
+node_class: unclassified-constant
+tags:
+  - cluster/perf-oppoints
+  - class/unclassified-constant
+  - source/sourced
+  - flag/anomaly
+  - flag/divergence
 ---
 
 # Pitch control role set
 
 **Definition.** Role tags counted as pitch-capable control surfaces.
+
+⚪ **Unclassified constant.** Not yet decided whether this is a rule of thumb, a calibration or a physical value. Classifying it is open work — it is deliberately not guessed.
 
 **Value.** `{elevator, stabilator, elevon, ruddervator}`
 
@@ -26,7 +35,8 @@ PITCH_ROLES = {"elevator", "stabilator", "elevon", "ruddervator"}
 
 **Consumed by.**
 
-- in this graph: [[control_capabilities|Control capability flags]]
+- in this graph: `Control capability flags`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `app/services/operating_point_generator_service.py:613 (_pick_control_name)` · `app/services/operating_point_generator_service.py:549 (_detect_control_capabilities)`
 
 **Source.** 🟢 SOURCED

@@ -6,11 +6,20 @@ unit: m²
 cluster: stability
 user_visible: false
 source_status: SOURCED
+node_class: derived
+tags:
+  - cluster/stability
+  - class/derived
+  - source/sourced
+  - flag/anomaly
+  - flag/divergence
 ---
 
 # Horizontal tail area (trapezoidal approximation)
 
 **Definition.** Planform area of the horizontal tail from trapezoidal integration of its cross-sections, doubled when symmetric.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -27,7 +36,8 @@ return total * (2.0 if symmetric else 1.0)
 
 **Consumed by.**
 
-- in this graph: [[s-v-area-approx|Vertical tail area (trapezoidal approximation)]] · [[v-h-current|Horizontal tail volume coefficient]]
+- in this graph: `Vertical tail area (trapezoidal approximation)` · `Horizontal tail volume coefficient`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `app/services/tail_sizing_service.py:401,414,431,441,462` · `app/services/tail_sizing_service.py:227 (V_H)`
 
 **Source.** 🟢 SOURCED

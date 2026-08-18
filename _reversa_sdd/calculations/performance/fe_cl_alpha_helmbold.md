@@ -6,11 +6,20 @@ unit: 1/rad
 cluster: perf-envelope
 user_visible: false
 source_status: PARTIAL
+node_class: derived
+tags:
+  - cluster/perf-envelope
+  - class/derived
+  - source/partial
+  - flag/anomaly
+  - flag/divergence
 ---
 
 # Finite-span lift-curve slope (Helmbold fallback)
 
 **Definition.** Cold-start lift-curve slope used when no alpha-sweep value is cached.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -18,13 +27,16 @@ source_status: PARTIAL
 return 2.0 * math.pi * ar / (ar + 2.0)
 ```
 
-**Inputs.** [[fe_aspect_ratio|Aspect ratio (gust path)]]
+**Inputs.**
+
+- [[fe_aspect_ratio|Aspect ratio (gust path)]]  — *⤵ fallback*
 
 **Produced by.** `app/services/flight_envelope_service.py:67` — `_helmbold_cl_alpha`
 
 **Consumed by.**
 
-- in this graph: [[fe_effective_cl_alpha|Effective lift-curve slope for gust]]
+- in this graph: `Effective lift-curve slope for gust`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 
 **Source.** 🟡 PARTIAL
 

@@ -6,11 +6,20 @@ unit: n/a
 cluster: aero-strips
 user_visible: false
 source_status: PARTIAL
+node_class: derived
+tags:
+  - cluster/aero-strips
+  - class/derived
+  - source/partial
+  - flag/anomaly
+  - flag/divergence
 ---
 
 # Per-section airfoil name
 
 **Definition.** Airfoil assigned to a section by locating the enclosing cross-section index by y.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -18,7 +27,10 @@ source_status: PARTIAL
 xsec_idx = int(np.clip(np.searchsorted(xsec_y, entry.y_m, side="right") - 1, 0, len(xsec_airfoils) - 1))
 ```
 
-**Inputs.** [[bwsd-main-wing|Main wing selection]] · [[saoa-y|Panel spanwise position]]
+**Inputs.**
+
+- [[bwsd-main-wing|Main wing selection]]
+- [[saoa-y|Panel spanwise position]]
 
 **Produced by.** `app/services/turbulator_optimizer_service.py:428` — `build_wing_section_data`
 

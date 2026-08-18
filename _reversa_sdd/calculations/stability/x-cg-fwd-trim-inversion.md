@@ -6,11 +6,21 @@ unit: m
 cluster: stability
 user_visible: true
 source_status: PARTIAL
+node_class: derived
+tags:
+  - cluster/stability
+  - class/derived
+  - source/partial
+  - surface/user-visible
+  - flag/anomaly
+  - flag/divergence
 ---
 
 # Forward CG limit (trim inversion)
 
 **Definition.** Furthest-forward CG at which the aircraft can still be trimmed at landing stall with full TE-UP elevator.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -18,13 +28,17 @@ source_status: PARTIAL
 return x_np_m - net_pitch_up * c_ref_m / cl_max_landing
 ```
 
-**Inputs.** [[net-pitch-up|Net nose-up moment coefficient]] · [[cl-max-landing|Landing CL_max]]
+**Inputs.**
+
+- [[net-pitch-up|Net nose-up moment coefficient]]
+- [[cl-max-landing|Landing CL_max]]  — *⊣ limit*
 
 **Produced by.** `app/services/elevator_authority_service.py:237` — `_trim_inversion`
 
 **Consumed by.**
 
-- in this graph: [[sm-max-fwd|Maximum forward-CG static margin]]
+- in this graph: `Maximum forward-CG static margin`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `app/services/elevator_authority_service.py:783,797,819,828 (ASB path)` · `app/services/elevator_authority_service.py:1124,1135,1156,1163 (AVL path)` · `app/services/assumption_compute_service.py:484-485 (would overwrite cg_stability_fwd_m)`
 
 **Source.** 🟡 PARTIAL

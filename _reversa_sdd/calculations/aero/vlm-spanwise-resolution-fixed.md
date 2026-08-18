@@ -6,11 +6,19 @@ unit: dimensionless
 cluster: aero-strips
 user_visible: false
 source_status: PARTIAL
+node_class: unclassified-constant
+tags:
+  - cluster/aero-strips
+  - class/unclassified-constant
+  - source/partial
+  - flag/divergence
 ---
 
 # VLM spanwise_resolution literal
 
 **Definition.** VLM spanwise resolution is pinned to 1 because density is already set by the remesh.
+
+⚪ **Unclassified constant.** Not yet decided whether this is a rule of thumb, a calibration or a physical value. Classifying it is open work — it is deliberately not guessed.
 
 **Value.** `1`
 
@@ -26,7 +34,8 @@ spanwise_resolution=1,  # gh-855: density set by the remesh, not here
 
 **Consumed by.**
 
-- in this graph: [[vlm-wing-strip-counts|Expected strips per wing]]
+- in this graph: `Expected strips per wing`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `app/services/vlm_strip_forces.py:_wing_strip_counts (called with 1 at line 234)`
 
 **Source.** 🟡 PARTIAL

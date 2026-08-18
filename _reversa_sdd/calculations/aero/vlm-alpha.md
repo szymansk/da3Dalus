@@ -6,11 +6,19 @@ unit: deg
 cluster: aero-strips
 user_visible: true
 source_status: SOURCED
+node_class: derived
+tags:
+  - cluster/aero-strips
+  - class/derived
+  - source/sourced
+  - surface/user-visible
 ---
 
 # Echoed angle of attack
 
 **Definition.** Operating-point alpha echoed into the strip-forces result.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 

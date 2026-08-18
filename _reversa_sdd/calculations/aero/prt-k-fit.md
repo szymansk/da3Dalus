@@ -6,11 +6,20 @@ unit: dimensionless
 cluster: aero-polars
 user_visible: false
 source_status: SOURCED
+node_class: derived
+tags:
+  - cluster/aero-polars
+  - class/derived
+  - source/sourced
+  - flag/anomaly
+  - flag/divergence
 ---
 
 # Band induced-drag factor k
 
 **Definition.** Slope of CD vs CL² for one V-band; converted to Oswald efficiency, never persisted.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -24,7 +33,8 @@ k, cd0_fit = np.polyfit(cl2_win, cd_win, deg=1)
 
 **Consumed by.**
 
-- in this graph: [[prt-e-oswald-band|Band Oswald efficiency]] · [[prt-r2|Band OLS R²]]
+- in this graph: `Band Oswald efficiency` · `Band OLS R²`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `_fit_band_with_ar:281`
 
 **Source.** 🟢 SOURCED

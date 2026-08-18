@@ -6,11 +6,18 @@ unit: mm
 cluster: structure
 user_visible: false
 source_status: PARTIAL
+node_class: derived
+tags:
+  - cluster/structure
+  - class/derived
+  - source/partial
 ---
 
 # Contained band upper bound
 
 **Definition.** Upper z limit of the region a spar may occupy at the station: the section top surface inset by the packing clearance.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -18,13 +25,17 @@ source_status: PARTIAL
 band_hi = pt.top_z - clr
 ```
 
-**Inputs.** [[section-top-z-analytic|Section upper surface height (analytic)]] · [[station-clearance|Station packing clearance]]
+**Inputs.**
+
+- [[section-top-z-analytic|Section upper surface height (analytic)]]
+- [[station-clearance|Station packing clearance]]
 
 **Produced by.** `cad_designer/airplane/geometry/spar_solver.py:763` — `build_stations_from_geometry`
 
 **Consumed by.**
 
-- in this graph: [[max-od-for-run|Largest containable OD for a run]] · [[max-od-from-stations|Containment-band OD limit at governing station]] · [[rod-outer-fallback-1mm|Rod sizing outer-dimension floor]] · [[section-depth-at-governing|Section depth at the governing station]]
+- in this graph: `Largest containable OD for a run` · `Containment-band OD limit at governing station` · `Rod sizing outer-dimension floor` · `Section depth at the governing station`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `cad_designer/airplane/geometry/spar_solver.py:282` · `cad_designer/airplane/geometry/spar_solver.py:293` · `cad_designer/airplane/geometry/spar_solver.py:543` · `cad_designer/airplane/geometry/spar_solver.py:604` · `cad_designer/airplane/geometry/spar_solver.py:767` · `app/services/spar_plan_service.py:234`
 
 **Source.** 🟡 PARTIAL

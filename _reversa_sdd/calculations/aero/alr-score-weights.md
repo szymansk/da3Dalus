@@ -6,11 +6,21 @@ unit: dimensionless
 cluster: aero-polars
 user_visible: true
 source_status: NO_SOURCE_FOUND
+node_class: unclassified-parameter
+tags:
+  - cluster/aero-polars
+  - class/unclassified-parameter
+  - source/no-source-found
+  - surface/user-visible
+  - flag/anomaly
+  - flag/divergence
 ---
 
 # re_agnostic component weights
 
 **Definition.** Relative weights of the five re_agnostic score components.
+
+⚪ **Unclassified parameter.** Not yet decided whether this is a user input or an internal tuning value.
 
 **Value.** `ld 0.35, cl_max 0.25, bucket 0.20, stall 0.10, cd_min 0.10`
 
@@ -26,7 +36,8 @@ components.append((min(ld_max / LD_REF, 1.0), 0.35)) ... (min(cl_max / CL_MAX_RE
 
 **Consumed by.**
 
-- in this graph: [[alr-score-re-agnostic|re_agnostic suitability score]]
+- in this graph: `re_agnostic suitability score`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `score_re_agnostic:890`
 
 **Source.** 🔴 NO SOURCE FOUND

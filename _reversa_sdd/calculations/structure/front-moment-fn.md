@@ -6,11 +6,20 @@ unit: N·m
 cluster: structure
 user_visible: false
 source_status: SOURCED
+node_class: derived
+tags:
+  - cluster/structure
+  - class/derived
+  - source/sourced
+  - flag/anomaly
+  - flag/divergence
 ---
 
 # Front-spar bending moment interpolator
 
 **Definition.** Clamped piecewise-linear interpolation of \|bending moment\| over the sampled span fractions; the front spar's sizing driver.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -27,7 +36,8 @@ return _make_interpolator(ys, ms)
 
 **Consumed by.**
 
-- in this graph: [[rear-secondary-bending|Rear-spar secondary bending share]] · [[station-design-moment|Station design moment (plan path)]] · [[torsion-proxy|Torsion proxy from bending moment]]
+- in this graph: `Rear-spar secondary bending share` · `Station design moment (plan path)` · `Torsion proxy from bending moment`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `app/services/spar_plan_service.py:560` · `app/services/spar_plan_service.py:439` · `cad_designer/airplane/geometry/spar_solver.py:764`
 
 **Source.** 🟢 SOURCED

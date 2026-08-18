@@ -6,11 +6,20 @@ unit: m/s
 cluster: perf-envelope
 user_visible: true
 source_status: PARTIAL
+node_class: derived
+tags:
+  - cluster/perf-envelope
+  - class/derived
+  - source/partial
+  - surface/user-visible
+  - flag/divergence
 ---
 
 # KPI: max speed
 
 **Definition.** Maximum level speed echoed as a KPI with confidence 'limit'.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -18,7 +27,9 @@ source_status: PARTIAL
 value=round(v_max_mps, 4)
 ```
 
-**Inputs.** [[fe_v_max|Maximum level speed]]
+**Inputs.**
+
+- [[fe_v_max|Maximum level speed]]  — *⤵ fallback*
 
 **Produced by.** `app/services/flight_envelope_service.py:486` — `derive_performance_kpis`
 

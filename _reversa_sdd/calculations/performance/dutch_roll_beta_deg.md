@@ -5,11 +5,21 @@ unit: deg
 cluster: perf-oppoints
 user_visible: true
 source_status: NO_SOURCE_FOUND
+node_class: regulatory-constant
+tags:
+  - cluster/perf-oppoints
+  - class/regulatory-constant
+  - source/no-source-found
+  - surface/user-visible
+  - flag/anomaly
+  - flag/divergence
 ---
 
 # Dutch-roll start sideslip
 
 **Definition.** Sideslip angle of the dutch_role_start excitation point.
+
+**Regulatory constant.** Taken from a standard. It carries the clause *and* the class of aircraft that clause applies to.
 
 **Value.** `2.0`
 
@@ -25,7 +35,8 @@ source_status: NO_SOURCE_FOUND
 
 **Consumed by.**
 
-- in this graph: [[beta_candidates|Sideslip candidate list]]
+- in this graph: `Sideslip candidate list`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `app/services/operating_point_generator_service.py:896 (beta_candidates)` · `app/services/operating_point_generator_service.py:660 (asb.OperatingPoint beta)`
 
 **Source.** 🔴 NO SOURCE FOUND

@@ -6,11 +6,21 @@ unit: dimensionless (0..1)
 cluster: powertrain
 user_visible: true
 source_status: SOURCED
+node_class: unclassified-constant
+tags:
+  - cluster/powertrain
+  - class/unclassified-constant
+  - source/sourced
+  - surface/user-visible
+  - flag/anomaly
+  - flag/divergence
 ---
 
 # Default motor efficiency (performance module)
 
 **Definition.** Fallback electrical-to-mechanical motor efficiency used when the catalog entry has no efficiency_pct.
+
+⚪ **Unclassified constant.** Not yet decided whether this is a rule of thumb, a calibration or a physical value. Classifying it is open work — it is deliberately not guessed.
 
 **Value.** `0.85`
 
@@ -20,7 +30,8 @@ source_status: SOURCED
 
 **Consumed by.**
 
-- in this graph: [[motor-eta|Motor + gearbox efficiency]]
+- in this graph: `Motor + gearbox efficiency`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `app/services/powertrain_performance.py:147`
 
 **Source.** 🟢 SOURCED

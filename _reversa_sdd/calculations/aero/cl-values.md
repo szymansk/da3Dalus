@@ -6,11 +6,19 @@ unit: -
 cluster: aero-spanwise
 user_visible: true
 source_status: SOURCED
+node_class: derived
+tags:
+  - cluster/aero-spanwise
+  - class/derived
+  - source/sourced
+  - surface/user-visible
 ---
 
 # Lift coefficient array
 
 **Definition.** CL vs alpha from the AeroBuildup solver result.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -24,7 +32,8 @@ np.atleast_1d(np.asarray(result.coefficients.CL, dtype=float))
 
 **Consumed by.**
 
-- in this graph: [[alpha-best-glide-deg|Alpha at best glide]] · [[alpha-min-sink-deg|Alpha at minimum sink]] · [[cl-max-speed-polar|CL max for stall speed]] · [[drag-at-zero-lift-point|Drag at zero lift point]] · [[ld-ratio-coefficient|Lift-to-drag ratio (coefficient form)]] · [[max-cl-point|Maximum lift coefficient point]] · [[speed-polar-ld|Glide ratio per point]] · [[speed-polar-v|Glide forward speed]] · [[speed-polar-w|Sink rate]] · [[stall-point|Stall point]] · [[trim-point-cm-zero|Trim point (Cm = 0)]] · [[zero-crossing-fallback-index|Zero-lift nearest-point fallback]]
+- in this graph: `Alpha at best glide` · `Alpha at minimum sink` · `CL max for stall speed` · `Drag at zero lift point` · `Lift-to-drag ratio (coefficient form)` · `Maximum lift coefficient point` · `Glide ratio per point` · `Glide forward speed` · `Sink rate` · `Stall point` · `Trim point (Cm = 0)` · `Zero-lift nearest-point fallback`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `_compute_cl_cd_points` · `_compute_trim_point` · `_build_speed_polar` · `_plot_coefficient_curves` · `copilot_tools:366` · `frontend useAnalysis`
 
 **Source.** 🟢 SOURCED

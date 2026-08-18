@@ -5,11 +5,19 @@ unit: mm
 cluster: structure
 user_visible: false
 source_status: PARTIAL
+node_class: derived
+tags:
+  - cluster/structure
+  - class/derived
+  - source/partial
+  - flag/divergence
 ---
 
 # Telescoping bore demand
 
 **Definition.** Minimum bore an inner (root-side) tube piece needs so the adjacent outboard piece can slide into it with clearance.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -17,13 +25,17 @@ source_status: PARTIAL
 telescope_bore = ods[i + 1] + 2.0 * spec.telescope_clearance_mm
 ```
 
-**Inputs.** [[piece-outer-diameter|Spar piece outer diameter]] · [[telescope-clearance-mm|Telescoping radial clearance]]
+**Inputs.**
+
+- [[piece-outer-diameter|Spar piece outer diameter]]
+- [[telescope-clearance-mm|Telescoping radial clearance]]
 
 **Produced by.** `cad_designer/airplane/geometry/spar_solver.py:423` — `plan_spar`
 
 **Consumed by.**
 
-- in this graph: [[piece-bore|Spar piece inner diameter]]
+- in this graph: `Spar piece inner diameter`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `cad_designer/airplane/geometry/spar_solver.py:425`
 
 **Source.** 🟡 PARTIAL

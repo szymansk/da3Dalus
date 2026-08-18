@@ -5,11 +5,21 @@ unit: dimensionless (x/c)
 cluster: structure
 user_visible: true
 source_status: PARTIAL
+node_class: unclassified-constant
+tags:
+  - cluster/structure
+  - class/unclassified-constant
+  - source/partial
+  - surface/user-visible
+  - flag/anomaly
+  - flag/divergence
 ---
 
 # Max-thickness chord search grid
 
 **Definition.** Chord positions scanned to find the deepest point of a section — the natural spar-placement reference used when no explicit x/c is requested.
+
+⚪ **Unclassified constant.** Not yet decided whether this is a rule of thumb, a calibration or a physical value. Classifying it is open work — it is deliberately not guessed.
 
 **Value.** `np.linspace(0.05, 0.6, 23)`
 

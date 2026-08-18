@@ -5,11 +5,20 @@ unit: dimensionless
 cluster: perf-oppoints
 user_visible: true
 source_status: PARTIAL
+node_class: derived
+tags:
+  - cluster/perf-oppoints
+  - class/derived
+  - source/partial
+  - surface/user-visible
+  - flag/divergence
 ---
 
 # STALL_IN_TURN warning + LIMIT_REACHED
 
 **Definition.** Turn point flagged infeasible when the target speed is below the in-turn stall speed.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -17,7 +26,9 @@ source_status: PARTIAL
 if velocity < v_stall_turn: ... point.status = OperatingPointStatus.LIMIT_REACHED
 ```
 
-**Inputs.** [[v_stall_turn|Stall speed in the turn]]
+**Inputs.**
+
+- [[v_stall_turn|Stall speed in the turn]]
 
 **Produced by.** `app/services/operating_point_generator_service.py:171` — `_apply_turn_feasibility`
 

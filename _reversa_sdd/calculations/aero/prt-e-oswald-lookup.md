@@ -6,11 +6,21 @@ unit: dimensionless
 cluster: aero-polars
 user_visible: true
 source_status: PARTIAL
+node_class: derived
+tags:
+  - cluster/aero-polars
+  - class/derived
+  - source/partial
+  - surface/user-visible
+  - flag/anomaly
+  - flag/divergence
 ---
 
 # e_oswald at query velocity (constant mean)
 
 **Definition.** Oswald efficiency returned as the V-independent mean of all non-fallback table rows.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -18,7 +28,9 @@ source_status: PARTIAL
 return float(sum(valid_e) / len(valid_e))
 ```
 
-**Inputs.** [[prt-e-oswald-band|Band Oswald efficiency]]
+**Inputs.**
+
+- [[prt-e-oswald-band|Band Oswald efficiency]]
 
 **Produced by.** `app/services/polar_re_table_service.py:208` — `lookup_e_oswald_at_v`
 

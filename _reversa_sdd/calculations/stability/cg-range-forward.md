@@ -6,11 +6,21 @@ unit: m
 cluster: stability
 user_visible: true
 source_status: PARTIAL
+node_class: derived
+tags:
+  - cluster/stability
+  - class/derived
+  - source/partial
+  - surface/user-visible
+  - flag/anomaly
+  - flag/divergence
 ---
 
 # Forward CG limit from margin bounds
 
 **Definition.** Most-forward (most stable) CG position, derived from the neutral point and the maximum allowed static margin.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -18,7 +28,11 @@ source_status: PARTIAL
 forward = np_x - (max_margin / 100) * mac
 ```
 
-**Inputs.** [[neutral-point-x-solver|Neutral point (solver)]] · [[mac-solver-cref|MAC (solver reference chord)]] · [[max-static-margin-pct-default|Maximum static margin (CG-range default)]]
+**Inputs.**
+
+- [[neutral-point-x-solver|Neutral point (solver)]]
+- [[mac-solver-cref|MAC (solver reference chord)]]
+- [[max-static-margin-pct-default|Maximum static margin (CG-range default)]]  — *⤵ fallback*
 
 **Produced by.** `app/services/stability_service.py:97` — `compute_cg_range`
 

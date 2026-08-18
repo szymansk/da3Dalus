@@ -6,11 +6,21 @@ unit: count
 cluster: powertrain
 user_visible: true
 source_status: NO_SOURCE_FOUND
+node_class: unclassified-constant
+tags:
+  - cluster/powertrain
+  - class/unclassified-constant
+  - source/no-source-found
+  - surface/user-visible
+  - flag/anomaly
+  - flag/divergence
 ---
 
 # Recommendation list cut-off
 
 **Definition.** Number of highest-confidence candidates returned to the client.
+
+⚪ **Unclassified constant.** Not yet decided whether this is a rule of thumb, a calibration or a physical value. Classifying it is open work — it is deliberately not guessed.
 
 **Value.** `10`
 
@@ -20,7 +30,9 @@ source_status: NO_SOURCE_FOUND
 return PowertrainSizingResponse(recommendations=candidates[:10], warnings=warnings)
 ```
 
-**Inputs.** [[combo-confidence|Combo confidence]]
+**Inputs.**
+
+- [[combo-confidence|Combo confidence]]
 
 **Produced by.** `app/services/powertrain_sizing_service.py:318` — `size_powertrain`
 

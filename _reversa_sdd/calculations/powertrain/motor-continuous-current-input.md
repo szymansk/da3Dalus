@@ -6,11 +6,21 @@ unit: A
 cluster: powertrain
 user_visible: true
 source_status: SOURCED
+node_class: unclassified-parameter
+tags:
+  - cluster/powertrain
+  - class/unclassified-parameter
+  - source/sourced
+  - surface/user-visible
+  - flag/anomaly
+  - flag/divergence
 ---
 
 # Motor continuous current rating
 
 **Definition.** Continuous current rating from the catalog.
+
+⚪ **Unclassified parameter.** Not yet decided whether this is a user input or an internal tuning value.
 
 **Inputs.** — *(leaf: a constant or an external input)*
 
@@ -18,7 +28,8 @@ source_status: SOURCED
 
 **Consumed by.**
 
-- in this graph: [[motor-continuous-electrical-power|Motor continuous electrical input power (estimated)]]
+- in this graph: `Motor continuous electrical input power (estimated)`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `app/services/powertrain_performance.py:168`
 
 **Source.** 🟢 SOURCED

@@ -6,11 +6,21 @@ unit: N/m^2
 cluster: perf-matching
 user_visible: true
 source_status: NO_SOURCE_FOUND
+node_class: derived
+tags:
+  - cluster/perf-matching
+  - class/derived
+  - source/no-source-found
+  - surface/user-visible
+  - flag/anomaly
+  - flag/divergence
 ---
 
 # WCL-derived W/S ceiling
 
 **Definition.** Wing-loading upper bound derived from the profile's wing-cube-loading target.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -18,7 +28,11 @@ source_status: NO_SOURCE_FOUND
 base = (wcl_lb * _LENNON_LB_FT_TO_SI) ** (2.0 / 3.0); ar_factor = max(ar, 1.0) ** 0.25; return base * ar_factor
 ```
 
-**Inputs.** [[wcl_upper_table|Lennon WCL upper bounds]] · [[lennon_lb_ft_to_si|Lennon WCL conversion factor]] · [[ar_resolved|Resolved aspect ratio]]
+**Inputs.**
+
+- [[wcl_upper_table|Lennon WCL upper bounds]]  — *⊣ limit*
+- [[lennon_lb_ft_to_si|Lennon WCL conversion factor]]  — *× unit*
+- [[ar_resolved|Resolved aspect ratio]]  — *⤵ fallback*
 
 **Produced by.** `app/services/matching_chart_service.py:531` — `_wcl_constraint`
 

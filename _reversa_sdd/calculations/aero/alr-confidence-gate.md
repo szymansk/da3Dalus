@@ -6,11 +6,19 @@ unit: dimensionless
 cluster: aero-polars
 user_visible: false
 source_status: PARTIAL
+node_class: unclassified-parameter
+tags:
+  - cluster/aero-polars
+  - class/unclassified-parameter
+  - source/partial
+  - flag/divergence
 ---
 
 # NeuralFoil confidence gate
 
 **Definition.** Minimum analysis_confidence for an alpha point to enter metric extraction.
+
+⚪ **Unclassified parameter.** Not yet decided whether this is a user input or an internal tuning value.
 
 **Value.** `0.90`
 
@@ -26,7 +34,8 @@ confidence_gate: float = 0.90
 
 **Consumed by.**
 
-- in this graph: [[alr-cd-min|Section CD_min]] · [[alr-cl-max|Section CL_max]] · [[alr-cl-valid-range|Polar-fit validity CL range]] · [[alr-polar-cd0|Airfoil cd0 (parabolic fit vertex)]]
+- in this graph: `Section CD_min` · `Section CL_max` · `Polar-fit validity CL range` · `Airfoil cd0 (parabolic fit vertex)`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `compute_airfoil_low_re:486` · `settings.low_re_confidence_gate (app/settings.py:98)`
 
 **Source.** 🟡 PARTIAL

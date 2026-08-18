@@ -6,11 +6,21 @@ unit: -
 cluster: perf-envelope
 user_visible: true
 source_status: PARTIAL
+node_class: unclassified-constant
+tags:
+  - cluster/perf-envelope
+  - class/unclassified-constant
+  - source/partial
+  - surface/user-visible
+  - flag/anomaly
+  - flag/scale
 ---
 
 # Negative g-limit ratio
 
 **Definition.** Ratio of negative to positive structural limit load factor.
+
+⚪ **Unclassified constant.** Not yet decided whether this is a rule of thumb, a calibration or a physical value. Classifying it is open work — it is deliberately not guessed.
 
 **Value.** `-0.4`
 
@@ -26,7 +36,8 @@ max(..., -0.4 * g_limit)
 
 **Consumed by.**
 
-- in this graph: [[fe_gust_critical_neg|Negative gust-critical trigger]] · [[fe_n_neg_maneuver|Negative maneuver load factor]]
+- in this graph: `Negative gust-critical trigger` · `Negative maneuver load factor`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 
 **Source.** 🟡 PARTIAL
 

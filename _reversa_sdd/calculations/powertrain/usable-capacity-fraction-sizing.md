@@ -6,11 +6,21 @@ unit: dimensionless
 cluster: powertrain
 user_visible: true
 source_status: NO_SOURCE_FOUND
+node_class: unclassified-constant
+tags:
+  - cluster/powertrain
+  - class/unclassified-constant
+  - source/no-source-found
+  - surface/user-visible
+  - flag/anomaly
+  - flag/divergence
 ---
 
 # Usable capacity fraction (sizing)
 
 **Definition.** Fraction of rated capacity assumed usable before the pack must be landed — the depth of discharge of the sizing path.
+
+⚪ **Unclassified constant.** Not yet decided whether this is a rule of thumb, a calibration or a physical value. Classifying it is open work — it is deliberately not guessed.
 
 **Value.** `0.8`
 
@@ -26,7 +36,8 @@ flight_time_h = (capacity_ah / cruise_current_a) * 0.8
 
 **Consumed by.**
 
-- in this graph: [[combo-flight-time-h|Estimated flight time (hours)]]
+- in this graph: `Estimated flight time (hours)`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `app/services/powertrain_sizing_service.py:257`
 
 **Source.** 🔴 NO SOURCE FOUND

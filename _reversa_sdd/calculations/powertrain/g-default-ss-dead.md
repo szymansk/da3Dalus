@@ -6,11 +6,21 @@ unit: m/s^2
 cluster: powertrain
 user_visible: false
 source_status: PARTIAL
+node_class: physical-constant
+tags:
+  - cluster/powertrain
+  - class/physical-constant
+  - source/partial
+  - flag/anomaly
+  - flag/physical
 ---
 
 # Gravity default (solution space)
 
 **Definition.** Module-level standard gravity, annotated as overridable via assumptions.g.
+
+**Physical constant.** A value of nature. It must be identical everywhere it appears — a second definition is a defect by construction, not a judgement call.
+*Identified as: gravity.*
 
 **Value.** `9.80665`
 

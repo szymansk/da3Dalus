@@ -6,11 +6,21 @@ unit: deg
 cluster: aero-strips
 user_visible: true
 source_status: SOURCED
+node_class: derived
+tags:
+  - cluster/aero-strips
+  - class/derived
+  - source/sourced
+  - surface/user-visible
+  - flag/anomaly
+  - flag/divergence
 ---
 
 # Strip induced angle
 
 **Definition.** Local induced angle of attack from the drag/lift ratio of the strip.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -18,7 +28,10 @@ source_status: SOURCED
 ai_deg = math.degrees(math.atan2(drag, lift))
 ```
 
-**Inputs.** [[vlm-strip-drag|Strip drag force]] · [[vlm-strip-lift|Strip lift force]]
+**Inputs.**
+
+- [[vlm-strip-drag|Strip drag force]]
+- [[vlm-strip-lift|Strip lift force]]
 
 **Produced by.** `app/services/vlm_strip_forces.py:276` — `compute_vlm_strip_forces`
 

@@ -6,11 +6,20 @@ unit: m
 cluster: perf-envelope
 user_visible: true
 source_status: PARTIAL
+node_class: derived
+tags:
+  - cluster/perf-envelope
+  - class/derived
+  - source/partial
+  - surface/user-visible
+  - flag/divergence
 ---
 
 # Maximum range
 
 **Definition.** Still-air distance on a full pack flown at minimum-drag speed.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -18,7 +27,9 @@ source_status: PARTIAL
 range_max_m = t_at_vmd_s * float(v_md)
 ```
 
-**Inputs.** [[end_t_at_vmd|Flight time at V_md]]
+**Inputs.**
+
+- [[end_t_at_vmd|Flight time at V_md]]
 
 **Produced by.** `app/services/endurance_service.py:412` — `compute_endurance`
 

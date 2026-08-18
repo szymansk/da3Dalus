@@ -6,11 +6,20 @@ unit: m²
 cluster: stability
 user_visible: false
 source_status: NO_SOURCE_FOUND
+node_class: unclassified-constant
+tags:
+  - cluster/stability
+  - class/unclassified-constant
+  - source/no-source-found
+  - flag/anomaly
+  - flag/divergence
 ---
 
 # Horizontal tail area fallback
 
 **Definition.** Horizontal tail area used when the context does not carry one.
+
+⚪ **Unclassified constant.** Not yet decided whether this is a rule of thumb, a calibration or a physical value. Classifying it is open work — it is deliberately not guessed.
 
 **Value.** `0.08`
 
@@ -26,7 +35,8 @@ s_h_m2: float = ctx.get("s_h_m2") or 0.08
 
 **Consumed by.**
 
-- in this graph: [[alpha-vh|Tail efficiency factor]] · [[delta-pct-htail|Horizontal tail chord-scale fraction]] · [[predicted-sm-fwd-htail|Predicted forward SM after htail scale]] · [[predicted-sm-htail-scale|Predicted SM after htail chord-scale]]
+- in this graph: `Tail efficiency factor` · `Horizontal tail chord-scale fraction` · `Predicted forward SM after htail scale` · `Predicted SM after htail chord-scale`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `app/services/sm_sizing_service.py:377,408,513,641,707,959`
 
 **Source.** 🔴 NO SOURCE FOUND

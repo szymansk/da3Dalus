@@ -6,11 +6,21 @@ unit: m/s
 cluster: perf-matching
 user_visible: true
 source_status: NO_SOURCE_FOUND
+node_class: derived
+tags:
+  - cluster/perf-matching
+  - class/derived
+  - source/no-source-found
+  - surface/user-visible
+  - flag/anomaly
+  - flag/divergence
 ---
 
 # Hand-launch minimum throw speed
 
 **Definition.** Minimum acceptable throw speed below which hand launch is rejected.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -18,7 +28,9 @@ source_status: NO_SOURCE_FOUND
 v_floor = _HAND_THROW_FLOOR * v_stall
 ```
 
-**Inputs.** [[hand_throw_floor|Hand-launch physics floor]]
+**Inputs.**
+
+- [[hand_throw_floor|Hand-launch physics floor]]  — *⊣ limit*
 
 **Produced by.** `app/services/field_length_service.py:378` — `compute_field_lengths`
 

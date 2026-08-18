@@ -6,11 +6,21 @@ unit: dimensionless (0..1)
 cluster: powertrain
 user_visible: true
 source_status: NO_SOURCE_FOUND
+node_class: derived
+tags:
+  - cluster/powertrain
+  - class/derived
+  - source/no-source-found
+  - surface/user-visible
+  - flag/anomaly
+  - flag/divergence
 ---
 
 # Combo confidence
 
 **Definition.** How well a motor+battery combo meets the flight-time target: the achieved/target ratio capped at 1.0.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -18,13 +28,16 @@ source_status: NO_SOURCE_FOUND
 if target_flight_time_min <= 0: return 0.0 ; return min(flight_time_min / target_flight_time_min, 1.0)
 ```
 
-**Inputs.** [[combo-flight-time-min|Estimated flight time]]
+**Inputs.**
+
+- [[combo-flight-time-min|Estimated flight time]]  — *⊣ limit*
 
 **Produced by.** `app/services/powertrain_sizing_service.py:125` — `_compute_confidence`
 
 **Consumed by.**
 
-- in this graph: [[candidate-cutoff|Recommendation list cut-off]]
+- in this graph: `Recommendation list cut-off`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `app/services/powertrain_sizing_service.py:271` · `app/services/powertrain_sizing_service.py:317`
 
 **Source.** 🔴 NO SOURCE FOUND

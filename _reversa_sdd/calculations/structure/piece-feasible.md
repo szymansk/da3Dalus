@@ -5,11 +5,21 @@ unit: boolean
 cluster: structure
 user_visible: true
 source_status: PARTIAL
+node_class: derived
+tags:
+  - cluster/structure
+  - class/derived
+  - source/partial
+  - surface/user-visible
+  - flag/anomaly
+  - flag/divergence
 ---
 
 # Spar piece feasibility
 
 **Definition.** True when the piece's outer diameter fits the tightest containment band and that band has room at all.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -17,7 +27,11 @@ source_status: PARTIAL
 feasible = od <= tightest + _FIT_TOL_MM and tightest > 0
 ```
 
-**Inputs.** [[piece-outer-diameter|Spar piece outer diameter]] · [[tightest-band|Tightest containment band for a piece]] · [[fit-tol-mm|Containment fit tolerance]]
+**Inputs.**
+
+- [[piece-outer-diameter|Spar piece outer diameter]]
+- [[tightest-band|Tightest containment band for a piece]]  — *⊣ limit*
+- [[fit-tol-mm|Containment fit tolerance]]  — *ε tolerance*
 
 **Produced by.** `cad_designer/airplane/geometry/spar_solver.py:540` — `_piece_from_run_with_od`
 

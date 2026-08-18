@@ -5,11 +5,18 @@ unit: dimensionless (span fraction)
 cluster: structure
 user_visible: false
 source_status: NO_SOURCE_FOUND
+node_class: unclassified-constant
+tags:
+  - cluster/structure
+  - class/unclassified-constant
+  - source/no-source-found
 ---
 
 # Root sampling epsilon
 
 **Definition.** Span fraction used to sample the root station instead of the degenerate y_span=0 slice, which on a real loft is pinched to zero thickness.
+
+⚪ **Unclassified constant.** Not yet decided whether this is a rule of thumb, a calibration or a physical value. Classifying it is open work — it is deliberately not guessed.
 
 **Value.** `1e-3`
 
@@ -25,7 +32,8 @@ _ROOT_EPS = 1e-3
 
 **Consumed by.**
 
-- in this graph: [[y-spans-grid|Spanwise sampling grid]]
+- in this graph: `Spanwise sampling grid`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `cad_designer/airplane/geometry/spar_solver.py:752`
 
 **Source.** 🔴 NO SOURCE FOUND

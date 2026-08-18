@@ -6,11 +6,21 @@ unit: – (enum string)
 cluster: stability
 user_visible: true
 source_status: PARTIAL
+node_class: derived
+tags:
+  - cluster/stability
+  - class/derived
+  - source/partial
+  - surface/user-visible
+  - flag/anomaly
+  - flag/divergence
 ---
 
 # Stability classification (static margin band)
 
 **Definition.** Maps static margin percent to a stable/neutral/unstable label. >5 % stable, 0–5 % neutral, <0 % unstable.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -20,7 +30,11 @@ if static_margin_pct >= 0: return "neutral"
 return "unstable"
 ```
 
-**Inputs.** [[static-margin-pct|Static margin percent]] · [[sm-classify-stable-threshold-pct|Stable/neutral boundary]] · [[sm-classify-neutral-threshold-pct|Neutral/unstable boundary]]
+**Inputs.**
+
+- [[static-margin-pct|Static margin percent]]
+- [[sm-classify-stable-threshold-pct|Stable/neutral boundary]]  — *⊣ limit*
+- [[sm-classify-neutral-threshold-pct|Neutral/unstable boundary]]  — *ε tolerance*
 
 **Produced by.** `app/services/stability_service.py:70` — `classify_stability`
 

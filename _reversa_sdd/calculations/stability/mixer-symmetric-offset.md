@@ -6,11 +6,19 @@ unit: deg
 cluster: stability
 user_visible: true
 source_status: SOURCED
+node_class: derived
+tags:
+  - cluster/stability
+  - class/derived
+  - source/sourced
+  - surface/user-visible
 ---
 
 # Mixer symmetric offset
 
 **Definition.** Symmetric (pitch or lift) component of a mixed control surface's deflection, after the primary mix gain.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -18,13 +26,16 @@ source_status: SOURCED
 d_sym = gp * primary_val
 ```
 
-**Inputs.** [[mix-gain-primary|Primary mix gain]]
+**Inputs.**
+
+- [[mix-gain-primary|Primary mix gain]]
 
 **Produced by.** `app/services/trim_enrichment_service.py:304` — `decompose_dual_role`
 
 **Consumed by.**
 
-- in this graph: [[mixer-left-right-deflection|Mixer left/right physical deflections]]
+- in this graph: `Mixer left/right physical deflections`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `app/services/trim_enrichment_service.py:321,323,324` · `frontend/components/workbench/trim-interpretation/MixerValuesCard.tsx`
 
 **Source.** 🟢 SOURCED

@@ -6,11 +6,20 @@ unit: dimensionless (0..1)
 cluster: aero-polars
 user_visible: false
 source_status: NO_SOURCE_FOUND
+node_class: derived
+tags:
+  - cluster/aero-polars
+  - class/derived
+  - source/no-source-found
+  - flag/anomaly
+  - flag/divergence
 ---
 
 # Match component of score_target_cl
 
 **Definition.** Drag-rise-based fit of the airfoil to the target CL, with a CL_max-margin fallback above r_poor.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -22,13 +31,21 @@ if tolerance_half > 0 and distance_from_sweet_spot < tolerance_half:
     match = min(match, 1.0)
 ```
 
-**Inputs.** [[alr-drag-rise-ratio|Relative drag-rise ratio r]] · [[low-re-score-r-poor|Drag-rise ratio at which Match→0]] · [[alr-tolerance-half|Match tolerance half-width]] · [[alr-best-ld-cl|CL at maximum L/D (closed form)]] · [[alr-cl-max|Section CL_max]] · [[low-re-cl-max-safety-band|CL_max safety band]]
+**Inputs.**
+
+- [[alr-drag-rise-ratio|Relative drag-rise ratio r]]
+- [[low-re-score-r-poor|Drag-rise ratio at which Match→0]]
+- [[alr-tolerance-half|Match tolerance half-width]]
+- [[alr-best-ld-cl|CL at maximum L/D (closed form)]]
+- [[alr-cl-max|Section CL_max]]  — *⊣ limit*
+- [[low-re-cl-max-safety-band|CL_max safety band]]  — *⤵ fallback*
 
 **Produced by.** `app/services/airfoil_low_re_service.py:1071` — `score_target_cl`
 
 **Consumed by.**
 
-- in this graph: [[alr-score-target-cl|target-CL suitability score]]
+- in this graph: `target-CL suitability score`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `score_target_cl:1085`
 
 **Source.** 🔴 NO SOURCE FOUND

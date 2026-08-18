@@ -6,11 +6,18 @@ unit: dimensionless (unit conversion)
 cluster: mass
 user_visible: false
 source_status: PARTIAL
+node_class: unclassified-constant
+tags:
+  - cluster/mass
+  - class/unclassified-constant
+  - source/partial
 ---
 
 # mm³·(kg/m³) → g divisor
 
 **Definition.** Unit-conversion divisor: volume in mm³ times density in kg/m³ divided by 1e6 yields mass in grams.
+
+⚪ **Unclassified constant.** Not yet decided whether this is a rule of thumb, a calibration or a physical value. Classifying it is open work — it is deliberately not guessed.
 
 **Value.** `1e6`
 
@@ -20,7 +27,8 @@ source_status: PARTIAL
 
 **Consumed by.**
 
-- in this graph: [[cad-shape-own-weight-surface|CAD shape own weight — surface print]] · [[cad-shape-own-weight-volume|CAD shape own weight — solid print]]
+- in this graph: `CAD shape own weight — surface print` · `CAD shape own weight — solid print`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `app/services/component_tree_service.py:455` · `app/services/component_tree_service.py:457`
 
 **Source.** 🟡 PARTIAL

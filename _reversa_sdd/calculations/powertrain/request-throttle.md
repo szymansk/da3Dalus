@@ -6,11 +6,19 @@ unit: dimensionless (0..1]
 cluster: powertrain
 user_visible: true
 source_status: SOURCED
+node_class: unclassified-parameter
+tags:
+  - cluster/powertrain
+  - class/unclassified-parameter
+  - source/sourced
+  - surface/user-visible
 ---
 
 # Throttle fraction
 
 **Definition.** User-supplied throttle setting, applied linearly to both the fixed RPM and the QPROP terminal voltage.
+
+⚪ **Unclassified parameter.** Not yet decided whether this is a user input or an internal tuning value.
 
 **Value.** `1.0`
 
@@ -20,7 +28,8 @@ source_status: SOURCED
 
 **Consumed by.**
 
-- in this graph: [[curve-prop-rpm|Fixed operating RPM (non-QPROP branch)]] · [[curve-v-terminal|Motor terminal voltage]]
+- in this graph: `Fixed operating RPM (non-QPROP branch)` · `Motor terminal voltage`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `app/services/powertrain_performance.py:643` · `app/services/powertrain_performance.py:702` · `app/api/v2/endpoints/aeroplane/powertrain_performance.py:251`
 
 **Source.** 🟢 SOURCED

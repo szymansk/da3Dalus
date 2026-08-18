@@ -6,11 +6,18 @@ unit: Pa
 cluster: perf-envelope
 user_visible: false
 source_status: SOURCED
+node_class: derived
+tags:
+  - cluster/perf-envelope
+  - class/derived
+  - source/sourced
 ---
 
 # Dynamic pressure
 
 **Definition.** Free-stream dynamic pressure at each sweep speed.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -18,13 +25,17 @@ source_status: SOURCED
 q = 0.5 * rho * v**2
 ```
 
-**Inputs.** [[fe_rho_default|Default air density (flight envelope)]] · [[fe_v_sweep|Velocity sweep points]]
+**Inputs.**
+
+- [[fe_rho_default|Default air density (flight envelope)]]  — *⤵ fallback*
+- [[fe_v_sweep|Velocity sweep points]]
 
 **Produced by.** `app/services/flight_envelope_service.py:325` — `compute_vn_curve`
 
 **Consumed by.**
 
-- in this graph: [[fe_n_neg_maneuver|Negative maneuver load factor]] · [[fe_n_pos_maneuver|Positive maneuver load factor]]
+- in this graph: `Negative maneuver load factor` · `Positive maneuver load factor`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 
 **Source.** 🟢 SOURCED
 

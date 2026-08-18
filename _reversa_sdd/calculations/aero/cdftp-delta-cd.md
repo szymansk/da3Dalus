@@ -6,11 +6,19 @@ unit: dimensionless
 cluster: aero-strips
 user_visible: false
 source_status: SOURCED
+node_class: derived
+tags:
+  - cluster/aero-strips
+  - class/derived
+  - source/sourced
+  - flag/divergence
 ---
 
 # Section drag delta (installed turbulator)
 
 **Definition.** Per-section drag change from the turbulator at its current position.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -18,13 +26,17 @@ source_status: SOURCED
 delta_cd=cd_tripped - cd_clean,
 ```
 
-**Inputs.** [[cdftp-cd-tripped|Tripped section drag (installed-turbulator path)]] · [[cdftp-cd-clean|Clean section drag (installed-turbulator path)]]
+**Inputs.**
+
+- [[cdftp-cd-tripped|Tripped section drag (installed-turbulator path)]]
+- [[cdftp-cd-clean|Clean section drag (installed-turbulator path)]]
 
 **Produced by.** `app/services/turbulator_optimizer_service.py:717` — `compute_delta_cd0_from_turbulator_position`
 
 **Consumed by.**
 
-- in this graph: [[cdftp-delta-cd0|Installed-turbulator 3D drag increment]]
+- in this graph: `Installed-turbulator 3D drag increment`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 
 **Source.** 🟢 SOURCED
 

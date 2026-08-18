@@ -6,11 +6,20 @@ unit: 1/chord
 cluster: aero-polars
 user_visible: true
 source_status: PARTIAL
+node_class: unclassified-parameter
+tags:
+  - cluster/aero-polars
+  - class/unclassified-parameter
+  - source/partial
+  - surface/user-visible
+  - flag/divergence
 ---
 
 # Reflex Signal B threshold
 
 **Definition.** Minimum positive quadratic coefficient of the aft camber line marking upturned-TE reflex.
+
+⚪ **Unclassified parameter.** Not yet decided whether this is a user input or an internal tuning value.
 
 **Value.** `0.015`
 

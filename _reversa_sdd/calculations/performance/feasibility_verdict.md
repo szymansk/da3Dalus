@@ -6,11 +6,21 @@ unit: enum
 cluster: perf-matching
 user_visible: true
 source_status: PARTIAL
+node_class: derived
+tags:
+  - cluster/perf-matching
+  - class/derived
+  - source/partial
+  - surface/user-visible
+  - flag/anomaly
+  - flag/divergence
 ---
 
 # Feasibility verdict
 
 **Definition.** Whether the design point satisfies all applicable, warning-relevant constraints.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -18,13 +28,19 @@ source_status: PARTIAL
 feasibility = "infeasible_below_constraints" if infeasible else "feasible"
 ```
 
-**Inputs.** [[design_point_ws|Design-point W/S]] · [[design_point_tw|Design-point T/W]] · [[tol_line_binding|Line-constraint binding tolerance]] · [[tol_vert_binding|Vertical-constraint binding tolerance]]
+**Inputs.**
+
+- [[design_point_ws|Design-point W/S]]
+- [[design_point_tw|Design-point T/W]]
+- [[tol_line_binding|Line-constraint binding tolerance]]
+- [[tol_vert_binding|Vertical-constraint binding tolerance]]
 
 **Produced by.** `app/services/matching_chart_service.py:687` — `_check_feasibility`
 
 **Consumed by.**
 
-- in this graph: [[binding_flag_propagation|Binding-flag back-propagation]]
+- in this graph: `Binding-flag back-propagation`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `compute_chart:994` · `MatchingChartResponse.feasibility` · `frontend/hooks/useMatchingChart.ts Feasibility`
 
 **Source.** 🟡 PARTIAL

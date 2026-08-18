@@ -6,11 +6,21 @@ unit: m
 cluster: mass
 user_visible: true
 source_status: SOURCED
+node_class: derived
+tags:
+  - cluster/mass
+  - class/derived
+  - source/sourced
+  - surface/user-visible
+  - flag/anomaly
+  - flag/divergence
 ---
 
 # Design CG_x (aerodynamic CG target)
 
 **Definition.** The longitudinal CG the design targets — neutral point shifted forward by the target static margin. Written back to the 'cg_x' design assumption on every recompute; it is the CG the aircraft SHOULD have, not the CG its parts produce.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -18,13 +28,18 @@ source_status: SOURCED
 cg_x = x_np - target_sm * mac
 ```
 
-**Inputs.** [[x-np|Neutral point]] · [[target-static-margin|Target static margin]] · [[mac|Mean aerodynamic chord (main wing)]]
+**Inputs.**
+
+- [[x-np|Neutral point]]  — *⊣ limit*
+- [[target-static-margin|Target static margin]]
+- [[mac|Mean aerodynamic chord (main wing)]]
 
 **Produced by.** `app/services/assumption_compute_service.py:108` — `recompute_assumptions`
 
 **Consumed by.**
 
-- in this graph: [[cg-change-epsilon|CG-change detection epsilon]]
+- in this graph: `CG-change detection epsilon`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `app/services/assumption_compute_service.py:199-206 (update_calculated_value 'cg_x', round(cg_x, 4), source='aerobuildup')` · `app/services/assumption_compute_service.py:802 (change detection)` · `app/services/operating_point_generator_service.py:238 (xyz_ref of operating points)` · `app/services/mass_cg_service.py:228 (get_cg_comparison design_cg_x)` · `app/services/loading_scenario_service.py:356 / :411 (base_cg_x)` · `app/services/invalidation_service.py:16 (_OP_AFFECTING_PARAMS)` · `frontend design-assumptions panel (parameter 'cg_x')`
 
 **Source.** 🟢 SOURCED

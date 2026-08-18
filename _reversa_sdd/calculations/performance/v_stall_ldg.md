@@ -6,11 +6,18 @@ unit: m/s
 cluster: perf-matching
 user_visible: false
 source_status: SOURCED
+node_class: derived
+tags:
+  - cluster/perf-matching
+  - class/derived
+  - source/sourced
 ---
 
 # Landing-configuration stall speed
 
 **Definition.** Stall speed in landing configuration, falling back to the clean V_S.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -24,7 +31,8 @@ v_stall_ldg: float = float(aircraft.get("v_s0_mps") or v_stall)
 
 **Consumed by.**
 
-- in this graph: [[v_app|Approach speed]]
+- in this graph: `Approach speed`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `_v_app:370`
 
 **Source.** 🟢 SOURCED

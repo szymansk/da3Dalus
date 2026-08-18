@@ -6,11 +6,19 @@ unit: dimensionless
 cluster: aero-polars
 user_visible: false
 source_status: NO_SOURCE_FOUND
+node_class: unclassified-parameter
+tags:
+  - cluster/aero-polars
+  - class/unclassified-parameter
+  - source/no-source-found
+  - flag/divergence
 ---
 
 # Drag-rise ratio at which Match→0
 
 **Definition.** CD(cl_target)/cd0 at which the target-CL Match component reaches zero.
+
+⚪ **Unclassified parameter.** Not yet decided whether this is a user input or an internal tuning value.
 
 **Value.** `2.5`
 
@@ -26,7 +34,8 @@ low_re_score_r_poor: float = 2.5
 
 **Consumed by.**
 
-- in this graph: [[alr-match|Match component of score_target_cl]]
+- in this graph: `Match component of score_target_cl`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `score_target_cl:1033,1055,1071`
 
 **Source.** 🔴 NO SOURCE FOUND

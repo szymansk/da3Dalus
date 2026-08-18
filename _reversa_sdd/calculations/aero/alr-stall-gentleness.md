@@ -6,11 +6,21 @@ unit: 1/deg
 cluster: aero-polars
 user_visible: true
 source_status: PARTIAL
+node_class: derived
+tags:
+  - cluster/aero-polars
+  - class/derived
+  - source/partial
+  - surface/user-visible
+  - flag/anomaly
+  - flag/divergence
 ---
 
 # Stall gentleness
 
 **Definition.** dCL/dα fitted over the 4 points starting at the CL_max peak; ≈0 gentle, negative abrupt.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -21,13 +31,17 @@ coeffs = np.polyfit(post_alpha, post_cl, 1)
 result["stall_gentleness"] = float(coeffs[0])
 ```
 
-**Inputs.** [[alr-cl-max|Section CL_max]] · [[alr-alpha-sweep|Alpha sweep bounds and step]]
+**Inputs.**
+
+- [[alr-cl-max|Section CL_max]]  — *⊣ limit*
+- [[alr-alpha-sweep|Alpha sweep bounds and step]]  — *⊣ limit*
 
 **Produced by.** `app/services/airfoil_low_re_service.py:624` — `_extract_metrics`
 
 **Consumed by.**
 
-- in this graph: [[alr-gentleness-scale|Stall gentleness normalisation scale]] · [[alr-score-re-agnostic|re_agnostic suitability score]]
+- in this graph: `Stall gentleness normalisation scale` · `re_agnostic suitability score`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `AirfoilLowRePolarModel.stall_gentleness` · `score_re_agnostic:851` · `suitability_service:513 → SuitabilityItem.stall_gentleness` · `frontend AirfoilSuitabilityCard.tsx:397`
 
 **Source.** 🟡 PARTIAL

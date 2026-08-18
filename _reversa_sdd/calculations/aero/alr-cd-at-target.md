@@ -6,11 +6,20 @@ unit: dimensionless
 cluster: aero-polars
 user_visible: false
 source_status: PARTIAL
+node_class: derived
+tags:
+  - cluster/aero-polars
+  - class/derived
+  - source/partial
+  - flag/anomaly
+  - flag/divergence
 ---
 
 # CD at target CL
 
 **Definition.** Section drag coefficient at the operating CL from the fitted parabolic polar.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -18,13 +27,19 @@ source_status: PARTIAL
 cd_at_target = cd0 + k * (cl_target - cl0) ** 2
 ```
 
-**Inputs.** [[alr-polar-cd0|Airfoil cd0 (parabolic fit vertex)]] · [[alr-polar-k|Airfoil polar curvature k]] · [[alr-polar-cl0|CL at minimum drag (cl0)]] · [[cl_target|Target lift coefficient]]
+**Inputs.**
+
+- [[alr-polar-cd0|Airfoil cd0 (parabolic fit vertex)]]
+- [[alr-polar-k|Airfoil polar curvature k]]
+- [[alr-polar-cl0|CL at minimum drag (cl0)]]
+- [[cl_target|Target lift coefficient]]
 
 **Produced by.** `app/services/airfoil_low_re_service.py:1045` — `score_target_cl`
 
 **Consumed by.**
 
-- in this graph: [[alr-drag-rise-ratio|Relative drag-rise ratio r]]
+- in this graph: `Relative drag-rise ratio r`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `score_target_cl:1046`
 
 **Source.** 🟡 PARTIAL

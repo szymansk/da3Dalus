@@ -6,11 +6,20 @@ unit: -
 cluster: perf-envelope
 user_visible: true
 source_status: SOURCED
+node_class: derived
+tags:
+  - cluster/perf-envelope
+  - class/derived
+  - source/sourced
+  - surface/user-visible
+  - flag/scale
 ---
 
 # Positive gust-critical trigger
 
 **Definition.** First speed at which the up-gust load factor exceeds the maneuver g-limit.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -18,7 +27,10 @@ source_status: SOURCED
 if n_pos > g_limit and not warned_positive: ...
 ```
 
-**Inputs.** [[fe_gust_n_pos|Positive gust load factor]] · [[fe_g_limit|Structural limit load factor]]
+**Inputs.**
+
+- [[fe_gust_n_pos|Positive gust load factor]]
+- [[fe_g_limit|Structural limit load factor]]  — *⤵ fallback*
 
 **Produced by.** `app/services/flight_envelope_service.py:246` — `_build_gust_lines`
 

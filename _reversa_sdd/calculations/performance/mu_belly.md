@@ -6,11 +6,20 @@ unit: dimensionless
 cluster: perf-matching
 user_visible: false
 source_status: NO_SOURCE_FOUND
+node_class: unclassified-constant
+tags:
+  - cluster/perf-matching
+  - class/unclassified-constant
+  - source/no-source-found
+  - flag/anomaly
+  - flag/divergence
 ---
 
 # Belly-landing friction
 
 **Definition.** Sliding friction coefficient assumed for a belly landing on grass.
+
+⚪ **Unclassified constant.** Not yet decided whether this is a rule of thumb, a calibration or a physical value. Classifying it is open work — it is deliberately not guessed.
 
 **Value.** `0.5`
 
@@ -26,7 +35,8 @@ _MU_BELLY: float = 0.5
 
 **Consumed by.**
 
-- in this graph: [[mu_brake_selected|Selected braking friction]]
+- in this graph: `Selected braking friction`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `compute_field_lengths:431`
 
 **Source.** 🔴 NO SOURCE FOUND

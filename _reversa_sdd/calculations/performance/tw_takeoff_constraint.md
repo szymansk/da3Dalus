@@ -6,11 +6,22 @@ unit: dimensionless
 cluster: perf-matching
 user_visible: true
 source_status: PARTIAL
+node_class: derived
+tags:
+  - cluster/perf-matching
+  - class/derived
+  - source/partial
+  - surface/user-visible
+  - flag/anomaly
+  - flag/divergence
+  - flag/scale
 ---
 
 # Takeoff constraint T/W
 
 **Definition.** Minimum T/W to reach the takeoff field-length target at a given W/S.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -18,7 +29,15 @@ source_status: PARTIAL
 return (_C_TO * _K_TO_50FT * ws) / (rho * g * cl_max_to * s_runway)
 ```
 
-**Inputs.** [[ws_range_mc|W/S sweep vector]] · [[mode_default_s_runway|Mode default field length]] · [[cl_max_to_mc|Takeoff CL_max (matching chart)]] · [[rho_sl|Sea-level ISA density]] · [[g_gravity|Standard gravity]] · [[c_to_roskam|Roskam takeoff ground-roll coefficient]] · [[k_to_50ft|Takeoff 50-ft obstacle factor]]
+**Inputs.**
+
+- [[ws_range_mc|W/S sweep vector]]
+- [[mode_default_s_runway|Mode default field length]]  — *⤵ fallback*
+- [[cl_max_to_mc|Takeoff CL_max (matching chart)]]  — *⤵ fallback*
+- [[rho_sl|Sea-level ISA density]]  — *⤵ fallback*
+- [[g_gravity|Standard gravity]]
+- [[c_to_roskam|Roskam takeoff ground-roll coefficient]]
+- [[k_to_50ft|Takeoff 50-ft obstacle factor]]
 
 **Produced by.** `app/services/matching_chart_service.py:310` — `_takeoff_constraint`
 

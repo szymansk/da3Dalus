@@ -6,11 +6,21 @@ unit: – (dimensionless)
 cluster: stability
 user_visible: true
 source_status: SOURCED
+node_class: derived
+tags:
+  - cluster/stability
+  - class/derived
+  - source/sourced
+  - surface/user-visible
+  - flag/anomaly
+  - flag/divergence
 ---
 
 # Swept flapped CL_max
 
 **Definition.** Maximum lift coefficient found by sweeping alpha with flaps deployed.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -21,13 +31,17 @@ if cl > cl_max_flap:
     alpha_at_cl_max = float(alpha)
 ```
 
-**Inputs.** [[flap-alpha-sweep|Flap CL_max alpha sweep]] · [[flap-default-deflection|Default flap deflection]]
+**Inputs.**
+
+- [[flap-alpha-sweep|Flap CL_max alpha sweep]]  — *⊣ limit*
+- [[flap-default-deflection|Default flap deflection]]  — *⤵ fallback*
 
 **Produced by.** `app/services/elevator_authority_service.py:890` — `_run_flap_analysis`
 
 **Consumed by.**
 
-- in this graph: [[alpha-stall-landing|Landing stall alpha]] · [[cl-max-landing|Landing CL_max]] · [[delta-cm-flap|Flap-induced pitching moment]]
+- in this graph: `Landing stall alpha` · `Landing CL_max` · `Flap-induced pitching moment`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `app/services/elevator_authority_service.py:646,654`
 
 **Source.** 🟢 SOURCED

@@ -6,11 +6,21 @@ unit: dimensionless
 cluster: aero-strips
 user_visible: true
 source_status: SOURCED
+node_class: derived
+tags:
+  - cluster/aero-strips
+  - class/derived
+  - source/sourced
+  - surface/user-visible
+  - flag/anomaly
+  - flag/divergence
 ---
 
 # Local strip drag coefficient
 
 **Definition.** Strip (induced) drag non-dimensionalised by dynamic pressure and strip area.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -18,7 +28,11 @@ source_status: SOURCED
 cd = drag / denom if denom > 0 else 0.0
 ```
 
-**Inputs.** [[vlm-strip-drag|Strip drag force]] · [[vlm-dynamic-pressure|Freestream dynamic pressure]] · [[vlm-strip-area|Strip area]]
+**Inputs.**
+
+- [[vlm-strip-drag|Strip drag force]]
+- [[vlm-dynamic-pressure|Freestream dynamic pressure]]
+- [[vlm-strip-area|Strip area]]
 
 **Produced by.** `app/services/vlm_strip_forces.py:272` — `compute_vlm_strip_forces`
 

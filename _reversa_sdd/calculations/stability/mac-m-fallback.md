@@ -6,11 +6,20 @@ unit: m
 cluster: stability
 user_visible: false
 source_status: NO_SOURCE_FOUND
+node_class: unclassified-constant
+tags:
+  - cluster/stability
+  - class/unclassified-constant
+  - source/no-source-found
+  - flag/anomaly
+  - flag/divergence
 ---
 
 # MAC fallback
 
 **Definition.** MAC used when the context value is missing or non-positive.
+
+⚪ **Unclassified constant.** Not yet decided whether this is a rule of thumb, a calibration or a physical value. Classifying it is open work — it is deliberately not guessed.
 
 **Value.** `0.30`
 
@@ -26,7 +35,8 @@ mac_m: float = float(mac_m_raw) if mac_m_raw and float(mac_m_raw) > 0 else 0.30
 
 **Consumed by.**
 
-- in this graph: [[delta-x-clipped|Clipped wing shift]] · [[dsm-dsh|SM sensitivity to horizontal tail area]] · [[dsm-dx-wing|SM sensitivity to wing longitudinal shift]] · [[l-h-m-fallback|Tail arm fallback]] · [[sm-at-aft|Static margin at aft CG]] · [[sm-at-fwd-after-shift|Forward-CG SM after wing shift]] · [[sm-fwd|Static margin at forward CG]] · [[sm-max-fwd|Maximum forward-CG static margin]]
+- in this graph: `Clipped wing shift` · `SM sensitivity to horizontal tail area` · `SM sensitivity to wing longitudinal shift` · `Tail arm fallback` · `Static margin at aft CG` · `Forward-CG SM after wing shift` · `Static margin at forward CG` · `Maximum forward-CG static margin`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `app/services/sm_sizing_service.py:138,154,600,640,678,706`
 
 **Source.** 🔴 NO SOURCE FOUND

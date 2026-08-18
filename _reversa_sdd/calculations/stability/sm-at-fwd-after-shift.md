@@ -6,11 +6,18 @@ unit: – (fraction of MAC)
 cluster: stability
 user_visible: false
 source_status: SOURCED
+node_class: derived
+tags:
+  - cluster/stability
+  - class/derived
+  - source/sourced
 ---
 
 # Forward-CG SM after wing shift
 
 **Definition.** Static margin at the forward stability CG that would result from the proposed wing shift; used to trigger the forward clip.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -18,7 +25,10 @@ source_status: SOURCED
 sm_at_fwd_after_shift = (x_np_new - cg_fwd_m) / mac_m
 ```
 
-**Inputs.** [[x-np-after-shift|Neutral point after wing shift]] · [[mac-m-fallback|MAC fallback]]
+**Inputs.**
+
+- [[x-np-after-shift|Neutral point after wing shift]]
+- [[mac-m-fallback|MAC fallback]]  — *⤵ fallback*
 
 **Produced by.** `app/services/sm_sizing_service.py:426` — `suggest_corrections`
 

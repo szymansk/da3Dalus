@@ -6,11 +6,20 @@ unit: MPa (N/mm²)
 cluster: structure
 user_visible: false
 source_status: PARTIAL
+node_class: unclassified-parameter
+tags:
+  - cluster/structure
+  - class/unclassified-parameter
+  - source/partial
+  - flag/anomaly
+  - flag/divergence
 ---
 
 # Allowable bending stress (plan path)
 
 **Definition.** Allowable bending stress for the plan endpoint, from the request override or the material component, rejecting non-positive values with a 422.
+
+⚪ **Unclassified parameter.** Not yet decided whether this is a user input or an internal tuning value.
 
 **Formula — as the code writes it.**
 
@@ -24,7 +33,8 @@ return float(sigma_allow)
 
 **Consumed by.**
 
-- in this graph: [[station-erf-w|Station required section modulus (plan path)]]
+- in this graph: `Station required section modulus (plan path)`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `app/services/spar_plan_service.py:554` · `app/services/spar_plan_service.py:568` · `cad_designer/airplane/geometry/spar_solver.py:765`
 
 **Source.** 🟡 PARTIAL

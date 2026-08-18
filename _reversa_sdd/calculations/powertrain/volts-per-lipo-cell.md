@@ -6,11 +6,19 @@ unit: V/cell
 cluster: powertrain
 user_visible: true
 source_status: SOURCED
+node_class: unclassified-constant
+tags:
+  - cluster/powertrain
+  - class/unclassified-constant
+  - source/sourced
+  - surface/user-visible
 ---
 
 # Loaded LiPo cell voltage
 
 **Definition.** Nominal loaded voltage of one LiPo cell, deliberately 3.7 V rather than the 4.2 V fully-charged peak.
+
+⚪ **Unclassified constant.** Not yet decided whether this is a rule of thumb, a calibration or a physical value. Classifying it is open work — it is deliberately not guessed.
 
 **Value.** `3.7`
 
@@ -20,7 +28,8 @@ source_status: SOURCED
 
 **Consumed by.**
 
-- in this graph: [[battery-nominal-voltage|Nominal pack voltage]] · [[motor-continuous-electrical-power|Motor continuous electrical input power (estimated)]] · [[motor-max-electrical-power|Motor maximum electrical input power (estimated)]]
+- in this graph: `Nominal pack voltage` · `Motor continuous electrical input power (estimated)` · `Motor maximum electrical input power (estimated)`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `app/services/powertrain_performance.py:159` · `app/services/powertrain_performance.py:171` · `app/services/powertrain_performance.py:184`
 
 **Source.** 🟢 SOURCED

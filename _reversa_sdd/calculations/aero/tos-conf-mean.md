@@ -6,11 +6,22 @@ unit: dimensionless
 cluster: aero-strips
 user_visible: true
 source_status: PARTIAL
+node_class: derived
+tags:
+  - cluster/aero-strips
+  - class/derived
+  - source/partial
+  - surface/user-visible
+  - flag/anomaly
+  - flag/divergence
+  - flag/scale
 ---
 
 # Mean NeuralFoil analysis confidence
 
 **Definition.** NaN-safe mean of NeuralFoil's per-alpha analysis_confidence at the probe trip position.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -18,7 +29,10 @@ source_status: PARTIAL
 conf_mean = float(np.nanmean(conf_arr))
 ```
 
-**Inputs.** [[tos-confidence-probe-xtr|Confidence-probe trip position]] · [[tos-alpha-grid|Alpha grid for cd lookup]]
+**Inputs.**
+
+- [[tos-confidence-probe-xtr|Confidence-probe trip position]]
+- [[tos-alpha-grid|Alpha grid for cd lookup]]
 
 **Produced by.** `app/services/turbulator_optimizer_service.py:222` — `optimize_section_xtr`
 

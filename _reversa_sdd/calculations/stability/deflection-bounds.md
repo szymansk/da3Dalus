@@ -6,11 +6,22 @@ unit: deg
 cluster: stability
 user_visible: true
 source_status: SOURCED
+node_class: unclassified-parameter
+tags:
+  - cluster/stability
+  - class/unclassified-parameter
+  - source/sourced
+  - surface/user-visible
+  - flag/anomaly
+  - flag/divergence
+  - flag/scale
 ---
 
 # Trim search bounds
 
 **Definition.** Lower and upper deflection limits within which the Brent solver searches for the trim.
+
+⚪ **Unclassified parameter.** Not yet decided whether this is a user input or an internal tuning value.
 
 **Formula — as the code writes it.**
 
@@ -24,7 +35,8 @@ lower, upper = request.deflection_bounds
 
 **Consumed by.**
 
-- in this graph: [[trim-bracket-test|Root bracketing test]] · [[trimmed-deflection|Trimmed control deflection]]
+- in this graph: `Root bracketing test` · `Trimmed control deflection`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `app/services/aerobuildup_trim_service.py:169,170,186,214`
 
 **Source.** 🟢 SOURCED

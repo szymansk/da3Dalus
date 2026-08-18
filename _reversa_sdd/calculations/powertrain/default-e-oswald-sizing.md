@@ -6,11 +6,22 @@ unit: dimensionless
 cluster: powertrain
 user_visible: true
 source_status: SOURCED
+node_class: unclassified-constant
+tags:
+  - cluster/powertrain
+  - class/unclassified-constant
+  - source/sourced
+  - surface/user-visible
+  - flag/anomaly
+  - flag/divergence
+  - flag/scale
 ---
 
 # Default Oswald efficiency (sizing)
 
 **Definition.** RC-typical Oswald span efficiency used when neither request nor context supplies e.
+
+⚪ **Unclassified constant.** Not yet decided whether this is a rule of thumb, a calibration or a physical value. Classifying it is open work — it is deliberately not guessed.
 
 **Value.** `0.8`
 
@@ -20,7 +31,8 @@ source_status: SOURCED
 
 **Consumed by.**
 
-- in this graph: [[resolved-e-oswald|Resolved Oswald efficiency]]
+- in this graph: `Resolved Oswald efficiency`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `app/services/powertrain_sizing_service.py:177`
 
 **Source.** 🟢 SOURCED

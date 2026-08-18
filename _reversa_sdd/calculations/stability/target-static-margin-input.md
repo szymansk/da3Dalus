@@ -6,11 +6,21 @@ unit: – (fraction of MAC)
 cluster: stability
 user_visible: true
 source_status: SOURCED
+node_class: unclassified-parameter
+tags:
+  - cluster/stability
+  - class/unclassified-parameter
+  - source/sourced
+  - surface/user-visible
+  - flag/anomaly
+  - flag/divergence
 ---
 
 # Target static margin
 
 **Definition.** User's design target for static margin; drives every SM sizing suggestion.
+
+⚪ **Unclassified parameter.** Not yet decided whether this is a user input or an internal tuning value.
 
 **Value.** `0.10`
 
@@ -26,7 +36,8 @@ target_sm = ctx.get("target_static_margin", 0.10)
 
 **Consumed by.**
 
-- in this graph: [[sm-delta-needed|SM shortfall to target]]
+- in this graph: `SM shortfall to target`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `app/services/sm_sizing_service.py:344,374,398,402,411` · `app/api/v2/endpoints/aeroplane/sm_suggestions.py:74,77` · `app/services/assumption_compute_service.py:107,108 (cg_x = x_np - target_sm * mac)`
 
 **Source.** 🟢 SOURCED

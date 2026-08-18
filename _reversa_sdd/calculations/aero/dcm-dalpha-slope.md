@@ -6,11 +6,21 @@ unit: 1/deg
 cluster: aero-spanwise
 user_visible: true
 source_status: SOURCED
+node_class: derived
+tags:
+  - cluster/aero-spanwise
+  - class/derived
+  - source/sourced
+  - surface/user-visible
+  - flag/anomaly
+  - flag/divergence
 ---
 
 # Longitudinal stability slope
 
 **Definition.** Linear-regression slope of Cm over alpha used to label the aircraft stable/neutral/unstable.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -18,7 +28,10 @@ source_status: SOURCED
 slope = np.polyfit(x[mask], y[mask], 1)[0]
 ```
 
-**Inputs.** [[cm-values|Pitching-moment coefficient array]] · [[alpha-array|Alpha sweep array]]
+**Inputs.**
+
+- [[cm-values|Pitching-moment coefficient array]]
+- [[alpha-array|Alpha sweep array]]
 
 **Produced by.** `app/services/analysis_service.py:826` — `_classify_longitudinal_stability`
 

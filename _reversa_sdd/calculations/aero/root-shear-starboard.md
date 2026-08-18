@@ -5,11 +5,20 @@ unit: N
 cluster: aero-spanwise
 user_visible: true
 source_status: PARTIAL
+node_class: derived
+tags:
+  - cluster/aero-spanwise
+  - class/derived
+  - source/partial
+  - surface/user-visible
+  - flag/divergence
 ---
 
 # Starboard root shear
 
 **Definition.** Peak shear at the starboard root.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -17,7 +26,9 @@ source_status: PARTIAL
 root_shear_N_starboard: float = Field(..., description="Peak shear at the starboard root (N)")
 ```
 
-**Inputs.** [[spanwise-shear|Running shear force]]
+**Inputs.**
+
+- [[spanwise-shear|Running shear force]]
 
 **Produced by.** `app/schemas/spanwise_loads.py:59` — `SurfaceSpanwiseLoads.root_shear_N_starboard`
 

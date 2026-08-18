@@ -6,11 +6,21 @@ unit: chord fraction
 cluster: aero-polars
 user_visible: true
 source_status: PARTIAL
+node_class: derived
+tags:
+  - cluster/aero-polars
+  - class/derived
+  - source/partial
+  - surface/user-visible
+  - flag/anomaly
+  - flag/divergence
 ---
 
 # camber_at_te (camber at x=0.9)
 
 **Definition.** Mean-camber-line value at 90% chord, used as the primary reflex signal.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -18,13 +28,16 @@ source_status: PARTIAL
 camber_at_te = float(np.interp(0.9, x_eval, camber))  # camber at x = 0.9
 ```
 
-**Inputs.** [[alr-camber-line|Mean camber line]]
+**Inputs.**
+
+- [[alr-camber-line|Mean camber line]]
 
 **Produced by.** `app/services/airfoil_low_re_service.py:221` — `classify_family`
 
 **Consumed by.**
 
-- in this graph: [[alr-aft-camber-ratio|Aft camber ratio (reflex Signal A)]]
+- in this graph: `Aft camber ratio (reflex Signal A)`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `classify_family:226` · `AirfoilGeometryModel.camber_at_te (app/models/airfoil_low_re.py:55) via scripts/backfill_airfoil_low_re.py:247`
 
 **Source.** 🟡 PARTIAL

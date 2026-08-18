@@ -5,11 +5,19 @@ unit: m/mm
 cluster: structure
 user_visible: false
 source_status: SOURCED
+node_class: unclassified-constant
+tags:
+  - cluster/structure
+  - class/unclassified-constant
+  - source/sourced
+  - flag/anomaly
 ---
 
 # Millimetre-to-metre conversion factor
 
 **Definition.** Converts the solver's millimetre plan lengths into the metre unit of the API response.
+
+⚪ **Unclassified constant.** Not yet decided whether this is a rule of thumb, a calibration or a physical value. Classifying it is open work — it is deliberately not guessed.
 
 **Value.** `0.001`
 
@@ -25,7 +33,8 @@ _MM_TO_M = 0.001
 
 **Consumed by.**
 
-- in this graph: [[piece-y-end|Spar piece tip spanwise position]] · [[piece-y-start|Spar piece root spanwise position]] · [[subsegment-lengths-m|Post-split sub-segment lengths]]
+- in this graph: `Spar piece tip spanwise position` · `Spar piece root spanwise position` · `Post-split sub-segment lengths`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `app/services/spar_plan_service.py:498-516` · `app/services/spar_plan_service.py:650` · `app/services/spar_plan_service.py:653` · `app/services/spar_insert_service.py:53`
 
 **Source.** 🟢 SOURCED

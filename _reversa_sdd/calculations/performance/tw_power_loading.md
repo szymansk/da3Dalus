@@ -6,11 +6,20 @@ unit: dimensionless
 cluster: perf-matching
 user_visible: true
 source_status: PARTIAL
+node_class: derived
+tags:
+  - cluster/perf-matching
+  - class/derived
+  - source/partial
+  - surface/user-visible
+  - flag/divergence
 ---
 
 # Power-loading T/W floor
 
 **Definition.** Minimum T/W implied by the profile's specific-power band.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -18,7 +27,12 @@ source_status: PARTIAL
 return p_over_m * eta_prop / (g * v_climb)
 ```
 
-**Inputs.** [[power_loading_table|Power-loading bands]] · [[eta_prop_default|Default propeller efficiency]] · [[g_gravity|Standard gravity]] · [[v_climb_power_loading|Climb speed for power loading]]
+**Inputs.**
+
+- [[power_loading_table|Power-loading bands]]  — *⊣ limit*
+- [[eta_prop_default|Default propeller efficiency]]  — *⤵ fallback*
+- [[g_gravity|Standard gravity]]
+- [[v_climb_power_loading|Climb speed for power loading]]  — *⊣ limit*
 
 **Produced by.** `app/services/matching_chart_service.py:564` — `_power_loading_constraint`
 

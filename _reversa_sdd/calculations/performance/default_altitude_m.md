@@ -5,11 +5,20 @@ unit: m
 cluster: perf-oppoints
 user_visible: true
 source_status: PARTIAL
+node_class: numerical-tolerance
+tags:
+  - cluster/perf-oppoints
+  - class/numerical-tolerance
+  - source/partial
+  - surface/user-visible
+  - flag/divergence
 ---
 
 # Default environment altitude
 
 **Definition.** Field altitude used when the aircraft has no flight profile.
+
+**Numerical tolerance.** A solver or comparison epsilon, not a domain value. ADR 0023 does not apply.
 
 **Value.** `0.0`
 
@@ -25,7 +34,8 @@ source_status: PARTIAL
 
 **Consumed by.**
 
-- in this graph: [[aero_coefficients_at_trim|Aero coefficients at the trimmed point]] · [[air_density_rho|Air density at the operating altitude]] · [[op_description_string|Operating-point description]]
+- in this graph: `Aero coefficients at the trimmed point` · `Air density at the operating altitude` · `Operating-point description`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `app/services/operating_point_generator_service.py:396 (altitude)` · `app/services/operating_point_generator_service.py:661, 769 (asb.Atmosphere)`
 
 **Source.** 🟡 PARTIAL

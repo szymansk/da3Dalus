@@ -6,11 +6,22 @@ unit: deg
 cluster: stability
 user_visible: true
 source_status: SOURCED
+node_class: unclassified-constant
+tags:
+  - cluster/stability
+  - class/unclassified-constant
+  - source/sourced
+  - surface/user-visible
+  - flag/anomaly
+  - flag/divergence
+  - flag/scale
 ---
 
 # Default control-surface deflection limit
 
 **Definition.** Mechanical deflection limit assumed when a trailing-edge device does not declare one.
+
+⚪ **Unclassified constant.** Not yet decided whether this is a rule of thumb, a calibration or a physical value. Classifying it is open work — it is deliberately not guessed.
 
 **Value.** `25.0`
 
@@ -26,7 +37,8 @@ max_pos, max_neg = limits.get(surface_name, (25.0, 25.0))
 
 **Consumed by.**
 
-- in this graph: [[deflection-usage-fraction|Deflection usage fraction]]
+- in this graph: `Deflection usage fraction`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `app/services/trim_enrichment_service.py:414,415,417,418` · `app/services/trim_enrichment_service.py:79,114,115 (second declaration `default = 25.0`)`
 
 **Source.** 🟢 SOURCED

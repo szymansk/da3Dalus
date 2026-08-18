@@ -5,11 +5,20 @@ unit: dimensionless (unit vector)
 cluster: structure
 user_visible: true
 source_status: PARTIAL
+node_class: derived
+tags:
+  - cluster/structure
+  - class/derived
+  - source/partial
+  - surface/user-visible
+  - flag/anomaly
 ---
 
 # Spar piece direction unit vector
 
 **Definition.** Unit direction the straight piece runs along, from its root point to its tip point. Dimensionless; never unit-scaled.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -21,13 +30,17 @@ if n < 1e-12:
 return (dx / n, dy / n, dz / n)
 ```
 
-**Inputs.** [[station-y-mm|Station spanwise position]] · [[station-center-z|Station centre height]]
+**Inputs.**
+
+- [[station-y-mm|Station spanwise position]]
+- [[station-center-z|Station centre height]]
 
 **Produced by.** `cad_designer/airplane/geometry/spar_solver.py:313` — `_unit_vector`
 
 **Consumed by.**
 
-- in this graph: [[no-spar-from-y|No-spar region start]] · [[piece-y-end|Spar piece tip spanwise position]]
+- in this graph: `No-spar region start` · `Spar piece tip spanwise position`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `cad_designer/airplane/geometry/spar_solver.py:530` · `app/services/spar_plan_service.py:500` · `app/schemas/spar_plan.py:186` · `frontend/hooks/useSparPlan.ts:42`
 
 **Source.** 🟡 PARTIAL

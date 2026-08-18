@@ -6,11 +6,20 @@ unit: N·m
 cluster: aero-spanwise
 user_visible: true
 source_status: SOURCED
+node_class: derived
+tags:
+  - cluster/aero-spanwise
+  - class/derived
+  - source/sourced
+  - surface/user-visible
+  - flag/divergence
 ---
 
 # Starboard root bending moment
 
 **Definition.** Headline spar-sizing bending moment at the starboard root.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -18,13 +27,16 @@ source_status: SOURCED
 root_bending_moment_Nm_starboard: float = Field(..., description="Root bending moment on the starboard half (N·m) — headline spar-sizing value")
 ```
 
-**Inputs.** [[spanwise-bending-moment|Running bending moment]]
+**Inputs.**
+
+- [[spanwise-bending-moment|Running bending moment]]
 
 **Produced by.** `app/schemas/spanwise_loads.py:61` — `SurfaceSpanwiseLoads.root_bending_moment_Nm_starboard`
 
 **Consumed by.**
 
-- in this graph: [[sizing-half-span-selection|Design half-span selection]]
+- in this graph: `Design half-span selection`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `_surface_to_stations:2206` · `frontend AnalysisViewerPanel.tsx:932` · `frontend/lib/sparPlanHelpers.ts:59`
 
 **Source.** 🟢 SOURCED

@@ -6,11 +6,20 @@ unit: dimensionless
 cluster: aero-polars
 user_visible: false
 source_status: SOURCED
+node_class: derived
+tags:
+  - cluster/aero-polars
+  - class/derived
+  - source/sourced
+  - flag/anomaly
+  - flag/divergence
 ---
 
 # CL at maximum L/D (closed form)
 
 **Definition.** CL that maximises L/D for the parabolic polar CD = cd0 + k(CL−cl0)².
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -18,13 +27,18 @@ source_status: SOURCED
 return math.sqrt(cl0**2 + cd0 / k)
 ```
 
-**Inputs.** [[alr-polar-cd0|Airfoil cd0 (parabolic fit vertex)]] · [[alr-polar-k|Airfoil polar curvature k]] · [[alr-polar-cl0|CL at minimum drag (cl0)]]
+**Inputs.**
+
+- [[alr-polar-cd0|Airfoil cd0 (parabolic fit vertex)]]
+- [[alr-polar-k|Airfoil polar curvature k]]
+- [[alr-polar-cl0|CL at minimum drag (cl0)]]
 
 **Produced by.** `app/services/airfoil_low_re_service.py:760` — `best_ld_cl`
 
 **Consumed by.**
 
-- in this graph: [[alr-match|Match component of score_target_cl]]
+- in this graph: `Match component of score_target_cl`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `score_target_cl:1038`
 
 **Source.** 🟢 SOURCED

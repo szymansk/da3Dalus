@@ -6,11 +6,20 @@ unit: deg
 cluster: aero-strips
 user_visible: true
 source_status: SOURCED
+node_class: derived
+tags:
+  - cluster/aero-strips
+  - class/derived
+  - source/sourced
+  - surface/user-visible
+  - flag/divergence
 ---
 
 # Effective angle of attack
 
 **Definition.** Section AoA implied by cl through the thin-airfoil lift curve, offset by the zero-lift angle.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -18,13 +27,18 @@ source_status: SOURCED
 alpha_eff_arr = np.degrees(cl_arr / _A0_RAD) + alpha_L0_at_y
 ```
 
-**Inputs.** [[saoa-cl|Section lift coefficient (Kutta-Joukowski)]] · [[saoa-a0|Thin-airfoil lift-curve slope]] · [[saoa-alpha-l0-at-y|Interpolated zero-lift angle at panel y]]
+**Inputs.**
+
+- [[saoa-cl|Section lift coefficient (Kutta-Joukowski)]]
+- [[saoa-a0|Thin-airfoil lift-curve slope]]
+- [[saoa-alpha-l0-at-y|Interpolated zero-lift angle at panel y]]
 
 **Produced by.** `app/services/section_aoa_service.py:300` — `compute_section_aoa`
 
 **Consumed by.**
 
-- in this graph: [[saoa-induced-angle|Induced downwash angle]]
+- in this graph: `Induced downwash angle`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `app/api/v2/endpoints/section_aoa.py:SectionAoaPoint.alpha_effective_deg` · `frontend/app/workbench/airfoil-preview/page.tsx:297`
 
 **Source.** 🟢 SOURCED

@@ -5,11 +5,21 @@ unit: deg
 cluster: perf-oppoints
 user_visible: true
 source_status: PARTIAL
+node_class: unclassified-constant
+tags:
+  - cluster/perf-oppoints
+  - class/unclassified-constant
+  - source/partial
+  - surface/user-visible
+  - flag/divergence
+  - flag/scale
 ---
 
 # Takeoff flap deflection target
 
 **Definition.** Fixed flap deflection requested for the takeoff-climb point before TED clipping.
+
+⚪ **Unclassified constant.** Not yet decided whether this is a rule of thumb, a calibration or a physical value. Classifying it is open work — it is deliberately not guessed.
 
 **Value.** `15.0`
 
@@ -25,7 +35,8 @@ source_status: PARTIAL
 
 **Consumed by.**
 
-- in this graph: [[flap_deflection_clipped_value|Clipped flap deflection]]
+- in this graph: `Clipped flap deflection`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `app/services/operating_point_generator_service.py:75-114 (_clip_flap_to_ted_limit)` · `app/services/operating_point_generator_service.py:635-647`
 
 **Source.** 🟡 PARTIAL

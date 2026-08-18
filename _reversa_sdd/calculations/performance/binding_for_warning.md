@@ -6,11 +6,19 @@ unit: bool
 cluster: perf-matching
 user_visible: true
 source_status: NO_SOURCE_FOUND
+node_class: derived
+tags:
+  - cluster/perf-matching
+  - class/derived
+  - source/no-source-found
+  - surface/user-visible
 ---
 
 # Warning-relevance flag
 
 **Definition.** Whether a constraint may drive the infeasibility verdict.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 

@@ -6,11 +6,18 @@ unit: dimensionless (unit conversion)
 cluster: mass
 user_visible: false
 source_status: PARTIAL
+node_class: unclassified-constant
+tags:
+  - cluster/mass
+  - class/unclassified-constant
+  - source/partial
 ---
 
 # g → kg divisor
 
 **Definition.** Unit conversion from the gram-based component tree to the kilogram-based design-assumption store.
+
+⚪ **Unclassified constant.** Not yet decided whether this is a rule of thumb, a calibration or a physical value. Classifying it is open work — it is deliberately not guessed.
 
 **Value.** `1000.0`
 
@@ -20,7 +27,8 @@ source_status: PARTIAL
 
 **Consumed by.**
 
-- in this graph: [[aircraft-total-weight-kg|Aircraft total weight from component tree]]
+- in this graph: `Aircraft total weight from component tree`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `app/services/component_tree_service.py:403`
 
 **Source.** 🟡 PARTIAL

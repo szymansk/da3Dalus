@@ -6,11 +6,21 @@ unit: g
 cluster: mass
 user_visible: true
 source_status: SOURCED
+node_class: derived
+tags:
+  - cluster/mass
+  - class/derived
+  - source/sourced
+  - surface/user-visible
+  - flag/anomaly
+  - flag/divergence
 ---
 
 # Node total weight (tree roll-up)
 
 **Definition.** Own weight plus the total weight of every child, computed in a post-order traversal when the whole tree is served.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -18,7 +28,9 @@ source_status: SOURCED
 node.total_weight_g = (own or 0.0) + sum(c.total_weight_g for c in node.children)
 ```
 
-**Inputs.** [[node-own-weight|Node own weight]]
+**Inputs.**
+
+- [[node-own-weight|Node own weight]]
 
 **Produced by.** `app/services/component_tree_service.py:106` — `_roll_up_weights`
 

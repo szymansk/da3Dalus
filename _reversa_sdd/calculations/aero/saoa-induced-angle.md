@@ -6,11 +6,21 @@ unit: deg
 cluster: aero-strips
 user_visible: true
 source_status: SOURCED
+node_class: derived
+tags:
+  - cluster/aero-strips
+  - class/derived
+  - source/sourced
+  - surface/user-visible
+  - flag/anomaly
+  - flag/divergence
 ---
 
 # Induced downwash angle
 
 **Definition.** Geometric minus effective angle of attack at each panel.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -18,7 +28,10 @@ source_status: SOURCED
 induced_angle_arr = alpha_geom_arr - alpha_eff_arr
 ```
 
-**Inputs.** [[saoa-alpha-geom|Geometric angle of attack]] · [[saoa-alpha-eff|Effective angle of attack]]
+**Inputs.**
+
+- [[saoa-alpha-geom|Geometric angle of attack]]
+- [[saoa-alpha-eff|Effective angle of attack]]
 
 **Produced by.** `app/services/section_aoa_service.py:337` — `compute_section_aoa`
 

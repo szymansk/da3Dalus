@@ -6,11 +6,20 @@ unit: rpm
 cluster: powertrain
 user_visible: false
 source_status: NO_SOURCE_FOUND
+node_class: derived
+tags:
+  - cluster/powertrain
+  - class/derived
+  - source/no-source-found
+  - flag/anomaly
+  - flag/divergence
 ---
 
 # Nearest-RPM polar row group
 
 **Definition.** The polar RPM group closest to the operating RPM; only its rows are used for the Ct/Cp interpolation.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -18,7 +27,10 @@ source_status: NO_SOURCE_FOUND
 rpms = sorted({s.rpm for s in request.polar_samples}) ; nearest_rpm = min(rpms, key=lambda r: abs(r - point_rpm)) ; rpm_rows = [s for s in request.polar_samples if s.rpm == nearest_rpm]
 ```
 
-**Inputs.** [[curve-prop-rpm|Fixed operating RPM (non-QPROP branch)]] · [[qprop-rpm-solution|Solved operating RPM]]
+**Inputs.**
+
+- [[curve-prop-rpm|Fixed operating RPM (non-QPROP branch)]]
+- [[qprop-rpm-solution|Solved operating RPM]]  — *⊣ limit*
 
 **Produced by.** `app/services/powertrain_performance.py:738` — `compute_performance_curve`
 

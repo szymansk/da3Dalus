@@ -6,11 +6,23 @@ unit: m²/s
 cluster: aero-strips
 user_visible: false
 source_status: PARTIAL
+node_class: physical-constant
+tags:
+  - cluster/aero-strips
+  - class/physical-constant
+  - source/partial
+  - flag/anomaly
+  - flag/divergence
+  - flag/scale
+  - flag/physical
 ---
 
 # Kinematic viscosity (section AoA)
 
 **Definition.** Hardcoded sea-level kinematic viscosity used for the local chord Reynolds number.
+
+**Physical constant.** A value of nature. It must be identical everywhere it appears — a second definition is a defect by construction, not a judgement call.
+*Identified as: kinematic viscosity of air.*
 
 **Value.** `1.5e-5`
 
@@ -26,7 +38,8 @@ nu = 1.5e-5  # kinematic viscosity [m²/s] — standard sea-level air
 
 **Consumed by.**
 
-- in this graph: [[saoa-re-local|Local chord Reynolds number (alpha_L0 lookup)]]
+- in this graph: `Local chord Reynolds number (alpha_L0 lookup)`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 
 **Source.** 🟡 PARTIAL
 

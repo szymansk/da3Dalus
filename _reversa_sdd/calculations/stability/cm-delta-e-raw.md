@@ -6,11 +6,22 @@ unit: 1/rad
 cluster: stability
 user_visible: true
 source_status: SOURCED
+node_class: derived
+tags:
+  - cluster/stability
+  - class/derived
+  - source/sourced
+  - surface/user-visible
+  - flag/anomaly
+  - flag/divergence
+  - flag/scale
 ---
 
 # Elevator authority (finite difference)
 
 **Definition.** Sensitivity of pitching moment to elevator deflection, from a two-point finite difference with TE-UP deflection.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -18,13 +29,18 @@ source_status: SOURCED
 cm_delta_e_raw = (cm_deflected - cm_baseline) / delta_e_max_rad
 ```
 
-**Inputs.** [[cm-baseline|Baseline pitching moment (zero deflection)]] · [[delta-e-max-rad|Maximum elevator deflection (radians)]] · [[delta-e-neg-deg|TE-UP deflection command]]
+**Inputs.**
+
+- [[cm-baseline|Baseline pitching moment (zero deflection)]]
+- [[delta-e-max-rad|Maximum elevator deflection (radians)]]
+- [[delta-e-neg-deg|TE-UP deflection command]]
 
 **Produced by.** `app/services/elevator_authority_service.py:709` — `_compute_forward_cg_limit_asb`
 
 **Consumed by.**
 
-- in this graph: [[cm-delta-e|Elevator authority (sign-enforced)]]
+- in this graph: `Elevator authority (sign-enforced)`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `app/services/elevator_authority_service.py:714,725` · `app/services/elevator_authority_service.py:1060,1062,1071 (AVL twin)`
 
 **Source.** 🟢 SOURCED

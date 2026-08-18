@@ -6,11 +6,20 @@ unit: – (dimensionless)
 cluster: stability
 user_visible: false
 source_status: NO_SOURCE_FOUND
+node_class: unclassified-constant
+tags:
+  - cluster/stability
+  - class/unclassified-constant
+  - source/no-source-found
+  - flag/anomaly
+  - flag/divergence
 ---
 
 # Near-stall approach speed factor
 
 **Definition.** Fraction of cruise speed used as the approach/stall operating velocity for the elevator-authority runs.
+
+⚪ **Unclassified constant.** Not yet decided whether this is a rule of thumb, a calibration or a physical value. Classifying it is open work — it is deliberately not guessed.
 
 **Value.** `0.6`
 
@@ -20,7 +29,9 @@ source_status: NO_SOURCE_FOUND
 velocity=v_cruise * 0.6,  # near-stall approach speed
 ```
 
-**Inputs.** [[v-cruise-fallback|Cruise speed fallback]]
+**Inputs.**
+
+- [[v-cruise-fallback|Cruise speed fallback]]  — *⤵ fallback*
 
 **Produced by.** `app/services/elevator_authority_service.py:621` — `_compute_forward_cg_limit_asb`
 

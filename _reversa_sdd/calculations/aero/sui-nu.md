@@ -6,11 +6,22 @@ unit: m²/s
 cluster: aero-polars
 user_visible: false
 source_status: SOURCED
+node_class: physical-constant
+tags:
+  - cluster/aero-polars
+  - class/physical-constant
+  - source/sourced
+  - flag/anomaly
+  - flag/divergence
+  - flag/physical
 ---
 
 # Kinematic viscosity for per-lens Re
 
 **Definition.** Kinematic viscosity used only for the per-lens (gh-838) Reynolds numbers.
+
+**Physical constant.** A value of nature. It must be identical everywhere it appears — a second definition is a defect by construction, not a judgement call.
+*Identified as: kinematic viscosity of air.*
 
 **Value.** `1.46e-5`
 
@@ -26,7 +37,8 @@ _NU = 1.46e-5  # kinematic viscosity m²/s at 15°C
 
 **Consumed by.**
 
-- in this graph: [[sui-per-lens-re|Per-lens Reynolds number]]
+- in this graph: `Per-lens Reynolds number`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `_per_lens_re:383`
 
 **Source.** 🟢 SOURCED

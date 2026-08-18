@@ -5,11 +5,18 @@ unit: m
 cluster: structure
 user_visible: false
 source_status: NO_SOURCE_FOUND
+node_class: unclassified-constant
+tags:
+  - cluster/structure
+  - class/unclassified-constant
+  - source/no-source-found
 ---
 
 # center_z nearest-key lookup tolerance
 
 **Definition.** Spanwise tolerance within which a center_z map key is accepted as matching the station y; mirrors the t/c tolerance so both maps resolve consistently.
+
+⚪ **Unclassified constant.** Not yet decided whether this is a rule of thumb, a calibration or a physical value. Classifying it is open work — it is deliberately not guessed.
 
 **Value.** `0.01`
 
@@ -25,7 +32,8 @@ if nearest is not None and abs(nearest - y_m) < 0.01:
 
 **Consumed by.**
 
-- in this graph: [[center-z-mm|Section mid-height (spar placement reference)]]
+- in this graph: `Section mid-height (spar placement reference)`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `app/services/spar_sizing.py:417`
 
 **Source.** 🔴 NO SOURCE FOUND

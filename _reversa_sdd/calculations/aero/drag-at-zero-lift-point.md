@@ -6,11 +6,21 @@ unit: mixed (deg, -, -)
 cluster: aero-spanwise
 user_visible: true
 source_status: SOURCED
+node_class: derived
+tags:
+  - cluster/aero-spanwise
+  - class/derived
+  - source/sourced
+  - surface/user-visible
+  - flag/anomaly
+  - flag/divergence
 ---
 
 # Drag at zero lift point
 
 **Definition.** CD interpolated linearly at the first CL sign change (labelled 'CD0' in the diagram).
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -18,13 +28,19 @@ source_status: SOURCED
 t = 0.0 if abs(cl1 - cl0) <= 1e-12 else -cl0 / (cl1 - cl0); alpha_deg = alpha[i] + t * (alpha[i+1] - alpha[i]); CD = cd[i] + t * (cd[i+1] - cd[i])
 ```
 
-**Inputs.** [[cl-values|Lift coefficient array]] · [[cd-values|Drag coefficient array]] · [[alpha-array|Alpha sweep array]] · [[divide-guard-epsilon|Division guard epsilon]]
+**Inputs.**
+
+- [[cl-values|Lift coefficient array]]
+- [[cd-values|Drag coefficient array]]
+- [[alpha-array|Alpha sweep array]]
+- [[divide-guard-epsilon|Division guard epsilon]]  — *ε tolerance*
 
 **Produced by.** `app/services/analysis_service.py:149` — `_interpolate_zero_crossing`
 
 **Consumed by.**
 
-- in this graph: [[characteristic-points|Characteristic points dict]]
+- in this graph: `Characteristic points dict`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `alpha-sweep PNG polar panel` · `API alpha_sweep response`
 
 **Source.** 🟢 SOURCED

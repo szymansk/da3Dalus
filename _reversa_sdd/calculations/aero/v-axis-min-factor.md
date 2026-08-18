@@ -5,11 +5,19 @@ unit: -
 cluster: aero-spanwise
 user_visible: false
 source_status: NO_SOURCE_FOUND
+node_class: unclassified-constant
+tags:
+  - cluster/aero-spanwise
+  - class/unclassified-constant
+  - source/no-source-found
+  - flag/anomaly
 ---
 
 # Lower axis-bound factor
 
 **Definition.** Fraction of the lowest V_stall used as the chart's left edge.
+
+⚪ **Unclassified constant.** Not yet decided whether this is a rule of thumb, a calibration or a physical value. Classifying it is open work — it is deliberately not guessed.
 
 **Value.** `0.7`
 
@@ -25,7 +33,8 @@ source_status: NO_SOURCE_FOUND
 
 **Consumed by.**
 
-- in this graph: [[v-axis-min|Speed-polar X-axis lower bound]]
+- in this graph: `Speed-polar X-axis lower bound`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 
 **Source.** 🔴 NO SOURCE FOUND
 

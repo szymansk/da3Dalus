@@ -6,11 +6,18 @@ unit: m
 cluster: aero-strips
 user_visible: false
 source_status: SOURCED
+node_class: derived
+tags:
+  - cluster/aero-strips
+  - class/derived
+  - source/sourced
 ---
 
 # Blended section chord
 
 **Definition.** Linear interpolation of chord for an inserted cross-section.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -18,7 +25,9 @@ source_status: SOURCED
 float(xa.chord) * a + float(xb.chord) * b
 ```
 
-**Inputs.** [[vlm-blend-fraction|Inserted-section blend fraction]]
+**Inputs.**
+
+- [[vlm-blend-fraction|Inserted-section blend fraction]]  — *⊣ limit*
 
 **Produced by.** `app/services/vlm_strip_forces.py:111` — `_blend_xsec`
 

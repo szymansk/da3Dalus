@@ -6,11 +6,18 @@ unit: dimensionless
 cluster: aero-strips
 user_visible: false
 source_status: SOURCED
+node_class: derived
+tags:
+  - cluster/aero-strips
+  - class/derived
+  - source/sourced
 ---
 
 # Unit freestream (drag) direction
 
 **Definition.** Normalised steady freestream direction used to project the strip force into drag.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -24,7 +31,8 @@ d_hat = np.asarray(vlm.steady_freestream_direction, dtype=float); d_hat = d_hat 
 
 **Consumed by.**
 
-- in this graph: [[vlm-lift-direction|Unit lift direction]] · [[vlm-strip-drag|Strip drag force]]
+- in this graph: `Unit lift direction` · `Strip drag force`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 
 **Source.** 🟢 SOURCED
 

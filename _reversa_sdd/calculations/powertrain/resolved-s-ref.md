@@ -6,11 +6,20 @@ unit: m^2
 cluster: powertrain
 user_visible: true
 source_status: NO_SOURCE_FOUND
+node_class: derived
+tags:
+  - cluster/powertrain
+  - class/derived
+  - source/no-source-found
+  - surface/user-visible
+  - flag/divergence
 ---
 
 # Resolved wing reference area
 
 **Definition.** Wing reference area resolved by the same three-tier priority.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -18,13 +27,16 @@ source_status: NO_SOURCE_FOUND
 s_ref_m2 = _pick(request.s_ref_m2, "s_ref_m2", _DEFAULT_S_REF_M2, "Wing reference area (s_ref_m2)", "s_ref_m2")
 ```
 
-**Inputs.** [[default-s-ref-sizing|Default wing reference area (sizing)]]
+**Inputs.**
+
+- [[default-s-ref-sizing|Default wing reference area (sizing)]]  — *⤵ fallback*
 
 **Produced by.** `app/services/powertrain_sizing_service.py:186` — `_resolve_aero_params`
 
 **Consumed by.**
 
-- in this graph: [[combo-cruise-power|Estimated cruise power]] · [[combo-required-power|Power required for a motor+battery combo]]
+- in this graph: `Estimated cruise power` · `Power required for a motor+battery combo`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `app/services/powertrain_sizing_service.py:248` · `app/services/powertrain_sizing_service.py:312`
 
 **Source.** 🔴 NO SOURCE FOUND

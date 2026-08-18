@@ -5,11 +5,20 @@ unit: index
 cluster: aero-spanwise
 user_visible: true
 source_status: NO_SOURCE_FOUND
+node_class: derived
+tags:
+  - cluster/aero-spanwise
+  - class/derived
+  - source/no-source-found
+  - surface/user-visible
+  - flag/anomaly
 ---
 
 # Trim nearest-point fallback
 
 **Definition.** When Cm never crosses zero the point of minimum \|Cm\| is reported as the trim point.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -17,7 +26,9 @@ source_status: NO_SOURCE_FOUND
 i = int(np.argmin(np.abs(cm)))
 ```
 
-**Inputs.** [[cm-values|Pitching-moment coefficient array]]
+**Inputs.**
+
+- [[cm-values|Pitching-moment coefficient array]]
 
 **Produced by.** `app/services/analysis_service.py:209` — `_compute_trim_point`
 

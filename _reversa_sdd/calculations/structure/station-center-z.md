@@ -6,11 +6,19 @@ unit: mm
 cluster: structure
 user_visible: true
 source_status: PARTIAL
+node_class: derived
+tags:
+  - cluster/structure
+  - class/derived
+  - source/partial
+  - surface/user-visible
 ---
 
 # Station centre height
 
 **Definition.** The StationData mid-height the solver places a spar axis on, copied from the sampled SectionPoint.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -18,13 +26,16 @@ source_status: PARTIAL
 center_z=pt.center_z,
 ```
 
-**Inputs.** [[section-center-z-analytic|Section mid-height (analytic)]]
+**Inputs.**
+
+- [[section-center-z-analytic|Section mid-height (analytic)]]
 
 **Produced by.** `cad_designer/airplane/geometry/spar_solver.py:775` — `build_stations_from_geometry`
 
 **Consumed by.**
 
-- in this graph: [[axis-z-at|Straight-piece axis height at a station]] · [[piece-direction-vector|Spar piece direction unit vector]] · [[piece-length|Spar piece length]] · [[root-centreline-z|Root centreline height]]
+- in this graph: `Straight-piece axis height at a station` · `Spar piece direction unit vector` · `Spar piece length` · `Root centreline height`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `cad_designer/airplane/geometry/spar_solver.py:271` · `cad_designer/airplane/geometry/spar_solver.py:528` · `cad_designer/airplane/geometry/spar_solver.py:529` · `cad_designer/airplane/geometry/spar_solver.py:586` · `cad_designer/airplane/geometry/spar_solver.py:601` · `cad_designer/airplane/geometry/spar_solver.py:618`
 
 **Source.** 🟡 PARTIAL

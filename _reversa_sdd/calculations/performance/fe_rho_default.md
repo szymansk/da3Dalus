@@ -6,11 +6,22 @@ unit: kg/m^3
 cluster: perf-envelope
 user_visible: false
 source_status: SOURCED
+node_class: physical-constant
+tags:
+  - cluster/perf-envelope
+  - class/physical-constant
+  - source/sourced
+  - flag/anomaly
+  - flag/divergence
+  - flag/physical
 ---
 
 # Default air density (flight envelope)
 
 **Definition.** Sea-level ISA density hardcoded as a bare default in three signatures, never a named constant.
+
+**Physical constant.** A value of nature. It must be identical everywhere it appears — a second definition is a defect by construction, not a judgement call.
+*Identified as: sea-level air density.*
 
 **Value.** `1.225`
 
@@ -26,7 +37,8 @@ rho: float = 1.225
 
 **Consumed by.**
 
-- in this graph: [[fe_delta_n|Gust load-factor increment]] · [[fe_mu_g|Gust mass ratio]] · [[fe_q|Dynamic pressure]] · [[fe_v_stall|Stall speed (1 g)]]
+- in this graph: `Gust load-factor increment` · `Gust mass ratio` · `Dynamic pressure` · `Stall speed (1 g)`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 
 **Source.** 🟢 SOURCED
 

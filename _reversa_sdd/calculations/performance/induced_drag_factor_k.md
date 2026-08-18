@@ -6,11 +6,18 @@ unit: dimensionless
 cluster: perf-matching
 user_visible: false
 source_status: SOURCED
+node_class: derived
+tags:
+  - cluster/perf-matching
+  - class/derived
+  - source/sourced
 ---
 
 # Induced-drag factor
 
 **Definition.** Lift-induced drag coefficient factor 1/(π·e·AR).
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -18,7 +25,10 @@ source_status: SOURCED
 k = 1.0 / (math.pi * e * ar)
 ```
 
-**Inputs.** [[e_resolved|Resolved Oswald factor]] · [[ar_resolved|Resolved aspect ratio]]
+**Inputs.**
+
+- [[e_resolved|Resolved Oswald factor]]  — *⤵ fallback*
+- [[ar_resolved|Resolved aspect ratio]]  — *⤵ fallback*
 
 **Produced by.** `app/services/matching_chart_service.py:267` — `_v_md`
 

@@ -6,11 +6,20 @@ unit: W
 cluster: perf-envelope
 user_visible: true
 source_status: SOURCED
+node_class: unclassified-parameter
+tags:
+  - cluster/perf-envelope
+  - class/unclassified-parameter
+  - source/sourced
+  - surface/user-visible
+  - flag/scale
 ---
 
 # Motor continuous power
 
 **Definition.** Continuous motor power rating; 0.0 means 'not configured'.
+
+⚪ **Unclassified parameter.** Not yet decided whether this is a user input or an internal tuning value.
 
 **Value.** `default 0.0 -> None`
 
@@ -26,7 +35,8 @@ motor_w_val = float(_motor_w_raw) if (_motor_w_raw is not None and _motor_w_raw 
 
 **Consumed by.**
 
-- in this graph: [[end_p_margin|Power margin]]
+- in this graph: `Power margin`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 
 **Source.** 🟢 SOURCED
 

@@ -6,11 +6,21 @@ unit: m/s
 cluster: perf-envelope
 user_visible: true
 source_status: SOURCED
+node_class: derived
+tags:
+  - cluster/perf-envelope
+  - class/derived
+  - source/sourced
+  - surface/user-visible
+  - flag/anomaly
+  - flag/divergence
 ---
 
 # KPI: min sink speed
 
 **Definition.** Minimum-power speed from a trimmed marker, else the cached polar value, else 1.2·V_s.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -18,7 +28,10 @@ source_status: SOURCED
 marker.velocity_mps | v_min_sink_polar_mps | 1.2 * stall_speed_mps
 ```
 
-**Inputs.** [[fe_v_stall|Stall speed (1 g)]] · [[kpi_min_sink_heuristic|Min-sink heuristic factor]]
+**Inputs.**
+
+- [[fe_v_stall|Stall speed (1 g)]]  — *⊣ limit*
+- [[kpi_min_sink_heuristic|Min-sink heuristic factor]]
 
 **Produced by.** `app/services/flight_envelope_service.py:446` — `derive_performance_kpis`
 

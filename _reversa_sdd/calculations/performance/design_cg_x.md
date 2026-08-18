@@ -6,11 +6,21 @@ unit: m
 cluster: perf-oppoints
 user_visible: true
 source_status: PARTIAL
+node_class: derived
+tags:
+  - cluster/perf-oppoints
+  - class/derived
+  - source/partial
+  - surface/user-visible
+  - flag/anomaly
+  - flag/divergence
 ---
 
 # Design CG x-position
 
 **Definition.** Longitudinal CG used as the moment reference for every trim solve.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -24,7 +34,8 @@ if row.active_source == "CALCULATED" and row.calculated_value is not None: retur
 
 **Consumed by.**
 
-- in this graph: [[op_xyz_ref|Operating-point moment reference]]
+- in this graph: `Operating-point moment reference`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `app/services/operating_point_generator_service.py:1116 (asb_airplane.xyz_ref)` · `app/services/operating_point_generator_service.py:1027, 1582 (xyz_ref field)`
 
 **Source.** 🟡 PARTIAL

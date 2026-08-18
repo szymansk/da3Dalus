@@ -6,11 +6,22 @@ unit: m/s^2
 cluster: perf-envelope
 user_visible: false
 source_status: SOURCED
+node_class: physical-constant
+tags:
+  - cluster/perf-envelope
+  - class/physical-constant
+  - source/sourced
+  - flag/anomaly
+  - flag/divergence
+  - flag/physical
 ---
 
 # Gravitational acceleration (endurance)
 
 **Definition.** Standard gravity used for the level-flight lift coefficient.
+
+**Physical constant.** A value of nature. It must be identical everywhere it appears — a second definition is a defect by construction, not a judgement call.
+*Identified as: gravity.*
 
 **Value.** `9.80665`
 
@@ -26,7 +37,8 @@ G = 9.80665  # m/s²
 
 **Consumed by.**
 
-- in this graph: [[end_cl|Level-flight lift coefficient]]
+- in this graph: `Level-flight lift coefficient`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `airfoil_low_re_service.py` · `powertrain_sizing_service.py`
 
 **Source.** 🟢 SOURCED

@@ -6,11 +6,19 @@ unit: – (fraction of MAC)
 cluster: stability
 user_visible: true
 source_status: SOURCED
+node_class: unclassified-constant
+tags:
+  - cluster/stability
+  - class/unclassified-constant
+  - source/sourced
+  - surface/user-visible
 ---
 
 # Tailless forward CG limit (SM)
 
 **Definition.** Forward CG limit for tailless aircraft expressed as static margin — CG far ahead of NP.
+
+⚪ **Unclassified constant.** Not yet decided whether this is a rule of thumb, a calibration or a physical value. Classifying it is open work — it is deliberately not guessed.
 
 **Value.** `0.10`
 
@@ -20,7 +28,8 @@ source_status: SOURCED
 
 **Consumed by.**
 
-- in this graph: [[sm-tailless-cg-envelope|Tailless absolute CG envelope width]]
+- in this graph: `Tailless absolute CG envelope width`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `app/services/sm_sizing_service.py:232,246` · `app/api/v2/endpoints/aeroplane/sm_suggestions.py:96`
 
 **Source.** 🟢 SOURCED

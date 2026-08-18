@@ -6,11 +6,19 @@ unit: V/cell
 cluster: powertrain
 user_visible: true
 source_status: SOURCED
+node_class: unclassified-constant
+tags:
+  - cluster/powertrain
+  - class/unclassified-constant
+  - source/sourced
+  - surface/user-visible
 ---
 
 # Nominal cell voltage (solution space)
 
 **Definition.** Mid-discharge nominal LiPo cell voltage, used for the energy-to-capacity conversion and the KV estimate.
+
+⚪ **Unclassified constant.** Not yet decided whether this is a rule of thumb, a calibration or a physical value. Classifying it is open work — it is deliberately not guessed.
 
 **Value.** `3.7`
 
@@ -20,7 +28,8 @@ source_status: SOURCED
 
 **Consumed by.**
 
-- in this graph: [[ss-v-nom|Pack nominal voltage (solution space)]]
+- in this graph: `Pack nominal voltage (solution space)`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `app/services/powertrain_solution_space_service.py:134`
 
 **Source.** 🟢 SOURCED

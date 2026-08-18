@@ -6,11 +6,20 @@ unit: rpm/V
 cluster: powertrain
 user_visible: true
 source_status: SOURCED
+node_class: derived
+tags:
+  - cluster/powertrain
+  - class/derived
+  - source/sourced
+  - surface/user-visible
+  - flag/divergence
 ---
 
 # Output-shaft KV
 
 **Definition.** Motor speed constant referred to the propeller shaft, i.e. raw motor KV divided by the gearbox reduction. The gear-blind raw KV must never be used for prop matching.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -18,13 +27,17 @@ source_status: SOURCED
 return self.kv_rpm_per_volt / (self.gear_ratio or 1.0)
 ```
 
-**Inputs.** [[motor-kv-rpm-per-volt-input|Raw motor KV]] · [[motor-gear-ratio-input|Gearbox reduction ratio]]
+**Inputs.**
+
+- [[motor-kv-rpm-per-volt-input|Raw motor KV]]
+- [[motor-gear-ratio-input|Gearbox reduction ratio]]
 
 **Produced by.** `app/services/powertrain_performance.py:140` — `MotorSpec.output_kv`
 
 **Consumed by.**
 
-- in this graph: [[curve-prop-rpm|Fixed operating RPM (non-QPROP branch)]] · [[motor-kv-si|Motor speed constant in SI]]
+- in this graph: `Fixed operating RPM (non-QPROP branch)` · `Motor speed constant in SI`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `app/services/powertrain_performance.py:131` · `app/services/powertrain_performance.py:643` · `app/services/powertrain_performance.py:783`
 
 **Source.** 🟢 SOURCED

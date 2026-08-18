@@ -6,11 +6,19 @@ unit: -
 cluster: perf-envelope
 user_visible: true
 source_status: PARTIAL
+node_class: derived
+tags:
+  - cluster/perf-envelope
+  - class/derived
+  - source/partial
+  - surface/user-visible
 ---
 
 # Resolved Oswald efficiency
 
 **Definition.** Cached polar Oswald factor, else the 0.8 fallback.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -18,13 +26,16 @@ source_status: PARTIAL
 e_oswald: float = e_oswald_raw if e_oswald_raw is not None else FALLBACK_E_OSWALD
 ```
 
-**Inputs.** [[end_fallback_e|Oswald fallback]]
+**Inputs.**
+
+- [[end_fallback_e|Oswald fallback]]  — *⤵ fallback*
 
 **Produced by.** `app/services/endurance_service.py:301` — `compute_endurance`
 
 **Consumed by.**
 
-- in this graph: [[end_k_induced|Induced-drag factor]]
+- in this graph: `Induced-drag factor`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 
 **Source.** 🟡 PARTIAL
 

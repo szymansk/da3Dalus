@@ -6,11 +6,20 @@ unit: W
 cluster: powertrain
 user_visible: false
 source_status: PARTIAL
+node_class: derived
+tags:
+  - cluster/powertrain
+  - class/derived
+  - source/partial
+  - flag/anomaly
+  - flag/divergence
 ---
 
 # Motor continuous electrical input power (estimated)
 
 **Definition.** Estimated continuous electrical input power from the continuous current rating (falling back to burst current) at loaded pack voltage.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -18,7 +27,12 @@ source_status: PARTIAL
 i_cont = self.continuous_current_a or self.max_current_a ; if i_cont is None: return float("inf") ; return i_cont * _VOLTS_PER_LIPO_CELL * self.cells_lipo_max
 ```
 
-**Inputs.** [[motor-continuous-current-input|Motor continuous current rating]] · [[motor-max-current-input|Motor burst current limit]] · [[volts-per-lipo-cell|Loaded LiPo cell voltage]] · [[motor-cells-lipo-max-input|Maximum LiPo cell count]]
+**Inputs.**
+
+- [[motor-continuous-current-input|Motor continuous current rating]]
+- [[motor-max-current-input|Motor burst current limit]]  — *⊣ limit*
+- [[volts-per-lipo-cell|Loaded LiPo cell voltage]]
+- [[motor-cells-lipo-max-input|Maximum LiPo cell count]]  — *⊣ limit*
 
 **Produced by.** `app/services/powertrain_performance.py:171` — `MotorSpec.continuous_electrical_power_w`
 

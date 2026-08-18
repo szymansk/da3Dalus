@@ -6,11 +6,21 @@ unit: varies
 cluster: perf-envelope
 user_visible: true
 source_status: SOURCED
+node_class: unclassified-parameter
+tags:
+  - cluster/perf-envelope
+  - class/unclassified-parameter
+  - source/sourced
+  - surface/user-visible
+  - flag/anomaly
+  - flag/divergence
 ---
 
 # Mission axis ranges
 
 **Definition.** Per-axis normalisation bounds taken from the primary mission preset row.
+
+⚪ **Unclassified parameter.** Not yet decided whether this is a user input or an internal tuning value.
 
 **Formula — as the code writes it.**
 
@@ -24,7 +34,8 @@ rng = primary_preset.axis_ranges  (fallback chain: presets[active_mission_ids[0]
 
 **Consumed by.**
 
-- in this graph: [[mkpi_normalise_score|Axis normalisation]] · [[mkpi_target_scores|Soll polygon scores]]
+- in this graph: `Axis normalisation` · `Soll polygon scores`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 
 **Source.** 🟢 SOURCED
 

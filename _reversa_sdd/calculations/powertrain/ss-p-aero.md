@@ -6,11 +6,21 @@ unit: W
 cluster: powertrain
 user_visible: true
 source_status: SOURCED
+node_class: derived
+tags:
+  - cluster/powertrain
+  - class/derived
+  - source/sourced
+  - surface/user-visible
+  - flag/anomaly
+  - flag/divergence
 ---
 
 # Aerodynamic power
 
 **Definition.** Power the airframe absorbs aerodynamically in level flight at a given speed: drag times velocity.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -18,13 +28,18 @@ source_status: SOURCED
 if v <= 0: return float("inf") ; q = 0.5 * rho * v * v ; cl = (mass_kg * g) / (q * s_ref) ; k = 1.0 / (math.pi * e * ar) ; cd = cd0 + k * cl * cl ; return q * s_ref * cd * v
 ```
 
-**Inputs.** [[ss-dynamic-pressure|Dynamic pressure]] · [[ss-drag-coefficient|Total drag coefficient]] · [[ss-s-ref|Wing reference area (solution space)]]
+**Inputs.**
+
+- [[ss-dynamic-pressure|Dynamic pressure]]
+- [[ss-drag-coefficient|Total drag coefficient]]
+- [[ss-s-ref|Wing reference area (solution space)]]  — *⤵ fallback*
 
 **Produced by.** `app/services/powertrain_solution_space_service.py:105` — `_p_aero`
 
 **Consumed by.**
 
-- in this graph: [[ss-p-aero-cruise|Aerodynamic power at cruise]] · [[ss-p-aero-top|Aerodynamic power at top speed]] · [[ss-p-elec|Electrical power required]]
+- in this graph: `Aerodynamic power at cruise` · `Aerodynamic power at top speed` · `Electrical power required`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `app/services/powertrain_solution_space_service.py:349` · `app/services/powertrain_solution_space_service.py:350`
 
 **Source.** 🟢 SOURCED

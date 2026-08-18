@@ -6,11 +6,21 @@ unit: dimensionless
 cluster: aero-polars
 user_visible: false
 source_status: PARTIAL
+node_class: unclassified-parameter
+tags:
+  - cluster/aero-polars
+  - class/unclassified-parameter
+  - source/partial
+  - flag/anomaly
+  - flag/divergence
+  - flag/scale
 ---
 
 # Oswald physical-range guard (0.4, 1.0]
 
 **Definition.** Band rows whose fitted e falls outside this interval are demoted to fallback rows.
+
+⚪ **Unclassified parameter.** Not yet decided whether this is a user input or an internal tuning value.
 
 **Value.** `0.4 / 1.0`
 
@@ -20,7 +30,9 @@ source_status: PARTIAL
 if not (0.4 < e_oswald <= 1.0):
 ```
 
-**Inputs.** [[prt-e-oswald-band|Band Oswald efficiency]]
+**Inputs.**
+
+- [[prt-e-oswald-band|Band Oswald efficiency]]
 
 **Produced by.** `app/services/polar_re_table_service.py:284` — `_fit_band_with_ar`
 

@@ -6,11 +6,21 @@ unit: – (fraction of MAC)
 cluster: stability
 user_visible: true
 source_status: PARTIAL
+node_class: derived
+tags:
+  - cluster/stability
+  - class/derived
+  - source/partial
+  - surface/user-visible
+  - flag/anomaly
+  - flag/divergence
 ---
 
 # Predicted SM after wing shift
 
 **Definition.** First-order prediction of the resulting static margin after applying a wing shift.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -18,13 +28,18 @@ source_status: PARTIAL
 predicted_sm = sm_at_aft + dsm_dx * delta_x_m
 ```
 
-**Inputs.** [[sm-at-aft|Static margin at aft CG]] · [[dsm-dx-wing|SM sensitivity to wing longitudinal shift]] · [[delta-x-wing-shift|Required wing longitudinal shift]]
+**Inputs.**
+
+- [[sm-at-aft|Static margin at aft CG]]
+- [[dsm-dx-wing|SM sensitivity to wing longitudinal shift]]
+- [[delta-x-wing-shift|Required wing longitudinal shift]]
 
 **Produced by.** `app/services/sm_sizing_service.py:680` — `_wing_shift_option`
 
 **Consumed by.**
 
-- in this graph: [[delta-sm-apply|Predicted SM change per apply]]
+- in this graph: `Predicted SM change per apply`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `app/services/sm_sizing_service.py:693` · `app/api/v2/endpoints/aeroplane/sm_suggestions.py:85,184 (SmApplyResponse.predicted_sm)`
 
 **Source.** 🟡 PARTIAL

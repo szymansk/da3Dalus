@@ -6,11 +6,22 @@ unit: m
 cluster: perf-matching
 user_visible: true
 source_status: PARTIAL
+node_class: unclassified-parameter
+tags:
+  - cluster/perf-matching
+  - class/unclassified-parameter
+  - source/partial
+  - surface/user-visible
+  - flag/anomaly
+  - flag/divergence
+  - flag/scale
 ---
 
 # Mode default field length
 
 **Definition.** Per-mode default field-length target used when the caller supplies no override.
+
+⚪ **Unclassified parameter.** Not yet decided whether this is a user input or an internal tuning value.
 
 **Value.** `rc_runway:50.0; rc_hand_launch:0.0; uav_runway:200.0; uav_belly_land:200.0; ga_runway:500.0`
 
@@ -26,7 +37,8 @@ defaults[mode]["s_runway"]
 
 **Consumed by.**
 
-- in this graph: [[tw_takeoff_constraint|Takeoff constraint T/W]] · [[ws_landing_constraint|Landing constraint W/S_max]]
+- in this graph: `Takeoff constraint T/W` · `Landing constraint W/S_max`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `compute_chart:780` · `_takeoff_constraint:843` · `_landing_constraint:850` · `hover_text:896,910`
 
 **Source.** 🟡 PARTIAL

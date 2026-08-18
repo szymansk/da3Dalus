@@ -6,11 +6,19 @@ unit: panels
 cluster: aero-strips
 user_visible: false
 source_status: PARTIAL
+node_class: derived
+tags:
+  - cluster/aero-strips
+  - class/derived
+  - source/partial
+  - flag/divergence
 ---
 
 # Panels allotted to a wing segment
 
 **Definition.** Spanwise panel count for one segment, proportional to its span with a floor.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -18,13 +26,18 @@ source_status: PARTIAL
 [max(min_per_segment, int(round(budget * s / total))) for s in spans]
 ```
 
-**Inputs.** [[vlm-segment-span|Dihedral-inclusive segment span]] · [[vlm-spanwise-panels-per-half|Spanwise panel budget per half-wing]] · [[vlm-min-panels-per-segment|Minimum panels per wing segment]]
+**Inputs.**
+
+- [[vlm-segment-span|Dihedral-inclusive segment span]]
+- [[vlm-spanwise-panels-per-half|Spanwise panel budget per half-wing]]
+- [[vlm-min-panels-per-segment|Minimum panels per wing segment]]  — *⊣ limit*
 
 **Produced by.** `app/services/vlm_strip_forces.py:74` — `_panels_per_segment`
 
 **Consumed by.**
 
-- in this graph: [[vlm-blend-fraction|Inserted-section blend fraction]]
+- in this graph: `Inserted-section blend fraction`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `app/services/vlm_strip_forces.py:remesh_uniform_density`
 
 **Source.** 🟡 PARTIAL

@@ -6,11 +6,21 @@ unit: boolean
 cluster: powertrain
 user_visible: true
 source_status: NO_SOURCE_FOUND
+node_class: derived
+tags:
+  - cluster/powertrain
+  - class/derived
+  - source/no-source-found
+  - surface/user-visible
+  - flag/anomaly
+  - flag/divergence
 ---
 
 # Estimated-power flag
 
 **Definition.** Per-sample marker: True when the numbers came from the current x voltage estimate (fixed-RPM model), False when they came from the QPROP physics solve.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -19,7 +29,9 @@ estimated_flag = False   # QPROP branch
 estimated_flag = True    # fixed-RPM branch
 ```
 
-**Inputs.** [[motor-uses-qprop-model|QPROP model availability flag]]
+**Inputs.**
+
+- [[motor-uses-qprop-model|QPROP model availability flag]]  — *⤵ fallback*
 
 **Produced by.** `app/services/powertrain_performance.py:730` — `compute_performance_curve`
 

@@ -6,11 +6,20 @@ unit: boolean
 cluster: powertrain
 user_visible: true
 source_status: PARTIAL
+node_class: derived
+tags:
+  - cluster/powertrain
+  - class/derived
+  - source/partial
+  - surface/user-visible
+  - flag/anomaly
 ---
 
 # Catalog battery match flag
 
 **Definition.** True when at least one catalog battery meets both the capacity floor and the margin-inclusive C-rate floor.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -18,7 +27,10 @@ source_status: PARTIAL
 cap = specs.get("capacity_mah") ; c_rating = specs.get("c_rating") or specs.get("discharge_c") ; if cap is not None and c_rating is not None: if float(cap) >= cap_mah_min and float(c_rating) >= c_min: return True
 ```
 
-**Inputs.** [[ss-cap-mah|Minimum battery capacity]] · [[ss-c-min|Required battery C-rate]]
+**Inputs.**
+
+- [[ss-cap-mah|Minimum battery capacity]]  — *⊣ limit*
+- [[ss-c-min|Required battery C-rate]]  — *⊣ limit*
 
 **Produced by.** `app/services/powertrain_solution_space_service.py:218` — `_catalog_battery_match`
 

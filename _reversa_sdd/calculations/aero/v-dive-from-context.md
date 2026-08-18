@@ -6,11 +6,19 @@ unit: m/s
 cluster: aero-spanwise
 user_visible: false
 source_status: NO_SOURCE_FOUND
+node_class: unclassified-parameter
+tags:
+  - cluster/aero-spanwise
+  - class/unclassified-parameter
+  - source/no-source-found
+  - flag/scale
 ---
 
 # Dive speed from context
 
 **Definition.** V_dive resolved from the cached assumption computation context, used only for the chart's upper axis bound.
+
+⚪ **Unclassified parameter.** Not yet decided whether this is a user input or an internal tuning value.
 
 **Formula — as the code writes it.**
 
@@ -24,7 +32,8 @@ raw = context.get("v_dive_mps"); return float(raw)
 
 **Consumed by.**
 
-- in this graph: [[v-axis-max|Speed-polar X-axis upper bound]]
+- in this graph: `Speed-polar X-axis upper bound`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 
 **Source.** 🔴 NO SOURCE FOUND
 

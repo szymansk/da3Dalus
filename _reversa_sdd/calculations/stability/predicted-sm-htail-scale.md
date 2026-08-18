@@ -6,11 +6,21 @@ unit: – (fraction of MAC)
 cluster: stability
 user_visible: true
 source_status: PARTIAL
+node_class: derived
+tags:
+  - cluster/stability
+  - class/derived
+  - source/partial
+  - surface/user-visible
+  - flag/anomaly
+  - flag/divergence
 ---
 
 # Predicted SM after htail chord-scale
 
 **Definition.** First-order prediction of the resulting static margin after chord-scaling the horizontal tail.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -18,7 +28,12 @@ source_status: PARTIAL
 predicted_sm = sm_at_aft + dsm_dsh * delta_pct * s_h_m2
 ```
 
-**Inputs.** [[sm-at-aft|Static margin at aft CG]] · [[dsm-dsh|SM sensitivity to horizontal tail area]] · [[delta-pct-htail|Horizontal tail chord-scale fraction]] · [[s-h-m2-fallback|Horizontal tail area fallback]]
+**Inputs.**
+
+- [[sm-at-aft|Static margin at aft CG]]
+- [[dsm-dsh|SM sensitivity to horizontal tail area]]
+- [[delta-pct-htail|Horizontal tail chord-scale fraction]]
+- [[s-h-m2-fallback|Horizontal tail area fallback]]  — *⤵ fallback*
 
 **Produced by.** `app/services/sm_sizing_service.py:709` — `_htail_scale_option`
 

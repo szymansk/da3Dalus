@@ -6,11 +6,21 @@ unit: mixed (deg, -, -)
 cluster: aero-spanwise
 user_visible: true
 source_status: SOURCED
+node_class: derived
+tags:
+  - cluster/aero-spanwise
+  - class/derived
+  - source/sourced
+  - surface/user-visible
+  - flag/anomaly
+  - flag/divergence
 ---
 
 # Maximum lift coefficient point
 
 **Definition.** Sweep point with the largest CL — the CL_max estimate.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -18,13 +28,17 @@ source_status: SOURCED
 i = int(np.argmax(cl))
 ```
 
-**Inputs.** [[cl-values|Lift coefficient array]] · [[alpha-array|Alpha sweep array]]
+**Inputs.**
+
+- [[cl-values|Lift coefficient array]]
+- [[alpha-array|Alpha sweep array]]
 
 **Produced by.** `app/services/analysis_service.py:129` — `_compute_cl_cd_points`
 
 **Consumed by.**
 
-- in this graph: [[characteristic-points|Characteristic points dict]] · [[stall-fallback-index|Stall fallback index]] · [[stall-point|Stall point]]
+- in this graph: `Characteristic points dict` · `Stall fallback index` · `Stall point`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `alpha-sweep PNG` · `copilot_tools 'cl_max_point'` · `_find_stall_point`
 
 **Source.** 🟢 SOURCED

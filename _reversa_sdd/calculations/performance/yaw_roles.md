@@ -5,11 +5,19 @@ unit: dimensionless
 cluster: perf-oppoints
 user_visible: false
 source_status: SOURCED
+node_class: unclassified-constant
+tags:
+  - cluster/perf-oppoints
+  - class/unclassified-constant
+  - source/sourced
+  - flag/divergence
 ---
 
 # Yaw control role set
 
 **Definition.** Role tags counted as yaw-capable control surfaces.
+
+⚪ **Unclassified constant.** Not yet decided whether this is a rule of thumb, a calibration or a physical value. Classifying it is open work — it is deliberately not guessed.
 
 **Value.** `{rudder, ruddervator}`
 
@@ -25,7 +33,8 @@ YAW_ROLES = {"rudder", "ruddervator"}
 
 **Consumed by.**
 
-- in this graph: [[control_capabilities|Control capability flags]]
+- in this graph: `Control capability flags`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `app/services/operating_point_generator_service.py:614` · `app/services/operating_point_generator_service.py:551`
 
 **Source.** 🟢 SOURCED

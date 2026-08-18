@@ -6,11 +6,21 @@ unit: dimensionless
 cluster: aero-strips
 user_visible: true
 source_status: PARTIAL
+node_class: derived
+tags:
+  - cluster/aero-strips
+  - class/derived
+  - source/partial
+  - surface/user-visible
+  - flag/anomaly
+  - flag/divergence
 ---
 
 # Installed-turbulator 3D drag increment
 
 **Definition.** Area-weighted ΔCD0 added to the aircraft's parasite cd0 for an enabled turbulator.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -18,7 +28,11 @@ source_status: PARTIAL
 delta_cd0 = compute_turbulator_delta_cd0(section_results, s_ref, wing_symmetric=wing_symmetric)
 ```
 
-**Inputs.** [[cdftp-delta-cd|Section drag delta (installed turbulator)]] · [[bwsd-section-area-normalised|Normalised section area]] · [[tos-symmetry-factor|Symmetric-wing doubling factor]]
+**Inputs.**
+
+- [[cdftp-delta-cd|Section drag delta (installed turbulator)]]
+- [[bwsd-section-area-normalised|Normalised section area]]
+- [[tos-symmetry-factor|Symmetric-wing doubling factor]]
 
 **Produced by.** `app/services/turbulator_optimizer_service.py:723` — `compute_delta_cd0_from_turbulator_position`
 

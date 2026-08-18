@@ -6,11 +6,20 @@ unit: g
 cluster: mass
 user_visible: true
 source_status: SOURCED
+node_class: derived
+tags:
+  - cluster/mass
+  - class/derived
+  - source/sourced
+  - surface/user-visible
+  - flag/divergence
 ---
 
 # COTS node own weight
 
 **Definition.** Own weight of a component-tree node of type 'cots': the catalogue component's mass multiplied by the node quantity.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -18,13 +27,16 @@ source_status: SOURCED
 comp.mass_g * (node.quantity or 1)
 ```
 
-**Inputs.** [[node-quantity|Node quantity]]
+**Inputs.**
+
+- [[node-quantity|Node quantity]]
 
 **Produced by.** `app/services/component_tree_service.py:438` — `_weight_from_cots`
 
 **Consumed by.**
 
-- in this graph: [[node-own-weight|Node own weight]]
+- in this graph: `Node own weight`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `app/services/component_tree_service.py:466 (_calculate_own_weight)` · `app/services/component_tree_service.py:106 (_roll_up_weights → total_weight_g)` · `app/services/component_tree_service.py:401 (get_aircraft_total_weight_kg)` · `frontend/components/workbench/ComponentTree.tsx:101`
 
 **Source.** 🟢 SOURCED

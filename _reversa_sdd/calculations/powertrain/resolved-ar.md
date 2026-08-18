@@ -6,11 +6,20 @@ unit: dimensionless
 cluster: powertrain
 user_visible: true
 source_status: SOURCED
+node_class: derived
+tags:
+  - cluster/powertrain
+  - class/derived
+  - source/sourced
+  - surface/user-visible
+  - flag/divergence
 ---
 
 # Resolved aspect ratio
 
 **Definition.** Wing aspect ratio resolved by the same three-tier priority.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -18,13 +27,16 @@ source_status: SOURCED
 ar = _pick(request.aspect_ratio, "aspect_ratio", _DEFAULT_AR, "Wing aspect ratio (aspect_ratio)", "aspect_ratio")
 ```
 
-**Inputs.** [[default-ar-sizing|Default aspect ratio (sizing)]]
+**Inputs.**
+
+- [[default-ar-sizing|Default aspect ratio (sizing)]]  — *⤵ fallback*
 
 **Produced by.** `app/services/powertrain_sizing_service.py:179` — `_resolve_aero_params`
 
 **Consumed by.**
 
-- in this graph: [[combo-cruise-power|Estimated cruise power]] · [[combo-required-power|Power required for a motor+battery combo]]
+- in this graph: `Estimated cruise power` · `Power required for a motor+battery combo`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `app/services/powertrain_sizing_service.py:247` · `app/services/powertrain_sizing_service.py:312`
 
 **Source.** 🟢 SOURCED

@@ -6,11 +6,19 @@ unit: kg/m^3
 cluster: powertrain
 user_visible: false
 source_status: SOURCED
+node_class: unclassified-constant
+tags:
+  - cluster/powertrain
+  - class/unclassified-constant
+  - source/sourced
+  - flag/anomaly
 ---
 
 # Sea-level density alias (sizing)
 
 **Definition.** Backward-compatibility alias for endurance_service.RHO_SEA_LEVEL, kept for existing tests.
+
+⚪ **Unclassified constant.** Not yet decided whether this is a rule of thumb, a calibration or a physical value. Classifying it is open work — it is deliberately not guessed.
 
 **Value.** `1.225 (via RHO_SEA_LEVEL import)`
 
@@ -26,7 +34,8 @@ AIR_DENSITY_SEA_LEVEL = RHO_SEA_LEVEL  # kept for backward compat with existing 
 
 **Consumed by.**
 
-- in this graph: [[air-density-sizing|Air density at altitude (sizing)]]
+- in this graph: `Air density at altitude (sizing)`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `app/tests/test_powertrain_sizing_service.py:19`
 
 **Source.** 🟢 SOURCED

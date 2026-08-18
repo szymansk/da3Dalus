@@ -6,11 +6,20 @@ unit: – (bool)
 cluster: stability
 user_visible: false
 source_status: SOURCED
+node_class: derived
+tags:
+  - cluster/stability
+  - class/derived
+  - source/sourced
+  - flag/anomaly
+  - flag/divergence
 ---
 
 # Tailless configuration flag
 
 **Definition.** True when the aircraft has no horizontal tail and is not a canard; gates both tail-volume sizing and SM apply operations.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 

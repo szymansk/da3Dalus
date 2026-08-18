@@ -6,11 +6,20 @@ unit: decimals
 cluster: aero-strips
 user_visible: true
 source_status: NO_SOURCE_FOUND
+node_class: unclassified-constant
+tags:
+  - cluster/aero-strips
+  - class/unclassified-constant
+  - source/no-source-found
+  - surface/user-visible
+  - flag/divergence
 ---
 
 # Output rounding precision
 
 **Definition.** y/chord/cl rounded to 6 decimals, all angles to 4 decimals before serialisation.
+
+⚪ **Unclassified constant.** Not yet decided whether this is a rule of thumb, a calibration or a physical value. Classifying it is open work — it is deliberately not guessed.
 
 **Value.** `6 / 4`
 

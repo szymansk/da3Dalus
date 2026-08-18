@@ -6,11 +6,21 @@ unit: dimensionless
 cluster: aero-polars
 user_visible: true
 source_status: NO_SOURCE_FOUND
+node_class: unclassified-constant
+tags:
+  - cluster/aero-polars
+  - class/unclassified-constant
+  - source/no-source-found
+  - surface/user-visible
+  - flag/anomaly
+  - flag/divergence
 ---
 
 # Mission family bonus
 
 **Definition.** Multiplier applied when the airfoil family is / is not in the mission's preferred list.
+
+⚪ **Unclassified constant.** Not yet decided whether this is a rule of thumb, a calibration or a physical value. Classifying it is open work — it is deliberately not guessed.
 
 **Value.** `1.0 / 0.7`
 
@@ -20,13 +30,17 @@ source_status: NO_SOURCE_FOUND
 family_bonus = 1.0 if family in preferred_families else 0.7
 ```
 
-**Inputs.** [[alr-family|Airfoil family label]] · [[low-re-mission-weights|Mission weighting table]]
+**Inputs.**
+
+- [[alr-family|Airfoil family label]]
+- [[low-re-mission-weights|Mission weighting table]]
 
 **Produced by.** `app/services/airfoil_low_re_service.py:918` — `score_mission`
 
 **Consumed by.**
 
-- in this graph: [[alr-score-mission|Mission suitability score]]
+- in this graph: `Mission suitability score`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `score_mission:939`
 
 **Source.** 🔴 NO SOURCE FOUND

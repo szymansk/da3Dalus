@@ -6,11 +6,19 @@ unit: dimensionless
 cluster: aero-polars
 user_visible: false
 source_status: NO_SOURCE_FOUND
+node_class: unclassified-constant
+tags:
+  - cluster/aero-polars
+  - class/unclassified-constant
+  - source/no-source-found
+  - flag/divergence
 ---
 
 # Mission cl_max_weight default
 
 **Definition.** Weight of the CL_max bonus when a mission weight table omits it.
+
+⚪ **Unclassified constant.** Not yet decided whether this is a rule of thumb, a calibration or a physical value. Classifying it is open work — it is deliberately not guessed.
 
 **Value.** `0.5`
 
@@ -26,7 +34,8 @@ cl_max_weight = weights.get("cl_max_weight", 0.5)
 
 **Consumed by.**
 
-- in this graph: [[alr-cl-bonus|Mission CL_max bonus]]
+- in this graph: `Mission CL_max bonus`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `score_mission:937`
 
 **Source.** 🔴 NO SOURCE FOUND

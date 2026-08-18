@@ -6,11 +6,20 @@ unit: strips
 cluster: aero-strips
 user_visible: false
 source_status: PARTIAL
+node_class: derived
+tags:
+  - cluster/aero-strips
+  - class/derived
+  - source/partial
+  - flag/anomaly
+  - flag/divergence
 ---
 
 # Expected strips per wing
 
 **Definition.** Expected spanwise strip count per wing = segments × spanwise_resolution × (2 if symmetric).
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -18,13 +27,16 @@ source_status: PARTIAL
 n = segments * spanwise_resolution * (2 if wing.symmetric else 1)
 ```
 
-**Inputs.** [[vlm-spanwise-resolution-fixed|VLM spanwise_resolution literal]]
+**Inputs.**
+
+- [[vlm-spanwise-resolution-fixed|VLM spanwise_resolution literal]]
 
 **Produced by.** `app/services/vlm_strip_forces.py:53` — `_wing_strip_counts`
 
 **Consumed by.**
 
-- in this graph: [[vlm-n-spanwise|Spanwise strip count per surface]]
+- in this graph: `Spanwise strip count per surface`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `app/services/vlm_strip_forces.py:compute_vlm_strip_forces (surface attribution)`
 
 **Source.** 🟡 PARTIAL

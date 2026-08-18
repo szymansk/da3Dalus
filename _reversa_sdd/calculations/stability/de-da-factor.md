@@ -6,11 +6,21 @@ unit: – (dimensionless)
 cluster: stability
 user_visible: false
 source_status: PARTIAL
+node_class: unclassified-constant
+tags:
+  - cluster/stability
+  - class/unclassified-constant
+  - source/partial
+  - flag/anomaly
+  - flag/divergence
+  - flag/scale
 ---
 
 # Downwash factor (1 − de/dalpha)
 
 **Definition.** Fraction of free-stream angle-of-attack change seen by the horizontal tail after wing downwash.
+
+⚪ **Unclassified constant.** Not yet decided whether this is a rule of thumb, a calibration or a physical value. Classifying it is open work — it is deliberately not guessed.
 
 **Value.** `0.6`
 
@@ -20,7 +30,8 @@ source_status: PARTIAL
 
 **Consumed by.**
 
-- in this graph: [[alpha-vh|Tail efficiency factor]] · [[dsm-dsh|SM sensitivity to horizontal tail area]]
+- in this graph: `Tail efficiency factor` · `SM sensitivity to horizontal tail area`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `app/services/sm_sizing_service.py:122 (_alpha_vh)` · `app/services/sm_sizing_service.py:162 (_dsm_dsh)`
 
 **Source.** 🟡 PARTIAL

@@ -5,11 +5,20 @@ unit: dimensionless
 cluster: perf-oppoints
 user_visible: true
 source_status: NO_SOURCE_FOUND
+node_class: derived
+tags:
+  - cluster/perf-oppoints
+  - class/derived
+  - source/no-source-found
+  - surface/user-visible
+  - flag/divergence
 ---
 
 # FLAP_DEFLECTION_CLIPPED warning
 
 **Definition.** Audit-trail warning appended when the flap target exceeded the TED limit.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -17,7 +26,9 @@ source_status: NO_SOURCE_FOUND
 warnings.append("FLAP_DEFLECTION_CLIPPED")
 ```
 
-**Inputs.** [[flap_deflection_clipped_value|Clipped flap deflection]]
+**Inputs.**
+
+- [[flap_deflection_clipped_value|Clipped flap deflection]]  — *⊣ limit*
 
 **Produced by.** `app/services/operating_point_generator_service.py:105` — `_clip_flap_to_ted_limit`
 

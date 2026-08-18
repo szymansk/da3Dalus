@@ -5,11 +5,18 @@ unit: dimensionless (span fraction)
 cluster: structure
 user_visible: false
 source_status: NO_SOURCE_FOUND
+node_class: derived
+tags:
+  - cluster/structure
+  - class/derived
+  - source/no-source-found
 ---
 
 # Spanwise sampling grid
 
 **Definition.** Evenly spaced span fractions root-to-tip at which the section is sampled, with the root replaced by _ROOT_EPS to avoid the degenerate pinched slice.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -20,13 +27,17 @@ if y_spans and y_spans[0] <= 0.0:
     y_spans[0] = _ROOT_EPS
 ```
 
-**Inputs.** [[n-span|Number of spanwise stations]] · [[root-eps|Root sampling epsilon]]
+**Inputs.**
+
+- [[n-span|Number of spanwise stations]]
+- [[root-eps|Root sampling epsilon]]
 
 **Produced by.** `cad_designer/airplane/geometry/spar_solver.py:745` — `build_stations_from_geometry`
 
 **Consumed by.**
 
-- in this graph: [[station-y-mm|Station spanwise position]]
+- in this graph: `Station spanwise position`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `cad_designer/airplane/geometry/spar_solver.py:754`
 
 **Source.** 🔴 NO SOURCE FOUND

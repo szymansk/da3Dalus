@@ -6,11 +6,22 @@ unit: dimensionless
 cluster: perf-matching
 user_visible: true
 source_status: PARTIAL
+node_class: unclassified-parameter
+tags:
+  - cluster/perf-matching
+  - class/unclassified-parameter
+  - source/partial
+  - surface/user-visible
+  - flag/anomaly
+  - flag/divergence
+  - flag/scale
 ---
 
 # Base CL_max fallback (field length)
 
 **Definition.** CL_max used when the aircraft dict carries no cl_max.
+
+⚪ **Unclassified parameter.** Not yet decided whether this is a user input or an internal tuning value.
 
 **Value.** `1.4`
 
@@ -26,7 +37,8 @@ cl_max_base: float = float(cl_max_raw) if cl_max_raw is not None else 1.4
 
 **Consumed by.**
 
-- in this graph: [[cl_max_ldg_fl|Landing CL_max (field length)]] · [[cl_max_to_fl|Takeoff CL_max (field length)]]
+- in this graph: `Landing CL_max (field length)` · `Takeoff CL_max (field length)`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `cl_max_to:360` · `cl_max_ldg:361`
 
 **Source.** 🟡 PARTIAL

@@ -6,11 +6,21 @@ unit: m
 cluster: stability
 user_visible: true
 source_status: SOURCED
+node_class: derived
+tags:
+  - cluster/stability
+  - class/derived
+  - source/sourced
+  - surface/user-visible
+  - flag/anomaly
+  - flag/divergence
 ---
 
 # MAC (solver reference chord)
 
 **Definition.** Mean aerodynamic chord taken from the solver's reference block, used to normalise the static margin.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -24,7 +34,8 @@ mac_val = _scalar(result.reference.Cref)
 
 **Consumed by.**
 
-- in this graph: [[cg-range-aft|Aft CG limit from margin bounds]] · [[cg-range-forward|Forward CG limit from margin bounds]] · [[static-margin-fraction|Static margin (fraction of MAC)]]
+- in this graph: `Aft CG limit from margin bounds` · `Forward CG limit from margin bounds` · `Static margin (fraction of MAC)`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `app/services/stability_service.py:328,333,334,353` · `app/services/copilot_tools.py:447,462`
 
 **Source.** 🟢 SOURCED

@@ -5,11 +5,19 @@ unit: mm
 cluster: structure
 user_visible: false
 source_status: NO_SOURCE_FOUND
+node_class: derived
+tags:
+  - cluster/structure
+  - class/derived
+  - source/no-source-found
+  - flag/anomaly
 ---
 
 # Minimum OD to carry a bore
 
 **Definition.** Floor on an inner piece's outer diameter so a minimal wall remains around its enlarged telescoping bore; forces OD to be non-increasing outboard.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -19,13 +27,17 @@ if ods[i] < min_od_for_bore:
     ods[i] = min_od_for_bore
 ```
 
-**Inputs.** [[piece-bore|Spar piece inner diameter]] · [[telescope-clearance-mm|Telescoping radial clearance]]
+**Inputs.**
+
+- [[piece-bore|Spar piece inner diameter]]
+- [[telescope-clearance-mm|Telescoping radial clearance]]
 
 **Produced by.** `cad_designer/airplane/geometry/spar_solver.py:426` — `plan_spar`
 
 **Consumed by.**
 
-- in this graph: [[piece-outer-diameter|Spar piece outer diameter]]
+- in this graph: `Spar piece outer diameter`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `cad_designer/airplane/geometry/spar_solver.py:428`
 
 **Source.** 🔴 NO SOURCE FOUND

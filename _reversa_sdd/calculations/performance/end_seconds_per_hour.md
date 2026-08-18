@@ -6,11 +6,18 @@ unit: s/h
 cluster: perf-envelope
 user_visible: false
 source_status: SOURCED
+node_class: unclassified-constant
+tags:
+  - cluster/perf-envelope
+  - class/unclassified-constant
+  - source/sourced
 ---
 
 # Wh-to-Ws conversion
 
 **Definition.** Seconds per hour converting battery capacity in Wh to joules.
+
+⚪ **Unclassified constant.** Not yet decided whether this is a rule of thumb, a calibration or a physical value. Classifying it is open work — it is deliberately not guessed.
 
 **Value.** `3600.0`
 
@@ -26,7 +33,8 @@ source_status: SOURCED
 
 **Consumed by.**
 
-- in this graph: [[end_t_at_vmd|Flight time at V_md]] · [[end_t_endurance_max|Maximum endurance]]
+- in this graph: `Flight time at V_md` · `Maximum endurance`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 
 **Source.** 🟢 SOURCED
 

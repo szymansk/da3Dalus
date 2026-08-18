@@ -6,11 +6,22 @@ unit: m
 cluster: perf-matching
 user_visible: true
 source_status: PARTIAL
+node_class: derived
+tags:
+  - cluster/perf-matching
+  - class/derived
+  - source/partial
+  - surface/user-visible
+  - flag/anomaly
+  - flag/divergence
+  - flag/scale
 ---
 
 # Landing ground roll
 
 **Definition.** Distance from touchdown to full stop.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -18,13 +29,19 @@ source_status: PARTIAL
 return k_ldg * wing_loading / (rho * cl_max_ldg)
 ```
 
-**Inputs.** [[k_ldg_adjusted|Friction-adjusted landing coefficient]] · [[wing_loading_fl|Wing loading (field length)]] · [[rho_sl|Sea-level ISA density]] · [[cl_max_ldg_fl|Landing CL_max (field length)]]
+**Inputs.**
+
+- [[k_ldg_adjusted|Friction-adjusted landing coefficient]]
+- [[wing_loading_fl|Wing loading (field length)]]
+- [[rho_sl|Sea-level ISA density]]  — *⤵ fallback*
+- [[cl_max_ldg_fl|Landing CL_max (field length)]]  — *⊣ limit*
 
 **Produced by.** `app/services/field_length_service.py:264` — `_compute_s_ldg_ground`
 
 **Consumed by.**
 
-- in this graph: [[s_ldg_50ft|Landing distance from 50 ft]] · [[s_obstacle_factor_apply|Obstacle-corrected distance]]
+- in this graph: `Landing distance from 50 ft` · `Obstacle-corrected distance`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `compute_field_lengths:435` · `FieldLengthRead.s_ldg_ground_m:441`
 
 **Source.** 🟡 PARTIAL

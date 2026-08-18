@@ -5,11 +5,21 @@ unit: m/s
 cluster: perf-oppoints
 user_visible: true
 source_status: PARTIAL
+node_class: derived
+tags:
+  - cluster/perf-oppoints
+  - class/derived
+  - source/partial
+  - surface/user-visible
+  - flag/anomaly
+  - flag/divergence
 ---
 
 # Maximum level speed target
 
 **Definition.** Target speed for the max_level_speed operating point.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -17,7 +27,10 @@ source_status: PARTIAL
 v_max_level = float(goals.get("max_level_speed_mps") or max(1.35 * cruise, cruise + 8.0))
 ```
 
-**Inputs.** [[default_max_level_speed_mps|Default maximum level speed]] · [[cruise_speed_resolved|Resolved cruise speed]]
+**Inputs.**
+
+- [[default_max_level_speed_mps|Default maximum level speed]]  — *⤵ fallback*
+- [[cruise_speed_resolved|Resolved cruise speed]]
 
 **Produced by.** `app/services/operating_point_generator_service.py:399` — `_build_target_definitions`
 

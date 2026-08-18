@@ -6,11 +6,20 @@ unit: dimensionless (0..1)
 cluster: powertrain
 user_visible: true
 source_status: SOURCED
+node_class: derived
+tags:
+  - cluster/powertrain
+  - class/derived
+  - source/sourced
+  - surface/user-visible
+  - flag/anomaly
 ---
 
 # Propeller efficiency per velocity sample
 
 **Definition.** Propulsive efficiency at each swept airspeed, clipped to [0,1], explicitly J-dependent rather than a flat scalar.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -18,7 +27,9 @@ source_status: SOURCED
 eta_prop = float(np.clip(Pe, 0.0, 1.0))
 ```
 
-**Inputs.** [[polar-pe|Propeller efficiency from polar]]
+**Inputs.**
+
+- [[polar-pe|Propeller efficiency from polar]]  — *⊣ limit*
 
 **Produced by.** `app/services/powertrain_performance.py:760` — `compute_performance_curve`
 

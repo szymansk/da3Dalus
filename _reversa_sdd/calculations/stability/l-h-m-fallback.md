@@ -6,11 +6,20 @@ unit: m
 cluster: stability
 user_visible: false
 source_status: SOURCED
+node_class: derived
+tags:
+  - cluster/stability
+  - class/derived
+  - source/sourced
+  - flag/anomaly
+  - flag/divergence
 ---
 
 # Tail arm fallback
 
 **Definition.** Horizontal tail moment arm used when the context value is missing or non-positive.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -18,13 +27,16 @@ source_status: SOURCED
 l_h_m = 2.0 * mac_m
 ```
 
-**Inputs.** [[mac-m-fallback|MAC fallback]]
+**Inputs.**
+
+- [[mac-m-fallback|MAC fallback]]  — *⤵ fallback*
 
 **Produced by.** `app/services/sm_sizing_service.py:160` — `_dsm_dsh`
 
 **Consumed by.**
 
-- in this graph: [[dsm-dsh|SM sensitivity to horizontal tail area]]
+- in this graph: `SM sensitivity to horizontal tail area`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `app/services/sm_sizing_service.py:162`
 
 **Source.** 🟢 SOURCED

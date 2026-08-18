@@ -6,11 +6,20 @@ unit: m
 cluster: stability
 user_visible: true
 source_status: SOURCED
+node_class: derived
+tags:
+  - cluster/stability
+  - class/derived
+  - source/sourced
+  - surface/user-visible
+  - flag/anomaly
 ---
 
 # Aft CG limit from margin bounds
 
 **Definition.** Most-aft (least stable) CG position, derived from the neutral point and the minimum allowed static margin.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -18,7 +27,11 @@ source_status: SOURCED
 aft = np_x - (min_margin / 100) * mac
 ```
 
-**Inputs.** [[neutral-point-x-solver|Neutral point (solver)]] · [[mac-solver-cref|MAC (solver reference chord)]] · [[min-static-margin-pct-default|Minimum static margin (CG-range default)]]
+**Inputs.**
+
+- [[neutral-point-x-solver|Neutral point (solver)]]
+- [[mac-solver-cref|MAC (solver reference chord)]]
+- [[min-static-margin-pct-default|Minimum static margin (CG-range default)]]  — *⤵ fallback*
 
 **Produced by.** `app/services/stability_service.py:98` — `compute_cg_range`
 

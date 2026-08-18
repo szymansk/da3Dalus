@@ -6,11 +6,20 @@ unit: Pa
 cluster: aero-spanwise
 user_visible: true
 source_status: SOURCED
+node_class: derived
+tags:
+  - cluster/aero-spanwise
+  - class/derived
+  - source/sourced
+  - surface/user-visible
+  - flag/divergence
 ---
 
 # Dynamic pressure
 
 **Definition.** Freestream dynamic pressure used to dimensionalise the strip forces.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -18,13 +27,16 @@ source_status: SOURCED
 q_dyn = 0.5 * rho * float(resolved_op.velocity) ** 2
 ```
 
-**Inputs.** [[rho-spanwise|Air density (spanwise loads)]]
+**Inputs.**
+
+- [[rho-spanwise|Air density (spanwise loads)]]
 
 **Produced by.** `app/services/analysis_service.py:2053` — `analyze_airplane_spanwise_loads`
 
 **Consumed by.**
 
-- in this graph: [[spanwise-bending-moment|Running bending moment]] · [[spanwise-shear|Running shear force]]
+- in this graph: `Running bending moment` · `Running shear force`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `compute_spanwise_loads` · `SpanwiseLoadsResponse.dynamic_pressure_Pa` · `frontend AnalysisViewerPanel.tsx:880`
 
 **Source.** 🟢 SOURCED

@@ -6,11 +6,21 @@ unit: dimensionless
 cluster: perf-matching
 user_visible: false
 source_status: PARTIAL
+node_class: derived
+tags:
+  - cluster/perf-matching
+  - class/derived
+  - source/partial
+  - flag/anomaly
+  - flag/divergence
+  - flag/scale
 ---
 
 # Takeoff CL_max (field length)
 
 **Definition.** CL_max in takeoff configuration, from the polar or from base CL_max times the flap factor.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -18,13 +28,17 @@ source_status: PARTIAL
 cl_max_to: float = float(aircraft.get("cl_max_takeoff") or cl_max_base * to_factor)
 ```
 
-**Inputs.** [[cl_max_base_fallback_fl|Base CL_max fallback (field length)]] · [[cl_max_flap_factors_resolved|Resolved flap factors]]
+**Inputs.**
+
+- [[cl_max_base_fallback_fl|Base CL_max fallback (field length)]]  — *⤵ fallback*
+- [[cl_max_flap_factors_resolved|Resolved flap factors]]  — *⤵ fallback*
 
 **Produced by.** `app/services/field_length_service.py:360` — `compute_field_lengths`
 
 **Consumed by.**
 
-- in this graph: [[s_to_ground|Takeoff ground roll]]
+- in this graph: `Takeoff ground roll`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `_compute_s_to_ground:424` · `_compute_s_to_bungee_partial:416`
 
 **Source.** 🟡 PARTIAL

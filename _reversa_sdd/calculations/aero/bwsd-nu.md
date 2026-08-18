@@ -6,11 +6,23 @@ unit: m²/s
 cluster: aero-strips
 user_visible: false
 source_status: PARTIAL
+node_class: physical-constant
+tags:
+  - cluster/aero-strips
+  - class/physical-constant
+  - source/partial
+  - flag/anomaly
+  - flag/divergence
+  - flag/scale
+  - flag/physical
 ---
 
 # Kinematic viscosity (section builder)
 
 **Definition.** Hardcoded kinematic viscosity used for the per-section Reynolds number.
+
+**Physical constant.** A value of nature. It must be identical everywhere it appears — a second definition is a defect by construction, not a judgement call.
+*Identified as: kinematic viscosity of air.*
 
 **Value.** `1.5e-5`
 
@@ -26,7 +38,8 @@ nu = 1.5e-5  # kinematic viscosity [m²/s]
 
 **Consumed by.**
 
-- in this graph: [[bwsd-re-local|Local section Reynolds number]]
+- in this graph: `Local section Reynolds number`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 
 **Source.** 🟡 PARTIAL
 

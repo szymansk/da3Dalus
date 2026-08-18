@@ -6,11 +6,21 @@ unit: W
 cluster: powertrain
 user_visible: true
 source_status: SOURCED
+node_class: derived
+tags:
+  - cluster/powertrain
+  - class/derived
+  - source/sourced
+  - surface/user-visible
+  - flag/anomaly
+  - flag/divergence
 ---
 
 # Power required for a motor+battery combo
 
 **Definition.** Electrical power required to hold level flight at the target cruise speed with a given combo's total mass, delegated to the endurance service's drag-polar physics.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -18,13 +28,22 @@ source_status: SOURCED
 if speed_ms <= 0: return 0.0 ; rho = _air_density(altitude_m) ; return _power_required(rho=rho, v=speed_ms, cd0=cd0, e=e_oswald, ar=ar, mass=total_mass_kg, s_ref=s_ref_m2, eta_total=eta_total)
 ```
 
-**Inputs.** [[air-density-sizing|Air density at altitude (sizing)]] · [[resolved-cd0|Resolved zero-lift drag coefficient]] · [[resolved-e-oswald|Resolved Oswald efficiency]] · [[resolved-ar|Resolved aspect ratio]] · [[resolved-s-ref|Resolved wing reference area]] · [[combo-total-mass|Combo total mass]] · [[combo-eta-total|Combo total propulsive efficiency]]
+**Inputs.**
+
+- [[air-density-sizing|Air density at altitude (sizing)]]
+- [[resolved-cd0|Resolved zero-lift drag coefficient]]  — *⤵ fallback*
+- [[resolved-e-oswald|Resolved Oswald efficiency]]
+- [[resolved-ar|Resolved aspect ratio]]
+- [[resolved-s-ref|Resolved wing reference area]]
+- [[combo-total-mass|Combo total mass]]
+- [[combo-eta-total|Combo total propulsive efficiency]]  — *⤵ fallback*
 
 **Produced by.** `app/services/powertrain_sizing_service.py:92` — `_combo_required_power_w`
 
 **Consumed by.**
 
-- in this graph: [[combo-cruise-power|Estimated cruise power]]
+- in this graph: `Estimated cruise power`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `app/services/powertrain_sizing_service.py:240`
 
 **Source.** 🟢 SOURCED

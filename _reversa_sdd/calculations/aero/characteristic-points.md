@@ -5,11 +5,21 @@ unit: -
 cluster: aero-spanwise
 user_visible: true
 source_status: PARTIAL
+node_class: derived
+tags:
+  - cluster/aero-spanwise
+  - class/derived
+  - source/partial
+  - surface/user-visible
+  - flag/anomaly
+  - flag/divergence
 ---
 
 # Characteristic points dict
 
 **Definition.** Six-key dict bundling max-L/D, CDmin, CLmax, CD0, stall and trim points.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -17,7 +27,14 @@ source_status: PARTIAL
 points = {"maximum_lift_to_drag_ratio_point": None, "minimum_drag_coefficient_point": None, "maximum_lift_coefficient_point": None, "drag_at_zero_lift_point": None, "stall_point": None, "trim_point_cm_equals_zero": None}
 ```
 
-**Inputs.** [[max-ld-point|Maximum L/D point]] · [[min-cd-point|Minimum drag coefficient point]] · [[max-cl-point|Maximum lift coefficient point]] · [[drag-at-zero-lift-point|Drag at zero lift point]] · [[stall-point|Stall point]] · [[trim-point-cm-zero|Trim point (Cm = 0)]]
+**Inputs.**
+
+- [[max-ld-point|Maximum L/D point]]
+- [[min-cd-point|Minimum drag coefficient point]]
+- [[max-cl-point|Maximum lift coefficient point]]  — *⊣ limit*
+- [[drag-at-zero-lift-point|Drag at zero lift point]]
+- [[stall-point|Stall point]]  — *⊣ limit*
+- [[trim-point-cm-zero|Trim point (Cm = 0)]]
 
 **Produced by.** `app/services/analysis_service.py:219` — `_compute_alpha_sweep_characteristic_points`
 

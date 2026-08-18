@@ -6,11 +6,20 @@ unit: deg
 cluster: aero-polars
 user_visible: false
 source_status: PARTIAL
+node_class: derived
+tags:
+  - cluster/aero-polars
+  - class/derived
+  - source/partial
+  - flag/anomaly
+  - flag/divergence
 ---
 
 # Attached-flow alpha window
 
 **Definition.** Alpha range from the first trusted point up to the CL_max peak.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -20,13 +29,17 @@ result["alpha_attached_lo"] = float(attached_alpha[0])
 result["alpha_attached_hi"] = float(attached_alpha[-1])
 ```
 
-**Inputs.** [[alr-cl-max|Section CL_max]] · [[alr-alpha-sweep|Alpha sweep bounds and step]]
+**Inputs.**
+
+- [[alr-cl-max|Section CL_max]]  — *⊣ limit*
+- [[alr-alpha-sweep|Alpha sweep bounds and step]]  — *⊣ limit*
 
 **Produced by.** `app/services/airfoil_low_re_service.py:649` — `_extract_metrics`
 
 **Consumed by.**
 
-- in this graph: [[alr-min-analysis-confidence|Windowed min analysis confidence]]
+- in this graph: `Windowed min analysis confidence`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `AirfoilLowRePolarModel.alpha_attached_lo/hi` · `_windowed_min_confidence:559`
 
 **Source.** 🟡 PARTIAL

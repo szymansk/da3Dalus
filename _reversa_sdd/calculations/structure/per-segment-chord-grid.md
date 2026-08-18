@@ -5,11 +5,20 @@ unit: dimensionless (x/c)
 cluster: structure
 user_visible: true
 source_status: NO_SOURCE_FOUND
+node_class: unclassified-constant
+tags:
+  - cluster/structure
+  - class/unclassified-constant
+  - source/no-source-found
+  - surface/user-visible
+  - flag/anomaly
 ---
 
 # Per-segment chord sampling grid
 
 **Definition.** Chord positions sampled for each segment in the per-segment section grid.
+
+⚪ **Unclassified constant.** Not yet decided whether this is a rule of thumb, a calibration or a physical value. Classifying it is open work — it is deliberately not guessed.
 
 **Value.** `np.linspace(0.05, 0.95, n_chord)`
 

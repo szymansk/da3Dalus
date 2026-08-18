@@ -6,11 +6,19 @@ unit: – (set of strings)
 cluster: stability
 user_visible: true
 source_status: SOURCED
+node_class: unclassified-constant
+tags:
+  - cluster/stability
+  - class/unclassified-constant
+  - source/sourced
+  - surface/user-visible
 ---
 
 # Reported aero coefficient whitelist
 
 **Definition.** Keys extracted from the AeroBuildup result and reported as aero coefficients.
+
+⚪ **Unclassified constant.** Not yet decided whether this is a rule of thumb, a calibration or a physical value. Classifying it is open work — it is deliberately not guessed.
 
 **Value.** `{"CL", "CD", "CY", "Cm", "Cl", "Cn"}`
 

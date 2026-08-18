@@ -6,11 +6,19 @@ unit: mm
 cluster: structure
 user_visible: true
 source_status: SOURCED
+node_class: derived
+tags:
+  - cluster/structure
+  - class/derived
+  - source/sourced
+  - surface/user-visible
 ---
 
 # Capped-spar flange (gurt) thickness
 
 **Definition.** Flange thickness of the capped spar; the free dimension reported as solved_mm for shape='capped'.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -18,13 +26,17 @@ source_status: SOURCED
 gurt = (H - h) / 2.0
 ```
 
-**Inputs.** [[capped-inner-height|Capped-spar inner gap height]] · [[spar-outer-dimension|Spar outer dimension]]
+**Inputs.**
+
+- [[capped-inner-height|Capped-spar inner gap height]]
+- [[spar-outer-dimension|Spar outer dimension]]
 
 **Produced by.** `app/services/spar_sizing.py:209` — `_solve_capped`
 
 **Consumed by.**
 
-- in this graph: [[capped-cross-section-area|Capped-spar cross-section area]]
+- in this graph: `Capped-spar cross-section area`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `app/services/spar_sizing.py:210` · `app/services/spar_sizing.py:344` · `frontend/lib/sparSizingHelpers.ts:59`
 
 **Source.** 🟢 SOURCED

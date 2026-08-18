@@ -6,11 +6,21 @@ unit: m/s
 cluster: aero-spanwise
 user_visible: true
 source_status: SOURCED
+node_class: derived
+tags:
+  - cluster/aero-spanwise
+  - class/derived
+  - source/sourced
+  - surface/user-visible
+  - flag/anomaly
+  - flag/divergence
 ---
 
 # Stall speed
 
 **Definition.** Speed at CL_max for the curve's mass.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -18,13 +28,19 @@ source_status: SOURCED
 v_stall = float(np.sqrt(2.0 * weight_n / (rho * s_ref_m2 * cl_max))) if cl_max > 0 else None
 ```
 
-**Inputs.** [[weight-n|Weight]] · [[rho-speed-polar|Air density (speed polar)]] · [[s-ref-speed-polar|Reference wing area]] · [[cl-max-speed-polar|CL max for stall speed]]
+**Inputs.**
+
+- [[weight-n|Weight]]
+- [[rho-speed-polar|Air density (speed polar)]]
+- [[s-ref-speed-polar|Reference wing area]]
+- [[cl-max-speed-polar|CL max for stall speed]]  — *⊣ limit*
 
 **Produced by.** `app/services/analysis_service.py:524` — `_compute_speed_polar`
 
 **Consumed by.**
 
-- in this graph: [[v-axis-min|Speed-polar X-axis lower bound]]
+- in this graph: `Speed-polar X-axis lower bound`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `SpeedPolarCurve.v_stall` · `frontend speed-polar chart`
 
 **Source.** 🟢 SOURCED

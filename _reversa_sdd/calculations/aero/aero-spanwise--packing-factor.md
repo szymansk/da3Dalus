@@ -5,11 +5,20 @@ unit: -
 cluster: aero-spanwise
 user_visible: true
 source_status: NO_SOURCE_FOUND
+node_class: unclassified-parameter
+tags:
+  - cluster/aero-spanwise
+  - class/unclassified-parameter
+  - source/no-source-found
+  - surface/user-visible
+  - flag/scale
 ---
 
 # Packing factor
 
 **Definition.** Fraction of the local profile thickness the spar may occupy.
+
+⚪ **Unclassified parameter.** Not yet decided whether this is a user input or an internal tuning value.
 
 **Value.** `0.8`
 
@@ -25,7 +34,8 @@ packing_factor: Annotated[float, Query(gt=0, le=1.0, description="Packing factor
 
 **Consumed by.**
 
-- in this graph: [[spar-outer-dimension|Spar outer dimension]] · [[station-clearance|Station packing clearance]]
+- in this graph: `Spar outer dimension` · `Station packing clearance`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `compute_spar_sizing via spar_params`
 
 **Source.** 🔴 NO SOURCE FOUND

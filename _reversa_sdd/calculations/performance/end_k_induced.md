@@ -6,11 +6,18 @@ unit: -
 cluster: perf-envelope
 user_visible: false
 source_status: SOURCED
+node_class: derived
+tags:
+  - cluster/perf-envelope
+  - class/derived
+  - source/sourced
 ---
 
 # Induced-drag factor
 
 **Definition.** Lift-dependent drag coefficient factor of the parabolic polar.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -18,13 +25,16 @@ source_status: SOURCED
 k = 1.0 / (math.pi * e * ar)
 ```
 
-**Inputs.** [[end_e_oswald|Resolved Oswald efficiency]]
+**Inputs.**
+
+- [[end_e_oswald|Resolved Oswald efficiency]]  — *⤵ fallback*
 
 **Produced by.** `app/services/endurance_service.py:121` — `_power_required`
 
 **Consumed by.**
 
-- in this graph: [[end_cd_total|Total drag coefficient]]
+- in this graph: `Total drag coefficient`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 
 **Source.** 🟢 SOURCED
 

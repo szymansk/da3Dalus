@@ -6,11 +6,20 @@ unit: enum
 cluster: aero-polars
 user_visible: true
 source_status: NO_SOURCE_FOUND
+node_class: derived
+tags:
+  - cluster/aero-polars
+  - class/derived
+  - source/no-source-found
+  - surface/user-visible
+  - flag/divergence
 ---
 
 # active_lens
 
 **Definition.** Which score drives the ranking: mission > target_cl_cruise > re_agnostic.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -18,7 +27,11 @@ source_status: NO_SOURCE_FOUND
 if has_mission: active_lens = "mission" ... elif has_cruise: active_lens = "target_cl_cruise" ... else: active_lens = "re_agnostic"
 ```
 
-**Inputs.** [[alr-score-mission|Mission suitability score]] · [[alr-score-target-cl|target-CL suitability score]] · [[alr-score-re-agnostic|re_agnostic suitability score]]
+**Inputs.**
+
+- [[alr-score-mission|Mission suitability score]]  — *⊣ limit*
+- [[alr-score-target-cl|target-CL suitability score]]  — *⊣ limit*
+- [[alr-score-re-agnostic|re_agnostic suitability score]]  — *⊣ limit*
 
 **Produced by.** `app/services/suitability_service.py:628` — `search_suitability`
 

@@ -6,11 +6,19 @@ unit: dimensionless (CD)
 cluster: aero-polars
 user_visible: false
 source_status: NO_SOURCE_FOUND
+node_class: numerical-tolerance
+tags:
+  - cluster/aero-polars
+  - class/numerical-tolerance
+  - source/no-source-found
+  - flag/divergence
 ---
 
 # Polar monotonicity guard tolerance
 
 **Definition.** Negative dCD tolerance below which the band fit is rejected as non-monotonic.
+
+**Numerical tolerance.** A solver or comparison epsilon, not a domain value. ADR 0023 does not apply.
 
 **Value.** `-1e-6`
 

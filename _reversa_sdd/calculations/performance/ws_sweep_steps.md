@@ -6,11 +6,19 @@ unit: count
 cluster: perf-matching
 user_visible: true
 source_status: NO_SOURCE_FOUND
+node_class: unclassified-constant
+tags:
+  - cluster/perf-matching
+  - class/unclassified-constant
+  - source/no-source-found
+  - surface/user-visible
 ---
 
 # W/S sweep resolution
 
 **Definition.** Number of sample points along the W/S axis.
+
+⚪ **Unclassified constant.** Not yet decided whether this is a rule of thumb, a calibration or a physical value. Classifying it is open work — it is deliberately not guessed.
 
 **Value.** `200`
 
@@ -26,7 +34,8 @@ _WS_STEPS: int = 200
 
 **Consumed by.**
 
-- in this graph: [[ws_range_mc|W/S sweep vector]]
+- in this graph: `W/S sweep vector`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `ws_range:838`
 
 **Source.** 🔴 NO SOURCE FOUND

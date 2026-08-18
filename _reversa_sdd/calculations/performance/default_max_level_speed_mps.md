@@ -5,11 +5,20 @@ unit: m/s
 cluster: perf-oppoints
 user_visible: true
 source_status: NO_SOURCE_FOUND
+node_class: unclassified-constant
+tags:
+  - cluster/perf-oppoints
+  - class/unclassified-constant
+  - source/no-source-found
+  - surface/user-visible
+  - flag/divergence
 ---
 
 # Default maximum level speed
 
 **Definition.** Top level-flight speed target in the default profile.
+
+⚪ **Unclassified constant.** Not yet decided whether this is a rule of thumb, a calibration or a physical value. Classifying it is open work — it is deliberately not guessed.
 
 **Value.** `28.0`
 
@@ -25,7 +34,8 @@ source_status: NO_SOURCE_FOUND
 
 **Consumed by.**
 
-- in this graph: [[v_max_level|Maximum level speed target]]
+- in this graph: `Maximum level speed target`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `app/services/operating_point_generator_service.py:399 (v_max_level)` · `app/services/assumption_compute_service.py:1038`
 
 **Source.** 🔴 NO SOURCE FOUND

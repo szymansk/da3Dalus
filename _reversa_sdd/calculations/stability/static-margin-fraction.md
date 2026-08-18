@@ -6,11 +6,21 @@ unit: – (fraction of MAC)
 cluster: stability
 user_visible: true
 source_status: SOURCED
+node_class: derived
+tags:
+  - cluster/stability
+  - class/derived
+  - source/sourced
+  - surface/user-visible
+  - flag/anomaly
+  - flag/divergence
 ---
 
 # Static margin (fraction of MAC)
 
 **Definition.** Longitudinal static stability margin: distance from CG to neutral point, normalised by the mean aerodynamic chord.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -18,13 +28,18 @@ source_status: SOURCED
 return (xnp - xcg) / mac
 ```
 
-**Inputs.** [[neutral-point-x-solver|Neutral point (solver)]] · [[cg-x-from-xyz-ref|CG x used for static margin]] · [[mac-solver-cref|MAC (solver reference chord)]]
+**Inputs.**
+
+- [[neutral-point-x-solver|Neutral point (solver)]]
+- [[cg-x-from-xyz-ref|CG x used for static margin]]
+- [[mac-solver-cref|MAC (solver reference chord)]]
 
 **Produced by.** `app/services/stability_service.py:52` — `_compute_static_margin`
 
 **Consumed by.**
 
-- in this graph: [[static-margin-pct|Static margin percent]]
+- in this graph: `Static margin percent`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `app/services/stability_service.py:329 (→ static_margin_pct)` · `app/services/stability_service.py:337 (StabilitySummaryResponse.static_margin)` · `app/api/v2/endpoints/aeroanalysis.py:203` · `app/mcp_server.py:1184 compute_stability tool`
 
 **Source.** 🟢 SOURCED

@@ -6,11 +6,20 @@ unit: dimensionless
 cluster: aero-strips
 user_visible: true
 source_status: PARTIAL
+node_class: derived
+tags:
+  - cluster/aero-strips
+  - class/derived
+  - source/partial
+  - surface/user-visible
+  - flag/divergence
 ---
 
 # L/D improvement
 
 **Definition.** Difference between tripped and clean L/D — the UI's accept/reject criterion.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -18,7 +27,10 @@ source_status: PARTIAL
 delta_l_d = l_d_tripped - l_d_clean if math.isfinite(l_d_tripped) and math.isfinite(l_d_clean) else float("nan")
 ```
 
-**Inputs.** [[tos-l-d-tripped|Tripped lift-to-drag ratio]] · [[tos-l-d-clean|Clean lift-to-drag ratio]]
+**Inputs.**
+
+- [[tos-l-d-tripped|Tripped lift-to-drag ratio]]
+- [[tos-l-d-clean|Clean lift-to-drag ratio]]
 
 **Produced by.** `app/services/turbulator_optimizer_service.py:346` — `compute_ld_summary`
 

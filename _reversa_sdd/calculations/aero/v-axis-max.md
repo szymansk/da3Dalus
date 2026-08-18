@@ -5,11 +5,20 @@ unit: m/s
 cluster: aero-spanwise
 user_visible: true
 source_status: PARTIAL
+node_class: derived
+tags:
+  - cluster/aero-spanwise
+  - class/derived
+  - source/partial
+  - surface/user-visible
+  - flag/divergence
 ---
 
 # Speed-polar X-axis upper bound
 
 **Definition.** Recommended chart upper speed bound from V_dive, else the fastest polar point.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -17,13 +26,18 @@ source_status: PARTIAL
 v_axis_max: float | None = 1.3 * v_dive   /   v_axis_max = max(all_v) if all_v else None
 ```
 
-**Inputs.** [[v-dive-from-context|Dive speed from context]] · [[v-axis-max-factor|Upper axis-bound factor]] · [[speed-polar-v|Glide forward speed]]
+**Inputs.**
+
+- [[v-dive-from-context|Dive speed from context]]  — *⊣ limit*
+- [[v-axis-max-factor|Upper axis-bound factor]]  — *⊣ limit*
+- [[speed-polar-v|Glide forward speed]]
 
 **Produced by.** `app/services/analysis_service.py:561` — `_compute_speed_polar`
 
 **Consumed by.**
 
-- in this graph: [[axis-autorange-guard|Axis-bound sanity guard]]
+- in this graph: `Axis-bound sanity guard`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `SpeedPolar.v_axis_max` · `frontend/lib/speedPolarLayout.ts`
 
 **Source.** 🟡 PARTIAL

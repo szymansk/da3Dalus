@@ -6,11 +6,20 @@ unit: -
 cluster: perf-envelope
 user_visible: true
 source_status: SOURCED
+node_class: derived
+tags:
+  - cluster/perf-envelope
+  - class/derived
+  - source/sourced
+  - surface/user-visible
+  - flag/scale
 ---
 
 # Gust mass ratio
 
 **Definition.** Dimensionless mass parameter governing gust alleviation.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -18,13 +27,20 @@ source_status: SOURCED
 return 2.0 * wing_loading / (rho * c_mgc * cl_alpha * g)
 ```
 
-**Inputs.** [[fe_wing_loading|Wing loading (gust path)]] · [[fe_rho_default|Default air density (flight envelope)]] · [[fe_c_mgc|Mean geometric chord]] · [[fe_effective_cl_alpha|Effective lift-curve slope for gust]] · [[fe_gravity|Gravitational acceleration (flight envelope)]]
+**Inputs.**
+
+- [[fe_wing_loading|Wing loading (gust path)]]
+- [[fe_rho_default|Default air density (flight envelope)]]  — *⤵ fallback*
+- [[fe_c_mgc|Mean geometric chord]]
+- [[fe_effective_cl_alpha|Effective lift-curve slope for gust]]  — *⤵ fallback*
+- [[fe_gravity|Gravitational acceleration (flight envelope)]]
 
 **Produced by.** `app/services/flight_envelope_service.py:89` — `_compute_mu_g`
 
 **Consumed by.**
 
-- in this graph: [[fe_gust_validity_warning|Pratt validity warning]] · [[fe_k_g|Gust alleviation factor]]
+- in this graph: `Pratt validity warning` · `Gust alleviation factor`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 
 **Source.** 🟢 SOURCED
 

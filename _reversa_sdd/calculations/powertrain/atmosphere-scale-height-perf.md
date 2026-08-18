@@ -6,11 +6,21 @@ unit: m
 cluster: powertrain
 user_visible: true
 source_status: NO_SOURCE_FOUND
+node_class: unclassified-constant
+tags:
+  - cluster/powertrain
+  - class/unclassified-constant
+  - source/no-source-found
+  - surface/user-visible
+  - flag/anomaly
+  - flag/divergence
 ---
 
 # Isothermal atmosphere scale height (performance)
 
 **Definition.** Scale height of the exponential (isothermal) atmosphere approximation.
+
+⚪ **Unclassified constant.** Not yet decided whether this is a rule of thumb, a calibration or a physical value. Classifying it is open work — it is deliberately not guessed.
 
 **Value.** `8500.0`
 
@@ -20,7 +30,8 @@ source_status: NO_SOURCE_FOUND
 
 **Consumed by.**
 
-- in this graph: [[air-density-perf|Air density at altitude (performance)]]
+- in this graph: `Air density at altitude (performance)`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `app/services/powertrain_performance.py:385` · `app/services/powertrain_performance.py:524` · `app/services/powertrain_performance.py:695`
 
 **Source.** 🔴 NO SOURCE FOUND

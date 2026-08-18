@@ -6,11 +6,20 @@ unit: -
 cluster: perf-envelope
 user_visible: true
 source_status: PARTIAL
+node_class: user-input
+tags:
+  - cluster/perf-envelope
+  - class/user-input
+  - source/partial
+  - surface/user-visible
+  - flag/scale
 ---
 
 # Maximum lift coefficient (envelope)
 
 **Definition.** Effective CL_max design assumption, defaulting to 1.4.
+
+**User input.** Supplied from outside the calculation (assumption store or request), not derived.
 
 **Value.** `default 1.4`
 
@@ -26,7 +35,8 @@ _load_assumptions -> PARAMETER_DEFAULTS['cl_max'] = 1.4
 
 **Consumed by.**
 
-- in this graph: [[fe_cl_min|Inverted maximum lift coefficient]] · [[fe_n_pos_maneuver|Positive maneuver load factor]] · [[fe_v_stall|Stall speed (1 g)]]
+- in this graph: `Inverted maximum lift coefficient` · `Positive maneuver load factor` · `Stall speed (1 g)`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 
 **Source.** 🟡 PARTIAL
 

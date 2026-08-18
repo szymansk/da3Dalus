@@ -6,11 +6,20 @@ unit: dimensionless
 cluster: perf-matching
 user_visible: false
 source_status: PARTIAL
+node_class: unclassified-parameter
+tags:
+  - cluster/perf-matching
+  - class/unclassified-parameter
+  - source/partial
+  - flag/divergence
+  - flag/scale
 ---
 
 # Landing CL_max (matching chart)
 
 **Definition.** Landing CL_max for the landing constraint, defaulting to the clean value.
+
+⚪ **Unclassified parameter.** Not yet decided whether this is a user input or an internal tuning value.
 
 **Formula — as the code writes it.**
 
@@ -18,13 +27,16 @@ source_status: PARTIAL
 cl_max_l: float = float(aircraft.get("cl_max_landing", cl_max_clean))
 ```
 
-**Inputs.** [[cl_max_clean_mc|Clean CL_max (matching chart)]]
+**Inputs.**
+
+- [[cl_max_clean_mc|Clean CL_max (matching chart)]]  — *⊣ limit*
 
 **Produced by.** `app/services/matching_chart_service.py:809` — `compute_chart`
 
 **Consumed by.**
 
-- in this graph: [[ws_landing_constraint|Landing constraint W/S_max]]
+- in this graph: `Landing constraint W/S_max`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `_landing_constraint:850` · `hover_text:909`
 
 **Source.** 🟡 PARTIAL

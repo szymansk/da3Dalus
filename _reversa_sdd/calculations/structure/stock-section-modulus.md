@@ -6,11 +6,20 @@ unit: mm³
 cluster: structure
 user_visible: false
 source_status: PARTIAL
+node_class: derived
+tags:
+  - cluster/structure
+  - class/derived
+  - source/partial
+  - flag/anomaly
+  - flag/divergence
 ---
 
 # Section modulus of a real stock item
 
 **Definition.** The bending capacity a Component-Library spar_tube stock item provides, used as the strength filter when snapping a solved piece to real stock.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 

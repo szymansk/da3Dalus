@@ -6,11 +6,21 @@ unit: deg
 cluster: stability
 user_visible: false
 source_status: SOURCED
+node_class: unclassified-constant
+tags:
+  - cluster/stability
+  - class/unclassified-constant
+  - source/sourced
+  - flag/anomaly
+  - flag/divergence
+  - flag/scale
 ---
 
 # Default flap deflection
 
 **Definition.** Flap deflection used in the landing-configuration run when the TED does not declare positive_deflection_deg.
+
+⚪ **Unclassified constant.** Not yet decided whether this is a rule of thumb, a calibration or a physical value. Classifying it is open work — it is deliberately not guessed.
 
 **Value.** `30.0`
 
@@ -26,7 +36,8 @@ flap_deg = getattr(ted, "positive_deflection_deg", None) or 30.0
 
 **Consumed by.**
 
-- in this graph: [[cl-max-landing-flap|Swept flapped CL_max]]
+- in this graph: `Swept flapped CL_max`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `app/services/elevator_authority_service.py:870`
 
 **Source.** 🟢 SOURCED

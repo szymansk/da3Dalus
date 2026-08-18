@@ -6,11 +6,19 @@ unit: 1/chord
 cluster: aero-polars
 user_visible: false
 source_status: NO_SOURCE_FOUND
+node_class: derived
+tags:
+  - cluster/aero-polars
+  - class/derived
+  - source/no-source-found
+  - flag/divergence
 ---
 
 # Aft camber concavity (reflex Signal B)
 
 **Definition.** Leading coefficient of a 2nd-order fit to the camber line over x∈[0.5,1.0].
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -19,13 +27,16 @@ p_aft_c = np.polyfit(x_eval[aft_concavity_mask], camber[aft_concavity_mask], 2)
 aft_concavity = float(p_aft_c[0])
 ```
 
-**Inputs.** [[alr-camber-line|Mean camber line]]
+**Inputs.**
+
+- [[alr-camber-line|Mean camber line]]
 
 **Produced by.** `app/services/airfoil_low_re_service.py:234` — `classify_family`
 
 **Consumed by.**
 
-- in this graph: [[alr-family|Airfoil family label]]
+- in this graph: `Airfoil family label`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `classify_family:265`
 
 **Source.** 🔴 NO SOURCE FOUND

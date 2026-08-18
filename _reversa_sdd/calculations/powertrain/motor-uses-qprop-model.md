@@ -6,11 +6,21 @@ unit: boolean
 cluster: powertrain
 user_visible: true
 source_status: SOURCED
+node_class: derived
+tags:
+  - cluster/powertrain
+  - class/derived
+  - source/sourced
+  - surface/user-visible
+  - flag/anomaly
+  - flag/divergence
 ---
 
 # QPROP model availability flag
 
 **Definition.** True when winding resistance Rm is present, which switches the performance curve from the fixed-RPM approximation to the QPROP torque-balance solver. Io is allowed to default to 0 A.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -18,13 +28,16 @@ source_status: SOURCED
 return self.rm_ohm is not None and self.rm_ohm > 0
 ```
 
-**Inputs.** [[motor-rm-ohm-input|Winding resistance]]
+**Inputs.**
+
+- [[motor-rm-ohm-input|Winding resistance]]
 
 **Produced by.** `app/services/powertrain_performance.py:122` — `MotorSpec.uses_qprop_model`
 
 **Consumed by.**
 
-- in this graph: [[curve-estimated-flag|Estimated-power flag]]
+- in this graph: `Estimated-power flag`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `app/services/powertrain_performance.py:701` · `app/tests/test_powertrain_qprop_motor.py:120`
 
 **Source.** 🟢 SOURCED

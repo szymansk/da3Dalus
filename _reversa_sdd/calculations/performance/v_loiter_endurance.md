@@ -5,11 +5,21 @@ unit: m/s
 cluster: perf-oppoints
 user_visible: true
 source_status: PARTIAL
+node_class: derived
+tags:
+  - cluster/perf-oppoints
+  - class/derived
+  - source/partial
+  - surface/user-visible
+  - flag/anomaly
+  - flag/divergence
 ---
 
 # loiter_endurance target speed
 
 **Definition.** Speed assigned to the endurance/loiter operating point.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -17,7 +27,10 @@ source_status: PARTIAL
 "velocity": max(1.15 * refs["vs_clean"], cruise * 0.80)
 ```
 
-**Inputs.** [[vs_clean|Clean stall speed reference]] · [[cruise_speed_resolved|Resolved cruise speed]]
+**Inputs.**
+
+- [[vs_clean|Clean stall speed reference]]
+- [[cruise_speed_resolved|Resolved cruise speed]]
 
 **Produced by.** `app/services/operating_point_generator_service.py:450` — `_build_target_definitions`
 

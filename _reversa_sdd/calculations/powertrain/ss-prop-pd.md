@@ -6,11 +6,21 @@ unit: dimensionless
 cluster: powertrain
 user_visible: true
 source_status: SOURCED
+node_class: unclassified-parameter
+tags:
+  - cluster/powertrain
+  - class/unclassified-parameter
+  - source/sourced
+  - surface/user-visible
+  - flag/anomaly
+  - flag/divergence
 ---
 
 # Propeller pitch-to-diameter ratio
 
 **Definition.** Pitch over diameter of the intended propeller, converting top speed into a target RPM.
+
+⚪ **Unclassified parameter.** Not yet decided whether this is a user input or an internal tuning value.
 
 **Value.** `0.65`
 
@@ -26,7 +36,8 @@ rpm_target = (v_top_mps / (prop_d * prop_pd)) * 60.0
 
 **Consumed by.**
 
-- in this graph: [[ss-rpm-target|Target propeller RPM]]
+- in this graph: `Target propeller RPM`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `app/services/powertrain_solution_space_service.py:158` · `app/services/powertrain_solution_space_service.py:393`
 
 **Source.** 🟢 SOURCED

@@ -6,11 +6,20 @@ unit: g
 cluster: perf-envelope
 user_visible: true
 source_status: SOURCED
+node_class: derived
+tags:
+  - cluster/perf-envelope
+  - class/derived
+  - source/sourced
+  - surface/user-visible
+  - flag/scale
 ---
 
 # Positive maneuver load factor
 
 **Definition.** Aerodynamically achievable positive load factor, clipped at the structural g-limit.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -18,7 +27,13 @@ source_status: SOURCED
 n_pos = min(q * wing_area_m2 * cl_max / weight, g_limit)
 ```
 
-**Inputs.** [[fe_q|Dynamic pressure]] · [[fe_wing_area|Reference wing area]] · [[fe_cl_max|Maximum lift coefficient (envelope)]] · [[fe_weight|Aircraft weight]] · [[fe_g_limit|Structural limit load factor]]
+**Inputs.**
+
+- [[fe_q|Dynamic pressure]]
+- [[fe_wing_area|Reference wing area]]  — *× unit*
+- [[fe_cl_max|Maximum lift coefficient (envelope)]]  — *⤵ fallback*
+- [[fe_weight|Aircraft weight]]
+- [[fe_g_limit|Structural limit load factor]]  — *⤵ fallback*
 
 **Produced by.** `app/services/flight_envelope_service.py:327` — `compute_vn_curve`
 

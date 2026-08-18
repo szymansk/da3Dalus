@@ -6,11 +6,18 @@ unit: 1/h (C)
 cluster: powertrain
 user_visible: false
 source_status: PARTIAL
+node_class: derived
+tags:
+  - cluster/powertrain
+  - class/derived
+  - source/partial
 ---
 
 # Raw required C-rate
 
 **Definition.** Physically required discharge rate before any safety margin: peak current over capacity in Ah.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -18,13 +25,17 @@ source_status: PARTIAL
 raw_c = i_peak / (cap_mah / 1000.0) if cap_mah > 0 else float("inf")
 ```
 
-**Inputs.** [[ss-i-peak|Peak battery current]] · [[ss-cap-mah|Minimum battery capacity]]
+**Inputs.**
+
+- [[ss-i-peak|Peak battery current]]
+- [[ss-cap-mah|Minimum battery capacity]]  — *⊣ limit*
 
 **Produced by.** `app/services/powertrain_solution_space_service.py:145` — `_per_cell`
 
 **Consumed by.**
 
-- in this graph: [[ss-c-min|Required battery C-rate]]
+- in this graph: `Required battery C-rate`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `app/services/powertrain_solution_space_service.py:146`
 
 **Source.** 🟡 PARTIAL

@@ -6,11 +6,21 @@ unit: m/s
 cluster: perf-oppoints
 user_visible: true
 source_status: NO_SOURCE_FOUND
+node_class: unclassified-constant
+tags:
+  - cluster/perf-oppoints
+  - class/unclassified-constant
+  - source/no-source-found
+  - surface/user-visible
+  - flag/anomaly
+  - flag/divergence
 ---
 
 # Default cruise speed
 
 **Definition.** Cruise speed target used when no flight profile exists.
+
+⚪ **Unclassified constant.** Not yet decided whether this is a rule of thumb, a calibration or a physical value. Classifying it is open work — it is deliberately not guessed.
 
 **Value.** `18.0`
 
@@ -26,7 +36,8 @@ source_status: NO_SOURCE_FOUND
 
 **Consumed by.**
 
-- in this graph: [[cruise_speed_resolved|Resolved cruise speed]]
+- in this graph: `Resolved cruise speed`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `app/services/operating_point_generator_service.py:277, 335, 398` · `app/services/assumption_compute_service.py:1037`
 
 **Source.** 🔴 NO SOURCE FOUND

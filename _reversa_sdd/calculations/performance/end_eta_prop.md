@@ -6,11 +6,21 @@ unit: -
 cluster: perf-envelope
 user_visible: true
 source_status: PARTIAL
+node_class: unclassified-constant
+tags:
+  - cluster/perf-envelope
+  - class/unclassified-constant
+  - source/partial
+  - surface/user-visible
+  - flag/anomaly
+  - flag/divergence
 ---
 
 # Default propeller efficiency
 
 **Definition.** Assumed propeller efficiency when no design assumption is set.
+
+⚪ **Unclassified constant.** Not yet decided whether this is a rule of thumb, a calibration or a physical value. Classifying it is open work — it is deliberately not guessed.
 
 **Value.** `0.65`
 
@@ -26,7 +36,8 @@ DEFAULT_ETA_PROP = 0.65  # APC/Folding RC-Scale, Drela/Hepperle
 
 **Consumed by.**
 
-- in this graph: [[end_eta_total|Total propulsion efficiency]]
+- in this graph: `Total propulsion efficiency`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `powertrain_sizing_service.py`
 
 **Source.** 🟡 PARTIAL

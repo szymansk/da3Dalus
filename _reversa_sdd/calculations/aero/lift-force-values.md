@@ -6,11 +6,19 @@ unit: N
 cluster: aero-spanwise
 user_visible: true
 source_status: SOURCED
+node_class: derived
+tags:
+  - cluster/aero-spanwise
+  - class/derived
+  - source/sourced
+  - surface/user-visible
 ---
 
 # Lift force array
 
 **Definition.** Dimensional lift L vs alpha from result.forces.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -24,7 +32,8 @@ np.atleast_1d(np.asarray(result.forces.L, dtype=float))
 
 **Consumed by.**
 
-- in this graph: [[ld-ratio-force|Glide ratio from forces]]
+- in this graph: `Glide ratio from forces`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `_plot_glide_ratio`
 
 **Source.** 🟢 SOURCED

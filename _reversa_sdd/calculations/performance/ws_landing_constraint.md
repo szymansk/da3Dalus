@@ -6,11 +6,22 @@ unit: N/m^2
 cluster: perf-matching
 user_visible: true
 source_status: PARTIAL
+node_class: derived
+tags:
+  - cluster/perf-matching
+  - class/derived
+  - source/partial
+  - surface/user-visible
+  - flag/anomaly
+  - flag/divergence
+  - flag/scale
 ---
 
 # Landing constraint W/S_max
 
 **Definition.** Maximum wing loading that still meets the landing field-length target.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -18,7 +29,13 @@ source_status: PARTIAL
 return (s_runway * rho * cl_max_l) / (_K_LDG_HARD * _K_LDG_50FT)
 ```
 
-**Inputs.** [[mode_default_s_runway|Mode default field length]] · [[cl_max_l_mc|Landing CL_max (matching chart)]] · [[rho_sl|Sea-level ISA density]] · [[k_ldg_hard|Landing ground-roll coefficient]] · [[k_ldg_50ft|Landing 50-ft obstacle factor]]
+**Inputs.**
+
+- [[mode_default_s_runway|Mode default field length]]  — *⤵ fallback*
+- [[cl_max_l_mc|Landing CL_max (matching chart)]]  — *⤵ fallback*
+- [[rho_sl|Sea-level ISA density]]  — *⤵ fallback*
+- [[k_ldg_hard|Landing ground-roll coefficient]]
+- [[k_ldg_50ft|Landing 50-ft obstacle factor]]
 
 **Produced by.** `app/services/matching_chart_service.py:341` — `_landing_constraint`
 

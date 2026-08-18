@@ -6,11 +6,21 @@ unit: m/s
 cluster: perf-matching
 user_visible: true
 source_status: PARTIAL
+node_class: derived
+tags:
+  - cluster/perf-matching
+  - class/derived
+  - source/partial
+  - surface/user-visible
+  - flag/anomaly
+  - flag/divergence
 ---
 
 # Bungee release speed
 
 **Definition.** Speed at bungee/catapult release from the stored elastic energy.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -18,13 +28,16 @@ source_status: PARTIAL
 return math.sqrt(2.0 * e_stored / mass_kg)
 ```
 
-**Inputs.** [[bungee_energy_stored|Bungee stored energy]]
+**Inputs.**
+
+- [[bungee_energy_stored|Bungee stored energy]]
 
 **Produced by.** `app/services/field_length_service.py:177` — `compute_bungee_release_speed`
 
 **Consumed by.**
 
-- in this graph: [[s_to_bungee_partial|Bungee partial ground roll]]
+- in this graph: `Bungee partial ground roll`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `compute_field_lengths:402,410,415`
 
 **Source.** 🟡 PARTIAL

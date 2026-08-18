@@ -5,11 +5,21 @@ unit: dimensionless
 cluster: perf-oppoints
 user_visible: true
 source_status: SOURCED
+node_class: unclassified-constant
+tags:
+  - cluster/perf-oppoints
+  - class/unclassified-constant
+  - source/sourced
+  - surface/user-visible
+  - flag/anomaly
+  - flag/divergence
 ---
 
 # Default clean stall margin
 
 **Definition.** Multiplier over clean stall speed for the low-speed operating point.
+
+⚪ **Unclassified constant.** Not yet decided whether this is a rule of thumb, a calibration or a physical value. Classifying it is open work — it is deliberately not guessed.
 
 **Value.** `1.20`
 
@@ -25,7 +35,8 @@ source_status: SOURCED
 
 **Consumed by.**
 
-- in this graph: [[min_margin_clean_floor|Clean-margin floor]] · [[v_stall_near_clean|stall_near_clean target speed]]
+- in this graph: `Clean-margin floor` · `stall_near_clean target speed`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `app/services/operating_point_generator_service.py:336, 401`
 
 **Source.** 🟢 SOURCED

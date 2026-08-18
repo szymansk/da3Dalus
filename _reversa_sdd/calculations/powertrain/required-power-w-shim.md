@@ -6,11 +6,20 @@ unit: W (never returned)
 cluster: powertrain
 user_visible: false
 source_status: NO_SOURCE_FOUND
+node_class: derived
+tags:
+  - cluster/powertrain
+  - class/derived
+  - source/no-source-found
+  - flag/anomaly
+  - flag/divergence
 ---
 
 # Legacy power-required shim
 
 **Definition.** Removed legacy entry point; unconditionally raises NotImplementedError directing callers to _combo_required_power_w.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 

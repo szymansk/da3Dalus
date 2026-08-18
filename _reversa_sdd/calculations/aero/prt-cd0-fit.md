@@ -6,11 +6,20 @@ unit: dimensionless
 cluster: aero-polars
 user_visible: true
 source_status: SOURCED
+node_class: derived
+tags:
+  - cluster/aero-polars
+  - class/derived
+  - source/sourced
+  - surface/user-visible
+  - flag/divergence
 ---
 
 # Band cd0 (fitted intercept)
 
 **Definition.** Zero-lift drag coefficient of one V-band from OLS of CD against CL².
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -18,13 +27,17 @@ source_status: SOURCED
 k, cd0_fit = np.polyfit(cl2_win, cd_win, deg=1)
 ```
 
-**Inputs.** [[prt-ols-window-lo|OLS polar window lower CL bound]] · [[prt-ols-window-hi|OLS polar window upper CL bound]]
+**Inputs.**
+
+- [[prt-ols-window-lo|OLS polar window lower CL bound]]  — *⊣ limit*
+- [[prt-ols-window-hi|OLS polar window upper CL bound]]  — *⊣ limit*
 
 **Produced by.** `app/services/polar_re_table_service.py:372` — `_fit_polar_ols`
 
 **Consumed by.**
 
-- in this graph: [[prt-cd0-lookup|cd0 at query velocity]] · [[prt-r2|Band OLS R²]]
+- in this graph: `cd0 at query velocity` · `Band OLS R²`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `_fit_band_with_ar:274,298` · `PolarReTableRow.cd0` · `lookup_cd0_at_v:131`
 
 **Source.** 🟢 SOURCED

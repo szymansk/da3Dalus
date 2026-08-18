@@ -6,11 +6,21 @@ unit: m^2
 cluster: powertrain
 user_visible: true
 source_status: NO_SOURCE_FOUND
+node_class: derived
+tags:
+  - cluster/powertrain
+  - class/derived
+  - source/no-source-found
+  - surface/user-visible
+  - flag/anomaly
+  - flag/divergence
 ---
 
 # Wing reference area (solution space)
 
 **Definition.** Wing area read from the aeroplane's gh-924 assumption_computation_context, or a minimal-RC fallback with a warning.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -24,7 +34,8 @@ s_ref_m2: float | None = ctx.get("s_ref_m2") ; if s_ref_m2 is None or s_ref_m2 <
 
 **Consumed by.**
 
-- in this graph: [[ss-lift-coefficient|Level-flight lift coefficient]] · [[ss-p-aero|Aerodynamic power]] · [[ss-p-aero-cruise|Aerodynamic power at cruise]] · [[ss-p-aero-top|Aerodynamic power at top speed]]
+- in this graph: `Level-flight lift coefficient` · `Aerodynamic power` · `Aerodynamic power at cruise` · `Aerodynamic power at top speed`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `app/services/powertrain_solution_space_service.py:349` · `app/services/powertrain_solution_space_service.py:350`
 
 **Source.** 🔴 NO SOURCE FOUND

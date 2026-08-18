@@ -6,11 +6,19 @@ unit: dimensionless
 cluster: aero-strips
 user_visible: false
 source_status: PARTIAL
+node_class: derived
+tags:
+  - cluster/aero-strips
+  - class/derived
+  - source/partial
+  - flag/divergence
 ---
 
 # Span fraction of a section
 
 **Definition.** Normalised spanwise position used to blend the root and tip trip positions.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -18,13 +26,17 @@ source_status: PARTIAL
 frac = (sec.y_m - y_min) / y_span if y_span > 0 else 0.0
 ```
 
-**Inputs.** [[saoa-y|Panel spanwise position]] · [[cdftp-y-span|Span extent for trip interpolation]]
+**Inputs.**
+
+- [[saoa-y|Panel spanwise position]]
+- [[cdftp-y-span|Span extent for trip interpolation]]
 
 **Produced by.** `app/services/turbulator_optimizer_service.py:687` — `compute_delta_cd0_from_turbulator_position`
 
 **Consumed by.**
 
-- in this graph: [[cdftp-xtr-sec|Section trip position from the installed turbulator]]
+- in this graph: `Section trip position from the installed turbulator`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 
 **Source.** 🟡 PARTIAL
 

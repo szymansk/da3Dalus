@@ -6,11 +6,21 @@ unit: mm²
 cluster: structure
 user_visible: true
 source_status: SOURCED
+node_class: derived
+tags:
+  - cluster/structure
+  - class/derived
+  - source/sourced
+  - surface/user-visible
+  - flag/anomaly
+  - flag/divergence
 ---
 
 # Capped-spar cross-section area
 
 **Definition.** Area of the two flanges of the capped spar (the web is neglected), used for mass integration.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -18,13 +28,17 @@ source_status: SOURCED
 area = 2.0 * b * gurt  # two flanges (upper + lower)
 ```
 
-**Inputs.** [[capped-gurt-thickness|Capped-spar flange (gurt) thickness]] · [[cap-width-mm|Cap/flange width]]
+**Inputs.**
+
+- [[capped-gurt-thickness|Capped-spar flange (gurt) thickness]]
+- [[cap-width-mm|Cap/flange width]]
 
 **Produced by.** `app/services/spar_sizing.py:210` — `_solve_capped`
 
 **Consumed by.**
 
-- in this graph: [[spar-mass-half|Half-span spar mass]]
+- in this graph: `Half-span spar mass`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `app/services/spar_sizing.py:347` · `app/services/spar_sizing.py:356`
 
 **Source.** 🟢 SOURCED

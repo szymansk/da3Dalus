@@ -6,11 +6,20 @@ unit: deg
 cluster: stability
 user_visible: false
 source_status: PARTIAL
+node_class: numerical-tolerance
+tags:
+  - cluster/stability
+  - class/numerical-tolerance
+  - source/partial
+  - flag/anomaly
+  - flag/divergence
 ---
 
 # Brent root-finder tolerance
 
 **Definition.** Absolute convergence tolerance on the deflection variable for the Brent root solve.
+
+**Numerical tolerance.** A solver or comparison epsilon, not a domain value. ADR 0023 does not apply.
 
 **Value.** `1e-6`
 
@@ -26,7 +35,8 @@ trimmed_deflection = brentq(residual, lower, upper, xtol=1e-6, maxiter=50)
 
 **Consumed by.**
 
-- in this graph: [[trimmed-deflection|Trimmed control deflection]]
+- in this graph: `Trimmed control deflection`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `app/services/aerobuildup_trim_service.py:214`
 
 **Source.** 🟡 PARTIAL

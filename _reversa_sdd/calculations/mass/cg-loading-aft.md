@@ -6,11 +6,20 @@ unit: m
 cluster: mass
 user_visible: true
 source_status: SOURCED
+node_class: derived
+tags:
+  - cluster/mass
+  - class/derived
+  - source/sourced
+  - surface/user-visible
+  - flag/divergence
 ---
 
 # Aft loading CG
 
 **Definition.** Aft-most CG produced by any user-defined loading scenario.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -18,13 +27,17 @@ source_status: SOURCED
 "cg_loading_aft_m": max(cg_values)
 ```
 
-**Inputs.** [[scenario-cg-x|Loading-scenario CG_x]] · [[base-cg-x-default|Fallback base CG_x for scenario CG]]
+**Inputs.**
+
+- [[scenario-cg-x|Loading-scenario CG_x]]
+- [[base-cg-x-default|Fallback base CG_x for scenario CG]]  — *ε tolerance*
 
 **Produced by.** `app/services/loading_scenario_service.py:446` — `compute_loading_envelope_for_aeroplane`
 
 **Consumed by.**
 
-- in this graph: [[cg-envelope-violation-mm|CG envelope violation distance]] · [[sm-at-aft-api|Static margin at aft loading CG (API)]] · [[sm-at-aft-ctx|Static margin at aft loading CG (cached)]]
+- in this graph: `CG envelope violation distance` · `Static margin at aft loading CG (API)` · `Static margin at aft loading CG (cached)`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `app/services/assumption_compute_service.py:796` · `app/services/loading_scenario_service.py:266 (ctx['cg_aft_m'])` · `app/services/loading_scenario_service.py:576/624 (CgEnvelopeRead)` · `app/services/sm_sizing_service.py:353 / :767 (reads ctx['cg_aft_m'])` · `app/services/tail_sizing_service.py:180 / :213 (l_h_eff_from_aft_cg_m)` · `frontend/hooks/useLoadingScenarios.ts:87`
 
 **Source.** 🟢 SOURCED

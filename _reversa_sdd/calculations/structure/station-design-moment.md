@@ -6,11 +6,21 @@ unit: N·m
 cluster: structure
 user_visible: false
 source_status: PARTIAL
+node_class: derived
+tags:
+  - cluster/structure
+  - class/derived
+  - source/partial
+  - flag/anomaly
+  - flag/divergence
+  - flag/scale
 ---
 
 # Station design moment (plan path)
 
 **Definition.** Design moment at a solver station: the driver moment (bending for the front spar, torsion reaction for the rear) times the limit load factor times the safety factor.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -18,13 +28,19 @@ source_status: PARTIAL
 m_design = abs(moment_fn(y_span)) * g_limit * safety_factor_j
 ```
 
-**Inputs.** [[front-moment-fn|Front-spar bending moment interpolator]] · [[rear-moment-fn|Rear-spar sizing moment]] · [[resolved-g-limit-plan|Limit load factor (plan path)]] · [[structure--safety-factor-j|Safety factor j]]
+**Inputs.**
+
+- [[front-moment-fn|Front-spar bending moment interpolator]]  — *⊣ limit*
+- [[rear-moment-fn|Rear-spar sizing moment]]
+- [[resolved-g-limit-plan|Limit load factor (plan path)]]  — *⊣ limit*
+- [[structure--safety-factor-j|Safety factor j]]  — *⊣ limit*
 
 **Produced by.** `cad_designer/airplane/geometry/spar_solver.py:764` — `build_stations_from_geometry`
 
 **Consumed by.**
 
-- in this graph: [[station-erf-w|Station required section modulus (plan path)]]
+- in this graph: `Station required section modulus (plan path)`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `cad_designer/airplane/geometry/spar_solver.py:765`
 
 **Source.** 🟡 PARTIAL

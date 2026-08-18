@@ -6,11 +6,21 @@ unit: 1/h (C)
 cluster: powertrain
 user_visible: true
 source_status: PARTIAL
+node_class: derived
+tags:
+  - cluster/powertrain
+  - class/derived
+  - source/partial
+  - surface/user-visible
+  - flag/anomaly
+  - flag/divergence
 ---
 
 # Hyperbola C-rate samples
 
 **Definition.** Minimum C-rate at each sampled capacity — the current-constraint boundary of the feasible region.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -18,7 +28,10 @@ source_status: PARTIAL
 c_rates = [i_peak / (c / 1000.0) for c in caps]
 ```
 
-**Inputs.** [[ss-i-peak|Peak battery current]] · [[hyperbola-capacity-samples|Hyperbola capacity samples]]
+**Inputs.**
+
+- [[ss-i-peak|Peak battery current]]
+- [[hyperbola-capacity-samples|Hyperbola capacity samples]]  — *⊣ limit*
 
 **Produced by.** `app/services/powertrain_solution_space_service.py:183` — `_build_hyperbola`
 

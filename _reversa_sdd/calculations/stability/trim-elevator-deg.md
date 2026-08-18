@@ -6,11 +6,21 @@ unit: deg
 cluster: stability
 user_visible: true
 source_status: SOURCED
+node_class: derived
+tags:
+  - cluster/stability
+  - class/derived
+  - source/sourced
+  - surface/user-visible
+  - flag/anomaly
+  - flag/divergence
 ---
 
 # Trim elevator deflection (from result)
 
 **Definition.** Elevator deflection at the analysed operating point; first control surface whose name contains 'elevator'.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 

@@ -6,11 +6,21 @@ unit: N/m^2
 cluster: perf-envelope
 user_visible: true
 source_status: SOURCED
+node_class: derived
+tags:
+  - cluster/perf-envelope
+  - class/derived
+  - source/sourced
+  - surface/user-visible
+  - flag/anomaly
+  - flag/divergence
 ---
 
 # KPI: wing loading
 
 **Definition.** Weight per reference wing area.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -18,7 +28,10 @@ source_status: SOURCED
 value = mass_kg * 9.81 / s_ref
 ```
 
-**Inputs.** [[mkpi_mass|Mass for wing loading]] · [[mkpi_gravity_inline|Gravity (mission KPI, inline)]]
+**Inputs.**
+
+- [[mkpi_mass|Mass for wing loading]]
+- [[mkpi_gravity_inline|Gravity (mission KPI, inline)]]
 
 **Produced by.** `app/services/mission_kpi_service.py:273` — `_kpi_wing_loading`
 

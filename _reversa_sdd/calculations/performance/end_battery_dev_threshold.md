@@ -6,11 +6,19 @@ unit: -
 cluster: perf-envelope
 user_visible: true
 source_status: NO_SOURCE_FOUND
+node_class: unclassified-constant
+tags:
+  - cluster/perf-envelope
+  - class/unclassified-constant
+  - source/no-source-found
+  - surface/user-visible
 ---
 
 # Battery-mass deviation threshold
 
 **Definition.** Relative deviation above which the battery-mass cross-check warns.
+
+⚪ **Unclassified constant.** Not yet decided whether this is a rule of thumb, a calibration or a physical value. Classifying it is open work — it is deliberately not guessed.
 
 **Value.** `0.30`
 
@@ -26,7 +34,8 @@ BATTERY_MASS_DEVIATION_THRESHOLD = 0.30  # 30%
 
 **Consumed by.**
 
-- in this graph: [[end_battery_deviation|Battery-mass deviation]]
+- in this graph: `Battery-mass deviation`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 
 **Source.** 🔴 NO SOURCE FOUND
 

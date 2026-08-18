@@ -5,11 +5,20 @@ unit: mm
 cluster: structure
 user_visible: true
 source_status: NO_SOURCE_FOUND
+node_class: unclassified-constant
+tags:
+  - cluster/structure
+  - class/unclassified-constant
+  - source/no-source-found
+  - surface/user-visible
+  - flag/anomaly
 ---
 
 # Buildable-minimum spar outer diameter
 
 **Definition.** Outer-diameter floor below which a spar piece is considered a non-object: no orderable/cuttable carbon spar exists that small, and the D-box skin plus ribs carry the tip. Trailing sub-floor pieces are dropped and reported as a no-spar region.
+
+⚪ **Unclassified constant.** Not yet decided whether this is a rule of thumb, a calibration or a physical value. Classifying it is open work — it is deliberately not guessed.
 
 **Value.** `1.0`
 
@@ -25,7 +34,8 @@ NEGLIGIBLE_OD_FLOOR_MM = 1.0
 
 **Consumed by.**
 
-- in this graph: [[no-spar-from-y|No-spar region start]] · [[real-front-pieces|Buildable front pieces]]
+- in this graph: `No-spar region start` · `Buildable front pieces`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `cad_designer/airplane/geometry/spar_solver.py:463` · `app/services/spar_insert_service.py:282` · `app/services/spar_insert_service.py:284`
 
 **Source.** 🔴 NO SOURCE FOUND

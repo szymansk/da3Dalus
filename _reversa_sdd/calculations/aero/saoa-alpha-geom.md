@@ -6,11 +6,21 @@ unit: deg
 cluster: aero-strips
 user_visible: true
 source_status: SOURCED
+node_class: derived
+tags:
+  - cluster/aero-strips
+  - class/derived
+  - source/sourced
+  - surface/user-visible
+  - flag/anomaly
+  - flag/divergence
 ---
 
 # Geometric angle of attack
 
 **Definition.** Trim alpha plus the local geometric twist at each panel.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -18,13 +28,16 @@ source_status: SOURCED
 alpha_geom_arr = op_alpha_deg + twist_at_y  # [deg]
 ```
 
-**Inputs.** [[saoa-twist-at-y|Interpolated twist at panel y]]
+**Inputs.**
+
+- [[saoa-twist-at-y|Interpolated twist at panel y]]
 
 **Produced by.** `app/services/section_aoa_service.py:326` — `compute_section_aoa`
 
 **Consumed by.**
 
-- in this graph: [[saoa-induced-angle|Induced downwash angle]]
+- in this graph: `Induced downwash angle`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `app/api/v2/endpoints/section_aoa.py:SectionAoaPoint.alpha_geometric_deg` · `frontend/hooks/useSectionAoa.ts`
 
 **Source.** 🟢 SOURCED

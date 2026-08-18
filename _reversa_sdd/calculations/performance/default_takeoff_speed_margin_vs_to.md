@@ -5,11 +5,20 @@ unit: dimensionless
 cluster: perf-oppoints
 user_visible: true
 source_status: PARTIAL
+node_class: unclassified-constant
+tags:
+  - cluster/perf-oppoints
+  - class/unclassified-constant
+  - source/partial
+  - surface/user-visible
+  - flag/divergence
 ---
 
 # Default takeoff margin
 
 **Definition.** Multiplier over takeoff-config stall speed for the takeoff-climb point.
+
+⚪ **Unclassified constant.** Not yet decided whether this is a rule of thumb, a calibration or a physical value. Classifying it is open work — it is deliberately not guessed.
 
 **Value.** `1.25`
 
@@ -25,7 +34,8 @@ source_status: PARTIAL
 
 **Consumed by.**
 
-- in this graph: [[v_takeoff|takeoff_climb target speed]]
+- in this graph: `takeoff_climb target speed`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `app/services/operating_point_generator_service.py:402`
 
 **Source.** 🟡 PARTIAL

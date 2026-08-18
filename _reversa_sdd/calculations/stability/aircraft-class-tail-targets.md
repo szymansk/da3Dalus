@@ -6,11 +6,22 @@ unit: – (dimensionless)
 cluster: stability
 user_visible: true
 source_status: PARTIAL
+node_class: unclassified-constant
+tags:
+  - cluster/stability
+  - class/unclassified-constant
+  - source/partial
+  - surface/user-visible
+  - flag/anomaly
+  - flag/divergence
+  - flag/scale
 ---
 
 # Tail-volume target ranges by aircraft class
 
 **Definition.** Per-class target bands for V_H and V_V with their literature citations; drives classification and the recommended tail areas.
+
+⚪ **Unclassified constant.** Not yet decided whether this is a rule of thumb, a calibration or a physical value. Classifying it is open work — it is deliberately not guessed.
 
 **Value.** `rc_trainer (0.55,0.70)/(0.040,0.050); rc_aerobatic (0.35,0.55)/(0.025,0.040); rc_combust (0.45,0.65)/(0.030,0.045); rc_pylon_3d (0.30,0.45)/(0.025,0.035); uav_survey (0.50,0.70)/(0.035,0.060); glider (0.40,0.55)/(0.020,0.030); boxwing (0.55,0.70)/(0.035,0.050)`
 
@@ -20,7 +31,8 @@ source_status: PARTIAL
 
 **Consumed by.**
 
-- in this graph: [[s-h-recommended-mm2|Recommended horizontal tail area]] · [[s-v-recommended-mm2|Recommended vertical tail area]] · [[tail-volume-classification|Tail volume classification]]
+- in this graph: `Recommended horizontal tail area` · `Recommended vertical tail area` · `Tail volume classification`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `app/services/tail_sizing_service.py:85,237,239,240,258,262` · `app/api/v2/endpoints/aeroplane/tail_sizing.py:92-97` · `frontend/components/workbench/TailVolumeCard.tsx` · `frontend/lib/metricsAdapters.ts:552-630`
 
 **Source.** 🟡 PARTIAL

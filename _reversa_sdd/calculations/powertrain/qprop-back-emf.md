@@ -6,11 +6,18 @@ unit: V
 cluster: powertrain
 user_visible: false
 source_status: SOURCED
+node_class: derived
+tags:
+  - cluster/powertrain
+  - class/derived
+  - source/sourced
 ---
 
 # Motor back-EMF
 
 **Definition.** Speed-proportional back-EMF at the motor terminals for a candidate RPM.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -18,13 +25,16 @@ source_status: SOURCED
 omega = rpm * 2.0 * math.pi / 60.0 ; back_emf = omega / kv_si
 ```
 
-**Inputs.** [[motor-kv-si|Motor speed constant in SI]]
+**Inputs.**
+
+- [[motor-kv-si|Motor speed constant in SI]]
 
 **Produced by.** `app/services/powertrain_performance.py:529` — `solve_qprop_operating_point.current_for_rpm`
 
 **Consumed by.**
 
-- in this graph: [[qprop-current-for-rpm|Terminal current at a candidate RPM]]
+- in this graph: `Terminal current at a candidate RPM`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `app/services/powertrain_performance.py:530`
 
 **Source.** 🟢 SOURCED

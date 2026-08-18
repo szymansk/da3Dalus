@@ -6,11 +6,21 @@ unit: mm
 cluster: structure
 user_visible: true
 source_status: SOURCED
+node_class: unclassified-parameter
+tags:
+  - cluster/structure
+  - class/unclassified-parameter
+  - source/sourced
+  - surface/user-visible
+  - flag/anomaly
+  - flag/divergence
 ---
 
 # Cap/flange width
 
 **Definition.** Flange width of a capped (I/C-beam) spar. Required for shape='capped'; ignored for other shapes.
+
+⚪ **Unclassified parameter.** Not yet decided whether this is a user input or an internal tuning value.
 
 **Formula — as the code writes it.**
 
@@ -28,7 +38,8 @@ cap_width_mm: Optional[float] = Field(
 
 **Consumed by.**
 
-- in this graph: [[capped-cross-section-area|Capped-spar cross-section area]] · [[capped-inner-cube|Capped-spar inner-height cube]]
+- in this graph: `Capped-spar cross-section area` · `Capped-spar inner-height cube`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `app/services/spar_sizing.py:330` · `app/services/spar_sizing.py:196` · `frontend/hooks/useSparSizing.ts:64`
 
 **Source.** 🟢 SOURCED

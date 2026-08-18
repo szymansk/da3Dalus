@@ -6,11 +6,21 @@ unit: dimensionless
 cluster: aero-polars
 user_visible: false
 source_status: PARTIAL
+node_class: unclassified-parameter
+tags:
+  - cluster/aero-polars
+  - class/unclassified-parameter
+  - source/partial
+  - flag/anomaly
+  - flag/divergence
+  - flag/scale
 ---
 
 # Tip-Re absolute floor
 
 **Definition.** Tip Reynolds below which the tip is flagged regardless of root Re.
+
+⚪ **Unclassified parameter.** Not yet decided whether this is a user input or an internal tuning value.
 
 **Value.** `80000.0`
 
@@ -26,7 +36,8 @@ low_re_tip_re_abs_floor: float = 80_000.0
 
 **Consumed by.**
 
-- in this graph: [[sui-tip-re-flag|tip_re_flag]]
+- in this graph: `tip_re_flag`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `suitability_service:274`
 
 **Source.** 🟡 PARTIAL

@@ -5,11 +5,18 @@ unit: mm
 cluster: structure
 user_visible: false
 source_status: PARTIAL
+node_class: derived
+tags:
+  - cluster/structure
+  - class/derived
+  - source/partial
 ---
 
 # Strength-driven bore
 
 **Definition.** Largest bore a tube of the given OD may have and still meet its strength requirement.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -17,13 +24,16 @@ source_status: PARTIAL
 strength_bore = _bore_for(runs[i], spec, ods[i])
 ```
 
-**Inputs.** [[bore-for|Strength bore from tube sizing]]
+**Inputs.**
+
+- [[bore-for|Strength bore from tube sizing]]
 
 **Produced by.** `cad_designer/airplane/geometry/spar_solver.py:424` — `plan_spar`
 
 **Consumed by.**
 
-- in this graph: [[piece-bore|Spar piece inner diameter]]
+- in this graph: `Spar piece inner diameter`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `cad_designer/airplane/geometry/spar_solver.py:425`
 
 **Source.** 🟡 PARTIAL

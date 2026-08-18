@@ -6,11 +6,20 @@ unit: m / m / m²
 cluster: aero-strips
 user_visible: false
 source_status: NO_SOURCE_FOUND
+node_class: numerical-tolerance
+tags:
+  - cluster/aero-strips
+  - class/numerical-tolerance
+  - source/no-source-found
+  - flag/anomaly
+  - flag/divergence
 ---
 
 # Placeholder y/chord/area in the raw section result
 
 **Definition.** optimize_section_xtr always returns y_m, chord_m and section_area_m2 as 0.0.
+
+**Numerical tolerance.** A solver or comparison epsilon, not a domain value. ADR 0023 does not apply.
 
 **Value.** `0.0`
 

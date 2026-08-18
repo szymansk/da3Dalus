@@ -5,11 +5,20 @@ unit: dimensionless
 cluster: perf-oppoints
 user_visible: false
 source_status: PARTIAL
+node_class: unclassified-constant
+tags:
+  - cluster/perf-oppoints
+  - class/unclassified-constant
+  - source/partial
+  - flag/anomaly
+  - flag/divergence
 ---
 
 # Flap control role set
 
 **Definition.** Role tags counted as lift-augmentation flaps.
+
+⚪ **Unclassified constant.** Not yet decided whether this is a rule of thumb, a calibration or a physical value. Classifying it is open work — it is deliberately not guessed.
 
 **Value.** `{flap}`
 
@@ -25,7 +34,8 @@ FLAP_ROLES = {"flap"}
 
 **Consumed by.**
 
-- in this graph: [[control_capabilities|Control capability flags]] · [[flap_limit_most_restrictive|Governing flap deflection limit]]
+- in this graph: `Control capability flags` · `Governing flap deflection limit`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `app/services/operating_point_generator_service.py:83, 637, 645, 969` · `app/services/assumption_compute_service.py:905 (_detect_first_flap_name, re-implemented)`
 
 **Source.** 🟡 PARTIAL

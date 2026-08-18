@@ -6,11 +6,20 @@ unit: deg
 cluster: aero-polars
 user_visible: false
 source_status: PARTIAL
+node_class: unclassified-parameter
+tags:
+  - cluster/aero-polars
+  - class/unclassified-parameter
+  - source/partial
+  - flag/anomaly
+  - flag/divergence
 ---
 
 # Alpha sweep bounds and step
 
 **Definition.** Angle-of-attack sweep evaluated at every Re grid point.
+
+⚪ **Unclassified parameter.** Not yet decided whether this is a user input or an internal tuning value.
 
 **Value.** `alpha_start=-5.0, alpha_end=18.0, alpha_step=0.2`
 
@@ -26,7 +35,8 @@ alpha_deg = np.arange(alpha_start, alpha_end + alpha_step * 0.5, alpha_step)
 
 **Consumed by.**
 
-- in this graph: [[alr-alpha-attached-window|Attached-flow alpha window]] · [[alr-cd-min|Section CD_min]] · [[alr-cl-max|Section CL_max]] · [[alr-cl-valid-range|Polar-fit validity CL range]] · [[alr-ld-max|Section (L/D)_max]] · [[alr-polar-cd0|Airfoil cd0 (parabolic fit vertex)]] · [[alr-polar-cl0|CL at minimum drag (cl0)]] · [[alr-polar-k|Airfoil polar curvature k]] · [[alr-stall-gentleness|Stall gentleness]]
+- in this graph: `Attached-flow alpha window` · `Section CD_min` · `Section CL_max` · `Polar-fit validity CL range` · `Section (L/D)_max` · `Airfoil cd0 (parabolic fit vertex)` · `CL at minimum drag (cl0)` · `Airfoil polar curvature k` · `Stall gentleness`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `get_aero_from_neuralfoil:470` · `_windowed_min_confidence:559`
 
 **Source.** 🟡 PARTIAL

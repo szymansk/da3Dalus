@@ -6,11 +6,19 @@ unit: W
 cluster: powertrain
 user_visible: true
 source_status: SOURCED
+node_class: derived
+tags:
+  - cluster/powertrain
+  - class/derived
+  - source/sourced
+  - surface/user-visible
 ---
 
 # Electrical power required
 
 **Definition.** Battery-side electrical power: aerodynamic power divided by the full propulsive chain efficiency.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -18,13 +26,20 @@ source_status: SOURCED
 eta = eta_prop * eta_motor * eta_esc ; if eta <= 0: return float("inf") ; return p_aero_w / eta
 ```
 
-**Inputs.** [[ss-p-aero|Aerodynamic power]] · [[ss-eta-prop-lo|Propeller efficiency band lower bound]] · [[ss-eta-prop-hi|Propeller efficiency band upper bound]] · [[ss-eta-motor|Motor efficiency (solution space)]] · [[ss-eta-esc|ESC efficiency (solution space)]]
+**Inputs.**
+
+- [[ss-p-aero|Aerodynamic power]]
+- [[ss-eta-prop-lo|Propeller efficiency band lower bound]]  — *⊣ limit*
+- [[ss-eta-prop-hi|Propeller efficiency band upper bound]]  — *⊣ limit*
+- [[ss-eta-motor|Motor efficiency (solution space)]]
+- [[ss-eta-esc|ESC efficiency (solution space)]]
 
 **Produced by.** `app/services/powertrain_solution_space_service.py:113` — `_p_elec`
 
 **Consumed by.**
 
-- in this graph: [[ss-i-peak|Peak battery current]] · [[ss-p-cruise-hi-e|Electrical cruise power at high prop efficiency]] · [[ss-p-cruise-lo-e|Electrical cruise power at low prop efficiency]] · [[ss-p-cruise-mid|Electrical cruise power (mid band)]] · [[ss-p-top-hi-e|Electrical peak power at high prop efficiency]] · [[ss-p-top-lo-e|Electrical peak power at low prop efficiency]] · [[ss-p-top-mid|Electrical peak power (mid band)]]
+- in this graph: `Peak battery current` · `Electrical cruise power at high prop efficiency` · `Electrical cruise power at low prop efficiency` · `Electrical cruise power (mid band)` · `Electrical peak power at high prop efficiency` · `Electrical peak power at low prop efficiency` · `Electrical peak power (mid band)`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `app/services/powertrain_solution_space_service.py:360` · `app/services/powertrain_solution_space_service.py:361` · `app/services/powertrain_solution_space_service.py:363` · `app/services/powertrain_solution_space_service.py:367` · `app/services/powertrain_solution_space_service.py:369` · `app/services/powertrain_solution_space_service.py:372`
 
 **Source.** 🟢 SOURCED

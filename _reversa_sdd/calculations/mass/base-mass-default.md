@@ -6,11 +6,19 @@ unit: kg
 cluster: mass
 user_visible: false
 source_status: NO_SOURCE_FOUND
+node_class: unclassified-constant
+tags:
+  - cluster/mass
+  - class/unclassified-constant
+  - source/no-source-found
+  - flag/anomaly
 ---
 
 # Fallback base mass for scenario CG
 
 **Definition.** Default used when the 'mass' design assumption row is missing while evaluating loading scenarios.
+
+⚪ **Unclassified constant.** Not yet decided whether this is a rule of thumb, a calibration or a physical value. Classifying it is open work — it is deliberately not guessed.
 
 **Value.** `1.0`
 
@@ -20,7 +28,8 @@ source_status: NO_SOURCE_FOUND
 
 **Consumed by.**
 
-- in this graph: [[cg-agg|Aggregate CG (default scenario)]] · [[scenario-cg-x|Loading-scenario CG_x]] · [[scenario-total-mass|Loading-scenario total mass]]
+- in this graph: `Aggregate CG (default scenario)` · `Loading-scenario CG_x` · `Loading-scenario total mass`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `app/services/loading_scenario_service.py:373` · `app/services/loading_scenario_service.py:433`
 
 **Source.** 🔴 NO SOURCE FOUND

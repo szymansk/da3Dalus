@@ -6,11 +6,20 @@ unit: mm³
 cluster: structure
 user_visible: false
 source_status: PARTIAL
+node_class: derived
+tags:
+  - cluster/structure
+  - class/derived
+  - source/partial
+  - flag/anomaly
+  - flag/divergence
 ---
 
 # Section modulus, solid round rod
 
 **Definition.** Elastic section modulus of a solid round rod of diameter d. This d³/10 form is the convention the whole spar cluster uses in place of the exact π·d³/32.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 

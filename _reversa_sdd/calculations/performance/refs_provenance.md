@@ -5,11 +5,20 @@ unit: dimensionless
 cluster: perf-oppoints
 user_visible: true
 source_status: NO_SOURCE_FOUND
+node_class: derived
+tags:
+  - cluster/perf-oppoints
+  - class/derived
+  - source/no-source-found
+  - surface/user-visible
+  - flag/divergence
 ---
 
 # Reference-speed provenance
 
 **Definition.** Marks whether the stall speeds came from a computed polar or from the cold-start estimate.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -17,13 +26,16 @@ source_status: NO_SOURCE_FOUND
 provenance = "cold_start"  # gh-535: caller must stamp STALE_NO_POLAR / provenance = "polar"
 ```
 
-**Inputs.** [[vs_clean|Clean stall speed reference]]
+**Inputs.**
+
+- [[vs_clean|Clean stall speed reference]]
 
 **Produced by.** `app/services/operating_point_generator_service.py:351` — `_estimate_reference_speeds`
 
 **Consumed by.**
 
-- in this graph: [[warn_stale_no_polar|STALE_NO_POLAR warning]]
+- in this graph: `STALE_NO_POLAR warning`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `app/services/operating_point_generator_service.py:372 (_stamp_stale_no_polar)`
 
 **Source.** 🔴 NO SOURCE FOUND

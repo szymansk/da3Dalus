@@ -6,11 +6,21 @@ unit: V
 cluster: powertrain
 user_visible: true
 source_status: NO_SOURCE_FOUND
+node_class: derived
+tags:
+  - cluster/powertrain
+  - class/derived
+  - source/no-source-found
+  - surface/user-visible
+  - flag/anomaly
+  - flag/divergence
 ---
 
 # Pack voltage under load
 
 **Definition.** Pack voltage assumed at peak current draw for a candidate cell count.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -18,13 +28,17 @@ source_status: NO_SOURCE_FOUND
 v_sag = s * CELL_V_SAG
 ```
 
-**Inputs.** [[cell-v-sag|Cell voltage under load]] · [[ss-cell-counts|Evaluated cell counts]]
+**Inputs.**
+
+- [[cell-v-sag|Cell voltage under load]]
+- [[ss-cell-counts|Evaluated cell counts]]
 
 **Produced by.** `app/services/powertrain_solution_space_service.py:135` — `_per_cell`
 
 **Consumed by.**
 
-- in this graph: [[ss-i-peak|Peak battery current]]
+- in this graph: `Peak battery current`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `app/services/powertrain_solution_space_service.py:140`
 
 **Source.** 🔴 NO SOURCE FOUND

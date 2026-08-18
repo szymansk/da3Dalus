@@ -6,11 +6,21 @@ unit: dimensionless (0..1)
 cluster: powertrain
 user_visible: true
 source_status: SOURCED
+node_class: derived
+tags:
+  - cluster/powertrain
+  - class/derived
+  - source/sourced
+  - surface/user-visible
+  - flag/anomaly
+  - flag/divergence
 ---
 
 # Combo total propulsive efficiency
 
 **Definition.** Chain efficiency from battery to thrust: propeller x motor x ESC, each taken from the request or the endurance-service default.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -18,13 +28,18 @@ source_status: SOURCED
 eta_total = eta_prop * eta_motor * eta_esc
 ```
 
-**Inputs.** [[default-eta-prop-endurance|Default propeller efficiency]] · [[default-eta-motor-endurance|Default motor efficiency (sizing path)]] · [[default-eta-esc-endurance|Default ESC efficiency]]
+**Inputs.**
+
+- [[default-eta-prop-endurance|Default propeller efficiency]]  — *⤵ fallback*
+- [[default-eta-motor-endurance|Default motor efficiency (sizing path)]]  — *⤵ fallback*
+- [[default-eta-esc-endurance|Default ESC efficiency]]  — *⤵ fallback*
 
 **Produced by.** `app/services/powertrain_sizing_service.py:238` — `_evaluate_motor_battery_combo`
 
 **Consumed by.**
 
-- in this graph: [[combo-cruise-power|Estimated cruise power]] · [[combo-required-power|Power required for a motor+battery combo]]
+- in this graph: `Estimated cruise power` · `Power required for a motor+battery combo`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `app/services/powertrain_sizing_service.py:249`
 
 **Source.** 🟢 SOURCED

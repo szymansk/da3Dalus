@@ -6,11 +6,21 @@ unit: W
 cluster: powertrain
 user_visible: true
 source_status: NO_SOURCE_FOUND
+node_class: unclassified-constant
+tags:
+  - cluster/powertrain
+  - class/unclassified-constant
+  - source/no-source-found
+  - surface/user-visible
+  - flag/anomaly
+  - flag/scale
 ---
 
 # Infeasible-powertrain warning threshold
 
 **Definition.** Shaft-power ceiling below which the response warns that the powertrain may be infeasible.
+
+⚪ **Unclassified constant.** Not yet decided whether this is a rule of thumb, a calibration or a physical value. Classifying it is open work — it is deliberately not guessed.
 
 **Value.** `0.1`
 
@@ -20,7 +30,9 @@ source_status: NO_SOURCE_FOUND
 if p_shaft_max < 0.1:
 ```
 
-**Inputs.** [[curve-p-shaft-max|Shaft power ceiling]]
+**Inputs.**
+
+- [[curve-p-shaft-max|Shaft power ceiling]]  — *⊣ limit*
 
 **Produced by.** `app/services/powertrain_performance.py:687` — `compute_performance_curve`
 

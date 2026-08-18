@@ -6,11 +6,20 @@ unit: -
 cluster: perf-envelope
 user_visible: false
 source_status: NO_SOURCE_FOUND
+node_class: unclassified-constant
+tags:
+  - cluster/perf-envelope
+  - class/unclassified-constant
+  - source/no-source-found
+  - flag/anomaly
+  - flag/divergence
 ---
 
 # Negative CL_max ratio
 
 **Definition.** Ratio of inverted to upright maximum lift coefficient.
+
+⚪ **Unclassified constant.** Not yet decided whether this is a rule of thumb, a calibration or a physical value. Classifying it is open work — it is deliberately not guessed.
 
 **Value.** `-0.8`
 
@@ -26,7 +35,8 @@ cl_min = -0.8 * cl_max
 
 **Consumed by.**
 
-- in this graph: [[fe_cl_min|Inverted maximum lift coefficient]]
+- in this graph: `Inverted maximum lift coefficient`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 
 **Source.** 🔴 NO SOURCE FOUND
 

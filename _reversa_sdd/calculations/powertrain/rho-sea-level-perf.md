@@ -6,11 +6,22 @@ unit: kg/m^3
 cluster: powertrain
 user_visible: true
 source_status: SOURCED
+node_class: physical-constant
+tags:
+  - cluster/powertrain
+  - class/physical-constant
+  - source/sourced
+  - surface/user-visible
+  - flag/anomaly
+  - flag/physical
 ---
 
 # Sea-level air density (performance module)
 
 **Definition.** ISA sea-level air density used as the base of the exponential atmosphere in the performance module.
+
+**Physical constant.** A value of nature. It must be identical everywhere it appears — a second definition is a defect by construction, not a judgement call.
+*Identified as: sea-level air density.*
 
 **Value.** `1.225`
 
@@ -20,7 +31,8 @@ source_status: SOURCED
 
 **Consumed by.**
 
-- in this graph: [[air-density-perf|Air density at altitude (performance)]]
+- in this graph: `Air density at altitude (performance)`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `app/services/powertrain_performance.py:348`
 
 **Source.** 🟢 SOURCED

@@ -6,11 +6,22 @@ unit: dimensionless
 cluster: aero-strips
 user_visible: true
 source_status: SOURCED
+node_class: numerical-tolerance
+tags:
+  - cluster/aero-strips
+  - class/numerical-tolerance
+  - source/sourced
+  - surface/user-visible
+  - flag/anomaly
+  - flag/divergence
+  - flag/scale
 ---
 
 # Strip viscous drag coefficient
 
 **Definition.** Hardcoded zero because the VLM is inviscid.
+
+**Numerical tolerance.** A solver or comparison epsilon, not a domain value. ADR 0023 does not apply.
 
 **Value.** `0.0`
 

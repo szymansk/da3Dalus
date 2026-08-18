@@ -5,11 +5,19 @@ unit: -
 cluster: structure
 user_visible: true
 source_status: NO_SOURCE_FOUND
+node_class: derived
+tags:
+  - cluster/structure
+  - class/derived
+  - source/no-source-found
+  - surface/user-visible
 ---
 
 # t/c fallback warning
 
 **Definition.** Human-readable warning listing every station where the 0.12 t/c fallback was applied, or None.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -19,7 +27,9 @@ tc_warn = (
 )
 ```
 
-**Inputs.** [[tc-fallback-ratio|Thickness-to-chord fallback ratio]]
+**Inputs.**
+
+- [[tc-fallback-ratio|Thickness-to-chord fallback ratio]]  — *⤵ fallback*
 
 **Produced by.** `app/services/spar_sizing.py:366` — `compute_spar_sizing`
 

@@ -6,11 +6,20 @@ unit: W
 cluster: powertrain
 user_visible: true
 source_status: SOURCED
+node_class: derived
+tags:
+  - cluster/powertrain
+  - class/derived
+  - source/sourced
+  - surface/user-visible
+  - flag/anomaly
 ---
 
 # Solved shaft power (QPROP)
 
 **Definition.** Mechanical shaft power at the solved torque-balance point.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -18,13 +27,17 @@ source_status: SOURCED
 p_shaft = max(torque * omega, 0.0)
 ```
 
-**Inputs.** [[qprop-torque|Solved shaft torque]] · [[qprop-rpm-solution|Solved operating RPM]]
+**Inputs.**
+
+- [[qprop-torque|Solved shaft torque]]
+- [[qprop-rpm-solution|Solved operating RPM]]  — *⊣ limit*
 
 **Produced by.** `app/services/powertrain_performance.py:581` — `solve_qprop_operating_point`
 
 **Consumed by.**
 
-- in this graph: [[curve-p-shaft|Shaft power per velocity sample]]
+- in this graph: `Shaft power per velocity sample`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `app/services/powertrain_performance.py:753`
 
 **Source.** 🟢 SOURCED

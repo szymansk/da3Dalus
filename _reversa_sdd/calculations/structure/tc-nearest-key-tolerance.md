@@ -5,11 +5,18 @@ unit: m
 cluster: structure
 user_visible: false
 source_status: NO_SOURCE_FOUND
+node_class: unclassified-constant
+tags:
+  - cluster/structure
+  - class/unclassified-constant
+  - source/no-source-found
 ---
 
 # t/c nearest-key lookup tolerance
 
 **Definition.** Spanwise tolerance within which a t/c map key is accepted as matching the station y before falling back to 0.12.
+
+⚪ **Unclassified constant.** Not yet decided whether this is a rule of thumb, a calibration or a physical value. Classifying it is open work — it is deliberately not guessed.
 
 **Value.** `0.01`
 
@@ -25,7 +32,8 @@ if nearest is not None and abs(nearest - y_m) < 0.01:
 
 **Consumed by.**
 
-- in this graph: [[tc-ratio|Thickness-to-chord ratio at station]]
+- in this graph: `Thickness-to-chord ratio at station`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `app/services/spar_sizing.py:399`
 
 **Source.** 🔴 NO SOURCE FOUND

@@ -6,11 +6,22 @@ unit: dimensionless
 cluster: perf-matching
 user_visible: true
 source_status: PARTIAL
+node_class: regulatory-constant
+tags:
+  - cluster/perf-matching
+  - class/regulatory-constant
+  - source/partial
+  - surface/user-visible
+  - flag/anomaly
+  - flag/divergence
+  - flag/scale
 ---
 
 # Takeoff 50-ft obstacle factor
 
 **Definition.** Multiplier converting takeoff ground roll to distance over a 50-ft obstacle.
+
+**Regulatory constant.** Taken from a standard. It carries the clause *and* the class of aircraft that clause applies to.
 
 **Value.** `1.66`
 
@@ -26,7 +37,8 @@ _K_TO_50FT: float = 1.66
 
 **Consumed by.**
 
-- in this graph: [[s_obstacle_factor_apply|Obstacle-corrected distance]] · [[s_to_50ft|Takeoff distance over 50 ft]] · [[tw_takeoff_constraint|Takeoff constraint T/W]]
+- in this graph: `Obstacle-corrected distance` · `Takeoff distance over 50 ft` · `Takeoff constraint T/W`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `compute_field_lengths:419,425` · `matching_chart_service._takeoff_constraint:310` · `matching_chart hover_text:896`
 
 **Source.** 🟡 PARTIAL

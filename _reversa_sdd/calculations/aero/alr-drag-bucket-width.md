@@ -6,11 +6,20 @@ unit: dimensionless (ΔCL)
 cluster: aero-polars
 user_visible: true
 source_status: PARTIAL
+node_class: derived
+tags:
+  - cluster/aero-polars
+  - class/derived
+  - source/partial
+  - surface/user-visible
+  - flag/divergence
 ---
 
 # Drag bucket width
 
 **Definition.** CL span over which CD stays within 15% of CD_min.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -19,13 +28,17 @@ bucket_mask = cd_f <= cd_threshold
 result["drag_bucket_width"] = float(np.max(bucket_cl) - np.min(bucket_cl))
 ```
 
-**Inputs.** [[alr-cd-min|Section CD_min]] · [[alr-drag-bucket-factor|Drag-bucket CD threshold factor]]
+**Inputs.**
+
+- [[alr-cd-min|Section CD_min]]  — *⊣ limit*
+- [[alr-drag-bucket-factor|Drag-bucket CD threshold factor]]  — *⊣ limit*
 
 **Produced by.** `app/services/airfoil_low_re_service.py:642` — `_extract_metrics`
 
 **Consumed by.**
 
-- in this graph: [[alr-score-re-agnostic|re_agnostic suitability score]] · [[alr-tolerance-half|Match tolerance half-width]]
+- in this graph: `re_agnostic suitability score` · `Match tolerance half-width`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `AirfoilLowRePolarModel.drag_bucket_width` · `score_re_agnostic:850` · `score_target_cl:1032,1049`
 
 **Source.** 🟡 PARTIAL

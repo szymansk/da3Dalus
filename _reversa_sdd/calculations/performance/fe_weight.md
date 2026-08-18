@@ -6,11 +6,18 @@ unit: N
 cluster: perf-envelope
 user_visible: false
 source_status: SOURCED
+node_class: derived
+tags:
+  - cluster/perf-envelope
+  - class/derived
+  - source/sourced
 ---
 
 # Aircraft weight
 
 **Definition.** Design weight used for stall speed and maneuver load factors.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -18,13 +25,17 @@ source_status: SOURCED
 weight = mass_kg * GRAVITY
 ```
 
-**Inputs.** [[fe_mass|Design mass (envelope)]] · [[fe_gravity|Gravitational acceleration (flight envelope)]]
+**Inputs.**
+
+- [[fe_mass|Design mass (envelope)]]  — *⤵ fallback*
+- [[fe_gravity|Gravitational acceleration (flight envelope)]]
 
 **Produced by.** `app/services/flight_envelope_service.py:313` — `compute_vn_curve`
 
 **Consumed by.**
 
-- in this graph: [[fe_n_neg_maneuver|Negative maneuver load factor]] · [[fe_n_pos_maneuver|Positive maneuver load factor]] · [[fe_v_stall|Stall speed (1 g)]]
+- in this graph: `Negative maneuver load factor` · `Positive maneuver load factor` · `Stall speed (1 g)`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 
 **Source.** 🟢 SOURCED
 

@@ -6,11 +6,19 @@ unit: dimensionless
 cluster: aero-strips
 user_visible: false
 source_status: PARTIAL
+node_class: derived
+tags:
+  - cluster/aero-strips
+  - class/derived
+  - source/partial
+  - flag/divergence
 ---
 
 # Section cd at a target CL and trip position
 
 **Definition.** 2D drag coefficient interpolated from the NeuralFoil polar at the requested CL.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -18,13 +26,20 @@ source_status: PARTIAL
 return float(np.interp(cl_target, cl_sorted, cd_sorted))
 ```
 
-**Inputs.** [[tos-alpha-grid|Alpha grid for cd lookup]] · [[tos-model-size|NeuralFoil model size (optimiser)]] · [[tos-xtr-lower|Lower-surface trip position]] · [[bwsd-re-local|Local section Reynolds number]] · [[saoa-cl|Section lift coefficient (Kutta-Joukowski)]]
+**Inputs.**
+
+- [[tos-alpha-grid|Alpha grid for cd lookup]]
+- [[tos-model-size|NeuralFoil model size (optimiser)]]
+- [[tos-xtr-lower|Lower-surface trip position]]
+- [[bwsd-re-local|Local section Reynolds number]]  — *⊣ limit*
+- [[saoa-cl|Section lift coefficient (Kutta-Joukowski)]]
 
 **Produced by.** `app/services/turbulator_optimizer_service.py:175` — `_cd_at_cl_xtr`
 
 **Consumed by.**
 
-- in this graph: [[cdftp-cd-clean|Clean section drag (installed-turbulator path)]] · [[cdftp-cd-tripped|Tripped section drag (installed-turbulator path)]] · [[tos-cd-clean|Natural-transition section drag]] · [[tos-cd-nearest-fallback|Nearest-neighbour cd fallback]] · [[tos-cd-values|cd sweep over the trip grid]]
+- in this graph: `Clean section drag (installed-turbulator path)` · `Tripped section drag (installed-turbulator path)` · `Natural-transition section drag` · `Nearest-neighbour cd fallback` · `cd sweep over the trip grid`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 
 **Source.** 🟡 PARTIAL
 

@@ -6,11 +6,22 @@ unit: – (dimensionless)
 cluster: stability
 user_visible: true
 source_status: SOURCED
+node_class: derived
+tags:
+  - cluster/stability
+  - class/derived
+  - source/sourced
+  - surface/user-visible
+  - flag/anomaly
+  - flag/divergence
+  - flag/scale
 ---
 
 # Landing CL_max
 
 **Definition.** Maximum lift coefficient in the landing configuration; the denominator of the trim inversion.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -18,13 +29,18 @@ source_status: SOURCED
 cl_max_landing = cl_max_clean + (_ROSKAM_FLAP_CL_BONUS if has_flap else 0.0)
 ```
 
-**Inputs.** [[cl-max-clean-fallback|Clean CL_max fallback]] · [[roskam-flap-cl-bonus|Flap CL_max increment]] · [[cl-max-landing-flap|Swept flapped CL_max]]
+**Inputs.**
+
+- [[cl-max-clean-fallback|Clean CL_max fallback]]  — *⤵ fallback*
+- [[roskam-flap-cl-bonus|Flap CL_max increment]]  — *⊣ limit*
+- [[cl-max-landing-flap|Swept flapped CL_max]]  — *⊣ limit*
 
 **Produced by.** `app/services/elevator_authority_service.py:361` — `_build_stub_result`
 
 **Consumed by.**
 
-- in this graph: [[x-cg-fwd-trim-inversion|Forward CG limit (trim inversion)]]
+- in this graph: `Forward CG limit (trim inversion)`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `app/services/elevator_authority_service.py:374,654,671,790,832,1025,1131,1167` · `app/schemas/forward_cg.py:72` · `app/api/v2/endpoints/aeroplane/forward_cg.py:99`
 
 **Source.** 🟢 SOURCED

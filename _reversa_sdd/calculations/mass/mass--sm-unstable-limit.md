@@ -6,11 +6,22 @@ unit: fraction of MAC
 cluster: mass
 user_visible: true
 source_status: SOURCED
+node_class: unclassified-constant
+tags:
+  - cluster/mass
+  - class/unclassified-constant
+  - source/sourced
+  - surface/user-visible
+  - flag/anomaly
+  - flag/divergence
+  - flag/scale
 ---
 
 # Static-margin lower (unstable) limit
 
 **Definition.** Static margin below which the aircraft is classified as unstable (Phugoid divergent) — hard ERROR in the CG-envelope classification.
+
+⚪ **Unclassified constant.** Not yet decided whether this is a rule of thumb, a calibration or a physical value. Classifying it is open work — it is deliberately not guessed.
 
 **Value.** `0.02`
 
@@ -20,7 +31,8 @@ source_status: SOURCED
 
 **Consumed by.**
 
-- in this graph: [[sm-classification|Static-margin classification]]
+- in this graph: `Static-margin classification`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `app/services/loading_scenario_service.py:73 (classify_sm)`
 
 **Source.** 🟢 SOURCED

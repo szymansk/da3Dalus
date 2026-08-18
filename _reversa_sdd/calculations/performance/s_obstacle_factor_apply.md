@@ -6,11 +6,20 @@ unit: m
 cluster: perf-matching
 user_visible: true
 source_status: PARTIAL
+node_class: derived
+tags:
+  - cluster/perf-matching
+  - class/derived
+  - source/partial
+  - surface/user-visible
+  - flag/divergence
 ---
 
 # Obstacle-corrected distance
 
 **Definition.** Ground roll scaled by an obstacle-clearance factor.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -18,7 +27,12 @@ source_status: PARTIAL
 return k * s_ground
 ```
 
-**Inputs.** [[s_to_ground|Takeoff ground roll]] · [[s_ldg_ground|Landing ground roll]] · [[k_to_50ft|Takeoff 50-ft obstacle factor]] · [[k_ldg_50ft|Landing 50-ft obstacle factor]]
+**Inputs.**
+
+- [[s_to_ground|Takeoff ground roll]]
+- [[s_ldg_ground|Landing ground roll]]
+- [[k_to_50ft|Takeoff 50-ft obstacle factor]]
+- [[k_ldg_50ft|Landing 50-ft obstacle factor]]
 
 **Produced by.** `app/services/field_length_service.py:142` — `_apply_obstacle_factor`
 

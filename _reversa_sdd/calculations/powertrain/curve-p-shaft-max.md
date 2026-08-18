@@ -6,11 +6,19 @@ unit: W
 cluster: powertrain
 user_visible: false
 source_status: SOURCED
+node_class: derived
+tags:
+  - cluster/powertrain
+  - class/derived
+  - source/sourced
+  - flag/anomaly
 ---
 
 # Shaft power ceiling
 
 **Definition.** Maximum shaft power available, the electrical ceiling times motor efficiency.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -18,13 +26,17 @@ source_status: SOURCED
 p_shaft_max = p_available_elec * motor.eta_motor
 ```
 
-**Inputs.** [[curve-p-available-elec|Electrical power ceiling]] · [[motor-eta|Motor + gearbox efficiency]]
+**Inputs.**
+
+- [[curve-p-available-elec|Electrical power ceiling]]  — *⤵ fallback*
+- [[motor-eta|Motor + gearbox efficiency]]  — *⤵ fallback*
 
 **Produced by.** `app/services/powertrain_performance.py:663` — `compute_performance_curve`
 
 **Consumed by.**
 
-- in this graph: [[curve-p-shaft|Shaft power per velocity sample]] · [[infeasibility-threshold-w|Infeasible-powertrain warning threshold]]
+- in this graph: `Shaft power per velocity sample` · `Infeasible-powertrain warning threshold`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `app/services/powertrain_performance.py:687` · `app/services/powertrain_performance.py:757`
 
 **Source.** 🟢 SOURCED

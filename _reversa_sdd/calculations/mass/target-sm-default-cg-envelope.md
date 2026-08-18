@@ -6,11 +6,21 @@ unit: fraction of MAC
 cluster: mass
 user_visible: true
 source_status: PARTIAL
+node_class: unclassified-constant
+tags:
+  - cluster/mass
+  - class/unclassified-constant
+  - source/partial
+  - surface/user-visible
+  - flag/anomaly
+  - flag/divergence
 ---
 
 # Target static margin fallback (CG envelope)
 
 **Definition.** Fallback target static margin used by get_cg_envelope when the design assumption row is absent.
+
+⚪ **Unclassified constant.** Not yet decided whether this is a rule of thumb, a calibration or a physical value. Classifying it is open work — it is deliberately not guessed.
 
 **Value.** `0.08`
 

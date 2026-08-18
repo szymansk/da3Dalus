@@ -6,11 +6,19 @@ unit: chord fraction
 cluster: aero-polars
 user_visible: false
 source_status: NO_SOURCE_FOUND
+node_class: derived
+tags:
+  - cluster/aero-polars
+  - class/derived
+  - source/no-source-found
+  - flag/divergence
 ---
 
 # Mean |y| of lower surface
 
 **Definition.** Mean absolute lower-surface ordinate, the legacy flat-bottom gate.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -24,7 +32,8 @@ mean_lower_abs_y = float(np.mean(np.abs(y_lower)))
 
 **Consumed by.**
 
-- in this graph: [[alr-family|Airfoil family label]]
+- in this graph: `Airfoil family label`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `classify_family:286`
 
 **Source.** 🔴 NO SOURCE FOUND

@@ -6,11 +6,20 @@ unit: n/a
 cluster: aero-polars
 user_visible: false
 source_status: NO_SOURCE_FOUND
+node_class: derived
+tags:
+  - cluster/aero-polars
+  - class/derived
+  - source/no-source-found
+  - flag/anomaly
+  - flag/divergence
 ---
 
 # upper_mask / lower_mask
 
 **Definition.** Two boolean arrays allocated in classify_family and never used.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 

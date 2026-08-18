@@ -6,11 +6,22 @@ unit: -
 cluster: aero-spanwise
 user_visible: true
 source_status: SOURCED
+node_class: derived
+tags:
+  - cluster/aero-spanwise
+  - class/derived
+  - source/sourced
+  - surface/user-visible
+  - flag/anomaly
+  - flag/divergence
+  - flag/scale
 ---
 
 # Chord Reynolds number (strip-forces echo)
 
 **Definition.** Chord-based Reynolds number echoed with the strip-forces response.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 

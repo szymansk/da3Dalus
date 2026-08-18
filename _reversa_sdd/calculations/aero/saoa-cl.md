@@ -6,11 +6,21 @@ unit: dimensionless
 cluster: aero-strips
 user_visible: true
 source_status: SOURCED
+node_class: derived
+tags:
+  - cluster/aero-strips
+  - class/derived
+  - source/sourced
+  - surface/user-visible
+  - flag/anomaly
+  - flag/divergence
 ---
 
 # Section lift coefficient (Kutta-Joukowski)
 
 **Definition.** Section cl from circulation via the 2D Kutta-Joukowski relation.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -18,13 +28,18 @@ source_status: SOURCED
 cl_arr = 2.0 * gamma_arr / (vmag * chord_arr)
 ```
 
-**Inputs.** [[saoa-gamma|Panel vortex strength]] · [[saoa-vmag|Local velocity magnitude]] · [[saoa-chord|Panel chord]]
+**Inputs.**
+
+- [[saoa-gamma|Panel vortex strength]]  — *⊣ limit*
+- [[saoa-vmag|Local velocity magnitude]]
+- [[saoa-chord|Panel chord]]
 
 **Produced by.** `app/services/section_aoa_service.py:279` — `compute_section_aoa`
 
 **Consumed by.**
 
-- in this graph: [[saoa-alpha-eff|Effective angle of attack]] · [[tos-cd-at-cl|Section cd at a target CL and trip position]] · [[tos-cl-avg|Area-weighted mean section CL]] · [[tos-cl-rep|Representative lift coefficient (whole scope)]]
+- in this graph: `Effective angle of attack` · `Section cd at a target CL and trip position` · `Area-weighted mean section CL` · `Representative lift coefficient (whole scope)`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `app/api/v2/endpoints/section_aoa.py:SectionAoaPoint.cl` · `app/services/turbulator_optimizer_service.py:build_wing_section_data` · `frontend/hooks/useSectionAoa.ts`
 
 **Source.** 🟢 SOURCED

@@ -5,11 +5,20 @@ unit: mm
 cluster: structure
 user_visible: true
 source_status: SOURCED
+node_class: derived
+tags:
+  - cluster/structure
+  - class/derived
+  - source/sourced
+  - surface/user-visible
+  - flag/divergence
 ---
 
 # Section thickness (analytic)
 
 **Definition.** Vertical (world-z) extent of the built section at the chord location — the depth available for a spar before clearance.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -17,13 +26,17 @@ source_status: SOURCED
 thickness=abs(top_z - bottom_z),
 ```
 
-**Inputs.** [[section-top-z-analytic|Section upper surface height (analytic)]] · [[section-bottom-z-analytic|Section lower surface height (analytic)]]
+**Inputs.**
+
+- [[section-top-z-analytic|Section upper surface height (analytic)]]
+- [[section-bottom-z-analytic|Section lower surface height (analytic)]]
 
 **Produced by.** `cad_designer/airplane/geometry/section_geometry.py:361` — `SectionGeometry._analytic_point`
 
 **Consumed by.**
 
-- in this graph: [[station-clearance|Station packing clearance]]
+- in this graph: `Station packing clearance`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `cad_designer/airplane/geometry/spar_solver.py:759` · `cad_designer/airplane/geometry/spar_solver.py:761` · `cad_designer/airplane/geometry/section_geometry.py:398` · `app/services/section_thickness.py:85` · `app/services/section_geometry_service.py:54`
 
 **Source.** 🟢 SOURCED

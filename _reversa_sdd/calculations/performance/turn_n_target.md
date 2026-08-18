@@ -6,11 +6,21 @@ unit: g
 cluster: perf-oppoints
 user_visible: true
 source_status: SOURCED
+node_class: derived
+tags:
+  - cluster/perf-oppoints
+  - class/derived
+  - source/sourced
+  - surface/user-visible
+  - flag/anomaly
+  - flag/divergence
 ---
 
 # Turn target load factor
 
 **Definition.** Target load factor of each default turn point.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -18,13 +28,16 @@ source_status: SOURCED
 "n_target": round(1.0 / math.cos(math.radians(bank)), 4)
 ```
 
-**Inputs.** [[turn_bank_angles|Default turn bank angles]]
+**Inputs.**
+
+- [[turn_bank_angles|Default turn bank angles]]  — *⤵ fallback*
 
 **Produced by.** `app/services/operating_point_generator_service.py:497` — `_build_target_definitions`
 
 **Consumed by.**
 
-- in this graph: [[cl_target|Target lift coefficient]] · [[op_description_string|Operating-point description]]
+- in this graph: `Target lift coefficient` · `Operating-point description`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `app/services/operating_point_generator_service.py:886 (n_target)` · `app/services/operating_point_generator_service.py:794-797 (cl_target)` · `app/services/operating_point_generator_service.py:984 (description)`
 
 **Source.** 🟢 SOURCED

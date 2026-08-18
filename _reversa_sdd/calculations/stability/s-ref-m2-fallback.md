@@ -6,11 +6,20 @@ unit: m²
 cluster: stability
 user_visible: false
 source_status: NO_SOURCE_FOUND
+node_class: unclassified-constant
+tags:
+  - cluster/stability
+  - class/unclassified-constant
+  - source/no-source-found
+  - flag/anomaly
+  - flag/divergence
 ---
 
 # Reference area fallback
 
 **Definition.** Wing reference area used when the context value is missing or non-positive.
+
+⚪ **Unclassified constant.** Not yet decided whether this is a rule of thumb, a calibration or a physical value. Classifying it is open work — it is deliberately not guessed.
 
 **Value.** `0.60`
 
@@ -26,7 +35,8 @@ s_ref_m2: float = float(s_ref_raw) if s_ref_raw and float(s_ref_raw) > 0 else 0.
 
 **Consumed by.**
 
-- in this graph: [[alpha-vh|Tail efficiency factor]] · [[dsm-dsh|SM sensitivity to horizontal tail area]]
+- in this graph: `Tail efficiency factor` · `SM sensitivity to horizontal tail area`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `app/services/sm_sizing_service.py:156,162`
 
 **Source.** 🔴 NO SOURCE FOUND

@@ -6,11 +6,20 @@ unit: -
 cluster: perf-envelope
 user_visible: true
 source_status: PARTIAL
+node_class: derived
+tags:
+  - cluster/perf-envelope
+  - class/derived
+  - source/partial
+  - surface/user-visible
+  - flag/scale
 ---
 
 # Total propulsion efficiency
 
 **Definition.** Product of propeller, motor and ESC efficiencies, constant over speed.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -18,13 +27,18 @@ source_status: PARTIAL
 eta_total: float = eta_prop * eta_motor * eta_esc
 ```
 
-**Inputs.** [[end_eta_prop|Default propeller efficiency]] · [[end_eta_motor|Default motor efficiency]] · [[end_eta_esc|Default ESC efficiency]]
+**Inputs.**
+
+- [[end_eta_prop|Default propeller efficiency]]  — *⤵ fallback*
+- [[end_eta_motor|Default motor efficiency]]  — *⤵ fallback*
+- [[end_eta_esc|Default ESC efficiency]]  — *⤵ fallback*
 
 **Produced by.** `app/services/endurance_service.py:276` — `compute_endurance`
 
 **Consumed by.**
 
-- in this graph: [[end_p_req|Battery power required]]
+- in this graph: `Battery power required`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 
 **Source.** 🟡 PARTIAL
 

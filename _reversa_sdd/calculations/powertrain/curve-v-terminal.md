@@ -6,11 +6,20 @@ unit: V
 cluster: powertrain
 user_visible: false
 source_status: SOURCED
+node_class: derived
+tags:
+  - cluster/powertrain
+  - class/derived
+  - source/sourced
+  - flag/anomaly
+  - flag/divergence
 ---
 
 # Motor terminal voltage
 
 **Definition.** Voltage presented at the motor terminals for the QPROP solve: pack voltage scaled linearly by throttle.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -18,13 +27,17 @@ source_status: SOURCED
 v_terminal = V_bat * request.throttle
 ```
 
-**Inputs.** [[curve-v-bat|Battery voltage used for the curve]] · [[request-throttle|Throttle fraction]]
+**Inputs.**
+
+- [[curve-v-bat|Battery voltage used for the curve]]  — *⊣ limit*
+- [[request-throttle|Throttle fraction]]
 
 **Produced by.** `app/services/powertrain_performance.py:702` — `compute_performance_curve`
 
 **Consumed by.**
 
-- in this graph: [[qprop-back-emf-floor|Back-EMF floor at the current ceiling]] · [[qprop-current-for-rpm|Terminal current at a candidate RPM]] · [[qprop-eta-motor|QPROP motor efficiency]] · [[qprop-rpm-free|Free-running RPM]]
+- in this graph: `Back-EMF floor at the current ceiling` · `Terminal current at a candidate RPM` · `QPROP motor efficiency` · `Free-running RPM`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `app/services/powertrain_performance.py:718`
 
 **Source.** 🟢 SOURCED

@@ -6,11 +6,19 @@ unit: N
 cluster: perf-matching
 user_visible: false
 source_status: NO_SOURCE_FOUND
+node_class: derived
+tags:
+  - cluster/perf-matching
+  - class/derived
+  - source/no-source-found
+  - flag/divergence
 ---
 
 # Effective mean thrust
 
 **Definition.** Static thrust after applying the (currently unity) de-rate factor.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -18,13 +26,16 @@ source_status: NO_SOURCE_FOUND
 t_mean = _T_STATIC_MEAN_FACTOR * t_static_N
 ```
 
-**Inputs.** [[t_static_mean_factor|Static-thrust de-rate factor]]
+**Inputs.**
+
+- [[t_static_mean_factor|Static-thrust de-rate factor]]
 
 **Produced by.** `app/services/field_length_service.py:201` — `_compute_s_to_ground`
 
 **Consumed by.**
 
-- in this graph: [[t_over_w_fl|Thrust-to-weight (field length)]]
+- in this graph: `Thrust-to-weight (field length)`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `t_over_w_fl:202`
 
 **Source.** 🔴 NO SOURCE FOUND

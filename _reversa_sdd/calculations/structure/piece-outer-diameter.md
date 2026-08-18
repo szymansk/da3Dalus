@@ -6,11 +6,21 @@ unit: mm
 cluster: structure
 user_visible: true
 source_status: PARTIAL
+node_class: derived
+tags:
+  - cluster/structure
+  - class/derived
+  - source/partial
+  - surface/user-visible
+  - flag/anomaly
+  - flag/divergence
 ---
 
 # Spar piece outer diameter
 
 **Definition.** Final outer diameter of a spar piece: its own governing strength-required OD, then possibly grown so its bore can admit the next outboard piece plus clearance (tube shapes only), then possibly replaced by a snapped real-stock OD.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -18,13 +28,17 @@ source_status: PARTIAL
 ods = [_governing_od(r.governing) for r in runs]
 ```
 
-**Inputs.** [[governing-od|Governing required OD of a piece]] · [[min-od-for-bore|Minimum OD to carry a bore]]
+**Inputs.**
+
+- [[governing-od|Governing required OD of a piece]]
+- [[min-od-for-bore|Minimum OD to carry a bore]]  — *⊣ limit*
 
 **Produced by.** `cad_designer/airplane/geometry/spar_solver.py:403` — `plan_spar`
 
 **Consumed by.**
 
-- in this graph: [[piece-feasible|Spar piece feasibility]] · [[piece-utilisation|Spar piece utilisation]] · [[piece-wall|Spar piece wall thickness]] · [[real-front-pieces|Buildable front pieces]] · [[telescope-bore|Telescoping bore demand]]
+- in this graph: `Spar piece feasibility` · `Spar piece utilisation` · `Spar piece wall thickness` · `Buildable front pieces` · `Telescoping bore demand`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `cad_designer/airplane/geometry/spar_solver.py:434` · `cad_designer/airplane/geometry/spar_solver.py:463` · `app/services/spar_plan_service.py:193` · `app/services/spar_plan_service.py:501` · `frontend/hooks/useSparPlan.ts:43` · `frontend/lib/sparPlanHelpers.ts:132`
 
 **Source.** 🟡 PARTIAL

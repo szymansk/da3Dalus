@@ -6,11 +6,19 @@ unit: V
 cluster: powertrain
 user_visible: true
 source_status: SOURCED
+node_class: derived
+tags:
+  - cluster/powertrain
+  - class/derived
+  - source/sourced
+  - surface/user-visible
 ---
 
 # Pack nominal voltage (solution space)
 
 **Definition.** Nominal pack voltage for a candidate cell count.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -18,13 +26,17 @@ source_status: SOURCED
 v_nom = s * CELL_V_NOM
 ```
 
-**Inputs.** [[cell-v-nom|Nominal cell voltage (solution space)]] · [[ss-cell-counts|Evaluated cell counts]]
+**Inputs.**
+
+- [[cell-v-nom|Nominal cell voltage (solution space)]]  — *× unit*
+- [[ss-cell-counts|Evaluated cell counts]]
 
 **Produced by.** `app/services/powertrain_solution_space_service.py:134` — `_per_cell`
 
 **Consumed by.**
 
-- in this graph: [[ss-cap-mah|Minimum battery capacity]] · [[ss-kv-approx|Approximate required motor KV]]
+- in this graph: `Minimum battery capacity` · `Approximate required motor KV`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `app/services/powertrain_solution_space_service.py:142` · `app/services/powertrain_solution_space_service.py:159` · `frontend/components/workbench/PowertrainTab.tsx:569`
 
 **Source.** 🟢 SOURCED

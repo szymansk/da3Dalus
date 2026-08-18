@@ -5,11 +5,19 @@ unit: -
 cluster: aero-spanwise
 user_visible: true
 source_status: NO_SOURCE_FOUND
+node_class: derived
+tags:
+  - cluster/aero-spanwise
+  - class/derived
+  - source/no-source-found
+  - surface/user-visible
 ---
 
 # Aerodynamic model label
 
 **Definition.** String identifying which solver produced the strip forces.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Value.** `"AVL" / "ASB"`
 

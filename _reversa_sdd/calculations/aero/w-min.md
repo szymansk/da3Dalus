@@ -6,11 +6,19 @@ unit: m/s
 cluster: aero-spanwise
 user_visible: true
 source_status: PARTIAL
+node_class: derived
+tags:
+  - cluster/aero-spanwise
+  - class/derived
+  - source/partial
+  - surface/user-visible
 ---
 
 # Minimum sink rate
 
 **Definition.** Lowest sink rate on the curve.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -18,7 +26,10 @@ source_status: PARTIAL
 w_min=float(w[i_min_sink])
 ```
 
-**Inputs.** [[speed-polar-w|Sink rate]] · [[i-min-sink|Minimum-sink index]]
+**Inputs.**
+
+- [[speed-polar-w|Sink rate]]
+- [[i-min-sink|Minimum-sink index]]
 
 **Produced by.** `app/services/analysis_service.py:544` — `_compute_speed_polar`
 

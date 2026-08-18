@@ -5,11 +5,19 @@ unit: processes
 cluster: perf-oppoints
 user_visible: false
 source_status: NO_SOURCE_FOUND
+node_class: unclassified-parameter
+tags:
+  - cluster/perf-oppoints
+  - class/unclassified-parameter
+  - source/no-source-found
+  - flag/divergence
 ---
 
 # OP-generation worker cap
 
 **Definition.** Bounded process-pool size for parallel trim solves.
+
+⚪ **Unclassified parameter.** Not yet decided whether this is a user input or an internal tuning value.
 
 **Value.** `4`
 

@@ -6,11 +6,21 @@ unit: dimensionless
 cluster: perf-matching
 user_visible: true
 source_status: PARTIAL
+node_class: unclassified-parameter
+tags:
+  - cluster/perf-matching
+  - class/unclassified-parameter
+  - source/partial
+  - surface/user-visible
+  - flag/divergence
+  - flag/scale
 ---
 
 # Clean CL_max (matching chart)
 
 **Definition.** Clean-configuration CL_max driving the stall constraint.
+
+⚪ **Unclassified parameter.** Not yet decided whether this is a user input or an internal tuning value.
 
 **Value.** `1.4 (fallback)`
 
@@ -26,7 +36,8 @@ cl_max_clean: float = float(aircraft.get("cl_max_clean", aircraft.get("cl_max", 
 
 **Consumed by.**
 
-- in this graph: [[cl_max_l_mc|Landing CL_max (matching chart)]] · [[cl_max_to_mc|Takeoff CL_max (matching chart)]] · [[ws_stall_constraint|Stall constraint W/S_max]]
+- in this graph: `Landing CL_max (matching chart)` · `Takeoff CL_max (matching chart)` · `Stall constraint W/S_max`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `_stall_constraint:868` · `cl_max_to_mc:808` · `cl_max_l_mc:809` · `hover_text:954`
 
 **Source.** 🟡 PARTIAL

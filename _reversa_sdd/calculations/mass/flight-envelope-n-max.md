@@ -6,11 +6,21 @@ unit: g (dimensionless load factor)
 cluster: mass
 user_visible: true
 source_status: SOURCED
+node_class: derived
+tags:
+  - cluster/mass
+  - class/derived
+  - source/sourced
+  - surface/user-visible
+  - flag/anomaly
+  - flag/divergence
 ---
 
 # Design limit load factor (published)
 
 **Definition.** Peak design load factor published to the computation context; currently just the effective g_limit design assumption, guarded to be positive.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -18,7 +28,9 @@ source_status: SOURCED
 "flight_envelope_n_max": (g_limit_effective if g_limit_effective is not None and g_limit_effective > 0 else None)
 ```
 
-**Inputs.** [[mass--g-limit|Design load factor limit]]
+**Inputs.**
+
+- [[mass--g-limit|Design load factor limit]]  — *⊣ limit*
 
 **Produced by.** `app/services/assumption_compute_service.py:719` — `recompute_assumptions`
 

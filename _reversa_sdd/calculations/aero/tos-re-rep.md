@@ -6,11 +6,20 @@ unit: dimensionless
 cluster: aero-strips
 user_visible: false
 source_status: PARTIAL
+node_class: derived
+tags:
+  - cluster/aero-strips
+  - class/derived
+  - source/partial
+  - flag/anomaly
+  - flag/divergence
 ---
 
 # Representative Reynolds number (whole scope)
 
 **Definition.** Area-weighted mean Reynolds number used for the single whole-wing trip optimisation.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -18,13 +27,17 @@ source_status: PARTIAL
 re_rep = sum(s.re_local * s.section_area_m2 for s in sections) / total_area if total_area > 0 else sections[len(sections) // 2].re_local
 ```
 
-**Inputs.** [[bwsd-re-local|Local section Reynolds number]] · [[bwsd-section-area-normalised|Normalised section area]]
+**Inputs.**
+
+- [[bwsd-re-local|Local section Reynolds number]]  — *⊣ limit*
+- [[bwsd-section-area-normalised|Normalised section area]]
 
 **Produced by.** `app/services/turbulator_optimizer_service.py:541` — `run_turbulator_optimizer`
 
 **Consumed by.**
 
-- in this graph: [[tos-global-xtr-opt|Whole-wing optimal trip position]]
+- in this graph: `Whole-wing optimal trip position`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 
 **Source.** 🟡 PARTIAL
 

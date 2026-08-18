@@ -6,11 +6,19 @@ unit: N·m
 cluster: structure
 user_visible: false
 source_status: NO_SOURCE_FOUND
+node_class: derived
+tags:
+  - cluster/structure
+  - class/derived
+  - source/no-source-found
+  - flag/anomaly
 ---
 
 # Torsion proxy from bending moment
 
 **Definition.** Estimated section torsion about the front spar when no explicit torsion distribution is supplied: a fixed fraction of the local bending moment.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -19,13 +27,17 @@ def torsion_fn(y_span: float) -> float:
     return proxy_ratio * bending_fn(y_span)
 ```
 
-**Inputs.** [[pitching-moment-proxy-ratio|Pitching-moment proxy ratio]] · [[front-moment-fn|Front-spar bending moment interpolator]]
+**Inputs.**
+
+- [[pitching-moment-proxy-ratio|Pitching-moment proxy ratio]]
+- [[front-moment-fn|Front-spar bending moment interpolator]]  — *⊣ limit*
 
 **Produced by.** `app/services/spar_plan_service.py:450` — `_make_rear_moment_fn`
 
 **Consumed by.**
 
-- in this graph: [[rear-torsion-reaction|Rear-spar torsion reaction]]
+- in this graph: `Rear-spar torsion reaction`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `app/services/spar_plan_service.py:453`
 
 **Source.** 🔴 NO SOURCE FOUND

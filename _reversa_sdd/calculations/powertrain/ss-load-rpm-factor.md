@@ -6,11 +6,21 @@ unit: dimensionless
 cluster: powertrain
 user_visible: true
 source_status: NO_SOURCE_FOUND
+node_class: unclassified-parameter
+tags:
+  - cluster/powertrain
+  - class/unclassified-parameter
+  - source/no-source-found
+  - surface/user-visible
+  - flag/anomaly
+  - flag/divergence
 ---
 
 # Under-load RPM factor
 
 **Definition.** Ratio of loaded to no-load shaft RPM, used to size KV upward for the sag/load penalty.
+
+⚪ **Unclassified parameter.** Not yet decided whether this is a user input or an internal tuning value.
 
 **Value.** `0.85`
 
@@ -26,7 +36,8 @@ kv_approx = rpm_target / (v_nom * load_rpm_factor)
 
 **Consumed by.**
 
-- in this graph: [[ss-kv-approx|Approximate required motor KV]]
+- in this graph: `Approximate required motor KV`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `app/services/powertrain_solution_space_service.py:159` · `app/services/powertrain_solution_space_service.py:391`
 
 **Source.** 🔴 NO SOURCE FOUND

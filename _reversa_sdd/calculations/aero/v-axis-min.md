@@ -5,11 +5,20 @@ unit: m/s
 cluster: aero-spanwise
 user_visible: true
 source_status: PARTIAL
+node_class: derived
+tags:
+  - cluster/aero-spanwise
+  - class/derived
+  - source/partial
+  - surface/user-visible
+  - flag/divergence
 ---
 
 # Speed-polar X-axis lower bound
 
 **Definition.** Recommended chart lower speed bound.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -17,13 +26,17 @@ source_status: PARTIAL
 v_axis_min: float | None = 0.7 * min(v_stall_values)
 ```
 
-**Inputs.** [[v-stall|Stall speed]] · [[v-axis-min-factor|Lower axis-bound factor]]
+**Inputs.**
+
+- [[v-stall|Stall speed]]  — *⊣ limit*
+- [[v-axis-min-factor|Lower axis-bound factor]]  — *⊣ limit*
 
 **Produced by.** `app/services/analysis_service.py:556` — `_compute_speed_polar`
 
 **Consumed by.**
 
-- in this graph: [[axis-autorange-guard|Axis-bound sanity guard]]
+- in this graph: `Axis-bound sanity guard`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `SpeedPolar.v_axis_min` · `frontend/lib/speedPolarLayout.ts`
 
 **Source.** 🟡 PARTIAL

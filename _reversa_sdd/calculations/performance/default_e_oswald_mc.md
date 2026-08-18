@@ -6,11 +6,22 @@ unit: dimensionless
 cluster: perf-matching
 user_visible: true
 source_status: PARTIAL
+node_class: unclassified-constant
+tags:
+  - cluster/perf-matching
+  - class/unclassified-constant
+  - source/partial
+  - surface/user-visible
+  - flag/anomaly
+  - flag/divergence
+  - flag/scale
 ---
 
 # Default Oswald factor (matching chart)
 
 **Definition.** Oswald efficiency used when no computed value is available.
+
+⚪ **Unclassified constant.** Not yet decided whether this is a rule of thumb, a calibration or a physical value. Classifying it is open work — it is deliberately not guessed.
 
 **Value.** `0.8`
 
@@ -26,7 +37,8 @@ DEFAULT_E_OSWALD: float = 0.8
 
 **Consumed by.**
 
-- in this graph: [[e_resolved|Resolved Oswald factor]]
+- in this graph: `Resolved Oswald factor`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `compute_chart:771` · `warnings list:772`
 
 **Source.** 🟡 PARTIAL

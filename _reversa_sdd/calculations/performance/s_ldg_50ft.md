@@ -6,11 +6,22 @@ unit: m
 cluster: perf-matching
 user_visible: true
 source_status: PARTIAL
+node_class: derived
+tags:
+  - cluster/perf-matching
+  - class/derived
+  - source/partial
+  - surface/user-visible
+  - flag/anomaly
+  - flag/divergence
+  - flag/scale
 ---
 
 # Landing distance from 50 ft
 
 **Definition.** Total landing distance from a 50-ft obstacle to full stop.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -18,13 +29,17 @@ source_status: PARTIAL
 s_ldg_50ft = _apply_obstacle_factor(s_ldg_ground, _K_LDG_50FT)
 ```
 
-**Inputs.** [[s_ldg_ground|Landing ground roll]] · [[k_ldg_50ft|Landing 50-ft obstacle factor]]
+**Inputs.**
+
+- [[s_ldg_ground|Landing ground roll]]
+- [[k_ldg_50ft|Landing 50-ft obstacle factor]]
 
 **Produced by.** `app/services/field_length_service.py:436` — `compute_field_lengths`
 
 **Consumed by.**
 
-- in this graph: [[effective_field_length|Effective field length]]
+- in this graph: `Effective field length`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `FieldLengthRead.s_ldg_50ft_m:442` · `mission_kpi_service.py:324 (field_friendliness)`
 
 **Source.** 🟡 PARTIAL

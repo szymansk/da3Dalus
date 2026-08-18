@@ -6,11 +6,19 @@ unit: dimensionless
 cluster: aero-strips
 user_visible: true
 source_status: SOURCED
+node_class: derived
+tags:
+  - cluster/aero-strips
+  - class/derived
+  - source/sourced
+  - surface/user-visible
 ---
 
 # Tripped section drag
 
 **Definition.** Section cd at the optimal trip position.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -18,13 +26,17 @@ source_status: SOURCED
 cd_tripped = float(cd_values[i_opt])
 ```
 
-**Inputs.** [[tos-cd-values|cd sweep over the trip grid]] · [[tos-xtr-opt|Optimal trip position]]
+**Inputs.**
+
+- [[tos-cd-values|cd sweep over the trip grid]]
+- [[tos-xtr-opt|Optimal trip position]]
 
 **Produced by.** `app/services/turbulator_optimizer_service.py:258` — `optimize_section_xtr`
 
 **Consumed by.**
 
-- in this graph: [[tos-cd-clean-nan-fallback|cd_clean → cd_tripped fallback]] · [[tos-delta-cd|Section drag delta]]
+- in this graph: `cd_clean → cd_tripped fallback` · `Section drag delta`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `app/schemas/turbulator_optimizer.py:TurbulatorSectionResult.cd_tripped`
 
 **Source.** 🟢 SOURCED

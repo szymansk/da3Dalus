@@ -6,11 +6,19 @@ unit: – (coefficient units)
 cluster: stability
 user_visible: false
 source_status: SOURCED
+node_class: derived
+tags:
+  - cluster/stability
+  - class/derived
+  - source/sourced
+  - flag/divergence
 ---
 
 # AeroBuildup trim residual
 
 **Definition.** Difference between the achieved and target aerodynamic coefficient at a given control deflection; the function driven to zero.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -24,7 +32,8 @@ return _to_scalar(coeff_val) - target_val
 
 **Consumed by.**
 
-- in this graph: [[trim-bracket-test|Root bracketing test]] · [[trimmed-deflection|Trimmed control deflection]]
+- in this graph: `Root bracketing test` · `Trimmed control deflection`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `app/services/aerobuildup_trim_service.py:169,170,214 (brentq)`
 
 **Source.** 🟢 SOURCED

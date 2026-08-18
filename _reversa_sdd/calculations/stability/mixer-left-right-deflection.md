@@ -6,11 +6,21 @@ unit: deg
 cluster: stability
 user_visible: true
 source_status: SOURCED
+node_class: derived
+tags:
+  - cluster/stability
+  - class/derived
+  - source/sourced
+  - surface/user-visible
+  - flag/anomaly
+  - flag/divergence
 ---
 
 # Mixer left/right physical deflections
 
 **Definition.** Physical left and right surface angles obtained by superposing the symmetric offset onto the differentially scaled antisymmetric component.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -26,7 +36,11 @@ deflection_left=round(d_sym + left, 3),
 deflection_right=round(d_sym + right, 3),
 ```
 
-**Inputs.** [[mixer-symmetric-offset|Mixer symmetric offset]] · [[mixer-antisymmetric|Mixer antisymmetric component]] · [[differential-ratio|Aileron differential ratio]]
+**Inputs.**
+
+- [[mixer-symmetric-offset|Mixer symmetric offset]]
+- [[mixer-antisymmetric|Mixer antisymmetric component]]
+- [[differential-ratio|Aileron differential ratio]]
 
 **Produced by.** `app/services/trim_enrichment_service.py:313` — `decompose_dual_role`
 

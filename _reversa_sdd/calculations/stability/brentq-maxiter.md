@@ -6,11 +6,20 @@ unit: – (count)
 cluster: stability
 user_visible: false
 source_status: PARTIAL
+node_class: unclassified-constant
+tags:
+  - cluster/stability
+  - class/unclassified-constant
+  - source/partial
+  - flag/anomaly
+  - flag/divergence
 ---
 
 # Brent root-finder iteration cap
 
 **Definition.** Maximum Brent iterations before the solve is abandoned.
+
+⚪ **Unclassified constant.** Not yet decided whether this is a rule of thumb, a calibration or a physical value. Classifying it is open work — it is deliberately not guessed.
 
 **Value.** `50`
 
@@ -26,7 +35,8 @@ trimmed_deflection = brentq(residual, lower, upper, xtol=1e-6, maxiter=50)
 
 **Consumed by.**
 
-- in this graph: [[trimmed-deflection|Trimmed control deflection]]
+- in this graph: `Trimmed control deflection`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `app/services/aerobuildup_trim_service.py:214`
 
 **Source.** 🟡 PARTIAL

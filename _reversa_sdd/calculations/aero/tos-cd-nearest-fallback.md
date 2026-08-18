@@ -6,11 +6,20 @@ unit: dimensionless
 cluster: aero-strips
 user_visible: false
 source_status: NO_SOURCE_FOUND
+node_class: derived
+tags:
+  - cluster/aero-strips
+  - class/derived
+  - source/no-source-found
+  - flag/anomaly
+  - flag/divergence
 ---
 
 # Nearest-neighbour cd fallback
 
 **Definition.** When the target CL lies outside the finite polar band, the nearest polar cd is returned.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -18,7 +27,9 @@ source_status: NO_SOURCE_FOUND
 nearest = int(np.argmin(np.abs(cl_sorted - cl_target))); return float(cd_sorted[nearest])
 ```
 
-**Inputs.** [[tos-cd-at-cl|Section cd at a target CL and trip position]]
+**Inputs.**
+
+- [[tos-cd-at-cl|Section cd at a target CL and trip position]]
 
 **Produced by.** `app/services/turbulator_optimizer_service.py:173` — `_cd_at_cl_xtr`
 

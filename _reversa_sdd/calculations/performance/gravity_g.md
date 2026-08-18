@@ -6,11 +6,22 @@ unit: m/s²
 cluster: perf-oppoints
 user_visible: false
 source_status: SOURCED
+node_class: physical-constant
+tags:
+  - cluster/perf-oppoints
+  - class/physical-constant
+  - source/sourced
+  - flag/anomaly
+  - flag/divergence
+  - flag/physical
 ---
 
 # Gravitational acceleration
 
 **Definition.** Standard gravity used to convert mass into required lift.
+
+**Physical constant.** A value of nature. It must be identical everywhere it appears — a second definition is a defect by construction, not a judgement call.
+*Identified as: gravity.*
 
 **Value.** `9.81`
 
@@ -26,7 +37,8 @@ source_status: SOURCED
 
 **Consumed by.**
 
-- in this graph: [[cl_target|Target lift coefficient]]
+- in this graph: `Target lift coefficient`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `app/services/operating_point_generator_service.py:797`
 
 **Source.** 🟢 SOURCED

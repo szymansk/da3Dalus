@@ -6,11 +6,20 @@ unit: N
 cluster: aero-strips
 user_visible: false
 source_status: NO_SOURCE_FOUND
+node_class: derived
+tags:
+  - cluster/aero-strips
+  - class/derived
+  - source/no-source-found
+  - flag/anomaly
+  - flag/divergence
 ---
 
 # Accumulated total lift
 
 **Definition.** Running sum of all strip lifts over the whole airplane.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -18,7 +27,9 @@ source_status: NO_SOURCE_FOUND
 total_lift += lift
 ```
 
-**Inputs.** [[vlm-strip-lift|Strip lift force]]
+**Inputs.**
+
+- [[vlm-strip-lift|Strip lift force]]
 
 **Produced by.** `app/services/vlm_strip_forces.py:266` — `compute_vlm_strip_forces`
 

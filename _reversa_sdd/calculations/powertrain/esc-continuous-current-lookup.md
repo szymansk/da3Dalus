@@ -6,11 +6,21 @@ unit: A
 cluster: powertrain
 user_visible: true
 source_status: SOURCED
+node_class: derived
+tags:
+  - cluster/powertrain
+  - class/derived
+  - source/sourced
+  - surface/user-visible
+  - flag/anomaly
+  - flag/divergence
 ---
 
 # ESC continuous current rating
 
 **Definition.** Continuous current rating read from an ESC catalog entry, with a legacy key fallback and a zero default.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 

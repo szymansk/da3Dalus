@@ -6,11 +6,21 @@ unit: -
 cluster: perf-envelope
 user_visible: true
 source_status: PARTIAL
+node_class: unclassified-constant
+tags:
+  - cluster/perf-envelope
+  - class/unclassified-constant
+  - source/partial
+  - surface/user-visible
+  - flag/anomaly
+  - flag/scale
 ---
 
 # Oswald fallback
 
 **Definition.** Oswald efficiency substituted when the polar fit produced none.
+
+⚪ **Unclassified constant.** Not yet decided whether this is a rule of thumb, a calibration or a physical value. Classifying it is open work — it is deliberately not guessed.
 
 **Value.** `0.8`
 
@@ -26,7 +36,8 @@ FALLBACK_E_OSWALD = 0.8
 
 **Consumed by.**
 
-- in this graph: [[end_e_oswald|Resolved Oswald efficiency]]
+- in this graph: `Resolved Oswald efficiency`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 
 **Source.** 🟡 PARTIAL
 

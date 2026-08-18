@@ -6,11 +6,21 @@ unit: – (dimensionless)
 cluster: stability
 user_visible: true
 source_status: PARTIAL
+node_class: unclassified-parameter
+tags:
+  - cluster/stability
+  - class/unclassified-parameter
+  - source/partial
+  - surface/user-visible
+  - flag/anomaly
+  - flag/divergence
 ---
 
 # Secondary mix gain
 
 **Definition.** Gain applied to the antisymmetric (roll/yaw) control component of a mixed surface.
+
+⚪ **Unclassified parameter.** Not yet decided whether this is a user input or an internal tuning value.
 
 **Value.** `1.0`
 
@@ -26,7 +36,8 @@ gs = float(getattr(ted, "mix_gain_secondary", 1.0) or 1.0)
 
 **Consumed by.**
 
-- in this graph: [[mixer-antisymmetric|Mixer antisymmetric component]]
+- in this graph: `Mixer antisymmetric component`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `app/services/trim_enrichment_service.py:255,303,305`
 
 **Source.** 🟡 PARTIAL

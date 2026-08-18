@@ -6,11 +6,20 @@ unit: m/s
 cluster: aero-spanwise
 user_visible: true
 source_status: SOURCED
+node_class: derived
+tags:
+  - cluster/aero-spanwise
+  - class/derived
+  - source/sourced
+  - surface/user-visible
+  - flag/divergence
 ---
 
 # Glide forward speed
 
 **Definition.** Speed required to fly each positive-CL point in steady glide.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -18,13 +27,19 @@ source_status: SOURCED
 v = np.sqrt(2.0 * weight_n / (rho * s_ref_m2 * cl_pos))
 ```
 
-**Inputs.** [[weight-n|Weight]] · [[rho-speed-polar|Air density (speed polar)]] · [[s-ref-speed-polar|Reference wing area]] · [[cl-values|Lift coefficient array]]
+**Inputs.**
+
+- [[weight-n|Weight]]
+- [[rho-speed-polar|Air density (speed polar)]]
+- [[s-ref-speed-polar|Reference wing area]]
+- [[cl-values|Lift coefficient array]]
 
 **Produced by.** `app/services/analysis_service.py:514` — `_compute_speed_polar`
 
 **Consumed by.**
 
-- in this graph: [[speed-polar-w|Sink rate]] · [[v-axis-max|Speed-polar X-axis upper bound]] · [[v-best-glide|Best-glide speed]] · [[v-min-sink|Minimum-sink speed]]
+- in this graph: `Sink rate` · `Speed-polar X-axis upper bound` · `Best-glide speed` · `Minimum-sink speed`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `SpeedPolarCurve.V` · `frontend AnalysisViewerPanel speed-polar chart`
 
 **Source.** 🟢 SOURCED

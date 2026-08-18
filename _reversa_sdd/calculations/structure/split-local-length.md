@@ -5,11 +5,20 @@ unit: mm
 cluster: structure
 user_visible: true
 source_status: PARTIAL
+node_class: derived
+tags:
+  - cluster/structure
+  - class/derived
+  - source/partial
+  - surface/user-visible
+  - flag/divergence
 ---
 
 # Segment-local split position
 
 **Definition.** A telescoping joint position expressed as a length from the host segment's root, used to split the host segment so each spar diameter gets its own sub-segment.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -20,13 +29,18 @@ if _FRACTION_TOL * host_len < local < host_len - _FRACTION_TOL * host_len:
     split_lengths.append(local)
 ```
 
-**Inputs.** [[host-root-y|Host segment root spanwise position]] · [[fraction-tol|Split-position boundary tolerance]] · [[piece-y-start|Spar piece root spanwise position]]
+**Inputs.**
+
+- [[host-root-y|Host segment root spanwise position]]
+- [[fraction-tol|Split-position boundary tolerance]]  — *ε tolerance*
+- [[piece-y-start|Spar piece root spanwise position]]
 
 **Produced by.** `app/services/spar_insert_service.py:308` — `_front_split_plan`
 
 **Consumed by.**
 
-- in this graph: [[subsegment-lengths-m|Post-split sub-segment lengths]]
+- in this graph: `Post-split sub-segment lengths`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `app/services/spar_insert_service.py:399` · `app/services/spar_insert_service.py:481`
 
 **Source.** 🟡 PARTIAL

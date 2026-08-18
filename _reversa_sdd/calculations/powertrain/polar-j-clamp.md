@@ -6,11 +6,20 @@ unit: dimensionless
 cluster: powertrain
 user_visible: false
 source_status: PARTIAL
+node_class: derived
+tags:
+  - cluster/powertrain
+  - class/derived
+  - source/partial
+  - flag/anomaly
+  - flag/divergence
 ---
 
 # Clamped advance ratio for interpolation
 
 **Definition.** Requested advance ratio clipped into the polar dataset's [J_min, J_max] range so np.interp never extrapolates.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -18,13 +27,16 @@ source_status: PARTIAL
 J_clamp = float(np.clip(J, J_min, J_max))
 ```
 
-**Inputs.** [[curve-advance-ratio|Advance ratio per velocity sample]]
+**Inputs.**
+
+- [[curve-advance-ratio|Advance ratio per velocity sample]]
 
 **Produced by.** `app/services/powertrain_performance.py:326` — `interpolate_ct_cp_pe`
 
 **Consumed by.**
 
-- in this graph: [[polar-cp|Propeller power coefficient]] · [[polar-ct|Propeller thrust coefficient]] · [[polar-pe|Propeller efficiency from polar]]
+- in this graph: `Propeller power coefficient` · `Propeller thrust coefficient` · `Propeller efficiency from polar`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `app/services/powertrain_performance.py:328` · `app/services/powertrain_performance.py:329` · `app/services/powertrain_performance.py:335` · `app/services/powertrain_performance.py:336`
 
 **Source.** 🟡 PARTIAL

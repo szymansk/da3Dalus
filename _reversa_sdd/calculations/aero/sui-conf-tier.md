@@ -6,11 +6,20 @@ unit: ordinal
 cluster: aero-polars
 user_visible: true
 source_status: NO_SOURCE_FOUND
+node_class: derived
+tags:
+  - cluster/aero-polars
+  - class/derived
+  - source/no-source-found
+  - surface/user-visible
+  - flag/divergence
 ---
 
 # Confidence sort tier
 
 **Definition.** 0 for confident items, 1 for low-confidence; primary key of the ranking sort.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -18,7 +27,10 @@ source_status: NO_SOURCE_FOUND
 return 0 if item.min_analysis_confidence >= low_conf_flag else 1
 ```
 
-**Inputs.** [[alr-min-analysis-confidence|Windowed min analysis confidence]] · [[low-re-low-confidence-flag|Low-confidence flag threshold]]
+**Inputs.**
+
+- [[alr-min-analysis-confidence|Windowed min analysis confidence]]  — *⤵ fallback*
+- [[low-re-low-confidence-flag|Low-confidence flag threshold]]  — *⊣ limit*
 
 **Produced by.** `app/services/suitability_service.py:625` — `_conf_tier`
 

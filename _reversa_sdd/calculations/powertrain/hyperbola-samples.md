@@ -6,11 +6,20 @@ unit: count
 cluster: powertrain
 user_visible: true
 source_status: NO_SOURCE_FOUND
+node_class: unclassified-constant
+tags:
+  - cluster/powertrain
+  - class/unclassified-constant
+  - source/no-source-found
+  - surface/user-visible
+  - flag/divergence
 ---
 
 # C-rate hyperbola sample count
 
 **Definition.** Number of points sampled along the C-rate hyperbola for the feasible-region plot.
+
+⚪ **Unclassified constant.** Not yet decided whether this is a rule of thumb, a calibration or a physical value. Classifying it is open work — it is deliberately not guessed.
 
 **Value.** `40`
 
@@ -20,7 +29,8 @@ source_status: NO_SOURCE_FOUND
 
 **Consumed by.**
 
-- in this graph: [[hyperbola-capacity-samples|Hyperbola capacity samples]]
+- in this graph: `Hyperbola capacity samples`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `app/services/powertrain_solution_space_service.py:173`
 
 **Source.** 🔴 NO SOURCE FOUND

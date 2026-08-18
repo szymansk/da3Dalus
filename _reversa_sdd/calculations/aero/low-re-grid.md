@@ -6,11 +6,21 @@ unit: dimensionless
 cluster: aero-polars
 user_visible: true
 source_status: PARTIAL
+node_class: unclassified-parameter
+tags:
+  - cluster/aero-polars
+  - class/unclassified-parameter
+  - source/partial
+  - surface/user-visible
+  - flag/anomaly
+  - flag/divergence
 ---
 
 # Absolute low-Re grid
 
 **Definition.** 13 log-spaced Reynolds numbers at which every airfoil's polar is precomputed.
+
+⚪ **Unclassified parameter.** Not yet decided whether this is a user input or an internal tuning value.
 
 **Value.** `[40000, 50000, 60000, 75000, 90000, 110000, 130000, 160000, 200000, 250000, 350000, 500000, 750000]`
 
@@ -26,7 +36,8 @@ _DEFAULT_LOW_RE_GRID: list[int] = [40_000, ... 750_000]
 
 **Consumed by.**
 
-- in this graph: [[alr-re-interp-fraction|ln(Re) interpolation fraction]] · [[sui-per-lens-re|Per-lens Reynolds number]] · [[sui-re-clamped|Grid-clamped Reynolds + clamp flag]]
+- in this graph: `ln(Re) interpolation fraction` · `Per-lens Reynolds number` · `Grid-clamped Reynolds + clamp flag`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `compute_airfoil_low_re:468` · `interpolate_polar_at_re (arg, unused)` · `suitability_service:254` · `_clamp_re_to_grid:124` · `compute_re_cd0_reference:808`
 
 **Source.** 🟡 PARTIAL

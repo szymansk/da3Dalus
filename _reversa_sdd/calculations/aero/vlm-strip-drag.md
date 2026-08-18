@@ -6,11 +6,19 @@ unit: N
 cluster: aero-strips
 user_visible: false
 source_status: SOURCED
+node_class: derived
+tags:
+  - cluster/aero-strips
+  - class/derived
+  - source/sourced
+  - flag/divergence
 ---
 
 # Strip drag force
 
 **Definition.** Component of the strip force along the freestream direction (induced drag only, VLM is inviscid).
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -18,13 +26,17 @@ source_status: SOURCED
 drag = float(np.dot(f_strip, d_hat))
 ```
 
-**Inputs.** [[vlm-strip-force-vector|Per-strip force vector]] · [[vlm-drag-direction|Unit freestream (drag) direction]]
+**Inputs.**
+
+- [[vlm-strip-force-vector|Per-strip force vector]]
+- [[vlm-drag-direction|Unit freestream (drag) direction]]
 
 **Produced by.** `app/services/vlm_strip_forces.py:265` — `compute_vlm_strip_forces`
 
 **Consumed by.**
 
-- in this graph: [[vlm-strip-ai|Strip induced angle]] · [[vlm-strip-cd|Local strip drag coefficient]] · [[vlm-total-drag|Accumulated total drag]]
+- in this graph: `Strip induced angle` · `Local strip drag coefficient` · `Accumulated total drag`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 
 **Source.** 🟢 SOURCED
 

@@ -5,11 +5,20 @@ unit: mixed
 cluster: aero-spanwise
 user_visible: true
 source_status: PARTIAL
+node_class: derived
+tags:
+  - cluster/aero-spanwise
+  - class/derived
+  - source/partial
+  - surface/user-visible
+  - flag/divergence
 ---
 
 # Per-surface spar sizing block
 
 **Definition.** Optional list of SparSizingResult appended to the spanwise-loads response when spar_params are supplied.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -17,7 +26,12 @@ source_status: PARTIAL
 spar_sizing: Optional[list[SparSizingResult]] = Field(None, ...)
 ```
 
-**Inputs.** [[g-limit-effective|Effective manoeuvre load factor]] · [[sigma-allow|Allowable bending stress]] · [[tc-by-y|Local thickness-to-chord ratio]] · [[sizing-half-span-selection|Design half-span selection]]
+**Inputs.**
+
+- [[g-limit-effective|Effective manoeuvre load factor]]  — *⤵ fallback*
+- [[sigma-allow|Allowable bending stress]]
+- [[tc-by-y|Local thickness-to-chord ratio]]
+- [[sizing-half-span-selection|Design half-span selection]]
 
 **Produced by.** `app/schemas/spanwise_loads.py:100` — `SpanwiseLoadsWithSizingResponse.spar_sizing`
 

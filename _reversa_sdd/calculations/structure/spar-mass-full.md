@@ -6,11 +6,20 @@ unit: kg
 cluster: structure
 user_visible: true
 source_status: NO_SOURCE_FOUND
+node_class: derived
+tags:
+  - cluster/structure
+  - class/derived
+  - source/no-source-found
+  - surface/user-visible
+  - flag/anomaly
 ---
 
 # Full-span spar mass
 
 **Definition.** Total spar mass for both halves, taken as exactly twice the half-span mass.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -18,7 +27,9 @@ source_status: NO_SOURCE_FOUND
 spar_mass_full_kg=half_mass * 2.0
 ```
 
-**Inputs.** [[spar-mass-half|Half-span spar mass]]
+**Inputs.**
+
+- [[spar-mass-half|Half-span spar mass]]
 
 **Produced by.** `app/services/spar_sizing.py:383` — `compute_spar_sizing`
 

@@ -6,11 +6,21 @@ unit: m/s
 cluster: perf-envelope
 user_visible: true
 source_status: NO_SOURCE_FOUND
+node_class: derived
+tags:
+  - cluster/perf-envelope
+  - class/derived
+  - source/no-source-found
+  - surface/user-visible
+  - flag/anomaly
+  - flag/divergence
 ---
 
 # Dive speed
 
 **Definition.** Design dive speed bounding the right edge of the V-n envelope.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -18,13 +28,17 @@ source_status: NO_SOURCE_FOUND
 v_dive = 1.4 * v_max_mps
 ```
 
-**Inputs.** [[fe_v_max|Maximum level speed]] · [[fe_dive_factor|Dive-speed factor]]
+**Inputs.**
+
+- [[fe_v_max|Maximum level speed]]  — *⤵ fallback*
+- [[fe_dive_factor|Dive-speed factor]]
 
 **Produced by.** `app/services/flight_envelope_service.py:315` — `compute_vn_curve`
 
 **Consumed by.**
 
-- in this graph: [[fe_u_gust_at_v|Gust velocity schedule]] · [[fe_v_c|Cruise speed (back-derived)]] · [[fe_v_sweep|Velocity sweep points]]
+- in this graph: `Gust velocity schedule` · `Cruise speed (back-derived)` · `Velocity sweep points`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `VnDiagram.tsx`
 
 **Source.** 🔴 NO SOURCE FOUND

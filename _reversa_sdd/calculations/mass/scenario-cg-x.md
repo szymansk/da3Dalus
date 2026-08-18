@@ -6,11 +6,21 @@ unit: m
 cluster: mass
 user_visible: true
 source_status: SOURCED
+node_class: derived
+tags:
+  - cluster/mass
+  - class/derived
+  - source/sourced
+  - surface/user-visible
+  - flag/anomaly
+  - flag/divergence
 ---
 
 # Loading-scenario CG_x
 
 **Definition.** Longitudinal CG of one user-defined loading scenario: mass-weighted moment sum over the component tree with toggles, mass overrides and position overrides applied, plus ad-hoc items.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -18,13 +28,17 @@ source_status: SOURCED
 m = mass_ovr_map.get(cid, float(comp.get("mass_kg", 0.0) or 0.0)); x = pos_ovr_map.get(cid, float(comp.get("x_m", 0.0) or 0.0)); total_mass += m; moment_x += m * x  ...  if total_mass <= 0: return base_cg_x; return moment_x / total_mass
 ```
 
-**Inputs.** [[base-mass-default|Fallback base mass for scenario CG]] · [[base-cg-x-default|Fallback base CG_x for scenario CG]]
+**Inputs.**
+
+- [[base-mass-default|Fallback base mass for scenario CG]]  — *⤵ fallback*
+- [[base-cg-x-default|Fallback base CG_x for scenario CG]]  — *ε tolerance*
 
 **Produced by.** `app/services/loading_scenario_service.py:123` — `compute_scenario_cg`
 
 **Consumed by.**
 
-- in this graph: [[cg-agg|Aggregate CG (default scenario)]] · [[cg-loading-aft|Aft loading CG]] · [[cg-loading-fwd|Forward loading CG]] · [[scenarios-eval|Per-scenario CG list]]
+- in this graph: `Aggregate CG (default scenario)` · `Aft loading CG` · `Forward loading CG` · `Per-scenario CG list`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 - outside it: `app/services/loading_scenario_service.py:373 (compute_cg_agg_for_aeroplane)` · `app/services/loading_scenario_service.py:433 (compute_loading_envelope_for_aeroplane)`
 
 **Source.** 🟢 SOURCED

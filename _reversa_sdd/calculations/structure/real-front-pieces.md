@@ -5,11 +5,19 @@ unit: -
 cluster: structure
 user_visible: false
 source_status: NO_SOURCE_FOUND
+node_class: derived
+tags:
+  - cluster/structure
+  - class/derived
+  - source/no-source-found
+  - flag/anomaly
 ---
 
 # Buildable front pieces
 
 **Definition.** The front-spar pieces that actually become a persisted Spare — those at or above the buildable OD floor. Sub-floor tips must not count toward telescoping detection or create a phantom segment split.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -17,7 +25,10 @@ source_status: NO_SOURCE_FOUND
 return [p for p in plan.front_pieces if p.outer_d >= NEGLIGIBLE_OD_FLOOR_MM]
 ```
 
-**Inputs.** [[negligible-od-floor-mm|Buildable-minimum spar outer diameter]] · [[piece-outer-diameter|Spar piece outer diameter]]
+**Inputs.**
+
+- [[negligible-od-floor-mm|Buildable-minimum spar outer diameter]]  — *⊣ limit*
+- [[piece-outer-diameter|Spar piece outer diameter]]
 
 **Produced by.** `app/services/spar_insert_service.py:284` — `_real_front_pieces`
 

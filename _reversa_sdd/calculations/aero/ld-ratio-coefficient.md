@@ -6,11 +6,19 @@ unit: -
 cluster: aero-spanwise
 user_visible: true
 source_status: SOURCED
+node_class: derived
+tags:
+  - cluster/aero-spanwise
+  - class/derived
+  - source/sourced
+  - surface/user-visible
 ---
 
 # Lift-to-drag ratio (coefficient form)
 
 **Definition.** Point-wise CL/CD used to locate the best-glide point.
+
+**Derived quantity.** Computed from the inputs below.
 
 **Formula — as the code writes it.**
 
@@ -18,13 +26,18 @@ source_status: SOURCED
 ld = np.where(np.abs(cd) > 1e-12, cl / cd, np.nan)
 ```
 
-**Inputs.** [[cl-values|Lift coefficient array]] · [[cd-values|Drag coefficient array]] · [[divide-guard-epsilon|Division guard epsilon]]
+**Inputs.**
+
+- [[cl-values|Lift coefficient array]]
+- [[cd-values|Drag coefficient array]]
+- [[divide-guard-epsilon|Division guard epsilon]]  — *ε tolerance*
 
 **Produced by.** `app/services/analysis_service.py:108` — `_compute_cl_cd_points`
 
 **Consumed by.**
 
-- in this graph: [[max-ld-point|Maximum L/D point]]
+- in this graph: `Maximum L/D point`  
+  *(these are backlinks — open the Backlinks pane to navigate them)*
 
 **Source.** 🟢 SOURCED
 
