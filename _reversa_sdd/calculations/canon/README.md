@@ -132,10 +132,32 @@ different situations, and only the last is a decision.
 
 | shape | what it is | verdict |
 |---|---|---|
-| **law** | one relation, applied wherever it is needed | approve it once |
+| **single** | one relation, applied wherever it is needed | approve it once |
 | **route** | the same quantity reached two ways — a closed form and a numerical search | ✅ legitimate, and it **generates a test**: they must agree |
 | **approximation** | a rule of thumb standing where a law belongs | ⚠️ label it; never approve it *as* a law |
-| **conflict** | two different laws claiming one quantity | ⚠️ decide it |
+| **duplicate** | the **same statement** declared in more than one place | ⚠️ consolidate to one authority — and the divergence between the copies is the finding |
+| **conflict** | two **different** laws claiming one quantity | ⚠️ decide it |
+
+**Duplicate versus conflict — the discriminator is one question: do the declarations say
+the same thing?**
+
+If yes it is a duplicate. That is a maintenance defect while the copies agree, and a
+correctness defect the moment they drift — which they do. Gravity is declared eleven times
+in two values, sea-level density nine times, and the target static margin four times as
+`0.12` seeded, `0.08` substituted by the loading path, `0.10` by the sizing path and
+`0.075` in a docstring. An aircraft without the stored row gets a *different design target*
+depending on which service asks.
+
+If no it is a conflict, and it is a correctness question today rather than eventually.
+
+A duplicate entry records **whether its copies still agree**. That is the field worth
+reading: `duplicate, copies agree` is technical debt, `duplicate, copies have diverged` is
+a defect with a reproduction waiting to be written.
+
+This shape also gives the mechanical findings a home. [`../findings.md`](../findings.md)
+already computes duplicate literal values across the whole register by a join — those rows
+belong on the quantity they duplicate, not only in a findings list. A finding lives where
+it binds the calculation.
 
 A fifth situation is not about the canon at all but about the code: one law, implemented
 inconsistently across several call sites. That is an **implementation conflict**, and the
