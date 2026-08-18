@@ -60,3 +60,52 @@ A computed value with no consumer anywhere (ADR 0021).
 143 of 285 constants carry no citation. ADR 0023 asks every engineering constant to name its source **and** its scale.
 
 - [[aero-spanwise--sigma-allow-positivity-guard]] · [[aircraft-class-default]] · [[alpha-vh-clamp-max]] · [[alpha-vh-clamp-min]] · [[alpha-vh-fallback]] · [[alr-cd0-reference-fallback]] · [[alr-cl-max-weight-default]] · [[alr-family-bonus]] · [[alr-gentleness-scale]] · [[alr-min-window-points]] · [[alr-score-bucket-ref]] · [[alr-score-cd-min-ref]] · [[alr-score-cl-max-ref]] · [[alr-score-ld-ref]] · [[atmosphere-scale-height-perf]] · [[avl-runner-timeout]] · [[axis-autorange-guard]] · [[base-mass-default]] · [[base-mass-fallback]] · [[battery-current-fallback-100a]] · [[bwsd-airfoil-fallback]] · [[candidate-cutoff]] · [[cell-v-sag]] · [[center-z-nearest-key-tolerance]] · [[cg-change-epsilon]] · [[cl-a-guard-epsilon]] · [[cl_target_guards]] · [[default-eta-esc-endurance]] · [[default-s-ref-sizing]] · [[default_cruise_speed_mps]] · [[default_loiter_s]] · [[default_max_alpha_deg]] · [[default_max_beta_deg]] · [[default_max_level_speed_mps]] · [[default_wind_mps]] · [[divide-guard-epsilon]] · [[dutch_roll_beta_deg]] · [[end_battery_dev_threshold]] · [[end_cd0_inline_default]] · [[end_eta_esc]] · [[end_p_margin_comfortable]] · [[fallback_speed_factors]] · [[fe_cl_min_factor]] · [[fe_dive_factor]] · [[fe_n_points]] · [[fe_v_max_default]] · [[fit-tol-mm]] · [[flap-alpha-sweep]] · [[flap_clip_epsilon]] · [[flap_factors]] · [[fraction-tol]] · [[grid_alpha_sweep]] · [[grid_fallback_trigger]] · [[hand_launch_ws_max]] · [[hand_throw_floor]] · [[hand_throw_warn]] · [[has-cadquery]] · [[htail-scale-min-guard]] · [[hyperbola-plot-span]] · [[hyperbola-samples]] · [[inboard-collinear-tolerance]] · [[infeasibility-threshold-w]] · [[is-v-tail-flag]] · [[k_ldg_50ft]] · [[k_ldg_hard]] · [[lennon_lb_ft_to_si]] · [[lfop-alpha-fallback]] · [[lfop-cl-target-clip]] · [[lfop-cruise-v]] · [[lfop-mass-fallback]] · [[lfop-s-ref-fallback]] · [[mac-m-fallback]] · [[mass-dedup-tolerance]] · [[max-x-wing-shift-mac]] · [[min-rear-x-c]] · [[min-spar-spacing]] · [[min_margin_clean_floor]] · [[mu_belly]] · [[mu_g_max]] · [[mu_g_min]] …
+
+## Dimensional check — the first pass
+
+Units are parsed into an SI dimension vector **plus a length scale**, because this
+codebase's specific hazard is millimetres inside a metre world (ADR 0001): a pure
+dimension check passes `mm` against `m`, which is exactly the class it must catch.
+Angle is carried in its own slot so degrees cannot silently meet radians.
+Tool: `scripts/dimensions.py`. **1051 of 1112** unit strings parse.
+
+### The load factor is declared as an acceleration
+
+**16 of 20 load-factor nodes carry the unit `g`** — an acceleration —
+while a load factor is `n = L/W`, a force over a force, and therefore **dimensionless**.
+The check needs no aerodynamics to see this: N/N does not balance against m/s².
+
+| unit | node | file |
+|---|---|---|
+| `g` | [[g-limit-default]] | `analysis_service.py` |
+| `g` | [[g-limit-effective]] | `analysis_service.py` |
+| `g` | [[g-limit]] | `analysis_service.py` |
+| `g (dimensionless load factor)` | [[flight-envelope-n-max]] | `assumption_compute_service.py` |
+| `g` | [[g-limit]] | `assumption_compute_service.py` |
+| `g` | [[fe_n_pos_maneuver]] | `flight_envelope_service.py` |
+| `g` | [[fe_n_neg_maneuver]] | `flight_envelope_service.py` |
+| `g` | [[fe_gust_n_pos]] | `flight_envelope_service.py` |
+| `g` | [[fe_gust_n_neg]] | `flight_envelope_service.py` |
+| `g` | [[fe_g_limit]] | `flight_envelope_service.py` |
+| `g` | [[fe_marker_load_factor]] | `flight_envelope_service.py` |
+| `g` | [[kpi_max_load_factor]] | `flight_envelope_service.py` |
+| `g` | [[mkpi_maneuver]] | `mission_kpi_service.py` |
+| `g` | [[n_target_level]] | `operating_point_generator_service.py` |
+| `g` | [[g-limit-default]] | `spar_plan_service.py` |
+| `g` | [[resolved-g-limit-plan]] | `spar_plan_service.py` |
+
+This is not a labelling nitpick. It is the annotation half of the defect recorded in
+**BR-W17** (gh-1079): `g_limit = 3` reads as *"three g"* and is then consumed as a bare
+multiplier that is multiplied again by `j · k ≈ 3.75`, so the wing actually breaks at
+about 11 g. Every unit annotation in the code agrees with the misreading.
+
+The three nodes that *are* marked dimensionless were corrected by the 2026-08-18 audit —
+which means the register inherited the confusion from the code and had to be told twice.
+
+### What this pass cannot do yet
+
+Checking a *chain* — inputs through formula to output — needs the canon, because grouping
+by symbol produces false positives: `W` is weight (N), sink rate (m/s) **and** section
+modulus (mm³) in this codebase. Which of those a node means is a canonical-quantity
+question, not a string question. See [[canon/README|the canon]].
+
