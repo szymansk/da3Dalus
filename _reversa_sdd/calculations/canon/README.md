@@ -153,6 +153,37 @@ ratio; it cannot distinguish a glider from an aerobatic model. It may still be t
 thing to show at cold start — but it is labelled as an approximation, and it never becomes
 the approved law for the quantity.
 
+## What may be left out — and what may not
+
+A skeleton that keeps everything is unreadable; one that drops the wrong things is worse
+than none. So exclusion needs a **typed reason**, and two kinds are never eligible.
+
+| may be excluded | why |
+|---|---|
+| an **input quantity** | it belongs to `quantities/`, not to `formulas/`. Excluded from the formula register, not from the canon. |
+| a member of **another chain** | say which chain, so a later path picks it up |
+| an **echo** — the same value republished under a second key | record the rename on the quantity it echoes |
+| **presentation** — colours, labels, axis limits, log lines | nothing downstream reads a number from it |
+| **plumbing** — timestamps, CRUD helpers, loop indices | no influence on a result |
+
+**Never excluded:**
+
+**A fallback constant.** It changes the answer. A substituted value is an edge of type
+`fallback`, and path 1 found 178 of them — that class *is* the ADR 0020 surface. "It is a
+constant, not a relation" is true and beside the point.
+
+**A second declaration of a quantity that already exists.** That is a duplicate, and
+surfacing duplicates is why the canon exists at all. "It is a design parameter, not a
+formula" is true and beside the point.
+
+The distinction that went wrong on path 3: **"this is not a formula" and "this does not
+belong in the canon" are different statements.** Path 3's proposal put five fallback
+constants and three competing declarations of the target static margin into `unassigned`,
+each with a defensible reason — and the defensible reasons hid that the seeded default is
+`0.12`, the loading path substitutes `0.08` when the row is missing, and the sizing path
+`0.10`. Two services that both feed the CG envelope, two different answers to the same
+missing input.
+
 ## Naming
 
 One readable scheme, `<quantity>_<configuration>_<unit>`:
