@@ -445,17 +445,18 @@ flowchart TD
   MEFF["m effektiv"]:::drv
   W["W = m g"]:::drv
 
+  KONSTR["Konstruktion<br/>Fluegel, Leitwerk, Rumpf"]:::choice
+  GEO["airplane<br/>Geometriemodell"]:::drv
+  MAC["MAC"]:::drv
+  REFQ["Referenzgroessen<br/>S_ref, b_ref, c_ref"]:::drv
+
   subgraph SOLVER["Solver: AeroSandbox AeroBuildup"]
     direction TB
-    GEO["Geometrie<br/>Fluegel, Leitwerk, Rumpf"]:::inp
-    REFQ["Referenzgroessen<br/>S_ref, b_ref, c_ref"]:::inp
     XYZ["xyz_ref<br/>Momentenbezug"]:::inp
     OP["Betriebspunkt<br/>V, alpha, Hoehe"]:::inp
     CTRL["Ruder- und Klappenstellung"]:::inp
     FID["Modellgroesse<br/>Genauigkeitsstufe"]:::inp
     RUN(["AeroBuildup.run"]):::drv
-    GEO --> RUN
-    REFQ --> RUN
     XYZ --> RUN
     OP --> RUN
     CTRL --> RUN
@@ -463,7 +464,6 @@ flowchart TD
   end
   XNP["x_NP"]:::drv
   CMA["Cm_alpha, CL_alpha"]:::drv
-  MAC["MAC<br/>auch als c_ref"]:::drv
   SM["SM erreicht"]:::out
   RT{{"Rechenwegprobe<br/>gegen -Cm_a / CL_a"}}:::chk
   CGD["x_cg Auslegung<br/>= x_NP - SM_target MAC"]:::out
@@ -491,9 +491,14 @@ flowchart TD
 
   KOMP --> CGK
 
+  DES ==> KONSTR --> GEO
+  GEO --> MAC
+  GEO --> REFQ
+  GEO --> RUN
+  REFQ --> RUN
   RUN --> XNP --> SM
   RUN --> CMA
-  RUN --> MAC --> SM
+  MAC --> SM
   CMA --> RT
   SM --> RT
   XNP --> CGD
@@ -519,7 +524,21 @@ Gegenstand hat, steht der Solver mit **allen seinen Eingaben** im Graphen: Was e
 ist nur so gut wie das, was er bekommt — und das ist die einzige Stelle, an der diese
 Anwendung an dieser Rechnung überhaupt etwas falsch machen kann.
 
-Eine Eigenschaft ist dabei wichtig und nicht offensichtlich: **`x_NP` ist unabhängig vom
+**Die Referenzgrößen sind keine eigene Eingabe.** Sie folgen aus der Geometrie, und die
+Geometrie folgt aus deiner Konstruktion. Die Kette lautet:
+
+```
+Konstruktion  →  Geometriemodell  →  S_ref, b_ref, c_ref  →  Solver
+```
+
+Daraus folgt etwas, das den Graphen vereinfacht: **`MAC` ist eine Geometriegröße, keine
+Solver-Ausgabe.** Sie wird aus der Konstruktion gerechnet, als `c_ref` übergeben — und
+zurückgelesen werden muss sie nie. Damit gibt es genau eine mittlere Flügeltiefe, und die
+Frage „welche der beiden gilt" stellt sich im Soll gar nicht mehr.
+
+Der Solver liefert entsprechend nur, was er wirklich erzeugt: `x_NP` und die Ableitungen.
+
+Eine Eigenschaft davon ist wichtig und nicht offensichtlich: **`x_NP` ist unabhängig vom
 Momentenbezugspunkt** — der Neutralpunkt ist eine Eigenschaft des Flugzeugs. `C_mα`
 dagegen **ist** bezugsabhängig. Deshalb hängt die Stabilitätsreserve aus dem
 Ableitungsweg an `xyz_ref`, die aus dem geometrischen Weg nicht. Genau das prüft die
@@ -555,7 +574,7 @@ Werkzeug zu erlauben, eine Zahl abzulehnen, die du bewusst als vorläufig annimm
 | `SM` aus vier Erzeugern | eine Formel, der Ableitungsweg wird **Probe** | zwei Wege zu einer Größe sind ein Test, keine zweite Wahrheit |
 | `SM_target` und `SM` gleich benannt | **getrennte Größen** — Vorgabe gegen Nachprüfung | eine wird gesetzt, die andere gemessen |
 | `x_NP` aus zwei Läufen | eine Autoritaet | ADR 0022 |
-| MAC zweimal | Hauptflügel-MAC, auch als Referenzsehne gesetzt | sonst liegen Reserven auf zwei Skalen |
+| MAC zweimal — gerechnet und aus dem Solver zurückgelesen | **eine** MAC aus der Geometrie, als `c_ref` übergeben, nie zurückgelesen | die Rückgabe ist die eigene Eingabe; zwei Werte kann es nur geben, wenn etwas Inkonsistentes hineingeht |
 | `SM_target` viermal vorgegeben | einmal, **aus der Mission** | 12 % passt zum Trainer, nicht zu Sport oder Kunstflug |
 | `m` mit 1,5 / 1,0 kg | ein Vorgabewert an einer Stelle | zwei Antworten auf eine fehlende Eingabe |
 | `t_wall` still 0,4 mm | aus dem Materialsatz, sonst **Warnung** | Schalenmasse ist linear darin |
