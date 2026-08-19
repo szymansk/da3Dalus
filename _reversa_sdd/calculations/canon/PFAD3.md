@@ -425,28 +425,22 @@ der Summe.
 flowchart TD
   classDef choice fill:#f3ecfa,stroke:#8a6fc0,color:#3c2a63
   classDef est fill:#fff8e6,stroke:#b4690e,color:#6b3f06
-  classDef drv fill:#ffffff,stroke:#8a8f98,color:#222
   classDef inp fill:#eef3f8,stroke:#5a7fa6,color:#173a5e
-  classDef out fill:#eaf5ee,stroke:#3d8a5a,color:#14432a
+  classDef drv fill:#ffffff,stroke:#8a8f98,color:#222
   classDef chk fill:#f0ecf8,stroke:#6b4fa0,color:#33235c
   classDef konst fill:#f4f4f2,stroke:#6b6b66,stroke-dasharray:3 2,color:#3a3a36
+  classDef out fill:#eaf5ee,stroke:#3d8a5a,color:#14432a
 
   KONSTR["Konstruktion"]:::choice
+  SMT["SM_target"]:::choice
+  MEST["m<br/>geschaetzte Abflugmasse"]:::est
+  HOEHE["h"]:::inp
+  GRAV["g = 9.80665 m/s^2"]:::konst
+
   GEO["airplane"]:::drv
   MAC["c_bar = (2/S) Int c(y)^2 dy"]:::drv
   SREF["S_ref, b_ref"]:::drv
-
-  SMT["SM_target"]:::choice
-  HOEHE["h  Hoehe"]:::inp
-  ATM["rho = rho_ISA(h)<br/>US-Standardatmosphaere 1976"]:::drv
-  GRAV["g = 9.80665 m/s^2"]:::konst
-
-  KOMP["m_i, n_i, x_i"]:::inp
-  REST["r_rest"]:::est
-  MSUM["m_kand = Sum(m_i n_i) (1 + r_rest)"]:::drv
-  MEST["m_est"]:::est
-  SWM{{"Wahl der Quelle"}}:::chk
-  MEFF["m"]:::drv
+  ATM["rho = rho_ISA(h)"]:::drv
   W["W = m g"]:::drv
 
   subgraph SOLVER["AeroBuildup"]
@@ -465,37 +459,28 @@ flowchart TD
   CMA["Cm_alpha"]:::drv
   CLA["CL_alpha"]:::drv
 
-  SWEEP(["AeroBuildup alpha-Sweep<br/>bei V_stall"]):::drv
+  SWEEP(["alpha-Sweep bei V_stall"]):::drv
   CLMAX["CL_max,stall"]:::drv
 
   CGD["x_cg = x_NP - SM_target c_bar"]:::out
   SM["SM = (x_NP - x_cg) / c_bar"]:::out
   RT{{"Probe SM =? -Cm_alpha / CL_alpha"}}:::chk
-  CGK["x_cg,komp = Sum(m_i x_i) / Sum(m_i)"]:::out
-  DIVM["m_kand - m_est"]:::out
-  DIVC["x_cg,komp - x_cg"]:::out
-
   VS["V_stall = sqrt(2 W / (rho S_ref CL_max,stall))"]:::out
-  ENV["CG-Huellkurve"]:::out
   MENV["zulaessiger Irrtum in m"]:::out
-  HAND["V_launch vs V_stall"]:::out
+  HAND["V_launch gegen V_stall"]:::out
 
   KONSTR --> GEO
   GEO --> MAC
   GEO --> SREF
   GEO --> RUN
+  GEO --> SWEEP
   SREF --> RUN
 
-  KOMP --> MSUM
-  REST --> MSUM
-  MSUM --> SWM
-  MEST --> SWM
-  SWM --> MEFF
-  MEFF --> W
+  MEST --> W
   GRAV --> W
-
-  MSUM --> DIVM
-  MEST --> DIVM
+  HOEHE --> ATM
+  HOEHE --> RUN
+  HOEHE --> SWEEP
 
   RUN --> XNP
   RUN --> CMA
@@ -513,26 +498,16 @@ flowchart TD
   CMA --> RT
   CLA --> RT
 
-  KOMP --> CGK
-  CGK --> DIVC
-  CGD --> DIVC
-
-  HOEHE --> ATM
-  HOEHE --> RUN
-  GEO --> SWEEP
-  HOEHE --> SWEEP
-  VS -. "Fixpunkt" .-> SWEEP
   SWEEP --> CLMAX
   W --> VS
   ATM --> VS
   SREF --> VS
   CLMAX --> VS
-  VS --> HAND
-  MEFF --> MENV
-  MENV --> HAND
+  VS -. "Fixpunkt" .-> SWEEP
 
-  CGD --> ENV
-  CGK --> ENV
+  MEST --> MENV
+  VS --> HAND
+  MENV --> HAND
 ```
 
 ### Der Solver und seine Vorbedingungen
@@ -565,6 +540,19 @@ Rechenwegprobe.
 Lila: was du vorgibst. Gelb: ein deklarierter Schätzwert. Blau: Daten und Betriebspunkt.
 **Grau gestrichelt: eine physikalische Konstante** — nicht gewählt, sondern gültig.
 Rauten: eine Wahl oder eine Probe. Grün: was herauskommt.
+
+**Die Masse ist hier eine Schätzung, mehr nicht.** Die Summe über den Komponentenbaum ist
+selbst eine Schätzung — nur anders zusammengesetzt, mit einem Restanteil für alles, was man
+nicht einzeln wiegt. Auf dieser Ebene beantwortet die Unterscheidung keine andere Frage,
+also steht hier `m`.
+
+Der Komponentenbaum gehört damit **nicht in diesen Pfad**, sondern ist eine eigene Kette,
+die ihn mit einem Kandidaten beliefert. Das ist die saubere Naht: Was der Baum leistet —
+Vollständigkeit, Restanteil, der Vergleich mit der Schätzung — ist eine Frage für sich und
+verdient einen eigenen Graphen, statt diesen zu überfrachten.
+
+Mit ihm fallen vorerst auch die CG-Hüllkurve und der Ladefall heraus: Beide brauchen die
+Bauteildaten, um überhaupt eine Spanne zu bilden.
 
 **`g` ist keine Eingabe, sondern eine physikalische Konstante.** Du wählst sie nicht — sie
 gilt. Deshalb steht sie gestrichelt und grau, außerhalb des Eingabebands.
@@ -688,7 +676,7 @@ Werkzeug zu erlauben, eine Zahl abzulehnen, die du bewusst als vorläufig annimm
 | `m` mit 1,5 / 1,0 kg | ein Vorgabewert an einer Stelle | zwei Antworten auf eine fehlende Eingabe |
 | `t_wall` still 0,4 mm | aus dem Materialsatz, sonst **Warnung** | Schalenmasse ist linear darin |
 | unauflösbarer Knoten trägt 0 g | fällt in den **erklärten Restanteil** | ein Loch in der Summe ist unsichtbar, ein Restanteil nicht |
-| Komponentensumme *ist* die Masse | Summe ist ein **Kandidat**, du schaltest | ADR 0010 |
+| Komponentensumme *ist* die Masse | Summe ist ein **Kandidat** aus einer eigenen Kette | ADR 0010; hier abstrahiert zu `m` |
 | `cg_x` als zweiquellige Größe geführt | **gerechnet aus `SM_target`**, keine Schätzung | ADR 0011 — du gibst die Reserve vor, nicht die Lage |
 | `S_H`, `l_H` erreichen den Dienst nie | echte Geometrie erreicht ihn | sonst misst der Korrekturzweig nichts |
 | `a_VH` immer 0,10 | je Flugzeug gerechnet | 0,10 ist ein Platzhalter |
