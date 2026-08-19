@@ -221,6 +221,13 @@ the opposite of what a canon is for. The unit suffix stays: in a codebase carryi
 millimetres inside a metre model (ADR 0001) it is a guard, and `mass_kg` and
 `wing_area_m2` already do it.
 
+**A Reynolds-dependent quantity carries the condition it was evaluated at.** `CL_max,stall`
+rather than `CL_max`, because at model Reynolds numbers the peak lift coefficient is a
+function of speed and a bare name hides which state it holds in. This is the naming
+counterpart of a precondition: what the precondition demands, the name makes visible — and
+in this case the name alone would have exposed the defect, since the application computes
+`CL_max,v_max` and substitutes it where `CL_max,stall` belongs.
+
 The scheme is not new. `field_length_service` already writes `cl_max_landing` on line 361
 and `v_s0_mps` on line 368 — seven lines apart, in one function. One of the two
 conventions already exists and is the right one; it only has to win.

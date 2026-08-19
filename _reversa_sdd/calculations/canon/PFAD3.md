@@ -465,7 +465,7 @@ flowchart TD
   CLA["CL_alpha"]:::drv
 
   SWEEP(["AeroBuildup alpha-Sweep<br/>bei V_stall"]):::drv
-  CLMAX["CL_max"]:::drv
+  CLMAX["CL_max,stall"]:::drv
 
   CGD["x_cg = x_NP - SM_target c_bar"]:::out
   SM["SM = (x_NP - x_cg) / c_bar"]:::out
@@ -474,7 +474,7 @@ flowchart TD
   DIVM["m_kand - m_est"]:::out
   DIVC["x_cg,komp - x_cg"]:::out
 
-  VS["V_stall = sqrt(2 W / (rho S_ref CL_max))"]:::out
+  VS["V_stall = sqrt(2 W / (rho S_ref CL_max,stall))"]:::out
   ENV["CG-Huellkurve"]:::out
   MENV["zulaessiger Irrtum in m"]:::out
   HAND["V_launch vs V_stall"]:::out
@@ -564,9 +564,24 @@ Rechenwegprobe.
 Lila: was du vorgibst. Gelb: ein deklarierter Schätzwert. Rauten: eine Wahl oder eine
 Probe — beide erzeugen keinen Wert. Grün: was herauskommt.
 
-**`CL_max` ist keine Eingabe.** Es folgt aus dem Profil und dem Flügel — ein
-Anstellwinkel-Sweep durch den Solver, dessen Spitzenwert. Damit steht im Graphen die
-Abhängigkeit, die Pfad 1 als Vorbedingung gefunden hat:
+**`CL_max,stall` ist keine Eingabe** — und der Zusatz gehört in den Namen. Bei niedriger
+Reynoldszahl ist der maximale Auftriebsbeiwert **geschwindigkeitsabhängig**; ein blankes
+`CL_max` verschweigt, bei welchem Zustand es gilt.
+
+Daraus folgt eine Benennungsregel, die über diesen Knoten hinausgeht:
+
+> **Eine reynoldsabhängige Größe trägt die Bedingung, bei der sie ermittelt wurde, im
+> Namen.**
+
+Sie ist das Gegenstück zur Vorbedingung: Was die Vorbedingung fordert, macht der Name
+sichtbar. Und sie hätte den Fehler allein aufgedeckt — die App bildet heute das Maximum
+über das ganze Geschwindigkeitsgitter, also `CL_max,v_max`, und setzt es dort ein, wo
+`CL_max,stall` stehen müsste. Unter zwei verschiedenen Namen fällt das beim Lesen auf.
+Unter einem nicht.
+
+Es folgt aus dem Profil und dem Flügel — ein Anstellwinkel-Sweep durch den Solver, dessen
+Spitzenwert. Damit steht im Graphen die Abhängigkeit, die Pfad 1 als Vorbedingung gefunden
+hat:
 
 ```
 V_stall braucht CL_max        CL_max gilt bei einer Reynoldszahl
@@ -649,6 +664,7 @@ Werkzeug zu erlauben, eine Zahl abzulehnen, die du bewusst als vorläufig annimm
 | `SM` aus vier Erzeugern | eine Formel, der Ableitungsweg wird **Probe** | zwei Wege zu einer Größe sind ein Test, keine zweite Wahrheit |
 | `SM_target` und `SM` gleich benannt | **getrennte Größen** — Vorgabe gegen Nachprüfung | eine wird gesetzt, die andere gemessen |
 | `x_NP` aus zwei Läufen | eine Autoritaet | ADR 0022 |
+| `CL_max` ohne Bedingung im Namen | **`CL_max,stall`** | ein blanker Name lässt `CL_max,v_max` und `CL_max,stall` gleich aussehen |
 | `CL_max` als Maximum über das ganze Geschwindigkeitsgitter | **bei `V_stall` ausgewertet**, iterativ | gemessen: Median +2,9 %, schlimmstenfalls +33 %, stets zu niedrige Abrissgeschwindigkeit |
 | `rho` einmal aus der Höhe, einmal als Literal 1,225 | **eine** Atmosphäre aus **einer** Höhe | der Solver bekommt sie aus `h`, `V_stall` aus einer Konstanten — zwei Dichten für einen Flugzustand |
 | MAC zweimal — gerechnet und aus dem Solver zurückgelesen | **eine** MAC aus der Geometrie, als `c_ref` übergeben, nie zurückgelesen | die Rückgabe ist die eigene Eingabe; zwei Werte kann es nur geben, wenn etwas Inkonsistentes hineingeht |
