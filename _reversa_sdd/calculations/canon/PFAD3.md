@@ -429,6 +429,7 @@ flowchart TD
   classDef inp fill:#eef3f8,stroke:#5a7fa6,color:#173a5e
   classDef out fill:#eaf5ee,stroke:#3d8a5a,color:#14432a
   classDef chk fill:#f0ecf8,stroke:#6b4fa0,color:#33235c
+  classDef konst fill:#f4f4f2,stroke:#6b6b66,stroke-dasharray:3 2,color:#3a3a36
 
   KONSTR["Konstruktion"]:::choice
   GEO["airplane"]:::drv
@@ -438,7 +439,7 @@ flowchart TD
   SMT["SM_target"]:::choice
   HOEHE["h  Hoehe"]:::inp
   ATM["rho = rho_ISA(h)<br/>US-Standardatmosphaere 1976"]:::drv
-  GRAV["g"]:::inp
+  GRAV["g = 9.80665 m/s^2"]:::konst
 
   KOMP["m_i, n_i, x_i"]:::inp
   REST["r_rest"]:::est
@@ -561,8 +562,23 @@ dagegen **ist** bezugsabhängig. Deshalb hängt die Stabilitätsreserve aus dem
 Ableitungsweg an `xyz_ref`, die aus dem geometrischen Weg nicht. Genau das prüft die
 Rechenwegprobe.
 
-Lila: was du vorgibst. Gelb: ein deklarierter Schätzwert. Rauten: eine Wahl oder eine
-Probe — beide erzeugen keinen Wert. Grün: was herauskommt.
+Lila: was du vorgibst. Gelb: ein deklarierter Schätzwert. Blau: Daten und Betriebspunkt.
+**Grau gestrichelt: eine physikalische Konstante** — nicht gewählt, sondern gültig.
+Rauten: eine Wahl oder eine Probe. Grün: was herauskommt.
+
+**`g` ist keine Eingabe, sondern eine physikalische Konstante.** Du wählst sie nicht — sie
+gilt. Deshalb steht sie gestrichelt und grau, außerhalb des Eingabebands.
+
+Der Unterschied ist nicht kosmetisch: Bei einer Eingabe lautet die Freigabefrage *„ist der
+Wert richtig gewählt"*, bei einer physikalischen Konstante lautet sie **„ist sie genau
+einmal deklariert"**. Es gibt keinen Ermessensspielraum, also auch keine Diskussion über
+den Wert — nur über die Anzahl der Stellen, an denen er steht. Im Register sind es
+**elf, in zwei verschiedenen Werten.**
+
+Eine physikalische Konstante wird gezeichnet, wenn sie in einer kanonischen Formel
+vorkommt. Steckt sie in einem zitierten Standard — die Gaskonstante und der
+Temperaturgradient in `rho_ISA(h)` —, gehört sie in die Quelle des Gesetzes und nicht in
+den Graphen.
 
 **`CL_max,stall` ist keine Eingabe** — und der Zusatz gehört in den Namen. Bei niedriger
 Reynoldszahl ist der maximale Auftriebsbeiwert **geschwindigkeitsabhängig**; ein blankes
