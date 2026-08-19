@@ -445,8 +445,24 @@ flowchart TD
   MEFF["m effektiv"]:::drv
   W["W = m g"]:::drv
 
-  SOLV["AeroBuildup<br/>xyz_ref := x_cg"]:::inp
+  subgraph SOLVER["Solver: AeroSandbox AeroBuildup"]
+    direction TB
+    GEO["Geometrie<br/>Fluegel, Leitwerk, Rumpf"]:::inp
+    REFQ["Referenzgroessen<br/>S_ref, b_ref, c_ref"]:::inp
+    XYZ["xyz_ref<br/>Momentenbezug"]:::inp
+    OP["Betriebspunkt<br/>V, alpha, Hoehe"]:::inp
+    CTRL["Ruder- und Klappenstellung"]:::inp
+    FID["Modellgroesse<br/>Genauigkeitsstufe"]:::inp
+    RUN(["AeroBuildup.run"]):::drv
+    GEO --> RUN
+    REFQ --> RUN
+    XYZ --> RUN
+    OP --> RUN
+    CTRL --> RUN
+    FID --> RUN
+  end
   XNP["x_NP"]:::drv
+  CMA["Cm_alpha, CL_alpha"]:::drv
   MAC["MAC<br/>auch als c_ref"]:::drv
   SM["SM erreicht"]:::out
   RT{{"Rechenwegprobe<br/>gegen -Cm_a / CL_a"}}:::chk
@@ -475,8 +491,10 @@ flowchart TD
 
   KOMP --> CGK
 
-  SOLV --> XNP --> SM
-  SOLV --> MAC --> SM
+  RUN --> XNP --> SM
+  RUN --> CMA
+  RUN --> MAC --> SM
+  CMA --> RT
   SM --> RT
   XNP --> CGD
   MAC --> CGD
@@ -493,6 +511,19 @@ flowchart TD
   HAND -. "kommt es weg" .-> DES
   RT -. "Bezugspunkte stimmen" .-> DES
 ```
+
+### Der Solver und seine Vorbedingungen
+
+Der Neutralpunkt ist eine **Rechengröße, der du vertraust**. Damit dieses Vertrauen einen
+Gegenstand hat, steht der Solver mit **allen seinen Eingaben** im Graphen: Was er liefert,
+ist nur so gut wie das, was er bekommt — und das ist die einzige Stelle, an der diese
+Anwendung an dieser Rechnung überhaupt etwas falsch machen kann.
+
+Eine Eigenschaft ist dabei wichtig und nicht offensichtlich: **`x_NP` ist unabhängig vom
+Momentenbezugspunkt** — der Neutralpunkt ist eine Eigenschaft des Flugzeugs. `C_mα`
+dagegen **ist** bezugsabhängig. Deshalb hängt die Stabilitätsreserve aus dem
+Ableitungsweg an `xyz_ref`, die aus dem geometrischen Weg nicht. Genau das prüft die
+Rechenwegprobe.
 
 Violett umrandet und doppelt gezeichnet: **du**. Gelb: ein deklarierter Schätzwert.
 Rautenknoten: eine Umschaltung oder eine Probe — beides erzeugt keinen Wert, sondern
