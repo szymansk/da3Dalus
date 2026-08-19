@@ -270,6 +270,41 @@ formulas say what is true, the applications say under which bindings, and the
 preconditions say what has to hold for the binding to mean anything. Each of the three is
 separately approvable and separately testable.
 
+### Where the designer decides — the source axis
+
+A quantity in this application does not simply have a producer. It has a **source type**,
+and for one of the three the **designer** chooses, not the system.
+
+| source type | what it means | in the code |
+|---|---|---|
+| **design choice** | only ever set by the designer; never computed | `DESIGN_CHOICE_PARAMS` — 7 entries incl. `target_static_margin`, `g_limit` |
+| **dual-sourced** | an estimate *and* a calculated value coexist, and the designer decides which is active | `estimate_value` (never null) · `calculated_value` (nullable) · `active_source` (default `ESTIMATE`) · `divergence_pct` |
+| **computed** | no assumption row exists; the value has one producer | `x_np`, `MAC` |
+
+The middle row is the one a graph easily gets wrong. `mass` and `cg_x` are **not** outputs
+of the component tree — they are quantities the designer may *let* the tree compute. The
+tree's sum is a **candidate**, `divergence_pct` says how far it sits from the estimate, and
+`active_source` records the decision. **The system must not make that decision.**
+
+### The loop back to the designer
+
+Not every edge feeds another calculation. Some feed the **designer**, and the graph has to
+say which.
+
+The component tree's completeness status — `valid` / `partial` / `invalid`, propagated
+bottom-up — is the example. Its purpose is **not** to gate the sum. It tells the maintainer
+*where to look next*: which nodes still carry no weight, so the estimate can be improved
+where it matters. A green-and-red tree is a working instrument, not a validation rule.
+
+Reading it as a gate is the mistake to avoid: it would make the machine refuse a number the
+designer knowingly accepts as provisional. **An estimate is not an error state.** The whole
+`estimate_value` / `calculated_value` / `active_source` machinery exists precisely because
+provisional is the normal condition of a design in progress (ADR 0010).
+
+So a target graph shows three things a producer-only graph cannot: **where the designer
+switches**, **what information that decision rests on**, and **which edges run back to the
+human rather than onward to the next formula.**
+
 ### What is actually approved: the target graph
 
 The per-formula checklist is the **evidence**. The artefact the maintainer approves is the
