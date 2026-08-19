@@ -270,6 +270,27 @@ formulas say what is true, the applications say under which bindings, and the
 preconditions say what has to hold for the binding to mean anything. Each of the three is
 separately approvable and separately testable.
 
+### What is actually approved: the target graph
+
+The per-formula checklist is the **evidence**. The artefact the maintainer approves is the
+**target graph of a path** — the same computation drawn without violated preconditions,
+silent substitutions or duplicate authorities (`PFAD3.md` §8 is the first one).
+
+That is the right unit, because the graph is what carries the system-level statements, and
+none of them is visible in a single formula file:
+
+- **one authority per quantity** — which producer wins, and which becomes a check
+- **which inputs must be supplied**, and from where
+- **where an estimate is legitimate** and therefore must declare itself
+- **where a check sits** instead of a second producer
+
+Forty-six formula files cannot be judged as a whole. One graph can — and the difference
+between the actual graph and the target graph is the work list, item by item, each with its
+evidence a page above.
+
+So the order runs: the per-entry gates produce the evidence, the target graph is the
+decision, and the entries inherit their approval from it.
+
 ### Two stages
 
 Approval happens twice, and the order matters.
