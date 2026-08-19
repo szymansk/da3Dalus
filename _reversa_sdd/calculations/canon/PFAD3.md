@@ -425,127 +425,104 @@ der Summe.
 flowchart TD
   classDef choice fill:#f3ecfa,stroke:#8a6fc0,color:#3c2a63
   classDef est fill:#fff8e6,stroke:#b4690e,color:#6b3f06
+  classDef drv fill:#ffffff,stroke:#8a8f98,color:#222
   classDef inp fill:#eef3f8,stroke:#5a7fa6,color:#173a5e
-  classDef op fill:#ffffff,stroke:#8a8f98,color:#222
+  classDef out fill:#eaf5ee,stroke:#3d8a5a,color:#14432a
   classDef chk fill:#f0ecf8,stroke:#6b4fa0,color:#33235c
-  classDef val fill:#eaf5ee,stroke:#3d8a5a,color:#14432a
 
-  subgraph L0["Ebene 0 — Eingaben"]
-    direction LR
-    I_KON["Konstruktion"]:::choice
-    I_SMT["SM_target"]:::choice
-    I_MEST["m_est"]:::est
-    I_REST["r_rest"]:::est
-    I_KOMP["m_i, n_i, x_i"]:::inp
-    I_CLMAX["CL_max"]:::inp
-    I_RHO["rho"]:::inp
-    I_G["g"]:::inp
-    I_OP["V, alpha, h"]:::inp
-    I_CTRL["Ruderstellung"]:::inp
-    I_FID["Modellgroesse"]:::inp
+  KONSTR["Konstruktion"]:::choice
+  GEO["airplane"]:::drv
+  MAC["c_bar = (2/S) Int c(y)^2 dy"]:::drv
+  SREF["S_ref, b_ref"]:::drv
+
+  SMT["SM_target"]:::choice
+  CLMAX["CL_max"]:::inp
+  RHO["rho"]:::inp
+  GRAV["g"]:::inp
+
+  KOMP["m_i, n_i, x_i"]:::inp
+  REST["r_rest"]:::est
+  MSUM["m_kand = Sum(m_i n_i) (1 + r_rest)"]:::drv
+  MEST["m_est"]:::est
+  SWM{{"Wahl der Quelle"}}:::chk
+  MEFF["m"]:::drv
+  W["W = m g"]:::drv
+
+  subgraph SOLVER["AeroBuildup"]
+    direction TB
+    XYZ["xyz_ref = x_cg"]:::inp
+    OP["V, alpha, h"]:::inp
+    CTRL["Ruderstellung"]:::inp
+    FID["Modellgroesse"]:::inp
+    RUN(["run"]):::drv
+    XYZ --> RUN
+    OP --> RUN
+    CTRL --> RUN
+    FID --> RUN
   end
+  XNP["x_NP"]:::drv
+  CMA["Cm_alpha"]:::drv
+  CLA["CL_alpha"]:::drv
 
-  subgraph L1["Ebene 1 — Rechnungen"]
-    direction LR
-    R_GEO["Geometriemodell aufbauen"]:::op
-    R_MAC["c_bar = (2/S) Int c(y)^2 dy"]:::op
-    R_SUM["m_kand = Sum(m_i n_i) (1 + r_rest)"]:::op
-    R_SEL{{"Wahl der Massenquelle"}}:::chk
-    R_W["W = m g"]:::op
-    R_SOLV(["AeroBuildup.run"]):::op
-    R_CGD["x_cg = x_NP - SM_target c_bar"]:::op
-    R_SM["SM = (x_NP - x_cg) / c_bar"]:::op
-    R_RT{{"Probe: SM =? -Cm_alpha / CL_alpha"}}:::chk
-    R_CGK["x_cg,komp = Sum(m_i x_i) / Sum(m_i)"]:::op
-    R_DIF["Differenzen bilden"]:::op
-    R_VS["V_stall = sqrt(2 W / (rho S_ref CL_max))"]:::op
-    R_ENV["Huellkurve pruefen"]:::op
-    R_MEN["zulaessigen Massenirrtum loesen"]:::op
-    R_HAND["V_launch gegen V_stall"]:::op
-  end
+  CGD["x_cg = x_NP - SM_target c_bar"]:::out
+  SM["SM = (x_NP - x_cg) / c_bar"]:::out
+  RT{{"Probe SM =? -Cm_alpha / CL_alpha"}}:::chk
+  CGK["x_cg,komp = Sum(m_i x_i) / Sum(m_i)"]:::out
+  DIVM["m_kand - m_est"]:::out
+  DIVC["x_cg,komp - x_cg"]:::out
 
-  subgraph L2["Ebene 2 — berechnete Werte"]
-    direction LR
-    V_AC["airplane"]:::val
-    V_MAC["c_bar"]:::val
-    V_SREF["S_ref, b_ref"]:::val
-    V_MK["m_kand"]:::val
-    V_M["m"]:::val
-    V_W["W"]:::val
-    V_XNP["x_NP"]:::val
-    V_CMA["Cm_alpha"]:::val
-    V_CLA["CL_alpha"]:::val
-    V_CGD["x_cg"]:::val
-    V_SM["SM"]:::val
-    V_RT["Probenergebnis"]:::val
-    V_CGK["x_cg,komp"]:::val
-    V_DM["m_kand - m_est"]:::val
-    V_DC["x_cg,komp - x_cg"]:::val
-    V_VS["V_stall"]:::val
-    V_ENV["Huellkurvenbefund"]:::val
-    V_MEN["zulaessiger Irrtum in m"]:::val
-    V_HAND["Startbefund"]:::val
-  end
+  VS["V_stall = sqrt(2 W / (rho S_ref CL_max))"]:::out
+  ENV["CG-Huellkurve"]:::out
+  MENV["zulaessiger Irrtum in m"]:::out
+  HAND["V_launch vs V_stall"]:::out
 
-  I_KON --> R_GEO --> V_AC
-  V_AC --> R_MAC --> V_MAC
-  R_GEO --> V_SREF
+  KONSTR --> GEO
+  GEO --> MAC
+  GEO --> SREF
+  GEO --> RUN
+  SREF --> RUN
 
-  I_KOMP --> R_SUM
-  I_REST --> R_SUM
-  R_SUM --> V_MK
-  V_MK --> R_SEL
-  I_MEST --> R_SEL
-  R_SEL --> V_M
-  V_M --> R_W
-  I_G --> R_W --> V_W
+  KOMP --> MSUM
+  REST --> MSUM
+  MSUM --> SWM
+  MEST --> SWM
+  SWM --> MEFF
+  MEFF --> W
+  GRAV --> W
 
-  V_AC --> R_SOLV
-  V_SREF --> R_SOLV
-  I_OP --> R_SOLV
-  I_CTRL --> R_SOLV
-  I_FID --> R_SOLV
-  V_CGD --> R_SOLV
-  R_SOLV --> V_XNP
-  R_SOLV --> V_CMA
-  R_SOLV --> V_CLA
+  MSUM --> DIVM
+  MEST --> DIVM
 
-  V_XNP --> R_CGD
-  V_MAC --> R_CGD
-  I_SMT --> R_CGD --> V_CGD
+  RUN --> XNP
+  RUN --> CMA
+  RUN --> CLA
 
-  V_XNP --> R_SM
-  V_MAC --> R_SM
-  V_CGD --> R_SM --> V_SM
+  XNP --> CGD
+  MAC --> CGD
+  SMT --> CGD
+  CGD --> XYZ
 
-  V_SM --> R_RT
-  V_CMA --> R_RT
-  V_CLA --> R_RT
-  R_RT --> V_RT
+  XNP --> SM
+  MAC --> SM
+  CGD --> SM
+  SM --> RT
+  CMA --> RT
+  CLA --> RT
 
-  I_KOMP --> R_CGK --> V_CGK
+  KOMP --> CGK
+  CGK --> DIVC
+  CGD --> DIVC
 
-  V_MK --> R_DIF
-  I_MEST --> R_DIF
-  V_CGK --> R_DIF
-  V_CGD --> R_DIF
-  R_DIF --> V_DM
-  R_DIF --> V_DC
+  W --> VS
+  RHO --> VS
+  SREF --> VS
+  CLMAX --> VS
+  VS --> HAND
+  MEFF --> MENV
+  MENV --> HAND
 
-  V_W --> R_VS
-  I_RHO --> R_VS
-  V_SREF --> R_VS
-  I_CLMAX --> R_VS
-  R_VS --> V_VS
-
-  V_CGD --> R_ENV
-  V_CGK --> R_ENV
-  R_ENV --> V_ENV
-
-  V_M --> R_MEN --> V_MEN
-  V_VS --> R_HAND
-  V_MEN --> R_HAND
-  R_HAND --> V_HAND
+  CGD --> ENV
+  CGK --> ENV
 ```
 
 ### Der Solver und seine Vorbedingungen
@@ -575,28 +552,8 @@ dagegen **ist** bezugsabhängig. Deshalb hängt die Stabilitätsreserve aus dem
 Ableitungsweg an `xyz_ref`, die aus dem geometrischen Weg nicht. Genau das prüft die
 Rechenwegprobe.
 
-Drei Bänder: **oben alles, was hineingeht**, in der Mitte **alles, was gerechnet wird**,
-unten **alles, was dabei herauskommt** — Zwischenwerte eingeschlossen.
-
-Lila: was du vorgibst. Gelb: ein deklarierter Schätzwert. Blau: Daten und Betriebspunkt.
-Rauten: eine Wahl oder eine Probe — beide erzeugen keinen neuen Wert aus Physik, sondern
-entscheiden oder vergleichen.
-
-**Pfeile, die nach oben zurücklaufen, sind keine Zeichenfehler.** Ein berechneter Wert kann
-wieder in eine Rechnung eingehen: `x_cg` geht als Momentenbezug in den Solver, `c_bar` in
-zwei weitere Formeln. Genau diese Rückläufe sind die Stellen, an denen eine Kette zirkulär
-werden kann — und sie sollen sichtbar sein.
-
-### Was am Ende dasteht
-
-Neunzehn Werte, davon acht Zwischenwerte, die nirgends angezeigt werden und trotzdem jede
-Zahl danach bestimmen: `airplane`, `c_bar`, `S_ref`, `m_kand`, `m`, `W`, `Cm_alpha`,
-`CL_alpha`.
-
-Das ist der Grund, warum das untere Band mit dazugehört. Ein Überblick, der nur die
-Ausgaben zeigt, verschweigt gerade die Größen, bei denen dieses Projekt seine Fehler hat —
-zwei mittlere Flügeltiefen, zwei Massen, zwei Momentenbezüge. **Was nirgends angezeigt
-wird, wird auch nirgends geprüft.**
+Lila: was du vorgibst. Gelb: ein deklarierter Schätzwert. Rauten: eine Wahl oder eine
+Probe — beide erzeugen keinen Wert. Grün: was herauskommt.
 
 ### Was dieser Graph zeigt und was nicht
 
