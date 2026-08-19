@@ -443,7 +443,7 @@ flowchart TD
 
   VCR[/"V  Fluggeschwindigkeit"/]:::inp
   CTRL[/"Ruder neutral"/]:::inp
-  FID[/"Modellgroesse"/]:::inp
+  FID[/"model_size = xxxlarge"/]:::inp
 
   ALPHA(["alpha: loese L = W bei V"]):::drv
 
@@ -536,6 +536,35 @@ wie die Definition es verlangt.
 Daraus folgt für die Freigabe: Für `x_np` braucht der Bezugspunkt **nicht** zu stimmen. Für
 `C_mα` — und damit für den Ableitungsweg zur Stabilitätsreserve — **schon**, und dort ist
 er bei 27 von 29 Flugzeugen der Ursprung statt des Schwerpunkts.
+
+### Die Genauigkeitsstufe: `xxxlarge`, festgelegt
+
+`model_size` folgt **nicht** aus dem Flugzeug — es ist die Netzgröße von NeuralFoil, aus
+dem AeroBuildup seine Profildaten holt, also ein Genauigkeits-gegen-Rechenzeit-Regler.
+Gemessen an einem SD7037 über den Bereich, in dem Modellflügel fliegen:
+
+| Größe | `C_L,max` @ Re 50k | Konfidenz @ 100k | Konfidenz @ 200k | Zeit |
+|---|---|---|---|---|
+| `xxsmall` | **1,086** | 0,751 | 0,746 | 1 ms |
+| `small` | 1,241 | 0,880 | 0,903 | 1 ms |
+| `medium` | 1,289 | 0,930 | 0,951 | 1 ms |
+| `large` | 1,274 | 0,950 | 0,964 | 1 ms |
+| `xxlarge` | 1,277 | 0,947 | 0,963 | 2 ms |
+| **`xxxlarge`** | 1,276 | **0,961** | **0,963** | 5 ms |
+
+`xxsmall` scheidet aus: bei Re 50 000 liefert es 1,086 gegen 1,24–1,29 aller übrigen —
+**14 bis 19 % daneben**, und zwar genau dort, wo die laminare Ablöseblase sitzt und die
+Funktion am schwersten zu treffen ist. Ab `small` sind sich alle beim Auftriebsbeiwert
+einig; die **Analysekonfidenz** ist der trennende Wert, und sie steigt mit der Größe.
+
+Festgelegt auf **`xxxlarge`** — höchste Konfidenz bei den Reynoldszahlen, die zählen, für
+5 ms. Die Vorgabe der Bibliothek ist `small`.
+
+> **Kanonregel: eine freigegebene Größe wird bei einer erklärten Genauigkeitsstufe
+> gerechnet.** Nicht überall die höchste — aber eine, die dasteht. Sonst hängt eine
+> freigegebene Zahl davon ab, über welchen Endpunkt man sie geholt hat. Heute erzeugen
+> **drei verschiedene Stufen** nutzersichtbare Widerstandszahlen: `xxxlarge` in der
+> Profildatenerhebung, `small` im Turbulatorpfad, `large` im interaktiven Endpunkt.
 
 ### Der Betriebspunkt: `V` vorgegeben, `α` gelöst
 
@@ -754,6 +783,7 @@ Werkzeug zu erlauben, eine Zahl abzulehnen, die du bewusst als vorläufig annimm
 | `x_NP` aus zwei Läufen | eine Autoritaet | ADR 0022 |
 | `CL_max` ohne Bedingung im Namen | **`CL_max,stall`** | ein blanker Name lässt `CL_max,v_max` und `CL_max,stall` gleich aussehen |
 | `CL_max` als Maximum über das ganze Geschwindigkeitsgitter | **bei `V_stall` ausgewertet**, iterativ | gemessen: Median +2,9 %, schlimmstenfalls +33 %, stets zu niedrige Abrissgeschwindigkeit |
+| drei Genauigkeitsstufen erzeugen nutzersichtbare Zahlen | **eine erklärte Stufe**, `xxxlarge` | sonst hängt eine freigegebene Zahl vom Endpunkt ab |
 | `rho` einmal aus der Höhe, einmal als Literal 1,225 | **eine** Atmosphäre aus **einer** Höhe | der Solver bekommt sie aus `h`, `V_stall` aus einer Konstanten — zwei Dichten für einen Flugzustand |
 | MAC zweimal — gerechnet und aus dem Solver zurückgelesen | **eine** MAC aus der Geometrie, als `c_ref` übergeben, nie zurückgelesen | die Rückgabe ist die eigene Eingabe; zwei Werte kann es nur geben, wenn etwas Inkonsistentes hineingeht |
 | `SM_target` viermal vorgegeben | einmal, **aus der Mission** | 12 % passt zum Trainer, nicht zu Sport oder Kunstflug |
