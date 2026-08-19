@@ -423,18 +423,17 @@ der Summe.
 
 ```mermaid
 flowchart TD
-  classDef choice fill:#f3ecfa,stroke:#8a6fc0,color:#3c2a63
-  classDef est fill:#fff8e6,stroke:#b4690e,color:#6b3f06
-  classDef inp fill:#eef3f8,stroke:#5a7fa6,color:#173a5e
+  classDef inp fill:#eef3f8,stroke:#5a7fa6,stroke-width:1.5px,color:#173a5e
+  classDef est fill:#eef3f8,stroke:#5a7fa6,stroke-width:1.5px,stroke-dasharray:6 3,color:#173a5e
   classDef drv fill:#ffffff,stroke:#8a8f98,color:#222
   classDef chk fill:#f0ecf8,stroke:#6b4fa0,color:#33235c
-  classDef konst fill:#f4f4f2,stroke:#6b6b66,stroke-dasharray:3 2,color:#3a3a36
+  classDef konst fill:#f0f0ee,stroke:#6b6b66,color:#3a3a36
   classDef out fill:#eaf5ee,stroke:#3d8a5a,color:#14432a
 
-  GEO["airplane"]:::choice
-  SMT["SM_target"]:::choice
-  MEST["m<br/>geschaetzte Abflugmasse"]:::est
-  HOEHE["h  Flughoehe"]:::inp
+  GEO[/"airplane"/]:::inp
+  SMT[/"SM_target"/]:::inp
+  MEST[/"m  Abflugmasse"/]:::est
+  HOEHE[/"h  Flughoehe"/]:::inp
   GRAV["g = 9.80665 m/s^2"]:::konst
 
   MAC["c_bar = (2/S) Int c(y)^2 dy"]:::drv
@@ -444,10 +443,10 @@ flowchart TD
 
   subgraph SOLVER["AeroBuildup"]
     direction TB
-    XYZ["xyz_ref = x_cg"]:::inp
-    OP["Betriebspunkt<br/>V, alpha"]:::inp
-    CTRL["Ruderstellung"]:::inp
-    FID["Modellgroesse"]:::inp
+    XYZ[/"xyz_ref = x_cg"/]:::inp
+    OP[/"Betriebspunkt V, alpha"/]:::inp
+    CTRL[/"Ruderstellung"/]:::inp
+    FID[/"Modellgroesse"/]:::inp
     RUN(["run"]):::drv
     XYZ --> RUN
     OP --> RUN
@@ -530,9 +529,13 @@ dagegen **ist** bezugsabhängig. Deshalb hängt die Stabilitätsreserve aus dem
 Ableitungsweg an `xyz_ref`, die aus dem geometrischen Weg nicht. Genau das prüft die
 Rechenwegprobe.
 
-Lila: was du vorgibst. Gelb: ein deklarierter Schätzwert. Blau: Daten und Betriebspunkt.
-**Grau gestrichelt: eine physikalische Konstante** — nicht gewählt, sondern gültig.
-Rauten: eine Wahl oder eine Probe. Grün: was herauskommt.
+**Schräge blaue Kästen: alles, was hineingeht** — gestrichelt umrandet, wo es eine
+Schätzung ist. Grau: eine physikalische Konstante, nicht gewählt sondern gültig. Weiß:
+eine Rechnung. Raute: eine Probe. Grün: was herauskommt.
+
+Die Form trennt die Rolle, der Strich die Sicherheit: `m` und `h` sind beide Eingaben, aber
+die eine ist geraten und die andere abgelesen. Beim Freigeben ist das der Unterschied
+zwischen *„ist der Wert plausibel"* und *„ist die Größe richtig ermittelt"*.
 
 **Die Masse ist hier eine Schätzung, mehr nicht.** Die Summe über den Komponentenbaum ist
 selbst eine Schätzung — nur anders zusammengesetzt, mit einem Restanteil für alles, was man
