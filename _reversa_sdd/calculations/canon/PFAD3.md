@@ -441,23 +441,16 @@ flowchart TD
   ATM["rho = rho_ISA(h)<br/>Standardatmosphaere"]:::drv
   W["W = m g"]:::drv
 
-  subgraph SOLVER["AeroBuildup"]
-    direction TB
-    XYZ[/"xyz_ref = x_cg"/]:::inp
-    OP[/"Betriebspunkt V, alpha"/]:::inp
-    CTRL[/"Ruderstellung"/]:::inp
-    FID[/"Modellgroesse"/]:::inp
-    RUN(["run"]):::drv
-    XYZ --> RUN
-    OP --> RUN
-    CTRL --> RUN
-    FID --> RUN
-  end
+  CTRL[/"Ruderstellung"/]:::inp
+  FID[/"Modellgroesse"/]:::inp
+  OP[/"Betriebspunkt V, alpha"/]:::inp
+
+  RUN(["AeroBuildup<br/>ein Punkt, xyz_ref = x_cg"]):::drv
+  SWEEP(["AeroBuildup<br/>alpha-Sweep bei V_stall"]):::drv
+
   XNP["x_NP"]:::drv
   CMA["Cm_alpha"]:::drv
   CLA["CL_alpha"]:::drv
-
-  SWEEP(["alpha-Sweep bei V_stall"]):::drv
   CLMAX["CL_max,stall"]:::drv
 
   CGD["x_cg = x_NP - SM_target c_bar"]:::out
@@ -470,6 +463,12 @@ flowchart TD
   GEO --> RUN
   GEO --> SWEEP
   SREF --> RUN
+  SREF --> SWEEP
+  CTRL --> RUN
+  CTRL --> SWEEP
+  FID --> RUN
+  FID --> SWEEP
+  OP --> RUN
 
   MEST --> W
   GRAV --> W
@@ -484,7 +483,7 @@ flowchart TD
   XNP --> CGD
   MAC --> CGD
   SMT --> CGD
-  CGD --> XYZ
+  CGD --> RUN
 
   XNP --> SM
   MAC --> SM
@@ -501,6 +500,19 @@ flowchart TD
   VS -. "Fixpunkt" .-> SWEEP
 
 ```
+
+### Zwei Aufrufe, ein Solver
+
+Beide Größen kommen aus **AeroBuildup**, nur mit verschiedenem Zuschnitt: einmal ein
+einzelner Punkt für die Stabilität, einmal ein Anstellwinkel-Sweep für den maximalen
+Auftriebsbeiwert. Sie teilen dieselben Eingaben — Geometrie, Referenzflächen,
+Ruderstellung, Genauigkeitsstufe, Höhe — und unterscheiden sich in genau zwei Dingen:
+
+| | ein Punkt | Sweep |
+|---|---|---|
+| Betriebspunkt | **offen** — `V, alpha` | gebunden an `V_stall` |
+| zusätzliche Bindung | `xyz_ref = x_cg` | — |
+| liefert | `x_NP`, `C_mα`, `CL_α` | `CL_max,stall` |
 
 ### Der Solver und seine Vorbedingungen
 
