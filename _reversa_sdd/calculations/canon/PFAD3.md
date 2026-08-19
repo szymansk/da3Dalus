@@ -434,12 +434,12 @@ flowchart TD
   GEO["airplane"]:::choice
   SMT["SM_target"]:::choice
   MEST["m<br/>geschaetzte Abflugmasse"]:::est
-  HOEHE["h"]:::inp
+  HOEHE["h  Flughoehe"]:::inp
   GRAV["g = 9.80665 m/s^2"]:::konst
 
   MAC["c_bar = (2/S) Int c(y)^2 dy"]:::drv
   SREF["S_ref, b_ref"]:::drv
-  ATM["rho = rho_ISA(h)"]:::drv
+  ATM["rho = rho_ISA(h)<br/>Standardatmosphaere"]:::drv
   W["W = m g"]:::drv
 
   subgraph SOLVER["AeroBuildup"]
