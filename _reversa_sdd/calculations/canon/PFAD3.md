@@ -431,13 +431,12 @@ flowchart TD
   classDef konst fill:#f4f4f2,stroke:#6b6b66,stroke-dasharray:3 2,color:#3a3a36
   classDef out fill:#eaf5ee,stroke:#3d8a5a,color:#14432a
 
-  KONSTR["Konstruktion"]:::choice
+  GEO["airplane"]:::choice
   SMT["SM_target"]:::choice
   MEST["m<br/>geschaetzte Abflugmasse"]:::est
   HOEHE["h"]:::inp
   GRAV["g = 9.80665 m/s^2"]:::konst
 
-  GEO["airplane"]:::drv
   MAC["c_bar = (2/S) Int c(y)^2 dy"]:::drv
   SREF["S_ref, b_ref"]:::drv
   ATM["rho = rho_ISA(h)"]:::drv
@@ -469,7 +468,6 @@ flowchart TD
   MENV["zulaessiger Irrtum in m"]:::out
   HAND["V_launch gegen V_stall"]:::out
 
-  KONSTR --> GEO
   GEO --> MAC
   GEO --> SREF
   GEO --> RUN
