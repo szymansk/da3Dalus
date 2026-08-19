@@ -432,89 +432,111 @@ flowchart TD
   classDef chk fill:#f0ecf8,stroke:#6b4fa0,color:#33235c
 
   DES(["Konstrukteur"]):::des
-
   MISS["Mission"]:::inp
-  SMT["SM_target<br/>Vorschlag, ueberschreibbar"]:::choice
-  ESTM["Schaetzung Masse"]:::est
 
-  KOMP["Hauptkomponenten<br/>Katalog, Handeingabe"]:::inp
-  REST["Restanteil X Prozent<br/>erklaerte Groesse"]:::est
-  MSUM["m_total Kandidat"]:::drv
-  STAT["Baumstatus<br/>gruen / rot"]:::chk
-  SWM{{"aktive Quelle Masse"}}:::chk
-  MEFF["m effektiv"]:::drv
+  KONSTR["Konstruktion"]:::choice
+  GEO["airplane"]:::drv
+  MAC["c_bar = (2/S) Int c(y)^2 dy<br/>MAC"]:::drv
+  SREF["S_ref, b_ref"]:::drv
+
+  SMT["SM_target"]:::choice
+  ESTM["m_est<br/>Schaetzung"]:::est
+  REST["r_rest<br/>Restanteil in Prozent"]:::est
+  KOMP["m_i, n_i<br/>Hauptkomponenten"]:::inp
+  STAT["Baumstatus"]:::chk
+
+  MSUM["m_kand = Sum(m_i n_i) (1 + r_rest)"]:::drv
+  SWM{{"active_source<br/>m_est oder m_kand"}}:::chk
+  MEFF["m"]:::drv
+  GRAV["g = 9.81 m/s^2"]:::inp
   W["W = m g"]:::drv
 
-  KONSTR["Konstruktion<br/>Fluegel, Leitwerk, Rumpf"]:::choice
-  GEO["airplane<br/>Geometriemodell"]:::drv
-  MAC["MAC"]:::drv
-  REFQ["Referenzgroessen<br/>S_ref, b_ref, c_ref"]:::drv
-
-  subgraph SOLVER["Solver: AeroSandbox AeroBuildup"]
+  subgraph SOLVER["AeroBuildup"]
     direction TB
-    XYZ["xyz_ref<br/>Momentenbezug"]:::inp
-    OP["Betriebspunkt<br/>V, alpha, Hoehe"]:::inp
-    CTRL["Ruder- und Klappenstellung"]:::inp
-    FID["Modellgroesse<br/>Genauigkeitsstufe"]:::inp
-    RUN(["AeroBuildup.run"]):::drv
+    XYZ["xyz_ref = x_cg"]:::inp
+    OP["V, alpha, h"]:::inp
+    CTRL["Ruderstellung"]:::inp
+    FID["Modellgroesse"]:::inp
+    RUN(["run"]):::drv
     XYZ --> RUN
     OP --> RUN
     CTRL --> RUN
     FID --> RUN
   end
+
   XNP["x_NP"]:::drv
-  CMA["Cm_alpha, CL_alpha"]:::drv
-  SM["SM erreicht"]:::out
-  RT{{"Rechenwegprobe<br/>gegen -Cm_a / CL_a"}}:::chk
-  CGD["x_cg Auslegung<br/>= x_NP - SM_target MAC"]:::out
+  CMA["Cm_alpha"]:::drv
+  CLA["CL_alpha"]:::drv
 
-  CGK["x_cg aus Komponenten<br/>Vergleichsgroesse"]:::drv
+  CGD["x_cg = x_NP - SM_target c_bar"]:::out
+  SM["SM = (x_NP - x_cg) / c_bar"]:::out
+  RT{{"Probe<br/>SM =? -Cm_alpha / CL_alpha"}}:::chk
+
+  XI["x_i<br/>Stationen"]:::inp
+  CGK["x_cg,komp = Sum(m_i x_i) / Sum(m_i)"]:::drv
+
+  VS["V_stall = sqrt(2 W / (rho S_ref CL_max))"]:::out
+  CLMAX["CL_max"]:::inp
+  RHO["rho"]:::inp
   ENV["CG-Huellkurve"]:::out
-  MENV["Massenachse<br/>wie weit darf ich irren"]:::out
-  HAND["Handstart<br/>erreicht V_stall"]:::out
+  MENV["Massenachse<br/>zulaessiger Irrtum in m"]:::out
+  HAND["Handstart<br/>V_launch vs V_stall"]:::out
 
-  SH["S_H, l_H aus der Geometrie"]:::inp
-  AVH["a_VH je Flugzeug"]:::drv
-  SUG["Fluegelversatz<br/>Akkuposition"]:::out
-
-  MISS --> SMT
-  DES ==> SMT
+  DES ==> KONSTR
   DES ==> ESTM
   DES ==> REST
+  DES ==> SMT
+  MISS --> SMT
+
+  KONSTR --> GEO
+  GEO --> MAC
+  GEO --> SREF
+  GEO --> RUN
+  SREF --> RUN
 
   KOMP --> MSUM
   REST --> MSUM
   MSUM --> SWM
   ESTM --> SWM
-  SWM --> MEFF --> W
-  MEFF --> MENV --> HAND
+  SWM --> MEFF
+  GRAV --> W
+  MEFF --> W
 
-  KOMP --> CGK
-
-  DES ==> KONSTR --> GEO
-  GEO --> MAC
-  GEO --> REFQ
-  GEO --> RUN
-  REFQ --> RUN
-  RUN --> XNP --> SM
+  RUN --> XNP
   RUN --> CMA
-  MAC --> SM
-  CMA --> RT
-  SM --> RT
+  RUN --> CLA
+
   XNP --> CGD
   MAC --> CGD
-  SMT --> CGD --> ENV
+  SMT --> CGD
+  CGD --> XYZ
 
-  SH --> AVH --> SUG
-  MAC --> SUG
-  CGD --> SUG
+  XNP --> SM
+  MAC --> SM
+  CGD --> SM
+  SM --> RT
+  CMA --> RT
+  CLA --> RT
+
+  KOMP --> CGK
+  XI --> CGK
+
+  W --> VS
+  RHO --> VS
+  SREF --> VS
+  CLMAX --> VS
+  VS --> HAND
+  MEFF --> MENV --> HAND
+
+  CGD --> ENV
+  CGK --> ENV
 
   STAT -. "wo nachschaerfen" .-> DES
-  MSUM -. "divergence" .-> DES
-  CGK -. "Abstand zum Auslegungsziel" .-> DES
-  ENV -. "haelt es die Huellkurve" .-> DES
+  MSUM -. "m_kand vs m_est" .-> DES
+  CGK -. "Abstand zu x_cg" .-> DES
+  ENV -. "haelt die Huellkurve" .-> DES
   HAND -. "kommt es weg" .-> DES
-  RT -. "Bezugspunkte stimmen" .-> DES
+  RT -. "Bezug stimmt" .-> DES
 ```
 
 ### Der Solver und seine Vorbedingungen
@@ -548,6 +570,22 @@ Violett umrandet und doppelt gezeichnet: **du**. Gelb: ein deklarierter Schätzw
 Rautenknoten: eine Umschaltung oder eine Probe — beides erzeugt keinen Wert, sondern
 entscheidet oder prüft. **Gestrichelt: Kanten, die zu dir zurücklaufen statt weiter in die
 Rechnung.**
+
+### Warum die Formeln in den Kästen stehen
+
+Ein Gesetz wird über **Formel und Eingänge** freigegeben. Ein Graph, der nur Namen zeigt,
+ist deshalb nicht freigebbar — man sieht nicht, ob alle Vorbedingungen da sind.
+
+Daraus folgt eine Regel, die zugleich maschinell prüfbar ist:
+
+> **Jedes Symbol in einer Formel hat eine eingehende Kante, und der Quellknoten trägt
+> dasselbe Symbol.**
+
+Ein Symbol ohne Kante ist ein unbelegter Eingang. Eine Kante auf ein Symbol, das in keiner
+Formel vorkommt, ist eine Beziehung, die niemand nutzt. Beides fällt beim Zeichnen auf und
+nicht erst beim Lesen des Codes — und beides lässt sich als Prüfung schreiben.
+
+Der Graph wird dadurch größer. Er wird aber erst dadurch das, was er sein soll.
 
 ### Was die Rückkanten sagen
 
