@@ -497,9 +497,34 @@ flowchart TD
   ATM --> VS
   SREF --> VS
   CLMAX --> VS
-  VS -. "Fixpunkt" .-> SWEEP
+  VS -. "Fixpunkt: Re(V_stall)" .-> SWEEP
 
 ```
+
+### Die kritischen Iterationen
+
+**Eine echte.** `V_stall` braucht `CL_max,stall`, und `CL_max,stall` gilt bei der
+Reynoldszahl, die aus `V_stall` folgt. Sie ist als `procedure` zu führen und braucht die
+vier Angaben, die ein Verfahren im Kanon verlangt: welche Beziehung sie löst, mit welcher
+Methode, unter welchen Annahmen, und was sie bei Nichtkonvergenz zurückgibt. **Keine der
+vier steht heute fest.** Verletzt wurde sie über die Flotte gemessen: Median +2,9 %,
+schlimmstenfalls +33 %, stets zu niedrig.
+
+**Eine scheinbare.** `x_cg → xyz_ref → x_np → x_cg` sieht zirkulär aus und ist in einem
+Durchgang erledigt — nachgemessen an einem Trainer mit Leitwerk:
+
+| `xyz_ref` | `x_np` | `C_mα` |
+|---|---|---|
+| 0,000 m | 0,10858 | −3,066 |
+| 0,150 m | 0,10875 | **+1,165** |
+
+`x_np` wandert über 150 mm Bezugsverschiebung um **0,17 mm** — das ist Numerik, keine
+Abhängigkeit. `C_mα` dagegen wechselt das Vorzeichen, und zwar genau bei `xyz_ref = x_np`,
+wie die Definition es verlangt.
+
+Daraus folgt für die Freigabe: Für `x_np` braucht der Bezugspunkt **nicht** zu stimmen. Für
+`C_mα` — und damit für den Ableitungsweg zur Stabilitätsreserve — **schon**, und dort ist
+er bei 27 von 29 Flugzeugen der Ursprung statt des Schwerpunkts.
 
 ### Zwei Aufrufe, ein Solver
 
