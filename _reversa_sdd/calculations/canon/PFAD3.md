@@ -441,9 +441,11 @@ flowchart TD
   ATM["rho = rho_ISA(h)<br/>Standardatmosphaere"]:::drv
   W["W = m g"]:::drv
 
-  CTRL[/"Ruderstellung"/]:::inp
+  VCR[/"V  Fluggeschwindigkeit"/]:::inp
+  CTRL[/"Ruder neutral"/]:::inp
   FID[/"Modellgroesse"/]:::inp
-  OP[/"Betriebspunkt V, alpha"/]:::inp
+
+  ALPHA(["alpha: loese L = W bei V"]):::drv
 
   RUN(["AeroBuildup<br/>ein Punkt, xyz_ref = x_cg"]):::drv
   SWEEP(["AeroBuildup<br/>alpha-Sweep bei V_stall"]):::drv
@@ -468,7 +470,13 @@ flowchart TD
   CTRL --> SWEEP
   FID --> RUN
   FID --> SWEEP
-  OP --> RUN
+  VCR --> ALPHA
+  W --> ALPHA
+  ATM --> ALPHA
+  SREF --> ALPHA
+  GEO --> ALPHA
+  ALPHA --> RUN
+  VCR --> RUN
 
   MEST --> W
   GRAV --> W
@@ -499,9 +507,9 @@ flowchart TD
   CLMAX --> VS
   VS -. "Fixpunkt: Re(V_stall)" .-> SWEEP
 
-  linkStyle 29 stroke:#b02a21,stroke-width:3px
-  linkStyle 33 stroke:#b02a21,stroke-width:3px
-  linkStyle 34 stroke:#b02a21,stroke-width:3px
+  linkStyle 35 stroke:#b02a21,stroke-width:3px
+  linkStyle 39 stroke:#b02a21,stroke-width:3px
+  linkStyle 40 stroke:#b02a21,stroke-width:3px
 ```
 
 ### Die kritischen Iterationen
@@ -529,6 +537,23 @@ Daraus folgt für die Freigabe: Für `x_np` braucht der Bezugspunkt **nicht** zu
 `C_mα` — und damit für den Ableitungsweg zur Stabilitätsreserve — **schon**, und dort ist
 er bei 27 von 29 Flugzeugen der Ursprung statt des Schwerpunkts.
 
+### Der Betriebspunkt: `V` vorgegeben, `α` gelöst
+
+Entschieden: Die Fluggeschwindigkeit ist eine Eingabe, der Anstellwinkel folgt aus dem
+Horizontalflug — `L = W`. Das Ruder bleibt neutral, damit die Ableitungen die des sauberen
+Flugzeugs sind und keine geschachtelte Trimmschleife entsteht.
+
+Damit ist der Betriebspunkt **keine offene Eingabe mehr**, sondern zur Hälfte gerechnet.
+Und `α` ist die **zweite Prozedur** in diesem Pfad: eine eindimensionale Lösung, die
+dieselben vier Angaben schuldet wie der Fixpunkt — Beziehung, Methode, Annahmen,
+Verhalten bei Nichtkonvergenz.
+
+Sie hat eine Annahme, die man leicht übersieht: `L = W` ist nur im **stationären
+Horizontalflug** die richtige Bedingung. Im Steigflug, in der Kurve oder beim Handstart
+gilt sie nicht — dort ist `L = n · W`. Der Anstellwinkel, den dieser Lauf liefert, ist also
+der des geradeaus fliegenden Modells, und die Stabilitätsableitungen gelten für genau
+diesen Zustand.
+
 ### Zwei Aufrufe, ein Solver
 
 Beide Größen kommen aus **AeroBuildup**, nur mit verschiedenem Zuschnitt: einmal ein
@@ -538,7 +563,7 @@ Ruderstellung, Genauigkeitsstufe, Höhe — und unterscheiden sich in genau zwei
 
 | | ein Punkt | Sweep |
 |---|---|---|
-| Betriebspunkt | **offen** — `V, alpha` | gebunden an `V_stall` |
+| Betriebspunkt | `V` vorgegeben, `α` aus `L = W` | gebunden an `V_stall` |
 | zusätzliche Bindung | `xyz_ref = x_cg` | — |
 | liefert | `x_NP`, `C_mα`, `CL_α` | `CL_max,stall` |
 
