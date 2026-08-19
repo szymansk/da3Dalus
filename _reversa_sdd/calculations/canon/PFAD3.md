@@ -381,131 +381,153 @@ Stabilitätsreserve vor allem, was daraus einen Schwerpunkt ableitet.
 
 ## 8. Wie der Pfad aussähe, wenn er stimmte
 
-Der folgende Graph zeigt denselben Pfad **ohne verletzte Vorbedingung, ohne stille
-Ersatzwerte, ohne doppelte Autorität.** Er ist kein Entwurfsvorschlag für eine neue
-Architektur — es ist derselbe Rechenweg, nur mit den Eigenschaften, die der Kanon von ihm
-verlangt.
+Derselbe Rechenweg **ohne verletzte Vorbedingung, ohne stille Ersatzwerte, ohne doppelte
+Autorität** — und mit den beiden Dingen, die ein reiner Erzeugergraph nicht zeigen kann:
+**wo der Konstrukteur entscheidet**, und **welche Kanten zu ihm zurücklaufen** statt weiter
+zur nächsten Formel.
 
 **Die Differenz zwischen Abschnitt 2 und diesem Graphen ist die Arbeitsliste.**
 
-### Ein Punkt vorweg, damit der Graph nicht falsch gelesen wird
+### Drei Quellenarten, nicht eine
 
-Der Soll-Zustand hat **weiterhin Schätzwerte.** Nach ADR 0010 und ADR 0011 ist eine
-Schätzung der normale Zustand eines iterativen Entwurfs — der Konstrukteur setzt eine
-Annahme und entscheidet, ob eine Messung sie ersetzen darf.
+| Art | wer setzt sie | Beispiel |
+|---|---|---|
+| **Entwurfswahl** | nur du, nie gerechnet | `SM_target`, `g_limit` |
+| **zweiquellig** | Schätzung *und* Rechnung existieren, **du schaltest** | `mass`, `cg_x` |
+| **gerechnet** | ein Erzeuger, keine Annahmezeile | `x_NP`, `MAC` |
 
-Was der Soll-Zustand nicht hat, sind **stille** Schätzungen. Jeder eingesprungene Wert
-trägt eine Deklaration (ADR 0020), und zwar mit der Angabe, ob es sich um übliche
-Fachpraxis oder um einen Mangel handelt.
+Die mittlere Art ist die, die man beim Zeichnen verliert. Die Komponentensumme ist ein
+**Kandidat** für die Masse, kein Ergebnis. `divergence` sagt dir, wie weit er von deiner
+Schätzung liegt; `active_source` hält deine Entscheidung fest.
 
-Deshalb sind im Graphen unten die Schätzknoten **nicht verschwunden**, sondern
-**beschriftet**.
+### Eine Schätzung ist kein Fehlerzustand
+
+Der Sollgraph hat weiterhin Schätzwerte, und er hat sie **absichtlich**. Was er nicht hat,
+sind *stille* Schätzungen: Jeder eingesprungene Wert deklariert sich, und der Restanteil
+für alles, was man nicht einzeln wiegt, ist eine **erklärte Größe** statt eines Lochs in
+der Summe.
 
 ```mermaid
 flowchart TD
-  classDef inp fill:#eef3f8,stroke:#5a7fa6,color:#173a5e
-  classDef drv fill:#ffffff,stroke:#8a8f98,color:#222
-  classDef out fill:#eaf5ee,stroke:#3d8a5a,color:#14432a
+  classDef des fill:#efe9f7,stroke:#6b4fa0,stroke-width:2px,color:#33235c
+  classDef choice fill:#f3ecfa,stroke:#8a6fc0,color:#3c2a63
   classDef est fill:#fff8e6,stroke:#b4690e,color:#6b3f06
+  classDef drv fill:#ffffff,stroke:#8a8f98,color:#222
+  classDef inp fill:#eef3f8,stroke:#5a7fa6,color:#173a5e
+  classDef out fill:#eaf5ee,stroke:#3d8a5a,color:#14432a
   classDef chk fill:#f0ecf8,stroke:#6b4fa0,color:#33235c
 
-  MI["Komponenten m_i, n<br/>Katalog oder Handeingabe"]:::inp
-  RHO["Dichte, Volumen, Flaeche"]:::inp
-  TW["Wandstaerke t_wall<br/>aus dem Materialsatz"]:::inp
-  MOWN["m_own je Knoten"]:::drv
-  MEST["fehlende Gruppe<br/>GESCHAETZT + Warnung"]:::est
-  MSUM["m_total<br/>eine Indexmenge"]:::drv
-  MEFF["m effektiv<br/>ein Vorgabewert"]:::drv
+  DES(["Konstrukteur"]):::des
+
+  SMT["SM_target<br/>aus der Mission"]:::choice
+  ESTM["Schaetzung Masse"]:::est
+  ESTCG["Schaetzung cg_x"]:::est
+
+  KOMP["Hauptkomponenten<br/>Katalog, Handeingabe"]:::inp
+  REST["Restanteil X Prozent<br/>erklaerte Groesse"]:::est
+  MSUM["m_total Kandidat"]:::drv
+  STAT["Baumstatus<br/>gruen / rot"]:::chk
+  SWM{{"aktive Quelle Masse"}}:::chk
+  MEFF["m effektiv"]:::drv
   W["W = m g"]:::drv
 
   SOLV["AeroBuildup<br/>xyz_ref := x_cg"]:::inp
-  XNP["x_NP<br/>eine Autoritaet"]:::drv
-  MAC["MAC<br/>Hauptfluegel, auch als c_ref"]:::drv
-  MISSION["Mission"]:::inp
-  SMT["SM_target<br/>missionsabhaengig"]:::inp
+  XNP["x_NP"]:::drv
+  MAC["MAC<br/>auch als c_ref"]:::drv
+  SM["SM erreicht"]:::out
+  RT{{"Rechenwegprobe<br/>gegen -Cm_a / CL_a"}}:::chk
+  CGD["x_cg Auslegung<br/>= x_NP - SM_target MAC"]:::out
 
-  SM["SM = (x_NP - x_cg) / MAC"]:::out
-  RT{{"Rechenwegprobe<br/>SM == -Cm_a / CL_a"}}:::chk
-  CGD["x_cg = x_NP - SM MAC"]:::out
+  CGK["x_cg Kandidat<br/>aus Komponenten"]:::drv
+  SWCG{{"aktive Quelle cg_x"}}:::chk
+  ENV["CG-Huellkurve"]:::out
+  MENV["Massenachse<br/>wie weit darf ich irren"]:::out
+  HAND["Handstart<br/>erreicht V_stall"]:::out
 
-  LI["Gewichtsposten m_i, x_i"]:::inp
-  CGS["x_cg je Ladefall"]:::drv
-  CGFA["x_cg vorn / hinten"]:::out
-  CGFWD["Vorderes CG-Limit<br/>aus Ruderautoritaet"]:::out
-  ENV["CG-Huellkurve<br/>+ Klassifikation"]:::out
-
-  SH["S_H, l_H<br/>aus der Geometrie"]:::inp
+  SH["S_H, l_H aus der Geometrie"]:::inp
   AVH["a_VH je Flugzeug"]:::drv
-  DSM["dSM/dx, dSM/dS_H"]:::drv
-  CLIP["Klemme 5 MAC<br/>angewendet"]:::chk
-  SUG["Fluegelversatz<br/>Leitwerksskalierung"]:::out
+  SUG["Fluegelversatz<br/>Akkuposition"]:::out
 
-  MI --> MOWN
-  RHO --> MOWN
-  TW --> MOWN
-  MEST --> MSUM
-  MOWN --> MSUM --> MEFF --> W
-  MEFF --> CGS
+  DES ==> SMT
+  DES ==> ESTM
+  DES ==> ESTCG
+  DES ==> REST
 
-  SOLV --> XNP
-  SOLV --> MAC
-  XNP --> SM
-  MAC --> SM
+  KOMP --> MSUM
+  REST --> MSUM
+  MSUM --> SWM
+  ESTM --> SWM
+  SWM --> MEFF --> W
+  MEFF --> MENV --> HAND
+
+  KOMP --> CGK --> SWCG
+  ESTCG --> SWCG
+  SWCG --> ENV
+
+  SOLV --> XNP --> SM
+  SOLV --> MAC --> SM
   SM --> RT
   XNP --> CGD
   MAC --> CGD
-  MISSION --> SMT --> CGD
-  SMT --> ENV
+  SMT --> CGD --> ENV
 
-  LI --> CGS --> CGFA --> ENV
-  CGD --> ENV
-  CGFWD --> ENV
-  SM --> ENV
+  SH --> AVH --> SUG
+  MAC --> SUG
+  CGD --> SUG
 
-  SH --> AVH --> DSM --> CLIP --> SUG
-  MAC --> DSM
-  SM --> SUG
+  STAT -. "wo nachschaerfen" .-> DES
+  MSUM -. "divergence" .-> DES
+  CGK -. "divergence" .-> DES
+  ENV -. "haelt es die Huellkurve" .-> DES
+  HAND -. "kommt es weg" .-> DES
+  RT -. "Bezugspunkte stimmen" .-> DES
 ```
 
-Gelb: ein **deklarierter** Schätzwert. Violett: eine Probe, die den Wert nicht erzeugt,
-sondern prüft.
+Violett umrandet und doppelt gezeichnet: **du**. Gelb: ein deklarierter Schätzwert.
+Rautenknoten: eine Umschaltung oder eine Probe — beides erzeugt keinen Wert, sondern
+entscheidet oder prüft. **Gestrichelt: Kanten, die zu dir zurücklaufen statt weiter in die
+Rechnung.**
 
-### Was sich strukturell ändert
+### Was die Rückkanten sagen
 
-Der Soll-Graph ist **schlanker**, obwohl er dieselbe Arbeit leistet. Doppelte Autoritäten
-verschwinden nicht, weil man sie streicht, sondern weil eine davon zur *Probe* wird.
+Sie sind der Grund, warum dieser Pfad keine Fließbandrechnung ist. Sechs Stück, und keine
+davon speist eine Formel:
+
+| Rückkante | beantwortet |
+|---|---|
+| Baumstatus | wo lohnt es sich, die Schätzung zu verfeinern |
+| `divergence` Masse | wie weit liegt die Komponentensumme von meiner Schätzung |
+| `divergence` Schwerpunkt | dasselbe für die Lage |
+| Hüllkurve | hält der Entwurf, wenn die Ladung wandert |
+| Massenachse / Handstart | **wie weit darf ich mich verschätzt haben, bevor es am Boden bleibt** |
+| Rechenwegprobe | rechnet der Solver um den richtigen Punkt |
+
+Der Baumstatus ist dabei ausdrücklich **kein Tor**. Er verweigert keine Zahl — er zeigt,
+wo die nächste Verfeinerung am meisten bringt. Ihn als Prüfregel zu lesen hieße, dem
+Werkzeug zu erlauben, eine Zahl abzulehnen, die du bewusst als vorläufig annimmst.
+
+### Was sich gegenüber heute strukturell ändert
 
 | heute | im Soll | warum |
 |---|---|---|
-| `SM` aus vier Erzeugern | **eine** Formel, der Ableitungsweg wird zur **Rechenwegprobe** | zwei Wege zu einer Größe sind ein Test, keine zweite Wahrheit |
-| `x_NP` aus zwei Läufen | eine Autorität | ADR 0022 |
-| MAC zweimal | Hauptflügel-MAC, **auch** als Referenzsehne des Solvers gesetzt | sonst liegen Reserven auf zwei Skalen |
-| `SM_target` viermal | einmal, **aus der Mission abgeleitet** | 12 % passt zum Trainer, nicht zu Sport oder Kunstflug |
+| `SM` aus vier Erzeugern | eine Formel, der Ableitungsweg wird **Probe** | zwei Wege zu einer Größe sind ein Test, keine zweite Wahrheit |
+| `SM_target` und `SM` gleich benannt | **getrennte Größen** — Vorgabe gegen Nachprüfung | eine wird gesetzt, die andere gemessen |
+| `x_NP` aus zwei Läufen | eine Autoritaet | ADR 0022 |
+| MAC zweimal | Hauptflügel-MAC, auch als Referenzsehne gesetzt | sonst liegen Reserven auf zwei Skalen |
+| `SM_target` viermal vorgegeben | einmal, **aus der Mission** | 12 % passt zum Trainer, nicht zu Sport oder Kunstflug |
 | `m` mit 1,5 / 1,0 kg | ein Vorgabewert an einer Stelle | zwei Antworten auf eine fehlende Eingabe |
-| `t_wall` still 0,4 mm | aus dem Materialsatz; fehlt er, **Warnung** | Schalenmasse ist linear darin |
-| unvollständiger Baum → stille Teilsumme | **geschätzte Gruppe + Warnung** | Sadraey §11.2: schätzen, nie weglassen |
+| `t_wall` still 0,4 mm | aus dem Materialsatz, sonst **Warnung** | Schalenmasse ist linear darin |
+| unauflösbarer Knoten trägt 0 g | fällt in den **erklärten Restanteil** | ein Loch in der Summe ist unsichtbar, ein Restanteil nicht |
+| Komponentensumme *ist* die Masse | Summe ist ein **Kandidat**, du schaltest | ADR 0010 |
 | `S_H`, `l_H` erreichen den Dienst nie | echte Geometrie erreicht ihn | sonst misst der Korrekturzweig nichts |
-| `a_VH` immer 0,10 | je Flugzeug gerechnet | 0,10 ist ein Platzhalter, kein Wert |
+| `a_VH` immer 0,10 | je Flugzeug gerechnet | 0,10 ist ein Platzhalter |
 | vorderes CG-Limit = 0,30·MAC | aus der Ruderautorität | der Ersatz ist heute der einzige Erzeuger |
-| 5·MAC-Klemme unbenutzt | angewendet | eine Inversion erster Ordnung braucht ihre Schranke |
 | `xyz_ref` = Ursprung | `xyz_ref := x_cg` | sonst ist die Reserve keine Reserve |
+| **Hüllkurve nur über den Schwerpunkt** | **Massenachse dazu** | die Frage lautet *wie weit darf ich irren*, nicht *ist es exakt* |
 
-### Zwei Knoten, die neu hinzukommen
+### Was gleich bleibt
 
-**Die geschätzte Gruppe.** Heute trägt ein Knoten ohne auflösbares Gewicht still 0 g bei.
-Im Soll trägt er eine **Schätzung** und eine Warnung — das ist genau, was Sadraey §11.2 und
-Scholz verlangen, und es ist auch der ehrlichere Zustand: Eine Summe, die eine Gruppe
-vergisst, ist eine falsche Zahl; eine Summe mit einer markierten Schätzung ist eine
-Zwischenstufe der Iteration.
-
-**Die Rechenwegprobe.** `SM = −C_mα/C_Lα` verschwindet nicht — es hört auf, ein zweiter
-Erzeuger zu sein, und wird zu einem Test gegen die geometrische Form. Läuft er auseinander,
-sagt der Fehlschlag präzise, dass die Momentenbezugspunkte nicht übereinstimmen. Aus einer
-Uneinigkeit wird eine Diagnose.
-
-### Und was gleich bleibt
-
-Der Schwerpunkt wird weiterhin **von oben abgeleitet**, nicht von unten summiert. Die
-Komponentensumme bleibt eine Vergleichsgröße, kein Ersatz für die Auslegung. Der Ladefall
-bleibt ein eigener Strang mit eigener Indexmenge — nur unter einem eigenen Namen, statt
-ebenfalls „die Masse des Flugzeugs" zu heißen.
+Der Schwerpunkt wird **von oben abgeleitet**, nicht von unten summiert. Die
+Komponentensumme bleibt eine Vergleichsgröße. Der Ladefall bleibt ein eigener Strang mit
+eigener Indexmenge — nur unter eigenem Namen, statt ebenfalls „die Masse des Flugzeugs" zu
+heißen. Und das Blei wird weiterhin **gewogen, nicht gerechnet**.
