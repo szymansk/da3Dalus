@@ -433,7 +433,7 @@ flowchart TD
   GEO[/"airplane"/]:::inp
   SMT[/"SM_target"/]:::inp
   MEST[/"m  Abflugmasse"/]:::est
-  HOEHE[/"h  Flughoehe"/]:::inp
+  HOEHE[/"h  Platzhoehe + Flughoehe"/]:::est
   GRAV["g = 9.80665 m/s^2"]:::konst
 
   MAC["c_bar = (2/S) Int c(y)^2 dy"]:::drv
@@ -554,6 +554,24 @@ Bauteildaten, um überhaupt eine Spanne zu bilden.
 Entscheidungen im Hinblick auf die Mission, nicht Rechenwege. Zuerst muss feststehen, dass
 die **richtigen Werte an den richtigen Betriebspunkten** entstehen — was man danach mit
 ihnen entscheidet, ist eine Ebene darüber.
+
+**Die Höhe ist ebenfalls eine Schätzung.** Wo genau das Modell fliegt, weiß niemand vorher
+— und über Grund ist der Spielraum ohnehin klein: 150 m ist die Grenze.
+
+Interessant ist, was das für die Freigabe bedeutet. Die Höhe zerfällt in zwei Anteile mit
+sehr verschiedenem Charakter:
+
+| Anteil | Art | Wirkung auf `V_stall` |
+|---|---|---|
+| **Platzhöhe über NN** | bekannt, kein Schätzwert | 600 m → **+2,9 %** |
+| **Flughöhe über Grund** | geschätzt, gesetzlich ≤ 150 m | **+0,7 %** über das ganze Band |
+
+Der geschätzte Anteil ist also der **unwichtigere**: Über die volle erlaubte Höhe bewegt
+sich die Abrissgeschwindigkeit um weniger als ein Prozent. Der bekannte Anteil ist der
+größere — wer im Alpenvorland bei 600 m Platzhöhe fliegt, hat 2,9 %, und bei 1000 m fünf.
+
+Beides zusammen bleibt klein gegen die Massenschätzung, aber die Reihenfolge ist wichtig:
+**Nicht die Flughöhe braucht eine bessere Schätzung, sondern die Platzhöhe eine Eingabe.**
 
 **`g` ist keine Eingabe, sondern eine physikalische Konstante.** Du wählst sie nicht — sie
 gilt. Deshalb steht sie gestrichelt und grau, außerhalb des Eingabebands.
