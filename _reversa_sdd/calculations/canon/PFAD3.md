@@ -445,7 +445,7 @@ flowchart TD
   subgraph SOLVER["AeroBuildup"]
     direction TB
     XYZ["xyz_ref = x_cg"]:::inp
-    OP["V, alpha"]:::inp
+    OP["Betriebspunkt<br/>V, alpha"]:::inp
     CTRL["Ruderstellung"]:::inp
     FID["Modellgroesse"]:::inp
     RUN(["run"]):::drv
@@ -465,8 +465,6 @@ flowchart TD
   SM["SM = (x_NP - x_cg) / c_bar"]:::out
   RT{{"Probe SM =? -Cm_alpha / CL_alpha"}}:::chk
   VS["V_stall = sqrt(2 W / (rho S_ref CL_max,stall))"]:::out
-  MENV["zulaessiger Irrtum in m"]:::out
-  HAND["V_launch gegen V_stall"]:::out
 
   GEO --> MAC
   GEO --> SREF
@@ -503,9 +501,6 @@ flowchart TD
   CLMAX --> VS
   VS -. "Fixpunkt" .-> SWEEP
 
-  MEST --> MENV
-  VS --> HAND
-  MENV --> HAND
 ```
 
 ### Der Solver und seine Vorbedingungen
@@ -551,6 +546,11 @@ verdient einen eigenen Graphen, statt diesen zu überfrachten.
 
 Mit ihm fallen vorerst auch die CG-Hüllkurve und der Ladefall heraus: Beide brauchen die
 Bauteildaten, um überhaupt eine Spanne zu bilden.
+
+**Ebenso heraus: der Handstartvergleich und die zulässige Massenabweichung.** Beides sind
+Entscheidungen im Hinblick auf die Mission, nicht Rechenwege. Zuerst muss feststehen, dass
+die **richtigen Werte an den richtigen Betriebspunkten** entstehen — was man danach mit
+ihnen entscheidet, ist eine Ebene darüber.
 
 **`g` ist keine Eingabe, sondern eine physikalische Konstante.** Du wählst sie nicht — sie
 gilt. Deshalb steht sie gestrichelt und grau, außerhalb des Eingabebands.
