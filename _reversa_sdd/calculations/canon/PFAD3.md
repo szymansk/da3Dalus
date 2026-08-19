@@ -499,11 +499,14 @@ flowchart TD
   CLMAX --> VS
   VS -. "Fixpunkt: Re(V_stall)" .-> SWEEP
 
+  linkStyle 29 stroke:#b02a21,stroke-width:3px
+  linkStyle 33 stroke:#b02a21,stroke-width:3px
+  linkStyle 34 stroke:#b02a21,stroke-width:3px
 ```
 
 ### Die kritischen Iterationen
 
-**Eine echte.** `V_stall` braucht `CL_max,stall`, und `CL_max,stall` gilt bei der
+**Eine echte** — im Graphen rot und dick hervorgehoben. `V_stall` braucht `CL_max,stall`, und `CL_max,stall` gilt bei der
 Reynoldszahl, die aus `V_stall` folgt. Sie ist als `procedure` zu führen und braucht die
 vier Angaben, die ein Verfahren im Kanon verlangt: welche Beziehung sie löst, mit welcher
 Methode, unter welchen Annahmen, und was sie bei Nichtkonvergenz zurückgibt. **Keine der
