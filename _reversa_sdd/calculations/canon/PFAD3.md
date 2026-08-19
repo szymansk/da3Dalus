@@ -436,7 +436,6 @@ flowchart TD
   SREF["S_ref, b_ref"]:::drv
 
   SMT["SM_target"]:::choice
-  CLMAX["CL_max"]:::inp
   HOEHE["h  Hoehe"]:::inp
   ATM["rho = rho_ISA(h)<br/>US-Standardatmosphaere 1976"]:::drv
   GRAV["g"]:::inp
@@ -464,6 +463,9 @@ flowchart TD
   XNP["x_NP"]:::drv
   CMA["Cm_alpha"]:::drv
   CLA["CL_alpha"]:::drv
+
+  SWEEP(["AeroBuildup alpha-Sweep<br/>bei V_stall"]):::drv
+  CLMAX["CL_max"]:::drv
 
   CGD["x_cg = x_NP - SM_target c_bar"]:::out
   SM["SM = (x_NP - x_cg) / c_bar"]:::out
@@ -516,6 +518,10 @@ flowchart TD
 
   HOEHE --> ATM
   HOEHE --> RUN
+  GEO --> SWEEP
+  HOEHE --> SWEEP
+  VS -. "Fixpunkt" .-> SWEEP
+  SWEEP --> CLMAX
   W --> VS
   ATM --> VS
   SREF --> VS
@@ -557,6 +563,20 @@ Rechenwegprobe.
 
 Lila: was du vorgibst. Gelb: ein deklarierter Schätzwert. Rauten: eine Wahl oder eine
 Probe — beide erzeugen keinen Wert. Grün: was herauskommt.
+
+**`CL_max` ist keine Eingabe.** Es folgt aus dem Profil und dem Flügel — ein
+Anstellwinkel-Sweep durch den Solver, dessen Spitzenwert. Damit steht im Graphen die
+Abhängigkeit, die Pfad 1 als Vorbedingung gefunden hat:
+
+```
+V_stall braucht CL_max        CL_max gilt bei einer Reynoldszahl
+CL_max muss bei V_stall gelten   Re folgt aus V_stall
+```
+
+**Ein Fixpunkt**, gestrichelt gezeichnet. Er ist der Grund, warum die heutige Rechnung um
+den Faktor liegt, den wir über die Flotte gemessen haben: Median +2,9 %, im schlimmsten
+Fall +33 %, und immer in die unsichere Richtung. Ein Graph, der `CL_max` als Eingabe
+zeichnet, verbirgt genau das.
 
 **`rho` ist keine Eingabe.** Sie folgt aus der Höhe über die Standardatmosphäre — du gibst
 höchstens `h` an. Damit gibt es genau **eine** Höhe im Graphen, und sie speist beides: die
@@ -629,6 +649,7 @@ Werkzeug zu erlauben, eine Zahl abzulehnen, die du bewusst als vorläufig annimm
 | `SM` aus vier Erzeugern | eine Formel, der Ableitungsweg wird **Probe** | zwei Wege zu einer Größe sind ein Test, keine zweite Wahrheit |
 | `SM_target` und `SM` gleich benannt | **getrennte Größen** — Vorgabe gegen Nachprüfung | eine wird gesetzt, die andere gemessen |
 | `x_NP` aus zwei Läufen | eine Autoritaet | ADR 0022 |
+| `CL_max` als Maximum über das ganze Geschwindigkeitsgitter | **bei `V_stall` ausgewertet**, iterativ | gemessen: Median +2,9 %, schlimmstenfalls +33 %, stets zu niedrige Abrissgeschwindigkeit |
 | `rho` einmal aus der Höhe, einmal als Literal 1,225 | **eine** Atmosphäre aus **einer** Höhe | der Solver bekommt sie aus `h`, `V_stall` aus einer Konstanten — zwei Dichten für einen Flugzustand |
 | MAC zweimal — gerechnet und aus dem Solver zurückgelesen | **eine** MAC aus der Geometrie, als `c_ref` übergeben, nie zurückgelesen | die Rückgabe ist die eigene Eingabe; zwei Werte kann es nur geben, wenn etwas Inkonsistentes hineingeht |
 | `SM_target` viermal vorgegeben | einmal, **aus der Mission** | 12 % passt zum Trainer, nicht zu Sport oder Kunstflug |
