@@ -437,7 +437,8 @@ flowchart TD
 
   SMT["SM_target"]:::choice
   CLMAX["CL_max"]:::inp
-  RHO["rho"]:::inp
+  HOEHE["h  Hoehe"]:::inp
+  ATM["rho = rho_ISA(h)<br/>US-Standardatmosphaere 1976"]:::drv
   GRAV["g"]:::inp
 
   KOMP["m_i, n_i, x_i"]:::inp
@@ -451,7 +452,7 @@ flowchart TD
   subgraph SOLVER["AeroBuildup"]
     direction TB
     XYZ["xyz_ref = x_cg"]:::inp
-    OP["V, alpha, h"]:::inp
+    OP["V, alpha"]:::inp
     CTRL["Ruderstellung"]:::inp
     FID["Modellgroesse"]:::inp
     RUN(["run"]):::drv
@@ -513,8 +514,10 @@ flowchart TD
   CGK --> DIVC
   CGD --> DIVC
 
+  HOEHE --> ATM
+  HOEHE --> RUN
   W --> VS
-  RHO --> VS
+  ATM --> VS
   SREF --> VS
   CLMAX --> VS
   VS --> HAND
@@ -554,6 +557,14 @@ Rechenwegprobe.
 
 Lila: was du vorgibst. Gelb: ein deklarierter Schätzwert. Rauten: eine Wahl oder eine
 Probe — beide erzeugen keinen Wert. Grün: was herauskommt.
+
+**`rho` ist keine Eingabe.** Sie folgt aus der Höhe über die Standardatmosphäre — du gibst
+höchstens `h` an. Damit gibt es genau **eine** Höhe im Graphen, und sie speist beides: die
+Atmosphäre des Solvers und die Dichte in der Abrissgeschwindigkeit.
+
+Das ist im Soll eine Selbstverständlichkeit und im Ist nicht: Heute bekommt der Solver
+seine Dichte aus der übergebenen Höhe, während die V-n-Kurve mit dem Literal 1,225 rechnet.
+Zwei Dichten für einen Flugzustand.
 
 ### Was dieser Graph zeigt und was nicht
 
@@ -618,6 +629,7 @@ Werkzeug zu erlauben, eine Zahl abzulehnen, die du bewusst als vorläufig annimm
 | `SM` aus vier Erzeugern | eine Formel, der Ableitungsweg wird **Probe** | zwei Wege zu einer Größe sind ein Test, keine zweite Wahrheit |
 | `SM_target` und `SM` gleich benannt | **getrennte Größen** — Vorgabe gegen Nachprüfung | eine wird gesetzt, die andere gemessen |
 | `x_NP` aus zwei Läufen | eine Autoritaet | ADR 0022 |
+| `rho` einmal aus der Höhe, einmal als Literal 1,225 | **eine** Atmosphäre aus **einer** Höhe | der Solver bekommt sie aus `h`, `V_stall` aus einer Konstanten — zwei Dichten für einen Flugzustand |
 | MAC zweimal — gerechnet und aus dem Solver zurückgelesen | **eine** MAC aus der Geometrie, als `c_ref` übergeben, nie zurückgelesen | die Rückgabe ist die eigene Eingabe; zwei Werte kann es nur geben, wenn etwas Inkonsistentes hineingeht |
 | `SM_target` viermal vorgegeben | einmal, **aus der Mission** | 12 % passt zum Trainer, nicht zu Sport oder Kunstflug |
 | `m` mit 1,5 / 1,0 kg | ein Vorgabewert an einer Stelle | zwei Antworten auf eine fehlende Eingabe |
