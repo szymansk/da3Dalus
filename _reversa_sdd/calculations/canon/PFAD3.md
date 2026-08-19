@@ -423,7 +423,6 @@ der Summe.
 
 ```mermaid
 flowchart TD
-  classDef des fill:#efe9f7,stroke:#6b4fa0,stroke-width:2px,color:#33235c
   classDef choice fill:#f3ecfa,stroke:#8a6fc0,color:#3c2a63
   classDef est fill:#fff8e6,stroke:#b4690e,color:#6b3f06
   classDef drv fill:#ffffff,stroke:#8a8f98,color:#222
@@ -431,24 +430,22 @@ flowchart TD
   classDef out fill:#eaf5ee,stroke:#3d8a5a,color:#14432a
   classDef chk fill:#f0ecf8,stroke:#6b4fa0,color:#33235c
 
-  DES(["Konstrukteur"]):::des
-  MISS["Mission"]:::inp
-
   KONSTR["Konstruktion"]:::choice
   GEO["airplane"]:::drv
-  MAC["c_bar = (2/S) Int c(y)^2 dy<br/>MAC"]:::drv
+  MAC["c_bar = (2/S) Int c(y)^2 dy"]:::drv
   SREF["S_ref, b_ref"]:::drv
 
   SMT["SM_target"]:::choice
-  ESTM["m_est<br/>Schaetzung"]:::est
-  REST["r_rest<br/>Restanteil in Prozent"]:::est
-  KOMP["m_i, n_i<br/>Hauptkomponenten"]:::inp
-  STAT["Baumstatus"]:::chk
+  CLMAX["CL_max"]:::inp
+  RHO["rho"]:::inp
+  GRAV["g"]:::inp
 
+  KOMP["m_i, n_i, x_i"]:::inp
+  REST["r_rest"]:::est
   MSUM["m_kand = Sum(m_i n_i) (1 + r_rest)"]:::drv
-  SWM{{"active_source<br/>m_est oder m_kand"}}:::chk
+  MEST["m_est"]:::est
+  SWM{{"Wahl der Quelle"}}:::chk
   MEFF["m"]:::drv
-  GRAV["g = 9.81 m/s^2"]:::inp
   W["W = m g"]:::drv
 
   subgraph SOLVER["AeroBuildup"]
@@ -463,30 +460,21 @@ flowchart TD
     CTRL --> RUN
     FID --> RUN
   end
-
   XNP["x_NP"]:::drv
   CMA["Cm_alpha"]:::drv
   CLA["CL_alpha"]:::drv
 
   CGD["x_cg = x_NP - SM_target c_bar"]:::out
   SM["SM = (x_NP - x_cg) / c_bar"]:::out
-  RT{{"Probe<br/>SM =? -Cm_alpha / CL_alpha"}}:::chk
-
-  XI["x_i<br/>Stationen"]:::inp
-  CGK["x_cg,komp = Sum(m_i x_i) / Sum(m_i)"]:::drv
+  RT{{"Probe SM =? -Cm_alpha / CL_alpha"}}:::chk
+  CGK["x_cg,komp = Sum(m_i x_i) / Sum(m_i)"]:::out
+  DIVM["m_kand - m_est"]:::out
+  DIVC["x_cg,komp - x_cg"]:::out
 
   VS["V_stall = sqrt(2 W / (rho S_ref CL_max))"]:::out
-  CLMAX["CL_max"]:::inp
-  RHO["rho"]:::inp
   ENV["CG-Huellkurve"]:::out
-  MENV["Massenachse<br/>zulaessiger Irrtum in m"]:::out
-  HAND["Handstart<br/>V_launch vs V_stall"]:::out
-
-  DES ==> KONSTR
-  DES ==> ESTM
-  DES ==> REST
-  DES ==> SMT
-  MISS --> SMT
+  MENV["zulaessiger Irrtum in m"]:::out
+  HAND["V_launch vs V_stall"]:::out
 
   KONSTR --> GEO
   GEO --> MAC
@@ -497,10 +485,13 @@ flowchart TD
   KOMP --> MSUM
   REST --> MSUM
   MSUM --> SWM
-  ESTM --> SWM
+  MEST --> SWM
   SWM --> MEFF
-  GRAV --> W
   MEFF --> W
+  GRAV --> W
+
+  MSUM --> DIVM
+  MEST --> DIVM
 
   RUN --> XNP
   RUN --> CMA
@@ -519,24 +510,19 @@ flowchart TD
   CLA --> RT
 
   KOMP --> CGK
-  XI --> CGK
+  CGK --> DIVC
+  CGD --> DIVC
 
   W --> VS
   RHO --> VS
   SREF --> VS
   CLMAX --> VS
   VS --> HAND
-  MEFF --> MENV --> HAND
+  MEFF --> MENV
+  MENV --> HAND
 
   CGD --> ENV
   CGK --> ENV
-
-  STAT -. "wo nachschaerfen" .-> DES
-  MSUM -. "m_kand vs m_est" .-> DES
-  CGK -. "Abstand zu x_cg" .-> DES
-  ENV -. "haelt die Huellkurve" .-> DES
-  HAND -. "kommt es weg" .-> DES
-  RT -. "Bezug stimmt" .-> DES
 ```
 
 ### Der Solver und seine Vorbedingungen
@@ -566,10 +552,30 @@ dagegen **ist** bezugsabhängig. Deshalb hängt die Stabilitätsreserve aus dem
 Ableitungsweg an `xyz_ref`, die aus dem geometrischen Weg nicht. Genau das prüft die
 Rechenwegprobe.
 
-Violett umrandet und doppelt gezeichnet: **du**. Gelb: ein deklarierter Schätzwert.
-Rautenknoten: eine Umschaltung oder eine Probe — beides erzeugt keinen Wert, sondern
-entscheidet oder prüft. **Gestrichelt: Kanten, die zu dir zurücklaufen statt weiter in die
-Rechnung.**
+Lila: was du vorgibst. Gelb: ein deklarierter Schätzwert. Rauten: eine Wahl oder eine
+Probe — beide erzeugen keinen Wert. Grün: was herauskommt.
+
+### Was dieser Graph zeigt und was nicht
+
+Er zeigt **Rechenwege**. Dass an einer Stelle gewählt wird, gehört dazu — die Wahl der
+Massenquelle ist Teil der Rechnung, denn von ihr hängt jede Zahl danach ab.
+
+Er zeigt **nicht**, wie du wählst. Baumstatus, Grün und Rot, was dir beim Nachschärfen
+hilft: eine andere Ebene, und sie würde diesen Graphen unlesbar machen, ohne die Frage zu
+beantworten, für die er da ist.
+
+Was er dafür zeigen muss, sind die **Werte, die du für die Entscheidung brauchst** — und
+die sind selbst Rechenergebnisse:
+
+| Entscheidung | Werte, die sie stützen |
+|---|---|
+| Baumsumme oder Schätzung | `m_kand − m_est` |
+| Akku verschieben oder Blei | `x_cg,komp − x_cg` |
+| trägt der Entwurf | CG-Hüllkurve, `V_launch` gegen `V_stall` |
+| rechnet der Solver richtig | die Probe |
+
+Vier Größen, vier Kästen, alle grün. Der Weg von dort zu deiner Entscheidung steht
+absichtlich nicht im Bild.
 
 ### Warum die Formeln in den Kästen stehen
 
