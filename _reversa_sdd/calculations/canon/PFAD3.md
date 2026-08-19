@@ -392,13 +392,27 @@ zur nächsten Formel.
 
 | Art | wer setzt sie | Beispiel |
 |---|---|---|
-| **Entwurfswahl** | nur du, nie gerechnet | `SM_target`, `g_limit` |
-| **zweiquellig** | Schätzung *und* Rechnung existieren, **du schaltest** | `mass`, `cg_x` |
-| **gerechnet** | ein Erzeuger, keine Annahmezeile | `x_NP`, `MAC` |
+| **Entwurfswahl** | die Mission schlägt vor, du überschreibst | `SM_target`, `g_limit` |
+| **zweiquellig** | Schätzung *und* Kandidat existieren, **du schaltest** | `mass` |
+| **gerechnet** | ein Erzeuger, keine Wahl | `x_NP`, `MAC`, **`cg_x`** |
 
-Die mittlere Art ist die, die man beim Zeichnen verliert. Die Komponentensumme ist ein
-**Kandidat** für die Masse, kein Ergebnis. `divergence` sagt dir, wie weit er von deiner
-Schätzung liegt; `active_source` hält deine Entscheidung fest.
+**`cg_x` ist keine Schätzung.** Du gibst die Stabilitätsreserve vor — über die Mission oder
+durch Überschreiben in den Annahmen — und der Schwerpunkt folgt daraus:
+`x_cg = x_NP − SM_target · MAC`. Das ist ADR 0011, und die Datenbank bestätigt es
+ausnahmslos:
+
+```
+cg_x    CALCULATED   27 von 27      nie geschätzt
+mass    ESTIMATE     27 von 27      nie aus dem Baum übernommen
+```
+
+Der aus Komponenten gerechnete Schwerpunkt ist deshalb **keine zweite Quelle**, sondern
+eine **Vergleichsgröße**: Er sagt dir, wie weit deine Bauteilverteilung vom Auslegungsziel
+abliegt — und ob du mit dem Akku oder mit Blei nachhelfen musst.
+
+Die Asymmetrie hat eine Nebenwirkung: `estimate_value` ist im Schema nicht optional, also
+trägt `cg_x` einen Schätzwert (0,15 m), der **nie aktiv wird**. Die Zweiquelligkeit ist auf
+eine Größe angewandt, die in diesem Entwurfsverfahren keine ist.
 
 ### Eine Schätzung ist kein Fehlerzustand
 
@@ -419,9 +433,9 @@ flowchart TD
 
   DES(["Konstrukteur"]):::des
 
-  SMT["SM_target<br/>aus der Mission"]:::choice
+  MISS["Mission"]:::inp
+  SMT["SM_target<br/>Vorschlag, ueberschreibbar"]:::choice
   ESTM["Schaetzung Masse"]:::est
-  ESTCG["Schaetzung cg_x"]:::est
 
   KOMP["Hauptkomponenten<br/>Katalog, Handeingabe"]:::inp
   REST["Restanteil X Prozent<br/>erklaerte Groesse"]:::est
@@ -438,8 +452,7 @@ flowchart TD
   RT{{"Rechenwegprobe<br/>gegen -Cm_a / CL_a"}}:::chk
   CGD["x_cg Auslegung<br/>= x_NP - SM_target MAC"]:::out
 
-  CGK["x_cg Kandidat<br/>aus Komponenten"]:::drv
-  SWCG{{"aktive Quelle cg_x"}}:::chk
+  CGK["x_cg aus Komponenten<br/>Vergleichsgroesse"]:::drv
   ENV["CG-Huellkurve"]:::out
   MENV["Massenachse<br/>wie weit darf ich irren"]:::out
   HAND["Handstart<br/>erreicht V_stall"]:::out
@@ -448,9 +461,9 @@ flowchart TD
   AVH["a_VH je Flugzeug"]:::drv
   SUG["Fluegelversatz<br/>Akkuposition"]:::out
 
+  MISS --> SMT
   DES ==> SMT
   DES ==> ESTM
-  DES ==> ESTCG
   DES ==> REST
 
   KOMP --> MSUM
@@ -460,9 +473,7 @@ flowchart TD
   SWM --> MEFF --> W
   MEFF --> MENV --> HAND
 
-  KOMP --> CGK --> SWCG
-  ESTCG --> SWCG
-  SWCG --> ENV
+  KOMP --> CGK
 
   SOLV --> XNP --> SM
   SOLV --> MAC --> SM
@@ -477,7 +488,7 @@ flowchart TD
 
   STAT -. "wo nachschaerfen" .-> DES
   MSUM -. "divergence" .-> DES
-  CGK -. "divergence" .-> DES
+  CGK -. "Abstand zum Auslegungsziel" .-> DES
   ENV -. "haelt es die Huellkurve" .-> DES
   HAND -. "kommt es weg" .-> DES
   RT -. "Bezugspunkte stimmen" .-> DES
@@ -497,7 +508,7 @@ davon speist eine Formel:
 |---|---|
 | Baumstatus | wo lohnt es sich, die Schätzung zu verfeinern |
 | `divergence` Masse | wie weit liegt die Komponentensumme von meiner Schätzung |
-| `divergence` Schwerpunkt | dasselbe für die Lage |
+| Abstand des Komponenten-Schwerpunkts | wie weit liegt meine Bauteilverteilung vom Auslegungsziel — Akku verschieben oder Blei |
 | Hüllkurve | hält der Entwurf, wenn die Ladung wandert |
 | Massenachse / Handstart | **wie weit darf ich mich verschätzt haben, bevor es am Boden bleibt** |
 | Rechenwegprobe | rechnet der Solver um den richtigen Punkt |
@@ -519,6 +530,7 @@ Werkzeug zu erlauben, eine Zahl abzulehnen, die du bewusst als vorläufig annimm
 | `t_wall` still 0,4 mm | aus dem Materialsatz, sonst **Warnung** | Schalenmasse ist linear darin |
 | unauflösbarer Knoten trägt 0 g | fällt in den **erklärten Restanteil** | ein Loch in der Summe ist unsichtbar, ein Restanteil nicht |
 | Komponentensumme *ist* die Masse | Summe ist ein **Kandidat**, du schaltest | ADR 0010 |
+| `cg_x` als zweiquellige Größe geführt | **gerechnet aus `SM_target`**, keine Schätzung | ADR 0011 — du gibst die Reserve vor, nicht die Lage |
 | `S_H`, `l_H` erreichen den Dienst nie | echte Geometrie erreicht ihn | sonst misst der Korrekturzweig nichts |
 | `a_VH` immer 0,10 | je Flugzeug gerechnet | 0,10 ist ein Platzhalter |
 | vorderes CG-Limit = 0,30·MAC | aus der Ruderautorität | der Ersatz ist heute der einzige Erzeuger |
