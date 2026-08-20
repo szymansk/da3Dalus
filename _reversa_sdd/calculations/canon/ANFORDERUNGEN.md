@@ -161,6 +161,13 @@ gezeichnet statt beschrieben. Ein Verfahren ohne inneres Diagramm ist ein Verfah
 Abbruchbedingung — und liefert im Fehlerfall eine Zahl, die aussieht wie ein Ergebnis
 (ADR 0020).
 
+**Die Trennung trägt mehr, als sie sollte.** Gebaut wurde sie für die Zyklen — wer sie
+dreht. Sie beantwortet aber auch die Frage nach der **Richtung**: ob missionsgetrieben oder
+charaktergetrieben gearbeitet wird (§2.1), ist eine Entscheidung des Konstrukteurs und
+steht deshalb im Ablauf. Der Rechengraph sieht davon nichts — er sieht nur, welche Größen
+gebunden sind. Ein Modell, das etwas erklärt, wofür es nicht gebaut wurde, ist
+wahrscheinlich richtig geschnitten.
+
 **Ein Solveraufruf ist im Rechengraphen keine Handlung**, sondern eine Beziehung, die aus
 Eingängen Ausgänge macht — auf der `kind`-Achse ein `procedure`. Erst *wann* er läuft und
 *wie oft*, ist Aktivität.
@@ -240,6 +247,9 @@ flowchart TD
   S(("&nbsp;")):::term
   A1(["Mission wählen und füllen"]):::akt
   O1["$$\text{Missionsvorgaben}$$"]:::ofn
+  D0{"Richtung?"}:::ent
+  A15(["Auslegungspunkt bestimmen"]):::akt
+  O15["$$W/S,\ T/W,\ m,\ S_\mathrm{ref},\ P$$"]:::ofn
   A2(["Konstruktion"]):::akt
   O2["$$\text{airplane}$$"]:::obj
   A3(["Analyse"]):::akt
@@ -248,25 +258,34 @@ flowchart TD
   E(("&nbsp;")):::term
 
   S --> A1
-  A1 --> A2
+  A1 --> D0
+  D0 -->|"missionsgetrieben"| A15
+  D0 -->|"charaktergetrieben"| A2
+  A15 --> A2
   A2 --> A3
   A3 --> D
   D -->|"nein"| A2
   D -->|"ja"| E
 
   A1 -.-> O1
+  O1 -.-> A15
   O1 -.-> A2
+  A15 -.-> O15
+  O15 -.-> A2
   A2 -.-> O2
   O2 -.-> A3
   A3 -.-> O3
   O3 -.-> D
 
-  linkStyle 4 stroke:#6b4fa0,stroke-width:2px
+  linkStyle 7 stroke:#6b4fa0,stroke-width:2px
 ```
 
 Gestrichelte Pfeile sind **Objektfluss** — sie sagen, welcher Wert von wo nach wo geht, und
 sind der Grund, warum man an diesem Bild überhaupt etwas prüfen kann. Ein Kasten mit
 gestricheltem Rand ist ein Wert, dessen Inhalt noch nicht festgelegt ist.
+
+**Die erste Raute ist die Richtungsentscheidung** aus §2.1. Sie verzweigt den Ablauf, nicht
+die Rechnung: Beide Zweige laufen später gegen **denselben** Beschränkungssatz.
 
 **Der violette Rückweg ist der Entwurfszyklus.** Er hat keinen Wächter, der sich rechnen
 ließe — dort steht das Urteil des Konstrukteurs.
@@ -296,19 +315,77 @@ Solange eine Aktivität nicht aufgemacht ist, sind auch ihre Objektknoten gestri
 
 ### 2.1 Mission wählen und füllen
 
-**Status: offen — hier arbeiten wir als Nächstes.**
+**Status: die Richtung ist entschieden, der Inhalt ist offen.**
 
-**Zweck.** Festlegen, wofür das Flugzeug gebaut wird, und daraus die Vorgaben ableiten, an
-denen der Entwurf später gemessen wird.
+**Zweck.** Festlegen, wofür gebaut wird — und **in welcher Richtung** gearbeitet wird.
 
-**Was hier schon entschieden ist**, weil es an anderer Stelle gebraucht wurde:
+#### Zwei Richtungen, ein Auslegungspunkt
 
-| Ausgabe | entschieden |
+| | bekannt | gesucht |
+|---|---|---|
+| **missionsgetrieben** | Nutzlast, Flugdauer, Feldlänge … | Masse, Flügelfläche, Leistung |
+| **charaktergetrieben** | Masse (geschätzt), Fläche (gezeichnet), Motor (gekauft) | welche Beschränkung bindet |
+
+Entschieden:
+
+1. **Beide Richtungen sind zulässig.** Für ein UAV ist die missionsgetriebene die richtige,
+   für einen Trainer oder ein Kunstflugmodell die charaktergetriebene.
+2. **Es gibt einen Beschränkungssatz und einen Auslegungspunkt**, nicht zwei Verfahren. Die
+   Richtung entscheidet nur, welche Größen Eingabe sind und welche gerechnet werden — also
+   die **Bindung**, nicht die Formel.
+3. **Wo beide Richtungen dieselbe Größe erreichen, ist die zweite eine Probe** (A7). Wer nur
+   von oben rechnet, hat Zahlen und kein Flugzeug; wer nur von unten baut, hat ein Flugzeug
+   und keine Aussage darüber, ob es die Aufgabe erfüllt.
+4. **Die Richtung ist eine Entwurfsentscheidung** und steht deshalb im Ablauf (§1), nicht im
+   Rechengraphen. Sie ist orthogonal zum Missionstyp: Auch ein Buschflugzeug kann
+   charaktergetrieben entstehen.
+
+#### Warum RC nicht der kleine Bruder von UAV ist
+
+Beim UAV ist das Flugzeug ein **Mittel**: Es existiert, um eine Nutzlast eine bestimmte Zeit
+zu tragen. Nimm die Nutzlast weg, und es gibt keinen Grund, es zu bauen — deshalb trägt dort
+die Kette *Forderung → Auslegungspunkt → Größe*.
+
+Beim Modell ist das Flugzeug der **Zweck**. Es trägt nichts, es muss nirgendwohin, und die
+Flugdauer ist, was der Akku hergibt. Gefordert wird, **wie es sich anfliegt** — eine
+Flugeigenschaft, keine Einsatzforderung. Und der Entwurf ist häufig **von unten**
+eingeschnürt: ein vorhandener Motor, eine Spannweite, die ins Auto passt, eine Fläche, die
+sich drucken lässt.
+
+Daraus folgt, was hier **nicht** erzwungen werden darf:
+
+| | |
 |---|---|
-| $SM_\mathrm{target}$ | Die Mission **schlägt vor**, der Konstrukteur überschreibt. Also ist es eine Ausgabe dieser Aktivität und zugleich eine Entwurfswahl weiter unten. |
+| nutzlastgetriebene Dimensionierung | es gibt beim Modell keine Nutzlast, um die herum ausgelegt würde |
+| Akkumasse aus geforderter Flugdauer | beim Modell wird der Akku gewählt und die Flugdauer folgt — `endurance-from-battery` ist für diese Richtung **richtig herum** |
 
-Mehr steht nicht fest. Was diese Aktivität sonst erzeugt, ist die nächste Frage — und sie
-lässt sich nicht aus dem Code beantworten, weil dieses Dokument den Sollzustand führt.
+#### Was unabhängig von der Richtung gilt
+
+- **Die Form einer Anforderung.** Auch beim Trainer ist *„soll sanft fliegen"* keine
+  Anforderung, *„Abrissgeschwindigkeit unter 7 m/s bei 1,2 kg"* schon. Nur der **Inhalt**
+  wechselt von Einsatz auf Flugeigenschaft.
+- **Die drei Modelle** — Schub mit Abfall, Widerstandspolare, Massenabschätzung.
+- **Die Iteration.** Frühe Annahmen sind falsch; ADR 0010 ist die gebaute Maschinerie dafür.
+
+#### Was hier schon entschieden ist
+
+| Ausgabe | |
+|---|---|
+| Richtung | missionsgetrieben oder charaktergetrieben |
+| $SM_\mathrm{target}$ | die Mission **schlägt vor**, der Konstrukteur überschreibt |
+
+#### Offen
+
+| | |
+|---|---|
+| **Inhalt der Vorgaben** | Welche Forderungen nimmt die missionsgetriebene Richtung auf — Nutzlast, Flugdauer, Reichweite? Und welche die charaktergetriebene? |
+| **Die neun Presets** | Bleiben sie, und sind sie Vorschlag oder Vorgabe? Heute liegen alle neun am RC-Ende; für den missionsgetriebenen Weg gibt es keinen Einstieg. |
+| **Zwei Missionsbegriffe** | Sind `mission_type` und `flight_profile` im Soll dasselbe? Heute sind es zwei Objekte ohne Verbindung — dieselbe Form, die wir im Kanon `duplicate` nennen, nur auf der Datenebene. |
+| **Standschub** | `t_static_N` ist ein Prüfstandswert und gilt nur bei $V = 0$. Für den Startlauf ist er richtig; für die Reise- und Steigbeschränkung nicht. Woher kommt der Schub bei Fahrt? → O8 |
+
+> **Ist-Zustand** dieser Aktivität, mit Zitaten:
+> `_reversa_sdd/mission-and-sizing/mission-objectives-presets/requirements.md`.
+> Er gehört nicht in dieses Dokument — hier steht, was gelten **soll**.
 
 ### 2.2 Konstruktion
 
@@ -761,6 +838,8 @@ eines ohne Abbruchbedingung.
 | **O3** | Die **drei fehlenden Angaben** zum Anstellwinkelverfahren, insbesondere das Verhalten oberhalb des Abrisses. | Freigabe von §2.1 |
 | **O4** | Welche **Prozessschritte** es wirklich gibt und wo ihre Grenzen liegen. | §1, und damit die Struktur aller weiteren Schritte |
 | **O5** | Welches **Atmosphärenmodell** kanonisch ist. `air-density-isa` ist freigegeben, aber die Implementierung kennt mehrere Verfahren, und **kein einziger** der 16 Aufrufer wählt eines. | Eindeutigkeit von $\rho$ |
+| **O7** | Wird **Finger, Bil & Braun, *Drag Estimation of Small Fixed-Wing UAVs*** (Aeronautical Journal 122/1248, 2018) die zitierte Quelle für $c_{D0}$ und $e$ **in unserer Größenklasse**? ADR 0023 verlangt bei 0,5–15 kg validierte Konstanten; `DEFAULT_E_OSWALD = 0.8` hat bis heute keine. | Freigabe von `induced-drag-factor`, `zero-lift-drag-from-sweep` |
+| **O8** | Woher kommt der **Schub bei Fahrt**? Propellerschub fällt mit der Geschwindigkeit ($P = T\,V$ bei näherungsweise konstanter Leistung), und der Standschub gilt nur bei $V = 0$. | jede Beschränkung, die $T/W$ außerhalb des Standes benutzt |
 | **O6** | Wie weit der **ASB-Sweep** Eingaben ersetzt. Der Solver kann über nahezu jeden Parameter fahren; jeder, den er sinnvoll durchfährt, ist einer, den niemand raten muss. | Umfang von Ebene 0 |
 
 ---
