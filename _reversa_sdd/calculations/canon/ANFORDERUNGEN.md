@@ -94,7 +94,43 @@ Jeder Eintrag trägt genau eines:
 Die Vertrauensmarker der Spezifikation (🟢/🟡/🔴) gelten hier **nicht**. Sie sagen, wie
 sicher eine Aussage über den Code ist. Dieses Dokument macht keine Aussagen über den Code.
 
-### 0.3 Was ein Verfahren schuldet
+### 0.3 Notation
+
+**Formeln und Größen werden in LaTeX gesetzt.** Das gilt für den Fließtext, für
+abgesetzte Formeln und für die Kästen der Rechengraphen: `mermaid-cli` 11 rendert KaTeX in
+Knotenbeschriftungen — nachgeprüft —, es gibt also keinen Grund, dort auf ASCII
+auszuweichen. Ob GitHubs eigener mermaid-Renderer dasselbe tut, ist **nicht** nachgeprüft;
+maßgeblich ist das PDF.
+
+$$V_S = \sqrt{\frac{2\,m\,g}{\rho\,S_\mathrm{ref}\,C_{L,\max,\mathrm{stall}}}}$$
+
+**Eine Grenze des Graphenrenderers:** mermaids KaTeX kennt `\overset` und `\stackrel`
+nicht und verwirft sie **still** — samt Argument. Im Fließtext (xelatex) funktionieren sie,
+im Kasten nicht; dort steht deshalb $\text{Probe: } \ldots\ ?$ statt $\overset{?}{=}$.
+Wer eine Formel in einen Knoten setzt, sieht sich das Ergebnis an.
+
+Vier Festlegungen, damit es einheitlich bleibt:
+
+| | |
+|---|---|
+| **Mehrbuchstabige Indizes aufrecht** | $S_\mathrm{ref}$, $x_\mathrm{NP}$, $\rho_\mathrm{ISA}$ — sie sind Namen, keine Produkte von Variablen |
+| **Operatoren aufrecht** | $\max$, $\min$, $\mathrm{d}y$ |
+| **Bedingung im Index, nicht im Text** | $C_{L,\max,\mathrm{stall}}$ — die Auswertebedingung gehört an die Größe (A2) |
+| **Größe ≠ Bezeichner** | $SM_\mathrm{target}$ ist die *Größe*; `sm_target` ist das *Feld*, das sie trägt. Mathe kursiv, Code in Schreibmaschine. |
+
+Die letzte Zeile ist die wichtigste. Ein Datenbankfeld, ein API-Name und ein
+Dateipfad sind keine Mathematik und werden nie als solche gesetzt; eine physikalische
+Größe wird nie in Schreibmaschine gesetzt. Wo beide im selben Satz vorkommen, sieht man
+dann sofort, wovon die Rede ist.
+
+**Der Katalog wird bei Berührung umgestellt.** Seine Einträge tragen die kanonische Form
+heute in einem einfachen Codeblock, weil `scripts/check_canon.py` sie dort ausliest und
+die Dimensionsprobe darauf rechnet. Das bleibt vorerst so: 43 der 46 Formeln stehen ohnehin
+auf `draft` und werden bei der Freigabe entlang der Pfade angefasst — dann bekommt jeder
+Eintrag seine LaTeX-Form. Ein Umschreiben aller Einträge auf einmal würde den Prüfer
+brechen, ohne dass ein einziger Eintrag dadurch näher an der Freigabe wäre.
+
+### 0.4 Was ein Verfahren schuldet
 
 Ein Gesetz (`law`) wird über Formel, Quelle und Maßstab freigegeben. Ein **Verfahren**
 (`procedure`) schuldet vier Angaben — keine davon darf erfunden werden, beide Ursprünge
@@ -134,8 +170,9 @@ warum es zwei Diagrammarten gibt und nicht eine.
 ### Was der Ablauf leisten soll
 
 **Er wählt die Bindungen.** Dieselbe Formel, andere Klappenstellung, anderer Name des
-Ergebnisses: `v_stall_clean`, `v_stall_launch`, `v_stall_landing` sind **eine** Formel mit
-drei Bindungen, nicht drei Formeln. Der Rechengraph zählt Formeln, nicht Größen.
+Ergebnisses: $V_{S,\mathrm{clean}}$, $V_{S,\mathrm{launch}}$ und $V_{S,\mathrm{landing}}$
+sind **eine** Formel mit drei Bindungen, nicht drei Formeln. Der Rechengraph zählt Formeln,
+nicht Größen.
 
 **Er macht Namen prüfbar.** Die Prozessstufe wählt die Bindung, die Bindung bestimmt den
 Namen. Jeder benannte Ausgabewert muss sich auf ein Paar *(Formel, Bindung)* zurückführen
@@ -165,17 +202,18 @@ werden darf.
 
 | Größe | Art | Anmerkung |
 |---|---|---|
-| `airplane` | Eingabe | die Konstruktion; **Referenzgrößen und `c̄` folgen daraus** |
-| `SM_target` | Entwurfswahl | die Mission schlägt vor, der Konstrukteur überschreibt |
-| `m` | Schätzung | der Komponentenbaum ist eine eigene Kette und liefert einen Kandidaten |
-| `h` | Schätzung | zerfällt in **bekannte** Platzhöhe und **geschätzte** Flughöhe ≤ 150 m |
-| `V` | Eingabe | die Fluggeschwindigkeit; `α` wird daraus gelöst |
+| `airplane` | Eingabe | die Konstruktion; **Referenzgrößen und $\bar{c}$ folgen daraus** |
+| $SM_\mathrm{target}$ | Entwurfswahl | die Mission schlägt vor, der Konstrukteur überschreibt |
+| $m$ | Schätzung | der Komponentenbaum ist eine eigene Kette und liefert einen Kandidaten |
+| $h$ | Schätzung | zerfällt in **bekannte** Platzhöhe und **geschätzte** Flughöhe $\leq 150\,\mathrm{m}$ |
+| $V$ | Eingabe | die Fluggeschwindigkeit; $\alpha$ wird daraus gelöst |
 | Ruderstellung | Eingabe | **neutral** — die Ableitungen sollen die des sauberen Flugzeugs sein |
 | `model_size` | Eingabe | **`xxxlarge`**, siehe A3 |
-| `g` | phys. Konstante | keine Eingabe, keine Wahl — siehe A5 |
+| $g$ | phys. Konstante | keine Eingabe, keine Wahl — siehe A5 |
 
-Sieben Positionen. Alles Weitere ist abgeleitet: `ρ` aus der Höhe, `C_L,max,stall` aus dem
-Sweep, `x_cg` aus `SM_target`, `W` aus `m` und `g`.
+Sieben Positionen. Alles Weitere ist abgeleitet: $\rho$ aus der Höhe,
+$C_{L,\max,\mathrm{stall}}$ aus dem Sweep, $x_\mathrm{CG}$ aus $SM_\mathrm{target}$, $W$ aus
+$m$ und $g$.
 
 #### Rechengraph
 
@@ -188,35 +226,35 @@ flowchart TD
   classDef konst fill:#f0f0ee,stroke:#6b6b66,color:#3a3a36
   classDef out fill:#eaf5ee,stroke:#3d8a5a,color:#14432a
 
-  GEO[/"airplane"/]:::inp
-  SMT[/"SM_target"/]:::inp
-  MEST[/"m  Abflugmasse"/]:::est
-  HOEHE[/"h  Platzhoehe + Flughoehe"/]:::est
-  GRAV["g = 9.80665 m/s^2"]:::konst
+  GEO[/"$$\text{airplane}$$"/]:::inp
+  SMT[/"$$SM_\mathrm{target}$$"/]:::inp
+  MEST[/"$$m \quad \text{Abflugmasse}$$"/]:::est
+  HOEHE[/"$$h \quad \text{Platzhöhe} + \text{Flughöhe}$$"/]:::est
+  GRAV["$$g = 9{,}80665\ \mathrm{m/s^2}$$"]:::konst
 
-  MAC["c_bar = (2/S) Int c(y)^2 dy"]:::drv
-  SREF["S_ref, b_ref"]:::drv
-  ATM["rho = rho_ISA(h)<br/>Standardatmosphaere"]:::drv
-  W["W = m g"]:::drv
+  MAC["$$\bar{c} = \frac{2}{S}\int c(y)^2\,\mathrm{d}y$$"]:::drv
+  SREF["$$S_\mathrm{ref},\ b_\mathrm{ref}$$"]:::drv
+  ATM["$$\rho = \rho_\mathrm{ISA}(h)$$"]:::drv
+  W["$$W = m\,g$$"]:::drv
 
-  VCR[/"V  Fluggeschwindigkeit"/]:::inp
-  CTRL[/"Ruder neutral"/]:::inp
-  FID[/"model_size = xxxlarge"/]:::inp
+  VCR[/"$$V \quad \text{Fluggeschwindigkeit}$$"/]:::inp
+  CTRL[/"$$\text{Ruder neutral}$$"/]:::inp
+  FID[/"$$\text{model size} = \text{xxxlarge}$$"/]:::inp
 
-  ALPHA(["alpha: loese L = W bei V"]):::drv
+  ALPHA(["$$\alpha: \ \text{löse } L = W \text{ bei } V$$"]):::drv
 
-  RUN(["AeroBuildup<br/>ein Punkt, xyz_ref = x_cg"]):::drv
-  SWEEP(["AeroBuildup<br/>alpha-Sweep bei V_stall"]):::drv
+  RUN(["$$\text{AeroBuildup, ein Punkt}, \ \mathbf{x}_\mathrm{ref} = x_\mathrm{CG}$$"]):::drv
+  SWEEP(["$$\text{AeroBuildup, } \alpha\text{-Sweep bei } V_S$$"]):::drv
 
-  XNP["x_NP"]:::drv
-  CMA["Cm_alpha"]:::drv
-  CLA["CL_alpha"]:::drv
-  CLMAX["CL_max,stall"]:::drv
+  XNP["$$x_\mathrm{NP}$$"]:::drv
+  CMA["$$C_{m\alpha}$$"]:::drv
+  CLA["$$C_{L\alpha}$$"]:::drv
+  CLMAX["$$C_{L,\max,\mathrm{stall}}$$"]:::drv
 
-  CGD["x_cg = x_NP - SM_target c_bar"]:::out
-  SM["SM = (x_NP - x_cg) / c_bar"]:::out
-  RT{{"Probe SM =? -Cm_alpha / CL_alpha"}}:::chk
-  VS["V_stall = sqrt(2 W / (rho S_ref CL_max,stall))"]:::out
+  CGD["$$x_\mathrm{CG} = x_\mathrm{NP} - SM_\mathrm{target}\,\bar{c}$$"]:::out
+  SM["$$SM = \frac{x_\mathrm{NP} - x_\mathrm{CG}}{\bar{c}}$$"]:::out
+  RT{{"$$\text{Probe: } SM = -\frac{C_{m\alpha}}{C_{L\alpha}}\ ?$$"}}:::chk
+  VS["$$V_S = \sqrt{\frac{2W}{\rho\,S_\mathrm{ref}\,C_{L,\max,\mathrm{stall}}}}$$"]:::out
 
   GEO --> MAC
   GEO --> SREF
@@ -263,7 +301,7 @@ flowchart TD
   ATM --> VS
   SREF --> VS
   CLMAX --> VS
-  VS -. "Fixpunkt: Re(V_stall)" .-> SWEEP
+  VS -. "$$\text{Fixpunkt: } Re(V_S)$$" .-> SWEEP
 
   linkStyle 35 stroke:#b02a21,stroke-width:3px
   linkStyle 39 stroke:#b02a21,stroke-width:3px
@@ -278,17 +316,17 @@ Raute: eine Probe. Grün: ein Ergebnis. **Rot und dick: der Fixpunkt, der konver
 
 | Knoten | Art | Katalogeintrag |
 |---|---|---|
-| `c̄ = (2/S) ∫ c(y)² dy` | law | **fehlt** — nur `quantities/mean-aerodynamic-chord.md` |
-| `S_ref`, `b_ref` | Geometrie | `quantities/wing-reference-area.md` · `quantities/wing-span.md` |
-| `ρ = ρ_ISA(h)` | law | `formulas/air-density-isa.md` — **freigegeben** |
-| `W = m·g` | law | `formulas/weight-from-mass.md` — **freigegeben** |
-| `α: löse L = W bei V` | **procedure** | §3.2.2 — Beziehung entschieden, drei Angaben offen |
-| AeroBuildup, ein Punkt | Solveraufruf | `xyz_ref = x_cg`; liefert `x_NP`, `C_mα`, `CL_α` |
-| AeroBuildup, α-Sweep | Solveraufruf | gebunden an `V_stall`; liefert `C_L,max,stall` |
-| `x_cg = x_NP − SM_target·c̄` | law | **fehlt** — ADR 0011 |
-| `SM = (x_NP − x_cg)/c̄` | law | **fehlt** |
-| Probe `SM ≟ −C_mα/CL_α` | Probe | **fehlt** — zwei Wege zu einer Größe sind ein *Test*, keine zweite Wahrheit |
-| `V_stall = √(2W/(ρ·S_ref·C_L,max,stall))` | law | `formulas/stall-speed.md` — **freigegeben** |
+| $\bar{c} = \frac{2}{S}\int c(y)^2\,\mathrm{d}y$ | law | **fehlt** — nur `quantities/mean-aerodynamic-chord.md` |
+| $S_\mathrm{ref},\ b_\mathrm{ref}$ | Geometrie | `quantities/wing-reference-area.md` · `quantities/wing-span.md` |
+| $\rho = \rho_\mathrm{ISA}(h)$ | law | `formulas/air-density-isa.md` — **freigegeben** |
+| $W = m\,g$ | law | `formulas/weight-from-mass.md` — **freigegeben** |
+| $\alpha$ aus $L = W$ bei $V$ | **procedure** | §3.2.2 — Beziehung entschieden, drei Angaben offen |
+| AeroBuildup, ein Punkt | Solveraufruf | $\mathbf{x}_\mathrm{ref} = x_\mathrm{CG}$; liefert $x_\mathrm{NP}$, $C_{m\alpha}$, $C_{L\alpha}$ |
+| AeroBuildup, $\alpha$-Sweep | Solveraufruf | gebunden an $V_S$; liefert $C_{L,\max,\mathrm{stall}}$ |
+| $x_\mathrm{CG} = x_\mathrm{NP} - SM_\mathrm{target}\,\bar{c}$ | law | **fehlt** — ADR 0011 |
+| $SM = (x_\mathrm{NP} - x_\mathrm{CG})/\bar{c}$ | law | **fehlt** |
+| Probe $SM \overset{?}{=} -C_{m\alpha}/C_{L\alpha}$ | Probe | **fehlt** — zwei Wege zu einer Größe sind ein *Test*, keine zweite Wahrheit |
+| $V_S = \sqrt{2W/(\rho\,S_\mathrm{ref}\,C_{L,\max,\mathrm{stall}})}$ | law | `formulas/stall-speed.md` — **freigegeben** |
 
 Der Stabilitätsteil des Katalogs existiert noch nicht: weder `static-margin` noch
 `neutral-point`, `centre-of-gravity` oder `pitching-moment-slope` haben einen Eintrag. Das
@@ -296,18 +334,20 @@ ist die nächste Katalogarbeit.
 
 #### Ausgaben
 
-`x_cg` · `SM` · `V_stall` · das Ergebnis der Probe.
+$x_\mathrm{CG}$ · $SM$ · $V_S$ · das Ergebnis der Probe.
 
 #### Zwei Eigenschaften, die man nachgemessen haben muss
 
-**`x_NP` ist bezugsunabhängig, `C_mα` nicht.** Über 150 mm Verschiebung des Bezugspunkts
-wandert `x_NP` um 0,17 mm — das ist Numerik. `C_mα` wechselt dabei das Vorzeichen, genau
-bei `xyz_ref = x_NP`. Für den Neutralpunkt muss der Bezugspunkt also *nicht* stimmen, für
-den Ableitungsweg zur Stabilitätsreserve **schon**.
+**$x_\mathrm{NP}$ ist bezugsunabhängig, $C_{m\alpha}$ nicht.** Über 150 mm Verschiebung des
+Bezugspunkts wandert $x_\mathrm{NP}$ um 0,17 mm — das ist Numerik. $C_{m\alpha}$ wechselt
+dabei das Vorzeichen, genau bei $\mathbf{x}_\mathrm{ref} = x_\mathrm{NP}$. Für den
+Neutralpunkt muss der Bezugspunkt also *nicht* stimmen, für den Ableitungsweg zur
+Stabilitätsreserve **schon**.
 
-**Der scheinbare Kreis `x_cg → xyz_ref → x_NP → x_cg` ist keiner.** Er ist in einem
-Durchgang erledigt, weil `x_NP` nicht am Bezugspunkt hängt. Der **echte** Kreis ist der
-rote: `C_L,max,stall` gilt bei der Reynoldszahl, die aus `V_stall` folgt.
+**Der scheinbare Kreis $x_\mathrm{CG} \to \mathbf{x}_\mathrm{ref} \to x_\mathrm{NP} \to
+x_\mathrm{CG}$ ist keiner.** Er ist in einem Durchgang erledigt, weil $x_\mathrm{NP}$ nicht
+am Bezugspunkt hängt. Der **echte** Kreis ist der rote: $C_{L,\max,\mathrm{stall}}$ gilt bei
+der Reynoldszahl, die aus $V_S$ folgt.
 
 ### 2.2 — noch nicht aufgenommen
 
@@ -329,33 +369,33 @@ Dieses Dokument nennt Formeln nur dort, wo ein Prozessschritt sie verwendet.
 Verfahren haben bisher **keinen** Platz im Katalog — sie stehen hier, bis genug davon
 zusammenkommen, um `procedures/` zu rechtfertigen.
 
-#### 3.2.1 Fixpunkt `V_stall ↔ C_L,max,stall`
+#### 3.2.1 Fixpunkt $V_S \leftrightarrow C_{L,\max,\mathrm{stall}}$
 
 **Status: offen** — die Beziehung steht, die Methode nicht.
 
 | | |
 |---|---|
-| **Beziehung** | ✅ entschieden. `V_S = √(2W/(ρ·S_ref·C_L,max))` mit `C_L,max` ausgewertet bei `Re(V_S)`. Bei Modell-Reynoldszahlen ist `C_L,max` geschwindigkeitsabhängig, also ist die Gleichung **implizit**. |
+| **Beziehung** | ✅ entschieden. $V_S = \sqrt{2W/(\rho\,S_\mathrm{ref}\,C_{L,\max})}$ mit $C_{L,\max}$ ausgewertet bei $Re(V_S)$. Bei Modell-Reynoldszahlen ist $C_{L,\max}$ geschwindigkeitsabhängig, also ist die Gleichung **implizit**. |
 | **Methode** | ⚪ offen. Fixpunktiteration, Sekante, Newton, oder eine feste Zahl von Durchgängen? |
-| **Annahmen** | ⚪ offen. Monotonie von `C_L,max(Re)` im Modellbereich? Startwert? |
+| **Annahmen** | ⚪ offen. Monotonie von $C_{L,\max}(Re)$ im Modellbereich? Startwert? |
 | **Nichtkonvergenz** | ⚪ offen. Was wird zurückgegeben — und mit welcher `DesignWarning`? |
-| **Toleranz** | ⚪ offen. Woran wird Konvergenz gemessen: an `V_S` oder an `C_L,max`, absolut oder relativ? |
+| **Toleranz** | ⚪ offen. Woran wird Konvergenz gemessen: an $V_S$ oder an $C_{L,\max}$, absolut oder relativ? |
 
 **Warum das Verfahren nötig ist, ist gemessen** — Flotte, 26 Flugzeuge: Median **+2,9 %**,
 schlimmstenfalls **+33,2 %**, **jede** Abweichung in dieselbe Richtung. Die gemeldete
 Abrissgeschwindigkeit ist immer die zu niedrige. Vorbedingung dokumentiert in
 `formulas/stall-speed.md`, Bindung `cl_max`.
 
-#### 3.2.2 Anstellwinkel aus `L = W`
+#### 3.2.2 Anstellwinkel aus $L = W$
 
 **Status: offen** — die Beziehung steht, die Methode nicht.
 
 | | |
 |---|---|
-| **Beziehung** | ✅ entschieden. Zu vorgegebenem `V` den Anstellwinkel finden, für den der Auftrieb das Gewicht trägt. |
+| **Beziehung** | ✅ entschieden. Zu vorgegebenem $V$ den Anstellwinkel $\alpha$ finden, für den der Auftrieb das Gewicht trägt. |
 | **Methode** | ⚪ offen. Eindimensionale Nullstelle — welche? |
-| **Annahmen** | ⚠️ eine steht fest und wird leicht übersehen: **`L = W` gilt nur im stationären Horizontalflug.** Im Steigflug, in der Kurve und beim Handstart ist `L = n·W`. Der gelieferte Anstellwinkel — und damit alle Ableitungen — gelten für den geradeaus fliegenden Zustand. |
-| **Nichtkonvergenz** | ⚪ offen. Der Fall existiert real: Oberhalb des Abrisses gibt es **kein** `α`, das `L = W` erfüllt. Was dann? |
+| **Annahmen** | ⚠️ eine steht fest und wird leicht übersehen: **$L = W$ gilt nur im stationären Horizontalflug.** Im Steigflug, in der Kurve und beim Handstart ist $L = n\,W$. Der gelieferte Anstellwinkel — und damit alle Ableitungen — gelten für den geradeaus fliegenden Zustand. |
+| **Nichtkonvergenz** | ⚪ offen. Der Fall existiert real: Oberhalb des Abrisses gibt es **kein** $\alpha$, das $L = W$ erfüllt. Was dann? |
 
 ---
 
@@ -384,13 +424,13 @@ Am Graphen aus §2.1 sieht man, warum das keine Formsache ist:
 
 | Änderung | wird ungültig |
 |---|---|
-| `h` | `ρ` → `α`, beide Solverläufe, und alles danach — **fast der ganze Schritt** |
-| `V` | `α`, der Punktlauf, `x_NP`, `C_mα`, `CL_α`, `x_cg`, `SM`, die Probe — **`V_stall` aber nicht** |
+| $h$ | $\rho$, $\alpha$, beide Solverläufe, und alles danach — **fast der ganze Schritt** |
+| $V$ | $\alpha$, der Punktlauf, $x_\mathrm{NP}$, $C_{m\alpha}$, $C_{L\alpha}$, $x_\mathrm{CG}$, $SM$, die Probe — **$V_S$ aber nicht** |
 
 Dass die Fluggeschwindigkeit die Abrissgeschwindigkeit *nicht* ungültig macht, folgt aus
-den Kanten: `V_stall` hängt an `W`, `ρ`, `S_ref` und `C_L,max,stall`, und der Sweep hängt
-an `V_stall` selbst, nicht an `V`. Genau solche Aussagen bekommt eine handgepflegte Liste
-falsch.
+den Kanten: $V_S$ hängt an $W$, $\rho$, $S_\mathrm{ref}$ und $C_{L,\max,\mathrm{stall}}$,
+und der Sweep hängt an $V_S$ selbst, nicht an $V$. Genau solche Aussagen bekommt eine
+handgepflegte Liste falsch.
 
 ### A2 — Benennung
 
@@ -399,12 +439,13 @@ falsch.
 Schema `<größe>_<konfiguration>_<einheit>`, ausgeschrieben, keine Normkürzel.
 
 > **Eine reynoldsabhängige Größe trägt die Bedingung, bei der sie ermittelt wurde, im
-> Namen.** `C_L,max,stall`, nicht `C_L,max`.
+> Namen.** $C_{L,\max,\mathrm{stall}}$, nicht $C_{L,\max}$.
 
 Die Regel ist das Gegenstück zur Vorbedingung: Was die Vorbedingung fordert, macht der Name
 sichtbar. Sie hätte den Reynolds-Fehler allein aufgedeckt — heute wird das Maximum über das
-ganze Geschwindigkeitsgitter gebildet, also `C_L,max,v_max`, und dort eingesetzt, wo
-`C_L,max,stall` stehen müsste. Unter zwei Namen fällt das beim Lesen auf, unter einem nicht.
+ganze Geschwindigkeitsgitter gebildet, also $C_{L,\max,v_{\max}}$, und dort eingesetzt, wo
+$C_{L,\max,\mathrm{stall}}$ stehen müsste. Unter zwei Namen fällt das beim Lesen auf, unter
+einem nicht.
 
 ### A3 — Eine erklärte Genauigkeitsstufe je freigegebener Größe
 
@@ -412,10 +453,10 @@ ganze Geschwindigkeitsgitter gebildet, also `C_L,max,v_max`, und dort eingesetzt
 
 `model_size` folgt nicht aus dem Flugzeug; es ist die Netzgröße von NeuralFoil, also ein
 Regler zwischen Genauigkeit und Rechenzeit. Gemessen an einem SD7037 im Modellbereich:
-`xxsmall` liefert bei Re 50 000 einen um **14–19 % zu niedrigen** `C_L,max`, und zwar dort,
-wo die laminare Ablöseblase sitzt. Ab `small` sind sich alle Stufen beim Auftriebsbeiwert
-einig; die **Analysekonfidenz** trennt sie, und sie steigt mit der Größe. `xxxlarge`
-erreicht 0,961 bei 100k für 5 ms.
+`xxsmall` liefert bei $Re = 50\,000$ einen um **14–19 % zu niedrigen** $C_{L,\max}$, und
+zwar dort, wo die laminare Ablöseblase sitzt. Ab `small` sind sich alle Stufen beim
+Auftriebsbeiwert einig; die **Analysekonfidenz** trennt sie, und sie steigt mit der Größe.
+`xxxlarge` erreicht 0,961 bei $Re = 100\,000$ für 5 ms.
 
 > Nicht überall die höchste Stufe — aber **eine, die dasteht.** Sonst hängt eine
 > freigegebene Zahl davon ab, über welchen Endpunkt man sie geholt hat.
@@ -435,11 +476,11 @@ weil beides in diesem Projekt real auseinanderläuft. Werkzeug: `scripts/check_c
 Bei einer Eingabe lautet die Freigabefrage *„ist der Wert richtig gewählt"*. Bei einer
 physikalischen Konstante lautet sie **„ist sie genau einmal deklariert"** — es gibt keinen
 Ermessensspielraum, also auch keine Diskussion über den Wert, nur über die Anzahl der
-Stellen. Im Register steht `g` **elfmal, in zwei verschiedenen Werten**.
+Stellen. Im Register steht $g$ **elfmal, in zwei verschiedenen Werten**.
 
 Gezeichnet wird eine Konstante nur, wenn sie in einer kanonischen Formel vorkommt. Steckt
-sie in einem zitierten Standard — Gaskonstante und Temperaturgradient in `ρ_ISA(h)` —,
-gehört sie in die Quelle des Gesetzes und nicht in den Graphen.
+sie in einem zitierten Standard — Gaskonstante und Temperaturgradient in
+$\rho_\mathrm{ISA}(h)$ —, gehört sie in die Quelle des Gesetzes und nicht in den Graphen.
 
 ### A6 — Keine stillen Ersatzwerte
 
@@ -465,11 +506,11 @@ der Ableitungsweg zur Stabilitätsreserve in §2.1.
 
 | Nr | Frage | blockiert |
 |---|---|---|
-| **O1** | Gehört der **Korrekturzweig** — Flügelversatz, Leitwerksskalierung — überhaupt in den Rechengraphen? Fällt er weg, verschwinden `a_VH`, beide Empfindlichkeiten und die 5·MAC-Klemme mit ihm. | Abschluss von §2.1 |
-| **O2** | Die **drei fehlenden Angaben** zum Fixpunkt `V_stall ↔ C_L,max,stall`. | Freigabe von `stall-speed` als Anwendung |
+| **O1** | Gehört der **Korrekturzweig** — Flügelversatz, Leitwerksskalierung — überhaupt in den Rechengraphen? Fällt er weg, verschwinden $a_{VH}$, beide Empfindlichkeiten und die $5\,\bar{c}$-Klemme mit ihm. | Abschluss von §2.1 |
+| **O2** | Die **drei fehlenden Angaben** zum Fixpunkt $V_S \leftrightarrow C_{L,\max,\mathrm{stall}}$. | Freigabe von `stall-speed` als Anwendung |
 | **O3** | Die **drei fehlenden Angaben** zum Anstellwinkelverfahren, insbesondere das Verhalten oberhalb des Abrisses. | Freigabe von §2.1 |
 | **O4** | Welche **Prozessschritte** es wirklich gibt und wo ihre Grenzen liegen. | §1, und damit die Struktur aller weiteren Schritte |
-| **O5** | Welches **Atmosphärenmodell** kanonisch ist. `air-density-isa` ist freigegeben, aber die Implementierung kennt mehrere Verfahren, und **kein einziger** der 16 Aufrufer wählt eines. | Eindeutigkeit von `ρ` |
+| **O5** | Welches **Atmosphärenmodell** kanonisch ist. `air-density-isa` ist freigegeben, aber die Implementierung kennt mehrere Verfahren, und **kein einziger** der 16 Aufrufer wählt eines. | Eindeutigkeit von $\rho$ |
 | **O6** | Wie weit der **ASB-Sweep** Eingaben ersetzt. Der Solver kann über nahezu jeden Parameter fahren; jeder, den er sinnvoll durchfährt, ist einer, den niemand raten muss. | Umfang von Ebene 0 |
 
 ---
