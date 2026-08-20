@@ -94,12 +94,14 @@ text = doc.read_text(encoding="utf-8")
 
 # A4 minus the 2.3 cm margins this document class uses, in points.
 TEXTWIDTH, TEXTHEIGHT = 465.0, 712.0
-#: Below this scale the subscripts inside a formula box stop being legible: KaTeX sets
-#: them at ~0.7 of the base, so 0.9 of an 11 pt label already puts them near 7 pt.
-LEGIBLE = 0.90
-#: ... but only a diagram with real vertical structure suffers from it. A single row of
-#: boxes stays readable however wide it is, and turning it onto its own page is absurd.
-SUBSTANTIAL_PT = 150.0
+#: What counts as legible depends on what the labels contain. KaTeX sets a subscript at
+#: ~0.7 of the base, so in a diagram full of formulas 0.9 of an 11 pt label already puts
+#: the subscripts near 7 pt. A diagram labelled in words survives far more shrinking.
+LEGIBLE_MATH, LEGIBLE_WORDS = 0.90, 0.70
+#: A page of its own costs the reader a break in the flow. Only take one when it buys
+#: enough to be worth it — otherwise a diagram that is merely wide and short gets a page
+#: for nothing.
+WORTH_A_PAGE = 1.20
 
 for pdf in sorted(tmp.glob("diagram*.pdf")):
     n = re.search(r"diagram(\d+)", pdf.name).group(1)
@@ -110,22 +112,32 @@ for pdf in sorted(tmp.glob("diagram*.pdf")):
         x0, y0, x1, y1 = (float(v) for v in box.groups())
         w, h = abs(x1 - x0), abs(y1 - y0)
 
-    # How far each placement would shrink the diagram. Aspect ratio alone is the wrong
-    # test: a three-box flow is very wide and still perfectly legible in the column.
-    inline = min(TEXTWIDTH / w, 0.62 * TEXTHEIGHT / h) if w and h else 1.0
-    turned = min(TEXTHEIGHT / w, 0.95 * TEXTWIDTH / h) if w and h else 0.0
+    # How far each of the three placements would shrink the diagram. Aspect ratio alone
+    # is the wrong test: a three-box flow is very wide and still perfectly legible in the
+    # column, while a tall one gains nothing from being turned.
+    inline  = min(TEXTWIDTH / w, 0.62 * TEXTHEIGHT / h) if w and h else 1.0
+    upright = min(TEXTWIDTH / w, 0.95 * TEXTHEIGHT / h) if w and h else 0.0
+    turned  = min(TEXTHEIGHT / w, 0.95 * TEXTWIDTH / h) if w and h else 0.0
+
+    src_mmd = pdf.with_suffix(".mmd")
+    has_math = "$$" in src_mmd.read_text(encoding="utf-8") if src_mmd.exists() else False
+    legible = LEGIBLE_MATH if has_math else LEGIBLE_WORDS
 
     img = pdf.as_posix()   # absolute: pandoc passes raw LaTeX through, so
                            # --resource-path does not apply to it
-    if inline < LEGIBLE and turned > inline and h > SUBSTANTIAL_PT:
-        block = ("\n\\clearpage\n\\begin{center}\\includegraphics[angle=90,"
-                 "height=0.95\\textheight,width=\\textwidth,keepaspectratio]"
-                 f"{{{img}}}\\end{{center}}\n\\clearpage\n")
-        how = f"eigene Seite, gedreht — in der Spalte nur {inline:.2f}x, gedreht {turned:.2f}x"
-    else:
+    own_page = max(upright, turned)
+    if inline >= legible or own_page < inline * WORTH_A_PAGE:
         block = ("\n\\begin{center}\\includegraphics[width=\\textwidth,"
                  f"height=0.62\\textheight,keepaspectratio]{{{img}}}\\end{{center}}\n")
-        how = f"in der Spalte ({inline:.2f}x)"
+        how = f"in der Spalte ({inline:.2f}x, Schwelle {legible:.2f})"
+    else:
+        angle = "angle=90," if turned > upright else ""
+        block = (f"\n\\clearpage\n\\begin{{center}}\\includegraphics[{angle}"
+                 "height=0.95\\textheight,width=\\textwidth,keepaspectratio]"
+                 f"{{{img}}}\\end{{center}}\n\\clearpage\n")
+        lage = "gedreht" if angle else "aufrecht"
+        how = (f"eigene Seite, {lage} — in der Spalte {inline:.2f}x, "
+               f"auf eigener Seite {own_page:.2f}x")
     text = text.replace(f"%%DIAGRAM{n}%%", block)
     print(f"    Diagramm {n}: {how}")
 

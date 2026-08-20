@@ -130,7 +130,39 @@ auf `draft` und werden bei der Freigabe entlang der Pfade angefasst — dann bek
 Eintrag seine LaTeX-Form. Ein Umschreiben aller Einträge auf einmal würde den Prüfer
 brechen, ohne dass ein einziger Eintrag dadurch näher an der Freigabe wäre.
 
-### 0.4 Was ein Verfahren schuldet
+### 0.4 Zwei Diagrammsprachen, und was in welche gehört
+
+Ein Rechengraph und ein Aktivitätsdiagramm beantworten verschiedene Fragen. Werden sie in
+ein Bild gelegt, beantwortet es keine von beiden: Ein Kasten ist dann mal eine Größe, mal
+eine Handlung, ein Pfeil mal eine Abhängigkeit, mal eine Reihenfolge — und keine der
+Prüfungen, für die wir die Graphen bauen, lässt sich noch darauf anwenden.
+
+| | **Rechengraph** | **Aktivitätsdiagramm** (UML) |
+|---|---|---|
+| Frage | *was hängt wovon ab* | *was geschieht wann* |
+| Zeit | zeitlos | geordnet |
+| Knoten | Größen **und** Beziehungen, zweigeteilt | Aktionen |
+| Kante | „ist Eingang von" · „erzeugt" | Kontrollfluss |
+| Zyklus | eine **Eigenschaft** des Graphen | eine **Schleife** mit Abbruchbedingung |
+| Verzweigung | gibt es nicht | Entscheidungsknoten mit Wächter |
+| Nebenläufigkeit | zwei Zweige ohne gemeinsame Kante | Fork / Join |
+| trägt | Invalidierung, Benennung, Formelfreigabe | Reihenfolge, Iterationssteuerung, Fehlerwege |
+
+Die Naht zwischen beiden lässt sich in einem Satz sagen:
+
+> **Der Rechengraph liefert eine Teilordnung. Das Aktivitätsdiagramm macht daraus eine
+> Ausführung — und alles, was es dabei hinzufügt, ist eine Entscheidung.**
+
+Das ist zugleich die Prüfregel. Was im Aktivitätsdiagramm steht und **nicht** aus den
+Kanten des Rechengraphen folgt, muss jemand entschieden haben: die Reihenfolge zweier
+unabhängiger Zweige, das Abbruchkriterium einer Schleife, der Weg im Fehlerfall. Steht es
+da, ohne entschieden worden zu sein, ist es geraten.
+
+Umgekehrt gilt: Ein Solveraufruf ist im Rechengraphen **keine Handlung**, sondern eine
+Beziehung, die aus Eingängen Ausgänge macht — auf der `kind`-Achse ein `procedure`. Erst
+*wann* er läuft und *wie oft* ist Aktivität.
+
+### 0.5 Was ein Verfahren schuldet
 
 Ein Gesetz (`law`) wird über Formel, Quelle und Maßstab freigegeben. Ein **Verfahren**
 (`procedure`) schuldet vier Angaben — keine davon darf erfunden werden, beide Ursprünge
@@ -153,13 +185,14 @@ nicht. Welche Schritte es wirklich gibt und wo ihre Grenzen liegen, ist die näc
 Festlegung.
 
 ```mermaid
-flowchart LR
-  classDef step fill:#eef3f8,stroke:#5a7fa6,stroke-width:1.5px,color:#173a5e
-  M["Mission waehlen<br/>und fuellen"]:::step
-  K["Konstruktion"]:::step
-  A["Analyse"]:::step
-  M --> K --> A
-  A -. "Aussage ueber ein Bauteil" .-> K
+stateDiagram-v2
+  direction LR
+  [*] --> Mission
+  Mission: Mission wählen und füllen
+  Mission --> Konstruktion
+  Konstruktion --> Analyse
+  Analyse --> Konstruktion: Aussage über ein Bauteil
+  Analyse --> [*]
 ```
 
 Der Ablauf trägt die **Entwurfszyklen** — analysieren, etwas ändern, neu analysieren. Sie
@@ -215,102 +248,145 @@ Sieben Positionen. Alles Weitere ist abgeleitet: $\rho$ aus der Höhe,
 $C_{L,\max,\mathrm{stall}}$ aus dem Sweep, $x_\mathrm{CG}$ aus $SM_\mathrm{target}$, $W$ aus
 $m$ und $g$.
 
-#### Rechengraph
+#### Rechengraph — was wovon abhängt
+
+Zweigeteilt: **Rechtecke sind Größen, abgerundete Kästen sind Beziehungen.** Eine Kante
+heißt „ist Eingang von" oder „erzeugt", nie „danach". Es gibt keine Reihenfolge in diesem
+Bild und keine Verzweigung — beides steht im Ablauf darunter.
+
+Der Nutzen der Zweiteilung ist unmittelbar: Eine Größe mit **zwei** eingehenden
+Beziehungen verletzt ADR 0022, und das sieht man jetzt, ohne etwas zu lesen.
 
 ```mermaid
 flowchart TD
   classDef inp fill:#eef3f8,stroke:#5a7fa6,stroke-width:1.5px,color:#173a5e
   classDef est fill:#eef3f8,stroke:#5a7fa6,stroke-width:1.5px,stroke-dasharray:6 3,color:#173a5e
-  classDef drv fill:#ffffff,stroke:#8a8f98,color:#222
-  classDef chk fill:#f0ecf8,stroke:#6b4fa0,color:#33235c
   classDef konst fill:#f0f0ee,stroke:#6b6b66,color:#3a3a36
-  classDef out fill:#eaf5ee,stroke:#3d8a5a,color:#14432a
+  classDef qty fill:#ffffff,stroke:#8a8f98,color:#222
+  classDef rel fill:#faf7f2,stroke:#b08b4f,color:#4a3410
+  classDef out fill:#eaf5ee,stroke:#3d8a5a,stroke-width:1.5px,color:#14432a
 
   GEO[/"$$\text{airplane}$$"/]:::inp
   SMT[/"$$SM_\mathrm{target}$$"/]:::inp
-  MEST[/"$$m \quad \text{Abflugmasse}$$"/]:::est
-  HOEHE[/"$$h \quad \text{Platzhöhe} + \text{Flughöhe}$$"/]:::est
-  GRAV["$$g = 9{,}80665\ \mathrm{m/s^2}$$"]:::konst
-
-  MAC["$$\bar{c} = \frac{2}{S}\int c(y)^2\,\mathrm{d}y$$"]:::drv
-  SREF["$$S_\mathrm{ref},\ b_\mathrm{ref}$$"]:::drv
-  ATM["$$\rho = \rho_\mathrm{ISA}(h)$$"]:::drv
-  W["$$W = m\,g$$"]:::drv
-
-  VCR[/"$$V \quad \text{Fluggeschwindigkeit}$$"/]:::inp
-  CTRL[/"$$\text{Ruder neutral}$$"/]:::inp
+  M[/"$$m \quad \text{Abflugmasse}$$"/]:::est
+  H[/"$$h \quad \text{Platzhöhe} + \text{Flughöhe}$$"/]:::est
+  V[/"$$V \quad \text{Fluggeschwindigkeit}$$"/]:::inp
+  DEL[/"$$\text{Ruder neutral}$$"/]:::inp
   FID[/"$$\text{model size} = \text{xxxlarge}$$"/]:::inp
+  G["$$g = 9{,}80665\ \mathrm{m/s^2}$$"]:::konst
 
-  ALPHA(["$$\alpha: \ \text{löse } L = W \text{ bei } V$$"]):::drv
+  RMAC(["$$\bar{c} = \frac{2}{S}\int c(y)^2\,\mathrm{d}y$$"]):::rel
+  RREF(["$$\text{Referenzgrößen aus der Geometrie}$$"]):::rel
+  RISA(["$$\rho = \rho_\mathrm{ISA}(h)$$"]):::rel
+  RW(["$$W = m\,g$$"]):::rel
+  RAL(["$$\text{löse } L = W \text{ bei } V$$"]):::rel
+  RAB1(["$$\text{AeroBuildup, ein Punkt}$$"]):::rel
+  RAB2(["$$\text{AeroBuildup, } \alpha\text{-Sweep}$$"]):::rel
+  RXCG(["$$x_\mathrm{CG} = x_\mathrm{NP} - SM_\mathrm{target}\,\bar{c}$$"]):::rel
+  RSM(["$$SM = \frac{x_\mathrm{NP} - x_\mathrm{CG}}{\bar{c}}$$"]):::rel
+  RVS(["$$V_S = \sqrt{\frac{2W}{\rho\,S_\mathrm{ref}\,C_{L,\max,\mathrm{stall}}}}$$"]):::rel
+  RPR(["$$SM = -C_{m\alpha}/C_{L\alpha}\ ?$$"]):::rel
 
-  RUN(["$$\text{AeroBuildup, ein Punkt}, \ \mathbf{x}_\mathrm{ref} = x_\mathrm{CG}$$"]):::drv
-  SWEEP(["$$\text{AeroBuildup, } \alpha\text{-Sweep bei } V_S$$"]):::drv
+  CBAR["$$\bar{c}$$"]:::qty
+  SREF["$$S_\mathrm{ref},\ b_\mathrm{ref}$$"]:::qty
+  RHO["$$\rho$$"]:::qty
+  W["$$W$$"]:::qty
+  AL["$$\alpha$$"]:::qty
+  XNP["$$x_\mathrm{NP}$$"]:::qty
+  CMA["$$C_{m\alpha}$$"]:::qty
+  CLA["$$C_{L\alpha}$$"]:::qty
+  CLMAX["$$C_{L,\max,\mathrm{stall}}$$"]:::qty
 
-  XNP["$$x_\mathrm{NP}$$"]:::drv
-  CMA["$$C_{m\alpha}$$"]:::drv
-  CLA["$$C_{L\alpha}$$"]:::drv
-  CLMAX["$$C_{L,\max,\mathrm{stall}}$$"]:::drv
+  XCG["$$x_\mathrm{CG}$$"]:::out
+  SM["$$SM$$"]:::out
+  VS["$$V_S$$"]:::out
+  PR["$$\text{Probe bestanden}$$"]:::out
 
-  CGD["$$x_\mathrm{CG} = x_\mathrm{NP} - SM_\mathrm{target}\,\bar{c}$$"]:::out
-  SM["$$SM = \frac{x_\mathrm{NP} - x_\mathrm{CG}}{\bar{c}}$$"]:::out
-  RT{{"$$\text{Probe: } SM = -\frac{C_{m\alpha}}{C_{L\alpha}}\ ?$$"}}:::chk
-  VS["$$V_S = \sqrt{\frac{2W}{\rho\,S_\mathrm{ref}\,C_{L,\max,\mathrm{stall}}}}$$"]:::out
+  GEO --> RMAC
+  RMAC --> CBAR
+  GEO --> RREF
+  RREF --> SREF
+  H --> RISA
+  RISA --> RHO
+  M --> RW
+  G --> RW
+  RW --> W
+  V --> RAL
+  W --> RAL
+  RHO --> RAL
+  SREF --> RAL
+  GEO --> RAL
+  RAL --> AL
+  GEO --> RAB1
+  SREF --> RAB1
+  DEL --> RAB1
+  FID --> RAB1
+  H --> RAB1
+  V --> RAB1
+  AL --> RAB1
+  XCG --> RAB1
+  RAB1 --> XNP
+  RAB1 --> CMA
+  RAB1 --> CLA
+  GEO --> RAB2
+  SREF --> RAB2
+  DEL --> RAB2
+  FID --> RAB2
+  H --> RAB2
+  VS --> RAB2
+  RAB2 --> CLMAX
+  XNP --> RXCG
+  SMT --> RXCG
+  CBAR --> RXCG
+  RXCG --> XCG
+  XNP --> RSM
+  XCG --> RSM
+  CBAR --> RSM
+  RSM --> SM
+  W --> RVS
+  RHO --> RVS
+  SREF --> RVS
+  CLMAX --> RVS
+  RVS --> VS
+  SM --> RPR
+  CMA --> RPR
+  CLA --> RPR
+  RPR --> PR
 
-  GEO --> MAC
-  GEO --> SREF
-  GEO --> RUN
-  GEO --> SWEEP
-  SREF --> RUN
-  SREF --> SWEEP
-  CTRL --> RUN
-  CTRL --> SWEEP
-  FID --> RUN
-  FID --> SWEEP
-  VCR --> ALPHA
-  W --> ALPHA
-  ATM --> ALPHA
-  SREF --> ALPHA
-  GEO --> ALPHA
-  ALPHA --> RUN
-  VCR --> RUN
-
-  MEST --> W
-  GRAV --> W
-  HOEHE --> ATM
-  HOEHE --> RUN
-  HOEHE --> SWEEP
-
-  RUN --> XNP
-  RUN --> CMA
-  RUN --> CLA
-
-  XNP --> CGD
-  MAC --> CGD
-  SMT --> CGD
-  CGD --> RUN
-
-  XNP --> SM
-  MAC --> SM
-  CGD --> SM
-  SM --> RT
-  CMA --> RT
-  CLA --> RT
-
-  SWEEP --> CLMAX
-  W --> VS
-  ATM --> VS
-  SREF --> VS
-  CLMAX --> VS
-  VS -. "$$\text{Fixpunkt: } Re(V_S)$$" .-> SWEEP
-
-  linkStyle 35 stroke:#b02a21,stroke-width:3px
-  linkStyle 39 stroke:#b02a21,stroke-width:3px
-  linkStyle 40 stroke:#b02a21,stroke-width:3px
+  linkStyle 31 stroke:#b02a21,stroke-width:3px
+  linkStyle 32 stroke:#b02a21,stroke-width:3px
+  linkStyle 44 stroke:#b02a21,stroke-width:3px
+  linkStyle 45 stroke:#b02a21,stroke-width:3px
+  linkStyle 22 stroke:#b4690e,stroke-width:2px,stroke-dasharray:5 4
+  linkStyle 23 stroke:#b4690e,stroke-width:2px,stroke-dasharray:5 4
+  linkStyle 33 stroke:#b4690e,stroke-width:2px,stroke-dasharray:5 4
+  linkStyle 36 stroke:#b4690e,stroke-width:2px,stroke-dasharray:5 4
 ```
 
 Schräge blaue Kästen sind Eingaben, **gestrichelt wo geschätzt** — die Form trägt die
-Rolle, der Strich die Sicherheit. Grau: physikalische Konstante. Weiß: eine Rechnung.
-Raute: eine Probe. Grün: ein Ergebnis. **Rot und dick: der Fixpunkt, der konvergieren muss.**
+Rolle, der Strich die Sicherheit. Grau: physikalische Konstante. Sandfarben abgerundet:
+eine Beziehung. Weiß: eine gerechnete Größe. Grün: ein Ergebnis dieses Schritts.
+
+#### Der Graph hat zwei Zyklen, und nur einer ist echt
+
+Das sieht man erst, seit Größen und Beziehungen getrennt sind — im vermischten Bild war der
+eine ein Pfeil und der andere eine Bemerkung.
+
+**Rot: $V_S \to$ Sweep $\to C_{L,\max,\mathrm{stall}} \to$ Abrissformel $\to V_S$.** Ein
+echter Fixpunkt. $C_{L,\max}$ gilt bei der Reynoldszahl, die aus $V_S$ folgt, und bei
+Modellgrößen hängt es stark davon ab. Er braucht ein Verfahren (§3.2.1) und ein
+Abbruchkriterium.
+
+**Bernstein gestrichelt: $x_\mathrm{CG} \to$ Punktlauf $\to x_\mathrm{NP} \to$ CG-Formel
+$\to x_\mathrm{CG}$.** Formal derselbe Kreis, praktisch keiner — nachgemessen wandert
+$x_\mathrm{NP}$ über 150 mm Bezugsverschiebung um 0,17 mm. Die Abhängigkeit steht im Graphen,
+weil sie besteht; sie ist numerisch vernachlässigbar, und das ist eine **Aussage über die
+Physik**, keine Vereinfachung der Zeichnung.
+
+Wichtig ist die Einschränkung: Für $x_\mathrm{NP}$ ist der Zyklus entartet, für
+$C_{m\alpha}$ **nicht** — dessen Vorzeichen wechselt genau bei
+$\mathbf{x}_\mathrm{ref} = x_\mathrm{NP}$. $C_{m\alpha}$ speist nur die Probe, also hängt
+genau die Probe am konvergierten $x_\mathrm{CG}$ und sonst nichts.
 
 #### Rechnungen dieses Schritts
 
@@ -336,18 +412,57 @@ ist die nächste Katalogarbeit.
 
 $x_\mathrm{CG}$ · $SM$ · $V_S$ · das Ergebnis der Probe.
 
-#### Zwei Eigenschaften, die man nachgemessen haben muss
+#### Ablauf dieses Schritts — was wann geschieht
 
-**$x_\mathrm{NP}$ ist bezugsunabhängig, $C_{m\alpha}$ nicht.** Über 150 mm Verschiebung des
-Bezugspunkts wandert $x_\mathrm{NP}$ um 0,17 mm — das ist Numerik. $C_{m\alpha}$ wechselt
-dabei das Vorzeichen, genau bei $\mathbf{x}_\mathrm{ref} = x_\mathrm{NP}$. Für den
-Neutralpunkt muss der Bezugspunkt also *nicht* stimmen, für den Ableitungsweg zur
-Stabilitätsreserve **schon**.
+Alles hier folgt aus den Kanten oben: die Teilordnung, die Nebenläufigkeit der beiden
+Zweige, die Schleife. **Was das Diagramm hinzufügt, steht unter „Offen".**
 
-**Der scheinbare Kreis $x_\mathrm{CG} \to \mathbf{x}_\mathrm{ref} \to x_\mathrm{NP} \to
-x_\mathrm{CG}$ ist keiner.** Er ist in einem Durchgang erledigt, weil $x_\mathrm{NP}$ nicht
-am Bezugspunkt hängt. Der **echte** Kreis ist der rote: $C_{L,\max,\mathrm{stall}}$ gilt bei
-der Reynoldszahl, die aus $V_S$ folgt.
+```mermaid
+stateDiagram-v2
+  direction TB
+  state teilen <<fork>>
+  state konvergiert <<choice>>
+  state vereinen <<join>>
+
+  [*] --> Geometrie
+  Geometrie: Geometrie auswerten
+  Geometrie --> Umgebung
+  Umgebung: Atmosphäre und Gewicht bestimmen
+  Umgebung --> teilen
+
+  teilen --> Horizontalflug
+  Horizontalflug: Horizontalflug lösen
+  Horizontalflug --> Stabilitaet
+  Stabilitaet: Stabilitätslauf um den Schwerpunkt
+  Stabilitaet --> vereinen
+
+  teilen --> Abriss
+  Abriss: Sweep, daraus die Abrissgeschwindigkeit
+  Abriss --> konvergiert
+  konvergiert --> Abriss: noch nicht konvergiert
+  konvergiert --> vereinen: konvergiert
+
+  vereinen --> Probe
+  Probe: Probe rechnen
+  Probe --> [*]
+```
+
+Der **Fork** ist keine Entwurfsentscheidung, sondern eine Ablesung: Der Abrisszweig braucht
+$W$, $\rho$ und $S_\mathrm{ref}$, aber weder $\alpha$ noch $x_\mathrm{CG}$. Die beiden
+Zweige teilen keine Kante und sind deshalb unabhängig — im vermischten Bild war das nicht
+zu sehen.
+
+#### Offen an diesem Ablauf
+
+Das sind genau die Stellen, an denen das Aktivitätsdiagramm über den Rechengraphen
+hinausgeht:
+
+| | |
+|---|---|
+| **Abbruch der Schleife** | Woran wird Konvergenz gemessen, mit welcher Toleranz, und was geschieht nach $N$ erfolglosen Durchgängen? → O2 |
+| **Fehlerweg** | Was, wenn der Horizontalflug keine Lösung hat — oberhalb des Abrisses gibt es kein $\alpha$ mit $L = W$? → O3 |
+| **Ausgang bei nicht bestandener Probe** | Ist das ein Ergebnis mit Warnung oder ein Abbruch? |
+| **Startwert** | Mit welchem $V_S$ läuft der erste Sweep? |
 
 ### 2.2 — noch nicht aufgenommen
 
