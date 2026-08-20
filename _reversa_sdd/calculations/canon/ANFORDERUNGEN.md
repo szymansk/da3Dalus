@@ -52,8 +52,8 @@ header-includes: |
 *Was gerechnet werden soll, an welcher Stelle des Ablaufs, mit welcher Formel, unter
 welchen Randbedingungen. Nicht, was der Code heute tut.*
 
-**Dieses Dokument wird sukzessive befüllt.** Was hier steht, ist entschieden; was fehlt,
-fehlt sichtbar. Ein leeres Feld ist ein besserer Zustand als ein ausgedachtes.
+**Dieses Dokument wird sukzessive befüllt**, von vorn nach hinten — dort beginnend, wo
+der Anwender beginnt. Was hier steht, ist entschieden; was fehlt, fehlt sichtbar.
 
 ---
 
@@ -130,39 +130,62 @@ auf `draft` und werden bei der Freigabe entlang der Pfade angefasst — dann bek
 Eintrag seine LaTeX-Form. Ein Umschreiben aller Einträge auf einmal würde den Prüfer
 brechen, ohne dass ein einziger Eintrag dadurch näher an der Freigabe wäre.
 
-### 0.4 Zwei Diagrammsprachen, und was in welche gehört
+### 0.4 Drei Ebenen von Diagramm, und wo ein Zyklus hingehört
 
 Ein Rechengraph und ein Aktivitätsdiagramm beantworten verschiedene Fragen. Werden sie in
-ein Bild gelegt, beantwortet es keine von beiden: Ein Kasten ist dann mal eine Größe, mal
+ein Bild gelegt, beantwortet es keine von beiden: Ein Kasten ist dann mal ein Wert, mal
 eine Handlung, ein Pfeil mal eine Abhängigkeit, mal eine Reihenfolge — und keine der
-Prüfungen, für die wir die Graphen bauen, lässt sich noch darauf anwenden.
+Prüfungen, für die wir die Bilder bauen, lässt sich noch darauf anwenden.
 
-| | **Rechengraph** | **Aktivitätsdiagramm** (UML) |
+Es sind drei Ebenen, und **die entscheidende Unterscheidung liegt beim Zyklus: wer ihn
+dreht.**
+
+| Ebene | Diagramm | ein Zyklus darin heißt |
 |---|---|---|
-| Frage | *was hängt wovon ab* | *was geschieht wann* |
-| Zeit | zeitlos | geordnet |
-| Knoten | Größen **und** Beziehungen, zweigeteilt | Aktionen |
-| Kante | „ist Eingang von" · „erzeugt" | Kontrollfluss |
-| Zyklus | eine **Eigenschaft** des Graphen | eine **Schleife** mit Abbruchbedingung |
-| Verzweigung | gibt es nicht | Entscheidungsknoten mit Wächter |
-| Nebenläufigkeit | zwei Zweige ohne gemeinsame Kante | Fork / Join |
-| trägt | Invalidierung, Benennung, Formelfreigabe | Reihenfolge, Iterationssteuerung, Fehlerwege |
+| **Ablauf** | Aktivitätsdiagramm | **der Anwender wiederholt etwas.** Er entscheidet, wann Schluss ist — es gibt kein rechenbares Abbruchkriterium |
+| **Aktivität** | Rechengraph | eine **Abhängigkeit**, die im Kreis läuft. Eine Eigenschaft, keine Handlung — hier wird nichts wiederholt |
+| **Rechnung** | Aktivitätsdiagramm | die **Iteration, die diesen Kreis auflöst** — mit Abbruchbedingungen: erfolgreich oder mit Fehler |
 
-Die Naht zwischen beiden lässt sich in einem Satz sagen:
+Daraus folgt die Regel, an der man beide Fehler erkennt:
 
-> **Der Rechengraph liefert eine Teilordnung. Das Aktivitätsdiagramm macht daraus eine
-> Ausführung — und alles, was es dabei hinzufügt, ist eine Entscheidung.**
+> **Ein Zyklus, den wir rechnen, gehört in die Rechnung. Ein Zyklus im Ablauf ist einer,
+> den der Anwender selbst dreht.**
 
-Das ist zugleich die Prüfregel. Was im Aktivitätsdiagramm steht und **nicht** aus den
-Kanten des Rechengraphen folgt, muss jemand entschieden haben: die Reihenfolge zweier
-unabhängiger Zweige, das Abbruchkriterium einer Schleife, der Weg im Fehlerfall. Steht es
-da, ohne entschieden worden zu sein, ist es geraten.
+Steht eine Konvergenzschleife im Ablauf, ist sie eine Ebene zu hoch. Steht ein
+Entwurfszyklus in einer Rechnung, hat jemand das Urteil des Konstrukteurs automatisiert.
 
-Umgekehrt gilt: Ein Solveraufruf ist im Rechengraphen **keine Handlung**, sondern eine
-Beziehung, die aus Eingängen Ausgänge macht — auf der `kind`-Achse ein `procedure`. Erst
-*wann* er läuft und *wie oft* ist Aktivität.
+**Das schließt zugleich eine Lücke.** Ein Verfahren schuldet vier Angaben (§0.5), und drei
+davon sind bisher überall offen. Das innere Aktivitätsdiagramm einer Rechnung **ist** diese
+Spezifikation: Methode, Annahmen und das Verhalten bei Nichtkonvergenz werden dort
+gezeichnet statt beschrieben. Ein Verfahren ohne inneres Diagramm ist ein Verfahren ohne
+Abbruchbedingung — und liefert im Fehlerfall eine Zahl, die aussieht wie ein Ergebnis
+(ADR 0020).
 
-### 0.5 Was ein Verfahren schuldet
+**Ein Solveraufruf ist im Rechengraphen keine Handlung**, sondern eine Beziehung, die aus
+Eingängen Ausgänge macht — auf der `kind`-Achse ein `procedure`. Erst *wann* er läuft und
+*wie oft*, ist Aktivität.
+
+### 0.5 Eine Bildsprache für alle drei Ebenen
+
+Damit man nicht umlernt, bedeuten die Formen überall dasselbe:
+
+| Form | überall |
+|---|---|
+| **abgerundet, sandfarben** | etwas, das rechnet — eine Beziehung, eine Aktivität |
+| **Rechteck** | ein Wert |
+| Rechteck grün | ein Wert, der diesen Schritt verlässt |
+| Parallelogramm blau | eine Eingabe; **gestrichelt**, wenn geschätzt |
+| Rechteck grau | eine physikalische Konstante |
+| **Raute** | eine Entscheidung, mit Wächtern an den Kanten |
+| **Balken** | Gabelung oder Vereinigung nebenläufiger Zweige |
+| durchgezogener Pfeil | Kontrollfluss — *danach* |
+| **gestrichelter Pfeil** | Objektfluss — *dieser Wert geht dorthin* |
+
+Objektknoten am Ablauf sind gültiges UML (Objektknoten bzw. Pins). Mitgeführt wird nur,
+**was eine Aktivitätsgrenze überschreitet** — Zwischenwerte stehen im Rechengraphen der
+jeweiligen Aktivität. Sonst hat man die Vermischung wieder, nur feiner.
+
+### 0.6 Was ein Verfahren schuldet
 
 Ein Gesetz (`law`) wird über Formel, Quelle und Maßstab freigegeben. Ein **Verfahren**
 (`procedure`) schuldet vier Angaben — keine davon darf erfunden werden, beide Ursprünge
@@ -178,27 +201,75 @@ liefert im Fehlerfall eine Zahl, die aussieht wie ein Ergebnis (ADR 0020).
 
 ---
 
+
+### 0.7 Die Form eines Aktivitätsabschnitts
+
+Jede Aktivität aus §1 hat einen Abschnitt in §2, und jeder Abschnitt hat dieselben Teile:
+
+| Teil | Inhalt |
+|---|---|
+| **Zweck** | wofür sie da ist, in einem Satz |
+| **Eingaben** | was hineingeht, mit Herkunft — Anwender, Konstante, oder eine frühere Aktivität |
+| **Ausgaben** | was herauskommt und weitergereicht wird |
+| **Rechengraph** | Größen und Beziehungen, zweigeteilt, azyklisch gelesen |
+| **Ablauf der Rechnung** | nur wenn iteriert wird: das innere Aktivitätsdiagramm mit den Abbruchbedingungen |
+| **Offen** | was hier noch entschieden werden muss |
+
+Eine Aktivität kann **zusammengesetzt** sein: Dann steht an dieser Stelle statt eines
+Rechengraphen ein eigenes Aktivitätsdiagramm, und ihre Teilaktivitäten bekommen eigene
+Abschnitte darunter.
+
+---
+
 ## 1. Der Ablauf
 
-**Status: offen.** Das Gerüst unten sind die drei Schritte, die genannt wurden — mehr
-nicht. Welche Schritte es wirklich gibt und wo ihre Grenzen liegen, ist die nächste
-Festlegung.
+**Status: im Aufbau.** Wir füllen ihn von vorn — dort, wo der Anwender anfängt.
+
+Die Zyklen in diesem Bild sind **Anwenderzyklen**: Der Konstrukteur sieht sich das Ergebnis
+an und geht zurück. Es gibt dafür kein rechenbares Abbruchkriterium, und es soll keines
+geben — die Entscheidung, dass ein Entwurf trägt, ist seine.
 
 ```mermaid
-stateDiagram-v2
-  direction LR
-  [*] --> Mission
-  Mission: Mission wählen und füllen
-  Mission --> Konstruktion
-  Konstruktion --> Analyse
-  Analyse --> Konstruktion: Aussage über ein Bauteil
-  Analyse --> [*]
+flowchart TD
+  classDef akt fill:#faf7f2,stroke:#b08b4f,stroke-width:1.5px,color:#4a3410
+  classDef obj fill:#ffffff,stroke:#8a8f98,color:#222
+  classDef ofn fill:#ffffff,stroke:#8a8f98,stroke-dasharray:5 4,color:#777
+  classDef term fill:#3a3a36,stroke:#3a3a36,color:#fff
+  classDef ent fill:#f0ecf8,stroke:#6b4fa0,color:#33235c
+
+  S(("&nbsp;")):::term
+  A1(["Mission wählen und füllen"]):::akt
+  O1["$$\text{Missionsvorgaben}$$"]:::ofn
+  A2(["Konstruktion"]):::akt
+  O2["$$\text{airplane}$$"]:::obj
+  A3(["Analyse"]):::akt
+  O3["$$x_\mathrm{CG},\ SM,\ V_S,\ \text{Probe}$$"]:::obj
+  D{"trägt der Entwurf?"}:::ent
+  E(("&nbsp;")):::term
+
+  S --> A1
+  A1 --> A2
+  A2 --> A3
+  A3 --> D
+  D -->|"nein"| A2
+  D -->|"ja"| E
+
+  A1 -.-> O1
+  O1 -.-> A2
+  A2 -.-> O2
+  O2 -.-> A3
+  A3 -.-> O3
+  O3 -.-> D
+
+  linkStyle 4 stroke:#6b4fa0,stroke-width:2px
 ```
 
-Der Ablauf trägt die **Entwurfszyklen** — analysieren, etwas ändern, neu analysieren. Sie
-enden durch das Urteil des Konstrukteurs. Die **Rechenzyklen** (Fixpunkte) bleiben unten in
-den Rechengraphen und enden durch ein Konvergenzkriterium. Diese Trennung ist der Grund,
-warum es zwei Diagrammarten gibt und nicht eine.
+Gestrichelte Pfeile sind **Objektfluss** — sie sagen, welcher Wert von wo nach wo geht, und
+sind der Grund, warum man an diesem Bild überhaupt etwas prüfen kann. Ein Kasten mit
+gestricheltem Rand ist ein Wert, dessen Inhalt noch nicht festgelegt ist.
+
+**Der violette Rückweg ist der Entwurfszyklus.** Er hat keinen Wächter, der sich rechnen
+ließe — dort steht das Urteil des Konstrukteurs.
 
 ### Was der Ablauf leisten soll
 
@@ -207,31 +278,138 @@ Ergebnisses: $V_{S,\mathrm{clean}}$, $V_{S,\mathrm{launch}}$ und $V_{S,\mathrm{l
 sind **eine** Formel mit drei Bindungen, nicht drei Formeln. Der Rechengraph zählt Formeln,
 nicht Größen.
 
-**Er macht Namen prüfbar.** Die Prozessstufe wählt die Bindung, die Bindung bestimmt den
+**Er macht Namen prüfbar.** Die Aktivität wählt die Bindung, die Bindung bestimmt den
 Namen. Jeder benannte Ausgabewert muss sich auf ein Paar *(Formel, Bindung)* zurückführen
 lassen. Ein Name, der das nicht kann, ist eine unerklärte Anwendung oder ein Duplikat.
 
 **Er zeigt, was dirty wird** — siehe Anforderung A1.
 
-### Offen
+### Was noch fehlt
 
-- Welche Prozessschritte gibt es wirklich, und wo verläuft die Grenze zwischen ihnen?
-- Welche Schritte sind wiederholbar, welche nur einmal am Anfang?
-- Welche Aussagen laufen aus der Analyse in die Konstruktion zurück?
+Drei Aktivitäten sind zu wenig, und die Namen sind Platzhalter aus dem ersten Gespräch. Wir
+verfeinern sie von vorn nach hinten; jede bekommt beim Verfeinern ihren Abschnitt in §2.
+Solange eine Aktivität nicht aufgemacht ist, sind auch ihre Objektknoten gestrichelt.
 
 ---
 
-## 2. Prozessschritte
+## 2. Die Aktivitäten
 
-### 2.1 Analyse — Stabilitätsreserve und Abrissgeschwindigkeit
+### 2.1 Mission wählen und füllen
 
-**Status: entschieden** bis auf die beiden Verfahren in §3.2 und die offene Entscheidung O1.
+**Status: offen — hier arbeiten wir als Nächstes.**
+
+**Zweck.** Festlegen, wofür das Flugzeug gebaut wird, und daraus die Vorgaben ableiten, an
+denen der Entwurf später gemessen wird.
+
+**Was hier schon entschieden ist**, weil es an anderer Stelle gebraucht wurde:
+
+| Ausgabe | entschieden |
+|---|---|
+| $SM_\mathrm{target}$ | Die Mission **schlägt vor**, der Konstrukteur überschreibt. Also ist es eine Ausgabe dieser Aktivität und zugleich eine Entwurfswahl weiter unten. |
+
+Mehr steht nicht fest. Was diese Aktivität sonst erzeugt, ist die nächste Frage — und sie
+lässt sich nicht aus dem Code beantworten, weil dieses Dokument den Sollzustand führt.
+
+### 2.2 Konstruktion
+
+**Status: noch nicht aufgenommen.** Erzeugt `airplane`.
+
+### 2.3 Analyse
+
+**Status: zusammengesetzt; die Teilaktivitäten sind geschnitten, die Rechnungen sind
+entschieden.**
 
 **Zweck.** Aus Geometrie, Masse und Zielstabilität die beiden Größen ermitteln, an denen
 der Entwurf zuerst scheitert: wo der Schwerpunkt liegen muss, und wie langsam das Modell
 werden darf.
 
-#### Eingaben dieses Schritts
+Dies ist eine **zusammengesetzte** Aktivität — statt eines Rechengraphen steht hier ein
+eigener Ablauf. **Er enthält keine Konvergenzschleife mehr:** Die Iteration der Abrissgeschwindigkeit ist
+eine Rechnung und gehört damit in den Abschnitt der Aktivität *Abrissgeschwindigkeit
+bestimmen* — der steht noch aus.
+
+```mermaid
+flowchart TD
+  classDef akt fill:#faf7f2,stroke:#b08b4f,stroke-width:1.5px,color:#4a3410
+  classDef obj fill:#ffffff,stroke:#8a8f98,color:#222
+  classDef out fill:#eaf5ee,stroke:#3d8a5a,stroke-width:1.5px,color:#14432a
+  classDef term fill:#3a3a36,stroke:#3a3a36,color:#fff
+  classDef bar fill:#6b6b66,stroke:#6b6b66,color:#6b6b66
+
+  S(("&nbsp;")):::term
+  B0["&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;"]:::bar
+  G(["Geometrie auswerten"]):::akt
+  OG["$$\bar{c},\ S_\mathrm{ref},\ b_\mathrm{ref}$$"]:::obj
+  U(["Atmosphäre und Gewicht bestimmen"]):::akt
+  OU["$$\rho,\ W$$"]:::obj
+  B1["&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;"]:::bar
+  B(["Betriebspunkt lösen"]):::akt
+  OB["$$\alpha$$"]:::obj
+  ST(["Stabilität bestimmen"]):::akt
+  OS["$$x_\mathrm{CG},\ SM,\ C_{m\alpha},\ C_{L\alpha}$$"]:::out
+  P(["Probe rechnen"]):::akt
+  OP["$$\text{Probe bestanden}$$"]:::out
+  AB(["Abrissgeschwindigkeit bestimmen"]):::akt
+  OA["$$V_S,\ C_{L,\max,\mathrm{stall}}$$"]:::out
+  B2["&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;"]:::bar
+  E(("&nbsp;")):::term
+
+  S --> B0
+  B0 --> G
+  B0 --> U
+  G --> B1
+  U --> B1
+  B1 --> B
+  B1 --> AB
+  B --> ST
+  ST --> P
+  P --> B2
+  AB --> B2
+  B2 --> E
+
+  G -.-> OG
+  U -.-> OU
+  B -.-> OB
+  ST -.-> OS
+  AB -.-> OA
+  P -.-> OP
+  OG -.-> B
+  OG -.-> ST
+  OG -.-> AB
+  OU -.-> B
+  OU -.-> AB
+  OB -.-> ST
+  OS -.-> P
+```
+
+**Die Gabelungen sind keine Entwurfsentscheidungen, sondern Ablesungen** — und der erste
+Entwurf dieses Bildes hatte an zwei Stellen mehr behauptet, als die Kanten hergeben:
+
+| behauptet war | tatsächlich |
+|---|---|
+| *Geometrie auswerten* **vor** *Atmosphäre und Gewicht* | beide brauchen nur Eingaben des Anwenders und sind **unabhängig** — die Reihenfolge war erfunden |
+| *Abrissgeschwindigkeit* wird vor der Probe **vereinigt** | die Probe braucht nur $SM$, $C_{m\alpha}$, $C_{L\alpha}$. Der Abrisszweig läuft **bis zum Ende durch**, ohne dass jemand auf ihn wartet |
+
+Beides fiel beim Nachzählen der Kanten auf, nicht beim Lesen — und das ist der Zweck der
+Regel aus §0.4: Was der Ablauf über den Rechengraphen hinaus behauptet, muss jemand
+entschieden haben. Hier hatte es niemand.
+
+Übrig bleiben zwei echte Gabelungen: $\{$Geometrie, Umgebung$\}$ am Anfang, und danach
+$\{$Betriebspunkt $\to$ Stabilität $\to$ Probe, Abrissgeschwindigkeit$\}$.
+
+
+#### Was beim Verfeinern dieser sechs zu entscheiden ist
+
+Das sind genau die Stellen, an denen eine Rechnung über ihren Rechengraphen hinausgeht —
+und damit der Inhalt der inneren Aktivitätsdiagramme:
+
+| bei | |
+|---|---|
+| *Abrissgeschwindigkeit bestimmen* | Woran wird Konvergenz gemessen, mit welcher Toleranz, und was geschieht nach $N$ erfolglosen Durchgängen? Mit welchem $V_S$ läuft der erste Sweep? → O2 |
+| *Betriebspunkt lösen* | Was, wenn es keine Lösung gibt — oberhalb des Abrisses erfüllt **kein** $\alpha$ die Bedingung $L = W$? → O3 |
+| *Probe rechnen* | Ist eine nicht bestandene Probe ein Ergebnis mit Warnung oder ein Abbruch? |
+
+#### Eingaben des ganzen Schritts
 
 | Größe | Art | Anmerkung |
 |---|---|---|
@@ -248,7 +426,12 @@ Sieben Positionen. Alles Weitere ist abgeleitet: $\rho$ aus der Höhe,
 $C_{L,\max,\mathrm{stall}}$ aus dem Sweep, $x_\mathrm{CG}$ aus $SM_\mathrm{target}$, $W$ aus
 $m$ und $g$.
 
-#### Rechengraph — was wovon abhängt
+#### Der Rechengraph des ganzen Schritts
+
+Bis die sechs Teilaktivitäten je einen eigenen Abschnitt haben, steht hier der Graph des
+ganzen Schritts. **Er wird beim Verfeinern zerschnitten**, nicht neu gezeichnet: Jede
+Teilaktivität bekommt den Ausschnitt, den sie rechnet, und was heute eine Kante zwischen
+zwei Beziehungen ist, wird dort zu einem Objektfluss zwischen zwei Aktivitäten.
 
 Zweigeteilt: **Rechtecke sind Größen, abgerundete Kästen sind Beziehungen.** Eine Kante
 heißt „ist Eingang von" oder „erzeugt", nie „danach". Es gibt keine Reihenfolge in diesem
@@ -388,7 +571,7 @@ $C_{m\alpha}$ **nicht** — dessen Vorzeichen wechselt genau bei
 $\mathbf{x}_\mathrm{ref} = x_\mathrm{NP}$. $C_{m\alpha}$ speist nur die Probe, also hängt
 genau die Probe am konvergierten $x_\mathrm{CG}$ und sonst nichts.
 
-#### Rechnungen dieses Schritts
+#### Die Rechnungen darin
 
 | Knoten | Art | Katalogeintrag |
 |---|---|---|
@@ -408,63 +591,10 @@ Der Stabilitätsteil des Katalogs existiert noch nicht: weder `static-margin` no
 `neutral-point`, `centre-of-gravity` oder `pitching-moment-slope` haben einen Eintrag. Das
 ist die nächste Katalogarbeit.
 
-#### Ausgaben
+#### Ausgaben des ganzen Schritts
 
 $x_\mathrm{CG}$ · $SM$ · $V_S$ · das Ergebnis der Probe.
 
-#### Ablauf dieses Schritts — was wann geschieht
-
-Alles hier folgt aus den Kanten oben: die Teilordnung, die Nebenläufigkeit der beiden
-Zweige, die Schleife. **Was das Diagramm hinzufügt, steht unter „Offen".**
-
-```mermaid
-stateDiagram-v2
-  direction TB
-  state teilen <<fork>>
-  state konvergiert <<choice>>
-  state vereinen <<join>>
-
-  [*] --> Geometrie
-  Geometrie: Geometrie auswerten
-  Geometrie --> Umgebung
-  Umgebung: Atmosphäre und Gewicht bestimmen
-  Umgebung --> teilen
-
-  teilen --> Horizontalflug
-  Horizontalflug: Horizontalflug lösen
-  Horizontalflug --> Stabilitaet
-  Stabilitaet: Stabilitätslauf um den Schwerpunkt
-  Stabilitaet --> vereinen
-
-  teilen --> Abriss
-  Abriss: Sweep, daraus die Abrissgeschwindigkeit
-  Abriss --> konvergiert
-  konvergiert --> Abriss: noch nicht konvergiert
-  konvergiert --> vereinen: konvergiert
-
-  vereinen --> Probe
-  Probe: Probe rechnen
-  Probe --> [*]
-```
-
-Der **Fork** ist keine Entwurfsentscheidung, sondern eine Ablesung: Der Abrisszweig braucht
-$W$, $\rho$ und $S_\mathrm{ref}$, aber weder $\alpha$ noch $x_\mathrm{CG}$. Die beiden
-Zweige teilen keine Kante und sind deshalb unabhängig — im vermischten Bild war das nicht
-zu sehen.
-
-#### Offen an diesem Ablauf
-
-Das sind genau die Stellen, an denen das Aktivitätsdiagramm über den Rechengraphen
-hinausgeht:
-
-| | |
-|---|---|
-| **Abbruch der Schleife** | Woran wird Konvergenz gemessen, mit welcher Toleranz, und was geschieht nach $N$ erfolglosen Durchgängen? → O2 |
-| **Fehlerweg** | Was, wenn der Horizontalflug keine Lösung hat — oberhalb des Abrisses gibt es kein $\alpha$ mit $L = W$? → O3 |
-| **Ausgang bei nicht bestandener Probe** | Ist das ein Ergebnis mit Warnung oder ein Abbruch? |
-| **Startwert** | Mit welchem $V_S$ läuft der erste Sweep? |
-
-### 2.2 — noch nicht aufgenommen
 
 ---
 
@@ -618,6 +748,11 @@ der Ableitungsweg zur Stabilitätsreserve in §2.1.
 ---
 
 ## 5. Offene Entscheidungen
+
+Seit §0.4 haben O2 und O3 einen Ort: Sie werden im **inneren Aktivitätsdiagramm** der
+jeweiligen Rechnung beantwortet, nicht in Prosa. Ein Verfahren ohne inneres Diagramm ist
+eines ohne Abbruchbedingung.
+
 
 | Nr | Frage | blockiert |
 |---|---|---|
