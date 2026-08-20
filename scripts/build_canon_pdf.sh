@@ -24,9 +24,10 @@ EMOJI = {"️": "", "\U0001F7E2": r"\statusok{}", "\U0001F7E1": r"\statusmid{}",
 EMOJI_V = {"️": "", "\U0001F7E2": "[ok]", "\U0001F7E1": "[~]", "\U0001F534": "[!]",
            "⚪": "[-]", "✅": "[ok]", "⚠": "[!]", "✓": "ok", "✗": "x"}
 MATH = {"→": r"\ensuremath{\rightarrow}", "√": r"\ensuremath{\surd}",
-        "∝": r"\ensuremath{\propto}"}
+        "∝": r"\ensuremath{\propto}", "≤": r"\ensuremath{\leq}",
+        "≥": r"\ensuremath{\geq}"}
 VERB = {"→": "->", "←": "<-", "│": "|", "─": "-",
-        "√": "sqrt", "∝": "~"}
+        "√": "sqrt", "∝": "~", "≤": "<=", "≥": ">="}
 
 lines = src.read_text(encoding="utf-8").splitlines(keepends=True)
 out, in_code, in_mermaid, buf, n = [], False, False, [], 0
