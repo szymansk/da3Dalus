@@ -248,14 +248,16 @@ flowchart TD
 
   S(("&nbsp;")):::term
   A1(["Mission wählen und füllen"]):::akt
-  O1["$$\text{Missionsvorgaben}$$"]:::ofn
+  O1["$$\text{Vorgaben, Bänder, Richtung}$$"]:::ofn
   D0{"Richtung?"}:::ent
-  A15(["Auslegungspunkt bestimmen"]):::akt
+  A15(["Auslegungspunkt lösen"]):::akt
   O15["$$W/S,\ T/W,\ m,\ S_\mathrm{ref},\ P$$"]:::ofn
   A2(["Konstruktion"]):::akt
   O2["$$\text{airplane}$$"]:::obj
   A3(["Analyse"]):::akt
-  O3["$$x_\mathrm{CG},\ SM,\ V_S,\ \text{Probe}$$"]:::obj
+  O3["$$x_\mathrm{CG},\ SM,\ V_S$$"]:::obj
+  A4(["Auslegungspunkt prüfen"]):::akt
+  O4["$$\text{im zulässigen Gebiet?}$$"]:::obj
   D{"trägt der Entwurf?"}:::ent
   E(("&nbsp;")):::term
 
@@ -265,30 +267,43 @@ flowchart TD
   D0 -->|"charaktergetrieben"| A2
   A15 --> A2
   A2 --> A3
-  A3 --> D
+  A3 --> A4
+  A4 --> D
   D -->|"nein"| A2
   D -->|"ja"| E
 
   A1 -.-> O1
   O1 -.-> A15
   O1 -.-> A2
+  O1 -.-> A4
   A15 -.-> O15
   O15 -.-> A2
+  O15 -.-> A4
   A2 -.-> O2
   O2 -.-> A3
   A3 -.-> O3
-  O3 -.-> D
+  O3 -.-> A4
+  A4 -.-> O4
+  O4 -.-> D
 
-  linkStyle 7 stroke:#6b4fa0,stroke-width:2px
+  linkStyle 8 stroke:#6b4fa0,stroke-width:2px
 ```
-*Abbildung — Der Ablauf des Anwenders. Rauten sind seine Entscheidungen; der violette Rückweg ist der Entwurfszyklus und hat bewusst keinen rechenbaren Wächter. Gestrichelte Pfeile sind Objektfluss, gestrichelte Kästen Werte, deren Inhalt noch offen ist.*
+*Abbildung — Der Ablauf, für beide Richtungen. Die Raute \emph{Richtung?} verzweigt sie; der violette Rückweg ist der Entwurfszyklus und hat bewusst keinen rechenbaren Wächter. Der Auslegungspunkt kommt zweimal vor: einmal gelöst, einmal geprüft. Auf dem missionsgetriebenen Weg ist die Prüfung die Probe der Lösung, auf dem charaktergetriebenen die einzige Stelle, an der der Beschränkungssatz überhaupt benutzt wird.*
 
 Gestrichelte Pfeile sind **Objektfluss** — sie sagen, welcher Wert von wo nach wo geht, und
 sind der Grund, warum man an diesem Bild überhaupt etwas prüfen kann. Ein Kasten mit
 gestricheltem Rand ist ein Wert, dessen Inhalt noch nicht festgelegt ist.
 
 **Die erste Raute ist die Richtungsentscheidung** aus §2.1. Sie verzweigt den Ablauf, nicht
-die Rechnung: Beide Zweige laufen später gegen **denselben** Beschränkungssatz.
+die Rechnung — und genau das macht der zweifach auftretende Auslegungspunkt sichtbar:
+
+| | missionsgetrieben | charaktergetrieben |
+|---|---|---|
+| *Auslegungspunkt lösen* | ja — aus den Forderungen | entfällt |
+| *Auslegungspunkt prüfen* | **Probe** der Lösung | die einzige Benutzung des Beschränkungssatzes |
+
+Es ist **eine** Beziehung mit zwei Bindungen, nicht zwei Verfahren (§2.1). Deshalb steht sie
+auch zweimal im selben Ablauf und nicht je einmal in zwei Abläufen.
 
 **Der violette Rückweg ist der Entwurfszyklus.** Er hat keinen Wächter, der sich rechnen
 ließe — dort steht das Urteil des Konstrukteurs.
@@ -370,9 +385,10 @@ Daraus folgt, was hier **nicht** erzwungen werden darf:
 - **Die drei Modelle** — Schub mit Abfall, Widerstandspolare, Massenabschätzung.
 - **Die Iteration.** Frühe Annahmen sind falsch; ADR 0010 ist die gebaute Maschinerie dafür.
 
-#### Der Einstieg: drei Fragen, in dieser Reihenfolge
+#### Der charaktergetriebene Einstieg: drei Fragen, in dieser Reihenfolge
 
-**Status: entschieden.**
+**Status: entschieden.** Sie gelten für den **charaktergetriebenen** Weg — Modellbau. Der
+missionsgetriebene Einstieg beginnt bei Nutzlast und Flugdauer und ist offen (siehe unten).
 
 1. **Die RC-Mission des Modells** — wofür es gebaut wird.
 2. **Der Typ** — Doppeldecker, Tiefdecker, Hochdecker, Ente, Nurflügel, inverser
