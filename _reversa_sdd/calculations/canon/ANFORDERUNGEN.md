@@ -367,18 +367,87 @@ Daraus folgt, was hier **nicht** erzwungen werden darf:
 - **Die drei Modelle** — Schub mit Abfall, Widerstandspolare, Massenabschätzung.
 - **Die Iteration.** Frühe Annahmen sind falsch; ADR 0010 ist die gebaute Maschinerie dafür.
 
+#### Der Einstieg: drei Fragen, in dieser Reihenfolge
+
+**Status: entschieden.**
+
+1. **Die RC-Mission des Modells** — wofür es gebaut wird.
+2. **Der Typ** — Doppeldecker, Tiefdecker, Hochdecker, Ente, Nurflügel, inverser
+   Nurflügel und was es sonst gibt.
+3. **Die Spannweite** — sie muss **handhabbar** sein.
+
+Aus diesen drei fallen bereits Konstruktionsvorgaben — und zwar als **Bänder**, nicht als
+Zahlen.
+
+#### Warum Bänder
+
+Zu diesem Zeitpunkt ist nichts genau, und eine genaue Zahl wäre eine Behauptung. Ein Band
+sagt, wo der Entwurf landen muss, damit er die Mission trifft — und es verschieben zu
+müssen ist eine Entscheidung, die man begründen kann. Eine Punktvorgabe kann man nur
+verfehlen.
+
+Das ist zugleich die einzige Form, die zu einer Vorgabe passt, die aus einem **Missionstyp**
+stammt: Ein Trainer hat keine Flächenbelastung, er hat eine, die zu Trainern passt.
+
+#### Was aus welcher Angabe fällt
+
+| Angabe | was daraus folgt |
+|---|---|
+| **RC-Mission** | Bänder für Flächenbelastung, Streckung, Stabilitätsreserve, Leitwerksvolumen, V-Form, Ruderflächenanteile |
+| **Typ** | **welche Bänder überhaupt existieren** — siehe unten |
+| **Spannweite** | mit dem Streckungsband: Flügelfläche und Flügeltiefe. Mit dem Flächenbelastungsband: **die Abflugmasse als Band** |
+
+#### Der Typ ist ein Topologieschalter, kein Parameter
+
+Er wählt nicht einen Wert aus einem Band, sondern entscheidet, **welche Bänder es gibt**.
+Ein Nurflügel hat kein Höhenleitwerksvolumen — nicht ein kleines, sondern keines. Bei einer
+Ente kehrt sich die Stabilitätslogik um. Ein Hoch- und ein Tiefdecker brauchen
+unterschiedliche V-Form für dieselbe Querstabilität.
+
+Deshalb steht der Typ **vor** der Spannweite und vor allem Übrigen außer der Mission: Er
+bestimmt die Gestalt des Anforderungssatzes, nicht seinen Inhalt.
+
+#### Die Abflugmasse wird ein Band — und das ist die zweite Gleichung
+
+$$m = \frac{(W/S)\ b^2}{g\,A}$$
+
+Spannweite ist gegeben, Streckung und Flächenbelastung kommen als Bänder aus der Mission —
+also ist die Abflugmasse ein Band. **Das ist für die charaktergetriebene Richtung genau das,
+was beim UAV die Missionsanalyse leistet:** die zusätzliche Gleichung, die aus Verhältnissen
+absolute Größen macht.
+
+Die Entsprechung ist strukturell, nicht nur begrifflich:
+
+| | die feste äußere Größe | daraus |
+|---|---|---|
+| **UAV** | Nutzlast — das Einzige, wofür das Flugzeug existiert | Masse, Fläche, Leistung |
+| **RC** | **Spannweite** — sie muss handhabbar sein, ins Auto und aufs Feld passen | Fläche, Flügeltiefe, **Massenband** |
+
+Beide sind **äußere Beschränkungen**, keine Leistungsziele. Das ist die Stelle, an der die
+beiden Richtungen dieselbe Form haben.
+
+Und es beantwortet eine Frage, die bisher offen im Raum stand: Die Abflugmasse ist heute
+bei 27 von 27 Flugzeugen eine Schätzung **ohne Band**. Ein Band sagt dagegen, was passiert,
+wenn man sich verschätzt hat — und ab wann das Modell nicht mehr das ist, das man entworfen
+hat.
+
 #### Was hier schon entschieden ist
 
 | Ausgabe | |
 |---|---|
 | Richtung | missionsgetrieben oder charaktergetrieben |
+| RC-Mission · Typ · Spannweite | die drei Einstiegsangaben, in dieser Reihenfolge |
+| Konstruktionsbänder | Flächenbelastung, Streckung, Stabilitätsreserve, Leitwerksvolumen, V-Form, Ruderanteile — als **Bänder** |
+| Abflugmassenband | aus Spannweite, Streckungs- und Flächenbelastungsband |
 | $SM_\mathrm{target}$ | die Mission **schlägt vor**, der Konstrukteur überschreibt |
 
 #### Offen
 
 | | |
 |---|---|
-| **Inhalt der Vorgaben** | Welche Forderungen nimmt die missionsgetriebene Richtung auf — Nutzlast, Flugdauer, Reichweite? Und welche die charaktergetriebene? |
+| **Die Bandwerte** | Welche Bänder gehören zu welcher RC-Mission? Quelle: `/rc-aircraft-designer` für missionstypische RC-Bereiche, `/aircraft-design-scholz` für alles analytisch Ableitbare — **nicht** aus Transportflugzeugliteratur (ADR 0023). |
+| **Die Typenliste** | Welche Typen unterstützt das System, und welche Bänder schaltet jeder ab? |
+| **Inhalt der Vorgaben** | Welche Forderungen nimmt die **missionsgetriebene** Richtung auf — Nutzlast, Flugdauer, Reichweite? |
 | **Die neun Presets** | Bleiben sie, und sind sie Vorschlag oder Vorgabe? Heute liegen alle neun am RC-Ende; für den missionsgetriebenen Weg gibt es keinen Einstieg. |
 | **Zwei Missionsbegriffe** | Sind `mission_type` und `flight_profile` im Soll dasselbe? Heute sind es zwei Objekte ohne Verbindung — dieselbe Form, die wir im Kanon `duplicate` nennen, nur auf der Datenebene. |
 | **Standschub** | `t_static_N` ist ein Prüfstandswert und gilt nur bei $V = 0$. Für den Startlauf ist er richtig; für die Reise- und Steigbeschränkung nicht. Woher kommt der Schub bei Fahrt? → O8 |
