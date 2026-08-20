@@ -30,25 +30,33 @@ MATH = {"→": r"\ensuremath{\rightarrow}", "√": r"\ensuremath{\surd}",
 VERB = {"→": "->", "←": "<-", "│": "|", "─": "-",
         "√": "sqrt", "∝": "~", "≤": "<=", "≥": ">=", "≠": "!="}
 
-lines = src.read_text(encoding="utf-8").splitlines(keepends=True)
-out, in_code, in_mermaid, buf, n = [], False, False, [], 0
+raw = src.read_text(encoding="utf-8")
+
+# Pull the mermaid blocks out first, together with the caption line that may follow one.
+# A caption is written as *Abbildung -- ...* so GitHub shows it as italic text under the
+# diagram while the PDF turns it into a real, numbered figure caption.
+n = 0
+
+def _take(m):
+    global n
+    n += 1
+    (tmp / f"diagram{n}.mmd").write_text(m.group(1), encoding="utf-8")
+    if m.group(2):
+        (tmp / f"diagram{n}.cap").write_text(m.group(2).strip(), encoding="utf-8")
+    # A placeholder, not the \includegraphics: how the diagram is placed depends on how
+    # big it turns out, and that is only known once mermaid has rendered it.
+    return f"\n%%DIAGRAM{n}%%\n\n"
+
+raw = re.sub(
+    r"```mermaid\n(.*?)\n```[ \t]*\n(?:[ \t]*\n)?"
+    r"(?:\*Abbildung[ \t]*[\u2014-][ \t]*(.+?)\*[ \t]*\n)?",
+    _take, raw, flags=re.S)
+
+lines = raw.splitlines(keepends=True)
+out, in_code = [], False
 
 for line in lines:
     stripped = line.strip()
-    if stripped.startswith("```mermaid"):
-        in_mermaid, buf = True, []
-        continue
-    if in_mermaid and stripped == "```":
-        n += 1
-        (tmp / f"diagram{n}.mmd").write_text("".join(buf), encoding="utf-8")
-        # A placeholder, not the \includegraphics: how the diagram is placed depends on
-        # how wide it turns out, and that is only known once mermaid has rendered it.
-        out.append(f"\n%%DIAGRAM{n}%%\n\n")
-        in_mermaid = False
-        continue
-    if in_mermaid:
-        buf.append(line)
-        continue
     if stripped.startswith("```"):
         in_code = not in_code
         out.append(line)
@@ -125,17 +133,29 @@ for pdf in sorted(tmp.glob("diagram*.pdf")):
 
     img = pdf.as_posix()   # absolute: pandoc passes raw LaTeX through, so
                            # --resource-path does not apply to it
+    cap_file = pdf.with_suffix(".cap")
+    caption = cap_file.read_text(encoding="utf-8").strip() if cap_file.exists() else ""
+    cap_tex = f"\\caption{{{caption}}}" if caption else ""
+
     own_page = max(upright, turned)
     if inline >= legible or own_page < inline * WORTH_A_PAGE:
-        block = ("\n\\begin{center}\\includegraphics[width=\\textwidth,"
-                 f"height=0.62\\textheight,keepaspectratio]{{{img}}}\\end{{center}}\n")
+        block = ("\n\\begin{figure}[H]\\centering\\includegraphics[width=\\textwidth,"
+                 f"height=0.62\\textheight,keepaspectratio]{{{img}}}"
+                 f"{cap_tex}\\end{{figure}}\n")
         how = f"in der Spalte ({inline:.2f}x, Schwelle {legible:.2f})"
     else:
-        angle = "angle=90," if turned > upright else ""
-        block = (f"\n\\clearpage\n\\begin{{center}}\\includegraphics[{angle}"
-                 "height=0.95\\textheight,width=\\textwidth,keepaspectratio]"
-                 f"{{{img}}}\\end{{center}}\n\\clearpage\n")
-        lage = "gedreht" if angle else "aufrecht"
+        if turned > upright:
+            # sidewaysfigure turns the caption with the figure, which \rotatebox on the
+            # graphic alone would not.
+            block = (f"\n\\begin{{sidewaysfigure}}\\centering\\includegraphics["
+                     "width=\\textheight,height=0.86\\textwidth,keepaspectratio]"
+                     f"{{{img}}}{cap_tex}\\end{{sidewaysfigure}}\n")
+            lage = "gedreht"
+        else:
+            block = (f"\n\\begin{{figure}}[p]\\centering\\includegraphics["
+                     "height=0.92\\textheight,width=\\textwidth,keepaspectratio]"
+                     f"{{{img}}}{cap_tex}\\end{{figure}}\n")
+            lage = "aufrecht"
         how = (f"eigene Seite, {lage} — in der Spalte {inline:.2f}x, "
                f"auf eigener Seite {own_page:.2f}x")
     text = text.replace(f"%%DIAGRAM{n}%%", block)

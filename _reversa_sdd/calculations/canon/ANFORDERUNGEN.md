@@ -31,6 +31,8 @@ header-includes: |
   \usepackage{longtable}
   \usepackage{microtype}
   \usepackage{graphicx}
+  \usepackage{float}
+  \usepackage{rotating}
   \definecolor{okgreen}{HTML}{1B7F3B}
   \definecolor{midamber}{HTML}{B4690E}
   \definecolor{badred}{HTML}{B02A21}
@@ -279,6 +281,7 @@ flowchart TD
 
   linkStyle 7 stroke:#6b4fa0,stroke-width:2px
 ```
+*Abbildung — Der Ablauf des Anwenders. Rauten sind seine Entscheidungen; der violette Rückweg ist der Entwurfszyklus und hat bewusst keinen rechenbaren Wächter. Gestrichelte Pfeile sind Objektfluss, gestrichelte Kästen Werte, deren Inhalt noch offen ist.*
 
 Gestrichelte Pfeile sind **Objektfluss** — sie sagen, welcher Wert von wo nach wo geht, und
 sind der Grund, warum man an diesem Bild überhaupt etwas prüfen kann. Ein Kasten mit
@@ -480,15 +483,15 @@ flowchart TD
   classDef obj fill:#ffffff,stroke:#8a8f98,color:#222
   classDef out fill:#eaf5ee,stroke:#3d8a5a,stroke-width:1.5px,color:#14432a
   classDef term fill:#3a3a36,stroke:#3a3a36,color:#fff
-  classDef bar fill:#6b6b66,stroke:#6b6b66,color:#6b6b66
+  classDef bar fill:#6b6b66,stroke:#6b6b66,color:#6b6b66,height:5px
 
   S(("&nbsp;")):::term
-  B0["&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;"]:::bar
+  B0["&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;"]:::bar
   G(["Geometrie auswerten"]):::akt
   OG["$$\bar{c},\ S_\mathrm{ref},\ b_\mathrm{ref}$$"]:::obj
   U(["Atmosphäre und Gewicht bestimmen"]):::akt
   OU["$$\rho,\ W$$"]:::obj
-  B1["&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;"]:::bar
+  B1["&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;"]:::bar
   B(["Betriebspunkt lösen"]):::akt
   OB["$$\alpha$$"]:::obj
   ST(["Stabilität bestimmen"]):::akt
@@ -497,7 +500,7 @@ flowchart TD
   OP["$$\text{Probe bestanden}$$"]:::out
   AB(["Abrissgeschwindigkeit bestimmen"]):::akt
   OA["$$V_S,\ C_{L,\max,\mathrm{stall}}$$"]:::out
-  B2["&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;"]:::bar
+  B2["&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;"]:::bar
   E(("&nbsp;")):::term
 
   S --> B0
@@ -527,6 +530,7 @@ flowchart TD
   OB -.-> ST
   OS -.-> P
 ```
+*Abbildung — Ablauf der Aktivität \emph{Analyse}. Balken sind Gabelung und Vereinigung nebenläufiger Zweige; sie folgen aus den Kanten des Rechengraphen und sind keine Entwurfsentscheidung. Eine Konvergenzschleife steht hier nicht — die gehört in die Rechnung.*
 
 **Die Gabelungen sind keine Entwurfsentscheidungen, sondern Ablesungen** — und der erste
 Entwurf dieses Bildes hatte an zwei Stellen mehr behauptet, als die Kanten hergeben:
@@ -691,6 +695,7 @@ flowchart TD
   linkStyle 33 stroke:#b4690e,stroke-width:2px,stroke-dasharray:5 4
   linkStyle 36 stroke:#b4690e,stroke-width:2px,stroke-dasharray:5 4
 ```
+*Abbildung — Rechengraph des Analyseschritts, zweigeteilt: Rechtecke sind Größen, abgerundete Kästen Beziehungen. Rot der echte Fixpunkt zwischen Abrissgeschwindigkeit und maximalem Auftriebsbeiwert, bernsteinfarben gestrichelt der numerisch entartete Zyklus um den Schwerpunkt.*
 
 Schräge blaue Kästen sind Eingaben, **gestrichelt wo geschätzt** — die Form trägt die
 Rolle, der Strich die Sicherheit. Grau: physikalische Konstante. Sandfarben abgerundet:
