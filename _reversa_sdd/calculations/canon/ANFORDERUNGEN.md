@@ -258,6 +258,7 @@ flowchart TD
   O3["$$x_\mathrm{CG},\ SM,\ V_S$$"]:::obj
   A4(["Auslegungspunkt prüfen"]):::akt
   O4["$$\text{im zulässigen Gebiet?}$$"]:::obj
+  OB3[/"$$m,\ h,\ V,\ \text{Ruder},\ \text{model size}$$"/]:::ofn
   D{"trägt der Entwurf?"}:::ent
   E(("&nbsp;")):::term
 
@@ -285,6 +286,8 @@ flowchart TD
   O3 -.-> A4
   A4 -.-> O4
   O4 -.-> D
+  O1 -.-> A3
+  OB3 -.-> A3
 
   linkStyle 8 stroke:#6b4fa0,stroke-width:2px
 ```
@@ -500,7 +503,9 @@ flowchart TD
   classDef out fill:#eaf5ee,stroke:#3d8a5a,stroke-width:1.5px,color:#14432a
   classDef term fill:#3a3a36,stroke:#3a3a36,color:#fff
   classDef bar fill:#6b6b66,stroke:#6b6b66,color:#6b6b66,height:5px
+  classDef inp fill:#eef3f8,stroke:#5a7fa6,stroke-width:1.5px,color:#173a5e
 
+  IN[/"$$\text{airplane},\ SM_\mathrm{target},\ m,\ h,\ V,\ \text{Ruder},\ \text{model size},\ g$$"/]:::inp
   S(("&nbsp;")):::term
   B0["&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;"]:::bar
   G(["Geometrie auswerten"]):::akt
@@ -574,6 +579,7 @@ und damit der Inhalt der inneren Aktivitätsdiagramme:
 | *Abrissgeschwindigkeit bestimmen* | Woran wird Konvergenz gemessen, mit welcher Toleranz, und was geschieht nach $N$ erfolglosen Durchgängen? Mit welchem $V_S$ läuft der erste Sweep? → O2 |
 | *Betriebspunkt lösen* | Was, wenn es keine Lösung gibt — oberhalb des Abrisses erfüllt **kein** $\alpha$ die Bedingung $L = W$? → O3 |
 | *Probe rechnen* | Ist eine nicht bestandene Probe ein Ergebnis mit Warnung oder ein Abbruch? |
+| *Stabilität bestimmen* | Sie enthält den **entarteten** Zyklus. Dass er in einem Durchgang aufgeht, ist eine Annahme mit Messung (0,17 mm auf 150 mm) — sie gehört als solche in ihren Abschnitt, nicht in eine Fußnote. |
 
 #### Eingaben des ganzen Schritts
 
@@ -930,6 +936,8 @@ eines ohne Abbruchbedingung.
 | **O5** | Welches **Atmosphärenmodell** kanonisch ist. `air-density-isa` ist freigegeben, aber die Implementierung kennt mehrere Verfahren, und **kein einziger** der 16 Aufrufer wählt eines. | Eindeutigkeit von $\rho$ |
 | **O7** | Wird **Finger, Bil & Braun, *Drag Estimation of Small Fixed-Wing UAVs*** (Aeronautical Journal 122/1248, 2018) die zitierte Quelle für $c_{D0}$ und $e$ **in unserer Größenklasse**? ADR 0023 verlangt bei 0,5–15 kg validierte Konstanten; `DEFAULT_E_OSWALD = 0.8` hat bis heute keine. | Freigabe von `induced-drag-factor`, `zero-lift-drag-from-sweep` |
 | **O8** | Woher kommt der **Schub bei Fahrt**? Propellerschub fällt mit der Geschwindigkeit ($P = T\,V$ bei näherungsweise konstanter Leistung), und der Standschub gilt nur bei $V = 0$. | jede Beschränkung, die $T/W$ außerhalb des Standes benutzt |
+| **O9** | §2.1 erzeugt ein **Massenband**, §2.3 verbraucht einen **Massenpunktwert**. Wie kommt man vom einen zum anderen — wählt der Konstrukteur einen Wert im Band, oder rechnet die Analyse über das ganze Band? | Anschluss von §2.1 an §2.3 |
+| **O10** | Woher kommen $m$, $h$, $V$, Ruderstellung und Genauigkeitsstufe? Im Ablauf haben sie **keinen Ursprung**. Platzhöhe und Fluggeschwindigkeit sind plausibel Missionsangaben; Ruderstellung und Genauigkeitsstufe sind eher Analyseeinstellungen und gar keine Entwurfsgrößen. | Vollständigkeit von §1 |
 | **O6** | Wie weit der **ASB-Sweep** Eingaben ersetzt. Der Solver kann über nahezu jeden Parameter fahren; jeder, den er sinnvoll durchfährt, ist einer, den niemand raten muss. | Umfang von Ebene 0 |
 
 ---

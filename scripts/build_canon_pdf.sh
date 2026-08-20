@@ -106,10 +106,10 @@ TEXTWIDTH, TEXTHEIGHT = 465.0, 712.0
 #: ~0.7 of the base, so in a diagram full of formulas 0.9 of an 11 pt label already puts
 #: the subscripts near 7 pt. A diagram labelled in words survives far more shrinking.
 LEGIBLE_MATH, LEGIBLE_WORDS = 0.90, 0.70
-#: A page of its own costs the reader a break in the flow. Only take one when it buys
-#: enough to be worth it — otherwise a diagram that is merely wide and short gets a page
-#: for nothing.
-WORTH_A_PAGE = 1.20
+#: A page of its own costs the reader a break in the flow, so a diagram that is already
+#: legible in the column stays there (the test above). Once it is not, any real gain is
+#: worth the page — this guard only rejects a move that changes nothing.
+WORTH_A_PAGE = 1.05
 
 for pdf in sorted(tmp.glob("diagram*.pdf")):
     n = re.search(r"diagram(\d+)", pdf.name).group(1)
