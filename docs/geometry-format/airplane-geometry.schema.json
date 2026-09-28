@@ -1,0 +1,431 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://da3dalus.dev/schemas/airplane-geometry.schema.json",
+  "title": "Airplane geometry document",
+  "description": "Complete geometric description of an aeroplane — every wing surface and every fuselage — as returned by the v2 REST API and accepted on write. Mirrors app/schemas/aeroplaneschema.py. Lengths are metres and angles are degrees UNLESS a field name or description says otherwise; see AIRPLANE-GEOMETRY.md §2 for the unit table, which has genuine exceptions. This schema is deliberately STRICTER than the runtime: it forbids unknown properties so that typos in hand-written or agent-written documents fail loudly, while the FastAPI layer silently ignores them.",
+  "type": "object",
+  "required": ["name"],
+  "additionalProperties": false,
+  "properties": {
+    "name": {
+      "type": "string",
+      "description": "Aeroplane name.",
+      "examples": ["Vanilla", "eHawk"]
+    },
+    "total_mass_kg": {
+      "type": ["number", "null"],
+      "description": "Total mass in kilograms. Not geometry — carried here because every mass-dependent analysis needs it.",
+      "examples": [3.0]
+    },
+    "xyz_ref": {
+      "$ref": "#/$defs/Point3",
+      "description": "Moment reference point of the aeroplane, normally the centre of gravity, in aeroplane coordinates (metres). Stability derivatives are taken about this point, so it is NOT decorative: C_m,alpha changes sign with it.",
+      "default": [0.0, 0.0, 0.0]
+    },
+    "wings": {
+      "type": ["object", "null"],
+      "description": "Wing surfaces keyed by name. Every lifting surface lives here — main wing, stabilisers, fins, canards. Insertion order is preserved and is the display order.",
+      "additionalProperties": { "$ref": "#/$defs/Wing" }
+    },
+    "fuselages": {
+      "type": ["object", "null"],
+      "description": "Fuselage bodies keyed by name. Also used for non-lifting bodies of revolution — nacelles, gear fairings, pods.",
+      "additionalProperties": { "$ref": "#/$defs/Fuselage" }
+    }
+  },
+
+  "$defs": {
+
+    "Point3": {
+      "type": "array",
+      "description": "Cartesian point or vector [x, y, z]. x aft, y starboard, z up.",
+      "items": { "type": "number" },
+      "minItems": 3,
+      "maxItems": 3
+    },
+
+    "Factor": {
+      "type": "number",
+      "description": "Dimensionless ratio in [0, 1].",
+      "minimum": 0.0,
+      "maximum": 1.0
+    },
+
+    "Wing": {
+      "type": "object",
+      "description": "One lifting surface, defined by an ordered chain of cross-sections (ribs). N cross-sections define N-1 segments.",
+      "required": ["name", "x_secs"],
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Wing name.",
+          "examples": ["Main Wing", "Horizontal Stabilizer"]
+        },
+        "symmetric": {
+          "type": "boolean",
+          "description": "When true the surface is mirrored about the XZ plane and only the starboard half is stored. A fin is NOT symmetric; a wing or tailplane normally is.",
+          "default": true
+        },
+        "design_model": {
+          "type": ["string", "null"],
+          "enum": ["wc", "asb", null],
+          "description": "Which editor owns this wing: 'wc' means it was authored as a WingConfiguration segment chain, 'asb' means it was authored as absolute cross-sections. NULL for legacy wings. Affects which round-trip is lossless, not the geometry itself."
+        },
+        "x_secs": {
+          "type": "array",
+          "description": "Ordered cross-sections from root to tip. The ordering IS the geometry — index 0 is the root station.",
+          "minItems": 2,
+          "items": { "$ref": "#/$defs/WingXSec" }
+        },
+        "units": { "$ref": "#/$defs/WingUnits" }
+      }
+    },
+
+    "WingUnits": {
+      "type": "object",
+      "description": "Declared units for this wing. Constant today; present so a reader never has to assume. Note it covers geometry and SPAR detail only — a trailing-edge device carries millimetre fields that this block does not describe (see AIRPLANE-GEOMETRY.md §2).",
+      "additionalProperties": false,
+      "properties": {
+        "geometry_length": { "const": "m", "description": "Unit of xyz_le and chord." },
+        "detail_length": { "const": "m", "description": "Unit of the spar fields: spare_origin, the support dimensions, spare_length, spare_start. These are stored in MILLIMETRES in the database and converted on read — the API contract is metres." },
+        "angle": { "const": "deg", "description": "Unit of every angular field." }
+      }
+    },
+
+    "WingXSec": {
+      "type": "object",
+      "description": "One cross-section (rib). Carries its own geometry, plus the detail of the segment that STARTS here and runs outboard. The last cross-section is a terminal rib and must carry no segment detail — x_sec_type, tip_type, number_interpolation_points, spare_list and trailing_edge_device must all be absent or null on it. JSON Schema cannot express that positional rule; it is enforced by AsbWingSchema.validate_last_xsec_has_no_segment_details.",
+      "required": ["xyz_le", "chord", "twist", "airfoil"],
+      "additionalProperties": false,
+      "properties": {
+        "xyz_le": {
+          "$ref": "#/$defs/Point3",
+          "description": "Leading-edge point of this rib in aeroplane coordinates, metres. ABSOLUTE, not an offset from the previous rib."
+        },
+        "chord": {
+          "type": "number",
+          "description": "Chord length in metres, measured in the rib plane.",
+          "exclusiveMinimum": 0.0,
+          "examples": [0.2, 0.18]
+        },
+        "twist": {
+          "type": "number",
+          "description": "CUMULATIVE geometric twist of this rib in degrees, measured from the aeroplane x-axis — not the increment over the previous rib. Positive is leading edge up. Contrast with `dihedral`, which IS an increment.",
+          "examples": [5, 2, 0]
+        },
+        "dihedral": {
+          "type": ["number", "null"],
+          "description": "This rib's OWN local-x rotation in degrees — an INCREMENT added at this station, except on the root rib where it is the absolute starting angle. Stored explicitly because the terminal rib's rotation moves no outboard station and therefore leaves no trace in xyz_le (gh-951). NULL on legacy rows, which fall back to the angle derived from the leading-edge positions.",
+          "examples": [0, 3, -3]
+        },
+        "airfoil": {
+          "type": "string",
+          "description": "Reference to the section profile: a repository-relative path to a Selig .dat file, or an http(s) URL.",
+          "examples": ["./components/airfoils/naca0012.dat", "https://m-selig.ae.illinois.edu/ads/coord/naca2412.dat"]
+        },
+        "control_surface": {
+          "anyOf": [{ "$ref": "#/$defs/ControlSurface" }, { "type": "null" }],
+          "description": "Aerodynamic view of the control surface on the outboard segment. A projection of trailing_edge_device, kept because the solver needs only these four values. Do not set it independently — it is derived."
+        },
+        "x_sec_type": {
+          "type": ["string", "null"],
+          "enum": ["root", "segment", "tip", null],
+          "description": "Role of the segment starting at this rib."
+        },
+        "tip_type": {
+          "type": ["string", "null"],
+          "enum": ["flat", "round", null],
+          "description": "How the outboard end is closed. Only meaningful on a segment whose x_sec_type is 'tip'."
+        },
+        "number_interpolation_points": {
+          "type": ["integer", "null"],
+          "description": "Number of intermediate profiles used when lofting this segment. Raise it where a segment twists or tapers strongly; it costs CAD time, not accuracy of the analysis.",
+          "exclusiveMinimum": 0
+        },
+        "spare_list": {
+          "type": ["array", "null"],
+          "description": "Spars of the segment starting at this rib, in order. The list index is load-bearing: a 'follow' or 'backward' spar refers to the spar at the SAME index in a neighbouring segment.",
+          "items": { "$ref": "#/$defs/SpareDetail" }
+        },
+        "trailing_edge_device": {
+          "anyOf": [{ "$ref": "#/$defs/TrailingEdgeDevice" }, { "type": "null" }],
+          "description": "Full construction definition of the movable surface on the segment starting at this rib."
+        },
+        "turbulator": {
+          "anyOf": [{ "$ref": "#/$defs/Turbulator" }, { "type": "null" }],
+          "description": "Optional upper-surface turbulator strip on the segment starting at this rib (gh-934)."
+        }
+      }
+    },
+
+    "ControlSurface": {
+      "type": "object",
+      "description": "The four values a vortex-lattice solver needs about a movable surface.",
+      "required": ["name"],
+      "additionalProperties": false,
+      "properties": {
+        "name": { "type": "string", "examples": ["Aileron", "Elevator", "Elevon"] },
+        "hinge_point": {
+          "$ref": "#/$defs/Factor",
+          "description": "Hinge line as a fraction of chord, measured from the leading edge. 0.8 means the aft 20 % deflects.",
+          "default": 0.8
+        },
+        "symmetric": {
+          "type": "boolean",
+          "description": "True when left and right deflect together (flap, elevator), false when they oppose (aileron, elevon, V-tail).",
+          "default": true
+        },
+        "deflection": {
+          "type": "number",
+          "description": "Current deflection in degrees. This is a STATE, not a limit — the limits are positive_deflection_deg and negative_deflection_deg on the device.",
+          "default": 0.0
+        }
+      }
+    },
+
+    "SpareDetail": {
+      "type": "object",
+      "description": "One spar in a wing segment. In the API contract every length here is METRES; the database stores them in millimetres and the service converts on read and on write.",
+      "required": ["spare_support_dimension_width", "spare_support_dimension_height"],
+      "additionalProperties": false,
+      "properties": {
+        "spare_support_dimension_width": {
+          "type": "number",
+          "description": "Width of the spar pocket in metres — the dimension across the chord.",
+          "minimum": 0.0
+        },
+        "spare_support_dimension_height": {
+          "type": "number",
+          "description": "Height of the spar pocket in metres — the dimension through the profile thickness.",
+          "minimum": 0.0
+        },
+        "spare_position_factor": {
+          "anyOf": [{ "$ref": "#/$defs/Factor" }, { "type": "null" }],
+          "description": "Chordwise position of the spar as a fraction of chord. Defaults to 0.25 when the geometry is solved and this is null."
+        },
+        "spare_length": {
+          "type": ["number", "null"],
+          "description": "Spar length in metres. Null means the spar runs the full segment.",
+          "minimum": 0.0
+        },
+        "spare_start": {
+          "type": "number",
+          "description": "Offset in metres from the segment root at which the spar begins.",
+          "default": 0.0,
+          "minimum": 0.0
+        },
+        "spare_mode": {
+          "type": ["string", "null"],
+          "enum": ["normal", "follow", "standard", "standard_backward", "orthogonal_backward", null],
+          "description": "How origin and direction are derived. See AIRPLANE-GEOMETRY.md §5 — the modes differ in whether the spar stays straight across a kink, and that decides whether it can be a single bought tube.",
+          "default": "standard"
+        },
+        "spare_vector": {
+          "anyOf": [{ "$ref": "#/$defs/Point3" }, { "type": "null" }],
+          "description": "Unit direction of the spar axis in aeroplane coordinates. DIMENSIONLESS — never scaled by the unit conversion. Solved from the mode unless the mode is 'normal', where a supplied vector is an explicit override."
+        },
+        "spare_origin": {
+          "anyOf": [{ "$ref": "#/$defs/Point3" }, { "type": "null" }],
+          "description": "Start point of the spar axis in aeroplane coordinates, metres. Solved from the mode; for mode 'normal' a supplied value is an OFFSET from the segment plane origin, not an absolute point."
+        }
+      }
+    },
+
+    "TrailingEdgeDevice": {
+      "type": "object",
+      "description": "Construction definition of a movable trailing-edge surface. Note the mixed units: relative chords are fractions, deflections are degrees, and the three spacing fields are MILLIMETRES.",
+      "additionalProperties": false,
+      "properties": {
+        "name": { "type": ["string", "null"], "description": "Device name. Derived from role or label when omitted." },
+        "role": {
+          "type": "string",
+          "enum": ["elevator", "aileron", "rudder", "elevon", "flaperon", "ruddervator", "stabilator", "flap", "other"],
+          "description": "Standardised role. Drives automatic trim detection and, for the dual-axis roles elevon/flaperon/ruddervator, the emission of a second AVL control line.",
+          "default": "other"
+        },
+        "label": { "type": ["string", "null"], "description": "User-facing display name, free text." },
+        "rel_chord_root": {
+          "anyOf": [{ "$ref": "#/$defs/Factor" }, { "type": "null" }],
+          "description": "Hinge position at the segment root as a fraction of chord."
+        },
+        "rel_chord_tip": {
+          "anyOf": [{ "$ref": "#/$defs/Factor" }, { "type": "null" }],
+          "description": "Hinge position at the segment tip. Falls back to rel_chord_root; a different value makes the hinge line sweep relative to the chord line."
+        },
+        "hinge_spacing": { "type": ["number", "null"], "description": "Gap at the hinge line in MILLIMETRES.", "minimum": 0.0 },
+        "side_spacing_root": { "type": ["number", "null"], "description": "Side gap at the root end in MILLIMETRES.", "minimum": 0.0 },
+        "side_spacing_tip": { "type": ["number", "null"], "description": "Side gap at the tip end in MILLIMETRES.", "minimum": 0.0 },
+        "servo": {
+          "anyOf": [{ "$ref": "#/$defs/Servo" }, { "type": "integer" }, { "type": "null" }],
+          "description": "The servo driving this surface: a full dimension set, or an integer index into an external servo list."
+        },
+        "servo_placement": {
+          "type": "string",
+          "enum": ["top", "bottom"],
+          "description": "Which shell surface the servo bay is cut into.",
+          "default": "top"
+        },
+        "rel_chord_servo_position": {
+          "anyOf": [{ "$ref": "#/$defs/Factor" }, { "type": "null" }],
+          "description": "Chordwise position of the servo as a fraction of chord."
+        },
+        "rel_length_servo_position": {
+          "anyOf": [{ "$ref": "#/$defs/Factor" }, { "type": "null" }],
+          "description": "Spanwise position of the servo as a fraction of the segment length."
+        },
+        "positive_deflection_deg": { "type": ["number", "null"], "description": "Maximum deflection in the positive sense, degrees. A LIMIT, not a state." },
+        "negative_deflection_deg": { "type": ["number", "null"], "description": "Maximum deflection in the negative sense, degrees. A LIMIT, not a state." },
+        "deflection_deg": { "type": ["number", "null"], "description": "Current deflection in degrees. The state the analysis is run at.", "default": 0.0 },
+        "trailing_edge_offset_factor": {
+          "type": ["number", "null"],
+          "description": "Clearance multiplier on the rib cutout behind the hinge line. The cutout depth is max(c_root·(1-rel_chord_root), (c_tip+sweep)·(1-rel_chord_tip)) times this factor, so 1.0 is exactly the control-surface depth and 1.2 keeps a fifth more clearance. NOT a 0-to-1 fraction: live values run 1.0 to 1.2. The topology class annotates it as a 0-to-1 Factor, but that annotation is not enforced and the data contradicts it.",
+          "minimum": 0.0,
+          "default": 1.0
+        },
+        "hinge_type": {
+          "type": ["string", "null"],
+          "enum": ["middle", "top", "top_simple", "round_inside", "round_outside", null],
+          "description": "Hinge geometry. Decides where the rotation axis sits relative to the profile and therefore how the gap opens when the surface deflects."
+        },
+        "symmetric": { "type": ["boolean", "null"], "description": "Whether left and right deflect together. Flaps yes, ailerons no." },
+        "mix_gain_primary": {
+          "type": "number",
+          "description": "AVL gain on the primary, symmetric axis — pitch or lift — in degrees of deflection per unit control variable (gh-772).",
+          "exclusiveMinimum": 0.0,
+          "maximum": 5.0,
+          "default": 1.0
+        },
+        "mix_gain_secondary": {
+          "type": "number",
+          "description": "AVL gain on the secondary, antisymmetric axis — roll or yaw — of a dual-role surface. Only meaningful for elevon, flaperon and ruddervator (gh-772).",
+          "exclusiveMinimum": 0.0,
+          "maximum": 5.0,
+          "default": 1.0
+        },
+        "differential_ratio": {
+          "type": "number",
+          "description": "Up/down throw ratio of the antisymmetric axis. Applied as a post-trim kinematic for left/right DISPLAY only — it does not alter the aerodynamic or trim solution (gh-772).",
+          "exclusiveMinimum": 0.3,
+          "maximum": 3.0,
+          "default": 1.0
+        }
+      }
+    },
+
+    "Servo": {
+      "type": "object",
+      "description": "Physical envelope of a servo actuator. EVERY dimension is in MILLIMETRES — this object does not follow the metre contract of the surrounding wing. Zero is accepted where a dimension is not yet known.",
+      "required": ["length", "width", "height", "leading_length", "latch_z", "latch_x", "latch_thickness", "latch_length", "cable_z", "screw_hole_lx", "screw_hole_d"],
+      "additionalProperties": false,
+      "properties": {
+        "component_id": { "type": ["integer", "null"], "description": "Foreign key into the component library, identifying which catalogued servo was chosen." },
+        "length": { "type": "number", "minimum": 0.0, "description": "X-dimension of the body (mm)." },
+        "width": { "type": "number", "minimum": 0.0, "description": "Y-dimension of the body (mm)." },
+        "height": { "type": "number", "minimum": 0.0, "description": "Z-dimension of the body (mm)." },
+        "leading_length": { "type": "number", "minimum": 0.0, "description": "X-distance from the front face to the output shaft axis (mm)." },
+        "latch_z": { "type": "number", "minimum": 0.0, "description": "Z-position of the lower edge of the mounting lug (mm)." },
+        "latch_x": { "type": "number", "minimum": 0.0, "description": "X-dimension of the mounting lug (mm)." },
+        "latch_thickness": { "type": "number", "minimum": 0.0, "description": "Thickness of the mounting lug (mm)." },
+        "latch_length": { "type": "number", "minimum": 0.0, "description": "Length of the mounting lug (mm)." },
+        "cable_z": { "type": "number", "minimum": 0.0, "description": "Z-position of the cable exit (mm)." },
+        "screw_hole_lx": { "type": "number", "minimum": 0.0, "description": "X-distance of the screw hole from the leading edge (mm)." },
+        "screw_hole_d": { "type": "number", "minimum": 0.0, "description": "Screw hole diameter (mm)." }
+      }
+    },
+
+    "Turbulator": {
+      "type": "object",
+      "description": "Upper-surface turbulator strip on one segment (gh-934). Trips the boundary layer to delay separation at low Reynolds number. One per segment, upper surface only.",
+      "required": ["position_root"],
+      "additionalProperties": false,
+      "properties": {
+        "form": {
+          "type": "string",
+          "enum": ["zigzag", "dots", "thread"],
+          "description": "Build form of the strip.",
+          "default": "zigzag"
+        },
+        "height_mm": {
+          "type": "number",
+          "description": "Strip or thread height in MILLIMETRES. Named for its unit because it sits among dimensionless fields.",
+          "minimum": 0.0,
+          "default": 0.3
+        },
+        "position_root": {
+          "$ref": "#/$defs/Factor",
+          "description": "Chordwise position x/c at the segment root. Dimensionless, so it needs no unit conversion."
+        },
+        "position_tip": {
+          "anyOf": [{ "$ref": "#/$defs/Factor" }, { "type": "null" }],
+          "description": "Chordwise position x/c at the segment tip. Falls back to position_root, which gives a strip parallel to the chord line rather than a swept one."
+        },
+        "enabled": {
+          "type": "boolean",
+          "description": "Whether the strip is cut into the CAD output. False keeps the definition without building it.",
+          "default": true
+        }
+      }
+    },
+
+    "Fuselage": {
+      "type": "object",
+      "description": "One fuselage body, defined as a chain of super-ellipse cross-sections lofted along x. Note the two representations that coexist: these cross-sections are the SIMPLIFIED model used for drag and layout, while step_path / solid_step_path point at the precise imported geometry. Neither is derived from the other.",
+      "required": ["name", "x_secs"],
+      "additionalProperties": false,
+      "properties": {
+        "name": { "type": "string", "examples": ["Fuselage", "Nacelle"] },
+        "x_secs": {
+          "type": "array",
+          "description": "Ordered cross-sections. Order defines the loft; it is normally nose to tail but the format does not enforce a direction.",
+          "minItems": 2,
+          "items": { "$ref": "#/$defs/FuselageXSecSuperEllipse" }
+        },
+        "symmetric": {
+          "type": "boolean",
+          "description": "When true the body is duplicated with y to -y by every downstream consumer. Use it for PAIRED sub-bodies stored on one side only — gear struts, wheel fairings, cowlings. The main fuselage normally sits on the symmetry plane itself and must NOT be mirrored (gh-715).",
+          "default": false
+        },
+        "step_path": {
+          "type": ["string", "null"],
+          "description": "Path, relative to ARTIFACTS_BASE_DIR, to the per-body STEP file exported at OpenVSP import (gh-729). Surface geometry only. Null when the body did not come from a .vsp3 import."
+        },
+        "solid_step_path": {
+          "type": ["string", "null"],
+          "description": "Path, relative to ARTIFACTS_BASE_DIR, to the sewed and healed closed-solid STEP produced from step_path (gh-731). This is the input the CAD pipeline needs for boolean work — battery bay cuts, servo mounts, tube bores. Null when sewing failed or the body was not imported."
+        }
+      }
+    },
+
+    "FuselageXSecSuperEllipse": {
+      "type": "object",
+      "description": "One fuselage station. The outline is the super-ellipse |y/a|^n + |z/b|^n = 1 in the section plane, which is ALWAYS normal to the x-axis — the format has no field for a section normal, and the converters hard-code [1, 0, 0]. A section cannot be tilted.",
+      "required": ["xyz", "a", "b", "n"],
+      "additionalProperties": false,
+      "properties": {
+        "xyz": {
+          "$ref": "#/$defs/Point3",
+          "description": "Centre of the section in aeroplane coordinates, metres. The y and z components offset the section, which is how a drooped or cranked body is built."
+        },
+        "a": {
+          "type": "number",
+          "description": "Semi-axis in Y (half-width) in metres — a HALF-axis, not a diameter. Maps to AeroSandbox FuselageXSec.width. From OpenVSP this is Ellipse_Width / 2. Zero is legal and means a degenerate station that closes the body to a point or a line; a body whose sections are all zero is caught downstream by the degeneracy guard and dropped from the aero model with a warning (gh-790).",
+          "minimum": 0.0,
+          "examples": [0.5, 0.036]
+        },
+        "b": {
+          "type": "number",
+          "description": "Semi-axis in Z (half-height) in metres — a HALF-axis, not a diameter. Maps to AeroSandbox FuselageXSec.height. From OpenVSP this is Ellipse_Height / 2. Zero is legal; see `a`.",
+          "minimum": 0.0,
+          "examples": [0.4, 0.026]
+        },
+        "n": {
+          "type": "number",
+          "description": "Super-ellipse exponent. n = 2 is a true ellipse; n below 2 pinches the corners towards a rhombus; n above 2 squares them off towards a rounded rectangle (the shape often called a hyperellipse). Maps to AeroSandbox FuselageXSec.shape. Live data spans 1.04 to 50.0 — the upper end is an imported box section.",
+          "exclusiveMinimum": 0.0,
+          "examples": [2.0, 1.5, 4.0, 50.0]
+        }
+      }
+    }
+  }
+}
