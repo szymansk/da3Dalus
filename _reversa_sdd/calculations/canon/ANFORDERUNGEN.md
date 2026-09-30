@@ -1140,6 +1140,60 @@ Gleitzahl und die Sinkgeschwindigkeit sind erst seit dem Ausklammern der Widerst
 
 ---
 
+### 3.7 Der dritte Punkt: Anflug
+
+**Status: entschieden. Er braucht keine einzige neue Formel — nur Bindungen.**
+
+Der erste Punkt, an dem die **Konfiguration wirklich umschaltet**. Und das Ergebnis des
+Durchgangs ist, dass alles Nötige schon dasteht: Was fehlt, sind die Bindungen an diesen
+Punkt.
+
+| Bindung | Formel | heute gebunden an |
+|---|---|---|
+| **Anfluggeschwindigkeit** | `V_op = k · V_S,cfg` | nichts Bestimmtes — die Formel ist allgemein |
+| **Abstand zum Abriss** | `V / V_S` | den **Reiseflug** — siehe Defekt ① |
+| **Ausschweben** | `R_glide = E · h` in Anflugkonfiguration | noch nicht gebunden |
+
+#### Der Umkehrpunkt: hier ist eine hohe Gleitzahl schlecht
+
+Beim Reiseflug und beim Gleiten will man sie groß. Beim Anflug will man sie **klein** —
+eine flach gleitende Zelle trägt weit, und genau das macht sie für einen Anfänger
+unzielbar. Er soll kurz einteilen und auf einen Punkt setzen können.
+
+Dieselbe Größe, entgegengesetzte Richtung, je nach Betriebspunkt. Das ist der Grund, warum
+Charaktereigenschaften **Bänder** brauchen und keine Ziele: Eine Größe, deren wünschenswerte
+Richtung vom Punkt abhängt, lässt sich nur beidseitig begrenzen.
+
+#### Zwei Defekte, beide im Kanon schon diagnostiziert
+
+**① Der Abstand zum Abriss ist an den einzigen Punkt gebunden, für den es keine Quelle
+gibt.** Der Eintrag trägt `source_status: PARTIAL` und sagt es selbst: Die Idee eines
+Verhältnisses von Flug- zu Abrissgeschwindigkeit ist regulatorisch gut belegt — aber die
+Vorschriften setzen Reserven auf **Anflug- und Startgeschwindigkeiten**, nicht auf die
+Reisegeschwindigkeit. Gerechnet wird bei uns `V_cruise / V_S1`. Die Formel ist belegt, die
+Bindung nicht. Sie gehört dorthin, wo ihre Quelle lebt: an den Anflug.
+
+**② Die Klappenwirkung ist multiplikativ, beide Quellen sind additiv.** Der Kanon rechnet
+`C_L,max,cfg = f · C_L,max,clean`; Scholz und Sadraey schreiben einen **Zuwachs**, keinen
+Faktor. Der Eintrag nennt auch, warum das bei uns besonders weh tut: Ein Faktor macht den
+Klappenzuwachs proportional zum sauberen Höchstauftrieb — und das ist verkehrt herum, denn
+der Zuwachs ist eine Eigenschaft **der Klappe**, nicht des Flügels. Dazu kommt der
+Flächenanteil, den die Faktorform ganz wegwirft und der bei Modellklappen kleiner ist als
+bei Verkehrsflugzeugen.
+
+Beides wirkt genau hier, weil die Abrissgeschwindigkeit in Landekonfiguration die Grundlage
+der Anfluggeschwindigkeit ist.
+
+#### Offen an diesem Punkt
+
+| | |
+|---|---|
+| **Der Reservefaktor** | Die Quellen geben ein Band: 1,2 bis 1,25 aus der RC-Literatur als Faustwert für die Landung, 1,3 aus den Vorschriften für den Anflug. Welcher gilt bei uns, ist deine Entscheidung — ich setze keinen. |
+| **Krähenstellung als vierte Konfiguration** | Wir führen sauber, Start und Landung. Die RC-Quellen nennen die Krähenstellung die **vorherrschende** Landeart beim Modell, und sie wirkt umgekehrt zur Klappe: mehr Widerstand **bei weniger Auftrieb**, also eine *höhere* Anfluggeschwindigkeit. Ob wir sie aufnehmen, ist offen. |
+
+
+---
+
 ## 4. Querschnittliche Anforderungen
 
 Sie gelten für **jeden** Prozessschritt und werden nicht pro Schritt wiederholt.
