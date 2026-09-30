@@ -16,5 +16,7 @@ Total non-dimensional drag from the AeroBuildup sweep, or the parabolic-polar mo
 
 **Unit.** `dimensionless`
 
+**Produced by.** [[drag-polar]]
+
 **Used by.** [[lift-to-drag-ratio]] · [[sink-rate]] · [[zero-lift-drag-from-sweep]] · [[stall-onset-detection]]
 

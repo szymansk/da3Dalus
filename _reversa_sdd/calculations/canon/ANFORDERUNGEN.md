@@ -780,7 +780,7 @@ Reihenfolge ist bewusst: **erst rechnen können, dann bewerten.**
 
 ### 3.1 Zuschnitt — was dazugehört
 
-Der Katalog führt **40 Formeln in sieben Familien**:
+Der Katalog führt **42 Formeln in sieben Familien**:
 
 | Familie | Formeln | gehört zum Leistungsmodell |
 |---|---|---|
@@ -983,7 +983,7 @@ beiden Fragen.
 
 ### 3.3 Formeln
 
-Der Katalog führt **40 Formeln und 61 Größen**; freigegeben sind bisher drei Formeln —
+Der Katalog führt **42 Formeln und 62 Größen**; freigegeben sind bisher drei Formeln —
 `air-density-isa`, `stall-speed`, `weight-from-mass`, also genau die Gesetze aus §2.1.
 Die übrigen stehen auf `draft`, weil sie aus der Bestandsaufnahme stammen und die Freigabe
 entlang der Pfade läuft, nicht Eintrag für Eintrag.
@@ -1022,6 +1022,64 @@ Abrissgeschwindigkeit ist immer die zu niedrige. Vorbedingung dokumentiert in
 | **Methode** | ⚪ offen. Eindimensionale Nullstelle — welche? |
 | **Annahmen** | ⚠️ eine steht fest und wird leicht übersehen: **$L = W$ gilt nur im stationären Horizontalflug.** Im Steigflug, in der Kurve und beim Handstart ist $L = n\,W$. Der gelieferte Anstellwinkel — und damit alle Ableitungen — gelten für den geradeaus fliegenden Zustand. |
 | **Nichtkonvergenz** | ⚪ offen. Der Fall existiert real: Oberhalb des Abrisses gibt es **kein** $\alpha$, das $L = W$ erfüllt. Was dann? |
+
+---
+
+### 3.5 Der erste Punkt: Reiseflug
+
+**Status: die Schließungen sind entschieden, zwei Lücken sind geschlossen.**
+
+Die Betriebspunkte werden einzeln aufgemacht. Der Reiseflug zuerst, weil an ihm die
+UAV-Frage hängt.
+
+#### Zwei Schließungen, nicht drei
+
+| Schließung | liefert | Frage |
+|---|---|---|
+| **größte Reichweite** | Geschwindigkeit geringsten Widerstands | *wie weit* komme ich |
+| **größte Flugdauer** | Geschwindigkeit geringster Leistung | *wie lange* bleibe ich oben |
+
+Eine dritte — eine vom Piloten vorgegebene Geschwindigkeit — ist **ausgeschlossen**, und
+der Grund verallgemeinert sich:
+
+> **Eine Schließungsbedingung muss etwas über das Flugzeug aussagen, nicht über die Wahl
+> des Piloten.** „Ich fliege das mit 20 m/s" bewertet nichts.
+
+**Ein Duplikat in spe, bevor es jemand baut:** Die Geschwindigkeit geringsten Sinkens und
+die der größten Flugdauer sind **physikalisch dieselbe** — beide minimieren die
+erforderliche Leistung. Sie gehört an zwei Punkte **gebunden**, nicht zweimal angelegt.
+
+#### Was am Reiseflug gilt
+
+| Rolle | Formeln |
+|---|---|
+| **Maschinerie** | Dichte aus der Höhe · Staudruck · geforderter Auftriebsbeiwert bei Lastvielfachem 1 · reynoldsgeplante Polare · induzierter Widerstandsfaktor · **Widerstandspolare** |
+| **schließt den Punkt** | Geschwindigkeit geringsten Widerstands · Geschwindigkeit geringster Leistung |
+| **liefert die Antworten** | Leistungsbedarf · Flugdauer aus dem Akku · **Reichweite** · gefordertes Schub-Gewicht-Verhältnis |
+| **Probe** | beste Gleitzahl in geschlossener Form · Abstandsverhältnis zum Abriss |
+
+#### Zwei Lücken, geschlossen
+
+**Die Widerstandspolare war nicht ausgeklammert.** Sie stand genau einmal im Kanon —
+**innerhalb** von `power-required-electrical`, wo die drei Formeln, die einen
+Widerstandsbeiwert brauchen, nicht an sie herankommen. Ein Erzeuger, der sich in einem
+Verbraucher versteckt, ist kein fehlendes Gesetz, sondern ein unausgeklammertes. Jetzt ein
+eigener Eintrag, mit der Einschränkung dabei: Die parabolische Form ist ein **Modell**, und
+bei unseren Reynoldszahlen ist die Polare eine *Schar* von Kurven, keine Kurve.
+
+**Die Reichweite gab es nicht.** Keine Größe, keine Formel — obwohl sie eine deiner drei
+UAV-Antworten ist und einzeilig aus dem Vorhandenen folgt. Jetzt vorhanden, mit einer
+Vorbedingung, die leicht zu übersehen ist: **Beide Faktoren müssen vom selben Betriebspunkt
+kommen.** Eine Flugdauer bei geringster Leistung mit einer Geschwindigkeit geringsten
+Widerstands zu multiplizieren ergäbe eine Zahl, die kein Flugzeug fliegen kann.
+
+#### Offen an diesem Punkt
+
+| | |
+|---|---|
+| **Die Reisegeschwindigkeit ist eine Ersetzung** | `V_cruise := V_md` — festverdrahtet als Reichweitenschließung, und der Eintrag trägt einen roten Vermerk, dass eine Annahme im Code verletzt ist. Die Flugdauerschließung existiert als Rechnung noch nicht. |
+| **Der Schubfaktor ist eine Zauberzahl** | `mean-thrust-derate` pauschaliert den Schubabfall mit einem Faktor, den kein Katalogeintrag kennt — während wir die echten Propellerkennlinien in der Datenbank haben |
+
 
 ---
 
@@ -1093,7 +1151,10 @@ Auftriebsbeiwert einig; die **Analysekonfidenz** trennt sie, und sie steigt mit 
 
 Jede Größe trägt ihre Einheit im Katalogeintrag. Jede kanonische Formel muss die
 Dimensionsprobe bestehen — mit **Längenmaßstab** (mm gegen m) und getrenntem Winkelfach,
-weil beides in diesem Projekt real auseinanderläuft. Werkzeug: `scripts/check_canon.py`.
+weil beides in diesem Projekt real auseinanderläuft. Werkzeuge: `scripts/canon_to_json.py` liest die Markdown-Einträge ein,
+`scripts/check_canon.py` rechnet darauf. Stand: **28 von 42 Formeln balancieren**, zehn
+sind Verfahren und damit nicht prüfbar, drei nicht parsbar, eine benutzt einen
+unregistrierten Faktor.
 
 ### A5 — Physikalische Konstanten genau einmal
 

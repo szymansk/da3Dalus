@@ -52,11 +52,15 @@ def build_symbols(quantities):
                 table[k] = d
     for c in MATH_CONSTANTS:
         table.setdefault(c, ONE)
-    # single-letter conventions the canonical forms use for registered quantities
+    # Single-letter conventions the canonical forms use for registered quantities.
+    # These OVERRIDE whatever a quantity's own symbol happened to claim first: norm()
+    # folds case, so `w` (sink rate, m/s) and `W` (weight, N) collide, and sink-rate
+    # sorts first. That one collision made three correct formulas report as dimensional
+    # errors. The conventions below are declared for exactly this purpose, so they win.
     for alias, target in (("s", "sref"), ("b", "bref"), ("v", "flightspeed"),
                           ("w", "weight"), ("m", "aircraftmass"), ("h", "altitude")):
         if target in table:
-            table.setdefault(alias, table[target])
+            table[alias] = table[target]
     return table
 
 
