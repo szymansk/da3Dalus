@@ -16,5 +16,5 @@ Geometric altitude at which the atmosphere is evaluated; defaults to 0 m everywh
 
 **Unit.** `m`
 
-**Used by.** [[air-density-isa]]
+**Used by.** [[air-density-isa]] · [[glide-distance-from-ratio]]
 

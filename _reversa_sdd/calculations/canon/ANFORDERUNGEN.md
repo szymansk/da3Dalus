@@ -780,7 +780,7 @@ Reihenfolge ist bewusst: **erst rechnen können, dann bewerten.**
 
 ### 3.1 Zuschnitt — was dazugehört
 
-Der Katalog führt **42 Formeln in sieben Familien**:
+Der Katalog führt **43 Formeln in sieben Familien**:
 
 | Familie | Formeln | gehört zum Leistungsmodell |
 |---|---|---|
@@ -983,7 +983,7 @@ beiden Fragen.
 
 ### 3.3 Formeln
 
-Der Katalog führt **42 Formeln und 62 Größen**; freigegeben sind bisher drei Formeln —
+Der Katalog führt **43 Formeln und 63 Größen**; freigegeben sind bisher drei Formeln —
 `air-density-isa`, `stall-speed`, `weight-from-mass`, also genau die Gesetze aus §2.1.
 Die übrigen stehen auf `draft`, weil sie aus der Bestandsaufnahme stammen und die Freigabe
 entlang der Pfade läuft, nicht Eintrag für Eintrag.
@@ -1083,6 +1083,63 @@ Widerstands zu multiplizieren ergäbe eine Zahl, die kein Flugzeug fliegen kann.
 
 ---
 
+### 3.6 Der zweite Punkt: motorloser Flug
+
+**Status: entschieden. Er war fast vollständig vorhanden.**
+
+Eine Familie, kein Punkt: **bestes Gleiten · geringstes Sinken · Kurvengleitflug bei
+mehreren Querneigungen.** Gemeinsam ist ihnen der Antriebszustand — kein Schub.
+
+#### Er teilt seine Schließungen mit dem Reiseflug
+
+| Schließung | heißt mit Motor | heißt ohne Motor |
+|---|---|---|
+| geringster Widerstand | größte Reichweite | **bestes Gleiten** |
+| geringste Leistung | größte Flugdauer | **geringstes Sinken** |
+
+Dieselbe Formel, dieselbe Zahl, zwei Namen — genau die Bindungsstruktur, für die dieses
+Dokument gebaut ist. **Und damit eine Probe:** Weichen bestes Gleiten und die
+Reichweitengeschwindigkeit voneinander ab, ist ein Fehler im Spiel.
+
+Mit einer Einschränkung, die zählt, sobald wir die echten Propellerkennlinien benutzen: Die
+Flugdauergeschwindigkeit minimiert die **aufgenommene** Leistung, das geringste Sinken die
+**erforderliche**. Solange der Wirkungsgrad als Konstante geführt wird, sind beide gleich;
+sobald er über der Geschwindigkeit variiert, laufen sie auseinander. Das ist keine
+Unstimmigkeit, sondern eine Genauigkeitsstufe — sie gehört erklärt, nicht weggerechnet.
+
+#### Der Kurvengleitflug braucht keine neue Formel
+
+`lift-coefficient-required` nimmt das **Lastvielfache** bereits entgegen. Bei Querneigung
+setzt man es ein, und Polare, Gleitzahl und Sinkgeschwindigkeit laufen unverändert durch.
+Die bekannte Skalierung fällt dabei heraus, statt hineingeschrieben zu werden — ein
+Betriebspunkt mit anderer Bindung, kein neues Gesetz.
+
+#### Eine Lücke, geschlossen: die Gleitstrecke
+
+Sie fehlte, und sie ist die Zahl, nach der dein Notfall fragt — *komme ich noch zum Platz*.
+`R_glide = E · h`, einzeilig aus Vorhandenem. Mit zwei Vorbedingungen, die beide in die
+unsichere Richtung zeigen:
+
+**Die Gleitzahl muss zur tatsächlich geflogenen Geschwindigkeit gehören.** Die beste
+erreicht man nur bei der Geschwindigkeit geringsten Widerstands; bei jeder anderen ist sie
+kleiner und die Strecke auch.
+
+**Der Propeller steckt nicht in der Polare.** Ein freilaufender Propeller erzeugt
+erheblichen Widerstand, ein stehender weniger, ein geklappter fast keinen — die Reihenfolge
+ist belegt, eine Zahl bei unserer Größe nicht. Also wird keine angesetzt, und die Strecke
+ist eine **obere Schranke** für ein Modell, dessen Propeller weiterdreht. Das steht am
+Eintrag, statt still eingerechnet zu werden.
+
+#### Was dieser Punkt sonst benutzt
+
+Gleitzahl · Sinkgeschwindigkeit · Geschwindigkeit geringsten Widerstands und geringster
+Leistung · Abriss in der Kurve · Lastvielfaches aus Querneigung — alles vorhanden, und die
+Gleitzahl und die Sinkgeschwindigkeit sind erst seit dem Ausklammern der Widerstandspolare
+(§3.5) überhaupt rechenbar.
+
+
+---
+
 ## 4. Querschnittliche Anforderungen
 
 Sie gelten für **jeden** Prozessschritt und werden nicht pro Schritt wiederholt.
@@ -1152,7 +1209,7 @@ Auftriebsbeiwert einig; die **Analysekonfidenz** trennt sie, und sie steigt mit 
 Jede Größe trägt ihre Einheit im Katalogeintrag. Jede kanonische Formel muss die
 Dimensionsprobe bestehen — mit **Längenmaßstab** (mm gegen m) und getrenntem Winkelfach,
 weil beides in diesem Projekt real auseinanderläuft. Werkzeuge: `scripts/canon_to_json.py` liest die Markdown-Einträge ein,
-`scripts/check_canon.py` rechnet darauf. Stand: **28 von 42 Formeln balancieren**, zehn
+`scripts/check_canon.py` rechnet darauf. Stand: **29 von 43 Formeln balancieren**, zehn
 sind Verfahren und damit nicht prüfbar, drei nicht parsbar, eine benutzt einen
 unregistrierten Faktor.
 
