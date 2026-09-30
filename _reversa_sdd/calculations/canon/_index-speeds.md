@@ -1,6 +1,6 @@
 # Path 1 — the speeds
 
-> **65 canonical quantities · 46 formulas** — 39 laws, 3 routes, 4 approximations.
+> **61 canonical quantities · 42 formulas** — 35 laws, 3 routes, 4 approximations.
 > Collapsed from 157 register nodes. Every entry is `status: draft`.
 
 ## Where it stands
@@ -47,11 +47,11 @@ A formula is approvable only once its inputs are.
 
 **Layer 1** (14) — [[air-density-isa]] · [[weight-from-mass]] · [[wing-loading]] · [[aspect-ratio]] · [[mean-geometric-chord]] · [[high-lift-clmax]] · [[dive-speed]] · [[climb-speed-for-power-loading]] · [[turn-load-factor]] · [[inverted-max-lift-coefficient]] · [[negative-limit-load-factor]] · [[mean-thrust-derate]] · [[battery-mass-from-capacity]] · [[mass-summation]]
 
-**Layer 2** (6) — [[induced-drag-factor]] · [[stall-speed]] · [[stall-wing-loading-limit]] · [[gust-mass-ratio]] · [[thrust-to-weight]] · [[relative-mass-deviation]]
+**Layer 2** (6) — [[induced-drag-factor]] · [[stall-speed]] · [[stall-wing-loading-limit]] · [[thrust-to-weight]] · [[relative-mass-deviation]]
 
-**Layer 3** (6) — [[minimum-drag-speed-heuristic]] · [[minimum-sink-speed-heuristic]] · [[operating-point-speed-from-stall-margin]] · [[stall-speed-in-turn]] · [[gust-alleviation-factor]] · [[stall-margin-ratio]]
+**Layer 3** (6) — [[minimum-drag-speed-heuristic]] · [[minimum-sink-speed-heuristic]] · [[operating-point-speed-from-stall-margin]] · [[stall-speed-in-turn]] · [[stall-margin-ratio]]
 
 **Layer 4** (1) — [[cruise-speed-resolution]]
 
-**Needs an input this path does not produce (19)** — [[dynamic-pressure]] · [[lift-balance-speed]] · [[clmax-from-polar]] · [[linear-lift-curve-inverse]] · [[lift-to-drag-ratio]] · [[max-lift-to-drag-parabolic]] · [[sink-rate]] · [[minimum-drag-speed-closed-form]] · [[minimum-drag-speed-from-polar]] · [[minimum-sink-speed-from-polar]] · [[lift-coefficient-required]] · [[gust-velocity-schedule]] · [[gust-load-increment]] · [[cruise-thrust-constraint]] · [[power-required-electrical]] · [[endurance-from-battery]] · [[zero-lift-drag-from-sweep]] · [[reynolds-scheduled-polar]] · [[stall-onset-detection]]
+**Needs an input this path does not produce (19)** — [[dynamic-pressure]] · [[lift-balance-speed]] · [[clmax-from-polar]] · [[linear-lift-curve-inverse]] · [[lift-to-drag-ratio]] · [[max-lift-to-drag-parabolic]] · [[sink-rate]] · [[minimum-drag-speed-closed-form]] · [[minimum-drag-speed-from-polar]] · [[minimum-sink-speed-from-polar]] · [[lift-coefficient-required]] · [[cruise-thrust-constraint]] · [[power-required-electrical]] · [[endurance-from-battery]] · [[zero-lift-drag-from-sweep]] · [[reynolds-scheduled-polar]] · [[stall-onset-detection]]
 

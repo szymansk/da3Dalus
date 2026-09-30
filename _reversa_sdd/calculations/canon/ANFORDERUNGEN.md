@@ -127,7 +127,7 @@ dann sofort, wovon die Rede ist.
 
 **Der Katalog wird bei Berührung umgestellt.** Seine Einträge tragen die kanonische Form
 heute in einem einfachen Codeblock, weil `scripts/check_canon.py` sie dort ausliest und
-die Dimensionsprobe darauf rechnet. Das bleibt vorerst so: 43 der 46 Formeln stehen ohnehin
+die Dimensionsprobe darauf rechnet. Das bleibt vorerst so: 39 der 42 Formeln stehen ohnehin
 auf `draft` und werden bei der Freigabe entlang der Pfade angefasst — dann bekommt jeder
 Eintrag seine LaTeX-Form. Ein Umschreiben aller Einträge auf einmal würde den Prüfer
 brechen, ohne dass ein einziger Eintrag dadurch näher an der Freigabe wäre.
@@ -780,7 +780,7 @@ Reihenfolge ist bewusst: **erst rechnen können, dann bewerten.**
 
 ### 3.1 Zuschnitt — was dazugehört
 
-Der Katalog führt **46 Formeln in sieben Familien**:
+Der Katalog führt **42 Formeln in sieben Familien**:
 
 | Familie | Formeln | gehört zum Leistungsmodell |
 |---|---|---|
@@ -789,7 +789,7 @@ Der Katalog führt **46 Formeln in sieben Familien**:
 | Geschwindigkeiten | 12 | ja |
 | Gleiten und Sinken | 3 | ja |
 | Antrieb und Energie | 7 | ja, mit enger Arbeitsteilung |
-| Hüllkurve und Lasten | 8 | ja |
+| Hüllkurve und Lasten | 4 | ja, ohne den Böenteil |
 | **Masse** | 2 | **nein — Eingabe** |
 
 **Die Masse ist kein Leistungsmerkmal.** Sie ist Teil der **Iteration**: Man schätzt sie,
@@ -812,6 +812,29 @@ Das System dimensioniert keinen Motor. Es stellt Anforderungen und bewertet eine
 **Die Hüllkurve ist ein Leistungsmerkmal über mehrere Betriebszustände.** Sie gehört hinein
 und ist die einzige Größe dieser Sammlung, die nicht *an* einem Punkt gilt, sondern an
 deren **Rand**.
+
+#### Gestrichen: der Böenteil
+
+**Status: entschieden am 30.09.2026.** Vier Formeln und vier Größen sind aus dem Kanon
+entfernt — Böengeschwindigkeiten, Böenabminderungsfaktor, Böenlastzuwachs,
+Böenmassenverhältnis.
+
+Drei Gründe, jeder für sich ausreichend:
+
+| | |
+|---|---|
+| **falsche Größenklasse** | die Böengeschwindigkeiten stammen aus 14 CFR 23.333 — Zulassungswerte für **bemannte** Leichtflugzeuge. ADR 0023 verlangt bei 0,5–15 kg validierte Konstanten. |
+| **rechnerisch falsch** | Böenlastzuwachs und Böenmassenverhältnis bestehen die **Dimensionsprobe nicht** — ein ungeklärtes Winkelmaß auf der rechten Seite |
+| **trägt zu keiner unserer Fragen bei** | Modellstrukturen werden aus dem **Manöverlastvielfachen** ausgelegt, nicht aus Böen. Der Manöverteil der Hüllkurve bleibt vollständig. |
+
+Nebenbefund: `mean-geometric-chord` hatte das Böenmassenverhältnis als **einzigen**
+Verbraucher und steht jetzt ohne. Nach ADR 0021 wäre es damit ein Streichkandidat — nicht
+zu verwechseln mit der mittleren aerodynamischen Flügeltiefe, die weiter gebraucht wird.
+Das ist noch nicht entschieden.
+
+> **Dies ist eine Entscheidung über den Kanon, nicht über den Code.** Was im Code mit den
+> Böenformeln geschieht, folgt später — es gilt weiterhin: keine Tickets, bis der Kanon
+> steht.
 
 #### Masse und Antrieb sind ein Entwurfszyklus, kein Rechenzyklus
 
@@ -846,7 +869,6 @@ Jeder Leistungswert bedeutet nur etwas zusammen mit dem Zustand, in dem er gilt 
 | **Anflug** | |
 | **Landung** | |
 | **Sturzflug** | die obere Grenze |
-| **Böe** | |
 | **motorloser Flug** | eine **Familie**, kein Punkt: bestes Gleiten, geringstes Sinken, Kurvenflug ohne Motor bei mehreren Querneigungen |
 
 #### Die Startart ist kein Betriebspunkt, sondern ein Urteil
@@ -935,7 +957,7 @@ beiden Fragen.
 
 ### 3.3 Formeln
 
-Der Katalog führt **46 Formeln und 65 Größen**; freigegeben sind bisher drei Formeln —
+Der Katalog führt **42 Formeln und 61 Größen**; freigegeben sind bisher drei Formeln —
 `air-density-isa`, `stall-speed`, `weight-from-mass`, also genau die Gesetze aus §2.1.
 Die übrigen stehen auf `draft`, weil sie aus der Bestandsaufnahme stammen und die Freigabe
 entlang der Pfade läuft, nicht Eintrag für Eintrag.

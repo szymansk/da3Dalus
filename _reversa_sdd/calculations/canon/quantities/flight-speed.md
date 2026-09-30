@@ -18,5 +18,5 @@ True airspeed satisfying the level-flight (or steady-glide) lift balance at a gi
 
 **Produced by.** [[lift-balance-speed]]
 
-**Used by.** [[dynamic-pressure]] · [[sink-rate]] · [[minimum-drag-speed-from-polar]] · [[minimum-sink-speed-from-polar]] · [[gust-velocity-schedule]] · [[gust-load-increment]] · [[power-required-electrical]] · [[reynolds-scheduled-polar]]
+**Used by.** [[dynamic-pressure]] · [[sink-rate]] · [[minimum-drag-speed-from-polar]] · [[minimum-sink-speed-from-polar]] · [[power-required-electrical]] · [[reynolds-scheduled-polar]]
 

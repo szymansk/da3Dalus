@@ -18,5 +18,5 @@ Weight per reference area; produced independently in three places (flight envelo
 
 **Produced by.** [[wing-loading]]
 
-**Used by.** [[minimum-drag-speed-closed-form]] · [[gust-mass-ratio]] · [[gust-load-increment]] · [[cruise-thrust-constraint]]
+**Used by.** [[minimum-drag-speed-closed-form]] · [[cruise-thrust-constraint]]
 

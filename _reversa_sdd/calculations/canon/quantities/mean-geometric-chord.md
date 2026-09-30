@@ -18,5 +18,5 @@ S_ref/b_ref, the reference chord the gust regulations prescribe (deliberately no
 
 **Produced by.** [[mean-geometric-chord]]
 
-**Used by.** [[gust-mass-ratio]]
+**Used by.** 
 

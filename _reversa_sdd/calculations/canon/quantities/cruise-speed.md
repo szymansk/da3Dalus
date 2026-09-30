@@ -18,5 +18,5 @@ Mission cruise speed, nominally a flight-profile goal; the chain substitutes der
 
 **Produced by.** [[cruise-speed-resolution]]
 
-**Used by.** [[operating-point-speed-from-stall-margin]] · [[gust-velocity-schedule]] · [[stall-margin-ratio]]
+**Used by.** [[operating-point-speed-from-stall-margin]] · [[stall-margin-ratio]]
 
