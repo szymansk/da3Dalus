@@ -175,3 +175,22 @@ Entwurf beruft, erbt dessen Instabilität.
 **Reproduktion vor Bericht.** Jede gemeldete Verletzung wird selbst nachgerechnet, bevor
 sie weitergegeben wird. Zweimal war die Meldung schärfer als beschrieben, einmal lag der
 Prüfagent falsch.
+
+---
+
+## 7. Der Navigator
+
+`navigator.html` — der vollständige Rechengraph als begehbare Seite, erzeugt aus
+`quantities/` und `formulas/`. 68 Größen in zwölf Schichten, Eingaben oben, Endergebnisse
+unten. Eine Größe anklicken hebt ihre Vorgänger und Nachfolger bis zur eingestellten Tiefe
+hervor; das Seitenfeld zeigt Beschreibung, erzeugende Formel als gesetzte Mathematik und
+die Quelle.
+
+Er ist **abgeleitet, nicht gepflegt**: Bei jeder Änderung am Katalog neu erzeugen, sonst
+läuft er auseinander — dasselbe Duplikatproblem, vor dem A1 warnt.
+
+Zwei Dinge, die beim Bauen zu beachten sind: Die Artifact-Sicherheitsrichtlinie lädt
+Schriften nur von Google Fonts, deshalb scheidet KaTeX aus (seine Glyphen kämen vom
+falschen Host) — **MathJax mit SVG-Ausgabe** trägt sie als Pfade im Bündel. Und die
+Einpassung muss warten, bis das Gitter wirklich eine Größe hat, sonst startet der Graph
+zufällig gezoomt.
