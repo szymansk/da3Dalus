@@ -730,7 +730,7 @@ eine ein Pfeil und der andere eine Bemerkung.
 
 **Rot: $V_S \to$ Sweep $\to C_{L,\max,\mathrm{stall}} \to$ Abrissformel $\to V_S$.** Ein
 echter Fixpunkt. $C_{L,\max}$ gilt bei der Reynoldszahl, die aus $V_S$ folgt, und bei
-Modellgrößen hängt es stark davon ab. Er braucht ein Verfahren (§3.2.1) und ein
+Modellgrößen hängt es stark davon ab. Er braucht ein Verfahren (§3.4.1) und ein
 Abbruchkriterium.
 
 **Bernstein gestrichelt: $x_\mathrm{CG} \to$ Punktlauf $\to x_\mathrm{NP} \to$ CG-Formel
@@ -752,7 +752,7 @@ genau die Probe am konvergierten $x_\mathrm{CG}$ und sonst nichts.
 | $S_\mathrm{ref},\ b_\mathrm{ref}$ | Geometrie | `quantities/wing-reference-area.md` · `quantities/wing-span.md` |
 | $\rho = \rho_\mathrm{ISA}(h)$ | law | `formulas/air-density-isa.md` — **freigegeben** |
 | $W = m\,g$ | law | `formulas/weight-from-mass.md` — **freigegeben** |
-| $\alpha$ aus $L = W$ bei $V$ | **procedure** | §3.2.2 — Beziehung entschieden, drei Angaben offen |
+| $\alpha$ aus $L = W$ bei $V$ | **procedure** | §3.4.2 — Beziehung entschieden, drei Angaben offen |
 | AeroBuildup, ein Punkt | Solveraufruf | $\mathbf{x}_\mathrm{ref} = x_\mathrm{CG}$; liefert $x_\mathrm{NP}$, $C_{m\alpha}$, $C_{L\alpha}$ |
 | AeroBuildup, $\alpha$-Sweep | Solveraufruf | gebunden an $V_S$; liefert $C_{L,\max,\mathrm{stall}}$ |
 | $x_\mathrm{CG} = x_\mathrm{NP} - SM_\mathrm{target}\,\bar{c}$ | law | **fehlt** — ADR 0011 |
@@ -771,9 +771,114 @@ $x_\mathrm{CG}$ · $SM$ · $V_S$ · das Ergebnis der Probe.
 
 ---
 
-## 3. Formeln und Verfahren
+## 3. Das Leistungsmodell
 
-### 3.1 Formeln
+Es ist die **Grundlage**: Erst wenn feststeht, welche Leistungswerte das Modell liefert und
+an welchem Zustand sie gelten, lässt sich sagen, welche Eigenschaften eines Flugzeugs sich
+daraus ableiten lassen — und welche ein aufwendigeres Analyseverfahren brauchen. Die
+Reihenfolge ist bewusst: **erst rechnen können, dann bewerten.**
+
+### 3.1 Zuschnitt — was dazugehört
+
+Der Katalog führt **46 Formeln in sieben Familien**:
+
+| Familie | Formeln | gehört zum Leistungsmodell |
+|---|---|---|
+| Atmosphäre und Grundgrößen | 6 | ja |
+| Polare und Auftrieb | 8 | ja |
+| Geschwindigkeiten | 12 | ja |
+| Gleiten und Sinken | 3 | ja |
+| Antrieb und Energie | 7 | ja, mit enger Arbeitsteilung |
+| Hüllkurve und Lasten | 8 | ja |
+| **Masse** | 2 | **nein — Eingabe** |
+
+**Die Masse ist kein Leistungsmerkmal.** Sie ist Teil der **Iteration**: Man schätzt sie,
+und verfeinert das Massebudget mit den Größen, die im Lauf des Entwurfs bekannt werden. Die
+Leistungswerte **erben diese Genauigkeit** — wird die Masse präziser, werden sie es mit ihr.
+
+Daraus folgt etwas, das eine offene Frage auflöst: Es gibt nicht ein *Zielband* und einen
+davon getrennten *Punktwert*, zwischen denen umgerechnet werden müsste. Es ist **eine Größe
+mit einer Genauigkeit, die sich über den Entwurf hinweg ändert**. Die Frage lautet nicht
+„wie rechnet man um", sondern „wie genau ist das gerade, und was heißt das für die Zahlen
+darunter" (vormals O9).
+
+**Der Antrieb gehört dazu, aber die Arbeitsteilung ist eng:**
+
+> Die Rechnung sagt, **was die Antriebskomponenten leisten müssen.** Die Masse der
+> **gewählten** Komponenten sagt, ob das ins Budget passt.
+
+Das System dimensioniert keinen Motor. Es stellt Anforderungen und bewertet eine Wahl.
+
+**Die Hüllkurve ist ein Leistungsmerkmal über mehrere Betriebszustände.** Sie gehört hinein
+und ist die einzige Größe dieser Sammlung, die nicht *an* einem Punkt gilt, sondern an
+deren **Rand**.
+
+#### Masse und Antrieb sind ein Entwurfszyklus, kein Rechenzyklus
+
+**Status: entschieden.**
+
+Der Antrieb folgt aus Masse und Mission und wirkt auf die Masse zurück. Das sieht nach
+einem Fixpunkt aus, ist aber keiner. Problematisch wird die Kopplung erst, wenn der Antrieb
+durch seine Anforderungen **deutlich schwerer** wird, als Budget und Mission zulassen. Dann
+ändert man konstruktiv etwas oder senkt die Forderung an Leistung und Mission — und das ist
+das Urteil des Konstrukteurs.
+
+Nach §0.4 heißt das: Die Schleife steht im **Ablauf**, nicht in der Rechnung. Sie hat kein
+Konvergenzkriterium und schuldet nicht die vier Angaben eines Verfahrens.
+
+Das verschiebt auch **O8**. Wenn das System keinen Antrieb dimensioniert, ist der Schub bei
+Fahrt keine Größe, die der Kern aus erster Hand herleitet, sondern eine **Eigenschaft der
+gewählten Komponente** — Propeller und Motor bringen ihre Kennlinie mit. Der Kern muss sie
+gegen den geforderten Schub halten können, mehr nicht.
+
+### 3.2 Die Betriebspunkte
+
+**Status: die Liste steht, ihre Form ist offen.**
+
+Jeder Leistungswert bedeutet nur etwas zusammen mit dem Zustand, in dem er gilt (A2).
+
+| Betriebspunkt | Anmerkung |
+|---|---|
+| **Start** | wie der Steigflug, nur mit anderem geforderten Auftrieb |
+| **Steigflug** | |
+| **Reiseflug** | |
+| **Kurvenflug** | mehrere Querneigungen |
+| **Anflug** | |
+| **Landung** | |
+| **Sturzflug** | die obere Grenze |
+| **Böe** | |
+| **motorloser Flug** | eine **Familie**, kein Punkt: bestes Gleiten, geringstes Sinken, Kurvenflug ohne Motor bei mehreren Querneigungen |
+
+#### Die Startart ist kein Betriebspunkt, sondern ein Urteil
+
+**Status: entschieden.**
+
+*Start* ist ein Flugzustand. *Handstart, Piste oder Katapult* ist das Ergebnis einer
+Prüfung: Liegt die zum sicheren Wegkommen nötige Geschwindigkeit über der, mit der sich ein
+Modell werfen lässt, scheidet der Handstart aus; reicht die Piste nicht, um auf diese
+Geschwindigkeit zu kommen, bleibt das Katapult. Die Startart **leitet sich aus den
+Leistungswerten ab** und sagt, ob das Flugzeug zur Mission passt.
+
+Das ist dieselbe Bewegung wie bei der Dichte und beim maximalen Auftriebsbeiwert: Was wie
+eine Eingabe aussah, ist eine abgeleitete Aussage. Jedes Mal wird Ebene 0 kleiner und der
+Graph ehrlicher.
+
+#### Der Antriebszustand ist eine eigene Achse
+
+Beim Modell ist er nicht nebensächlich: Ein **freilaufender** Propeller erzeugt erheblichen
+Widerstand, ein **stehender** weniger, ein **geklappter** fast keinen. Dieselbe Zelle hat je
+nach Propellerzustand deutlich verschiedene Gleitzahlen. Ob die Größenordnung dieses
+Unterschieds belegbar ist, ist offen.
+
+#### Offen an den Betriebspunkten
+
+| | |
+|---|---|
+| **Woraus ein Punkt besteht** | Welche Angaben muss er nennen, damit ein Wert eindeutig ist? Kandidaten: Geschwindigkeit, Höhe, Klappenstellung, Antriebszustand, Lastvielfaches, Ruderstellung. |
+| **Was vorgegeben und was gelöst wird** | In Pfad 3 ist die Geschwindigkeit vorgegeben und der Anstellwinkel gelöst. Beim Start scheint es umgekehrt zu laufen, und im Reiseflug will man effizient fliegen — **woraus sich die Geschwindigkeit ergibt**. Gilt je Punkt eine eigene Regel, oder eine gemeinsame? |
+
+
+### 3.3 Formeln
 
 Der Katalog führt **46 Formeln und 65 Größen**; freigegeben sind bisher drei Formeln —
 `air-density-isa`, `stall-speed`, `weight-from-mass`, also genau die Gesetze aus §2.1.
@@ -782,12 +887,12 @@ entlang der Pfade läuft, nicht Eintrag für Eintrag.
 
 Dieses Dokument nennt Formeln nur dort, wo ein Prozessschritt sie verwendet.
 
-### 3.2 Verfahren
+### 3.4 Verfahren
 
 Verfahren haben bisher **keinen** Platz im Katalog — sie stehen hier, bis genug davon
 zusammenkommen, um `procedures/` zu rechtfertigen.
 
-#### 3.2.1 Fixpunkt $V_S \leftrightarrow C_{L,\max,\mathrm{stall}}$
+#### 3.4.1 Fixpunkt $V_S \leftrightarrow C_{L,\max,\mathrm{stall}}$
 
 **Status: offen** — die Beziehung steht, die Methode nicht.
 
@@ -804,7 +909,7 @@ schlimmstenfalls **+33,2 %**, **jede** Abweichung in dieselbe Richtung. Die geme
 Abrissgeschwindigkeit ist immer die zu niedrige. Vorbedingung dokumentiert in
 `formulas/stall-speed.md`, Bindung `cl_max`.
 
-#### 3.2.2 Anstellwinkel aus $L = W$
+#### 3.4.2 Anstellwinkel aus $L = W$
 
 **Status: offen** — die Beziehung steht, die Methode nicht.
 
@@ -935,8 +1040,8 @@ eines ohne Abbruchbedingung.
 | **O4** | Welche **Prozessschritte** es wirklich gibt und wo ihre Grenzen liegen. | §1, und damit die Struktur aller weiteren Schritte |
 | **O5** | Welches **Atmosphärenmodell** kanonisch ist. `air-density-isa` ist freigegeben, aber die Implementierung kennt mehrere Verfahren, und **kein einziger** der 16 Aufrufer wählt eines. | Eindeutigkeit von $\rho$ |
 | **O7** | Wird **Finger, Bil & Braun, *Drag Estimation of Small Fixed-Wing UAVs*** (Aeronautical Journal 122/1248, 2018) die zitierte Quelle für $c_{D0}$ und $e$ **in unserer Größenklasse**? ADR 0023 verlangt bei 0,5–15 kg validierte Konstanten; `DEFAULT_E_OSWALD = 0.8` hat bis heute keine. | Freigabe von `induced-drag-factor`, `zero-lift-drag-from-sweep` |
-| **O8** | Woher kommt der **Schub bei Fahrt**? Propellerschub fällt mit der Geschwindigkeit ($P = T\,V$ bei näherungsweise konstanter Leistung), und der Standschub gilt nur bei $V = 0$. | jede Beschränkung, die $T/W$ außerhalb des Standes benutzt |
-| **O9** | §2.1 erzeugt ein **Massenband**, §2.3 verbraucht einen **Massenpunktwert**. Wie kommt man vom einen zum anderen — wählt der Konstrukteur einen Wert im Band, oder rechnet die Analyse über das ganze Band? | Anschluss von §2.1 an §2.3 |
+| **O8** | *Verschoben, siehe §3.1.* Woher kommt der **Schub bei Fahrt**? Propellerschub fällt mit der Geschwindigkeit ($P = T\,V$ bei näherungsweise konstanter Leistung), und der Standschub gilt nur bei $V = 0$. | jede Beschränkung, die $T/W$ außerhalb des Standes benutzt |
+| **O9** | *Geklärt, siehe §3.1 — eine Größe mit veränderlicher Genauigkeit.* §2.1 erzeugt ein **Massenband**, §2.3 verbraucht einen **Massenpunktwert**. Wie kommt man vom einen zum anderen — wählt der Konstrukteur einen Wert im Band, oder rechnet die Analyse über das ganze Band? | Anschluss von §2.1 an §2.3 |
 | **O10** | Woher kommen $m$, $h$, $V$, Ruderstellung und Genauigkeitsstufe? Im Ablauf haben sie **keinen Ursprung**. Platzhöhe und Fluggeschwindigkeit sind plausibel Missionsangaben; Ruderstellung und Genauigkeitsstufe sind eher Analyseeinstellungen und gar keine Entwurfsgrößen. | Vollständigkeit von §1 |
 | **O6** | Wie weit der **ASB-Sweep** Eingaben ersetzt. Der Solver kann über nahezu jeden Parameter fahren; jeder, den er sinnvoll durchfährt, ist einer, den niemand raten muss. | Umfang von Ebene 0 |
 
