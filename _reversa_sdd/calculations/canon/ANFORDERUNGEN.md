@@ -780,7 +780,7 @@ Reihenfolge ist bewusst: **erst rechnen können, dann bewerten.**
 
 ### 3.1 Zuschnitt — was dazugehört
 
-Der Katalog führt **43 Formeln in sieben Familien**:
+Der Katalog führt **44 Formeln in sieben Familien**:
 
 | Familie | Formeln | gehört zum Leistungsmodell |
 |---|---|---|
@@ -983,7 +983,7 @@ beiden Fragen.
 
 ### 3.3 Formeln
 
-Der Katalog führt **43 Formeln und 63 Größen**; freigegeben sind bisher drei Formeln —
+Der Katalog führt **44 Formeln und 68 Größen**; freigegeben sind bisher drei Formeln —
 `air-density-isa`, `stall-speed`, `weight-from-mass`, also genau die Gesetze aus §2.1.
 Die übrigen stehen auf `draft`, weil sie aus der Bestandsaufnahme stammen und die Freigabe
 entlang der Pfade läuft, nicht Eintrag für Eintrag.
@@ -1329,10 +1329,26 @@ die gerade geflogen wird.**
 | Sturzflug | Höchstgeschwindigkeit, also Schub gleich Widerstand |
 | Kurvenflug | Schub, der die Kurve hält |
 
-Der Kanon führt dafür bisher genau einen Weg, und das ist der Pauschalfaktor auf den
-Standschub aus §3.9 — die Zauberzahl. **Ein Zugriff auf die Propellerkennlinien schließt
-alle drei Punkte auf einmal.** Das ist das Ergebnis dieses Durchgangs, das am weitesten
-trägt.
+#### Berichtigung: die Rechnung gibt es schon, sie wird nur nicht benutzt
+
+Ich hatte hier zunächst geschrieben, ein *Zugriff* auf die Propellerkennlinien müsse
+gebaut werden. Nachgeprüft stimmt das nicht, und der wahre Befund ist schärfer.
+
+Die Daten liegen wirklich in der Datenbank — **454 Propeller, 300 187 Messpunkte, kein
+einziger fehlender Beiwert**, nachgezählt und nicht aus dem Schema geschlossen. Und die
+App rechnet daraus bereits den Schub über der Geschwindigkeit: `powertrain_performance`
+liefert `T(V)` und `P_shaft(V)` aus `T = C_T(J)·ρ·n²·D⁴`.
+
+Nur benutzen die drei Dienste, die ihn brauchen, ihn nicht. Feldlänge, Auslegungsdiagramm
+und Missions-KPIs greifen ausnahmslos auf `t_static_N` zu — eine handeingetragene
+**Prüfstandszahl**, die nur bei stehendem Flugzeug gilt. Keiner von ihnen ruft den
+Antriebsdienst.
+
+> **Es fehlt kein Gesetz. Es gibt zwei Autoritäten für dieselbe Größe** — eine gemessen,
+> eine geraten — und die drei Punkte hängen an der geratenen. Das ist ADR 0022, und es
+> steht als Konflikt am Eintrag `thrust-at-airspeed-from-coefficient`.
+
+Damit ändert sich auch die Art der Arbeit: nicht bauen, sondern **verbinden**.
 
 ### 3.11 Was der Durchgang ergeben hat
 
@@ -1351,9 +1367,10 @@ Neun Betriebspunkte, einzeln aufgemacht. Die Bilanz:
 überwiegend **Bindungen, keine Gesetze** — dieselbe Formel gilt an drei Punkten und war an
 keinem festgemacht. `V = k · V_S,cfg` ist dafür das Musterbeispiel: Anflug, Landung, Start.
 
-**Es fehlt genau ein Gesetz, und es fehlt dreifach.** Der verfügbare Schub bei Fahrt. Ohne
-ihn bleiben Steigflug, Kurvenflug und Sturzflug Beschriftungen. Mit ihm — und die Daten
-liegen in der Datenbank — werden es Rechnungen.
+**Es fehlt kein Gesetz — es fehlt eine Verbindung, und sie fehlt dreifach.** Der Schub bei
+Fahrt wird bereits aus gemessenen Kennlinien gerechnet, nur greifen Feldlänge,
+Auslegungsdiagramm und Missions-KPIs stattdessen auf eine Standschubzahl zurück. Solange
+das so ist, bleiben Steigflug, Kurvenflug und Sturzflug Beschriftungen.
 
 **Zwei Lücken bleiben, und sie sind dieselbe Frage zweimal:** Ob die Bahn zum Starten und
 zum Landen reicht. Beide brauchen entweder eine Integration, die wir nicht machen, oder
@@ -1432,7 +1449,7 @@ Auftriebsbeiwert einig; die **Analysekonfidenz** trennt sie, und sie steigt mit 
 Jede Größe trägt ihre Einheit im Katalogeintrag. Jede kanonische Formel muss die
 Dimensionsprobe bestehen — mit **Längenmaßstab** (mm gegen m) und getrenntem Winkelfach,
 weil beides in diesem Projekt real auseinanderläuft. Werkzeuge: `scripts/canon_to_json.py` liest die Markdown-Einträge ein,
-`scripts/check_canon.py` rechnet darauf. Stand: **29 von 43 Formeln balancieren**, zehn
+`scripts/check_canon.py` rechnet darauf. Stand: **30 von 44 Formeln balancieren**, zehn
 sind Verfahren und damit nicht prüfbar, drei nicht parsbar, eine benutzt einen
 unregistrierten Faktor.
 
@@ -1458,6 +1475,30 @@ sind **stille** Schätzungen. Jede Ersetzung, Klemmung, Wiederholung und Kürzun
 `DesignWarning`, deren `severity` sagt, ob es fachliche Praxis oder ein Defekt ist. Ein
 Restanteil für alles, was man nicht einzeln wiegt, ist eine **erklärte Größe** — ein Loch in
 der Summe ist unsichtbar, ein Restanteil nicht.
+
+### A8 — Symbole sind im Kanon eindeutig
+
+**Status: entschieden.**
+
+Zwei Größen dürfen nicht dasselbe Symbol tragen, auch nicht in verschiedener
+Schreibweise — die Dimensionsprüfung faltet Groß- und Kleinschreibung, und dann gewinnt,
+wer alphabetisch vorne steht.
+
+Das ist keine Formsache. Es ist beim Aufbau des Leistungsmodells **dreimal** zugeschlagen:
+
+| Kollision | Folge |
+|---|---|
+| `w` Sinkgeschwindigkeit ↔ `W` Gewicht | **drei korrekte Formeln** meldeten sich als Dimensionsfehler. Hätte man den Meldungen geglaubt, hätte man richtige Formeln „repariert" |
+| `D` Widerstandskraft ↔ Propellerdurchmesser | der Durchmesser wäre still als Kraft gelesen worden — die Prüfung hätte aus dem falschen Grund balanciert |
+| `n` Lastvielfaches ↔ Propellerdrehzahl | der Faktor $1/\mathrm{s}^2$ fiel weg, und der Schub kam als Masse mal Länge heraus |
+
+Die Auflösung ist, das mehrdeutige Symbol zu **qualifizieren**, nicht die Prüfung
+nachsichtiger zu machen: `D_prop`, `n_prop`. Dieselbe Bewegung wie bei A2, wo eine Größe
+ihre Auswertebedingung im Namen trägt — hier trägt sie ihren Gegenstand.
+
+**Die gefährlichere Richtung ist die stille.** Eine falsche Meldung fällt auf. Ein Symbol,
+das zufällig zur richtigen Dimension aufgelöst wird, balanciert aus dem falschen Grund und
+fällt nie auf.
 
 ### A7 — Eine Autorität je nutzersichtbarer Größe
 
