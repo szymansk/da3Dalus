@@ -1233,6 +1233,61 @@ Fragen beitrug — *passt es auf meinen Platz* schon.
 
 ---
 
+### 3.9 Der fünfte Punkt: Start
+
+**Status: der Zustand ist entschieden, das Urteil ist zur Hälfte rechenbar.**
+
+Der Start ist ein **Flugzustand**; *Handstart, Piste oder Katapult* ist das **Urteil**
+daraus (§3.2). Der Zustand fügt eine Bindung hinzu — die Startgeschwindigkeit, wieder
+`V = k · V_S,cfg`, jetzt in Startkonfiguration. Dieselbe Beziehung zum dritten Mal: Anflug,
+Landung, Start. Sie ist die meistgebundene Formel des Kanons.
+
+#### Das Urteil ist ein Vergleich, keine Strecke
+
+Vier Stufen, und wir können zwei davon ohne Integration und ohne geborgte Konstanten
+beantworten:
+
+| Stufe | rechenbar? |
+|---|---|
+| **Wurf aus dem Stand** | ja, als Vergleich — aber die Wurfgeschwindigkeit hat **keine Quelle** |
+| **Start im Laufen** | dieselbe Form, um die Laufgeschwindigkeit erhöht. Die RC-Quellen nennen diese Stufe ausdrücklich |
+| **Katapult** | ja — die Abschussgeschwindigkeit folgt aus Zugkraft, Masse und Auszug; im Kern Energieerhaltung |
+| **Piste** | **nein.** Ob die Bahn reicht, ist eine Beschleunigungsstrecke — also eine Integration, die wir nicht machen, oder eine Korrelation mit Zulassungskonstanten, die wir nicht borgen dürfen |
+
+Dieselbe Lücke wie bei der Landung (§3.8), und aus demselben Grund. Die drei übrigen Stufen
+sind aber genau das, was du beschrieben hast: **zwei Geschwindigkeiten gegeneinander
+halten.**
+
+Und das Katapult macht aus dem Urteil mehr als ein Ja oder Nein. Reicht der Wurf nicht,
+lässt sich sagen, **welche Zugkraft** nötig wäre — aus einer Absage wird eine Anforderung.
+
+#### Die letzte Zauberzahl sitzt hier
+
+`mean-thrust-derate` rechnet `T_mean = f_T · T_static` — der Schubabfall als **Pauschalfaktor**,
+und `f_T` ist die einzige Größe im Kanon, die die Dimensionsprüfung als unregistriert
+meldet. Sie steht ohne Eintrag, ohne Einheit, ohne Quelle.
+
+Sie sitzt ausgerechnet dort, wo der Start sie am meisten braucht: Ob ein Modell aus dem
+Stand wegkommt, hängt am Schub **bei der Geschwindigkeit, die es gerade hat** — und
+Propellerschub fällt mit der Fahrt, weil Motor und Propeller bei hohem Gas näherungsweise
+Konstantleistungsmaschinen sind.
+
+**Wir brauchen dafür keinen Faktor.** Die Datenbank führt zu jedem Propeller Messpunkte
+über Drehzahl und Fortschrittsgrad — Schubbeiwert, Leistungsbeiwert, Wirkungsgrad. Der
+Schub bei Fahrt ist daraus ablesbar, nicht zu schätzen. Das ist die Auflösung von **O8**:
+keine neue Modellierung, sondern ein Zugriff auf Daten, die wir haben.
+
+#### Offen an diesem Punkt
+
+| | |
+|---|---|
+| **Die Wurfgeschwindigkeit** | keine Quelle bei unserer Größe. Sie gehört als **erklärte Eingabe mit Warnung** ins System, nicht als stille Konstante (ADR 0020) — und sie ist ohnehin personenabhängig |
+| **Die Startreserve** | die Quellen geben 1,2 bis 1,25 für die **Landung**; auf den Start zu übertragen ist ein Schluss, keine Quelle. Beim Start spricht mehr für den oberen Rand: keine Bahn zum Beschleunigen, und das Modell ist im verletzlichsten Zustand |
+| **Die Pistenstufe** | wie bei der Landung offen — Vergleich statt Strecke, aber welcher |
+
+
+---
+
 ## 4. Querschnittliche Anforderungen
 
 Sie gelten für **jeden** Prozessschritt und werden nicht pro Schritt wiederholt.
@@ -1354,7 +1409,7 @@ eines ohne Abbruchbedingung.
 | **O4** | Welche **Prozessschritte** es wirklich gibt und wo ihre Grenzen liegen. | §1, und damit die Struktur aller weiteren Schritte |
 | **O5** | Welches **Atmosphärenmodell** kanonisch ist. `air-density-isa` ist freigegeben, aber die Implementierung kennt mehrere Verfahren, und **kein einziger** der 16 Aufrufer wählt eines. | Eindeutigkeit von $\rho$ |
 | **O7** | Wird **Finger, Bil & Braun, *Drag Estimation of Small Fixed-Wing UAVs*** (Aeronautical Journal 122/1248, 2018) die zitierte Quelle für $c_{D0}$ und $e$ **in unserer Größenklasse**? ADR 0023 verlangt bei 0,5–15 kg validierte Konstanten; `DEFAULT_E_OSWALD = 0.8` hat bis heute keine. | Freigabe von `induced-drag-factor`, `zero-lift-drag-from-sweep` |
-| **O8** | *Verschoben, siehe §3.1.* Woher kommt der **Schub bei Fahrt**? Propellerschub fällt mit der Geschwindigkeit ($P = T\,V$ bei näherungsweise konstanter Leistung), und der Standschub gilt nur bei $V = 0$. | jede Beschränkung, die $T/W$ außerhalb des Standes benutzt |
+| **O8** | *Geklärt, siehe §3.9 — aus den Propellerkennlinien der Datenbank.* Woher kommt der **Schub bei Fahrt**? Propellerschub fällt mit der Geschwindigkeit ($P = T\,V$ bei näherungsweise konstanter Leistung), und der Standschub gilt nur bei $V = 0$. | jede Beschränkung, die $T/W$ außerhalb des Standes benutzt |
 | **O9** | *Geklärt, siehe §3.1 — eine Größe mit veränderlicher Genauigkeit.* §2.1 erzeugt ein **Massenband**, §2.3 verbraucht einen **Massenpunktwert**. Wie kommt man vom einen zum anderen — wählt der Konstrukteur einen Wert im Band, oder rechnet die Analyse über das ganze Band? | Anschluss von §2.1 an §2.3 |
 | **O10** | Woher kommen $m$, $h$, $V$, Ruderstellung und Genauigkeitsstufe? Im Ablauf haben sie **keinen Ursprung**. Platzhöhe und Fluggeschwindigkeit sind plausibel Missionsangaben; Ruderstellung und Genauigkeitsstufe sind eher Analyseeinstellungen und gar keine Entwurfsgrößen. | Vollständigkeit von §1 |
 | **O6** | Wie weit der **ASB-Sweep** Eingaben ersetzt. Der Solver kann über nahezu jeden Parameter fahren; jeder, den er sinnvoll durchfährt, ist einer, den niemand raten muss. | Umfang von Ebene 0 |
