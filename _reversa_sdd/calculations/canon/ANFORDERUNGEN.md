@@ -1194,6 +1194,45 @@ der Anfluggeschwindigkeit ist.
 
 ---
 
+### 3.8 Der vierte Punkt: Landung
+
+**Status: entschieden, und er ist fast leer. Das ist der Befund.**
+
+Was die Landung gegenüber dem Anflug hinzufügt, ist **eine** Bindung: die
+Aufsetzgeschwindigkeit, dieselbe Beziehung `V = k · V_S,cfg` wie am Anflug, nur mit
+kleinerem Faktor. Sonst nichts.
+
+**Das Abfangen wird nicht gerechnet.** Es ist ein Übergang — Verzögerung auf Mindestfahrt
+im Bodeneffekt —, und Übergänge integrieren wir nicht (§3.2). Das ist eine erklärte
+Auslassung, keine Lücke: Sie steht hier, damit niemand später eine Aufsetzgeschwindigkeit
+für eine Flarehöhe hält.
+
+#### Die Landestrecke gibt es im Kanon nicht
+
+Weder eine Größe noch eine Formel — nicht für die Landestrecke, nicht für die Feldlänge.
+Dabei ist **Feldtauglichkeit eine der sieben Missionsachsen**, die dem Anwender angezeigt
+werden. Es gibt also eine nutzersichtbare Zahl, für die der Kanon keine Beziehung führt.
+
+Und wo sie gerechnet wird, steht sie auf Konstanten, die wir bei unserer Größe nicht
+übernehmen dürfen: Die Landebeschränkung des Auslegungsdiagramms benutzt Loftin-Faktoren
+mit einer **Hindernishöhe von 50 Fuß**. Fünfzehn Meter Hindernisfreiheit sind für ein
+Modell auf einem Vereinsgelände keine sinnvolle Größe, und ADR 0023 verlangt bei 0,5–15 kg
+validierte Konstanten statt solcher, die in der Verkehrsflugzeugliteratur üblich sind.
+
+Das ist dieselbe Form wie beim Böenteil: eine Rechnung, die es gibt, deren Zahlen aber aus
+der falschen Größenklasse stammen. Der Unterschied ist, dass die Böe zu keiner unserer
+Fragen beitrug — *passt es auf meinen Platz* schon.
+
+#### Offen an diesem Punkt
+
+| | |
+|---|---|
+| **Wie beantworten wir „passt es auf meinen Platz"?** | Über eine Streckenrechnung geht es nicht, ohne zu integrieren — und das tun wir nicht. Über eine geschlossene Korrelation geht es nicht, ohne Zulassungskonstanten zu übernehmen. Bliebe der Weg, den du für den Start vorgezeichnet hast: **zwei Größen vergleichen** statt eine Strecke ausrechnen — etwa Anflugsteilheit und Aufsetzgeschwindigkeit gegen das, was der Platz hergibt. |
+| **Der Aufsetzfaktor** | wie am Anflug: die Quellen geben ein Band, die Wahl ist deine |
+
+
+---
+
 ## 4. Querschnittliche Anforderungen
 
 Sie gelten für **jeden** Prozessschritt und werden nicht pro Schritt wiederholt.
