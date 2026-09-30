@@ -870,13 +870,68 @@ Widerstand, ein **stehender** weniger, ein **geklappter** fast keinen. Dieselbe 
 nach Propellerzustand deutlich verschiedene Gleitzahlen. Ob die Größenordnung dieses
 Unterschieds belegbar ist, ist offen.
 
-#### Offen an den Betriebspunkten
+#### Woraus ein Betriebspunkt besteht
+
+**Status: entschieden, nach KISS zugeschnitten.**
+
+Ein Punkt nennt fünf Dinge — mehr nicht:
 
 | | |
 |---|---|
-| **Woraus ein Punkt besteht** | Welche Angaben muss er nennen, damit ein Wert eindeutig ist? Kandidaten: Geschwindigkeit, Höhe, Klappenstellung, Antriebszustand, Lastvielfaches, Ruderstellung. |
-| **Was vorgegeben und was gelöst wird** | In Pfad 3 ist die Geschwindigkeit vorgegeben und der Anstellwinkel gelöst. Beim Start scheint es umgekehrt zu laufen, und im Reiseflug will man effizient fliegen — **woraus sich die Geschwindigkeit ergibt**. Gilt je Punkt eine eigene Regel, oder eine gemeinsame? |
+| **Höhe** | eine Höhe, keine Dichtehöhe mit Temperatur. Über das ganze erlaubte Flughöhenband bewegt sich die Abrissgeschwindigkeit um **0,7 %** — gemessen. Die Platzhöhe zählt, das Wetter nicht. |
+| **Masse** | der aktuelle Stand des Budgets |
+| **Konfiguration** | welche Polare gilt — Klappenstellung, Motor an oder aus. Beides wählt dieselbe Sache, also **eine** Angabe. |
+| **Lastvielfaches** | oder Querneigung, **nie beides** — im stationären Kurvenflug folgt das eine aus dem anderen |
+| **Schließungsbedingung** | siehe unten |
 
+Geschwindigkeit, Anstellwinkel und Auftriebsbeiwert sind **ein** Freiheitsgrad, nicht drei:
+Bei gegebener Höhe, Masse, Polare und Lastvielfachem folgt aus einem von ihnen der Rest.
+Genannt wird einer. Die Ruderstellung ist eine **Ausgabe** — der Punkt wird eingetrimmt,
+und das ist Teil der Rechnung.
+
+**Draußen, weil sie zu keiner unserer beiden Fragen beitragen:** Temperatur, Rollreibung,
+Pistenneigung, Bodeneffekt, Akkuladezustand, und der Zustand des Propellerblattes im
+Segelflug. Für den letzten gibt es ohnehin keine belegte Zahl — der motorlose Flug rechnet
+mit der sauberen Polare, und dass der Propeller darin nicht steckt, steht dabei.
+
+#### Die Schließungsbedingung
+
+**Status: entschieden.**
+
+Stationärer Flug hat vier Unbekannte — Geschwindigkeit, Auftriebsbeiwert, Bahnneigung,
+Schub — und zwei Kräftegleichungen. Es müssen also **genau zwei** Bedingungen geliefert
+werden: der Antriebszustand, und eine Schließung. Die gibt es in zwei Sorten:
+
+| Sorte | Beispiele |
+|---|---|
+| **vorgegebener Wert** | Höchstgeschwindigkeit, geforderte Steigrate, Manövergeschwindigkeit |
+| **Extremalbedingung** | bestes Gleiten, geringstes Sinken, größte Reichweite — die Geschwindigkeit ist **Ergebnis** |
+
+Deshalb wird die Geschwindigkeit an den meisten Punkten **nicht** vorgegeben. Die Gleitzahl
+ist keine Konstante, sondern eine Funktion der Geschwindigkeit, und die Geschwindigkeit des
+besten Gleitens **wandert mit dem Gewicht** — ein ballastiertes Modell gleitet am besten bei
+höherer Fahrt. Ein Modell mit fest vorgegebener Geschwindigkeit wäre falsch, sobald jemand
+Ballast einlegt.
+
+> **Bei unserer Größe ist jede Extremalbedingung implizit.** Nullauftriebswiderstand und
+> maximaler Auftriebsbeiwert hängen von der Reynoldszahl ab, und die hängt an der
+> Geschwindigkeit. Unser Fixpunkt zwischen Abrissgeschwindigkeit und maximalem
+> Auftriebsbeiwert ist damit kein Sonderfall, sondern die Regel. Beide Lehrbuchquellen
+> behandeln die Polare als reynoldsunabhängig und tragen an dieser Stelle nicht.
+
+#### Ein Typ, nicht zwei
+
+**Status: entschieden.**
+
+Start und Landung sind streng genommen keine Gleichgewichte, sondern beschleunigte
+Bewegungen, die man integrieren müsste. Wir tun das **nicht**. Was wir vom Start brauchen,
+ist die **Geschwindigkeit, mit der das Modell sicher wegkommt** — und die lässt sich gegen
+das halten, was ein Wurf, ein Start im Laufen, eine Piste oder eine Flitsche hergibt. Das
+ist ein Punkt und ein Vergleich, keine Integration.
+
+Damit entfallen Rollreibung, Pistenneigung, Bodeneffekt und der Merker stationär gegen
+instationär. Sie wären nur für eine Startstrecke nötig, und die beantwortet keine unserer
+beiden Fragen.
 
 ### 3.3 Formeln
 
@@ -1048,6 +1103,20 @@ eines ohne Abbruchbedingung.
 ---
 
 ## Arbeitsregeln
+
+**KISS — und der Zweck ist der Filter.** Wir bauen ein Werkzeug für Modellflugzeuge und
+kleine UAVs, keine Zulassungsrechnung. Was es beantworten muss:
+
+| | |
+|---|---|
+| **Modellflugzeug** | qualitative Aussagen zur **Fliegbarkeit** |
+| **UAV** | **Reichweite, Nutzlast, Reisefluggeschwindigkeit** |
+
+Alles, was zu keiner dieser Aussagen beiträgt, fliegt heraus — auch wenn es fachlich
+richtig ist. Es gibt Modelle, die aus einem Brett und einem Motor bestehen und fliegen.
+Eine Größe kommt hinzu, wenn sie eine dieser Fragen beantwortet **und** wir sie mit
+unseren Werkzeugen rechnen können; fehlt eines von beiden, bleibt sie draußen, und das
+steht dabei.
 
 **Keine Tickets, bis der Kanon steht.** Befunde werden dort festgehalten, wo sie die
 Rechnung binden.
