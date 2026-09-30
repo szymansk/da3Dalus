@@ -1380,6 +1380,140 @@ integrieren** — welche Größen verglichen werden, ist offen.
 
 ---
 
+### 3.12 Der Rechengraph im Ganzen
+
+**Status: gerechnet, nicht vollständig zeichenbar.**
+
+Was wir heute rechnen können, in drei Bändern:
+
+| Band | Anzahl |
+|---|---|
+| **Eingaben** — von keiner Formel erzeugt | **26** |
+| **Zwischenergebnisse** — erzeugt *und* weiterverwendet | **23** |
+| **Endergebnisse** — erzeugt und von nichts verbraucht | **19** |
+
+Zwölf Schichten von der ersten Eingabe bis zum tiefsten Ergebnis, 110 Kanten.
+
+#### Das Rückgrat
+
+Der vollständige Graph ist als **ein Bild nicht lesbar** — zwei Versuche, einmal mit allen
+68 Größen, einmal mit gebündelten Eingaben, beide ein Knäuel bei einem Seitenverhältnis
+über 3:1. Der Grund ist nicht die Knotenzahl, sondern dass viele Kanten mehrere Schichten
+überspringen; dann hält keine Schichtung.
+
+Was sich zeichnen lässt, ist das **Rückgrat**: die elf Größen, die mindestens dreifach
+weiterverwendet werden, und die Kanten zwischen ihnen. Die Endergebnisse sind zu Zählern
+zusammengefasst.
+
+```mermaid
+flowchart TD
+  classDef inp fill:#eef3f8,stroke:#5a7fa6,stroke-width:1.5px,color:#173a5e
+  classDef hub fill:#fdf6e8,stroke:#b08b4f,stroke-width:2px,color:#4a3410
+  classDef out fill:#eaf5ee,stroke:#3d8a5a,stroke-width:1.5px,color:#14432a
+  EIN[/"Eingaben (26)"/]:::inp
+  h_air_density["$$rho$$"]:::hub
+  h_induced_drag_factor["$$k$$"]:::hub
+  h_aircraft_mass["$$m$$"]:::hub
+  h_weight["$$W$$"]:::hub
+  h_flight_speed["$$V$$"]:::hub
+  h_zero_lift_drag_coefficient["$$C_D0$$"]:::hub
+  h_lift_coefficient["$$C_L$$"]:::hub
+  h_max_lift_coefficient["$$C_L,max$$"]:::hub
+  h_cruise_speed["$$V_cruise$$"]:::hub
+  h_drag_coefficient["$$C_D$$"]:::hub
+  h_stall_speed["$$V_S$$"]:::hub
+  h_lift_coefficient --> h_max_lift_coefficient
+  h_zero_lift_drag_coefficient --> h_drag_coefficient
+  h_lift_coefficient --> h_drag_coefficient
+  h_induced_drag_factor --> h_drag_coefficient
+  h_air_density --> h_flight_speed
+  h_weight --> h_flight_speed
+  h_aircraft_mass --> h_lift_coefficient
+  h_air_density --> h_zero_lift_drag_coefficient
+  h_flight_speed --> h_zero_lift_drag_coefficient
+  h_air_density --> h_stall_speed
+  h_weight --> h_stall_speed
+  h_max_lift_coefficient --> h_stall_speed
+  h_aircraft_mass --> h_weight
+  h_lift_coefficient --> h_zero_lift_drag_coefficient
+  EIN --> h_cruise_speed
+  EIN --> h_drag_coefficient
+  EIN --> h_stall_speed
+  h_air_density --> o_air_density["2 Endergebnis(se)"]:::out
+  h_induced_drag_factor --> o_induced_drag_factor["1 Endergebnis(se)"]:::out
+  h_weight --> o_weight["1 Endergebnis(se)"]:::out
+  h_flight_speed --> o_flight_speed["1 Endergebnis(se)"]:::out
+  h_zero_lift_drag_coefficient --> o_zero_lift_drag_coefficient["2 Endergebnis(se)"]:::out
+  h_lift_coefficient --> o_lift_coefficient["2 Endergebnis(se)"]:::out
+  h_max_lift_coefficient --> o_max_lift_coefficient["3 Endergebnis(se)"]:::out
+  h_cruise_speed --> o_cruise_speed["3 Endergebnis(se)"]:::out
+  h_drag_coefficient --> o_drag_coefficient["1 Endergebnis(se)"]:::out
+  h_stall_speed --> o_stall_speed["3 Endergebnis(se)"]:::out
+```
+*Abbildung — Das Rückgrat des Rechenwerks. Sandfarben die mehrfach wiederverwendeten Größen, grün die Zahl der Endergebnisse, die unmittelbar an ihnen hängen. Die vollständigen 68 Größen und 110 Kanten sind als ein Bild nicht lesbar; die Schichtung steht stattdessen in den Tabellen.*
+
+#### Die tragenden Größen
+
+| Größe | wird gebraucht von |
+|---|---|
+| `air-density` | **8×** |
+| `lift-coefficient` | **7×** |
+| `flight-speed` | **6×** |
+| `zero-lift-drag-coefficient` | **5×** |
+| `max-lift-coefficient` | **4×** |
+| `induced-drag-factor` | **4×** |
+| `aircraft-mass` | **4×** |
+
+Sieben Größen tragen den halben Graphen. Wer eine davon ändert, ändert fast alles darunter
+— das ist zugleich die Aussage, die Anforderung A1 über die Invalidierung macht, nur von
+der anderen Seite gelesen.
+
+#### Was die Schichtung sichtbar macht
+
+**Siebzehn der 26 Eingaben werden genau einmal gebraucht:**
+
+`advance-ratio`, `bank-angle`, `battery-mass`, `battery-specific-energy`, `component-mass`, `drag-force`, `flap-clmax-factor`, `lift-curve-slope`, `lift-force`, `limit-load-factor`, `mean-aerodynamic-chord`, `propeller-diameter`, `propeller-speed`, `propulsive-efficiency`, `static-thrust`, `thrust-coefficient`, `zero-lift-angle`
+
+Das Modell ist oben **breit und flach**, nicht verzahnt. Zwei Drittel der Eingaben
+beliefern je eine einzige Formel.
+
+**Ein Endergebnis in einer niedrigen Schicht ist ein Verdachtsfall.** Es heißt: aus fast
+nichts gerechnet, von niemandem gebraucht. Vier davon gibt es, und es sind genau die
+Befunde der vorangegangenen Abschnitte:
+
+| L1 | `climb-speed` |
+| L1 | `mean-geometric-chord` |
+| L1 | `negative-limit-load-factor` |
+| L2 | `battery-mass-deviation` |
+| L2 | `thrust-at-airspeed` |
+| L3 | `thrust-to-weight` |
+
+Die Steiggeschwindigkeit steht auf L1, weil sie nur an einer **Ziel**-Abrissgeschwindigkeit
+hängt — die hohle Steigrechnung aus §3.10. Die mittlere geometrische Flügeltiefe ist der
+Waise aus dem Böenschnitt. Das negative Lastvielfache ist das Verkehrsflugzeugverhältnis.
+Und der Schub bei Fahrt steht dort, weil ihn **noch niemand verbraucht** — genau die zwei
+Autoritäten aus §3.10.
+
+#### Zwei Zyklen, und beide sind Namensprobleme
+
+Die maschinelle Suche findet genau zwei Kreise. Keiner davon ist ein Fixpunkt:
+
+| Kreis | was wirklich dahintersteckt |
+|---|---|
+| Widerstandsbeiwert ↔ Nullauftriebswiderstand | Der eine wird **aus dem Sweep abgelesen** (Messung), der andere **aus der Polare gerechnet** (Modell). Ein Name, zwei Bedeutungen. |
+| Staudruck ↔ Fluggeschwindigkeit ↔ Auftriebsbeiwert | `flight-speed` ist ein **Sammelbegriff**. Eine Formel rechnet den Beiwert *bei gegebener* Geschwindigkeit, eine andere die Geschwindigkeit *bei gegebenem* Beiwert — Umkehrungen voneinander, beide in denselben Topf. |
+
+Beides ist dieselbe Verletzung von A2: eine Größe ohne ihre Bedingung im Namen. Und beides
+ist behebbar durch Benennen, nicht durch Rechnen.
+
+Bemerkenswert ist, was **nicht** auftaucht: Die beiden echten Fixpunkte, die wir kennen —
+Abrissgeschwindigkeit gegen maximalen Auftriebsbeiwert, und Schwerpunkt gegen Neutralpunkt
+— stehen nicht im Graphen. Der erste, weil die Reynoldsabhängigkeit nirgends als Kante
+ausgedrückt ist; der zweite, weil der Stabilitätspfad überhaupt keine Katalogeinträge hat.
+
+
+---
+
 ## 4. Querschnittliche Anforderungen
 
 Sie gelten für **jeden** Prozessschritt und werden nicht pro Schritt wiederholt.
