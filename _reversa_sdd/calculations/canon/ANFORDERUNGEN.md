@@ -1288,6 +1288,81 @@ keine neue Modellierung, sondern ein Zugriff auf Daten, die wir haben.
 
 ---
 
+### 3.10 Die letzten drei Punkte: Steigflug, Kurvenflug, Sturzflug
+
+**Status: alle drei sind hohl, und zwar aus einem gemeinsamen Grund.**
+
+**Der Steigflug ist benannt, nicht gerechnet.** Im ganzen Kanon enthalten **fünf** Formeln
+überhaupt Schub oder Leistung, und **keine einzige** bildet eine Differenz aus Schub und
+Widerstand oder aus verfügbarer und erforderlicher Leistung. Ohne diese Differenz gibt es
+keine Steigrate und keinen Steigwinkel.
+
+Was es stattdessen gibt, sind zwei Vielfache der Abrissgeschwindigkeit:
+
+```
+V_climb = max(1.3 * V_S,target, 1 m/s)
+```
+
+Das hängt an einer **Ziel**-Abrissgeschwindigkeit — einer Eingabe — und trägt weder Polare
+noch Schub. Der zweite Eintrag sagt es über sich selbst: Die Geschwindigkeiten sind als
+bestes Steigen nach Winkel und nach Rate **beschriftet**, enthalten aber keine
+Steigbeziehung, keinen Schub, keine Überschussleistung.
+
+**Der Sturzflug steht auf einer Zahl, die niemand erzeugt.** `V_D` folgt aus der
+Höchstgeschwindigkeit im Horizontalflug — und die ist im Kanon eine **reine Eingabe**, von
+keiner Formel produziert. Damit hängt die obere Grenze der Hüllkurve an einem Wert, der von
+außen kommt. Berechenbar wäre er: Höchstgeschwindigkeit ist dort, wo der verfügbare Schub
+dem Widerstand gleicht.
+
+**Der Kurvenflug hat die Last, aber nicht die Kurve.** Lastvielfaches aus Querneigung und
+Abriss in der Kurve sind da. Radius, Drehrate und die Frage, ob der Schub die Kurve
+**hält**, sind es nicht.
+
+#### Der gemeinsame Nenner
+
+Alle drei brauchen dieselbe fehlende Größe: **den verfügbaren Schub bei der Geschwindigkeit,
+die gerade geflogen wird.**
+
+| Punkt | braucht |
+|---|---|
+| Steigflug | Überschuss von Schub über Widerstand |
+| Sturzflug | Höchstgeschwindigkeit, also Schub gleich Widerstand |
+| Kurvenflug | Schub, der die Kurve hält |
+
+Der Kanon führt dafür bisher genau einen Weg, und das ist der Pauschalfaktor auf den
+Standschub aus §3.9 — die Zauberzahl. **Ein Zugriff auf die Propellerkennlinien schließt
+alle drei Punkte auf einmal.** Das ist das Ergebnis dieses Durchgangs, das am weitesten
+trägt.
+
+### 3.11 Was der Durchgang ergeben hat
+
+Neun Betriebspunkte, einzeln aufgemacht. Die Bilanz:
+
+| Punkt | Ergebnis |
+|---|---|
+| **Reiseflug** | zwei Lücken geschlossen: die Widerstandspolare ausgeklammert, die Reichweite angelegt |
+| **motorloser Flug** | fast vollständig vorhanden; teilt beide Schließungen mit dem Reiseflug. Gleitstrecke ergänzt |
+| **Anflug** | **keine neue Formel** — nur Bindungen. Zwei Defekte aufgedeckt |
+| **Landung** | fast leer. Die Feldlänge ist eine nutzersichtbare Zahl ohne Grundlage im Kanon |
+| **Start** | O8 geklärt, die letzte Zauberzahl lokalisiert |
+| **Steigflug · Kurvenflug · Sturzflug** | hohl, aus einem gemeinsamen Grund |
+
+**Der Kanon war vollständiger, als sein Zustand vermuten ließ.** Was fehlte, waren
+überwiegend **Bindungen, keine Gesetze** — dieselbe Formel gilt an drei Punkten und war an
+keinem festgemacht. `V = k · V_S,cfg` ist dafür das Musterbeispiel: Anflug, Landung, Start.
+
+**Es fehlt genau ein Gesetz, und es fehlt dreifach.** Der verfügbare Schub bei Fahrt. Ohne
+ihn bleiben Steigflug, Kurvenflug und Sturzflug Beschriftungen. Mit ihm — und die Daten
+liegen in der Datenbank — werden es Rechnungen.
+
+**Zwei Lücken bleiben, und sie sind dieselbe Frage zweimal:** Ob die Bahn zum Starten und
+zum Landen reicht. Beide brauchen entweder eine Integration, die wir nicht machen, oder
+Zulassungskonstanten, die wir nicht borgen. Die Richtung steht: **vergleichen statt
+integrieren** — welche Größen verglichen werden, ist offen.
+
+
+---
+
 ## 4. Querschnittliche Anforderungen
 
 Sie gelten für **jeden** Prozessschritt und werden nicht pro Schritt wiederholt.
