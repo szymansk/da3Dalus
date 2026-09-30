@@ -194,3 +194,11 @@ Schriften nur von Google Fonts, deshalb scheidet KaTeX aus (seine Glyphen kämen
 falschen Host) — **MathJax mit SVG-Ausgabe** trägt sie als Pfade im Bündel. Und die
 Einpassung muss warten, bis das Gitter wirklich eine Größe hat, sonst startet der Graph
 zufällig gezoomt.
+
+**Zwei Fehler aus dem ersten Wurf, damit sie nicht wiederkommen.** `setPointerCapture` auf
+dem SVG leitet alle Zeigerereignisse dorthin um — der Klick erreicht den Knoten dann nie,
+und die Auswahl bleibt auf dem Startwert stehen. Statt Erfassung: auf `window` horchen und
+per Bewegungsschwelle zwischen Ziehen und Klicken unterscheiden. Und die Seite wird
+**rein ASCII** geschrieben, im Skript als `\uXXXX`, im Markup als Zahlenverweise, im
+Stilblock als CSS-Escape; sonst hängt die Lesbarkeit der Umlaute daran, wer welche
+Zeichensatzangabe mitschickt.
