@@ -1,6 +1,6 @@
 # Path 1 — the speeds
 
-> **61 canonical quantities · 42 formulas** — 35 laws, 3 routes, 4 approximations.
+> **61 canonical quantities · 40 formulas** — 36 laws, 2 routes, 2 approximations.
 > Collapsed from 157 register nodes. Every entry is `status: draft`.
 
 ## Where it stands
@@ -26,8 +26,6 @@
 
 ## Approximations — label, never approve as the law
 
-- [[minimum-drag-speed-heuristic]] · V_md = 1.4·V_S carries no polar information — no C_D0, no e, no AR — so it cannot tell a glider from an aerobatic model.
-- [[minimum-sink-speed-heuristic]] · V_mp = 1.2·V_S likewise contains no polar information.
 - [[operating-point-speed-from-stall-margin]] · V_x and V_y are labelled best-angle and best-rate-of-climb but contain no climb relation — no thrust, no excess power.
 - [[climb-speed-for-power-loading]] · A fixed multiple of the target stall speed, not a climb-performance result.
 
@@ -49,7 +47,7 @@ A formula is approvable only once its inputs are.
 
 **Layer 2** (6) — [[induced-drag-factor]] · [[stall-speed]] · [[stall-wing-loading-limit]] · [[thrust-to-weight]] · [[relative-mass-deviation]]
 
-**Layer 3** (6) — [[minimum-drag-speed-heuristic]] · [[minimum-sink-speed-heuristic]] · [[operating-point-speed-from-stall-margin]] · [[stall-speed-in-turn]] · [[stall-margin-ratio]]
+**Layer 3** (6) — [[operating-point-speed-from-stall-margin]] · [[stall-speed-in-turn]] · [[stall-margin-ratio]]
 
 **Layer 4** (1) — [[cruise-speed-resolution]]
 

@@ -127,7 +127,7 @@ dann sofort, wovon die Rede ist.
 
 **Der Katalog wird bei Berührung umgestellt.** Seine Einträge tragen die kanonische Form
 heute in einem einfachen Codeblock, weil `scripts/check_canon.py` sie dort ausliest und
-die Dimensionsprobe darauf rechnet. Das bleibt vorerst so: 39 der 42 Formeln stehen ohnehin
+die Dimensionsprobe darauf rechnet. Das bleibt vorerst so: 37 der 40 Formeln stehen ohnehin
 auf `draft` und werden bei der Freigabe entlang der Pfade angefasst — dann bekommt jeder
 Eintrag seine LaTeX-Form. Ein Umschreiben aller Einträge auf einmal würde den Prüfer
 brechen, ohne dass ein einziger Eintrag dadurch näher an der Freigabe wäre.
@@ -780,13 +780,13 @@ Reihenfolge ist bewusst: **erst rechnen können, dann bewerten.**
 
 ### 3.1 Zuschnitt — was dazugehört
 
-Der Katalog führt **42 Formeln in sieben Familien**:
+Der Katalog führt **40 Formeln in sieben Familien**:
 
 | Familie | Formeln | gehört zum Leistungsmodell |
 |---|---|---|
 | Atmosphäre und Grundgrößen | 6 | ja |
 | Polare und Auftrieb | 8 | ja |
-| Geschwindigkeiten | 12 | ja |
+| Geschwindigkeiten | 10 | ja |
 | Gleiten und Sinken | 3 | ja |
 | Antrieb und Energie | 7 | ja, mit enger Arbeitsteilung |
 | Hüllkurve und Lasten | 4 | ja, ohne den Böenteil |
@@ -812,6 +812,32 @@ Das System dimensioniert keinen Motor. Es stellt Anforderungen und bewertet eine
 **Die Hüllkurve ist ein Leistungsmerkmal über mehrere Betriebszustände.** Sie gehört hinein
 und ist die einzige Größe dieser Sammlung, die nicht *an* einem Punkt gilt, sondern an
 deren **Rand**.
+
+#### Eine Autorität je Größe: die zwei Doppelerzeuger
+
+**Status: entschieden am 30.09.2026.**
+
+| Größe | Autorität | zweiter Weg |
+|---|---|---|
+| Geschwindigkeit geringsten Widerstands | **aus der Polare** | die geschlossene Form bleibt als **Probe** |
+| Geschwindigkeit geringsten Sinkens | **aus der Polare** | keiner mehr |
+
+**Die beiden Faustformeln sind gestrichen** — `1,4·V_S` und `1,2·V_S`. Ihr eigener
+Katalogeintrag sagt den Grund: Sie tragen **keine Polareninformation**, kein
+Nullauftriebswiderstand, kein Streckungsfaktor — und könnten „einen Segler nicht von einem
+Kunstflugmodell unterscheiden". Eine Zahl, die zwei völlig verschiedene Modelle gleich
+bewertet, trägt zu keiner Aussage über Fliegbarkeit bei.
+
+**Die geschlossene Form bleibt, aber als Probe.** Sie setzt konstanten
+Nullauftriebswiderstand und konstanten Streckungsfaktor voraus; bei unseren Reynoldszahlen
+hängen beide von der Geschwindigkeit ab. Die Differenz beider Wege **misst genau diese
+Abhängigkeit** — dieselbe Prüfung, die beim Abriss im Mittel 2,9 % und schlimmstenfalls
+33 % ergeben hat. Zwei Wege zu einer Größe sind ein Test, keine zweite Wahrheit (A7).
+
+Offen bleibt dabei eine Sache, die den Code betrifft und nicht den Kanon: Beide
+Polaren-Einträge tragen einen 🔴-Vermerk, dass eine ihrer Annahmen **in der Implementierung
+verletzt** ist. Die Autorität zu wählen heißt hier, die Arbeit zu benennen, nicht sie
+erledigt zu haben.
 
 #### Gestrichen: der Böenteil
 
@@ -957,7 +983,7 @@ beiden Fragen.
 
 ### 3.3 Formeln
 
-Der Katalog führt **42 Formeln und 61 Größen**; freigegeben sind bisher drei Formeln —
+Der Katalog führt **40 Formeln und 61 Größen**; freigegeben sind bisher drei Formeln —
 `air-density-isa`, `stall-speed`, `weight-from-mass`, also genau die Gesetze aus §2.1.
 Die übrigen stehen auf `draft`, weil sie aus der Bestandsaufnahme stammen und die Freigabe
 entlang der Pfade läuft, nicht Eintrag für Eintrag.

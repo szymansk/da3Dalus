@@ -2,7 +2,7 @@
 canon: minimum-sink-speed-from-polar
 entry: formula
 kind: procedure
-shape: route
+shape: law
 status: draft
 output: minimum-sink-speed
 source_status: SOURCED
@@ -11,7 +11,7 @@ tags:
   - canon/formula
   - source/sourced
   - dim/procedural
-  - shape/route
+  - shape/law
   - kind/procedure
   - status/draft
 ---
@@ -25,6 +25,8 @@ V_mp = V( argmin_i w_i ),  w_min = min_i w_i
 ```
 
 **Produces** [[minimum-sink-speed]]  ·  **from** [[flight-speed]] · [[sink-rate]]
+
+**Autorität.** Einziger Erzeuger dieser Größe, seit die Faustformel gestrichen ist. Eine geschlossene Gegenprobe wie bei der Geschwindigkeit geringsten Widerstands gibt es hier nicht.
 
 **Kind: a procedure.** There is no closed form, so an algorithm stands in its place. Source and scale are asked as of any entry — a procedure is not source-free: it either implements a published standard or solves a stated equation. **On top of that** it must say **under which assumptions it holds** and **when it converges**, including what it returns when it does not.
 
