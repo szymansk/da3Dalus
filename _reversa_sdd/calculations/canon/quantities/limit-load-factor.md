@@ -16,4 +16,4 @@ User-chosen positive manoeuvre load-factor limit, default 3.0.
 
 **Unit.** `g`
 
-**Used by.** [[maneuvering-speed]] · [[max-sustained-turn-rate]] · [[min-sustained-turn-radius]] · [[negative-limit-load-factor]]
+**Used by.** [[maneuvering-speed]] · [[max-sustained-turn-rate]] · [[min-sustained-turn-radius]]

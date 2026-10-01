@@ -1672,10 +1672,26 @@ Das Steigen hängt stark daran.
 **Draußen bleiben** die Böenlinien (bereits gestrichen) und das Flattern — eine echte
 Geschwindigkeitsgrenze, aber ohne Rechenweg in den Quellen.
 
-**Offen:** das negative Lastvielfache $n_{neg} = -0{,}4\,n_{lim}$, ebenfalls ein Verhältnis
-aus der Zulassung — eigene Frage. Und `cruise-speed-resolution` greift noch auf $V_{max}$
-und $V_D$ zu (die Kette $V_C = V_D/1{,}4$ mit $V_D = 1{,}4\,V_{max}$ hebt sich im Code
-auf); sie wird beim Reiseflug-Abgleich mitgezogen.
+**Das negative Lastvielfache ist gestrichen** ($n_{neg} = -0{,}4\,n_{lim}$, FAR 23.337 —
+wie oft ein zugelassenes Flugzeug nach unten belastet wird, nicht was es hält). An seine
+Stelle tritt, was das Flugzeug **hält**: das **Bruchlastvielfache des Holms**, nach oben und
+nach unten getrennt,
+
+$$
+n_{break,\pm} = \min_y \frac{M_{cap,\pm}(y)}{\lvert M_{1g,\pm}(y)\rvert},
+$$
+
+aus dem tatsächlich eingebauten Holm (Eintrag `spar-break-load-factor`). Bei symmetrischem
+Holm — Kohlerohr, I-Holm mit gleichen Gurten wie beim Bryan — gleich groß. **Befestigungen
+bleiben außen vor** (Gummiringe, Flügelschrauben, Steckungen; Maintainer 01.10.2026), nur
+Festigkeit, keine Steifigkeit (BR-W18). Welche Abwärtslasten ein Modell erfährt, ist eine
+Frage seines Charakters und gehört in die Bewertung. Soll mit Ausführungsweg: #1139
+(Tragfähigkeit je Station aus den eingebauten Holmen), #1106 (Rechteck- und Gurtholme
+richtig gerechnet). Die untere Kante der Hüllkurve: links der negative Abriss
+($C_{L,min}$), rechts $n_{break,-}$.
+
+Offen bleibt `cruise-speed-resolution`: Es greift noch auf $V_{max}$ und $V_D$ zu (die
+Kette $V_C = V_D/1{,}4$ mit $V_D = 1{,}4\,V_{max}$ hebt sich im Code auf); sie wird beim Reiseflug-Abgleich mitgezogen.
 
 ### 3.11 Was der Durchgang ergeben hat
 
@@ -1822,6 +1838,12 @@ hängt — die hohle Steigrechnung aus §3.10. Die mittlere geometrische Flügel
 Waise aus dem Böenschnitt. Das negative Lastvielfache ist das Verkehrsflugzeugverhältnis.
 Und der Schub bei Fahrt steht dort, weil ihn **noch niemand verbraucht** — genau die zwei
 Autoritäten aus §3.10.
+
+> **Nachtrag 01.10.2026 — die Liste ist abgearbeitet bis auf zwei.** `climb-speed` und
+> `negative-limit-load-factor` sind gestrichen (Steigflug als Optimierungsproblem; das
+> Bruchlastvielfache des Holms statt des Zulassungsverhältnisses), der Schub bei Fahrt wird
+> von Steigen, Kurve und $V_{max}$ verbraucht. Offen: `mean-geometric-chord` (Waise) und
+> `battery-mass-deviation`. Die Zahlen dieses Abschnitts beschreiben den Stand davor.
 
 #### Zwei Zyklen, und beide sind Namensprobleme
 

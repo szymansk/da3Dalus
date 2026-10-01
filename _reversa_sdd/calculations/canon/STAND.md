@@ -254,3 +254,7 @@ Offen: $n_{neg} = -0{,}4\,n_{lim}$ (Zulassungsverhältnis), `cruise-speed-resolu
 aussagekräftig. AeroBuildup fehlt das Giermoment aus induziertem Widerstand, AVL der
 Profilwiderstand des Ruders; bei fester Rollrate ändert die Aufteilung reibungsfrei kaum
 etwas. Details §3.1, Skripte `bryan_aileron_*.py`. Nicht wieder aufmachen ohne neues Werkzeug.
+
+**Negatives Lastvielfaches (01.10.2026):** $n_{neg} = -0{,}4\,n_{lim}$ gestrichen. Stattdessen
+`spar-break-load-factor`: $n_{break,\pm}$ aus dem eingebauten Holm, aus `airplane` abgeleitet;
+**Befestigungen ignoriert** (Maintainer). Soll über #1139 und #1106.
