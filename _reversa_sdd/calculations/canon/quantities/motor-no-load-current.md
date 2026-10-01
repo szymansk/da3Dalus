@@ -18,4 +18,4 @@ No-load current of the fitted motor, from the parts catalogue. Missing for 18 of
 
 **Produced by.** [[airplane-components]]
 
-**Used by.** [[best-angle-of-climb]] · [[best-rate-of-climb]] · [[max-sustained-turn-rate]] · [[min-sustained-turn-radius]] · [[motor-propeller-equilibrium]]
+**Used by.** [[best-angle-of-climb]] · [[best-rate-of-climb]] · [[dive-speed]] · [[max-level-speed]] · [[max-sustained-turn-rate]] · [[min-sustained-turn-radius]] · [[motor-propeller-equilibrium]]

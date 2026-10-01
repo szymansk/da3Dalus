@@ -1,54 +1,52 @@
 ---
 canon: dive-speed
 entry: formula
-kind: law
+kind: procedure
 shape: law
 status: draft
 output: dive-speed
 source_status: PARTIAL
-dimensional_check: BALANCES
+dimensional_check: PROCEDURAL
 tags:
   - canon/formula
   - source/partial
-  - dim/balances
+  - dim/procedural
   - shape/law
-  - kind/law
+  - kind/procedure
   - status/draft
 ---
 
-# Design dive speed from maximum level speed
+# Dive speed — terminal speed in a vertical dive
 
 **Canonical form**
 
 ```
-V_D = 1.4 * V_max
+solve for V, alpha, n_prop:   L(V, alpha) = 0
+                             D(V, alpha) = m * g + T(V, n_prop)
+                             motor-propeller torque balance at (V, n_prop)
 ```
 
-**Produces** [[dive-speed]]  ·  **from** [[max-level-speed]]
+**Produces** [[dive-speed]]  ·  **from** [[airplane]] · [[aircraft-mass]] · [[gravity]] · [[air-density]] · [[motor-voltage-constant]] · [[motor-no-load-current]] · [[motor-circuit-resistance]] · [[battery-voltage]]
 
-**Kind: a law.** A closed-form relation. Approval asks for its **source** and its **validity at 0.5–15 kg**.
+**Kind: a procedure — a closure by a prescribed value**, not an extremum: the speed at which a vertical dive stops accelerating. Lift is zero, so drag balances weight plus thrust. It is a property of the aircraft and an **upper bound**, and a model reaches it from ordinary flying height.
 
-**Dimensional check.** 🟢 balances
+**Replaces** `V_D = 1.4 · V_max` (2026-10-01, maintainer). The factor came from FAR 23.335, where 1.40 / 1.50 / 1.55 multiply the design **cruise** speed of a certified aircraft, not `V_max`; neither Scholz/Sadraey nor the RC sources give any factor for models (ADR 0023). With the thrust table the full-throttle and the power-off dive give the same number: beyond the zero-thrust advance ratio the thrust coefficient is clamped at 0.
 
-**Source.** 🟡 PARTIAL
+**On the safe side, declared.** The drag of a windmilling or stopped propeller is not modelled (`Q-PT-10`), so the real dive speed is lower. The result says so (ADR 0020).
 
-> 14 CFR 23.335(b)(2)(i) (FAR Part 23, Design airspeeds): V_D may not be less than 1.40*V_C_min for normal and commuter category; 1.50*V_C for utility; 1.55*V_C for acrobatic. The factors may be decreased linearly with W/S to 1.35 at W/S = 100 psf.
+**Source.** 🟡 PARTIAL — physics of the vertical dive; the reading of `V_D` as terminal dive speed is the domain experts' own proposal for unregulated models, adopted by the maintainer on 2026-10-01. Not a textbook definition: Scholz knows `V_D` only from CS-25.
 
-**The source writes it as**
+**What it is for.** The right-hand edge of the envelope, and the speed of the pull-out case: fully pulled at `V_D` the wing could produce `(V_D / V_S)²` g. BRYAN, power off, no propeller drag: **31.6 m/s** at α = −5.9° — a full pull there could demand about 35 g. Whether the aircraft survives the pull-out is decided by the pilot below [[maneuvering-speed]], not above it.
 
-```
-The regulation multiplies the DESIGN CRUISING SPEED V_C, not the maximum level speed V_max. The proposal applies 1.4 to V_max. Since V_max > V_C in general (Sadraey §4.3.3.1/4.3.3.2: V_max ~ 1.2-1.3 V_C), applying the factor to V_max yields a larger, more conservative V_D than the regulation requires - a safe direction, but a different quantity, and the register should not claim FAR 23.335 as the source of the proposed form without saying so.
-```
-
-**Validity at 0.5–15 kg.** FAR Part 23 governs manned GA aircraft; no airworthiness code assigns a V_D to a 0.5-15 kg model. RC practice has no certified equivalent: RC-Network Wiki ("Manövergeschwindigkeit") treats V_A and V_NE qualitatively and observes that high-performance models are marketed as "full-throttle capable" with "dive from 500 m and pull to full deflection" claims - i.e. the RC community operates well outside a certified envelope. Adopting 1.4 is a reasonable conservative import, but note the category coupling: an aerobatic RC model under the same rule would take 1.55, not 1.4. Flag under ADR 0023 as a transport/GA-category constant used at model scale.
+**Termination.** A failed solve returns no value (ADR 0020).
 
 ## Implementations (3)
 
 | node | claimed | verified | deviation |
 |---|---|---|---|
-| [[fe_dive_factor]] | EXACT | 🟢 |  |
-| [[fe_v_dive]] | EXACT | 🟢 |  |
-| [[kpi_dive_speed]] | EXACT | 🟢 |  |
+| [[fe_dive_factor]] | DEVIATES | 🟢 | Ist: `V_D = 1.4 · V_max` — the factor this entry replaced on 2026-10-01 |
+| [[fe_v_dive]] | DEVIATES | 🟢 | Ist: `1.4 · V_max`, with `V_max` a 28 m/s default |
+| [[kpi_dive_speed]] | DEVIATES | 🟢 | Ist: `1.4 · V_max` |
 
 ## Approval
 
@@ -58,6 +56,3 @@ The regulation multiplies the DESIGN CRUISING SPEED V_C, not the maximum level s
 - [ ] **Implementations** — all agree, or each deviation is declared and justified
 - [ ] **Preconditions** — every binding condition holds, or the violation is ticketed
 - [ ] **Inputs approved** — no formula is approvable before its inputs are
-
-> While `status: draft` this entry **cites nothing and decides nothing**.
-

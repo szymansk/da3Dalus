@@ -243,3 +243,9 @@ Vollgas als Optimierungsprobleme ($T = D$, $1 \le n \le n_{lim}$); welche Grenze
 (Schub, Flügel, Struktur) ist Teil der Antwort. Querneigung als Eingabe,
 `turn-load-factor` und `stall-speed-in-turn` gestrichen. Eckgeschwindigkeit
 $V^* = V_S\sqrt{n_{lim}}$ ist eine Sicherheitsaussage und kommt zum Sturzflug.
+
+**Sturzflug/Hüllkurve (01.10.2026):** $V_{max}$ als Optimierungsproblem ($T = D$ bei
+Vollgas, vorher Eingabe 28 m/s); $V_D$ = Endgeschwindigkeit im senkrechten Sturz
+($L = 0$, $D = mg + T$), obere Schranke ohne Propellerwiderstand, ersetzt $1{,}4\,V_{max}$
+(vom Maintainer übernommen; Bryan 31,6 m/s); $V_A$ = Abrissproblem bei $n = n_{lim}$.
+Offen: $n_{neg} = -0{,}4\,n_{lim}$ (Zulassungsverhältnis), `cruise-speed-resolution`.

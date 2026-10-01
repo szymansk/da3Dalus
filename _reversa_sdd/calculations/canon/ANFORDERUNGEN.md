@@ -1363,8 +1363,8 @@ keine neue Modellierung, sondern ein Zugriff auf Daten, die wir haben.
 
 ### 3.10 Die letzten drei Punkte: Steigflug, Kurvenflug, Sturzflug
 
-**Status: Steigflug und Kurvenflug sind seit dem 01.10.2026 gerechnet (unten). Der
-Sturzflug ist hohl, aus dem gemeinsamen Grund, der hier zuerst steht.**
+**Status: alle drei sind seit dem 01.10.2026 gerechnet (unten). Was hier zuerst steht,
+ist der Befund davor.**
 
 **Befund vor dem 01.10.2026 — der Steigflug war benannt, nicht gerechnet.** Im ganzen Kanon enthalten **fünf** Formeln
 überhaupt Schub oder Leistung, und **keine einzige** bildet eine Differenz aus Schub und
@@ -1382,7 +1382,7 @@ noch Schub. Der zweite Eintrag sagt es über sich selbst: Die Geschwindigkeiten 
 bestes Steigen nach Winkel und nach Rate **beschriftet**, enthalten aber keine
 Steigbeziehung, keinen Schub, keine Überschussleistung.
 
-**Der Sturzflug steht auf einer Zahl, die niemand erzeugt.** `V_D` folgt aus der
+**Befund vor dem 01.10.2026 — der Sturzflug stand auf einer Zahl, die niemand erzeugt.** `V_D` folgt aus der
 Höchstgeschwindigkeit im Horizontalflug — und die ist im Kanon eine **reine Eingabe**, von
 keiner Formel produziert. Damit hängt die obere Grenze der Hüllkurve an einem Wert, der von
 außen kommt. Berechenbar wäre er: Höchstgeschwindigkeit ist dort, wo der verfügbare Schub
@@ -1549,6 +1549,66 @@ Manövergeschwindigkeit $V_A$), ist eine **Sicherheitsaussage**: darunter reißt
 ab, bevor die Struktur überlastet wird; darüber kann ein voller Höhenruderausschlag den
 Flügel brechen. Sie wird beim Sturzflug aufgenommen und taugt nur so viel wie $n_{lim}$.
 
+#### Der Sturzflug und die Hüllkurve — gerechnet (01.10.2026)
+
+**Vier Ecken, alle aus dem Flugzeug:** $V_S$, $V_A$, $V_{max}$, $V_D$.
+
+**Höchstgeschwindigkeit** — die größte Geschwindigkeit im Horizontalflug, bei der der
+Schub bei Vollgas den Widerstand noch hält (Sadraey §4.3.3), als Optimierungsproblem wie
+Steig- und Kurvenflug:
+
+$$
+V_{max} = \max_{V,\,\alpha,\,n_{prop}} V
+\quad\text{u.d.N.}\quad L = m\,g,\quad T(V,n_{prop}) = D(V,\alpha),\quad Q_m = Q_p
+$$
+
+Bis heute eine Eingabe mit dem Vorgabewert 28 m/s für jedes Flugzeug. Ein **Ziel** für die
+Höchstgeschwindigkeit, wo eine Mission eines hat, wird in der Probe mit diesem Wert
+verglichen — es ersetzt ihn nicht.
+
+**Sturzfluggeschwindigkeit** — die **Endgeschwindigkeit im senkrechten Sturz**: Auftrieb
+null, Widerstand gleich Gewicht plus Schub.
+
+$$
+L(V_D,\alpha) = 0, \qquad D(V_D,\alpha) = m\,g + T(V_D, n_{prop})
+$$
+
+Eine Schließung durch einen vorgeschriebenen Wert, kein Extremum — Eintrag `dive-speed`.
+Sie ersetzt $V_D = 1{,}4\,V_{max}$: Der Faktor stammt aus FAR 23.335, wo er die
+**Reisegeschwindigkeit** zugelassener Flugzeuge multipliziert; weder Scholz/Sadraey noch
+die RC-Quellen kennen einen Faktor für Modelle (ADR 0023). Die Lesart als
+Endgeschwindigkeit ist der Vorschlag der Experten für unregulierte Modelle — eigene
+Überlegung, kein Lehrbuch — und **vom Maintainer übernommen**. Sie ist eine **obere
+Schranke** auf der sicheren Seite: Der Widerstand des stehenden oder mitdrehenden
+Propellers ist nicht modelliert (`Q-PT-10`), und das wird ausgewiesen. Mit und ohne Motor
+ergibt sich dieselbe Zahl, weil der Schubbeiwert jenseits des Nullschub-Fortschrittsgrads
+auf null steht.
+
+Am Bryan, ohne Motor und Propellerwiderstand: **31,6 m/s** (114 km/h) bei
+$\alpha = -5{,}9^\circ$. Voll gezogen könnte der Flügel dort $(V_D/V_S)^2 \approx 35\,g$
+verlangen — ob das Modell das Abfangen übersteht, entscheidet der Pilot unterhalb von
+$V_A$, nicht darüber.
+
+**Manövergeschwindigkeit** — das Abrissproblem, gebunden bei $n = n_{lim}$:
+
+$$
+V_A = \min_{V,\,\alpha} V \quad\text{u.d.N.}\quad L(V,\alpha) = n_{lim}\,m\,g
+$$
+
+Darunter reißt die Strömung ab, bevor die Struktur $n_{lim}$ erreicht; darüber kann voller
+Ausschlag das Flugzeug überlasten. Die Lehrbuchform $V_A = V_S\sqrt{n_{lim}}$ bleibt als
+Probe — sie nimmt das $C_{L,max}$ des Geradeausflugs, das Problem wertet es bei der
+Reynoldszahl von $V_A$ aus (derselbe Grund wie beim Kurvenflug). Die Aussage taugt nur so
+viel wie $n_{lim}$, eine Nutzervorgabe (Vorgabewert 3; gemessen tragen Modelle 6–19 g).
+
+**Draußen bleiben** die Böenlinien (bereits gestrichen) und das Flattern — eine echte
+Geschwindigkeitsgrenze, aber ohne Rechenweg in den Quellen.
+
+**Offen:** das negative Lastvielfache $n_{neg} = -0{,}4\,n_{lim}$, ebenfalls ein Verhältnis
+aus der Zulassung — eigene Frage. Und `cruise-speed-resolution` greift noch auf $V_{max}$
+und $V_D$ zu (die Kette $V_C = V_D/1{,}4$ mit $V_D = 1{,}4\,V_{max}$ hebt sich im Code
+auf); sie wird beim Reiseflug-Abgleich mitgezogen.
+
 ### 3.11 Was der Durchgang ergeben hat
 
 Neun Betriebspunkte, einzeln aufgemacht. Die Bilanz:
@@ -1562,7 +1622,7 @@ Neun Betriebspunkte, einzeln aufgemacht. Die Bilanz:
 | **Start** | O8 geklärt, die letzte Zauberzahl lokalisiert |
 | **Steigflug** | gerechnet (01.10.2026): Motor–Propeller-Gleichgewicht, $V_y$ und $V_x$ als Optimierungsprobleme; heute überall Route A, bis #1149 die Widerstände bringt |
 | **Kurvenflug** | gerechnet (01.10.2026): gehaltene Kurve, $\omega_{max}$ und $r_{min}$ als Optimierungsprobleme; Querneigung und $\sqrt{n}$-Abkürzung gestrichen |
-| **Sturzflug** | hohl: Höchstgeschwindigkeit ist eine Eingabe; Eckgeschwindigkeit vorgemerkt |
+| **Sturzflug** | gerechnet (01.10.2026): $V_{max}$ als Optimierungsproblem, $V_D$ als Endgeschwindigkeit im senkrechten Sturz, $V_A$ als gebundenes Abrissproblem; Faktor 1,4 gestrichen |
 
 **Der Kanon war vollständiger, als sein Zustand vermuten ließ.** Was fehlte, waren
 überwiegend **Bindungen, keine Gesetze** — dieselbe Formel gilt an drei Punkten und war an
@@ -1570,8 +1630,8 @@ keinem festgemacht. `V = k · V_S,cfg` ist dafür das Musterbeispiel: Anflug, La
 
 **Es fehlt kein Gesetz — es fehlt eine Verbindung, und sie fehlt dreifach.** Der Schub bei
 Fahrt wird bereits aus gemessenen Kennlinien gerechnet, nur greifen Feldlänge,
-Auslegungsdiagramm und Missions-KPIs stattdessen auf eine Standschubzahl zurück. Solange das so ist, bleibt der Sturzflug eine Beschriftung; Steig- und Kurvenflug nehmen
-den Schub seit dem 01.10.2026 aus dem Motor–Propeller-Gleichgewicht.
+Auslegungsdiagramm und Missions-KPIs stattdessen auf eine Standschubzahl zurück. Seit dem 01.10.2026 nehmen Steig-, Kurven- und Sturzflug den Schub aus dem
+Motor–Propeller-Gleichgewicht.
 
 **Zwei Lücken bleiben, und sie sind dieselbe Frage zweimal:** Ob die Bahn zum Starten und
 zum Landen reicht. Beide brauchen entweder eine Integration, die wir nicht machen, oder

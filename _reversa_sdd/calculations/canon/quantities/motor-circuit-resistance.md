@@ -18,4 +18,4 @@ Resistance in the torque balance. **Circuit**, not winding: motor + ESC + cable 
 
 **Produced by.** [[airplane-components]]
 
-**Used by.** [[best-angle-of-climb]] · [[best-rate-of-climb]] · [[max-sustained-turn-rate]] · [[min-sustained-turn-radius]] · [[motor-propeller-equilibrium]]
+**Used by.** [[best-angle-of-climb]] · [[best-rate-of-climb]] · [[dive-speed]] · [[max-level-speed]] · [[max-sustained-turn-rate]] · [[min-sustained-turn-radius]] · [[motor-propeller-equilibrium]]

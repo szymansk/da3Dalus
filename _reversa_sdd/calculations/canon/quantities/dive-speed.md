@@ -3,16 +3,16 @@ canon: dive-speed
 kind: quantity
 symbol: V_D
 unit: m/s
-role: output
+role: derived
 status: draft
 tags:
   - canon/quantity
-  - role/output
+  - role/derived
 ---
 
-# Design dive speed · `V_D`
+# Dive speed · `V_D`
 
-Right-hand bound of the V-n envelope, a fixed multiple of the maximum level speed.
+Terminal speed in a vertical dive — the right-hand edge of the envelope and the speed of the pull-out case. An upper bound: propeller drag is not modelled.
 
 **Unit.** `m/s`
 
