@@ -1,0 +1,639 @@
+{
+ "schema_version": "0.1",
+ "name": "BRYAN - Konstruktionsprofil (Kalibrierung aus dem digitalisierten Bausatz)",
+ "geometrie": "format/bryan.airplane.json",
+ "einheiten": {
+  "laenge": "mm",
+  "winkel": "deg",
+  "masse": "g"
+ },
+ "materialien": {
+  "Balsa": {
+   "art": "balsa",
+   "dichte": 0.16,
+   "dicken": [
+    1.0,
+    1.5,
+    2.0,
+    3.0
+   ],
+   "brett": [
+    300,
+    100
+   ],
+   "maserung": true
+  },
+  "Birkensperrholz": {
+   "art": "birkensperrholz",
+   "dichte": 0.7,
+   "dicken": [
+    1.0
+   ],
+   "brett": [
+    300,
+    100
+   ],
+   "maserung": false
+  },
+  "Pappelsperrholz": {
+   "art": "pappelsperrholz",
+   "dichte": 0.45,
+   "dicken": [
+    3.0
+   ],
+   "brett": [
+    300,
+    100
+   ],
+   "maserung": false
+  },
+  "Stahldraht": {
+   "art": "stahldraht",
+   "dichte": 7.85,
+   "dicken": [
+    0.8,
+    1.5
+   ]
+  },
+  "CFK-Rohr": {
+   "art": "cfk",
+   "dichte": 1.55,
+   "dicken": [
+    2.0
+   ]
+  },
+  "Buegelfolie": {
+   "art": "folie",
+   "dichte": 1.0,
+   "dicken": [
+    0.03
+   ],
+   "flaechengewicht": 30
+  }
+ },
+ "fertigung": {
+  "verfahren": "laser",
+  "schnittfuge": 0.1,
+  "passung": "nennmass",
+  "spiel": 0.0,
+  "querteil_minus": 0.1,
+  "mindeststeg": 1.1,
+  "bruecke_min": 0.6,
+  "flanke_min": 5.0,
+  "einfuehrmaul": {
+   "ab_tiefe": 5.0,
+   "fase": 0.3,
+   "winkel": 45
+  },
+  "brett_rand": 2.0,
+  "teileabstand": 1.0,
+  "gravur": {
+   "schrift_min": 1.1,
+   "schrift_max": 3.0,
+   "abstand_kante": 0.36,
+   "passmarke_je_stoss": true
+  },
+  "erleichterung": {
+   "form": "oval",
+   "materialanteil_ziel": 0.74,
+   "steg_min": 1.1
+  }
+ },
+ "bespannung": {
+  "material": "Buegelfolie",
+  "s_rel": 0.02,
+  "s_abs_mm": 1.0,
+  "d_abs_mm": 4.0,
+  "k_w": 2.0,
+  "w_stringer_mm": 2.0,
+  "l_ecke_mm": 8.0,
+  "n_kasten": 10.0,
+  "delta_fluegel_mm": 1.25,
+  "rippenteilung_max_mm": 40.0,
+  "nasenleiste_tiefe_mm": 6.0,
+  "stuetze_breite_mm": 4.0
+ },
+ "fluegel": {
+  "Tragflaeche": {
+   "bauweise": "rippen",
+   "bauweise_regel": "KR-F1: Profilhoehe 11..15 mm >= 4 x Rippendicke -> Rippenbauweise",
+   "rippen": {
+    "bauteil": {
+     "material": "Balsa",
+     "dicke": 1.5,
+     "maserung": "laengs"
+    },
+    "teilung_max": 40.0,
+    "teilung_regel": "ab_pflichtrippe_rest_aussen",
+    "rest_faktor_max": 1.25,
+    "pflichtrippen": [
+     "wurzel",
+     "rumpfseite",
+     "ruder_anfang",
+     "ruder_ende",
+     "randbogen"
+    ],
+    "kreuzschlitz": true,
+    "rippenfuss_auf_brett": true,
+    "wurzelrippe": "geneigt_um_v"
+   },
+   "holme": [
+    {
+     "index": 0,
+     "art": "i_holm",
+     "rolle": "Hauptholm 21.a/32 + 22.a",
+     "gurt": {
+      "material": "Birkensperrholz",
+      "dicke": 1.0,
+      "breite": 4.0
+     },
+     "steg": {
+      "material": "Balsa",
+      "dicke": 2.0
+     },
+     "gurt_buendig": true,
+     "steg_hoehe_anteil": 0.93,
+     "stoss": "keiner",
+     "erleichterung": true
+    },
+    {
+     "index": 1,
+     "art": "steg_hochkant",
+     "rolle": "Hilfsholm 22.b = Scharnieranschlag Querruder",
+     "steg": {
+      "material": "Balsa",
+      "dicke": 3.0
+     },
+     "stoss": "keiner"
+    }
+   ],
+   "nasenleiste": {
+    "bauteil": {
+     "material": "Balsa",
+     "dicke": 3.0,
+     "lagen": 2
+    },
+    "tiefe": 6.0,
+    "form": "geschliffen_schablone",
+    "hoehe": "rippennasenhoehe"
+   },
+   "endleiste": {
+    "art": "rippenspitzen"
+   },
+   "beplankung": {
+    "bauteil": {
+     "material": "Balsa",
+     "dicke": 1.0
+    },
+    "rippe_unter_beplankung": "profil_minus_dicke",
+    "bereiche": [
+     {
+      "y_von": 0,
+      "y_bis": 30.8,
+      "x_von": 0.0,
+      "x_bis": 1.0,
+      "seite": "beide",
+      "grund": "Rumpfdurchfuehrung/Fenster (21.c, 23.c, 33.a, 33.b)"
+     },
+     {
+      "y_von": 0,
+      "y_bis": 64.2,
+      "x_von": 0.76,
+      "x_bis": 1.0,
+      "seite": "unten",
+      "grund": "Wurzelfeld hinten bis Querruderbeginn (21.d)"
+     },
+     {
+      "y_von": 102.7,
+      "y_bis": 144.3,
+      "x_von": 0.34,
+      "x_bis": 0.77,
+      "seite": "unten",
+      "grund": "Servofeld (21.b)"
+     }
+    ]
+   },
+   "ruder": {
+    "bauweise": "kasten",
+    "unterbeplankung": {
+     "material": "Balsa",
+     "dicke": 1.0
+    },
+    "verkastung": {
+     "material": "Balsa",
+     "dicke": 3.0
+    },
+    "endfahnen": {
+     "material": "Balsa",
+     "dicke": 1.5
+    },
+    "anschlag": "Holm Index 1 (Hilfsholm 22.b)",
+    "scharnier": "folie",
+    "spalt_lasern": true,
+    "horn": {
+     "bauteil": {
+      "material": "Birkensperrholz",
+      "dicke": 1.0
+     },
+     "lochabstand": 8.0,
+     "bohrung_plus": 0.1,
+     "normteil": true
+    }
+   },
+   "servo_einbau": {
+    "ort": "fluegel",
+    "variante": "rippe_aussparung_laschen_aussen",
+    "spiel_laenge": 0.3,
+    "spiel_breite": 0.2,
+    "deckel_beplankt": true,
+    "kabelweg": "rippenloecher_fluchtend",
+    "kabelloch_d": 10.0,
+    "markierloch_d": 0.6
+   },
+   "randbogen": {
+    "bauweise": "lagen_gesperrt",
+    "lagen": {
+     "material": "Balsa",
+     "dicke": 2.0,
+     "lagen": 3,
+     "maserung": "gesperrt"
+    },
+    "innenleisten": {
+     "material": "Balsa",
+     "dicke": 1.5
+    },
+    "sperrwinkel": 41.0
+   },
+   "v_form_stoss": {
+    "art": "durchgehend_geklebt",
+    "wurzelrippe_neigung": "v_winkel",
+    "keil": true
+   },
+   "schraenkung": {
+    "bau": "brett_flach",
+    "helling_hoehe_max": 0.0
+   }
+  },
+  "Hoehenleitwerk": {
+   "bauweise": "platte_rahmen_streifen",
+   "bauweise_regel": "KR-L1: Profilhoehe t/c x c = 2 mm < 4 mm -> ebene Platte; Tiefe 75..95 > 60 -> Rahmen + Streifen",
+   "platte": {
+    "material": "Balsa",
+    "dicke": 2.0,
+    "maserung": "laengs"
+   },
+   "streifen": {
+    "bauteil": {
+     "material": "Balsa",
+     "dicke": 2.0,
+     "breite": 2.0
+    },
+    "abstand_max": 20.0,
+    "ausschnitte": "ovale_offen",
+    "rahmenbreite": 5.0
+   },
+   "ruder": {
+    "bauweise": "vollplatte",
+    "scharnier": "folie",
+    "spalt_lasern": true,
+    "horn": {
+     "bauteil": {
+      "material": "Birkensperrholz",
+      "dicke": 1.0
+     },
+     "lochabstand": 9.0,
+     "bohrung_plus": 0.1,
+     "normteil": true
+    }
+   },
+   "servo_einbau": {
+    "ort": "rumpf",
+    "variante": "servobrett",
+    "spiel_laenge": 0.3,
+    "spiel_breite": 0.2
+   }
+  },
+  "Seitenleitwerk": {
+   "bauweise": "platte_rahmen_streifen",
+   "bauweise_regel": "KR-L1 wie HLW",
+   "platte": {
+    "material": "Balsa",
+    "dicke": 2.0,
+    "maserung": "laengs"
+   },
+   "streifen": {
+    "bauteil": {
+     "material": "Balsa",
+     "dicke": 2.0,
+     "breite": 2.0
+    },
+    "abstand_max": 20.0,
+    "ausschnitte": "ovale_offen",
+    "rahmenbreite": 5.0
+   },
+   "teilung_platte": "an Streifenkerben, Maserung parallel Vorderkante (15.a/15.b/15.c)",
+   "ruder": {
+    "bauweise": "vollplatte",
+    "scharnier": "folie",
+    "spalt_lasern": true,
+    "horn": {
+     "bauteil": {
+      "material": "Birkensperrholz",
+      "dicke": 1.0
+     },
+     "lochabstand": 9.0,
+     "bohrung_plus": 0.1,
+     "normteil": true
+    }
+   },
+   "servo_einbau": {
+    "ort": "rumpf",
+    "variante": "servobrett",
+    "spiel_laenge": 0.3,
+    "spiel_breite": 0.2
+   }
+  }
+ },
+ "rumpf": {
+  "Rumpf": {
+   "aufbau": "halbschalen_mittelebene",
+   "bezugsachse": "gerade Mittelgurt-Leiste (3.d) auf z = 0",
+   "bereiche": [
+    {
+     "x_von": 0.0,
+     "x_bis": 21.2,
+     "bauweise": "kasten",
+     "grund": "Nasenkasten vor dem Kopfspant, n = 50"
+    },
+    {
+     "x_von": 21.2,
+     "x_bis": 238.8,
+     "bauweise": "kasten",
+     "grund": "n = 50; Fluegelfenster, Kabine, Akku"
+    },
+    {
+     "x_von": 238.8,
+     "x_bis": 469.0,
+     "bauweise": "kasten_stringerruecken",
+     "grund": "n 6..8 oben gerundet, Boden eben"
+    }
+   ],
+   "spanten": {
+    "bauteil": {
+     "material": "Balsa",
+     "dicke": 2.0
+    },
+    "lastbauteil": {
+     "material": "Pappelsperrholz",
+     "dicke": 3.0
+    },
+    "abstand_max_stringer": 72.0,
+    "abstand_max_kasten": 155.0,
+    "an": [
+     "motor",
+     "fahrwerk",
+     "fluegelnase",
+     "fluegelende",
+     "kabinenende",
+     "bauweisenwechsel"
+    ],
+    "form": "halbspant",
+    "innenkontur": "bogen",
+    "rest_faktor_max": 1.25
+   },
+   "waende": {
+    "bauteil": {
+     "material": "Balsa",
+     "dicke": 1.5
+    },
+    "teilung_hoehe": "oben_unten_mittelgurt",
+    "mittelgurt": {
+     "material": "Balsa",
+     "dicke": 1.5,
+     "breite": 4.0
+    }
+   },
+   "stringer": {
+    "bauteil": {
+     "material": "Balsa",
+     "dicke": 2.0,
+     "breite": 2.0
+    },
+    "kerbe": "buendig",
+    "rueckenband": {
+     "material": "Balsa",
+     "dicke": 1.5,
+     "breite": 6.0
+    }
+   },
+   "deck_boden": {
+    "bauteil": {
+     "material": "Balsa",
+     "dicke": 1.5
+    },
+    "biegeplatte_ueber_breite": true,
+    "r_t_min": 100
+   },
+   "nase": "kopfspant_nasenkasten",
+   "heck": "heckleiste_waende_zusammen",
+   "unterseite_eben_ab_x": 0.0
+  }
+ },
+ "schnittstellen": {
+  "fluegel_rumpf": {
+   "art": "fenster_durchgesteckt",
+   "fenster_spiel": 1.0,
+   "befestigung": "verklebt",
+   "rollfreiheit_pruefen": true,
+   "fluegelhalter": {
+    "material": "Balsa",
+    "dicke": 2.0
+   }
+  },
+  "hlw_rumpf": {
+   "art": "schlitz_durchgesteckt",
+   "schlitz": "nennmass",
+   "laengsanschlag": "Schultern an den Wandlaschen 3.a"
+  },
+  "slw_rumpf": {
+   "art": "auf_rueckenleiste",
+   "zapfen": true
+  }
+ },
+ "komponenten": {
+  "motor": {
+   "typ": "BL 1510 2000KV",
+   "masse": 19,
+   "einbau": "spant_elastisch",
+   "spant": {
+    "material": "Pappelsperrholz",
+    "dicke": 3.0
+   },
+   "spant_mass": [
+    30,
+    30
+   ],
+   "lochkreis_d": 12.2,
+   "loecher": 8,
+   "loch_d": 1.9,
+   "mittelloch_d": 5.0,
+   "tuellen_quadrat": 22.0,
+   "tuellen_d": 2.9,
+   "abstand_vor_kopfspant": 5.0,
+   "abstand_lasermerkmal": true,
+   "seitenzug_deg": 2.0,
+   "sturz_deg": 0.0,
+   "prop_d": 152.4,
+   "kopfspant_x": 21.2
+  },
+  "fahrwerk": {
+   "art": "draht_brett",
+   "draht_d": 1.5,
+   "brett": {
+    "material": "Pappelsperrholz",
+    "dicke": 3.0
+   },
+   "brett_zwischen_spanten": true,
+   "spur": 117.0,
+   "rad_d": 54.0,
+   "standwinkel_deg": 9.1,
+   "befestigung": "4 Blechschrauben 2,9 x 6,5",
+   "heckrad": "am_seitenruder",
+   "x_achse": 72.6
+  },
+  "akku": {
+   "typ": "2S 450 mAh",
+   "mass": [
+    58,
+    30,
+    12
+   ],
+   "masse": 28,
+   "einbau": "brett",
+   "brett": {
+    "material": "Balsa",
+    "dicke": 3.0
+   },
+   "stellbereich_x": [
+    99.5,
+    121.1
+   ],
+   "lichte_weite_plus": 0.5,
+   "bis_kopfspant": true
+  },
+  "haube": {
+   "art": "druckteil_auf_deckel",
+   "deckel": {
+    "material": "Balsa",
+    "dicke": 1.5
+   },
+   "befestigung": "magnet",
+   "magnet": [
+    3.0,
+    1.5
+   ],
+   "magnet_anzahl": 6,
+   "loch": "presssitz"
+  },
+  "servos": [
+   {
+    "ruder": "Querruder",
+    "ort": "fluegel",
+    "traeger": "Rippe 24.b (Aussparung, Laschen aussen)",
+    "abtrieb": "aussen",
+    "masse": 4.8
+   },
+   {
+    "ruder": "Hoehenruder",
+    "ort": "rumpf",
+    "traeger": "Servobrett 12.b",
+    "x_bereich": [
+     205.5,
+     233.5
+    ],
+    "abtrieb": "vorn",
+    "masse": 4.8
+   },
+   {
+    "ruder": "Seitenruder",
+    "ort": "rumpf",
+    "traeger": "Servobrett 12.b",
+    "x_bereich": [
+     205.5,
+     233.5
+    ],
+    "abtrieb": "vorn",
+    "masse": 4.8
+   }
+  ],
+  "empfaenger": {
+   "mass": [
+    30,
+    20,
+    8
+   ],
+   "masse": 5,
+   "traeger": "Wurzelrippe 23.a (flach)"
+  },
+  "regler": {
+   "mass": [
+    30,
+    13,
+    5
+   ],
+   "masse": 7,
+   "traeger": "Nasenboden 11.b"
+  },
+  "anlenkung": {
+   "draht_d": 0.8,
+   "rohr_d": 2.0,
+   "freigang_min": 1.0,
+   "fuehrung": "spantloecher",
+   "servowinkel_ziel": [
+    30,
+    45
+   ]
+  }
+ },
+ "teilung": {
+  "nur_gestuetzt": true,
+  "abstand_kerbe_min": 5.0,
+  "links_rechts_versetzt": true,
+  "schwalbenschwanz": {
+   "winkel": 15.0,
+   "tiefe": 5.0,
+   "breite_min": 12.0,
+   "restwand_min": 0.8
+  },
+  "gerades_blatt": {
+   "laenge": 16.0,
+   "bis_breite": 4.0
+  },
+  "verkleben_flach_vor_biegen": true
+ },
+ "toleranzen": {
+  "kontur": 0.3,
+  "stufe_hoehe": 0.3,
+  "laenge_bogen": 0.2,
+  "winkel_deg": 0.5,
+  "kerbtiefe": 0.05,
+  "passung_min": -0.05,
+  "komponente_spiel_je_seite": 0.3,
+  "bohrung_plus": 0.1,
+  "restspalt_ruder": [
+   0.3,
+   0.5
+  ]
+ },
+ "herkunft": {
+  "materialien": "[BRYAN gemessen] k2 material_je_baugruppe; Dichten [Annahme] schwerpunkt.md",
+  "fertigung": "[BRYAN gemessen] K-32, K-44, K-47, K-52; Einfuehrmaul [allgemein] K-43",
+  "bespannung": "[BRYAN kalibriert] bespannung.md (Stringer 4.a-c, Rippenteilung 40)",
+  "fluegel.Tragflaeche": "[BRYAN gemessen] K-19..K-25, k2, 3D-Modell gesamt_rh",
+  "fluegel.Hoehenleitwerk": "[BRYAN gemessen] K-26..K-28",
+  "rumpf.Rumpf": "[BRYAN gemessen] K-13..K-18, k2 Stationen",
+  "komponenten": "[BRYAN gemessen] K-53..K-60, komponenten.md; Lochkreis 12,2 Datenblatt (Laser 12,0)",
+  "teilung": "[BRYAN gemessen] K-45, K-46",
+  "toleranzen": "[BRYAN gemessen] Nacharbeitsgrenze 0,3 (k6); Komponentenspiel K-67"
+ }
+}

@@ -1,0 +1,2111 @@
+{
+ "name": "BRYAN",
+ "total_mass_kg": 0.151,
+ "xyz_ref": [
+  0.1368,
+  0.0,
+  -0.0062
+ ],
+ "wings": {
+  "Tragflaeche": {
+   "name": "Tragflaeche",
+   "symmetric": true,
+   "design_model": "asb",
+   "x_secs": [
+    {
+     "xyz_le": [
+      0.08866,
+      -0.000253,
+      -0.02094
+     ],
+     "chord": 0.149259,
+     "twist": 2.846,
+     "dihedral": 3.023,
+     "airfoil": "./bryan_profil.dat",
+     "x_sec_type": "root",
+     "spare_list": [
+      {
+       "spare_support_dimension_width": 0.00398,
+       "spare_support_dimension_height": 0.01547,
+       "spare_position_factor": 0.322,
+       "spare_length": null,
+       "spare_start": 0.0,
+       "spare_mode": "standard_backward"
+      },
+      {
+       "spare_support_dimension_width": 0.00301,
+       "spare_support_dimension_height": 0.0041,
+       "spare_position_factor": 0.8022,
+       "spare_length": null,
+       "spare_start": 0.0,
+       "spare_mode": "standard_backward"
+      }
+     ]
+    },
+    {
+     "xyz_le": [
+      0.088747,
+      0.023113,
+      -0.019696
+     ],
+     "chord": 0.14961,
+     "twist": 2.846,
+     "dihedral": 0.0,
+     "airfoil": "./bryan_profil.dat",
+     "x_sec_type": "segment",
+     "spare_list": [
+      {
+       "spare_support_dimension_width": 0.00398,
+       "spare_support_dimension_height": 0.01499,
+       "spare_position_factor": 0.321,
+       "spare_length": null,
+       "spare_start": 0.0,
+       "spare_mode": "standard_backward"
+      },
+      {
+       "spare_support_dimension_width": 0.00302,
+       "spare_support_dimension_height": 0.00697,
+       "spare_position_factor": 0.7872,
+       "spare_length": null,
+       "spare_start": 0.0,
+       "spare_mode": "standard_backward"
+      }
+     ]
+    },
+    {
+     "xyz_le": [
+      0.090945,
+      0.063151,
+      -0.017749
+     ],
+     "chord": 0.145604,
+     "twist": 2.846,
+     "dihedral": 0.0,
+     "airfoil": "./bryan_profil.dat",
+     "x_sec_type": "segment",
+     "spare_list": [
+      {
+       "spare_support_dimension_width": 0.00398,
+       "spare_support_dimension_height": 0.01431,
+       "spare_position_factor": 0.3145,
+       "spare_length": null,
+       "spare_start": 0.0,
+       "spare_mode": "standard_backward"
+      },
+      {
+       "spare_support_dimension_width": 0.00302,
+       "spare_support_dimension_height": 0.00799,
+       "spare_position_factor": 0.7694,
+       "spare_length": null,
+       "spare_start": 0.0,
+       "spare_mode": "standard_backward"
+      }
+     ],
+     "trailing_edge_device": {
+      "name": "Querruder",
+      "role": "aileron",
+      "label": "Querruder 26/27/28",
+      "rel_chord_root": 0.7793,
+      "rel_chord_tip": 0.7628,
+      "hinge_spacing": 0.3,
+      "side_spacing_root": 0.37,
+      "side_spacing_tip": 0.0,
+      "servo": {
+       "component_id": null,
+       "length": 20.0,
+       "width": 8.6,
+       "height": 20.2,
+       "leading_length": 4.25,
+       "latch_z": 12.0,
+       "latch_x": 4.0,
+       "latch_thickness": 1.0,
+       "latch_length": 28.0,
+       "cable_z": 0.0,
+       "screw_hole_lx": 2.25,
+       "screw_hole_d": 0.0
+      },
+      "servo_placement": "bottom",
+      "rel_chord_servo_position": 0.4965,
+      "rel_length_servo_position": 0.6044,
+      "positive_deflection_deg": 32.0,
+      "negative_deflection_deg": 32.0,
+      "deflection_deg": 0.0,
+      "trailing_edge_offset_factor": 1.0,
+      "hinge_type": "top_simple",
+      "symmetric": false
+     },
+     "control_surface": {
+      "name": "Querruder",
+      "hinge_point": 0.7793,
+      "symmetric": false,
+      "deflection": 0.0
+     }
+    },
+    {
+     "xyz_le": [
+      0.0945,
+      0.12699,
+      -0.014717
+     ],
+     "chord": 0.136997,
+     "twist": 2.846,
+     "dihedral": 0.0,
+     "airfoil": "./bryan_profil.dat",
+     "x_sec_type": "segment",
+     "spare_list": [
+      {
+       "spare_support_dimension_width": 0.00398,
+       "spare_support_dimension_height": 0.01324,
+       "spare_position_factor": 0.3084,
+       "spare_length": null,
+       "spare_start": 0.0,
+       "spare_mode": "standard_backward"
+      },
+      {
+       "spare_support_dimension_width": 0.00302,
+       "spare_support_dimension_height": 0.00783,
+       "spare_position_factor": 0.7514,
+       "spare_length": null,
+       "spare_start": 0.0,
+       "spare_mode": "standard_backward"
+      }
+     ],
+     "trailing_edge_device": {
+      "name": "Querruder",
+      "role": "aileron",
+      "label": "Querruder 26/27/28",
+      "rel_chord_root": 0.7623,
+      "rel_chord_tip": 0.7581,
+      "hinge_spacing": 0.3,
+      "side_spacing_root": 0.0,
+      "side_spacing_tip": 0.0,
+      "servo": null,
+      "servo_placement": "bottom",
+      "rel_chord_servo_position": null,
+      "rel_length_servo_position": null,
+      "positive_deflection_deg": 32.0,
+      "negative_deflection_deg": 32.0,
+      "deflection_deg": 0.0,
+      "trailing_edge_offset_factor": 1.0,
+      "hinge_type": "top_simple",
+      "symmetric": false
+     },
+     "control_surface": {
+      "name": "Querruder",
+      "hinge_point": 0.7623,
+      "symmetric": false,
+      "deflection": 0.0
+     }
+    },
+    {
+     "xyz_le": [
+      0.097599,
+      0.184926,
+      -0.012026
+     ],
+     "chord": 0.127216,
+     "twist": 2.846,
+     "dihedral": 0.0,
+     "airfoil": "./bryan_profil.dat",
+     "x_sec_type": "segment",
+     "spare_list": [
+      {
+       "spare_support_dimension_width": 0.00398,
+       "spare_support_dimension_height": 0.01224,
+       "spare_position_factor": 0.3083,
+       "spare_length": null,
+       "spare_start": 0.0,
+       "spare_mode": "standard_backward"
+      },
+      {
+       "spare_support_dimension_width": 0.00302,
+       "spare_support_dimension_height": 0.00739,
+       "spare_position_factor": 0.7463,
+       "spare_length": null,
+       "spare_start": 0.0,
+       "spare_mode": "standard_backward"
+      }
+     ],
+     "trailing_edge_device": {
+      "name": "Querruder",
+      "role": "aileron",
+      "label": "Querruder 26/27/28",
+      "rel_chord_root": 0.7582,
+      "rel_chord_tip": 0.7654,
+      "hinge_spacing": 0.3,
+      "side_spacing_root": 0.0,
+      "side_spacing_tip": 0.0,
+      "servo": null,
+      "servo_placement": "bottom",
+      "rel_chord_servo_position": null,
+      "rel_length_servo_position": null,
+      "positive_deflection_deg": 32.0,
+      "negative_deflection_deg": 32.0,
+      "deflection_deg": 0.0,
+      "trailing_edge_offset_factor": 1.0,
+      "hinge_type": "top_simple",
+      "symmetric": false
+     },
+     "control_surface": {
+      "name": "Querruder",
+      "hinge_point": 0.7582,
+      "symmetric": false,
+      "deflection": 0.0
+     }
+    },
+    {
+     "xyz_le": [
+      0.09891,
+      0.208903,
+      -0.010977
+     ],
+     "chord": 0.121184,
+     "twist": 2.846,
+     "dihedral": 0.0,
+     "airfoil": "./bryan_profil.dat",
+     "x_sec_type": "segment",
+     "spare_list": [
+      {
+       "spare_support_dimension_width": 0.00398,
+       "spare_support_dimension_height": 0.01183,
+       "spare_position_factor": 0.3124,
+       "spare_length": null,
+       "spare_start": 0.0,
+       "spare_mode": "standard_backward"
+      },
+      {
+       "spare_support_dimension_width": 0.00302,
+       "spare_support_dimension_height": 0.00701,
+       "spare_position_factor": 0.7544,
+       "spare_length": null,
+       "spare_start": 0.0,
+       "spare_mode": "standard_backward"
+      }
+     ],
+     "trailing_edge_device": {
+      "name": "Querruder",
+      "role": "aileron",
+      "label": "Querruder 26/27/28",
+      "rel_chord_root": 0.7677,
+      "rel_chord_tip": 0.7887,
+      "hinge_spacing": 0.3,
+      "side_spacing_root": 0.0,
+      "side_spacing_tip": 0.0,
+      "servo": null,
+      "servo_placement": "bottom",
+      "rel_chord_servo_position": null,
+      "rel_length_servo_position": null,
+      "positive_deflection_deg": 32.0,
+      "negative_deflection_deg": 32.0,
+      "deflection_deg": 0.0,
+      "trailing_edge_offset_factor": 1.0,
+      "hinge_type": "top_simple",
+      "symmetric": false
+     },
+     "control_surface": {
+      "name": "Querruder",
+      "hinge_point": 0.7677,
+      "symmetric": false,
+      "deflection": 0.0
+     }
+    },
+    {
+     "xyz_le": [
+      0.100025,
+      0.2265,
+      -0.010308
+     ],
+     "chord": 0.113716,
+     "twist": 2.846,
+     "dihedral": 0.0,
+     "airfoil": "./bryan_profil.dat",
+     "x_sec_type": "tip",
+     "tip_type": "round",
+     "spare_list": [
+      {
+       "spare_support_dimension_width": 0.00398,
+       "spare_support_dimension_height": 0.01156,
+       "spare_position_factor": 0.3049,
+       "spare_length": null,
+       "spare_start": 0.0,
+       "spare_mode": "follow"
+      }
+     ]
+    },
+    {
+     "xyz_le": [
+      0.101192,
+      0.23499,
+      -0.010074
+     ],
+     "chord": 0.107687,
+     "twist": 2.846,
+     "dihedral": 0.0,
+     "airfoil": "./bryan_profil.dat",
+     "x_sec_type": "tip",
+     "tip_type": "round",
+     "spare_list": [
+      {
+       "spare_support_dimension_width": 0.00202,
+       "spare_support_dimension_height": 0.01121,
+       "spare_position_factor": 0.3306,
+       "spare_length": null,
+       "spare_start": 0.0,
+       "spare_mode": "follow"
+      }
+     ]
+    },
+    {
+     "xyz_le": [
+      0.10411,
+      0.243493,
+      -0.009958
+     ],
+     "chord": 0.098906,
+     "twist": 2.846,
+     "dihedral": 0.0,
+     "airfoil": "./bryan_profil.dat",
+     "x_sec_type": "tip",
+     "tip_type": "round",
+     "spare_list": [
+      {
+       "spare_support_dimension_width": 0.00202,
+       "spare_support_dimension_height": 0.01057,
+       "spare_position_factor": 0.33,
+       "spare_length": null,
+       "spare_start": 0.0,
+       "spare_mode": "follow"
+      }
+     ]
+    },
+    {
+     "xyz_le": [
+      0.108604,
+      0.251501,
+      -0.009986
+     ],
+     "chord": 0.087353,
+     "twist": 2.846,
+     "dihedral": 0.0,
+     "airfoil": "./bryan_profil.dat",
+     "x_sec_type": "tip",
+     "tip_type": "round",
+     "spare_list": [
+      {
+       "spare_support_dimension_width": 0.00201,
+       "spare_support_dimension_height": 0.00943,
+       "spare_position_factor": 0.3213,
+       "spare_length": null,
+       "spare_start": 0.0,
+       "spare_mode": "follow"
+      }
+     ]
+    },
+    {
+     "xyz_le": [
+      0.113902,
+      0.258014,
+      -0.010138
+     ],
+     "chord": 0.074807,
+     "twist": 2.846,
+     "dihedral": 0.0,
+     "airfoil": "./bryan_profil.dat",
+     "x_sec_type": "tip",
+     "tip_type": "round",
+     "spare_list": [
+      {
+       "spare_support_dimension_width": 0.00201,
+       "spare_support_dimension_height": 0.00795,
+       "spare_position_factor": 0.3034,
+       "spare_length": null,
+       "spare_start": 0.0,
+       "spare_mode": "follow"
+      }
+     ]
+    },
+    {
+     "xyz_le": [
+      0.121598,
+      0.264534,
+      -0.010484
+     ],
+     "chord": 0.057542,
+     "twist": 2.846,
+     "dihedral": 0.0,
+     "airfoil": "./bryan_profil.dat",
+     "x_sec_type": "tip",
+     "tip_type": "round",
+     "spare_list": [
+      {
+       "spare_support_dimension_width": 0.00201,
+       "spare_support_dimension_height": 0.00579,
+       "spare_position_factor": 0.2569,
+       "spare_length": null,
+       "spare_start": 0.0,
+       "spare_mode": "follow"
+      }
+     ]
+    },
+    {
+     "xyz_le": [
+      0.12864,
+      0.268554,
+      -0.010882
+     ],
+     "chord": 0.042429,
+     "twist": 2.846,
+     "dihedral": 0.0,
+     "airfoil": "./bryan_profil.dat",
+     "x_sec_type": "tip",
+     "tip_type": "round",
+     "spare_list": [
+      {
+       "spare_support_dimension_width": 0.002,
+       "spare_support_dimension_height": 0.00091,
+       "spare_position_factor": 0.172,
+       "spare_length": 0.001858,
+       "spare_start": 0.0,
+       "spare_mode": "follow"
+      }
+     ]
+    },
+    {
+     "xyz_le": [
+      0.135554,
+      0.271075,
+      -0.011327
+     ],
+     "chord": 0.028239,
+     "twist": 2.846,
+     "dihedral": 0.0,
+     "airfoil": "./bryan_profil.dat",
+     "x_sec_type": "tip",
+     "tip_type": "round",
+     "spare_list": []
+    },
+    {
+     "xyz_le": [
+      0.144802,
+      0.272903,
+      -0.011978
+     ],
+     "chord": 0.010035,
+     "twist": 2.846,
+     "dihedral": 0.0,
+     "airfoil": "./bryan_profil.dat"
+    }
+   ],
+   "units": {
+    "geometry_length": "m",
+    "detail_length": "m",
+    "angle": "deg"
+   }
+  },
+  "Hoehenleitwerk": {
+   "name": "Hoehenleitwerk",
+   "symmetric": true,
+   "design_model": "asb",
+   "x_secs": [
+    {
+     "xyz_le": [
+      0.391935,
+      0.0,
+      -0.000999
+     ],
+     "chord": 0.07556,
+     "twist": 0.0,
+     "dihedral": 0.0,
+     "airfoil": "./bryan_platte.dat",
+     "x_sec_type": "root",
+     "spare_list": [],
+     "trailing_edge_device": {
+      "name": "Hoehenruder",
+      "role": "elevator",
+      "label": "Hoehenruder 14.c (einteilig)",
+      "rel_chord_root": 0.9157,
+      "rel_chord_tip": 0.9062,
+      "hinge_spacing": 0.3,
+      "side_spacing_root": 0.0,
+      "side_spacing_tip": 0.0,
+      "servo": {
+       "component_id": null,
+       "length": 20.0,
+       "width": 8.6,
+       "height": 20.2,
+       "leading_length": 4.25,
+       "latch_z": 12.0,
+       "latch_x": 4.0,
+       "latch_thickness": 1.0,
+       "latch_length": 28.0,
+       "cable_z": 0.0,
+       "screw_hole_lx": 2.25,
+       "screw_hole_d": 0.0
+      },
+      "servo_placement": "bottom",
+      "rel_chord_servo_position": null,
+      "rel_length_servo_position": null,
+      "positive_deflection_deg": 14.0,
+      "negative_deflection_deg": 14.0,
+      "deflection_deg": 0.0,
+      "trailing_edge_offset_factor": 1.0,
+      "hinge_type": "middle",
+      "symmetric": true
+     },
+     "control_surface": {
+      "name": "Hoehenruder",
+      "hinge_point": 0.9157,
+      "symmetric": true,
+      "deflection": 0.0
+     }
+    },
+    {
+     "xyz_le": [
+      0.391934,
+      0.00405,
+      -0.000999
+     ],
+     "chord": 0.076358,
+     "twist": 0.0,
+     "dihedral": 0.0,
+     "airfoil": "./bryan_platte.dat",
+     "x_sec_type": "segment",
+     "spare_list": [],
+     "trailing_edge_device": {
+      "name": "Hoehenruder",
+      "role": "elevator",
+      "label": "Hoehenruder 14.c (einteilig)",
+      "rel_chord_root": 0.9062,
+      "rel_chord_tip": 0.8841,
+      "hinge_spacing": 0.3,
+      "side_spacing_root": 0.0,
+      "side_spacing_tip": 0.0,
+      "servo": {
+       "component_id": null,
+       "length": 20.0,
+       "width": 8.6,
+       "height": 20.2,
+       "leading_length": 4.25,
+       "latch_z": 12.0,
+       "latch_x": 4.0,
+       "latch_thickness": 1.0,
+       "latch_length": 28.0,
+       "cable_z": 0.0,
+       "screw_hole_lx": 2.25,
+       "screw_hole_d": 0.0
+      },
+      "servo_placement": "bottom",
+      "rel_chord_servo_position": null,
+      "rel_length_servo_position": null,
+      "positive_deflection_deg": 14.0,
+      "negative_deflection_deg": 14.0,
+      "deflection_deg": 0.0,
+      "trailing_edge_offset_factor": 1.0,
+      "hinge_type": "middle",
+      "symmetric": true
+     },
+     "control_surface": {
+      "name": "Hoehenruder",
+      "hinge_point": 0.9062,
+      "symmetric": true,
+      "deflection": 0.0
+     }
+    },
+    {
+     "xyz_le": [
+      0.391933,
+      0.00655,
+      -0.000999
+     ],
+     "chord": 0.078262,
+     "twist": 0.0,
+     "dihedral": 0.0,
+     "airfoil": "./bryan_platte.dat",
+     "x_sec_type": "segment",
+     "spare_list": [],
+     "trailing_edge_device": {
+      "name": "Hoehenruder",
+      "role": "elevator",
+      "label": "Hoehenruder 14.c (einteilig)",
+      "rel_chord_root": 0.8841,
+      "rel_chord_tip": 0.7968,
+      "hinge_spacing": 0.3,
+      "side_spacing_root": 0.0,
+      "side_spacing_tip": 0.0,
+      "servo": {
+       "component_id": null,
+       "length": 20.0,
+       "width": 8.6,
+       "height": 20.2,
+       "leading_length": 4.25,
+       "latch_z": 12.0,
+       "latch_x": 4.0,
+       "latch_thickness": 1.0,
+       "latch_length": 28.0,
+       "cable_z": 0.0,
+       "screw_hole_lx": 2.25,
+       "screw_hole_d": 0.0
+      },
+      "servo_placement": "bottom",
+      "rel_chord_servo_position": null,
+      "rel_length_servo_position": null,
+      "positive_deflection_deg": 14.0,
+      "negative_deflection_deg": 14.0,
+      "deflection_deg": 0.0,
+      "trailing_edge_offset_factor": 1.0,
+      "hinge_type": "middle",
+      "symmetric": true
+     },
+     "control_surface": {
+      "name": "Hoehenruder",
+      "hinge_point": 0.8841,
+      "symmetric": true,
+      "deflection": 0.0
+     }
+    },
+    {
+     "xyz_le": [
+      0.391932,
+      0.01155,
+      -0.000999
+     ],
+     "chord": 0.086838,
+     "twist": 0.0,
+     "dihedral": 0.0,
+     "airfoil": "./bryan_platte.dat",
+     "x_sec_type": "segment",
+     "spare_list": [],
+     "trailing_edge_device": {
+      "name": "Hoehenruder",
+      "role": "elevator",
+      "label": "Hoehenruder 14.c (einteilig)",
+      "rel_chord_root": 0.7968,
+      "rel_chord_tip": 0.7879,
+      "hinge_spacing": 0.3,
+      "side_spacing_root": 0.0,
+      "side_spacing_tip": 0.0,
+      "servo": {
+       "component_id": null,
+       "length": 20.0,
+       "width": 8.6,
+       "height": 20.2,
+       "leading_length": 4.25,
+       "latch_z": 12.0,
+       "latch_x": 4.0,
+       "latch_thickness": 1.0,
+       "latch_length": 28.0,
+       "cable_z": 0.0,
+       "screw_hole_lx": 2.25,
+       "screw_hole_d": 0.0
+      },
+      "servo_placement": "bottom",
+      "rel_chord_servo_position": null,
+      "rel_length_servo_position": null,
+      "positive_deflection_deg": 14.0,
+      "negative_deflection_deg": 14.0,
+      "deflection_deg": 0.0,
+      "trailing_edge_offset_factor": 1.0,
+      "hinge_type": "middle",
+      "symmetric": true
+     },
+     "control_surface": {
+      "name": "Hoehenruder",
+      "hinge_point": 0.7968,
+      "symmetric": true,
+      "deflection": 0.0
+     }
+    },
+    {
+     "xyz_le": [
+      0.393922,
+      0.0118,
+      -0.000999
+     ],
+     "chord": 0.085298,
+     "twist": 0.0,
+     "dihedral": 0.0,
+     "airfoil": "./bryan_platte.dat",
+     "x_sec_type": "segment",
+     "spare_list": [],
+     "trailing_edge_device": {
+      "name": "Hoehenruder",
+      "role": "elevator",
+      "label": "Hoehenruder 14.c (einteilig)",
+      "rel_chord_root": 0.7879,
+      "rel_chord_tip": 0.6962,
+      "hinge_spacing": 0.3,
+      "side_spacing_root": 0.0,
+      "side_spacing_tip": 0.0,
+      "servo": {
+       "component_id": null,
+       "length": 20.0,
+       "width": 8.6,
+       "height": 20.2,
+       "leading_length": 4.25,
+       "latch_z": 12.0,
+       "latch_x": 4.0,
+       "latch_thickness": 1.0,
+       "latch_length": 28.0,
+       "cable_z": 0.0,
+       "screw_hole_lx": 2.25,
+       "screw_hole_d": 0.0
+      },
+      "servo_placement": "bottom",
+      "rel_chord_servo_position": null,
+      "rel_length_servo_position": null,
+      "positive_deflection_deg": 14.0,
+      "negative_deflection_deg": 14.0,
+      "deflection_deg": 0.0,
+      "trailing_edge_offset_factor": 1.0,
+      "hinge_type": "middle",
+      "symmetric": true
+     },
+     "control_surface": {
+      "name": "Hoehenruder",
+      "hinge_point": 0.7879,
+      "symmetric": true,
+      "deflection": 0.0
+     }
+    },
+    {
+     "xyz_le": [
+      0.394891,
+      0.0178,
+      -0.000999
+     ],
+     "chord": 0.095135,
+     "twist": 0.0,
+     "dihedral": 0.0,
+     "airfoil": "./bryan_platte.dat",
+     "x_sec_type": "segment",
+     "spare_list": [],
+     "trailing_edge_device": {
+      "name": "Hoehenruder",
+      "role": "elevator",
+      "label": "Hoehenruder 14.c (einteilig)",
+      "rel_chord_root": 0.6962,
+      "rel_chord_tip": 0.6948,
+      "hinge_spacing": 0.3,
+      "side_spacing_root": 0.0,
+      "side_spacing_tip": 0.0,
+      "servo": {
+       "component_id": null,
+       "length": 20.0,
+       "width": 8.6,
+       "height": 20.2,
+       "leading_length": 4.25,
+       "latch_z": 12.0,
+       "latch_x": 4.0,
+       "latch_thickness": 1.0,
+       "latch_length": 28.0,
+       "cable_z": 0.0,
+       "screw_hole_lx": 2.25,
+       "screw_hole_d": 0.0
+      },
+      "servo_placement": "bottom",
+      "rel_chord_servo_position": null,
+      "rel_length_servo_position": null,
+      "positive_deflection_deg": 14.0,
+      "negative_deflection_deg": 14.0,
+      "deflection_deg": 0.0,
+      "trailing_edge_offset_factor": 1.0,
+      "hinge_type": "middle",
+      "symmetric": true
+     },
+     "control_surface": {
+      "name": "Hoehenruder",
+      "hinge_point": 0.6962,
+      "symmetric": true,
+      "deflection": 0.0
+     }
+    },
+    {
+     "xyz_le": [
+      0.395261,
+      0.01955,
+      -0.000999
+     ],
+     "chord": 0.0948,
+     "twist": 0.0,
+     "dihedral": 0.0,
+     "airfoil": "./bryan_platte.dat",
+     "x_sec_type": "segment",
+     "spare_list": [],
+     "trailing_edge_device": {
+      "name": "Hoehenruder",
+      "role": "elevator",
+      "label": "Hoehenruder 14.c (einteilig)",
+      "rel_chord_root": 0.6948,
+      "rel_chord_tip": 0.6832,
+      "hinge_spacing": 0.3,
+      "side_spacing_root": 0.0,
+      "side_spacing_tip": 0.0,
+      "servo": {
+       "component_id": null,
+       "length": 20.0,
+       "width": 8.6,
+       "height": 20.2,
+       "leading_length": 4.25,
+       "latch_z": 12.0,
+       "latch_x": 4.0,
+       "latch_thickness": 1.0,
+       "latch_length": 28.0,
+       "cable_z": 0.0,
+       "screw_hole_lx": 2.25,
+       "screw_hole_d": 0.0
+      },
+      "servo_placement": "bottom",
+      "rel_chord_servo_position": null,
+      "rel_length_servo_position": null,
+      "positive_deflection_deg": 14.0,
+      "negative_deflection_deg": 14.0,
+      "deflection_deg": 0.0,
+      "trailing_edge_offset_factor": 1.0,
+      "hinge_type": "middle",
+      "symmetric": true
+     },
+     "control_surface": {
+      "name": "Hoehenruder",
+      "hinge_point": 0.6948,
+      "symmetric": true,
+      "deflection": 0.0
+     }
+    },
+    {
+     "xyz_le": [
+      0.405034,
+      0.0538,
+      -0.000999
+     ],
+     "chord": 0.0821,
+     "twist": 0.0,
+     "dihedral": 0.0,
+     "airfoil": "./bryan_platte.dat",
+     "x_sec_type": "segment",
+     "spare_list": [],
+     "trailing_edge_device": {
+      "name": "Hoehenruder",
+      "role": "elevator",
+      "label": "Hoehenruder 14.c (einteilig)",
+      "rel_chord_root": 0.6832,
+      "rel_chord_tip": 0.6535,
+      "hinge_spacing": 0.3,
+      "side_spacing_root": 0.0,
+      "side_spacing_tip": 0.0,
+      "servo": {
+       "component_id": null,
+       "length": 20.0,
+       "width": 8.6,
+       "height": 20.2,
+       "leading_length": 4.25,
+       "latch_z": 12.0,
+       "latch_x": 4.0,
+       "latch_thickness": 1.0,
+       "latch_length": 28.0,
+       "cable_z": 0.0,
+       "screw_hole_lx": 2.25,
+       "screw_hole_d": 0.0
+      },
+      "servo_placement": "bottom",
+      "rel_chord_servo_position": null,
+      "rel_length_servo_position": null,
+      "positive_deflection_deg": 14.0,
+      "negative_deflection_deg": 14.0,
+      "deflection_deg": 0.0,
+      "trailing_edge_offset_factor": 1.0,
+      "hinge_type": "middle",
+      "symmetric": true
+     },
+     "control_surface": {
+      "name": "Hoehenruder",
+      "hinge_point": 0.6832,
+      "symmetric": true,
+      "deflection": 0.0
+     }
+    },
+    {
+     "xyz_le": [
+      0.418949,
+      0.08505,
+      -0.000999
+     ],
+     "chord": 0.064542,
+     "twist": 0.0,
+     "dihedral": 0.0,
+     "airfoil": "./bryan_platte.dat",
+     "x_sec_type": "segment",
+     "spare_list": [],
+     "trailing_edge_device": {
+      "name": "Hoehenruder",
+      "role": "elevator",
+      "label": "Hoehenruder 14.c (einteilig)",
+      "rel_chord_root": 0.6535,
+      "rel_chord_tip": 0.6609,
+      "hinge_spacing": 0.3,
+      "side_spacing_root": 0.0,
+      "side_spacing_tip": 0.0,
+      "servo": {
+       "component_id": null,
+       "length": 20.0,
+       "width": 8.6,
+       "height": 20.2,
+       "leading_length": 4.25,
+       "latch_z": 12.0,
+       "latch_x": 4.0,
+       "latch_thickness": 1.0,
+       "latch_length": 28.0,
+       "cable_z": 0.0,
+       "screw_hole_lx": 2.25,
+       "screw_hole_d": 0.0
+      },
+      "servo_placement": "bottom",
+      "rel_chord_servo_position": null,
+      "rel_length_servo_position": null,
+      "positive_deflection_deg": 14.0,
+      "negative_deflection_deg": 14.0,
+      "deflection_deg": 0.0,
+      "trailing_edge_offset_factor": 1.0,
+      "hinge_type": "middle",
+      "symmetric": true
+     },
+     "control_surface": {
+      "name": "Hoehenruder",
+      "hinge_point": 0.6535,
+      "symmetric": true,
+      "deflection": 0.0
+     }
+    },
+    {
+     "xyz_le": [
+      0.421274,
+      0.08805,
+      -0.000999
+     ],
+     "chord": 0.060301,
+     "twist": 0.0,
+     "dihedral": 0.0,
+     "airfoil": "./bryan_platte.dat",
+     "x_sec_type": "segment",
+     "spare_list": [],
+     "trailing_edge_device": {
+      "name": "Hoehenruder",
+      "role": "elevator",
+      "label": "Hoehenruder 14.c (einteilig)",
+      "rel_chord_root": 0.6609,
+      "rel_chord_tip": 0.683,
+      "hinge_spacing": 0.3,
+      "side_spacing_root": 0.0,
+      "side_spacing_tip": 0.0,
+      "servo": {
+       "component_id": null,
+       "length": 20.0,
+       "width": 8.6,
+       "height": 20.2,
+       "leading_length": 4.25,
+       "latch_z": 12.0,
+       "latch_x": 4.0,
+       "latch_thickness": 1.0,
+       "latch_length": 28.0,
+       "cable_z": 0.0,
+       "screw_hole_lx": 2.25,
+       "screw_hole_d": 0.0
+      },
+      "servo_placement": "bottom",
+      "rel_chord_servo_position": null,
+      "rel_length_servo_position": null,
+      "positive_deflection_deg": 14.0,
+      "negative_deflection_deg": 14.0,
+      "deflection_deg": 0.0,
+      "trailing_edge_offset_factor": 1.0,
+      "hinge_type": "middle",
+      "symmetric": true
+     },
+     "control_surface": {
+      "name": "Hoehenruder",
+      "hinge_point": 0.6609,
+      "symmetric": true,
+      "deflection": 0.0
+     }
+    },
+    {
+     "xyz_le": [
+      0.422977,
+      0.0898,
+      -0.000999
+     ],
+     "chord": 0.055854,
+     "twist": 0.0,
+     "dihedral": 0.0,
+     "airfoil": "./bryan_platte.dat",
+     "x_sec_type": "segment",
+     "spare_list": [],
+     "trailing_edge_device": {
+      "name": "Hoehenruder",
+      "role": "elevator",
+      "label": "Hoehenruder 14.c (einteilig)",
+      "rel_chord_root": 0.683,
+      "rel_chord_tip": 0.988,
+      "hinge_spacing": 0.3,
+      "side_spacing_root": 0.0,
+      "side_spacing_tip": 0.0,
+      "servo": {
+       "component_id": null,
+       "length": 20.0,
+       "width": 8.6,
+       "height": 20.2,
+       "leading_length": 4.25,
+       "latch_z": 12.0,
+       "latch_x": 4.0,
+       "latch_thickness": 1.0,
+       "latch_length": 28.0,
+       "cable_z": 0.0,
+       "screw_hole_lx": 2.25,
+       "screw_hole_d": 0.0
+      },
+      "servo_placement": "bottom",
+      "rel_chord_servo_position": null,
+      "rel_length_servo_position": null,
+      "positive_deflection_deg": 14.0,
+      "negative_deflection_deg": 14.0,
+      "deflection_deg": 0.0,
+      "trailing_edge_offset_factor": 1.0,
+      "hinge_type": "middle",
+      "symmetric": true
+     },
+     "control_surface": {
+      "name": "Hoehenruder",
+      "hinge_point": 0.683,
+      "symmetric": true,
+      "deflection": 0.0
+     }
+    },
+    {
+     "xyz_le": [
+      0.428874,
+      0.0938,
+      -0.000999
+     ],
+     "chord": 0.032644,
+     "twist": 0.0,
+     "dihedral": 0.0,
+     "airfoil": "./bryan_platte.dat",
+     "x_sec_type": "tip",
+     "tip_type": "round",
+     "spare_list": []
+    },
+    {
+     "xyz_le": [
+      0.437334,
+      0.0962,
+      -0.000999
+     ],
+     "chord": 0.005239,
+     "twist": 0.0,
+     "dihedral": 0.0,
+     "airfoil": "./bryan_platte.dat"
+    }
+   ],
+   "units": {
+    "geometry_length": "m",
+    "detail_length": "m",
+    "angle": "deg"
+   }
+  },
+  "Seitenleitwerk": {
+   "name": "Seitenleitwerk",
+   "symmetric": false,
+   "design_model": "asb",
+   "x_secs": [
+    {
+     "xyz_le": [
+      0.468287,
+      0.0,
+      -0.020766
+     ],
+     "chord": 0.002597,
+     "twist": 0.0,
+     "dihedral": 90.0,
+     "airfoil": "./bryan_platte.dat",
+     "x_sec_type": "root",
+     "spare_list": [],
+     "trailing_edge_device": {
+      "name": "Seitenruder",
+      "role": "rudder",
+      "label": "Seitenruder 15.d",
+      "rel_chord_root": 0,
+      "rel_chord_tip": 0,
+      "hinge_spacing": 0.3,
+      "side_spacing_root": 0.0,
+      "side_spacing_tip": 0.0,
+      "servo": {
+       "component_id": null,
+       "length": 20.0,
+       "width": 8.6,
+       "height": 20.2,
+       "leading_length": 4.25,
+       "latch_z": 12.0,
+       "latch_x": 4.0,
+       "latch_thickness": 1.0,
+       "latch_length": 28.0,
+       "cable_z": 0.0,
+       "screw_hole_lx": 2.25,
+       "screw_hole_d": 0.0
+      },
+      "servo_placement": "bottom",
+      "rel_chord_servo_position": null,
+      "rel_length_servo_position": null,
+      "positive_deflection_deg": 35.0,
+      "negative_deflection_deg": 35.0,
+      "deflection_deg": 0.0,
+      "trailing_edge_offset_factor": 1.0,
+      "hinge_type": "middle",
+      "symmetric": null
+     },
+     "control_surface": {
+      "name": "Seitenruder",
+      "hinge_point": 0,
+      "symmetric": true,
+      "deflection": 0.0
+     }
+    },
+    {
+     "xyz_le": [
+      0.468281,
+      0.0,
+      -0.01925
+     ],
+     "chord": 0.014996,
+     "twist": 0.0,
+     "dihedral": 0.0,
+     "airfoil": "./bryan_platte.dat",
+     "x_sec_type": "segment",
+     "spare_list": [],
+     "trailing_edge_device": {
+      "name": "Seitenruder",
+      "role": "rudder",
+      "label": "Seitenruder 15.d",
+      "rel_chord_root": 0,
+      "rel_chord_tip": 0,
+      "hinge_spacing": 0.3,
+      "side_spacing_root": 0.0,
+      "side_spacing_tip": 0.0,
+      "servo": {
+       "component_id": null,
+       "length": 20.0,
+       "width": 8.6,
+       "height": 20.2,
+       "leading_length": 4.25,
+       "latch_z": 12.0,
+       "latch_x": 4.0,
+       "latch_thickness": 1.0,
+       "latch_length": 28.0,
+       "cable_z": 0.0,
+       "screw_hole_lx": 2.25,
+       "screw_hole_d": 0.0
+      },
+      "servo_placement": "bottom",
+      "rel_chord_servo_position": null,
+      "rel_length_servo_position": null,
+      "positive_deflection_deg": 35.0,
+      "negative_deflection_deg": 35.0,
+      "deflection_deg": 0.0,
+      "trailing_edge_offset_factor": 1.0,
+      "hinge_type": "middle",
+      "symmetric": null
+     },
+     "control_surface": {
+      "name": "Seitenruder",
+      "hinge_point": 0,
+      "symmetric": true,
+      "deflection": 0.0
+     }
+    },
+    {
+     "xyz_le": [
+      0.468272,
+      0.0,
+      -0.01675
+     ],
+     "chord": 0.031155,
+     "twist": 0.0,
+     "dihedral": 0.0,
+     "airfoil": "./bryan_platte.dat",
+     "x_sec_type": "segment",
+     "spare_list": [],
+     "trailing_edge_device": {
+      "name": "Seitenruder",
+      "role": "rudder",
+      "label": "Seitenruder 15.d",
+      "rel_chord_root": 0,
+      "rel_chord_tip": 0,
+      "hinge_spacing": 0.3,
+      "side_spacing_root": 0.0,
+      "side_spacing_tip": 0.0,
+      "servo": {
+       "component_id": null,
+       "length": 20.0,
+       "width": 8.6,
+       "height": 20.2,
+       "leading_length": 4.25,
+       "latch_z": 12.0,
+       "latch_x": 4.0,
+       "latch_thickness": 1.0,
+       "latch_length": 28.0,
+       "cable_z": 0.0,
+       "screw_hole_lx": 2.25,
+       "screw_hole_d": 0.0
+      },
+      "servo_placement": "bottom",
+      "rel_chord_servo_position": null,
+      "rel_length_servo_position": null,
+      "positive_deflection_deg": 35.0,
+      "negative_deflection_deg": 35.0,
+      "deflection_deg": 0.0,
+      "trailing_edge_offset_factor": 1.0,
+      "hinge_type": "middle",
+      "symmetric": null
+     },
+     "control_surface": {
+      "name": "Seitenruder",
+      "hinge_point": 0,
+      "symmetric": true,
+      "deflection": 0.0
+     }
+    },
+    {
+     "xyz_le": [
+      0.46827,
+      0.0,
+      -0.016
+     ],
+     "chord": 0.033495,
+     "twist": 0.0,
+     "dihedral": 0.0,
+     "airfoil": "./bryan_platte.dat",
+     "x_sec_type": "segment",
+     "spare_list": [],
+     "trailing_edge_device": {
+      "name": "Seitenruder",
+      "role": "rudder",
+      "label": "Seitenruder 15.d",
+      "rel_chord_root": 0,
+      "rel_chord_tip": 0,
+      "hinge_spacing": 0.3,
+      "side_spacing_root": 0.0,
+      "side_spacing_tip": 0.0,
+      "servo": {
+       "component_id": null,
+       "length": 20.0,
+       "width": 8.6,
+       "height": 20.2,
+       "leading_length": 4.25,
+       "latch_z": 12.0,
+       "latch_x": 4.0,
+       "latch_thickness": 1.0,
+       "latch_length": 28.0,
+       "cable_z": 0.0,
+       "screw_hole_lx": 2.25,
+       "screw_hole_d": 0.0
+      },
+      "servo_placement": "bottom",
+      "rel_chord_servo_position": null,
+      "rel_length_servo_position": null,
+      "positive_deflection_deg": 35.0,
+      "negative_deflection_deg": 35.0,
+      "deflection_deg": 0.0,
+      "trailing_edge_offset_factor": 1.0,
+      "hinge_type": "middle",
+      "symmetric": null
+     },
+     "control_surface": {
+      "name": "Seitenruder",
+      "hinge_point": 0,
+      "symmetric": true,
+      "deflection": 0.0
+     }
+    },
+    {
+     "xyz_le": [
+      0.468264,
+      0.0,
+      -0.0145
+     ],
+     "chord": 0.035565,
+     "twist": 0.0,
+     "dihedral": 0.0,
+     "airfoil": "./bryan_platte.dat",
+     "x_sec_type": "segment",
+     "spare_list": [],
+     "trailing_edge_device": {
+      "name": "Seitenruder",
+      "role": "rudder",
+      "label": "Seitenruder 15.d",
+      "rel_chord_root": 0,
+      "rel_chord_tip": 0,
+      "hinge_spacing": 0.3,
+      "side_spacing_root": 0.0,
+      "side_spacing_tip": 0.0,
+      "servo": {
+       "component_id": null,
+       "length": 20.0,
+       "width": 8.6,
+       "height": 20.2,
+       "leading_length": 4.25,
+       "latch_z": 12.0,
+       "latch_x": 4.0,
+       "latch_thickness": 1.0,
+       "latch_length": 28.0,
+       "cable_z": 0.0,
+       "screw_hole_lx": 2.25,
+       "screw_hole_d": 0.0
+      },
+      "servo_placement": "bottom",
+      "rel_chord_servo_position": null,
+      "rel_length_servo_position": null,
+      "positive_deflection_deg": 35.0,
+      "negative_deflection_deg": 35.0,
+      "deflection_deg": 0.0,
+      "trailing_edge_offset_factor": 1.0,
+      "hinge_type": "middle",
+      "symmetric": null
+     },
+     "control_surface": {
+      "name": "Seitenruder",
+      "hinge_point": 0,
+      "symmetric": true,
+      "deflection": 0.0
+     }
+    },
+    {
+     "xyz_le": [
+      0.468245,
+      0.0,
+      -0.009
+     ],
+     "chord": 0.037929,
+     "twist": 0.0,
+     "dihedral": 0.0,
+     "airfoil": "./bryan_platte.dat",
+     "x_sec_type": "segment",
+     "spare_list": [],
+     "trailing_edge_device": {
+      "name": "Seitenruder",
+      "role": "rudder",
+      "label": "Seitenruder 15.d",
+      "rel_chord_root": 0,
+      "rel_chord_tip": 0.0019,
+      "hinge_spacing": 0.3,
+      "side_spacing_root": 0.0,
+      "side_spacing_tip": 0.0,
+      "servo": {
+       "component_id": null,
+       "length": 20.0,
+       "width": 8.6,
+       "height": 20.2,
+       "leading_length": 4.25,
+       "latch_z": 12.0,
+       "latch_x": 4.0,
+       "latch_thickness": 1.0,
+       "latch_length": 28.0,
+       "cable_z": 0.0,
+       "screw_hole_lx": 2.25,
+       "screw_hole_d": 0.0
+      },
+      "servo_placement": "bottom",
+      "rel_chord_servo_position": null,
+      "rel_length_servo_position": null,
+      "positive_deflection_deg": 35.0,
+      "negative_deflection_deg": 35.0,
+      "deflection_deg": 0.0,
+      "trailing_edge_offset_factor": 1.0,
+      "hinge_type": "middle",
+      "symmetric": null
+     },
+     "control_surface": {
+      "name": "Seitenruder",
+      "hinge_point": 0,
+      "symmetric": true,
+      "deflection": 0.0
+     }
+    },
+    {
+     "xyz_le": [
+      0.46783,
+      0.0,
+      0.013
+     ],
+     "chord": 0.035706,
+     "twist": 0.0,
+     "dihedral": 0.0,
+     "airfoil": "./bryan_platte.dat",
+     "x_sec_type": "segment",
+     "spare_list": [],
+     "trailing_edge_device": {
+      "name": "Seitenruder",
+      "role": "rudder",
+      "label": "Seitenruder 15.d",
+      "rel_chord_root": 0.0019,
+      "rel_chord_tip": 0.7044,
+      "hinge_spacing": 0.3,
+      "side_spacing_root": 0.0,
+      "side_spacing_tip": 0.0,
+      "servo": {
+       "component_id": null,
+       "length": 20.0,
+       "width": 8.6,
+       "height": 20.2,
+       "leading_length": 4.25,
+       "latch_z": 12.0,
+       "latch_x": 4.0,
+       "latch_thickness": 1.0,
+       "latch_length": 28.0,
+       "cable_z": 0.0,
+       "screw_hole_lx": 2.25,
+       "screw_hole_d": 0.0
+      },
+      "servo_placement": "bottom",
+      "rel_chord_servo_position": null,
+      "rel_length_servo_position": null,
+      "positive_deflection_deg": 35.0,
+      "negative_deflection_deg": 35.0,
+      "deflection_deg": 0.0,
+      "trailing_edge_offset_factor": 1.0,
+      "hinge_type": "middle",
+      "symmetric": null
+     },
+     "control_surface": {
+      "name": "Seitenruder",
+      "hinge_point": 0.0019,
+      "symmetric": true,
+      "deflection": 0.0
+     }
+    },
+    {
+     "xyz_le": [
+      0.388874,
+      0.0,
+      0.02925
+     ],
+     "chord": 0.112194,
+     "twist": 0.0,
+     "dihedral": 0.0,
+     "airfoil": "./bryan_platte.dat",
+     "x_sec_type": "segment",
+     "spare_list": [],
+     "trailing_edge_device": {
+      "name": "Seitenruder",
+      "role": "rudder",
+      "label": "Seitenruder 15.d",
+      "rel_chord_root": 0.7044,
+      "rel_chord_tip": 0.6327,
+      "hinge_spacing": 0.3,
+      "side_spacing_root": 0.0,
+      "side_spacing_tip": 0.0,
+      "servo": {
+       "component_id": null,
+       "length": 20.0,
+       "width": 8.6,
+       "height": 20.2,
+       "leading_length": 4.25,
+       "latch_z": 12.0,
+       "latch_x": 4.0,
+       "latch_thickness": 1.0,
+       "latch_length": 28.0,
+       "cable_z": 0.0,
+       "screw_hole_lx": 2.25,
+       "screw_hole_d": 0.0
+      },
+      "servo_placement": "bottom",
+      "rel_chord_servo_position": null,
+      "rel_length_servo_position": null,
+      "positive_deflection_deg": 35.0,
+      "negative_deflection_deg": 35.0,
+      "deflection_deg": 0.0,
+      "trailing_edge_offset_factor": 1.0,
+      "hinge_type": "middle",
+      "symmetric": null
+     },
+     "control_surface": {
+      "name": "Seitenruder",
+      "hinge_point": 0.7044,
+      "symmetric": true,
+      "deflection": 0.0
+     }
+    },
+    {
+     "xyz_le": [
+      0.422279,
+      0.0,
+      0.06325
+     ],
+     "chord": 0.072109,
+     "twist": 0.0,
+     "dihedral": 0.0,
+     "airfoil": "./bryan_platte.dat",
+     "x_sec_type": "segment",
+     "spare_list": [],
+     "trailing_edge_device": {
+      "name": "Seitenruder",
+      "role": "rudder",
+      "label": "Seitenruder 15.d",
+      "rel_chord_root": 0.6327,
+      "rel_chord_tip": 0.5648,
+      "hinge_spacing": 0.3,
+      "side_spacing_root": 0.0,
+      "side_spacing_tip": 0.0,
+      "servo": {
+       "component_id": null,
+       "length": 20.0,
+       "width": 8.6,
+       "height": 20.2,
+       "leading_length": 4.25,
+       "latch_z": 12.0,
+       "latch_x": 4.0,
+       "latch_thickness": 1.0,
+       "latch_length": 28.0,
+       "cable_z": 0.0,
+       "screw_hole_lx": 2.25,
+       "screw_hole_d": 0.0
+      },
+      "servo_placement": "bottom",
+      "rel_chord_servo_position": null,
+      "rel_length_servo_position": null,
+      "positive_deflection_deg": 35.0,
+      "negative_deflection_deg": 35.0,
+      "deflection_deg": 0.0,
+      "trailing_edge_offset_factor": 1.0,
+      "hinge_type": "middle",
+      "symmetric": null
+     },
+     "control_surface": {
+      "name": "Seitenruder",
+      "hinge_point": 0.6327,
+      "symmetric": true,
+      "deflection": 0.0
+     }
+    },
+    {
+     "xyz_le": [
+      0.439517,
+      0.0,
+      0.08025
+     ],
+     "chord": 0.050256,
+     "twist": 0.0,
+     "dihedral": 0.0,
+     "airfoil": "./bryan_platte.dat",
+     "x_sec_type": "segment",
+     "spare_list": [],
+     "trailing_edge_device": {
+      "name": "Seitenruder",
+      "role": "rudder",
+      "label": "Seitenruder 15.d",
+      "rel_chord_root": 0.5648,
+      "rel_chord_tip": 0.5685,
+      "hinge_spacing": 0.3,
+      "side_spacing_root": 0.0,
+      "side_spacing_tip": 0.0,
+      "servo": {
+       "component_id": null,
+       "length": 20.0,
+       "width": 8.6,
+       "height": 20.2,
+       "leading_length": 4.25,
+       "latch_z": 12.0,
+       "latch_x": 4.0,
+       "latch_thickness": 1.0,
+       "latch_length": 28.0,
+       "cable_z": 0.0,
+       "screw_hole_lx": 2.25,
+       "screw_hole_d": 0.0
+      },
+      "servo_placement": "bottom",
+      "rel_chord_servo_position": null,
+      "rel_length_servo_position": null,
+      "positive_deflection_deg": 35.0,
+      "negative_deflection_deg": 35.0,
+      "deflection_deg": 0.0,
+      "trailing_edge_offset_factor": 1.0,
+      "hinge_type": "middle",
+      "symmetric": null
+     },
+     "control_surface": {
+      "name": "Seitenruder",
+      "hinge_point": 0.5648,
+      "symmetric": true,
+      "deflection": 0.0
+     }
+    },
+    {
+     "xyz_le": [
+      0.444202,
+      0.0,
+      0.08325
+     ],
+     "chord": 0.041687,
+     "twist": 0.0,
+     "dihedral": 0.0,
+     "airfoil": "./bryan_platte.dat",
+     "x_sec_type": "segment",
+     "spare_list": [],
+     "trailing_edge_device": {
+      "name": "Seitenruder",
+      "role": "rudder",
+      "label": "Seitenruder 15.d",
+      "rel_chord_root": 0.5685,
+      "rel_chord_tip": 0.7809,
+      "hinge_spacing": 0.3,
+      "side_spacing_root": 0.0,
+      "side_spacing_tip": 0.0,
+      "servo": {
+       "component_id": null,
+       "length": 20.0,
+       "width": 8.6,
+       "height": 20.2,
+       "leading_length": 4.25,
+       "latch_z": 12.0,
+       "latch_x": 4.0,
+       "latch_thickness": 1.0,
+       "latch_length": 28.0,
+       "cable_z": 0.0,
+       "screw_hole_lx": 2.25,
+       "screw_hole_d": 0.0
+      },
+      "servo_placement": "bottom",
+      "rel_chord_servo_position": null,
+      "rel_length_servo_position": null,
+      "positive_deflection_deg": 35.0,
+      "negative_deflection_deg": 35.0,
+      "deflection_deg": 0.0,
+      "trailing_edge_offset_factor": 1.0,
+      "hinge_type": "middle",
+      "symmetric": null
+     },
+     "control_surface": {
+      "name": "Seitenruder",
+      "hinge_point": 0.5685,
+      "symmetric": true,
+      "deflection": 0.0
+     }
+    },
+    {
+     "xyz_le": [
+      0.450749,
+      0.0,
+      0.086
+     ],
+     "chord": 0.021963,
+     "twist": 0.0,
+     "dihedral": 0.0,
+     "airfoil": "./bryan_platte.dat",
+     "x_sec_type": "tip",
+     "tip_type": "round",
+     "spare_list": [],
+     "trailing_edge_device": {
+      "name": "Seitenruder",
+      "role": "rudder",
+      "label": "Seitenruder 15.d",
+      "rel_chord_root": 0.7809,
+      "rel_chord_tip": 1,
+      "hinge_spacing": 0.3,
+      "side_spacing_root": 0.0,
+      "side_spacing_tip": 0.0,
+      "servo": {
+       "component_id": null,
+       "length": 20.0,
+       "width": 8.6,
+       "height": 20.2,
+       "leading_length": 4.25,
+       "latch_z": 12.0,
+       "latch_x": 4.0,
+       "latch_thickness": 1.0,
+       "latch_length": 28.0,
+       "cable_z": 0.0,
+       "screw_hole_lx": 2.25,
+       "screw_hole_d": 0.0
+      },
+      "servo_placement": "bottom",
+      "rel_chord_servo_position": null,
+      "rel_length_servo_position": null,
+      "positive_deflection_deg": 35.0,
+      "negative_deflection_deg": 35.0,
+      "deflection_deg": 0.0,
+      "trailing_edge_offset_factor": 1.0,
+      "hinge_type": "middle",
+      "symmetric": null
+     },
+     "control_surface": {
+      "name": "Seitenruder",
+      "hinge_point": 0.7809,
+      "symmetric": true,
+      "deflection": 0.0
+     }
+    },
+    {
+     "xyz_le": [
+      0.457419,
+      0.0,
+      0.08735
+     ],
+     "chord": 0.007753,
+     "twist": 0.0,
+     "dihedral": 0.0,
+     "airfoil": "./bryan_platte.dat"
+    }
+   ],
+   "units": {
+    "geometry_length": "m",
+    "detail_length": "m",
+    "angle": "deg"
+   }
+  }
+ },
+ "fuselages": {
+  "Rumpf": {
+   "name": "Rumpf",
+   "symmetric": false,
+   "x_secs": [
+    {
+     "xyz": [
+      0.0,
+      0.0,
+      0.001792
+     ],
+     "a": 0.0,
+     "b": 0.0,
+     "n": 2.0
+    },
+    {
+     "xyz": [
+      0.0003,
+      0.0,
+      0.001792
+     ],
+     "a": 0.017132,
+     "b": 0.019595,
+     "n": 50.0
+    },
+    {
+     "xyz": [
+      0.01,
+      0.0,
+      -3.5e-05
+     ],
+     "a": 0.01852,
+     "b": 0.022874,
+     "n": 50.0
+    },
+    {
+     "xyz": [
+      0.02123,
+      0.0,
+      -0.002056
+     ],
+     "a": 0.020073,
+     "b": 0.026515,
+     "n": 50.0
+    },
+    {
+     "xyz": [
+      0.045,
+      0.0,
+      -0.004091
+     ],
+     "a": 0.021992,
+     "b": 0.030234,
+     "n": 50.0
+    },
+    {
+     "xyz": [
+      0.06655,
+      0.0,
+      -0.004878
+     ],
+     "a": 0.02252,
+     "b": 0.031675,
+     "n": 50.0
+    },
+    {
+     "xyz": [
+      0.08743,
+      0.0,
+      -0.004985
+     ],
+     "a": 0.022527,
+     "b": 0.031772,
+     "n": 50.0
+    },
+    {
+     "xyz": [
+      0.16,
+      0.0,
+      -0.005215
+     ],
+     "a": 0.022589,
+     "b": 0.031998,
+     "n": 50.0
+    },
+    {
+     "xyz": [
+      0.236,
+      0.0,
+      -0.00503
+     ],
+     "a": 0.022515,
+     "b": 0.031822,
+     "n": 50.0
+    },
+    {
+     "xyz": [
+      0.2405,
+      0.0,
+      0.004154
+     ],
+     "a": 0.022568,
+     "b": 0.04196,
+     "n": 6.31
+    },
+    {
+     "xyz": [
+      0.27,
+      0.0,
+      0.003637
+     ],
+     "a": 0.022107,
+     "b": 0.040183,
+     "n": 6.64
+    },
+    {
+     "xyz": [
+      0.3102,
+      0.0,
+      0.002786
+     ],
+     "a": 0.020637,
+     "b": 0.037151,
+     "n": 7.06
+    },
+    {
+     "xyz": [
+      0.345,
+      0.0,
+      0.001697
+     ],
+     "a": 0.018304,
+     "b": 0.033592,
+     "n": 7.08
+    },
+    {
+     "xyz": [
+      0.38282,
+      0.0,
+      0.000522
+     ],
+     "a": 0.014429,
+     "b": 0.029099,
+     "n": 8.24
+    },
+    {
+     "xyz": [
+      0.42,
+      0.0,
+      -0.0014
+     ],
+     "a": 0.0093,
+     "b": 0.024037,
+     "n": 16.77
+    },
+    {
+     "xyz": [
+      0.45,
+      0.0,
+      -0.001765
+     ],
+     "a": 0.005771,
+     "b": 0.020595,
+     "n": 6.38
+    },
+    {
+     "xyz": [
+      0.467,
+      0.0,
+      -0.003935
+     ],
+     "a": 0.001771,
+     "b": 0.017271,
+     "n": 20.32
+    },
+    {
+     "xyz": [
+      0.469,
+      0.0,
+      -0.003935
+     ],
+     "a": 0.0,
+     "b": 0.017271,
+     "n": 2.0
+    }
+   ],
+   "step_path": null,
+   "solid_step_path": null
+  },
+  "Haube": {
+   "name": "Haube",
+   "symmetric": false,
+   "x_secs": [
+    {
+     "xyz": [
+      0.133842,
+      0.0,
+      0.026769
+     ],
+     "a": 0.02248,
+     "b": 0.0,
+     "n": 2.0
+    },
+    {
+     "xyz": [
+      0.134442,
+      0.0,
+      0.026769
+     ],
+     "a": 0.02248,
+     "b": 0.00126,
+     "n": 3.43
+    },
+    {
+     "xyz": [
+      0.135842,
+      0.0,
+      0.026769
+     ],
+     "a": 0.02248,
+     "b": 0.002332,
+     "n": 2.37
+    },
+    {
+     "xyz": [
+      0.138842,
+      0.0,
+      0.026769
+     ],
+     "a": 0.02248,
+     "b": 0.004537,
+     "n": 1.93
+    },
+    {
+     "xyz": [
+      0.143842,
+      0.0,
+      0.026769
+     ],
+     "a": 0.02248,
+     "b": 0.007772,
+     "n": 1.97
+    },
+    {
+     "xyz": [
+      0.151842,
+      0.0,
+      0.026769
+     ],
+     "a": 0.02248,
+     "b": 0.011699,
+     "n": 1.94
+    },
+    {
+     "xyz": [
+      0.163842,
+      0.0,
+      0.026769
+     ],
+     "a": 0.02248,
+     "b": 0.015963,
+     "n": 1.92
+    },
+    {
+     "xyz": [
+      0.178842,
+      0.0,
+      0.026769
+     ],
+     "a": 0.02248,
+     "b": 0.019562,
+     "n": 1.94
+    },
+    {
+     "xyz": [
+      0.193842,
+      0.0,
+      0.026769
+     ],
+     "a": 0.02248,
+     "b": 0.021849,
+     "n": 1.92
+    },
+    {
+     "xyz": [
+      0.208842,
+      0.0,
+      0.026769
+     ],
+     "a": 0.02248,
+     "b": 0.02305,
+     "n": 1.95
+    },
+    {
+     "xyz": [
+      0.221842,
+      0.0,
+      0.026769
+     ],
+     "a": 0.02248,
+     "b": 0.023271,
+     "n": 1.94
+    },
+    {
+     "xyz": [
+      0.229842,
+      0.0,
+      0.026769
+     ],
+     "a": 0.02248,
+     "b": 0.023016,
+     "n": 1.96
+    },
+    {
+     "xyz": [
+      0.235342,
+      0.0,
+      0.026769
+     ],
+     "a": 0.02248,
+     "b": 0.022654,
+     "n": 1.99
+    },
+    {
+     "xyz": [
+      0.237332,
+      0.0,
+      0.026769
+     ],
+     "a": 0.02248,
+     "b": 0.022503,
+     "n": 2.0
+    },
+    {
+     "xyz": [
+      0.237732,
+      0.0,
+      0.026769
+     ],
+     "a": 0.02248,
+     "b": 0.022503,
+     "n": 2.0
+    }
+   ],
+   "step_path": null,
+   "solid_step_path": null
+  }
+ }
+}
