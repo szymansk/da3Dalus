@@ -507,7 +507,44 @@ hat.
 
 ### 2.2 Konstruktion
 
-**Status: noch nicht aufgenommen.** Erzeugt `airplane`.
+**Status: noch nicht aufgenommen.** Erzeugt `airplane`. Eine erste Prüfung, die an die
+Konstruktion zurückmeldet, steht schon (unten).
+
+#### Rollwirkung gegen die gebauten Ruderausschläge (01.10.2026)
+
+**Die Ausschläge sind Konstruktionsparameter.** Wie weit das Querruder auf und ab geht,
+legt die Konstruktion fest — Freiraum am Ruder, Servokinematik, Lage des Ruderhorns — und
+es steht im Flugzeug (`positive/negative_deflection_deg`). Der Kanon rechnet die
+Ausschläge **nicht aus**, er prüft gegen sie.
+
+**Eingabe** ist eine geforderte Rollrate, die ihre Geschwindigkeit im Namen trägt (A2):
+im Reiseflug (die Charakteraussage, „rollt 360 °/s“) und/oder im Anflug (die
+Steuerbarkeitsaussage; dort legt Sadraey §12.3.3 das Querruder aus). Bei festem Ausschlag
+ist $pb/2V$ nahezu geschwindigkeitsunabhängig, die Rollrate in °/s wächst also mit $V$ —
+ohne Geschwindigkeit wäre die Forderung unbestimmt.
+
+**Rechnung** — stationäres Rollen, Schließung durch einen vorgeschriebenen Wert
+(Eintrag `roll-authority`):
+
+$$
+L(V,\alpha) = m\,g, \qquad C_l\big(V,\alpha,\,s\,\delta_{a,max},\,p\big) = 0
+$$
+
+$s$ skaliert die **gebauten** Ausschläge, auf und ab wie konstruiert, eine Differenzierung
+eingeschlossen. Zwei Antworten je Betriebspunkt: die Rollrate $p_{max}$ bei vollem
+Ausschlag ($s = 1$), und der Anteil $s_{req}$, den die Forderung braucht. $s_{req} \le 1$:
+erreichbar, der Rest ist Reserve. $s_{req} > 1$ oder keine Lösung: **mit diesen
+Ausschlägen nicht erreichbar** — ausgewiesen, nie abgeschnitten (ADR 0020).
+
+**Werkzeug:** AeroBuildup reicht hier — Rollmoment aus dem Ausschlag und Rolldämpfung
+hängen am Auftrieb, nicht am induzierten Widerstand (anders als beim Wendemoment, §3.1).
+Ausgewiesene Grenze: NeuralFoils Klappenmodell bei großen Ausschlägen und kleiner
+Reynoldszahl ist ungeprüft, und das Abreißen des Ruders jenseits etwa 25° ist nur so gut
+wie dieses Modell.
+
+**Zurück in die Konstruktion** führt das Ergebnis über den Ablauf (§0.4): Reicht der
+Ausschlag nicht, ändert der Konstrukteur Ruderhorn, Servoweg oder Rudertiefe — die Rechnung
+schlägt das nicht vor.
 
 ### 2.3 Analyse
 

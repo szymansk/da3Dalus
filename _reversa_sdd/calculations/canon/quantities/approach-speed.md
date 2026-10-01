@@ -18,3 +18,5 @@ Betriebspunktgeschwindigkeit — jede trägt ihren Punkt im Namen (A2).
 **Unit.** `m/s`
 
 **Produced by.** [[speed-from-stall-margin]]
+
+**Used by.** [[roll-authority]]

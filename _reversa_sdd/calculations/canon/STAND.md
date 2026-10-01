@@ -258,3 +258,9 @@ etwas. Details §3.1, Skripte `bryan_aileron_*.py`. Nicht wieder aufmachen ohne 
 **Negatives Lastvielfaches (01.10.2026):** $n_{neg} = -0{,}4\,n_{lim}$ gestrichen. Stattdessen
 `spar-break-load-factor`: $n_{break,\pm}$ aus dem eingebauten Holm, aus `airplane` abgeleitet;
 **Befestigungen ignoriert** (Maintainer). Soll über #1139 und #1106.
+
+**Rollwirkung (01.10.2026), §2.2:** `roll-authority` prüft eine geforderte Rollrate — je
+Geschwindigkeit (Reiseflug, Anflug), vom Maintainer bestätigt — gegen die **im Flugzeug
+festgelegten** Querruderausschläge (Konstruktionsparameter: Freiraum, Servokinematik,
+Ruderhorn). Ergebnis: $p_{max}$ bei vollem Ausschlag und der nötige Anteil $s_{req}$;
+$s_{req} > 1$ = nicht erreichbar. AeroBuildup reicht (Auftrieb, nicht induzierter Widerstand).
