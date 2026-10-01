@@ -1453,7 +1453,7 @@ Sadraey nicht.
 | Route | wenn | Drehzahl | Zustand heute |
 |---|---|---|---|
 | B — Drehmomentgleichgewicht | $R_m$ bekannt | aus dem Gleichgewicht | Model B, gh-1006 |
-| A — feste Drehzahl | $R_m$ fehlt | Leerlaufdrehzahl $K_v U_{bat}$ | Model A, gh-615 — **für alle 41 Motoren** |
+| A — leistungsbegrenzt | $R_m$ fehlt | Leerlaufdrehzahl $K_v U_{bat}$, abgesenkt auf $C_P\rho n^3 D^5 = \eta_{mot} P_{mot,max}$ (O11) | Model A, gh-615 — **für alle Katalogmotoren**; die Begrenzung fehlt im Code (#1150) |
 
 Das Ergebnis sagt, welche Route lief (ADR 0020). $R_m$ wird **nur** übernommen, wo ein
 Hersteller ihn veröffentlicht, und **nie** aus $K_v$ und $I_0$ geschätzt — eine solche
@@ -1626,7 +1626,9 @@ bei Leerlaufdrehzahl (14 800 U/min); die Leistungsgrenze kappt nur die **ausgege
 Leistung, nicht den Schub. Der Propeller verlangt dort 75–82 W Wellenleistung von einem
 45-W-Motor. Begrenzt man die Drehzahl so, dass er höchstens $45 \cdot 0{,}85$ W aufnimmt,
 sinkt der Standschub von 489 g auf 307 g. Die 45 W kann der Antriebsdienst zudem gar nicht
-lesen — er kennt nur Ströme. Welche Lesart von Route A gilt, ist offen (O11).
+lesen — er kennt nur Ströme. **Entschieden (O11, 01.10.2026): Route A ist leistungsbegrenzt** — die Drehzahl sinkt, bis
+der Propeller höchstens $\eta_{mot}\,P_{mot,max}$ aufnimmt. Die Lesart „wie gebaut“ ist ein
+Defekt im Code (#1150).
 
 | Größe | A wie gebaut | A leistungsbegrenzt |
 |---|---|---|
@@ -2044,7 +2046,7 @@ eines ohne Abbruchbedingung.
 | **O8** | *Geklärt, siehe §3.9 — aus den Propellerkennlinien der Datenbank.* Woher kommt der **Schub bei Fahrt**? Propellerschub fällt mit der Geschwindigkeit ($P = T\,V$ bei näherungsweise konstanter Leistung), und der Standschub gilt nur bei $V = 0$. | jede Beschränkung, die $T/W$ außerhalb des Standes benutzt |
 | **O9** | *Geklärt, siehe §3.1 — eine Größe mit veränderlicher Genauigkeit.* §2.1 erzeugt ein **Massenband**, §2.3 verbraucht einen **Massenpunktwert**. Wie kommt man vom einen zum anderen — wählt der Konstrukteur einen Wert im Band, oder rechnet die Analyse über das ganze Band? | Anschluss von §2.1 an §2.3 |
 | **O10** | Woher kommen $m$, $h$, $V$, Ruderstellung und Genauigkeitsstufe? Im Ablauf haben sie **keinen Ursprung**. Platzhöhe und Fluggeschwindigkeit sind plausibel Missionsangaben; Ruderstellung und Genauigkeitsstufe sind eher Analyseeinstellungen und gar keine Entwurfsgrößen. | Vollständigkeit von §1 |
-| **O11** | Welche Lesart gilt für Route A (ohne $R_m$)? **Wie gebaut:** Schub bei Leerlaufdrehzahl, die Leistungsgrenze kappt nur die ausgegebene Leistung — beim Bryan verlangt der Propeller 75–82 W von einem 45-W-Motor. **Leistungsbegrenzt:** Drehzahl so weit abgesenkt, dass der Propeller höchstens $P_{max}\,\eta_{mot}$ aufnimmt — Standschub 307 statt 489 g. Dazu: Der Antriebsdienst liest `max_power_w` nicht. | Steigen, Kurve, $V_{max}$ auf Route A — dem Normalfall |
+| **O11** | ✅ **Entschieden 01.10.2026:** Route A ist **leistungsbegrenzt** — Drehzahl abgesenkt, bis der Propeller höchstens $\eta_{mot}\,P_{mot,max}$ aufnimmt. „Wie gebaut“ (Schub bei Leerlaufdrehzahl) ist ein Code-Defekt (#1150). | Steigen, Kurve, $V_{max}$ auf Route A |
 | **O6** | Wie weit der **ASB-Sweep** Eingaben ersetzt. Der Solver kann über nahezu jeden Parameter fahren; jeder, den er sinnvoll durchfährt, ist einer, den niemand raten muss. | Umfang von Ebene 0 |
 
 ---

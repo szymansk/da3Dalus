@@ -4,7 +4,7 @@ entry: formula
 kind: procedure
 shape: law
 status: draft
-output: component-mass, battery-mass, battery-capacity, battery-specific-energy, static-thrust, propulsive-efficiency, motor-voltage-constant, motor-no-load-current, motor-circuit-resistance, battery-voltage
+output: component-mass, battery-mass, battery-capacity, battery-specific-energy, static-thrust, propulsive-efficiency, motor-voltage-constant, motor-no-load-current, motor-circuit-resistance, battery-voltage, motor-max-power
 source_status: SOURCED
 dimensional_check: PROCEDURAL
 tags:
@@ -21,10 +21,10 @@ tags:
 **Canonical form**
 
 ```
-m_i, m_bat, E_bat, E_star, T_static, eta_total, K_v, I_0, R_m, U_bat := components of the airplane
+m_i, m_bat, E_bat, E_star, T_static, eta_total, K_v, I_0, R_m, U_bat, P_mot,max := components of the airplane
 ```
 
-**Produces** [[component-mass]] · [[battery-mass]] · [[battery-capacity]] · [[battery-specific-energy]] · [[static-thrust]] · [[propulsive-efficiency]] · [[motor-voltage-constant]] · [[motor-no-load-current]] · [[motor-circuit-resistance]] · [[battery-voltage]]  ·  **from** [[airplane]]
+**Produces** [[component-mass]] · [[battery-mass]] · [[battery-capacity]] · [[battery-specific-energy]] · [[static-thrust]] · [[propulsive-efficiency]] · [[motor-voltage-constant]] · [[motor-no-load-current]] · [[motor-circuit-resistance]] · [[battery-voltage]] · [[motor-max-power]]  ·  **from** [[airplane]]
 
 **Kind: a procedure — an evaluation of the model.** Masses, battery data, static thrust and the
 drive-train efficiency belong to the components the aircraft is built from — motor,
