@@ -64,6 +64,7 @@ main{position:relative;overflow:hidden;background:var(--bg)}
 .node text{fill:var(--ink);font-family:"STIX Two Text",Georgia,serif;font-size:14px;pointer-events:none;
   dominant-baseline:middle;text-anchor:middle}
 .node{cursor:pointer}
+.opt{fill:var(--sel);color:var(--sel);font-weight:600;font-size:13px;margin-left:2px}
 .edge{fill:none;stroke:var(--line-2);stroke-width:1.1px;transition:opacity .16s,stroke .16s}
 .faded{opacity:var(--dim)}
 .edge.up{stroke:var(--inp);stroke-width:1.9px;opacity:1}
@@ -131,6 +132,7 @@ main{position:relative;overflow:hidden;background:var(--bg)}
       <span><i class="sw" style="background:var(--hub-bg);border-color:var(--hub)"></i>tragend &#8212; vierfach oder &#246;fter gebraucht</span>
       <span><i class="sw" style="background:var(--panel);border-color:var(--mid)"></i>Zwischenergebnis</span>
       <span><i class="sw" style="background:var(--out-bg);border-color:var(--out)"></i>Endergebnis &#8212; von nichts verbraucht</span>
+      <span><i class="sw" style="border:none;text-align:center;font-weight:600;color:var(--sel);font-size:15px;line-height:13px">*</i>Ergebnis eines Optimierungsproblems &#8212; keine geschlossene Formel</span>
     </div>
   </div>
 
@@ -195,6 +197,7 @@ function sym(q){
   return s.replace(/\b(rho|alpha|gamma|eta|mu|pi|sigma|phi|lambda)\b/g,m=>g[m]);
 }
 let moved=false;
+const isOpt=q=>(prodBy[q]||[]).some(f=>F[f].kind==='optimization');
 const nodeEls={};
 for(const q in Q){
   const {x,y}=P[q];
@@ -206,6 +209,7 @@ for(const q in Q){
   const t=el('text',{x:NW/2,y:NH/2});
   t.appendChild(Object.assign(document.createElementNS(NS,'tspan'),{textContent:parts[0]}));
   if(parts[1]){ const s=el('tspan',{dy:'4',style:'font-size:10px'}); s.textContent=parts.slice(1).join('_'); t.appendChild(s); }
+  if(isOpt(q)){ const s=el('tspan',{dy:parts[1]?'-6':'-4',class:'opt'}); s.textContent='*'; t.appendChild(s); }
   g.appendChild(t);
   g.addEventListener('click',()=>{ if(!moved) select(q); });
   g.addEventListener('keydown',ev=>{ if(ev.key==='Enter'||ev.key===' '){ev.preventDefault();select(q);} });
@@ -245,7 +249,7 @@ function select(q){
   const d=Q[q], fs=prodBy[q]||[];
   const cls = INPUTS.has(q)?'inp' : OUTPUTS.has(q)?'out' : (useCount[q]>=4?'hub':'mid');
   const role = INPUTS.has(q)?'Eingabe' : OUTPUTS.has(q)?'Endergebnis' : (useCount[q]>=4?'tragend':'Zwischenergebnis');
-  let h=`<h2>${esc(sym(q))}</h2>
+  let h=`<h2>${esc(sym(q))}${isOpt(q)?'<span class="opt" title="Ergebnis eines Optimierungsproblems">*</span>':''}</h2>
    <p class="meta">${esc(q)} \u00b7 ${esc(d.unit||'\u2014')} \u00b7 Schicht L${LAYER[q]}
    &nbsp;<span class="pill" style="color:var(--${cls});border-color:var(--${cls})">${role}</span></p>
    <p class="desc">${esc(d.desc||'Keine Beschreibung im Katalog.')}</p>`;
