@@ -210,3 +210,18 @@ per Bewegungsschwelle zwischen Ziehen und Klicken unterscheiden. Und die Seite w
 **rein ASCII** geschrieben, im Skript als `\uXXXX`, im Markup als Zahlenverweise, im
 Stilblock als CSS-Escape; sonst hängt die Lesbarkeit der Umlaute daran, wer welche
 Zeichensatzangabe mitschickt.
+
+---
+
+## 8. Die Datenbank ist keine Referenzflotte
+
+Die Flugzeuge in `db/test.db` sind zum Teil aus VSPaero importiert und skaliert; Masse und
+Massenschätzung passen dann nicht zur Größe, und ob jeder Import korrekt ist, ist offen.
+**Ein Lauf über sie belegt nichts über eine Methode.** Auffälligkeiten gehen als Frage an
+den Maintainer, nicht als Schluss.
+
+Geplant: eine **Referenzflotte aus echten Bauplänen**, rekonstruiert mit dem
+Bauplan-Plugin des Maintainers. Je Modell: Geometrie mit Profilen, Abflugmasse, Akku
+(Kapazität, Masse), die passenden Motor-Propeller-Kombinationen — am besten APC, weil
+deren Kennlinien vorliegen —, wo bekannt ein Flugwert aus Plan oder Herstellerangabe als
+Probe, und eine Mischung aus Trainer, Segler, Kunstflug, Nurflügel.

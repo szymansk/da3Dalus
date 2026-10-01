@@ -1070,8 +1070,20 @@ Auftriebsbeiwert am Optimum. `clmax-from-polar` ist gestrichen: Es nahm das Maxi
 Geschwindigkeitsgitter und lieferte den Wert damit bei der falschen Geschwindigkeit. Eine
 Autorität für den Höchstauftrieb.
 
-**Offen vor der Freigabe:** der Flottenvergleich, wie damals für die Fehlermessung. Ein
-Modell ist kein Beweis.
+**Offen vor der Freigabe:** ein Vergleich über eine **Referenzflotte**. Der Lauf über die
+Datenbank (01.10.2026, `scripts/canon_checks/fleet_opti_vs_fixed_point.py`) ist **kein
+Beleg**, weder für noch gegen die Methode: Die Flugzeuge sind zum Teil aus VSPaero
+importiert und skaliert, Masse und Massenschätzung passen dann nicht zur Größe — bei
+`cessna337` und `spitfire` mit 1,5 kg ergibt sich eine Abrissgeschwindigkeit um 1 m/s. Wo
+beide Wege ohne Meldung durchliefen, lagen sie im Median 0,007 % auseinander; die
+Auffälligkeiten gehören zu den Importen, nicht zur Methode, und es wird nichts daraus
+geschlossen.
+
+Die Referenzflotte entsteht aus **echten Bauplänen**, rekonstruiert mit dem Plugin des
+Maintainers — mit Abflugmasse, Akku und den für das Modell passenden
+Motor-Propeller-Kombinationen. Sie trägt drei Dinge zugleich: die Freigabe dieser Methode,
+die Prüfung der Antriebs-Arbeitsteilung (§3.1) samt Schub bei Fahrt aus den
+Propellertabellen, und die fachlichen Tests, für die der Kanon gebaut wird.
 
 #### 3.4.2 Anstellwinkel aus $L = W$
 
