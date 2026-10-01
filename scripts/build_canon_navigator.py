@@ -17,12 +17,11 @@ import pathlib
 import re
 import sys
 
-#: Edges the layering breaks, with the reason. Both are naming collapses, not fixed
-#: points: one name covering a swept measurement and a modelled value, and a generic
-#: speed bucket holding two relations that are inverses of each other.
+#: Edges the layering breaks, with the reason. A naming collapse, not a fixed point: one
+#: name covering a swept measurement and a modelled value. (The second one, a generic
+#: speed bucket, was resolved in the canon on 2026-10-01 by making V a pure input.)
 BROKEN_EDGES = {
     ("drag-coefficient", "zero-lift-drag-coefficient"),
-    ("lift-coefficient", "flight-speed"),
 }
 
 GREEK = {"rho": r"\rho", "alpha": r"\alpha", "gamma": r"\gamma", "eta": r"\eta",

@@ -51,5 +51,5 @@ A formula is approvable only once its inputs are.
 
 **Layer 4** (1) — [[cruise-speed-resolution]]
 
-**Needs an input this path does not produce (19)** — [[dynamic-pressure]] · [[lift-balance-speed]] · [[clmax-from-polar]] · [[linear-lift-curve-inverse]] · [[lift-to-drag-ratio]] · [[max-lift-to-drag-parabolic]] · [[sink-rate]] · [[minimum-drag-speed-closed-form]] · [[minimum-drag-speed-from-polar]] · [[minimum-sink-speed-from-polar]] · [[lift-coefficient-required]] · [[cruise-thrust-constraint]] · [[power-required-electrical]] · [[endurance-from-battery]] · [[zero-lift-drag-from-sweep]] · [[reynolds-scheduled-polar]] · [[stall-onset-detection]]
+**Needs an input this path does not produce (19)** — [[dynamic-pressure]] · [[clmax-from-polar]] · [[linear-lift-curve-inverse]] · [[lift-to-drag-ratio]] · [[max-lift-to-drag-parabolic]] · [[sink-rate]] · [[minimum-drag-speed-closed-form]] · [[minimum-drag-speed-from-polar]] · [[minimum-sink-speed-from-polar]] · [[lift-coefficient-required]] · [[cruise-thrust-constraint]] · [[power-required-electrical]] · [[endurance-from-battery]] · [[zero-lift-drag-from-sweep]] · [[reynolds-scheduled-polar]] · [[stall-onset-detection]]
 

@@ -27,6 +27,8 @@ V_S = sqrt(2 * m * g / (rho * S_ref * C_L,max))
 
 **Produces** [[stall-speed]]  ·  **from** [[weight]] · [[air-density]] · [[wing-reference-area]] · [[max-lift-coefficient]]
 
+**One relation, two directions.** This entry is the lift balance solved for the speed at the named condition C_L = C_L,max. [[lift-coefficient-required]] is the same relation, `n·m·g = ½·ρ·V²·S_ref·C_L`, solved the other way. Every time the sources solve it for a speed, the C_L belongs to a named condition (Sadraey Eq. 4.30, 4.55, 4.85; Scholz Eq. 5.30, 5.40) — there is no generic lift-balance speed, which is why `lift-balance-speed` was deleted on 2026-10-01.
+
 **Kind: a law.** A closed-form relation. Approval asks for its **source** and its **validity at 0.5–15 kg**.
 
 **Dimensional check.** 🟢 balances

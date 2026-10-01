@@ -1599,12 +1599,70 @@ benannte Größen**, eine je Betriebspunkt, mit eigener Bindung von Faktor und K
 Die Steiggeschwindigkeiten gehören nicht dazu — sie sind keine Abrissreserven, sondern
 hängen an der Steigrechnung (§3.10).
 
-**Der nächste Fall desselben Musters ist `flight-speed`.** Als freie Variable der
-Maschinerie — die Geschwindigkeit des gerade ausgewerteten Punktes — ist sie legitim. Als
-**Ausgabe** einer Formel nicht: `lift-balance-speed` schreibt in sie hinein, und genau das
-erzeugt den falschen Zyklus aus §3.12. Dazu kommt, dass `lift-balance-speed` und
-`stall-speed` dasselbe Gesetz sind — das zweite ist das erste mit $C_L = C_{L,\max}$. Die
-Regel daraus: **Eine generische Größe darf Eingang der Maschinerie sein, nie Ausgabe.**
+**`flight-speed` ist reine Eingabe — entschieden am 01.10.2026, nach Prüfung durch
+Scholz/Sadraey und AeroSandbox.** Die Geschwindigkeit ist die **freie Variable** der
+Maschinerie: Staudruck, geforderter Auftriebsbeiwert, Widerstand, Leistungsbedarf und die
+Polarenabfragen werden *bei* einem gegebenen $V$ ausgewertet. Keine Formel erzeugt sie.
+
+`lift-balance-speed` ist gestrichen. Die Auftriebsbilanz
+$n\,m\,g = \tfrac12\rho V^2 S_\mathrm{ref}\,C_L$ ist **eine** Beziehung, in zwei Richtungen
+benutzt — nach $C_L$ aufgelöst in `lift-coefficient-required`, nach $V$ aufgelöst in
+`stall-speed` bei $C_L = C_{L,\max}$. Die Quellen bestätigen das, und sie bestätigen den
+entscheidenden Punkt: **Jedes Mal, wenn sie nach $V$ auflösen, gehört das $C_L$ zu einer
+benannten Bedingung** — Höchstauftrieb, geringster Widerstand, geringste Leistung (Sadraey
+Gl. 4.30, 4.55, 4.85; Scholz Gl. 5.30, 5.40). Eine generische Geschwindigkeit kommt in den
+Quellen nicht vor.
+
+**AeroSandbox behandelt $V$ genauso.** `velocity` ist in `asb.OperatingPoint` immer
+Eingabe, und keiner der 3D-Solver löst nach ihr auf. Wer die Geschwindigkeit für $L = W$
+will, macht sie zur Entscheidungsvariable eines `asb.Opti`-Problems.
+
+**Bei unserer Größe spricht das zusätzlich für $V$ als freie Variable:** Die Reynoldszahl
+folgt unmittelbar aus $V$, und AeroBuildup rechnet sie je Profilschnitt selbst aus der
+lokalen Tiefe. Die impliziten Schließungen lassen sich so am einfachsten iterieren.
+
+Zwei Vorbehalte stehen am Eintrag: Ein Punkt mit gefordertem $C_L > C_{L,\max}$ ist
+unfliegbar und wird gemeldet, nicht durchgerechnet. Und $L = n\,W$ gilt nur bei kleiner
+Bahnneigung. Eine Ausnahme ist festgehalten: Sollte eine Geschwindigkeit je aus einem
+**gewählten** $C_L$ folgen — etwa dem Auslegungsauftrieb des Profils —, braucht sie eine
+eigene benannte Schließung.
+
+Damit ist der falsche Zyklus Staudruck–Geschwindigkeit–Auftriebsbeiwert aus §3.12
+verschwunden. Übrig bleibt einer, der Widerstandsbeiwert.
+
+**Die Regel daraus: Eine generische Größe darf Eingang der Maschinerie sein, nie Ausgabe.**
+
+#### Was AeroSandbox selbst liefert — und wir deshalb nicht nachrechnen sollten
+
+Gegen den installierten Quelltext (AeroSandbox 4.2.9) geprüft, nicht nur gegen die
+Dokumentation:
+
+| liefert der Solver direkt | API |
+|---|---|
+| Dichte, Viskosität, Schallgeschwindigkeit | `Atmosphere.density()` u. a. |
+| Staudruck | `OperatingPoint.dynamic_pressure()` |
+| Reynoldszahl zu einer Bezugslänge | `OperatingPoint.reynolds(L)` |
+| $C_L$, $C_D$ gesamt, $C_m$ | Schlüssel `CL`, `CD`, `Cm` |
+| Auftrieb, Widerstand in N | `L`, `D` |
+| induzierter Widerstand in N | `D_induced` (kein Beiwert) |
+| Neutralpunkt, Stabilitätsableitungen | `run_with_stability_derivatives()` → `x_np`, `CLa`, `Cma` … je Radiant |
+
+| liefert er **nicht** | |
+|---|---|
+| Nullauftriebswiderstand | muss aus der Polare abgelesen werden |
+| Gleitzahl | `CL/CD` |
+
+Jede Größe der ersten Tabelle, die die App **selbst** nachrechnet, ist ein zweiter
+Erzeuger im Sinne von ADR 0022. Das ist eine Prüfliste für die Implementierung, keine
+Kanonänderung — die Formeln bleiben als Definitionen stehen, aber die App soll lesen statt
+rechnen.
+
+Zwei Feinheiten aus der Prüfung: Die Stabilitätsableitungen entstehen durch **finite
+Differenzen** (Schritt 0,001°), nicht durch automatisches Differenzieren, und die
+Schlüssel heißen `CLa`/`Cma`, nicht `CLalpha`/`Cmalpha` — die Fachdokumentation hatte an
+beiden Stellen unrecht, der Quelltext gewinnt. Und weil die Reynoldszahl aus der lokalen
+Tiefe **in Metern** gebildet wird, verschiebt ein Millimeter-Meter-Fehler in der Tiefe sie
+um den Faktor tausend.
 
 ### A3 — Eine erklärte Genauigkeitsstufe je freigegebener Größe
 
@@ -1701,7 +1759,7 @@ eines ohne Abbruchbedingung.
 | **O2** | Die **drei fehlenden Angaben** zum Fixpunkt $V_S \leftrightarrow C_{L,\max,\mathrm{stall}}$. | Freigabe von `stall-speed` als Anwendung |
 | **O3** | Die **drei fehlenden Angaben** zum Anstellwinkelverfahren, insbesondere das Verhalten oberhalb des Abrisses. | Freigabe von §2.1 |
 | **O4** | Welche **Prozessschritte** es wirklich gibt und wo ihre Grenzen liegen. | §1, und damit die Struktur aller weiteren Schritte |
-| **O5** | Welches **Atmosphärenmodell** kanonisch ist. `air-density-isa` ist freigegeben, aber die Implementierung kennt mehrere Verfahren, und **kein einziger** der 16 Aufrufer wählt eines. | Eindeutigkeit von $\rho$ |
+| **O5** | *Befund 01.10.2026:* AeroSandbox nutzt ohne `method=` eine C1-stetige Näherung an die ISA (mittlerer Druckfehler 0,02 % bis 100 km), mit `method="isa"` die exakte ISA; bei Modellflughöhen vernachlässigbar. Welches **Atmosphärenmodell** kanonisch ist. `air-density-isa` ist freigegeben, aber die Implementierung kennt mehrere Verfahren, und **kein einziger** der 16 Aufrufer wählt eines. | Eindeutigkeit von $\rho$ |
 | **O7** | Wird **Finger, Bil & Braun, *Drag Estimation of Small Fixed-Wing UAVs*** (Aeronautical Journal 122/1248, 2018) die zitierte Quelle für $c_{D0}$ und $e$ **in unserer Größenklasse**? ADR 0023 verlangt bei 0,5–15 kg validierte Konstanten; `DEFAULT_E_OSWALD = 0.8` hat bis heute keine. | Freigabe von `induced-drag-factor`, `zero-lift-drag-from-sweep` |
 | **O8** | *Geklärt, siehe §3.9 — aus den Propellerkennlinien der Datenbank.* Woher kommt der **Schub bei Fahrt**? Propellerschub fällt mit der Geschwindigkeit ($P = T\,V$ bei näherungsweise konstanter Leistung), und der Standschub gilt nur bei $V = 0$. | jede Beschränkung, die $T/W$ außerhalb des Standes benutzt |
 | **O9** | *Geklärt, siehe §3.1 — eine Größe mit veränderlicher Genauigkeit.* §2.1 erzeugt ein **Massenband**, §2.3 verbraucht einen **Massenpunktwert**. Wie kommt man vom einen zum anderen — wählt der Konstrukteur einen Wert im Band, oder rechnet die Analyse über das ganze Band? | Anschluss von §2.1 an §2.3 |

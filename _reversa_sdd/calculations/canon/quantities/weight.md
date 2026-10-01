@@ -18,5 +18,5 @@ Aircraft mass expressed as a force, W = m*g.
 
 **Produced by.** [[weight-from-mass]]
 
-**Used by.** [[lift-balance-speed]] · [[stall-speed]] · [[thrust-to-weight]]
+**Used by.** [[stall-speed]] · [[thrust-to-weight]]
 

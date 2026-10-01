@@ -26,6 +26,8 @@ C_L,req = n * m * g / (q * S_ref)
 
 **Produces** [[lift-coefficient]]  ·  **from** [[aircraft-mass]] · [[gravity]] · [[load-factor]] · [[dynamic-pressure]] · [[wing-reference-area]]
 
+**One relation, two directions.** This entry is the lift balance solved for C_L at the speed of the operating point. [[stall-speed]] is the same relation, `n·m·g = ½·ρ·V²·S_ref·C_L`, solved the other way. Every time the sources solve it for a speed, the C_L belongs to a named condition (Sadraey Eq. 4.30, 4.55, 4.85; Scholz Eq. 5.30, 5.40) — there is no generic lift-balance speed, which is why `lift-balance-speed` was deleted on 2026-10-01.
+
 **Kind: a law.** A closed-form relation. Approval asks for its **source** and its **validity at 0.5–15 kg**.
 
 **Dimensional check.** 🟢 balances
