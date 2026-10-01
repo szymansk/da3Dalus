@@ -1,0 +1,22 @@
+[
+ {
+  "manufacturer": "Pichler",
+  "name": "Pulsar Micro 1510 2000Kv",
+  "component_type": "brushless_motor",
+  "mass_g": 19,
+  "bbox_x_mm": 18.5,
+  "bbox_y_mm": 18.5,
+  "bbox_z_mm": 20,
+  "model_ref": "pichler/15048",
+  "source_url": "https://www.voltmaster.de/Brushless-Motor-Pulsar-Micro-1510-2000KV",
+  "source_version": "Pichler product page (pichler.de ?a=17385) and dealer listing, retrieved 2026-10-01; Ri, Io and max current not published",
+  "specs": {
+   "kv_rpm_per_volt": 2000,
+   "max_power_w": 45,
+   "cells_lipo_min": 2,
+   "cells_lipo_max": 3,
+   "shaft_diameter_mm": 2.0,
+   "art_no": "15048"
+  }
+ }
+]

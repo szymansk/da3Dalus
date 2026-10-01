@@ -1477,7 +1477,7 @@ $$
 \gamma_{max} = \max_{V,\,\alpha,\,\gamma,\,n}\; & \gamma \\
 \text{u.d.N.}\; & L(V,\alpha) = m\,g\cos\gamma
 & \text{u.d.N.}\; & \text{dieselben drei} \\
-& T(V,n) - D(V,\alpha) = m\,g\sin\gamma \\
+& T(V,n) - D(V,\alpha) \ge m\,g\sin\gamma \\
 & Q_m(n) = Q_p(V,n)
 \end{aligned}
 $$
@@ -1517,7 +1517,7 @@ $$
 r_{min} = \min_{V,\,\alpha,\,n,\,n_{prop}}\; & \frac{V^2}{g\sqrt{n^2-1}} \\
 \text{u.d.N.}\; & L(V,\alpha) = n\,m\,g
 & \text{u.d.N.}\; & \text{dieselben vier} \\
-& T(V,n_{prop}) = D(V,\alpha) \\
+& T(V,n_{prop}) \ge D(V,\alpha) \\
 & Q_m(n_{prop}) = Q_p(V,n_{prop}) \\
 & 1 \le n \le n_{lim}
 \end{aligned}
@@ -1559,7 +1559,7 @@ Steig- und Kurvenflug:
 
 $$
 V_{max} = \max_{V,\,\alpha,\,n_{prop}} V
-\quad\text{u.d.N.}\quad L = m\,g,\quad T(V,n_{prop}) = D(V,\alpha),\quad Q_m = Q_p
+\quad\text{u.d.N.}\quad L = m\,g,\quad T(V,n_{prop}) \ge D(V,\alpha),\quad Q_m = Q_p
 $$
 
 Bis heute eine Eingabe mit dem Vorgabewert 28 m/s für jedes Flugzeug. Ein **Ziel** für die
@@ -1600,6 +1600,47 @@ Ausschlag das Flugzeug überlasten. Die Lehrbuchform $V_A = V_S\sqrt{n_{lim}}$ b
 Probe — sie nimmt das $C_{L,max}$ des Geradeausflugs, das Problem wertet es bei der
 Reynoldszahl von $V_A$ aus (derselbe Grund wie beim Kurvenflug). Die Aussage taugt nur so
 viel wie $n_{lim}$, eine Nutzervorgabe (Vorgabewert 3; gemessen tragen Modelle 6–19 g).
+
+#### Erster Lauf am Bryan — und was er am Kanon korrigiert hat (01.10.2026)
+
+Variante A des Plans: Pichler Pulsar Micro 1510 (2000 KV, 45 W, in den Katalog
+aufgenommen über `data/cots/pichler.json`), APC 6x4E für „6 × 4“, 2S nominell. Pichler
+veröffentlicht weder Innenwiderstand noch Leerlaufstrom — **Route A**. Skript:
+`scripts/canon_checks/reference_fleet/bryan_route_a.py`.
+
+**Korrektur 1 — Vollgas ist eine Obergrenze.** Mit $T = D$ als Gleichung scheiterte die
+Hälfte der Probleme, und die „engste Kurve“ lag bei 26 m/s: Bei zwei- bis dreifachem
+Schubüberschuss gibt es bei kleiner Fahrt keinen stationären Flug mit Vollgas. Richtig ist
+$T(V) \ge D$ (und $T - D \ge m\,g\sin\gamma$) — der Pilot kann Gas wegnehmen. Steigen,
+Kurve und $V_{max}$ sind entsprechend berichtigt.
+
+**Korrektur 2 — senkrecht heißt: kein eindeutiges $V_x$.** Mit $T > W$ erreicht der
+Steigwinkel $90^\circ$ über einen ganzen Geschwindigkeitsbereich. Ergebnis ist dann
+„steigt senkrecht“, kein einzelnes $V_x$.
+
+**Korrektur 3 — $V_{max}$ braucht Mehrfachstart.** Ein Start lief auf einen Scheinast
+unterhalb des Abrisses (5,9 m/s bei $\alpha = 16{,}7^\circ$).
+
+**Befund — Route A, wie gebaut, ist nicht leistungsbegrenzt.** Der Code rechnet den Schub
+bei Leerlaufdrehzahl (14 800 U/min); die Leistungsgrenze kappt nur die **ausgegebene**
+Leistung, nicht den Schub. Der Propeller verlangt dort 75–82 W Wellenleistung von einem
+45-W-Motor. Begrenzt man die Drehzahl so, dass er höchstens $45 \cdot 0{,}85$ W aufnimmt,
+sinkt der Standschub von 489 g auf 307 g. Die 45 W kann der Antriebsdienst zudem gar nicht
+lesen — er kennt nur Ströme. Welche Lesart von Route A gilt, ist offen (O11).
+
+| Größe | A wie gebaut | A leistungsbegrenzt |
+|---|---|---|
+| Standschub, $T/W$ | 489 g, 3,24 | 307 g, 2,03 |
+| bestes Steigen | senkrecht, 20,6 m/s | fast senkrecht ($84{,}9^\circ$), 13,8 m/s |
+| steilstes Steigen | senkrecht ab ca. 3 m/s | senkrecht ab ca. 3 m/s |
+| schnellste / engste Kurve | 181 °/s, $r = 2{,}8$ m bei 8,8 m/s — $n_{lim} = 3$ aktiv | gleich |
+| $V_{max}$ | 26,0 m/s (94 km/h) | 25,4 m/s (91 km/h) |
+| $V_D$ | 31,6 m/s (114 km/h) | gleich |
+
+Die Kurve begrenzt beim Bryan nicht der Antrieb, sondern die Vorgabe $n_{lim} = 3$ — beide
+Lesarten liefern dieselbe Kurve, am Rand des Abrisses ($\alpha = 13{,}4^\circ$). $V_{max}$
+hängt kaum an der Lesart, weil der Propeller bei hoher Fahrt wenig Leistung aufnimmt.
+Das Steigen hängt stark daran.
 
 **Draußen bleiben** die Böenlinien (bereits gestrichen) und das Flattern — eine echte
 Geschwindigkeitsgrenze, aber ohne Rechenweg in den Quellen.
@@ -2003,6 +2044,7 @@ eines ohne Abbruchbedingung.
 | **O8** | *Geklärt, siehe §3.9 — aus den Propellerkennlinien der Datenbank.* Woher kommt der **Schub bei Fahrt**? Propellerschub fällt mit der Geschwindigkeit ($P = T\,V$ bei näherungsweise konstanter Leistung), und der Standschub gilt nur bei $V = 0$. | jede Beschränkung, die $T/W$ außerhalb des Standes benutzt |
 | **O9** | *Geklärt, siehe §3.1 — eine Größe mit veränderlicher Genauigkeit.* §2.1 erzeugt ein **Massenband**, §2.3 verbraucht einen **Massenpunktwert**. Wie kommt man vom einen zum anderen — wählt der Konstrukteur einen Wert im Band, oder rechnet die Analyse über das ganze Band? | Anschluss von §2.1 an §2.3 |
 | **O10** | Woher kommen $m$, $h$, $V$, Ruderstellung und Genauigkeitsstufe? Im Ablauf haben sie **keinen Ursprung**. Platzhöhe und Fluggeschwindigkeit sind plausibel Missionsangaben; Ruderstellung und Genauigkeitsstufe sind eher Analyseeinstellungen und gar keine Entwurfsgrößen. | Vollständigkeit von §1 |
+| **O11** | Welche Lesart gilt für Route A (ohne $R_m$)? **Wie gebaut:** Schub bei Leerlaufdrehzahl, die Leistungsgrenze kappt nur die ausgegebene Leistung — beim Bryan verlangt der Propeller 75–82 W von einem 45-W-Motor. **Leistungsbegrenzt:** Drehzahl so weit abgesenkt, dass der Propeller höchstens $P_{max}\,\eta_{mot}$ aufnimmt — Standschub 307 statt 489 g. Dazu: Der Antriebsdienst liest `max_power_w` nicht. | Steigen, Kurve, $V_{max}$ auf Route A — dem Normalfall |
 | **O6** | Wie weit der **ASB-Sweep** Eingaben ersetzt. Der Solver kann über nahezu jeden Parameter fahren; jeder, den er sinnvoll durchfährt, ist einer, den niemand raten muss. | Umfang von Ebene 0 |
 
 ---

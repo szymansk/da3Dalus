@@ -14,7 +14,7 @@ tags:
   - shape/law
   - kind/optimization
   - status/draft
-tex: \begin{aligned}\gamma_{max} = \max_{V,\,\alpha,\,\gamma,\,n}\; & \gamma \\ \text{u.d.N.}\; & L(V,\alpha) = m\,g\cos\gamma \\ & T(V,n) - D(V,\alpha) = m\,g\sin\gamma \\ & Q_m(n) = Q_p(V,n)\end{aligned}
+tex: \begin{aligned}\gamma_{max} = \max_{V,\,\alpha,\,\gamma,\,n}\; & \gamma \\ \text{u.d.N.}\; & L(V,\alpha) = m\,g\cos\gamma \\ & T(V,n) - D(V,\alpha) \ge m\,g\sin\gamma \\ & Q_m(n) = Q_p(V,n)\end{aligned}
 ---
 
 # Best angle of climb at full throttle
@@ -24,7 +24,7 @@ tex: \begin{aligned}\gamma_{max} = \max_{V,\,\alpha,\,\gamma,\,n}\; & \gamma \\ 
 ```
 maximize over V, alpha, gamma, n:   gamma
 subject to:   L(V, alpha) = m * g * cos(gamma)
-              T(V, n) - D(V, alpha) = m * g * sin(gamma)
+              T(V, n) - D(V, alpha) >= m * g * sin(gamma)
               motor-propeller torque balance at (V, n)
 ```
 
@@ -43,3 +43,7 @@ subject to:   L(V, alpha) = m * g * cos(gamma)
 **Source.** 🟢 Sadraey §4.3.5 (rate and angle of climb, Eq. 4.84–4.85; angle of climb §4.3.5) for the definitions; the force balances are the steady-flight equations along and normal to the path. 🟢 Drela `motor1` §1.1 for the motor model.
 
 **Replaces** `climb-speed-for-power-loading` (`V_climb = max(1.3·V_S,target, 1 m/s)`), deleted 2026-10-01: a multiple of a *target* stall speed, with neither thrust nor polar in it.
+
+**Full throttle is a ceiling, not an equality** (corrected 2026-10-01 after the first run on BRYAN). The thrust constraint reads `T(V, n_prop) ≥ …`: the pilot can always throttle back. Written as an equality, an aircraft with a large thrust excess has no level or steady solution at low speed — on BRYAN half the problems failed and the "tightest turn" came out at 26 m/s. At the optimum the inequality binds wherever thrust is what limits.
+
+**When the answer is vertical, `V_x` is not unique.** With thrust above weight the climb angle reaches 90° over a whole speed range (BRYAN: from about 3 m/s — hanging on the propeller). Then the result is "climbs vertically", with the range if wanted, and no single `V_x`.
