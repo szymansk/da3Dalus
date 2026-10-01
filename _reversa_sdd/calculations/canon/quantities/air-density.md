@@ -18,4 +18,4 @@ Density at the flight altitude; either the ISA model evaluated at an altitude or
 
 **Produced by.** [[air-density-isa]]
 
-**Used by.** [[aerobuildup-evaluation]] · [[best-angle-of-climb]] · [[best-rate-of-climb]] · [[dynamic-pressure]] · [[minimum-drag-speed-closed-form]] · [[minimum-drag-speed-from-polar]] · [[minimum-sink-speed-from-polar]] · [[motor-propeller-equilibrium]] · [[power-required-electrical]] · [[reynolds-scheduled-polar]] · [[stall-speed]] · [[stall-wing-loading-limit]] · [[thrust-at-airspeed-from-coefficient]]
+**Used by.** [[aerobuildup-evaluation]] · [[best-angle-of-climb]] · [[best-rate-of-climb]] · [[dynamic-pressure]] · [[max-sustained-turn-rate]] · [[min-sustained-turn-radius]] · [[minimum-drag-speed-closed-form]] · [[minimum-drag-speed-from-polar]] · [[minimum-sink-speed-from-polar]] · [[motor-propeller-equilibrium]] · [[power-required-electrical]] · [[reynolds-scheduled-polar]] · [[stall-speed]] · [[stall-wing-loading-limit]] · [[thrust-at-airspeed-from-coefficient]]

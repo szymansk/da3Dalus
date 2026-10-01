@@ -237,3 +237,9 @@ aus $K_v$/$I_0$ schätzen — `Q-PT-6`; Daten: #1149. $V_y$/$\mathit{ROC}_{max}$
 $V_x$/$\gamma_{max}$ sind Optimierungsprobleme mit beiden Kräftegleichgewichten
 (nicht Kleinwinkel); $\gamma = 90^\circ$ ist eine erlaubte, benannte aktive Schranke.
 Offen bleiben Kurven- und Sturzflug (beide brauchen den Schub bei Fahrt).
+
+**Kurvenflug (01.10.2026):** nur die gehaltene Kurve — $\omega_{max}$ und $r_{min}$ bei
+Vollgas als Optimierungsprobleme ($T = D$, $1 \le n \le n_{lim}$); welche Grenze greift
+(Schub, Flügel, Struktur) ist Teil der Antwort. Querneigung als Eingabe,
+`turn-load-factor` und `stall-speed-in-turn` gestrichen. Eckgeschwindigkeit
+$V^* = V_S\sqrt{n_{lim}}$ ist eine Sicherheitsaussage und kommt zum Sturzflug.

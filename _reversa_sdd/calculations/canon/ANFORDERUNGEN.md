@@ -1363,8 +1363,8 @@ keine neue Modellierung, sondern ein Zugriff auf Daten, die wir haben.
 
 ### 3.10 Die letzten drei Punkte: Steigflug, Kurvenflug, Sturzflug
 
-**Status: der Steigflug ist seit dem 01.10.2026 gerechnet (unten). Kurven- und Sturzflug
-sind hohl, aus dem gemeinsamen Grund, der hier zuerst steht.**
+**Status: Steigflug und Kurvenflug sind seit dem 01.10.2026 gerechnet (unten). Der
+Sturzflug ist hohl, aus dem gemeinsamen Grund, der hier zuerst steht.**
 
 **Befund vor dem 01.10.2026 — der Steigflug war benannt, nicht gerechnet.** Im ganzen Kanon enthalten **fünf** Formeln
 überhaupt Schub oder Leistung, und **keine einzige** bildet eine Differenz aus Schub und
@@ -1388,7 +1388,7 @@ keiner Formel produziert. Damit hängt die obere Grenze der Hüllkurve an einem 
 außen kommt. Berechenbar wäre er: Höchstgeschwindigkeit ist dort, wo der verfügbare Schub
 dem Widerstand gleicht.
 
-**Der Kurvenflug hat die Last, aber nicht die Kurve.** Lastvielfaches aus Querneigung und
+**Befund vor dem 01.10.2026 — der Kurvenflug hatte die Last, aber nicht die Kurve.** Lastvielfaches aus Querneigung und
 Abriss in der Kurve sind da. Radius, Drehrate und die Frage, ob der Schub die Kurve
 **hält**, sind es nicht.
 
@@ -1502,6 +1502,53 @@ Liegt er über der Grenze von Motor, Regler oder Akku, ist der Antrieb bei Vollg
 **Die Akkuspannung ist nominell** ($3{,}7$ V je Zelle, BR-PM3); der Spannungseinbruch
 unter Last ist nicht modelliert und wird ausgewiesen.
 
+#### Der Kurvenflug — gerechnet (01.10.2026)
+
+**Nur die gehaltene Kurve.** Höhe und Geschwindigkeit bleiben, der Schub hält dem
+Widerstand die Waage — die Grenze setzt der Antrieb. Zwei Aussagen über das Flugzeug, beide
+bei Vollgas: die **schnellste Drehrate** und der **engste Radius**. Für RC ist das die
+Wendigkeit und ob das Modell eine steile Kurve hält, für UAV der kleinste Kreis über einem
+Ziel.
+
+$$
+\begin{aligned}
+\omega_{max} = \max_{V,\,\alpha,\,n,\,n_{prop}}\; & \frac{g\sqrt{n^2-1}}{V}
+&\qquad
+r_{min} = \min_{V,\,\alpha,\,n,\,n_{prop}}\; & \frac{V^2}{g\sqrt{n^2-1}} \\
+\text{u.d.N.}\; & L(V,\alpha) = n\,m\,g
+& \text{u.d.N.}\; & \text{dieselben vier} \\
+& T(V,n_{prop}) = D(V,\alpha) \\
+& Q_m(n_{prop}) = Q_p(V,n_{prop}) \\
+& 1 \le n \le n_{lim}
+\end{aligned}
+$$
+
+Einträge `max-sustained-turn-rate` ($\omega_{max}$, $V_\omega$) und
+`min-sustained-turn-radius` ($r_{min}$, $V_r$). Der Widerstand kommt aus AeroBuildup beim
+Anstellwinkel der Kurve — der höhere induzierte Widerstand ist darin. Schub und Drehzahl
+wie im Steigflug.
+
+**Welche Grenze greift, ist die Antwort.** Drei Dinge können die Kurve begrenzen, und das
+Optimum sagt, welches: der **Schub** (keine Schranke aktiv), der **Flügel** (das Optimum
+liegt am Auftriebsmaximum — die Kurve hält nur am Rand des Abrisses) oder die **Struktur**
+($n = n_{lim}$ aktiv — die Vorgabe des Nutzers begrenzt, nicht die Aerodynamik). Die beiden
+letzten sind benannte aktive Schranken wie $\gamma = 90^\circ$ im Steigflug.
+
+**Die Querneigung ist Ergebnis, keine Eingabe.** Eine Kurve mit gewählter Querneigung sagt
+etwas über die Wahl des Piloten, nicht über das Flugzeug. **Gestrichen:**
+`turn-load-factor` ($n = 1/\cos\phi$) mit der Eingabe Querneigung, und
+`stall-speed-in-turn` ($V_{S,turn} = V_S\sqrt{n}$) — eine zweite Autorität (ADR 0022):
+Die Abkürzung nimmt das $C_{L,max}$ des Geradeausflugs, das Abrissproblem mit gebundenem
+Lastvielfachen wertet es bei der Reynoldszahl der Kurve aus. Das Lastvielfache ist jetzt
+eine Eingabe der Auftriebsbilanz, je Anwendung gebunden.
+
+**Die momentane Kurve gehört zur Hüllkurve.** Ziehen über die gehaltene Grenze hinaus
+tauscht Fahrt oder Höhe gegen eine engere Kurve, begrenzt durch Abriss und Struktur. Ihre
+Kennzahl, die **Eckgeschwindigkeit** $V^* = V_S\sqrt{n_{lim}}$ (in der Zulassung die
+Manövergeschwindigkeit $V_A$), ist eine **Sicherheitsaussage**: darunter reißt die Strömung
+ab, bevor die Struktur überlastet wird; darüber kann ein voller Höhenruderausschlag den
+Flügel brechen. Sie wird beim Sturzflug aufgenommen und taugt nur so viel wie $n_{lim}$.
+
 ### 3.11 Was der Durchgang ergeben hat
 
 Neun Betriebspunkte, einzeln aufgemacht. Die Bilanz:
@@ -1514,7 +1561,8 @@ Neun Betriebspunkte, einzeln aufgemacht. Die Bilanz:
 | **Landung** | fast leer. Die Feldlänge ist eine nutzersichtbare Zahl ohne Grundlage im Kanon |
 | **Start** | O8 geklärt, die letzte Zauberzahl lokalisiert |
 | **Steigflug** | gerechnet (01.10.2026): Motor–Propeller-Gleichgewicht, $V_y$ und $V_x$ als Optimierungsprobleme; heute überall Route A, bis #1149 die Widerstände bringt |
-| **Kurvenflug · Sturzflug** | hohl, aus einem gemeinsamen Grund: der Schub bei Fahrt |
+| **Kurvenflug** | gerechnet (01.10.2026): gehaltene Kurve, $\omega_{max}$ und $r_{min}$ als Optimierungsprobleme; Querneigung und $\sqrt{n}$-Abkürzung gestrichen |
+| **Sturzflug** | hohl: Höchstgeschwindigkeit ist eine Eingabe; Eckgeschwindigkeit vorgemerkt |
 
 **Der Kanon war vollständiger, als sein Zustand vermuten ließ.** Was fehlte, waren
 überwiegend **Bindungen, keine Gesetze** — dieselbe Formel gilt an drei Punkten und war an
@@ -1522,8 +1570,8 @@ keinem festgemacht. `V = k · V_S,cfg` ist dafür das Musterbeispiel: Anflug, La
 
 **Es fehlt kein Gesetz — es fehlt eine Verbindung, und sie fehlt dreifach.** Der Schub bei
 Fahrt wird bereits aus gemessenen Kennlinien gerechnet, nur greifen Feldlänge,
-Auslegungsdiagramm und Missions-KPIs stattdessen auf eine Standschubzahl zurück. Solange das so ist, bleiben Kurvenflug und Sturzflug Beschriftungen; der Steigflug
-nimmt den Schub seit dem 01.10.2026 aus dem Motor–Propeller-Gleichgewicht.
+Auslegungsdiagramm und Missions-KPIs stattdessen auf eine Standschubzahl zurück. Solange das so ist, bleibt der Sturzflug eine Beschriftung; Steig- und Kurvenflug nehmen
+den Schub seit dem 01.10.2026 aus dem Motor–Propeller-Gleichgewicht.
 
 **Zwei Lücken bleiben, und sie sind dieselbe Frage zweimal:** Ob die Bahn zum Starten und
 zum Landen reicht. Beide brauchen entweder eine Integration, die wir nicht machen, oder
