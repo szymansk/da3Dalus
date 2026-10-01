@@ -187,7 +187,15 @@ hervor; das Seitenfeld zeigt Beschreibung, erzeugende Formel als gesetzte Mathem
 die Quelle.
 
 Er ist **abgeleitet, nicht gepflegt**: Bei jeder Änderung am Katalog neu erzeugen, sonst
-läuft er auseinander — dasselbe Duplikatproblem, vor dem A1 warnt.
+läuft er auseinander — dasselbe Duplikatproblem, vor dem A1 warnt. Neu erzeugen mit
+
+```
+poetry run python scripts/build_canon_navigator.py \
+    _reversa_sdd/calculations/canon _reversa_sdd/calculations/canon/navigator.html
+```
+
+Die Seitenvorlage liegt in `scripts/canon_navigator_template.html`; das Skript setzt nur
+die Daten ein. Die generierte HTML-Datei nie von Hand ändern.
 
 Zwei Dinge, die beim Bauen zu beachten sind: Die Artifact-Sicherheitsrichtlinie lädt
 Schriften nur von Google Fonts, deshalb scheidet KaTeX aus (seine Glyphen kämen vom

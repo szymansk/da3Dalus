@@ -839,6 +839,28 @@ Polaren-Einträge tragen einen 🔴-Vermerk, dass eine ihrer Annahmen **in der I
 verletzt** ist. Die Autorität zu wählen heißt hier, die Arbeit zu benennen, nicht sie
 erledigt zu haben.
 
+#### Der negative Höchstauftrieb kommt aus der Polare
+
+**Status: entschieden am 30.09.2026.**
+
+Der Eintrag rechnete `C_L,min = −0,8 · C_L,max`. Gestrichen, aus zwei Gründen:
+
+**Keine Quelle.** Nachweislich gesucht und nichts gefunden — 14 CFR 23.337 setzt ein
+negatives *Lastvielfaches*, keinen negativen Auftriebsbeiwert.
+
+**Keine Wölbungsabhängigkeit, und die ist das Ganze.** Ein symmetrisches Kunstflugprofil
+fliegt auf dem Rücken mit nahezu demselben Höchstauftrieb, ein stark gewölbtes Trainerprofil
+deutlich darunter. Beide liegen in unserer Klasse, also kann eine Konstante beide nicht
+bedienen — dieselbe Fehlerklasse wie die gestrichenen Faustformeln.
+
+Jetzt wird der Tiefpunkt der gerechneten Polare abgelesen, aus **demselben** Sweep wie der
+positive Höchstauftrieb. Die Wölbung steckt damit automatisch drin. Eine Bedingung wird
+dabei leicht übersehen: **Der Sweep muss über den Rückenabriss hinausreichen.** Er beginnt
+heute bei −15°, und ein gewölbtes Profil reißt auf dem Rücken oft erst jenseits davon ab.
+Liegt der Tiefpunkt auf dem Rand, ist es kein Minimum, sondern ein Randwert — und dann
+meldet sich der negative Ast der Hüllkurve als Platzhalter, statt still eine Zahl zu
+liefern.
+
 #### Gestrichen: der Böenteil
 
 **Status: entschieden am 30.09.2026.** Vier Formeln und vier Größen sind aus dem Kanon

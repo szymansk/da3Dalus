@@ -1,0 +1,321 @@
+<title>Rechenkanon-Navigator</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=STIX+Two+Text:ital,wght@0,400;0,600;1,400&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<script>window.MathJax={tex:{inlineMath:[['$','$']],displayMath:[['$$','$$']]},svg:{fontCache:'global'},startup:{typeset:false}};</script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/3.2.2/es5/tex-svg.js"></script>
+<style>
+:root{
+  --bg:#FBFAF7; --panel:#FFFFFF; --ink:#23211C; --ink-2:#6B675E; --ink-3:#9A958A;
+  --line:#E2DED4; --line-2:#CFC9BC;
+  --inp:#4C7198; --mid:#8A8579; --out:#35754D; --hub:#A67C3C; --sel:#6B4FA0;
+  --inp-bg:#EBF1F7; --out-bg:#E7F2EB; --hub-bg:#FAF2E4; --sel-bg:#F0EBF8;
+  --dim:0.13;
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    color-scheme:dark;
+    --bg:#16150F; --panel:#1F1D16; --ink:#EDEAE1; --ink-2:#A7A294; --ink-3:#777266;
+    --line:#332F26; --line-2:#474034;
+    --inp:#7FA6CC; --mid:#9C968A; --out:#6FB98B; --hub:#D6AA63; --sel:#A78BDB;
+    --inp-bg:#1C2530; --out-bg:#18271E; --hub-bg:#2A2216; --sel-bg:#241E33;
+    --dim:0.16;
+  }
+}
+:root[data-theme="dark"]{
+  color-scheme:dark;
+  --bg:#16150F; --panel:#1F1D16; --ink:#EDEAE1; --ink-2:#A7A294; --ink-3:#777266;
+  --line:#332F26; --line-2:#474034;
+  --inp:#7FA6CC; --mid:#9C968A; --out:#6FB98B; --hub:#D6AA63; --sel:#A78BDB;
+  --inp-bg:#1C2530; --out-bg:#18271E; --hub-bg:#2A2216; --sel-bg:#241E33;
+  --dim:0.16;
+}
+*{box-sizing:border-box}
+html,body{height:100%}
+body{margin:0;background:var(--bg);color:var(--ink);
+  font-family:"IBM Plex Sans",system-ui,sans-serif;font-size:14px;line-height:1.5;}
+.wrap{display:grid;grid-template-columns:270px minmax(0,1fr) 340px;height:100%;}
+aside,.info{background:var(--panel);overflow-y:auto;padding:18px 18px 28px;}
+aside{border-right:1px solid var(--line)}
+.info{border-left:1px solid var(--line)}
+h1{font-family:"STIX Two Text",Georgia,serif;font-size:19px;font-weight:600;margin:0 0 2px;
+   letter-spacing:-.01em;text-wrap:balance}
+.sub{color:var(--ink-2);font-size:12.5px;margin:0 0 20px}
+.grp{margin-bottom:22px}
+.lab{font-size:10.5px;text-transform:uppercase;letter-spacing:.09em;color:var(--ink-3);
+     font-weight:600;margin-bottom:8px}
+.depth{display:flex;align-items:center;gap:10px}
+.depth input[type=range]{flex:1;accent-color:var(--sel)}
+.depth output{font-family:"IBM Plex Mono",monospace;font-size:15px;font-weight:500;
+  min-width:2.1em;text-align:right;font-variant-numeric:tabular-nums}
+input[type=search]{width:100%;padding:7px 9px;border:1px solid var(--line-2);border-radius:5px;
+  background:var(--bg);color:var(--ink);font:inherit;font-size:13px}
+input:focus-visible,button:focus-visible,li:focus-visible{outline:2px solid var(--sel);outline-offset:2px}
+.hits{list-style:none;margin:8px 0 0;padding:0;max-height:210px;overflow-y:auto}
+.hits li{padding:5px 8px;border-radius:4px;cursor:pointer;font-size:13px;
+  display:flex;justify-content:space-between;gap:8px}
+.hits li:hover{background:var(--sel-bg)}
+.hits .u{color:var(--ink-3);font-family:"IBM Plex Mono",monospace;font-size:11px}
+.leg{display:flex;flex-direction:column;gap:7px;font-size:12.5px;color:var(--ink-2)}
+.leg span{display:flex;align-items:center;gap:8px}
+.sw{width:22px;height:13px;border-radius:3px;border:1.5px solid;flex:none}
+main{position:relative;overflow:hidden;background:var(--bg)}
+svg{width:100%;height:100%;display:block;cursor:grab;touch-action:none}
+svg.drag{cursor:grabbing}
+.node rect{stroke-width:1.5px;transition:opacity .16s}
+.node text{font-family:"STIX Two Text",Georgia,serif;font-size:14px;pointer-events:none;
+  dominant-baseline:middle;text-anchor:middle}
+.node{cursor:pointer}
+.edge{fill:none;stroke:var(--line-2);stroke-width:1.1px;transition:opacity .16s,stroke .16s}
+.faded{opacity:var(--dim)}
+.edge.up{stroke:var(--inp);stroke-width:1.9px;opacity:1}
+.edge.down{stroke:var(--out);stroke-width:1.9px;opacity:1}
+.laylab{font-size:10px;fill:var(--ink-3);font-family:"IBM Plex Mono",monospace}
+.hint{position:absolute;left:0;right:0;bottom:12px;text-align:center;color:var(--ink-3);
+  font-size:12px;pointer-events:none}
+.z{position:absolute;top:12px;right:12px;display:flex;gap:6px}
+.z button{width:30px;height:30px;border:1px solid var(--line-2);background:var(--panel);
+  color:var(--ink);border-radius:5px;cursor:pointer;font-size:15px;line-height:1}
+.z button:hover{border-color:var(--sel)}
+.info h2{font-family:"STIX Two Text",Georgia,serif;font-size:22px;margin:0 0 3px;font-weight:600}
+.info .meta{color:var(--ink-2);font-size:12.5px;margin:0 0 16px;
+  font-family:"IBM Plex Mono",monospace}
+.pill{display:inline-block;padding:1px 7px;border-radius:99px;font-size:10.5px;
+  font-weight:600;letter-spacing:.04em;text-transform:uppercase;border:1px solid}
+.desc{font-family:"STIX Two Text",Georgia,serif;font-size:15px;line-height:1.55;
+  color:var(--ink);margin:0 0 20px}
+.blk{border-top:1px solid var(--line);padding-top:14px;margin-top:16px}
+.blk .lab{margin-bottom:9px}
+.math{overflow-x:auto;padding:2px 0;font-size:15px}
+.math mjx-container{margin:0 !important}
+.math mjx-container[display]{margin:.35em 0 !important;text-align:left !important}
+.mono{font-family:"IBM Plex Mono",monospace;font-size:12px;background:var(--bg);
+  border:1px solid var(--line);border-radius:5px;padding:8px 10px;overflow-x:auto;
+  white-space:pre-wrap;color:var(--ink-2)}
+.src{font-family:"STIX Two Text",Georgia,serif;font-size:13px;color:var(--ink-2);
+  line-height:1.5;border-left:2px solid var(--line-2);padding-left:11px;margin:0}
+.lnk{list-style:none;margin:0;padding:0;display:flex;flex-wrap:wrap;gap:5px}
+.lnk li{border:1px solid var(--line-2);border-radius:4px;padding:2px 8px;font-size:12px;
+  cursor:pointer;background:var(--bg)}
+.lnk li:hover{border-color:var(--sel);color:var(--sel)}
+.empty{color:var(--ink-3);font-size:13px;font-family:"STIX Two Text",Georgia,serif;
+  font-style:italic;margin-top:40px}
+@media (max-width:900px){
+  .wrap{grid-template-columns:1fr;grid-template-rows:auto 62vh auto;height:auto}
+  aside{border-right:none;border-bottom:1px solid var(--line)}
+  .info{border-left:none;border-top:1px solid var(--line)}
+}
+</style>
+<div class="wrap">
+<aside>
+  <h1>Rechenkanon-Navigator</h1>
+  <p class="sub" id="counts"></p>
+
+  <div class="grp">
+    <div class="lab">Tiefe der Hervorhebung</div>
+    <div class="depth">
+      <input type="range" id="depth" min="0" max="12" value="1" aria-label="Tiefe">
+      <output id="depthOut" for="depth">1</output>
+    </div>
+    <p class="sub" style="margin:7px 0 0">Wie viele Schritte vorw&#228;rts und r&#252;ckw&#228;rts von der gew&#228;hlten Gr&#246;&#223;e hervorgehoben werden. 0 zeigt nur sie selbst.</p>
+  </div>
+
+  <div class="grp">
+    <div class="lab">Gr&#246;&#223;e suchen</div>
+    <input type="search" id="q" placeholder="Name, Symbol oder Einheit" aria-label="Gr&#246;&#223;e suchen">
+    <ul class="hits" id="hits"></ul>
+  </div>
+
+  <div class="grp">
+    <div class="lab">Legende</div>
+    <div class="leg">
+      <span><i class="sw" style="background:var(--inp-bg);border-color:var(--inp)"></i>Eingabe &#8212; von keiner Formel erzeugt</span>
+      <span><i class="sw" style="background:var(--hub-bg);border-color:var(--hub)"></i>tragend &#8212; vierfach oder &#246;fter gebraucht</span>
+      <span><i class="sw" style="background:var(--panel);border-color:var(--mid)"></i>Zwischenergebnis</span>
+      <span><i class="sw" style="background:var(--out-bg);border-color:var(--out)"></i>Endergebnis &#8212; von nichts verbraucht</span>
+    </div>
+  </div>
+
+  <div class="grp">
+    <div class="lab">Schichten</div>
+    <p class="sub" style="margin:0">Oben stehen die Eingaben, nach unten w&#228;chst die Abh&#228;ngigkeitstiefe. Ganz unten steht, was nirgends mehr eingeht.</p>
+  </div>
+</aside>
+
+<main>
+  <svg id="g" role="img" aria-label="Rechengraph"><g id="cam"></g></svg>
+  <div class="z">
+    <button id="zin" title="Gr&#246;&#223;er" aria-label="Gr&#246;&#223;er">+</button>
+    <button id="zout" title="Kleiner" aria-label="Kleiner">&#8722;</button>
+    <button id="zfit" title="Einpassen" aria-label="Einpassen">&#10530;</button>
+  </div>
+  <div class="hint">Ziehen zum Verschieben &#183; Rad zum Zoomen &#183; Gr&#246;&#223;e anklicken</div>
+</main>
+
+<div class="info" id="info"></div>
+</div>
+
+<script>window.__DATA__=__CANON_DATA__;</script>
+<script>
+const D = window.__DATA__;
+const Q=D.Q, F=D.F, LAYER=D.layer, ORDER=D.order;
+const INPUTS=new Set(D.inputs), OUTPUTS=new Set(D.outputs);
+
+const pred={}, succ={}, prodBy={}, useCount={};
+for(const q in Q){pred[q]=[];succ[q]=[];useCount[q]=0;}
+for(const [a,b,f] of D.edges){ pred[b].push([a,f]); succ[a].push([b,f]); useCount[a]++; }
+for(const f in F){ (prodBy[F[f].out] ||= []).push(f); }
+
+const NW=78, NH=30, GAPX=13, GAPY=74, PAD=48;
+const layers=Object.keys(ORDER).map(Number).sort((a,b)=>a-b);
+const widest=Math.max(...layers.map(l=>ORDER[l].length));
+const W=widest*(NW+GAPX)-GAPX, H=(layers.length-1)*GAPY+NH;
+const P={};
+for(const l of layers){
+  const row=ORDER[l], off=(W-(row.length*(NW+GAPX)-GAPX))/2;
+  row.forEach((q,i)=>{ P[q]={x:off+i*(NW+GAPX), y:l*GAPY}; });
+}
+const cam=document.getElementById('cam'), svg=document.getElementById('g');
+const NS='http://www.w3.org/2000/svg';
+const el=(n,a)=>{const e=document.createElementNS(NS,n);for(const k in a)e.setAttribute(k,a[k]);return e;};
+
+for(const l of layers){
+  const t=el('text',{x:-26,y:l*GAPY+NH/2,class:'laylab','dominant-baseline':'middle','text-anchor':'end'});
+  t.textContent='L'+l; cam.appendChild(t);
+}
+const edgeEls=[];
+for(const [a,b,f] of D.edges){
+  const p1=P[a], p2=P[b];
+  const x1=p1.x+NW/2, y1=p1.y+NH, x2=p2.x+NW/2, y2=p2.y;
+  const dy=Math.max(18,(y2-y1)/2);
+  const e=el('path',{class:'edge',d:`M${x1},${y1} C${x1},${y1+dy} ${x2},${y2-dy} ${x2},${y2}`});
+  cam.appendChild(e); edgeEls.push({e,a,b});
+}
+function sym(q){
+  const s=(Q[q].symbol||q).replace(/\\/g,'').trim();
+  const g={rho:'\u03c1',alpha:'\u03b1',gamma:'\u03b3',eta:'\u03b7',mu:'\u03bc',pi:'\u03c0',sigma:'\u03c3',phi:'\u03c6',lambda:'\u03bb'};
+  return s.replace(/\b(rho|alpha|gamma|eta|mu|pi|sigma|phi|lambda)\b/g,m=>g[m]);
+}
+let moved=false;
+const nodeEls={};
+for(const q in Q){
+  const {x,y}=P[q];
+  const g=el('g',{class:'node',transform:`translate(${x},${y})`,tabindex:'0',role:'button'});
+  const cls = INPUTS.has(q)?'inp' : OUTPUTS.has(q)?'out' : (useCount[q]>=4?'hub':'mid');
+  const fill = cls==='inp'?'var(--inp-bg)' : cls==='out'?'var(--out-bg)' : cls==='hub'?'var(--hub-bg)':'var(--panel)';
+  g.appendChild(el('rect',{width:NW,height:NH,rx:5,fill,stroke:`var(--${cls})`}));
+  const raw=sym(q), parts=raw.split('_');
+  const t=el('text',{x:NW/2,y:NH/2});
+  t.appendChild(Object.assign(document.createElementNS(NS,'tspan'),{textContent:parts[0]}));
+  if(parts[1]){ const s=el('tspan',{dy:'4',style:'font-size:10px'}); s.textContent=parts.slice(1).join('_'); t.appendChild(s); }
+  g.appendChild(t);
+  g.addEventListener('click',()=>{ if(!moved) select(q); });
+  g.addEventListener('keydown',ev=>{ if(ev.key==='Enter'||ev.key===' '){ev.preventDefault();select(q);} });
+  cam.appendChild(g); nodeEls[q]=g;
+}
+
+let depth=1, sel=null;
+const dEl=document.getElementById('depth'), dOut=document.getElementById('depthOut');
+dEl.addEventListener('input',()=>{depth=+dEl.value;dOut.value=depth;if(sel)paint();});
+
+function reach(start,map,n){
+  const seen=new Set(); let front=[start];
+  for(let i=0;i<n;i++){
+    const nxt=[];
+    for(const q of front) for(const [o] of map[q]) if(!seen.has(o)&&o!==start){seen.add(o);nxt.push(o);}
+    front=nxt; if(!front.length) break;
+  }
+  return seen;
+}
+function paint(){
+  if(!sel){ for(const q in nodeEls) nodeEls[q].classList.remove('faded');
+            edgeEls.forEach(({e})=>e.classList.remove('faded','up','down')); return; }
+  const up=reach(sel,pred,depth), down=reach(sel,succ,depth);
+  const on=new Set([sel,...up,...down]);
+  for(const q in nodeEls) nodeEls[q].classList.toggle('faded',!on.has(q));
+  edgeEls.forEach(({e,a,b})=>{
+    e.classList.remove('up','down','faded');
+    const upE = (on.has(a)&&(b===sel||up.has(b))) && (a===sel||up.has(a));
+    const dnE = (on.has(b)&&(a===sel||down.has(a))) && (b===sel||down.has(b));
+    if(upE) e.classList.add('up'); else if(dnE) e.classList.add('down'); else e.classList.add('faded');
+  });
+}
+const info=document.getElementById('info');
+function esc(s){return String(s).replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));}
+function select(q){
+  sel=q; paint();
+  const d=Q[q], fs=prodBy[q]||[];
+  const cls = INPUTS.has(q)?'inp' : OUTPUTS.has(q)?'out' : (useCount[q]>=4?'hub':'mid');
+  const role = INPUTS.has(q)?'Eingabe' : OUTPUTS.has(q)?'Endergebnis' : (useCount[q]>=4?'tragend':'Zwischenergebnis');
+  let h=`<h2>${esc(sym(q))}</h2>
+   <p class="meta">${esc(q)} \u00b7 ${esc(d.unit||'\u2014')} \u00b7 Schicht L${LAYER[q]}
+   &nbsp;<span class="pill" style="color:var(--${cls});border-color:var(--${cls})">${role}</span></p>
+   <p class="desc">${esc(d.desc||'Keine Beschreibung im Katalog.')}</p>`;
+  for(const f of fs){
+    const e=F[f];
+    h+=`<div class="blk"><div class="lab">Erzeugt durch \u00b7 ${esc(e.kind)} \u00b7 ${esc(e.status)}</div>`;
+    h+= e.tex ? `<div class="math">$$${e.tex}$$</div>`
+              : `<div class="mono">${esc(e.form)}</div>
+                 <p class="sub" style="margin:6px 0 0">Verfahrensform \u2014 nicht als Formel setzbar.</p>`;
+    if(e.ins.length) h+=`<div class="lab" style="margin-top:12px">Aus</div><ul class="lnk">`+
+      e.ins.map(i=>`<li data-q="${esc(i)}">${esc(sym(i))}</li>`).join('')+`</ul>`;
+    if(e.src) h+=`<div class="lab" style="margin-top:12px">Quelle</div><p class="src">${esc(e.src)}</p>`;
+    h+=`</div>`;
+  }
+  const us=succ[q].map(([o])=>o), uniq=[...new Set(us)];
+  if(uniq.length) h+=`<div class="blk"><div class="lab">Geht ein in \u00b7 ${uniq.length}</div><ul class="lnk">`+
+    uniq.map(o=>`<li data-q="${esc(o)}">${esc(sym(o))}</li>`).join('')+`</ul></div>`;
+  else h+=`<div class="blk"><div class="lab">Geht ein in</div><p class="sub" style="margin:0">Nichts \u2014 dies ist ein Endergebnis.</p></div>`;
+  info.innerHTML=h;
+  info.querySelectorAll('[data-q]').forEach(li=>li.addEventListener('click',()=>select(li.dataset.q)));
+  if(window.MathJax?.typesetPromise) MathJax.typesetPromise([info]).catch(()=>{});
+}
+// Suche
+const qi=document.getElementById('q'), hits=document.getElementById('hits');
+qi.addEventListener('input',()=>{
+  const v=qi.value.trim().toLowerCase();
+  if(!v){hits.innerHTML='';return;}
+  const m=Object.keys(Q).filter(k=>k.includes(v)||(Q[k].symbol||'').toLowerCase().includes(v)
+    ||(Q[k].unit||'').toLowerCase().includes(v)).slice(0,18);
+  hits.innerHTML=m.map(k=>`<li data-q="${esc(k)}">${esc(k)}<span class="u">${esc(Q[k].unit||'')}</span></li>`).join('');
+  hits.querySelectorAll('li').forEach(li=>li.addEventListener('click',()=>{select(li.dataset.q);qi.value='';hits.innerHTML='';}));
+});
+// Kamera
+let k=1,tx=0,ty=0;
+const apply=()=>cam.setAttribute('transform',`translate(${tx},${ty}) scale(${k})`);
+function fit(){
+  const r=svg.getBoundingClientRect();
+  k=Math.min((r.width-2*PAD)/W,(r.height-2*PAD)/H,1);
+  tx=(r.width-W*k)/2; ty=(r.height-H*k)/2; apply();
+}
+svg.addEventListener('wheel',e=>{e.preventDefault();
+  const r=svg.getBoundingClientRect(), mx=e.clientX-r.left, my=e.clientY-r.top;
+  const f=Math.exp(-e.deltaY*0.0016), nk=Math.min(3,Math.max(0.15,k*f));
+  tx=mx-(mx-tx)*(nk/k); ty=my-(my-ty)*(nk/k); k=nk; apply();},{passive:false});
+let drag=null;
+svg.addEventListener('pointerdown',e=>{
+  drag={x:e.clientX-tx,y:e.clientY-ty,sx:e.clientX,sy:e.clientY};moved=false;svg.classList.add('drag');});
+addEventListener('pointermove',e=>{
+  if(!drag)return;
+  if(Math.abs(e.clientX-drag.sx)>3||Math.abs(e.clientY-drag.sy)>3)moved=true;
+  if(moved){tx=e.clientX-drag.x;ty=e.clientY-drag.y;apply();}});
+addEventListener('pointerup',()=>{drag=null;svg.classList.remove('drag');
+  if(moved) setTimeout(()=>{moved=false;},0);});
+document.getElementById('zin').onclick=()=>{k=Math.min(3,k*1.25);apply();};
+document.getElementById('zout').onclick=()=>{k=Math.max(0.15,k/1.25);apply();};
+document.getElementById('zfit').onclick=fit;
+addEventListener('resize',fit);
+
+document.getElementById('counts').textContent =
+  `${Object.keys(Q).length} Gr\u00f6\u00dfen \u00b7 ${D.edges.length} Kanten \u00b7 ${layers.length} Schichten \u00b7 `+
+  `${D.inputs.length} Eingaben, ${D.outputs.length} Endergebnisse`;
+info.innerHTML=`<p class="empty">Eine Gr\u00f6\u00dfe im Graphen anklicken \u2014 hier erscheinen Beschreibung, erzeugende Formel und Quelle.</p>`;
+select('stall-speed');
+function fitWhenSized(tries){
+  const r=svg.getBoundingClientRect();
+  if(r.width>40 && r.height>40){ fit(); return; }
+  if(tries>0) requestAnimationFrame(()=>fitWhenSized(tries-1));
+}
+fitWhenSized(30);
+addEventListener('load',()=>fitWhenSized(5));
+if(document.fonts&&document.fonts.ready) document.fonts.ready.then(()=>fitWhenSized(3));
+
+</script>

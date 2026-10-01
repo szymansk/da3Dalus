@@ -18,5 +18,5 @@ Clean-configuration peak lift coefficient; supplied as a design assumption (defa
 
 **Produced by.** [[clmax-from-polar]]
 
-**Used by.** [[stall-speed]] · [[stall-wing-loading-limit]] · [[high-lift-clmax]] · [[inverted-max-lift-coefficient]]
+**Used by.** [[stall-speed]] · [[stall-wing-loading-limit]] · [[high-lift-clmax]]
 
