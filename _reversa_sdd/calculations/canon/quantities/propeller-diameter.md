@@ -18,4 +18,4 @@ Propeller diameter. Written `D_prop` rather than `D`, because `D` is drag.
 
 **Produced by.** [[airplane-geometry]]
 
-**Used by.** [[advance-ratio-from-speed]] · [[thrust-at-airspeed-from-coefficient]]
+**Used by.** [[advance-ratio-from-speed]] · [[motor-propeller-equilibrium]] · [[thrust-at-airspeed-from-coefficient]]

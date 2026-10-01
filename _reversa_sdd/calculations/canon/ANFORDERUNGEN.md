@@ -1363,9 +1363,10 @@ keine neue Modellierung, sondern ein Zugriff auf Daten, die wir haben.
 
 ### 3.10 Die letzten drei Punkte: Steigflug, Kurvenflug, Sturzflug
 
-**Status: alle drei sind hohl, und zwar aus einem gemeinsamen Grund.**
+**Status: der Steigflug ist seit dem 01.10.2026 gerechnet (unten). Kurven- und Sturzflug
+sind hohl, aus dem gemeinsamen Grund, der hier zuerst steht.**
 
-**Der Steigflug ist benannt, nicht gerechnet.** Im ganzen Kanon enthalten **fünf** Formeln
+**Befund vor dem 01.10.2026 — der Steigflug war benannt, nicht gerechnet.** Im ganzen Kanon enthalten **fünf** Formeln
 überhaupt Schub oder Leistung, und **keine einzige** bildet eine Differenz aus Schub und
 Widerstand oder aus verfügbarer und erforderlicher Leistung. Ohne diese Differenz gibt es
 keine Steigrate und keinen Steigwinkel.
@@ -1423,6 +1424,84 @@ Antriebsdienst.
 
 Damit ändert sich auch die Art der Arbeit: nicht bauen, sondern **verbinden**.
 
+#### Der Steigflug — gerechnet (01.10.2026)
+
+**Der Schub bei Vollgas kommt aus dem Gleichgewicht von Motor und Propeller.** Bei jeder
+Fluggeschwindigkeit dreht der Propeller dort, wo das Motordrehmoment das
+Propellerdrehmoment trifft; belastet der Propeller den Motor, sinkt die Drehzahl:
+
+$$
+\frac{I(n) - I_0}{K_v'} = \frac{C_P(J)\,\rho\,n^2 D_{prop}^5}{2\pi},
+\qquad I(n) = \frac{U_{bat} - 2\pi n / K_v'}{R_m},
+\qquad J = \frac{V}{n\,D_{prop}}
+$$
+
+und daraus $T = C_T(J)\,\rho\,n^2 D_{prop}^4$ (Eintrag `motor-propeller-equilibrium`).
+Das ist Drelas lineares Gleichstrommotor-Modell gegen die **gemessenen** Kennlinien des
+eingebauten Propellers — es hat keine Singularität bei $V = 0$ und braucht nur Daten, die
+es gibt.
+
+**Konstante Leistung ist verworfen.** Sadraey rechnet mit $T = \eta_P P / V$ bei festem
+$P$ (Gl. 8.2, 4.84; $\eta_P = 0{,}5\ldots0{,}6$ im Steigflug) und nennt das selbst
+„ausreichend für die Vorauslegung“. Ein spannungsgespeister Motor an einem Festpropeller
+liefert keine konstante Leistung, die Beziehung divergiert bei $V \to 0$, und $\eta_P(J)$
+braucht trotzdem die Drehzahl. Ein Modell für Elektroantriebe enthalten Scholz und
+Sadraey nicht.
+
+**Zwei Routen, nach Datenlage — schon entschieden (`Q-PT-6`, 14.08.2026).**
+
+| Route | wenn | Drehzahl | Zustand heute |
+|---|---|---|---|
+| B — Drehmomentgleichgewicht | $R_m$ bekannt | aus dem Gleichgewicht | Model B, gh-1006 |
+| A — feste Drehzahl | $R_m$ fehlt | Leerlaufdrehzahl $K_v U_{bat}$ | Model A, gh-615 — **für alle 41 Motoren** |
+
+Das Ergebnis sagt, welche Route lief (ADR 0020). $R_m$ wird **nur** übernommen, wo ein
+Hersteller ihn veröffentlicht, und **nie** aus $K_v$ und $I_0$ geschätzt — eine solche
+Schätzung (die AeroSandbox mitbringt) war erwogen und ist durch `Q-PT-6` ausgeschlossen.
+Gemeint ist der **Kreiswiderstand** aus Motor, Regler und Kabel, nicht die kalte
+Wicklung des Datenblatts. Die Daten nachzutragen ist #1149.
+
+**Was Route A kostet, ist gemessen.** Katalogmotor AL 28-13, APC 6x4E, 2S: belastet
+8 973, im Leerlauf 10 064 U/min — Route A überschätzt den Schub um rund 25 %. Und
+$R_m$ ist die dominante Unsicherheit: halbiert oder verdoppelt verschiebt er den Schub um
+28 % im Stand und 40 % bei 10 m/s (`scripts/canon_checks/thrust_motor_resistance_sensitivity.py`).
+Für die Steigrate wirkt das verstärkt, weil sie am Überschuss $T - D$ hängt.
+
+**Bestes Steigen und steilstes Steigen sind Optimierungsprobleme** — dieselbe Form wie die
+drei Extremalbedingungen in §3.4.1, mit dem Schub in der Bilanz:
+
+$$
+\begin{aligned}
+\mathit{ROC}_{max} = \max_{V,\,\alpha,\,\gamma,\,n}\; & V \sin\gamma
+&\qquad
+\gamma_{max} = \max_{V,\,\alpha,\,\gamma,\,n}\; & \gamma \\
+\text{u.d.N.}\; & L(V,\alpha) = m\,g\cos\gamma
+& \text{u.d.N.}\; & \text{dieselben drei} \\
+& T(V,n) - D(V,\alpha) = m\,g\sin\gamma \\
+& Q_m(n) = Q_p(V,n)
+\end{aligned}
+$$
+
+Sie liefern $V_y$ mit $\mathit{ROC}_{max}$ und $V_x$ mit $\gamma_{max}$ (Einträge
+`best-rate-of-climb`, `best-angle-of-climb`).
+
+**Beide Kräftegleichgewichte, nicht die Kleinwinkelform.** Sadraeys
+$\mathit{ROC} = (T - D) V / W$ mit $L = W$ gilt nur für flaches Steigen. Ein Modell mit
+viel Schub steigt steil, mit $T > W$ senkrecht. Die Bilanz längs und quer zur Bahn kostet
+eine Variable und stimmt bei jedem Winkel; bei $\gamma = 90^\circ$ wird $L = 0$ — das ist
+die Antwort, kein Versagen. Diese eine aktive Schranke ist deshalb **erlaubt** und wird
+benannt; jede andere aktive Schranke und jeder Solverabbruch liefert keinen Wert.
+
+**Der Strom ist ein Urteil, keine Nebenbedingung.** Das Optimum liefert den Motorstrom.
+Liegt er über der Grenze von Motor, Regler oder Akku, ist der Antrieb bei Vollgas
+überlastet — gemeldet, nicht wegoptimiert.
+
+**Gestrichen:** `climb-speed-for-power-loading` ($V_{climb} = \max(1{,}3\,V_{S,target},
+1\ \text{m/s})$) und die Größe $V_{climb}$.
+
+**Die Akkuspannung ist nominell** ($3{,}7$ V je Zelle, BR-PM3); der Spannungseinbruch
+unter Last ist nicht modelliert und wird ausgewiesen.
+
 ### 3.11 Was der Durchgang ergeben hat
 
 Neun Betriebspunkte, einzeln aufgemacht. Die Bilanz:
@@ -1434,7 +1513,8 @@ Neun Betriebspunkte, einzeln aufgemacht. Die Bilanz:
 | **Anflug** | **keine neue Formel** — nur Bindungen. Zwei Defekte aufgedeckt |
 | **Landung** | fast leer. Die Feldlänge ist eine nutzersichtbare Zahl ohne Grundlage im Kanon |
 | **Start** | O8 geklärt, die letzte Zauberzahl lokalisiert |
-| **Steigflug · Kurvenflug · Sturzflug** | hohl, aus einem gemeinsamen Grund |
+| **Steigflug** | gerechnet (01.10.2026): Motor–Propeller-Gleichgewicht, $V_y$ und $V_x$ als Optimierungsprobleme; heute überall Route A, bis #1149 die Widerstände bringt |
+| **Kurvenflug · Sturzflug** | hohl, aus einem gemeinsamen Grund: der Schub bei Fahrt |
 
 **Der Kanon war vollständiger, als sein Zustand vermuten ließ.** Was fehlte, waren
 überwiegend **Bindungen, keine Gesetze** — dieselbe Formel gilt an drei Punkten und war an
@@ -1442,8 +1522,8 @@ keinem festgemacht. `V = k · V_S,cfg` ist dafür das Musterbeispiel: Anflug, La
 
 **Es fehlt kein Gesetz — es fehlt eine Verbindung, und sie fehlt dreifach.** Der Schub bei
 Fahrt wird bereits aus gemessenen Kennlinien gerechnet, nur greifen Feldlänge,
-Auslegungsdiagramm und Missions-KPIs stattdessen auf eine Standschubzahl zurück. Solange
-das so ist, bleiben Steigflug, Kurvenflug und Sturzflug Beschriftungen.
+Auslegungsdiagramm und Missions-KPIs stattdessen auf eine Standschubzahl zurück. Solange das so ist, bleiben Kurvenflug und Sturzflug Beschriftungen; der Steigflug
+nimmt den Schub seit dem 01.10.2026 aus dem Motor–Propeller-Gleichgewicht.
 
 **Zwei Lücken bleiben, und sie sind dieselbe Frage zweimal:** Ob die Bahn zum Starten und
 zum Landen reicht. Beide brauchen entweder eine Integration, die wir nicht machen, oder

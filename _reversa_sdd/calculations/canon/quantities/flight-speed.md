@@ -27,4 +27,4 @@ is, `V < V_S` — is not flyable and must be reported as such, not computed thro
 
 **Unit.** `m/s`
 
-**Used by.** [[advance-ratio-from-speed]] · [[aerobuildup-evaluation]] · [[dynamic-pressure]] · [[power-required-electrical]] · [[reynolds-scheduled-polar]] · [[sink-rate]]
+**Used by.** [[advance-ratio-from-speed]] · [[aerobuildup-evaluation]] · [[dynamic-pressure]] · [[motor-propeller-equilibrium]] · [[power-required-electrical]] · [[reynolds-scheduled-polar]] · [[sink-rate]]

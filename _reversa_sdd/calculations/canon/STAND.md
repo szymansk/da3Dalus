@@ -225,3 +225,15 @@ Bauplan-Plugin des Maintainers. Je Modell: Geometrie mit Profilen, Abflugmasse, 
 (Kapazität, Masse), die passenden Motor-Propeller-Kombinationen — am besten APC, weil
 deren Kennlinien vorliegen —, wo bekannt ein Flugwert aus Plan oder Herstellerangabe als
 Probe, und eine Mischung aus Trainer, Segler, Kunstflug, Nurflügel.
+
+---
+
+## 9. Steigflug gerechnet (01.10.2026)
+
+Schub bei Vollgas aus dem Motor–Propeller-Gleichgewicht (`motor-propeller-equilibrium`),
+zwei Routen nach Datenlage wie in `Q-PT-6` entschieden: B mit Kreiswiderstand $R_m$
+(Drehmomentgleichgewicht), A ohne (Leerlaufdrehzahl, ~25 % zu optimistisch). $R_m$ **nie**
+aus $K_v$/$I_0$ schätzen — `Q-PT-6`; Daten: #1149. $V_y$/$\mathit{ROC}_{max}$ und
+$V_x$/$\gamma_{max}$ sind Optimierungsprobleme mit beiden Kräftegleichgewichten
+(nicht Kleinwinkel); $\gamma = 90^\circ$ ist eine erlaubte, benannte aktive Schranke.
+Offen bleiben Kurven- und Sturzflug (beide brauchen den Schub bei Fahrt).
