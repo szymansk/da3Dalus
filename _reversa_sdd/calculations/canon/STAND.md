@@ -249,3 +249,8 @@ Vollgas, vorher Eingabe 28 m/s); $V_D$ = Endgeschwindigkeit im senkrechten Sturz
 ($L = 0$, $D = mg + T$), obere Schranke ohne Propellerwiderstand, ersetzt $1{,}4\,V_{max}$
 (vom Maintainer übernommen; Bryan 31,6 m/s); $V_A$ = Abrissproblem bei $n = n_{lim}$.
 Offen: $n_{neg} = -0{,}4\,n_{lim}$ (Zulassungsverhältnis), `cruise-speed-resolution`.
+
+**Querruderdifferenzierung — nicht im MVP (01.10.2026, Maintainer):** zu komplex, zu wenig
+aussagekräftig. AeroBuildup fehlt das Giermoment aus induziertem Widerstand, AVL der
+Profilwiderstand des Ruders; bei fester Rollrate ändert die Aufteilung reibungsfrei kaum
+etwas. Details §3.1, Skripte `bryan_aileron_*.py`. Nicht wieder aufmachen ohne neues Werkzeug.

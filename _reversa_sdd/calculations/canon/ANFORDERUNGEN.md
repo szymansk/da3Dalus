@@ -929,6 +929,31 @@ Fahrt keine Größe, die der Kern aus erster Hand herleitet, sondern eine **Eige
 gewählten Komponente** — Propeller und Motor bringen ihre Kennlinie mit. Der Kern muss sie
 gegen den geforderten Schub halten können, mehr nicht.
 
+#### Nicht im MVP: die Querruderdifferenzierung (01.10.2026)
+
+**Entscheidung des Maintainers:** Eine Empfehlung für die Querruderdifferenzierung gegen
+das negative Wendemoment rechnet der Kern **nicht** — für ein MVP zu komplex und zu wenig
+aussagekräftig. Untersucht am Bryan (Anflug $1{,}3\,V_S$, stationäres Rollen; Skripte
+`bryan_aileron_differential.py`, `bryan_aileron_fixed_roll.py`), mit drei Befunden, die die
+Entscheidung tragen:
+
+- **Kein vorhandenes Werkzeug rechnet es vollständig.** AeroBuildup rechnet die Flügel
+  ohne induzierten Widerstand und addiert ihn ohne Hebelarm (`aero_buildup.py:262`,
+  `:279-298`) — das Giermoment aus der Widerstandsasymmetrie fehlt. AVL erfasst es, ist
+  aber reibungsfrei und kennt den Profilwiderstand des ausgeschlagenen Ruders nicht —
+  genau den Hebel, auf dem Differenzierung beruht.
+- **Bei fester Rollrate verschieben die Ruder das Giermoment reibungsfrei kaum** (AVL,
+  $pb/2V = 0{,}276$: $C_n$ zwischen $-0{,}0274$ und $-0{,}0285$ über jede Aufteilung). Es
+  ist der Preis der Rollrate ($\approx -C_L/8$), nicht des Ausschlags.
+- **Der Profilwiderstand der Ruder ist gleich groß** (NeuralFoil-Streifenschätzung
+  $-0{,}015 \ldots +0{,}032$) — eine Antwort hinge an der Kopplung zweier Modelle und an
+  NeuralFoil bei 15–25° Klappenausschlag und $Re \approx 60\,000$, beides ungeprüft.
+
+Nebenbei gefunden, für die AVL-Anbindung relevant: Der AVL-Wrapper von AeroSandbox setzt
+nur `d1 = 1°` und übergeht die Ruderausschläge (`avl.py:389`), und sein Profilexport
+schrieb für das Bryan-Profil Punkte mit $x > 1$ ($C_L = -2{,}6$ bei $5^\circ$). Ob der
+eigene AVL-Export der App betroffen ist, ist nicht geprüft.
+
 ### 3.2 Die Betriebspunkte
 
 **Status: die Liste steht, ihre Form ist offen.**
