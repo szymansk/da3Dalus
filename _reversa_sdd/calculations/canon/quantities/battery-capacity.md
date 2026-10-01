@@ -3,11 +3,11 @@ canon: battery-capacity
 kind: quantity
 symbol: E_bat
 unit: Wh
-role: input
+role: derived
 status: draft
 tags:
   - canon/quantity
-  - role/input
+  - role/derived
 ---
 
 # Usable battery capacity · `E_bat`
@@ -15,5 +15,7 @@ tags:
 Usable pack energy; 0.0 in the database means 'not configured'.
 
 **Unit.** `Wh`
+
+**Produced by.** [[airplane-components]]
 
 **Used by.** [[battery-mass-from-capacity]] · [[endurance-from-battery]]

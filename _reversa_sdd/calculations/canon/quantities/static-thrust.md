@@ -3,11 +3,11 @@ canon: static-thrust
 kind: quantity
 symbol: T_static
 unit: N
-role: input
+role: derived
 status: draft
 tags:
   - canon/quantity
-  - role/input
+  - role/derived
 ---
 
 # Static thrust · `T_static`
@@ -15,5 +15,7 @@ tags:
 Measured or nameplate static thrust of the propulsion system.
 
 **Unit.** `N`
+
+**Produced by.** [[airplane-components]]
 
 **Used by.** [[mean-thrust-derate]]

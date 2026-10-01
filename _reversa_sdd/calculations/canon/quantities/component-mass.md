@@ -3,11 +3,11 @@ canon: component-mass
 kind: quantity
 symbol: m_i
 unit: kg
-role: input
+role: derived
 status: draft
 tags:
   - canon/quantity
-  - role/input
+  - role/derived
 ---
 
 # Component mass · `m_i`
@@ -15,5 +15,7 @@ tags:
 Own weight of a single component-tree node, summed to give the aircraft mass.
 
 **Unit.** `kg`
+
+**Produced by.** [[airplane-components]]
 
 **Used by.** [[mass-summation]]

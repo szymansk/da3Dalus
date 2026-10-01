@@ -21,3 +21,7 @@ Defined inside [[thrust-at-airspeed-from-coefficient]]; it has no entry of its o
 it is never computed for its own sake.
 
 **Unit.** `dimensionless`
+
+**Produced by.** [[advance-ratio-from-speed]]
+
+**Used by.** [[propeller-table-lookup]]

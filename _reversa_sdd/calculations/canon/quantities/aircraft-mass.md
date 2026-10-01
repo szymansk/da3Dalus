@@ -3,11 +3,11 @@ canon: aircraft-mass
 kind: quantity
 symbol: m
 unit: kg
-role: input
+role: derived
 status: approved
 tags:
   - canon/quantity
-  - role/input
+  - role/derived
 ---
 
 # Aircraft design mass · `m`

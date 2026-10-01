@@ -16,4 +16,4 @@ Propeller rotational speed in revolutions per second. Written `n_prop` rather th
 
 **Unit.** `1/s`
 
-**Used by.** [[thrust-at-airspeed-from-coefficient]]
+**Used by.** [[advance-ratio-from-speed]] · [[thrust-at-airspeed-from-coefficient]]

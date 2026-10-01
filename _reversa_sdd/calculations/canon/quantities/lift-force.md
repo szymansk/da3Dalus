@@ -16,4 +16,6 @@ Dimensional lift returned by the solver.
 
 **Unit.** `N`
 
+**Produced by.** [[aerobuildup-evaluation]]
+
 **Used by.** [[lift-to-drag-ratio]]

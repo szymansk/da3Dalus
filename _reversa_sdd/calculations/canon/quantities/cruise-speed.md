@@ -3,11 +3,11 @@ canon: cruise-speed
 kind: quantity
 symbol: V_cruise
 unit: m/s
-role: input
+role: derived
 status: draft
 tags:
   - canon/quantity
-  - role/input
+  - role/derived
 ---
 
 # Cruise speed · `V_cruise`

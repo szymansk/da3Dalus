@@ -3,11 +3,11 @@ canon: wing-span
 kind: quantity
 symbol: b_ref
 unit: m
-role: input
+role: derived
 status: draft
 tags:
   - canon/quantity
-  - role/input
+  - role/derived
 ---
 
 # Reference span · `b_ref`
@@ -15,5 +15,7 @@ tags:
 Reference wing span of the built airplane.
 
 **Unit.** `m`
+
+**Produced by.** [[airplane-geometry]]
 
 **Used by.** [[aspect-ratio]] · [[mean-geometric-chord]]

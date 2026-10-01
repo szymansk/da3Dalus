@@ -3,11 +3,11 @@ canon: max-lift-coefficient
 kind: quantity
 symbol: C_L,max,stall
 unit: dimensionless
-role: input
+role: derived
 status: approved
 tags:
   - canon/quantity
-  - role/input
+  - role/derived
 ---
 
 # Maximum lift coefficient (clean) · `C_L,max`

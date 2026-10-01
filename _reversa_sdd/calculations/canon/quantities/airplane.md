@@ -17,4 +17,4 @@ tail, reference values. Not a number but the model every solver-backed relation 
 evaluated on. Listed as an input so that the graph says the truth for invalidation (A1):
 a change to the geometry dirties every quantity the solver produces.
 
-**Used by.** [[minimum-drag-speed-from-polar]] · [[minimum-sink-speed-from-polar]] · [[stall-speed]]
+**Used by.** [[aerobuildup-evaluation]] · [[airplane-components]] · [[airplane-geometry]] · [[minimum-drag-speed-from-polar]] · [[minimum-sink-speed-from-polar]] · [[propeller-table-lookup]] · [[stall-speed]]

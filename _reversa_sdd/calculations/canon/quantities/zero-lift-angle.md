@@ -3,11 +3,11 @@ canon: zero-lift-angle
 kind: quantity
 symbol: alpha_0
 unit: deg
-role: input
+role: derived
 status: draft
 tags:
   - canon/quantity
-  - role/input
+  - role/derived
 ---
 
 # Zero-lift angle of attack · `alpha_0`
@@ -15,5 +15,7 @@ tags:
 Angle of attack at which the linear lift curve gives zero lift.
 
 **Unit.** `deg`
+
+**Produced by.** [[aerobuildup-evaluation]]
 
 **Used by.** [[linear-lift-curve-inverse]]

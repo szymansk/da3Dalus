@@ -3,11 +3,11 @@ canon: propeller-diameter
 kind: quantity
 symbol: D_prop
 unit: m
-role: input
+role: derived
 status: draft
 tags:
   - canon/quantity
-  - role/input
+  - role/derived
 ---
 
 # Propeller diameter · `D_prop`
@@ -16,4 +16,6 @@ Propeller diameter. Written `D_prop` rather than `D`, because `D` is drag.
 
 **Unit.** `m`
 
-**Used by.** [[thrust-at-airspeed-from-coefficient]]
+**Produced by.** [[airplane-geometry]]
+
+**Used by.** [[advance-ratio-from-speed]] · [[thrust-at-airspeed-from-coefficient]]
