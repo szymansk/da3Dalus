@@ -78,7 +78,8 @@ def read_canon(root: pathlib.Path) -> tuple[dict, dict]:
         source = re.search(r"\*\*Source\.\*\*.*?\n\n> (.+?)(?:\n\n|\Z)", t, re.S)
         ins = re.findall(r"\[\[([a-z0-9-]+)\]\]", produces.group(1)) if produces else []
         formulas[f.stem] = {
-            "out": _front(t, "output"), "ins": [i for i in ins if i in quantities],
+            "out": [o.strip() for o in _front(t, "output").split(",") if o.strip()],
+            "ins": [i for i in ins if i in quantities],
             "form": form, "tex": to_tex(form), "kind": _front(t, "kind"),
             "status": _front(t, "status"),
             "src": " ".join(source.group(1).split())[:420] if source else "",
@@ -89,22 +90,23 @@ def read_canon(root: pathlib.Path) -> tuple[dict, dict]:
 def layout(quantities: dict, formulas: dict) -> dict:
     edges = []
     for slug, f in formulas.items():
-        for i in dict.fromkeys(f["ins"]):
-            if i != f["out"] and (i, f["out"]) not in BROKEN_EDGES:
-                edges.append((i, f["out"], slug))
+        for out in f["out"]:
+            for i in dict.fromkeys(f["ins"]):
+                if i != out and (i, out) not in BROKEN_EDGES:
+                    edges.append((i, out, slug))
 
-    produced = {f["out"] for f in formulas.values()}
+    produced = {o for f in formulas.values() for o in f["out"]}
     consumed = {a for a, _, _ in edges}
     layer = {q: 0 for q in quantities if q not in produced}
     for _ in range(80):                                      # longest chain is ~12
         changed = False
         for f in formulas.values():
-            ins = [i for i in f["ins"]
-                   if i != f["out"] and (i, f["out"]) not in BROKEN_EDGES]
-            if all(i in layer for i in ins):
-                lvl = 1 + max([layer[i] for i in ins], default=0)
-                if layer.get(f["out"], -1) < lvl:
-                    layer[f["out"]] = lvl; changed = True
+            for out in f["out"]:
+                ins = [i for i in f["ins"] if i != out and (i, out) not in BROKEN_EDGES]
+                if all(i in layer for i in ins):
+                    lvl = 1 + max([layer[i] for i in ins], default=0)
+                    if layer.get(out, -1) < lvl:
+                        layer[out] = lvl; changed = True
         if not changed:
             break
     for q in quantities:

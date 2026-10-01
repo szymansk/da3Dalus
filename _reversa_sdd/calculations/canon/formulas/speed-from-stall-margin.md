@@ -1,10 +1,10 @@
 ---
-canon: operating-point-speed-from-stall-margin
+canon: speed-from-stall-margin
 entry: formula
 kind: rating
 shape: approximation
 status: draft
-output: operating-point-speed
+output: approach-speed, touchdown-speed, takeoff-speed
 source_status: SOURCED
 dimensional_check: PROCEDURAL
 tags:
@@ -16,15 +16,15 @@ tags:
   - status/draft
 ---
 
-# Operating-point speed as a fixed margin over a stall speed
+# Named operating-point speeds as a margin over the stall speed
 
 **Canonical form**
 
 ```
-V_op = k_op * V_S,cfg   (optionally floored by a fraction of V_cruise or an absolute minimum)
+V = k * V_S,cfg
 ```
 
-**Produces** [[operating-point-speed]]  ·  **from** [[stall-speed]] · [[cruise-speed]]
+**Produces** [[approach-speed]] · [[touchdown-speed]] · [[takeoff-speed]]  ·  **from** [[stall-speed]]
 
 **Kind: a rating.** A preference, not physics. The reference values still need an origin and a scale — where does *excellent* come from, and for which aircraft? **On top:** whether **this** weighting is the one you want. That part is a decision, not a fact.
 
@@ -45,6 +45,33 @@ Sources give named speeds with named factors, each tied to a certification requi
 ```
 
 **Validity at 0.5–15 kg.** The factors are manned-aircraft certification minima. Two RC-specific cautions. (1) A 1.3 margin over a stall speed whose C_L,max is uncertain by 30-45% at model Reynolds number (see stall-speed) is thinner than the same 1.3 on a certified aircraft with a flight-tested V_S - at model scale the margin should arguably be larger, not equal. (2) Vx/Vy for a propeller model are properly the minimum-drag and minimum-power speeds (Sadraey Eq. 4.80/4.85), not multiples of V_S; and hand-launched models have no V_LOF or ground roll at all, so takeoff-derived operating points are undefined for that launch mode.
+
+
+## Rebuilt 2026-10-01 — named outputs, no cruise floor, no climb speeds
+
+**There is no generic operating-point speed.** The entry used to produce `V_op`, a
+collective quantity without its condition in its name — the A2 violation that also put a
+false cycle into the graph through `flight-speed`. It now produces three **named**
+quantities, one per operating point, each with its own binding of `k` and of the
+configuration:
+
+| output | binds | configuration |
+|---|---|---|
+| [[approach-speed]] `V_app` | `k` approach margin | landing |
+| [[touchdown-speed]] `V_TD` | `k` touchdown margin | landing |
+| [[takeoff-speed]] `V_TO` | `k` take-off margin | take-off |
+
+The factors themselves stay open — the sources give an RC rule-of-thumb band of 1.2–1.25
+for landing and 1.3 from regulation for approach; choosing is the maintainer's call.
+
+**The cruise-speed floor is gone.** It came only from the two climb bindings
+(`max(1.35·V_S1, 0.85·V_cruise)`, `max(1.50·V_S1, 0.95·V_cruise)`), and the source note
+already said those floors have no regulatory counterpart. With them gone the formula hangs
+on the stall speed alone, as a margin over stall should.
+
+**V_x and V_y are gone from this entry.** They are climb speeds, not stall margins, and
+they contained no climb relation — no thrust, no excess power. Their home is the climb
+operating point, which is hollow until thrust at airspeed is connected (§3.10).
 
 ## Implementations (5)
 

@@ -1584,6 +1584,28 @@ ganze Geschwindigkeitsgitter gebildet, also $C_{L,\max,v_{\max}}$, und dort eing
 $C_{L,\max,\mathrm{stall}}$ stehen müsste. Unter zwei Namen fällt das beim Lesen auf, unter
 einem nicht.
 
+#### Es gibt keine generische Betriebspunktgeschwindigkeit
+
+**Entschieden am 01.10.2026.** Jede Geschwindigkeit trägt ihren Betriebspunkt im Namen:
+$V_\mathrm{app}$, $V_\mathrm{TD}$, $V_\mathrm{TO}$, $V_\mathrm{cruise}$, $V_S$. Ein
+Sammelbegriff wie $V_\mathrm{op}$ sagt nichts darüber, wo er gilt — und er erzeugt falsche
+Abhängigkeiten. `V_op` hing an der Reisegeschwindigkeit, obwohl drei seiner fünf Anwendungen
+sie gar nicht benutzten; die Kante kam allein aus einer Untergrenze für die beiden
+Steiggeschwindigkeiten, die nach eigenem Katalogeintrag keine regulatorische Entsprechung
+hat.
+
+Die Beziehung $V = k \cdot V_{S,\mathrm{cfg}}$ bleibt **eine** Formel. Sie erzeugt **drei
+benannte Größen**, eine je Betriebspunkt, mit eigener Bindung von Faktor und Konfiguration.
+Die Steiggeschwindigkeiten gehören nicht dazu — sie sind keine Abrissreserven, sondern
+hängen an der Steigrechnung (§3.10).
+
+**Der nächste Fall desselben Musters ist `flight-speed`.** Als freie Variable der
+Maschinerie — die Geschwindigkeit des gerade ausgewerteten Punktes — ist sie legitim. Als
+**Ausgabe** einer Formel nicht: `lift-balance-speed` schreibt in sie hinein, und genau das
+erzeugt den falschen Zyklus aus §3.12. Dazu kommt, dass `lift-balance-speed` und
+`stall-speed` dasselbe Gesetz sind — das zweite ist das erste mit $C_L = C_{L,\max}$. Die
+Regel daraus: **Eine generische Größe darf Eingang der Maschinerie sein, nie Ausgabe.**
+
 ### A3 — Eine erklärte Genauigkeitsstufe je freigegebener Größe
 
 **Status: entschieden — `xxxlarge` für den Analysepfad.**

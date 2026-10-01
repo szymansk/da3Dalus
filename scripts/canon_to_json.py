@@ -41,7 +41,7 @@ def build(canon_dir: pathlib.Path) -> dict:
         t = f.read_text(encoding="utf-8")
         formulas.append(
             {"slug": _front(t, "canon") or f.stem,
-             "output_quantity": _front(t, "output"),
+             "output_quantity": (_front(t, "output") or "").split(",")[0].strip(),
              "canonical_form": _canonical_form(t),
              "kind": _front(t, "kind")}
         )

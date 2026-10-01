@@ -26,7 +26,7 @@
 
 ## Approximations — label, never approve as the law
 
-- [[operating-point-speed-from-stall-margin]] · V_x and V_y are labelled best-angle and best-rate-of-climb but contain no climb relation — no thrust, no excess power.
+- [[speed-from-stall-margin]] · V_x and V_y are labelled best-angle and best-rate-of-climb but contain no climb relation — no thrust, no excess power.
 - [[climb-speed-for-power-loading]] · A fixed multiple of the target stall speed, not a climb-performance result.
 
 ## Implementation conflicts — one law, call sites that disagree
@@ -47,7 +47,7 @@ A formula is approvable only once its inputs are.
 
 **Layer 2** (6) — [[induced-drag-factor]] · [[stall-speed]] · [[stall-wing-loading-limit]] · [[thrust-to-weight]] · [[relative-mass-deviation]]
 
-**Layer 3** (6) — [[operating-point-speed-from-stall-margin]] · [[stall-speed-in-turn]] · [[stall-margin-ratio]]
+**Layer 3** (6) — [[speed-from-stall-margin]] · [[stall-speed-in-turn]] · [[stall-margin-ratio]]
 
 **Layer 4** (1) — [[cruise-speed-resolution]]
 

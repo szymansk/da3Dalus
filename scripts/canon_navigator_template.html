@@ -162,7 +162,7 @@ const INPUTS=new Set(D.inputs), OUTPUTS=new Set(D.outputs);
 const pred={}, succ={}, prodBy={}, useCount={};
 for(const q in Q){pred[q]=[];succ[q]=[];useCount[q]=0;}
 for(const [a,b,f] of D.edges){ pred[b].push([a,f]); succ[a].push([b,f]); useCount[a]++; }
-for(const f in F){ (prodBy[F[f].out] ||= []).push(f); }
+for(const f in F){ for(const o of [].concat(F[f].out)) (prodBy[o] ||= []).push(f); }
 
 const NW=78, NH=30, GAPX=13, GAPY=74, PAD=48;
 const layers=Object.keys(ORDER).map(Number).sort((a,b)=>a-b);
