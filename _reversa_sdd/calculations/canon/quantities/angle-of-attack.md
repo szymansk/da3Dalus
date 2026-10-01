@@ -16,5 +16,4 @@ Independent variable of the aerodynamic sweep.
 
 **Unit.** `deg`
 
-**Used by.** [[clmax-from-polar]] · [[zero-lift-drag-from-sweep]] · [[stall-onset-detection]] · [[inverted-max-lift-coefficient]]
-
+**Used by.** [[inverted-max-lift-coefficient]] · [[stall-onset-detection]] · [[zero-lift-drag-from-sweep]]

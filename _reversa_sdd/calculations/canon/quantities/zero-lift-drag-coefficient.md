@@ -16,10 +16,10 @@ The lift-independent term of the parabolic polar; the chain also produces a seco
 
 **Unit.** `dimensionless`
 
-**Produced by.** [[zero-lift-drag-from-sweep]] · [[reynolds-scheduled-polar]]
 
 > ⚠️ **2 formulas produce this one quantity.** That is the shape ADR 0022
 > forbids unless one is derived from the others. Resolve during approval.
 
-**Used by.** [[max-lift-to-drag-parabolic]] · [[minimum-drag-speed-closed-form]] · [[cruise-thrust-constraint]] · [[power-required-electrical]] · [[reynolds-scheduled-polar]]
+**Produced by.** [[reynolds-scheduled-polar]] · [[zero-lift-drag-from-sweep]]
 
+**Used by.** [[cruise-thrust-constraint]] · [[drag-polar]] · [[max-lift-to-drag-parabolic]] · [[minimum-drag-speed-closed-form]] · [[power-required-electrical]]

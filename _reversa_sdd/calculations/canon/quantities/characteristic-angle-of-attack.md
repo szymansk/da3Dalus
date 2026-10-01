@@ -17,4 +17,3 @@ Angle of attack reported for a named condition (stall, best glide, minimum sink)
 **Unit.** `deg`
 
 **Produced by.** [[linear-lift-curve-inverse]]
-

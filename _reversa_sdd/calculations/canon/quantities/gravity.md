@@ -16,5 +16,4 @@ Constant converting mass to weight; the chain carries two literal values, 9.81 (
 
 **Unit.** `m/s^2`
 
-**Used by.** [[weight-from-mass]] · [[wing-loading]] · [[lift-coefficient-required]] · [[power-required-electrical]]
-
+**Used by.** [[lift-coefficient-required]] · [[minimum-drag-speed-from-polar]] · [[minimum-sink-speed-from-polar]] · [[power-required-electrical]] · [[stall-speed]] · [[weight-from-mass]] · [[wing-loading]]

@@ -17,4 +17,3 @@ Own weight of a single component-tree node, summed to give the aircraft mass.
 **Unit.** `kg`
 
 **Used by.** [[mass-summation]]
-

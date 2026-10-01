@@ -17,4 +17,3 @@ Index of the first post-C_L,max sweep point showing falling lift and rising drag
 **Unit.** `dimensionless`
 
 **Produced by.** [[stall-onset-detection]]
-

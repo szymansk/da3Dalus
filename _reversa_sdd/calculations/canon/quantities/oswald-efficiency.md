@@ -17,4 +17,3 @@ Efficiency factor of the induced-drag term; from the polar fit, from a Reynolds 
 **Unit.** `dimensionless`
 
 **Used by.** [[induced-drag-factor]] · [[max-lift-to-drag-parabolic]] · [[reynolds-scheduled-polar]]
-

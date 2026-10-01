@@ -19,4 +19,3 @@ Power drawn from the battery to hold level flight at a given speed.
 **Produced by.** [[power-required-electrical]]
 
 **Used by.** [[endurance-from-battery]]
-

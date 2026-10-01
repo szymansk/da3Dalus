@@ -19,4 +19,3 @@ Right-hand bound of the V-n envelope, a fixed multiple of the maximum level spee
 **Produced by.** [[dive-speed]]
 
 **Used by.** [[cruise-speed-resolution]]
-

@@ -17,4 +17,3 @@ Pack-level energy density used to predict battery mass from capacity.
 **Unit.** `Wh/kg`
 
 **Used by.** [[battery-mass-from-capacity]]
-

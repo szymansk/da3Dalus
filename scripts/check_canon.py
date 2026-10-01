@@ -20,7 +20,7 @@ FUNCS = {"sqrt": 0.5, "cbrt": 1 / 3}
 #: forms that are definitions or procedures, not algebraic laws — a dimensional
 #: check does not apply to them, and failing them would be noise.
 PROCEDURAL = re.compile(
-    r"argmax|argmin|max over|min over|first i|interp\(|:=|\bfor V\b|\bwhere\b|"
+    r"minimi[sz]e|argmax|argmin|max over|min over|first i|interp\(|:=|\bfor V\b|\bwhere\b|"
     r"crossing|detection|_ISA\(|table|converted to|optionally|standard atmosphere",
     re.I,
 )

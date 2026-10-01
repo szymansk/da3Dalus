@@ -1,7 +1,7 @@
 ---
 canon: minimum-sink-speed-from-polar
 entry: formula
-kind: procedure
+kind: optimization
 shape: law
 status: draft
 output: minimum-sink-speed
@@ -12,8 +12,9 @@ tags:
   - source/sourced
   - dim/procedural
   - shape/law
-  - kind/procedure
+  - kind/optimization
   - status/draft
+tex: \begin{aligned}V_mp = \operatorname*{arg\,min}_{V,\,\alpha}\; & D(V,\alpha)\,V \\ \text{u.d.N.}\; & L(V,\alpha) = n\,m\,g\end{aligned}
 ---
 
 # Minimum-sink speed as the argmin of the computed sink rate
@@ -21,14 +22,15 @@ tags:
 **Canonical form**
 
 ```
-V_mp = V( argmin_i w_i ),  w_min = min_i w_i
+minimize over V, alpha:   D(V, alpha) * V
+subject to:               L(V, alpha) = n * m * g
 ```
 
-**Produces** [[minimum-sink-speed]]  ·  **from** [[flight-speed]] · [[sink-rate]]
+**Produces** [[minimum-sink-speed]]  ·  **from** [[airplane]] · [[aircraft-mass]] · [[gravity]] · [[load-factor]] · [[air-density]]
 
 **Autorität.** Einziger Erzeuger dieser Größe, seit die Faustformel gestrichen ist. Eine geschlossene Gegenprobe wie bei der Geschwindigkeit geringsten Widerstands gibt es hier nicht.
 
-**Kind: a procedure.** There is no closed form, so an algorithm stands in its place. Source and scale are asked as of any entry — a procedure is not source-free: it either implements a published standard or solves a stated equation. **On top of that** it must say **under which assumptions it holds** and **when it converges**, including what it returns when it does not.
+**Kind: an optimisation problem.** The value is the solution of a stated optimisation, solved by IPOPT through `asb.Opti` with AeroBuildup inside the constraint. The coupling through Reynolds number is not drawn as a cycle: it sits inside the constraint, because AeroBuildup forms the Reynolds number from `V` per wing section. Approval asks, on top of source and scale: **no bound active at the optimum**, and **what is returned when the solver fails** — never a value.
 
 > 🔴 **An assumption of this entry is broken in the code.**
 >
@@ -67,6 +69,21 @@ Sadraey gives the closed form; the proposal's argmin over computed sink rate is 
 ```
 
 **Validity at 0.5–15 kg.** Valid and directly RC-relevant: Sadraey's statement that the minimum-power speed is the best-climb speed for a PROPELLER aircraft applies to essentially every 0.5-15 kg electric model. The V_mp = V_md/1.316 identity is a free consistency assertion the app should enforce between its two speeds - if the computed argmin and argmax disagree with it by much, the polar fit is bad, not the physics.
+
+
+## Rebuilt 2026-10-01 — an optimisation problem
+
+The speed for minimum sink and maximum endurance is the solution of the problem above, not the arg-extremum of a
+sampled sweep. The sweep version picked a grid point and needed a polar evaluated at the
+right Reynolds number for each sample; the optimisation does both at once and enforces
+`L = n·m·g` exactly rather than to the nearest grid point.
+
+**Verified** on the same 1.5 kg trainer: 11.13 m/s, sink 0.656 m/s. A dense-sweep cross-check agreed to
+1–2 %, the remainder sitting in the sweep's snapping to `L ≈ W` on a flat minimum.
+
+**Observed:** `V_mp / V_md` = 0.70 there, against 0.76 for a parabolic polar. The polar at
+Re ≈ 100 000 is not parabolic — which is the argument for solving the problem on the real
+polar instead of a closed form.
 
 ## Implementations (3)
 

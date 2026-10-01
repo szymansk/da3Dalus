@@ -18,3 +18,4 @@ Time the pack sustains a given power draw.
 
 **Produced by.** [[endurance-from-battery]]
 
+**Used by.** [[range-from-endurance]]

@@ -17,4 +17,3 @@ Speed assumed for the climb constraint in the power-loading sizing.
 **Unit.** `m/s`
 
 **Produced by.** [[climb-speed-for-power-loading]]
-

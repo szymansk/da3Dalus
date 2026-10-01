@@ -17,6 +17,3 @@ Vertical descent rate in a steady glide at a given forward speed.
 **Unit.** `m/s`
 
 **Produced by.** [[sink-rate]]
-
-**Used by.** [[minimum-sink-speed-from-polar]]
-

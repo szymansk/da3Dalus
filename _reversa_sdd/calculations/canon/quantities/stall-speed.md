@@ -18,5 +18,4 @@ Minimum flyable speed, the lift-balance speed at C_L,max; V_S1 clean, V_S0 landi
 
 **Produced by.** [[stall-speed]]
 
-**Used by.** [[speed-from-stall-margin]] · [[stall-speed-in-turn]] · [[stall-margin-ratio]]
-
+**Used by.** [[speed-from-stall-margin]] · [[stall-margin-ratio]] · [[stall-speed-in-turn]]

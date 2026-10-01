@@ -17,4 +17,3 @@ User-chosen positive manoeuvre load-factor limit, default 3.0.
 **Unit.** `g`
 
 **Used by.** [[negative-limit-load-factor]]
-

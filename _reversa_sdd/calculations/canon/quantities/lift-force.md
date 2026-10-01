@@ -17,4 +17,3 @@ Dimensional lift returned by the solver.
 **Unit.** `N`
 
 **Used by.** [[lift-to-drag-ratio]]
-

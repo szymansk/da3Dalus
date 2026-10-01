@@ -16,5 +16,4 @@ Design requirement on the maximum acceptable stall speed, selected per operating
 
 **Unit.** `m/s`
 
-**Used by.** [[stall-wing-loading-limit]] · [[climb-speed-for-power-loading]]
-
+**Used by.** [[climb-speed-for-power-loading]] · [[stall-wing-loading-limit]]

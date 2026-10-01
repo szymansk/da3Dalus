@@ -18,5 +18,4 @@ Aerodynamic efficiency at a point, C_L/C_D, identically L/D.
 
 **Produced by.** [[lift-to-drag-ratio]]
 
-**Used by.** [[minimum-drag-speed-from-polar]] · [[glide-distance-from-ratio]]
-
+**Used by.** [[glide-distance-from-ratio]]

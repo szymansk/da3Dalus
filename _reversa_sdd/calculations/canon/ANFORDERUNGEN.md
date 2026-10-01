@@ -211,6 +211,33 @@ liefert im Fehlerfall eine Zahl, die aussieht wie ein Ergebnis (ADR 0020).
 ---
 
 
+#### Was ein Optimierungsproblem schuldet
+
+**Entschieden am 01.10.2026.** Werte, die auf eine Optimierung hinauslaufen, werden **als
+Optimierungsproblem** dargestellt und nicht als geschlossene Formel. Ihre kanonische Form
+nennt Entscheidungsvariablen, Ziel und Nebenbedingung:
+
+$$V_S = \min_{V,\,\alpha}\; V \quad \text{u.d.N.}\quad L(V,\alpha) = n\,m\,g$$
+
+Damit **entfällt der Verweis auf einen Zyklus**. Die Kopplung über die Reynoldszahl steht
+nicht als Kreis im Graphen, sondern steckt in der Nebenbedingung — der Solver bildet bei
+jedem $V$ die passende Polare. Das Problem *beschreibt* die Kopplung bereits vollständig.
+
+Die vier Angaben eines Verfahrens (§0.6) werden dadurch konkret:
+
+| | |
+|---|---|
+| **Beziehung** | Ziel und Nebenbedingung |
+| **Methode** | IPOPT über `asb.Opti`, mit AeroBuildup in der Nebenbedingung — ein veröffentlichtes Verfahren mit eigenem Konvergenzstatus |
+| **Annahmen** | **keine Schranke ist am Optimum aktiv**; das Modell ist differenzierbar (NeuralFoil ist es) |
+| **Versagen** | Solverfehler oder aktive Schranke → `DesignWarning`, **kein Wert** |
+
+Eine aktive Schranke ist kein Ergebnis, sondern ein Randwert — dieselbe Klammerbedingung
+wie beim Sweep, nur vom Solver selbst gemeldet.
+
+Die geschlossene Form bleibt, wo es sie gibt, als **Optimalitätsbedingung und Probe**: Am
+Optimum eingesetzt muss sie den Wert des Solvers zurückgeben.
+
 ### 0.7 Die Form eines Aktivitätsabschnitts
 
 Jede Aktivität aus §1 hat einen Abschnitt in §2, und jeder Abschnitt hat dieselben Teile:
@@ -1017,22 +1044,34 @@ Dieses Dokument nennt Formeln nur dort, wo ein Prozessschritt sie verwendet.
 Verfahren haben bisher **keinen** Platz im Katalog — sie stehen hier, bis genug davon
 zusammenkommen, um `procedures/` zu rechtfertigen.
 
-#### 3.4.1 Fixpunkt $V_S \leftrightarrow C_{L,\max,\mathrm{stall}}$
+#### 3.4.1 Die drei Extremalbedingungen als Optimierungsprobleme
 
-**Status: offen** — die Beziehung steht, die Methode nicht.
+**Status: entschieden am 01.10.2026. Ersetzt den „Fixpunkt $V_S \leftrightarrow
+C_{L,\max,\mathrm{stall}}$".**
 
-| | |
+| Größe | Ziel unter $L(V,\alpha) = n\,m\,g$ |
 |---|---|
-| **Beziehung** | ✅ entschieden. $V_S = \sqrt{2W/(\rho\,S_\mathrm{ref}\,C_{L,\max})}$ mit $C_{L,\max}$ ausgewertet bei $Re(V_S)$. Bei Modell-Reynoldszahlen ist $C_{L,\max}$ geschwindigkeitsabhängig, also ist die Gleichung **implizit**. |
-| **Methode** | ⚪ offen. Fixpunktiteration, Sekante, Newton, oder eine feste Zahl von Durchgängen? |
-| **Annahmen** | ⚪ offen. Monotonie von $C_{L,\max}(Re)$ im Modellbereich? Startwert? |
-| **Nichtkonvergenz** | ⚪ offen. Was wird zurückgegeben — und mit welcher `DesignWarning`? |
-| **Toleranz** | ⚪ offen. Woran wird Konvergenz gemessen: an $V_S$ oder an $C_{L,\max}$, absolut oder relativ? |
+| Abrissgeschwindigkeit $V_S$ und $C_{L,\max,\mathrm{stall}}$ | minimiere $V$ |
+| bestes Gleiten / größte Reichweite $V_{md}$ | minimiere $D$ |
+| geringstes Sinken / größte Flugdauer $V_{mp}$ | minimiere $D\,V$ |
 
-**Warum das Verfahren nötig ist, ist gemessen** — Flotte, 26 Flugzeuge: Median **+2,9 %**,
-schlimmstenfalls **+33,2 %**, **jede** Abweichung in dieselbe Richtung. Die gemeldete
-Abrissgeschwindigkeit ist immer die zu niedrige. Vorbedingung dokumentiert in
-`formulas/stall-speed.md`, Bindung `cl_max`.
+Nachgerechnet an einem 1,5-kg-Trainer (NACA 2412, 1,4 m): Der Optimierer liefert
+$V_S = 8{,}4888$ m/s bei $\alpha = 15{,}8°$, die Fixpunktiteration $8{,}4891$ m/s —
+**0,004 % Abstand**. $V_{md} = 15{,}86$ m/s und $V_{mp} = 11{,}13$ m/s konvergieren
+ebenso; ein dichter Geschwindigkeitssweep trifft sie auf 1–2 %, der Rest liegt im
+Rastern des Sweeps auf flachen Minima.
+
+Und eine Beobachtung, die für den Weg spricht: $V_{mp}/V_{md} = 0{,}70$ statt der $0{,}76$
+der parabolischen Polare. **Bei $Re \approx 100\,000$ ist die Polare nicht parabolisch**,
+und eine geschlossene Form würde genau das wegrechnen.
+
+$C_{L,\max,\mathrm{stall}}$ ist jetzt die **zweite Ausgabe** der Abrissoptimierung — der
+Auftriebsbeiwert am Optimum. `clmax-from-polar` ist gestrichen: Es nahm das Maximum über ein
+Geschwindigkeitsgitter und lieferte den Wert damit bei der falschen Geschwindigkeit. Eine
+Autorität für den Höchstauftrieb.
+
+**Offen vor der Freigabe:** der Flottenvergleich, wie damals für die Fehlermessung. Ein
+Modell ist kein Beweis.
 
 #### 3.4.2 Anstellwinkel aus $L = W$
 
@@ -1756,7 +1795,7 @@ eines ohne Abbruchbedingung.
 | Nr | Frage | blockiert |
 |---|---|---|
 | **O1** | Gehört der **Korrekturzweig** — Flügelversatz, Leitwerksskalierung — überhaupt in den Rechengraphen? Fällt er weg, verschwinden $a_{VH}$, beide Empfindlichkeiten und die $5\,\bar{c}$-Klemme mit ihm. | Abschluss von §2.1 |
-| **O2** | Die **drei fehlenden Angaben** zum Fixpunkt $V_S \leftrightarrow C_{L,\max,\mathrm{stall}}$. | Freigabe von `stall-speed` als Anwendung |
+| **O2** | *Geklärt 01.10.2026, siehe §3.4.1 — als Optimierungsproblem, Methode IPOPT über `asb.Opti`.* Die **drei fehlenden Angaben** zum Fixpunkt $V_S \leftrightarrow C_{L,\max,\mathrm{stall}}$. | Freigabe von `stall-speed` als Anwendung |
 | **O3** | Die **drei fehlenden Angaben** zum Anstellwinkelverfahren, insbesondere das Verhalten oberhalb des Abrisses. | Freigabe von §2.1 |
 | **O4** | Welche **Prozessschritte** es wirklich gibt und wo ihre Grenzen liegen. | §1, und damit die Struktur aller weiteren Schritte |
 | **O5** | *Befund 01.10.2026:* AeroSandbox nutzt ohne `method=` eine C1-stetige Näherung an die ISA (mittlerer Druckfehler 0,02 % bis 100 km), mit `method="isa"` die exakte ISA; bei Modellflughöhen vernachlässigbar. Welches **Atmosphärenmodell** kanonisch ist. `air-density-isa` ist freigegeben, aber die Implementierung kennt mehrere Verfahren, und **kein einziger** der 16 Aufrufer wählt eines. | Eindeutigkeit von $\rho$ |

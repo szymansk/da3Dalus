@@ -17,4 +17,3 @@ Best achievable glide ratio over the polar.
 **Unit.** `dimensionless`
 
 **Produced by.** [[max-lift-to-drag-parabolic]]
-

@@ -1,7 +1,7 @@
 ---
 canon: max-lift-coefficient
 kind: quantity
-symbol: C_L,max
+symbol: C_L,max,stall
 unit: dimensionless
 role: input
 status: approved
@@ -16,7 +16,6 @@ Clean-configuration peak lift coefficient; supplied as a design assumption (defa
 
 **Unit.** `dimensionless`
 
-**Produced by.** [[clmax-from-polar]]
+**Produced by.** [[stall-speed]]
 
-**Used by.** [[stall-speed]] · [[stall-wing-loading-limit]] · [[high-lift-clmax]]
-
+**Used by.** [[high-lift-clmax]] · [[stall-wing-loading-limit]]

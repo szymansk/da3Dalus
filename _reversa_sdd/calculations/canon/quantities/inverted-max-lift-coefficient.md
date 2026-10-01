@@ -17,4 +17,3 @@ Peak lift coefficient in inverted flight, bounding the negative branch of the V-
 **Unit.** `dimensionless`
 
 **Produced by.** [[inverted-max-lift-coefficient]]
-

@@ -17,4 +17,3 @@ Lower manoeuvre bound of the V-n envelope, a fixed fraction of the positive limi
 **Unit.** `g`
 
 **Produced by.** [[negative-limit-load-factor]]
-

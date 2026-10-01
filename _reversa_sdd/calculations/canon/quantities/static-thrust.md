@@ -17,4 +17,3 @@ Measured or nameplate static thrust of the propulsion system.
 **Unit.** `N`
 
 **Used by.** [[mean-thrust-derate]]
-

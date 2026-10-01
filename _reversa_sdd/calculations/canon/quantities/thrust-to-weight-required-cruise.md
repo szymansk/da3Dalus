@@ -17,4 +17,3 @@ The thrust-to-weight ratio cruise demands at a given wing loading — the matchi
 **Unit.** `dimensionless`
 
 **Produced by.** [[cruise-thrust-constraint]]
-

@@ -56,7 +56,7 @@ computed for **this** section.
 > its convergence behaviour are then properties of that method — published, not chosen.
 
 **Relation solved.** The definition of the lift-curve minimum, `C_L,min = min_alpha C_L(alpha)`
-— the mirror of [[clmax-from-polar]]. No closed form exists, because `C_L(alpha)` comes from
+— the mirror of the stall optimisation's `C_L,max,stall` ([[stall-speed]]). No closed form exists, because `C_L(alpha)` comes from
 a black-box solver.
 
 **Method.** The same sweep that yields the positive peak, extended far enough into negative

@@ -17,4 +17,3 @@ The greatest wing loading that still meets a required stall speed. A design LIMI
 **Unit.** `N/m^2`
 
 **Produced by.** [[stall-wing-loading-limit]]
-

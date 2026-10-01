@@ -1,20 +1,21 @@
 ---
 canon: stall-speed
 entry: formula
-kind: law
+kind: optimization
 shape: law
 status: approved
-output: stall-speed
+output: stall-speed, max-lift-coefficient
 source_status: SOURCED
-dimensional_check: BALANCES
+dimensional_check: PROCEDURAL
 tags:
   - canon/formula
   - source/sourced
-  - dim/balances
+  - dim/procedural
   - shape/law
-  - kind/law
+  - kind/optimization
   - status/approved
   - flag/conflict
+tex: \begin{aligned}V_S = \min_{V,\,\alpha}\; & V \\ \text{u.d.N.}\; & L(V,\alpha) = n\,m\,g\end{aligned}
 ---
 
 # Stall speed from the lift balance at C_L,max
@@ -22,22 +23,48 @@ tags:
 **Canonical form**
 
 ```
-V_S = sqrt(2 * m * g / (rho * S_ref * C_L,max))
+minimize over V, alpha:   V
+subject to:               L(V, alpha) = n * m * g
 ```
 
-**Produces** [[stall-speed]]  ·  **from** [[weight]] · [[air-density]] · [[wing-reference-area]] · [[max-lift-coefficient]]
+**Produces** [[stall-speed]] · [[max-lift-coefficient]]  ·  **from** [[airplane]] · [[aircraft-mass]] · [[gravity]] · [[load-factor]] · [[air-density]]
 
 **One relation, two directions.** This entry is the lift balance solved for the speed at the named condition C_L = C_L,max. [[lift-coefficient-required]] is the same relation, `n·m·g = ½·ρ·V²·S_ref·C_L`, solved the other way. Every time the sources solve it for a speed, the C_L belongs to a named condition (Sadraey Eq. 4.30, 4.55, 4.85; Scholz Eq. 5.30, 5.40) — there is no generic lift-balance speed, which is why `lift-balance-speed` was deleted on 2026-10-01.
 
-**Kind: a law.** A closed-form relation. Approval asks for its **source** and its **validity at 0.5–15 kg**.
+**Kind: an optimisation problem.** The value is the solution of a stated optimisation, solved by IPOPT through `asb.Opti` with AeroBuildup inside the constraint. The coupling through Reynolds number is not drawn as a cycle: it sits inside the constraint, because AeroBuildup forms the Reynolds number from `V` per wing section. Approval asks, on top of source and scale: **no bound active at the optimum**, and **what is returned when the solver fails** — never a value.
 
-**Dimensional check.** 🟢 balances
+**Dimensional check.** ⚪ procedural — an optimisation problem, not an expression
 
 **Source.** 🟢 SOURCED
 
 > Sadraey §4.3.2 Eq. 4.30: L = W = 0.5*rho*V_s^2*S*C_L,max. Scholz 05_PreliminarySizing §5.1 for the landing-configuration instance. Anderson FoA 6e §4.13 for the underlying statement V_stall proportional to 1/sqrt(c_l,max).
 
 **Validity at 0.5–15 kg.** The EQUATION is exact; the INPUT is where 0.5-15 kg scale bites hardest, and this is the most important qualification in the whole register. Lennon (Basics of R/C Model Aircraft Design, Ch. 1-3, 'Reynolds Number and Scale Effect') documents NACA 0012 C_L,max falling from 1.55 at high model Rn to 0.83 at low model Rn - a 46% loss - with stall AoA dropping 17 deg to 10 deg and profile drag nearly doubling. Since V_S scales as C_L,max^-0.5, a handbook or 2D C_L,max makes V_S optimistic by up to ~35%. The 3D wing value is lower again than the section value. Any V_S the app reports must carry the Reynolds number it was evaluated at, or it is not a safety number.
+
+
+## Rebuilt 2026-10-01 — an optimisation problem, not a closed form
+
+**The stall speed is the smallest speed at which the aircraft still carries its weight.**
+Written that way it needs no fixed point: the optimiser chooses `V` and `alpha` together,
+and the Reynolds dependence of the polar is inside the constraint.
+
+**The approved relation survives as the optimality condition — and as the Probe.** At the
+optimum, `V_S = sqrt(2·n·m·g / (rho·S_ref·C_L))` with `C_L` the lift coefficient there.
+Plugging the optimiser's `C_L` into the closed form must return its `V_S`; a mismatch is a
+defect. Sadraey Eq. 4.30 is unchanged — what changed is how it is evaluated at low Re.
+
+**Second output: `C_L,max,stall`.** The lift coefficient at the optimum *is* the maximum
+lift coefficient at the stall condition — exactly the quantity the precondition below
+asks for, and exactly what A2 says its name must carry. It replaces `clmax-from-polar`,
+which took a maximum over a velocity grid and so returned the value at the wrong speed.
+One authority for C_L,max.
+
+**Verified** on a 1.5 kg trainer (NACA 2412, 1.4 m span): optimiser 8.4888 m/s at
+alpha = 15.8°, C_L = 1.191; fixed-point iteration 8.4891 m/s after three sweeps —
+0.004 % apart. A fleet comparison is outstanding before approval of the method.
+
+**Configuration bindings** (take-off, landing) are the same problem with the configured
+aircraft inside the constraint — the flap is in the geometry, not a factor on C_L,max.
 
 ## ⚠️ Conflict
 

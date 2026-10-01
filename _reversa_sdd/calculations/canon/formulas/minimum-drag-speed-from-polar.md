@@ -1,7 +1,7 @@
 ---
 canon: minimum-drag-speed-from-polar
 entry: formula
-kind: procedure
+kind: optimization
 shape: route
 status: draft
 output: minimum-drag-speed
@@ -12,8 +12,9 @@ tags:
   - source/sourced
   - dim/procedural
   - shape/route
-  - kind/procedure
+  - kind/optimization
   - status/draft
+tex: \begin{aligned}V_md = \operatorname*{arg\,min}_{V,\,\alpha}\; & D(V,\alpha) \\ \text{u.d.N.}\; & L(V,\alpha) = n\,m\,g\end{aligned}
 ---
 
 # Minimum-drag speed as the argmax of the computed glide ratio
@@ -21,14 +22,15 @@ tags:
 **Canonical form**
 
 ```
-V_md = V( argmax_i (C_L_i / C_D_i) )
+minimize over V, alpha:   D(V, alpha)
+subject to:               L(V, alpha) = n * m * g
 ```
 
-**Produces** [[minimum-drag-speed]]  ·  **from** [[flight-speed]] · [[lift-to-drag-ratio]]
+**Produces** [[minimum-drag-speed]]  ·  **from** [[airplane]] · [[aircraft-mass]] · [[gravity]] · [[load-factor]] · [[air-density]]
 
 **Autorität.** Dies ist der Erzeuger dieser Größe. Die geschlossene Form ([[minimum-drag-speed-closed-form]]) setzt einen reynoldsunabhängigen parabolischen Polarenverlauf voraus; bei 0,5–15 kg gilt das nicht. Sie bleibt als **Probe** — die Differenz beider misst, wie stark die Reynoldsabhängigkeit an diesem Punkt wirkt.
 
-**Kind: a procedure.** There is no closed form, so an algorithm stands in its place. Source and scale are asked as of any entry — a procedure is not source-free: it either implements a published standard or solves a stated equation. **On top of that** it must say **under which assumptions it holds** and **when it converges**, including what it returns when it does not.
+**Kind: an optimisation problem.** The value is the solution of a stated optimisation, solved by IPOPT through `asb.Opti` with AeroBuildup inside the constraint. The coupling through Reynolds number is not drawn as a cycle: it sits inside the constraint, because AeroBuildup forms the Reynolds number from `V` per wing section. Approval asks, on top of source and scale: **no bound active at the optimum**, and **what is returned when the solver fails** — never a value.
 
 > 🔴 **An assumption of this entry is broken in the code.**
 >
@@ -67,6 +69,21 @@ Sources define the condition; the discrete argmax over sweep points is the imple
 ```
 
 **Validity at 0.5–15 kg.** Valid, and at 0.5-15 kg this is the PREFERRED route over the closed form, precisely because the low-Re polar is not parabolic. RC-Network also gives the weight dependence that validates the app's behaviour: heavier aircraft reach best glide ratio at higher speed (the ballast argument). Resolution caveat: the argmax is only as good as the alpha/speed grid - a coarse sweep will quantise V_md.
+
+
+## Rebuilt 2026-10-01 — an optimisation problem
+
+The speed for best glide and maximum range is the solution of the problem above, not the arg-extremum of a
+sampled sweep. The sweep version picked a grid point and needed a polar evaluated at the
+right Reynolds number for each sample; the optimisation does both at once and enforces
+`L = n·m·g` exactly rather than to the nearest grid point.
+
+**Verified** on the same 1.5 kg trainer: 15.86 m/s, E = 20.0. A dense-sweep cross-check agreed to
+1–2 %, the remainder sitting in the sweep's snapping to `L ≈ W` on a flat minimum.
+
+**Observed:** `V_mp / V_md` = 0.70 there, against 0.76 for a parabolic polar. The polar at
+Re ≈ 100 000 is not parabolic — which is the argument for solving the problem on the real
+polar instead of a closed form.
 
 ## Implementations (2)
 

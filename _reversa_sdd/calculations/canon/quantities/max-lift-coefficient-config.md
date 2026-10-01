@@ -17,4 +17,3 @@ C_L,max in takeoff or landing configuration, nominally the clean value scaled by
 **Unit.** `dimensionless`
 
 **Produced by.** [[high-lift-clmax]]
-

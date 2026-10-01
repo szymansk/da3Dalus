@@ -21,5 +21,3 @@ Defined inside [[thrust-at-airspeed-from-coefficient]]; it has no entry of its o
 it is never computed for its own sake.
 
 **Unit.** `dimensionless`
-
-**Used by.** [[thrust-at-airspeed-from-coefficient]]

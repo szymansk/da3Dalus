@@ -16,5 +16,4 @@ Usable pack energy; 0.0 in the database means 'not configured'.
 
 **Unit.** `Wh`
 
-**Used by.** [[endurance-from-battery]] · [[battery-mass-from-capacity]]
-
+**Used by.** [[battery-mass-from-capacity]] · [[endurance-from-battery]]

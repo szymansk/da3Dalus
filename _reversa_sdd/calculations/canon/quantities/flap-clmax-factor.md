@@ -17,4 +17,3 @@ Per-flap-type multiplier applied to the clean C_L,max for takeoff and landing (1
 **Unit.** `dimensionless`
 
 **Used by.** [[high-lift-clmax]]
-

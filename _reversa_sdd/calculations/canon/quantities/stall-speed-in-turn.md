@@ -17,4 +17,3 @@ Stall speed raised by the load factor of a coordinated turn.
 **Unit.** `m/s`
 
 **Produced by.** [[stall-speed-in-turn]]
-

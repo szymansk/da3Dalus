@@ -27,5 +27,4 @@ is, `V < V_S` — is not flyable and must be reported as such, not computed thro
 
 **Unit.** `m/s`
 
-**Used by.** [[dynamic-pressure]] · [[sink-rate]] · [[minimum-drag-speed-from-polar]] · [[minimum-sink-speed-from-polar]] · [[power-required-electrical]] · [[reynolds-scheduled-polar]] · [[thrust-at-airspeed-from-coefficient]]
-
+**Used by.** [[dynamic-pressure]] · [[power-required-electrical]] · [[reynolds-scheduled-polar]] · [[sink-rate]]

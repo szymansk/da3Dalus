@@ -17,4 +17,3 @@ Slope of the linear part of the C_L(alpha) curve, from the cached sweep regressi
 **Unit.** `1/rad`
 
 **Used by.** [[linear-lift-curve-inverse]]
-

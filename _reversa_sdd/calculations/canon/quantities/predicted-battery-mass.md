@@ -19,4 +19,3 @@ Battery mass implied by the declared capacity and the assumed specific energy.
 **Produced by.** [[battery-mass-from-capacity]]
 
 **Used by.** [[relative-mass-deviation]]
-

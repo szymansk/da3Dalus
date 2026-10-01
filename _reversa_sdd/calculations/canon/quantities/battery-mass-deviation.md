@@ -17,4 +17,3 @@ Relative gap between the predicted and the entered battery mass, used as a consi
 **Unit.** `dimensionless`
 
 **Produced by.** [[relative-mass-deviation]]
-

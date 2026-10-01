@@ -17,4 +17,3 @@ Bank angle of a steady coordinated level turn.
 **Unit.** `deg`
 
 **Used by.** [[turn-load-factor]]
-

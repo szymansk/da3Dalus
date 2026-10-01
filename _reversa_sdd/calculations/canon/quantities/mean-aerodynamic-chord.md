@@ -17,4 +17,3 @@ Chord used to form the Reynolds number for the speed-scheduled polar lookup.
 **Unit.** `m`
 
 **Used by.** [[reynolds-scheduled-polar]]
-

@@ -17,4 +17,3 @@ Cruise-to-stall speed ratio reported as a stall-margin KPI.
 **Unit.** `dimensionless`
 
 **Produced by.** [[stall-margin-ratio]]
-

@@ -17,4 +17,3 @@ Installed thrust per unit weight; the y-axis of the matching chart and the drive
 **Unit.** `dimensionless`
 
 **Produced by.** [[thrust-to-weight]]
-

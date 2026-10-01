@@ -19,4 +19,3 @@ Thrust averaged over the ground roll, static thrust times a de-rate factor.
 **Produced by.** [[mean-thrust-derate]]
 
 **Used by.** [[thrust-to-weight]]
-

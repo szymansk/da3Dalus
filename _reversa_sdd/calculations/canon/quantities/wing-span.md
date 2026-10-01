@@ -17,4 +17,3 @@ Reference wing span of the built airplane.
 **Unit.** `m`
 
 **Used by.** [[aspect-ratio]] · [[mean-geometric-chord]]
-

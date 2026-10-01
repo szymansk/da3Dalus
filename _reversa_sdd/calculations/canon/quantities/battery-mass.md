@@ -17,4 +17,3 @@ Mass of the battery as entered in the component tree.
 **Unit.** `kg`
 
 **Used by.** [[relative-mass-deviation]]
-

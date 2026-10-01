@@ -16,5 +16,4 @@ Reference area of the built AeroSandbox airplane, the denominator of every coeff
 
 **Unit.** `m^2`
 
-**Used by.** [[wing-loading]] · [[aspect-ratio]] · [[mean-geometric-chord]] · [[stall-speed]] · [[lift-coefficient-required]] · [[power-required-electrical]]
-
+**Used by.** [[aspect-ratio]] · [[lift-coefficient-required]] · [[mean-geometric-chord]] · [[power-required-electrical]] · [[wing-loading]]

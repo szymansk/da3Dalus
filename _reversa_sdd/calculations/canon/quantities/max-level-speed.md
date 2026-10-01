@@ -17,4 +17,3 @@ Maximum level-flight speed goal, defaulting to 28 m/s.
 **Unit.** `m/s`
 
 **Used by.** [[cruise-speed-resolution]] · [[dive-speed]]
-

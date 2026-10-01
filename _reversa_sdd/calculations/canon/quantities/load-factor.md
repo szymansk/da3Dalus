@@ -18,5 +18,4 @@ Ratio of lift to weight; 1 in level flight, higher in a turn or a gust.
 
 **Produced by.** [[turn-load-factor]]
 
-**Used by.** [[stall-speed-in-turn]] · [[lift-coefficient-required]]
-
+**Used by.** [[lift-coefficient-required]] · [[minimum-drag-speed-from-polar]] · [[minimum-sink-speed-from-polar]] · [[stall-speed-in-turn]] · [[stall-speed]]

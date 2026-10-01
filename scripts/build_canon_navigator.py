@@ -79,7 +79,7 @@ def read_canon(root: pathlib.Path) -> tuple[dict, dict]:
         formulas[f.stem] = {
             "out": [o.strip() for o in _front(t, "output").split(",") if o.strip()],
             "ins": [i for i in ins if i in quantities],
-            "form": form, "tex": to_tex(form), "kind": _front(t, "kind"),
+            "form": form, "tex": _front(t, "tex") or to_tex(form), "kind": _front(t, "kind"),
             "status": _front(t, "status"),
             "src": " ".join(source.group(1).split())[:420] if source else "",
         }

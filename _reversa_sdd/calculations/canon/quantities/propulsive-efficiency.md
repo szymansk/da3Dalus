@@ -17,4 +17,3 @@ Battery-to-thrust chain efficiency converting aerodynamic power into electrical 
 **Unit.** `dimensionless`
 
 **Used by.** [[power-required-electrical]]
-
