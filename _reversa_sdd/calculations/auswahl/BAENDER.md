@@ -167,11 +167,83 @@ Urmodells. Danach rechnet der Kanon Schub und Steigen aus Motor und Propeller
 
 **Status:** ✅ Vom Maintainer am 02.10.2026 als Band übernommen (Spalte „Vorschlag“).
 
+## 3b. Segler (recherchiert 02.10.2026)
+
+Die beiden Primärquellen ordnen nach **Steuerachsen**, nicht nach Mission:
+- **Drela** — Mark Drela (MIT), „Basic sizing checks for homebrew RC thermal gliders",
+  *RC Soaring Digest* 21(8), Aug. 2004, S. 12–14.
+- **Lelke** — Helmut Lelke, „Airplane/Glider Design Guidelines and Design Analysis Program",
+  Charles River RC.
+
+Daraus folgt: Höhe + Seite ergibt die Werte des Polyeder-Seglers, Querruder ergeben die des
+Querruder-Seglers. Wurfsegler bekommen Drelas DLG-Wert für das Seitenleitwerk.
+
+**Definitionen (Drela):**
+
+- $V_H = (S_H/S)\,(l_H/c)$
+- $V_V = (S_V/S)\,(l_V/b)$
+- $B = \Gamma_{eq}\,(l_V/b)/C_{L,therm}$ ist Blaine Rawdons Spiralparameter: $B>5$ spiralstabil,
+  $B=5$ neutral. Er gibt beim Polyeder-Segler zugleich ungefähr die Rollwirkung des Seitenruders an.
+- $C_{L,therm}$ ist der Auftriebsbeiwert im langsamen Kreisen: 0,7 bei großen Seglern, 0,6 bei
+  Wurfseglern.
+
+Damit wird die V-Form zum **Ergebnis**: $\Gamma_{eq} = B\,C_{L,therm}\,b/l_V$.
+
+**Bänder nach Steuerachsen (Drela):**
+
+| Band | Höhe + Seite (Polyeder) | mit Querrudern | Wurfsegler (DLG) |
+|---|---|---|---|
+| $V_H$ | 0,3–0,6 (Drela bevorzugt 0,4–0,45) | 0,3–0,6 | wie links |
+| $V_V$ | 0,02–0,04 (bevorzugt ≥ 0,03) | 0,015–0,025 (bevorzugt ≥ 0,025) | 0,05–0,06 |
+| $B$ | 4,0–6,0 (bevorzugt 5,0–5,5) | 2,0–5,0 (bevorzugt ≥ 3,0) | wie die Steuerachsen |
+
+Lelke gibt $V_H \approx 0{,}4$ („Psf") und $V_V$ 0,020–0,03 („Ysf"), gleich für Flugzeug und Segler.
+
+**Probe Thermiksegler mit 2,8 m Spannweite:**
+- Aus den Tabellenwerten: Streckung 14,7, Rumpflänge 0,5 b, Leitwerkshebel ≈ 0,6 der Rumpflänge.
+- Daraus folgen $c$ = 0,19 m und $l$ = 0,84 m.
+- Mit Lennons 13 % Höhenleitwerksfläche ergibt sich $V_H$ = 0,57, innerhalb Drelas Band.
+- Die V-Form bei Höhe + Seite: $\Gamma_{eq}$ = 5 · 0,7 · 2,8/0,84 ≈ 12°.
+
+**Weitere Werte für Segler (Lelke):**
+
+| Band | Wert |
+|---|---|
+| Einstellwinkel Flügel / Einstellwinkeldifferenz (EWD) | 4–6° / 2–3° |
+| Schränkung | 0–3°, über das äußere Drittel |
+| Ausschläge | Seite ±15–30°, Quer ±10–20°, Höhe ±10–20°; die größeren Werte für Segler |
+| Rudertiefe | Seite 25–50 %, Quer 20–25 %, Höhe 20–30 % |
+| Querruderlänge | mindestens das äußere Drittel der Halbspannweite |
+| Streckung | 2-m-Segler etwa 10, 3-m-Segler etwa 16 (deckt sich mit der Modelltabelle) |
+| Schwerpunkt | Start bei 30 % der mittleren Flügeltiefe |
+
+**Leitwerkshebel:** Es gibt keine direkte Quelle. Er folgt aus der Rumpflänge je Mission [T] und der
+Vault-Grenze „Leitwerkshebel ≤ 60 % der Rumpflänge". Die Probe oben bestätigt das.
+
+**V-Leitwerk:** Drela verweist auf eine eigene Bemessungsregel für die äquivalenten Höhen- und
+Seitenflächen. Die Originalseite ließ sich nicht abrufen. Aus zweiter Hand: Die Fläche des
+V-Leitwerks ist die Summe der Höhen- und Seitenleitwerksfläche. **Lücke** bis zum Original.
+
+**Stabilitätsreserve bei Seglern: keine belastbare Quelle.** Es gibt nur Hinweise:
+- Einzelberichte im RC Soaring Digest erfliegen 5 % bzw. 2,5 %.
+- Der Vault nennt 5 % als Untergrenze für den Erstflug.
+- Laut rcn-schwerpunkt-lage-erfliegen beginnt das Erfliegen etwa 15 % MAC vor dem Neutralpunkt.
+
+Segler werden üblicherweise mit dem Sturzflugtest nach hinten erflogen. Das Urmodell braucht deshalb
+einen **Startwert für den Erstflug**, kein Missionsband. **Entscheidung des Maintainers offen.**
+
+Quellen:
+- [RCSD 2004-08](https://www.rcsoaringdigest.com/pdfs/RCSD-2004/RCSD-2004-08.pdf)
+- [Lelke](https://charlesriverrc.org/articles/design-and-construction/aircraft-design/software/helmut-lelkes-design-analysis-program/da_web.pdf)
+- [RCSD-Archiv](https://www.rcsoaringdigest.com/Trimming.html)
+
 ## 4. Lücken: Bänder ohne Quelle
 
 1. ~~Leistungsbelastung W/kg~~: ✅ entschieden am 02.10.2026 (§3a).
 2. **Pfeilung des Nurflügels.**
-3. **Segler:** Stabilitätsreserve-Ziel und Leitwerkshebel für alle Segler-Missionen.
+3. **Segler:** Leitwerk, V-Form, Einstellwinkel und Ausschläge sind belegt (§3b). Offen sind das
+   Stabilitätsreserve-Ziel (Startwert für den Erstflug, Entscheidung des Maintainers) und die
+   Bemessung des V-Leitwerks (Drelas Original nicht abrufbar).
 4. **3D, Speed, Park und Scale:** Zuspitzung, Leitwerksvolumen, Stabilitätsreserve und Ruder. Aus
    der Tabelle sind nur Masse, Streckung und Rumpflänge belegt.
 5. **Leitwerke ohne Größenregel:** Bemessung von V-Leitwerk, Ente, Tandem und Kastenflügel.
