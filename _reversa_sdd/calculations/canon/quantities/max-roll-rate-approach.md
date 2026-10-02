@@ -16,4 +16,4 @@ Steady roll rate with the full aileron throws set in the airplane, at the approa
 
 **Unit.** `deg/s`
 
-**Produced by.** [[roll-authority]]
+**Produced by.** [[max-roll-rate]]

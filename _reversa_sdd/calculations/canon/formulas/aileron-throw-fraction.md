@@ -1,10 +1,10 @@
 ---
-canon: roll-authority
+canon: aileron-throw-fraction
 entry: formula
 kind: procedure
 shape: law
 status: draft
-output: max-roll-rate-cruise, max-roll-rate-approach, aileron-throw-fraction-cruise, aileron-throw-fraction-approach
+output: aileron-throw-fraction-cruise, aileron-throw-fraction-approach
 source_status: SOURCED
 dimensional_check: PROCEDURAL
 tags:
@@ -14,27 +14,27 @@ tags:
   - shape/law
   - kind/procedure
   - status/draft
-tex: \begin{aligned}& L(V,\alpha) = m\,g, \quad C_l\big(V,\alpha,\,s\,\delta_{a,max},\,p\big) = 0 \\ & p_{max} = p\big|_{s=1}, \qquad s_{req}:\; p\big|_{s} = p_{req}\end{aligned}
+tex: s_{req}:\; L(V,\alpha) = m\,g, \quad C_l\big(V,\alpha,\,s_{req}\,\delta_{a,max},\,p_{target}\big) = 0
 ---
 
-# Roll authority with the aileron throws set in the airplane
+# Fraction of the set aileron throw a roll-rate target needs
 
 **Canonical form**
 
 ```
-solve for alpha, p (steady roll at V):   L(V, alpha) = m * g,   C_l(V, alpha, s * delta_a,max, p) = 0
-p_max   = p  at s = 1                         (full set throw)
-s_req   = s  with  p(s) = p_req               (fraction of the set throw needed)
-evaluated at V = V_cruise and at V = V_app
+solve for alpha, s_req (steady roll at V, roll rate held at the target):   L(V, alpha) = m * g,   C_l(V, alpha, s_req * delta_a,max, p_target) = 0
+evaluated at V = V_cruise and at V = V_app, for each target given
 ```
 
-**Produces** [[max-roll-rate-cruise]] · [[max-roll-rate-approach]] · [[aileron-throw-fraction-cruise]] · [[aileron-throw-fraction-approach]]  ·  **from** [[airplane]] · [[aircraft-mass]] · [[gravity]] · [[air-density]] · [[cruise-speed]] · [[approach-speed]] · [[roll-rate-requirement-cruise]] · [[roll-rate-requirement-approach]]
+**Produces** [[aileron-throw-fraction-cruise]] · [[aileron-throw-fraction-approach]]  ·  **from** [[airplane]] · [[aircraft-mass]] · [[gravity]] · [[air-density]] · [[cruise-speed]] · [[approach-speed]] · [[roll-rate-target-cruise]] · [[roll-rate-target-approach]]
 
 **Kind: a procedure — a closure by a prescribed value.** The steady roll: the rolling moment from the ailerons balances the roll damping, lift carries the weight. `s` scales the **throws set in the airplane** — up and down as constructed, a differential included — from 0 to the full throw.
 
 **The throws are construction parameters, not results** (maintainer, 2026-10-01). `delta_a,max` up and down (`positive/negative_deflection_deg` on the trailing-edge device) are fixed by the construction: clearance at the aileron, servo kinematics, horn placement. The canon checks against them; it does not size them.
 
-**Two answers per operating point.**
+**Measured against a target.** Its companion [[max-roll-rate]] gives the roll rate of the full set throw, without a target.
+
+**Two answers per operating point, split over two entries.**
 - `p_max` — the roll rate the set throws deliver. A property of the airplane.
 - `s_req` — the fraction of the set throw the requirement needs. `s_req ≤ 1`: reachable, and the rest is reserve (a dual rate or expo can take it away). `s_req > 1`, or no solution: **not reachable with these throws** — declared, never clipped (ADR 0020).
 

@@ -524,7 +524,7 @@ ist $pb/2V$ nahezu geschwindigkeitsunabhängig, die Rollrate in °/s wächst als
 ohne Geschwindigkeit wäre die Forderung unbestimmt.
 
 **Rechnung** — stationäres Rollen, Schließung durch einen vorgeschriebenen Wert
-(Eintrag `roll-authority`):
+(Einträge `max-roll-rate` und `aileron-throw-fraction`):
 
 $$
 L(V,\alpha) = m\,g, \qquad C_l\big(V,\alpha,\,s\,\delta_{a,max},\,p\big) = 0
@@ -2101,6 +2101,26 @@ ihre Auswertebedingung im Namen trägt — hier trägt sie ihren Gegenstand.
 **Die gefährlichere Richtung ist die stille.** Eine falsche Meldung fällt auf. Ein Symbol,
 das zufällig zur richtigen Dimension aufgelöst wird, balanciert aus dem falschen Grund und
 fällt nie auf.
+
+### A9 — Zielwerte heißen `target` und sind als solche sichtbar
+
+**Anforderung (Maintainer, 02.10.2026).** Vorgegebene Zielwerte gehören in den Kanon — über
+sie tastet man sich an die Mission heran —, aber **einheitlich benannt**: Größe
+`<name>-target`, Symbol mit Index `target` (z. B. $V_{S,target}$, $p_{target,cruise}$),
+`role: target`. Der Index `req` bleibt dem **berechneten Bedarf** vorbehalten — was die
+Physik verlangt ($P_{req}$, $(T/W)_{req,cruise}$, $s_{req}$), nicht was der Nutzer vorgibt.
+Ausnahme mit Begründung: $n_{lim}$ behält sein Fachsymbol, ist aber `role: target`.
+
+**Sichtbarkeit.** Der Navigator zeigt auf einen Blick, ob ein Wert **rein gerechnet** ist
+oder **an einem Zielwert gemessen**: Zielwerte haben eine eigene Farbe; jede Größe, die
+stromabwärts von einem Zielwert liegt, trägt einen gestrichelten Rand und nennt im
+Seitenfeld, an welchen Zielwerten sie hängt. Das wird aus dem Graphen bestimmt, nicht von
+Hand gepflegt — eine Größe, die rein aus dem Flugzeug folgt, darf deshalb nicht mit einer
+zielwertgebundenen in **einem** Eintrag stehen (so wurde `roll-authority` in
+`max-roll-rate` und `aileron-throw-fraction` geteilt).
+
+**Prüfung.** Kein Eingabeknoten heißt `requirement`, `goal` oder `req`; jeder Zielwert hat
+`role: target`.
 
 ### A7 — Eine Autorität je nutzersichtbarer Größe
 

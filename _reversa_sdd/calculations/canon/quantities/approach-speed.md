@@ -19,4 +19,4 @@ Betriebspunktgeschwindigkeit — jede trägt ihren Punkt im Namen (A2).
 
 **Produced by.** [[speed-from-stall-margin]]
 
-**Used by.** [[roll-authority]]
+**Used by.** [[aileron-throw-fraction]] · [[max-roll-rate]]

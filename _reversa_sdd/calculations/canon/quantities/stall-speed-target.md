@@ -3,11 +3,11 @@ canon: stall-speed-target
 kind: quantity
 symbol: V_S,target
 unit: m/s
-role: input
+role: target
 status: draft
 tags:
   - canon/quantity
-  - role/input
+  - role/target
 ---
 
 # Target stall speed · `V_S,target`

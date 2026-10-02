@@ -7,7 +7,7 @@
   --bg:#FBFAF7; --panel:#FFFFFF; --ink:#23211C; --ink-2:#6B675E; --ink-3:#9A958A;
   --line:#E2DED4; --line-2:#CFC9BC;
   --inp:#4C7198; --mid:#8A8579; --out:#35754D; --hub:#A67C3C; --sel:#6B4FA0;
-  --inp-bg:#EBF1F7; --out-bg:#E7F2EB; --hub-bg:#FAF2E4; --sel-bg:#F0EBF8;
+  --inp-bg:#EBF1F7; --tgt:#B0457A; --tgt-bg:#F8E9F0; --out-bg:#E7F2EB; --hub-bg:#FAF2E4; --sel-bg:#F0EBF8;
   --dim:0.13;
 }
 @media (prefers-color-scheme:dark){
@@ -16,7 +16,7 @@
     --bg:#16150F; --panel:#1F1D16; --ink:#EDEAE1; --ink-2:#A7A294; --ink-3:#777266;
     --line:#332F26; --line-2:#474034;
     --inp:#7FA6CC; --mid:#9C968A; --out:#6FB98B; --hub:#D6AA63; --sel:#A78BDB;
-    --inp-bg:#1C2530; --out-bg:#18271E; --hub-bg:#2A2216; --sel-bg:#241E33;
+    --inp-bg:#1C2530; --tgt:#E08AB5; --tgt-bg:#2E1B26; --out-bg:#18271E; --hub-bg:#2A2216; --sel-bg:#241E33;
     --dim:0.16;
   }
 }
@@ -25,7 +25,7 @@
   --bg:#16150F; --panel:#1F1D16; --ink:#EDEAE1; --ink-2:#A7A294; --ink-3:#777266;
   --line:#332F26; --line-2:#474034;
   --inp:#7FA6CC; --mid:#9C968A; --out:#6FB98B; --hub:#D6AA63; --sel:#A78BDB;
-  --inp-bg:#1C2530; --out-bg:#18271E; --hub-bg:#2A2216; --sel-bg:#241E33;
+  --inp-bg:#1C2530; --tgt:#E08AB5; --tgt-bg:#2E1B26; --out-bg:#18271E; --hub-bg:#2A2216; --sel-bg:#241E33;
   --dim:0.16;
 }
 *{box-sizing:border-box}
@@ -129,6 +129,8 @@ main{position:relative;overflow:hidden;background:var(--bg)}
     <div class="lab">Legende</div>
     <div class="leg">
       <span><i class="sw" style="background:var(--inp-bg);border-color:var(--inp)"></i>Eingabe &#8212; von keiner Formel erzeugt</span>
+      <span><i class="sw" style="background:var(--tgt-bg);border-color:var(--tgt)"></i>Zielwert &#8212; Vorgabe des Nutzers</span>
+      <span><i class="sw" style="border:1.5px dashed var(--tgt)"></i>an einem Zielwert gemessen &#8212; kein reiner Rechenwert</span>
       <span><i class="sw" style="background:var(--hub-bg);border-color:var(--hub)"></i>tragend &#8212; vierfach oder &#246;fter gebraucht</span>
       <span><i class="sw" style="background:var(--panel);border-color:var(--mid)"></i>Zwischenergebnis</span>
       <span><i class="sw" style="background:var(--out-bg);border-color:var(--out)"></i>Endergebnis &#8212; von nichts verbraucht</span>
@@ -160,11 +162,18 @@ main{position:relative;overflow:hidden;background:var(--bg)}
 const D = window.__DATA__;
 const Q=D.Q, F=D.F, LAYER=D.layer, ORDER=D.order;
 const INPUTS=new Set(D.inputs), OUTPUTS=new Set(D.outputs);
+// Target values (role: target) are user-given goals; every quantity downstream of one is
+// measured against a goal rather than computed from the aircraft alone.
+const TARGETS=new Set(Object.keys(Q).filter(q=>Q[q].role==='target'));
 
 const pred={}, succ={}, prodBy={}, useCount={};
 for(const q in Q){pred[q]=[];succ[q]=[];useCount[q]=0;}
 for(const [a,b,f] of D.edges){ pred[b].push([a,f]); succ[a].push([b,f]); useCount[a]++; }
 for(const f in F){ for(const o of [].concat(F[f].out)) (prodBy[o] ||= []).push(f); }
+const TBOUND=new Set(), TFROM={};
+for(const s of TARGETS){ const seen=new Set(), st=[s]; while(st.length){ const v=st.pop();
+  for(const [w] of succ[v]){ if(seen.has(w)||TARGETS.has(w)) continue;
+    seen.add(w); TBOUND.add(w); (TFROM[w] ||= new Set()).add(s); st.push(w); } } }
 
 const NW=78, NH=30, GAPX=13, GAPY=74, PAD=48;
 const layers=Object.keys(ORDER).map(Number).sort((a,b)=>a-b);
@@ -202,9 +211,11 @@ const nodeEls={};
 for(const q in Q){
   const {x,y}=P[q];
   const g=el('g',{class:'node',transform:`translate(${x},${y})`,tabindex:'0',role:'button'});
-  const cls = INPUTS.has(q)?'inp' : OUTPUTS.has(q)?'out' : (useCount[q]>=4?'hub':'mid');
-  const fill = cls==='inp'?'var(--inp-bg)' : cls==='out'?'var(--out-bg)' : cls==='hub'?'var(--hub-bg)':'var(--panel)';
-  g.appendChild(el('rect',{width:NW,height:NH,rx:5,fill,stroke:`var(--${cls})`}));
+  const cls = TARGETS.has(q)?'tgt' : INPUTS.has(q)?'inp' : OUTPUTS.has(q)?'out' : (useCount[q]>=4?'hub':'mid');
+  const fill = cls==='tgt'?'var(--tgt-bg)' : cls==='inp'?'var(--inp-bg)' : cls==='out'?'var(--out-bg)' : cls==='hub'?'var(--hub-bg)':'var(--panel)';
+  const ra={width:NW,height:NH,rx:5,fill,stroke:`var(--${cls})`};
+  if(TBOUND.has(q)){ ra.stroke='var(--tgt)'; ra['stroke-dasharray']='5 3'; }
+  g.appendChild(el('rect',ra));
   const raw=sym(q), parts=raw.split('_');
   const t=el('text',{x:NW/2,y:NH/2});
   t.appendChild(Object.assign(document.createElementNS(NS,'tspan'),{textContent:parts[0]}));
@@ -247,12 +258,15 @@ function esc(s){return String(s).replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>
 function select(q){
   sel=q; paint();
   const d=Q[q], fs=prodBy[q]||[];
-  const cls = INPUTS.has(q)?'inp' : OUTPUTS.has(q)?'out' : (useCount[q]>=4?'hub':'mid');
-  const role = INPUTS.has(q)?'Eingabe' : OUTPUTS.has(q)?'Endergebnis' : (useCount[q]>=4?'tragend':'Zwischenergebnis');
+  const cls = TARGETS.has(q)?'tgt' : INPUTS.has(q)?'inp' : OUTPUTS.has(q)?'out' : (useCount[q]>=4?'hub':'mid');
+  const role = TARGETS.has(q)?'Zielwert \u2014 Vorgabe' : INPUTS.has(q)?'Eingabe' : OUTPUTS.has(q)?'Endergebnis' : (useCount[q]>=4?'tragend':'Zwischenergebnis');
   let h=`<h2>${esc(sym(q))}${isOpt(q)?'<span class="opt" title="Ergebnis eines Optimierungsproblems">*</span>':''}</h2>
    <p class="meta">${esc(q)} \u00b7 ${esc(d.unit||'\u2014')} \u00b7 Schicht L${LAYER[q]}
    &nbsp;<span class="pill" style="color:var(--${cls});border-color:var(--${cls})">${role}</span></p>
    <p class="desc">${esc(d.desc||'Keine Beschreibung im Katalog.')}</p>`;
+  if(TBOUND.has(q)) h+=`<p class="desc" style="border-left:3px dashed var(--tgt);padding-left:8px">
+     <b>An einem Zielwert gemessen</b>, nicht allein aus dem Flugzeug gerechnet \u2014 h\u00e4ngt an
+     ${[...TFROM[q]].map(s=>`<a href="#" onclick="select('${s}');return false">${esc(sym(s))}</a>`).join(', ')}.</p>`;
   for(const f of fs){
     const e=F[f];
     h+=`<div class="blk"><div class="lab">Erzeugt durch \u00b7 ${esc(e.kind)} \u00b7 ${esc(e.status)}</div>`;

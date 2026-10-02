@@ -1,19 +1,19 @@
 ---
-canon: roll-rate-requirement-cruise
+canon: roll-rate-target-cruise
 kind: quantity
-symbol: p_req,cruise
+symbol: p_target,cruise
 unit: deg/s
-role: input
+role: target
 status: draft
 tags:
   - canon/quantity
-  - role/input
+  - role/target
 ---
 
-# Required roll rate at cruise · `p_req,cruise`
+# Target roll rate at cruise · `p_target,cruise`
 
 Mission/character requirement: the roll rate the model must reach at cruise speed. Optional.
 
 **Unit.** `deg/s`
 
-**Used by.** [[roll-authority]]
+**Used by.** [[aileron-throw-fraction]]

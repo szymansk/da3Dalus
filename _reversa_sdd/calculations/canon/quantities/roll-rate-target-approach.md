@@ -1,19 +1,19 @@
 ---
-canon: roll-rate-requirement-approach
+canon: roll-rate-target-approach
 kind: quantity
-symbol: p_req,app
+symbol: p_target,app
 unit: deg/s
-role: input
+role: target
 status: draft
 tags:
   - canon/quantity
-  - role/input
+  - role/target
 ---
 
-# Required roll rate on approach · `p_req,app`
+# Target roll rate on approach · `p_target,app`
 
 Mission requirement: the roll rate the model must still reach on approach — controllability. Optional.
 
 **Unit.** `deg/s`
 
-**Used by.** [[roll-authority]]
+**Used by.** [[aileron-throw-fraction]]

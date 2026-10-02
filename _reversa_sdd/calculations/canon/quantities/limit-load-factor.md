@@ -3,11 +3,11 @@ canon: limit-load-factor
 kind: quantity
 symbol: n_lim
 unit: g
-role: input
+role: target
 status: draft
 tags:
   - canon/quantity
-  - role/input
+  - role/target
 ---
 
 # Structural limit load factor · `n_lim`

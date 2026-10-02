@@ -18,4 +18,4 @@ Mission cruise speed, nominally a flight-profile goal; the chain substitutes der
 
 **Produced by.** [[cruise-speed-resolution]]
 
-**Used by.** [[range-from-endurance]] · [[roll-authority]] · [[stall-margin-ratio]]
+**Used by.** [[aileron-throw-fraction]] · [[max-roll-rate]] · [[range-from-endurance]] · [[stall-margin-ratio]]

@@ -12,8 +12,8 @@ tags:
 
 # Aileron throw needed on approach · `s_req,app`
 
-Fraction of the set aileron throw the approach roll-rate requirement needs; above 1 it is not reachable with these throws.
+Fraction of the set aileron throw the approach roll-rate target needs; above 1 it is not reachable with these throws.
 
 **Unit.** `dimensionless`
 
-**Produced by.** [[roll-authority]]
+**Produced by.** [[aileron-throw-fraction]]

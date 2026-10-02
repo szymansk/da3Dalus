@@ -16,4 +16,4 @@ Constant converting mass to weight; the chain carries two literal values, 9.81 (
 
 **Unit.** `m/s^2`
 
-**Used by.** [[best-angle-of-climb]] · [[best-rate-of-climb]] · [[dive-speed]] · [[lift-coefficient-required]] · [[maneuvering-speed]] · [[max-level-speed]] · [[max-sustained-turn-rate]] · [[min-sustained-turn-radius]] · [[minimum-drag-speed-from-polar]] · [[minimum-sink-speed-from-polar]] · [[power-required-electrical]] · [[roll-authority]] · [[spar-break-load-factor]] · [[stall-speed]] · [[weight-from-mass]] · [[wing-loading]]
+**Used by.** [[aileron-throw-fraction]] · [[best-angle-of-climb]] · [[best-rate-of-climb]] · [[dive-speed]] · [[lift-coefficient-required]] · [[maneuvering-speed]] · [[max-level-speed]] · [[max-roll-rate]] · [[max-sustained-turn-rate]] · [[min-sustained-turn-radius]] · [[minimum-drag-speed-from-polar]] · [[minimum-sink-speed-from-polar]] · [[power-required-electrical]] · [[spar-break-load-factor]] · [[stall-speed]] · [[weight-from-mass]] · [[wing-loading]]
