@@ -303,3 +303,8 @@ Klappenausschlägen; K21). Handstart neu gefasst als Urteil „handstartfähig o
 Kriterien erst nach RC-Fachquelle.
 
 **Handstart-Urteil gestrichen (02.10.2026, Maintainer):** kein Mehrwert; keine belastbaren Grenzen in den Quellen. Vom Start bleibt V_TO.
+
+**Stabilität (02.10.2026)** — Umfang mit Maintainer: statisch längs + seitlich, vordere
+SP-Grenze aus Höhenruderwirkung; Dynamik später. Schritt 1 angelegt: `neutral-point` (V_md),
+`static-margin`, `cg-for-target-margin`, `static-margin-probe`; x_CG Eingabe, SM_target Zielwert.
+Als Nächstes: Seitenstabilität (C_lβ, C_nβ), vordere Grenze.

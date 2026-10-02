@@ -820,16 +820,20 @@ genau die Probe am konvergierten $x_\mathrm{CG}$ und sonst nichts.
 | $\rho = \rho_\mathrm{ISA}(h)$ | law | `formulas/air-density-isa.md` — **freigegeben** |
 | $W = m\,g$ | law | `formulas/weight-from-mass.md` — **freigegeben** |
 | $\alpha$ aus $L = W$ bei $V$ | **procedure** | §3.4.2 — Beziehung entschieden, drei Angaben offen |
-| AeroBuildup, ein Punkt | Solveraufruf | $\mathbf{x}_\mathrm{ref} = x_\mathrm{CG}$; liefert $x_\mathrm{NP}$, $C_{m\alpha}$, $C_{L\alpha}$ |
+| AeroBuildup bei $V_{md}$ | Solveraufruf | `neutral-point`: liefert $x_\mathrm{NP}$ (ohne Rückbezug auf $x_\mathrm{CG}$); `static-margin-probe`: mit $\mathbf{x}_\mathrm{ref} = x_\mathrm{CG}$ $C_{m\alpha}$, $C_{L\alpha}$ |
 | Abrissproblem (`asb.Opti` + AeroBuildup) | Optimierung | liefert $V_S$ **und** $C_{L,\max,\mathrm{stall}}$ (§3.4.1) |
-| $x_\mathrm{CG} = x_\mathrm{NP} - SM_\mathrm{target}\,\bar{c}$ | law | **fehlt** — ADR 0011 |
-| $SM = (x_\mathrm{NP} - x_\mathrm{CG})/\bar{c}$ | law | **fehlt** |
-| Probe $SM \overset{?}{=} -C_{m\alpha}/C_{L\alpha}$ | Probe | **fehlt** — zwei Wege zu einer Größe sind ein *Test*, keine zweite Wahrheit |
+| $x_\mathrm{CG} = x_\mathrm{NP} - SM_\mathrm{target}\,\bar{c}$ | law | `formulas/cg-for-target-margin.md` (02.10.2026) — ADR 0011 |
+| $SM = (x_\mathrm{NP} - x_\mathrm{CG})/\bar{c}$ | law | `formulas/static-margin.md` (02.10.2026) |
+| Probe $SM \overset{?}{=} -C_{m\alpha}/C_{L\alpha}$ | Probe | `formulas/static-margin-probe.md` (02.10.2026) — zwei Wege zu einer Größe sind ein *Test*, keine zweite Wahrheit |
 | $V_S = \sqrt{2W/(\rho\,S_\mathrm{ref}\,C_{L,\max,\mathrm{stall}})}$ | optimization | `formulas/stall-speed.md` — Beziehung freigegeben, Methode wartet auf den Flottenvergleich |
 
-Der Stabilitätsteil des Katalogs existiert noch nicht: weder `static-margin` noch
-`neutral-point`, `centre-of-gravity` oder `pitching-moment-slope` haben einen Eintrag. Das
-ist die nächste Katalogarbeit.
+**Angelegt am 02.10.2026 (Längsstabilität, statisch):** `neutral-point` (bei $V_{md}$, dem
+benannten Punkt — der Neutralpunkt hängt kaum vom Anstellwinkel ab), `static-margin`,
+`cg-for-target-margin` (Auslegungsrichtung), `static-margin-probe` mit
+`pitching-moment-slope`. $x_\mathrm{CG}$ ist in der Analyse eine **Eingabe** wie die Masse
+(A6); $SM_\mathrm{target}$ ein **Zielwert** (A9). Der Umfang ist mit dem Maintainer vereinbart:
+statisch längs **und** seitlich, dazu die vordere Schwerpunktgrenze aus der
+Höhenruderwirkung; Dynamik später. Seitenstabilität und vordere Grenze folgen.
 
 #### Ausgaben des ganzen Schritts
 
@@ -2264,6 +2268,7 @@ Was schon ein Ticket hat, steht mit Nummer dabei und fällt dann nicht noch einm
 | K19 | Reisegeschwindigkeit nicht ersetzen: $t_{max}$ bei $V_{mp}$, $R_{max}$ bei $V_{md}$; $V_{cruise,target}$ als Zielwert; Abstandsverhältnis zum Abriss gestrichen | §3.5, §3.7 | `V_cruise := V_md`, `V_C = V_D/1,4` mit `V_D = 1,4·V_max` |
 | K20 | Pistenstufe/Feldlänge nicht im Kanon (Over-Engineering) — die Feldlängen-Funktion der App hat damit keine Kanon-Grundlage; Entfernen nach ADR 0021 bei der Freigabe entscheiden | §3.8, §3.9 | `field_length_service` |
 | K21 | Butterfly im Anflug: $V_{S0}(s)$, $V_{app}(s)$, Gleitwinkel, $s_{max}$ | §3.7 | — |
+| K22 | Längsstabilität statisch: $x_{NP}$ bei $V_{md}$, $SM$, $x_{CG}$ aus $SM_{target}$, Probe $-C_{m\alpha}/C_{L\alpha}$ | §2.3 | ADR-0004-Kontext (ein Wert am Reiseflugpunkt), eigene Neutralpunkt-Wege |
 
 ## Arbeitsregeln
 
