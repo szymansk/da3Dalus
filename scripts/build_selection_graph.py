@@ -229,7 +229,7 @@ code{font-family:var(--mono);font-size:12.5px}
     }
     if(trag==="eindecker"||trag==="doppeldecker"){
       if(nf){
-        const sw=lw==="nf_mitte"?0.05*b:0.26*b, cr=1.35*c, ctip=cr*0.55, yW=y0+(fus?0.14*b:0.06*b), tipLE=yW+sw;
+        const sw=Math.tan(((D.baender||{}).pfeilung_nurfluegel_grad||{wert:17}).wert*Math.PI/180)*b/2, cr=1.35*c, ctip=cr*0.55, yW=y0+(fus?0.14*b:0.06*b), tipLE=yW+sw;
         T+=wing(yW,b,cr,0.55,sw,mainCS);
         if(lw==="nf_mitte") T+=finTop(yW+cr*0.55,cr*0.5);
         if(lw==="nf_winglet") for(const sg of [1,-1]) T+=R(cx+sg*b/2-1.5,tipLE,3,ctip);

@@ -532,8 +532,8 @@
           "typisch": [],
           "kurz": "Eine Seitenflosse in der Mitte",
           "legt_fest": [
-            "Typisch für Brett- und Deltanurflügel",
-            "Längsstabilität aus S-Schlag-Profil oder Pfeilung"
+            "Eine Seitenflosse in der Mitte",
+            "Gepfeilter Flügel (17°), Schränkung getrimmt"
           ],
           "wenn": {
             "trag": [
@@ -549,8 +549,8 @@
           "typisch": [],
           "kurz": "Seitenflächen an den Flügelspitzen",
           "legt_fest": [
-            "Typisch für gepfeilte Nurflügel",
-            "Hebelarm aus der Pfeilung"
+            "Seitenflächen an den Spitzen, längster Hebelarm",
+            "Gepfeilter Flügel (17°), Schränkung getrimmt"
           ],
           "wenn": {
             "trag": [
@@ -567,7 +567,7 @@
           "kurz": "Nur Elevons, keine Seitenfläche (Horten-Art)",
           "legt_fest": [
             "Keine Seitenfläche, kein Seitenruder",
-            "Richtungsstabilität aus Pfeilung und Verwindung"
+            "Gepfeilter Flügel (17°), Richtungsstabilität aus Pfeilung und Verwindung"
           ],
           "wenn": {
             "trag": [
@@ -1172,6 +1172,11 @@
         7.5,
         10
       ]
+    },
+    "pfeilung_nurfluegel_grad": {
+      "wert": 17,
+      "bezug": "25-%-Linie",
+      "quelle": "Panknin-Beispiel (b2streamlines), Grenze 20°; Maintainer 02.10.2026: Urmodell immer gepfeilt, Schränkung getrimmt"
     }
   }
 }

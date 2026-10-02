@@ -32,7 +32,7 @@ Jede dieser Angaben kommt aus einer Antwort, einem Band oder einem Vorgabewert.
 | Flächenbelastung | **Ergebnis** `m/S`; Plausibilitätsprüfung gegen [V] |
 | Zuspitzung | [V] für Trainer, Sport, Kunstflug, Segler; sonst — |
 | Schränkung | Nurflügel [V]; sonst — (Vorgabe 0°) |
-| Pfeilung | Brett 0°; Pfeil als Vorgabe ≤ 20° (Panknin), §3c |
+| Pfeilung | Nurflügel: 17° an der 25-%-Linie, Schränkung getrimmt (Maintainer, §3c) |
 | V-Form | aus Flügellage und Steuerachsen [V] |
 | Profil | Profilklasse der Mission [V], dann beste Wahl aus der DB bei der Reynoldszahl des Urmodells |
 | Rumpflänge | Verhältnis Rumpflänge zu Spannweite je Mission [T] |
@@ -310,6 +310,11 @@ und $\alpha_{geo} = \alpha_{total} - (\alpha_{0,root}-\alpha_{0,tip})$.
 - Die NACA empfiehlt beim gepfeilten Nurflügel etwa 0° geometrische V-Form, damit die wirksame V-Form
   3–4° nicht übersteigt.
 
+✅ **Entschieden (Maintainer, 02.10.2026):** Das Urmodell bleibt einfach. Ein Nurflügel wird immer
+**gepfeilt** angelegt, mit **17° an der 25-%-Linie** (Panknins Beispiel, unter seiner 20°-Grenze).
+Die Schränkung wird getrimmt. Das Brett ist keine Auswahl; der Konstrukteur kann sich vom Urmodell aus
+an ein Brett herantasten.
+
 **Für „Mission → Pfeilwinkel" gibt es keine Quelle.** Auch einen Sollwert für den Ruderhebel nennt
 keine Quelle; die Umkehrung „Pfeilung aus Soll-Hebel" hat deshalb keine Grundlage. Für das Urmodell
 folgt daraus:
@@ -328,9 +333,7 @@ folgt daraus:
 ## 4. Lücken: Bänder ohne Quelle
 
 1. ~~Leistungsbelastung W/kg~~: ✅ entschieden am 02.10.2026 (§3a).
-2. **Pfeilung des Nurflügels:** Der Mechanismus ist geklärt (§3c). Für die Pfeilung je Mission gibt
-   es keine Quelle; offen ist, ob Brett oder Pfeil eine eigene Auswahl wird und welcher Vorgabewert
-   für den Pfeil gilt.
+2. ~~Pfeilung des Nurflügels~~: ✅ entschieden, Urmodell immer gepfeilt mit 17° (§3c).
 3. **Segler:** Leitwerk, V-Form, Einstellwinkel und Ausschläge sind belegt (§3b). Die Stabilitätsreserve ist
    belegt (Maintainer); Nurflügel nach Lennon 5–10 % (entschieden).
 4. **3D, Speed, Park und Scale:** Zuspitzung, Leitwerksvolumen, Stabilitätsreserve und Ruder. Aus
