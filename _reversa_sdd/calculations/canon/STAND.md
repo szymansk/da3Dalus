@@ -325,3 +325,5 @@ gestrichen. Auswahlgraph als HTML unter `_reversa_sdd/calculations/auswahl/`.
 **Auswahlgraph veröffentlicht:** https://claude.ai/artifact/XqNVPRRcsqcJEkckMpipxS — Quelle `_reversa_sdd/calculations/auswahl/auswahl.json`, Bau `poetry run python scripts/build_selection_graph.py` (HTML nie von Hand ändern).
 
 **Auswahlgraph v2 (02.10.2026):** fünf Fragen (Leitwerk als Frage 4), Tandem und Kastenflügel/Joined Wing als Bauarten, jede Kombination Motor × Mission × Bauart bewertet (RC-Prüfer: Fachquellen + Modelltabelle 2 674 Modelle; Doppeldecker-Segler unsinnig, kein einziger in der Tabelle). Offen vom Prüfer vorgeschlagen: Startart (Segler), Antriebsanordnung, Rumpfform, Steuerachsen, Fahrwerk, Nurflügel-Grundriss; fehlende Missionen Combat/Funflyer, Jet/Impeller, FPV.
+
+**Auswahlgraph v4 (02.10.2026):** sechs Fragen; Steuerachsen als Frage 5 (Höhe+Seite / Höhe+Quer / drei Achsen / drei Achsen+Klappen; Nurflügel Elevons ± Seitenruder), Mission „Trainer (Segler)" neu, Anmerkungen je Mission (Querruder-Trainer, Segelflug-Trainer meist Höhe+Seite). Ente ist eine Leitwerkskonfiguration (Höhenleitwerk vorn), nicht Bauart — Flügellage bleibt frei (Maintainer).

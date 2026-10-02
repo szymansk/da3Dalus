@@ -2252,15 +2252,21 @@ weit“). Festgehalten, damit es nicht verloren geht: Ein geführter Prozess fra
 jede Antwort den Lösungsraum stark beschneidet **und** das Bild im Kopf schärft. Für RC,
 aufbauend auf der früheren Festlegung *Mission → Typ → Spannweite*:
 
-**Festgelegt am 02.10.2026 (Maintainer) — fünf Fragen bis zum Urmodell:**
+**Festgelegt am 02.10.2026 (Maintainer) — sechs Fragen bis zum Urmodell:**
 
 1. **Motorisiert?** ja / nein — die erste Frage überhaupt; sie teilt Missionen, Bauarten und Bänder
-2. **Mission** — Trainer, Kunstflug, Hotwing, Hang, Thermik …
-3. **Bauart** — Normal (Hoch-, Schulter-, Mittel-, Tiefdecker), Nurflügel, Ente, Doppeldecker,
-   Tandem, Kastenflügel / Joined Wing
-4. **Leitwerk** — welche gehen, hängt an der Bauart (Normal-, T-, Kreuz-, V-, Dach-, H-Leitwerk;
-   beim Nurflügel Mittelflosse, Winglets oder keine; Ente, Tandem, Kastenflügel je eigene)
-5. **Spannweite**
+2. **Mission** — Trainer, Kunstflug, Hotwing, … ; ohne Motor Segelflug-Trainer, Thermik, Hang, Wurf, Scale
+3. **Bauart** — Tragflügelsystem und Flügellage: Eindecker (Hoch-, Schulter-, Mittel-,
+   Tiefdecker), Doppeldecker, Nurflügel, Tandem, Kastenflügel / Joined Wing
+4. **Leitwerk** — wo das Höhenleitwerk sitzt und wie es aussieht: hinten (Normal-, T-, Kreuz-,
+   V-, Dach-, H-Leitwerk), **vorn als Ente** (Maintainer 02.10.2026: Ente ist eine
+   Leitwerkskonfiguration, die Flügellage bleibt frei — z. B. Mitteldecker-Ente); beim Nurflügel
+   Mittelflosse, Winglets oder keine; Tandem und Kastenflügel je eigene
+5. **Steuerachsen** — Höhe + Seite · Höhe + Quer · drei Achsen · drei Achsen + Klappen; beim
+   Nurflügel Elevons (± Seitenruder). Segelflug-Trainer haben zumeist nur Höhe und Seite; im
+   Motorflug gibt es eigene Querruder-Trainer als Zwischenschritt (Maintainer 02.10.2026).
+   Bestimmt die Flügelsegmente und die nötige V-Form.
+6. **Spannweite**
 
 Jede Kombination Motor × Mission × Bauart ist bewertet (typisch / möglich / ungewöhnlich /
 unsinnig, mit Begründung und Quelle: RC-Fachquellen, Modelltabelle mit 2 674 Modellen,
