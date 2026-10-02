@@ -301,3 +301,5 @@ Reiseflug nur bei diesem Zielwert, sonst p̂ = pb/2V; `stall-margin-ratio` gestr
 (`butterfly-approach`: V_S0(s), V_app(s), Gleitwinkel, s_max; Vorbehalt NeuralFoil bei großen
 Klappenausschlägen; K21). Handstart neu gefasst als Urteil „handstartfähig oder Bodenstart",
 Kriterien erst nach RC-Fachquelle.
+
+**Handstart-Urteil gestrichen (02.10.2026, Maintainer):** kein Mehrwert; keine belastbaren Grenzen in den Quellen. Vom Start bleibt V_TO.

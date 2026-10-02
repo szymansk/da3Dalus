@@ -1378,6 +1378,10 @@ Fragen beitrug — *passt es auf meinen Platz* schon.
 
 **Status: der Zustand ist entschieden, das Urteil ist zur Hälfte rechenbar.**
 
+> **Stand 02.10.2026:** Das Starturteil ist gestrichen — Pistenstufe (Over-Engineering) und
+> Handstart-Urteil (kein Mehrwert) hat der Maintainer beide herausgenommen. Was folgt, ist der
+> Befund davor; vom Start bleibt im Kanon die Startgeschwindigkeit $V_{TO} = k_S \cdot V_{S,TO}$.
+
 Der Start ist ein **Flugzustand**; *Handstart, Piste oder Katapult* ist das **Urteil**
 daraus (§3.2). Der Zustand fügt eine Bindung hinzu — die Startgeschwindigkeit, wieder
 `V = k · V_S,cfg`, jetzt in Startkonfiguration. Dieselbe Beziehung zum dritten Mal: Anflug,
@@ -1429,7 +1433,7 @@ keine neue Modellierung, sondern ein Zugriff auf Daten, die wir haben.
 
 | | |
 |---|---|
-| **Handstart oder Bodenstart** | *Neu gefasst 02.10.2026 (Maintainer):* Nicht die Wurfgeschwindigkeit ist die Frage, sondern das Urteil **handstartfähig oder Bodenstart**. Kriterien (Masse einhändig werfbar, Abriss unter dem, was ein Wurf erreicht, Beschleunigung nach dem Wurf über $T_0/W$) und ihre Grenzwerte werden erst mit der RC-Fachquelle belegt (ADR 0023), dann aufgenommen. |
+| ~~**Handstart oder Bodenstart**~~ | **Gestrichen 02.10.2026 (Maintainer):** kein Mehrwert — wer ein schweres Modell ohne Fahrwerk baut, merkt es selbst. Die Fachquellen haben ohnehin keine belastbaren Grenzen (Wurfmasse, Wurfgeschwindigkeit); der Kanon fällt kein Starturteil. |
 | **Die Startreserve** | die Quellen geben 1,2 bis 1,25 für die **Landung**; auf den Start zu übertragen ist ein Schluss, keine Quelle. Beim Start spricht mehr für den oberen Rand: keine Bahn zum Beschleunigen, und das Modell ist im verletzlichsten Zustand |
 | ~~**Die Pistenstufe**~~ | **gestrichen 02.10.2026** (Maintainer): Over-Engineering, der Pilot merkt es sofort |
 
