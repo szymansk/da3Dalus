@@ -1181,7 +1181,10 @@
     "platzhalter": {
       "scale": "sport",
       "scale_segler": "segler_nach_steuerachsen",
-      "quelle": "Maintainer 02.10.2026; Masse, Streckung, Rumpflänge weiter aus der Scale-Statistik"
+      "quelle": "Maintainer 02.10.2026 (BAENDER.md §3d, §3e); Masse, Streckung, Rumpflänge weiter aus der Statistik der Modelltabelle",
+      "3d": "kunstflug + 3D-Ausschläge (Extreme Flight)",
+      "speed": "segler_mit_querrudern (Drela) + Steuerachsen hq + Stabilitätsreserve 5–8 %",
+      "park": "trainer + Ausschläge großes Ende (Lelke)"
     }
   }
 }

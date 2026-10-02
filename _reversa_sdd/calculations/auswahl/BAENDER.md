@@ -362,7 +362,7 @@ Nur aus Suchergebnissen, nicht am Original geprüft:
 - F3P-Ausschläge
 - Leitwerk 20–30 % der Flügelfläche bei 3D-Foamies
 
-**Vorschlag (Platzhalter wie bei Scale, §3d):**
+✅ **Entschieden (Maintainer, 02.10.2026), Platzhalter wie bei Scale (§3d):**
 - **3D:** Kunstflug-Bänder (Zuspitzung, Leitwerksvolumen, Stabilitätsreserve 0–3 %, Rudergrößen),
   dazu die 3D-Ausschläge oben. Das Profil spricht für Lennons 10–15 % und gegen die 7–10 % von
   rcplanedesigner.
@@ -371,7 +371,8 @@ Nur aus Suchergebnissen, nicht am Original geprüft:
   die Hotliner-Klasse. Hotwings sind Nurflügel und folgen §3c.
 - **Park:** Trainer-Bänder, mit den Ausschlägen oben.
 
-**Entscheidung des Maintainers offen.**
+Masse, Streckung und Rumpflänge kommen weiter aus der Statistik der Modelltabelle (§2).
+
 
 ## 4. Lücken: Bänder ohne Quelle
 
@@ -379,8 +380,7 @@ Nur aus Suchergebnissen, nicht am Original geprüft:
 2. ~~Pfeilung des Nurflügels~~: ✅ entschieden, Urmodell immer gepfeilt mit 17° (§3c).
 3. **Segler:** Leitwerk, V-Form, Einstellwinkel und Ausschläge sind belegt (§3b). Die Stabilitätsreserve ist
    belegt (Maintainer); Nurflügel nach Lennon 5–10 % (entschieden).
-4. **3D, Speed und Park** (Scale entschieden, §3d): Zuspitzung, Leitwerksvolumen, Stabilitätsreserve und Ruder. Aus
-   der Tabelle sind nur Masse, Streckung und Rumpflänge belegt.
+4. ~~3D, Speed, Park, Scale~~: ✅ entschieden als Platzhalter (§3d, §3e).
 5. **Leitwerke ohne Größenregel:** Ente, Tandem und Kastenflügel. Das V-Leitwerk ist geschlossen
    (Drela, §3b).
 6. **Klappen und Ausschläge:** Klappengröße und Ruderausschläge je Mission.
