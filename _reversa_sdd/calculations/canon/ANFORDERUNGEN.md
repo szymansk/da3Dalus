@@ -1216,7 +1216,7 @@ Widerstands zu multiplizieren ergäbe eine Zahl, die kein Flugzeug fliegen kann.
 | | |
 |---|---|
 | ~~**Die Reisegeschwindigkeit ist eine Ersetzung**~~ | **Entschieden 02.10.2026:** `cruise-speed-resolution` und die allgemeine `cruise-speed` gestrichen (A2: allgemeine Größe als Ausgabe; ADR 0020: Ersetzung ohne Quelle). Die zwei Schließungen sind benannte Ergebnisse: **größte Flugdauer** $t_{max}$ bei $V_{mp}$, **größte Reichweite** $R_{max} = 3600\,\eta\,E_{bat}/D(V_{md})$ bei $V_{md}$ (`endurance-and-range`). Für UAV optional ein **Zielwert** $V_{cruise,target}$: Flugdauer und Reichweite bei dieser Geschwindigkeit (`cruise-target-performance`, zielwertgebunden). |
-| **Der Schubfaktor ist eine Zauberzahl** | `mean-thrust-derate` pauschaliert den Schubabfall mit einem Faktor, den kein Katalogeintrag kennt — während wir die echten Propellerkennlinien in der Datenbank haben |
+| ~~**Der Schubfaktor ist eine Zauberzahl**~~ | gestrichen am 02.10.2026, siehe §3.9 |
 
 
 ---
@@ -1402,7 +1402,7 @@ halten.**
 Und das Katapult macht aus dem Urteil mehr als ein Ja oder Nein. Reicht der Wurf nicht,
 lässt sich sagen, **welche Zugkraft** nötig wäre — aus einer Absage wird eine Anforderung.
 
-#### Die letzte Zauberzahl sitzt hier
+#### Die letzte Zauberzahl sitzt hier — *gestrichen am 02.10.2026*
 
 `mean-thrust-derate` rechnet `T_mean = f_T · T_static` — der Schubabfall als **Pauschalfaktor**,
 und `f_T` ist die einzige Größe im Kanon, die die Dimensionsprüfung als unregistriert
@@ -1417,6 +1417,13 @@ Konstantleistungsmaschinen sind.
 über Drehzahl und Fortschrittsgrad — Schubbeiwert, Leistungsbeiwert, Wirkungsgrad. Der
 Schub bei Fahrt ist daraus ablesbar, nicht zu schätzen. Das ist die Auflösung von **O8**:
 keine neue Modellierung, sondern ein Zugriff auf Daten, die wir haben.
+
+> **Gestrichen am 02.10.2026:** `f_T`, `mean-thrust-derate`, `mean-thrust` und der
+> Typenschild-Standschub `T_static` (er nennt weder Spannung noch Propeller). Das
+> Schub-Gewicht-Verhältnis ist jetzt eine Eigenschaft des Flugzeugs: der **berechnete**
+> Standschub aus dem Motor–Propeller-Gleichgewicht bei $V = 0$ über dem Gewicht,
+> $T_0/W$ (`static-thrust-to-weight`). Ob die Bahn reicht, bleibt bei der Pistenstufe offen —
+> dann auf Grundlage des Schubs bei Fahrt, nicht eines Faktors.
 
 #### Offen an diesem Punkt
 
@@ -2239,7 +2246,7 @@ Was schon ein Ticket hat, steht mit Nummer dabei und fällt dann nicht noch einm
 | K5 | ADR 0026: Analyse mit Solver-Widerstand, $(L/D)_{max} = W/D(V_{md})$, $C_{D0}$/$e$ als Ausgleichsparabel nur zur Anzeige | §3.12 (A2), O13 | ADR-0004-Kontext mit Ein-Punkt-Zerlegung und Parabelformel |
 | K6 | ~~Abstandsverhältnis zum Abriss an den Anflug binden~~ — gestrichen, siehe K19 | §3.7 | an den Reiseflug gebunden |
 | K7 | Klappen in der Geometrie; $V_{S0}$, $V_{S,TO}$ aus dem Abrissproblem; Faktor $f_{cfg}$ gestrichen | §3.8, A3 | multiplikativer Klappenfaktor, Rückfall auf den reinen Abriss |
-| K8 | Schub bei Fahrt aus dem Motor–Propeller-Gleichgewicht statt `t_static_N` in Feldlänge, Auslegungsdiagramm, Missions-KPIs | §3.10 | Standschub-Zahl |
+| K8 | Schub bei Fahrt aus dem Motor–Propeller-Gleichgewicht statt `t_static_N` in Feldlänge, Auslegungsdiagramm, Missions-KPIs; `f_T` und Typenschild-Standschub gestrichen, $T_0/W$ berechnet | §3.9, §3.10 | Standschub-Zahl, `f_T = 1,0` |
 | K9 | Steigflug als Optimierungsproblem ($V_y$, $V_x$); `climb-speed-for-power-loading` gestrichen | §3.10 | $V_{climb} = \max(1{,}3\,V_{S,target}, 1)$ |
 | K10 | Kurvenflug: gehaltene Kurve; Querneigung als Eingabe und $V_S\sqrt{n}$ gestrichen | §3.10 | $n = 1/\cos\phi$, $V_{S,turn} = V_S\sqrt{n}$ |
 | K11 | $V_{max}$ berechnet; $V_D$ = Endgeschwindigkeit im senkrechten Sturz; $V_A$ = gebundenes Abrissproblem | §3.10 | $V_{max}$ = 28 m/s Vorgabe, $V_D = 1{,}4\,V_{max}$ |

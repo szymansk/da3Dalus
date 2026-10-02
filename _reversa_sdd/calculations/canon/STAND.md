@@ -294,3 +294,5 @@ Vorbehalt k_e,D0 (Bryan +9 % induziert vs. AVL). O13 entschieden.
 Schließungen `endurance-and-range` (t_max bei V_mp, R_max bei V_md, Solver-Widerstand);
 `V_cruise,target` als optionaler UAV-Zielwert (`cruise-target-performance`); Rollrate im
 Reiseflug nur bei diesem Zielwert, sonst p̂ = pb/2V; `stall-margin-ratio` gestrichen (= k_S).
+
+**f_T (02.10.2026):** `mean-thrust-derate`/`mean-thrust`/`static-thrust` gestrichen; `static-thrust-to-weight` T_0/W aus dem berechneten Standschub (V = 0).

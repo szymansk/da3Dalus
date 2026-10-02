@@ -1,7 +1,7 @@
 ---
 canon: thrust-at-airspeed
 kind: quantity
-symbol: T(V)
+symbol: T
 unit: N
 role: derived
 status: draft
@@ -20,4 +20,4 @@ roughly constant-power devices at high throttle.
 
 **Produced by.** [[thrust-at-airspeed-from-coefficient]]
 
-**Used by.** [[best-angle-of-climb]] · [[best-rate-of-climb]] · [[dive-speed]] · [[max-level-speed]] · [[max-sustained-turn-rate]] · [[min-sustained-turn-radius]]
+**Used by.** [[best-angle-of-climb]] · [[best-rate-of-climb]] · [[dive-speed]] · [[max-level-speed]] · [[max-sustained-turn-rate]] · [[min-sustained-turn-radius]] · [[static-thrust-to-weight]]
