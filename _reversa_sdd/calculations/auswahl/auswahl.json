@@ -1,14 +1,32 @@
 {
   "stand": "02.10.2026",
-  "hinweis": "Bänder und Plausibilität je Kombination folgen mit RC-Quellen (ADR 0023). Die Seite zeigt, was jede Antwort festlegt — keine Zahlenwerte ohne Quelle.",
+  "hinweis": "Bewertung der Kombinationen: RC-Fachquellen und Modelltabelle (2 674 Modelle); [Praxis] ist allgemeine RC-Praxis ohne schriftliche Quelle. Zahlenbänder folgen mit Quellen (ADR 0023).",
   "schritte": [
     {
       "id": "motor",
       "frage": "Motorisiert?",
       "warum": "Die erste Frage überhaupt: Sie teilt Missionen, Bauarten und Bänder in zwei Welten.",
       "optionen": [
-        {"id": "ja", "name": "Ja", "kurz": "Elektroantrieb an Bord", "legt_fest": ["Antrieb vorhanden: Motor, Propeller, Regler, Akku", "Leistungsbelastung W/P als Band der Mission", "Steigen, Kurve, V_max und Massenhüllkurve hängen am Schub"]},
-        {"id": "nein", "name": "Nein", "kurz": "Segler ohne Antrieb", "legt_fest": ["Kein Antrieb: Energie aus Höhe, Thermik oder Hangaufwind", "Gleitzahl und Sinken sind die Leistungsgrößen", "Steigen und V_max entfallen"]}
+        {
+          "id": "ja",
+          "name": "Ja",
+          "kurz": "Elektroantrieb an Bord",
+          "legt_fest": [
+            "Antrieb vorhanden: Motor, Propeller, Regler, Akku",
+            "Leistungsbelastung W/P als Band der Mission",
+            "Steigen, Kurve, V_max und Massenhüllkurve hängen am Schub"
+          ]
+        },
+        {
+          "id": "nein",
+          "name": "Nein",
+          "kurz": "Segler ohne Antrieb",
+          "legt_fest": [
+            "Kein Antrieb: Energie aus Höhe, Thermik oder Hangaufwind",
+            "Gleitzahl und Sinken sind die Leistungsgrößen",
+            "Steigen und V_max entfallen"
+          ]
+        }
       ]
     },
     {
@@ -16,50 +34,748 @@
       "frage": "Mission",
       "warum": "Der Charakter des Modells. Sie setzt die Bänder, aus denen das Urmodell dimensioniert wird.",
       "optionen": [
-        {"id": "trainer", "name": "Trainer", "wenn": {"motor": "ja"}, "kurz": "Fliegen lernen", "legt_fest": ["Niedrige Flächenbelastung", "Hohe Stabilitätsreserve, deutliche V-Form", "Gutmütiges Abrissverhalten"]},
-        {"id": "sport", "name": "Sport / Allround", "wenn": {"motor": "ja"}, "kurz": "Vielseitig fliegen", "legt_fest": ["Mittlere Flächenbelastung", "Mittlere Stabilitätsreserve, wenig V-Form", "Querruder"]},
-        {"id": "kunstflug", "name": "Kunstflug", "wenn": {"motor": "ja"}, "kurz": "Figuren, Rückenflug", "legt_fest": ["Symmetrisches Profil", "Kleine Stabilitätsreserve, keine V-Form", "Große Ruderausschläge, hohe Rollrate"]},
-        {"id": "3d", "name": "3D", "wenn": {"motor": "ja"}, "kurz": "Schweben, Torque Roll", "legt_fest": ["Schub-Gewicht über 1", "Sehr große Ruderflächen und Ausschläge", "Stabilitätsreserve nahe null"]},
-        {"id": "speed", "name": "Speed (Hotliner, Hotwing)", "wenn": {"motor": "ja"}, "kurz": "Schnell fliegen", "legt_fest": ["Hohe Flächenbelastung", "Dünnes Profil, kleine Stirnfläche", "Hohe Leistungsbelastung"]},
-        {"id": "elektrosegler", "name": "Elektrosegler", "wenn": {"motor": "ja"}, "kurz": "Steigen mit Motor, dann segeln", "legt_fest": ["Große Streckung, Seglerprofil", "Motor nur zum Steigen: Steigrate zählt, V_max kaum", "Klappbarer Propeller"]},
-        {"id": "scale", "name": "Scale", "wenn": {"motor": "ja"}, "kurz": "Wie das Original", "legt_fest": ["Grundriss und Proportionen vom Vorbild", "Bänder nur als Prüfung, nicht als Vorgabe"]},
-        {"id": "park", "name": "Parkflyer / Indoor", "wenn": {"motor": "ja"}, "kurz": "Kleiner Platz, langsam", "legt_fest": ["Sehr niedrige Flächenbelastung", "Kleine Spannweite, sehr leichte Bauweise"]},
-        {"id": "thermik", "name": "Thermik", "wenn": {"motor": "nein"}, "kurz": "Aufwinde nutzen", "legt_fest": ["Niedrige Flächenbelastung, große Streckung", "Geringes Sinken bei V_mp", "Wölbklappen und Butterfly häufig"]},
-        {"id": "hang", "name": "Hang (Slope)", "wenn": {"motor": "nein"}, "kurz": "Hangaufwind", "legt_fest": ["Höhere Flächenbelastung, Ballast", "Gute Gleitzahl auch schnell", "Robust für Landung im Gelände"]},
-        {"id": "wurf", "name": "Wurfsegler (HLG / DLG)", "wenn": {"motor": "nein"}, "kurz": "Hand- oder Schleuderstart", "legt_fest": ["Sehr niedrige Masse", "Kleine Spannweite, sehr leichter Aufbau", "Wurf als Start"]},
-        {"id": "scale_segler", "name": "Scale-Segler", "wenn": {"motor": "nein"}, "kurz": "Wie das Original", "legt_fest": ["Grundriss und Proportionen vom Vorbild", "Bänder nur als Prüfung"]}
+        {
+          "id": "trainer",
+          "name": "Trainer",
+          "wenn": {
+            "motor": "ja"
+          },
+          "kurz": "Fliegen lernen",
+          "legt_fest": [
+            "Niedrige Flächenbelastung",
+            "Hohe Stabilitätsreserve, deutliche V-Form",
+            "Gutmütiges Abrissverhalten"
+          ]
+        },
+        {
+          "id": "sport",
+          "name": "Sport / Allround",
+          "wenn": {
+            "motor": "ja"
+          },
+          "kurz": "Vielseitig fliegen",
+          "legt_fest": [
+            "Mittlere Flächenbelastung",
+            "Mittlere Stabilitätsreserve, wenig V-Form",
+            "Querruder"
+          ]
+        },
+        {
+          "id": "kunstflug",
+          "name": "Kunstflug",
+          "wenn": {
+            "motor": "ja"
+          },
+          "kurz": "Figuren, Rückenflug",
+          "legt_fest": [
+            "Symmetrisches Profil",
+            "Kleine Stabilitätsreserve, keine V-Form",
+            "Große Ruderausschläge, hohe Rollrate"
+          ]
+        },
+        {
+          "id": "3d",
+          "name": "3D",
+          "wenn": {
+            "motor": "ja"
+          },
+          "kurz": "Schweben, Torque Roll",
+          "legt_fest": [
+            "Schub-Gewicht über 1",
+            "Sehr große Ruderflächen und Ausschläge",
+            "Stabilitätsreserve nahe null"
+          ]
+        },
+        {
+          "id": "speed",
+          "name": "Speed (Hotliner, Hotwing)",
+          "wenn": {
+            "motor": "ja"
+          },
+          "kurz": "Schnell fliegen",
+          "legt_fest": [
+            "Hohe Flächenbelastung",
+            "Dünnes Profil, kleine Stirnfläche",
+            "Hohe Leistungsbelastung"
+          ]
+        },
+        {
+          "id": "elektrosegler",
+          "name": "Elektrosegler",
+          "wenn": {
+            "motor": "ja"
+          },
+          "kurz": "Steigen mit Motor, dann segeln",
+          "legt_fest": [
+            "Große Streckung, Seglerprofil",
+            "Motor nur zum Steigen: Steigrate zählt, V_max kaum",
+            "Klappbarer Propeller"
+          ]
+        },
+        {
+          "id": "scale",
+          "name": "Scale",
+          "wenn": {
+            "motor": "ja"
+          },
+          "kurz": "Wie das Original",
+          "legt_fest": [
+            "Grundriss und Proportionen vom Vorbild",
+            "Bänder nur als Prüfung, nicht als Vorgabe"
+          ]
+        },
+        {
+          "id": "park",
+          "name": "Parkflyer / Indoor",
+          "wenn": {
+            "motor": "ja"
+          },
+          "kurz": "Kleiner Platz, langsam",
+          "legt_fest": [
+            "Sehr niedrige Flächenbelastung",
+            "Kleine Spannweite, sehr leichte Bauweise"
+          ]
+        },
+        {
+          "id": "thermik",
+          "name": "Thermik",
+          "wenn": {
+            "motor": "nein"
+          },
+          "kurz": "Aufwinde nutzen",
+          "legt_fest": [
+            "Niedrige Flächenbelastung, große Streckung",
+            "Geringes Sinken bei V_mp",
+            "Wölbklappen und Butterfly häufig"
+          ]
+        },
+        {
+          "id": "hang",
+          "name": "Hang (Slope)",
+          "wenn": {
+            "motor": "nein"
+          },
+          "kurz": "Hangaufwind",
+          "legt_fest": [
+            "Höhere Flächenbelastung, Ballast",
+            "Gute Gleitzahl auch schnell",
+            "Robust für Landung im Gelände"
+          ]
+        },
+        {
+          "id": "wurf",
+          "name": "Wurfsegler (HLG / DLG)",
+          "wenn": {
+            "motor": "nein"
+          },
+          "kurz": "Hand- oder Schleuderstart",
+          "legt_fest": [
+            "Sehr niedrige Masse",
+            "Kleine Spannweite, sehr leichter Aufbau",
+            "Wurf als Start"
+          ]
+        },
+        {
+          "id": "scale_segler",
+          "name": "Scale-Segler",
+          "wenn": {
+            "motor": "nein"
+          },
+          "kurz": "Wie das Original",
+          "legt_fest": [
+            "Grundriss und Proportionen vom Vorbild",
+            "Bänder nur als Prüfung"
+          ]
+        }
       ]
     },
     {
       "id": "bauart",
       "frage": "Bauart",
-      "warum": "Die Topologie: welche Flächen es gibt, wo sie sitzen, welches Leitwerk.",
+      "warum": "Die Topologie: welche Flächen es gibt und wo sie sitzen. Die Bewertung je Mission kommt aus den RC-Quellen und der Modelltabelle (2 674 Modelle).",
       "optionen": [
-        {"id": "hochdecker", "name": "Hochdecker", "gruppe": "Normal", "kurz": "Flügel oben am Rumpf", "legt_fest": ["Normalleitwerk hinten", "Pendelstabilität: weniger V-Form nötig", "Leitwerksvolumen aus Bändern"]},
-        {"id": "schulterdecker", "name": "Schulterdecker", "gruppe": "Normal", "kurz": "Flügel knapp unter der Oberkante", "legt_fest": ["Normalleitwerk hinten", "V-Form zwischen Hoch- und Mitteldecker"]},
-        {"id": "mitteldecker", "name": "Mitteldecker", "gruppe": "Normal", "kurz": "Flügel in Rumpfmitte", "legt_fest": ["Normalleitwerk hinten", "Neutrale Flügellage für die Rollstabilität"]},
-        {"id": "tiefdecker", "name": "Tiefdecker", "gruppe": "Normal", "kurz": "Flügel unten am Rumpf", "legt_fest": ["Normalleitwerk hinten", "Mehr V-Form für dieselbe Rollstabilität"]},
-        {"id": "nurfluegel", "name": "Nurflügel", "gruppe": "Ohne Höhenleitwerk", "kurz": "Kein Höhenleitwerk", "legt_fest": ["Pfeilung oder S-Schlag-Profil für die Längsstabilität", "Elevons statt Höhen- und Querruder", "Andere Stabilitätslogik (Lennon: eigene Reserven)"]},
-        {"id": "ente", "name": "Ente", "gruppe": "Ohne Höhenleitwerk hinten", "kurz": "Vorflügel vorn", "legt_fest": ["Vorderer Flügel trägt mit", "Stabilitätslogik kehrt sich um", "Vorflügel muss vor dem Hauptflügel abreißen"]},
-        {"id": "doppeldecker", "name": "Doppeldecker", "gruppe": "Mehrere Tragflächen", "kurz": "Zwei Tragflächen übereinander", "legt_fest": ["Zwei Flügel mit Staffelung und Abstand", "Gegenseitige Beeinflussung der Flügel", "Normalleitwerk hinten"]}
+        {
+          "id": "hochdecker",
+          "name": "Hochdecker",
+          "gruppe": "Normal",
+          "kurz": "Flügel oben am Rumpf",
+          "legt_fest": [
+            "Normalleitwerk hinten",
+            "Pendelstabilität: weniger V-Form nötig",
+            "Leitwerksvolumen aus Bändern"
+          ]
+        },
+        {
+          "id": "schulterdecker",
+          "name": "Schulterdecker",
+          "gruppe": "Normal",
+          "kurz": "Flügel knapp unter der Oberkante",
+          "legt_fest": [
+            "Normalleitwerk hinten",
+            "V-Form zwischen Hoch- und Mitteldecker"
+          ]
+        },
+        {
+          "id": "mitteldecker",
+          "name": "Mitteldecker",
+          "gruppe": "Normal",
+          "kurz": "Flügel in Rumpfmitte",
+          "legt_fest": [
+            "Normalleitwerk hinten",
+            "Neutrale Flügellage für die Rollstabilität"
+          ]
+        },
+        {
+          "id": "tiefdecker",
+          "name": "Tiefdecker",
+          "gruppe": "Normal",
+          "kurz": "Flügel unten am Rumpf",
+          "legt_fest": [
+            "Normalleitwerk hinten",
+            "Mehr V-Form für dieselbe Rollstabilität"
+          ]
+        },
+        {
+          "id": "nurfluegel",
+          "name": "Nurflügel",
+          "gruppe": "Ohne Höhenleitwerk",
+          "kurz": "Kein Höhenleitwerk",
+          "legt_fest": [
+            "Pfeilung oder S-Schlag-Profil für die Längsstabilität",
+            "Elevons statt Höhen- und Querruder",
+            "Andere Stabilitätslogik (Lennon: eigene Reserven)"
+          ]
+        },
+        {
+          "id": "ente",
+          "name": "Ente",
+          "gruppe": "Höhenleitwerk vorn",
+          "kurz": "Vorflügel vorn",
+          "legt_fest": [
+            "Vorderer Flügel trägt mit",
+            "Stabilitätslogik kehrt sich um",
+            "Vorflügel muss vor dem Hauptflügel abreißen"
+          ]
+        },
+        {
+          "id": "doppeldecker",
+          "name": "Doppeldecker",
+          "gruppe": "Mehrere Tragflächen",
+          "kurz": "Zwei Tragflächen übereinander",
+          "legt_fest": [
+            "Zwei Flügel mit Staffelung und Abstand",
+            "Gegenseitige Beeinflussung der Flügel",
+            "Normalleitwerk hinten"
+          ]
+        },
+        {
+          "id": "tandem",
+          "name": "Tandem",
+          "gruppe": "Mehrere Tragflächen",
+          "kurz": "Zwei ähnlich große Flügel hintereinander",
+          "legt_fest": [
+            "Der hintere Flügel trägt mit und stabilisiert die Längsachse",
+            "Kein Höhenleitwerk; Seitenflosse am Hinterflügel",
+            "Schwerpunkt zwischen den Flügeln; Druckpropeller kaum unterzubringen"
+          ]
+        },
+        {
+          "id": "kasten",
+          "name": "Kastenflügel / Joined Wing",
+          "gruppe": "Mehrere Tragflächen",
+          "kurz": "Geschlossenes Flügelsystem",
+          "legt_fest": [
+            "Zwei Flügel, über Endscheiben verbunden (Kastenflügel) oder direkt verbunden (Joined Wing)",
+            "Kein Höhenleitwerk; Endscheiben als Seitenflächen",
+            "Prandtls »bestes Flügelsystem«: weniger induzierter Widerstand bei gleicher Spannweite"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "leitwerk",
+      "frage": "Leitwerk",
+      "warum": "Wie die Längs- und Richtungsstabilität entsteht. Welche Leitwerke gehen, hängt an der Bauart; die Mission sagt, welches typisch ist.",
+      "hinweis": "Pendelhöhenleitwerk ist eine Variante (Normal-, T-, Kreuz-, V-, Dach-, H-Leitwerk), keine eigene Konfiguration. Bei Scale folgt das Leitwerk dem Vorbild.",
+      "optionen": [
+        {
+          "id": "normal",
+          "name": "Normalleitwerk",
+          "gruppe": "Hinten am Rumpf",
+          "bauarten": [
+            "hochdecker",
+            "schulterdecker",
+            "mitteldecker",
+            "tiefdecker",
+            "doppeldecker"
+          ],
+          "typisch": [
+            "trainer",
+            "sport",
+            "kunstflug",
+            "3d",
+            "park",
+            "hang",
+            "wurf"
+          ],
+          "kurz": "Höhenleitwerk unten, Seitenleitwerk darüber",
+          "legt_fest": [
+            "Getrenntes Höhen- und Seitenruder",
+            "Leitwerksvolumen aus Bändern"
+          ]
+        },
+        {
+          "id": "t",
+          "name": "T-Leitwerk",
+          "gruppe": "Hinten am Rumpf",
+          "bauarten": [
+            "hochdecker",
+            "schulterdecker",
+            "mitteldecker",
+            "tiefdecker",
+            "doppeldecker"
+          ],
+          "typisch": [
+            "thermik",
+            "elektrosegler",
+            "scale_segler"
+          ],
+          "kurz": "Höhenleitwerk oben auf dem Seitenleitwerk",
+          "legt_fest": [
+            "Höhenleitwerk in sauberer Anströmung, weniger Widerstand",
+            "Rumpf auf Torsion belastet; bei hohem Anstellwinkel im Flügelnachlauf"
+          ]
+        },
+        {
+          "id": "kreuz",
+          "name": "Kreuzleitwerk",
+          "gruppe": "Hinten am Rumpf",
+          "bauarten": [
+            "hochdecker",
+            "schulterdecker",
+            "mitteldecker",
+            "tiefdecker",
+            "doppeldecker"
+          ],
+          "typisch": [
+            "thermik",
+            "elektrosegler",
+            "scale_segler"
+          ],
+          "kurz": "Höhenleitwerk auf halber Höhe der Seitenflosse",
+          "legt_fest": [
+            "Kompromiss zwischen Normal- und T-Leitwerk"
+          ]
+        },
+        {
+          "id": "v",
+          "name": "V-Leitwerk",
+          "gruppe": "Hinten am Rumpf",
+          "bauarten": [
+            "hochdecker",
+            "schulterdecker",
+            "mitteldecker",
+            "tiefdecker",
+            "doppeldecker"
+          ],
+          "typisch": [
+            "thermik",
+            "hang",
+            "speed",
+            "wurf",
+            "elektrosegler"
+          ],
+          "kurz": "Zwei schräge Flächen, Ruder gemischt",
+          "legt_fest": [
+            "Höhen- und Seitenruder über Mischer",
+            "Leichter, weniger Flächen"
+          ]
+        },
+        {
+          "id": "dach",
+          "name": "Dachleitwerk",
+          "gruppe": "Hinten am Rumpf",
+          "bauarten": [
+            "hochdecker",
+            "schulterdecker",
+            "mitteldecker",
+            "tiefdecker"
+          ],
+          "typisch": [],
+          "kurz": "Umgekehrtes V",
+          "legt_fest": [
+            "Braucht praktisch zwei Leitwerksträger oder eine nurflügelnahe Anordnung",
+            "Speziallösung"
+          ]
+        },
+        {
+          "id": "h",
+          "name": "H-Leitwerk",
+          "gruppe": "Hinten am Rumpf",
+          "bauarten": [
+            "hochdecker",
+            "schulterdecker",
+            "mitteldecker",
+            "tiefdecker",
+            "doppeldecker"
+          ],
+          "typisch": [],
+          "kurz": "Zwei Seitenflossen an den Enden des Höhenleitwerks",
+          "legt_fest": [
+            "Zwei Seitenflossen, auch auf Doppelleitwerksträgern",
+            "Häufig bei Scale und FPV"
+          ]
+        },
+        {
+          "id": "nf_mitte",
+          "name": "Mittelflosse",
+          "gruppe": "Nurflügel",
+          "bauarten": [
+            "nurfluegel"
+          ],
+          "typisch": [
+            "sport",
+            "park",
+            "speed",
+            "hang"
+          ],
+          "kurz": "Eine Seitenflosse in der Mitte",
+          "legt_fest": [
+            "Typisch für Brett- und Deltanurflügel",
+            "Längsstabilität aus S-Schlag-Profil oder Pfeilung"
+          ]
+        },
+        {
+          "id": "nf_winglet",
+          "name": "Winglets",
+          "gruppe": "Nurflügel",
+          "bauarten": [
+            "nurfluegel"
+          ],
+          "typisch": [
+            "sport",
+            "park",
+            "speed",
+            "hang"
+          ],
+          "kurz": "Seitenflächen an den Flügelspitzen",
+          "legt_fest": [
+            "Typisch für gepfeilte Nurflügel",
+            "Hebelarm aus der Pfeilung"
+          ]
+        },
+        {
+          "id": "nf_ohne",
+          "name": "Ohne Seitenflosse",
+          "gruppe": "Nurflügel",
+          "bauarten": [
+            "nurfluegel"
+          ],
+          "typisch": [],
+          "kurz": "Gieren über Spreizruder (Horten-Art)",
+          "legt_fest": [
+            "Keine Seitenfläche",
+            "Richtungsstabilität aus Pfeilung und Verwindung"
+          ]
+        },
+        {
+          "id": "ente_flosse",
+          "name": "Seitenflosse hinten",
+          "gruppe": "Ente",
+          "bauarten": [
+            "ente"
+          ],
+          "typisch": [],
+          "kurz": "Vorflügel plus Seitenflosse am Heck",
+          "legt_fest": [
+            "Höhenruder am Vorflügel",
+            "Meist keine geometrische V-Form nötig"
+          ]
+        },
+        {
+          "id": "ente_winglet",
+          "name": "Winglets am Hauptflügel",
+          "gruppe": "Ente",
+          "bauarten": [
+            "ente"
+          ],
+          "typisch": [],
+          "kurz": "Vorflügel plus Seitenflächen an den Spitzen",
+          "legt_fest": [
+            "Höhenruder am Vorflügel",
+            "Seitenruder in den Winglets"
+          ]
+        },
+        {
+          "id": "tandem_flosse",
+          "name": "Seitenflosse am Hinterflügel",
+          "gruppe": "Tandem",
+          "bauarten": [
+            "tandem"
+          ],
+          "typisch": [],
+          "kurz": "Hinterflügel stabilisiert, Flosse dahinter",
+          "legt_fest": [
+            "Längsstabilität aus dem Hinterflügel",
+            "Hebelarm für die Seitenflosse meist ausreichend"
+          ]
+        },
+        {
+          "id": "endscheiben",
+          "name": "Endscheiben",
+          "gruppe": "Kastenflügel",
+          "bauarten": [
+            "kasten"
+          ],
+          "typisch": [],
+          "kurz": "Die Verbindungsflächen wirken als Seitenflächen",
+          "legt_fest": [
+            "Optional zusätzliche Mittelflosse",
+            "Beim Joined Wing ohne Endscheiben: Mittelflosse"
+          ]
+        }
       ]
     },
     {
       "id": "spannweite",
       "frage": "Spannweite",
       "warum": "Die erste Zahl. Mit den Bändern der Mission folgt daraus das ganze Gerüst.",
-      "eingabe": {"einheit": "mm", "min": 300, "max": 4000, "schritt": 10, "beispiel": 1400},
-      "legt_fest": ["Größe des Modells", "Mit der Streckung: Flügeltiefe und Flügelfläche", "Mit der Flächenbelastung: die Zielmasse", "Mit Flügeltiefe und Fluggeschwindigkeit: die Reynoldszahl für die Profilwahl"]
+      "eingabe": {
+        "einheit": "mm",
+        "min": 300,
+        "max": 4000,
+        "schritt": 10,
+        "beispiel": 1400
+      },
+      "legt_fest": [
+        "Größe des Modells",
+        "Mit der Streckung: Flügeltiefe und Flügelfläche",
+        "Mit der Flächenbelastung: die Zielmasse",
+        "Mit Flügeltiefe und Fluggeschwindigkeit: die Reynoldszahl für die Profilwahl"
+      ]
     }
   ],
   "urmodell": [
-    {"was": "Flügelfläche und -tiefe", "aus": "Spannweite und Streckung (Band der Mission)", "art": "Rechnung"},
-    {"was": "Zielmasse", "aus": "Flügelfläche und Flächenbelastung (Band der Mission)", "art": "Rechnung"},
-    {"was": "Profil", "aus": "Beste Wahl aus der Profil-DB für Profilklasse und Reynoldszahl (gh-821)", "art": "Auswahl"},
-    {"was": "Flügelsegmente", "aus": "So wenige, wie die Ruder der Mission brauchen", "art": "Topologie"},
-    {"was": "Leitwerk und Hebelarm", "aus": "Bauart und Leitwerksvolumen (Band)", "art": "Topologie"},
-    {"was": "Schwerpunkt", "aus": "Neutralpunkt und SM_target — stabil per Konstruktion", "art": "Kanon", "eintrag": "cg-for-target-margin"},
-    {"was": "Antrieb", "aus": "Leistungsbelastung (Band) mal Masse, erste Wahl aus dem Teilekatalog", "art": "Auswahl", "nur_motor": true},
-    {"was": "Alle Leistungs- und Stabilitätswerte", "aus": "Der Rechenkanon rechnet das Urmodell wie jedes Flugzeug", "art": "Kanon", "eintrag": "navigator"}
-  ]
+    {
+      "was": "Flügelfläche und -tiefe",
+      "aus": "Spannweite und Streckung (Band der Mission)",
+      "art": "Rechnung"
+    },
+    {
+      "was": "Zielmasse",
+      "aus": "Flügelfläche und Flächenbelastung (Band der Mission)",
+      "art": "Rechnung"
+    },
+    {
+      "was": "Profil",
+      "aus": "Beste Wahl aus der Profil-DB für Profilklasse und Reynoldszahl (gh-821)",
+      "art": "Auswahl"
+    },
+    {
+      "was": "Flügelsegmente",
+      "aus": "So wenige, wie die Ruder der Mission brauchen",
+      "art": "Topologie"
+    },
+    {
+      "was": "Leitwerk und Hebelarm",
+      "aus": "Leitwerkskonfiguration (Frage 4) und Leitwerksvolumen (Band)",
+      "art": "Topologie"
+    },
+    {
+      "was": "Schwerpunkt",
+      "aus": "Neutralpunkt und SM_target — stabil per Konstruktion",
+      "art": "Kanon",
+      "eintrag": "cg-for-target-margin"
+    },
+    {
+      "was": "Antrieb",
+      "aus": "Leistungsbelastung (Band) mal Masse, erste Wahl aus dem Teilekatalog",
+      "art": "Auswahl",
+      "nur_motor": true
+    },
+    {
+      "was": "Alle Leistungs- und Stabilitätswerte",
+      "aus": "Der Rechenkanon rechnet das Urmodell wie jedes Flugzeug",
+      "art": "Kanon",
+      "eintrag": "navigator"
+    }
+  ],
+  "bewertung": {
+    "trainer": {
+      "hochdecker": "T",
+      "schulterdecker": "P",
+      "mitteldecker": "U",
+      "tiefdecker": "P",
+      "nurfluegel": "U",
+      "ente": "U",
+      "doppeldecker": "U",
+      "tandem": "U",
+      "kasten": "U"
+    },
+    "sport": {
+      "hochdecker": "P",
+      "schulterdecker": "T",
+      "mitteldecker": "T",
+      "tiefdecker": "T",
+      "nurfluegel": "T",
+      "ente": "P",
+      "doppeldecker": "P",
+      "tandem": "U",
+      "kasten": "U"
+    },
+    "kunstflug": {
+      "hochdecker": "U",
+      "schulterdecker": "P",
+      "mitteldecker": "T",
+      "tiefdecker": "T",
+      "nurfluegel": "U",
+      "ente": "U",
+      "doppeldecker": "T",
+      "tandem": "U",
+      "kasten": "U"
+    },
+    "3d": {
+      "hochdecker": "U",
+      "schulterdecker": "P",
+      "mitteldecker": "T",
+      "tiefdecker": "T",
+      "nurfluegel": "U",
+      "ente": "U",
+      "doppeldecker": "P",
+      "tandem": "N",
+      "kasten": "N"
+    },
+    "speed": {
+      "hochdecker": "U",
+      "schulterdecker": "P",
+      "mitteldecker": "T",
+      "tiefdecker": "P",
+      "nurfluegel": "T",
+      "ente": "U",
+      "doppeldecker": "U",
+      "tandem": "U",
+      "kasten": "U"
+    },
+    "elektrosegler": {
+      "hochdecker": "P",
+      "schulterdecker": "T",
+      "mitteldecker": "P",
+      "tiefdecker": "U",
+      "nurfluegel": "P",
+      "ente": "U",
+      "doppeldecker": "N",
+      "tandem": "U",
+      "kasten": "U"
+    },
+    "scale": {
+      "hochdecker": "T",
+      "schulterdecker": "P",
+      "mitteldecker": "P",
+      "tiefdecker": "T",
+      "nurfluegel": "P",
+      "ente": "U",
+      "doppeldecker": "T",
+      "tandem": "U",
+      "kasten": "U"
+    },
+    "park": {
+      "hochdecker": "T",
+      "schulterdecker": "P",
+      "mitteldecker": "T",
+      "tiefdecker": "P",
+      "nurfluegel": "T",
+      "ente": "P",
+      "doppeldecker": "P",
+      "tandem": "U",
+      "kasten": "U"
+    },
+    "thermik": {
+      "hochdecker": "P",
+      "schulterdecker": "T",
+      "mitteldecker": "U",
+      "tiefdecker": "U",
+      "nurfluegel": "P",
+      "ente": "U",
+      "doppeldecker": "N",
+      "tandem": "U",
+      "kasten": "U"
+    },
+    "hang": {
+      "hochdecker": "U",
+      "schulterdecker": "T",
+      "mitteldecker": "T",
+      "tiefdecker": "U",
+      "nurfluegel": "T",
+      "ente": "U",
+      "doppeldecker": "U",
+      "tandem": "U",
+      "kasten": "U"
+    },
+    "wurf": {
+      "hochdecker": "P",
+      "schulterdecker": "T",
+      "mitteldecker": "U",
+      "tiefdecker": "U",
+      "nurfluegel": "P",
+      "ente": "U",
+      "doppeldecker": "N",
+      "tandem": "U",
+      "kasten": "N"
+    },
+    "scale_segler": {
+      "hochdecker": "P",
+      "schulterdecker": "T",
+      "mitteldecker": "T",
+      "tiefdecker": "U",
+      "nurfluegel": "P",
+      "ente": "U",
+      "doppeldecker": "U",
+      "tandem": "U",
+      "kasten": "U"
+    }
+  },
+  "gruende": {
+    "*:tandem": "Experimentell: in der Modelltabelle kein Tandem-Modell. [Modelltabelle; Praxis]",
+    "*:kasten": "Experimentell: in der Modelltabelle kein Kastenflügel, die RC-Quellen behandeln ihn nicht. [Modelltabelle; Praxis]",
+    "*:ente": "Enten-Segler sind selten. [Modelltabelle]",
+    "trainer:mitteldecker": "Schwerer zu bauen; der Trainer will die Pendelstabilität des Hochdeckers. [Quelle: wing-wing-configuration]",
+    "trainer:nurfluegel": "Gibt es (EPP-Nurflügel), aber keine Quelle führt ihn als Anfängerauslegung. [Quelle: rcn-nurfluegel]",
+    "trainer:ente": "Gibt es (Dreiflächen-Trainer), aber keine Quelle führt sie als Anfängerauslegung. [Quelle: lennon-three-surface-config]",
+    "trainer:doppeldecker": "Gibt es, aber keine Quelle führt ihn als Anfängerauslegung. [Praxis]",
+    "kunstflug:hochdecker": "Die Pendelstabilität des Hochdeckers arbeitet gegen saubere Rollen. [Quelle: wing-wing-configuration, lennon-wing-position-dihedral]",
+    "kunstflug:nurfluegel": "Wenig Nickdämpfung, passt nicht zu Präzisionskunstflug. [Quelle: rcn-nurfluegel]",
+    "kunstflug:ente": "Enten fliegen nahe der Stabilitätsgrenze, passt nicht zu Präzisionskunstflug. [Quelle: rcn-canard]",
+    "3d:hochdecker": "Selten: 3D braucht große Ruderflächen im Propellerstrahl. [Praxis]",
+    "3d:nurfluegel": "Selten: 3D braucht große Ruderflächen im Propellerstrahl. [Praxis]",
+    "3d:ente": "Selten: 3D braucht große Ruderflächen im Propellerstrahl. [Praxis]",
+    "3d:tandem": "Das »Leitwerk« ist ein zweiter tragender Flügel: kein großes, angeblasenes Höhen- und Seitenruder zum Schweben. [Praxis]",
+    "3d:kasten": "Das »Leitwerk« ist ein zweiter tragender Flügel: kein großes, angeblasenes Höhen- und Seitenruder zum Schweben. [Praxis]",
+    "speed:hochdecker": "Widerstand und Anordnung arbeiten gegen Geschwindigkeit. [Praxis]",
+    "speed:ente": "Selten, aber vorhanden (Speed Canard SC 01 B). [Modelltabelle]",
+    "speed:doppeldecker": "Der Widerstand widerspricht der Mission; Doppeldecker-Pylonklassen gibt es, darum nicht unsinnig. [Praxis]",
+    "elektrosegler:tiefdecker": "Flügelspitzen setzen am Boden auf, es braucht mehr V-Form; Tiefdecker-Segler sind selten. [Quelle: lennon-wing-position-dihedral; Praxis]",
+    "thermik:tiefdecker": "Flügelspitzen setzen am Boden auf, es braucht mehr V-Form; Tiefdecker-Segler sind selten. [Quelle: lennon-wing-position-dihedral; Praxis]",
+    "wurf:tiefdecker": "Flügelspitzen setzen am Boden auf, es braucht mehr V-Form; Tiefdecker-Segler sind selten. [Quelle: lennon-wing-position-dihedral; Praxis]",
+    "scale_segler:tiefdecker": "Flügelspitzen setzen am Boden auf, es braucht mehr V-Form; Tiefdecker-Segler sind selten. [Quelle: lennon-wing-position-dihedral; Praxis]",
+    "hang:tiefdecker": "Flügelspitzen setzen am Boden auf, es braucht mehr V-Form; Tiefdecker-Segler sind selten. [Quelle: lennon-wing-position-dihedral; Praxis]",
+    "elektrosegler:doppeldecker": "Die Flügel stören sich gegenseitig, das widerspricht der Gleitleistung. In der Modelltabelle kein einziger Doppeldecker-Segler. [Quelle: rcn-flaechenbelastung; Modelltabelle]",
+    "thermik:doppeldecker": "Die Flügel stören sich gegenseitig, das widerspricht der Gleitleistung. In der Modelltabelle kein einziger Doppeldecker-Segler. [Quelle: rcn-flaechenbelastung; Modelltabelle]",
+    "thermik:mitteldecker": "Möglich, aber der Rumpf-Flügel-Übergang stört. [Praxis]",
+    "wurf:mitteldecker": "Möglich, aber der Rumpf-Flügel-Übergang stört. [Praxis]",
+    "hang:hochdecker": "Bei Hangseglern selten. [Praxis]",
+    "hang:doppeldecker": "Der Wind liefert die Energie; Hang-Doppeldecker aus Schaum fliegen, sind aber selten. [Praxis]",
+    "wurf:doppeldecker": "Geworfen wird an der Flügelspitze; die Klasse begrenzt Spannweite (1,5 m) und Servos (2). Streben und zweiter Flügel widersprechen dem. [Quelle: rcn-hlg]",
+    "wurf:kasten": "Ein geschlossener Flügel hat keine freie Spitze zum Werfen. [Praxis]",
+    "wurf:tandem": "Im Prinzip möglich, nie gesehen. [Praxis]",
+    "scale:ente": "Nur wenige Vorbilder (Pou-du-Ciel, Quickie, VariEze). [Quelle: lennon-tandem-wing-config; Praxis]",
+    "scale:tandem": "Nur wenige Vorbilder (Pou-du-Ciel, Quickie, VariEze). [Quelle: lennon-tandem-wing-config; Praxis]",
+    "scale:kasten": "Nur wenige Vorbilder (Pou-du-Ciel, Quickie, VariEze). [Quelle: lennon-tandem-wing-config; Praxis]",
+    "scale_segler:doppeldecker": "Historische Doppeldecker-Hängegleiter gibt es (Chanute 1896), darum nicht unsinnig. [Praxis]"
+  },
+  "legende": {
+    "T": "typisch",
+    "P": "möglich",
+    "U": "ungewöhnlich",
+    "N": "unsinnig"
+  }
 }

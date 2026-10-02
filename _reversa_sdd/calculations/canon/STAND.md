@@ -323,3 +323,5 @@ Bauart → Spannweite), vom Kanon wie jedes Flugzeug gerechnet; `cruise-thrust-c
 gestrichen. Auswahlgraph als HTML unter `_reversa_sdd/calculations/auswahl/`.
 
 **Auswahlgraph veröffentlicht:** https://claude.ai/artifact/XqNVPRRcsqcJEkckMpipxS — Quelle `_reversa_sdd/calculations/auswahl/auswahl.json`, Bau `poetry run python scripts/build_selection_graph.py` (HTML nie von Hand ändern).
+
+**Auswahlgraph v2 (02.10.2026):** fünf Fragen (Leitwerk als Frage 4), Tandem und Kastenflügel/Joined Wing als Bauarten, jede Kombination Motor × Mission × Bauart bewertet (RC-Prüfer: Fachquellen + Modelltabelle 2 674 Modelle; Doppeldecker-Segler unsinnig, kein einziger in der Tabelle). Offen vom Prüfer vorgeschlagen: Startart (Segler), Antriebsanordnung, Rumpfform, Steuerachsen, Fahrwerk, Nurflügel-Grundriss; fehlende Missionen Combat/Funflyer, Jet/Impeller, FPV.

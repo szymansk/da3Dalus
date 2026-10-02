@@ -2252,12 +2252,20 @@ weit“). Festgehalten, damit es nicht verloren geht: Ein geführter Prozess fra
 jede Antwort den Lösungsraum stark beschneidet **und** das Bild im Kopf schärft. Für RC,
 aufbauend auf der früheren Festlegung *Mission → Typ → Spannweite*:
 
-**Festgelegt am 02.10.2026 (Maintainer) — vier Fragen bis zum Urmodell:**
+**Festgelegt am 02.10.2026 (Maintainer) — fünf Fragen bis zum Urmodell:**
 
 1. **Motorisiert?** ja / nein — die erste Frage überhaupt; sie teilt Missionen, Bauarten und Bänder
 2. **Mission** — Trainer, Kunstflug, Hotwing, Hang, Thermik …
-3. **Bauart** — Normal (Hoch-, Schulter-, Mittel-, Tiefdecker), Ente, Nurflügel, Doppeldecker …
-4. **Spannweite**
+3. **Bauart** — Normal (Hoch-, Schulter-, Mittel-, Tiefdecker), Nurflügel, Ente, Doppeldecker,
+   Tandem, Kastenflügel / Joined Wing
+4. **Leitwerk** — welche gehen, hängt an der Bauart (Normal-, T-, Kreuz-, V-, Dach-, H-Leitwerk;
+   beim Nurflügel Mittelflosse, Winglets oder keine; Ente, Tandem, Kastenflügel je eigene)
+5. **Spannweite**
+
+Jede Kombination Motor × Mission × Bauart ist bewertet (typisch / möglich / ungewöhnlich /
+unsinnig, mit Begründung und Quelle: RC-Fachquellen, Modelltabelle mit 2 674 Modellen,
+sonst als Praxis markiert). Unsinniges ist nicht wählbar — z. B. Doppeldecker-Segler: in der
+Tabelle kein einziger. Die Bewertung ist Auswahlhilfe, nicht Kanon (A10).
 
 Daraus entsteht das **Urmodell** (O12): Flächenbelastung aus der Mission, bestes Profil aus der
 DB, Flügel mit so wenigen Segmenten, wie die Ruder brauchen, Schwerpunkt aus Neutralpunkt und

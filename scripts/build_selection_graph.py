@@ -3,7 +3,7 @@
     poetry run python scripts/build_selection_graph.py
 
 The page is generated — edit the JSON, never the HTML. It runs parallel to the calculation
-canon: four guided questions (motorised? -> mission -> layout -> span) lead to an Urmodell,
+canon: five guided questions (motorised? -> mission -> layout -> tail -> span) lead to an Urmodell,
 which the canon then computes like any airplane (ANFORDERUNGEN.md O12, section 6.1).
 The output is pure ASCII (data as \\u escapes, text as HTML entities) so no viewer can
 mis-decode it.
@@ -27,6 +27,7 @@ TEMPLATE = r"""<title>Urmodell-Auswahl</title>
   --bg:#F2F3F5; --panel:#FFFFFF; --ink:#15171C; --muted:#5B616E; --line:#D8DBE1;
   --accent:#FF8400; --accent-ink:#A85400; --chosen:#FFF0DF; --dim:#A9AEB8;
   --tag-rech:#2F6F9E; --tag-top:#6B5BA8; --tag-aus:#3E7F4E; --tag-kan:#A85400;
+    --good:#2E7D4F; --warn:#9A6200; --bad:#B23A3A;
   --sans:"Geist",ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;
   --mono:"JetBrains Mono",ui-monospace,"SFMono-Regular",Menlo,monospace;
 }
@@ -35,6 +36,7 @@ TEMPLATE = r"""<title>Urmodell-Auswahl</title>
     --bg:#111317; --panel:#1A1D22; --ink:#E8EAEE; --muted:#9AA1AC; --line:#2B3038;
     --accent:#FF8F1F; --accent-ink:#FFB066; --chosen:#2A1D0F; --dim:#555B66;
     --tag-rech:#7FB3DA; --tag-top:#B4A8E6; --tag-aus:#8CC79A; --tag-kan:#FFB066;
+    --good:#7CCB97; --warn:#E5B45C; --bad:#F08A8A;
     color-scheme:dark;
   }
 }
@@ -42,6 +44,7 @@ TEMPLATE = r"""<title>Urmodell-Auswahl</title>
   --bg:#111317; --panel:#1A1D22; --ink:#E8EAEE; --muted:#9AA1AC; --line:#2B3038;
   --accent:#FF8F1F; --accent-ink:#FFB066; --chosen:#2A1D0F; --dim:#555B66;
   --tag-rech:#7FB3DA; --tag-top:#B4A8E6; --tag-aus:#8CC79A; --tag-kan:#FFB066;
+    --good:#7CCB97; --warn:#E5B45C; --bad:#F08A8A;
   color-scheme:dark;
 }
 *{box-sizing:border-box}
@@ -55,7 +58,7 @@ h1{font-size:26px;line-height:1.15;margin:0;text-wrap:balance;font-weight:700}
 .path .seg{padding:3px 9px;border:1px solid var(--line);border-radius:4px;background:var(--panel)}
 .path .seg.set{border-color:var(--accent);color:var(--accent-ink)}
 .path .arrow{color:var(--dim)}
-.steps{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px;align-items:start}
+.steps{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:12px;align-items:start}
 .step{background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:14px;display:grid;gap:10px}
 .step.locked{opacity:.55}
 .stephead{display:grid;gap:3px}
@@ -70,12 +73,18 @@ h1{font-size:26px;line-height:1.15;margin:0;text-wrap:balance;font-weight:700}
 .opt.on{background:var(--chosen);border-color:var(--accent)}
 .opt .n{font-weight:600;font-size:14px}
 .opt .k{font-size:12.5px;color:var(--muted)}
-.opt[disabled]{cursor:not-allowed;opacity:.5}
+.opt[disabled]{cursor:not-allowed;opacity:.55}
+.opt .top{display:flex;gap:6px;align-items:baseline;justify-content:space-between}
+.badge{font-family:var(--mono);font-size:10px;letter-spacing:.04em;padding:0 5px;border-radius:3px;border:1px solid currentColor;white-space:nowrap}
+.badge.T{color:var(--good)} .badge.U{color:var(--warn)} .badge.N{color:var(--bad)}
+.opt .r{font-size:11.5px;color:var(--muted);line-height:1.35;margin-top:3px}
+.stephint{font-size:12px;color:var(--muted);margin:0;border-top:1px dashed var(--line);padding-top:8px}
+.legend{display:flex;flex-wrap:wrap;gap:6px 12px;font-size:12px;color:var(--muted)}
 .span{display:grid;gap:8px}
 .span label{font-size:13px;color:var(--muted)}
 .span .row{display:flex;gap:10px;align-items:center}
-.span input[type=range]{flex:1;accent-color:var(--accent)}
-.span input[type=number]{width:96px;font-family:var(--mono);font-size:14px;padding:5px 7px;border:1px solid var(--line);border-radius:4px;background:var(--bg);color:var(--ink);font-variant-numeric:tabular-nums}
+.span input[type=range]{flex:1;min-width:0;accent-color:var(--accent)}
+.span input[type=number]{width:78px;flex:none;font-family:var(--mono);font-size:14px;padding:5px 7px;border:1px solid var(--line);border-radius:4px;background:var(--bg);color:var(--ink);font-variant-numeric:tabular-nums}
 .span .unit{font-family:var(--mono);font-size:12.5px;color:var(--muted)}
 .fixes{display:grid;gap:4px;border-top:1px dashed var(--line);padding-top:9px}
 .fixes .t{font-family:var(--mono);font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
@@ -96,7 +105,8 @@ td.was{font-weight:600;white-space:nowrap}
 tr.off td{color:var(--dim)} tr.off .tag{color:var(--dim)}
 .note{font-size:12.5px;color:var(--muted);margin:0;max-width:90ch}
 code{font-family:var(--mono);font-size:12.5px}
-@media (max-width:980px){.steps{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media (max-width:1100px){.steps{grid-template-columns:repeat(3,minmax(0,1fr))}}
+@media (max-width:760px){.steps{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media (max-width:560px){.steps{grid-template-columns:1fr} td.was{white-space:normal}}
 @media (prefers-reduced-motion:no-preference){.opt{transition:border-color .12s,background .12s}}
 </style>
@@ -105,8 +115,9 @@ code{font-family:var(--mono);font-size:12.5px}
   <header>
     <div class="eyebrow">da3Dalus &middot; Auswahlgraph &middot; parallel zum Rechenkanon</div>
     <h1>Urmodell-Auswahl</h1>
-    <p class="lede">Vier Fragen f&uuml;hren zu einem ersten, g&uuml;ltigen und stabilen Flugzeug. Jede Antwort legt etwas fest; was daraus folgt, steht unten. Der Rechenkanon rechnet das Urmodell danach wie jedes andere Flugzeug.</p>
+    <p class="lede">F&uuml;nf Fragen f&uuml;hren zu einem ersten, g&uuml;ltigen und stabilen Flugzeug. Jede Antwort legt etwas fest; was daraus folgt, steht unten. Der Rechenkanon rechnet das Urmodell danach wie jedes andere Flugzeug.</p>
     <div class="path" id="path" aria-live="polite"></div>
+    <div class="legend"><span><span class="badge T">typisch</span> h&auml;ufig f&uuml;r diese Mission</span><span>ohne Abzeichen: m&ouml;glich</span><span><span class="badge U">ungew&ouml;hnlich</span> gibt es, aber selten</span><span><span class="badge N">unsinnig</span> widerspricht der Mission, nicht w&auml;hlbar</span></div>
   </header>
   <section class="steps" id="steps" aria-label="Fragen"></section>
   <section class="urmodell" aria-label="Urmodell">
@@ -120,12 +131,21 @@ code{font-family:var(--mono);font-size:12.5px}
 <script>
 (function(){
   const D=window.__AUSWAHL__, S=D.schritte;
-  const pick={motor:"ja", mission:"trainer", bauart:"hochdecker", spannweite:1400};
+  const pick={motor:"ja", mission:"trainer", bauart:"hochdecker", leitwerk:"normal", spannweite:1400};
   let example=true;
   const el=(t,c,h)=>{const e=document.createElement(t); if(c) e.className=c; if(h!=null) e.innerHTML=h; return e;};
   const esc=s=>String(s).replace(/[&<>]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;"}[c]));
   const opt=(step,id)=>(step.optionen||[]).find(o=>o.id===id);
-  const allowed=o=>!o.wenn||Object.entries(o.wenn).every(([k,v])=>pick[k]===v);
+  const allowed=o=>(!o.wenn||Object.entries(o.wenn).every(([k,v])=>pick[k]===v))&&(!o.bauarten||o.bauarten.includes(pick.bauart));
+  // rating of an option for the chosen mission: layouts from the matrix, tails from their typical-missions list
+  const rating=(st,o)=>{
+    if(!pick.mission) return null;
+    if(st.id==="bauart") return (D.bewertung[pick.mission]||{})[o.id]||null;
+    if(st.id==="leitwerk") return (o.typisch||[]).includes(pick.mission)?"T":null;
+    return null;
+  };
+  const reason=o=>D.gruende[pick.mission+":"+o.id]||D.gruende["*:"+o.id]||"";
+  const usable=(st,o)=>allowed(o)&&rating(st,o)!=="N";
   function fixesBox(items){
     const b=el("div","fixes"); b.appendChild(el("div","t","legt fest"));
     if(!items||!items.length){ b.appendChild(el("p","none","Noch nichts gew&auml;hlt.")); return b; }
@@ -157,15 +177,19 @@ code{font-family:var(--mono);font-size:12.5px}
         st.optionen.filter(allowed).forEach(o=>{
           if(o.gruppe&&o.gruppe!==grp){ grp=o.gruppe; opts.appendChild(el("div","grp",esc(grp))); }
           const b=el("button","opt"+(pick[st.id]===o.id?" on":""));
-          b.type="button"; b.id="opt-"+st.id+"-"+o.id; b.disabled=!prevDone;
+          const r=rating(st,o);
+          b.type="button"; b.id="opt-"+st.id+"-"+o.id; b.disabled=!prevDone||r==="N";
           b.setAttribute("aria-pressed",pick[st.id]===o.id?"true":"false");
-          b.innerHTML=`<span class="n">${esc(o.name)}</span><span class="k">${esc(o.kurz)}</span>`;
+          const badge=r&&r!=="P"?`<span class="badge ${r}">${esc(D.legende[r])}</span>`:"";
+          const why=(r==="U"||r==="N")?`<span class="r">${esc(reason(o))}</span>`:"";
+          b.innerHTML=`<span class="top"><span class="n">${esc(o.name)}</span>${badge}</span><span class="k">${esc(o.kurz)}</span>${why}`;
           b.addEventListener("click",()=>choose(st,o.id));
           opts.appendChild(b);
         });
         box.appendChild(opts);
         const sel=opt(st,pick[st.id]);
         box.appendChild(fixesBox(sel?sel.legt_fest:null));
+        if(st.hinweis) box.appendChild(el("p","stephint",esc(st.hinweis)));
       }
       host.appendChild(box);
     });
@@ -174,7 +198,9 @@ code{font-family:var(--mono);font-size:12.5px}
   function choose(st,id){
     pick[st.id]=id; example=false;
     // a later answer that no longer fits the earlier ones is cleared
-    S.forEach(s=>{ if(s.optionen&&pick[s.id]!=null){ const o=opt(s,pick[s.id]); if(o&&!allowed(o)) pick[s.id]=null; } });
+    S.forEach(s=>{ if(s.optionen&&pick[s.id]!=null){ const o=opt(s,pick[s.id]); if(o&&!usable(s,o)) pick[s.id]=null; } });
+    // a layout with exactly one tail option takes it directly
+    const lw=S.find(s=>s.id==="leitwerk"); if(lw&&pick.bauart&&pick.leitwerk==null){ const only=lw.optionen.filter(allowed); if(only.length===1) pick.leitwerk=only[0].id; }
     render();
   }
   function renderPath(){
