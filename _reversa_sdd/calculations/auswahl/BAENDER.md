@@ -32,7 +32,7 @@ Jede dieser Angaben kommt aus einer Antwort, einem Band oder einem Vorgabewert.
 | Flächenbelastung | **Ergebnis** `m/S`; Plausibilitätsprüfung gegen [V] |
 | Zuspitzung | [V] für Trainer, Sport, Kunstflug, Segler; sonst — |
 | Schränkung | Nurflügel [V]; sonst — (Vorgabe 0°) |
-| Pfeilung | Nurflügel —, **Lücke** |
+| Pfeilung | Brett 0°; Pfeil als Vorgabe ≤ 20° (Panknin), §3c |
 | V-Form | aus Flügellage und Steuerachsen [V] |
 | Profil | Profilklasse der Mission [V], dann beste Wahl aus der DB bei der Reynoldszahl des Urmodells |
 | Rumpflänge | Verhältnis Rumpflänge zu Spannweite je Mission [T] |
@@ -275,10 +275,62 @@ Quellen:
 - [Lelke](https://charlesriverrc.org/articles/design-and-construction/aircraft-design/software/helmut-lelkes-design-analysis-program/da_web.pdf)
 - [RCSD-Archiv](https://www.rcsoaringdigest.com/Trimming.html)
 
+## 3c. Nurflügel: Pfeilung (recherchiert 02.10.2026)
+
+**Hypothese des Maintainers:** Die Pfeilung folgt aus der Auslegung des Ruderhebels. Ein ungepfeilter
+Flügel ist am effizientesten und neigt am wenigsten zur Taumelschwingung (Dutch roll). Er hat aber
+kaum Ruderhebel und ist empfindlich auf die Schwerpunktlage.
+
+**Befund (RC-Prüfer und Aerodynamik-Prüfer):**
+
+| Teilaussage | Ergebnis | Beleg |
+|---|---|---|
+| Die Pfeilung erzeugt den Ruderhebel und den Schwerpunktbereich | **bestätigt**: wirksamer Hebelarm ∝ halbe gepfeilte Spannweite · tan Λ; die Lage des Neutralpunkts lässt sich über die Pfeilung einstellen | NACA ACR L4H19 (1944); lennon-tailless-sweep-washout |
+| Das Brett ist empfindlich auf den Schwerpunkt | **bestätigt**. Ursache: Die Elevons sitzen nur ≈ 0,5–0,75 c̄ hinter dem Neutralpunkt, also sind $C_{m\delta}$ und $C_{mq}$ klein. Jede Schwerpunktverschiebung kostet $\Delta\delta = \Delta SM\,C_L/C_{m\delta}$. Das Brett braucht ein S-Schlag-Profil ($C_{m0}>0$) und einen Nasenausleger für den Schwerpunkt | Anderson §4.9; lennon-tailless-cg-static-margin; flying-wing-reflex-airfoil |
+| Das Brett neigt am wenigsten zur Taumelschwingung | **im Kern bestätigt**. Der Pfeilungsanteil des Schieberollmoments $\Delta C_{l\beta} \propto -C_L \sin 2\Lambda$ fehlt; er wächst im Langsamflug und beim Kreisen. Aber auch $C_{n\beta}$ ist klein, das Problem wandert zur schwachen Richtungsstabilität und Spiralneigung | eigene Herleitung (Aerodynamik-Prüfer); Sadraey §12.3.3 |
+| Das Brett ist am effizientesten | **nicht belegt**. Das Brett spart Schränkung und Pfeilung, zahlt aber mit dem S-Schlag-Profil (9–15 % weniger $C_{L,max}$) und mit Trimmwiderstand. Einen direkten Vergleich gibt es nicht | flying-wing-reflex-airfoil; rcn-nurfluegel |
+
+**Pfeilung und Schränkung sind gekoppelt (Panknin).** Bei gewählter Pfeilung folgt die nötige
+Schränkung aus Pfeilung, Zuspitzung, Streckung, Profilmomenten, Auslegungs-$C_L$ und Stabilitätsmaß:
+
+$$\alpha_{total} = \frac{K_1 C_{M,root} + K_2 C_{M,tip} - C_L\,St}{1{,}4\cdot10^{-5}\,\lambda^{1{,}43}\,\Lambda_{25}},\quad
+K_1 = \tfrac14\frac{3+2\Gamma+\Gamma^2}{1+\Gamma+\Gamma^2},\; K_2 = 1-K_1$$
+
+und $\alpha_{geo} = \alpha_{total} - (\alpha_{0,root}-\alpha_{0,tip})$.
+- $\Lambda_{25}$ in Grad, $\Gamma$ ist hier die Zuspitzung und $St$ das Stabilitätsmaß als Bruch.
+- Die Formel ist empirisch angepasst und gilt für ein Trapez mit linearer Schränkung.
+- Bei $\Lambda\to0$ läuft sie gegen unendlich. **Für das Brett ist sie unbrauchbar.**
+- Der RC-Prüfer hat Panknins Beispiel nachgerechnet: −3,4° gegenüber −3,2° auf der Seite. Der
+  Unterschied kommt von gerundeten K-Werten.
+- Quelle: [b2streamlines/Panknin](https://b2streamlines.com/Panknin/Panknin.html).
+
+**Grenzen:**
+- Die Pfeilung an der 25-%-Linie sollte unter etwa 20° bleiben (Panknin). Darüber verschlechtert sich
+  die Strömung und Steuerprobleme werden möglich.
+- Die NACA empfiehlt beim gepfeilten Nurflügel etwa 0° geometrische V-Form, damit die wirksame V-Form
+  3–4° nicht übersteigt.
+
+**Für „Mission → Pfeilwinkel" gibt es keine Quelle.** Auch einen Sollwert für den Ruderhebel nennt
+keine Quelle; die Umkehrung „Pfeilung aus Soll-Hebel" hat deshalb keine Grundlage. Für das Urmodell
+folgt daraus:
+- **Brett:** 0° Pfeilung, S-Schlag-Profil, Nasenausleger.
+- **Pfeil:** Die Pfeilung ist eine Vorgabe ≤ 20°. Panknins Beispiel-Thermiksegler hat 17°.
+- **Schränkung:** Sie wird nicht nach Panknin geschätzt, sondern mit dem Kanon getrimmt:
+  $C_m = 0$ beim Auslegungs-$C_L$ mit dem Stabilitätsmaß-Ziel, über AeroBuildup und
+  `cg-for-target-margin`. Panknin liefert nur den Startwert.
+
+**Was der Kanon kann und was nicht:**
+- Er rechnet $C_{l\beta}$, $C_{n\beta}$, Neutralpunkt und Ruderwirkung statisch
+  (lateral-static-stability, neutral-point).
+- **Die Dämpfung der Taumelschwingung braucht eine Eigenwertanalyse mit Trägheiten.** Die ist nicht
+  im Kanon (Stand A10 und §2.3).
+
 ## 4. Lücken: Bänder ohne Quelle
 
 1. ~~Leistungsbelastung W/kg~~: ✅ entschieden am 02.10.2026 (§3a).
-2. **Pfeilung des Nurflügels.**
+2. **Pfeilung des Nurflügels:** Der Mechanismus ist geklärt (§3c). Für die Pfeilung je Mission gibt
+   es keine Quelle; offen ist, ob Brett oder Pfeil eine eigene Auswahl wird und welcher Vorgabewert
+   für den Pfeil gilt.
 3. **Segler:** Leitwerk, V-Form, Einstellwinkel und Ausschläge sind belegt (§3b). Die Stabilitätsreserve ist
    belegt (Maintainer); Nurflügel nach Lennon 5–10 % (entschieden).
 4. **3D, Speed, Park und Scale:** Zuspitzung, Leitwerksvolumen, Stabilitätsreserve und Ruder. Aus
