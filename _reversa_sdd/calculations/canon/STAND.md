@@ -331,3 +331,5 @@ gestrichen. Auswahlgraph als HTML unter `_reversa_sdd/calculations/auswahl/`.
 **Auswahlgraph v5 (02.10.2026):** Taxonomie bereinigt (Maintainer): Ente und Nurflügel sind Leitwerkskonfigurationen; sieben Fragen — Motor, Mission, Tragflügel, Flügellage (nur Eindecker, inkl. „ohne Rumpf"), Leitwerk, Steuerachsen, Spannweite. Nurflügel: Elevons typisch (Horten-Art).
 
 **Auswahlgraph v6 (02.10.2026):** schematische Dreiseitenansicht (Draufsicht, Seiten-, Vorderansicht) aus den Antworten, reines SVG; Ruder orange. Streckung je Mission nur zur Anschauung (`skizze.streckung`), kein Band.
+
+**Auswahlgraph v7 (02.10.2026):** Bewertungsmatrix vom RC-Prüfer in der neuen Einteilung neu erstellt (Tragflügel × Mission, Flügellage × Mission, Leitwerksgruppe hinten/Ente/Nurflügel × Mission, typische Leitwerke je Mission); keine neuen Sperren, nur die drei Doppeldecker-Segler. Bänder und Lücken: `auswahl/BAENDER.md`.
