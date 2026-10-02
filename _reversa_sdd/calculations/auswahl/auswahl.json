@@ -203,61 +203,22 @@
       ]
     },
     {
-      "id": "bauart",
-      "frage": "Bauart",
-      "warum": "Das Tragflügelsystem und die Lage des Flügels am Rumpf. Wo das Höhenleitwerk sitzt (hinten, vorn als Ente, keins), fragt erst Frage 4. Bewertung je Mission aus RC-Quellen und Modelltabelle (2 674 Modelle).",
+      "id": "trag",
+      "frage": "Tragflügel",
+      "warum": "Wie viele tragende Flügel es gibt und wie sie angeordnet sind. Bewertung je Mission aus RC-Quellen und Modelltabelle (2 674 Modelle).",
       "optionen": [
         {
-          "id": "hochdecker",
-          "name": "Hochdecker",
-          "gruppe": "Eindecker",
-          "kurz": "Flügel oben am Rumpf",
+          "id": "eindecker",
+          "name": "Eindecker",
+          "kurz": "Ein Tragflügel",
           "legt_fest": [
-            "Pendelstabilität: weniger V-Form nötig"
-          ]
-        },
-        {
-          "id": "schulterdecker",
-          "name": "Schulterdecker",
-          "gruppe": "Eindecker",
-          "kurz": "Flügel knapp unter der Oberkante",
-          "legt_fest": [
-            "V-Form zwischen Hoch- und Mitteldecker"
-          ]
-        },
-        {
-          "id": "mitteldecker",
-          "name": "Mitteldecker",
-          "gruppe": "Eindecker",
-          "kurz": "Flügel in Rumpfmitte",
-          "legt_fest": [
-            "Neutrale Flügellage für die Rollstabilität"
-          ]
-        },
-        {
-          "id": "tiefdecker",
-          "name": "Tiefdecker",
-          "gruppe": "Eindecker",
-          "kurz": "Flügel unten am Rumpf",
-          "legt_fest": [
-            "Mehr V-Form für dieselbe Rollstabilität"
-          ]
-        },
-        {
-          "id": "nurfluegel",
-          "name": "Nurflügel",
-          "gruppe": "Ohne Höhenleitwerk",
-          "kurz": "Kein Höhenleitwerk",
-          "legt_fest": [
-            "Pfeilung oder S-Schlag-Profil für die Längsstabilität",
-            "Elevons statt Höhen- und Querruder",
-            "Andere Stabilitätslogik (Lennon: eigene Reserven)"
+            "Ein Flügel; seine Lage am Rumpf fragt Frage 4",
+            "Längsstabilität aus Leitwerk hinten, Ente oder Nurflügel (Frage 5)"
           ]
         },
         {
           "id": "doppeldecker",
           "name": "Doppeldecker",
-          "gruppe": "Mehrere Tragflächen",
           "kurz": "Zwei Tragflächen übereinander",
           "legt_fest": [
             "Zwei Flügel mit Staffelung und Abstand",
@@ -267,7 +228,6 @@
         {
           "id": "tandem",
           "name": "Tandem",
-          "gruppe": "Mehrere Tragflächen",
           "kurz": "Zwei ähnlich große Flügel hintereinander",
           "legt_fest": [
             "Der hintere Flügel trägt mit und stabilisiert die Längsachse",
@@ -278,7 +238,6 @@
         {
           "id": "kasten",
           "name": "Kastenflügel / Joined Wing",
-          "gruppe": "Mehrere Tragflächen",
           "kurz": "Geschlossenes Flügelsystem",
           "legt_fest": [
             "Zwei Flügel, über Endscheiben verbunden (Kastenflügel) oder direkt verbunden (Joined Wing)",
@@ -289,22 +248,73 @@
       ]
     },
     {
+      "id": "lage",
+      "frage": "Flügellage",
+      "nur_wenn": {
+        "trag": [
+          "eindecker"
+        ]
+      },
+      "warum": "Wo der Flügel am Rumpf sitzt. Ohne Rumpf bleibt nur der Nurflügel; ein Nurflügel mit Rumpf kann aber Hoch- oder Mitteldecker sein.",
+      "optionen": [
+        {
+          "id": "hochdecker",
+          "name": "Hochdecker",
+          "gruppe": "Mit Rumpf",
+          "kurz": "Flügel oben am Rumpf",
+          "legt_fest": [
+            "Pendelstabilität: weniger V-Form nötig"
+          ]
+        },
+        {
+          "id": "schulterdecker",
+          "name": "Schulterdecker",
+          "gruppe": "Mit Rumpf",
+          "kurz": "Flügel knapp unter der Oberkante",
+          "legt_fest": [
+            "V-Form zwischen Hoch- und Mitteldecker"
+          ]
+        },
+        {
+          "id": "mitteldecker",
+          "name": "Mitteldecker",
+          "gruppe": "Mit Rumpf",
+          "kurz": "Flügel in Rumpfmitte",
+          "legt_fest": [
+            "Neutrale Flügellage für die Rollstabilität"
+          ]
+        },
+        {
+          "id": "tiefdecker",
+          "name": "Tiefdecker",
+          "gruppe": "Mit Rumpf",
+          "kurz": "Flügel unten am Rumpf",
+          "legt_fest": [
+            "Mehr V-Form für dieselbe Rollstabilität"
+          ]
+        },
+        {
+          "id": "ohne_rumpf",
+          "name": "Ohne Rumpf",
+          "gruppe": "Ohne Rumpf",
+          "kurz": "Reiner Flügel",
+          "legt_fest": [
+            "Kein Rumpf: Einbauten im Flügel",
+            "Nur als Nurflügel möglich (Frage 5)"
+          ]
+        }
+      ]
+    },
+    {
       "id": "leitwerk",
       "frage": "Leitwerk",
-      "warum": "Wo das Höhenleitwerk sitzt (hinten, vorn als Ente, keins) und wie es aussieht. Welche Leitwerke gehen, hängt an der Bauart; die Mission sagt, welches typisch oder ungewöhnlich ist.",
+      "warum": "Woher die Längsstabilität kommt: Höhenleitwerk hinten, vorn (Ente) oder keins (Nurflügel). Welche Leitwerke gehen, hängt an Tragflügel und Flügellage.",
       "hinweis": "Pendelhöhenleitwerk ist eine Variante (Normal-, T-, Kreuz-, V-, Dach-, H-Leitwerk), keine eigene Konfiguration. Bei Scale folgt das Leitwerk dem Vorbild.",
       "optionen": [
         {
           "id": "normal",
           "name": "Normalleitwerk",
           "gruppe": "Höhenleitwerk hinten",
-          "bauarten": [
-            "hochdecker",
-            "schulterdecker",
-            "mitteldecker",
-            "tiefdecker",
-            "doppeldecker"
-          ],
           "typisch": [
             "trainer",
             "sport",
@@ -319,19 +329,23 @@
           "legt_fest": [
             "Getrenntes Höhen- und Seitenruder",
             "Leitwerksvolumen aus Bändern"
-          ]
+          ],
+          "wenn": {
+            "trag": [
+              "eindecker",
+              "doppeldecker"
+            ]
+          },
+          "wenn_nicht": {
+            "lage": [
+              "ohne_rumpf"
+            ]
+          }
         },
         {
           "id": "t",
           "name": "T-Leitwerk",
           "gruppe": "Höhenleitwerk hinten",
-          "bauarten": [
-            "hochdecker",
-            "schulterdecker",
-            "mitteldecker",
-            "tiefdecker",
-            "doppeldecker"
-          ],
           "typisch": [
             "thermik",
             "elektrosegler",
@@ -342,19 +356,23 @@
           "legt_fest": [
             "Höhenleitwerk in sauberer Anströmung, weniger Widerstand",
             "Rumpf auf Torsion belastet; bei hohem Anstellwinkel im Flügelnachlauf"
-          ]
+          ],
+          "wenn": {
+            "trag": [
+              "eindecker",
+              "doppeldecker"
+            ]
+          },
+          "wenn_nicht": {
+            "lage": [
+              "ohne_rumpf"
+            ]
+          }
         },
         {
           "id": "kreuz",
           "name": "Kreuzleitwerk",
           "gruppe": "Höhenleitwerk hinten",
-          "bauarten": [
-            "hochdecker",
-            "schulterdecker",
-            "mitteldecker",
-            "tiefdecker",
-            "doppeldecker"
-          ],
           "typisch": [
             "thermik",
             "elektrosegler",
@@ -363,19 +381,23 @@
           "kurz": "Höhenleitwerk auf halber Höhe der Seitenflosse",
           "legt_fest": [
             "Kompromiss zwischen Normal- und T-Leitwerk"
-          ]
+          ],
+          "wenn": {
+            "trag": [
+              "eindecker",
+              "doppeldecker"
+            ]
+          },
+          "wenn_nicht": {
+            "lage": [
+              "ohne_rumpf"
+            ]
+          }
         },
         {
           "id": "v",
           "name": "V-Leitwerk",
           "gruppe": "Höhenleitwerk hinten",
-          "bauarten": [
-            "hochdecker",
-            "schulterdecker",
-            "mitteldecker",
-            "tiefdecker",
-            "doppeldecker"
-          ],
           "typisch": [
             "thermik",
             "hang",
@@ -387,54 +409,66 @@
           "legt_fest": [
             "Höhen- und Seitenruder über Mischer",
             "Leichter, weniger Flächen"
-          ]
+          ],
+          "wenn": {
+            "trag": [
+              "eindecker",
+              "doppeldecker"
+            ]
+          },
+          "wenn_nicht": {
+            "lage": [
+              "ohne_rumpf"
+            ]
+          }
         },
         {
           "id": "dach",
           "name": "Dachleitwerk",
           "gruppe": "Höhenleitwerk hinten",
-          "bauarten": [
-            "hochdecker",
-            "schulterdecker",
-            "mitteldecker",
-            "tiefdecker"
-          ],
           "typisch": [],
           "kurz": "Umgekehrtes V",
           "legt_fest": [
             "Braucht praktisch zwei Leitwerksträger oder eine nurflügelnahe Anordnung",
             "Speziallösung"
-          ]
+          ],
+          "wenn": {
+            "trag": [
+              "eindecker"
+            ]
+          },
+          "wenn_nicht": {
+            "lage": [
+              "ohne_rumpf"
+            ]
+          }
         },
         {
           "id": "h",
           "name": "H-Leitwerk",
           "gruppe": "Höhenleitwerk hinten",
-          "bauarten": [
-            "hochdecker",
-            "schulterdecker",
-            "mitteldecker",
-            "tiefdecker",
-            "doppeldecker"
-          ],
           "typisch": [],
           "kurz": "Zwei Seitenflossen an den Enden des Höhenleitwerks",
           "legt_fest": [
             "Zwei Seitenflossen, auch auf Doppelleitwerksträgern",
             "Häufig bei Scale und FPV"
-          ]
+          ],
+          "wenn": {
+            "trag": [
+              "eindecker",
+              "doppeldecker"
+            ]
+          },
+          "wenn_nicht": {
+            "lage": [
+              "ohne_rumpf"
+            ]
+          }
         },
         {
           "id": "ente_flosse",
           "name": "Seitenflosse hinten",
           "gruppe": "Höhenleitwerk vorn (Ente)",
-          "bauarten": [
-            "hochdecker",
-            "schulterdecker",
-            "mitteldecker",
-            "tiefdecker",
-            "doppeldecker"
-          ],
           "typisch": [],
           "kurz": "Vorflügel plus Seitenflosse am Heck",
           "legt_fest": [
@@ -443,19 +477,23 @@
             "Vorflügel muss vor dem Hauptflügel abreißen",
             "Stabilitätslogik kehrt sich um: der Vorflügel trägt mit"
           ],
-          "bewertung_von": "ente"
+          "bewertung_von": "ente",
+          "wenn": {
+            "trag": [
+              "eindecker",
+              "doppeldecker"
+            ]
+          },
+          "wenn_nicht": {
+            "lage": [
+              "ohne_rumpf"
+            ]
+          }
         },
         {
           "id": "ente_winglet",
           "name": "Winglets am Hauptflügel",
           "gruppe": "Höhenleitwerk vorn (Ente)",
-          "bauarten": [
-            "hochdecker",
-            "schulterdecker",
-            "mitteldecker",
-            "tiefdecker",
-            "doppeldecker"
-          ],
           "typisch": [],
           "kurz": "Vorflügel plus Seitenflächen an den Spitzen",
           "legt_fest": [
@@ -464,87 +502,101 @@
             "Vorflügel muss vor dem Hauptflügel abreißen",
             "Stabilitätslogik kehrt sich um: der Vorflügel trägt mit"
           ],
-          "bewertung_von": "ente"
+          "bewertung_von": "ente",
+          "wenn": {
+            "trag": [
+              "eindecker",
+              "doppeldecker"
+            ]
+          },
+          "wenn_nicht": {
+            "lage": [
+              "ohne_rumpf"
+            ]
+          }
         },
         {
           "id": "nf_mitte",
           "name": "Mittelflosse",
-          "gruppe": "Nurflügel",
-          "bauarten": [
-            "nurfluegel"
-          ],
-          "typisch": [
-            "sport",
-            "park",
-            "speed",
-            "hang"
-          ],
+          "gruppe": "Kein Höhenleitwerk (Nurflügel)",
+          "typisch": [],
           "kurz": "Eine Seitenflosse in der Mitte",
           "legt_fest": [
             "Typisch für Brett- und Deltanurflügel",
             "Längsstabilität aus S-Schlag-Profil oder Pfeilung"
-          ]
+          ],
+          "wenn": {
+            "trag": [
+              "eindecker"
+            ]
+          },
+          "bewertung_von": "nurfluegel"
         },
         {
           "id": "nf_winglet",
           "name": "Winglets",
-          "gruppe": "Nurflügel",
-          "bauarten": [
-            "nurfluegel"
-          ],
-          "typisch": [
-            "sport",
-            "park",
-            "speed",
-            "hang"
-          ],
+          "gruppe": "Kein Höhenleitwerk (Nurflügel)",
+          "typisch": [],
           "kurz": "Seitenflächen an den Flügelspitzen",
           "legt_fest": [
             "Typisch für gepfeilte Nurflügel",
             "Hebelarm aus der Pfeilung"
-          ]
+          ],
+          "wenn": {
+            "trag": [
+              "eindecker"
+            ]
+          },
+          "bewertung_von": "nurfluegel"
         },
         {
           "id": "nf_ohne",
           "name": "Ohne Seitenflosse",
-          "gruppe": "Nurflügel",
-          "bauarten": [
-            "nurfluegel"
-          ],
+          "gruppe": "Kein Höhenleitwerk (Nurflügel)",
           "typisch": [],
-          "kurz": "Gieren über Spreizruder (Horten-Art)",
+          "kurz": "Nur Elevons, keine Seitenfläche (Horten-Art)",
           "legt_fest": [
-            "Keine Seitenfläche",
+            "Keine Seitenfläche, kein Seitenruder",
             "Richtungsstabilität aus Pfeilung und Verwindung"
-          ]
+          ],
+          "wenn": {
+            "trag": [
+              "eindecker"
+            ]
+          },
+          "bewertung_von": "nurfluegel"
         },
         {
           "id": "tandem_flosse",
           "name": "Seitenflosse am Hinterflügel",
           "gruppe": "Tandem",
-          "bauarten": [
-            "tandem"
-          ],
           "typisch": [],
           "kurz": "Hinterflügel stabilisiert, Flosse dahinter",
           "legt_fest": [
             "Längsstabilität aus dem Hinterflügel",
             "Hebelarm für die Seitenflosse meist ausreichend"
-          ]
+          ],
+          "wenn": {
+            "trag": [
+              "tandem"
+            ]
+          }
         },
         {
           "id": "endscheiben",
           "name": "Endscheiben",
           "gruppe": "Kastenflügel",
-          "bauarten": [
-            "kasten"
-          ],
           "typisch": [],
           "kurz": "Die Verbindungsflächen wirken als Seitenflächen",
           "legt_fest": [
             "Optional zusätzliche Mittelflosse",
             "Beim Joined Wing ohne Endscheiben: Mittelflosse"
-          ]
+          ],
+          "wenn": {
+            "trag": [
+              "kasten"
+            ]
+          }
         }
       ]
     },
@@ -566,15 +618,6 @@
           "id": "hs",
           "name": "Höhe + Seite",
           "gruppe": "Mit Höhenruder",
-          "bauarten": [
-            "hochdecker",
-            "schulterdecker",
-            "mitteldecker",
-            "tiefdecker",
-            "doppeldecker",
-            "tandem",
-            "kasten"
-          ],
           "typisch": [
             "trainer",
             "segel_trainer",
@@ -586,42 +629,38 @@
             "Keine Querruder: ein Flügelsegment je Hälfte reicht",
             "Deutlich mehr V-Form, oft Knick- oder Polyederflügel",
             "Gutmütig, wenig Servos"
-          ]
+          ],
+          "wenn_nicht": {
+            "leitwerk": [
+              "nf_mitte",
+              "nf_winglet",
+              "nf_ohne"
+            ]
+          }
         },
         {
           "id": "hq",
           "name": "Höhe + Quer",
           "gruppe": "Mit Höhenruder",
-          "bauarten": [
-            "hochdecker",
-            "schulterdecker",
-            "mitteldecker",
-            "tiefdecker",
-            "doppeldecker",
-            "tandem",
-            "kasten"
-          ],
           "typisch": [],
           "kurz": "Ohne Seitenruder",
           "legt_fest": [
             "Querruder: eigenes Segment je Hälfte",
             "Wenig V-Form",
             "Kein Seitenruder zum Ausgleich des negativen Wendemoments"
-          ]
+          ],
+          "wenn_nicht": {
+            "leitwerk": [
+              "nf_mitte",
+              "nf_winglet",
+              "nf_ohne"
+            ]
+          }
         },
         {
           "id": "hsq",
           "name": "Höhe + Seite + Quer",
           "gruppe": "Mit Höhenruder",
-          "bauarten": [
-            "hochdecker",
-            "schulterdecker",
-            "mitteldecker",
-            "tiefdecker",
-            "doppeldecker",
-            "tandem",
-            "kasten"
-          ],
           "typisch": [
             "trainer",
             "sport",
@@ -637,21 +676,19 @@
             "Querruder: eigenes Segment je Hälfte",
             "Wenig oder keine V-Form",
             "Volle Kontrolle um alle Achsen"
-          ]
+          ],
+          "wenn_nicht": {
+            "leitwerk": [
+              "nf_mitte",
+              "nf_winglet",
+              "nf_ohne"
+            ]
+          }
         },
         {
           "id": "hsqk",
           "name": "Höhe + Seite + Quer + Klappen",
           "gruppe": "Mit Höhenruder",
-          "bauarten": [
-            "hochdecker",
-            "schulterdecker",
-            "mitteldecker",
-            "tiefdecker",
-            "doppeldecker",
-            "tandem",
-            "kasten"
-          ],
           "typisch": [
             "thermik",
             "elektrosegler",
@@ -662,39 +699,50 @@
             "Klappen: zusätzliches Segment je Hälfte",
             "Butterfly möglich (Kanon: butterfly-approach)",
             "Langsamflug mit Klappen (Kanon: Abrissgeschwindigkeit mit Klappen)"
-          ]
+          ],
+          "wenn_nicht": {
+            "leitwerk": [
+              "nf_mitte",
+              "nf_winglet",
+              "nf_ohne"
+            ]
+          }
         },
         {
           "id": "elevon",
           "name": "Elevons",
           "gruppe": "Nurflügel",
-          "bauarten": [
-            "nurfluegel"
-          ],
           "typisch": [],
-          "kurz": "Höhe und Quer gemischt",
+          "kurz": "Höhe und Quer gemischt, sonst nichts",
           "legt_fest": [
             "Ein Rudersegment je Hälfte, gemischt angesteuert",
-            "Gieren nur über Pfeilung, Winglets oder Spreizruder"
-          ]
+            "Die übliche Nurflügel-Steuerung (Maintainer, 02.10.2026)"
+          ],
+          "wenn": {
+            "leitwerk": [
+              "nf_mitte",
+              "nf_winglet",
+              "nf_ohne"
+            ]
+          },
+          "typisch_immer": true
         },
         {
           "id": "elevon_s",
           "name": "Elevons + Seitenruder",
           "gruppe": "Nurflügel",
-          "bauarten": [
-            "nurfluegel"
-          ],
-          "leitwerke": [
-            "nf_mitte",
-            "nf_winglet"
-          ],
           "typisch": [],
           "kurz": "Zusätzlich Seitenruder an Flosse oder Winglets",
           "legt_fest": [
             "Ein Rudersegment je Hälfte, gemischt angesteuert",
             "Seitenruder an der Mittelflosse oder in den Winglets"
-          ]
+          ],
+          "wenn": {
+            "leitwerk": [
+              "nf_mitte",
+              "nf_winglet"
+            ]
+          }
         }
       ]
     },
@@ -735,12 +783,12 @@
     },
     {
       "was": "Flügelsegmente",
-      "aus": "So wenige, wie die Ruder aus Frage 5 brauchen",
+      "aus": "So wenige, wie die Ruder aus Frage 6 brauchen",
       "art": "Topologie"
     },
     {
       "was": "Leitwerk und Hebelarm",
-      "aus": "Leitwerk (Frage 4) und Leitwerksvolumen (Band)",
+      "aus": "Leitwerk (Frage 5) und Leitwerksvolumen (Band)",
       "art": "Topologie"
     },
     {

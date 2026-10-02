@@ -3,7 +3,7 @@
     poetry run python scripts/build_selection_graph.py
 
 The page is generated — edit the JSON, never the HTML. It runs parallel to the calculation
-canon: six guided questions (motorised? -> mission -> layout -> tail -> control axes -> span) lead to an Urmodell,
+canon: seven guided questions (motorised? -> mission -> wing system -> wing position -> tail -> control axes -> span) lead to an Urmodell,
 which the canon then computes like any airplane (ANFORDERUNGEN.md O12, section 6.1).
 The output is pure ASCII (data as \\u escapes, text as HTML entities) so no viewer can
 mis-decode it.
@@ -58,7 +58,7 @@ h1{font-size:26px;line-height:1.15;margin:0;text-wrap:balance;font-weight:700}
 .path .seg{padding:3px 9px;border:1px solid var(--line);border-radius:4px;background:var(--panel)}
 .path .seg.set{border-color:var(--accent);color:var(--accent-ink)}
 .path .arrow{color:var(--dim)}
-.steps{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px;align-items:start}
+.steps{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;align-items:start}
 .step{background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:14px;display:grid;gap:10px}
 .step.locked{opacity:.55}
 .stephead{display:grid;gap:3px}
@@ -78,6 +78,7 @@ h1{font-size:26px;line-height:1.15;margin:0;text-wrap:balance;font-weight:700}
 .badge{font-family:var(--mono);font-size:10px;letter-spacing:.04em;padding:0 5px;border-radius:3px;border:1px solid currentColor;white-space:nowrap}
 .badge.T{color:var(--good)} .badge.U{color:var(--warn)} .badge.N{color:var(--bad)}
 .opt .r{font-size:11.5px;color:var(--muted);line-height:1.35;margin-top:3px}
+.none-step{font-size:13px;color:var(--muted);margin:0}
 .stephint.note-m{color:var(--ink);border-top-style:solid}
 .stephint{font-size:12px;color:var(--muted);margin:0;border-top:1px dashed var(--line);padding-top:8px}
 .legend{display:flex;flex-wrap:wrap;gap:6px 12px;font-size:12px;color:var(--muted)}
@@ -106,7 +107,7 @@ td.was{font-weight:600;white-space:nowrap}
 tr.off td{color:var(--dim)} tr.off .tag{color:var(--dim)}
 .note{font-size:12.5px;color:var(--muted);margin:0;max-width:90ch}
 code{font-family:var(--mono);font-size:12.5px}
-@media (max-width:760px){.steps{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media (max-width:980px){.steps{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media (max-width:560px){.steps{grid-template-columns:1fr} td.was{white-space:normal}}
 @media (prefers-reduced-motion:no-preference){.opt{transition:border-color .12s,background .12s}}
 </style>
@@ -115,7 +116,7 @@ code{font-family:var(--mono);font-size:12.5px}
   <header>
     <div class="eyebrow">da3Dalus &middot; Auswahlgraph &middot; parallel zum Rechenkanon</div>
     <h1>Urmodell-Auswahl</h1>
-    <p class="lede">Sechs Fragen f&uuml;hren zu einem ersten, g&uuml;ltigen und stabilen Flugzeug. Jede Antwort legt etwas fest; was daraus folgt, steht unten. Der Rechenkanon rechnet das Urmodell danach wie jedes andere Flugzeug.</p>
+    <p class="lede">Sieben Fragen f&uuml;hren zu einem ersten, g&uuml;ltigen und stabilen Flugzeug. Jede Antwort legt etwas fest; was daraus folgt, steht unten. Der Rechenkanon rechnet das Urmodell danach wie jedes andere Flugzeug.</p>
     <div class="path" id="path" aria-live="polite"></div>
     <div class="legend"><span><span class="badge T">typisch</span> h&auml;ufig f&uuml;r diese Mission</span><span>ohne Abzeichen: m&ouml;glich</span><span><span class="badge U">ungew&ouml;hnlich</span> gibt es, aber selten</span><span><span class="badge N">unsinnig</span> widerspricht der Mission, nicht w&auml;hlbar</span></div>
   </header>
@@ -131,19 +132,23 @@ code{font-family:var(--mono);font-size:12.5px}
 <script>
 (function(){
   const D=window.__AUSWAHL__, S=D.schritte;
-  const pick={motor:"ja", mission:"trainer", bauart:"hochdecker", leitwerk:"normal", steuerung:"hs", spannweite:1400};
+  const pick={motor:"ja", mission:"trainer", trag:"eindecker", lage:"hochdecker", leitwerk:"normal", steuerung:"hs", spannweite:1400};
   let example=true;
   const el=(t,c,h)=>{const e=document.createElement(t); if(c) e.className=c; if(h!=null) e.innerHTML=h; return e;};
   const esc=s=>String(s).replace(/[&<>]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;"}[c]));
   const opt=(step,id)=>(step.optionen||[]).find(o=>o.id===id);
-  const allowed=o=>(!o.wenn||Object.entries(o.wenn).every(([k,v])=>pick[k]===v))&&(!o.bauarten||o.bauarten.includes(pick.bauart))&&(!o.leitwerke||o.leitwerke.includes(pick.leitwerk));
-  // rating of an option for the chosen mission: layouts from the matrix, tails from their typical-missions list
+  // a condition {key: value | [values]} holds when every key's pick matches; wenn_nicht excludes
+  const holds=c=>Object.entries(c).every(([k,v])=>Array.isArray(v)?v.includes(pick[k]):pick[k]===v);
+  const allowed=o=>(!o.wenn||holds(o.wenn))&&(!o.wenn_nicht||!Object.entries(o.wenn_nicht).some(([k,v])=>v.includes(pick[k])));
+  const active=st=>!st.nur_wenn||holds(st.nur_wenn);
+  const answered=st=>!active(st)||pick[st.id]!=null;
+  // rating for the chosen mission: the matrix (by own id or bewertung_von) first, then the typical lists
   const rating=(st,o)=>{
     if(!pick.mission) return null;
-    if(st.id==="bauart") return (D.bewertung[pick.mission]||{})[o.id]||null;
-    if(o.bewertung_von) return (D.bewertung[pick.mission]||{})[o.bewertung_von]||null;
-    if(st.id==="leitwerk"||st.id==="steuerung") return (o.typisch||[]).includes(pick.mission)?"T":null;
-    return null;
+    if(o.typisch_immer) return "T";
+    const r=(D.bewertung[pick.mission]||{})[o.bewertung_von||o.id];
+    if(r) return r;
+    return (o.typisch||[]).includes(pick.mission)?"T":null;
   };
   const reason=o=>{ const k=o.bewertung_von||o.id; return D.gruende[pick.mission+":"+k]||D.gruende["*:"+k]||""; };
   const usable=(st,o)=>allowed(o)&&rating(st,o)!=="N";
@@ -155,14 +160,17 @@ code{font-family:var(--mono);font-size:12.5px}
   function render(){
     const host=document.getElementById("steps"); host.innerHTML="";
     S.forEach((st,i)=>{
-      const prevDone=S.slice(0,i).every(p=>pick[p.id]!=null);
-      const box=el("article","step"+(prevDone?"":" locked"));
+      const prevDone=S.slice(0,i).every(answered);
+      const box=el("article","step"+(prevDone&&active(st)?"":" locked"));
       const head=el("div","stephead");
       head.appendChild(el("div","stepno","Frage "+(i+1)+" von "+S.length));
       head.appendChild(el("h2",null,esc(st.frage)));
       head.appendChild(el("p","why",esc(st.warum)));
       box.appendChild(head);
-      if(st.eingabe){
+      if(!active(st)){
+        const by=S.find(s=>s.id===Object.keys(st.nur_wenn)[0]), o=by&&opt(by,pick[by.id]);
+        box.appendChild(el("p","none-step","Entf&auml;llt"+(o?" f&uuml;r "+esc(o.name):"")+"."));
+      } else if(st.eingabe){
         const e=st.eingabe, w=el("div","span"), id="span-"+st.id;
         const v=pick[st.id]!=null?pick[st.id]:e.beispiel;
         w.innerHTML=`<label for="${id}">Spannweite in ${e.einheit}</label>
@@ -201,9 +209,12 @@ code{font-family:var(--mono);font-size:12.5px}
   function choose(st,id){
     pick[st.id]=id; example=false;
     // a later answer that no longer fits the earlier ones is cleared
-    S.forEach(s=>{ if(s.optionen&&pick[s.id]!=null){ const o=opt(s,pick[s.id]); if(o&&!usable(s,o)) pick[s.id]=null; } });
+    S.forEach(s=>{
+      if(!active(s)){ pick[s.id]=null; return; }
+      if(s.optionen&&pick[s.id]!=null){ const o=opt(s,pick[s.id]); if(o&&!usable(s,o)) pick[s.id]=null; }
+    });
     // a layout with exactly one tail option takes it directly
-    for(const sid of ["leitwerk","steuerung"]){ const s=S.find(q=>q.id===sid); if(s&&pick.bauart&&pick[sid]==null){ const only=s.optionen.filter(allowed); if(only.length===1) pick[sid]=only[0].id; } }
+    for(const s of S){ const i=S.indexOf(s); if(s.optionen&&active(s)&&pick[s.id]==null&&S.slice(0,i).every(answered)){ const only=s.optionen.filter(o=>usable(s,o)); if(only.length===1) pick[s.id]=only[0].id; } }
     render();
   }
   function renderPath(){
@@ -211,15 +222,16 @@ code{font-family:var(--mono);font-size:12.5px}
     S.forEach((st,i)=>{
       if(i) p.appendChild(el("span","arrow","&rarr;"));
       let txt=st.frage+": &ndash;";
-      if(pick[st.id]!=null){ txt = st.eingabe ? `${pick[st.id]} ${st.eingabe.einheit}` : esc(opt(st,pick[st.id]).name); }
-      p.appendChild(el("span","seg"+(pick[st.id]!=null?" set":""),txt));
+      if(!active(st)) txt=st.frage+": entf&auml;llt";
+      else if(pick[st.id]!=null){ txt = st.eingabe ? `${pick[st.id]} ${st.eingabe.einheit}` : esc(opt(st,pick[st.id]).name); }
+      p.appendChild(el("span","seg"+(pick[st.id]!=null||!active(st)?" set":""),txt));
     });
     if(example) p.appendChild(el("span","seg","Beispiel &mdash; w&auml;hle selbst"));
   }
   function renderUr(){
-    const done=S.every(s=>pick[s.id]!=null), motor=pick.motor==="ja";
+    const done=S.every(answered), motor=pick.motor==="ja";
     const st=document.getElementById("state");
-    st.className="state"+(done?" ready":""); st.innerHTML=done?(example?"Urmodell (Beispielpfad)":"Urmodell bereit"):"noch "+S.filter(s=>pick[s.id]==null).length+" Frage(n) offen";
+    st.className="state"+(done?" ready":""); st.innerHTML=done?(example?"Urmodell (Beispielpfad)":"Urmodell bereit"):"noch "+S.filter(s=>!answered(s)).length+" Frage(n) offen";
     const tb=document.getElementById("ur"); tb.innerHTML="";
     D.urmodell.forEach(u=>{
       const off=u.nur_motor&&!motor;

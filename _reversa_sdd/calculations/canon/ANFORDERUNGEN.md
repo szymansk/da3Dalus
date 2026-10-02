@@ -2252,23 +2252,28 @@ weit“). Festgehalten, damit es nicht verloren geht: Ein geführter Prozess fra
 jede Antwort den Lösungsraum stark beschneidet **und** das Bild im Kopf schärft. Für RC,
 aufbauend auf der früheren Festlegung *Mission → Typ → Spannweite*:
 
-**Festgelegt am 02.10.2026 (Maintainer) — sechs Fragen bis zum Urmodell:**
+**Festgelegt am 02.10.2026 (Maintainer) — sieben Fragen bis zum Urmodell:**
 
 1. **Motorisiert?** ja / nein — die erste Frage überhaupt; sie teilt Missionen, Bauarten und Bänder
-2. **Mission** — Trainer, Kunstflug, Hotwing, … ; ohne Motor Segelflug-Trainer, Thermik, Hang, Wurf, Scale
-3. **Bauart** — Tragflügelsystem und Flügellage: Eindecker (Hoch-, Schulter-, Mittel-,
-   Tiefdecker), Doppeldecker, Nurflügel, Tandem, Kastenflügel / Joined Wing
-4. **Leitwerk** — wo das Höhenleitwerk sitzt und wie es aussieht: hinten (Normal-, T-, Kreuz-,
-   V-, Dach-, H-Leitwerk), **vorn als Ente** (Maintainer 02.10.2026: Ente ist eine
-   Leitwerkskonfiguration, die Flügellage bleibt frei — z. B. Mitteldecker-Ente); beim Nurflügel
-   Mittelflosse, Winglets oder keine; Tandem und Kastenflügel je eigene
-5. **Steuerachsen** — Höhe + Seite · Höhe + Quer · drei Achsen · drei Achsen + Klappen; beim
-   Nurflügel Elevons (± Seitenruder). Segelflug-Trainer haben zumeist nur Höhe und Seite; im
-   Motorflug gibt es eigene Querruder-Trainer als Zwischenschritt (Maintainer 02.10.2026).
+2. **Mission** — Trainer, Sport, Kunstflug, 3D, Speed, Elektrosegler, Scale, Park; ohne Motor
+   Segelflug-Trainer, Thermik, Hang, Wurf, Scale
+3. **Tragflügel** — Eindecker, Doppeldecker, Tandem, Kastenflügel / Joined Wing
+4. **Flügellage** (nur Eindecker) — Hoch-, Schulter-, Mittel-, Tiefdecker oder ohne Rumpf
+5. **Leitwerk** — woher die Längsstabilität kommt: Höhenleitwerk hinten (Normal-, T-, Kreuz-, V-,
+   Dach-, H-Leitwerk), vorn (Ente) oder keins (Nurflügel: Mittelflosse, Winglets, ohne
+   Seitenfläche); Tandem und Kastenflügel je eigene
+6. **Steuerachsen** — Höhe + Seite · Höhe + Quer · drei Achsen · drei Achsen + Klappen; beim
+   Nurflügel Elevons (typisch, Horten-Art) oder Elevons + Seitenruder. Segelflug-Trainer haben
+   zumeist nur Höhe und Seite; im Motorflug gibt es eigene Querruder-Trainer als Zwischenschritt.
    Bestimmt die Flügelsegmente und die nötige V-Form.
-6. **Spannweite**
+7. **Spannweite**
 
-Jede Kombination Motor × Mission × Bauart ist bewertet (typisch / möglich / ungewöhnlich /
+**Taxonomie (Maintainer 02.10.2026):** Ente und Nurflügel sind Leitwerkskonfigurationen — sie sagen,
+wo die Längsstabilität herkommt —, keine Bauarten. Die Flügellage ist davon unabhängig und hängt nur
+am Rumpf: eine Mitteldecker-Ente und ein Hochdecker-Nurflügel mit Rumpf sind beide möglich; ohne
+Rumpf bleibt nur der Nurflügel.
+
+Jede Kombination Motor × Mission × Tragflügel, Flügellage und Leitwerk ist bewertet (typisch / möglich / ungewöhnlich /
 unsinnig, mit Begründung und Quelle: RC-Fachquellen, Modelltabelle mit 2 674 Modellen,
 sonst als Praxis markiert). Unsinniges ist nicht wählbar — z. B. Doppeldecker-Segler: in der
 Tabelle kein einziger. **»Unsinnig« nur mit schriftlicher Quelle oder Aussage des
