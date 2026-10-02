@@ -46,7 +46,7 @@ Jede dieser Angaben kommt aus einer Antwort, einem Band oder einem Vorgabewert.
 | Höhen- und Seitenruder | Flächenanteil je Mission [V] für Trainer, Sport, Kunstflug |
 | Klappen | —, **Lücke** |
 | Ruderausschläge | einzelne Werte [V]; je Mission — |
-| Stabilitätsreserve-Ziel | Trainer, Sport, Kunstflug, Nurflügel [V]; Segler — |
+| Stabilitätsreserve-Ziel | Trainer, Sport, Kunstflug, Nurflügel [V]; Segler (Maintainer, §3b) |
 | Schwerpunkt | Kanon: `cg-for-target-margin` aus Neutralpunkt und Stabilitätsreserve-Ziel |
 | Antrieb | Leistungsbelastung W/kg (§3a, Band) mal Masse, dann erste Wahl aus dem Teilekatalog |
 
@@ -240,13 +240,34 @@ aufheben. „Aber viel besser als raten."
 Für das Urmodell heißt das: Höhen- und Seitenleitwerk werden wie üblich über $V_H$ und $V_V$
 bemessen und dann umgerechnet.
 
-**Stabilitätsreserve bei Seglern: keine belastbare Quelle.** Es gibt nur Hinweise:
-- Einzelberichte im RC Soaring Digest erfliegen 5 % bzw. 2,5 %.
-- Der Vault nennt 5 % als Untergrenze für den Erstflug.
-- Laut rcn-schwerpunkt-lage-erfliegen beginnt das Erfliegen etwa 15 % MAC vor dem Neutralpunkt.
+**Stabilitätsreserve bei Seglern mit Höhenleitwerk.** Eingebracht vom Maintainer am 02.10.2026, die
+ursprüngliche Herkunft ist nicht genannt:
 
-Segler werden üblicherweise mit dem Sturzflugtest nach hinten erflogen. Das Urmodell braucht deshalb
-einen **Startwert für den Erstflug**, kein Missionsband. **Entscheidung des Maintainers offen.**
+| Klasse | % MAC | Charakter |
+|---|---|---|
+| sportlich / agil | 5–8 | erfahrene Piloten, Leistungssegler (F3B, F3F, F5B), Thermik zeigt sich deutlich |
+| Allround / sicher | 8–12 | Allround-Segler, Scale, Thermiksegler unter normalen Bedingungen |
+| Einsteiger / sehr stabil | 12–15 | Thermik-Trainer (RES), Anfänger; sehr eigenstabil, träger auf Höhenruder |
+
+**Zuordnung zu den Missionen (min / typ / max; der Typwert ist der Startwert des Urmodells):**
+
+| Mission | Band | Begründung der Zuordnung |
+|---|---|---|
+| Segelflug-Trainer | 12 / 13,5 / 15 | Einsteiger, RES |
+| Thermik | 5 / 10 / 12 | Allround, sportlich bis 5 |
+| Hang | 5 / 8 / 12 | F3F sportlich, Allround-Hang bis 12 |
+| Wurf | 5 / 6,5 / 8 | Leistungssegler, nicht genannt, Zuordnung von Claude |
+| Scale-Segler | 8 / 10 / 12 | Scale |
+| Elektrosegler | 5 / 10 / 12 | Allround, F5B sportlich |
+
+Die Quelle passt zu den übrigen Hinweisen:
+- Einzelberichte im RC Soaring Digest erfliegen 2,5–5 %.
+- Der Vault nennt 5 % als Untergrenze für den Erstflug.
+- Laut rcn beginnt das Erfliegen bei etwa 15 %.
+
+**Widerspruch beim Nurflügel:** Die Quelle nennt 1,5–4 % („das dämpfende Heckleitwerk fehlt"),
+Lennon dagegen 5–10 % (lennon-tailless-cg-static-margin: hintere Grenze 5 %, vordere 10 %).
+**Entscheidung des Maintainers offen.**
 
 Quellen:
 - [RCSD 2004-08](https://www.rcsoaringdigest.com/pdfs/RCSD-2004/RCSD-2004-08.pdf)
@@ -257,8 +278,8 @@ Quellen:
 
 1. ~~Leistungsbelastung W/kg~~: ✅ entschieden am 02.10.2026 (§3a).
 2. **Pfeilung des Nurflügels.**
-3. **Segler:** Leitwerk, V-Form, Einstellwinkel und Ausschläge sind belegt (§3b). Offen ist das
-   Stabilitätsreserve-Ziel (Startwert für den Erstflug, Entscheidung des Maintainers).
+3. **Segler:** Leitwerk, V-Form, Einstellwinkel und Ausschläge sind belegt (§3b). Die Stabilitätsreserve ist
+   belegt (Maintainer); offen ist nur der Widerspruch beim Nurflügel (1,5–4 % gegen 5–10 %).
 4. **3D, Speed, Park und Scale:** Zuspitzung, Leitwerksvolumen, Stabilitätsreserve und Ruder. Aus
    der Tabelle sind nur Masse, Streckung und Rumpflänge belegt.
 5. **Leitwerke ohne Größenregel:** Ente, Tandem und Kastenflügel. Das V-Leitwerk ist geschlossen

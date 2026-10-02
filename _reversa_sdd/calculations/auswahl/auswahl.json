@@ -1127,6 +1127,42 @@
           270
         ]
       }
+    },
+    "stabilitaetsreserve_segler_prozent_mac": {
+      "quelle": "BAENDER.md §3b, Maintainer 02.10.2026 (Herkunft nicht genannt)",
+      "hinweis": "Typwert = Startwert des Urmodells",
+      "werte": {
+        "segel_trainer": [
+          12,
+          13.5,
+          15
+        ],
+        "thermik": [
+          5,
+          10,
+          12
+        ],
+        "hang": [
+          5,
+          8,
+          12
+        ],
+        "wurf": [
+          5,
+          6.5,
+          8
+        ],
+        "scale_segler": [
+          8,
+          10,
+          12
+        ],
+        "elektrosegler": [
+          5,
+          10,
+          12
+        ]
+      }
     }
   }
 }
