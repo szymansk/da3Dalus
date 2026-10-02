@@ -40,7 +40,8 @@ Jede dieser Angaben kommt aus einer Antwort, einem Band oder einem Vorgabewert.
 | Hebelarme | Leitwerks- und Nasenhebel in MAC für Trainer, Sport, Kunstflug [V]; sonst aus der Rumpflänge |
 | Höhenleitwerk | Leitwerksvolumen [V] für Trainer, Sport, Kunstflug; sonst Flächenanteil [V]/[T] |
 | Seitenleitwerk | 35–50 % der Höhenleitwerksfläche [V] |
-| Leitwerk von V, Ente, Tandem, Kastenflügel | —, **Lücke** |
+| V-Leitwerk | Umrechnung aus $V_H$/$V_V$ nach Drela (§3b) |
+| Leitwerk von Ente, Tandem, Kastenflügel | —, **Lücke** |
 | Querruder | Tiefe und Spannweitenanteil je Anordnung [V] |
 | Höhen- und Seitenruder | Flächenanteil je Mission [V] für Trainer, Sport, Kunstflug |
 | Klappen | —, **Lücke** |
@@ -220,9 +221,24 @@ Lelke gibt $V_H \approx 0{,}4$ („Psf") und $V_V$ 0,020–0,03 („Ysf"), gleic
 **Leitwerkshebel:** Es gibt keine direkte Quelle. Er folgt aus der Rumpflänge je Mission [T] und der
 Vault-Grenze „Leitwerkshebel ≤ 60 % der Rumpflänge". Die Probe oben bestätigt das.
 
-**V-Leitwerk:** Drela verweist auf eine eigene Bemessungsregel für die äquivalenten Höhen- und
-Seitenflächen. Die Originalseite ließ sich nicht abrufen. Aus zweiter Hand: Die Fläche des
-V-Leitwerks ist die Summe der Höhen- und Seitenleitwerksfläche. **Lücke** bis zum Original.
+**V-Leitwerk (Drela, „V-tail sizing", Charles River RC; Text vom Maintainer am 02.10.2026
+eingebracht, weil die Seite automatische Abrufe blockiert):** Ein herkömmliches Leitwerk wird so in
+ein gleichwertiges V-Leitwerk umgerechnet:
+
+- $A_{V\text{-}Lw} = A_V + A_H$ — die Fläche beider Hälften zusammen, flach gelegt
+- $\nu = \arctan\sqrt{A_V/A_H}$ — der V-Winkel gegen die Horizontale
+
+Rückwärts:
+
+- $A_H = A_{V\text{-}Lw}\cos^2\nu$
+- $A_V = A_{V\text{-}Lw}\sin^2\nu$
+
+Drela schränkt ein: Die Formeln gelten streng nur für große Leitwerksstreckungen. Sie erfassen nicht,
+wie sich die beiden Hälften an der Wurzel gegenseitig stören und beim Seitenruderausschlag Auftrieb
+aufheben. „Aber viel besser als raten."
+
+Für das Urmodell heißt das: Höhen- und Seitenleitwerk werden wie üblich über $V_H$ und $V_V$
+bemessen und dann umgerechnet.
 
 **Stabilitätsreserve bei Seglern: keine belastbare Quelle.** Es gibt nur Hinweise:
 - Einzelberichte im RC Soaring Digest erfliegen 5 % bzw. 2,5 %.
@@ -241,11 +257,11 @@ Quellen:
 
 1. ~~Leistungsbelastung W/kg~~: ✅ entschieden am 02.10.2026 (§3a).
 2. **Pfeilung des Nurflügels.**
-3. **Segler:** Leitwerk, V-Form, Einstellwinkel und Ausschläge sind belegt (§3b). Offen sind das
-   Stabilitätsreserve-Ziel (Startwert für den Erstflug, Entscheidung des Maintainers) und die
-   Bemessung des V-Leitwerks (Drelas Original nicht abrufbar).
+3. **Segler:** Leitwerk, V-Form, Einstellwinkel und Ausschläge sind belegt (§3b). Offen ist das
+   Stabilitätsreserve-Ziel (Startwert für den Erstflug, Entscheidung des Maintainers).
 4. **3D, Speed, Park und Scale:** Zuspitzung, Leitwerksvolumen, Stabilitätsreserve und Ruder. Aus
    der Tabelle sind nur Masse, Streckung und Rumpflänge belegt.
-5. **Leitwerke ohne Größenregel:** Bemessung von V-Leitwerk, Ente, Tandem und Kastenflügel.
+5. **Leitwerke ohne Größenregel:** Ente, Tandem und Kastenflügel. Das V-Leitwerk ist geschlossen
+   (Drela, §3b).
 6. **Klappen und Ausschläge:** Klappengröße und Ruderausschläge je Mission.
 7. **Rumpfquerschnitt.**
