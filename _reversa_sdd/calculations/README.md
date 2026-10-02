@@ -209,4 +209,6 @@ calculations/
   performance/       matching chart, field length, endurance, envelope
   mass/              mass build-up, CG, assumptions
   powertrain/        motor, battery, propeller
+  canon/             the calculation canon (Soll): formulas, quantities, ANFORDERUNGEN, navigator
+  auswahl/           selection graph → Urmodell generator (Soll, outside the canon): questions, bands, sources
 ```
