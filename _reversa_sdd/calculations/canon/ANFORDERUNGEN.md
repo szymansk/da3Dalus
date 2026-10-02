@@ -2000,8 +2000,10 @@ verschwunden. Übrig bleibt einer, der Widerstandsbeiwert.
 > **Behoben am 02.10.2026.** Der Widerstandsbeiwert war ein Namensfehler nach A2: `C_D`
 > hieß sowohl der gerechnete Wert als auch der Parabelwert. Der Parabelwert heißt jetzt
 > `C_D,par`. `C_D0` und $e$ haben **einen** Erzeuger, `parasite-drag-split` — der
-> schädliche Widerstand am Reiseflugpunkt, $C_{D0} = C_D - C_L^2/(\pi\,AR\,e)$ mit $e$
-> aus Trefftz, wie **ADR 0004** es seit gh-924 bindend festlegt. Die beiden abweichenden
+> Wert am Reiseflugpunkt, $C_{D0} = C_D - C_L^2/(\pi\,AR\,e)$, wie **ADR 0004** es seit gh-924
+> festlegt. **Die Definitionen stehen zur Prüfung** (Maintainer, 02.10.2026): $e$ ist entgegen
+> ADR 0004 kein Trefftz-Wert, sondern AeroBuildups empirischer Oswald-Faktor (Nita & Scholz
+> 2012); siehe O13. Die beiden abweichenden
 > Erzeuger (`zero-lift-drag-from-sweep` am $C_L = 0$-Durchgang, `reynolds-scheduled-polar`
 > mit sich selbst als Eingabe) sind gestrichen. Die geschlossene $V_{md}$-Formel ist nur
 > noch Probe ($V_{md,probe}$) — als Erzeuger hätte sie über $V_{cruise}$ eine neue Schleife
