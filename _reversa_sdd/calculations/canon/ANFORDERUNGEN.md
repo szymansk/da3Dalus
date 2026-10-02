@@ -2183,6 +2183,27 @@ die Geometrie je Flugzustand ändern — Wölb-, Lande- und Rennklappen. Damit k
 Frage zurück, ab wann solche Mittel einen Anfänger überfordern; sie gehört in die
 Bewertung (Bänder), nicht in die Rechnung.
 
+### 6.1 Ausblick — der geführte Konstruktionsprozess (RC)
+
+**Erst nach dem Rechenkern** (Maintainer, 02.10.2026: „wir sind schon einen Schritt zu
+weit“). Festgehalten, damit es nicht verloren geht: Ein geführter Prozess fragt so, dass
+jede Antwort den Lösungsraum stark beschneidet **und** das Bild im Kopf schärft. Für RC,
+aufbauend auf der früheren Festlegung *Mission → Typ → Spannweite*:
+
+1. Wofür — Mission und Charakter
+2. Wer fliegt — Erfahrung
+3. Typ — Motormodell, Segler, Motorsegler, Nurflügel
+4. Wo und wie gestartet/gelandet — Gelände, Start- und Landeart
+5. Wie groß — Spannweite
+6. Wie gebaut — Rippen, Druck, Schaum
+7. Grundanordnung — Decker, Leitwerk, Antrieb, Fahrwerk
+8. Wie viele Ruder
+
+Quer dazu die Abkürzung **„Hast du ein Vorbild?“** — die Referenzflotte (Bryan, SNACK)
+liefert dafür die Anker. Prüfstein: Die Bänder, die der Prozess aus den Antworten eines
+Referenzflugzeugs ableitet, müssen dessen echte Werte enthalten. Für UAV stehen andere
+Fragen vorn (Nutzlast, Reichweite, Reisegeschwindigkeit).
+
 ## Arbeitsregeln
 
 **KISS — und der Zweck ist der Filter.** Wir bauen ein Werkzeug für Modellflugzeuge und

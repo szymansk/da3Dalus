@@ -5,19 +5,33 @@ no lifespan), so every write passes the same validation as the frontend.
 Run from the repo root: the app's DB URL is relative (./db/test.db).
 
     poetry run python scripts/canon_checks/reference_fleet/import_to_db.py bryan
+    poetry run python scripts/canon_checks/reference_fleet/import_to_db.py snack --no-airfoil-table
+
+Battery: from <key>.konstruktion.json (komponenten.akku.typ, e.g. "2S 450 mAh") or, if that file
+is absent, from <key>.zusatz.json ("akku": "2S 600-800 mAh ..."; the upper capacity is taken and
+reported as an assumption).
+--no-airfoil-table: copy the .dat files but do not register them in the airfoil catalogue — for
+models whose format needs one file per station (absolute thickness), which would flood it.
 
 Writes: aeroplane, wings (geometry, spars, trailing-edge devices, servos),
 fuselages, total mass, design assumptions (mass, cg_x, battery energy), and
 copies the referenced .dat airfoils into components/airfoils/.
 """
-import json, pathlib, shutil, sys
+import json, pathlib, re, shutil, sys
 from fastapi.testclient import TestClient
 from app.main import app
 
 key = sys.argv[1]
+AIRFOIL_TABLE = "--no-airfoil-table" not in sys.argv
 SRC = pathlib.Path(__file__).parent / key
 geo = json.loads((SRC / f"{key}.airplane.json").read_text())
-kon = json.loads((SRC / f"{key}.konstruktion.json").read_text())
+kon_p, zus_p = SRC / f"{key}.konstruktion.json", SRC / f"{key}.zusatz.json"
+if kon_p.exists():
+    akku = json.loads(kon_p.read_text())["komponenten"]["akku"]["typ"]          # e.g. "2S 450 mAh"
+else:
+    akku = json.loads(zus_p.read_text())["akku"]                               # e.g. "2S 600-800 mAh ..."
+_m = re.match(r"\s*(\d+)S\s+(?:\d+\s*-\s*)?(\d+)\s*mAh", akku)
+CELLS, MAH = int(_m.group(1)), float(_m.group(2))
 AF_DIR = pathlib.Path("components/airfoils")
 c = TestClient(app)
 
@@ -35,15 +49,18 @@ for w in geo["wings"].values():
             shutil.copy(SRC / f, AF_DIR / f)
             af_map[f] = f"./components/airfoils/{f}"
 # the import endpoint only scans inside components/ — stage just these files there
-stage = pathlib.Path("components/_reference_fleet_import")
-stage.mkdir(exist_ok=True)
-for f in af_map:
-    shutil.copy(SRC / f, stage / f)
-try:
-    r = ok(c.post("/airfoils/import", json={"directory": str(stage.resolve())}), "Profile in Profiltabelle")
-    print("Profile:", r.json())
-finally:
-    shutil.rmtree(stage)
+if AIRFOIL_TABLE:
+    stage = pathlib.Path("components/_reference_fleet_import")
+    stage.mkdir(exist_ok=True)
+    for f in af_map:
+        shutil.copy(SRC / f, stage / f)
+    try:
+        r = ok(c.post("/airfoils/import", json={"directory": str(stage.resolve())}), "Profile in Profiltabelle")
+        print("Profile:", r.json())
+    finally:
+        shutil.rmtree(stage)
+else:
+    print(f"Profile: {len(af_map)} Dateien kopiert, nicht in die Profiltabelle eingetragen")
 
 pid = ok(c.post("/aeroplanes", params={"name": geo["name"]}), "Flugzeug").json()["id"]
 print("Flugzeug", geo["name"], pid)
@@ -82,9 +99,8 @@ for fname, f in geo["fuselages"].items():
 m = geo["total_mass_kg"]
 ok(c.post(f"/aeroplanes/{pid}/total_mass_kg", json={"total_mass_kg": m}), "Masse")
 ok(c.post(f"/aeroplanes/{pid}/assumptions"), "Annahmen anlegen")
-akku = kon["komponenten"]["akku"]["typ"]                 # e.g. "2S 450 mAh"
-cells, mah = int(akku.split("S")[0]), float(akku.split()[1])
+cells, mah = CELLS, MAH
 e_wh = cells * 3.7 * mah / 1000                          # nominal LiPo cell voltage
 for p, v in (("mass", m), ("cg_x", geo["xyz_ref"][0]), ("battery_capacity_wh", e_wh)):
     ok(c.put(f"/aeroplanes/{pid}/assumptions/{p}", json={"estimate_value": v}), f"Annahme {p}")
-print(f"  Masse {m} kg, cg_x {geo['xyz_ref'][0]} m, Akku {akku} = {e_wh:.2f} Wh")
+print(f"  Masse {m} kg, cg_x {geo['xyz_ref'][0]} m, Akku {akku.split(',')[0]} -> {cells}S {mah:.0f} mAh = {e_wh:.2f} Wh")

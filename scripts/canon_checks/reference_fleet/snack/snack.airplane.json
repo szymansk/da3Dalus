@@ -1,0 +1,2165 @@
+{
+ "name": "SNACK",
+ "total_mass_kg": 0.25,
+ "xyz_ref": [
+  0.1435,
+  0.0,
+  0.0157
+ ],
+ "wings": {
+  "Tragflaeche": {
+   "name": "Tragflaeche",
+   "symmetric": true,
+   "design_model": "asb",
+   "x_secs": [
+    {
+     "xyz_le": [
+      0.091423,
+      0.0,
+      0.014004
+     ],
+     "chord": 0.117392,
+     "twist": -0.213,
+     "dihedral": 3.923,
+     "airfoil": "./snack_fluegel_00.dat",
+     "x_sec_type": "root",
+     "spare_list": [
+      {
+       "spare_support_dimension_width": 0.001,
+       "spare_support_dimension_height": 0.00603,
+       "spare_position_factor": 0.4611,
+       "spare_length": null,
+       "spare_start": 0.0,
+       "spare_mode": "standard_backward"
+      }
+     ]
+    },
+    {
+     "xyz_le": [
+      0.094697,
+      0.0329,
+      0.016261
+     ],
+     "chord": 0.117352,
+     "twist": -0.472,
+     "dihedral": 0.0,
+     "airfoil": "./snack_fluegel_01.dat",
+     "x_sec_type": "segment",
+     "spare_list": [
+      {
+       "spare_support_dimension_width": 0.001,
+       "spare_support_dimension_height": 0.00603,
+       "spare_position_factor": 0.4482,
+       "spare_length": null,
+       "spare_start": 0.0,
+       "spare_mode": "standard_backward"
+      }
+     ]
+    },
+    {
+     "xyz_le": [
+      0.09492,
+      0.0332,
+      0.016281
+     ],
+     "chord": 0.147924,
+     "twist": 0.366,
+     "dihedral": 0.0,
+     "airfoil": "./snack_fluegel_02.dat",
+     "x_sec_type": "segment",
+     "spare_list": [
+      {
+       "spare_support_dimension_width": 0.001,
+       "spare_support_dimension_height": 0.00603,
+       "spare_position_factor": 0.3541,
+       "spare_length": null,
+       "spare_start": 0.0,
+       "spare_mode": "standard_backward"
+      }
+     ],
+     "trailing_edge_device": {
+      "name": "Querruder",
+      "role": "aileron",
+      "label": "Querruder 28 (Balsa 3, spitz geschliffen)",
+      "rel_chord_root": 0.7935,
+      "rel_chord_tip": 0.8366,
+      "hinge_spacing": 0.73,
+      "side_spacing_root": 0.0,
+      "side_spacing_tip": 0.0,
+      "servo": null,
+      "servo_placement": "bottom",
+      "rel_chord_servo_position": null,
+      "rel_length_servo_position": null,
+      "positive_deflection_deg": 19.4,
+      "negative_deflection_deg": 19.4,
+      "deflection_deg": 0.0,
+      "trailing_edge_offset_factor": 1.0,
+      "hinge_type": "middle",
+      "symmetric": false
+     },
+     "control_surface": {
+      "name": "Querruder",
+      "hinge_point": 0.7935,
+      "symmetric": false,
+      "deflection": 0.0
+     }
+    },
+    {
+     "xyz_le": [
+      0.12075,
+      0.286,
+      0.033617
+     ],
+     "chord": 0.109413,
+     "twist": -0.109,
+     "dihedral": 0.0,
+     "airfoil": "./snack_fluegel_03.dat",
+     "x_sec_type": "tip",
+     "tip_type": "round",
+     "spare_list": [
+      {
+       "spare_support_dimension_width": 0.001,
+       "spare_support_dimension_height": 0.00603,
+       "spare_position_factor": 0.366,
+       "spare_length": null,
+       "spare_start": 0.0,
+       "spare_mode": "standard_backward"
+      }
+     ],
+     "trailing_edge_device": {
+      "name": "Querruder",
+      "role": "aileron",
+      "label": "Querruder 28 (Balsa 3, spitz geschliffen)",
+      "rel_chord_root": 0.8366,
+      "rel_chord_tip": 0.8363,
+      "hinge_spacing": 0.68,
+      "side_spacing_root": 0.0,
+      "side_spacing_tip": 0.0,
+      "servo": null,
+      "servo_placement": "bottom",
+      "rel_chord_servo_position": null,
+      "rel_length_servo_position": null,
+      "positive_deflection_deg": 19.4,
+      "negative_deflection_deg": 19.4,
+      "deflection_deg": 0.0,
+      "trailing_edge_offset_factor": 1.0,
+      "hinge_type": "middle",
+      "symmetric": false
+     },
+     "control_surface": {
+      "name": "Querruder",
+      "hinge_point": 0.8366,
+      "symmetric": false,
+      "deflection": 0.0
+     }
+    },
+    {
+     "xyz_le": [
+      0.124017,
+      0.298,
+      0.03444
+     ],
+     "chord": 0.105543,
+     "twist": -0.041,
+     "dihedral": 0.0,
+     "airfoil": "./snack_fluegel_04.dat",
+     "x_sec_type": "tip",
+     "tip_type": "round",
+     "spare_list": [
+      {
+       "spare_support_dimension_width": 0.001,
+       "spare_support_dimension_height": 0.00603,
+       "spare_position_factor": 0.3545,
+       "spare_length": null,
+       "spare_start": 0.0,
+       "spare_mode": "standard_backward"
+      }
+     ],
+     "trailing_edge_device": {
+      "name": "Querruder",
+      "role": "aileron",
+      "label": "Querruder 28 (Balsa 3, spitz geschliffen)",
+      "rel_chord_root": 0.8363,
+      "rel_chord_tip": 0.834,
+      "hinge_spacing": 0.68,
+      "side_spacing_root": 0.0,
+      "side_spacing_tip": 0.0,
+      "servo": null,
+      "servo_placement": "bottom",
+      "rel_chord_servo_position": null,
+      "rel_length_servo_position": null,
+      "positive_deflection_deg": 19.4,
+      "negative_deflection_deg": 19.4,
+      "deflection_deg": 0.0,
+      "trailing_edge_offset_factor": 1.0,
+      "hinge_type": "middle",
+      "symmetric": false
+     },
+     "control_surface": {
+      "name": "Querruder",
+      "hinge_point": 0.8363,
+      "symmetric": false,
+      "deflection": 0.0
+     }
+    },
+    {
+     "xyz_le": [
+      0.127009,
+      0.304,
+      0.034851
+     ],
+     "chord": 0.102252,
+     "twist": -0.339,
+     "dihedral": 0.0,
+     "airfoil": "./snack_fluegel_05.dat",
+     "x_sec_type": "tip",
+     "tip_type": "round",
+     "spare_list": [
+      {
+       "spare_support_dimension_width": 0.001,
+       "spare_support_dimension_height": 0.00603,
+       "spare_position_factor": 0.3398,
+       "spare_length": null,
+       "spare_start": 0.0,
+       "spare_mode": "standard_backward"
+      }
+     ],
+     "trailing_edge_device": {
+      "name": "Querruder",
+      "role": "aileron",
+      "label": "Querruder 28 (Balsa 3, spitz geschliffen)",
+      "rel_chord_root": 0.834,
+      "rel_chord_tip": 0.8308,
+      "hinge_spacing": 0.68,
+      "side_spacing_root": 0.0,
+      "side_spacing_tip": 0.0,
+      "servo": null,
+      "servo_placement": "bottom",
+      "rel_chord_servo_position": null,
+      "rel_length_servo_position": null,
+      "positive_deflection_deg": 19.4,
+      "negative_deflection_deg": 19.4,
+      "deflection_deg": 0.0,
+      "trailing_edge_offset_factor": 1.0,
+      "hinge_type": "middle",
+      "symmetric": false
+     },
+     "control_surface": {
+      "name": "Querruder",
+      "hinge_point": 0.834,
+      "symmetric": false,
+      "deflection": 0.0
+     }
+    },
+    {
+     "xyz_le": [
+      0.129907,
+      0.308,
+      0.035126
+     ],
+     "chord": 0.099152,
+     "twist": -0.366,
+     "dihedral": 0.0,
+     "airfoil": "./snack_fluegel_06.dat",
+     "x_sec_type": "tip",
+     "tip_type": "round",
+     "spare_list": [
+      {
+       "spare_support_dimension_width": 0.001,
+       "spare_support_dimension_height": 0.00603,
+       "spare_position_factor": 0.3233,
+       "spare_length": null,
+       "spare_start": 0.0,
+       "spare_mode": "standard_backward"
+      }
+     ],
+     "trailing_edge_device": {
+      "name": "Querruder",
+      "role": "aileron",
+      "label": "Querruder 28 (Balsa 3, spitz geschliffen)",
+      "rel_chord_root": 0.8308,
+      "rel_chord_tip": 0.8257,
+      "hinge_spacing": 0.68,
+      "side_spacing_root": 0.0,
+      "side_spacing_tip": 0.0,
+      "servo": null,
+      "servo_placement": "bottom",
+      "rel_chord_servo_position": null,
+      "rel_length_servo_position": null,
+      "positive_deflection_deg": 19.4,
+      "negative_deflection_deg": 19.4,
+      "deflection_deg": 0.0,
+      "trailing_edge_offset_factor": 1.0,
+      "hinge_type": "middle",
+      "symmetric": false
+     },
+     "control_surface": {
+      "name": "Querruder",
+      "hinge_point": 0.8308,
+      "symmetric": false,
+      "deflection": 0.0
+     }
+    },
+    {
+     "xyz_le": [
+      0.133757,
+      0.312,
+      0.0354
+     ],
+     "chord": 0.095101,
+     "twist": -0.233,
+     "dihedral": 0.0,
+     "airfoil": "./snack_fluegel_07.dat",
+     "x_sec_type": "tip",
+     "tip_type": "round",
+     "spare_list": [
+      {
+       "spare_support_dimension_width": 0.001,
+       "spare_support_dimension_height": 0.00603,
+       "spare_position_factor": 0.2988,
+       "spare_length": null,
+       "spare_start": 0.0,
+       "spare_mode": "standard_backward"
+      }
+     ],
+     "trailing_edge_device": {
+      "name": "Querruder",
+      "role": "aileron",
+      "label": "Querruder 28 (Balsa 3, spitz geschliffen)",
+      "rel_chord_root": 0.8257,
+      "rel_chord_tip": 0.8176,
+      "hinge_spacing": 0.68,
+      "side_spacing_root": 0.0,
+      "side_spacing_tip": 0.0,
+      "servo": null,
+      "servo_placement": "bottom",
+      "rel_chord_servo_position": null,
+      "rel_length_servo_position": null,
+      "positive_deflection_deg": 19.4,
+      "negative_deflection_deg": 19.4,
+      "deflection_deg": 0.0,
+      "trailing_edge_offset_factor": 1.0,
+      "hinge_type": "middle",
+      "symmetric": false
+     },
+     "control_surface": {
+      "name": "Querruder",
+      "hinge_point": 0.8257,
+      "symmetric": false,
+      "deflection": 0.0
+     }
+    },
+    {
+     "xyz_le": [
+      0.138867,
+      0.316,
+      0.035674
+     ],
+     "chord": 0.089791,
+     "twist": -0.456,
+     "dihedral": 0.0,
+     "airfoil": "./snack_fluegel_08.dat",
+     "x_sec_type": "tip",
+     "tip_type": "round",
+     "spare_list": [
+      {
+       "spare_support_dimension_width": 0.001,
+       "spare_support_dimension_height": 0.00603,
+       "spare_position_factor": 0.262,
+       "spare_length": null,
+       "spare_start": 0.0,
+       "spare_mode": "standard_backward"
+      }
+     ],
+     "trailing_edge_device": {
+      "name": "Querruder",
+      "role": "aileron",
+      "label": "Querruder 28 (Balsa 3, spitz geschliffen)",
+      "rel_chord_root": 0.8176,
+      "rel_chord_tip": 0.8117,
+      "hinge_spacing": 0.68,
+      "side_spacing_root": 0.0,
+      "side_spacing_tip": 0.0,
+      "servo": null,
+      "servo_placement": "bottom",
+      "rel_chord_servo_position": null,
+      "rel_length_servo_position": null,
+      "positive_deflection_deg": 19.4,
+      "negative_deflection_deg": 19.4,
+      "deflection_deg": 0.0,
+      "trailing_edge_offset_factor": 1.0,
+      "hinge_type": "middle",
+      "symmetric": false
+     },
+     "control_surface": {
+      "name": "Querruder",
+      "hinge_point": 0.8176,
+      "symmetric": false,
+      "deflection": 0.0
+     }
+    },
+    {
+     "xyz_le": [
+      0.142135,
+      0.318,
+      0.035812
+     ],
+     "chord": 0.086424,
+     "twist": -0.494,
+     "dihedral": 0.0,
+     "airfoil": "./snack_fluegel_09.dat",
+     "x_sec_type": "tip",
+     "tip_type": "round",
+     "spare_list": [
+      {
+       "spare_support_dimension_width": 0.001,
+       "spare_support_dimension_height": 0.00603,
+       "spare_position_factor": 0.2356,
+       "spare_length": null,
+       "spare_start": 0.0,
+       "spare_mode": "standard_backward"
+      }
+     ],
+     "trailing_edge_device": {
+      "name": "Querruder",
+      "role": "aileron",
+      "label": "Querruder 28 (Balsa 3, spitz geschliffen)",
+      "rel_chord_root": 0.8117,
+      "rel_chord_tip": 0.8034,
+      "hinge_spacing": 0.68,
+      "side_spacing_root": 0.0,
+      "side_spacing_tip": 0.0,
+      "servo": null,
+      "servo_placement": "bottom",
+      "rel_chord_servo_position": null,
+      "rel_length_servo_position": null,
+      "positive_deflection_deg": 19.4,
+      "negative_deflection_deg": 19.4,
+      "deflection_deg": 0.0,
+      "trailing_edge_offset_factor": 1.0,
+      "hinge_type": "middle",
+      "symmetric": false
+     },
+     "control_surface": {
+      "name": "Querruder",
+      "hinge_point": 0.8117,
+      "symmetric": false,
+      "deflection": 0.0
+     }
+    },
+    {
+     "xyz_le": [
+      0.146167,
+      0.32,
+      0.035949
+     ],
+     "chord": 0.082292,
+     "twist": -0.544,
+     "dihedral": 0.0,
+     "airfoil": "./snack_fluegel_10.dat",
+     "x_sec_type": "tip",
+     "tip_type": "round",
+     "spare_list": [
+      {
+       "spare_support_dimension_width": 0.001,
+       "spare_support_dimension_height": 0.00603,
+       "spare_position_factor": 0.1997,
+       "spare_length": null,
+       "spare_start": 0.0,
+       "spare_mode": "standard_backward"
+      }
+     ],
+     "trailing_edge_device": {
+      "name": "Querruder",
+      "role": "aileron",
+      "label": "Querruder 28 (Balsa 3, spitz geschliffen)",
+      "rel_chord_root": 0.8034,
+      "rel_chord_tip": 0.7918,
+      "hinge_spacing": 0.68,
+      "side_spacing_root": 0.0,
+      "side_spacing_tip": 0.0,
+      "servo": null,
+      "servo_placement": "bottom",
+      "rel_chord_servo_position": null,
+      "rel_length_servo_position": null,
+      "positive_deflection_deg": 19.4,
+      "negative_deflection_deg": 19.4,
+      "deflection_deg": 0.0,
+      "trailing_edge_offset_factor": 1.0,
+      "hinge_type": "middle",
+      "symmetric": false
+     },
+     "control_surface": {
+      "name": "Querruder",
+      "hinge_point": 0.8034,
+      "symmetric": false,
+      "deflection": 0.0
+     }
+    },
+    {
+     "xyz_le": [
+      0.15109,
+      0.3218,
+      0.036072
+     ],
+     "chord": 0.077279,
+     "twist": -0.612,
+     "dihedral": 0.0,
+     "airfoil": "./snack_fluegel_11.dat",
+     "x_sec_type": "tip",
+     "tip_type": "round",
+     "spare_list": [
+      {
+       "spare_support_dimension_width": 0.001,
+       "spare_support_dimension_height": 0.00603,
+       "spare_position_factor": 0.1502,
+       "spare_length": null,
+       "spare_start": 0.0,
+       "spare_mode": "standard_backward"
+      }
+     ],
+     "trailing_edge_device": {
+      "name": "Querruder",
+      "role": "aileron",
+      "label": "Querruder 28 (Balsa 3, spitz geschliffen)",
+      "rel_chord_root": 0.7918,
+      "rel_chord_tip": 0.7899,
+      "hinge_spacing": 0.68,
+      "side_spacing_root": 0.0,
+      "side_spacing_tip": 0.0,
+      "servo": null,
+      "servo_placement": "bottom",
+      "rel_chord_servo_position": null,
+      "rel_length_servo_position": null,
+      "positive_deflection_deg": 19.4,
+      "negative_deflection_deg": 19.4,
+      "deflection_deg": 0.0,
+      "trailing_edge_offset_factor": 1.0,
+      "hinge_type": "middle",
+      "symmetric": false
+     },
+     "control_surface": {
+      "name": "Querruder",
+      "hinge_point": 0.7918,
+      "symmetric": false,
+      "deflection": 0.0
+     }
+    },
+    {
+     "xyz_le": [
+      0.151859,
+      0.322,
+      0.036086
+     ],
+     "chord": 0.076495,
+     "twist": -0.354,
+     "dihedral": 0.0,
+     "airfoil": "./snack_fluegel_12.dat",
+     "x_sec_type": "tip",
+     "tip_type": "round",
+     "spare_list": [
+      {
+       "spare_support_dimension_width": 0.001,
+       "spare_support_dimension_height": 0.00603,
+       "spare_position_factor": 0.1419,
+       "spare_length": null,
+       "spare_start": 0.0,
+       "spare_mode": "standard_backward"
+      }
+     ]
+    },
+    {
+     "xyz_le": [
+      0.152629,
+      0.3222,
+      0.0361
+     ],
+     "chord": 0.059484,
+     "twist": -2.345,
+     "dihedral": 0.0,
+     "airfoil": "./snack_fluegel_13.dat",
+     "x_sec_type": "tip",
+     "tip_type": "round",
+     "spare_list": [
+      {
+       "spare_support_dimension_width": 0.001,
+       "spare_support_dimension_height": 0.00603,
+       "spare_position_factor": 0.1697,
+       "spare_length": null,
+       "spare_start": 0.0,
+       "spare_mode": "standard_backward"
+      }
+     ]
+    },
+    {
+     "xyz_le": [
+      0.153398,
+      0.3224,
+      0.036113
+     ],
+     "chord": 0.058716,
+     "twist": -2.382,
+     "dihedral": 0.0,
+     "airfoil": "./snack_fluegel_14.dat",
+     "x_sec_type": "tip",
+     "tip_type": "round",
+     "spare_list": [
+      {
+       "spare_support_dimension_width": 0.001,
+       "spare_support_dimension_height": 0.00603,
+       "spare_position_factor": 0.159,
+       "spare_length": null,
+       "spare_start": 0.0,
+       "spare_mode": "standard_backward"
+      }
+     ]
+    },
+    {
+     "xyz_le": [
+      0.155048,
+      0.3228,
+      0.036141
+     ],
+     "chord": 0.057068,
+     "twist": -2.466,
+     "dihedral": 0.0,
+     "airfoil": "./snack_fluegel_15.dat",
+     "x_sec_type": "tip",
+     "tip_type": "round",
+     "spare_list": [
+      {
+       "spare_support_dimension_width": 0.001,
+       "spare_support_dimension_height": 0.00603,
+       "spare_position_factor": 0.135,
+       "spare_length": null,
+       "spare_start": 0.0,
+       "spare_mode": "standard_backward"
+      }
+     ]
+    },
+    {
+     "xyz_le": [
+      0.159471,
+      0.3236,
+      0.036196
+     ],
+     "chord": 0.052613,
+     "twist": -1.624,
+     "dihedral": 0.0,
+     "airfoil": "./snack_fluegel_16.dat",
+     "x_sec_type": "tip",
+     "tip_type": "round",
+     "spare_list": []
+    },
+    {
+     "xyz_le": [
+      0.162758,
+      0.324,
+      0.036223
+     ],
+     "chord": 0.049176,
+     "twist": 0.534,
+     "dihedral": 0.0,
+     "airfoil": "./snack_fluegel_17.dat"
+    }
+   ],
+   "units": {
+    "geometry_length": "m",
+    "detail_length": "m",
+    "angle": "deg"
+   }
+  },
+  "Hoehenleitwerk": {
+   "name": "Hoehenleitwerk",
+   "symmetric": true,
+   "design_model": "asb",
+   "x_secs": [
+    {
+     "xyz_le": [
+      0.408364,
+      0.0,
+      0.047767
+     ],
+     "chord": 0.092365,
+     "twist": 0.0,
+     "dihedral": 0.0,
+     "airfoil": "./snack_hlw_00.dat",
+     "x_sec_type": "root",
+     "spare_list": [],
+     "trailing_edge_device": {
+      "name": "Hoehenruder",
+      "role": "elevator",
+      "label": "Hoehenruder 16b (einteilig, Balsa 2)",
+      "rel_chord_root": 0.7058,
+      "rel_chord_tip": 0.7111,
+      "hinge_spacing": 0.5,
+      "side_spacing_root": 0.0,
+      "side_spacing_tip": 0.0,
+      "servo": null,
+      "servo_placement": "bottom",
+      "rel_chord_servo_position": null,
+      "rel_length_servo_position": null,
+      "positive_deflection_deg": 21.8,
+      "negative_deflection_deg": 21.8,
+      "deflection_deg": 0.0,
+      "trailing_edge_offset_factor": 1.0,
+      "hinge_type": "middle",
+      "symmetric": true
+     },
+     "control_surface": {
+      "name": "Hoehenruder",
+      "hinge_point": 0.7058,
+      "symmetric": true,
+      "deflection": 0.0
+     }
+    },
+    {
+     "xyz_le": [
+      0.408517,
+      0.014,
+      0.047767
+     ],
+     "chord": 0.091465,
+     "twist": 0.0,
+     "dihedral": 0.0,
+     "airfoil": "./snack_hlw_01.dat",
+     "x_sec_type": "segment",
+     "spare_list": [],
+     "trailing_edge_device": {
+      "name": "Hoehenruder",
+      "role": "elevator",
+      "label": "Hoehenruder 16b (einteilig, Balsa 2)",
+      "rel_chord_root": 0.7111,
+      "rel_chord_tip": 0.6616,
+      "hinge_spacing": 0.5,
+      "side_spacing_root": 0.0,
+      "side_spacing_tip": 0.0,
+      "servo": null,
+      "servo_placement": "bottom",
+      "rel_chord_servo_position": null,
+      "rel_length_servo_position": null,
+      "positive_deflection_deg": 21.8,
+      "negative_deflection_deg": 21.8,
+      "deflection_deg": 0.0,
+      "trailing_edge_offset_factor": 1.0,
+      "hinge_type": "middle",
+      "symmetric": true
+     },
+     "control_surface": {
+      "name": "Hoehenruder",
+      "hinge_point": 0.7111,
+      "symmetric": true,
+      "deflection": 0.0
+     }
+    },
+    {
+     "xyz_le": [
+      0.430428,
+      0.094,
+      0.047767
+     ],
+     "chord": 0.065184,
+     "twist": 0.0,
+     "dihedral": 0.0,
+     "airfoil": "./snack_hlw_02.dat",
+     "x_sec_type": "segment",
+     "spare_list": [],
+     "trailing_edge_device": {
+      "name": "Hoehenruder",
+      "role": "elevator",
+      "label": "Hoehenruder 16b (einteilig, Balsa 2)",
+      "rel_chord_root": 0.6616,
+      "rel_chord_tip": 0.6472,
+      "hinge_spacing": 0.5,
+      "side_spacing_root": 0.0,
+      "side_spacing_tip": 0.0,
+      "servo": null,
+      "servo_placement": "bottom",
+      "rel_chord_servo_position": null,
+      "rel_length_servo_position": null,
+      "positive_deflection_deg": 21.8,
+      "negative_deflection_deg": 21.8,
+      "deflection_deg": 0.0,
+      "trailing_edge_offset_factor": 1.0,
+      "hinge_type": "middle",
+      "symmetric": true
+     },
+     "control_surface": {
+      "name": "Hoehenruder",
+      "hinge_point": 0.6616,
+      "symmetric": true,
+      "deflection": 0.0
+     }
+    },
+    {
+     "xyz_le": [
+      0.433699,
+      0.1,
+      0.047767
+     ],
+     "chord": 0.061585,
+     "twist": 0.0,
+     "dihedral": 0.0,
+     "airfoil": "./snack_hlw_03.dat",
+     "x_sec_type": "segment",
+     "spare_list": [],
+     "trailing_edge_device": {
+      "name": "Hoehenruder",
+      "role": "elevator",
+      "label": "Hoehenruder 16b (einteilig, Balsa 2)",
+      "rel_chord_root": 0.6472,
+      "rel_chord_tip": 0.6269,
+      "hinge_spacing": 0.5,
+      "side_spacing_root": 0.0,
+      "side_spacing_tip": 0.0,
+      "servo": null,
+      "servo_placement": "bottom",
+      "rel_chord_servo_position": null,
+      "rel_length_servo_position": null,
+      "positive_deflection_deg": 21.8,
+      "negative_deflection_deg": 21.8,
+      "deflection_deg": 0.0,
+      "trailing_edge_offset_factor": 1.0,
+      "hinge_type": "middle",
+      "symmetric": true
+     },
+     "control_surface": {
+      "name": "Hoehenruder",
+      "hinge_point": 0.6472,
+      "symmetric": true,
+      "deflection": 0.0
+     }
+    },
+    {
+     "xyz_le": [
+      0.437414,
+      0.104,
+      0.047767
+     ],
+     "chord": 0.057651,
+     "twist": 0.0,
+     "dihedral": 0.0,
+     "airfoil": "./snack_hlw_04.dat",
+     "x_sec_type": "tip",
+     "tip_type": "round",
+     "spare_list": [],
+     "trailing_edge_device": {
+      "name": "Hoehenruder",
+      "role": "elevator",
+      "label": "Hoehenruder 16b (einteilig, Balsa 2)",
+      "rel_chord_root": 0.6269,
+      "rel_chord_tip": 0.6102,
+      "hinge_spacing": 0.5,
+      "side_spacing_root": 0.0,
+      "side_spacing_tip": 0.0,
+      "servo": null,
+      "servo_placement": "bottom",
+      "rel_chord_servo_position": null,
+      "rel_length_servo_position": null,
+      "positive_deflection_deg": 21.8,
+      "negative_deflection_deg": 21.8,
+      "deflection_deg": 0.0,
+      "trailing_edge_offset_factor": 1.0,
+      "hinge_type": "middle",
+      "symmetric": true
+     },
+     "control_surface": {
+      "name": "Hoehenruder",
+      "hinge_point": 0.6269,
+      "symmetric": true,
+      "deflection": 0.0
+     }
+    },
+    {
+     "xyz_le": [
+      0.440056,
+      0.106,
+      0.047767
+     ],
+     "chord": 0.0549,
+     "twist": 0.0,
+     "dihedral": 0.0,
+     "airfoil": "./snack_hlw_05.dat",
+     "x_sec_type": "tip",
+     "tip_type": "round",
+     "spare_list": [],
+     "trailing_edge_device": {
+      "name": "Hoehenruder",
+      "role": "elevator",
+      "label": "Hoehenruder 16b (einteilig, Balsa 2)",
+      "rel_chord_root": 0.6102,
+      "rel_chord_tip": 0.5834,
+      "hinge_spacing": 0.5,
+      "side_spacing_root": 0.0,
+      "side_spacing_tip": 0.0,
+      "servo": null,
+      "servo_placement": "bottom",
+      "rel_chord_servo_position": null,
+      "rel_length_servo_position": null,
+      "positive_deflection_deg": 21.8,
+      "negative_deflection_deg": 21.8,
+      "deflection_deg": 0.0,
+      "trailing_edge_offset_factor": 1.0,
+      "hinge_type": "middle",
+      "symmetric": true
+     },
+     "control_surface": {
+      "name": "Hoehenruder",
+      "hinge_point": 0.6102,
+      "symmetric": true,
+      "deflection": 0.0
+     }
+    },
+    {
+     "xyz_le": [
+      0.443737,
+      0.108,
+      0.047767
+     ],
+     "chord": 0.051108,
+     "twist": 0.0,
+     "dihedral": 0.0,
+     "airfoil": "./snack_hlw_06.dat",
+     "x_sec_type": "tip",
+     "tip_type": "round",
+     "spare_list": [],
+     "trailing_edge_device": {
+      "name": "Hoehenruder",
+      "role": "elevator",
+      "label": "Hoehenruder 16b (einteilig, Balsa 2)",
+      "rel_chord_root": 0.5834,
+      "rel_chord_tip": 0.5516,
+      "hinge_spacing": 0.5,
+      "side_spacing_root": 0.0,
+      "side_spacing_tip": 0.0,
+      "servo": null,
+      "servo_placement": "bottom",
+      "rel_chord_servo_position": null,
+      "rel_length_servo_position": null,
+      "positive_deflection_deg": 21.8,
+      "negative_deflection_deg": 21.8,
+      "deflection_deg": 0.0,
+      "trailing_edge_offset_factor": 1.0,
+      "hinge_type": "middle",
+      "symmetric": true
+     },
+     "control_surface": {
+      "name": "Hoehenruder",
+      "hinge_point": 0.5834,
+      "symmetric": true,
+      "deflection": 0.0
+     }
+    },
+    {
+     "xyz_le": [
+      0.44745,
+      0.1093,
+      0.047767
+     ],
+     "chord": 0.047325,
+     "twist": 0.0,
+     "dihedral": 0.0,
+     "airfoil": "./snack_hlw_07.dat",
+     "x_sec_type": "tip",
+     "tip_type": "round",
+     "spare_list": [],
+     "trailing_edge_device": {
+      "name": "Hoehenruder",
+      "role": "elevator",
+      "label": "Hoehenruder 16b (einteilig, Balsa 2)",
+      "rel_chord_root": 0.5516,
+      "rel_chord_tip": 0.5114,
+      "hinge_spacing": 0.5,
+      "side_spacing_root": 0.0,
+      "side_spacing_tip": 0.0,
+      "servo": null,
+      "servo_placement": "bottom",
+      "rel_chord_servo_position": null,
+      "rel_length_servo_position": null,
+      "positive_deflection_deg": 21.8,
+      "negative_deflection_deg": 21.8,
+      "deflection_deg": 0.0,
+      "trailing_edge_offset_factor": 1.0,
+      "hinge_type": "middle",
+      "symmetric": true
+     },
+     "control_surface": {
+      "name": "Hoehenruder",
+      "hinge_point": 0.5516,
+      "symmetric": true,
+      "deflection": 0.0
+     }
+    },
+    {
+     "xyz_le": [
+      0.451384,
+      0.11,
+      0.047767
+     ],
+     "chord": 0.043352,
+     "twist": 0.0,
+     "dihedral": 0.0,
+     "airfoil": "./snack_hlw_08.dat"
+    }
+   ],
+   "units": {
+    "geometry_length": "m",
+    "detail_length": "m",
+    "angle": "deg"
+   }
+  },
+  "Seitenleitwerk": {
+   "name": "Seitenleitwerk",
+   "symmetric": false,
+   "design_model": "asb",
+   "x_secs": [
+    {
+     "xyz_le": [
+      0.45973,
+      0.0,
+      0.05863
+     ],
+     "chord": 0.008681,
+     "twist": 0.0,
+     "dihedral": 90.0,
+     "airfoil": "./snack_slw_00.dat",
+     "x_sec_type": "root",
+     "spare_list": [],
+     "trailing_edge_device": {
+      "name": "Seitenruder",
+      "role": "rudder",
+      "label": "Seitenruder 15c (Balsa 2)",
+      "rel_chord_root": 0.0,
+      "rel_chord_tip": 0.0,
+      "hinge_spacing": 0.0,
+      "side_spacing_root": 0.0,
+      "side_spacing_tip": 0.0,
+      "servo": null,
+      "servo_placement": "bottom",
+      "rel_chord_servo_position": null,
+      "rel_length_servo_position": null,
+      "positive_deflection_deg": 29.2,
+      "negative_deflection_deg": 29.2,
+      "deflection_deg": 0.0,
+      "trailing_edge_offset_factor": 1.0,
+      "hinge_type": "middle",
+      "symmetric": null
+     },
+     "control_surface": {
+      "name": "Seitenruder",
+      "hinge_point": 0.0,
+      "symmetric": true,
+      "deflection": 0.0
+     }
+    },
+    {
+     "xyz_le": [
+      0.444759,
+      0.0,
+      0.06163
+     ],
+     "chord": 0.022878,
+     "twist": 0.0,
+     "dihedral": 0.0,
+     "airfoil": "./snack_slw_01.dat",
+     "x_sec_type": "segment",
+     "spare_list": [],
+     "trailing_edge_device": {
+      "name": "Seitenruder",
+      "role": "rudder",
+      "label": "Seitenruder 15c (Balsa 2)",
+      "rel_chord_root": 0.0,
+      "rel_chord_tip": 0.1578,
+      "hinge_spacing": 0.0,
+      "side_spacing_root": 0.0,
+      "side_spacing_tip": 0.0,
+      "servo": null,
+      "servo_placement": "bottom",
+      "rel_chord_servo_position": null,
+      "rel_length_servo_position": null,
+      "positive_deflection_deg": 29.2,
+      "negative_deflection_deg": 29.2,
+      "deflection_deg": 0.0,
+      "trailing_edge_offset_factor": 1.0,
+      "hinge_type": "middle",
+      "symmetric": null
+     },
+     "control_surface": {
+      "name": "Seitenruder",
+      "hinge_point": 0.0,
+      "symmetric": true,
+      "deflection": 0.0
+     }
+    },
+    {
+     "xyz_le": [
+      0.424328,
+      0.0,
+      0.06313
+     ],
+     "chord": 0.042921,
+     "twist": 0.0,
+     "dihedral": 0.0,
+     "airfoil": "./snack_slw_02.dat",
+     "x_sec_type": "segment",
+     "spare_list": [],
+     "trailing_edge_device": {
+      "name": "Seitenruder",
+      "role": "rudder",
+      "label": "Seitenruder 15c (Balsa 2)",
+      "rel_chord_root": 0.1578,
+      "rel_chord_tip": 0.3084,
+      "hinge_spacing": 0.0,
+      "side_spacing_root": 0.0,
+      "side_spacing_tip": 0.0,
+      "servo": null,
+      "servo_placement": "bottom",
+      "rel_chord_servo_position": null,
+      "rel_length_servo_position": null,
+      "positive_deflection_deg": 29.2,
+      "negative_deflection_deg": 29.2,
+      "deflection_deg": 0.0,
+      "trailing_edge_offset_factor": 1.0,
+      "hinge_type": "middle",
+      "symmetric": null
+     },
+     "control_surface": {
+      "name": "Seitenruder",
+      "hinge_point": 0.1578,
+      "symmetric": true,
+      "deflection": 0.0
+     }
+    },
+    {
+     "xyz_le": [
+      0.407286,
+      0.0,
+      0.06613
+     ],
+     "chord": 0.059189,
+     "twist": 0.0,
+     "dihedral": 0.0,
+     "airfoil": "./snack_slw_03.dat",
+     "x_sec_type": "segment",
+     "spare_list": [],
+     "trailing_edge_device": {
+      "name": "Seitenruder",
+      "role": "rudder",
+      "label": "Seitenruder 15c (Balsa 2)",
+      "rel_chord_root": 0.3084,
+      "rel_chord_tip": 0.3731,
+      "hinge_spacing": 0.0,
+      "side_spacing_root": 0.0,
+      "side_spacing_tip": 0.0,
+      "servo": null,
+      "servo_placement": "bottom",
+      "rel_chord_servo_position": null,
+      "rel_length_servo_position": null,
+      "positive_deflection_deg": 29.2,
+      "negative_deflection_deg": 29.2,
+      "deflection_deg": 0.0,
+      "trailing_edge_offset_factor": 1.0,
+      "hinge_type": "middle",
+      "symmetric": null
+     },
+     "control_surface": {
+      "name": "Seitenruder",
+      "hinge_point": 0.3084,
+      "symmetric": true,
+      "deflection": 0.0
+     }
+    },
+    {
+     "xyz_le": [
+      0.401402,
+      0.0,
+      0.06763
+     ],
+     "chord": 0.064685,
+     "twist": 0.0,
+     "dihedral": 0.0,
+     "airfoil": "./snack_slw_04.dat",
+     "x_sec_type": "segment",
+     "spare_list": [],
+     "trailing_edge_device": {
+      "name": "Seitenruder",
+      "role": "rudder",
+      "label": "Seitenruder 15c (Balsa 2)",
+      "rel_chord_root": 0.3731,
+      "rel_chord_tip": 0.5418,
+      "hinge_spacing": 0.0,
+      "side_spacing_root": 0.0,
+      "side_spacing_tip": 0.0,
+      "servo": null,
+      "servo_placement": "bottom",
+      "rel_chord_servo_position": null,
+      "rel_length_servo_position": null,
+      "positive_deflection_deg": 29.2,
+      "negative_deflection_deg": 29.2,
+      "deflection_deg": 0.0,
+      "trailing_edge_offset_factor": 1.0,
+      "hinge_type": "middle",
+      "symmetric": null
+     },
+     "control_surface": {
+      "name": "Seitenruder",
+      "hinge_point": 0.3731,
+      "symmetric": true,
+      "deflection": 0.0
+     }
+    },
+    {
+     "xyz_le": [
+      0.378931,
+      0.0,
+      0.07213
+     ],
+     "chord": 0.085994,
+     "twist": 0.0,
+     "dihedral": 0.0,
+     "airfoil": "./snack_slw_05.dat",
+     "x_sec_type": "segment",
+     "spare_list": [],
+     "trailing_edge_device": {
+      "name": "Seitenruder",
+      "role": "rudder",
+      "label": "Seitenruder 15c (Balsa 2)",
+      "rel_chord_root": 0.5418,
+      "rel_chord_tip": 0.594,
+      "hinge_spacing": 0.0,
+      "side_spacing_root": 0.0,
+      "side_spacing_tip": 0.0,
+      "servo": null,
+      "servo_placement": "bottom",
+      "rel_chord_servo_position": null,
+      "rel_length_servo_position": null,
+      "positive_deflection_deg": 29.2,
+      "negative_deflection_deg": 29.2,
+      "deflection_deg": 0.0,
+      "trailing_edge_offset_factor": 1.0,
+      "hinge_type": "middle",
+      "symmetric": null
+     },
+     "control_surface": {
+      "name": "Seitenruder",
+      "hinge_point": 0.5418,
+      "symmetric": true,
+      "deflection": 0.0
+     }
+    },
+    {
+     "xyz_le": [
+      0.368415,
+      0.0,
+      0.07363
+     ],
+     "chord": 0.096123,
+     "twist": 0.0,
+     "dihedral": 0.0,
+     "airfoil": "./snack_slw_06.dat",
+     "x_sec_type": "segment",
+     "spare_list": [],
+     "trailing_edge_device": {
+      "name": "Seitenruder",
+      "role": "rudder",
+      "label": "Seitenruder 15c (Balsa 2)",
+      "rel_chord_root": 0.594,
+      "rel_chord_tip": 0.6751,
+      "hinge_spacing": 0.0,
+      "side_spacing_root": 0.0,
+      "side_spacing_tip": 0.0,
+      "servo": null,
+      "servo_placement": "bottom",
+      "rel_chord_servo_position": null,
+      "rel_length_servo_position": null,
+      "positive_deflection_deg": 29.2,
+      "negative_deflection_deg": 29.2,
+      "deflection_deg": 0.0,
+      "trailing_edge_offset_factor": 1.0,
+      "hinge_type": "middle",
+      "symmetric": null
+     },
+     "control_surface": {
+      "name": "Seitenruder",
+      "hinge_point": 0.594,
+      "symmetric": true,
+      "deflection": 0.0
+     }
+    },
+    {
+     "xyz_le": [
+      0.345996,
+      0.0,
+      0.07663
+     ],
+     "chord": 0.117767,
+     "twist": 0.0,
+     "dihedral": 0.0,
+     "airfoil": "./snack_slw_07.dat",
+     "x_sec_type": "segment",
+     "spare_list": [],
+     "trailing_edge_device": {
+      "name": "Seitenruder",
+      "role": "rudder",
+      "label": "Seitenruder 15c (Balsa 2)",
+      "rel_chord_root": 0.6751,
+      "rel_chord_tip": 0.7371,
+      "hinge_spacing": 0.0,
+      "side_spacing_root": 0.0,
+      "side_spacing_tip": 0.0,
+      "servo": null,
+      "servo_placement": "bottom",
+      "rel_chord_servo_position": null,
+      "rel_length_servo_position": null,
+      "positive_deflection_deg": 29.2,
+      "negative_deflection_deg": 29.2,
+      "deflection_deg": 0.0,
+      "trailing_edge_offset_factor": 1.0,
+      "hinge_type": "middle",
+      "symmetric": null
+     },
+     "control_surface": {
+      "name": "Seitenruder",
+      "hinge_point": 0.6751,
+      "symmetric": true,
+      "deflection": 0.0
+     }
+    },
+    {
+     "xyz_le": [
+      0.319324,
+      0.0,
+      0.07813
+     ],
+     "chord": 0.144052,
+     "twist": 0.0,
+     "dihedral": 0.0,
+     "airfoil": "./snack_slw_08.dat",
+     "x_sec_type": "segment",
+     "spare_list": [],
+     "trailing_edge_device": {
+      "name": "Seitenruder",
+      "role": "rudder",
+      "label": "Seitenruder 15c (Balsa 2)",
+      "rel_chord_root": 0.7371,
+      "rel_chord_tip": 0.7643,
+      "hinge_spacing": 0.0,
+      "side_spacing_root": 0.0,
+      "side_spacing_tip": 0.0,
+      "servo": null,
+      "servo_placement": "bottom",
+      "rel_chord_servo_position": null,
+      "rel_length_servo_position": null,
+      "positive_deflection_deg": 29.2,
+      "negative_deflection_deg": 29.2,
+      "deflection_deg": 0.0,
+      "trailing_edge_offset_factor": 1.0,
+      "hinge_type": "middle",
+      "symmetric": null
+     },
+     "control_surface": {
+      "name": "Seitenruder",
+      "hinge_point": 0.7371,
+      "symmetric": true,
+      "deflection": 0.0
+     }
+    },
+    {
+     "xyz_le": [
+      0.303916,
+      0.0,
+      0.07963
+     ],
+     "chord": 0.159073,
+     "twist": 0.0,
+     "dihedral": 0.0,
+     "airfoil": "./snack_slw_09.dat",
+     "x_sec_type": "segment",
+     "spare_list": [],
+     "trailing_edge_device": {
+      "name": "Seitenruder",
+      "role": "rudder",
+      "label": "Seitenruder 15c (Balsa 2)",
+      "rel_chord_root": 0.7643,
+      "rel_chord_tip": 0.7707,
+      "hinge_spacing": 0.0,
+      "side_spacing_root": 0.0,
+      "side_spacing_tip": 0.0,
+      "servo": null,
+      "servo_placement": "bottom",
+      "rel_chord_servo_position": null,
+      "rel_length_servo_position": null,
+      "positive_deflection_deg": 29.2,
+      "negative_deflection_deg": 29.2,
+      "deflection_deg": 0.0,
+      "trailing_edge_offset_factor": 1.0,
+      "hinge_type": "middle",
+      "symmetric": null
+     },
+     "control_surface": {
+      "name": "Seitenruder",
+      "hinge_point": 0.7643,
+      "symmetric": true,
+      "deflection": 0.0
+     }
+    },
+    {
+     "xyz_le": [
+      0.300767,
+      0.0,
+      0.08113
+     ],
+     "chord": 0.161835,
+     "twist": 0.0,
+     "dihedral": 0.0,
+     "airfoil": "./snack_slw_10.dat",
+     "x_sec_type": "segment",
+     "spare_list": [],
+     "trailing_edge_device": {
+      "name": "Seitenruder",
+      "role": "rudder",
+      "label": "Seitenruder 15c (Balsa 2)",
+      "rel_chord_root": 0.7707,
+      "rel_chord_tip": 0.7514,
+      "hinge_spacing": 0.0,
+      "side_spacing_root": 0.0,
+      "side_spacing_tip": 0.0,
+      "servo": null,
+      "servo_placement": "bottom",
+      "rel_chord_servo_position": null,
+      "rel_length_servo_position": null,
+      "positive_deflection_deg": 29.2,
+      "negative_deflection_deg": 29.2,
+      "deflection_deg": 0.0,
+      "trailing_edge_offset_factor": 1.0,
+      "hinge_type": "middle",
+      "symmetric": null
+     },
+     "control_surface": {
+      "name": "Seitenruder",
+      "hinge_point": 0.7707,
+      "symmetric": true,
+      "deflection": 0.0
+     }
+    },
+    {
+     "xyz_le": [
+      0.314511,
+      0.0,
+      0.08263
+     ],
+     "chord": 0.147703,
+     "twist": 0.0,
+     "dihedral": 0.0,
+     "airfoil": "./snack_slw_11.dat",
+     "x_sec_type": "segment",
+     "spare_list": [],
+     "trailing_edge_device": {
+      "name": "Seitenruder",
+      "role": "rudder",
+      "label": "Seitenruder 15c (Balsa 2)",
+      "rel_chord_root": 0.7514,
+      "rel_chord_tip": 0.6271,
+      "hinge_spacing": 0.0,
+      "side_spacing_root": 0.0,
+      "side_spacing_tip": 0.0,
+      "servo": null,
+      "servo_placement": "bottom",
+      "rel_chord_servo_position": null,
+      "rel_length_servo_position": null,
+      "positive_deflection_deg": 29.2,
+      "negative_deflection_deg": 29.2,
+      "deflection_deg": 0.0,
+      "trailing_edge_offset_factor": 1.0,
+      "hinge_type": "middle",
+      "symmetric": null
+     },
+     "control_surface": {
+      "name": "Seitenruder",
+      "hinge_point": 0.7514,
+      "symmetric": true,
+      "deflection": 0.0
+     }
+    },
+    {
+     "xyz_le": [
+      0.36564,
+      0.0,
+      0.08713
+     ],
+     "chord": 0.095413,
+     "twist": 0.0,
+     "dihedral": 0.0,
+     "airfoil": "./snack_slw_12.dat",
+     "x_sec_type": "segment",
+     "spare_list": [],
+     "trailing_edge_device": {
+      "name": "Seitenruder",
+      "role": "rudder",
+      "label": "Seitenruder 15c (Balsa 2)",
+      "rel_chord_root": 0.6271,
+      "rel_chord_tip": 0.5628,
+      "hinge_spacing": 0.0,
+      "side_spacing_root": 0.0,
+      "side_spacing_tip": 0.0,
+      "servo": null,
+      "servo_placement": "bottom",
+      "rel_chord_servo_position": null,
+      "rel_length_servo_position": null,
+      "positive_deflection_deg": 29.2,
+      "negative_deflection_deg": 29.2,
+      "deflection_deg": 0.0,
+      "trailing_edge_offset_factor": 1.0,
+      "hinge_type": "middle",
+      "symmetric": null
+     },
+     "control_surface": {
+      "name": "Seitenruder",
+      "hinge_point": 0.6271,
+      "symmetric": true,
+      "deflection": 0.0
+     }
+    },
+    {
+     "xyz_le": [
+      0.380172,
+      0.0,
+      0.08863
+     ],
+     "chord": 0.080493,
+     "twist": 0.0,
+     "dihedral": 0.0,
+     "airfoil": "./snack_slw_13.dat",
+     "x_sec_type": "segment",
+     "spare_list": [],
+     "trailing_edge_device": {
+      "name": "Seitenruder",
+      "role": "rudder",
+      "label": "Seitenruder 15c (Balsa 2)",
+      "rel_chord_root": 0.5628,
+      "rel_chord_tip": 0.596,
+      "hinge_spacing": 0.0,
+      "side_spacing_root": 0.0,
+      "side_spacing_tip": 0.0,
+      "servo": null,
+      "servo_placement": "bottom",
+      "rel_chord_servo_position": null,
+      "rel_length_servo_position": null,
+      "positive_deflection_deg": 29.2,
+      "negative_deflection_deg": 29.2,
+      "deflection_deg": 0.0,
+      "trailing_edge_offset_factor": 1.0,
+      "hinge_type": "middle",
+      "symmetric": null
+     },
+     "control_surface": {
+      "name": "Seitenruder",
+      "hinge_point": 0.5628,
+      "symmetric": true,
+      "deflection": 0.0
+     }
+    },
+    {
+     "xyz_le": [
+      0.393914,
+      0.0,
+      0.14263
+     ],
+     "chord": 0.052663,
+     "twist": 0.0,
+     "dihedral": 0.0,
+     "airfoil": "./snack_slw_14.dat",
+     "x_sec_type": "tip",
+     "tip_type": "round",
+     "spare_list": [],
+     "trailing_edge_device": {
+      "name": "Seitenruder",
+      "role": "rudder",
+      "label": "Seitenruder 15c (Balsa 2)",
+      "rel_chord_root": 0.596,
+      "rel_chord_tip": 0.7499,
+      "hinge_spacing": 0.0,
+      "side_spacing_root": 0.0,
+      "side_spacing_tip": 0.0,
+      "servo": null,
+      "servo_placement": "bottom",
+      "rel_chord_servo_position": null,
+      "rel_length_servo_position": null,
+      "positive_deflection_deg": 29.2,
+      "negative_deflection_deg": 29.2,
+      "deflection_deg": 0.0,
+      "trailing_edge_offset_factor": 1.0,
+      "hinge_type": "middle",
+      "symmetric": null
+     },
+     "control_surface": {
+      "name": "Seitenruder",
+      "hinge_point": 0.596,
+      "symmetric": true,
+      "deflection": 0.0
+     }
+    },
+    {
+     "xyz_le": [
+      0.395124,
+      0.0,
+      0.14713
+     ],
+     "chord": 0.040223,
+     "twist": 0.0,
+     "dihedral": 0.0,
+     "airfoil": "./snack_slw_15.dat",
+     "x_sec_type": "tip",
+     "tip_type": "round",
+     "spare_list": [],
+     "trailing_edge_device": {
+      "name": "Seitenruder",
+      "role": "rudder",
+      "label": "Seitenruder 15c (Balsa 2)",
+      "rel_chord_root": 0.7499,
+      "rel_chord_tip": 0.9779,
+      "hinge_spacing": 0.0,
+      "side_spacing_root": 0.0,
+      "side_spacing_tip": 0.0,
+      "servo": null,
+      "servo_placement": "bottom",
+      "rel_chord_servo_position": null,
+      "rel_length_servo_position": null,
+      "positive_deflection_deg": 29.2,
+      "negative_deflection_deg": 29.2,
+      "deflection_deg": 0.0,
+      "trailing_edge_offset_factor": 1.0,
+      "hinge_type": "middle",
+      "symmetric": null
+     },
+     "control_surface": {
+      "name": "Seitenruder",
+      "hinge_point": 0.7499,
+      "symmetric": true,
+      "deflection": 0.0
+     }
+    },
+    {
+     "xyz_le": [
+      0.397484,
+      0.0,
+      0.15043
+     ],
+     "chord": 0.028422,
+     "twist": 0.0,
+     "dihedral": 0.0,
+     "airfoil": "./snack_slw_16.dat",
+     "x_sec_type": "tip",
+     "tip_type": "round",
+     "spare_list": []
+    },
+    {
+     "xyz_le": [
+      0.398609,
+      0.0,
+      0.15123
+     ],
+     "chord": 0.026308,
+     "twist": 0.0,
+     "dihedral": 0.0,
+     "airfoil": "./snack_slw_17.dat",
+     "x_sec_type": "tip",
+     "tip_type": "round",
+     "spare_list": []
+    },
+    {
+     "xyz_le": [
+      0.400899,
+      0.0,
+      0.15223
+     ],
+     "chord": 0.020055,
+     "twist": 0.0,
+     "dihedral": 0.0,
+     "airfoil": "./snack_slw_18.dat",
+     "x_sec_type": "tip",
+     "tip_type": "round",
+     "spare_list": []
+    },
+    {
+     "xyz_le": [
+      0.404277,
+      0.0,
+      0.15283
+     ],
+     "chord": 0.013091,
+     "twist": 0.0,
+     "dihedral": 0.0,
+     "airfoil": "./snack_slw_19.dat",
+     "x_sec_type": "tip",
+     "tip_type": "round",
+     "spare_list": []
+    },
+    {
+     "xyz_le": [
+      0.406199,
+      0.0,
+      0.15303
+     ],
+     "chord": 0.00952,
+     "twist": 0.0,
+     "dihedral": 0.0,
+     "airfoil": "./snack_slw_20.dat"
+    }
+   ],
+   "units": {
+    "geometry_length": "m",
+    "detail_length": "m",
+    "angle": "deg"
+   }
+  }
+ },
+ "fuselages": {
+  "Rumpf": {
+   "name": "Rumpf",
+   "symmetric": false,
+   "x_secs": [
+    {
+     "xyz": [
+      -0.011903,
+      0.0,
+      0.05087
+     ],
+     "a": 0.0,
+     "b": 0.0,
+     "n": 2.0
+    },
+    {
+     "xyz": [
+      -0.0116,
+      0.0,
+      0.05087
+     ],
+     "a": 0.025152,
+     "b": 0.003485,
+     "n": 50.0
+    },
+    {
+     "xyz": [
+      -0.006,
+      0.0,
+      0.041278
+     ],
+     "a": 0.025221,
+     "b": 0.016039,
+     "n": 50.0
+    },
+    {
+     "xyz": [
+      0.0004,
+      0.0,
+      0.038594
+     ],
+     "a": 0.02521,
+     "b": 0.019194,
+     "n": 50.0
+    },
+    {
+     "xyz": [
+      0.0065,
+      0.0,
+      0.037169
+     ],
+     "a": 0.02522,
+     "b": 0.021067,
+     "n": 50.0
+    },
+    {
+     "xyz": [
+      0.02,
+      0.0,
+      0.034595
+     ],
+     "a": 0.02522,
+     "b": 0.02463,
+     "n": 50.0
+    },
+    {
+     "xyz": [
+      0.04,
+      0.0,
+      0.032184
+     ],
+     "a": 0.02522,
+     "b": 0.028508,
+     "n": 50.0
+    },
+    {
+     "xyz": [
+      0.073,
+      0.0,
+      0.031218
+     ],
+     "a": 0.02522,
+     "b": 0.031894,
+     "n": 50.0
+    },
+    {
+     "xyz": [
+      0.104,
+      0.0,
+      0.031491
+     ],
+     "a": 0.02522,
+     "b": 0.033894,
+     "n": 50.0
+    },
+    {
+     "xyz": [
+      0.118,
+      0.0,
+      0.031796
+     ],
+     "a": 0.025222,
+     "b": 0.034617,
+     "n": 50.0
+    },
+    {
+     "xyz": [
+      0.1216,
+      0.0,
+      0.030605
+     ],
+     "a": 0.025152,
+     "b": 0.033507,
+     "n": 50.0
+    },
+    {
+     "xyz": [
+      0.136,
+      0.0,
+      0.026926
+     ],
+     "a": 0.025161,
+     "b": 0.029938,
+     "n": 50.0
+    },
+    {
+     "xyz": [
+      0.15,
+      0.0,
+      0.027364
+     ],
+     "a": 0.02516,
+     "b": 0.03025,
+     "n": 50.0
+    },
+    {
+     "xyz": [
+      0.18,
+      0.0,
+      0.028681
+     ],
+     "a": 0.025163,
+     "b": 0.030546,
+     "n": 50.0
+    },
+    {
+     "xyz": [
+      0.21,
+      0.0,
+      0.030543
+     ],
+     "a": 0.025163,
+     "b": 0.030296,
+     "n": 50.0
+    },
+    {
+     "xyz": [
+      0.241,
+      0.0,
+      0.033019
+     ],
+     "a": 0.025163,
+     "b": 0.029485,
+     "n": 50.0
+    },
+    {
+     "xyz": [
+      0.2436,
+      0.0,
+      0.045279
+     ],
+     "a": 0.02515,
+     "b": 0.040494,
+     "n": 50.0
+    },
+    {
+     "xyz": [
+      0.247,
+      0.0,
+      0.044942
+     ],
+     "a": 0.025148,
+     "b": 0.040643,
+     "n": 50.0
+    },
+    {
+     "xyz": [
+      0.27,
+      0.0,
+      0.045676
+     ],
+     "a": 0.024848,
+     "b": 0.038455,
+     "n": 50.0
+    },
+    {
+     "xyz": [
+      0.3,
+      0.0,
+      0.046353
+     ],
+     "a": 0.023791,
+     "b": 0.035311,
+     "n": 50.0
+    },
+    {
+     "xyz": [
+      0.33,
+      0.0,
+      0.046715
+     ],
+     "a": 0.021963,
+     "b": 0.031853,
+     "n": 50.0
+    },
+    {
+     "xyz": [
+      0.36,
+      0.0,
+      0.045979
+     ],
+     "a": 0.019347,
+     "b": 0.028815,
+     "n": 50.0
+    },
+    {
+     "xyz": [
+      0.39,
+      0.0,
+      0.046462
+     ],
+     "a": 0.015955,
+     "b": 0.023916,
+     "n": 50.0
+    },
+    {
+     "xyz": [
+      0.42,
+      0.0,
+      0.044979
+     ],
+     "a": 0.011766,
+     "b": 0.020295,
+     "n": 50.0
+    },
+    {
+     "xyz": [
+      0.445,
+      0.0,
+      0.043975
+     ],
+     "a": 0.007685,
+     "b": 0.016526,
+     "n": 33.84
+    },
+    {
+     "xyz": [
+      0.46,
+      0.0,
+      0.043933
+     ],
+     "a": 0.00498,
+     "b": 0.013468,
+     "n": 21.75
+    },
+    {
+     "xyz": [
+      0.4718,
+      0.0,
+      0.044776
+     ],
+     "a": 0.002719,
+     "b": 0.002035,
+     "n": 50.0
+    },
+    {
+     "xyz": [
+      0.472289,
+      0.0,
+      0.044776
+     ],
+     "a": 0.002719,
+     "b": 0.002035,
+     "n": 50.0
+    }
+   ],
+   "step_path": null,
+   "solid_step_path": null
+  },
+  "Haube": {
+   "name": "Haube",
+   "symmetric": false,
+   "x_secs": [
+    {
+     "xyz": [
+      0.119462,
+      0.0,
+      0.066269
+     ],
+     "a": 0.0,
+     "b": 0.0,
+     "n": 2.0
+    },
+    {
+     "xyz": [
+      0.1198,
+      0.0,
+      0.066269
+     ],
+     "a": 0.025373,
+     "b": 0.000339,
+     "n": 50.0
+    },
+    {
+     "xyz": [
+      0.121,
+      0.0,
+      0.066325
+     ],
+     "a": 0.025159,
+     "b": 0.001491,
+     "n": 50.0
+    },
+    {
+     "xyz": [
+      0.125,
+      0.0,
+      0.067069
+     ],
+     "a": 0.025157,
+     "b": 0.004479,
+     "n": 50.0
+    },
+    {
+     "xyz": [
+      0.13,
+      0.0,
+      0.068042
+     ],
+     "a": 0.025152,
+     "b": 0.008256,
+     "n": 50.0
+    },
+    {
+     "xyz": [
+      0.136,
+      0.0,
+      0.069154
+     ],
+     "a": 0.02515,
+     "b": 0.012355,
+     "n": 50.0
+    },
+    {
+     "xyz": [
+      0.142,
+      0.0,
+      0.071037
+     ],
+     "a": 0.025157,
+     "b": 0.013875,
+     "n": 50.0
+    },
+    {
+     "xyz": [
+      0.148,
+      0.0,
+      0.072131
+     ],
+     "a": 0.025158,
+     "b": 0.014646,
+     "n": 50.0
+    },
+    {
+     "xyz": [
+      0.1545,
+      0.0,
+      0.072617
+     ],
+     "a": 0.02515,
+     "b": 0.014836,
+     "n": 50.0
+    },
+    {
+     "xyz": [
+      0.17,
+      0.0,
+      0.073091
+     ],
+     "a": 0.02515,
+     "b": 0.014475,
+     "n": 50.0
+    },
+    {
+     "xyz": [
+      0.2,
+      0.0,
+      0.073773
+     ],
+     "a": 0.02515,
+     "b": 0.013541,
+     "n": 50.0
+    },
+    {
+     "xyz": [
+      0.225,
+      0.0,
+      0.07409
+     ],
+     "a": 0.02515,
+     "b": 0.01251,
+     "n": 50.0
+    },
+    {
+     "xyz": [
+      0.2395,
+      0.0,
+      0.074178
+     ],
+     "a": 0.02515,
+     "b": 0.011816,
+     "n": 50.0
+    },
+    {
+     "xyz": [
+      0.2415,
+      0.0,
+      0.067697
+     ],
+     "a": 0.025157,
+     "b": 0.005258,
+     "n": 50.0
+    },
+    {
+     "xyz": [
+      0.241798,
+      0.0,
+      0.067697
+     ],
+     "a": 0.025157,
+     "b": 0.005258,
+     "n": 50.0
+    }
+   ],
+   "step_path": null,
+   "solid_step_path": null
+  }
+ }
+}

@@ -1,0 +1,66 @@
+{
+ "quelle": "FlugModell-Bauplan SNACK (Konstruktion Hilmar Lange, 2024), Seite 1; Messwerte aus SNACK_Gesamtmodell.step",
+ "technische_daten_plan": {
+  "spannweite_mm": 650,
+  "rumpflaenge_mm": 513,
+  "abfluggewicht_g": 250,
+  "fluegelinhalt_dm2": 7.5,
+  "flaechenbelastung_g_dm2": 33.3
+ },
+ "gemessen_step": {
+  "spannweite_mm": 648.0,
+  "laenge_mm": 512.6,
+  "fluegelinhalt_dm2_format": 8.02,
+  "v_form_grad_le_linie": 3.92,
+  "v_form_grad_unterseite": 4.24
+ },
+ "ruderausschlaege_plan_mm": {
+  "hoehenruder": "+-10",
+  "seitenruder": "20",
+  "querruder": "+-10"
+ },
+ "ruderausschlaege_grad_abgeleitet": {
+  "querruder": 19.4,
+  "hoehenruder": 21.8,
+  "seitenruder": 29.2,
+  "hinweis": "asin(Ausschlag mm / groesste Rudertiefe): Querruder 30.2, Hoehenruder 26.9, Seitenruder 40.9 mm; ANNAHME: Plan-mm gelten an der tiefsten Stelle"
+ },
+ "schwerpunkt_plan": {
+  "text": "0 bis 3 mm vor dem Holm (S. 9)",
+  "x_bereich_mm": [
+   142.0,
+   145.0
+  ],
+  "xyz_ref_gewaehlt_mm": [
+   143.5,
+   0.0,
+   15.7
+  ],
+  "hinweis": "x = Mitte des Planbereichs, gemessen an der Holm-Vorderkante in der Mittelebene; z = Holmmitte (ANNAHME, Plan nennt keine Hoehe)"
+ },
+ "antrieb": {
+  "motor": "Lumenier ZIP V2 2305 3200KV Cinematic (24 g)",
+  "motor_hinweis": "nur fuer 2S; bei 3S die 2400-kv-Version",
+  "propeller": "HQ Durable Prop 5043 Dreiblatt",
+  "vollgasstrom_A": 19,
+  "leistung": "ueber 500 W/kg",
+  "bezug": "FPV24.com"
+ },
+ "steller": "15-25-A-Klasse, z. B. Pichler Pulsar A-15 (6 g) oder Hobbywing Skywalker 20A (19 g)",
+ "servos": "4 Stueck bis 6 g, z. B. Pichler Master S706 MG; am Hoehenruder besser Chaservo DS06",
+ "empfaenger": "leichter 6-Kanal (2 getrennte Querruderservos); bei boeigem Wind Kreiselempfaenger",
+ "akku": "2S 600-800 mAh LiPo, z. B. SLS XTRON 2S 800 mAh 7,4 V 40C/80C",
+ "materialbedarf_plan": [
+  "1 mm Balsa: 2 Brettchen (mittelhart)",
+  "1,5 mm Balsa: 2 Brettchen (mittelhart)",
+  "2 mm Balsa: 2 Brettchen (mittelhart)",
+  "3 mm Balsa: 1/2 Brettchen (hart)",
+  "4 mm Pappelsperrholz 70 x 70",
+  "1,5 mm Flugzeugsperrholz Birke 70 x 70",
+  "6x1 mm CFK-Profilstab (1 m)",
+  "0,8 mm Federstahldraht (1 m)",
+  "Rundholz D 3 mm (0,5 m)"
+ ],
+ "anlenkung": "0,8 mm Stahldraht, versteift mit 3 mm Rundholz; Schubstangen 210 / 255 mm (S. 4); Servos an die Rumpfseitenwand geklebt; Querruder direkt mit abgekroepftem 0,8-mm-Draht",
+ "magnete": "Neodym D 3 x 2 mm (Spant 2, U-Spant 10, Akkudeckel 13/14, Haube 18/20)"
+}

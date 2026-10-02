@@ -1,0 +1,1096 @@
+[
+ {
+  "name": "10",
+  "gruppe": "Rumpf",
+  "dicke_gemessen": 2.0,
+  "dicke": 2.0,
+  "vol_mm3": 900,
+  "huelle_mm": [
+   50.3,
+   17.8,
+   9.7
+  ],
+  "material": "Balsa mittelhart"
+ },
+ {
+  "name": "12a",
+  "gruppe": "Rumpf",
+  "dicke_gemessen": 3.0,
+  "dicke": 3.0,
+  "vol_mm3": 1012,
+  "huelle_mm": [
+   37.2,
+   12.5,
+   3.0
+  ],
+  "material": "Balsa hart"
+ },
+ {
+  "name": "12b",
+  "gruppe": "Rumpf",
+  "dicke_gemessen": 3.0,
+  "dicke": 3.0,
+  "vol_mm3": 1011,
+  "huelle_mm": [
+   37.2,
+   12.5,
+   3.0
+  ],
+  "material": "Balsa hart"
+ },
+ {
+  "name": "13a",
+  "gruppe": "Rumpf",
+  "dicke_gemessen": 2.0,
+  "dicke": 2.0,
+  "vol_mm3": 8443,
+  "huelle_mm": [
+   129.0,
+   50.5,
+   11.2
+  ],
+  "material": "Balsa mittelhart"
+ },
+ {
+  "name": "13b",
+  "gruppe": "Rumpf",
+  "dicke_gemessen": 1.5,
+  "dicke": 1.5,
+  "vol_mm3": 4498,
+  "huelle_mm": [
+   114.9,
+   47.3,
+   9.8
+  ],
+  "material": "Balsa mittelhart"
+ },
+ {
+  "name": "14a",
+  "gruppe": "Rumpf",
+  "dicke_gemessen": 2.0,
+  "dicke": 2.0,
+  "vol_mm3": 125,
+  "huelle_mm": [
+   10.7,
+   7.8,
+   2.0
+  ],
+  "material": "Balsa mittelhart"
+ },
+ {
+  "name": "14b",
+  "gruppe": "Rumpf",
+  "dicke_gemessen": 2.0,
+  "dicke": 2.0,
+  "vol_mm3": 4337,
+  "huelle_mm": [
+   55.7,
+   40.7,
+   6.1
+  ],
+  "material": "Balsa mittelhart"
+ },
+ {
+  "name": "1a",
+  "gruppe": "Rumpf",
+  "dicke_gemessen": 1.5,
+  "dicke": 1.5,
+  "vol_mm3": 37088,
+  "huelle_mm": [
+   472.3,
+   84.4,
+   24.0
+  ],
+  "material": "Balsa mittelhart"
+ },
+ {
+  "name": "1b",
+  "gruppe": "Rumpf",
+  "dicke_gemessen": 1.5,
+  "dicke": 1.5,
+  "vol_mm3": 37092,
+  "huelle_mm": [
+   472.3,
+   84.4,
+   24.0
+  ],
+  "material": "Balsa mittelhart"
+ },
+ {
+  "name": "1c",
+  "gruppe": "Rumpf",
+  "dicke_gemessen": 1.5,
+  "dicke": 1.5,
+  "vol_mm3": 10998,
+  "huelle_mm": [
+   208.2,
+   47.4,
+   28.1
+  ],
+  "material": "Balsa mittelhart"
+ },
+ {
+  "name": "2a",
+  "gruppe": "Rumpf",
+  "dicke_gemessen": 3.0,
+  "dicke": 3.0,
+  "vol_mm3": 1419,
+  "huelle_mm": [
+   31.3,
+   23.8,
+   3.0
+  ],
+  "material": "Balsa hart"
+ },
+ {
+  "name": "2b",
+  "gruppe": "Rumpf",
+  "dicke_gemessen": 3.0,
+  "dicke": 3.0,
+  "vol_mm3": 1891,
+  "huelle_mm": [
+   78.7,
+   8.0,
+   3.0
+  ],
+  "material": "Balsa hart"
+ },
+ {
+  "name": "2c",
+  "gruppe": "Rumpf",
+  "dicke_gemessen": 3.0,
+  "dicke": 3.0,
+  "vol_mm3": 1891,
+  "huelle_mm": [
+   78.7,
+   8.0,
+   3.0
+  ],
+  "material": "Balsa hart"
+ },
+ {
+  "name": "2d",
+  "gruppe": "Rumpf",
+  "dicke_gemessen": 3.0,
+  "dicke": 3.0,
+  "vol_mm3": 747,
+  "huelle_mm": [
+   31.3,
+   8.0,
+   3.0
+  ],
+  "material": "Balsa hart"
+ },
+ {
+  "name": "3a",
+  "gruppe": "Rumpf",
+  "dicke_gemessen": 1.5,
+  "dicke": 1.5,
+  "vol_mm3": 11900,
+  "huelle_mm": [
+   229.5,
+   50.2,
+   32.3
+  ],
+  "material": "Balsa mittelhart"
+ },
+ {
+  "name": "3b",
+  "gruppe": "Rumpf",
+  "dicke_gemessen": 1.5,
+  "dicke": 1.5,
+  "vol_mm3": 603,
+  "huelle_mm": [
+   41.0,
+   10.1,
+   2.6
+  ],
+  "material": "Balsa mittelhart"
+ },
+ {
+  "name": "4",
+  "gruppe": "Rumpf",
+  "dicke_gemessen": 3.0,
+  "dicke": 3.0,
+  "vol_mm3": 1828,
+  "huelle_mm": [
+   50.2,
+   13.6,
+   3.0
+  ],
+  "material": "Balsa hart"
+ },
+ {
+  "name": "5a",
+  "gruppe": "Rumpf",
+  "dicke_gemessen": 1.5,
+  "dicke": 1.5,
+  "vol_mm3": 3530,
+  "huelle_mm": [
+   84.9,
+   50.3,
+   8.1
+  ],
+  "material": "Balsa mittelhart"
+ },
+ {
+  "name": "5b",
+  "gruppe": "Rumpf",
+  "dicke_gemessen": 1.5,
+  "dicke": 1.5,
+  "vol_mm3": 6411,
+  "huelle_mm": [
+   85.1,
+   50.3,
+   3.8
+  ],
+  "material": "Balsa mittelhart"
+ },
+ {
+  "name": "5c",
+  "gruppe": "Rumpf",
+  "dicke_gemessen": 1.5,
+  "dicke": 1.5,
+  "vol_mm3": 5421,
+  "huelle_mm": [
+   69.5,
+   50.3,
+   19.5
+  ],
+  "material": "Balsa mittelhart"
+ },
+ {
+  "name": "6a",
+  "gruppe": "Rumpf",
+  "dicke_gemessen": 1.5,
+  "dicke": 1.5,
+  "vol_mm3": 6449,
+  "huelle_mm": [
+   85.3,
+   50.3,
+   8.0
+  ],
+  "material": "Balsa mittelhart"
+ },
+ {
+  "name": "6b",
+  "gruppe": "Rumpf",
+  "dicke_gemessen": 1.5,
+  "dicke": 1.5,
+  "vol_mm3": 6414,
+  "huelle_mm": [
+   85.1,
+   50.3,
+   3.9
+  ],
+  "material": "Balsa mittelhart"
+ },
+ {
+  "name": "6c",
+  "gruppe": "Rumpf",
+  "dicke_gemessen": 1.5,
+  "dicke": 1.5,
+  "vol_mm3": 5736,
+  "huelle_mm": [
+   73.0,
+   50.3,
+   21.8
+  ],
+  "material": "Balsa mittelhart"
+ },
+ {
+  "name": "7a",
+  "gruppe": "Rumpf",
+  "dicke_gemessen": 4.0,
+  "dicke": 4.0,
+  "vol_mm3": 5649,
+  "huelle_mm": [
+   47.3,
+   34.9,
+   5.8
+  ],
+  "material": "Pappelsperrholz"
+ },
+ {
+  "name": "7b",
+  "gruppe": "Rumpf",
+  "dicke_gemessen": 1.5,
+  "dicke": 1.5,
+  "vol_mm3": 2310,
+  "huelle_mm": [
+   99.1,
+   43.7,
+   1.5
+  ],
+  "material": "Balsa mittelhart"
+ },
+ {
+  "name": "7c",
+  "gruppe": "Rumpf",
+  "dicke_gemessen": 1.5,
+  "dicke": 1.5,
+  "vol_mm3": 2337,
+  "huelle_mm": [
+   98.3,
+   43.7,
+   1.5
+  ],
+  "material": "Balsa mittelhart"
+ },
+ {
+  "name": "7d",
+  "gruppe": "Rumpf",
+  "dicke_gemessen": 3.0,
+  "dicke": 3.0,
+  "vol_mm3": 11703,
+  "huelle_mm": [
+   88.5,
+   47.3,
+   8.3
+  ],
+  "material": "Balsa hart"
+ },
+ {
+  "name": "9a",
+  "gruppe": "Rumpf",
+  "dicke_gemessen": 2.0,
+  "dicke": 2.0,
+  "vol_mm3": 1066,
+  "huelle_mm": [
+   106.6,
+   7.7,
+   5.0
+  ],
+  "material": "Balsa mittelhart"
+ },
+ {
+  "name": "9b",
+  "gruppe": "Rumpf",
+  "dicke_gemessen": 2.0,
+  "dicke": 2.0,
+  "vol_mm3": 1066,
+  "huelle_mm": [
+   106.6,
+   7.7,
+   5.0
+  ],
+  "material": "Balsa mittelhart"
+ },
+ {
+  "name": "15a",
+  "gruppe": "Leitwerk",
+  "dicke_gemessen": 2.0,
+  "dicke": 2.0,
+  "vol_mm3": 7280,
+  "huelle_mm": [
+   124.9,
+   78.2,
+   2.0
+  ],
+  "material": "Balsa mittelhart"
+ },
+ {
+  "name": "15b",
+  "gruppe": "Leitwerk",
+  "dicke_gemessen": 2.0,
+  "dicke": 2.0,
+  "vol_mm3": 686,
+  "huelle_mm": [
+   31.8,
+   12.3,
+   2.0
+  ],
+  "material": "Balsa mittelhart"
+ },
+ {
+  "name": "15c",
+  "gruppe": "Leitwerk",
+  "dicke_gemessen": 2.0,
+  "dicke": 2.0,
+  "vol_mm3": 5324,
+  "huelle_mm": [
+   93.9,
+   43.6,
+   2.0
+  ],
+  "material": "Balsa mittelhart"
+ },
+ {
+  "name": "15d",
+  "gruppe": "Leitwerk",
+  "dicke_gemessen": 1.5,
+  "dicke": 1.5,
+  "vol_mm3": 179,
+  "huelle_mm": [
+   15.6,
+   14.9,
+   1.5
+  ],
+  "material": "Birkensperrholz (ANNAHME: Ruderhorn)"
+ },
+ {
+  "name": "16a",
+  "gruppe": "Leitwerk",
+  "dicke_gemessen": 2.0,
+  "dicke": 2.0,
+  "vol_mm3": 23227,
+  "huelle_mm": [
+   220.2,
+   64.9,
+   2.0
+  ],
+  "material": "Balsa mittelhart"
+ },
+ {
+  "name": "16b",
+  "gruppe": "Leitwerk",
+  "dicke_gemessen": 2.0,
+  "dicke": 2.0,
+  "vol_mm3": 10502,
+  "huelle_mm": [
+   220.2,
+   26.9,
+   2.0
+  ],
+  "material": "Balsa mittelhart"
+ },
+ {
+  "name": "16c",
+  "gruppe": "Leitwerk",
+  "dicke_gemessen": 1.5,
+  "dicke": 1.5,
+  "vol_mm3": 152,
+  "huelle_mm": [
+   15.6,
+   15.0,
+   1.5
+  ],
+  "material": "Birkensperrholz (ANNAHME: Ruderhorn)"
+ },
+ {
+  "name": "17a",
+  "gruppe": "Haube",
+  "dicke_gemessen": 1.5,
+  "dicke": 1.5,
+  "vol_mm3": 4282,
+  "huelle_mm": [
+   119.8,
+   29.3,
+   1.5
+  ],
+  "material": "Balsa mittelhart"
+ },
+ {
+  "name": "17b",
+  "gruppe": "Haube",
+  "dicke_gemessen": 1.5,
+  "dicke": 1.5,
+  "vol_mm3": 4282,
+  "huelle_mm": [
+   119.8,
+   29.3,
+   1.5
+  ],
+  "material": "Balsa mittelhart"
+ },
+ {
+  "name": "17c",
+  "gruppe": "Haube",
+  "dicke_gemessen": 1.5,
+  "dicke": 1.5,
+  "vol_mm3": 3090,
+  "huelle_mm": [
+   50.2,
+   34.9,
+   22.2
+  ],
+  "material": "Balsa mittelhart"
+ },
+ {
+  "name": "17d",
+  "gruppe": "Haube",
+  "dicke_gemessen": 1.5,
+  "dicke": 1.5,
+  "vol_mm3": 6428,
+  "huelle_mm": [
+   85.3,
+   50.2,
+   3.1
+  ],
+  "material": "Balsa mittelhart"
+ },
+ {
+  "name": "18",
+  "gruppe": "Haube",
+  "dicke_gemessen": 1.5,
+  "dicke": 1.5,
+  "vol_mm3": 620,
+  "huelle_mm": [
+   47.3,
+   15.6,
+   9.7
+  ],
+  "material": "Balsa mittelhart"
+ },
+ {
+  "name": "19a",
+  "gruppe": "Haube",
+  "dicke_gemessen": 1.5,
+  "dicke": 1.5,
+  "vol_mm3": 547,
+  "huelle_mm": [
+   105.1,
+   9.1,
+   1.5
+  ],
+  "material": "Balsa mittelhart"
+ },
+ {
+  "name": "19b",
+  "gruppe": "Haube",
+  "dicke_gemessen": 1.5,
+  "dicke": 1.5,
+  "vol_mm3": 547,
+  "huelle_mm": [
+   105.1,
+   9.1,
+   1.5
+  ],
+  "material": "Balsa mittelhart"
+ },
+ {
+  "name": "20",
+  "gruppe": "Haube",
+  "dicke_gemessen": 1.5,
+  "dicke": 1.5,
+  "vol_mm3": 1438,
+  "huelle_mm": [
+   50.3,
+   23.5,
+   2.2
+  ],
+  "material": "Balsa mittelhart"
+ },
+ {
+  "name": "21_1",
+  "gruppe": "Fluegel",
+  "dicke_gemessen": 1.0,
+  "dicke": 1.0,
+  "vol_mm3": 14440,
+  "huelle_mm": [
+   323.7,
+   70.6,
+   24.7
+  ],
+  "material": "Balsa mittelhart"
+ },
+ {
+  "name": "21_2",
+  "gruppe": "Fluegel",
+  "dicke_gemessen": 1.0,
+  "dicke": 1.0,
+  "vol_mm3": 14452,
+  "huelle_mm": [
+   323.7,
+   70.6,
+   24.7
+  ],
+  "material": "Balsa mittelhart"
+ },
+ {
+  "name": "22a_1",
+  "gruppe": "Fluegel",
+  "dicke_gemessen": 1.83,
+  "dicke": 2.0,
+  "vol_mm3": 321,
+  "huelle_mm": [
+   53.6,
+   4.3,
+   1.9
+  ],
+  "material": "Balsa mittelhart"
+ },
+ {
+  "name": "22a_2",
+  "gruppe": "Fluegel",
+  "dicke_gemessen": 1.84,
+  "dicke": 2.0,
+  "vol_mm3": 321,
+  "huelle_mm": [
+   53.6,
+   4.3,
+   1.9
+  ],
+  "material": "Balsa mittelhart"
+ },
+ {
+  "name": "22b_1",
+  "gruppe": "Fluegel",
+  "dicke_gemessen": 2.0,
+  "dicke": 2.0,
+  "vol_mm3": 347,
+  "huelle_mm": [
+   52.0,
+   4.3,
+   2.3
+  ],
+  "material": "Balsa mittelhart"
+ },
+ {
+  "name": "22b_2",
+  "gruppe": "Fluegel",
+  "dicke_gemessen": 2.0,
+  "dicke": 2.0,
+  "vol_mm3": 349,
+  "huelle_mm": [
+   52.0,
+   4.3,
+   2.3
+  ],
+  "material": "Balsa mittelhart"
+ },
+ {
+  "name": "22c_1",
+  "gruppe": "Fluegel",
+  "dicke_gemessen": 2.0,
+  "dicke": 2.0,
+  "vol_mm3": 331,
+  "huelle_mm": [
+   49.8,
+   4.3,
+   2.3
+  ],
+  "material": "Balsa mittelhart"
+ },
+ {
+  "name": "22c_2",
+  "gruppe": "Fluegel",
+  "dicke_gemessen": 2.0,
+  "dicke": 2.0,
+  "vol_mm3": 331,
+  "huelle_mm": [
+   49.8,
+   4.3,
+   2.3
+  ],
+  "material": "Balsa mittelhart"
+ },
+ {
+  "name": "22d_1",
+  "gruppe": "Fluegel",
+  "dicke_gemessen": 2.0,
+  "dicke": 2.0,
+  "vol_mm3": 300,
+  "huelle_mm": [
+   45.9,
+   4.3,
+   2.3
+  ],
+  "material": "Balsa mittelhart"
+ },
+ {
+  "name": "22d_2",
+  "gruppe": "Fluegel",
+  "dicke_gemessen": 2.0,
+  "dicke": 2.0,
+  "vol_mm3": 296,
+  "huelle_mm": [
+   45.9,
+   4.2,
+   2.3
+  ],
+  "material": "Balsa mittelhart"
+ },
+ {
+  "name": "22e_1",
+  "gruppe": "Fluegel",
+  "dicke_gemessen": 2.0,
+  "dicke": 2.0,
+  "vol_mm3": 266,
+  "huelle_mm": [
+   42.0,
+   4.2,
+   2.3
+  ],
+  "material": "Balsa mittelhart"
+ },
+ {
+  "name": "22e_2",
+  "gruppe": "Fluegel",
+  "dicke_gemessen": 2.0,
+  "dicke": 2.0,
+  "vol_mm3": 267,
+  "huelle_mm": [
+   42.0,
+   4.2,
+   2.3
+  ],
+  "material": "Balsa mittelhart"
+ },
+ {
+  "name": "22f_1",
+  "gruppe": "Fluegel",
+  "dicke_gemessen": 2.0,
+  "dicke": 2.0,
+  "vol_mm3": 306,
+  "huelle_mm": [
+   42.4,
+   38.3,
+   6.4
+  ],
+  "material": "Balsa mittelhart"
+ },
+ {
+  "name": "22f_2",
+  "gruppe": "Fluegel",
+  "dicke_gemessen": 2.0,
+  "dicke": 2.0,
+  "vol_mm3": 306,
+  "huelle_mm": [
+   42.4,
+   38.3,
+   6.4
+  ],
+  "material": "Balsa mittelhart"
+ },
+ {
+  "name": "23_1",
+  "gruppe": "Fluegel",
+  "dicke_gemessen": 8.54,
+  "dicke": 1.0,
+  "vol_mm3": 14506,
+  "huelle_mm": [
+   322.3,
+   70.6,
+   28.1
+  ],
+  "hinweis": "gewoelbte Beplankung, Dicke aus Volumen/Flaeche wie 21",
+  "material": "Balsa mittelhart"
+ },
+ {
+  "name": "23_2",
+  "gruppe": "Fluegel",
+  "dicke_gemessen": 8.54,
+  "dicke": 1.0,
+  "vol_mm3": 14506,
+  "huelle_mm": [
+   322.3,
+   70.6,
+   28.1
+  ],
+  "hinweis": "gewoelbte Beplankung, Dicke aus Volumen/Flaeche wie 21",
+  "material": "Balsa mittelhart"
+ },
+ {
+  "name": "24_1",
+  "gruppe": "Fluegel",
+  "dicke_gemessen": 2.0,
+  "dicke": 2.0,
+  "vol_mm3": 6396,
+  "huelle_mm": [
+   324.1,
+   25.9,
+   10.0
+  ],
+  "material": "Balsa mittelhart"
+ },
+ {
+  "name": "24_2",
+  "gruppe": "Fluegel",
+  "dicke_gemessen": 2.0,
+  "dicke": 2.0,
+  "vol_mm3": 6401,
+  "huelle_mm": [
+   324.1,
+   25.9,
+   10.0
+  ],
+  "material": "Balsa mittelhart"
+ },
+ {
+  "name": "25a_1",
+  "gruppe": "Fluegel",
+  "dicke_gemessen": 1.89,
+  "dicke": 2.0,
+  "vol_mm3": 450,
+  "huelle_mm": [
+   62.9,
+   5.6,
+   2.0
+  ],
+  "material": "Balsa mittelhart"
+ },
+ {
+  "name": "25a_2",
+  "gruppe": "Fluegel",
+  "dicke_gemessen": 1.91,
+  "dicke": 2.0,
+  "vol_mm3": 448,
+  "huelle_mm": [
+   62.9,
+   5.6,
+   2.0
+  ],
+  "material": "Balsa mittelhart"
+ },
+ {
+  "name": "25b_1",
+  "gruppe": "Fluegel",
+  "dicke_gemessen": 2.0,
+  "dicke": 2.0,
+  "vol_mm3": 320,
+  "huelle_mm": [
+   64.1,
+   4.1,
+   2.3
+  ],
+  "material": "Balsa mittelhart"
+ },
+ {
+  "name": "25b_2",
+  "gruppe": "Fluegel",
+  "dicke_gemessen": 2.0,
+  "dicke": 2.0,
+  "vol_mm3": 319,
+  "huelle_mm": [
+   64.1,
+   4.1,
+   2.3
+  ],
+  "material": "Balsa mittelhart"
+ },
+ {
+  "name": "25c_1",
+  "gruppe": "Fluegel",
+  "dicke_gemessen": 2.0,
+  "dicke": 2.0,
+  "vol_mm3": 1089,
+  "huelle_mm": [
+   54.6,
+   10.2,
+   3.2
+  ],
+  "material": "Balsa mittelhart"
+ },
+ {
+  "name": "25c_2",
+  "gruppe": "Fluegel",
+  "dicke_gemessen": 2.0,
+  "dicke": 2.0,
+  "vol_mm3": 1086,
+  "huelle_mm": [
+   54.6,
+   10.2,
+   3.2
+  ],
+  "material": "Balsa mittelhart"
+ },
+ {
+  "name": "25d_1",
+  "gruppe": "Fluegel",
+  "dicke_gemessen": 2.0,
+  "dicke": 2.0,
+  "vol_mm3": 451,
+  "huelle_mm": [
+   61.4,
+   5.5,
+   2.4
+  ],
+  "material": "Balsa mittelhart"
+ },
+ {
+  "name": "25d_2",
+  "gruppe": "Fluegel",
+  "dicke_gemessen": 2.0,
+  "dicke": 2.0,
+  "vol_mm3": 452,
+  "huelle_mm": [
+   61.4,
+   5.6,
+   2.4
+  ],
+  "material": "Balsa mittelhart"
+ },
+ {
+  "name": "25e_1",
+  "gruppe": "Fluegel",
+  "dicke_gemessen": 2.0,
+  "dicke": 2.0,
+  "vol_mm3": 416,
+  "huelle_mm": [
+   57.0,
+   5.5,
+   2.4
+  ],
+  "material": "Balsa mittelhart"
+ },
+ {
+  "name": "25e_2",
+  "gruppe": "Fluegel",
+  "dicke_gemessen": 2.0,
+  "dicke": 2.0,
+  "vol_mm3": 417,
+  "huelle_mm": [
+   57.0,
+   5.5,
+   2.4
+  ],
+  "material": "Balsa mittelhart"
+ },
+ {
+  "name": "25f_1",
+  "gruppe": "Fluegel",
+  "dicke_gemessen": 2.0,
+  "dicke": 2.0,
+  "vol_mm3": 391,
+  "huelle_mm": [
+   52.6,
+   5.5,
+   2.4
+  ],
+  "material": "Balsa mittelhart"
+ },
+ {
+  "name": "25f_2",
+  "gruppe": "Fluegel",
+  "dicke_gemessen": 2.0,
+  "dicke": 2.0,
+  "vol_mm3": 391,
+  "huelle_mm": [
+   52.6,
+   5.5,
+   2.4
+  ],
+  "material": "Balsa mittelhart"
+ },
+ {
+  "name": "25g_1",
+  "gruppe": "Fluegel",
+  "dicke_gemessen": 2.0,
+  "dicke": 2.0,
+  "vol_mm3": 347,
+  "huelle_mm": [
+   48.5,
+   5.4,
+   2.4
+  ],
+  "material": "Balsa mittelhart"
+ },
+ {
+  "name": "25g_2",
+  "gruppe": "Fluegel",
+  "dicke_gemessen": 2.0,
+  "dicke": 2.0,
+  "vol_mm3": 348,
+  "huelle_mm": [
+   48.5,
+   5.4,
+   2.4
+  ],
+  "material": "Balsa mittelhart"
+ },
+ {
+  "name": "27_1",
+  "gruppe": "Fluegel",
+  "dicke_gemessen": 1.0,
+  "dicke": 1.0,
+  "vol_mm3": 11860,
+  "huelle_mm": [
+   324.0,
+   66.0,
+   27.9
+  ],
+  "material": "Balsa mittelhart"
+ },
+ {
+  "name": "27_2",
+  "gruppe": "Fluegel",
+  "dicke_gemessen": 1.0,
+  "dicke": 1.0,
+  "vol_mm3": 11860,
+  "huelle_mm": [
+   324.0,
+   66.0,
+   27.9
+  ],
+  "material": "Balsa mittelhart"
+ },
+ {
+  "name": "28_1",
+  "gruppe": "Fluegel",
+  "dicke_gemessen": 3.0,
+  "dicke": 3.0,
+  "vol_mm3": 19947,
+  "huelle_mm": [
+   289.1,
+   30.2,
+   24.5
+  ],
+  "material": "Balsa hart"
+ },
+ {
+  "name": "28_2",
+  "gruppe": "Fluegel",
+  "dicke_gemessen": 3.0,
+  "dicke": 3.0,
+  "vol_mm3": 19930,
+  "huelle_mm": [
+   289.1,
+   30.2,
+   24.5
+  ],
+  "material": "Balsa hart"
+ },
+ {
+  "name": "30_1",
+  "gruppe": "Fluegel",
+  "dicke_gemessen": 1.5,
+  "dicke": 1.5,
+  "vol_mm3": 383,
+  "huelle_mm": [
+   32.5,
+   17.4,
+   2.7
+  ],
+  "material": "Birkensperrholz (ANNAHME: Ruderhorn)"
+ },
+ {
+  "name": "30_2",
+  "gruppe": "Fluegel",
+  "dicke_gemessen": 1.5,
+  "dicke": 1.5,
+  "vol_mm3": 383,
+  "huelle_mm": [
+   32.5,
+   17.4,
+   2.7
+  ],
+  "material": "Birkensperrholz (ANNAHME: Ruderhorn)"
+ },
+ {
+  "name": "Holm_CFK_1",
+  "gruppe": "Fluegel",
+  "dicke_gemessen": 1.1,
+  "dicke": 1.0,
+  "vol_mm3": 2145,
+  "huelle_mm": [
+   324.2,
+   29.7,
+   18.4
+  ],
+  "material": "CFK-Flachprofil 6 x 1"
+ },
+ {
+  "name": "Holm_CFK_2",
+  "gruppe": "Fluegel",
+  "dicke_gemessen": 1.1,
+  "dicke": 1.0,
+  "vol_mm3": 2145,
+  "huelle_mm": [
+   324.2,
+   29.7,
+   18.4
+  ],
+  "material": "CFK-Flachprofil 6 x 1"
+ }
+]
