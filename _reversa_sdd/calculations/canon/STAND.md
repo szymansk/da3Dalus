@@ -339,3 +339,11 @@ gestrichen. Auswahlgraph als HTML unter `_reversa_sdd/calculations/auswahl/`.
 **Bänder vollständig (02.10.2026):** Jede Lücke ist mit Quelle, Platzhalter oder gekennzeichnetem Vorgabewert geschlossen (`auswahl/BAENDER.md` §3a–§3f). Grundsatz des Maintainers: Das Urmodell muss grundsätzlich fliegen, nicht perfekt sein.
 
 **Urmodell-Generator als Ticket #1152 angelegt (02.10.2026).** Entschieden: Die Presets folgen den 13 Missionen des Auswahlgraphen (BR-MS5 teilweise ersetzt); ein erzeugtes Urmodell trägt `created_by="preset"`. BAENDER an Q-MS-14 angeglichen (Missions-Preset ist der einzige Autor der Missionswerte).
+
+**BRYAN: Stabilität und Massenhüllkurve gerechnet (02.10.2026),**
+`scripts/canon_checks/reference_fleet/bryan/ERGEBNISSE_STABILITAET.md`.
+- Neutralpunkt 43,8 % MAC; Plan-Schwerpunkt 31,4 % MAC; Stabilitätsmaß 12,3 %.
+- Spirale schwach instabil.
+- m_max,level 1228 g, m_max,TO 1218 g (ohne Struktur). Hinten begrenzt der Neutralpunkt.
+- Befunde: Der Abriss bei Re ≈ 50k ist nicht sauber erfasst (α ≈ 23°), ein Gegencheck ist nötig. Die
+  vordere Grenze braucht Abriss-α fest und x < x_NP; das ist in mass-envelope.md nachgetragen.

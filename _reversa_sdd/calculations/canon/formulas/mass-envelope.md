@@ -51,6 +51,13 @@ narrows with the take-off mass, as curves over `m`, and the masses at which it c
   canon reports which edge comes first and judges nothing (A10). A load `Δm` at `x_load` moves the
   CG by `Δm·(x_load − x_CG)/(m + Δm)` — whether that stays inside is read off, not computed here.
 
+**How the front edge is solved (BRYAN, 2026-10-02).** Hold the angle of attack at the stall angle
+`α_S(m)` of the stall-speed problem and leave the speed free: with full up elevator the tail
+download raises the trimmed stall speed, so trimming at the clean `V_S` is infeasible. Bound
+`x_CG < x_NP`: with full elevator, `Cm = 0` has a second root aft of the neutral point (the unstable
+branch). For a conventional tail the aft edge from full down elevator at `V_max` lies far behind the
+neutral point (BRYAN: > 90 % MAC), so the neutral point is the edge that comes first.
+
 **Absorbs** `forward-cg-limit` (2026-10-02): its value is this envelope's front edge at the
 current mass — a separate entry would be a second authority (ADR 0022).
 
