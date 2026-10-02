@@ -269,3 +269,13 @@ $s_{req} > 1$ = nicht erreichbar. AeroBuildup reicht (Auftrieb, nicht induzierte
 und Zielkonflikte als Pareto-Front (ε-Constraint mit `asb.Opti`; Hebel = alles an
 `airplane`, Zielgrößen = gestrichelt). Musterfall $V_S$ gegen $V_{max}$; Klappen weiten die
 Front. Richtung, keine Entscheidung — ohne Ticket.
+
+**Prüfung durch drei unabhängige Reviewer (02.10.2026) — eingearbeitet:** Masse ist Eingabe (A6,
+`mass-summation` gestrichen); Klappen in der Geometrie, sonst keine Konfiguration (A3,
+`high-lift-clmax`/`flap-clmax-factor` gestrichen, `V_S0`/`V_S,TO` als Abriss-Bindungen);
+Schub bei Fahrt verbindet sich mit Steigen/Kurve/V_max/V_D (Route A leistungsbegrenzt);
+`stall-speed` auf draft (Methode nicht freigegeben); Symbole `n_prop`, `w_sink`, `e_osw`,
+`C_roll`, `k_S`; Einheiten Grad; veraltete Textstellen. **Offen für den Maintainer:**
+Ticketregel (Soll ohne Nummer vs. „keine Tickets bis der Kanon steht“), Stabilitätsteil und
+Nutzlast (Zweck), C_D0-Schleife (`reynolds-scheduled-polar`), `mean-thrust-derate`/f_T,
+`cruise-speed-resolution`, Kinds außerhalb der erlaubten Menge (`substitution`).

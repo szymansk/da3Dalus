@@ -14,7 +14,7 @@ tags:
   - shape/law
   - kind/procedure
   - status/draft
-tex: s_{req}:\; L(V,\alpha) = m\,g, \quad C_l\big(V,\alpha,\,s_{req}\,\delta_{a,max},\,p_{target}\big) = 0
+tex: s_{req}:\; L(V,\alpha) = m\,g, \quad C_{roll}\big(V,\alpha,\,s_{req}\,\delta_{a,max},\,p_{target}\big) = 0
 ---
 
 # Fraction of the set aileron throw a roll-rate target needs
@@ -22,7 +22,7 @@ tex: s_{req}:\; L(V,\alpha) = m\,g, \quad C_l\big(V,\alpha,\,s_{req}\,\delta_{a,
 **Canonical form**
 
 ```
-solve for alpha, s_req (steady roll at V, roll rate held at the target):   L(V, alpha) = m * g,   C_l(V, alpha, s_req * delta_a,max, p_target) = 0
+solve for alpha, s_req (steady roll at V, roll rate held at the target):   L(V, alpha) = m * g,   C_roll(V, alpha, s_req * delta_a,max, p_target,cruise | p_target,app) = 0
 evaluated at V = V_cruise and at V = V_app, for each target given
 ```
 

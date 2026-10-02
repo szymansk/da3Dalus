@@ -3,11 +3,11 @@ canon: aileron-throw-fraction-cruise
 kind: quantity
 symbol: s_req,cruise
 unit: dimensionless
-role: derived
+role: output
 status: draft
 tags:
   - canon/quantity
-  - role/derived
+  - role/output
 ---
 
 # Aileron throw needed at cruise · `s_req,cruise`

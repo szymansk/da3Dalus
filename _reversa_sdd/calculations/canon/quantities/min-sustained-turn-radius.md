@@ -3,11 +3,11 @@ canon: min-sustained-turn-radius
 kind: quantity
 symbol: r_min
 unit: m
-role: derived
+role: output
 status: draft
 tags:
   - canon/quantity
-  - role/derived
+  - role/output
 ---
 
 # Minimum sustained turn radius · `r_min`

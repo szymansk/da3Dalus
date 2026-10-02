@@ -21,7 +21,7 @@ tags:
 **Canonical form**
 
 ```
-C_D0(V), e(V) = interp( table, Re(V) ),  Re = rho * V * c_MAC / mu
+C_D0(V), e_osw(V) = interp( table, Re(V) ),  Re = rho * V * c_MAC / mu
 ```
 
 **Produces** [[zero-lift-drag-coefficient]]  ·  **from** [[flight-speed]] · [[air-density]] · [[mean-aerodynamic-chord]] · [[zero-lift-drag-coefficient]] · [[oswald-efficiency]]

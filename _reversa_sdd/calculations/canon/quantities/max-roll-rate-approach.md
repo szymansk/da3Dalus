@@ -3,11 +3,11 @@ canon: max-roll-rate-approach
 kind: quantity
 symbol: p_max,app
 unit: deg/s
-role: derived
+role: output
 status: draft
 tags:
   - canon/quantity
-  - role/derived
+  - role/output
 ---
 
 # Maximum roll rate on approach · `p_max,app`

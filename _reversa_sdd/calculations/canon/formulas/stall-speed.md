@@ -3,8 +3,8 @@ canon: stall-speed
 entry: formula
 kind: optimization
 shape: law
-status: approved
-output: stall-speed, max-lift-coefficient
+status: draft
+output: stall-speed, max-lift-coefficient, stall-speed-landing, stall-speed-takeoff
 source_status: SOURCED
 dimensional_check: PROCEDURAL
 tags:
@@ -13,7 +13,7 @@ tags:
   - dim/procedural
   - shape/law
   - kind/optimization
-  - status/approved
+  - status/draft
   - flag/conflict
 tex: \begin{aligned}V_S = \min_{V,\,\alpha}\; & V \\ \text{u.d.N.}\; & L(V,\alpha) = n\,m\,g\end{aligned}
 ---
@@ -27,7 +27,7 @@ minimize over V, alpha:   V
 subject to:               L(V, alpha) = n * m * g
 ```
 
-**Produces** [[stall-speed]] · [[max-lift-coefficient]]  ·  **from** [[airplane]] · [[aircraft-mass]] · [[gravity]] · [[load-factor]] · [[air-density]]
+**Produces** [[stall-speed]] · [[max-lift-coefficient]] · [[stall-speed-landing]] · [[stall-speed-takeoff]]  ·  **from** [[airplane]] · [[aircraft-mass]] · [[gravity]] · [[load-factor]] · [[air-density]]
 
 **One relation, two directions.** This entry is the lift balance solved for the speed at the named condition C_L = C_L,max. [[lift-coefficient-required]] is the same relation, `n·m·g = ½·ρ·V²·S_ref·C_L`, solved the other way. Every time the sources solve it for a speed, the C_L belongs to a named condition (Sadraey Eq. 4.30, 4.55, 4.85; Scholz Eq. 5.30, 5.40) — there is no generic lift-balance speed, which is why `lift-balance-speed` was deleted on 2026-10-01.
 
@@ -65,6 +65,11 @@ alpha = 15.8°, C_L = 1.191; fixed-point iteration 8.4891 m/s after three sweeps
 
 **Configuration bindings** (take-off, landing) are the same problem with the configured
 aircraft inside the constraint — the flap is in the geometry, not a factor on C_L,max.
+**If the geometry has flaps, they are used as constructed for that configuration; if it has
+none, there is no configuration** (maintainer, 2026-10-02): the landing and take-off
+stall speeds are then the clean stall speed — the same aircraft, not a fallback. The
+multiplicative flap factor `C_L,max,cfg = f · C_L,max,clean` (`high-lift-clmax`) and its
+`flap-clmax-factor` are deleted.
 
 ## ⚠️ Conflict
 
@@ -101,7 +106,7 @@ path, not of the law.
 
 **Why it decides the answer.** C_L,max is a function of Reynolds number, steeply so in the model range: at low Re the boundary layer stays laminar further aft, separates against the adverse gradient and forms a laminar separation bubble that caps the suction peak. Lennon (Basics of R/C Model Aircraft Design, ch. 1-3) documents NACA 0012 falling from C_L,max 1.55 to 0.83 across the model Re range, with the stall angle dropping 17 deg to 10 deg. Since V_S ~ C_L,max^-0.5, the binding decides the answer.
 
-**Consequence.** V_stall is therefore an IMPLICIT equation at model scale: V_S depends on C_L,max(Re) and Re depends on V_S. It needs a fixed point, or a C_L,max evaluated at the stall condition and said so.
+**Consequence.** V_stall is therefore an IMPLICIT equation at model scale: V_S depends on C_L,max(Re) and Re depends on V_S. (Ist finding; resolved in the Soll by the optimisation above, which carries the Reynolds coupling inside the constraint — no fixed point needed.)
 
 **In the code.** _fine_sweep_cl_max (app/services/assumption_compute_service.py:1141-1209) sweeps a velocity x alpha grid from v_stall_approx = max(v_cruise*0.5, 3.0) to v_max and then takes cl_max = float(np.max(cl_arr)) — the maximum over ALL velocities. AeroBuildup gets its section data from NeuralFoil, which IS Reynolds dependent, so the low-speed samples genuinely carry a lower C_L. Taking the max picks the FASTEST sample and uses it to compute the speed at the SLOWEST point of the envelope.
 
@@ -146,5 +151,7 @@ And it misses often because the lower bound is not a property of the aircraft: g
 - [ ] **Preconditions** — every binding condition holds, or the violation is ticketed
 - [ ] **Inputs approved** — no formula is approvable before its inputs are
 
-> **Approved.** This is the relation the implementations are measured against.
+> **The relation was approved** (Sadraey Eq. 4.30). **The method — the optimisation that
+> replaced the closed form on 2026-10-01 — is not yet approved:** it waits for the
+> reference-fleet comparison (ANFORDERUNGEN §3.4.1). Hence `status: draft`.
 

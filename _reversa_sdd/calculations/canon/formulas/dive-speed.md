@@ -26,7 +26,7 @@ solve for V, alpha, n_prop:   L(V, alpha) = 0
                              motor-propeller torque balance at (V, n_prop)
 ```
 
-**Produces** [[dive-speed]]  ·  **from** [[airplane]] · [[aircraft-mass]] · [[gravity]] · [[air-density]] · [[motor-voltage-constant]] · [[motor-no-load-current]] · [[motor-circuit-resistance]] · [[battery-voltage]]
+**Produces** [[dive-speed]]  ·  **from** [[airplane]] · [[aircraft-mass]] · [[gravity]] · [[air-density]] · [[thrust-at-airspeed]]
 
 **Kind: a procedure — a closure by a prescribed value**, not an extremum: the speed at which a vertical dive stops accelerating. Lift is zero, so drag balances weight plus thrust. It is a property of the aircraft and an **upper bound**, and a model reaches it from ordinary flying height.
 

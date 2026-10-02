@@ -3,11 +3,11 @@ canon: stall-onset-index
 kind: quantity
 symbol: i_stall
 unit: dimensionless
-role: derived
+role: output
 status: draft
 tags:
   - canon/quantity
-  - role/derived
+  - role/output
 ---
 
 # Stall-onset sweep index · `i_stall`

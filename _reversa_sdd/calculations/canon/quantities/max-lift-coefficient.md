@@ -12,10 +12,10 @@ tags:
 
 # Maximum lift coefficient (clean) · `C_L,max`
 
-Clean-configuration peak lift coefficient; supplied as a design assumption (default 1.4) or taken as the maximum of the computed polar.
+Maximum lift coefficient at the stall condition — the second output of the [[stall-speed]] optimisation (2026-10-01), evaluated at the stall's own Reynolds number. In the design direction, where no airplane exists yet, its source is open (O12).
 
 **Unit.** `dimensionless`
 
 **Produced by.** [[stall-speed]]
 
-**Used by.** [[high-lift-clmax]] · [[stall-wing-loading-limit]]
+**Used by.** [[stall-wing-loading-limit]]

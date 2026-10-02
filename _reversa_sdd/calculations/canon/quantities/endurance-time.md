@@ -3,11 +3,11 @@ canon: endurance-time
 kind: quantity
 symbol: t
 unit: s
-role: output
+role: derived
 status: draft
 tags:
   - canon/quantity
-  - role/output
+  - role/derived
 ---
 
 # Flight time · `t`

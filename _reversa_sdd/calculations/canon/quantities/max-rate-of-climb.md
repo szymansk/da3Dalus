@@ -3,11 +3,11 @@ canon: max-rate-of-climb
 kind: quantity
 symbol: ROC_max
 unit: m/s
-role: derived
+role: output
 status: draft
 tags:
   - canon/quantity
-  - role/derived
+  - role/output
 ---
 
 # Maximum rate of climb · `ROC_max`

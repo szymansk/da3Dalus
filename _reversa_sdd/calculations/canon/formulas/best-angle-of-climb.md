@@ -14,7 +14,7 @@ tags:
   - shape/law
   - kind/optimization
   - status/draft
-tex: \begin{aligned}\gamma_{max} = \max_{V,\,\alpha,\,\gamma,\,n}\; & \gamma \\ \text{u.d.N.}\; & L(V,\alpha) = m\,g\cos\gamma \\ & T(V,n) - D(V,\alpha) \ge m\,g\sin\gamma \\ & Q_m(n) = Q_p(V,n)\end{aligned}
+tex: \begin{aligned}\gamma_{max} = \max_{V,\,\alpha,\,\gamma,\,n_{prop}}\; & \gamma \\ \text{u.d.N.}\; & L(V,\alpha) = m\,g\cos\gamma \\ & T(V,n_{prop}) - D(V,\alpha) \ge m\,g\sin\gamma \\ & Q_m(n_{prop}) = Q_p(V,n_{prop})\end{aligned}
 ---
 
 # Best angle of climb at full throttle
@@ -22,15 +22,15 @@ tex: \begin{aligned}\gamma_{max} = \max_{V,\,\alpha,\,\gamma,\,n}\; & \gamma \\ 
 **Canonical form**
 
 ```
-maximize over V, alpha, gamma, n:   gamma
+maximize over V, alpha, gamma, n_prop:   gamma
 subject to:   L(V, alpha) = m * g * cos(gamma)
-              T(V, n) - D(V, alpha) >= m * g * sin(gamma)
-              motor-propeller torque balance at (V, n)
+              T(V, n_prop) - D(V, alpha) >= m * g * sin(gamma)
+              motor-propeller torque balance at (V, n_prop)
 ```
 
-**Produces** [[best-angle-of-climb-speed]] · [[max-climb-angle]]  ·  **from** [[airplane]] · [[aircraft-mass]] · [[gravity]] · [[air-density]] · [[motor-voltage-constant]] · [[motor-no-load-current]] · [[motor-circuit-resistance]] · [[battery-voltage]]
+**Produces** [[best-angle-of-climb-speed]] · [[max-climb-angle]]  ·  **from** [[airplane]] · [[aircraft-mass]] · [[gravity]] · [[air-density]] · [[thrust-at-airspeed]]
 
-**Kind: an optimisation problem**, the same shape as the three extremal closures (§3.4.1). Variables: airspeed `V`, angle of attack `alpha`, flight-path angle `gamma`, propeller speed `n`. AeroBuildup is inside the lift and drag constraints; the thrust is `T = C_T(J) · rho · n² · D⁴` ([[thrust-at-airspeed-from-coefficient]]) with the measured table of the fitted propeller; the rpm is tied to the motor by [[motor-propeller-equilibrium]] — as a constraint on route B, as a fixed value on route A.
+**Kind: an optimisation problem**, the same shape as the three extremal closures (§3.4.1). Variables: airspeed `V`, angle of attack `alpha`, flight-path angle `gamma`, propeller speed `n_prop`. AeroBuildup is inside the lift and drag constraints; the thrust is `T = C_T(J) · rho · n² · D⁴` ([[thrust-at-airspeed-from-coefficient]]) with the measured table of the fitted propeller; the rpm is tied to the motor by [[motor-propeller-equilibrium]] — as a constraint on route B; on route A the free-run rpm, lowered to the motor's power limit (O11).
 
 **Exact steady climb, not the small-angle form.** Sadraey writes `ROC = (T − D)·V / W` with `L = W` (Eq. 4.84). That holds for shallow climbs only. A model with a high thrust-to-weight ratio climbs steeply, and with `T > W` vertically. Stating both force balances along and across the path costs one variable and keeps the result right at every angle; at `gamma = 90°` the lift constraint gives `L = 0`, which is the honest answer.
 

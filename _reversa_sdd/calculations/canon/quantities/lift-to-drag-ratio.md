@@ -3,11 +3,11 @@ canon: lift-to-drag-ratio
 kind: quantity
 symbol: E
 unit: dimensionless
-role: output
+role: derived
 status: draft
 tags:
   - canon/quantity
-  - role/output
+  - role/derived
 ---
 
 # Lift-to-drag ratio (glide ratio) · `E`

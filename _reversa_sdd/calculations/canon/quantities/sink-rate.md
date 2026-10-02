@@ -1,7 +1,7 @@
 ---
 canon: sink-rate
 kind: quantity
-symbol: w
+symbol: w_sink
 unit: m/s
 role: output
 status: draft
@@ -10,7 +10,7 @@ tags:
   - role/output
 ---
 
-# Sink rate · `w`
+# Sink rate · `w_sink`
 
 Vertical descent rate in a steady glide at a given forward speed.
 

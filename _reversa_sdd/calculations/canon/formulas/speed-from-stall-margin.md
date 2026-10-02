@@ -21,10 +21,10 @@ tags:
 **Canonical form**
 
 ```
-V = k * V_S,cfg
+V = k_S * V_S,cfg      (V_S,cfg = V_S0 for approach and touchdown, V_S,TO for take-off)
 ```
 
-**Produces** [[approach-speed]] · [[touchdown-speed]] · [[takeoff-speed]]  ·  **from** [[stall-speed]]
+**Produces** [[approach-speed]] · [[touchdown-speed]] · [[takeoff-speed]]  ·  **from** [[stall-speed-landing]] · [[stall-speed-takeoff]]
 
 **Kind: a rating.** A preference, not physics. The reference values still need an origin and a scale — where does *excellent* come from, and for which aircraft? **On top:** whether **this** weighting is the one you want. That part is a decision, not a fact.
 
@@ -52,14 +52,14 @@ Sources give named speeds with named factors, each tied to a certification requi
 **There is no generic operating-point speed.** The entry used to produce `V_op`, a
 collective quantity without its condition in its name — the A2 violation that also put a
 false cycle into the graph through `flight-speed`. It now produces three **named**
-quantities, one per operating point, each with its own binding of `k` and of the
+quantities, one per operating point, each with its own binding of `k_S` and of the
 configuration:
 
 | output | binds | configuration |
 |---|---|---|
-| [[approach-speed]] `V_app` | `k` approach margin | landing |
-| [[touchdown-speed]] `V_TD` | `k` touchdown margin | landing |
-| [[takeoff-speed]] `V_TO` | `k` take-off margin | take-off |
+| [[approach-speed]] `V_app` | `k_S` approach margin | landing |
+| [[touchdown-speed]] `V_TD` | `k_S` touchdown margin | landing |
+| [[takeoff-speed]] `V_TO` | `k_S` take-off margin | take-off |
 
 The factors themselves stay open — the sources give an RC rule-of-thumb band of 1.2–1.25
 for landing and 1.3 from regulation for approach; choosing is the maintainer's call.
@@ -71,7 +71,7 @@ on the stall speed alone, as a margin over stall should.
 
 **V_x and V_y are gone from this entry.** They are climb speeds, not stall margins, and
 they contained no climb relation — no thrust, no excess power. Their home is the climb
-operating point, which is hollow until thrust at airspeed is connected (§3.10).
+operating point, which has been computed since 2026-10-01 (§3.10).
 
 ## Implementations (5)
 

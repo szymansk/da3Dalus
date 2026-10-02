@@ -3,11 +3,11 @@ canon: aileron-throw-fraction-approach
 kind: quantity
 symbol: s_req,app
 unit: dimensionless
-role: derived
+role: output
 status: draft
 tags:
   - canon/quantity
-  - role/derived
+  - role/output
 ---
 
 # Aileron throw needed on approach · `s_req,app`

@@ -3,11 +3,11 @@ canon: approach-speed
 kind: quantity
 symbol: V_app
 unit: m/s
-role: output
+role: derived
 status: draft
 tags:
   - canon/quantity
-  - role/output
+  - role/derived
 ---
 
 # approach speed · `V_app`

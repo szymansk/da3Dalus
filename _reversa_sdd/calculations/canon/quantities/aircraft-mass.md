@@ -3,19 +3,17 @@ canon: aircraft-mass
 kind: quantity
 symbol: m
 unit: kg
-role: derived
+role: input
 status: approved
 tags:
   - canon/quantity
-  - role/derived
+  - role/input
 ---
 
 # Aircraft design mass · `m`
 
-The mass the whole speed chain balances lift against; supplied as the 'mass' design assumption or summed from the component tree.
+Take-off mass of the aircraft. **An input of the canon** (maintainer, 2026-10-02): whether it is entered by hand or summed from the components is not the canon's concern.
 
 **Unit.** `kg`
-
-**Produced by.** [[mass-summation]]
 
 **Used by.** [[aileron-throw-fraction]] · [[best-angle-of-climb]] · [[best-rate-of-climb]] · [[dive-speed]] · [[lift-coefficient-required]] · [[maneuvering-speed]] · [[max-level-speed]] · [[max-roll-rate]] · [[max-sustained-turn-rate]] · [[min-sustained-turn-radius]] · [[minimum-drag-speed-from-polar]] · [[minimum-sink-speed-from-polar]] · [[power-required-electrical]] · [[spar-break-load-factor]] · [[stall-speed]] · [[weight-from-mass]] · [[wing-loading]]

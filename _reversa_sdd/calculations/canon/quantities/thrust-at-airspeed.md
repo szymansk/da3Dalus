@@ -19,3 +19,5 @@ roughly constant-power devices at high throttle.
 **Unit.** `N`
 
 **Produced by.** [[thrust-at-airspeed-from-coefficient]]
+
+**Used by.** [[best-angle-of-climb]] · [[best-rate-of-climb]] · [[dive-speed]] · [[max-level-speed]] · [[max-sustained-turn-rate]] · [[min-sustained-turn-radius]]

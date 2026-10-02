@@ -3,11 +3,11 @@ canon: zero-lift-drag-coefficient
 kind: quantity
 symbol: C_D0
 unit: dimensionless
-role: output
+role: derived
 status: draft
 tags:
   - canon/quantity
-  - role/output
+  - role/derived
 ---
 
 # Zero-lift (parasite) drag coefficient · `C_D0`

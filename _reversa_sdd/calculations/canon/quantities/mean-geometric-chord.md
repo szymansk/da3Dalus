@@ -3,11 +3,11 @@ canon: mean-geometric-chord
 kind: quantity
 symbol: c_bar
 unit: m
-role: derived
+role: output
 status: draft
 tags:
   - canon/quantity
-  - role/derived
+  - role/output
 ---
 
 # Mean geometric chord · `c_bar`

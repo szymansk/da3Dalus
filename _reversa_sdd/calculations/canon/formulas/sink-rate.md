@@ -21,7 +21,7 @@ tags:
 **Canonical form**
 
 ```
-w = V * C_D / C_L   (small glide-angle form of w = V * sin(gamma), tan(gamma) = C_D/C_L)
+w_sink = V * C_D / C_L   (small glide-angle form of w_sink = V * sin(gamma), tan(gamma) = C_D/C_L)
 ```
 
 **Produces** [[sink-rate]]  ·  **from** [[flight-speed]] · [[lift-coefficient]] · [[drag-coefficient]]

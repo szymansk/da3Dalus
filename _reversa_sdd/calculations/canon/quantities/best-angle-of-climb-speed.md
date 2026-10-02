@@ -3,11 +3,11 @@ canon: best-angle-of-climb-speed
 kind: quantity
 symbol: V_x
 unit: m/s
-role: derived
+role: output
 status: draft
 tags:
   - canon/quantity
-  - role/derived
+  - role/output
 ---
 
 # Speed for best angle of climb · `V_x`

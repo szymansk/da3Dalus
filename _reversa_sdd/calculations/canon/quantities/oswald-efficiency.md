@@ -1,7 +1,7 @@
 ---
 canon: oswald-efficiency
 kind: quantity
-symbol: e
+symbol: e_osw
 unit: dimensionless
 role: derived
 status: draft
@@ -10,7 +10,7 @@ tags:
   - role/derived
 ---
 
-# Oswald span efficiency factor · `e`
+# Oswald span efficiency factor · `e_osw`
 
 Efficiency factor of the induced-drag term; from the polar fit, from a Reynolds table, or the 0.8 literal.
 

@@ -127,7 +127,7 @@ dann sofort, wovon die Rede ist.
 
 **Der Katalog wird bei Berührung umgestellt.** Seine Einträge tragen die kanonische Form
 heute in einem einfachen Codeblock, weil `scripts/check_canon.py` sie dort ausliest und
-die Dimensionsprobe darauf rechnet. Das bleibt vorerst so: 37 der 40 Formeln stehen ohnehin
+die Dimensionsprobe darauf rechnet. Das bleibt vorerst so: fast alle Formeln stehen ohnehin
 auf `draft` und werden bei der Freigabe entlang der Pfade angefasst — dann bekommt jeder
 Eintrag seine LaTeX-Form. Ein Umschreiben aller Einträge auf einmal würde den Prüfer
 brechen, ohne dass ein einziger Eintrag dadurch näher an der Freigabe wäre.
@@ -156,7 +156,7 @@ Daraus folgt die Regel, an der man beide Fehler erkennt:
 Steht eine Konvergenzschleife im Ablauf, ist sie eine Ebene zu hoch. Steht ein
 Entwurfszyklus in einer Rechnung, hat jemand das Urteil des Konstrukteurs automatisiert.
 
-**Das schließt zugleich eine Lücke.** Ein Verfahren schuldet vier Angaben (§0.5), und drei
+**Das schließt zugleich eine Lücke.** Ein Verfahren schuldet vier Angaben (§0.6), und drei
 davon sind bisher überall offen. Das innere Aktivitätsdiagramm einer Rechnung **ist** diese
 Spezifikation: Methode, Annahmen und das Verhalten bei Nichtkonvergenz werden dort
 gezeichnet statt beschrieben. Ein Verfahren ohne inneres Diagramm ist ein Verfahren ohne
@@ -548,8 +548,8 @@ schlägt das nicht vor.
 
 ### 2.3 Analyse
 
-**Status: zusammengesetzt; die Teilaktivitäten sind geschnitten, die Rechnungen sind
-entschieden.**
+**Status: zusammengesetzt; die Teilaktivitäten sind geschnitten. Entschieden sind die
+Beziehungen; offen sind einzelne Angaben (siehe Tabelle unten) und der Stabilitätsteil.**
 
 **Zweck.** Aus Geometrie, Masse und Zielstabilität die beiden Größen ermitteln, an denen
 der Entwurf zuerst scheitert: wo der Schwerpunkt liegen muss, und wie langsam das Modell
@@ -659,7 +659,7 @@ und damit der Inhalt der inneren Aktivitätsdiagramme:
 | $g$ | phys. Konstante | keine Eingabe, keine Wahl — siehe A5 |
 
 Sieben Positionen. Alles Weitere ist abgeleitet: $\rho$ aus der Höhe,
-$C_{L,\max,\mathrm{stall}}$ aus dem Sweep, $x_\mathrm{CG}$ aus $SM_\mathrm{target}$, $W$ aus
+$C_{L,\max,\mathrm{stall}}$ aus dem Abrissproblem (seit 01.10.2026, §3.4.1; vorher aus dem Sweep), $x_\mathrm{CG}$ aus $SM_\mathrm{target}$, $W$ aus
 $m$ und $g$.
 
 #### Der Rechengraph des ganzen Schritts
@@ -792,7 +792,7 @@ eine Beziehung. Weiß: eine gerechnete Größe. Grün: ein Ergebnis dieses Schri
 Das sieht man erst, seit Größen und Beziehungen getrennt sind — im vermischten Bild war der
 eine ein Pfeil und der andere eine Bemerkung.
 
-**Rot: $V_S \to$ Sweep $\to C_{L,\max,\mathrm{stall}} \to$ Abrissformel $\to V_S$.** Ein
+**Rot (überholt seit 01.10.2026 — heute ein Optimierungsproblem ohne Zyklus, §3.4.1): $V_S \to$ Sweep $\to C_{L,\max,\mathrm{stall}} \to$ Abrissformel $\to V_S$.** Ein
 echter Fixpunkt. $C_{L,\max}$ gilt bei der Reynoldszahl, die aus $V_S$ folgt, und bei
 Modellgrößen hängt es stark davon ab. Er braucht ein Verfahren (§3.4.1) und ein
 Abbruchkriterium.
@@ -812,17 +812,17 @@ genau die Probe am konvergierten $x_\mathrm{CG}$ und sonst nichts.
 
 | Knoten | Art | Katalogeintrag |
 |---|---|---|
-| $\bar{c} = \frac{2}{S}\int c(y)^2\,\mathrm{d}y$ | law | **fehlt** — nur `quantities/mean-aerodynamic-chord.md` |
+| $\bar{c} = \frac{2}{S}\int c(y)^2\,\mathrm{d}y$ | procedure | `formulas/airplane-geometry.md` — aus dem Flugzeug (seit 01.10.2026) |
 | $S_\mathrm{ref},\ b_\mathrm{ref}$ | Geometrie | `quantities/wing-reference-area.md` · `quantities/wing-span.md` |
 | $\rho = \rho_\mathrm{ISA}(h)$ | law | `formulas/air-density-isa.md` — **freigegeben** |
 | $W = m\,g$ | law | `formulas/weight-from-mass.md` — **freigegeben** |
 | $\alpha$ aus $L = W$ bei $V$ | **procedure** | §3.4.2 — Beziehung entschieden, drei Angaben offen |
 | AeroBuildup, ein Punkt | Solveraufruf | $\mathbf{x}_\mathrm{ref} = x_\mathrm{CG}$; liefert $x_\mathrm{NP}$, $C_{m\alpha}$, $C_{L\alpha}$ |
-| AeroBuildup, $\alpha$-Sweep | Solveraufruf | gebunden an $V_S$; liefert $C_{L,\max,\mathrm{stall}}$ |
+| Abrissproblem (`asb.Opti` + AeroBuildup) | Optimierung | liefert $V_S$ **und** $C_{L,\max,\mathrm{stall}}$ (§3.4.1) |
 | $x_\mathrm{CG} = x_\mathrm{NP} - SM_\mathrm{target}\,\bar{c}$ | law | **fehlt** — ADR 0011 |
 | $SM = (x_\mathrm{NP} - x_\mathrm{CG})/\bar{c}$ | law | **fehlt** |
 | Probe $SM \overset{?}{=} -C_{m\alpha}/C_{L\alpha}$ | Probe | **fehlt** — zwei Wege zu einer Größe sind ein *Test*, keine zweite Wahrheit |
-| $V_S = \sqrt{2W/(\rho\,S_\mathrm{ref}\,C_{L,\max,\mathrm{stall}})}$ | law | `formulas/stall-speed.md` — **freigegeben** |
+| $V_S = \sqrt{2W/(\rho\,S_\mathrm{ref}\,C_{L,\max,\mathrm{stall}})}$ | optimization | `formulas/stall-speed.md` — Beziehung freigegeben, Methode wartet auf den Flottenvergleich |
 
 Der Stabilitätsteil des Katalogs existiert noch nicht: weder `static-margin` noch
 `neutral-point`, `centre-of-gravity` oder `pitching-moment-slope` haben einen Eintrag. Das
@@ -1002,7 +1002,7 @@ Jeder Leistungswert bedeutet nur etwas zusammen mit dem Zustand, in dem er gilt 
 | **Start** | wie der Steigflug, nur mit anderem geforderten Auftrieb |
 | **Steigflug** | |
 | **Reiseflug** | |
-| **Kurvenflug** | mehrere Querneigungen |
+| **Kurvenflug** | gehaltene Kurve: schnellste Drehrate, engster Radius (§3.10) — Querneigung ist Ergebnis |
 | **Anflug** | |
 | **Landung** | |
 | **Sturzflug** | die obere Grenze |
@@ -1040,7 +1040,7 @@ Ein Punkt nennt fünf Dinge — mehr nicht:
 | **Höhe** | eine Höhe, keine Dichtehöhe mit Temperatur. Über das ganze erlaubte Flughöhenband bewegt sich die Abrissgeschwindigkeit um **0,7 %** — gemessen. Die Platzhöhe zählt, das Wetter nicht. |
 | **Masse** | der aktuelle Stand des Budgets |
 | **Konfiguration** | welche Polare gilt — Klappenstellung, Motor an oder aus. Beides wählt dieselbe Sache, also **eine** Angabe. |
-| **Lastvielfaches** | oder Querneigung, **nie beides** — im stationären Kurvenflug folgt das eine aus dem anderen |
+| **Lastvielfaches** | Eingabe der Auftriebsbilanz, je Anwendung gebunden; im Kurvenflug Optimierungsvariable (die Querneigung ist gestrichen, §3.10) |
 | **Schließungsbedingung** | siehe unten |
 
 Geschwindigkeit, Anstellwinkel und Auftriebsbeiwert sind **ein** Freiheitsgrad, nicht drei:
@@ -1094,8 +1094,9 @@ beiden Fragen.
 
 ### 3.3 Formeln
 
-Der Katalog führt **44 Formeln und 68 Größen**; freigegeben sind bisher drei Formeln —
-`air-density-isa`, `stall-speed`, `weight-from-mass`, also genau die Gesetze aus §2.1.
+Freigegeben sind bisher zwei Formeln — `air-density-isa` und `weight-from-mass`; bei
+`stall-speed` ist die Beziehung freigegeben, die Methode noch nicht (§3.4.1). Die Gesetze
+stammen aus §2.3.
 Die übrigen stehen auf `draft`, weil sie aus der Bestandsaufnahme stammen und die Freigabe
 entlang der Pfade läuft, nicht Eintrag für Eintrag.
 
@@ -1268,7 +1269,7 @@ Eintrag, statt still eingerechnet zu werden.
 #### Was dieser Punkt sonst benutzt
 
 Gleitzahl · Sinkgeschwindigkeit · Geschwindigkeit geringsten Widerstands und geringster
-Leistung · Abriss in der Kurve · Lastvielfaches aus Querneigung — alles vorhanden, und die
+Leistung · Abriss in der Kurve · Lastvielfaches aus Querneigung — *Befund vor dem 01.10.2026; die Querneigung ist inzwischen gestrichen (§3.10)* — alles vorhanden, und die
 Gleitzahl und die Sinkgeschwindigkeit sind erst seit dem Ausklammern der Widerstandspolare
 (§3.5) überhaupt rechenbar.
 
@@ -1285,7 +1286,7 @@ Punkt.
 
 | Bindung | Formel | heute gebunden an |
 |---|---|---|
-| **Anfluggeschwindigkeit** | `V_op = k · V_S,cfg` | nichts Bestimmtes — die Formel ist allgemein |
+| **Anfluggeschwindigkeit** | `V_app = k_S · V_S0` (Ist-Befund: damals `V_op = k · V_S,cfg`, an nichts gebunden) | Landekonfiguration — Klappen, wie gebaut (A3-Entscheidung 02.10.2026) |
 | **Abstand zum Abriss** | `V / V_S` | den **Reiseflug** — siehe Defekt ① |
 | **Ausschweben** | `R_glide = E · h` in Anflugkonfiguration | noch nicht gebunden |
 
@@ -1308,7 +1309,7 @@ Vorschriften setzen Reserven auf **Anflug- und Startgeschwindigkeiten**, nicht a
 Reisegeschwindigkeit. Gerechnet wird bei uns `V_cruise / V_S1`. Die Formel ist belegt, die
 Bindung nicht. Sie gehört dorthin, wo ihre Quelle lebt: an den Anflug.
 
-**② Die Klappenwirkung ist multiplikativ, beide Quellen sind additiv.** Der Kanon rechnet
+**② Die Klappenwirkung ist multiplikativ, beide Quellen sind additiv** — *erledigt am 02.10.2026: Die Klappe steckt in der Geometrie; hat das Flugzeug Klappen, rechnet das Abrissproblem mit dem konfigurierten Flugzeug, sonst gibt es keine Konfiguration. Faktor und `high-lift-clmax` sind gestrichen.* Der Kanon rechnet
 `C_L,max,cfg = f · C_L,max,clean`; Scholz und Sadraey schreiben einen **Zuwachs**, keinen
 Faktor. Der Eintrag nennt auch, warum das bei uns besonders weh tut: Ein Faktor macht den
 Klappenzuwachs proportional zum sauberen Höchstauftrieb — und das ist verkehrt herum, denn
@@ -1732,7 +1733,7 @@ Kette $V_C = V_D/1{,}4$ mit $V_D = 1{,}4\,V_{max}$ hebt sich im Code auf); sie w
 
 ### 3.11 Was der Durchgang ergeben hat
 
-Neun Betriebspunkte, einzeln aufgemacht. Die Bilanz:
+Acht Betriebspunkte, einzeln aufgemacht. Die Bilanz:
 
 | Punkt | Ergebnis |
 |---|---|
@@ -1923,7 +1924,7 @@ Zwei Fehlerarten, die er verhindert: **Unterinvalidierung** (eine angezeigte Zah
 nicht mehr zur Geometrie — still und falsch) und **Überinvalidierung** (alles rechnet neu,
 und die Anwender gewöhnen sich ab, auf den Zustand zu achten).
 
-Am Graphen aus §2.1 sieht man, warum das keine Formsache ist:
+Am Graphen aus §2.3 sieht man, warum das keine Formsache ist:
 
 | Änderung | wird ungültig |
 |---|---|
@@ -2051,7 +2052,7 @@ Auftriebsbeiwert einig; die **Analysekonfidenz** trennt sie, und sie steigt mit 
 Jede Größe trägt ihre Einheit im Katalogeintrag. Jede kanonische Formel muss die
 Dimensionsprobe bestehen — mit **Längenmaßstab** (mm gegen m) und getrenntem Winkelfach,
 weil beides in diesem Projekt real auseinanderläuft. Werkzeuge: `scripts/canon_to_json.py` liest die Markdown-Einträge ein,
-`scripts/check_canon.py` rechnet darauf. Stand: **30 von 44 Formeln balancieren**, zehn
+`scripts/check_canon.py` rechnet darauf. Stand 01.10.2026 (überholt, aktuelle Zahlen liefert `check_canon.py`): **30 von 44 Formeln balancieren**, zehn
 sind Verfahren und damit nicht prüfbar, drei nicht parsbar, eine benutzt einen
 unregistrierten Faktor.
 
@@ -2128,7 +2129,7 @@ zielwertgebundenen in **einem** Eintrag stehen (so wurde `roll-authority` in
 
 Zu jeder Größe, die ein Anwender sieht, gibt es genau **einen** Erzeuger. Wo zwei Wege zu
 derselben Größe führen, ist der zweite eine **Probe** und kein zweiter Erzeuger — so wie
-der Ableitungsweg zur Stabilitätsreserve in §2.1.
+der Ableitungsweg zur Stabilitätsreserve in §2.3.
 
 ---
 

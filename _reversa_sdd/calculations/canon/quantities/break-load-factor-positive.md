@@ -3,11 +3,11 @@ canon: break-load-factor-positive
 kind: quantity
 symbol: n_break,+
 unit: dimensionless
-role: derived
+role: output
 status: draft
 tags:
   - canon/quantity
-  - role/derived
+  - role/output
 ---
 
 # Break load factor, upward · `n_break,+`

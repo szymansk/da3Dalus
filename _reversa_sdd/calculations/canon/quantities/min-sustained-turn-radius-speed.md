@@ -3,11 +3,11 @@ canon: min-sustained-turn-radius-speed
 kind: quantity
 symbol: V_r
 unit: m/s
-role: derived
+role: output
 status: draft
 tags:
   - canon/quantity
-  - role/derived
+  - role/output
 ---
 
 # Speed for the tightest sustained turn · `V_r`

@@ -44,7 +44,7 @@ subject to:               L(V, alpha) = n * m * g
 
 **Relation solved.** Minimum of the steady-glide sink rate w = V*CD/CL; at minimum power the induced drag is three times the parasite drag, giving CL_mp = sqrt(3*pi*e*AR*CD0). Cited in-code as 'Anderson section 6.7.2' at assumption_compute_service.py:1957-1959 and restated at speed_polar_service.py:11-12. Citation passed through as written in the code; not independently verified.
 
-**Method.** Exhaustive search over a sampled discretisation: i_min_sink = int(np.argmin(w)) at analysis_service.py:521, over w = v*(cd_pos/cl_pos) computed at :515 for the positive-CL alpha-sweep samples, co-sorted by V at :517-519. v_min_sink and w_min are read out at that index (:543-544).
+**Method (Ist, today's code).** Exhaustive search over a sampled discretisation: i_min_sink = int(np.argmin(w)) at analysis_service.py:521, over w = v*(cd_pos/cl_pos) computed at :515 for the positive-CL alpha-sweep samples, co-sorted by V at :517-519. v_min_sink and w_min are read out at that index (:543-544).
 
 **Assumptions.** (1) The sampled CL range brackets CL_ms = sqrt(3)*CL_md - unchecked. CL_ms sits close to CL_max, so this is a demand on the high-CL (low-speed) end of the alpha sweep specifically. (2) The polar is still physically valid there: with the default alpha_end = 20 deg the samples run past CL_max, so the argmin is taken over a set that includes post-stall points, where AeroBuildup/NeuralFoil is least reliable and where no steady glide exists. (3) The spacing resolves a minimum that is flatter than the L/D maximum in CL, while V ~ CL^(-1/2) - so, as for V_md, grid error is first-order in the published speed. (4) CD(CL) valid at the speed it is assigned to - see violation.
 
@@ -52,7 +52,7 @@ subject to:               L(V, alpha) = n * m * g
 
 **On failure.** argmin always returns an index; an endpoint minimum (the sweep stopped before the sink minimum) is reported as v_min_sink/w_min with nothing in the response to distinguish it. Empty curve with v_min_sink = None only for the degenerate-geometry branch at :493-512. Whole polar returned as null on any exception (:667-669). No DesignWarning in the file - undeclared, ADR 0020.
 
-**Shape: a route.** This is one of several ways to the same quantity. The canon does not choose between them — it requires that they **agree**.
+**Shape: a route.** Ist: the code reaches this quantity in several ways; Soll: this optimisation is the only producer. The canon does not choose between them — it requires that they **agree**.
 
 **Test that follows.** Both routes claim the same quantity by different means; they must agree. Where they do not, the polar is not parabolic — which is a statement about the aircraft, not a defect.
 

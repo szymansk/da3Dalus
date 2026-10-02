@@ -3,11 +3,11 @@ canon: minimum-drag-speed
 kind: quantity
 symbol: V_md
 unit: m/s
-role: output
+role: derived
 status: draft
 tags:
   - canon/quantity
-  - role/output
+  - role/derived
 ---
 
 # Minimum-drag speed (best-glide speed) · `V_md`

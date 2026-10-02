@@ -2,7 +2,7 @@
 canon: minimum-drag-speed-closed-form
 entry: formula
 kind: law
-shape: route
+shape: approximation
 status: draft
 output: minimum-drag-speed
 source_status: SOURCED
@@ -30,7 +30,7 @@ V_md = sqrt( 2*(W/S) / (rho * sqrt(C_D0 / k)) )
 
 **Kind: a law.** A closed-form relation. Approval asks for its **source** and its **validity at 0.5–15 kg**.
 
-**Shape: a route.** This is one of several ways to the same quantity. The canon does not choose between them — it requires that they **agree**.
+**Shape: a route.** This is one of several ways to the same quantity. The canon has chosen: the authority is [[minimum-drag-speed-from-polar]]; this closed form is its Probe — it requires that they **agree**.
 
 **Test that follows.** Both routes claim the same quantity by different means; they must agree. Where they do not, the polar is not parabolic — which is a statement about the aircraft, not a defect.
 

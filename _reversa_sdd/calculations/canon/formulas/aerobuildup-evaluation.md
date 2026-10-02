@@ -21,7 +21,7 @@ tags:
 **Canonical form**
 
 ```
-L, D, CLa, alpha_0, e := AeroBuildup(airplane, OperatingPoint(V, alpha, atmosphere))
+L, D, CLa, alpha_0, e_osw := AeroBuildup(airplane, OperatingPoint(V, alpha, atmosphere))
 ```
 
 **Produces** [[lift-force]] · [[drag-force]] · [[lift-curve-slope]] · [[zero-lift-angle]] · [[oswald-efficiency]]  ·  **from** [[airplane]] · [[flight-speed]] · [[angle-of-attack]] · [[air-density]]

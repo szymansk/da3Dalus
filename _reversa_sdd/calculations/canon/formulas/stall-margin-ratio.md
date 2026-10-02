@@ -21,7 +21,7 @@ tags:
 **Canonical form**
 
 ```
-V_cruise / V_S1
+V_cruise / V_S
 ```
 
 **Produces** [[stall-margin-ratio]]  ·  **from** [[cruise-speed]] · [[stall-speed]]

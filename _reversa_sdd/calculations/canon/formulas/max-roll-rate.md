@@ -14,7 +14,7 @@ tags:
   - shape/law
   - kind/procedure
   - status/draft
-tex: L(V,\alpha) = m\,g, \quad C_l\big(V,\alpha,\,\delta_{a,max},\,p_{max}\big) = 0
+tex: L(V,\alpha) = m\,g, \quad C_{roll}\big(V,\alpha,\,\delta_{a,max},\,p_{max}\big) = 0
 ---
 
 # Maximum roll rate with the aileron throws set in the airplane
@@ -22,7 +22,7 @@ tex: L(V,\alpha) = m\,g, \quad C_l\big(V,\alpha,\,\delta_{a,max},\,p_{max}\big) 
 **Canonical form**
 
 ```
-solve for alpha, p_max (steady roll at V, full set throw):   L(V, alpha) = m * g,   C_l(V, alpha, delta_a,max, p_max) = 0
+solve for alpha, p_max (steady roll at V, full set throw):   L(V, alpha) = m * g,   C_roll(V, alpha, delta_a,max, p_max) = 0
 evaluated at V = V_cruise and at V = V_app
 ```
 

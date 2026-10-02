@@ -3,11 +3,11 @@ canon: max-sustained-turn-rate-speed
 kind: quantity
 symbol: V_omega
 unit: m/s
-role: derived
+role: output
 status: draft
 tags:
   - canon/quantity
-  - role/derived
+  - role/output
 ---
 
 # Speed for the fastest sustained turn · `V_omega`

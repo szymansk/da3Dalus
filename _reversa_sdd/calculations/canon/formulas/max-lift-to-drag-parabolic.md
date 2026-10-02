@@ -22,7 +22,7 @@ tags:
 **Canonical form**
 
 ```
-E_max = 0.5 * sqrt(pi * e * AR / C_D0)
+E_max = 0.5 * sqrt(pi * e_osw * AR / C_D0)
 ```
 
 **Produces** [[max-lift-to-drag-ratio]]  ·  **from** [[oswald-efficiency]] · [[aspect-ratio]] · [[zero-lift-drag-coefficient]]

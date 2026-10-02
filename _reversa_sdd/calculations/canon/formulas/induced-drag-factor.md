@@ -21,7 +21,7 @@ tags:
 **Canonical form**
 
 ```
-k = 1 / (pi * e * AR)
+k = 1 / (pi * e_osw * AR)
 ```
 
 **Produces** [[induced-drag-factor]]  ·  **from** [[oswald-efficiency]] · [[aspect-ratio]]

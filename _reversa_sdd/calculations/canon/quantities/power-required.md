@@ -3,11 +3,11 @@ canon: power-required
 kind: quantity
 symbol: P_req
 unit: W
-role: output
+role: derived
 status: draft
 tags:
   - canon/quantity
-  - role/output
+  - role/derived
 ---
 
 # Electrical power required · `P_req`

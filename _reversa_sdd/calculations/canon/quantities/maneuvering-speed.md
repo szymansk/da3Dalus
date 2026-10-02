@@ -3,11 +3,11 @@ canon: maneuvering-speed
 kind: quantity
 symbol: V_A
 unit: m/s
-role: derived
+role: output
 status: draft
 tags:
   - canon/quantity
-  - role/derived
+  - role/output
 ---
 
 # Manoeuvring speed · `V_A`

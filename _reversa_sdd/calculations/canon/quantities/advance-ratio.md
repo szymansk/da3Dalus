@@ -17,7 +17,7 @@ The axis the measured propeller tables are indexed by, and the reason thrust fal
 airspeed — as `J` rises the blade's angle of attack drops and the thrust coefficient slides
 toward zero.
 
-Defined inside [[thrust-at-airspeed-from-coefficient]]; it has no entry of its own because
+Produced by [[advance-ratio-from-speed]] because
 it is never computed for its own sake.
 
 **Unit.** `dimensionless`

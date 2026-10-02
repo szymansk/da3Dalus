@@ -3,11 +3,11 @@ canon: inverted-max-lift-coefficient
 kind: quantity
 symbol: C_L,min
 unit: dimensionless
-role: derived
+role: output
 status: draft
 tags:
   - canon/quantity
-  - role/derived
+  - role/output
 ---
 
 # Negative maximum lift coefficient · `C_L,min`

@@ -3,11 +3,11 @@ canon: wing-loading
 kind: quantity
 symbol: W/S
 unit: N/m^2
-role: output
+role: derived
 status: draft
 tags:
   - canon/quantity
-  - role/output
+  - role/derived
 ---
 
 # Wing loading · `W/S`

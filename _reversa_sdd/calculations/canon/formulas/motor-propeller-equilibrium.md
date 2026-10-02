@@ -21,9 +21,9 @@ tags:
 **Canonical form**
 
 ```
-route B (R_m known):  (I(n) - I_0) / K_v' = C_P(J) * rho * n^2 * D^5 / (2*pi)
-                      I(n) = (U_bat - 2*pi*n / K_v') / R_m,   J = V / (n * D)
-route A (R_m absent): n = min( K_v * U_bat / 60 ,  n  with  C_P(J) * rho * n^3 * D^5 = eta_mot * P_mot,max )
+route B (R_m known):  (I(n_prop) - I_0) / K_v' = C_P(J) * rho * n_prop^2 * D_prop^5 / (2*pi)
+                      I(n_prop) = (U_bat - 2*pi*n_prop / K_v') / R_m,   J = V / (n_prop * D_prop)
+route A (R_m absent): n_prop = min( K_v * U_bat / 60 ,  n_prop  with  C_P(J) * rho * n_prop^3 * D_prop^5 = eta_mot * P_mot,max )
 ```
 
 **Produces** [[propeller-speed]]  ·  **from** [[airplane]] · [[flight-speed]] · [[air-density]] · [[motor-voltage-constant]] · [[motor-no-load-current]] · [[motor-circuit-resistance]] · [[battery-voltage]] · [[motor-max-power]] · [[propeller-diameter]]
