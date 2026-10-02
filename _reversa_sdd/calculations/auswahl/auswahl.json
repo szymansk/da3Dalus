@@ -1003,5 +1003,23 @@
     "U": "ungewöhnlich",
     "N": "unsinnig"
   },
-  "regel": "»Unsinnig« (nicht wählbar) nur mit schriftlicher Quelle oder Aussage des Maintainers; eine Einschätzung aus [Praxis] allein ergibt höchstens »ungewöhnlich«."
+  "regel": "»Unsinnig« (nicht wählbar) nur mit schriftlicher Quelle oder Aussage des Maintainers; eine Einschätzung aus [Praxis] allein ergibt höchstens »ungewöhnlich«.",
+  "skizze": {
+    "hinweis": "Streckung je Mission nur zur Anschauung der Skizze — kein Band, keine Vorgabe für das Urmodell.",
+    "streckung": {
+      "trainer": 6,
+      "sport": 6,
+      "kunstflug": 5,
+      "3d": 4,
+      "speed": 8,
+      "elektrosegler": 12,
+      "scale": 7,
+      "park": 5,
+      "segel_trainer": 9,
+      "thermik": 14,
+      "hang": 12,
+      "wurf": 10,
+      "scale_segler": 14
+    }
+  }
 }

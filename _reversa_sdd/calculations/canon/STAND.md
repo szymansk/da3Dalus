@@ -329,3 +329,5 @@ gestrichen. Auswahlgraph als HTML unter `_reversa_sdd/calculations/auswahl/`.
 **Auswahlgraph v4 (02.10.2026):** sechs Fragen; Steuerachsen als Frage 5 (Höhe+Seite / Höhe+Quer / drei Achsen / drei Achsen+Klappen; Nurflügel Elevons ± Seitenruder), Mission „Trainer (Segler)" neu, Anmerkungen je Mission (Querruder-Trainer, Segelflug-Trainer meist Höhe+Seite). Ente ist eine Leitwerkskonfiguration (Höhenleitwerk vorn), nicht Bauart — Flügellage bleibt frei (Maintainer).
 
 **Auswahlgraph v5 (02.10.2026):** Taxonomie bereinigt (Maintainer): Ente und Nurflügel sind Leitwerkskonfigurationen; sieben Fragen — Motor, Mission, Tragflügel, Flügellage (nur Eindecker, inkl. „ohne Rumpf"), Leitwerk, Steuerachsen, Spannweite. Nurflügel: Elevons typisch (Horten-Art).
+
+**Auswahlgraph v6 (02.10.2026):** schematische Dreiseitenansicht (Draufsicht, Seiten-, Vorderansicht) aus den Antworten, reines SVG; Ruder orange. Streckung je Mission nur zur Anschauung (`skizze.streckung`), kein Band.

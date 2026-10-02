@@ -27,7 +27,7 @@ TEMPLATE = r"""<title>Urmodell-Auswahl</title>
   --bg:#F2F3F5; --panel:#FFFFFF; --ink:#15171C; --muted:#5B616E; --line:#D8DBE1;
   --accent:#FF8400; --accent-ink:#A85400; --chosen:#FFF0DF; --dim:#A9AEB8;
   --tag-rech:#2F6F9E; --tag-top:#6B5BA8; --tag-aus:#3E7F4E; --tag-kan:#A85400;
-    --good:#2E7D4F; --warn:#9A6200; --bad:#B23A3A;
+    --good:#2E7D4F; --sk-fill:#E3E6EB; --warn:#9A6200; --bad:#B23A3A;
   --sans:"Geist",ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;
   --mono:"JetBrains Mono",ui-monospace,"SFMono-Regular",Menlo,monospace;
 }
@@ -36,7 +36,7 @@ TEMPLATE = r"""<title>Urmodell-Auswahl</title>
     --bg:#111317; --panel:#1A1D22; --ink:#E8EAEE; --muted:#9AA1AC; --line:#2B3038;
     --accent:#FF8F1F; --accent-ink:#FFB066; --chosen:#2A1D0F; --dim:#555B66;
     --tag-rech:#7FB3DA; --tag-top:#B4A8E6; --tag-aus:#8CC79A; --tag-kan:#FFB066;
-    --good:#7CCB97; --warn:#E5B45C; --bad:#F08A8A;
+    --good:#7CCB97; --sk-fill:#2A2F37; --warn:#E5B45C; --bad:#F08A8A;
     color-scheme:dark;
   }
 }
@@ -44,7 +44,7 @@ TEMPLATE = r"""<title>Urmodell-Auswahl</title>
   --bg:#111317; --panel:#1A1D22; --ink:#E8EAEE; --muted:#9AA1AC; --line:#2B3038;
   --accent:#FF8F1F; --accent-ink:#FFB066; --chosen:#2A1D0F; --dim:#555B66;
   --tag-rech:#7FB3DA; --tag-top:#B4A8E6; --tag-aus:#8CC79A; --tag-kan:#FFB066;
-    --good:#7CCB97; --warn:#E5B45C; --bad:#F08A8A;
+    --good:#7CCB97; --sk-fill:#2A2F37; --warn:#E5B45C; --bad:#F08A8A;
   color-scheme:dark;
 }
 *{box-sizing:border-box}
@@ -107,6 +107,21 @@ td.was{font-weight:600;white-space:nowrap}
 tr.off td{color:var(--dim)} tr.off .tag{color:var(--dim)}
 .note{font-size:12.5px;color:var(--muted);margin:0;max-width:90ch}
 code{font-family:var(--mono);font-size:12.5px}
+.sketch{display:grid;grid-template-columns:1.1fr 1fr 1fr;gap:10px 18px;align-items:start;background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:12px 16px}
+.sketch figure{margin:0;display:grid;gap:4px}
+.sketch figcaption{font-family:var(--mono);font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+.sketch svg{width:100%;height:auto;display:block}
+.sketch .note{grid-column:1/-1}
+.cs-chip{display:inline-block;width:14px;height:8px;background:var(--accent);vertical-align:middle;border-radius:1px}
+.sk{fill:var(--sk-fill);stroke:var(--ink);stroke-width:1.1;stroke-linejoin:round}
+.sk.dash{fill:none;stroke-dasharray:4 3}
+.cs{fill:var(--accent);stroke:none}
+.skl{stroke:var(--ink);stroke-width:1.1;fill:none}
+.skw{stroke:var(--ink);stroke-width:2.6;fill:none;stroke-linecap:round;stroke-linejoin:round}
+.skd{stroke:var(--muted);stroke-width:1;fill:none}
+.skt{fill:var(--muted);font-family:var(--mono);font-size:11px}
+.prop{stroke:var(--muted);stroke-width:1.4;fill:none;stroke-dasharray:3 3}
+@media (max-width:760px){.sketch{grid-template-columns:1fr}}
 @media (max-width:980px){.steps{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media (max-width:560px){.steps{grid-template-columns:1fr} td.was{white-space:normal}}
 @media (prefers-reduced-motion:no-preference){.opt{transition:border-color .12s,background .12s}}
@@ -120,6 +135,12 @@ code{font-family:var(--mono);font-size:12.5px}
     <div class="path" id="path" aria-live="polite"></div>
     <div class="legend"><span><span class="badge T">typisch</span> h&auml;ufig f&uuml;r diese Mission</span><span>ohne Abzeichen: m&ouml;glich</span><span><span class="badge U">ungew&ouml;hnlich</span> gibt es, aber selten</span><span><span class="badge N">unsinnig</span> widerspricht der Mission, nicht w&auml;hlbar</span></div>
   </header>
+  <section class="sketch" aria-label="Skizze">
+    <figure><div id="sk-top"></div><figcaption>Draufsicht</figcaption></figure>
+    <figure><div id="sk-side"></div><figcaption>Seitenansicht</figcaption></figure>
+    <figure><div id="sk-front"></div><figcaption>Vorderansicht</figcaption></figure>
+    <p class="note">Schematisch, nicht ma&szlig;st&auml;blich: Proportionen nur zur Anschauung, kein Band. <span class="cs-chip"></span> Ruder &middot; gestrichelt: verdeckt oder an der Fl&uuml;gelspitze &middot; Strichkreis: Propeller</p>
+  </section>
   <section class="steps" id="steps" aria-label="Fragen"></section>
   <section class="urmodell" aria-label="Urmodell">
     <div class="urhead"><h2>Was das Urmodell daraus bekommt</h2><span class="state" id="state"></span></div>
@@ -152,6 +173,118 @@ code{font-family:var(--mono);font-size:12.5px}
   };
   const reason=o=>{ const k=o.bewertung_von||o.id; return D.gruende[pick.mission+":"+k]||D.gruende["*:"+k]||""; };
   const usable=(st,o)=>allowed(o)&&rating(st,o)!=="N";
+  // schematic three-view of the current answers; proportions are illustrative only
+  function drawSketch(){
+    const b=240, cx=150, y0=16, Lf=176;
+    const ar=((D.skizze||{}).streckung||{})[pick.mission]||7, c=b/ar;
+    const lw=pick.leitwerk, ax=pick.steuerung, trag=pick.trag||"eindecker", lage=pick.lage;
+    const NF=["nf_mitte","nf_winglet","nf_ohne"], AFT=["normal","t","kreuz","v","dach","h"];
+    const nf=NF.includes(lw), ente=!!lw&&lw.indexOf("ente")===0, aft=AFT.includes(lw);
+    const fus=!(trag==="eindecker"&&lage==="ohne_rumpf");
+    const ail=["hq","hsq","hsqk"].includes(ax), flap=ax==="hsqk", elevon=!!ax&&ax.indexOf("elevon")===0;
+    const rud=["hs","hsq","hsqk","elevon_s"].includes(ax), elev=!!ax&&!elevon;
+    const f1=v=>v.toFixed(1), P=pts=>pts.map(p=>f1(p[0])+","+f1(p[1])).join(" ");
+    const poly=(pts,cl)=>`<polygon class="${cl||"sk"}" points="${P(pts)}"/>`;
+    const L=(x1,y1,x2,y2,cl)=>`<line class="${cl||"skl"}" x1="${f1(x1)}" y1="${f1(y1)}" x2="${f1(x2)}" y2="${f1(y2)}"/>`;
+    const R=(x,y,w,h,cl)=>`<rect class="${cl||"sk"}" x="${f1(x)}" y="${f1(y)}" width="${f1(w)}" height="${f1(h)}"/>`;
+    const tan=d=>Math.tan(d*Math.PI/180);
+    const mainCS=[].concat(ail?[[0.55,0.95]]:[],flap?[[0.08,0.5]]:[],elevon?[[0.3,0.95]]:[]);
+    function wing(yr,span,cr,taper,sw,cs,cl){
+      let s=""; const h=span/2, ct=cr*taper;
+      for(const sg of [1,-1]){
+        const X=f=>cx+sg*h*f, LE=f=>yr+sw*f, CH=f=>cr+(ct-cr)*f;
+        s+=poly([[X(0),LE(0)],[X(1),LE(1)],[X(1),LE(1)+CH(1)],[X(0),LE(0)+CH(0)]],cl);
+        if(!cl) for(const [a,e] of cs) s+=poly([[X(a),LE(a)+CH(a)*0.72],[X(e),LE(e)+CH(e)*0.72],[X(e),LE(e)+CH(e)],[X(a),LE(a)+CH(a)]],"cs");
+      }
+      return s;
+    }
+    const finTop=(y,len)=>R(cx-1.5,y,3,len);
+    const k=250/Lf, xs=y=>22+(y-y0)*k;
+    const prof=(x,y,ch)=>`<ellipse class="sk" cx="${f1(x+ch/2)}" cy="${f1(y)}" rx="${f1(ch/2)}" ry="2.6"/>`;
+    const finSide=(xe,cw,base,top,cl)=>poly([[xe-cw*1.25,base],[xe-cw*0.45,top],[xe,top],[xe,base]],cl)+(rud&&!cl?R(xe-cw*0.3,top+2,cw*0.3,base-top-3,"cs"):"");
+    const fw=(y,half,deg,cl)=>{ const d=tan(deg)*half; return `<polyline class="${cl||"skw"}" points="${P([[cx-half,y-d],[cx,y],[cx+half,y-d]])}"/>`; };
+    const WY={hochdecker:[83,85],schulterdecker:[87,88],mitteldecker:[95,95],tiefdecker:[105,104],ohne_rumpf:[95,95]};
+    const wy=WY[lage]||[95,95];
+    const dih=ax==="hs"?7:nf?1.5:["kunstflug","3d"].includes(pick.mission)?0:2.5;
+    let T="", Sd="", Fb="", F="", pusher=null;
+    const lenF=nf?0.5*b:Lf;
+    if(fus){
+      T+=`<rect class="sk" x="${cx-7}" y="${y0}" width="14" height="${f1(lenF)}" rx="7"/>`;
+      const xe=xs(y0+lenF), xm=22+0.45*(xe-22);
+      Sd+=`<path class="sk" d="M22,95 C22,83 32,83 46,83 L${f1(xm)},84 L${f1(xe)},91 L${f1(xe)},99 L${f1(xm)},106 L46,107 C32,107 22,107 22,95 Z"/>`;
+    }
+    function aftTail(){
+      const ct=0.62*c, yt=y0+Lf-ct, span=(lw==="v"||lw==="dach")?0.3*b:0.36*b, xe=xs(y0+Lf), cw=ct*k, hs=span/2*0.9;
+      T+=wing(yt,span,ct,0.8,0,elev?[[0.05,0.98]]:[]);
+      if(["normal","t","kreuz"].includes(lw)) T+=finTop(yt-ct*0.3,ct*1.3);
+      if(lw==="h") for(const sg of [1,-1]) T+=R(cx+sg*span/2-1.5,yt-ct*0.2,3,ct*1.2);
+      if(lw==="v"){ Sd+=poly([[xe-cw*1.1,90],[xe-cw*0.35,70],[xe,70],[xe,90]])+(elev?R(xe-cw*0.3,72,cw*0.3,17,"cs"):""); Fb+=L(cx,90,cx-30,66,"skw")+L(cx,90,cx+30,66,"skw"); }
+      else if(lw==="dach"){ Sd+=poly([[xe-cw*1.1,99],[xe-cw*0.35,118],[xe,118],[xe,99]])+(elev?R(xe-cw*0.3,100,cw*0.3,17,"cs"):""); Fb+=L(cx,100,cx-30,122,"skw")+L(cx,100,cx+30,122,"skw"); }
+      else {
+        const sy={normal:91,h:91,kreuz:74,t:58}[lw];
+        Sd+=finSide(xe,cw,91,58)+`<ellipse class="sk" cx="${f1(xe-cw/2)}" cy="${sy}" rx="${f1(cw/2)}" ry="2"/>`;
+        if(lw==="h") Fb+=L(cx-hs,93,cx+hs,93,"skw")+L(cx-hs,78,cx-hs,104,"skw")+L(cx+hs,78,cx+hs,104,"skw");
+        else { const fy={normal:93,kreuz:76,t:60}[lw]; Fb+=L(cx,93,cx,60,"skw")+L(cx-hs,fy,cx+hs,fy,"skw"); }
+      }
+    }
+    if(trag==="eindecker"||trag==="doppeldecker"){
+      if(nf){
+        const sw=lw==="nf_mitte"?0.05*b:0.26*b, cr=1.35*c, ctip=cr*0.55, yW=y0+(fus?0.14*b:0.06*b), tipLE=yW+sw;
+        T+=wing(yW,b,cr,0.55,sw,mainCS);
+        if(lw==="nf_mitte") T+=finTop(yW+cr*0.55,cr*0.5);
+        if(lw==="nf_winglet") for(const sg of [1,-1]) T+=R(cx+sg*b/2-1.5,tipLE,3,ctip);
+        Sd+=prof(xs(yW),wy[0],cr*k);
+        if(lw==="nf_mitte"){ const xt=xs(yW)+cr*k; Sd+=finSide(xt,cr*k*0.35,wy[0],wy[0]-24); Fb+=L(cx,wy[1],cx,wy[1]-24,"skw"); }
+        if(lw==="nf_winglet"){ const xt=xs(tipLE)+ctip*k; Sd+=finSide(xt,ctip*k*0.8,wy[0],wy[0]-18,"sk dash"); const d=tan(dih)*120; F+=L(cx-120,wy[1]-d,cx-120,wy[1]-d-18,"skw")+L(cx+120,wy[1]-d,cx+120,wy[1]-d-18,"skw"); }
+        F+=fw(wy[1],120,dih);
+        if(!fus) pusher=yW+cr;
+      } else {
+        const yW=y0+(ente?0.55:0.2)*Lf, bi=trag==="doppeldecker";
+        if(bi) T+=wing(yW+0.4*c,b,c,0.95,0,[],"sk dash");
+        T+=wing(yW,b,c,bi?0.95:0.7,0,mainCS);
+        if(bi){
+          const xu=xs(yW)+c*k*0.5, xl=xs(yW+0.4*c)+c*k*0.5, ls=106-tan(dih)*80;
+          Sd+=prof(xs(yW),66,c*k)+prof(xs(yW+0.4*c),106,c*k)+L(xu,68,xl,104);
+          F+=fw(68,120,0)+fw(106,115,dih)+L(cx-80,68,cx-80,ls)+L(cx+80,68,cx+80,ls);
+        } else { Sd+=prof(xs(yW),wy[0],c*k); F+=fw(wy[1],120,dih); }
+        if(aft) aftTail();
+        if(ente){
+          const cf=0.55*c, yf=y0+0.05*Lf;
+          T+=wing(yf,0.32*b,cf,0.85,0,elev?[[0.08,0.98]]:[]);
+          Sd+=prof(xs(yf),93,cf*k); F+=L(cx-38,93,cx+38,93,"skw");
+          if(lw==="ente_flosse"){ T+=finTop(y0+Lf-0.6*c,0.6*c); Sd+=finSide(xs(y0+Lf),0.6*c*k,91,60); Fb+=L(cx,93,cx,62,"skw"); }
+          if(lw==="ente_winglet"){
+            for(const sg of [1,-1]) T+=R(cx+sg*b/2-1.5,yW,3,0.7*c);
+            Sd+=finSide(xs(yW)+c*k*0.85,c*k*0.6,wy[0],wy[0]-18,"sk dash");
+            const d=tan(dih)*120; F+=L(cx-120,wy[1]-d,cx-120,wy[1]-d-18,"skw")+L(cx+120,wy[1]-d,cx+120,wy[1]-d-18,"skw");
+          }
+        }
+      }
+    } else if(trag==="tandem"){
+      const yF=y0+0.14*Lf, yR=y0+0.72*Lf;
+      T+=wing(yF,b,c,0.75,0,mainCS)+wing(yR,0.9*b,c,0.75,0,elev?[[0.1,0.9]]:[])+finTop(y0+Lf-0.55*c,0.55*c);
+      Sd+=prof(xs(yF),104,c*k)+prof(xs(yR),82,c*k)+finSide(xs(y0+Lf),0.55*c*k,91,60);
+      F+=fw(104,120,2)+fw(80,108,dih); Fb+=L(cx,93,cx,62,"skw");
+    } else if(trag==="kasten"){
+      const sw=0.09*b, yF=y0+0.16*Lf, yR=y0+0.86*Lf-c;
+      T+=wing(yF,b,c,0.7,sw,mainCS)+wing(yR,b,c,0.7,-sw,elev?[[0.1,0.6]]:[]);
+      for(const sg of [1,-1]) T+=R(cx+sg*b/2-1.5,yF+sw,3,(yR-sw+0.7*c)-(yF+sw));
+      Sd+=poly([[xs(yF+sw),106],[xs(yF+sw)+0.7*c*k,106],[xs(yR-sw)+0.7*c*k,60],[xs(yR-sw),60]],"sk dash")+prof(xs(yF),106,c*k)+prof(xs(yR),60,c*k);
+      const yf=104-tan(1.5)*120, yr=64+tan(1.5)*120;
+      F+=fw(104,120,1.5)+fw(64,120,-1.5)+L(cx-120,yr,cx-120,yf,"skw")+L(cx+120,yr,cx+120,yf,"skw");
+    }
+    if(pick.motor==="ja"){
+      if(pusher==null){ T+=L(cx-24,y0-4,cx+24,y0-4,"prop"); Sd+=L(18,70,18,120,"prop"); F+=`<circle class="prop" cx="${cx}" cy="95" r="30"/>`; }
+      else { T+=L(cx-22,pusher+5,cx+22,pusher+5,"prop"); const xp=xs(pusher)+4; Sd+=L(xp,wy[0]-24,xp,wy[0]+24,"prop"); F+=`<circle class="prop" cx="${cx}" cy="${wy[1]}" r="26"/>`; }
+    }
+    T+=L(cx-b/2,214,cx+b/2,214,"skd")+L(cx-b/2,209,cx-b/2,219,"skd")+L(cx+b/2,209,cx+b/2,219,"skd")
+      +`<text class="skt" x="${cx}" y="229" text-anchor="middle">b = ${pick.spannweite!=null?pick.spannweite:"\u2013"} mm</text>`;
+    const front=Fb+(fus?`<circle class="sk" cx="${cx}" cy="95" r="11"/>`:"")+F;
+    const svg=(vb,body,lab)=>`<svg viewBox="${vb}" role="img" aria-label="${lab}">${body}</svg>`;
+    document.getElementById("sk-top").innerHTML=svg("0 0 300 234",T,"Draufsicht");
+    document.getElementById("sk-side").innerHTML=svg("0 45 300 90",Sd,"Seitenansicht");
+    document.getElementById("sk-front").innerHTML=svg("0 50 300 80",front,"Vorderansicht");
+  }
   function fixesBox(items){
     const b=el("div","fixes"); b.appendChild(el("div","t","legt fest"));
     if(!items||!items.length){ b.appendChild(el("p","none","Noch nichts gew&auml;hlt.")); return b; }
@@ -240,6 +373,7 @@ code{font-family:var(--mono);font-size:12.5px}
       tr.innerHTML=`<td class="was">${esc(u.was)}</td><td>${esc(aus)}${u.eintrag&&!off?` <code>${esc(u.eintrag)}</code>`:""}</td><td><span class="tag ${esc(u.art)}">${esc(u.art)}</span></td>`;
       tb.appendChild(tr);
     });
+    drawSketch();
     document.getElementById("hinweis").innerHTML="Stand "+esc(D.stand)+". "+esc(D.hinweis);
   }
   render();
