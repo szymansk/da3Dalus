@@ -47,7 +47,7 @@ Jede dieser Angaben kommt aus einer Antwort, einem Band oder einem Vorgabewert.
 | Ruderausschläge | einzelne Werte [V]; je Mission — |
 | Stabilitätsreserve-Ziel | Trainer, Sport, Kunstflug, Nurflügel [V]; Segler — |
 | Schwerpunkt | Kanon: `cg-for-target-margin` aus Neutralpunkt und Stabilitätsreserve-Ziel |
-| Antrieb | **Leistungsbelastung W/kg: keine Quelle**, größte Lücke |
+| Antrieb | Leistungsbelastung W/kg (§3a, Vorschlag) mal Masse, dann erste Wahl aus dem Teilekatalog |
 
 ## 2. Statistik der Modelltabelle [T]
 
@@ -130,10 +130,46 @@ Probe für einen Trainer mit 1,4 m Spannweite:
 - **Streckung beim Kunstflug:** [V] nennt 4,75 als typisch, die Tabelle hat einen Median von 5,2.
   Das ist verträglich.
 
+## 3a. Leistungsbelastung W/kg (recherchiert 02.10.2026)
+
+Alle Werte sind **elektrische Eingangsleistung bei Vollgas je kg Abfluggewicht**. Umrechnung:
+1 W/lb = 2,205 W/kg.
+
+| Mission | Maintainer-Tabelle | MAN | Faustregel 2 | WRCS (E-flite) | Modelltabelle [T] | **Vorschlag min / typ / max** |
+|---|---|---|---|---|---|---|
+| Trainer | 100–150 | 110–165 | 110–176 | 155–200 | – | **110 / 150 / 200** |
+| Sport | 150–250 | 165–220 | 176–265 | 200–245 | 332 [234–429] n=29 | **165 / 220 / 265** |
+| Kunstflug | 250–350 | 220–330 | 330–440 | 245–285 | 404 [333–461] n=48 | **220 / 300 / 400** |
+| 3D | 350–500+ | 330–440+ | 330–440 | 285–440+ | 410 [313–489] n=15 | **330 / 400 / 500** |
+| Speed | 350–500+, Pylon/F5B 1000+ | – | – | – | 333 [240–500] n=27 | **350 / 500 / 1000** |
+| Elektrosegler | 50–150 | 110–165 | – | – | 203 [150–241] n=70 | **110 / 165 / 250** |
+| Scale | 100–150, Warbirds 150–250 | 110–165, Warbirds 165–330 | 220–330 | 155–200 (langsam) | 319 [278–509] n=38 | **155 / 220 / 330** |
+| Park | – | ≤ 110 (Slow Flyer) | – | – | 271 [180–375] n=24 | **110 / 180 / 270** |
+
+Quellen der Spalten:
+- **Maintainer-Tabelle:** vom Maintainer eingebracht, 02.10.2026.
+- **MAN:** Model Airplane News, Watts-per-pound guide.
+- **Faustregel 2:** zweite verbreitete Watt-pro-Pfund-Aufteilung, im selben Suchergebnis.
+- **WRCS:** Leitfaden des WRCS-Vereins (wrcs.org.au), ausdrücklich „auf E-flite-Motoren gestützt".
+- **Modelltabelle:** Antriebsklasse „NNN W" geteilt durch die Masse. Das ist die **Nennleistung des
+  Motors**, nicht die geflogene Eingangsleistung, und liegt deshalb systematisch über den
+  Faustregeln.
+
+Nicht in den Vorschlag eingegangen:
+- **Vorkoetter (MotoCalc, 2004):** Sport 35–50 W/lb (77–110 W/kg), Kunstflug 60 W/lb (132 W/kg).
+  Das sind Mindestwerte für ausreichendes Fliegen, deutlich unter allen anderen Quellen.
+- **F5J-Wettbewerb:** etwa 500 W bei 0,8–1,5 kg, also 333–625 W/kg. Das ist die Klasse mit
+  Startsteigflug, nicht der gewöhnliche Elektrosegler.
+
+Die Quellen streuen etwa um den Faktor 1,5 bis 2. Der Wert dient nur zur **ersten Antriebswahl** des
+Urmodells. Danach rechnet der Kanon Schub und Steigen aus Motor und Propeller
+(`motor-propeller-equilibrium`, Route A leistungsbegrenzt), nicht aus W/kg.
+
+**Status:** Vorschlag. Die Entscheidung des Maintainers steht aus.
+
 ## 4. Lücken: Bänder ohne Quelle
 
-1. **Leistungsbelastung W/kg** für alle Missionen mit Motor. Der Vault nennt nur Hubraumverhältnisse
-   für Verbrenner. Ohne diesen Wert kann das Urmodell keinen Antrieb wählen.
+1. ~~Leistungsbelastung W/kg~~: recherchiert in §3a, die Entscheidung des Maintainers steht aus.
 2. **Pfeilung des Nurflügels.**
 3. **Segler:** Stabilitätsreserve-Ziel und Leitwerkshebel für alle Segler-Missionen.
 4. **3D, Speed, Park und Scale:** Zuspitzung, Leitwerksvolumen, Stabilitätsreserve und Ruder. Aus

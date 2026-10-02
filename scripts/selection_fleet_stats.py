@@ -9,6 +9,7 @@ committed as a snapshot. Medians with interquartile range, and a mass fit m = C 
 
 import json
 import math
+import re
 import sqlite3
 import statistics as st
 import sys
@@ -81,7 +82,17 @@ for m, types in M.items():
             res = [p[1] - (my + k * (p[0] - mx)) for p in pts]
             s = (sum(r * r for r in res) / (len(pts) - 2)) ** 0.5
             fit = (round(C, 3), round(k, 2), round(math.exp(s), 2), len(pts))
+    # electric drive class "NNNW" is the motor's nominal rating, not the flown input power
+    pw = []
+    for dc, w in c.execute(
+        f"select drive_class, weight_g from models where type in ({','.join('?' * len(types))})",
+        types,
+    ).fetchall():
+        hit = re.fullmatch(r"\s*(\d+)\s*W\s*", dc or "")
+        if hit and w and w > 50:
+            pw.append(int(hit.group(1)) / (w / 1000))
     out[m] = dict(
+        w_per_kg=q(pw),
         n=len(rows),
         wl=q(wl),
         ar=q(ar),
