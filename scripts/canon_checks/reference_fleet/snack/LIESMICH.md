@@ -1,3 +1,5 @@
+> ⚠ **Profile vorläufig (02.10.2026):** aus unbearbeiteten Laserteilen gefittet — siehe `BEFUNDE_PROFIL.md`. Nicht für aerodynamische Rechnungen verwenden.
+
 # SNACK - befuelltes Datenmodell (Geometrieformat AIRPLANE-GEOMETRY)
 
 Stand 02.10.2026. Quelle: `SNACK_Gesamtmodell.step` + FlugModell-Bauplan SNACK (Konstruktion Hilmar Lange).
