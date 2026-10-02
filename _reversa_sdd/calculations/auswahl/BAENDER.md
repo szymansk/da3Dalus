@@ -341,6 +341,38 @@ Der Konstrukteur ersetzt die Geometrie danach durch die des Vorbilds.
 Ausnahme: Masse, Streckung und Rumpflänge kommen weiter aus der Scale-Statistik der Modelltabelle
 (§2), denn sie sind dort eigens erhoben.
 
+## 3e. 3D, Speed, Park (recherchiert 02.10.2026)
+
+Eigene Bänder für Leitwerksvolumen, Stabilitätsreserve und Zuspitzung gibt es für diese Missionen nicht.
+Belegt ist nur Folgendes:
+
+| Mission | belegt | Quelle |
+|---|---|---|
+| 3D | Ausschläge niedrig: Höhe 8–10°, Quer 15–20°, Seite 20°. Ausschläge 3D: Höhe 45–50° (Tumbling 60°+), Quer 38–40°, Seite 45–50°, Expo 60–90 % | [Extreme Flight, Datenblatt 60" Edge](https://extremeflightrc.com/cdn/shop/files/DATASHEET_60EDGE.pdf) |
+| 3D | symmetrisches Profil, 10–15 % dick | lennon-symmetrical-airfoil-aerobatics; nextcraft |
+| 3D | Torquen: das Modell hängt am Propeller, es braucht viel Schub und große Höhen- und Seitenruder | rcn-torquen |
+| Speed (Hotliner) | aerodynamisch ein Segler, etwa 2 m Spannweite, Querruder + Höhe, **kein Seitenruder** | rcn-segelflugzeug; Siren-Testbericht (Model Aviation) |
+| Speed (Hotliner) | Gierstabilität $V_V \approx 0{,}03$ für Querrudermodelle ohne Seitenruder | Lelke |
+| Speed (Pylon F5D) | 1,0 m Spannweite, 0,13 m², 0,9 kg; FAI: höchstens 1,25 kg und 7,5 kg/m²; Profile MH 30/32/33/43 | [Hepperle, F5D](https://mh-aerotools.de/airfoils/f5d_models.htm) |
+| Park | Flächenbelastung 10–30 g/dm² bei kleiner Spannweite; Bauweise oft Depron/EPP-Platte | wing-wing-area-wing-loading…; rcn-hallenflug, rcn-foamies |
+| Park | Ausschläge am großen Ende (Quer/Höhe ±20°, Seite ±30°), niedrige Rate ≈ 70 % der hohen | Lelke; Model Aviation (UMX) |
+
+Nur aus Suchergebnissen, nicht am Original geprüft:
+- Pylon-Schwerpunkt 18–38 % MAC
+- F3P-Ausschläge
+- Leitwerk 20–30 % der Flügelfläche bei 3D-Foamies
+
+**Vorschlag (Platzhalter wie bei Scale, §3d):**
+- **3D:** Kunstflug-Bänder (Zuspitzung, Leitwerksvolumen, Stabilitätsreserve 0–3 %, Rudergrößen),
+  dazu die 3D-Ausschläge oben. Das Profil spricht für Lennons 10–15 % und gegen die 7–10 % von
+  rcplanedesigner.
+- **Speed:** Segler-Bänder mit Querrudern nach Drela (§3b), Steuerachsen Höhe + Quer. Für die
+  Stabilitätsreserve gilt „sportlich 5–8 %"; die Quelle des Maintainers nennt dort ausdrücklich F5B,
+  die Hotliner-Klasse. Hotwings sind Nurflügel und folgen §3c.
+- **Park:** Trainer-Bänder, mit den Ausschlägen oben.
+
+**Entscheidung des Maintainers offen.**
+
 ## 4. Lücken: Bänder ohne Quelle
 
 1. ~~Leistungsbelastung W/kg~~: ✅ entschieden am 02.10.2026 (§3a).
