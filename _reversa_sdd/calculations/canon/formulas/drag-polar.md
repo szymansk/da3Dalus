@@ -2,16 +2,16 @@
 canon: drag-polar
 entry: formula
 kind: law
-shape: route
+shape: approximation
 status: draft
-output: drag-coefficient
+output: drag-coefficient-parabolic
 source_status: SOURCED
 dimensional_check: BALANCES
 tags:
   - canon/formula
   - source/sourced
   - dim/balances
-  - shape/route
+  - shape/approximation
   - kind/law
   - status/draft
 ---
@@ -21,10 +21,10 @@ tags:
 **Canonical form**
 
 ```
-C_D = C_D0 + k * C_L^2
+C_D,par = C_D0 + k * C_L^2
 ```
 
-**Produces** [[drag-coefficient]]  ·  **from** [[zero-lift-drag-coefficient]] · [[induced-drag-factor]] · [[lift-coefficient]]
+**Produces** [[drag-coefficient-parabolic]]  ·  **from** [[zero-lift-drag-coefficient]] · [[induced-drag-factor]] · [[lift-coefficient]]
 
 **Kind: a law.** A closed-form relation. Approval asks for its **source** and its **validity at 0.5–15 kg**.
 
@@ -66,3 +66,9 @@ outstanding.
 - [ ] **Implementations** — all agree, or each deviation is declared and justified
 - [ ] **Preconditions** — every binding condition holds, or the violation is ticketed
 - [ ] **Inputs approved** — no formula is approvable before its inputs are
+
+**Renamed 2026-10-02 (A2).** The parabola's value is `C_D,par`, not `C_D`. `C_D` is the
+coefficient the solver computes; the two shared one name, which is what made the graph
+show the false cycle `C_D → C_D0 → C_D`. The parabola is an **approximation** — measured
+non-parabolic at Re ≈ 1e5 (`V_mp/V_md` = 0.70 against 0.76) — kept where ADR 0004 and the
+design direction use it.

@@ -279,3 +279,8 @@ Schub bei Fahrt verbindet sich mit Steigen/Kurve/V_max/V_D (Route A leistungsbeg
 Ticketregel (Soll ohne Nummer vs. „keine Tickets bis der Kanon steht“), Stabilitätsteil und
 Nutzlast (Zweck), C_D0-Schleife (`reynolds-scheduled-polar`), `mean-thrust-derate`/f_T,
 `cruise-speed-resolution`, Kinds außerhalb der erlaubten Menge (`substitution`).
+
+**C_D0-Schleife behoben (02.10.2026)** nach unabhängigem Review: Kanon an **ADR 0004** angeglichen
+(`parasite-drag-split`: C_D0 schädlich am Reiseflugpunkt, e Trefftz); `C_D,par` für die Parabel;
+geschlossene V_md-Formel nur Probe. **O13 offen:** Analyse direkt mit Solver-Widerstand bräuchte
+eine neue ADR gegen 0004.

@@ -20,9 +20,9 @@ import sys
 #: Edges the layering breaks, with the reason. A naming collapse, not a fixed point: one
 #: name covering a swept measurement and a modelled value. (The second one, a generic
 #: speed bucket, was resolved in the canon on 2026-10-01 by making V a pure input.)
-BROKEN_EDGES = {
-    ("drag-coefficient", "zero-lift-drag-coefficient"),
-}
+# Edges cut by hand. Empty since 2026-10-02: the last false cycle (C_D -> C_D0 -> C_D) was a
+# naming collision, removed in the canon itself. Keep it empty; fix cycles in the canon.
+BROKEN_EDGES: set = set()
 
 GREEK = {"rho": r"\rho", "alpha": r"\alpha", "gamma": r"\gamma", "eta": r"\eta",
          "mu": r"\mu", "pi": r"\pi", "sigma": r"\sigma", "lambda": r"\lambda",
@@ -91,7 +91,9 @@ def layout(quantities: dict, formulas: dict) -> dict:
     for slug, f in formulas.items():
         for out in f["out"]:
             for i in dict.fromkeys(f["ins"]):
-                if i != out and (i, out) not in BROKEN_EDGES:
+                if i == out:
+                    raise SystemExit(f"self-edge: {slug} lists its own output {out!r} as an input")
+                if (i, out) not in BROKEN_EDGES:
                     edges.append((i, out, slug))
 
     produced = {o for f in formulas.values() for o in f["out"]}

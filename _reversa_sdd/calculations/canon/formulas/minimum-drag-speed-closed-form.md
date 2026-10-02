@@ -4,7 +4,7 @@ entry: formula
 kind: law
 shape: approximation
 status: draft
-output: minimum-drag-speed
+output: minimum-drag-speed-probe
 source_status: SOURCED
 dimensional_check: BALANCES
 tags:
@@ -21,10 +21,10 @@ tags:
 **Canonical form**
 
 ```
-V_md = sqrt( 2*(W/S) / (rho * sqrt(C_D0 / k)) )
+V_md,probe = sqrt( 2*(W/S) / (rho * sqrt(C_D0 / k)) )
 ```
 
-**Produces** [[minimum-drag-speed]]  ·  **from** [[wing-loading]] · [[air-density]] · [[zero-lift-drag-coefficient]] · [[induced-drag-factor]]
+**Produces** [[minimum-drag-speed-probe]]  ·  **from** [[wing-loading]] · [[air-density]] · [[zero-lift-drag-coefficient]] · [[induced-drag-factor]]
 
 **Probe, nicht Erzeuger.** Die Autorität ist [[minimum-drag-speed-from-polar]]. Diese Form setzt konstanten Nullauftriebswiderstand und konstanten Streckungsfaktor voraus — bei unseren Reynoldszahlen hängen beide von der Geschwindigkeit ab. Der Vergleich beider Wege ist ein Test (ADR 0022), keine zweite Wahrheit.
 
@@ -65,3 +65,8 @@ Identical to the proposal once W/S is factored (Sadraey writes 2W/(rho*S) groupe
 
 > While `status: draft` this entry **cites nothing and decides nothing**.
 
+**Own output since 2026-10-02.** As the Probe it must not produce `V_md` itself: it did, and
+with `C_D0` and `e` now bound to the cruise point (ADR 0004) that closed a loop
+`V_md → V_cruise → e → k → V_md`. Its value is `V_md,probe`, compared with the
+optimisation's `V_md`; a mismatch beyond the parabola's known error at low Reynolds number
+is reported, not substituted.

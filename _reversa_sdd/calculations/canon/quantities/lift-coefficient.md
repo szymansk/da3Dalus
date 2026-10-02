@@ -18,4 +18,4 @@ Non-dimensional lift, either produced by the AeroBuildup sweep or demanded by th
 
 **Produced by.** [[lift-coefficient-required]]
 
-**Used by.** [[drag-polar]] · [[inverted-max-lift-coefficient]] · [[lift-to-drag-ratio]] · [[linear-lift-curve-inverse]] · [[sink-rate]] · [[stall-onset-detection]] · [[zero-lift-drag-from-sweep]]
+**Used by.** [[drag-polar]] · [[inverted-max-lift-coefficient]] · [[linear-lift-curve-inverse]] · [[sink-rate]] · [[stall-onset-detection]]

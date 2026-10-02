@@ -24,7 +24,7 @@ tags:
 w_sink = V * C_D / C_L   (small glide-angle form of w_sink = V * sin(gamma), tan(gamma) = C_D/C_L)
 ```
 
-**Produces** [[sink-rate]]  ·  **from** [[flight-speed]] · [[lift-coefficient]] · [[drag-coefficient]]
+**Produces** [[sink-rate]]  ·  **from** [[flight-speed]] · [[lift-coefficient]] · [[drag-coefficient-parabolic]]
 
 **Kind: a law.** A closed-form relation. Approval asks for its **source** and its **validity at 0.5–15 kg**.
 

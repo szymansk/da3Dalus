@@ -4,7 +4,7 @@ entry: formula
 kind: procedure
 shape: law
 status: draft
-output: lift-force, drag-force, lift-curve-slope, zero-lift-angle, oswald-efficiency
+output: lift-force, drag-force, lift-curve-slope, zero-lift-angle
 source_status: SOURCED
 dimensional_check: PROCEDURAL
 tags:
@@ -21,14 +21,14 @@ tags:
 **Canonical form**
 
 ```
-L, D, CLa, alpha_0, e_osw := AeroBuildup(airplane, OperatingPoint(V, alpha, atmosphere))
+L, D, CLa, alpha_0 := AeroBuildup(airplane, OperatingPoint(V, alpha, atmosphere))
 ```
 
-**Produces** [[lift-force]] · [[drag-force]] · [[lift-curve-slope]] · [[zero-lift-angle]] · [[oswald-efficiency]]  ·  **from** [[airplane]] · [[flight-speed]] · [[angle-of-attack]] · [[air-density]]
+**Produces** [[lift-force]] · [[drag-force]] · [[lift-curve-slope]] · [[zero-lift-angle]]  ·  **from** [[airplane]] · [[flight-speed]] · [[angle-of-attack]] · [[air-density]]
 
 **Kind: a procedure — the solver.** AeroBuildup returns lift and drag in newtons and, with
 `run_with_stability_derivatives()`, the lift-curve slope (key `CLa`, per radian, by finite
-difference). The zero-lift angle and the span efficiency are read off the computed polar.
+difference). The zero-lift angle is read off the computed polar. The span efficiency is produced once, at the cruise point, by [[parasite-drag-split]] (ADR 0004).
 The Reynolds number is formed inside, per section, from `V` and the local chord.
 
 **Why this entry exists.** These were inputs, though they are the most airplane-dependent

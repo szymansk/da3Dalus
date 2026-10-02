@@ -18,4 +18,4 @@ Ratio of span squared to reference area; also read directly from the aircraft di
 
 **Produced by.** [[aspect-ratio]]
 
-**Used by.** [[induced-drag-factor]] · [[max-lift-to-drag-parabolic]]
+**Used by.** [[induced-drag-factor]] · [[max-lift-to-drag-parabolic]] · [[parasite-drag-split]]

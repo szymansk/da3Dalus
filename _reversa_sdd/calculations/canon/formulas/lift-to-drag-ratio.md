@@ -21,10 +21,10 @@ tags:
 **Canonical form**
 
 ```
-E = C_L / C_D = L / D
+E = L / D
 ```
 
-**Produces** [[lift-to-drag-ratio]]  ·  **from** [[lift-coefficient]] · [[drag-coefficient]] · [[lift-force]] · [[drag-force]]
+**Produces** [[lift-to-drag-ratio]]  ·  **from** [[lift-force]] · [[drag-force]]
 
 **Kind: a law.** A closed-form relation. Approval asks for its **source** and its **validity at 0.5–15 kg**.
 
@@ -60,3 +60,4 @@ RC-Network adds the operationally useful identity E = horizontal distance / alti
 
 > While `status: draft` this entry **cites nothing and decides nothing**.
 
+**2026-10-02:** from the solver's forces at the operating point, not from the parabola (`C_D,par` is an approximation, measured non-parabolic at Re ≈ 1e5). ADR 0004's closed form governs only `(L/D)max`, see [[max-lift-to-drag-parabolic]].
