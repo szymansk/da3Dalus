@@ -2,6 +2,7 @@
 canon: dive-speed
 entry: formula
 kind: procedure
+tool: OPT
 shape: law
 status: draft
 output: dive-speed

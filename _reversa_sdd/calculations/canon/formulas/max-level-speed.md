@@ -2,6 +2,7 @@
 canon: max-level-speed
 entry: formula
 kind: optimization
+tool: OPT
 shape: law
 status: draft
 output: max-level-speed

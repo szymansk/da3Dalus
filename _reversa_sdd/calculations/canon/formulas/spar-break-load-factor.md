@@ -2,6 +2,7 @@
 canon: spar-break-load-factor
 entry: formula
 kind: procedure
+tool: APP
 shape: law
 status: draft
 output: break-load-factor-positive, break-load-factor-negative

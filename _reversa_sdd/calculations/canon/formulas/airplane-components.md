@@ -2,6 +2,7 @@
 canon: airplane-components
 entry: formula
 kind: procedure
+tool: KAT
 shape: law
 status: draft
 output: battery-mass, battery-capacity, battery-specific-energy, static-thrust, propulsive-efficiency, motor-voltage-constant, motor-no-load-current, motor-circuit-resistance, battery-voltage, motor-max-power

@@ -64,6 +64,7 @@ main{position:relative;overflow:hidden;background:var(--bg)}
 .node text{fill:var(--ink);font-family:"STIX Two Text",Georgia,serif;font-size:14px;pointer-events:none;
   dominant-baseline:middle;text-anchor:middle}
 .node{cursor:pointer}
+.node text.tool{fill:var(--mid);font-size:7px;letter-spacing:.03em;dominant-baseline:auto}
 .opt{fill:var(--sel);color:var(--sel);font-weight:600;font-size:13px;margin-left:2px}
 .edge{fill:none;stroke:var(--line-2);stroke-width:1.1px;transition:opacity .16s,stroke .16s}
 .faded{opacity:var(--dim)}
@@ -131,6 +132,7 @@ main{position:relative;overflow:hidden;background:var(--bg)}
       <span><i class="sw" style="background:var(--inp-bg);border-color:var(--inp)"></i>Eingabe &#8212; von keiner Formel erzeugt</span>
       <span><i class="sw" style="background:var(--tgt-bg);border-color:var(--tgt)"></i>Zielwert &#8212; Vorgabe des Nutzers</span>
       <span><i class="sw" style="border:1.5px dashed var(--tgt)"></i>an einem Zielwert gemessen &#8212; kein reiner Rechenwert</span>
+      <span style="display:block;margin-top:6px"><b>Werkzeug</b> (unten rechts im Knoten): OPT asb.Opti + AeroBuildup &#183; AB AeroBuildup &#183; GEO/ATM AeroSandbox-Geometrie/-Atmosph&#228;re &#183; KAT Teilekatalog &#183; APC Propellertabellen &#183; APP eigene Rechnung der App. NeuralFoil rechnet die Profile innerhalb von AeroBuildup. AVL rechnet im Kanon nichts.</span>
       <span><i class="sw" style="background:var(--hub-bg);border-color:var(--hub)"></i>tragend &#8212; vierfach oder &#246;fter gebraucht</span>
       <span><i class="sw" style="background:var(--panel);border-color:var(--mid)"></i>Zwischenergebnis</span>
       <span><i class="sw" style="background:var(--out-bg);border-color:var(--out)"></i>Endergebnis &#8212; von nichts verbraucht</span>
@@ -207,6 +209,10 @@ function sym(q){
 }
 let moved=false;
 const isOpt=q=>(prodBy[q]||[]).some(f=>F[f].kind==='optimization');
+// Which tool computes a value (formula frontmatter `tool`). Inputs carry none.
+const TOOLS={OPT:'asb.Opti + AeroBuildup (NeuralFoil-Profile)',AB:'AeroBuildup (NeuralFoil-Profile)',AVL:'AVL',
+  GEO:'AeroSandbox-Geometrie',ATM:'AeroSandbox-Atmosph\u00e4re',KAT:'Teilekatalog (DB)',APC:'APC-Propellertabellen (DB)',APP:'App \u2014 eigene Rechnung'};
+const toolOf=q=>[...new Set((prodBy[q]||[]).map(f=>F[f].tool||'APP'))];
 const nodeEls={};
 for(const q in Q){
   const {x,y}=P[q];
@@ -222,6 +228,8 @@ for(const q in Q){
   if(parts[1]){ const s=el('tspan',{dy:'4',style:'font-size:10px'}); s.textContent=parts.slice(1).join('_'); t.appendChild(s); }
   if(isOpt(q)){ const s=el('tspan',{dy:parts[1]?'-6':'-4',class:'opt'}); s.textContent='*'; t.appendChild(s); }
   g.appendChild(t);
+  const tl=toolOf(q);
+  if(tl.length){ const tt=el('text',{x:NW-3,y:NH-3,class:'tool','text-anchor':'end'}); tt.textContent=tl.join('/'); g.appendChild(tt); }
   g.addEventListener('click',()=>{ if(!moved) select(q); });
   g.addEventListener('keydown',ev=>{ if(ev.key==='Enter'||ev.key===' '){ev.preventDefault();select(q);} });
   cam.appendChild(g); nodeEls[q]=g;
@@ -264,6 +272,7 @@ function select(q){
    <p class="meta">${esc(q)} \u00b7 ${esc(d.unit||'\u2014')} \u00b7 Schicht L${LAYER[q]}
    &nbsp;<span class="pill" style="color:var(--${cls});border-color:var(--${cls})">${role}</span></p>
    <p class="desc">${esc(d.desc||'Keine Beschreibung im Katalog.')}</p>`;
+  { const tl=toolOf(q); h+=`<p class="meta">Gerechnet mit: ${tl.length?tl.map(k=>esc(TOOLS[k]||k)).join(' \u00b7 '):'\u2014 (Eingabe)'}</p>`; }
   if(TBOUND.has(q)) h+=`<p class="desc" style="border-left:3px dashed var(--tgt);padding-left:8px">
      <b>An einem Zielwert gemessen</b>, nicht allein aus dem Flugzeug gerechnet \u2014 h\u00e4ngt an
      ${[...TFROM[q]].map(s=>`<a href="#" onclick="select('${s}');return false">${esc(sym(s))}</a>`).join(', ')}.</p>`;

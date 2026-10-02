@@ -2,6 +2,7 @@
 canon: dynamic-pressure
 entry: formula
 kind: law
+tool: APP
 shape: law
 status: draft
 output: dynamic-pressure

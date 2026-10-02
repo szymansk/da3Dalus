@@ -2,6 +2,7 @@
 canon: stall-onset-detection
 entry: formula
 kind: procedure
+tool: AB
 shape: law
 status: draft
 output: stall-onset-index

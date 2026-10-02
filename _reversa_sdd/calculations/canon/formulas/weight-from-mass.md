@@ -2,6 +2,7 @@
 canon: weight-from-mass
 entry: formula
 kind: law
+tool: APP
 shape: law
 status: approved
 output: weight

@@ -2,9 +2,10 @@
 canon: minimum-drag-speed-from-polar
 entry: formula
 kind: optimization
+tool: OPT
 shape: route
 status: draft
-output: minimum-drag-speed
+output: minimum-drag-speed, max-lift-to-drag-ratio
 source_status: SOURCED
 dimensional_check: PROCEDURAL
 tags:
@@ -26,7 +27,7 @@ minimize over V, alpha:   D(V, alpha)
 subject to:               L(V, alpha) = n * m * g
 ```
 
-**Produces** [[minimum-drag-speed]]  ·  **from** [[airplane]] · [[aircraft-mass]] · [[gravity]] · [[load-factor]] · [[air-density]]
+**Produces** [[minimum-drag-speed]] · [[max-lift-to-drag-ratio]]  ·  **from** [[airplane]] · [[aircraft-mass]] · [[gravity]] · [[load-factor]] · [[air-density]]
 
 **Autorität.** Dies ist der Erzeuger dieser Größe. Die geschlossene Form ([[minimum-drag-speed-closed-form]]) setzt einen reynoldsunabhängigen parabolischen Polarenverlauf voraus; bei 0,5–15 kg gilt das nicht. Sie bleibt als **Probe** — die Differenz beider misst, wie stark die Reynoldsabhängigkeit an diesem Punkt wirkt.
 
@@ -106,3 +107,7 @@ polar instead of a closed form.
 
 > While `status: draft` this entry **cites nothing and decides nothing**.
 
+**Second output since 2026-10-02 (ADR 0026): `(L/D)max = m·g / D(V_md)`** — the lift-to-drag
+ratio at this optimum. With `L = W` enforced at the correct Reynolds number the old reason
+against an argmax (a sweep mixing Reynolds numbers) does not apply. The parabolic closed form
+is its Probe ([[max-lift-to-drag-parabolic]]).

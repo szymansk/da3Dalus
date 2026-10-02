@@ -2,6 +2,7 @@
 canon: best-angle-of-climb
 entry: formula
 kind: optimization
+tool: OPT
 shape: law
 status: draft
 output: best-angle-of-climb-speed, max-climb-angle

@@ -2,6 +2,7 @@
 canon: best-rate-of-climb
 entry: formula
 kind: optimization
+tool: OPT
 shape: law
 status: draft
 output: best-rate-of-climb-speed, max-rate-of-climb

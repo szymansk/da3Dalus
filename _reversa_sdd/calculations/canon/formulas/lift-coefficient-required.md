@@ -2,6 +2,7 @@
 canon: lift-coefficient-required
 entry: formula
 kind: law
+tool: APP
 shape: law
 status: draft
 output: lift-coefficient

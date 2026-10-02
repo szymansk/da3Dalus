@@ -2,6 +2,7 @@
 canon: aileron-throw-fraction
 entry: formula
 kind: procedure
+tool: OPT
 shape: law
 status: draft
 output: aileron-throw-fraction-cruise, aileron-throw-fraction-approach

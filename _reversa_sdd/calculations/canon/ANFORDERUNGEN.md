@@ -1999,11 +1999,10 @@ verschwunden. Übrig bleibt einer, der Widerstandsbeiwert.
 
 > **Behoben am 02.10.2026.** Der Widerstandsbeiwert war ein Namensfehler nach A2: `C_D`
 > hieß sowohl der gerechnete Wert als auch der Parabelwert. Der Parabelwert heißt jetzt
-> `C_D,par`. `C_D0` und $e$ haben **einen** Erzeuger, `parasite-drag-split` — der
-> Wert am Reiseflugpunkt, $C_{D0} = C_D - C_L^2/(\pi\,AR\,e)$, wie **ADR 0004** es seit gh-924
-> festlegt. **Die Definitionen stehen zur Prüfung** (Maintainer, 02.10.2026): $e$ ist entgegen
-> ADR 0004 kein Trefftz-Wert, sondern AeroBuildups empirischer Oswald-Faktor (Nita & Scholz
-> 2012); siehe O13. Die beiden abweichenden
+> `C_D,par`. `C_D0` und $e$ haben **einen** Erzeuger — die
+> Ausgleichsparabel über den genutzten $C_L$-Bereich der Solver-Polare (`parabolic-polar-fit`,
+> **ADR 0026**, das ADR 0004 in den Definitionen ablöst). Sie dient nur der Anzeige; die
+> Analyse rechnet mit dem Solver-Widerstand. Die beiden abweichenden
 > Erzeuger (`zero-lift-drag-from-sweep` am $C_L = 0$-Durchgang, `reynolds-scheduled-polar`
 > mit sich selbst als Eingabe) sind gestrichen. Die geschlossene $V_{md}$-Formel ist nur
 > noch Probe ($V_{md,probe}$) — als Erzeuger hätte sie über $V_{cruise}$ eine neue Schleife
@@ -2166,7 +2165,7 @@ eines ohne Abbruchbedingung.
 | **O10** | Woher kommen $m$, $h$, $V$, Ruderstellung und Genauigkeitsstufe? Im Ablauf haben sie **keinen Ursprung**. Platzhöhe und Fluggeschwindigkeit sind plausibel Missionsangaben; Ruderstellung und Genauigkeitsstufe sind eher Analyseeinstellungen und gar keine Entwurfsgrößen. | Vollständigkeit von §1 |
 | **O11** | ✅ **Entschieden 01.10.2026:** Route A ist **leistungsbegrenzt** — Drehzahl abgesenkt, bis der Propeller höchstens $\eta_{mot}\,P_{mot,max}$ aufnimmt. „Wie gebaut“ (Schub bei Leerlaufdrehzahl) ist ein Code-Defekt (#1150). | Steigen, Kurve, $V_{max}$ auf Route A |
 | **O12** | Woher kommt in der **Auslegungsrichtung** ein Wert, den es erst mit dem Flugzeug gibt — z. B. $C_{L,max}$ für $(W/S)_{max,stall}$? Aus der Profilwahl (NeuralFoil), als Vorgabe je Flugzeugtyp (Quelle nach ADR 0023) oder vom Nutzer — jeweils als Annahme benannt (A2), getrennt vom gerechneten $C_{L,max,stall}$. | Alle Auslegungsformeln: Flächenbelastung, Leitwerke, Hebelarm |
-| **O13** | Soll die **Analyse** den Widerstand direkt aus dem Solver nehmen statt aus der Parabel — Leistungsbedarf $P = D\,V/\eta$ (Flugdauer, Reichweite) und $(L/D)_{max} = m g / D$ am $V_{md}$-Optimum? Physikalisch richtiger (gemessen nicht-parabolisch bei $Re \approx 10^5$), aber **ADR 0004** legt $(L/D)_{max} = \tfrac12\sqrt{\pi AR e / C_{D0}}$ fest — es bräuchte eine **neue ADR**, die 0004 ändert (BR-AA7, RF-15, BR-AA11, BR-AA13). Dazu: Bindungen der Reichweite (bei $V_{cruise}$) und der größten Flugdauer (bei $V_{mp}$) benennen. | Flugdauer, Reichweite (UAV-Zweck), $(L/D)_{max}$ |
+| **O13** | ✅ **Entschieden 02.10.2026 — [ADR 0026](../../adrs/0026-aero-truth-from-the-solver-not-the-parabola.md):** Die Analyse rechnet mit dem Solver-Widerstand; $(L/D)_{max} = W/D(V_{md})$; die Parabelformel ist Probe. $C_{D0}$ und $e$ sind die Parabel-Anpassung über den genutzten $C_L$-Bereich, nur Anzeige und berechneter Wert der Entwurfsannahme (ADR 0010). Auslegung: Scholz-Kette mit $c_f$ bei Missions-Reynoldszahl. Vorbehalt: AeroBuildups $e$ zählt auftriebsabhängigen Profilwiderstand teils doppelt (Bryan: 9 % mehr induzierter Widerstand als AVL). | Flugdauer, Reichweite, $(L/D)_{max}$, Anzeige $C_{D0}$/$e$ |
 | **O6** | Wie weit der **ASB-Sweep** Eingaben ersetzt. Der Solver kann über nahezu jeden Parameter fahren; jeder, den er sinnvoll durchfährt, ist einer, den niemand raten muss. | Umfang von Ebene 0 |
 
 ---

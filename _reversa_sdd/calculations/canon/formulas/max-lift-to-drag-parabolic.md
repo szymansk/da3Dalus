@@ -2,9 +2,10 @@
 canon: max-lift-to-drag-parabolic
 entry: formula
 kind: law
+tool: APP
 shape: law
 status: draft
-output: max-lift-to-drag-ratio
+output: max-lift-to-drag-probe
 source_status: SOURCED
 dimensional_check: BALANCES
 tags:
@@ -22,10 +23,10 @@ tags:
 **Canonical form**
 
 ```
-E_max = 0.5 * sqrt(pi * e_osw * AR / C_D0)
+E_max,probe = 0.5 * sqrt(pi * e_osw * AR / C_D0)
 ```
 
-**Produces** [[max-lift-to-drag-ratio]]  ·  **from** [[oswald-efficiency]] · [[aspect-ratio]] · [[zero-lift-drag-coefficient]]
+**Produces** [[max-lift-to-drag-probe]]  ·  **from** [[oswald-efficiency]] · [[aspect-ratio]] · [[zero-lift-drag-coefficient]]
 
 **Kind: a law.** A closed-form relation. Approval asks for its **source** and its **validity at 0.5–15 kg**.
 
@@ -67,3 +68,7 @@ One user-visible number, two different laws behind it. mission_kpi_service repor
 
 > While `status: draft` this entry **cites nothing and decides nothing**.
 
+**Probe, not authority (ADR 0026, 2026-10-02).** It assumes a parabolic polar; the authority
+is `W/D(V_md)` from [[minimum-drag-speed-from-polar]]. A deviation beyond tolerance is
+reported as "polar not parabolic" (ADR 0020). Note: ADR 0004 cited this as Scholz eq. 5.39 —
+in Scholz 5.39 is `C_L,md`; the formula follows from the same polar.

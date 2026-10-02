@@ -2,6 +2,7 @@
 canon: min-sustained-turn-radius
 entry: formula
 kind: optimization
+tool: OPT
 shape: law
 status: draft
 output: min-sustained-turn-radius, min-sustained-turn-radius-speed

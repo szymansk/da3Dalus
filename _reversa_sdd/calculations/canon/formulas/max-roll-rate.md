@@ -2,6 +2,7 @@
 canon: max-roll-rate
 entry: formula
 kind: procedure
+tool: OPT
 shape: law
 status: draft
 output: max-roll-rate-cruise, max-roll-rate-approach

@@ -2,6 +2,7 @@
 canon: minimum-drag-speed-closed-form
 entry: formula
 kind: law
+tool: APP
 shape: approximation
 status: draft
 output: minimum-drag-speed-probe

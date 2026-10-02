@@ -2,6 +2,7 @@
 canon: mean-geometric-chord
 entry: formula
 kind: law
+tool: APP
 shape: law
 status: draft
 output: mean-geometric-chord

@@ -2,6 +2,7 @@
 canon: cruise-speed-resolution
 entry: formula
 kind: substitution
+tool: APP
 shape: law
 status: draft
 output: cruise-speed

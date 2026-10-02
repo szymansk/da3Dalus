@@ -2,6 +2,7 @@
 canon: cruise-thrust-constraint
 entry: formula
 kind: law
+tool: APP
 shape: law
 status: draft
 output: thrust-to-weight-required-cruise

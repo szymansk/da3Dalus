@@ -284,3 +284,8 @@ Nutzlast (Zweck), C_D0-Schleife (`reynolds-scheduled-polar`), `mean-thrust-derat
 (`parasite-drag-split`: C_D0 schädlich am Reiseflugpunkt, e Trefftz); `C_D,par` für die Parabel;
 geschlossene V_md-Formel nur Probe. **O13 offen:** Analyse direkt mit Solver-Widerstand bräuchte
 eine neue ADR gegen 0004.
+
+**ADR 0026 (02.10.2026)** löst ADR 0004 in den Definitionen ab (Prinzip bleibt): Analyse mit
+Solver-Widerstand, (L/D)max = W/D(V_md), Parabelformel = Probe; C_D0/e = Ausgleichsparabel, nur
+Anzeige + berechneter Wert (ADR 0010); Auslegung Scholz-Kette mit c_f bei Missions-Re;
+Vorbehalt k_e,D0 (Bryan +9 % induziert vs. AVL). O13 entschieden.

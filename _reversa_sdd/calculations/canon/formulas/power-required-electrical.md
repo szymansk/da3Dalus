@@ -1,18 +1,19 @@
 ---
 canon: power-required-electrical
 entry: formula
-kind: law
+kind: procedure
+tool: OPT
 shape: law
 status: draft
 output: power-required
 source_status: SOURCED
-dimensional_check: BALANCES
+dimensional_check: PROCEDURAL
 tags:
   - canon/formula
   - source/sourced
-  - dim/balances
+  - dim/procedural
   - shape/law
-  - kind/law
+  - kind/procedure
   - status/draft
 ---
 
@@ -21,10 +22,10 @@ tags:
 **Canonical form**
 
 ```
-P_req(V) = 0.5 * rho * V^3 * S_ref * (C_D0 + k * C_L^2) / eta_total,  with C_L = 2 m g / (rho V^2 S_ref)
+solve for alpha:  P_req(V) = D(V, alpha) * V / eta_total,  with L(V, alpha) = m * g   (solver drag, ADR 0026)
 ```
 
-**Produces** [[power-required]]  ·  **from** [[air-density]] · [[flight-speed]] · [[wing-reference-area]] · [[zero-lift-drag-coefficient]] · [[induced-drag-factor]] · [[aircraft-mass]] · [[gravity]] · [[propulsive-efficiency]]
+**Produces** [[power-required]]  ·  **from** [[airplane]] · [[aircraft-mass]] · [[gravity]] · [[air-density]] · [[flight-speed]] · [[propulsive-efficiency]]
 
 **Kind: a law.** A closed-form relation. Approval asks for its **source** and its **validity at 0.5–15 kg**.
 
@@ -61,3 +62,8 @@ Sadraey's eta is eta_P, the PROPELLER efficiency alone, converting shaft power t
 
 > While `status: draft` this entry **cites nothing and decides nothing**.
 
+**Rebuilt 2026-10-02 (ADR 0026).** Power required comes from the solver drag at the level-flight
+`α` for each speed, not from the parabola `C_D0 + k·C_L²` — measured non-parabolic at
+Re ≈ 1e5. **Bindings (open detail):** endurance is largest at `V_mp`; range uses the power at
+`V_cruise` (and `R = η·E_bat/D(V)` is largest at `V_md`) — the range precondition "same
+operating point" is met by evaluating endurance and range at the same named speed.

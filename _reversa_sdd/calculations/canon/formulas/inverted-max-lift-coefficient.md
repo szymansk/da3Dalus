@@ -2,6 +2,7 @@
 canon: inverted-max-lift-coefficient
 entry: formula
 kind: procedure
+tool: AB
 shape: law
 status: draft
 output: inverted-max-lift-coefficient

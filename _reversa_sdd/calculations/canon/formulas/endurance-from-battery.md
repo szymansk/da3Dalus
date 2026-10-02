@@ -2,6 +2,7 @@
 canon: endurance-from-battery
 entry: formula
 kind: law
+tool: APP
 shape: law
 status: draft
 output: endurance-time

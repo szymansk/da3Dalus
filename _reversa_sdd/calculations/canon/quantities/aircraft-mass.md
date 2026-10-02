@@ -16,4 +16,4 @@ Take-off mass of the aircraft. **An input of the canon** (maintainer, 2026-10-02
 
 **Unit.** `kg`
 
-**Used by.** [[aileron-throw-fraction]] · [[best-angle-of-climb]] · [[best-rate-of-climb]] · [[dive-speed]] · [[lift-coefficient-required]] · [[maneuvering-speed]] · [[max-level-speed]] · [[max-roll-rate]] · [[max-sustained-turn-rate]] · [[min-sustained-turn-radius]] · [[minimum-drag-speed-from-polar]] · [[minimum-sink-speed-from-polar]] · [[parasite-drag-split]] · [[power-required-electrical]] · [[spar-break-load-factor]] · [[stall-speed]] · [[weight-from-mass]] · [[wing-loading]]
+**Used by.** [[aileron-throw-fraction]] · [[best-angle-of-climb]] · [[best-rate-of-climb]] · [[dive-speed]] · [[lift-coefficient-required]] · [[maneuvering-speed]] · [[max-level-speed]] · [[max-roll-rate]] · [[max-sustained-turn-rate]] · [[min-sustained-turn-radius]] · [[minimum-drag-speed-from-polar]] · [[minimum-sink-speed-from-polar]] · [[parabolic-polar-fit]] · [[power-required-electrical]] · [[spar-break-load-factor]] · [[stall-speed]] · [[weight-from-mass]] · [[wing-loading]]

@@ -2,6 +2,7 @@
 canon: max-sustained-turn-rate
 entry: formula
 kind: optimization
+tool: OPT
 shape: law
 status: draft
 output: max-sustained-turn-rate, max-sustained-turn-rate-speed

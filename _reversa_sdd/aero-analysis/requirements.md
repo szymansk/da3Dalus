@@ -53,6 +53,7 @@ NeuralFoil suitability scoring (→ `airfoil-catalog`), mass and CG aggregation
 
 ### The two cluster invariants
 
+> ⚠ **Principle stands; the `cd0`/`e` definitions are amended by ADR 0026 (Soll, 2026-10-02).**
 - **BR-14 — One aero truth per aircraft (gh-924, ADR 0004).** 🟢 `cd0`
   (**parasite**, not total CD), `e_oswald`, `(L/D)max` and `x_np` are produced
   **once** by `assumption_compute_service.recompute_assumptions` at the cruise
@@ -135,6 +136,7 @@ NeuralFoil suitability scoring (→ `airfoil-catalog`), mass and CG aggregation
   publishing `coefficients.CD` as CD0 double-counts induced drag and collapses
   `(L/D)max` (17 instead of 24 on a high-AR glider). Ratified against
   Anderson §6.7.2.
+> ⚠ **Superseded by ADR 0026 (Soll, 2026-10-02).**
 - **BR-AA7 — `(L/D)max` is published from self-consistent scalars, not from the
   sweep argmax.** 🟢 (`:282-300`, Scholz eq. 5.39)
 
@@ -201,6 +203,7 @@ NeuralFoil suitability scoring (→ `airfoil-catalog`), mass and CG aggregation
   α ∈ [−2°, +6°]; returns `(None, None)` when `R² < 0.995`, when `CL_α ≤ 0`, or
   when fewer than 3 finite points survive. `α₀ = degrees(−CL_0 / CL_α)`.
   Consumers (`compute_vn_curve`) then fall back to Helmbold-Diederich.
+> ⚠ **Superseded by ADR 0026 (Soll, 2026-10-02).**
 - **BR-AA11 — Picard refinement is exactly one pass (gh-493 A7).** 🟢
   `_picard_iterate_speed` looks up `cd0`/`e` at the scalar `V₀` in
   `polar_re_table`, re-solves, accepts `V₁`, and logs a warning when
@@ -208,6 +211,7 @@ NeuralFoil suitability scoring (→ `airfoil-catalog`), mass and CG aggregation
 - **BR-AA12 — Sub-stall clamp (gh-683).** 🟢 `V_md` and `V_min_sink` are clamped
   to `max(V, V_stall)`, because the closed-form optimum CL can exceed `CL_max`
   on high-AR / draggy polars and back-solve a physically unreachable speed.
+> ⚠ **Superseded by ADR 0026 (Soll, 2026-10-02).**
 - **BR-AA13 — Re-table fallback rows are backfilled with the authoritative
   values (gh-924).** 🟢 A rejected band's `cd0`/`e` are `None` and the lookups
   would otherwise fall back to a hard-coded `0.03 / 0.8` that contradicts the
@@ -353,7 +357,7 @@ NeuralFoil suitability scoring (→ `airfoil-catalog`), mass and CG aggregation
 | RF-12 | Reject a material with non-positive `allowable_bending_stress_mpa` with 422 | Must | `sigma_allow = 0` → 422, never a division by zero |
 | RF-13 | Compute and cache the aero context at the cruise point in one pipeline | Must | `GET …/assumptions/computation-context` returns all documented keys after a recompute |
 | RF-14 | Publish `cd0` as **parasite** drag | Must | For a cambered wing with CL(α=0) > 0, `context.cd0 < coefficients.CD` |
-| RF-15 | Publish `(L/D)max` from `½·sqrt(π·AR·e/CD0)` when the parabolic scalars exist | Must | `ld_max` matches the closed form, not the sweep argmax |
+| RF-15 | ~~Publish `(L/D)max` from `½·sqrt(π·AR·e/CD0)`~~ — **superseded by ADR 0026**: `(L/D)max = W/D(V_md)` from the solver; the closed form is a Probe | Must | `ld_max` matches the closed form, not the sweep argmax |
 | RF-16 | Reject a polar fit through six gates and refine only the two refinable ones | Must | `negative_slope_k` is never retried; `insufficient_points` halves the α step |
 | RF-17 | Surface only `category == "design"` rejections to the user | Must | A `cd0_stability_mismatch` is not shown; an `unphysical_e_oswald` is |
 | RF-18 | Compute, persist and serve a stability summary keyed by `(aeroplane_id, solver)` | Must | Two runs with the same solver upsert one row; `geometry_hash` is stored |

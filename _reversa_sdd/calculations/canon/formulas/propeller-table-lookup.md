@@ -2,6 +2,7 @@
 canon: propeller-table-lookup
 entry: formula
 kind: procedure
+tool: APC
 shape: law
 status: draft
 output: thrust-coefficient

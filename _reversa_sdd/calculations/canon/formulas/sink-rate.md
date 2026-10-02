@@ -2,6 +2,7 @@
 canon: sink-rate
 entry: formula
 kind: law
+tool: APP
 shape: law
 status: draft
 output: sink-rate

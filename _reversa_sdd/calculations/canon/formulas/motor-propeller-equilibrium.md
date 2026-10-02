@@ -2,6 +2,7 @@
 canon: motor-propeller-equilibrium
 entry: formula
 kind: procedure
+tool: APP
 shape: route
 status: draft
 output: propeller-speed

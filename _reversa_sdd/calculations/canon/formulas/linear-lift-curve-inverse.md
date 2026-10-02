@@ -2,6 +2,7 @@
 canon: linear-lift-curve-inverse
 entry: formula
 kind: law
+tool: APP
 shape: law
 status: draft
 output: characteristic-angle-of-attack

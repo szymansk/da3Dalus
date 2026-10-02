@@ -1,6 +1,6 @@
 # ADR 0004 — One aero truth per aircraft: the cached computation context
 
-- **Status:** Accepted — in force
+- **Status:** Accepted — principle in force; **definitions amended by [ADR 0026](0026-aero-truth-from-the-solver-not-the-parabola.md)** (2026-10-02): `e` is not a Trefftz value, `cd0`/`e` become a fitted parabola for display, `(L/D)max` comes from the solver
 - **Decided:** 2026-06-09 (gh-924, commit `8847b13d`)
 - **Deciders:** Marc Szymanski (maintainer), ratified by three domain-expert reviews
 - **Confidence:** 🟢 CONFIRMED (detailed commit body with before/after numbers)

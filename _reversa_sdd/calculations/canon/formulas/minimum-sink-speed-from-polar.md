@@ -2,6 +2,7 @@
 canon: minimum-sink-speed-from-polar
 entry: formula
 kind: optimization
+tool: OPT
 shape: law
 status: draft
 output: minimum-sink-speed

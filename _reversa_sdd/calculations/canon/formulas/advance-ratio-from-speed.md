@@ -2,6 +2,7 @@
 canon: advance-ratio-from-speed
 entry: formula
 kind: law
+tool: APP
 shape: law
 status: draft
 output: advance-ratio

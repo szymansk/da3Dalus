@@ -2,6 +2,7 @@
 canon: drag-polar
 entry: formula
 kind: law
+tool: APP
 shape: approximation
 status: draft
 output: drag-coefficient-parabolic

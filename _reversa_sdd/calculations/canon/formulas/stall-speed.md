@@ -2,6 +2,7 @@
 canon: stall-speed
 entry: formula
 kind: optimization
+tool: OPT
 shape: law
 status: draft
 output: stall-speed, max-lift-coefficient, stall-speed-landing, stall-speed-takeoff

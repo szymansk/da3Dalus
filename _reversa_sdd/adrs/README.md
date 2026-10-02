@@ -23,7 +23,7 @@ quantity). A violation of either is review-blocking.
 | [0001](0001-millimetres-in-cad-metres-in-db-and-aerosandbox.md) | Millimetres in the CAD topology, metres in the DB and AeroSandbox | units, converters | Accepted (+ amendment) |
 | [0002](0002-cad-designer-is-frozen-new-creators-only.md) | `cad_designer/` is frozen: read-only topology, new Creators only | CAD engine, quality gates | Accepted |
 | [0003](0003-aerosandbox-default-avl-exception.md) | AeroSandbox is the default solver; AVL is the exception | aerodynamics | Accepted |
-| [0004](0004-one-aero-truth-per-aircraft.md) | One aero truth per aircraft: the cached computation context | aerodynamics, data model | Accepted |
+| [0004](0004-one-aero-truth-per-aircraft.md) | One aero truth per aircraft: the cached computation context | aerodynamics, data model | Accepted — definitions amended by 0026 |
 | [0005](0005-cad-in-a-spawned-process-pool.md) | CAD runs in a spawned worker process (OCCT is not thread-safe) | concurrency | Accepted, inconsistently applied |
 | [0006](0006-versioning-by-row-copy-not-json-snapshots.md) | Versioning by row copy: a DAG of aeroplane rows | persistence, versioning | Accepted (supersedes `design_versions`) |
 | [0007](0007-copilot-proposes-human-adopts.md) | The AI copilot proposes on a branch; only a human adopts | AI, safety | Accepted (+ amendment: MCP writes) |
@@ -45,6 +45,7 @@ quantity). A violation of either is review-blocking.
 | [0023](0023-engineering-constants-carry-provenance.md) | Engineering constants carry provenance and are validated at RC/UAV scale | domain methodology | Accepted |
 | [0024](0024-single-user-desktop-operating-model.md) | Single-user desktop operating model | product, security | Accepted (**corrects 0016**) |
 | [0025](0025-mcp-is-built-on-the-copilot-tool-layer.md) | MCP is built on the copilot tool layer, not by wrapping REST | agents, architecture | Accepted |
+| [0026](0026-aero-truth-from-the-solver-not-the-parabola.md) | The aero truth comes from the solver, not from the parabola | aerodynamics | Accepted (amends 0004) |
 
 ## Provenance
 
@@ -62,7 +63,7 @@ validation interview (2026-08-13 → 2026-08-15), which also appended
 
 - **Domain:** 0011 → 0010 → 0004 → 0012 → 0023
 - **Geometry stack:** 0001 → 0002 → 0005 → 0018
-- **Aero stack:** 0003 → 0004 → 0008
+- **Aero stack:** 0003 → 0004 → 0026 → 0008
 - **Persistence and change:** 0009 → 0006 → 0007
 - **Risk before deploying anything:** **0024** → 0016 → 0009 → 0006
 - **Cross-cutting rules the interview settled:** 0020 (warn) → 0021 (delete) →

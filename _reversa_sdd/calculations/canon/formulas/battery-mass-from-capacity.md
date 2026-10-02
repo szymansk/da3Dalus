@@ -2,6 +2,7 @@
 canon: battery-mass-from-capacity
 entry: formula
 kind: law
+tool: APP
 shape: law
 status: draft
 output: predicted-battery-mass

@@ -2,6 +2,7 @@
 canon: speed-from-stall-margin
 entry: formula
 kind: rating
+tool: APP
 shape: approximation
 status: draft
 output: approach-speed, touchdown-speed, takeoff-speed

@@ -2,6 +2,7 @@
 canon: thrust-at-airspeed-from-coefficient
 entry: formula
 kind: law
+tool: APP
 shape: law
 status: draft
 output: thrust-at-airspeed

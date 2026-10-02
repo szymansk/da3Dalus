@@ -2,6 +2,7 @@
 canon: maneuvering-speed
 entry: formula
 kind: optimization
+tool: OPT
 shape: law
 status: draft
 output: maneuvering-speed

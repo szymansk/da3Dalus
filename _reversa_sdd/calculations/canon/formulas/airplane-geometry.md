@@ -2,6 +2,7 @@
 canon: airplane-geometry
 entry: formula
 kind: procedure
+tool: GEO
 shape: law
 status: draft
 output: wing-reference-area, wing-span, mean-aerodynamic-chord, propeller-diameter
