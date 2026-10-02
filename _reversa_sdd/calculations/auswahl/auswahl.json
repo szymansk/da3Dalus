@@ -1177,6 +1177,11 @@
       "wert": 17,
       "bezug": "25-%-Linie",
       "quelle": "Panknin-Beispiel (b2streamlines), Grenze 20°; Maintainer 02.10.2026: Urmodell immer gepfeilt, Schränkung getrimmt"
+    },
+    "platzhalter": {
+      "scale": "sport",
+      "scale_segler": "segler_nach_steuerachsen",
+      "quelle": "Maintainer 02.10.2026; Masse, Streckung, Rumpflänge weiter aus der Scale-Statistik"
     }
   }
 }

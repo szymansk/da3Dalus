@@ -330,13 +330,24 @@ folgt daraus:
 - **Die Dämpfung der Taumelschwingung braucht eine Eigenwertanalyse mit Trägheiten.** Die ist nicht
   im Kanon (Stand A10 und §2.3).
 
+## 3d. Scale (entschieden 02.10.2026)
+
+Ein Scale-Modell folgt seinem Vorbild; Bänder je Mission ergeben dafür keinen Sinn. ✅ **Maintainer:**
+- **Scale (motorisiert):** Das Urmodell übernimmt die **Bänder der Sport-Mission** als Platzhalter.
+- **Scale-Segler:** Das Urmodell übernimmt die **Segler-Bänder** (§3b) nach Steuerachsen.
+
+Der Konstrukteur ersetzt die Geometrie danach durch die des Vorbilds.
+
+Ausnahme: Masse, Streckung und Rumpflänge kommen weiter aus der Scale-Statistik der Modelltabelle
+(§2), denn sie sind dort eigens erhoben.
+
 ## 4. Lücken: Bänder ohne Quelle
 
 1. ~~Leistungsbelastung W/kg~~: ✅ entschieden am 02.10.2026 (§3a).
 2. ~~Pfeilung des Nurflügels~~: ✅ entschieden, Urmodell immer gepfeilt mit 17° (§3c).
 3. **Segler:** Leitwerk, V-Form, Einstellwinkel und Ausschläge sind belegt (§3b). Die Stabilitätsreserve ist
    belegt (Maintainer); Nurflügel nach Lennon 5–10 % (entschieden).
-4. **3D, Speed, Park und Scale:** Zuspitzung, Leitwerksvolumen, Stabilitätsreserve und Ruder. Aus
+4. **3D, Speed und Park** (Scale entschieden, §3d): Zuspitzung, Leitwerksvolumen, Stabilitätsreserve und Ruder. Aus
    der Tabelle sind nur Masse, Streckung und Rumpflänge belegt.
 5. **Leitwerke ohne Größenregel:** Ente, Tandem und Kastenflügel. Das V-Leitwerk ist geschlossen
    (Drela, §3b).
