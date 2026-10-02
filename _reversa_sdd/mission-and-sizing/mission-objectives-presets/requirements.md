@@ -78,6 +78,12 @@ chart's per-profile constraint applicability (→ [`../design.md`](../design.md)
   `axis_ranges` used to normalise real values onto that scale, and the
   `suggested_estimates`. Axes: `stall_safety`, `glide`, `climb`, `cruise`,
   `maneuver`, `wing_loading`, `field_friendliness`.
+  > **⚠ Superseded in part, 2026-10-02 (maintainer, Soll):** the preset taxonomy
+  > follows the **13 missions of the selection graph** (`calculations/auswahl/`:
+  > trainer, sport, kunstflug, 3d, speed, elektrosegler, scale, park, segel_trainer,
+  > thermik, hang, wurf, scale_segler). This replaces the nine ids above. The fate
+  > of the ids without a counterpart (`stol_bush`, `wing_racer`, and `flying_wing`,
+  > now a tail configuration) is for planning. Execution: GH issue #1152.
   🟢 A real FK is added (`Q-CC-7`). Previously a free-text `String` PK with no FK
   from `mission_objectives.mission_type`, so the two can drift apart.
 - **BR-MS34 — The preset `power_to_weight` values are dimensionally

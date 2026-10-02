@@ -337,3 +337,5 @@ gestrichen. Auswahlgraph als HTML unter `_reversa_sdd/calculations/auswahl/`.
 **Band Leistungsbelastung entschieden (02.10.2026):** W/kg min/typ/max je motorisierter Mission übernommen (`auswahl/BAENDER.md` §3a, `auswahl.json` → `baender`).
 
 **Bänder vollständig (02.10.2026):** Jede Lücke ist mit Quelle, Platzhalter oder gekennzeichnetem Vorgabewert geschlossen (`auswahl/BAENDER.md` §3a–§3f). Grundsatz des Maintainers: Das Urmodell muss grundsätzlich fliegen, nicht perfekt sein.
+
+**Urmodell-Generator als Ticket #1152 angelegt (02.10.2026).** Entschieden: Die Presets folgen den 13 Missionen des Auswahlgraphen (BR-MS5 teilweise ersetzt); ein erzeugtes Urmodell trägt `created_by="preset"`. BAENDER an Q-MS-14 angeglichen (Missions-Preset ist der einzige Autor der Missionswerte).

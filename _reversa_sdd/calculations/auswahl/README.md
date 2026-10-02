@@ -1,6 +1,6 @@
 # Auswahlgraph und Urmodell
 
-**Status: Soll, entschieden 02.10.2026 (O12). Noch kein GH-Ticket. Das ist ein Befund, siehe §6.**
+**Status: Soll, entschieden 02.10.2026 (O12). GH-Ticket #1152.**
 
 Sieben geführte Fragen erzeugen ein **Urmodell**: ein erstes Flugzeug, das grundsätzlich fliegt. Der
 Rechenkanon (`../canon/`) rechnet es danach wie jedes andere Flugzeug.
@@ -116,11 +116,14 @@ Jeder Schritt nennt seine Quelle in `BAENDER.md`.
   (n = 17, Streuung ×1,63).
 - **Seitenflächen des Nurflügels:** Lennon nennt die Bauformen; die Fläche selbst ist eine Vorgabe.
 
-- **Missions-Taxonomie:** Der Auswahlgraph hat 13 Missionen, die Presets haben 9 Kennungen
-  (`trainer, sport, acro_3d, sailplane, motor_glider, slope_soarer, flying_wing, wing_racer, stol_bush`,
-  BR-MS5). Eine Zuordnung fehlt. Eine unbekannte Mission muss sichtbar scheitern (BR-MS35, Q-MS-10).
-- **Herkunft:** `create_aeroplane` setzt fest `created_by="human"` (`aeroplane_service.py:90`). Wie ein
-  erzeugtes Urmodell gekennzeichnet wird, ist offen.
+- **Missions-Taxonomie** ✅ *entschieden (Maintainer, 02.10.2026):* Die Presets folgen den **13
+  Missionen des Auswahlgraphen**. Das ersetzt die neun Preset-Kennungen von BR-MS5 (dort vermerkt).
+  Was mit den bisherigen Kennungen ohne Gegenstück geschieht (`stol_bush`, `wing_racer`, und
+  `flying_wing`, das jetzt ein Leitwerk ist und keine Mission), klärt die Planung. Eine unbekannte
+  Mission muss weiterhin sichtbar scheitern (BR-MS35, Q-MS-10).
+- **Herkunft** ✅ *entschieden (Maintainer, 02.10.2026):* Ein erzeugtes Urmodell trägt
+  `created_by="preset"` oder einen gleichwertigen Wert, der festgelegt und nicht geraten wird. Heute
+  setzt `create_aeroplane` fest `"human"` (`aeroplane_service.py:90`).
 - **Reihenfolge:** Schritte 11 und 12 hängen an Kanon-Einträgen, die noch Soll sind (K22 Neutralpunkt
   bei $V_{md}$, K8/K12 bzw. #1150 Route A leistungsbegrenzt). Bis dahin trägt die vorhandene
   `mass_cg_service.compute_recommended_cg` (Q-MB-2).
@@ -140,11 +143,6 @@ Jeder Schritt nennt seine Quelle in `BAENDER.md`.
   kompensieren).
 - **Design-Agent:** Epic #902 (KI-Copilot).
 
-## 6. Befund: Soll ohne Ticket
+## 6. Ticket
 
-Der Generator ist entschieden, aber nicht gebaut, und hat noch keine GH-Nummer. Nach `MARKERS.md` ist
-ein Soll ohne Ticket ein Befund.
-
-Ein Feature-Ticket braucht die Zustimmung des Maintainers (`/supercycle-ticket`). Der Generator gehört
-nicht zum Kanon; das Ticket fällt deshalb **nicht** unter die Kanon-Ausnahme „Soll · Kanon" mit
-Register K.
+Der Generator wird über **#1152** umgesetzt. Der frühere Befund „Soll ohne Ticket" ist damit erledigt.
