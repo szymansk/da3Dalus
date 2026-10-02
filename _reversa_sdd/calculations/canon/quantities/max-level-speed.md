@@ -3,11 +3,11 @@ canon: max-level-speed
 kind: quantity
 symbol: V_max
 unit: m/s
-role: derived
+role: output
 status: draft
 tags:
   - canon/quantity
-  - role/derived
+  - role/output
 ---
 
 # Maximum level speed · `V_max`
@@ -17,5 +17,3 @@ Highest level-flight speed at full throttle — where thrust still equals drag. 
 **Unit.** `m/s`
 
 **Produced by.** [[max-level-speed]]
-
-**Used by.** [[cruise-speed-resolution]]

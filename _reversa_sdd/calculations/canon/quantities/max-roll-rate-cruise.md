@@ -12,8 +12,8 @@ tags:
 
 # Maximum roll rate at cruise · `p_max,cruise`
 
-Steady roll rate with the full aileron throws set in the airplane, at the cruise speed.
+Steady roll rate with the full set aileron throws at the cruise-speed target — exists only when that target is given.
 
 **Unit.** `deg/s`
 
-**Produced by.** [[max-roll-rate]]
+**Produced by.** [[max-roll-rate-cruise-target]]

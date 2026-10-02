@@ -18,4 +18,4 @@ Usable pack energy; 0.0 in the database means 'not configured'.
 
 **Produced by.** [[airplane-components]]
 
-**Used by.** [[battery-mass-from-capacity]] · [[endurance-from-battery]]
+**Used by.** [[battery-mass-from-capacity]] · [[cruise-target-performance]] · [[endurance-and-range]]

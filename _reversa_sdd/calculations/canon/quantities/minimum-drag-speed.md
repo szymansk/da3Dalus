@@ -22,4 +22,4 @@ Speed at which C_L/C_D is maximum; the best-glide and best-range speed for a pro
 
 **Produced by.** [[minimum-drag-speed-from-polar]]
 
-**Used by.** [[cruise-speed-resolution]]
+**Used by.** [[endurance-and-range]]

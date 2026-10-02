@@ -289,3 +289,8 @@ eine neue ADR gegen 0004.
 Solver-Widerstand, (L/D)max = W/D(V_md), Parabelformel = Probe; C_D0/e = Ausgleichsparabel, nur
 Anzeige + berechneter Wert (ADR 0010); Auslegung Scholz-Kette mit c_f bei Missions-Re;
 Vorbehalt k_e,D0 (Bryan +9 % induziert vs. AVL). O13 entschieden.
+
+**Reisegeschwindigkeit (02.10.2026):** `cruise-speed-resolution`/`cruise-speed` gestrichen; benannte
+Schließungen `endurance-and-range` (t_max bei V_mp, R_max bei V_md, Solver-Widerstand);
+`V_cruise,target` als optionaler UAV-Zielwert (`cruise-target-performance`); Rollrate im
+Reiseflug nur bei diesem Zielwert, sonst p̂ = pb/2V; `stall-margin-ratio` gestrichen (= k_S).

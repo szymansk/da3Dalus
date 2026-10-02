@@ -3,11 +3,11 @@ canon: stall-speed
 kind: quantity
 symbol: V_S
 unit: m/s
-role: derived
+role: output
 status: approved
 tags:
   - canon/quantity
-  - role/derived
+  - role/output
 ---
 
 # Stall speed · `V_S`
@@ -17,5 +17,3 @@ Minimum flyable speed, the lift-balance speed at C_L,max; V_S1 clean, V_S0 landi
 **Unit.** `m/s`
 
 **Produced by.** [[stall-speed]]
-
-**Used by.** [[stall-margin-ratio]]

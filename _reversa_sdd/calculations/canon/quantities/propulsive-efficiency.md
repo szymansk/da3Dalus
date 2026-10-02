@@ -18,4 +18,4 @@ Battery-to-thrust chain efficiency converting aerodynamic power into electrical 
 
 **Produced by.** [[airplane-components]]
 
-**Used by.** [[power-required-electrical]]
+**Used by.** [[cruise-target-performance]] · [[endurance-and-range]]

@@ -3,11 +3,11 @@ canon: minimum-sink-speed
 kind: quantity
 symbol: V_mp
 unit: m/s
-role: output
+role: derived
 status: draft
 tags:
   - canon/quantity
-  - role/output
+  - role/derived
 ---
 
 # Minimum-sink speed (minimum-power speed) · `V_mp`
@@ -21,3 +21,5 @@ Speed at which the steady-glide sink rate is lowest; physically also the best-en
 > forbids unless one is derived from the others. Resolve during approval.
 
 **Produced by.** [[minimum-sink-speed-from-polar]]
+
+**Used by.** [[endurance-and-range]]

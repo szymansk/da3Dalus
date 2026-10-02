@@ -24,10 +24,10 @@ tex: s_{req}:\; L(V,\alpha) = m\,g, \quad C_{roll}\big(V,\alpha,\,s_{req}\,\delt
 
 ```
 solve for alpha, s_req (steady roll at V, roll rate held at the target):   L(V, alpha) = m * g,   C_roll(V, alpha, s_req * delta_a,max, p_target,cruise | p_target,app) = 0
-evaluated at V = V_cruise and at V = V_app, for each target given
+evaluated at V = V_cruise,target (when given) and at V = V_app, for each roll-rate target given
 ```
 
-**Produces** [[aileron-throw-fraction-cruise]] · [[aileron-throw-fraction-approach]]  ·  **from** [[airplane]] · [[aircraft-mass]] · [[gravity]] · [[air-density]] · [[cruise-speed]] · [[approach-speed]] · [[roll-rate-target-cruise]] · [[roll-rate-target-approach]]
+**Produces** [[aileron-throw-fraction-cruise]] · [[aileron-throw-fraction-approach]]  ·  **from** [[airplane]] · [[aircraft-mass]] · [[gravity]] · [[air-density]] · [[cruise-speed-target]] · [[approach-speed]] · [[roll-rate-target-cruise]] · [[roll-rate-target-approach]]
 
 **Kind: a procedure — a closure by a prescribed value.** The steady roll: the rolling moment from the ailerons balances the roll damping, lift carries the weight. `s` scales the **throws set in the airplane** — up and down as constructed, a differential included — from 0 to the full throw.
 

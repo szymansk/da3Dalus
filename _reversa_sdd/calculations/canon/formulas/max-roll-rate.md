@@ -5,7 +5,7 @@ kind: procedure
 tool: OPT
 shape: law
 status: draft
-output: max-roll-rate-cruise, max-roll-rate-approach
+output: max-roll-rate-approach, max-roll-rate-nondimensional
 source_status: SOURCED
 dimensional_check: PROCEDURAL
 tags:
@@ -24,10 +24,10 @@ tex: L(V,\alpha) = m\,g, \quad C_{roll}\big(V,\alpha,\,\delta_{a,max},\,p_{max}\
 
 ```
 solve for alpha, p_max (steady roll at V, full set throw):   L(V, alpha) = m * g,   C_roll(V, alpha, delta_a,max, p_max) = 0
-evaluated at V = V_cruise and at V = V_app
+evaluated at V = V_app;   p_hat_max = p_max * b_ref / (2 * V_app)
 ```
 
-**Produces** [[max-roll-rate-cruise]] · [[max-roll-rate-approach]]  ·  **from** [[airplane]] · [[aircraft-mass]] · [[gravity]] · [[air-density]] · [[cruise-speed]] · [[approach-speed]]
+**Produces** [[max-roll-rate-approach]] · [[max-roll-rate-nondimensional]]  ·  **from** [[airplane]] · [[aircraft-mass]] · [[gravity]] · [[air-density]] · [[approach-speed]]
 
 **Kind: a procedure — a closure by a prescribed value.** The steady roll: the rolling moment from the ailerons balances the roll damping, lift carries the weight. `s` scales the **throws set in the airplane** — up and down as constructed, a differential included — from 0 to the full throw.
 
@@ -44,3 +44,8 @@ evaluated at V = V_cruise and at V = V_app
 **AeroBuildup is adequate here** — unlike for adverse yaw. Aileron rolling moment (section lift from NeuralFoil with the deflection) and roll damping (roll rate in the local onset flow, `aero_buildup.py:719-731`) both come from lift, not from induced drag. AVL can cross-check. Declared limit: NeuralFoil's flap model at large throws and low Reynolds number is unvalidated, and aileron stall beyond about 25° (Sadraey §12.4.3) is only as good as that model.
 
 **Source.** 🟢 Sadraey §12.4 (aileron design; steady roll from `C_l,δa · δa + C_l,p · pb/2V = 0`), with the rate requirement made scale-free per the domain expert (time-to-bank does not transfer to model scale).
+
+**2026-10-02:** evaluated on approach only; the cruise value moved to
+[[max-roll-rate-cruise-target]] and exists only when a cruise-speed target is given. New output
+`p_hat_max = p·b/2V` — nearly independent of speed, the RC character statement without a reference
+speed.

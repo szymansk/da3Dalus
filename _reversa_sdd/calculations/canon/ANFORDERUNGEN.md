@@ -518,8 +518,11 @@ es steht im Flugzeug (`positive/negative_deflection_deg`). Der Kanon rechnet die
 Ausschläge **nicht aus**, er prüft gegen sie.
 
 **Eingabe** ist eine geforderte Rollrate, die ihre Geschwindigkeit im Namen trägt (A2):
-im Reiseflug (die Charakteraussage, „rollt 360 °/s“) und/oder im Anflug (die
-Steuerbarkeitsaussage; dort legt Sadraey §12.3.3 das Querruder aus). Bei festem Ausschlag
+bei der **Reisegeschwindigkeit als Zielwert** $V_{cruise,target}$ — nur wenn eine angegeben ist
+(02.10.2026, §3.5) — und/oder im Anflug (die Steuerbarkeitsaussage; dort legt Sadraey §12.3.3
+das Querruder aus). Ohne Reiseforderung ist die Charakteraussage für RC die dimensionslose
+Rollrate $\hat p_{max} = p\,b/2V$ bei vollem Ausschlag, die kaum von der Geschwindigkeit
+abhängt. Bei festem Ausschlag
 ist $pb/2V$ nahezu geschwindigkeitsunabhängig, die Rollrate in °/s wächst also mit $V$ —
 ohne Geschwindigkeit wäre die Forderung unbestimmt.
 
@@ -1191,7 +1194,7 @@ erforderliche Leistung. Sie gehört an zwei Punkte **gebunden**, nicht zweimal a
 | **Maschinerie** | Dichte aus der Höhe · Staudruck · geforderter Auftriebsbeiwert bei Lastvielfachem 1 · reynoldsgeplante Polare · induzierter Widerstandsfaktor · **Widerstandspolare** |
 | **schließt den Punkt** | Geschwindigkeit geringsten Widerstands · Geschwindigkeit geringster Leistung |
 | **liefert die Antworten** | Leistungsbedarf · Flugdauer aus dem Akku · **Reichweite** · gefordertes Schub-Gewicht-Verhältnis |
-| **Probe** | beste Gleitzahl in geschlossener Form · Abstandsverhältnis zum Abriss |
+| **Probe** | beste Gleitzahl in geschlossener Form (das Abstandsverhältnis zum Abriss ist gestrichen, §3.7) |
 
 #### Zwei Lücken, geschlossen
 
@@ -1212,7 +1215,7 @@ Widerstands zu multiplizieren ergäbe eine Zahl, die kein Flugzeug fliegen kann.
 
 | | |
 |---|---|
-| **Die Reisegeschwindigkeit ist eine Ersetzung** | `V_cruise := V_md` — festverdrahtet als Reichweitenschließung, und der Eintrag trägt einen roten Vermerk, dass eine Annahme im Code verletzt ist. Die Flugdauerschließung existiert als Rechnung noch nicht. |
+| ~~**Die Reisegeschwindigkeit ist eine Ersetzung**~~ | **Entschieden 02.10.2026:** `cruise-speed-resolution` und die allgemeine `cruise-speed` gestrichen (A2: allgemeine Größe als Ausgabe; ADR 0020: Ersetzung ohne Quelle). Die zwei Schließungen sind benannte Ergebnisse: **größte Flugdauer** $t_{max}$ bei $V_{mp}$, **größte Reichweite** $R_{max} = 3600\,\eta\,E_{bat}/D(V_{md})$ bei $V_{md}$ (`endurance-and-range`). Für UAV optional ein **Zielwert** $V_{cruise,target}$: Flugdauer und Reichweite bei dieser Geschwindigkeit (`cruise-target-performance`, zielwertgebunden). |
 | **Der Schubfaktor ist eine Zauberzahl** | `mean-thrust-derate` pauschaliert den Schubabfall mit einem Faktor, den kein Katalogeintrag kennt — während wir die echten Propellerkennlinien in der Datenbank haben |
 
 
@@ -1306,7 +1309,10 @@ gibt.** Der Eintrag trägt `source_status: PARTIAL` und sagt es selbst: Die Idee
 Verhältnisses von Flug- zu Abrissgeschwindigkeit ist regulatorisch gut belegt — aber die
 Vorschriften setzen Reserven auf **Anflug- und Startgeschwindigkeiten**, nicht auf die
 Reisegeschwindigkeit. Gerechnet wird bei uns `V_cruise / V_S1`. Die Formel ist belegt, die
-Bindung nicht. Sie gehört dorthin, wo ihre Quelle lebt: an den Anflug.
+Bindung nicht. Sie gehört dorthin, wo ihre Quelle lebt: an den Anflug. — *Erledigt am
+02.10.2026 durch Streichung:* Am Anflug ist das Verhältnis $V_{app}/V_{S0} = k_S$, also die
+Eingabe selbst; eine Größe, die nur ihre Eingabe wiedergibt, wird nach ADR 0021 gestrichen
+(`stall-margin-ratio`).
 
 **② Die Klappenwirkung ist multiplikativ, beide Quellen sind additiv** — *erledigt am 02.10.2026: Die Klappe steckt in der Geometrie; hat das Flugzeug Klappen, rechnet das Abrissproblem mit dem konfigurierten Flugzeug, sonst gibt es keine Konfiguration. Faktor und `high-lift-clmax` sind gestrichen.* Der Kanon rechnet
 `C_L,max,cfg = f · C_L,max,clean`; Scholz und Sadraey schreiben einen **Zuwachs**, keinen
@@ -2231,7 +2237,7 @@ Was schon ein Ticket hat, steht mit Nummer dabei und fällt dann nicht noch einm
 | K3 | Abriss als Optimierungsproblem; `clmax-from-polar` gestrichen | §3.4.1 | Maximum über ein Geschwindigkeitsraster, Fixpunkt |
 | K4 | $V_{md}$, $V_{mp}$ als Optimierungsprobleme; geschlossene Formen nur Probe | §3.4.1, ADR 0026 | Argmax über einen Sweep fester Reynoldszahl, drei Erzeuger |
 | K5 | ADR 0026: Analyse mit Solver-Widerstand, $(L/D)_{max} = W/D(V_{md})$, $C_{D0}$/$e$ als Ausgleichsparabel nur zur Anzeige | §3.12 (A2), O13 | ADR-0004-Kontext mit Ein-Punkt-Zerlegung und Parabelformel |
-| K6 | Abstandsverhältnis zum Abriss an den Anflug binden | §3.7 | an den Reiseflug gebunden |
+| K6 | ~~Abstandsverhältnis zum Abriss an den Anflug binden~~ — gestrichen, siehe K19 | §3.7 | an den Reiseflug gebunden |
 | K7 | Klappen in der Geometrie; $V_{S0}$, $V_{S,TO}$ aus dem Abrissproblem; Faktor $f_{cfg}$ gestrichen | §3.8, A3 | multiplikativer Klappenfaktor, Rückfall auf den reinen Abriss |
 | K8 | Schub bei Fahrt aus dem Motor–Propeller-Gleichgewicht statt `t_static_N` in Feldlänge, Auslegungsdiagramm, Missions-KPIs | §3.10 | Standschub-Zahl |
 | K9 | Steigflug als Optimierungsproblem ($V_y$, $V_x$); `climb-speed-for-power-loading` gestrichen | §3.10 | $V_{climb} = \max(1{,}3\,V_{S,target}, 1)$ |
@@ -2244,6 +2250,7 @@ Was schon ein Ticket hat, steht mit Nummer dabei und fällt dann nicht noch einm
 | K16 | `xxxlarge` für den Analysepfad | A3 | kleinere Modellgröße |
 | K17 | $g$ einmal, ein Wert | A5 | elfmal, zwei Werte |
 | K18 | Zielwerte heißen `target`; zielwertgebundene Werte sind als solche erkennbar | A9 | `req`/`goal`/`target` gemischt |
+| K19 | Reisegeschwindigkeit nicht ersetzen: $t_{max}$ bei $V_{mp}$, $R_{max}$ bei $V_{md}$; $V_{cruise,target}$ als Zielwert; Abstandsverhältnis zum Abriss gestrichen | §3.5, §3.7 | `V_cruise := V_md`, `V_C = V_D/1,4` mit `V_D = 1,4·V_max` |
 
 ## Arbeitsregeln
 
