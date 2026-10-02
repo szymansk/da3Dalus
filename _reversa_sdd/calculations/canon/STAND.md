@@ -296,3 +296,8 @@ Schließungen `endurance-and-range` (t_max bei V_mp, R_max bei V_md, Solver-Wide
 Reiseflug nur bei diesem Zielwert, sonst p̂ = pb/2V; `stall-margin-ratio` gestrichen (= k_S).
 
 **f_T (02.10.2026):** `mean-thrust-derate`/`mean-thrust`/`static-thrust` gestrichen; `static-thrust-to-weight` T_0/W aus dem berechneten Standschub (V = 0).
+
+**02.10.2026:** Pistenstufe gestrichen (Over-Engineering, Maintainer; K20). Butterfly aufgenommen
+(`butterfly-approach`: V_S0(s), V_app(s), Gleitwinkel, s_max; Vorbehalt NeuralFoil bei großen
+Klappenausschlägen; K21). Handstart neu gefasst als Urteil „handstartfähig oder Bodenstart",
+Kriterien erst nach RC-Fachquelle.

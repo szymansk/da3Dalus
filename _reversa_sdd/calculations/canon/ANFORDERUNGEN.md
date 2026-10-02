@@ -1330,7 +1330,7 @@ der Anfluggeschwindigkeit ist.
 | | |
 |---|---|
 | **Der Reservefaktor** | Die Quellen geben ein Band: 1,2 bis 1,25 aus der RC-Literatur als Faustwert für die Landung, 1,3 aus den Vorschriften für den Anflug. Welcher gilt bei uns, ist deine Entscheidung — ich setze keinen. |
-| **Krähenstellung als vierte Konfiguration** | Wir führen sauber, Start und Landung. Die RC-Quellen nennen die Krähenstellung die **vorherrschende** Landeart beim Modell, und sie wirkt umgekehrt zur Klappe: mehr Widerstand **bei weniger Auftrieb**, also eine *höhere* Anfluggeschwindigkeit. Ob wir sie aufnehmen, ist offen. |
+| ~~**Krähenstellung als vierte Konfiguration**~~ | **Entschieden 02.10.2026:** `butterfly-approach` — das Abrissproblem in Butterfly-Stellung über dem Mischanteil $s$: Kurve $V_{S0}(s)$, daraus a) $V_{app}(s)$ und Gleitwinkel (der Pilot passt die Fahrt an), b) $s_{max}$ mit $V_{S0}(s_{max}) = V_{app}$ (der Pilot hält die Fahrt und mischt im Endanflug zu). Nur bei Wölbklappen und Querrudern. Vorbehalt: NeuralFoil bei 45–80° Klappenausschlag ungeprüft — Freigabe erst nach Abgleich an einem Segler der Referenzflotte. |
 
 
 ---
@@ -1368,7 +1368,7 @@ Fragen beitrug — *passt es auf meinen Platz* schon.
 
 | | |
 |---|---|
-| **Wie beantworten wir „passt es auf meinen Platz"?** | Über eine Streckenrechnung geht es nicht, ohne zu integrieren — und das tun wir nicht. Über eine geschlossene Korrelation geht es nicht, ohne Zulassungskonstanten zu übernehmen. Bliebe der Weg, den du für den Start vorgezeichnet hast: **zwei Größen vergleichen** statt eine Strecke ausrechnen — etwa Anflugsteilheit und Aufsetzgeschwindigkeit gegen das, was der Platz hergibt. |
+| ~~**Wie beantworten wir „passt es auf meinen Platz"?**~~ | **Gestrichen 02.10.2026 (Maintainer):** Over-Engineering — ob es passt, merkt der Pilot sofort. Keine Pistenstufe für Landung und Start. |
 | **Der Aufsetzfaktor** | wie am Anflug: die Quellen geben ein Band, die Wahl ist deine |
 
 
@@ -1422,16 +1422,16 @@ keine neue Modellierung, sondern ein Zugriff auf Daten, die wir haben.
 > Typenschild-Standschub `T_static` (er nennt weder Spannung noch Propeller). Das
 > Schub-Gewicht-Verhältnis ist jetzt eine Eigenschaft des Flugzeugs: der **berechnete**
 > Standschub aus dem Motor–Propeller-Gleichgewicht bei $V = 0$ über dem Gewicht,
-> $T_0/W$ (`static-thrust-to-weight`). Ob die Bahn reicht, bleibt bei der Pistenstufe offen —
-> dann auf Grundlage des Schubs bei Fahrt, nicht eines Faktors.
+> $T_0/W$ (`static-thrust-to-weight`). Ob die Bahn reicht, rechnet der Kanon nicht (Pistenstufe
+> gestrichen am 02.10.2026).
 
 #### Offen an diesem Punkt
 
 | | |
 |---|---|
-| **Die Wurfgeschwindigkeit** | keine Quelle bei unserer Größe. Sie gehört als **erklärte Eingabe mit Warnung** ins System, nicht als stille Konstante (ADR 0020) — und sie ist ohnehin personenabhängig |
+| **Handstart oder Bodenstart** | *Neu gefasst 02.10.2026 (Maintainer):* Nicht die Wurfgeschwindigkeit ist die Frage, sondern das Urteil **handstartfähig oder Bodenstart**. Kriterien (Masse einhändig werfbar, Abriss unter dem, was ein Wurf erreicht, Beschleunigung nach dem Wurf über $T_0/W$) und ihre Grenzwerte werden erst mit der RC-Fachquelle belegt (ADR 0023), dann aufgenommen. |
 | **Die Startreserve** | die Quellen geben 1,2 bis 1,25 für die **Landung**; auf den Start zu übertragen ist ein Schluss, keine Quelle. Beim Start spricht mehr für den oberen Rand: keine Bahn zum Beschleunigen, und das Modell ist im verletzlichsten Zustand |
-| **Die Pistenstufe** | wie bei der Landung offen — Vergleich statt Strecke, aber welcher |
+| ~~**Die Pistenstufe**~~ | **gestrichen 02.10.2026** (Maintainer): Over-Engineering, der Pilot merkt es sofort |
 
 
 ---
@@ -2258,6 +2258,8 @@ Was schon ein Ticket hat, steht mit Nummer dabei und fällt dann nicht noch einm
 | K17 | $g$ einmal, ein Wert | A5 | elfmal, zwei Werte |
 | K18 | Zielwerte heißen `target`; zielwertgebundene Werte sind als solche erkennbar | A9 | `req`/`goal`/`target` gemischt |
 | K19 | Reisegeschwindigkeit nicht ersetzen: $t_{max}$ bei $V_{mp}$, $R_{max}$ bei $V_{md}$; $V_{cruise,target}$ als Zielwert; Abstandsverhältnis zum Abriss gestrichen | §3.5, §3.7 | `V_cruise := V_md`, `V_C = V_D/1,4` mit `V_D = 1,4·V_max` |
+| K20 | Pistenstufe/Feldlänge nicht im Kanon (Over-Engineering) — die Feldlängen-Funktion der App hat damit keine Kanon-Grundlage; Entfernen nach ADR 0021 bei der Freigabe entscheiden | §3.8, §3.9 | `field_length_service` |
+| K21 | Butterfly im Anflug: $V_{S0}(s)$, $V_{app}(s)$, Gleitwinkel, $s_{max}$ | §3.7 | — |
 
 ## Arbeitsregeln
 
