@@ -24,6 +24,10 @@ Your job is that slice. You return a brief, not a reading list.
    planner build against a system that does not exist.
    **A Soll without a ticket number is a finding — report it.** It means a decision has
    no execution path, and nobody will notice it was never built.
+   **One exception:** inside `_reversa_sdd/calculations/canon/`, until the canon is approved,
+   a decided-not-built statement may carry **`Soll · Kanon`** instead of a number (register
+   in `ANFORDERUNGEN.md` §7; rule in `MARKERS.md`). Report it as *decided, not yet
+   commissioned* — not as an illegal Soll.
 3. **Report gaps as findings.** If the spec does not cover the ticket, say so plainly and
    name the nearest unit. A confident-sounding brief over a 🔴 is worse than "not
    specified".

@@ -901,7 +901,7 @@ Abhängigkeit** — dieselbe Prüfung, die beim Abriss im Mittel 2,9 % und schli
 Offen bleibt dabei eine Sache, die den Code betrifft und nicht den Kanon: Beide
 Polaren-Einträge tragen einen 🔴-Vermerk, dass eine ihrer Annahmen **in der Implementierung
 verletzt** ist. Die Autorität zu wählen heißt hier, die Arbeit zu benennen, nicht sie
-erledigt zu haben.
+erledigt zu haben (**`Soll · Kanon`**, Register §7).
 
 #### Der negative Höchstauftrieb kommt aus der Polare
 
@@ -945,8 +945,7 @@ zu verwechseln mit der mittleren aerodynamischen Flügeltiefe, die weiter gebrau
 Das ist noch nicht entschieden.
 
 > **Dies ist eine Entscheidung über den Kanon, nicht über den Code.** Was im Code mit den
-> Böenformeln geschieht, folgt später — es gilt weiterhin: keine Tickets, bis der Kanon
-> steht.
+> Böenformeln geschieht, folgt später — **`Soll · Kanon`**, Register §7.
 
 #### Masse und Antrieb sind ein Entwurfszyklus, kein Rechenzyklus
 
@@ -2034,7 +2033,7 @@ Dokumentation:
 Jede Größe der ersten Tabelle, die die App **selbst** nachrechnet, ist ein zweiter
 Erzeuger im Sinne von ADR 0022. Das ist eine Prüfliste für die Implementierung, keine
 Kanonänderung — die Formeln bleiben als Definitionen stehen, aber die App soll lesen statt
-rechnen.
+rechnen (**`Soll · Kanon`**, Register §7).
 
 Zwei Feinheiten aus der Prüfung: Die Stabilitätsableitungen entstehen durch **finite
 Differenzen** (Schritt 0,001°), nicht durch automatisches Differenzieren, und die
@@ -2218,6 +2217,34 @@ liefert dafür die Anker. Prüfstein: Die Bänder, die der Prozess aus den Antwo
 Referenzflugzeugs ableitet, müssen dessen echte Werte enthalten. Für UAV stehen andere
 Fragen vorn (Nutzlast, Reichweite, Reisegeschwindigkeit).
 
+## 7. Register `Soll · Kanon` — entschieden, noch nicht gebaut
+
+**Was das ist.** Jede Kanon-Entscheidung, die der heutige Code noch nicht umsetzt, steht
+hier einmal — mit dem Abschnitt, der sie trägt. Bei der Freigabe des Kanons wird jede Zeile
+ein Unterticket des Epics „Rechenkanon umsetzen“ (`MARKERS.md`, Ausnahme `Soll · Kanon`).
+Was schon ein Ticket hat, steht mit Nummer dabei und fällt dann nicht noch einmal an.
+
+| # | Entscheidung | Abschnitt | heute im Code |
+|---|---|---|---|
+| K1 | Böen aus dem Kanon gestrichen — Böenformeln im Code entfernen bzw. nicht mehr anzeigen | §3.1 | Böenlinien in der V-n-Hüllkurve |
+| K2 | $C_{L,min}$ aus dem Tiefpunkt der Polare; der Sweep muss über den Rückenabriss reichen | §3.1 | Sweep ab −15°, Randwert möglich |
+| K3 | Abriss als Optimierungsproblem; `clmax-from-polar` gestrichen | §3.4.1 | Maximum über ein Geschwindigkeitsraster, Fixpunkt |
+| K4 | $V_{md}$, $V_{mp}$ als Optimierungsprobleme; geschlossene Formen nur Probe | §3.4.1, ADR 0026 | Argmax über einen Sweep fester Reynoldszahl, drei Erzeuger |
+| K5 | ADR 0026: Analyse mit Solver-Widerstand, $(L/D)_{max} = W/D(V_{md})$, $C_{D0}$/$e$ als Ausgleichsparabel nur zur Anzeige | §3.12 (A2), O13 | ADR-0004-Kontext mit Ein-Punkt-Zerlegung und Parabelformel |
+| K6 | Abstandsverhältnis zum Abriss an den Anflug binden | §3.7 | an den Reiseflug gebunden |
+| K7 | Klappen in der Geometrie; $V_{S0}$, $V_{S,TO}$ aus dem Abrissproblem; Faktor $f_{cfg}$ gestrichen | §3.8, A3 | multiplikativer Klappenfaktor, Rückfall auf den reinen Abriss |
+| K8 | Schub bei Fahrt aus dem Motor–Propeller-Gleichgewicht statt `t_static_N` in Feldlänge, Auslegungsdiagramm, Missions-KPIs | §3.10 | Standschub-Zahl |
+| K9 | Steigflug als Optimierungsproblem ($V_y$, $V_x$); `climb-speed-for-power-loading` gestrichen | §3.10 | $V_{climb} = \max(1{,}3\,V_{S,target}, 1)$ |
+| K10 | Kurvenflug: gehaltene Kurve; Querneigung als Eingabe und $V_S\sqrt{n}$ gestrichen | §3.10 | $n = 1/\cos\phi$, $V_{S,turn} = V_S\sqrt{n}$ |
+| K11 | $V_{max}$ berechnet; $V_D$ = Endgeschwindigkeit im senkrechten Sturz; $V_A$ = gebundenes Abrissproblem | §3.10 | $V_{max}$ = 28 m/s Vorgabe, $V_D = 1{,}4\,V_{max}$ |
+| K12 | Route A leistungsbegrenzt | §3.10, O11 | **#1150** |
+| K13 | $n_{neg}$ gestrichen; Bruchlastvielfaches $n_{break,\pm}$ des Holms | §3.10 | **#1139**, **#1106** |
+| K14 | Rollwirkung gegen die gebauten Ausschläge | §2.2 | — |
+| K15 | Was AeroSandbox liefert, liest die App, statt es nachzurechnen | A3-Umfeld, ADR 0022 | eigene Nachrechnungen |
+| K16 | `xxxlarge` für den Analysepfad | A3 | kleinere Modellgröße |
+| K17 | $g$ einmal, ein Wert | A5 | elfmal, zwei Werte |
+| K18 | Zielwerte heißen `target`; zielwertgebundene Werte sind als solche erkennbar | A9 | `req`/`goal`/`target` gemischt |
+
 ## Arbeitsregeln
 
 **KISS — und der Zweck ist der Filter.** Wir bauen ein Werkzeug für Modellflugzeuge und
@@ -2234,8 +2261,12 @@ Eine Größe kommt hinzu, wenn sie eine dieser Fragen beantwortet **und** wir si
 unseren Werkzeugen rechnen können; fehlt eines von beiden, bleibt sie draußen, und das
 steht dabei.
 
-**Keine Tickets, bis der Kanon steht.** Befunde werden dort festgehalten, wo sie die
-Rechnung binden.
+**Tickets (entschieden 02.10.2026, `MARKERS.md`):** Ein **Fehler im heutigen Code** —
+Ist weicht von einer 🟢-Regel ab — bekommt **sofort** ein Bug-Ticket. Eine
+**Kanon-Entscheidung, die noch nicht gebaut ist,** trägt bis zur Freigabe des Kanons den
+Vermerk **`Soll · Kanon`** und steht im Register §7; bei der Freigabe wird daraus **ein**
+Epic „Rechenkanon umsetzen“ mit einem Unterticket je Eintrag. Befunde werden dort
+festgehalten, wo sie die Rechnung binden.
 
 **Der Sollzustand wird erfragt, nicht aus dem Code abgeleitet.** Der Code ist die Quelle
 für den Ist-Zustand. Für diesen hier ist es der Maintainer.

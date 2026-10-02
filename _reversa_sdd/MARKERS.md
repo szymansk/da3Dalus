@@ -63,7 +63,29 @@ process — one authority per fact:
 GitHub stays authoritative for *state*. If this specification starts owning "what comes
 next", it becomes a worse issue tracker written in Markdown.
 
-## When the spec and a ticket disagree
+### The one exception: `Soll · Kanon` (maintainer, 2026-10-02)
+
+**Scope:** `_reversa_sdd/calculations/canon/` only, and only **until the canon is approved**.
+
+The calculation canon is still being decided, and fast — ADR 0004 was amended by ADR 0026
+within hours. Ticketing each intermediate decision would fill the backlog with issues that
+go stale the next day, which is exactly the dishonesty this rule exists to prevent. So,
+inside the canon:
+
+| case | carries |
+|---|---|
+| a **defect in today's code** — Ist departing from a 🟢 rule | a **bug ticket, immediately** (as everywhere) |
+| a **canon decision not yet built** | the marker **`Soll · Kanon`** plus its canon section, and an entry in the register (`ANFORDERUNGEN.md` §7) |
+
+`Soll · Kanon` is honest about the tense — it never reads as today's behaviour — but says
+*decided, not yet commissioned*. `/spec-finder` reports it as such, not as an illegal Soll.
+
+**It expires.** When the canon is approved, every `Soll · Kanon` becomes a sub-issue of one
+epic *"Rechenkanon umsetzen"*, the marker is replaced by the issue number, and the normal
+rule applies again. A `Soll · Kanon` outside the canon folder, or after the approval, is an
+illegal Soll.
+
+
 
 A ticket that contradicts a spec rule is one of two things:
 

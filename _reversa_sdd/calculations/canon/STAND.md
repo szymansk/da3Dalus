@@ -165,7 +165,7 @@ muss — und verschiebt die Grenze zwischen Eingabe und Ableitung weiter.
 
 ## 6. Arbeitsregeln, die gelten
 
-**Keine Tickets, bis der Rechenkanon steht.** Befunde werden im Kanon festgehalten, wo sie
+**Tickets (02.10.2026):** Bugs im heutigen Code sofort; Kanon-Entscheidungen tragen bis zur Freigabe **`Soll · Kanon`** (Register ANFORDERUNGEN §7, Ausnahme in `MARKERS.md`), bei Freigabe ein Epic mit Untertickets. Befunde werden im Kanon festgehalten, wo sie
 die Rechnung binden — nicht in einer Fundliste und nicht als Backlog.
 
 **Kein Skill und kein CI-Gate, bevor der Kanon stabil ist.** Sieben Nachschärfungen in drei
