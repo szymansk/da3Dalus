@@ -22,6 +22,9 @@ Quellen:
 
 Jede dieser Angaben kommt aus einer Antwort, einem Band oder einem Vorgabewert.
 
+**Grundsatz (Maintainer, 02.10.2026):** Das Urmodell muss grundsätzlich fliegen, nicht perfekt
+sein. Es ist ein Startwert. Wo keine Quelle existiert, genügt ein gekennzeichneter Vorgabewert.
+
 **Keine weitere Frage ist nötig.** Die Lücken liegen in den **Bändern**, nicht in den Fragen (§4).
 
 | Angabe des Urmodells | kommt aus |
@@ -374,6 +377,24 @@ Nur aus Suchergebnissen, nicht am Original geprüft:
 Masse, Streckung und Rumpflänge kommen weiter aus der Statistik der Modelltabelle (§2).
 
 
+## 3f. Restliche Vorgaben (entschieden 02.10.2026)
+
+✅ Maintainer, nach dem Grundsatz in §1:
+
+| Punkt | Festlegung | Art |
+|---|---|---|
+| Profildicke im Kunstflug und 3D | 10–15 % (Lennon), gegen 7–10 % (rcplanedesigner) | Quelle; die 3D-Quellen stützen es |
+| Ausschläge im Motorflug ohne eigene Quelle (Trainer, Sport, Kunstflug, Scale) | Lelke: Seite ±15–30°, Quer ±10–20°, Höhe ±10–20°; kleinere Werte für schnelle Modelle | Quelle (allgemein, nicht je Mission) |
+| Klappen | Innenflügel bis zum Querruder, Tiefe 25 % | **Vorgabewert ohne Quelle** |
+| Rumpfquerschnitt | Superellipse mit n = 2, größter Durchmesser 10 % der Rumpflänge, am Nasenhebel | **Vorgabewert ohne Quelle** |
+| Ente | Vorflügel über ein Leitwerksvolumen wie das Höhenleitwerk der Mission bemessen, Hebel nach vorn | **Platzhalter** und `DesignWarning` „ungetestete Bemessung" (ADR 0020) |
+| Tandem | Hinterflügel mit 90 % der Spannweite und gleicher Tiefe, Schwerpunkt aus `cg-for-target-margin` | **Platzhalter** und `DesignWarning` |
+| Kastenflügel / Joined Wing | zwei gleich große Flügel, ±9 % der Spannweite gepfeilt (wie die Skizze), Endscheiben | **Platzhalter** und `DesignWarning` |
+
+Ein Vorgabewert ohne Quelle ist keine belegte Zahl im Sinn von ADR 0023. Er macht nur das Urmodell
+vollständig. Der Kanon rechnet das Ergebnis trotzdem richtig, denn er rechnet die Geometrie, nicht die
+Absicht.
+
 ## 4. Lücken: Bänder ohne Quelle
 
 1. ~~Leistungsbelastung W/kg~~: ✅ entschieden am 02.10.2026 (§3a).
@@ -381,7 +402,9 @@ Masse, Streckung und Rumpflänge kommen weiter aus der Statistik der Modelltabel
 3. **Segler:** Leitwerk, V-Form, Einstellwinkel und Ausschläge sind belegt (§3b). Die Stabilitätsreserve ist
    belegt (Maintainer); Nurflügel nach Lennon 5–10 % (entschieden).
 4. ~~3D, Speed, Park, Scale~~: ✅ entschieden als Platzhalter (§3d, §3e).
-5. **Leitwerke ohne Größenregel:** Ente, Tandem und Kastenflügel. Das V-Leitwerk ist geschlossen
-   (Drela, §3b).
-6. **Klappen und Ausschläge:** Klappengröße und Ruderausschläge je Mission.
-7. **Rumpfquerschnitt.**
+5. ~~Ente, Tandem, Kastenflügel~~: Platzhalter mit `DesignWarning` (§3f).
+6. ~~Klappen und Ausschläge~~: Lelke bzw. Vorgabewert (§3f).
+7. ~~Rumpfquerschnitt~~: Vorgabewert (§3f).
+
+**Stand 02.10.2026: Alle Lücken sind mit einer Quelle, einem Platzhalter oder einem gekennzeichneten
+Vorgabewert geschlossen. Das Urmodell ist für alle Kombinationen des Auswahlgraphen erzeugbar.**

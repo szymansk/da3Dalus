@@ -335,3 +335,5 @@ gestrichen. Auswahlgraph als HTML unter `_reversa_sdd/calculations/auswahl/`.
 **Auswahlgraph v7 (02.10.2026):** Bewertungsmatrix vom RC-Prüfer in der neuen Einteilung neu erstellt (Tragflügel × Mission, Flügellage × Mission, Leitwerksgruppe hinten/Ente/Nurflügel × Mission, typische Leitwerke je Mission); keine neuen Sperren, nur die drei Doppeldecker-Segler. Bänder und Lücken: `auswahl/BAENDER.md`.
 
 **Band Leistungsbelastung entschieden (02.10.2026):** W/kg min/typ/max je motorisierter Mission übernommen (`auswahl/BAENDER.md` §3a, `auswahl.json` → `baender`).
+
+**Bänder vollständig (02.10.2026):** Jede Lücke ist mit Quelle, Platzhalter oder gekennzeichnetem Vorgabewert geschlossen (`auswahl/BAENDER.md` §3a–§3f). Grundsatz des Maintainers: Das Urmodell muss grundsätzlich fliegen, nicht perfekt sein.

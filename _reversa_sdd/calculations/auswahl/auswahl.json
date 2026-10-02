@@ -1185,6 +1185,50 @@
       "3d": "kunstflug + 3D-Ausschläge (Extreme Flight)",
       "speed": "segler_mit_querrudern (Drela) + Steuerachsen hq + Stabilitätsreserve 5–8 %",
       "park": "trainer + Ausschläge großes Ende (Lelke)"
+    },
+    "vorgaben": {
+      "quelle": "BAENDER.md §3f, Maintainer 02.10.2026",
+      "profildicke_kunstflug_3d_prozent": [
+        10,
+        15
+      ],
+      "ausschlaege_motorflug_grad": {
+        "seite": [
+          15,
+          30
+        ],
+        "quer": [
+          10,
+          20
+        ],
+        "hoehe": [
+          10,
+          20
+        ],
+        "quelle": "Lelke"
+      },
+      "klappen": {
+        "spannweite": "Innenflügel bis Querruder",
+        "tiefe": 0.25,
+        "art": "Vorgabewert ohne Quelle"
+      },
+      "rumpfquerschnitt": {
+        "n": 2,
+        "durchmesser_zu_rumpflaenge": 0.1,
+        "art": "Vorgabewert ohne Quelle"
+      },
+      "ente": {
+        "regel": "Vorflügel über Leitwerksvolumen der Mission, Hebel nach vorn",
+        "warnung": "ungetestete Bemessung"
+      },
+      "tandem": {
+        "regel": "Hinterflügel 90 % Spannweite, gleiche Tiefe",
+        "warnung": "ungetestete Bemessung"
+      },
+      "kasten": {
+        "regel": "zwei gleiche Flügel, ±9 % der Spannweite gepfeilt, Endscheiben",
+        "warnung": "ungetestete Bemessung"
+      }
     }
   }
 }
