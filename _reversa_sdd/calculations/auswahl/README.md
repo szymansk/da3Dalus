@@ -116,11 +116,28 @@ Jeder Schritt nennt seine Quelle in `BAENDER.md`.
   (n = 17, Streuung ×1,63).
 - **Seitenflächen des Nurflügels:** Lennon nennt die Bauformen; die Fläche selbst ist eine Vorgabe.
 
+- **Missions-Taxonomie:** Der Auswahlgraph hat 13 Missionen, die Presets haben 9 Kennungen
+  (`trainer, sport, acro_3d, sailplane, motor_glider, slope_soarer, flying_wing, wing_racer, stol_bush`,
+  BR-MS5). Eine Zuordnung fehlt. Eine unbekannte Mission muss sichtbar scheitern (BR-MS35, Q-MS-10).
+- **Herkunft:** `create_aeroplane` setzt fest `created_by="human"` (`aeroplane_service.py:90`). Wie ein
+  erzeugtes Urmodell gekennzeichnet wird, ist offen.
+- **Reihenfolge:** Schritte 11 und 12 hängen an Kanon-Einträgen, die noch Soll sind (K22 Neutralpunkt
+  bei $V_{md}$, K8/K12 bzw. #1150 Route A leistungsbegrenzt). Bis dahin trägt die vorhandene
+  `mass_cg_service.compute_recommended_cg` (Q-MB-2).
+- **Anlegen in der App:** nicht über den MCP-Pfad. `_call_endpoint` speichert heute nichts (BR-MCP7,
+  Q-MC-1). Agenten-Zugang später über `copilot_tools` (ADR 0025, Epic #902).
+- **Masse:** wird als **Schätzwert** der Design-Annahme `mass` geschrieben (Q-MB-7, ADR 0010), nie über
+  `weight_items` (Q-MB-1, wird gelöscht).
+
 ## 5. Beziehungen
 
 - **ANFORDERUNGEN:** §5 O12 (Entscheidung), §6.1 (Fragen und Taxonomie), A10 (der Kanon bewertet nicht).
 - **ADRs:** 0020 (Warnungen), 0022 (eine Autorität: Der Generator erzeugt Geometrie, der Kanon
-  rechnet Werte), 0023 (Quellen, RC-Maßstab).
+  rechnet Werte, das Missions-Preset ist der einzige Autor der Missionswerte), 0023 (Quellen,
+  RC-Maßstab), 0001 (Einheiten), 0007/0025 (Schreibrechte von Agenten).
+- **Entschieden, nicht neu verhandeln:** Q-MS-14 (Stabilitätsreserve), Q-MS-1 (W/kg), Q-MB-1/Q-MB-7
+  (Masse), Q-PT-1 (Reglerwahl), Q-FD-3 (Superellipse-Naht), BR-F1 (Halbachsen; #1146 nicht
+  kompensieren).
 - **Design-Agent:** Epic #902 (KI-Copilot).
 
 ## 6. Befund: Soll ohne Ticket

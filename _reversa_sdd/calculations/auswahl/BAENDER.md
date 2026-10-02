@@ -25,6 +25,13 @@ Jede dieser Angaben kommt aus einer Antwort, einem Band oder einem Vorgabewert.
 **Grundsatz (Maintainer, 02.10.2026):** Das Urmodell muss grundsätzlich fliegen, nicht perfekt
 sein. Es ist ein Startwert. Wo keine Quelle existiert, genügt ein gekennzeichneter Vorgabewert.
 
+**Autorität zur Laufzeit (ADR 0022 Korollar 5, Q-MS-14):** Das **Missions-Preset** ist der einzige
+Autor missionsgeprägter Vorgabewerte, also Stabilitätsreserve, Leistungsbelastung, Reisegeschwindigkeit,
+Lastvielfaches und $C_{L,max}$. Dieses Dokument belegt die Werte mit Quellen; der Generator liest sie
+**aus dem Preset**. Wo ein Band hier vom Preset abweicht, gilt das Preset, bis eine neue Entscheidung es
+ändert. Die Presets (9 Kennungen) sind um die Missionen des Auswahlgraphen zu ergänzen oder zuzuordnen,
+siehe README §4.
+
 **Keine weitere Frage ist nötig.** Die Lücken liegen in den **Bändern**, nicht in den Fragen (§4).
 
 | Angabe des Urmodells | kommt aus |
@@ -103,7 +110,7 @@ Probe für einen Trainer mit 1,4 m Spannweite:
 | Leitwerksvolumen V_H | 0,55 / 0,65 / 0,75 | 0,45 / 0,55 / 0,65 | 0,40 / 0,50 / 0,60 | tail-horizontal-tail-placement… |
 | Leitwerkshebel (× MAC) | 2,7–3,0 | 2,3–2,7 | 2,0–2,3 | fuselage-tail-lever-arm--design-envelope |
 | Nasenhebel (× MAC) | 1,2–1,5 | 1,1–1,3 | 1,0–1,2 | fuselage-front-lever-arm--design-envelope |
-| Stabilitätsreserve % MAC | 5 / 10 / 15 | 3 / 4 / 5 (Lennon: 10) | 0 / 1,5 / 3 | airplane-balance-…static-margin; lennon-cg-location… |
+| Stabilitätsreserve % MAC | 5 / 10 / 15 → **Typ 15** | 3 / 4 / 5 → **Typ 10** (Lennon) | 0 / 1,5 / 3 → **Typ 3** | airplane-balance-…static-margin; lennon-cg-location…; **verbindlicher Typwert: Q-MS-14** |
 | Höhenruder, % der HLW-Fläche | 25–30 | 35–40 | 40–70 | tail-elevator--practical-limits… |
 | Seitenruder, % der SLW-Fläche | 20–40 | 40–60 | 60–80 | tail-rudder--practical-limits… |
 | Profildicke % | 12 / 15 / 18, flache Unterseite | 10 / 11 / 12, halbsymmetrisch | 7 / 8,5 / 10, symmetrisch (Lennon: 10–15) | wing-airfoils--relative-thickness / families |
@@ -130,7 +137,10 @@ Probe für einen Trainer mit 1,4 m Spannweite:
 
 **Widersprüche:**
 - **Profildicke im Kunstflug:** rcplanedesigner nennt 7–10 %, Lennon 10–15 %.
-- **Stabilitätsreserve beim Sport-Modell:** rcplanedesigner nennt 3–5 %, Lennon 10 %.
+- **Stabilitätsreserve beim Sport-Modell:** rcplanedesigner nennt 3–5 %, Lennon 10 %. ✅ **Bereits
+  entschieden in Q-MS-14** (2026-08-14, nach Scholz/Sadraey): Sport 10 %, Kunstflug und 3D 3 % (1,5 %
+  ist als Vorgabe verboten, weil im dynamisch instabilen Band), Trainer 15 %, Nurflügel 7,5 %. Dieses
+  Dokument hatte den Widerspruch am 02.10.2026 fälschlich als offen geführt.
 - **Streckung beim Kunstflug:** [V] nennt 4,75 als typisch, die Tabelle hat einen Median von 5,2.
   Das ist verträglich.
 
