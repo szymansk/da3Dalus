@@ -1,6 +1,6 @@
 {
   "stand": "02.10.2026",
-  "hinweis": "Bewertung der Kombinationen: RC-Fachquellen und Modelltabelle (2 674 Modelle); [Praxis] ist allgemeine RC-Praxis ohne schriftliche Quelle. Zahlenbänder folgen mit Quellen (ADR 0023).",
+  "hinweis": "Bewertung der Kombinationen: RC-Fachquellen und Modelltabelle (2 674 Modelle); [Praxis] ist allgemeine RC-Praxis ohne schriftliche Quelle. Zahlenbänder folgen mit Quellen (ADR 0023). »Unsinnig« (nicht wählbar) nur mit schriftlicher Quelle oder Aussage des Maintainers; eine Einschätzung aus [Praxis] allein ergibt höchstens »ungewöhnlich«.",
   "schritte": [
     {
       "id": "motor",
@@ -642,8 +642,8 @@
       "nurfluegel": "U",
       "ente": "U",
       "doppeldecker": "P",
-      "tandem": "N",
-      "kasten": "N"
+      "tandem": "U",
+      "kasten": "U"
     },
     "speed": {
       "hochdecker": "U",
@@ -720,7 +720,7 @@
       "ente": "U",
       "doppeldecker": "N",
       "tandem": "U",
-      "kasten": "N"
+      "kasten": "U"
     },
     "scale_segler": {
       "hochdecker": "P",
@@ -748,8 +748,8 @@
     "3d:hochdecker": "Selten: 3D braucht große Ruderflächen im Propellerstrahl. [Praxis]",
     "3d:nurfluegel": "Selten: 3D braucht große Ruderflächen im Propellerstrahl. [Praxis]",
     "3d:ente": "Selten: 3D braucht große Ruderflächen im Propellerstrahl. [Praxis]",
-    "3d:tandem": "Das »Leitwerk« ist ein zweiter tragender Flügel: kein großes, angeblasenes Höhen- und Seitenruder zum Schweben. [Praxis]",
-    "3d:kasten": "Das »Leitwerk« ist ein zweiter tragender Flügel: kein großes, angeblasenes Höhen- und Seitenruder zum Schweben. [Praxis]",
+    "3d:tandem": "Selten zu erwarten: Das »Leitwerk« ist ein zweiter tragender Flügel, ohne großes, angeblasenes Höhen- und Seitenruder zum Schweben. [Praxis]",
+    "3d:kasten": "Selten zu erwarten: Das »Leitwerk« ist ein zweiter tragender Flügel, ohne großes, angeblasenes Höhen- und Seitenruder zum Schweben. [Praxis]",
     "speed:hochdecker": "Widerstand und Anordnung arbeiten gegen Geschwindigkeit. [Praxis]",
     "speed:ente": "Selten, aber vorhanden (Speed Canard SC 01 B). [Modelltabelle]",
     "speed:doppeldecker": "Der Widerstand widerspricht der Mission; Doppeldecker-Pylonklassen gibt es, darum nicht unsinnig. [Praxis]",
@@ -765,7 +765,7 @@
     "hang:hochdecker": "Bei Hangseglern selten. [Praxis]",
     "hang:doppeldecker": "Der Wind liefert die Energie; Hang-Doppeldecker aus Schaum fliegen, sind aber selten. [Praxis]",
     "wurf:doppeldecker": "Geworfen wird an der Flügelspitze; die Klasse begrenzt Spannweite (1,5 m) und Servos (2). Streben und zweiter Flügel widersprechen dem. [Quelle: rcn-hlg]",
-    "wurf:kasten": "Ein geschlossener Flügel hat keine freie Spitze zum Werfen. [Praxis]",
+    "wurf:kasten": "Startet wie ein Nurflügel-Segler (Maintainer, 02.10.2026); experimentell, in der Modelltabelle kein Kastenflügel. [Maintainer; Modelltabelle]",
     "wurf:tandem": "Im Prinzip möglich, nie gesehen. [Praxis]",
     "scale:ente": "Nur wenige Vorbilder (Pou-du-Ciel, Quickie, VariEze). [Quelle: lennon-tandem-wing-config; Praxis]",
     "scale:tandem": "Nur wenige Vorbilder (Pou-du-Ciel, Quickie, VariEze). [Quelle: lennon-tandem-wing-config; Praxis]",
@@ -777,5 +777,6 @@
     "P": "möglich",
     "U": "ungewöhnlich",
     "N": "unsinnig"
-  }
+  },
+  "regel": "»Unsinnig« (nicht wählbar) nur mit schriftlicher Quelle oder Aussage des Maintainers; eine Einschätzung aus [Praxis] allein ergibt höchstens »ungewöhnlich«."
 }

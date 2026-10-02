@@ -2265,7 +2265,9 @@ aufbauend auf der früheren Festlegung *Mission → Typ → Spannweite*:
 Jede Kombination Motor × Mission × Bauart ist bewertet (typisch / möglich / ungewöhnlich /
 unsinnig, mit Begründung und Quelle: RC-Fachquellen, Modelltabelle mit 2 674 Modellen,
 sonst als Praxis markiert). Unsinniges ist nicht wählbar — z. B. Doppeldecker-Segler: in der
-Tabelle kein einziger. Die Bewertung ist Auswahlhilfe, nicht Kanon (A10).
+Tabelle kein einziger. **»Unsinnig« nur mit schriftlicher Quelle oder Aussage des
+Maintainers**; eine Einschätzung aus Praxis allein ergibt höchstens »ungewöhnlich«
+(Kastenflügel-Wurfsegler startet wie ein Nurflügel-Segler, Maintainer 02.10.2026). Die Bewertung ist Auswahlhilfe, nicht Kanon (A10).
 
 Daraus entsteht das **Urmodell** (O12): Flächenbelastung aus der Mission, bestes Profil aus der
 DB, Flügel mit so wenigen Segmenten, wie die Ruder brauchen, Schwerpunkt aus Neutralpunkt und
