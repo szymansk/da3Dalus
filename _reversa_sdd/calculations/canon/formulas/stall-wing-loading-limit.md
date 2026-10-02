@@ -21,10 +21,10 @@ tags:
 **Canonical form**
 
 ```
-(W/S)_max,stall = 0.5 * rho * V_S,target^2 * C_L,max,clean
+(W/S)_max,stall = 0.5 * rho_0 * V_S,target^2 * C_L,max,clean
 ```
 
-**Produces** [[wing-loading-limit-stall]]  ·  **from** [[air-density]] · [[stall-speed-target]] · [[max-lift-coefficient]]
+**Produces** [[wing-loading-limit-stall]]  ·  **from** [[sea-level-air-density]] · [[stall-speed-target]] · [[max-lift-coefficient]]
 
 **Kind: a law.** A closed-form relation. Approval asks for its **source** and its **validity at 0.5–15 kg**.
 
@@ -39,7 +39,7 @@ tags:
 **The source writes it as**
 
 ```
-Identical. Sadraey adds two binding usage rules the app should honour: (a) rho must be the SEA-LEVEL value (1.225 kg/m^3), because lowest density gives highest V_s and hence the conservative match; (b) the acceptable region is to the LEFT of the resulting vertical line (lower W/S is always acceptable). Sadraey also notes FAR 23 caps V_s at 61 kt and CS-VLA at 45 kt - FAR 25 has no V_s cap and uses landing field length instead.
+Identical. Sadraey adds two usage rules: (a) rho is the SEA-LEVEL value (1.225 kg/m^3). Corrected 2026-10-02: the earlier gloss called this the conservative choice because lowest density gives highest V_s — that is backwards, sea level is the densest air and gives the LOWEST V_s. It is a convention (stall speeds stated as equivalent airspeed), and the maintainer adopts it for simplicity: RC models are flown by feel, almost never with an airspeed sensor, so V_S,target is meant at sea level. (b) the acceptable region is to the LEFT of the resulting vertical line (lower W/S is always acceptable). Sadraey also notes FAR 23 caps V_s at 61 kt and CS-VLA at 45 kt - FAR 25 has no V_s cap and uses landing field length instead.
 ```
 
 **Validity at 0.5–15 kg.** Valid at RC scale, and it is the right constraint to use for RC (Scholz's Loftin landing-field-length alternative, s_LFL with k_L = 0.107 kg/m^3, is a statistical fit to 1980s jet transports and must NOT be used at 0.5-15 kg). Caveat under ADR 0023: Sadraey's C_L,max source tables 4.10/4.11 have no RC row. The nearest bands are Home-built 1.2-1.8 and Microlight 1.8-2.4. The app's 1.4 default sits inside the home-built band, which is a defensible provenance, but it is a manned-aircraft band, not an RC measurement.
@@ -61,3 +61,12 @@ Identical. Sadraey adds two binding usage rules the app should honour: (a) rho m
 
 > While `status: draft` this entry **cites nothing and decides nothing**.
 
+## Design direction — what this entry is for (maintainer, 2026-10-02)
+
+It turns a **mission target** into a **requirement on the construction** before the airplane
+exists: the highest wing loading that still meets `V_S,target`. That is the purpose of the
+design direction, not a defect — the system is meant to help the designer (a person or an AI
+agent) judge the aircraft's properties and steer the construction. Once an airplane exists,
+the analysis computes `V_S` and the comparison with `V_S,target` closes the loop in the Ablauf.
+
+Open: where `C_L,max` comes from while there is no airplane yet (O12).
