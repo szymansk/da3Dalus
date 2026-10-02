@@ -835,10 +835,17 @@ benannten Punkt — der Neutralpunkt hängt kaum vom Anstellwinkel ab), `static-
 statisch längs **und** seitlich, dazu die vordere Schwerpunktgrenze aus der
 Höhenruderwirkung; Dynamik später.
 
-**Ergänzt am 02.10.2026:** `forward-cg-limit` — der vorderste Schwerpunkt, bei dem das voll
-nach oben ausgeschlagene Höhenruder (wie gebaut) beim Abriss in Landekonfiguration noch trimmt;
-Gültigkeitsbedingung: das Höhenleitwerk ist dort nicht abgerissen; Bodeneffekt nicht modelliert.
-Hinten liefert der Kanon den Neutralpunkt — eine Mindestreserve $SM_{min}$ ist Bewertung (A10).
+**Ergänzt am 02.10.2026 — die Massenhüllkurve** (`mass-envelope`; ersetzt die Nutzlast, die
+nur „wie viel Masse darf dazu“ fragt). Über der Abflugmasse: Geschwindigkeitsbereich $V_S(m)$,
+$V_{max}(m)$; beste Steigrate $ROC_{max}(m)$; $m_{max,level}$, wo kein Horizontalflug mehr
+geht; $m_{max,TO}$, wo das Flugzeug bei der Startgeschwindigkeit nicht mehr aus dem Abheben
+herauskommt (das Bild des überladenen Bombers — es liegt vor $m_{max,level}$); der trimmbare
+Schwerpunktbereich $[x_{fwd}(m), x_{aft}(m)]$ — volles Höhenruder nach oben beim Abriss in
+Landekonfiguration, nach unten bei $V_{max}(m)$, wie gebaut (Sadraey Gl. 12.90); der Neutralpunkt
+daneben als physikalische Grenze. Dazu `max-mass-structure`: $m_{max,struct} = n_{break,+}\,m$, ab der
+der Holm nicht einmal 1 g hält. Alles physikalische Grenzen, keine Bewertung (A10). Wohin eine
+Zuladung den Schwerpunkt schiebt, liest der Konstrukteur am Diagramm ab. Gültigkeitsbedingungen:
+Leitwerk an den Trimmpunkten nicht abgerissen, Bodeneffekt nicht modelliert.
 `lateral-static-stability-md` / `-app` — $C_{l\beta}$, $C_{n\beta}$ und das Spiralkriterium
 $C_{l\beta} C_{nr} - C_{n\beta} C_{lr}$ bei $V_{md}$ und im Anflug; Werte, keine Urteile; vor
 der Freigabe Gegenprüfung mit AVL am Bryan (Flügellage, Seitenleitwerk im Nachlauf).
@@ -2290,7 +2297,8 @@ Was schon ein Ticket hat, steht mit Nummer dabei und fällt dann nicht noch einm
 | K20 | Pistenstufe/Feldlänge nicht im Kanon (Over-Engineering) — die Feldlängen-Funktion der App hat damit keine Kanon-Grundlage; Entfernen nach ADR 0021 bei der Freigabe entscheiden | §3.8, §3.9 | `field_length_service` |
 | K21 | Butterfly im Anflug: $V_{S0}(s)$, $V_{app}(s)$, Gleitwinkel, $s_{max}$ | §3.7 | — |
 | K22 | Längsstabilität statisch: $x_{NP}$ bei $V_{md}$, $SM$, $x_{CG}$ aus $SM_{target}$, Probe $-C_{m\alpha}/C_{L\alpha}$ | §2.3 | ADR-0004-Kontext (ein Wert am Reiseflugpunkt), eigene Neutralpunkt-Wege |
-| K23 | Vordere Schwerpunktgrenze aus der Höhenruderwirkung; Seitenstabilität statisch ($C_{l\beta}$, $C_{n\beta}$, Spiralkriterium) bei $V_{md}$ und im Anflug | §2.3 | — |
+| K23 | Seitenstabilität statisch ($C_{l\beta}$, $C_{n\beta}$, Spiralkriterium) bei $V_{md}$ und im Anflug | §2.3 | — |
+| K24 | Massenhüllkurve: $V_S(m)$, $V_{max}(m)$, $ROC_{max}(m)$, $m_{max,level}$, $m_{max,TO}$, trimmbarer Schwerpunktbereich über der Masse; $m_{max,struct}$ | §2.3 | `forward_cg`-Endpunkt, Nutzlast-/Missionsrechnungen |
 
 ## Arbeitsregeln
 

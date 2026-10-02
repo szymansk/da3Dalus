@@ -313,3 +313,7 @@ Als Nächstes: Seitenstabilität (C_lβ, C_nβ), vordere Grenze.
 Bewertung. Stabilität Schritt 2: `forward-cg-limit` (x_fwd, Abriss in Landekonfiguration, volles
 Höhenruder wie gebaut), `lateral-static-stability-md/-app` (C_lβ, C_nβ, Spiralkriterium);
 AVL-Gegenprüfung vor Freigabe.
+
+**Massenhüllkurve (02.10.2026, ersetzt Nutzlast):** `mass-envelope` — V_S(m), V_max(m), ROC_max(m),
+m_max,level, m_max,TO (Bomberbild), trimmbarer SP-Bereich über m; `max-mass-structure`;
+`forward-cg-limit` darin aufgegangen. Nutzlast ist kein Kanonthema.

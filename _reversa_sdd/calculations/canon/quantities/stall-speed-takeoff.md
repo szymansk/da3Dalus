@@ -18,4 +18,4 @@ Stall speed with the airplane in its take-off configuration — flaps as constru
 
 **Produced by.** [[stall-speed]]
 
-**Used by.** [[speed-from-stall-margin]]
+**Used by.** [[mass-envelope]] · [[speed-from-stall-margin]]

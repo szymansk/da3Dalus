@@ -18,4 +18,4 @@ Chord used to form the Reynolds number for the speed-scheduled polar lookup.
 
 **Produced by.** [[airplane-geometry]]
 
-**Used by.** [[cg-for-target-margin]] · [[forward-cg-limit]] · [[static-margin]]
+**Used by.** [[cg-for-target-margin]] · [[static-margin]]

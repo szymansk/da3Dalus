@@ -3,11 +3,11 @@ canon: break-load-factor-positive
 kind: quantity
 symbol: n_break,+
 unit: dimensionless
-role: output
+role: derived
 status: draft
 tags:
   - canon/quantity
-  - role/output
+  - role/derived
 ---
 
 # Break load factor, upward · `n_break,+`
@@ -17,3 +17,5 @@ Load factor at which the fitted spar breaks under upward load (positive g). A pr
 **Unit.** `dimensionless`
 
 **Produced by.** [[spar-break-load-factor]]
+
+**Used by.** [[max-mass-structure]]

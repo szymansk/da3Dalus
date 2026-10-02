@@ -3,11 +3,11 @@ canon: takeoff-speed
 kind: quantity
 symbol: V_TO
 unit: m/s
-role: output
+role: derived
 status: draft
 tags:
   - canon/quantity
-  - role/output
+  - role/derived
 ---
 
 # takeoff speed · `V_TO`
@@ -18,3 +18,5 @@ Betriebspunktgeschwindigkeit — jede trägt ihren Punkt im Namen (A2).
 **Unit.** `m/s`
 
 **Produced by.** [[speed-from-stall-margin]]
+
+**Used by.** [[mass-envelope]]
