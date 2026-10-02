@@ -308,3 +308,8 @@ Kriterien erst nach RC-Fachquelle.
 SP-Grenze aus Höhenruderwirkung; Dynamik später. Schritt 1 angelegt: `neutral-point` (V_md),
 `static-margin`, `cg-for-target-margin`, `static-margin-probe`; x_CG Eingabe, SM_target Zielwert.
 Als Nächstes: Seitenstabilität (C_lβ, C_nβ), vordere Grenze.
+
+**A10 (02.10.2026, Maintainer): Der Kanon rechnet, er bewertet nicht.** SM_min/Bänder/Pass-Fail →
+Bewertung. Stabilität Schritt 2: `forward-cg-limit` (x_fwd, Abriss in Landekonfiguration, volles
+Höhenruder wie gebaut), `lateral-static-stability-md/-app` (C_lβ, C_nβ, Spiralkriterium);
+AVL-Gegenprüfung vor Freigabe.

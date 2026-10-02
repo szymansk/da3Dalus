@@ -16,4 +16,4 @@ Longitudinal CG position of the aircraft. **An input of the canon** like the mas
 
 **Unit.** `m`
 
-**Used by.** [[static-margin-probe]] · [[static-margin]]
+**Used by.** [[lateral-static-stability-app]] · [[lateral-static-stability-md]] · [[static-margin-probe]] · [[static-margin]]

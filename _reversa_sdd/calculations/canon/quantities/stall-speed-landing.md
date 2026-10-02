@@ -18,4 +18,4 @@ Stall speed with the airplane in its landing configuration — flaps as construc
 
 **Produced by.** [[stall-speed]]
 
-**Used by.** [[butterfly-approach]] · [[speed-from-stall-margin]]
+**Used by.** [[butterfly-approach]] · [[forward-cg-limit]] · [[speed-from-stall-margin]]

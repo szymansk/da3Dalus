@@ -833,7 +833,15 @@ benannten Punkt — der Neutralpunkt hängt kaum vom Anstellwinkel ab), `static-
 `pitching-moment-slope`. $x_\mathrm{CG}$ ist in der Analyse eine **Eingabe** wie die Masse
 (A6); $SM_\mathrm{target}$ ein **Zielwert** (A9). Der Umfang ist mit dem Maintainer vereinbart:
 statisch längs **und** seitlich, dazu die vordere Schwerpunktgrenze aus der
-Höhenruderwirkung; Dynamik später. Seitenstabilität und vordere Grenze folgen.
+Höhenruderwirkung; Dynamik später.
+
+**Ergänzt am 02.10.2026:** `forward-cg-limit` — der vorderste Schwerpunkt, bei dem das voll
+nach oben ausgeschlagene Höhenruder (wie gebaut) beim Abriss in Landekonfiguration noch trimmt;
+Gültigkeitsbedingung: das Höhenleitwerk ist dort nicht abgerissen; Bodeneffekt nicht modelliert.
+Hinten liefert der Kanon den Neutralpunkt — eine Mindestreserve $SM_{min}$ ist Bewertung (A10).
+`lateral-static-stability-md` / `-app` — $C_{l\beta}$, $C_{n\beta}$ und das Spiralkriterium
+$C_{l\beta} C_{nr} - C_{n\beta} C_{lr}$ bei $V_{md}$ und im Anflug; Werte, keine Urteile; vor
+der Freigabe Gegenprüfung mit AVL am Bryan (Flügellage, Seitenleitwerk im Nachlauf).
 
 #### Ausgaben des ganzen Schritts
 
@@ -2155,6 +2163,19 @@ zielwertgebundenen in **einem** Eintrag stehen (so wurde `roll-authority` in
 **Prüfung.** Kein Eingabeknoten heißt `requirement`, `goal` oder `req`; jeder Zielwert hat
 `role: target`.
 
+### A10 — Der Kanon rechnet, er bewertet nicht
+
+**Anforderung (Maintainer, 02.10.2026).** Der Kanon rechnet **das, womit man später bewerten
+kann** — er bewertet selbst nicht. Grenzwerte zur Interpretation (eine Mindest-Stabilitätsreserve
+$SM_{min}$, Bänder je Modellklasse, Bestanden/Nicht-bestanden) gehören in die Bewertung bzw. zum
+Konstrukteur, nicht in den Kanon. Erlaubt bleiben **Zielwerte** (A9), weil sich der Entwurf über
+sie an die Mission herantastet, und **Gültigkeitsbedingungen** einer Rechnung (etwa: das
+Höhenleitwerk darf beim Trimmpunkt nicht selbst abgerissen sein) — die sagen, ob ein Wert gilt,
+nicht, ob er gut ist.
+
+**Anlass.** Beim Schwerpunktbereich: Der Kanon liefert den Neutralpunkt und die vordere Grenze aus
+der Höhenruderwirkung; wie viel Abstand zum Neutralpunkt man hält, ist Bewertung.
+
 ### A7 — Eine Autorität je nutzersichtbarer Größe
 
 **Status: entschieden (ADR 0022).**
@@ -2269,6 +2290,7 @@ Was schon ein Ticket hat, steht mit Nummer dabei und fällt dann nicht noch einm
 | K20 | Pistenstufe/Feldlänge nicht im Kanon (Over-Engineering) — die Feldlängen-Funktion der App hat damit keine Kanon-Grundlage; Entfernen nach ADR 0021 bei der Freigabe entscheiden | §3.8, §3.9 | `field_length_service` |
 | K21 | Butterfly im Anflug: $V_{S0}(s)$, $V_{app}(s)$, Gleitwinkel, $s_{max}$ | §3.7 | — |
 | K22 | Längsstabilität statisch: $x_{NP}$ bei $V_{md}$, $SM$, $x_{CG}$ aus $SM_{target}$, Probe $-C_{m\alpha}/C_{L\alpha}$ | §2.3 | ADR-0004-Kontext (ein Wert am Reiseflugpunkt), eigene Neutralpunkt-Wege |
+| K23 | Vordere Schwerpunktgrenze aus der Höhenruderwirkung; Seitenstabilität statisch ($C_{l\beta}$, $C_{n\beta}$, Spiralkriterium) bei $V_{md}$ und im Anflug | §2.3 | — |
 
 ## Arbeitsregeln
 

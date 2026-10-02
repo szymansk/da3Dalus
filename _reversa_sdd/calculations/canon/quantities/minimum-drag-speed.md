@@ -22,4 +22,4 @@ Speed at which C_L/C_D is maximum; the best-glide and best-range speed for a pro
 
 **Produced by.** [[minimum-drag-speed-from-polar]]
 
-**Used by.** [[endurance-and-range]] · [[neutral-point]] · [[static-margin-probe]]
+**Used by.** [[endurance-and-range]] · [[lateral-static-stability-md]] · [[neutral-point]] · [[static-margin-probe]]
