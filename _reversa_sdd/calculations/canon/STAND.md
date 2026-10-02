@@ -264,3 +264,8 @@ Geschwindigkeit (Reiseflug, Anflug), vom Maintainer bestätigt — gegen die **i
 festgelegten** Querruderausschläge (Konstruktionsparameter: Freiraum, Servokinematik,
 Ruderhorn). Ergebnis: $p_{max}$ bei vollem Ausschlag und der nötige Anteil $s_{req}$;
 $s_{req} > 1$ = nicht erreichbar. AeroBuildup reicht (Auftrieb, nicht induzierter Widerstand).
+
+**Ausblick (02.10.2026), ANFORDERUNGEN §6:** später auf dem Kanon Maßnahmen zum Zielwert
+und Zielkonflikte als Pareto-Front (ε-Constraint mit `asb.Opti`; Hebel = alles an
+`airplane`, Zielgrößen = gestrichelt). Musterfall $V_S$ gegen $V_{max}$; Klappen weiten die
+Front. Richtung, keine Entscheidung — ohne Ticket.

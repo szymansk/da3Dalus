@@ -2155,6 +2155,33 @@ eines ohne Abbruchbedingung.
 
 ---
 
+## 6. Ausblick — Maßnahmen und Zielkonflikte (Pareto)
+
+**Richtung, vom Maintainer gesetzt (02.10.2026) — noch keine Entscheidung, deshalb ohne
+Ticket.** Auf dem Kanon aufbauend soll später sichtbar werden, **welche Maßnahmen** einen
+Wert näher an seinen Zielwert bringen und **wie das auf die anderen Zielwerte wirkt** — im
+Sinne einer Pareto-Front. Ziel ist eine ehrliche Aussage wie: *Ein Flugzeug mit sehr gutem
+Schnellflug und sehr gutem Langsamflug zugleich lässt sich nicht bauen.*
+
+**Was der Kanon dafür schon trennt.**
+
+| Rolle | im Kanon | Beispiel |
+|---|---|---|
+| Hebel | Konstruktionsparameter, alles was an `airplane` hängt | Flügelfläche, Streckung, Profil, Klappen, Masse, Antrieb, Ausschläge |
+| Zielgröße | stromabwärts eines Zielwerts, im Navigator gestrichelt (A9) | $V_S$ gegen $V_{S,target}$, $s_{req}$, $(W/S)_{max,stall}$ |
+| Zielwert | `role: target` | $V_{S,target}$, $p_{target}$, $n_{lim}$ |
+
+**Wie es gerechnet würde.** Mit demselben Werkzeug wie Abriss, Steigen und Kurve
+(`asb.Opti`): eine Zielgröße optimieren, die anderen als Nebenbedingung auf ein Niveau
+binden, das Niveau verschieben — jeder Schritt ein Punkt der Front
+($\varepsilon$-Constraint-Verfahren).
+
+**Das Musterbeispiel.** $V_S$ und $V_{max}$ ziehen über die Flächenbelastung gegeneinander:
+klein heißt langsam, groß heißt schnell. Was die Front **aufweitet**, sind Maßnahmen, die
+die Geometrie je Flugzustand ändern — Wölb-, Lande- und Rennklappen. Damit kehrt die frühe
+Frage zurück, ab wann solche Mittel einen Anfänger überfordern; sie gehört in die
+Bewertung (Bänder), nicht in die Rechnung.
+
 ## Arbeitsregeln
 
 **KISS — und der Zweck ist der Filter.** Wir bauen ein Werkzeug für Modellflugzeuge und
