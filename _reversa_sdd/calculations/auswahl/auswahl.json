@@ -809,7 +809,7 @@
     },
     {
       "was": "Antrieb",
-      "aus": "Leistungsbelastung (Band) mal Masse, erste Wahl aus dem Teilekatalog",
+      "aus": "Leistungsbelastung (Band W/kg je Mission) mal Masse, erste Wahl aus dem Teilekatalog",
       "art": "Auswahl",
       "nur_motor": true
     },
@@ -1080,5 +1080,53 @@
       "scale_segler": 14
     }
   },
-  "bewertung_quelle": "RC-Prüfer 02.10.2026 in der neuen Einteilung (Tragflügel, Flügellage, Leitwerksgruppe); Modelltabelle per Stichwortsuche zugeordnet, n-Werte nur Anhalt."
+  "bewertung_quelle": "RC-Prüfer 02.10.2026 in der neuen Einteilung (Tragflügel, Flügellage, Leitwerksgruppe); Modelltabelle per Stichwortsuche zugeordnet, n-Werte nur Anhalt.",
+  "baender": {
+    "leistungsbelastung_w_kg": {
+      "einheit": "W/kg, elektrische Eingangsleistung bei Vollgas je kg Abfluggewicht",
+      "quelle": "BAENDER.md §3a, Maintainer 02.10.2026",
+      "werte": {
+        "trainer": [
+          110,
+          150,
+          200
+        ],
+        "sport": [
+          165,
+          220,
+          265
+        ],
+        "kunstflug": [
+          220,
+          300,
+          400
+        ],
+        "3d": [
+          330,
+          400,
+          500
+        ],
+        "speed": [
+          350,
+          500,
+          1000
+        ],
+        "elektrosegler": [
+          110,
+          165,
+          250
+        ],
+        "scale": [
+          155,
+          220,
+          330
+        ],
+        "park": [
+          110,
+          180,
+          270
+        ]
+      }
+    }
+  }
 }

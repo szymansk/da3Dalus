@@ -47,7 +47,7 @@ Jede dieser Angaben kommt aus einer Antwort, einem Band oder einem Vorgabewert.
 | Ruderausschläge | einzelne Werte [V]; je Mission — |
 | Stabilitätsreserve-Ziel | Trainer, Sport, Kunstflug, Nurflügel [V]; Segler — |
 | Schwerpunkt | Kanon: `cg-for-target-margin` aus Neutralpunkt und Stabilitätsreserve-Ziel |
-| Antrieb | Leistungsbelastung W/kg (§3a, Vorschlag) mal Masse, dann erste Wahl aus dem Teilekatalog |
+| Antrieb | Leistungsbelastung W/kg (§3a, Band) mal Masse, dann erste Wahl aus dem Teilekatalog |
 
 ## 2. Statistik der Modelltabelle [T]
 
@@ -165,11 +165,11 @@ Die Quellen streuen etwa um den Faktor 1,5 bis 2. Der Wert dient nur zur **erste
 Urmodells. Danach rechnet der Kanon Schub und Steigen aus Motor und Propeller
 (`motor-propeller-equilibrium`, Route A leistungsbegrenzt), nicht aus W/kg.
 
-**Status:** Vorschlag. Die Entscheidung des Maintainers steht aus.
+**Status:** ✅ Vom Maintainer am 02.10.2026 als Band übernommen (Spalte „Vorschlag“).
 
 ## 4. Lücken: Bänder ohne Quelle
 
-1. ~~Leistungsbelastung W/kg~~: recherchiert in §3a, die Entscheidung des Maintainers steht aus.
+1. ~~Leistungsbelastung W/kg~~: ✅ entschieden am 02.10.2026 (§3a).
 2. **Pfeilung des Nurflügels.**
 3. **Segler:** Stabilitätsreserve-Ziel und Leitwerkshebel für alle Segler-Missionen.
 4. **3D, Speed, Park und Scale:** Zuspitzung, Leitwerksvolumen, Stabilitätsreserve und Ruder. Aus
