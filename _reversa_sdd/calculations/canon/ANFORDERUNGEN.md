@@ -2212,7 +2212,7 @@ eines ohne Abbruchbedingung.
 | **O9** | *Geklärt, siehe §3.1 — eine Größe mit veränderlicher Genauigkeit.* §2.1 erzeugt ein **Massenband**, §2.3 verbraucht einen **Massenpunktwert**. Wie kommt man vom einen zum anderen — wählt der Konstrukteur einen Wert im Band, oder rechnet die Analyse über das ganze Band? | Anschluss von §2.1 an §2.3 |
 | **O10** | Woher kommen $m$, $h$, $V$, Ruderstellung und Genauigkeitsstufe? Im Ablauf haben sie **keinen Ursprung**. Platzhöhe und Fluggeschwindigkeit sind plausibel Missionsangaben; Ruderstellung und Genauigkeitsstufe sind eher Analyseeinstellungen und gar keine Entwurfsgrößen. | Vollständigkeit von §1 |
 | **O11** | ✅ **Entschieden 01.10.2026:** Route A ist **leistungsbegrenzt** — Drehzahl abgesenkt, bis der Propeller höchstens $\eta_{mot}\,P_{mot,max}$ aufnimmt. „Wie gebaut“ (Schub bei Leerlaufdrehzahl) ist ein Code-Defekt (#1150). | Steigen, Kurve, $V_{max}$ auf Route A |
-| **O12** | Woher kommt in der **Auslegungsrichtung** ein Wert, den es erst mit dem Flugzeug gibt — z. B. $C_{L,max}$ für $(W/S)_{max,stall}$? Aus der Profilwahl (NeuralFoil), als Vorgabe je Flugzeugtyp (Quelle nach ADR 0023) oder vom Nutzer — jeweils als Annahme benannt (A2), getrennt vom gerechneten $C_{L,max,stall}$. | Alle Auslegungsformeln: Flächenbelastung, Leitwerke, Hebelarm |
+| **O12** | ✅ **Entschieden 02.10.2026:** Die Auslegungsrichtung schätzt keine Beiwerte. Aus den geführten Fragen entsteht ein **Urmodell** — Flächenbelastung aus der Mission, bestes Profil aus der DB, Flügel mit so wenigen Segmenten, wie die Ruder brauchen, Schwerpunkt aus dem Neutralpunkt und $SM_{target}$, also stabil per Konstruktion — und der Kanon rechnet es wie jedes Flugzeug. Der Generator (mit Design-Agent, Epic #902) gehört zum Ablauf, nicht zum Rechenkern. `cruise-thrust-constraint` gestrichen; `stall-wing-loading-limit` bleibt nur als Hilfe bei vorgegebener Ziel-Abrissgeschwindigkeit, mit $C_{L,max}$ aus dem gewählten Profil. | Auslegungsrichtung |
 | **O13** | ✅ **Entschieden 02.10.2026 — [ADR 0026](../../adrs/0026-aero-truth-from-the-solver-not-the-parabola.md):** Die Analyse rechnet mit dem Solver-Widerstand; $(L/D)_{max} = W/D(V_{md})$; die Parabelformel ist Probe. $C_{D0}$ und $e$ sind die Parabel-Anpassung über den genutzten $C_L$-Bereich, nur Anzeige und berechneter Wert der Entwurfsannahme (ADR 0010). Auslegung: Scholz-Kette mit $c_f$ bei Missions-Reynoldszahl. Vorbehalt: AeroBuildups $e$ zählt auftriebsabhängigen Profilwiderstand teils doppelt (Bryan: 9 % mehr induzierter Widerstand als AVL). | Flugdauer, Reichweite, $(L/D)_{max}$, Anzeige $C_{D0}$/$e$ |
 | **O6** | Wie weit der **ASB-Sweep** Eingaben ersetzt. Der Solver kann über nahezu jeden Parameter fahren; jeder, den er sinnvoll durchfährt, ist einer, den niemand raten muss. | Umfang von Ebene 0 |
 
@@ -2252,14 +2252,21 @@ weit“). Festgehalten, damit es nicht verloren geht: Ein geführter Prozess fra
 jede Antwort den Lösungsraum stark beschneidet **und** das Bild im Kopf schärft. Für RC,
 aufbauend auf der früheren Festlegung *Mission → Typ → Spannweite*:
 
-1. Wofür — Mission und Charakter
-2. Wer fliegt — Erfahrung
-3. Typ — Motormodell, Segler, Motorsegler, Nurflügel
-4. Wo und wie gestartet/gelandet — Gelände, Start- und Landeart
-5. Wie groß — Spannweite
-6. Wie gebaut — Rippen, Druck, Schaum
-7. Grundanordnung — Decker, Leitwerk, Antrieb, Fahrwerk
-8. Wie viele Ruder
+**Festgelegt am 02.10.2026 (Maintainer) — vier Fragen bis zum Urmodell:**
+
+1. **Motorisiert?** ja / nein — die erste Frage überhaupt; sie teilt Missionen, Bauarten und Bänder
+2. **Mission** — Trainer, Kunstflug, Hotwing, Hang, Thermik …
+3. **Bauart** — Normal (Hoch-, Schulter-, Mittel-, Tiefdecker), Ente, Nurflügel, Doppeldecker …
+4. **Spannweite**
+
+Daraus entsteht das **Urmodell** (O12): Flächenbelastung aus der Mission, bestes Profil aus der
+DB, Flügel mit so wenigen Segmenten, wie die Ruder brauchen, Schwerpunkt aus Neutralpunkt und
+$SM_{target}$ — ein gültiges, stabiles Flugzeug, das der Konstrukteur weiter formt. Alles
+Weitere (Bauweise, Erfahrung, Ruderzahl) sind Vorgaben, die er ändert. Der Auswahlgraph liegt
+parallel zum Kanon unter `_reversa_sdd/calculations/auswahl/`.
+
+*Frühere Fassung (verworfen):* Wofür · Wer fliegt · Typ · Gelände · Spannweite · Bauweise ·
+Anordnung · Ruderzahl.
 
 Quer dazu die Abkürzung **„Hast du ein Vorbild?“** — die Referenzflotte (Bryan, SNACK)
 liefert dafür die Anker. Prüfstein: Die Bänder, die der Prozess aus den Antworten eines

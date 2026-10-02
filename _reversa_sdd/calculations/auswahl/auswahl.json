@@ -1,0 +1,65 @@
+{
+  "stand": "02.10.2026",
+  "hinweis": "Bänder und Plausibilität je Kombination folgen mit RC-Quellen (ADR 0023). Die Seite zeigt, was jede Antwort festlegt — keine Zahlenwerte ohne Quelle.",
+  "schritte": [
+    {
+      "id": "motor",
+      "frage": "Motorisiert?",
+      "warum": "Die erste Frage überhaupt: Sie teilt Missionen, Bauarten und Bänder in zwei Welten.",
+      "optionen": [
+        {"id": "ja", "name": "Ja", "kurz": "Elektroantrieb an Bord", "legt_fest": ["Antrieb vorhanden: Motor, Propeller, Regler, Akku", "Leistungsbelastung W/P als Band der Mission", "Steigen, Kurve, V_max und Massenhüllkurve hängen am Schub"]},
+        {"id": "nein", "name": "Nein", "kurz": "Segler ohne Antrieb", "legt_fest": ["Kein Antrieb: Energie aus Höhe, Thermik oder Hangaufwind", "Gleitzahl und Sinken sind die Leistungsgrößen", "Steigen und V_max entfallen"]}
+      ]
+    },
+    {
+      "id": "mission",
+      "frage": "Mission",
+      "warum": "Der Charakter des Modells. Sie setzt die Bänder, aus denen das Urmodell dimensioniert wird.",
+      "optionen": [
+        {"id": "trainer", "name": "Trainer", "wenn": {"motor": "ja"}, "kurz": "Fliegen lernen", "legt_fest": ["Niedrige Flächenbelastung", "Hohe Stabilitätsreserve, deutliche V-Form", "Gutmütiges Abrissverhalten"]},
+        {"id": "sport", "name": "Sport / Allround", "wenn": {"motor": "ja"}, "kurz": "Vielseitig fliegen", "legt_fest": ["Mittlere Flächenbelastung", "Mittlere Stabilitätsreserve, wenig V-Form", "Querruder"]},
+        {"id": "kunstflug", "name": "Kunstflug", "wenn": {"motor": "ja"}, "kurz": "Figuren, Rückenflug", "legt_fest": ["Symmetrisches Profil", "Kleine Stabilitätsreserve, keine V-Form", "Große Ruderausschläge, hohe Rollrate"]},
+        {"id": "3d", "name": "3D", "wenn": {"motor": "ja"}, "kurz": "Schweben, Torque Roll", "legt_fest": ["Schub-Gewicht über 1", "Sehr große Ruderflächen und Ausschläge", "Stabilitätsreserve nahe null"]},
+        {"id": "speed", "name": "Speed (Hotliner, Hotwing)", "wenn": {"motor": "ja"}, "kurz": "Schnell fliegen", "legt_fest": ["Hohe Flächenbelastung", "Dünnes Profil, kleine Stirnfläche", "Hohe Leistungsbelastung"]},
+        {"id": "elektrosegler", "name": "Elektrosegler", "wenn": {"motor": "ja"}, "kurz": "Steigen mit Motor, dann segeln", "legt_fest": ["Große Streckung, Seglerprofil", "Motor nur zum Steigen: Steigrate zählt, V_max kaum", "Klappbarer Propeller"]},
+        {"id": "scale", "name": "Scale", "wenn": {"motor": "ja"}, "kurz": "Wie das Original", "legt_fest": ["Grundriss und Proportionen vom Vorbild", "Bänder nur als Prüfung, nicht als Vorgabe"]},
+        {"id": "park", "name": "Parkflyer / Indoor", "wenn": {"motor": "ja"}, "kurz": "Kleiner Platz, langsam", "legt_fest": ["Sehr niedrige Flächenbelastung", "Kleine Spannweite, sehr leichte Bauweise"]},
+        {"id": "thermik", "name": "Thermik", "wenn": {"motor": "nein"}, "kurz": "Aufwinde nutzen", "legt_fest": ["Niedrige Flächenbelastung, große Streckung", "Geringes Sinken bei V_mp", "Wölbklappen und Butterfly häufig"]},
+        {"id": "hang", "name": "Hang (Slope)", "wenn": {"motor": "nein"}, "kurz": "Hangaufwind", "legt_fest": ["Höhere Flächenbelastung, Ballast", "Gute Gleitzahl auch schnell", "Robust für Landung im Gelände"]},
+        {"id": "wurf", "name": "Wurfsegler (HLG / DLG)", "wenn": {"motor": "nein"}, "kurz": "Hand- oder Schleuderstart", "legt_fest": ["Sehr niedrige Masse", "Kleine Spannweite, sehr leichter Aufbau", "Wurf als Start"]},
+        {"id": "scale_segler", "name": "Scale-Segler", "wenn": {"motor": "nein"}, "kurz": "Wie das Original", "legt_fest": ["Grundriss und Proportionen vom Vorbild", "Bänder nur als Prüfung"]}
+      ]
+    },
+    {
+      "id": "bauart",
+      "frage": "Bauart",
+      "warum": "Die Topologie: welche Flächen es gibt, wo sie sitzen, welches Leitwerk.",
+      "optionen": [
+        {"id": "hochdecker", "name": "Hochdecker", "gruppe": "Normal", "kurz": "Flügel oben am Rumpf", "legt_fest": ["Normalleitwerk hinten", "Pendelstabilität: weniger V-Form nötig", "Leitwerksvolumen aus Bändern"]},
+        {"id": "schulterdecker", "name": "Schulterdecker", "gruppe": "Normal", "kurz": "Flügel knapp unter der Oberkante", "legt_fest": ["Normalleitwerk hinten", "V-Form zwischen Hoch- und Mitteldecker"]},
+        {"id": "mitteldecker", "name": "Mitteldecker", "gruppe": "Normal", "kurz": "Flügel in Rumpfmitte", "legt_fest": ["Normalleitwerk hinten", "Neutrale Flügellage für die Rollstabilität"]},
+        {"id": "tiefdecker", "name": "Tiefdecker", "gruppe": "Normal", "kurz": "Flügel unten am Rumpf", "legt_fest": ["Normalleitwerk hinten", "Mehr V-Form für dieselbe Rollstabilität"]},
+        {"id": "nurfluegel", "name": "Nurflügel", "gruppe": "Ohne Höhenleitwerk", "kurz": "Kein Höhenleitwerk", "legt_fest": ["Pfeilung oder S-Schlag-Profil für die Längsstabilität", "Elevons statt Höhen- und Querruder", "Andere Stabilitätslogik (Lennon: eigene Reserven)"]},
+        {"id": "ente", "name": "Ente", "gruppe": "Ohne Höhenleitwerk hinten", "kurz": "Vorflügel vorn", "legt_fest": ["Vorderer Flügel trägt mit", "Stabilitätslogik kehrt sich um", "Vorflügel muss vor dem Hauptflügel abreißen"]},
+        {"id": "doppeldecker", "name": "Doppeldecker", "gruppe": "Mehrere Tragflächen", "kurz": "Zwei Tragflächen übereinander", "legt_fest": ["Zwei Flügel mit Staffelung und Abstand", "Gegenseitige Beeinflussung der Flügel", "Normalleitwerk hinten"]}
+      ]
+    },
+    {
+      "id": "spannweite",
+      "frage": "Spannweite",
+      "warum": "Die erste Zahl. Mit den Bändern der Mission folgt daraus das ganze Gerüst.",
+      "eingabe": {"einheit": "mm", "min": 300, "max": 4000, "schritt": 10, "beispiel": 1400},
+      "legt_fest": ["Größe des Modells", "Mit der Streckung: Flügeltiefe und Flügelfläche", "Mit der Flächenbelastung: die Zielmasse", "Mit Flügeltiefe und Fluggeschwindigkeit: die Reynoldszahl für die Profilwahl"]
+    }
+  ],
+  "urmodell": [
+    {"was": "Flügelfläche und -tiefe", "aus": "Spannweite und Streckung (Band der Mission)", "art": "Rechnung"},
+    {"was": "Zielmasse", "aus": "Flügelfläche und Flächenbelastung (Band der Mission)", "art": "Rechnung"},
+    {"was": "Profil", "aus": "Beste Wahl aus der Profil-DB für Profilklasse und Reynoldszahl (gh-821)", "art": "Auswahl"},
+    {"was": "Flügelsegmente", "aus": "So wenige, wie die Ruder der Mission brauchen", "art": "Topologie"},
+    {"was": "Leitwerk und Hebelarm", "aus": "Bauart und Leitwerksvolumen (Band)", "art": "Topologie"},
+    {"was": "Schwerpunkt", "aus": "Neutralpunkt und SM_target — stabil per Konstruktion", "art": "Kanon", "eintrag": "cg-for-target-margin"},
+    {"was": "Antrieb", "aus": "Leistungsbelastung (Band) mal Masse, erste Wahl aus dem Teilekatalog", "art": "Auswahl", "nur_motor": true},
+    {"was": "Alle Leistungs- und Stabilitätswerte", "aus": "Der Rechenkanon rechnet das Urmodell wie jedes Flugzeug", "art": "Kanon", "eintrag": "navigator"}
+  ]
+}

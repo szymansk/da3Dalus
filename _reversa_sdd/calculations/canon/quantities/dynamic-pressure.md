@@ -18,4 +18,4 @@ Half rho V squared, the scaling between forces and coefficients.
 
 **Produced by.** [[dynamic-pressure]]
 
-**Used by.** [[cruise-thrust-constraint]] · [[lift-coefficient-required]]
+**Used by.** [[lift-coefficient-required]]

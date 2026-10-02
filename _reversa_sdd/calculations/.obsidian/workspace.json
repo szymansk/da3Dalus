@@ -1,0 +1,197 @@
+{
+  "main": {
+    "id": "5f040c4159e6a48e",
+    "type": "split",
+    "children": [
+      {
+        "id": "b2501f7cee4d68f8",
+        "type": "tabs",
+        "children": [
+          {
+            "id": "43cfe2170afea367",
+            "type": "leaf",
+            "state": {
+              "type": "markdown",
+              "state": {
+                "file": "canon/formulas/minimum-sink-speed-from-polar.md",
+                "mode": "source",
+                "source": false
+              },
+              "icon": "lucide-file",
+              "title": "minimum-sink-speed-from-polar"
+            }
+          }
+        ]
+      }
+    ],
+    "direction": "vertical"
+  },
+  "left": {
+    "id": "390a842f19085e5b",
+    "type": "split",
+    "children": [
+      {
+        "id": "3a70c83184da1446",
+        "type": "tabs",
+        "children": [
+          {
+            "id": "6ea7d5a0b4e83465",
+            "type": "leaf",
+            "state": {
+              "type": "file-explorer",
+              "state": {
+                "sortOrder": "alphabetical",
+                "autoReveal": false
+              },
+              "icon": "lucide-folder-closed",
+              "title": "Dateiexplorer"
+            }
+          },
+          {
+            "id": "7b97e7532e8648ad",
+            "type": "leaf",
+            "state": {
+              "type": "search",
+              "state": {
+                "query": "",
+                "matchingCase": false,
+                "explainSearch": false,
+                "collapseAll": false,
+                "extraContext": false,
+                "sortOrder": "alphabetical"
+              },
+              "icon": "lucide-search",
+              "title": "Suchen"
+            }
+          },
+          {
+            "id": "22db66bfe5bbd5aa",
+            "type": "leaf",
+            "state": {
+              "type": "bookmarks",
+              "state": {},
+              "icon": "lucide-bookmark",
+              "title": "Lesezeichen"
+            }
+          }
+        ]
+      }
+    ],
+    "direction": "horizontal",
+    "width": 300
+  },
+  "right": {
+    "id": "6961141399382eab",
+    "type": "split",
+    "children": [
+      {
+        "id": "3f9a433569563b5c",
+        "type": "tabs",
+        "children": [
+          {
+            "id": "8c17a0f87663619c",
+            "type": "leaf",
+            "state": {
+              "type": "backlink",
+              "state": {
+                "file": "canon/formulas/minimum-sink-speed-from-polar.md",
+                "collapseAll": false,
+                "extraContext": false,
+                "sortOrder": "alphabetical",
+                "showSearch": false,
+                "searchQuery": "",
+                "backlinkCollapsed": false,
+                "unlinkedCollapsed": true
+              },
+              "icon": "links-coming-in",
+              "title": "Rückverweise auf minimum-sink-speed-from-polar"
+            }
+          },
+          {
+            "id": "3d2bbd8ae2b1b2eb",
+            "type": "leaf",
+            "state": {
+              "type": "outgoing-link",
+              "state": {
+                "file": "canon/formulas/minimum-sink-speed-from-polar.md",
+                "linksCollapsed": false,
+                "unlinkedCollapsed": true
+              },
+              "icon": "links-going-out",
+              "title": "Ausgehende Links von minimum-sink-speed-from-polar öffnen"
+            }
+          },
+          {
+            "id": "cc7566c3098cb514",
+            "type": "leaf",
+            "state": {
+              "type": "tag",
+              "state": {
+                "sortOrder": "frequency",
+                "useHierarchy": true,
+                "showSearch": false,
+                "searchQuery": ""
+              },
+              "icon": "lucide-tags",
+              "title": "Tags"
+            }
+          },
+          {
+            "id": "b6d2a345bd8c6741",
+            "type": "leaf",
+            "state": {
+              "type": "all-properties",
+              "state": {
+                "sortOrder": "frequency",
+                "showSearch": false,
+                "searchQuery": ""
+              },
+              "icon": "lucide-archive",
+              "title": "Alle Eigenschaften"
+            }
+          },
+          {
+            "id": "85f3b9426c664074",
+            "type": "leaf",
+            "state": {
+              "type": "outline",
+              "state": {
+                "file": "canon/formulas/minimum-sink-speed-from-polar.md",
+                "followCursor": false,
+                "showSearch": false,
+                "searchQuery": ""
+              },
+              "icon": "lucide-list",
+              "title": "Gliederung von minimum-sink-speed-from-polar"
+            }
+          }
+        ]
+      }
+    ],
+    "direction": "horizontal",
+    "width": 300,
+    "collapsed": true
+  },
+  "left-ribbon": {
+    "hiddenItems": {
+      "switcher:Schnellauswahl öffnen": false,
+      "graph:Graph-Ansicht öffnen": false,
+      "canvas:Neuen Canvas erstellen": false,
+      "daily-notes:Heutige Notiz öffnen": false,
+      "templates:Vorlage einfügen": false,
+      "command-palette:Befehlspalette öffnen": false,
+      "bases:Neue Base erstellen": false
+    }
+  },
+  "active": "43cfe2170afea367",
+  "lastOpenFiles": [
+    "canon/ANFORDERUNGEN.pdf",
+    "canon/ANFORDERUNGEN.md",
+    "canon/STAND.md",
+    "canon/PFAD3.pdf",
+    "canon/PFAD3.md",
+    "canon/quantities/minimum-sink-speed.md",
+    "canon/formulas/air-density-isa.md",
+    "findings.md"
+  ]
+}

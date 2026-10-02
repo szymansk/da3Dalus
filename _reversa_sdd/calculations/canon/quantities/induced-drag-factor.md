@@ -18,4 +18,4 @@ Coefficient of C_L^2 in the parabolic polar, k = 1/(pi*e*AR).
 
 **Produced by.** [[induced-drag-factor]]
 
-**Used by.** [[cruise-thrust-constraint]] · [[drag-polar]] · [[minimum-drag-speed-closed-form]]
+**Used by.** [[drag-polar]] · [[minimum-drag-speed-closed-form]]

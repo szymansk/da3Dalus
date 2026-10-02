@@ -22,4 +22,4 @@ Zero-lift parasite drag coefficient of the parabola fitted to the solver polar o
 
 **Produced by.** [[parabolic-polar-fit]]
 
-**Used by.** [[cruise-thrust-constraint]] · [[drag-polar]] · [[max-lift-to-drag-parabolic]] · [[minimum-drag-speed-closed-form]]
+**Used by.** [[drag-polar]] · [[max-lift-to-drag-parabolic]] · [[minimum-drag-speed-closed-form]]

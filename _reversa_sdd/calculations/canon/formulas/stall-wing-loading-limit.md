@@ -70,4 +70,7 @@ design direction, not a defect — the system is meant to help the designer (a p
 agent) judge the aircraft's properties and steer the construction. Once an airplane exists,
 the analysis computes `V_S` and the comparison with `V_S,target` closes the loop in the Ablauf.
 
-Open: where `C_L,max` comes from while there is no airplane yet (O12).
+**O12 decided (2026-10-02):** the design direction is an **Urmodell** generated from the guided
+questions and computed by the canon like any airplane. This entry stays only as an aid when a
+stall-speed target is given; its `C_L,max` then comes from the **chosen airfoil** (NeuralFoil at
+the mission Reynolds number, scaled to the wing with AeroSandbox's `CL_over_Cl`), not from a table.

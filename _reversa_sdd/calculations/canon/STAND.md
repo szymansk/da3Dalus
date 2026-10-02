@@ -317,3 +317,9 @@ AVL-Gegenprüfung vor Freigabe.
 **Massenhüllkurve (02.10.2026, ersetzt Nutzlast):** `mass-envelope` — V_S(m), V_max(m), ROC_max(m),
 m_max,level, m_max,TO (Bomberbild), trimmbarer SP-Bereich über m; `max-mass-structure`;
 `forward-cg-limit` darin aufgegangen. Nutzlast ist kein Kanonthema.
+
+**O12 entschieden (02.10.2026):** Auslegung = Urmodell aus vier Fragen (motorisiert? → Mission →
+Bauart → Spannweite), vom Kanon wie jedes Flugzeug gerechnet; `cruise-thrust-constraint`
+gestrichen. Auswahlgraph als HTML unter `_reversa_sdd/calculations/auswahl/`.
+
+**Auswahlgraph veröffentlicht:** https://claude.ai/artifact/XqNVPRRcsqcJEkckMpipxS — Quelle `_reversa_sdd/calculations/auswahl/auswahl.json`, Bau `poetry run python scripts/build_selection_graph.py` (HTML nie von Hand ändern).
