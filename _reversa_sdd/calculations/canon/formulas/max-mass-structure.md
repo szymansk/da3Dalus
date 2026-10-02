@@ -23,7 +23,7 @@ tex: m_{max,struct} = n_{break,+}\,m
 **Canonical form**
 
 ```
-m_max,struct = n_break,+ * m
+m_max,struct = n_break,pos * m
 ```
 
 **Produces** [[max-mass-structure]]  ·  **from** [[break-load-factor-positive]] · [[aircraft-mass]]

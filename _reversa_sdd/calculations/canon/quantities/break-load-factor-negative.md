@@ -1,7 +1,7 @@
 ---
 canon: break-load-factor-negative
 kind: quantity
-symbol: n_break,-
+symbol: n_break,neg
 unit: dimensionless
 role: output
 status: draft

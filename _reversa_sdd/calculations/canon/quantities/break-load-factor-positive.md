@@ -1,7 +1,7 @@
 ---
 canon: break-load-factor-positive
 kind: quantity
-symbol: n_break,+
+symbol: n_break,pos
 unit: dimensionless
 role: derived
 status: draft
