@@ -267,7 +267,8 @@ Die Quelle passt zu den übrigen Hinweisen:
 
 **Widerspruch beim Nurflügel:** Die Quelle nennt 1,5–4 % („das dämpfende Heckleitwerk fehlt"),
 Lennon dagegen 5–10 % (lennon-tailless-cg-static-margin: hintere Grenze 5 %, vordere 10 %).
-**Entscheidung des Maintainers offen.**
+✅ **Entschieden (Maintainer, 02.10.2026): Lennon, 5 / 7,5 / 10 % MAC.** Der Maintainer merkt an:
+Der Schwerpunkt wird am Ende ohnehin erflogen; das Band setzt nur den Startwert des Urmodells.
 
 Quellen:
 - [RCSD 2004-08](https://www.rcsoaringdigest.com/pdfs/RCSD-2004/RCSD-2004-08.pdf)
@@ -279,7 +280,7 @@ Quellen:
 1. ~~Leistungsbelastung W/kg~~: ✅ entschieden am 02.10.2026 (§3a).
 2. **Pfeilung des Nurflügels.**
 3. **Segler:** Leitwerk, V-Form, Einstellwinkel und Ausschläge sind belegt (§3b). Die Stabilitätsreserve ist
-   belegt (Maintainer); offen ist nur der Widerspruch beim Nurflügel (1,5–4 % gegen 5–10 %).
+   belegt (Maintainer); Nurflügel nach Lennon 5–10 % (entschieden).
 4. **3D, Speed, Park und Scale:** Zuspitzung, Leitwerksvolumen, Stabilitätsreserve und Ruder. Aus
    der Tabelle sind nur Masse, Streckung und Rumpflänge belegt.
 5. **Leitwerke ohne Größenregel:** Ente, Tandem und Kastenflügel. Das V-Leitwerk ist geschlossen

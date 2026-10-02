@@ -1163,6 +1163,15 @@
           12
         ]
       }
+    },
+    "stabilitaetsreserve_nurfluegel_prozent_mac": {
+      "quelle": "lennon-tailless-cg-static-margin; Maintainer 02.10.2026",
+      "hinweis": "Startwert des Urmodells; der Schwerpunkt wird erflogen",
+      "werte": [
+        5,
+        7.5,
+        10
+      ]
     }
   }
 }
