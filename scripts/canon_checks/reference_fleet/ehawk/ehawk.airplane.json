@@ -210,7 +210,8 @@
        "cable_z": 0.0,
        "screw_hole_lx": 2.25,
        "screw_hole_d": 0.0
-      }
+      },
+      "role": "aileron"
      }
     },
     {
@@ -255,12 +256,13 @@
       "servo_placement": "top",
       "rel_chord_servo_position": null,
       "rel_length_servo_position": null,
-      "positive_deflection_deg": 25,
-      "negative_deflection_deg": 25,
+      "positive_deflection_deg": 35,
+      "negative_deflection_deg": 35,
       "trailing_edge_offset_factor": 1.0,
       "hinge_type": "top",
-      "symmetric": true,
-      "servo": null
+      "symmetric": false,
+      "servo": null,
+      "role": "aileron"
      }
     },
     {
@@ -305,12 +307,13 @@
       "servo_placement": "top",
       "rel_chord_servo_position": null,
       "rel_length_servo_position": null,
-      "positive_deflection_deg": 25,
-      "negative_deflection_deg": 25,
+      "positive_deflection_deg": 35,
+      "negative_deflection_deg": 35,
       "trailing_edge_offset_factor": 1.0,
       "hinge_type": "top",
-      "symmetric": true,
-      "servo": null
+      "symmetric": false,
+      "servo": null,
+      "role": "aileron"
      }
     },
     {
@@ -355,12 +358,13 @@
       "servo_placement": "top",
       "rel_chord_servo_position": null,
       "rel_length_servo_position": null,
-      "positive_deflection_deg": 25,
-      "negative_deflection_deg": 25,
+      "positive_deflection_deg": 35,
+      "negative_deflection_deg": 35,
       "trailing_edge_offset_factor": 1.0,
       "hinge_type": "top",
-      "symmetric": true,
-      "servo": null
+      "symmetric": false,
+      "servo": null,
+      "role": "aileron"
      }
     },
     {

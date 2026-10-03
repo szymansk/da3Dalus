@@ -38,6 +38,8 @@ eHawk_Rumpf_R4 des Maintainers, zusammengesetzt mit `build_ehawk.py` (Annahmen d
    BRYAN 43,7 gegen 33,1 %). AeroBuildup kennt nur den Eigenabwind jeder Fläche, nicht den Abwind des
    Flügels am Leitwerk (`aero_buildup.py:746`). Die App übernimmt diesen Neutralpunkt für den
    empfohlenen Schwerpunkt; das ist ein Fehler in der unsicheren Richtung, **Ticket #1154**.
-2. **Unstimmigkeit in den Quelldaten:** Alle vier Rudersegmente des Flügels heißen „aileron". Nur das
-   innerste ist gegenläufig (±35°), die drei äußeren sind gleichläufig (±25°) und haben keine Rolle.
-   Querruder und Wölbklappe sind damit nicht eindeutig. Frage an den Maintainer.
+2. **Querruder über mehrere Segmente (geklärt, Ticket #1155):** Die vier Segmente „aileron" sind ein
+   Querruder. Die Folgesegmente erben vom ersten (gegenläufig, ±35°); in der Quelle tragen sie die
+   Vorgabewerte des Konstruktors. Die App wendet diese Vererbung beim Import nicht an und würde drei
+   Viertel des Querruders als Klappe rechnen. `build_ehawk.py` setzt die Vererbung jetzt um. Die
+   Ergebnisse oben ändert das nicht, denn keines hängt am Querruderausschlag.

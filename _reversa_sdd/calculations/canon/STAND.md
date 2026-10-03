@@ -374,3 +374,7 @@ Flugzeugen:** Der Neutralpunkt aus AeroBuildup liegt etwa 10 % MAC zu weit hinte
 Leitwerk). Der App-Fehler ist Ticket #1154; `neutral-point.md` braucht ein Wirbelgitter-Werkzeug
 (Entscheidung des Maintainers). Am BRYAN schrumpft das Stabilitätsmaß des Plan-Schwerpunkts damit auf etwa
 2 %.
+
+**Querruder über mehrere Segmente (03.10.2026):** Gleichnamige Folgesegmente erben vom ersten Segment
+(Maintainer). Die App wendet das beim Import nicht an und rechnet die Fortsetzungen als Klappen: Ticket
+#1155. Der e-Hawk der Referenzflotte setzt die Vererbung jetzt um.

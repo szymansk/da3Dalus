@@ -16,8 +16,10 @@ Declared assumptions:
   * wing incidence +1.5 deg relative to the tube (EWD per the report, tail 0 deg) -> wing twist +1.5
   * pod sections are super-ellipses with n = 2 (round, 34 x 34 mm at the widest)
   * CG z = -0.015 m (pod centre; not stated in the report)
-  * the wing file's control surfaces are copied unchanged (see ERGEBNISSE.md: role/symmetric
-    inconsistent in the source)
+  * multi-segment control surface: consecutive segments with the same TED name form one surface and
+    inherit the first segment's symmetric flag, throws and role (maintainer 2026-10-03; the source
+    carries constructor defaults on the continuations — app bug #1155). The e-Hawk's four "aileron"
+    segments are therefore one antisymmetric aileron, +-35 deg.
 """
 
 import json
@@ -30,6 +32,22 @@ wing = wing_src["wings"]["Tragflaeche"]
 for x in wing["x_secs"]:
     x["twist"] = x.get("twist", 0.0) + 1.5
     x["airfoil"] = "./mh32.dat"
+
+# inheritance along a run of same-named control surfaces (#1155)
+first = None
+for x in wing["x_secs"]:
+    ted = x.get("trailing_edge_device")
+    if not ted:
+        first = None
+        continue
+    if first is None or ted.get("name") != first.get("name"):
+        first = ted
+        first["role"] = first.get("role") or ("aileron" if first.get("name") == "aileron" else None)
+    else:
+        for k in ("symmetric", "positive_deflection_deg", "negative_deflection_deg", "role"):
+            ted[k] = first.get(k)
+    if x.get("control_surface"):
+        x["control_surface"]["symmetric"] = ted["symmetric"]
 
 # pod stations from the STEP sections: x, width, height, z-centre  [mm]
 POD = [(-298, 1.4, 1.4, -19.2), (-290, 6.7, 6.6, -19.2), (-270, 17.6, 17.4, -19.2),
