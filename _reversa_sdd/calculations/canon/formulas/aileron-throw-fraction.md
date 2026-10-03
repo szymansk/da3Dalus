@@ -20,10 +20,13 @@ tex: s_{req}:\; L(V,\alpha) = m\,g, \quad C_{roll}\big(V,\alpha,\,s_{req}\,\delt
 
 # Fraction of the set aileron throw a roll-rate target needs
 
-> **⚠ Blocking finding, 2026-10-03 (BRYAN):** AeroBuildup's roll damping `C_lp` is 2.3× larger
-> than AVL's and ASB VLM's (−0.82 vs −0.35/−0.36). A steady roll computed with AeroBuildup therefore
-> underestimates the roll rate by about that factor. Tool or correction to be decided before approval
-> (`scripts/canon_checks/reference_fleet/bryan/ERGEBNISSE_STABILITAET.md`).
+> **Cross-check with AVL, 2026-10-03 (BRYAN, `bryan_roll_rate_compare.py`):** steady roll at the
+> approach, ailerons ±20°: AeroBuildup p·b/2V = 0.339, AVL 0.276 (+23 %). AeroBuildup's *local* roll
+> damping is about twice AVL's and ASB VLM's (−0.66 vs −0.35), but at a real roll rate it turns strongly
+> nonlinear (the down-going tip approaches the stall, effective damping −0.42), and its aileron moment
+> is larger too; the errors largely cancel. AVL is inviscid and linear, so neither is ground truth.
+> ASB's VLM models no control deflection and cannot compute this entry. Open before approval: a
+> measured roll rate (reference fleet) to decide which side of the 23 % is right.
 
 **Canonical form**
 

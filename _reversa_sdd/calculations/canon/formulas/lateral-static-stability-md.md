@@ -47,8 +47,8 @@ Lennon's spiral-stability margin by class — belong to the evaluation.
 without fuselage agrees roughly (0.103 vs 0.119); **with fuselage AeroBuildup halves it** (0.050),
 AVL barely changes (0.122) — AVL models bodies crudely, so the fuselage share stays open (needs a third
 source). The spiral criterion is negative in all methods (weakly unstable), magnitudes differ ×10.
-**Roll damping is 2.3× too large in AeroBuildup** (−0.82 vs AVL −0.35, ASB VLM −0.36) — not used by this
-entry, but blocking for [[max-roll-rate]].
+AeroBuildup's *local* roll damping is about twice AVL's and ASB VLM's (−0.82 vs −0.35/−0.36 at V_md); the
+steady roll rate of [[max-roll-rate]] nevertheless agrees with AVL within 23 % (nonlinear, see there).
 
 **Open before trusting the numbers.** Whether AeroBuildup captures the dihedral effect of the
 wing position (high vs low wing) and the fin in the fuselage wake is unchecked — a cross-check

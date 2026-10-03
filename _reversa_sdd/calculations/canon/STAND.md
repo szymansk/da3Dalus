@@ -364,6 +364,6 @@ winzigen Randbogen-Segmenten). Der App-Pfad (gh-855) ist sauber: Wurzelmoment 87
 Schrenk.
 
 **AVL-Gegencheck Seitenstabilität am BRYAN (03.10.2026):** C_lβ stimmt auf 20 %; C_nβ ohne Rumpf grob,
-mit Rumpf halbiert AeroBuildup (Rumpfanteil offen). **Blockierend: C_lp in AeroBuildup 2,3-fach zu
-groß** (AVL und VLM übereinstimmend), damit sind `max-roll-rate` und `aileron-throw-fraction` zu langsam.
-Werkzeug oder Korrektur ist zu entscheiden. Die App gibt C_lp aus AeroBuildup ohne Hinweis aus.
+mit Rumpf halbiert AeroBuildup (Rumpfanteil offen). **Korrigiert:** Die lokale C_lp in AeroBuildup ist etwa doppelt so groß wie in AVL/VLM, die stationäre
+Rollrate weicht aber nur 23 % ab (nichtlinear, Spitzenabriss); nicht blockierend. Die VLM kennt keine
+Ruder. Offen: eine gemessene Rollrate entscheidet. Die App gibt C_lp aus AeroBuildup ohne Hinweis aus.

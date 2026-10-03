@@ -144,13 +144,16 @@ Gerechnet mit `bryan_lateral_avl.py` bei V_md und gleichem C_L = 0,565, Bezug Pl
 | VLM ohne Rumpf | −0,020 | +0,150 | −0,364 | −0,275 | +0,143 | −0,070 | – |
 
 **Befunde:**
-1. **Die Rolldämpfung ist in AeroBuildup 2,3-fach zu groß.** AVL (−0,349) und VLM (−0,364) stimmen
-   überein, AeroBuildup liefert −0,819. Plausibel ist ein streifenweises Modell ohne die Entlastung durch
-   den induzierten Abwind bei antisymmetrischer Last. **Folge für den Kanon:** `max-roll-rate` und
-   `aileron-throw-fraction` rechnen die stationäre Rollrate mit AeroBuildup und **unterschätzen sie etwa
-   um diesen Faktor.** Das blockiert ihre Freigabe; Werkzeug oder Korrektur ist zu entscheiden.
-   **Folge für die App:** Der Analyse-Endpunkt gibt C_lp aus AeroBuildup als „Roll Damping" aus,
-   ohne Hinweis. Rollraten selbst rechnet die App nur mit AVL.
+1. **Die lokale Rolldämpfung ist in AeroBuildup etwa doppelt so groß** wie in AVL und VLM (bei V_md −0,82
+   gegen −0,35/−0,36, im Anflug −0,66). **Die stationäre Rollrate weicht trotzdem nur um 23 % ab**
+   (`bryan_roll_rate_compare.py`, Anflug, Querruder ±20°): AeroBuildup pb/2V = 0,339, AVL 0,276. Ursache
+   ist die Nichtlinearität: Bei pb/2V = 0,34 ändert sich der Anstellwinkel an der Spitze um bis zu 19°, die
+   abwärts gehende Spitze nähert sich dem Abriss, die wirksame Dämpfung sinkt auf −0,42
+   (C_l/(pb/2V): 0,66 → 0,56 → 0,42 bei 0,01 → 0,2 → 0,34). Auch das Querrudermoment ist größer.
+   (Eine frühere Fassung schloss aus der lokalen Ableitung auf eine 2,3-fach unterschätzte Rollrate.
+   Das war falsch.) Die ASB-VLM kennt keine Ruderausschläge und kann die Rollrate nicht allein rechnen.
+   **Für die App** bleibt: Der Analyse-Endpunkt zeigt die lokale Rolldämpfung aus AeroBuildup
+   unkommentiert an.
 2. **Die Richtungsstabilität ohne Rumpf stimmt grob überein** (AeroBuildup 0,103, AVL 0,119,
    VLM 0,150). **Mit Rumpf halbiert AeroBuildup C_nβ** auf 0,050 (destabilisierendes Rumpfmoment), AVL
    kaum (0,122). AVL modelliert Rümpfe nur grob. Welcher Rumpfbeitrag stimmt, bleibt offen und braucht
