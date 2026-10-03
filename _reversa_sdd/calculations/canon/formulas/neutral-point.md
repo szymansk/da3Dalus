@@ -2,7 +2,8 @@
 canon: neutral-point
 entry: formula
 kind: procedure
-tool: AB
+uncertainty: interval
+tool: AVL
 shape: law
 status: draft
 output: neutral-point
@@ -17,41 +18,41 @@ tags:
   - status/draft
 ---
 
-# Neutral point of the airplane
-
-> **⚠ Blocking finding, 2026-10-03 (reference fleet, GH #1154):** AeroBuildup models each surface's
-> self-downwash only, not the wing's downwash at the tail (`aero_buildup.py:746`). Its `x_np` lies about
-> **10 % MAC aft** of AVL: BRYAN 43.7 vs 33.1 %, e-Hawk 58.4 vs 48.8 %; ASB VLM (no fuselage) 38.3 % on
-> BRYAN. The tool of this entry must change to a vortex-lattice method (ASB VLM or AVL), with the fuselage
-> contribution declared. Maintainer decision pending; every entry downstream of `x_NP` (static margin,
-> cg-for-target-margin, the mass envelope's aft edge) inherits it.
->
-> **Low-Re validity of AVL (2026-10-03, `reference_fleet/NP_NIEDRIGE_RE.md`):** AVL carries the downwash
-> but no viscous lift slope beyond CLAF. On BRYAN its NP moves 36.0 → 32.9 % MAC between CLAF 1.0 and
-> ASB's thickness rule, and to 14.1 % with NeuralFoil's local slopes (1.62 / 1.09 x 2π, laminar-bubble
-> nonlinearity), which would make the published plan unflyable. No source quantifies AVL's NP error
-> below Re 500k. **Calibration against flown CGs of the reference fleet is required before approval.**
+# Neutral point of the airplane — an interval over method worlds (A11)
 
 **Canonical form**
 
 ```
-solve for alpha at V_md:   L(V_md, alpha) = m * g
-x_NP := AeroBuildup(airplane, V_md, alpha).run_with_stability_derivatives()['x_np']
+world textbook:  x_NP = (S_w*x_ac,w + K*S_h*x_ac,h) / (S_w + K*S_h),  K = eta*(1 - 4/(AR_w+2)) * [AR_h/(AR_h+2)]/[AR_w/(AR_w+2)],  eta = 0.9
+world Pappas:    the same barycentre with K = (1 - 3.24/AR_w) * [1/(1+2/AR_h)]/[1/(1+2/AR_w)]
+world AVL:       solve for alpha at V_md:  L = m*g;   x_NP := AVL(airplane, alpha).Xnp   (CLAF by ASB's thickness rule)
+x_NP := [ min over worlds, max over worlds ]          (an interval, no core — A11)
 ```
 
 **Produces** [[neutral-point]]  ·  **from** [[airplane]] · [[aircraft-mass]] · [[gravity]] · [[air-density]] · [[minimum-drag-speed]]
 
-**Kind: a procedure — one solver evaluation at a named point.** AeroBuildup returns the
-neutral point directly (`x_np`, from the finite-difference derivatives; ANFORDERUNGEN §3.12).
+**Kind: a procedure with declared uncertainty (A11, maintainer 2026-10-03).** No single method captures
+the physics at Re 30k–300k (`scripts/canon_checks/reference_fleet/NP_NIEDRIGE_RE.md`). The neutral point
+is therefore the **interval** spanned by three accepted methods, each a self-consistent *world* that is
+carried through the whole downstream chain (A11 rule 4). One entry, one producer (ADR 0022, ADR 0027).
 
-**Named point: `V_md`** (2026-10-02). The neutral point depends only weakly on the angle of
-attack (ADR 0004 §x_np; Anderson §4.9), so one representative level-flight point suffices;
-`V_md` is the canon's named mid-range point. A dependence large enough to matter would show
-in the Probe at other speeds.
+- **Textbook world:** the barycentre form is the exact form of `h_n = h_ac + eta*V_H*(a_h/a)*(1 - de/da)`
+  with `K = eta*(a_h/a)*(1 - de/da)`, lift slopes `a = 2 pi AR/(AR+2)`, downwash `de/da = 2 a_w/(pi AR_w)`
+  (Sadraey Eq. 6.67, §6.7.4); `eta = 0.9` (Sadraey §6, 0.85–0.95 conventional). Aerodynamic centres at 25 %
+  of each surface's MAC. V-tail: horizontal projection `A cos^2(nu)` (Drela).
+- **Pappas world:** Dean Pappas, "If It Flies", *Model Aviation* 10/2009 (after von Mises/Prager/Kuerti),
+  verbatim barycentre with downwash factor `1 - 3.24/AR_w` and aspect-ratio correction `1/(1 + 2/AR)`.
+- **AVL world:** vortex lattice with the wing's downwash at the tail; Drela's CLAF thickness rule as
+  written by AeroSandbox.
 
-**No feedback from the CG.** The moment reference does not move `x_NP` — measured: 0.17 mm
-over 150 mm of reference shift (§2.3). The entry therefore takes no CG input, and the
-design relation `x_CG = x_NP − SM_target · c̄` closes no loop.
+**Not used:** AeroBuildup (no wing–tail downwash, about 10 % MAC aft — GH #1154); the flat rules with a
+fixed tail weight (rcplanedesigner K = 0.5 and −5 % MAC, Harding, Krauss), because they ignore aspect
+ratio and miss by 5–11 % MAC on the reference fleet; Lennon's fixed 35 %.
 
-**Source.** 🟢 Anderson §4.9 / Scholz (neutral point definition); AeroSandbox
-`run_with_stability_derivatives`.
+**Not validated (A11 rule 5).** The interval is a **lower bound** of the true uncertainty: all three
+worlds share blind spots, above all the fuselage (only rcplanedesigner's flat −5 % and Lennon's "up to
+15 %" are sourced; Raymer's formula is unchecked). A validation margin needs flown CGs of the reference
+fleet. Reference fleet (np_methods.py): BRYAN [32.9, 36.9] % MAC, e-Hawk [48.8, 52.9] % MAC.
+
+**Source.** 🟢 Sadraey Eq. 6.67 (textbook); Pappas, *Model Aviation* 10/2009; Drela, AVL. Review of the
+uncertainty procedure: `reference_fleet/UNSCHAERFE_PRUEFUNG.md`.

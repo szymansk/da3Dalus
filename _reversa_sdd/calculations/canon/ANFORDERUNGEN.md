@@ -2183,6 +2183,54 @@ nicht, ob er gut ist.
 **Anlass.** Beim Schwerpunktbereich: Der Kanon liefert den Neutralpunkt und die vordere Grenze aus
 der Höhenruderwirkung; wie viel Abstand zum Neutralpunkt man hält, ist Bewertung.
 
+### A11 — Unscharfe Größen: Intervall über Methodenwelten
+
+**Anforderung (Maintainer, 03.10.2026).** Wo keine Theorie die Physik hinreichend genau trifft und
+belegte Methoden voneinander abweichen, gibt der Kanon **keine Zahl als Wahrheit** aus, sondern ein
+**Intervall**. Alles, was von einer unscharfen Größe abhängt, ist ebenfalls unscharf. Geprüft wurde das
+Verfahren mit einem Rechentest und einer kritischen Literaturprüfung
+(`scripts/canon_checks/reference_fleet/UNSCHAERFE_PRUEFUNG.md`).
+
+**So wird gerechnet:**
+
+1. **Möglichkeit, nicht Wahrscheinlichkeit.** Methodenunterschiede sind Modellunwissen, keine
+   Zufallsstreuung (NASA Langley, Roy & Oberkampf 2011). Es gibt keine erfundenen Verteilungen und keine
+   Wurzel aus der Quadratsumme. Ergebnis ist ein **Intervall [min, max] ohne Kern**. Einen Kern bekommt
+   eine Größe erst, wenn eine Methode an Messungen kalibriert ist.
+2. **Unscharf ist die Ursache, nicht das Ergebnis.** Die Ursache ist im Regelfall die **Methodenwahl**:
+   Jede belegte Methode ist eine in sich stimmige *Welt*. Die Größe, die die Welten erzeugt, trägt im
+   Katalog `uncertainty: interval`, und ihr Eintrag nennt die Welten mit Quelle. Stetige Ursachen
+   (ein unsicherer Parameter mit belegten Grenzen) sind erlaubt und werden an ihren Grenzen ausgewertet.
+3. **Je Welt durch die ganze Kette.** Jede Welt bzw. jede Grenze einer Ursache läuft durch die
+   **vollständige** nachgelagerte Kette. Das Ergebnisintervall ist Minimum und Maximum über die Läufe.
+   **Nie Intervall auf Intervall weiterrechnen:** Im Test machte das aus einem per Konstruktion exakten
+   Stabilitätsmaß von 10 % das Band 6–14 %. Welten werden nicht gemischt. Treffen mehrere Ursachen
+   zusammen, laufen alle Kombinationen.
+4. **Monotonie prüfen.** Die Ränder an den Welten bzw. Grenzen sind nur exakt, wenn die Kette über die
+   Ursache monoton ist. Optimierungsketten bekommen deshalb eine Prüfung auf einem Gitter; ist die Kette
+   nicht monoton, wird innerhalb der Grenzen optimiert.
+5. **Sparsam.** Unscharf wird eine Größe nur, wo belegte Methoden abweichen; je Größe höchstens zwei
+   stetige Ursachen. Stimmen die Methoden überein, ist die Größe **nicht scharf, sondern nicht
+   validiert**: Die Methodenstreuung ist immer nur eine **untere Schranke**, denn alle Methoden können
+   denselben blinden Fleck haben (etwa den Rumpf).
+
+**Was der Kanon nicht tut (A10).** Welcher Rand für eine Auslegung gilt, zum Beispiel ein
+Erstflug-Schwerpunkt vom vorderen Rand des Neutralpunkts aus, ist ein **Zielwert** der Auslegung bzw.
+der Bewertung. Der Kanon gibt beide Ränder aus.
+
+**Im Navigator** tragen unscharfe Größen und alles, was von ihnen abhängt, eine eigene Kennzeichnung,
+so wie die an Zielwerten gemessenen Größen (A9).
+
+**Erster Fall:** der Neutralpunkt mit den Welten Lehrbuch, Pappas und AVL (`neutral-point.md`). Ihm
+folgen Stabilitätsmaß, `cg-for-target-margin` und die hintere Kante der Massenhüllkurve.
+Kandidaten mit belegter Streuung:
+- die Rollrate (AeroBuildup gegen AVL, 23 %)
+- die Richtungsstabilität mit Rumpf (Faktor 2)
+- die vordere Trimmgrenze (ohne Abwind am Leitwerk überschätzt)
+
+**Verhältnis zu A7 / ADR 0022.** Ein Eintrag, der ein Intervall liefert, ist **ein** Erzeuger. Die
+Welten sind keine zweiten Autoritäten, sondern Teil seiner Definition (ADR 0027).
+
 ### A7 — Eine Autorität je nutzersichtbarer Größe
 
 **Status: entschieden (ADR 0022).**
@@ -2327,6 +2375,8 @@ Was schon ein Ticket hat, steht mit Nummer dabei und fällt dann nicht noch einm
 | K22 | Längsstabilität statisch: $x_{NP}$ bei $V_{md}$, $SM$, $x_{CG}$ aus $SM_{target}$, Probe $-C_{m\alpha}/C_{L\alpha}$ | §2.3 | ADR-0004-Kontext (ein Wert am Reiseflugpunkt), eigene Neutralpunkt-Wege |
 | K23 | Seitenstabilität statisch ($C_{l\beta}$, $C_{n\beta}$, Spiralkriterium) bei $V_{md}$ und im Anflug | §2.3 | — |
 | K24 | Massenhüllkurve: $V_S(m)$, $V_{max}(m)$, $ROC_{max}(m)$, $m_{max,level}$, $m_{max,TO}$, trimmbarer Schwerpunktbereich über der Masse; $m_{max,struct}$ | §2.3 | `forward_cg`-Endpunkt, Nutzlast-/Missionsrechnungen |
+| K25 | Unscharfe Größen nach A11: der Kanon rechnet je Methodenwelt durch die ganze Kette und gibt [min, max] aus; Kennzeichnung im Navigator und in der App | §4 A11 | Rechenkern, Ausgabeschemata |
+| K26 | Neutralpunkt als Intervall über Lehrbuch / Pappas / AVL statt aus AeroBuildup; empfohlener Schwerpunkt und Stabilitätsmaß als Intervall | §2.3, A11 | `assumption_compute_service` (GH #1154) |
 
 ## Arbeitsregeln
 

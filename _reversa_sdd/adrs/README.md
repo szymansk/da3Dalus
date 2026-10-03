@@ -46,6 +46,7 @@ quantity). A violation of either is review-blocking.
 | [0024](0024-single-user-desktop-operating-model.md) | Single-user desktop operating model | product, security | Accepted (**corrects 0016**) |
 | [0025](0025-mcp-is-built-on-the-copilot-tool-layer.md) | MCP is built on the copilot tool layer, not by wrapping REST | agents, architecture | Accepted |
 | [0026](0026-aero-truth-from-the-solver-not-the-parabola.md) | The aero truth comes from the solver, not from the parabola | aerodynamics | Accepted (amends 0004) |
+| [0027](0027-uncertain-quantities-as-intervals-over-method-worlds.md) | Uncertain quantities are intervals over method worlds | aerodynamics, calculation canon | Accepted (amends 0026 for the neutral point; clarifies 0022) |
 
 ## Provenance
 
@@ -63,7 +64,7 @@ validation interview (2026-08-13 → 2026-08-15), which also appended
 
 - **Domain:** 0011 → 0010 → 0004 → 0012 → 0023
 - **Geometry stack:** 0001 → 0002 → 0005 → 0018
-- **Aero stack:** 0003 → 0004 → 0026 → 0008
+- **Aero stack:** 0003 → 0004 → 0026 → 0027 → 0008
 - **Persistence and change:** 0009 → 0006 → 0007
 - **Risk before deploying anything:** **0024** → 0016 → 0009 → 0006
 - **Cross-cutting rules the interview settled:** 0020 (warn) → 0021 (delete) →

@@ -394,3 +394,9 @@ und das Lehrbuch (mit Abwind und Streckung) stimmen mit AVL auf 1–4 % MAC übe
 Die pauschale RC-Faustregel (K 0,5, −5 %) kennt keine Streckung und irrt um 5–11 % (beim BRYAN in der
 unsicheren Richtung). Der frühere Schluss „RC-Faustregel trifft" ist zurückgenommen. Offen ist der
 Rumpfanteil.
+
+**A11 entschieden und umgesetzt (03.10.2026, ADR 0027):** Unscharfe Größen sind Intervalle [min, max]
+ohne Kern über Methodenwelten. Je Welt wird durch die ganze Kette gerechnet, nie Intervall auf Intervall.
+Monotonie wird geprüft. Übereinstimmung heißt „nicht validiert", nicht scharf; die Streuung ist eine
+untere Schranke. Erster Fall Neutralpunkt mit Lehrbuch, Pappas und AVL (AeroBuildup raus). Register
+K25/K26; der Navigator kennzeichnet unscharfe Größen und ihre Folgen; #1154 ist kommentiert.

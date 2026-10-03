@@ -66,6 +66,7 @@ def read_canon(root: pathlib.Path) -> tuple[dict, dict]:
         quantities[f.stem] = {
             "symbol": _front(t, "symbol"), "unit": _front(t, "unit"),
             "role": _front(t, "role"),
+            "unc": _front(t, "uncertainty"),
             "desc": " ".join(m.group(1).split()) if m else "",
         }
     formulas = {}

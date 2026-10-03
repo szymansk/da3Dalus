@@ -2,6 +2,7 @@
 
 - **Status:** Accepted — **amends [ADR 0004](0004-one-aero-truth-per-aircraft.md)** in its
   definitions; ADR 0004's principle stays in force
+- **Amended by:** [ADR 0027](0027-uncertain-quantities-as-intervals-over-method-worlds.md) for the neutral point (an interval over method worlds, AeroBuildup excluded)
 - **Decided:** 2026-10-02, by the maintainer
 - **Basis:** a critical re-reading of ADR 0004 requested by the maintainer ("decisions made
   on an incomplete view must not be taken as given"), two independent domain reviews
