@@ -73,3 +73,30 @@ Nullauftrieb.
    das Modell gut, wo wird es kritisch? Der Plan-Schwerpunkt eines geflogenen Bauplans ist eine erste
    Stütze. Mit AVL und der Dickenregel liegt der BRYAN-Plan-Schwerpunkt bei 1,5 % Stabilitätsmaß.
    Das ist knapp, aber für ein geflogenes Modell nicht unmöglich.
+
+## Die geometrische RC-Methode (Maintainer-Anstoß, 03.10.2026)
+
+> „Wenn du betrachtest, wie RC-Flugzeuge rein geometrisch ausgelegt werden und selten so elaboriert
+> berechnet, wie wir das gerade tun, dann solltest du der Wahrheit und der Nutzbarkeit für den
+> Konstrukteur näher kommen." (Maintainer)
+
+**Methode (rcplanedesigner, vault `airplane-balance-finding-the-first-flight-cg--build-the-neutral-point`):**
+- Der Neutralpunkt ist der Schwerpunkt der aerodynamischen Mittelpunkte (je 25 % MAC).
+- Gewichtet wird der Flügel mit seiner Fläche, das Höhenleitwerk mit der halben Fläche.
+- Für den Rumpf wird der Wert um 5 % MAC nach vorn geschoben.
+- Beim V-Leitwerk zählt die Projektion A·cos²ν (Drela).
+
+Gerechnet mit `np_geometric.py`:
+
+| Flugzeug | RC-Methode | AVL | AeroBuildup | Plan-Schwerpunkt | Stabilitätsmaß (RC) |
+|---|---|---|---|---|---|
+| BRYAN | 41,5 % | 32,9 % | 43,7 % | 31,4 % | **10,1 %** |
+| e-Hawk | 41,5 % | 48,8 % | 58,4 % | 33,0 % | **8,6 %** |
+
+Mit der RC-Methode liegen beide Plan-Schwerpunkte genau im Zielbereich der Praxis: Sport 10 % (Q-MS-14),
+Segler 5–12 % (BAENDER §3b). AVL ergibt kein einheitliches Bild (1,5 % und 15,8 %), AeroBuildup liegt bei
+beiden zu weit hinten.
+
+**Vorbehalt:** Die Übereinstimmung ist teilweise zirkulär, denn die Konstrukteure setzen den Schwerpunkt
+vermutlich mit genau dieser Regel. Sie belegt nicht die Physik. Sie belegt aber, dass die Regel zu dem
+passt, was gebaut und **geflogen** wird. Für den Konstrukteur ist sie die anschlussfähige Zahl.

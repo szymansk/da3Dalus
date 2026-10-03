@@ -383,3 +383,8 @@ Leitwerk). Der App-Fehler ist Ticket #1154; `neutral-point.md` braucht ein Wirbe
 AeroBuildup (hat den Abwind), aber nicht kalibriert. Beim BRYAN verschiebt allein die CLAF-Wahl den
 Neutralpunkt um 3 % MAC; mit NeuralFoil-Steigungen um über 20 %. Keine Literatur mit Fehlerzahlen unter
 Re 500k. Freigabe braucht geflogene Schwerpunkte der Referenzflotte.
+
+**Geometrische RC-Methode für den Neutralpunkt (03.10.2026):** Gerechnet nach rcplanedesigner (Flügel
+plus halbe Höhenleitwerksfläche, Rumpf −5 % MAC). Damit liegen beide Plan-Schwerpunkte im Zielbereich
+(BRYAN 10,1 %, e-Hawk 8,6 %), anders als mit AVL (1,5 % / 15,8 %) oder AeroBuildup. Vorbehalt: teilweise
+zirkulär. Entscheidung des Maintainers zum Werkzeug des Kanons steht aus.
