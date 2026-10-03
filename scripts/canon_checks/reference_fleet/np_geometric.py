@@ -51,5 +51,5 @@ rows.append(("e-Hawk", d["xyz_ref"][0], np_rc(main, [(vt, vt.area() * np.cos(nu)
 
 print(f"{'':8s} {'RC-Methode':>11s} {'AVL':>6s} {'AeroBuildup':>12s} {'Plan-SP':>8s}  SM (RC-Methode)")
 for name, x_cg, (x_np, mac, le), ab, avl in rows:
-    p = lambda x: 100 * (x - le) / mac  # noqa: E731
-    print(f"{name:8s} {p(x_np):10.1f}% {avl:5.1f}% {ab:11.1f}% {p(x_cg):7.1f}%   {100*(x_np-x_cg)/mac:5.1f} %")
+    pn, pc = 100 * (x_np - le) / mac, 100 * (x_cg - le) / mac
+    print(f"{name:8s} {pn:10.1f}% {avl:5.1f}% {ab:11.1f}% {pc:7.1f}%   {100*(x_np-x_cg)/mac:5.1f} %")
