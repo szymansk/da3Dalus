@@ -378,3 +378,8 @@ Leitwerk). Der App-Fehler ist Ticket #1154; `neutral-point.md` braucht ein Wirbe
 **Querruder über mehrere Segmente (03.10.2026):** Gleichnamige Folgesegmente erben vom ersten Segment
 (Maintainer). Die App wendet das beim Import nicht an und rechnet die Fortsetzungen als Klappen: Ticket
 #1155. Der e-Hawk der Referenzflotte setzt die Vererbung jetzt um.
+
+**Neutralpunkt bei kleiner Re (03.10.2026, `reference_fleet/NP_NIEDRIGE_RE.md`):** AVL ist besser als
+AeroBuildup (hat den Abwind), aber nicht kalibriert. Beim BRYAN verschiebt allein die CLAF-Wahl den
+Neutralpunkt um 3 % MAC; mit NeuralFoil-Steigungen um über 20 %. Keine Literatur mit Fehlerzahlen unter
+Re 500k. Freigabe braucht geflogene Schwerpunkte der Referenzflotte.

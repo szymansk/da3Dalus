@@ -25,6 +25,12 @@ tags:
 > BRYAN. The tool of this entry must change to a vortex-lattice method (ASB VLM or AVL), with the fuselage
 > contribution declared. Maintainer decision pending; every entry downstream of `x_NP` (static margin,
 > cg-for-target-margin, the mass envelope's aft edge) inherits it.
+>
+> **Low-Re validity of AVL (2026-10-03, `reference_fleet/NP_NIEDRIGE_RE.md`):** AVL carries the downwash
+> but no viscous lift slope beyond CLAF. On BRYAN its NP moves 36.0 → 32.9 % MAC between CLAF 1.0 and
+> ASB's thickness rule, and to 14.1 % with NeuralFoil's local slopes (1.62 / 1.09 x 2π, laminar-bubble
+> nonlinearity), which would make the published plan unflyable. No source quantifies AVL's NP error
+> below Re 500k. **Calibration against flown CGs of the reference fleet is required before approval.**
 
 **Canonical form**
 
