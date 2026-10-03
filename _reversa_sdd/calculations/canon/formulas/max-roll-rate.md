@@ -1,6 +1,7 @@
 ---
 canon: max-roll-rate
 entry: formula
+uncertainty: interval
 kind: procedure
 tool: OPT
 shape: law
@@ -20,13 +21,14 @@ tex: L(V,\alpha) = m\,g, \quad C_{roll}\big(V,\alpha,\,\delta_{a,max},\,p_{max}\
 
 # Maximum roll rate with the aileron throws set in the airplane
 
-> **Cross-check with AVL, 2026-10-03 (BRYAN, `bryan_roll_rate_compare.py`):** steady roll at the
-> approach, ailerons ±20°: AeroBuildup p·b/2V = 0.339, AVL 0.276 (+23 %). AeroBuildup's *local* roll
-> damping is about twice AVL's and ASB VLM's (−0.66 vs −0.35), but at a real roll rate it turns strongly
-> nonlinear (the down-going tip approaches the stall, effective damping −0.42), and its aileron moment
-> is larger too; the errors largely cancel. AVL is inviscid and linear, so neither is ground truth.
-> ASB's VLM models no control deflection and cannot compute this entry. Open before approval: a
-> measured roll rate (reference fleet) to decide which side of the 23 % is right.
+> **Uncertain quantity (A11, maintainer 2026-10-03).** Interval over two method worlds, each run through
+> the whole entry: **AeroBuildup** (the optimisation as written below; viscous flap model, but strip-wise
+> roll damping without induced relief, strongly nonlinear at real roll rates) and **AVL** (steady roll with
+> the ailerons driven directly, `d1 d1 delta`, CLAF by ASB's thickness rule; carries the induced relief
+> but no low-Re flap losses). Neither is provably conservative. BRYAN, approach, ailerons ±20°:
+> p·b/2V AeroBuildup 0.339, AVL 0.276 (`reference_fleet/bryan_roll_rate_compare.py`). The 23 % spread
+> can flip "target met" (A9), so A11 rule 5 makes it an interval. ASB's VLM models no control deflection
+> and is not a world.
 
 **Canonical form**
 

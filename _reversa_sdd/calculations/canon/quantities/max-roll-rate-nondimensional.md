@@ -4,6 +4,7 @@ kind: quantity
 symbol: p_hat_max
 unit: dimensionless
 role: output
+uncertainty: interval
 status: draft
 tags:
   - canon/quantity
@@ -17,3 +18,5 @@ tags:
 **Unit.** `dimensionless`
 
 **Produced by.** [[max-roll-rate]]
+
+**Unschärfe (A11).** Intervall über die Methodenwelten AeroBuildup und AVL (Rollrate: Streuung 23 % beim BRYAN).

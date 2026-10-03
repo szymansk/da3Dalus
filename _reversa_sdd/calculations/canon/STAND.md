@@ -408,3 +408,7 @@ und AeroBuildup ihn nicht kennt. Die Erwartung war falsch herum. Kandidat für A
 **A11 geschärft (03.10.2026):** Unscharf nur, wenn die Streuung eine Auslegungsentscheidung ändern kann.
 Liegt ein Werkzeug belegt auf der vorsichtigen Seite, bleibt die Größe scharf mit Gültigkeitsbedingung.
 Die vordere Trimmgrenze bleibt scharf (AeroBuildup, vorsichtig; AVL bis 4 % MAC weiter vorn).
+
+**Seitenstabilität nach A11-Regel 5 eingeordnet (03.10.2026):** Rollrate und Querruderausschlag sind
+unscharf (Welten AeroBuildup und AVL, 23 %). C_nβ und das Spiralkriterium bleiben scharf mit
+Gültigkeitsbedingung (Faktor 2,4 ohne feste Richtung; die Entscheidungen stimmen überein).

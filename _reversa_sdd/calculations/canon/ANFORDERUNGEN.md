@@ -2225,9 +2225,14 @@ so wie die an Zielwerten gemessenen Größen (A9).
 
 **Erster Fall:** der Neutralpunkt mit den Welten Lehrbuch, Pappas und AVL (`neutral-point.md`). Ihm
 folgen Stabilitätsmaß, `cg-for-target-margin` und die hintere Kante der Massenhüllkurve.
-Kandidaten mit belegter Streuung:
-- die Rollrate (AeroBuildup gegen AVL, 23 %)
-- die Richtungsstabilität mit Rumpf (Faktor 2)
+Eingeordnet nach Regel 5 (03.10.2026):
+- **Rollrate und nötiger Querruderausschlag: unscharf.** Welten AeroBuildup und AVL, Streuung 23 %
+  beim BRYAN. Die Streuung kann „Rollraten-Ziel erreicht" kippen, und kein Werkzeug ist belegt
+  vorsichtig.
+- **Richtungsstabilität C_nβ und Spiralkriterium: scharf mit Gültigkeitsbedingung.** Die Methoden
+  streuen bis Faktor 2,4 ohne feste Richtung. Sie ändern aber keine Entscheidung: Vorzeichen und
+  Spiralurteil stimmen an beiden Flugzeugen überein, und die Seitenflosse wird über das
+  Seitenleitwerksvolumen bemessen.
 
 **Bewusst scharf (Kriterium aus Regel 5):** die vordere Trimmgrenze. AeroBuildup liefert 14,3 % MAC, AVL
 10,4–13,5 % beim BRYAN. AeroBuildup liegt nachweislich auf der vorsichtigen Seite, weil ihm der Abwind am

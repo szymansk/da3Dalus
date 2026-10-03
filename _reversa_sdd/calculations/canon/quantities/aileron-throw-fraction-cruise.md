@@ -4,6 +4,7 @@ kind: quantity
 symbol: s_req,cruise
 unit: dimensionless
 role: output
+uncertainty: interval
 status: draft
 tags:
   - canon/quantity
@@ -17,3 +18,5 @@ Fraction of the set aileron throw the cruise roll-rate target needs; above 1 it 
 **Unit.** `dimensionless`
 
 **Produced by.** [[aileron-throw-fraction]]
+
+**Unschärfe (A11).** Intervall über die Methodenwelten AeroBuildup und AVL (Rollrate: Streuung 23 % beim BRYAN).

@@ -50,6 +50,13 @@ source). The spiral criterion is negative in all methods (weakly unstable), magn
 AeroBuildup's *local* roll damping is about twice AVL's and ASB VLM's (−0.82 vs −0.35/−0.36 at V_md); the
 steady roll rate of [[max-roll-rate]] nevertheless agrees with AVL within 23 % (nonlinear, see there).
 
+**Kept crisp (A11 rule 5, maintainer 2026-10-03). Validity condition, declared (ADR 0020):** AeroBuildup's
+`C_nβ` differs from AVL's by up to a factor 2.4, with no consistent direction (BRYAN 0.050 vs 0.122, e-Hawk
+0.117 vs 0.082); the fuselage share is unresolved. The spread changes no decision the canon carries: `C_nβ`
+is positive and the spiral criterion has the same sign in both methods on both aircraft, and fins are
+sized by the vertical tail volume. Revisit if an evaluation threshold on `C_nβ` is introduced or a spiral
+criterion lies near zero (BRYAN AeroBuildup: −0.0006).
+
 **Open before trusting the numbers.** Whether AeroBuildup captures the dihedral effect of the
 wing position (high vs low wing) and the fin in the fuselage wake is unchecked — a cross-check
 with AVL on BRYAN is required for approval.

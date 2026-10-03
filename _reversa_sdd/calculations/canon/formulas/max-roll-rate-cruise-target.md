@@ -1,6 +1,7 @@
 ---
 canon: max-roll-rate-cruise-target
 entry: formula
+uncertainty: interval
 kind: procedure
 tool: OPT
 shape: law
@@ -18,6 +19,15 @@ tags:
 ---
 
 # Maximum roll rate at the mission's cruise speed
+
+> **Uncertain quantity (A11, maintainer 2026-10-03).** Interval over two method worlds, each run through
+> the whole entry: **AeroBuildup** (the optimisation as written below; viscous flap model, but strip-wise
+> roll damping without induced relief, strongly nonlinear at real roll rates) and **AVL** (steady roll with
+> the ailerons driven directly, `d1 d1 delta`, CLAF by ASB's thickness rule; carries the induced relief
+> but no low-Re flap losses). Neither is provably conservative. BRYAN, approach, ailerons ±20°:
+> p·b/2V AeroBuildup 0.339, AVL 0.276 (`reference_fleet/bryan_roll_rate_compare.py`). The 23 % spread
+> can flip "target met" (A9), so A11 rule 5 makes it an interval. ASB's VLM models no control deflection
+> and is not a world.
 
 **Canonical form**
 
