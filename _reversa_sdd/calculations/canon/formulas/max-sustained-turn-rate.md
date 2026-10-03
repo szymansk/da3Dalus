@@ -32,6 +32,12 @@ subject to:   L(V, alpha) = n * m * g
 
 **Produces** [[max-sustained-turn-rate]] · [[max-sustained-turn-rate-speed]]  ·  **from** [[airplane]] · [[aircraft-mass]] · [[gravity]] · [[air-density]] · [[limit-load-factor]] · [[thrust-at-airspeed]]
 
+**The problem is not convex (BRYAN, 2026-10-03).** The fastest sustained turn sits at the stall
+corner. Past the first `C_L` peak the post-stall plateau offers a second local optimum: from a
+generic start IPOPT returned 9.83 m/s at α = 22.9° instead of 8.79 m/s at 13.4°, with no bound
+active. Restrict `α` to the pre-stall branch (first `C_L` peak from an α sweep, as in
+[[stall-speed]]); approval requires the optimum to lie on it (O3).
+
 **Kind: an optimisation problem**, the same shape as the extremal closures and the climb. Variables: airspeed `V`, angle of attack `alpha`, load factor `n`, propeller speed `n_prop`. A **sustained** turn: level, at constant speed, so thrust equals drag; the drag comes from AeroBuildup at the turn's `alpha`, so the induced drag of the higher lift is in it. Thrust and rpm as in the climb ([[motor-propeller-equilibrium]], route declared per `Q-PT-6`).
 
 **Kinematics of the coordinated level turn.** `omega = g·sqrt(n² − 1) / V`, `r = V² / (g·sqrt(n² − 1))`; equivalently `n = 1/cos(phi)` (Lennon, *Basics of R/C Model Aircraft Design*, Ch. 21, as a vector sum of weight and centrifugal force). The bank angle is the result, not an input.

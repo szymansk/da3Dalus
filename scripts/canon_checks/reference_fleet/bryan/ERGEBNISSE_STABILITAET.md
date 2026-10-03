@@ -73,3 +73,22 @@ Wert, keine Bewertung (A10).
 4. **Der Antrieb ist stark:** Das Schub-Gewichts-Verhältnis liegt über 1, ROC_max beträgt 13,8 m/s, das
    Modell steigt senkrecht. Nach Antrieb und Aerodynamik trägt der Bryan das Achtfache seiner Masse;
    begrenzen wird die Struktur.
+
+## Nachprüfung aller Probleme nahe am Abriss (03.10.2026)
+
+Gerechnet mit `bryan_stall_branch_check.py`. A ist die bisherige Lösung, B die auf den Ast vor dem
+Abriss beschränkte.
+
+| Problem | A | B | Befund |
+|---|---|---|---|
+| Manövergeschwindigkeit V_A | 8,79 m/s / 13,4° | gleich | unauffällig |
+| engste Kurve | 8,79 / 13,4° | gleich | unauffällig |
+| **schnellste Kurve** | **9,83 / 22,9°** | **8,79 / 13,4°** | **betroffen**: A liegt hinter dem Abriss |
+| steilstes Steigen V_x | ≈ 3,5 / −3,4° | ≈ 3,5 / −3,4° | kein Abrissproblem: senkrecht, V_x nicht eindeutig (steht so im Kanon) |
+| bestes Steigen V_y | 13,85 / −4,6° | gleich | unauffällig |
+| geringstes Sinken V_mp | 6,19 / 4,4° | gleich | unauffällig |
+| geringster Widerstand V_md | 7,82 / 0,7° | gleich | unauffällig |
+| V_max | 25,38 / −5,1° | gleich | unauffällig |
+
+Butterfly war nicht prüfbar, weil der Bryan keine Klappen hat. Die schnellste Kurve liegt beim Bryan an
+der Ecke aus Abriss und n_lim; ihre richtige Lösung fällt mit der Manövergeschwindigkeit zusammen.

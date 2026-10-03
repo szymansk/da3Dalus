@@ -353,3 +353,7 @@ zweites lokales Maximum (1,07 bei 23° gegen 1,26 bei 12°), in dem IPOPT ohne a
 blieb. V_S bei 151 g ist 5,29 statt 5,68 m/s. Die vordere Schwerpunktgrenze liegt bei 14,3 % MAC, hinten
 begrenzt der Neutralpunkt bei 43,8 %. `stall-speed.md` verlangt jetzt das erste C_L-Maximum. **Offen für
 die Freigabe:** dieselbe Prüfung auf das globale Optimum bei allen Kanon-Problemen nahe am Abriss.
+
+**Nachprüfung nahe am Abriss (03.10.2026):** Von sieben Problemen ist nur `max-sustained-turn-rate`
+betroffen (9,83 statt 8,79 m/s). In O3 steht jetzt das Freigabetor: Das Optimum muss auf dem Ast vor dem
+ersten C_L-Maximum liegen. Butterfly ist ungeprüft (Bryan ohne Klappen).
