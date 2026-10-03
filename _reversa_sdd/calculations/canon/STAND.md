@@ -357,3 +357,7 @@ die Freigabe:** dieselbe Prüfung auf das globale Optimum bei allen Kanon-Proble
 **Nachprüfung nahe am Abriss (03.10.2026):** Von sieben Problemen ist nur `max-sustained-turn-rate`
 betroffen (9,83 statt 8,79 m/s). In O3 steht jetzt das Freigabetor: Das Optimum muss auf dem Ast vor dem
 ersten C_L-Maximum liegen. Butterfly ist ungeprüft (Bryan ohne Klappen).
+
+**BRYAN Holm (03.10.2026):** n_break = 45 (Druckgurt an der Wurzel; Birkensperrholz 37,5 MPa nach USDA ×
+2/3), m_max,struct = 6,8 kg ≫ m_max,level 1,23 kg. Befund: ASB-VLM auf der Rundbogen-Geometrie
+numerisch unbrauchbar; Last nach Schrenk gerechnet.

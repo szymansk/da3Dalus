@@ -92,3 +92,35 @@ Abriss beschränkte.
 
 Butterfly war nicht prüfbar, weil der Bryan keine Klappen hat. Die schnellste Kurve liegt beim Bryan an
 der Ecke aus Abriss und n_lim; ihre richtige Lösung fällt mit der Manövergeschwindigkeit zusammen.
+
+## Holm: Bruch-Lastvielfaches (03.10.2026)
+
+Gerechnet mit `bryan_spar_break.py` nach dem Kanon-Eintrag spar-break-load-factor.
+
+- **Holm:** I-Holm mit Birkensperrholz-Gurten 1,0 × 4,0 mm, bündig zur Kontur. Steg aus Balsa, 2 mm,
+  Höhe 15,5 mm an der Wurzel. Kein Holmstoß.
+- **Festigkeit:**
+  - Druckgurt: Birke parallel zur Faser 56,3 MPa (USDA Wood Handbook, GTR-282). Beim dreilagigen
+    Sperrholz tragen zwei der drei Lagen, also 37,5 MPa.
+  - Zuggurt: 91,1 MPa (NACA Report 84, Elmendorf 1920, Tab. 4).
+- **Last:** 1 g nach Schrenk (NACA TM 948). Die Gewichtsentlastung durch den Flügel ist vernachlässigt,
+  das liegt auf der sicheren Seite.
+
+| y [mm] | Holmhöhe [mm] | M_1g [N·mm] | M_cap, Druck [N·mm] | n |
+|---|---|---|---|---|
+| 0 | 15,5 | 88,7 | 4006 | **45,2** |
+| 55 | 14,5 | 53,2 | 3553 | 66,8 |
+| 109 | 13,5 | 27,3 | 3163 | 116 |
+| 164 | 12,6 | 10,5 | 2789 | 265 |
+
+- **n_break,+ = n_break,− = 45**, maßgebend an der Wurzel (Druckgurt; der Zuggurt allein trüge 110).
+  Bei 25 bzw. 50 MPa Druckfestigkeit wären es 30 bzw. 60.
+- **m_max,struct = 6,8 kg.** Das liegt weit über der Grenze von Antrieb und Aerodynamik
+  (m_max,level 1,23 kg). Beim Bryan begrenzt der Holm also nie die Masse; bei 151 g liegen gemessene
+  RC-Lasten (6–19 g) weit darunter.
+- **Nicht gerechnet, nach Entscheidung:** Befestigung, Klebung, Schub im Steg, örtliches Beulen des
+  1 mm dünnen Druckgurts zwischen den Rippen. Der Kanon rechnet nur die Festigkeit (BR-W18). Beulen
+  wäre bei so dünnen Gurten die erste Frage, falls der Holm je knapp wird.
+- **Befund:** Die Wirbelgitter-Rechnung (ASB VLM) lieferte auf dieser Geometrie unbrauchbare Werte
+  (Panelkräfte von 10⁹ N), vermutlich wegen der winzigen Schnitte am runden Randbogen. Zu prüfen ist,
+  ob die Spannweitenverteilung der App auf solchen Geometrien denselben Weg nimmt.
