@@ -54,6 +54,15 @@ optimum, `V_S = sqrt(2·n·m·g / (rho·S_ref·C_L))` with `C_L` the lift coeffi
 Plugging the optimiser's `C_L` into the closed form must return its `V_S`; a mismatch is a
 defect. Sadraey Eq. 4.30 is unchanged — what changed is how it is evaluated at low Re.
 
+**The problem is not convex — approval needs the global optimum (BRYAN, 2026-10-02).** After the
+stall the lift curve runs onto a post-stall plateau that can carry a second, lower local maximum
+of `C_L` (BRYAN: 1.26 at 12° and 1.07 at 23°). IPOPT from a generic start found the 23° branch:
+`V_S` 5.68 m/s instead of about 5.2 m/s, and **no bound was active**, so the existing check did
+not catch it. The canonical evaluation therefore first locates the first `C_L` maximum by an α
+sweep (re-evaluated at the resulting `V_S` for the Reynolds number) and restricts `α` to the
+pre-stall branch. Approval adds: **the optimum must be the first `C_L` peak**, checked against the
+sweep.
+
 **Second output: `C_L,max,stall`.** The lift coefficient at the optimum *is* the maximum
 lift coefficient at the stall condition — exactly the quantity the precondition below
 asks for, and exactly what A2 says its name must carry. It replaces `clmax-from-polar`,

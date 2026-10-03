@@ -347,3 +347,9 @@ gestrichen. Auswahlgraph als HTML unter `_reversa_sdd/calculations/auswahl/`.
 - m_max,level 1228 g, m_max,TO 1218 g (ohne Struktur). Hinten begrenzt der Neutralpunkt.
 - Befunde: Der Abriss bei Re ≈ 50k ist nicht sauber erfasst (α ≈ 23°), ein Gegencheck ist nötig. Die
   vordere Grenze braucht Abriss-α fest und x < x_NP; das ist in mass-envelope.md nachgetragen.
+
+**BRYAN korrigiert (03.10.2026):** Das Abrissproblem ist nicht konvex; ein Post-Stall-Plateau hat ein
+zweites lokales Maximum (1,07 bei 23° gegen 1,26 bei 12°), in dem IPOPT ohne aktive Schranke hängen
+blieb. V_S bei 151 g ist 5,29 statt 5,68 m/s. Die vordere Schwerpunktgrenze liegt bei 14,3 % MAC, hinten
+begrenzt der Neutralpunkt bei 43,8 %. `stall-speed.md` verlangt jetzt das erste C_L-Maximum. **Offen für
+die Freigabe:** dieselbe Prüfung auf das globale Optimum bei allen Kanon-Problemen nahe am Abriss.

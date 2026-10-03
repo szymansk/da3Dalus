@@ -112,6 +112,18 @@ def aero(p, V, a):
     return asb.AeroBuildup(p, asb.OperatingPoint(atm, velocity=V, alpha=a)).run()
 
 
+def stall_branch_alpha(m):
+    """Angle of the first C_L maximum. The post-stall plateau carries a second, lower local
+    maximum (BRYAN: 1.07 at 23 deg vs 1.26 at 12 deg) where a local solver can get trapped."""
+    V = 6.0
+    for _ in range(3):  # the peak moves with Re; two re-evaluations at the resulting V_S suffice
+        al = np.arange(-4, 26, 0.5)
+        cl = np.ravel(asb.AeroBuildup(plane, asb.OperatingPoint(atm, velocity=V, alpha=al)).run()["CL"])
+        i = next((k for k in range(1, len(cl) - 1) if cl[k] >= cl[k - 1] and cl[k] > cl[k + 1]), int(np.argmax(cl)))
+        V = float(np.sqrt(2 * m * G / (RHO * plane.s_ref * cl[i])))
+    return float(al[i])
+
+
 def level(m, objective, V0=10.0):
     """Level flight L = m g; objective 'VS' (min V), 'Vmd' (min D), 'Vmax' (max V, T >= D)."""
     o = asb.Opti()
@@ -120,6 +132,7 @@ def level(m, objective, V0=10.0):
     r = aero(plane, V, a)
     o.subject_to(r["L"] == m * G)
     if objective == "VS":
+        o.subject_to(a <= stall_branch_alpha(m) + 1.0)  # stay on the pre-stall branch
         o.minimize(V)
     elif objective == "Vmd":
         o.minimize(r["D"])

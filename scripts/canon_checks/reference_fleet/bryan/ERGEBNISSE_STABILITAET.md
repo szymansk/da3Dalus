@@ -24,36 +24,44 @@ neutral-point, static-margin, cg-for-target-margin, lateral-static-stability-md/
 | Punkt | C_lβ | C_nβ | C_lr | C_nr | E_spiral |
 |---|---|---|---|---|---|
 | V_md 7,82 m/s | −0,0547 | +0,0497 | +0,1510 | −0,1268 | −0,00057 |
-| Anflug 7,39 m/s | −0,0528 | +0,0486 | +0,1577 | −0,1258 | −0,00102 |
+| Anflug 1,3·V_S = 6,88 m/s | −0,0489 | +0,0473 | +0,1685 | −0,1243 | −0,00189 |
 
 Statisch ist das Modell roll- und richtungsstabil. Die Spirale ist schwach instabil (E < 0). Das ist ein
 Wert, keine Bewertung (A10).
 
-## Massenhüllkurve
+## Massenhüllkurve (korrigiert: Abriss auf dem ersten C_L-Maximum)
 
-| m [g] | V_S [m/s] | V_max [m/s] | ROC_max [m/s] | T−D bei V_TO [N] | vordere Grenze [% MAC] |
+| m [g] | V_S [m/s] | V_max [m/s] | ROC_max [m/s] | T−D bei V_TO [N] | vordere Grenze [% MAC] (getrimmtes V_S) |
 |---|---|---|---|---|---|
-| 100 | 4,62 | 25,31 | 17,70 | +2,40 | – |
-| 151 | 5,68 | 25,38 | 13,80 | +2,22 | – |
-| 200 | 5,99 | 25,42 | 10,44 | +2,11 | 15,9 |
-| 300 | 7,22 | 25,46 | 6,73 | +1,85 | 17,5 |
-| 500 | 9,22 | 25,29 | 3,56 | +1,39 | 18,9 |
-| 800 | 11,61 | 24,35 | 1,48 | +0,77 | 19,7 |
-| 1100 | 15,26 | 22,20 | 0,35 | +0,21 | – |
+| 100 | 4,46 | 25,31 | 17,70 | +2,41 | 12,2 (4,7 m/s) |
+| **151** | **5,29** | 25,38 | 13,80 | +2,25 | **14,3** (5,6 m/s) |
+| 200 | 5,99 | 25,42 | 10,44 | +2,11 | 15,9 (6,3 m/s) |
+| 300 | 7,22 | 25,46 | 6,73 | +1,85 | 17,5 (7,6 m/s) |
+| 500 | 9,22 | 25,29 | 3,56 | +1,39 | 18,9 (9,7 m/s) |
+| 800 | 11,61 | 24,35 | 1,48 | +0,77 | 19,7 (12,2 m/s) |
+| 1100 | 13,59 | 22,20 | 0,35 | +0,21 | 20,0 (14,3 m/s) |
 
+- **Schwerpunktbereich bei 151 g:** vorn 14,3 % MAC (volles Höhenruder hält den Abriss), hinten der
+  Neutralpunkt bei 43,8 % MAC. Der Plan-Schwerpunkt (31,4 %) liegt mittig. Die vordere Grenze wandert mit
+  der Masse nach hinten, weil die Abrissgeschwindigkeit und damit der Höhenruderbedarf steigen.
 - **Grenzmassen:** m_max,level = **1228 g**, m_max,TO = **1218 g**. Das ist die aerodynamische und
   antriebsseitige Grenze, die Struktur ist nicht berücksichtigt (max-mass-structure braucht n_break des
   Holms).
-- **Hintere Grenze:** Das Ruder (voll Tief bei V_max) trimmt erst weit hinter dem Neutralpunkt, bei
-  über 90 % MAC. Hinten begrenzt also bei jeder Masse zuerst der **Neutralpunkt** (43,8 % MAC).
+- **Hintere Grenze:** Das Ruder (voll Tief bei V_max) trimmt erst weit hinter dem Neutralpunkt, bei über
+  90 % MAC. Hinten begrenzt also bei jeder Masse zuerst der **Neutralpunkt**.
 
 ## Befunde
 
-1. **Der Abriss ist bei der Nennmasse nicht sauber erfasst.** Das Problem der Abrissgeschwindigkeit
-   endet bei α ≈ 23°, nahe der Schranke von 25°. AeroBuildup/NeuralFoil liefert bei Re ≈ 50k kein klares
-   C_L,max. V_S und die vordere Schwerpunktgrenze sind bei 100, 151 und 1100 g deshalb nicht belastbar;
-   für die vordere Grenze findet der Solver dort keine Lösung. Vor der Freigabe ist ein Gegencheck des
-   Abrisses nötig, gegen XFOIL oder Messwerte.
+1. **Das Abrissproblem ist nicht konvex.** Das ganze Flugzeug hat in AeroBuildup ein sauberes
+   C_L,max = 1,26 bei α = 12°. Danach folgt ein Plateau mit einem zweiten, kleineren Maximum von 1,07
+   bei 23°. IPOPT ist vom allgemeinen Startwert aus dort hängen geblieben: V_S = 5,68 statt 5,29 m/s,
+   und zwar **ohne aktive Schranke**, sodass die bisherige Freigabeprüfung es nicht bemerkt hat. (Eine
+   frühere Fassung dieses Dokuments hielt den Abriss in AeroBuildup für unsauber erfasst. Das war falsch:
+   Das 2D-Profil reißt in NeuralFoil bei Re 52k sauber bei 11° ab, C_L,max 1,26, Konfidenz 0,98.)
+   Korrektur: erst eine α-Abtastung zum ersten Maximum, dann der Optimierer nur auf dem Ast vor dem
+   Abriss. Nachgetragen in `canon/formulas/stall-speed.md`. **Das betrifft jedes Kanon-Problem nahe am
+   Abriss** (Anflug, Start, engste Kurve, vordere Grenze). Ihre Freigabe braucht dieselbe Prüfung auf
+   das globale Optimum.
 2. **Die vordere Grenze hat zwei Wurzeln.** Mit vollem Höhenruder hat Cm = 0 eine zweite Lösung hinter
    dem Neutralpunkt. Die Formulierung muss den Anstellwinkel beim Abriss festhalten und den Schwerpunkt
    auf die Seite vor dem Neutralpunkt beschränken. Die Geschwindigkeit bleibt frei, denn der Abtrieb
