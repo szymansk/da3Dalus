@@ -127,3 +127,36 @@ Gerechnet mit `bryan_spar_break.py` nach dem Kanon-Eintrag spar-break-load-facto
   Panels seit gh-855 proportional zur Segmentspanne (`vlm_strip_forces.remesh_uniform_density`). Auf dem
   Bryan liefert sie C_L = 0,587 mit plausiblem Verlauf; das Wurzelmoment bei 1 g ist 87,0 N·mm gegen
   88,7 N·mm nach Schrenk (−2 %). Schrenk ist hier also eine gute und leicht konservative Näherung.
+
+## Seitenstabilität: AeroBuildup gegen AVL und VLM (03.10.2026)
+
+Gerechnet mit `bryan_lateral_avl.py` bei V_md und gleichem C_L = 0,565, Bezug Plan-Schwerpunkt.
+- **AVL:** Die AFIL-Verweise zeigen auf die Original-Profildateien, weil der ASB-Export x > 1 schreibt.
+  Ausgelesen wird der erste Treffer, weil AVL zusätzlich die Spiralzeile „Clb Cnr / Clr Cnb = …" druckt.
+- **VLM:** ASB-Wirbelgitter mit einem Panel je Segment.
+
+| Methode | C_lβ | C_nβ | C_lp | C_nr | C_lr | C_np | E_spiral |
+|---|---|---|---|---|---|---|---|
+| AeroBuildup mit Rumpf | −0,055 | **+0,050** | **−0,819** | −0,127 | +0,151 | −0,060 | −0,0006 |
+| AeroBuildup ohne Rumpf | −0,052 | +0,103 | −0,819 | −0,127 | +0,151 | −0,060 | – |
+| AVL mit Rumpf | −0,066 | +0,122 | −0,349 | −0,162 | +0,137 | −0,039 | −0,0060 |
+| AVL ohne Rumpf | −0,072 | +0,119 | −0,350 | −0,161 | +0,137 | −0,039 | – |
+| VLM ohne Rumpf | −0,020 | +0,150 | −0,364 | −0,275 | +0,143 | −0,070 | – |
+
+**Befunde:**
+1. **Die Rolldämpfung ist in AeroBuildup 2,3-fach zu groß.** AVL (−0,349) und VLM (−0,364) stimmen
+   überein, AeroBuildup liefert −0,819. Plausibel ist ein streifenweises Modell ohne die Entlastung durch
+   den induzierten Abwind bei antisymmetrischer Last. **Folge für den Kanon:** `max-roll-rate` und
+   `aileron-throw-fraction` rechnen die stationäre Rollrate mit AeroBuildup und **unterschätzen sie etwa
+   um diesen Faktor.** Das blockiert ihre Freigabe; Werkzeug oder Korrektur ist zu entscheiden.
+   **Folge für die App:** Der Analyse-Endpunkt gibt C_lp aus AeroBuildup als „Roll Damping" aus,
+   ohne Hinweis. Rollraten selbst rechnet die App nur mit AVL.
+2. **Die Richtungsstabilität ohne Rumpf stimmt grob überein** (AeroBuildup 0,103, AVL 0,119,
+   VLM 0,150). **Mit Rumpf halbiert AeroBuildup C_nβ** auf 0,050 (destabilisierendes Rumpfmoment), AVL
+   kaum (0,122). AVL modelliert Rümpfe nur grob. Welcher Rumpfbeitrag stimmt, bleibt offen und braucht
+   eine dritte Quelle (z. B. DATCOM-Rumpfanteil).
+3. **Die Schieberollmomente liegen nah beieinander:** AeroBuildup −0,055, AVL −0,066. Den Einfluss der
+   Flügellage (Hochdecker) erfasst AeroBuildup also in der Größenordnung. Die VLM (−0,020) hat keinen
+   Rumpf und damit keinen Hochdeckereffekt.
+4. **Die Spirale ist in allen Methoden schwach instabil.** Das Vorzeichen stimmt; der Betrag
+   unterscheidet sich um den Faktor 10.

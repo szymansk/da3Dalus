@@ -20,6 +20,11 @@ tex: L(V,\alpha) = m\,g, \quad C_{roll}\big(V,\alpha,\,\delta_{a,max},\,p_{max}\
 
 # Maximum roll rate with the aileron throws set in the airplane
 
+> **⚠ Blocking finding, 2026-10-03 (BRYAN):** AeroBuildup's roll damping `C_lp` is 2.3× larger
+> than AVL's and ASB VLM's (−0.82 vs −0.35/−0.36). A steady roll computed with AeroBuildup therefore
+> underestimates the roll rate by about that factor. Tool or correction to be decided before approval
+> (`scripts/canon_checks/reference_fleet/bryan/ERGEBNISSE_STABILITAET.md`).
+
 **Canonical form**
 
 ```

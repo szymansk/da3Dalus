@@ -20,6 +20,11 @@ tex: s_{req}:\; L(V,\alpha) = m\,g, \quad C_{roll}\big(V,\alpha,\,s_{req}\,\delt
 
 # Fraction of the set aileron throw a roll-rate target needs
 
+> **⚠ Blocking finding, 2026-10-03 (BRYAN):** AeroBuildup's roll damping `C_lp` is 2.3× larger
+> than AVL's and ASB VLM's (−0.82 vs −0.35/−0.36). A steady roll computed with AeroBuildup therefore
+> underestimates the roll rate by about that factor. Tool or correction to be decided before approval
+> (`scripts/canon_checks/reference_fleet/bryan/ERGEBNISSE_STABILITAET.md`).
+
 **Canonical form**
 
 ```

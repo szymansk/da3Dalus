@@ -362,3 +362,8 @@ ersten C_L-Maximum liegen. Butterfly ist ungeprüft (Bryan ohne Klappen).
 2/3), m_max,struct = 6,8 kg ≫ m_max,level 1,23 kg. Der VLM-Befund war ein Fehler im eigenen Aufruf (24 Panels je Segment auf
 winzigen Randbogen-Segmenten). Der App-Pfad (gh-855) ist sauber: Wurzelmoment 87,0 gegen 88,7 N·mm nach
 Schrenk.
+
+**AVL-Gegencheck Seitenstabilität am BRYAN (03.10.2026):** C_lβ stimmt auf 20 %; C_nβ ohne Rumpf grob,
+mit Rumpf halbiert AeroBuildup (Rumpfanteil offen). **Blockierend: C_lp in AeroBuildup 2,3-fach zu
+groß** (AVL und VLM übereinstimmend), damit sind `max-roll-rate` und `aileron-throw-fraction` zu langsam.
+Werkzeug oder Korrektur ist zu entscheiden. Die App gibt C_lp aus AeroBuildup ohne Hinweis aus.
