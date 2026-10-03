@@ -2209,8 +2209,10 @@ Verfahren mit einem Rechentest und einer kritischen Literaturprüfung
 4. **Monotonie prüfen.** Die Ränder an den Welten bzw. Grenzen sind nur exakt, wenn die Kette über die
    Ursache monoton ist. Optimierungsketten bekommen deshalb eine Prüfung auf einem Gitter; ist die Kette
    nicht monoton, wird innerhalb der Grenzen optimiert.
-5. **Sparsam.** Unscharf wird eine Größe nur, wo belegte Methoden abweichen; je Größe höchstens zwei
-   stetige Ursachen. Stimmen die Methoden überein, ist die Größe **nicht scharf, sondern nicht
+5. **Sparsam.** Unscharf wird eine Größe nur, wo belegte Methoden abweichen **und** die Streuung eine
+   Auslegungsentscheidung ändern kann (Maintainer, 03.10.2026). Liegt ein Werkzeug nachweislich auf der
+   vorsichtigen Seite, bleibt die Größe scharf und trägt eine **Gültigkeitsbedingung**, die Richtung und
+   Größe der Abweichung nennt. Je Größe höchstens zwei stetige Ursachen. Stimmen die Methoden überein, ist die Größe **nicht scharf, sondern nicht
    validiert**: Die Methodenstreuung ist immer nur eine **untere Schranke**, denn alle Methoden können
    denselben blinden Fleck haben (etwa den Rumpf).
 
@@ -2226,8 +2228,12 @@ folgen Stabilitätsmaß, `cg-for-target-margin` und die hintere Kante der Massen
 Kandidaten mit belegter Streuung:
 - die Rollrate (AeroBuildup gegen AVL, 23 %)
 - die Richtungsstabilität mit Rumpf (Faktor 2)
-- die vordere Trimmgrenze: AeroBuildup 14,3 % gegen AVL 10,4–13,5 % MAC beim BRYAN. AeroBuildup fehlt
-  der Abwind, AVL fehlen die Klappenverluste; beide Fehler laufen entgegengesetzt
+
+**Bewusst scharf (Kriterium aus Regel 5):** die vordere Trimmgrenze. AeroBuildup liefert 14,3 % MAC, AVL
+10,4–13,5 % beim BRYAN. AeroBuildup liegt nachweislich auf der vorsichtigen Seite, weil ihm der Abwind am
+Leitwerk fehlt, der den nötigen Abtrieb unterstützt. Die Reserve zum Erstflug-Schwerpunkt (8,6 % MAC) ist
+größer als die Streuung. Die Grenze bleibt deshalb scharf mit AeroBuildup, mit Gültigkeitsbedingung.
+Wieder aufgreifen, wenn ein Referenzflugzeug eine Reserve in der Größenordnung der Streuung zeigt.
 
 **Verhältnis zu A7 / ADR 0022.** Ein Eintrag, der ein Intervall liefert, ist **ein** Erzeuger. Die
 Welten sind keine zweiten Autoritäten, sondern Teil seiner Definition (ADR 0027).

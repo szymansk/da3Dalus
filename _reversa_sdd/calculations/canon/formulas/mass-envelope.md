@@ -62,7 +62,10 @@ neutral point (BRYAN: > 90 % MAC), so the neutral point is the edge that comes f
 10.4 % (CLAF thickness rule) and 13.5 % (CLAF 1.0). AeroBuildup lacks the wing downwash at the tail,
 which *helps* the download at the front edge, so it is conservative here. AVL lacks the low-Re viscous
 flap losses that NeuralFoil's flap model carries. The two errors run in opposite directions; spread
-10.4–14.3 % MAC. Candidate uncertain quantity under A11.
+10.4–14.3 % MAC. **Kept crisp (A11 rule 5, maintainer 2026-10-03):** the front edge is computed with
+AeroBuildup, which is conservative here. **Validity condition, declared (ADR 0020):** methods carrying the
+wing–tail downwash place the front edge up to about 4 % MAC further forward. Revisit if a reference aircraft
+shows a first-flight reserve of the order of that spread.
 
 **Absorbs** `forward-cg-limit` (2026-10-02): its value is this envelope's front edge at the
 current mass — a separate entry would be a second authority (ADR 0022).

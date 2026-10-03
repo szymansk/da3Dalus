@@ -404,3 +404,7 @@ K25/K26; der Navigator kennzeichnet unscharfe Größen und ihre Folgen; #1154 is
 **Vordere Trimmgrenze am BRYAN (03.10.2026):** AeroBuildup 14,3 %, AVL 10,4 % bzw. 13,5 % MAC.
 AeroBuildup liegt auf der vorsichtigen Seite, weil der Abwind am Leitwerk den nötigen Abtrieb unterstützt
 und AeroBuildup ihn nicht kennt. Die Erwartung war falsch herum. Kandidat für A11, Streuung 10,4–14,3 %.
+
+**A11 geschärft (03.10.2026):** Unscharf nur, wenn die Streuung eine Auslegungsentscheidung ändern kann.
+Liegt ein Werkzeug belegt auf der vorsichtigen Seite, bleibt die Größe scharf mit Gültigkeitsbedingung.
+Die vordere Trimmgrenze bleibt scharf (AeroBuildup, vorsichtig; AVL bis 4 % MAC weiter vorn).
