@@ -121,6 +121,9 @@ Gerechnet mit `bryan_spar_break.py` nach dem Kanon-Eintrag spar-break-load-facto
 - **Nicht gerechnet, nach Entscheidung:** Befestigung, Klebung, Schub im Steg, örtliches Beulen des
   1 mm dünnen Druckgurts zwischen den Rippen. Der Kanon rechnet nur die Festigkeit (BR-W18). Beulen
   wäre bei so dünnen Gurten die erste Frage, falls der Holm je knapp wird.
-- **Befund:** Die Wirbelgitter-Rechnung (ASB VLM) lieferte auf dieser Geometrie unbrauchbare Werte
-  (Panelkräfte von 10⁹ N), vermutlich wegen der winzigen Schnitte am runden Randbogen. Zu prüfen ist,
-  ob die Spannweitenverteilung der App auf solchen Geometrien denselben Weg nimmt.
+- **Geprüft, kein App-Befund (03.10.2026):** Die Wirbelgitter-Rechnung lieferte zuerst unbrauchbare
+  Werte (Panelkräfte von 10⁹ N). Ursache war mein eigener Aufruf mit 24 Panels **je Segment**: Auf den
+  winzigen Segmenten des runden Randbogens entstehen dadurch fast entartete Panels. Die App verteilt die
+  Panels seit gh-855 proportional zur Segmentspanne (`vlm_strip_forces.remesh_uniform_density`). Auf dem
+  Bryan liefert sie C_L = 0,587 mit plausiblem Verlauf; das Wurzelmoment bei 1 g ist 87,0 N·mm gegen
+  88,7 N·mm nach Schrenk (−2 %). Schrenk ist hier also eine gute und leicht konservative Näherung.

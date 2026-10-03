@@ -359,5 +359,6 @@ betroffen (9,83 statt 8,79 m/s). In O3 steht jetzt das Freigabetor: Das Optimum 
 ersten C_L-Maximum liegen. Butterfly ist ungeprüft (Bryan ohne Klappen).
 
 **BRYAN Holm (03.10.2026):** n_break = 45 (Druckgurt an der Wurzel; Birkensperrholz 37,5 MPa nach USDA ×
-2/3), m_max,struct = 6,8 kg ≫ m_max,level 1,23 kg. Befund: ASB-VLM auf der Rundbogen-Geometrie
-numerisch unbrauchbar; Last nach Schrenk gerechnet.
+2/3), m_max,struct = 6,8 kg ≫ m_max,level 1,23 kg. Der VLM-Befund war ein Fehler im eigenen Aufruf (24 Panels je Segment auf
+winzigen Randbogen-Segmenten). Der App-Pfad (gh-855) ist sauber: Wurzelmoment 87,0 gegen 88,7 N·mm nach
+Schrenk.
