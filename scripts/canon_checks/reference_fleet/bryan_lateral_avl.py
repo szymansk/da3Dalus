@@ -60,7 +60,7 @@ for label, p in (("AeroBuildup (mit Rumpf)", plane(True)), ("AeroBuildup (ohne R
     r = asb.AeroBuildup(p, op).run_with_stability_derivatives()
     rows[label] = {k: sc(r[k]) for k in KEYS if k in r}
 AVL_MAP = {"Clb": "Clb", "Cnb": "Cnb", "Clp": "Clp", "Cnr": "Cnr", "Clr": "Clr", "Cnp": "Cnp",
-           "Cyb": "CYb", "CL": "CLtot"}
+           "Cyb": "CYb", "CL": "CLtot", "Xnp": "Xnp"}
 
 
 def run_avl(p, cl_target):
@@ -102,3 +102,10 @@ for label, vals in rows.items():
         print(f"{label:28s} {vals['Fehler']}")
         continue
     print(f"{label:28s}" + "".join(f"{vals.get(k, float('nan')):9.4f}" for k in KEYS))
+
+W = plane(True).wings[0]
+mac = W.mean_aerodynamic_chord()
+x_le = W.aerodynamic_center()[0] - 0.25 * mac
+x_np_ab = sc(asb.AeroBuildup(plane(True), op).run_with_stability_derivatives()["x_np"])
+print(f"\nNeutralpunkt: AeroBuildup {100*(x_np_ab-x_le)/mac:.1f} % MAC, "
+      f"AVL {100*(rows['AVL (mit Rumpf)']['Xnp']-x_le)/mac:.1f} % MAC")

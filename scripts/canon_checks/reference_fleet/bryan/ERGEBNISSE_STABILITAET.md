@@ -163,3 +163,12 @@ Gerechnet mit `bryan_lateral_avl.py` bei V_md und gleichem C_L = 0,565, Bezug Pl
    Rumpf und damit keinen Hochdeckereffekt.
 4. **Die Spirale ist in allen Methoden schwach instabil.** Das Vorzeichen stimmt; der Betrag
    unterscheidet sich um den Faktor 10.
+
+## Neutralpunkt gegen AVL (03.10.2026): Befund, Ticket #1154
+
+AeroBuildup legt den Neutralpunkt bei **43,7 % MAC**, AVL bei **33,1 %** und die ASB-VLM ohne Rumpf bei
+38,3 %. AeroBuildup kennt den Abwind des Flügels am Leitwerk nicht. **Damit steht das Stabilitätsmaß des
+Plan-Schwerpunkts nicht bei 12,3 %, sondern nach AVL bei etwa 1,7 %.** Die Längsstabilitäts-, Schwerpunkt-
+und Hüllkurvenwerte oben, die am AeroBuildup-Neutralpunkt hängen, sind entsprechend vorläufig: hintere
+Grenze, Stabilitätsmaß und cg-for-target-margin. Der Bauplan setzt den Schwerpunkt also knapp vor den
+Neutralpunkt; bei einem Modell dieser Klasse ist das üblich und wird erflogen.

@@ -1,0 +1,489 @@
+{
+ "name": "e-Hawk",
+ "total_mass_kg": 0.55,
+ "xyz_ref": [
+  0.0,
+  0.0,
+  0.0
+ ],
+ "wings": {
+  "Tragflaeche": {
+   "name": "Tragflaeche",
+   "symmetric": true,
+   "design_model": "wc",
+   "x_secs": [
+    {
+     "xyz_le": [
+      0.0,
+      0.0,
+      0.0
+     ],
+     "chord": 0.162,
+     "twist": 0.0,
+     "dihedral": 1.0,
+     "airfoil": "./mh32.dat",
+     "x_sec_type": "root",
+     "number_interpolation_points": 201,
+     "spare_list": [
+      {
+       "spare_support_dimension_width": 0.00442,
+       "spare_support_dimension_height": 0.00442,
+       "spare_position_factor": 0.25,
+       "spare_length": null,
+       "spare_start": 0.0,
+       "spare_mode": "standard",
+       "spare_vector": [
+        0.03675826199775033,
+        0.9992133621593052,
+        0.014882441237981629
+       ],
+       "spare_origin": [
+        0.0405,
+        -6.0306e-05,
+        0.003454955
+       ]
+      },
+      {
+       "spare_support_dimension_width": 0.00642,
+       "spare_support_dimension_height": 0.00642,
+       "spare_position_factor": 0.55,
+       "spare_length": 0.07,
+       "spare_start": 0.0,
+       "spare_mode": "standard",
+       "spare_vector": [
+        0.0,
+        1.0,
+        0.0
+       ],
+       "spare_origin": [
+        0.0891,
+        -6.4549e-05,
+        0.003698033
+       ]
+      },
+      {
+       "spare_support_dimension_width": 0.00642,
+       "spare_support_dimension_height": 0.00642,
+       "spare_position_factor": 0.2,
+       "spare_length": 0.07,
+       "spare_start": 0.0,
+       "spare_mode": "standard",
+       "spare_vector": [
+        0.0,
+        1.0,
+        0.0
+       ],
+       "spare_origin": [
+        0.0324,
+        -5.4909e-05,
+        0.00314573
+       ]
+      }
+     ]
+    },
+    {
+     "xyz_le": [
+      0.0,
+      0.019996954,
+      0.000349048
+     ],
+     "chord": 0.162,
+     "twist": 0.0,
+     "dihedral": 0.0,
+     "airfoil": "./mh32.dat",
+     "x_sec_type": "segment",
+     "number_interpolation_points": 201,
+     "spare_list": [
+      {
+       "spare_support_dimension_width": 0.00442,
+       "spare_support_dimension_height": 0.00442,
+       "spare_position_factor": 0.25,
+       "spare_length": null,
+       "spare_start": 0.0,
+       "spare_mode": "follow",
+       "spare_vector": [
+        0.03675826199775033,
+        0.9992133621593052,
+        0.014882441237981629
+       ],
+       "spare_origin": [
+        0.041235165,
+        0.019923961,
+        0.003752603
+       ]
+      },
+      {
+       "spare_support_dimension_width": 0.00642,
+       "spare_support_dimension_height": 0.00642,
+       "spare_position_factor": 0.25,
+       "spare_length": 0.06,
+       "spare_start": 0.0,
+       "spare_mode": "follow",
+       "spare_vector": [
+        0.0,
+        1.0,
+        0.0
+       ],
+       "spare_origin": [
+        0.0891,
+        0.019935451,
+        0.003698033
+       ]
+      },
+      {
+       "spare_support_dimension_width": 0.00642,
+       "spare_support_dimension_height": 0.00642,
+       "spare_position_factor": 0.25,
+       "spare_length": 0.06,
+       "spare_start": 0.0,
+       "spare_mode": "follow",
+       "spare_vector": [
+        0.0,
+        1.0,
+        0.0
+       ],
+       "spare_origin": [
+        0.0324,
+        0.019945091,
+        0.00314573
+       ]
+      }
+     ]
+    },
+    {
+     "xyz_le": [
+      0.0025,
+      0.219966493,
+      0.003839529
+     ],
+     "chord": 0.157,
+     "twist": 0.0,
+     "dihedral": 0.0,
+     "airfoil": "./mh32.dat",
+     "x_sec_type": "segment",
+     "number_interpolation_points": 201,
+     "spare_list": [
+      {
+       "spare_support_dimension_width": 0.00442,
+       "spare_support_dimension_height": 0.00442,
+       "spare_position_factor": 0.25,
+       "spare_length": null,
+       "spare_start": 0.0,
+       "spare_mode": "follow",
+       "spare_vector": [
+        0.03675826199775033,
+        0.9992133621593052,
+        0.014882441237981629
+       ],
+       "spare_origin": [
+        0.048586818,
+        0.219766633,
+        0.006729092
+       ]
+      }
+     ],
+     "trailing_edge_device": {
+      "name": "aileron",
+      "rel_chord_root": 0.8,
+      "rel_chord_tip": 0.8,
+      "hinge_spacing": 0.5,
+      "side_spacing_root": 2.0,
+      "side_spacing_tip": 2.0,
+      "servo_placement": "top",
+      "rel_chord_servo_position": 0.414,
+      "rel_length_servo_position": 0.486,
+      "positive_deflection_deg": 35,
+      "negative_deflection_deg": 35,
+      "trailing_edge_offset_factor": 1.2,
+      "hinge_type": "top",
+      "symmetric": false,
+      "servo": {
+       "component_id": null,
+       "length": 20.0,
+       "width": 8.6,
+       "height": 20.2,
+       "leading_length": 4.25,
+       "latch_z": 12.0,
+       "latch_x": 4.0,
+       "latch_thickness": 1.0,
+       "latch_length": 28.0,
+       "cable_z": 0.0,
+       "screw_hole_lx": 2.25,
+       "screw_hole_d": 0.0
+      }
+     }
+    },
+    {
+     "xyz_le": [
+      0.0105,
+      0.469928417,
+      0.008202631
+     ],
+     "chord": 0.132888889,
+     "twist": 0.0,
+     "dihedral": 0.0,
+     "airfoil": "./mh32.dat",
+     "x_sec_type": "segment",
+     "number_interpolation_points": 201,
+     "spare_list": [
+      {
+       "spare_support_dimension_width": 0.00442,
+       "spare_support_dimension_height": 0.00442,
+       "spare_position_factor": 0.25,
+       "spare_length": null,
+       "spare_start": 0.0,
+       "spare_mode": "follow",
+       "spare_vector": [
+        0.03675826199775033,
+        0.9992133621593052,
+        0.014882441237981629
+       ],
+       "spare_origin": [
+        0.057776383,
+        0.469569974,
+        0.010449702
+       ]
+      }
+     ],
+     "trailing_edge_device": {
+      "name": "aileron",
+      "rel_chord_root": 0.8,
+      "rel_chord_tip": 0.8,
+      "hinge_spacing": 0.5,
+      "side_spacing_root": 2.0,
+      "side_spacing_tip": 2.0,
+      "servo_placement": "top",
+      "rel_chord_servo_position": null,
+      "rel_length_servo_position": null,
+      "positive_deflection_deg": 25,
+      "negative_deflection_deg": 25,
+      "trailing_edge_offset_factor": 1.0,
+      "hinge_type": "top",
+      "symmetric": true,
+      "servo": null
+     }
+    },
+    {
+     "xyz_le": [
+      0.0155,
+      0.544916994,
+      0.009511562
+     ],
+     "chord": 0.123055556,
+     "twist": 0.0,
+     "dihedral": 0.0,
+     "airfoil": "./mh32.dat",
+     "x_sec_type": "segment",
+     "number_interpolation_points": 201,
+     "spare_list": [
+      {
+       "spare_support_dimension_width": 0.00442,
+       "spare_support_dimension_height": 0.00442,
+       "spare_position_factor": 0.25,
+       "spare_length": null,
+       "spare_start": 0.0,
+       "spare_mode": "follow",
+       "spare_vector": [
+        0.03675826199775033,
+        0.9992133621593052,
+        0.014882441237981629
+       ],
+       "spare_origin": [
+        0.060533253,
+        0.544510976,
+        0.011565885
+       ]
+      }
+     ],
+     "trailing_edge_device": {
+      "name": "aileron",
+      "rel_chord_root": 0.8,
+      "rel_chord_tip": 0.8,
+      "hinge_spacing": 0.5,
+      "side_spacing_root": 2.0,
+      "side_spacing_tip": 2.0,
+      "servo_placement": "top",
+      "rel_chord_servo_position": null,
+      "rel_length_servo_position": null,
+      "positive_deflection_deg": 25,
+      "negative_deflection_deg": 25,
+      "trailing_edge_offset_factor": 1.0,
+      "hinge_type": "top",
+      "symmetric": true,
+      "servo": null
+     }
+    },
+    {
+     "xyz_le": [
+      0.0265,
+      0.629904048,
+      0.010995016
+     ],
+     "chord": 0.105217778,
+     "twist": 0.0,
+     "dihedral": 0.0,
+     "airfoil": "./mh32.dat",
+     "x_sec_type": "segment",
+     "number_interpolation_points": 201,
+     "spare_list": [
+      {
+       "spare_support_dimension_width": 0.00442,
+       "spare_support_dimension_height": 0.00442,
+       "spare_position_factor": 0.25,
+       "spare_length": null,
+       "spare_start": 0.0,
+       "spare_mode": "follow",
+       "spare_vector": [
+        0.03675826199775033,
+        0.9992133621593052,
+        0.014882441237981629
+       ],
+       "spare_origin": [
+        0.063657705,
+        0.629444112,
+        0.012830893
+       ]
+      }
+     ],
+     "trailing_edge_device": {
+      "name": "aileron",
+      "rel_chord_root": 0.8,
+      "rel_chord_tip": 0.8,
+      "hinge_spacing": 0.5,
+      "side_spacing_root": 2.0,
+      "side_spacing_tip": 2.0,
+      "servo_placement": "top",
+      "rel_chord_servo_position": null,
+      "rel_length_servo_position": null,
+      "positive_deflection_deg": 25,
+      "negative_deflection_deg": 25,
+      "trailing_edge_offset_factor": 1.0,
+      "hinge_type": "top",
+      "symmetric": true,
+      "servo": null
+     }
+    },
+    {
+     "xyz_le": [
+      0.0385,
+      0.669897956,
+      0.011693112
+     ],
+     "chord": 0.09,
+     "twist": 0.0,
+     "dihedral": 0.0,
+     "airfoil": "./mh32.dat",
+     "x_sec_type": "segment",
+     "number_interpolation_points": 201,
+     "spare_list": [
+      {
+       "spare_support_dimension_width": 0.00442,
+       "spare_support_dimension_height": 0.00442,
+       "spare_position_factor": 0.25,
+       "spare_length": null,
+       "spare_start": 0.0,
+       "spare_mode": "standard_backward",
+       "spare_vector": [
+        0.03675826199775033,
+        0.9992133621593052,
+        0.014882441237981629
+       ],
+       "spare_origin": [
+        0.065128036,
+        0.669412646,
+        0.01342619
+       ]
+      }
+     ]
+    },
+    {
+     "xyz_le": [
+      0.046,
+      0.68989491,
+      0.01204216
+     ],
+     "chord": 0.0795,
+     "twist": 0.0,
+     "dihedral": 5.0,
+     "airfoil": "./mh32.dat",
+     "x_sec_type": "tip",
+     "tip_type": "flat",
+     "number_interpolation_points": 201
+    },
+    {
+     "xyz_le": [
+      0.0535,
+      0.704812738,
+      0.013610087
+     ],
+     "chord": 0.071,
+     "twist": 0.0,
+     "dihedral": 5.0,
+     "airfoil": "./mh32.dat",
+     "x_sec_type": "tip",
+     "tip_type": "flat",
+     "number_interpolation_points": 201
+    },
+    {
+     "xyz_le": [
+      0.0635,
+      0.719537146,
+      0.016472222
+     ],
+     "chord": 0.062,
+     "twist": 0.0,
+     "dihedral": 5.0,
+     "airfoil": "./mh32.dat",
+     "x_sec_type": "tip",
+     "tip_type": "flat",
+     "number_interpolation_points": 201
+    },
+    {
+     "xyz_le": [
+      0.076,
+      0.733956071,
+      0.020606783
+     ],
+     "chord": 0.0525,
+     "twist": 0.0,
+     "dihedral": 10.0,
+     "airfoil": "./mh32.dat",
+     "x_sec_type": "tip",
+     "tip_type": "flat",
+     "number_interpolation_points": 201
+    },
+    {
+     "xyz_le": [
+      0.091,
+      0.742944012,
+      0.024990494
+     ],
+     "chord": 0.0405,
+     "twist": 0.0,
+     "dihedral": 15.0,
+     "airfoil": "./mh32.dat",
+     "x_sec_type": "tip",
+     "tip_type": "flat",
+     "number_interpolation_points": 201
+    },
+    {
+     "xyz_le": [
+      0.1085,
+      0.74671756,
+      0.028270789
+     ],
+     "chord": 0.024,
+     "twist": 0.0,
+     "dihedral": 0.0,
+     "airfoil": "./mh32.dat"
+    }
+   ],
+   "units": {
+    "geometry_length": "m",
+    "detail_length": "m",
+    "angle": "deg"
+   }
+  }
+ },
+ "fuselages": {}
+}

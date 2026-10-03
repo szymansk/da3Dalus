@@ -19,6 +19,13 @@ tags:
 
 # Neutral point of the airplane
 
+> **⚠ Blocking finding, 2026-10-03 (reference fleet, GH #1154):** AeroBuildup models each surface's
+> self-downwash only, not the wing's downwash at the tail (`aero_buildup.py:746`). Its `x_np` lies about
+> **10 % MAC aft** of AVL: BRYAN 43.7 vs 33.1 %, e-Hawk 58.4 vs 48.8 %; ASB VLM (no fuselage) 38.3 % on
+> BRYAN. The tool of this entry must change to a vortex-lattice method (ASB VLM or AVL), with the fuselage
+> contribution declared. Maintainer decision pending; every entry downstream of `x_NP` (static margin,
+> cg-for-target-margin, the mass envelope's aft edge) inherits it.
+
 **Canonical form**
 
 ```

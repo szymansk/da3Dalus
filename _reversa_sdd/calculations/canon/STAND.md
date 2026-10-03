@@ -367,3 +367,10 @@ Schrenk.
 mit Rumpf halbiert AeroBuildup (Rumpfanteil offen). **Korrigiert:** Die lokale C_lp in AeroBuildup ist etwa doppelt so groß wie in AVL/VLM, die stationäre
 Rollrate weicht aber nur 23 % ab (nichtlinear, Spitzenabriss); nicht blockierend. Die VLM kennt keine
 Ruder. Offen: eine gemessene Rollrate entscheidet. Die App gibt C_lp aus AeroBuildup ohne Hinweis aus.
+
+**e-Hawk als zweites Referenzflugzeug (03.10.2026):** aus den Projekten des Maintainers zusammengesetzt
+(`reference_fleet/ehawk/`). V_S 4,51, (L/D)max 14,3, Sinken 0,38 m/s. **Blockierender Befund an beiden
+Flugzeugen:** Der Neutralpunkt aus AeroBuildup liegt etwa 10 % MAC zu weit hinten (kein Abwind am
+Leitwerk). Der App-Fehler ist Ticket #1154; `neutral-point.md` braucht ein Wirbelgitter-Werkzeug
+(Entscheidung des Maintainers). Am BRYAN schrumpft das Stabilitätsmaß des Plan-Schwerpunkts damit auf etwa
+2 %.
