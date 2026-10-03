@@ -58,6 +58,12 @@ download raises the trimmed stall speed, so trimming at the clean `V_S` is infea
 branch). For a conventional tail the aft edge from full down elevator at `V_max` lies far behind the
 neutral point (BRYAN: > 90 % MAC), so the neutral point is the edge that comes first.
 
+**Front edge across methods (BRYAN, 2026-10-03, `bryan_fwd_trim_avl.py`):** AeroBuildup 14.3 % MAC, AVL
+10.4 % (CLAF thickness rule) and 13.5 % (CLAF 1.0). AeroBuildup lacks the wing downwash at the tail,
+which *helps* the download at the front edge, so it is conservative here. AVL lacks the low-Re viscous
+flap losses that NeuralFoil's flap model carries. The two errors run in opposite directions; spread
+10.4–14.3 % MAC. Candidate uncertain quantity under A11.
+
 **Absorbs** `forward-cg-limit` (2026-10-02): its value is this envelope's front edge at the
 current mass — a separate entry would be a second authority (ADR 0022).
 

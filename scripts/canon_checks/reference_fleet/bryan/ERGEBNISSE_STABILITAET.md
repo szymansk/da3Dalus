@@ -172,3 +172,29 @@ Plan-Schwerpunkts nicht bei 12,3 %, sondern nach AVL bei etwa 1,7 %.** Die Läng
 und Hüllkurvenwerte oben, die am AeroBuildup-Neutralpunkt hängen, sind entsprechend vorläufig: hintere
 Grenze, Stabilitätsmaß und cg-for-target-margin. Der Bauplan setzt den Schwerpunkt also knapp vor den
 Neutralpunkt; bei einem Modell dieser Klasse ist das üblich und wird erflogen.
+
+## Vordere Trimmgrenze gegen AVL (03.10.2026, `bryan_fwd_trim_avl.py`)
+
+Formulierung wie in `mass-envelope.md`: Anstellwinkel am ersten C_L-Maximum (11,0°), volles Höhenruder −14°,
+der Schwerpunkt ist dort, wo das Nickmoment verschwindet.
+
+| Methode | C_L | vordere Trimmgrenze |
+|---|---|---|
+| AeroBuildup | 1,093 | **14,3 % MAC** |
+| AVL, CLAF nach der ASB-Dickenregel | 1,181 | **10,4 %** |
+| AVL, CLAF 1,0 | 1,112 | **13,5 %** |
+
+**Die Erwartung war falsch herum.** An der vorderen Grenze muss das Höhenleitwerk Abtrieb liefern. Der
+Abwind des Flügels senkt den Anstellwinkel am Leitwerk und hilft dabei. AeroBuildup kennt ihn nicht
+(#1154). Es rechnet zu wenig Abtrieb und legt die Grenze zu weit hinten, also auf die vorsichtige Seite.
+
+AVL kennt den Abwind, rechnet das Höhenruder aber reibungsfrei und linear, ohne die Klappenverluste bei
+kleiner Re. Diese Verluste bildet AeroBuildup über das Klappenmodell von NeuralFoil ab. **Beide Methoden
+fehlen je ein Effekt, in entgegengesetzte Richtungen.** Die Streuung beträgt **10,4–14,3 % MAC**.
+
+**Schwerpunktfenster BRYAN bei 151 g, als Intervalle:**
+- vordere Trimmgrenze [10,4; 14,3] % MAC
+- Neutralpunkt [32,9; 36,9] % MAC
+- Der Plan-Schwerpunkt (31,4 %) liegt im Fenster.
+- Ein Erstflug-Schwerpunkt bei 10 % Stabilitätsmaß vom vorderen Neutralpunkt-Rand läge bei 22,9 %. Bis zur
+  ungünstigen Trimmgrenze bleiben dann 8,6 % MAC Reserve.

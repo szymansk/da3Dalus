@@ -2226,7 +2226,8 @@ folgen Stabilitätsmaß, `cg-for-target-margin` und die hintere Kante der Massen
 Kandidaten mit belegter Streuung:
 - die Rollrate (AeroBuildup gegen AVL, 23 %)
 - die Richtungsstabilität mit Rumpf (Faktor 2)
-- die vordere Trimmgrenze (ohne Abwind am Leitwerk überschätzt)
+- die vordere Trimmgrenze: AeroBuildup 14,3 % gegen AVL 10,4–13,5 % MAC beim BRYAN. AeroBuildup fehlt
+  der Abwind, AVL fehlen die Klappenverluste; beide Fehler laufen entgegengesetzt
 
 **Verhältnis zu A7 / ADR 0022.** Ein Eintrag, der ein Intervall liefert, ist **ein** Erzeuger. Die
 Welten sind keine zweiten Autoritäten, sondern Teil seiner Definition (ADR 0027).

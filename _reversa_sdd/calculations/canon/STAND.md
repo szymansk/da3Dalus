@@ -400,3 +400,7 @@ ohne Kern über Methodenwelten. Je Welt wird durch die ganze Kette gerechnet, ni
 Monotonie wird geprüft. Übereinstimmung heißt „nicht validiert", nicht scharf; die Streuung ist eine
 untere Schranke. Erster Fall Neutralpunkt mit Lehrbuch, Pappas und AVL (AeroBuildup raus). Register
 K25/K26; der Navigator kennzeichnet unscharfe Größen und ihre Folgen; #1154 ist kommentiert.
+
+**Vordere Trimmgrenze am BRYAN (03.10.2026):** AeroBuildup 14,3 %, AVL 10,4 % bzw. 13,5 % MAC.
+AeroBuildup liegt auf der vorsichtigen Seite, weil der Abwind am Leitwerk den nötigen Abtrieb unterstützt
+und AeroBuildup ihn nicht kennt. Die Erwartung war falsch herum. Kandidat für A11, Streuung 10,4–14,3 %.
