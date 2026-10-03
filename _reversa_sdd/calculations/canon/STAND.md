@@ -388,3 +388,9 @@ Re 500k. Freigabe braucht geflogene Schwerpunkte der Referenzflotte.
 plus halbe Höhenleitwerksfläche, Rumpf −5 % MAC). Damit liegen beide Plan-Schwerpunkte im Zielbereich
 (BRYAN 10,1 %, e-Hawk 8,6 %), anders als mit AVL (1,5 % / 15,8 %) oder AeroBuildup. Vorbehalt: teilweise
 zirkulär. Entscheidung des Maintainers zum Werkzeug des Kanons steht aus.
+
+**Neutralpunkt: Gegenprüfung aller belegten Methoden (03.10.2026, `np_methods.py`):** Pappas (MA 10/2009)
+und das Lehrbuch (mit Abwind und Streckung) stimmen mit AVL auf 1–4 % MAC überein, an beiden Flugzeugen.
+Die pauschale RC-Faustregel (K 0,5, −5 %) kennt keine Streckung und irrt um 5–11 % (beim BRYAN in der
+unsicheren Richtung). Der frühere Schluss „RC-Faustregel trifft" ist zurückgenommen. Offen ist der
+Rumpfanteil.

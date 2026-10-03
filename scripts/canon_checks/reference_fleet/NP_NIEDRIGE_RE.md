@@ -100,3 +100,54 @@ beiden zu weit hinten.
 **Vorbehalt:** Die Übereinstimmung ist teilweise zirkulär, denn die Konstrukteure setzen den Schwerpunkt
 vermutlich mit genau dieser Regel. Sie belegt nicht die Physik. Sie belegt aber, dass die Regel zu dem
 passt, was gebaut und **geflogen** wird. Für den Konstrukteur ist sie die anschlussfähige Zahl.
+
+## Akribische Gegenprüfung aller belegten Methoden (03.10.2026, `np_methods.py`)
+
+Drei unabhängige Recherchen (RC-Vault, Modellflugliteratur im Netz, Lehrbuch) ergaben diese belegten
+Formeln. Alle außer Lennon haben die Schwerpunktform
+$x_{NP} = (S_w x_{ac,w} + K S_h x_{ac,h})/(S_w + K S_h)$ und unterscheiden sich nur im Leitwerksgewicht
+$K$ und im Rumpfterm:
+
+| | Methode | K | Rumpf | Quelle |
+|---|---|---|---|---|
+| A | rcplanedesigner | 0,5 pauschal | −5 % MAC | vault `…build-the-neutral-point`, rcplanedesigner.com |
+| B | Harding | Wirksamkeit, Beispiel 0,5 | in K | Model Aviation 08/2004, „Fundamentals of Stability" |
+| C | Pappas | $(1-3{,}24/AR_w)\cdot\frac{1/(1+2/AR_h)}{1/(1+2/AR_w)}$ | – | Model Aviation 10/2009, „If It Flies" (nach von Mises/Prager/Kuerti) |
+| D | Lehrbuch | $\eta(1-\frac{4}{AR_w+2})\frac{AR_h/(AR_h+2)}{AR_w/(AR_w+2)}$ | (Raymer, ungeprüft) | Sadraey Eq. 6.67, dε/dα = 2a/(πAR) |
+| E | Krauss | 0,75 | – | stunthanger.com „aft cg limit" (dort selbst als den Abwind übergehend bezeichnet) |
+| F | Lennon | hinterster Schwerpunkt = [0,17 + 0,30·V_H·HTE]·MAC, HTE 0,4–0,9 | in der Formel | Lennon 1996, Kap. 7 |
+| G | Lennon | Neutralpunkt fest 35 % MAC | – | Lennon 1996, Kap. 6 |
+
+Der Lehrbuch-Prüfer hat gezeigt, dass die Schwerpunktform die **exakte** Form der Lehrbuchbeziehung
+ist, mit $K = \eta (a_h/a)(1 - d\varepsilon/d\alpha)$. Die lineare Form $h_n - h_{ac} = K V_H$
+überschätzt um den Faktor $(1 + K S_h/S)$.
+
+**Ergebnis (Neutralpunkt in % MAC, Stabilitätsmaß am Plan-Schwerpunkt):**
+
+| Methode | BRYAN (AR 4,3) | e-Hawk (AR 11,3) |
+|---|---|---|
+| C Pappas | 34,0 (SM 2,6) | 52,9 (SM 19,9) |
+| D Lehrbuch η 1,0 | 38,2 (6,8) | 52,4 (19,4) |
+| D Lehrbuch η 0,9 | 36,9 (5,5) | 49,8 (16,8) |
+| **AVL** | **32,9 (1,5)** | **48,8 (15,8)** |
+| A rcplanedesigner | 41,5 (10,1) | 41,5 (8,6) |
+| B Harding | 46,5 (15,1) | 46,5 (13,6) |
+| G Lennon fest | 35,0 (3,6) | 35,0 (2,0) |
+| E Krauss | 55,7 (24,3) | 56,5 (23,5) |
+| AeroBuildup | 43,7 (12,3) | 58,4 (25,4) |
+
+Lennons hinterster Schwerpunkt (F, HTE 0,4–0,9): BRYAN 22,7–29,8 %, e-Hawk 22,4–29,2 % MAC.
+
+**Befunde:**
+1. **Die Methoden mit Abwind und Streckung (Pappas, Lehrbuch) stimmen mit AVL auf 1–4 % MAC überein**,
+   an beiden Flugzeugen. Die frühere Lesart „AVL uneinheitlich" war falsch: AVL passt zur Physik.
+2. **Die Konstrukteure haben verschieden gewählt:** BRYAN mit 2–7 % (Sport-Band rcplanedesigner 3–5 %),
+   der e-Hawk mit 16–20 % (vorsichtiger Erstflug-Schwerpunkt; rcn empfiehlt etwa 15 % zum Einfliegen).
+3. **Die pauschale Faustregel (A, B) kennt keine Streckung.** Beim BRYAN legt sie den Neutralpunkt 5–8 %
+   MAC zu weit nach hinten; das ist bei kleiner Streckung die unsichere Richtung. Beim e-Hawk legt sie ihn
+   8–11 % zu weit nach vorn. Dass sie beide Plan-Schwerpunkte „traf", war Zufall.
+4. **Rumpf:** Belegt ist nur rcplanedesigners Pauschalwert von −5 % und Lennons „bis 15 %". Raymers Formel
+   (−0,6 bis −1,3 % für schlanke RC-Rümpfe) steht nicht im Vault und ist ungeprüft. AVL-Rümpfe sind grob.
+   Der Rumpfanteil bleibt offen.
+5. **Nicht gefunden:** Simons' Formel und die „Schenk"/FMT-Formel (nur im Druck). Nichts davon ist
+   erfunden.
