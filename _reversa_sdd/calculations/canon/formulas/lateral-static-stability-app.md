@@ -1,6 +1,7 @@
 ---
 canon: lateral-static-stability-app
 entry: formula
+uncertainty: interval
 kind: procedure
 tool: AB
 shape: law
@@ -41,6 +42,17 @@ and `C_nβ` can fall at high angle of attack.
 
 **Values, not verdicts (A10).** The RC bands — dihedral 2–7° by wing position and control,
 Lennon's spiral-stability margin by class — belong to the evaluation.
+
+**Uncertain (A11 rule 5) — reclassified 2026-10-03 on the Urmodell fleet; maintainer confirmation
+pending.** The same day this entry was kept crisp on two aircraft, with the condition "revisit if a spiral
+criterion lies near zero". The 74-aircraft fleet (`reference_fleet/urmodell/ERGEBNISSE.md` B3) triggers it:
+the spiral verdict differs between AeroBuildup and AVL on 16 of 74 aircraft, the sign of `C_nβ` on 8 (all
+finless flying wings). Worlds: **AeroBuildup** and **AVL**. AeroBuildup is **not a valid world for
+`C_lβ` of swept wings**: it has no sweep contribution to the dihedral effect (`sweep_clb_repro.py`: a plain
+wing at C_L 0.4 gives +0.001 at 0°, 17° and 30° sweep, AVL −0.032 / −0.057 / −0.076). For swept
+layouts the interval of `C_lβ` and of the spiral criterion therefore rests on AVL alone and is marked not
+validated, as for the neutral point. V-tail `C_nβ`: AeroBuildup about 2× AVL, cause not shown (🟡 missing
+mutual interference of the two halves).
 
 **Open before trusting the numbers.** Whether AeroBuildup captures the dihedral effect of the
 wing position (high vs low wing) and the fin in the fuselage wake is unchecked — a cross-check

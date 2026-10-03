@@ -4,6 +4,7 @@ kind: quantity
 symbol: E_spiral,md
 unit: 1/rad^2
 role: output
+uncertainty: interval
 status: draft
 tags:
   - canon/quantity
@@ -17,3 +18,5 @@ tags:
 **Unit.** `1/rad^2`
 
 **Produced by.** [[lateral-static-stability-md]]
+
+**Unschärfe (A11).** Intervall über AeroBuildup und AVL; für gepfeilte Flügel nur AVL (Urmodell-Flotte, 03.10.2026, Bestätigung offen).

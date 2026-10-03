@@ -1,0 +1,166 @@
+{
+ "name": "nein-hang-eindecker-mitteldecker-v-hsq-2000",
+ "total_mass_kg": 1.1337,
+ "xyz_ref": [
+  0.09334724505482807,
+  0.0,
+  -0.06
+ ],
+ "wings": {
+  "Tragflaeche": {
+   "symmetric": true,
+   "x_secs": [
+    {
+     "xyz_le": [
+      0.0,
+      0.0,
+      -0.06
+     ],
+     "chord": 0.23391812865497075,
+     "twist": 1.5,
+     "airfoil": "./airfoils/rg15.dat"
+    },
+    {
+     "xyz_le": [
+      0.017543859649122806,
+      0.6,
+      0.0012984657946327263
+     ],
+     "chord": 0.16374269005847952,
+     "twist": 1.5,
+     "control_surface": {
+      "name": "aileron",
+      "hinge_point": 0.75,
+      "symmetric": false,
+      "deflection": 0.0
+     },
+     "airfoil": "./airfoils/rg15.dat"
+    },
+    {
+     "xyz_le": [
+      0.027777777777777776,
+      0.95,
+      0.03705590417483515
+     ],
+     "chord": 0.12280701754385964,
+     "twist": 1.5,
+     "airfoil": "./airfoils/rg15.dat"
+    },
+    {
+     "xyz_le": [
+      0.029239766081871343,
+      1.0,
+      0.042164109657721216
+     ],
+     "chord": 0.11695906432748537,
+     "twist": 1.5,
+     "airfoil": "./airfoils/rg15.dat"
+    }
+   ]
+  },
+  "V-Leitwerk": {
+   "symmetric": true,
+   "x_secs": [
+    {
+     "xyz_le": [
+      0.7411024847494646,
+      0.0,
+      -0.06
+     ],
+     "chord": 0.14950818965711235,
+     "twist": 0.0,
+     "control_surface": {
+      "name": "ruddervator",
+      "hinge_point": 0.7,
+      "symmetric": false,
+      "deflection": 0.0
+     },
+     "airfoil": "./airfoils/naca0009.dat"
+    },
+    {
+     "xyz_le": [
+      0.7971315560185742,
+      0.254163922417091,
+      0.13862455796402687
+     ],
+     "chord": 0.10465573275997864,
+     "twist": 0.0,
+     "airfoil": "./airfoils/naca0009.dat"
+    }
+   ]
+  }
+ },
+ "fuselages": {
+  "Rumpf": {
+   "x_secs": [
+    {
+     "xyz": [
+      -0.2982127112214471,
+      0.0,
+      -0.06
+     ],
+     "a": 0.018,
+     "b": 0.018,
+     "n": 2.0
+    },
+    {
+     "xyz": [
+      -0.1782127112214471,
+      0.0,
+      -0.06
+     ],
+     "a": 0.06,
+     "b": 0.06,
+     "n": 2.0
+    },
+    {
+     "xyz": [
+      0.061787288778552885,
+      0.0,
+      -0.06
+     ],
+     "a": 0.06,
+     "b": 0.06,
+     "n": 2.0
+    },
+    {
+     "xyz": [
+      0.18178728877855288,
+      0.0,
+      -0.06
+     ],
+     "a": 0.020999999999999998,
+     "b": 0.020999999999999998,
+     "n": 2.0
+    },
+    {
+     "xyz": [
+      0.9017872887785529,
+      0.0,
+      -0.06
+     ],
+     "a": 0.018,
+     "b": 0.018,
+     "n": 2.0
+    }
+   ]
+  }
+ },
+ "urmodell": {
+  "motor": "nein",
+  "mission": "hang",
+  "trag": "eindecker",
+  "lage": "mitteldecker",
+  "leitwerk": "v",
+  "steuerung": "hsq",
+  "span_m": 2.0,
+  "AR": 11.340967930574779,
+  "S_m2": 0.35270358090125326,
+  "mac_m": 0.1819363222871995,
+  "x_le_ref": 0.01299545159194282,
+  "x_np_geo_fwd": 0.10790215083780402,
+  "sm_target": 0.08,
+  "tail_arm_m": 0.72,
+  "dihedral_deg": 5.833333333333332
+ }
+}

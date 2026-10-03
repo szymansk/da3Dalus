@@ -1,0 +1,207 @@
+{
+ "name": "ja-3d-eindecker-tiefdecker-normal-hsq-1300",
+ "total_mass_kg": 1.9329,
+ "xyz_ref": [
+  0.12384924916683426,
+  0.0,
+  -0.065
+ ],
+ "wings": {
+  "Tragflaeche": {
+   "symmetric": true,
+   "x_secs": [
+    {
+     "xyz_le": [
+      0.0,
+      0.0,
+      -0.13
+     ],
+     "chord": 0.36879432624113473,
+     "twist": 0.0,
+     "airfoil": "./airfoils/naca0015.dat"
+    },
+    {
+     "xyz_le": [
+      0.027659574468085105,
+      0.39,
+      -0.10272854334203094
+     ],
+     "chord": 0.2581560283687943,
+     "twist": 0.0,
+     "control_surface": {
+      "name": "aileron",
+      "hinge_point": 0.75,
+      "symmetric": false,
+      "deflection": 0.0
+     },
+     "airfoil": "./airfoils/naca0015.dat"
+    },
+    {
+     "xyz_le": [
+      0.043794326241134746,
+      0.6174999999999999,
+      -0.08682019362488233
+     ],
+     "chord": 0.19361702127659575,
+     "twist": 0.0,
+     "airfoil": "./airfoils/naca0015.dat"
+    },
+    {
+     "xyz_le": [
+      0.04609929078014184,
+      0.65,
+      -0.08454757223671824
+     ],
+     "chord": 0.18439716312056736,
+     "twist": 0.0,
+     "airfoil": "./airfoils/naca0015.dat"
+    }
+   ]
+  },
+  "Hoehenleitwerk": {
+   "symmetric": true,
+   "x_secs": [
+    {
+     "xyz_le": [
+      0.6663270777328475,
+      0.0,
+      -0.065
+     ],
+     "chord": 0.17031028638933426,
+     "twist": 0.0,
+     "control_surface": {
+      "name": "elevator",
+      "hinge_point": 0.7,
+      "symmetric": true,
+      "deflection": 0.0
+     },
+     "airfoil": "./airfoils/naca0009.dat"
+    },
+    {
+     "xyz_le": [
+      0.704430722091612,
+      0.2895274868618683,
+      -0.065
+     ],
+     "chord": 0.11921720047253398,
+     "twist": 0.0,
+     "airfoil": "./airfoils/naca0009.dat"
+    }
+   ]
+  },
+  "Seitenleitwerk": {
+   "symmetric": false,
+   "x_secs": [
+    {
+     "xyz_le": [
+      0.671526811500671,
+      0.0,
+      -0.065
+     ],
+     "chord": 0.17193805401574636,
+     "twist": 0.0,
+     "control_surface": {
+      "name": "rudder",
+      "hinge_point": 0.65,
+      "symmetric": true,
+      "deflection": 0.0
+     },
+     "airfoil": "./airfoils/naca0009.dat"
+    },
+    {
+     "xyz_le": [
+      0.716380216896083,
+      0.0,
+      0.15926702697706052
+     ],
+     "chord": 0.12708464862033428,
+     "twist": 0.0,
+     "airfoil": "./airfoils/naca0009.dat"
+    }
+   ]
+  }
+ },
+ "fuselages": {
+  "Rumpf": {
+   "x_secs": [
+    {
+     "xyz": [
+      -0.45653513448358274,
+      0.0,
+      -0.065
+     ],
+     "a": 0.013000000000000001,
+     "b": 0.013000000000000001,
+     "n": 2.0
+    },
+    {
+     "xyz": [
+      -0.35253513448358276,
+      0.0,
+      -0.065
+     ],
+     "a": 0.052000000000000005,
+     "b": 0.052000000000000005,
+     "n": 2.0
+    },
+    {
+     "xyz": [
+      -0.19653513448358273,
+      0.0,
+      -0.065
+     ],
+     "a": 0.065,
+     "b": 0.065,
+     "n": 2.0
+    },
+    {
+     "xyz": [
+      0.06346486551641728,
+      0.0,
+      -0.065
+     ],
+     "a": 0.065,
+     "b": 0.065,
+     "n": 2.0
+    },
+    {
+     "xyz": [
+      0.3234648655164173,
+      0.0,
+      -0.065
+     ],
+     "a": 0.0325,
+     "b": 0.0325,
+     "n": 2.0
+    },
+    {
+     "xyz": [
+      0.8434648655164173,
+      0.0,
+      -0.065
+     ],
+     "a": 0.01625,
+     "b": 0.01625,
+     "n": 2.0
+    }
+   ]
+  }
+ },
+ "urmodell": {
+  "motor": "ja",
+  "mission": "3d",
+  "trag": "eindecker",
+  "lage": "tiefdecker",
+  "leitwerk": "normal",
+  "steuerung": "hsq",
+  "span_m": 1.3,
+  "AR": 4.688551036221174,
+  "S_m2": 0.3604525122887619,
+  "mac_m": 0.28684003152088255,
+  "x_le_ref": 0.020488573680063057,
+  "x_np_geo_fwd": 0.13245445011246074,
+  "sm_target": 0.03,
+  "tail_arm_m": 0.6167060677698973,
+  "dihedral_deg": 4.0
+ }
+}

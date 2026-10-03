@@ -2229,10 +2229,11 @@ Eingeordnet nach Regel 5 (03.10.2026):
 - **Rollrate und nötiger Querruderausschlag: unscharf.** Welten AeroBuildup und AVL, Streuung 23 %
   beim BRYAN. Die Streuung kann „Rollraten-Ziel erreicht" kippen, und kein Werkzeug ist belegt
   vorsichtig.
-- **Richtungsstabilität C_nβ und Spiralkriterium: scharf mit Gültigkeitsbedingung.** Die Methoden
-  streuen bis Faktor 2,4 ohne feste Richtung. Sie ändern aber keine Entscheidung: Vorzeichen und
-  Spiralurteil stimmen an beiden Flugzeugen überein, und die Seitenflosse wird über das
-  Seitenleitwerksvolumen bemessen.
+- **Seitenstabilität C_lβ, C_nβ und Spiralkriterium: unscharf (neu eingeordnet, Bestätigung offen).**
+  Zuerst waren sie scharf eingeordnet, gestützt auf zwei Flugzeuge. Die Urmodell-Flotte mit 74
+  Flugzeugen hat die Gültigkeitsbedingung verletzt: Das Spiralurteil kippt bei 16 Flugzeugen, das
+  Vorzeichen von C_nβ bei 8. AeroBuildup fehlt der Pfeilungsbeitrag zu C_lβ, das ist durch eine
+  Reproduktion belegt. Bei gepfeilten Flügeln zählt deshalb nur AVL als Welt.
 
 **Bewusst scharf (Kriterium aus Regel 5):** die vordere Trimmgrenze. AeroBuildup liefert 14,3 % MAC, AVL
 10,4–13,5 % beim BRYAN. AeroBuildup liegt nachweislich auf der vorsichtigen Seite, weil ihm der Abwind am
@@ -2389,6 +2390,7 @@ Was schon ein Ticket hat, steht mit Nummer dabei und fällt dann nicht noch einm
 | K24 | Massenhüllkurve: $V_S(m)$, $V_{max}(m)$, $ROC_{max}(m)$, $m_{max,level}$, $m_{max,TO}$, trimmbarer Schwerpunktbereich über der Masse; $m_{max,struct}$ | §2.3 | `forward_cg`-Endpunkt, Nutzlast-/Missionsrechnungen |
 | K25 | Unscharfe Größen nach A11: der Kanon rechnet je Methodenwelt durch die ganze Kette und gibt [min, max] aus; Kennzeichnung im Navigator und in der App | §4 A11 | Rechenkern, Ausgabeschemata |
 | K26 | Neutralpunkt als Intervall über Lehrbuch / Pappas / AVL statt aus AeroBuildup; empfohlener Schwerpunkt und Stabilitätsmaß als Intervall | §2.3, A11 | `assumption_compute_service` (GH #1154) |
+| K27 | Seitenstabilität (C_lβ, C_nβ, Spirale) als Intervall über AeroBuildup / AVL; bei gepfeilten Flügeln nur AVL (AeroBuildup fehlt der Pfeilungsbeitrag zu C_lβ). Bestätigung durch den Maintainer offen | §4 A11 | `run_with_stability_derivatives`-Ausgabe (GH #1156) |
 
 ## Arbeitsregeln
 

@@ -412,3 +412,16 @@ Die vordere Trimmgrenze bleibt scharf (AeroBuildup, vorsichtig; AVL bis 4 % MAC 
 **Seitenstabilität nach A11-Regel 5 eingeordnet (03.10.2026):** Rollrate und Querruderausschlag sind
 unscharf (Welten AeroBuildup und AVL, 23 %). C_nβ und das Spiralkriterium bleiben scharf mit
 Gültigkeitsbedingung (Faktor 2,4 ohne feste Richtung; die Entscheidungen stimmen überein).
+
+**Urmodell-Flotte (03.10.2026, `scripts/canon_checks/reference_fleet/urmodell/`):** 74 typische Urmodelle,
+je eine recherchierte Spannweite, Kanon fehlerfrei durchgerechnet. Befunde:
+- B1: Kleine SM-Ziele (3 %) liegen unter der Neutralpunkt-Streuung. Wer nur die geometrischen Welten
+  nutzt, setzt Kunstflieger in der AVL-Welt instabil. Der Generator (#1152) muss den vorderen Rand
+  aller Welten nehmen.
+- B2: Der Neutralpunkt aus AeroBuildup liegt bei Leitwerksmodellen −6 bis +29 % MAC neben AVL
+  (Median +14,5), bei Nurflügeln −4 (#1154 kommentiert).
+- B3: Das Spiralurteil kippt bei 16 von 74 Flugzeugen. AeroBuildup fehlt der Pfeilungsbeitrag zu C_lβ
+  (Reproduktion, GH #1156). Die Seitenstabilität ist deshalb unscharf eingeordnet (K27,
+  **Bestätigung offen**).
+- B4: Rollrate AeroBuildup/AVL 1,04–1,20, AeroBuildup immer höher. Bleibt unscharf.
+- B5: Nurflügel ohne Flosse mit 17° Pfeilung ist richtungsneutral (C_nβ ≈ 0). Offen für #1152.

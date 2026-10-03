@@ -4,6 +4,7 @@ kind: quantity
 symbol: C_n_beta,app
 unit: 1/rad
 role: output
+uncertainty: interval
 status: draft
 tags:
   - canon/quantity
@@ -17,3 +18,5 @@ Yawing-moment derivative with sideslip; positive turns the nose into the relativ
 **Unit.** `1/rad`
 
 **Produced by.** [[lateral-static-stability-app]]
+
+**Unschärfe (A11).** Intervall über AeroBuildup und AVL; für gepfeilte Flügel nur AVL (Urmodell-Flotte, 03.10.2026, Bestätigung offen).

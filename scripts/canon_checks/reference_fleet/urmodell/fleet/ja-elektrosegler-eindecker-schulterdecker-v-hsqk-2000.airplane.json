@@ -1,0 +1,182 @@
+{
+ "name": "ja-elektrosegler-eindecker-schulterdecker-v-hsqk-2000",
+ "total_mass_kg": 1.2041,
+ "xyz_ref": [
+  0.08548738287008409,
+  0.0,
+  -0.05
+ ],
+ "wings": {
+  "Tragflaeche": {
+   "symmetric": true,
+   "x_secs": [
+    {
+     "xyz_le": [
+      0.0,
+      0.0,
+      -0.015
+     ],
+     "chord": 0.22038567493112948,
+     "twist": 2.0,
+     "airfoil": "./airfoils/sd7037.dat"
+    },
+    {
+     "xyz_le": [
+      0.0027548209366391185,
+      0.1,
+      -0.00272154390970954
+     ],
+     "chord": 0.209366391184573,
+     "twist": 2.0,
+     "control_surface": {
+      "name": "flap",
+      "hinge_point": 0.75,
+      "symmetric": true,
+      "deflection": 0.0
+     },
+     "airfoil": "./airfoils/sd7037.dat"
+    },
+    {
+     "xyz_le": [
+      0.01652892561983471,
+      0.6,
+      0.05867073654174275
+     ],
+     "chord": 0.15426997245179064,
+     "twist": 2.0,
+     "control_surface": {
+      "name": "aileron",
+      "hinge_point": 0.75,
+      "symmetric": false,
+      "deflection": 0.0
+     },
+     "airfoil": "./airfoils/sd7037.dat"
+    },
+    {
+     "xyz_le": [
+      0.026170798898071626,
+      0.95,
+      0.10164533285775935
+     ],
+     "chord": 0.11570247933884298,
+     "twist": 2.0,
+     "airfoil": "./airfoils/sd7037.dat"
+    },
+    {
+     "xyz_le": [
+      0.027548209366391185,
+      1.0,
+      0.10778456090290459
+     ],
+     "chord": 0.11019283746556474,
+     "twist": 2.0,
+     "airfoil": "./airfoils/sd7037.dat"
+    }
+   ]
+  },
+  "V-Leitwerk": {
+   "symmetric": true,
+   "x_secs": [
+    {
+     "xyz_le": [
+      0.6160294281488707,
+      0.0,
+      -0.05
+     ],
+     "chord": 0.15626796233564666,
+     "twist": 0.0,
+     "control_surface": {
+      "name": "ruddervator",
+      "hinge_point": 0.7,
+      "symmetric": false,
+      "deflection": 0.0
+     },
+     "airfoil": "./airfoils/naca0009.dat"
+    },
+    {
+     "xyz_le": [
+      0.6745917638902289,
+      0.2656555359705993,
+      0.16388393696963388
+     ],
+     "chord": 0.10938757363495265,
+     "twist": 0.0,
+     "airfoil": "./airfoils/naca0009.dat"
+    }
+   ]
+  }
+ },
+ "fuselages": {
+  "Rumpf": {
+   "x_secs": [
+    {
+     "xyz": [
+      -0.21602066247481844,
+      0.0,
+      -0.05
+     ],
+     "a": 0.015,
+     "b": 0.015,
+     "n": 2.0
+    },
+    {
+     "xyz": [
+      -0.11602066247481843,
+      0.0,
+      -0.05
+     ],
+     "a": 0.05,
+     "b": 0.05,
+     "n": 2.0
+    },
+    {
+     "xyz": [
+      0.08397933752518155,
+      0.0,
+      -0.05
+     ],
+     "a": 0.05,
+     "b": 0.05,
+     "n": 2.0
+    },
+    {
+     "xyz": [
+      0.18397933752518159,
+      0.0,
+      -0.05
+     ],
+     "a": 0.017499999999999998,
+     "b": 0.017499999999999998,
+     "n": 2.0
+    },
+    {
+     "xyz": [
+      0.7839793375251816,
+      0.0,
+      -0.05
+     ],
+     "a": 0.015,
+     "b": 0.015,
+     "n": 2.0
+    }
+   ]
+  }
+ },
+ "urmodell": {
+  "motor": "ja",
+  "mission": "elektrosegler",
+  "trag": "eindecker",
+  "lage": "schulterdecker",
+  "leitwerk": "v",
+  "steuerung": "hsqk",
+  "span_m": 2.0,
+  "AR": 12.009808434859996,
+  "S_m2": 0.33306109932523914,
+  "mac_m": 0.17141108050198958,
+  "x_le_ref": 0.012243648607284975,
+  "x_np_geo_fwd": 0.10262849092028305,
+  "sm_target": 0.1,
+  "tail_arm_m": 0.6,
+  "dihedral_deg": 6.999999999999999
+ }
+}

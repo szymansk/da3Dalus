@@ -1,0 +1,105 @@
+{
+ "name": "nein-hang-eindecker-ohne_rumpf-nf_mitte-elevon-2000",
+ "total_mass_kg": 1.6104,
+ "xyz_ref": [
+  0.20495998749554736,
+  0.0,
+  -0.03
+ ],
+ "wings": {
+  "Tragflaeche": {
+   "symmetric": true,
+   "x_secs": [
+    {
+     "xyz_le": [
+      0.0,
+      0.0,
+      -0.03
+     ],
+     "chord": 0.3351487222454964,
+     "twist": 1.5,
+     "airfoil": "./airfoils/mh45.dat"
+    },
+    {
+     "xyz_le": [
+      0.1030304738133836,
+      0.3,
+      -0.03
+     ],
+     "chord": 0.2899036447423544,
+     "twist": 0.6000000000000001,
+     "control_surface": {
+      "name": "elevon",
+      "hinge_point": 0.8,
+      "symmetric": false,
+      "deflection": 0.0
+     },
+     "airfoil": "./airfoils/mh45.dat"
+    },
+    {
+     "xyz_le": [
+      0.3262631670757148,
+      0.95,
+      -0.03
+     ],
+     "chord": 0.1918726434855467,
+     "twist": -1.3499999999999996,
+     "airfoil": "./airfoils/mh45.dat"
+    },
+    {
+     "xyz_le": [
+      0.3434349127112787,
+      1.0,
+      -0.03
+     ],
+     "chord": 0.18433179723502305,
+     "twist": -1.5,
+     "airfoil": "./airfoils/mh45.dat"
+    }
+   ]
+  },
+  "Seitenleitwerk": {
+   "symmetric": false,
+   "x_secs": [
+    {
+     "xyz_le": [
+      0.3416698678666075,
+      0.0,
+      0.0
+     ],
+     "chord": 0.18609684207969418,
+     "twist": 0.0,
+     "airfoil": "./airfoils/naca0009.dat"
+    },
+    {
+     "xyz_le": [
+      0.3974989204905158,
+      0.0,
+      0.27914526311954124
+     ],
+     "chord": 0.11165810524781651,
+     "twist": 0.0,
+     "airfoil": "./airfoils/naca0009.dat"
+    }
+   ]
+  }
+ },
+ "fuselages": {},
+ "urmodell": {
+  "motor": "nein",
+  "mission": "hang",
+  "trag": "eindecker",
+  "lage": "ohne_rumpf",
+  "leitwerk": "nf_mitte",
+  "steuerung": "elevon",
+  "span_m": 2.0,
+  "AR": 7.700000000000001,
+  "S_m2": 0.5194805194805194,
+  "mac_m": 0.2670378528859278,
+  "x_le_ref": 0.15956355250493964,
+  "x_np_geo_fwd": 0.22632301572642158,
+  "sm_target": 0.08,
+  "tail_arm_m": 0.0,
+  "dihedral_deg": 0.0
+ }
+}

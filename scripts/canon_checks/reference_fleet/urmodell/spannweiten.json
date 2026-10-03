@@ -1,0 +1,9 @@
+{
+ "stand": "Webrecherche 2026-10-03 (Hersteller-/Händlerseiten, Klassenregeln aus Sekundärquellen; FAI-PDFs nicht direkt abrufbar). Belege: SPANNWEITEN.md",
+ "spannweite_mm": {
+  "trainer": 1500, "sport": 1300, "kunstflug": 1500, "3d": 1300, "speed": 1700,
+  "elektrosegler": 2000, "scale": 1400, "park": 700, "segel_trainer": 2000,
+  "thermik": 3000, "hang": 2000, "wurf": 1500, "scale_segler": 4000
+ },
+ "nach_bauart_mm": {"speed/nurfluegel": 800}
+}

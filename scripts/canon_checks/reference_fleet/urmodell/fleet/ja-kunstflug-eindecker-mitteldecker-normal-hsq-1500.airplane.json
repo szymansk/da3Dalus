@@ -1,0 +1,207 @@
+{
+ "name": "ja-kunstflug-eindecker-mitteldecker-normal-hsq-1500",
+ "total_mass_kg": 2.7386,
+ "xyz_ref": [
+  0.13627807657238344,
+  0.0,
+  -0.0675
+ ],
+ "wings": {
+  "Tragflaeche": {
+   "symmetric": true,
+   "x_secs": [
+    {
+     "xyz_le": [
+      0.0,
+      0.0,
+      -0.0675
+     ],
+     "chord": 0.3846153846153846,
+     "twist": 0.0,
+     "airfoil": "./airfoils/naca0015.dat"
+    },
+    {
+     "xyz_le": [
+      0.028846153846153855,
+      0.44999999999999996,
+      -0.04391649932263146
+     ],
+     "chord": 0.26923076923076916,
+     "twist": 0.0,
+     "control_surface": {
+      "name": "aileron",
+      "hinge_point": 0.75,
+      "symmetric": false,
+      "deflection": 0.0
+     },
+     "airfoil": "./airfoils/naca0015.dat"
+    },
+    {
+     "xyz_le": [
+      0.04567307692307691,
+      0.7124999999999999,
+      -0.030159457260833147
+     ],
+     "chord": 0.20192307692307693,
+     "twist": 0.0,
+     "airfoil": "./airfoils/naca0015.dat"
+    },
+    {
+     "xyz_le": [
+      0.04807692307692307,
+      0.75,
+      -0.0281941655377191
+     ],
+     "chord": 0.1923076923076923,
+     "twist": 0.0,
+     "airfoil": "./airfoils/naca0015.dat"
+    }
+   ]
+  },
+  "Hoehenleitwerk": {
+   "symmetric": true,
+   "x_secs": [
+    {
+     "xyz_le": [
+      0.6926347994054436,
+      0.0,
+      -0.0675
+     ],
+     "chord": 0.18672575964318283,
+     "twist": 0.0,
+     "control_surface": {
+      "name": "elevator",
+      "hinge_point": 0.7,
+      "symmetric": true,
+      "deflection": 0.0
+     },
+     "airfoil": "./airfoils/naca0009.dat"
+    },
+    {
+     "xyz_le": [
+      0.7344110895456588,
+      0.31743379139341077,
+      -0.0675
+     ],
+     "chord": 0.13070803175022797,
+     "twist": 0.0,
+     "airfoil": "./airfoils/naca0009.dat"
+    }
+   ]
+  },
+  "Seitenleitwerk": {
+   "symmetric": false,
+   "x_secs": [
+    {
+     "xyz_le": [
+      0.6983357130632339,
+      0.0,
+      -0.0675
+     ],
+     "chord": 0.1885104207638244,
+     "twist": 0.0,
+     "control_surface": {
+      "name": "rudder",
+      "hinge_point": 0.65,
+      "symmetric": true,
+      "deflection": 0.0
+     },
+     "airfoil": "./airfoils/naca0009.dat"
+    },
+    {
+     "xyz_le": [
+      0.7475123445668403,
+      0.0,
+      0.17838315751803185
+     ],
+     "chord": 0.13933378926021805,
+     "twist": 0.0,
+     "airfoil": "./airfoils/naca0009.dat"
+    }
+   ]
+  }
+ },
+ "fuselages": {
+  "Rumpf": {
+   "x_secs": [
+    {
+     "xyz": [
+      -0.46315386617294174,
+      0.0,
+      -0.0675
+     ],
+     "a": 0.013500000000000002,
+     "b": 0.013500000000000002,
+     "n": 2.0
+    },
+    {
+     "xyz": [
+      -0.35515386617294176,
+      0.0,
+      -0.0675
+     ],
+     "a": 0.054000000000000006,
+     "b": 0.054000000000000006,
+     "n": 2.0
+    },
+    {
+     "xyz": [
+      -0.19315386617294172,
+      0.0,
+      -0.0675
+     ],
+     "a": 0.0675,
+     "b": 0.0675,
+     "n": 2.0
+    },
+    {
+     "xyz": [
+      0.0768461338270583,
+      0.0,
+      -0.0675
+     ],
+     "a": 0.0675,
+     "b": 0.0675,
+     "n": 2.0
+    },
+    {
+     "xyz": [
+      0.3468461338270583,
+      0.0,
+      -0.0675
+     ],
+     "a": 0.03375,
+     "b": 0.03375,
+     "n": 2.0
+    },
+    {
+     "xyz": [
+      0.8868461338270583,
+      0.0,
+      -0.0675
+     ],
+     "a": 0.016875,
+     "b": 0.016875,
+     "n": 2.0
+    }
+   ]
+  }
+ },
+ "urmodell": {
+  "motor": "ja",
+  "mission": "kunstflug",
+  "trag": "eindecker",
+  "lage": "mitteldecker",
+  "leitwerk": "normal",
+  "steuerung": "hsq",
+  "span_m": 1.5,
+  "AR": 5.192873580723785,
+  "S_m2": 0.4332861112491003,
+  "mac_m": 0.29914529914529914,
+  "x_le_ref": 0.021367521367521375,
+  "x_np_geo_fwd": 0.14525243554674241,
+  "sm_target": 0.03,
+  "tail_arm_m": 0.6431623931623931,
+  "dihedral_deg": 3.0
+ }
+}

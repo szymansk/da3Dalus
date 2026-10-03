@@ -1,0 +1,150 @@
+{
+ "name": "ja-speed-eindecker-schulterdecker-nf_winglet-elevon-800",
+ "total_mass_kg": 0.4156,
+ "xyz_ref": [
+  0.08358622211553451,
+  0.0,
+  -0.012
+ ],
+ "wings": {
+  "Tragflaeche": {
+   "symmetric": true,
+   "x_secs": [
+    {
+     "xyz_le": [
+      0.0,
+      0.0,
+      -0.0036
+     ],
+     "chord": 0.13405948889819858,
+     "twist": 1.0,
+     "airfoil": "./airfoils/mh45.dat"
+    },
+    {
+     "xyz_le": [
+      0.041212189525353445,
+      0.12,
+      -0.0036
+     ],
+     "chord": 0.11596145789694176,
+     "twist": 0.10000000000000009,
+     "control_surface": {
+      "name": "elevon",
+      "hinge_point": 0.8,
+      "symmetric": false,
+      "deflection": 0.0
+     },
+     "airfoil": "./airfoils/mh45.dat"
+    },
+    {
+     "xyz_le": [
+      0.13050526683028593,
+      0.38,
+      -0.0036
+     ],
+     "chord": 0.07674905739421868,
+     "twist": -1.8499999999999996,
+     "airfoil": "./airfoils/mh45.dat"
+    },
+    {
+     "xyz_le": [
+      0.1373739650845115,
+      0.4,
+      -0.0036
+     ],
+     "chord": 0.07373271889400922,
+     "twist": -2.0,
+     "airfoil": "./airfoils/mh45.dat"
+    }
+   ]
+  },
+  "Winglet": {
+   "symmetric": true,
+   "x_secs": [
+    {
+     "xyz_le": [
+      0.1373739650845115,
+      0.4,
+      -0.0036
+     ],
+     "chord": 0.05263613559678153,
+     "twist": 0.0,
+     "airfoil": "./airfoils/naca0009.dat"
+    },
+    {
+     "xyz_le": [
+      0.15316480576354596,
+      0.4,
+      0.05956336271613782
+     ],
+     "chord": 0.031581681358068915,
+     "twist": 0.0,
+     "airfoil": "./airfoils/naca0009.dat"
+    }
+   ]
+  }
+ },
+ "fuselages": {
+  "Rumpf": {
+   "x_secs": [
+    {
+     "xyz": [
+      -0.08399999999999999,
+      0.0,
+      -0.012
+     ],
+     "a": 0.0024000000000000002,
+     "b": 0.0024000000000000002,
+     "n": 2.0
+    },
+    {
+     "xyz": [
+      -0.0624,
+      0.0,
+      -0.012
+     ],
+     "a": 0.012,
+     "b": 0.012,
+     "n": 2.0
+    },
+    {
+     "xyz": [
+      -0.011999999999999997,
+      0.0,
+      -0.012
+     ],
+     "a": 0.012,
+     "b": 0.012,
+     "n": 2.0
+    },
+    {
+     "xyz": [
+      0.06,
+      0.0,
+      -0.012
+     ],
+     "a": 0.0036,
+     "b": 0.0036,
+     "n": 2.0
+    }
+   ]
+  }
+ },
+ "urmodell": {
+  "motor": "ja",
+  "mission": "speed",
+  "trag": "eindecker",
+  "lage": "schulterdecker",
+  "leitwerk": "nf_winglet",
+  "steuerung": "elevon",
+  "span_m": 0.8,
+  "AR": 7.700000000000001,
+  "S_m2": 0.08311688311688312,
+  "mac_m": 0.10681514115437113,
+  "x_le_ref": 0.06382542100197586,
+  "x_np_geo_fwd": 0.09052920629056864,
+  "sm_target": 0.065,
+  "tail_arm_m": 0.0,
+  "dihedral_deg": 0.0
+ }
+}

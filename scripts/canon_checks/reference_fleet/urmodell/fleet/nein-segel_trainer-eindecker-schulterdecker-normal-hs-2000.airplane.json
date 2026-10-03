@@ -1,0 +1,171 @@
+{
+ "name": "nein-segel_trainer-eindecker-schulterdecker-normal-hs-2000",
+ "total_mass_kg": 0.858,
+ "xyz_ref": [
+  0.081268636630346,
+  0.0,
+  -0.06
+ ],
+ "wings": {
+  "Tragflaeche": {
+   "symmetric": true,
+   "x_secs": [
+    {
+     "xyz_le": [
+      0.0,
+      0.0,
+      -0.018
+     ],
+     "chord": 0.26666666666666666,
+     "twist": 2.0,
+     "airfoil": "./airfoils/s3021.dat"
+    },
+    {
+     "xyz_le": [
+      0.03333333333333333,
+      1.0,
+      0.16207855595490106
+     ],
+     "chord": 0.13333333333333333,
+     "twist": 2.0,
+     "airfoil": "./airfoils/s3021.dat"
+    }
+   ]
+  },
+  "Hoehenleitwerk": {
+   "symmetric": true,
+   "x_secs": [
+    {
+     "xyz_le": [
+      0.7529116601051506,
+      0.0,
+      -0.06
+     ],
+     "chord": 0.13502002624606374,
+     "twist": 0.0,
+     "control_surface": {
+      "name": "elevator",
+      "hinge_point": 0.7,
+      "symmetric": true,
+      "deflection": 0.0
+     },
+     "airfoil": "./airfoils/naca0009.dat"
+    },
+    {
+     "xyz_le": [
+      0.783119788870961,
+      0.2295340446183084,
+      -0.06
+     ],
+     "chord": 0.09451401837224462,
+     "twist": 0.0,
+     "airfoil": "./airfoils/naca0009.dat"
+    }
+   ]
+  },
+  "Seitenleitwerk": {
+   "symmetric": false,
+   "x_secs": [
+    {
+     "xyz_le": [
+      0.7491003404512105,
+      0.0,
+      -0.06
+     ],
+     "chord": 0.1728051005910978,
+     "twist": 0.0,
+     "control_surface": {
+      "name": "rudder",
+      "hinge_point": 0.65,
+      "symmetric": true,
+      "deflection": 0.0
+     },
+     "airfoil": "./airfoils/naca0009.dat"
+    },
+    {
+     "xyz_le": [
+      0.7941799319097578,
+      0.0,
+      0.16539795729273632
+     ],
+     "chord": 0.12772550913255054,
+     "twist": 0.0,
+     "airfoil": "./airfoils/naca0009.dat"
+    }
+   ]
+  }
+ },
+ "fuselages": {
+  "Rumpf": {
+   "x_secs": [
+    {
+     "xyz": [
+      -0.27809455895769164,
+      0.0,
+      -0.06
+     ],
+     "a": 0.018,
+     "b": 0.018,
+     "n": 2.0
+    },
+    {
+     "xyz": [
+      -0.15809455895769164,
+      0.0,
+      -0.06
+     ],
+     "a": 0.06,
+     "b": 0.06,
+     "n": 2.0
+    },
+    {
+     "xyz": [
+      0.08190544104230835,
+      0.0,
+      -0.06
+     ],
+     "a": 0.06,
+     "b": 0.06,
+     "n": 2.0
+    },
+    {
+     "xyz": [
+      0.20190544104230834,
+      0.0,
+      -0.06
+     ],
+     "a": 0.020999999999999998,
+     "b": 0.020999999999999998,
+     "n": 2.0
+    },
+    {
+     "xyz": [
+      0.9219054410423083,
+      0.0,
+      -0.06
+     ],
+     "a": 0.018,
+     "b": 0.018,
+     "n": 2.0
+    }
+   ]
+  }
+ },
+ "urmodell": {
+  "motor": "nein",
+  "mission": "segel_trainer",
+  "trag": "eindecker",
+  "lage": "schulterdecker",
+  "leitwerk": "normal",
+  "steuerung": "hs",
+  "span_m": 2.0,
+  "AR": 9.84169841628055,
+  "S_m2": 0.40643391321390543,
+  "mac_m": 0.20740740740740737,
+  "x_le_ref": 0.014814814814814822,
+  "x_np_geo_fwd": 0.109268636630346,
+  "sm_target": 0.135,
+  "tail_arm_m": 0.72,
+  "dihedral_deg": 10.208333333333334
+ }
+}

@@ -1,6 +1,7 @@
 ---
 canon: lateral-static-stability-md
 entry: formula
+uncertainty: interval
 kind: procedure
 tool: AB
 shape: law
@@ -50,12 +51,16 @@ source). The spiral criterion is negative in all methods (weakly unstable), magn
 AeroBuildup's *local* roll damping is about twice AVL's and ASB VLM's (−0.82 vs −0.35/−0.36 at V_md); the
 steady roll rate of [[max-roll-rate]] nevertheless agrees with AVL within 23 % (nonlinear, see there).
 
-**Kept crisp (A11 rule 5, maintainer 2026-10-03). Validity condition, declared (ADR 0020):** AeroBuildup's
-`C_nβ` differs from AVL's by up to a factor 2.4, with no consistent direction (BRYAN 0.050 vs 0.122, e-Hawk
-0.117 vs 0.082); the fuselage share is unresolved. The spread changes no decision the canon carries: `C_nβ`
-is positive and the spiral criterion has the same sign in both methods on both aircraft, and fins are
-sized by the vertical tail volume. Revisit if an evaluation threshold on `C_nβ` is introduced or a spiral
-criterion lies near zero (BRYAN AeroBuildup: −0.0006).
+**Uncertain (A11 rule 5) — reclassified 2026-10-03 on the Urmodell fleet; maintainer confirmation
+pending.** The same day this entry was kept crisp on two aircraft, with the condition "revisit if a spiral
+criterion lies near zero". The 74-aircraft fleet (`reference_fleet/urmodell/ERGEBNISSE.md` B3) triggers it:
+the spiral verdict differs between AeroBuildup and AVL on 16 of 74 aircraft, the sign of `C_nβ` on 8 (all
+finless flying wings). Worlds: **AeroBuildup** and **AVL**. AeroBuildup is **not a valid world for
+`C_lβ` of swept wings**: it has no sweep contribution to the dihedral effect (`sweep_clb_repro.py`: a plain
+wing at C_L 0.4 gives +0.001 at 0°, 17° and 30° sweep, AVL −0.032 / −0.057 / −0.076). For swept
+layouts the interval of `C_lβ` and of the spiral criterion therefore rests on AVL alone and is marked not
+validated, as for the neutral point. V-tail `C_nβ`: AeroBuildup about 2× AVL, cause not shown (🟡 missing
+mutual interference of the two halves).
 
 **Open before trusting the numbers.** Whether AeroBuildup captures the dihedral effect of the
 wing position (high vs low wing) and the fin in the fuselage wake is unchecked — a cross-check
