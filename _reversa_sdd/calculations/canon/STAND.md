@@ -425,3 +425,8 @@ je eine recherchierte Spannweite, Kanon fehlerfrei durchgerechnet. Befunde:
   **Bestätigung offen**).
 - B4: Rollrate AeroBuildup/AVL 1,04–1,20, AeroBuildup immer höher. Bleibt unscharf.
 - B5: Nurflügel ohne Flosse mit 17° Pfeilung ist richtungsneutral (C_nβ ≈ 0). Offen für #1152.
+
+**Flotte nachgerechnet (04.10.2026):** Die Mittelflosse der Nurflügel schwebte im Generator hinter dem
+Flügel (in den Renderings sichtbar) und ist jetzt korrigiert. Neu: Spiralurteil uneinig bei 24 von 74,
+C_nβ-Vorzeichen bei 15. Betroffen sind nur Nurflügel ohne oder mit Mittelflosse. Galerie:
+https://claude.ai/artifact/So2qRuebq75FuNu5W3wZuC

@@ -2231,8 +2231,8 @@ Eingeordnet nach Regel 5 (03.10.2026):
   vorsichtig.
 - **Seitenstabilität C_lβ, C_nβ und Spiralkriterium: unscharf (neu eingeordnet, Bestätigung offen).**
   Zuerst waren sie scharf eingeordnet, gestützt auf zwei Flugzeuge. Die Urmodell-Flotte mit 74
-  Flugzeugen hat die Gültigkeitsbedingung verletzt: Das Spiralurteil kippt bei 16 Flugzeugen, das
-  Vorzeichen von C_nβ bei 8. AeroBuildup fehlt der Pfeilungsbeitrag zu C_lβ, das ist durch eine
+  Flugzeugen hat die Gültigkeitsbedingung verletzt: Das Spiralurteil kippt bei 24 Flugzeugen, das
+  Vorzeichen von C_nβ bei 15. AeroBuildup fehlt der Pfeilungsbeitrag zu C_lβ, das ist durch eine
   Reproduktion belegt. Bei gepfeilten Flügeln zählt deshalb nur AVL als Welt.
 
 **Bewusst scharf (Kriterium aus Regel 5):** die vordere Trimmgrenze. AeroBuildup liefert 14,3 % MAC, AVL

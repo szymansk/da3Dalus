@@ -54,8 +54,8 @@ steady roll rate of [[max-roll-rate]] nevertheless agrees with AVL within 23 % (
 **Uncertain (A11 rule 5) — reclassified 2026-10-03 on the Urmodell fleet; maintainer confirmation
 pending.** The same day this entry was kept crisp on two aircraft, with the condition "revisit if a spiral
 criterion lies near zero". The 74-aircraft fleet (`reference_fleet/urmodell/ERGEBNISSE.md` B3) triggers it:
-the spiral verdict differs between AeroBuildup and AVL on 16 of 74 aircraft, the sign of `C_nβ` on 8 (all
-finless flying wings). Worlds: **AeroBuildup** and **AVL**. AeroBuildup is **not a valid world for
+the spiral verdict differs between AeroBuildup and AVL on 24 of 74 aircraft, the sign of `C_nβ` on 15 (all
+flying wings without fin or with a centre fin; rerun 2026-10-04 after a generator fix). Worlds: **AeroBuildup** and **AVL**. AeroBuildup is **not a valid world for
 `C_lβ` of swept wings**: it has no sweep contribution to the dihedral effect (`sweep_clb_repro.py`: a plain
 wing at C_L 0.4 gives +0.001 at 0°, 17° and 30° sweep, AVL −0.032 / −0.057 / −0.076). For swept
 layouts the interval of `C_lβ` and of the spiral criterion therefore rests on AVL alone and is marked not

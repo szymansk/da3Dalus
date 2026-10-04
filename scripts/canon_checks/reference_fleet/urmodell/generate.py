@@ -12,7 +12,8 @@ Declared defaults (no source, BAENDER §3f principle "must fly, not be perfect")
   D2 shoulder-wing dihedral interpolated between Lennon's high and mid wing
   D3 fuselage stations as fractions of length and a maximum diameter of 0.1 L (BAENDER §3f)
   D4 flying wing: washout 3 deg (Lennon 2–5 / Panknin start), aspect ratio from the flying-wing statistics,
-     central fin 10 % of S at the wing tip arm (Lennon "Plover"), winglets 4 % of S each
+     central fin 10 % of S on the centre section, trailing edges flush (2026-10-04: was placed at the
+     tip-TE station and floated behind the wing without a boom), winglets 4 % of S each
   D5 biplane: two equal wings, gap = chord, upper stagger 0.3 chord forward, aspect ratio per wing = band
   D6 control-surface hinge lines and span fractions (ailerons 0.6–0.95 b/2 at 25 % chord, Lennon)
   D8 flying-wing mass = mission wing-loading median x area (the span fit is built on tailed aircraft)
@@ -250,7 +251,8 @@ def build(combo: dict, span: float) -> dict:
             S_f = 0.10 * S_w
             h = math.sqrt(1.5 * S_f)
             c = S_f / h
-            x_te = tip["xyz_le"][0] + tip["chord"]
+            root = wing_xs[0]
+            x_te = root["xyz_le"][0] + root["chord"]   # fin sits on the centre section, TE flush (no boom)
             fin = [dict(xyz_le=[x_te - c, 0.0, 0.0], chord=c, twist=0.0,
                         **({"control_surface": cs("rudder", 0.65, True)} if axes == "elevon_s" else {})),
                    dict(xyz_le=[x_te - 0.7 * c, 0.0, h], chord=0.6 * c, twist=0.0)]

@@ -67,15 +67,17 @@ Werkzeug ist also nicht immer vorn. Das bestätigt, dass A11 Intervalle braucht.
 Am 03.10. wurde entschieden: C_nβ und Spiralkriterium bleiben scharf, weil Vorzeichen und Spiralurteil
 **an zwei Flugzeugen** in beiden Methoden übereinstimmten. Auf 74 Flugzeugen gilt:
 
-| Bauart | n | C_lβ AB/AVL | C_nβ AB/AVL | Spiralurteil uneinig |
-|---|---|---|---|---|
-| Normal / T / Kreuz | 39 | 0,52–1,11 | 0,41–1,14 | 1 |
-| V-Leitwerk | 11 | 0,86–1,11 | 0,92–2,17 | 8 |
-| Nurflügel mit Flosse/Winglet | 16 | 0,02–0,33 | 0,18–0,80 | 0 |
-| Nurflügel ohne Flosse | 8 | −0,01–0,06 | −0,72–−0,02 | 7 |
+| Bauart | n | C_lβ AB/AVL | C_nβ AB/AVL | C_nβ-Vorzeichen uneinig | Spiralurteil uneinig |
+|---|---|---|---|---|---|
+| Normal / T / Kreuz | 39 | 0,52–1,11 | 0,41–1,14 | 0 | 1 |
+| V-Leitwerk | 11 | 0,86–1,11 | 0,92–2,17 | 0 | 8 |
+| Nurflügel mit Winglets | 8 | 0,02–0,10 | 0,18–0,60 | 0 | 0 |
+| Nurflügel mit Mittelflosse | 8 | 0,15–0,38 | −0,48–+0,05 | 7 | 8 |
+| Nurflügel ohne Flosse | 8 | −0,01–0,06 | −0,72–−0,02 | 8 | 7 |
 
-Das Spiralurteil kippt bei 16 von 74 Flugzeugen. Das Vorzeichen von C_nβ kippt bei 8, alle sind
-Nurflügel ohne Flosse.
+Das Spiralurteil ist bei 24 von 74 Flugzeugen uneinig, das Vorzeichen von C_nβ bei 15. Betroffen sind
+nur Nurflügel ohne Flosse oder mit Mittelflosse. (Stand 04.10. nach der Korrektur der Mittelflosse,
+siehe B6. Der erste Lauf ergab 16 und 8.)
 
 **Ursache, durch Reproduktion belegt (`sweep_clb_repro.py`):** AeroBuildup kennt keinen
 Pfeilungsbeitrag zu C_lβ. Getestet wurde ein reiner Flügel mit AR 7,7, NACA 0009 und C_L 0,4:
@@ -105,17 +107,27 @@ AeroBuildup liegt **immer** höher. Die Einordnung „unscharf“ bleibt. Keine 
 vorsichtig: AVL fehlen die Klappenverluste bei kleiner Reynoldszahl, und auch die wahre Rollrate kann
 tiefer liegen. Die Streuung von 4–20 % ist aber kleiner als beim BRYAN (23 %).
 
-### B5 — Nurflügel ohne Flosse mit 17° Pfeilung: richtungsneutral
+### B5 — Nurflügel ohne Flosse oder mit Mittelflosse: richtungsneutral
 
-C_nβ liegt bei AeroBuildup um −0,002 und bei AVL um +0,004. Beides ist praktisch null. Als Urmodell
+Ohne Flosse liegt C_nβ bei AeroBuildup um −0,002 und bei AVL um +0,004. Beides ist praktisch null.
+Mit der Mittelflosse auf dem Mittelstück (10 % der Flügelfläche, kurzer Hebel) liegt AVL bei
++0,005 bis +0,008, also kaum höher. Nur die Winglets kommen auf +0,016 bis +0,019. Als Urmodell
 fliegt ein solcher Nurflügel nur knapp. Für #1152 offen: entweder Winglets oder eine Mittelflosse
 als Vorgabe, oder mehr Pfeilung. BAENDER §3c setzt 17° fest, das reicht für einen flossenlosen
 Nurflügel nicht. Belege für eine bessere Vorgabe fehlen noch.
 
+### B6 — Fehler im Generator: Mittelflosse schwebte hinter dem Flügel (korrigiert 04.10.)
+
+Die Renderings zeigten das Problem. Die Mittelflosse stand an der x-Position der Flügelspitzen-
+Hinterkante, aber bei y = 0. Bei 17° Pfeilung liegt das weit hinter dem Mittelstück, und es gab
+keinen Ausleger. Jetzt sitzt sie auf dem Mittelstück, die Hinterkanten bündig. Betroffen waren 8
+Modelle; Flotte und Seitenstabilität sind neu gerechnet. Renderings: `render_iso.py`, `renders/`,
+Galerie `galerie.html`.
+
 ## Dateien
 
 `combos.py` · `generate.py` · `fleet/` (74 Geometrien und Profile) · `fleet_eval.py` · `fleet_results.csv` ·
-`lateral_avl.py` · `lateral_avl.csv` · `sweep_clb_repro.py` · `analyse.py` · `SPANNWEITEN.md`
+`lateral_avl.py` · `lateral_avl.csv` · `sweep_clb_repro.py` · `analyse.py` · `SPANNWEITEN.md` · `render_iso.py` · `renders/` · `build_gallery.py` · `galerie.html`
 
 ## Quellen der Spannweiten (Auszug, URLs)
 
