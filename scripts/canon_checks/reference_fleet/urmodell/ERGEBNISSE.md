@@ -137,10 +137,35 @@ Holme sind jetzt ebenfalls gesetzt, nach den Vorgaben des App-Holmplaners (Vorga
 Konstruktionsansicht: `render_construction.py` ist eine Python-Portierung von
 `frontend/components/workbench/WingOutlineViewer.tsx`.
 
+### B8 — ASB-VLM ist kein Ersatz für AVL bei der Seitenstabilität (04.10.)
+
+Geprüft wurde auf Frage des Maintainers, ob das Wirbelgitterverfahren von AeroSandbox AVL für die
+Seitenderivative ersetzen kann (`vlm_lateral.py`, Vernetzung wie im App-Pfad gh-855).
+
+| Bauart | n | C_lβ VLM/AVL | C_nβ VLM/AVL | Spiral uneinig VLM–AVL | AB–AVL |
+|---|---|---|---|---|---|
+| Normal / T / Kreuz | 39 | 0,33–0,81 | 0,66–1,63 | 28 | 1 |
+| V-Leitwerk | 11 | 0,72–0,80 | 0,72–0,96 | 7 | 8 |
+| Nurflügel, Winglets | 8 | 0,76–13 | streut, ein Ausreißer | 3 | 0 |
+| Nurflügel, Mittelflosse | 8 | 0,48–0,54 | 0,18–0,30 | 0 | 8 |
+| Nurflügel ohne Flosse | 8 | 0,52–0,55 | −0,14–−0,07 | 8 | 7 |
+
+Das Spiralurteil von VLM und AVL ist bei 46 von 74 Flugzeugen uneinig, bei AeroBuildup gegen AVL bei 24.
+
+- **Pfeilungsterm vorhanden.** Am reinen Flügel passt der Zuwachs von 0° auf 17° Pfeilung zu AVL
+  (VLM −0,022 bei C_L 0,32; AVL −0,025 bei C_L 0,39).
+- **Grundanteil fehlt.** Der Anteil, den AVL schon beim ungepfeilten Flügel liefert (−0,032 bei C_L 0,4),
+  fehlt in VLM ganz (−0,000), und mit 5° V-Form fehlt er weiterhin.
+- **Kein Rumpf.** ASB-VLM rechnet ohne Rumpf. Das AVL-Modell aus AeroSandbox enthält den Rumpf als
+  BODY. Deshalb fehlen in VLM der Rumpfbeitrag zu C_nβ (instabil) und der Einfluss der Flügellage auf
+  C_lβ.
+- **Folge:** AVL ist das einzige der drei Verfahren, das Pfeilung, V-Leitwerk-Interferenz und Rumpf
+  enthält.
+
 ## Dateien
 
 `combos.py` · `generate.py` · `fleet/` (74 Geometrien und Profile) · `fleet_eval.py` · `fleet_results.csv` ·
-`lateral_avl.py` · `lateral_avl.csv` · `sweep_clb_repro.py` · `analyse.py` · `SPANNWEITEN.md` · `render_iso.py` · `renders/` · `render_construction.py` (Bilder nicht eingecheckt, reproduzierbar) · `build_gallery.py` · `galerie.html`
+`lateral_avl.py` · `lateral_avl.csv` · `sweep_clb_repro.py` · `analyse.py` · `SPANNWEITEN.md` · `render_iso.py` · `renders/` · `render_construction.py` (Bilder nicht eingecheckt, reproduzierbar) · `build_gallery.py` · `galerie.html` · `vlm_lateral.py` · `vlm_lateral.csv`
 
 ## Quellen der Spannweiten (Auszug, URLs)
 
