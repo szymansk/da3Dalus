@@ -18,7 +18,23 @@
      ],
      "chord": 0.23391812865497075,
      "twist": 1.5,
-     "airfoil": "./airfoils/rg15.dat"
+     "airfoil": "./airfoils/rg15.dat",
+     "spare_list": [
+      {
+       "spare_position_factor": 0.305,
+       "spare_support_dimension_width": 0.005965814159048861,
+       "spare_support_dimension_height": 0.005965814159048861,
+       "spare_start": 0.0,
+       "spare_mode": "standard"
+      },
+      {
+       "spare_position_factor": 0.65,
+       "spare_support_dimension_width": 0.003579488495429316,
+       "spare_support_dimension_height": 0.003579488495429316,
+       "spare_start": 0.0,
+       "spare_mode": "standard"
+      }
+     ]
     },
     {
      "xyz_le": [
@@ -28,13 +44,31 @@
      ],
      "chord": 0.16374269005847952,
      "twist": 1.5,
-     "control_surface": {
-      "name": "aileron",
-      "hinge_point": 0.75,
-      "symmetric": false,
-      "deflection": 0.0
-     },
-     "airfoil": "./airfoils/rg15.dat"
+     "airfoil": "./airfoils/rg15.dat",
+     "spare_list": [
+      {
+       "spare_position_factor": 0.305,
+       "spare_support_dimension_width": 0.005965814159048861,
+       "spare_support_dimension_height": 0.005965814159048861,
+       "spare_start": 0.0,
+       "spare_mode": "standard"
+      },
+      {
+       "spare_position_factor": 0.65,
+       "spare_support_dimension_width": 0.003579488495429316,
+       "spare_support_dimension_height": 0.003579488495429316,
+       "spare_start": 0.0,
+       "spare_mode": "standard"
+      }
+     ],
+     "control_surfaces": [
+      {
+       "name": "aileron",
+       "hinge_point": 0.75,
+       "symmetric": false,
+       "deflection": 0.0
+      }
+     ]
     },
     {
      "xyz_le": [
@@ -44,7 +78,23 @@
      ],
      "chord": 0.12280701754385964,
      "twist": 1.5,
-     "airfoil": "./airfoils/rg15.dat"
+     "airfoil": "./airfoils/rg15.dat",
+     "spare_list": [
+      {
+       "spare_position_factor": 0.305,
+       "spare_support_dimension_width": 0.005965814159048861,
+       "spare_support_dimension_height": 0.005965814159048861,
+       "spare_start": 0.0,
+       "spare_mode": "standard"
+      },
+      {
+       "spare_position_factor": 0.65,
+       "spare_support_dimension_width": 0.003579488495429316,
+       "spare_support_dimension_height": 0.003579488495429316,
+       "spare_start": 0.0,
+       "spare_mode": "standard"
+      }
+     ]
     },
     {
      "xyz_le": [
@@ -69,13 +119,30 @@
      ],
      "chord": 0.14950818965711235,
      "twist": 0.0,
-     "control_surface": {
-      "name": "ruddervator",
-      "hinge_point": 0.7,
-      "symmetric": false,
-      "deflection": 0.0
-     },
-     "airfoil": "./airfoils/naca0009.dat"
+     "airfoil": "./airfoils/naca0009.dat",
+     "spare_list": [
+      {
+       "spare_position_factor": 0.3,
+       "spare_support_dimension_width": 0.0029829070795244304,
+       "spare_support_dimension_height": 0.0029829070795244304,
+       "spare_start": 0.0,
+       "spare_mode": "standard"
+      }
+     ],
+     "control_surfaces": [
+      {
+       "name": "ruddervator_pitch",
+       "hinge_point": 0.7,
+       "symmetric": true,
+       "deflection": 0.0
+      },
+      {
+       "name": "ruddervator_yaw",
+       "hinge_point": 0.7,
+       "symmetric": false,
+       "deflection": 0.0
+      }
+     ]
     },
     {
      "xyz_le": [

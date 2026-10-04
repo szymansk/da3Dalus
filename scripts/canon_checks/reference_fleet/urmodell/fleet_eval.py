@@ -25,6 +25,7 @@ import traceback
 HERE = pathlib.Path(__file__).parent
 FLEET = HERE / "fleet"
 DELTA_A = 20.0
+ROLL = ("aileron", "elevon_roll")  # antisymmetric roll surfaces
 
 
 def asb_plane(d, delta_a=0.0, with_avl_opts=False):
@@ -43,12 +44,9 @@ def asb_plane(d, delta_a=0.0, with_avl_opts=False):
     for name, w in d["wings"].items():
         xs = []
         for x in w["x_secs"]:
-            c = x.get("control_surface")
-            surfs = []
-            if c:
-                defl = delta_a if c["name"] in ("aileron", "elevon") else 0.0
-                surfs = [asb.ControlSurface(name=c["name"], symmetric=c["symmetric"], hinge_point=c["hinge_point"],
-                                            deflection=defl)]
+            surfs = [asb.ControlSurface(name=c["name"], symmetric=c["symmetric"], hinge_point=c["hinge_point"],
+                                        deflection=delta_a if c["name"] in ROLL else 0.0)
+                     for c in x.get("control_surfaces", [])]
             xs.append(asb.WingXSec(xyz_le=x["xyz_le"], chord=x["chord"], twist=x["twist"], airfoil=af(x["airfoil"]),
                                    control_surfaces=surfs, analysis_specific_options=ox))
         wings.append(asb.Wing(name=name, symmetric=w["symmetric"], xsecs=xs, analysis_specific_options=ow))
@@ -174,7 +172,7 @@ def evaluate(path: pathlib.Path) -> dict:
             pav = asb_plane(d, with_avl_opts=True)
             cl_app = m * g / (0.5 * rho * va ** 2 * S)
             out0, controls = avl_run(pav, asb.OperatingPoint(atm, velocity=va, alpha=4), d["xyz_ref"], ["quit"])
-            name = "aileron" if "aileron" in controls else "elevon"
+            name = "aileron" if "aileron" in controls else "elevon_roll"
             if name in controls:
                 idx = controls.index(name) + 1
                 out, _ = avl_run(pav, asb.OperatingPoint(atm, velocity=va, alpha=4), d["xyz_ref"],

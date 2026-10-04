@@ -124,10 +124,23 @@ keinen Ausleger. Jetzt sitzt sie auf dem Mittelstück, die Hinterkanten bündig.
 Modelle; Flotte und Seitenstabilität sind neu gerechnet. Renderings: `render_iso.py`, `renders/`,
 Galerie `galerie.html`.
 
+### B7 — Fehler im Generator: Höhensteuerung fehlte bei V-Leitwerk und Nurflügel (korrigiert 04.10.)
+
+Ruddervators und Elevons waren nur gegensinnig angelegt, also nur mit Seiten- bzw. Querruderfunktion. 35
+der 74 Modelle hatten damit keine Höhensteuerung. Jetzt trägt jede dieser Ruderflächen zwei Anteile:
+gleichsinnig (`*_pitch`) und gegensinnig (`*_roll` bzw. `*_yaw`). Die bisherigen Ergebnisse ändern sich
+nicht, weil der neue Anteil bei 0° steht. Die Rollraten von Stichproben sind bitgleich. Erst damit
+lassen sich vordere Trimmgrenze und Trimmung für diese 35 Modelle rechnen.
+
+Holme sind jetzt ebenfalls gesetzt, nach den Vorgaben des App-Holmplaners (Vorgabe D9 in
+`generate.py`). Sie dienen nur der Anschauung und gehen in keine aerodynamische Rechnung ein.
+Konstruktionsansicht: `render_construction.py` ist eine Python-Portierung von
+`frontend/components/workbench/WingOutlineViewer.tsx`.
+
 ## Dateien
 
 `combos.py` · `generate.py` · `fleet/` (74 Geometrien und Profile) · `fleet_eval.py` · `fleet_results.csv` ·
-`lateral_avl.py` · `lateral_avl.csv` · `sweep_clb_repro.py` · `analyse.py` · `SPANNWEITEN.md` · `render_iso.py` · `renders/` · `build_gallery.py` · `galerie.html`
+`lateral_avl.py` · `lateral_avl.csv` · `sweep_clb_repro.py` · `analyse.py` · `SPANNWEITEN.md` · `render_iso.py` · `renders/` · `render_construction.py` (Bilder nicht eingecheckt, reproduzierbar) · `build_gallery.py` · `galerie.html`
 
 ## Quellen der Spannweiten (Auszug, URLs)
 

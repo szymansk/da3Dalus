@@ -13,9 +13,21 @@ LABEL = {"trainer": "Trainer", "park": "Park", "sport": "Sport", "kunstflug": "K
          "thermik": "Thermik", "hang": "Hang", "wurf": "Wurf"}
 LW = {"normal": "Normalleitwerk", "t": "T-Leitwerk", "kreuz": "Kreuzleitwerk", "v": "V-Leitwerk",
       "nf_mitte": "Nurflügel, Mittelflosse", "nf_winglet": "Nurflügel, Winglets", "nf_ohne": "Nurflügel ohne Flosse"}
-ST = {"hs": "Höhe + Seite", "hsq": "+ Querruder", "hsqk": "+ Querruder + Klappen", "elevon": "Elevons"}
+ST = {"hs": "Höhe + Seite", "hsq": "Höhe + Seite + Quer", "hsqk": "Höhe + Seite + Quer + Wölbklappen",
+      "elevon": "Elevons (Höhe + Quer gemischt)"}
 LAGE = {"hochdecker": "Hochdecker", "schulterdecker": "Schulterdecker", "mitteldecker": "Mitteldecker",
         "tiefdecker": "Tiefdecker", "ohne_rumpf": "ohne Rumpf", None: "Doppeldecker"}
+
+def _jpeg(path):
+    import io
+
+    from PIL import Image
+    im = Image.open(path).convert("RGB")
+    im = im.resize((720, round(720 * im.height / im.width)), Image.LANCZOS)
+    buf = io.BytesIO()
+    im.save(buf, "JPEG", quality=82, optimize=True)
+    return base64.b64encode(buf.getvalue()).decode()
+
 
 planes = [json.loads(p.read_text()) for p in sorted((HERE / "fleet").glob("*.airplane.json"))]
 sections = []
@@ -24,12 +36,12 @@ for m in ORDER:
     cards = []
     for d in group:
         u = d["urmodell"]
-        img = base64.b64encode((HERE / "renders" / f"{d['name']}.png").read_bytes()).decode()
+        img = _jpeg(HERE / "renders_construction" / f"{d['name']}.png")
         ws = d["total_mass_kg"] * 1000 / (u["S_m2"] * 100)
         cards.append(f'''<figure class="card" data-m="{m}">
-<img alt="Isometrie {html.escape(d['name'])}" loading="lazy" src="data:image/png;base64,{img}">
+<img alt="Isometrie {html.escape(d['name'])}" loading="lazy" src="data:image/jpeg;base64,{img}">
 <figcaption><b>{LAGE[u['lage']] if u['trag'] == 'eindecker' else 'Doppeldecker'}</b>
-<span>{LW[u['leitwerk']]} · {ST[u['steuerung']]}</span>
+<span>{LW[u['leitwerk']]} · {ST[u['steuerung']].replace('Höhe + Seite', 'Höhe/Seite gemischt (Ruddervator)') if u['leitwerk'] == 'v' else ST[u['steuerung']]}</span>
 <span class="num">b {u['span_m']*1000:.0f} mm · {d['total_mass_kg']*1000:.0f} g · {ws:.0f} g/dm² · AR {u['AR']:.1f}</span></figcaption></figure>''')
     motor = "Motor" if group[0]["urmodell"]["motor"] == "ja" else "Segler"
     sections.append(f'''<section id="{m}"><h2>{LABEL[m]} <small>{motor} · {len(group)}</small></h2>
@@ -61,16 +73,17 @@ h2 small {{ font:400 12px var(--mono); color:var(--muted); letter-spacing:.04em;
 .grid {{ display:grid; grid-template-columns:repeat(auto-fill,minmax(260px,1fr)); gap:12px; }}
 .card {{ margin:0; background:var(--panel); border:1px solid var(--line); border-radius:4px; overflow:hidden;
   display:flex; flex-direction:column; min-width:0; }}
-.card img {{ width:100%; aspect-ratio:4/3.2; object-fit:contain; max-width:100%; }}
+.card img {{ width:100%; aspect-ratio:900/640; background:#17171A; object-fit:contain; max-width:100%; }}
 figcaption {{ display:flex; flex-direction:column; gap:2px; padding:8px 10px 10px; border-top:1px solid var(--line); font-size:13px; }}
 figcaption span {{ color:var(--muted); }}
 .num {{ font:12px var(--mono); font-variant-numeric:tabular-nums; color:var(--accent) !important; }}
 </style>
 <div class="wrap">
 <header><h1>Urmodell-Flotte · 74 typische Urmodelle</h1>
-<p>Isometrische Ansicht (von vorn links oben, gleicher Maßstab auf allen Achsen, jedes Bild auf seine Größe
-eingepasst). Je Mission eine recherchierte Spannweite. Bei V-Leitwerken nahe 40° Öffnungswinkel steht eine
-Hälfte in der Isometrie fast genau auf Kante und erscheint als Strich.</p></header>
+<p>Konstruktionsansicht wie im Workbench-Viewer der App: Profilschnitte und Segmentkanten orange,
+Ruder grün (Scharnierlinie dick), Holme lila (Hauptholm am Dickenmaximum, Hilfsholm bei 65 % Tiefe), Rumpf blau.
+Elevons und Ruddervators sind Mischer aus Höhe und Quer bzw. Höhe und Seite. Holme sind zur Anschauung
+nach den Vorgaben des App-Holmplaners gesetzt; die App bemisst sie selbst.</p></header>
 <nav aria-label="Missionen">{chips}</nav>
 {''.join(sections)}
 </div>

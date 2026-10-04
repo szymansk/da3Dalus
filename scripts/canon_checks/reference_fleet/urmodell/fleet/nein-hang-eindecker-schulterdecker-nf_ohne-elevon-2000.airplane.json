@@ -18,7 +18,23 @@
      ],
      "chord": 0.3351487222454964,
      "twist": 1.5,
-     "airfoil": "./airfoils/mh45.dat"
+     "airfoil": "./airfoils/mh45.dat",
+     "spare_list": [
+      {
+       "spare_position_factor": 0.275,
+       "spare_support_dimension_width": 0.006706321008191961,
+       "spare_support_dimension_height": 0.006706321008191961,
+       "spare_start": 0.0,
+       "spare_mode": "standard"
+      },
+      {
+       "spare_position_factor": 0.65,
+       "spare_support_dimension_width": 0.004023792604915177,
+       "spare_support_dimension_height": 0.004023792604915177,
+       "spare_start": 0.0,
+       "spare_mode": "standard"
+      }
+     ]
     },
     {
      "xyz_le": [
@@ -28,13 +44,37 @@
      ],
      "chord": 0.2899036447423544,
      "twist": 0.6000000000000001,
-     "control_surface": {
-      "name": "elevon",
-      "hinge_point": 0.8,
-      "symmetric": false,
-      "deflection": 0.0
-     },
-     "airfoil": "./airfoils/mh45.dat"
+     "airfoil": "./airfoils/mh45.dat",
+     "spare_list": [
+      {
+       "spare_position_factor": 0.275,
+       "spare_support_dimension_width": 0.006706321008191961,
+       "spare_support_dimension_height": 0.006706321008191961,
+       "spare_start": 0.0,
+       "spare_mode": "standard"
+      },
+      {
+       "spare_position_factor": 0.65,
+       "spare_support_dimension_width": 0.004023792604915177,
+       "spare_support_dimension_height": 0.004023792604915177,
+       "spare_start": 0.0,
+       "spare_mode": "standard"
+      }
+     ],
+     "control_surfaces": [
+      {
+       "name": "elevon_pitch",
+       "hinge_point": 0.8,
+       "symmetric": true,
+       "deflection": 0.0
+      },
+      {
+       "name": "elevon_roll",
+       "hinge_point": 0.8,
+       "symmetric": false,
+       "deflection": 0.0
+      }
+     ]
     },
     {
      "xyz_le": [
@@ -44,7 +84,23 @@
      ],
      "chord": 0.1918726434855467,
      "twist": -1.3499999999999996,
-     "airfoil": "./airfoils/mh45.dat"
+     "airfoil": "./airfoils/mh45.dat",
+     "spare_list": [
+      {
+       "spare_position_factor": 0.275,
+       "spare_support_dimension_width": 0.006706321008191961,
+       "spare_support_dimension_height": 0.006706321008191961,
+       "spare_start": 0.0,
+       "spare_mode": "standard"
+      },
+      {
+       "spare_position_factor": 0.65,
+       "spare_support_dimension_width": 0.004023792604915177,
+       "spare_support_dimension_height": 0.004023792604915177,
+       "spare_start": 0.0,
+       "spare_mode": "standard"
+      }
+     ]
     },
     {
      "xyz_le": [

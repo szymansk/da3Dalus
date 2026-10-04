@@ -16,6 +16,12 @@ Declared defaults (no source, BAENDER §3f principle "must fly, not be perfect")
      tip-TE station and floated behind the wing without a boom), winglets 4 % of S each
   D5 biplane: two equal wings, gap = chord, upper stagger 0.3 chord forward, aspect ratio per wing = band
   D6 control-surface hinge lines and span fractions (ailerons 0.6–0.95 b/2 at 25 % chord, Lennon)
+  D9 spars as the app's spar planner places them (spar_plan_service / SparPlanRequest defaults): front spar
+     at the section's max-thickness x/c, rear spar at 0.65 c on main wings, both full span, solid carbon
+     rod (500 MPa, DB material "Carbon Fiber (structural)"), diameter from the root moment of an elliptic
+     load M = m g b / (3 pi) x g_limit 3 x j 1.5 with W = d^3/10 (the solver's convention), capped at
+     packing 0.8 x root thickness; rear spar 0.6 x front diameter (torsion-sized in the app — placeholder);
+     tails: one spar at max thickness, min(0.5 x main d, 0.6 x root thickness). Visual only: the app re-sizes spars.
   D8 flying-wing mass = mission wing-loading median x area (the span fit is built on tailed aircraft)
   D7 CG from the FORWARD edge of the geometric neutral-point worlds (textbook, Pappas) minus SM target
 """
@@ -69,6 +75,48 @@ def wing_sections(span, c_root, taper, sweep_c4_deg, dihedral_deg, twist_root, t
         out.append(dict(xyz_le=[x_c4 - 0.25 * c, y, z0 + y * math.tan(math.radians(dihedral_deg))],
                         chord=c, twist=twist_root + (twist_tip - twist_root) * f))
     return out
+
+
+def foil_shape(name):
+    """(t/c, x/c of max thickness) of a coordinate file in fleet/airfoils/."""
+    import numpy as np
+    pts = []
+    for line in (HERE / "fleet" / "airfoils" / f"{name}.dat").read_text().splitlines():
+        try:
+            a, b = (float(v) for v in line.split()[:2])
+        except ValueError:
+            continue
+        if a <= 1.5:
+            pts.append((a, b))
+    pts = np.array(pts)
+    i0 = int(np.argmin(pts[:, 0]))
+    up, lo = pts[: i0 + 1][::-1], pts[i0:]
+    xg = np.linspace(0.01, 0.99, 197)
+    th = np.interp(xg, up[:, 0], up[:, 1]) - np.interp(xg, lo[:, 0], lo[:, 1])
+    if np.median(th) < 0:
+        th = -th
+    k = int(np.argmax(th))
+    return float(th[k]), float(xg[k])
+
+
+def add_spars(wings, mass, span):
+    """D9: front/rear spar on every main-wing segment, one spar on tail segments (metres)."""
+    g = 9.80665
+    m_design = mass * g * span / (3 * math.pi) * 3.0 * 1.5
+    d_req = (10 * m_design / 500e6) ** (1 / 3)
+    for name, w in wings.items():
+        xs = w["x_secs"]
+        tc, xmax = foil_shape(pathlib.Path(xs[0]["airfoil"]).stem)
+        t_root = tc * xs[0]["chord"]
+        main = name in ("Tragflaeche", "Oberfluegel")
+        d = min(d_req, 0.8 * t_root) if main else min(0.5 * d_req, 0.6 * t_root)
+        spars = [{"spare_position_factor": round(xmax, 3), "spare_support_dimension_width": d,
+                  "spare_support_dimension_height": d, "spare_start": 0.0, "spare_mode": "standard"}]
+        if main:
+            spars.append({"spare_position_factor": 0.65, "spare_support_dimension_width": 0.6 * d,
+                          "spare_support_dimension_height": 0.6 * d, "spare_start": 0.0, "spare_mode": "standard"})
+        for x in xs[:-1]:
+            x["spare_list"] = [dict(s) for s in spars]
 
 
 def surface_geom(xs):
@@ -192,7 +240,7 @@ def build(combo: dict, span: float) -> dict:
         put(1, cs("flap", 0.75, True))
         put(2, cs("aileron", 0.75, False))
     if axes in ("elevon", "elevon_s"):
-        put(1, cs("elevon", 0.8, False))
+        put(1, [cs("elevon_pitch", 0.8, True), cs("elevon_roll", 0.8, False)])   # mixer: pitch + roll
     for x in wing_xs:
         if x.get("control_surface") is None:
             x.pop("control_surface", None)
@@ -226,7 +274,8 @@ def build(combo: dict, span: float) -> dict:
             c_r = 2 * A / (b_v * (1 + taper_t))
             vt = wing_sections(b_v, c_r, taper_t, 10.0, nu, 0.0, 0.0, [0, 1], x0=xac_h - 0.25 * c_r, z0=z_boom)
             for x in vt[:1]:
-                x["control_surface"] = cs("ruddervator", 0.7, False)
+                x["control_surface"] = [cs("ruddervator_pitch", 0.7, True),        # mixer: pitch + yaw
+                                        cs("ruddervator_yaw", 0.7, False)]
             wings["V-Leitwerk"] = {"symmetric": True, "x_secs": vt}
         else:
             b_h = math.sqrt(AR_h * S_h)
@@ -290,6 +339,12 @@ def build(combo: dict, span: float) -> dict:
     x_np = min(ref["worlds"])
     x_cg = x_np - band["sm"] * ref["mac"]
 
+    add_spars(wings, mass, span)
+    for w in wings.values():
+        for x in w["x_secs"]:
+            c = x.pop("control_surface", None)
+            if c:
+                x["control_surfaces"] = c if isinstance(c, list) else [c]
     return {"name": combo_id(combo, span), "total_mass_kg": round(mass, 4), "xyz_ref": [x_cg, 0.0, -0.5 * D],
             "wings": wings, "fuselages": fuselages,
             "urmodell": {**combo, "span_m": span, "AR": ref["AR"], "S_m2": ref["S"], "mac_m": ref["mac"],

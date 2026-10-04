@@ -1,0 +1,3 @@
+renders_construction/
+*.log
+__pycache__/

@@ -18,7 +18,23 @@
      ],
      "chord": 0.272108843537415,
      "twist": 2.0,
-     "airfoil": "./airfoils/sd7037.dat"
+     "airfoil": "./airfoils/sd7037.dat",
+     "spare_list": [
+      {
+       "spare_position_factor": 0.29,
+       "spare_support_dimension_width": 0.007644320260494124,
+       "spare_support_dimension_height": 0.007644320260494124,
+       "spare_start": 0.0,
+       "spare_mode": "standard"
+      },
+      {
+       "spare_position_factor": 0.65,
+       "spare_support_dimension_width": 0.0045865921562964745,
+       "spare_support_dimension_height": 0.0045865921562964745,
+       "spare_start": 0.0,
+       "spare_mode": "standard"
+      }
+     ]
     },
     {
      "xyz_le": [
@@ -43,13 +59,24 @@
      ],
      "chord": 0.15138943380073844,
      "twist": 0.0,
-     "control_surface": {
-      "name": "elevator",
-      "hinge_point": 0.7,
-      "symmetric": true,
-      "deflection": 0.0
-     },
-     "airfoil": "./airfoils/naca0009.dat"
+     "airfoil": "./airfoils/naca0009.dat",
+     "spare_list": [
+      {
+       "spare_position_factor": 0.3,
+       "spare_support_dimension_width": 0.003822160130247062,
+       "spare_support_dimension_height": 0.003822160130247062,
+       "spare_start": 0.0,
+       "spare_mode": "standard"
+      }
+     ],
+     "control_surfaces": [
+      {
+       "name": "elevator",
+       "hinge_point": 0.7,
+       "symmetric": true,
+       "deflection": 0.0
+      }
+     ]
     },
     {
      "xyz_le": [
@@ -74,13 +101,24 @@
      ],
      "chord": 0.23491600207082278,
      "twist": 0.0,
-     "control_surface": {
-      "name": "rudder",
-      "hinge_point": 0.65,
-      "symmetric": true,
-      "deflection": 0.0
-     },
-     "airfoil": "./airfoils/naca0009.dat"
+     "airfoil": "./airfoils/naca0009.dat",
+     "spare_list": [
+      {
+       "spare_position_factor": 0.3,
+       "spare_support_dimension_width": 0.003822160130247062,
+       "spare_support_dimension_height": 0.003822160130247062,
+       "spare_start": 0.0,
+       "spare_mode": "standard"
+      }
+     ],
+     "control_surfaces": [
+      {
+       "name": "rudder",
+       "hinge_point": 0.65,
+       "symmetric": true,
+       "deflection": 0.0
+      }
+     ]
     },
     {
      "xyz_le": [
