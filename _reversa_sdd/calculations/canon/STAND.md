@@ -444,3 +444,7 @@ Werte.
 **O14 weiter entschieden (05.10.2026, K29):** Sekunden-Rechnungen laufen beim Verlassen der
 Konstruktionsansicht. Veraltete Werte sind ausgegraut, der alte Wert bleibt per Mouse-over sichtbar. Offen
 ist nur noch, wo die Stufe festgelegt wird (Kanon-Eintrag oder App).
+
+**O10 entschieden (05.10.2026):** Masse, Höhe, Geschwindigkeit und Ruderstellung gehören zum
+Betriebspunkt (§3.2); die Ruderstellung ist dort eine Ausgabe (eingetrimmt). Die Genauigkeitsstufe ist
+eine Rechner-Einstellung (A3).
