@@ -24,14 +24,33 @@ import sys
 # naming collision, removed in the canon itself. Keep it empty; fix cycles in the canon.
 BROKEN_EDGES: set = set()
 
-GREEK = {"rho": r"\rho", "alpha": r"\alpha", "gamma": r"\gamma", "eta": r"\eta",
-         "mu": r"\mu", "pi": r"\pi", "sigma": r"\sigma", "lambda": r"\lambda",
-         "phi": r"\phi"}
+GREEK = {
+    "rho": r"\rho",
+    "alpha": r"\alpha",
+    "gamma": r"\gamma",
+    "eta": r"\eta",
+    "mu": r"\mu",
+    "pi": r"\pi",
+    "sigma": r"\sigma",
+    "lambda": r"\lambda",
+    "phi": r"\phi",
+}
 
 #: A canonical form containing any of these is a procedure, not an expression, and is
 #: shown verbatim rather than typeset.
-NOT_TYPESETTABLE = ("argmax", "argmin", "interp", "first i", "max over", "min over",
-                    "sum_i", "crossing", ":=", "optionally", "[")
+NOT_TYPESETTABLE = (
+    "argmax",
+    "argmin",
+    "interp",
+    "first i",
+    "max over",
+    "min over",
+    "sum_i",
+    "crossing",
+    ":=",
+    "optionally",
+    "[",
+)
 
 
 def _front(text: str, key: str) -> str:
@@ -50,11 +69,14 @@ def to_tex(form: str) -> str | None:
     s = re.sub(r"\^([0-9.]+)", lambda m: "^{%s}" % m.group(1), s)
     s = s.replace("*", r"\,")
     s = re.sub(r"\bmax\b", r"\\max ", s)
-    while r"\sqrt(" in s:                                    # also nested
-        i = s.index(r"\sqrt("); j = i + 6; depth = 1
+    while r"\sqrt(" in s:  # also nested
+        i = s.index(r"\sqrt(")
+        j = i + 6
+        depth = 1
         while j < len(s) and depth:
-            depth += (s[j] == "(") - (s[j] == ")"); j += 1
-        s = s[:i] + r"\sqrt{" + s[i + 6:j - 1] + "}" + s[j:]
+            depth += (s[j] == "(") - (s[j] == ")")
+            j += 1
+        s = s[:i] + r"\sqrt{" + s[i + 6 : j - 1] + "}" + s[j:]
     return re.sub(r"\s+", " ", s).strip()
 
 
@@ -64,7 +86,8 @@ def read_canon(root: pathlib.Path) -> tuple[dict, dict]:
         t = f.read_text(encoding="utf-8")
         m = re.search(r"^# .+?\n+(.+?)(?:\n\n|\Z)", t.split("---", 2)[2], re.S | re.M)
         quantities[f.stem] = {
-            "symbol": _front(t, "symbol"), "unit": _front(t, "unit"),
+            "symbol": _front(t, "symbol"),
+            "unit": _front(t, "unit"),
             "role": _front(t, "role"),
             "unc": _front(t, "uncertainty"),
             "desc": " ".join(m.group(1).split()) if m else "",
@@ -80,7 +103,9 @@ def read_canon(root: pathlib.Path) -> tuple[dict, dict]:
         formulas[f.stem] = {
             "out": [o.strip() for o in _front(t, "output").split(",") if o.strip()],
             "ins": [i for i in ins if i in quantities],
-            "form": form, "tex": _front(t, "tex") or to_tex(form), "kind": _front(t, "kind"),
+            "form": form,
+            "tex": _front(t, "tex") or to_tex(form),
+            "kind": _front(t, "kind"),
             "tool": _front(t, "tool") or "APP",
             "status": _front(t, "status"),
             "src": " ".join(source.group(1).split())[:420] if source else "",
@@ -101,7 +126,7 @@ def layout(quantities: dict, formulas: dict) -> dict:
     produced = {o for f in formulas.values() for o in f["out"]}
     consumed = {a for a, _, _ in edges}
     layer = {q: 0 for q in quantities if q not in produced}
-    for _ in range(80):                                      # longest chain is ~12
+    for _ in range(80):  # longest chain is ~12
         changed = False
         for f in formulas.values():
             for out in f["out"]:
@@ -109,33 +134,41 @@ def layout(quantities: dict, formulas: dict) -> dict:
                 if all(i in layer for i in ins):
                     lvl = 1 + max([layer[i] for i in ins], default=0)
                     if layer.get(out, -1) < lvl:
-                        layer[out] = lvl; changed = True
+                        layer[out] = lvl
+                        changed = True
         if not changed:
             break
     for q in quantities:
         layer.setdefault(q, 0)
 
     rows = collections.defaultdict(list)
-    for q, l in layer.items():
-        rows[l].append(q)
-    for l in rows:
-        rows[l].sort()
-    pos = {q: i for l in rows for i, q in enumerate(rows[l])}
+    for q, lay in layer.items():
+        rows[lay].append(q)
+    for lay in rows:
+        rows[lay].sort()
+    pos = {q: i for lay in rows for i, q in enumerate(rows[lay])}
     pred, succ = collections.defaultdict(list), collections.defaultdict(list)
     for a, b, _ in edges:
-        pred[b].append(a); succ[a].append(b)
-    for sweep in range(14):                                  # barycentre, both ways
+        pred[b].append(a)
+        succ[a].append(b)
+    for sweep in range(14):  # barycentre, both ways
         ref = pred if sweep % 2 == 0 else succ
-        for l in sorted(rows, reverse=sweep % 2):
-            rows[l].sort(key=lambda q: (sum(pos[x] for x in ref[q]) / len(ref[q]))
-                         if ref[q] else pos[q])
-            for i, q in enumerate(rows[l]):
+        for lay in sorted(rows, reverse=sweep % 2):
+            rows[lay].sort(
+                key=lambda q: (sum(pos[x] for x in ref[q]) / len(ref[q])) if ref[q] else pos[q]
+            )
+            for i, q in enumerate(rows[lay]):
                 pos[q] = i
 
-    return {"Q": quantities, "F": formulas, "edges": edges, "layer": layer,
-            "order": {str(l): rows[l] for l in sorted(rows)},
-            "inputs": sorted(q for q in quantities if q not in produced),
-            "outputs": sorted(q for q in produced if q not in consumed)}
+    return {
+        "Q": quantities,
+        "F": formulas,
+        "edges": edges,
+        "layer": layer,
+        "order": {str(lay): rows[lay] for lay in sorted(rows)},
+        "inputs": sorted(q for q in quantities if q not in produced),
+        "outputs": sorted(q for q in produced if q not in consumed),
+    }
 
 
 def to_ascii(html: str) -> str:
@@ -144,6 +177,7 @@ def to_ascii(html: str) -> str:
     The page is served under whatever charset the host decides, so anything non-ASCII
     in the source is a gamble on that decision. Escaping removes the gamble.
     """
+
     def convert(chunk: str, kind: str) -> str:
         if kind == "script":
             return "".join(c if ord(c) < 128 else "\\u%04x" % ord(c) for c in chunk)
@@ -154,11 +188,11 @@ def to_ascii(html: str) -> str:
     out, i = [], 0
     for m in re.finditer(r"<(script|style)\b[^>]*>(.*?)</\1>", html, re.S | re.I):
         if m.start() > i:
-            out.append(convert(html[i:m.start()], "html"))
+            out.append(convert(html[i : m.start()], "html"))
         gt = html.index(">", m.start())
-        out.append(html[m.start():gt + 1])
+        out.append(html[m.start() : gt + 1])
         out.append(convert(m.group(2), m.group(1).lower()))
-        out.append(html[m.end(2):m.end()])
+        out.append(html[m.end(2) : m.end()])
         i = m.end()
     out.append(convert(html[i:], "html"))
     return "".join(out)
@@ -175,8 +209,10 @@ def main(canon_dir: str, out_path: str) -> None:
     pathlib.Path(out_path).write_text(html, encoding="ascii")
 
     layers = len(data["order"])
-    print(f"{len(quantities)} quantities, {len(formulas)} formulas, "
-          f"{len(data['edges'])} edges, {layers} layers")
+    print(
+        f"{len(quantities)} quantities, {len(formulas)} formulas, "
+        f"{len(data['edges'])} edges, {layers} layers"
+    )
     print(f"{len(data['inputs'])} inputs, {len(data['outputs'])} final results")
     print(f"-> {out_path}  ({len(html) / 1024:.0f} KB)")
 

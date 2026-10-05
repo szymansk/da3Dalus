@@ -17,7 +17,12 @@ Writes: aeroplane, wings (geometry, spars, trailing-edge devices, servos),
 fuselages, total mass, design assumptions (mass, cg_x, battery energy), and
 copies the referenced .dat airfoils into components/airfoils/.
 """
-import json, pathlib, re, shutil, sys
+
+import json
+import pathlib
+import re
+import shutil
+import sys
 from fastapi.testclient import TestClient
 from app.main import app
 
@@ -27,18 +32,20 @@ SRC = pathlib.Path(__file__).parent / key
 geo = json.loads((SRC / f"{key}.airplane.json").read_text())
 kon_p, zus_p = SRC / f"{key}.konstruktion.json", SRC / f"{key}.zusatz.json"
 if kon_p.exists():
-    akku = json.loads(kon_p.read_text())["komponenten"]["akku"]["typ"]          # e.g. "2S 450 mAh"
+    akku = json.loads(kon_p.read_text())["komponenten"]["akku"]["typ"]  # e.g. "2S 450 mAh"
 else:
-    akku = json.loads(zus_p.read_text())["akku"]                               # e.g. "2S 600-800 mAh ..."
+    akku = json.loads(zus_p.read_text())["akku"]  # e.g. "2S 600-800 mAh ..."
 _m = re.match(r"\s*(\d+)S\s+(?:\d+\s*-\s*)?(\d+)\s*mAh", akku)
 CELLS, MAH = int(_m.group(1)), float(_m.group(2))
 AF_DIR = pathlib.Path("components/airfoils")
 c = TestClient(app)
 
+
 def ok(r, what):
     if r.status_code >= 300:
         sys.exit(f"FEHLER {what}: {r.status_code} {r.text[:400]}")
     return r
+
 
 # airfoils: copy the .dat files and reference them where the app looks for them
 af_map = {}
@@ -55,7 +62,10 @@ if AIRFOIL_TABLE:
     for f in af_map:
         shutil.copy(SRC / f, stage / f)
     try:
-        r = ok(c.post("/airfoils/import", json={"directory": str(stage.resolve())}), "Profile in Profiltabelle")
+        r = ok(
+            c.post("/airfoils/import", json={"directory": str(stage.resolve())}),
+            "Profile in Profiltabelle",
+        )
         print("Profile:", r.json())
     finally:
         shutil.rmtree(stage)
@@ -67,40 +77,72 @@ print("Flugzeug", geo["name"], pid)
 
 for wname, w in geo["wings"].items():
     xs = w["x_secs"]
-    ok(c.put(f"/aeroplanes/{pid}/wings/{wname}", json={
-        "name": wname, "symmetric": w["symmetric"],
-        "x_secs": [{k: v for k, v in {
-            "xyz_le": x["xyz_le"], "chord": x["chord"], "twist": x["twist"],
-            "airfoil": af_map[pathlib.Path(x["airfoil"]).name],
-            "x_sec_type": x.get("x_sec_type"), "tip_type": x.get("tip_type"),
-        }.items() if v is not None} for x in xs]}), f"Fluegel {wname}")
+    ok(
+        c.put(
+            f"/aeroplanes/{pid}/wings/{wname}",
+            json={
+                "name": wname,
+                "symmetric": w["symmetric"],
+                "x_secs": [
+                    {
+                        k: v
+                        for k, v in {
+                            "xyz_le": x["xyz_le"],
+                            "chord": x["chord"],
+                            "twist": x["twist"],
+                            "airfoil": af_map[pathlib.Path(x["airfoil"]).name],
+                            "x_sec_type": x.get("x_sec_type"),
+                            "tip_type": x.get("tip_type"),
+                        }.items()
+                        if v is not None
+                    }
+                    for x in xs
+                ],
+            },
+        ),
+        f"Fluegel {wname}",
+    )
     n_sp = n_ted = 0
-    for i, x in enumerate(xs[:-1]):                     # terminal section carries no segment data
+    for i, x in enumerate(xs[:-1]):  # terminal section carries no segment data
         base = f"/aeroplanes/{pid}/wings/{wname}/cross_sections/{i}"
         for sp in x.get("spare_list") or []:
-            ok(c.post(f"{base}/spars", json=sp), f"{wname} Holm @{i}"); n_sp += 1
+            ok(c.post(f"{base}/spars", json=sp), f"{wname} Holm @{i}")
+            n_sp += 1
         ted = x.get("trailing_edge_device")
         if ted:
             servo = ted.get("servo")
-            ok(c.patch(f"{base}/trailing_edge_device",
-                       json={k: v for k, v in ted.items() if k != "servo" and v is not None}),
-               f"{wname} Ruder @{i}"); n_ted += 1
+            ok(
+                c.patch(
+                    f"{base}/trailing_edge_device",
+                    json={k: v for k, v in ted.items() if k != "servo" and v is not None},
+                ),
+                f"{wname} Ruder @{i}",
+            )
+            n_ted += 1
             if servo:
-                ok(c.patch(f"{base}/trailing_edge_device/servo",
-                           json={"servo": {k: v for k, v in servo.items() if k != "component_id"}}),
-                   f"{wname} Servo @{i}")
+                ok(
+                    c.patch(
+                        f"{base}/trailing_edge_device/servo",
+                        json={"servo": {k: v for k, v in servo.items() if k != "component_id"}},
+                    ),
+                    f"{wname} Servo @{i}",
+                )
     print(f"  {wname}: {len(xs)} Schnitte, {n_sp} Holme, {n_ted} Rudersegmente")
 
 for fname, f in geo["fuselages"].items():
-    ok(c.put(f"/aeroplanes/{pid}/fuselages/{fname}",
-             json={"name": fname, "x_secs": f["x_secs"]}), f"Rumpf {fname}")
+    ok(
+        c.put(f"/aeroplanes/{pid}/fuselages/{fname}", json={"name": fname, "x_secs": f["x_secs"]}),
+        f"Rumpf {fname}",
+    )
     print(f"  {fname}: {len(f['x_secs'])} Schnitte")
 
 m = geo["total_mass_kg"]
 ok(c.post(f"/aeroplanes/{pid}/total_mass_kg", json={"total_mass_kg": m}), "Masse")
 ok(c.post(f"/aeroplanes/{pid}/assumptions"), "Annahmen anlegen")
 cells, mah = CELLS, MAH
-e_wh = cells * 3.7 * mah / 1000                          # nominal LiPo cell voltage
+e_wh = cells * 3.7 * mah / 1000  # nominal LiPo cell voltage
 for p, v in (("mass", m), ("cg_x", geo["xyz_ref"][0]), ("battery_capacity_wh", e_wh)):
     ok(c.put(f"/aeroplanes/{pid}/assumptions/{p}", json={"estimate_value": v}), f"Annahme {p}")
-print(f"  Masse {m} kg, cg_x {geo['xyz_ref'][0]} m, Akku {akku.split(',')[0]} -> {cells}S {mah:.0f} mAh = {e_wh:.2f} Wh")
+print(
+    f"  Masse {m} kg, cg_x {geo['xyz_ref'][0]} m, Akku {akku.split(',')[0]} -> {cells}S {mah:.0f} mAh = {e_wh:.2f} Wh"
+)
