@@ -430,3 +430,8 @@ je eine recherchierte Spannweite, Kanon fehlerfrei durchgerechnet. Befunde:
 Flügel (in den Renderings sichtbar) und ist jetzt korrigiert. Neu: Spiralurteil uneinig bei 24 von 74,
 C_nβ-Vorzeichen bei 15. Betroffen sind nur Nurflügel ohne oder mit Mittelflosse. Galerie:
 https://claude.ai/artifact/So2qRuebq75FuNu5W3wZuC
+
+**K27 entschieden (05.10.2026):** Die Seitenstabilität kommt für alle Bauarten aus AVL, mit Rumpf und als
+nicht validiert gekennzeichnet. ASB-VLM ist geprüft und taugt nicht: 46 von 74 Spiralurteilen weichen
+von AVL ab (Flotte B8). Neu im Kanon: Verdopplungszeit der Spirale statt Vorzeichen, sowie V_V und
+Drelas B als Geometrie-Anker mit Vorbedingung Leitwerk. Offen ist O14: Rechenzeit und wann gerechnet wird.

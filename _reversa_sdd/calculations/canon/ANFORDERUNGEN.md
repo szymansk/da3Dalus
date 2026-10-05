@@ -2229,11 +2229,13 @@ Eingeordnet nach Regel 5 (03.10.2026):
 - **Rollrate und nötiger Querruderausschlag: unscharf.** Welten AeroBuildup und AVL, Streuung 23 %
   beim BRYAN. Die Streuung kann „Rollraten-Ziel erreicht" kippen, und kein Werkzeug ist belegt
   vorsichtig.
-- **Seitenstabilität C_lβ, C_nβ und Spiralkriterium: unscharf (neu eingeordnet, Bestätigung offen).**
-  Zuerst waren sie scharf eingeordnet, gestützt auf zwei Flugzeuge. Die Urmodell-Flotte mit 74
-  Flugzeugen hat die Gültigkeitsbedingung verletzt: Das Spiralurteil kippt bei 24 Flugzeugen, das
-  Vorzeichen von C_nβ bei 15. AeroBuildup fehlt der Pfeilungsbeitrag zu C_lβ, das ist durch eine
-  Reproduktion belegt. Bei gepfeilten Flügeln zählt deshalb nur AVL als Welt.
+- **Seitenstabilität C_lβ, C_nβ und Spiralkriterium: ein Werkzeug, AVL, für alle Bauarten (entschieden
+  05.10.2026, K27).** Auf der Flotte kippte das Spiralurteil von AeroBuildup gegenüber AVL bei 24 von
+  74 Modellen. AeroBuildup fehlt der Pfeilungsbeitrag zu C_lβ, und beim V-Leitwerk überschätzt es C_nβ.
+  ASB-VLM fehlen der Grundanteil von C_lβ und der Rumpf. Nur AVL enthält beides. Nach Regel „eine Welt
+  muss die Physik enthalten“ bleibt eine Welt, die Größe ist damit nicht unscharf, aber nicht
+  validiert. Dazu kommen die Verdopplungszeit der Querlage statt des Vorzeichens sowie die
+  Geometrie-Anker V_V und Drelas B (nur mit Leitwerk).
 
 **Bewusst scharf (Kriterium aus Regel 5):** die vordere Trimmgrenze. AeroBuildup liefert 14,3 % MAC, AVL
 10,4–13,5 % beim BRYAN. AeroBuildup liegt nachweislich auf der vorsichtigen Seite, weil ihm der Abwind am
@@ -2275,6 +2277,7 @@ eines ohne Abbruchbedingung.
 | **O11** | ✅ **Entschieden 01.10.2026:** Route A ist **leistungsbegrenzt** — Drehzahl abgesenkt, bis der Propeller höchstens $\eta_{mot}\,P_{mot,max}$ aufnimmt. „Wie gebaut“ (Schub bei Leerlaufdrehzahl) ist ein Code-Defekt (#1150). | Steigen, Kurve, $V_{max}$ auf Route A |
 | **O12** | ✅ **Entschieden 02.10.2026:** Die Auslegungsrichtung schätzt keine Beiwerte. Aus den geführten Fragen entsteht ein **Urmodell** — Flächenbelastung aus der Mission, bestes Profil aus der DB, Flügel mit so wenigen Segmenten, wie die Ruder brauchen, Schwerpunkt aus dem Neutralpunkt und $SM_{target}$, also stabil per Konstruktion — und der Kanon rechnet es wie jedes Flugzeug. Der Generator (mit Design-Agent, Epic #902) gehört zum Ablauf, nicht zum Rechenkern. `cruise-thrust-constraint` gestrichen; `stall-wing-loading-limit` bleibt nur als Hilfe bei vorgegebener Ziel-Abrissgeschwindigkeit, mit $C_{L,max}$ aus dem gewählten Profil. | Auslegungsrichtung |
 | **O13** | ✅ **Entschieden 02.10.2026 — [ADR 0026](../../adrs/0026-aero-truth-from-the-solver-not-the-parabola.md):** Die Analyse rechnet mit dem Solver-Widerstand; $(L/D)_{max} = W/D(V_{md})$; die Parabelformel ist Probe. $C_{D0}$ und $e$ sind die Parabel-Anpassung über den genutzten $C_L$-Bereich, nur Anzeige und berechneter Wert der Entwurfsannahme (ADR 0010). Auslegung: Scholz-Kette mit $c_f$ bei Missions-Reynoldszahl. Vorbehalt: AeroBuildups $e$ zählt auftriebsabhängigen Profilwiderstand teils doppelt (Bryan: 9 % mehr induzierter Widerstand als AVL). | Flugdauer, Reichweite, $(L/D)_{max}$, Anzeige $C_{D0}$/$e$ |
+| **O14** | Offen (05.10.2026): **Rechenzeit und Auslösung.** Wann rechnet der Kanon was, synchron oder im Hintergrund? Gemessen je Urmodell: AeroBuildup 0,03 s je Lauf, mit Derivativen 0,2 s; AVL-Stabilität 0,1 s; die ganze Flotten-Auswertung (Stall-Ast, Polaren-Optimierungen, Neutralpunkt in drei Welten, Rollrate in zwei Welten, Seitenstabilität) 4–5 s. Teuer sind Optimierungen und Schleifen (Massen-Hüllkurve beim BRYAN: Minuten), nicht AVL. Die App hat bereits einen entprellten Hintergrund-Rechner mit Invalidierung (`app/core/background_jobs.py`, `invalidation_service.py`). Zu entscheiden: welche Kanon-Größen sofort, welche entprellt im Hintergrund, welche nur auf Anforderung. | Rechenkern, Ablauf |
 | **O6** | Wie weit der **ASB-Sweep** Eingaben ersetzt. Der Solver kann über nahezu jeden Parameter fahren; jeder, den er sinnvoll durchfährt, ist einer, den niemand raten muss. | Umfang von Ebene 0 |
 
 ---
@@ -2390,7 +2393,7 @@ Was schon ein Ticket hat, steht mit Nummer dabei und fällt dann nicht noch einm
 | K24 | Massenhüllkurve: $V_S(m)$, $V_{max}(m)$, $ROC_{max}(m)$, $m_{max,level}$, $m_{max,TO}$, trimmbarer Schwerpunktbereich über der Masse; $m_{max,struct}$ | §2.3 | `forward_cg`-Endpunkt, Nutzlast-/Missionsrechnungen |
 | K25 | Unscharfe Größen nach A11: der Kanon rechnet je Methodenwelt durch die ganze Kette und gibt [min, max] aus; Kennzeichnung im Navigator und in der App | §4 A11 | Rechenkern, Ausgabeschemata |
 | K26 | Neutralpunkt als Intervall über Lehrbuch / Pappas / AVL statt aus AeroBuildup; empfohlener Schwerpunkt und Stabilitätsmaß als Intervall | §2.3, A11 | `assumption_compute_service` (GH #1154) |
-| K27 | Seitenstabilität (C_lβ, C_nβ, Spirale) als Intervall über AeroBuildup / AVL; bei gepfeilten Flügeln nur AVL (AeroBuildup fehlt der Pfeilungsbeitrag zu C_lβ). Bestätigung durch den Maintainer offen | §4 A11 | `run_with_stability_derivatives`-Ausgabe (GH #1156) |
+| K27 | Seitenstabilität (C_lβ, C_nβ, Spiralkriterium, Verdopplungszeit) für alle Bauarten aus **AVL** mit Rumpf, nicht validiert; AeroBuildup nur Gegenprobe bei Normal-/T-/Kreuzleitwerk. Neu: `spiral-doubling-time`, `vertical-tail-volume`, `spiral-parameter` (beide mit Vorbedingung Leitwerk). Entschieden 05.10.2026 | §4 A11 | `run_with_stability_derivatives`-Ausgabe (GH #1156) |
 
 ## Arbeitsregeln
 
