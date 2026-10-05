@@ -435,3 +435,8 @@ https://claude.ai/artifact/So2qRuebq75FuNu5W3wZuC
 nicht validiert gekennzeichnet. ASB-VLM ist geprüft und taugt nicht: 46 von 74 Spiralurteilen weichen
 von AVL ab (Flotte B8). Neu im Kanon: Verdopplungszeit der Spirale statt Vorzeichen, sowie V_V und
 Drelas B als Geometrie-Anker mit Vorbedingung Leitwerk. Offen ist O14: Rechenzeit und wann gerechnet wird.
+
+**O14 teilweise entschieden (05.10.2026, K28):** Rechnungen, die Minuten dauern, werden aktiv angestoßen und
+laufen im Hintergrund auf einem unveränderlichen Snapshot der Versionierung. Den Snapshot gibt es schon
+(`aeroplane_version_service.snapshot`). Offen: Behandlung der Sekunden-Rechnungen und Anzeige veralteter
+Werte.
