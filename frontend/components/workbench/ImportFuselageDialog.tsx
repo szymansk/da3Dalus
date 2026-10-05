@@ -12,7 +12,7 @@ export function approxEq(a: number, b: number, eps: number = 1e-9): boolean {
 }
 
 /** Build Plotly Surface3d traces for a fuselage from xsec dicts */
-function buildFuselageSurface(
+export function buildFuselageSurface(
   xsecs: XSec[],
   color: string,
   opacity: number,
@@ -176,7 +176,7 @@ function FuselagePreview3D({ xsecs, selectedXsec }: Readonly<{ xsecs: XSec[]; se
  * Generate the SVG path of a section outline (gh-1157: lower half uses
  * `n_lower`). SVG y grows downwards, so z is negated to keep the top up.
  */
-function superellipsePath(xs: SuperEllipseSection, samples: number = 64): string {
+export function superellipsePath(xs: SuperEllipseSection, samples: number = 64): string {
   const points: string[] = [];
   for (let i = 0; i <= samples; i++) {
     const t = (i / samples) * 2 * Math.PI;
@@ -186,7 +186,7 @@ function superellipsePath(xs: SuperEllipseSection, samples: number = 64): string
   return points.join(" ") + "Z";
 }
 
-interface XSec {
+export interface XSec {
   xyz: number[];
   a: number;
   b: number;
@@ -342,7 +342,7 @@ function CrossSectionSvg({
 }
 
 /** Parameter editor for the selected cross-section */
-function XSecParameterEditor({
+export function XSecParameterEditor({
   xsecs,
   selectedXsec,
   setXsecs,
@@ -433,7 +433,7 @@ function transformSlicedXsecs(
 }
 
 /** Save a fuselage via PUT, falling back to POST on 409 conflict. */
-async function saveFuselage(
+export async function saveFuselage(
   aeroplaneId: string,
   fuselageName: string,
   xsecs: XSec[],

@@ -242,3 +242,42 @@ def test_put_and_get_fuselage_keep_n_lower(client_and_db):
 
     xsec = client.get(f"/aeroplanes/{plane_id}/fuselages/Rumpf/cross_sections/0").json()
     assert xsec["n_lower"] == pytest.approx(8.0)
+
+
+def test_openvsp_slicer_refinement_skipped_for_asymmetric_sections(tmp_path, monkeypatch, caplog):
+    """The STEP slicer fits symmetric super-ellipses only, so an imported
+    fuselage with a VSP lower-half exponent keeps its handler sections."""
+    import logging
+    import sys
+    import types
+
+    from app.core.config import settings
+    from app.services import openvsp_import_service
+
+    monkeypatch.setattr(settings, "ARTIFACTS_BASE_DIR", tmp_path)
+    (tmp_path / "fuse.stp").write_text("FAKE")
+
+    def _slicer_must_not_run(*_a, **_kw):
+        raise AssertionError("slicer must not run for asymmetric sections")
+
+    fake_slicing = types.ModuleType("cad_designer.aerosandbox.slicing")
+    fake_slicing.slice_step_at_stations = _slicer_must_not_run
+    fake_slicing.slice_step_to_fuselage = _slicer_must_not_run
+    fake_slicing.vsp_anchored_x_stations = _slicer_must_not_run
+    monkeypatch.setitem(sys.modules, "cad_designer.aerosandbox.slicing", fake_slicing)
+
+    handler_fuse = schemas.FuselageSchema(
+        name="Body",
+        x_secs=[
+            schemas.FuselageXSecSuperEllipseSchema(xyz=[0.0, 0.0, 0.0], a=0.05, b=0.04, n=N_TOP),
+            schemas.FuselageXSecSuperEllipseSchema(
+                xyz=[0.5, 0.0, 0.0], a=0.05, b=0.04, n=N_TOP, n_lower=N_BOTTOM
+            ),
+        ],
+    )
+
+    with caplog.at_level(logging.INFO, logger=openvsp_import_service.logger.name):
+        result = openvsp_import_service._try_slicer_refinement("fuse.stp", handler_fuse, "Body")
+
+    assert result is None
+    assert "top/bottom asymmetric" in caplog.text

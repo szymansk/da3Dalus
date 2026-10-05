@@ -724,7 +724,7 @@ async function buildAllWingTraces(
 /** Build superellipse cross-section traces for a fuselage. */
 const COLOR_FUSELAGE_HIGHLIGHT = "#FACC15"; // yellow for selected fuselage xsec
 
-function buildFuselageTraces(fuselage: Fuselage, color: string, selectedIdx: number | null = null) {
+export function buildFuselageTraces(fuselage: Fuselage, color: string, selectedIdx: number | null = null) {
   const traces: PlotlyData[] = [];
   const xsecs = fuselage.x_secs;
   if (xsecs.length < 2) return traces;

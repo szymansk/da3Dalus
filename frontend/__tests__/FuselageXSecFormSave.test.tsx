@@ -3,7 +3,7 @@
  * tested via PropertyForm in fuselage mode (GH#359).
  */
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen, act } from "@testing-library/react";
+import { render, screen, act, fireEvent } from "@testing-library/react";
 import React, { useRef } from "react";
 
 // ── Mocks ──────────────────────────────────────────────────────
@@ -160,5 +160,23 @@ describe("FuselageXSecForm imperative save (via PropertyForm fuselage mode)", ()
     });
 
     expect(caughtError).toBeInstanceOf(Error);
+  });
+
+  it("saves a typed lower-half exponent and Cancel clears it again (gh-1157)", async () => {
+    mockIsDirty = true;
+    render(<Harness />);
+    const field = screen.getByLabelText("n lower (bottom, empty = n)") as HTMLInputElement;
+    expect(field.value).toBe("");
+
+    fireEvent.change(field, { target: { value: "8" } });
+    expect(mockSetDirty).toHaveBeenCalledWith(true);
+    await act(async () => {
+      screen.getByTestId("trigger-save").click();
+    });
+    expect(mockUpdateFuselageXSec.mock.calls[0][1].n_lower).toBe(8);
+
+    fireEvent.click(screen.getByText("Cancel"));
+    fireEvent.blur(field);
+    expect(field.value).toBe("");
   });
 });
