@@ -440,3 +440,7 @@ Drelas B als Geometrie-Anker mit Vorbedingung Leitwerk. Offen ist O14: Rechenzei
 laufen im Hintergrund auf einem unveränderlichen Snapshot der Versionierung. Den Snapshot gibt es schon
 (`aeroplane_version_service.snapshot`). Offen: Behandlung der Sekunden-Rechnungen und Anzeige veralteter
 Werte.
+
+**O14 weiter entschieden (05.10.2026, K29):** Sekunden-Rechnungen laufen beim Verlassen der
+Konstruktionsansicht. Veraltete Werte sind ausgegraut, der alte Wert bleibt per Mouse-over sichtbar. Offen
+ist nur noch, wo die Stufe festgelegt wird (Kanon-Eintrag oder App).
