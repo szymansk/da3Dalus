@@ -448,3 +448,5 @@ ist nur noch, wo die Stufe festgelegt wird (Kanon-Eintrag oder App).
 **O10 entschieden (05.10.2026):** Masse, Höhe, Geschwindigkeit und Ruderstellung gehören zum
 Betriebspunkt (§3.2); die Ruderstellung ist dort eine Ausgabe (eingetrimmt). Die Genauigkeitsstufe ist
 eine Rechner-Einstellung (A3).
+
+**O5 entschieden (05.10.2026, K30):** Die Luftdichte kommt aus der exakten ISA (`method="isa"`). Heute nutzen alle 15 Aufrufer die geglättete Näherung.
