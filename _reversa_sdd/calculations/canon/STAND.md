@@ -450,3 +450,5 @@ Betriebspunkt (§3.2); die Ruderstellung ist dort eine Ausgabe (eingetrimmt). Di
 eine Rechner-Einstellung (A3).
 
 **O5 entschieden (05.10.2026, K30):** Die Luftdichte kommt aus der exakten ISA (`method="isa"`). Heute nutzen alle 15 Aufrufer die geglättete Näherung.
+
+**O1 entschieden (05.10.2026, K31):** Der Korrekturzweig (Flügelversatz, Leitwerksskalierung) besteht aus Auslegungsrechnungen und gehört in einen eigenen Auslegungskanon, nicht in den Rechenkanon. Offen: Grenzfälle im heutigen Kanon, die ein Ziel in eine Konstruktionsgröße umrechnen (`cg-for-target-margin`, `stall-wing-loading-limit`, `aileron-throw-fraction`).
