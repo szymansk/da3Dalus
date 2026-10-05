@@ -8,7 +8,9 @@ NeuralFoil profile-drag integration.
 from __future__ import annotations
 
 import logging
+import math
 import re as _re
+from dataclasses import replace
 
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
@@ -114,6 +116,15 @@ def _build_section(
     )
 
 
+def _tip_hinge(xsec, root_hinge: float) -> float:
+    """Hinge chord fraction at the outboard section of the segment starting at ``xsec``."""
+    ted = xsec.trailing_edge_device
+    tip = getattr(ted, "rel_chord_tip", None) if ted is not None else None
+    if tip is None:
+        return root_hinge
+    return math.copysign(float(tip), root_hinge)
+
+
 def _build_controls_for_wing(wing: AsbWingSchema, wing_key: str = "w") -> list[list[AvlControl]]:
     """Build per-section control lists replicating ASB's CONTROL duplication.
 
@@ -122,6 +133,10 @@ def _build_controls_for_wing(wing: AsbWingSchema, wing_key: str = "w") -> list[l
     panel strip. A dual-role surface (gh-772: elevon/flaperon/ruddervator) emits
     TWO CONTROL variables per section (primary symmetric + secondary
     antisymmetric); single-axis surfaces emit one, unchanged.
+
+    gh-1163: the copy on section i+1 carries the segment's tip hinge
+    (``rel_chord_tip``), so a device spanning several tapered segments keeps one
+    straight hinge line. Without a tip value the root hinge is used, as before.
     """
     from app.converters.model_schema_converters import axes_for_xsec
 
@@ -139,7 +154,9 @@ def _build_controls_for_wing(wing: AsbWingSchema, wing_key: str = "w") -> list[l
             )
             controls_per_section[i].append(ctrl)
             if i + 1 < n:
-                controls_per_section[i + 1].append(ctrl)
+                controls_per_section[i + 1].append(
+                    replace(ctrl, xhinge=_tip_hinge(xsec, axis.hinge_point))
+                )
 
     return controls_per_section
 

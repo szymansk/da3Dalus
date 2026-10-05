@@ -303,7 +303,7 @@ function buildEdgeTraces(ctx: WingTraceCtx): PlotlyData[] {
 }
 
 /** Trailing edge device (TED) outlines. */
-function buildTEDTraces(ctx: WingTraceCtx): PlotlyData[] {
+export function buildTEDTraces(ctx: WingTraceCtx): PlotlyData[] {
   const traces: PlotlyData[] = [];
   const { xsecs, dihedrals } = ctx;
 
@@ -314,10 +314,9 @@ function buildTEDTraces(ctx: WingTraceCtx): PlotlyData[] {
     if (relChord == null) continue;
 
     const nextI = Math.min(i + 1, xsecs.length - 1);
-    const nextTed = xsecs[nextI]?.trailing_edge_device ?? xsecs[nextI]?.control_surface;
-    const nextRelChord = nextTed
-      ? (nextTed.rel_chord_tip as number ?? relChord)
-      : relChord;
+    // gh-1163: the segment ends at its OWN tip hinge, so a device over several
+    // segments follows one straight hinge line.
+    const nextRelChord = (ted.rel_chord_tip as number | null | undefined) ?? relChord;
 
     const h1 = transformProfile([relChord], [0], xsecs[i].chord, xsecs[i].twist, xsecs[i].xyz_le, dihedrals[i]);
     const h2 = transformProfile([nextRelChord], [0], xsecs[nextI].chord, xsecs[nextI].twist, xsecs[nextI].xyz_le, dihedrals[nextI]);
