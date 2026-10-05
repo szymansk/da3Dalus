@@ -134,6 +134,7 @@ describe("FuselageXSecForm imperative save (via PropertyForm fuselage mode)", ()
     expect(payload.a).toBe(0.05);
     expect(payload.b).toBe(0.04);
     expect(payload.n).toBe(2.5);
+    expect(payload.n_lower).toBeNull(); // gh-1157: symmetric section stays symmetric
   });
 
   it("skips save when not dirty", async () => {

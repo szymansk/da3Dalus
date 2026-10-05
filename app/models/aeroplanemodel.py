@@ -515,6 +515,8 @@ class FuselageXSecSuperEllipseModel(Base):
     a = Column(Float, nullable=False)
     b = Column(Float, nullable=False)
     n = Column(Float, nullable=False)
+    # Exponent of the lower half (z < 0); NULL = same as ``n`` (gh-1157).
+    n_lower = Column(Float, nullable=True)
     # index to maintain ordering of cross-sections within a fuselage
     sort_index = Column(Integer, default=0, nullable=False)
 

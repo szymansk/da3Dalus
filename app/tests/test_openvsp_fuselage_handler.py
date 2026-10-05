@@ -18,6 +18,7 @@ import pytest
 from app.converters import openvsp_adapter, openvsp_importer
 from app.converters.openvsp_fuselage_handler import (
     _fit_n_from_xsec_points,
+    _lower_super_ellipse_exponent,
     _rounded_rect_to_n,
     _sample_xsec_yz,
     _shape_to_super_ellipse,
@@ -998,3 +999,74 @@ class TestDegenerateFuselageFilter:
         monkeypatch.setattr(openvsp_adapter, "get_vsp", lambda: fake)
         result = import_vsp3(f)
         assert "Fuselage" in (result.aeroplane.fuselages or {})
+
+
+# ---------------------------------------------------------------------------
+# gh-1157: lower-half exponent from Super_M_bot / Super_N_bot
+# ---------------------------------------------------------------------------
+
+
+class TestLowerSuperEllipseExponent:
+    @staticmethod
+    def _fake(top_bot_sym: float) -> ModuleType:
+        return _make_fuse_vsp(
+            xsecs=[
+                {
+                    "shape": "SUPER_ELLIPSE",
+                    "x_pct": 0.5,
+                    "Super_Width": 0.04,
+                    "Super_Height": 0.05,
+                    "Super_M": 2.0,
+                    "Super_N": 2.0,
+                    "Super_M_bot": 6.0,
+                    "Super_N_bot": 8.0,
+                    "Super_TopBotSym": top_bot_sym,
+                }
+            ]
+        )
+
+    def test_asymmetric_section_yields_mean_of_bottom_pair_with_warning(self):
+        ctx = ImportContext()
+        n_lower = _lower_super_ellipse_exponent(
+            self._fake(0.0), "XS_0", _SHAPES["SUPER_ELLIPSE"], ctx
+        )
+        assert n_lower == pytest.approx(7.0)
+        assert len(ctx.warnings) == 1
+
+    def test_symmetric_section_yields_none(self):
+        ctx = ImportContext()
+        assert (
+            _lower_super_ellipse_exponent(self._fake(1.0), "XS_0", _SHAPES["SUPER_ELLIPSE"], ctx)
+            is None
+        )
+
+    def test_other_shapes_yield_none(self):
+        ctx = ImportContext()
+        assert (
+            _lower_super_ellipse_exponent(self._fake(0.0), "XS_0", _SHAPES["ELLIPSE"], ctx) is None
+        )
+
+    def test_handler_stores_n_lower(self, tmp_path, monkeypatch):
+        f = tmp_path / "split.vsp3"
+        f.write_text("<vsp3/>")
+        fake_xsecs = [
+            {"shape": "POINT", "x_pct": 0.0},
+            {
+                "shape": "SUPER_ELLIPSE",
+                "x_pct": 0.5,
+                "Super_Width": 0.04,
+                "Super_Height": 0.05,
+                "Super_M": 2.0,
+                "Super_N": 2.0,
+                "Super_M_bot": 8.0,
+                "Super_N_bot": 8.0,
+                "Super_TopBotSym": 0.0,
+            },
+            {"shape": "POINT", "x_pct": 1.0},
+        ]
+        fake = _make_fuse_vsp(xsecs=fake_xsecs)
+        monkeypatch.setattr(openvsp_adapter, "get_vsp", lambda: fake)
+        result = import_vsp3(f)
+        fus = (result.aeroplane.fuselages or {})["Fuselage"]
+        assert fus.x_secs[0].n_lower is None
+        assert fus.x_secs[1].n_lower == pytest.approx(8.0)

@@ -4,6 +4,7 @@ import React, { useState, useEffect, useRef } from "react";
 import { Upload, X, Check, Loader2, Maximize2, Minimize2, Plus, Trash2, Play } from "lucide-react";
 import { API_BASE } from "@/lib/fetcher";
 import { useDialog } from "@/hooks/useDialog";
+import { parseLowerExponent, sectionOffset, type SuperEllipseSection } from "@/lib/fuselageSection";
 
 /** Tolerant float equality — avoids exact `===` on floating-point scale factors. */
 export function approxEq(a: number, b: number, eps: number = 1e-9): boolean {
@@ -28,15 +29,10 @@ function buildFuselageSurface(
     const zRow: number[] = [];
     for (let j = 0; j <= samples; j++) {
       const t = (j / samples) * 2 * Math.PI;
-      const cosT = Math.cos(t);
-      const sinT = Math.sin(t);
-      const r = Math.pow(
-        Math.pow(Math.abs(cosT), xsec.n) + Math.pow(Math.abs(sinT), xsec.n),
-        -1 / xsec.n,
-      );
+      const r = sectionOffset(xsec, t);
       xRow.push(xsec.xyz[0]);
-      yRow.push(xsec.xyz[1] + xsec.a * r * cosT);
-      zRow.push(xsec.xyz[2] + xsec.b * r * sinT);
+      yRow.push(xsec.xyz[1] + r.y);
+      zRow.push(xsec.xyz[2] + r.z);
     }
     xGrid.push(xRow);
     yGrid.push(yRow);
@@ -82,15 +78,10 @@ function FuselagePreview3D({ xsecs, selectedXsec }: Readonly<{ xsecs: XSec[]; se
         const z: number[] = [];
         for (let j = 0; j <= pts; j++) {
           const t = (j / pts) * 2 * Math.PI;
-          const cosT = Math.cos(t);
-          const sinT = Math.sin(t);
-          const r = Math.pow(
-            Math.pow(Math.abs(cosT), xsec.n) + Math.pow(Math.abs(sinT), xsec.n),
-            -1 / xsec.n,
-          );
+          const r = sectionOffset(xsec, t);
           x.push(xsec.xyz[0]);
-          y.push(xsec.xyz[1] + xsec.a * r * cosT);
-          z.push(xsec.xyz[2] + xsec.b * r * sinT);
+          y.push(xsec.xyz[1] + r.y);
+          z.push(xsec.xyz[2] + r.z);
         }
         return {
           x, y, z,
@@ -181,20 +172,16 @@ function FuselagePreview3D({ xsecs, selectedXsec }: Readonly<{ xsecs: XSec[]; se
   return <div ref={containerRef} className="h-full w-full" />;
 }
 
-/** Generate SVG path for a superellipse |x/a|^n + |y/b|^n = 1 */
-function superellipsePath(a: number, b: number, n: number, samples: number = 64): string {
+/**
+ * Generate the SVG path of a section outline (gh-1157: lower half uses
+ * `n_lower`). SVG y grows downwards, so z is negated to keep the top up.
+ */
+function superellipsePath(xs: SuperEllipseSection, samples: number = 64): string {
   const points: string[] = [];
   for (let i = 0; i <= samples; i++) {
     const t = (i / samples) * 2 * Math.PI;
-    const cosT = Math.cos(t);
-    const sinT = Math.sin(t);
-    const r = Math.pow(
-      Math.pow(Math.abs(cosT), n) + Math.pow(Math.abs(sinT), n),
-      -1 / n,
-    );
-    const px = a * r * cosT;
-    const py = b * r * sinT;
-    points.push(`${i === 0 ? "M" : "L"}${px.toFixed(3)},${py.toFixed(3)}`);
+    const r = sectionOffset(xs, t);
+    points.push(`${i === 0 ? "M" : "L"}${r.y.toFixed(3)},${(-r.z).toFixed(3)}`);
   }
   return points.join(" ") + "Z";
 }
@@ -204,6 +191,7 @@ interface XSec {
   a: number;
   b: number;
   n: number;
+  n_lower?: number | null;
 }
 
 interface ImportFuselageDialogProps {
@@ -266,6 +254,10 @@ function CrossSectionSvg({
       a: (xsec.a + next.a) / 2,
       b: (xsec.b + next.b) / 2,
       n: (xsec.n + next.n) / 2,
+      n_lower:
+        xsec.n_lower == null && next.n_lower == null
+          ? null
+          : ((xsec.n_lower ?? xsec.n) + (next.n_lower ?? next.n)) / 2,
     };
     setXsecs((prev) => [
       ...prev.slice(0, idx + 1),
@@ -293,7 +285,7 @@ function CrossSectionSvg({
         <line x1={0} y1={-viewSize} x2={0} y2={viewSize} stroke="#2E2E2E" strokeWidth={viewSize * 0.005} />
         {/* Superellipse */}
         <path
-          d={superellipsePath(xsec.a, xsec.b, xsec.n)}
+          d={superellipsePath(xsec)}
           fill="rgba(255,132,0,0.15)"
           stroke="#FF8400"
           strokeWidth={viewSize * 0.01}
@@ -363,12 +355,12 @@ function XSecParameterEditor({
   const xsec = xsecs[idx];
   if (!xsec) return null;
 
-  const update = (field: keyof XSec, value: number, subIdx?: number) => {
+  const update = (field: keyof XSec, value: number | null, subIdx?: number) => {
     setXsecs((prev) => prev.map((xs, i) => {
       if (i !== idx) return xs;
       if (field === "xyz" && subIdx !== undefined) {
         const newXyz = [...xs.xyz];
-        newXyz[subIdx] = value;
+        newXyz[subIdx] = value ?? 0;
         return { ...xs, xyz: newXyz };
       }
       return { ...xs, [field]: value };
@@ -407,6 +399,12 @@ function XSecParameterEditor({
           onChange={(e) => update("n", Math.max(0.5, Math.min(10, Number.parseFloat(e.target.value) || 2)))}
           className="w-full rounded-xl border border-border bg-input px-2 py-1 font-[family-name:var(--font-jetbrains-mono)] text-[11px] text-foreground" />
       </div>
+      <div className="flex flex-col gap-0.5">
+        <label htmlFor="xsec-n-lower" className="text-[9px] text-muted-foreground">n lower (bottom, empty = n)</label>
+        <input id="xsec-n-lower" type="number" step="0.1" value={xsec.n_lower ?? ""}
+          onChange={(e) => update("n_lower", parseLowerExponent(e.target.value))}
+          className="w-full rounded-xl border border-border bg-input px-2 py-1 font-[family-name:var(--font-jetbrains-mono)] text-[11px] text-foreground" />
+      </div>
     </>
   );
 }
@@ -442,7 +440,7 @@ async function saveFuselage(
 ): Promise<void> {
   const body = JSON.stringify({
     name: fuselageName,
-    x_secs: xsecs.map((xs) => ({ xyz: xs.xyz, a: xs.a, b: xs.b, n: xs.n })),
+    x_secs: xsecs.map((xs) => ({ xyz: xs.xyz, a: xs.a, b: xs.b, n: xs.n, n_lower: xs.n_lower ?? null })),
   });
 
   let res = await fetch(

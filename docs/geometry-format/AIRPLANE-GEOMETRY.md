@@ -65,7 +65,7 @@ kommt, ist metrisch; was aus dem Bauteilkatalog kommt, ist in Millimetern.
 | `turbulator.height_mm` | **mm** | trägt die Einheit im Namen |
 | alle Felder von `servo` | **mm** | Katalogmaße eines Bauteils |
 | `rel_chord_*`, `*_position_factor`, `position_root/tip`, `hinge_point` | — | dimensionslose Anteile |
-| `n` (Superellipsenexponent) | — | dimensionslos |
+| `n`, `n_lower` (Superellipsenexponenten) | — | dimensionslos |
 
 Der `units`-Block am Flügel meldet `geometry_length: "m"`, `detail_length: "m"`,
 `angle: "deg"`. **Er deckt die Geometrie und die Holme ab, nicht das Ruder** — die drei
@@ -284,12 +284,42 @@ Aus OpenVSP kommend gilt $a = \texttt{Ellipse\_Width}/2$ und
 $b = \texttt{Ellipse\_Height}/2$. Die Achszuordnung ist über den ganzen Stapel festgelegt
 (gh-706): $a \to$ AeroSandbox `width`, $b \to$ `height`, $n \to$ `shape`.
 
+### 7.1a Oben und unten verschieden (`n_lower`, gh-1157)
+
+Ein Querschnitt darf unterhalb der Mittellinie einen **eigenen Exponenten** tragen:
+
+$$z \ge 0:\ \left|\frac{y}{a}\right|^{n} + \left|\frac{z}{b}\right|^{n} = 1, \qquad
+z < 0:\ \left|\frac{y}{a}\right|^{n_\mathrm{lower}} + \left|\frac{z}{b}\right|^{n_\mathrm{lower}} = 1$$
+
+| | |
+|---|---|
+| `n_lower` | Exponent der **unteren** Hälfte; `null` oder fehlend heißt: wie `n` |
+
+Beide Hälften teilen sich $a$ und $b$ und treffen sich in $(\pm a, 0)$; die Kontur bleibt
+geschlossen. So beschreibt man einen Rumpf, der **unten eckig** (Kastenboden, großes
+$n_\mathrm{lower}$) und **oben gerundet** ($n = 2$) ist. In OpenVSP entspricht das der
+Super-Ellipse mit ausgeschaltetem `Super_TopBotSym`; der Import übernimmt dann
+$n_\mathrm{lower} = (\texttt{Super\_M\_bot} + \texttt{Super\_N\_bot})/2$.
+
+Die Fläche ist die halbe Summe der beiden vollen Superellipsen:
+
+$$A = 2ab\left[\frac{\Gamma(1+\tfrac{1}{n})^{2}}{\Gamma(1+\tfrac{2}{n})}
++ \frac{\Gamma(1+\tfrac{1}{n_\mathrm{lower}})^{2}}{\Gamma(1+\tfrac{2}{n_\mathrm{lower}})}\right]$$
+
+AeroSandbox kennt nur einen Exponenten je Schnitt. Der Konverter baut deshalb eine eigene
+Schnittklasse (`app/converters/split_superellipse.py`), die Kontur und Umfang je Hälfte
+rechnet; ihr `shape` ist der **flächengleiche** Exponent. Wer nur `shape` liest — die
+Zwischenschnitte von AeroSandbox oder die Serialisierung des CAD-Rumpfs — behält damit die
+Querschnittsfläche, verliert aber die Form der Unterseite.
+
 ### 7.2 Die Kontur erzeugen
 
 Für die Konstruktion braucht man die Punktfolge, nicht die implizite Gleichung:
 
 $$y(t) = a\,\operatorname{sgn}(\cos t)\,\lvert\cos t\rvert^{2/n}, \qquad
 z(t) = b\,\operatorname{sgn}(\sin t)\,\lvert\sin t\rvert^{2/n}, \qquad t \in [0, 2\pi)$$
+
+Mit `n_lower` gilt für $\sin t < 0$ dieselbe Formel mit $n_\mathrm{lower}$ statt $n$.
 
 Die Signum-Faktoren sind nötig, weil der Betrag in der impliziten Form die Vorzeichen
 verwirft; ohne sie bekommt man nur den ersten Quadranten.

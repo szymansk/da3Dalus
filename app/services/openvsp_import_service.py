@@ -309,6 +309,7 @@ def _scale_fuselage_xsecs(
             a=xs.a * factor,
             b=xs.b * factor,
             n=xs.n,
+            n_lower=xs.n_lower,
         )
         for xs in x_secs
     ]
@@ -632,6 +633,14 @@ def _try_slicer_refinement(
         # positions** (not the STEP bbox) so that a symmetric pair —
         # whose STEP holds both halves and looks Y-dominant by bbox —
         # is correctly classified by the single-half handler schema.
+        if any(xs.n_lower is not None for xs in handler_fuse.x_secs):
+            # gh-1157: the slicer fits symmetric super-ellipses only and
+            # would drop the VSP lower-half exponent.
+            logger.info(
+                "Skipping slicer refinement for %r — top/bottom asymmetric sections.",
+                fuse_name,
+            )
+            return None
         if not _is_x_dominant_fuselage(handler_xsec_dicts):
             logger.info(
                 "Skipping slicer refinement for %r — not X-dominant in world frame.",

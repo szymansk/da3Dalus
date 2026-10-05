@@ -9,6 +9,7 @@ from aerosandbox import FuselageXSec
 from cadquery import Vector
 
 from app import schemas
+from app.converters.split_superellipse import SplitSuperEllipseFuselageXSec
 from app.converters.spare_origin_preservation import (
     scale_db_origin_to_config,
     should_preserve_normal_spare,
@@ -483,20 +484,35 @@ def _asb_fuselage_xsecs_from_schema(
     # so the caller can build the mirrored half of a symmetric
     # fuselage (paired sub-fuselages like landing-gear struts).
     return [
-        FuselageXSec(
-            xyz_c=[
+        _asb_fuselage_xsec(
+            xyz=[
                 float(x_sec.xyz[0]),
                 -float(x_sec.xyz[1]) if mirror_y else float(x_sec.xyz[1]),
                 float(x_sec.xyz[2]),
             ],
-            xyz_normal=[1.0, 0.0, 0.0],
-            radius=None,
-            width=float(x_sec.a),
-            height=float(x_sec.b),
-            shape=float(x_sec.n),
+            a=x_sec.a,
+            b=x_sec.b,
+            n=x_sec.n,
+            n_lower=x_sec.n_lower,
         )
         for x_sec in fuselage.x_secs
     ]
+
+
+def _asb_fuselage_xsec(
+    *, xyz: list[float], a: float, b: float, n: float, n_lower: Optional[float]
+) -> FuselageXSec:
+    """One ASB section; a split super-ellipse when ``n_lower`` differs (gh-1157)."""
+    common = dict(
+        xyz_c=[float(value) for value in xyz],
+        xyz_normal=[1.0, 0.0, 0.0],
+        radius=None,
+        width=float(a),
+        height=float(b),
+    )
+    if n_lower is None or float(n_lower) == float(n):
+        return FuselageXSec(shape=float(n), **common)
+    return SplitSuperEllipseFuselageXSec(shape_upper=float(n), shape_lower=float(n_lower), **common)
 
 
 def _asb_fuselage_is_degenerate(fuselage, *, eps: float = 1e-9) -> bool:
@@ -590,6 +606,7 @@ def _mirror_fuselage_schema_y(
                 a=xs.a,
                 b=xs.b,
                 n=xs.n,
+                n_lower=xs.n_lower,
             )
             for xs in fuselage.x_secs
         ],
@@ -616,13 +633,8 @@ def fuselage_model_to_fuselage_config(
     fuselage_config.asb_fuselage = asb.Fuselage(
         name=fuselage.name,
         xsecs=[
-            FuselageXSec(
-                xyz_c=[float(value) for value in x_sec.xyz],
-                xyz_normal=[1.0, 0.0, 0.0],
-                radius=None,
-                width=float(x_sec.a),
-                height=float(x_sec.b),
-                shape=float(x_sec.n),
+            _asb_fuselage_xsec(
+                xyz=x_sec.xyz, a=x_sec.a, b=x_sec.b, n=x_sec.n, n_lower=x_sec.n_lower
             )
             for x_sec in (fuselage.x_secs or [])
         ],

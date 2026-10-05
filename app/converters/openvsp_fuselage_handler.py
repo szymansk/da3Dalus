@@ -43,6 +43,7 @@ separate ticket.
 from __future__ import annotations
 
 from types import ModuleType
+from typing import Optional
 
 from app.converters import openvsp_importer
 from app.converters.openvsp_importer import AeroplaneSchema, ImportContext
@@ -170,6 +171,37 @@ def _read_xsec_bounding(vsp: ModuleType, xs_id: str) -> tuple[float, float]:
     w = float(vsp.GetXSecWidth(xs_id))
     h = float(vsp.GetXSecHeight(xs_id))
     return w / 2.0, h / 2.0
+
+
+def _lower_super_ellipse_exponent(
+    vsp: ModuleType, xs_id: str, shape: int, ctx: ImportContext
+) -> Optional[float]:
+    """Exponent of the lower half for an asymmetric VSP super-ellipse (gh-1157).
+
+    OpenVSP's ``XS_SUPER_ELLIPSE`` carries a separate bottom pair
+    ``Super_M_bot`` / ``Super_N_bot`` once ``Super_TopBotSym`` is off.
+    Returns their mean (same M/N averaging as the top half), or ``None``
+    when the section is top/bottom symmetric or not a super-ellipse.
+    """
+    if shape != getattr(vsp, "XS_SUPER_ELLIPSE", -1):
+        return None
+    if not vsp.GetXSecParm(xs_id, "Super_TopBotSym"):
+        return None
+    if _get_xsec_parm(vsp, xs_id, "Super_TopBotSym") >= 0.5:
+        return None
+    m_bot = _get_xsec_parm(vsp, xs_id, "Super_M_bot")
+    n_bot = _get_xsec_parm(vsp, xs_id, "Super_N_bot")
+    if abs(m_bot - n_bot) > 0.01:
+        ctx.add_warning(
+            component_type="FUSELAGE_XSEC",
+            component_name=xs_id,
+            reason=(
+                f"SUPER_ELLIPSE lower half has asymmetric M_bot={m_bot} vs "
+                f"N_bot={n_bot}; using arithmetic mean {(m_bot + n_bot) / 2.0:.3f}."
+            ),
+            severity="info",
+        )
+    return (m_bot + n_bot) / 2.0
 
 
 def _shape_to_super_ellipse(
@@ -397,12 +429,14 @@ def _handle_fuselage(
         y_pct = _read_loc_pct(vsp, xs_id, "Y", i, n_xsec)
         z_pct = _read_loc_pct(vsp, xs_id, "Z", i, n_xsec)
         a, b, n = _shape_to_super_ellipse(vsp, xs_id, shape, ctx)
+        n_lower = _lower_super_ellipse_exponent(vsp, xs_id, shape, ctx)
         xsecs.append(
             FuselageXSecSuperEllipseSchema(
                 xyz=[x_pct * length, y_pct * length, z_pct * length],
                 a=max(a, 0.0),
                 b=max(b, 0.0),
                 n=max(n, 1.0),
+                n_lower=None if n_lower is None else max(n_lower, 1.0),
             )
         )
 
