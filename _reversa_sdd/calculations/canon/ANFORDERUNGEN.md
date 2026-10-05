@@ -1171,14 +1171,23 @@ Propellertabellen, und die fachlichen Tests, für die der Kanon gebaut wird.
 
 #### 3.4.2 Anstellwinkel aus $L = W$
 
-**Status: offen** — die Beziehung steht, die Methode nicht.
+**Status: entschieden (05.10.2026, O3).**
 
 | | |
 |---|---|
-| **Beziehung** | ✅ entschieden. Zu vorgegebenem $V$ den Anstellwinkel $\alpha$ finden, für den der Auftrieb das Gewicht trägt. |
-| **Methode** | ⚪ offen. Eindimensionale Nullstelle — welche? |
-| **Annahmen** | ⚠️ eine steht fest und wird leicht übersehen: **$L = W$ gilt nur im stationären Horizontalflug.** Im Steigflug, in der Kurve und beim Handstart ist $L = n\,W$. Der gelieferte Anstellwinkel — und damit alle Ableitungen — gelten für den geradeaus fliegenden Zustand. |
-| **Nichtkonvergenz** | ⚪ offen. Der Fall existiert real: Oberhalb des Abrisses gibt es **kein** $\alpha$, das $L = W$ erfüllt. Was dann? |
+| **Beziehung** | ✅ Zu vorgegebenem $V$ den Anstellwinkel $\alpha$ finden, für den der Auftrieb das $n$-fache Gewicht trägt: $L(V,\alpha) = n\,m\,g$. |
+| **Methode** | ✅ Erst eine $\alpha$-Abtastung (Schritt 0,5°) bis über den Abriss; sie liefert den **ersten** $C_L$-Gipfel $\alpha_1$. Dann löst IPOPT über `asb.Opti` die Gleichung mit der Schranke $\alpha \le \alpha_1$ — dieselbe Methode wie das Abrissproblem (§3.4.1). |
+| **Annahmen** | ✅ Gelöst wird auf dem Ast **vor dem ersten $C_L$-Gipfel**; dort ist $L$ in $\alpha$ monoton und die Lösung eindeutig. $n$ ist je Anwendung gebunden: im stationären Horizontalflug $n = 1$, im Steigflug, in der Kurve und beim Handstart $L = n\,W$. Der gelieferte Anstellwinkel und alle Ableitungen gelten für genau diesen Zustand. |
+| **Nichtkonvergenz** | ✅ Reicht der erste Gipfel nicht für $L = n\,m\,g$ — $V$ liegt unter der Abrissgeschwindigkeit bei dieser Last —, gibt es **keinen Wert**, sondern eine `DesignWarning` „unterhalb Abriss“. Ebenso bei aktiver Schranke oder Solverfehler. Nie wird der Randwert $\alpha_1$ geliefert und nie eine Lösung auf dem Plateau hinter dem Abriss (ADR 0020). |
+
+**Freigabetor für jedes Problem nahe am Abriss** (Abrissgeschwindigkeit, schnellste gehaltene Kurve):
+Das Optimum muss vor $\alpha_1$ liegen, geprüft gegen die Abtastung. Befund BRYAN: Hinter dem ersten
+Gipfel (1,26 bei 12°) liegt ein Plateau mit einem zweiten lokalen Maximum (1,07 bei 23°), auf das beide
+Probleme ohne Schranke fallen.
+
+**Angleichung `stall-onset-detection`:** Der Eintrag sucht den Abriss ab dem **globalen** $C_L$-Maximum
+(`np.argmax`). Kanonisch ist der **erste** Gipfel, sonst greifen beide Verfahren bei einem höheren zweiten
+Gipfel verschiedene Punkte (K32).
 
 ---
 
@@ -2267,7 +2276,7 @@ eines ohne Abbruchbedingung.
 |---|---|---|
 | **O1** | ✅ **Entschieden 05.10.2026 (Maintainer):** Der Korrekturzweig — Flügelversatz, Leitwerksskalierung (`alpha-vh`, `dsm-dx-wing`, `dsm-dsh` → `wing-shift-lever`, `htail-chord-scale`, 5·MAC-Klemme) — sind **Auslegungsrechnungen und gehören in einen eigenen Kanon**, nicht in diesen. Dieser Kanon rechnet, was ein gegebenes Flugzeug kann; der Auslegungskanon rechnet, was man ändern muss, um ein Ziel zu erreichen. Die Einträge werden hier nicht aufgenommen (K31). **Grenzfälle bleiben hier** (Maintainer 05.10.2026): `cg-for-target-margin`, `stall-wing-loading-limit` und `aileron-throw-fraction` rechnen zwar ein Ziel in eine Konstruktionsgröße um, bleiben aber im Rechenkanon — der Urmodell-Generator braucht sie (O12). Der Ist-Fehler gh-1145 (Leitwerksgeometrie erreicht `sm_sizing_service` nie) bleibt ein Bug im heutigen Code. | Abschluss von §2.1 |
 | **O2** | *Geklärt 01.10.2026, siehe §3.4.1 — als Optimierungsproblem, Methode IPOPT über `asb.Opti`.* Die **drei fehlenden Angaben** zum Fixpunkt $V_S \leftrightarrow C_{L,\max,\mathrm{stall}}$. | Freigabe von `stall-speed` als Anwendung |
-| **O3** | Die **drei fehlenden Angaben** zum Anstellwinkelverfahren, insbesondere das Verhalten oberhalb des Abrisses. **Teilbefund BRYAN 03.10.2026:** Hinter dem ersten $C_L$-Maximum (1,26 bei 12°) liegt ein Plateau mit einem zweiten, kleineren lokalen Maximum (1,07 bei 23°). Zwei Kanon-Probleme fallen ohne aktive Schranke dorthin: `stall-speed` und `max-sustained-turn-rate`. Unauffällig sind `maneuvering-speed`, `min-sustained-turn-radius`, $V_y$, $V_{mp}$, $V_{md}$ und $V_{max}$ (`bryan_stall_branch_check.py`). **Freigabetor für jedes Problem nahe am Abriss:** Das Optimum muss auf dem Ast vor dem ersten $C_L$-Maximum liegen, geprüft gegen eine α-Abtastung. | Freigabe von §2.1 und aller Probleme nahe am Abriss |
+| **O3** | ✅ **Entschieden 05.10.2026 (Maintainer), siehe §3.4.2:** α-Abtastung → erster $C_L$-Gipfel $\alpha_1$ als Schranke, IPOPT über `asb.Opti`; Lösung nur auf dem Ast vor $\alpha_1$; ohne Lösung kein Wert, sondern `DesignWarning` „unterhalb Abriss“. Freigabetor für Probleme nahe am Abriss bleibt (Befund BRYAN: Plateau mit zweitem Maximum). `stall-onset-detection` wird auf den ersten Gipfel angeglichen (K32). | Freigabe von §2.1 und aller Probleme nahe am Abriss |
 | **O4** | Welche **Prozessschritte** es wirklich gibt und wo ihre Grenzen liegen. | §1, und damit die Struktur aller weiteren Schritte |
 | **O5** | ✅ **Entschieden 05.10.2026 (Maintainer):** Kanonisch ist die **exakte ISA** (U.S. 1976 / ICAO, AeroSandbox `method="isa"`) — genau das Gesetz, das `air-density-isa` nennt. Die geglättete Standard-Näherung (`method="differentiable"`) wird nicht gebraucht: Die Höhe ist je Betriebspunkt fest (O10), nicht Optimierungsvariable. Gemessen: Näherung −339 ppm bei 500 m, −0,2 % bei 3 km in der Dichte; exakte ISA 0,06 ms je Aufruf. Ist: alle 15 Aufrufer nutzen die Näherung (K30). Die ISA bleibt eine Nennbedingung, nicht das Tageswetter (§3.2). | Eindeutigkeit von $\rho$ |
 | **O7** | Wird **Finger, Bil & Braun, *Drag Estimation of Small Fixed-Wing UAVs*** (Aeronautical Journal 122/1248, 2018) die zitierte Quelle für $c_{D0}$ und $e$ **in unserer Größenklasse**? ADR 0023 verlangt bei 0,5–15 kg validierte Konstanten; `DEFAULT_E_OSWALD = 0.8` hat bis heute keine. | Freigabe von `induced-drag-factor`, `zero-lift-drag-from-sweep` |
@@ -2398,6 +2407,7 @@ Was schon ein Ticket hat, steht mit Nummer dabei und fällt dann nicht noch einm
 | K29 | Sekunden-Rechnungen beim Verlassen der Konstruktionsansicht statt bei jeder Änderung; Änderungen markieren abhängige Werte sofort als veraltet (Kanon-Graph liefert den Unterbaum). Veraltete Werte ausgegraut, alter Wert per Mouse-over. Entschieden 05.10.2026 | O14 | `invalidation_service`, `background_jobs` (heute: entprellt 2 s nach Änderung), Frontend-Werteanzeige |
 | K30 | Luftdichte aus der exakten ISA: `asb.Atmosphere(..., method="isa")` an allen Aufrufstellen statt der geglätteten Standard-Näherung. Entschieden 05.10.2026 | O5 | 15 Aufrufstellen von `asb.Atmosphere` (`analysis_service`, `operating_point_generator_service`, `avl_trim_service`, `aerobuildup_trim_service`, `section_aoa_service`, `neuralfoil_cdcl_service`, `mass_cg_service`, `api/utils.py`) |
 | K31 | Auslegungsrechnungen (Korrekturzweig: Flügelversatz, Leitwerksskalierung, `a_VH`, Empfindlichkeiten, 5·MAC-Klemme) gehören in einen **eigenen Auslegungskanon**; der Rechenkanon enthält nur Analyse eines gegebenen Flugzeugs. Entschieden 05.10.2026 | O1 | `sm_sizing_service`, `tail_sizing_service` (gh-1145) |
+| K32 | Anstellwinkel aus $L = n\,W$ nach §3.4.2 (Abtastung, erster $C_L$-Gipfel als Schranke, IPOPT, ohne Lösung kein Wert + `DesignWarning`); `stall-onset-detection` ab dem **ersten** statt dem globalen $C_L$-Maximum. Entschieden 05.10.2026 | O3, §3.4.2 | `analysis_service.py:169` (`np.argmax`), Anstellwinkel-Löser der Trimm- und Betriebspunkt-Dienste |
 
 ## Arbeitsregeln
 

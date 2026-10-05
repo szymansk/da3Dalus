@@ -33,6 +33,10 @@ i_stall = first i > i(C_L,max) with C_L_i < C_L_(i-1) and C_D_i > C_D_(i-1)
 >
 > analysis_service.py:170-171 and :176-177 - the two fallbacks above break the method's own bracketing assumption without saying so. Consequence: for any alpha sweep that stops before the break (any user-supplied alpha_end below stall, and the default 20 deg is not guaranteed to clear it for cambered high-lift sections), the response still contains a stall_point and the plot still draws the orange 'Stall' marker (:52, :60, :972) and the 'Stall-Indiz: a=..., CL=...' summary line (:1372-1374). A user reads the last computed alpha as the aircraft's stall angle. Secondary: the criterion at :173 has no source and no noise guard, so a single non-monotone AeroBuildup sample before the real break places the marker early - the same failure mode, in the opposite direction, with the same silent presentation.
 
+> **Canonical change (O3, maintainer 2026-10-05, K32).** The scan starts at the **first** C_L peak of the
+> α-sampling, not at the global maximum (`np.argmax`). Behind the first peak a plateau can carry a second, higher
+> maximum; then the two would pick different points. Ist: `analysis_service.py:169` uses the global maximum.
+
 ### The procedure
 
 > A procedure is not invented here. It has **two origins**, and both are citable:
