@@ -11,6 +11,7 @@ import { useWingConfig } from "@/hooks/useWingConfig";
 import type { WingConfigSegment } from "@/hooks/useWingConfig";
 import { useFuselage, type FuselageXSec } from "@/hooks/useFuselage";
 import { ImportFuselageDialog } from "./ImportFuselageDialog";
+import { parseLowerExponent } from "@/lib/fuselageSection";
 
 /** Parse a number input string, allowing empty/partial input during editing */
 function num(v: string, fallback = 0): number {
@@ -793,6 +794,7 @@ function FuselageXSecForm({ aeroplaneId, fuselageName, xsecIndex, xsec, onSave, 
   const [a, setA] = useState(String(xsec.a));
   const [b, setB] = useState(String(xsec.b));
   const [n, setN] = useState(String(xsec.n));
+  const [nLower, setNLower] = useState(xsec.n_lower == null ? "" : String(xsec.n_lower));
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [show3DEditor, setShow3DEditor] = useState(false);
@@ -808,6 +810,7 @@ function FuselageXSecForm({ aeroplaneId, fuselageName, xsecIndex, xsec, onSave, 
     setA(String(xsec.a));
     setB(String(xsec.b));
     setN(String(xsec.n));
+    setNLower(xsec.n_lower == null ? "" : String(xsec.n_lower));
     setError(null);
   }, [xsec, xsecIndex]);
 
@@ -816,6 +819,7 @@ function FuselageXSecForm({ aeroplaneId, fuselageName, xsecIndex, xsec, onSave, 
     a: Number.parseFloat(a) || 0.001,
     b: Number.parseFloat(b) || 0.001,
     n: Math.max(0.5, Math.min(10, Number.parseFloat(n) || 2)),
+    n_lower: parseLowerExponent(nLower),
   });
 
   useImperativeHandle(ref, () => ({
@@ -854,6 +858,7 @@ function FuselageXSecForm({ aeroplaneId, fuselageName, xsecIndex, xsec, onSave, 
     setA(String(xsec.a));
     setB(String(xsec.b));
     setN(String(xsec.n));
+    setNLower(xsec.n_lower == null ? "" : String(xsec.n_lower));
     setDirty(false);
   };
 
@@ -900,6 +905,7 @@ function FuselageXSecForm({ aeroplaneId, fuselageName, xsecIndex, xsec, onSave, 
         </div>
         <div className="flex gap-3">
           <Field label="n (exponent)" value={n} onChange={(v) => { setN(v); markDirty(); }} />
+          <Field label="n lower (bottom, empty = n)" value={nLower} onChange={(v) => { setNLower(v); markDirty(); }} />
         </div>
       </div>
 

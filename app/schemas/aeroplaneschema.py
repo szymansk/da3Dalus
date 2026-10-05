@@ -745,8 +745,22 @@ class FuselageXSecSuperEllipseSchema(BaseModel):
     )
     n: float = Field(
         ...,
-        description="Superellipse exponent",
+        description=(
+            "Superellipse exponent. Applies to the whole section, or only to "
+            "the upper half (z >= 0) when ``n_lower`` is set."
+        ),
         examples=[2, 1.5],
+    )
+    n_lower: Optional[float] = Field(
+        default=None,
+        gt=0,
+        description=(
+            "Superellipse exponent of the lower half (z < 0), gh-1157. Lets a "
+            "section be boxy underneath and rounded on top, like an OpenVSP "
+            "super-ellipse with Super_TopBotSym = false. Both halves share a and b "
+            "and meet at (±a, 0). ``None`` means the lower half uses ``n``."
+        ),
+        examples=[None, 6.0],
     )
 
     model_config = ConfigDict(from_attributes=True)

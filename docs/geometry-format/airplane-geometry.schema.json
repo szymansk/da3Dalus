@@ -399,7 +399,7 @@
 
     "FuselageXSecSuperEllipse": {
       "type": "object",
-      "description": "One fuselage station. The outline is the super-ellipse |y/a|^n + |z/b|^n = 1 in the section plane, which is ALWAYS normal to the x-axis — the format has no field for a section normal, and the converters hard-code [1, 0, 0]. A section cannot be tilted.",
+      "description": "One fuselage station. The outline is the super-ellipse |y/a|^n + |z/b|^n = 1 in the section plane (below the centre line with `n_lower` in place of `n` when given), which is ALWAYS normal to the x-axis — the format has no field for a section normal, and the converters hard-code [1, 0, 0]. A section cannot be tilted.",
       "required": ["xyz", "a", "b", "n"],
       "additionalProperties": false,
       "properties": {
@@ -421,9 +421,15 @@
         },
         "n": {
           "type": "number",
-          "description": "Super-ellipse exponent. n = 2 is a true ellipse; n below 2 pinches the corners towards a rhombus; n above 2 squares them off towards a rounded rectangle (the shape often called a hyperellipse). Maps to AeroSandbox FuselageXSec.shape. Live data spans 1.04 to 50.0 — the upper end is an imported box section.",
+          "description": "Super-ellipse exponent of the whole section, or of the upper half (z >= 0) when `n_lower` is set. n = 2 is a true ellipse; n below 2 pinches the corners towards a rhombus; n above 2 squares them off towards a rounded rectangle (the shape often called a hyperellipse). Maps to AeroSandbox FuselageXSec.shape. Live data spans 1.04 to 50.0 — the upper end is an imported box section.",
           "exclusiveMinimum": 0.0,
           "examples": [2.0, 1.5, 4.0, 50.0]
+        },
+        "n_lower": {
+          "type": ["number", "null"],
+          "description": "Super-ellipse exponent of the lower half (z < 0), gh-1157. null or absent: the lower half uses `n`. Both halves share `a` and `b` and meet at (±a, 0), so the outline stays closed. Lets a body be boxy underneath (large n_lower) and rounded on top (n = 2) — the OpenVSP super-ellipse with Super_TopBotSym off. Consumers that know only one exponent use the area-equivalent exponent, so the section area is kept.",
+          "exclusiveMinimum": 0.0,
+          "examples": [null, 6.0, 8.0]
         }
       }
     }

@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import type { Wing, XSec } from "@/hooks/useWings";
 import type { Fuselage } from "@/hooks/useFuselage";
+import { sectionOffset } from "@/lib/fuselageSection";
 import { API_BASE } from "@/lib/fetcher";
 
 interface WingOutlineViewerProps {
@@ -723,7 +724,7 @@ async function buildAllWingTraces(
 /** Build superellipse cross-section traces for a fuselage. */
 const COLOR_FUSELAGE_HIGHLIGHT = "#FACC15"; // yellow for selected fuselage xsec
 
-function buildFuselageTraces(fuselage: Fuselage, color: string, selectedIdx: number | null = null) {
+export function buildFuselageTraces(fuselage: Fuselage, color: string, selectedIdx: number | null = null) {
   const traces: PlotlyData[] = [];
   const xsecs = fuselage.x_secs;
   if (xsecs.length < 2) return traces;
@@ -746,13 +747,10 @@ function buildFuselageTraces(fuselage: Fuselage, color: string, selectedIdx: num
     const cx: number[] = [], cy: number[] = [], cz: number[] = [];
     for (let j = 0; j <= nPts; j++) {
       const theta = (2 * Math.PI * j) / nPts;
-      const cosT = Math.cos(theta);
-      const sinT = Math.sin(theta);
-      const r_y = xs.a * Math.sign(cosT) * Math.pow(Math.abs(cosT), 2 / xs.n);
-      const r_z = xs.b * Math.sign(sinT) * Math.pow(Math.abs(sinT), 2 / xs.n);
+      const r = sectionOffset(xs, theta);
       cx.push(xs.xyz[0]);
-      cy.push(xs.xyz[1] + r_y);
-      cz.push(xs.xyz[2] + r_z);
+      cy.push(xs.xyz[1] + r.y);
+      cz.push(xs.xyz[2] + r.z);
     }
     traces.push(scatter3d(cx, cy, cz, xsecColor, xsecWidth));
   }
@@ -761,13 +759,10 @@ function buildFuselageTraces(fuselage: Fuselage, color: string, selectedIdx: num
   for (const angle of [0, Math.PI / 2, Math.PI, 3 * Math.PI / 2]) {
     const lx: number[] = [], ly: number[] = [], lz: number[] = [];
     for (const xs of xsecs) {
-      const cosT = Math.cos(angle);
-      const sinT = Math.sin(angle);
-      const r_y = xs.a * Math.sign(cosT) * Math.pow(Math.abs(cosT + 1e-10), 2 / xs.n);
-      const r_z = xs.b * Math.sign(sinT) * Math.pow(Math.abs(sinT + 1e-10), 2 / xs.n);
+      const r = sectionOffset(xs, angle);
       lx.push(xs.xyz[0]);
-      ly.push(xs.xyz[1] + r_y);
-      lz.push(xs.xyz[2] + r_z);
+      ly.push(xs.xyz[1] + r.y);
+      lz.push(xs.xyz[2] + r.z);
     }
     traces.push(scatter3d(lx, ly, lz, color, 1.5));
   }

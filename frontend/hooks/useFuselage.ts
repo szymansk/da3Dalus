@@ -8,6 +8,8 @@ export interface FuselageXSec {
   a: number;
   b: number;
   n: number;
+  /** gh-1157: exponent of the lower half (z < 0); null/absent = same as `n`. */
+  n_lower?: number | null;
 }
 
 export interface Fuselage {

@@ -11,6 +11,7 @@ import { useFuselage } from "@/hooks/useFuselage";
 import { useFuselages } from "@/hooks/useFuselages";
 import { ImportFuselageDialog } from "./ImportFuselageDialog";
 import { CreateWingDialog } from "./CreateWingDialog";
+import { sectionExponentLabel } from "@/lib/fuselageSection";
 
 // ── Types ───────────────────────────────────────────────────────
 
@@ -562,7 +563,7 @@ interface BuildTreeDataParams {
   selectedXsecIndex: number | null;
   selectedFuselage: string | null;
   selectedFuselageXsecIndex: number | null;
-  fuselage: { x_secs: { a: number; b: number; n: number }[] } | null;
+  fuselage: { x_secs: { a: number; b: number; n: number; n_lower?: number | null }[] } | null;
   isWingVisible?: (wingName: string) => boolean;
   isWingLoading?: (wingName: string) => boolean;
   isFuselageVisible?: (name: string) => boolean;
@@ -690,7 +691,7 @@ function buildFuselageNodes(treeData: TreeNode[], params: BuildTreeDataParams): 
         expanded: false,
         leaf: true,
         selected: isXsSelected,
-        detail: `a=${(xs.a * 1000).toFixed(1)}mm b=${(xs.b * 1000).toFixed(1)}mm n=${xs.n.toFixed(1)}`,
+        detail: `a=${(xs.a * 1000).toFixed(1)}mm b=${(xs.b * 1000).toFixed(1)}mm ${sectionExponentLabel(xs)}`,
         onClick: () => {
           params.selectFuselage(fn);
           params.selectFuselageXsec(i);
