@@ -105,8 +105,8 @@
       "name": "Querruder",
       "role": "aileron",
       "label": "Querruder 26/27/28",
-      "rel_chord_root": 0.7793,
-      "rel_chord_tip": 0.7628,
+      "rel_chord_root": 0.7803,
+      "rel_chord_tip": 0.7624,
       "hinge_spacing": 0.3,
       "side_spacing_root": 0.37,
       "side_spacing_tip": 0.0,
@@ -136,7 +136,7 @@
      },
      "control_surface": {
       "name": "Querruder",
-      "hinge_point": 0.7793,
+      "hinge_point": 0.7803,
       "symmetric": false,
       "deflection": 0.0
      }
@@ -174,8 +174,8 @@
       "name": "Querruder",
       "role": "aileron",
       "label": "Querruder 26/27/28",
-      "rel_chord_root": 0.7623,
-      "rel_chord_tip": 0.7581,
+      "rel_chord_root": 0.7624,
+      "rel_chord_tip": 0.7565,
       "hinge_spacing": 0.3,
       "side_spacing_root": 0.0,
       "side_spacing_tip": 0.0,
@@ -192,7 +192,7 @@
      },
      "control_surface": {
       "name": "Querruder",
-      "hinge_point": 0.7623,
+      "hinge_point": 0.7624,
       "symmetric": false,
       "deflection": 0.0
      }
@@ -230,8 +230,8 @@
       "name": "Querruder",
       "role": "aileron",
       "label": "Querruder 26/27/28",
-      "rel_chord_root": 0.7582,
-      "rel_chord_tip": 0.7654,
+      "rel_chord_root": 0.7565,
+      "rel_chord_tip": 0.7659,
       "hinge_spacing": 0.3,
       "side_spacing_root": 0.0,
       "side_spacing_tip": 0.0,
@@ -248,7 +248,7 @@
      },
      "control_surface": {
       "name": "Querruder",
-      "hinge_point": 0.7582,
+      "hinge_point": 0.7565,
       "symmetric": false,
       "deflection": 0.0
      }
@@ -286,8 +286,8 @@
       "name": "Querruder",
       "role": "aileron",
       "label": "Querruder 26/27/28",
-      "rel_chord_root": 0.7677,
-      "rel_chord_tip": 0.7887,
+      "rel_chord_root": 0.7659,
+      "rel_chord_tip": 0.7928,
       "hinge_spacing": 0.3,
       "side_spacing_root": 0.0,
       "side_spacing_tip": 0.0,
@@ -304,7 +304,7 @@
      },
      "control_surface": {
       "name": "Querruder",
-      "hinge_point": 0.7677,
+      "hinge_point": 0.7659,
       "symmetric": false,
       "deflection": 0.0
      }
@@ -1132,8 +1132,8 @@
       "name": "Seitenruder",
       "role": "rudder",
       "label": "Seitenruder 15.d",
-      "rel_chord_root": 0,
-      "rel_chord_tip": 0,
+      "rel_chord_root": 0.0,
+      "rel_chord_tip": 0.0,
       "hinge_spacing": 0.3,
       "side_spacing_root": 0.0,
       "side_spacing_tip": 0.0,
@@ -1163,7 +1163,7 @@
      },
      "control_surface": {
       "name": "Seitenruder",
-      "hinge_point": 0,
+      "hinge_point": 0.0,
       "symmetric": true,
       "deflection": 0.0
      }
@@ -1184,8 +1184,8 @@
       "name": "Seitenruder",
       "role": "rudder",
       "label": "Seitenruder 15.d",
-      "rel_chord_root": 0,
-      "rel_chord_tip": 0,
+      "rel_chord_root": 0.0,
+      "rel_chord_tip": 0.0,
       "hinge_spacing": 0.3,
       "side_spacing_root": 0.0,
       "side_spacing_tip": 0.0,
@@ -1215,7 +1215,7 @@
      },
      "control_surface": {
       "name": "Seitenruder",
-      "hinge_point": 0,
+      "hinge_point": 0.0,
       "symmetric": true,
       "deflection": 0.0
      }
@@ -1236,8 +1236,8 @@
       "name": "Seitenruder",
       "role": "rudder",
       "label": "Seitenruder 15.d",
-      "rel_chord_root": 0,
-      "rel_chord_tip": 0,
+      "rel_chord_root": 0.0,
+      "rel_chord_tip": 0.0,
       "hinge_spacing": 0.3,
       "side_spacing_root": 0.0,
       "side_spacing_tip": 0.0,
@@ -1267,7 +1267,7 @@
      },
      "control_surface": {
       "name": "Seitenruder",
-      "hinge_point": 0,
+      "hinge_point": 0.0,
       "symmetric": true,
       "deflection": 0.0
      }
@@ -1288,8 +1288,8 @@
       "name": "Seitenruder",
       "role": "rudder",
       "label": "Seitenruder 15.d",
-      "rel_chord_root": 0,
-      "rel_chord_tip": 0,
+      "rel_chord_root": 0.0,
+      "rel_chord_tip": 0.0,
       "hinge_spacing": 0.3,
       "side_spacing_root": 0.0,
       "side_spacing_tip": 0.0,
@@ -1319,7 +1319,7 @@
      },
      "control_surface": {
       "name": "Seitenruder",
-      "hinge_point": 0,
+      "hinge_point": 0.0,
       "symmetric": true,
       "deflection": 0.0
      }
@@ -1340,8 +1340,8 @@
       "name": "Seitenruder",
       "role": "rudder",
       "label": "Seitenruder 15.d",
-      "rel_chord_root": 0,
-      "rel_chord_tip": 0,
+      "rel_chord_root": 0.0,
+      "rel_chord_tip": 0.0,
       "hinge_spacing": 0.3,
       "side_spacing_root": 0.0,
       "side_spacing_tip": 0.0,
@@ -1371,7 +1371,7 @@
      },
      "control_surface": {
       "name": "Seitenruder",
-      "hinge_point": 0,
+      "hinge_point": 0.0,
       "symmetric": true,
       "deflection": 0.0
      }
@@ -1392,8 +1392,8 @@
       "name": "Seitenruder",
       "role": "rudder",
       "label": "Seitenruder 15.d",
-      "rel_chord_root": 0,
-      "rel_chord_tip": 0.0019,
+      "rel_chord_root": 0.0,
+      "rel_chord_tip": 0.002,
       "hinge_spacing": 0.3,
       "side_spacing_root": 0.0,
       "side_spacing_tip": 0.0,
@@ -1423,7 +1423,7 @@
      },
      "control_surface": {
       "name": "Seitenruder",
-      "hinge_point": 0,
+      "hinge_point": 0.0,
       "symmetric": true,
       "deflection": 0.0
      }
@@ -1444,7 +1444,7 @@
       "name": "Seitenruder",
       "role": "rudder",
       "label": "Seitenruder 15.d",
-      "rel_chord_root": 0.0019,
+      "rel_chord_root": 0.002,
       "rel_chord_tip": 0.7044,
       "hinge_spacing": 0.3,
       "side_spacing_root": 0.0,
@@ -1475,7 +1475,7 @@
      },
      "control_surface": {
       "name": "Seitenruder",
-      "hinge_point": 0.0019,
+      "hinge_point": 0.002,
       "symmetric": true,
       "deflection": 0.0
      }
@@ -1653,7 +1653,7 @@
       "role": "rudder",
       "label": "Seitenruder 15.d",
       "rel_chord_root": 0.5685,
-      "rel_chord_tip": 0.7809,
+      "rel_chord_tip": 0.781,
       "hinge_spacing": 0.3,
       "side_spacing_root": 0.0,
       "side_spacing_tip": 0.0,
@@ -1705,8 +1705,8 @@
       "name": "Seitenruder",
       "role": "rudder",
       "label": "Seitenruder 15.d",
-      "rel_chord_root": 0.7809,
-      "rel_chord_tip": 1,
+      "rel_chord_root": 0.781,
+      "rel_chord_tip": 1.0,
       "hinge_spacing": 0.3,
       "side_spacing_root": 0.0,
       "side_spacing_tip": 0.0,
@@ -1736,7 +1736,7 @@
      },
      "control_surface": {
       "name": "Seitenruder",
-      "hinge_point": 0.7809,
+      "hinge_point": 0.781,
       "symmetric": true,
       "deflection": 0.0
      }
