@@ -244,10 +244,9 @@ def test_put_and_get_fuselage_keep_n_lower(client_and_db):
     assert xsec["n_lower"] == pytest.approx(8.0)
 
 
-def test_openvsp_slicer_refinement_skipped_for_asymmetric_sections(tmp_path, monkeypatch, caplog):
+def test_openvsp_slicer_refinement_skipped_for_asymmetric_sections(tmp_path, monkeypatch):
     """The STEP slicer fits symmetric super-ellipses only, so an imported
     fuselage with a VSP lower-half exponent keeps its handler sections."""
-    import logging
     import sys
     import types
 
@@ -257,7 +256,12 @@ def test_openvsp_slicer_refinement_skipped_for_asymmetric_sections(tmp_path, mon
     monkeypatch.setattr(settings, "ARTIFACTS_BASE_DIR", tmp_path)
     (tmp_path / "fuse.stp").write_text("FAKE")
 
+    # Record calls instead of raising: the refinement swallows slicer errors,
+    # and log capture depends on handler state other tests may change.
+    slicer_calls: list[str] = []
+
     def _slicer_must_not_run(*_a, **_kw):
+        slicer_calls.append("called")
         raise AssertionError("slicer must not run for asymmetric sections")
 
     fake_slicing = types.ModuleType("cad_designer.aerosandbox.slicing")
@@ -276,8 +280,7 @@ def test_openvsp_slicer_refinement_skipped_for_asymmetric_sections(tmp_path, mon
         ],
     )
 
-    with caplog.at_level(logging.INFO, logger=openvsp_import_service.logger.name):
-        result = openvsp_import_service._try_slicer_refinement("fuse.stp", handler_fuse, "Body")
+    result = openvsp_import_service._try_slicer_refinement("fuse.stp", handler_fuse, "Body")
 
     assert result is None
-    assert "top/bottom asymmetric" in caplog.text
+    assert slicer_calls == []
