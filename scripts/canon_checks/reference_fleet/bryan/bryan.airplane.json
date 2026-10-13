@@ -1698,8 +1698,8 @@
      "twist": 0.0,
      "dihedral": 0.0,
      "airfoil": "./bryan_platte.dat",
-     "x_sec_type": "tip",
-     "tip_type": "round",
+     "x_sec_type": "segment",
+     "tip_type": null,
      "spare_list": [],
      "trailing_edge_device": {
       "name": "Seitenruder",
@@ -1740,6 +1740,20 @@
       "symmetric": true,
       "deflection": 0.0
      }
+    },
+    {
+     "xyz_le": [
+      0.4550042249062694,
+      0.0,
+      0.0868612524173109
+     ],
+     "chord": 0.012897520851860902,
+     "twist": 0.0,
+     "dihedral": 0.0,
+     "airfoil": "./bryan_platte.dat",
+     "x_sec_type": "tip",
+     "tip_type": "round",
+     "spare_list": []
     },
     {
      "xyz_le": [

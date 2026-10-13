@@ -95,11 +95,112 @@ def test_edge_clamps_do_not_pull_the_line_on_a_vertical_surface():
     changes = tool.straighten(xs)
 
     assert changes[0]["line_error_mm"] == pytest.approx(0.0, abs=1e-6)
-    assert changes[2]["new"] == (round(0.06 / 0.09, 4), 1.0)
-    assert changes[2]["clamped"] is True
     assert changes[0]["new"] == (round(0.10 / 0.15, 4), round(0.08 / 0.12, 4))
+
+
+def _fin_leaving_the_trailing_edge():
+    # hinge x = 0.50 on every section; the tip (te 0.49) lies ahead of it, so the
+    # straight hinge leaves the outline inside the last segment (te 0.53 -> 0.49)
+    xs = [
+        _xsec(0.0, 0.40, 0.15, z=0.00),
+        _xsec(0.0, 0.42, 0.12, z=0.05),
+        _xsec(0.0, 0.44, 0.09, z=0.10),
+        _xsec(0.0, 0.46, 0.03, z=0.12),
+    ]
+    xs[2]["x_sec_type"], xs[2]["tip_type"] = "tip", "round"
+    rels = [(0.10 / 0.15, 0.08 / 0.12), (0.08 / 0.12, 0.06 / 0.09), (0.06 / 0.09, 1.0)]
+    for i, (r, t) in enumerate(rels):
+        xs[i]["trailing_edge_device"] = {
+            "name": "Seitenruder",
+            "rel_chord_root": r,
+            "rel_chord_tip": t,
+        }
+        xs[i]["control_surface"] = {"name": "Seitenruder", "hinge_point": r}
+    xs[2]["spare_list"] = [{"spare_position_factor": 0.3, "spare_mode": "standard"}]
+    return xs
+
+
+def test_rudder_ends_where_the_straight_hinge_leaves_the_outline():
+    xs = _fin_leaving_the_trailing_edge()
+
+    new, report = tool.rebuild(xs)
+
+    # te x = 0.53 - 0.04*(t) along the last segment hits x = 0.50 at t = 0.75 -> z = 0.115
+    assert len(new) == 5
+    cut = new[3]
+    assert cut["xyz_le"][2] == pytest.approx(0.115)
+    assert cut["xyz_le"][0] + cut["chord"] == pytest.approx(0.50)
+    # the new section lies on the old outline: LE and TE interpolate linearly
+    assert cut["xyz_le"][0] == pytest.approx(0.455)
+    assert "trailing_edge_device" not in cut and "control_surface" not in cut
+    assert new[2]["trailing_edge_device"]["rel_chord_tip"] == 1.0
+    assert new[2]["trailing_edge_device"]["rel_chord_root"] == round(0.06 / 0.09, 4)
+    # the tip classification moves to the outermost real segment
+    assert (cut["x_sec_type"], cut["tip_type"]) == ("tip", "round")
+    assert new[2].get("x_sec_type") == "segment" and new[2].get("tip_type") is None
+    # a spar in the split segment continues on the same line in the new segment
+    assert cut["spare_list"] == [{"spare_position_factor": 0.3, "spare_mode": "follow"}]
+    assert report["inserted"] == [3]
+    # every stored hinge point now lies on the straight line x = 0.50
+    for i in range(3):
+        ted = new[i]["trailing_edge_device"]
+        for x, rel in ((new[i], ted["rel_chord_root"]), (new[i + 1], ted["rel_chord_tip"])):
+            assert _hinge(x, rel) == pytest.approx(0.50, abs=1e-5)
+    assert xs[2]["trailing_edge_device"]["rel_chord_tip"] == 1.0  # input left untouched
+
+
+def test_full_chord_rudder_below_the_hinge_keeps_zero_and_is_not_cut():
+    # lower fin part: the hinge line runs 0.4 mm ahead of the leading edge, so the
+    # whole section moves (fraction 0) - that is a rudder, not a missing one
+    xs = [
+        _xsec(0.0, 0.4684, 0.03, z=-0.02),
+        _xsec(0.0, 0.4684, 0.04, z=-0.01),
+        _xsec(0.0, 0.4400, 0.10, z=0.03),
+        _xsec(0.0, 0.4500, 0.06, z=0.06),
+    ]
+    for i, (r, t) in enumerate([(0.0, 0.0), (0.0, 0.28), (0.28, 0.3)]):
+        xs[i]["trailing_edge_device"] = {
+            "name": "Seitenruder",
+            "rel_chord_root": r,
+            "rel_chord_tip": t,
+        }
+
+    new, report = tool.rebuild(xs)
+
+    assert len(new) == 4 and report["inserted"] == []
+    assert new[0]["trailing_edge_device"]["rel_chord_root"] == 0.0
+    assert all("trailing_edge_device" in new[i] for i in range(3))
+
+
+def test_hinge_leaving_the_outline_mid_run_is_refused():
+    xs = [
+        _xsec(0.0, 0.40, 0.15, z=0.00),
+        _xsec(0.0, 0.46, 0.03, z=0.05),
+        _xsec(0.0, 0.40, 0.15, z=0.10),
+    ]
+    for i in range(2):
+        xs[i]["trailing_edge_device"] = {
+            "name": "Seitenruder",
+            "rel_chord_root": 0.66,
+            "rel_chord_tip": 0.66,
+        }
+    xs[0]["trailing_edge_device"]["rel_chord_tip"] = 1.0
+    xs[1]["trailing_edge_device"]["rel_chord_root"] = 1.0
+
+    with pytest.raises(ValueError, match="Seitenruder"):
+        tool.rebuild(xs)
 
 
 def test_surfaces_without_ted_are_left_alone():
     xs = [_xsec(0.0, 0.0, 0.2), _xsec(0.5, 0.0, 0.2)]
     assert tool.straighten(xs) == []
+
+
+def test_rebuild_is_idempotent_on_its_own_output():
+    new, _ = tool.rebuild(_fin_leaving_the_trailing_edge())
+
+    again, report = tool.rebuild(new)
+
+    assert report["inserted"] == [] and report["removed"] == []
+    assert len(again) == len(new)
+    assert again[3]["xyz_le"] == new[3]["xyz_le"]
