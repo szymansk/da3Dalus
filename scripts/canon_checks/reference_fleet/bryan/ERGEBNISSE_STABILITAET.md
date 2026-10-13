@@ -108,14 +108,16 @@ Gerechnet mit `bryan_spar_break.py` nach dem Kanon-Eintrag spar-break-load-facto
 
 | y [mm] | Holmhöhe [mm] | M_1g [N·mm] | M_cap, Druck [N·mm] | n |
 |---|---|---|---|---|
-| 0 | 15,5 | 88,7 | 4006 | **45,2** |
-| 55 | 14,5 | 53,2 | 3553 | 66,8 |
-| 109 | 13,5 | 27,3 | 3163 | 116 |
-| 164 | 12,6 | 10,5 | 2789 | 265 |
+| 0 | 14,7 | 88,7 | 3654 | **41,2** |
+| 55 | 13,7 | 53,2 | 3222 | 60,6 |
+| 109 | 12,8 | 27,3 | 2869 | 105 |
+| 164 | 12,2 | 10,5 | 2618 | 248 |
 
-- **n_break,+ = n_break,− = 45**, maßgebend an der Wurzel (Druckgurt; der Zuggurt allein trüge 110).
-  Bei 25 bzw. 50 MPa Druckfestigkeit wären es 30 bzw. 60.
-- **m_max,struct = 6,8 kg.** Das liegt weit über der Grenze von Antrieb und Aerodynamik
+- **n_break,+ = n_break,− = 41**, maßgebend an der Wurzel (Druckgurt; der Zuggurt allein trüge 100).
+  Bei 25 bzw. 50 MPa Druckfestigkeit wären es 27 bzw. 55.
+  Holmhöhe seit gh-1171 = Profildicke an der Holmachse (bündige Gurte); vorher standen an der Wurzel
+  15,5 mm bei 14,7 mm Profildicke, daraus n = 45 und 6,8 kg.
+- **m_max,struct = 6,2 kg.** Das liegt weit über der Grenze von Antrieb und Aerodynamik
   (m_max,level 1,23 kg). Beim Bryan begrenzt der Holm also nie die Masse; bei 151 g liegen gemessene
   RC-Lasten (6–19 g) weit darunter.
 - **Nicht gerechnet, nach Entscheidung:** Befestigung, Klebung, Schub im Steg, örtliches Beulen des
