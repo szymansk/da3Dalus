@@ -26,19 +26,39 @@
      "spare_list": [
       {
        "spare_support_dimension_width": 0.00398,
-       "spare_support_dimension_height": 0.01547,
-       "spare_position_factor": 0.322,
+       "spare_support_dimension_height": 0.01469,
+       "spare_position_factor": 0.3212,
        "spare_length": null,
        "spare_start": 0.0,
-       "spare_mode": "standard_backward"
+       "spare_mode": "normal",
+       "spare_vector": [
+        0.0,
+        0.998565668,
+        0.053540708
+       ],
+       "spare_origin": [
+        0.13675,
+        -0.000343352,
+        -0.019242924
+       ]
       },
       {
        "spare_support_dimension_width": 0.00301,
        "spare_support_dimension_height": 0.0041,
-       "spare_position_factor": 0.8022,
+       "spare_position_factor": 0.8016,
        "spare_length": null,
        "spare_start": 0.0,
-       "spare_mode": "standard_backward"
+       "spare_mode": "normal",
+       "spare_vector": [
+        -0.085727654,
+        0.994335788,
+        0.062826028
+       ],
+       "spare_origin": [
+        0.208294582,
+        -7.6344e-05,
+        -0.024258123
+       ]
       }
      ]
     },
@@ -56,19 +76,39 @@
      "spare_list": [
       {
        "spare_support_dimension_width": 0.00398,
-       "spare_support_dimension_height": 0.01499,
-       "spare_position_factor": 0.321,
+       "spare_support_dimension_height": 0.01434,
+       "spare_position_factor": 0.3199,
        "spare_length": null,
        "spare_start": 0.0,
-       "spare_mode": "standard_backward"
+       "spare_mode": "normal",
+       "spare_vector": [
+        0.0,
+        0.998848209,
+        0.04798182
+       ],
+       "spare_origin": [
+        0.13675,
+        0.023030025,
+        -0.0179897
+       ]
       },
       {
        "spare_support_dimension_width": 0.00302,
        "spare_support_dimension_height": 0.00697,
-       "spare_position_factor": 0.7872,
+       "spare_position_factor": 0.7857,
        "spare_length": null,
        "spare_start": 0.0,
-       "spare_mode": "standard_backward"
+       "spare_mode": "normal",
+       "spare_vector": [
+        -0.085759191,
+        0.994701579,
+        0.056693287
+       ],
+       "spare_origin": [
+        0.206282345,
+        0.023263139,
+        -0.022783443
+       ]
       }
      ]
     },
@@ -86,27 +126,47 @@
      "spare_list": [
       {
        "spare_support_dimension_width": 0.00398,
-       "spare_support_dimension_height": 0.01431,
-       "spare_position_factor": 0.3145,
+       "spare_support_dimension_height": 0.0135,
+       "spare_position_factor": 0.3136,
        "spare_length": null,
        "spare_start": 0.0,
-       "spare_mode": "standard_backward"
+       "spare_mode": "normal",
+       "spare_vector": [
+        0.0,
+        0.998932406,
+        0.046195768
+       ],
+       "spare_origin": [
+        0.13675,
+        0.063071078,
+        -0.016066242
+       ]
       },
       {
        "spare_support_dimension_width": 0.00302,
-       "spare_support_dimension_height": 0.00799,
-       "spare_position_factor": 0.7694,
+       "spare_support_dimension_height": 0.00772,
+       "spare_position_factor": 0.7684,
        "spare_length": null,
        "spare_start": 0.0,
-       "spare_mode": "standard_backward"
+       "spare_mode": "normal",
+       "spare_vector": [
+        -0.085774442,
+        0.994878463,
+        0.05347513
+       ],
+       "spare_origin": [
+        0.202832098,
+        0.063281779,
+        -0.02050257
+       ]
       }
      ],
      "trailing_edge_device": {
       "name": "Querruder",
       "role": "aileron",
       "label": "Querruder 26/27/28",
-      "rel_chord_root": 0.7793,
-      "rel_chord_tip": 0.7628,
+      "rel_chord_root": 0.7803,
+      "rel_chord_tip": 0.7624,
       "hinge_spacing": 0.3,
       "side_spacing_root": 0.37,
       "side_spacing_tip": 0.0,
@@ -136,7 +196,7 @@
      },
      "control_surface": {
       "name": "Querruder",
-      "hinge_point": 0.7793,
+      "hinge_point": 0.7803,
       "symmetric": false,
       "deflection": 0.0
      }
@@ -155,27 +215,47 @@
      "spare_list": [
       {
        "spare_support_dimension_width": 0.00398,
-       "spare_support_dimension_height": 0.01324,
-       "spare_position_factor": 0.3084,
+       "spare_support_dimension_height": 0.01254,
+       "spare_position_factor": 0.3074,
        "spare_length": null,
        "spare_start": 0.0,
-       "spare_mode": "standard_backward"
+       "spare_mode": "normal",
+       "spare_vector": [
+        0.0,
+        0.999011454,
+        0.044453517
+       ],
+       "spare_origin": [
+        0.13675,
+        0.126915532,
+        -0.013113746
+       ]
       },
       {
        "spare_support_dimension_width": 0.00302,
-       "spare_support_dimension_height": 0.00783,
-       "spare_position_factor": 0.7514,
+       "spare_support_dimension_height": 0.00728,
+       "spare_position_factor": 0.7505,
        "spare_length": null,
        "spare_start": 0.0,
-       "spare_mode": "standard_backward"
+       "spare_mode": "normal",
+       "spare_vector": [
+        -0.085788506,
+        0.995041599,
+        0.050324439
+       ],
+       "spare_origin": [
+        0.197329998,
+        0.127099401,
+        -0.017072346
+       ]
       }
      ],
      "trailing_edge_device": {
       "name": "Querruder",
       "role": "aileron",
       "label": "Querruder 26/27/28",
-      "rel_chord_root": 0.7623,
-      "rel_chord_tip": 0.7581,
+      "rel_chord_root": 0.7624,
+      "rel_chord_tip": 0.7565,
       "hinge_spacing": 0.3,
       "side_spacing_root": 0.0,
       "side_spacing_tip": 0.0,
@@ -192,7 +272,7 @@
      },
      "control_surface": {
       "name": "Querruder",
-      "hinge_point": 0.7623,
+      "hinge_point": 0.7624,
       "symmetric": false,
       "deflection": 0.0
      }
@@ -211,27 +291,47 @@
      "spare_list": [
       {
        "spare_support_dimension_width": 0.00398,
-       "spare_support_dimension_height": 0.01224,
-       "spare_position_factor": 0.3083,
+       "spare_support_dimension_height": 0.01194,
+       "spare_position_factor": 0.3068,
        "spare_length": null,
        "spare_start": 0.0,
-       "spare_mode": "standard_backward"
+       "spare_mode": "normal",
+       "spare_vector": [
+        0.0,
+        0.999189746,
+        0.040247387
+       ],
+       "spare_origin": [
+        0.13675,
+        0.184860783,
+        -0.010535327
+       ]
       },
       {
        "spare_support_dimension_width": 0.00302,
-       "spare_support_dimension_height": 0.00739,
-       "spare_position_factor": 0.7463,
+       "spare_support_dimension_height": 0.00677,
+       "spare_position_factor": 0.7446,
        "spare_length": null,
        "spare_start": 0.0,
-       "spare_mode": "standard_backward"
+       "spare_mode": "normal",
+       "spare_vector": [
+        -0.085816492,
+        0.995366197,
+        0.043378136
+       ],
+       "spare_origin": [
+        0.192336434,
+        0.185018622,
+        -0.014143069
+       ]
       }
      ],
      "trailing_edge_device": {
       "name": "Querruder",
       "role": "aileron",
       "label": "Querruder 26/27/28",
-      "rel_chord_root": 0.7582,
-      "rel_chord_tip": 0.7654,
+      "rel_chord_root": 0.7565,
+      "rel_chord_tip": 0.7659,
       "hinge_spacing": 0.3,
       "side_spacing_root": 0.0,
       "side_spacing_tip": 0.0,
@@ -248,7 +348,7 @@
      },
      "control_surface": {
       "name": "Querruder",
-      "hinge_point": 0.7582,
+      "hinge_point": 0.7565,
       "symmetric": false,
       "deflection": 0.0
      }
@@ -267,27 +367,47 @@
      "spare_list": [
       {
        "spare_support_dimension_width": 0.00398,
-       "spare_support_dimension_height": 0.01183,
-       "spare_position_factor": 0.3124,
+       "spare_support_dimension_height": 0.01119,
+       "spare_position_factor": 0.3113,
        "spare_length": null,
        "spare_start": 0.0,
-       "spare_mode": "standard_backward"
+       "spare_mode": "normal",
+       "spare_vector": [
+        0.0,
+        0.999507119,
+        0.031392979
+       ],
+       "spare_origin": [
+        0.13675,
+        0.208849473,
+        -0.009569062
+       ]
       },
       {
        "spare_support_dimension_width": 0.00302,
-       "spare_support_dimension_height": 0.00701,
-       "spare_position_factor": 0.7544,
+       "spare_support_dimension_height": 0.00586,
+       "spare_position_factor": 0.7538,
        "spare_length": null,
        "spare_start": 0.0,
-       "spare_mode": "standard_backward"
+       "spare_mode": "normal",
+       "spare_vector": [
+        -0.085862443,
+        0.995899169,
+        0.028504125
+       ],
+       "spare_origin": [
+        0.190270265,
+        0.208983661,
+        -0.013098671
+       ]
       }
      ],
      "trailing_edge_device": {
       "name": "Querruder",
       "role": "aileron",
       "label": "Querruder 26/27/28",
-      "rel_chord_root": 0.7677,
-      "rel_chord_tip": 0.7887,
+      "rel_chord_root": 0.7659,
+      "rel_chord_tip": 0.7928,
       "hinge_spacing": 0.3,
       "side_spacing_root": 0.0,
       "side_spacing_tip": 0.0,
@@ -304,7 +424,7 @@
      },
      "control_surface": {
       "name": "Querruder",
-      "hinge_point": 0.7677,
+      "hinge_point": 0.7659,
       "symmetric": false,
       "deflection": 0.0
      }
@@ -324,11 +444,21 @@
      "spare_list": [
       {
        "spare_support_dimension_width": 0.00398,
-       "spare_support_dimension_height": 0.01156,
-       "spare_position_factor": 0.3049,
+       "spare_support_dimension_height": 0.01057,
+       "spare_position_factor": 0.322,
        "spare_length": null,
        "spare_start": 0.0,
-       "spare_mode": "follow"
+       "spare_mode": "normal",
+       "spare_vector": [
+        0.0,
+        0.999861949,
+        0.016615755
+       ],
+       "spare_origin": [
+        0.13675,
+        0.226464385,
+        -0.009015805
+       ]
       }
      ]
     },
@@ -347,11 +477,21 @@
      "spare_list": [
       {
        "spare_support_dimension_width": 0.00202,
-       "spare_support_dimension_height": 0.01121,
-       "spare_position_factor": 0.3306,
+       "spare_support_dimension_height": 0.00971,
+       "spare_position_factor": 0.3292,
        "spare_length": null,
        "spare_start": 0.0,
-       "spare_mode": "follow"
+       "spare_mode": "normal",
+       "spare_vector": [
+        0.0,
+        0.999997478,
+        0.002246064
+       ],
+       "spare_origin": [
+        0.13675,
+        0.234973635,
+        -0.008874398
+       ]
       }
      ]
     },
@@ -370,11 +510,21 @@
      "spare_list": [
       {
        "spare_support_dimension_width": 0.00202,
-       "spare_support_dimension_height": 0.01057,
-       "spare_position_factor": 0.33,
+       "spare_support_dimension_height": 0.00859,
+       "spare_position_factor": 0.329,
        "spare_length": null,
        "spare_start": 0.0,
-       "spare_mode": "follow"
+       "spare_mode": "normal",
+       "spare_vector": [
+        0.0,
+        0.999855574,
+        -0.016995043
+       ],
+       "spare_origin": [
+        0.13675,
+        0.243496856,
+        -0.008855254
+       ]
       }
      ]
     },
@@ -393,11 +543,21 @@
      "spare_list": [
       {
        "spare_support_dimension_width": 0.00201,
-       "spare_support_dimension_height": 0.00943,
-       "spare_position_factor": 0.3213,
+       "spare_support_dimension_height": 0.00737,
+       "spare_position_factor": 0.3212,
        "spare_length": null,
        "spare_start": 0.0,
-       "spare_mode": "follow"
+       "spare_mode": "normal",
+       "spare_vector": [
+        0.0,
+        0.999169627,
+        -0.040743788
+       ],
+       "spare_origin": [
+        0.13675,
+        0.251524205,
+        -0.008991699
+       ]
       }
      ]
     },
@@ -416,11 +576,21 @@
      "spare_list": [
       {
        "spare_support_dimension_width": 0.00201,
-       "spare_support_dimension_height": 0.00795,
-       "spare_position_factor": 0.3034,
+       "spare_support_dimension_height": 0.00564,
+       "spare_position_factor": 0.3045,
        "spare_length": null,
        "spare_start": 0.0,
-       "spare_mode": "follow"
+       "spare_mode": "normal",
+       "spare_vector": [
+        0.0,
+        0.996963091,
+        -0.077875515
+       ],
+       "spare_origin": [
+        0.13675,
+        0.258060687,
+        -0.009258241
+       ]
       }
      ]
     },
@@ -439,11 +609,21 @@
      "spare_list": [
       {
        "spare_support_dimension_width": 0.00201,
-       "spare_support_dimension_height": 0.00579,
-       "spare_position_factor": 0.2569,
+       "spare_support_dimension_height": 0.00399,
+       "spare_position_factor": 0.2624,
        "spare_length": null,
        "spare_start": 0.0,
-       "spare_mode": "follow"
+       "spare_mode": "normal",
+       "spare_vector": [
+        0.0,
+        0.989103913,
+        -0.147219052
+       ],
+       "spare_origin": [
+        0.13675,
+        0.264604747,
+        -0.009769416
+       ]
       }
      ]
     },
@@ -462,11 +642,21 @@
      "spare_list": [
       {
        "spare_support_dimension_width": 0.002,
-       "spare_support_dimension_height": 0.00091,
-       "spare_position_factor": 0.172,
+       "spare_support_dimension_height": 0.00224,
+       "spare_position_factor": 0.1903,
        "spare_length": 0.001858,
        "spare_start": 0.0,
-       "spare_mode": "follow"
+       "spare_mode": "normal",
+       "spare_vector": [
+        0.0,
+        0.944231768,
+        -0.329281596
+       ],
+       "spare_origin": [
+        0.13675,
+        0.26864426,
+        -0.01037066
+       ]
       }
      ]
     },
@@ -1132,8 +1322,8 @@
       "name": "Seitenruder",
       "role": "rudder",
       "label": "Seitenruder 15.d",
-      "rel_chord_root": 0,
-      "rel_chord_tip": 0,
+      "rel_chord_root": 0.0,
+      "rel_chord_tip": 0.0,
       "hinge_spacing": 0.3,
       "side_spacing_root": 0.0,
       "side_spacing_tip": 0.0,
@@ -1163,7 +1353,7 @@
      },
      "control_surface": {
       "name": "Seitenruder",
-      "hinge_point": 0,
+      "hinge_point": 0.0,
       "symmetric": true,
       "deflection": 0.0
      }
@@ -1184,8 +1374,8 @@
       "name": "Seitenruder",
       "role": "rudder",
       "label": "Seitenruder 15.d",
-      "rel_chord_root": 0,
-      "rel_chord_tip": 0,
+      "rel_chord_root": 0.0,
+      "rel_chord_tip": 0.0,
       "hinge_spacing": 0.3,
       "side_spacing_root": 0.0,
       "side_spacing_tip": 0.0,
@@ -1215,7 +1405,7 @@
      },
      "control_surface": {
       "name": "Seitenruder",
-      "hinge_point": 0,
+      "hinge_point": 0.0,
       "symmetric": true,
       "deflection": 0.0
      }
@@ -1236,8 +1426,8 @@
       "name": "Seitenruder",
       "role": "rudder",
       "label": "Seitenruder 15.d",
-      "rel_chord_root": 0,
-      "rel_chord_tip": 0,
+      "rel_chord_root": 0.0,
+      "rel_chord_tip": 0.0,
       "hinge_spacing": 0.3,
       "side_spacing_root": 0.0,
       "side_spacing_tip": 0.0,
@@ -1267,7 +1457,7 @@
      },
      "control_surface": {
       "name": "Seitenruder",
-      "hinge_point": 0,
+      "hinge_point": 0.0,
       "symmetric": true,
       "deflection": 0.0
      }
@@ -1288,8 +1478,8 @@
       "name": "Seitenruder",
       "role": "rudder",
       "label": "Seitenruder 15.d",
-      "rel_chord_root": 0,
-      "rel_chord_tip": 0,
+      "rel_chord_root": 0.0,
+      "rel_chord_tip": 0.0,
       "hinge_spacing": 0.3,
       "side_spacing_root": 0.0,
       "side_spacing_tip": 0.0,
@@ -1319,7 +1509,7 @@
      },
      "control_surface": {
       "name": "Seitenruder",
-      "hinge_point": 0,
+      "hinge_point": 0.0,
       "symmetric": true,
       "deflection": 0.0
      }
@@ -1340,8 +1530,8 @@
       "name": "Seitenruder",
       "role": "rudder",
       "label": "Seitenruder 15.d",
-      "rel_chord_root": 0,
-      "rel_chord_tip": 0,
+      "rel_chord_root": 0.0,
+      "rel_chord_tip": 0.0,
       "hinge_spacing": 0.3,
       "side_spacing_root": 0.0,
       "side_spacing_tip": 0.0,
@@ -1371,7 +1561,7 @@
      },
      "control_surface": {
       "name": "Seitenruder",
-      "hinge_point": 0,
+      "hinge_point": 0.0,
       "symmetric": true,
       "deflection": 0.0
      }
@@ -1392,8 +1582,8 @@
       "name": "Seitenruder",
       "role": "rudder",
       "label": "Seitenruder 15.d",
-      "rel_chord_root": 0,
-      "rel_chord_tip": 0.0019,
+      "rel_chord_root": 0.0,
+      "rel_chord_tip": 0.002,
       "hinge_spacing": 0.3,
       "side_spacing_root": 0.0,
       "side_spacing_tip": 0.0,
@@ -1423,7 +1613,7 @@
      },
      "control_surface": {
       "name": "Seitenruder",
-      "hinge_point": 0,
+      "hinge_point": 0.0,
       "symmetric": true,
       "deflection": 0.0
      }
@@ -1444,7 +1634,7 @@
       "name": "Seitenruder",
       "role": "rudder",
       "label": "Seitenruder 15.d",
-      "rel_chord_root": 0.0019,
+      "rel_chord_root": 0.002,
       "rel_chord_tip": 0.7044,
       "hinge_spacing": 0.3,
       "side_spacing_root": 0.0,
@@ -1475,7 +1665,7 @@
      },
      "control_surface": {
       "name": "Seitenruder",
-      "hinge_point": 0.0019,
+      "hinge_point": 0.002,
       "symmetric": true,
       "deflection": 0.0
      }
@@ -1653,7 +1843,7 @@
       "role": "rudder",
       "label": "Seitenruder 15.d",
       "rel_chord_root": 0.5685,
-      "rel_chord_tip": 0.7809,
+      "rel_chord_tip": 0.781,
       "hinge_spacing": 0.3,
       "side_spacing_root": 0.0,
       "side_spacing_tip": 0.0,
@@ -1698,15 +1888,15 @@
      "twist": 0.0,
      "dihedral": 0.0,
      "airfoil": "./bryan_platte.dat",
-     "x_sec_type": "tip",
-     "tip_type": "round",
+     "x_sec_type": "segment",
+     "tip_type": null,
      "spare_list": [],
      "trailing_edge_device": {
       "name": "Seitenruder",
       "role": "rudder",
       "label": "Seitenruder 15.d",
-      "rel_chord_root": 0.7809,
-      "rel_chord_tip": 1,
+      "rel_chord_root": 0.781,
+      "rel_chord_tip": 1.0,
       "hinge_spacing": 0.3,
       "side_spacing_root": 0.0,
       "side_spacing_tip": 0.0,
@@ -1736,10 +1926,24 @@
      },
      "control_surface": {
       "name": "Seitenruder",
-      "hinge_point": 0.7809,
+      "hinge_point": 0.781,
       "symmetric": true,
       "deflection": 0.0
      }
+    },
+    {
+     "xyz_le": [
+      0.4550042249062694,
+      0.0,
+      0.0868612524173109
+     ],
+     "chord": 0.012897520851860902,
+     "twist": 0.0,
+     "dihedral": 0.0,
+     "airfoil": "./bryan_platte.dat",
+     "x_sec_type": "tip",
+     "tip_type": "round",
+     "spare_list": []
     },
     {
      "xyz_le": [
