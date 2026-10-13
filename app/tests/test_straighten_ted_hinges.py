@@ -132,12 +132,14 @@ def test_rudder_ends_where_the_straight_hinge_leaves_the_outline():
     assert cut["xyz_le"][0] + cut["chord"] == pytest.approx(0.50)
     # the new section lies on the old outline: LE and TE interpolate linearly
     assert cut["xyz_le"][0] == pytest.approx(0.455)
-    assert "trailing_edge_device" not in cut and "control_surface" not in cut
+    assert "trailing_edge_device" not in cut
+    assert "control_surface" not in cut
     assert new[2]["trailing_edge_device"]["rel_chord_tip"] == 1.0
     assert new[2]["trailing_edge_device"]["rel_chord_root"] == round(0.06 / 0.09, 4)
     # the tip classification moves to the outermost real segment
     assert (cut["x_sec_type"], cut["tip_type"]) == ("tip", "round")
-    assert new[2].get("x_sec_type") == "segment" and new[2].get("tip_type") is None
+    assert new[2].get("x_sec_type") == "segment"
+    assert new[2].get("tip_type") is None
     # a spar in the split segment continues on the same line in the new segment
     assert cut["spare_list"] == [{"spare_position_factor": 0.3, "spare_mode": "follow"}]
     assert report["inserted"] == [3]
@@ -167,7 +169,8 @@ def test_full_chord_rudder_below_the_hinge_keeps_zero_and_is_not_cut():
 
     new, report = tool.rebuild(xs)
 
-    assert len(new) == 4 and report["inserted"] == []
+    assert len(new) == 4
+    assert report["inserted"] == []
     assert new[0]["trailing_edge_device"]["rel_chord_root"] == 0.0
     assert all("trailing_edge_device" in new[i] for i in range(3))
 
@@ -201,6 +204,7 @@ def test_rebuild_is_idempotent_on_its_own_output():
 
     again, report = tool.rebuild(new)
 
-    assert report["inserted"] == [] and report["removed"] == []
+    assert report["inserted"] == []
+    assert report["removed"] == []
     assert len(again) == len(new)
     assert again[3]["xyz_le"] == new[3]["xyz_le"]
