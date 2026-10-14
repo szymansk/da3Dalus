@@ -33,9 +33,12 @@ applications:
     bind: {n_load: {const: -1, source: "definition of the load factor n = L/W (as stated in max-mass-structure); inverted level flight means L = −W"}}
     produce: {v_s: null, cl_max: inverted-max-lift-coefficient, alpha_s: null, polar: null}
 preconditions:
-  - {id: cl_max_at_stall_reynolds_number, parameter: cl_max, on_violation: error}
   - {id: rho_at_evaluation_altitude, parameter: rho, on_violation: warning}
-  - {id: alpha_range_past_inverted_stall, parameter: cl_max, on_violation: error, applications: [inverted]}
+postconditions:
+  - {id: cl_max_at_stall_reynolds_number, parameter: cl_max, on_violation: error}
+  - {id: alpha_range_past_inverted_stall, parameter: polar, on_violation: error, applications: [inverted]}
+# ESCALATED: optimum_at_first_cl_peak (and its inverted mirror) — the entry states "the optimum must be
+# the first C_L peak, checked against the sweep" only as an approval step, not per evaluation.
 ---
 
 # Stall speed from the lift balance at C_L,max
@@ -136,7 +139,7 @@ polar and would have been a second producer of the same quantity (A7, ADR 0022).
 **Bracketing — K32 mirrored.** The α sweep runs to the **first negative-`C_L` trough** before IPOPT, and
 `α` is restricted to that branch. The trough must lie strictly inside the sampled range: the default
 sweep starts at −15°, and a cambered section can stall inverted beyond that; a range chosen for the
-upright polar is not automatically sufficient for the inverted one (precondition
+upright polar is not automatically sufficient for the inverted one (postcondition
 `alpha_range_past_inverted_stall`). If the trough sits on the boundary, there is **no value** — a
 boundary sample is never passed off as `C_L,min` (ADR 0020). Two sweeps for two named conditions are not
 two authorities for one polar.
@@ -177,7 +180,7 @@ The formula is exact. These are the conditions its **inputs** must satisfy for a
 application of it to mean what it claims. A violated precondition is a defect of the
 path, not of the law.
 
-### `cl_max` — ⚪
+### `cl_max` — ⚪ (a postcondition since #1181: `cl_max` is an output of the problem)
 
 **Requirement.** Evaluated at the Reynolds number of the stall condition itself, not at cruise and not from a 2D table at Re ~ 1e6.
 
