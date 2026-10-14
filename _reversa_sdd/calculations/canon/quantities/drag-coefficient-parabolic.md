@@ -19,4 +19,4 @@ Value of the parabolic drag polar `C_D0 + k·C_L²` — an approximation of the 
 
 **Produced by.** [[drag-polar]]
 
-**Used by.** [[sink-rate]] · [[stall-onset-detection]]
+**Used by.** [[sink-rate]]

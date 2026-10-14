@@ -15,10 +15,13 @@ tags:
   - shape/law
   - kind/procedure
   - status/draft
-inputs: {cl: lift-coefficient, alpha: angle-of-attack}
+inputs: {polar: null}
+# ESCALATED: polar — the sampled polar this entry reads has no quantity and no producer the
+# text states (stall-speed's alpha sweep at V_S is a candidate, but the entry does not say it
+# publishes the sweep); its evaluation condition, and so its slug, is open.
 outputs: {cl_min: inverted-max-lift-coefficient}
 preconditions:
-  - {id: alpha_range_past_inverted_stall, parameter: alpha, on_violation: error}
+  - {id: alpha_range_past_inverted_stall, parameter: polar, on_violation: error}
   - {id: cl_min_named_by_evaluation_condition, parameter: cl_min, on_violation: warning}
 ---
 
@@ -30,7 +33,7 @@ preconditions:
 C_L,min = min over alpha of C_L(alpha)
 ```
 
-**Produces** [[inverted-max-lift-coefficient]]  ·  **from** [[lift-coefficient]] · [[angle-of-attack]]
+**Produces** [[inverted-max-lift-coefficient]]  ·  **from** a polar (escalated, see the front matter)
 
 **Kind: a procedure.** There is no closed form, so an algorithm stands in its place. Source and scale are asked as of any entry — a procedure is not source-free: it either implements a published standard or solves a stated equation. **On top of that** it must say **under which assumptions it holds** and **when it converges**, including what it returns when it does not.
 

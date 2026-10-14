@@ -446,6 +446,7 @@ Closed. The unit is the unit of the values.
 | `scalar` | one number in the declared unit (an interval over worlds when the producer has `uncertainty: interval`) |
 | `airplane` | the aircraft model: geometry, sections, airfoils, components — not a number |
 | `curve` | one value per point of a swept variable (the crow mix `s`, the mass `m`), named in the symbol |
+| `polar` | the sampled whole-aircraft coefficients over angle of attack — α, C_L, C_D, C_m, of equal length — at one evaluation condition, which the slug names (A2) |
 | `curve_pair` | two curves over the same swept variable that bound a range — a lower and an upper edge |
 
 ### One example per kind

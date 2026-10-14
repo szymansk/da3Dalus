@@ -517,8 +517,8 @@ Maintainer; `check_canon.py` meldet es als *open*.
 **Typen und Bedeutungen**
 
 - `lift-coefficient`: eine Größe, zwei Bedeutungen — „either produced by the AeroBuildup sweep or demanded by the level-flight balance“ (A2).
-- `inverted-max-lift-coefficient`, `stall-onset-detection`: binden `lift-coefficient` (Skalar, Erzeuger `lift-coefficient-required`), die Form braucht die abgetastete Polare C_L(α); eine Polaren-Größe gibt es nicht.
-- `stall-onset-detection`: bindet `drag-coefficient-parabolic` (C_D,par), tastet aber das C_D der Solver-Polare ab (`drag-polar`, Umbenennung 02.10.2026).
+- `inverted-max-lift-coefficient`, `stall-onset-detection`: binden `lift-coefficient` (Skalar, Erzeuger `lift-coefficient-required`), die Form braucht die abgetastete Polare C_L(α); eine Polaren-Größe gibt es nicht. **Teilweise behoben (Architekt, 14.10.2026):** neuer Typ `polar`; beide Einträge lesen `inputs: {polar: …}`. Die Polaren-Größe und ihr Erzeuger bleiben eskaliert — der Text nennt keinen (Kandidat: der α-Sweep von `stall-speed` bei V_S).
+- `stall-onset-detection`: bindet `drag-coefficient-parabolic` (C_D,par), tastet aber das C_D der Solver-Polare ab (`drag-polar`, Umbenennung 02.10.2026). **Behoben mit dem Typ `polar` (#1181)** — die Bindung an C_D,par entfällt.
 - `sink-rate`: die Form nennt C_D, gebunden ist C_D,par.
 - `stall-wing-loading-limit`: die Form sagt C_L,max,clean, gebunden ist `max-lift-coefficient` (C_L,max,stall aus der Stall-Optimierung, braucht ein Flugzeug), der O12-Text sagt „aus dem gewählten Profil“ — drei verschiedene C_L,max.
 - `glide-distance-from-ratio`: bindet `altitude` (Auswertehöhe der Atmosphäre) als Gleithöhe über Grund — eine Größe, zwei Bedeutungen.
