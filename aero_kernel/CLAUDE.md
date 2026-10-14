@@ -84,8 +84,13 @@ failure.
 - **`DEBUG`** for every engine step (node start/end/duration/status, cache hit/miss, world, solver call and
   settings), **`INFO`** one line per `compute()` and per import, **`WARNING`** only for degraded operation
   (tool missing, timeout, dead worker), **`ERROR`** via `logger.exception` for `internal` errors.
-- Domain warnings and expected outcomes (`not_applicable`, `skipped`, `not_converged`) are in the result,
-  not at `WARNING` level.
+- **Every default taken is logged** (maintainer, 2026-10-14), once per call and slug, with slug, value,
+  unit, source and `call_id`: physical constants (`role: input`) at `INFO`, design targets
+  (`role: target`) at `WARNING`. A target default is also a `default_target_used` practice warning in the
+  result; every default is in `provenance.defaults_used`. An absent `optional:` parameter: `INFO` line
+  with the route taken.
+- Other domain warnings and expected outcomes (`not_applicable`, `skipped`, `not_converged`) are in the
+  result, not at `WARNING` level.
 - Context in `extra` (`call_id`, `quantity`, `formula`, `world`, `scope`); lazy `%s` formatting; English;
   never full geometry or polars, only hashes and the values that matter.
 - Pool workers do not log; they return diagnostics and the adapter logs them.

@@ -226,6 +226,8 @@ Sources:
   from the section chords in metres, the evaluated V and the speed of sound at the altitude. Not in input
   validation, which does not know V.
 - violated or unchecked preconditions
+- a design target taken from its canon default (`default_target_used`, ch. 8.11)
+- the route an `optional:` parameter selected (ch. 8.5)
 - active bounds in the optimiser
 - the "not validated" marker of A11
 
@@ -260,6 +262,7 @@ No internal paths or mechanisms in any field (ADR 0019).
 - canon model hash and its source commit (the canon state)
 - tool versions (aerosandbox, NeuralFoil model, AVL)
 - accuracy tier (A3) and solver settings
+- `defaults_used`: every canon default the call took, as `{slug, value, unit, source}` (ch. 8.11)
 
 **Cache key** = SHA-256 over the canonical JSON of:
 - the scope (see below), the application id and the world assignment
@@ -565,11 +568,19 @@ class ComputeRequest(BaseModel):
 - The quantity `airplane` (type `airplane`) is `AircraftInput.airplane`.
 - Every other quantity with `role: input` or `role: target` is `AircraftInput.values[<slug>]`. Today these
   are `aircraft-mass`, `centre-of-gravity`, `altitude`, `flight-speed`, `angle-of-attack`, `load-factor`,
-  `gravity`, `sea-level-air-density` and the six `*-target` quantities. Assumptions are values like any
+  `gravity`, `sea-level-air-density` and the `*-target` quantities. Assumptions are values like any
   other (R1); whether a value is assumed or measured is not the kernel's concern.
-- A missing value falls back to the quantity's `default` in the canon model (e.g. physical constants, A5).
-  This is no warning: the default is declared in the canon with its source, it is not a substitution in
-  the sense of ADR 0020. The provenance lists every default used.
+- A missing value falls back to the quantity's `default` in the canon model. Every default taken is
+  listed in `provenance.defaults_used` and **logged** (maintainer, 2026-10-14; ch. 8.14). Whether it is
+  also a result warning depends on the role:
+  - **`role: input`** (physical constants such as `gravity` 9.80665 m/s², `sea-level-air-density`; A5):
+    no warning. The constant is the value, sourced in the canon, not a substitute for a caller's choice.
+    Logged at `INFO`.
+  - **`role: target`** (e.g. the stall margins `approach-/touchdown-/takeoff-speed-margin-target`): a
+    `practice` warning `default_target_used`, `origin` = the target slug, message with value and source,
+    inherited by every quantity whose subtree reads it (ch. 8.2). A target is the designer's decision; a
+    default stands in for one the designer did not make, which is a declared substitution in the sense of
+    ADR 0020, and domain practice because it carries a source. Logged at `WARNING`.
   Without a default, the quantities that need it get `invalid_input`, code `missing_input`, with
   `input_path = values.<slug>`; the rest of the request is computed. **Exception:** an application whose
   `given` names the missing slug does not exist, so its outputs are `not_applicable`, code `not_given`
@@ -708,11 +719,17 @@ They are the first thing a developer or an agent reads to check a change and to 
 |---|---|---|
 | `DEBUG` | every step of the engine, to check the code runs as intended | subtree and order; per node: start, end, duration, status; cache hit/miss with key prefix; world assignment; solver call with its settings and duration; precondition result |
 | `INFO` | one line per `compute()` call and per import | request (slugs, `include_long_runs`, budget), result counts per status, total duration, cache hits; importer: entries added/changed/removed |
-| `WARNING` | the kernel ran, but in a degraded way an operator should know about | tool unavailable, time budget exceeded, a process-pool worker died, a disk-cache entry unreadable and recomputed |
+| `WARNING` | the kernel ran, but in a degraded way an operator should know about, or it decided something on the designer's behalf | tool unavailable, time budget exceeded, a process-pool worker died, a disk-cache entry unreadable and recomputed; **a design target taken from its default** |
 | `ERROR` | a programming error | every `internal` error, with `logger.exception` and the traceback |
 
-- **Not logged as `WARNING`:** domain warnings (regime, preconditions, `conflicting_mass`) and expected
-  outcomes (`not_applicable`, `skipped`, `not_converged`). They are in the result; at most `DEBUG`.
+- **Every default taken is logged** (maintainer, 2026-10-14), once per `compute()` call and slug, when
+  the input is resolved, so also on a full cache hit: `"default used: %s = %s %s (%s)"` with slug, value,
+  unit and source, `extra` = `call_id`, `quantity` (the slug), `role`. Level by role: `input` (physical
+  constants) → `INFO`, `target` → `WARNING` (ch. 8.11). The same applies to an `optional:` parameter that
+  is absent: one `INFO` line per call and parameter, `"optional input absent: %s.%s, route %s"` (formula,
+  parameter, route), alongside its result warning (ch. 8.5).
+- **Otherwise not logged as `WARNING`:** domain warnings (regime, preconditions, `conflicting_mass`) and
+  expected outcomes (`not_applicable`, `skipped`, `not_converged`). They are in the result; at most `DEBUG`.
 - **No bulk data.** Geometry and polars are never logged in full, only their hash, size and the values that
   matter for the step. No user data above `DEBUG`.
 - **Process-pool workers do not log.** A worker returns its diagnostics (duration, iterations, solver status)
@@ -775,6 +792,7 @@ They are the first thing a developer or an agent reads to check a change and to 
 | Q28 | Mass differs from the geometry's `total_mass_kg` | computed with the passed mass; `conflicting_mass` warning on every quantity that depends on the mass, none on the others |
 | Q29 | Target not set | `max-roll-rate-cruise` (`given: [cruise-speed-target]`) is `not_applicable`, code `not_given`; a quantity reading `cruise-speed-target` without `given` gets `missing_input` |
 | Q30 | Embedded relation and optional parameter | with `flight-speed` = 0, `thrust-at-airspeed` equals the thrust inside `static-thrust-to-weight` bit for bit (one relation function); without `motor-circuit-resistance` both run route A with a `practice` warning naming the route, no `missing_input` |
+| Q31 | Defaults taken | without `gravity` and without `approach-speed-margin-target`: `approach-speed` computes; `provenance.defaults_used` lists both with value and source; `caplog` has one `INFO` line for `gravity` and one `WARNING` line for the target, each with `call_id`, also on a second, cached call; the result carries `default_target_used` (`practice`) on `approach-speed` and its dependents, and no warning for `gravity` |
 
 ## 11. Risks and technical debt
 
