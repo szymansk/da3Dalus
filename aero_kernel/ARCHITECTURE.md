@@ -130,6 +130,7 @@ aero_kernel/
   cache.py          NodeStore protocol; MemoryCache (LRU), DiskCache
   validate.py       physical admissibility; regime warnings (ADR 0028)
   errors.py         error catalogue (ch. 8.1)
+  __init__.py       public API; adds the NullHandler to the `aero_kernel` logger (ch. 8.14)
   tools/            robustness.py (#1178)
   tests/            unit, property, golden, traceability and error tests
 ```
@@ -660,6 +661,39 @@ directly gets `missing_input`, its dependents `upstream_failed` with the cause i
 
 An error dominates: computing the long run would not help a node whose other input failed. A predecessor
 counts only if the node actually needs it; an unused output of a multi-output formula does not propagate.
+
+### 8.14 Logging
+
+Logs are **diagnostics**, not the contract: values, warnings and errors reach the caller only through the
+`ComputeResult` (ch. 8.3). Logs answer a different question: *did the code run the way it was meant to?*
+They are the first thing a developer or an agent reads to check a change and to trace an error.
+
+**Library rules.**
+- One logger per module, `logger = logging.getLogger(__name__)`, all below `aero_kernel`. The package root
+  adds only a `logging.NullHandler`. The kernel never configures handlers, levels or formats and never
+  calls `basicConfig`; that is the caller's job (app, pytest, scripts).
+- Messages are English (ADR 0029), lazily formatted (`logger.debug("cache hit %s", key)`), and carry the
+  context as `extra`: `call_id` (a short id per `compute()` call), `quantity`, `formula`, `application`,
+  `world`, `scope`. With `call_id` the lines of one call can be followed through concurrent tasks.
+
+**Levels.**
+
+| Level | What | Examples |
+|---|---|---|
+| `DEBUG` | every step of the engine, to check the code runs as intended | subtree and order; per node: start, end, duration, status; cache hit/miss with key prefix; world assignment; solver call with its settings and duration; precondition result |
+| `INFO` | one line per `compute()` call and per import | request (slugs, `include_long_runs`, budget), result counts per status, total duration, cache hits; importer: entries added/changed/removed |
+| `WARNING` | the kernel ran, but in a degraded way an operator should know about | tool unavailable, time budget exceeded, a process-pool worker died, a disk-cache entry unreadable and recomputed |
+| `ERROR` | a programming error | every `internal` error, with `logger.exception` and the traceback |
+
+- **Not logged as `WARNING`:** domain warnings (regime, preconditions, `conflicting_mass`) and expected
+  outcomes (`not_applicable`, `skipped`, `not_converged`). They are in the result; at most `DEBUG`.
+- **No bulk data.** Geometry and polars are never logged in full, only their hash, size and the values that
+  matter for the step. No user data above `DEBUG`.
+- **Process-pool workers do not log.** A worker returns its diagnostics (duration, iterations, solver status)
+  with its result; the adapter logs them in the parent process. That avoids lost or interleaved lines
+  from spawned processes.
+- **Tests use the logs.** Engine tests assert key `DEBUG` events with `caplog` (e.g. "cache hit", "node
+  skipped") where the log is the cheapest proof of behaviour, such as Q7 and Q18.
 
 ## 9. Decisions (references only)
 
