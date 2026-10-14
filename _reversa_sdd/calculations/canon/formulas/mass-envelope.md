@@ -30,6 +30,8 @@ inputs:
   d_prop: propeller-diameter
   airplane_to: airplane-takeoff
   airplane_ldg: airplane-landing
+  delta_e_up: elevator-deflection-up
+  delta_e_down: elevator-deflection-down
 outputs:
   speed_range: speed-range-over-mass
   roc_curve: climb-rate-over-mass
@@ -58,11 +60,11 @@ for each mass m (a sweep; the airplane's mass is one point of it):
   ROC_max(m)                best-rate-of-climb problem at mass m
   m_max,level:  maximize m   s.t.  exists V, alpha, n_prop:  L = m g,  T(V, n_prop) >= D(V, alpha)
   m_max,TO:     maximize m   s.t.  at V_TO(m), take-off configuration:  L = m g,  T - D >= 0
-  x_fwd(m):     most forward x_CG trimmable at the stall, landing configuration, full up elevator
-  x_aft(m):     most aft x_CG trimmable at V_max(m), full down elevator           (both as constructed)
+  x_fwd(m):     most forward x_CG trimmable at the stall, landing configuration, elevator at delta_e,up
+  x_aft(m):     most aft x_CG trimmable at V_max(m), elevator at delta_e,down     (both given design inputs)
 ```
 
-**Produces** [[speed-range-over-mass]] · [[climb-rate-over-mass]] · [[max-mass-level-flight]] · [[max-mass-lift-off]] · [[cg-envelope-over-mass]]  ·  **from** [[airplane]] · [[gravity]] · [[air-density]] · [[stall-speed-takeoff]] · [[takeoff-speed]] · [[neutral-point]] · [[motor-voltage-constant]] · [[motor-no-load-current]] · [[motor-circuit-resistance]] · [[battery-voltage]] · [[motor-max-power]] · [[propeller-diameter]] · [[airplane-takeoff]] · [[airplane-landing]]
+**Produces** [[speed-range-over-mass]] · [[climb-rate-over-mass]] · [[max-mass-level-flight]] · [[max-mass-lift-off]] · [[cg-envelope-over-mass]]  ·  **from** [[airplane]] · [[gravity]] · [[air-density]] · [[stall-speed-takeoff]] · [[takeoff-speed]] · [[neutral-point]] · [[motor-voltage-constant]] · [[motor-no-load-current]] · [[motor-circuit-resistance]] · [[battery-voltage]] · [[motor-max-power]] · [[propeller-diameter]] · [[airplane-takeoff]] · [[airplane-landing]] · [[elevator-deflection-up]] · [[elevator-deflection-down]]
 
 **Kind: an optimisation problem family, swept over the mass** (maintainer, 2026-10-02 —
 replaces the payload question: payload is *"how much mass may be added"*). Everything that
@@ -78,18 +80,18 @@ narrows with the take-off mass, as curves over `m`, and the masses at which it c
   take-off speed in take-off configuration: `m_max,TO`, where the excess thrust at `V_TO(m)`
   vanishes. It lies **below** `m_max,level`: an aircraft can still cruise and yet no longer climb
   out of the lift-off. (`V_TO(m)` keeps the take-off reserve: `V_TO(m) = V_S,TO(m) · V_TO/V_S,TO`.)
-- **Trim.** The CG range `[x_fwd(m), x_aft(m)]` in which the elevator, **as constructed**, trims
+- **Trim.** The CG range `[x_fwd(m), x_aft(m)]` in which the elevator, **at the given deflections** `δ_e,up` / `δ_e,down`, trims
   the aircraft over its whole speed range (Sadraey Eq. 12.90: trim from `V_S` to `V_max` at both
-  CG extremes): full up at the slow end (stall, landing configuration), full down at the fast
+  CG extremes): `δ_e,up` at the slow end (stall, landing configuration), `δ_e,down` at the fast
   end (`V_max(m)`). The neutral point stands beside it as the physical stability boundary; the
   canon reports which edge comes first and judges nothing (A10). A load `Δm` at `x_load` moves the
   CG by `Δm·(x_load − x_CG)/(m + Δm)` — whether that stays inside is read off, not computed here.
 
 **How the front edge is solved (BRYAN, 2026-10-02).** Hold the angle of attack at the stall angle
-`α_S(m)` of the stall-speed problem and leave the speed free: with full up elevator the tail
+`α_S(m)` of the stall-speed problem and leave the speed free: with the elevator at `δ_e,up` the tail
 download raises the trimmed stall speed, so trimming at the clean `V_S` is infeasible. Bound
-`x_CG < x_NP`: with full elevator, `Cm = 0` has a second root aft of the neutral point (the unstable
-branch). For a conventional tail the aft edge from full down elevator at `V_max` lies far behind the
+`x_CG < x_NP`: with the elevator at its given deflection, `Cm = 0` has a second root aft of the neutral point (the unstable
+branch). For a conventional tail the aft edge from the elevator at `δ_e,down` at `V_max` lies far behind the
 neutral point (BRYAN: > 90 % MAC), so the neutral point is the edge that comes first.
 
 **Front edge across methods (BRYAN, 2026-10-03, `bryan_fwd_trim_avl.py`):** AeroBuildup 14.3 % MAC, AVL

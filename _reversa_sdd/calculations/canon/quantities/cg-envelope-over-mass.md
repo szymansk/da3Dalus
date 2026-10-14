@@ -13,7 +13,7 @@ type: curve_pair
 
 # Trimmable CG range over the mass · `x_fwd(m), x_aft(m)`
 
-CG range in which the elevator, as constructed, trims the aircraft from the stall to V_max, as a function of the mass.
+CG range in which the elevator, at the given deflections (`elevator-deflection-up` / `-down`), trims the aircraft from the stall to V_max, as a function of the mass.
 
 **Unit.** `m`
 
