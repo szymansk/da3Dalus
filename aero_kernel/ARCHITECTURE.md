@@ -242,7 +242,7 @@ Sources:
 - `slug` and `unit` (SI)
 - `status`: `ok`, `not_applicable`, `skipped` or `error`
 - `reason` for every status other than `ok`: machine-readable `code` plus natural-language `message`
-  (`not_applicable`: the application's unmet condition; `skipped`: `long_run_not_included` or
+  (`not_applicable`: `condition_not_met`, `not_given` or `depends_on_not_applicable`, ch. 8.5; `skipped`: `long_run_not_included` or
   `depends_on_skipped`; `error`: see `error`)
 - `value` **or** `interval {min, max, worlds{assignment: value}}` (ch. 8.13). `value` is a float in the
   quantity's SI unit, or a structured value of the quantity's `type` (ch. 8.12).
@@ -343,9 +343,18 @@ quantity.
 
 - Every input parameter of the formula is bound either to a **quantity** or to a **constant with source**
   (ADR 0028). Every output parameter is bound to a quantity.
-- The condition is a predicate from a closed vocabulary over facts of the aircraft (`has_flap`,
-  `has_horizontal_tail`, …), defined in the canon (#1181) and implemented once in `graph.py`. No condition
-  means "always".
+- An application has at most two kinds of condition; without either it exists always:
+  - `when`: one term of the closed vocabulary over facts of the aircraft geometry (`has_vertical_tail`,
+    …). The canon `README.md` defines the vocabulary; each term is implemented once in `graph.py`.
+  - `given`: a list of input quantities (`role: input` or `target`, no `default`). The application exists
+    only if every one of them is supplied in `AircraftInput.values`. A target the designer did not set is
+    not a missing input but no requirement (ch. 8.11).
+  Unmet, the application's outputs are `not_applicable` with `reason.code` `condition_not_met` (`when`) or
+  `not_given` (`given`). Both kinds are declared in the entry; the importer never infers a condition.
+- **A named condition is a quantity, never a mechanism** (A2, ch. 8.13). A configured aircraft
+  (`airplane-landing`), a speed (`approach-speed`) or the static case (`thrust-static`) is its own
+  quantity, produced by its own application. There is no per-application override of an input, no
+  operating-point and no configuration field.
 - An entry without `applications:` has exactly one application: every parameter bound to its default
   quantity from `inputs:` / `outputs:`, condition "always".
 - **Keys are always parameter names** (snake_case), in the canon fields, in `x` and in the return value of
@@ -436,49 +445,27 @@ python -m aero_kernel.importer <canon-document-dir> [--check]
 | 5 Write | writes `canon_model.json` (sorted, stable formatting), its content hash, the source commit of the canon document and the importer version; writes `IMPORT_REPORT.md` (diff, findings, Appendix A table) | — |
 
 **What the importer reads (maintainer decision 2026-10-14, migration in #1181).** Every entry carries its
-structure in the front matter; the prose explains, the importer never reads it. The canon `README.md`
-defines the fields; this is the shape the importer requires:
+structure in the front matter; the prose explains, the importer never reads it. **The definition of the
+fields, the `when` vocabulary and the quantity types is the canon `README.md`, section "Machine-readable
+fields"** (in the canon document, #1181). This document does not repeat them, so the two cannot drift
+apart; the importer's JSON Schema is written against that section. What the importer adds on top:
 
-```yaml
-# formula entry
-canon: speed-from-stall-margin
-entry: formula
-kind: rating                      # law | procedure | optimization | fit | rating
-tool: APP                         # APP | ATM | GEO | AB | AVL | OPT | KAT | APC
-inputs:   {stall_speed: stall-speed-landing, margin: null}   # parameter → default quantity (null: bound per application)
-outputs:  {speed: approach-speed}
-applications:
-  - id: approach
-    bind:    {stall_speed: stall-speed-landing, margin: {const: <value>, source: "<citation>"}}
-    produce: {speed: approach-speed}
-  - id: takeoff
-    bind:    {stall_speed: stall-speed-takeoff, margin: {const: <value>, source: "<citation>"}}
-    produce: {speed: takeoff-speed}
-    when: has_flap                # closed vocabulary; absent = always
-preconditions:
-  - {id: <check-id>, on: stall_speed, on_violation: warning}   # warning | error
-uncertainty: interval             # optional; then
-worlds: [textbook, pappas, avl]
-cost: seconds                     # optional, interim (ch. 8.7)
-
-# quantity entry
-canon: aircraft-mass
-entry: quantity
-unit: kg
-role: input                       # input | derived | output | target
-type: scalar                      # scalar | airplane | polar | … (closed set, ch. 8.12)
-default: null                     # or {value: <value>, source: "<citation>"}
-```
-
-The values in the example are illustrative; the canon entries are the authority.
+- **Formula entries** are recognised by `entry: formula`, **quantity entries** by `kind: quantity`.
+- **Parsing.** Plain YAML with PyYAML `safe_load`. The canon uses no key or value that YAML 1.1 reads as a
+  boolean (`on`, `off`, `yes`, `no`, `y`, `n`); a precondition names its parameter with `parameter:`.
+  A boolean where the schema expects a string is a stage-1 finding.
+- **`# ESCALATED:` comments** mark an undecided field. An entry that carries one is a stage-1 finding: the
+  importer imports nothing until the maintainer has decided it (all or nothing, below).
+- **`cost:`** is taken only where the entry sets it; otherwise derived from `tool` (ch. 8.7).
 
 **The model** (`canon_model.json`, JSON Schema `canon_model.schema.json`) holds, per namespace: `quantities`
 (slug, symbol, unit, role, type, default) and `formulas` (slug, kind, tool, cost, inputs, outputs,
 applications, preconditions, worlds). These take the front-matter fields **1:1** with the same names and
 nesting, after normalisation: `bind` values are a quantity reference or `{const, source}`, `when` is a
-vocabulary term or absent, and the default application is written out explicitly. Fixture models in
+vocabulary term or absent, `given` is a list of input slugs or absent, and the default application is
+written out explicitly. Fixture models in
 `tests/fixtures/` follow exactly this shape and are validated against `canon_model.schema.json`. The model
-also holds plus `schema_version`, `content_hash`, `source_commit` and
+also holds `schema_version`, `content_hash`, `source_commit` and
 `importer_version`. References are slugs; namespaces are written `<namespace>:<slug>` (`calc:stall-speed`,
 later `sizing:…`), and a bare slug in a request means `calc:`.
 
@@ -571,7 +558,9 @@ class ComputeRequest(BaseModel):
   This is no warning: the default is declared in the canon with its source, it is not a substitution in
   the sense of ADR 0020. The provenance lists every default used.
   Without a default, the quantities that need it get `invalid_input`, code `missing_input`, with
-  `input_path = values.<slug>`; the rest of the request is computed.
+  `input_path = values.<slug>`; the rest of the request is computed. **Exception:** an application whose
+  `given` names the missing slug does not exist, so its outputs are `not_applicable`, code `not_given`
+  (ch. 8.5); an application that reads the same slug without `given` still gets `missing_input`.
 - **The passed mass always wins** (maintainer, 2026-10-14). Mass comes only from
   `values["aircraft-mass"]`; the geometry's `total_mass_kg` is not used. Otherwise no "what if?"
   calculation at a different mass would be possible. If both are set and differ, the call is **not**
@@ -608,7 +597,9 @@ async def stall_speed(x: Inputs, ctx: Context) -> dict[str, Value]:
 - **One coroutine per formula.** `x` maps the formula's **parameter names** (canon `inputs:`) to values, as
   bound by the application; the formula never sees which application or quantity it serves. It returns a
   dict over its **output parameter names**, every one of them. Values are floats in SI or instances of
-  the structured types in `schema.py` (`AirplaneGeometry`, `Polar`, …), matching the quantity's `type`.
+  the structured types in `schema.py`, one per quantity `type` of the canon `README.md`: `scalar` → `float`,
+  `airplane` → `AirplaneGeometry`, `curve` → `Curve`, `curve_pair` → `CurvePair`, `polar` → `Polar`. A new
+  type is a canon decision first, then a type here.
 - **`ctx`** carries: `solvers` (the adapters), `world` (the active world of this formula, if it has
   worlds), `accuracy`, and `warn(code, message, severity)`. Nothing else: no cache, no request, no
   global.
@@ -632,6 +623,15 @@ They need no operating point from the caller. The generic inputs (`flight-speed`
 `angle-of-attack`, `load-factor`) are ordinary input values (O10, A2: a generic quantity may be an input,
 never an output), so one call evaluates one operating point. Several operating points are several calls;
 `CachedKernel` makes the shared subtree free. There is no operating-point expansion in the graph.
+
+**Named conditions inside one call** follow the same rule, quantity by quantity. Where a formula needs a
+value at a fixed condition, the chain up to it has an application per condition, each producing a
+quantity that names it: the take-off and landing stall speeds read `airplane-takeoff` /
+`airplane-landing` (type `airplane`, produced by a configuration formula; without flaps it is the
+unchanged aircraft, not a fallback), `static-thrust-to-weight` reads `thrust-static`, produced by the
+propulsion chain with the speed bound to `{const: 0, source: …}`. A sampled curve over angle of attack is a
+quantity of type `polar` whose slug names its evaluation condition (A2). The engine needs nothing beyond
+applications for any of these.
 
 **Worlds (A11, ADR 0027).**
 - A formula with `uncertainty: interval` declares its worlds in the canon. Each world is a run of the same
@@ -725,7 +725,7 @@ They are the first thing a developer or an agent reads to check a change and to 
 | Q2 | All 57 canon entries mapped onto the model | Appendix A complete; the import succeeds without a schema change |
 | Q3 | Every value is traceable | The result carries slug, application, tool, canon model hash and source commit |
 | Q4 | The solver does not converge | `not_converged`; successors `upstream_failed`; other quantities still compute |
-| Q5 | Layout without flaps | `stall-speed-landing` is `not_applicable`: no error, no substitute value |
+| Q5 | Layout without flap and aileron | `butterfly-max-mix` is `not_applicable`, code `condition_not_met`: no error, no substitute value. `stall-speed-landing` computes and equals `stall-speed` (no configuration, not a fallback) |
 | Q6 | Every error category | Serialises to JSON with `message` and `hint` |
 | Q7 | Second identical call | `CachedKernel` (`use`): no formula call, `from_cache` true; `refresh` and stateless `compute()`: formula called; values bit-identical across all three |
 | Q8 | Input mass ≤ 0 | `invalid_input` with `input_path`; Re < 3·10⁴ only warns |
@@ -749,6 +749,7 @@ They are the first thing a developer or an agent reads to check a change and to 
 | Q26 | Status precedence | mixed failed/skipped/not-applicable predecessors give the status of ch. 8.13 |
 | Q27 | Cache key | inputs differing in the last bit of a float give different keys; a changed source file changes every key |
 | Q28 | Mass differs from the geometry's `total_mass_kg` | computed with the passed mass; `conflicting_mass` warning on every quantity that depends on the mass, none on the others |
+| Q29 | Target not set | `max-roll-rate-cruise` (`given: [cruise-speed-target]`) is `not_applicable`, code `not_given`; a quantity reading `cruise-speed-target` without `given` gets `missing_input` |
 
 ## 11. Risks and technical debt
 
@@ -788,7 +789,7 @@ How the columns are filled:
 - **applications:** the number of bindings. Only `stall-speed` has a table today; otherwise 1, or the
   number of outputs for `rating`.
 - **preconditions:** whether the entry has them in structured form.
-- **cost class:** a proposal.
+- **cost class:** derived from the tool (ch. 8.7); no entry sets `cost:` yet, so no formula is `minutes`.
 
 Generated from the canon files. The importer (#1174 or its follow-up) replaces this table with one generated from the canon
 model (part of `IMPORT_REPORT.md`).
@@ -821,7 +822,7 @@ model (part of `IMPORT_REPORT.md`).
 | `lift-to-drag-ratio` | law | APP | law | 2 → 1 | 1 | – | – | instant | core chain |
 | `linear-lift-curve-inverse` | law | APP | law | 3 → 1 | 1 | – | – | instant | later |
 | `maneuvering-speed` | optimization | OPT | law | 5 → 1 | 1 | – | – | seconds | later |
-| `mass-envelope` | optimization | OPT | law | 6 → 5 | 1 | – | – | minutes | core chain |
+| `mass-envelope` | optimization | OPT | law | 7 → 5 | 1 | – | – | seconds | core chain |
 | `max-level-speed` | optimization | OPT | law | 5 → 1 | 1 | – | – | seconds | probe |
 | `max-lift-to-drag-parabolic` | law | APP | law | 3 → 1 | 1 | – | – | instant | later |
 | `max-mass-structure` | law | APP | law | 2 → 1 | 1 | – | – | instant | later |
