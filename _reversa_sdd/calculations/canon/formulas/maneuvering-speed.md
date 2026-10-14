@@ -16,6 +16,13 @@ tags:
   - kind/optimization
   - status/draft
 tex: \begin{aligned}V_A = \min_{V,\,\alpha}\; & V \\ \text{u.d.N.}\; & L(V,\alpha) = n_{lim}\,m\,g\end{aligned}
+inputs:
+  airplane: airplane
+  m: aircraft-mass
+  g: gravity
+  n_lim: limit-load-factor
+  rho: air-density
+outputs: {v_a: maneuvering-speed}
 ---
 
 # Manoeuvring speed — the corner of stall line and load limit

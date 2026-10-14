@@ -8,6 +8,7 @@ status: draft
 tags:
   - canon/quantity
   - role/output
+type: scalar
 ---
 
 # Dive speed · `V_D`

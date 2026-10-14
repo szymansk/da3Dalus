@@ -8,6 +8,7 @@ status: draft
 tags:
   - canon/quantity
   - role/derived
+type: scalar
 ---
 
 # Total powertrain efficiency · `eta_total`

@@ -15,6 +15,18 @@ tags:
   - shape/law
   - kind/procedure
   - status/draft
+inputs:
+  airplane: airplane
+  m: aircraft-mass
+  g: gravity
+  rho: air-density
+  x_cg: centre-of-gravity
+  v: approach-speed
+outputs:
+  c_l_beta: dihedral-effect-app
+  c_n_beta: weathercock-stability-app
+  e_spiral: spiral-criterion-app
+  t2_spiral: spiral-doubling-time-app
 ---
 
 # Static lateral-directional stability on approach

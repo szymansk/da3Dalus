@@ -16,6 +16,14 @@ tags:
   - kind/fit
   - status/draft
 tex: \min_{C_{D0},\,e}\; \sum_{i} \Big( C_{D,i} - C_{D0} - \frac{C_{L,i}^2}{\pi\,AR\,e} \Big)^2 \quad C_{L,i} \in \big[\max(0.1,\,0.1\,C_{L,max}),\; 0.85\,C_{L,max}\big]
+inputs:
+  airplane: airplane
+  m: aircraft-mass
+  g: gravity
+  rho: air-density
+  ar: aspect-ratio
+  cl_max: max-lift-coefficient
+outputs: {cd0: zero-lift-drag-coefficient, e_osw: oswald-efficiency}
 ---
 
 # Parabolic polar fitted to the solver polar (ADR 0026)

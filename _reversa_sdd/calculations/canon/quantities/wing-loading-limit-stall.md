@@ -8,6 +8,7 @@ status: draft
 tags:
   - canon/quantity
   - role/output
+type: scalar
 ---
 
 # Wing-loading limit from a stall-speed requirement · `(W/S)_max,stall`

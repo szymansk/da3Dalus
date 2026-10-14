@@ -9,6 +9,7 @@ status: draft
 tags:
   - canon/quantity
   - role/derived
+type: scalar
 ---
 
 # Neutral point · `x_NP`

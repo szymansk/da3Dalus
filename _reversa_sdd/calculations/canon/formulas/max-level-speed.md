@@ -16,6 +16,8 @@ tags:
   - kind/optimization
   - status/draft
 tex: \begin{aligned}V_{max} = \max_{V,\,\alpha,\,n_{prop}}\; & V \\ \text{u.d.N.}\; & L(V,\alpha) = m\,g \\ & T(V,n_{prop}) \ge D(V,\alpha) \\ & Q_m(n_{prop}) = Q_p(V,n_{prop})\end{aligned}
+inputs: {airplane: airplane, m: aircraft-mass, g: gravity, rho: air-density, t: thrust-at-airspeed}
+outputs: {v_max: max-level-speed}
 ---
 
 # Maximum level speed at full throttle

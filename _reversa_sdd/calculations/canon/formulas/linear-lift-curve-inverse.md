@@ -15,6 +15,11 @@ tags:
   - shape/law
   - kind/law
   - status/draft
+inputs: {cl: lift-coefficient, cl_alpha: lift-curve-slope, alpha_0: zero-lift-angle}
+outputs: {alpha: characteristic-angle-of-attack}
+# ESCALATED: applications — the output names three conditions (stall, best glide, minimum
+# sink), each with its own C_L, but no quantity holds those C_L values; which C_L each
+# application binds, and whether they become three output quantities, is open.
 ---
 
 # Angle of attack from lift coefficient via the linear lift curve

@@ -15,6 +15,19 @@ tags:
   - shape/law
   - kind/optimization
   - status/draft
+inputs:
+  airplane: airplane
+  g: gravity
+  rho: air-density
+  t: thrust-at-airspeed
+  v_s_to: stall-speed-takeoff
+  v_to: takeoff-speed
+outputs:
+  speed_range: speed-range-over-mass
+  roc_curve: climb-rate-over-mass
+  m_max_level: max-mass-level-flight
+  m_max_to: max-mass-lift-off
+  cg_envelope: cg-envelope-over-mass
 ---
 
 # Mass envelope — what narrows with the take-off mass

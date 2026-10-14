@@ -8,6 +8,7 @@ status: draft
 tags:
   - canon/quantity
   - role/derived
+type: scalar
 ---
 
 # Advance ratio · `J`

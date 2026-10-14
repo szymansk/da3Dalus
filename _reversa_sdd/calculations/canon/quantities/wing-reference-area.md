@@ -8,6 +8,7 @@ status: approved
 tags:
   - canon/quantity
   - role/derived
+type: scalar
 ---
 
 # Wing reference area · `S_ref`

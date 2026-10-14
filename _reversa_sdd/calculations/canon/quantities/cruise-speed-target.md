@@ -8,6 +8,7 @@ status: draft
 tags:
   - canon/quantity
   - role/target
+type: scalar
 ---
 
 # Cruise-speed target · `V_cruise,target`

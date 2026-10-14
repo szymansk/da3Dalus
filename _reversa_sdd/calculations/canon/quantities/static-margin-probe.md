@@ -8,6 +8,7 @@ status: draft
 tags:
   - canon/quantity
   - role/output
+type: scalar
 ---
 
 # Static margin, Probe · `SM_probe`

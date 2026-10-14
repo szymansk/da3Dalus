@@ -15,6 +15,8 @@ tags:
   - shape/law
   - kind/law
   - status/draft
+inputs: {v: flight-speed, n_prop: propeller-speed, d_prop: propeller-diameter}
+outputs: {j: advance-ratio}
 ---
 
 # Advance ratio

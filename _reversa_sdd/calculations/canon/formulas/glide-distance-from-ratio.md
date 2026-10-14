@@ -15,6 +15,11 @@ tags:
   - shape/law
   - kind/law
   - status/draft
+inputs: {e: lift-to-drag-ratio, h: altitude}
+outputs: {r_glide: glide-distance}
+preconditions:
+  - {id: lift_to_drag_of_flown_configuration, on: e, on_violation: warning}
+  - {id: propeller_drag_not_in_polar, on: e, on_violation: warning}
 ---
 
 # Glide distance from the glide ratio

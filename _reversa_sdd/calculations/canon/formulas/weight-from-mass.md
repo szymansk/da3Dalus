@@ -15,6 +15,8 @@ tags:
   - shape/law
   - kind/law
   - status/approved
+inputs: {m: aircraft-mass, g: gravity}
+outputs: {w: weight}
 ---
 
 # Weight from mass

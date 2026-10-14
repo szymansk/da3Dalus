@@ -8,6 +8,7 @@ status: draft
 tags:
   - canon/quantity
   - role/target
+type: scalar
 ---
 
 # Target roll rate on approach · `p_target,app`

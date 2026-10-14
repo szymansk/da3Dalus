@@ -8,6 +8,7 @@ status: draft
 tags:
   - canon/quantity
   - role/output
+type: scalar
 ---
 
 # Stall-onset sweep index · `i_stall`

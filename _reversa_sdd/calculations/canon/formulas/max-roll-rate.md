@@ -17,6 +17,9 @@ tags:
   - kind/procedure
   - status/draft
 tex: L(V,\alpha) = m\,g, \quad C_{roll}\big(V,\alpha,\,\delta_{a,max},\,p_{max}\big) = 0
+inputs: {airplane: airplane, m: aircraft-mass, g: gravity, rho: air-density, v_app: approach-speed}
+outputs: {p_max: max-roll-rate-approach, p_hat_max: max-roll-rate-nondimensional}
+worlds: [aerobuildup, avl]
 ---
 
 # Maximum roll rate with the aileron throws set in the airplane

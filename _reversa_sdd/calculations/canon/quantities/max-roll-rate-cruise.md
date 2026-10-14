@@ -9,6 +9,7 @@ status: draft
 tags:
   - canon/quantity
   - role/output
+type: scalar
 ---
 
 # Maximum roll rate at cruise · `p_max,cruise`

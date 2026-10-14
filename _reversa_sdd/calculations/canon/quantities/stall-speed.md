@@ -8,6 +8,7 @@ status: approved
 tags:
   - canon/quantity
   - role/output
+type: scalar
 ---
 
 # Stall speed · `V_S`

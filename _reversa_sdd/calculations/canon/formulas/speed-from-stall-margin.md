@@ -15,6 +15,20 @@ tags:
   - shape/approximation
   - kind/rating
   - status/draft
+inputs: {v_s_cfg: null, k_s: null}
+outputs: {v: null}
+applications:
+  # ESCALATED: k_s — the margin of each application is open ("choosing is the maintainer's
+  # call"): no value with a source and no quantity to bind it to.
+  - id: approach
+    bind: {v_s_cfg: stall-speed-landing}
+    produce: {v: approach-speed}
+  - id: touchdown
+    bind: {v_s_cfg: stall-speed-landing}
+    produce: {v: touchdown-speed}
+  - id: takeoff
+    bind: {v_s_cfg: stall-speed-takeoff}
+    produce: {v: takeoff-speed}
 ---
 
 # Named operating-point speeds as a margin over the stall speed

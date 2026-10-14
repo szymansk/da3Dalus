@@ -16,6 +16,8 @@ tags:
   - kind/law
   - status/draft
   - flag/conflict
+inputs: {e_osw: oswald-efficiency, ar: aspect-ratio, cd0: zero-lift-drag-coefficient}
+outputs: {e_max_probe: max-lift-to-drag-probe}
 ---
 
 # Maximum glide ratio of a parabolic polar

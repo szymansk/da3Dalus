@@ -8,6 +8,7 @@ status: draft
 tags:
   - canon/quantity
   - role/target
+type: scalar
 ---
 
 # Static-margin target · `SM_target`

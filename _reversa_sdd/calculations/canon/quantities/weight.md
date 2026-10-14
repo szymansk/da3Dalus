@@ -8,6 +8,7 @@ status: approved
 tags:
   - canon/quantity
   - role/derived
+type: scalar
 ---
 
 # Aircraft weight · `W`

@@ -16,6 +16,14 @@ tags:
   - shape/law
   - kind/procedure
   - status/draft
+inputs:
+  airplane: airplane
+  m: aircraft-mass
+  g: gravity
+  rho: air-density
+  v_md: minimum-drag-speed
+outputs: {x_np: neutral-point}
+worlds: [textbook, pappas, avl]
 ---
 
 # Neutral point of the airplane — an interval over method worlds (A11)

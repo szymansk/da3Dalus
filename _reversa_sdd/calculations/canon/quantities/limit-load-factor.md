@@ -8,6 +8,7 @@ status: draft
 tags:
   - canon/quantity
   - role/target
+type: scalar
 ---
 
 # Structural limit load factor · `n_lim`

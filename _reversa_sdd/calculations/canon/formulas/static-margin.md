@@ -16,6 +16,8 @@ tags:
   - kind/law
   - status/draft
 tex: SM = \frac{x_{NP} - x_{CG}}{c_{MAC}}
+inputs: {x_np: neutral-point, x_cg: centre-of-gravity, c_mac: mean-aerodynamic-chord}
+outputs: {sm: static-margin}
 ---
 
 # Static margin

@@ -16,6 +16,8 @@ tags:
   - kind/optimization
   - status/draft
 tex: \begin{aligned}V_mp = \operatorname*{arg\,min}_{V,\,\alpha}\; & D(V,\alpha)\,V \\ \text{u.d.N.}\; & L(V,\alpha) = n\,m\,g\end{aligned}
+inputs: {airplane: airplane, m: aircraft-mass, g: gravity, n: load-factor, rho: air-density}
+outputs: {v_mp: minimum-sink-speed}
 ---
 
 # Minimum-sink speed as the argmin of the computed sink rate

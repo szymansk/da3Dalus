@@ -8,6 +8,7 @@ status: draft
 tags:
   - canon/quantity
   - role/output
+type: curve_pair
 ---
 
 # Trimmable CG range over the mass · `x_fwd(m), x_aft(m)`

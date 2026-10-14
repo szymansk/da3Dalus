@@ -8,6 +8,7 @@ status: draft
 tags:
   - canon/quantity
   - role/target
+type: scalar
 ---
 
 # Target stall speed · `V_S,target`

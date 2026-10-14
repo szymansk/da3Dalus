@@ -16,6 +16,14 @@ tags:
   - kind/optimization
   - status/draft
 tex: \begin{aligned}r_{min} = \min_{V,\,\alpha,\,n,\,n_{prop}}\; & \frac{V^2}{g\sqrt{n^2-1}} \\ \text{u.d.N.}\; & L(V,\alpha) = n\,m\,g \\ & T(V,n_{prop}) \ge D(V,\alpha) \\ & Q_m(n_{prop}) = Q_p(V,n_{prop}) \\ & 1 \le n \le n_{lim}\end{aligned}
+inputs:
+  airplane: airplane
+  m: aircraft-mass
+  g: gravity
+  rho: air-density
+  n_lim: limit-load-factor
+  t: thrust-at-airspeed
+outputs: {r_min: min-sustained-turn-radius, v_r: min-sustained-turn-radius-speed}
 ---
 
 # Tightest sustained turn at full throttle

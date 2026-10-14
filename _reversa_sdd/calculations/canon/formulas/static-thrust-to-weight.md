@@ -16,6 +16,10 @@ tags:
   - kind/law
   - status/draft
 tex: \frac{T_0}{W} = \frac{T(V = 0)}{W}
+inputs: {t: thrust-at-airspeed, w: weight}
+outputs: {t0_w: static-thrust-to-weight}
+# ESCALATED: t — the entry binds thrust-at-airspeed "at V = 0"; a binding names a quantity,
+# not the operating point it is evaluated at, and no static-thrust quantity exists.
 ---
 
 # Static thrust-to-weight ratio

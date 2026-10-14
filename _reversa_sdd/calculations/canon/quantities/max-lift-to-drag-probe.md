@@ -8,6 +8,7 @@ status: draft
 tags:
   - canon/quantity
   - role/output
+type: scalar
 ---
 
 # Maximum lift-to-drag ratio, parabolic Probe · `E_max,probe`

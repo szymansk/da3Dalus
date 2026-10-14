@@ -15,6 +15,17 @@ tags:
   - shape/route
   - kind/procedure
   - status/draft
+inputs:
+  airplane: airplane
+  v: flight-speed
+  rho: air-density
+  k_v: motor-voltage-constant
+  i_0: motor-no-load-current
+  r_m: motor-circuit-resistance
+  u_bat: battery-voltage
+  p_mot_max: motor-max-power
+  d_prop: propeller-diameter
+outputs: {n_prop: propeller-speed}
 ---
 
 # Propeller speed from the motor–propeller torque balance

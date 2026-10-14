@@ -15,6 +15,8 @@ tags:
   - shape/law
   - kind/procedure
   - status/draft
+inputs: {airplane: airplane, v: flight-speed, alpha: angle-of-attack, rho: air-density}
+outputs: {l: lift-force, d: drag-force, cl_alpha: lift-curve-slope, alpha_0: zero-lift-angle}
 ---
 
 # Aerodynamic evaluation of the airplane at an operating point

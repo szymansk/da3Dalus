@@ -8,6 +8,7 @@ status: draft
 tags:
   - canon/quantity
   - role/input
+type: scalar
 ---
 
 # Angle of attack · `alpha`

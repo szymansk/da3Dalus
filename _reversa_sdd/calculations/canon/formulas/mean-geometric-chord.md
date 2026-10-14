@@ -15,6 +15,8 @@ tags:
   - shape/law
   - kind/law
   - status/draft
+inputs: {s_ref: wing-reference-area, b_ref: wing-span}
+outputs: {c_bar: mean-geometric-chord}
 ---
 
 # Mean geometric chord

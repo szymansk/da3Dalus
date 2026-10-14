@@ -16,6 +16,16 @@ tags:
   - shape/law
   - kind/procedure
   - status/draft
+inputs:
+  airplane: airplane
+  m: aircraft-mass
+  g: gravity
+  rho: air-density
+  v_cruise_target: cruise-speed-target
+outputs: {p_max: max-roll-rate-cruise}
+# ESCALATED: when — exists only when a cruise-speed target is given: a condition on given
+# inputs, not a fact of the geometry; the when vocabulary has no term for it.
+worlds: [aerobuildup, avl]
 ---
 
 # Maximum roll rate at the mission's cruise speed

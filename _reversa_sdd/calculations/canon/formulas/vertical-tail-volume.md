@@ -15,6 +15,11 @@ tags:
   - shape/law
   - kind/law
   - status/draft
+inputs: {airplane: airplane}
+outputs: {v_v: vertical-tail-volume}
+applications:
+  - id: with_vertical_tail
+    when: has_vertical_tail
 ---
 
 # Vertical tail volume

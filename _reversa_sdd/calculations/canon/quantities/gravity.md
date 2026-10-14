@@ -8,6 +8,7 @@ status: approved
 tags:
   - canon/quantity
   - role/input
+type: scalar
 ---
 
 # Gravitational acceleration · `g`

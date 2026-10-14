@@ -8,6 +8,7 @@ status: draft
 tags:
   - canon/quantity
   - role/output
+type: scalar
 ---
 
 # Spiral time to double at the minimum-drag speed · `T_2,spiral,md`

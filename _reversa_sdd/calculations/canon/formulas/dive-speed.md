@@ -15,6 +15,8 @@ tags:
   - shape/law
   - kind/procedure
   - status/draft
+inputs: {airplane: airplane, m: aircraft-mass, g: gravity, rho: air-density, t: thrust-at-airspeed}
+outputs: {v_d: dive-speed}
 ---
 
 # Dive speed — terminal speed in a vertical dive

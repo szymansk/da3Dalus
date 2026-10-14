@@ -17,6 +17,22 @@ tags:
   - status/draft
   - flag/conflict
 tex: \begin{aligned}V_S = \min_{V,\,\alpha}\; & V \\ \text{u.d.N.}\; & L(V,\alpha) = n\,m\,g\end{aligned}
+inputs: {airplane: airplane, m: aircraft-mass, g: gravity, n: load-factor, rho: air-density}
+outputs: {v_s: null, cl_max: null}
+applications:
+  - id: clean
+    produce: {v_s: stall-speed, cl_max: max-lift-coefficient}
+  # ESCALATED: takeoff, landing — (1) they bind the airplane in its take-off / landing
+  # configuration, which no quantity names; (2) their condition: the table says "the wing
+  # carries a flap", the 2026-10-02 text says without flaps they exist and equal the clean
+  # stall speed; (3) cl_max: no quantity holds C_L,max in take-off or landing configuration.
+  - id: takeoff
+    produce: {v_s: stall-speed-takeoff}
+  - id: landing
+    produce: {v_s: stall-speed-landing}
+preconditions:
+  - {id: cl_max_at_stall_reynolds_number, on: cl_max, on_violation: error}
+  - {id: rho_at_evaluation_altitude, on: rho, on_violation: warning}
 ---
 
 # Stall speed from the lift balance at C_L,max

@@ -9,6 +9,7 @@ status: draft
 tags:
   - canon/quantity
   - role/output
+type: scalar
 ---
 
 # Aileron throw needed at cruise · `s_req,cruise`

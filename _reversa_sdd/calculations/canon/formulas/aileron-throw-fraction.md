@@ -17,6 +17,25 @@ tags:
   - kind/procedure
   - status/draft
 tex: s_{req}:\; L(V,\alpha) = m\,g, \quad C_{roll}\big(V,\alpha,\,s_{req}\,\delta_{a,max},\,p_{target}\big) = 0
+inputs:
+  airplane: airplane
+  m: aircraft-mass
+  g: gravity
+  rho: air-density
+  v: null
+  p_target: null
+outputs: {s_req: null}
+applications:
+  # ESCALATED: when — each application exists only if its roll-rate target is given (cruise also
+  # needs the cruise-speed target): a condition on given inputs, not a fact of the geometry, and
+  # the when vocabulary has no term for it.
+  - id: cruise
+    bind: {v: cruise-speed-target, p_target: roll-rate-target-cruise}
+    produce: {s_req: aileron-throw-fraction-cruise}
+  - id: approach
+    bind: {v: approach-speed, p_target: roll-rate-target-approach}
+    produce: {s_req: aileron-throw-fraction-approach}
+worlds: [aerobuildup, avl]
 ---
 
 # Fraction of the set aileron throw a roll-rate target needs

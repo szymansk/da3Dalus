@@ -16,6 +16,8 @@ tags:
   - kind/optimization
   - status/draft
 tex: \begin{aligned}\mathit{ROC}_{max} = \max_{V,\,\alpha,\,\gamma,\,n_{prop}}\; & V\sin\gamma \\ \text{u.d.N.}\; & L(V,\alpha) = m\,g\cos\gamma \\ & T(V,n_{prop}) - D(V,\alpha) \ge m\,g\sin\gamma \\ & Q_m(n_{prop}) = Q_p(V,n_{prop})\end{aligned}
+inputs: {airplane: airplane, m: aircraft-mass, g: gravity, rho: air-density, t: thrust-at-airspeed}
+outputs: {v_y: best-rate-of-climb-speed, roc_max: max-rate-of-climb}
 ---
 
 # Best rate of climb at full throttle

@@ -15,6 +15,8 @@ tags:
   - shape/approximation
   - kind/law
   - status/draft
+inputs: {cd0: zero-lift-drag-coefficient, k: induced-drag-factor, cl: lift-coefficient}
+outputs: {cd_par: drag-coefficient-parabolic}
 ---
 
 # The drag polar

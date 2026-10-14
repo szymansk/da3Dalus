@@ -15,6 +15,18 @@ tags:
   - shape/law
   - kind/procedure
   - status/draft
+inputs:
+  airplane: airplane
+  m: aircraft-mass
+  g: gravity
+  rho: air-density
+  x_cg: centre-of-gravity
+  v: minimum-drag-speed
+outputs:
+  c_l_beta: dihedral-effect-md
+  c_n_beta: weathercock-stability-md
+  e_spiral: spiral-criterion-md
+  t2_spiral: spiral-doubling-time-md
 ---
 
 # Static lateral-directional stability at the minimum-drag speed

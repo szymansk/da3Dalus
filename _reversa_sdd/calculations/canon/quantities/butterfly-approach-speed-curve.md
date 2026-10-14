@@ -8,6 +8,7 @@ status: draft
 tags:
   - canon/quantity
   - role/output
+type: curve
 ---
 
 # Approach speed over the crow mix · `V_app(s)`

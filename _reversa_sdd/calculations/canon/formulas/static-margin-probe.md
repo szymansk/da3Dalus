@@ -15,6 +15,14 @@ tags:
   - shape/law
   - kind/procedure
   - status/draft
+inputs:
+  airplane: airplane
+  m: aircraft-mass
+  g: gravity
+  rho: air-density
+  v_md: minimum-drag-speed
+  x_cg: centre-of-gravity
+outputs: {c_m_alpha: pitching-moment-slope, sm_probe: static-margin-probe}
 ---
 
 # Static margin from the moment slope — the Probe

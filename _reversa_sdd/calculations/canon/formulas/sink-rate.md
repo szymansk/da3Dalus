@@ -15,6 +15,8 @@ tags:
   - shape/law
   - kind/law
   - status/draft
+inputs: {v: flight-speed, cl: lift-coefficient, cd: drag-coefficient-parabolic}
+outputs: {w_sink: sink-rate}
 ---
 
 # Steady-glide sink rate

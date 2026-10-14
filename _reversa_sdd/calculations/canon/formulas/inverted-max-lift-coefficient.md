@@ -15,6 +15,11 @@ tags:
   - shape/law
   - kind/procedure
   - status/draft
+inputs: {cl: lift-coefficient, alpha: angle-of-attack}
+outputs: {cl_min: inverted-max-lift-coefficient}
+preconditions:
+  - {id: alpha_range_past_inverted_stall, on: alpha, on_violation: error}
+  - {id: cl_min_named_by_evaluation_condition, on: cl_min, on_violation: warning}
 ---
 
 # Negative maximum lift coefficient as the trough of the computed polar

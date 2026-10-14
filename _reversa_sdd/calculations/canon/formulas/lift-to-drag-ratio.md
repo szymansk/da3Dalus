@@ -15,6 +15,8 @@ tags:
   - shape/law
   - kind/law
   - status/draft
+inputs: {l: lift-force, d: drag-force}
+outputs: {e: lift-to-drag-ratio}
 ---
 
 # Lift-to-drag ratio

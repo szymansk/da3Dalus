@@ -16,6 +16,21 @@ tags:
   - kind/optimization
   - status/draft
 tex: \begin{aligned}V_{S0}(s) &= \min_{V,\,\alpha} V \;\;\text{u.d.N.}\;\; L(V,\alpha;\,s) = m\,g \\ V_{app}(s) &= V_{app}\,\frac{V_{S0}(s)}{V_{S0}} \\ s_{max}&:\; V_{S0}(s_{max}) = V_{app}\end{aligned}
+inputs:
+  airplane: airplane
+  m: aircraft-mass
+  g: gravity
+  rho: air-density
+  v_s0: stall-speed-landing
+  v_app: approach-speed
+outputs:
+  v_s0_curve: butterfly-stall-speed-curve
+  v_app_curve: butterfly-approach-speed-curve
+  gamma_curve: butterfly-glide-angle-curve
+  s_max: butterfly-max-mix
+applications:
+  - id: crow
+    when: has_flap_and_aileron
 ---
 
 # Butterfly (crow) in the approach — how far it may be mixed in

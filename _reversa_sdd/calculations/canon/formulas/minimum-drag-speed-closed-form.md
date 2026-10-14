@@ -15,6 +15,12 @@ tags:
   - shape/route
   - kind/law
   - status/draft
+inputs:
+  w_s: wing-loading
+  rho: air-density
+  cd0: zero-lift-drag-coefficient
+  k: induced-drag-factor
+outputs: {v_md_probe: minimum-drag-speed-probe}
 ---
 
 # Minimum-drag speed from the parabolic polar

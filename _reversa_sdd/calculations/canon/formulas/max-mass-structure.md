@@ -16,6 +16,8 @@ tags:
   - kind/law
   - status/draft
 tex: m_{max,struct} = n_{break,+}\,m
+inputs: {n_break_pos: break-load-factor-positive, m: aircraft-mass}
+outputs: {m_max_struct: max-mass-structure}
 ---
 
 # Mass at which the spar no longer holds one g

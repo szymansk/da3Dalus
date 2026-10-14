@@ -16,6 +16,8 @@ tags:
   - kind/optimization
   - status/draft
 tex: \begin{aligned}V_md = \operatorname*{arg\,min}_{V,\,\alpha}\; & D(V,\alpha) \\ \text{u.d.N.}\; & L(V,\alpha) = n\,m\,g\end{aligned}
+inputs: {airplane: airplane, m: aircraft-mass, g: gravity, n: load-factor, rho: air-density}
+outputs: {v_md: minimum-drag-speed, e_max: max-lift-to-drag-ratio}
 ---
 
 # Minimum-drag speed as the argmax of the computed glide ratio

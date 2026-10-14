@@ -16,6 +16,14 @@ tags:
   - kind/optimization
   - status/draft
 tex: \begin{aligned}\omega_{max} = \max_{V,\,\alpha,\,n,\,n_{prop}}\; & \frac{g\sqrt{n^2-1}}{V} \\ \text{u.d.N.}\; & L(V,\alpha) = n\,m\,g \\ & T(V,n_{prop}) \ge D(V,\alpha) \\ & Q_m(n_{prop}) = Q_p(V,n_{prop}) \\ & 1 \le n \le n_{lim}\end{aligned}
+inputs:
+  airplane: airplane
+  m: aircraft-mass
+  g: gravity
+  rho: air-density
+  n_lim: limit-load-factor
+  t: thrust-at-airspeed
+outputs: {omega_max: max-sustained-turn-rate, v_omega: max-sustained-turn-rate-speed}
 ---
 
 # Fastest sustained turn at full throttle

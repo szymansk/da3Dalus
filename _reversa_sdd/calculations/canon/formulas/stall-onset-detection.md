@@ -15,6 +15,8 @@ tags:
   - shape/law
   - kind/procedure
   - status/draft
+inputs: {cl: lift-coefficient, cd: drag-coefficient-parabolic, alpha: angle-of-attack}
+outputs: {i_stall: stall-onset-index}
 ---
 
 # Stall onset from the shape of the computed polar
