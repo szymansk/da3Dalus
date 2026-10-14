@@ -32,8 +32,10 @@ then the code. Epic: #1173.
   solver work goes through `runtime.py` (process pool), AVL through `asyncio.create_subprocess_exec`.
   Never call `asyncio.run` inside the package; always re-raise `CancelledError`; clean up subprocesses and
   temp dirs on cancellation.
-- **Stateless.** No module-level mutable state except the cache; the cache must never change a result.
-  Cache use is chosen per call (`ComputeRequest.cache`: `use` | `refresh` | `off`, ARCHITECTURE §8.4).
+- **Two interfaces, one engine (ARCHITECTURE §8.4).** `compute()` is stateless: no cache, no module-level
+  mutable state, no global pool. `CachedKernel` is the stateful facade that owns the cache, in-flight
+  dedup and resources, and injects its `NodeStore` into the same engine. Never add state to `compute()`;
+  never let the cache change a value.
 
 ## Tests
 
