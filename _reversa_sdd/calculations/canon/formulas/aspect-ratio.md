@@ -27,7 +27,7 @@ AR = b_ref^2 / S_ref
 
 **Produces** [[aspect-ratio]]  ·  **from** [[wing-span]] · [[wing-reference-area]]
 
-**Kind: a law.** A closed-form relation. Approval asks for its **source** and its **validity at 0.5–15 kg**.
+**Kind: a law.** A closed-form relation. Approval asks for its **source** and its **validity in the RC/UAV regime (ADR 0028)**.
 
 **Dimensional check.** 🟢 balances
 
@@ -41,7 +41,7 @@ AR = b_ref^2 / S_ref
 Sadraey §5.6 is explicit that AR = b^2/S is "only valid when area equals span x chord" (rectangular or straight-tapered); for elliptic, delta or unusual planforms the AR = b/c_bar definition must be used.
 ```
 
-**Validity at 0.5–15 kg.** Valid for the trapezoidal wings this app builds. Sadraey's caveat is live for RC flying wings and delta/elliptical planforms, which are common at model scale. The separate 7.0 literal fallback noted in the skeleton has no source in any of the three authorities and is an undeclared substitution (ADR 0020).
+**Validity in the RC/UAV regime (ADR 0028).** Valid for the trapezoidal wings this app builds. Sadraey's caveat is live for RC flying wings and delta/elliptical planforms, which are common at model scale. The separate 7.0 literal fallback noted in the skeleton has no source in any of the three authorities and is an undeclared substitution (ADR 0020).
 
 ## Implementations (1)
 
@@ -52,7 +52,7 @@ Sadraey §5.6 is explicit that AR = b^2/S is "only valid when area equals span x
 ## Approval
 
 - [ ] **Source** — citation real, or absence stated and adopted on the maintainer's authority
-- [ ] **Scale** — holds at 0.5–15 kg, or the limitation is written down (ADR 0023)
+- [ ] **Regime** — holds in the RC/UAV regime (Reynolds, Mach, equipment), or the limitation is written down (ADR 0028)
 - [ ] **Dimensions** — the check balances
 - [ ] **Implementations** — all agree, or each deviation is declared and justified
 - [ ] **Preconditions** — every binding condition holds, or the violation is ticketed

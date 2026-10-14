@@ -29,7 +29,7 @@ V_md,probe = sqrt( 2*(W/S) / (rho * sqrt(C_D0 / k)) )
 
 **Probe, nicht Erzeuger.** Die Autorität ist [[minimum-drag-speed-from-polar]]. Diese Form setzt konstanten Nullauftriebswiderstand und konstanten Streckungsfaktor voraus — bei unseren Reynoldszahlen hängen beide von der Geschwindigkeit ab. Der Vergleich beider Wege ist ein Test (ADR 0022), keine zweite Wahrheit.
 
-**Kind: a law.** A closed-form relation. Approval asks for its **source** and its **validity at 0.5–15 kg**.
+**Kind: a law.** A closed-form relation. Approval asks for its **source** and its **validity in the RC/UAV regime (ADR 0028)**.
 
 **Shape: a route.** This is one of several ways to the same quantity. The canon has chosen: the authority is [[minimum-drag-speed-from-polar]]; this closed form is its Probe — it requires that they **agree**.
 
@@ -47,7 +47,7 @@ V_md,probe = sqrt( 2*(W/S) / (rho * sqrt(C_D0 / k)) )
 Identical to the proposal once W/S is factored (Sadraey writes 2W/(rho*S) grouped, the proposal writes 2*(W/S)/rho). Sadraey introduces it as the speed for maximum rate of climb of a JET; the same quantity is the minimum-drag speed for any aircraft.
 ```
 
-**Validity at 0.5–15 kg.** Valid at RC scale as an algebraic consequence of the parabolic polar, with the same caveat as max-lift-to-drag-parabolic: at Re 5e4-3e5 the polar is offset-parabolic, so C_D0 and k must be fitted over the C_L range of interest, not anchored at C_L = 0 (see zero-lift-drag-from-sweep). Do not let this closed form and the argmax-of-polar route both be authoritative - ADR 0022.
+**Validity in the RC/UAV regime (ADR 0028).** Valid at RC scale as an algebraic consequence of the parabolic polar, with the same caveat as max-lift-to-drag-parabolic: at Re 5e4-3e5 the polar is offset-parabolic, so C_D0 and k must be fitted over the C_L range of interest, not anchored at C_L = 0 (see zero-lift-drag-from-sweep). Do not let this closed form and the argmax-of-polar route both be authoritative - ADR 0022.
 
 ## Implementations (1)
 
@@ -58,7 +58,7 @@ Identical to the proposal once W/S is factored (Sadraey writes 2W/(rho*S) groupe
 ## Approval
 
 - [ ] **Source** — citation real, or absence stated and adopted on the maintainer's authority
-- [ ] **Scale** — holds at 0.5–15 kg, or the limitation is written down (ADR 0023)
+- [ ] **Regime** — holds in the RC/UAV regime (Reynolds, Mach, equipment), or the limitation is written down (ADR 0028)
 - [ ] **Dimensions** — the check balances
 - [ ] **Implementations** — all agree, or each deviation is declared and justified
 - [ ] **Preconditions** — every binding condition holds, or the violation is ticketed

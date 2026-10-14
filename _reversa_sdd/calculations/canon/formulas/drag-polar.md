@@ -27,7 +27,7 @@ C_D,par = C_D0 + k * C_L^2
 
 **Produces** [[drag-coefficient-parabolic]]  ·  **from** [[zero-lift-drag-coefficient]] · [[induced-drag-factor]] · [[lift-coefficient]]
 
-**Kind: a law.** A closed-form relation. Approval asks for its **source** and its **validity at 0.5–15 kg**.
+**Kind: a law.** A closed-form relation. Approval asks for its **source** and its **validity in the RC/UAV regime (ADR 0028)**.
 
 **Dimensional check.** 🟢 balances — all three terms are dimensionless.
 
@@ -41,7 +41,7 @@ none produced one. The relation was present exactly once, **inlined** inside
 [[power-required-electrical]], where the other three cannot reach it. A producer hidden
 inside a consumer is not a missing law; it is an unfactored one.
 
-**Validity at 0.5–15 kg.** The parabolic form is a **model**, not an identity, and at model
+**Validity in the RC/UAV regime (ADR 0028).** The parabolic form is a **model**, not an identity, and at model
 Reynolds numbers it is weaker than the textbooks assume. Both `C_D0` and `k` vary with
 Reynolds number (see [[reynolds-scheduled-polar]]), so the polar is a *family* of curves
 indexed by speed, not one curve. Treating `C_D0` and `k` as constants across the speed
@@ -62,7 +62,7 @@ outstanding.
 ## Approval
 
 - [ ] **Source** — citation real, or absence stated and adopted on the maintainer's authority
-- [ ] **Scale** — holds at 0.5–15 kg, or the limitation is written down (ADR 0023)
+- [ ] **Regime** — holds in the RC/UAV regime (Reynolds, Mach, equipment), or the limitation is written down (ADR 0028)
 - [ ] **Dimensions** — the check balances
 - [ ] **Implementations** — all agree, or each deviation is declared and justified
 - [ ] **Preconditions** — every binding condition holds, or the violation is ticketed

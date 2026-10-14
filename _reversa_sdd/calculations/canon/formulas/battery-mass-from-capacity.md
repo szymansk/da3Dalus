@@ -27,7 +27,7 @@ m_bat,pred = E_bat / E_star
 
 **Produces** [[predicted-battery-mass]]  ·  **from** [[battery-capacity]] · [[battery-specific-energy]]
 
-**Kind: a law.** A closed-form relation. Approval asks for its **source** and its **validity at 0.5–15 kg**.
+**Kind: a law.** A closed-form relation. Approval asks for its **source** and its **validity in the RC/UAV regime (ADR 0028)**.
 
 **Dimensional check.** 🟢 balances
 
@@ -41,7 +41,7 @@ m_bat,pred = E_bat / E_star
 RC-Network tabulates MJ/kg; the app uses Wh/kg. 1 MJ = 0.2778 kWh, so 0.55 MJ/kg = 152.8 Wh/kg.
 ```
 
-**Validity at 0.5–15 kg.** The critical qualification: 0.55 MJ/kg is a CELL-level figure. Pack-level specific energy after wiring, connectors, balance leads, shrink and case is materially lower - typically 100-140 Wh/kg for RC packs in this class. The skeleton correctly names the quantity 'pack specific energy', so if the cell number is used as the default the predicted mass is systematically light and the deviation warning downstream fires spuriously on correctly-specified packs. Record E* with its source and its cell-vs-pack basis per ADR 0023.
+**Validity in the RC/UAV regime (ADR 0028).** The critical qualification: 0.55 MJ/kg is a CELL-level figure. Pack-level specific energy after wiring, connectors, balance leads, shrink and case is materially lower - typically 100-140 Wh/kg for RC packs in this class. The skeleton correctly names the quantity 'pack specific energy', so if the cell number is used as the default the predicted mass is systematically light and the deviation warning downstream fires spuriously on correctly-specified packs. Record E* with its source and its cell-vs-pack basis per ADR 0023.
 
 ## Implementations (1)
 
@@ -52,7 +52,7 @@ RC-Network tabulates MJ/kg; the app uses Wh/kg. 1 MJ = 0.2778 kWh, so 0.55 MJ/kg
 ## Approval
 
 - [ ] **Source** — citation real, or absence stated and adopted on the maintainer's authority
-- [ ] **Scale** — holds at 0.5–15 kg, or the limitation is written down (ADR 0023)
+- [ ] **Regime** — holds in the RC/UAV regime (Reynolds, Mach, equipment), or the limitation is written down (ADR 0028)
 - [ ] **Dimensions** — the check balances
 - [ ] **Implementations** — all agree, or each deviation is declared and justified
 - [ ] **Preconditions** — every binding condition holds, or the violation is ticketed

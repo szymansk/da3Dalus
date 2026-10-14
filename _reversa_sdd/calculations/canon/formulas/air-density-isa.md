@@ -27,7 +27,7 @@ rho = rho_ISA(h)   [U.S. 1976 COESA standard atmosphere]
 
 **Produces** [[air-density]]  ·  **from** [[altitude]]
 
-**Kind: a law.** A closed-form relation. Approval asks for its **source** and its **validity at 0.5–15 kg**.
+**Kind: a law.** A closed-form relation. Approval asks for its **source** and its **validity in the RC/UAV regime (ADR 0028)**.
 
 ℹ️ **Reclassified** from `procedure` by the trial of 2026-08-18. Not a procedure. rho_ISA(h) is a closed form — the barometric formula over a piecewise-linear lapse-rate table, closed with the ideal gas law. AeroSandbox even ships that exact closed form (`method='isa'`, _isa_atmo_functions.py:62). It was classified as a procedure only because the formula sits behind a library call the parser could not read. Caveat worth keeping in the canon: no call site in this repo passes `method=`, so every rho in the app comes from the *default* `method='differentiable'` path, which is a cubic-B-spline surrogate of that law, not the law itself — see `method` and `convergence` below.
 
@@ -53,7 +53,7 @@ operating point (O10), so no optimiser needs the smooth surrogate.
 Scholz does not write rho(h) directly; he writes T(h) and derives p(h), then uses q/M^2 = (gamma/2)*p(h). Sea-level anchors: T0 = 288.15 K, p0 = 101325 Pa, rho0 = 1.225 kg/m^3.
 ```
 
-**Validity at 0.5–15 kg.** Model is exact and the chain defaults to h=0, so it degenerates to the 1.225 literal. The real RC limitation is not altitude but that RC flies in the surface layer where the day's density deviates from ISA: 15 C vs 30 C at sea level is ~5% in rho, i.e. ~2.5% on every speed in the chain. ISA-at-0m is a nominal reference, not the field condition, and should be labelled as such (ADR 0020: substituting ISA for measured conditions is an undeclared substitution).
+**Validity in the RC/UAV regime (ADR 0028).** Model is exact and the chain defaults to h=0, so it degenerates to the 1.225 literal. The real RC limitation is not altitude but that RC flies in the surface layer where the day's density deviates from ISA: 15 C vs 30 C at sea level is ~5% in rho, i.e. ~2.5% on every speed in the chain. ISA-at-0m is a nominal reference, not the field condition, and should be labelled as such (ADR 0020: substituting ISA for measured conditions is an undeclared substitution).
 
 ## Implementations (2)
 
@@ -65,7 +65,7 @@ Scholz does not write rho(h) directly; he writes T(h) and derives p(h), then use
 ## Approval
 
 - [ ] **Source** — citation real, or absence stated and adopted on the maintainer's authority
-- [ ] **Scale** — holds at 0.5–15 kg, or the limitation is written down (ADR 0023)
+- [ ] **Regime** — holds in the RC/UAV regime (Reynolds, Mach, equipment), or the limitation is written down (ADR 0028)
 - [ ] **Dimensions** — the check balances
 - [ ] **Implementations** — all agree, or each deviation is declared and justified
 - [ ] **Preconditions** — every binding condition holds, or the violation is ticketed

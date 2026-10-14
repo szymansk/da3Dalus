@@ -27,7 +27,7 @@ J = V / (n_prop * D_prop)
 
 **Produces** [[advance-ratio]]  ·  **from** [[flight-speed]] · [[propeller-speed]] · [[propeller-diameter]]
 
-**Kind: a law.** A closed-form relation. Approval asks for its **source** and its **validity at 0.5–15 kg**.
+**Kind: a law.** A closed-form relation. Approval asks for its **source** and its **validity in the RC/UAV regime (ADR 0028)**.
 
 **Dimensional check.** 🟢 balances — (m/s) / ((1/s)·m) is dimensionless.
 
@@ -35,4 +35,4 @@ J = V / (n_prop * D_prop)
 
 > Standard propeller notation: the forward distance per revolution relative to the diameter. Used verbatim by the APC data files the tables come from.
 
-**Validity at 0.5–15 kg.** Exact.
+**Validity in the RC/UAV regime (ADR 0028).** Exact.

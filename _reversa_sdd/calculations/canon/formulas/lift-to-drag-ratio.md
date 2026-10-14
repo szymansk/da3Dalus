@@ -27,7 +27,7 @@ E = L / D
 
 **Produces** [[lift-to-drag-ratio]]  ·  **from** [[lift-force]] · [[drag-force]]
 
-**Kind: a law.** A closed-form relation. Approval asks for its **source** and its **validity at 0.5–15 kg**.
+**Kind: a law.** A closed-form relation. Approval asks for its **source** and its **validity in the RC/UAV regime (ADR 0028)**.
 
 **Dimensional check.** 🟢 balances
 
@@ -41,7 +41,7 @@ E = L / D
 RC-Network adds the operationally useful identity E = horizontal distance / altitude lost in still air, and its reciprocal tan(glide angle) = 1/E. Scholz uses the symbol E throughout, matching the app's choice.
 ```
 
-**Validity at 0.5–15 kg.** Exact - it is a ratio of two coefficients over the same q*S, so the reference area cancels and there is no scale dependence in the definition itself. RC-Network notes E is not a constant but a function of airspeed, which the app already respects by reporting it per point.
+**Validity in the RC/UAV regime (ADR 0028).** Exact - it is a ratio of two coefficients over the same q*S, so the reference area cancels and there is no scale dependence in the definition itself. RC-Network notes E is not a constant but a function of airspeed, which the app already respects by reporting it per point.
 
 ## Implementations (2)
 
@@ -53,7 +53,7 @@ RC-Network adds the operationally useful identity E = horizontal distance / alti
 ## Approval
 
 - [ ] **Source** — citation real, or absence stated and adopted on the maintainer's authority
-- [ ] **Scale** — holds at 0.5–15 kg, or the limitation is written down (ADR 0023)
+- [ ] **Regime** — holds in the RC/UAV regime (Reynolds, Mach, equipment), or the limitation is written down (ADR 0028)
 - [ ] **Dimensions** — the check balances
 - [ ] **Implementations** — all agree, or each deviation is declared and justified
 - [ ] **Preconditions** — every binding condition holds, or the violation is ticketed

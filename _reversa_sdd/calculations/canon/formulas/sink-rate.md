@@ -27,7 +27,7 @@ w_sink = V * C_D / C_L   (small glide-angle form of w_sink = V * sin(gamma), tan
 
 **Produces** [[sink-rate]]  ·  **from** [[flight-speed]] · [[lift-coefficient]] · [[drag-coefficient-parabolic]]
 
-**Kind: a law.** A closed-form relation. Approval asks for its **source** and its **validity at 0.5–15 kg**.
+**Kind: a law.** A closed-form relation. Approval asks for its **source** and its **validity in the RC/UAV regime (ADR 0028)**.
 
 ℹ️ **Reclassified** from `procedure` by the trial of 2026-08-18. A single vectorised product: `w = v * (cd_pos / cl_pos)` (app/services/analysis_service.py:515), with V from `v = np.sqrt(2.0 * weight_n / (rho * s_ref_m2 * cl_pos))` (line 514). Closed form evaluated elementwise over the polar; no method involved.
 
@@ -53,7 +53,7 @@ w_sink = V * C_D / C_L   (small glide-angle form of w_sink = V * sin(gamma), tan
 The sourced relation is the glide-angle one, tan(gamma) = C_D/C_L, from which w = V*sin(gamma). The proposal's w = V*C_D/C_L is its small-angle form (sin ~ tan), correctly labelled as such in the skeleton.
 ```
 
-**Validity at 0.5–15 kg.** The small-angle step is benign for RC gliders (E = 10-20 gives gamma = 3-6 deg, error under 0.5%) but not for draggy powered models: at E = 5 the error is ~2%, at E = 3 it is ~5%, and 3-6 is a realistic E for a sport RC model at low Re. Second-order point: the exact steady glide has L = W*cos(gamma), so V itself is slightly overstated by the level-flight lift balance at low E. Both errors push sink rate the same way (optimistic). Acceptable with a stated E floor; below E ~ 5 report the trigonometric form.
+**Validity in the RC/UAV regime (ADR 0028).** The small-angle step is benign for RC gliders (E = 10-20 gives gamma = 3-6 deg, error under 0.5%) but not for draggy powered models: at E = 5 the error is ~2%, at E = 3 it is ~5%, and 3-6 is a realistic E for a sport RC model at low Re. Second-order point: the exact steady glide has L = W*cos(gamma), so V itself is slightly overstated by the level-flight lift balance at low E. Both errors push sink rate the same way (optimistic). Acceptable with a stated E floor; below E ~ 5 report the trigonometric form.
 
 ## Implementations (1)
 
@@ -64,7 +64,7 @@ The sourced relation is the glide-angle one, tan(gamma) = C_D/C_L, from which w 
 ## Approval
 
 - [ ] **Source** — citation real, or absence stated and adopted on the maintainer's authority
-- [ ] **Scale** — holds at 0.5–15 kg, or the limitation is written down (ADR 0023)
+- [ ] **Regime** — holds in the RC/UAV regime (Reynolds, Mach, equipment), or the limitation is written down (ADR 0028)
 - [ ] **Dimensions** — the check balances
 - [ ] **Implementations** — all agree, or each deviation is declared and justified
 - [ ] **Preconditions** — every binding condition holds, or the violation is ticketed

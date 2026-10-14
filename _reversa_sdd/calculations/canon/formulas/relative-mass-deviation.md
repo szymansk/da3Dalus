@@ -27,7 +27,7 @@ dev = |m_bat,pred - m_bat| / m_bat
 
 **Produces** [[battery-mass-deviation]]  ·  **from** [[predicted-battery-mass]] · [[battery-mass]]
 
-**Kind: a law.** A closed-form relation. Approval asks for its **source** and its **validity at 0.5–15 kg**.
+**Kind: a law.** A closed-form relation. Approval asks for its **source** and its **validity in the RC/UAV regime (ADR 0028)**.
 
 **Dimensional check.** 🟢 balances
 
@@ -41,7 +41,7 @@ dev = |m_bat,pred - m_bat| / m_bat
 n/a.
 ```
 
-**Validity at 0.5–15 kg.** Not scale-dependent. Two implementation notes rather than validity notes: (1) the denominator m_bat is zero whenever the battery mass is unset, and the chain's own convention that 0.0 means 'not configured' makes that state reachable, so the division is undefined on a realistic input; (2) the warning it drives is only as meaningful as E* (see battery-mass-from-capacity) - with a cell-level E* the deviation measures the cell-to-pack overhead rather than a user error, which would make the warning fire on correct data and train users to ignore it.
+**Validity in the RC/UAV regime (ADR 0028).** Not scale-dependent. Two implementation notes rather than validity notes: (1) the denominator m_bat is zero whenever the battery mass is unset, and the chain's own convention that 0.0 means 'not configured' makes that state reachable, so the division is undefined on a realistic input; (2) the warning it drives is only as meaningful as E* (see battery-mass-from-capacity) - with a cell-level E* the deviation measures the cell-to-pack overhead rather than a user error, which would make the warning fire on correct data and train users to ignore it.
 
 ## Implementations (1)
 
@@ -52,7 +52,7 @@ n/a.
 ## Approval
 
 - [ ] **Source** — citation real, or absence stated and adopted on the maintainer's authority
-- [ ] **Scale** — holds at 0.5–15 kg, or the limitation is written down (ADR 0023)
+- [ ] **Regime** — holds in the RC/UAV regime (Reynolds, Mach, equipment), or the limitation is written down (ADR 0028)
 - [ ] **Dimensions** — the check balances
 - [ ] **Implementations** — all agree, or each deviation is declared and justified
 - [ ] **Preconditions** — every binding condition holds, or the violation is ticketed

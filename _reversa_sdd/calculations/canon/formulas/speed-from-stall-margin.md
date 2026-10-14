@@ -45,7 +45,7 @@ V = k_S * V_S,cfg      (V_S,cfg = V_S0 for approach and touchdown, V_S,TO for ta
 Sources give named speeds with named factors, each tied to a certification requirement. The generalised scheme V_op = k_op*V_S,cfg with an optional V_cruise-fraction floor and an absolute minimum is the app's abstraction over them; the floors have no regulatory counterpart.
 ```
 
-**Validity at 0.5–15 kg.** The factors are manned-aircraft certification minima. Two RC-specific cautions. (1) A 1.3 margin over a stall speed whose C_L,max is uncertain by 30-45% at model Reynolds number (see stall-speed) is thinner than the same 1.3 on a certified aircraft with a flight-tested V_S - at model scale the margin should arguably be larger, not equal. (2) Vx/Vy for a propeller model are properly the minimum-drag and minimum-power speeds (Sadraey Eq. 4.80/4.85), not multiples of V_S; and hand-launched models have no V_LOF or ground roll at all, so takeoff-derived operating points are undefined for that launch mode.
+**Validity in the RC/UAV regime (ADR 0028).** The factors are manned-aircraft certification minima. Two RC-specific cautions. (1) A 1.3 margin over a stall speed whose C_L,max is uncertain by 30-45% at model Reynolds number (see stall-speed) is thinner than the same 1.3 on a certified aircraft with a flight-tested V_S - at model scale the margin should arguably be larger, not equal. (2) Vx/Vy for a propeller model are properly the minimum-drag and minimum-power speeds (Sadraey Eq. 4.80/4.85), not multiples of V_S; and hand-launched models have no V_LOF or ground roll at all, so takeoff-derived operating points are undefined for that launch mode.
 
 
 ## Rebuilt 2026-10-01 — named outputs, no cruise floor, no climb speeds
@@ -87,7 +87,7 @@ operating point, which has been computed since 2026-10-01 (§3.10).
 ## Approval
 
 - [ ] **Source** — citation real, or absence stated and adopted on the maintainer's authority
-- [ ] **Scale** — holds at 0.5–15 kg, or the limitation is written down (ADR 0023)
+- [ ] **Regime** — holds in the RC/UAV regime (Reynolds, Mach, equipment), or the limitation is written down (ADR 0028)
 - [ ] **Ownership** — the weighting is the maintainer's decision, recorded as such
 - [ ] **Dimensions** — the check balances
 - [ ] **Implementations** — all agree, or each deviation is declared and justified

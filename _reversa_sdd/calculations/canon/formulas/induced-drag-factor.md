@@ -27,7 +27,7 @@ k = 1 / (pi * e_osw * AR)
 
 **Produces** [[induced-drag-factor]]  ·  **from** [[oswald-efficiency]] · [[aspect-ratio]]
 
-**Kind: a law.** A closed-form relation. Approval asks for its **source** and its **validity at 0.5–15 kg**.
+**Kind: a law.** A closed-form relation. Approval asks for its **source** and its **validity in the RC/UAV regime (ADR 0028)**.
 
 **Dimensional check.** 🟢 balances
 
@@ -41,7 +41,7 @@ k = 1 / (pi * e_osw * AR)
 Anderson §6.7.2 draws a distinction the app must not lose: the SPAN efficiency e in C_D,i = C_L^2/(pi*e*AR) is 0.9-1.0 for a clean wing, whereas the OSWALD factor e_tilde = 1/(1 + r*pi*e*AR) in the total-airplane polar is 0.70-0.85 and additionally absorbs the lift-dependent part of parasite drag (C_D,e = C_D,0 + r*C_L^2). They are different numbers; Anderson says so explicitly.
 ```
 
-**Validity at 0.5–15 kg.** Prandtl lifting-line: valid for moderate-to-high AR unswept wings, which covers RC well. The RC-specific weakness is the constant-e assumption: at Re 5e4-3e5 the lift-dependent parasite term r*C_L^2 is LARGER than at transport scale (laminar separation bubble drag rises steeply outside the drag bucket), so a single e fitted over the whole polar is a worse approximation for a model than for an airliner. The 0.8 literal fallback is an Oswald-band number (Anderson's 0.70-0.85) being used where a span efficiency may be meant - state which one it is.
+**Validity in the RC/UAV regime (ADR 0028).** Prandtl lifting-line: valid for moderate-to-high AR unswept wings, which covers RC well. The RC-specific weakness is the constant-e assumption: at Re 5e4-3e5 the lift-dependent parasite term r*C_L^2 is LARGER than at transport scale (laminar separation bubble drag rises steeply outside the drag bucket), so a single e fitted over the whole polar is a worse approximation for a model than for an airliner. The 0.8 literal fallback is an Oswald-band number (Anderson's 0.70-0.85) being used where a span efficiency may be meant - state which one it is.
 
 ## Implementations (2)
 
@@ -53,7 +53,7 @@ Anderson §6.7.2 draws a distinction the app must not lose: the SPAN efficiency 
 ## Approval
 
 - [ ] **Source** — citation real, or absence stated and adopted on the maintainer's authority
-- [ ] **Scale** — holds at 0.5–15 kg, or the limitation is written down (ADR 0023)
+- [ ] **Regime** — holds in the RC/UAV regime (Reynolds, Mach, equipment), or the limitation is written down (ADR 0028)
 - [ ] **Dimensions** — the check balances
 - [ ] **Implementations** — all agree, or each deviation is declared and justified
 - [ ] **Preconditions** — every binding condition holds, or the violation is ticketed

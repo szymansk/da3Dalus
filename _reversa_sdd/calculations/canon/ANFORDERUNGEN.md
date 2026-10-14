@@ -69,7 +69,7 @@ entsteht auf der Dokumentebene derselbe Duplikatschaden, den wir im Code beschre
 | Ebene | was sie festlegt | Autorität |
 |---|---|---|
 | **Größe** | Name, Symbol, Einheit, Rolle | `quantities/<name>.md` |
-| **Formel** | kanonische Form, Quelle, Gültigkeit bei 0,5–15 kg, Dimensionsprobe | `formulas/<name>.md` |
+| **Formel** | kanonische Form, Quelle, Gültigkeit im RC/UAV-Regime (ADR 0028: Reynolds, Mach, Ausrüstung), Dimensionsprobe | `formulas/<name>.md` |
 | **Anwendung** | welche Bindung, unter welcher Bedingung sie existiert | im Formeleintrag, Abschnitt *Applications* |
 | **Ablauf · Rechengraph · Verfahren** | **wann gerechnet wird, in welcher Reihenfolge, mit welchen Bindungen** | **dieses Dokument** |
 
@@ -957,7 +957,7 @@ Drei Gründe, jeder für sich ausreichend:
 
 | | |
 |---|---|
-| **falsche Größenklasse** | die Böengeschwindigkeiten stammen aus 14 CFR 23.333 — Zulassungswerte für **bemannte** Leichtflugzeuge. ADR 0023 verlangt bei 0,5–15 kg validierte Konstanten. |
+| **falsche Größenklasse** | die Böengeschwindigkeiten stammen aus 14 CFR 23.333 — Zulassungswerte für **bemannte** Leichtflugzeuge. ADR 0028 (früher 0023) verlangt für das RC/UAV-Regime geprüfte Konstanten. |
 | **rechnerisch falsch** | Böenlastzuwachs und Böenmassenverhältnis bestehen die **Dimensionsprobe nicht** — ein ungeklärtes Winkelmaß auf der rechten Seite |
 | **trägt zu keiner unserer Fragen bei** | Modellstrukturen werden aus dem **Manöverlastvielfachen** ausgelegt, nicht aus Böen. Der Manöverteil der Hüllkurve bleibt vollständig. |
 
@@ -1385,8 +1385,8 @@ werden. Es gibt also eine nutzersichtbare Zahl, für die der Kanon keine Beziehu
 Und wo sie gerechnet wird, steht sie auf Konstanten, die wir bei unserer Größe nicht
 übernehmen dürfen: Die Landebeschränkung des Auslegungsdiagramms benutzt Loftin-Faktoren
 mit einer **Hindernishöhe von 50 Fuß**. Fünfzehn Meter Hindernisfreiheit sind für ein
-Modell auf einem Vereinsgelände keine sinnvolle Größe, und ADR 0023 verlangt bei 0,5–15 kg
-validierte Konstanten statt solcher, die in der Verkehrsflugzeugliteratur üblich sind.
+Modell auf einem Vereinsgelände keine sinnvolle Größe, und ADR 0028 (früher 0023) verlangt für das
+RC/UAV-Regime geprüfte Konstanten statt solcher, die in der Verkehrsflugzeugliteratur üblich sind.
 
 Das ist dieselbe Form wie beim Böenteil: eine Rechnung, die es gibt, deren Zahlen aber aus
 der falschen Größenklasse stammen. Der Unterschied ist, dass die Böe zu keiner unserer
@@ -2279,7 +2279,7 @@ eines ohne Abbruchbedingung.
 | **O3** | ✅ **Entschieden 05.10.2026 (Maintainer), siehe §3.4.2:** α-Abtastung → erster $C_L$-Gipfel $\alpha_1$ als Schranke, IPOPT über `asb.Opti`; Lösung nur auf dem Ast vor $\alpha_1$; ohne Lösung kein Wert, sondern `DesignWarning` „unterhalb Abriss“. Freigabetor für Probleme nahe am Abriss bleibt (Befund BRYAN: Plateau mit zweitem Maximum). `stall-onset-detection` wird auf den ersten Gipfel angeglichen (K32). | Freigabe von §2.1 und aller Probleme nahe am Abriss |
 | **O4** | Welche **Prozessschritte** es wirklich gibt und wo ihre Grenzen liegen. | §1, und damit die Struktur aller weiteren Schritte |
 | **O5** | ✅ **Entschieden 05.10.2026 (Maintainer):** Kanonisch ist die **exakte ISA** (U.S. 1976 / ICAO, AeroSandbox `method="isa"`) — genau das Gesetz, das `air-density-isa` nennt. Die geglättete Standard-Näherung (`method="differentiable"`) wird nicht gebraucht: Die Höhe ist je Betriebspunkt fest (O10), nicht Optimierungsvariable. Gemessen: Näherung −339 ppm bei 500 m, −0,2 % bei 3 km in der Dichte; exakte ISA 0,06 ms je Aufruf. Ist: alle 15 Aufrufer nutzen die Näherung (K30). Die ISA bleibt eine Nennbedingung, nicht das Tageswetter (§3.2). | Eindeutigkeit von $\rho$ |
-| **O7** | Wird **Finger, Bil & Braun, *Drag Estimation of Small Fixed-Wing UAVs*** (Aeronautical Journal 122/1248, 2018) die zitierte Quelle für $c_{D0}$ und $e$ **in unserer Größenklasse**? ADR 0023 verlangt bei 0,5–15 kg validierte Konstanten; `DEFAULT_E_OSWALD = 0.8` hat bis heute keine. | Freigabe von `induced-drag-factor`, `zero-lift-drag-from-sweep` |
+| **O7** | Wird **Finger, Bil & Braun, *Drag Estimation of Small Fixed-Wing UAVs*** (Aeronautical Journal 122/1248, 2018) die zitierte Quelle für $c_{D0}$ und $e$ **in unserer Größenklasse**? ADR 0028 (früher 0023) verlangt für das RC/UAV-Regime geprüfte Konstanten; `DEFAULT_E_OSWALD = 0.8` hat bis heute keine. | Freigabe von `induced-drag-factor`, `zero-lift-drag-from-sweep` |
 | **O8** | *Geklärt, siehe §3.9 — aus den Propellerkennlinien der Datenbank.* Woher kommt der **Schub bei Fahrt**? Propellerschub fällt mit der Geschwindigkeit ($P = T\,V$ bei näherungsweise konstanter Leistung), und der Standschub gilt nur bei $V = 0$. | jede Beschränkung, die $T/W$ außerhalb des Standes benutzt |
 | **O9** | *Geklärt, siehe §3.1 — eine Größe mit veränderlicher Genauigkeit.* §2.1 erzeugt ein **Massenband**, §2.3 verbraucht einen **Massenpunktwert**. Wie kommt man vom einen zum anderen — wählt der Konstrukteur einen Wert im Band, oder rechnet die Analyse über das ganze Band? | Anschluss von §2.1 an §2.3 |
 | **O10** | ✅ **Entschieden 05.10.2026 (Maintainer):** $m$, $h$, $V$ und Ruderstellung **gehören zum Betriebspunkt**, die Genauigkeitsstufe nicht. Das schließt an bereits Entschiedenes an (§3.2 „Woraus ein Betriebspunkt besteht“): **Höhe** = Platzhöhe, eine Missionsangabe; **Masse** = aktueller Stand des Massenbudgets; **Geschwindigkeit** = der eine freie Freiheitsgrad des Punkts, je Punkt benannt ($V_\mathrm{app}$, $V_\mathrm{cruise}$ …) und über die Schließungsbedingung bestimmt; **Ruderstellung** = Ausgabe, der Punkt wird eingetrimmt — sie gehört zum Punkt, ist aber kein Eingang. Die **Genauigkeitsstufe** ist eine Einstellung des Rechners, kein Zustand des Flugzeugs: eine erklärte Stufe je freigegebener Größe (A3, `xxxlarge` im Analysepfad). | Vollständigkeit von §1 |

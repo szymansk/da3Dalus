@@ -42,11 +42,12 @@ quantity). A violation of either is review-blocking.
 | [0020](0020-one-designwarning-channel-no-undeclared-fallbacks.md) | One `DesignWarning` channel: no *undeclared* fallbacks | UX, correctness | Accepted (refines 0012) |
 | [0021](0021-complete-but-unreachable-code-is-deleted-by-default.md) | Complete but unreachable code is deleted by default; "inert" is forbidden | code health | Accepted |
 | ⭐ [0022](0022-one-authority-per-user-facing-quantity.md) | One authority per user-facing quantity | data model, correctness | Accepted (generalises 0004) |
-| [0023](0023-engineering-constants-carry-provenance.md) | Engineering constants carry provenance and are validated at RC/UAV scale | domain methodology | Accepted |
+| [0023](0023-engineering-constants-carry-provenance.md) | Engineering constants carry provenance and are validated at RC/UAV scale | domain methodology | **Superseded by 0028** |
 | [0024](0024-single-user-desktop-operating-model.md) | Single-user desktop operating model | product, security | Accepted (**corrects 0016**) |
 | [0025](0025-mcp-is-built-on-the-copilot-tool-layer.md) | MCP is built on the copilot tool layer, not by wrapping REST | agents, architecture | Accepted |
 | [0026](0026-aero-truth-from-the-solver-not-the-parabola.md) | The aero truth comes from the solver, not from the parabola | aerodynamics | Accepted (amends 0004) |
 | [0027](0027-uncertain-quantities-as-intervals-over-method-worlds.md) | Uncertain quantities are intervals over method worlds | aerodynamics, calculation canon | Accepted (amends 0026 for the neutral point; clarifies 0022) |
+| ⭐ [0028](0028-engineering-constants-carry-provenance-regime-by-flow-physics.md) | Engineering constants carry provenance; the regime is defined by flow physics | domain methodology | Accepted (supersedes 0023) |
 
 ## Provenance
 
@@ -62,10 +63,10 @@ validation interview (2026-08-13 → 2026-08-15), which also appended
 
 ## Reading order
 
-- **Domain:** 0011 → 0010 → 0004 → 0012 → 0023
+- **Domain:** 0011 → 0010 → 0004 → 0012 → 0023 → 0028
 - **Geometry stack:** 0001 → 0002 → 0005 → 0018
 - **Aero stack:** 0003 → 0004 → 0026 → 0027 → 0008
 - **Persistence and change:** 0009 → 0006 → 0007
 - **Risk before deploying anything:** **0024** → 0016 → 0009 → 0006
 - **Cross-cutting rules the interview settled:** 0020 (warn) → 0021 (delete) →
-  0022 (one producer) → 0023 (provenance) → 0024 (operating model)
+  0022 (one producer) → 0028 (provenance, supersedes 0023) → 0024 (operating model)

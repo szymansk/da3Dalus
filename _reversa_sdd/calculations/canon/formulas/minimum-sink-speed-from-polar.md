@@ -69,7 +69,7 @@ subject to:               L(V, alpha) = n * m * g
 Sadraey gives the closed form; the proposal's argmin over computed sink rate is the numerical equivalent of the same condition. Sadraey also fixes the exact ratio: V_mp = V_md/3^0.25 = V_md/1.316, and (L/D) at minimum power = 0.866*(L/D)_max.
 ```
 
-**Validity at 0.5–15 kg.** Valid and directly RC-relevant: Sadraey's statement that the minimum-power speed is the best-climb speed for a PROPELLER aircraft applies to essentially every 0.5-15 kg electric model. The V_mp = V_md/1.316 identity is a free consistency assertion the app should enforce between its two speeds - if the computed argmin and argmax disagree with it by much, the polar fit is bad, not the physics.
+**Validity in the RC/UAV regime (ADR 0028).** Valid and directly RC-relevant: Sadraey's statement that the minimum-power speed is the best-climb speed for a PROPELLER aircraft applies to essentially every 0.5-15 kg electric model. The V_mp = V_md/1.316 identity is a free consistency assertion the app should enforce between its two speeds - if the computed argmin and argmax disagree with it by much, the polar fit is bad, not the physics.
 
 
 ## Rebuilt 2026-10-01 — an optimisation problem
@@ -97,7 +97,7 @@ polar instead of a closed form.
 ## Approval
 
 - [ ] **Source** — citation real, or absence stated and adopted on the maintainer's authority
-- [ ] **Scale** — holds at 0.5–15 kg, or the limitation is written down (ADR 0023)
+- [ ] **Regime** — holds in the RC/UAV regime (Reynolds, Mach, equipment), or the limitation is written down (ADR 0028)
 - [ ] **Relation and method** — which equation it solves, and by which named method
 - [ ] **Assumptions** — the conditions the method requires (bracketing, continuity, range)
 - [ ] **Convergence** — the criterion, and what is returned and declared on failure

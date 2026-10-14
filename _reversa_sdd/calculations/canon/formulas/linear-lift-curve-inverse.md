@@ -27,7 +27,7 @@ alpha = alpha_0 + C_L / C_Lalpha   (converted to degrees)
 
 **Produces** [[characteristic-angle-of-attack]]  ·  **from** [[lift-coefficient]] · [[lift-curve-slope]] · [[zero-lift-angle]]
 
-**Kind: a law.** A closed-form relation. Approval asks for its **source** and its **validity at 0.5–15 kg**.
+**Kind: a law.** A closed-form relation. Approval asks for its **source** and its **validity in the RC/UAV regime (ADR 0028)**.
 
 ℹ️ **Reclassified** from `procedure` by the trial of 2026-08-18. It is the algebraic inverse of a linear relation, written as one expression: `alpha_rad = alpha_0_rad + cl / cl_alpha_per_rad` (app/services/assumption_compute_service.py:2021-2023). No iteration, no search, no bracketing — the parser failed on it, not the maths. Its COEFFICIENTS come from a fit (that fit is a separate node), but the relation itself is closed form.
 
@@ -53,7 +53,7 @@ alpha = alpha_0 + C_L / C_Lalpha   (converted to degrees)
 Sources write the forward relation C_L = a*(alpha - alpha_0); the proposal inverts it. Anderson §5.3.3 adds a fact worth keeping: alpha_L=0 is unaffected by aspect ratio (at zero lift there is no downwash), so the section zero-lift angle may be used for the finite wing - the slope, not the intercept, is what AR changes.
 ```
 
-**Validity at 0.5–15 kg.** Valid ONLY inside the linear range, and that is a real restriction for two of the three quantities this formula is used for. Recovering alpha_stall by inverting the linear curve at C_L,max is wrong by construction, because the curve is non-linear precisely there - it will always understate the stall angle. The error is largest exactly at RC scale: Lennon records stall AoA dropping from 17 deg to 10 deg at low model Rn while the linear slope barely moves, so the linear extrapolation overshoots further the smaller the model. alpha at best glide and minimum sink are inside the linear range and are fine.
+**Validity in the RC/UAV regime (ADR 0028).** Valid ONLY inside the linear range, and that is a real restriction for two of the three quantities this formula is used for. Recovering alpha_stall by inverting the linear curve at C_L,max is wrong by construction, because the curve is non-linear precisely there - it will always understate the stall angle. The error is largest exactly at RC scale: Lennon records stall AoA dropping from 17 deg to 10 deg at low model Rn while the linear slope barely moves, so the linear extrapolation overshoots further the smaller the model. alpha at best glide and minimum sink are inside the linear range and are fine.
 
 ## Implementations (3)
 
@@ -66,7 +66,7 @@ Sources write the forward relation C_L = a*(alpha - alpha_0); the proposal inver
 ## Approval
 
 - [ ] **Source** — citation real, or absence stated and adopted on the maintainer's authority
-- [ ] **Scale** — holds at 0.5–15 kg, or the limitation is written down (ADR 0023)
+- [ ] **Regime** — holds in the RC/UAV regime (Reynolds, Mach, equipment), or the limitation is written down (ADR 0028)
 - [ ] **Dimensions** — the check balances
 - [ ] **Implementations** — all agree, or each deviation is declared and justified
 - [ ] **Preconditions** — every binding condition holds, or the violation is ticketed

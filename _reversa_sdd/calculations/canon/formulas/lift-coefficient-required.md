@@ -29,7 +29,7 @@ C_L,req = n * m * g / (q * S_ref)
 
 **One relation, two directions.** This entry is the lift balance solved for C_L at the speed of the operating point. [[stall-speed]] is the same relation, `n·m·g = ½·ρ·V²·S_ref·C_L`, solved the other way. Every time the sources solve it for a speed, the C_L belongs to a named condition (Sadraey Eq. 4.30, 4.55, 4.85; Scholz Eq. 5.30, 5.40) — there is no generic lift-balance speed, which is why `lift-balance-speed` was deleted on 2026-10-01.
 
-**Kind: a law.** A closed-form relation. Approval asks for its **source** and its **validity at 0.5–15 kg**.
+**Kind: a law.** A closed-form relation. Approval asks for its **source** and its **validity in the RC/UAV regime (ADR 0028)**.
 
 **Dimensional check.** 🟢 balances
 
@@ -43,7 +43,7 @@ C_L,req = n * m * g / (q * S_ref)
 Sources write the n = 1 case and introduce n separately; the combined n*m*g/(q*S) is the app's composition. Scholz's Eq. 5.30 is in mass form (m/S = C_L*q/g), which is where the g placement differs.
 ```
 
-**Validity at 0.5–15 kg.** Exact. Only caution is interpretive: the C_L this returns is a DEMAND, and the app must compare it against C_L,max at the correct Reynolds number before reporting the point as flyable - Lennon Ch. 21 is explicit that exceeding C_L,max here is precisely the accelerated stall.
+**Validity in the RC/UAV regime (ADR 0028).** Exact. Only caution is interpretive: the C_L this returns is a DEMAND, and the app must compare it against C_L,max at the correct Reynolds number before reporting the point as flyable - Lennon Ch. 21 is explicit that exceeding C_L,max here is precisely the accelerated stall.
 
 ## Implementations (1)
 
@@ -54,7 +54,7 @@ Sources write the n = 1 case and introduce n separately; the combined n*m*g/(q*S
 ## Approval
 
 - [ ] **Source** — citation real, or absence stated and adopted on the maintainer's authority
-- [ ] **Scale** — holds at 0.5–15 kg, or the limitation is written down (ADR 0023)
+- [ ] **Regime** — holds in the RC/UAV regime (Reynolds, Mach, equipment), or the limitation is written down (ADR 0028)
 - [ ] **Dimensions** — the check balances
 - [ ] **Implementations** — all agree, or each deviation is declared and justified
 - [ ] **Preconditions** — every binding condition holds, or the violation is ticketed

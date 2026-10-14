@@ -27,7 +27,7 @@ R_glide = E * h
 
 **Produces** [[glide-distance]]  ·  **from** [[lift-to-drag-ratio]] · [[altitude]]
 
-**Kind: a law.** A closed-form relation. Approval asks for its **source** and its **validity at 0.5–15 kg**.
+**Kind: a law.** A closed-form relation. Approval asks for its **source** and its **validity in the RC/UAV regime (ADR 0028)**.
 
 **Dimensional check.** 🟢 balances — dimensionless * m = m.
 
@@ -35,7 +35,7 @@ R_glide = E * h
 
 > Definitional from the steady glide: the glide angle satisfies tan(gamma) = C_D/C_L = 1/E, so the ground distance covered from height h is h/tan(gamma) = E*h. Anderson, Fundamentals of Aerodynamics 6e, §6.6, derives the same relation for the unpowered equilibrium glide. The small-angle step is the one already declared in [[sink-rate]].
 
-**Validity at 0.5–15 kg.** Exact for a **steady** glide at the stated glide ratio. It
+**Validity in the RC/UAV regime (ADR 0028).** Exact for a **steady** glide at the stated glide ratio. It
 assumes the aircraft is already at that speed and stays there; the height lost while
 settling into the glide after a motor stops is not in it, and at model scale that
 transient is a real fraction of a low-altitude engine-out.
@@ -56,7 +56,7 @@ whose propeller keeps turning.
 ## Approval
 
 - [ ] **Source** — citation real, or absence stated and adopted on the maintainer's authority
-- [ ] **Scale** — holds at 0.5–15 kg, or the limitation is written down (ADR 0023)
+- [ ] **Regime** — holds in the RC/UAV regime (Reynolds, Mach, equipment), or the limitation is written down (ADR 0028)
 - [ ] **Dimensions** — the check balances
 - [ ] **Implementations** — all agree, or each deviation is declared and justified
 - [ ] **Preconditions** — every binding condition holds, or the violation is ticketed

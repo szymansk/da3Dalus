@@ -27,7 +27,7 @@ W/S = m * g / S_ref
 
 **Produces** [[wing-loading]]  ·  **from** [[aircraft-mass]] · [[gravity]] · [[wing-reference-area]]
 
-**Kind: a law.** A closed-form relation. Approval asks for its **source** and its **validity at 0.5–15 kg**.
+**Kind: a law.** A closed-form relation. Approval asks for its **source** and its **validity in the RC/UAV regime (ADR 0028)**.
 
 **Dimensional check.** 🟢 balances
 
@@ -41,7 +41,7 @@ W/S = m * g / S_ref
 Scholz/Sadraey normally write the MASS loading m/S in kg/m^2 (or lb/ft^2), not the force loading N/m^2. RC writes g/dm^2 (Europe) or oz/ft^2 (Lennon: gliders <10-15, sport 15-20, pattern 23-26 oz/ft^2). Conversion, not disagreement - but it is where the second g enters.
 ```
 
-**Validity at 0.5–15 kg.** Fully valid at 0.5-15 kg; wing loading is arguably the single most used RC design number. Caveat is presentational: RC users read g/dm^2 or oz/ft^2, and Lennon's mission bands are the ones they benchmark against. Producing this quantity in three places with two different g values (as the skeleton notes) is an ADR 0022 violation with no defence in either source.
+**Validity in the RC/UAV regime (ADR 0028).** Fully valid at 0.5-15 kg; wing loading is arguably the single most used RC design number. Caveat is presentational: RC users read g/dm^2 or oz/ft^2, and Lennon's mission bands are the ones they benchmark against. Producing this quantity in three places with two different g values (as the skeleton notes) is an ADR 0022 violation with no defence in either source.
 
 ## Implementations (3)
 
@@ -54,7 +54,7 @@ Scholz/Sadraey normally write the MASS loading m/S in kg/m^2 (or lb/ft^2), not t
 ## Approval
 
 - [ ] **Source** — citation real, or absence stated and adopted on the maintainer's authority
-- [ ] **Scale** — holds at 0.5–15 kg, or the limitation is written down (ADR 0023)
+- [ ] **Regime** — holds in the RC/UAV regime (Reynolds, Mach, equipment), or the limitation is written down (ADR 0028)
 - [ ] **Dimensions** — the check balances
 - [ ] **Implementations** — all agree, or each deviation is declared and justified
 - [ ] **Preconditions** — every binding condition holds, or the violation is ticketed

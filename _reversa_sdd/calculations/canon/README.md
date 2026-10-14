@@ -239,7 +239,7 @@ Each formula carries a `status`:
 | status | meaning |
 |---|---|
 | `draft` | proposed by extraction. **Cites nothing, decides nothing.** |
-| `approved` | the maintainer has read it, the source is real, and its validity at 0.5–15 kg is stated |
+| `approved` | the maintainer has read it, the source is real, and its validity in the RC/UAV regime (ADR 0028) is stated |
 | `superseded` | replaced by another entry, which is named |
 
 Three gates before `approved`:
@@ -248,8 +248,9 @@ Three gates before `approved`:
    relation is adopted on the maintainer's authority. 🔴 NO SOURCE FOUND is a legitimate
    outcome; a fabricated citation is the worst possible entry, because everything
    downstream cites it.
-2. **Scale** — does it hold for RC/UAV aircraft of 0.5–15 kg? A relation derived for
-   transport aircraft is not disqualified, but the limitation is stated (ADR 0023).
+2. **Regime** — does it hold in the RC/UAV regime (chord Re 3·10⁴–1·10⁶, bubble-sensitive below
+   7·10⁴; Mach ≤ 0.3; RC equipment)? A relation derived for transport aircraft is not
+   disqualified, but the limitation is stated (ADR 0028, superseding 0023; mass is not a criterion).
    Low Reynolds number, low wing loading and hand launch are where it usually bites.
 3. **Implementations** — every implementing node either agrees, or its deviation is
    declared and justified.
@@ -338,7 +339,7 @@ decision, and the entries inherit their approval from it.
 Approval happens twice, and the order matters.
 
 **First the formula** — the law itself. Is the relation right, does it have a source, does
-it hold at 0.5–15 kg, do the dimensions balance? This is approved once and inherited by
+it hold in the RC/UAV regime (ADR 0028), do the dimensions balance? This is approved once and inherited by
 every application.
 
 **Then the application** — the law bound to a specific problem: which `cl_max`, which

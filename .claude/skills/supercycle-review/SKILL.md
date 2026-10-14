@@ -100,8 +100,9 @@ Check the diff against:
      exception that does not emit a `DesignWarning`.
    - **ADR 0021** — code added complete but unreachable, or an existing
      unreachable mechanism left untouched ("inert" is forbidden).
-   - **ADR 0023** — a new engineering constant, default or correlation without
-     its source and without a statement that it is valid at RC/UAV scale.
+   - **ADR 0028** (supersedes 0023) — a new engineering constant, default or
+     correlation without its source and without a statement of its validity in
+     the RC/UAV regime (Reynolds, Mach, equipment — not mass).
 
 If the change is genuinely right and the ADR is wrong, the resolution is a **new
 ADR superseding the old one** — proposed to the user, not an undocumented

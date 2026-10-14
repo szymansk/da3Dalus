@@ -27,7 +27,7 @@ W = m * g
 
 **Produces** [[weight]]  ·  **from** [[aircraft-mass]] · [[gravity]]
 
-**Kind: a law.** A closed-form relation. Approval asks for its **source** and its **validity at 0.5–15 kg**.
+**Kind: a law.** A closed-form relation. Approval asks for its **source** and its **validity in the RC/UAV regime (ADR 0028)**.
 
 **Dimensional check.** 🟢 balances
 
@@ -41,7 +41,7 @@ W = m * g
 Scholz and Sadraey almost always carry the mass form m*g inline rather than a separate symbol W (e.g. T_TO/(m_MTO*g), m_ML/S_W), so the 'weight' node is an app-level construct, not a source-level one.
 ```
 
-**Validity at 0.5–15 kg.** Exact at any scale. The two literals differ by 0.15%, which is far below every other uncertainty in this chain (C_L,max at model Reynolds number is uncertain by 30-45%, see stall-speed). So the 9.81 / 9.80665 split is an ADR 0022 single-authority defect, not an accuracy defect - do not justify it as a precision improvement. Scholz's own choice is 9.81.
+**Validity in the RC/UAV regime (ADR 0028).** Exact at any scale. The two literals differ by 0.15%, which is far below every other uncertainty in this chain (C_L,max at model Reynolds number is uncertain by 30-45%, see stall-speed). So the 9.81 / 9.80665 split is an ADR 0022 single-authority defect, not an accuracy defect - do not justify it as a precision improvement. Scholz's own choice is 9.81.
 
 ## Implementations (4)
 
@@ -55,7 +55,7 @@ Scholz and Sadraey almost always carry the mass form m*g inline rather than a se
 ## Approval
 
 - [ ] **Source** — citation real, or absence stated and adopted on the maintainer's authority
-- [ ] **Scale** — holds at 0.5–15 kg, or the limitation is written down (ADR 0023)
+- [ ] **Regime** — holds in the RC/UAV regime (Reynolds, Mach, equipment), or the limitation is written down (ADR 0028)
 - [ ] **Dimensions** — the check balances
 - [ ] **Implementations** — all agree, or each deviation is declared and justified
 - [ ] **Preconditions** — every binding condition holds, or the violation is ticketed

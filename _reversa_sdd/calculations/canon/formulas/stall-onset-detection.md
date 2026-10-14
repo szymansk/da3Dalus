@@ -67,7 +67,7 @@ i_stall = first i > i(C_L,max) with C_L_i < C_L_(i-1) and C_D_i > C_D_(i-1)
 Anderson describes the mechanism qualitatively and distinguishes stall types rather than giving a detection rule.
 ```
 
-**Validity at 0.5–15 kg.** Two RC-scale weaknesses. (1) Anderson §4.13 distinguishes leading-edge stall (thin 10-16% sections: sharp peaked maximum, rapid post-stall drop - the test fires cleanly) from trailing-edge stall (>16% thick: "gentle, gradual bending-over of the lift curve" - the test fires late and is sensitive to alpha step size). Thick sections are common on RC trainers, so the soft case is the normal case here. (2) Lennon records stall AoA falling from 17 deg to 10 deg at low model Rn, so a sweep grid tuned to full-scale stall angles can straddle the peak entirely. Deeper caveat: AeroBuildup/VLM does not model separation, so what this test detects is a feature of the underlying section data, not a computed stall - it must not be presented to the user as a predicted stall angle without stating the Re it came from.
+**Validity in the RC/UAV regime (ADR 0028).** Two RC-scale weaknesses. (1) Anderson §4.13 distinguishes leading-edge stall (thin 10-16% sections: sharp peaked maximum, rapid post-stall drop - the test fires cleanly) from trailing-edge stall (>16% thick: "gentle, gradual bending-over of the lift curve" - the test fires late and is sensitive to alpha step size). Thick sections are common on RC trainers, so the soft case is the normal case here. (2) Lennon records stall AoA falling from 17 deg to 10 deg at low model Rn, so a sweep grid tuned to full-scale stall angles can straddle the peak entirely. Deeper caveat: AeroBuildup/VLM does not model separation, so what this test detects is a feature of the underlying section data, not a computed stall - it must not be presented to the user as a predicted stall angle without stating the Re it came from.
 
 ## Implementations (1)
 
@@ -78,7 +78,7 @@ Anderson describes the mechanism qualitatively and distinguishes stall types rat
 ## Approval
 
 - [ ] **Source** — citation real, or absence stated and adopted on the maintainer's authority
-- [ ] **Scale** — holds at 0.5–15 kg, or the limitation is written down (ADR 0023)
+- [ ] **Regime** — holds in the RC/UAV regime (Reynolds, Mach, equipment), or the limitation is written down (ADR 0028)
 - [ ] **Relation and method** — which equation it solves, and by which named method
 - [ ] **Assumptions** — the conditions the method requires (bracketing, continuity, range)
 - [ ] **Convergence** — the criterion, and what is returned and declared on failure

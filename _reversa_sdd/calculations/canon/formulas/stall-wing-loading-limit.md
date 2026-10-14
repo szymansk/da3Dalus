@@ -27,7 +27,7 @@ tags:
 
 **Produces** [[wing-loading-limit-stall]]  ·  **from** [[sea-level-air-density]] · [[stall-speed-target]] · [[max-lift-coefficient]]
 
-**Kind: a law.** A closed-form relation. Approval asks for its **source** and its **validity at 0.5–15 kg**.
+**Kind: a law.** A closed-form relation. Approval asks for its **source** and its **validity in the RC/UAV regime (ADR 0028)**.
 
 ℹ️ **Reclassified.** Was recorded as a second producer of another quantity. It produces its own: a design limit, not the actual value.
 
@@ -43,7 +43,7 @@ tags:
 Identical. Sadraey adds two usage rules: (a) rho is the SEA-LEVEL value (1.225 kg/m^3). Corrected 2026-10-02: the earlier gloss called this the conservative choice because lowest density gives highest V_s — that is backwards, sea level is the densest air and gives the LOWEST V_s. It is a convention (stall speeds stated as equivalent airspeed), and the maintainer adopts it for simplicity: RC models are flown by feel, almost never with an airspeed sensor, so V_S,target is meant at sea level. (b) the acceptable region is to the LEFT of the resulting vertical line (lower W/S is always acceptable). Sadraey also notes FAR 23 caps V_s at 61 kt and CS-VLA at 45 kt - FAR 25 has no V_s cap and uses landing field length instead.
 ```
 
-**Validity at 0.5–15 kg.** Valid at RC scale, and it is the right constraint to use for RC (Scholz's Loftin landing-field-length alternative, s_LFL with k_L = 0.107 kg/m^3, is a statistical fit to 1980s jet transports and must NOT be used at 0.5-15 kg). Caveat under ADR 0023: Sadraey's C_L,max source tables 4.10/4.11 have no RC row. The nearest bands are Home-built 1.2-1.8 and Microlight 1.8-2.4. The app's 1.4 default sits inside the home-built band, which is a defensible provenance, but it is a manned-aircraft band, not an RC measurement.
+**Validity in the RC/UAV regime (ADR 0028).** Valid at RC scale, and it is the right constraint to use for RC (Scholz's Loftin landing-field-length alternative, s_LFL with k_L = 0.107 kg/m^3, is a statistical fit to 1980s jet transports and must NOT be used at 0.5-15 kg). Caveat under ADR 0023: Sadraey's C_L,max source tables 4.10/4.11 have no RC row. The nearest bands are Home-built 1.2-1.8 and Microlight 1.8-2.4. The app's 1.4 default sits inside the home-built band, which is a defensible provenance, but it is a manned-aircraft band, not an RC measurement.
 
 ## Implementations (1)
 
@@ -54,7 +54,7 @@ Identical. Sadraey adds two usage rules: (a) rho is the SEA-LEVEL value (1.225 k
 ## Approval
 
 - [ ] **Source** — citation real, or absence stated and adopted on the maintainer's authority
-- [ ] **Scale** — holds at 0.5–15 kg, or the limitation is written down (ADR 0023)
+- [ ] **Regime** — holds in the RC/UAV regime (Reynolds, Mach, equipment), or the limitation is written down (ADR 0028)
 - [ ] **Dimensions** — the check balances
 - [ ] **Implementations** — all agree, or each deviation is declared and justified
 - [ ] **Preconditions** — every binding condition holds, or the violation is ticketed

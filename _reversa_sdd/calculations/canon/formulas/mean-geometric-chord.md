@@ -27,7 +27,7 @@ c_bar = S_ref / b_ref
 
 **Produces** [[mean-geometric-chord]]  ·  **from** [[wing-reference-area]] · [[wing-span]]
 
-**Kind: a law.** A closed-form relation. Approval asks for its **source** and its **validity at 0.5–15 kg**.
+**Kind: a law.** A closed-form relation. Approval asks for its **source** and its **validity in the RC/UAV regime (ADR 0028)**.
 
 **Dimensional check.** 🟢 balances
 
@@ -41,7 +41,7 @@ c_bar = S_ref / b_ref
 The regulation names it only as a symbol definition inside the gust-load paragraph; it does not write c_bar = S/b as a standalone equation. That algebraic step comes from Sadraey's AR definition.
 ```
 
-**Validity at 0.5–15 kg.** Valid. The deliberate choice of MGC over MAC is correct and matches the regulation - keep it, and keep the comment saying why, because it will otherwise be 'fixed' to MAC by a future reviewer. For a rectangular RC wing MGC and MAC coincide, so the distinction only bites on tapered wings.
+**Validity in the RC/UAV regime (ADR 0028).** Valid. The deliberate choice of MGC over MAC is correct and matches the regulation - keep it, and keep the comment saying why, because it will otherwise be 'fixed' to MAC by a future reviewer. For a rectangular RC wing MGC and MAC coincide, so the distinction only bites on tapered wings.
 
 ## Implementations (1)
 
@@ -52,7 +52,7 @@ The regulation names it only as a symbol definition inside the gust-load paragra
 ## Approval
 
 - [ ] **Source** — citation real, or absence stated and adopted on the maintainer's authority
-- [ ] **Scale** — holds at 0.5–15 kg, or the limitation is written down (ADR 0023)
+- [ ] **Regime** — holds in the RC/UAV regime (Reynolds, Mach, equipment), or the limitation is written down (ADR 0028)
 - [ ] **Dimensions** — the check balances
 - [ ] **Implementations** — all agree, or each deviation is declared and justified
 - [ ] **Preconditions** — every binding condition holds, or the violation is ticketed

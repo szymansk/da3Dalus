@@ -47,4 +47,4 @@ differently. No sourced rule for flying-wing fins exists (research 2026-10-04).
 **Source.** 🟢 SOURCED — Sadraey Eq. 6.74; V-tail projection sin²ν: McCombs, *Model Aviation* 7/1996;
 Drela's V-tail rule (BAENDER §3b).
 
-**Validity at 0.5–15 kg.** Exact as geometry; the bands are RC values.
+**Validity in the RC/UAV regime (ADR 0028).** Exact as geometry; the bands are RC values.

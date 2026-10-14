@@ -116,7 +116,7 @@ normal. In einem Formelregister sehen beide identisch aus.
 | Ebene | Aussage | Freigabe prüft |
 |---|---|---|
 | **Größe** | Symbol, Einheit, Bedeutung, Rolle (Eingabe / abgeleitet / Ausgabe) | Ist es *eine* Größe? |
-| **Formel** | eine Beziehung zwischen Größen, in Symbolen | Quelle · Maßstab 0,5–15 kg · Dimensionen |
+| **Formel** | eine Beziehung zwischen Größen, in Symbolen | Quelle · Regime (ADR 0028: Re, Mach, Ausrüstung) · Dimensionen |
 | **Anwendung** | die Formel an ein Problem gebunden, mit Bedingung | Ist die Bindung die richtige? |
 | **Vorbedingung** | was für die Eingaben gelten muss, damit die Bindung etwas bedeutet | Hält sie? Welcher Test klärt es? |
 

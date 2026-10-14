@@ -28,7 +28,7 @@ E_max,probe = 0.5 * sqrt(pi * e_osw * AR / C_D0)
 
 **Produces** [[max-lift-to-drag-probe]]  ·  **from** [[oswald-efficiency]] · [[aspect-ratio]] · [[zero-lift-drag-coefficient]]
 
-**Kind: a law.** A closed-form relation. Approval asks for its **source** and its **validity at 0.5–15 kg**.
+**Kind: a law.** A closed-form relation. Approval asks for its **source** and its **validity in the RC/UAV regime (ADR 0028)**.
 
 **Dimensional check.** 🟢 balances
 
@@ -42,7 +42,7 @@ E_max,probe = 0.5 * sqrt(pi * e_osw * AR / C_D0)
 Identical in all three. Both Anderson and Scholz also give the companion result C_L,md = sqrt(pi*e*AR*C_D,0), i.e. at maximum L/D the zero-lift drag exactly equals the induced drag - a cheap internal consistency assertion the app could make.
 ```
 
-**Validity at 0.5–15 kg.** The derivation assumes a strictly parabolic polar with constant C_D0 and constant e. That assumption is materially weaker at Re 5e4-3e5 than at transport Re: the RC-scale polar has a drag bucket and a steep off-bucket rise (Scholz/Sadraey §5.4.3: Cd = Cd_min + K*(Cl - Cl_min)^2, an OFFSET parabola), so E_max from this closed form and E_max read off the computed polar will legitimately disagree. Anderson's note that (L/D)_max is independent of weight and size does hold - it is a configuration property. Two producers of E_max is an ADR 0022 risk; pick the computed-polar one as authority at RC scale and derive the closed form only for cross-check.
+**Validity in the RC/UAV regime (ADR 0028).** The derivation assumes a strictly parabolic polar with constant C_D0 and constant e. That assumption is materially weaker at Re 5e4-3e5 than at transport Re: the RC-scale polar has a drag bucket and a steep off-bucket rise (Scholz/Sadraey §5.4.3: Cd = Cd_min + K*(Cl - Cl_min)^2, an OFFSET parabola), so E_max from this closed form and E_max read off the computed polar will legitimately disagree. Anderson's note that (L/D)_max is independent of weight and size does hold - it is a configuration property. Two producers of E_max is an ADR 0022 risk; pick the computed-polar one as authority at RC scale and derive the closed form only for cross-check.
 
 ## ⚠️ Conflict
 
@@ -60,7 +60,7 @@ One user-visible number, two different laws behind it. mission_kpi_service repor
 ## Approval
 
 - [ ] **Source** — citation real, or absence stated and adopted on the maintainer's authority
-- [ ] **Scale** — holds at 0.5–15 kg, or the limitation is written down (ADR 0023)
+- [ ] **Regime** — holds in the RC/UAV regime (Reynolds, Mach, equipment), or the limitation is written down (ADR 0028)
 - [ ] **Dimensions** — the check balances
 - [ ] **Implementations** — all agree, or each deviation is declared and justified
 - [ ] **Preconditions** — every binding condition holds, or the violation is ticketed

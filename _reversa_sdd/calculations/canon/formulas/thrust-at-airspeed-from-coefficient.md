@@ -27,7 +27,7 @@ T = C_T * rho * n_prop^2 * D_prop^4
 
 **Produces** [[thrust-at-airspeed]]  ·  **from** [[thrust-coefficient]] · [[air-density]] · [[propeller-speed]] · [[propeller-diameter]]
 
-**Kind: a law.** A closed-form relation. Approval asks for its **source** and its **validity at 0.5–15 kg**.
+**Kind: a law.** A closed-form relation. Approval asks for its **source** and its **validity in the RC/UAV regime (ADR 0028)**.
 
 **Dimensional check.** 🟢 balances — (kg/m^3) * (1/s^2) * m^4 = kg*m/s^2 = N.
 
@@ -45,7 +45,7 @@ dimensional checker, which is a worse trade than one extra line.
 unit and no source — the one symbol the dimensional check reports as unregistered. This
 relation replaces the guess with a measurement.
 
-**Validity at 0.5–15 kg.** This is the *right* scale for it: the tables are APC model
+**Validity in the RC/UAV regime (ADR 0028).** This is the *right* scale for it: the tables are APC model
 propellers. Two limits are real. The coefficient is clamped at zero past the zero-thrust
 point, so nothing windmilling is modelled. And a table lookup outside its `J` range is an
 extrapolation, which the implementation already flags.
@@ -67,7 +67,7 @@ ADR 0022: one authority per user-facing quantity.
 ## Approval
 
 - [ ] **Source** — citation real, or absence stated and adopted on the maintainer's authority
-- [ ] **Scale** — holds at 0.5–15 kg, or the limitation is written down (ADR 0023)
+- [ ] **Regime** — holds in the RC/UAV regime (Reynolds, Mach, equipment), or the limitation is written down (ADR 0028)
 - [ ] **Dimensions** — the check balances
 - [ ] **Implementations** — all agree, or each deviation is declared and justified
 - [ ] **Preconditions** — every binding condition holds, or the violation is ticketed

@@ -29,7 +29,7 @@ subject to:               L(V, alpha) = n * m * g
 
 **Produces** [[minimum-drag-speed]] · [[max-lift-to-drag-ratio]]  ·  **from** [[airplane]] · [[aircraft-mass]] · [[gravity]] · [[load-factor]] · [[air-density]]
 
-**Autorität.** Dies ist der Erzeuger dieser Größe. Die geschlossene Form ([[minimum-drag-speed-closed-form]]) setzt einen reynoldsunabhängigen parabolischen Polarenverlauf voraus; bei 0,5–15 kg gilt das nicht. Sie bleibt als **Probe** — die Differenz beider misst, wie stark die Reynoldsabhängigkeit an diesem Punkt wirkt.
+**Autorität.** Dies ist der Erzeuger dieser Größe. Die geschlossene Form ([[minimum-drag-speed-closed-form]]) setzt einen reynoldsunabhängigen parabolischen Polarenverlauf voraus; im RC/UAV-Regime (Re 3·10⁴–1·10⁶, ADR 0028) gilt das nicht. Sie bleibt als **Probe** — die Differenz beider misst, wie stark die Reynoldsabhängigkeit an diesem Punkt wirkt.
 
 **Kind: an optimisation problem.** The value is the solution of a stated optimisation, solved by IPOPT through `asb.Opti` with AeroBuildup inside the constraint. The coupling through Reynolds number is not drawn as a cycle: it sits inside the constraint, because AeroBuildup forms the Reynolds number from `V` per wing section. Approval asks, on top of source and scale: **no bound active at the optimum**, and **what is returned when the solver fails** — never a value.
 
@@ -69,7 +69,7 @@ subject to:               L(V, alpha) = n * m * g
 Sources define the condition; the discrete argmax over sweep points is the implementation.
 ```
 
-**Validity at 0.5–15 kg.** Valid, and at 0.5-15 kg this is the PREFERRED route over the closed form, precisely because the low-Re polar is not parabolic. RC-Network also gives the weight dependence that validates the app's behaviour: heavier aircraft reach best glide ratio at higher speed (the ballast argument). Resolution caveat: the argmax is only as good as the alpha/speed grid - a coarse sweep will quantise V_md.
+**Validity in the RC/UAV regime (ADR 0028).** Valid, and at 0.5-15 kg this is the PREFERRED route over the closed form, precisely because the low-Re polar is not parabolic. RC-Network also gives the weight dependence that validates the app's behaviour: heavier aircraft reach best glide ratio at higher speed (the ballast argument). Resolution caveat: the argmax is only as good as the alpha/speed grid - a coarse sweep will quantise V_md.
 
 
 ## Rebuilt 2026-10-01 — an optimisation problem
@@ -96,7 +96,7 @@ polar instead of a closed form.
 ## Approval
 
 - [ ] **Source** — citation real, or absence stated and adopted on the maintainer's authority
-- [ ] **Scale** — holds at 0.5–15 kg, or the limitation is written down (ADR 0023)
+- [ ] **Regime** — holds in the RC/UAV regime (Reynolds, Mach, equipment), or the limitation is written down (ADR 0028)
 - [ ] **Relation and method** — which equation it solves, and by which named method
 - [ ] **Assumptions** — the conditions the method requires (bracketing, continuity, range)
 - [ ] **Convergence** — the criterion, and what is returned and declared on failure

@@ -44,4 +44,4 @@ experienced pilot; rudder-only models V_V·B = 0.10–0.20 for roll authority. B
 **Source.** 🟢 SOURCED — Drela, MIT 16.Unified *Design Rules*, Eqs 8–10; Beron-Rawdon, *Model Aviation*
 9/1990 (equivalent dihedral for polyhedral).
 
-**Validity at 0.5–15 kg.** Stated for RC sailplanes and models; the stability threshold is empirical.
+**Validity in the RC/UAV regime (ADR 0028).** Stated for RC sailplanes and models; the stability threshold is empirical.

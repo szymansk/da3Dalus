@@ -1,6 +1,6 @@
 # ADR 0023 — Engineering constants carry provenance and are validated at RC/UAV scale
 
-- **Status:** Accepted — new decision
+- **Status:** **Superseded by [ADR 0028](0028-engineering-constants-carry-provenance-regime-by-flow-physics.md)** (2026-10-14): the regime is defined by flow physics, not by mass; the core rule and the findings below carry over. Originally: Accepted — new decision
 - **Decided:** 2026-08-14, ratified against the domain-expert consensus round
 - **Deciders:** Marc Szymanski (maintainer); rulings from `expert-consensus-{sizing,aero,powertrain,turbulator}.md`
 - **Confidence:** 🟢 CONFIRMED (constants traced to their source in code docstrings; divergences computed with worked examples)

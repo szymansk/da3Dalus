@@ -345,9 +345,12 @@ Always applicable, on every change:
   practice or a defect.
 - **ADR 0021** — complete but unreachable code is deleted by default; "inert" is
   forbidden.
-- **ADR 0023** — engineering constants carry their source and are validated at
-  **RC/UAV scale (0.5–15 kg)**, never adopted because they are standard in
-  transport-category literature.
+- **ADR 0028** (supersedes 0023) — engineering constants carry their source and
+  are checked for the **RC/UAV regime defined by flow physics** (chord Re
+  3·10⁴–1·10⁶, bubble-sensitive below 7·10⁴; Mach ≤ 0.3; RC equipment such as
+  no wheel brakes), never adopted because they are standard in
+  transport-category literature. Mass is a hint about the class, not a
+  criterion.
 
 If a change is right and an ADR is wrong, the resolution is a **new ADR
 superseding it** — never an undocumented exception.
