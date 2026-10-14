@@ -460,3 +460,79 @@ eine Rechner-Einstellung (A3).
 **O1 entschieden (05.10.2026, K31):** Der Korrekturzweig (Flügelversatz, Leitwerksskalierung) besteht aus Auslegungsrechnungen und gehört in einen eigenen Auslegungskanon, nicht in den Rechenkanon. Die Grenzfälle `cg-for-target-margin`, `stall-wing-loading-limit` und `aileron-throw-fraction` bleiben im Rechenkanon (Maintainer).
 
 **O3 entschieden (05.10.2026, K32):** Der Anstellwinkel aus L = n·W wird nach §3.4.2 gelöst: Abtastung bis zum ersten C_L-Gipfel als Schranke, IPOPT, und ohne Lösung kein Wert, sondern eine DesignWarning. `stall-onset-detection` sucht künftig ab dem ersten Gipfel.
+
+---
+
+## 10. Format migration findings (#1181)
+
+Beim Nachtragen der maschinenlesbaren Felder (README „Machine-readable fields“) in alle 57 Formel- und
+116 Größeneinträge gefunden. **Nicht stillschweigend korrigiert** — außer den als *behoben* markierten
+mechanischen Fehlern. *Eskaliert* heißt: Feld ausgelassen, `# ESCALATED:` im Eintrag, Entscheidung beim
+Maintainer; `check_canon.py` meldet es als *open*.
+
+**Behoben (mechanisch)**
+
+- `spiral-parameter`, `vertical-tail-volume`: fehlten in den Used-by-Zeilen von `airplane` (beide), `aircraft-mass`, `gravity`, `air-density`, `minimum-drag-speed` (nur `spiral-parameter`). Ergänzt.
+
+**Format**
+
+- YAML 1.1 (PyYAML `safe_load`) liest den Schlüssel `on:` der Vorbedingungen als Boolean `true`. `check_canon.py` liest mit YAML-1.2-Booleans; der Importer (#1174) muss es ebenso tun (README sagt es).
+- ARCHITECTURE §8.9 (aero_kernel): das Größenbeispiel trägt `entry: quantity`; die Größeneinträge tragen `kind: quantity` und kein `entry:`.
+- ARCHITECTURE §8.9: das Beispiel gibt `speed-from-stall-margin`/takeoff `when: has_flap`; der Eintrag nennt keine Bedingung, deshalb steht keine.
+- ARCHITECTURE Anhang A schlägt für `mass-envelope` die Kostenklasse `minutes` vor; der Eintrag sagt nirgends „Minuten“, deshalb kein `cost:` (kein Eintrag sagt es).
+- README „Naming“: das Schema `<quantity>_<configuration>_<unit>` (`v_stall_landing_mps`) ist das Registerschema; die Kanon-Slugs sind kebab-case ohne Einheit (`stall-speed-landing`). Auch das Stall-Speed-Beispiel im README nutzt noch die Registernamen.
+
+**Anwendungen und Bindungen**
+
+- `stall-speed`: die Anwendungstabelle nutzt Registernamen. Zuordnung: `v_stall_clean_mps` → `stall-speed`, `v_stall_takeoff_mps` → `stall-speed-takeoff`, `v_stall_landing_mps` → `stall-speed-landing`, `cl_max_clean` → `max-lift-coefficient` (seit dem Umbau eine **Ausgabe**), `air_density_at_altitude` → `air-density`; `cl_max_takeoff`, `cl_max_landing` → keine Kanongröße (mit `high-lift-clmax` gelöscht).
+- `stall-speed`: die Tabelle bindet `cl_max` und `rho`; seit dem Umbau (01.10.2026) unterscheiden sich die Anwendungen durch die **Konfiguration des Flugzeugs**, die keine Größe benennt. Eskaliert.
+- `stall-speed`: Bedingung widersprüchlich — Tabelle „the wing carries a flap“, Text vom 02.10.2026 und die Größen `stall-speed-landing`/`-takeoff`: ohne Klappen gleich der Reiseflug-Abrissgeschwindigkeit. Eskaliert.
+- `stall-speed`: Take-off- und Landeanwendung haben keine Größe für ihr `C_L,max` (zweite Ausgabe). Eskaliert.
+- `stall-speed` (Größe): die Beschreibung nennt „V_S1 clean, V_S0 landing, V_S,TO takeoff“ in einer Größe, obwohl es drei Größen sind (A2).
+- `speed-from-stall-margin`: `k_S` je Anwendung offen („choosing is the maintainer's call“), keine Quelle, keine Größe. Eskaliert.
+- `aileron-throw-fraction`, `max-roll-rate-cruise-target`, `stall-wing-loading-limit`: Existenzbedingung „wenn das Ziel gegeben ist“ — eine Bedingung über gegebene Eingaben, keine Geometrietatsache; das `when`-Vokabular kennt sie nicht. Eskaliert.
+- `cruise-target-performance`: `cruise-speed-target` ist laut Größe optional; der Eintrag sagt nicht, was ohne Ziel geschieht.
+- `linear-lift-curve-inverse`: die Ausgabe `characteristic-angle-of-attack` trägt drei Bedingungen (α_stall, α_bg, α_ms) in einer Größe (A2); welches C_L je Anwendung gebunden wird, hat keine Größe. Eskaliert.
+- `static-thrust-to-weight`: bindet `thrust-at-airspeed` „bei V = 0“; eine Bindung nennt eine Größe, nicht den Betriebspunkt; eine `static-thrust`-Größe gibt es nicht. Eskaliert.
+- `load-factor`: die Größe sagt „bound per application: 1 in straight level flight, n_lim for the envelope“; keiner der vier Leser (`lift-coefficient-required`, `minimum-drag-speed-from-polar`, `minimum-sink-speed-from-polar`, `stall-speed`) nennt seine Bindung — alle binden die generische Eingabe.
+- `maneuvering-speed`: ist laut Text „das `stall-speed`-Problem bei n = n_lim“ — eine Anwendung von `stall-speed` als eigener Eintrag.
+- `lateral-static-stability-app` / `-md`: dieselbe Formel, zwei Einträge, die sich nur in V (V_app / V_md) unterscheiden — zwei Anwendungen einer Formel als zwei Einträge.
+- `spiral-parameter`, `vertical-tail-volume`: die „Precondition“ Leitwerk ist als Anwendungsbedingung `when: has_vertical_tail` erfasst (für Nurflügel nicht gerechnet), nicht als Vorbedingung.
+
+**Vorbedingungen**
+
+- `stall-speed`: die Vorbedingung `cl_max` liegt seit dem Umbau auf einem Ausgabeparameter, nicht auf einer Bindung.
+- `stall-speed` (`rho`), `glide-distance-from-ratio` (beide), `inverted-max-lift-coefficient` (Benennung): der Eintrag sagt nicht, was bei Verletzung geschieht → `warning` gesetzt.
+- `inverted-max-lift-coefficient`: `alpha_range_past_inverted_stall` als `error` gelesen („the value is **not** reported as a minimum“) — der Eintrag nennt zugleich eine DesignWarning; bitte bestätigen.
+- `inverted-max-lift-coefficient`: die Benennungs-Vorbedingung verletzt der Kanon selbst — die Größe `inverted-max-lift-coefficient` trägt keine Auswertebedingung im Namen.
+- `linear-lift-curve-inverse`: die gebrochene Annahme „C_L im Fit-Fenster“ (🔴-Block) steht nicht als Vorbedingung da — Kandidat, nicht gesetzt.
+
+**Eingänge, die die kanonische Form braucht, der Eintrag aber nicht nennt**
+
+- `best-angle-of-climb`, `best-rate-of-climb`, `dive-speed`, `max-level-speed`, `max-sustained-turn-rate`, `min-sustained-turn-radius`, `mass-envelope`: die Drehmomentbilanz im Problem braucht Motor- und Propellergrößen (K_v, I_0, R_m, U_bat, P_mot,max, D_prop) und `n_prop` als Variable; die from-Zeile nennt nur `thrust-at-airspeed`, laut Größe ein Wert „at the speed currently flown“.
+- `mass-envelope`: die Schranke `x_CG < x_NP` nutzt den Neutralpunkt; `neutral-point` steht nicht in der from-Zeile.
+- `max-roll-rate`: `p_hat_max = p·b_ref/(2·V_app)` nutzt `b_ref`; `wing-span` steht nicht in der from-Zeile (nur über `airplane` erreichbar).
+- `motor-propeller-equilibrium`: die Form nutzt `eta_mot` (Vorgabe 0,85, BR-PM3, laut Text ohne Modellmaßstab-Quelle) — weder Eingang noch Konstante mit Quelle.
+
+**Typen und Bedeutungen**
+
+- `lift-coefficient`: eine Größe, zwei Bedeutungen — „either produced by the AeroBuildup sweep or demanded by the level-flight balance“ (A2).
+- `inverted-max-lift-coefficient`, `stall-onset-detection`: binden `lift-coefficient` (Skalar, Erzeuger `lift-coefficient-required`), die Form braucht die abgetastete Polare C_L(α); eine Polaren-Größe gibt es nicht.
+- `stall-onset-detection`: bindet `drag-coefficient-parabolic` (C_D,par), tastet aber das C_D der Solver-Polare ab (`drag-polar`, Umbenennung 02.10.2026).
+- `sink-rate`: die Form nennt C_D, gebunden ist C_D,par.
+- `stall-wing-loading-limit`: die Form sagt C_L,max,clean, gebunden ist `max-lift-coefficient` (C_L,max,stall aus der Stall-Optimierung, braucht ein Flugzeug), der O12-Text sagt „aus dem gewählten Profil“ — drei verschiedene C_L,max.
+- `glide-distance-from-ratio`: bindet `altitude` (Auswertehöhe der Atmosphäre) als Gleithöhe über Grund — eine Größe, zwei Bedeutungen.
+- `cg-for-target-margin`, `static-margin`: hängen vom Intervall `x_NP` ab (A11: was von einer unscharfen Größe abhängt, ist unscharf), weder Eintrag noch Größe sagt es; `uncertainty` nicht gesetzt.
+
+**Werte und Quellen**
+
+- `gravity`: zwei Werte mit Quelle im Kanon (9,81 Scholz; 9,80665 CGPM, `weight-from-mass`), keine Wahl (A5) → kein `default`. Eskaliert.
+- `limit-load-factor` („default 3.0“), `altitude` („defaults to 0 m“): Vorgabewerte ohne Quelle → kein `default`.
+- `sea-level-air-density`: `default` 1,225 kg/m³ mit der Quelle aus `air-density-isa` (U.S. Standard Atmosphere 1976).
+
+**Veraltete Texte**
+
+- `minimum-drag-speed` („3 formulas“), `minimum-sink-speed` („2“), `zero-lift-drag-coefficient` („2“): die ⚠️-Hinweise sind veraltet, Produced by nennt je einen Erzeuger.
+- `airplane-geometry`: der Text nennt „the flap factor from the flap type“; der Klappenfaktor ist gelöscht (`stall-speed`, 02.10.2026) und keine Ausgabe.
+- `butterfly-approach`: verweist für die Klappenkonfigurationen auf „A3“; A3 ist die Genauigkeitsstufe.
+- `drag-polar`, `thrust-at-airspeed-from-coefficient`: Prosa verlinkt gelöschte Einträge (`power-required-electrical`, `reynolds-scheduled-polar`, `mean-thrust-derate`).
