@@ -510,31 +510,37 @@ def _check_formula(e: Entry, canon: Canon, add, gap) -> tuple[set[str], set[str]
             if value is None and name not in explicit_null:
                 gap(e, "applications", f"{where}: output parameter {name!r} is not produced")
 
-    for pre in e.front.get("preconditions") or []:
-        if not isinstance(pre, dict) or not (
-            PRECONDITION_KEYS <= set(pre) <= PRECONDITION_KEYS | PRECONDITION_OPTIONAL
-        ):
-            add(
-                e.slug,
-                "preconditions",
-                f"needs {sorted(PRECONDITION_KEYS)}, optionally {sorted(PRECONDITION_OPTIONAL)}: "
-                f"{pre!r}",
-            )
-            continue
-        scope = pre.get("applications")
-        if scope is not None:
-            if not isinstance(scope, list) or not scope:
-                add(e.slug, "preconditions", f"{pre['id']}: applications must be a non-empty list")
-            else:
-                for aid in scope:
-                    if aid not in ids:
-                        add(e.slug, "preconditions", f"{pre['id']}: unknown application {aid!r}")
-        if not SNAKE.match(str(pre["id"])):
-            add(e.slug, "preconditions", f"id {pre['id']!r} is not snake_case")
-        if pre["parameter"] not in inputs and pre["parameter"] not in outputs:
-            add(e.slug, "preconditions", f"{pre['id']}: names no parameter: {pre['parameter']!r}")
-        if pre["on_violation"] not in ON_VIOLATION:
-            add(e.slug, "preconditions", f"{pre['id']}: on_violation {pre['on_violation']!r}")
+    # preconditions run before the call and check inputs; postconditions run after it and check
+    # outputs (also those an application writes as null)
+    for field, params, kind in (
+        ("preconditions", inputs, "input"),
+        ("postconditions", outputs, "output"),
+    ):
+        for pre in e.front.get(field) or []:
+            if not isinstance(pre, dict) or not (
+                PRECONDITION_KEYS <= set(pre) <= PRECONDITION_KEYS | PRECONDITION_OPTIONAL
+            ):
+                add(
+                    e.slug,
+                    field,
+                    f"needs {sorted(PRECONDITION_KEYS)}, optionally {sorted(PRECONDITION_OPTIONAL)}: "
+                    f"{pre!r}",
+                )
+                continue
+            scope = pre.get("applications")
+            if scope is not None:
+                if not isinstance(scope, list) or not scope:
+                    add(e.slug, field, f"{pre['id']}: applications must be a non-empty list")
+                else:
+                    for aid in scope:
+                        if aid not in ids:
+                            add(e.slug, field, f"{pre['id']}: unknown application {aid!r}")
+            if not SNAKE.match(str(pre["id"])):
+                add(e.slug, field, f"id {pre['id']!r} is not snake_case")
+            if pre["parameter"] not in params:
+                add(e.slug, field, f"{pre['id']}: {pre['parameter']!r} is not an {kind} parameter")
+            if pre["on_violation"] not in ON_VIOLATION:
+                add(e.slug, field, f"{pre['id']}: on_violation {pre['on_violation']!r}")
 
     unc = e.front.get("uncertainty")
     if unc is not None and unc not in UNCERTAINTY:

@@ -602,6 +602,41 @@ def test_a_precondition_scope_must_be_a_list(tmp_path, typed_quantities):
     assert any("preconditions" in m and "list" in m for m in msgs), msgs
 
 
+def test_a_precondition_on_an_output_is_reported(tmp_path, typed_quantities):
+    front = GOOD_FRONT + "preconditions:\n  - {id: check_v, parameter: v, on_violation: error}\n"
+    msgs = _messages(_errors(_canon(tmp_path, front=front, quantities=typed_quantities)))
+    assert any("preconditions" in m and "input" in m and "'v'" in m for m in msgs), msgs
+
+
+def test_a_postcondition_on_an_output_is_accepted(tmp_path, typed_quantities):
+    front = SCOPED_FRONT.replace("preconditions:", "postconditions:").replace(
+        "parameter: a", "parameter: v"
+    )
+    assert _findings(_canon(tmp_path, front=front, quantities=typed_quantities)) == []
+
+
+def test_a_postcondition_on_an_input_is_reported(tmp_path, typed_quantities):
+    front = GOOD_FRONT + "postconditions:\n  - {id: check_a, parameter: a, on_violation: error}\n"
+    msgs = _messages(_errors(_canon(tmp_path, front=front, quantities=typed_quantities)))
+    assert any("postconditions" in m and "output" in m and "'a'" in m for m in msgs), msgs
+
+
+def test_a_postcondition_scoped_to_an_unknown_application_is_reported(tmp_path, typed_quantities):
+    front = (
+        SCOPED_FRONT.replace("preconditions:", "postconditions:")
+        .replace("parameter: a", "parameter: v")
+        .replace("applications: [two]", "applications: [three]")
+    )
+    msgs = _messages(_errors(_canon(tmp_path, front=front, quantities=typed_quantities)))
+    assert any("postconditions" in m and "'three'" in m for m in msgs), msgs
+
+
+def test_a_postcondition_with_an_unknown_violation_mode_is_reported(tmp_path, typed_quantities):
+    front = GOOD_FRONT + "postconditions:\n  - {id: check_v, parameter: v, on_violation: abort}\n"
+    msgs = _messages(_errors(_canon(tmp_path, front=front, quantities=typed_quantities)))
+    assert any("postconditions" in m and "abort" in m for m in msgs), msgs
+
+
 def test_the_old_precondition_key_on_is_reported(tmp_path, typed_quantities):
     """`on` was renamed to `parameter`: YAML 1.1 reads a bare `on` as the boolean true."""
     front = GOOD_FRONT + "preconditions:\n  - {id: check_a, on: a, on_violation: error}\n"
