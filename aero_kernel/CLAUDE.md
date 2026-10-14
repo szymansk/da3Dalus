@@ -1,4 +1,4 @@
-# rechenkern/ — module instructions
+# aero_kernel/ — module instructions
 
 **Read [`ARCHITECTURE.md`](ARCHITECTURE.md) before changing anything in this package. It is binding.**
 If a change contradicts it, change the architecture document first and get the maintainer's approval,
@@ -11,17 +11,19 @@ then the code. Epic: #1173.
 - **The canon is the structural source.** Quantities, applications, dependencies and units come from the
   manifest generated out of `_reversa_sdd/calculations/canon/`. Code only registers implementations via
   `@formula("<slug>")`. Never hard-code a dependency, a unit or a quantity name that the manifest owns.
-- **One file per canon formula** in `formulas/`, file name = slug. One implementation per formula;
+- **One file per canon formula** in `formulas/`, file name = slug with underscores (`stall_speed.py`). One implementation per formula;
   applications are bindings, not copies (ARCHITECTURE §8.5).
 - **Formulas compute, they do not judge** (canon A10): no thresholds, bands or pass/fail in this package.
 - **Solvers only through `solvers/`.** Formulas never import aerosandbox or call AVL directly, so they stay
   mockable and missing tools become `tool_unavailable`.
-- **Errors vs warnings.** No value → `CanonError` with category, `message`, `hint` (ARCHITECTURE §8.1).
+- **Errors vs warnings.** No value → `KernelError` with category, `message`, `hint` (ARCHITECTURE §8.1).
   Value with a caveat → warning with `severity` (ADR 0020). Never a silent substitute.
 - **Validation** rejects only physically inadmissible input. Regime (Re, Mach; ADR 0028) is a warning.
   Mass is not a criterion.
 - **Uncertain quantities** (A11, ADR 0027): run each method world through the whole subtree; intervals
   only at the end; never interval arithmetic.
+- **English only (ADR 0029).** Identifiers, file names, comments, docstrings, error `message`/`hint`
+  and docs in this package are English. Canon slugs are used as they are.
 - **Stateless.** No module-level mutable state except the cache; the cache must never change a result.
 
 ## Tests
@@ -35,6 +37,6 @@ Every formula: a unit test against a hand-computed value. Golden values of the r
 **regression, not validation**. Run slow tests sequentially.
 
 ```bash
-poetry run pytest rechenkern/tests            # fast
-poetry run pytest rechenkern/tests -m aero    # solvers, golden values
+poetry run pytest aero_kernel/tests            # fast
+poetry run pytest aero_kernel/tests -m aero    # solvers, golden values
 ```
