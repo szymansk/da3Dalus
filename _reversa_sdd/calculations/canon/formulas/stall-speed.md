@@ -29,12 +29,12 @@ applications:
     bind: {airplane: airplane-landing}
     produce: {v_s: stall-speed-landing, cl_max: max-lift-coefficient-landing, alpha_s: null, polar: null}
   - id: inverted
-    bind: {n_load: {const: -1, source: "inverted level flight, L = −m·g (definition of the load factor n = L/W)"}}
+    bind: {n_load: {const: -1, source: "definition of the load factor n = L/W (as stated in max-mass-structure); inverted level flight means L = −W"}}
     produce: {v_s: null, cl_max: inverted-max-lift-coefficient, alpha_s: null, polar: null}
 preconditions:
   - {id: cl_max_at_stall_reynolds_number, parameter: cl_max, on_violation: error}
   - {id: rho_at_evaluation_altitude, parameter: rho, on_violation: warning}
-  - {id: alpha_range_past_inverted_stall, parameter: cl_max, on_violation: error}
+  - {id: alpha_range_past_inverted_stall, parameter: cl_max, on_violation: error, applications: [inverted]}
 ---
 
 # Stall speed from the lift balance at C_L,max

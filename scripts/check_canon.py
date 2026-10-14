@@ -272,6 +272,8 @@ GENERIC_OPERATING_POINT = {"flight-speed", "angle-of-attack", "load-factor", "ai
 #: roles a `given` quantity may have: supplied from outside, never computed
 GIVEN_ROLES = {"input", "target"}
 PRECONDITION_KEYS = {"id", "parameter", "on_violation"}
+#: optional on a precondition: the application ids it applies to (absent: all of them)
+PRECONDITION_OPTIONAL = {"applications"}
 #: what an escalated gap looks like in the front matter
 ESCALATED = re.compile(r"^\s*#\s*ESCALATED\b", re.M)
 
@@ -487,9 +489,24 @@ def _check_formula(e: Entry, canon: Canon, add, gap) -> tuple[set[str], set[str]
                 gap(e, "applications", f"{where}: output parameter {name!r} is not produced")
 
     for pre in e.front.get("preconditions") or []:
-        if not isinstance(pre, dict) or set(pre) != PRECONDITION_KEYS:
-            add(e.slug, "preconditions", f"needs exactly {sorted(PRECONDITION_KEYS)}: {pre!r}")
+        if not isinstance(pre, dict) or not (
+            PRECONDITION_KEYS <= set(pre) <= PRECONDITION_KEYS | PRECONDITION_OPTIONAL
+        ):
+            add(
+                e.slug,
+                "preconditions",
+                f"needs {sorted(PRECONDITION_KEYS)}, optionally {sorted(PRECONDITION_OPTIONAL)}: "
+                f"{pre!r}",
+            )
             continue
+        scope = pre.get("applications")
+        if scope is not None:
+            if not isinstance(scope, list) or not scope:
+                add(e.slug, "preconditions", f"{pre['id']}: applications must be a non-empty list")
+            else:
+                for aid in scope:
+                    if aid not in ids:
+                        add(e.slug, "preconditions", f"{pre['id']}: unknown application {aid!r}")
         if not SNAKE.match(str(pre["id"])):
             add(e.slug, "preconditions", f"id {pre['id']!r} is not snake_case")
         if pre["parameter"] not in inputs and pre["parameter"] not in outputs:

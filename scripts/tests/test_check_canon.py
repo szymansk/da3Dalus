@@ -575,6 +575,33 @@ def test_a_well_formed_precondition_is_accepted(tmp_path, typed_quantities):
     assert _findings(_canon(tmp_path, front=front, quantities=typed_quantities)) == []
 
 
+SCOPED_FRONT = (
+    GOOD_FRONT
+    + """applications:
+  - id: one
+  - id: two
+preconditions:
+  - {id: check_a, parameter: a, on_violation: error, applications: [two]}
+"""
+)
+
+
+def test_a_precondition_scoped_to_existing_applications_is_accepted(tmp_path, typed_quantities):
+    assert _findings(_canon(tmp_path, front=SCOPED_FRONT, quantities=typed_quantities)) == []
+
+
+def test_a_precondition_scoped_to_an_unknown_application_is_reported(tmp_path, typed_quantities):
+    front = SCOPED_FRONT.replace("applications: [two]", "applications: [three]")
+    msgs = _messages(_errors(_canon(tmp_path, front=front, quantities=typed_quantities)))
+    assert any("preconditions" in m and "'three'" in m for m in msgs), msgs
+
+
+def test_a_precondition_scope_must_be_a_list(tmp_path, typed_quantities):
+    front = SCOPED_FRONT.replace("applications: [two]", "applications: two")
+    msgs = _messages(_errors(_canon(tmp_path, front=front, quantities=typed_quantities)))
+    assert any("preconditions" in m and "list" in m for m in msgs), msgs
+
+
 def test_the_old_precondition_key_on_is_reported(tmp_path, typed_quantities):
     """`on` was renamed to `parameter`: YAML 1.1 reads a bare `on` as the boolean true."""
     front = GOOD_FRONT + "preconditions:\n  - {id: check_a, on: a, on_violation: error}\n"
