@@ -15,10 +15,7 @@ tags:
   - shape/law
   - kind/procedure
   - status/draft
-inputs: {polar: null}
-# ESCALATED: polar — the sampled polar this entry reads has no quantity and no producer the
-# text states (stall-speed's alpha sweep at V_S is a candidate, but the entry does not say it
-# publishes the sweep); its evaluation condition, and so its slug, is open.
+inputs: {polar: polar-stall}
 outputs: {i_stall: stall-onset-index}
 ---
 
@@ -30,7 +27,7 @@ outputs: {i_stall: stall-onset-index}
 i_stall = first i > i(C_L,max) with C_L_i < C_L_(i-1) and C_D_i > C_D_(i-1)
 ```
 
-**Produces** [[stall-onset-index]]  ·  **from** a polar (escalated, see the front matter)
+**Produces** [[stall-onset-index]]  ·  **from** [[polar-stall]]
 
 **Kind: a procedure.** There is no closed form, so an algorithm stands in its place. Source and scale are asked as of any entry — a procedure is not source-free: it either implements a published standard or solves a stated equation. **On top of that** it must say **under which assumptions it holds** and **when it converges**, including what it returns when it does not.
 

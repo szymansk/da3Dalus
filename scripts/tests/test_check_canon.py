@@ -670,8 +670,8 @@ def test_yaml_1_1_booleans_are_found_in_keys_and_values():
 
 def test_every_real_entry_carries_the_fields():
     canon = check_canon.load_canon(REAL_CANON)
-    assert len(canon.formulas) == 58
-    assert len(canon.quantities) == 136
+    assert len(canon.formulas) == 57
+    assert len(canon.quantities) == 137
     assert all("inputs" in f.front and "outputs" in f.front for f in canon.formulas.values())
     assert all("type" in q.front for q in canon.quantities.values())
 

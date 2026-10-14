@@ -13,8 +13,8 @@ type: scalar
 
 # Negative maximum lift coefficient · `C_L,min`
 
-Peak lift coefficient in inverted flight, bounding the negative branch of the V-n envelope.
+Peak lift coefficient in inverted flight, bounding the negative branch of the V-n envelope — the lift coefficient at the optimum of the `inverted` application of [[stall-speed]] (`n = −1`; maintainer, 2026-10-14, D4).
 
 **Unit.** `dimensionless`
 
-**Produced by.** [[inverted-max-lift-coefficient]]
+**Produced by.** [[stall-speed]]
