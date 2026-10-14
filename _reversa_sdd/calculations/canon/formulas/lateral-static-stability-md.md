@@ -66,7 +66,7 @@ without fuselage agrees roughly (0.103 vs 0.119); **with fuselage AeroBuildup ha
 AVL barely changes (0.122) — AVL models bodies crudely, so the fuselage share stays open (needs a third
 source). The spiral criterion is negative in all methods (weakly unstable), magnitudes differ ×10.
 AeroBuildup's *local* roll damping is about twice AVL's and ASB VLM's (−0.82 vs −0.35/−0.36 at V_md); the
-steady roll rate of [[max-roll-rate]] nevertheless agrees with AVL within 23 % (nonlinear, see there).
+steady roll rate of [[roll-rate]] nevertheless agrees with AVL within 23 % (nonlinear, see there).
 
 **One tool for every aircraft: AVL (K27, maintainer 2026-10-05).** Lateral derivatives come from AVL with the
 fuselage as BODY, for all layouts, marked **not validated**. No geometry-dependent tool switch: one authority

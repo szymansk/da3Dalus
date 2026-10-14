@@ -20,4 +20,4 @@ Betriebspunktgeschwindigkeit — jede trägt ihren Punkt im Namen (A2).
 
 **Produced by.** [[speed-from-stall-margin]]
 
-**Used by.** [[aileron-throw-fraction]] · [[butterfly-approach]] · [[lateral-static-stability-app]] · [[max-roll-rate]]
+**Used by.** [[aileron-deflection-required]] · [[butterfly-approach]] · [[lateral-static-stability-app]] · [[roll-rate]]

@@ -17,4 +17,4 @@ Mission/character requirement: the roll rate the model must reach at cruise spee
 
 **Unit.** `deg/s`
 
-**Used by.** [[aileron-throw-fraction]]
+**Used by.** [[aileron-deflection-required]]

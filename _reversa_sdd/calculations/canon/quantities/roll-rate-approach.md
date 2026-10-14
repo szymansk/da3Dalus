@@ -1,7 +1,7 @@
 ---
-canon: max-roll-rate-cruise
+canon: roll-rate-approach
 kind: quantity
-symbol: p_max,cruise
+symbol: p_app
 unit: deg/s
 role: output
 uncertainty: interval
@@ -12,12 +12,12 @@ tags:
 type: scalar
 ---
 
-# Maximum roll rate at cruise · `p_max,cruise`
+# Roll rate on approach · `p_app`
 
-Steady roll rate with the full set aileron throws at the cruise-speed target — exists only when that target is given.
+Steady roll rate at the given aileron deflection, at the approach speed.
 
 **Unit.** `deg/s`
 
-**Produced by.** [[max-roll-rate-cruise-target]]
+**Produced by.** [[roll-rate]]
 
 **Unschärfe (A11).** Intervall über die Methodenwelten AeroBuildup und AVL (Rollrate: Streuung 23 % beim BRYAN).

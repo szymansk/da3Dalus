@@ -1,12 +1,12 @@
 ---
-canon: max-roll-rate-cruise-target
+canon: roll-rate-cruise-target
 entry: formula
 uncertainty: interval
 kind: procedure
 tool: OPT
 shape: law
 status: draft
-output: max-roll-rate-cruise
+output: roll-rate-cruise
 source_status: SOURCED
 dimensional_check: PROCEDURAL
 tags:
@@ -22,14 +22,19 @@ inputs:
   g: gravity
   rho: air-density
   v_cruise_target: cruise-speed-target
-outputs: {p_max: max-roll-rate-cruise}
+  delta_a: aileron-deflection
+outputs: {p: roll-rate-cruise}
+preconditions:
+  - {id: aileron_deflection_within_method_validity, parameter: delta_a, on_violation: warning}
+# ESCALATED: delta_a validity range — the deflection range in which the method holds is open
+# (domain experts consulted).
 applications:
   - id: at_cruise_speed_target
     given: [cruise-speed-target]
 worlds: [aerobuildup, avl]
 ---
 
-# Maximum roll rate at the mission's cruise speed
+# Roll rate at the mission's cruise speed
 
 > **Uncertain quantity (A11, maintainer 2026-10-03).** Interval over two method worlds, each run through
 > the whole entry: **AeroBuildup** (the optimisation as written below; viscous flap model, but strip-wise
@@ -43,12 +48,12 @@ worlds: [aerobuildup, avl]
 **Canonical form**
 
 ```
-solve for alpha, p_max at V_cruise,target (steady roll, full set throw):   L = m * g,   C_roll(V, alpha, delta_a,max, p_max) = 0
+solve for alpha, p at V_cruise,target (steady roll, at the given aileron deflection):   L = m * g,   C_roll(V, alpha, delta_a, p) = 0
 ```
 
-**Produces** [[max-roll-rate-cruise]]  ·  **from** [[airplane]] · [[aircraft-mass]] · [[gravity]] · [[air-density]] · [[cruise-speed-target]]
+**Produces** [[roll-rate-cruise]]  ·  **from** [[airplane]] · [[aircraft-mass]] · [[gravity]] · [[air-density]] · [[cruise-speed-target]] · [[aileron-deflection]]
 
-**Kind: a procedure**, the same steady roll as [[max-roll-rate]], evaluated at `V_cruise,target`.
+**Kind: a procedure**, the same steady roll as [[roll-rate]], evaluated at `V_cruise,target`.
 **Only when a cruise-speed target is given** (maintainer, 2026-10-02). Without one, the approach
-check and the dimensionless roll rate `p·b/2V` of [[max-roll-rate]] remain — for an RC model without
+check and the dimensionless roll rate `p·b/2V` of [[roll-rate]] remain — for an RC model without
 a cruise requirement the latter is the character statement, since it hardly depends on speed.
