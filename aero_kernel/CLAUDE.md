@@ -51,6 +51,21 @@ then the code. Epic: #1173.
   never let the cache change a value. Cache scopes (`scope=`, `drop_scope`) isolate tenants; a hit
   must never cross scopes.
 
+## Logging (ARCHITECTURE §8.14)
+
+Logs are how you check that your code runs as intended. Write them while you write the code, not after a
+failure.
+- `logger = logging.getLogger(__name__)` per module. Never configure handlers or levels in the package.
+- **`DEBUG`** for every engine step (node start/end/duration/status, cache hit/miss, world, solver call and
+  settings), **`INFO`** one line per `compute()` and per import, **`WARNING`** only for degraded operation
+  (tool missing, timeout, dead worker), **`ERROR`** via `logger.exception` for `internal` errors.
+- Domain warnings and expected outcomes (`not_applicable`, `skipped`, `not_converged`) are in the result,
+  not at `WARNING` level.
+- Context in `extra` (`call_id`, `quantity`, `formula`, `world`, `scope`); lazy `%s` formatting; English;
+  never full geometry or polars, only hashes and the values that matter.
+- Pool workers do not log; they return diagnostics and the adapter logs them.
+- To see what your code did: `poetry run pytest aero_kernel/tests -k <test> -o log_cli=true --log-cli-level=DEBUG`.
+
 ## Tests
 
 | Marker | Runs | Needs |
