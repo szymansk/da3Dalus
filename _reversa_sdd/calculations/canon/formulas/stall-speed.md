@@ -5,7 +5,7 @@ kind: optimization
 tool: OPT
 shape: law
 status: draft
-output: stall-speed, max-lift-coefficient, stall-speed-landing, stall-speed-takeoff
+output: stall-speed, max-lift-coefficient, stall-speed-landing, stall-speed-takeoff, max-lift-coefficient-landing, max-lift-coefficient-takeoff
 source_status: SOURCED
 dimensional_check: PROCEDURAL
 tags:
@@ -22,14 +22,14 @@ outputs: {v_s: null, cl_max: null}
 applications:
   - id: clean
     produce: {v_s: stall-speed, cl_max: max-lift-coefficient}
-  # ESCALATED: takeoff, landing — (1) they bind the airplane in its take-off / landing
-  # configuration, which no quantity names; (2) their condition: the table says "the wing
-  # carries a flap", the 2026-10-02 text says without flaps they exist and equal the clean
-  # stall speed; (3) cl_max: no quantity holds C_L,max in take-off or landing configuration.
+  # ESCALATED: takeoff, landing — their condition: the table says "the wing carries a flap",
+  # the 2026-10-02 text says without flaps they exist and equal the clean stall speed.
   - id: takeoff
-    produce: {v_s: stall-speed-takeoff}
+    bind: {airplane: airplane-takeoff}
+    produce: {v_s: stall-speed-takeoff, cl_max: max-lift-coefficient-takeoff}
   - id: landing
-    produce: {v_s: stall-speed-landing}
+    bind: {airplane: airplane-landing}
+    produce: {v_s: stall-speed-landing, cl_max: max-lift-coefficient-landing}
 preconditions:
   - {id: cl_max_at_stall_reynolds_number, parameter: cl_max, on_violation: error}
   - {id: rho_at_evaluation_altitude, parameter: rho, on_violation: warning}
@@ -44,7 +44,7 @@ minimize over V, alpha:   V
 subject to:               L(V, alpha) = n * m * g
 ```
 
-**Produces** [[stall-speed]] · [[max-lift-coefficient]] · [[stall-speed-landing]] · [[stall-speed-takeoff]]  ·  **from** [[airplane]] · [[aircraft-mass]] · [[gravity]] · [[load-factor]] · [[air-density]]
+**Produces** [[stall-speed]] · [[max-lift-coefficient]] · [[stall-speed-landing]] · [[stall-speed-takeoff]] · [[max-lift-coefficient-landing]] · [[max-lift-coefficient-takeoff]]  ·  **from** [[airplane]] · [[airplane-takeoff]] · [[airplane-landing]] · [[aircraft-mass]] · [[gravity]] · [[load-factor]] · [[air-density]]
 
 **One relation, two directions.** This entry is the lift balance solved for the speed at the named condition C_L = C_L,max. [[lift-coefficient-required]] is the same relation, `n·m·g = ½·ρ·V²·S_ref·C_L`, solved the other way. Every time the sources solve it for a speed, the C_L belongs to a named condition (Sadraey Eq. 4.30, 4.55, 4.85; Scholz Eq. 5.30, 5.40) — there is no generic lift-balance speed, which is why `lift-balance-speed` was deleted on 2026-10-01.
 
@@ -114,11 +114,15 @@ The applications above dissolve (c) structurally rather than by correction: v_st
 
 One law, bound differently. Each application is approved separately, **after** the formula.
 
-| application | binds | exists when | implementations |
-|---|---|---|---|
-| `v_stall_clean_mps` | `cl_max` = [[cl_max_clean]], `rho` = [[air_density_at_altitude]] | always | [[fe_v_stall]] · [[v-stall]] |
-| `v_stall_takeoff_mps` | `cl_max` = [[cl_max_takeoff]], `rho` = [[air_density_at_altitude]] | the wing carries a flap | [[v-stall-to-fl]] |
-| `v_stall_landing_mps` | `cl_max` = [[cl_max_landing]], `rho` = [[air_density_at_altitude]] | the wing carries a flap | [[v-stall-ldg-fl]] |
+| application | binds | produces | exists when | implementations |
+|---|---|---|---|---|
+| `clean` | `airplane` = [[airplane]], `rho` = [[air-density]] | [[stall-speed]] · [[max-lift-coefficient]] | always | [[fe_v_stall]] · [[v-stall]] |
+| `takeoff` | `airplane` = [[airplane-takeoff]], `rho` = [[air-density]] | [[stall-speed-takeoff]] · [[max-lift-coefficient-takeoff]] | the wing carries a flap | [[v-stall-to-fl]] |
+| `landing` | `airplane` = [[airplane-landing]], `rho` = [[air-density]] | [[stall-speed-landing]] · [[max-lift-coefficient-landing]] | the wing carries a flap | [[v-stall-ldg-fl]] |
+
+Since the rebuild of 2026-10-01 `C_L,max` is an output of the problem, so the applications bind
+the **configured airplane** ([[airplane-configuration]]), not a `C_L,max` (#1181, architect
+2026-10-14). The "exists when" column is open: see the front matter.
 
 ## Preconditions on the bindings
 
