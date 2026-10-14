@@ -350,21 +350,27 @@ def test_parameter_names_must_be_snake_case(tmp_path):
 
 
 def test_precondition_on_an_unknown_parameter_is_reported(tmp_path, typed_quantities):
-    front = GOOD_FRONT + "preconditions:\n  - {id: check_x, on: x, on_violation: warning}\n"
+    front = GOOD_FRONT + "preconditions:\n  - {id: check_x, parameter: x, on_violation: warning}\n"
     msgs = _messages(_errors(_canon(tmp_path, front=front, quantities=typed_quantities)))
     assert any("preconditions" in m and "'x'" in m for m in msgs), msgs
 
 
 def test_precondition_with_an_unknown_violation_mode_is_reported(tmp_path, typed_quantities):
-    front = GOOD_FRONT + "preconditions:\n  - {id: check_a, on: a, on_violation: abort}\n"
+    front = GOOD_FRONT + "preconditions:\n  - {id: check_a, parameter: a, on_violation: abort}\n"
     msgs = _messages(_errors(_canon(tmp_path, front=front, quantities=typed_quantities)))
     assert any("abort" in m for m in msgs), msgs
 
 
 def test_a_well_formed_precondition_is_accepted(tmp_path, typed_quantities):
-    """`on` is a key, not YAML 1.1's boolean `on` (PyYAML's default would read it as True)."""
-    front = GOOD_FRONT + "preconditions:\n  - {id: check_a, on: a, on_violation: error}\n"
+    front = GOOD_FRONT + "preconditions:\n  - {id: check_a, parameter: a, on_violation: error}\n"
     assert _findings(_canon(tmp_path, front=front, quantities=typed_quantities)) == []
+
+
+def test_the_old_precondition_key_on_is_reported(tmp_path, typed_quantities):
+    """`on` was renamed to `parameter`: YAML 1.1 reads a bare `on` as the boolean true."""
+    front = GOOD_FRONT + "preconditions:\n  - {id: check_a, on: a, on_violation: error}\n"
+    msgs = _messages(_errors(_canon(tmp_path, front=front, quantities=typed_quantities)))
+    assert any("preconditions" in m for m in msgs), msgs
 
 
 def test_interval_uncertainty_needs_worlds(tmp_path, typed_quantities):
@@ -439,6 +445,18 @@ def test_cli_exits_zero_on_a_consistent_canon(tmp_path, typed_quantities):
 def test_the_real_canon_has_no_structural_errors():
     errors = [f for f in _findings(REAL_CANON) if not f.open]
     assert errors == [], "\n".join(_messages(errors))
+
+
+def test_the_real_canon_has_no_yaml_1_1_boolean_keys():
+    """Keys and values avoid on/off/yes/no/y/n, which a YAML 1.1 reader turns into booleans."""
+    canon = check_canon.load_canon(REAL_CANON)
+    for entry in [*canon.formulas.values(), *canon.quantities.values()]:
+        assert check_canon.yaml11_booleans(entry.raw_front) == [], entry.slug
+
+
+def test_yaml_1_1_booleans_are_found_in_keys_and_values():
+    raw = "a: {id: x, on: e}\nb: yes\nc: [n, avl]\nd: none\n"
+    assert check_canon.yaml11_booleans(raw) == ["on", "yes", "n"]
 
 
 def test_every_real_entry_carries_the_fields():

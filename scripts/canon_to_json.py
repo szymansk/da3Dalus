@@ -18,7 +18,7 @@ import sys
 def _front(text: str, key: str) -> str | None:
     head = text.split("---", 2)[1]
     m = re.search(rf"^{key}:\s*(.+)$", head, re.M)
-    return m.group(1).strip() if m else None
+    return m.group(1).strip().strip('"') if m else None
 
 
 def _canonical_form(text: str) -> str:
@@ -32,18 +32,22 @@ def build(canon_dir: pathlib.Path) -> dict:
     for f in sorted((canon_dir / "quantities").glob("*.md")):
         t = f.read_text(encoding="utf-8")
         quantities.append(
-            {"slug": _front(t, "canon") or f.stem,
-             "symbol": _front(t, "symbol"),
-             "unit": _front(t, "unit")}
+            {
+                "slug": _front(t, "canon") or f.stem,
+                "symbol": _front(t, "symbol"),
+                "unit": _front(t, "unit"),
+            }
         )
     formulas = []
     for f in sorted((canon_dir / "formulas").glob("*.md")):
         t = f.read_text(encoding="utf-8")
         formulas.append(
-            {"slug": _front(t, "canon") or f.stem,
-             "output_quantity": (_front(t, "output") or "").split(",")[0].strip(),
-             "canonical_form": _canonical_form(t),
-             "kind": _front(t, "kind")}
+            {
+                "slug": _front(t, "canon") or f.stem,
+                "output_quantity": (_front(t, "output") or "").split(",")[0].strip(),
+                "canonical_form": _canonical_form(t),
+                "kind": _front(t, "kind"),
+            }
         )
     return {"proposal": {"quantities": quantities, "formulas": formulas}}
 

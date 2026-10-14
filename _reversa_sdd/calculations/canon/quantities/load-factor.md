@@ -1,7 +1,7 @@
 ---
 canon: load-factor
 kind: quantity
-symbol: n
+symbol: "n"
 unit: dimensionless
 role: input
 status: draft

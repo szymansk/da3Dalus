@@ -476,7 +476,7 @@ Maintainer; `check_canon.py` meldet es als *open*.
 
 **Format**
 
-- YAML 1.1 (PyYAML `safe_load`) liest den Schlüssel `on:` der Vorbedingungen als Boolean `true`. `check_canon.py` liest mit YAML-1.2-Booleans; der Importer (#1174) muss es ebenso tun (README sagt es).
+- YAML 1.1 (PyYAML `safe_load`) liest den Schlüssel `on:` der Vorbedingungen als Boolean `true`. `check_canon.py` liest mit YAML-1.2-Booleans; der Importer (#1174) muss es ebenso tun (README sagt es). **Behoben (Architekt, 14.10.2026):** der Schlüssel heißt jetzt `parameter`; Schlüssel und Werte meiden YAML-1.1-Booleans, `check_canon.py` prüft es und liest wieder mit `safe_load`.
 - ARCHITECTURE §8.9 (aero_kernel): das Größenbeispiel trägt `entry: quantity`; die Größeneinträge tragen `kind: quantity` und kein `entry:`.
 - ARCHITECTURE §8.9: das Beispiel gibt `speed-from-stall-margin`/takeoff `when: has_flap`; der Eintrag nennt keine Bedingung, deshalb steht keine.
 - ARCHITECTURE Anhang A schlägt für `mass-envelope` die Kostenklasse `minutes` vor; der Eintrag sagt nirgends „Minuten“, deshalb kein `cost:` (kein Eintrag sagt es).

@@ -17,7 +17,7 @@ tags:
   - status/draft
   - flag/conflict
 tex: \begin{aligned}V_S = \min_{V,\,\alpha}\; & V \\ \text{u.d.N.}\; & L(V,\alpha) = n\,m\,g\end{aligned}
-inputs: {airplane: airplane, m: aircraft-mass, g: gravity, n: load-factor, rho: air-density}
+inputs: {airplane: airplane, m: aircraft-mass, g: gravity, n_load: load-factor, rho: air-density}
 outputs: {v_s: null, cl_max: null}
 applications:
   - id: clean
@@ -31,8 +31,8 @@ applications:
   - id: landing
     produce: {v_s: stall-speed-landing}
 preconditions:
-  - {id: cl_max_at_stall_reynolds_number, on: cl_max, on_violation: error}
-  - {id: rho_at_evaluation_altitude, on: rho, on_violation: warning}
+  - {id: cl_max_at_stall_reynolds_number, parameter: cl_max, on_violation: error}
+  - {id: rho_at_evaluation_altitude, parameter: rho, on_violation: warning}
 ---
 
 # Stall speed from the lift balance at C_L,max

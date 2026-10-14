@@ -369,8 +369,9 @@ fields **state what the entry already says** — no value, source, world, condit
 precondition appears here that the entry does not state, and none of them is a threshold or a
 pass/fail limit: the canon computes, it does not judge (A10).
 
-The front matter is **YAML 1.2**. A YAML 1.1 parser — PyYAML's default `safe_load` — reads the
-key `on` as the boolean `true`; a reader must use YAML 1.2 booleans (`true` / `false` only).
+Keys and values avoid YAML 1.1 booleans (`on`, `off`, `yes`, `no`, `y`, `n`), so a YAML 1.1 and a
+YAML 1.2 reader see the same front matter. A parameter is never named `n` (the load factor's parameter is
+`n_load`); a unit or symbol that is one of them — the newton `N`, the load factor `n` — is quoted.
 
 ### Formula entries
 
@@ -382,7 +383,7 @@ The existing fields (`canon`, `entry`, `kind`, `tool`, `shape`, `status`, `outpu
 | `inputs` | always | parameter → default quantity slug, one key per input of the formula; `null` where the quantity is bound per application |
 | `outputs` | always | parameter → default quantity slug, one key per output; `null` where it is produced per application |
 | `applications` | only for several applications or a condition | a list; each item has `id`, optional `bind` (parameter → quantity slug or `{const: <value>, source: "<citation>"}`), optional `produce` (parameter → quantity slug) and optional `when` (a term of the vocabulary below; absent = always) |
-| `preconditions` | only where the entry states them | a list of `{id, on, on_violation}`: `on` names a parameter, `on_violation` is `warning` or `error` |
+| `preconditions` | only where the entry states them | a list of `{id, parameter, on_violation}`: `parameter` names a parameter of the formula, `on_violation` is `warning` or `error` |
 | `uncertainty` | only where the entry already says `interval` | `interval` (A11) |
 | `worlds` | with `uncertainty: interval` | the method worlds, as the entry names them, in snake_case |
 | `cost` | optional, interim (O14 question 3 is open) | `instant`, `seconds` or `minutes`; set only where the entry says the computation takes minutes. Without it the importer derives `instant` or `seconds` from `tool` (ARCHITECTURE §8.7) |
@@ -453,8 +454,8 @@ output: glide-distance
 inputs: {e: lift-to-drag-ratio, h: altitude}
 outputs: {r_glide: glide-distance}
 preconditions:
-  - {id: lift_to_drag_of_flown_configuration, on: e, on_violation: warning}
-  - {id: propeller_drag_not_in_polar, on: e, on_violation: warning}
+  - {id: lift_to_drag_of_flown_configuration, parameter: e, on_violation: warning}
+  - {id: propeller_drag_not_in_polar, parameter: e, on_violation: warning}
 ```
 
 A **procedure** with declared uncertainty (`neutral-point`):
@@ -560,6 +561,7 @@ default: {value: 1.225, source: "U.S. Standard Atmosphere 1976 (NOAA-S/T 76-1562
 - every application binds every input and produces every output (open, not an error, in an
   escalated entry); `bind` / `produce` keys are parameters; constants carry a source; `when`
   terms are in the vocabulary above;
+- no key or plain value is a YAML 1.1 boolean;
 - preconditions name a parameter and say `warning` or `error`; `worlds` exist exactly with
   `uncertainty: interval`; `cost` is one of the three classes;
 - every quantity has a `type` from the set above; a `default` carries a source.

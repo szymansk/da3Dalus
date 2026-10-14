@@ -266,7 +266,7 @@ LINK = re.compile(r"\[\[([^\]|]+)\]\]")
 ON_VIOLATION = {"warning", "error"}
 COST = {"instant", "seconds", "minutes"}
 APPLICATION_KEYS = {"id", "bind", "produce", "when"}
-PRECONDITION_KEYS = {"id", "on", "on_violation"}
+PRECONDITION_KEYS = {"id", "parameter", "on_violation"}
 #: what an escalated gap looks like in the front matter
 ESCALATED = re.compile(r"^\s*#\s*ESCALATED\b", re.M)
 
@@ -300,27 +300,23 @@ class Finding:
     open: bool = False
 
 
-class _Yaml12Loader(yaml.SafeLoader):
-    """SafeLoader with YAML 1.2 booleans: only true/false.
-
-    YAML 1.1 (PyYAML's default) reads `on`, `off`, `yes`, `no` as booleans, which would turn
-    the precondition key `on:` into `True`. The canon front matter is YAML 1.2.
-    """
+#: plain scalars YAML 1.1 reads as booleans; the canon front matter avoids them entirely
+YAML11_BOOLEANS = {"on", "off", "yes", "no", "y", "n"}
 
 
-_Yaml12Loader.yaml_implicit_resolvers = {
-    first: [(tag, rx) for tag, rx in resolvers if tag != "tag:yaml.org,2002:bool"]
-    for first, resolvers in yaml.SafeLoader.yaml_implicit_resolvers.items()
-}
-_Yaml12Loader.add_implicit_resolver(
-    "tag:yaml.org,2002:bool", re.compile(r"^(?:true|True|TRUE|false|False|FALSE)$"), list("tTfF")
-)
+def yaml11_booleans(raw: str) -> list[str]:
+    """Plain keys or values a YAML 1.1 reader would turn into booleans, in order."""
+    return [
+        tok.value
+        for tok in yaml.scan(raw)
+        if isinstance(tok, yaml.ScalarToken) and tok.plain and tok.value.lower() in YAML11_BOOLEANS
+    ]
 
 
 def _read_entry(path: pathlib.Path) -> Entry:
     text = path.read_text(encoding="utf-8")
     _, raw, body = text.split("---", 2)
-    front = yaml.load(raw, Loader=_Yaml12Loader) or {}  # a SafeLoader subclass
+    front = yaml.safe_load(raw) or {}
     return Entry(slug=front.get("canon") or path.stem, front=front, raw_front=raw, body=body)
 
 
@@ -466,8 +462,8 @@ def _check_formula(e: Entry, canon: Canon, add, gap) -> tuple[set[str], set[str]
             continue
         if not SNAKE.match(str(pre["id"])):
             add(e.slug, "preconditions", f"id {pre['id']!r} is not snake_case")
-        if pre["on"] not in inputs and pre["on"] not in outputs:
-            add(e.slug, "preconditions", f"{pre['id']}: 'on' names no parameter: {pre['on']!r}")
+        if pre["parameter"] not in inputs and pre["parameter"] not in outputs:
+            add(e.slug, "preconditions", f"{pre['id']}: names no parameter: {pre['parameter']!r}")
         if pre["on_violation"] not in ON_VIOLATION:
             add(e.slug, "preconditions", f"{pre['id']}: on_violation {pre['on_violation']!r}")
 

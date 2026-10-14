@@ -2,7 +2,7 @@
 canon: lift-force
 kind: quantity
 symbol: L
-unit: N
+unit: "N"
 role: derived
 status: draft
 tags:

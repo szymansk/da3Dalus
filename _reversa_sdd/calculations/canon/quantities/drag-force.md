@@ -2,7 +2,7 @@
 canon: drag-force
 kind: quantity
 symbol: D
-unit: N
+unit: "N"
 role: derived
 status: draft
 tags:

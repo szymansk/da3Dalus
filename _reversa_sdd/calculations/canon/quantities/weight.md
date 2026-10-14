@@ -2,7 +2,7 @@
 canon: weight
 kind: quantity
 symbol: W
-unit: N
+unit: "N"
 role: derived
 status: approved
 tags:

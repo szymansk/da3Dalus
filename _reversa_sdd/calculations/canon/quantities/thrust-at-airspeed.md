@@ -2,7 +2,7 @@
 canon: thrust-at-airspeed
 kind: quantity
 symbol: T
-unit: N
+unit: "N"
 role: derived
 status: draft
 tags:

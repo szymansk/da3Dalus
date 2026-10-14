@@ -55,7 +55,7 @@ NOT_TYPESETTABLE = (
 
 def _front(text: str, key: str) -> str:
     m = re.search(rf"^{key}:\s*(.+)$", text.split("---", 2)[1], re.M)
-    return m.group(1).strip() if m else ""
+    return m.group(1).strip().strip('"') if m else ""
 
 
 def to_tex(form: str) -> str | None:
