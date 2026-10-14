@@ -189,7 +189,7 @@ An error means **no value**. A value with a caveat is a **warning** (8.2), not a
 | Category | retryable | escalate | Meaning | Example hint |
 |---|---|---|---|---|
 | `invalid_input` | no | no | input is physically inadmissible | "Chord at `wings.W.x_secs[2].chord` must be > 0." |
-| `unsupported_configuration` | no | no | the method does not cover this layout, or no solution exists inside the method's declared validity range (code `no_solution_in_validity_range`, `detail` = the range and the value reached at its edge) | "The textbook neutral-point formula needs a horizontal tail." |
+| `unsupported_configuration` | no | no | the method does not cover this layout, or a target lies above what the method itself can reach (code `target_above_method_maximum`, `detail` = the maximum reached and the input at which it occurs, e.g. the roll rate and δ_a) | "The textbook neutral-point formula needs a horizontal tail." |
 | `not_applicable` | — | — | **not an error**: the application does not exist (no flap and aileron → no butterfly approach) | — |
 | `not_implemented` | no | no | the canon formula has no implementation yet | "`max-sustained-turn-rate` is in the canon, not in the kernel." |
 | `not_converged` | yes | no | the solver found no solution | "Raise the accuracy tier or change the start value." |
@@ -228,6 +228,7 @@ Sources:
 - violated or unchecked preconditions
 - a design target taken from its canon default (`default_target_used`, ch. 8.11)
 - the route an `optional:` parameter selected (ch. 8.5)
+- tool validity conditions, raised in the adapters (ch. 8.8), and reference points an entry cites
 - active bounds in the optimiser
 - the "not validated" marker of A11
 
@@ -458,6 +459,12 @@ caller's responsibility.
     (capability check → `tool_unavailable`, Q10), `run_cpu(fn, *args)` (process pool), `run_avl(files,
     commands)` (async subprocess in a temp dir, killed and cleaned up on cancellation, Q17), and
     `regime(chords_m, v, altitude) -> list[Warning]` (ADR 0028 check, ch. 8.2). Tested with a stub solver.
+  - **Tool validity warnings belong to the adapter**, like the regime: they hold for every formula that uses
+    the tool, so no canon entry repeats them and they are no precondition. Each names its source. AVL:
+    `|p·b/2V| > 0.10`, the documented range of the primer (`defect`). AeroBuildup with a deflected
+    control surface: NeuralFoil's `analysis_confidence` at `α_eff` of the deflected strips as a value, and
+    "δ range of the τ fit unknown" (`practice`). A reference point a specific entry cites (Sadraey's
+    20–25°) is emitted by that formula via `ctx.warn`, `practice`, and stated in the entry text.
   - **#1175 adds the domain methods** (`aerobuildup.sweep`, `avl.stability`, `opti.solve` …), each built on
     the base, alongside the first formula that needs it.
   - Adapters know no canon names. They return warnings without `quantity`; the engine sets `origin` to
@@ -644,10 +651,16 @@ angles, …) or solved for as results
 first draft; the canon is used to find out which stop a wanted performance needs. The kernel therefore
 **never reads, checks, clamps or warns** about a stop — not in validation, not in a formula, not in an
 adapter — and `not_applicable` never follows from a stop. A deflection value is only validated for being
-finite. What does bound an angle is the **method's validity range**, declared in the canon with its
-source: a given angle outside it is a precondition (`on_violation` as the entry says), and a solved angle
-that would lie outside it is `no_solution_in_validity_range` (ch. 8.1) — a fact with the range and the
-value reached at its edge, never a clipped value (ADR 0020) and never a judgement (A10).
+finite. **No fixed angle range bounds a deflection** (D6, 2026-10-14): a number would be invented, since
+neither tool documents one. What remains is per method world (ch. 8.13):
+- **A method that saturates** (AeroBuildup: clean airfoil at `α_eff = α + τ·δ`, no flap separation) is
+  searched upward from 0 until its result stops increasing. That computed maximum is the method's own
+  limit; a target above it is `target_above_method_maximum` (ch. 8.1) in that world — never a clipped
+  angle (ADR 0020), never a judgement (A10).
+- **A linear method** (AVL, linear in δ) is solved directly; it always has a solution.
+- Everything else is a **warning carrying values**, no pass/fail: tool validity conditions from the adapter
+  (ch. 8.8) and labelled reference points the entry cites (Sadraey §12.4.3, separation onset about
+  20–25°, transport/GA, not checked at model Reynolds numbers; ADR 0028).
 
 **Requests name quantities.** A formula with several outputs runs once per application and world; each
 requested output is its own `QuantityResult`. Requesting two outputs of the same formula calls it once.
@@ -736,7 +749,9 @@ sampled grid and no `-static` chain.
   outputs into separate formulas is a canon decision, not an engine rule.
 - **A failed assignment** makes the quantity an error, not a narrower interval: the error of the failed
   assignment, with `detail.worlds_ok` holding the values that did compute. A silently narrowed interval
-  would be an undeclared fallback (ADR 0020).
+  would be an undeclared fallback (ADR 0020). Example: `aileron-deflection-required-approach` with the target above the
+  AeroBuildup maximum is an error even though AVL, linear in δ, returns an angle; the AVL value is in
+  `detail.worlds_ok`.
 - **Continuous causes** (a parameter evaluated at its bounds, A11 rule 2) and the **monotonicity check**
   (rule 4) are declared in the canon model but not in v1: such a formula returns `not_implemented`, code
   `continuous_uncertainty`. The core chain has only method worlds.
@@ -851,7 +866,7 @@ They are the first thing a developer or an agent reads to check a change and to 
 | Q31 | Defaults taken | without `gravity` and without `approach-speed-margin-target`: `approach-speed` computes; `provenance.defaults_used` lists both with value and source; `caplog` has one `INFO` line for `gravity` and one `WARNING` line for the target, each with `call_id`, also on a second, cached call; the result carries `default_target_used` (`practice`) on `approach-speed` and its dependents, and no warning for `gravity` |
 | Q32 | Embedding | `importer --check` rejects an embedding cycle, an embedded formula with worlds, and an embedded input that is neither bound, produced in the closure nor generic; the traceability test fails when an embedder does not call the embedded relation function; `mass-envelope` with `neutral-point` in three worlds runs three times and returns `cg-envelope-over-mass` as a pointwise interval |
 | Q33 | Flap deflection: beyond the stop, flapless, missing | `flap-deflection-landing` larger than the flap's `positive_deflection_deg`: `airplane-landing` carries exactly the given deflection, `stall-speed-landing` computes, no error, no clamp and no warning about the stop. Flapless, no deflection given: `airplane-landing` is the unchanged aircraft, `stall-speed-landing` equals `stall-speed`, no warning, one `INFO` line. Flapless with a deflection: same values plus `deflection_without_flap`. Flaps, no deflection: `stall-speed-landing` is `missing_input` (`values.flap-deflection-landing`), `approach-speed` `upstream_failed`; `stall-speed` still computes |
-| Q34 | Angles, not stops | `roll-rate-approach` at a given `aileron-deflection` beyond the aileron's stop computes, no stop warning; `aileron-deflection-required-approach` for an unreachable `roll-rate-target-approach` is `unsupported_configuration`, code `no_solution_in_validity_range`, with the range and the roll rate at its edge in `detail`, never a clipped angle |
+| Q34 | Angles, not stops | `roll-rate-approach` at a given `aileron-deflection` beyond the aileron's stop computes, no stop warning; `aileron-deflection-required-approach` for a target above the AeroBuildup maximum: that world fails with `unsupported_configuration`, code `target_above_method_maximum` (maximum roll rate and its δ_a in `detail`), the AVL world computes, the quantity is `error` with the AVL value in `detail.worlds_ok` — no clipped angle, no narrowed interval. AVL at `|p·b/2V| > 0.10` carries the `defect` warning from the adapter |
 | Q35 | Roll without ailerons, scaled crow | an aircraft without a surface acting as aileron, flaperon or elevon: `roll-rate-approach` and `aileron-deflection-required-approach` are `not_applicable` (`condition_not_met`), no `missing_input` for `aileron-deflection`; a flaperon-only wing has `has_aileron`; the butterfly curves at mix `s` use `s · crow-flap-deflection` and `s · crow-aileron-deflection`, independent of the stops |
 
 ## 11. Risks and technical debt
