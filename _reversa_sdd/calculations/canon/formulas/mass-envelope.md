@@ -96,8 +96,9 @@ neutral point (BRYAN: > 90 % MAC), so the neutral point is the edge that comes f
 
 **Front edge across methods (BRYAN, 2026-10-03, `bryan_fwd_trim_avl.py`):** AeroBuildup 14.3 % MAC, AVL
 10.4 % (CLAF thickness rule) and 13.5 % (CLAF 1.0). AeroBuildup lacks the wing downwash at the tail,
-which *helps* the download at the front edge, so it is conservative here. AVL lacks the low-Re viscous
-flap losses that NeuralFoil's flap model carries. The two errors run in opposite directions; spread
+which *helps* the download at the front edge, so it is conservative here. AVL lacks the profile drag of the deflected
+surface, which AeroBuildup carries only as a Hoerner drag factor on the clean section (no flap separation;
+`kulfan_airfoil.py:211-255`). The two errors run in opposite directions; spread
 10.4–14.3 % MAC. **Kept crisp (A11 rule 5, maintainer 2026-10-03):** the front edge is computed with
 AeroBuildup, which is conservative here. **Validity condition, declared (ADR 0020):** methods carrying the
 wing–tail downwash place the front edge up to about 4 % MAC further forward. Revisit if a reference aircraft
@@ -108,7 +109,8 @@ current mass — a separate entry would be a second authority (ADR 0022).
 
 **Validity conditions, declared (ADR 0020).** The tail must not itself be stalled at the trim
 points; ground effect is not modelled (optimistic in the flare); at model scale the elevator works
-at low Reynolds number, NeuralFoil's flap model there is unchecked.
+at low Reynolds number, and AeroBuildup represents its deflection only as an effective-angle shift on the
+clean airfoil with a Hoerner drag factor (no flap separation, δ range of the fit unknown; `kulfan_airfoil.py:211-255`).
 
 **Source.** 🟢 Sadraey §11.6.3, §12.4, Eq. 12.90 (trim over the speed range); the level-flight
 and climb problems as in §3.10.

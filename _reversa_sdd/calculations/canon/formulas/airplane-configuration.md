@@ -65,11 +65,11 @@ flaperons too. In the geometry format these are the trailing-edge devices with `
 `role: flaperon` (`docs/geometry-format/airplane-geometry.schema.json`, `TrailingEdgeDevice.role`). In
 the take-off and landing configuration all of them are set to the given deflection angle.
 
-**Validity, declared (no threshold, A10).** The configured airplane is evaluated with NeuralFoil's flap
-model, which is unverified at large deflections and low Reynolds number: ANFORDERUNGEN.md, §
-"Rollwirkung gegen die gebauten Ruderausschläge" (lines 544–546: beyond about 25° the result is only as
-good as that model), and § "Nicht im MVP: die Querruderdifferenzierung" (lines 1007–1008: 15–25° at
-Re ≈ 60 000, unverified). Landing settings typically lie above that range.
+**Validity, declared (no threshold, A10).** The configured airplane is evaluated through AeroBuildup. AeroBuildup has no flap model of its own, and NeuralFoil never sees the deflected surface: AeroSandbox evaluates the clean airfoil at `α_eff = α + τ·δ`, `τ = 1 − x_hinge^2.7514` (a δ-independent fit to an XFoil study), and multiplies the drag by a factor fitted to Hoerner, *Fluid Dynamic Drag*, p. 13-13 Fig. 32 (`aerosandbox/geometry/airfoil/kulfan_airfoil.py:211-255`, reached from `aero_buildup.py:784-801`; AeroSandbox 4.2.9 / NeuralFoil 0.3.2). There is no flap separation: the effectiveness is over-predicted at large δ until the clean section stalls, and the δ range of the τ fit is unknown.
+The limitation was first noted in ANFORDERUNGEN.md, § "Rollwirkung gegen die gebauten Ruderausschläge"
+(lines 544–546: beyond about 25°) and § "Nicht im MVP: die Querruderdifferenzierung" (lines 1007–1008:
+15–25° at Re ≈ 60 000, unverified); both describe it as a NeuralFoil flap model, which the code does not
+confirm (#1181). Landing settings typically lie above that range.
 
 **Source.** 🔴 NO SOURCE FOUND — a construction step, adopted on the maintainer's statement in
 [[stall-speed]] (2026-10-02).

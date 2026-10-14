@@ -66,9 +66,8 @@ from it (maintainer, 2026-10-02):
 configurations): crow needs both.
 
 **Declared limit — approval needs a comparison.** Crow flaps deflect 45–80°; the flow on the
-flap is separated there. NeuralFoil's flap model, on which AeroBuildup builds, is not made for
-such deflections — the result is reliable for moderate flap angles (up to about 20–30°), not
-yet for true landing settings. Approval requires a check against measured or plan values of a
+flap is separated there. AeroBuildup has no flap model of its own, and NeuralFoil never sees the deflected surface: AeroSandbox evaluates the clean airfoil at `α_eff = α + τ·δ`, `τ = 1 − x_hinge^2.7514` (a δ-independent fit to an XFoil study), and multiplies the drag by a factor fitted to Hoerner, *Fluid Dynamic Drag*, p. 13-13 Fig. 32 (`aerosandbox/geometry/airfoil/kulfan_airfoil.py:211-255`, reached from `aero_buildup.py:784-801`; AeroSandbox 4.2.9 / NeuralFoil 0.3.2). There is no flap separation: the effectiveness is over-predicted at large δ until the clean section stalls, and the δ range of the τ fit is unknown. At crow deflections the flap
+effect is therefore over-predicted. Approval requires a check against measured or plan values of a
 glider in the reference fleet.
 
 **Source.** 🟡 PARTIAL — the stall relation as in [[stall-speed]]; crow as the dominant landing
