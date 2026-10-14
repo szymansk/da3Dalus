@@ -189,8 +189,8 @@ An error means **no value**. A value with a caveat is a **warning** (8.2), not a
 | Category | retryable | escalate | Meaning | Example hint |
 |---|---|---|---|---|
 | `invalid_input` | no | no | input is physically inadmissible | "Chord at `wings.W.x_secs[2].chord` must be > 0." |
-| `unsupported_configuration` | no | no | the method does not cover this layout | "The textbook neutral-point formula needs a horizontal tail." |
-| `not_applicable` | — | — | **not an error**: the application does not exist (no flap → no V_S,landing) | — |
+| `unsupported_configuration` | no | no | the method does not cover this layout, or no solution exists inside the method's declared validity range (code `no_solution_in_validity_range`, `detail` = the range and the value reached at its edge) | "The textbook neutral-point formula needs a horizontal tail." |
+| `not_applicable` | — | — | **not an error**: the application does not exist (no flap and aileron → no butterfly approach) | — |
 | `not_implemented` | no | no | the canon formula has no implementation yet | "`max-sustained-turn-rate` is in the canon, not in the kernel." |
 | `not_converged` | yes | no | the solver found no solution | "Raise the accuracy tier or change the start value." |
 | `timeout` | yes | no | the time budget was exceeded | "Raise the budget or request it as a long run." |
@@ -592,7 +592,8 @@ class ComputeRequest(BaseModel):
 - The quantity `airplane` (type `airplane`) is `AircraftInput.airplane`.
 - Every other quantity with `role: input` or `role: target` is `AircraftInput.values[<slug>]`. Today these
   are `aircraft-mass`, `centre-of-gravity`, `altitude`, `flight-speed`, `angle-of-attack`, `load-factor`,
-  `gravity`, `sea-level-air-density` and the `*-target` quantities. Assumptions are values like any
+  `gravity`, `sea-level-air-density`, the control-device angles (`flap-deflection-*`, `aileron-deflection`,
+  …) and the `*-target` quantities. Assumptions are values like any
   other (R1); whether a value is assumed or measured is not the kernel's concern.
 - A missing value falls back to the quantity's `default` in the canon model. Every default taken is
   listed in `provenance.defaults_used` and **logged** (maintainer, 2026-10-14; ch. 8.14). Whether it is
@@ -630,12 +631,18 @@ two sections; airfoil coordinates that are not a closed contour. Each rule lives
 `input_path` is a dotted path into `AircraftInput` with keys and indices in brackets, e.g.
 `airplane.wings["Main wing"].x_secs[2].chord` or `values.aircraft-mass`. Regime is not validated (ch. 8.2).
 
-**Control-surface stops are not limits** (maintainer, 2026-10-14). `positive_deflection_deg` /
-`negative_deflection_deg` in the geometry are the designer's construction data, possibly a first draft; the
-canon is used to find out which stop a desired speed needs. The kernel therefore **never checks, clamps or
-warns** about a deflection against a stop — not in validation, not in a formula, not in an adapter, and
-`not_applicable` never follows from a stop. A deflection value (e.g. `flap-deflection-landing`) is only
-validated for being finite. A stop exists for the designer, not for the canon.
+**Control devices are angles; stops are not limits** (maintainer, 2026-10-14). For **every** control device
+— flap, aileron, elevator, rudder, crow — the canon works with deflection **angles in degrees**, given as
+design inputs (`flap-deflection-landing`, `aileron-deflection`, …) or solved for as results
+(`aileron-deflection-required-approach`); never with a fraction or percentage of a stop. The geometry's
+`positive_deflection_deg` / `negative_deflection_deg` are the designer's construction data, possibly a
+first draft; the canon is used to find out which stop a wanted performance needs. The kernel therefore
+**never reads, checks, clamps or warns** about a stop — not in validation, not in a formula, not in an
+adapter — and `not_applicable` never follows from a stop. A deflection value is only validated for being
+finite. What does bound an angle is the **method's validity range**, declared in the canon with its
+source: a given angle outside it is a precondition (`on_violation` as the entry says), and a solved angle
+that would lie outside it is `no_solution_in_validity_range` (ch. 8.1) — a fact with the range and the
+value reached at its edge, never a clipped value (ADR 0020) and never a judgement (A10).
 
 **Requests name quantities.** A formula with several outputs runs once per application and world; each
 requested output is its own `QuantityResult`. Requesting two outputs of the same formula calls it once.
@@ -710,7 +717,7 @@ sampled grid and no `-static` chain.
 - A formula with `uncertainty: interval` declares its worlds in the canon. Each world is a run of the same
   implementation with `ctx.world` set; worlds are not separate formulas (A7).
 - A **world assignment** fixes one world per uncertain formula in the subtree, written
-  `max-roll-rate=aerobuildup,neutral-point=avl`, formulas sorted by slug, so JSON and cache keys are
+  `neutral-point=avl,roll-rate=aerobuildup`, formulas sorted by slug, so JSON and cache keys are
   deterministic. The engine runs the **Cartesian product** over the
   uncertain formulas in a quantity's subtree (A11 rule 3); a node outside an uncertain formula's subtree
   runs once and is shared by all assignments.
@@ -834,11 +841,12 @@ They are the first thing a developer or an agent reads to check a change and to 
 | Q26 | Status precedence | mixed failed/skipped/not-applicable predecessors give the status of ch. 8.13 |
 | Q27 | Cache key | inputs differing in the last bit of a float give different keys; a changed source file changes every key |
 | Q28 | Mass differs from the geometry's `total_mass_kg` | computed with the passed mass; `conflicting_mass` warning on every quantity that depends on the mass, none on the others |
-| Q29 | Target not set | `max-roll-rate-cruise` (`given: [cruise-speed-target]`) is `not_applicable`, code `not_given`; a quantity reading `cruise-speed-target` without `given` gets `missing_input` |
+| Q29 | Target not set | `roll-rate-cruise` (`given: [cruise-speed-target]`) is `not_applicable`, code `not_given`; a quantity reading `cruise-speed-target` without `given` gets `missing_input` |
 | Q30 | Embedded relation and optional parameter | with `flight-speed` = 0, `thrust-at-airspeed` equals the thrust inside `static-thrust-to-weight` bit for bit (one relation function); without `motor-circuit-resistance` both run route A with a `practice` warning naming the route, no `missing_input` |
 | Q31 | Defaults taken | without `gravity` and without `approach-speed-margin-target`: `approach-speed` computes; `provenance.defaults_used` lists both with value and source; `caplog` has one `INFO` line for `gravity` and one `WARNING` line for the target, each with `call_id`, also on a second, cached call; the result carries `default_target_used` (`practice`) on `approach-speed` and its dependents, and no warning for `gravity` |
 | Q32 | Embedding | `importer --check` rejects an embedding cycle, an embedded formula with worlds, and an embedded input that is neither bound, produced in the closure nor generic; the traceability test fails when an embedder does not call the embedded relation function; `mass-envelope` with `neutral-point` in three worlds runs three times and returns `cg-envelope-over-mass` as a pointwise interval |
 | Q33 | Flap deflection: beyond the stop, flapless, missing | `flap-deflection-landing` larger than the flap's `positive_deflection_deg`: `airplane-landing` carries exactly the given deflection, `stall-speed-landing` computes, no error, no clamp and no warning about the stop. Flapless, no deflection given: `airplane-landing` is the unchanged aircraft, `stall-speed-landing` equals `stall-speed`, no warning, one `INFO` line. Flapless with a deflection: same values plus `deflection_without_flap`. Flaps, no deflection: `stall-speed-landing` is `missing_input` (`values.flap-deflection-landing`), `approach-speed` `upstream_failed`; `stall-speed` still computes |
+| Q34 | Angles, not stops | `roll-rate-approach` at a given `aileron-deflection` beyond the aileron's stop computes, no stop warning; `aileron-deflection-required-approach` for an unreachable `roll-rate-target-approach` is `unsupported_configuration`, code `no_solution_in_validity_range`, with the range and the roll rate at its edge in `detail`, never a clipped angle |
 
 ## 11. Risks and technical debt
 
@@ -888,7 +896,7 @@ model (part of `IMPORT_REPORT.md`).
 |---|---|---|---|---|---|---|---|---|---|
 | `advance-ratio-from-speed` | law | APP | law | 3 → 1 | 1 | – | – | instant | later |
 | `aerobuildup-evaluation` | procedure | AB | law | 4 → 4 | 1 | – | – | seconds | core chain |
-| `aileron-throw-fraction` | procedure | OPT | law | 8 → 2 | 1 | – | A11 | seconds | core chain |
+| `aileron-deflection-required` | procedure | OPT | law | 8 → 2 | 1 | – | A11 | seconds | core chain |
 | `air-density-isa` | law | ATM | law | 1 → 1 | 1 | – | – | instant | core chain |
 | `airplane-components` | procedure | KAT | law | 1 → 9 | 1 | – | – | instant | probe |
 | `airplane-geometry` | procedure | GEO | law | 1 → 4 | 1 | – | – | instant | core chain |
@@ -916,8 +924,8 @@ model (part of `IMPORT_REPORT.md`).
 | `max-level-speed` | optimization | OPT | law | 5 → 1 | 1 | – | – | seconds | probe |
 | `max-lift-to-drag-parabolic` | law | APP | law | 3 → 1 | 1 | – | – | instant | later |
 | `max-mass-structure` | law | APP | law | 2 → 1 | 1 | – | – | instant | later |
-| `max-roll-rate-cruise-target` | procedure | OPT | law | 5 → 1 | 1 | – | A11 | seconds | later |
-| `max-roll-rate` | procedure | OPT | law | 5 → 2 | 1 | – | A11 | seconds | core chain |
+| `roll-rate-cruise-target` | procedure | OPT | law | 5 → 1 | 1 | – | A11 | seconds | later |
+| `roll-rate` | procedure | OPT | law | 5 → 2 | 1 | – | A11 | seconds | core chain |
 | `max-sustained-turn-rate` | optimization | OPT | law | 6 → 2 | 1 | – | – | seconds | later |
 | `mean-geometric-chord` | law | APP | law | 2 → 1 | 1 | – | – | instant | core chain |
 | `min-sustained-turn-radius` | optimization | OPT | law | 6 → 2 | 1 | – | – | seconds | later |
