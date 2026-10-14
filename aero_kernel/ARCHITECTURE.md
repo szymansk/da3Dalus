@@ -348,7 +348,10 @@ quantity.
   (ADR 0028). Every output parameter is bound to a quantity.
 - An application has at most two kinds of condition; without either it exists always:
   - `when`: one term of the closed vocabulary over facts of the aircraft geometry (`has_vertical_tail`,
-    …). The canon `README.md` defines the vocabulary; each term is implemented once in `graph.py`.
+    `has_aileron`, …). The canon `README.md` defines the vocabulary; each term is implemented once in
+    `graph.py`. Terms over control devices go by the **role** a surface acts in, not by its name (maintainer:
+    "a flap is every surface that acts like a flap"): `has_aileron` holds for a surface acting as aileron,
+    flaperon or elevon. Without ailerons the roll quantities are `not_applicable`, code `condition_not_met`.
   - `given`: a list of input quantities (`role: input` or `target`, no `default`). The application exists
     only if every one of them is supplied in `AircraftInput.values`. A target the designer did not set is
     not a missing input but no requirement (ch. 8.11).
@@ -592,8 +595,9 @@ class ComputeRequest(BaseModel):
 - The quantity `airplane` (type `airplane`) is `AircraftInput.airplane`.
 - Every other quantity with `role: input` or `role: target` is `AircraftInput.values[<slug>]`. Today these
   are `aircraft-mass`, `centre-of-gravity`, `altitude`, `flight-speed`, `angle-of-attack`, `load-factor`,
-  `gravity`, `sea-level-air-density`, the control-device angles (`flap-deflection-*`, `aileron-deflection`,
-  …) and the `*-target` quantities. Assumptions are values like any
+  `gravity`, `sea-level-air-density`, the control-device angles (`flap-deflection-takeoff` /
+  `-landing`, `aileron-deflection`, `elevator-deflection-up` / `-down`, `crow-flap-deflection` /
+  `crow-aileron-deflection`; deg, geometry sign convention, no default) and the `*-target` quantities. Assumptions are values like any
   other (R1); whether a value is assumed or measured is not the kernel's concern.
 - A missing value falls back to the quantity's `default` in the canon model. Every default taken is
   listed in `provenance.defaults_used` and **logged** (maintainer, 2026-10-14; ch. 8.14). Whether it is
@@ -633,7 +637,8 @@ two sections; airfoil coordinates that are not a closed contour. Each rule lives
 
 **Control devices are angles; stops are not limits** (maintainer, 2026-10-14). For **every** control device
 — flap, aileron, elevator, rudder, crow — the canon works with deflection **angles in degrees**, given as
-design inputs (`flap-deflection-landing`, `aileron-deflection`, …) or solved for as results
+design inputs (`flap-deflection-landing`, `aileron-deflection`, `elevator-deflection-up`, the full-crow
+angles, …) or solved for as results
 (`aileron-deflection-required-approach`); never with a fraction or percentage of a stop. The geometry's
 `positive_deflection_deg` / `negative_deflection_deg` are the designer's construction data, possibly a
 first draft; the canon is used to find out which stop a wanted performance needs. The kernel therefore
@@ -847,6 +852,7 @@ They are the first thing a developer or an agent reads to check a change and to 
 | Q32 | Embedding | `importer --check` rejects an embedding cycle, an embedded formula with worlds, and an embedded input that is neither bound, produced in the closure nor generic; the traceability test fails when an embedder does not call the embedded relation function; `mass-envelope` with `neutral-point` in three worlds runs three times and returns `cg-envelope-over-mass` as a pointwise interval |
 | Q33 | Flap deflection: beyond the stop, flapless, missing | `flap-deflection-landing` larger than the flap's `positive_deflection_deg`: `airplane-landing` carries exactly the given deflection, `stall-speed-landing` computes, no error, no clamp and no warning about the stop. Flapless, no deflection given: `airplane-landing` is the unchanged aircraft, `stall-speed-landing` equals `stall-speed`, no warning, one `INFO` line. Flapless with a deflection: same values plus `deflection_without_flap`. Flaps, no deflection: `stall-speed-landing` is `missing_input` (`values.flap-deflection-landing`), `approach-speed` `upstream_failed`; `stall-speed` still computes |
 | Q34 | Angles, not stops | `roll-rate-approach` at a given `aileron-deflection` beyond the aileron's stop computes, no stop warning; `aileron-deflection-required-approach` for an unreachable `roll-rate-target-approach` is `unsupported_configuration`, code `no_solution_in_validity_range`, with the range and the roll rate at its edge in `detail`, never a clipped angle |
+| Q35 | Roll without ailerons, scaled crow | an aircraft without a surface acting as aileron, flaperon or elevon: `roll-rate-approach` and `aileron-deflection-required-approach` are `not_applicable` (`condition_not_met`), no `missing_input` for `aileron-deflection`; a flaperon-only wing has `has_aileron`; the butterfly curves at mix `s` use `s · crow-flap-deflection` and `s · crow-aileron-deflection`, independent of the stops |
 
 ## 11. Risks and technical debt
 
