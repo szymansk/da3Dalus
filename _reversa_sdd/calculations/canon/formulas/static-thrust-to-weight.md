@@ -16,10 +16,19 @@ tags:
   - kind/law
   - status/draft
 tex: \frac{T_0}{W} = \frac{T(V = 0)}{W}
-inputs: {t: thrust-at-airspeed, w: weight}
+inputs:
+  w: weight
+  airplane: airplane
+  rho: air-density
+  k_v: motor-voltage-constant
+  i_0: motor-no-load-current
+  r_m: motor-circuit-resistance
+  u_bat: battery-voltage
+  p_mot_max: motor-max-power
+  d_prop: propeller-diameter
 outputs: {t0_w: static-thrust-to-weight}
-# ESCALATED: t — the entry binds thrust-at-airspeed "at V = 0"; a binding names a quantity,
-# not the operating point it is evaluated at, and no static-thrust quantity exists.
+embeds: [motor-propeller-equilibrium, advance-ratio-from-speed, propeller-table-lookup, thrust-at-airspeed-from-coefficient]
+optional: [r_m]
 ---
 
 # Static thrust-to-weight ratio
@@ -30,7 +39,7 @@ outputs: {t0_w: static-thrust-to-weight}
 T_0/W = T / W
 ```
 
-**Produces** [[static-thrust-to-weight]]  ·  **from** [[thrust-at-airspeed]] · [[weight]]
+**Produces** [[static-thrust-to-weight]]  ·  **from** [[weight]] · [[airplane]] · [[air-density]] · [[motor-voltage-constant]] · [[motor-no-load-current]] · [[motor-circuit-resistance]] · [[battery-voltage]] · [[motor-max-power]] · [[propeller-diameter]]
 
 **Kind: a law.** `T` is the thrust at airspeed bound at `V = 0`: the computed static thrust — the motor-propeller balance at `V = 0` on the
 measured propeller table — over the weight. A common RC figure: above 1 the model can climb

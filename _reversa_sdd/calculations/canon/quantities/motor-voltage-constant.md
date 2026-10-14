@@ -19,4 +19,4 @@ Speed constant of the brushless motor fitted to the airplane, from the parts cat
 
 **Produced by.** [[airplane-components]]
 
-**Used by.** [[motor-propeller-equilibrium]]
+**Used by.** [[best-angle-of-climb]] · [[best-rate-of-climb]] · [[dive-speed]] · [[max-level-speed]] · [[max-sustained-turn-rate]] · [[min-sustained-turn-radius]] · [[motor-propeller-equilibrium]] · [[static-thrust-to-weight]]

@@ -16,8 +16,20 @@ tags:
   - kind/optimization
   - status/draft
 tex: \begin{aligned}\gamma_{max} = \max_{V,\,\alpha,\,\gamma,\,n_{prop}}\; & \gamma \\ \text{u.d.N.}\; & L(V,\alpha) = m\,g\cos\gamma \\ & T(V,n_{prop}) - D(V,\alpha) \ge m\,g\sin\gamma \\ & Q_m(n_{prop}) = Q_p(V,n_{prop})\end{aligned}
-inputs: {airplane: airplane, m: aircraft-mass, g: gravity, rho: air-density, t: thrust-at-airspeed}
+inputs:
+  airplane: airplane
+  m: aircraft-mass
+  g: gravity
+  rho: air-density
+  k_v: motor-voltage-constant
+  i_0: motor-no-load-current
+  r_m: motor-circuit-resistance
+  u_bat: battery-voltage
+  p_mot_max: motor-max-power
+  d_prop: propeller-diameter
 outputs: {v_x: best-angle-of-climb-speed, gamma_max: max-climb-angle}
+embeds: [motor-propeller-equilibrium, advance-ratio-from-speed, propeller-table-lookup, thrust-at-airspeed-from-coefficient]
+optional: [r_m]
 ---
 
 # Best angle of climb at full throttle
@@ -31,7 +43,7 @@ subject to:   L(V, alpha) = m * g * cos(gamma)
               motor-propeller torque balance at (V, n_prop)
 ```
 
-**Produces** [[best-angle-of-climb-speed]] · [[max-climb-angle]]  ·  **from** [[airplane]] · [[aircraft-mass]] · [[gravity]] · [[air-density]] · [[thrust-at-airspeed]]
+**Produces** [[best-angle-of-climb-speed]] · [[max-climb-angle]]  ·  **from** [[airplane]] · [[aircraft-mass]] · [[gravity]] · [[air-density]] · [[motor-voltage-constant]] · [[motor-no-load-current]] · [[motor-circuit-resistance]] · [[battery-voltage]] · [[motor-max-power]] · [[propeller-diameter]]
 
 **Kind: an optimisation problem**, the same shape as the three extremal closures (§3.4.1). Variables: airspeed `V`, angle of attack `alpha`, flight-path angle `gamma`, propeller speed `n_prop`. AeroBuildup is inside the lift and drag constraints; the thrust is `T = C_T(J) · rho · n² · D⁴` ([[thrust-at-airspeed-from-coefficient]]) with the measured table of the fitted propeller; the rpm is tied to the motor by [[motor-propeller-equilibrium]] — as a constraint on route B; on route A the free-run rpm, lowered to the motor's power limit (O11).
 

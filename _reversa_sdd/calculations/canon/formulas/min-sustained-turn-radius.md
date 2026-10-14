@@ -22,8 +22,15 @@ inputs:
   g: gravity
   rho: air-density
   n_lim: limit-load-factor
-  t: thrust-at-airspeed
+  k_v: motor-voltage-constant
+  i_0: motor-no-load-current
+  r_m: motor-circuit-resistance
+  u_bat: battery-voltage
+  p_mot_max: motor-max-power
+  d_prop: propeller-diameter
 outputs: {r_min: min-sustained-turn-radius, v_r: min-sustained-turn-radius-speed}
+embeds: [motor-propeller-equilibrium, advance-ratio-from-speed, propeller-table-lookup, thrust-at-airspeed-from-coefficient]
+optional: [r_m]
 ---
 
 # Tightest sustained turn at full throttle
@@ -38,7 +45,7 @@ subject to:   L(V, alpha) = n * m * g
               1 <= n <= n_lim
 ```
 
-**Produces** [[min-sustained-turn-radius]] · [[min-sustained-turn-radius-speed]]  ·  **from** [[airplane]] · [[aircraft-mass]] · [[gravity]] · [[air-density]] · [[limit-load-factor]] · [[thrust-at-airspeed]]
+**Produces** [[min-sustained-turn-radius]] · [[min-sustained-turn-radius-speed]]  ·  **from** [[airplane]] · [[aircraft-mass]] · [[gravity]] · [[air-density]] · [[limit-load-factor]] · [[motor-voltage-constant]] · [[motor-no-load-current]] · [[motor-circuit-resistance]] · [[battery-voltage]] · [[motor-max-power]] · [[propeller-diameter]]
 
 **Kind: an optimisation problem**, the same shape as the extremal closures and the climb. Variables: airspeed `V`, angle of attack `alpha`, load factor `n`, propeller speed `n_prop`. A **sustained** turn: level, at constant speed, so thrust equals drag; the drag comes from AeroBuildup at the turn's `alpha`, so the induced drag of the higher lift is in it. Thrust and rpm as in the climb ([[motor-propeller-equilibrium]], route declared per `Q-PT-6`).
 

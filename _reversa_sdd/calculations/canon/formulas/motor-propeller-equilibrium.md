@@ -26,6 +26,7 @@ inputs:
   p_mot_max: motor-max-power
   d_prop: propeller-diameter
 outputs: {n_prop: propeller-speed}
+optional: [r_m]
 ---
 
 # Propeller speed from the motor–propeller torque balance

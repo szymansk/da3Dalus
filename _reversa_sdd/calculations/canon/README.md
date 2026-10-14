@@ -384,6 +384,8 @@ The existing fields (`canon`, `entry`, `kind`, `tool`, `shape`, `status`, `outpu
 | `outputs` | always | parameter → default quantity slug, one key per output; `null` where it is produced per application |
 | `applications` | only for several applications or a condition | a list; each item has `id`, optional `bind` (parameter → quantity slug or `{const: <value>, source: "<citation>"}`), optional `produce` (parameter → quantity slug) optional `when` (a term of the vocabulary below; absent = always) and optional `given` (a list of quantity slugs; see below) |
 | `preconditions` | only where the entry states them | a list of `{id, parameter, on_violation}`: `parameter` names a parameter of the formula, `on_violation` is `warning` or `error` |
+| `embeds` | only where the canonical form evaluates another canon relation inside itself | a list of formula slugs: the canon formulas whose relation the canonical form evaluates inside itself, over its own variables. Not a value edge — nothing is read from them. Tools are named by `tool:` |
+| `optional` | only where the entry picks its route by data | a list of input parameter names that may arrive as `None` when neither a value nor a default exists; the formula then takes the route that needs no value and declares it as a warning (ADR 0020) |
 | `uncertainty` | only where the entry already says `interval` | `interval` (A11) |
 | `worlds` | with `uncertainty: interval` | the method worlds, as the entry names them, in snake_case |
 | `cost` | optional, interim (O14 question 3 is open) | `instant`, `seconds` or `minutes`; set only where the entry says the computation takes minutes. Without it the importer derives `instant` or `seconds` from `tool` (ARCHITECTURE §8.7) |
@@ -570,6 +572,7 @@ default: {value: 1.225, source: "U.S. Standard Atmosphere 1976 (NOAA-S/T 76-1562
 - no key or plain value is a YAML 1.1 boolean;
 - preconditions name a parameter and say `warning` or `error`; `worlds` exist exactly with
   `uncertainty: interval`; `cost` is one of the three classes;
+- `embeds` names other existing formulas; `optional` names input parameters;
 - every quantity has a `type` from the set above; a `default` carries a source.
 
 The vocabulary and the type set are read from the two tables above — this README is their only
