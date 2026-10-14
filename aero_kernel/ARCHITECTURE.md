@@ -38,13 +38,24 @@ becomes the app's single source of computation (register epic "implement the cal
 ## 3. Context and boundary
 
 **`aero_kernel` is a pure Python library with an asynchronous programming API**, not a service. It has no
-REST endpoint, no HTTP and no server process. The caller imports it and awaits one coroutine in-process:
+REST endpoint, no HTTP and no server process. It offers **two interfaces** with the same request and
+result types:
 
 ```python
-from aero_kernel import compute, AircraftInput, ComputeRequest
+from aero_kernel import compute, CachedKernel, MemoryCache, AircraftInput, ComputeRequest
 
-result = await compute(AircraftInput(...), ComputeRequest(quantities=["stall-speed"], include_long_runs=False))
+# 1. stateless: a pure function, no cache, no state between calls
+result = await compute(AircraftInput(...), ComputeRequest(quantities=["stall-speed"]))
+
+# 2. cached: a facade object that holds a cache and puts it in front of the same computation
+kernel = CachedKernel(cache=MemoryCache(max_entries=10_000))     # or DiskCache(path=...)
+async with kernel:
+    result = await kernel.compute(AircraftInput(...), ComputeRequest(quantities=["stall-speed"]))
 ```
+
+Both interfaces return the same values for the same input (Q7). Which one a caller uses is its choice: tests,
+golden values and the robustness run use the stateless function; the app will use one long-lived
+`CachedKernel`.
 
 The input and output types are Pydantic models, so they also have a JSON form and a JSON Schema. That is
 for data exchange (golden files, agents, a later REST or MCP layer), not a network interface. Exposing the
@@ -86,7 +97,9 @@ and the existing `app/api/v2` and MCP layers stay where they are (ADR 0019, ADR 
    condition (canon README, "One formula, several applications").
 4. **Method worlds instead of interval arithmetic** (A11, ADR 0027). Each world runs through the whole
    subtree, and the interval is formed only at the end.
-5. **Stateless outside, cache inside.** Cache keys come from content and versions, never from identities.
+5. **Stateless core, cache as a facade.** `compute()` is a pure function without state. `CachedKernel` is a
+   facade that owns a cache and the in-flight deduplication and delegates to the same engine (ch. 8.4).
+   Cache keys come from content and versions, never from identities.
 6. **Solvers behind thin adapters.** Formulas talk to adapters, never to AeroSandbox or AVL directly. That
    keeps them mockable in the fast tier, and capability errors arise in one place.
 
@@ -94,8 +107,10 @@ and the existing `app/api/v2` and MCP layers stay where they are (ADR 0019, ADR 
 
 ```
 aero_kernel/
-  api.py            async compute() — the only public entry point (ch. 8.10)
-  runtime.py        executor, concurrency limit, cancellation, in-flight deduplication
+  api.py            async compute() — the stateless interface (pure function)
+  cached.py         CachedKernel — the cached facade (owns cache, in-flight deduplication, resources)
+  engine.py         walks the graph; takes an optional NodeStore (none = stateless)
+  runtime.py        executor, concurrency limit, cancellation
   schema.py         AircraftInput, OperatingPoint, ComputeRequest, ComputeResult, QuantityResult,
                     KernelError, Warning, Provenance (Pydantic, extra="forbid")
   canon/            canon_model.json         the interpreted canon (versioned, committed)
@@ -108,7 +123,7 @@ aero_kernel/
   registry.py       @formula(slug) — implementations ↔ canon model
   formulas/         one file per canon formula (file name = slug, with underscores)
   solvers/          aerobuildup.py · avl.py · opti.py · atmosphere.py · data.py (KAT, APC)
-  cache.py          in-memory LRU, optionally on disk
+  cache.py          NodeStore protocol; MemoryCache (LRU), DiskCache
   validate.py       physical admissibility; regime warnings (ADR 0028)
   errors.py         error catalogue (ch. 8.1)
   tools/            robustness.py (#1178)
@@ -134,7 +149,7 @@ await compute(aircraft, request)
  3 per application: check its condition    → not met → status "not_applicable"
  4 per world (A11) and per operating point:
      cost class "minutes" and include_long_runs off → status "skipped" (reason long_run_not_included)
-     build key → cache hit? (mode use)     → reuse, from_cache = true
+     [CachedKernel only] build key → cache hit? → reuse, from_cache = true
      else schedule the implementation (time budget); independent nodes run concurrently (ch. 8.10)
        success → value + warnings (incl. regime ADR 0028, preconditions)
        failure → KernelError; successors → upstream_failed
@@ -202,7 +217,7 @@ Sources:
 
 No internal paths or mechanisms in any field (ADR 0019).
 
-### 8.4 Provenance and cache key
+### 8.4 Provenance, cache key and the two interfaces
 
 `Provenance`:
 - kernel version
@@ -219,17 +234,30 @@ No internal paths or mechanisms in any field (ADR 0019).
 Canonicalisation means sorted keys and numbers at a fixed number of significant digits. When a formula
 changes, only its subtree expires (A1).
 
-**Cache control per call.** `ComputeRequest.cache` sets how this call uses the cache:
+**Two interfaces, one engine.**
+
+- **`compute()`, stateless.** A pure function. It keeps nothing between calls: no cache and no
+  deduplication. Two calls with the same input compute twice.
+- **`CachedKernel`, stateful facade.** An object that owns a `NodeStore` (`MemoryCache` or `DiskCache`) and
+  the in-flight deduplication.
+  - Its `compute()` has the same signature and the same result type.
+  - It delegates to the same engine and passes in its store.
+- **Why node level.** Caching happens **per graph node**, not per whole request. That way, a change to one
+  input expires only its subtree (A1). The facade therefore injects the store into the engine instead of
+  wrapping the whole call. Seen from outside it is still a facade: a separate object, put in front of the
+  same computation, with no influence on the values.
+
+**Per call on the facade:** `await kernel.compute(aircraft, request, cache="use" | "refresh")`.
 
 | Mode | Reads | Writes | In-flight dedup | Use |
 |---|---|---|---|---|
 | `use` (default) | yes | yes | yes | normal operation |
 | `refresh` | no | yes | no | force a recomputation and replace the stored entries, e.g. after a tool upgrade |
-| `off` | no | no | no | measurements, robustness run, debugging; the cache is not touched |
 
-Kernel-wide settings (in-memory size, optional disk location) are passed by the caller when it configures
-the kernel, never read from the environment. Each `QuantityResult` reports `from_cache` (true/false), so the
-caller can see where a value came from. The mode never changes a value (Q7).
+A call without the cache is simply the stateless `compute()`, so the facade needs no "off" mode.
+
+Cache settings (size, disk location) are passed when the facade is created, never read from the environment.
+Each `QuantityResult` reports `from_cache`, which is always `false` from the stateless interface.
 
 ### 8.5 Applications and preconditions
 
@@ -327,9 +355,13 @@ caller's event loop, it can be cancelled, and it limits its own resource use.
 - **Concurrency from the graph.** Independent nodes of the subtree, method worlds (A11) and operating points
   run concurrently (`asyncio.TaskGroup`). The dependency graph decides what may run in parallel, never the
   formula code.
-- **Bounded.** One kernel-wide concurrency limit (semaphore, default = CPU count − 1) and one process pool.
-  The caller may pass its own executor and limit, e.g. the app shares its pool. The pool is created lazily
-  and shut down by `aero_kernel.shutdown()`; no work starts at import.
+- **Bounded.** Execution resources are passed in, never global:
+  - an executor (process pool) and a concurrency limit.
+  - The **stateless `compute()`** takes them as optional keyword arguments. Without them it uses a
+    per-call default, so it stays free of state.
+  - **`CachedKernel`** owns one pool and one limit for its lifetime. They are created lazily and closed by
+    `async with` or `aclose()`.
+  - Nothing starts at import. Resources are not results: they never change a value.
 - **Cancellation.**
   - Cancelling the `compute()` task cancels all child tasks.
   - It kills running AVL subprocesses and removes their temporary directories.
@@ -338,9 +370,9 @@ caller's event loop, it can be cancelled, and it limits its own resource use.
   - `asyncio.CancelledError` is always re-raised, never turned into a result.
 - **Time budget.** `ComputeRequest.time_budget_s` is enforced with `asyncio.timeout`. Quantities still open
   when it expires get `error.category = timeout`; quantities already finished are returned.
-- **Cache under concurrency.** The cache is safe for concurrent use. **In-flight deduplication** (mode
-  `use` only): when two concurrent requests need the same key, the second awaits the first one's future
-  instead of computing it again.
+- **Cache under concurrency (`CachedKernel` only).** The store is safe for concurrent use. **In-flight
+  deduplication** (mode `use`): when two concurrent requests need the same key, the second awaits the first
+  one's future instead of computing it again.
 - **No hidden loop.** The kernel never calls `asyncio.run`, never creates or closes the caller's loop and
   keeps no loop-bound global state. It works inside FastAPI, in pytest-asyncio and in plain
   `asyncio.run(compute(...))` from scripts.
@@ -377,7 +409,7 @@ caller's event loop, it can be cancelled, and it limits its own resource use.
 | Q4 | The solver does not converge | `not_converged`; successors `upstream_failed`; other quantities still compute |
 | Q5 | Layout without flaps | `stall-speed-landing` is `not_applicable`: no error, no substitute value |
 | Q6 | Every error category | Serialises to JSON with `message` and `hint` |
-| Q7 | Second identical call | With `cache=use`: no formula call, `from_cache` true; with `off` and `refresh`: formula called; values bit-identical in all three modes |
+| Q7 | Second identical call | `CachedKernel` (`use`): no formula call, `from_cache` true; `refresh` and stateless `compute()`: formula called; values bit-identical across all three |
 | Q8 | Input mass ≤ 0 | `invalid_input` with `input_path`; Re < 3·10⁴ only warns |
 | Q9 | Boundary to `app/` | Test: no import from `app/`, `cad_designer/`, `scripts/` |
 | Q10 | No AeroSandbox installed | `tool_unavailable`, no ImportError |
@@ -388,7 +420,8 @@ caller's event loop, it can be cancelled, and it limits its own resource use.
 | Q15 | A `minutes` quantity requested without `include_long_runs` | `status: skipped`, `reason.code = long_run_not_included`, dependents `depends_on_skipped`, all other quantities computed |
 | Q16 | Event loop stays responsive | while a `seconds` computation runs, a concurrent `asyncio.sleep(0.01)` task is delayed by < 50 ms |
 | Q17 | Cancellation | cancelling `compute()` during an AVL run kills the subprocess and leaves no temp directory; `CancelledError` propagates |
-| Q18 | In-flight deduplication | two concurrent identical requests cause exactly one formula call |
+| Q18 | In-flight deduplication | on one `CachedKernel`, two concurrent identical requests cause exactly one formula call |
+| Q20 | Stateless interface leaves no state | after `compute()` returns, no cache entry, pool or other object created by it remains; a second call computes again |
 | Q19 | Time budget | budget exceeded → open quantities `timeout`, finished ones returned |
 
 ## 11. Risks and technical debt
