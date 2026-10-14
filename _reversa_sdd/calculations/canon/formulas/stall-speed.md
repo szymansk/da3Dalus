@@ -37,8 +37,8 @@ preconditions:
 postconditions:
   - {id: cl_max_at_stall_reynolds_number, parameter: cl_max, on_violation: error}
   - {id: alpha_range_past_inverted_stall, parameter: polar, on_violation: error, applications: [inverted]}
-# ESCALATED: optimum_at_first_cl_peak (and its inverted mirror) — the entry states "the optimum must be
-# the first C_L peak, checked against the sweep" only as an approval step, not per evaluation.
+  - {id: optimum_at_first_cl_peak, parameter: cl_max, on_violation: error, applications: [clean, takeoff, landing]}
+  - {id: optimum_at_first_cl_trough, parameter: cl_max, on_violation: error, applications: [inverted]}
 ---
 
 # Stall speed from the lift balance at C_L,max
@@ -83,7 +83,9 @@ of `C_L` (BRYAN: 1.26 at 12° and 1.07 at 23°). IPOPT from a generic start foun
 not catch it. The canonical evaluation therefore first locates the first `C_L` maximum by an α
 sweep (re-evaluated at the resulting `V_S` for the Reynolds number) and restricts `α` to the
 pre-stall branch. Approval adds: **the optimum must be the first `C_L` peak**, checked against the
-sweep.
+sweep. Since #1181 the check also runs per evaluation (postcondition `optimum_at_first_cl_peak`, and
+`optimum_at_first_cl_trough` for the inverted application), from K32: without it a wrong-branch value
+would be returned silently (ADR 0020).
 
 **Third output: `α_S`, the stall angle** (maintainer, 2026-10-14, D2) — the optimum α at the first
 `C_L` peak, clean application. α is a decision variable of this optimisation, so the stall angle comes
