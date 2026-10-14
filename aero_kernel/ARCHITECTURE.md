@@ -384,9 +384,17 @@ quantity.
     own (the embedder's preconditions apply). The embedder node is cached as a whole; the build digest
     covers the shared code (ch. 8.4). Approval of the embedder follows approval of its closure.
 - **Optional parameters** (`optional:`, a list of input parameter names). The formula receives `None`
-  when the bound quantity has neither a value nor a default, and selects its route by data; it declares
-  the route that ran as a warning (ADR 0020, Q-PT-6). Example: `r_m` of `motor-propeller-equilibrium`
-  (route B with it, route A without). Unlike `given`, the application exists either way.
+  when the bound quantity has neither a value nor a default, and selects its route by data. Unlike
+  `given`, the application exists either way. The entry states, per route, which of three outcomes holds:
+  - **a declared method limitation** → a `practice` warning naming the route (ADR 0020). Example: `r_m`
+    of `motor-propeller-equilibrium`, route A without it (Q-PT-6).
+  - **the canon's own definition for that data** → no warning. Example: `delta_f` of
+    `airplane-configuration` on an aircraft without flaps: there is no configuration, the aircraft is
+    unchanged (stall-speed, 2026-10-02); this is not a substitute.
+  - **the value is needed after all** → the formula raises `FormulaError(invalid_input, missing_input)`
+    with `input_path = values.<slug>`, exactly as the engine would (ch. 8.11). Example: `delta_f` absent
+    on an aircraft that has flaps.
+  Every absent optional parameter is logged at `INFO` with the route (ch. 8.14).
 - An entry without `applications:` has exactly one application: every parameter bound to its default
   quantity from `inputs:` / `outputs:`, condition "always".
 - **Keys are always parameter names** (snake_case), in the canon fields, in `x` and in the return value of
@@ -685,7 +693,10 @@ quantity that names it: the take-off and landing stall speeds read `airplane-tak
 `airplane-landing` (type `airplane`, produced by `airplane-configuration` from the design inputs
 `flap-deflection-takeoff` / `flap-deflection-landing`; without flaps it is the unchanged aircraft, not a
 fallback). `airplane-configuration` sets the given deflection as the flaps' state (`deflection_deg`)
-exactly, **also beyond the stops** (ch. 8.11). A sampled curve over angle of attack is a quantity of type `polar`
+exactly, **also beyond the stops** (ch. 8.11). Its `delta_f` is `optional:`: without flaps an absent
+deflection gives the unchanged aircraft (no warning); with flaps it is `missing_input`, and its dependents
+`upstream_failed`. A deflection given for an aircraft without flaps has nothing to act on: unchanged
+aircraft plus a `practice` warning `deflection_without_flap`, because a supplied value is not used. A sampled curve over angle of attack is a quantity of type `polar`
 whose slug names its evaluation condition (A2). The engine needs nothing beyond applications for any of
 these.
 
@@ -827,7 +838,7 @@ They are the first thing a developer or an agent reads to check a change and to 
 | Q30 | Embedded relation and optional parameter | with `flight-speed` = 0, `thrust-at-airspeed` equals the thrust inside `static-thrust-to-weight` bit for bit (one relation function); without `motor-circuit-resistance` both run route A with a `practice` warning naming the route, no `missing_input` |
 | Q31 | Defaults taken | without `gravity` and without `approach-speed-margin-target`: `approach-speed` computes; `provenance.defaults_used` lists both with value and source; `caplog` has one `INFO` line for `gravity` and one `WARNING` line for the target, each with `call_id`, also on a second, cached call; the result carries `default_target_used` (`practice`) on `approach-speed` and its dependents, and no warning for `gravity` |
 | Q32 | Embedding | `importer --check` rejects an embedding cycle, an embedded formula with worlds, and an embedded input that is neither bound, produced in the closure nor generic; the traceability test fails when an embedder does not call the embedded relation function; `mass-envelope` with `neutral-point` in three worlds runs three times and returns `cg-envelope-over-mass` as a pointwise interval |
-| Q33 | Deflection beyond the stop | `flap-deflection-landing` larger than the flap's `positive_deflection_deg`: `airplane-landing` carries exactly the given deflection, `stall-speed-landing` computes, no error, no clamp and no warning about the stop |
+| Q33 | Flap deflection: beyond the stop, flapless, missing | `flap-deflection-landing` larger than the flap's `positive_deflection_deg`: `airplane-landing` carries exactly the given deflection, `stall-speed-landing` computes, no error, no clamp and no warning about the stop. Flapless, no deflection given: `airplane-landing` is the unchanged aircraft, `stall-speed-landing` equals `stall-speed`, no warning, one `INFO` line. Flapless with a deflection: same values plus `deflection_without_flap`. Flaps, no deflection: `stall-speed-landing` is `missing_input` (`values.flap-deflection-landing`), `approach-speed` `upstream_failed`; `stall-speed` still computes |
 
 ## 11. Risks and technical debt
 
