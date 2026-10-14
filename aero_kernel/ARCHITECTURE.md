@@ -210,7 +210,8 @@ An error means **no value**. A value with a caveat is a **warning** (8.2), not a
 - **Violated precondition or postcondition:** the canon entry says per check `on_violation: warning | error`.
   `warning` → a `defect` warning and the value is returned. `error` → `unsupported_configuration`, code
   `precondition_violated` / `postcondition_violated`, `detail.precondition` / `detail.postcondition` = its
-  id; for a postcondition the computed value is discarded, never returned (ADR 0020).
+  id; for a postcondition **all outputs of that application** (in that world) are discarded, never
+  returned (ADR 0020): they come from one evaluation, so a failed check on one invalidates the others.
 
 ### 8.2 Warnings
 
@@ -379,21 +380,35 @@ quantity.
   tool (AeroBuildup inside `stall-speed`) is named by `tool:`, not by `embeds:`. An embedded formula may
   itself be an optimisation: `mass-envelope` solves the stall-speed, max-level-speed and
   best-rate-of-climb problems at each mass of its own sweep.
-  - **What is listed:** every formula the canonical form names **directly**. Embedding is transitive; the
-    importer computes the closure (embedding `max-level-speed` brings in its propulsion relations), so a
-    relation the form also names directly is listed again, and nothing else needs to be repeated.
-  - **Inputs:** every input quantity of the closure is either an input of the embedder, produced inside
-    the closure (`propeller-speed`, `thrust-coefficient`), or a generic operating-point quantity
-    (`flight-speed`, `angle-of-attack`, `load-factor`, `aircraft-mass`; A2) — those are the embedder's own
-    variables, solved for or swept. An embedder binds the *configuration* it needs as its own input
-    (`airplane-landing` for a landing-configuration trim), because it embeds a relation, not an
-    application.
-  - **Importer checks:** every slug exists; the closure is acyclic; the input rule above; no formula in
-    the closure has `uncertainty: interval` (worlds are per node, ch. 8.13; an uncertain embedded relation
-    needs a decision first).
-  - **Engine:** an embedded formula is no node — no cache entry, no application, no preconditions of its
-    own (the embedder's preconditions apply). The embedder node is cached as a whole; the build digest
-    covers the shared code (ch. 8.4). Approval of the embedder follows approval of its closure.
+  - **What is listed:** every formula the canonical form names **directly**, as `<slug>` or, for a formula
+    with several applications, `<slug>.<application-id>` per application whose checks apply
+    (`stall-speed.clean`, `stall-speed.landing`); a bare slug of a multi-application formula is an import
+    finding. Embedding is transitive; the importer computes the closure (embedding `max-level-speed`
+    brings in its propulsion relations), so a relation the form also names directly is listed again, and
+    nothing else needs to be repeated. The application id selects **only** which scoped checks apply; the
+    inputs are still bound by the embedder (an embedder binds the configuration it needs, e.g.
+    `airplane-landing`, as its own input).
+  - **Variables** (`variables:`, a list of quantity slugs on the embedder): the quantities the embedder
+    solves for or sweeps itself (`mass-envelope`: `aircraft-mass` swept, `flight-speed`,
+    `angle-of-attack`, `propeller-speed` solved). Inside the closure a listed quantity is **always** the
+    embedder's variable, even if the embedder also reads that quantity as an input for another purpose
+    (`m_current: aircraft-mass`, the current mass on the sweep). Nothing is implied: a quantity is a
+    variable only if listed.
+  - **Inputs:** every input quantity of the closure is a `variables:` entry, an input of the embedder, or
+    produced inside the closure (`propeller-speed`, `thrust-coefficient`).
+  - **Importer checks:** every slug and application id exists; the closure is acyclic; the input rule
+    above; every `variables:` entry is read somewhere in the closure; no formula in the closure has
+    `uncertainty: interval` (worlds are per node, ch. 8.13; an uncertain embedded relation needs a decision
+    first).
+  - **Engine:** an embedded formula is no node — no cache entry and no preconditions of its own (its inputs
+    are the embedder's variables or inputs; the embedder's preconditions apply). **Its postconditions do
+    run**, on every embedded evaluation — they guard what the relation returns (e.g. `stall-speed`'s
+    `optimum_at_first_cl_peak` at each mass of the sweep, K32): the unscoped ones always, a scoped one when
+    its application is listed. A violation is the embedder's: `on_violation: error` makes it
+    `postcondition_violated` with `detail.embedded` = `<slug>.<application-id>`, `detail.postcondition` = the
+    id and the variable values of the failing evaluation; `warning` becomes the embedder's `defect` warning
+    with the same detail. The embedder node is cached as a whole; the build digest covers the shared code
+    (ch. 8.4). Approval of the embedder follows approval of its closure.
 - **Optional parameters** (`optional:`, a list of input parameter names). The formula receives `None`
   when the bound quantity has neither a value nor a default, and selects its route by data. Unlike
   `given`, the application exists either way. The entry states, per route, which of three outcomes holds:
@@ -703,8 +718,8 @@ async def stall_speed(x: Inputs, ctx: Context) -> dict[str, Value]:
   `airplane` → `AirplaneGeometry`, `curve` → `Curve`, `curve_pair` → `CurvePair`, `polar` → `Polar`. A new
   type is a canon decision first, then a type here.
 - **`ctx`** carries: `solvers` (the adapters), `world` (the active world of this formula, if it has
-  worlds), `accuracy`, and `warn(code, message, severity)`. Nothing else: no cache, no request, no
-  global.
+  worlds), `accuracy`, `warn(code, message, severity)` and `embedded(item)` (ch. 8.5, below). Nothing else:
+  no cache, no request, no global.
 - **Formula code is cheap.** It runs on the event loop. Anything heavy goes through an adapter; adapters
   run CPU work in the process pool and AVL as an async subprocess (ch. 8.10).
 - **Picklability** concerns only adapters: what they send to the pool is a module-level function and plain
@@ -722,8 +737,11 @@ async def stall_speed(x: Inputs, ctx: Context) -> dict[str, Value]:
   it); its `@formula` coroutine and every embedder call that one function, so there is one implementation
   per relation (ADR 0022). For an embedded optimisation the function is its problem (built into a given
   `asb.Opti` or solved at given values of the embedder's variables); the formula's module decides which and
-  documents it. The traceability test (Q11) checks that every `embeds:` slug has that function and that the
-  embedder's module calls it (static check of the import and call).
+  documents it. An embedder obtains it **only** through `ctx.embedded("<slug>.<application-id>")`, which
+  returns the relation together with the postconditions that apply: evaluated as a whole, the handle runs
+  them on every call; built into an outer problem, the embedder passes the solved values to the handle's
+  `check(...)`. The traceability test (Q11) checks that every `embeds:` item has that function and that the
+  embedder requests each listed item through `ctx.embedded` (static check).
 - **Registration** is by decorator at import of `aero_kernel.formulas`. The traceability test (Q11) checks
   that each implementation's parameter names equal the canon model's.
 
@@ -895,6 +913,7 @@ They are the first thing a developer or an agent reads to check a change and to 
 | Q33 | Flap deflection: beyond the stop, flapless, missing | `flap-deflection-landing` larger than the flap's `positive_deflection_deg`: `airplane-landing` carries exactly the given deflection, `stall-speed-landing` computes, no error, no clamp and no warning about the stop. Flapless, no deflection given: `airplane-landing` is the unchanged aircraft, `stall-speed-landing` equals `stall-speed`, no warning, one `INFO` line. Flapless with a deflection: same values plus `deflection_without_flap`. Flaps, no deflection: `stall-speed-landing` is `missing_input` (`values.flap-deflection-landing`), `approach-speed` `upstream_failed`; `stall-speed` still computes |
 | Q34 | Angles, not stops | `roll-rate-approach` at a given `aileron-deflection` beyond the aileron's stop computes, no stop warning; `aileron-deflection-required-approach` for a target above the AeroBuildup maximum: that world fails with `unsupported_configuration`, code `target_above_method_maximum` (maximum roll rate and its δ_a in `detail`), the AVL world computes, the quantity is `error` with the AVL value in `detail.worlds_ok` — no clipped angle, no narrowed interval. AVL at `|p·b/2V| > 0.10` carries the `defect` warning from the adapter |
 | Q35 | Roll without ailerons, scaled crow | an aircraft without a surface acting as aileron, flaperon or elevon: `roll-rate-approach` and `aileron-deflection-required-approach` are `not_applicable` (`condition_not_met`), no `missing_input` for `aileron-deflection`; a flaperon-only wing has `has_aileron` but not the butterfly condition (crow needs a flap-acting and a distinct aileron-acting surface at once), so the butterfly quantities are `not_applicable`; the butterfly curves at mix `s` use `s · crow-flap-deflection` and `s · crow-aileron-deflection`, independent of the stops |
+| Q36 | Embedded postcondition and variables | a stub `stall-speed` whose optimum is not the first C_L peak at one sweep mass: `mass-envelope` is `error`, `postcondition_violated`, `detail.embedded = stall-speed.clean` with that mass; with `m_current` set, the embedded `m` still takes every sweep value (`variables:`), never the current mass; the importer rejects a bare `stall-speed` in `embeds:` and a closure input that is neither variable, input nor produced |
 
 ## 11. Risks and technical debt
 
