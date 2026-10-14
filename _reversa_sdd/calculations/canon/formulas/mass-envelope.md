@@ -40,13 +40,16 @@ outputs:
   m_max_to: max-mass-lift-off
   cg_envelope: cg-envelope-over-mass
 embeds:
-  - stall-speed
+  - stall-speed.clean
+  - stall-speed.landing
+  - stall-speed.takeoff
   - max-level-speed
   - best-rate-of-climb
   - motor-propeller-equilibrium
   - advance-ratio-from-speed
   - propeller-table-lookup
   - thrust-at-airspeed-from-coefficient
+variables: [aircraft-mass, flight-speed]
 optional: [r_m]
 cost: minutes
 ---
@@ -73,6 +76,9 @@ narrows with the take-off mass, as curves over `m`, and the masses at which it c
 
 **A long run** (maintainer-approved plan of epic #1173, 2026-10-14): computed only on explicit request
 (K28), hence `cost: minutes`.
+
+**Variables of the envelope** (#1181): the mass `m`, swept, and the speed `V`, solved in each
+embedded problem. The load factor is not one: the embedded stall problems bind `n = 1` themselves.
 
 - **Speed range.** `V_S(m)` rises, `V_max(m)` falls; where they meet is `m_max,level` — beyond
   it no level flight is possible.

@@ -30,6 +30,7 @@ inputs:
   d_prop: propeller-diameter
 outputs: {r_min: min-sustained-turn-radius, v_r: min-sustained-turn-radius-speed}
 embeds: [motor-propeller-equilibrium, advance-ratio-from-speed, propeller-table-lookup, thrust-at-airspeed-from-coefficient]
+variables: [flight-speed]
 optional: [r_m]
 ---
 

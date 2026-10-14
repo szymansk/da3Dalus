@@ -30,6 +30,7 @@ inputs:
   d_prop: propeller-diameter
 outputs: {omega_max: max-sustained-turn-rate, v_omega: max-sustained-turn-rate-speed}
 embeds: [motor-propeller-equilibrium, advance-ratio-from-speed, propeller-table-lookup, thrust-at-airspeed-from-coefficient]
+variables: [flight-speed]
 optional: [r_m]
 ---
 

@@ -28,6 +28,7 @@ inputs:
   d_prop: propeller-diameter
 outputs: {t0_w: static-thrust-to-weight}
 embeds: [motor-propeller-equilibrium, advance-ratio-from-speed, propeller-table-lookup, thrust-at-airspeed-from-coefficient]
+variables: [flight-speed]
 optional: [r_m]
 ---
 
