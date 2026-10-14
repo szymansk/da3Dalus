@@ -2,7 +2,7 @@
 canon: advance-ratio
 kind: quantity
 symbol: J
-unit: dimensionless
+unit: 1
 role: derived
 status: draft
 tags:
@@ -21,7 +21,7 @@ toward zero.
 Produced by [[advance-ratio-from-speed]] because
 it is never computed for its own sake.
 
-**Unit.** `dimensionless`
+**Unit.** `1`
 
 **Produced by.** [[advance-ratio-from-speed]]
 

@@ -2,7 +2,7 @@
 canon: battery-mass-deviation
 kind: quantity
 symbol: dev
-unit: dimensionless
+unit: 1
 role: output
 status: draft
 tags:
@@ -15,6 +15,6 @@ type: scalar
 
 Relative gap between the predicted and the entered battery mass, used as a consistency warning.
 
-**Unit.** `dimensionless`
+**Unit.** `1`
 
 **Produced by.** [[relative-mass-deviation]]

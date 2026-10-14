@@ -2,7 +2,7 @@
 canon: break-load-factor-negative
 kind: quantity
 symbol: n_break,neg
-unit: dimensionless
+unit: 1
 role: output
 status: draft
 tags:
@@ -15,6 +15,6 @@ type: scalar
 
 Load factor at which the fitted spar breaks under downward load (negative g: pushing, inverted flight, outside manoeuvres). Same magnitude as upward for a symmetric spar.
 
-**Unit.** `dimensionless`
+**Unit.** `1`
 
 **Produced by.** [[spar-break-load-factor]]

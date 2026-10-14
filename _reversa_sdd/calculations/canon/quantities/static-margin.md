@@ -2,7 +2,7 @@
 canon: static-margin
 kind: quantity
 symbol: SM
-unit: dimensionless
+unit: 1
 role: output
 status: draft
 tags:
@@ -15,6 +15,6 @@ type: scalar
 
 `(x_NP − x_CG)/c_MAC` — positive is stable; commonly quoted in % MAC.
 
-**Unit.** `dimensionless`
+**Unit.** `1`
 
 **Produced by.** [[static-margin]]

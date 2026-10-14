@@ -2,7 +2,7 @@
 canon: max-lift-coefficient-landing
 kind: quantity
 symbol: C_L,max,LDG
-unit: dimensionless
+unit: 1
 role: derived
 status: draft
 tags:
@@ -16,6 +16,6 @@ type: scalar
 The lift coefficient at the optimum of the [[stall-speed]] problem with the airplane in landing
 configuration — the companion of [[stall-speed-landing]], evaluated at its own Reynolds number.
 
-**Unit.** `dimensionless`
+**Unit.** `1`
 
 **Produced by.** [[stall-speed]]

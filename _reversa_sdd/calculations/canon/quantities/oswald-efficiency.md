@@ -2,7 +2,7 @@
 canon: oswald-efficiency
 kind: quantity
 symbol: e_osw
-unit: dimensionless
+unit: 1
 role: derived
 status: draft
 tags:
@@ -15,7 +15,7 @@ type: scalar
 
 Oswald factor of the parabola fitted to the solver polar (ADR 0026) — comparable with literature values. **Display only.** Not AeroBuildup's internal `e`, which is the empirical Nita & Scholz correlation with a full-scale viscous factor.
 
-**Unit.** `dimensionless`
+**Unit.** `1`
 
 **Produced by.** [[parabolic-polar-fit]]
 

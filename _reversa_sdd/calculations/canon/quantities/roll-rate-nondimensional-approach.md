@@ -2,7 +2,7 @@
 canon: roll-rate-nondimensional-approach
 kind: quantity
 symbol: p_hat_app
-unit: dimensionless
+unit: 1
 role: output
 uncertainty: interval
 status: draft
@@ -16,7 +16,7 @@ type: scalar
 
 `p·b/(2V)` at the given aileron deflection, on approach — nearly independent of speed, so it characterises the aircraft's roll authority without a reference speed.
 
-**Unit.** `dimensionless`
+**Unit.** `1`
 
 **Produced by.** [[roll-rate]]
 

@@ -2,7 +2,7 @@
 canon: zero-lift-drag-coefficient
 kind: quantity
 symbol: C_D0
-unit: dimensionless
+unit: 1
 role: derived
 status: draft
 tags:
@@ -15,7 +15,7 @@ type: scalar
 
 Zero-lift parasite drag coefficient of the parabola fitted to the solver polar over the operating C_L window (ADR 0026). **Display and the calculated value of the `cd0` design assumption (ADR 0010) — never an input to performance.** In the design direction an estimate (Scholz chain with `c_f` at the mission Reynolds number, O12).
 
-**Unit.** `dimensionless`
+**Unit.** `1`
 
 
 > ⚠️ **2 formulas produce this one quantity.** That is the shape ADR 0022

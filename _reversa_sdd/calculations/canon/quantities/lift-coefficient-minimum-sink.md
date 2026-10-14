@@ -2,7 +2,7 @@
 canon: lift-coefficient-minimum-sink
 kind: quantity
 symbol: C_L,mp
-unit: dimensionless
+unit: 1
 role: derived
 status: draft
 tags:
@@ -15,7 +15,7 @@ type: scalar
 
 The lift coefficient at the optimum of [[minimum-sink-speed-from-polar]].
 
-**Unit.** `dimensionless`
+**Unit.** `1`
 
 **Produced by.** [[minimum-sink-speed-from-polar]]
 

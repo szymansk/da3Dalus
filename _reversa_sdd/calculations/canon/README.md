@@ -454,7 +454,9 @@ stay. Added:
 
 #### Quantity types
 
-Closed. The unit is the unit of the values.
+Closed. The unit is the unit of the values. A dimensionless quantity is written `unit: 1` — one spelling
+for the whole canon (#1181); the `airplane` types carry `—` (not a number). A `polar` has a unit per
+column: α in `deg`, the coefficients `C_L`, `C_D`, `C_m` in `1`; its `unit` field says `1`.
 
 | type | what the value is |
 |---|---|

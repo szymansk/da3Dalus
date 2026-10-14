@@ -2,7 +2,7 @@
 canon: static-thrust-to-weight
 kind: quantity
 symbol: T_0/W
-unit: dimensionless
+unit: 1
 role: output
 status: draft
 tags:
@@ -15,6 +15,6 @@ type: scalar
 
 Computed static thrust over weight. Above 1 the model can climb vertically.
 
-**Unit.** `dimensionless`
+**Unit.** `1`
 
 **Produced by.** [[static-thrust-to-weight]]

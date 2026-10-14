@@ -2,7 +2,7 @@
 canon: lift-to-drag-ratio
 kind: quantity
 symbol: E
-unit: dimensionless
+unit: 1
 role: derived
 status: draft
 tags:
@@ -15,7 +15,7 @@ type: scalar
 
 Aerodynamic efficiency at a point, C_L/C_D, identically L/D.
 
-**Unit.** `dimensionless`
+**Unit.** `1`
 
 **Produced by.** [[lift-to-drag-ratio]]
 

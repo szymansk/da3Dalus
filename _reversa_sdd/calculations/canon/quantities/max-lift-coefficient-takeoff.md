@@ -2,7 +2,7 @@
 canon: max-lift-coefficient-takeoff
 kind: quantity
 symbol: C_L,max,TO
-unit: dimensionless
+unit: 1
 role: derived
 status: draft
 tags:
@@ -16,6 +16,6 @@ type: scalar
 The lift coefficient at the optimum of the [[stall-speed]] problem with the airplane in take-off
 configuration — the companion of [[stall-speed-takeoff]], evaluated at its own Reynolds number.
 
-**Unit.** `dimensionless`
+**Unit.** `1`
 
 **Produced by.** [[stall-speed]]

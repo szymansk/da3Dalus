@@ -2,7 +2,7 @@
 canon: static-margin-probe
 kind: quantity
 symbol: SM_probe
-unit: dimensionless
+unit: 1
 role: output
 status: draft
 tags:
@@ -15,6 +15,6 @@ type: scalar
 
 `−C_mα/C_Lα` with the moment reference at the CG — checks [[static-margin]].
 
-**Unit.** `dimensionless`
+**Unit.** `1`
 
 **Produced by.** [[static-margin-probe]]

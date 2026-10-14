@@ -2,7 +2,7 @@
 canon: stall-onset-index
 kind: quantity
 symbol: i_stall
-unit: dimensionless
+unit: 1
 role: output
 status: draft
 tags:
@@ -15,6 +15,6 @@ type: scalar
 
 Index of the first post-C_L,max sweep point showing falling lift and rising drag. An index into a sweep, not an angle.
 
-**Unit.** `dimensionless`
+**Unit.** `1`
 
 **Produced by.** [[stall-onset-detection]]
