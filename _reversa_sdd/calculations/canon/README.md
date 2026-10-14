@@ -423,7 +423,6 @@ entry that states the condition.
 
 | term | holds when |
 |---|---|
-| `has_flap` | the main wing carries at least one trailing-edge device acting as a flap (stated by the `stall-speed` application table; its use there is escalated, see `STAND.md`) |
 | `has_flap_and_aileron` | the main wing carries trailing-edge devices acting as camber flaps and as ailerons — both, as crow needs (`butterfly-approach`) |
 | `has_vertical_tail` | the aircraft has a fin or a V-tail behind the main wing; winglets or a centre fin on a tailless wing do not count (`spiral-parameter`, `vertical-tail-volume`) |
 

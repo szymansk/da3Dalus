@@ -22,8 +22,6 @@ outputs: {v_s: null, cl_max: null}
 applications:
   - id: clean
     produce: {v_s: stall-speed, cl_max: max-lift-coefficient}
-  # ESCALATED: takeoff, landing — their condition: the table says "the wing carries a flap",
-  # the 2026-10-02 text says without flaps they exist and equal the clean stall speed.
   - id: takeoff
     bind: {airplane: airplane-takeoff}
     produce: {v_s: stall-speed-takeoff, cl_max: max-lift-coefficient-takeoff}
@@ -117,12 +115,15 @@ One law, bound differently. Each application is approved separately, **after** t
 | application | binds | produces | exists when | implementations |
 |---|---|---|---|---|
 | `clean` | `airplane` = [[airplane]], `rho` = [[air-density]] | [[stall-speed]] · [[max-lift-coefficient]] | always | [[fe_v_stall]] · [[v-stall]] |
-| `takeoff` | `airplane` = [[airplane-takeoff]], `rho` = [[air-density]] | [[stall-speed-takeoff]] · [[max-lift-coefficient-takeoff]] | the wing carries a flap | [[v-stall-to-fl]] |
-| `landing` | `airplane` = [[airplane-landing]], `rho` = [[air-density]] | [[stall-speed-landing]] · [[max-lift-coefficient-landing]] | the wing carries a flap | [[v-stall-ldg-fl]] |
+| `takeoff` | `airplane` = [[airplane-takeoff]], `rho` = [[air-density]] | [[stall-speed-takeoff]] · [[max-lift-coefficient-takeoff]] | always — without flaps equal to the clean stall speed | [[v-stall-to-fl]] |
+| `landing` | `airplane` = [[airplane-landing]], `rho` = [[air-density]] | [[stall-speed-landing]] · [[max-lift-coefficient-landing]] | always — without flaps equal to the clean stall speed | [[v-stall-ldg-fl]] |
 
 Since the rebuild of 2026-10-01 `C_L,max` is an output of the problem, so the applications bind
 the **configured airplane** ([[airplane-configuration]]), not a `C_L,max` (#1181, architect
-2026-10-14). The "exists when" column is open: see the front matter.
+2026-10-14). Take-off and landing are **configurations, not flight phases**: their stall speeds always
+exist and feed the speeds that use them — approach and touchdown from `V_S0`, take-off from `V_S,TO`;
+without flaps the configured airplane is the same aircraft, so they equal the clean stall speed
+(maintainer, 2026-10-14).
 
 ## Preconditions on the bindings
 
