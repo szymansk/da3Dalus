@@ -477,8 +477,13 @@ def _check_formula(e: Entry, canon: Canon, add, gap) -> tuple[set[str], set[str]
         for name, value in _effective(inputs, bind).items():
             if value is None:
                 gap(e, "applications", f"{where}: input parameter {name!r} is not bound")
+        # An output may be produced explicitly as null: the implementation returns it, the
+        # application does not expose it. Only an output absent from the merged produce is a gap.
+        explicit_null = (
+            {n for n, v in produce.items() if v is None} if isinstance(produce, dict) else set()
+        )
         for name, value in _effective(outputs, produce).items():
-            if value is None:
+            if value is None and name not in explicit_null:
                 gap(e, "applications", f"{where}: output parameter {name!r} is not produced")
 
     for pre in e.front.get("preconditions") or []:

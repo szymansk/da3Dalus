@@ -399,7 +399,8 @@ exactly one parameter.
 parameter bound to its default, condition "always". An application starts from the defaults
 and overrides them with its `bind` and `produce`; after that, every input parameter must be
 bound — to a quantity or to a constant with its source — and every output parameter must be
-produced. One formula, several applications is the shape described in "One formula, several
+produced: bound to a quantity, or explicitly to `null` (the implementation still returns it; the
+application does not expose it). An output parameter absent from the merged `produce` is an error. One formula, several applications is the shape described in "One formula, several
 applications" above; the preconditions belong to the binding, as described in "Preconditions
 belong to the binding".
 
@@ -576,7 +577,8 @@ default: {value: 1.225, source: "U.S. Standard Atmosphere 1976 (NOAA-S/T 76-1562
 - the quantities bound in `inputs` and `bind` equal the **from** line; those in `outputs` and
   `produce` equal the **Produces** line and the `output` field;
 - every quantity's **Used by** / **Produced by** line names exactly the formulas that read / write it;
-- every application binds every input and produces every output (open, not an error, in an
+- every application binds every input and produces every output — to a quantity or explicitly to
+  `null` (open, not an error, in an
   escalated entry); `bind` / `produce` keys are parameters; constants carry a source; `when`
   terms are in the vocabulary above; `given` slugs exist, are inputs or targets without a default, and
   are bound by their application;

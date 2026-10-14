@@ -261,6 +261,26 @@ applications:
     assert any("application one" in m and "'b'" in m for m in msgs), msgs
 
 
+PRODUCE_FRONT = """
+inputs: {a: speed-a, b: speed-b}
+outputs: {v: null, w: null}
+applications:
+  - id: one
+    produce: {v: speed-v, w: null}
+"""
+
+
+def test_an_output_explicitly_produced_as_null_is_accepted(tmp_path, typed_quantities):
+    """`produce: {w: null}` — the implementation returns it, the application does not expose it."""
+    assert _findings(_canon(tmp_path, front=PRODUCE_FRONT, quantities=typed_quantities)) == []
+
+
+def test_an_output_absent_from_produce_is_reported(tmp_path, typed_quantities):
+    front = PRODUCE_FRONT.replace("produce: {v: speed-v, w: null}", "produce: {v: speed-v}")
+    msgs = _messages(_errors(_canon(tmp_path, front=front, quantities=typed_quantities)))
+    assert any("application one" in m and "'w'" in m for m in msgs), msgs
+
+
 def test_default_application_needs_every_default(tmp_path, typed_quantities):
     front = "inputs: {a: speed-a, b: null}\noutputs: {v: speed-v}\n"
     root = _canon(tmp_path, front=front, quantities=typed_quantities, inputs_line=("speed-a",))
