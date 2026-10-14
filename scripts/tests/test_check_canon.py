@@ -361,6 +361,12 @@ def test_precondition_with_an_unknown_violation_mode_is_reported(tmp_path, typed
     assert any("abort" in m for m in msgs), msgs
 
 
+def test_a_well_formed_precondition_is_accepted(tmp_path, typed_quantities):
+    """`on` is a key, not YAML 1.1's boolean `on` (PyYAML's default would read it as True)."""
+    front = GOOD_FRONT + "preconditions:\n  - {id: check_a, on: a, on_violation: error}\n"
+    assert _findings(_canon(tmp_path, front=front, quantities=typed_quantities)) == []
+
+
 def test_interval_uncertainty_needs_worlds(tmp_path, typed_quantities):
     front = GOOD_FRONT + "uncertainty: interval\n"
     msgs = _messages(_errors(_canon(tmp_path, front=front, quantities=typed_quantities)))

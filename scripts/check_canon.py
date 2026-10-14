@@ -300,10 +300,27 @@ class Finding:
     open: bool = False
 
 
+class _Yaml12Loader(yaml.SafeLoader):
+    """SafeLoader with YAML 1.2 booleans: only true/false.
+
+    YAML 1.1 (PyYAML's default) reads `on`, `off`, `yes`, `no` as booleans, which would turn
+    the precondition key `on:` into `True`. The canon front matter is YAML 1.2.
+    """
+
+
+_Yaml12Loader.yaml_implicit_resolvers = {
+    first: [(tag, rx) for tag, rx in resolvers if tag != "tag:yaml.org,2002:bool"]
+    for first, resolvers in yaml.SafeLoader.yaml_implicit_resolvers.items()
+}
+_Yaml12Loader.add_implicit_resolver(
+    "tag:yaml.org,2002:bool", re.compile(r"^(?:true|True|TRUE|false|False|FALSE)$"), list("tTfF")
+)
+
+
 def _read_entry(path: pathlib.Path) -> Entry:
     text = path.read_text(encoding="utf-8")
     _, raw, body = text.split("---", 2)
-    front = yaml.safe_load(raw) or {}
+    front = yaml.load(raw, Loader=_Yaml12Loader) or {}  # a SafeLoader subclass
     return Entry(slug=front.get("canon") or path.stem, front=front, raw_front=raw, body=body)
 
 
