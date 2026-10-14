@@ -190,7 +190,7 @@ An error means **no value**. A value with a caveat is a **warning** (8.2), not a
 |---|---|---|---|---|
 | `invalid_input` | no | no | input is physically inadmissible | "Chord at `wings.W.x_secs[2].chord` must be > 0." |
 | `unsupported_configuration` | no | no | the method does not cover this layout, or a target lies above what the method itself can reach (code `target_above_method_maximum`, `detail` = the maximum reached and the input at which it occurs, e.g. the roll rate and δ_a) | "The textbook neutral-point formula needs a horizontal tail." |
-| `not_applicable` | — | — | **not an error**: the application does not exist (no flap and aileron → no butterfly approach) | — |
+| `not_applicable` | — | — | **not an error**: the application does not exist (no separate flap and aileron → no butterfly approach) | — |
 | `not_implemented` | no | no | the canon formula has no implementation yet | "`max-sustained-turn-rate` is in the canon, not in the kernel." |
 | `not_converged` | yes | no | the solver found no solution | "Raise the accuracy tier or change the start value." |
 | `timeout` | yes | no | the time budget was exceeded | "Raise the budget or request it as a long run." |
@@ -352,7 +352,8 @@ quantity.
     `has_aileron`, …). The canon `README.md` defines the vocabulary; each term is implemented once in
     `graph.py`. Terms over control devices go by the **role** a surface acts in, not by its name (maintainer:
     "a flap is every surface that acts like a flap"): `has_aileron` holds for a surface acting as aileron,
-    flaperon or elevon. Without ailerons the roll quantities are `not_applicable`, code `condition_not_met`.
+    flaperon or elevon; the butterfly condition needs a flap-acting surface **and a distinct**
+    aileron-acting one, because crow deflects both at once (a flaperon alone cannot). Without ailerons the roll quantities are `not_applicable`, code `condition_not_met`.
   - `given`: a list of input quantities (`role: input` or `target`, no `default`). The application exists
     only if every one of them is supplied in `AircraftInput.values`. A target the designer did not set is
     not a missing input but no requirement (ch. 8.11).
@@ -837,7 +838,7 @@ They are the first thing a developer or an agent reads to check a change and to 
 | Q2 | All 57 canon entries mapped onto the model | Appendix A complete; the import succeeds without a schema change |
 | Q3 | Every value is traceable | The result carries slug, application, tool, canon model hash and source commit |
 | Q4 | The solver does not converge | `not_converged`; successors `upstream_failed`; other quantities still compute |
-| Q5 | Layout without flap and aileron | `butterfly-max-mix` is `not_applicable`, code `condition_not_met`: no error, no substitute value. `stall-speed-landing` computes and equals `stall-speed` (no configuration, not a fallback) |
+| Q5 | Layout without a separate flap and aileron | `butterfly-max-mix` is `not_applicable`, code `condition_not_met`: no error, no substitute value. `stall-speed-landing` computes and equals `stall-speed` (no configuration, not a fallback) |
 | Q6 | Every error category | Serialises to JSON with `message` and `hint` |
 | Q7 | Second identical call | `CachedKernel` (`use`): no formula call, `from_cache` true; `refresh` and stateless `compute()`: formula called; values bit-identical across all three |
 | Q8 | Input mass ≤ 0 | `invalid_input` with `input_path`; Re < 3·10⁴ only warns |
@@ -867,7 +868,7 @@ They are the first thing a developer or an agent reads to check a change and to 
 | Q32 | Embedding | `importer --check` rejects an embedding cycle, an embedded formula with worlds, and an embedded input that is neither bound, produced in the closure nor generic; the traceability test fails when an embedder does not call the embedded relation function; `mass-envelope` with `neutral-point` in three worlds runs three times and returns `cg-envelope-over-mass` as a pointwise interval |
 | Q33 | Flap deflection: beyond the stop, flapless, missing | `flap-deflection-landing` larger than the flap's `positive_deflection_deg`: `airplane-landing` carries exactly the given deflection, `stall-speed-landing` computes, no error, no clamp and no warning about the stop. Flapless, no deflection given: `airplane-landing` is the unchanged aircraft, `stall-speed-landing` equals `stall-speed`, no warning, one `INFO` line. Flapless with a deflection: same values plus `deflection_without_flap`. Flaps, no deflection: `stall-speed-landing` is `missing_input` (`values.flap-deflection-landing`), `approach-speed` `upstream_failed`; `stall-speed` still computes |
 | Q34 | Angles, not stops | `roll-rate-approach` at a given `aileron-deflection` beyond the aileron's stop computes, no stop warning; `aileron-deflection-required-approach` for a target above the AeroBuildup maximum: that world fails with `unsupported_configuration`, code `target_above_method_maximum` (maximum roll rate and its δ_a in `detail`), the AVL world computes, the quantity is `error` with the AVL value in `detail.worlds_ok` — no clipped angle, no narrowed interval. AVL at `|p·b/2V| > 0.10` carries the `defect` warning from the adapter |
-| Q35 | Roll without ailerons, scaled crow | an aircraft without a surface acting as aileron, flaperon or elevon: `roll-rate-approach` and `aileron-deflection-required-approach` are `not_applicable` (`condition_not_met`), no `missing_input` for `aileron-deflection`; a flaperon-only wing has `has_aileron`; the butterfly curves at mix `s` use `s · crow-flap-deflection` and `s · crow-aileron-deflection`, independent of the stops |
+| Q35 | Roll without ailerons, scaled crow | an aircraft without a surface acting as aileron, flaperon or elevon: `roll-rate-approach` and `aileron-deflection-required-approach` are `not_applicable` (`condition_not_met`), no `missing_input` for `aileron-deflection`; a flaperon-only wing has `has_aileron` but not the butterfly condition (crow needs a flap-acting and a distinct aileron-acting surface at once), so the butterfly quantities are `not_applicable`; the butterfly curves at mix `s` use `s · crow-flap-deflection` and `s · crow-aileron-deflection`, independent of the stops |
 
 ## 11. Risks and technical debt
 
