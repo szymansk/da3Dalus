@@ -18,4 +18,4 @@ The [[airplane]] with its flaps set for the take-off configuration. Without flap
 
 **Produced by.** [[airplane-configuration]]
 
-**Used by.** [[stall-speed]]
+**Used by.** [[mass-envelope]] · [[stall-speed]]

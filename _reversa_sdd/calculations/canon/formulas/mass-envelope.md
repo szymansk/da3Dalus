@@ -19,16 +19,33 @@ inputs:
   airplane: airplane
   g: gravity
   rho: air-density
-  t: thrust-at-airspeed
   v_s_to: stall-speed-takeoff
   v_to: takeoff-speed
   x_np: neutral-point
+  k_v: motor-voltage-constant
+  i_0: motor-no-load-current
+  r_m: motor-circuit-resistance
+  u_bat: battery-voltage
+  p_mot_max: motor-max-power
+  d_prop: propeller-diameter
+  airplane_to: airplane-takeoff
+  airplane_ldg: airplane-landing
 outputs:
   speed_range: speed-range-over-mass
   roc_curve: climb-rate-over-mass
   m_max_level: max-mass-level-flight
   m_max_to: max-mass-lift-off
   cg_envelope: cg-envelope-over-mass
+embeds:
+  - stall-speed
+  - max-level-speed
+  - best-rate-of-climb
+  - motor-propeller-equilibrium
+  - advance-ratio-from-speed
+  - propeller-table-lookup
+  - thrust-at-airspeed-from-coefficient
+optional: [r_m]
+cost: minutes
 ---
 
 # Mass envelope — what narrows with the take-off mass
@@ -45,11 +62,14 @@ for each mass m (a sweep; the airplane's mass is one point of it):
   x_aft(m):     most aft x_CG trimmable at V_max(m), full down elevator           (both as constructed)
 ```
 
-**Produces** [[speed-range-over-mass]] · [[climb-rate-over-mass]] · [[max-mass-level-flight]] · [[max-mass-lift-off]] · [[cg-envelope-over-mass]]  ·  **from** [[airplane]] · [[gravity]] · [[air-density]] · [[thrust-at-airspeed]] · [[stall-speed-takeoff]] · [[takeoff-speed]] · [[neutral-point]]
+**Produces** [[speed-range-over-mass]] · [[climb-rate-over-mass]] · [[max-mass-level-flight]] · [[max-mass-lift-off]] · [[cg-envelope-over-mass]]  ·  **from** [[airplane]] · [[gravity]] · [[air-density]] · [[stall-speed-takeoff]] · [[takeoff-speed]] · [[neutral-point]] · [[motor-voltage-constant]] · [[motor-no-load-current]] · [[motor-circuit-resistance]] · [[battery-voltage]] · [[motor-max-power]] · [[propeller-diameter]] · [[airplane-takeoff]] · [[airplane-landing]]
 
 **Kind: an optimisation problem family, swept over the mass** (maintainer, 2026-10-02 —
 replaces the payload question: payload is *"how much mass may be added"*). Everything that
 narrows with the take-off mass, as curves over `m`, and the masses at which it closes:
+
+**A long run** (maintainer-approved plan of epic #1173, 2026-10-14): computed only on explicit request
+(K28), hence `cost: minutes`.
 
 - **Speed range.** `V_S(m)` rises, `V_max(m)` falls; where they meet is `m_max,level` — beyond
   it no level flight is possible.

@@ -20,5 +20,3 @@ roughly constant-power devices at high throttle.
 **Unit.** `N`
 
 **Produced by.** [[thrust-at-airspeed-from-coefficient]]
-
-**Used by.** [[mass-envelope]]

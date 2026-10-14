@@ -403,6 +403,12 @@ produced. One formula, several applications is the shape described in "One formu
 applications" above; the preconditions belong to the binding, as described in "Preconditions
 belong to the binding".
 
+**`embeds`** lists **direct** embeds only. Embedding is transitive, and the importer computes the
+closure. Every input of an embedded formula is either bound by the embedder, produced inside the
+closure (for example `propeller-speed`, `thrust-coefficient`, `advance-ratio`), or a generic
+operating-point quantity — `flight-speed`, `angle-of-attack`, `load-factor`, `aircraft-mass`, the
+embedder's own solve or sweep variables. No formula with `uncertainty: interval` is in the closure.
+
 **`given`** — an application that exists only when the caller supplies certain values lists them:
 `given: [<slug>, …]`. Each slug has role `input` or `target`, has no `default`, and is bound by that
 application. The application exists only if all of them are supplied; otherwise it is not computed —
@@ -570,7 +576,9 @@ default: {value: 1.225, source: "U.S. Standard Atmosphere 1976 (NOAA-S/T 76-1562
 - no key or plain value is a YAML 1.1 boolean;
 - preconditions name a parameter and say `warning` or `error`; `worlds` exist exactly with
   `uncertainty: interval`; `cost` is one of the three classes;
-- `embeds` names other existing formulas; `optional` names input parameters;
+- `embeds` names other existing formulas; the closure is acyclic, holds no formula with
+  `uncertainty: interval`, and every embedded input is accounted for as above; `optional` names
+  input parameters;
 - every quantity has a `type` from the set above; a `default` carries a source.
 
 The vocabulary and the type set are read from the two tables above — this README is their only
