@@ -365,8 +365,24 @@ quantity.
   balance as constraints, and `static-thrust-to-weight` evaluates `T(V = 0)`; all of them embed the
   propulsion relations (`motor-propeller-equilibrium`, `advance-ratio-from-speed`, `propeller-table-lookup`,
   `thrust-at-airspeed-from-coefficient`) and bind motor, battery and propeller inputs directly. A solver
-  tool (AeroBuildup inside `stall-speed`) is named by `tool:`, not by `embeds:`. The importer checks that
-  every embedded slug exists; approval of the embedder follows approval of what it embeds.
+  tool (AeroBuildup inside `stall-speed`) is named by `tool:`, not by `embeds:`. An embedded formula may
+  itself be an optimisation: `mass-envelope` solves the stall-speed, max-level-speed and
+  best-rate-of-climb problems at each mass of its own sweep.
+  - **What is listed:** every formula the canonical form names **directly**. Embedding is transitive; the
+    importer computes the closure (embedding `max-level-speed` brings in its propulsion relations), so a
+    relation the form also names directly is listed again, and nothing else needs to be repeated.
+  - **Inputs:** every input quantity of the closure is either an input of the embedder, produced inside
+    the closure (`propeller-speed`, `thrust-coefficient`), or a generic operating-point quantity
+    (`flight-speed`, `angle-of-attack`, `load-factor`, `aircraft-mass`; A2) — those are the embedder's own
+    variables, solved for or swept. An embedder binds the *configuration* it needs as its own input
+    (`airplane-landing` for a landing-configuration trim), because it embeds a relation, not an
+    application.
+  - **Importer checks:** every slug exists; the closure is acyclic; the input rule above; no formula in
+    the closure has `uncertainty: interval` (worlds are per node, ch. 8.13; an uncertain embedded relation
+    needs a decision first).
+  - **Engine:** an embedded formula is no node — no cache entry, no application, no preconditions of its
+    own (the embedder's preconditions apply). The embedder node is cached as a whole; the build digest
+    covers the shared code (ch. 8.4). Approval of the embedder follows approval of its closure.
 - **Optional parameters** (`optional:`, a list of input parameter names). The formula receives `None`
   when the bound quantity has neither a value nor a default, and selects its route by data; it declares
   the route that ran as a warning (ADR 0020, Q-PT-6). Example: `r_m` of `motor-propeller-equilibrium`
@@ -640,8 +656,10 @@ async def stall_speed(x: Inputs, ctx: Context) -> dict[str, Value]:
 - **Embedded relations** (ch. 8.5). The module of an embedded formula exposes its relation as a plain,
   module-level function over parameter names (numpy- and CasADi-compatible where an OPT formula embeds
   it); its `@formula` coroutine and every embedder call that one function, so there is one implementation
-  per relation (ADR 0022). The traceability test (Q11) checks that every `embeds:` slug has that function
-  and that the embedder calls it.
+  per relation (ADR 0022). For an embedded optimisation the function is its problem (built into a given
+  `asb.Opti` or solved at given values of the embedder's variables); the formula's module decides which and
+  documents it. The traceability test (Q11) checks that every `embeds:` slug has that function and that the
+  embedder's module calls it (static check of the import and call).
 - **Registration** is by decorator at import of `aero_kernel.formulas`. The traceability test (Q11) checks
   that each implementation's parameter names equal the canon model's.
 
@@ -677,7 +695,13 @@ sampled grid and no `-static` chain.
   uncertain formulas in a quantity's subtree (A11 rule 3); a node outside an uncertain formula's subtree
   runs once and is shared by all assignments.
 - The interval of a quantity is min and max over its assignments; `worlds` lists every assignment with its
-  value. Never interval arithmetic.
+  value. Never interval arithmetic. For `curve` and `curve_pair` min and max are pointwise over the swept
+  variable, which must be the same grid in every world (else `internal`); for `airplane` and `polar` there is
+  no min/max, only `worlds`.
+- Worlds follow **value edges**, not `embeds:`. A formula that reads an uncertain quantity (`mass-envelope`
+  reads `neutral-point`) is in its subtree and runs once per assignment like any node; all its outputs
+  carry the interval, also those that do not depend on it numerically (zero width). Splitting such
+  outputs into separate formulas is a canon decision, not an engine rule.
 - **A failed assignment** makes the quantity an error, not a narrower interval: the error of the failed
   assignment, with `detail.worlds_ok` holding the values that did compute. A silently narrowed interval
   would be an undeclared fallback (ADR 0020).
@@ -793,6 +817,7 @@ They are the first thing a developer or an agent reads to check a change and to 
 | Q29 | Target not set | `max-roll-rate-cruise` (`given: [cruise-speed-target]`) is `not_applicable`, code `not_given`; a quantity reading `cruise-speed-target` without `given` gets `missing_input` |
 | Q30 | Embedded relation and optional parameter | with `flight-speed` = 0, `thrust-at-airspeed` equals the thrust inside `static-thrust-to-weight` bit for bit (one relation function); without `motor-circuit-resistance` both run route A with a `practice` warning naming the route, no `missing_input` |
 | Q31 | Defaults taken | without `gravity` and without `approach-speed-margin-target`: `approach-speed` computes; `provenance.defaults_used` lists both with value and source; `caplog` has one `INFO` line for `gravity` and one `WARNING` line for the target, each with `call_id`, also on a second, cached call; the result carries `default_target_used` (`practice`) on `approach-speed` and its dependents, and no warning for `gravity` |
+| Q32 | Embedding | `importer --check` rejects an embedding cycle, an embedded formula with worlds, and an embedded input that is neither bound, produced in the closure nor generic; the traceability test fails when an embedder does not call the embedded relation function; `mass-envelope` with `neutral-point` in three worlds runs three times and returns `cg-envelope-over-mass` as a pointwise interval |
 
 ## 11. Risks and technical debt
 
