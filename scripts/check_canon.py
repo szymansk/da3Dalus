@@ -266,6 +266,9 @@ LINK = re.compile(r"\[\[([^\]|]+)\]\]")
 ON_VIOLATION = {"warning", "error"}
 COST = {"instant", "seconds", "minutes"}
 APPLICATION_KEYS = {"id", "bind", "produce", "when", "given"}
+#: the embedder's own solve or sweep variables (README, `embeds`): an embedded formula may read
+#: them without the embedder binding them
+GENERIC_OPERATING_POINT = {"flight-speed", "angle-of-attack", "load-factor", "aircraft-mass"}
 #: roles a `given` quantity may have: supplied from outside, never computed
 GIVEN_ROLES = {"input", "target"}
 PRECONDITION_KEYS = {"id", "parameter", "on_violation"}
@@ -546,6 +549,67 @@ def _diff(name: str, prose: set[str], front: set[str]) -> str:
     return "; ".join(parts)
 
 
+def _direct_embeds(e: Entry) -> list[str]:
+    embeds = e.front.get("embeds") or []
+    return [s for s in embeds if isinstance(s, str)] if isinstance(embeds, list) else []
+
+
+def _check_embeds(canon: Canon, reads_of: dict, writes_of: dict, add) -> None:
+    """The embeds closure: acyclic, no worlds inside, every embedded input accounted for."""
+    graph = {
+        s: [x for x in _direct_embeds(e) if x in canon.formulas] for s, e in canon.formulas.items()
+    }
+
+    state: dict[str, int] = {}  # 1 = on the DFS stack, 2 = done
+    reported: set[frozenset] = set()
+
+    def visit(node: str, path: list[str]) -> None:
+        state[node] = 1
+        for nxt in graph[node]:
+            if state.get(nxt) == 1:
+                cycle = path[path.index(nxt) :] + [nxt]
+                key = frozenset(cycle)
+                if key not in reported:
+                    reported.add(key)
+                    add(nxt, "embeds", "cycle: " + " -> ".join(cycle))
+            elif state.get(nxt) is None:
+                visit(nxt, [*path, nxt])
+        state[node] = 2
+
+    for slug in graph:
+        if slug not in state:
+            visit(slug, [slug])
+    if reported:
+        return  # a closure over a cycle is not defined
+
+    def closure(slug: str) -> list[str]:
+        seen: list[str] = []
+        stack = list(graph[slug])
+        while stack:
+            nxt = stack.pop(0)
+            if nxt not in seen:
+                seen.append(nxt)
+                stack.extend(graph[nxt])
+        return seen
+
+    for slug in canon.formulas:
+        inner = closure(slug)
+        if not inner:
+            continue
+        produced = set().union(*(writes_of[x] for x in inner))
+        supplied = reads_of[slug] | produced | GENERIC_OPERATING_POINT
+        for x in inner:
+            if canon.formulas[x].front.get("uncertainty") == "interval":
+                add(slug, "embeds", f"{x} has uncertainty: interval and may not be embedded")
+            for q in sorted(reads_of[x] - supplied):
+                add(
+                    slug,
+                    "embeds",
+                    f"input {q!r} of embedded {x} is neither bound by {slug}, produced inside "
+                    "the closure, nor a generic operating-point quantity",
+                )
+
+
 def check_structure(canon: Canon) -> list[Finding]:
     findings: list[Finding] = []
 
@@ -557,12 +621,16 @@ def check_structure(canon: Canon) -> list[Finding]:
 
     used_by: dict[str, set[str]] = {s: set() for s in canon.quantities}
     produced_by: dict[str, set[str]] = {s: set() for s in canon.quantities}
+    reads_of: dict[str, set[str]] = {}
+    writes_of: dict[str, set[str]] = {}
     for slug, e in canon.formulas.items():
         reads, writes = _check_formula(e, canon, add, gap)
+        reads_of[slug], writes_of[slug] = reads, writes
         for r in reads:
             used_by[r].add(slug)
         for w in writes:
             produced_by[w].add(slug)
+    _check_embeds(canon, reads_of, writes_of, add)
 
     for slug, e in canon.quantities.items():
         t = e.front.get("type")

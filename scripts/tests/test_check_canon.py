@@ -419,6 +419,94 @@ def test_embeds_must_not_name_the_formula_itself(tmp_path, typed_quantities):
     assert any("embeds" in m and "itself" in m for m in msgs), msgs
 
 
+def _embed_canon(tmp_path, formulas):
+    """A canon of formulas {slug: (inputs, outputs, extra front)} with consistent quantity links."""
+    root = tmp_path / "canon"
+    (root / "formulas").mkdir(parents=True)
+    (root / "quantities").mkdir()
+    (root / "README.md").write_text(README, encoding="utf-8")
+    readers, producers = {}, {}
+    for slug, (inputs, outputs, extra) in formulas.items():
+        for q in inputs.values():
+            readers.setdefault(q, []).append(slug)
+        for q in outputs.values():
+            producers.setdefault(q, []).append(slug)
+        front = (
+            "inputs: {" + ", ".join(f"{k}: {v}" for k, v in inputs.items()) + "}\n"
+            "outputs: {" + ", ".join(f"{k}: {v}" for k, v in outputs.items()) + "}\n" + extra
+        )
+        text = _formula(slug, list(outputs.values()), list(inputs.values()), front)
+        (root / "formulas" / f"{slug}.md").write_text(text, encoding="utf-8")
+    for q in sorted(set(readers) | set(producers)):
+        text = _with_type({q: _quantity(q, producers.get(q, ()), readers.get(q, ()))})[q]
+        (root / "quantities" / f"{q}.md").write_text(text, encoding="utf-8")
+    return root
+
+
+def test_embedded_inputs_bound_produced_inside_or_generic_are_accepted(tmp_path):
+    """f embeds g, g embeds h: h's output feeds g inside the closure; flight-speed is generic."""
+    root = _embed_canon(
+        tmp_path,
+        {
+            "f": ({"a": "speed-a"}, {"v": "speed-v"}, "embeds: [g]\n"),
+            "g": ({"a": "speed-a", "w": "speed-w"}, {"x": "speed-x"}, "embeds: [h]\n"),
+            "h": ({"a": "speed-a", "s": "flight-speed"}, {"w": "speed-w"}, ""),
+        },
+    )
+    assert _findings(root) == []
+
+
+def test_embedded_input_the_embedder_does_not_supply_is_reported(tmp_path):
+    root = _embed_canon(
+        tmp_path,
+        {
+            "f": ({"a": "speed-a"}, {"v": "speed-v"}, "embeds: [h]\n"),
+            "h": ({"a": "speed-a", "b": "speed-b"}, {"w": "speed-w"}, ""),
+        },
+    )
+    msgs = _messages(_errors(root))
+    assert any("f embeds" in m and "speed-b" in m for m in msgs), msgs
+
+
+def test_embeds_through_a_chain_is_checked_transitively(tmp_path):
+    root = _embed_canon(
+        tmp_path,
+        {
+            "f": ({"a": "speed-a"}, {"v": "speed-v"}, "embeds: [g]\n"),
+            "g": ({"a": "speed-a", "b": "speed-b"}, {"x": "speed-x"}, "embeds: [h]\n"),
+            "h": ({"b": "speed-b", "c": "speed-c"}, {"w": "speed-w"}, ""),
+        },
+    )
+    msgs = _messages(_errors(root))
+    assert any("f embeds" in m and "speed-b" in m for m in msgs), msgs
+    assert any("f embeds" in m and "speed-c" in m for m in msgs), msgs
+    assert any("g embeds" in m and "speed-c" in m for m in msgs), msgs
+
+
+def test_an_embeds_cycle_is_reported(tmp_path):
+    root = _embed_canon(
+        tmp_path,
+        {
+            "f": ({"a": "speed-a"}, {"v": "speed-v"}, "embeds: [g]\n"),
+            "g": ({"a": "speed-a"}, {"x": "speed-x"}, "embeds: [f]\n"),
+        },
+    )
+    msgs = _messages(_errors(root))
+    assert any("embeds" in m and "cycle" in m for m in msgs), msgs
+
+
+def test_a_formula_with_worlds_in_the_closure_is_reported(tmp_path):
+    root = _embed_canon(
+        tmp_path,
+        {
+            "f": ({"a": "speed-a"}, {"v": "speed-v"}, "embeds: [h]\n"),
+            "h": ({"a": "speed-a"}, {"w": "speed-w"}, "uncertainty: interval\nworlds: [avl]\n"),
+        },
+    )
+    msgs = _messages(_errors(root))
+    assert any("f embeds" in m and "interval" in m for m in msgs), msgs
+
+
 def test_optional_naming_an_input_parameter_is_accepted(tmp_path, typed_quantities):
     front = GOOD_FRONT + "optional: [b]\n"
     assert _findings(_canon(tmp_path, front=front, quantities=typed_quantities)) == []
