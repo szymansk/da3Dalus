@@ -35,7 +35,8 @@ then the code. Epic: #1173.
 - **Two interfaces, one engine (ARCHITECTURE §8.4).** `compute()` is stateless: no cache, no module-level
   mutable state, no global pool. `CachedKernel` is the stateful facade that owns the cache, in-flight
   dedup and resources, and injects its `NodeStore` into the same engine. Never add state to `compute()`;
-  never let the cache change a value.
+  never let the cache change a value. Cache scopes (`scope=`, `drop_scope`) isolate tenants; a hit
+  must never cross scopes.
 
 ## Tests
 
