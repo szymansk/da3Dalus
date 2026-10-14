@@ -357,6 +357,216 @@ Otherwise approval rests on unapproved ground. That is what makes the traversal 
 from the input parameters to the outputs, and it gives the only honest progress
 measure — *what fraction of the paths reaching a user-visible number is approved*.
 
+## Machine-readable fields
+
+Every entry carries its structure in the YAML front matter; the prose explains it. A program
+that reads the canon — the `aero_kernel` importer (#1174), `scripts/check_canon.py` — reads
+**only these fields, never the prose**. This section is the definition of the fields;
+`aero_kernel/ARCHITECTURE.md` §8.9 cites it. The fields were added to all entries in #1181.
+
+**Two rules hold for every field.** Field names, ids and vocabulary terms are English. And the
+fields **state what the entry already says** — no value, source, world, condition or
+precondition appears here that the entry does not state, and none of them is a threshold or a
+pass/fail limit: the canon computes, it does not judge (A10).
+
+The front matter is **YAML 1.2**. A YAML 1.1 parser — PyYAML's default `safe_load` — reads the
+key `on` as the boolean `true`; a reader must use YAML 1.2 booleans (`true` / `false` only).
+
+### Formula entries
+
+The existing fields (`canon`, `entry`, `kind`, `tool`, `shape`, `status`, `output`, `tags`,
+`tex`, …) stay. Added:
+
+| field | required | what it holds |
+|---|---|---|
+| `inputs` | always | parameter → default quantity slug, one key per input of the formula; `null` where the quantity is bound per application |
+| `outputs` | always | parameter → default quantity slug, one key per output; `null` where it is produced per application |
+| `applications` | only for several applications or a condition | a list; each item has `id`, optional `bind` (parameter → quantity slug or `{const: <value>, source: "<citation>"}`), optional `produce` (parameter → quantity slug) and optional `when` (a term of the vocabulary below; absent = always) |
+| `preconditions` | only where the entry states them | a list of `{id, on, on_violation}`: `on` names a parameter, `on_violation` is `warning` or `error` |
+| `uncertainty` | only where the entry already says `interval` | `interval` (A11) |
+| `worlds` | with `uncertainty: interval` | the method worlds, as the entry names them, in snake_case |
+| `cost` | optional, interim (O14 question 3 is open) | `instant`, `seconds` or `minutes`; set only where the entry says the computation takes minutes. Without it the importer derives `instant` or `seconds` from `tool` (ARCHITECTURE §8.7) |
+
+**Parameters.** A parameter name is snake_case and local to the formula (`cl_max`, `rho`,
+`v_s_cfg`), taken from the canonical form's symbols where it has them. Quantity slugs are
+kebab-case and appear only as binding targets. Every input and every output of the formula has
+exactly one parameter.
+
+**Applications.** An entry without `applications:` has exactly one application: every
+parameter bound to its default, condition "always". An application starts from the defaults
+and overrides them with its `bind` and `produce`; after that, every input parameter must be
+bound — to a quantity or to a constant with its source — and every output parameter must be
+produced. One formula, several applications is the shape described in "One formula, several
+applications" above; the preconditions belong to the binding, as described in "Preconditions
+belong to the binding".
+
+**`on_violation`** says what the entry says happens when the precondition is violated: a value
+that is unsafe or must not be used → `error`; a caveat → `warning`. Where the entry does not say,
+the field is `warning` and the gap is listed in `STAND.md`.
+
+**Escalated fields.** Where the entry text does not decide a field — an ambiguous binding, a
+constant without a stated source, a condition the text implies but does not state — the field is
+left out and the front matter carries a comment `# ESCALATED: <reason>`. The question is with the
+maintainer; `check_canon.py` reports the gap as *open*, not as an error. The importer (#1174)
+cannot import such an entry until it is decided.
+
+#### Vocabulary of `when`
+
+Closed. Each term is a predicate over facts of the aircraft geometry; a new term needs a canon
+entry that states the condition.
+
+| term | holds when |
+|---|---|
+| `has_flap` | the main wing carries at least one trailing-edge device acting as a flap (stated by the `stall-speed` application table; its use there is escalated, see `STAND.md`) |
+| `has_flap_and_aileron` | the main wing carries trailing-edge devices acting as camber flaps and as ailerons — both, as crow needs (`butterfly-approach`) |
+| `has_vertical_tail` | the aircraft has a fin or a V-tail behind the main wing; winglets or a centre fin on a tailless wing do not count (`spiral-parameter`, `vertical-tail-volume`) |
+
+### Quantity entries
+
+The existing fields (`canon`, `kind`, `symbol`, `unit`, `role`, `status`, `uncertainty`, `tags`)
+stay. Added:
+
+| field | required | what it holds |
+|---|---|---|
+| `type` | always | the kind of value, from the closed set below |
+| `default` | only where the canon states a value with its source | `{value: <value>, source: "<citation>"}` |
+
+#### Quantity types
+
+Closed. The unit is the unit of the values.
+
+| type | what the value is |
+|---|---|
+| `scalar` | one number in the declared unit (an interval over worlds when the producer has `uncertainty: interval`) |
+| `airplane` | the aircraft model: geometry, sections, airfoils, components — not a number |
+| `curve` | one value per point of a swept variable (the crow mix `s`, the mass `m`), named in the symbol |
+| `curve_pair` | two curves over the same swept variable that bound a range — a lower and an upper edge |
+
+### One example per kind
+
+A **law** with preconditions and the single default application (`glide-distance-from-ratio`):
+
+```yaml
+kind: law
+tool: APP
+output: glide-distance
+inputs: {e: lift-to-drag-ratio, h: altitude}
+outputs: {r_glide: glide-distance}
+preconditions:
+  - {id: lift_to_drag_of_flown_configuration, on: e, on_violation: warning}
+  - {id: propeller_drag_not_in_polar, on: e, on_violation: warning}
+```
+
+A **procedure** with declared uncertainty (`neutral-point`):
+
+```yaml
+kind: procedure
+uncertainty: interval
+tool: AVL
+output: neutral-point
+inputs:
+  airplane: airplane
+  m: aircraft-mass
+  g: gravity
+  rho: air-density
+  v_md: minimum-drag-speed
+outputs: {x_np: neutral-point}
+worlds: [textbook, pappas, avl]
+```
+
+An **optimization** that exists only under a condition (`butterfly-approach`):
+
+```yaml
+kind: optimization
+tool: OPT
+output: butterfly-stall-speed-curve, butterfly-approach-speed-curve, butterfly-glide-angle-curve, butterfly-max-mix
+inputs:
+  airplane: airplane
+  m: aircraft-mass
+  g: gravity
+  rho: air-density
+  v_s0: stall-speed-landing
+  v_app: approach-speed
+outputs:
+  v_s0_curve: butterfly-stall-speed-curve
+  v_app_curve: butterfly-approach-speed-curve
+  gamma_curve: butterfly-glide-angle-curve
+  s_max: butterfly-max-mix
+applications:
+  - id: crow
+    when: has_flap_and_aileron
+```
+
+A **fit** (`parabolic-polar-fit`):
+
+```yaml
+kind: fit
+tool: OPT
+output: zero-lift-drag-coefficient, oswald-efficiency
+inputs:
+  airplane: airplane
+  m: aircraft-mass
+  g: gravity
+  rho: air-density
+  ar: aspect-ratio
+  cl_max: max-lift-coefficient
+outputs: {cd0: zero-lift-drag-coefficient, e_osw: oswald-efficiency}
+```
+
+A **rating** with three applications of one formula (`speed-from-stall-margin`). Its margin
+`k_S` is not decided yet, so it is escalated; once decided, each application binds it, for
+example `bind: {v_s_cfg: stall-speed-landing, k_s: {const: <value>, source: "<citation>"}}`:
+
+```yaml
+kind: rating
+tool: APP
+output: approach-speed, touchdown-speed, takeoff-speed
+inputs: {v_s_cfg: null, k_s: null}
+outputs: {v: null}
+applications:
+  # ESCALATED: k_s — the margin of each application is open ("choosing is the maintainer's
+  # call"): no value with a source and no quantity to bind it to.
+  - id: approach
+    bind: {v_s_cfg: stall-speed-landing}
+    produce: {v: approach-speed}
+  - id: touchdown
+    bind: {v_s_cfg: stall-speed-landing}
+    produce: {v: touchdown-speed}
+  - id: takeoff
+    bind: {v_s_cfg: stall-speed-takeoff}
+    produce: {v: takeoff-speed}
+```
+
+A **quantity** with a stated default (`sea-level-air-density`):
+
+```yaml
+kind: quantity
+symbol: rho_0
+unit: kg/m^3
+role: input
+type: scalar
+default: {value: 1.225, source: "U.S. Standard Atmosphere 1976 (NOAA-S/T 76-1562), sea-level density; cited in formulas/air-density-isa"}
+```
+
+### What `check_canon.py` checks
+
+`poetry run python scripts/check_canon.py` (default: this directory) runs the dimensional check
+(informational) and the structural check, which fails on any error:
+
+- `inputs` / `outputs` are mappings with snake_case keys; every bound slug exists;
+- the quantities bound in `inputs` and `bind` equal the **from** line; those in `outputs` and
+  `produce` equal the **Produces** line and the `output` field;
+- every quantity's **Used by** / **Produced by** line names exactly the formulas that read / write it;
+- every application binds every input and produces every output (open, not an error, in an
+  escalated entry); `bind` / `produce` keys are parameters; constants carry a source; `when`
+  terms are in the vocabulary above;
+- preconditions name a parameter and say `warning` or `error`; `worlds` exist exactly with
+  `uncertainty: interval`; `cost` is one of the three classes;
+- every quantity has a `type` from the set above; a `default` carries a source.
+
+The vocabulary and the type set are read from the two tables above — this README is their only
+definition.
+
 ## The paths
 
 Chains are approved one at a time, in dependency order.
