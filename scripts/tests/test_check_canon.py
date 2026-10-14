@@ -382,6 +382,55 @@ def test_given_slug_must_be_bound_by_the_application(tmp_path, typed_quantities)
     assert any("given" in m and "speed-a" in m and "not bound" in m for m in msgs), msgs
 
 
+def _second_formula():
+    """A formula `g` that `f` can embed; it reads speed-a and writes nothing anyone else reads."""
+    return (
+        "g",
+        _formula("g", ["speed-w"], ["speed-a"], "inputs: {a: speed-a}\noutputs: {w: speed-w}\n"),
+    )
+
+
+def _with_g(quantities):
+    quantities["speed-a"] = quantities["speed-a"].replace("[[f]]", "[[f]] · [[g]]")
+    quantities["speed-w"] = _with_type({"w": _quantity("speed-w", produced_by=["g"])})["w"]
+    return quantities
+
+
+def test_embeds_naming_existing_formulas_is_accepted(tmp_path, typed_quantities):
+    front = GOOD_FRONT + "embeds: [g]\n"
+    root = _canon(
+        tmp_path,
+        front=front,
+        quantities=_with_g(typed_quantities),
+        extra_formulas=[_second_formula()],
+    )
+    assert _findings(root) == []
+
+
+def test_embeds_naming_an_unknown_formula_is_reported(tmp_path, typed_quantities):
+    front = GOOD_FRONT + "embeds: [no-such-formula]\n"
+    msgs = _messages(_errors(_canon(tmp_path, front=front, quantities=typed_quantities)))
+    assert any("embeds" in m and "no-such-formula" in m for m in msgs), msgs
+
+
+def test_embeds_must_not_name_the_formula_itself(tmp_path, typed_quantities):
+    front = GOOD_FRONT + "embeds: [f]\n"
+    msgs = _messages(_errors(_canon(tmp_path, front=front, quantities=typed_quantities)))
+    assert any("embeds" in m and "itself" in m for m in msgs), msgs
+
+
+def test_optional_naming_an_input_parameter_is_accepted(tmp_path, typed_quantities):
+    front = GOOD_FRONT + "optional: [b]\n"
+    assert _findings(_canon(tmp_path, front=front, quantities=typed_quantities)) == []
+
+
+def test_optional_naming_a_non_input_is_reported(tmp_path, typed_quantities):
+    front = GOOD_FRONT + "optional: [v, z]\n"
+    msgs = _messages(_errors(_canon(tmp_path, front=front, quantities=typed_quantities)))
+    assert any("optional" in m and "'v'" in m for m in msgs), msgs
+    assert any("optional" in m and "'z'" in m for m in msgs), msgs
+
+
 # --- naming ----------------------------------------------------------------------------------
 
 

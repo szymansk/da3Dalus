@@ -499,6 +499,24 @@ def _check_formula(e: Entry, canon: Canon, add, gap) -> tuple[set[str], set[str]
         if not isinstance(w, str) or not SNAKE.match(w):
             add(e.slug, "worlds", f"world {w!r} is not snake_case")
 
+    embeds = e.front.get("embeds") or []
+    if not isinstance(embeds, list):
+        add(e.slug, "embeds", f"not a list: {embeds!r}")
+        embeds = []
+    for slug in embeds:
+        if slug == e.slug:
+            add(e.slug, "embeds", "a formula cannot embed itself")
+        elif slug not in canon.formulas:
+            add(e.slug, "embeds", f"unknown formula {slug!r}")
+
+    optional = e.front.get("optional") or []
+    if not isinstance(optional, list):
+        add(e.slug, "optional", f"not a list: {optional!r}")
+        optional = []
+    for name in optional:
+        if name not in inputs:
+            add(e.slug, "optional", f"{name!r} is not an input parameter")
+
     cost = e.front.get("cost")
     if cost is not None and cost not in COST:
         add(e.slug, "cost", f"unknown cost class {cost!r}")
