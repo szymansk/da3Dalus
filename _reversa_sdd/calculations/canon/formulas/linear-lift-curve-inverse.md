@@ -5,7 +5,7 @@ kind: law
 tool: APP
 shape: law
 status: draft
-output: characteristic-angle-of-attack
+output: angle-of-attack-stall, angle-of-attack-best-glide, angle-of-attack-minimum-sink
 source_status: SOURCED
 dimensional_check: PROCEDURAL
 tags:
@@ -15,11 +15,18 @@ tags:
   - shape/law
   - kind/law
   - status/draft
-inputs: {cl: lift-coefficient, cl_alpha: lift-curve-slope, alpha_0: zero-lift-angle}
-outputs: {alpha: characteristic-angle-of-attack}
-# ESCALATED: applications — the output names three conditions (stall, best glide, minimum
-# sink), each with its own C_L, but no quantity holds those C_L values; which C_L each
-# application binds, and whether they become three output quantities, is open.
+inputs: {cl: null, cl_alpha: lift-curve-slope, alpha_0: zero-lift-angle}
+outputs: {alpha: null}
+applications:
+  - id: stall
+    bind: {cl: max-lift-coefficient}
+    produce: {alpha: angle-of-attack-stall}
+  # ESCALATED: cl of best_glide and minimum_sink — no quantity holds C_L at the minimum-drag or
+  # the minimum-sink speed (domain question: which C_L, and from where).
+  - id: best_glide
+    produce: {alpha: angle-of-attack-best-glide}
+  - id: minimum_sink
+    produce: {alpha: angle-of-attack-minimum-sink}
 ---
 
 # Angle of attack from lift coefficient via the linear lift curve
@@ -30,7 +37,7 @@ outputs: {alpha: characteristic-angle-of-attack}
 alpha = alpha_0 + C_L / C_Lalpha   (converted to degrees)
 ```
 
-**Produces** [[characteristic-angle-of-attack]]  ·  **from** [[lift-coefficient]] · [[lift-curve-slope]] · [[zero-lift-angle]]
+**Produces** [[angle-of-attack-stall]] · [[angle-of-attack-best-glide]] · [[angle-of-attack-minimum-sink]]  ·  **from** [[max-lift-coefficient]] · [[lift-curve-slope]] · [[zero-lift-angle]]
 
 **Kind: a law.** A closed-form relation. Approval asks for its **source** and its **validity in the RC/UAV regime (ADR 0028)**.
 
