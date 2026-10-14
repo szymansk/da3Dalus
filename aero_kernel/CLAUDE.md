@@ -8,9 +8,13 @@ then the code. Epic: #1173.
 
 - **Boundary.** Never import from `app/`, `cad_designer/` or `scripts/`. The app calls the core, never
   the other way round (ARCHITECTURE §3, test Q9).
-- **The canon is the structural source.** Quantities, applications, dependencies and units come from the
-  manifest generated out of `_reversa_sdd/calculations/canon/`. Code only registers implementations via
-  `@formula("<slug>")`. Never hard-code a dependency, a unit or a quantity name that the manifest owns.
+- **The kernel interprets its own canon model** (`canon/canon_model.json`). Quantities, applications,
+  dependencies and units come from it. Code only registers implementations via `@formula("<slug>")`.
+  Never hard-code a dependency, a unit or a quantity name that the model owns.
+- **Canon changes only through the import** (`python -m aero_kernel.importer`, ARCHITECTURE §8.9). Never
+  edit `canon_model.json` by hand, and never read `_reversa_sdd/` at runtime. A canon finding is fixed in
+  the canon document, then re-imported. A breaking diff means: update the affected implementations and
+  golden values in the same change.
 - **One file per canon formula** in `formulas/`, file name = slug with underscores (`stall_speed.py`). One implementation per formula;
   applications are bindings, not copies (ARCHITECTURE §8.5).
 - **Formulas compute, they do not judge** (canon A10): no thresholds, bands or pass/fail in this package.
