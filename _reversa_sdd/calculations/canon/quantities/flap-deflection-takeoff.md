@@ -18,7 +18,7 @@ The flap angle that defines the take-off configuration of the airplane ([[airpla
 `positive_deflection_deg` in the geometry: that stop may only be a first draft, and the canon is used to
 find out which stop the wanted speed needs — the stop matters to the designer, not to the canon.
 
-For orientation only, not a default: typical RC values are take-off 10–20°; Lennon gives 20°.
+Lennon: 20° take-off (slotted flap, 30 % chord) — orientation only, not a default.
 
 **Unit.** `deg`
 

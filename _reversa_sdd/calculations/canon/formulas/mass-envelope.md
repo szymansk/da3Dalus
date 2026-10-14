@@ -17,6 +17,7 @@ tags:
   - status/draft
 inputs:
   airplane: airplane
+  m_current: aircraft-mass
   g: gravity
   rho: air-density
   v_s_to: stall-speed-takeoff
@@ -64,7 +65,7 @@ for each mass m (a sweep; the airplane's mass is one point of it):
   x_aft(m):     most aft x_CG trimmable at V_max(m), elevator at delta_e,down     (both given design inputs)
 ```
 
-**Produces** [[speed-range-over-mass]] · [[climb-rate-over-mass]] · [[max-mass-level-flight]] · [[max-mass-lift-off]] · [[cg-envelope-over-mass]]  ·  **from** [[airplane]] · [[gravity]] · [[air-density]] · [[stall-speed-takeoff]] · [[takeoff-speed]] · [[neutral-point]] · [[motor-voltage-constant]] · [[motor-no-load-current]] · [[motor-circuit-resistance]] · [[battery-voltage]] · [[motor-max-power]] · [[propeller-diameter]] · [[airplane-takeoff]] · [[airplane-landing]] · [[elevator-deflection-up]] · [[elevator-deflection-down]]
+**Produces** [[speed-range-over-mass]] · [[climb-rate-over-mass]] · [[max-mass-level-flight]] · [[max-mass-lift-off]] · [[cg-envelope-over-mass]]  ·  **from** [[airplane]] · [[gravity]] · [[air-density]] · [[stall-speed-takeoff]] · [[takeoff-speed]] · [[neutral-point]] · [[motor-voltage-constant]] · [[motor-no-load-current]] · [[motor-circuit-resistance]] · [[battery-voltage]] · [[motor-max-power]] · [[propeller-diameter]] · [[airplane-takeoff]] · [[airplane-landing]] · [[elevator-deflection-up]] · [[elevator-deflection-down]] · [[aircraft-mass]]
 
 **Kind: an optimisation problem family, swept over the mass** (maintainer, 2026-10-02 —
 replaces the payload question: payload is *"how much mass may be added"*). Everything that
@@ -98,8 +99,9 @@ neutral point (BRYAN: > 90 % MAC), so the neutral point is the edge that comes f
 10.4 % (CLAF thickness rule) and 13.5 % (CLAF 1.0). AeroBuildup lacks the wing downwash at the tail,
 which *helps* the download at the front edge, so it is conservative here. AVL lacks the profile drag of the deflected
 surface, which AeroBuildup carries only as a Hoerner drag factor on the clean section (no flap separation;
-`kulfan_airfoil.py:211-255`). The two errors run in opposite directions; spread
-10.4–14.3 % MAC. **Kept crisp (A11 rule 5, maintainer 2026-10-03):** the front edge is computed with
+`kulfan_airfoil.py:211-255`). The two errors run in opposite directions 🟡 INFERRED — the conclusion
+rested on AeroBuildup carrying NeuralFoil's low-Re flap losses, a premise the #1181 correction withdrew,
+so it is not re-established (open, STAND §10); spread 10.4–14.3 % MAC. **Kept crisp (A11 rule 5, maintainer 2026-10-03):** the front edge is computed with
 AeroBuildup, which is conservative here. **Validity condition, declared (ADR 0020):** methods carrying the
 wing–tail downwash place the front edge up to about 4 % MAC further forward. Revisit if a reference aircraft
 shows a first-flight reserve of the order of that spread.

@@ -9,7 +9,7 @@ tags:
   - canon/quantity
   - role/target
 type: scalar
-default: {value: 1.1, source: "Sadraey, Aircraft Design (2013), §4.3.4, V_R ≈ 1.1 V_s"}
+default: {value: 1.1, source: "Sadraey, Aircraft Design (2013), §4.3.4: V_TO = 1.1–1.3 V_s (lower edge)"}
 ---
 
 # Take-off-speed margin target · `k_S,TO`

@@ -18,7 +18,7 @@ The flap angle that defines the landing configuration of the airplane ([[airplan
 `positive_deflection_deg` in the geometry: that stop may only be a first draft, and the canon is used to
 find out which stop the wanted speed needs — the stop matters to the designer, not to the canon.
 
-For orientation only, not a default: typical RC values are landing 30–45°; Lennon gives 40°.
+Lennon: 40° landing (slotted flap, 30 % chord) — orientation only, not a default.
 
 **Unit.** `deg`
 

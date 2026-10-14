@@ -77,7 +77,7 @@ configuration:
 **The factors are targets with sourced defaults** (maintainer, 2026-10-14): approach 1.3 — CS 25.125
 is the transport-category regulation, carried to RC by Lennon (Ch. 20, FAR 23 reasoning scaled);
 touchdown 1.2 — Lennon's 20 % safety margin (Ch. 4, Ch. 14); take-off 1.1 — Sadraey §4.3.4,
-`V_R ≈ 1.1·V_s`. (Corrected 2026-10-14: an earlier note gave a landing band "1.2–1.25"; no source
+`V_TO = 1.1–1.3·V_s`, the lower edge. (Corrected 2026-10-14: an earlier note gave a landing band "1.2–1.25"; no source
 gives 1.25, and "1.3 from regulation" is the transport-category CS 25.125, not an RC rule.) The
 designer may override each. **Physical meaning:** at `k·V_S` the load-factor margin to the stall is
 `n = k²` — 1.1 → 1.21, 1.2 → 1.44, 1.3 → 1.69. **The touchdown sources disagree:** Lennon flies the

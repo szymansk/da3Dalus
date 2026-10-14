@@ -41,8 +41,9 @@ T_0/W = T / W
 
 **Produces** [[static-thrust-to-weight]]  ·  **from** [[weight]] · [[airplane]] · [[air-density]] · [[motor-voltage-constant]] · [[motor-no-load-current]] · [[motor-circuit-resistance]] · [[battery-voltage]] · [[motor-max-power]] · [[propeller-diameter]]
 
-**Kind: a law.** `T` is the thrust at airspeed bound at `V = 0`: the computed static thrust — the motor-propeller balance at `V = 0` on the
-measured propeller table — over the weight. A common RC figure: above 1 the model can climb
+**Kind: a law.** `T` is the static thrust, evaluated inside this entry at `V = 0`: it embeds the
+motor-propeller balance and the measured propeller table (`embeds:`) and reads no thrust value — the
+computed static thrust over the weight. A common RC figure: above 1 the model can climb
 vertically and hang on the propeller (BRYAN, route A power-limited: 2.0).
 
 **Replaces** (2026-10-02, maintainer) `thrust-to-weight` with `T_mean = f_T · T_static`:
