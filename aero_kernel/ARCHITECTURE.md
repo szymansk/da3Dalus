@@ -385,17 +385,20 @@ quantity.
     (`stall-speed.clean`, `stall-speed.landing`); a bare slug of a multi-application formula is an import
     finding. Embedding is transitive; the importer computes the closure (embedding `max-level-speed`
     brings in its propulsion relations), so a relation the form also names directly is listed again, and
-    nothing else needs to be repeated. The application id selects **only** which scoped checks apply; the
-    inputs are still bound by the embedder (an embedder binds the configuration it needs, e.g.
-    `airplane-landing`, as its own input).
+    nothing else needs to be repeated. **An item embeds that application as written** — its bindings
+    (quantities and `{const, source}`, e.g. `stall-speed.landing`: `airplane: airplane-landing`, `n: 1`)
+    and its checks; a bare slug means the formula's single (default) application. One meaning of
+    "application" everywhere, nothing bound twice.
   - **Variables** (`variables:`, a list of quantity slugs on the embedder): the quantities the embedder
     solves for or sweeps itself (`mass-envelope`: `aircraft-mass` swept, `flight-speed`,
     `angle-of-attack`, `propeller-speed` solved). Inside the closure a listed quantity is **always** the
     embedder's variable, even if the embedder also reads that quantity as an input for another purpose
     (`m_current: aircraft-mass`, the current mass on the sweep). Nothing is implied: a quantity is a
     variable only if listed.
-  - **Inputs:** every input quantity of the closure is a `variables:` entry, an input of the embedder, or
-    produced inside the closure (`propeller-speed`, `thrust-coefficient`).
+  - **Inputs:** every quantity an embedded application binds is a `variables:` entry (then the embedder's
+    variable takes its place), produced inside the closure (`propeller-speed`, `thrust-coefficient`), or an
+    input of the embedder — that input is the value edge through which it arrives (`airplane_ldg:
+    airplane-landing`). Constants come with the application and are never re-bound.
   - **Importer checks:** every slug and application id exists; the closure is acyclic; the input rule
     above; every `variables:` entry is read somewhere in the closure; no formula in the closure has
     `uncertainty: interval` (worlds are per node, ch. 8.13; an uncertain embedded relation needs a decision
@@ -738,9 +741,10 @@ async def stall_speed(x: Inputs, ctx: Context) -> dict[str, Value]:
   per relation (ADR 0022). For an embedded optimisation the function is its problem (built into a given
   `asb.Opti` or solved at given values of the embedder's variables); the formula's module decides which and
   documents it. An embedder obtains it **only** through `ctx.embedded("<slug>.<application-id>")`, which
-  returns the relation together with the postconditions that apply: evaluated as a whole, the handle runs
-  them on every call; built into an outer problem, the embedder passes the solved values to the handle's
-  `check(...)`. The traceability test (Q11) checks that every `embeds:` item has that function and that the
+  returns the relation with that application's constants and quantity bindings already applied (the values
+  arrive through the embedder's inputs) and its postconditions; the embedder passes only its `variables:`.
+  Evaluated as a whole, the handle runs the postconditions on every call; built into an outer problem,
+  the embedder passes the solved values to the handle's `check(...)`. The traceability test (Q11) checks that every `embeds:` item has that function and that the
   embedder requests each listed item through `ctx.embedded` (static check).
 - **Registration** is by decorator at import of `aero_kernel.formulas`. The traceability test (Q11) checks
   that each implementation's parameter names equal the canon model's.
