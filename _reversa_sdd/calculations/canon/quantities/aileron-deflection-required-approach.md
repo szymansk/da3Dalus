@@ -14,8 +14,9 @@ type: scalar
 
 # Aileron deflection needed at approach · `delta_a,req,app`
 
-The symmetric aileron angle ±δ_a the approach roll-rate target needs. If no angle in the method's validity
-range reaches it, there is no value but the error `no_solution_in_validity_range` — never a clipped angle.
+The symmetric aileron angle ±δ_a the approach roll-rate target needs. If the target lies above the
+maximum roll rate a method reaches, there is no value in that world but the error
+`target_above_method_maximum` — never a clipped angle.
 
 **Unit.** `deg`
 

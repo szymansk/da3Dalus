@@ -14,8 +14,9 @@ type: scalar
 
 # Aileron deflection needed at cruise · `delta_a,req,cruise`
 
-The symmetric aileron angle ±δ_a the cruise roll-rate target needs. If no angle in the method's validity
-range reaches it, there is no value but the error `no_solution_in_validity_range` — never a clipped angle.
+The symmetric aileron angle ±δ_a the cruise roll-rate target needs. If the target lies above the
+maximum roll rate a method reaches, there is no value in that world but the error
+`target_above_method_maximum` — never a clipped angle.
 
 **Unit.** `deg`
 

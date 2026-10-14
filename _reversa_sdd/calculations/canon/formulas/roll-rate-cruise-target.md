@@ -24,10 +24,6 @@ inputs:
   v_cruise_target: cruise-speed-target
   delta_a: aileron-deflection
 outputs: {p: roll-rate-cruise}
-preconditions:
-  - {id: aileron_deflection_within_method_validity, parameter: delta_a, on_violation: warning}
-# ESCALATED: delta_a validity range — the deflection range in which the method holds is open
-# (domain experts consulted).
 applications:
   - id: at_cruise_speed_target
     given: [cruise-speed-target]
@@ -60,3 +56,5 @@ solve for alpha, p at V_cruise,target (steady roll, at the given aileron deflect
 **Only when a cruise-speed target is given** (maintainer, 2026-10-02). Without one, the approach
 check and the dimensionless roll rate `p·b/2V` of [[roll-rate]] remain — for an RC model without
 a cruise requirement the latter is the character statement, since it hardly depends on speed.
+
+**Method premise (architect, 2026-10-14).** AeroBuildup has no flap model of its own: it evaluates the clean airfoil at `α + τ·δ`, `τ = 1 − x_hinge^2.7514` (a δ-independent fit to an XFoil study), with the drag times a multiplier fitted to Hoerner, *Fluid Dynamic Drag*, p. 13-13 Fig. 32 (`aerosandbox/geometry/airfoil/kulfan_airfoil.py:211-255`, via `aero_buildup.py:784-801`). There is no flap separation: it over-predicts the effectiveness at large δ until the clean section stalls, and the δ range of the τ fit is unknown. AVL is linear in δ by construction and documented only for `|pb/2V| < 0.10`. Reference point: Sadraey §12.4.3 puts separation onset on a deflected surface at about 20–25° — transport and GA data, not checked at model Reynolds number (ADR 0028). Beyond it the solver adapter reports a warning with the angle; the canon sets no limit.
