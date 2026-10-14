@@ -18,11 +18,11 @@ tags:
 inputs: {airplane: airplane, flap_deflection: null}
 outputs: {airplane_cfg: null}
 applications:
-  # ESCALATED: flap_deflection — which flap angle defines the take-off and the landing
-  # configuration is an open domain question; no quantity or sourced constant holds it.
   - id: takeoff
+    bind: {flap_deflection: flap-deflection-takeoff}
     produce: {airplane_cfg: airplane-takeoff}
   - id: landing
+    bind: {flap_deflection: flap-deflection-landing}
     produce: {airplane_cfg: airplane-landing}
 ---
 
@@ -34,7 +34,7 @@ applications:
 airplane_cfg := airplane with its flaps at delta_f,cfg      (cfg = take-off | landing)
 ```
 
-**Produces** [[airplane-takeoff]] · [[airplane-landing]]  ·  **from** [[airplane]]
+**Produces** [[airplane-takeoff]] · [[airplane-landing]]  ·  **from** [[airplane]] · [[flap-deflection-takeoff]] · [[flap-deflection-landing]]
 
 **Kind: a procedure — an evaluation of the model.** The same airplane with its flaps set for the
 configuration: the flap is in the geometry, not a factor on `C_L,max` ([[stall-speed]], 2026-10-02).
@@ -46,8 +46,15 @@ The configured airplane is what the take-off and landing applications of [[stall
 maintainer 2026-10-02): if the geometry has flaps, they are used as constructed for that
 configuration; if it has none, the configured airplane is the airplane itself.
 
-**Open.** Which flap deflection defines each configuration is not decided (escalated in the front
-matter).
+**The deflection is a design input** ([[flap-deflection-takeoff]], [[flap-deflection-landing]];
+maintainer, 2026-10-14), not bounded by the geometry's stop `positive_deflection_deg`: the canon is
+used to find out which stop the wanted speed needs.
+
+**Validity, declared (no threshold, A10).** The configured airplane is evaluated with NeuralFoil's flap
+model, which is unverified at large deflections and low Reynolds number: ANFORDERUNGEN.md, §
+"Rollwirkung gegen die gebauten Ruderausschläge" (lines 544–546: beyond about 25° the result is only as
+good as that model), and § "Nicht im MVP: die Querruderdifferenzierung" (lines 1007–1008: 15–25° at
+Re ≈ 60 000, unverified). Landing settings typically lie above that range.
 
 **Source.** 🔴 NO SOURCE FOUND — a construction step, adopted on the maintainer's statement in
 [[stall-speed]] (2026-10-02).
