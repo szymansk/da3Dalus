@@ -33,8 +33,9 @@ then the code. Epic: #1173.
   `conflicting_mass` warning, never an abort. Regime (Re, Mach; ADR 0028) is a warning, raised in the solver adapters.
   Control devices are angles in degrees, never fractions of a stop; stops (`positive/negative_deflection_deg`)
   are never read, checked, clamped or warned about; `airplane-configuration` applies the given flap
-  deflection even beyond the stop. Only the method's declared validity range bounds an angle
-  (ARCHITECTURE §8.11).
+  deflection even beyond the stop. No fixed angle range: a saturating method is
+  searched to its own maximum, a linear one solved directly; tool validity is an adapter warning
+  (ARCHITECTURE §8.11, §8.8).
 - **Parameter names vs. slugs.** Inside a formula and in its canon fields, keys are parameter names
   (snake_case); quantity slugs (kebab-case) appear only as binding targets (ARCHITECTURE §8.5).
   Mass is not a criterion.
