@@ -756,8 +756,49 @@ def _readme_with_example(root, slug, yaml_text):
 
 def test_a_readme_example_that_matches_its_entry_is_accepted(tmp_path, typed_quantities):
     root = _canon(tmp_path, quantities=typed_quantities)
-    _readme_with_example(root, "f", "kind: law\ninputs: {a: speed-a, b: speed-b}\n")
+    _readme_with_example(
+        root, "f", "kind: law\ninputs: {a: speed-a, b: speed-b}\noutputs: {v: speed-v}\n"
+    )
     assert _findings(root) == []
+
+
+def test_a_readme_example_missing_a_machine_readable_key_of_its_entry_is_reported(
+    tmp_path, typed_quantities
+):
+    """Review round 2, B: the entry gained `optional:`, the example did not."""
+    root = _canon(tmp_path, front=GOOD_FRONT + "optional: [b]\n", quantities=typed_quantities)
+    _readme_with_example(
+        root, "f", "kind: law\ninputs: {a: speed-a, b: speed-b}\noutputs: {v: speed-v}\n"
+    )
+    msgs = _messages(_errors(root))
+    assert any("README" in m and "optional" in m for m in msgs), msgs
+
+
+def test_an_escalation_only_opens_the_gaps_it_names(tmp_path, typed_quantities):
+    front = """
+inputs: {a: speed-a, b: null}
+outputs: {v: speed-v}
+applications:
+  # ESCALATED: c has no decided binding
+  - id: one
+    bind: {a: speed-a}
+"""
+    root = _canon(tmp_path, front=front, quantities=typed_quantities, inputs_line=("speed-a",))
+    _fix_used_by(root, "speed-b", [])
+    errors = _errors(root)
+    assert any("'b'" in f.message for f in errors), _messages(errors)
+
+
+def test_a_default_overridden_in_every_application_is_not_read(tmp_path, typed_quantities):
+    """Only the quantities an application actually binds belong on the from line."""
+    front = """
+inputs: {a: speed-a, b: speed-v}
+outputs: {v: speed-v}
+applications:
+  - id: one
+    bind: {b: speed-b}
+"""
+    assert _findings(_canon(tmp_path, front=front, quantities=typed_quantities)) == []
 
 
 def test_a_readme_example_that_drifted_from_its_entry_is_reported(tmp_path, typed_quantities):

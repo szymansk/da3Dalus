@@ -279,6 +279,21 @@ ESCALATED = re.compile(r"^\s*#\s*ESCALATED\b", re.M)
 #: an escalation states its reason: '# ESCALATED: <reason>'
 ESCALATED_REASON = re.compile(r"^\s*#\s*ESCALATED\b:?(.*)$", re.M)
 UNCERTAINTY = {"interval"}
+#: the machine-readable keys a README example must reproduce in full (when/given are compared
+#: as part of applications)
+EXAMPLE_KEYS_FORMULA = (
+    "inputs",
+    "outputs",
+    "applications",
+    "preconditions",
+    "postconditions",
+    "embeds",
+    "optional",
+    "uncertainty",
+    "worlds",
+    "cost",
+)
+EXAMPLE_KEYS_QUANTITY = ("type", "default", "uncertainty")
 
 
 @dataclasses.dataclass(frozen=True)
@@ -291,6 +306,13 @@ class Entry:
     @property
     def escalated(self) -> bool:
         return bool(ESCALATED.search(self.raw_front))
+
+    def escalates(self, name: str) -> bool:
+        """Whether an '# ESCALATED: <reason>' comment names this parameter or field."""
+        return any(
+            re.search(rf"(?<![A-Za-z0-9_-]){re.escape(name)}(?![A-Za-z0-9_-])", m.group(1))
+            for m in ESCALATED_REASON.finditer(self.raw_front)
+        )
 
 
 @dataclasses.dataclass(frozen=True)
@@ -432,8 +454,6 @@ def _check_formula(e: Entry, canon: Canon, add, gap) -> tuple[set[str], set[str]
             add(e.slug, field, f"{param!r} is bound to {value!r}, not a quantity slug")
         elif value not in q:
             add(e.slug, field, f"{param!r} is bound to unknown quantity {value!r}")
-        else:
-            (reads if field.endswith(("inputs", "bind")) else writes).add(value)
 
     for name, value in inputs.items():
         target("inputs", name, value, allow_const=False)
@@ -498,9 +518,17 @@ def _check_formula(e: Entry, canon: Canon, add, gap) -> tuple[set[str], set[str]
                 add(e.slug, "applications", f"{where}: given {slug!r} has a default")
             if slug not in bound:
                 add(e.slug, "applications", f"{where}: given {slug!r} is not bound by it")
+        # what this application actually reads and writes (a default overridden by every
+        # application is never read and does not belong on the from line)
+        for value in _effective(inputs, bind).values():
+            if isinstance(value, str) and value in q:
+                reads.add(value)
+        for value in _effective(outputs, produce).values():
+            if isinstance(value, str) and value in q:
+                writes.add(value)
         for name, value in _effective(inputs, bind).items():
             if value is None:
-                gap(e, "applications", f"{where}: input parameter {name!r} is not bound")
+                gap(e, "applications", f"{where}: input parameter {name!r} is not bound", name)
         # An output may be produced explicitly as null: the implementation returns it, the
         # application does not expose it. Only an output absent from the merged produce is a gap.
         explicit_null = (
@@ -508,7 +536,7 @@ def _check_formula(e: Entry, canon: Canon, add, gap) -> tuple[set[str], set[str]
         )
         for name, value in _effective(outputs, produce).items():
             if value is None and name not in explicit_null:
-                gap(e, "applications", f"{where}: output parameter {name!r} is not produced")
+                gap(e, "applications", f"{where}: output parameter {name!r} is not produced", name)
 
     # preconditions run before the call and check inputs; postconditions run after it and check
     # outputs (also those an application writes as null)
@@ -669,8 +697,9 @@ def check_structure(canon: Canon) -> list[Finding]:
     def add(entry: str, field: str, message: str) -> None:
         findings.append(Finding(entry, field, message))
 
-    def gap(e: Entry, field: str, message: str) -> None:
-        findings.append(Finding(e.slug, field, message, open=e.escalated))
+    def gap(e: Entry, field: str, message: str, name: str) -> None:
+        # open only when an escalation comment names this parameter
+        findings.append(Finding(e.slug, field, message, open=e.escalates(name)))
 
     used_by: dict[str, set[str]] = {s: set() for s in canon.quantities}
     produced_by: dict[str, set[str]] = {s: set() for s in canon.quantities}
@@ -702,8 +731,9 @@ def check_structure(canon: Canon) -> list[Finding]:
         if entry is None:
             add("README", "examples", f"example names no entry: {slug!r}")
             continue
-        for key, value in example.items():
-            if entry.front.get(key) != value:
+        keys = EXAMPLE_KEYS_FORMULA if slug in canon.formulas else EXAMPLE_KEYS_QUANTITY
+        for key in dict.fromkeys([*example, *keys]):
+            if entry.front.get(key) != example.get(key):
                 add("README", "examples", f"{slug}: {key} differs from the entry's front matter")
 
     for slug, e in canon.quantities.items():
