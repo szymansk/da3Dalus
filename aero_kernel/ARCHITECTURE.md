@@ -1,7 +1,7 @@
 # aero_kernel — Architecture (lean arc42)
 
 > **Status: draft for approval (#1174).** Once the maintainer approves it, this document is the
-> **binding template** for every ticket of Epic #1173 (#1174–#1179). Whoever changes something stated
+> **binding template** for every ticket of Epic #1173 (#1174–#1178). Whoever changes something stated
 > here changes this document first.
 >
 > **What is not in here:** the content of the formulas (→ the canon in `_reversa_sdd/calculations/canon/`)
@@ -40,8 +40,8 @@ becomes the app's single source of computation (register epic "implement the cal
 ```
         tests (aero_kernel/tests)        robustness run (tools/robustness.py)
                      \                     /
-   calibration ───── compute(AircraftInput, ComputeRequest) ──→ ComputeResult
-   (calibration/)    |   aero_kernel/   |
+                     compute(AircraftInput, ComputeRequest) ──→ ComputeResult
+                     |   aero_kernel/   |
                      └──────────────────┘
           reads: its own canon model (canon/canon_model.json, shipped in the package)
    import: external canon document (_reversa_sdd/calculations/canon/) ──→ importer ──→ canon model
@@ -54,8 +54,8 @@ becomes the app's single source of computation (register epic "implement the cal
   the kernel, never the other way round.
 - **No second producer (ADR 0022).** Until the register epic switches the app over, the app shows no values
   from the kernel.
-- **Not inert (ADR 0021).** The kernel is still in use from day one: tests, the CI job, the robustness run
-  and the calibration all call it (Epic #1173).
+- **Not inert (ADR 0021).** The kernel is still in use from day one: tests, the CI job and the robustness run
+  all call it (Epic #1173).
 - **No triggering, no storage.** When computation runs (K28, K29) and where results are kept (snapshot) is
   the caller's decision. The kernel supplies the dependency subtree (A1) and the cost class for that.
 
@@ -96,7 +96,6 @@ aero_kernel/
   cache.py          in-memory LRU, optionally on disk
   validate.py       physical admissibility; regime warnings (ADR 0028)
   errors.py         error catalogue (ch. 8.1)
-  calibration/      FlightObservation, comparison (#1179)
   tools/            robustness.py (#1178)
   tests/            unit, property, golden, traceability and error tests
 ```
@@ -179,7 +178,7 @@ Sources:
 - `status`: `ok`, `not_applicable` or `error`
 - `value` **or** `interval {min, max, worlds{name: value}}`
 - `tool` and `application`
-- `validated`: always `false` until calibration (#1179)
+- `validated`: `false` — no value is validated against flight data (canon A11: "not validated")
 - `warnings[]` and `error`
 
 No internal paths or mechanisms in any field (ADR 0019).
