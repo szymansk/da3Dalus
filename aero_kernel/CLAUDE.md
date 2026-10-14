@@ -51,6 +51,31 @@ then the code. Epic: #1173.
   never let the cache change a value. Cache scopes (`scope=`, `drop_scope`) isolate tenants; a hit
   must never cross scopes.
 
+## Code style, types and linters
+
+- **PEP 8** (https://peps.python.org/pep-0008/): naming (`snake_case` functions and variables,
+  `PascalCase` classes, `UPPER_CASE` constants), imports at the top in standard / third-party / local
+  order, one statement per line. Formatting is not discussed; `ruff format` decides (line length 100).
+- **Pydantic v2 for every data type** that crosses a module boundary: input, request, result, errors,
+  warnings, provenance, the canon model, cache entries. `model_config = ConfigDict(extra="forbid")`;
+  results and canon-model types also `frozen=True`. Constraints belong in the model (`Field(gt=0)`,
+  validators), not in scattered `if` checks. No `dict` as an ad-hoc record.
+- **Types everywhere.** Every function, method and attribute is annotated, including return types and
+  tests' helpers. Modern syntax (`X | None`, `list[float]`). `Any` only at a documented boundary (e.g. raw
+  front matter in the importer), never as a shortcut; `cast` and `# type: ignore` need a comment saying why.
+- **Docstrings** (Google style) on every public module, class and function: what it does, its units, and
+  which canon slug it implements.
+- **Linters are the gate, not a suggestion.** Before every commit, all three must be clean:
+
+  ```bash
+  poetry run ruff check aero_kernel          # strict rule set in aero_kernel/ruff.toml
+  poetry run ruff format --check aero_kernel
+  poetry run pyright aero_kernel             # strict mode (pyrightconfig.json)
+  ```
+
+  Never silence a finding to get green (`# noqa`, `# type: ignore`, relaxing `ruff.toml`) without a
+  comment naming the reason; a finding usually points at a real problem.
+
 ## Logging (ARCHITECTURE §8.14)
 
 Logs are how you check that your code runs as intended. Write them while you write the code, not after a
