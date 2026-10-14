@@ -352,9 +352,22 @@ quantity.
   Unmet, the application's outputs are `not_applicable` with `reason.code` `condition_not_met` (`when`) or
   `not_given` (`given`). Both kinds are declared in the entry; the importer never infers a condition.
 - **A named condition is a quantity, never a mechanism** (A2, ch. 8.13). A configured aircraft
-  (`airplane-landing`), a speed (`approach-speed`) or the static case (`thrust-static`) is its own
-  quantity, produced by its own application. There is no per-application override of an input, no
-  operating-point and no configuration field.
+  (`airplane-landing`) or a speed (`approach-speed`) is its own quantity, produced by its own
+  application. There is no per-application override of an input, no operating-point and no configuration
+  field.
+- **An embedded relation is not an edge** (`embeds:`, a list of formula slugs). Where a formula's
+  canonical form evaluates another canon formula's relation *inside* itself, over its own variables, it
+  reads that relation's inputs, not its output quantity. Example: the climb, turn, level-speed, dive and
+  mass-envelope problems carry `V` and `n_prop` as decision variables with `T(V, n_prop)` and the torque
+  balance as constraints, and `static-thrust-to-weight` evaluates `T(V = 0)`; all of them embed the
+  propulsion relations (`motor-propeller-equilibrium`, `advance-ratio-from-speed`, `propeller-table-lookup`,
+  `thrust-at-airspeed-from-coefficient`) and bind motor, battery and propeller inputs directly. A solver
+  tool (AeroBuildup inside `stall-speed`) is named by `tool:`, not by `embeds:`. The importer checks that
+  every embedded slug exists; approval of the embedder follows approval of what it embeds.
+- **Optional parameters** (`optional:`, a list of input parameter names). The formula receives `None`
+  when the bound quantity has neither a value nor a default, and selects its route by data; it declares
+  the route that ran as a warning (ADR 0020, Q-PT-6). Example: `r_m` of `motor-propeller-equilibrium`
+  (route B with it, route A without). Unlike `given`, the application exists either way.
 - An entry without `applications:` has exactly one application: every parameter bound to its default
   quantity from `inputs:` / `outputs:`, condition "always".
 - **Keys are always parameter names** (snake_case), in the canon fields, in `x` and in the return value of
@@ -560,7 +573,8 @@ class ComputeRequest(BaseModel):
   Without a default, the quantities that need it get `invalid_input`, code `missing_input`, with
   `input_path = values.<slug>`; the rest of the request is computed. **Exception:** an application whose
   `given` names the missing slug does not exist, so its outputs are `not_applicable`, code `not_given`
-  (ch. 8.5); an application that reads the same slug without `given` still gets `missing_input`.
+  (ch. 8.5); an application that reads the same slug without `given` still gets `missing_input`. A
+  parameter listed in `optional:` receives `None` instead (ch. 8.5).
 - **The passed mass always wins** (maintainer, 2026-10-14). Mass comes only from
   `values["aircraft-mass"]`; the geometry's `total_mass_kg` is not used. Otherwise no "what if?"
   calculation at a different mass would be possible. If both are set and differ, the call is **not**
@@ -612,6 +626,11 @@ async def stall_speed(x: Inputs, ctx: Context) -> dict[str, Value]:
   substitute value (ADR 0020).
 - **Preconditions** are separate functions, `@precondition("stall-speed", "<check-id>")`, taking the same
   `x` and returning `held | violated | unchecked` with a message.
+- **Embedded relations** (ch. 8.5). The module of an embedded formula exposes its relation as a plain,
+  module-level function over parameter names (numpy- and CasADi-compatible where an OPT formula embeds
+  it); its `@formula` coroutine and every embedder call that one function, so there is one implementation
+  per relation (ADR 0022). The traceability test (Q11) checks that every `embeds:` slug has that function
+  and that the embedder calls it.
 - **Registration** is by decorator at import of `aero_kernel.formulas`. The traceability test (Q11) checks
   that each implementation's parameter names equal the canon model's.
 
@@ -628,10 +647,15 @@ never an output), so one call evaluates one operating point. Several operating p
 value at a fixed condition, the chain up to it has an application per condition, each producing a
 quantity that names it: the take-off and landing stall speeds read `airplane-takeoff` /
 `airplane-landing` (type `airplane`, produced by a configuration formula; without flaps it is the
-unchanged aircraft, not a fallback), `static-thrust-to-weight` reads `thrust-static`, produced by the
-propulsion chain with the speed bound to `{const: 0, source: …}`. A sampled curve over angle of attack is a
-quantity of type `polar` whose slug names its evaluation condition (A2). The engine needs nothing beyond
-applications for any of these.
+unchanged aircraft, not a fallback). A sampled curve over angle of attack is a quantity of type `polar`
+whose slug names its evaluation condition (A2). The engine needs nothing beyond applications for any of
+these.
+
+**Functions of a variable the formula solves for** are not quantities. Thrust over airspeed is not a curve
+`T(V)` handed to the optimisers: they solve for `V` and `n_prop` themselves and embed the propulsion
+relations (ch. 8.5). `thrust-at-airspeed` stays a scalar at the given `flight-speed`; the static value is
+`static-thrust-to-weight` embedding the same relations at `V = 0`. One relation, one implementation, no
+sampled grid and no `-static` chain.
 
 **Worlds (A11, ADR 0027).**
 - A formula with `uncertainty: interval` declares its worlds in the canon. Each world is a run of the same
@@ -750,6 +774,7 @@ They are the first thing a developer or an agent reads to check a change and to 
 | Q27 | Cache key | inputs differing in the last bit of a float give different keys; a changed source file changes every key |
 | Q28 | Mass differs from the geometry's `total_mass_kg` | computed with the passed mass; `conflicting_mass` warning on every quantity that depends on the mass, none on the others |
 | Q29 | Target not set | `max-roll-rate-cruise` (`given: [cruise-speed-target]`) is `not_applicable`, code `not_given`; a quantity reading `cruise-speed-target` without `given` gets `missing_input` |
+| Q30 | Embedded relation and optional parameter | with `flight-speed` = 0, `thrust-at-airspeed` equals the thrust inside `static-thrust-to-weight` bit for bit (one relation function); without `motor-circuit-resistance` both run route A with a `practice` warning naming the route, no `missing_input` |
 
 ## 11. Risks and technical debt
 
