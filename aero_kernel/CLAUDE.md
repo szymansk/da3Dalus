@@ -28,7 +28,10 @@ then the code. Epic: #1173.
   mockable and missing tools become `tool_unavailable`.
 - **Errors vs warnings.** No value → `KernelError` with category, `message`, `hint` (ARCHITECTURE §8.1).
   Value with a caveat → warning with `severity` (ADR 0020). Never a silent substitute.
-- **Validation** rejects only physically inadmissible input. Regime (Re, Mach; ADR 0028) is a warning.
+- **Validation** rejects only physically inadmissible input, plus contradicting sources of one value
+  (`conflicting_mass`). Regime (Re, Mach; ADR 0028) is a warning, raised in the solver adapters.
+- **Parameter names vs. slugs.** Inside a formula and in its canon fields, keys are parameter names
+  (snake_case); quantity slugs (kebab-case) appear only as binding targets (ARCHITECTURE §8.5).
   Mass is not a criterion.
 - **Uncertain quantities** (A11, ADR 0027): run each method world through the whole subtree; intervals
   only at the end; never interval arithmetic. A failed world makes the quantity an error, never a
