@@ -26,6 +26,9 @@ inputs:
   b_ref: wing-span
   delta_a: aileron-deflection
 outputs: {p: roll-rate-approach, p_hat: roll-rate-nondimensional-approach}
+applications:
+  - id: approach
+    when: has_aileron
 preconditions:
   - {id: aileron_deflection_within_method_validity, parameter: delta_a, on_violation: warning}
 # ESCALATED: delta_a validity range — the deflection range in which the method holds is open

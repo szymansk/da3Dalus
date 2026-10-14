@@ -31,6 +31,7 @@ preconditions:
 applications:
   - id: at_cruise_speed_target
     given: [cruise-speed-target]
+    when: has_aileron
 worlds: [aerobuildup, avl]
 ---
 

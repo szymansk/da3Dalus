@@ -32,10 +32,12 @@ applications:
     bind: {v: cruise-speed-target, p_target: roll-rate-target-cruise}
     produce: {delta_a_req: aileron-deflection-required-cruise}
     given: [roll-rate-target-cruise, cruise-speed-target]
+    when: has_aileron
   - id: approach
     bind: {v: approach-speed, p_target: roll-rate-target-approach}
     produce: {delta_a_req: aileron-deflection-required-approach}
     given: [roll-rate-target-approach]
+    when: has_aileron
 worlds: [aerobuildup, avl]
 ---
 

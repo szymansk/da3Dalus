@@ -437,6 +437,7 @@ entry that states the condition.
 
 | term | holds when |
 |---|---|
+| `has_aileron` | the geometry has at least one control surface that acts as an aileron: trailing-edge devices with `role` `aileron`, `flaperon` or `elevon`. Without it the roll quantities are `not_applicable` (`roll-rate`, `roll-rate-cruise-target`, `aileron-deflection-required`) |
 | `has_flap_and_aileron` | the main wing carries trailing-edge devices acting as camber flaps and as ailerons — both, as crow needs (`butterfly-approach`) |
 | `has_vertical_tail` | the aircraft has a fin or a V-tail behind the main wing; winglets or a centre fin on a tailless wing do not count (`spiral-parameter`, `vertical-tail-volume`) |
 
