@@ -276,6 +276,9 @@ PRECONDITION_KEYS = {"id", "parameter", "on_violation"}
 PRECONDITION_OPTIONAL = {"applications"}
 #: what an escalated gap looks like in the front matter
 ESCALATED = re.compile(r"^\s*#\s*ESCALATED\b", re.M)
+#: an escalation states its reason: '# ESCALATED: <reason>'
+ESCALATED_REASON = re.compile(r"^\s*#\s*ESCALATED\b:?(.*)$", re.M)
+UNCERTAINTY = {"interval"}
 
 
 @dataclasses.dataclass(frozen=True)
@@ -296,6 +299,8 @@ class Canon:
     quantities: dict[str, Entry]
     vocabulary: set[str]
     types: set[str]
+    #: README "One example per kind": (slug, parsed example) pairs
+    examples: list = dataclasses.field(default_factory=list)
 
 
 @dataclasses.dataclass(frozen=True)
@@ -351,7 +356,22 @@ def load_canon(canon_dir: pathlib.Path) -> Canon:
         quantities=quantities,
         vocabulary=_table_terms(readme, "Vocabulary of `when`"),
         types=_table_terms(readme, "Quantity types"),
+        examples=_readme_examples(readme),
     )
+
+
+def _readme_examples(readme: str) -> list:
+    """The YAML examples of the README section "One example per kind", each with the slug the
+    sentence before it names in parentheses."""
+    m = re.search(r"^#+ One example per kind[^\n]*$(.*?)(?=^#{1,3} |\Z)", readme, re.M | re.S)
+    if not m:
+        return []
+    out, last = [], 0
+    for block in re.finditer(r"```yaml\n(.*?)```", m.group(1), re.S):
+        slug = re.search(r"\(`([a-z0-9-]+)`\)", m.group(1)[last : block.start()])
+        out.append((slug.group(1) if slug else None, yaml.safe_load(block.group(1)) or {}))
+        last = block.end()
+    return out
 
 
 def _links_after(body: str, label: str) -> list[str] | None:
@@ -454,7 +474,9 @@ def _check_formula(e: Entry, canon: Canon, add, gap) -> tuple[set[str], set[str]
                     add(e.slug, "applications", f"{where}: {field} key {name!r} is not a parameter")
                 target(f"applications {field}", name, value, allow_const=field == "bind")
         when = app.get("when")
-        if when is not None and when not in canon.vocabulary:
+        if when is not None and not isinstance(when, str):
+            add(e.slug, "applications", f"{where}: when must be one vocabulary term: {when!r}")
+        elif when is not None and when not in canon.vocabulary:
             add(e.slug, "applications", f"{where}: when term {when!r} is not in the vocabulary")
         given = app.get("given") or []
         bound = {v for v in _effective(inputs, bind).values() if isinstance(v, str)}
@@ -514,7 +536,10 @@ def _check_formula(e: Entry, canon: Canon, add, gap) -> tuple[set[str], set[str]
         if pre["on_violation"] not in ON_VIOLATION:
             add(e.slug, "preconditions", f"{pre['id']}: on_violation {pre['on_violation']!r}")
 
-    interval = e.front.get("uncertainty") == "interval"
+    unc = e.front.get("uncertainty")
+    if unc is not None and unc not in UNCERTAINTY:
+        add(e.slug, "uncertainty", f"{unc!r} is not one of {sorted(UNCERTAINTY)}")
+    interval = unc == "interval"
     worlds = e.front.get("worlds")
     if interval and not (isinstance(worlds, list) and worlds):
         add(e.slug, "worlds", "uncertainty: interval needs a non-empty list of worlds")
@@ -654,7 +679,31 @@ def check_structure(canon: Canon) -> list[Finding]:
             produced_by[w].add(slug)
     _check_embeds(canon, reads_of, writes_of, add)
 
+    for e in [*canon.formulas.values(), *canon.quantities.values()]:
+        booleans = yaml11_booleans(e.raw_front)
+        if booleans:
+            add(e.slug, "yaml", f"YAML 1.1 booleans as plain keys or values: {booleans}")
+        for m in ESCALATED_REASON.finditer(e.raw_front):
+            if not m.group(1).strip():
+                add(
+                    e.slug,
+                    "ESCALATED",
+                    "an escalation comment needs a reason: '# ESCALATED: <reason>'",
+                )
+
+    for slug, example in canon.examples:
+        entry = canon.formulas.get(slug) or canon.quantities.get(slug)
+        if entry is None:
+            add("README", "examples", f"example names no entry: {slug!r}")
+            continue
+        for key, value in example.items():
+            if entry.front.get(key) != value:
+                add("README", "examples", f"{slug}: {key} differs from the entry's front matter")
+
     for slug, e in canon.quantities.items():
+        unc = e.front.get("uncertainty")
+        if unc is not None and unc not in UNCERTAINTY:
+            add(slug, "uncertainty", f"{unc!r} is not one of {sorted(UNCERTAINTY)}")
         t = e.front.get("type")
         if t is None:
             add(slug, "type", "missing")

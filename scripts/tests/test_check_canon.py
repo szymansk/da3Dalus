@@ -666,6 +666,79 @@ def test_quantity_default_with_a_source_is_accepted(tmp_path, typed_quantities):
 # --- command line ----------------------------------------------------------------------------
 
 
+# --- review round 1: robustness --------------------------------------------------------------
+
+
+def test_a_yaml_1_1_boolean_in_an_entry_is_a_structural_error(tmp_path, typed_quantities, capsys):
+    typed_quantities["speed-a"] = typed_quantities["speed-a"].replace(
+        "symbol: speed_a", "symbol: y"
+    )
+    root = _canon(tmp_path, quantities=typed_quantities)
+    assert check_canon.cli([str(root)]) == 1
+    out = capsys.readouterr().out
+    assert "speed-a" in out and "'y'" in out, out
+
+
+def test_a_when_that_is_not_a_term_is_reported_not_a_crash(tmp_path, typed_quantities):
+    front = GOOD_FRONT + "applications:\n  - id: one\n    when: [has_flap]\n"
+    msgs = _messages(_errors(_canon(tmp_path, front=front, quantities=typed_quantities)))
+    assert any("when" in m for m in msgs), msgs
+
+
+def test_an_unknown_uncertainty_value_is_reported(tmp_path, typed_quantities):
+    front = GOOD_FRONT + "uncertainty: fuzzy\n"
+    msgs = _messages(_errors(_canon(tmp_path, front=front, quantities=typed_quantities)))
+    assert any("uncertainty" in m and "fuzzy" in m for m in msgs), msgs
+
+
+def test_an_unknown_uncertainty_value_on_a_quantity_is_reported(tmp_path, typed_quantities):
+    typed_quantities["speed-v"] = typed_quantities["speed-v"].replace(
+        "type: scalar", "type: scalar\nuncertainty: fuzzy"
+    )
+    msgs = _messages(_errors(_canon(tmp_path, quantities=typed_quantities)))
+    assert any("speed-v uncertainty" in m for m in msgs), msgs
+
+
+def test_an_escalation_without_a_reason_is_reported(tmp_path, typed_quantities):
+    front = GOOD_FRONT + "# ESCALATED:\n"
+    msgs = _messages(_errors(_canon(tmp_path, front=front, quantities=typed_quantities)))
+    assert any("ESCALATED" in m and "reason" in m for m in msgs), msgs
+
+
+def test_an_escalation_with_a_reason_is_accepted(tmp_path, typed_quantities):
+    front = GOOD_FRONT + "# ESCALATED: b has no decided binding\n"
+    assert _findings(_canon(tmp_path, front=front, quantities=typed_quantities)) == []
+
+
+def _readme_with_example(root, slug, yaml_text):
+    readme = root / "README.md"
+    readme.write_text(
+        readme.read_text(encoding="utf-8")
+        + f"\n### One example per kind\n\nA **law** (`{slug}`):\n\n```yaml\n{yaml_text}```\n",
+        encoding="utf-8",
+    )
+
+
+def test_a_readme_example_that_matches_its_entry_is_accepted(tmp_path, typed_quantities):
+    root = _canon(tmp_path, quantities=typed_quantities)
+    _readme_with_example(root, "f", "kind: law\ninputs: {a: speed-a, b: speed-b}\n")
+    assert _findings(root) == []
+
+
+def test_a_readme_example_that_drifted_from_its_entry_is_reported(tmp_path, typed_quantities):
+    root = _canon(tmp_path, quantities=typed_quantities)
+    _readme_with_example(root, "f", "kind: law\ninputs: {a: speed-a}\n")
+    msgs = _messages(_errors(root))
+    assert any("README" in m and "f" in m and "inputs" in m for m in msgs), msgs
+
+
+def test_a_readme_example_naming_an_unknown_entry_is_reported(tmp_path, typed_quantities):
+    root = _canon(tmp_path, quantities=typed_quantities)
+    _readme_with_example(root, "nope", "kind: law\n")
+    msgs = _messages(_errors(root))
+    assert any("README" in m and "nope" in m for m in msgs), msgs
+
+
 def test_cli_exits_non_zero_on_a_structural_error(tmp_path, capsys):
     assert check_canon.cli([str(_canon(tmp_path))]) == 1
     assert "speed-a" in capsys.readouterr().out
