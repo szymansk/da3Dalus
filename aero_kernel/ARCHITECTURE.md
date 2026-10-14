@@ -546,7 +546,6 @@ class AircraftInput(BaseModel):          # extra="forbid"
     airplane: AirplaneGeometry           # docs/geometry-format/airplane-geometry.schema.json
     values: dict[str, float]             # canon slug → value in the quantity's SI unit
 
-
 class ComputeRequest(BaseModel):
     quantities: list[str]                # canon quantity slugs, not formula slugs
     include_long_runs: bool = False      # ch. 8.7
