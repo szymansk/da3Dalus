@@ -17,16 +17,17 @@ tags:
   - status/draft
   - flag/conflict
 tex: \begin{aligned}V_S = \min_{V,\,\alpha}\; & V \\ \text{u.d.N.}\; & L(V,\alpha) = n\,m\,g\end{aligned}
-inputs: {airplane: airplane, m: aircraft-mass, g: gravity, n_load: load-factor, rho: air-density}
+inputs: {airplane: airplane, m: aircraft-mass, g: gravity, n_load: null, rho: air-density}
 outputs: {v_s: null, cl_max: null, alpha_s: null, polar: null}
 applications:
   - id: clean
+    bind: {n_load: {const: 1, source: "definition of the load factor n = L/W (as stated in max-mass-structure); straight level flight means L = W"}}
     produce: {v_s: stall-speed, cl_max: max-lift-coefficient, alpha_s: angle-of-attack-stall, polar: polar-stall}
   - id: takeoff
-    bind: {airplane: airplane-takeoff}
+    bind: {airplane: airplane-takeoff, n_load: {const: 1, source: "definition of the load factor n = L/W (as stated in max-mass-structure); straight level flight means L = W"}}
     produce: {v_s: stall-speed-takeoff, cl_max: max-lift-coefficient-takeoff, alpha_s: null, polar: null}
   - id: landing
-    bind: {airplane: airplane-landing}
+    bind: {airplane: airplane-landing, n_load: {const: 1, source: "definition of the load factor n = L/W (as stated in max-mass-structure); straight level flight means L = W"}}
     produce: {v_s: stall-speed-landing, cl_max: max-lift-coefficient-landing, alpha_s: null, polar: null}
   - id: inverted
     bind: {n_load: {const: -1, source: "definition of the load factor n = L/W (as stated in max-mass-structure); inverted level flight means L = −W"}}
@@ -46,7 +47,7 @@ minimize over V, alpha:   V
 subject to:               L(V, alpha) = n * m * g
 ```
 
-**Produces** [[stall-speed]] · [[max-lift-coefficient]] · [[angle-of-attack-stall]] · [[polar-stall]] · [[inverted-max-lift-coefficient]] · [[stall-speed-landing]] · [[stall-speed-takeoff]] · [[max-lift-coefficient-landing]] · [[max-lift-coefficient-takeoff]]  ·  **from** [[airplane]] · [[airplane-takeoff]] · [[airplane-landing]] · [[aircraft-mass]] · [[gravity]] · [[load-factor]] · [[air-density]]
+**Produces** [[stall-speed]] · [[max-lift-coefficient]] · [[angle-of-attack-stall]] · [[polar-stall]] · [[inverted-max-lift-coefficient]] · [[stall-speed-landing]] · [[stall-speed-takeoff]] · [[max-lift-coefficient-landing]] · [[max-lift-coefficient-takeoff]]  ·  **from** [[airplane]] · [[airplane-takeoff]] · [[airplane-landing]] · [[aircraft-mass]] · [[gravity]] · [[air-density]]
 
 **One relation, two directions.** This entry is the lift balance solved for the speed at the named condition C_L = C_L,max. [[lift-coefficient-required]] is the same relation, `n·m·g = ½·ρ·V²·S_ref·C_L`, solved the other way. Every time the sources solve it for a speed, the C_L belongs to a named condition (Sadraey Eq. 4.30, 4.55, 4.85; Scholz Eq. 5.30, 5.40) — there is no generic lift-balance speed, which is why `lift-balance-speed` was deleted on 2026-10-01.
 

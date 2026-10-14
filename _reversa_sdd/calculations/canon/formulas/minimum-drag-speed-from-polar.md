@@ -16,12 +16,15 @@ tags:
   - kind/optimization
   - status/draft
 tex: \begin{aligned}V_md = \operatorname*{arg\,min}_{V,\,\alpha}\; & D(V,\alpha) \\ \text{u.d.N.}\; & L(V,\alpha) = n\,m\,g\end{aligned}
-inputs: {airplane: airplane, m: aircraft-mass, g: gravity, n_load: load-factor, rho: air-density}
+inputs: {airplane: airplane, m: aircraft-mass, g: gravity, n_load: null, rho: air-density}
 outputs:
   v_md: minimum-drag-speed
   e_max: max-lift-to-drag-ratio
   alpha_md: angle-of-attack-best-glide
   cl_md: lift-coefficient-best-glide
+applications:
+  - id: level_flight
+    bind: {n_load: {const: 1, source: "definition of the load factor n = L/W (as stated in max-mass-structure); straight level flight means L = W"}}
 ---
 
 # Minimum-drag speed as the argmax of the computed glide ratio
@@ -33,7 +36,7 @@ minimize over V, alpha:   D(V, alpha)
 subject to:               L(V, alpha) = n * m * g
 ```
 
-**Produces** [[minimum-drag-speed]] · [[max-lift-to-drag-ratio]] · [[angle-of-attack-best-glide]] · [[lift-coefficient-best-glide]]  ·  **from** [[airplane]] · [[aircraft-mass]] · [[gravity]] · [[load-factor]] · [[air-density]]
+**Produces** [[minimum-drag-speed]] · [[max-lift-to-drag-ratio]] · [[angle-of-attack-best-glide]] · [[lift-coefficient-best-glide]]  ·  **from** [[airplane]] · [[aircraft-mass]] · [[gravity]] · [[air-density]]
 
 **Autorität.** Dies ist der Erzeuger dieser Größe. Die geschlossene Form ([[minimum-drag-speed-closed-form]]) setzt einen reynoldsunabhängigen parabolischen Polarenverlauf voraus; im RC/UAV-Regime (Re 3·10⁴–1·10⁶, ADR 0028) gilt das nicht. Sie bleibt als **Probe** — die Differenz beider misst, wie stark die Reynoldsabhängigkeit an diesem Punkt wirkt.
 
