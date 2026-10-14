@@ -480,7 +480,7 @@ Maintainer; `check_canon.py` meldet es als *open*.
 - ARCHITECTURE §8.9 (aero_kernel): das Größenbeispiel trägt `entry: quantity`; die Größeneinträge tragen `kind: quantity` und kein `entry:`.
 - ARCHITECTURE §8.9: das Beispiel gibt `speed-from-stall-margin`/takeoff `when: has_flap`; der Eintrag nennt keine Bedingung, deshalb steht keine.
 - ARCHITECTURE Anhang A schlägt für `mass-envelope` die Kostenklasse `minutes` vor; der Eintrag sagt nirgends „Minuten“, deshalb kein `cost:` (kein Eintrag sagt es).
-- README „Naming“: das Schema `<quantity>_<configuration>_<unit>` (`v_stall_landing_mps`) ist das Registerschema; die Kanon-Slugs sind kebab-case ohne Einheit (`stall-speed-landing`). Auch das Stall-Speed-Beispiel im README nutzt noch die Registernamen.
+- README „Naming“: das Schema `<quantity>_<configuration>_<unit>` (`v_stall_landing_mps`) ist das Registerschema; die Kanon-Slugs sind kebab-case ohne Einheit (`stall-speed-landing`). Im Stall-Speed-Beispiel des README sind die Anwendungen jetzt Kanon-Slugs (**umbenannt, #1181**); die Spalte „binds `cl_max`“ behält `cl_max_clean`/`_takeoff`/`_landing`, weil es für Take-off und Landung keine Kanongröße gibt und `max-lift-coefficient` seit dem Umbau eine Ausgabe ist (siehe `stall-speed` unten). Das Naming-Schema selbst bleibt unverändert.
 
 **Anwendungen und Bindungen**
 

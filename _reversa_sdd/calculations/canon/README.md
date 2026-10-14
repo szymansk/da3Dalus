@@ -62,9 +62,9 @@ and three **applications** of it, differing only in which `cl_max` is bound:
 
 | application | binds `cl_max` | exists when |
 |---|---|---|
-| `v_stall_clean_mps` | `cl_max_clean` | always |
-| `v_stall_takeoff_mps` | `cl_max_takeoff` | the wing has a flap |
-| `v_stall_landing_mps` | `cl_max_landing` | the wing has a flap |
+| `stall-speed` | `cl_max_clean` | always |
+| `stall-speed-takeoff` | `cl_max_takeoff` | the wing has a flap |
+| `stall-speed-landing` | `cl_max_landing` | the wing has a flap |
 
 Three **quantities** — they have different values. One **formula**. Three
 **applications** binding one input differently.
