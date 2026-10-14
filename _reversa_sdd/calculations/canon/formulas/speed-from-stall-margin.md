@@ -18,16 +18,14 @@ tags:
 inputs: {v_s_cfg: null, k_s: null}
 outputs: {v: null}
 applications:
-  # ESCALATED: k_s — the margin of each application is open ("choosing is the maintainer's
-  # call"): no value with a source and no quantity to bind it to.
   - id: approach
-    bind: {v_s_cfg: stall-speed-landing}
+    bind: {v_s_cfg: stall-speed-landing, k_s: approach-speed-margin-target}
     produce: {v: approach-speed}
   - id: touchdown
-    bind: {v_s_cfg: stall-speed-landing}
+    bind: {v_s_cfg: stall-speed-landing, k_s: touchdown-speed-margin-target}
     produce: {v: touchdown-speed}
   - id: takeoff
-    bind: {v_s_cfg: stall-speed-takeoff}
+    bind: {v_s_cfg: stall-speed-takeoff, k_s: takeoff-speed-margin-target}
     produce: {v: takeoff-speed}
 ---
 
@@ -39,7 +37,7 @@ applications:
 V = k_S * V_S,cfg      (V_S,cfg = V_S0 for approach and touchdown, V_S,TO for take-off)
 ```
 
-**Produces** [[approach-speed]] · [[touchdown-speed]] · [[takeoff-speed]]  ·  **from** [[stall-speed-landing]] · [[stall-speed-takeoff]]
+**Produces** [[approach-speed]] · [[touchdown-speed]] · [[takeoff-speed]]  ·  **from** [[stall-speed-landing]] · [[stall-speed-takeoff]] · [[approach-speed-margin-target]] · [[touchdown-speed-margin-target]] · [[takeoff-speed-margin-target]]
 
 **Kind: a rating.** A preference, not physics. The reference values still need an origin and a scale — where does *excellent* come from, and for which aircraft? **On top:** whether **this** weighting is the one you want. That part is a decision, not a fact.
 
@@ -72,12 +70,19 @@ configuration:
 
 | output | binds | configuration |
 |---|---|---|
-| [[approach-speed]] `V_app` | `k_S` approach margin | landing |
-| [[touchdown-speed]] `V_TD` | `k_S` touchdown margin | landing |
-| [[takeoff-speed]] `V_TO` | `k_S` take-off margin | take-off |
+| [[approach-speed]] `V_app` | `k_S` = [[approach-speed-margin-target]] | landing |
+| [[touchdown-speed]] `V_TD` | `k_S` = [[touchdown-speed-margin-target]] | landing |
+| [[takeoff-speed]] `V_TO` | `k_S` = [[takeoff-speed-margin-target]] | take-off |
 
-The factors themselves stay open — the sources give an RC rule-of-thumb band of 1.2–1.25
-for landing and 1.3 from regulation for approach; choosing is the maintainer's call.
+**The factors are targets with sourced defaults** (maintainer, 2026-10-14): approach 1.3 — CS 25.125
+is the transport-category regulation, carried to RC by Lennon (Ch. 20, FAR 23 reasoning scaled);
+touchdown 1.2 — Lennon's 20 % safety margin (Ch. 4, Ch. 14); take-off 1.1 — Sadraey §4.3.4,
+`V_R ≈ 1.1·V_s`. (Corrected 2026-10-14: an earlier note gave a landing band "1.2–1.25"; no source
+gives 1.25, and "1.3 from regulation" is the transport-category CS 25.125, not an RC rule.) The
+designer may override each. **Physical meaning:** at `k·V_S` the load-factor margin to the stall is
+`n = k²` — 1.1 → 1.21, 1.2 → 1.44, 1.3 → 1.69. **The touchdown sources disagree:** Lennon flies the
+touchdown at 1.2·V_S, RC-Network (*Abfangen*) touches down at about the minimum speed after the
+flare. The canon states both and judges neither (A10).
 
 **The cruise-speed floor is gone.** It came only from the two climb bindings
 (`max(1.35·V_S1, 0.85·V_cruise)`, `max(1.50·V_S1, 0.95·V_cruise)`), and the source note

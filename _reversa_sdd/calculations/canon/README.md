@@ -521,9 +521,9 @@ inputs:
 outputs: {cd0: zero-lift-drag-coefficient, e_osw: oswald-efficiency}
 ```
 
-A **rating** with three applications of one formula (`speed-from-stall-margin`). Its margin
-`k_S` is not decided yet, so it is escalated; once decided, each application binds it, for
-example `bind: {v_s_cfg: stall-speed-landing, k_s: {const: <value>, source: "<citation>"}}`:
+A **rating** with three applications of one formula (`speed-from-stall-margin`); each binds its
+margin `k_S` to a target quantity whose `default` carries the source (a constant would be written
+`k_s: {const: <value>, source: "<citation>"}`):
 
 ```yaml
 kind: rating
@@ -532,16 +532,14 @@ output: approach-speed, touchdown-speed, takeoff-speed
 inputs: {v_s_cfg: null, k_s: null}
 outputs: {v: null}
 applications:
-  # ESCALATED: k_s — the margin of each application is open ("choosing is the maintainer's
-  # call"): no value with a source and no quantity to bind it to.
   - id: approach
-    bind: {v_s_cfg: stall-speed-landing}
+    bind: {v_s_cfg: stall-speed-landing, k_s: approach-speed-margin-target}
     produce: {v: approach-speed}
   - id: touchdown
-    bind: {v_s_cfg: stall-speed-landing}
+    bind: {v_s_cfg: stall-speed-landing, k_s: touchdown-speed-margin-target}
     produce: {v: touchdown-speed}
   - id: takeoff
-    bind: {v_s_cfg: stall-speed-takeoff}
+    bind: {v_s_cfg: stall-speed-takeoff, k_s: takeoff-speed-margin-target}
     produce: {v: takeoff-speed}
 ```
 
