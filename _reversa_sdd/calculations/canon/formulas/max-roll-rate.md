@@ -17,7 +17,13 @@ tags:
   - kind/procedure
   - status/draft
 tex: L(V,\alpha) = m\,g, \quad C_{roll}\big(V,\alpha,\,\delta_{a,max},\,p_{max}\big) = 0
-inputs: {airplane: airplane, m: aircraft-mass, g: gravity, rho: air-density, v_app: approach-speed}
+inputs:
+  airplane: airplane
+  m: aircraft-mass
+  g: gravity
+  rho: air-density
+  v_app: approach-speed
+  b_ref: wing-span
 outputs: {p_max: max-roll-rate-approach, p_hat_max: max-roll-rate-nondimensional}
 worlds: [aerobuildup, avl]
 ---
@@ -40,7 +46,7 @@ solve for alpha, p_max (steady roll at V, full set throw):   L(V, alpha) = m * g
 evaluated at V = V_app;   p_hat_max = p_max * b_ref / (2 * V_app)
 ```
 
-**Produces** [[max-roll-rate-approach]] · [[max-roll-rate-nondimensional]]  ·  **from** [[airplane]] · [[aircraft-mass]] · [[gravity]] · [[air-density]] · [[approach-speed]]
+**Produces** [[max-roll-rate-approach]] · [[max-roll-rate-nondimensional]]  ·  **from** [[airplane]] · [[aircraft-mass]] · [[gravity]] · [[air-density]] · [[approach-speed]] · [[wing-span]]
 
 **Kind: a procedure — a closure by a prescribed value.** The steady roll: the rolling moment from the ailerons balances the roll damping, lift carries the weight. `s` scales the **throws set in the airplane** — up and down as constructed, a differential included — from 0 to the full throw.
 

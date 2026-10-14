@@ -510,8 +510,8 @@ Maintainer; `check_canon.py` meldet es als *open*.
 **Eingänge, die die kanonische Form braucht, der Eintrag aber nicht nennt**
 
 - `best-angle-of-climb`, `best-rate-of-climb`, `dive-speed`, `max-level-speed`, `max-sustained-turn-rate`, `min-sustained-turn-radius`, `mass-envelope`: die Drehmomentbilanz im Problem braucht Motor- und Propellergrößen (K_v, I_0, R_m, U_bat, P_mot,max, D_prop) und `n_prop` als Variable; die from-Zeile nennt nur `thrust-at-airspeed`, laut Größe ein Wert „at the speed currently flown“.
-- `mass-envelope`: die Schranke `x_CG < x_NP` nutzt den Neutralpunkt; `neutral-point` steht nicht in der from-Zeile.
-- `max-roll-rate`: `p_hat_max = p·b_ref/(2·V_app)` nutzt `b_ref`; `wing-span` steht nicht in der from-Zeile (nur über `airplane` erreichbar).
+- `mass-envelope`: die Schranke `x_CG < x_NP` nutzt den Neutralpunkt; `neutral-point` steht nicht in der from-Zeile. **Deklariert (#1181).**
+- `max-roll-rate`: `p_hat_max = p·b_ref/(2·V_app)` nutzt `b_ref`; `wing-span` steht nicht in der from-Zeile (nur über `airplane` erreichbar). **Deklariert (#1181).**
 - `motor-propeller-equilibrium`: die Form nutzt `eta_mot` (Vorgabe 0,85, BR-PM3, laut Text ohne Modellmaßstab-Quelle) — weder Eingang noch Konstante mit Quelle.
 
 **Typen und Bedeutungen**

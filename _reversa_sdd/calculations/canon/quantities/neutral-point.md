@@ -20,4 +20,4 @@ Longitudinal position about which the pitching moment does not change with angle
 
 **Produced by.** [[neutral-point]]
 
-**Used by.** [[cg-for-target-margin]] · [[static-margin]]
+**Used by.** [[cg-for-target-margin]] · [[mass-envelope]] · [[static-margin]]

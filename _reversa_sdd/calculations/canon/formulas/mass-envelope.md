@@ -22,6 +22,7 @@ inputs:
   t: thrust-at-airspeed
   v_s_to: stall-speed-takeoff
   v_to: takeoff-speed
+  x_np: neutral-point
 outputs:
   speed_range: speed-range-over-mass
   roc_curve: climb-rate-over-mass
@@ -44,7 +45,7 @@ for each mass m (a sweep; the airplane's mass is one point of it):
   x_aft(m):     most aft x_CG trimmable at V_max(m), full down elevator           (both as constructed)
 ```
 
-**Produces** [[speed-range-over-mass]] · [[climb-rate-over-mass]] · [[max-mass-level-flight]] · [[max-mass-lift-off]] · [[cg-envelope-over-mass]]  ·  **from** [[airplane]] · [[gravity]] · [[air-density]] · [[thrust-at-airspeed]] · [[stall-speed-takeoff]] · [[takeoff-speed]]
+**Produces** [[speed-range-over-mass]] · [[climb-rate-over-mass]] · [[max-mass-level-flight]] · [[max-mass-lift-off]] · [[cg-envelope-over-mass]]  ·  **from** [[airplane]] · [[gravity]] · [[air-density]] · [[thrust-at-airspeed]] · [[stall-speed-takeoff]] · [[takeoff-speed]] · [[neutral-point]]
 
 **Kind: an optimisation problem family, swept over the mass** (maintainer, 2026-10-02 —
 replaces the payload question: payload is *"how much mass may be added"*). Everything that
