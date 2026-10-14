@@ -526,7 +526,7 @@ Maintainer; `check_canon.py` meldet es als *open*.
 
 **Werte und Quellen**
 
-- `gravity`: zwei Werte mit Quelle im Kanon (9,81 Scholz; 9,80665 CGPM, `weight-from-mass`), keine Wahl (A5) → kein `default`. Eskaliert.
+- `gravity`: zwei Werte mit Quelle im Kanon (9,81 Scholz; 9,80665 CGPM, `weight-from-mass`). **Entschieden (Koordinator, 14.10.2026):** `default` 9,80665 m/s² (Normfallbeschleunigung, CGPM 1901 / U.S. Standard Atmosphere 1976) — der definierte Wert; Scholz' 9,81 ist seine Rundung, keine zweite Konstante (A5). `weight-from-mass` zitiert den gerundeten Wert.
 - `limit-load-factor` („default 3.0“), `altitude` („defaults to 0 m“): Vorgabewerte ohne Quelle → kein `default`.
 - `sea-level-air-density`: `default` 1,225 kg/m³ mit der Quelle aus `air-density-isa` (U.S. Standard Atmosphere 1976).
 
