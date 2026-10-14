@@ -417,7 +417,7 @@ def _with_g(quantities):
 
 
 def test_embeds_naming_existing_formulas_is_accepted(tmp_path, typed_quantities):
-    front = GOOD_FRONT + "embeds: [g]\n"
+    front = GOOD_FRONT + "embeds: [g]\nvariables: []\n"
     root = _canon(
         tmp_path,
         front=front,
@@ -463,13 +463,17 @@ def _embed_canon(tmp_path, formulas):
     return root
 
 
-def test_embedded_inputs_bound_produced_inside_or_generic_are_accepted(tmp_path):
-    """f embeds g, g embeds h: h's output feeds g inside the closure; flight-speed is generic."""
+def test_embedded_inputs_bound_produced_inside_or_variables_are_accepted(tmp_path):
+    """f embeds g, g embeds h: h's output feeds g inside the closure; flight-speed is f's variable."""
     root = _embed_canon(
         tmp_path,
         {
-            "f": ({"a": "speed-a"}, {"v": "speed-v"}, "embeds: [g]\n"),
-            "g": ({"a": "speed-a", "w": "speed-w"}, {"x": "speed-x"}, "embeds: [h]\n"),
+            "f": ({"a": "speed-a"}, {"v": "speed-v"}, "embeds: [g]\nvariables: [flight-speed]\n"),
+            "g": (
+                {"a": "speed-a", "w": "speed-w"},
+                {"x": "speed-x"},
+                "embeds: [h]\nvariables: [flight-speed]\n",
+            ),
             "h": ({"a": "speed-a", "s": "flight-speed"}, {"w": "speed-w"}, ""),
         },
     )
@@ -480,7 +484,7 @@ def test_embedded_input_the_embedder_does_not_supply_is_reported(tmp_path):
     root = _embed_canon(
         tmp_path,
         {
-            "f": ({"a": "speed-a"}, {"v": "speed-v"}, "embeds: [h]\n"),
+            "f": ({"a": "speed-a"}, {"v": "speed-v"}, "embeds: [h]\nvariables: []\n"),
             "h": ({"a": "speed-a", "b": "speed-b"}, {"w": "speed-w"}, ""),
         },
     )
@@ -492,8 +496,12 @@ def test_embeds_through_a_chain_is_checked_transitively(tmp_path):
     root = _embed_canon(
         tmp_path,
         {
-            "f": ({"a": "speed-a"}, {"v": "speed-v"}, "embeds: [g]\n"),
-            "g": ({"a": "speed-a", "b": "speed-b"}, {"x": "speed-x"}, "embeds: [h]\n"),
+            "f": ({"a": "speed-a"}, {"v": "speed-v"}, "embeds: [g]\nvariables: []\n"),
+            "g": (
+                {"a": "speed-a", "b": "speed-b"},
+                {"x": "speed-x"},
+                "embeds: [h]\nvariables: []\n",
+            ),
             "h": ({"b": "speed-b", "c": "speed-c"}, {"w": "speed-w"}, ""),
         },
     )
@@ -507,8 +515,8 @@ def test_an_embeds_cycle_is_reported(tmp_path):
     root = _embed_canon(
         tmp_path,
         {
-            "f": ({"a": "speed-a"}, {"v": "speed-v"}, "embeds: [g]\n"),
-            "g": ({"a": "speed-a"}, {"x": "speed-x"}, "embeds: [f]\n"),
+            "f": ({"a": "speed-a"}, {"v": "speed-v"}, "embeds: [g]\nvariables: []\n"),
+            "g": ({"a": "speed-a"}, {"x": "speed-x"}, "embeds: [f]\nvariables: []\n"),
         },
     )
     msgs = _messages(_errors(root))
@@ -519,12 +527,87 @@ def test_a_formula_with_worlds_in_the_closure_is_reported(tmp_path):
     root = _embed_canon(
         tmp_path,
         {
-            "f": ({"a": "speed-a"}, {"v": "speed-v"}, "embeds: [h]\n"),
+            "f": ({"a": "speed-a"}, {"v": "speed-v"}, "embeds: [h]\nvariables: []\n"),
             "h": ({"a": "speed-a"}, {"w": "speed-w"}, "uncertainty: interval\nworlds: [avl]\n"),
         },
     )
     msgs = _messages(_errors(root))
     assert any("f embeds" in m and "interval" in m for m in msgs), msgs
+
+
+def test_a_generic_quantity_is_no_longer_free_without_variables(tmp_path):
+    """Round 2, D: flight-speed in the closure must be one of the embedder's variables."""
+    root = _embed_canon(
+        tmp_path,
+        {
+            "f": ({"a": "speed-a"}, {"v": "speed-v"}, "embeds: [h]\nvariables: []\n"),
+            "h": ({"a": "speed-a", "s": "flight-speed"}, {"w": "speed-w"}, ""),
+        },
+    )
+    msgs = _messages(_errors(root))
+    assert any("f embeds" in m and "flight-speed" in m for m in msgs), msgs
+
+
+def test_embeds_needs_variables(tmp_path):
+    root = _embed_canon(
+        tmp_path,
+        {
+            "f": ({"a": "speed-a"}, {"v": "speed-v"}, "embeds: [h]\n"),
+            "h": ({"a": "speed-a"}, {"w": "speed-w"}, ""),
+        },
+    )
+    msgs = _messages(_errors(root))
+    assert any("variables" in m for m in msgs), msgs
+
+
+def test_a_variable_no_formula_in_the_closure_reads_is_reported(tmp_path):
+    root = _embed_canon(
+        tmp_path,
+        {
+            "f": ({"a": "speed-a"}, {"v": "speed-v"}, "embeds: [h]\nvariables: [speed-z]\n"),
+            "h": ({"a": "speed-a"}, {"w": "speed-w"}, ""),
+        },
+    )
+    msgs = _messages(_errors(root))
+    assert any("variables" in m and "speed-z" in m for m in msgs), msgs
+
+
+TWO_APPS = "applications:\n  - id: one\n  - id: two\n"
+
+
+def test_embedding_one_application_of_a_multi_application_formula_is_accepted(tmp_path):
+    root = _embed_canon(
+        tmp_path,
+        {
+            "f": ({"a": "speed-a"}, {"v": "speed-v"}, "embeds: [h.one]\nvariables: []\n"),
+            "h": ({"a": "speed-a"}, {"w": "speed-w"}, TWO_APPS),
+        },
+    )
+    assert _findings(root) == []
+
+
+def test_embedding_a_multi_application_formula_bare_is_reported(tmp_path):
+    root = _embed_canon(
+        tmp_path,
+        {
+            "f": ({"a": "speed-a"}, {"v": "speed-v"}, "embeds: [h]\nvariables: []\n"),
+            "h": ({"a": "speed-a"}, {"w": "speed-w"}, TWO_APPS),
+        },
+    )
+    msgs = _messages(_errors(root))
+    assert any("embeds" in m and "'h'" in m and "application" in m for m in msgs), msgs
+
+
+def test_embedding_an_unknown_application_is_reported(tmp_path):
+    root = _embed_canon(
+        tmp_path,
+        {
+            "f": ({"a": "speed-a"}, {"v": "speed-v"}, "embeds: [h.three]\nvariables: []\n"),
+            "h": ({"a": "speed-a"}, {"w": "speed-w"}, TWO_APPS),
+        },
+    )
+    msgs = _messages(_errors(root))
+    assert any("embeds" in m and "h.three" in m for m in msgs), msgs
 
 
 def test_optional_naming_an_input_parameter_is_accepted(tmp_path, typed_quantities):

@@ -266,9 +266,6 @@ LINK = re.compile(r"\[\[([^\]|]+)\]\]")
 ON_VIOLATION = {"warning", "error"}
 COST = {"instant", "seconds", "minutes"}
 APPLICATION_KEYS = {"id", "bind", "produce", "when", "given"}
-#: the embedder's own solve or sweep variables (README, `embeds`): an embedded formula may read
-#: them without the embedder binding them
-GENERIC_OPERATING_POINT = {"flight-speed", "angle-of-attack", "load-factor", "aircraft-mass"}
 #: roles a `given` quantity may have: supplied from outside, never computed
 GIVEN_ROLES = {"input", "target"}
 PRECONDITION_KEYS = {"id", "parameter", "on_violation"}
@@ -587,11 +584,34 @@ def _check_formula(e: Entry, canon: Canon, add, gap) -> tuple[set[str], set[str]
     if not isinstance(embeds, list):
         add(e.slug, "embeds", f"not a list: {embeds!r}")
         embeds = []
-    for slug in embeds:
+    for item in embeds:
+        slug, _, app = str(item).partition(".")
+        target_f = canon.formulas.get(slug)
         if slug == e.slug:
             add(e.slug, "embeds", "a formula cannot embed itself")
-        elif slug not in canon.formulas:
-            add(e.slug, "embeds", f"unknown formula {slug!r}")
+        elif target_f is None:
+            add(e.slug, "embeds", f"unknown formula {item!r}")
+        else:
+            app_ids = [
+                a.get("id") for a in target_f.front.get("applications") or [] if isinstance(a, dict)
+            ]
+            if app and app not in app_ids:
+                add(e.slug, "embeds", f"{item!r}: {slug} has no application {app!r}")
+            elif not app and len(app_ids) > 1:
+                add(
+                    e.slug,
+                    "embeds",
+                    f"{slug!r} has several applications: name one as {slug}.<application>",
+                )
+    if embeds and not isinstance(e.front.get("variables"), list):
+        add(
+            e.slug,
+            "variables",
+            "embeds needs variables: the quantities the formula solves for or sweeps itself",
+        )
+    for v in e.front.get("variables") or []:
+        if v not in q:
+            add(e.slug, "variables", f"unknown quantity {v!r}")
 
     optional = e.front.get("optional") or []
     if not isinstance(optional, list):
@@ -631,8 +651,11 @@ def _diff(name: str, prose: set[str], front: set[str]) -> str:
 
 
 def _direct_embeds(e: Entry) -> list[str]:
+    """Embedded formula slugs; an item 'slug.application' selects only postconditions."""
     embeds = e.front.get("embeds") or []
-    return [s for s in embeds if isinstance(s, str)] if isinstance(embeds, list) else []
+    if not isinstance(embeds, list):
+        return []
+    return list(dict.fromkeys(s.partition(".")[0] for s in embeds if isinstance(s, str)))
 
 
 def _check_embeds(canon: Canon, reads_of: dict, writes_of: dict, add) -> None:
@@ -678,7 +701,11 @@ def _check_embeds(canon: Canon, reads_of: dict, writes_of: dict, add) -> None:
         if not inner:
             continue
         produced = set().union(*(writes_of[x] for x in inner))
-        supplied = reads_of[slug] | produced | GENERIC_OPERATING_POINT
+        variables = set(canon.formulas[slug].front.get("variables") or [])
+        supplied = reads_of[slug] | produced | variables
+        read_inside = set().union(*(reads_of[x] for x in inner))
+        for v in sorted(variables - read_inside):
+            add(slug, "variables", f"{v!r} is read by no formula in the embeds closure")
         for x in inner:
             if canon.formulas[x].front.get("uncertainty") == "interval":
                 add(slug, "embeds", f"{x} has uncertainty: interval and may not be embedded")
@@ -686,8 +713,8 @@ def _check_embeds(canon: Canon, reads_of: dict, writes_of: dict, add) -> None:
                 add(
                     slug,
                     "embeds",
-                    f"input {q!r} of embedded {x} is neither bound by {slug}, produced inside "
-                    "the closure, nor a generic operating-point quantity",
+                    f"input {q!r} of embedded {x} is neither a variable of {slug}, an input of "
+                    f"{slug}, nor produced inside the closure",
                 )
 
 
