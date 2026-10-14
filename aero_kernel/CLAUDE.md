@@ -33,6 +33,7 @@ then the code. Epic: #1173.
   Never call `asyncio.run` inside the package; always re-raise `CancelledError`; clean up subprocesses and
   temp dirs on cancellation.
 - **Stateless.** No module-level mutable state except the cache; the cache must never change a result.
+  Cache use is chosen per call (`ComputeRequest.cache`: `use` | `refresh` | `off`, ARCHITECTURE §8.4).
 
 ## Tests
 

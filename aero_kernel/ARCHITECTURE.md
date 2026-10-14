@@ -134,7 +134,7 @@ await compute(aircraft, request)
  3 per application: check its condition    → not met → status "not_applicable"
  4 per world (A11) and per operating point:
      cost class "minutes" and include_long_runs off → status "skipped" (reason long_run_not_included)
-     build key → cache hit?                → reuse
+     build key → cache hit? (mode use)     → reuse, from_cache = true
      else schedule the implementation (time budget); independent nodes run concurrently (ch. 8.10)
        success → value + warnings (incl. regime ADR 0028, preconditions)
        failure → KernelError; successors → upstream_failed
@@ -198,6 +198,7 @@ Sources:
 - `tool` and `application`
 - `validated`: `false` — no value is validated against flight data (canon A11: "not validated")
 - `warnings[]` and `error`
+- `from_cache`: whether the value was served from the cache (ch. 8.4)
 
 No internal paths or mechanisms in any field (ADR 0019).
 
@@ -217,6 +218,18 @@ No internal paths or mechanisms in any field (ADR 0019).
 
 Canonicalisation means sorted keys and numbers at a fixed number of significant digits. When a formula
 changes, only its subtree expires (A1).
+
+**Cache control per call.** `ComputeRequest.cache` sets how this call uses the cache:
+
+| Mode | Reads | Writes | In-flight dedup | Use |
+|---|---|---|---|---|
+| `use` (default) | yes | yes | yes | normal operation |
+| `refresh` | no | yes | no | force a recomputation and replace the stored entries, e.g. after a tool upgrade |
+| `off` | no | no | no | measurements, robustness run, debugging; the cache is not touched |
+
+Kernel-wide settings (in-memory size, optional disk location) are passed by the caller when it configures
+the kernel, never read from the environment. Each `QuantityResult` reports `from_cache` (true/false), so the
+caller can see where a value came from. The mode never changes a value (Q7).
 
 ### 8.5 Applications and preconditions
 
@@ -325,9 +338,9 @@ caller's event loop, it can be cancelled, and it limits its own resource use.
   - `asyncio.CancelledError` is always re-raised, never turned into a result.
 - **Time budget.** `ComputeRequest.time_budget_s` is enforced with `asyncio.timeout`. Quantities still open
   when it expires get `error.category = timeout`; quantities already finished are returned.
-- **Cache under concurrency.** The cache is safe for concurrent use. **In-flight deduplication**: when two
-  concurrent requests need the same key, the second awaits the first one's future instead of computing it
-  again.
+- **Cache under concurrency.** The cache is safe for concurrent use. **In-flight deduplication** (mode
+  `use` only): when two concurrent requests need the same key, the second awaits the first one's future
+  instead of computing it again.
 - **No hidden loop.** The kernel never calls `asyncio.run`, never creates or closes the caller's loop and
   keeps no loop-bound global state. It works inside FastAPI, in pytest-asyncio and in plain
   `asyncio.run(compute(...))` from scripts.
@@ -364,7 +377,7 @@ caller's event loop, it can be cancelled, and it limits its own resource use.
 | Q4 | The solver does not converge | `not_converged`; successors `upstream_failed`; other quantities still compute |
 | Q5 | Layout without flaps | `stall-speed-landing` is `not_applicable`: no error, no substitute value |
 | Q6 | Every error category | Serialises to JSON with `message` and `hint` |
-| Q7 | Second identical call | No formula call; result bit-identical with and without cache |
+| Q7 | Second identical call | With `cache=use`: no formula call, `from_cache` true; with `off` and `refresh`: formula called; values bit-identical in all three modes |
 | Q8 | Input mass ≤ 0 | `invalid_input` with `input_path`; Re < 3·10⁴ only warns |
 | Q9 | Boundary to `app/` | Test: no import from `app/`, `cad_designer/`, `scripts/` |
 | Q10 | No AeroSandbox installed | `tool_unavailable`, no ImportError |
