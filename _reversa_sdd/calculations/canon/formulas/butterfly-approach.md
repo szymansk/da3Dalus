@@ -23,6 +23,8 @@ inputs:
   rho: air-density
   v_s0: stall-speed-landing
   v_app: approach-speed
+  delta_f_crow: crow-flap-deflection
+  delta_a_crow: crow-aileron-deflection
 outputs:
   v_s0_curve: butterfly-stall-speed-curve
   v_app_curve: butterfly-approach-speed-curve
@@ -38,14 +40,14 @@ applications:
 **Canonical form**
 
 ```
-for the crow mix s in [0, 1]  (flaps down, ailerons up, as constructed, scaled by s):
+for the crow mix s in [0, 1]  (flaps down by s * delta_f,crow, ailerons up by s * delta_a,crow):
   minimize over V, alpha:  V      subject to:  L(V, alpha; s) = m * g        ->  V_S0(s)
   V_app(s)  = V_app * V_S0(s) / V_S0                 (same reserve k_S as without crow)
   gamma(s)  = glide angle at V_app(s), configuration s
   s_max     : V_S0(s_max) = V_app                    (stall reaches the approach speed flown without crow)
 ```
 
-**Produces** [[butterfly-stall-speed-curve]] · [[butterfly-approach-speed-curve]] · [[butterfly-glide-angle-curve]] · [[butterfly-max-mix]]  ·  **from** [[airplane]] · [[aircraft-mass]] · [[gravity]] · [[air-density]] · [[stall-speed-landing]] · [[approach-speed]]
+**Produces** [[butterfly-stall-speed-curve]] · [[butterfly-approach-speed-curve]] · [[butterfly-glide-angle-curve]] · [[butterfly-max-mix]]  ·  **from** [[airplane]] · [[aircraft-mass]] · [[gravity]] · [[air-density]] · [[stall-speed-landing]] · [[approach-speed]] · [[crow-flap-deflection]] · [[crow-aileron-deflection]]
 
 **Kind: an optimisation problem** — the [[stall-speed]] problem with the airplane in crow
 configuration, swept over the mix `s`. The core is the curve `V_S0(s)`; two readings follow
