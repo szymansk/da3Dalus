@@ -18,8 +18,6 @@ tags:
 inputs: {airplane: airplane, flap_deflection: null}
 outputs: {airplane_cfg: null}
 optional: [flap_deflection]
-# ESCALATED: which devices count as flaps — the canon says "if the geometry has flaps" but states no
-# rule for which devices count (e.g. trailing-edge devices on the main wing acting as flaps).
 applications:
   - id: takeoff
     bind: {flap_deflection: flap-deflection-takeoff}
@@ -62,7 +60,10 @@ used to find out which stop the wanted speed needs.
 | flaps | absent | no value: `missing_input` for the configured airplane; its dependents fail; the clean stall speed still computes |
 | flaps | given | the deflection applied exactly, also beyond the stop |
 
-Which devices count as flaps is not yet stated in the canon (escalated in the front matter).
+**What counts as a flap** (maintainer, 2026-10-14): every control surface that acts as a flap —
+flaperons too. In the geometry format these are the trailing-edge devices with `role: flap` or
+`role: flaperon` (`docs/geometry-format/airplane-geometry.schema.json`, `TrailingEdgeDevice.role`). In
+the take-off and landing configuration all of them are set to the given deflection angle.
 
 **Validity, declared (no threshold, A10).** The configured airplane is evaluated with NeuralFoil's flap
 model, which is unverified at large deflections and low Reynolds number: ANFORDERUNGEN.md, §
