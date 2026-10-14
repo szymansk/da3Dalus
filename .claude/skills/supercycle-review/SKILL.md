@@ -103,6 +103,8 @@ Check the diff against:
    - **ADR 0028** (supersedes 0023) — a new engineering constant, default or
      correlation without its source and without a statement of its validity in
      the RC/UAV regime (Reynolds, Mach, equipment — not mass).
+   - **ADR 0029** — a German identifier, file or folder name, comment,
+     docstring or in-tree doc in new code.
 
 If the change is genuinely right and the ADR is wrong, the resolution is a **new
 ADR superseding the old one** — proposed to the user, not an undocumented

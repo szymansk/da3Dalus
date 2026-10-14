@@ -351,6 +351,10 @@ Always applicable, on every change:
   no wheel brakes), never adopted because they are standard in
   transport-category literature. Mass is a hint about the class, not a
   criterion.
+- **ADR 0029** — everything in the source tree is English: identifiers, file
+  and folder names, comments, docstrings, in-tree docs (package README /
+  ARCHITECTURE / CLAUDE.md), API and error messages. The specification in
+  `_reversa_sdd/` may stay German; user data (wing/aircraft names) is free.
 
 If a change is right and an ADR is wrong, the resolution is a **new ADR
 superseding it** — never an undocumented exception.
