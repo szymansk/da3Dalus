@@ -37,18 +37,18 @@ becomes the app's single source of computation (register epic "implement the cal
 
 ## 3. Context and boundary
 
-**`aero_kernel` is a pure Python library with a programming API**, not a service. It has no REST endpoint,
-no HTTP and no process of its own. The caller imports it and calls one function in-process:
+**`aero_kernel` is a pure Python library with an asynchronous programming API**, not a service. It has no
+REST endpoint, no HTTP and no server process. The caller imports it and awaits one coroutine in-process:
 
 ```python
 from aero_kernel import compute, AircraftInput, ComputeRequest
 
-result = compute(AircraftInput(...), ComputeRequest(quantities=["stall-speed"], include_long_runs=False))
+result = await compute(AircraftInput(...), ComputeRequest(quantities=["stall-speed"], include_long_runs=False))
 ```
 
 The input and output types are Pydantic models, so they also have a JSON form and a JSON Schema. That is
 for data exchange (golden files, agents, a later REST or MCP layer), not a network interface. Exposing the
-kernel over REST or MCP is the app's job, through the register epic: the app's services call `compute()`
+kernel over REST or MCP is the app's job, through the register epic: the app's services `await compute()`
 and the existing `app/api/v2` and MCP layers stay where they are (ADR 0019, ADR 0025).
 
 ```
@@ -94,7 +94,8 @@ and the existing `app/api/v2` and MCP layers stay where they are (ADR 0019, ADR 
 
 ```
 aero_kernel/
-  api.py            compute() — the only public entry point
+  api.py            async compute() — the only public entry point (ch. 8.10)
+  runtime.py        executor, concurrency limit, cancellation, in-flight deduplication
   schema.py         AircraftInput, OperatingPoint, ComputeRequest, ComputeResult, QuantityResult,
                     KernelError, Warning, Provenance (Pydantic, extra="forbid")
   canon/            canon_model.json         the interpreted canon (versioned, committed)
@@ -127,14 +128,14 @@ aero_kernel/
 ## 6. Runtime view — one call
 
 ```
-compute(aircraft, request)
+await compute(aircraft, request)
  1 validate(aircraft)                      → invalid_input with input_path; the only abort
  2 canon_model.subtree(request.quantities)    → formulas + applications, topologically sorted
  3 per application: check its condition    → not met → status "not_applicable"
  4 per world (A11) and per operating point:
      cost class "minutes" and include_long_runs off → status "skipped" (reason long_run_not_included)
      build key → cache hit?                → reuse
-     else call the implementation (time budget)
+     else schedule the implementation (time budget); independent nodes run concurrently (ch. 8.10)
        success → value + warnings (incl. regime ADR 0028, preconditions)
        failure → KernelError; successors → upstream_failed
  5 merge worlds → [min, max] with the list of worlds
@@ -299,6 +300,40 @@ Rules:
 - **Several canons.** The calculation canon and, later, the sizing canon (K31) are imported into separate
   namespaces of the same model format.
 
+### 8.10 Asynchronous API and concurrency
+
+The kernel behaves like an asynchronous Python API: `compute()` is a coroutine, it never blocks the
+caller's event loop, it can be cancelled, and it limits its own resource use.
+
+- **Non-blocking.** All heavy work runs off the event loop:
+  - CPU-bound solver work (AeroBuildup, NeuralFoil, IPOPT via `asb.Opti`) runs in a **process pool**. The
+    spawn context mirrors `app/services/cad_service.py`, because CasADi/IPOPT and numpy do not reliably
+    release the GIL.
+  - AVL runs through `asyncio.create_subprocess_exec`.
+  - Pure `law` formulas below a size threshold run inline; they are microseconds.
+- **Concurrency from the graph.** Independent nodes of the subtree, method worlds (A11) and operating points
+  run concurrently (`asyncio.TaskGroup`). The dependency graph decides what may run in parallel, never the
+  formula code.
+- **Bounded.** One kernel-wide concurrency limit (semaphore, default = CPU count − 1) and one process pool.
+  The caller may pass its own executor and limit, e.g. the app shares its pool. The pool is created lazily
+  and shut down by `aero_kernel.shutdown()`; no work starts at import.
+- **Cancellation.**
+  - Cancelling the `compute()` task cancels all child tasks.
+  - It kills running AVL subprocesses and removes their temporary directories.
+  - Work already running in the process pool is allowed to finish but its result is discarded, because
+    pool workers cannot be interrupted safely.
+  - `asyncio.CancelledError` is always re-raised, never turned into a result.
+- **Time budget.** `ComputeRequest.time_budget_s` is enforced with `asyncio.timeout`. Quantities still open
+  when it expires get `error.category = timeout`; quantities already finished are returned.
+- **Cache under concurrency.** The cache is safe for concurrent use. **In-flight deduplication**: when two
+  concurrent requests need the same key, the second awaits the first one's future instead of computing it
+  again.
+- **No hidden loop.** The kernel never calls `asyncio.run`, never creates or closes the caller's loop and
+  keeps no loop-bound global state. It works inside FastAPI, in pytest-asyncio and in plain
+  `asyncio.run(compute(...))` from scripts.
+- **Optional, decided at approval: `compute_iter()`.** An async generator yielding each `QuantityResult` as
+  soon as it is final, for progressive display of long runs. Same request, same results as `compute()`.
+
 ## 9. Decisions (references only)
 
 - **ADRs:**
@@ -338,6 +373,10 @@ Rules:
 | Q13 | Import twice | byte-identical `canon_model.json` |
 | Q14 | A canon entry with an unknown unit | the import fails at stage 2 with file and field; no model written |
 | Q15 | A `minutes` quantity requested without `include_long_runs` | `status: skipped`, `reason.code = long_run_not_included`, dependents `depends_on_skipped`, all other quantities computed |
+| Q16 | Event loop stays responsive | while a `seconds` computation runs, a concurrent `asyncio.sleep(0.01)` task is delayed by < 50 ms |
+| Q17 | Cancellation | cancelling `compute()` during an AVL run kills the subprocess and leaves no temp directory; `CancelledError` propagates |
+| Q18 | In-flight deduplication | two concurrent identical requests cause exactly one formula call |
+| Q19 | Time budget | budget exceeded → open quantities `timeout`, finished ones returned |
 
 ## 11. Risks and technical debt
 
