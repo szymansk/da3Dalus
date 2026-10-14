@@ -43,7 +43,9 @@ becomes the app's single source of computation (register epic "implement the cal
    calibration ───── compute(AircraftInput, ComputeRequest) ──→ ComputeResult
    (calibration/)    |   aero_kernel/   |
                      └──────────────────┘
-          reads: canon manifest (generated from _reversa_sdd/calculations/canon/)
+          reads: its own canon model (canon/canon_model.json, shipped in the package)
+   import: external canon document (_reversa_sdd/calculations/canon/) ──→ importer ──→ canon model
+           (a deliberate, separate step; never at runtime)
           calls: AeroSandbox (AeroBuildup, Opti, atmosphere), AVL (subprocess)
    later:  app/services · copilot (#902) · MCP — through the register epic, not now
 ```
@@ -59,9 +61,12 @@ becomes the app's single source of computation (register epic "implement the cal
 
 ## 4. Solution strategy
 
-1. **The canon is the structural source.** A generator turns the canon files into a versioned **manifest**:
-   quantities, formulas, applications, preconditions, units, roles, worlds and cost class. Code registers
-   **implementations** per formula only. Dependencies never come from code.
+1. **The kernel interprets its own machine-readable canon model.** The canon document in `_reversa_sdd/` is
+   the human source. A structured **import process** (ch. 8.9) translates it into a versioned JSON **canon
+   model** that ships inside the package. The model holds quantities, formulas, applications,
+   preconditions, units, roles, worlds and cost class. At runtime the kernel reads only this model, never the
+   external document. Code registers **implementations** per formula only; dependencies never come from
+   code.
 2. **The whole canon is declared,** including what is not implemented yet (`not_implemented`).
 3. **Formula ≠ application.** One implementation per formula. Applications bind inputs and carry a
    condition (canon README, "One formula, several applications").
@@ -78,10 +83,14 @@ aero_kernel/
   api.py            compute() — the only public entry point
   schema.py         AircraftInput, OperatingPoint, ComputeRequest, ComputeResult, QuantityResult,
                     KernelError, Warning, Provenance (Pydantic, extra="forbid")
-  manifest/         generate.py  canon .md → manifest.json (shipped with the package, versioned)
-                    load.py      load + consistency rules (ch. 8.6)
+  canon/            canon_model.json         the interpreted canon (versioned, committed)
+                    canon_model.schema.json  JSON Schema of the canon model
+                    IMPORT_REPORT.md         report of the last import (source commit, diff, findings)
+                    load.py                  load + schema/version check at runtime
+  importer/         parse.py · normalise.py · validate.py · diff.py · write.py · __main__.py
+                    external canon document → canon model (ch. 8.9); not imported at runtime
   graph.py          subtree, order, world expansion, upstream_failed
-  registry.py       @formula(slug) — implementations ↔ manifest
+  registry.py       @formula(slug) — implementations ↔ canon model
   formulas/         one file per canon formula (file name = slug, with underscores)
   solvers/          aerobuildup.py · avl.py · opti.py · atmosphere.py · data.py (KAT, APC)
   cache.py          in-memory LRU, optionally on disk
@@ -95,7 +104,8 @@ aero_kernel/
 | Block | Responsible for | Must not |
 |---|---|---|
 | `api` | accept the request, validate, walk the graph, build the result | compute |
-| `manifest` | read and check the canon structure | know formulas |
+| `canon` (load) | load the canon model, check schema and version | read `_reversa_sdd/`; know formulas |
+| `importer` | translate the external canon document into the canon model | run during `compute()` |
 | `graph` | dependencies, worlds, error propagation | call tools |
 | `formulas/*` | exactly one canon formula | compute a second formula; judge thresholds (A10) |
 | `solvers/*` | call the tool, report its version, translate tool errors | know canon names |
@@ -106,7 +116,7 @@ aero_kernel/
 ```
 compute(aircraft, request)
  1 validate(aircraft)                      → invalid_input with input_path; the only abort
- 2 manifest.subtree(request.quantities)    → formulas + applications, topologically sorted
+ 2 canon_model.subtree(request.quantities)    → formulas + applications, topologically sorted
  3 per application: check its condition    → not met → status "not_applicable"
  4 per world (A11) and per operating point:
      cost class "minutes" without approval → needs_confirmation
@@ -178,14 +188,14 @@ No internal paths or mechanisms in any field (ADR 0019).
 
 `Provenance`:
 - kernel version
-- manifest hash (the canon state)
+- canon model hash and its source commit (the canon state)
 - tool versions (aerosandbox, NeuralFoil model, AVL)
 - accuracy tier (A3) and solver settings
 
 **Cache key** = hash of:
 - the formula slug, application and world
 - the canonicalised **relevant** inputs
-- the manifest hash of the entry
+- the canon model hash of the entry
 - the implementation version and the tool versions
 
 Canonicalisation means sorted keys and numbers at a fixed number of significant digits. When a formula
@@ -201,23 +211,26 @@ A **precondition** is an executable check per application. It returns one of thr
 - 🔴 violated: a `defect` warning or an error, as the canon entry says
 - ⚪ unchecked: a `practice` warning
 
-### 8.6 Consistency rules when loading the manifest
+### 8.6 Consistency rules (checked by the importer)
 
 - One producer per quantity; a second path only as a probe (A7).
 - Unique symbols and slugs (A8).
 - Targets only as `role: target` (A9).
-- Units of implementation signatures equal the manifest (A4).
-- Every implementation has a slug in the manifest.
+- Units consistent across bindings (A4); dimensional check of law entries (`scripts/check_canon.py` logic).
+- Every reference (inputs, bindings, worlds) resolves to a quantity in the model.
+
+At load time the kernel additionally checks: every registered implementation has a slug in the model, and
+its declared units equal the model's.
 - Separate namespaces: the calculation canon now, the sizing canon (K31) later.
 
-Violations are **canon findings**, not runtime errors: the generator reports them and the canon is
-corrected.
+Violations are **canon findings**, not runtime errors: the importer reports them, writes no model, and the
+canon document is corrected.
 
 ### 8.7 Cost class
 
 Each formula has a cost class: `instant`, `seconds` or `minutes`. A `minutes` formula only runs with
 `request.allow_long_runs` (K28). Which layer sets the class is still open (O14, question 3). The kernel
-carries the attribute from the manifest.
+carries the attribute from the canon model.
 
 ### 8.8 Tools and data sources
 
@@ -225,6 +238,39 @@ carries the attribute from the manifest.
 - Data: KAT (component catalogue) and APC (propeller tables).
 - Data comes **from the caller**, either inline in the input or as a provider with a content hash. The
   kernel loads nothing on its own.
+
+### 8.9 Canon import — from the canon document to the canon model
+
+The kernel does not read the canon document. It interprets **its own canon model**. Changes to the canon
+reach the kernel **only through an import**, a deliberate, reviewable step:
+
+```
+python -m aero_kernel.importer <canon-document-dir> [--check]
+```
+
+| Stage | Does | Fails when |
+|---|---|---|
+| 1 Parse | reads every formula and quantity entry: front matter, the structured fields (`inputs`, `applications`, `preconditions`, `uncertainty`, …) and the canonical form; never prose | a required field is missing or malformed |
+| 2 Normalise | slugs, units to SI symbols, roles, kinds, tools to closed vocabularies; resolves `[[…]]` references | an unknown unit, kind, tool or role |
+| 3 Validate | JSON Schema of the canon model; consistency rules (ch. 8.6); dimensional check | any rule is violated |
+| 4 Diff | compares with the committed canon model: entries added, removed or changed; marks **breaking** changes (inputs, units, outputs, applications) and lists the affected implementations and golden tests | — (only reports) |
+| 5 Write | writes `canon_model.json` (sorted, stable formatting), its content hash, the source commit of the canon document and the importer version; writes `IMPORT_REPORT.md` (diff, findings, Appendix A table) | — |
+
+Rules:
+- **All or nothing.** Any failure in stages 1–3 writes nothing. The importer lists the findings with file,
+  field and message; they are fixed in the canon document, not in the model.
+- **The model is never edited by hand.** It is only produced by the importer, so model and document cannot
+  drift apart unnoticed.
+- **Idempotent.** Importing the same canon document twice yields a byte-identical model.
+- **`--check`** writes nothing and reports whether the committed model still matches the canon document.
+  CI runs it and reports drift; whether drift fails the build follows #1177. The canon is still `draft`,
+  so drift is expected.
+- **A breaking change** in the diff requires the affected implementations and golden values to be updated in
+  the same change set (the traceability test, Q11, enforces it).
+- **Schema version.** `canon_model.json` carries the schema version. The kernel refuses to load a model with
+  an unknown schema version (`internal`, escalate).
+- **Several canons.** The calculation canon and, later, the sizing canon (K31) are imported into separate
+  namespaces of the same model format.
 
 ## 9. Decisions (references only)
 
@@ -251,8 +297,8 @@ carries the attribute from the manifest.
 | No. | Scenario | Test |
 |---|---|---|
 | Q1 | A new canon formula without implementation | The request returns `not_implemented` with the slug; no code changed |
-| Q2 | All 57 canon entries mapped onto the model | Appendix A complete; the manifest loads without a model change |
-| Q3 | Every value is traceable | The result carries slug, application, tool, manifest hash |
+| Q2 | All 57 canon entries mapped onto the model | Appendix A complete; the import succeeds without a schema change |
+| Q3 | Every value is traceable | The result carries slug, application, tool, canon model hash and source commit |
 | Q4 | The solver does not converge | `not_converged`; successors `upstream_failed`; other quantities still compute |
 | Q5 | Layout without flaps | `stall-speed-landing` is `not_applicable`: no error, no substitute value |
 | Q6 | Every error category | Serialises to JSON with `message` and `hint` |
@@ -260,18 +306,22 @@ carries the attribute from the manifest.
 | Q8 | Input mass ≤ 0 | `invalid_input` with `input_path`; Re < 3·10⁴ only warns |
 | Q9 | Boundary to `app/` | Test: no import from `app/`, `cad_designer/`, `scripts/` |
 | Q10 | No AeroSandbox installed | `tool_unavailable`, no ImportError |
+| Q11 | A canon change with a changed input of an implemented formula | the import diff marks it breaking; the traceability test fails until the implementation is updated |
+| Q12 | Runtime independence | `compute()` works with `_reversa_sdd/` absent; only `canon/canon_model.json` is read |
+| Q13 | Import twice | byte-identical `canon_model.json` |
+| Q14 | A canon entry with an unknown unit | the import fails at stage 2 with file and field; no model written |
 
 ## 11. Risks and technical debt
 
 | Risk | Consequence | Handling |
 |---|---|---|
-| **The canon is only half machine-readable.** Inputs sit in the prose line "Produces … from". Only `stall-speed` has an application table, and only 3 of 57 entries have structured preconditions. | The manifest cannot derive applications and preconditions completely. | **Decision needed** (see below). |
+| **The canon document is only half machine-readable.** Inputs sit in the prose line "Produces … from". Only `stall-speed` has an application table, and only 3 of 57 entries have structured preconditions. | The importer cannot derive applications and preconditions completely. | **Decision needed** (see below). |
 | 55 of 57 canon entries are `draft` | Tests run against unapproved entries | Intended (Epic #1173); golden values are called "regression" |
 | CI has no aero dependencies | Solver formulas are untested in the fast tier | Mock the adapters; job `aero-kernel-aero` (#1177) |
 | Solver convergence (stall plateau, bounds) | `not_converged` occurs often | Robustness run (#1178), K32 procedure |
-| The `stall-speed` application table uses old register names (`v_stall_clean_mps`) instead of canon slugs | Names do not match the manifest | Switch to canon slugs when extending the format |
+| The `stall-speed` application table uses old register names (`v_stall_clean_mps`) instead of canon slugs | Names do not match the canon model | Switch to canon slugs when extending the format |
 
-**Open decision for the maintainer: the canon format.** So that the manifest does not have to guess
+**Open decision for the maintainer: the canon format.** So that the importer does not have to guess
 applications and preconditions from prose, every formula entry needs machine-readable fields in its front
 matter, for example:
 - `inputs:`
@@ -279,7 +329,7 @@ matter, for example:
 - `preconditions:` (check, status, test)
 
 Proposal: extend the format once and update all 57 entries mechanically, keeping the prose, **before** the
-generator is built.
+importer is built.
 
 ## 12. Glossary
 
@@ -292,7 +342,9 @@ generator is built.
 | **Precondition** | what must hold for the inputs so that the application means what it claims | Vorbedingung |
 | **World** | one method that runs through the whole chain for an uncertain quantity (A11) | Welt |
 | **Probe** | a second path to a quantity, only as a check (A7) | Probe |
-| **Manifest** | machine-readable, versioned image of the canon that the kernel loads | — |
+| **Canon document** | the human-readable canon in `_reversa_sdd/calculations/canon/` (external source) | Rechenkanon |
+| **Canon model** | the machine-readable, versioned JSON image of the canon inside the package, interpreted by the kernel | — |
+| **Import** | the deliberate step that translates the canon document into the canon model (ch. 8.9) | — |
 | **Cost class** | `instant` / `seconds` / `minutes` | Kostenklasse |
 | **Operating point** | mass, altitude, speed and controls of one flight condition (O10) | Betriebspunkt |
 
@@ -307,8 +359,8 @@ How the columns are filled:
 - **preconditions:** whether the entry has them in structured form.
 - **cost class:** a proposal.
 
-Generated from the canon files. The manifest generator (#1174) replaces this table with an automatically
-generated one.
+Generated from the canon files. The importer (#1174) replaces this table with one generated from the canon
+model (part of `IMPORT_REPORT.md`).
 
 | Formula | kind | tool | shape | in → out | applications | preconditions | worlds | cost class | v1 |
 |---|---|---|---|---|---|---|---|---|---|
