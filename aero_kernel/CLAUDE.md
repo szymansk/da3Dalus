@@ -29,7 +29,8 @@ then the code. Epic: #1173.
 - **Errors vs warnings.** No value → `KernelError` with category, `message`, `hint` (ARCHITECTURE §8.1).
   Value with a caveat → warning with `severity` (ADR 0020). Never a silent substitute.
 - **Validation** rejects only physically inadmissible input. Mass is always the passed
-  `values["aircraft-mass"]`; the geometry's `total_mass_kg` is ignored (what-if calculations). Regime (Re, Mach; ADR 0028) is a warning, raised in the solver adapters.
+  `values["aircraft-mass"]` (what-if calculations); a differing `total_mass_kg` in the geometry gives a
+  `conflicting_mass` warning, never an abort. Regime (Re, Mach; ADR 0028) is a warning, raised in the solver adapters.
 - **Parameter names vs. slugs.** Inside a formula and in its canon fields, keys are parameter names
   (snake_case); quantity slugs (kebab-case) appear only as binding targets (ARCHITECTURE §8.5).
   Mass is not a criterion.
