@@ -37,6 +37,20 @@ becomes the app's single source of computation (register epic "implement the cal
 
 ## 3. Context and boundary
 
+**`aero_kernel` is a pure Python library with a programming API**, not a service. It has no REST endpoint,
+no HTTP and no process of its own. The caller imports it and calls one function in-process:
+
+```python
+from aero_kernel import compute, AircraftInput, ComputeRequest
+
+result = compute(AircraftInput(...), ComputeRequest(quantities=["stall-speed"], include_long_runs=False))
+```
+
+The input and output types are Pydantic models, so they also have a JSON form and a JSON Schema. That is
+for data exchange (golden files, agents, a later REST or MCP layer), not a network interface. Exposing the
+kernel over REST or MCP is the app's job, through the register epic: the app's services call `compute()`
+and the existing `app/api/v2` and MCP layers stay where they are (ADR 0019, ADR 0025).
+
 ```
         tests (aero_kernel/tests)        robustness run (tools/robustness.py)
                      \                     /
@@ -129,7 +143,8 @@ compute(aircraft, request)
 
 ## 7. Deployment
 
-A library inside the same repository, with no process of its own. AVL runs as a subprocess in a temporary
+A Python library inside the same repository (package `aero_kernel/`), imported in-process by its callers;
+no server, no process of its own. AVL runs as a subprocess in a temporary
 directory.
 
 ## 8. Cross-cutting concepts
@@ -237,7 +252,7 @@ formulas of cost class `minutes`. The caller decides beforehand; the kernel neit
   `reason.code = long_run_not_included`. Quantities depending on it are `skipped` with
   `reason.code = depends_on_skipped`. Everything else in the request is computed normally.
 - Flag on: the quantity is computed like any other; the time budget of the request applies.
-- **Documentation:** every `minutes` quantity is marked as long-running in the generated API reference and
+- **Documentation:** every `minutes` quantity is marked as long-running in the generated Python API reference (docstrings and the JSON Schema of the Pydantic types) and
   in `IMPORT_REPORT.md` (Appendix A, column "cost class"), so a caller knows before calling.
 - `skipped` is not an error: nothing failed, the caller chose not to include it.
 
