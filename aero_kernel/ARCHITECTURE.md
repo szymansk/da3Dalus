@@ -346,7 +346,11 @@ An **application** is a formula plus the bindings of its inputs, a condition and
 quantity.
 
 - Every input parameter of the formula is bound either to a **quantity** or to a **constant with source**
-  (ADR 0028). Every output parameter is bound to a quantity.
+  (ADR 0028). Every output parameter is bound to a quantity, or explicitly to `null` in `produce`: the
+  implementation still returns it (ch. 8.12), the application does not expose it. Example: `stall-speed`
+  returns its α sweep as `polar`; only the clean application produces `polar-stall`, the take-off,
+  landing and inverted applications write `polar: null`. A forgotten output is an import finding, an
+  unexposed one is a declaration.
 - An application has at most two kinds of condition; without either it exists always:
   - `when`: one term of the closed vocabulary over facts of the aircraft geometry (`has_vertical_tail`,
     `has_aileron`, …). The canon `README.md` defines the vocabulary; each term is implemented once in
@@ -723,7 +727,10 @@ exactly, **also beyond the stops** (ch. 8.11). Its `delta_f` is `optional:`: wit
 deflection gives the unchanged aircraft (no warning); with flaps it is `missing_input`, and its dependents
 `upstream_failed`. A deflection given for an aircraft without flaps has nothing to act on: unchanged
 aircraft plus a `practice` warning `deflection_without_flap`, because a supplied value is not used. A sampled curve over angle of attack is a quantity of type `polar`
-whose slug names its evaluation condition (A2). The engine needs nothing beyond applications for any of
+whose slug names its evaluation condition (A2): `polar-stall`, the clean sweep at `V_S` with solver
+drag, an output of `stall-speed` read by `stall-onset-detection`. The negative extremum `C_L,min` is not
+read off that polar but is `stall-speed`'s `inverted` application (`n` bound to `{const: -1, source}`)
+at its own Reynolds number. The engine needs nothing beyond applications for any of
 these.
 
 **Functions of a variable the formula solves for** are not quantities. Thrust over airspeed is not a curve
