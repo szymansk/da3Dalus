@@ -32,7 +32,7 @@ outputs:
   s_max: butterfly-max-mix
 applications:
   - id: crow
-    when: has_flap_and_aileron
+    when: has_separate_flap_and_aileron
 ---
 
 # Butterfly (crow) in the approach — how far it may be mixed in

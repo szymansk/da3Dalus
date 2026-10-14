@@ -438,7 +438,7 @@ entry that states the condition.
 | term | holds when |
 |---|---|
 | `has_aileron` | the geometry has at least one control surface that acts as an aileron: trailing-edge devices with `role` `aileron`, `flaperon` or `elevon`. Without it the roll quantities are `not_applicable` (`roll-rate`, `roll-rate-cruise-target`, `aileron-deflection-required`) |
-| `has_flap_and_aileron` | the geometry has a control surface that acts as a flap (`role` `flap` or `flaperon`) and one that acts as an aileron (`role` `aileron`, `flaperon` or `elevon`) — both, as crow needs (`butterfly-approach`) |
+| `has_separate_flap_and_aileron` | the geometry has at least one device acting as a flap (`role` `flap` or `flaperon`) and at least one **other** device acting as an aileron (`role` `aileron`, `flaperon` or `elevon`): crow deflects flaps down and ailerons up at the same time, which one surface cannot do (`butterfly-approach`) |
 | `has_vertical_tail` | the aircraft has a fin or a V-tail behind the main wing; winglets or a centre fin on a tailless wing do not count (`spiral-parameter`, `vertical-tail-volume`) |
 
 ### Quantity entries
@@ -515,7 +515,7 @@ outputs:
   s_max: butterfly-max-mix
 applications:
   - id: crow
-    when: has_flap_and_aileron
+    when: has_separate_flap_and_aileron
 ```
 
 A **fit** (`parabolic-polar-fit`):
