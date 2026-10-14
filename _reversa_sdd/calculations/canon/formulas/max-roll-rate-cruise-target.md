@@ -23,8 +23,9 @@ inputs:
   rho: air-density
   v_cruise_target: cruise-speed-target
 outputs: {p_max: max-roll-rate-cruise}
-# ESCALATED: when — exists only when a cruise-speed target is given: a condition on given
-# inputs, not a fact of the geometry; the when vocabulary has no term for it.
+applications:
+  - id: at_cruise_speed_target
+    given: [cruise-speed-target]
 worlds: [aerobuildup, avl]
 ---
 

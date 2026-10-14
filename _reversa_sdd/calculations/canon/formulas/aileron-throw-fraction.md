@@ -26,15 +26,14 @@ inputs:
   p_target: null
 outputs: {s_req: null}
 applications:
-  # ESCALATED: when — each application exists only if its roll-rate target is given (cruise also
-  # needs the cruise-speed target): a condition on given inputs, not a fact of the geometry, and
-  # the when vocabulary has no term for it.
   - id: cruise
     bind: {v: cruise-speed-target, p_target: roll-rate-target-cruise}
     produce: {s_req: aileron-throw-fraction-cruise}
+    given: [roll-rate-target-cruise, cruise-speed-target]
   - id: approach
     bind: {v: approach-speed, p_target: roll-rate-target-approach}
     produce: {s_req: aileron-throw-fraction-approach}
+    given: [roll-rate-target-approach]
 worlds: [aerobuildup, avl]
 ---
 

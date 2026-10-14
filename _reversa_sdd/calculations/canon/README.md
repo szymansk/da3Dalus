@@ -382,7 +382,7 @@ The existing fields (`canon`, `entry`, `kind`, `tool`, `shape`, `status`, `outpu
 |---|---|---|
 | `inputs` | always | parameter → default quantity slug, one key per input of the formula; `null` where the quantity is bound per application |
 | `outputs` | always | parameter → default quantity slug, one key per output; `null` where it is produced per application |
-| `applications` | only for several applications or a condition | a list; each item has `id`, optional `bind` (parameter → quantity slug or `{const: <value>, source: "<citation>"}`), optional `produce` (parameter → quantity slug) and optional `when` (a term of the vocabulary below; absent = always) |
+| `applications` | only for several applications or a condition | a list; each item has `id`, optional `bind` (parameter → quantity slug or `{const: <value>, source: "<citation>"}`), optional `produce` (parameter → quantity slug) optional `when` (a term of the vocabulary below; absent = always) and optional `given` (a list of quantity slugs; see below) |
 | `preconditions` | only where the entry states them | a list of `{id, parameter, on_violation}`: `parameter` names a parameter of the formula, `on_violation` is `warning` or `error` |
 | `uncertainty` | only where the entry already says `interval` | `interval` (A11) |
 | `worlds` | with `uncertainty: interval` | the method worlds, as the entry names them, in snake_case |
@@ -400,6 +400,11 @@ bound — to a quantity or to a constant with its source — and every output pa
 produced. One formula, several applications is the shape described in "One formula, several
 applications" above; the preconditions belong to the binding, as described in "Preconditions
 belong to the binding".
+
+**`given`** — an application that exists only when the caller supplies certain values lists them:
+`given: [<slug>, …]`. Each slug has role `input` or `target`, has no `default`, and is bound by that
+application. The application exists only if all of them are supplied; otherwise it is not computed —
+not computed differently. `when` speaks about the geometry, `given` about what was supplied.
 
 **`on_violation`** says what the entry says happens when the precondition is violated: a value
 that is unsafe or must not be used → `error`; a caveat → `warning`. Where the entry does not say,
@@ -560,7 +565,8 @@ default: {value: 1.225, source: "U.S. Standard Atmosphere 1976 (NOAA-S/T 76-1562
 - every quantity's **Used by** / **Produced by** line names exactly the formulas that read / write it;
 - every application binds every input and produces every output (open, not an error, in an
   escalated entry); `bind` / `produce` keys are parameters; constants carry a source; `when`
-  terms are in the vocabulary above;
+  terms are in the vocabulary above; `given` slugs exist, are inputs or targets without a default, and
+  are bound by their application;
 - no key or plain value is a YAML 1.1 boolean;
 - preconditions name a parameter and say `warning` or `error`; `worlds` exist exactly with
   `uncertainty: interval`; `cost` is one of the three classes;

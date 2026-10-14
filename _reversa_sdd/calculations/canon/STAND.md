@@ -490,7 +490,7 @@ Maintainer; `check_canon.py` meldet es als *open*.
 - `stall-speed`: Take-off- und Landeanwendung haben keine Größe für ihr `C_L,max` (zweite Ausgabe). Eskaliert.
 - `stall-speed` (Größe): die Beschreibung nennt „V_S1 clean, V_S0 landing, V_S,TO takeoff“ in einer Größe, obwohl es drei Größen sind (A2).
 - `speed-from-stall-margin`: `k_S` je Anwendung offen („choosing is the maintainer's call“), keine Quelle, keine Größe. Eskaliert.
-- `aileron-throw-fraction`, `max-roll-rate-cruise-target`, `stall-wing-loading-limit`: Existenzbedingung „wenn das Ziel gegeben ist“ — eine Bedingung über gegebene Eingaben, keine Geometrietatsache; das `when`-Vokabular kennt sie nicht. Eskaliert.
+- `aileron-throw-fraction`, `max-roll-rate-cruise-target`, `stall-wing-loading-limit`: Existenzbedingung „wenn das Ziel gegeben ist“ — eine Bedingung über gegebene Eingaben, keine Geometrietatsache; das `when`-Vokabular kennt sie nicht. Eskaliert. **Behoben (Architekt, 14.10.2026):** neues Anwendungsfeld `given: [<slug>, …]`; die drei Einträge tragen es.
 - `cruise-target-performance`: `cruise-speed-target` ist laut Größe optional; der Eintrag sagt nicht, was ohne Ziel geschieht.
 - `linear-lift-curve-inverse`: die Ausgabe `characteristic-angle-of-attack` trägt drei Bedingungen (α_stall, α_bg, α_ms) in einer Größe (A2); welches C_L je Anwendung gebunden wird, hat keine Größe. Eskaliert.
 - `static-thrust-to-weight`: bindet `thrust-at-airspeed` „bei V = 0“; eine Bindung nennt eine Größe, nicht den Betriebspunkt; eine `static-thrust`-Größe gibt es nicht. Eskaliert.
