@@ -409,7 +409,10 @@ quantity.
 - **Keys are always parameter names** (snake_case), in the canon fields, in `x` and in the return value of
   an implementation (ch. 8.12). Quantity slugs (kebab-case) appear only as binding targets.
 
-A **precondition** is an executable check per application, registered with `@precondition(slug, id)`
+A **precondition** is an executable check per application, scoped by its optional `applications: [<id>, …]`
+in the canon entry (absent = every application of the formula; e.g. `alpha_range_past_inverted_stall`
+of `stall-speed` only for `inverted`). The engine runs it only for the listed applications; for the
+others it is neither run nor reported as unchecked. It is registered with `@precondition(slug, id)`
 (ch. 8.12) and run before the implementation. It returns one of three states:
 - 🟢 held
 - 🔴 violated: a `defect` warning or an error, as `on_violation` in the canon entry says (ch. 8.1)
@@ -696,7 +699,8 @@ async def stall_speed(x: Inputs, ctx: Context) -> dict[str, Value]:
 - **Failure.** Raise `FormulaError(category, code, message, hint, detail)` for an expected failure
   (`not_converged`, `unsupported_configuration`, …). Any other exception becomes `internal`. Never return a
   substitute value (ADR 0020).
-- **Preconditions** are separate functions, `@precondition("stall-speed", "<check-id>")`, taking the same
+- **Preconditions** are separate functions, `@precondition("stall-speed", "<check-id>")`, run only for the
+  applications the canon scopes them to (ch. 8.5), taking the same
   `x` and returning `held | violated | unchecked` with a message.
 - **Embedded relations** (ch. 8.5). The module of an embedded formula exposes its relation as a plain,
   module-level function over parameter names (numpy- and CasADi-compatible where an OPT formula embeds
@@ -912,8 +916,8 @@ They are the first thing a developer or an agent reads to check a change and to 
 
 How the columns are filled:
 - **in → out:** counted from the "Produces … from" line.
-- **applications:** the number of bindings. Only `stall-speed` has a table today; otherwise 1, or the
-  number of outputs for `rating`.
+- **applications:** the number of bindings, from the entry's `applications:` (1 without). Hand-kept until
+  the importer generates this table; only the rows touched by #1181 decisions are current.
 - **preconditions:** whether the entry has them in structured form.
 - **cost class:** derived from the tool (ch. 8.7), unless the entry declares `cost:` (marked *declared*). Only
   `mass-envelope` declares one: `minutes`, the long run of the approved plan of epic #1173 (K28).
@@ -928,6 +932,7 @@ model (part of `IMPORT_REPORT.md`).
 | `aileron-deflection-required` | procedure | OPT | law | 8 → 2 | 1 | – | A11 | seconds | core chain |
 | `air-density-isa` | law | ATM | law | 1 → 1 | 1 | – | – | instant | core chain |
 | `airplane-components` | procedure | KAT | law | 1 → 9 | 1 | – | – | instant | probe |
+| `airplane-configuration` | procedure | GEO | law | 2 → 1 | 2 | – | – | instant | core chain |
 | `airplane-geometry` | procedure | GEO | law | 1 → 4 | 1 | – | – | instant | core chain |
 | `aspect-ratio` | law | APP | law | 2 → 1 | 1 | – | – | instant | core chain |
 | `battery-mass-from-capacity` | law | APP | law | 2 → 1 | 1 | – | – | instant | later |
@@ -942,7 +947,6 @@ model (part of `IMPORT_REPORT.md`).
 | `endurance-and-range` | procedure | OPT | law | 8 → 2 | 1 | – | – | seconds | later |
 | `glide-distance-from-ratio` | law | APP | law | 2 → 1 | 1 | yes | – | instant | later |
 | `induced-drag-factor` | law | APP | law | 2 → 1 | 1 | – | – | instant | later |
-| `inverted-max-lift-coefficient` | procedure | AB | law | 2 → 1 | 1 | yes | – | seconds | later |
 | `lateral-static-stability-app` | procedure | AVL | law | 6 → 4 | 1 | – | – | seconds | core chain |
 | `lateral-static-stability-md` | procedure | AVL | law | 6 → 4 | 1 | – | – | seconds | core chain |
 | `lift-coefficient-required` | law | APP | law | 5 → 1 | 1 | – | – | instant | core chain |
@@ -971,7 +975,7 @@ model (part of `IMPORT_REPORT.md`).
 | `speed-from-stall-margin` | rating | APP | approximation | 2 → 3 | 3 | – | – | instant | probe |
 | `spiral-parameter` | law | APP | law | 5 → 1 | 1 | – | – | instant | core chain |
 | `stall-onset-detection` | procedure | AB | law | 3 → 1 | 1 | – | – | seconds | core chain |
-| `stall-speed` | optimization | OPT | law | 5 → 4 | 3 | yes | – | seconds | core chain |
+| `stall-speed` | optimization | OPT | law | 5 → 4 | 4 | yes | – | seconds | core chain |
 | `stall-wing-loading-limit` | law | APP | law | 3 → 1 | 1 | – | – | instant | later |
 | `static-margin-probe` | procedure | AB | law | 6 → 2 | 1 | – | – | seconds | core chain |
 | `static-margin` | law | APP | law | 3 → 1 | 1 | – | – | instant | core chain |
@@ -981,7 +985,7 @@ model (part of `IMPORT_REPORT.md`).
 | `weight-from-mass` | law | APP | law | 2 → 1 | 1 | – | – | instant | core chain |
 | `wing-loading` | law | APP | law | 3 → 1 | 1 | – | – | instant | core chain |
 
-*57 entries; core chain 26, probes 6, later 25.*
+*57 entries; core chain 27, probes 6, later 24. `airplane-configuration` added, `inverted-max-lift-coefficient` removed (its output is `stall-speed`'s `inverted` application).*
 
 **Finding from the mapping.** All 57 entries fit the model (five `kind`s, eight tools, three `shape`s,
 worlds, cost classes). What is missing is not a concept but **machine-readability** in the canon (#1181).
