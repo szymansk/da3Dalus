@@ -51,7 +51,7 @@ route A (R_m absent): n_prop = min( K_v * U_bat / 60 ,  n_prop  with  C_P(J) * r
 
 *What it still ignores.* The rpm drop under load below the power ceiling — measured on a D-Power AL 28-13 with APC 6x4E: loaded 8 973 vs free-run 10 064 rpm, about 25 % too much thrust. And `eta_mot` is the default 0.85 (BR-PM3) unless the catalogue carries an efficiency — a constant without a model-scale source (ADR 0023), declared.
 
-**Already decided — `Q-PT-6`** (maintainer, 2026-08-14). The route is chosen by data availability, and the result **declares which route ran** (ADR 0020). `R_m` is sourced only where a manufacturer publishes it and **never synthesised** from `K_v` and `I_0`. Today no catalogue motor carries it, so every number comes from route A until #1149 fills the data.
+**Already decided — `Q-PT-6`** (maintainer, 2026-08-14). The route is chosen by data availability, and the result **declares which route ran** (ADR 0020). `R_m` is sourced only where a manufacturer publishes it and **never synthesised** from `K_v` and `I_0`. Today no catalogue motor carries it, so every number comes from route A until #1149 fills the data. `r_m` is therefore `optional`: route A without `R_m` is a **declared method limitation**, and a `practice` warning names the route (`Q-PT-6`).
 
 **Why not constant power.** Sadraey's propeller relation `T = eta_P · P / V` with constant `P` (Eq. 8.2, 4.84; `eta_P` 0.5–0.6 in climb, §4.3.5.2) is stated there as "sufficient for preliminary sizing". A voltage-fed motor on a fixed-pitch propeller does not deliver constant power, the relation diverges at `V = 0`, and it still needs the rpm to read `eta_P(J)`. It stays out of the canon.
 

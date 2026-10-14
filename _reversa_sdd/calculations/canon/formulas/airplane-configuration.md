@@ -17,6 +17,9 @@ tags:
   - status/draft
 inputs: {airplane: airplane, flap_deflection: null}
 outputs: {airplane_cfg: null}
+optional: [flap_deflection]
+# ESCALATED: which devices count as flaps — the canon says "if the geometry has flaps" but states no
+# rule for which devices count (e.g. trailing-edge devices on the main wing acting as flaps).
 applications:
   - id: takeoff
     bind: {flap_deflection: flap-deflection-takeoff}
@@ -49,6 +52,17 @@ configuration; if it has none, the configured airplane is the airplane itself.
 **The deflection is a design input** ([[flap-deflection-takeoff]], [[flap-deflection-landing]];
 maintainer, 2026-10-14), not bounded by the geometry's stop `positive_deflection_deg`: the canon is
 used to find out which stop the wanted speed needs.
+
+**Four cases** (architect, 2026-10-14; `flap_deflection` is optional):
+
+| aircraft | deflection | result |
+|---|---|---|
+| no flaps | absent | the unchanged aircraft, no warning — the canon's own definition ([[stall-speed]], maintainer 2026-10-02) |
+| no flaps | given | the unchanged aircraft and a `practice` warning `deflection_without_flap`: the supplied value is not used |
+| flaps | absent | no value: `missing_input` for the configured airplane; its dependents fail; the clean stall speed still computes |
+| flaps | given | the deflection applied exactly, also beyond the stop |
+
+Which devices count as flaps is not yet stated in the canon (escalated in the front matter).
 
 **Validity, declared (no threshold, A10).** The configured airplane is evaluated with NeuralFoil's flap
 model, which is unverified at large deflections and low Reynolds number: ANFORDERUNGEN.md, §

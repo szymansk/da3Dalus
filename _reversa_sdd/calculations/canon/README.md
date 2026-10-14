@@ -385,7 +385,7 @@ The existing fields (`canon`, `entry`, `kind`, `tool`, `shape`, `status`, `outpu
 | `applications` | only for several applications or a condition | a list; each item has `id`, optional `bind` (parameter → quantity slug or `{const: <value>, source: "<citation>"}`), optional `produce` (parameter → quantity slug) optional `when` (a term of the vocabulary below; absent = always) and optional `given` (a list of quantity slugs; see below) |
 | `preconditions` | only where the entry states them | a list of `{id, parameter, on_violation}`: `parameter` names a parameter of the formula, `on_violation` is `warning` or `error` |
 | `embeds` | only where the canonical form evaluates another canon relation inside itself | a list of formula slugs: the canon formulas whose relation the canonical form evaluates inside itself, over its own variables. Not a value edge — nothing is read from them. Tools are named by `tool:` |
-| `optional` | only where the entry picks its route by data | a list of input parameter names that may arrive as `None` when neither a value nor a default exists; the formula then takes the route that needs no value and declares it as a warning (ADR 0020) |
+| `optional` | only where the entry picks its route by data | a list of input parameter names that may arrive as `None` when neither a value nor a default exists; what follows is stated per route in the entry (below) |
 | `uncertainty` | only where the entry already says `interval` | `interval` (A11) |
 | `worlds` | with `uncertainty: interval` | the method worlds, as the entry names them, in snake_case |
 | `cost` | optional, interim (O14 question 3 is open) | `instant`, `seconds` or `minutes`; set only where the entry says the computation takes minutes. Without it the importer derives `instant` or `seconds` from `tool` (ARCHITECTURE §8.7) |
@@ -408,6 +408,12 @@ closure. Every input of an embedded formula is either bound by the embedder, pro
 closure (for example `propeller-speed`, `thrust-coefficient`, `advance-ratio`), or a generic
 operating-point quantity — `flight-speed`, `angle-of-attack`, `load-factor`, `aircraft-mass`, the
 embedder's own solve or sweep variables. No formula with `uncertainty: interval` is in the closure.
+
+**`optional`** — an absent optional parameter leads to one of three outcomes, and the entry states which
+one per route: (1) a **declared method limitation** — the formula takes the route that needs no value
+and a `practice` warning names the route (ADR 0020); (2) the **canon's own definition** — the absent
+value means something stated, and there is no warning; (3) the value **is needed after all** — no
+value, `missing_input`.
 
 **`given`** — an application that exists only when the caller supplies certain values lists them:
 `given: [<slug>, …]`. Each slug has role `input` or `target`, has no `default`, and is bound by that
