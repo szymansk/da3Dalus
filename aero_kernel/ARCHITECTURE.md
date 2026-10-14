@@ -569,9 +569,9 @@ class ComputeRequest(BaseModel):
   the sense of ADR 0020. The provenance lists every default used.
   Without a default, the quantities that need it get `invalid_input`, code `missing_input`, with
   `input_path = values.<slug>`; the rest of the request is computed.
-- **One value, one source.** Mass comes only from `values["aircraft-mass"]`. If the geometry's
-  `total_mass_kg` is set and differs, validation reports `invalid_input`, code `conflicting_mass`. This is
-  the one check besides physical admissibility: two contradicting inputs make every result ambiguous.
+- **The passed mass always wins** (maintainer, 2026-10-14). Mass comes only from
+  `values["aircraft-mass"]`; the geometry's `total_mass_kg` is ignored, without error or warning.
+  Otherwise no "what if?" calculation at a different mass would be possible.
 - **Airfoils are inline.** The kernel loads nothing on its own (ch. 8.8), so `airfoil` in
   `AirplaneGeometry` is a NACA designation or inline coordinates. A file path is `invalid_input`, code
   `unresolved_airfoil`; resolving paths is the caller's job (the test fleet uses a test helper).
