@@ -28,6 +28,10 @@ then the code. Epic: #1173.
   only at the end; never interval arithmetic.
 - **English only (ADR 0029).** Identifiers, file names, comments, docstrings, error `message`/`hint`
   and docs in this package are English. Canon slugs are used as they are.
+- **Async API (ARCHITECTURE §8.10).** `compute()` is a coroutine and must never block the event loop:
+  solver work goes through `runtime.py` (process pool), AVL through `asyncio.create_subprocess_exec`.
+  Never call `asyncio.run` inside the package; always re-raise `CancelledError`; clean up subprocesses and
+  temp dirs on cancellation.
 - **Stateless.** No module-level mutable state except the cache; the cache must never change a result.
 
 ## Tests
@@ -41,6 +45,6 @@ Every formula: a unit test against a hand-computed value. Golden values of the r
 **regression, not validation**. Run slow tests sequentially.
 
 ```bash
-poetry run pytest aero_kernel/tests            # fast
+poetry run pytest aero_kernel/tests            # fast (pytest-asyncio)
 poetry run pytest aero_kernel/tests -m aero    # solvers, golden values
 ```
