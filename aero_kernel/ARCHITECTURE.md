@@ -259,6 +259,29 @@ A call without the cache is simply the stateless `compute()`, so the facade need
 Cache settings (size, disk location) are passed when the facade is created, never read from the environment.
 Each `QuantityResult` reports `from_cache`, which is always `false` from the stateless interface.
 
+**Cache scopes (multi-user callers).** A caller serving several users or aircraft can partition the cache.
+
+```python
+await kernel.compute(aircraft, request, scope="aircraft/3f2c…")   # default: scope="shared"
+await kernel.drop_scope("aircraft/3f2c…")                          # e.g. the aircraft was deleted
+```
+
+- **Correctness never depends on scopes.** Keys are content hashes over everything that affects a value, so a
+  hit can never return a value for different inputs. That holds in every scope, including `shared`.
+- **Isolation.**
+  - The scope is part of the key. An entry in one scope is never visible from another.
+  - In-flight deduplication works only within a scope, so there is no cross-scope timing side channel.
+- **Deletion.** `drop_scope(scope)` removes every entry of a scope, in memory and on disk.
+- **Limits.** `MemoryCache` and `DiskCache` accept an optional limit per scope in addition to the global one,
+  so one scope cannot evict the others.
+- **Pluggable store.** `NodeStore` is a protocol with `get(scope, key)`, `put(scope, key, value)` and
+  `drop_scope(scope)`. A caller may supply its own store, e.g. a database or Redis per tenant.
+- **One pool for all scopes.** One `CachedKernel` serves many scopes with one process pool, so no per-aircraft
+  kernel objects are needed.
+- **The caller assigns scopes.** What a scope stands for (aircraft, user, version snapshot K28, or `shared`)
+  is the caller's decision. The kernel knows neither users nor aircraft; it only separates by name.
+- **Not in the stateless `compute()`.** It has no cache and therefore no scope.
+
 ### 8.5 Applications and preconditions
 
 An **application** is a formula plus the bindings of its inputs, a condition and the name of the output
@@ -422,6 +445,7 @@ caller's event loop, it can be cancelled, and it limits its own resource use.
 | Q17 | Cancellation | cancelling `compute()` during an AVL run kills the subprocess and leaves no temp directory; `CancelledError` propagates |
 | Q18 | In-flight deduplication | on one `CachedKernel`, two concurrent identical requests cause exactly one formula call |
 | Q20 | Stateless interface leaves no state | after `compute()` returns, no cache entry, pool or other object created by it remains; a second call computes again |
+| Q21 | Cache scopes | an entry written in scope A is never a hit in scope B; `drop_scope(A)` leaves B untouched; a per-scope limit evicts only within its scope |
 | Q19 | Time budget | budget exceeded → open quantities `timeout`, finished ones returned |
 
 ## 11. Risks and technical debt
