@@ -857,7 +857,8 @@ How the columns are filled:
 - **applications:** the number of bindings. Only `stall-speed` has a table today; otherwise 1, or the
   number of outputs for `rating`.
 - **preconditions:** whether the entry has them in structured form.
-- **cost class:** derived from the tool (ch. 8.7); no entry sets `cost:` yet, so no formula is `minutes`.
+- **cost class:** derived from the tool (ch. 8.7), unless the entry declares `cost:` (marked *declared*). Only
+  `mass-envelope` declares one: `minutes`, the long run of the approved plan of epic #1173 (K28).
 
 Generated from the canon files. The importer (#1174 or its follow-up) replaces this table with one generated from the canon
 model (part of `IMPORT_REPORT.md`).
@@ -890,7 +891,7 @@ model (part of `IMPORT_REPORT.md`).
 | `lift-to-drag-ratio` | law | APP | law | 2 → 1 | 1 | – | – | instant | core chain |
 | `linear-lift-curve-inverse` | law | APP | law | 3 → 1 | 1 | – | – | instant | later |
 | `maneuvering-speed` | optimization | OPT | law | 5 → 1 | 1 | – | – | seconds | later |
-| `mass-envelope` | optimization | OPT | law | 7 → 5 | 1 | – | – | seconds | core chain |
+| `mass-envelope` | optimization | OPT | law | 7 → 5 | 1 | – | – | minutes (declared) | core chain |
 | `max-level-speed` | optimization | OPT | law | 5 → 1 | 1 | – | – | seconds | probe |
 | `max-lift-to-drag-parabolic` | law | APP | law | 3 → 1 | 1 | – | – | instant | later |
 | `max-mass-structure` | law | APP | law | 2 → 1 | 1 | – | – | instant | later |
