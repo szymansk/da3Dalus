@@ -503,7 +503,7 @@ Maintainer; `check_canon.py` meldet es als *open*.
 
 - `stall-speed`: die Vorbedingung `cl_max` liegt seit dem Umbau auf einem Ausgabeparameter, nicht auf einer Bindung.
 - `stall-speed` (`rho`), `glide-distance-from-ratio` (beide), `inverted-max-lift-coefficient` (Benennung): der Eintrag sagt nicht, was bei Verletzung geschieht → `warning` gesetzt.
-- `inverted-max-lift-coefficient`: `alpha_range_past_inverted_stall` als `error` gelesen („the value is **not** reported as a minimum“) — der Eintrag nennt zugleich eine DesignWarning; bitte bestätigen.
+- `inverted-max-lift-coefficient`: `alpha_range_past_inverted_stall` als `error` gelesen („the value is **not** reported as a minimum“) — der Eintrag nennt zugleich eine DesignWarning. **Entschieden (Koordinator, 14.10.2026):** `error` bleibt — der Kern gibt nie einen Platzhalterwert zurück (A6, ADR 0020); „not reported as a minimum“ heißt: kein Wert.
 - `inverted-max-lift-coefficient`: die Benennungs-Vorbedingung verletzt der Kanon selbst — die Größe `inverted-max-lift-coefficient` trägt keine Auswertebedingung im Namen.
 - `linear-lift-curve-inverse`: die gebrochene Annahme „C_L im Fit-Fenster“ (🔴-Block) steht nicht als Vorbedingung da — Kandidat, nicht gesetzt.
 
