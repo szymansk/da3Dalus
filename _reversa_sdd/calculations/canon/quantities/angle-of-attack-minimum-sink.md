@@ -13,8 +13,10 @@ type: scalar
 
 # Angle of attack at minimum sink · `alpha_ms`
 
-Angle of attack at minimum sink, recovered from its C_L through the linear lift curve. Replaces `characteristic-angle-of-attack`, which carried three conditions in one quantity (A2; #1181).
+Angle of attack at minimum sink: the optimum α of [[minimum-sink-speed-from-polar]], from the nonlinear polar at the right Reynolds
+number (maintainer, 2026-10-14, D2). Replaces `characteristic-angle-of-attack`, which carried three
+conditions in one quantity (A2; #1181).
 
 **Unit.** `deg`
 
-**Produced by.** [[linear-lift-curve-inverse]]
+**Produced by.** [[minimum-sink-speed-from-polar]]

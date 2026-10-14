@@ -5,7 +5,7 @@ kind: optimization
 tool: OPT
 shape: law
 status: draft
-output: stall-speed, max-lift-coefficient, stall-speed-landing, stall-speed-takeoff, max-lift-coefficient-landing, max-lift-coefficient-takeoff
+output: stall-speed, max-lift-coefficient, angle-of-attack-stall, stall-speed-landing, stall-speed-takeoff, max-lift-coefficient-landing, max-lift-coefficient-takeoff
 source_status: SOURCED
 dimensional_check: PROCEDURAL
 tags:
@@ -18,10 +18,12 @@ tags:
   - flag/conflict
 tex: \begin{aligned}V_S = \min_{V,\,\alpha}\; & V \\ \text{u.d.N.}\; & L(V,\alpha) = n\,m\,g\end{aligned}
 inputs: {airplane: airplane, m: aircraft-mass, g: gravity, n_load: load-factor, rho: air-density}
-outputs: {v_s: null, cl_max: null}
+outputs: {v_s: null, cl_max: null, alpha_s: null}
 applications:
   - id: clean
-    produce: {v_s: stall-speed, cl_max: max-lift-coefficient}
+    produce: {v_s: stall-speed, cl_max: max-lift-coefficient, alpha_s: angle-of-attack-stall}
+  # ESCALATED: alpha_s of takeoff and landing — D2 names the optimum alpha of the clean application
+  # only; no quantity holds the stall angle in take-off or landing configuration.
   - id: takeoff
     bind: {airplane: airplane-takeoff}
     produce: {v_s: stall-speed-takeoff, cl_max: max-lift-coefficient-takeoff}
@@ -42,7 +44,7 @@ minimize over V, alpha:   V
 subject to:               L(V, alpha) = n * m * g
 ```
 
-**Produces** [[stall-speed]] · [[max-lift-coefficient]] · [[stall-speed-landing]] · [[stall-speed-takeoff]] · [[max-lift-coefficient-landing]] · [[max-lift-coefficient-takeoff]]  ·  **from** [[airplane]] · [[airplane-takeoff]] · [[airplane-landing]] · [[aircraft-mass]] · [[gravity]] · [[load-factor]] · [[air-density]]
+**Produces** [[stall-speed]] · [[max-lift-coefficient]] · [[angle-of-attack-stall]] · [[stall-speed-landing]] · [[stall-speed-takeoff]] · [[max-lift-coefficient-landing]] · [[max-lift-coefficient-takeoff]]  ·  **from** [[airplane]] · [[airplane-takeoff]] · [[airplane-landing]] · [[aircraft-mass]] · [[gravity]] · [[load-factor]] · [[air-density]]
 
 **One relation, two directions.** This entry is the lift balance solved for the speed at the named condition C_L = C_L,max. [[lift-coefficient-required]] is the same relation, `n·m·g = ½·ρ·V²·S_ref·C_L`, solved the other way. Every time the sources solve it for a speed, the C_L belongs to a named condition (Sadraey Eq. 4.30, 4.55, 4.85; Scholz Eq. 5.30, 5.40) — there is no generic lift-balance speed, which is why `lift-balance-speed` was deleted on 2026-10-01.
 
@@ -76,6 +78,11 @@ not catch it. The canonical evaluation therefore first locates the first `C_L` m
 sweep (re-evaluated at the resulting `V_S` for the Reynolds number) and restricts `α` to the
 pre-stall branch. Approval adds: **the optimum must be the first `C_L` peak**, checked against the
 sweep.
+
+**Third output: `α_S`, the stall angle** (maintainer, 2026-10-14, D2) — the optimum α at the first
+`C_L` peak, clean application. α is a decision variable of this optimisation, so the stall angle comes
+from the nonlinear polar at the correct Reynolds number; a second producer would violate one authority
+per quantity (ADR 0022).
 
 **Second output: `C_L,max,stall`.** The lift coefficient at the optimum *is* the maximum
 lift coefficient at the stall condition — exactly the quantity the precondition below

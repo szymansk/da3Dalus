@@ -5,7 +5,7 @@ kind: optimization
 tool: OPT
 shape: law
 status: draft
-output: minimum-sink-speed
+output: minimum-sink-speed, angle-of-attack-minimum-sink, lift-coefficient-minimum-sink
 source_status: SOURCED
 dimensional_check: PROCEDURAL
 tags:
@@ -17,7 +17,7 @@ tags:
   - status/draft
 tex: \begin{aligned}V_mp = \operatorname*{arg\,min}_{V,\,\alpha}\; & D(V,\alpha)\,V \\ \text{u.d.N.}\; & L(V,\alpha) = n\,m\,g\end{aligned}
 inputs: {airplane: airplane, m: aircraft-mass, g: gravity, n_load: load-factor, rho: air-density}
-outputs: {v_mp: minimum-sink-speed}
+outputs: {v_mp: minimum-sink-speed, alpha_mp: angle-of-attack-minimum-sink, cl_mp: lift-coefficient-minimum-sink}
 ---
 
 # Minimum-sink speed as the argmin of the computed sink rate
@@ -29,11 +29,13 @@ minimize over V, alpha:   D(V, alpha) * V
 subject to:               L(V, alpha) = n * m * g
 ```
 
-**Produces** [[minimum-sink-speed]]  ·  **from** [[airplane]] · [[aircraft-mass]] · [[gravity]] · [[load-factor]] · [[air-density]]
+**Produces** [[minimum-sink-speed]] · [[angle-of-attack-minimum-sink]] · [[lift-coefficient-minimum-sink]]  ·  **from** [[airplane]] · [[aircraft-mass]] · [[gravity]] · [[load-factor]] · [[air-density]]
 
 **Autorität.** Einziger Erzeuger dieser Größe, seit die Faustformel gestrichen ist. Eine geschlossene Gegenprobe wie bei der Geschwindigkeit geringsten Widerstands gibt es hier nicht.
 
 **Kind: an optimisation problem.** The value is the solution of a stated optimisation, solved by IPOPT through `asb.Opti` with AeroBuildup inside the constraint. The coupling through Reynolds number is not drawn as a cycle: it sits inside the constraint, because AeroBuildup forms the Reynolds number from `V` per wing section. Approval asks, on top of source and scale: **no bound active at the optimum**, and **what is returned when the solver fails** — never a value.
+
+**Optimum angle of attack (maintainer, 2026-10-14, D2).** α is a decision variable of this optimisation, so the angle of attack at the optimum comes from the nonlinear polar at the correct Reynolds number; it is an output here, and a second producer would violate one authority per quantity (ADR 0022). `C_L,mp` at the optimum is output too: the Probe [[linear-lift-curve-inverse]] reads it.
 
 > 🔴 **An assumption of this entry is broken in the code.**
 >
