@@ -3,11 +3,11 @@ canon: thrust-at-airspeed
 kind: quantity
 symbol: T
 unit: "N"
-role: derived
+role: output
 status: draft
 tags:
   - canon/quantity
-  - role/derived
+  - role/output
 type: scalar
 ---
 
@@ -15,7 +15,8 @@ type: scalar
 
 The thrust a chosen propeller actually delivers at the speed currently flown — not the
 bench number. Propeller thrust falls with airspeed, because motor and propeller are
-roughly constant-power devices at high throttle.
+roughly constant-power devices at high throttle. Evaluated at the given flight-speed; the
+optimisers embed the same relation over their own V (`embeds:`).
 
 **Unit.** `N`
 
