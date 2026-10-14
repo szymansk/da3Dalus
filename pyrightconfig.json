@@ -2,7 +2,10 @@
   "typeCheckingMode": "basic",
   "venvPath": ".",
   "venv": ".venv",
-  "include": ["app"],
+  "include": [
+    "app",
+    "aero_kernel"
+  ],
   "exclude": [
     "**/__pycache__",
     "**/node_modules",
@@ -13,5 +16,8 @@
     "cad_designer"
   ],
   "reportMissingImports": true,
-  "reportMissingTypeStubs": false
+  "reportMissingTypeStubs": false,
+  "strict": [
+    "aero_kernel"
+  ]
 }

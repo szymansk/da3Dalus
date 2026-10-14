@@ -37,6 +37,8 @@ becomes the app's single source of computation (register epic "implement the cal
 - The fast CI tier runs **without** AeroSandbox and AVL.
 - SI units throughout.
 - Everything in the source tree is English (ADR 0029).
+- PEP 8, Pydantic v2 for all data types, full type annotations; enforced by `ruff` (strict rule set in
+  `aero_kernel/ruff.toml`) and `pyright` in strict mode (module CLAUDE.md).
 - The ADRs listed in chapter 9 are binding.
 
 ## 3. Context and boundary

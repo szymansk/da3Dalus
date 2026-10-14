@@ -1,0 +1,32 @@
+# Stricter than the repository default: aero_kernel is new code, held to PEP 8,
+# full type annotations and docstrings from the first line (aero_kernel/CLAUDE.md).
+extend = "../pyproject.toml"
+
+[lint]
+select = [
+    "E", "W",   # pycodestyle (PEP 8)
+    "F",        # pyflakes
+    "I",        # import order
+    "N",        # pep8-naming
+    "UP",       # modern syntax (X | None, list[int])
+    "B",        # bugbear
+    "A",        # shadowed builtins
+    "C4",       # comprehensions
+    "SIM",      # simplifications
+    "RUF",      # ruff-specific
+    "ANN",      # type annotations everywhere
+    "ASYNC",    # async pitfalls (blocking calls in coroutines)
+    "LOG", "G", # logging: getLogger(__name__), lazy %-formatting
+    "PT",       # pytest style
+    "D",        # docstrings
+]
+# The repository-wide ignore list exists for legacy code; none of it applies here.
+ignore = [
+    "E501",     # line length is enforced by the formatter
+]
+
+[lint.pydocstyle]
+convention = "google"
+
+[lint.per-file-ignores]
+"tests/**" = ["D", "ANN"]
