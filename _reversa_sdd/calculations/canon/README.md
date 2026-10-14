@@ -509,6 +509,8 @@ inputs:
   rho: air-density
   v_s0: stall-speed-landing
   v_app: approach-speed
+  delta_f_crow: crow-flap-deflection
+  delta_a_crow: crow-aileron-deflection
 outputs:
   v_s0_curve: butterfly-stall-speed-curve
   v_app_curve: butterfly-approach-speed-curve
@@ -589,7 +591,9 @@ default: {value: 1.225, source: "U.S. Standard Atmosphere 1976 (NOAA-S/T 76-1562
 - `embeds` names other existing formulas; the closure is acyclic, holds no formula with
   `uncertainty: interval`, and every embedded input is accounted for as above; `optional` names
   input parameters;
-- every quantity has a `type` from the set above; a `default` carries a source.
+- every quantity has a `type` from the set above; a `default` carries a source;
+- no plain key or value is a YAML 1.1 boolean; an `# ESCALATED:` comment states its reason;
+- every example above equals the front matter of the entry it names, so the examples cannot drift.
 
 The vocabulary and the type set are read from the two tables above — this README is their only
 definition.
