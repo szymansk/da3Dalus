@@ -31,6 +31,9 @@ then the code. Epic: #1173.
 - **Validation** rejects only physically inadmissible input. Mass is always the passed
   `values["aircraft-mass"]` (what-if calculations); a differing `total_mass_kg` in the geometry gives a
   `conflicting_mass` warning, never an abort. Regime (Re, Mach; ADR 0028) is a warning, raised in the solver adapters.
+  Control-surface stops (`positive/negative_deflection_deg`) are never a limit: no check, clamp or warning
+  against them anywhere; `airplane-configuration` applies the given flap deflection even beyond the stop
+  (ARCHITECTURE §8.11).
 - **Parameter names vs. slugs.** Inside a formula and in its canon fields, keys are parameter names
   (snake_case); quantity slugs (kebab-case) appear only as binding targets (ARCHITECTURE §8.5).
   Mass is not a criterion.
