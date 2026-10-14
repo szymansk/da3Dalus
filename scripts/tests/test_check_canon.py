@@ -330,6 +330,58 @@ applications:
     assert _findings(_canon(tmp_path, front=front, quantities=typed_quantities)) == []
 
 
+GIVEN_FRONT = """
+inputs: {a: speed-a, b: null}
+outputs: {v: speed-v}
+applications:
+  - id: one
+    bind: {b: speed-b}
+    given: [speed-b]
+"""
+
+
+def _as_target(quantities, slug):
+    quantities[slug] = quantities[slug].replace("role: derived", "role: target")
+    return quantities
+
+
+def test_given_input_that_the_application_binds_is_accepted(tmp_path, typed_quantities):
+    quantities = _as_target(typed_quantities, "speed-b")
+    assert _findings(_canon(tmp_path, front=GIVEN_FRONT, quantities=quantities)) == []
+
+
+def test_given_slug_must_exist(tmp_path, typed_quantities):
+    front = GIVEN_FRONT.replace("given: [speed-b]", "given: [no-such-quantity]")
+    msgs = _messages(_errors(_canon(tmp_path, front=front, quantities=typed_quantities)))
+    assert any("given" in m and "no-such-quantity" in m for m in msgs), msgs
+
+
+def test_given_slug_must_be_an_input_or_target(tmp_path, typed_quantities):
+    msgs = _messages(_errors(_canon(tmp_path, front=GIVEN_FRONT, quantities=typed_quantities)))
+    assert any("given" in m and "speed-b" in m and "role" in m for m in msgs), msgs
+
+
+def test_given_slug_must_have_no_default(tmp_path, typed_quantities):
+    quantities = _as_target(typed_quantities, "speed-b")
+    quantities["speed-b"] = quantities["speed-b"].replace(
+        "type: scalar", 'type: scalar\ndefault: {value: 1.0, source: "x"}'
+    )
+    msgs = _messages(_errors(_canon(tmp_path, front=GIVEN_FRONT, quantities=quantities)))
+    assert any("given" in m and "default" in m for m in msgs), msgs
+
+
+def test_given_slug_must_be_bound_by_the_application(tmp_path, typed_quantities):
+    quantities = _as_target(typed_quantities, "speed-a")
+    front = GIVEN_FRONT.replace("given: [speed-b]", "given: [speed-a, speed-b]")
+    quantities = _as_target(quantities, "speed-b")
+    assert _errors(_canon(tmp_path, front=front, quantities=quantities)) == []
+    front = GIVEN_FRONT.replace("bind: {b: speed-b}", "bind: {a: speed-b, b: speed-b}").replace(
+        "given: [speed-b]", "given: [speed-a]"
+    )
+    msgs = _messages(_errors(_canon(tmp_path / "x", front=front, quantities=quantities)))
+    assert any("given" in m and "speed-a" in m and "not bound" in m for m in msgs), msgs
+
+
 # --- naming ----------------------------------------------------------------------------------
 
 

@@ -265,7 +265,9 @@ KEBAB = re.compile(r"^[a-z0-9]+(?:-[a-z0-9]+)*$")
 LINK = re.compile(r"\[\[([^\]|]+)\]\]")
 ON_VIOLATION = {"warning", "error"}
 COST = {"instant", "seconds", "minutes"}
-APPLICATION_KEYS = {"id", "bind", "produce", "when"}
+APPLICATION_KEYS = {"id", "bind", "produce", "when", "given"}
+#: roles a `given` quantity may have: supplied from outside, never computed
+GIVEN_ROLES = {"input", "target"}
 PRECONDITION_KEYS = {"id", "parameter", "on_violation"}
 #: what an escalated gap looks like in the front matter
 ESCALATED = re.compile(r"^\s*#\s*ESCALATED\b", re.M)
@@ -449,6 +451,26 @@ def _check_formula(e: Entry, canon: Canon, add, gap) -> tuple[set[str], set[str]
         when = app.get("when")
         if when is not None and when not in canon.vocabulary:
             add(e.slug, "applications", f"{where}: when term {when!r} is not in the vocabulary")
+        given = app.get("given") or []
+        bound = {v for v in _effective(inputs, bind).values() if isinstance(v, str)}
+        if not isinstance(given, list):
+            add(e.slug, "applications", f"{where}: given is not a list")
+            given = []
+        for slug in given:
+            if slug not in q:
+                add(e.slug, "applications", f"{where}: given names unknown quantity {slug!r}")
+                continue
+            if q[slug].front.get("role") not in GIVEN_ROLES:
+                add(
+                    e.slug,
+                    "applications",
+                    f"{where}: given {slug!r} has role "
+                    f"{q[slug].front.get('role')!r}, not input or target",
+                )
+            if q[slug].front.get("default") is not None:
+                add(e.slug, "applications", f"{where}: given {slug!r} has a default")
+            if slug not in bound:
+                add(e.slug, "applications", f"{where}: given {slug!r} is not bound by it")
         for name, value in _effective(inputs, bind).items():
             if value is None:
                 gap(e, "applications", f"{where}: input parameter {name!r} is not bound")
