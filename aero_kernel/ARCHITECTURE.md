@@ -118,7 +118,7 @@ compute(aircraft, request)
  2 canon_model.subtree(request.quantities)    → formulas + applications, topologically sorted
  3 per application: check its condition    → not met → status "not_applicable"
  4 per world (A11) and per operating point:
-     cost class "minutes" without approval → needs_confirmation
+     cost class "minutes" and include_long_runs off → status "skipped" (reason long_run_not_included)
      build key → cache hit?                → reuse
      else call the implementation (time budget)
        success → value + warnings (incl. regime ADR 0028, preconditions)
@@ -155,7 +155,6 @@ An error means **no value**. A value with a caveat is a **warning** (8.2), not a
 | `timeout` | yes | no | the time budget was exceeded | "Raise the budget or request it as a long run." |
 | `tool_unavailable` | no | yes | a tool is missing (AeroSandbox, AVL) | "Use an environment with the aero dependencies." |
 | `upstream_failed` | as predecessor | as predecessor | a predecessor quantity has no value | "Fix `stall-speed` first." |
-| `needs_confirmation` | yes, after approval | yes | long run (K28) | "The user must start this computation." |
 | `internal` | no | yes | programming error | "Report it; attach input and provenance." |
 
 `escalate = true` means an agent cannot resolve this itself; a human has to act.
@@ -175,7 +174,10 @@ Sources:
 
 `QuantityResult` fields:
 - `slug` and `unit` (SI)
-- `status`: `ok`, `not_applicable` or `error`
+- `status`: `ok`, `not_applicable`, `skipped` or `error`
+- `reason` for every status other than `ok`: machine-readable `code` plus natural-language `message`
+  (`not_applicable`: the application's unmet condition; `skipped`: `long_run_not_included` or
+  `depends_on_skipped`; `error`: see `error`)
 - `value` **or** `interval {min, max, worlds{name: value}}`
 - `tool` and `application`
 - `validated`: `false` — no value is validated against flight data (canon A11: "not validated")
@@ -227,9 +229,20 @@ canon document is corrected.
 
 ### 8.7 Cost class
 
-Each formula has a cost class: `instant`, `seconds` or `minutes`. A `minutes` formula only runs with
-`request.allow_long_runs` (K28). Which layer sets the class is still open (O14, question 3). The kernel
-carries the attribute from the canon model.
+Each formula has a cost class: `instant`, `seconds` or `minutes`, carried in the canon model.
+
+**Long runs are opt-in per request.** `ComputeRequest.include_long_runs` (default `false`) switches on
+formulas of cost class `minutes`. The caller decides beforehand; the kernel neither asks back nor defers.
+- Flag off: a requested `minutes` quantity is returned with `status: skipped`, no value, and
+  `reason.code = long_run_not_included`. Quantities depending on it are `skipped` with
+  `reason.code = depends_on_skipped`. Everything else in the request is computed normally.
+- Flag on: the quantity is computed like any other; the time budget of the request applies.
+- **Documentation:** every `minutes` quantity is marked as long-running in the generated API reference and
+  in `IMPORT_REPORT.md` (Appendix A, column "cost class"), so a caller knows before calling.
+- `skipped` is not an error: nothing failed, the caller chose not to include it.
+
+When the app turns the flag on (K28: on explicit user request, on an immutable version snapshot) is the
+caller's responsibility. Which layer *assigns* the cost class to a formula is still open (O14, question 3).
 
 ### 8.8 Tools and data sources
 
@@ -309,6 +322,7 @@ Rules:
 | Q12 | Runtime independence | `compute()` works with `_reversa_sdd/` absent; only `canon/canon_model.json` is read |
 | Q13 | Import twice | byte-identical `canon_model.json` |
 | Q14 | A canon entry with an unknown unit | the import fails at stage 2 with file and field; no model written |
+| Q15 | A `minutes` quantity requested without `include_long_runs` | `status: skipped`, `reason.code = long_run_not_included`, dependents `depends_on_skipped`, all other quantities computed |
 
 ## 11. Risks and technical debt
 
