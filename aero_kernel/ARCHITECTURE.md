@@ -4,6 +4,10 @@
 > **binding template** for every ticket of Epic #1173 (#1174–#1178). Whoever changes something stated
 > here changes this document first.
 >
+> **Precedence.** Where a ticket of the epic says something different (e.g. "manifest",
+> `@formula(slug, inputs, outputs)`, graph from `scripts/canon_to_json.py`), this document wins and the
+> ticket is corrected.
+>
 > **What is not in here:** the content of the formulas (→ the canon in `_reversa_sdd/calculations/canon/`)
 > and the decisions (→ ADRs and register K, chapter 9). This document links; it does not repeat.
 
@@ -111,7 +115,7 @@ aero_kernel/
   cached.py         CachedKernel — the cached facade (owns cache, in-flight deduplication, resources)
   engine.py         walks the graph; takes an optional NodeStore (none = stateless)
   runtime.py        executor, concurrency limit, cancellation
-  schema.py         AircraftInput, OperatingPoint, ComputeRequest, ComputeResult, QuantityResult,
+  schema.py         AircraftInput, ComputeRequest, ComputeResult, QuantityResult, AirplaneGeometry, Polar,
                     KernelError, Warning, Provenance (Pydantic, extra="forbid")
   canon/            canon_model.json         the interpreted canon (versioned, committed)
                     canon_model.schema.json  JSON Schema of the canon model
@@ -120,9 +124,9 @@ aero_kernel/
   importer/         parse.py · normalise.py · validate.py · diff.py · write.py · __main__.py
                     external canon document → canon model (ch. 8.9); not imported at runtime
   graph.py          subtree, order, world expansion, upstream_failed
-  registry.py       @formula(slug) — implementations ↔ canon model
+  registry.py       @formula(slug), @precondition(slug, id) — implementations ↔ canon model (ch. 8.12)
   formulas/         one file per canon formula (file name = slug, with underscores)
-  solvers/          aerobuildup.py · avl.py · opti.py · atmosphere.py · data.py (KAT, APC)
+  solvers/          aerobuildup.py · avl.py · opti.py · atmosphere.py · data.py (KAT, APC providers)
   cache.py          NodeStore protocol; MemoryCache (LRU), DiskCache
   validate.py       physical admissibility; regime warnings (ADR 0028)
   errors.py         error catalogue (ch. 8.1)
@@ -144,17 +148,20 @@ aero_kernel/
 
 ```
 await compute(aircraft, request)
- 1 validate(aircraft)                      → invalid_input with input_path; the only abort
- 2 canon_model.subtree(request.quantities)    → formulas + applications, topologically sorted
- 3 per application: check its condition    → not met → status "not_applicable"
- 4 per world (A11) and per operating point:
-     cost class "minutes" and include_long_runs off → status "skipped" (reason long_run_not_included)
-     [CachedKernel only] build key → cache hit? → reuse, from_cache = true
-     else schedule the implementation (time budget); independent nodes run concurrently (ch. 8.10)
-       success → value + warnings (incl. regime ADR 0028, preconditions)
-       failure → KernelError; successors → upstream_failed
- 5 merge worlds → [min, max] with the list of worlds
- 6 ComputeResult with provenance
+ 1 validate(aircraft)                      → any finding: ComputeResult with input_errors, nothing computed
+ 2 resolve request.quantities              → unknown slug: that quantity error invalid_input, rest goes on
+ 3 canon_model.subtree(quantities)         → applications, topologically sorted (ch. 8.13)
+ 4 per application: evaluate its condition → not met → status not_applicable (+ dependents, ch. 8.13)
+ 5 per application and world assignment (A11), in graph order, concurrently where independent:
+     cost class minutes and include_long_runs off → skipped (long_run_not_included)
+     a predecessor failed/skipped/not applicable  → status by precedence (ch. 8.13)
+     required input value missing                → error invalid_input, code missing_input
+     [CachedKernel only] key from the direct input values → hit → reuse, from_cache = true
+     else check preconditions, then await the implementation inside the time budget (ch. 8.10)
+       success → outputs + warnings (regime warnings come from the solver adapters, ch. 8.2)
+       FormulaError / other exception → KernelError (other exceptions → internal)
+ 6 per quantity: merge worlds → value, or interval {min, max, worlds}
+ 7 ComputeResult (ch. 8.3) with provenance
 ```
 
 ## 7. Deployment
@@ -190,18 +197,43 @@ An error means **no value**. A value with a caveat is a **warning** (8.2), not a
 
 `escalate = true` means an agent cannot resolve this itself; a human has to act.
 
+- **`compute()` never raises for computational failure.** Everything is in the `ComputeResult`. It raises
+  only `asyncio.CancelledError` and Pydantic `ValidationError` when the caller builds a malformed
+  `AircraftInput` or `ComputeRequest` (wrong types, unknown fields). Physically inadmissible but well-typed
+  input is not an exception: it is returned in `ComputeResult.input_errors`.
+- **`upstream_failed` with several failed predecessors:** `retryable` is true only if every root cause is
+  retryable; `escalate` is true if any root cause escalates. `detail.causes` lists the root
+  `KernelError`s (quantity, code), never the chain in between.
+- **Violated precondition:** the canon entry says per precondition `on_violation: warning | error`.
+  `warning` → a `defect` warning and the value is returned. `error` → `unsupported_configuration`, code
+  `precondition_violated`, `detail.precondition` = its id.
+
 ### 8.2 Warnings
 
 Same shape as `DesignWarning` (ADR 0020): `severity` (`practice` | `defect`), `code`, `message`,
 `quantity`.
 
+Each warning also carries `origin`: the quantity where it arose. A quantity's result lists its own
+warnings and those of its subtree, deduplicated by (`code`, `origin`). A V_S evaluated at Re 2·10⁴ thus
+warns on V_S and on everything computed from it.
+
 Sources:
-- the regime (ADR 0028): Re band 3·10⁴–1·10⁶, "bubble-sensitive" below 7·10⁴, Mach
+- the regime (ADR 0028): chord Re band 3·10⁴–1·10⁶, "bubble-sensitive" below 7·10⁴, Mach ≤ 0.3, warned up
+  to 0.6. **Checked where Re and Mach become known:** in the aerodynamic solver adapters, per evaluation,
+  from the section chords in metres, the evaluated V and the speed of sound at the altitude. Not in input
+  validation, which does not know V.
 - violated or unchecked preconditions
 - active bounds in the optimiser
 - the "not validated" marker of A11
 
 ### 8.3 Result contract
+
+`ComputeResult` fields:
+- `quantities`: one `QuantityResult` per requested slug, in request order. Only requested quantities are
+  returned, not the intermediate nodes of the subtree.
+- `input_errors[]`: `KernelError`s of category `invalid_input` from validation (step 1). Non-empty means
+  nothing was computed and `quantities` is empty.
+- `provenance` (ch. 8.4).
 
 `QuantityResult` fields:
 - `slug` and `unit` (SI)
@@ -209,7 +241,8 @@ Sources:
 - `reason` for every status other than `ok`: machine-readable `code` plus natural-language `message`
   (`not_applicable`: the application's unmet condition; `skipped`: `long_run_not_included` or
   `depends_on_skipped`; `error`: see `error`)
-- `value` **or** `interval {min, max, worlds{name: value}}`
+- `value` **or** `interval {min, max, worlds{assignment: value}}` (ch. 8.13). `value` is a float in the
+  quantity's SI unit, or a structured value of the quantity's `type` (ch. 8.12).
 - `tool` and `application`
 - `validated`: `false` — no value is validated against flight data (canon A11: "not validated")
 - `warnings[]` and `error`
@@ -225,14 +258,24 @@ No internal paths or mechanisms in any field (ADR 0019).
 - tool versions (aerosandbox, NeuralFoil model, AVL)
 - accuracy tier (A3) and solver settings
 
-**Cache key** = hash of:
-- the formula slug, application and world
-- the canonicalised **relevant** inputs
-- the canon model hash of the entry
-- the implementation version and the tool versions
+**Cache key** = SHA-256 over the canonical JSON of:
+- the scope (see below), the application id and the world assignment
+- the **direct input values** of the node: the values bound to its parameters, i.e. the outputs of its
+  predecessors or the caller's input values. A node's key thus changes exactly when something in its
+  subtree changes value (A1), without tracking leaf inputs.
+- the **build digest**: one hash over the kernel package's source files and `canon_model.json`, computed
+  lazily on first use. Any code or canon change invalidates every entry. That wastes hits after an
+  upgrade but can never serve a stale value; no hand-maintained implementation version exists that could be
+  forgotten.
+- the tool versions (aerosandbox, NeuralFoil model, AVL) and the accuracy tier and solver settings.
 
-Canonicalisation means sorted keys and numbers at a fixed number of significant digits. When a formula
-changes, only its subtree expires (A1).
+**Canonicalisation:** sorted keys; floats as their exact shortest round-trip representation (`repr`),
+`-0.0` as `0.0`; NaN and infinity cannot occur because validation rejects them. Numbers are **not**
+rounded: rounding would let two different inputs share a key.
+
+**What is stored:** the node's outputs (all output parameters of the application in that world) and its
+own warnings. Errors, `skipped` and `not_applicable` are never stored; a `timeout` or `not_converged` is
+recomputed next time.
 
 **Two interfaces, one engine.**
 
@@ -274,8 +317,13 @@ await kernel.drop_scope("aircraft/3f2c…")                          # e.g. the 
 - **Deletion.** `drop_scope(scope)` removes every entry of a scope, in memory and on disk.
 - **Limits.** `MemoryCache` and `DiskCache` accept an optional limit per scope in addition to the global one,
   so one scope cannot evict the others.
-- **Pluggable store.** `NodeStore` is a protocol with `get(scope, key)`, `put(scope, key, value)` and
-  `drop_scope(scope)`. A caller may supply its own store, e.g. a database or Redis per tenant.
+- **Pluggable store.** `NodeStore` is an **async** protocol: `await get(scope, key) -> Entry | None`,
+  `await put(scope, key, entry)`, `await drop_scope(scope)`. `Entry` is the JSON form of the stored outputs and
+  warnings. A caller may supply its own store, e.g. a database or Redis per tenant.
+- **`MemoryCache`:** one LRU over all scopes (`max_entries`), plus an optional `max_entries_per_scope`
+  that evicts the least recently used entry **of that scope**.
+- **`DiskCache`:** one SQLite file (stdlib `sqlite3`) at `path`; values as JSON, never pickle; limits
+  `max_bytes` and optional `max_bytes_per_scope`, evicting by last access time.
 - **One pool for all scopes.** One `CachedKernel` serves many scopes with one process pool, so no per-aircraft
   kernel objects are needed.
 - **The caller assigns scopes.** What a scope stands for (aircraft, user, version snapshot K28, or `shared`)
@@ -287,10 +335,19 @@ await kernel.drop_scope("aircraft/3f2c…")                          # e.g. the 
 An **application** is a formula plus the bindings of its inputs, a condition and the name of the output
 quantity.
 
-A **precondition** is an executable check per application. It returns one of three states:
+- Every input parameter of the formula is bound either to a **quantity** or to a **constant with source**
+  (ADR 0028). Every output parameter is bound to a quantity.
+- The condition is a predicate from a closed vocabulary over facts of the aircraft (`has_flap`,
+  `has_horizontal_tail`, …), defined in the canon (#1181) and implemented once in `graph.py`. No condition
+  means "always".
+- An entry without `applications:` has exactly one application: every parameter bound to the quantity of
+  the same slug, condition "always".
+
+A **precondition** is an executable check per application, registered with `@precondition(slug, id)`
+(ch. 8.12) and run before the implementation. It returns one of three states:
 - 🟢 held
-- 🔴 violated: a `defect` warning or an error, as the canon entry says
-- ⚪ unchecked: a `practice` warning
+- 🔴 violated: a `defect` warning or an error, as `on_violation` in the canon entry says (ch. 8.1)
+- ⚪ unchecked, including "no check registered yet": a `practice` warning
 
 ### 8.6 Consistency rules (checked by the importer)
 
@@ -300,9 +357,10 @@ A **precondition** is an executable check per application. It returns one of thr
 - Units consistent across bindings (A4); dimensional check of law entries (`scripts/check_canon.py` logic).
 - Every reference (inputs, bindings, worlds) resolves to a quantity in the model.
 
-At load time the kernel additionally checks: every registered implementation has a slug in the model, and
-its declared units equal the model's.
-- Separate namespaces: the calculation canon now, the sizing canon (K31) later.
+- Separate namespaces: the calculation canon now, the sizing canon (K31) later (ch. 8.9).
+
+At load time the kernel additionally checks that every registered implementation and precondition has its
+slug and id in the model.
 
 Violations are **canon findings**, not runtime errors: the importer reports them, writes no model, and the
 canon document is corrected.
@@ -310,6 +368,11 @@ canon document is corrected.
 ### 8.7 Cost class
 
 Each formula has a cost class: `instant`, `seconds` or `minutes`, carried in the canon model.
+
+**Where it comes from (interim, O14 question 3 open).** The importer takes the canon field `cost:` where it
+is set (#1181), otherwise derives it from the tool: APP, ATM, GEO, KAT, APC → `instant`; AB, AVL, OPT →
+`seconds`. `minutes` is never derived, only declared. Should O14 assign the class to the app instead, the
+field leaves the canon and the kernel only reports it.
 
 **Long runs are opt-in per request.** `ComputeRequest.include_long_runs` (default `false`) switches on
 formulas of cost class `minutes`. The caller decides beforehand; the kernel neither asks back nor defers.
@@ -322,7 +385,7 @@ formulas of cost class `minutes`. The caller decides beforehand; the kernel neit
 - `skipped` is not an error: nothing failed, the caller chose not to include it.
 
 When the app turns the flag on (K28: on explicit user request, on an immutable version snapshot) is the
-caller's responsibility. Which layer *assigns* the cost class to a formula is still open (O14, question 3).
+caller's responsibility.
 
 ### 8.8 Tools and data sources
 
@@ -330,6 +393,10 @@ caller's responsibility. Which layer *assigns* the cost class to a formula is st
 - Data: KAT (component catalogue) and APC (propeller tables).
 - Data comes **from the caller**, either inline in the input or as a provider with a content hash. The
   kernel loads nothing on its own.
+- A provider is an async protocol in `solvers/data.py`: `content_hash() -> str` (part of the cache key of
+  every node that reads it) and one lookup method per source. The lookup signatures are defined with the
+  first formula that uses them (the probes `airplane-components`, `propeller-table-lookup`); the core chain
+  reads no provider.
 
 ### 8.9 Canon import — from the canon document to the canon model
 
@@ -342,11 +409,54 @@ python -m aero_kernel.importer <canon-document-dir> [--check]
 
 | Stage | Does | Fails when |
 |---|---|---|
-| 1 Parse | reads every formula and quantity entry: front matter, the structured fields (`inputs`, `applications`, `preconditions`, `uncertainty`, …) and the canonical form; never prose | a required field is missing or malformed |
+| 1 Parse | reads the front matter of every formula and quantity entry (fields above); never prose | a required field is missing or malformed |
 | 2 Normalise | slugs, units to SI symbols, roles, kinds, tools to closed vocabularies; resolves `[[…]]` references | an unknown unit, kind, tool or role |
 | 3 Validate | JSON Schema of the canon model; consistency rules (ch. 8.6); dimensional check | any rule is violated |
 | 4 Diff | compares with the committed canon model: entries added, removed or changed; marks **breaking** changes (inputs, units, outputs, applications) and lists the affected implementations and golden tests | — (only reports) |
 | 5 Write | writes `canon_model.json` (sorted, stable formatting), its content hash, the source commit of the canon document and the importer version; writes `IMPORT_REPORT.md` (diff, findings, Appendix A table) | — |
+
+**What the importer reads (maintainer decision 2026-10-14, migration in #1181).** Every entry carries its
+structure in the front matter; the prose explains, the importer never reads it. The canon `README.md`
+defines the fields; this is the shape the importer requires:
+
+```yaml
+# formula entry
+canon: speed-from-stall-margin
+entry: formula
+kind: rating                      # law | procedure | optimization | fit | rating
+tool: APP                         # APP | ATM | GEO | AB | AVL | OPT | KAT | APC
+inputs:   {stall_speed: stall-speed-landing, margin: null}   # parameter → default quantity (null: bound per application)
+outputs:  {speed: approach-speed}
+applications:
+  - id: approach
+    bind:    {stall_speed: stall-speed-landing, margin: {const: <value>, source: "<citation>"}}
+    produce: {speed: approach-speed}
+  - id: takeoff
+    bind:    {stall_speed: stall-speed-takeoff, margin: {const: <value>, source: "<citation>"}}
+    produce: {speed: takeoff-speed}
+    when: has_flap                # closed vocabulary; absent = always
+preconditions:
+  - {id: <check-id>, on: stall_speed, on_violation: warning}   # warning | error
+uncertainty: interval             # optional; then
+worlds: [textbook, pappas, avl]
+cost: seconds                     # optional, interim (ch. 8.7)
+
+# quantity entry
+canon: aircraft-mass
+kind: quantity
+unit: kg
+role: input                       # input | derived | output | target
+type: scalar                      # scalar | airplane | polar | … (closed set, ch. 8.12)
+default: null                     # or {value: <value>, source: "<citation>"}
+```
+
+The values in the example are illustrative; the canon entries are the authority.
+
+**The model** (`canon_model.json`, JSON Schema `canon_model.schema.json`) holds, per namespace: `quantities`
+(slug, symbol, unit, role, type, default) and `formulas` (slug, kind, tool, cost, inputs, outputs,
+applications, preconditions, worlds), plus `schema_version`, `content_hash`, `source_commit` and
+`importer_version`. References are slugs; namespaces are written `<namespace>:<slug>` (`calc:stall-speed`,
+later `sizing:…`), and a bare slug in a request means `calc:`.
 
 Rules:
 - **All or nothing.** Any failure in stages 1–3 writes nothing. The importer lists the findings with file,
@@ -374,14 +484,17 @@ caller's event loop, it can be cancelled, and it limits its own resource use.
     spawn context mirrors `app/services/cad_service.py`, because CasADi/IPOPT and numpy do not reliably
     release the GIL.
   - AVL runs through `asyncio.create_subprocess_exec`.
-  - Pure `law` formulas below a size threshold run inline; they are microseconds.
-- **Concurrency from the graph.** Independent nodes of the subtree, method worlds (A11) and operating points
-  run concurrently (`asyncio.TaskGroup`). The dependency graph decides what may run in parallel, never the
+  - Formula code itself runs on the loop; it is cheap by contract (ch. 8.12). Only the solver adapters
+    leave the loop. There is no size threshold.
+- **Concurrency from the graph.** Independent nodes of the subtree and world assignments (A11) run
+  concurrently (`asyncio.TaskGroup`). The dependency graph decides what may run in parallel, never the
   formula code.
 - **Bounded.** Execution resources are passed in, never global:
   - an executor (process pool) and a concurrency limit.
-  - The **stateless `compute()`** takes them as optional keyword arguments. Without them it uses a
-    per-call default, so it stays free of state.
+  - The **stateless `compute()`** takes them as optional keyword arguments (`executor=`,
+    `max_concurrency=`, default `os.cpu_count()`). Without an executor it creates a pool on the first
+    solver call and shuts it down before returning, so it stays free of state. Spawning costs about a
+    second; callers that compute often pass an executor or use `CachedKernel`.
   - **`CachedKernel`** owns one pool and one limit for its lifetime. They are created lazily and closed by
     `async with` or `aclose()`.
   - Nothing starts at import. Resources are not results: they never change a value.
@@ -391,16 +504,123 @@ caller's event loop, it can be cancelled, and it limits its own resource use.
   - Work already running in the process pool is allowed to finish but its result is discarded, because
     pool workers cannot be interrupted safely.
   - `asyncio.CancelledError` is always re-raised, never turned into a result.
-- **Time budget.** `ComputeRequest.time_budget_s` is enforced with `asyncio.timeout`. Quantities still open
-  when it expires get `error.category = timeout`; quantities already finished are returned.
+- **Time budget.** `ComputeRequest.time_budget_s` (default `None` = no budget) is one wall-clock budget for
+  the whole request, enforced with `asyncio.timeout`. Quantities still open when it expires get
+  `error.category = timeout`; quantities already finished are returned.
 - **Cache under concurrency (`CachedKernel` only).** The store is safe for concurrent use. **In-flight
   deduplication** (mode `use`): when two concurrent requests need the same key, the second awaits the first
   one's future instead of computing it again.
 - **No hidden loop.** The kernel never calls `asyncio.run`, never creates or closes the caller's loop and
   keeps no loop-bound global state. It works inside FastAPI, in pytest-asyncio and in plain
   `asyncio.run(compute(...))` from scripts.
-- **Optional, decided at approval: `compute_iter()`.** An async generator yielding each `QuantityResult` as
-  soon as it is final, for progressive display of long runs. Same request, same results as `compute()`.
+- **Not in v1: `compute_iter()`** (maintainer, 2026-10-14). An async generator yielding each
+  `QuantityResult` as soon as it is final can be added later without changing `compute()`; first the canon
+  is built and checked against real calculations.
+
+### 8.11 Input and request
+
+```python
+class AircraftInput(BaseModel):          # extra="forbid"
+    airplane: AirplaneGeometry           # docs/geometry-format/airplane-geometry.schema.json
+    values: dict[str, float]             # canon slug → value in the quantity's SI unit
+    providers: dict[str, DataProvider] = {}   # "KAT", "APC" (ch. 8.8)
+
+class ComputeRequest(BaseModel):
+    quantities: list[str]                # canon quantity slugs, not formula slugs
+    include_long_runs: bool = False      # ch. 8.7
+    time_budget_s: float | None = None   # ch. 8.10
+    accuracy: Literal[...] = "xxxlarge"  # NeuralFoil model size, A3 / O10: a solver setting
+```
+
+**Binding of canon input quantities to the input:**
+- The quantity `airplane` (type `airplane`) is `AircraftInput.airplane`.
+- Every other quantity with `role: input` or `role: target` is `AircraftInput.values[<slug>]`. Today these
+  are `aircraft-mass`, `centre-of-gravity`, `altitude`, `flight-speed`, `angle-of-attack`, `load-factor`,
+  `gravity`, `sea-level-air-density` and the six `*-target` quantities. Assumptions are values like any
+  other (R1); whether a value is assumed or measured is not the kernel's concern.
+- A missing value falls back to the quantity's `default` in the canon model (e.g. physical constants, A5).
+  Without a default, the quantities that need it get `invalid_input`, code `missing_input`, with
+  `input_path = values.<slug>`; the rest of the request is computed.
+- **One source for mass.** Mass comes only from `values["aircraft-mass"]`. If the geometry's
+  `total_mass_kg` is set and differs, validation reports `invalid_input`, code `conflicting_mass`.
+
+**Units.** Parsing `AirplaneGeometry` normalises the format's documented exceptions (spar dimensions in mm
+etc., AIRPLANE-GEOMETRY.md §2) to SI. That validator is the only place where units are converted; after
+parsing everything is SI.
+
+**Validation (step 1, physical admissibility only).** Non-finite numbers; lengths that must be positive
+(chord, span, airfoil thickness, fuselage dimensions) ≤ 0; mass ≤ 0; density ≤ 0; a wing with fewer than
+two sections; an airfoil that cannot be resolved. Each rule lives in `validate.py` with one test.
+`input_path` is a dotted path into `AircraftInput` with keys and indices in brackets, e.g.
+`airplane.wings["Main wing"].x_secs[2].chord` or `values.aircraft-mass`. Regime is not validated (ch. 8.2).
+
+**Requests name quantities.** A formula with several outputs runs once per application and world; each
+requested output is its own `QuantityResult`. Requesting two outputs of the same formula calls it once.
+
+### 8.12 Formula implementation contract
+
+```python
+@formula("stall-speed")
+async def stall_speed(x: Inputs, ctx: Context) -> dict[str, Value]:
+    polar = await ctx.solvers.aerobuildup.sweep(x["airplane"], ...)   # leaves the loop
+    ...
+    return {"stall-speed": v_s, "max-lift-coefficient": cl_max}
+```
+
+- **One coroutine per formula.** `x` maps the formula's **parameter names** (canon `inputs:`) to values, as
+  bound by the application; the formula never sees which application or quantity it serves. It returns a
+  dict over its **output parameter names**, every one of them. Values are floats in SI or instances of
+  the structured types in `schema.py` (`AirplaneGeometry`, `Polar`, …), matching the quantity's `type`.
+- **`ctx`** carries: `solvers` (the adapters), `world` (the active world of this formula, if it has
+  worlds), `accuracy`, and `warn(code, message, severity)`. Nothing else: no cache, no request, no
+  global.
+- **Formula code is cheap.** It runs on the event loop. Anything heavy goes through an adapter; adapters
+  run CPU work in the process pool and AVL as an async subprocess (ch. 8.10).
+- **Picklability** concerns only adapters: what they send to the pool is a module-level function and plain
+  data. Formulas themselves never cross a process boundary.
+- **Failure.** Raise `FormulaError(category, code, message, hint, detail)` for an expected failure
+  (`not_converged`, `unsupported_configuration`, …). Any other exception becomes `internal`. Never return a
+  substitute value (ADR 0020).
+- **Preconditions** are separate functions, `@precondition("stall-speed", "<check-id>")`, taking the same
+  `x` and returning `held | violated | unchecked` with a message.
+- **Registration** is by decorator at import of `aero_kernel.formulas`. The traceability test (Q11) checks
+  that each implementation's parameter names equal the canon model's.
+
+### 8.13 Graph semantics
+
+**Operating points.** A named condition is part of the quantity's name (A2): `stall-speed`,
+`minimum-drag-speed` and `approach-speed` are separate quantities, each produced by its own application.
+They need no operating point from the caller. The generic inputs (`flight-speed`, `altitude`,
+`angle-of-attack`, `load-factor`) are ordinary input values (O10, A2: a generic quantity may be an input,
+never an output), so one call evaluates one operating point. Several operating points are several calls;
+`CachedKernel` makes the shared subtree free. There is no operating-point expansion in the graph.
+
+**Worlds (A11, ADR 0027).**
+- A formula with `uncertainty: interval` declares its worlds in the canon. Each world is a run of the same
+  implementation with `ctx.world` set; worlds are not separate formulas (A7).
+- A **world assignment** fixes one world per uncertain formula in the subtree, written
+  `neutral-point=avl,max-roll-rate=aerobuildup`. The engine runs the **Cartesian product** over the
+  uncertain formulas in a quantity's subtree (A11 rule 3); a node outside an uncertain formula's subtree
+  runs once and is shared by all assignments.
+- The interval of a quantity is min and max over its assignments; `worlds` lists every assignment with its
+  value. Never interval arithmetic.
+- **A failed assignment** makes the quantity an error, not a narrower interval: the error of the failed
+  assignment, with `detail.worlds_ok` holding the values that did compute. A silently narrowed interval
+  would be an undeclared fallback (ADR 0020).
+- **Continuous causes** (a parameter evaluated at its bounds, A11 rule 2) and the **monotonicity check**
+  (rule 4) are declared in the canon model but not in v1: such a formula returns `not_implemented`, code
+  `continuous_uncertainty`. The core chain has only method worlds.
+
+**Status propagation.** A node whose predecessors are not all `ok` takes the status by precedence:
+
+| Predecessors (any of) | Node | reason / category |
+|---|---|---|
+| `error` | `error` | `upstream_failed` (ch. 8.1 for retryable/escalate) |
+| `skipped`, none `error` | `skipped` | `depends_on_skipped` |
+| `not_applicable`, none of the above | `not_applicable` | `depends_on_not_applicable` |
+
+An error dominates: computing the long run would not help a node whose other input failed. A predecessor
+counts only if the node actually needs it; an unused output of a multi-output formula does not propagate.
 
 ## 9. Decisions (references only)
 
@@ -444,29 +664,25 @@ caller's event loop, it can be cancelled, and it limits its own resource use.
 | Q16 | Event loop stays responsive | while a `seconds` computation runs, a concurrent `asyncio.sleep(0.01)` task is delayed by < 50 ms |
 | Q17 | Cancellation | cancelling `compute()` during an AVL run kills the subprocess and leaves no temp directory; `CancelledError` propagates |
 | Q18 | In-flight deduplication | on one `CachedKernel`, two concurrent identical requests cause exactly one formula call |
+| Q19 | Time budget | budget exceeded → open quantities `timeout`, finished ones returned |
 | Q20 | Stateless interface leaves no state | after `compute()` returns, no cache entry, pool or other object created by it remains; a second call computes again |
 | Q21 | Cache scopes | an entry written in scope A is never a hit in scope B; `drop_scope(A)` leaves B untouched; a per-scope limit evicts only within its scope |
-| Q19 | Time budget | budget exceeded → open quantities `timeout`, finished ones returned |
+| Q22 | Multi-output formula | requesting two outputs of one application calls the implementation once |
+| Q23 | One world fails | the quantity is `error` with `detail.worlds_ok`; no narrowed interval |
+| Q24 | Missing input value | only the quantities needing it get `missing_input`; the rest compute |
+| Q25 | Precondition violated | `on_violation: warning` → value plus `defect` warning; `error` → `precondition_violated` |
+| Q26 | Status precedence | mixed failed/skipped/not-applicable predecessors give the status of ch. 8.13 |
+| Q27 | Cache key | inputs differing in the last bit of a float give different keys; a changed source file changes every key |
 
 ## 11. Risks and technical debt
 
 | Risk | Consequence | Handling |
 |---|---|---|
-| **The canon document is only half machine-readable.** Inputs sit in the prose line "Produces … from". Only `stall-speed` has an application table, and only 3 of 57 entries have structured preconditions. | The importer cannot derive applications and preconditions completely. | **Decision needed** (see below). |
+| **The canon is not yet machine-readable.** Applications, preconditions and parameter names exist only in prose. | The importer cannot be built against the real canon. | **Decided** (maintainer, 2026-10-14): extend the format for all entries first, #1181. Until then #1174 builds and tests loader, graph and engine against small hand-written fixture models in `tests/fixtures/`; the importer follows #1181. |
 | 55 of 57 canon entries are `draft` | Tests run against unapproved entries | Intended (Epic #1173); golden values are called "regression" |
 | CI has no aero dependencies | Solver formulas are untested in the fast tier | Mock the adapters; job `aero-kernel-aero` (#1177) |
 | Solver convergence (stall plateau, bounds) | `not_converged` occurs often | Robustness run (#1178), K32 procedure |
-| The `stall-speed` application table uses old register names (`v_stall_clean_mps`) instead of canon slugs | Names do not match the canon model | Switch to canon slugs when extending the format |
-
-**Open decision for the maintainer: the canon format.** So that the importer does not have to guess
-applications and preconditions from prose, every formula entry needs machine-readable fields in its front
-matter, for example:
-- `inputs:`
-- `applications:` (name, bindings, condition)
-- `preconditions:` (check, status, test)
-
-Proposal: extend the format once and update all 57 entries mechanically, keeping the prose, **before** the
-importer is built.
+| The `stall-speed` application table uses old register names (`v_stall_clean_mps`) instead of canon slugs | Names do not match the canon model | Becomes canon slugs in #1181 |
 
 ## 12. Glossary
 
@@ -483,7 +699,9 @@ importer is built.
 | **Canon model** | the machine-readable, versioned JSON image of the canon inside the package, interpreted by the kernel | — |
 | **Import** | the deliberate step that translates the canon document into the canon model (ch. 8.9) | — |
 | **Cost class** | `instant` / `seconds` / `minutes` | Kostenklasse |
-| **Operating point** | mass, altitude, speed and controls of one flight condition (O10) | Betriebspunkt |
+| **Operating point** | mass, altitude, speed and controls of one flight condition (O10); one call evaluates one (ch. 8.13) | Betriebspunkt |
+| **Parameter** | the name of a formula input or output inside the formula; applications bind it to a quantity | — |
+| **World assignment** | one world chosen per uncertain formula of a subtree (ch. 8.13) | — |
 
 ---
 
@@ -562,4 +780,4 @@ model (part of `IMPORT_REPORT.md`).
 *57 entries; core chain 26, probes 6, later 25.*
 
 **Finding from the mapping.** All 57 entries fit the model (five `kind`s, eight tools, three `shape`s,
-worlds, cost classes). What is missing is not a concept but **machine-readability** in the canon (ch. 11).
+worlds, cost classes). What is missing is not a concept but **machine-readability** in the canon (#1181).
