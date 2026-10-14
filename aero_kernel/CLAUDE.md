@@ -9,8 +9,14 @@ then the code. Epic: #1173.
 - **Boundary.** Never import from `app/`, `cad_designer/` or `scripts/`. The app calls the core, never
   the other way round (ARCHITECTURE §3, test Q9).
 - **The kernel interprets its own canon model** (`canon/canon_model.json`). Quantities, applications,
-  dependencies and units come from it. Code only registers implementations via `@formula("<slug>")`.
-  Never hard-code a dependency, a unit or a quantity name that the model owns.
+  dependencies and units come from it. Code only registers implementations via `@formula("<slug>")` and
+  checks via `@precondition("<slug>", "<id>")`. Never hard-code a dependency, a unit or a quantity name that
+  the model owns.
+- **Formula contract (ARCHITECTURE §8.12).** A formula is a cheap coroutine over its canon parameter names,
+  returns every output parameter, and raises `FormulaError` instead of returning a substitute. Heavy work
+  only through a solver adapter. It never sees the application, the request or the cache.
+- **Until #1181 is merged** the canon document is not machine-readable: build and test against hand-written
+  fixture models in `tests/fixtures/`, never against a hand-written `canon/canon_model.json`.
 - **Canon changes only through the import** (`python -m aero_kernel.importer`, ARCHITECTURE §8.9). Never
   edit `canon_model.json` by hand, and never read `_reversa_sdd/` at runtime. A canon finding is fixed in
   the canon document, then re-imported. A breaking diff means: update the affected implementations and
@@ -25,7 +31,10 @@ then the code. Epic: #1173.
 - **Validation** rejects only physically inadmissible input. Regime (Re, Mach; ADR 0028) is a warning.
   Mass is not a criterion.
 - **Uncertain quantities** (A11, ADR 0027): run each method world through the whole subtree; intervals
-  only at the end; never interval arithmetic.
+  only at the end; never interval arithmetic. A failed world makes the quantity an error, never a
+  narrower interval (ARCHITECTURE §8.13).
+- **Cache keys** hash exact values (`repr` of floats), never rounded ones; a rounded key can serve a value
+  for a different input (ARCHITECTURE §8.4).
 - **English only (ADR 0029).** Identifiers, file names, comments, docstrings, error `message`/`hint`
   and docs in this package are English. Canon slugs are used as they are.
 - **Async API (ARCHITECTURE §8.10).** `compute()` is a coroutine and must never block the event loop:
