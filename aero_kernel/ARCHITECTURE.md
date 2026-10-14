@@ -570,8 +570,11 @@ class ComputeRequest(BaseModel):
   Without a default, the quantities that need it get `invalid_input`, code `missing_input`, with
   `input_path = values.<slug>`; the rest of the request is computed.
 - **The passed mass always wins** (maintainer, 2026-10-14). Mass comes only from
-  `values["aircraft-mass"]`; the geometry's `total_mass_kg` is ignored, without error or warning.
-  Otherwise no "what if?" calculation at a different mass would be possible.
+  `values["aircraft-mass"]`; the geometry's `total_mass_kg` is not used. Otherwise no "what if?"
+  calculation at a different mass would be possible. If both are set and differ, the call is **not**
+  aborted, but a warning is issued: code `conflicting_mass`, severity `practice`, `origin` =
+  `aircraft-mass`, message with both values. Like every warning it is inherited by all quantities whose
+  subtree reads the mass (ch. 8.2).
 - **Airfoils are inline.** The kernel loads nothing on its own (ch. 8.8), so `airfoil` in
   `AirplaneGeometry` is a NACA designation or inline coordinates. A file path is `invalid_input`, code
   `unresolved_airfoil`; resolving paths is the caller's job (the test fleet uses a test helper).
@@ -709,6 +712,7 @@ counts only if the node actually needs it; an unused output of a multi-output fo
 | Q25 | Precondition violated | `on_violation: warning` → value plus `defect` warning; `error` → `precondition_violated` |
 | Q26 | Status precedence | mixed failed/skipped/not-applicable predecessors give the status of ch. 8.13 |
 | Q27 | Cache key | inputs differing in the last bit of a float give different keys; a changed source file changes every key |
+| Q28 | Mass differs from the geometry's `total_mass_kg` | computed with the passed mass; `conflicting_mass` warning on every quantity that depends on the mass, none on the others |
 
 ## 11. Risks and technical debt
 
