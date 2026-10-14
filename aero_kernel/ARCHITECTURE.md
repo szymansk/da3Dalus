@@ -622,6 +622,13 @@ two sections; airfoil coordinates that are not a closed contour. Each rule lives
 `input_path` is a dotted path into `AircraftInput` with keys and indices in brackets, e.g.
 `airplane.wings["Main wing"].x_secs[2].chord` or `values.aircraft-mass`. Regime is not validated (ch. 8.2).
 
+**Control-surface stops are not limits** (maintainer, 2026-10-14). `positive_deflection_deg` /
+`negative_deflection_deg` in the geometry are the designer's construction data, possibly a first draft; the
+canon is used to find out which stop a desired speed needs. The kernel therefore **never checks, clamps or
+warns** about a deflection against a stop — not in validation, not in a formula, not in an adapter, and
+`not_applicable` never follows from a stop. A deflection value (e.g. `flap-deflection-landing`) is only
+validated for being finite. A stop exists for the designer, not for the canon.
+
 **Requests name quantities.** A formula with several outputs runs once per application and world; each
 requested output is its own `QuantityResult`. Requesting two outputs of the same formula calls it once.
 
@@ -675,8 +682,10 @@ never an output), so one call evaluates one operating point. Several operating p
 **Named conditions inside one call** follow the same rule, quantity by quantity. Where a formula needs a
 value at a fixed condition, the chain up to it has an application per condition, each producing a
 quantity that names it: the take-off and landing stall speeds read `airplane-takeoff` /
-`airplane-landing` (type `airplane`, produced by a configuration formula; without flaps it is the
-unchanged aircraft, not a fallback). A sampled curve over angle of attack is a quantity of type `polar`
+`airplane-landing` (type `airplane`, produced by `airplane-configuration` from the design inputs
+`flap-deflection-takeoff` / `flap-deflection-landing`; without flaps it is the unchanged aircraft, not a
+fallback). `airplane-configuration` sets the given deflection as the flaps' state (`deflection_deg`)
+exactly, **also beyond the stops** (ch. 8.11). A sampled curve over angle of attack is a quantity of type `polar`
 whose slug names its evaluation condition (A2). The engine needs nothing beyond applications for any of
 these.
 
@@ -818,6 +827,7 @@ They are the first thing a developer or an agent reads to check a change and to 
 | Q30 | Embedded relation and optional parameter | with `flight-speed` = 0, `thrust-at-airspeed` equals the thrust inside `static-thrust-to-weight` bit for bit (one relation function); without `motor-circuit-resistance` both run route A with a `practice` warning naming the route, no `missing_input` |
 | Q31 | Defaults taken | without `gravity` and without `approach-speed-margin-target`: `approach-speed` computes; `provenance.defaults_used` lists both with value and source; `caplog` has one `INFO` line for `gravity` and one `WARNING` line for the target, each with `call_id`, also on a second, cached call; the result carries `default_target_used` (`practice`) on `approach-speed` and its dependents, and no warning for `gravity` |
 | Q32 | Embedding | `importer --check` rejects an embedding cycle, an embedded formula with worlds, and an embedded input that is neither bound, produced in the closure nor generic; the traceability test fails when an embedder does not call the embedded relation function; `mass-envelope` with `neutral-point` in three worlds runs three times and returns `cg-envelope-over-mass` as a pointwise interval |
+| Q33 | Deflection beyond the stop | `flap-deflection-landing` larger than the flap's `positive_deflection_deg`: `airplane-landing` carries exactly the given deflection, `stall-speed-landing` computes, no error, no clamp and no warning about the stop |
 
 ## 11. Risks and technical debt
 
