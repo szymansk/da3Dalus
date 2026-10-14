@@ -428,13 +428,15 @@ def _check_parameters(e: Entry, field: str, add) -> dict:
     return params
 
 
-def _check_formula(e: Entry, canon: Canon, add, gap) -> tuple[set[str], set[str]]:
-    """Check one formula entry; return the quantity slugs it reads and writes."""
+def _check_formula(e: Entry, canon: Canon, add, gap) -> tuple[set[str], set[str], dict]:
+    """Check one formula entry; return the quantity slugs it reads and writes, overall and per
+    application id ('default' for an entry without applications)."""
     q = canon.quantities
     inputs = _check_parameters(e, "inputs", add)
     outputs = _check_parameters(e, "outputs", add)
     reads: set[str] = set()
     writes: set[str] = set()
+    per_app: dict[str, tuple[set[str], set[str]]] = {}
 
     def target(field: str, param: str, value, *, allow_const: bool) -> None:
         if value is None:
@@ -517,12 +519,13 @@ def _check_formula(e: Entry, canon: Canon, add, gap) -> tuple[set[str], set[str]
                 add(e.slug, "applications", f"{where}: given {slug!r} is not bound by it")
         # what this application actually reads and writes (a default overridden by every
         # application is never read and does not belong on the from line)
-        for value in _effective(inputs, bind).values():
-            if isinstance(value, str) and value in q:
-                reads.add(value)
-        for value in _effective(outputs, produce).values():
-            if isinstance(value, str) and value in q:
-                writes.add(value)
+        app_reads = {v for v in _effective(inputs, bind).values() if isinstance(v, str) and v in q}
+        app_writes = {
+            v for v in _effective(outputs, produce).values() if isinstance(v, str) and v in q
+        }
+        reads |= app_reads
+        writes |= app_writes
+        per_app[str(aid)] = (app_reads, app_writes)
         for name, value in _effective(inputs, bind).items():
             if value is None:
                 gap(e, "applications", f"{where}: input parameter {name!r} is not bound", name)
@@ -638,7 +641,7 @@ def _check_formula(e: Entry, canon: Canon, add, gap) -> tuple[set[str], set[str]
     declared = {o.strip() for o in str(e.front.get("output") or "").split(",") if o.strip()}
     if declared != writes:
         add(e.slug, "outputs", _diff("output field", declared, writes))
-    return reads, writes
+    return reads, writes, per_app
 
 
 def _diff(name: str, prose: set[str], front: set[str]) -> str:
@@ -658,8 +661,26 @@ def _direct_embeds(e: Entry) -> list[str]:
     return list(dict.fromkeys(s.partition(".")[0] for s in embeds if isinstance(s, str)))
 
 
-def _check_embeds(canon: Canon, reads_of: dict, writes_of: dict, add) -> None:
-    """The embeds closure: acyclic, no worlds inside, every embedded input accounted for."""
+def _embedded_items(e: Entry, canon: Canon) -> list[tuple[str, str | None]]:
+    """(formula, application) pairs of an entry's embeds; None selects the single application."""
+    embeds = e.front.get("embeds") or []
+    if not isinstance(embeds, list):
+        return []
+    out = []
+    for item in embeds:
+        if isinstance(item, str):
+            slug, _, app = item.partition(".")
+            if slug in canon.formulas:
+                out.append((slug, app or None))
+    return out
+
+
+def _check_embeds(canon: Canon, reads_of: dict, writes_of: dict, per_app_of: dict, add) -> None:
+    """The embeds closure: acyclic, no worlds inside, every embedded input accounted for.
+
+    An item embeds that application as written — its bindings and its checks — so the input
+    rule applies to what the listed applications bind (after defaults), not to the union of all.
+    """
     graph = {
         s: [x for x in _direct_embeds(e) if x in canon.formulas] for s, e in canon.formulas.items()
     }
@@ -686,30 +707,38 @@ def _check_embeds(canon: Canon, reads_of: dict, writes_of: dict, add) -> None:
     if reported:
         return  # a closure over a cycle is not defined
 
-    def closure(slug: str) -> list[str]:
-        seen: list[str] = []
-        stack = list(graph[slug])
+    def rw(slug: str, app: str | None) -> tuple[set[str], set[str]]:
+        apps = per_app_of[slug]
+        if app is None and len(apps) == 1:
+            return next(iter(apps.values()))
+        if app in apps:
+            return apps[app]
+        return reads_of[slug], writes_of[slug]  # malformed item, reported elsewhere
+
+    def closure(slug: str) -> list[tuple[str, str | None]]:
+        seen: list[tuple[str, str | None]] = []
+        stack = _embedded_items(canon.formulas[slug], canon)
         while stack:
             nxt = stack.pop(0)
             if nxt not in seen:
                 seen.append(nxt)
-                stack.extend(graph[nxt])
+                stack.extend(_embedded_items(canon.formulas[nxt[0]], canon))
         return seen
 
     for slug in canon.formulas:
         inner = closure(slug)
         if not inner:
             continue
-        produced = set().union(*(writes_of[x] for x in inner))
+        produced = set().union(*(rw(*x)[1] for x in inner))
         variables = set(canon.formulas[slug].front.get("variables") or [])
         supplied = reads_of[slug] | produced | variables
-        read_inside = set().union(*(reads_of[x] for x in inner))
+        read_inside = set().union(*(rw(*x)[0] for x in inner))
         for v in sorted(variables - read_inside):
             add(slug, "variables", f"{v!r} is read by no formula in the embeds closure")
-        for x in inner:
+        for x, app in inner:
             if canon.formulas[x].front.get("uncertainty") == "interval":
                 add(slug, "embeds", f"{x} has uncertainty: interval and may not be embedded")
-            for q in sorted(reads_of[x] - supplied):
+            for q in sorted(rw(x, app)[0] - supplied):
                 add(
                     slug,
                     "embeds",
@@ -731,15 +760,17 @@ def check_structure(canon: Canon) -> list[Finding]:
     used_by: dict[str, set[str]] = {s: set() for s in canon.quantities}
     produced_by: dict[str, set[str]] = {s: set() for s in canon.quantities}
     reads_of: dict[str, set[str]] = {}
+    per_app_of: dict[str, dict] = {}
     writes_of: dict[str, set[str]] = {}
     for slug, e in canon.formulas.items():
-        reads, writes = _check_formula(e, canon, add, gap)
+        reads, writes, per_app = _check_formula(e, canon, add, gap)
         reads_of[slug], writes_of[slug] = reads, writes
+        per_app_of[slug] = per_app
         for r in reads:
             used_by[r].add(slug)
         for w in writes:
             produced_by[w].add(slug)
-    _check_embeds(canon, reads_of, writes_of, add)
+    _check_embeds(canon, reads_of, writes_of, per_app_of, add)
 
     for e in [*canon.formulas.values(), *canon.quantities.values()]:
         booleans = yaml11_booleans(e.raw_front)

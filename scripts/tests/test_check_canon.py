@@ -610,6 +610,47 @@ def test_embedding_an_unknown_application_is_reported(tmp_path):
     assert any("embeds" in m and "h.three" in m for m in msgs), msgs
 
 
+def _per_app_canon(tmp_path, item):
+    """h has two applications binding b differently; f embeds one of them and reads speed-b."""
+    h_front = (
+        "applications:\n  - id: one\n    bind: {b: speed-b}\n  - id: two\n    bind: {b: speed-c}\n"
+    )
+    root = _embed_canon(
+        tmp_path,
+        {
+            "f": (
+                {"a": "speed-a", "b": "speed-b"},
+                {"v": "speed-v"},
+                f"embeds: [{item}]\nvariables: []\n",
+            ),
+            "h": ({"a": "speed-a", "b": "null"}, {"w": "speed-w"}, h_front),
+        },
+    )
+    # the fixture builder cannot see application bindings: write h's from line and links by hand
+    h = root / "formulas" / "h.md"
+    h.write_text(
+        h.read_text(encoding="utf-8").replace(
+            "**from** [[speed-a]] · [[null]]", "**from** [[speed-a]] · [[speed-b]] · [[speed-c]]"
+        ),
+        encoding="utf-8",
+    )
+    (root / "quantities" / "null.md").unlink()
+    for q, users in (("speed-b", ["f", "h"]), ("speed-c", ["h"])):
+        text = _with_type({q: _quantity(q, used_by=users)})[q]
+        (root / "quantities" / f"{q}.md").write_text(text, encoding="utf-8")
+    return root
+
+
+def test_the_input_rule_applies_to_the_embedded_application_only(tmp_path):
+    """Review round 2: an item embeds that application as written, not the union of all."""
+    assert _findings(_per_app_canon(tmp_path, "h.one")) == []
+
+
+def test_the_input_rule_reports_what_the_embedded_application_binds(tmp_path):
+    msgs = _messages(_errors(_per_app_canon(tmp_path, "h.two")))
+    assert any("f embeds" in m and "speed-c" in m for m in msgs), msgs
+
+
 def test_optional_naming_an_input_parameter_is_accepted(tmp_path, typed_quantities):
     front = GOOD_FRONT + "optional: [b]\n"
     assert _findings(_canon(tmp_path, front=front, quantities=typed_quantities)) == []
