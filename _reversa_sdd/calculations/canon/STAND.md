@@ -172,6 +172,10 @@ die Rechnung binden — nicht in einer Fundliste und nicht als Backlog.
 Pfaden; ein Skill hätte jede vorherige Fassung zementiert. Und ein Gate, das sich auf einen
 Entwurf beruft, erbt dessen Instabilität.
 
+*Abgrenzung (Maintainer 14.10.2026, Epic #1173):* Der CI-Job `rechenkern-aero` (#1177) ist **kein Gate auf
+Kanon-Einträge**. Er schützt nur das Paket `rechenkern/` gegen Regressionen seiner eigenen Goldwerte. Der
+Rechenkern ist die ausführbare Referenz, mit der die Stabilität des Kanons vor der Freigabe belegt wird.
+
 **Reproduktion vor Bericht.** Jede gemeldete Verletzung wird selbst nachgerechnet, bevor
 sie weitergegeben wird. Zweimal war die Meldung schärfer als beschrieben, einmal lag der
 Prüfagent falsch.
