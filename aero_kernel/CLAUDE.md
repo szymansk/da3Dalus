@@ -10,7 +10,7 @@ then the code. Epic: #1173.
   the other way round (ARCHITECTURE §3, test Q9).
 - **The kernel interprets its own canon model** (`canon/canon_model.json`). Quantities, applications,
   dependencies and units come from it. Code only registers implementations via `@formula("<slug>")` and
-  checks via `@precondition("<slug>", "<id>")`. Never hard-code a dependency, a unit or a quantity name that
+  checks via `@precondition("<slug>", "<id>")` (inputs, before) and `@postcondition("<slug>", "<id>")` (outputs, after). Never hard-code a dependency, a unit or a quantity name that
   the model owns.
 - **Formula contract (ARCHITECTURE §8.12).** A formula is a cheap coroutine over its canon parameter names,
   returns every output parameter, and raises `FormulaError` instead of returning a substitute. Heavy work

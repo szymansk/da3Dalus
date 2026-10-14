@@ -207,9 +207,10 @@ An error means **no value**. A value with a caveat is a **warning** (8.2), not a
 - **`upstream_failed` with several failed predecessors:** `retryable` is true only if every root cause is
   retryable; `escalate` is true if any root cause escalates. `detail.causes` lists the root
   `KernelError`s (quantity, code), never the chain in between.
-- **Violated precondition:** the canon entry says per precondition `on_violation: warning | error`.
+- **Violated precondition or postcondition:** the canon entry says per check `on_violation: warning | error`.
   `warning` → a `defect` warning and the value is returned. `error` → `unsupported_configuration`, code
-  `precondition_violated`, `detail.precondition` = its id.
+  `precondition_violated` / `postcondition_violated`, `detail.precondition` / `detail.postcondition` = its
+  id; for a postcondition the computed value is discarded, never returned (ADR 0020).
 
 ### 8.2 Warnings
 
@@ -283,8 +284,9 @@ No internal paths or mechanisms in any field (ADR 0019).
 rounded: rounding would let two different inputs share a key.
 
 **What is stored:** the node's outputs (all output parameters of the application in that world) and its
-own warnings, **including its precondition warnings**. A hit returns them unchanged; preconditions depend
-only on the direct input values, which are part of the key, so they need not run again. Errors, `skipped` and `not_applicable` are never stored; a `timeout` or `not_converged` is
+own warnings, **including its pre- and postcondition warnings**. A hit returns them unchanged; both depend
+only on the direct input values (which are part of the key) and on the outputs computed from them, so they
+need not run again. Errors, `skipped` and `not_applicable` are never stored; a `timeout` or `not_converged` is
 recomputed next time.
 
 **Two interfaces, one engine.**
@@ -397,11 +399,11 @@ quantity.
   `given`, the application exists either way. The entry states, per route, which of three outcomes holds:
   - **a declared method limitation** → a `practice` warning naming the route (ADR 0020). Example: `r_m`
     of `motor-propeller-equilibrium`, route A without it (Q-PT-6).
-  - **the canon's own definition for that data** → no warning. Example: `delta_f` of
+  - **the canon's own definition for that data** → no warning. Example: `flap_deflection` of
     `airplane-configuration` on an aircraft without flaps: there is no configuration, the aircraft is
     unchanged (stall-speed, 2026-10-02); this is not a substitute.
   - **the value is needed after all** → the formula raises `FormulaError(invalid_input, missing_input)`
-    with `input_path = values.<slug>`, exactly as the engine would (ch. 8.11). Example: `delta_f` absent
+    with `input_path = values.<slug>`, exactly as the engine would (ch. 8.11). Example: `flap_deflection` absent
     on an aircraft that has flaps.
   Every absent optional parameter is logged at `INFO` with the route (ch. 8.14).
 - An entry without `applications:` has exactly one application: every parameter bound to its default
@@ -413,7 +415,16 @@ A **precondition** is an executable check per application, scoped by its optiona
 in the canon entry (absent = every application of the formula; e.g. `alpha_range_past_inverted_stall`
 of `stall-speed` only for `inverted`). The engine runs it only for the listed applications; for the
 others it is neither run nor reported as unchecked. It is registered with `@precondition(slug, id)`
-(ch. 8.12) and run before the implementation. It returns one of three states:
+(ch. 8.12) and run before the implementation, so its `parameter` must be an **input** parameter.
+
+A **postcondition** (`postconditions:`, same shape `{id, parameter, on_violation, applications}`) checks
+what a computed value claims — that `cl_max` really is the C_L,max at the stall Reynolds number, that the
+sweep bracketed the inverted stall. It runs **after** the implementation, on the inputs and all its
+outputs (also the ones an application does not expose), registered with `@postcondition(slug, id)`. Its
+`parameter` must be an **output** parameter. The importer rejects an output parameter in
+`preconditions:` and an input parameter in `postconditions:`.
+
+Both kinds return one of three states:
 - 🟢 held
 - 🔴 violated: a `defect` warning or an error, as `on_violation` in the canon entry says (ch. 8.1)
 - ⚪ unchecked, including "no check registered yet": a `practice` warning
@@ -516,12 +527,14 @@ apart; the importer's JSON Schema is written against that section. What the impo
   importer imports nothing until the maintainer has decided it (all or nothing, below).
 - **`cost:`** is taken only where the entry sets it; otherwise derived from `tool` (ch. 8.7).
 
-**The model** (`canon_model.json`, JSON Schema `canon_model.schema.json`) holds, per namespace: `quantities`
-(slug, symbol, unit, role, type, default) and `formulas` (slug, kind, tool, cost, inputs, outputs,
-applications, preconditions, worlds). These take the front-matter fields **1:1** with the same names and
-nesting, after normalisation: `bind` values are a quantity reference or `{const, source}`, `when` is a
-vocabulary term or absent, `given` is a list of input slugs or absent, and the default application is
-written out explicitly. Fixture models in
+**The model** (`canon_model.json`, JSON Schema `canon_model.schema.json`) holds, per namespace, `quantities`
+and `formulas` with **every field the canon README section "Machine-readable fields" defines, 1:1**, same
+names and nesting — this document does not re-list them, so a new field cannot be forgotten here. Only
+prose-oriented fields the README keeps for readers (`tags`, `tex`, `source_status`, …) are dropped.
+Normalisation adds nothing but: `bind` values become a quantity reference or `{const, source}`; absent
+optional fields get their stated default (`when`/`given` absent = always, precondition `applications`
+absent = all, `cost` derived, ch. 8.7); the default application is written out explicitly; the `embeds`
+closure (ch. 8.5) is stored alongside the listed embeds. Fixture models in
 `tests/fixtures/` follow exactly this shape and are validated against `canon_model.schema.json`. The model
 also holds `schema_version`, `content_hash`, `source_commit` and
 `importer_version`. References are slugs; namespaces are written `<namespace>:<slug>` (`calc:stall-speed`,
@@ -701,7 +714,9 @@ async def stall_speed(x: Inputs, ctx: Context) -> dict[str, Value]:
   substitute value (ADR 0020).
 - **Preconditions** are separate functions, `@precondition("stall-speed", "<check-id>")`, run only for the
   applications the canon scopes them to (ch. 8.5), taking the same
-  `x` and returning `held | violated | unchecked` with a message.
+  `x` and returning `held | violated | unchecked` with a message. **Postconditions**,
+  `@postcondition("stall-speed", "<check-id>")`, take `x` and the implementation's full return dict `y`
+  and return the same three states.
 - **Embedded relations** (ch. 8.5). The module of an embedded formula exposes its relation as a plain,
   module-level function over parameter names (numpy- and CasADi-compatible where an OPT formula embeds
   it); its `@formula` coroutine and every embedder call that one function, so there is one implementation
@@ -727,7 +742,7 @@ quantity that names it: the take-off and landing stall speeds read `airplane-tak
 `airplane-landing` (type `airplane`, produced by `airplane-configuration` from the design inputs
 `flap-deflection-takeoff` / `flap-deflection-landing`; without flaps it is the unchanged aircraft, not a
 fallback). `airplane-configuration` sets the given deflection as the flaps' state (`deflection_deg`)
-exactly, **also beyond the stops** (ch. 8.11). Its `delta_f` is `optional:`: without flaps an absent
+exactly, **also beyond the stops** (ch. 8.11). Its `flap_deflection` is `optional:`: without flaps an absent
 deflection gives the unchanged aircraft (no warning); with flaps it is `missing_input`, and its dependents
 `upstream_failed`. A deflection given for an aircraft without flaps has nothing to act on: unchanged
 aircraft plus a `practice` warning `deflection_without_flap`, because a supplied value is not used. A sampled curve over angle of attack is a quantity of type `polar`
@@ -869,7 +884,7 @@ They are the first thing a developer or an agent reads to check a change and to 
 | Q22 | Multi-output formula | requesting two outputs of one application calls the implementation once |
 | Q23 | One world fails | the quantity is `error` with `detail.worlds_ok`; no narrowed interval |
 | Q24 | Missing input value | only the quantities needing it get `missing_input`; the rest compute |
-| Q25 | Precondition violated | `on_violation: warning` → value plus `defect` warning; `error` → `precondition_violated` |
+| Q25 | Pre-/postcondition violated | `on_violation: warning` → value plus `defect` warning; `error` → `precondition_violated` (implementation not called) / `postcondition_violated` (value discarded); the importer rejects an output in `preconditions:` and an input in `postconditions:` |
 | Q26 | Status precedence | mixed failed/skipped/not-applicable predecessors give the status of ch. 8.13 |
 | Q27 | Cache key | inputs differing in the last bit of a float give different keys; a changed source file changes every key |
 | Q28 | Mass differs from the geometry's `total_mass_kg` | computed with the passed mass; `conflicting_mass` warning on every quantity that depends on the mass, none on the others |
