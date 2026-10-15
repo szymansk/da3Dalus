@@ -461,6 +461,25 @@ class TestPoolLifetime:
         assert all("the injected executor was shut down" in str(r) for r in affected)
         assert all(isinstance(r, (tuple, RuntimeError)) for r in results[:-1])
 
+    async def test_a_caller_cancelling_a_queued_call_while_close_runs_still_sees_cancellation(
+        self,
+    ) -> None:
+        """CancelledError is always re-raised (ch. 8.10), also for a call waiting at the gate."""
+        runtime = SolverRuntime(max_workers=1, max_concurrency=8)
+        await runtime.run_cpu(workers.square, 1)
+        calls = [asyncio.create_task(runtime.run_cpu(workers.nap, 0.5)) for _ in range(5)]
+        await asyncio.sleep(0.3)
+        closing = asyncio.create_task(runtime.aclose())
+        await asyncio.sleep(0)  # aclose has begun
+        victim = calls[-1]
+        victim.cancel()
+        results = await asyncio.gather(*calls, return_exceptions=True)
+        await closing
+        assert victim.cancelled()
+        assert isinstance(results[-1], asyncio.CancelledError)
+        assert isinstance(results[0], tuple)  # the running call finished
+        assert all(isinstance(r, RuntimeError) and "closed" in str(r) for r in results[1:-1])
+
     async def test_a_call_after_close_does_not_wait_for_a_slot(self) -> None:
         executor = ProcessPoolExecutor(
             max_workers=1, mp_context=multiprocessing.get_context("spawn")
