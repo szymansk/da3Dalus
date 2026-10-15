@@ -778,6 +778,16 @@ neither tool documents one. What remains is per method world (ch. 8.13):
   (ch. 8.8) and labelled reference points the entry cites (Sadraey §12.4.3, separation onset about
   20–25°, transport/GA, not checked at model Reynolds numbers; ADR 0028).
 
+**The geometry's current deflections are not read either** (2026-10-15). `deflection_deg` on a
+trailing-edge device and `deflection` on its `control_surface` are the state an editor last computed in,
+not a design input. The kernel's aircraft is the geometry with **every control device at 0°**; a
+configuration or a formula sets the angles it needs from `values` (`flap-deflection-landing`,
+`aileron-deflection`, …) or solves for them (trim, `aileron-deflection-required-*`). `values` always
+wins, as with the mass: a non-zero geometry deflection is ignored and reported once per device as a
+`practice` warning `geometry_deflection_ignored` (`origin` = `airplane`, `detail` = device and angle),
+inherited like `conflicting_mass`. From the device the kernel reads its **role** (which surface acts as
+flap, aileron, elevon, …), its hinge geometry and its span, never an angle.
+
 **Requests name quantities.** A formula with several outputs runs once per application and world; each
 requested output is its own `QuantityResult`. Requesting two outputs of the same formula calls it once.
 
