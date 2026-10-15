@@ -804,3 +804,261 @@ async def test_two_instances_opening_one_fresh_file_together_lose_nothing(
                 (actual,) = db.execute("SELECT SUM(size) FROM entries").fetchone()
             assert stored[""] == actual == stored["s"]
     assert caplog.text == ""
+
+
+def _traced_connect(statements: list[str]) -> Callable[..., sqlite3.Connection]:
+    """A replacement for ``sqlite3.connect`` that records every statement."""
+    real_connect = sqlite3.connect
+
+    def connect(*args: Any, **kwargs: Any) -> sqlite3.Connection:
+        connection = real_connect(*args, **kwargs)
+        connection.set_trace_callback(statements.append)
+        return connection
+
+    return connect
+
+
+@pytest.mark.asyncio
+async def test_the_wal_pragma_runs_once_per_instance(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    cache = _disk(tmp_path)
+    await cache.put("s", "k", entry())
+    statements: list[str] = []
+    monkeypatch.setattr(sqlite3, "connect", _traced_connect(statements))
+    await cache.get("s", "k")
+    await cache.put("s", "j", entry())
+    assert statements
+    assert [text for text in statements if "journal_mode" in text] == []
+
+
+@pytest.mark.asyncio
+async def test_a_failed_wal_switch_is_tried_again_on_the_next_call(tmp_path: Path) -> None:
+    path = tmp_path / DB_NAME
+    sqlite3.connect(path).close()
+    cache = _disk(tmp_path, busy_timeout_s=0.05)
+    blocker = sqlite3.connect(path, isolation_level=None)
+    blocker.execute("BEGIN EXCLUSIVE")
+    try:
+        await cache.put("s", "k", entry())
+    finally:
+        blocker.execute("ROLLBACK")
+        blocker.close()
+    await cache.put("s", "k", entry())
+    with sqlite3.connect(path) as db:
+        assert db.execute("PRAGMA journal_mode").fetchone() == ("wal",)
+
+
+@pytest.mark.asyncio
+async def test_a_new_file_after_a_quarantine_is_switched_to_wal(tmp_path: Path) -> None:
+    cache = _disk(tmp_path)
+    await cache.put("s", "k", entry())
+    (tmp_path / DB_NAME).write_bytes(b"not a database" * 100)
+    for suffix in ("-wal", "-shm"):
+        (tmp_path / f"{DB_NAME}{suffix}").unlink(missing_ok=True)
+    assert await cache.get("s", "k") is None
+    await cache.put("s", "k", entry())
+    with sqlite3.connect(tmp_path / DB_NAME) as db:
+        assert db.execute("PRAGMA journal_mode").fetchone() == ("wal",)
+
+
+@pytest.mark.asyncio
+async def test_a_replacing_put_keeps_the_totals_exact(tmp_path: Path) -> None:
+    cache = _disk(tmp_path)
+    await cache.put("s", "k", entry())
+    await cache.put("s", "k", Entry(outputs={"v": list[JsonValue]([1.0] * 50)}, warnings=()))
+    _agree(tmp_path)
+    stored, actual = _totals(tmp_path)
+    assert stored["s"] == actual["s"] > _size()
+
+
+@pytest.mark.asyncio
+async def test_a_put_within_the_limits_scans_no_table(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    cache = _disk(tmp_path, max_bytes_per_scope=5_000_000)
+    for index in range(50):
+        await cache.put("s", str(index), entry())
+    statements: list[str] = []
+    monkeypatch.setattr(sqlite3, "connect", _traced_connect(statements))
+    await cache.put("s", "new", entry())
+    plans: list[str] = []
+    with sqlite3.connect(tmp_path / DB_NAME) as db:
+        for text in statements:
+            if "entries" in text and text.lstrip().upper().startswith("SELECT"):
+                plans += [str(row[-1]) for row in db.execute("EXPLAIN QUERY PLAN " + text)]
+    assert plans
+    assert [plan for plan in plans if plan.startswith("SCAN")] == []
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("operation", ["get", "put"])
+async def test_a_denied_move_aside_degrades_with_a_warning(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    caplog: pytest.LogCaptureFixture,
+    operation: str,
+) -> None:
+    cache = _disk(tmp_path)
+    (tmp_path / DB_NAME).write_bytes(b"not a database" * 100)
+
+    def deny(_self: Path, _target: Path) -> Path:
+        msg = "denied"
+        raise PermissionError(msg)
+
+    monkeypatch.setattr(Path, "replace", deny)
+    with caplog.at_level(logging.WARNING, logger="aero_kernel.cache"):
+        if operation == "get":
+            assert await cache.get("s", "k") is None
+        else:
+            await cache.put("s", "k", entry())
+    assert "disk cache unavailable (PermissionError)" in caplog.text
+
+
+@pytest.mark.asyncio
+async def test_a_denied_move_aside_makes_drop_scope_a_store_error(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    cache = _disk(tmp_path)
+    (tmp_path / DB_NAME).write_bytes(b"not a database" * 100)
+
+    def deny(_self: Path, _target: Path) -> Path:
+        msg = "denied"
+        raise PermissionError(msg)
+
+    monkeypatch.setattr(Path, "replace", deny)
+    with pytest.raises(StoreError, match="the store is unavailable"):
+        await cache.drop_scope("s")
+
+
+def _coded(error: type[sqlite3.Error], code: int, name: str) -> sqlite3.Error:
+    """An sqlite3 error carrying the given (possibly extended) result code."""
+    exc = error(name)
+    exc.sqlite_errorcode = code
+    exc.sqlite_errorname = name
+    return exc
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    ("code", "name"), [(517, "SQLITE_BUSY_SNAPSHOT"), (6, "SQLITE_LOCKED"), (5, "SQLITE_BUSY")]
+)
+async def test_busy_and_locked_codes_count_as_busy_including_extended_ones(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, code: int, name: str
+) -> None:
+    def locked(_self: DiskCache, _scope: str) -> None:
+        raise _coded(sqlite3.OperationalError, code, name)
+
+    monkeypatch.setattr(DiskCache, "_drop", locked)
+    with pytest.raises(StoreError, match="busy, retry later"):
+        await _disk(tmp_path).drop_scope("s")
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    ("code", "name"), [(779, "SQLITE_CORRUPT_INDEX"), (11, "SQLITE_CORRUPT"), (26, "SQLITE_NOTADB")]
+)
+async def test_corrupt_codes_move_the_file_aside_including_extended_ones(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, code: int, name: str
+) -> None:
+    cache = _disk(tmp_path)
+    await cache.put("s", "k", entry())
+    calls: list[int] = []
+
+    def corrupt(_self: DiskCache, _scope: str, _key: str) -> None:
+        calls.append(1)
+        if len(calls) == 1:
+            raise _coded(sqlite3.DatabaseError, code, name)
+
+    monkeypatch.setattr(DiskCache, "_read", corrupt)
+    assert await cache.get("s", "k") is None
+    assert (tmp_path / f"{DB_NAME}.corrupt").is_file()
+
+
+@pytest.mark.asyncio
+async def test_the_busy_timeout_is_applied(tmp_path: Path) -> None:
+    cache = _disk(tmp_path, busy_timeout_s=0.25)
+    await cache.put("s", "k", entry())
+    blocker = sqlite3.connect(tmp_path / DB_NAME, isolation_level=None)
+    blocker.execute("BEGIN IMMEDIATE")
+    try:
+        started = time.perf_counter()
+        with pytest.raises(StoreError):
+            await cache.drop_scope("s")
+        assert 0.2 <= time.perf_counter() - started < 0.6
+    finally:
+        blocker.execute("ROLLBACK")
+        blocker.close()
+
+
+@pytest.mark.asyncio
+async def test_a_move_aside_does_not_block_the_event_loop(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    cache = _disk(tmp_path)
+    (tmp_path / DB_NAME).write_bytes(b"not a database" * 100)
+    real_replace = Path.replace
+
+    def slow_replace(self: Path, target: Path) -> Path:
+        time.sleep(0.3)
+        return real_replace(self, target)
+
+    monkeypatch.setattr(Path, "replace", slow_replace)
+    lag = await _max_loop_lag(lambda: cache.get("s", "k"))
+    assert lag < 0.05
+
+
+@pytest.mark.asyncio
+async def test_a_stale_caller_leaves_the_new_file_alone(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    cache = _disk(tmp_path)
+    (tmp_path / DB_NAME).write_bytes(b"not a database" * 100)
+    gate = threading.Event()
+    # The private method is wrapped by name to hold one caller back.
+    real_read = getattr(DiskCache, "_read")  # noqa: B009 - a string keeps the type checker out
+
+    def slow_read(self: DiskCache, scope: str, key: str) -> Entry | None:
+        if key == "slow":
+            try:
+                return real_read(self, scope, key)
+            finally:
+                gate.wait(5)
+        return real_read(self, scope, key)
+
+    monkeypatch.setattr(DiskCache, "_read", slow_read)
+
+    async def fast() -> None:
+        await asyncio.sleep(0.1)
+        assert await cache.get("s", "fast") is None  # quarantines
+        await cache.put("s", "keep", entry(9.0))  # a new, healthy file
+        gate.set()
+
+    await asyncio.gather(cache.get("s", "slow"), fast())
+    assert await cache.get("s", "keep") == entry(9.0)
+
+
+@pytest.mark.asyncio
+async def test_nothing_opens_the_file_while_it_is_being_moved_aside(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    cache = _disk(tmp_path)
+    await cache.put("s", "warm", entry())
+    (tmp_path / DB_NAME).write_bytes(b"not a database" * 100)
+    for suffix in ("-wal", "-shm"):
+        (tmp_path / f"{DB_NAME}{suffix}").unlink(missing_ok=True)
+    real_replace = Path.replace
+
+    def slow_replace(self: Path, target: Path) -> Path:
+        moved = real_replace(self, target)
+        time.sleep(0.3)
+        return moved
+
+    monkeypatch.setattr(Path, "replace", slow_replace)
+
+    async def writer() -> None:
+        await asyncio.sleep(0.1)
+        await cache.put("s", "new", entry(4.0))
+
+    await asyncio.gather(cache.get("s", "k"), writer())
+    assert await cache.get("s", "new") == entry(4.0)
