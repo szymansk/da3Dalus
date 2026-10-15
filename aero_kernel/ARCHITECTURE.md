@@ -414,9 +414,10 @@ quantity.
     - `has_separate_flap_and_aileron`: some device A has role `flap` or `flaperon` and some **other**
       device B ≠ A has role `aileron`, `flaperon` or `elevon`.
     - `has_vertical_tail` (**provisional, D9: awaiting the maintainer's confirmation**): the main wing is
-      the symmetric wing with the largest planform area; a vertical tail is another wing that is not
+      the symmetric wing with the largest planform area (Σ mean chord × segment span measured in the
+      y–z plane, so sweep does not count, as in AeroSandbox's planform area); a vertical tail is another wing that is not
       symmetric (a fin) or carries a device of role `rudder` or `ruddervator` (a V-tail), and whose root
-      leading edge lies behind the main wing's root trailing edge (`x_le + chord` of its first section).
+      leading edge lies at or behind (`≥`) the main wing's root trailing edge (`x_le + chord` of its first section).
       Winglets are sections of the main wing, a centre fin of a tailless wing overlaps its root chord: both
       do not count. No angle threshold is used.
   - `given`: a list of input quantities (`role: input` or `target`, no `default`). The application exists
@@ -644,7 +645,9 @@ later `sizing:…`), and a bare slug in a request means `calc:`.
   namespace qualified — except a requested quantity's own slug (`QuantityResult.slug` and its error's
   `quantity`), which echoes the request's spelling exactly, so the caller can match it (an unknown slug
   cannot be normalised anyway). Two request entries that name the same quantity in different spellings
-  (`stall-speed`, `calc:stall-speed`) are a duplicate, rejected like any other. World assignments key formulas by bare slug, so two uncertain formulas of the same
+  (`stall-speed`, `calc:stall-speed`) are a duplicate: qualifying a slug is syntactic (bare = `calc:`), so
+  `ComputeRequest` compares the qualified forms and rejects the request as malformed; the graph never sees
+  a duplicate and keeps request order. World assignments key formulas by bare slug, so two uncertain formulas of the same
   bare slug in different namespaces are a model error (`GraphModelError`) until a second namespace needs
   them.
 - **`schema_version`** is the integer `1` (`Literal[1]`), raised on every change of the model's shape. The
