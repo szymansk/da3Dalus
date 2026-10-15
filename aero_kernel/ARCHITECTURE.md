@@ -389,7 +389,10 @@ await kernel.drop_scope("aircraft/3f2c…")                          # e.g. the 
   recomputation (Q7). The store knows only JSON values; converting structured outputs (polar, airplane,
   curves) to JSON and back by the quantity's `type` is the engine's. A backend failure (locked database,
   unreadable entry, corrupt file moved aside) degrades to a miss or a dropped write with one `WARNING`
-  log line, never a wrong value and never a result error (ADR 0020: the log declares it).
+  log line, never a wrong value and never a result error (ADR 0020: the log declares it). The one exception is
+  `drop_scope`: the caller relies on the deletion (e.g. an aircraft was deleted), so a store that cannot
+  delete raises `cache.StoreError` — a typed error of the `NodeStore` contract with a plain message and no
+  backend internals (ADR 0019) — after the backend's own wait (busy timeout); no further retry.
 - **One pool for all scopes.** One `CachedKernel` serves many scopes with one process pool, so no per-aircraft
   kernel objects are needed.
 - **The caller assigns scopes.** What a scope stands for (aircraft, user, version snapshot K28, or `shared`)
