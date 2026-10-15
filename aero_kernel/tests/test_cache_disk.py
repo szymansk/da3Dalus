@@ -276,3 +276,16 @@ async def test_a_lock_during_the_repair_retry_raises_and_keeps_the_file(
     monkeypatch.setattr(cache, "_open", failing_open)
     assert await cache.get("s", "k") is None
     assert (tmp_path / DB_NAME).read_bytes() == b"precious"
+
+
+@pytest.mark.asyncio
+async def test_concurrent_first_opens_drop_no_put(
+    tmp_path: Path, caplog: pytest.LogCaptureFixture
+) -> None:
+    with caplog.at_level(logging.WARNING, logger="aero_kernel.cache"):
+        for trial in range(30):
+            cache = DiskCache(path=tmp_path / f"t{trial}.sqlite", max_bytes=10_000_000)
+            await asyncio.gather(*(cache.put("s", f"k{i}", entry(float(i))) for i in range(30)))
+            hits = await asyncio.gather(*(cache.get("s", f"k{i}") for i in range(30)))
+            assert None not in hits
+    assert caplog.text == ""

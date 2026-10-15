@@ -325,7 +325,8 @@ class DiskCache:
         self._path = path
         self._max_bytes = max_bytes
         self._max_per_scope = max_bytes_per_scope
-        self._lock = threading.Lock()
+        self._lock = threading.RLock()
+        self._wal_set = False
 
     async def get(self, scope: str, key: str) -> Entry | None:
         """Return a fresh entry and mark it most recently used; a miss on any read problem."""
@@ -466,7 +467,10 @@ class DiskCache:
         """Open a connection and make sure the schema is current."""
         db = sqlite3.connect(self._path, timeout=self._busy_timeout_s)
         try:
-            db.execute("PRAGMA journal_mode = WAL")
+            with self._lock:  # switching to WAL needs the file to itself; once per instance
+                if not self._wal_set:
+                    db.execute("PRAGMA journal_mode = WAL")
+                    self._wal_set = True
             (version,) = db.execute("PRAGMA user_version").fetchone()
             if version not in (0, _SCHEMA_VERSION):
                 logger.warning(
@@ -492,5 +496,6 @@ class DiskCache:
         aside = self._path.with_name(f"{self._path.name}.corrupt")
         logger.warning("disk cache file is no database, moved aside to %s", aside.name)
         self._path.replace(aside)
+        self._wal_set = False
         for suffix in ("-wal", "-shm"):
             self._path.with_name(f"{self._path.name}{suffix}").unlink(missing_ok=True)
