@@ -560,6 +560,16 @@ class TestInlineAirfoil:
         assert error.code == "non_positive_thickness"
         assert error.detail == {"value": 0.0}
 
+    def test_a_step_on_the_lower_surface_is_measured_at_its_first_point(self) -> None:
+        """Hand-computed: lower surface (0,0) (0.5,-0.05) (0.5,-0.02) (1,0), upper (0,0) (0.5,-0.03) (1,0).
+
+        At x = 0.5 the first point along the lower surface wins, y = -0.05, so the thickness
+        there is -0.03 - (-0.05) = 0.02 > 0 and the contour is admissible. Taking the last point
+        (y = -0.02) would give -0.01, a maximum of 0, and a false rejection.
+        """
+        step = [[1, 0], [0.5, -0.03], [0, 0], [0.5, -0.05], [0.5, -0.02], [1, 0]]
+        assert _validate(_with_airfoil({"coordinates": step})) == ()
+
     def test_blunt_trailing_edge_is_accepted(self) -> None:
         blunt = [[1.0, 0.01], [0.5, 0.06], [0.0, 0.0], [0.5, -0.06], [1.0, -0.01]]
         assert _validate(_with_airfoil({"coordinates": blunt})) == ()
