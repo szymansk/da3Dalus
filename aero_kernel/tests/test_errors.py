@@ -112,20 +112,49 @@ def test_matching_explicit_flags_are_accepted() -> None:
     assert error.retryable is True
 
 
-def test_upstream_failed_requires_explicit_flags() -> None:
-    with pytest.raises(ValidationError, match="upstream_failed"):
-        KernelError(
-            code="upstream_failed", category=ErrorCategory.UPSTREAM_FAILED, message="m", hint="h"
-        )
-    error = KernelError(
+def _upstream(
+    *, retryable: bool, escalate: bool, detail: dict[str, JsonValue] | None = None
+) -> KernelError:
+    return KernelError(
         code="upstream_failed",
         category=ErrorCategory.UPSTREAM_FAILED,
-        retryable=True,
-        escalate=True,
+        retryable=retryable,
+        escalate=escalate,
         message="m",
         hint="h",
+        detail={} if detail is None else detail,
     )
-    assert (error.retryable, error.escalate) == (True, True)
+
+
+_CAUSE_INTERNAL: dict[str, JsonValue] = {"causes": [{"quantity": "a", "code": "internal"}]}
+
+
+def test_upstream_failed_requires_explicit_flags() -> None:
+    with pytest.raises(ValidationError, match="explicit"):
+        KernelError(
+            code="upstream_failed",
+            category=ErrorCategory.UPSTREAM_FAILED,
+            message="m",
+            hint="h",
+            detail=_CAUSE_INTERNAL,
+        )
+    error = _upstream(retryable=False, escalate=True, detail=_CAUSE_INTERNAL)
+    assert (error.retryable, error.escalate) == (False, True)
+
+
+def test_upstream_failed_flags_must_match_the_root_codes() -> None:
+    """The model enforces the aggregation rule, not only aggregate_upstream."""
+    with pytest.raises(ValidationError, match="contradict"):
+        _upstream(retryable=True, escalate=False, detail=_CAUSE_INTERNAL)
+    with pytest.raises(ValidationError, match="contradict"):
+        _upstream(retryable=False, escalate=False, detail=_CAUSE_INTERNAL)
+
+
+def test_upstream_failed_requires_causes_in_detail() -> None:
+    with pytest.raises(ValidationError, match="causes"):
+        _upstream(retryable=False, escalate=False)
+    with pytest.raises(ValidationError, match="causes"):
+        _upstream(retryable=False, escalate=False, detail={"causes": []})
 
 
 @pytest.mark.parametrize("category", list(ErrorCategory))
@@ -135,7 +164,7 @@ def test_every_category_serialises_to_json_with_message_and_hint(category: Error
         error = KernelError(
             code="upstream_failed",
             category=category,
-            retryable=False,
+            retryable=True,
             escalate=False,
             quantity="approach-speed",
             message="stall-speed has no value.",
@@ -312,19 +341,6 @@ def test_aggregate_root_without_quantity_is_rejected() -> None:
         aggregate_upstream([cause], quantity="q")
 
 
-def test_aggregate_malformed_upstream_detail_is_rejected() -> None:
-    bad = KernelError(
-        code="upstream_failed",
-        category=ErrorCategory.UPSTREAM_FAILED,
-        retryable=False,
-        escalate=False,
-        message="m",
-        hint="h",
-    )
-    with pytest.raises(ValueError, match="causes"):
-        aggregate_upstream([bad], quantity="q")
-
-
 def test_aggregate_carries_optional_context() -> None:
     result = aggregate_upstream(
         [_err("a")], quantity="q", formula="f", application="app", world="w1"
@@ -462,8 +478,6 @@ def test_non_mapping_input_is_rejected() -> None:
 @pytest.mark.parametrize(
     ("causes", "match"),
     [
-        (None, "causes"),
-        ([], "causes"),
         (["text"], "objects"),
         ([{"quantity": "a"}], "string quantity"),
         ([{"quantity": 1, "code": "timeout"}], "string quantity"),
@@ -471,34 +485,9 @@ def test_non_mapping_input_is_rejected() -> None:
         ([{"quantity": "a", "code": "upstream_failed"}], "no root code"),
     ],
 )
-def test_aggregate_malformed_upstream_causes_are_rejected(causes: JsonValue, match: str) -> None:
-    detail: dict[str, JsonValue] = {} if causes is None else {"causes": causes}
-    bad = KernelError(
-        code="upstream_failed",
-        category=ErrorCategory.UPSTREAM_FAILED,
-        retryable=False,
-        escalate=False,
-        message="m",
-        hint="h",
-        detail=detail,
-    )
-    with pytest.raises(ValueError, match=match):
-        aggregate_upstream([bad], quantity="q")
-
-
-def test_aggregate_flags_follow_the_root_codes_not_the_chain() -> None:
-    """A nested upstream_failed whose detail names a non-retryable root makes the outer one non-retryable."""
-    inner = KernelError(
-        code="upstream_failed",
-        category=ErrorCategory.UPSTREAM_FAILED,
-        retryable=True,  # deliberately wrong: the outer flags must come from the root code
-        escalate=False,
-        message="m",
-        hint="h",
-        detail={"causes": [{"quantity": "a", "code": "internal"}]},
-    )
-    outer = aggregate_upstream([inner], quantity="q")
-    assert (outer.retryable, outer.escalate) == (False, True)
+def test_upstream_failed_with_malformed_causes_is_rejected(causes: JsonValue, match: str) -> None:
+    with pytest.raises(ValidationError, match=match):
+        _upstream(retryable=False, escalate=False, detail={"causes": causes})
 
 
 def test_aggregate_hint_lists_several_roots() -> None:

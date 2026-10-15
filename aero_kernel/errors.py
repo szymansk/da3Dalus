@@ -187,17 +187,19 @@ class KernelError(BaseModel):
 
     @model_validator(mode="after")
     def _check_category(self) -> Self:
-        """Reject flags that contradict the category and codes of another category."""
-        if (
-            self.category is not _UPSTREAM
-            and (self.retryable, self.escalate) != _FLAGS[self.category]
-        ):
+        """Reject flags that contradict the category or the roots, and codes outside the table."""
+        _check_code(self.code, self.category)
+        if self.category is _UPSTREAM:
+            expected = _root_flags(_roots(self))
+        else:
+            expected = _FLAGS[self.category]
+        if (self.retryable, self.escalate) != expected:
             msg = (
-                f"retryable={self.retryable}, escalate={self.escalate} contradict category "
-                f"{self.category.value} (ch. 8.1)"
+                f"retryable={self.retryable}, escalate={self.escalate} contradict "
+                f"{'the root causes' if self.category is _UPSTREAM else 'category ' + self.category.value}"
+                " (ch. 8.1)"
             )
             raise ValueError(msg)
-        _check_code(self.code, self.category)
         return self
 
 
@@ -359,6 +361,12 @@ def _roots(cause: KernelError) -> list[tuple[str, str]]:
     return [(cause.quantity, cause.code)]
 
 
+def _root_flags(roots: Sequence[tuple[str, str]]) -> tuple[bool, bool]:
+    """Combine the flags of root causes: retryable if all are, escalate if any does."""
+    flags = [flags_for(CODE_CATALOGUE[code]) for _, code in roots]
+    return all(r for r, _ in flags), any(e for _, e in flags)
+
+
 def aggregate_upstream(
     causes: Sequence[KernelError],
     *,
@@ -392,11 +400,12 @@ def aggregate_upstream(
         raise ValueError(msg)
     roots = list(dict.fromkeys(root for cause in causes for root in _roots(cause)))
     names = ", ".join(f"`{root_quantity}`" for root_quantity in dict.fromkeys(q for q, _ in roots))
+    retryable, escalate = _root_flags(roots)
     return KernelError(
         code=_UPSTREAM.value,
         category=_UPSTREAM,
-        retryable=all(flags_for(CODE_CATALOGUE[code])[0] for _, code in roots),
-        escalate=any(flags_for(CODE_CATALOGUE[code])[1] for _, code in roots),
+        retryable=retryable,
+        escalate=escalate,
         quantity=quantity,
         formula=formula,
         application=application,
