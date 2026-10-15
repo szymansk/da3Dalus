@@ -266,3 +266,9 @@ def test_every_model_type_is_frozen() -> None:
 def test_const_binding_must_be_finite(bad: float) -> None:
     with pytest.raises(ValidationError, match="finite"):
         ConstBinding.model_validate({"const": bad, "source": "s"})
+
+
+@pytest.mark.parametrize("world", ["aero-buildup", "Avl", "a__b"])
+def test_world_names_are_snake_case_not_kebab(world: str) -> None:
+    with pytest.raises(ValidationError):
+        make_formula(uncertainty="interval", worlds=[world, "avl"])

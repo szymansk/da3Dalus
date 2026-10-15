@@ -12,6 +12,8 @@ from typing import Any
 from aero_kernel.canon.model import Namespace, compute_content_hash
 from pydantic import TypeAdapter
 
+# ``Any`` in this module is the raw-JSON boundary: the entries below are hand-written JSON-shaped
+# dicts that the canon model types validate (and normalise) before anything is written.
 FIXTURE_PATH = Path(__file__).resolve().parent / "flight_canon.json"
 
 
