@@ -749,7 +749,13 @@ caller's event loop, it can be cancelled, and it limits its own resource use.
     `async with` or `aclose()`. Once closing has begun, a runtime refuses work: a call not yet running in
     the pool — waiting for a slot, or queued and cancelled by the shutdown — fails with
     `RuntimeError("… closed")`, never with a `CancelledError` nobody asked for, and no new pool is ever
-    created. Calls already running in a worker finish and return. Closing waits for the workers (off the loop, `asyncio.to_thread`) and
+    created. Calls already running in a worker finish and return. For an **owned** pool this holds exactly: submissions are
+    gated by a second semaphore equal to the pool's worker count, so every submitted item has a free
+    worker and nothing sits in the pool's own call queue. An **injected** executor's worker count is
+    unknown, so there up to one queued call may still start after closing began (CPython keeps one extra
+    call queued per pool); `aclose()` still waits for it. An injected executor that its owner shuts down
+    while the runtime is open makes the affected calls fail with `RuntimeError("the injected executor was
+    shut down")` — a programming error of the injector, never a bare `CancelledError`. Closing waits for the workers (off the loop, `asyncio.to_thread`) and
     cancels pending futures, so nothing remains after `compute()` returns (Q20); an injected executor is
     the caller's and is never shut down.
   - Nothing starts at import. Resources are not results: they never change a value.
