@@ -402,7 +402,7 @@ class ComputeRequest(BaseModel):
 
     model_config = ConfigDict(extra="forbid", frozen=True)
 
-    quantities: tuple[str, ...] = Field(min_length=1)
+    quantities: tuple[Annotated[str, Field(min_length=1)], ...] = Field(min_length=1)
     include_long_runs: bool = Field(default=False, strict=True)
     time_budget_s: float | None = Field(default=None, strict=True, gt=0, allow_inf_nan=False)
     accuracy: Accuracy = "xxxlarge"
