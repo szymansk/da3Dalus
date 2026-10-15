@@ -9,6 +9,7 @@ tags:
   - canon/quantity
   - role/target
 type: scalar
+positive: true
 default: {value: 1.2, source: "Lennon, Basics of R/C Model Aircraft Design, Ch. 4 and Ch. 14 (20 % safety margin)"}
 ---
 

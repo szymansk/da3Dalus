@@ -9,6 +9,7 @@ tags:
   - canon/quantity
   - role/target
 type: scalar
+positive: true
 default: {value: 1.3, source: "Lennon, Basics of R/C Model Aircraft Design, Ch. 20 (FAR 23 reasoning, scaled); CS 25.125 as transport-category reference"}
 ---
 

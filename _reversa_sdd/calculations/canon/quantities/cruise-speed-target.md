@@ -9,6 +9,7 @@ tags:
   - canon/quantity
   - role/target
 type: scalar
+positive: true
 ---
 
 # Cruise-speed target · `V_cruise,target`

@@ -9,6 +9,7 @@ tags:
   - canon/quantity
   - role/target
 type: scalar
+positive: true
 ---
 
 # Target stall speed · `V_S,target`
