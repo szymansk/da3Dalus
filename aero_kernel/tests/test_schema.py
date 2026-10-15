@@ -1,6 +1,7 @@
 """Tests for the result types (ARCHITECTURE ch. 5, 8.2, 8.3, 8.4; scenarios Q3, Q15, Q23, Q26, Q31)."""
 
 import pytest
+from aero_kernel import schema
 from aero_kernel.errors import ErrorCategory, format_world_assignment, parse_world_assignment
 from aero_kernel.schema import (
     WARNING_CATALOGUE,
@@ -459,3 +460,26 @@ class TestFiniteFloats:
     def test_default_used_rejects_non_finite(self, bad: float) -> None:
         with pytest.raises(ValidationError):
             DefaultUsed(slug="gravity", value=bad, unit="m/s^2", source="ISO")
+
+
+def test_all_pins_the_public_names() -> None:
+    assert sorted(schema.__all__) == sorted(
+        [
+            "Accuracy",
+            "ComputeResult",
+            "DefaultUsed",
+            "Interval",
+            "KernelError",
+            "KernelWarning",
+            "Provenance",
+            "QuantityResult",
+            "QuantityStatus",
+            "Reason",
+            "ReasonCode",
+            "WARNING_CATALOGUE",
+            "WarningSeverity",
+            "dedupe_warnings",
+        ]
+    )
+    for name in schema.__all__:
+        assert hasattr(schema, name)

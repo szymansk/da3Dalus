@@ -15,7 +15,22 @@ from aero_kernel.errors import (
 )
 from pydantic import BaseModel, ConfigDict, Field, JsonValue, model_validator
 
-__all__ = ["WARNING_CATALOGUE", "Interval", "KernelError", "KernelWarning", "WarningSeverity"]
+__all__ = [
+    "WARNING_CATALOGUE",
+    "Accuracy",
+    "ComputeResult",
+    "DefaultUsed",
+    "Interval",
+    "KernelError",
+    "KernelWarning",
+    "Provenance",
+    "QuantityResult",
+    "QuantityStatus",
+    "Reason",
+    "ReasonCode",
+    "WarningSeverity",
+    "dedupe_warnings",
+]
 
 
 class WarningSeverity(StrEnum):
