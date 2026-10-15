@@ -162,8 +162,12 @@ class KernelError(BaseModel):
 
     code: str = Field(min_length=1)
     category: ErrorCategory
-    retryable: bool = Field(False, description=_FLAG_DESCRIPTION, json_schema_extra=_drop_default)
-    escalate: bool = Field(False, description=_FLAG_DESCRIPTION, json_schema_extra=_drop_default)
+    retryable: bool = Field(
+        default=False, description=_FLAG_DESCRIPTION, json_schema_extra=_drop_default
+    )
+    escalate: bool = Field(
+        default=False, description=_FLAG_DESCRIPTION, json_schema_extra=_drop_default
+    )
     quantity: str | None = None
     formula: str | None = None
     application: str | None = None
