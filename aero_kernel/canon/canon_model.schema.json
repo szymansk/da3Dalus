@@ -374,7 +374,7 @@
     },
     "Quantity": {
       "additionalProperties": false,
-      "description": "A quantity of the canon vocabulary.\n\nAttributes:\n    symbol: The quantity's symbol.\n    unit: The unit of its values; ``1`` is dimensionless.\n    role: ``input`` and ``target`` are supplied by the caller, ``derived`` and ``output`` computed.\n    type: The kind of value.\n    uncertainty: ``interval`` where the producer declares method worlds.\n    default: The stated default, only where the canon states one.\n    positive: Whether the quantity is strictly greater than zero by its definition.",
+      "description": "A quantity of the canon vocabulary.\n\nAttributes:\n    symbol: The quantity's symbol.\n    unit: The unit of its values; ``1`` is dimensionless.\n    role: ``input`` and ``target`` are supplied by the caller, ``derived`` and ``output`` computed.\n    type: The kind of value.\n    uncertainty: ``interval`` where the producer declares method worlds.\n    default: The stated default, only where the canon states one.\n    positive: ``True`` where the quantity is strictly greater than zero by its definition,\n        otherwise omitted (``None``); ``false`` is no spelling of the canon.",
       "properties": {
         "default": {
           "anyOf": [
@@ -388,9 +388,17 @@
           "default": null
         },
         "positive": {
-          "default": false,
-          "title": "Positive",
-          "type": "boolean"
+          "anyOf": [
+            {
+              "const": true,
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Positive"
         },
         "role": {
           "enum": [

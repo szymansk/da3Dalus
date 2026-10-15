@@ -143,7 +143,13 @@ formulas = {
             ),
         ],
         "preconditions": [
-            {"id": "rho_at_evaluation_altitude", "parameter": "rho", "on_violation": "warning"}
+            {"id": "rho_at_evaluation_altitude", "parameter": "rho", "on_violation": "warning"},
+            {
+                "id": "landing_configuration_given",
+                "parameter": "airplane",
+                "on_violation": "warning",
+                "applications": ["landing"],
+            },
         ],
         "postconditions": [
             {
@@ -289,12 +295,14 @@ def build_flight_canon() -> str:
     """Return the text of ``flight_canon.json``: sorted keys, two-space indent, final newline."""
     namespaces: dict[str, Any] = {"calc": {"quantities": quantities, "formulas": formulas}}
     parsed = TypeAdapter(dict[str, Namespace]).validate_python(namespaces)
+    # The model file holds the normalised form: every absent optional field is written out.
+    normalised = {name: namespace.model_dump(mode="json") for name, namespace in parsed.items()}
     model = {
         "schema_version": 1,
         "content_hash": compute_content_hash(parsed),
         "source_commit": "0123456789abcdef0123456789abcdef01234567",
         "importer_version": "0.0.0-fixture",
-        "namespaces": namespaces,
+        "namespaces": normalised,
     }
     return json.dumps(model, indent=2, sort_keys=True, ensure_ascii=False) + "\n"
 
