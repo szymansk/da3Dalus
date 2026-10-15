@@ -11,7 +11,7 @@ from typing import Any, Literal, cast, get_args, get_origin
 import pytest
 from aero_kernel import geometry
 from aero_kernel.geometry import AirplaneGeometry
-from pydantic import BaseModel
+from pydantic import BaseModel, ValidationError
 from pydantic.fields import FieldInfo
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
@@ -152,11 +152,17 @@ def test_schema_valid_documents_parse_as_written(relative: str) -> None:
     assert airplane.wings
 
 
-def test_fleet_counts() -> None:
-    """Document the state of the fleet: 2 valid as written, the rest split by control_surfaces."""
-    assert len(FLEET_FILES) == 78
-    assert len(repaired_fleet(conformant=True)) == 4
-    assert len(repaired_fleet(conformant=False)) == 74
+@pytest.mark.parametrize("path", FLEET_FILES, ids=lambda p: p.name)
+def test_fleet_file_parses_or_is_rejected_only_for_control_surfaces(path: Path) -> None:
+    """Invariant, not a count: a fleet file is conformant after the two repairs, or it fails
+    on ``control_surfaces`` and on nothing else."""
+    document = repair_for_schema(read_document(path))
+    if not has_control_surfaces(document):
+        AirplaneGeometry.model_validate(document)
+        return
+    with pytest.raises(ValidationError) as caught:
+        AirplaneGeometry.model_validate(document)
+    assert {tuple(e["loc"])[-1] for e in caught.value.errors()} == {"control_surfaces"}
 
 
 @pytest.mark.parametrize("path", repaired_fleet(conformant=True), ids=lambda p: p.name)
@@ -177,7 +183,10 @@ def test_repair_leaves_control_surfaces_in_place() -> None:
 
 
 def test_urmodell_documents_are_still_rejected_for_control_surfaces() -> None:
-    """The fleet is not format-conformant: its ribs carry ASB control_surfaces, not devices."""
+    """Deliberate tripwire: the fleet's ribs carry ASB control_surfaces, not devices (#1184).
+
+    Flip to a positive test when #1184 regenerates the fleet.
+    """
     path = repaired_fleet(conformant=False)[0]
     with pytest.raises(ValueError, match="control_surfaces"):
         AirplaneGeometry.model_validate(repair_for_schema(read_document(path)))
