@@ -320,7 +320,9 @@ class Provenance(BaseModel):
     build_digest: str = Field(min_length=1)
     canon_model_hash: str = Field(min_length=1)
     canon_source_commit: str = Field(min_length=1)
-    tool_versions: dict[str, Annotated[str, Field(min_length=1)]] = Field(default_factory=dict)
+    tool_versions: dict[
+        Annotated[str, Field(min_length=1)], Annotated[str, Field(min_length=1)]
+    ] = Field(default_factory=dict)
     accuracy: Accuracy
     solver_settings: dict[str, JsonValue] = Field(default_factory=dict)
     defaults_used: tuple[DefaultUsed, ...] = ()
