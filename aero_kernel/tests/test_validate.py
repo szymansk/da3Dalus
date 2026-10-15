@@ -7,7 +7,7 @@ from typing import Any
 import pytest
 from aero_kernel import geometry
 from aero_kernel.errors import ErrorCategory, KernelError
-from aero_kernel.schema import AircraftInput
+from aero_kernel.schema import AircraftInput, WarningSeverity
 from aero_kernel.validate import UNREAD_FIELDS, Validation, validate_aircraft
 from pydantic import BaseModel
 
@@ -375,3 +375,97 @@ class TestInlineAirfoil:
         assert _codes(_validate(_with_airfoil({"coordinates": coordinates}))) == [
             "non_finite_number"
         ]
+
+
+class TestConflictingMass:
+    def test_differing_masses_warn_with_both_values(self) -> None:
+        document = _document()
+        document["airplane"]["total_mass_kg"] = 2.0
+        (warning,) = _result(document).warnings
+        assert warning.code == "conflicting_mass"
+        assert warning.severity is WarningSeverity.PRACTICE
+        assert warning.origin == "aircraft-mass"
+        assert warning.detail == {"aircraft_mass_kg": 1.5, "geometry_total_mass_kg": 2.0}
+        assert "1.5" in warning.message
+        assert "2.0" in warning.message
+
+    def test_equal_masses_do_not_warn(self) -> None:
+        document = _document()
+        document["airplane"]["total_mass_kg"] = 1.5
+        assert _result(document).warnings == ()
+
+    def test_the_comparison_is_exact(self) -> None:
+        document = _document()
+        document["airplane"]["total_mass_kg"] = 1.5 + 1e-12
+        assert _codes_of_warnings(_result(document)) == ["conflicting_mass"]
+
+    def test_a_missing_mass_on_either_side_does_not_warn(self) -> None:
+        document = _document()
+        assert _result(document).warnings == ()  # no geometry mass
+        document["airplane"]["total_mass_kg"] = 2.0
+        del document["values"]["aircraft-mass"]
+        assert _result(document).warnings == ()  # no passed mass
+
+    def test_a_non_finite_mass_is_an_error_and_no_warning(self) -> None:
+        document = _document()
+        document["airplane"]["total_mass_kg"] = math.nan
+        result = _result(document)
+        assert _paths(result.errors) == ["airplane.total_mass_kg"]
+        assert result.warnings == ()
+
+
+def _codes_of_warnings(result: Validation) -> list[str]:
+    return [warning.code for warning in result.warnings]
+
+
+class TestGeometryDeflectionIgnored:
+    def test_device_deflection_warns_once_with_path_and_angle(self) -> None:
+        document = _document()
+        x_sec = document["airplane"]["wings"]["Main wing"]["x_secs"][0]
+        x_sec["trailing_edge_device"] = {"deflection_deg": 12.5}
+        (warning,) = _result(document).warnings
+        assert warning.code == "geometry_deflection_ignored"
+        assert warning.severity is WarningSeverity.PRACTICE
+        assert warning.origin == "airplane"
+        assert warning.detail == {
+            "device": 'airplane.wings["Main wing"].x_secs[0].trailing_edge_device',
+            "deflection_deg": 12.5,
+        }
+
+    def test_control_surface_deflection_warns(self) -> None:
+        document = _document()
+        x_sec = document["airplane"]["wings"]["Main wing"]["x_secs"][0]
+        x_sec["trailing_edge_device"] = {}
+        x_sec["control_surface"] = {"name": "aileron", "deflection": -3.0}
+        (warning,) = _result(document).warnings
+        assert warning.detail == {
+            "device": 'airplane.wings["Main wing"].x_secs[0].control_surface',
+            "deflection_deg": -3.0,
+        }
+
+    def test_both_views_of_one_device_warn_once(self) -> None:
+        document = _document()
+        x_sec = document["airplane"]["wings"]["Main wing"]["x_secs"][0]
+        x_sec["trailing_edge_device"] = {"deflection_deg": 5.0}
+        x_sec["control_surface"] = {"name": "aileron", "deflection": 5.0}
+        (warning,) = _result(document).warnings
+        assert warning.detail["deflection_deg"] == 5.0
+        assert str(warning.detail["device"]).endswith("trailing_edge_device")
+
+    def test_zero_or_absent_deflection_does_not_warn(self) -> None:
+        document = _document()
+        x_sec = document["airplane"]["wings"]["Main wing"]["x_secs"][0]
+        x_sec["trailing_edge_device"] = {"deflection_deg": 0.0}
+        x_sec["control_surface"] = {"name": "aileron"}
+        document["airplane"]["wings"]["Main wing"]["x_secs"][1]["control_surface"] = None
+        assert _result(document).warnings == ()
+        x_sec["trailing_edge_device"] = {"deflection_deg": None}
+        assert _result(document).warnings == ()
+
+    def test_non_finite_deflection_is_an_error_and_no_warning(self) -> None:
+        document = _document()
+        x_sec = document["airplane"]["wings"]["Main wing"]["x_secs"][0]
+        x_sec["trailing_edge_device"] = {"deflection_deg": math.nan}
+        result = _result(document)
+        assert _codes(result.errors) == ["non_finite_number"]
+        assert result.warnings == ()

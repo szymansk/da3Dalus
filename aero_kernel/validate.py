@@ -22,8 +22,8 @@ from typing import cast
 from aero_kernel import geometry
 from aero_kernel.errors import ErrorCategory, KernelError
 from aero_kernel.geometry import Wing
-from aero_kernel.schema import AircraftInput, KernelWarning
-from pydantic import BaseModel, ConfigDict
+from aero_kernel.schema import WARNING_CATALOGUE, AircraftInput, KernelWarning
+from pydantic import BaseModel, ConfigDict, JsonValue
 
 logger = logging.getLogger(__name__)
 
@@ -320,6 +320,59 @@ def _value_findings(values: Mapping[str, float]) -> list[KernelError]:
     return findings
 
 
+def _warning(code: str, origin: str, message: str, detail: dict[str, JsonValue]) -> KernelWarning:
+    """Build a practice warning from the catalogue (the severity follows from the code)."""
+    logger.debug("warning %s at %s", code, origin)
+    return KernelWarning(
+        severity=WARNING_CATALOGUE[code], code=code, message=message, origin=origin, detail=detail
+    )
+
+
+def _mass_warnings(aircraft: AircraftInput) -> list[KernelWarning]:
+    """Warn when the passed mass and the geometry's ``total_mass_kg`` differ (exact comparison).
+
+    The passed mass wins (ch. 8.11). A non-finite mass is an error elsewhere, not a warning.
+    """
+    passed = aircraft.values.get("aircraft-mass")
+    stored = aircraft.airplane.total_mass_kg
+    if passed is None or stored is None or not (math.isfinite(passed) and math.isfinite(stored)):
+        return []
+    if passed == stored:
+        return []
+    message = (
+        f"The passed aircraft-mass is {passed} kg but the geometry's total_mass_kg is "
+        f"{stored} kg; the passed mass is used."
+    )
+    detail: dict[str, JsonValue] = {"aircraft_mass_kg": passed, "geometry_total_mass_kg": stored}
+    return [_warning("conflicting_mass", "aircraft-mass", message, detail)]
+
+
+def _deflection_warnings(wings: Mapping[str, Wing]) -> list[KernelWarning]:
+    """Warn once per device whose geometry carries a non-zero deflection; the kernel ignores it."""
+    warnings: list[KernelWarning] = []
+    for key, wing in wings.items():
+        for index, x_sec in enumerate(wing.x_secs):
+            path = f"{_key_path('airplane.wings', key)}.x_secs[{index}]"
+            candidates = (
+                (f"{path}.trailing_edge_device", x_sec.trailing_edge_device, "deflection_deg"),
+                (f"{path}.control_surface", x_sec.control_surface, "deflection"),
+            )
+            for device, model, field in candidates:
+                # getattr is Any; both fields are `Num | None`/`Num` floats on their models
+                angle = None if model is None else cast("float | None", getattr(model, field))
+                if angle is not None and math.isfinite(angle) and angle != 0:
+                    message = (
+                        f"The geometry sets a deflection of {angle} deg at {device}; it is "
+                        "ignored, deflections come from the values."
+                    )
+                    detail: dict[str, JsonValue] = {"device": device, "deflection_deg": angle}
+                    warnings.append(
+                        _warning("geometry_deflection_ignored", "airplane", message, detail)
+                    )
+                    break
+    return warnings
+
+
 def validate_aircraft(aircraft: AircraftInput) -> Validation:
     """Report every physically inadmissible value of an aircraft input, and the input's caveats.
 
@@ -340,4 +393,5 @@ def validate_aircraft(aircraft: AircraftInput) -> Validation:
     errors += _fuselage_findings(aircraft.airplane.fuselages or {})
     errors += _value_findings(aircraft.values)
     logger.debug("validation done: %d errors", len(errors))
-    return Validation(errors=tuple(errors))
+    warnings = _mass_warnings(aircraft) + _deflection_warnings(aircraft.airplane.wings or {})
+    return Validation(errors=tuple(errors), warnings=tuple(warnings))
