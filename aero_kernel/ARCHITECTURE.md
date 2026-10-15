@@ -943,14 +943,19 @@ async def stall_speed(x: Inputs, ctx: Context) -> dict[str, Value]:
     (`CheckResult`: `held | violated | unchecked` plus a message). Decorators stack, so one check function
     serves several `(slug, id)` pairs — one implementation per check (`optimum_at_first_cl_peak` for
     `stall-speed` and `butterfly-approach`). A duplicate registration or a non-coroutine `formula` is a
-    `RegistryError` at import — a programming error, never a result.
-  - **Parameter names are not repeated in code** (precedence note at the top). The decorator carries the
+    `RegistrationError` at import — a programming error, never a result.
+  - **Parameter names are not repeated in code** (precedence note at the top). Considered and rejected,
+    because each is a second, hand-kept copy of what the model owns: names in the decorator
+    (`inputs=…, outputs=…`), a typed `Inputs` model per formula, keyword parameters in the signature; and an
+    AST scan of `x["…"]`, which is fragile. The body still *reads* `x["name"]` — use, not a declaration. The decorator carries the
     formula's **interface fingerprint** instead: `sha256_of` the formula's sorted input names, output names
     and `optional` in the canon model. The traceability check computes it from the loaded model and compares
     (Q11): a changed parameter fails it until the implementation is updated and its fingerprint with it. It
     also checks that every registered slug and check id exists in the model, that every embedded item has
     a registered relation, and that every embedder requests each of its items through `ctx.embedded`
-    (static check). It runs as a test in CI and once when a kernel is built; at runtime a formula whose
+    (static check). `@relation`, the relation check and the static check arrive with the first embedded
+    formula, not before (ADR 0021). A registered check whose id exists in the model only on the other
+    side is a finding (`check_kind_mismatch`). It runs as a test in CI and once when a kernel is built; at runtime a formula whose
     fingerprint does not match is `internal`, code `stale_implementation`, escalate, for its quantities
     only. A model formula without an implementation is `not_implemented` (Q1).
 
