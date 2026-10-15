@@ -28,6 +28,7 @@ __all__ = [
     "TrailingEdgeDevice",
     "Turbulator",
     "Wing",
+    "WingUnits",
     "WingXSec",
 ]
 
