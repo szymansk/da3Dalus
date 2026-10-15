@@ -392,7 +392,10 @@ await kernel.drop_scope("aircraft/3f2c…")                          # e.g. the 
   log line, never a wrong value and never a result error (ADR 0020: the log declares it). The one exception is
   `drop_scope`: the caller relies on the deletion (e.g. an aircraft was deleted), so a store that cannot
   delete raises `cache.StoreError` — a typed error of the `NodeStore` contract with a plain message and no
-  backend internals (ADR 0019) — after the backend's own wait (busy timeout); no further retry.
+  backend internals (ADR 0019) — after the backend's own wait (busy timeout); no further retry. Because a quarantined `<name>.corrupt` file may still
+  hold rows of any scope, **`drop_scope` deletes an existing `.corrupt` file** as part of the deletion (it
+  is unreadable anyway); a quarantine triggered by `get` or `put` still renames, so the file is kept for
+  diagnosis until the next `drop_scope`.
 - **One pool for all scopes.** One `CachedKernel` serves many scopes with one process pool, so no per-aircraft
   kernel objects are needed.
 - **The caller assigns scopes.** What a scope stands for (aircraft, user, version snapshot K28, or `shared`)
