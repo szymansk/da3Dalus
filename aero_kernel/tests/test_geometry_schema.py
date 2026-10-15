@@ -197,8 +197,12 @@ def test_enums_and_defaults_match(name: str) -> None:
 
 FLEET_ROOT = REPO_ROOT / "scripts" / "canon_checks" / "reference_fleet"
 FLEET_FILES = sorted(FLEET_ROOT.rglob("*.airplane.json"))
-# These documents already satisfy the JSON Schema and are parsed as they are.
-VALID_AS_WRITTEN = ["bryan/bryan.airplane.json", "snack/snack.airplane.json"]
+# Documents that satisfy the JSON Schema as written; test_valid_as_written_list_is_complete checks it.
+VALID_AS_WRITTEN = [
+    "bryan/bryan.airplane.json",
+    "ehawk/ehawk_fluegel.airplane.json",
+    "snack/snack.airplane.json",
+]
 
 
 def read_document(path: Path) -> dict[str, Any]:
@@ -369,3 +373,39 @@ def test_a_document_setting_every_schema_field_is_accepted() -> None:
     airplane = AirplaneGeometry.model_validate(document)
     assert airplane.wings is not None
     assert airplane.wings["W"].x_secs[0].trailing_edge_device is not None
+
+
+BOUND_KEYWORDS = {
+    "minimum",
+    "maximum",
+    "exclusiveMinimum",
+    "exclusiveMaximum",
+    "minItems",
+    "maxItems",
+    "minLength",
+    "maxLength",
+    "multipleOf",
+}
+
+
+def bound_keywords(node: object, path: str = "") -> list[str]:
+    """List every numeric or size bound in a JSON Schema, except the fixed-size tuples (Point3, coordinate pair)."""
+    found: list[str] = []
+    if isinstance(node, dict):
+        mapping = cast("dict[str, object]", node)  # raw JSON schema
+        # a fixed-size tuple (a Point3, an airfoil coordinate pair) is structure, not a constraint
+        is_point = "prefixItems" in mapping and mapping.get("minItems") == mapping.get("maxItems")
+        for key, value in mapping.items():
+            if key in BOUND_KEYWORDS and not (is_point and key in {"minItems", "maxItems"}):
+                found.append(f"{path}/{key}")
+            found += bound_keywords(value, f"{path}/{key}")
+    elif isinstance(node, list):
+        for index, item in enumerate(cast("list[object]", node)):  # raw JSON schema
+            found += bound_keywords(item, f"{path}/{index}")
+    return found
+
+
+def test_the_model_declares_no_physical_constraint() -> None:
+    """Inadmissible but well-typed input must reach validate.py as input_errors (ch. 8.11)."""
+    published = AirplaneGeometry.model_json_schema(mode="validation")
+    assert bound_keywords(published) == []
