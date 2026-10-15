@@ -35,7 +35,8 @@ becomes the app's single source of computation (register epic "implement the cal
 - Python 3.11–3.12 with Poetry.
 - Dependencies are limited to numpy, pydantic, aerosandbox and avl-binary.
 - The fast CI tier runs **without** AeroSandbox and AVL.
-- SI units throughout.
+- One unit per quantity, the canon's: SI-coherent, with the canon's declared exceptions (angles in
+  `deg`, `deg/s`; `Wh`; `rpm/V`). No conversion inside the kernel except the geometry's millimetre fields.
 - Everything in the source tree is English (ADR 0029).
 - PEP 8, Pydantic v2 for all data types, full type annotations; enforced by `ruff` (strict rule set in
   `aero_kernel/ruff.toml`) and `pyright` in strict mode (module CLAUDE.md).
@@ -260,13 +261,13 @@ The A11 "not validated" marker is the field `QuantityResult.validated`, not a wa
 - `provenance` (ch. 8.4).
 
 `QuantityResult` fields:
-- `slug` and `unit` (SI)
+- `slug` and `unit` (the quantity's canon unit, ch. 8.11)
 - `status`: `ok`, `not_applicable`, `skipped` or `error`
 - `reason` for every status other than `ok`: machine-readable `code` plus natural-language `message`
   (`not_applicable`: `condition_not_met`, `not_given` or `depends_on_not_applicable`, ch. 8.5; `skipped`: `long_run_not_included` or
   `depends_on_skipped`; `error`: see `error`)
 - `value` **or** `interval {min, max, worlds{assignment: value}}` (ch. 8.13), exactly one when `ok`, neither
-  otherwise. `value` is a float in the quantity's SI unit, or a structured value of the quantity's `type`
+  otherwise. `value` is a float in the quantity's canon unit, or a structured value of the quantity's `type`
   (ch. 8.12). **v1 returns floats only**; the union widens with the first non-scalar formula, no placeholder
   type before that (ADR 0021). Numbers are **strict and finite**: `value`, the interval bounds and world
   values accept an `int` or `float`, never a `bool` or a numeric string, and never NaN or ±inf. The same holds inside every free JSON field
@@ -577,7 +578,7 @@ python -m aero_kernel.importer <canon-document-dir> [--check]
 | Stage | Does | Fails when |
 |---|---|---|
 | 1 Parse | reads the front matter of every formula and quantity entry (fields above); never prose | a required field is missing or malformed |
-| 2 Normalise | slugs, units to SI symbols, roles, kinds, tools to closed vocabularies; resolves `[[…]]` references | an unknown unit, kind, tool or role |
+| 2 Normalise | slugs, unit spellings to one closed symbol set (`1` for dimensionless, `—` folded into it), roles, kinds, tools to closed vocabularies; resolves `[[…]]` references | an unknown unit, kind, tool or role |
 | 3 Validate | JSON Schema of the canon model; consistency rules (ch. 8.6); dimensional check | any rule is violated |
 | 4 Diff | compares with the committed canon model: entries added, removed or changed; marks **breaking** changes (inputs, units, outputs, applications) and lists the affected implementations and golden tests | — (only reports) |
 | 5 Write | writes `canon_model.json` (sorted, stable formatting), its content hash, the source commit of the canon document and the importer version; writes `IMPORT_REPORT.md` (diff, findings, Appendix A table) | — |
@@ -674,7 +675,7 @@ caller's event loop, it can be cancelled, and it limits its own resource use.
 ```python
 class AircraftInput(BaseModel):          # extra="forbid"
     airplane: AirplaneGeometry           # docs/geometry-format/airplane-geometry.schema.json
-    values: dict[str, float]             # canon slug → value in the quantity's SI unit
+    values: dict[str, float]             # canon slug → value in the quantity's canon unit
 
 class ComputeRequest(BaseModel):
     quantities: list[str]                # canon quantity slugs, not formula slugs
@@ -689,6 +690,16 @@ class ComputeRequest(BaseModel):
 `ComputeRequest` stay pure data with a JSON form and a JSON Schema.
 
 **Binding of canon input quantities to the input:**
+- **Units.** A value is given, and a result returned, in the unit the canon model declares for the
+  quantity — SI-coherent, with the canon's declared exceptions: angles in `deg` (and `deg/s`), energy in
+  `Wh`, the motor constant in `rpm/V`. The kernel converts none of them; a formula converts internally
+  where a tool needs radians or SI base units.
+- **What `values` may hold.** Only slugs of the canon model with `role: input` or `role: target`. An
+  unknown slug is an `input_errors` entry, code `unknown_quantity`; a slug of a derived or output quantity
+  (no override of a computed value) is `not_an_input`; both with `input_path = values.<slug>`.
+- **What a request may name.** Only quantities with `role: derived` or `output`. An unknown slug is, per
+  quantity, `error` / `invalid_input` / `unknown_quantity`; an input or target slug is `not_requestable`
+  (its value is the caller's own); the rest of the request is computed.
 - The quantity `airplane` (type `airplane`) is `AircraftInput.airplane`.
 - Every other quantity with `role: input` or `role: target` is `AircraftInput.values[<slug>]`. Today these
   are `aircraft-mass`, `centre-of-gravity`, `altitude`, `flight-speed`, `angle-of-attack`, `load-factor`,
