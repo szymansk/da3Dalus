@@ -83,3 +83,54 @@ class TestNonFinite:
         document["values"]["aircraft-mass"] = math.nan
         document["values"]["altitude"] = math.nan
         assert _paths(_validate(document)) == ["values.aircraft-mass", "values.altitude"]
+
+
+class TestPositiveQuantities:
+    @pytest.mark.parametrize("chord", [0.0, -0.1, -math.inf])
+    def test_non_positive_chord_is_rejected(self, chord: float) -> None:
+        document = _document()
+        document["airplane"]["wings"]["Main wing"]["x_secs"][1]["chord"] = chord
+        errors = _validate(document)
+        if math.isinf(chord):
+            # -inf is reported once, as non-finite, not also as non-positive
+            assert len(errors) == 1
+        assert _paths(errors) == ['airplane.wings["Main wing"].x_secs[1].chord']
+        assert errors[0].category is ErrorCategory.INVALID_INPUT
+
+    def test_positive_chord_is_accepted(self) -> None:
+        document = _document()
+        document["airplane"]["wings"]["Main wing"]["x_secs"][1]["chord"] = 1e-6
+        assert _validate(document) == ()
+
+    @pytest.mark.parametrize("mass", [0.0, -2.0])
+    def test_non_positive_mass_is_rejected(self, mass: float) -> None:
+        document = _document()
+        document["values"]["aircraft-mass"] = mass
+        assert _paths(_validate(document)) == ["values.aircraft-mass"]
+
+    @pytest.mark.parametrize("density", [0.0, -1.225])
+    def test_non_positive_density_is_rejected(self, density: float) -> None:
+        document = _document()
+        document["values"]["sea-level-air-density"] = density
+        assert _paths(_validate(document)) == ["values.sea-level-air-density"]
+
+    def test_absent_mass_and_density_are_not_a_finding(self) -> None:
+        # a missing value is `missing_input` in the engine (Q24), not a validation finding
+        document = _document()
+        document["values"] = {}
+        assert _validate(document) == ()
+
+
+class TestWingSections:
+    def test_one_section_is_rejected(self) -> None:
+        document = _document()
+        del document["airplane"]["wings"]["Main wing"]["x_secs"][1]
+        assert _paths(_validate(document)) == ['airplane.wings["Main wing"].x_secs']
+
+    def test_no_section_is_rejected(self) -> None:
+        document = _document()
+        document["airplane"]["wings"]["Main wing"]["x_secs"] = []
+        assert _paths(_validate(document)) == ['airplane.wings["Main wing"].x_secs']
+
+    def test_two_sections_are_accepted(self) -> None:
+        assert _validate(_document()) == ()
