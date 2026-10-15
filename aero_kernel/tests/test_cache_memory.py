@@ -153,3 +153,22 @@ async def test_every_log_record_carries_the_scope(caplog: pytest.LogCaptureFixtu
         await cache.drop_scope("s")
     assert len(caplog.records) == 4
     assert all(getattr(record, "scope", None) == "s" for record in caplog.records)
+
+
+@pytest.mark.asyncio
+async def test_a_replacing_put_refreshes_the_order_within_the_scope() -> None:
+    cache = MemoryCache(max_entries=100, max_entries_per_scope=2)
+    await cache.put("s", "a", entry(1.0))
+    await cache.put("s", "b", entry(1.0))
+    await cache.put("s", "a", entry(2.0))
+    await cache.put("s", "c", entry(1.0))
+    assert await cache.get("s", "b") is None
+    assert await cache.get("s", "a") == entry(2.0)
+
+
+@pytest.mark.asyncio
+async def test_emptied_scopes_leave_no_bookkeeping_behind() -> None:
+    cache = MemoryCache(max_entries=1)
+    for index in range(50):
+        await cache.put(f"scope-{index}", "k", entry())
+    assert len(getattr(cache, "_scopes")) == 1  # noqa: B009 - the leak is only visible in the state
