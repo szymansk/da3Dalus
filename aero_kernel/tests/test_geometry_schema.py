@@ -104,7 +104,7 @@ def type_signature(node: dict[str, Any], defs: dict[str, Any]) -> Signature:
     """Reduce a JSON Schema node to the set of type branches it admits.
 
     Branches: ``"null"``, ``"number"``, ``"integer"``, ``"string"``, ``"boolean"``,
-    ``("enum", values)``, ``("ref", name)`` for an object definition, ``"point3"``,
+    ``("enum", values)``, ``("ref", name)`` for an object definition, ``("tuple", element signatures)``,
     ``("array", item signature)`` and ``("object", value signature)``. Numeric bounds, array
     lengths other than for a point, and descriptions are left out on purpose: the model carries
     no physical constraint (ch. 8.11), so only the type structure is compared.
@@ -133,8 +133,12 @@ def type_signature(node: dict[str, Any], defs: dict[str, Any]) -> Signature:
 def kind_signature(kind: str, node: dict[str, Any], defs: dict[str, Any]) -> Signature:
     """Reduce one JSON ``type`` of a node (with its array and object details) to branches."""
     if kind == "array":
-        if node.get("minItems") == node.get("maxItems") == 3:
-            return frozenset({"point3"})
+        if "prefixItems" in node:
+            return frozenset(
+                {("tuple", tuple(type_signature(i, defs) for i in node["prefixItems"]))}
+            )
+        if node.get("minItems") == node.get("maxItems") and node.get("minItems"):
+            return frozenset({("tuple", (type_signature(node["items"], defs),) * node["minItems"])})
         return frozenset({("array", type_signature(node["items"], defs))})
     if kind == "object":
         values = node.get("additionalProperties")
