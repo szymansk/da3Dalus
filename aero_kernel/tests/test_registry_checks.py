@@ -184,3 +184,12 @@ def test_checks_returns_a_copy() -> None:
 
 def test_check_result_may_be_unchecked() -> None:
     assert CheckResult(state="unchecked", message="no data").state == "unchecked"
+
+
+def _keyword_only_pre(*, x: Mapping[str, float]) -> CheckResult:
+    return HELD
+
+
+def test_check_that_cannot_be_called_positionally_is_rejected() -> None:
+    with pytest.raises(RegistryError, match="exactly 1"):
+        Registry().precondition("stall-speed", "rho-ok")(_keyword_only_pre)
