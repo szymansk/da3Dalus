@@ -69,10 +69,25 @@ async def test_nonzero_exit_is_returned_not_raised(script: Path) -> None:
     assert run.returncode == 3
 
 
-@pytest.mark.parametrize("name", ["../escape.txt", "/abs.txt", "sub/file.txt", ""])
+BAD_NAMES = ["../escape.txt", "/abs.txt", "sub/file.txt", "", ".", ".."]
+
+
+@pytest.mark.parametrize("name", BAD_NAMES)
 async def test_rejects_file_names_that_leave_the_directory(name: str, script: Path) -> None:
     with pytest.raises(ValueError, match="plain file name"):
         await run_process({name: "x"}, "", executable=sys.executable, args=[str(script), "0"])
+
+
+@pytest.mark.parametrize("name", BAD_NAMES)
+async def test_rejects_collect_names_that_leave_the_directory(name: str, script: Path) -> None:
+    with pytest.raises(ValueError, match="plain file name"):
+        await run_process(
+            {"in.txt": "x"},
+            "",
+            executable=sys.executable,
+            args=[str(script), "0"],
+            collect=[name],
+        )
 
 
 async def test_missing_executable_is_tool_unavailable(tmp_path: Path) -> None:
@@ -138,8 +153,11 @@ async def test_cancel_kills_the_process_group_and_removes_the_temp_dir(tmp_path:
     task, pid, grandchild, cwd = await _start_sleeper(tmp_path)
     assert _is_dir(cwd)
     task.cancel()
+    # Bounded: a kill that spares the grandchild leaves the pipes open and asyncio waits ~60 s.
+    # Hitting the bound raises TimeoutError, which is not the CancelledError expected here.
     with pytest.raises(asyncio.CancelledError):
-        await task
+        async with asyncio.timeout(5):
+            await task
     assert not _is_dir(cwd)
     assert await _wait_dead(pid)
     assert await _wait_dead(grandchild)
@@ -150,8 +168,11 @@ async def test_expired_budget_kills_the_process_and_removes_the_temp_dir(tmp_pat
     sleeper.write_text(SLEEP_SCRIPT)
     marker = tmp_path / "marker.txt"
     with pytest.raises(TimeoutError):
-        async with asyncio.timeout(1.0):
+        # The outer bound only guards against a hang; the budget itself must be what expired.
+        async with asyncio.timeout(6) as guard, asyncio.timeout(1.0) as budget:
             await run_process({}, "", executable=sys.executable, args=[str(sleeper), str(marker)])
+    assert budget.expired()
+    assert not guard.expired()
     pid, grandchild, cwd = _read_marker(marker)
     assert not _is_dir(cwd)
     assert await _wait_dead(pid)
