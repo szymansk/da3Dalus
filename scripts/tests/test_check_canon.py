@@ -979,6 +979,13 @@ def test_the_output_field_alone_disagreeing_is_reported(tmp_path, typed_quantiti
     assert not any("Produces line" in m for m in msgs), msgs
 
 
+def test_a_quantity_without_a_canon_slug_is_reported(tmp_path, typed_quantities):
+    """No fallback to the file name (ADR 0020): a missing `canon:` is an error naming the file."""
+    typed_quantities["speed-b"] = typed_quantities["speed-b"].replace("canon: speed-b\n", "")
+    msgs = _messages(_errors(_canon(tmp_path, quantities=typed_quantities)))
+    assert any("quantities/speed-b.md canon: missing canon slug" in m for m in msgs), msgs
+
+
 def test_two_files_with_the_same_canon_slug_are_reported(tmp_path, typed_quantities):
     root = _canon(tmp_path, quantities=typed_quantities)
     (root / "quantities" / "speed-a-copy.md").write_text(

@@ -350,9 +350,8 @@ def _read_entry(path: pathlib.Path) -> Entry:
     _, raw, body = text.split("---", 2)
     front = yaml.safe_load(raw) or {}
     file = f"{path.parent.name}/{path.name}"
-    return Entry(
-        slug=front.get("canon") or path.stem, front=front, raw_front=raw, body=body, file=file
-    )
+    slug = front.get("canon")  # no fallback to the file name (ADR 0020): checked in load_canon
+    return Entry(slug=slug or "", front=front, raw_front=raw, body=body, file=file)
 
 
 def _table_terms(readme: str, heading: str) -> set[str]:
@@ -372,6 +371,9 @@ def load_canon(canon_dir: pathlib.Path) -> Canon:
         entries: dict[str, Entry] = {}
         for f in sorted((root / sub).glob("*.md")):
             e = _read_entry(f)
+            if not e.slug:
+                load_errors.append((e.file, "missing canon slug: the entry needs a 'canon:' field"))
+                continue
             if e.slug != f.stem:
                 load_errors.append(
                     (e.file, f"canon slug {e.slug!r} differs from the file name {f.stem!r}")

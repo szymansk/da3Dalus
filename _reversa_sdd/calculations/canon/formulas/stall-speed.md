@@ -126,7 +126,7 @@ multiplicative flap factor `C_L,max,cfg = f · C_L,max,clean` (`high-lift-clmax`
 
 (c) THE REAL ONE — the configuration fallback. field_length_service:367-368 and operating_point_generator_service:355-356 substitute the clean V_S when the per-configuration value is absent, asserting C_L,max,LDG := C_L,max,clean. Seven lines earlier, at field_length_service:361, the same function multiplies C_L,max by up to 1.6 for that same configuration. One function assumes the flaps work and do not work at once; on the fallback branch the approach speed is up to 26 % too high while the landing distance is computed with the raised C_L,max. Verified.
 
-The applications above dissolve (c) structurally rather than by correction: v_stall_landing_mps does not exist when there is no flap, and when there is one it comes from this law with cl_max_landing bound. What remains to decide is only (a): which density.
+The applications above dissolve (c) structurally rather than by correction: `stall-speed-landing` always exists and comes from this problem with the airplane in its landing configuration ([[airplane-landing]]); without flaps that configuration is the same aircraft, so it equals the clean stall speed by definition, not by a fallback (maintainer, 2026-10-14). What remains to decide is only (a): which density.
 
 > Two or more implementations use **genuinely different laws** for this quantity.
 > This is the entry that must be decided, not merely read.
