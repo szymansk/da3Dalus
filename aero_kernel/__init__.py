@@ -11,7 +11,11 @@ ch. 8.14).
 
 import logging
 
-logging.getLogger("aero_kernel").addHandler(logging.NullHandler())
+# The logger is process-global but the package can be executed more than once (a reload, or
+# coverage importing it and dropping it from ``sys.modules``), so attach the handler only once.
+_logger = logging.getLogger("aero_kernel")
+if not any(isinstance(handler, logging.NullHandler) for handler in _logger.handlers):
+    _logger.addHandler(logging.NullHandler())
 
 # The repository is ``package-mode = false``, so the package is never installed and has no
 # distribution metadata to read the version from.
