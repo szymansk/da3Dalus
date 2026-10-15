@@ -330,6 +330,10 @@ class DiskCache:
     ``drop_scope`` is a deletion the caller relies on, so a locked database raises there. The file
     does not shrink after evictions or ``drop_scope`` (no ``VACUUM``).
 
+    The switch of a fresh file to WAL holds the instance lock while it waits for a competing
+    switch. If the file stays locked, concurrent callers on one instance therefore wait one after
+    another, each up to ``busy_timeout_s``: about N times ``busy_timeout_s`` for N callers.
+
     The guard that moves a damaged file aside only once works per instance (a generation counter);
     two instances on one file may each move aside what they see, which costs cache content, never
     correctness.

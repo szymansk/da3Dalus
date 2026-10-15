@@ -1062,3 +1062,59 @@ async def test_nothing_opens_the_file_while_it_is_being_moved_aside(
 
     await asyncio.gather(cache.get("s", "k"), writer())
     assert await cache.get("s", "new") == entry(4.0)
+
+
+@pytest.mark.asyncio
+async def test_a_read_refreshes_recency_before_later_writes(tmp_path: Path) -> None:
+    cache = _disk(tmp_path, max_bytes=2 * _size() + 1)
+    await cache.put("s", "a", entry())
+    assert await cache.get("s", "a") is not None
+    await cache.put("s", "b", entry())
+    await cache.put("s", "c", entry())
+    assert await cache.get("s", "a") is None
+    assert await cache.get("s", "b") is not None
+    assert await cache.get("s", "c") is not None
+
+
+@pytest.mark.asyncio
+async def test_removing_the_corrupt_file_does_not_block_the_event_loop(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    cache = _disk(tmp_path)
+    await cache.put("s", "k", entry())
+    (tmp_path / f"{DB_NAME}.corrupt").write_bytes(b"x")
+    real_unlink = Path.unlink
+
+    def slow_unlink(self: Path, missing_ok: bool = False) -> None:
+        if self.name.endswith(".corrupt"):
+            time.sleep(0.3)
+        real_unlink(self, missing_ok=missing_ok)
+
+    monkeypatch.setattr(Path, "unlink", slow_unlink)
+    lag = await _max_loop_lag(lambda: cache.drop_scope("s"))
+    assert lag < 0.05
+    assert not (tmp_path / f"{DB_NAME}.corrupt").exists()
+
+
+@pytest.mark.asyncio
+async def test_a_half_prepared_schema_is_invisible_to_other_connections(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    cache = _disk(tmp_path)
+    paused, release = threading.Event(), threading.Event()
+    # The private method is wrapped by name to pause the preparation.
+    real_rebuild = getattr(DiskCache, "_rebuild_totals")  # noqa: B009 - keeps the type checker out
+
+    def slow_rebuild(db: sqlite3.Connection) -> None:
+        paused.set()
+        release.wait(5)
+        real_rebuild(db)
+
+    monkeypatch.setattr(DiskCache, "_rebuild_totals", staticmethod(slow_rebuild))
+    task = asyncio.create_task(cache.put("s", "k", entry()))
+    await asyncio.to_thread(paused.wait, 5)
+    with sqlite3.connect(tmp_path / DB_NAME) as db:
+        seen = db.execute("SELECT COUNT(*) FROM sqlite_master WHERE name = 'entries'").fetchone()
+    release.set()
+    await task
+    assert seen == (0,)
