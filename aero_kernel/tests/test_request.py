@@ -45,6 +45,14 @@ class TestComputeRequestQuantities:
         request = ComputeRequest(quantities=(slug, "stall-speed"))
         assert request.quantities == (slug, "stall-speed")
 
+    @pytest.mark.parametrize(
+        "pair", [("stall_speed", "calc:stall_speed"), ("Stall Speed", "calc:Stall Speed")]
+    )
+    def test_a_malformed_slug_is_not_qualified_to_find_duplicates(
+        self, pair: tuple[str, str]
+    ) -> None:
+        assert ComputeRequest(quantities=pair).quantities == pair
+
     def test_a_malformed_slug_requested_twice_is_a_duplicate(self) -> None:
         with pytest.raises(ValidationError, match=r"duplicate quantity in request: stall_speed"):
             ComputeRequest(quantities=("stall_speed", "stall_speed"))

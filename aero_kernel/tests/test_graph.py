@@ -303,3 +303,17 @@ def test_a_rejected_request_echoes_the_raw_spelling_with_its_namespace(
     error = CanonGraph(flight_canon).resolve("calc:no-such-thing")
     assert isinstance(error, KernelError)
     assert error.quantity == "calc:no-such-thing"
+
+
+@pytest.mark.parametrize(
+    "pair", [("stall_speed", "calc:stall_speed"), ("Stall Speed", "calc:Stall Speed")]
+)
+def test_two_malformed_spellings_are_two_unknown_quantities(
+    flight_canon: CanonModel, pair: tuple[str, str]
+) -> None:
+    subtree = CanonGraph(flight_canon).subtree(pair)
+    assert [(e.code, e.quantity) for e in subtree.errors] == [
+        ("unknown_quantity", pair[0]),
+        ("unknown_quantity", pair[1]),
+    ]
+    assert subtree.requested == ()
