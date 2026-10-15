@@ -26,6 +26,7 @@ inputs:
   u_bat: battery-voltage
   p_mot_max: motor-max-power
   d_prop: propeller-diameter
+  eta_mot: motor-efficiency
 outputs: {t0_w: static-thrust-to-weight}
 embeds: [motor-propeller-equilibrium, advance-ratio-from-speed, propeller-table-lookup, thrust-at-airspeed-from-coefficient]
 variables: [flight-speed]
@@ -40,7 +41,7 @@ optional: [r_m]
 T_0/W = T / W
 ```
 
-**Produces** [[static-thrust-to-weight]]  ·  **from** [[weight]] · [[airplane]] · [[air-density]] · [[motor-voltage-constant]] · [[motor-no-load-current]] · [[motor-circuit-resistance]] · [[battery-voltage]] · [[motor-max-power]] · [[propeller-diameter]]
+**Produces** [[static-thrust-to-weight]]  ·  **from** [[weight]] · [[airplane]] · [[air-density]] · [[motor-voltage-constant]] · [[motor-no-load-current]] · [[motor-circuit-resistance]] · [[battery-voltage]] · [[motor-max-power]] · [[propeller-diameter]] · [[motor-efficiency]]
 
 **Kind: a law.** `T` is the static thrust, evaluated inside this entry at `V = 0`: it embeds the
 motor-propeller balance and the measured propeller table (`embeds:`) and reads no thrust value — the

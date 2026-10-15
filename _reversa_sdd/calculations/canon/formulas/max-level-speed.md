@@ -27,6 +27,7 @@ inputs:
   u_bat: battery-voltage
   p_mot_max: motor-max-power
   d_prop: propeller-diameter
+  eta_mot: motor-efficiency
 outputs: {v_max: max-level-speed}
 embeds: [motor-propeller-equilibrium, advance-ratio-from-speed, propeller-table-lookup, thrust-at-airspeed-from-coefficient]
 variables: [flight-speed]
@@ -44,7 +45,7 @@ subject to:   L(V, alpha) = m * g
               motor-propeller torque balance at (V, n_prop)
 ```
 
-**Produces** [[max-level-speed]]  ·  **from** [[airplane]] · [[aircraft-mass]] · [[gravity]] · [[air-density]] · [[motor-voltage-constant]] · [[motor-no-load-current]] · [[motor-circuit-resistance]] · [[battery-voltage]] · [[motor-max-power]] · [[propeller-diameter]]
+**Produces** [[max-level-speed]]  ·  **from** [[airplane]] · [[aircraft-mass]] · [[gravity]] · [[air-density]] · [[motor-voltage-constant]] · [[motor-no-load-current]] · [[motor-circuit-resistance]] · [[battery-voltage]] · [[motor-max-power]] · [[propeller-diameter]] · [[motor-efficiency]]
 
 **Kind: an optimisation problem**, the same shape as climb and turn: the highest speed at which full-throttle thrust still equals drag in level flight. Thrust and rpm from [[motor-propeller-equilibrium]] (route declared, `Q-PT-6`).
 

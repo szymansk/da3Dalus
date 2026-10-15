@@ -28,6 +28,7 @@ inputs:
   u_bat: battery-voltage
   p_mot_max: motor-max-power
   d_prop: propeller-diameter
+  eta_mot: motor-efficiency
 outputs: {omega_max: max-sustained-turn-rate, v_omega: max-sustained-turn-rate-speed}
 embeds: [motor-propeller-equilibrium, advance-ratio-from-speed, propeller-table-lookup, thrust-at-airspeed-from-coefficient]
 variables: [flight-speed]
@@ -46,7 +47,7 @@ subject to:   L(V, alpha) = n * m * g
               1 <= n <= n_lim
 ```
 
-**Produces** [[max-sustained-turn-rate]] · [[max-sustained-turn-rate-speed]]  ·  **from** [[airplane]] · [[aircraft-mass]] · [[gravity]] · [[air-density]] · [[limit-load-factor]] · [[motor-voltage-constant]] · [[motor-no-load-current]] · [[motor-circuit-resistance]] · [[battery-voltage]] · [[motor-max-power]] · [[propeller-diameter]]
+**Produces** [[max-sustained-turn-rate]] · [[max-sustained-turn-rate-speed]]  ·  **from** [[airplane]] · [[aircraft-mass]] · [[gravity]] · [[air-density]] · [[limit-load-factor]] · [[motor-voltage-constant]] · [[motor-no-load-current]] · [[motor-circuit-resistance]] · [[battery-voltage]] · [[motor-max-power]] · [[propeller-diameter]] · [[motor-efficiency]]
 
 **The problem is not convex (BRYAN, 2026-10-03).** The fastest sustained turn sits at the stall
 corner. Past the first `C_L` peak the post-stall plateau offers a second local optimum: from a

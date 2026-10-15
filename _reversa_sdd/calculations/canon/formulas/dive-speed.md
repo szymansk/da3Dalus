@@ -26,6 +26,7 @@ inputs:
   u_bat: battery-voltage
   p_mot_max: motor-max-power
   d_prop: propeller-diameter
+  eta_mot: motor-efficiency
 outputs: {v_d: dive-speed}
 embeds: [motor-propeller-equilibrium, advance-ratio-from-speed, propeller-table-lookup, thrust-at-airspeed-from-coefficient]
 variables: [flight-speed]
@@ -42,7 +43,7 @@ solve for V, alpha, n_prop:   L(V, alpha) = 0
                              motor-propeller torque balance at (V, n_prop)
 ```
 
-**Produces** [[dive-speed]]  ·  **from** [[airplane]] · [[aircraft-mass]] · [[gravity]] · [[air-density]] · [[motor-voltage-constant]] · [[motor-no-load-current]] · [[motor-circuit-resistance]] · [[battery-voltage]] · [[motor-max-power]] · [[propeller-diameter]]
+**Produces** [[dive-speed]]  ·  **from** [[airplane]] · [[aircraft-mass]] · [[gravity]] · [[air-density]] · [[motor-voltage-constant]] · [[motor-no-load-current]] · [[motor-circuit-resistance]] · [[battery-voltage]] · [[motor-max-power]] · [[propeller-diameter]] · [[motor-efficiency]]
 
 **Kind: a procedure — a closure by a prescribed value**, not an extremum: the speed at which a vertical dive stops accelerating. Lift is zero, so drag balances weight plus thrust. It is a property of the aircraft and an **upper bound**, and a model reaches it from ordinary flying height.
 

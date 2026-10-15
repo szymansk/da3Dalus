@@ -27,6 +27,7 @@ inputs:
   u_bat: battery-voltage
   p_mot_max: motor-max-power
   d_prop: propeller-diameter
+  eta_mot: motor-efficiency
 outputs: {v_y: best-rate-of-climb-speed, roc_max: max-rate-of-climb}
 embeds: [motor-propeller-equilibrium, advance-ratio-from-speed, propeller-table-lookup, thrust-at-airspeed-from-coefficient]
 variables: [flight-speed]
@@ -44,7 +45,7 @@ subject to:   L(V, alpha) = m * g * cos(gamma)
               motor-propeller torque balance at (V, n_prop)
 ```
 
-**Produces** [[best-rate-of-climb-speed]] · [[max-rate-of-climb]]  ·  **from** [[airplane]] · [[aircraft-mass]] · [[gravity]] · [[air-density]] · [[motor-voltage-constant]] · [[motor-no-load-current]] · [[motor-circuit-resistance]] · [[battery-voltage]] · [[motor-max-power]] · [[propeller-diameter]]
+**Produces** [[best-rate-of-climb-speed]] · [[max-rate-of-climb]]  ·  **from** [[airplane]] · [[aircraft-mass]] · [[gravity]] · [[air-density]] · [[motor-voltage-constant]] · [[motor-no-load-current]] · [[motor-circuit-resistance]] · [[battery-voltage]] · [[motor-max-power]] · [[propeller-diameter]] · [[motor-efficiency]]
 
 **Kind: an optimisation problem**, the same shape as the three extremal closures (§3.4.1). Variables: airspeed `V`, angle of attack `alpha`, flight-path angle `gamma`, propeller speed `n_prop`. AeroBuildup is inside the lift and drag constraints; the thrust is `T = C_T(J) · rho · n² · D⁴` ([[thrust-at-airspeed-from-coefficient]]) with the measured table of the fitted propeller; the rpm is tied to the motor by [[motor-propeller-equilibrium]] — as a constraint on route B; on route A the free-run rpm, lowered to the motor's power limit (O11).
 
