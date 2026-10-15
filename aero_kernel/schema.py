@@ -404,7 +404,7 @@ class ComputeRequest(BaseModel):
 
     quantities: tuple[str, ...] = Field(min_length=1)
     include_long_runs: bool = Field(default=False, strict=True)
-    time_budget_s: float | None = Field(default=None, strict=True, gt=0)
+    time_budget_s: float | None = Field(default=None, strict=True, gt=0, allow_inf_nan=False)
     accuracy: Accuracy = "xxxlarge"
 
     @model_validator(mode="after")

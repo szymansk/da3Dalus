@@ -46,6 +46,12 @@ class TestComputeRequestShape:
         with pytest.raises(ValidationError, match="time_budget_s"):
             ComputeRequest(quantities=("a",), time_budget_s=budget)
 
+    @pytest.mark.parametrize("budget", [float("inf"), float("nan")])
+    def test_non_finite_time_budget_is_rejected(self, budget: float) -> None:
+        """Unlimited is spelled None, never infinity."""
+        with pytest.raises(ValidationError, match="time_budget_s"):
+            ComputeRequest(quantities=("a",), time_budget_s=budget)
+
     def test_positive_time_budget_is_kept(self) -> None:
         assert ComputeRequest(quantities=("a",), time_budget_s=2.5).time_budget_s == 2.5
 
