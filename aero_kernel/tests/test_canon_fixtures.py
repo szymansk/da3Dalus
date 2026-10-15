@@ -40,6 +40,9 @@ def test_flight_canon_has_when_and_given(flight_canon: CanonModel) -> None:
 def test_flight_canon_has_scoped_pre_and_postconditions(flight_canon: CanonModel) -> None:
     stall = formulas(flight_canon)["stall-speed"]
     assert stall.preconditions[0].applications is None
+    assert {c.id: c.applications for c in stall.preconditions}["landing_configuration_given"] == (
+        "landing",
+    )
     scoped = {c.id: c.applications for c in stall.postconditions}
     assert scoped["optimum_at_first_cl_peak"] == ("clean", "landing")
     assert scoped["cl_max_at_stall_reynolds_number"] is None
@@ -81,3 +84,13 @@ def test_committed_fixture_equals_the_built_one() -> None:
     assert FIXTURE_PATH.read_text(encoding="utf-8") == build_flight_canon(), (
         "flight_canon.json is stale: run `python -m aero_kernel.tests.fixtures.build`"
     )
+
+
+def test_absent_conditions_are_stored_as_explicit_null(flight_canon: CanonModel) -> None:
+    """ch. 8.9: ``when``, ``given`` and a check's ``applications`` absent are written as null."""
+    document = json.loads(FIXTURE_PATH.read_text(encoding="utf-8"))
+    stall = document["namespaces"]["calc"]["formulas"]["stall-speed"]
+    assert stall["applications"][0]["when"] is None
+    assert stall["applications"][0]["given"] is None
+    assert stall["preconditions"][0]["applications"] is None
+    assert stall["postconditions"][0]["applications"] is None

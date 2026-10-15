@@ -103,7 +103,8 @@ class Quantity(BaseModel):
         type: The kind of value.
         uncertainty: ``interval`` where the producer declares method worlds.
         default: The stated default, only where the canon states one.
-        positive: Whether the quantity is strictly greater than zero by its definition.
+        positive: ``True`` where the quantity is strictly greater than zero by its definition,
+            otherwise omitted (``None``); ``false`` is no spelling of the canon.
     """
 
     model_config = _MODEL_CONFIG
@@ -114,12 +115,12 @@ class Quantity(BaseModel):
     type: QuantityType
     uncertainty: Literal["interval"] | None = None
     default: Default | None = None
-    positive: bool = False
+    positive: Literal[True] | None = None
 
     @model_validator(mode="after")
     def _check_positive(self) -> Self:
         """Allow ``positive`` only on supplied quantities, and only with a positive default."""
-        if not self.positive:
+        if self.positive is None:
             return self
         if self.role not in ("input", "target"):
             msg = f"positive is only allowed on role input or target, not {self.role}"

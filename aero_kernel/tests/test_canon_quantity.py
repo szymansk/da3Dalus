@@ -20,7 +20,7 @@ def make_quantity(**overrides: object) -> Quantity:
 def test_minimal_quantity_defaults() -> None:
     quantity = make_quantity()
     assert quantity.default is None
-    assert quantity.positive is False
+    assert quantity.positive is None
     assert quantity.uncertainty is None
 
 
@@ -68,3 +68,10 @@ def test_canon_units_are_accepted(unit: str) -> None:
 def test_unit_outside_the_closed_set_is_rejected(unit: str) -> None:
     with pytest.raises(ValidationError):
         make_quantity(unit=unit)
+
+
+@pytest.mark.parametrize("role", ["input", "target", "derived", "output"])
+def test_positive_false_is_an_error_on_every_role(role: str) -> None:
+    """README: ``positive`` is ``true`` or omitted; ``false`` is one spelling too many."""
+    with pytest.raises(ValidationError):
+        make_quantity(role=role, positive=False)
