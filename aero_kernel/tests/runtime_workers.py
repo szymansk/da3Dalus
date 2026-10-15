@@ -1,6 +1,8 @@
 """Top-level worker functions for the runtime tests; spawned processes import them by name."""
 
+import logging
 import os
+import sys
 import time
 
 from aero_kernel.errors import ErrorCategory, FormulaError
@@ -71,3 +73,19 @@ class UnpicklableError(Exception):
 def raise_unpicklable() -> WorkerOutcome[int]:
     """Raise an exception that would break the result channel."""
     raise UnpicklableError("odd", "worker")
+
+
+def parent_test_module_is_loaded() -> WorkerOutcome[bool]:
+    """Report whether the worker inherited the parent's modules (true under fork).
+
+    A spawned worker imports only what it unpickles, so the test module itself is absent; the
+    parent's ``__main__`` re-import pulls in pytest even under spawn, so pytest proves nothing.
+    """
+    loaded = "aero_kernel.tests.test_runtime" in sys.modules
+    return WorkerOutcome(value=loaded, diagnostics=WorkerDiagnostics(duration_s=0.0))
+
+
+def logging_is_disabled() -> WorkerOutcome[bool]:
+    """Report whether logging is switched off in the worker process."""
+    disabled = not logging.getLogger("aero_kernel.worker_probe").isEnabledFor(logging.CRITICAL)
+    return WorkerOutcome(value=disabled, diagnostics=WorkerDiagnostics(duration_s=0.0))
