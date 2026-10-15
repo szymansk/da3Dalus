@@ -141,6 +141,18 @@ def test_importing_package_keeps_logger_unconfigured() -> None:
     assert logger.level == logging.NOTSET
 
 
+def test_executing_the_package_twice_adds_one_null_handler() -> None:
+    """gh-1185: the package may be executed twice (coverage imports it, then drops it from
+    ``sys.modules``, and the next import runs ``__init__`` again); the logger is global."""
+    package = importlib.import_module(PACKAGE_NAME)
+    importlib.reload(package)
+    importlib.reload(package)
+    handlers = logging.getLogger(PACKAGE_NAME).handlers
+    assert [type(h) for h in handlers if isinstance(h, logging.NullHandler)] == [
+        logging.NullHandler
+    ]
+
+
 def test_version_constant() -> None:
     """The package exposes a plain version string and an empty public API for now."""
     package = importlib.import_module(PACKAGE_NAME)
