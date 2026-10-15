@@ -4,6 +4,7 @@ The format is docs/geometry-format/AIRPLANE-GEOMETRY.md; the model mirrors
 docs/geometry-format/airplane-geometry.schema.json as types, with no physical constraint.
 """
 
+import json
 import math
 import re
 from typing import Any
@@ -20,6 +21,8 @@ from aero_kernel.geometry import (
     Turbulator,
     WingXSec,
 )
+from aero_kernel.tests.test_geometry_schema import SCHEMA_PATH
+from jsonschema import Draft202012Validator
 from pydantic import ValidationError
 
 # A raw JSON document as read from a file: the one place where Any is the honest type.
@@ -804,3 +807,59 @@ class TestStringsAreKeptVerbatim:
         parsed_fuselage = airplane.fuselages["F"]
         assert (parsed_fuselage.name, parsed_fuselage.step_path) == (" F ", " a/b.step ")
         assert parsed_fuselage.solid_step_path == " c.step "
+
+
+def count_documents(value: object) -> dict[str, Doc]:
+    """Schema-valid documents that put ``value`` into each of the three integer fields."""
+    servo = SERVO_MM
+
+    def doc(detail: Doc) -> Doc:
+        wing = minimal_wing()
+        wing["x_secs"][0] |= detail
+        return airplane_with_wing(wing)
+
+    return {
+        "number_interpolation_points": doc({"number_interpolation_points": value}),
+        "servo": doc({"trailing_edge_device": {"servo": value}}),
+        "component_id": doc({"trailing_edge_device": {"servo": servo | {"component_id": value}}}),
+    }
+
+
+class TestCountAcceptsIntegerValuedFloats:
+    """JSON Schema 'integer' admits 3.0; the model normalises it to int 3 (architect ruling)."""
+
+    @pytest.mark.parametrize("field", ["number_interpolation_points", "servo", "component_id"])
+    def test_integer_valued_float_becomes_an_int(self, field: str) -> None:
+        airplane = AirplaneGeometry.model_validate(count_documents(3.0)[field])
+        assert airplane.wings is not None
+        rib = airplane.wings["W"].x_secs[0]
+        if field == "number_interpolation_points":
+            parsed = rib.number_interpolation_points
+        else:
+            assert rib.trailing_edge_device is not None
+            servo = rib.trailing_edge_device.servo
+            parsed = servo.component_id if isinstance(servo, Servo) else servo
+        assert parsed == 3
+        assert type(parsed) is int
+
+    @pytest.mark.parametrize("field", ["number_interpolation_points", "servo", "component_id"])
+    @pytest.mark.parametrize("value", [3.5, True, "3", float("nan"), float("inf")])
+    def test_other_values_are_rejected(self, field: str, value: object) -> None:
+        with pytest.raises(ValidationError, match=field):
+            AirplaneGeometry.model_validate(count_documents(value)[field])
+
+    @pytest.mark.parametrize("field", ["number_interpolation_points", "servo", "component_id"])
+    @pytest.mark.parametrize("value", [3, 3.0, 3.5, True, False, "3", None, 1e300])
+    def test_model_agrees_with_the_json_schema(self, field: str, value: object) -> None:
+        # jsonschema ships no type information: Any is the honest type at this boundary
+        validator: Any = Draft202012Validator(json.loads(SCHEMA_PATH.read_text()))
+        document = count_documents(value)[field]
+        by_schema = bool(validator.is_valid(document))
+        try:
+            AirplaneGeometry.model_validate(document)
+            by_model = True
+        except ValidationError:
+            by_model = False
+        # Not compared: the schema's exclusiveMinimum on number_interpolation_points. The model
+        # carries no physical bound (ch. 8.11), so 0 and -2 are validate.py's business.
+        assert by_model == by_schema, (field, value)

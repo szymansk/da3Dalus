@@ -14,7 +14,7 @@ model does not parse again and cannot be scaled twice.
 
 from typing import Annotated, Literal
 
-from pydantic import AfterValidator, BaseModel, ConfigDict, Field
+from pydantic import AfterValidator, BaseModel, BeforeValidator, ConfigDict, Field
 
 __all__ = [
     "Airfoil",
@@ -36,7 +36,21 @@ __all__ = [
 Num = Annotated[float, Field(strict=True)]
 Point3 = tuple[Num, Num, Num]
 Flag = Annotated[bool, Field(strict=True)]
-Count = Annotated[int, Field(strict=True)]
+
+
+def _integer_valued(value: object) -> object:
+    """Turn an integer-valued float (``3.0``) into an int; leave everything else to strict int.
+
+    JSON Schema's ``integer`` admits ``3.0``. A bool, a string, ``3.5`` and NaN/infinity are
+    passed on unchanged, so the strict int validation that follows rejects them.
+    """
+    if isinstance(value, float) and value.is_integer():
+        return int(value)
+    return value
+
+
+# A count or index of the format: an int, or an integer-valued float, normalised to int.
+Count = Annotated[int, BeforeValidator(_integer_valued), Field(strict=True)]
 
 _MM_TO_M = 0.001
 
