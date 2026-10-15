@@ -165,6 +165,17 @@ def test_fleet_documents_parse_after_the_two_repairs(path: Path) -> None:
     assert airplane.wings or airplane.fuselages
 
 
+def test_repair_leaves_control_surfaces_in_place() -> None:
+    """Dropping them would silently turn a layout with elevons into one without devices."""
+    path = repaired_fleet(conformant=False)[0]
+    original = read_document(path)
+    repaired = repair_for_schema(read_document(path))
+    assert has_control_surfaces(repaired)
+    assert {k: v for k, v in repaired.items() if k in {"wings"}}["wings"].keys() == original[
+        "wings"
+    ].keys()
+
+
 def test_urmodell_documents_are_still_rejected_for_control_surfaces() -> None:
     """The fleet is not format-conformant: its ribs carry ASB control_surfaces, not devices."""
     path = repaired_fleet(conformant=False)[0]
