@@ -1,7 +1,7 @@
 """Tests for the result types (ARCHITECTURE ch. 5, 8.2, 8.3, 8.4; scenarios Q3, Q15, Q23, Q26, Q31)."""
 
 import pytest
-from aero_kernel.errors import ErrorCategory
+from aero_kernel.errors import ErrorCategory, format_world_assignment, parse_world_assignment
 from aero_kernel.schema import (
     WARNING_CATALOGUE,
     ComputeResult,
@@ -15,8 +15,6 @@ from aero_kernel.schema import (
     ReasonCode,
     WarningSeverity,
     dedupe_warnings,
-    format_world_assignment,
-    parse_world_assignment,
 )
 from pydantic import ValidationError
 
