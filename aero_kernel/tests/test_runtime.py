@@ -6,15 +6,23 @@ import multiprocessing
 import sys
 import textwrap
 import time
-from collections.abc import AsyncIterator, Sequence
+from collections.abc import AsyncIterator, Callable, Sequence
 from concurrent.futures import ProcessPoolExecutor
 from concurrent.futures.process import BrokenProcessPool
+from multiprocessing.context import BaseContext
 from pathlib import Path
 
+import aero_kernel.runtime as runtime_module
 import pytest
 import pytest_asyncio
 from aero_kernel.errors import ErrorCategory, FormulaError
-from aero_kernel.runtime import SolverRuntime, WorkerFailure, WorkerOutcome, run_in_worker
+from aero_kernel.runtime import (
+    SolverRuntime,
+    WorkerFailure,
+    WorkerOutcome,
+    run_in_worker,
+    silence_worker_logging,
+)
 from aero_kernel.tests import runtime_workers as workers
 
 pytestmark = pytest.mark.asyncio(loop_scope="module")
@@ -112,6 +120,21 @@ class TestRunCpu:
             await shared_runtime.run_cpu(workers.raise_unpicklable)
         assert await shared_runtime.run_cpu(workers.square, 3) == 9
 
+    async def test_workers_are_spawned_not_forked(self, shared_runtime: SolverRuntime) -> None:
+        # a forked worker inherits the parent's test module; a spawned one starts clean
+        assert await shared_runtime.run_cpu(workers.parent_test_module_is_loaded) is False
+
+    async def test_workers_have_logging_switched_off(self, shared_runtime: SolverRuntime) -> None:
+        """Pool workers do not log (ch. 8.14): the pool initializer guarantees it."""
+        assert await shared_runtime.run_cpu(workers.logging_is_disabled) is True
+
+    async def test_the_initializer_disables_logging(self) -> None:
+        try:
+            silence_worker_logging()
+            assert not logging.getLogger("aero_kernel.x").isEnabledFor(logging.CRITICAL)
+        finally:
+            logging.disable(logging.NOTSET)
+
     async def test_the_loop_stays_responsive_during_pool_work(
         self, shared_runtime: SolverRuntime
     ) -> None:
@@ -128,6 +151,7 @@ class TestRunCpu:
                 worst_delay = max(worst_delay, time.perf_counter() - before - 0.01)
 
         ticking = asyncio.create_task(ticker())
+        await asyncio.sleep(0)  # let the ticker start, or a blocking run_cpu would hide behind it
         await shared_runtime.run_cpu(workers.nap, 0.6)
         stop.set()
         await ticking
@@ -300,6 +324,80 @@ class TestPoolLifetime:
             with pytest.raises(asyncio.CancelledError):
                 await queued
             await running
+
+    async def test_the_loop_stays_free_while_aclose_waits_for_a_worker(self) -> None:
+        runtime = SolverRuntime(max_workers=1)
+        await runtime.run_cpu(workers.square, 1)
+        running = asyncio.create_task(runtime.run_cpu(workers.nap, 0.8))
+        await asyncio.sleep(0.2)
+        worst_delay = 0.0
+        stop = asyncio.Event()
+
+        async def ticker() -> None:
+            nonlocal worst_delay
+            while not stop.is_set():
+                before = time.perf_counter()
+                await asyncio.sleep(0.01)
+                worst_delay = max(worst_delay, time.perf_counter() - before - 0.01)
+
+        ticking = asyncio.create_task(ticker())
+        await asyncio.sleep(0)
+        await runtime.aclose()  # waits for the nap
+        stop.set()
+        await ticking
+        await running
+        assert worst_delay < 0.05
+
+    async def test_run_process_after_close_raises(self, tmp_path: Path) -> None:
+        runtime = SolverRuntime(max_workers=1)
+        await runtime.aclose()
+        with pytest.raises(RuntimeError, match="closed"):
+            await runtime.run_process({}, "", executable=sys.executable, args=["-c", "pass"])
+
+    async def test_close_refuses_a_process_call_waiting_for_a_slot(self) -> None:
+        runtime = SolverRuntime(max_workers=1, max_concurrency=1)
+        await runtime.run_cpu(workers.square, 1)
+        running = asyncio.create_task(runtime.run_cpu(workers.nap, 0.6))
+        await asyncio.sleep(0.2)
+        waiting = asyncio.create_task(
+            runtime.run_process({}, "", executable=sys.executable, args=["-c", "pass"])
+        )
+        await asyncio.sleep(0.1)
+        await runtime.aclose()
+        await running
+        with pytest.raises(RuntimeError, match="closed"):
+            await waiting
+
+    async def test_no_pool_is_built_before_the_first_call(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        created: list[dict[str, object]] = []
+        real = ProcessPoolExecutor
+
+        def recording(
+            max_workers: int | None,
+            mp_context: BaseContext,
+            initializer: Callable[[], None],
+        ) -> ProcessPoolExecutor:
+            created.append(
+                {"mp_context": mp_context, "initializer": initializer, "max_workers": max_workers}
+            )
+            return real(max_workers=max_workers, mp_context=mp_context, initializer=initializer)
+
+        monkeypatch.setattr(runtime_module, "ProcessPoolExecutor", recording)
+        runtime = SolverRuntime(max_workers=1)
+        assert created == []
+        await runtime.aclose()
+        assert created == []
+        async with SolverRuntime(max_workers=1) as used:
+            assert created == []
+            await used.run_cpu(workers.square, 1)
+            await used.run_cpu(workers.square, 2)
+        (kwargs,) = created
+        context = kwargs["mp_context"]
+        assert isinstance(context, BaseContext)
+        assert context.get_start_method() == "spawn"
+        assert kwargs["initializer"] is silence_worker_logging
 
     async def test_aclose_is_idempotent_and_blocks_further_use(self) -> None:
         runtime = SolverRuntime(max_workers=1)

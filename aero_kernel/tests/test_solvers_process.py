@@ -167,9 +167,11 @@ async def test_expired_budget_kills_the_process_and_removes_the_temp_dir(tmp_pat
     sleeper = tmp_path / "sleeper.py"
     sleeper.write_text(SLEEP_SCRIPT)
     marker = tmp_path / "marker.txt"
+    # The outer bound only guards against a hang; the budget itself must be what expired.
+    guard = asyncio.timeout(6)
+    budget = asyncio.timeout(1.0)
     with pytest.raises(TimeoutError):
-        # The outer bound only guards against a hang; the budget itself must be what expired.
-        async with asyncio.timeout(6) as guard, asyncio.timeout(1.0) as budget:
+        async with guard, budget:
             await run_process({}, "", executable=sys.executable, args=[str(sleeper), str(marker)])
     assert budget.expired()
     assert not guard.expired()

@@ -32,6 +32,7 @@ __all__ = [
     "WorkerFailure",
     "WorkerOutcome",
     "run_in_worker",
+    "silence_worker_logging",
 ]
 
 T = TypeVar("T")
@@ -135,6 +136,15 @@ def run_in_worker(
         raise
 
 
+def silence_worker_logging() -> None:
+    """Pool initializer: switch logging off in the worker process (ch. 8.14).
+
+    Workers return diagnostics and the parent logs them, so a worker never logs. A pool the
+    caller injects brings its own initializer, if it wants this guarantee.
+    """
+    logging.disable(logging.CRITICAL)
+
+
 def _log_diagnostics(fn: Callable[..., object], diagnostics: WorkerDiagnostics) -> None:
     """Log what a worker reported; workers never log themselves (ch. 8.14)."""
     logger.debug(
@@ -223,6 +233,7 @@ class SolverRuntime:
             self._pool = ProcessPoolExecutor(
                 max_workers=self._max_workers,
                 mp_context=multiprocessing.get_context("spawn"),
+                initializer=silence_worker_logging,
             )
         return self._pool
 
