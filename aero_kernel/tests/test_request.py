@@ -27,6 +27,19 @@ class TestComputeRequestQuantities:
         with pytest.raises(ValidationError, match=r"duplicate quantity in request: stall-speed"):
             ComputeRequest(quantities=("stall-speed", "wing-area", "stall-speed"))
 
+    @pytest.mark.parametrize(
+        "quantities", [("stall-speed", "calc:stall-speed"), ("calc:stall-speed", "stall-speed")]
+    )
+    def test_two_spellings_of_one_quantity_are_a_duplicate(
+        self, quantities: tuple[str, str]
+    ) -> None:
+        with pytest.raises(ValidationError, match=r"duplicate quantity in request.*stall-speed"):
+            ComputeRequest(quantities=quantities)
+
+    def test_the_same_slug_in_another_namespace_is_no_duplicate(self) -> None:
+        request = ComputeRequest(quantities=("stall-speed", "other:stall-speed"))
+        assert request.quantities == ("stall-speed", "other:stall-speed")
+
 
 class TestComputeRequestStrictness:
     def test_unknown_accuracy_is_rejected(self) -> None:

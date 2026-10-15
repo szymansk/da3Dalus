@@ -9,6 +9,7 @@ from collections.abc import Iterable, Mapping
 from enum import StrEnum
 from typing import Annotated, Literal, Self
 
+from aero_kernel.canon.model import DEFAULT_NAMESPACE
 from aero_kernel.errors import (
     ErrorCategory,
     KernelError,
@@ -417,11 +418,15 @@ class ComputeRequest(BaseModel):
 
     @model_validator(mode="after")
     def _check_unique_quantities(self) -> Self:
-        """Reject a slug requested twice: each requested slug appears once in the result."""
-        seen: set[str] = set()
+        """Reject a quantity requested twice, also in two spellings (bare means ``calc:``)."""
+        seen: dict[str, str] = {}
         for slug in self.quantities:
-            if slug in seen:
-                msg = f"duplicate quantity in request: {slug}"
+            qualified = slug if ":" in slug else f"{DEFAULT_NAMESPACE}:{slug}"
+            if qualified in seen:
+                first = seen[qualified]
+                msg = f"duplicate quantity in request: {slug}" + (
+                    "" if first == slug else f" (the same quantity as {first})"
+                )
                 raise ValueError(msg)
-            seen.add(slug)
+            seen[qualified] = slug
         return self
