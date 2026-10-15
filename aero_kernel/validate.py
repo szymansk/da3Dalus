@@ -20,7 +20,7 @@ from itertools import pairwise
 from typing import cast
 
 from aero_kernel import geometry
-from aero_kernel.errors import ErrorCategory, KernelError
+from aero_kernel.errors import ErrorCategory, KernelError, is_slug
 from aero_kernel.geometry import Wing
 from aero_kernel.schema import WARNING_CATALOGUE, AircraftInput, KernelWarning
 from pydantic import BaseModel, ConfigDict, JsonValue
@@ -68,8 +68,6 @@ UNREAD_FIELDS: Mapping[type[BaseModel], frozenset[str]] = {
     ),
 }
 
-_SLUG_KEY = re.compile(r"[a-z][a-z0-9]*(-[a-z0-9]+)*")
-
 
 def _key_path(parent: str, key: str) -> str:
     """Extend a path by a dict key: ``parent["key"]``, the key JSON-escaped, unicode kept."""
@@ -78,7 +76,7 @@ def _key_path(parent: str, key: str) -> str:
 
 def _values_path(slug: str) -> str:
     """Path of a ``values`` entry: dotted for a canon slug, bracketed for any other key."""
-    if _SLUG_KEY.fullmatch(slug):
+    if is_slug(slug):
         return f"values.{slug}"
     return _key_path("values", slug)
 
@@ -222,7 +220,8 @@ def _airfoil_findings(airfoil: geometry.Airfoil, path: str) -> list[KernelError]
                     "chord fractions: thickness <= 0; inline coordinates must be in Selig order "
                     "(upper surface from the trailing edge to the leading edge, then the lower "
                     "surface).",
-                    "Give the upper surface (first half of the contour) above the lower one.",
+                    "List the upper surface from the trailing edge to the leading edge, then the lower "
+                    "surface.",
                     thickness,
                 )
             )

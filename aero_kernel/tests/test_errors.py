@@ -15,6 +15,7 @@ from aero_kernel.errors import (
     flags_for,
     format_world_assignment,
     internal_error_from_exception,
+    is_slug,
     parse_world_assignment,
 )
 from pydantic import JsonValue, ValidationError
@@ -716,3 +717,15 @@ def test_finite_json_values_pass() -> None:
         detail=detail,
     )
     assert error.detail == detail
+
+
+@pytest.mark.parametrize("text", ["aircraft-mass", "a", "x1-y2-z3", "stall-speed-landing"])
+def test_is_slug_accepts_kebab_case(text: str) -> None:
+    assert is_slug(text)
+
+
+@pytest.mark.parametrize(
+    "text", ["", "Aircraft-mass", "aircraft_mass", "-a", "a-", "a--b", "1a", "a b", "a-b\n"]
+)
+def test_is_slug_rejects_everything_else(text: str) -> None:
+    assert not is_slug(text)

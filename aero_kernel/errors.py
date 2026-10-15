@@ -36,6 +36,7 @@ __all__ = [
     "flags_for",
     "format_world_assignment",
     "internal_error_from_exception",
+    "is_slug",
     "parse_world_assignment",
 ]
 
@@ -140,12 +141,19 @@ def _check_code(code: str, category: ErrorCategory) -> None:
 
 
 _SLUG_PATTERN = re.compile(r"[a-z][a-z0-9]*(-[a-z0-9]+)*")
+
+
+def is_slug(text: str) -> bool:
+    """Tell whether ``text`` is a canon slug: kebab-case, e.g. ``aircraft-mass``."""
+    return _SLUG_PATTERN.fullmatch(text) is not None
+
+
 _WORLD_PATTERN = re.compile(r"[a-z][a-z0-9]*(_[a-z0-9]+)*")
 
 
 def _check_world_pair(slug: str, world: str) -> None:
     """Raise ``ValueError`` unless ``slug`` is kebab-case and ``world`` snake_case."""
-    if not _SLUG_PATTERN.fullmatch(slug) or not _WORLD_PATTERN.fullmatch(world):
+    if not is_slug(slug) or not _WORLD_PATTERN.fullmatch(world):
         msg = f"world assignment has a malformed pair {slug}={world}"
         raise ValueError(msg)
 
