@@ -423,6 +423,8 @@ class TestAirfoilDesignation:
             "",
             "naca63-412",
             " naca2412",
+            "naca\uff12\uff14\uff11\uff12",  # full-width digits
+            "naca\u0662\u0664\u0661\u0662",  # Arabic-Indic digits
         ],
     )
     def test_anything_else_is_unresolved(self, name: str) -> None:

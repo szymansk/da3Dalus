@@ -147,7 +147,7 @@ def _not_positive(
     return [_finding(code, path, message, hint, value)]
 
 
-_NACA = re.compile(r"naca(?P<digits>\d{4})", re.IGNORECASE)
+_NACA = re.compile(r"naca(?P<digits>[0-9]{4})", re.IGNORECASE)
 
 
 def _interpolate(curve: list[tuple[float, float]], x: float) -> float:
