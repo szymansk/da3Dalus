@@ -170,7 +170,7 @@ def test_model_is_frozen_and_forbids_extra_fields() -> None:
         error.message = "changed"  # type: ignore[misc]  # frozen model: the assignment must fail
     with pytest.raises(ValidationError):
         KernelError.model_validate(
-            {"code": "x", "category": "internal", "message": "m", "hint": "h", "bogus": 1}
+            {"code": "internal", "category": "internal", "message": "m", "hint": "h", "bogus": 1}
         )
 
 
@@ -196,9 +196,16 @@ def test_catalogued_code_with_wrong_category_is_rejected() -> None:
         KernelError(code="missing_input", category=ErrorCategory.TIMEOUT, message="m", hint="h")
 
 
-def test_uncatalogued_code_is_allowed() -> None:
-    error = _err("x", ErrorCategory.NOT_CONVERGED, code="some_new_code")
-    assert error.code == "some_new_code"
+def test_unresolved_airfoil_is_catalogued() -> None:
+    assert CODE_CATALOGUE["unresolved_airfoil"] is ErrorCategory.INVALID_INPUT
+
+
+def test_uncatalogued_code_is_rejected() -> None:
+    """The code table is closed: a new code is added to the table, never invented at the raise site."""
+    with pytest.raises(ValidationError, match="some_new_code"):
+        _err("x", ErrorCategory.NOT_CONVERGED, code="some_new_code")
+    with pytest.raises(ValueError, match="some_new_code"):
+        FormulaError(ErrorCategory.NOT_CONVERGED, "some_new_code", "m", "h")
 
 
 def test_catalogued_codes_get_the_flags_of_their_category() -> None:
@@ -347,9 +354,42 @@ def test_formula_error_detail_defaults_to_empty() -> None:
     assert exc.detail == {}
 
 
-def test_formula_error_rejects_upstream_failed() -> None:
-    with pytest.raises(ValueError, match="upstream_failed"):
-        FormulaError(ErrorCategory.UPSTREAM_FAILED, "upstream_failed", "m", "h")
+@pytest.mark.parametrize(
+    "category",
+    [
+        ErrorCategory.TIMEOUT,
+        ErrorCategory.UPSTREAM_FAILED,
+        ErrorCategory.NOT_IMPLEMENTED,
+        ErrorCategory.INTERNAL,
+    ],
+)
+def test_formula_error_rejects_engine_categories(category: ErrorCategory) -> None:
+    with pytest.raises(ValueError, match="engine"):
+        FormulaError(category, category.value, "m", "h")
+
+
+@pytest.mark.parametrize(
+    "category",
+    [
+        ErrorCategory.INVALID_INPUT,
+        ErrorCategory.UNSUPPORTED_CONFIGURATION,
+        ErrorCategory.NOT_CONVERGED,
+        ErrorCategory.TOOL_UNAVAILABLE,
+    ],
+)
+def test_formula_error_accepts_formula_categories(category: ErrorCategory) -> None:
+    assert FormulaError(category, category.value, "m", "h").category is category
+
+
+def test_formula_error_carries_input_path_into_the_kernel_error() -> None:
+    exc = FormulaError(
+        ErrorCategory.INVALID_INPUT,
+        "missing_input",
+        "m",
+        "h",
+        input_path="values.flap-deflection-landing",
+    )
+    assert exc.to_kernel_error(quantity="q").input_path == "values.flap-deflection-landing"
 
 
 def test_formula_error_translates_with_context() -> None:
@@ -378,35 +418,39 @@ def test_formula_error_translates_with_context() -> None:
 
 
 def test_formula_error_translation_context_is_optional() -> None:
-    error = FormulaError(ErrorCategory.TIMEOUT, "timeout", "m", "h").to_kernel_error(quantity="q")
+    error = FormulaError(ErrorCategory.NOT_CONVERGED, "not_converged", "m", "h").to_kernel_error(
+        quantity="q"
+    )
     assert error.quantity == "q"
     assert error.formula is None
     assert error.retryable is True
 
 
-def test_formula_error_with_wrong_category_for_code_fails_on_translation() -> None:
-    exc = FormulaError(ErrorCategory.TIMEOUT, "missing_input", "m", "h")
-    with pytest.raises(ValidationError):
-        exc.to_kernel_error(quantity="q")
+def test_formula_error_with_wrong_category_for_code_is_rejected() -> None:
+    with pytest.raises(ValueError, match="missing_input"):
+        FormulaError(ErrorCategory.NOT_CONVERGED, "missing_input", "m", "h")
 
 
-def test_internal_error_from_exception() -> None:
+def test_internal_error_from_exception_leaks_no_exception_text() -> None:
+    """ADR 0019: str(exc) can carry paths and internals; it goes to the log only."""
     error = internal_error_from_exception(
-        ZeroDivisionError("division by zero"), quantity="q", formula="f", application="a", world="w"
+        ZeroDivisionError("/secret/path"), quantity="q", formula="f", application="a", world="w"
     )
     assert error.category is ErrorCategory.INTERNAL
     assert error.code == "internal"
-    assert "ZeroDivisionError" in error.message
-    assert "division by zero" in error.message
-    assert error.hint
+    assert error.message == "Internal error (ZeroDivisionError) while computing `q`."
+    assert "/secret/path" not in error.model_dump_json()
+    assert error.hint == "Report it; attach input and provenance."
     assert error.escalate is True
-    assert error.detail == {"exception_type": "ZeroDivisionError"}
+    assert error.detail == {}
     assert (error.quantity, error.formula, error.application, error.world) == ("q", "f", "a", "w")
 
 
 def test_invalid_category_is_rejected() -> None:
     with pytest.raises(ValidationError):
-        KernelError.model_validate({"code": "x", "category": "nope", "message": "m", "hint": "h"})
+        KernelError.model_validate(
+            {"code": "internal", "category": "nope", "message": "m", "hint": "h"}
+        )
 
 
 def test_non_mapping_input_is_rejected() -> None:
@@ -421,7 +465,9 @@ def test_non_mapping_input_is_rejected() -> None:
         ([], "causes"),
         (["text"], "objects"),
         ([{"quantity": "a"}], "string quantity"),
-        ([{"quantity": 1, "code": "x"}], "string quantity"),
+        ([{"quantity": 1, "code": "timeout"}], "string quantity"),
+        ([{"quantity": "a", "code": "made_up"}], "no root code"),
+        ([{"quantity": "a", "code": "upstream_failed"}], "no root code"),
     ],
 )
 def test_aggregate_malformed_upstream_causes_are_rejected(causes: JsonValue, match: str) -> None:
@@ -437,3 +483,24 @@ def test_aggregate_malformed_upstream_causes_are_rejected(causes: JsonValue, mat
     )
     with pytest.raises(ValueError, match=match):
         aggregate_upstream([bad], quantity="q")
+
+
+def test_aggregate_flags_follow_the_root_codes_not_the_chain() -> None:
+    """A nested upstream_failed whose detail names a non-retryable root makes the outer one non-retryable."""
+    inner = KernelError(
+        code="upstream_failed",
+        category=ErrorCategory.UPSTREAM_FAILED,
+        retryable=True,  # deliberately wrong: the outer flags must come from the root code
+        escalate=False,
+        message="m",
+        hint="h",
+        detail={"causes": [{"quantity": "a", "code": "internal"}]},
+    )
+    outer = aggregate_upstream([inner], quantity="q")
+    assert (outer.retryable, outer.escalate) == (False, True)
+
+
+def test_aggregate_hint_lists_several_roots() -> None:
+    result = aggregate_upstream([_err("a"), _err("b")], quantity="q")
+    assert result.hint == "Fix `a`, `b` first."
+    assert aggregate_upstream([_err("a")], quantity="q").hint == "Fix `a` first."

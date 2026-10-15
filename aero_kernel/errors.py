@@ -48,11 +48,14 @@ _FLAGS: Mapping[ErrorCategory, tuple[bool, bool]] = {
     ErrorCategory.INTERNAL: (False, True),
 }
 
-# Codes the architecture names (ch. 8.1, 8.5, 8.13) plus one default code per category, equal to
-# the category name. A code outside the catalogue is allowed (formulas may define their own).
+# The closed code table (ch. 8.1): every code belongs to exactly one category, so a root cause's
+# flags follow from its code. A new code is added here, never invented at the raise site. Each
+# category also has a default code equal to its name. Warning codes and the reason codes of
+# non-error statuses (``condition_not_met``, ``not_given``, ...) are not in this table.
 CODE_CATALOGUE: Mapping[str, ErrorCategory] = {
     **{category.value: category for category in ErrorCategory},
     "missing_input": ErrorCategory.INVALID_INPUT,
+    "unresolved_airfoil": ErrorCategory.INVALID_INPUT,
     "target_above_method_maximum": ErrorCategory.UNSUPPORTED_CONFIGURATION,
     "precondition_violated": ErrorCategory.UNSUPPORTED_CONFIGURATION,
     "postcondition_violated": ErrorCategory.UNSUPPORTED_CONFIGURATION,
@@ -60,6 +63,27 @@ CODE_CATALOGUE: Mapping[str, ErrorCategory] = {
 }
 
 _UPSTREAM = ErrorCategory.UPSTREAM_FAILED
+
+# The only categories a formula or adapter may raise; the others belong to the engine (ch. 8.12).
+_FORMULA_CATEGORIES = frozenset(
+    {
+        ErrorCategory.INVALID_INPUT,
+        ErrorCategory.UNSUPPORTED_CONFIGURATION,
+        ErrorCategory.NOT_CONVERGED,
+        ErrorCategory.TOOL_UNAVAILABLE,
+    }
+)
+
+
+def _check_code(code: str, category: ErrorCategory) -> None:
+    """Raise ``ValueError`` unless ``code`` is catalogued under ``category``."""
+    expected = CODE_CATALOGUE.get(code)
+    if expected is None:
+        msg = f"code {code} is not in the error catalogue; add it to CODE_CATALOGUE"
+        raise ValueError(msg)
+    if expected is not category:
+        msg = f"code {code} belongs to category {expected.value}, not {category.value}"
+        raise ValueError(msg)
 
 
 def flags_for(category: ErrorCategory) -> tuple[bool, bool]:
@@ -84,17 +108,19 @@ class KernelError(BaseModel):
     """A computational failure: no value (ch. 8.1).
 
     ``retryable`` and ``escalate`` may be omitted for every category except ``upstream_failed``; they
-    then take the value of the category table. Given explicitly they must equal it.
+    then take the value of the category table. Given explicitly they must equal it. The code must
+    be in :data:`CODE_CATALOGUE` under the given category. ``upstream_failed`` errors are built
+    only by :func:`aggregate_upstream`.
 
     Attributes:
-        code: Machine-readable code; catalogued codes must carry their catalogue category.
+        code: Machine-readable code from the closed :data:`CODE_CATALOGUE`.
         category: The error category.
         retryable: Whether repeating the call (with other settings) can help.
         escalate: Whether an agent cannot resolve this itself and a human has to act.
         quantity: Slug of the failed quantity.
         formula: Slug of the formula that failed.
         application: Id of the application that failed.
-        world: Label of the method world that failed (ch. 8.13).
+        world: Method world that failed (ch. 8.13): its name, or the canonical assignment string.
         input_path: Path of the offending input value.
         message: The cause, in natural language.
         hint: What to do.
@@ -149,12 +175,7 @@ class KernelError(BaseModel):
                 f"{self.category.value} (ch. 8.1)"
             )
             raise ValueError(msg)
-        expected = CODE_CATALOGUE.get(self.code)
-        if expected is not None and expected is not self.category:
-            msg = (
-                f"code {self.code} belongs to category {expected.value}, not {self.category.value}"
-            )
-            raise ValueError(msg)
+        _check_code(self.code, self.category)
         return self
 
 
@@ -164,11 +185,12 @@ class FormulaError(Exception):
     The engine translates it into a :class:`KernelError` with :meth:`to_kernel_error`.
 
     Attributes:
-        category: The error category (not ``upstream_failed``: the engine sets that itself).
-        code: Machine-readable code.
+        category: One of invalid_input, unsupported_configuration, not_converged, tool_unavailable.
+        code: Machine-readable code from :data:`CODE_CATALOGUE`.
         message: The cause, in natural language.
         hint: What to do.
         detail: Structured data about the failure.
+        input_path: Path of the offending input value.
     """
 
     def __init__(
@@ -178,6 +200,7 @@ class FormulaError(Exception):
         message: str,
         hint: str,
         detail: Mapping[str, JsonValue] | None = None,
+        input_path: str | None = None,
     ) -> None:
         """Create the error.
 
@@ -187,19 +210,23 @@ class FormulaError(Exception):
             message: The cause, in natural language.
             hint: What to do.
             detail: Structured data about the failure.
+            input_path: Path of the offending input value.
 
         Raises:
-            ValueError: If the category is ``upstream_failed``.
+            ValueError: If the category belongs to the engine (timeout, upstream_failed,
+                not_implemented, internal) or the code is not catalogued under the category.
         """
-        if category is _UPSTREAM:
-            msg = "a formula cannot raise upstream_failed; the engine derives it"
+        if category not in _FORMULA_CATEGORIES:
+            msg = f"category {category.value} belongs to the engine; a formula cannot raise it"
             raise ValueError(msg)
+        _check_code(code, category)
         super().__init__(message)
         self.category = category
         self.code = code
         self.message = message
         self.hint = hint
         self.detail: dict[str, JsonValue] = dict(detail) if detail else {}
+        self.input_path = input_path
 
     def to_kernel_error(
         self,
@@ -227,6 +254,7 @@ class FormulaError(Exception):
             formula=formula,
             application=application,
             world=world,
+            input_path=self.input_path,
             message=self.message,
             hint=self.hint,
             detail=self.detail,
@@ -236,14 +264,15 @@ class FormulaError(Exception):
 def internal_error_from_exception(
     exc: BaseException,
     *,
-    quantity: str | None = None,
+    quantity: str,
     formula: str | None = None,
     application: str | None = None,
     world: str | None = None,
 ) -> KernelError:
     """Translate any exception that is not a :class:`FormulaError` into an ``internal`` error.
 
-    Logging the traceback (``logger.exception``) is the caller's job (ch. 8.14).
+    Only the exception type enters the error: its text can carry file paths and internals
+    (ADR 0019). The text and traceback go to ``logger.exception`` in the engine (ch. 8.14).
 
     Args:
         exc: The unexpected exception.
@@ -255,7 +284,6 @@ def internal_error_from_exception(
     Returns:
         An ``internal`` error.
     """
-    kind = type(exc).__name__
     return KernelError(
         code=ErrorCategory.INTERNAL.value,
         category=ErrorCategory.INTERNAL,
@@ -263,9 +291,8 @@ def internal_error_from_exception(
         formula=formula,
         application=application,
         world=world,
-        message=f"Unexpected {kind}: {exc}",
+        message=f"Internal error ({type(exc).__name__}) while computing `{quantity}`.",
         hint="Report it; attach input and provenance.",
-        detail={"exception_type": kind},
     )
 
 
@@ -285,6 +312,10 @@ def _roots(cause: KernelError) -> list[tuple[str, str]]:
             if not isinstance(quantity, str) or not isinstance(code, str):
                 msg = "upstream_failed detail.causes entries need string quantity and code"
                 raise ValueError(msg)
+            category = CODE_CATALOGUE.get(code)
+            if category is None or category is _UPSTREAM:
+                msg = f"upstream_failed detail.causes entry has no root code: {code}"
+                raise ValueError(msg)
             roots.append((quantity, code))
         return roots
     if cause.quantity is None:
@@ -303,10 +334,10 @@ def aggregate_upstream(
 ) -> KernelError:
     """Build the ``upstream_failed`` error of a quantity whose predecessors failed (ch. 8.1).
 
-    ``retryable`` is true only if every cause is retryable, ``escalate`` if any cause escalates.
-    An ``upstream_failed`` cause already carries the flags of its own roots, so combining the
-    flags of the direct causes equals combining those of all roots. ``detail.causes`` lists the
-    root causes (quantity, code), never the chain in between.
+    ``retryable`` is true only if every root cause is retryable, ``escalate`` if any root cause
+    escalates; each root's flags follow from its code through the closed table. ``detail.causes``
+    lists the root causes (quantity, code), never the chain in between. This is the only
+    intended way to build an ``upstream_failed`` error.
 
     Args:
         causes: The failed predecessors' errors; at least one.
@@ -329,8 +360,8 @@ def aggregate_upstream(
     return KernelError(
         code=_UPSTREAM.value,
         category=_UPSTREAM,
-        retryable=all(cause.retryable for cause in causes),
-        escalate=any(cause.escalate for cause in causes),
+        retryable=all(flags_for(CODE_CATALOGUE[code])[0] for _, code in roots),
+        escalate=any(flags_for(CODE_CATALOGUE[code])[1] for _, code in roots),
         quantity=quantity,
         formula=formula,
         application=application,
