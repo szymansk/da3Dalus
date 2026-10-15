@@ -14,11 +14,14 @@ from aero_kernel.errors import (
     check_finite_json,
     parse_world_assignment,
 )
+from aero_kernel.geometry import AirplaneGeometry
 from pydantic import BaseModel, ConfigDict, Field, JsonValue, model_validator
 
 __all__ = [
     "WARNING_CATALOGUE",
     "Accuracy",
+    "AircraftInput",
+    "AirplaneGeometry",
     "ComputeRequest",
     "ComputeResult",
     "DefaultUsed",
@@ -368,11 +371,30 @@ class ComputeResult(BaseModel):
         return self
 
 
+class AircraftInput(BaseModel):
+    """The aircraft of a call (ch. 8.11): geometry plus the input and target values.
+
+    Types only: a well-typed but inadmissible value (NaN, a negative mass) parses and becomes an
+    ``input_errors`` entry in ``validate.py``. The mass is only ever ``values["aircraft-mass"]``.
+
+    Attributes:
+        airplane: The geometry document; its millimetre fields are metres once parsed.
+        values: Value per canon input or target slug, in the quantity's SI unit.
+    """
+
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    airplane: AirplaneGeometry
+    values: dict[Annotated[str, Field(min_length=1)], Annotated[float, Field(strict=True)]] = Field(
+        default_factory=dict
+    )
+
+
 class ComputeRequest(BaseModel):
     """What to compute (ch. 8.11): quantities by canon slug, plus the call's solver settings.
 
     Attributes:
-        quantities: Canon quantity slugs (not formula slugs), each once.
+        quantities: Canon quantity slugs (not formula slugs); at least one, each once.
         include_long_runs: Whether quantities of cost class ``long`` run (ch. 8.7).
         time_budget_s: Wall-clock budget of the call in seconds; ``None`` means unlimited (ch. 8.10).
         accuracy: NeuralFoil model size, a solver setting (A3, O10).
@@ -380,9 +402,9 @@ class ComputeRequest(BaseModel):
 
     model_config = ConfigDict(extra="forbid", frozen=True)
 
-    quantities: tuple[str, ...]
-    include_long_runs: bool = False
-    time_budget_s: float | None = None
+    quantities: tuple[str, ...] = Field(min_length=1)
+    include_long_runs: bool = Field(default=False, strict=True)
+    time_budget_s: float | None = Field(default=None, strict=True, gt=0)
     accuracy: Accuracy = "xxxlarge"
 
     @model_validator(mode="after")
