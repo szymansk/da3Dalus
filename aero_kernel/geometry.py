@@ -16,7 +16,20 @@ from typing import Annotated, Literal
 
 from pydantic import AfterValidator, BaseModel, ConfigDict, Field
 
-__all__ = ["AirplaneGeometry"]
+__all__ = [
+    "Airfoil",
+    "AirplaneGeometry",
+    "ControlSurface",
+    "Fuselage",
+    "FuselageXSecSuperEllipse",
+    "InlineAirfoil",
+    "Servo",
+    "SpareDetail",
+    "TrailingEdgeDevice",
+    "Turbulator",
+    "Wing",
+    "WingXSec",
+]
 
 # A number in the format is an int or a float, never a bool or a string; NaN and infinity parse.
 Num = Annotated[float, Field(strict=True)]
