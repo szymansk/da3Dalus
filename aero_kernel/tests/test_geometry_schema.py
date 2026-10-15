@@ -5,9 +5,8 @@ The two must not drift: same fields (by format key), same required set, same enu
 """
 
 import json
-import types
 from pathlib import Path
-from typing import Any, Literal, Union, cast, get_args, get_origin
+from typing import Any, Literal, cast, get_args, get_origin
 
 import pytest
 from aero_kernel import geometry
@@ -62,16 +61,14 @@ def model_for(name: str) -> type[BaseModel]:
     return AirplaneGeometry if name == "Airplane" else MODELS[name]
 
 
-def literal_values(annotation: object) -> set[Any] | None:
-    """Return the values of a Literal in an annotation (through ``| None``), else ``None``."""
+def literal_values(annotation: object) -> set[Any]:
+    """Return all Literal values in an annotation, looking through ``| None`` unions."""
     if get_origin(annotation) is Literal:
         return set(get_args(annotation))
-    if get_origin(annotation) in (Union, types.UnionType):
-        for arg in get_args(annotation):
-            values = literal_values(arg)
-            if values is not None:
-                return values
-    return None
+    values: set[Any] = set()
+    for arg in get_args(annotation):
+        values |= literal_values(arg)
+    return values
 
 
 def test_every_object_definition_has_a_model() -> None:
