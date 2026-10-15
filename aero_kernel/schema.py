@@ -40,8 +40,9 @@ class WarningSeverity(StrEnum):
     DEFECT = "defect"
 
 
-# NaN and infinity cannot occur in a result (ch. 8.4): they do not survive a JSON round trip.
-FiniteFloat = Annotated[float, Field(allow_inf_nan=False)]
+# Numbers in a result are strict (an int or float, never a bool or a string) and finite (ch. 8.3):
+# NaN and infinity do not survive a JSON round trip.
+FiniteFloat = Annotated[float, Field(strict=True, allow_inf_nan=False)]
 
 # The accuracy tiers of the solvers (ch. 8.11), coarsest first.
 Accuracy = Literal["xxsmall", "xsmall", "small", "medium", "large", "xlarge", "xxlarge", "xxxlarge"]
@@ -253,6 +254,10 @@ class QuantityResult(BaseModel):
             if self.error is not None:
                 msg = "status ok must not carry an error"
                 raise ValueError(msg)
+            for name, text in (("tool", self.tool), ("application", self.application)):
+                if not text:
+                    msg = f"status ok needs {name}: every value leads back to its application and tool"
+                    raise ValueError(msg)
         elif has_result:
             msg = f"status {self.status.value} must not carry a value or interval"
             raise ValueError(msg)
@@ -315,7 +320,7 @@ class Provenance(BaseModel):
     build_digest: str = Field(min_length=1)
     canon_model_hash: str = Field(min_length=1)
     canon_source_commit: str = Field(min_length=1)
-    tool_versions: dict[str, str] = Field(default_factory=dict)
+    tool_versions: dict[str, Annotated[str, Field(min_length=1)]] = Field(default_factory=dict)
     accuracy: Accuracy
     solver_settings: dict[str, JsonValue] = Field(default_factory=dict)
     defaults_used: tuple[DefaultUsed, ...] = ()
