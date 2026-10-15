@@ -27,7 +27,7 @@ from pydantic import BaseModel, ConfigDict, JsonValue
 
 logger = logging.getLogger(__name__)
 
-__all__ = ["UNREAD_FIELDS", "Validation", "validate_aircraft"]
+__all__ = ["Validation", "validate_aircraft"]
 
 
 class Validation(BaseModel):
