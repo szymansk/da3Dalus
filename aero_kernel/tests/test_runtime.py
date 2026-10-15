@@ -320,12 +320,12 @@ class TestPoolLifetime:
         await asyncio.sleep(0.3)
         await runtime.aclose()
         results = await asyncio.gather(*calls, return_exceptions=True)
-        # the pool hands one extra call to its worker queue, so a second call may still run
+        # an owned pool is gated by its worker count: exactly the running call finishes
         assert isinstance(results[0], tuple)
-        refused = [r for r in results if isinstance(r, RuntimeError)]
-        assert len(refused) >= 4
+        refused = results[1:]
+        assert all(isinstance(r, RuntimeError) for r in refused)
+        assert len(refused) == 5
         assert all("closed" in str(r) for r in refused)
-        assert all(isinstance(r, (tuple, RuntimeError)) for r in results)
         assert not any(call.cancelled() for call in calls)
 
     async def test_a_real_cancellation_of_a_queued_call_still_raises_cancelled_error(
@@ -415,21 +415,50 @@ class TestPoolLifetime:
         assert context.get_start_method() == "spawn"
         assert kwargs["initializer"] is silence_worker_logging
 
-    async def test_a_caller_cancelling_a_queued_call_during_close_still_sees_cancellation(
+    async def test_an_injected_executor_may_start_one_queued_call_after_close_began(
         self,
     ) -> None:
-        runtime = SolverRuntime(max_workers=1, max_concurrency=8)
-        await runtime.run_cpu(workers.square, 1)
-        calls = [asyncio.create_task(runtime.run_cpu(workers.nap, 0.5)) for _ in range(5)]
-        await asyncio.sleep(0.3)
-        closing = asyncio.create_task(runtime.aclose())
-        await asyncio.sleep(0)  # aclose has begun
-        victim = calls[-1]
-        victim.cancel()
-        results = await asyncio.gather(*calls, return_exceptions=True)
-        await closing
+        """Its worker count is unknown, so the one call CPython queues in the pool still runs."""
+        executor = ProcessPoolExecutor(
+            max_workers=1, mp_context=multiprocessing.get_context("spawn")
+        )
+        try:
+            runtime = SolverRuntime(executor=executor, max_concurrency=2)
+            await runtime.run_cpu(workers.square, 1)
+            running = asyncio.create_task(runtime.run_cpu(workers.nap, 0.5))
+            queued = asyncio.create_task(runtime.run_cpu(workers.nap, 0.1))
+            waiting = asyncio.create_task(runtime.run_cpu(workers.nap, 0.1))
+            await asyncio.sleep(0.3)
+            await runtime.aclose()
+            results = await asyncio.gather(running, queued, waiting, return_exceptions=True)
+        finally:
+            executor.shutdown(wait=True)
+        assert isinstance(results[0], tuple)
+        assert isinstance(results[1], tuple)  # queued in the pool before closing: still starts
+        assert isinstance(results[2], RuntimeError)  # still waiting for a slot: refused
+        assert "closed" in str(results[2])
+
+    async def test_an_injected_executor_shut_down_by_its_owner_gives_runtime_error(self) -> None:
+        """A programming error of the injector, never a bare CancelledError (N08)."""
+        executor = ProcessPoolExecutor(
+            max_workers=1, mp_context=multiprocessing.get_context("spawn")
+        )
+        try:
+            runtime = SolverRuntime(executor=executor, max_concurrency=8)
+            await runtime.run_cpu(workers.square, 1)
+            calls = [asyncio.create_task(runtime.run_cpu(workers.nap, 0.5)) for _ in range(5)]
+            await asyncio.sleep(0.3)
+            executor.shutdown(wait=False, cancel_futures=True)
+            victim = calls[-1]
+            victim.cancel()  # a genuine cancellation by the caller still propagates
+            results = await asyncio.gather(*calls, return_exceptions=True)
+        finally:
+            executor.shutdown(wait=True)
         assert victim.cancelled()
         assert isinstance(results[-1], asyncio.CancelledError)
+        affected = [r for r in results[:-1] if isinstance(r, RuntimeError)]
+        assert affected
+        assert all("the injected executor was shut down" in str(r) for r in affected)
         assert all(isinstance(r, (tuple, RuntimeError)) for r in results[:-1])
 
     async def test_a_call_after_close_does_not_wait_for_a_slot(self) -> None:

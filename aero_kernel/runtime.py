@@ -8,12 +8,13 @@ leave the pool and any subprocess in a clean state.
 """
 
 import asyncio
+import contextlib
 import logging
 import multiprocessing
 import os
 import pickle
 import time
-from collections.abc import Callable, Mapping, Sequence
+from collections.abc import AsyncGenerator, Callable, Mapping, Sequence
 from concurrent.futures import Executor, ProcessPoolExecutor
 from concurrent.futures.process import BrokenProcessPool
 from dataclasses import dataclass
@@ -202,6 +203,7 @@ class SolverRuntime:
         self._pool: Executor | None = executor
         self._owns_pool = executor is None
         self._slots: asyncio.Semaphore | None = None
+        self._worker_slots: asyncio.Semaphore | None = None
         self._closed = False
 
     async def __aenter__(self) -> Self:
@@ -216,9 +218,10 @@ class SolverRuntime:
         """Shut down the pool this runtime created and wait for its workers; idempotent.
 
         Workers still running are waited for, so no process outlives the call; their calls
-        return normally, and so does the one call the pool has already handed to its worker
-        queue. Calls that have not got that far (waiting for a slot, or still queued in the pool)
-        raise ``RuntimeError``. A pool the caller injected is left alone.
+        return normally. An owned pool is gated by its worker count, so nothing waits in its own
+        queue: every other call (waiting for a slot or a worker) raises ``RuntimeError``. A pool
+        the caller injected is left alone and has no such gate, so up to one call queued in it
+        before closing began still starts and returns.
         """
         self._closed = True
         pool, self._pool = self._pool, None
@@ -236,6 +239,20 @@ class SolverRuntime:
         if self._slots is None:
             self._slots = asyncio.Semaphore(self.max_concurrency)
         return self._slots
+
+    @contextlib.asynccontextmanager
+    async def _free_worker(self) -> AsyncGenerator[None]:
+        """Hold one worker of an owned pool, so no submission waits in the pool's own queue.
+
+        An injected executor has an unknown worker count and gets no gate (ch. 8.10).
+        """
+        if not self._owns_pool:
+            yield
+            return
+        if self._worker_slots is None:
+            self._worker_slots = asyncio.Semaphore(self._max_workers or os.cpu_count() or 1)
+        async with self._worker_slots:
+            yield
 
     def _executor(self) -> Executor:
         """Return the pool, creating it on first use; never after the runtime is closed."""
@@ -282,7 +299,7 @@ class SolverRuntime:
             RuntimeError: If the runtime is closed.
         """
         self._check_open()
-        async with self._slot_limit():
+        async with self._slot_limit(), self._free_worker():
             self._check_open()
             loop = asyncio.get_running_loop()
             try:
@@ -291,11 +308,11 @@ class SolverRuntime:
                     await loop.run_in_executor(self._executor(), run_in_worker, fn, args),
                 )
             except asyncio.CancelledError:
-                # ``aclose`` cancels the futures still queued in the pool. The caller did not
-                # cancel, so for them this is a refusal, not a cancellation.
+                # Only the injector can cancel a pool future behind our back (an owned pool never
+                # queues, see ``_free_worker``). The caller did not cancel: a programming error.
                 task = asyncio.current_task()
-                if self._closed and task is not None and task.cancelling() == 0:
-                    msg = "the solver runtime is closed"
+                if task is not None and task.cancelling() == 0:
+                    msg = "the injected executor was shut down"
                     raise RuntimeError(msg) from None
                 raise
             except BrokenProcessPool:
