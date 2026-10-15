@@ -6,15 +6,14 @@ import sqlite3
 from pathlib import Path
 
 import pytest
-from aero_kernel import cache as cache_module
-from aero_kernel.cache import DiskCache
+from aero_kernel.cache import DiskCache, StoreError
 
 from .cache_builders import entry
 
 DB_NAME = "nodes.sqlite"
 
 
-def _disk(tmp_path: Path, **kwargs: int | None) -> DiskCache:
+def _disk(tmp_path: Path, busy_timeout_s: float = 5.0, **kwargs: int | None) -> DiskCache:
     """A cache in ``tmp_path`` with generous limits unless overridden."""
     limits: dict[str, int | None] = {"max_bytes": 10_000_000, "max_bytes_per_scope": None}
     limits.update(kwargs)
@@ -24,6 +23,7 @@ def _disk(tmp_path: Path, **kwargs: int | None) -> DiskCache:
         path=tmp_path / DB_NAME,
         max_bytes=max_bytes,
         max_bytes_per_scope=limits["max_bytes_per_scope"],
+        busy_timeout_s=busy_timeout_s,
     )
 
 
@@ -156,10 +156,9 @@ async def test_an_entry_over_the_scope_limit_is_not_stored(tmp_path: Path) -> No
 
 @pytest.mark.asyncio
 async def test_a_locked_database_degrades_get_and_put_with_a_warning(
-    tmp_path: Path, caplog: pytest.LogCaptureFixture, monkeypatch: pytest.MonkeyPatch
+    tmp_path: Path, caplog: pytest.LogCaptureFixture
 ) -> None:
-    monkeypatch.setattr(cache_module, "_BUSY_TIMEOUT_S", 0.05)
-    cache = _disk(tmp_path)
+    cache = _disk(tmp_path, busy_timeout_s=0.05)
     await cache.put("s", "k", entry())
     blocker = sqlite3.connect(tmp_path / DB_NAME, isolation_level=None)
     blocker.execute("BEGIN IMMEDIATE")
@@ -175,21 +174,35 @@ async def test_a_locked_database_degrades_get_and_put_with_a_warning(
 
 
 @pytest.mark.asyncio
-async def test_drop_scope_on_a_locked_database_raises(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+async def test_drop_scope_on_a_locked_database_raises_store_error(
+    tmp_path: Path, caplog: pytest.LogCaptureFixture
 ) -> None:
-    monkeypatch.setattr(cache_module, "_BUSY_TIMEOUT_S", 0.05)
-    cache = _disk(tmp_path)
+    cache = _disk(tmp_path, busy_timeout_s=0.05)
     await cache.put("s", "k", entry())
     blocker = sqlite3.connect(tmp_path / DB_NAME, isolation_level=None)
     blocker.execute("BEGIN IMMEDIATE")
     try:
-        with pytest.raises(sqlite3.OperationalError):
+        with (
+            caplog.at_level(logging.WARNING, logger="aero_kernel.cache"),
+            pytest.raises(StoreError) as caught,
+        ):
             await cache.drop_scope("s")
     finally:
         blocker.execute("ROLLBACK")
         blocker.close()
+    message = str(caught.value)
+    assert message == ("the cache could not delete scope s; the store is busy, retry later")
+    assert "sqlite" not in message.lower()
+    assert str(tmp_path) not in message
+    assert isinstance(caught.value.__cause__, sqlite3.OperationalError)
+    assert "database is locked" in caplog.text
     assert await cache.get("s", "k") == entry()
+
+
+@pytest.mark.parametrize("bad", [0.0, -1.0])
+def test_busy_timeout_must_be_positive(tmp_path: Path, bad: float) -> None:
+    with pytest.raises(ValueError, match="busy_timeout_s"):
+        DiskCache(path=tmp_path / DB_NAME, max_bytes=10, busy_timeout_s=bad)
 
 
 @pytest.mark.asyncio
@@ -205,12 +218,11 @@ async def test_two_instances_share_one_file(tmp_path: Path) -> None:
 async def test_a_database_locked_while_opening_is_a_miss_not_a_move_aside(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    monkeypatch.setattr(cache_module, "_BUSY_TIMEOUT_S", 0.05)
     blocker = sqlite3.connect(tmp_path / DB_NAME, isolation_level=None)
     blocker.execute("PRAGMA journal_mode = WAL")
     blocker.execute("BEGIN IMMEDIATE")
     try:
-        assert await _disk(tmp_path).get("s", "k") is None
+        assert await _disk(tmp_path, busy_timeout_s=0.05).get("s", "k") is None
     finally:
         blocker.execute("ROLLBACK")
         blocker.close()
