@@ -829,6 +829,12 @@ def check_structure(canon: Canon) -> list[Finding]:
                 add("README", "examples", f"{slug}: {key} differs from the entry's front matter")
 
     for slug, e in canon.quantities.items():
+        if "positive" in e.front:
+            pos = e.front["positive"]
+            if not isinstance(pos, bool):
+                add(slug, "positive", f"must be a boolean (true / false): {pos!r}")
+            elif e.front.get("role") not in ("input", "target"):
+                add(slug, "positive", "allowed only on a quantity with role input or target")
         unc = e.front.get("uncertainty")
         if unc is not None and unc not in UNCERTAINTY:
             add(slug, "uncertainty", f"{unc!r} is not one of {sorted(UNCERTAINTY)}")

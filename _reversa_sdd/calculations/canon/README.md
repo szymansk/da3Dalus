@@ -452,6 +452,7 @@ stay. Added:
 |---|---|---|
 | `type` | always | the kind of value, from the closed set below |
 | `default` | only where the canon states a value with its source | `{value: <value>, source: "<citation>"}` |
+| `positive` | optional, only on role `input` or `target` | `true` when the quantity is strictly greater than zero **by its definition** (a mass, a density, gravity) — a fact about the quantity, not a design judgement (A10). A supplied value ≤ 0 is rejected. Not set where zero or a negative value is meaningful (angles, deflections, altitude, a speed that may be 0). Example: `aircraft-mass` carries `positive: true` |
 
 #### Quantity types
 
@@ -678,7 +679,8 @@ default: {value: 1.225, source: "U.S. Standard Atmosphere 1976 (NOAA-S/T 76-1562
   there, and every variable is read somewhere in the closure; a scalar input or target without a default
   that the closure binds through an embedder input but `variables` does not list is reported as an open
   warning (it may be swept or solved), never as an error; `optional` names input parameters;
-- every quantity has a `type` from the set above; a `default` carries a source;
+- every quantity has a `type` from the set above; a `default` carries a source; `positive` is a
+  boolean and only on role `input` or `target`;
 - no plain key or value is a YAML 1.1 boolean; an `# ESCALATED:` comment states its reason;
 - every example above equals the front matter of the entry it names, so the examples cannot drift.
 

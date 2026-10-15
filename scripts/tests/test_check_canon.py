@@ -822,6 +822,31 @@ def test_quantity_default_with_a_source_is_accepted(tmp_path, typed_quantities):
     assert _findings(_canon(tmp_path, quantities=typed_quantities)) == []
 
 
+# --- quantity field `positive` ------------------------------------------------------------------
+
+
+def _set(quantities, slug, old, new):
+    quantities[slug] = quantities[slug].replace(old, new)
+    return quantities
+
+
+def test_positive_true_on_an_input_is_accepted(tmp_path, typed_quantities):
+    q = _set(typed_quantities, "speed-a", "role: derived", "role: input\npositive: true")
+    assert _findings(_canon(tmp_path, quantities=q)) == []
+
+
+def test_positive_must_be_a_boolean(tmp_path, typed_quantities):
+    q = _set(typed_quantities, "speed-a", "role: derived", "role: input\npositive: maybe")
+    msgs = _messages(_errors(_canon(tmp_path, quantities=q)))
+    assert any("speed-a positive" in m and "boolean" in m for m in msgs), msgs
+
+
+def test_positive_on_a_derived_quantity_is_reported(tmp_path, typed_quantities):
+    q = _set(typed_quantities, "speed-v", "role: derived", "role: derived\npositive: true")
+    msgs = _messages(_errors(_canon(tmp_path, quantities=q)))
+    assert any("speed-v positive" in m and "input" in m for m in msgs), msgs
+
+
 # --- command line ----------------------------------------------------------------------------
 
 
