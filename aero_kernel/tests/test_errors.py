@@ -573,6 +573,7 @@ def test_catalogue_holds_exactly_the_codes_the_architecture_names() -> None:
         "postcondition_violated": ErrorCategory.UNSUPPORTED_CONFIGURATION,
         "continuous_uncertainty": ErrorCategory.NOT_IMPLEMENTED,
         "non_scalar_result": ErrorCategory.NOT_IMPLEMENTED,
+        "stale_implementation": ErrorCategory.INTERNAL,
     }
     assert dict(CODE_CATALOGUE) == expected
 
