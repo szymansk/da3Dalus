@@ -16,9 +16,9 @@ from aero_kernel.errors import ErrorCategory
 from aero_kernel.tests.canon_builders import base_model
 
 
-def write_model(tmp_path: Path, raw: Any) -> Path:
-    """Write ``raw`` as JSON and return the file."""
-    path = tmp_path / "canon_model.json"
+def write_model(tmp_path: Path, raw: Any, name: str = "canon_model.json") -> Path:
+    """Write ``raw`` as JSON to ``tmp_path / name`` and return the file."""
+    path = tmp_path / name
     path.write_text(json.dumps(raw), encoding="utf-8")
     return path
 
@@ -158,7 +158,11 @@ def test_loader_opens_only_the_model_file(tmp_path: Path, monkeypatch: pytest.Mo
     monkeypatch.setattr(builtins, "open", spy(originals["builtins"]))
     monkeypatch.setattr(io, "open", spy(originals["io"]))
     monkeypatch.setattr(Path, "open", path_open)
+    path.read_text(encoding="utf-8")
+    one_read = list(opened)  # what a single read of the model costs through the three entry points
+    opened.clear()
     load_canon_model(path)
+    assert opened == one_read
     assert set(opened) == {str(path)}
 
 
@@ -174,9 +178,9 @@ def failures(tmp_path: Path) -> list[CanonLoadError]:
         tmp_path / "absent.json",
         corrupt,
         deep,
-        write_model(tmp_path, [1]),
-        write_model(tmp_path, wrong_version),
-        write_model(tmp_path, invalid),
+        write_model(tmp_path, [1], "non_object.json"),
+        write_model(tmp_path, wrong_version, "wrong_version.json"),
+        write_model(tmp_path, invalid, "invalid.json"),
     ]
     caught: list[CanonLoadError] = []
     for path in paths:
@@ -227,3 +231,18 @@ def test_error_log_carries_the_cause_and_the_findings_but_no_path(
 def test_supported_schema_version_is_the_models_literal() -> None:
     literal = get_args(CanonModel.model_fields["schema_version"].annotation)
     assert literal == (load.SUPPORTED_SCHEMA_VERSION,)
+
+
+@pytest.mark.parametrize("content", ["{not json", "[" * 200_000], ids=["json", "nested"])
+def test_json_and_nesting_failures_log_their_cause(
+    tmp_path: Path, caplog: pytest.LogCaptureFixture, content: str
+) -> None:
+    path = tmp_path / "bad.json"
+    path.write_text(content, encoding="utf-8")
+    with (
+        caplog.at_level(logging.ERROR, logger="aero_kernel.canon.load"),
+        pytest.raises(CanonLoadError),
+    ):
+        load_canon_model(path)
+    (record,) = caplog.records
+    assert record.exc_info is not None
