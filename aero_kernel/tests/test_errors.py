@@ -577,3 +577,8 @@ def test_formula_error_accepts_json_detail() -> None:
         ErrorCategory.NOT_CONVERGED, "not_converged", "m", "h", {"v": [1, 2.5, None, "x"]}
     )
     assert exc.to_kernel_error(quantity="q").detail == {"v": [1, 2.5, None, "x"]}
+
+
+def test_aggregate_message_quotes_the_quantity_and_the_roots() -> None:
+    result = aggregate_upstream([_err("a"), _err("b")], quantity="q")
+    assert result.message == "`q` has no value because `a`, `b` failed."
