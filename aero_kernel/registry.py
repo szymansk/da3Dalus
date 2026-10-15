@@ -7,6 +7,7 @@ and then frozen.
 """
 
 import argparse
+import ast
 import inspect
 import logging
 import re
@@ -17,7 +18,7 @@ from pathlib import Path
 from typing import Literal, TypeVar
 
 from aero_kernel.canon.load import CanonLoadError, load_canon_model
-from aero_kernel.canon.model import DEFAULT_NAMESPACE, Formula
+from aero_kernel.canon.model import DEFAULT_NAMESPACE, CanonModel, Check, Formula
 from aero_kernel.canonical import sha256_of
 from aero_kernel.errors import SLUG_REGEX
 from pydantic import BaseModel, ConfigDict, Field, JsonValue
@@ -30,6 +31,8 @@ __all__ = [
     "Implementation",
     "Registry",
     "RegistryError",
+    "RegistryFinding",
+    "check_registry",
     "formula",
     "interface_fingerprint",
     "main",
@@ -186,6 +189,12 @@ class Registry:
 
         return register
 
+    def slugs(self) -> frozenset[str]:
+        """Return the qualified slugs of every formula with any registration."""
+        return frozenset(
+            [*self._implementations, *self._relations, *(slug for slug, _ in self._checks)]
+        )
+
     def implementation(self, slug: str) -> Implementation | None:
         """Look the implementation of a formula up.
 
@@ -309,6 +318,130 @@ formula = DEFAULT_REGISTRY.formula
 relation = DEFAULT_REGISTRY.relation
 precondition = DEFAULT_REGISTRY.precondition
 postcondition = DEFAULT_REGISTRY.postcondition
+
+
+FindingCode = Literal[
+    "unknown_formula",
+    "unknown_check",
+    "stale_implementation",
+    "missing_relation",
+    "embedded_item_not_requested",
+]
+
+
+class RegistryFinding(BaseModel):
+    """A mismatch between the registry and the canon model; a test or CI finding, not a result error.
+
+    Attributes:
+        code: What is wrong.
+        slug: Qualified slug of the formula concerned.
+        check_id: Id of the check concerned, if any.
+        message: The mismatch, in natural language.
+    """
+
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    code: FindingCode
+    slug: str
+    check_id: str | None = None
+    message: str = Field(min_length=1)
+
+
+def _requested_items(func: Callable[..., object]) -> set[str] | None:
+    """Return the qualified items a module requests via ``ctx.embedded("...")``, or ``None``.
+
+    The scan covers the whole module of ``func``, so a helper of the formula may make the call.
+    ``None`` means the module's source is not available.
+    """
+    try:
+        source = inspect.getsource(inspect.getmodule(func) or func)
+    except (OSError, TypeError):
+        return None
+    items: set[str] = set()
+    for node in ast.walk(ast.parse(source)):
+        if (
+            isinstance(node, ast.Call)
+            and isinstance(node.func, ast.Attribute)
+            and node.func.attr == "embedded"
+            and node.args
+            and isinstance(node.args[0], ast.Constant)
+            and isinstance(node.args[0].value, str)
+        ):
+            reference, _, application = node.args[0].value.rpartition(".")
+            try:
+                items.add(f"{_qualify(reference)}.{application}")
+            except RegistryError:
+                continue  # not a reference at all; it cannot match an ``embeds`` item
+    return items
+
+
+def _finding(
+    code: FindingCode, slug: str, message: str, check_id: str | None = None
+) -> RegistryFinding:
+    """Build a finding."""
+    return RegistryFinding(code=code, slug=slug, check_id=check_id, message=message)
+
+
+def _check_embeds(
+    registry: Registry, model: CanonModel, slug: str, implementation: Implementation
+) -> list[RegistryFinding]:
+    """Check the embeds of an implemented formula: relations registered, items requested."""
+    formula = model.formula(slug)
+    if formula is None or not formula.embeds:
+        return []
+    findings: list[RegistryFinding] = []
+    for item in sorted({item.rpartition(".")[0] for item in formula.embeds_closure}):
+        if registry.relation_function(item) is None:
+            msg = f"{slug} embeds {item}, which has no registered relation"
+            findings.append(_finding("missing_relation", slug, msg))
+    requested = _requested_items(implementation.func)
+    for item in formula.embeds:
+        if requested is None or item not in requested:
+            reason = "its module source is not available" if requested is None else "not requested"
+            msg = f"{slug} embeds {item}, but its implementation does not request it via ctx.embedded ({reason})"
+            findings.append(_finding("embedded_item_not_requested", slug, msg))
+    return findings
+
+
+def check_registry(registry: Registry, model: CanonModel) -> tuple[RegistryFinding, ...]:
+    """Check the registry against the canon model (traceability, tests Q1 and Q11).
+
+    Reports a registered slug or check id the model does not have, an implementation written
+    against another interface, and, for an implemented embedder, an embedded formula without a
+    registered relation or an embedded item the module never requests through ``ctx.embedded``.
+    A model formula without implementation is no finding: the engine answers ``not_implemented``.
+
+    Args:
+        registry: The registry to check.
+        model: The canon model.
+
+    Returns:
+        The findings, sorted by slug, code and check id; empty if the registry is consistent.
+    """
+    findings: list[RegistryFinding] = []
+    for slug in sorted(registry.slugs()):
+        formula = model.formula(slug)
+        if formula is None:
+            findings.append(_finding("unknown_formula", slug, f"the model has no formula {slug}"))
+            continue
+        sides: tuple[tuple[CheckKind, str, tuple[Check, ...]], ...] = (
+            ("pre", "precondition", formula.preconditions),
+            ("post", "postcondition", formula.postconditions),
+        )
+        for kind, label, known in sides:
+            known_ids = {check.id for check in known}
+            for check_id in sorted(registry.checks(slug, kind)):
+                if check_id not in known_ids:
+                    msg = f"{slug} has no {label} {check_id}"
+                    findings.append(_finding("unknown_check", slug, msg, check_id))
+        implementation = registry.implementation(slug)
+        if implementation is None:
+            continue
+        if implementation.interface != interface_fingerprint(formula):
+            msg = f"the implementation of {slug} was written against another interface than the model's"
+            findings.append(_finding("stale_implementation", slug, msg))
+        findings.extend(_check_embeds(registry, model, slug, implementation))
+    return tuple(sorted(findings, key=lambda f: (f.slug, f.code, f.check_id or "")))
 
 
 def main(argv: Sequence[str] | None = None) -> int:
