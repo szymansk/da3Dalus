@@ -65,7 +65,9 @@ then the code. Epic: #1173.
   order, one statement per line. Formatting is not discussed; `ruff format` decides (line length 100).
 - **Pydantic v2 for every data type** that crosses a module boundary: input, request, result, errors,
   warnings, provenance, the canon model, cache entries. `model_config = ConfigDict(extra="forbid")`;
-  results and canon-model types also `frozen=True`. Constraints belong in the model (`Field(gt=0)`,
+  results and canon-model types also `frozen=True`. `frozen` does not protect `dict` fields or arrays: never
+  mutate a model after construction, and never hand the same object to two calls — the cache stores
+  serialised entries and deserialises a fresh object per hit (ARCHITECTURE §8.4). Constraints belong in the model (`Field(gt=0)`,
   validators), not in scattered `if` checks. No `dict` as an ad-hoc record.
 - **Types everywhere.** Every function, method and attribute is annotated, including return types and
   tests' helpers. Modern syntax (`X | None`, `list[float]`). `Any` only at a documented boundary (e.g. raw
