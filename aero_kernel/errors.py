@@ -93,6 +93,7 @@ CODE_CATALOGUE: Mapping[str, ErrorCategory] = {
     "postcondition_violated": ErrorCategory.UNSUPPORTED_CONFIGURATION,
     "continuous_uncertainty": ErrorCategory.NOT_IMPLEMENTED,
     "non_scalar_result": ErrorCategory.NOT_IMPLEMENTED,
+    "stale_implementation": ErrorCategory.INTERNAL,
 }
 
 _UPSTREAM = ErrorCategory.UPSTREAM_FAILED
