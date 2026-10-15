@@ -266,8 +266,14 @@ The A11 "not validated" marker is the field `QuantityResult.validated`, not a wa
   `depends_on_skipped`; `error`: see `error`)
 - `value` **or** `interval {min, max, worlds{assignment: value}}` (ch. 8.13), exactly one when `ok`, neither
   otherwise. `value` is a float in the quantity's SI unit, or a structured value of the quantity's `type`
-  (ch. 8.12). **v1 has floats only**; the union widens with the first non-scalar formula, no placeholder
-  type before that (ADR 0021).
+  (ch. 8.12). **v1 returns floats only**; the union widens with the first non-scalar formula, no placeholder
+  type before that (ADR 0021). A **requested** quantity whose `type` is not `scalar` (`polar-stall`,
+  `airplane-landing`, a `curve`) is therefore, per quantity, `error` with category `not_implemented`, code
+  `non_scalar_result`, decided at request time before anything is computed; the rest of the request is
+  computed. The canon model is not touched: such quantities are requestable by the canon, only the v1
+  result type cannot carry them. **Internal node values are not constrained by this:** the engine passes
+  polars, configured geometry and curves between nodes as the structured types of ch. 8.12; only what
+  enters a `QuantityResult` is float-only.
 - `reason` codes are a closed enum of their own, separate from error codes; `ok` has neither `reason` nor
   `error`, `error` has `error` and no `reason`, the other two have `reason` and no `error`.
 - `tool` and `application`
@@ -953,6 +959,7 @@ They are the first thing a developer or an agent reads to check a change and to 
 | Q35 | Roll without ailerons; crow from the landing configuration | an aircraft without a surface acting as aileron, flaperon or elevon: `roll-rate-approach` and `aileron-deflection-required-approach` are `not_applicable` (`condition_not_met`), no `missing_input` for `aileron-deflection`; a flaperon-only wing has `has_aileron` but not the butterfly condition (crow needs a flap-acting and a distinct aileron-acting surface at once), so the butterfly quantities are `not_applicable`; with separate flaps and ailerons the butterfly curves start from `airplane-landing` (maintainer E2, 2026-10-15): at mix `s` the flap is at `flap-deflection-landing + s · (crow-flap-deflection − flap-deflection-landing)` and the aileron at `s · crow-aileron-deflection` (absolute end angles at `s = 1`, independent of the stops); at `s = 0` the stall speed agrees with `stall-speed-landing` to solver tolerance and `butterfly-approach-speed-curve(0)` equals `approach-speed` exactly (normalised by `V_S0(0)` of the same sweep) |
 | Q36 | Embedded postcondition and variables | a stub `stall-speed` whose optimum is not the first C_L peak at one sweep mass: `mass-envelope` is `error`, `postcondition_violated`, `detail.embedded = stall-speed.clean` with that mass; with `m_current` set, the embedded `m` still takes every sweep value (`variables:`), never the current mass; the importer rejects a bare `stall-speed` in `embeds:` and a closure input that is neither variable, input nor produced |
 | Q37 | Postcondition on a curve | a stub stall solve that lands on the post-stall peak at one mix `s`: `butterfly-approach` is `error`, `postcondition_violated` (`optimum_at_first_cl_peak`, the failing `s` in `detail`); all four butterfly outputs are discarded, none returned; the check function is the one `stall-speed` uses |
+| Q38 | Non-scalar quantity requested in v1 | requesting `polar-stall` together with `stall-speed`: `polar-stall` is `error`, `not_implemented`, code `non_scalar_result`, no formula called for it; `stall-speed` computes and its formula, which also returns the polar internally, runs once |
 
 ## 11. Risks and technical debt
 
