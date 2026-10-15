@@ -133,7 +133,8 @@ aero_kernel/
   formulas/         one file per canon formula (file name = slug, with underscores)
   solvers/          aerobuildup.py · avl.py · opti.py · atmosphere.py · data.py (KAT, APC providers)
   cache.py          NodeStore protocol; MemoryCache (LRU), DiskCache
-  validate.py       physical admissibility; regime warnings (ADR 0028)
+  validate.py       physical admissibility of the input and `values` against the canon (ch. 8.11)
+  canonical.py      canonical JSON and the SHA-256 helper, shared by the canon model hash and the cache keys
   errors.py         error catalogue (ch. 8.1): `ErrorCategory`, `KernelError`, the closed code table
                     (code → category), `FormulaError`, upstream aggregation; imports no other module
   __init__.py       public API; adds the NullHandler to the `aero_kernel` logger (ch. 8.14)
@@ -620,7 +621,9 @@ later `sizing:…`), and a bare slug in a request means `calc:`.
 - **Layout.** `{schema_version, content_hash, source_commit, importer_version, namespaces: {"calc":
   {quantities: {<slug>: …}, formulas: {<slug>: …}}}}`, dict keys bare slugs. **Every reference inside the
   model is fully qualified** (`calc:stall-speed`, embeds items `calc:stall-speed.clean`); application ids
-  and parameter names stay bare. Only a request's bare slug means `calc:`.
+  and parameter names stay bare. Every `embeds` and `embeds_closure` item is normalised to
+  `<ns>:<slug>.<application-id>` (a single-application formula as `.default`); a bare item does not load.
+  Absent `when`, `given` and check `applications` are stored as `null` (= always / all). Only a request's bare slug means `calc:`.
 - **`schema_version`** is the integer `1` (`Literal[1]`), raised on every change of the model's shape. The
   loader reads it **before** type validation, so a newer model reports its version, not a cascade of
   unknown fields; any other version is `internal`, escalate. The loader raises `CanonLoadError` carrying
@@ -630,7 +633,7 @@ later `sizing:…`), and a bare slug in a request means `calc:`.
   not its provenance (`source_commit`, `importer_version` and the hash itself are outside it), so two
   imports of identical content from different commits hash alike. Canonical JSON is the one used for
   cache keys (ch. 8.4): sorted keys, separators `,` `:`, UTF-8 without ASCII escaping, floats as `repr`;
-  one helper, shared with the cache. The model's validator recomputes it: a hand-edited model does not
+  one helper in `canonical.py`, shared with the cache. The model's validator recomputes it: a hand-edited model does not
   load.
 - **Closed vocabularies live in the model types**, so the importer's stage 2 and 3 check against them:
   `kind` (law, procedure, optimization, fit, rating), `tool` (APP, ATM, GEO, AB, AVL, OPT, KAT, APC),
