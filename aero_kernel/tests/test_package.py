@@ -4,6 +4,7 @@ import ast
 import asyncio
 import importlib
 import logging
+import re
 import subprocess
 import sys
 from pathlib import Path
@@ -17,9 +18,12 @@ FORBIDDEN_ROOTS = frozenset({"app", "cad_designer", "scripts"})
 def _imported_roots(path: Path, package_root: Path) -> set[str]:
     """Return the top-level module names a source file imports.
 
+    Sees import statements only; dynamic imports (``importlib.import_module``,
+    ``__import__``) are covered by the runtime test below.
+
     A relative import is resolved against the file's position. One that climbs out of
-    the package is reported by the first segment of the module it reaches, or as
-    ``".."`` when it names nothing outside (``from .. import app``).
+    the package is always reported as ``".."``, plus the top-level name it reaches
+    (the module's first segment, or the imported names for ``from .. import app``).
 
     Args:
         path: Python source file inside the package.
@@ -86,6 +90,17 @@ def test_boundary_detector_flags_forbidden_imports(tmp_path: Path, source: str) 
     assert _violations(root) != []
 
 
+def test_boundary_detector_handles_nested_subpackages(tmp_path: Path) -> None:
+    """In sub/x.py ``from .. import engine`` stays inside; ``from ... import app`` escapes."""
+    root = tmp_path / PACKAGE_NAME
+    (root / "sub").mkdir(parents=True)
+    module = root / "sub" / "x.py"
+    module.write_text("from .. import engine\n", encoding="utf-8")
+    assert _violations(root) == []
+    module.write_text("from ... import app\n", encoding="utf-8")
+    assert _violations(root) != []
+
+
 @pytest.mark.parametrize(
     "source",
     ["import json", "from . import sibling", "from .sub import x", "from aero_kernel import y"],
@@ -98,7 +113,7 @@ def test_boundary_detector_accepts_internal_imports(tmp_path: Path, source: str)
     assert _violations(root) == []
 
 
-def test_logger_has_only_a_null_handler() -> None:
+def test_logger_has_only_a_null_handler(package_root: Path) -> None:
     """Ch. 8.14: the package adds a NullHandler and configures nothing else."""
     code = (
         "import logging, aero_kernel;"
@@ -107,7 +122,11 @@ def test_logger_has_only_a_null_handler() -> None:
         " logging.getLogger().handlers)"
     )
     out = subprocess.run(
-        [sys.executable, "-c", code], capture_output=True, text=True, check=True
+        [sys.executable, "-c", code],
+        capture_output=True,
+        text=True,
+        check=True,
+        cwd=package_root.parent,
     ).stdout.strip()
     assert out == "['NullHandler'] 0 True []"
 
@@ -125,8 +144,25 @@ def test_importing_package_keeps_logger_unconfigured() -> None:
 def test_version_constant() -> None:
     """The package exposes a plain version string and an empty public API for now."""
     package = importlib.import_module(PACKAGE_NAME)
-    assert package.__version__ == "0.1.0"
+    assert re.fullmatch(r"\d+\.\d+\.\d+", package.__version__)
     assert package.__all__ == []
+
+
+def test_import_pulls_in_no_application_module(package_root: Path) -> None:
+    """Runtime complement of Q9: importing the package loads nothing from the app side."""
+    code = (
+        "import sys, aero_kernel;"
+        "roots = {'app', 'cad_designer', 'scripts'};"
+        "print(sorted(m for m in sys.modules if m.split('.')[0] in roots))"
+    )
+    out = subprocess.run(
+        [sys.executable, "-c", code],
+        capture_output=True,
+        text=True,
+        check=True,
+        cwd=package_root.parent,
+    ).stdout.strip()
+    assert out == "[]"
 
 
 @pytest.mark.asyncio
