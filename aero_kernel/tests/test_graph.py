@@ -159,11 +159,6 @@ def test_a_non_scalar_request_alone_leaves_the_subtree_empty(flight_canon: Canon
     assert subtree.leaf_inputs == ()
 
 
-def test_a_quantity_requested_twice_in_two_spellings_counts_once(flight_canon: CanonModel) -> None:
-    subtree = CanonGraph(flight_canon).subtree(["stall-speed", "calc:stall-speed"])
-    assert [r.slug for r in subtree.requested] == ["calc:stall-speed"]
-
-
 def test_the_producer_of_a_requested_quantity(flight_canon: CanonModel) -> None:
     subtree = CanonGraph(flight_canon).subtree(["stall-speed"])
     assert subtree.producer_of("stall-speed") == STALL_CLEAN

@@ -217,7 +217,8 @@ class Subtree(BaseModel):
     """The part of the graph one request needs (ch. 6 steps 2 and 3, K29).
 
     Attributes:
-        requested: The requested quantities that resolved, each once, in request order.
+        requested: The requested quantities that resolved, in request order; a duplicate is
+            ``ComputeRequest``'s to reject, so none occurs here.
         errors: The errors of the rejected requested quantities, in request order.
         nodes: The needed nodes in topological order (``layers`` flattened).
         edges: Per node, the value edges it reads through; only what it actually reads.
@@ -568,7 +569,7 @@ class CanonGraph:
             resolved = self.resolve(slug)
             if isinstance(resolved, KernelError):
                 errors.append(resolved)
-            elif all(resolved.slug != other.slug for other in requested):
+            else:
                 requested.append(resolved)
         edges = self._edges_back_from([r.producer for r in requested])
         layers = _layers(edges)
