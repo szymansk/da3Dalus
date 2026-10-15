@@ -55,12 +55,34 @@ class SolverAdapter:
         self.runtime = runtime
         self._versions: dict[str, str] | None = None
 
-    @staticmethod
-    def _importable(module: str) -> bool:
-        """Tell whether ``module`` can be found, without importing it."""
+    def __init_subclass__(cls, **kwargs: object) -> None:
+        """Reject a ``requirements`` entry that is not a top-level module name.
+
+        ``find_spec`` of a dotted name imports its parent package, which would import the tool.
+
+        Raises:
+            ValueError: If a module name of ``requirements`` contains a dot.
+        """
+        super().__init_subclass__(**kwargs)
+        for distribution, module in cls.__dict__.get("requirements", {}).items():
+            if "." in module:
+                msg = (
+                    f"{cls.__name__}.requirements[{distribution!r}] must name a top-level "
+                    f"module, got {module!r}"
+                )
+                raise ValueError(msg)
+
+    def _importable(self, module: str) -> bool:
+        """Tell whether ``module`` can be found without importing it; a failure is logged."""
         try:
             return importlib.util.find_spec(module) is not None
-        except ModuleNotFoundError:  # a parent package of a dotted name is missing
+        except (ImportError, ValueError) as error:
+            logger.warning(
+                "cannot find module %s of tool %s, treating it as unavailable: %s",
+                module,
+                self.tool,
+                error,
+            )
             return False
 
     def _missing(self) -> list[str]:

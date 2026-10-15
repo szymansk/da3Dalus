@@ -1,6 +1,7 @@
 """The solver adapter base: capability detection, tool versions, error form (Q10)."""
 
 import importlib.metadata
+import importlib.util
 import logging
 import subprocess
 import sys
@@ -35,13 +36,6 @@ class MissingAdapter(SolverAdapter):
         return "ran"
 
 
-class NestedAdapter(SolverAdapter):
-    """Fake adapter whose module is a submodule of a missing package."""
-
-    tool: ClassVar[str] = "fake-nested"
-    requirements: ClassVar[Mapping[str, str]] = {"no-such-distribution": "no_such_pkg_xyz.sub"}
-
-
 def test_adapter_holds_the_runtime_it_was_given() -> None:
     runtime = SolverRuntime()
     assert PresentAdapter(runtime).runtime is runtime
@@ -59,8 +53,29 @@ def test_a_missing_tool_is_not_available_and_not_in_the_versions() -> None:
     assert adapter.tool_versions() == {"pydantic": importlib.metadata.version("pydantic")}
 
 
-def test_a_submodule_of_a_missing_package_is_not_available() -> None:
-    assert NestedAdapter(SolverRuntime()).available() is False
+def test_a_dotted_module_name_is_rejected_when_the_class_is_defined() -> None:
+    with pytest.raises(ValueError, match="top-level"):
+
+        class _Dotted(SolverAdapter):  # pyright: ignore[reportUnusedClass]  # defining it is the test
+            tool: ClassVar[str] = "fake-dotted"
+            requirements: ClassVar[Mapping[str, str]] = {"dist": "pkg.sub"}
+
+
+@pytest.mark.parametrize("error", [ImportError("broken"), ValueError("no __spec__")])
+def test_a_find_spec_failure_means_unavailable_with_a_warning(
+    error: Exception, monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
+) -> None:
+    def failing_find_spec(name: str) -> None:
+        raise error
+
+    monkeypatch.setattr(importlib.util, "find_spec", failing_find_spec)
+    adapter = PresentAdapter(SolverRuntime())
+    with caplog.at_level(logging.WARNING, logger="aero_kernel.solvers.base"):
+        assert adapter.available() is False
+        with pytest.raises(FormulaError) as caught:
+            adapter.require_available()
+    assert caught.value.code == "tool_unavailable"
+    assert any("pydantic" in r.getMessage() and "find" in r.getMessage() for r in caplog.records)
 
 
 def test_versions_are_read_once() -> None:
