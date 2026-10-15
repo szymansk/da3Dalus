@@ -35,6 +35,7 @@ logger = logging.getLogger(__name__)
 
 __all__ = [
     "CanonGraph",
+    "Edge",
     "GraphModelError",
     "Node",
     "NodeId",
@@ -43,7 +44,11 @@ __all__ = [
     "Propagated",
     "Read",
     "Resolved",
+    "Subtree",
+    "WhenFacts",
+    "facts_from_geometry",
     "qualify",
+    "unmet_condition",
 ]
 
 _FROZEN = ConfigDict(extra="forbid", frozen=True)
