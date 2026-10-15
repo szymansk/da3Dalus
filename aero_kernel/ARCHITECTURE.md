@@ -124,7 +124,8 @@ aero_kernel/
   canon/            canon_model.json         the interpreted canon (versioned, committed)
                     canon_model.schema.json  JSON Schema of the canon model
                     IMPORT_REPORT.md         report of the last import (source commit, diff, findings)
-                    load.py                  load + schema/version check at runtime
+                    model.py                 the canon-model types (Pydantic; the schema is generated from them)
+                    load.py                  load + schema/version and reference check at runtime
   importer/         parse.py · normalise.py · validate.py · diff.py · write.py · __main__.py
                     external canon document → canon model (ch. 8.9); not imported at runtime
   graph.py          subtree, order, world expansion, upstream_failed
@@ -611,6 +612,30 @@ closure (ch. 8.5) is stored alongside the listed embeds. Fixture models in
 also holds `schema_version`, `content_hash`, `source_commit` and
 `importer_version`. References are slugs; namespaces are written `<namespace>:<slug>` (`calc:stall-speed`,
 later `sizing:…`), and a bare slug in a request means `calc:`.
+
+**Shape and identity of the model file** (decided for #1174, unit 6):
+- **Types first, schema generated.** `canon/model.py` holds the Pydantic types (frozen, `extra="forbid"`,
+  invariants in the model, ch. 8.11). `canon_model.schema.json` is generated from them and committed; a
+  test fails when the committed schema differs from the generated one. Never hand-written.
+- **Layout.** `{schema_version, content_hash, source_commit, importer_version, namespaces: {"calc":
+  {quantities: {<slug>: …}, formulas: {<slug>: …}}}}`. Within a namespace references are bare slugs; a
+  reference into another namespace is `<namespace>:<slug>` (none exist yet).
+- **`schema_version`** is a positive integer, `1` now, raised on every change of the model's shape. The
+  loader accepts exactly the version it was built for; any other is `internal`, escalate.
+- **`content_hash`** is the SHA-256 (hex) of the canonical JSON of `namespaces` only — the canon's content,
+  not its provenance (`source_commit`, `importer_version` and the hash itself are outside it), so two
+  imports of identical content from different commits hash alike. Canonical JSON is the one used for
+  cache keys (ch. 8.4): sorted keys, separators `,` `:`, UTF-8 without ASCII escaping, floats as `repr`.
+- **The embeds closure** is a field of each embedder, `embeds_closure`: the sorted, de-duplicated
+  `<slug>.<application-id>` items reachable through `embeds`, computed by the importer. The loader does not
+  recompute it; it checks that every item and every reference resolves.
+- **Loader checks** (cheap, at load): schema version, JSON Schema, every reference (bindings, produce,
+  embeds, closure, world names) resolves, and every registered implementation and check has its slug and
+  id in the model (ch. 8.6). Consistency rules (ch. 8.6) are the importer's; the loader trusts a model
+  that passed them.
+- **`values` against the canon** — `unknown_quantity`, `not_an_input`, `non_positive_value` (ch. 8.11) —
+  are `validate.validate_values(values, model)`, built with the model types (unit 6), called next to
+  `validate_aircraft` in step 1.
 
 Rules:
 - **All or nothing.** Any failure in stages 1–3 writes nothing. The importer lists the findings with file,
