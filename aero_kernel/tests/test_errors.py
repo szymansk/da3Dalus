@@ -582,3 +582,23 @@ def test_formula_error_accepts_json_detail() -> None:
 def test_aggregate_message_quotes_the_quantity_and_the_roots() -> None:
     result = aggregate_upstream([_err("a"), _err("b")], quantity="q")
     assert result.message == "`q` has no value because `a`, `b` failed."
+
+
+def test_aggregate_names_a_quantity_once_when_two_roots_share_it() -> None:
+    result = aggregate_upstream(
+        [
+            _err("a", ErrorCategory.NOT_CONVERGED),
+            _err("a", ErrorCategory.TIMEOUT),
+            _err("b", ErrorCategory.NOT_CONVERGED),
+        ],
+        quantity="q",
+    )
+    assert result.detail == {
+        "causes": [
+            {"quantity": "a", "code": "not_converged"},
+            {"quantity": "a", "code": "timeout"},
+            {"quantity": "b", "code": "not_converged"},
+        ]
+    }
+    assert result.hint == "Fix `a`, `b` first."
+    assert result.message == "`q` has no value because `a`, `b` failed."
