@@ -3,7 +3,8 @@
 from typing import get_args
 
 import pytest
-from aero_kernel.schema import Accuracy, AircraftInput, ComputeRequest
+from aero_kernel import schema
+from aero_kernel.schema import Accuracy, AircraftInput, ComputeRequest, Provenance
 from pydantic import ValidationError
 
 
@@ -34,6 +35,11 @@ class TestComputeRequestStrictness:
     def test_unknown_field_is_rejected(self) -> None:
         with pytest.raises(ValidationError, match="extra_forbidden"):
             ComputeRequest.model_validate({"quantities": ["a"], "cache": True})
+
+    def test_accuracy_is_the_alias_of_the_result_types(self) -> None:
+        """One definition of the tiers: a redefined Literal could drift from Provenance."""
+        assert ComputeRequest.model_fields["accuracy"].annotation is schema.Accuracy
+        assert Provenance.model_fields["accuracy"].annotation is schema.Accuracy
 
     def test_accuracy_is_the_shared_literal(self) -> None:
         for tier in get_args(Accuracy):
