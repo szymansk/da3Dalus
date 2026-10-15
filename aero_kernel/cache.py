@@ -5,10 +5,14 @@ values; converting typed results to and from JSON is the engine's job. Entries a
 every hit builds a fresh object, so no caller can corrupt another caller's result.
 """
 
+import asyncio
 import hashlib
 import logging
+import sqlite3
+import threading
 from collections import OrderedDict
 from collections.abc import Mapping
+from contextlib import closing
 from pathlib import Path
 from typing import Protocol, Self, runtime_checkable
 
@@ -17,10 +21,12 @@ from aero_kernel.errors import check_finite_json
 from aero_kernel.schema import Accuracy, KernelWarning
 from pydantic import BaseModel, ConfigDict, JsonValue, model_validator
 
-__all__ = ["Entry", "MemoryCache", "NodeStore", "build_digest", "cache_key"]
+__all__ = ["DiskCache", "Entry", "MemoryCache", "NodeStore", "build_digest", "cache_key"]
 
 logger = logging.getLogger(__name__)
 
+_BUSY_TIMEOUT_S = 5.0
+_SCHEMA_VERSION = 1
 _PACKAGE_ROOT = Path(__file__).resolve().parent
 _EXCLUDED_DIRECTORIES = frozenset({"tests", "tools", "importer"})
 _CANON_MODEL = "canon/canon_model.json"
@@ -249,3 +255,199 @@ class MemoryCache:
         """Remove one entry and log it."""
         del self._entries[stored]
         logger.debug("cache evict %s", _short(stored[1]), extra={"scope": stored[0]})
+
+
+class DiskCache:
+    """A persistent store: one SQLite file, values as JSON text, never pickle (ch. 8.4).
+
+    Limits count payload bytes (the JSON text), not SQLite overhead, and evict by access order
+    (least recently read or written first). Every call opens its own connection in a worker thread,
+    so the cache is thread-safe and several processes may share the file through SQLite's locking;
+    writers of one key write the same content, so the last writer winning is harmless.
+
+    Degraded operation is declared with a ``WARNING`` log (ADR 0020, ch. 8.14): an unreadable entry
+    is a miss and is deleted, a non-database file is moved aside as ``<name>.corrupt``, an unknown
+    schema version resets the cache, and a locked database makes ``get`` a miss and ``put`` a no-op.
+    ``drop_scope`` is a deletion the caller relies on, so a locked database raises there. The file
+    does not shrink after evictions or ``drop_scope`` (no ``VACUUM``).
+    """
+
+    def __init__(
+        self, *, path: Path, max_bytes: int, max_bytes_per_scope: int | None = None
+    ) -> None:
+        """Remember the settings; nothing is created until the first call.
+
+        Args:
+            path: The SQLite file; its parent directory is created on first use.
+            max_bytes: Payload bytes kept over all scopes.
+            max_bytes_per_scope: Optional payload bytes kept per scope.
+
+        Raises:
+            ValueError: If a limit is below 1.
+        """
+        if max_bytes < 1 or (max_bytes_per_scope is not None and max_bytes_per_scope < 1):
+            msg = "cache limits must be at least 1"
+            raise ValueError(msg)
+        self._path = path
+        self._max_bytes = max_bytes
+        self._max_per_scope = max_bytes_per_scope
+        self._lock = threading.Lock()
+
+    async def get(self, scope: str, key: str) -> Entry | None:
+        """Return a fresh entry and mark it most recently used; a miss on any read problem."""
+        _check_scope(scope)
+        try:
+            found = await asyncio.to_thread(self._read, scope, key)
+        except sqlite3.OperationalError:
+            logger.warning(
+                "disk cache database locked, %s treated as a miss",
+                _short(key),
+                extra={"scope": scope},
+            )
+            return None
+        logger.debug("cache %s %s", "hit" if found else "miss", _short(key), extra={"scope": scope})
+        return found
+
+    async def put(self, scope: str, key: str, entry: Entry) -> None:
+        """Store the entry and evict by the limits; skipped if it alone exceeds a limit."""
+        _check_scope(scope)
+        text = entry.to_json()
+        size = len(text.encode())
+        if size > self._max_bytes or (
+            self._max_per_scope is not None and size > self._max_per_scope
+        ):
+            logger.debug(
+                "entry too large for the disk cache, not stored: %s",
+                _short(key),
+                extra={"scope": scope},
+            )
+            return
+        try:
+            await asyncio.to_thread(self._write, scope, key, text, size)
+        except sqlite3.OperationalError:
+            logger.warning(
+                "disk cache database locked, %s not stored", _short(key), extra={"scope": scope}
+            )
+
+    async def drop_scope(self, scope: str) -> None:
+        """Delete every entry of ``scope``.
+
+        Raises:
+            sqlite3.OperationalError: If the database stays locked past the busy timeout.
+        """
+        _check_scope(scope)
+        await asyncio.to_thread(self._drop, scope)
+        logger.debug("cache scope dropped", extra={"scope": scope})
+
+    def _read(self, scope: str, key: str) -> Entry | None:
+        """Look the entry up (worker thread); delete and warn about an unreadable row."""
+        with closing(self._connect()) as db, db:
+            row = db.execute(
+                "SELECT value FROM entries WHERE scope = ? AND key = ?", (scope, key)
+            ).fetchone()
+            if row is None:
+                return None
+            try:
+                found = Entry.from_json(row[0])
+            except ValueError:
+                db.execute("DELETE FROM entries WHERE scope = ? AND key = ?", (scope, key))
+                logger.warning(
+                    "disk cache entry unreadable and recomputed: %s",
+                    _short(key),
+                    extra={"scope": scope},
+                )
+                return None
+            db.execute(
+                "UPDATE entries SET tick = (SELECT MAX(tick) + 1 FROM entries)"
+                " WHERE scope = ? AND key = ?",
+                (scope, key),
+            )
+            return found
+
+    def _write(self, scope: str, key: str, text: str, size: int) -> None:
+        """Insert the row and evict in one transaction (worker thread)."""
+        with closing(self._connect()) as db, db:
+            db.execute(
+                "INSERT OR REPLACE INTO entries (scope, key, value, size, tick)"
+                " VALUES (?, ?, ?, ?, (SELECT COALESCE(MAX(tick), 0) + 1 FROM entries))",
+                (scope, key, text, size),
+            )
+            if self._max_per_scope is not None:
+                self._trim(db, "WHERE scope = ?", (scope,), self._max_per_scope)
+            self._trim(db, "", (), self._max_bytes)
+
+    def _drop(self, scope: str) -> None:
+        """Delete the rows of ``scope`` (worker thread)."""
+        with closing(self._connect()) as db, db:
+            db.execute("DELETE FROM entries WHERE scope = ?", (scope,))
+
+    @staticmethod
+    def _trim(db: sqlite3.Connection, where: str, params: tuple[str, ...], limit: int) -> None:
+        """Delete the least recently used rows matching ``where`` until their payload fits ``limit``.
+
+        ``where`` is one of the constant clauses of :meth:`_write`, never caller data.
+        """
+        (total,) = db.execute(
+            f"SELECT COALESCE(SUM(size), 0) FROM entries {where}", params
+        ).fetchone()
+        rows = iter(
+            db.execute(
+                f"SELECT scope, key, size FROM entries {where} ORDER BY tick", params
+            ).fetchall()
+        )
+        while total > limit:
+            scope, key, size = next(rows)
+            db.execute("DELETE FROM entries WHERE scope = ? AND key = ?", (scope, key))
+            total -= size
+            logger.debug("cache evict %s", _short(key), extra={"scope": scope})
+
+    def _connect(self) -> sqlite3.Connection:
+        """Open the database, creating it, or moving a file that is no database aside."""
+        self._path.parent.mkdir(parents=True, exist_ok=True)
+        try:
+            return self._open()
+        except sqlite3.OperationalError:
+            raise
+        except sqlite3.DatabaseError:
+            pass
+        with self._lock:  # one thread repairs; another may already have
+            try:
+                return self._open()
+            except sqlite3.OperationalError:
+                raise
+            except sqlite3.DatabaseError:
+                self._move_aside()
+        return self._open()
+
+    def _open(self) -> sqlite3.Connection:
+        """Open a connection and make sure the schema is current."""
+        db = sqlite3.connect(self._path, timeout=_BUSY_TIMEOUT_S)
+        try:
+            db.execute("PRAGMA journal_mode = WAL")
+            (version,) = db.execute("PRAGMA user_version").fetchone()
+            if version not in (0, _SCHEMA_VERSION):
+                logger.warning(
+                    "disk cache schema version %s is unknown, resetting the cache", version
+                )
+                db.execute("DROP TABLE IF EXISTS entries")
+            if version != _SCHEMA_VERSION:
+                db.execute(
+                    "CREATE TABLE IF NOT EXISTS entries (scope TEXT NOT NULL, key TEXT NOT NULL,"
+                    " value TEXT NOT NULL, size INTEGER NOT NULL, tick INTEGER NOT NULL,"
+                    " PRIMARY KEY (scope, key))"
+                )
+                db.execute("CREATE INDEX IF NOT EXISTS entries_tick ON entries (tick)")
+                db.execute("CREATE INDEX IF NOT EXISTS entries_scope_tick ON entries (scope, tick)")
+                db.execute(f"PRAGMA user_version = {_SCHEMA_VERSION}")
+        except BaseException:
+            db.close()
+            raise
+        return db
+
+    def _move_aside(self) -> None:
+        """Rename the unusable file to ``<name>.corrupt``, replacing an older one."""
+        aside = self._path.with_name(f"{self._path.name}.corrupt")
+        logger.warning("disk cache file is no database, moved aside to %s", aside.name)
+        self._path.replace(aside)
+        for suffix in ("-wal", "-shm"):
+            self._path.with_name(f"{self._path.name}{suffix}").unlink(missing_ok=True)
