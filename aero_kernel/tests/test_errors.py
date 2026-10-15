@@ -2,9 +2,11 @@
 
 import json
 import logging
+from pathlib import Path
 
 import numpy as np
 import pytest
+from aero_kernel import errors
 from aero_kernel.errors import (
     CODE_CATALOGUE,
     ErrorCategory,
@@ -749,8 +751,6 @@ def test_is_world_name_rejects_everything_else(text: str) -> None:
 
 
 def test_public_names_of_errors_are_pinned() -> None:
-    from aero_kernel import errors
-
     assert sorted(errors.__all__) == sorted(
         [
             "CODE_CATALOGUE",
@@ -777,10 +777,6 @@ def test_public_names_of_errors_are_pinned() -> None:
 
 def test_namespace_and_identifier_patterns_are_defined_once() -> None:
     """The canon model and the registry import the patterns; neither carries a literal copy."""
-    from pathlib import Path
-
-    from aero_kernel import errors
-
     assert errors.NAMESPACE_REGEX == r"[a-z][a-z0-9_]*"
     assert errors.IDENTIFIER_REGEX == r"[a-z][a-z0-9]*([_-][a-z0-9]+)*"
     root = Path(errors.__file__).parent

@@ -140,3 +140,9 @@ def test_formula_with_exactly_x_and_ctx_is_accepted() -> None:
     registry.formula("other", interface=FINGERPRINT)(_positional_only)
     assert registry.implementation("stall-speed") is not None
     assert registry.implementation("other") is not None
+
+
+def test_namespace_with_underscore_and_digit_is_accepted() -> None:
+    registry = Registry()
+    registry.formula("my_ns2:stall-speed", interface=FINGERPRINT)(_impl)
+    assert registry.implementation("my_ns2:stall-speed") is not None
