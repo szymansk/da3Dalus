@@ -38,6 +38,14 @@ def test_fingerprint_is_independent_of_declaration_order(flight_canon: CanonMode
     assert interface_fingerprint(reordered) == interface_fingerprint(formula)
 
 
+def test_fingerprint_sorts_the_optional_parameters(flight_canon: CanonModel) -> None:
+    formula = flight_canon.formula("stall-speed")
+    assert formula is not None
+    one = formula.model_copy(update={"optional": ("rho", "n_load")})
+    other = formula.model_copy(update={"optional": ("n_load", "rho")})
+    assert interface_fingerprint(one) == interface_fingerprint(other)
+
+
 @pytest.mark.parametrize("change", ["inputs", "outputs", "optional"])
 def test_fingerprint_changes_with_any_part_of_the_interface(
     flight_canon: CanonModel, change: str

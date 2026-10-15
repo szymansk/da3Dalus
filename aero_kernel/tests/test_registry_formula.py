@@ -69,7 +69,17 @@ def test_malformed_slug_is_rejected(slug: str) -> None:
         Registry().formula(slug, interface=FINGERPRINT)(_impl)
 
 
-@pytest.mark.parametrize("interface", ["", "abc", "sha256:xyz", "sha256:" + "0" * 63])
+@pytest.mark.parametrize(
+    "interface",
+    [
+        "",
+        "abc",
+        "sha256:xyz",
+        "sha256:" + "0" * 63,
+        "sha256:" + "0" * 65,
+        "sha256:" + "0" * 64 + "x",
+    ],
+)
 def test_malformed_interface_fingerprint_is_rejected(interface: str) -> None:
     with pytest.raises(RegistryError, match="interface"):
         Registry().formula("stall-speed", interface=interface)(_impl)
