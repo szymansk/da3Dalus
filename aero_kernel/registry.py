@@ -28,8 +28,8 @@ __all__ = [
     "DEFAULT_REGISTRY",
     "CheckResult",
     "Implementation",
-    "RegistrationError",
     "Registry",
+    "RegistryError",
     "RegistryFinding",
     "TraceabilityReport",
     "formula",
@@ -54,6 +54,7 @@ class CheckResult(BaseModel):
     message: str = Field(min_length=1)
 
 
+# Loosely typed until the engine unit defines ``Context`` and tightens this alias (ch. 8.12).
 # ``object`` stands for the engine's value types (ch. 8.12): the registry never looks at a value, and
 # a narrower parameter annotation on a formula must stay assignable.
 FormulaFunction = Callable[..., Coroutine[object, object, Mapping[str, object]]]
@@ -67,7 +68,7 @@ _CHECK_ID_PATTERN = re.compile(r"[a-z][a-z0-9]*([_-][a-z0-9]+)*")
 _FINGERPRINT_PATTERN = re.compile(r"sha256:[0-9a-f]{64}")
 
 
-class RegistrationError(Exception):
+class RegistryError(Exception):
     """A programming error at registration: duplicate, non-coroutine, malformed name, frozen.
 
     Raised at import; it never becomes a computation result.
@@ -121,6 +122,9 @@ class TraceabilityReport(BaseModel):
 class Implementation:
     """A registered formula implementation.
 
+    A frozen dataclass rather than a Pydantic model: it holds a function, which is code, not data
+    crossing a module boundary.
+
     Attributes:
         slug: Qualified formula slug, ``<namespace>:<slug>``.
         func: The coroutine ``f(x, ctx) -> dict``.
@@ -137,7 +141,7 @@ def _qualify(slug: str) -> str:
     match = _SLUG_PATTERN.fullmatch(slug)
     if match is None:
         msg = f"malformed formula slug {slug!r}: expected '[<namespace>:]<kebab-case-slug>'"
-        raise RegistrationError(msg)
+        raise RegistryError(msg)
     return f"{match['namespace'] or DEFAULT_NAMESPACE}:{match['slug']}"
 
 
@@ -174,7 +178,7 @@ class Registry:
         return self._frozen
 
     def freeze(self) -> None:
-        """Freeze the registry: any later registration raises ``RegistrationError``.
+        """Freeze the registry: any later registration raises ``RegistryError``.
 
         Called by ``aero_kernel.formulas`` once every formula module is imported. Freezing again
         does nothing.
@@ -189,12 +193,12 @@ class Registry:
         )
 
     def _ensure_open(self) -> None:
-        """Raise ``RegistrationError`` if the registry is frozen."""
+        """Raise ``RegistryError`` if the registry is frozen."""
         if self._frozen:
             msg = (
                 "the registry is frozen; formulas are registered at import of aero_kernel.formulas"
             )
-            raise RegistrationError(msg)
+            raise RegistryError(msg)
 
     def formula(self, slug: str, interface: str) -> Callable[[_FormulaT], _FormulaT]:
         """Register the decorated coroutine as the one implementation of a formula.
@@ -207,25 +211,25 @@ class Registry:
             The decorator; it returns the function unchanged.
 
         Raises:
-            RegistrationError: If the slug or fingerprint is malformed.
+            RegistryError: If the slug or fingerprint is malformed.
         """
         self._ensure_open()
         qualified = _qualify(slug)
         if _FINGERPRINT_PATTERN.fullmatch(interface) is None:
             msg = f"malformed interface fingerprint {interface!r} for {qualified}"
-            raise RegistrationError(msg)
+            raise RegistryError(msg)
 
         def register(func: _FormulaT) -> _FormulaT:
             self._ensure_open()
             if not inspect.iscoroutinefunction(func):
                 msg = f"implementation of {qualified} must be a coroutine function (async def)"
-                raise RegistrationError(msg)
+                raise RegistryError(msg)
             if len(inspect.signature(func).parameters) != 2:
                 msg = f"implementation of {qualified} must take exactly 2 parameters (x, ctx)"
-                raise RegistrationError(msg)
+                raise RegistryError(msg)
             if qualified in self._implementations:
                 msg = f"formula {qualified} already has an implementation"
-                raise RegistrationError(msg)
+                raise RegistryError(msg)
             self._implementations[qualified] = Implementation(qualified, func, interface)
             logger.debug("registered formula %s", qualified)
             return func
@@ -370,21 +374,21 @@ class Registry:
         qualified = _qualify(slug)
         if _CHECK_ID_PATTERN.fullmatch(check_id) is None:
             msg = f"malformed check id {check_id!r} for {qualified}: expected kebab- or snake-case"
-            raise RegistrationError(msg)
+            raise RegistryError(msg)
         label = "precondition" if kind == "pre" else "postcondition"
 
         def register(func: _CheckT) -> _CheckT:
             self._ensure_open()
             if inspect.iscoroutinefunction(func):
                 msg = f"{label} {qualified}/{check_id} must be a plain function, not a coroutine"
-                raise RegistrationError(msg)
+                raise RegistryError(msg)
             if len(inspect.signature(func).parameters) != arity:
                 msg = f"{label} {qualified}/{check_id} must take exactly {arity} parameter(s)"
-                raise RegistrationError(msg)
+                raise RegistryError(msg)
             registered = self._checks.setdefault((qualified, kind), {})
             if check_id in registered:
                 msg = f"{label} {check_id} of {qualified} is already registered"
-                raise RegistrationError(msg)
+                raise RegistryError(msg)
             registered[check_id] = func
             logger.debug("registered %s %s/%s", label, qualified, check_id)
             return func

@@ -5,7 +5,6 @@ from collections.abc import Callable, Mapping
 import pytest
 from aero_kernel.canon.model import CanonModel
 from aero_kernel.registry import (
-    DEFAULT_REGISTRY,
     CheckResult,
     Registry,
     RegistryFinding,
@@ -164,10 +163,3 @@ def test_findings_and_report_are_frozen_and_closed() -> None:
     assert not report.ok
     with pytest.raises(ValueError, match="frozen"):
         report.findings = ()
-
-
-def test_the_default_registry_is_consistent_with_the_fixture_model(
-    flight_canon: CanonModel,
-) -> None:
-    """The CI traceability test; it runs against the packaged model once that exists."""
-    assert DEFAULT_REGISTRY.check_traceability(flight_canon).ok

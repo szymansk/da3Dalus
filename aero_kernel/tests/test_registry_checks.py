@@ -5,7 +5,7 @@ from collections.abc import Mapping
 
 import pytest
 from aero_kernel import registry as registry_module
-from aero_kernel.registry import CheckResult, RegistrationError, Registry
+from aero_kernel.registry import CheckResult, Registry, RegistryError
 
 FINGERPRINT = "sha256:" + "0" * 64
 HELD = CheckResult(state="held", message="ok")
@@ -68,23 +68,23 @@ def test_stacked_decorators_share_one_function_across_formulas() -> None:
 def test_duplicate_check_is_an_error_even_for_the_same_function() -> None:
     registry = Registry()
     registry.precondition("stall-speed", "rho-ok")(pre)
-    with pytest.raises(RegistrationError, match=r"rho-ok.*calc:stall-speed.*already"):
+    with pytest.raises(RegistryError, match=r"rho-ok.*calc:stall-speed.*already"):
         registry.precondition("stall-speed", "rho-ok")(pre)
 
 
 @pytest.mark.parametrize("check_id", ["", "Rho", "rho ok", "-rho", "rho_", "rho--ok"])
 def test_malformed_check_id_is_rejected(check_id: str) -> None:
-    with pytest.raises(RegistrationError, match="check id"):
+    with pytest.raises(RegistryError, match="check id"):
         Registry().precondition("stall-speed", check_id)(pre)
 
 
 def test_precondition_must_take_exactly_x() -> None:
-    with pytest.raises(RegistrationError, match="exactly 1"):
+    with pytest.raises(RegistryError, match="exactly 1"):
         Registry().precondition("stall-speed", "rho-ok")(post)
 
 
 def test_postcondition_must_take_exactly_x_and_y() -> None:
-    with pytest.raises(RegistrationError, match="exactly 2"):
+    with pytest.raises(RegistryError, match="exactly 2"):
         Registry().postcondition("stall-speed", "rho-ok")(pre)
 
 
@@ -92,7 +92,7 @@ def test_check_must_be_a_plain_function() -> None:
     async def coroutine_check(x: Mapping[str, float]) -> CheckResult:
         return HELD
 
-    with pytest.raises(RegistrationError, match="plain function"):
+    with pytest.raises(RegistryError, match="plain function"):
         Registry().precondition("stall-speed", "rho-ok")(
             coroutine_check  # pyright: ignore[reportArgumentType]  # deliberately async
         )
@@ -108,7 +108,7 @@ def test_freeze_blocks_every_registration() -> None:
         lambda: registry.precondition("a", "b"),
         lambda: registry.postcondition("a", "b"),
     ):
-        with pytest.raises(RegistrationError, match="frozen"):
+        with pytest.raises(RegistryError, match="frozen"):
             register()
 
 
@@ -147,5 +147,5 @@ def test_a_decorator_made_before_the_freeze_cannot_register_after_it() -> None:
     registry = Registry()
     decorator = registry.precondition("stall-speed", "rho-ok")
     registry.freeze()
-    with pytest.raises(RegistrationError, match="frozen"):
+    with pytest.raises(RegistryError, match="frozen"):
         decorator(pre)
