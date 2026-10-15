@@ -436,7 +436,7 @@ def test_embeds_naming_an_unknown_formula_is_reported(tmp_path, typed_quantities
 def test_embeds_must_not_name_the_formula_itself(tmp_path, typed_quantities):
     front = GOOD_FRONT + "embeds: [f]\n"
     msgs = _messages(_errors(_canon(tmp_path, front=front, quantities=typed_quantities)))
-    assert any("embeds" in m and "itself" in m for m in msgs), msgs
+    assert any("f embeds" in m and "cannot embed itself" in m for m in msgs), msgs
 
 
 def _embed_canon(tmp_path, formulas):
@@ -568,8 +568,14 @@ def test_a_variable_no_formula_in_the_closure_reads_is_reported(tmp_path):
             "h": ({"a": "speed-a"}, {"w": "speed-w"}, ""),
         },
     )
+    # speed-z exists, so only the 'read by no formula' rule can fire
+    (root / "quantities" / "speed-z.md").write_text(
+        _with_type({"z": _quantity("speed-z")})["z"], encoding="utf-8"
+    )
     msgs = _messages(_errors(root))
-    assert any("variables" in m and "speed-z" in m for m in msgs), msgs
+    assert any(
+        "f variables" in m and "'speed-z'" in m and "read by no formula" in m for m in msgs
+    ), msgs
 
 
 TWO_APPS = "applications:\n  - id: one\n  - id: two\n"
@@ -876,6 +882,137 @@ def test_positive_on_a_non_scalar_quantity_is_reported(tmp_path):
     )
     msgs = _messages(_errors(root))
     assert any("butterfly-stall-speed-curve positive" in m and "scalar" in m for m in msgs), msgs
+
+
+# --- review of PR #1182: one failing input per rule ----------------------------------------
+
+
+def _bound_b(front_tail):
+    return "inputs: {a: speed-a, b: null}\noutputs: {v: speed-v}\n" + front_tail
+
+
+def _canon_b(tmp_path, typed_quantities, tail):
+    root = _canon(
+        tmp_path, front=_bound_b(tail), quantities=typed_quantities, inputs_line=("speed-a",)
+    )
+    _fix_used_by(root, "speed-b", [])
+    return root
+
+
+def test_a_constant_with_unknown_keys_is_reported(tmp_path, typed_quantities):
+    tail = 'applications:\n  - id: one\n    bind: {b: {const: 1, source: "x", unit: m}}\n'
+    msgs = _messages(_errors(_canon_b(tmp_path, typed_quantities, tail)))
+    assert any("constant for 'b' has unknown keys ['unit']" in m for m in msgs), msgs
+
+
+def test_a_duplicate_application_id_is_reported(tmp_path, typed_quantities):
+    front = GOOD_FRONT + "applications:\n  - id: one\n  - id: one\n"
+    msgs = _messages(_errors(_canon(tmp_path, front=front, quantities=typed_quantities)))
+    assert any("application id 'one' is used twice" in m for m in msgs), msgs
+
+
+def test_an_application_with_unknown_keys_is_reported(tmp_path, typed_quantities):
+    front = GOOD_FRONT + "applications:\n  - id: one\n    colour: red\n"
+    msgs = _messages(_errors(_canon(tmp_path, front=front, quantities=typed_quantities)))
+    assert any("application one: unknown keys ['colour']" in m for m in msgs), msgs
+
+
+def test_an_application_id_that_is_not_snake_case_is_reported(tmp_path, typed_quantities):
+    front = GOOD_FRONT + "applications:\n  - id: One-x\n"
+    msgs = _messages(_errors(_canon(tmp_path, front=front, quantities=typed_quantities)))
+    assert any("application id 'One-x' is not snake_case" in m for m in msgs), msgs
+
+
+def test_a_precondition_id_that_is_not_snake_case_is_reported(tmp_path, typed_quantities):
+    front = GOOD_FRONT + "preconditions:\n  - {id: Check-A, parameter: a, on_violation: error}\n"
+    msgs = _messages(_errors(_canon(tmp_path, front=front, quantities=typed_quantities)))
+    assert any("f preconditions: id 'Check-A' is not snake_case" in m for m in msgs), msgs
+
+
+def test_a_world_that_is_not_snake_case_is_reported(tmp_path, typed_quantities):
+    front = GOOD_FRONT + "uncertainty: interval\nworlds: [Text-Book]\n"
+    msgs = _messages(_errors(_canon(tmp_path, front=front, quantities=typed_quantities)))
+    assert any("world 'Text-Book' is not snake_case" in m for m in msgs), msgs
+
+
+def test_a_binding_that_is_not_a_kebab_slug_is_reported(tmp_path, typed_quantities):
+    front = "inputs: {a: Speed_A, b: speed-b}\noutputs: {v: speed-v}\n"
+    msgs = _messages(_errors(_canon(tmp_path, front=front, quantities=typed_quantities)))
+    assert any("'a' is bound to 'Speed_A', not a quantity slug" in m for m in msgs), msgs
+
+
+def test_a_variable_naming_an_unknown_quantity_is_reported(tmp_path):
+    root = _embed_canon(
+        tmp_path,
+        {
+            "f": ({"a": "speed-a"}, {"v": "speed-v"}, "embeds: [h]\nvariables: [no-such]\n"),
+            "h": ({"a": "speed-a"}, {"w": "speed-w"}, ""),
+        },
+    )
+    msgs = _messages(_errors(root))
+    assert any("f variables: unknown quantity 'no-such'" in m for m in msgs), msgs
+
+
+def test_the_produces_line_alone_disagreeing_is_reported(tmp_path, typed_quantities):
+    root = _canon(tmp_path, quantities=typed_quantities)
+    path = root / "formulas" / "f.md"
+    path.write_text(
+        path.read_text(encoding="utf-8").replace(
+            "**Produces** [[speed-v]]", "**Produces** [[speed-b]]"
+        ),
+        encoding="utf-8",
+    )
+    msgs = _messages(_errors(root))
+    assert any("f outputs: only in the Produces line: ['speed-b']" in m for m in msgs), msgs
+    assert not any("output field" in m for m in msgs), msgs
+
+
+def test_the_output_field_alone_disagreeing_is_reported(tmp_path, typed_quantities):
+    root = _canon(tmp_path, quantities=typed_quantities)
+    path = root / "formulas" / "f.md"
+    path.write_text(
+        path.read_text(encoding="utf-8").replace("output: speed-v", "output: speed-b"),
+        encoding="utf-8",
+    )
+    msgs = _messages(_errors(root))
+    assert any("f outputs: only in the output field: ['speed-b']" in m for m in msgs), msgs
+    assert not any("Produces line" in m for m in msgs), msgs
+
+
+def test_two_files_with_the_same_canon_slug_are_reported(tmp_path, typed_quantities):
+    root = _canon(tmp_path, quantities=typed_quantities)
+    (root / "quantities" / "speed-a-copy.md").write_text(
+        typed_quantities["speed-a"], encoding="utf-8"
+    )
+    msgs = _messages(_errors(root))
+    assert any("speed-a-copy.md" in m and "duplicate" in m for m in msgs), msgs
+
+
+def test_a_canon_slug_that_differs_from_the_file_name_is_reported(tmp_path, typed_quantities):
+    typed_quantities["speed-b"] = typed_quantities["speed-b"].replace(
+        "canon: speed-b", "canon: speed-bee"
+    )
+    msgs = _messages(_errors(_canon(tmp_path, quantities=typed_quantities)))
+    assert any("speed-b.md" in m and "speed-bee" in m and "file name" in m for m in msgs), msgs
+
+
+def test_an_unknown_role_is_reported(tmp_path, typed_quantities):
+    typed_quantities["speed-a"] = typed_quantities["speed-a"].replace(
+        "role: derived", "role: inptu"
+    )
+    msgs = _messages(_errors(_canon(tmp_path, quantities=typed_quantities)))
+    assert any("speed-a role" in m and "'inptu'" in m for m in msgs), msgs
+
+
+def test_a_positive_quantity_with_a_non_numeric_default_is_reported(tmp_path, typed_quantities):
+    q = _set(
+        typed_quantities,
+        "speed-a",
+        "role: derived",
+        'role: input\npositive: true\ndefault: {value: "-9.8", source: "x"}',
+    )
+    msgs = _messages(_errors(_canon(tmp_path, quantities=q)))
+    assert any("speed-a default" in m and "number" in m for m in msgs), msgs
 
 
 # --- command line ----------------------------------------------------------------------------

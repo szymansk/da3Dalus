@@ -32,7 +32,8 @@ X does not compute approved formula Y", which is a check.
 The duplicates come in two kinds, and one register would hide the second.
 
 **`quantities/`** — the vocabulary. Symbol, unit, meaning, and a role: `input`
-(supplied from outside the chain), `derived`, or `output` (reaches the user).
+(supplied from outside the chain), `derived`, `output` (reaches the user), or `target` (a
+requirement the result is measured against, A9). The set is closed.
 Nine definitions of `ρ₀` are a *quantity* duplicate.
 
 **`formulas/`** — the physics. A relation between canonical quantities, in symbols,
@@ -52,32 +53,37 @@ A formula can be applied more than once with different inputs. That is not dupli
 and it is not a conflict — it is the normal shape of a design calculation, and the canon
 has to say so, or it cannot tell the two apart.
 
-**Stall speed is the worked example.** There is one law:
+**Stall speed is the worked example.** There is one problem — the smallest speed at which the
+aircraft carries `n · m · g` — whose optimality condition is the familiar law
 
 ```
 v_stall = sqrt(2 · m · g / (rho · S_ref · cl_max))
 ```
 
-and three **applications** of it, differing only in which `cl_max` is bound:
+with `cl_max` an **output**: the lift coefficient at the optimum, at its own Reynolds number. The
+canon applies it four times, differing in the configured airplane and the load factor they bind:
 
-| application | binds `cl_max` | exists when |
-|---|---|---|
-| `stall-speed` | `cl_max_clean` | always |
-| `stall-speed-takeoff` | `cl_max_takeoff` | the wing has a flap |
-| `stall-speed-landing` | `cl_max_landing` | the wing has a flap |
+| application | binds | produces | exists when |
+|---|---|---|---|
+| `clean` | `airplane`, `n = 1` | `stall-speed`, `max-lift-coefficient` | always |
+| `takeoff` | `airplane-takeoff`, `n = 1` | `stall-speed-takeoff`, `max-lift-coefficient-takeoff` | always — without flaps equal to the clean values |
+| `landing` | `airplane-landing`, `n = 1` | `stall-speed-landing`, `max-lift-coefficient-landing` | always — without flaps equal to the clean values |
+| `inverted` | `airplane`, `n = −1` | `inverted-max-lift-coefficient` | always |
 
-Three **quantities** — they have different values. One **formula**. Three
-**applications** binding one input differently.
+Separate **quantities** — they are different conditions, with different values (or, without flaps,
+the same value by definition). One **formula**. Four **applications** binding it differently.
 
 Two consequences follow, and both are mechanical:
 
-**In the code there should be three calls to one function**, not three implementations of
-one law. Three separate implementations where the canon declares one formula is
+**In the code there should be one function, called once per application**, not one
+implementation per application. Separate implementations where the canon declares one formula is
 duplication, and it can be detected by a join rather than by reading.
 
 **A configuration that does not exist is not computed.** The application carries a
-condition. A wing with no flap has one stall speed, not three identical ones — and
-certainly not three that disagree because one of them fell back to the clean value.
+condition: an aircraft without a separate flap and aileron has no crow curve
+(`butterfly-approach`). Where the configuration exists by definition, it is computed, and never
+falls back silently to another one — a wing without flaps has a landing stall speed equal to the
+clean one because its landing configuration is the same aircraft (maintainer, 2026-10-14).
 
 ### Two axes, not one
 
@@ -382,7 +388,7 @@ The existing fields (`canon`, `entry`, `kind`, `tool`, `shape`, `status`, `outpu
 |---|---|---|
 | `inputs` | always | parameter → default quantity slug, one key per input of the formula; `null` where the quantity is bound per application |
 | `outputs` | always | parameter → default quantity slug, one key per output; `null` where it is produced per application |
-| `applications` | only for several applications or a condition | a list; each item has `id`, optional `bind` (parameter → quantity slug or `{const: <value>, source: "<citation>"}`), optional `produce` (parameter → quantity slug) optional `when` (a term of the vocabulary below; absent = always) and optional `given` (a list of quantity slugs; see below) |
+| `applications` | only for several applications, a condition, or a constant binding | a list; each item has `id`, optional `bind` (parameter → quantity slug or `{const: <value>, source: "<citation>"}`), optional `produce` (parameter → quantity slug), optional `when` (a term of the vocabulary below; absent = always) and optional `given` (a list of quantity slugs; see below) |
 | `preconditions` | only where the entry states them | a list of `{id, parameter, on_violation}` with an optional `applications: [<id>, …]`: `parameter` names an **input** parameter (the check runs before the call), `on_violation` is `warning` or `error`, `applications` names the applications the check belongs to (absent: all of them — preconditions belong to the binding) |
 | `postconditions` | only where the entry states a check on a result | the same shape as `preconditions`, but `parameter` names an **output** parameter: the check runs after the call, on the inputs and all outputs — also those an application writes as `null` |
 | `embeds` | only where the canonical form evaluates another canon relation inside itself | formulas whose relation the canonical form evaluates inside itself, listed directly as `<slug>`, or `<slug>.<application-id>` per application whose checks apply when the formula has several applications; transitive (the importer computes the closure); an item embeds that application as written — its bindings (quantities and constants) and its checks; a bare slug is the single default application. Every quantity the embedded applications bind is a `variables` entry, produced inside the closure, or an input of the embedder; constants are never re-bound; the embedded formula's postconditions run on every embedded evaluation, its preconditions do not; no formula with `uncertainty: interval` in the closure. Not a value edge — nothing is read from them. Tools are named by `tool:` |
@@ -429,7 +435,8 @@ the field is `warning` and the gap is listed in `STAND.md`.
 **Escalated fields.** Where the entry text does not decide a field — an ambiguous binding, a
 constant without a stated source, a condition the text implies but does not state — the field is
 left out and the front matter carries a comment `# ESCALATED: <reason>`. The question is with the
-maintainer; `check_canon.py` reports the gap as *open*, not as an error. The importer (#1174)
+maintainer; `check_canon.py` reports the gap of a parameter the reason names as *open*, not as an
+error. Every other gap of the entry stays an error. The importer (#1174)
 cannot import such an entry until it is decided.
 
 #### Vocabulary of `when`
@@ -666,11 +673,9 @@ default: {value: 1.225, source: "U.S. Standard Atmosphere 1976 (NOAA-S/T 76-1562
   `produce` equal the **Produces** line and the `output` field;
 - every quantity's **Used by** / **Produced by** line names exactly the formulas that read / write it;
 - every application binds every input and produces every output — to a quantity or explicitly to
-  `null` (open, not an error, in an
-  escalated entry); `bind` / `produce` keys are parameters; constants carry a source; `when`
+  `null` (open, not an error, when an `# ESCALATED:` reason names the parameter); `bind` / `produce` keys are parameters; constants carry a source; `when`
   terms are in the vocabulary above; `given` slugs exist, are inputs or targets without a default, and
   are bound by their application;
-- no key or plain value is a YAML 1.1 boolean;
 - preconditions name an input parameter, postconditions an output parameter; both say `warning` or
   `error`, and their `applications` name existing application ids of that formula; `worlds` exist exactly with
   `uncertainty: interval`; `cost` is one of the three classes;
@@ -680,11 +685,12 @@ default: {value: 1.225, source: "U.S. Standard Atmosphere 1976 (NOAA-S/T 76-1562
   there, and every variable is read somewhere in the closure; a scalar input or target without a default
   that the closure binds through an embedder input but `variables` does not list is reported as an open
   warning (it may be swept or solved), never as an error; `optional` names input parameters;
-- every quantity has a `type` from the set above; a `default` carries a source; `positive` is `true`
+- every quantity has a `role` from the closed set and a `type` from the set above; a `default` carries a source; `positive` is `true`
   (never `false`), only on `type: scalar` with role `input` or `target`, and a default of a positive
   quantity is > 0;
 - no plain key or value is a YAML 1.1 boolean; an `# ESCALATED:` comment states its reason;
-- every example above equals the front matter of the entry it names, so the examples cannot drift.
+- every example above equals the front matter of the entry it names, so the examples cannot drift;
+- every entry's `canon` slug equals its file name, and no two entries share a slug.
 
 The vocabulary and the type set are read from the two tables above — this README is their only
 definition.

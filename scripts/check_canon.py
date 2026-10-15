@@ -11,9 +11,10 @@ quantities of unlike dimension. Informational; it does not fail the run.
 README ("Machine-readable fields") against itself and against the prose links: `inputs` /
 `outputs` / `applications` against the "Produces … from" line, the quantities' "Used by" /
 "Produced by" links, every referenced slug, the closed `when` vocabulary and `type` set,
-every parameter bound in every application. A structural error fails the run. A gap in an
-entry whose front matter carries an `# ESCALATED:` comment is reported as *open* instead:
-the question is with the maintainer, the gap is known.
+every parameter bound in every application. A structural error fails the run. A gap on a
+parameter that an `# ESCALATED: <reason>` comment names in its reason is reported as *open*
+instead: the question is with the maintainer, the gap is known. Every other gap of the same
+entry stays an error.
 
 Run:  poetry run python scripts/check_canon.py [canon-dir | canon.json]
       (default: _reversa_sdd/calculations/canon; a .json file runs the dimensional check only)
@@ -271,11 +272,10 @@ GIVEN_ROLES = {"input", "target"}
 PRECONDITION_KEYS = {"id", "parameter", "on_violation"}
 #: optional on a precondition: the application ids it applies to (absent: all of them)
 PRECONDITION_OPTIONAL = {"applications"}
-#: what an escalated gap looks like in the front matter
-ESCALATED = re.compile(r"^\s*#\s*ESCALATED\b", re.M)
 #: an escalation states its reason: '# ESCALATED: <reason>'
 ESCALATED_REASON = re.compile(r"^\s*#\s*ESCALATED\b:?(.*)$", re.M)
 UNCERTAINTY = {"interval"}
+ROLES = {"input", "derived", "output", "target"}
 #: the machine-readable keys a README example must reproduce in full (when/given are compared
 #: as part of applications)
 EXAMPLE_KEYS_FORMULA = (
@@ -300,10 +300,8 @@ class Entry:
     front: dict
     raw_front: str
     body: str
-
-    @property
-    def escalated(self) -> bool:
-        return bool(ESCALATED.search(self.raw_front))
+    #: the file it was read from, relative to the canon directory
+    file: str = ""
 
     def escalates(self, name: str) -> bool:
         """Whether an '# ESCALATED: <reason>' comment names this parameter or field."""
@@ -321,6 +319,8 @@ class Canon:
     types: set[str]
     #: README "One example per kind": (slug, parsed example) pairs
     examples: list = dataclasses.field(default_factory=list)
+    #: (file, message) problems found while reading the entries: duplicate or misnamed slugs
+    load_errors: list = dataclasses.field(default_factory=list)
 
 
 @dataclasses.dataclass(frozen=True)
@@ -328,7 +328,7 @@ class Finding:
     entry: str
     field: str
     message: str
-    #: True for a gap in an escalated entry: known, waiting for the maintainer
+    #: True for a gap an '# ESCALATED:' comment names, or an open warning: known, not an error
     open: bool = False
 
 
@@ -349,7 +349,10 @@ def _read_entry(path: pathlib.Path) -> Entry:
     text = path.read_text(encoding="utf-8")
     _, raw, body = text.split("---", 2)
     front = yaml.safe_load(raw) or {}
-    return Entry(slug=front.get("canon") or path.stem, front=front, raw_front=raw, body=body)
+    file = f"{path.parent.name}/{path.name}"
+    return Entry(
+        slug=front.get("canon") or path.stem, front=front, raw_front=raw, body=body, file=file
+    )
 
 
 def _table_terms(readme: str, heading: str) -> set[str]:
@@ -363,20 +366,33 @@ def _table_terms(readme: str, heading: str) -> set[str]:
 def load_canon(canon_dir: pathlib.Path) -> Canon:
     root = pathlib.Path(canon_dir)
     readme = (root / "README.md").read_text(encoding="utf-8")
-    formulas = {}
-    for f in sorted((root / "formulas").glob("*.md")):
-        e = _read_entry(f)
-        formulas[e.slug] = e
-    quantities = {}
-    for f in sorted((root / "quantities").glob("*.md")):
-        e = _read_entry(f)
-        quantities[e.slug] = e
+    load_errors: list = []
+
+    def read_all(sub: str) -> dict[str, Entry]:
+        entries: dict[str, Entry] = {}
+        for f in sorted((root / sub).glob("*.md")):
+            e = _read_entry(f)
+            if e.slug != f.stem:
+                load_errors.append(
+                    (e.file, f"canon slug {e.slug!r} differs from the file name {f.stem!r}")
+                )
+            if e.slug in entries:
+                load_errors.append(
+                    (e.file, f"duplicate canon slug {e.slug!r}, also in {entries[e.slug].file}")
+                )
+                continue
+            entries[e.slug] = e
+        return entries
+
+    formulas = read_all("formulas")
+    quantities = read_all("quantities")
     return Canon(
         formulas=formulas,
         quantities=quantities,
         vocabulary=_table_terms(readme, "Vocabulary of `when`"),
         types=_table_terms(readme, "Quantity types"),
         examples=_readme_examples(readme),
+        load_errors=load_errors,
     )
 
 
@@ -828,7 +844,12 @@ def check_structure(canon: Canon) -> list[Finding]:
             if entry.front.get(key) != example.get(key):
                 add("README", "examples", f"{slug}: {key} differs from the entry's front matter")
 
+    for file, message in canon.load_errors:
+        add(file, "canon", message)
+
     for slug, e in canon.quantities.items():
+        if e.front.get("role") not in ROLES:
+            add(slug, "role", f"{e.front.get('role')!r} is not one of {sorted(ROLES)}")
         if "positive" in e.front:
             pos = e.front["positive"]
             if pos is not True:
@@ -844,7 +865,12 @@ def check_structure(canon: Canon) -> list[Finding]:
             else:
                 d = e.front.get("default")
                 value = d.get("value") if isinstance(d, dict) else None
-                if isinstance(value, int | float) and not isinstance(value, bool) and value <= 0:
+                is_number = isinstance(value, int | float) and not isinstance(value, bool)
+                if d is not None and not is_number:
+                    add(
+                        slug, "default", f"a positive quantity needs a number as default: {value!r}"
+                    )
+                elif is_number and value <= 0:
                     add(
                         slug, "default", f"a positive quantity needs a default value > 0: {value!r}"
                     )
