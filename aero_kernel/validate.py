@@ -21,6 +21,7 @@ from itertools import pairwise
 from typing import cast
 
 from aero_kernel import geometry
+from aero_kernel.canon.model import CanonModel
 from aero_kernel.errors import ErrorCategory, KernelError, is_slug
 from aero_kernel.geometry import Wing
 from aero_kernel.schema import WARNING_CATALOGUE, AircraftInput, KernelWarning
@@ -28,7 +29,7 @@ from pydantic import BaseModel, ConfigDict, JsonValue
 
 logger = logging.getLogger(__name__)
 
-__all__ = ["Validation", "validate_aircraft"]
+__all__ = ["Validation", "validate_aircraft", "validate_values"]
 
 
 class Validation(BaseModel):
@@ -441,3 +442,54 @@ def validate_aircraft(aircraft: AircraftInput) -> Validation:
     warnings = _mass_warnings(aircraft) + _deflection_warnings(airplane.wings or {})
     logger.debug("validation done: %d errors, %d warnings", len(errors), len(warnings))
     return Validation(errors=tuple(errors), warnings=tuple(warnings))
+
+
+def validate_values(values: Mapping[str, float], model: CanonModel) -> tuple[KernelError, ...]:
+    """Check the supplied ``values`` against the canon model (ch. 8.11).
+
+    A slug must name a quantity of the model (``unknown_quantity``) that the caller supplies: a
+    scalar of role ``input`` or ``target`` (``not_an_input``), and a quantity the canon declares
+    ``positive`` must be > 0 (``non_positive_value``). Non-finite numbers are
+    :func:`validate_aircraft`'s finding and not reported twice. The admissibility comes from the
+    model; no slug is named here.
+
+    Args:
+        values: Value per canon slug (a bare slug means ``calc:``), in the canon's unit.
+        model: The canon model.
+
+    Returns:
+        The ``invalid_input`` errors, by slug, each with ``input_path`` ``values.<slug>``.
+    """
+    errors: list[KernelError] = []
+    for slug in sorted(values):
+        path = _values_path(slug)
+        quantity = model.quantity(slug)
+        if quantity is None:
+            errors.append(
+                _finding(
+                    "unknown_quantity",
+                    path,
+                    f"{slug} is not a quantity of the canon.",
+                    "Use the slug of a canon input or target quantity.",
+                )
+            )
+        elif quantity.role not in ("input", "target") or quantity.type != "scalar":
+            errors.append(
+                _finding(
+                    "not_an_input",
+                    path,
+                    f"{slug} is not a number the caller supplies: its role is {quantity.role} "
+                    f"and its type {quantity.type}.",
+                    "Remove it from the values; the kernel computes it, or it is the airplane.",
+                )
+            )
+        elif quantity.positive:
+            errors += _not_positive(
+                values[slug],
+                path,
+                "non_positive_value",
+                f"Value of {slug}",
+                quantity.unit,
+                f"Give {slug} a value > 0.",
+            )
+    return tuple(errors)
