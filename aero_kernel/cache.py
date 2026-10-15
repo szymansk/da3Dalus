@@ -232,46 +232,52 @@ class MemoryCache:
             raise ValueError(msg)
         self._max_entries = max_entries
         self._max_per_scope = max_entries_per_scope
-        self._entries: OrderedDict[tuple[str, str], str] = OrderedDict()
+        # Texts by scope then key, each in recency order, and the global recency order beside them:
+        # both kinds of eviction pop the oldest entry of an OrderedDict, so neither scans.
+        self._scopes: dict[str, OrderedDict[str, str]] = {}
+        self._recency: OrderedDict[tuple[str, str], None] = OrderedDict()
 
     async def get(self, scope: str, key: str) -> Entry | None:
         """Return a fresh copy of the entry, marking it most recently used."""
         _check_scope(scope)
-        text = self._entries.get((scope, key))
+        text = self._scopes.get(scope, {}).get(key)
         if text is None:
             logger.debug("cache miss %s", _short(key), extra={"scope": scope})
             return None
-        self._entries.move_to_end((scope, key))
+        self._scopes[scope].move_to_end(key)
+        self._recency.move_to_end((scope, key))
         logger.debug("cache hit %s", _short(key), extra={"scope": scope})
         return Entry.from_json(text)
 
     async def put(self, scope: str, key: str, entry: Entry) -> None:
         """Store the serialised entry and evict by the limits."""
         _check_scope(scope)
-        self._entries[(scope, key)] = entry.to_json()
-        self._entries.move_to_end((scope, key))
-        if self._max_per_scope is not None:
-            self._evict_scope(scope, self._max_per_scope)
-        while len(self._entries) > self._max_entries:
-            self._evict(next(iter(self._entries)))
+        members = self._scopes.setdefault(scope, OrderedDict())
+        members[key] = entry.to_json()
+        members.move_to_end(key)
+        self._recency[(scope, key)] = None
+        self._recency.move_to_end((scope, key))
+        if self._max_per_scope is not None and len(members) > self._max_per_scope:
+            self._evict(scope, next(iter(members)))
+        if len(self._recency) > self._max_entries:
+            oldest_scope, oldest_key = next(iter(self._recency))
+            self._evict(oldest_scope, oldest_key)
 
     async def drop_scope(self, scope: str) -> None:
         """Remove every entry of ``scope``."""
         _check_scope(scope)
-        for stored in [item for item in self._entries if item[0] == scope]:
-            del self._entries[stored]
+        for key in self._scopes.pop(scope, {}):
+            del self._recency[(scope, key)]
         logger.debug("cache scope dropped", extra={"scope": scope})
 
-    def _evict_scope(self, scope: str, limit: int) -> None:
-        """Evict the least recently used entries of ``scope`` until it holds ``limit``."""
-        members = [item for item in self._entries if item[0] == scope]
-        for stored in members[: max(0, len(members) - limit)]:
-            self._evict(stored)
-
-    def _evict(self, stored: tuple[str, str]) -> None:
+    def _evict(self, scope: str, key: str) -> None:
         """Remove one entry and log it."""
-        del self._entries[stored]
-        logger.debug("cache evict %s", _short(stored[1]), extra={"scope": stored[0]})
+        members = self._scopes[scope]
+        del members[key]
+        if not members:
+            del self._scopes[scope]
+        del self._recency[(scope, key)]
+        logger.debug("cache evict %s", _short(key), extra={"scope": scope})
 
 
 class DiskCache:
