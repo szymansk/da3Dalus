@@ -1,13 +1,17 @@
 """The runtime loader of the canon model (ARCHITECTURE ch. 8.9)."""
 
+import builtins
+import io
 import json
 import logging
+from collections.abc import Callable
 from pathlib import Path
-from typing import Any
+from typing import Any, get_args
 
 import pytest
 from aero_kernel.canon import load
 from aero_kernel.canon.load import CanonLoadError, load_canon_model
+from aero_kernel.canon.model import CanonModel
 from aero_kernel.errors import ErrorCategory
 from aero_kernel.tests.canon_builders import base_model
 
@@ -130,15 +134,96 @@ def test_load_failure_is_logged_once_at_error(
     assert [r.levelno for r in caplog.records if r.levelno >= logging.INFO] == [logging.ERROR]
 
 
-def test_loader_reads_only_the_model_file(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_loader_opens_only_the_model_file(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """Spy on every way to open a file, not only ``read_text`` (Q12: no canon document)."""
     path = write_model(tmp_path, base_model())
-    read: list[Path] = []
-    original = Path.read_text
+    opened: list[str] = []
+    originals: dict[str, Callable[..., Any]] = {
+        "builtins": builtins.open,
+        "io": io.open,
+        "path": Path.open,
+    }
 
-    def recording(self: Path, *args: Any, **kwargs: Any) -> str:
-        read.append(self)
-        return original(self, *args, **kwargs)
+    def spy(original: Callable[..., Any]) -> Callable[..., Any]:
+        def recording(file: Any, *args: Any, **kwargs: Any) -> Any:
+            opened.append(str(file))
+            return original(file, *args, **kwargs)
 
-    monkeypatch.setattr(Path, "read_text", recording)
+        return recording
+
+    def path_open(self: Path, *args: Any, **kwargs: Any) -> Any:
+        opened.append(str(self))
+        return originals["path"](self, *args, **kwargs)
+
+    monkeypatch.setattr(builtins, "open", spy(originals["builtins"]))
+    monkeypatch.setattr(io, "open", spy(originals["io"]))
+    monkeypatch.setattr(Path, "open", path_open)
     load_canon_model(path)
-    assert read == [path]
+    assert set(opened) == {str(path)}
+
+
+def failures(tmp_path: Path) -> list[CanonLoadError]:
+    """Provoke one load failure of every kind and return the exceptions."""
+    corrupt = tmp_path / "corrupt.json"
+    corrupt.write_text("{not json", encoding="utf-8")
+    deep = tmp_path / "deep.json"
+    deep.write_text("[" * 200_000, encoding="utf-8")
+    wrong_version = dict(base_model(), schema_version=2)
+    invalid = dict(base_model(), source_commit="xyz")
+    paths = [
+        tmp_path / "absent.json",
+        corrupt,
+        deep,
+        write_model(tmp_path, [1]),
+        write_model(tmp_path, wrong_version),
+        write_model(tmp_path, invalid),
+    ]
+    caught: list[CanonLoadError] = []
+    for path in paths:
+        with pytest.raises(CanonLoadError) as raised:
+            load_canon_model(path)
+        caught.append(raised.value)
+    return caught
+
+
+def test_no_load_error_message_holds_a_file_path(tmp_path: Path) -> None:
+    for error in failures(tmp_path):
+        text = f"{error} {error.error.message} {error.error.hint} {error.error.detail}"
+        assert str(tmp_path) not in text
+        assert ".json" not in text
+        assert "/" not in error.error.message
+
+
+def test_deeply_nested_json_is_a_load_error(tmp_path: Path) -> None:
+    deep = tmp_path / "deep.json"
+    deep.write_text("[" * 200_000, encoding="utf-8")
+    with pytest.raises(CanonLoadError) as caught:
+        load_canon_model(deep)
+    assert_internal(caught.value)
+    assert "nested" in caught.value.error.message
+
+
+def test_error_log_carries_the_cause_and_the_findings_but_no_path(
+    tmp_path: Path, caplog: pytest.LogCaptureFixture
+) -> None:
+    invalid = write_model(tmp_path, dict(base_model(), source_commit="xyz"))
+    with (
+        caplog.at_level(logging.ERROR, logger="aero_kernel.canon.load"),
+        pytest.raises(CanonLoadError),
+    ):
+        load_canon_model(invalid)
+    with (
+        caplog.at_level(logging.ERROR, logger="aero_kernel.canon.load"),
+        pytest.raises(CanonLoadError),
+    ):
+        load_canon_model(tmp_path / "absent.json")
+    findings, missing = caplog.records
+    assert findings.exc_info is not None
+    assert findings.findings["error_count"] == 1  # type: ignore[attr-defined]  # logging extra
+    assert missing.exc_info is not None
+    assert all(str(tmp_path) not in r.getMessage() for r in caplog.records)
+
+
+def test_supported_schema_version_is_the_models_literal() -> None:
+    literal = get_args(CanonModel.model_fields["schema_version"].annotation)
+    assert literal == (load.SUPPORTED_SCHEMA_VERSION,)
