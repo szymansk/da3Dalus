@@ -3,7 +3,7 @@
 from collections.abc import Callable, Mapping
 
 import pytest
-from aero_kernel.canon.model import CanonModel
+from aero_kernel.canon.model import CanonModel, Namespace, compute_content_hash
 from aero_kernel.registry import (
     CheckResult,
     Registry,
@@ -163,3 +163,27 @@ def test_findings_and_report_are_frozen_and_closed() -> None:
     assert not report.ok
     with pytest.raises(ValueError, match="frozen"):
         report.findings = ()
+
+
+def test_not_implemented_is_sorted_by_qualified_slug(flight_canon: CanonModel) -> None:
+    """``calc1:a`` sorts after ``calc:z``, but ``calc1`` before ``calc2`` whatever the model order."""
+    calc = flight_canon.namespaces["calc"]
+    stall = calc.formulas["stall-speed"]
+    namespaces = {
+        "calc2": Namespace(quantities=calc.quantities, formulas={"b-one": stall}),
+        "calc": Namespace(quantities=calc.quantities, formulas={"z-last": stall, "a-first": stall}),
+        "calc1": Namespace(quantities=calc.quantities, formulas={"a-one": stall}),
+    }
+    model = CanonModel(
+        schema_version=1,
+        content_hash=compute_content_hash(namespaces),
+        source_commit="0" * 40,
+        importer_version="test",
+        namespaces=namespaces,
+    )
+    assert Registry().check_traceability(model).not_implemented == (
+        "calc1:a-one",
+        "calc2:b-one",
+        "calc:a-first",
+        "calc:z-last",
+    )

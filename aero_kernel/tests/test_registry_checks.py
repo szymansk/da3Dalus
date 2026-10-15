@@ -1,7 +1,8 @@
 """Registry: checks, freezing and the default registry (ARCHITECTURE ch. 8.12)."""
 
 import logging
-from collections.abc import Mapping
+from collections.abc import Callable, Mapping
+from typing import Any, cast
 
 import pytest
 from aero_kernel import registry as registry_module
@@ -121,18 +122,26 @@ def test_freeze_logs_the_counts_once(caplog: pytest.LogCaptureFixture) -> None:
     registry.formula("stall-speed", interface=FINGERPRINT)(impl)
     registry.precondition("stall-speed", "rho-ok")(pre)
     registry.postcondition("stall-speed", "rho-ok")(post)
+    registry.postcondition("stall-speed", "other-ok")(post)
     with caplog.at_level(logging.INFO, logger="aero_kernel.registry"):
         registry.freeze()
         registry.freeze()
-    assert [r.getMessage() for r in caplog.records] == ["registry frozen: 1 formulas, 2 checks"]
+    assert [(r.levelno, r.getMessage()) for r in caplog.records] == [
+        (logging.INFO, "registry frozen: 1 formulas, 3 checks")
+    ]
 
 
 def test_registrations_are_logged_at_debug(caplog: pytest.LogCaptureFixture) -> None:
     registry = Registry()
     with caplog.at_level(logging.DEBUG, logger="aero_kernel.registry"):
+        registry.formula("stall-speed", interface=FINGERPRINT)(_impl)
         registry.precondition("stall-speed", "rho-ok")(pre)
-    messages = [r.getMessage() for r in caplog.records]
-    assert messages == ["registered precondition calc:stall-speed/rho-ok"]
+        registry.postcondition("stall-speed", "rho-ok")(post)
+    assert [(r.levelno, r.getMessage()) for r in caplog.records] == [
+        (logging.DEBUG, "registered formula calc:stall-speed"),
+        (logging.DEBUG, "registered precondition calc:stall-speed/rho-ok"),
+        (logging.DEBUG, "registered postcondition calc:stall-speed/rho-ok"),
+    ]
 
 
 def test_module_level_decorators_belong_to_the_default_registry() -> None:
@@ -143,9 +152,35 @@ def test_module_level_decorators_belong_to_the_default_registry() -> None:
     assert registry_module.postcondition.__self__ is default  # pyright: ignore[reportFunctionMemberAccess]
 
 
+async def _impl(x: Mapping[str, float], ctx: object) -> dict[str, float]:
+    return {}
+
+
 def test_a_decorator_made_before_the_freeze_cannot_register_after_it() -> None:
     registry = Registry()
-    decorator = registry.precondition("stall-speed", "rho-ok")
+    decorators: list[Callable[[Any], object]] = [
+        registry.formula("stall-speed", interface=FINGERPRINT),
+        registry.precondition("stall-speed", "rho-ok"),
+        registry.postcondition("stall-speed", "rho-ok"),
+    ]
+    targets: list[object] = [_impl, pre, post]
     registry.freeze()
-    with pytest.raises(RegistryError, match="frozen"):
-        decorator(pre)
+    for decorator, target in zip(decorators, targets, strict=True):
+        with pytest.raises(RegistryError, match="frozen"):
+            decorator(target)
+    assert registry.implementation("stall-speed") is None
+    assert dict(registry.checks("stall-speed", "pre")) == {}
+    assert dict(registry.checks("stall-speed", "post")) == {}
+
+
+def test_checks_returns_a_copy() -> None:
+    registry = Registry()
+    registry.precondition("stall-speed", "rho-ok")(pre)
+    # ``checks`` is typed as a Mapping; the copy it hands out is a dict, which is what is tested.
+    copy = cast("dict[str, Callable[..., CheckResult]]", registry.checks("stall-speed", "pre"))
+    copy.clear()
+    assert registry.checks("stall-speed", "pre") == {"rho-ok": pre}
+
+
+def test_check_result_may_be_unchecked() -> None:
+    assert CheckResult(state="unchecked", message="no data").state == "unchecked"
