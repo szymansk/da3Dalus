@@ -954,7 +954,9 @@ async def stall_speed(x: Inputs, ctx: Context) -> dict[str, Value]:
     also checks that every registered slug and check id exists in the model, that every embedded item has
     a registered relation, and that every embedder requests each of its items through `ctx.embedded`
     (static check). `@relation`, the relation check and the static check arrive with the first embedded
-    formula, not before (ADR 0021). A registered check whose id exists in the model only on the other
+    formula, not before (ADR 0021); a working version exists in commit `13dde61b` to restore from.
+    The check is `Registry.check_traceability(model) -> TraceabilityReport(findings, not_implemented, ok)`;
+    the formulas unit asserts `DEFAULT_REGISTRY.check_traceability(load_canon_model()).ok`. A registered check whose id exists in the model only on the other
     side is a finding (`check_kind_mismatch`). It runs as a test in CI and once when a kernel is built; at runtime a formula whose
     fingerprint does not match is `internal`, code `stale_implementation`, escalate, for its quantities
     only. A model formula without an implementation is `not_implemented` (Q1).
