@@ -1,15 +1,19 @@
 """``DiskCache``: one SQLite file, JSON values, byte limits, degraded operation (ch. 8.4, 8.14)."""
 
 import asyncio
+import contextlib
 import logging
 import math
 import sqlite3
 import threading
+import time
+from collections.abc import Awaitable, Callable
 from pathlib import Path
 from typing import Any
 
 import pytest
 from aero_kernel.cache import DiskCache, Entry, StoreError
+from pydantic import JsonValue
 
 from .cache_builders import entry
 
@@ -608,3 +612,138 @@ async def test_a_stale_quarantine_leaves_the_fresh_file_alone(tmp_path: Path) ->
     await asyncio.to_thread(getattr(cache, "_quarantine"), 0)  # noqa: B009 - private by design
     assert await cache.get("s", "fresh") == entry(7.0)
     assert (tmp_path / f"{DB_NAME}.corrupt").is_file()
+
+
+async def _max_loop_lag(work: Callable[[], Awaitable[object]]) -> float:
+    """Run ``work`` while a task sleeps 10 ms in a loop; return the worst oversleep in seconds."""
+    lags: list[float] = []
+    stop = asyncio.Event()
+
+    async def probe() -> None:
+        while not stop.is_set():
+            started = time.perf_counter()
+            await asyncio.sleep(0.01)
+            lags.append(time.perf_counter() - started - 0.01)
+
+    task = asyncio.create_task(probe())
+    await asyncio.sleep(0.03)
+    try:
+        await work()
+    finally:
+        stop.set()
+        await task
+    return max(lags)
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("operation", ["get", "put", "drop_scope"])
+async def test_waiting_for_a_database_lock_does_not_block_the_event_loop(
+    tmp_path: Path, operation: str
+) -> None:
+    cache = _disk(tmp_path, busy_timeout_s=0.4)
+    await cache.put("s", "k", entry())
+    blocker = sqlite3.connect(tmp_path / DB_NAME, isolation_level=None)
+    blocker.execute("BEGIN IMMEDIATE")
+    calls: dict[str, Callable[[], Awaitable[object]]] = {
+        "get": lambda: cache.get("s", "k"),
+        "put": lambda: cache.put("s", "j", entry()),
+        "drop_scope": lambda: cache.drop_scope("s"),
+    }
+
+    async def work() -> None:
+        with contextlib.suppress(StoreError):
+            await calls[operation]()
+
+    try:
+        lag = await _max_loop_lag(work)
+    finally:
+        blocker.execute("ROLLBACK")
+        blocker.close()
+    assert lag < 0.05
+
+
+def test_the_size_limit_has_no_default(tmp_path: Path) -> None:
+    with pytest.raises(TypeError):
+        DiskCache(path=tmp_path / DB_NAME)  # type: ignore[call-arg]  # the point: no default size
+
+
+@pytest.mark.asyncio
+async def test_the_database_is_in_wal_mode(tmp_path: Path) -> None:
+    await _disk(tmp_path).put("s", "k", entry())
+    with sqlite3.connect(tmp_path / DB_NAME) as db:
+        assert db.execute("PRAGMA journal_mode").fetchone() == ("wal",)
+
+
+@pytest.mark.asyncio
+async def test_put_and_eviction_are_one_transaction(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    cache = _disk(tmp_path)
+    await cache.put("s", "old", entry())
+
+    def failing_trim(*_args: object) -> None:
+        msg = "eviction failed"
+        raise RuntimeError(msg)
+
+    monkeypatch.setattr(DiskCache, "_trim", failing_trim)
+    with pytest.raises(RuntimeError, match="eviction failed"):
+        await cache.put("s", "new", entry())
+    with sqlite3.connect(tmp_path / DB_NAME) as db:
+        assert db.execute("SELECT key FROM entries ORDER BY key").fetchall() == [("old",)]
+    _agree(tmp_path)
+
+
+@pytest.mark.asyncio
+async def test_an_entry_over_the_scope_limit_is_not_stored_and_leaves_the_scope_alone(
+    tmp_path: Path,
+) -> None:
+    cache = _disk(tmp_path, max_bytes_per_scope=2 * _size() + 1)
+    await cache.put("busy", "a", entry())
+    await cache.put("busy", "b", entry())
+    await cache.put("busy", "big", Entry(outputs={"v": list[JsonValue]([1.0] * 50)}, warnings=()))
+    assert await cache.get("busy", "big") is None
+    assert await cache.get("busy", "a") == entry()
+    assert await cache.get("busy", "b") == entry()
+
+
+@pytest.mark.asyncio
+async def test_limits_count_utf8_bytes_not_characters(tmp_path: Path) -> None:
+    wide = Entry(outputs={"v": "ä" * 40}, warnings=())
+    text = wide.to_json()
+    assert len(text.encode()) > len(text)
+    cache = _disk(tmp_path, max_bytes=len(text))
+    await cache.put("s", "k", wide)
+    assert await cache.get("s", "k") is None
+
+
+@pytest.mark.asyncio
+async def test_the_same_key_in_two_scopes_coexists(tmp_path: Path) -> None:
+    cache = _disk(tmp_path)
+    await cache.put("a", "k", entry(1.0))
+    await cache.put("b", "k", entry(2.0))
+    assert await cache.get("a", "k") == entry(1.0)
+    assert await cache.get("b", "k") == entry(2.0)
+
+
+@pytest.mark.asyncio
+async def test_a_write_counts_as_access(tmp_path: Path) -> None:
+    cache = _disk(tmp_path, max_bytes=2 * _size() + 1)
+    await cache.put("s", "a", entry())
+    await cache.put("s", "b", entry())
+    await cache.put("s", "a", entry())
+    await cache.put("s", "c", entry())
+    assert await cache.get("s", "b") is None
+    assert await cache.get("s", "a") is not None
+
+
+@pytest.mark.asyncio
+async def test_a_negative_schema_version_resets_the_cache(
+    tmp_path: Path, caplog: pytest.LogCaptureFixture
+) -> None:
+    cache = _disk(tmp_path)
+    await cache.put("s", "k", entry())
+    with sqlite3.connect(tmp_path / DB_NAME) as db:
+        db.execute("PRAGMA user_version = -1")
+    with caplog.at_level(logging.WARNING, logger="aero_kernel.cache"):
+        assert await cache.get("s", "k") is None
+    assert "schema version -1" in caplog.text
