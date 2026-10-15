@@ -287,3 +287,11 @@ def test_a_malformed_slug_is_an_unknown_quantity_with_the_raw_spelling(
     error = CanonGraph(flight_canon).resolve("Not A Slug")
     assert isinstance(error, KernelError)
     assert (error.code, error.quantity) == ("unknown_quantity", "Not A Slug")
+
+
+def test_a_malformed_slug_is_reported_per_quantity_while_the_rest_resolves(
+    flight_canon: CanonModel,
+) -> None:
+    subtree = CanonGraph(flight_canon).subtree(["stall_speed", "stall-speed"])
+    assert [(e.code, e.quantity) for e in subtree.errors] == [("unknown_quantity", "stall_speed")]
+    assert [r.requested for r in subtree.requested] == ["stall-speed"]

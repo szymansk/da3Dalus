@@ -36,10 +36,14 @@ class TestComputeRequestQuantities:
         with pytest.raises(ValidationError, match=r"duplicate quantity in request.*stall-speed"):
             ComputeRequest(quantities=quantities)
 
-    @pytest.mark.parametrize("slug", ["Stall Speed", "calc:", "a:b:c"])
-    def test_a_malformed_slug_is_rejected(self, slug: str) -> None:
-        with pytest.raises(ValidationError, match="malformed slug"):
-            ComputeRequest(quantities=(slug,))
+    @pytest.mark.parametrize("slug", ["Stall Speed", "stall_speed", "calc:", "a:b:c"])
+    def test_a_malformed_slug_stays_a_per_quantity_matter(self, slug: str) -> None:
+        request = ComputeRequest(quantities=(slug, "stall-speed"))
+        assert request.quantities == (slug, "stall-speed")
+
+    def test_a_malformed_slug_requested_twice_is_a_duplicate(self) -> None:
+        with pytest.raises(ValidationError, match=r"duplicate quantity in request: stall_speed"):
+            ComputeRequest(quantities=("stall_speed", "stall_speed"))
 
     def test_the_same_slug_in_another_namespace_is_no_duplicate(self) -> None:
         request = ComputeRequest(quantities=("stall-speed", "other:stall-speed"))
