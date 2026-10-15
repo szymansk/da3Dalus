@@ -452,6 +452,12 @@ class TestInlineAirfoil:
         assert _paths(errors) == [f"{_AIRFOIL_PATH}.coordinates"]
         assert _codes(errors) == ["invalid_airfoil_contour"]
 
+    def test_contour_starting_at_the_leading_edge_is_one_finding(self) -> None:
+        """One code for one cause: the thickness of a contour that fails the rule is not computed."""
+        from_leading_edge = [[0.0, 0.0], [0.5, 0.06], [1.0, 0.0], [0.5, -0.06], [0.0, 0.0]]
+        errors = _validate(_with_airfoil({"coordinates": from_leading_edge}))
+        assert _codes(errors) == ["invalid_airfoil_contour"]
+
     def test_blunt_trailing_edge_is_accepted(self) -> None:
         blunt = [[1.0, 0.01], [0.5, 0.06], [0.0, 0.0], [0.5, -0.06], [1.0, -0.01]]
         assert _validate(_with_airfoil({"coordinates": blunt})) == ()

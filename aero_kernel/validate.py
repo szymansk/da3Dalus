@@ -15,6 +15,7 @@ import json
 import logging
 import math
 import re
+from bisect import bisect_left
 from collections.abc import Mapping
 from itertools import pairwise
 from typing import cast
@@ -152,13 +153,14 @@ _NACA = re.compile(r"naca(?P<digits>[0-9]{4})", re.IGNORECASE)
 
 def _interpolate(curve: list[tuple[float, float]], x: float) -> float:
     """Linearly interpolate ``y`` at ``x`` on a curve sorted by x; constant outside its range."""
-    if x <= curve[0][0]:
+    xs = [point[0] for point in curve]
+    x = min(x, xs[-1])
+    index = bisect_left(xs, x)
+    if index == 0:
         return curve[0][1]
-    for (x0, y0), (x1, y1) in pairwise(curve):
-        if x <= x1:
-            # x > x0 here: an earlier pair would have caught x <= x0, so x1 > x0
-            return y0 + (y1 - y0) * (x - x0) / (x1 - x0)
-    return curve[-1][1]
+    # xs[index - 1] < x <= xs[index], so the interval has a positive width
+    (x0, y0), (x1, y1) = curve[index - 1], curve[index]
+    return y0 + (y1 - y0) * (x - x0) / (x1 - x0)
 
 
 def _contour_thickness(points: tuple[tuple[float, float], ...]) -> float:
@@ -202,9 +204,11 @@ def _airfoil_findings(airfoil: geometry.Airfoil, path: str) -> list[KernelError]
     coordinates_path = f"{path}.coordinates"
     findings: list[KernelError] = []
     finite = all(math.isfinite(c) for point in points for c in point)
-    if len(points) < 3 or (
-        finite and not (points[0][0] == points[-1][0] == max(x for x, _ in points))
-    ):
+    # a non-finite contour is reported as such by the walk, so it is neither judged nor measured
+    trailing_edge = (
+        finite and len(points) >= 3 and points[0][0] == points[-1][0] == max(x for x, _ in points)
+    )
+    if len(points) < 3 or (finite and not trailing_edge):
         findings.append(
             _finding(
                 "invalid_airfoil_contour",
@@ -214,7 +218,8 @@ def _airfoil_findings(airfoil: geometry.Airfoil, path: str) -> list[KernelError]
                 "Start and end the contour at the trailing edge (Selig order).",
             )
         )
-    if len(points) >= 3 and finite:
+    # the thickness of a contour that fails the rule is meaningless: one code for one cause
+    if trailing_edge:
         thickness = _contour_thickness(points)
         if thickness <= 0:
             findings.append(
