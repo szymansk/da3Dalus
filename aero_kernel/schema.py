@@ -418,10 +418,17 @@ class ComputeRequest(BaseModel):
 
     @model_validator(mode="after")
     def _check_unique_quantities(self) -> Self:
-        """Reject a quantity requested twice, also in two spellings (bare means ``calc:``)."""
+        """Reject a quantity requested twice, also in two spellings (bare means ``calc:``).
+
+        A malformed slug is compared by its raw spelling: it is an unknown quantity, which the
+        graph reports per quantity.
+        """
         seen: dict[str, str] = {}
         for slug in self.quantities:
-            qualified = qualify(slug)
+            try:
+                qualified = qualify(slug)
+            except ValueError:  # malformed: an unknown quantity, reported per quantity (ch. 8.11)
+                qualified = slug
             if qualified in seen:
                 first = seen[qualified]
                 msg = f"duplicate quantity in request: {slug}" + (

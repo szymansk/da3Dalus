@@ -20,7 +20,7 @@ def formula(
     namespace: str = "calc",
     **extra: Any,
 ) -> dict[str, Any]:
-    """A one-application formula reading and writing quantities (bare slugs, parameter -> slug) in ``namespace``."""
+    """A one-application formula over quantities of ``namespace`` (bare slugs, parameter -> slug)."""
     bind = {parameter: f"{namespace}:{slug}" for parameter, slug in reads.items()}
     produce = {parameter: f"{namespace}:{slug}" for parameter, slug in writes.items()}
     app_extra = {key: extra.pop(key) for key in ("when", "given") if key in extra}
