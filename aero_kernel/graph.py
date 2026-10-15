@@ -11,6 +11,7 @@ import itertools
 import logging
 import math
 from collections.abc import Collection, Mapping, Sequence
+from typing import Self
 
 from aero_kernel.canon.model import (
     DEFAULT_NAMESPACE,
@@ -20,10 +21,15 @@ from aero_kernel.canon.model import (
     Quantity,
     WhenTerm,
 )
-from aero_kernel.errors import ErrorCategory, KernelError, format_world_assignment
+from aero_kernel.errors import (
+    ErrorCategory,
+    KernelError,
+    aggregate_upstream,
+    format_world_assignment,
+)
 from aero_kernel.geometry import AirplaneGeometry, Wing
-from aero_kernel.schema import Reason, ReasonCode
-from pydantic import BaseModel, ConfigDict
+from aero_kernel.schema import QuantityStatus, Reason, ReasonCode
+from pydantic import BaseModel, ConfigDict, model_validator
 
 logger = logging.getLogger(__name__)
 
@@ -32,7 +38,9 @@ __all__ = [
     "GraphModelError",
     "Node",
     "NodeId",
+    "NodeOutcome",
     "Produce",
+    "Propagated",
     "Read",
     "Resolved",
     "qualify",
@@ -162,6 +170,44 @@ class Edge(BaseModel):
     parameter: str
 
 
+class NodeOutcome(BaseModel):
+    """What happened to a node, as far as its successors care (ch. 8.13).
+
+    Attributes:
+        status: The node's status.
+        error: Why it failed, exactly for status ``error``.
+    """
+
+    model_config = _FROZEN
+
+    status: QuantityStatus
+    error: KernelError | None = None
+
+    @model_validator(mode="after")
+    def _check_error(self) -> Self:
+        """Require an error exactly with status ``error``."""
+        if (self.status is QuantityStatus.ERROR) != (self.error is not None):
+            msg = "an outcome carries an error exactly when its status is error"
+            raise ValueError(msg)
+        return self
+
+
+class Propagated(BaseModel):
+    """The status a node takes from its predecessors (ch. 8.13).
+
+    Attributes:
+        status: ``error``, ``skipped`` or ``not_applicable``.
+        reason: Why, for ``skipped`` and ``not_applicable``.
+        error: The ``upstream_failed`` error, for ``error``.
+    """
+
+    model_config = _FROZEN
+
+    status: QuantityStatus
+    reason: Reason | None = None
+    error: KernelError | None = None
+
+
 class Subtree(BaseModel):
     """The part of the graph one request needs (ch. 6 steps 2 and 3, K29).
 
@@ -201,6 +247,66 @@ class Subtree(BaseModel):
             if resolved.slug == qualified:
                 return resolved.producer
         raise KeyError(slug)
+
+    def long_run_nodes(self) -> tuple[NodeId, ...]:
+        """Return the nodes of cost class ``minutes``, in order (ch. 8.7).
+
+        The graph decides nothing: the engine skips them when ``include_long_runs`` is off.
+        """
+        return tuple(node.id for node in self.nodes if node.cost == "minutes")
+
+    def propagate(
+        self,
+        node: NodeId,
+        outcomes: Mapping[NodeId, NodeOutcome],
+        *,
+        quantity: str,
+        world: str | None = None,
+    ) -> Propagated | None:
+        """Give a node the status its predecessors force on it (ch. 8.13 table).
+
+        Only the predecessors the node reads count. Precedence: ``error`` over ``skipped`` over
+        ``not_applicable``. A computed predecessor propagates the same way into an ``optional``
+        parameter; ``optional`` only covers an absent supplied value.
+
+        Args:
+            node: The node.
+            outcomes: The outcome of each of its predecessors (others are ignored).
+            quantity: Slug of the quantity the status is reported for, used in an error.
+            world: Canonical world assignment string of the evaluation, if any.
+
+        Returns:
+            The forced status, or ``None`` if every read predecessor is ``ok`` (or there is none).
+
+        Raises:
+            KeyError: If a read predecessor has no outcome.
+        """
+        read = list(dict.fromkeys(edge.predecessor for edge in self.edges[node]))
+        causes = [e for p in read if (e := outcomes[p].error) is not None]
+        if causes:
+            error = aggregate_upstream(
+                causes,
+                quantity=quantity,
+                formula=node.formula_slug,
+                application=node.application,
+                world=world,
+            )
+            return Propagated(status=QuantityStatus.ERROR, error=error)
+        for status, code, wording in (
+            (QuantityStatus.SKIPPED, ReasonCode.DEPENDS_ON_SKIPPED, "skipped"),
+            (QuantityStatus.NOT_APPLICABLE, ReasonCode.DEPENDS_ON_NOT_APPLICABLE, "not applicable"),
+        ):
+            names = [
+                f"`{edge.quantity.partition(':')[2]}`"
+                for edge in self.edges[node]
+                if outcomes[edge.predecessor].status is status
+            ]
+            if names:
+                message = (
+                    f"`{quantity}` reads {', '.join(dict.fromkeys(names))}, which is {wording}."
+                )
+                return Propagated(status=status, reason=Reason(code=code, message=message))
+        return None
 
     def nodes_for(self, slug: str) -> tuple[NodeId, ...]:
         """Return the nodes a requested quantity needs, in topological order.
