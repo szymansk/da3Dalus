@@ -9,6 +9,7 @@ tags:
   - canon/quantity
   - role/input
 type: scalar
+positive: true
 default: {value: 9.80665, source: "standard gravity, CGPM 1901 / U.S. Standard Atmosphere 1976"}
 ---
 

@@ -9,6 +9,7 @@ tags:
   - canon/quantity
   - role/target
 type: scalar
+positive: true
 ---
 
 # Structural limit load factor · `n_lim`

@@ -291,7 +291,7 @@ EXAMPLE_KEYS_FORMULA = (
     "worlds",
     "cost",
 )
-EXAMPLE_KEYS_QUANTITY = ("type", "default", "uncertainty")
+EXAMPLE_KEYS_QUANTITY = ("type", "default", "uncertainty", "positive")
 
 
 @dataclasses.dataclass(frozen=True)

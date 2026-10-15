@@ -9,6 +9,7 @@ tags:
   - canon/quantity
   - role/input
 type: scalar
+positive: true
 ---
 
 # Aircraft design mass · `m`

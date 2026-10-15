@@ -575,3 +575,5 @@ Maintainer; `check_canon.py` meldet es als *open*.
 
 **Delta-Review F5 (Architekt, 15.10.2026):** `variables` ohne `embeds` ist ein Fehler. `variables` gehört zu den Schlüsseln, die README-Beispiele vollständig wiedergeben müssen; neues Beispiel `mass-envelope` (Einbettung je Anwendung, Variablen, Eingänge mit `m_current` und `airplane_ldg`). Neue offene Warnung (lässt den Lauf nicht scheitern): eine Skalargröße mit Rolle `input`/`target` ohne Vorgabe, die der Abschluss über einen Eingang des Einbettenden bindet und die nicht in `variables` steht. Der reale Kanon erzeugt keine solche Warnung.
 
+**Größenfeld `positive` (Architekt, 15.10.2026, 594b5988):** `positive: true` heißt „nach Definition echt größer null“ (Tatsache, keine Bewertung, A10), nur bei Rolle `input`/`target`; gesetzt bei `aircraft-mass`, `gravity`, `sea-level-air-density`, `limit-load-factor` (laut Definition ein positives Grenzlastvielfaches). Offene Fälle (Wirkungsgrad, Geschwindigkeits- und Reserveziele, Fluggeschwindigkeit, Rollratenziele) liegen beim Koordinator.
+
