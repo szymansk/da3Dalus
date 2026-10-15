@@ -4,6 +4,7 @@ The two must not drift: same fields (by format key), same required set, same enu
 (except the millimetre fields, whose defaults are metres in the model), and real documents parse.
 """
 
+import copy
 import json
 from pathlib import Path
 from typing import Any, Literal, cast, get_args, get_origin
@@ -125,7 +126,9 @@ def repair_for_schema(document: dict[str, Any]) -> dict[str, Any]:
     surfaces, the format's ``trailing_edge_device`` (with its role) is absent, and building one
     would mean guessing the roles.
     """
-    repaired = {k: v for k, v in document.items() if k not in {"urmodell", "herkunft"}}
+    repaired = {
+        k: v for k, v in copy.deepcopy(document).items() if k not in {"urmodell", "herkunft"}
+    }
     for group in ("wings", "fuselages"):
         bodies: dict[str, dict[str, Any]] = repaired.get(group) or {}
         for key, body in bodies.items():
@@ -169,6 +172,14 @@ def test_fleet_file_parses_or_is_rejected_only_for_control_surfaces(path: Path) 
 def test_fleet_documents_parse_after_the_two_repairs(path: Path) -> None:
     airplane = AirplaneGeometry.model_validate(repair_for_schema(read_document(path)))
     assert airplane.wings or airplane.fuselages
+
+
+def test_repair_does_not_mutate_its_input() -> None:
+    path = repaired_fleet(conformant=False)[0]
+    document = read_document(path)
+    before = copy.deepcopy(document)
+    repair_for_schema(document)
+    assert document == before
 
 
 def test_repair_leaves_control_surfaces_in_place() -> None:
