@@ -261,7 +261,9 @@ No internal paths or mechanisms in any field (ADR 0019).
 ### 8.4 Provenance, cache key and the two interfaces
 
 `Provenance`:
-- kernel version
+- kernel version (`aero_kernel.__version__`, a constant bumped by hand: the repository is not an installed
+  package) **and the build digest** (below), which identifies the exact code even when nobody bumped the
+  version (Q3)
 - canon model hash and its source commit (the canon state)
 - tool versions (aerosandbox, NeuralFoil model, AVL)
 - accuracy tier (A3) and solver settings
