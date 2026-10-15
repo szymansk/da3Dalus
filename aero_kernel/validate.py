@@ -9,9 +9,11 @@ of control devices are never read (ch. 8.11).
 import json
 import logging
 import math
+from collections.abc import Mapping
 from typing import cast
 
 from aero_kernel.errors import ErrorCategory, KernelError
+from aero_kernel.geometry import Wing
 from aero_kernel.schema import AircraftInput
 from pydantic import BaseModel
 
@@ -61,6 +63,50 @@ def _non_finite(node: object, path: str) -> list[KernelError]:
     return findings
 
 
+def _not_positive(value: float, path: str, what: str) -> list[KernelError]:
+    """Report ``value`` if it is finite and ``<= 0`` (a non-finite value is reported elsewhere)."""
+    if not math.isfinite(value) or value > 0:
+        return []
+    return [
+        _finding(
+            path, f"{what} at {path} is {value}, but must be > 0.", f"Give {path} a value > 0."
+        )
+    ]
+
+
+def _wing_findings(wings: Mapping[str, Wing]) -> list[KernelError]:
+    """Check the wings: at least two sections and a positive chord on each."""
+    findings: list[KernelError] = []
+    for key, wing in wings.items():
+        wing_path = _key_path("airplane.wings", key)
+        if len(wing.x_secs) < 2:
+            findings.append(
+                _finding(
+                    f"{wing_path}.x_secs",
+                    f"Wing {key!r} has {len(wing.x_secs)} section(s); a wing needs at least 2.",
+                    "Give the wing a root and a tip section.",
+                )
+            )
+        for index, x_sec in enumerate(wing.x_secs):
+            findings += _not_positive(x_sec.chord, f"{wing_path}.x_secs[{index}].chord", "Chord")
+    return findings
+
+
+def _value_findings(values: Mapping[str, float]) -> list[KernelError]:
+    """Check the passed values: mass and density must be positive."""
+    findings: list[KernelError] = []
+    for slug, what in _POSITIVE_VALUES.items():
+        if slug in values:
+            findings += _not_positive(values[slug], f"values.{slug}", what)
+    return findings
+
+
+_POSITIVE_VALUES: Mapping[str, str] = {
+    "aircraft-mass": "Mass",
+    "sea-level-air-density": "Density",
+}
+
+
 def validate_input(aircraft: AircraftInput) -> tuple[KernelError, ...]:
     """Report every physically inadmissible value of an aircraft input.
 
@@ -78,4 +124,8 @@ def validate_input(aircraft: AircraftInput) -> tuple[KernelError, ...]:
     for slug in sorted(aircraft.values):
         findings += _non_finite(aircraft.values[slug], f"values.{slug}")
     logger.debug("rule non_finite: %d findings", len(findings))
-    return tuple(findings)
+    wing_findings = _wing_findings(aircraft.airplane.wings or {})
+    logger.debug("rule wings: %d findings", len(wing_findings))
+    value_findings = _value_findings(aircraft.values)
+    logger.debug("rule positive_values: %d findings", len(value_findings))
+    return tuple(findings + wing_findings + value_findings)
