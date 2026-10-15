@@ -193,3 +193,27 @@ def _keyword_only_pre(*, x: Mapping[str, float]) -> CheckResult:
 def test_check_that_cannot_be_called_positionally_is_rejected() -> None:
     with pytest.raises(RegistryError, match="exactly 1"):
         Registry().precondition("stall-speed", "rho-ok")(_keyword_only_pre)
+
+
+def _var_positional_pre(*args: object) -> CheckResult:
+    return HELD
+
+
+def _pre_with_default(x: Mapping[str, float], extra: int = 1) -> CheckResult:
+    return HELD
+
+
+def _post_with_default(x: Mapping[str, float], y: Mapping[str, float], z: int = 1) -> CheckResult:
+    return HELD
+
+
+@pytest.mark.parametrize("func", [_var_positional_pre, _pre_with_default])
+def test_precondition_must_declare_exactly_x(func: Callable[..., CheckResult]) -> None:
+    with pytest.raises(RegistryError, match="exactly 1"):
+        Registry().precondition("stall-speed", "rho-ok")(func)
+
+
+@pytest.mark.parametrize("func", [_var_positional_pre, _post_with_default])
+def test_postcondition_must_declare_exactly_x_and_y(func: Callable[..., CheckResult]) -> None:
+    with pytest.raises(RegistryError, match="exactly 2"):
+        Registry().postcondition("stall-speed", "rho-ok")(func)

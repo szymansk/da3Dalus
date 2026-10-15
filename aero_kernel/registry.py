@@ -163,16 +163,18 @@ def interface_fingerprint(formula: Formula) -> str:
 
 
 def _require_positional_arity(func: Callable[..., object], arity: int, what: str) -> None:
-    """Raise ``RegistryError`` unless ``func`` can be called with exactly ``arity`` positional arguments.
+    """Raise ``RegistryError`` unless ``func`` declares exactly ``arity`` positional parameters.
 
-    A keyword-only parameter without default, or too few or too many positional ones, fail the
-    call the engine will make; ``*args`` is accepted.
+    No ``*args``, ``**kwargs``, keyword-only parameter or default value: the signature is the
+    contract the engine calls (ch. 8.12), so it must show exactly the required positions.
     """
-    try:
-        inspect.signature(func).bind(*([None] * arity))
-    except TypeError as error:
-        msg = f"{what} must be callable with exactly {arity} positional arguments"
-        raise RegistryError(msg) from error
+    positional = (inspect.Parameter.POSITIONAL_ONLY, inspect.Parameter.POSITIONAL_OR_KEYWORD)
+    parameters = list(inspect.signature(func).parameters.values())
+    if len(parameters) != arity or any(
+        p.kind not in positional or p.default is not inspect.Parameter.empty for p in parameters
+    ):
+        msg = f"{what} must declare exactly {arity} positional parameters without defaults"
+        raise RegistryError(msg)
 
 
 class Registry:
