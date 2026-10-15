@@ -84,6 +84,73 @@ def test_published_json_schema_shows_the_format_default_under_the_format_key() -
     assert published["properties"]["height_mm"]["default"] == 0.3
 
 
+# Where the model deliberately accepts more than the schema: the inline airfoil (ch. 8.11).
+EXTRA_BRANCHES: dict[tuple[str, str], frozenset[Any]] = {
+    ("WingXSec", "airfoil"): frozenset({("ref", "InlineAirfoil")}),
+}
+
+Signature = frozenset[Any]
+
+
+def type_signature(node: dict[str, Any], defs: dict[str, Any]) -> Signature:
+    """Reduce a JSON Schema node to the set of type branches it admits.
+
+    Branches: ``"null"``, ``"number"``, ``"integer"``, ``"string"``, ``"boolean"``,
+    ``("enum", values)``, ``("ref", name)`` for an object definition, ``"point3"``,
+    ``("array", item signature)`` and ``("object", value signature)``. Numeric bounds, array
+    lengths other than for a point, and descriptions are left out on purpose: the model carries
+    no physical constraint (ch. 8.11), so only the type structure is compared.
+    """
+    if "$ref" in node:
+        name = node["$ref"].rsplit("/", 1)[-1]
+        target = defs[name]
+        if "properties" in target:
+            return frozenset({("ref", name)})
+        return type_signature(target, defs)
+    if "anyOf" in node:
+        return frozenset().union(*(type_signature(b, defs) for b in node["anyOf"]))
+    if "const" in node:
+        return frozenset({("enum", frozenset({node["const"]}))})
+    if "enum" in node:
+        values = set(node["enum"])
+        branches: set[Any] = {("enum", frozenset(values - {None}))}
+        if None in values:
+            branches.add("null")
+        return frozenset(branches)
+    kinds = node["type"] if isinstance(node["type"], list) else [node["type"]]
+    return frozenset().union(*(kind_signature(kind, node, defs) for kind in kinds))
+
+
+def kind_signature(kind: str, node: dict[str, Any], defs: dict[str, Any]) -> Signature:
+    """Reduce one JSON ``type`` of a node (with its array and object details) to branches."""
+    if kind == "array":
+        if node.get("minItems") == node.get("maxItems") == 3:
+            return frozenset({"point3"})
+        return frozenset({("array", type_signature(node["items"], defs))})
+    if kind == "object":
+        values = node.get("additionalProperties")
+        return frozenset({("object", type_signature(values, defs) if values else frozenset())})
+    return frozenset({kind})
+
+
+def test_field_types_match_the_schema() -> None:
+    """Per field: same type branches, nullability and refs as the JSON Schema."""
+    model_doc = AirplaneGeometry.model_json_schema(mode="validation")
+    schema_doc = load_schema()
+    pairs = [("Airplane", model_doc, schema_doc)] + [
+        (name, model_doc["$defs"][name], definition)
+        for name, definition in object_schemas().items()
+        if name != "Airplane"
+    ]
+    for name, model_def, schema_def in pairs:
+        for key, prop in schema_def["properties"].items():
+            expected = type_signature(prop, schema_doc.get("$defs", {}))
+            actual = type_signature(model_def["properties"][key], model_doc["$defs"])
+            extra = EXTRA_BRANCHES.get((name, key), frozenset())
+            assert actual - extra == expected, (name, key, actual, expected)
+            assert extra <= actual, (name, key)
+
+
 def test_every_object_definition_has_a_model() -> None:
     names = set(object_schemas()) - {"Airplane"}
     assert names == set(MODELS)

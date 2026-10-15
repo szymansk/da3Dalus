@@ -125,9 +125,9 @@ class WingUnits(_Frozen):
         angle: Unit of every angular field.
     """
 
-    geometry_length: Literal["m"] | None = None
-    detail_length: Literal["m"] | None = None
-    angle: Literal["deg"] | None = None
+    geometry_length: Literal["m"] = "m"
+    detail_length: Literal["m"] = "m"
+    angle: Literal["deg"] = "deg"
 
 
 class ControlSurface(_Frozen):
@@ -336,14 +336,14 @@ class Wing(_Frozen):
         symmetric: Whether the surface is mirrored about the XZ plane (only one half is stored).
         design_model: Which editor owns the wing; geometry-neutral.
         x_secs: Ribs from root to tip.
-        units: Declared units.
+        units: Declared units; the constants when absent.
     """
 
     name: str
     symmetric: Flag = True
     design_model: Literal["wc", "asb"] | None = None
     x_secs: tuple[WingXSec, ...]
-    units: WingUnits | None = None
+    units: WingUnits = Field(default_factory=WingUnits)
 
 
 class AirplaneGeometry(_Frozen):
