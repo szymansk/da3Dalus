@@ -45,7 +45,9 @@ class Validation(BaseModel):
     warnings: tuple[KernelWarning, ...] = ()
 
 
-# Fields no kernel formula reads (ch. 8.11); a finding on them would be noise. A device's
+# Fields no kernel formula reads. This is the policy "a check exists only for a field the kernel
+# reads" (ch. 8.11): a finding on them would be noise. When a later formula starts reading one
+# (turbulator, spars), that unit removes it from this table. A device's
 # ``control_surface`` is read for its deflection only (to report an ignored one); the stops
 # (``*_deflection_deg``) are never read.
 UNREAD_FIELDS: Mapping[type[BaseModel], frozenset[str]] = {
@@ -217,7 +219,9 @@ def _airfoil_findings(airfoil: geometry.Airfoil, path: str) -> list[KernelError]
                     "non_positive_thickness",
                     coordinates_path,
                     f"The airfoil at {coordinates_path} has a maximum thickness of {thickness} "
-                    "chord fractions; it must be > 0.",
+                    "chord fractions: thickness <= 0; inline coordinates must be in Selig order "
+                    "(upper surface from the trailing edge to the leading edge, then the lower "
+                    "surface).",
                     "Give the upper surface (first half of the contour) above the lower one.",
                     thickness,
                 )

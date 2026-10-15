@@ -415,6 +415,12 @@ class TestInlineAirfoil:
         assert _paths(errors) == [f"{_AIRFOIL_PATH}.coordinates"]
         assert _codes(errors) == ["non_positive_thickness"]
 
+    def test_reversed_contour_message_names_the_selig_rule(self) -> None:
+        reversed_diamond = [[1.0, 0.0], [0.5, -0.06], [0.0, 0.0], [0.5, 0.06], [1.0, 0.0]]
+        (error,) = _validate(_with_airfoil({"coordinates": reversed_diamond}))
+        assert error.code == "non_positive_thickness"
+        assert "Selig order" in error.message
+
     def test_flat_contour_has_no_thickness(self) -> None:
         flat = [[1.0, 0.0], [0.5, 0.0], [0.0, 0.0], [0.5, 0.0], [1.0, 0.0]]
         assert _codes(_validate(_with_airfoil({"coordinates": flat}))) == ["non_positive_thickness"]
