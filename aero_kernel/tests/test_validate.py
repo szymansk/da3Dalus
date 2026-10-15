@@ -305,3 +305,73 @@ class TestControlSurface:
         x_sec["control_surface"] = {"name": "aileron"}
         x_sec["trailing_edge_device"] = {"role": "aileron"}
         assert _validate(document) == ()
+
+
+DIAMOND = [[1.0, 0.0], [0.5, 0.06], [0.0, 0.0], [0.5, -0.06], [1.0, 0.0]]
+
+
+def _with_airfoil(airfoil: object) -> dict[str, Any]:
+    document = _document()
+    document["airplane"]["wings"]["Main wing"]["x_secs"][1]["airfoil"] = airfoil
+    return document
+
+
+_AIRFOIL_PATH = 'airplane.wings["Main wing"].x_secs[1].airfoil'
+
+
+class TestAirfoilDesignation:
+    @pytest.mark.parametrize("name", ["naca2412", "NACA2412", "NaCa23012", "naca0012"])
+    def test_naca_designations_are_accepted(self, name: str) -> None:
+        assert _validate(_with_airfoil(name)) == ()
+
+    @pytest.mark.parametrize(
+        "name",
+        ["airfoils/e387.dat", "NACA 2412", "naca241", "naca241255", "2412", "", "naca63-412"],
+    )
+    def test_anything_else_is_unresolved(self, name: str) -> None:
+        errors = _validate(_with_airfoil(name))
+        assert _paths(errors) == [_AIRFOIL_PATH]
+        assert _codes(errors) == ["unresolved_airfoil"]
+        assert errors[0].category is ErrorCategory.INVALID_INPUT
+
+    @pytest.mark.parametrize("name", ["naca0000", "NACA23000"])
+    def test_zero_thickness_digits_are_rejected(self, name: str) -> None:
+        errors = _validate(_with_airfoil(name))
+        assert _paths(errors) == [_AIRFOIL_PATH]
+        assert _codes(errors) == ["non_positive_thickness"]
+
+
+class TestInlineAirfoil:
+    def test_closed_contour_with_thickness_is_accepted(self) -> None:
+        assert _validate(_with_airfoil({"coordinates": DIAMOND})) == ()
+
+    def test_open_contour_is_rejected(self) -> None:
+        errors = _validate(_with_airfoil({"coordinates": [*DIAMOND[:-1], [0.99, 0.0]]}))
+        assert _paths(errors) == [f"{_AIRFOIL_PATH}.coordinates"]
+        assert _codes(errors) == ["open_airfoil_contour"]
+
+    @pytest.mark.parametrize("count", [0, 1, 2])
+    def test_fewer_than_three_points_are_rejected(self, count: int) -> None:
+        coordinates = [[1.0, 0.0], [0.0, 0.0], [1.0, 0.0]][:count]
+        errors = _validate(_with_airfoil({"coordinates": coordinates}))
+        assert _codes(errors) == ["open_airfoil_contour"]
+
+    def test_three_points_closed_with_zero_thickness_are_rejected(self) -> None:
+        errors = _validate(_with_airfoil({"coordinates": [[1.0, 0.0], [0.0, 0.0], [1.0, 0.0]]}))
+        assert _paths(errors) == [f"{_AIRFOIL_PATH}.coordinates"]
+        assert _codes(errors) == ["non_positive_thickness"]
+
+    def test_flat_contour_has_no_thickness(self) -> None:
+        flat = [[1.0, 0.0], [0.5, 0.0], [0.0, 0.0], [0.5, 0.0], [1.0, 0.0]]
+        assert _codes(_validate(_with_airfoil({"coordinates": flat}))) == ["non_positive_thickness"]
+
+    def test_cambered_zero_thickness_curve_has_no_thickness(self) -> None:
+        # upper and lower coincide on a cambered line: y-range is > 0 but thickness is 0
+        line = [[1.0, 0.0], [0.5, 0.05], [0.0, 0.0], [0.5, 0.05], [1.0, 0.0]]
+        assert _codes(_validate(_with_airfoil({"coordinates": line}))) == ["non_positive_thickness"]
+
+    def test_non_finite_point_is_only_a_non_finite_finding(self) -> None:
+        coordinates = [[1.0, 0.0], [0.5, math.nan], [0.0, 0.0], [0.5, -0.06], [1.0, 0.0]]
+        assert _codes(_validate(_with_airfoil({"coordinates": coordinates}))) == [
+            "non_finite_number"
+        ]
