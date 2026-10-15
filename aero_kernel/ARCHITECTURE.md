@@ -131,7 +131,8 @@ aero_kernel/
   solvers/          aerobuildup.py · avl.py · opti.py · atmosphere.py · data.py (KAT, APC providers)
   cache.py          NodeStore protocol; MemoryCache (LRU), DiskCache
   validate.py       physical admissibility; regime warnings (ADR 0028)
-  errors.py         error catalogue (ch. 8.1)
+  errors.py         error catalogue (ch. 8.1): `ErrorCategory`, the code table (code → category, hint),
+                    `FormulaError`; `KernelError` itself is a result type and lives in schema.py
   __init__.py       public API; adds the NullHandler to the `aero_kernel` logger (ch. 8.14)
   tools/            robustness.py (#1178)
   tests/            unit, property, golden, traceability and error tests
@@ -190,7 +191,6 @@ An error means **no value**. A value with a caveat is a **warning** (8.2), not a
 |---|---|---|---|---|
 | `invalid_input` | no | no | input is physically inadmissible | "Chord at `wings.W.x_secs[2].chord` must be > 0." |
 | `unsupported_configuration` | no | no | the method does not cover this layout, or a target lies above what the method itself can reach (code `target_above_method_maximum`, `detail` = the maximum reached and the input at which it occurs, e.g. the roll rate and δ_a) | "The textbook neutral-point formula needs a horizontal tail." |
-| `not_applicable` | — | — | **not an error**: the application does not exist (no separate flap and aileron → no butterfly approach) | — |
 | `not_implemented` | no | no | the canon formula has no implementation yet | "`max-sustained-turn-rate` is in the canon, not in the kernel." |
 | `not_converged` | yes | no | the solver found no solution | "Raise the accuracy tier or change the start value." |
 | `timeout` | yes | no | the time budget was exceeded | "Raise the budget or request it as a long run." |
@@ -198,7 +198,13 @@ An error means **no value**. A value with a caveat is a **warning** (8.2), not a
 | `upstream_failed` | as predecessor | as predecessor | a predecessor quantity has no value | "Fix `stall-speed` first." |
 | `internal` | no | yes | programming error | "Report it; attach input and provenance." |
 
-`escalate = true` means an agent cannot resolve this itself; a human has to act.
+`escalate = true` means an agent cannot resolve this itself; a human has to act. `retryable` and `escalate`
+follow from the category (the table), never set per error; for `upstream_failed` they are derived from the
+root causes (below).
+
+**`not_applicable` is no category.** It is a `QuantityResult.status` with a `reason` (ch. 8.3), not a
+`KernelError`: the application does not exist (no separate flap and aileron → no butterfly approach), so
+nothing failed. The category enum holds only the eight rows above.
 
 - **`compute()` never raises for computational failure.** Everything is in the `ComputeResult`. It raises
   only `asyncio.CancelledError` and Pydantic `ValidationError` when the caller builds a malformed
@@ -738,9 +744,13 @@ async def stall_speed(x: Inputs, ctx: Context) -> dict[str, Value]:
   run CPU work in the process pool and AVL as an async subprocess (ch. 8.10).
 - **Picklability** concerns only adapters: what they send to the pool is a module-level function and plain
   data. Formulas themselves never cross a process boundary.
-- **Failure.** Raise `FormulaError(category, code, message, hint, detail)` for an expected failure
-  (`not_converged`, `unsupported_configuration`, …). Any other exception becomes `internal`. Never return a
-  substitute value (ADR 0020).
+- **Failure.** Raise `FormulaError(category, code, message, hint, detail=None, input_path=None)` for an
+  expected failure. Formulas and adapters may raise only `invalid_input` (e.g. `missing_input` for an
+  optional parameter that is needed after all, with `input_path`), `unsupported_configuration`,
+  `not_converged` and `tool_unavailable`; `timeout`, `upstream_failed`, `not_implemented` and `internal`
+  belong to the engine. The engine turns a `FormulaError` into a `KernelError`, adding `quantity`,
+  `formula`, `application`, `world` and `retryable`/`escalate` from the category. Any other exception
+  becomes `internal`. Never return a substitute value (ADR 0020).
 - **Preconditions** are separate functions, `@precondition("stall-speed", "<check-id>")`, run only for the
   applications the canon scopes them to (ch. 8.5), taking the same
   `x` and returning `held | violated | unchecked` with a message. **Postconditions**,
