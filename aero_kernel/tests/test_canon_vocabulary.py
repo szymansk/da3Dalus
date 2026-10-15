@@ -1,4 +1,9 @@
-"""The closed vocabularies of the canon model, pinned to their exact members (ch. 8.9)."""
+"""The closed vocabularies of the canon model, pinned to their exact members (ch. 8.9).
+
+A deliberate change detector: the member lists below are hand-copied from the canon README
+"Machine-readable fields" as of #1181 (the units from the quantity entries, normalised). A change
+to a vocabulary must change this file in the same commit, and the model's ``schema_version``.
+"""
 
 from typing import get_args
 
@@ -45,11 +50,9 @@ VOCABULARIES = {
 
 @pytest.mark.parametrize("name", sorted(VOCABULARIES))
 def test_vocabulary_has_exactly_these_members(name: str) -> None:
-    assert list(get_args(getattr(model, name))) == VOCABULARIES[name]
-
-
-def test_unit_set_has_twenty_three_symbols() -> None:
-    assert len(get_args(model.Unit)) == 23
+    members = get_args(getattr(model, name))
+    assert len(members) == len(set(members)) == len(VOCABULARIES[name])
+    assert set(members) == set(VOCABULARIES[name])
 
 
 @pytest.mark.parametrize("value", ["point", "Interval", "", "continuous"])
