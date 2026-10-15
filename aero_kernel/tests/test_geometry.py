@@ -8,6 +8,7 @@ import math
 from typing import Any
 
 import pytest
+from aero_kernel import geometry
 from aero_kernel.geometry import (
     AirplaneGeometry,
     ControlSurface,
@@ -593,3 +594,24 @@ class TestAirfoil:
         assert parse_first_section({"airfoil": {"coordinates": []}}).airfoil == InlineAirfoil(
             coordinates=()
         )
+
+
+def test_all_pins_the_public_names() -> None:
+    assert sorted(geometry.__all__) == sorted(
+        [
+            "Airfoil",
+            "AirplaneGeometry",
+            "ControlSurface",
+            "Fuselage",
+            "FuselageXSecSuperEllipse",
+            "InlineAirfoil",
+            "Servo",
+            "SpareDetail",
+            "TrailingEdgeDevice",
+            "Turbulator",
+            "Wing",
+            "WingXSec",
+        ]
+    )
+    for name in geometry.__all__:
+        assert hasattr(geometry, name)
