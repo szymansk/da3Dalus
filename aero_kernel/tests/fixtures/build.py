@@ -86,6 +86,7 @@ stall_outputs = {"v_s": None, "cl_max": None, "polar": None}
 
 
 def stall_bind(n: float, airplane: str = "calc:airplane") -> dict[str, Any]:
+    """Bind the inputs of ``stall-speed``: the load factor ``n`` as a sourced constant."""
     return {
         "airplane": airplane,
         "m": "calc:aircraft-mass",

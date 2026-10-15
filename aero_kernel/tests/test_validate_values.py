@@ -21,6 +21,12 @@ def model() -> CanonModel:
         "type": "scalar",
         "positive": True,
     }
+    quantities["airplane-landing"] = {
+        "symbol": "airplane_ldg",
+        "unit": "1",
+        "role": "derived",
+        "type": "airplane",
+    }
     quantities["airplane"] = {
         "symbol": "airplane",
         "unit": "1",
@@ -97,4 +103,23 @@ def test_other_non_scalar_input_is_not_a_number() -> None:
         "type": "curve",
     }
     (error,) = validate_values({"grid": 1.0}, CanonModel.model_validate(with_hash(namespaces)))
+    assert error.code == "not_an_input"
     assert "`grid` is a curve, not a number; values hold numbers only" in error.message
+
+
+@pytest.mark.parametrize(
+    ("slug", "value"), [("gravity", 0.0), ("cruise-speed-target", -1.0), ("aircraft-mass", -0.5)]
+)
+def test_every_positive_quantity_is_checked_whatever_its_role_or_slug(
+    slug: str, value: float
+) -> None:
+    (error,) = validate_values({slug: value}, model())
+    assert error.code == "non_positive_value"
+    assert error.input_path == f"values.{slug}"
+
+
+def test_derived_non_scalar_is_computed_by_the_kernel_not_the_airplane() -> None:
+    (error,) = validate_values({"airplane-landing": 1.0}, model())
+    assert error.code == "not_an_input"
+    assert "computed by the kernel" in error.message
+    assert "AircraftInput.airplane" not in error.message

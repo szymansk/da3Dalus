@@ -3,6 +3,8 @@
 import copy
 from typing import Any
 
+# ``Any`` below is the raw-JSON boundary: these dicts are hand-edited JSON documents that the
+# tests mutate before the canon model validates them; the model types are the typed side.
 from aero_kernel.canon.model import Namespace, compute_content_hash
 from pydantic import TypeAdapter
 

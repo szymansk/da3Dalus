@@ -36,3 +36,7 @@ def test_negative_zero_is_canonicalised_in_nested_values() -> None:
     nested: JsonValue = {"a": [1.5, {"b": -0.0, "c": [-0.0]}], "d": -1.0}
     assert canonical_json(nested) == b'{"a":[1.5,{"b":0.0,"c":[0.0]}],"d":-1.0}'
     assert sha256_of({"x": [-0.0]}) == sha256_of({"x": [0.0]})
+
+
+def test_floats_keep_their_shortest_round_trip_repr() -> None:
+    assert b"0.30000000000000004" in canonical_json([0.1 + 0.2])

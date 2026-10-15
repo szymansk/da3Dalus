@@ -745,3 +745,28 @@ def test_is_world_name_accepts_snake_case(text: str) -> None:
 )
 def test_is_world_name_rejects_everything_else(text: str) -> None:
     assert not is_world_name(text)
+
+
+def test_public_names_of_errors_are_pinned() -> None:
+    from aero_kernel import errors
+
+    assert sorted(errors.__all__) == sorted(
+        [
+            "CODE_CATALOGUE",
+            "SLUG_REGEX",
+            "WORLD_NAME_REGEX",
+            "ErrorCategory",
+            "FormulaError",
+            "KernelError",
+            "aggregate_upstream",
+            "check_finite_json",
+            "flags_for",
+            "format_world_assignment",
+            "internal_error_from_exception",
+            "is_slug",
+            "is_world_name",
+            "parse_world_assignment",
+        ]
+    )
+    for name in errors.__all__:
+        assert hasattr(errors, name)
