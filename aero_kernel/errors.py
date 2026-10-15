@@ -119,20 +119,18 @@ def flags_for(category: ErrorCategory) -> tuple[bool, bool]:
     return _FLAGS[category]
 
 
-def _flags_required_in_schema(schema: JsonDict) -> None:
-    """Advertise ``retryable`` and ``escalate`` as required, without the placeholder default.
+def _drop_default(schema: JsonDict) -> None:
+    """Do not advertise the placeholder ``False`` as the real default of a flag.
 
-    The fields default to ``False`` only so the type checker accepts omitting them; the validator
+    The flags default to ``False`` only so the type checker accepts omitting them; the validator
     fills the real value from the category (or requires it for ``upstream_failed``).
     """
-    properties = schema.get("properties")
-    required = schema.setdefault("required", [])
-    for name in ("retryable", "escalate"):
-        field = properties.get(name) if isinstance(properties, dict) else None
-        if isinstance(field, dict):
-            field.pop("default", None)
-        if isinstance(required, list) and name not in required:
-            required.append(name)
+    schema.pop("default", None)
+
+
+_FLAG_DESCRIPTION = (
+    "Omitted: taken from the category table (ch. 8.1); required for upstream_failed."
+)
 
 
 class KernelError(BaseModel):
@@ -159,13 +157,13 @@ class KernelError(BaseModel):
     """
 
     model_config = ConfigDict(
-        extra="forbid", frozen=True, json_schema_extra=_flags_required_in_schema
+        extra="forbid", frozen=True, json_schema_serialization_defaults_required=True
     )
 
     code: str = Field(min_length=1)
     category: ErrorCategory
-    retryable: bool = False
-    escalate: bool = False
+    retryable: bool = Field(False, description=_FLAG_DESCRIPTION, json_schema_extra=_drop_default)
+    escalate: bool = Field(False, description=_FLAG_DESCRIPTION, json_schema_extra=_drop_default)
     quantity: str | None = None
     formula: str | None = None
     application: str | None = None

@@ -534,11 +534,17 @@ def test_internal_error_hides_the_exception_text_everywhere() -> None:
     assert "/secret/path" not in json.dumps(error.detail)
 
 
-def test_json_schema_marks_flags_as_required_without_a_default() -> None:
-    schema = KernelError.model_json_schema()
+def test_json_schema_validation_mode_makes_flags_optional_without_a_default() -> None:
+    schema = KernelError.model_json_schema(mode="validation")
+    for name in ("retryable", "escalate"):
+        assert name not in schema["required"]
+        assert "default" not in schema["properties"][name]
+        assert "category table" in schema["properties"][name]["description"]
+
+
+def test_json_schema_serialization_mode_requires_flags() -> None:
+    schema = KernelError.model_json_schema(mode="serialization")
     assert {"retryable", "escalate"} <= set(schema["required"])
-    assert "default" not in schema["properties"]["retryable"]
-    assert "default" not in schema["properties"]["escalate"]
 
 
 def test_catalogue_holds_exactly_the_codes_the_architecture_names() -> None:
