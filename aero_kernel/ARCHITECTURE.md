@@ -572,10 +572,18 @@ caller's responsibility.
 
 - Tools: APP (pure), ATM, GEO, AB, AVL, OPT.
 - **Solver adapters** (`solvers/`) are split between two tickets:
-  - **#1174 builds the base**: `SolverAdapter` with `available() -> bool` and `version() -> str`
-    (capability check → `tool_unavailable`, Q10), `run_cpu(fn, *args)` (process pool), `run_avl(files,
-    commands)` (async subprocess in a temp dir, killed and cleaned up on cancellation, Q17), and
-    `regime(chords_m, v, altitude) -> list[Warning]` (ADR 0028 check, ch. 8.2). Tested with a stub solver.
+  - **#1174 builds the base**: `SolverAdapter(runtime)` with `available() -> bool` and `version() -> str`
+    (capability check → `tool_unavailable`, Q10) and `tool_versions() -> {distribution: version}` (what
+    `Provenance.tool_versions` and the cache key take); `runtime.SolverRuntime` owns the spawn-context pool
+    and the concurrency limit and offers `run_cpu(fn, *args)` and `run_process(files, commands, …)` (an
+    async subprocess in its own process group and temp dir, killed and cleaned up on cancellation or
+    timeout, Q17; the AVL adapter is its first user); and `regime(chords_m, v, speed_of_sound,
+    kinematic_viscosity) -> list[KernelWarning]` (ADR 0028 check, ch. 8.2; the atmosphere values come from
+    the caller, the ISA is the ATM formula's). Regime codes: `reynolds_outside_band` (defect, Re < 3·10⁴
+    or > 10⁶), `reynolds_bubble_sensitive` (practice, Re < 7·10⁴), `mach_above_limit` (practice,
+    0.3 < M ≤ 0.6), `mach_beyond_validity` (defect, M > 0.6). A worker function returns a `WorkerOutcome`
+    (value plus diagnostics, logged by the parent at `DEBUG`) or a `WorkerFailure` the parent re-raises as
+    `FormulaError`; a dead worker discards the pool and becomes `internal`. Tested with a stub solver.
   - **Tool validity warnings belong to the adapter**, like the regime: they hold for every formula that uses
     the tool, so no canon entry repeats them and they are no precondition. Each names its source. AVL:
     `|p·b/2V| > 0.10`, the documented range of the primer (`defect`). AeroBuildup with a deflected
@@ -734,7 +742,9 @@ caller's event loop, it can be cancelled, and it limits its own resource use.
     solver call and shuts it down before returning, so it stays free of state. Spawning costs about a
     second; callers that compute often pass an executor or use `CachedKernel`.
   - **`CachedKernel`** owns one pool and one limit for its lifetime. They are created lazily and closed by
-    `async with` or `aclose()`.
+    `async with` or `aclose()`. Closing waits for the workers (off the loop, `asyncio.to_thread`) and
+    cancels pending futures, so nothing remains after `compute()` returns (Q20); an injected executor is
+    the caller's and is never shut down.
   - Nothing starts at import. Resources are not results: they never change a value.
 - **Cancellation.**
   - Cancelling the `compute()` task cancels all child tasks.
