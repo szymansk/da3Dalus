@@ -14,7 +14,7 @@ from pathlib import Path
 import pytest
 import pytest_asyncio
 from aero_kernel.errors import ErrorCategory, FormulaError
-from aero_kernel.runtime import SolverRuntime
+from aero_kernel.runtime import SolverRuntime, WorkerFailure, WorkerOutcome, run_in_worker
 from aero_kernel.tests import runtime_workers as workers
 
 pytestmark = pytest.mark.asyncio(loop_scope="module")
@@ -86,6 +86,31 @@ class TestRunCpu:
     async def test_an_unexpected_exception_propagates(self, shared_runtime: SolverRuntime) -> None:
         with pytest.raises(ValueError, match="worker exploded"):
             await shared_runtime.run_cpu(workers.boom)
+
+    async def test_a_worker_raising_formula_error_neither_breaks_the_pool_nor_its_siblings(
+        self, caplog: pytest.LogCaptureFixture
+    ) -> None:
+        async with SolverRuntime(max_workers=2, max_concurrency=2) as runtime:
+            sibling = asyncio.create_task(runtime.run_cpu(workers.nap, 0.8))
+            await asyncio.sleep(0.5)
+            with (
+                caplog.at_level(logging.WARNING, logger="aero_kernel.runtime"),
+                pytest.raises(FormulaError) as caught,
+            ):
+                await runtime.run_cpu(workers.raise_formula)
+            start, end = await sibling
+            assert await runtime.run_cpu(workers.square, 2) == 4
+        assert caught.value.code == "missing_input"
+        assert caught.value.category is ErrorCategory.INVALID_INPUT
+        assert end > start
+        assert [r for r in caplog.records if r.levelno >= logging.WARNING] == []
+
+    async def test_an_exception_that_cannot_be_unpickled_still_reaches_the_caller(
+        self, shared_runtime: SolverRuntime
+    ) -> None:
+        with pytest.raises(RuntimeError, match="UnpicklableError: odd"):
+            await shared_runtime.run_cpu(workers.raise_unpicklable)
+        assert await shared_runtime.run_cpu(workers.square, 3) == 9
 
     async def test_the_loop_stays_responsive_during_pool_work(
         self, shared_runtime: SolverRuntime
@@ -273,3 +298,26 @@ class TestPoolLifetime:
                     await runtime.run_cpu(workers.square, 1)
         finally:
             executor.shutdown(wait=True)
+
+
+class TestTrampoline:
+    """Direct (in-process) tests: coverage cannot see the code that runs in a spawned worker."""
+
+    async def test_passes_an_outcome_through(self) -> None:
+        outcome = run_in_worker(workers.square, (3,))
+        assert isinstance(outcome, WorkerOutcome)
+        assert outcome.value == 9
+
+    async def test_turns_a_formula_error_into_a_failure(self) -> None:
+        failure = run_in_worker(workers.raise_formula, ())
+        assert isinstance(failure, WorkerFailure)
+        assert failure.code == "missing_input"
+        assert failure.diagnostics.duration_s >= 0
+
+    async def test_reraises_a_picklable_exception_as_it_is(self) -> None:
+        with pytest.raises(ValueError, match="worker exploded"):
+            run_in_worker(workers.boom, ())
+
+    async def test_replaces_an_unpicklable_exception(self) -> None:
+        with pytest.raises(RuntimeError, match="UnpicklableError: odd"):
+            run_in_worker(workers.raise_unpicklable, ())

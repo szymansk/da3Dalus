@@ -11,6 +11,8 @@ import asyncio
 import logging
 import multiprocessing
 import os
+import pickle
+import time
 from collections.abc import Callable, Mapping, Sequence
 from concurrent.futures import Executor, ProcessPoolExecutor
 from concurrent.futures.process import BrokenProcessPool
@@ -29,6 +31,7 @@ __all__ = [
     "WorkerDiagnostics",
     "WorkerFailure",
     "WorkerOutcome",
+    "run_in_worker",
 ]
 
 T = TypeVar("T")
@@ -92,6 +95,44 @@ class WorkerFailure(BaseModel):
     def to_formula_error(self) -> FormulaError:
         """Build the ``FormulaError`` the failure stands for."""
         return FormulaError(self.category, self.code, self.message, self.hint, self.detail)
+
+
+def run_in_worker(
+    fn: Callable[..., WorkerOutcome[T] | WorkerFailure], args: tuple[object, ...]
+) -> WorkerOutcome[T] | WorkerFailure:
+    """Run ``fn`` in the worker so that no exception can break the pool or its siblings.
+
+    ``FormulaError`` cannot be unpickled (its constructor validates), and an exception that fails
+    to unpickle kills the pool's result channel. So ``FormulaError`` becomes a
+    :class:`WorkerFailure`, an exception that does not survive a pickle round trip becomes a
+    ``RuntimeError`` with its type and text, and any other exception is re-raised as it is.
+
+    Args:
+        fn: The worker function.
+        args: Its arguments.
+
+    Returns:
+        What ``fn`` returned, or the failure it raised as a ``FormulaError``.
+    """
+    started = time.perf_counter()
+    try:
+        return fn(*args)
+    except FormulaError as error:
+        return WorkerFailure(
+            category=error.category,
+            code=error.code,
+            message=error.message,
+            hint=error.hint,
+            detail=error.detail,
+            diagnostics=WorkerDiagnostics(duration_s=time.perf_counter() - started),
+        )
+    except Exception as error:
+        try:
+            pickle.loads(pickle.dumps(error))  # our own exception, same process
+        except Exception:  # any failure to round-trip means it must be replaced
+            msg = f"{type(error).__name__}: {error}"
+            raise RuntimeError(msg) from None
+        raise
 
 
 def _log_diagnostics(fn: Callable[..., object], diagnostics: WorkerDiagnostics) -> None:
@@ -220,7 +261,10 @@ class SolverRuntime:
         async with self._slot_limit():
             loop = asyncio.get_running_loop()
             try:
-                result: object = await loop.run_in_executor(self._executor(), fn, *args)
+                result = cast(
+                    "object",  # widened on purpose: the contract check below is a runtime guard
+                    await loop.run_in_executor(self._executor(), run_in_worker, fn, args),
+                )
             except BrokenProcessPool:
                 logger.warning("a process-pool worker died while running %s", fn)
                 self._discard_broken_pool()

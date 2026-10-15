@@ -3,7 +3,7 @@
 import os
 import time
 
-from aero_kernel.errors import ErrorCategory
+from aero_kernel.errors import ErrorCategory, FormulaError
 from aero_kernel.runtime import WorkerDiagnostics, WorkerFailure, WorkerOutcome
 
 
@@ -50,3 +50,24 @@ def boom() -> WorkerOutcome[int]:
 def die() -> WorkerOutcome[int]:
     """Kill the worker process without cleanup."""
     os._exit(1)
+
+
+def raise_formula() -> WorkerOutcome[int]:
+    """Raise ``FormulaError`` the forbidden way: it does not survive pickling."""
+    raise FormulaError(
+        ErrorCategory.INVALID_INPUT, "missing_input", "worker lacks an input", "pass it"
+    )
+
+
+class UnpicklableError(Exception):
+    """An exception that pickles but cannot be unpickled (``__init__`` needs two arguments)."""
+
+    def __init__(self, first: str, second: str) -> None:
+        """Keep only ``first`` in ``args``, so unpickling fails."""
+        super().__init__(first)
+        self.second = second
+
+
+def raise_unpicklable() -> WorkerOutcome[int]:
+    """Raise an exception that would break the result channel."""
+    raise UnpicklableError("odd", "worker")
