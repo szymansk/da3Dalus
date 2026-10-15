@@ -16,6 +16,7 @@ import logging
 import math
 import re
 from collections.abc import Mapping
+from itertools import pairwise
 from typing import cast
 
 from aero_kernel import geometry
@@ -140,6 +141,84 @@ def _name_mismatch(kind: str, key: str, name: str, path: str) -> list[KernelErro
     return [_finding("name_mismatch", f"{path}.name", message, f"Rename it to {key!r}.")]
 
 
+_NACA = re.compile(r"naca(?P<digits>\d{4,5})", re.IGNORECASE)
+
+
+def _interpolate(curve: list[tuple[float, float]], x: float) -> float:
+    """Linearly interpolate ``y`` at ``x`` on a curve sorted by x; constant outside its range."""
+    if x <= curve[0][0]:
+        return curve[0][1]
+    for (x0, y0), (x1, y1) in pairwise(curve):
+        if x <= x1:
+            # x > x0 here: an earlier pair would have caught x <= x0, so x1 > x0
+            return y0 + (y1 - y0) * (x - x0) / (x1 - x0)
+    return curve[-1][1]
+
+
+def _contour_thickness(points: tuple[tuple[float, float], ...]) -> float:
+    """Maximum thickness (upper minus lower, chord fractions) of a Selig-ordered contour.
+
+    The contour runs trailing edge, upper surface, leading edge (smallest x), lower surface,
+    trailing edge. The lower surface is interpolated at the stations of the upper one.
+    """
+    leading_edge = min(range(len(points)), key=lambda index: points[index][0])
+    upper = sorted(points[: leading_edge + 1])
+    lower = sorted(points[leading_edge:])
+    return max(y - _interpolate(lower, x) for x, y in upper)
+
+
+def _airfoil_findings(airfoil: geometry.Airfoil, path: str) -> list[KernelError]:
+    """Check an airfoil: a resolvable designation or a closed contour with positive thickness."""
+    if isinstance(airfoil, str):
+        match = _NACA.fullmatch(airfoil)
+        if match is None:
+            return [
+                _finding(
+                    "unresolved_airfoil",
+                    path,
+                    f"Airfoil {airfoil!r} is not a NACA 4- or 5-digit designation and the "
+                    "kernel loads no files.",
+                    "Pass a designation such as 'naca2412', or inline coordinates.",
+                )
+            ]
+        if int(match["digits"][-2:]) == 0:
+            return [
+                _finding(
+                    "non_positive_thickness",
+                    path,
+                    f"Airfoil {airfoil!r} has a thickness of 0 chord fractions; it must be > 0.",
+                    "Use a designation with a thickness above 00.",
+                )
+            ]
+        return []
+    points = airfoil.coordinates
+    coordinates_path = f"{path}.coordinates"
+    findings: list[KernelError] = []
+    if len(points) < 3 or points[0] != points[-1]:
+        findings.append(
+            _finding(
+                "open_airfoil_contour",
+                coordinates_path,
+                f"The airfoil contour at {coordinates_path} has {len(points)} point(s) and "
+                "its first and last point differ; it must be closed with at least 3 points.",
+                "End the contour on its first point (Selig order, trailing edge to trailing edge).",
+            )
+        )
+    if len(points) >= 3 and all(math.isfinite(c) for point in points for c in point):
+        thickness = _contour_thickness(points)
+        if thickness <= 0:
+            findings.append(
+                _finding(
+                    "non_positive_thickness",
+                    coordinates_path,
+                    f"The airfoil at {coordinates_path} has a maximum thickness of {thickness} "
+                    "chord fractions; it must be > 0.",
+                    "Give the upper surface (first half of the contour) above the lower one.",
+                )
+            )
+    return findings
+
+
 def _section_findings(x_sec: geometry.WingXSec, path: str, *, is_last: bool) -> list[KernelError]:
     """Check one rib: positive chord, no segment details on the last, no orphan control surface."""
     findings = _not_positive(
@@ -150,6 +229,7 @@ def _section_findings(x_sec: geometry.WingXSec, path: str, *, is_last: bool) -> 
         "m",
         "Give the chord a length > 0.",
     )
+    findings += _airfoil_findings(x_sec.airfoil, f"{path}.airfoil")
     if is_last:
         details = {
             "trailing_edge_device": x_sec.trailing_edge_device,
