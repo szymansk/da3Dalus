@@ -102,6 +102,12 @@ jobs:
       - name: Lint (ruff)
         run: poetry run ruff check .
 
+      - name: Format check (ruff, aero_kernel)
+        run: poetry run ruff format --check aero_kernel
+
+      - name: Type check (pyright strict, aero_kernel)
+        run: poetry run pyright aero_kernel
+
       - name: Run PR-fast test tier with coverage
         # Excludes the heavy tiers (slow, e2e) and tests that need
         # external tooling (CadQuery / Aerosandbox / AVL). pytest-xdist
