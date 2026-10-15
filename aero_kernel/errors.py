@@ -437,7 +437,7 @@ def aggregate_upstream(
         formula=formula,
         application=application,
         world=world,
-        message=f"{quantity} has no value because {names} failed.",
+        message=f"`{quantity}` has no value because {names} failed.",
         hint=f"Fix {names} first.",
         detail={"causes": [{"quantity": q, "code": c} for q, c in roots]},
     )
