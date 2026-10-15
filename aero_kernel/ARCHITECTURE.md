@@ -317,6 +317,14 @@ only on the direct input values (which are part of the key) and on the outputs c
 need not run again. Errors, `skipped` and `not_applicable` are never stored; a `timeout` or `not_converged` is
 recomputed next time.
 
+**No object is shared between calls.** `frozen=True` stops attribute assignment, not in-place mutation of
+a `dict` field (`Interval.worlds`, `detail`) or of an array inside a structured value; that is a Pydantic
+limit, accepted rather than worked around with custom immutable types. The guarantee is structural
+instead: a store keeps entries in a **serialised form** (canonical JSON / bytes) and every hit
+deserialises a fresh object, and every `compute()` builds a fresh `ComputeResult`. A caller who mutates
+its result can corrupt only its own copy. Kernel code never mutates a model after construction; results
+need not be hashable.
+
 **Two interfaces, one engine.**
 
 - **`compute()`, stateless.** A pure function. It keeps nothing between calls: no cache and no
