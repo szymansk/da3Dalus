@@ -5,7 +5,7 @@ from collections.abc import Callable
 from pathlib import Path
 
 import pytest
-from aero_kernel.cache import Entry, MemoryCache, NodeStore
+from aero_kernel.cache import DiskCache, Entry, MemoryCache, NodeStore
 from pydantic import JsonValue
 
 from .cache_builders import entry
@@ -14,6 +14,7 @@ StoreFactory = Callable[[Path], NodeStore]
 
 FACTORIES: dict[str, StoreFactory] = {
     "memory": lambda _path: MemoryCache(max_entries=100),
+    "disk": lambda path: DiskCache(path=path / "cache" / "nodes.sqlite", max_bytes=10_000_000),
 }
 
 
