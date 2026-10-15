@@ -550,16 +550,17 @@ def test_json_schema_serialization_mode_requires_flags() -> None:
 
 
 def test_catalogue_holds_exactly_the_codes_the_architecture_names() -> None:
-    """The table is closed: a warning code or a new code must not slip in."""
-    assert set(CODE_CATALOGUE) == {category.value for category in ErrorCategory} | {
-        "missing_input",
-        "unresolved_airfoil",
-        "target_above_method_maximum",
-        "precondition_violated",
-        "postcondition_violated",
-        "continuous_uncertainty",
-        "non_scalar_result",
+    """The table is closed and pins every code to its category."""
+    expected = {category.value: category for category in ErrorCategory} | {
+        "missing_input": ErrorCategory.INVALID_INPUT,
+        "unresolved_airfoil": ErrorCategory.INVALID_INPUT,
+        "target_above_method_maximum": ErrorCategory.UNSUPPORTED_CONFIGURATION,
+        "precondition_violated": ErrorCategory.UNSUPPORTED_CONFIGURATION,
+        "postcondition_violated": ErrorCategory.UNSUPPORTED_CONFIGURATION,
+        "continuous_uncertainty": ErrorCategory.NOT_IMPLEMENTED,
+        "non_scalar_result": ErrorCategory.NOT_IMPLEMENTED,
     }
+    assert dict(CODE_CATALOGUE) == expected
 
 
 @pytest.mark.parametrize("field", ["message", "hint"])

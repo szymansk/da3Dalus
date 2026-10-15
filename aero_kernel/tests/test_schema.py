@@ -1,10 +1,13 @@
 """Tests for the result types (ARCHITECTURE ch. 5, 8.2, 8.3, 8.4; scenarios Q3, Q15, Q23, Q26, Q31)."""
 
+from typing import get_args
+
 import pytest
 from aero_kernel import schema
 from aero_kernel.errors import ErrorCategory, format_world_assignment, parse_world_assignment
 from aero_kernel.schema import (
     WARNING_CATALOGUE,
+    Accuracy,
     ComputeResult,
     DefaultUsed,
     Interval,
@@ -293,7 +296,9 @@ class TestProvenance:
         with pytest.raises(ValidationError):
             make_provenance(defaults_used=[entry])
 
-    @pytest.mark.parametrize("field", ["kernel_version", "build_digest", "canon_model_hash"])
+    @pytest.mark.parametrize(
+        "field", ["kernel_version", "build_digest", "canon_model_hash", "canon_source_commit"]
+    )
     def test_rejects_empty_identifier(self, field: str) -> None:
         with pytest.raises(ValidationError):
             make_provenance(**{field: ""})
@@ -396,26 +401,46 @@ class TestWorldAssignment:
         assert parse_world_assignment("neutral-point=avl") == {"neutral-point": "avl"}
 
     @pytest.mark.parametrize(
-        "text",
+        ("text", "message"),
         [
-            "",
-            "avl",
-            "neutral-point=",
-            "=avl",
-            "neutral-point=avl,",
-            "neutral-point=avl, roll-rate=aerobuildup",
-            "roll-rate=aerobuildup,neutral-point=avl",
-            "neutral-point=avl,neutral-point=avl",
-            "Neutral-Point=avl",
-            "neutral_point=avl",
-            "neutral-point=Avl",
-            "neutral-point=a-b",
-            "a=b=c",
+            ("", "without '='"),
+            ("avl", "without '='"),
+            ("neutral-point=avl,", "without '='"),
+            ("neutral-point=", "malformed pair"),
+            ("=avl", "malformed pair"),
+            ("neutral-point=avl, roll-rate=aerobuildup", "malformed pair"),
+            ("Neutral-Point=avl", "malformed pair"),
+            ("neutral_point=avl", "malformed pair"),
+            ("neutral-point=Avl", "malformed pair"),
+            ("neutral-point=a-b", "malformed pair"),
+            ("a=b=c", "malformed pair"),
+            ("-a=x", "malformed pair"),
+            ("a-=x", "malformed pair"),
+            ("a--b=x", "malformed pair"),
+            ("a=_avl", "malformed pair"),
+            ("a=avl_", "malformed pair"),
+            ("a=a__b", "malformed pair"),
+            ("roll-rate=aerobuildup,neutral-point=avl", "not sorted"),
+            ("neutral-point=avl,neutral-point=avl", "repeats formula"),
         ],
     )
-    def test_parse_rejects_malformed(self, text: str) -> None:
-        with pytest.raises(ValueError, match="world"):
+    def test_parse_rejects_malformed(self, text: str, message: str) -> None:
+        with pytest.raises(ValueError, match=message):
             parse_world_assignment(text)
+
+    def test_interval_rejects_malformed_second_world_key(self) -> None:
+        with pytest.raises(ValidationError, match="malformed pair"):
+            Interval(min=1.0, max=2.0, worlds={"a=x": 1.0, "a=Bad": 2.0})
+
+    @pytest.mark.parametrize(("lo", "hi"), [(0.31, 0.34), (0.30, 0.33)])
+    def test_interval_rejects_narrowed_bounds(self, lo: float, hi: float) -> None:
+        with pytest.raises(ValidationError, match="smallest and largest"):
+            Interval(min=lo, max=hi, worlds=WORLDS)
+
+    @pytest.mark.parametrize(("lo", "hi"), [(0.30 - 1e-9, 0.34), (0.30, 0.34 + 1e-9)])
+    def test_interval_bounds_must_match_exactly(self, lo: float, hi: float) -> None:
+        with pytest.raises(ValidationError, match="smallest and largest"):
+            Interval(min=lo, max=hi, worlds=WORLDS)
 
     def test_format_rejects_malformed_pair(self) -> None:
         with pytest.raises(ValueError, match="world"):
@@ -511,3 +536,53 @@ class TestMinorInvariants:
     def test_quantity_rejects_empty_slug_and_unit(self, field: str) -> None:
         with pytest.raises(ValidationError):
             make_quantity(**{field: ""})
+
+
+class TestSurvivingMutants:
+    def test_dedupe_keeps_different_codes_with_same_origin_and_world(self) -> None:
+        a = make_warning()
+        b = make_warning(code="conflicting_mass")
+        assert dedupe_warnings([a, b]) == (a, b)
+        assert len(make_quantity(warnings=[a, b]).warnings) == 2
+
+    @pytest.mark.parametrize("status", ["not_applicable", "skipped"])
+    def test_non_ok_status_rejects_value_and_interval(self, status: str) -> None:
+        reason = make_reason("not_given" if status == "not_applicable" else "depends_on_skipped")
+        interval = Interval(min=0.30, max=0.34, worlds=WORLDS)
+        with pytest.raises(ValidationError, match="value or interval"):
+            make_quantity(status=status, reason=reason)
+        with pytest.raises(ValidationError, match="value or interval"):
+            make_quantity(status=status, value=None, interval=interval, reason=reason)
+
+    def test_skipped_rejects_error(self) -> None:
+        with pytest.raises(ValidationError, match="must not carry an error"):
+            make_quantity(
+                status="skipped",
+                value=None,
+                error=make_error(),
+                reason=make_reason("depends_on_skipped"),
+            )
+
+    @pytest.mark.parametrize("bad", [{"a": 1}, [1.0], "abc"])
+    def test_value_rejects_non_float(self, bad: object) -> None:
+        with pytest.raises(ValidationError):
+            make_quantity(value=bad)
+
+    def test_accuracy_has_the_eight_levels(self) -> None:
+        assert get_args(Accuracy) == (
+            "xxsmall",
+            "xsmall",
+            "small",
+            "medium",
+            "large",
+            "xlarge",
+            "xxlarge",
+            "xxxlarge",
+        )
+
+    def test_mixed_input_errors_are_rejected(self) -> None:
+        timeout = KernelError(
+            code="timeout", category=ErrorCategory.TIMEOUT, message="slow", hint="Retry."
+        )
+        with pytest.raises(ValidationError, match="invalid_input"):
+            make_compute(quantities=[], input_errors=[make_error(), timeout])
