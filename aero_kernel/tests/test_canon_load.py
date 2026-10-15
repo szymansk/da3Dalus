@@ -4,6 +4,7 @@ import builtins
 import io
 import json
 import logging
+import os
 from collections.abc import Callable
 from pathlib import Path
 from typing import Any, get_args
@@ -142,6 +143,7 @@ def test_loader_opens_only_the_model_file(tmp_path: Path, monkeypatch: pytest.Mo
         "builtins": builtins.open,
         "io": io.open,
         "path": Path.open,
+        "os": os.open,
     }
 
     def spy(original: Callable[..., Any]) -> Callable[..., Any]:
@@ -157,6 +159,7 @@ def test_loader_opens_only_the_model_file(tmp_path: Path, monkeypatch: pytest.Mo
 
     monkeypatch.setattr(builtins, "open", spy(originals["builtins"]))
     monkeypatch.setattr(io, "open", spy(originals["io"]))
+    monkeypatch.setattr(os, "open", spy(originals["os"]))
     monkeypatch.setattr(Path, "open", path_open)
     path.read_text(encoding="utf-8")
     one_read = list(opened)  # what a single read of the model costs through the three entry points
