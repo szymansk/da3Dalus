@@ -4,9 +4,12 @@ import pytest
 from aero_kernel.errors import ErrorCategory
 from aero_kernel.schema import (
     WARNING_CATALOGUE,
+    ComputeResult,
+    DefaultUsed,
     Interval,
     KernelError,
     KernelWarning,
+    Provenance,
     QuantityResult,
     QuantityStatus,
     ReasonCode,
@@ -256,3 +259,95 @@ class TestQuantityResultInvariants:
     def test_same_code_with_different_origin_is_kept(self) -> None:
         result = make_quantity(warnings=[make_warning(), make_warning(origin="other")])
         assert len(result.warnings) == 2
+
+
+def make_provenance(**overrides: object) -> Provenance:
+    """Build a valid provenance, with fields overridden."""
+    fields: dict[str, object] = {
+        "kernel_version": "0.1.0",
+        "build_digest": "ab" * 32,
+        "canon_model_hash": "cd" * 32,
+        "canon_source_commit": "3a86f54c",
+        "tool_versions": {"aerosandbox": "4.2.9"},
+        "accuracy": "xxxlarge",
+        "solver_settings": {},
+        "defaults_used": [
+            {"slug": "gravity", "value": 9.80665, "unit": "m/s^2", "source": "ISO 80000-3"}
+        ],
+    }
+    return Provenance.model_validate(fields | overrides)
+
+
+class TestProvenance:
+    def test_accepts_valid_provenance_with_defaults_used(self) -> None:
+        provenance = make_provenance()
+        assert provenance.defaults_used == (
+            DefaultUsed(slug="gravity", value=9.80665, unit="m/s^2", source="ISO 80000-3"),
+        )
+
+    @pytest.mark.parametrize("field", ["slug", "unit", "source"])
+    def test_default_used_rejects_empty_text(self, field: str) -> None:
+        entry = {"slug": "gravity", "value": 9.8, "unit": "m/s^2", "source": "ISO"} | {field: ""}
+        with pytest.raises(ValidationError):
+            make_provenance(defaults_used=[entry])
+
+    @pytest.mark.parametrize("field", ["kernel_version", "build_digest", "canon_model_hash"])
+    def test_rejects_empty_identifier(self, field: str) -> None:
+        with pytest.raises(ValidationError):
+            make_provenance(**{field: ""})
+
+    def test_rejects_unknown_accuracy(self) -> None:
+        with pytest.raises(ValidationError):
+            make_provenance(accuracy="huge")
+
+
+def make_compute(**overrides: object) -> ComputeResult:
+    """Build a valid compute result with one ok quantity, with fields overridden."""
+    fields: dict[str, object] = {
+        "quantities": [make_quantity()],
+        "input_errors": [],
+        "provenance": make_provenance(),
+    }
+    return ComputeResult.model_validate(fields | overrides)
+
+
+class TestComputeResult:
+    def test_accepts_quantities(self) -> None:
+        assert len(make_compute().quantities) == 1
+
+    def test_accepts_input_errors_with_no_quantities(self) -> None:
+        result = make_compute(quantities=[], input_errors=[make_error()])
+        assert result.input_errors[0].code == "missing_input"
+
+    def test_rejects_input_errors_with_quantities(self) -> None:
+        with pytest.raises(ValidationError, match="input_errors"):
+            make_compute(input_errors=[make_error()])
+
+    def test_rejects_non_invalid_input_error(self) -> None:
+        timeout = KernelError(
+            code="timeout", category=ErrorCategory.TIMEOUT, message="slow", hint="Retry."
+        )
+        with pytest.raises(ValidationError, match="invalid_input"):
+            make_compute(quantities=[], input_errors=[timeout])
+
+    def test_rejects_duplicate_slugs(self) -> None:
+        with pytest.raises(ValidationError, match="slug"):
+            make_compute(quantities=[make_quantity(), make_quantity()])
+
+    def test_json_round_trip_with_every_status(self) -> None:
+        interval = Interval(min=0.30, max=0.34, worlds=WORLDS)
+        quantities = [
+            make_quantity(slug="a", warnings=[make_warning(world="w=1", detail={"k": [1, "x"]})]),
+            make_quantity(slug="b", value=None, interval=interval, tool="avl", application="x"),
+            make_quantity(
+                slug="c", status="not_applicable", value=None, reason=make_reason("not_given")
+            ),
+            make_quantity(
+                slug="d", status="skipped", value=None, reason=make_reason("long_run_not_included")
+            ),
+            make_quantity(slug="e", status="error", value=None, error=make_error()),
+        ]
+        result = make_compute(quantities=quantities)
+        restored = ComputeResult.model_validate_json(result.model_dump_json())
+        assert restored == result
+        assert {q.status for q in restored.quantities} == set(QuantityStatus)
