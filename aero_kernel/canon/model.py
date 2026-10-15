@@ -9,7 +9,7 @@ from collections.abc import Iterator, Mapping
 from typing import Annotated, Literal, Self
 
 from aero_kernel.canonical import sha256_of
-from aero_kernel.errors import SLUG_REGEX, WORLD_NAME_REGEX
+from aero_kernel.errors import IDENTIFIER_REGEX, NAMESPACE_REGEX, SLUG_REGEX, WORLD_NAME_REGEX
 from pydantic import (
     BaseModel,
     ConfigDict,
@@ -141,11 +141,9 @@ CostClass = Literal["instant", "seconds", "minutes"]
 WhenTerm = Literal["has_aileron", "has_separate_flap_and_aileron", "has_vertical_tail"]
 OnViolation = Literal["warning", "error"]
 
-# The slug and world-name patterns are defined once, in ``errors.py``; every other pattern here
+# The slug, world-name, namespace and identifier patterns are defined once, in ``errors.py``; every other pattern here
 # is built from them. Parameter names, like world names, are snake_case. A reference is fully
 # qualified: ``<namespace>:<slug>`` (ch. 8.9).
-_NAMESPACE_REGEX = r"[a-z][a-z0-9_]*"
-_IDENTIFIER_REGEX = r"[a-z][a-z0-9]*([_-][a-z0-9]+)*"
 
 
 def _anchored(regex: str) -> StringConstraints:
@@ -154,14 +152,14 @@ def _anchored(regex: str) -> StringConstraints:
 
 
 Parameter = Annotated[str, _anchored(WORLD_NAME_REGEX)]
-Identifier = Annotated[str, _anchored(_IDENTIFIER_REGEX)]
+Identifier = Annotated[str, _anchored(IDENTIFIER_REGEX)]
 
 
 WorldName = Annotated[str, _anchored(WORLD_NAME_REGEX)]
-QualifiedSlug = Annotated[str, _anchored(f"{_NAMESPACE_REGEX}:{SLUG_REGEX}")]
+QualifiedSlug = Annotated[str, _anchored(f"{NAMESPACE_REGEX}:{SLUG_REGEX}")]
 # An embedded application: ``<namespace>:<slug>.<application-id>``; never a bare formula slug.
 QualifiedApplication = Annotated[
-    str, _anchored(rf"{_NAMESPACE_REGEX}:{SLUG_REGEX}\.{_IDENTIFIER_REGEX}")
+    str, _anchored(rf"{NAMESPACE_REGEX}:{SLUG_REGEX}\.{IDENTIFIER_REGEX}")
 ]
 
 
@@ -358,7 +356,7 @@ class Formula(BaseModel):
 
 # Dict keys inside a namespace are bare slugs; namespace names are lower-case identifiers.
 SlugKey = Annotated[str, _anchored(SLUG_REGEX)]
-NamespaceKey = Annotated[str, _anchored(_NAMESPACE_REGEX)]
+NamespaceKey = Annotated[str, _anchored(NAMESPACE_REGEX)]
 
 DEFAULT_NAMESPACE = "calc"
 

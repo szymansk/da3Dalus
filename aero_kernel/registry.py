@@ -19,7 +19,7 @@ from typing import Literal, TypeVar
 from aero_kernel.canon.load import CanonLoadError, load_canon_model
 from aero_kernel.canon.model import DEFAULT_NAMESPACE, CanonModel, Check, Formula
 from aero_kernel.canonical import sha256_of
-from aero_kernel.errors import SLUG_REGEX
+from aero_kernel.errors import IDENTIFIER_REGEX, NAMESPACE_REGEX, SLUG_REGEX
 from pydantic import BaseModel, ConfigDict, Field, JsonValue
 
 logger = logging.getLogger(__name__)
@@ -62,8 +62,8 @@ _FormulaT = TypeVar("_FormulaT", bound=FormulaFunction)
 _CheckT = TypeVar("_CheckT", bound=Callable[..., CheckResult])
 CheckKind = Literal["pre", "post"]
 
-_SLUG_PATTERN = re.compile(rf"(?:(?P<namespace>[a-z][a-z0-9_]*):)?(?P<slug>{SLUG_REGEX})")
-_CHECK_ID_PATTERN = re.compile(r"[a-z][a-z0-9]*([_-][a-z0-9]+)*")
+_SLUG_PATTERN = re.compile(rf"(?:(?P<namespace>{NAMESPACE_REGEX}):)?(?P<slug>{SLUG_REGEX})")
+_CHECK_ID_PATTERN = re.compile(IDENTIFIER_REGEX)
 _FINGERPRINT_PATTERN = re.compile(r"sha256:[0-9a-f]{64}")
 
 
