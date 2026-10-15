@@ -76,6 +76,9 @@ async def run_process(
     and everything it started, removes the directory and re-raises (Q17, ch. 8.10). Never blocks
     the event loop for the run itself.
 
+    POSIX only (macOS, Linux and the Linux containers, ARCHITECTURE ch. 7): the process group is
+    killed with ``os.killpg``, and there is no Windows fallback.
+
     Args:
         files: Input files by plain file name; ``str`` is written as UTF-8.
         commands: Text written to stdin.
