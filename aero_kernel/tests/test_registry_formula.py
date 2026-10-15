@@ -1,6 +1,6 @@
 """Registry: registering formula implementations (ARCHITECTURE ch. 8.12)."""
 
-from collections.abc import Mapping
+from collections.abc import Callable, Coroutine, Mapping
 
 import pytest
 from aero_kernel.registry import Implementation, Registry, RegistryError
@@ -95,3 +95,29 @@ def test_formula_must_take_exactly_x_and_ctx() -> None:
     for func in (one, three):
         with pytest.raises(RegistryError, match="exactly 2"):
             Registry().formula("stall-speed", interface=FINGERPRINT)(func)
+
+
+async def _keyword_only_ctx(x: Mapping[str, float], *, ctx: object) -> dict[str, float]:
+    return {}
+
+
+async def _var_keyword(x: Mapping[str, float], **kwargs: object) -> dict[str, float]:
+    return {}
+
+
+async def _var_positional(*args: object) -> dict[str, float]:
+    return {}
+
+
+@pytest.mark.parametrize("func", [_keyword_only_ctx, _var_keyword])
+def test_formula_that_cannot_be_called_with_x_and_ctx_positionally_is_rejected(
+    func: Callable[..., Coroutine[object, object, dict[str, float]]],
+) -> None:
+    with pytest.raises(RegistryError, match="exactly 2"):
+        Registry().formula("stall-speed", interface=FINGERPRINT)(func)
+
+
+def test_formula_taking_var_positional_is_accepted() -> None:
+    registry = Registry()
+    registry.formula("stall-speed", interface=FINGERPRINT)(_var_positional)
+    assert registry.implementation("stall-speed") is not None

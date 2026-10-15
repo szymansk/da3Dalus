@@ -59,7 +59,6 @@ class CheckResult(BaseModel):
 # a narrower parameter annotation on a formula must stay assignable.
 FormulaFunction = Callable[..., Coroutine[object, object, Mapping[str, object]]]
 _FormulaT = TypeVar("_FormulaT", bound=FormulaFunction)
-_FunctionT = TypeVar("_FunctionT", bound=Callable[..., object])
 _CheckT = TypeVar("_CheckT", bound=Callable[..., CheckResult])
 CheckKind = Literal["pre", "post"]
 
@@ -163,6 +162,19 @@ def interface_fingerprint(formula: Formula) -> str:
     return sha256_of(interface)
 
 
+def _require_positional_arity(func: Callable[..., object], arity: int, what: str) -> None:
+    """Raise ``RegistryError`` unless ``func`` can be called with exactly ``arity`` positional arguments.
+
+    A keyword-only parameter without default, or too few or too many positional ones, fail the
+    call the engine will make; ``*args`` is accepted.
+    """
+    try:
+        inspect.signature(func).bind(*([None] * arity))
+    except TypeError as error:
+        msg = f"{what} must be callable with exactly {arity} positional arguments"
+        raise RegistryError(msg) from error
+
+
 class Registry:
     """The implementations and checks of a kernel, linked to the canon model by slug."""
 
@@ -224,9 +236,7 @@ class Registry:
             if not inspect.iscoroutinefunction(func):
                 msg = f"implementation of {qualified} must be a coroutine function (async def)"
                 raise RegistryError(msg)
-            if len(inspect.signature(func).parameters) != 2:
-                msg = f"implementation of {qualified} must take exactly 2 parameters (x, ctx)"
-                raise RegistryError(msg)
+            _require_positional_arity(func, 2, f"implementation of {qualified}")
             if qualified in self._implementations:
                 msg = f"formula {qualified} already has an implementation"
                 raise RegistryError(msg)
@@ -382,9 +392,7 @@ class Registry:
             if inspect.iscoroutinefunction(func):
                 msg = f"{label} {qualified}/{check_id} must be a plain function, not a coroutine"
                 raise RegistryError(msg)
-            if len(inspect.signature(func).parameters) != arity:
-                msg = f"{label} {qualified}/{check_id} must take exactly {arity} parameter(s)"
-                raise RegistryError(msg)
+            _require_positional_arity(func, arity, f"{label} {qualified}/{check_id}")
             registered = self._checks.setdefault((qualified, kind), {})
             if check_id in registered:
                 msg = f"{label} {check_id} of {qualified} is already registered"
