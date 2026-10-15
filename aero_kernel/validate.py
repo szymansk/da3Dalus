@@ -473,14 +473,31 @@ def validate_values(values: Mapping[str, float], model: CanonModel) -> tuple[Ker
                     "Use the slug of a canon input or target quantity.",
                 )
             )
-        elif quantity.role not in ("input", "target") or quantity.type != "scalar":
+        elif quantity.role not in ("input", "target"):
             errors.append(
                 _finding(
                     "not_an_input",
                     path,
-                    f"{slug} is not a number the caller supplies: its role is {quantity.role} "
-                    f"and its type {quantity.type}.",
-                    "Remove it from the values; the kernel computes it, or it is the airplane.",
+                    f"`{slug}` is computed by the kernel; values cannot override it.",
+                    f"Remove `{slug}` from the values; request it as a quantity instead.",
+                )
+            )
+        elif quantity.type == "airplane":
+            errors.append(
+                _finding(
+                    "not_an_input",
+                    path,
+                    f"`{slug}` is given as AircraftInput.airplane, not in values.",
+                    f"Remove `{slug}` from the values and pass the geometry as the airplane.",
+                )
+            )
+        elif quantity.type != "scalar":
+            errors.append(
+                _finding(
+                    "not_an_input",
+                    path,
+                    f"`{slug}` is a {quantity.type}, not a number; values hold numbers only.",
+                    f"Remove `{slug}` from the values.",
                 )
             )
         elif quantity.positive:
