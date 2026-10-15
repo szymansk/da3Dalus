@@ -506,12 +506,12 @@ kind: optimization
 tool: OPT
 output: butterfly-stall-speed-curve, butterfly-approach-speed-curve, butterfly-glide-angle-curve, butterfly-max-mix
 inputs:
-  airplane: airplane
+  airplane: null
   m: aircraft-mass
   g: gravity
   rho: air-density
-  v_s0: stall-speed-landing
   v_app: approach-speed
+  delta_f_ldg: flap-deflection-landing
   delta_f_crow: crow-flap-deflection
   delta_a_crow: crow-aileron-deflection
 outputs:
@@ -521,6 +521,7 @@ outputs:
   s_max: butterfly-max-mix
 applications:
   - id: crow
+    bind: {airplane: airplane-landing}
     when: has_separate_flap_and_aileron
 ```
 

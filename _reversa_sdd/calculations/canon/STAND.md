@@ -569,3 +569,5 @@ Maintainer; `check_canon.py` meldet es als *open*.
 
 **Lesart der Einbettung bestätigt (Architekt, 14.10.2026):** ein Eintrag `<slug>.<application>` bettet diese Anwendung so ein, wie sie geschrieben ist — ihre Bindungen (Größen und Konstanten) und ihre Prüfungen; ein bloßer Slug ist die einzige Anwendung. Die Eingangsregel gilt für die Größen, die die eingebetteten Anwendungen nach den Vorgaben binden; Konstanten werden nie neu gebunden. `load-factor` bleibt aus den Variablen von `mass-envelope`; `airplane_to` / `airplane_ldg` bleiben Eingänge (die Wertekanten der Größen, die `stall-speed.takeoff` / `.landing` binden). `check_canon.py` prüft die Regel je eingebetteter Anwendung.
 
+**Butterfly-Grundkonfiguration (Maintainer, 15.10.2026, E2/Option C):** `s = 0` ist die Landekonfiguration; die Krähenwinkel sind absolute Endausschläge: δ_f(s) = δ_f,landing + s·(δ_f,crow − δ_f,landing), δ_a(s) = s·δ_a,crow. Die Anwendung `crow` bindet `airplane-landing` und liest `flap-deflection-landing`; V_app(s) wird mit V_S0(0) desselben Sweeps normiert — die Mischung aus Reiseflug- und Landekonfiguration entfällt, der Eingang `stall-speed-landing` damit auch.
+

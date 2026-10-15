@@ -18,4 +18,4 @@ The [[airplane]] with its flaps set for the landing configuration. Without flaps
 
 **Produced by.** [[airplane-configuration]]
 
-**Used by.** [[mass-envelope]] · [[stall-speed]]
+**Used by.** [[butterfly-approach]] · [[mass-envelope]] · [[stall-speed]]

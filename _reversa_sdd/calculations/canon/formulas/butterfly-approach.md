@@ -15,14 +15,14 @@ tags:
   - shape/law
   - kind/optimization
   - status/draft
-tex: \begin{aligned}V_{S0}(s) &= \min_{V,\,\alpha} V \;\;\text{u.d.N.}\;\; L(V,\alpha;\,s) = m\,g \\ V_{app}(s) &= V_{app}\,\frac{V_{S0}(s)}{V_{S0}} \\ s_{max}&:\; V_{S0}(s_{max}) = V_{app}\end{aligned}
+tex: \begin{aligned}V_{S0}(s) &= \min_{V,\,\alpha} V \;\;\text{u.d.N.}\;\; L(V,\alpha;\,s) = m\,g \\ V_{app}(s) &= V_{app}\,\frac{V_{S0}(s)}{V_{S0}(0)} \\ s_{max}&:\; V_{S0}(s_{max}) = V_{app}\end{aligned}
 inputs:
-  airplane: airplane
+  airplane: null
   m: aircraft-mass
   g: gravity
   rho: air-density
-  v_s0: stall-speed-landing
   v_app: approach-speed
+  delta_f_ldg: flap-deflection-landing
   delta_f_crow: crow-flap-deflection
   delta_a_crow: crow-aileron-deflection
 outputs:
@@ -32,6 +32,7 @@ outputs:
   s_max: butterfly-max-mix
 applications:
   - id: crow
+    bind: {airplane: airplane-landing}
     when: has_separate_flap_and_aileron
 ---
 
@@ -40,14 +41,21 @@ applications:
 **Canonical form**
 
 ```
-for the crow mix s in [0, 1]  (flaps down by s * delta_f,crow, ailerons up by s * delta_a,crow):
+for the crow mix s in [0, 1], starting from the landing configuration (s = 0):
+  delta_f(s) = delta_f,landing + s * (delta_f,crow - delta_f,landing)      flaps down
+  delta_a(s) = s * delta_a,crow                                           ailerons up
   minimize over V, alpha:  V      subject to:  L(V, alpha; s) = m * g        ->  V_S0(s)
-  V_app(s)  = V_app * V_S0(s) / V_S0                 (same reserve k_S as without crow)
+  V_app(s)  = V_app * V_S0(s) / V_S0(0)              (same reserve k_S as without crow; V_S0(0) from this sweep)
   gamma(s)  = glide angle at V_app(s), configuration s
   s_max     : V_S0(s_max) = V_app                    (stall reaches the approach speed flown without crow)
 ```
 
-**Produces** [[butterfly-stall-speed-curve]] · [[butterfly-approach-speed-curve]] · [[butterfly-glide-angle-curve]] · [[butterfly-max-mix]]  ·  **from** [[airplane]] · [[aircraft-mass]] · [[gravity]] · [[air-density]] · [[stall-speed-landing]] · [[approach-speed]] · [[crow-flap-deflection]] · [[crow-aileron-deflection]]
+**Produces** [[butterfly-stall-speed-curve]] · [[butterfly-approach-speed-curve]] · [[butterfly-glide-angle-curve]] · [[butterfly-max-mix]]  ·  **from** [[airplane-landing]] · [[aircraft-mass]] · [[gravity]] · [[air-density]] · [[approach-speed]] · [[flap-deflection-landing]] · [[crow-flap-deflection]] · [[crow-aileron-deflection]]
+
+**Base configuration (maintainer, 2026-10-15, E2).** `s = 0` is the landing configuration
+([[airplane-landing]]); the crow angles are absolute end deflections: the flaps run from
+`δ_f,landing` to `δ_f,crow`, the ailerons from 0 to `δ_a,crow` (up). `V_app(s)` is normalised with
+`V_S0(0)` of the same sweep, so clean and landing stall speeds are not mixed.
 
 **Kind: an optimisation problem** — the [[stall-speed]] problem with the airplane in crow
 configuration, swept over the mix `s`. The core is the curve `V_S0(s)`; two readings follow
