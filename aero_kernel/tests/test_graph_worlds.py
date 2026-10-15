@@ -161,3 +161,9 @@ def test_two_uncertain_formulas_with_one_bare_slug_are_a_model_error() -> None:
     model = CanonModel.model_validate(with_hash(namespaces))
     with pytest.raises(GraphModelError, match=r"calc:np.*other:np"):
         CanonGraph(model)
+
+
+def test_a_malformed_world_in_an_assignment_is_rejected() -> None:
+    subtree = CanonGraph(two_worlds_model()).subtree(["only1"])
+    with pytest.raises(ValueError, match="malformed"):
+        subtree.assignment_key(node_id("u1"), {"u1": "Not A World"})

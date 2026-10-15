@@ -1,6 +1,12 @@
 """Graph layer over the canon model (ARCHITECTURE ch. 5, 6, 8.13)."""
 
+import os
+import subprocess
+import sys
+from pathlib import Path
+
 import pytest
+from aero_kernel import graph
 from aero_kernel.canon.model import CanonModel
 from aero_kernel.errors import ErrorCategory, KernelError
 from aero_kernel.graph import CanonGraph, Edge, GraphModelError, NodeId, Resolved, Subtree
@@ -217,3 +223,54 @@ def test_a_parameter_declared_optional_is_an_optional_read(flight_canon: CanonMo
         "airplane": False,
         "flap_deflection": True,
     }
+
+
+_LAYERS_SCRIPT = """
+import sys
+from pathlib import Path
+from aero_kernel.canon.load import load_canon_model
+from aero_kernel.graph import CanonGraph
+
+model = load_canon_model(Path(sys.argv[1]) / "tests" / "fixtures" / "flight_canon.json")
+request = ["stall-speed", "neutral-point", "max-mass-level-flight", "roll-rate-cruise",
+           "approach-speed", "stall-speed-landing"]
+for layer in CanonGraph(model).subtree(request).layers:
+    print([(n.formula, n.application) for n in layer])
+"""
+
+
+def test_the_layer_order_does_not_depend_on_the_hash_seed(package_root: Path) -> None:
+    outputs = {
+        subprocess.run(
+            [sys.executable, "-c", _LAYERS_SCRIPT, str(package_root)],
+            capture_output=True,
+            check=True,
+            cwd=package_root.parent,
+            env={**os.environ, "PYTHONHASHSEED": str(seed)},
+            text=True,
+        ).stdout
+        for seed in range(8)
+    }
+    assert len(outputs) == 1
+    first_layer = next(iter(outputs)).splitlines()[0]
+    assert first_layer.index("airplane-configuration") < first_layer.index("max-mass-level-flight")
+
+
+def test_public_names_of_graph_are_pinned() -> None:
+    assert sorted(graph.__all__) == [
+        "CanonGraph",
+        "Edge",
+        "GraphModelError",
+        "Node",
+        "NodeId",
+        "NodeOutcome",
+        "Produce",
+        "Propagated",
+        "Read",
+        "Resolved",
+        "Subtree",
+        "WhenFacts",
+        "facts_from_geometry",
+        "qualify",
+        "unmet_condition",
+    ]
