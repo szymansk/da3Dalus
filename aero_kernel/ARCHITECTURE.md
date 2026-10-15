@@ -865,7 +865,7 @@ They are the first thing a developer or an agent reads to check a change and to 
 | `DEBUG` | every step of the engine, to check the code runs as intended | subtree and order; per node: start, end, duration, status; cache hit/miss with key prefix; world assignment; solver call with its settings and duration; precondition result |
 | `INFO` | one line per `compute()` call and per import | request (slugs, `include_long_runs`, budget), result counts per status, total duration, cache hits; importer: entries added/changed/removed |
 | `WARNING` | the kernel ran, but in a degraded way an operator should know about, or it decided something on the designer's behalf | tool unavailable, time budget exceeded, a process-pool worker died, a disk-cache entry unreadable and recomputed; **a design target taken from its default** |
-| `ERROR` | a programming error | every `internal` error, with `logger.exception` and the traceback |
+| `ERROR` | a programming error | every `internal` error with its traceback, logged exactly once where it is translated (`internal_error_from_exception`, `exc_info=exc`); the exception text goes only here, never into the result (ADR 0019) |
 
 - **Every default taken is logged** (maintainer, 2026-10-14), once per `compute()` call and slug, when
   the input is resolved, so also on a full cache hit: `"default used: %s = %s %s (%s)"` with slug, value,
