@@ -272,6 +272,27 @@ def test_fleet_documents_parse_after_the_two_repairs(path: Path) -> None:
     assert airplane.wings or airplane.fuselages
 
 
+@pytest.mark.parametrize("path", FLEET_FILES, ids=lambda p: p.name)
+def test_repair_names_every_body_after_its_key(path: Path) -> None:
+    repaired = repair_for_schema(read_document(path))
+    for group in ("wings", "fuselages"):
+        bodies: dict[str, dict[str, Any]] = repaired.get(group) or {}
+        for key, body in bodies.items():
+            assert body["name"] == key
+
+
+def test_valid_as_written_list_is_complete() -> None:
+    """The list is derived from the files, not trusted: exactly the parsable ones."""
+    parsable: list[str] = []
+    for path in FLEET_FILES:
+        try:
+            AirplaneGeometry.model_validate(read_document(path))
+        except ValidationError:
+            continue
+        parsable.append(path.relative_to(FLEET_ROOT).as_posix())
+    assert parsable == VALID_AS_WRITTEN
+
+
 def test_repair_does_not_mutate_its_input() -> None:
     path = repaired_fleet(conformant=False)[0]
     document = read_document(path)
