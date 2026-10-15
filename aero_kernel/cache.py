@@ -327,6 +327,10 @@ class DiskCache:
     schema version resets the cache, and a locked database makes ``get`` a miss and ``put`` a no-op.
     ``drop_scope`` is a deletion the caller relies on, so a locked database raises there. The file
     does not shrink after evictions or ``drop_scope`` (no ``VACUUM``).
+
+    The guard that moves a damaged file aside only once works per instance (a generation counter);
+    two instances on one file may each move aside what they see, which costs cache content, never
+    correctness.
     """
 
     def __init__(
@@ -406,28 +410,43 @@ class DiskCache:
                 )
 
     async def drop_scope(self, scope: str) -> None:
-        """Delete every entry of ``scope``.
+        """Delete every entry of ``scope``, and with it any quarantined ``<name>.corrupt`` file.
+
+        The quarantined file may hold rows of the scope, and a deletion must be complete. A
+        ``get`` or ``put`` that quarantined a file keeps it for diagnosis until the next call here.
 
         Raises:
-            StoreError: If the database stays locked past the busy timeout; no retry follows.
+            StoreError: If the database stays locked past the busy timeout (no retry follows), or
+                the file system refuses, or the quarantined file cannot be removed.
         """
         _check_scope(scope)
         try:
             await self._guard(self._drop, scope)
         except (sqlite3.Error, OSError) as exc:
-            if _is_corrupt(exc):  # the file, and with it the scope, was moved aside
-                logger.debug("cache scope dropped with the corrupt file", extra={"scope": scope})
-                return
-            logger.warning(
-                "disk cache unavailable (%s), scope not dropped",
-                _error_name(exc),
-                exc_info=exc,
-                extra={"scope": scope},
-            )
-            reason = "busy, retry later" if _is_busy(exc) else "unavailable"
-            msg = f"the cache could not delete scope {scope}; the store is {reason}"
-            raise StoreError(msg) from exc
+            if not _is_corrupt(exc):
+                raise self._store_error(scope, exc) from exc
+            logger.debug("cache scope dropped with the corrupt file", extra={"scope": scope})
+        try:
+            await asyncio.to_thread(self._discard_quarantined)
+        except OSError as exc:
+            raise self._store_error(scope, exc) from exc
         logger.debug("cache scope dropped", extra={"scope": scope})
+
+    @staticmethod
+    def _store_error(scope: str, exc: Exception) -> StoreError:
+        """Log the failure with its traceback and build the plain error for the caller (ADR 0019)."""
+        logger.warning(
+            "disk cache unavailable (%s), scope not dropped",
+            _error_name(exc),
+            exc_info=exc,
+            extra={"scope": scope},
+        )
+        reason = "busy, retry later" if _is_busy(exc) else "unavailable"
+        return StoreError(f"the cache could not delete scope {scope}; the store is {reason}")
+
+    def _discard_quarantined(self) -> None:
+        """Remove ``<name>.corrupt`` if it exists (worker thread)."""
+        self._path.with_name(f"{self._path.name}.corrupt").unlink(missing_ok=True)
 
     def _read(self, scope: str, key: str) -> Entry | None:
         """Look the entry up (worker thread); delete and warn about an unreadable row.
