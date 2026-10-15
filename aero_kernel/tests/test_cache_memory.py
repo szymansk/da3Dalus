@@ -125,3 +125,13 @@ async def test_lru_order_holds_across_scopes_and_limits() -> None:
     assert await cache.get("a", "2") is None
     assert await cache.get("a", "1") == entry(1.0)
     assert await cache.get("b", "2") == entry(4.0)
+
+
+@pytest.mark.asyncio
+async def test_a_scope_emptied_by_global_eviction_can_be_filled_again() -> None:
+    cache = MemoryCache(max_entries=1)
+    await cache.put("a", "k", entry(1.0))
+    await cache.put("b", "k", entry(2.0))
+    assert await cache.get("a", "k") is None
+    await cache.put("a", "k", entry(3.0))
+    assert await cache.get("a", "k") == entry(3.0)
