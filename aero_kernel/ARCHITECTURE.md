@@ -618,21 +618,38 @@ later `sizing:…`), and a bare slug in a request means `calc:`.
   invariants in the model, ch. 8.11). `canon_model.schema.json` is generated from them and committed; a
   test fails when the committed schema differs from the generated one. Never hand-written.
 - **Layout.** `{schema_version, content_hash, source_commit, importer_version, namespaces: {"calc":
-  {quantities: {<slug>: …}, formulas: {<slug>: …}}}}`. Within a namespace references are bare slugs; a
-  reference into another namespace is `<namespace>:<slug>` (none exist yet).
-- **`schema_version`** is a positive integer, `1` now, raised on every change of the model's shape. The
-  loader accepts exactly the version it was built for; any other is `internal`, escalate.
-- **`content_hash`** is the SHA-256 (hex) of the canonical JSON of `namespaces` only — the canon's content,
+  {quantities: {<slug>: …}, formulas: {<slug>: …}}}}`, dict keys bare slugs. **Every reference inside the
+  model is fully qualified** (`calc:stall-speed`, embeds items `calc:stall-speed.clean`); application ids
+  and parameter names stay bare. Only a request's bare slug means `calc:`.
+- **`schema_version`** is the integer `1` (`Literal[1]`), raised on every change of the model's shape. The
+  loader reads it **before** type validation, so a newer model reports its version, not a cascade of
+  unknown fields; any other version is `internal`, escalate. The loader raises `CanonLoadError` carrying
+  that `KernelError`; turning it into per-quantity results is the api's job (`compute()` never raises,
+  ch. 8.1). `source_commit` is a 40-hex git SHA, `importer_version` a non-empty string.
+- **`content_hash`** is `"sha256:" + hex` of the canonical JSON of `namespaces` only — the canon's content,
   not its provenance (`source_commit`, `importer_version` and the hash itself are outside it), so two
   imports of identical content from different commits hash alike. Canonical JSON is the one used for
-  cache keys (ch. 8.4): sorted keys, separators `,` `:`, UTF-8 without ASCII escaping, floats as `repr`.
-- **The embeds closure** is a field of each embedder, `embeds_closure`: the sorted, de-duplicated
-  `<slug>.<application-id>` items reachable through `embeds`, computed by the importer. The loader does not
-  recompute it; it checks that every item and every reference resolves.
-- **Loader checks** (cheap, at load): schema version, JSON Schema, every reference (bindings, produce,
-  embeds, closure, world names) resolves, and every registered implementation and check has its slug and
-  id in the model (ch. 8.6). Consistency rules (ch. 8.6) are the importer's; the loader trusts a model
-  that passed them.
+  cache keys (ch. 8.4): sorted keys, separators `,` `:`, UTF-8 without ASCII escaping, floats as `repr`;
+  one helper, shared with the cache. The model's validator recomputes it: a hand-edited model does not
+  load.
+- **Closed vocabularies live in the model types**, so the importer's stage 2 and 3 check against them:
+  `kind` (law, procedure, optimization, fit, rating), `tool` (APP, ATM, GEO, AB, AVL, OPT, KAT, APC),
+  `role`, `type`, the `when` terms, `on_violation`, `cost` and **`unit`** (the canon's symbols after
+  normalisation, `—` folded into `1`).
+- **The model checks its own structural integrity** (a fixture or a file that breaks it does not load):
+  every reference resolves; every application binds every input and produces every output (`null` =
+  unexposed); a precondition names an input, a postcondition an output; `worlds` (≥ 2, unique, snake_case)
+  exactly with `uncertainty: interval`; `given` slugs are bound by their application, role input/target,
+  without default; `positive` only on input/target, a default then > 0; `variables` exactly with `embeds`;
+  `embeds` ⊆ `embeds_closure` and every closure item resolves. **Cross-formula rules stay with the
+  importer** (ch. 8.6): one producer per quantity, unit consistency, closure correctness and acyclicity,
+  cost derivation. The implicit application is written out with id `default`.
+- **The embeds closure** is a field of each embedder, `embeds_closure`: the sorted, de-duplicated items
+  reachable through `embeds` (the direct ones included), computed by the importer.
+- **Loader** (`canon/load.py`): version pre-check, Pydantic validation (the JSON Schema is generated from
+  the same types; `jsonschema` is a test dependency only, used to validate fixtures against the committed
+  schema), and — once a registry exists — that every registered implementation and check has its slug and
+  id in the model (ch. 8.6).
 - **`values` against the canon** — `unknown_quantity`, `not_an_input`, `non_positive_value` (ch. 8.11) —
   are `validate.validate_values(values, model)`, built with the model types (unit 6), called next to
   `validate_aircraft` in step 1.
