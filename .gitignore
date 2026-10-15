@@ -308,3 +308,6 @@ components/cots-assets/
 
 # APC PER3 raw .dat files — local only; reimport from data/cots/apc_props.json.gz
 data/apc_raw/
+
+# Ruff
+.ruff_cache/
