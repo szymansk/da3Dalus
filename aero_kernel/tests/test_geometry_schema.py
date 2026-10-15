@@ -116,25 +116,34 @@ def read_document(path: Path) -> dict[str, Any]:
 
 
 def repair_for_schema(document: dict[str, Any]) -> dict[str, Any]:
-    """Make a generated fleet document schema-valid; the repairs are exactly these three.
+    """Apply the two lossless repairs to a generated fleet document, and nothing else.
 
-    The generated fleet files carry (1) analysis notes at the top level (``urmodell``,
-    ``herkunft``), (2) wings and fuselages without ``name`` (the dict key is the name) and
-    (3) a plural ``control_surfaces`` list on ribs, which the format does not have.
+    1. Drop the pure-metadata top-level keys ``urmodell`` and ``herkunft``; they carry no geometry.
+    2. Fill a missing wing or fuselage ``name`` from its dict key; the key is the name.
+
+    ``control_surfaces`` is deliberately not repaired: it is the AeroSandbox list of mixing
+    surfaces, the format's ``trailing_edge_device`` (with its role) is absent, and building one
+    would mean guessing the roles.
     """
-    repaired = {
-        k: v
-        for k, v in document.items()
-        if k in {"name", "total_mass_kg", "xyz_ref", "wings", "fuselages"}
-    }
+    repaired = {k: v for k, v in document.items() if k not in {"urmodell", "herkunft"}}
     for group in ("wings", "fuselages"):
         bodies: dict[str, dict[str, Any]] = repaired.get(group) or {}
         for key, body in bodies.items():
             body.setdefault("name", key)
-            sections: list[dict[str, Any]] = body["x_secs"]
-            for section in sections:
-                section.pop("control_surfaces", None)
     return repaired
+
+
+def has_control_surfaces(document: dict[str, Any]) -> bool:
+    """Whether any rib of a fleet document carries the non-format ``control_surfaces`` list."""
+    wings: dict[str, dict[str, Any]] = document.get("wings") or {}
+    return any("control_surfaces" in rib for wing in wings.values() for rib in wing["x_secs"])
+
+
+def repaired_fleet(*, conformant: bool) -> list[Path]:
+    """Fleet files that are format-conformant after the two repairs, or those that are not."""
+    return [
+        path for path in FLEET_FILES if has_control_surfaces(read_document(path)) is not conformant
+    ]
 
 
 @pytest.mark.parametrize("relative", VALID_AS_WRITTEN)
@@ -143,14 +152,24 @@ def test_schema_valid_documents_parse_as_written(relative: str) -> None:
     assert airplane.wings
 
 
-def test_the_fleet_is_found() -> None:
-    assert len(FLEET_FILES) >= 70
+def test_fleet_counts() -> None:
+    """Document the state of the fleet: 2 valid as written, the rest split by control_surfaces."""
+    assert len(FLEET_FILES) == 78
+    assert len(repaired_fleet(conformant=True)) == 4
+    assert len(repaired_fleet(conformant=False)) == 74
 
 
-@pytest.mark.parametrize("path", FLEET_FILES, ids=lambda p: p.name)
-def test_every_fleet_document_parses_after_the_stated_repairs(path: Path) -> None:
+@pytest.mark.parametrize("path", repaired_fleet(conformant=True), ids=lambda p: p.name)
+def test_fleet_documents_parse_after_the_two_repairs(path: Path) -> None:
     airplane = AirplaneGeometry.model_validate(repair_for_schema(read_document(path)))
     assert airplane.wings or airplane.fuselages
+
+
+def test_urmodell_documents_are_still_rejected_for_control_surfaces() -> None:
+    """The fleet is not format-conformant: its ribs carry ASB control_surfaces, not devices."""
+    path = repaired_fleet(conformant=False)[0]
+    with pytest.raises(ValueError, match="control_surfaces"):
+        AirplaneGeometry.model_validate(repair_for_schema(read_document(path)))
 
 
 def test_a_schema_violation_in_a_fleet_document_is_still_rejected() -> None:
