@@ -16,9 +16,13 @@ from pydantic import JsonValue, ValidationError
 
 logger = logging.getLogger(__name__)
 
-__all__ = ["DEFAULT_MODEL_PATH", "SUPPORTED_SCHEMA_VERSION", "CanonLoadError", "load_model"]
+__all__ = ["SUPPORTED_SCHEMA_VERSION", "CanonLoadError", "default_model_path", "load_canon_model"]
 
-DEFAULT_MODEL_PATH = Path(__file__).resolve().parent / "canon_model.json"
+
+def default_model_path() -> Path:
+    """Return the path of the packaged canon model, ``canon/canon_model.json``."""
+    return Path(__file__).resolve().parent / "canon_model.json"
+
 
 # The one model shape this build understands; raised on every change of the types.
 SUPPORTED_SCHEMA_VERSION = 1
@@ -70,7 +74,7 @@ def _findings(error: ValidationError) -> dict[str, JsonValue]:
     }
 
 
-def load_model(path: Path | None = None) -> CanonModel:
+def load_canon_model(path: Path | None = None) -> CanonModel:
     """Load and validate the canon model.
 
     The schema version is checked before the types, so a model of a newer shape reports its
@@ -86,7 +90,7 @@ def load_model(path: Path | None = None) -> CanonModel:
         CanonLoadError: If the file is unreadable, is no JSON object, has an unsupported
             ``schema_version``, or fails validation.
     """
-    target = DEFAULT_MODEL_PATH if path is None else path
+    target = default_model_path() if path is None else path
     try:
         raw: object = json.loads(target.read_text(encoding="utf-8"))
     except OSError as exc:

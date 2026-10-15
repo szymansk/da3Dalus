@@ -3,7 +3,7 @@
 from pathlib import Path
 
 import pytest
-from aero_kernel.canon.load import load_model
+from aero_kernel.canon.load import load_canon_model
 from aero_kernel.canon.model import CanonModel
 
 PACKAGE_ROOT = Path(__file__).resolve().parent.parent
@@ -18,4 +18,4 @@ def package_root() -> Path:
 @pytest.fixture(scope="session")
 def flight_canon() -> CanonModel:
     """The fixture canon model of tests/fixtures/flight_canon.json (frozen, shared)."""
-    return load_model(PACKAGE_ROOT / "tests" / "fixtures" / "flight_canon.json")
+    return load_canon_model(PACKAGE_ROOT / "tests" / "fixtures" / "flight_canon.json")
