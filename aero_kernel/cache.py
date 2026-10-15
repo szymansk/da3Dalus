@@ -11,6 +11,7 @@ import logging
 import math
 import sqlite3
 import threading
+import time
 from collections import OrderedDict
 from collections.abc import Callable, Generator, Mapping
 from contextlib import closing, contextmanager
@@ -39,6 +40,7 @@ _T = TypeVar("_T")
 _SCHEMA_VERSION = 2
 _ALL_SCOPES = ""  # the totals row for all scopes; a real scope is never empty
 _EVICTION_CHUNK = 64
+_WAL_RETRY_S = 0.005
 _PACKAGE_ROOT = Path(__file__).resolve().parent
 _EXCLUDED_DIRECTORIES = frozenset({"tests", "tools", "importer"})
 _CANON_MODEL = "canon/canon_model.json"
@@ -604,7 +606,7 @@ class DiskCache:
         try:
             with self._lock:  # switching to WAL needs the file to itself; once per instance
                 if not self._wal_set:
-                    db.execute("PRAGMA journal_mode = WAL")
+                    self._enable_wal(db)
                     self._wal_set = True
             (version,) = db.execute("PRAGMA user_version").fetchone()
             if version != _SCHEMA_VERSION:
@@ -614,6 +616,23 @@ class DiskCache:
             db.close()
             raise
         return db
+
+    def _enable_wal(self, db: sqlite3.Connection) -> None:
+        """Switch the file to WAL, waiting up to the busy timeout for a competing switch.
+
+        SQLite returns ``SQLITE_BUSY`` from this pragma at once, without calling the busy handler,
+        when another process switches the same fresh file, so the wait is done here.
+        """
+        deadline = time.monotonic() + self._busy_timeout_s
+        while True:
+            try:
+                db.execute("PRAGMA journal_mode = WAL")
+            except sqlite3.OperationalError as exc:
+                if not _is_busy(exc) or time.monotonic() >= deadline:
+                    raise
+                time.sleep(_WAL_RETRY_S)
+            else:
+                return
 
     @staticmethod
     def _prepare(db: sqlite3.Connection) -> None:
