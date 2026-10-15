@@ -37,12 +37,14 @@ __all__ = [
     "KernelError",
     "aggregate_upstream",
     "check_finite_json",
+    "display_slug",
     "flags_for",
     "format_world_assignment",
     "internal_error_from_exception",
     "is_slug",
     "is_world_name",
     "parse_world_assignment",
+    "qualify",
 ]
 
 
@@ -158,6 +160,44 @@ _SLUG_PATTERN = re.compile(SLUG_REGEX)
 def is_slug(text: str) -> bool:
     """Tell whether ``text`` is a canon slug: kebab-case, e.g. ``aircraft-mass``."""
     return _SLUG_PATTERN.fullmatch(text) is not None
+
+
+# The namespace a bare slug belongs to (the canon model's ``DEFAULT_NAMESPACE``, pinned by a test).
+_DEFAULT_NAMESPACE = "calc"
+
+
+def qualify(slug: str) -> str:
+    """Write a slug in its qualified form ``<namespace>:<slug>``; a bare slug means ``calc:``.
+
+    Args:
+        slug: A bare or qualified canon slug.
+
+    Returns:
+        The qualified slug.
+
+    Raises:
+        ValueError: If the slug or its namespace is malformed.
+    """
+    namespace, separator, name = slug.rpartition(":")
+    if not separator:
+        namespace = _DEFAULT_NAMESPACE
+    if re.fullmatch(NAMESPACE_REGEX, namespace) is None or not is_slug(name):
+        msg = f"malformed slug {slug!r}: expected <slug> or <namespace>:<slug>"
+        raise ValueError(msg)
+    return f"{namespace}:{name}"
+
+
+def display_slug(qualified: str) -> str:
+    """Write a qualified slug as the public form: ``calc:x`` bare, any other namespace qualified.
+
+    Args:
+        qualified: A qualified slug.
+
+    Returns:
+        The slug as results, errors and messages write it.
+    """
+    namespace, _, name = qualified.partition(":")
+    return name if namespace == _DEFAULT_NAMESPACE else qualified
 
 
 # The regular expression of a world name, public so the canon model's JSON Schema states the same.

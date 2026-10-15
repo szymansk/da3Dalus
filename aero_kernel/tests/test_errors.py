@@ -7,6 +7,7 @@ from pathlib import Path
 import numpy as np
 import pytest
 from aero_kernel import errors
+from aero_kernel.canon.model import DEFAULT_NAMESPACE
 from aero_kernel.errors import (
     CODE_CATALOGUE,
     ErrorCategory,
@@ -14,12 +15,14 @@ from aero_kernel.errors import (
     KernelError,
     aggregate_upstream,
     check_finite_json,
+    display_slug,
     flags_for,
     format_world_assignment,
     internal_error_from_exception,
     is_slug,
     is_world_name,
     parse_world_assignment,
+    qualify,
 )
 from pydantic import JsonValue, ValidationError
 
@@ -764,12 +767,14 @@ def test_public_names_of_errors_are_pinned() -> None:
             "KernelError",
             "aggregate_upstream",
             "check_finite_json",
+            "display_slug",
             "flags_for",
             "format_world_assignment",
             "internal_error_from_exception",
             "is_slug",
             "is_world_name",
             "parse_world_assignment",
+            "qualify",
         ]
     )
     for name in errors.__all__:
@@ -785,3 +790,33 @@ def test_namespace_and_identifier_patterns_are_defined_once() -> None:
         source = (root / module).read_text(encoding="utf-8")
         assert errors.NAMESPACE_REGEX not in source, module
         assert errors.IDENTIFIER_REGEX not in source, module
+
+
+@pytest.mark.parametrize(
+    ("slug", "expected"),
+    [
+        ("stall-speed", "calc:stall-speed"),
+        ("calc:stall-speed", "calc:stall-speed"),
+        ("other:stall-speed", "other:stall-speed"),
+        ("my_ns2:x", "my_ns2:x"),
+    ],
+)
+def test_qualify_writes_the_namespace_a_bare_slug_means_calc(slug: str, expected: str) -> None:
+    assert qualify(slug) == expected
+
+
+@pytest.mark.parametrize(
+    "slug", ["", "Stall-Speed", "stall speed", ":x", "calc:", "a:b:c", "calc:Bad", "Calc:x", "x-"]
+)
+def test_qualify_rejects_a_malformed_slug(slug: str) -> None:
+    with pytest.raises(ValueError, match="slug"):
+        qualify(slug)
+
+
+def test_the_default_namespace_of_qualify_is_the_canon_models() -> None:
+    assert qualify("x") == f"{DEFAULT_NAMESPACE}:x"
+
+
+def test_display_slug_writes_calc_bare_and_other_namespaces_qualified() -> None:
+    assert display_slug("calc:stall-speed") == "stall-speed"
+    assert display_slug("other:stall-speed") == "other:stall-speed"
