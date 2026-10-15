@@ -220,3 +220,15 @@ def test_every_term_of_the_vocabulary_is_read_from_its_own_fact(term: str) -> No
             }
         )
         assert only.holds(term) is (term == name)  # type: ignore[arg-type]  # term is one of the Literal values
+
+
+def test_one_flaperon_is_an_aileron_but_no_butterfly_layout() -> None:
+    held = facts({"w": wing(sec(0, 0, 0.2, "flaperon"), sec(0, 0.5, 0.2))})
+    assert (held.has_aileron, held.has_separate_flap_and_aileron) == (True, False)
+
+
+def test_two_flaperons_on_different_ribs_are_a_butterfly_layout() -> None:
+    held = facts(
+        {"w": wing(sec(0, 0, 0.2, "flaperon"), sec(0, 0.3, 0.2, "flaperon"), sec(0, 0.6, 0.2))}
+    )
+    assert (held.has_aileron, held.has_separate_flap_and_aileron) == (True, True)
