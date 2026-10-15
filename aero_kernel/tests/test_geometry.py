@@ -166,7 +166,9 @@ class TestWing:
         wing = airplane.wings["W"]
         assert wing.symmetric is True
         assert wing.design_model is None
-        assert wing.units is None
+        assert wing.units.geometry_length == "m"
+        assert wing.units.detail_length == "m"
+        assert wing.units.angle == "deg"
         root = wing.x_secs[0]
         assert root.xyz_le == (0.0, 0.0, 0.0)
         assert root.chord == 0.2
@@ -254,13 +256,18 @@ class TestWing:
         with pytest.raises(ValidationError, match="design_model"):
             AirplaneGeometry.model_validate(airplane_with_wing(wing))
 
+    @pytest.mark.parametrize("units", [None, {"angle": None}, {"detail_length": None}])
+    def test_units_are_never_null(self, units: object) -> None:
+        wing = minimal_wing() | {"units": units}
+        with pytest.raises(ValidationError, match="units"):
+            AirplaneGeometry.model_validate(airplane_with_wing(wing))
+
     def test_units_block_accepts_only_the_declared_constants(self) -> None:
         wing = minimal_wing() | {
             "units": {"geometry_length": "m", "detail_length": "m", "angle": "deg"}
         }
         airplane = AirplaneGeometry.model_validate(airplane_with_wing(wing))
         assert airplane.wings is not None
-        assert airplane.wings["W"].units is not None
         for key, value in (("geometry_length", "mm"), ("angle", "rad"), ("extra", "m")):
             bad = minimal_wing() | {"units": {key: value}}
             with pytest.raises(ValidationError, match=key):
