@@ -9,9 +9,8 @@ from collections.abc import Iterator, Mapping
 from typing import Annotated, Literal, Self
 
 from aero_kernel.canonical import sha256_of
-from aero_kernel.errors import SLUG_REGEX, WORLD_NAME_REGEX, is_world_name
+from aero_kernel.errors import SLUG_REGEX, WORLD_NAME_REGEX
 from pydantic import (
-    AfterValidator,
     BaseModel,
     ConfigDict,
     Field,
@@ -155,19 +154,7 @@ Parameter = Annotated[str, _anchored(WORLD_NAME_REGEX)]
 Identifier = Annotated[str, _anchored(_IDENTIFIER_REGEX)]
 
 
-def _check_world_name(text: str) -> str:
-    """Return ``text`` if it is a world name, else raise ``ValueError``."""
-    if not is_world_name(text):
-        msg = f"{text!r} is not a snake_case world name"
-        raise ValueError(msg)
-    return text
-
-
-WorldName = Annotated[
-    str,
-    AfterValidator(_check_world_name),
-    Field(json_schema_extra={"pattern": f"^{WORLD_NAME_REGEX}$"}),
-]
+WorldName = Annotated[str, _anchored(WORLD_NAME_REGEX)]
 QualifiedSlug = Annotated[str, _anchored(f"{_NAMESPACE_REGEX}:{SLUG_REGEX}")]
 # An embedded application: ``<namespace>:<slug>.<application-id>``; never a bare formula slug.
 QualifiedApplication = Annotated[
