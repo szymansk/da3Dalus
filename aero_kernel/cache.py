@@ -418,28 +418,43 @@ class DiskCache:
         logger.debug("cache scope dropped", extra={"scope": scope})
 
     def _read(self, scope: str, key: str) -> Entry | None:
-        """Look the entry up (worker thread); delete and warn about an unreadable row."""
-        with closing(self._open()) as db, db:
-            row = db.execute(
-                "SELECT value FROM entries WHERE scope = ? AND key = ?", (scope, key)
-            ).fetchone()
+        """Look the entry up (worker thread); delete and warn about an unreadable row.
+
+        The recency update is best effort and runs in its own short transaction after the read: a
+        read-only file or a lock costs only the eviction order, never the hit.
+        """
+        with closing(self._open()) as db:
+            with db:
+                row = db.execute(
+                    "SELECT value FROM entries WHERE scope = ? AND key = ?", (scope, key)
+                ).fetchone()
             if row is None:
                 return None
             try:
                 found = Entry.from_json(row[0])
             except ValueError:
-                db.execute("DELETE FROM entries WHERE scope = ? AND key = ?", (scope, key))
+                with db:
+                    db.execute("DELETE FROM entries WHERE scope = ? AND key = ?", (scope, key))
                 logger.warning(
                     "disk cache entry unreadable and recomputed: %s",
                     _short(key),
                     extra={"scope": scope},
                 )
                 return None
-            db.execute(
-                "UPDATE entries SET tick = (SELECT MAX(tick) + 1 FROM entries)"
-                " WHERE scope = ? AND key = ?",
-                (scope, key),
-            )
+            try:
+                with db:
+                    db.execute(
+                        "UPDATE entries SET tick = (SELECT MAX(tick) + 1 FROM entries)"
+                        " WHERE scope = ? AND key = ?",
+                        (scope, key),
+                    )
+            except sqlite3.Error as exc:
+                logger.debug(
+                    "disk cache recency not updated (%s): %s",
+                    _error_name(exc),
+                    _short(key),
+                    extra={"scope": scope},
+                )
             return found
 
     def _write(self, scope: str, key: str, text: str, size: int) -> None:
