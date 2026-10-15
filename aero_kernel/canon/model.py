@@ -5,8 +5,10 @@ ch. 8.9 says. All models are frozen, reject unknown fields and carry their invar
 they are canon-model types, not input types.
 """
 
+from collections.abc import Iterator, Mapping
 from typing import Annotated, Literal, Self
 
+from aero_kernel.canonical import sha256_of
 from pydantic import BaseModel, ConfigDict, Field, StringConstraints, model_validator
 
 __all__ = ["Default", "Quantity", "QuantityRole", "QuantityType"]
@@ -310,4 +312,165 @@ class Formula(BaseModel):
         if list(self.embeds_closure) != sorted(set(self.embeds_closure)):
             msg = "embeds_closure must be sorted and unique"
             raise ValueError(msg)
+        return self
+
+
+# --- the model ------------------------------------------------------------------------------
+
+# Dict keys inside a namespace are bare slugs; namespace names are lower-case identifiers.
+SlugKey = Annotated[str, StringConstraints(pattern=r"^[a-z][a-z0-9]*(-[a-z0-9]+)*$")]
+NamespaceKey = Annotated[str, StringConstraints(pattern=r"^[a-z][a-z0-9_]*$")]
+
+DEFAULT_NAMESPACE = "calc"
+
+
+class Namespace(BaseModel):
+    """One canon of the model: its quantities and formulas, keyed by bare slug.
+
+    Attributes:
+        quantities: The quantity vocabulary.
+        formulas: The formulas.
+    """
+
+    model_config = _MODEL_CONFIG
+
+    quantities: dict[SlugKey, Quantity]
+    formulas: dict[SlugKey, Formula]
+
+
+def compute_content_hash(namespaces: Mapping[str, Namespace]) -> str:
+    """Hash the canon's content: ``"sha256:"`` plus the hex SHA-256 of the canonical JSON.
+
+    Only the namespaces enter; provenance (``source_commit``, ``importer_version``) and the hash
+    itself do not, so identical content hashes alike whatever commit it was imported from.
+
+    Args:
+        namespaces: The namespaces of a model.
+
+    Returns:
+        The prefixed hex digest.
+    """
+    return sha256_of({name: ns.model_dump(mode="json") for name, ns in namespaces.items()})
+
+
+def _split(reference: str) -> tuple[str, str]:
+    """Split ``<namespace>:<slug>``; a bare slug belongs to the default namespace."""
+    namespace, separator, slug = reference.partition(":")
+    if not separator:
+        return DEFAULT_NAMESPACE, reference
+    return namespace, slug
+
+
+def _references(formula: Formula) -> Iterator[tuple[str, str]]:
+    """Yield every ``(kind, reference)`` the formula holds: ``quantity``, ``given`` or ``embed``."""
+    for default in (*formula.inputs.values(), *formula.outputs.values()):
+        if default is not None:
+            yield "quantity", default
+    for application in formula.applications:
+        for binding in application.bind.values():
+            if isinstance(binding, str):
+                yield "quantity", binding
+        for produced in application.produce.values():
+            if produced is not None:
+                yield "quantity", produced
+        for slug in application.given or ():
+            yield "given", slug
+    for slug in formula.variables:
+        yield "quantity", slug
+    for item in (*formula.embeds, *formula.embeds_closure):
+        yield "embed", item
+
+
+class CanonModel(BaseModel):
+    """The interpreted canon the kernel runs on (ch. 8.9); the content of ``canon_model.json``.
+
+    Attributes:
+        schema_version: Version of this model shape; ``1``.
+        content_hash: Hash of ``namespaces`` (see :func:`compute_content_hash`).
+        source_commit: Commit of the canon document the model was imported from.
+        importer_version: Version of the importer that wrote the model.
+        namespaces: Quantities and formulas per namespace; every reference inside is qualified.
+    """
+
+    model_config = _MODEL_CONFIG
+
+    schema_version: Literal[1]
+    content_hash: Annotated[str, StringConstraints(pattern=r"^sha256:[0-9a-f]{64}$")]
+    source_commit: Annotated[str, StringConstraints(pattern=r"^[0-9a-f]{40}$")]
+    importer_version: str = Field(min_length=1)
+    namespaces: Annotated[dict[NamespaceKey, Namespace], Field(min_length=1)]
+
+    def quantity(self, reference: str) -> Quantity | None:
+        """Look a quantity up by slug.
+
+        Args:
+            reference: ``<namespace>:<slug>``, or a bare slug, which means ``calc:``.
+
+        Returns:
+            The quantity, or ``None`` if the model has none.
+        """
+        namespace, slug = _split(reference)
+        found = self.namespaces.get(namespace)
+        return None if found is None else found.quantities.get(slug)
+
+    def formula(self, reference: str) -> Formula | None:
+        """Look a formula up by slug.
+
+        Args:
+            reference: ``<namespace>:<slug>``, or a bare slug, which means ``calc:``.
+
+        Returns:
+            The formula, or ``None`` if the model has none.
+        """
+        namespace, slug = _split(reference)
+        found = self.namespaces.get(namespace)
+        return None if found is None else found.formulas.get(slug)
+
+    @model_validator(mode="after")
+    def _check_hash(self) -> Self:
+        """Reject a model whose content does not match its ``content_hash``."""
+        expected = compute_content_hash(self.namespaces)
+        if self.content_hash != expected:
+            msg = f"content_hash {self.content_hash} does not match the content ({expected})"
+            raise ValueError(msg)
+        return self
+
+    def _check_embed(self, item: str) -> str | None:
+        """Return the problem with an embedded ``<ns>:<slug>.<application-id>``, if any."""
+        reference, _, application_id = item.rpartition(".")
+        formula = self.formula(reference)
+        if formula is None:
+            return f"embeds {item}, but formula {reference} does not exist"
+        if all(application.id != application_id for application in formula.applications):
+            return f"embeds {item}, but the formula has no such application"
+        return None
+
+    def _check_given(self, reference: str) -> str | None:
+        """Return the problem with a ``given`` slug, if any: it must be a supplied, default-less one."""
+        quantity = self.quantity(reference)
+        if quantity is None:
+            return f"unknown quantity {reference}"
+        if quantity.role not in ("input", "target") or quantity.default is not None:
+            return f"given {reference} must be an input or target without default"
+        return None
+
+    @model_validator(mode="after")
+    def _check_references(self) -> Self:
+        """Require every reference of every formula to resolve."""
+        problems: list[str] = []
+        for namespace, content in self.namespaces.items():
+            for slug, formula in content.formulas.items():
+                for kind, reference in _references(formula):
+                    if kind == "embed":
+                        problem = self._check_embed(reference)
+                    elif kind == "given":
+                        problem = self._check_given(reference)
+                    else:
+                        problem = (
+                            None if self.quantity(reference) else f"unknown quantity {reference}"
+                        )
+                    if problem is not None:
+                        problems.append(f"{namespace}:{slug}: {problem}")
+        if problems:
+            raise ValueError("; ".join(dict.fromkeys(problems)))
         return self
