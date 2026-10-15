@@ -105,8 +105,8 @@ def _check_code(code: str, category: ErrorCategory) -> None:
         raise ValueError(msg)
 
 
-_SLUG_PATTERN = re.compile(r"[a-z0-9]+(-[a-z0-9]+)*")
-_WORLD_PATTERN = re.compile(r"[a-z0-9]+(_[a-z0-9]+)*")
+_SLUG_PATTERN = re.compile(r"[a-z][a-z0-9]*(-[a-z0-9]+)*")
+_WORLD_PATTERN = re.compile(r"[a-z][a-z0-9]*(_[a-z0-9]+)*")
 
 
 def _check_world_pair(slug: str, world: str) -> None:

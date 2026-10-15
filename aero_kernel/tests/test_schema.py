@@ -115,6 +115,8 @@ def make_quantity(**overrides: object) -> QuantityResult:
         "unit": "m/s",
         "status": "ok",
         "value": 12.5,
+        "tool": "aerobuildup",
+        "application": "default",
     }
     return QuantityResult.model_validate(fields | overrides)
 
@@ -257,7 +259,7 @@ class TestQuantityResultInvariants:
 
     def test_same_code_and_origin_in_different_worlds_is_kept(self) -> None:
         result = make_quantity(
-            warnings=[make_warning(world="a=1"), make_warning(world="a=2")],
+            warnings=[make_warning(world="a=x"), make_warning(world="a=y")],
         )
         assert len(result.warnings) == 2
 
@@ -344,7 +346,7 @@ class TestComputeResult:
     def test_json_round_trip_with_every_status(self) -> None:
         interval = Interval(min=0.30, max=0.34, worlds=WORLDS)
         quantities = [
-            make_quantity(slug="a", warnings=[make_warning(world="w=1", detail={"k": [1, "x"]})]),
+            make_quantity(slug="a", warnings=[make_warning(world="w=x", detail={"k": [1, "x"]})]),
             make_quantity(slug="b", value=None, interval=interval, tool="avl", application="x"),
             make_quantity(
                 slug="c", status="not_applicable", value=None, reason=make_reason("not_given")
@@ -368,7 +370,7 @@ class TestDedupeWarnings:
         assert dedupe_warnings([first, other, again]) == (first, other)
 
     def test_world_distinguishes_warnings(self) -> None:
-        a, b = make_warning(world="w=1"), make_warning(world="w=2")
+        a, b = make_warning(world="w=x"), make_warning(world="w=y")
         assert dedupe_warnings([a, b]) == (a, b)
 
     def test_result_passes_the_quantity_invariant(self) -> None:
@@ -586,3 +588,56 @@ class TestSurvivingMutants:
         )
         with pytest.raises(ValidationError, match="invalid_input"):
             make_compute(quantities=[], input_errors=[make_error(), timeout])
+
+
+class TestRulings:
+    @pytest.mark.parametrize("bad", [True, False, "12.5"])
+    def test_value_rejects_bool_and_numeric_string(self, bad: object) -> None:
+        with pytest.raises(ValidationError):
+            make_quantity(value=bad)
+
+    def test_value_accepts_int(self) -> None:
+        assert make_quantity(value=3).value == 3
+
+    @pytest.mark.parametrize("bad", [True, "0.3"])
+    def test_interval_numbers_are_strict(self, bad: object) -> None:
+        with pytest.raises(ValidationError):
+            Interval.model_validate({"min": bad, "max": 0.3, "worlds": {"a=x": 0.3}})
+        with pytest.raises(ValidationError):
+            Interval.model_validate({"min": 0.3, "max": 0.3, "worlds": {"a=x": bad}})
+
+    @pytest.mark.parametrize("bad", [True, "9.8"])
+    def test_default_used_value_is_strict(self, bad: object) -> None:
+        with pytest.raises(ValidationError):
+            DefaultUsed.model_validate({"slug": "g", "value": bad, "unit": "u", "source": "s"})
+
+    @pytest.mark.parametrize("field", ["tool", "application"])
+    def test_ok_requires_tool_and_application(self, field: str) -> None:
+        with pytest.raises(ValidationError, match=field):
+            make_quantity(**{field: None})
+
+    def test_non_ok_needs_no_tool(self) -> None:
+        result = make_quantity(
+            status="skipped",
+            value=None,
+            tool=None,
+            application=None,
+            reason=make_reason("depends_on_skipped"),
+        )
+        assert result.tool is None
+
+    def test_tool_versions_must_be_non_empty(self) -> None:
+        with pytest.raises(ValidationError):
+            make_provenance(tool_versions={"avl": ""})
+
+    def test_tool_versions_may_be_empty(self) -> None:
+        assert make_provenance(tool_versions={}).tool_versions == {}
+
+    @pytest.mark.parametrize("text", ["a1-b2=x1_y2", "neutral-point=avl2"])
+    def test_digits_are_allowed_after_the_first_letter(self, text: str) -> None:
+        assert parse_world_assignment(text)
+
+    @pytest.mark.parametrize("text", ["1a=x", "a=1x", "1=x", "a=_x"])
+    def test_first_character_must_be_a_letter(self, text: str) -> None:
+        with pytest.raises(ValueError, match="malformed pair"):
+            parse_world_assignment(text)
