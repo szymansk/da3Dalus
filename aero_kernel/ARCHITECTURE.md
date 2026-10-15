@@ -235,8 +235,10 @@ no separate `quantity` field: the reporting quantity is the `QuantityResult` tha
 
 Warning codes are a **closed table** like error codes (ch. 8.1), each with its fixed severity; a source
 adds its codes when it is built. A quantity's result lists its own warnings and those of its subtree,
-deduplicated by (`code`, `origin`, `world`) — the engine collects and deduplicates, the result type only
-rejects duplicates. A V_S evaluated at Re 2·10⁴ thus warns on V_S and on everything computed from it.
+deduplicated by their **full content** (`code`, `origin`, `world`, `message`, `detail`): a warning that
+reaches a quantity along several subtree paths is one warning, while two warnings that differ only in
+`detail` (`geometry_deflection_ignored` for two devices, both with origin `airplane`) stay two. The engine
+collects and deduplicates; the result type only rejects exact duplicates. A V_S evaluated at Re 2·10⁴ thus warns on V_S and on everything computed from it.
 
 Sources:
 - the regime (ADR 0028): chord Re band 3·10⁴–1·10⁶, "bubble-sensitive" below 7·10⁴, Mach ≤ 0.3, warned up
