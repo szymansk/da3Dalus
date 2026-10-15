@@ -81,6 +81,7 @@ class WorkerFailure(BaseModel):
         message: The cause, in natural language.
         hint: What to do.
         detail: Structured data about the failure.
+        input_path: Path of the offending input value, if any.
         diagnostics: The worker's report.
     """
 
@@ -91,11 +92,19 @@ class WorkerFailure(BaseModel):
     message: str
     hint: str
     detail: dict[str, JsonValue] = Field(default_factory=dict)
+    input_path: str | None = None
     diagnostics: WorkerDiagnostics
 
     def to_formula_error(self) -> FormulaError:
         """Build the ``FormulaError`` the failure stands for."""
-        return FormulaError(self.category, self.code, self.message, self.hint, self.detail)
+        return FormulaError(
+            self.category,
+            self.code,
+            self.message,
+            self.hint,
+            self.detail,
+            self.input_path,
+        )
 
 
 def run_in_worker(
@@ -125,6 +134,7 @@ def run_in_worker(
             message=error.message,
             hint=error.hint,
             detail=error.detail,
+            input_path=error.input_path,
             diagnostics=WorkerDiagnostics(duration_s=time.perf_counter() - started),
         )
     except Exception as error:
@@ -132,7 +142,7 @@ def run_in_worker(
             pickle.loads(pickle.dumps(error))  # our own exception, same process
         except Exception:  # any failure to round-trip means it must be replaced
             msg = f"{type(error).__name__}: {error}"
-            raise RuntimeError(msg) from None
+            raise RuntimeError(msg) from error  # the pool ships the original traceback as text
         raise
 
 
@@ -206,8 +216,9 @@ class SolverRuntime:
         """Shut down the pool this runtime created and wait for its workers; idempotent.
 
         Workers still running are waited for, so no process outlives the call; their calls
-        return normally. Calls that have not reached a worker yet (waiting for a slot, or queued
-        in the pool) raise ``RuntimeError``. A pool the caller injected is left alone.
+        return normally, and so does the one call the pool has already handed to its worker
+        queue. Calls that have not got that far (waiting for a slot, or still queued in the pool)
+        raise ``RuntimeError``. A pool the caller injected is left alone.
         """
         self._closed = True
         pool, self._pool = self._pool, None

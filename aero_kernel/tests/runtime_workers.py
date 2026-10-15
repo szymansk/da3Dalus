@@ -70,9 +70,25 @@ class UnpicklableError(Exception):
         self.second = second
 
 
-def raise_unpicklable() -> WorkerOutcome[int]:
-    """Raise an exception that would break the result channel."""
+def failure_site() -> WorkerOutcome[int]:
+    """The frame where the unpicklable exception is raised; named so tests can find it."""
     raise UnpicklableError("odd", "worker")
+
+
+def raise_unpicklable() -> WorkerOutcome[int]:
+    """Raise an exception that would break the result channel, from a nested frame."""
+    return failure_site()
+
+
+def raise_formula_with_path() -> WorkerOutcome[int]:
+    """Raise ``FormulaError`` carrying an ``input_path``."""
+    raise FormulaError(
+        ErrorCategory.INVALID_INPUT,
+        "missing_input",
+        "worker lacks an input",
+        "pass it",
+        input_path="geometry.wings[0].span",
+    )
 
 
 def parent_test_module_is_loaded() -> WorkerOutcome[bool]:

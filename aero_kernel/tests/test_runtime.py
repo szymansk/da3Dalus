@@ -6,6 +6,7 @@ import multiprocessing
 import sys
 import textwrap
 import time
+import traceback
 from collections.abc import AsyncIterator, Callable, Sequence
 from concurrent.futures import ProcessPoolExecutor
 from concurrent.futures.process import BrokenProcessPool
@@ -119,6 +120,21 @@ class TestRunCpu:
         with pytest.raises(RuntimeError, match="UnpicklableError: odd"):
             await shared_runtime.run_cpu(workers.raise_unpicklable)
         assert await shared_runtime.run_cpu(workers.square, 3) == 9
+
+    async def test_the_worker_side_traceback_of_a_replaced_exception_survives(
+        self, shared_runtime: SolverRuntime
+    ) -> None:
+        with pytest.raises(RuntimeError) as caught:
+            await shared_runtime.run_cpu(workers.raise_unpicklable)
+        text = "".join(traceback.format_exception(caught.value))
+        assert "failure_site" in text
+
+    async def test_input_path_survives_the_process_boundary(
+        self, shared_runtime: SolverRuntime
+    ) -> None:
+        with pytest.raises(FormulaError) as caught:
+            await shared_runtime.run_cpu(workers.raise_formula_with_path)
+        assert caught.value.input_path == "geometry.wings[0].span"
 
     async def test_workers_are_spawned_not_forked(self, shared_runtime: SolverRuntime) -> None:
         # a forked worker inherits the parent's test module; a spawned one starts clean
@@ -462,6 +478,13 @@ class TestTrampoline:
         with pytest.raises(ValueError, match="worker exploded"):
             run_in_worker(workers.boom, ())
 
-    async def test_replaces_an_unpicklable_exception(self) -> None:
-        with pytest.raises(RuntimeError, match="UnpicklableError: odd"):
+    async def test_replaces_an_unpicklable_exception_chaining_the_original(self) -> None:
+        with pytest.raises(RuntimeError, match="UnpicklableError: odd") as caught:
             run_in_worker(workers.raise_unpicklable, ())
+        assert isinstance(caught.value.__cause__, workers.UnpicklableError)
+
+    async def test_a_failure_keeps_the_input_path(self) -> None:
+        failure = run_in_worker(workers.raise_formula_with_path, ())
+        assert isinstance(failure, WorkerFailure)
+        assert failure.input_path == "geometry.wings[0].span"
+        assert failure.to_formula_error().input_path == "geometry.wings[0].span"
