@@ -3,15 +3,20 @@
 Adapters know no canon names. They return warnings without ``origin``; the engine sets it.
 """
 
+import importlib.metadata
+import importlib.util
 import logging
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
+from typing import ClassVar
 
+from aero_kernel.errors import ErrorCategory, FormulaError
+from aero_kernel.runtime import SolverRuntime
 from aero_kernel.schema import KernelWarning, WarningSeverity
 from pydantic import JsonValue
 
 logger = logging.getLogger(__name__)
 
-__all__ = ["regime"]
+__all__ = ["SolverAdapter", "regime"]
 
 # The RC/UAV regime of ADR 0028, defined by flow physics.
 _RE_BAND_MIN = 3.0e4
@@ -19,6 +24,92 @@ _RE_BUBBLE_MAX = 7.0e4
 _RE_BAND_MAX = 1.0e6
 _MACH_LIMIT = 0.3
 _MACH_VALIDITY = 0.6
+
+
+class SolverAdapter:
+    """Base of every solver adapter (ch. 8.8): capability check, tool versions, the runtime.
+
+    A subclass names its tool and the distributions it needs, each with the module that proves
+    it is importable. Nothing is imported here: capability is found with ``find_spec`` and the
+    versions with ``importlib.metadata``, so a missing tool is ``tool_unavailable`` and never an
+    ``ImportError`` (Q10). Adapters know no canon names. Every public method of a subclass calls
+    :meth:`require_available` first, and returns warnings without ``origin`` (the engine sets it).
+
+    Attributes:
+        tool: Name of the tool, e.g. ``aerobuildup``.
+        requirements: Distribution name -> importable module name, for every distribution the
+            adapter relies on (e.g. ``{"aerosandbox": "aerosandbox"}``).
+        runtime: The runtime that runs the adapter's CPU work and subprocesses.
+    """
+
+    tool: ClassVar[str]
+    requirements: ClassVar[Mapping[str, str]]
+
+    def __init__(self, runtime: SolverRuntime) -> None:
+        """Create the adapter.
+
+        Args:
+            runtime: The runtime of the owning ``compute()`` call or ``CachedKernel``.
+        """
+        self.runtime = runtime
+        self._versions: dict[str, str] | None = None
+
+    @staticmethod
+    def _importable(module: str) -> bool:
+        """Tell whether ``module`` can be found, without importing it."""
+        try:
+            return importlib.util.find_spec(module) is not None
+        except ModuleNotFoundError:  # a parent package of a dotted name is missing
+            return False
+
+    def _missing(self) -> list[str]:
+        """Return the required distributions whose module cannot be found."""
+        return [
+            distribution
+            for distribution, module in self.requirements.items()
+            if not self._importable(module)
+        ]
+
+    def available(self) -> bool:
+        """Tell whether every required module can be found (nothing is imported)."""
+        return not self._missing()
+
+    def require_available(self) -> None:
+        """Raise ``tool_unavailable`` unless :meth:`available`; logs a ``WARNING`` (ch. 8.14).
+
+        Raises:
+            FormulaError: Category ``tool_unavailable`` naming the missing distributions.
+        """
+        missing = self._missing()
+        if not missing:
+            return
+        logger.warning("tool %s is unavailable, missing: %s", self.tool, ", ".join(missing))
+        raise FormulaError(
+            ErrorCategory.TOOL_UNAVAILABLE,
+            "tool_unavailable",
+            f"the tool {self.tool} is not available in this installation",
+            f"install: {', '.join(missing)}",
+            detail={"tool": self.tool, "missing": list(missing)},
+        )
+
+    def tool_versions(self) -> dict[str, str]:
+        """Return the installed version per required distribution (provenance, cache key).
+
+        A distribution that is not installed is omitted. The result is read once and then kept;
+        treat it as read-only.
+
+        Returns:
+            Distribution name -> version, e.g. ``{"aerosandbox": "4.2.8"}``.
+        """
+        if self._versions is None:
+            versions: dict[str, str] = {}
+            for distribution in self.requirements:
+                try:
+                    versions[distribution] = importlib.metadata.version(distribution)
+                except importlib.metadata.PackageNotFoundError:
+                    continue
+            self._versions = versions
+        return self._versions
 
 
 def _require_positive(name: str, value: float) -> None:
