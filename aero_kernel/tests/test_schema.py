@@ -445,7 +445,8 @@ class TestFiniteFloats:
     @pytest.mark.parametrize("bad", NON_FINITE)
     @pytest.mark.parametrize("field", ["min", "max"])
     def test_interval_bound_rejects_non_finite(self, field: str, bad: float) -> None:
-        fields: dict[str, object] = {"min": 0.30, "max": 0.34, "worlds": WORLDS} | {field: bad}
+        base: dict[str, object] = {"min": 0.30, "max": 0.34, "worlds": WORLDS}
+        fields = base | {field: bad}
         with pytest.raises(ValidationError):
             Interval.model_validate(fields)
 
