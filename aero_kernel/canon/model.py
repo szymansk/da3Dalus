@@ -9,7 +9,7 @@ from collections.abc import Iterator, Mapping
 from typing import Annotated, Literal, Self
 
 from aero_kernel.canonical import sha256_of
-from aero_kernel.errors import WORLD_NAME_REGEX, is_world_name
+from aero_kernel.errors import SLUG_REGEX, WORLD_NAME_REGEX, is_world_name
 from pydantic import (
     AfterValidator,
     BaseModel,
@@ -138,10 +138,20 @@ CostClass = Literal["instant", "seconds", "minutes"]
 WhenTerm = Literal["has_aileron", "has_separate_flap_and_aileron", "has_vertical_tail"]
 OnViolation = Literal["warning", "error"]
 
-# A parameter is local to its formula and snake_case; an application, check or world name is a
-# lower-case identifier. A reference is fully qualified: ``<namespace>:<slug>`` (ch. 8.9).
-Parameter = Annotated[str, StringConstraints(pattern=r"^[a-z][a-z0-9]*(_[a-z0-9]+)*$")]
-Identifier = Annotated[str, StringConstraints(pattern=r"^[a-z][a-z0-9]*([_-][a-z0-9]+)*$")]
+# The slug and world-name patterns are defined once, in ``errors.py``; every other pattern here
+# is built from them. Parameter names, like world names, are snake_case. A reference is fully
+# qualified: ``<namespace>:<slug>`` (ch. 8.9).
+_NAMESPACE_REGEX = r"[a-z][a-z0-9_]*"
+_IDENTIFIER_REGEX = r"[a-z][a-z0-9]*([_-][a-z0-9]+)*"
+
+
+def _anchored(regex: str) -> StringConstraints:
+    """Constrain a string to match ``regex`` completely."""
+    return StringConstraints(pattern=f"^{regex}$")
+
+
+Parameter = Annotated[str, _anchored(WORLD_NAME_REGEX)]
+Identifier = Annotated[str, _anchored(_IDENTIFIER_REGEX)]
 
 
 def _check_world_name(text: str) -> str:
@@ -157,15 +167,10 @@ WorldName = Annotated[
     AfterValidator(_check_world_name),
     Field(json_schema_extra={"pattern": f"^{WORLD_NAME_REGEX}$"}),
 ]
-QualifiedSlug = Annotated[
-    str, StringConstraints(pattern=r"^[a-z][a-z0-9_]*:[a-z][a-z0-9]*(-[a-z0-9]+)*$")
-]
+QualifiedSlug = Annotated[str, _anchored(f"{_NAMESPACE_REGEX}:{SLUG_REGEX}")]
 # An embedded application: ``<namespace>:<slug>.<application-id>``; never a bare formula slug.
 QualifiedApplication = Annotated[
-    str,
-    StringConstraints(
-        pattern=r"^[a-z][a-z0-9_]*:[a-z][a-z0-9]*(-[a-z0-9]+)*\.[a-z][a-z0-9]*([_-][a-z0-9]+)*$"
-    ),
+    str, _anchored(rf"{_NAMESPACE_REGEX}:{SLUG_REGEX}\.{_IDENTIFIER_REGEX}")
 ]
 
 
@@ -361,8 +366,8 @@ class Formula(BaseModel):
 # --- the model ------------------------------------------------------------------------------
 
 # Dict keys inside a namespace are bare slugs; namespace names are lower-case identifiers.
-SlugKey = Annotated[str, StringConstraints(pattern=r"^[a-z][a-z0-9]*(-[a-z0-9]+)*$")]
-NamespaceKey = Annotated[str, StringConstraints(pattern=r"^[a-z][a-z0-9_]*$")]
+SlugKey = Annotated[str, _anchored(SLUG_REGEX)]
+NamespaceKey = Annotated[str, _anchored(_NAMESPACE_REGEX)]
 
 DEFAULT_NAMESPACE = "calc"
 

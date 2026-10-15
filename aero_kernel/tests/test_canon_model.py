@@ -1,5 +1,7 @@
 """The canon model: identity, hash and the structural integrity of its references."""
 
+import json
+from pathlib import Path
 from typing import Any
 
 import pytest
@@ -280,3 +282,21 @@ def test_public_names_of_the_model_are_pinned() -> None:
     )
     for name in model.__all__:
         assert hasattr(model, name)
+
+
+def test_model_holds_no_second_definition_of_the_slug_and_world_patterns() -> None:
+    from aero_kernel import errors
+    from aero_kernel.canon import model
+
+    source = Path(model.__file__).read_text(encoding="utf-8")
+    for regex in (errors.SLUG_REGEX, errors.WORLD_NAME_REGEX):
+        assert regex not in source
+
+
+def test_schema_states_the_shared_patterns() -> None:
+    from aero_kernel import errors
+    from aero_kernel.canon.schema_file import schema_text
+
+    text = schema_text()
+    for regex in (errors.SLUG_REGEX, errors.WORLD_NAME_REGEX):
+        assert json.dumps(f"^{regex}$") in text

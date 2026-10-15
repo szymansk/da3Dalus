@@ -28,6 +28,7 @@ logger = logging.getLogger(__name__)
 
 __all__ = [
     "CODE_CATALOGUE",
+    "SLUG_REGEX",
     "WORLD_NAME_REGEX",
     "ErrorCategory",
     "FormulaError",
@@ -145,7 +146,9 @@ def _check_code(code: str, category: ErrorCategory) -> None:
         raise ValueError(msg)
 
 
-_SLUG_PATTERN = re.compile(r"[a-z][a-z0-9]*(-[a-z0-9]+)*")
+# The regular expression of a canon slug, public so the canon model's JSON Schema states the same.
+SLUG_REGEX = r"[a-z][a-z0-9]*(-[a-z0-9]+)*"
+_SLUG_PATTERN = re.compile(SLUG_REGEX)
 
 
 def is_slug(text: str) -> bool:
