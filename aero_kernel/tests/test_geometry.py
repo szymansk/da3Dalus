@@ -774,3 +774,33 @@ class TestUnitsAreConvertedExactlyWhereDocumented:
         assert isinstance(device.servo, Servo)
         for index, name in enumerate(SERVO_MM):
             assert_close(getattr(device.servo, f"{name}_m"), (10.0 + index) * 1e-3)
+
+
+class TestStringsAreKeptVerbatim:
+    def test_names_labels_paths_and_designations_are_not_normalised(self) -> None:
+        document = distinct_document()
+        document["name"] = "  Mixed Case  "
+        wing = document["wings"]["W"]
+        wing["name"] = " W "
+        rib = wing["x_secs"][0]
+        rib["airfoil"] = " NACA2412 "
+        rib["control_surface"]["name"] = " Aileron "
+        rib["trailing_edge_device"] |= {"name": " L ", "label": " left "}
+        fuselage = document["fuselages"]["F"]
+        fuselage |= {"name": " F ", "step_path": " a/b.step ", "solid_step_path": " c.step "}
+        airplane = AirplaneGeometry.model_validate(document)
+        assert airplane.name == "  Mixed Case  "
+        assert airplane.wings is not None
+        parsed_wing = airplane.wings["W"]
+        assert parsed_wing.name == " W "
+        parsed_rib = parsed_wing.x_secs[0]
+        assert parsed_rib.airfoil == " NACA2412 "
+        assert parsed_rib.control_surface is not None
+        assert parsed_rib.control_surface.name == " Aileron "
+        assert parsed_rib.trailing_edge_device is not None
+        assert parsed_rib.trailing_edge_device.name == " L "
+        assert parsed_rib.trailing_edge_device.label == " left "
+        assert airplane.fuselages is not None
+        parsed_fuselage = airplane.fuselages["F"]
+        assert (parsed_fuselage.name, parsed_fuselage.step_path) == (" F ", " a/b.step ")
+        assert parsed_fuselage.solid_step_path == " c.step "
