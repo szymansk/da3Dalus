@@ -52,6 +52,7 @@ jobs:
             backend:
               - 'app/**'
               - 'cad_designer/**'
+              - 'aero_kernel/**'
               - 'pyproject.toml'
               - 'poetry.lock'
               - 'alembic/**'
@@ -109,11 +110,12 @@ jobs:
         # by the autouse `clean_cad_task_state` fixture.
         run: |
           poetry run pytest \
-            -m "not slow and not e2e and not requires_cadquery and not requires_aerosandbox and not requires_avl" \
+            -m "not slow and not e2e and not requires_cadquery and not requires_aerosandbox and not requires_avl and not aero" \
             -n auto --dist worksteal \
             --tb=short \
             --cov=app \
             --cov=cad_designer \
+            --cov=aero_kernel \
             --cov-report=term-missing \
             --cov-report=xml \
             --cov-fail-under=70
@@ -228,6 +230,7 @@ jobs:
             poetry run pytest -v --tb=short \
               --cov=app \
               --cov=cad_designer \
+              --cov=aero_kernel \
               --cov-report=term-missing \
               --cov-report=xml
         env:
