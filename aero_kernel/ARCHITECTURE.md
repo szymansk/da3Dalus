@@ -763,17 +763,23 @@ one code, one test:
 
 | code | rule |
 |---|---|
-| `non_finite_number` | NaN or ±inf anywhere in the geometry or in `values` |
-| `non_positive_length` | chord, fuselage semi-axes `a`, `b` ≤ 0 |
-| `non_positive_thickness` | airfoil thickness ≤ 0 (inline contour, or the NACA thickness digits) |
+| `non_finite_number` | NaN or ±inf anywhere in the geometry fields the kernel reads or in `values` (exact leaf path, tuple elements as `[i]`) |
+| `non_positive_length` | a chord ≤ 0; fuselage semi-axes `a`, `b` ≤ 0; a wing whose span — the summed Euclidean length of its `xyz_le` chain — is 0 (path: its `x_secs`) |
+| `non_positive_exponent` | a fuselage super-ellipse exponent `n` or `n_lower` ≤ 0 |
+| `non_positive_thickness` | an airfoil of thickness ≤ 0 (inline contour, or NACA thickness digits `00`) |
 | `non_positive_mass` | `values.aircraft-mass` ≤ 0 |
 | `non_positive_density` | `values.sea-level-air-density` ≤ 0 |
-| `too_few_sections` | a wing with fewer than two `x_secs` |
-| `open_airfoil_contour` | inline coordinates that are not a closed contour |
-| `unresolved_airfoil` | an airfoil string that is not a NACA designation (`^naca\d{4,5}$`, case-insensitive) |
-| `segment_on_last_section` | the last `x_sec` carries segment details (`trailing_edge_device`, `spare_list`, `turbulator`) |
-| `name_mismatch` | a wing or fuselage whose `name` differs from its dict key |
+| `non_positive_gravity` | `values.gravity` ≤ 0 |
+| `too_few_sections` | a wing or a fuselage with fewer than two `x_secs` |
+| `invalid_airfoil_contour` | inline coordinates with fewer than 3 points, or whose first and last point do not both lie at the contour's largest `x` (a blunt trailing edge is allowed; no tolerance is invented) |
+| `unresolved_airfoil` | an airfoil string that is not a NACA 4-digit designation (`^naca\d{4}$`, case-insensitive, no spaces): the only kind a solver builds without loading data; a 5-digit or 6-series section is passed inline |
+| `segment_on_last_section` | the last `x_sec` carries a `trailing_edge_device`, `spare_list` or `turbulator`: there is no segment for it, so the kernel would silently drop it |
 | `control_surface_without_device` | a `control_surface` without the `trailing_edge_device` it is a projection of: its role would be unknown |
+
+Other `values` are checked for finiteness only. A dict key is the identity of a wing or fuselage (paths use
+it); a differing `name` is a label and no finding. The geometry's `total_mass_kg` is never used, so only its
+finiteness is checked. `detail` carries `{"value": …}`: the number, or `"nan"` / `"inf"` / `"-inf"` as a
+string (free JSON fields stay finite, ch. 8.3). Findings come in document order, then `values` by slug.
 
 The kernel never reads `control_surface` (a derived projection; role and hinge come from the device,
 angles from `values`), so a disagreement between the two is no finding.
