@@ -526,6 +526,17 @@ class TestInlineAirfoil:
         errors = _validate(_with_airfoil({"coordinates": coordinates}))
         assert _codes(errors) == ["invalid_airfoil_contour"]
 
+    def test_offset_stations_with_zero_thickness_are_rejected(self) -> None:
+        """Upper and lower stations differ, so the lower surface is interpolated between them."""
+        v_shape = [[1, 0], [0.75, -0.025], [0.25, -0.025], [0, 0], [0.5, -0.05], [1, 0]]
+        errors = _validate(_with_airfoil({"coordinates": v_shape}))
+        assert _codes(errors) == ["non_positive_thickness"]
+
+    def test_vertical_leading_edge_is_measured_without_raising(self) -> None:
+        """Two points share x = 0 on the lower surface: the interpolation must not divide by 0."""
+        blunt_nose = [[1, 0], [0.5, 0.05], [0, 0.01], [0, -0.01], [0.5, -0.05], [1, 0]]
+        assert _validate(_with_airfoil({"coordinates": blunt_nose})) == ()
+
     def test_blunt_trailing_edge_is_accepted(self) -> None:
         blunt = [[1.0, 0.01], [0.5, 0.06], [0.0, 0.0], [0.5, -0.06], [1.0, -0.01]]
         assert _validate(_with_airfoil({"coordinates": blunt})) == ()
