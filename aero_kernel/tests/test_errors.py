@@ -754,6 +754,8 @@ def test_public_names_of_errors_are_pinned() -> None:
     assert sorted(errors.__all__) == sorted(
         [
             "CODE_CATALOGUE",
+            "IDENTIFIER_REGEX",
+            "NAMESPACE_REGEX",
             "SLUG_REGEX",
             "WORLD_NAME_REGEX",
             "ErrorCategory",
@@ -771,3 +773,18 @@ def test_public_names_of_errors_are_pinned() -> None:
     )
     for name in errors.__all__:
         assert hasattr(errors, name)
+
+
+def test_namespace_and_identifier_patterns_are_defined_once() -> None:
+    """The canon model and the registry import the patterns; neither carries a literal copy."""
+    from pathlib import Path
+
+    from aero_kernel import errors
+
+    assert errors.NAMESPACE_REGEX == r"[a-z][a-z0-9_]*"
+    assert errors.IDENTIFIER_REGEX == r"[a-z][a-z0-9]*([_-][a-z0-9]+)*"
+    root = Path(errors.__file__).parent
+    for module in ("canon/model.py", "registry.py"):
+        source = (root / module).read_text(encoding="utf-8")
+        assert errors.NAMESPACE_REGEX not in source, module
+        assert errors.IDENTIFIER_REGEX not in source, module

@@ -28,6 +28,8 @@ logger = logging.getLogger(__name__)
 
 __all__ = [
     "CODE_CATALOGUE",
+    "IDENTIFIER_REGEX",
+    "NAMESPACE_REGEX",
     "SLUG_REGEX",
     "WORLD_NAME_REGEX",
     "ErrorCategory",
@@ -165,6 +167,12 @@ _WORLD_PATTERN = re.compile(WORLD_NAME_REGEX)
 def is_world_name(text: str) -> bool:
     """Tell whether ``text`` is a method-world name: snake_case, e.g. ``aero_buildup``."""
     return _WORLD_PATTERN.fullmatch(text) is not None
+
+
+# The regular expressions of a namespace name and of an identifier (application and check ids), public
+# for the same reason: the canon model and the registry build their patterns from these.
+NAMESPACE_REGEX = r"[a-z][a-z0-9_]*"
+IDENTIFIER_REGEX = r"[a-z][a-z0-9]*([_-][a-z0-9]+)*"
 
 
 def _check_world_pair(slug: str, world: str) -> None:
