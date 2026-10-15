@@ -6,6 +6,7 @@ The two must not drift: same fields (by format key), same required set, same enu
 
 import copy
 import json
+import math
 from pathlib import Path
 from typing import Any, Literal, cast, get_args, get_origin
 
@@ -72,6 +73,17 @@ def literal_values(annotation: object) -> set[Any]:
     return values
 
 
+def assert_close(actual: float, expected: float) -> None:
+    """Assert equality up to the rounding of a mm -> m multiplication."""
+    assert math.isclose(actual, expected, rel_tol=1e-12), (actual, expected)
+
+
+def test_published_json_schema_shows_the_format_default_under_the_format_key() -> None:
+    """The model's JSON Schema speaks the format: height_mm defaults to 0.3 (mm), not 0.0003."""
+    published = geometry.Turbulator.model_json_schema(mode="validation")
+    assert published["properties"]["height_mm"]["default"] == 0.3
+
+
 def test_every_object_definition_has_a_model() -> None:
     names = set(object_schemas()) - {"Airplane"}
     assert names == set(MODELS)
@@ -101,7 +113,9 @@ def test_enums_and_defaults_match(name: str) -> None:
             assert literal_values(field.annotation) == set(enum) - {None}, key
         if "const" in prop:
             assert literal_values(field.annotation) == {prop["const"]}, key
-        if "default" in prop and key not in MILLIMETRE_KEYS:
+        if "default" in prop and key in MILLIMETRE_KEYS:
+            assert_close(field.default, prop["default"] * 1e-3)
+        elif "default" in prop:
             assert field.default == prop["default"] or tuple(prop["default"]) == field.default, key
 
 
