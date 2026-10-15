@@ -669,3 +669,104 @@ class TestNoPhysicalConstraint:
         assert airplane.fuselages is not None
         assert len(airplane.fuselages["F"].x_secs) == 1
         assert airplane.fuselages["F"].x_secs[0].a == -1
+
+
+class TestSiNamesAreNotInput:
+    """A converted field is only readable under the format key, so a re-parse cannot rescale it."""
+
+    @pytest.mark.parametrize("key", sorted(SERVO_MM))
+    def test_servo_rejects_its_si_key(self, key: str) -> None:
+        servo = {k: v for k, v in SERVO_MM.items() if k != key} | {f"{key}_m": 0.02}
+        reject_first_section({"trailing_edge_device": {"servo": servo}}, "servo")
+
+    @pytest.mark.parametrize("key", ["hinge_spacing", "side_spacing_root", "side_spacing_tip"])
+    def test_device_rejects_a_spacing_under_its_si_key(self, key: str) -> None:
+        reject_first_section({"trailing_edge_device": {f"{key}_m": 0.001}}, f"{key}_m")
+
+    def test_turbulator_rejects_its_height_under_the_si_key(self) -> None:
+        reject_first_section({"turbulator": {"position_root": 0.3, "height_m": 0.001}}, "height_m")
+
+
+def distinct_document() -> Doc:
+    """A document in which every number is different and non-zero, to expose a wrong scale."""
+    servo = {name: 10.0 + index for index, name in enumerate(SERVO_MM)}
+    device = {
+        "rel_chord_root": 0.71, "rel_chord_tip": 0.72, "hinge_spacing": 0.53,
+        "side_spacing_root": 2.54, "side_spacing_tip": 3.55, "servo": servo,
+        "rel_chord_servo_position": 0.56, "rel_length_servo_position": 0.57,
+        "positive_deflection_deg": 23.5, "negative_deflection_deg": -19.5, "deflection_deg": 4.5,
+        "trailing_edge_offset_factor": 1.15, "mix_gain_primary": 1.7, "mix_gain_secondary": 0.9,
+        "differential_ratio": 1.4,
+    }  # fmt: skip
+    spar = {
+        "spare_support_dimension_width": 0.0061, "spare_support_dimension_height": 0.0042,
+        "spare_position_factor": 0.31, "spare_length": 0.43, "spare_start": 0.05,
+        "spare_vector": [0.1, 0.9, 0.2], "spare_origin": [0.11, 0.12, 0.13],
+    }  # fmt: skip
+    rib = {
+        "xyz_le": [0.011, 0.022, 0.033], "chord": 0.2345, "twist": 1.5, "dihedral": 2.5,
+        "airfoil": "naca2412",
+        "control_surface": {"name": "A", "hinge_point": 0.77, "deflection": 6.5},
+        "spare_list": [spar], "trailing_edge_device": device,
+        "turbulator": {"position_root": 0.33, "position_tip": 0.36, "height_mm": 0.45},
+    }  # fmt: skip
+    tip = {"xyz_le": [0.1, 1.2, 0.3], "chord": 0.12, "twist": -1.5, "airfoil": "naca2412"}
+    station = {"xyz": [0.4, 0.015, 0.025], "a": 0.081, "b": 0.062, "n": 2.3, "n_lower": 4.7}
+    return {
+        "name": "D", "total_mass_kg": 2.75, "xyz_ref": [0.101, 0.002, 0.003],
+        "wings": {"W": {"name": "W", "x_secs": [rib, tip]}},
+        "fuselages": {"F": {"name": "F", "x_secs": [station, station]}},
+    }  # fmt: skip
+
+
+class TestUnitsAreConvertedExactlyWhereDocumented:
+    def test_non_millimetre_numbers_are_unscaled_and_millimetre_numbers_are_scaled(self) -> None:
+        airplane = AirplaneGeometry.model_validate(distinct_document())
+        assert airplane.total_mass_kg == 2.75
+        assert airplane.xyz_ref == (0.101, 0.002, 0.003)
+        assert airplane.wings is not None
+        rib, tip = airplane.wings["W"].x_secs
+        assert rib.xyz_le == (0.011, 0.022, 0.033)
+        assert (rib.chord, rib.twist, rib.dihedral) == (0.2345, 1.5, 2.5)
+        assert tip.xyz_le == (0.1, 1.2, 0.3)
+        assert (tip.chord, tip.twist) == (0.12, -1.5)
+        surface = rib.control_surface
+        assert surface is not None
+        assert (surface.hinge_point, surface.deflection) == (0.77, 6.5)
+        assert rib.spare_list is not None
+        spar = rib.spare_list[0]
+        assert (spar.spare_support_dimension_width, spar.spare_support_dimension_height) == (
+            0.0061,
+            0.0042,
+        )
+        assert (spar.spare_position_factor, spar.spare_length, spar.spare_start) == (
+            0.31,
+            0.43,
+            0.05,
+        )
+        assert spar.spare_vector == (0.1, 0.9, 0.2)
+        assert spar.spare_origin == (0.11, 0.12, 0.13)
+        device = rib.trailing_edge_device
+        assert device is not None
+        assert (device.rel_chord_root, device.rel_chord_tip) == (0.71, 0.72)
+        assert (device.rel_chord_servo_position, device.rel_length_servo_position) == (0.56, 0.57)
+        assert (device.positive_deflection_deg, device.negative_deflection_deg) == (23.5, -19.5)
+        assert device.deflection_deg == 4.5
+        assert device.trailing_edge_offset_factor == 1.15
+        assert (device.mix_gain_primary, device.mix_gain_secondary) == (1.7, 0.9)
+        assert device.differential_ratio == 1.4
+        turbulator = rib.turbulator
+        assert turbulator is not None
+        assert (turbulator.position_root, turbulator.position_tip) == (0.33, 0.36)
+        assert airplane.fuselages is not None
+        station = airplane.fuselages["F"].x_secs[0]
+        assert station.xyz == (0.4, 0.015, 0.025)
+        assert (station.a, station.b, station.n, station.n_lower) == (0.081, 0.062, 2.3, 4.7)
+        # millimetre fields: x 1e-3
+        assert_close(device.hinge_spacing_m, 0.00053)
+        assert_close(device.side_spacing_root_m, 0.00254)
+        assert_close(device.side_spacing_tip_m, 0.00355)
+        assert_close(turbulator.height_m, 0.00045)
+        assert isinstance(device.servo, Servo)
+        for index, name in enumerate(SERVO_MM):
+            assert_close(getattr(device.servo, f"{name}_m"), (10.0 + index) * 1e-3)
