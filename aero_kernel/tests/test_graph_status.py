@@ -2,7 +2,7 @@
 
 import pytest
 from aero_kernel.canon.model import CanonModel
-from aero_kernel.errors import ErrorCategory, KernelError
+from aero_kernel.errors import ErrorCategory, KernelError, aggregate_upstream
 from aero_kernel.graph import CanonGraph, NodeId, NodeOutcome, Propagated, Subtree
 from aero_kernel.schema import QuantityStatus, ReasonCode
 from aero_kernel.tests.graph_builders import formula, model_of, quantity
@@ -156,3 +156,48 @@ def test_long_runs_are_the_nodes_of_cost_class_minutes(flight_canon: CanonModel)
     mass = NodeId(formula="calc:max-mass-level-flight", application="default")
     assert graph.subtree(["max-mass-level-flight", "stall-speed"]).long_run_nodes() == (mass,)
     assert graph.subtree(["stall-speed"]).long_run_nodes() == ()
+
+
+def test_a_nested_upstream_failure_reports_the_root_cause_only() -> None:
+    model = model_of(
+        {"i": quantity("input"), "b": quantity("derived"), "d": quantity("derived")},
+        {"f-b": formula({"x": "i"}, {"y": "b"}), "f-d": formula({"p": "b"}, {"y": "d"})},
+    )
+    root = KernelError(
+        code="tool_unavailable",
+        category=ErrorCategory.TOOL_UNAVAILABLE,
+        quantity="a",
+        message="m",
+        hint="h",
+    )
+    upstream = NodeOutcome(
+        status=QuantityStatus.ERROR, error=aggregate_upstream([root], quantity="b")
+    )
+    propagated = (
+        CanonGraph(model)
+        .subtree(["d"])
+        .propagate(node_id("f-d"), {node_id("f-b"): upstream}, quantity="d")
+    )
+    assert propagated is not None
+    assert propagated.error is not None
+    assert propagated.error.detail["causes"] == [{"quantity": "a", "code": "tool_unavailable"}]
+    assert propagated.error.escalate is True
+
+
+def test_an_error_propagates_through_an_optional_read() -> None:
+    model = model_of(
+        {"a": quantity("input"), "b": quantity("derived"), "c": quantity("derived")},
+        {
+            "f-b": formula({"x": "a"}, {"y": "b"}),
+            "f-c": formula({"p": "b"}, {"y": "c"}, optional=["p"]),
+        },
+    )
+    propagated = (
+        CanonGraph(model)
+        .subtree(["c"])
+        .propagate(node_id("f-c"), {node_id("f-b"): failed("b")}, quantity="c")
+    )
+    assert propagated is not None
+    assert propagated.status is QuantityStatus.ERROR
+    assert propagated.error is not None
+    assert propagated.error.category is ErrorCategory.UPSTREAM_FAILED
