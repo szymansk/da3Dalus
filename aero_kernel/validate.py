@@ -170,8 +170,9 @@ def _contour_thickness(points: tuple[tuple[float, float], ...]) -> float:
     trailing edge. The lower surface is interpolated at the stations of the upper one.
     """
     leading_edge = min(range(len(points)), key=lambda index: points[index][0])
-    upper = sorted(points[: leading_edge + 1])
-    lower = sorted(points[leading_edge:])
+    # stable sorts by x only: at an equal x the first point along the surface wins, y never decides
+    upper = sorted(points[: leading_edge + 1], key=lambda point: point[0])
+    lower = sorted(points[leading_edge:], key=lambda point: point[0])
     return max(y - _interpolate(lower, x) for x, y in upper)
 
 

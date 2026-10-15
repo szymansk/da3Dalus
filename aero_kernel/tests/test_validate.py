@@ -548,6 +548,18 @@ class TestInlineAirfoil:
             "non_finite_number"
         ]
 
+    def test_equal_x_on_a_surface_takes_the_first_point_along_the_surface(self) -> None:
+        """A vertical step at the nose: y must not decide which side of it is measured.
+
+        The lower surface starts at the leading-edge point (0, 0.2) and steps down to (0, -0.2).
+        The first point along the surface wins at x = 0, so the thickness there is 0; picking by
+        y would measure 0.4 and hide that the whole contour is flat.
+        """
+        step = [[1, 0], [0.5, 0], [0, 0.2], [0, -0.2], [0.5, 0], [1, 0]]
+        (error,) = _validate(_with_airfoil({"coordinates": step}))
+        assert error.code == "non_positive_thickness"
+        assert error.detail == {"value": 0.0}
+
     def test_blunt_trailing_edge_is_accepted(self) -> None:
         blunt = [[1.0, 0.01], [0.5, 0.06], [0.0, 0.0], [0.5, -0.06], [1.0, -0.01]]
         assert _validate(_with_airfoil({"coordinates": blunt})) == ()
