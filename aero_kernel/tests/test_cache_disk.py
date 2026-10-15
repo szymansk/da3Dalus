@@ -158,7 +158,7 @@ async def test_an_entry_over_the_scope_limit_is_not_stored(tmp_path: Path) -> No
 
 
 @pytest.mark.asyncio
-async def test_a_locked_database_degrades_get_and_put_with_a_warning(
+async def test_a_locked_database_skips_the_put_and_still_serves_the_hit(
     tmp_path: Path, caplog: pytest.LogCaptureFixture
 ) -> None:
     cache = _disk(tmp_path, busy_timeout_s=0.05)
@@ -167,12 +167,12 @@ async def test_a_locked_database_degrades_get_and_put_with_a_warning(
     blocker.execute("BEGIN IMMEDIATE")
     try:
         with caplog.at_level(logging.WARNING, logger="aero_kernel.cache"):
-            assert await cache.get("s", "k") is None
+            assert await cache.get("s", "k") == entry()
             await cache.put("s", "new", entry())
     finally:
         blocker.execute("ROLLBACK")
         blocker.close()
-    assert caplog.text.count("disk cache unavailable (SQLITE_BUSY)") == 2
+    assert caplog.text.count("disk cache unavailable (SQLITE_BUSY)") == 1
     assert await cache.get("s", "new") is None
 
 
@@ -219,16 +219,18 @@ async def test_two_instances_share_one_file(tmp_path: Path) -> None:
 
 @pytest.mark.asyncio
 async def test_a_database_locked_while_opening_is_a_miss_not_a_move_aside(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    tmp_path: Path, caplog: pytest.LogCaptureFixture, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     blocker = sqlite3.connect(tmp_path / DB_NAME, isolation_level=None)
     blocker.execute("PRAGMA journal_mode = WAL")
     blocker.execute("BEGIN IMMEDIATE")
     try:
-        assert await _disk(tmp_path, busy_timeout_s=0.05).get("s", "k") is None
+        with caplog.at_level(logging.WARNING, logger="aero_kernel.cache"):
+            assert await _disk(tmp_path, busy_timeout_s=0.05).get("s", "k") is None
     finally:
         blocker.execute("ROLLBACK")
         blocker.close()
+    assert caplog.text.count("disk cache unavailable (SQLITE_BUSY)") == 1
     assert not (tmp_path / f"{DB_NAME}.corrupt").exists()
 
 
@@ -380,3 +382,20 @@ async def test_an_error_that_is_not_a_lock_is_not_called_busy(
     with pytest.raises(StoreError) as caught:
         await directory_as_database.drop_scope("s")
     assert str(caught.value) == "the cache could not delete scope s; the store is unavailable"
+
+
+@pytest.mark.asyncio
+async def test_a_hit_survives_a_failing_recency_update(
+    tmp_path: Path, caplog: pytest.LogCaptureFixture
+) -> None:
+    cache = _disk(tmp_path)
+    await cache.put("s", "k", entry(5.0))
+    path = tmp_path / DB_NAME
+    path.chmod(0o444)
+    try:
+        with caplog.at_level(logging.DEBUG, logger="aero_kernel.cache"):
+            assert await cache.get("s", "k") == entry(5.0)
+    finally:
+        path.chmod(0o644)
+    assert "recency not updated" in caplog.text
+    assert "WARNING" not in caplog.text
