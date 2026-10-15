@@ -12,8 +12,8 @@ import math
 import sqlite3
 import threading
 from collections import OrderedDict
-from collections.abc import Callable, Mapping
-from contextlib import closing
+from collections.abc import Callable, Generator, Mapping
+from contextlib import closing, contextmanager
 from pathlib import Path
 from typing import Protocol, Self, TypeVar, runtime_checkable
 
@@ -36,7 +36,9 @@ logger = logging.getLogger(__name__)
 
 _T = TypeVar("_T")
 
-_SCHEMA_VERSION = 1
+_SCHEMA_VERSION = 2
+_ALL_SCOPES = ""  # the totals row for all scopes; a real scope is never empty
+_EVICTION_CHUNK = 64
 _PACKAGE_ROOT = Path(__file__).resolve().parent
 _EXCLUDED_DIRECTORIES = frozenset({"tests", "tools", "importer"})
 _CANON_MODEL = "canon/canon_model.json"
@@ -282,6 +284,14 @@ class MemoryCache:
         logger.debug("cache evict %s", _short(key), extra={"scope": scope})
 
 
+@contextmanager
+def _transaction(db: sqlite3.Connection) -> Generator[None]:
+    """A write transaction that takes the write lock at once; an error rolls back on close."""
+    db.execute("BEGIN IMMEDIATE")
+    yield
+    db.execute("COMMIT")
+
+
 def _error_name(exc: Exception) -> str:
     """The SQLite error name (``SQLITE_BUSY``) or the exception type, for the logs only."""
     return exc.sqlite_errorname if isinstance(exc, sqlite3.Error) else type(exc).__name__
@@ -426,15 +436,15 @@ class DiskCache:
         with closing(self._open()) as db:
             with db:
                 row = db.execute(
-                    "SELECT value FROM entries WHERE scope = ? AND key = ?", (scope, key)
+                    "SELECT value, size FROM entries WHERE scope = ? AND key = ?", (scope, key)
                 ).fetchone()
             if row is None:
                 return None
             try:
                 found = Entry.from_json(row[0])
             except ValueError:
-                with db:
-                    db.execute("DELETE FROM entries WHERE scope = ? AND key = ?", (scope, key))
+                with _transaction(db):
+                    self._delete_rows(db, [(scope, key, row[1])])
                 logger.warning(
                     "disk cache entry unreadable and recomputed: %s",
                     _short(key),
@@ -458,41 +468,97 @@ class DiskCache:
             return found
 
     def _write(self, scope: str, key: str, text: str, size: int) -> None:
-        """Insert the row and evict in one transaction (worker thread)."""
-        with closing(self._open()) as db, db:
+        """Insert the row, update the totals and evict, in one transaction (worker thread)."""
+        with closing(self._open()) as db, _transaction(db):
+            previous = db.execute(
+                "SELECT size FROM entries WHERE scope = ? AND key = ?", (scope, key)
+            ).fetchone()
             db.execute(
                 "INSERT OR REPLACE INTO entries (scope, key, value, size, tick)"
                 " VALUES (?, ?, ?, ?, (SELECT COALESCE(MAX(tick), 0) + 1 FROM entries))",
                 (scope, key, text, size),
             )
+            grown = size - (0 if previous is None else previous[0])
+            self._add_to_totals(db, {scope: grown})
             if self._max_per_scope is not None:
-                self._trim(db, "WHERE scope = ?", (scope,), self._max_per_scope)
-            self._trim(db, "", (), self._max_bytes)
+                self._trim(db, scope, self._max_per_scope)
+            self._trim(db, None, self._max_bytes)
 
     def _drop(self, scope: str) -> None:
-        """Delete the rows of ``scope`` (worker thread)."""
-        with closing(self._open()) as db, db:
+        """Delete the rows of ``scope`` and its totals (worker thread)."""
+        with closing(self._open()) as db, _transaction(db):
+            freed = self._total(db, scope)
             db.execute("DELETE FROM entries WHERE scope = ?", (scope,))
+            db.execute("DELETE FROM totals WHERE scope = ?", (scope,))
+            self._add_to_totals(db, {_ALL_SCOPES: -freed})
 
     @staticmethod
-    def _trim(db: sqlite3.Connection, where: str, params: tuple[str, ...], limit: int) -> None:
-        """Delete the least recently used rows matching ``where`` until their payload fits ``limit``.
+    def _total(db: sqlite3.Connection, scope: str) -> int:
+        """The running payload total of ``scope`` (:data:`_ALL_SCOPES` for everything)."""
+        row = db.execute("SELECT bytes FROM totals WHERE scope = ?", (scope,)).fetchone()
+        return 0 if row is None else row[0]
 
-        ``where`` is one of the constant clauses of :meth:`_write`, never caller data.
-        """
-        (total,) = db.execute(
-            f"SELECT COALESCE(SUM(size), 0) FROM entries {where}", params
-        ).fetchone()
-        rows = iter(
+    @staticmethod
+    def _add_to_totals(db: sqlite3.Connection, changes: dict[str, int]) -> None:
+        """Add ``changes`` per scope to the totals; the all-scopes row follows the sum."""
+        for scope, change in changes.items():
             db.execute(
-                f"SELECT scope, key, size FROM entries {where} ORDER BY tick", params
-            ).fetchall()
-        )
+                "INSERT INTO totals (scope, bytes) VALUES (?, ?)"
+                " ON CONFLICT (scope) DO UPDATE SET bytes = bytes + excluded.bytes",
+                (scope, change),
+            )
+        if _ALL_SCOPES not in changes:
+            db.execute(
+                "INSERT INTO totals (scope, bytes) VALUES (?, ?)"
+                " ON CONFLICT (scope) DO UPDATE SET bytes = bytes + excluded.bytes",
+                (_ALL_SCOPES, sum(changes.values())),
+            )
+
+    def _delete_rows(self, db: sqlite3.Connection, rows: list[tuple[str, str, int]]) -> None:
+        """Delete ``(scope, key, size)`` rows with one statement and subtract them from the totals."""
+        db.executemany("DELETE FROM entries WHERE scope = ? AND key = ?", [r[:2] for r in rows])
+        freed: dict[str, int] = {}
+        for scope, _key, size in rows:
+            freed[scope] = freed.get(scope, 0) - size
+        self._add_to_totals(db, freed)
+
+    def _trim(self, db: sqlite3.Connection, scope: str | None, limit: int) -> None:
+        """Evict least recently used rows, in chunks, until the total fits ``limit``.
+
+        ``scope`` limits the eviction to one scope; ``None`` means over all scopes. Nothing is
+        read from ``entries`` while the running total is within the limit.
+        """
+        total = self._total(db, _ALL_SCOPES if scope is None else scope)
         while total > limit:
-            scope, key, size = next(rows)
-            db.execute("DELETE FROM entries WHERE scope = ? AND key = ?", (scope, key))
-            total -= size
-            logger.debug("cache evict %s", _short(key), extra={"scope": scope})
+            where = "" if scope is None else "WHERE scope = ?"  # constant clause, no caller data
+            rows = db.execute(
+                f"SELECT scope, key, size FROM entries {where} ORDER BY tick LIMIT ?",
+                (_EVICTION_CHUNK,) if scope is None else (scope, _EVICTION_CHUNK),
+            ).fetchall()
+            if not rows:
+                logger.warning("disk cache totals drifted from the entries, rebuilding them")
+                self._rebuild_totals(db)
+                return
+            doomed: list[tuple[str, str, int]] = []
+            for row_scope, key, size in rows:
+                if total <= limit:
+                    break
+                doomed.append((row_scope, key, size))
+                total -= size
+                logger.debug("cache evict %s", _short(key), extra={"scope": row_scope})
+            self._delete_rows(db, doomed)
+
+    @staticmethod
+    def _rebuild_totals(db: sqlite3.Connection) -> None:
+        """Recompute the running totals from the entries."""
+        db.execute("DELETE FROM totals")
+        db.execute(
+            "INSERT INTO totals (scope, bytes) SELECT scope, SUM(size) FROM entries GROUP BY scope"
+        )
+        db.execute(
+            "INSERT INTO totals (scope, bytes) SELECT ?, COALESCE(SUM(size), 0) FROM entries",
+            (_ALL_SCOPES,),
+        )
 
     async def _guard(self, function: Callable[..., _T], *args: object) -> _T:
         """Run ``function`` in a worker thread; a corrupt file is moved aside before re-raising."""
@@ -505,33 +571,43 @@ class DiskCache:
             raise
 
     def _open(self) -> sqlite3.Connection:
-        """Open a connection and make sure the schema is current."""
+        """Open a connection in autocommit mode and make sure the schema is current."""
         self._path.parent.mkdir(parents=True, exist_ok=True)
-        db = sqlite3.connect(self._path, timeout=self._busy_timeout_s)
+        db = sqlite3.connect(self._path, timeout=self._busy_timeout_s, isolation_level=None)
         try:
             with self._lock:  # switching to WAL needs the file to itself; once per instance
                 if not self._wal_set:
                     db.execute("PRAGMA journal_mode = WAL")
                     self._wal_set = True
             (version,) = db.execute("PRAGMA user_version").fetchone()
-            if version not in (0, _SCHEMA_VERSION):
-                logger.warning(
-                    "disk cache schema version %s is unknown, resetting the cache", version
-                )
-                db.execute("DROP TABLE IF EXISTS entries")
             if version != _SCHEMA_VERSION:
-                db.execute(
-                    "CREATE TABLE IF NOT EXISTS entries (scope TEXT NOT NULL, key TEXT NOT NULL,"
-                    " value TEXT NOT NULL, size INTEGER NOT NULL, tick INTEGER NOT NULL,"
-                    " PRIMARY KEY (scope, key))"
-                )
-                db.execute("CREATE INDEX IF NOT EXISTS entries_tick ON entries (tick)")
-                db.execute("CREATE INDEX IF NOT EXISTS entries_scope_tick ON entries (scope, tick)")
-                db.execute(f"PRAGMA user_version = {_SCHEMA_VERSION}")
+                with self._lock:
+                    self._prepare(db)
         except BaseException:
             db.close()
             raise
         return db
+
+    @staticmethod
+    def _prepare(db: sqlite3.Connection) -> None:
+        """Create the schema, or reset it if its version is unknown (worker thread, under the lock)."""
+        (version,) = db.execute("PRAGMA user_version").fetchone()
+        if version not in (0, _SCHEMA_VERSION):
+            logger.warning("disk cache schema version %s is unknown, resetting the cache", version)
+            db.execute("DROP TABLE IF EXISTS entries")
+            db.execute("DROP TABLE IF EXISTS totals")
+        db.execute(
+            "CREATE TABLE IF NOT EXISTS entries (scope TEXT NOT NULL, key TEXT NOT NULL,"
+            " value TEXT NOT NULL, size INTEGER NOT NULL, tick INTEGER NOT NULL,"
+            " PRIMARY KEY (scope, key))"
+        )
+        db.execute("CREATE INDEX IF NOT EXISTS entries_tick ON entries (tick)")
+        db.execute("CREATE INDEX IF NOT EXISTS entries_scope_tick ON entries (scope, tick)")
+        db.execute(
+            "CREATE TABLE IF NOT EXISTS totals (scope TEXT PRIMARY KEY, bytes INTEGER NOT NULL)"
+        )
+        DiskCache._rebuild_totals(db)
+        db.execute(f"PRAGMA user_version = {_SCHEMA_VERSION}")
 
     def _quarantine(self, generation: int) -> None:
         """Rename the unusable file to ``<name>.corrupt``, replacing an older one.
