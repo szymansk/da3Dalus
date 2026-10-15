@@ -537,22 +537,18 @@ class TestTrailingEdgeDevice:
 
 class TestTurbulator:
     def test_height_is_converted_and_defaults_apply(self) -> None:
-        rib = parse_first_section({"turbulator": {"position_root": 0.3, "height_mm": 0.4}})
-        turbulator = rib.turbulator
-        assert turbulator is not None
+        turbulator = first_turbulator({"turbulator": {"position_root": 0.3, "height_mm": 0.4}})
         assert_close(turbulator.height_m, 0.0004)
         assert (turbulator.position_root, turbulator.position_tip) == (0.3, None)
         assert (turbulator.form, turbulator.enabled) == ("zigzag", True)
 
     def test_default_height_is_the_format_default_in_metres(self) -> None:
-        turbulator = parse_first_section({"turbulator": {"position_root": 0.3}}).turbulator
-        assert turbulator is not None
+        turbulator = first_turbulator({"turbulator": {"position_root": 0.3}})
         assert_close(turbulator.height_m, 0.0003)
 
     def test_other_fields_and_rejections(self) -> None:
         detail = {"position_root": 0.3, "position_tip": 0.35, "form": "dots", "enabled": False}
-        turbulator = parse_first_section({"turbulator": detail}).turbulator
-        assert turbulator is not None
+        turbulator = first_turbulator({"turbulator": detail})
         assert (turbulator.position_tip, turbulator.form, turbulator.enabled) == (
             0.35,
             "dots",
