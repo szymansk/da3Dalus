@@ -616,7 +616,7 @@ later `sizing:…`), and a bare slug in a request means `calc:`.
 
 **Shape and identity of the model file** (decided for #1174, unit 6):
 - **Types first, schema generated.** `canon/model.py` holds the Pydantic types (frozen, `extra="forbid"`,
-  invariants in the model, ch. 8.11). `canon_model.schema.json` is generated from them and committed; a
+  invariants in the model, ch. 8.11). `canon_model.schema.json` is generated from them (`python -m aero_kernel.canon.schema_file [path]`) and committed; a
   test fails when the committed schema differs from the generated one. Never hand-written.
 - **Layout.** `{schema_version, content_hash, source_commit, importer_version, namespaces: {"calc":
   {quantities: {<slug>: …}, formulas: {<slug>: …}}}}`, dict keys bare slugs. **Every reference inside the
@@ -741,9 +741,11 @@ class ComputeRequest(BaseModel):
   quantity — SI-coherent, with the canon's declared exceptions: angles in `deg` (and `deg/s`), energy in
   `Wh`, the motor constant in `rpm/V`. The kernel converts none of them; a formula converts internally
   where a tool needs radians or SI base units.
-- **What `values` may hold.** Only slugs of the canon model with `role: input` or `role: target`. An
-  unknown slug is an `input_errors` entry, code `unknown_quantity`; a slug of a derived or output quantity
-  (no override of a computed value) is `not_an_input`; both with `input_path = values.<slug>`.
+- **What `values` may hold.** Only slugs of **scalar** canon quantities with `role: input` or `role:
+  target`. An unknown slug is an `input_errors` entry, code `unknown_quantity`; a slug of a derived or
+  output quantity (no override of a computed value), or of a non-scalar input (`airplane`, which arrives as
+  `AircraftInput.airplane`), is `not_an_input` — "not an input of `values`", the message naming where the
+  quantity comes from instead; both with `input_path = values.<slug>`.
 - **What a request may name.** Only quantities with `role: derived` or `output`. An unknown slug is, per
   quantity, `error` / `invalid_input` / `unknown_quantity`; an input or target slug is `not_requestable`
   (its value is the caller's own); the rest of the request is computed.
