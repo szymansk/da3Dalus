@@ -434,3 +434,16 @@ def test_the_model_declares_no_physical_constraint() -> None:
     """Inadmissible but well-typed input must reach validate.py as input_errors (ch. 8.11)."""
     published = AirplaneGeometry.model_json_schema(mode="validation")
     assert bound_keywords(published) == []
+
+
+def test_the_bound_detector_finds_bounds_and_spares_fixed_tuples() -> None:
+    """The R1 guard above is only worth something if it can fail."""
+    constrained: dict[str, Any] = {
+        "properties": {"x": {"exclusiveMinimum": 0}, "p": {"anyOf": [{"maxItems": 2}]}}
+    }
+    assert bound_keywords(constrained) == [
+        "/properties/x/exclusiveMinimum",
+        "/properties/p/anyOf/0/maxItems",
+    ]
+    fixed: dict[str, Any] = {"prefixItems": [{}, {}], "minItems": 2, "maxItems": 2}
+    assert bound_keywords(fixed) == []
