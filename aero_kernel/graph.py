@@ -711,9 +711,12 @@ def _roles(wing: Wing) -> list[str]:
 
 
 def _planform_area(wing: Wing) -> float:
-    """Planform area of one stored half: mean chord times segment length, summed (m^2)."""
+    """Planform area of one stored half: mean chord times y-z segment span, summed (m^2).
+
+    The span is measured in the y-z plane, so sweep does not count.
+    """
     return sum(
-        (a.chord + b.chord) / 2 * math.dist(a.xyz_le, b.xyz_le)
+        (a.chord + b.chord) / 2 * math.hypot(b.xyz_le[1] - a.xyz_le[1], b.xyz_le[2] - a.xyz_le[2])
         for a, b in zip(wing.x_secs, wing.x_secs[1:], strict=False)
     )
 

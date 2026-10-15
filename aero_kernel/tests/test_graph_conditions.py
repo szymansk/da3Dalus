@@ -232,3 +232,35 @@ def test_two_flaperons_on_different_ribs_are_a_butterfly_layout() -> None:
         {"w": wing(sec(0, 0, 0.2, "flaperon"), sec(0, 0.3, 0.2, "flaperon"), sec(0, 0.6, 0.2))}
     )
     assert (held.has_aileron, held.has_separate_flap_and_aileron) == (True, True)
+
+
+def test_the_main_wing_is_chosen_by_area_not_by_span() -> None:
+    narrow = wing(sec(0, 0, 0.05), sec(0, 1.0, 0.05))  # area .05, span 1.0, trailing edge .05
+    wide = wing(sec(0, 0, 0.5), sec(0, 0.4, 0.5))  # area .2, span .4, trailing edge .5
+    assert facts({"narrow": narrow, "wide": wide, "fin": fin(0.3)}).has_vertical_tail is False
+
+
+def test_a_larger_fin_does_not_take_over_as_main_wing() -> None:
+    main = wing(sec(0, 0, 0.2), sec(0, 1.0, 0.2))  # area .2
+    big_fin = wing(sec(0.9, 0, 1.0), sec(0.95, 0.3, 1.0), symmetric=False)  # area .3
+    assert facts({"main": main, "fin": big_fin}).has_vertical_tail is True
+
+
+def test_the_root_of_the_main_wing_is_its_first_rib() -> None:
+    swept = wing(sec(0, 0, 0.2), sec(0.5, 0.5, 0.1))  # root trailing edge .2, tip's .6
+    assert facts({"main": swept, "fin": fin(0.3)}).has_vertical_tail is True
+
+
+def test_the_area_weights_chords_by_segment_length() -> None:
+    long_segment = wing(sec(0, 0, 0.3), sec(0, 1.0, 0.3))  # area .3
+    short_segments = wing(sec(0, 0, 0.2), sec(0, 0.1, 0.2), sec(0, 0.2, 0.2), sec(0, 0.3, 0.2))
+    held = facts({"a": long_segment, "b": short_segments, "fin": fin(0.25)})
+    assert held.has_vertical_tail is False  # a is main (trailing edge .3), the fin is not behind
+
+
+def test_sweep_does_not_count_towards_the_planform_area() -> None:
+    swept = wing(sec(0, 0, 0.2), sec(1.0, 0.5, 0.2))  # y-z area .1, Euclidean .22
+    straight = wing(sec(0, 0, 0.3), sec(0, 0.5, 0.3))  # area .15, trailing edge .3
+    assert (
+        facts({"swept": swept, "straight": straight, "fin": fin(0.25)}).has_vertical_tail is False
+    )
