@@ -6,7 +6,7 @@ unknown fields. :class:`KernelError` is re-exported from :mod:`aero_kernel.error
 
 from collections.abc import Iterable, Mapping
 from enum import StrEnum
-from typing import Literal, Self
+from typing import Annotated, Literal, Self
 
 from aero_kernel.errors import (
     ErrorCategory,
@@ -24,6 +24,9 @@ class WarningSeverity(StrEnum):
     PRACTICE = "practice"
     DEFECT = "defect"
 
+
+# NaN and infinity cannot occur in a result (ch. 8.4): they do not survive a JSON round trip.
+FiniteFloat = Annotated[float, Field(allow_inf_nan=False)]
 
 # The accuracy tiers of the solvers (ch. 8.11), coarsest first.
 Accuracy = Literal["xxsmall", "xsmall", "small", "medium", "large", "xlarge", "xxlarge", "xxxlarge"]
@@ -108,9 +111,9 @@ class Interval(BaseModel):
 
     model_config = ConfigDict(extra="forbid", frozen=True)
 
-    min: float
-    max: float
-    worlds: dict[str, float] = Field(min_length=1)
+    min: FiniteFloat
+    max: FiniteFloat
+    worlds: dict[str, FiniteFloat] = Field(min_length=1)
 
     @model_validator(mode="after")
     def _check_worlds(self) -> Self:
@@ -198,7 +201,7 @@ class QuantityResult(BaseModel):
     unit: str
     status: QuantityStatus
     reason: Reason | None = None
-    value: float | None = None
+    value: FiniteFloat | None = None
     interval: Interval | None = None
     tool: str | None = None
     application: str | None = None
@@ -259,7 +262,7 @@ class DefaultUsed(BaseModel):
     model_config = ConfigDict(extra="forbid", frozen=True)
 
     slug: str = Field(min_length=1)
-    value: float
+    value: FiniteFloat
     unit: str = Field(min_length=1)
     source: str = Field(min_length=1)
 

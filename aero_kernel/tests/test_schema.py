@@ -431,3 +431,30 @@ class TestWorldAssignment:
     def test_warning_rejects_malformed_world(self) -> None:
         with pytest.raises(ValidationError, match="world"):
             make_warning(world="avl")
+
+
+NON_FINITE = [float("nan"), float("inf"), float("-inf")]
+
+
+class TestFiniteFloats:
+    @pytest.mark.parametrize("bad", NON_FINITE)
+    def test_value_rejects_non_finite(self, bad: float) -> None:
+        with pytest.raises(ValidationError):
+            make_quantity(value=bad)
+
+    @pytest.mark.parametrize("bad", NON_FINITE)
+    @pytest.mark.parametrize("field", ["min", "max"])
+    def test_interval_bound_rejects_non_finite(self, field: str, bad: float) -> None:
+        fields: dict[str, object] = {"min": 0.30, "max": 0.34, "worlds": WORLDS} | {field: bad}
+        with pytest.raises(ValidationError):
+            Interval.model_validate(fields)
+
+    @pytest.mark.parametrize("bad", NON_FINITE)
+    def test_interval_world_value_rejects_non_finite(self, bad: float) -> None:
+        with pytest.raises(ValidationError):
+            Interval.model_validate({"min": 0.3, "max": 0.3, "worlds": {"a=x": bad}})
+
+    @pytest.mark.parametrize("bad", NON_FINITE)
+    def test_default_used_rejects_non_finite(self, bad: float) -> None:
+        with pytest.raises(ValidationError):
+            DefaultUsed(slug="gravity", value=bad, unit="m/s^2", source="ISO")
