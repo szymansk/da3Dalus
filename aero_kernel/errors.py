@@ -6,11 +6,14 @@ An error means *no value*. A value with a caveat is a warning, not an error.
 This module is independent of the result types: ``schema.py`` re-exports :class:`KernelError`.
 """
 
+import logging
 from collections.abc import Mapping, Sequence
 from enum import StrEnum
 from typing import Self, cast
 
 from pydantic import BaseModel, ConfigDict, Field, JsonValue, model_validator
+
+logger = logging.getLogger(__name__)
 
 __all__ = [
     "CODE_CATALOGUE",
@@ -272,7 +275,8 @@ def internal_error_from_exception(
     """Translate any exception that is not a :class:`FormulaError` into an ``internal`` error.
 
     Only the exception type enters the error: its text can carry file paths and internals
-    (ADR 0019). The text and traceback go to ``logger.exception`` in the engine (ch. 8.14).
+    (ADR 0019). The text and traceback are logged here at ``ERROR`` (the equivalent of
+    ``logger.exception``, which needs an active ``except`` block) with the call context (ch. 8.14).
 
     Args:
         exc: The unexpected exception.
@@ -284,6 +288,18 @@ def internal_error_from_exception(
     Returns:
         An ``internal`` error.
     """
+    logger.error(
+        "internal error while computing %s: %s",
+        quantity,
+        exc,
+        exc_info=exc,
+        extra={
+            "quantity": quantity,
+            "formula": formula,
+            "application": application,
+            "world": world,
+        },
+    )
     return KernelError(
         code=ErrorCategory.INTERNAL.value,
         category=ErrorCategory.INTERNAL,

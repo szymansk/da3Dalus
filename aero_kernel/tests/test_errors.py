@@ -1,6 +1,7 @@
 """Tests for the error catalogue (ARCHITECTURE ch. 8.1, scenarios Q4, Q6, Q23, Q25)."""
 
 import json
+import logging
 
 import pytest
 from aero_kernel.errors import (
@@ -504,3 +505,31 @@ def test_aggregate_hint_lists_several_roots() -> None:
     result = aggregate_upstream([_err("a"), _err("b")], quantity="q")
     assert result.hint == "Fix `a`, `b` first."
     assert aggregate_upstream([_err("a")], quantity="q").hint == "Fix `a` first."
+
+
+def test_internal_error_logs_the_exception_text_at_error_level(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    """The text and traceback go to the log only, with the call context in ``extra``."""
+    exc = ZeroDivisionError("/secret/path")
+    with caplog.at_level(logging.ERROR, logger="aero_kernel.errors"):
+        internal_error_from_exception(exc, quantity="q", formula="f", application="a", world="w")
+    records = [r for r in caplog.records if r.levelno == logging.ERROR]
+    assert len(records) == 1
+    record = records[0]
+    assert "/secret/path" in record.getMessage()
+    assert record.exc_info is not None
+    assert record.exc_info[1] is exc
+    assert (record.quantity, record.formula, record.application, record.world) == (  # type: ignore[attr-defined]  # ``extra`` attributes are set dynamically on the record
+        "q",
+        "f",
+        "a",
+        "w",
+    )
+
+
+def test_internal_error_hides_the_exception_text_everywhere() -> None:
+    error = internal_error_from_exception(ValueError("/secret/path"), quantity="q")
+    assert "/secret/path" not in error.message
+    assert "/secret/path" not in error.hint
+    assert "/secret/path" not in json.dumps(error.detail)
