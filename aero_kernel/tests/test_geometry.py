@@ -630,3 +630,42 @@ def test_docstring_documents_every_attribute(name: str) -> None:
     doc = model.__doc__ or ""
     undocumented = [f for f in model.model_fields if f"{f}:" not in doc]
     assert undocumented == []
+
+
+class TestNoPhysicalConstraint:
+    def test_inadmissible_but_well_typed_values_parse(self) -> None:
+        """Each of these becomes an input_error in validate.py, never a ValidationError."""
+        wing = minimal_wing()
+        sections = wing["x_secs"]
+        sections[0] |= {
+            "chord": -0.1,
+            "number_interpolation_points": 0,
+            "trailing_edge_device": {
+                "positive_deflection_deg": 400,
+                "mix_gain_primary": 10,
+                "servo": SERVO_MM | {"length": -1},
+            },
+        }
+        fuselage = fuselage_doc()
+        fuselage["x_secs"] = [{"xyz": [0, 0, 0], "a": -1, "b": 0.1, "n": -2}]
+        airplane = AirplaneGeometry.model_validate(
+            {
+                "name": "A",
+                "total_mass_kg": -1,
+                "wings": {"W": wing},
+                "fuselages": {"F": fuselage},
+            }
+        )
+        assert airplane.total_mass_kg == -1
+        assert airplane.wings is not None
+        rib = airplane.wings["W"].x_secs[0]
+        assert rib.chord == -0.1
+        assert rib.number_interpolation_points == 0
+        assert rib.trailing_edge_device is not None
+        assert rib.trailing_edge_device.positive_deflection_deg == 400
+        assert rib.trailing_edge_device.mix_gain_primary == 10
+        assert isinstance(rib.trailing_edge_device.servo, Servo)
+        assert rib.trailing_edge_device.servo.length_m == -0.001
+        assert airplane.fuselages is not None
+        assert len(airplane.fuselages["F"].x_secs) == 1
+        assert airplane.fuselages["F"].x_secs[0].a == -1
