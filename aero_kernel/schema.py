@@ -4,6 +4,7 @@ Warnings, quantity results, the compute result and provenance. All models are fr
 unknown fields. :class:`KernelError` is re-exported from :mod:`aero_kernel.errors`.
 """
 
+import re
 from collections.abc import Iterable, Mapping
 from enum import StrEnum
 from typing import Literal, Self
@@ -23,6 +24,68 @@ class WarningSeverity(StrEnum):
 
 # The accuracy tiers of the solvers (ch. 8.11), coarsest first.
 Accuracy = Literal["xxsmall", "xsmall", "small", "medium", "large", "xlarge", "xxlarge", "xxxlarge"]
+
+_SLUG_PATTERN = re.compile(r"[a-z0-9]+(-[a-z0-9]+)*")
+_WORLD_PATTERN = re.compile(r"[a-z0-9]+(_[a-z0-9]+)*")
+
+
+def _check_world_pair(slug: str, world: str) -> None:
+    """Raise ``ValueError`` unless ``slug`` is kebab-case and ``world`` snake_case."""
+    if not _SLUG_PATTERN.fullmatch(slug) or not _WORLD_PATTERN.fullmatch(world):
+        msg = f"world assignment has a malformed pair {slug}={world}"
+        raise ValueError(msg)
+
+
+def format_world_assignment(assignment: Mapping[str, str]) -> str:
+    """Write a world assignment in its canonical form (ch. 8.13).
+
+    Args:
+        assignment: World name per uncertain formula slug.
+
+    Returns:
+        Pairs ``<formula-slug>=<world>`` sorted by slug and joined by ``,`` without spaces.
+
+    Raises:
+        ValueError: If the assignment is empty or a slug or world name is malformed.
+    """
+    if not assignment:
+        msg = "world assignment must not be empty"
+        raise ValueError(msg)
+    for slug, world in assignment.items():
+        _check_world_pair(slug, world)
+    return ",".join(f"{slug}={assignment[slug]}" for slug in sorted(assignment))
+
+
+def parse_world_assignment(text: str) -> dict[str, str]:
+    """Parse the canonical world assignment string (ch. 8.13).
+
+    Args:
+        text: For example ``neutral-point=avl,roll-rate=aerobuildup``. A single formula's world
+            is one pair, never a bare world name.
+
+    Returns:
+        World name per formula slug.
+
+    Raises:
+        ValueError: If the text is empty, a pair is malformed, the slugs are not unique or not
+            sorted, or a slug (kebab-case) or world name (snake_case) is malformed.
+    """
+    assignment: dict[str, str] = {}
+    for pair in text.split(","):
+        slug, separator, world = pair.partition("=")
+        if not separator:
+            msg = f"world assignment {text!r} has a pair without '=': {pair!r}"
+            raise ValueError(msg)
+        _check_world_pair(slug, world)
+        if slug in assignment:
+            msg = f"world assignment {text!r} repeats formula {slug}"
+            raise ValueError(msg)
+        assignment[slug] = world
+    if format_world_assignment(assignment) != text:
+        msg = f"world assignment {text!r} is not sorted by formula slug"
+        raise ValueError(msg)
+    return assignment
+
 
 # The closed warning table (ch. 8.2): code -> fixed severity. A new code is added here by the unit
 # that builds its source, never invented at the raise site.
@@ -63,7 +126,9 @@ class KernelWarning(BaseModel):
 
     @model_validator(mode="after")
     def _check_code(self) -> Self:
-        """Reject codes outside the table and severities that contradict it."""
+        """Reject codes outside the table, contradicting severities and a malformed world."""
+        if self.world is not None:
+            parse_world_assignment(self.world)
         expected = WARNING_CATALOGUE.get(self.code)
         if expected is None:
             msg = f"code {self.code} is not in the warning catalogue; add it to WARNING_CATALOGUE"
@@ -108,7 +173,9 @@ class Interval(BaseModel):
 
     @model_validator(mode="after")
     def _check_worlds(self) -> Self:
-        """Require min and max to be the extremes of the world values."""
+        """Require canonical world keys, and min and max to be the extremes of the values."""
+        for key in self.worlds:
+            parse_world_assignment(key)
         if self.min != min(self.worlds.values()) or self.max != max(self.worlds.values()):
             msg = "interval min and max must equal the smallest and largest world value"
             raise ValueError(msg)
