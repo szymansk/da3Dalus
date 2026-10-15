@@ -188,9 +188,8 @@ def test_repair_leaves_control_surfaces_in_place() -> None:
     original = read_document(path)
     repaired = repair_for_schema(read_document(path))
     assert has_control_surfaces(repaired)
-    assert {k: v for k, v in repaired.items() if k in {"wings"}}["wings"].keys() == original[
-        "wings"
-    ].keys()
+    for key, wing in original["wings"].items():
+        assert repaired["wings"][key]["x_secs"] == wing["x_secs"]
 
 
 def test_urmodell_documents_are_still_rejected_for_control_surfaces() -> None:
