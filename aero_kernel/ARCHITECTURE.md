@@ -534,10 +534,15 @@ Both kinds return one of three states:
 - One producer per quantity; a second path only as a probe (A7).
 - Unique symbols and slugs (A8).
 - Targets only as `role: target` (A9).
-- Units consistent across bindings (A4); dimensional check of law entries. **The importer is the
-  authority** for model validity; it ports the logic of `scripts/check_canon.py` (it may not import
-  `scripts/`). `check_canon.py` remains an authoring aid for the canon document (#1181) until
-  `importer --check` runs in CI, then it is removed (ADR 0021).
+- Units consistent across bindings (A4); dimensional check of law entries (later, report-only).
+- **One home per rule.** The importer is the authority for model validity: every **structural** rule
+  (front-matter fields, vocabularies, references, the rules above) lives in the importer, which ports them
+  from `scripts/check_canon.py` (it may not import `scripts/`). Until `importer --check` runs in CI
+  (#1177, unit 13) the two copies exist on purpose and a differential test keeps them agreeing; then the
+  structural rules are **deleted from `check_canon.py`** and the differential test with them (ADR 0021).
+  `check_canon.py` keeps only the **prose/authoring checks** the importer never does, because it never
+  reads prose — the "Produces / from" and "Used by" lines and the README examples — as the canon
+  document's own authoring check.
 - Every reference (inputs, bindings, worlds) resolves to a quantity in the model.
 
 - Separate namespaces: the calculation canon now, the sizing canon (K31) later (ch. 8.9).
