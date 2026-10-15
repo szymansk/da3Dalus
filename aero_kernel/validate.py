@@ -45,6 +45,21 @@ class Validation(BaseModel):
     warnings: tuple[KernelWarning, ...] = ()
 
 
+# What the kernel reads of a trailing-edge device (ch. 8.11), an allowlist so a field cannot be
+# missed: its role, the hinge line, the symmetry, the AVL mixing gains of dual roles, and the
+# deflection (only to report it as ignored). Its span is the segment it sits on.
+_TED_READ = frozenset(
+    {
+        "role",
+        "rel_chord_root",
+        "rel_chord_tip",
+        "symmetric",
+        "mix_gain_primary",
+        "mix_gain_secondary",
+        "deflection_deg",
+    }
+)
+
 # Fields no kernel formula reads. This is the policy "a check exists only for a field the kernel
 # reads" (ch. 8.11): a finding on them would be noise. When a later formula starts reading one
 # (turbulator, spars), that unit removes it from this table. A device's
@@ -55,17 +70,7 @@ UNREAD_FIELDS: Mapping[type[BaseModel], frozenset[str]] = {
     geometry.SpareDetail: frozenset(geometry.SpareDetail.model_fields),
     geometry.Turbulator: frozenset(geometry.Turbulator.model_fields),
     geometry.ControlSurface: frozenset(geometry.ControlSurface.model_fields) - {"deflection"},
-    geometry.TrailingEdgeDevice: frozenset(
-        {
-            "servo",
-            "hinge_spacing_m",
-            "side_spacing_root_m",
-            "side_spacing_tip_m",
-            "positive_deflection_deg",
-            "negative_deflection_deg",
-            "trailing_edge_offset_factor",
-        }
-    ),
+    geometry.TrailingEdgeDevice: frozenset(geometry.TrailingEdgeDevice.model_fields) - _TED_READ,
 }
 
 

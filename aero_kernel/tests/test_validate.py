@@ -250,6 +250,61 @@ class TestKernelReadFieldsOnly:
                     assert name in UNREAD_FIELDS.get(model, frozenset()), (model, name)
 
 
+_TED_READ_FLOATS = [
+    "rel_chord_root",
+    "rel_chord_tip",
+    "mix_gain_primary",
+    "mix_gain_secondary",
+    "deflection_deg",
+]
+_TED_UNREAD_FLOATS = [
+    "rel_chord_servo_position",
+    "rel_length_servo_position",
+    "hinge_spacing",
+    "side_spacing_root",
+    "side_spacing_tip",
+    "positive_deflection_deg",
+    "negative_deflection_deg",
+    "trailing_edge_offset_factor",
+    "differential_ratio",
+]
+
+
+class TestTrailingEdgeDeviceReadSet:
+    """The kernel reads exactly role, hinge line, symmetric, mixing gains and (to report) the angle."""
+
+    @pytest.mark.parametrize("field", _TED_READ_FLOATS)
+    def test_nan_in_a_read_field_is_a_finding(self, field: str) -> None:
+        document = _document()
+        x_sec = document["airplane"]["wings"]["Main wing"]["x_secs"][0]
+        x_sec["trailing_edge_device"] = {field: math.nan}
+        assert _paths(_validate(document)) == [
+            f'airplane.wings["Main wing"].x_secs[0].trailing_edge_device.{field}'
+        ]
+
+    @pytest.mark.parametrize("field", _TED_UNREAD_FLOATS)
+    def test_nan_in_an_unread_field_is_no_finding(self, field: str) -> None:
+        document = _document()
+        x_sec = document["airplane"]["wings"]["Main wing"]["x_secs"][0]
+        x_sec["trailing_edge_device"] = {field: math.nan}
+        assert _validate(document) == ()
+
+    def test_every_float_field_is_classified(self) -> None:
+        """A new float field on the device must be put on one list, read or unread."""
+        classified = set(_TED_READ_FLOATS) | set(_TED_UNREAD_FLOATS)
+        aliases = {
+            "hinge_spacing_m": "hinge_spacing",
+            "side_spacing_root_m": "side_spacing_root",
+            "side_spacing_tip_m": "side_spacing_tip",
+        }
+        floats = {
+            aliases.get(name, name)
+            for name, field in geometry.TrailingEdgeDevice.model_fields.items()
+            if "float" in str(field.annotation)
+        }
+        assert floats == classified
+
+
 class TestFuselage:
     @pytest.mark.parametrize("axis", ["a", "b"])
     @pytest.mark.parametrize("size", [0.0, -0.05])
