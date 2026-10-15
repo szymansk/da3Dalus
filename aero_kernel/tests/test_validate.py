@@ -235,3 +235,73 @@ class TestKernelReadFieldsOnly:
             for name, field in model.model_fields.items():
                 if field.validation_alias is not None:
                     assert name in UNREAD_FIELDS.get(model, frozenset()), (model, name)
+
+
+class TestFuselage:
+    @pytest.mark.parametrize("axis", ["a", "b"])
+    @pytest.mark.parametrize("size", [0.0, -0.05])
+    def test_non_positive_semi_axis_is_rejected(self, axis: str, size: float) -> None:
+        document = _document()
+        document["airplane"]["fuselages"]["Body"]["x_secs"][1][axis] = size
+        errors = _validate(document)
+        assert _paths(errors) == [f'airplane.fuselages["Body"].x_secs[1].{axis}']
+        assert _codes(errors) == ["non_positive_length"]
+
+
+class TestNames:
+    def test_wing_name_must_equal_its_key(self) -> None:
+        document = _document()
+        document["airplane"]["wings"]["Main wing"]["name"] = "Other"
+        errors = _validate(document)
+        assert _paths(errors) == ['airplane.wings["Main wing"].name']
+        assert _codes(errors) == ["name_mismatch"]
+
+    def test_fuselage_name_must_equal_its_key(self) -> None:
+        document = _document()
+        document["airplane"]["fuselages"]["Body"]["name"] = "Other"
+        errors = _validate(document)
+        assert _paths(errors) == ['airplane.fuselages["Body"].name']
+        assert _codes(errors) == ["name_mismatch"]
+
+
+class TestSegmentDetails:
+    @pytest.mark.parametrize(
+        ("field", "value"),
+        [
+            ("trailing_edge_device", {}),
+            ("spare_list", []),
+            ("turbulator", {"position_root": 0.3}),
+        ],
+    )
+    def test_last_section_carries_no_segment_details(self, field: str, value: object) -> None:
+        document = _document()
+        document["airplane"]["wings"]["Main wing"]["x_secs"][1][field] = value
+        errors = _validate(document)
+        assert _paths(errors) == [f'airplane.wings["Main wing"].x_secs[1].{field}']
+        assert _codes(errors) == ["segment_on_last_section"]
+
+    def test_details_on_an_inner_section_are_accepted(self) -> None:
+        document = _document()
+        wing = document["airplane"]["wings"]["Main wing"]
+        wing["x_secs"][0]["trailing_edge_device"] = {}
+        wing["x_secs"][0]["spare_list"] = []
+        wing["x_secs"][0]["turbulator"] = {"position_root": 0.3}
+        assert _validate(document) == ()
+
+
+class TestControlSurface:
+    def test_control_surface_needs_a_trailing_edge_device(self) -> None:
+        document = _document()
+        document["airplane"]["wings"]["Main wing"]["x_secs"][0]["control_surface"] = {
+            "name": "aileron"
+        }
+        errors = _validate(document)
+        assert _paths(errors) == ['airplane.wings["Main wing"].x_secs[0].control_surface']
+        assert _codes(errors) == ["control_surface_without_device"]
+
+    def test_control_surface_with_a_device_is_accepted(self) -> None:
+        document = _document()
+        x_sec = document["airplane"]["wings"]["Main wing"]["x_secs"][0]
+        x_sec["control_surface"] = {"name": "aileron"}
+        x_sec["trailing_edge_device"] = {"role": "aileron"}
+        assert _validate(document) == ()

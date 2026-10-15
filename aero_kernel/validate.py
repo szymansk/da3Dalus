@@ -132,11 +132,60 @@ def _not_positive(
     return [_finding(code, path, message, hint)]
 
 
+def _name_mismatch(kind: str, key: str, name: str, path: str) -> list[KernelError]:
+    """Report a ``name`` that differs from the dict key it is stored under."""
+    if name == key:
+        return []
+    message = f"The name {name!r} of {kind} {key!r} differs from its key; the key is the identity."
+    return [_finding("name_mismatch", f"{path}.name", message, f"Rename it to {key!r}.")]
+
+
+def _section_findings(x_sec: geometry.WingXSec, path: str, *, is_last: bool) -> list[KernelError]:
+    """Check one rib: positive chord, no segment details on the last, no orphan control surface."""
+    findings = _not_positive(
+        x_sec.chord,
+        f"{path}.chord",
+        "non_positive_length",
+        "Chord",
+        "m",
+        "Give the chord a length > 0.",
+    )
+    if is_last:
+        details = {
+            "trailing_edge_device": x_sec.trailing_edge_device,
+            "spare_list": x_sec.spare_list,
+            "turbulator": x_sec.turbulator,
+        }
+        for field, detail in details.items():
+            if detail is not None:
+                findings.append(
+                    _finding(
+                        "segment_on_last_section",
+                        f"{path}.{field}",
+                        f"The last section carries {field}, but it ends the wing and has no "
+                        "segment outboard of it.",
+                        f"Move {field} to the section where its segment starts, or remove it.",
+                    )
+                )
+    if x_sec.control_surface is not None and x_sec.trailing_edge_device is None:
+        findings.append(
+            _finding(
+                "control_surface_without_device",
+                f"{path}.control_surface",
+                "A control surface is given on a section without a trailing-edge device; the "
+                "kernel takes role and hinge from the device.",
+                "Add a trailing_edge_device to the same section.",
+            )
+        )
+    return findings
+
+
 def _wing_findings(wings: Mapping[str, Wing]) -> list[KernelError]:
-    """Check the wings: at least two sections and a positive chord on each."""
+    """Check the wings: name, section count and each section."""
     findings: list[KernelError] = []
     for key, wing in wings.items():
         wing_path = _key_path("airplane.wings", key)
+        findings += _name_mismatch("wing", key, wing.name, wing_path)
         if len(wing.x_secs) < 2:
             findings.append(
                 _finding(
@@ -146,16 +195,30 @@ def _wing_findings(wings: Mapping[str, Wing]) -> list[KernelError]:
                     "Give the wing a root and a tip section.",
                 )
             )
+        last = len(wing.x_secs) - 1
         for index, x_sec in enumerate(wing.x_secs):
-            path = f"{wing_path}.x_secs[{index}].chord"
-            findings += _not_positive(
-                x_sec.chord,
-                path,
-                "non_positive_length",
-                "Chord",
-                "m",
-                "Give the chord a length > 0.",
+            findings += _section_findings(
+                x_sec, f"{wing_path}.x_secs[{index}]", is_last=index == last
             )
+    return findings
+
+
+def _fuselage_findings(fuselages: Mapping[str, geometry.Fuselage]) -> list[KernelError]:
+    """Check the fuselages: name and positive semi-axes."""
+    findings: list[KernelError] = []
+    for key, fuselage in fuselages.items():
+        path = _key_path("airplane.fuselages", key)
+        findings += _name_mismatch("fuselage", key, fuselage.name, path)
+        for index, x_sec in enumerate(fuselage.x_secs):
+            for axis, size in (("a", x_sec.a), ("b", x_sec.b)):
+                findings += _not_positive(
+                    size,
+                    f"{path}.x_secs[{index}].{axis}",
+                    "non_positive_length",
+                    "Semi-axis",
+                    "m",
+                    "Give the semi-axis a length > 0.",
+                )
     return findings
 
 
@@ -194,6 +257,7 @@ def validate_aircraft(aircraft: AircraftInput) -> Validation:
     for slug in sorted(aircraft.values):
         errors += _non_finite(aircraft.values[slug], _values_path(slug))
     errors += _wing_findings(aircraft.airplane.wings or {})
+    errors += _fuselage_findings(aircraft.airplane.fuselages or {})
     errors += _value_findings(aircraft.values)
     logger.debug("validation done: %d errors", len(errors))
     return Validation(errors=tuple(errors))
