@@ -8,7 +8,8 @@ assignments speak the public bare slug.
 """
 
 import logging
-from collections.abc import Sequence
+import math
+from collections.abc import Collection, Sequence
 
 from aero_kernel.canon.model import (
     DEFAULT_NAMESPACE,
@@ -19,6 +20,8 @@ from aero_kernel.canon.model import (
     WhenTerm,
 )
 from aero_kernel.errors import ErrorCategory, KernelError
+from aero_kernel.geometry import AirplaneGeometry, Wing
+from aero_kernel.schema import Reason, ReasonCode
 from pydantic import BaseModel, ConfigDict
 
 logger = logging.getLogger(__name__)
@@ -308,6 +311,14 @@ class CanonGraph:
         """The ids of all nodes of the model."""
         return tuple(self._nodes)
 
+    def node(self, node_id: NodeId) -> Node:
+        """Return the node with the given id.
+
+        Raises:
+            KeyError: If the model has no such application.
+        """
+        return self._nodes[node_id]
+
     def subtree(self, quantities: Sequence[str]) -> Subtree:
         """Find the nodes a request needs and order them (ch. 6 steps 2 and 3).
 
@@ -427,3 +438,138 @@ def _request_error(
 ) -> KernelError:
     """Build the error of one rejected requested quantity."""
     return KernelError(code=code, category=category, quantity=slug, message=message, hint=hint)
+
+
+# --- application conditions (ch. 8.5) -----------------------------------------------------------
+
+
+class WhenFacts(BaseModel):
+    """The facts of an aircraft's geometry that the closed ``when`` vocabulary asks about.
+
+    Attributes:
+        has_aileron: A device acts as aileron, flaperon or elevon.
+        has_separate_flap_and_aileron: A flap-acting and a distinct aileron-acting device exist.
+        has_vertical_tail: The aircraft has a vertical tail (provisional rule, see below).
+    """
+
+    model_config = _FROZEN
+
+    has_aileron: bool
+    has_separate_flap_and_aileron: bool
+    has_vertical_tail: bool
+
+    def holds(self, term: WhenTerm) -> bool:
+        """Tell whether a ``when`` term holds.
+
+        Args:
+            term: A term of the closed vocabulary.
+
+        Returns:
+            Its fact.
+        """
+        return {
+            "has_aileron": self.has_aileron,
+            "has_separate_flap_and_aileron": self.has_separate_flap_and_aileron,
+            "has_vertical_tail": self.has_vertical_tail,
+        }[term]
+
+
+_AILERON_ROLES = frozenset({"aileron", "flaperon", "elevon"})
+_FLAP_ROLES = frozenset({"flap", "flaperon"})
+_RUDDER_ROLES = frozenset({"rudder", "ruddervator"})
+
+
+def _roles(wing: Wing) -> list[str]:
+    """The roles of a wing's trailing-edge devices, one per rib that carries one."""
+    return [
+        x_sec.trailing_edge_device.role
+        for x_sec in wing.x_secs
+        if x_sec.trailing_edge_device is not None
+    ]
+
+
+def _planform_area(wing: Wing) -> float:
+    """Planform area of one stored half: mean chord times segment length, summed (m^2)."""
+    return sum(
+        (a.chord + b.chord) / 2 * math.dist(a.xyz_le, b.xyz_le)
+        for a, b in zip(wing.x_secs, wing.x_secs[1:], strict=False)
+    )
+
+
+def _has_vertical_tail(wings: dict[str, Wing]) -> bool:
+    """Tell whether another wing is a fin or V-tail behind the main wing's root chord.
+
+    PROVISIONAL (ARCHITECTURE ch. 8.5, awaiting the maintainer's confirmation as D9). The main
+    wing is the symmetric wing of the largest planform area. A vertical tail is another wing that
+    is not symmetric (a fin) or carries a rudder or ruddervator device (a V-tail), and whose
+    first rib lies at or behind the main wing's root trailing edge. Winglets are ribs of the main
+    wing and a tailless centre fin overlaps the root chord, so neither counts.
+    """
+    ribbed = {name: wing for name, wing in wings.items() if wing.x_secs}
+    symmetric = {name: wing for name, wing in ribbed.items() if wing.symmetric}
+    if not symmetric:
+        return False
+    main_name = max(symmetric, key=lambda name: _planform_area(symmetric[name]))
+    root = ribbed[main_name].x_secs[0]
+    trailing_edge_x = root.xyz_le[0] + root.chord
+    return any(
+        (not wing.symmetric or _RUDDER_ROLES & set(_roles(wing)))
+        and wing.x_secs[0].xyz_le[0] >= trailing_edge_x
+        for name, wing in ribbed.items()
+        if name != main_name
+    )
+
+
+def facts_from_geometry(airplane: AirplaneGeometry) -> WhenFacts:
+    """Derive the ``when`` facts of a geometry (ch. 8.5).
+
+    Roles come from ``trailing_edge_device.role`` only, never from a name or a control surface.
+    A device is one rib of one wing.
+
+    Args:
+        airplane: The aircraft geometry.
+
+    Returns:
+        The facts; all false for an aircraft without wings.
+    """
+    wings = airplane.wings or {}
+    devices = [
+        ((name, index), x_sec.trailing_edge_device.role)
+        for name, wing in wings.items()
+        for index, x_sec in enumerate(wing.x_secs)
+        if x_sec.trailing_edge_device is not None
+    ]
+    return WhenFacts(
+        has_aileron=any(role in _AILERON_ROLES for _, role in devices),
+        has_separate_flap_and_aileron=any(
+            flap_role in _FLAP_ROLES and aileron_role in _AILERON_ROLES and flap != aileron
+            for flap, flap_role in devices
+            for aileron, aileron_role in devices
+        ),
+        has_vertical_tail=_has_vertical_tail(wings),
+    )
+
+
+def unmet_condition(node: Node, facts: WhenFacts, supplied: Collection[str]) -> Reason | None:
+    """Check a node's ``when`` and ``given`` conditions; ``when`` first.
+
+    Args:
+        node: The application's node.
+        facts: The geometry facts of the aircraft.
+        supplied: Slugs (bare or qualified) of the input and target values that were supplied.
+
+    Returns:
+        ``condition_not_met`` or ``not_given`` with a message naming the term or the missing
+        slugs, or ``None`` if the application exists.
+    """
+    if node.when is not None and not facts.holds(node.when):
+        return Reason(
+            code=ReasonCode.CONDITION_NOT_MET,
+            message=f"The aircraft does not satisfy `{node.when}`.",
+        )
+    given = {qualify(slug) for slug in supplied}
+    missing = [slug for slug in node.given if slug not in given]
+    if missing:
+        names = ", ".join(f"`{slug.partition(':')[2]}`" for slug in missing)
+        return Reason(code=ReasonCode.NOT_GIVEN, message=f"{names} was not supplied.")
+    return None

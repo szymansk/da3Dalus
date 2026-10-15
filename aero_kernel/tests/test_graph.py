@@ -200,3 +200,10 @@ def test_a_node_reading_its_own_output_is_a_cycle() -> None:
     model = model_of({"a": quantity("derived")}, {"f": formula({"x": "a"}, {"y": "a"})})
     with pytest.raises(GraphModelError, match=r"cycle: calc:f.default -> calc:f.default"):
         CanonGraph(model).subtree(["a"])
+
+
+def test_producer_of_an_unrequested_quantity_is_a_key_error(flight_canon: CanonModel) -> None:
+    subtree = CanonGraph(flight_canon).subtree(["stall-speed", "polar-stall"])
+    for slug in ("approach-speed", "polar-stall"):
+        with pytest.raises(KeyError):
+            subtree.producer_of(slug)
