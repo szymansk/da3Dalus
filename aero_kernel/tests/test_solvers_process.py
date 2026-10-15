@@ -1,7 +1,9 @@
 """The async subprocess helper (ch. 8.8, 8.10; Q17, Q19)."""
 
 import asyncio
+import logging
 import os
+import shutil
 import sys
 import tempfile
 import textwrap
@@ -166,3 +168,30 @@ async def test_temp_dir_is_removed_after_a_normal_run(
     assert run.returncode == 0
     assert _is_dir(scratch)
     assert _entries(scratch) == []
+
+
+async def test_a_failed_cleanup_is_logged_and_does_not_mask_the_result(
+    script: Path,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    scratch = tmp_path / "scratch"
+    scratch.mkdir()
+    monkeypatch.setattr(tempfile, "tempdir", str(scratch))
+
+    def failing_rmtree(path: Path) -> None:
+        msg = "busy"
+        raise PermissionError(msg)
+
+    monkeypatch.setattr(shutil, "rmtree", failing_rmtree)
+    with caplog.at_level(logging.WARNING, logger="aero_kernel.solvers.process"):
+        run = await run_process(
+            {"in.txt": "a"}, "", executable=sys.executable, args=[str(script), "0"]
+        )
+    assert run.returncode == 0
+    (record,) = [r for r in caplog.records if r.levelno == logging.WARNING]
+    message = record.getMessage()
+    assert "temp directory of external process not removed" in message
+    assert "aero_kernel_" in message
+    assert str(scratch) not in message

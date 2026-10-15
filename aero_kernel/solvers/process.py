@@ -50,6 +50,17 @@ def _kill_group(process: asyncio.subprocess.Process) -> None:
         os.killpg(process.pid, signal.SIGKILL)
 
 
+def _remove_directory(directory: Path) -> None:
+    """Remove the temp directory; a failure is logged, never raised.
+
+    Raising would mask the ``CancelledError`` or ``TimeoutError`` in flight (ADR 0020: not silent).
+    """
+    try:
+        shutil.rmtree(directory)
+    except OSError:
+        logger.warning("temp directory of external process not removed: %s", directory.name)
+
+
 async def run_process(
     files: Mapping[str, str | bytes],
     commands: str,
@@ -126,6 +137,6 @@ async def run_process(
         if process is not None and process.returncode is None:
             _kill_group(process)
             logger.debug("killed external process %s", process.pid)
-        shutil.rmtree(directory, ignore_errors=True)
+        _remove_directory(directory)
         if process is not None and process.returncode is None:
             await process.wait()
