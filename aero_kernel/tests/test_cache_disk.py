@@ -538,3 +538,24 @@ async def test_an_sqlite_error_without_a_code_is_an_unavailable_store(
     with pytest.raises(StoreError, match="the store is unavailable") as caught:
         await _disk(tmp_path).drop_scope("s")
     assert isinstance(caught.value.__cause__, codeless_error)
+
+
+@pytest.mark.asyncio
+async def test_totals_subtract_only_what_was_deleted_when_another_connection_evicted_first(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    cache = _disk(tmp_path)
+    await cache.put("s", "k", entry())
+    evictor = DiskCache(path=tmp_path / DB_NAME, max_bytes=_size())
+    real_from_json = Entry.from_json
+
+    def unreadable_after_an_eviction(text: str) -> Entry:
+        # Between the read and the delete another connection stores a newer entry, evicting "k".
+        monkeypatch.setattr(Entry, "from_json", real_from_json)
+        asyncio.run(evictor.put("s", "newer", entry(2.0)))
+        raise ValueError(text)
+
+    monkeypatch.setattr(Entry, "from_json", unreadable_after_an_eviction)
+    assert await cache.get("s", "k") is None
+    _agree(tmp_path)
+    assert await cache.get("s", "newer") == entry(2.0)

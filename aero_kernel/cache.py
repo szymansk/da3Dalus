@@ -438,7 +438,7 @@ class DiskCache:
         with closing(self._open()) as db:
             with db:
                 row = db.execute(
-                    "SELECT value, size FROM entries WHERE scope = ? AND key = ?", (scope, key)
+                    "SELECT value FROM entries WHERE scope = ? AND key = ?", (scope, key)
                 ).fetchone()
             if row is None:
                 return None
@@ -446,7 +446,13 @@ class DiskCache:
                 found = Entry.from_json(row[0])
             except ValueError:
                 with _transaction(db):
-                    self._delete_rows(db, [(scope, key, row[1])])
+                    # Another connection may have evicted the row since the read: subtract only
+                    # what this statement actually deleted (RETURNING, SQLite 3.35 or newer).
+                    deleted = db.execute(
+                        "DELETE FROM entries WHERE scope = ? AND key = ? RETURNING size",
+                        (scope, key),
+                    ).fetchall()
+                    self._add_to_totals(db, {scope: -sum(size for (size,) in deleted)})
                 logger.warning(
                     "disk cache entry unreadable and recomputed: %s",
                     _short(key),
@@ -592,24 +598,31 @@ class DiskCache:
 
     @staticmethod
     def _prepare(db: sqlite3.Connection) -> None:
-        """Create the schema, or reset it if its version is unknown (worker thread, under the lock)."""
-        (version,) = db.execute("PRAGMA user_version").fetchone()
-        if version not in (0, _SCHEMA_VERSION):
-            logger.warning("disk cache schema version %s is unknown, resetting the cache", version)
-            db.execute("DROP TABLE IF EXISTS entries")
-            db.execute("DROP TABLE IF EXISTS totals")
-        db.execute(
-            "CREATE TABLE IF NOT EXISTS entries (scope TEXT NOT NULL, key TEXT NOT NULL,"
-            " value TEXT NOT NULL, size INTEGER NOT NULL, tick INTEGER NOT NULL,"
-            " PRIMARY KEY (scope, key))"
-        )
-        db.execute("CREATE INDEX IF NOT EXISTS entries_tick ON entries (tick)")
-        db.execute("CREATE INDEX IF NOT EXISTS entries_scope_tick ON entries (scope, tick)")
-        db.execute(
-            "CREATE TABLE IF NOT EXISTS totals (scope TEXT PRIMARY KEY, bytes INTEGER NOT NULL)"
-        )
-        DiskCache._rebuild_totals(db)
-        db.execute(f"PRAGMA user_version = {_SCHEMA_VERSION}")
+        """Create the schema, or reset it if its version is unknown (worker thread, under the lock).
+
+        One transaction: another process preparing the same file, or writers that already see the
+        current schema, never observe or collide with half of it. Running it again is harmless.
+        """
+        with _transaction(db):
+            (version,) = db.execute("PRAGMA user_version").fetchone()
+            if version not in (0, _SCHEMA_VERSION):
+                logger.warning(
+                    "disk cache schema version %s is unknown, resetting the cache", version
+                )
+                db.execute("DROP TABLE IF EXISTS entries")
+                db.execute("DROP TABLE IF EXISTS totals")
+            db.execute(
+                "CREATE TABLE IF NOT EXISTS entries (scope TEXT NOT NULL, key TEXT NOT NULL,"
+                " value TEXT NOT NULL, size INTEGER NOT NULL, tick INTEGER NOT NULL,"
+                " PRIMARY KEY (scope, key))"
+            )
+            db.execute("CREATE INDEX IF NOT EXISTS entries_tick ON entries (tick)")
+            db.execute("CREATE INDEX IF NOT EXISTS entries_scope_tick ON entries (scope, tick)")
+            db.execute(
+                "CREATE TABLE IF NOT EXISTS totals (scope TEXT PRIMARY KEY, bytes INTEGER NOT NULL)"
+            )
+            DiskCache._rebuild_totals(db)
+            db.execute(f"PRAGMA user_version = {_SCHEMA_VERSION}")
 
     def _quarantine(self, generation: int) -> None:
         """Rename the unusable file to ``<name>.corrupt``, replacing an older one.
