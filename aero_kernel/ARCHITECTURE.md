@@ -267,7 +267,9 @@ The A11 "not validated" marker is the field `QuantityResult.validated`, not a wa
 - `value` **or** `interval {min, max, worlds{assignment: value}}` (ch. 8.13), exactly one when `ok`, neither
   otherwise. `value` is a float in the quantity's SI unit, or a structured value of the quantity's `type`
   (ch. 8.12). **v1 returns floats only**; the union widens with the first non-scalar formula, no placeholder
-  type before that (ADR 0021). A **requested** quantity whose `type` is not `scalar` (`polar-stall`,
+  type before that (ADR 0021). Numbers are **strict and finite**: `value`, the interval bounds and world
+  values accept an `int` or `float`, never a `bool` or a numeric string, and never NaN or ±inf.
+- `ok` requires `tool` and `application` (Q3: every value leads back to its application and tool). A **requested** quantity whose `type` is not `scalar` (`polar-stall`,
   `airplane-landing`, a `curve`) is therefore, per quantity, `error` with category `not_implemented`, code
   `non_scalar_result`, decided at request time before anything is computed; the rest of the request is
   computed. The canon model is not touched: such quantities are requestable by the canon, only the v1
@@ -290,7 +292,8 @@ No internal paths or mechanisms in any field (ADR 0019).
   package) **and the build digest** (below), which identifies the exact code even when nobody bumped the
   version (Q3)
 - canon model hash and its source commit (the canon state)
-- tool versions (aerosandbox, NeuralFoil model, AVL)
+- tool versions (aerosandbox, NeuralFoil model, AVL): one non-empty version string per tool **the call actually
+  used**; empty when only pure formulas ran
 - accuracy tier (A3) and solver settings
 - `defaults_used`: every canon default the call took, as `{slug, value, unit, source}` (ch. 8.11)
 
@@ -834,8 +837,9 @@ sampled grid and no `-static` chain.
 - A **world assignment** fixes one world per uncertain formula in the subtree, written
   `neutral-point=avl,roll-rate=aerobuildup`, formulas sorted by slug, so JSON and cache keys are
   deterministic. **This format is binding** wherever a world appears (`Interval.worlds` keys, the `world`
-  of a warning or error): non-empty `<formula-slug>=<world>` pairs, slug kebab-case, world snake_case as in
-  the canon's `worlds:`, unique slugs, sorted by slug, joined by `,` without spaces. A single formula's
+  of a warning or error): non-empty `<formula-slug>=<world>` pairs, slug kebab-case
+  (`[a-z][a-z0-9]*(-[a-z0-9]+)*`), world snake_case as in the canon's `worlds:` (`[a-z][a-z0-9]*(_[a-z0-9]+)*`):
+  lowercase letters and digits, the first character a letter, unique slugs, sorted by slug, joined by `,` without spaces. A single formula's
   world is one pair (`neutral-point=avl`), never a bare world name. One parse/format helper in `errors.py`
   (which imports no other kernel module) validates it; `schema.py` imports it from there. The engine runs the **Cartesian product** over the
   uncertain formulas in a quantity's subtree (A11 rule 3); a node outside an uncertain formula's subtree
