@@ -12,7 +12,9 @@ from aero_kernel.errors import (
     KernelError,
     aggregate_upstream,
     flags_for,
+    format_world_assignment,
     internal_error_from_exception,
+    parse_world_assignment,
 )
 from pydantic import JsonValue, ValidationError
 
@@ -344,9 +346,9 @@ def test_aggregate_root_without_quantity_is_rejected() -> None:
 
 def test_aggregate_carries_optional_context() -> None:
     result = aggregate_upstream(
-        [_err("a")], quantity="q", formula="f", application="app", world="w1"
+        [_err("a")], quantity="q", formula="f", application="app", world="f=w1"
     )
-    assert (result.formula, result.application, result.world) == ("f", "app", "w1")
+    assert (result.formula, result.application, result.world) == ("f", "app", "f=w1")
 
 
 # ---- FormulaError translation -------------------------------------------------------------
@@ -419,7 +421,7 @@ def test_formula_error_translates_with_context() -> None:
         {"input": "values.flap-deflection-landing"},
     )
     error = exc.to_kernel_error(
-        quantity="stall-speed-landing", formula="stall-speed", application="landing", world="asb"
+        quantity="stall-speed-landing", formula="stall-speed", application="landing", world="f=asb"
     )
     assert error.category is ErrorCategory.INVALID_INPUT
     assert error.code == "missing_input"
@@ -430,7 +432,7 @@ def test_formula_error_translates_with_context() -> None:
         "stall-speed-landing",
         "stall-speed",
         "landing",
-        "asb",
+        "f=asb",
     )
     assert (error.retryable, error.escalate) == (False, False)
 
@@ -452,7 +454,7 @@ def test_formula_error_with_wrong_category_for_code_is_rejected() -> None:
 def test_internal_error_from_exception_leaks_no_exception_text() -> None:
     """ADR 0019: str(exc) can carry paths and internals; it goes to the log only."""
     error = internal_error_from_exception(
-        ZeroDivisionError("/secret/path"), quantity="q", formula="f", application="a", world="w"
+        ZeroDivisionError("/secret/path"), quantity="q", formula="f", application="a", world="f=w"
     )
     assert error.category is ErrorCategory.INTERNAL
     assert error.code == "internal"
@@ -461,7 +463,7 @@ def test_internal_error_from_exception_leaks_no_exception_text() -> None:
     assert error.hint == "Report it; attach input and provenance."
     assert error.escalate is True
     assert error.detail == {}
-    assert (error.quantity, error.formula, error.application, error.world) == ("q", "f", "a", "w")
+    assert (error.quantity, error.formula, error.application, error.world) == ("q", "f", "a", "f=w")
 
 
 def test_invalid_category_is_rejected() -> None:
@@ -508,7 +510,7 @@ def test_internal_error_logs_the_exception_text_at_error_level(
             quantity="q",
             formula="f",
             application="a",
-            world="w",
+            world="f=w",
             call_id="c1",
             scope="tenant",
         )
@@ -523,7 +525,7 @@ def test_internal_error_logs_the_exception_text_at_error_level(
         "q",
         "f",
         "a",
-        "w",
+        "f=w",
     )
 
 
@@ -609,3 +611,41 @@ def test_aggregate_names_a_quantity_once_when_two_roots_share_it() -> None:
     }
     assert result.hint == "Fix `a`, `b` first."
     assert result.message == "`q` has no value because `a`, `b` failed."
+
+
+# ---- world assignment (ch. 8.13) ----------------------------------------------------------
+
+
+def _err_in_world(world: str) -> KernelError:
+    return KernelError(
+        code="not_converged",
+        category=ErrorCategory.NOT_CONVERGED,
+        world=world,
+        message="m",
+        hint="h",
+    )
+
+
+@pytest.mark.parametrize("world", ["neutral-point=avl", "neutral-point=avl,roll-rate=aerobuildup"])
+def test_kernel_error_accepts_canonical_world(world: str) -> None:
+    assert _err_in_world(world).world == world
+
+
+@pytest.mark.parametrize(
+    "world",
+    [
+        "avl",
+        "roll-rate=aerobuildup,neutral-point=avl",
+        "neutral-point=avl,neutral-point=avl",
+        "neutral-point",
+        "neutral-point=avl,",
+    ],
+)
+def test_kernel_error_rejects_malformed_world(world: str) -> None:
+    with pytest.raises(ValidationError, match="world"):
+        _err_in_world(world)
+
+
+def test_world_helpers_live_in_errors() -> None:
+    assert parse_world_assignment("a-b=c_d") == {"a-b": "c_d"}
+    assert format_world_assignment({"z": "y", "a": "b"}) == "a=b,z=y"
