@@ -90,7 +90,9 @@ failure.
 - `logger = logging.getLogger(__name__)` per module. Never configure handlers or levels in the package.
 - **`DEBUG`** for every engine step (node start/end/duration/status, cache hit/miss, world, solver call and
   settings), **`INFO`** one line per `compute()` and per import, **`WARNING`** only for degraded operation
-  (tool missing, timeout, dead worker), **`ERROR`** via `logger.exception` for `internal` errors.
+  (tool missing, timeout, dead worker), **`ERROR`** with the traceback for `internal` errors, logged once, in
+  `errors.internal_error_from_exception` (`logger.error(..., exc_info=exc)`: it receives the exception
+  outside an `except` block, so `logger.exception` does not apply).
 - **Every default taken is logged** (maintainer, 2026-10-14), once per call and slug, with slug, value,
   unit, source and `call_id`: physical constants (`role: input`) at `INFO`, design targets
   (`role: target`) at `WARNING`. A target default is also a `default_target_used` practice warning in the
