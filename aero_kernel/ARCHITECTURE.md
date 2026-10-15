@@ -118,7 +118,7 @@ aero_kernel/
   engine.py         walks the graph; takes an optional NodeStore (none = stateless)
   runtime.py        executor, concurrency limit, cancellation
   schema.py         AircraftInput, ComputeRequest, ComputeResult, QuantityResult, AirplaneGeometry, Polar,
-                    KernelError, Warning, Provenance (Pydantic, extra="forbid")
+                    Warning, Provenance (Pydantic, extra="forbid"); re-exports KernelError
   canon/            canon_model.json         the interpreted canon (versioned, committed)
                     canon_model.schema.json  JSON Schema of the canon model
                     IMPORT_REPORT.md         report of the last import (source commit, diff, findings)
@@ -131,8 +131,8 @@ aero_kernel/
   solvers/          aerobuildup.py · avl.py · opti.py · atmosphere.py · data.py (KAT, APC providers)
   cache.py          NodeStore protocol; MemoryCache (LRU), DiskCache
   validate.py       physical admissibility; regime warnings (ADR 0028)
-  errors.py         error catalogue (ch. 8.1): `ErrorCategory`, the code table (code → category, hint),
-                    `FormulaError`; `KernelError` itself is a result type and lives in schema.py
+  errors.py         error catalogue (ch. 8.1): `ErrorCategory`, `KernelError`, the closed code table
+                    (code → category), `FormulaError`, upstream aggregation; imports no other module
   __init__.py       public API; adds the NullHandler to the `aero_kernel` logger (ch. 8.14)
   tools/            robustness.py (#1178)
   tests/            unit, property, golden, traceability and error tests
@@ -201,6 +201,10 @@ An error means **no value**. A value with a caveat is a **warning** (8.2), not a
 `escalate = true` means an agent cannot resolve this itself; a human has to act. `retryable` and `escalate`
 follow from the category (the table), never set per error; for `upstream_failed` they are derived from the
 root causes (below).
+
+**The code table is closed.** Every `code` belongs to exactly one category and is listed in `errors.py`; a
+new code is added there, never invented at the raise site. So an agent can rely on the codes, and a root
+cause's flags follow from its code alone.
 
 **`not_applicable` is no category.** It is a `QuantityResult.status` with a `reason` (ch. 8.3), not a
 `KernelError`: the application does not exist (no separate flap and aileron → no butterfly approach), so
