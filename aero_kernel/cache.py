@@ -8,6 +8,7 @@ every hit builds a fresh object, so no caller can corrupt another caller's resul
 import asyncio
 import hashlib
 import logging
+import math
 import sqlite3
 import threading
 from collections import OrderedDict
@@ -306,13 +307,13 @@ class DiskCache:
                 limits this is infrastructure, not an engineering decision, so it has a default.
 
         Raises:
-            ValueError: If a limit is below 1 or ``busy_timeout_s`` is not positive.
+            ValueError: If a limit is below 1 or ``busy_timeout_s`` is not positive and finite.
         """
         if max_bytes < 1 or (max_bytes_per_scope is not None and max_bytes_per_scope < 1):
             msg = "cache limits must be at least 1"
             raise ValueError(msg)
-        if busy_timeout_s <= 0:
-            msg = "busy_timeout_s must be positive"
+        if not (0 < busy_timeout_s < math.inf):
+            msg = "busy_timeout_s must be positive and finite"
             raise ValueError(msg)
         self._busy_timeout_s = busy_timeout_s
         self._path = path
