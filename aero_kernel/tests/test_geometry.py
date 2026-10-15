@@ -1,0 +1,599 @@
+"""Tests for the input model of the geometry format (ARCHITECTURE ch. 8.11).
+
+The format is docs/geometry-format/AIRPLANE-GEOMETRY.md; the model mirrors
+docs/geometry-format/airplane-geometry.schema.json as types, with no physical constraint.
+"""
+
+import math
+from typing import Any
+
+import pytest
+from aero_kernel.geometry import (
+    AirplaneGeometry,
+    ControlSurface,
+    InlineAirfoil,
+    Servo,
+    SpareDetail,
+    TrailingEdgeDevice,
+    Turbulator,
+    WingXSec,
+)
+from pydantic import ValidationError
+
+# A raw JSON document as read from a file: the one place where Any is the honest type.
+Doc = dict[str, Any]
+
+
+def assert_close(actual: float | None, expected: float) -> None:
+    """Assert equality up to the rounding of a mm -> m multiplication."""
+    assert actual is not None
+    assert math.isclose(actual, expected, rel_tol=1e-12), (actual, expected)
+
+
+def minimal_wing() -> Doc:
+    """A two-section wing document with only the required fields."""
+    section = {"xyz_le": [0.0, 0.0, 0.0], "chord": 0.2, "twist": 0.0, "airfoil": "naca0012"}
+    tip = section | {"xyz_le": [0.0, 1.0, 0.0]}
+    return {"name": "Wing", "x_secs": [section, tip]}
+
+
+class TestAirplaneGeometryRoot:
+    def test_name_alone_parses_with_the_schema_defaults(self) -> None:
+        airplane = AirplaneGeometry.model_validate({"name": "Vanilla"})
+        assert airplane.name == "Vanilla"
+        assert airplane.total_mass_kg is None
+        assert airplane.xyz_ref == (0.0, 0.0, 0.0)
+        assert airplane.wings is None
+        assert airplane.fuselages is None
+
+    def test_name_is_required(self) -> None:
+        with pytest.raises(ValidationError, match="name"):
+            AirplaneGeometry.model_validate({})
+
+    def test_unknown_field_is_rejected(self) -> None:
+        with pytest.raises(ValidationError, match="extra_forbidden"):
+            AirplaneGeometry.model_validate({"name": "A", "herkunft": "x"})
+
+    @pytest.mark.parametrize("mass", [True, "3.0"])
+    def test_mass_must_be_a_number(self, mass: object) -> None:
+        with pytest.raises(ValidationError, match="total_mass_kg"):
+            AirplaneGeometry.model_validate({"name": "A", "total_mass_kg": mass})
+
+    def test_integers_are_accepted_for_floats(self) -> None:
+        airplane = AirplaneGeometry.model_validate(
+            {"name": "A", "xyz_ref": [1, 0, 0], "total_mass_kg": 3}
+        )
+        assert airplane.xyz_ref == (1.0, 0.0, 0.0)
+        assert airplane.total_mass_kg == 3.0
+
+    @pytest.mark.parametrize("ref", [[0.0, 0.0], [0, 0, 0, 0], [True, 0, 0], ["0", 0, 0]])
+    def test_reference_point_must_be_three_numbers(self, ref: object) -> None:
+        with pytest.raises(ValidationError, match="xyz_ref"):
+            AirplaneGeometry.model_validate({"name": "A", "xyz_ref": ref})
+
+    def test_non_finite_numbers_parse(self) -> None:
+        airplane = AirplaneGeometry.model_validate(
+            {"name": "A", "total_mass_kg": float("nan"), "xyz_ref": [float("inf"), 0, 0]}
+        )
+        assert airplane.xyz_ref[0] == float("inf")
+        assert airplane.total_mass_kg != airplane.total_mass_kg
+
+    def test_model_is_frozen(self) -> None:
+        airplane = AirplaneGeometry.model_validate({"name": "A"})
+        with pytest.raises(ValidationError, match="frozen"):
+            airplane.name = "B"  # type: ignore[misc]  # frozen on purpose: the test expects the error
+
+
+def fuselage_doc() -> Doc:
+    """A fuselage with two super-ellipse stations."""
+    return {
+        "name": "Fuselage",
+        "x_secs": [
+            {"xyz": [0.0, 0.0, 0.0], "a": 0.0, "b": 0.0, "n": 2.0},
+            {"xyz": [1.0, 0.0, 0.0], "a": 0.05, "b": 0.04, "n": 2, "n_lower": 6.0},
+        ],
+    }
+
+
+class TestFuselage:
+    def test_fuselage_parses_with_defaults_and_n_lower(self) -> None:
+        airplane = AirplaneGeometry.model_validate(
+            {"name": "A", "fuselages": {"F": fuselage_doc()}}
+        )
+        assert airplane.fuselages is not None
+        fuselage = airplane.fuselages["F"]
+        assert fuselage.symmetric is False
+        assert fuselage.step_path is None
+        assert fuselage.solid_step_path is None
+        first, second = fuselage.x_secs
+        assert first.n_lower is None
+        assert (second.a, second.b, second.n, second.n_lower) == (0.05, 0.04, 2.0, 6.0)
+
+    def test_station_fields_are_not_scaled(self) -> None:
+        airplane = AirplaneGeometry.model_validate(
+            {"name": "A", "fuselages": {"F": fuselage_doc()}}
+        )
+        assert airplane.fuselages is not None
+        assert airplane.fuselages["F"].x_secs[1].xyz == (1.0, 0.0, 0.0)
+
+    @pytest.mark.parametrize(
+        ("path", "value"),
+        [("a", "0.1"), ("n", True), ("xyz", [0, 0]), ("n_lower", "6"), ("extra", 1)],
+    )
+    def test_station_types_are_strict(self, path: str, value: object) -> None:
+        doc = fuselage_doc()
+        station = {"xyz": [1.0, 0.0, 0.0], "a": 0.05, "b": 0.04, "n": 2.0} | {path: value}
+        doc["x_secs"] = [station, station]
+        with pytest.raises(ValidationError, match=path):
+            AirplaneGeometry.model_validate({"name": "A", "fuselages": {"F": doc}})
+
+    @pytest.mark.parametrize("missing", ["xyz", "a", "b", "n"])
+    def test_station_requires_xyz_a_b_n(self, missing: str) -> None:
+        station = {"xyz": [1.0, 0.0, 0.0], "a": 0.05, "b": 0.04, "n": 2.0}
+        del station[missing]
+        doc = fuselage_doc() | {"x_secs": [station, station]}
+        with pytest.raises(ValidationError, match=missing):
+            AirplaneGeometry.model_validate({"name": "A", "fuselages": {"F": doc}})
+
+    def test_fuselage_requires_name_and_sections(self) -> None:
+        with pytest.raises(ValidationError, match="x_secs"):
+            AirplaneGeometry.model_validate({"name": "A", "fuselages": {"F": {"name": "F"}}})
+
+    def test_step_paths_are_kept(self) -> None:
+        doc = fuselage_doc() | {"symmetric": True, "step_path": "a.step", "solid_step_path": None}
+        airplane = AirplaneGeometry.model_validate({"name": "A", "fuselages": {"F": doc}})
+        assert airplane.fuselages is not None
+        assert airplane.fuselages["F"].symmetric is True
+        assert airplane.fuselages["F"].step_path == "a.step"
+
+    @pytest.mark.parametrize("flag", ["true", 1])
+    def test_symmetric_must_be_a_bool(self, flag: object) -> None:
+        doc = fuselage_doc() | {"symmetric": flag}
+        with pytest.raises(ValidationError, match="symmetric"):
+            AirplaneGeometry.model_validate({"name": "A", "fuselages": {"F": doc}})
+
+
+def airplane_with_wing(wing: Doc) -> Doc:
+    """Wrap a wing document into an aeroplane document."""
+    return {"name": "A", "wings": {"W": wing}}
+
+
+class TestWing:
+    def test_minimal_wing_gets_the_schema_defaults(self) -> None:
+        airplane = AirplaneGeometry.model_validate(airplane_with_wing(minimal_wing()))
+        assert airplane.wings is not None
+        wing = airplane.wings["W"]
+        assert wing.symmetric is True
+        assert wing.design_model is None
+        assert wing.units is None
+        root = wing.x_secs[0]
+        assert root.xyz_le == (0.0, 0.0, 0.0)
+        assert root.chord == 0.2
+        assert root.dihedral is None
+        assert root.control_surface is None
+        assert root.x_sec_type is None
+        assert root.tip_type is None
+        assert root.number_interpolation_points is None
+        assert root.spare_list is None
+        assert root.trailing_edge_device is None
+        assert root.turbulator is None
+
+    def test_wing_requires_name_and_sections(self) -> None:
+        with pytest.raises(ValidationError, match="name"):
+            AirplaneGeometry.model_validate(airplane_with_wing({"x_secs": []}))
+        with pytest.raises(ValidationError, match="x_secs"):
+            AirplaneGeometry.model_validate(airplane_with_wing({"name": "W"}))
+
+    def test_section_count_is_not_a_type_matter(self) -> None:
+        wing: Doc = {"name": "W", "x_secs": []}
+        airplane = AirplaneGeometry.model_validate(airplane_with_wing(wing))
+        assert airplane.wings is not None
+        assert airplane.wings["W"].x_secs == ()
+
+    @pytest.mark.parametrize("missing", ["xyz_le", "chord", "twist", "airfoil"])
+    def test_section_requires_its_four_fields(self, missing: str) -> None:
+        wing = minimal_wing()
+        sections = wing["x_secs"]
+        del sections[0][missing]
+        with pytest.raises(ValidationError, match=missing):
+            AirplaneGeometry.model_validate(airplane_with_wing(wing))
+
+    @pytest.mark.parametrize(
+        ("field", "value"),
+        [
+            ("chord", "0.2"),
+            ("twist", True),
+            ("dihedral", "3"),
+            ("xyz_le", [0, 0]),
+            ("x_sec_type", "middle"),
+            ("tip_type", "pointy"),
+            ("number_interpolation_points", 2.5),
+            ("number_interpolation_points", True),
+            ("airfoil", 12),
+            ("control_surfaces", []),
+        ],
+    )
+    def test_section_types_and_enums_are_strict(self, field: str, value: object) -> None:
+        wing = minimal_wing()
+        sections = wing["x_secs"]
+        sections[0][field] = value
+        with pytest.raises(ValidationError, match=field):
+            AirplaneGeometry.model_validate(airplane_with_wing(wing))
+
+    def test_section_details_parse(self) -> None:
+        wing = minimal_wing()
+        sections = wing["x_secs"]
+        sections[0] |= {
+            "dihedral": 3,
+            "x_sec_type": "root",
+            "tip_type": "round",
+            "number_interpolation_points": 5,
+        }
+        sections[0]["twist"] = -2
+        airplane = AirplaneGeometry.model_validate(airplane_with_wing(wing))
+        assert airplane.wings is not None
+        root = airplane.wings["W"].x_secs[0]
+        assert (root.dihedral, root.twist) == (3.0, -2.0)
+        assert (root.x_sec_type, root.tip_type, root.number_interpolation_points) == (
+            "root",
+            "round",
+            5,
+        )
+
+    @pytest.mark.parametrize("design_model", ["wc", "asb", None])
+    def test_design_model_enum(self, design_model: str | None) -> None:
+        wing = minimal_wing() | {"design_model": design_model, "symmetric": False}
+        airplane = AirplaneGeometry.model_validate(airplane_with_wing(wing))
+        assert airplane.wings is not None
+        assert airplane.wings["W"].design_model == design_model
+        assert airplane.wings["W"].symmetric is False
+
+    def test_unknown_design_model_is_rejected(self) -> None:
+        wing = minimal_wing() | {"design_model": "xyz"}
+        with pytest.raises(ValidationError, match="design_model"):
+            AirplaneGeometry.model_validate(airplane_with_wing(wing))
+
+    def test_units_block_accepts_only_the_declared_constants(self) -> None:
+        wing = minimal_wing() | {
+            "units": {"geometry_length": "m", "detail_length": "m", "angle": "deg"}
+        }
+        airplane = AirplaneGeometry.model_validate(airplane_with_wing(wing))
+        assert airplane.wings is not None
+        assert airplane.wings["W"].units is not None
+        for key, value in (("geometry_length", "mm"), ("angle", "rad"), ("extra", "m")):
+            bad = minimal_wing() | {"units": {key: value}}
+            with pytest.raises(ValidationError, match=key):
+                AirplaneGeometry.model_validate(airplane_with_wing(bad))
+
+
+def parse_first_section(detail: Doc) -> WingXSec:
+    """Parse a wing whose root rib carries ``detail`` and return that parsed rib."""
+    wing = minimal_wing()
+    sections = wing["x_secs"]
+    sections[0] |= detail
+    airplane = AirplaneGeometry.model_validate(airplane_with_wing(wing))
+    assert airplane.wings is not None
+    return airplane.wings["W"].x_secs[0]
+
+
+def first_surface(detail: Doc) -> ControlSurface:
+    """Parse a root rib with ``detail`` and return its control surface."""
+    surface = parse_first_section(detail).control_surface
+    assert surface is not None
+    return surface
+
+
+def first_spar(detail: Doc) -> SpareDetail:
+    """Parse a root rib with ``detail`` and return its first spar."""
+    spars = parse_first_section(detail).spare_list
+    assert spars
+    return spars[0]
+
+
+def first_device(detail: Doc) -> TrailingEdgeDevice:
+    """Parse a root rib with ``detail`` and return its trailing-edge device."""
+    device = parse_first_section(detail).trailing_edge_device
+    assert device is not None
+    return device
+
+
+def first_turbulator(detail: Doc) -> Turbulator:
+    """Parse a root rib with ``detail`` and return its turbulator."""
+    turbulator = parse_first_section(detail).turbulator
+    assert turbulator is not None
+    return turbulator
+
+
+def reject_first_section(detail: Doc, match: str) -> None:
+    """Assert that a root rib carrying ``detail`` fails to parse with ``match``."""
+    wing = minimal_wing()
+    sections = wing["x_secs"]
+    sections[0] |= detail
+    with pytest.raises(ValidationError, match=match):
+        AirplaneGeometry.model_validate(airplane_with_wing(wing))
+
+
+SERVO_MM = {
+    "length": 23.0,
+    "width": 12.0,
+    "height": 24.0,
+    "leading_length": 6.0,
+    "latch_z": 15.0,
+    "latch_x": 4.0,
+    "latch_thickness": 2.5,
+    "latch_length": 32.0,
+    "cable_z": 7.0,
+    "screw_hole_lx": 3.0,
+    "screw_hole_d": 2.0,
+}
+
+
+class TestControlSurface:
+    def test_defaults_and_values(self) -> None:
+        surface = first_surface({"control_surface": {"name": "Aileron"}})
+        assert (surface.name, surface.hinge_point, surface.symmetric, surface.deflection) == (
+            "Aileron",
+            0.8,
+            True,
+            0.0,
+        )
+
+    def test_name_is_required_and_types_are_strict(self) -> None:
+        reject_first_section({"control_surface": {}}, "name")
+        reject_first_section({"control_surface": {"name": "A", "deflection": "3"}}, "deflection")
+        reject_first_section({"control_surface": {"name": "A", "symmetric": 0}}, "symmetric")
+        reject_first_section({"control_surface": {"name": "A", "mix": 1}}, "extra_forbidden")
+
+    def test_factor_range_is_not_a_type_matter(self) -> None:
+        assert (
+            first_surface({"control_surface": {"name": "A", "hinge_point": 1.5}}).hinge_point == 1.5
+        )
+
+
+class TestSpar:
+    def test_spar_lengths_are_metres_and_stay_unscaled(self) -> None:
+        spar = {
+            "spare_support_dimension_width": 0.006,
+            "spare_support_dimension_height": 0.004,
+            "spare_length": 0.5,
+            "spare_start": 0.1,
+            "spare_origin": [0.1, 0.0, 0.0],
+            "spare_vector": [0.0, 1.0, 0.0],
+            "spare_position_factor": 0.25,
+            "spare_mode": "normal",
+        }
+        parsed = first_spar({"spare_list": [spar]})
+        assert parsed.spare_support_dimension_width == 0.006
+        assert parsed.spare_support_dimension_height == 0.004
+        assert parsed.spare_length == 0.5
+        assert parsed.spare_start == 0.1
+        assert parsed.spare_origin == (0.1, 0.0, 0.0)
+        assert parsed.spare_vector == (0.0, 1.0, 0.0)
+        assert parsed.spare_position_factor == 0.25
+        assert parsed.spare_mode == "normal"
+
+    def test_defaults(self) -> None:
+        spar = {"spare_support_dimension_width": 0.006, "spare_support_dimension_height": 0.004}
+        parsed = first_spar({"spare_list": [spar]})
+        assert parsed.spare_start == 0.0
+        assert parsed.spare_mode == "standard"
+        assert parsed.spare_length is None
+        assert parsed.spare_origin is None
+        assert parsed.spare_vector is None
+        assert parsed.spare_position_factor is None
+
+    def test_required_enum_and_strictness(self) -> None:
+        reject_first_section({"spare_list": [{"spare_support_dimension_width": 0.1}]}, "height")
+        base = {"spare_support_dimension_width": 0.1, "spare_support_dimension_height": 0.1}
+        reject_first_section({"spare_list": [base | {"spare_mode": "diagonal"}]}, "spare_mode")
+        reject_first_section({"spare_list": [base | {"spare_vector": [0, 1]}]}, "spare_vector")
+        reject_first_section({"spare_list": [base | {"spare_start": "0"}]}, "spare_start")
+        reject_first_section({"spare_list": [base | {"colour": 1}]}, "extra_forbidden")
+
+
+def servo_attributes() -> dict[str, float]:
+    """The hand-computed metre values of ``SERVO_MM`` (mm * 0.001)."""
+    return {
+        "length_m": 0.023,
+        "width_m": 0.012,
+        "height_m": 0.024,
+        "leading_length_m": 0.006,
+        "latch_z_m": 0.015,
+        "latch_x_m": 0.004,
+        "latch_thickness_m": 0.0025,
+        "latch_length_m": 0.032,
+        "cable_z_m": 0.007,
+        "screw_hole_lx_m": 0.003,
+        "screw_hole_d_m": 0.002,
+    }
+
+
+class TestTrailingEdgeDevice:
+    def test_defaults(self) -> None:
+        device = first_device({"trailing_edge_device": {}})
+        assert device.role == "other"
+        assert device.servo_placement == "top"
+        assert device.deflection_deg == 0.0
+        assert device.trailing_edge_offset_factor == 1.0
+        assert (device.mix_gain_primary, device.mix_gain_secondary, device.differential_ratio) == (
+            1.0,
+            1.0,
+            1.0,
+        )
+        for name in (
+            "name",
+            "label",
+            "rel_chord_root",
+            "rel_chord_tip",
+            "hinge_spacing_m",
+            "side_spacing_root_m",
+            "side_spacing_tip_m",
+            "servo",
+            "rel_chord_servo_position",
+            "rel_length_servo_position",
+            "positive_deflection_deg",
+            "negative_deflection_deg",
+            "hinge_type",
+            "symmetric",
+        ):
+            assert getattr(device, name) is None, name
+
+    def test_millimetre_spacings_become_metres(self) -> None:
+        detail = {"hinge_spacing": 0.5, "side_spacing_root": 2.0, "side_spacing_tip": 1.5}
+        device = first_device({"trailing_edge_device": detail})
+        assert_close(device.hinge_spacing_m, 0.0005)
+        assert_close(device.side_spacing_root_m, 0.002)
+        assert_close(device.side_spacing_tip_m, 0.0015)
+
+    def test_dimensionless_and_angle_fields_are_not_scaled(self) -> None:
+        detail = {
+            "role": "elevon",
+            "rel_chord_root": 0.7,
+            "rel_chord_tip": 0.75,
+            "rel_chord_servo_position": 0.5,
+            "rel_length_servo_position": 0.4,
+            "positive_deflection_deg": 25.0,
+            "negative_deflection_deg": -20,
+            "deflection_deg": 5,
+            "trailing_edge_offset_factor": 1.2,
+            "mix_gain_primary": 1.5,
+            "mix_gain_secondary": 0.5,
+            "differential_ratio": 2.0,
+            "hinge_type": "top_simple",
+            "symmetric": False,
+            "servo_placement": "bottom",
+            "name": "L",
+            "label": "left",
+        }
+        device = first_device({"trailing_edge_device": detail})
+        assert device.role == "elevon"
+        assert (device.rel_chord_root, device.rel_chord_tip) == (0.7, 0.75)
+        assert (device.rel_chord_servo_position, device.rel_length_servo_position) == (0.5, 0.4)
+        assert (device.positive_deflection_deg, device.negative_deflection_deg) == (25.0, -20.0)
+        assert device.deflection_deg == 5.0
+        assert device.trailing_edge_offset_factor == 1.2
+        assert (device.mix_gain_primary, device.mix_gain_secondary, device.differential_ratio) == (
+            1.5,
+            0.5,
+            2.0,
+        )
+        assert (device.hinge_type, device.symmetric, device.servo_placement) == (
+            "top_simple",
+            False,
+            "bottom",
+        )
+        assert (device.name, device.label) == ("L", "left")
+
+    @pytest.mark.parametrize(
+        ("field", "value"),
+        [
+            ("role", "spoiler"),
+            ("hinge_type", "pivot"),
+            ("servo_placement", "left"),
+            ("hinge_spacing", "0.5"),
+            ("rel_chord_root", True),
+            ("symmetric", "yes"),
+            ("hinge_hight", 1),
+        ],
+    )
+    def test_enums_types_and_unknown_fields_are_rejected(self, field: str, value: object) -> None:
+        reject_first_section({"trailing_edge_device": {field: value}}, field)
+
+    def test_format_key_not_attribute_name_is_the_input(self) -> None:
+        reject_first_section(
+            {"trailing_edge_device": {"hinge_spacing_m": 0.0005}}, "extra_forbidden"
+        )
+
+    def test_servo_index_and_null(self) -> None:
+        assert first_device({"trailing_edge_device": {"servo": 3}}).servo == 3
+        reject_first_section({"trailing_edge_device": {"servo": 2.5}}, "servo")
+        reject_first_section({"trailing_edge_device": {"servo": True}}, "servo")
+
+    def test_servo_millimetres_become_metres(self) -> None:
+        device = first_device({"trailing_edge_device": {"servo": SERVO_MM}})
+        servo = device.servo
+        assert isinstance(servo, Servo)
+        for name, expected in servo_attributes().items():
+            assert_close(getattr(servo, name), expected)
+        assert servo.component_id is None
+
+    def test_servo_component_id_is_kept_and_all_dimensions_are_required(self) -> None:
+        device = first_device({"trailing_edge_device": {"servo": SERVO_MM | {"component_id": 7}}})
+        assert isinstance(device.servo, Servo)
+        assert device.servo.component_id == 7
+        for missing in SERVO_MM:
+            partial = {k: v for k, v in SERVO_MM.items() if k != missing}
+            reject_first_section({"trailing_edge_device": {"servo": partial}}, missing)
+
+    def test_dumped_model_does_not_parse_again(self) -> None:
+        """A converted field renamed to SI cannot be scaled twice by a re-parse."""
+        rib = parse_first_section(
+            {"trailing_edge_device": {"hinge_spacing": 0.5, "servo": SERVO_MM}}
+        )
+        dumped = rib.model_dump()
+        with pytest.raises(ValidationError, match="extra_forbidden"):
+            WingXSec.model_validate(dumped)
+
+
+class TestTurbulator:
+    def test_height_is_converted_and_defaults_apply(self) -> None:
+        rib = parse_first_section({"turbulator": {"position_root": 0.3, "height_mm": 0.4}})
+        turbulator = rib.turbulator
+        assert turbulator is not None
+        assert_close(turbulator.height_m, 0.0004)
+        assert (turbulator.position_root, turbulator.position_tip) == (0.3, None)
+        assert (turbulator.form, turbulator.enabled) == ("zigzag", True)
+
+    def test_default_height_is_the_format_default_in_metres(self) -> None:
+        turbulator = parse_first_section({"turbulator": {"position_root": 0.3}}).turbulator
+        assert turbulator is not None
+        assert_close(turbulator.height_m, 0.0003)
+
+    def test_other_fields_and_rejections(self) -> None:
+        detail = {"position_root": 0.3, "position_tip": 0.35, "form": "dots", "enabled": False}
+        turbulator = parse_first_section({"turbulator": detail}).turbulator
+        assert turbulator is not None
+        assert (turbulator.position_tip, turbulator.form, turbulator.enabled) == (
+            0.35,
+            "dots",
+            False,
+        )
+        reject_first_section({"turbulator": {}}, "position_root")
+        reject_first_section({"turbulator": {"position_root": 0.3, "form": "wave"}}, "form")
+        reject_first_section({"turbulator": {"position_root": 0.3, "height_mm": "1"}}, "height_mm")
+        reject_first_section(
+            {"turbulator": {"position_root": 0.3, "height_m": 0.001}}, "extra_forbidden"
+        )
+
+
+class TestAirfoil:
+    @pytest.mark.parametrize(
+        "designation", ["naca2412", "NACA0012", "./airfoils/mh45.dat", "https://x/y.dat"]
+    )
+    def test_a_string_is_kept_verbatim(self, designation: str) -> None:
+        assert parse_first_section({"airfoil": designation}).airfoil == designation
+
+    def test_inline_coordinates_parse_as_tuples(self) -> None:
+        coordinates = [[1, 0], [0.5, 0.06], [0.0, 0.0], [0.5, -0.06], [1.0, 0.0]]
+        airfoil = parse_first_section({"airfoil": {"coordinates": coordinates}}).airfoil
+        assert isinstance(airfoil, InlineAirfoil)
+        assert airfoil.coordinates[0] == (1.0, 0.0)
+        assert len(airfoil.coordinates) == 5
+
+    @pytest.mark.parametrize(
+        "airfoil",
+        [
+            {"coordinates": [[1.0]]},
+            {"coordinates": [[1.0, "0"]]},
+            {"coordinates": [[1.0, 0.0]], "n": 1},
+            {},
+            None,
+        ],
+    )
+    def test_malformed_airfoil_is_rejected(self, airfoil: object) -> None:
+        reject_first_section({"airfoil": airfoil}, "airfoil")
+
+    def test_an_empty_or_open_contour_still_parses(self) -> None:
+        assert parse_first_section({"airfoil": {"coordinates": []}}).airfoil == InlineAirfoil(
+            coordinates=()
+        )
