@@ -17,6 +17,10 @@ class TestComputeRequestDefaults:
 
 
 class TestComputeRequestQuantities:
+    def test_empty_slug_is_rejected(self) -> None:
+        with pytest.raises(ValidationError, match="quantities"):
+            ComputeRequest(quantities=("stall-speed", ""))
+
     def test_duplicate_slug_is_rejected(self) -> None:
         with pytest.raises(ValidationError, match=r"duplicate quantity in request: stall-speed"):
             ComputeRequest(quantities=("stall-speed", "wing-area", "stall-speed"))
