@@ -7,9 +7,10 @@ Identifiers inside the graph are the canon's qualified ``<namespace>:<slug>`` fo
 assignments speak the public bare slug.
 """
 
+import itertools
 import logging
 import math
-from collections.abc import Collection, Sequence
+from collections.abc import Collection, Mapping, Sequence
 
 from aero_kernel.canon.model import (
     DEFAULT_NAMESPACE,
@@ -19,7 +20,7 @@ from aero_kernel.canon.model import (
     Quantity,
     WhenTerm,
 )
-from aero_kernel.errors import ErrorCategory, KernelError
+from aero_kernel.errors import ErrorCategory, KernelError, format_world_assignment
 from aero_kernel.geometry import AirplaneGeometry, Wing
 from aero_kernel.schema import Reason, ReasonCode
 from pydantic import BaseModel, ConfigDict
@@ -68,6 +69,11 @@ class NodeId(BaseModel):
     def __hash__(self) -> int:
         """Hash by value; stated explicitly because the type checker does not infer pydantic's."""
         return hash((self.formula, self.application))
+
+    @property
+    def formula_slug(self) -> str:
+        """The public bare slug of the formula, as errors and world assignments write it."""
+        return self.formula.partition(":")[2]
 
 
 class Read(BaseModel):
@@ -196,6 +202,102 @@ class Subtree(BaseModel):
                 return resolved.producer
         raise KeyError(slug)
 
+    def nodes_for(self, slug: str) -> tuple[NodeId, ...]:
+        """Return the nodes a requested quantity needs, in topological order.
+
+        Args:
+            slug: Bare or qualified slug of a quantity in ``requested``.
+
+        Returns:
+            The quantity's own subtree: its producer and everything it reads back to the leaves.
+
+        Raises:
+            KeyError: If the quantity was not requested.
+        """
+        needed = self._closure(self.producer_of(slug))
+        return tuple(node.id for node in self.nodes if node.id in needed)
+
+    def uncertain_formulas(self, slug: str) -> tuple[str, ...]:
+        """Return the uncertain formulas in a requested quantity's subtree (A11).
+
+        Worlds follow value edges, so a formula that reads an uncertain quantity is in the subtree
+        like any other; ``embeds`` carry none.
+
+        Args:
+            slug: Bare or qualified slug of a quantity in ``requested``.
+
+        Returns:
+            Bare formula slugs, sorted.
+
+        Raises:
+            KeyError: If the quantity was not requested.
+        """
+        return self._uncertain_in(self._closure(self.producer_of(slug)))
+
+    def world_assignments(self, slug: str) -> tuple[dict[str, str], ...]:
+        """Return the Cartesian product of the worlds of a quantity's uncertain formulas (A11).
+
+        Args:
+            slug: Bare or qualified slug of a quantity in ``requested``.
+
+        Returns:
+            One world per uncertain formula and assignment, formulas sorted by slug, worlds in
+            canon order. A quantity with no uncertain formula has the one empty assignment, which
+            stands for "no world". Write one with :func:`format_world_assignment`.
+
+        Raises:
+            KeyError: If the quantity was not requested.
+        """
+        worlds = self._worlds()
+        formulas = self.uncertain_formulas(slug)
+        return tuple(
+            dict(zip(formulas, combination, strict=True))
+            for combination in itertools.product(*(worlds[f] for f in formulas))
+        )
+
+    def assignment_key(self, node: NodeId, assignment: Mapping[str, str]) -> str | None:
+        """Restrict a world assignment to the uncertain formulas a node depends on.
+
+        Nodes with the same key compute the same value, so the engine runs them once and shares
+        the result across the assignments.
+
+        Args:
+            node: A node of the subtree.
+            assignment: A full assignment, as returned by :meth:`world_assignments`.
+
+        Returns:
+            The canonical string of the restricted assignment, or ``None`` if the node depends on
+            no uncertain formula.
+
+        Raises:
+            KeyError: If the node is not in the subtree or the assignment lacks a needed formula.
+        """
+        formulas = self._uncertain_in(self._closure(node))
+        if not formulas:
+            return None
+        return format_world_assignment({formula: assignment[formula] for formula in formulas})
+
+    def _closure(self, root: NodeId) -> set[NodeId]:
+        """The node and everything it reads, transitively."""
+        found: set[NodeId] = set()
+        pending = [root]
+        while pending:
+            node = pending.pop()
+            if node not in found:
+                found.add(node)
+                pending.extend(edge.predecessor for edge in self.edges[node])
+        return found
+
+    def _worlds(self) -> dict[str, tuple[str, ...]]:
+        """The worlds per uncertain formula (bare slug) among the subtree's nodes."""
+        return {n.id.formula_slug: n.worlds for n in self.nodes if n.worlds}
+
+    def _uncertain_in(self, members: set[NodeId]) -> tuple[str, ...]:
+        """The sorted bare slugs of the uncertain formulas among the given nodes."""
+        return tuple(
+            sorted({n.id.formula_slug for n in self.nodes if n.worlds and n.id in members})
+        )
+
 
 def _sort_key(node: NodeId) -> tuple[str, str]:
     """Order nodes by formula slug, then application id."""
@@ -280,6 +382,7 @@ class CanonGraph:
                     node = _node(namespace, slug, formula, application.id)
                     self._nodes[node.id] = node
         self._producers = self._index_producers()
+        self._check_world_slugs()
         self._check_reads()
 
     def _index_producers(self) -> dict[str, NodeId]:
@@ -295,6 +398,19 @@ class CanonGraph:
                     )
                     raise GraphModelError(msg)
         return producers
+
+    def _check_world_slugs(self) -> None:
+        """Require the bare slugs of uncertain formulas to be unique: assignments are keyed by them."""
+        owners: dict[str, str] = {}
+        for node in self._nodes.values():
+            if node.worlds:
+                other = owners.setdefault(node.id.formula_slug, node.id.formula)
+                if other != node.id.formula:
+                    msg = (
+                        f"uncertain formulas {other} and {node.id.formula} share the slug "
+                        f"{node.id.formula_slug}; world assignments could not tell them apart"
+                    )
+                    raise GraphModelError(msg)
 
     def _check_reads(self) -> None:
         """Require every read quantity to be a supplied one or to have a producer."""
