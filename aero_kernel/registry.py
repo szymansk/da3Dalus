@@ -6,16 +6,21 @@ The registry holds code only, never call state: it is filled at import of ``aero
 and then frozen.
 """
 
+import argparse
 import inspect
 import logging
 import re
-from collections.abc import Callable, Coroutine, Mapping
+import sys
+from collections.abc import Callable, Coroutine, Mapping, Sequence
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Literal, TypeVar
 
-from aero_kernel.canon.model import DEFAULT_NAMESPACE
+from aero_kernel.canon.load import CanonLoadError, load_canon_model
+from aero_kernel.canon.model import DEFAULT_NAMESPACE, Formula
+from aero_kernel.canonical import sha256_of
 from aero_kernel.errors import SLUG_REGEX
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, JsonValue
 
 logger = logging.getLogger(__name__)
 
@@ -26,6 +31,8 @@ __all__ = [
     "Registry",
     "RegistryError",
     "formula",
+    "interface_fingerprint",
+    "main",
     "postcondition",
     "precondition",
     "relation",
@@ -88,6 +95,24 @@ def _qualify(slug: str) -> str:
         msg = f"malformed formula slug {slug!r}: expected '[<namespace>:]<kebab-case-slug>'"
         raise RegistryError(msg)
     return f"{match['namespace'] or DEFAULT_NAMESPACE}:{match['slug']}"
+
+
+def interface_fingerprint(formula: Formula) -> str:
+    """Fingerprint the interface of a canon formula: what an implementation is written against.
+
+    Args:
+        formula: A formula of the canon model.
+
+    Returns:
+        ``"sha256:"`` plus the hex digest of the sorted input names, output names and ``optional``
+        parameters. The value goes into ``@formula(slug, interface=...)``.
+    """
+    interface: dict[str, JsonValue] = {
+        "inputs": list[JsonValue](sorted(formula.inputs)),
+        "outputs": list[JsonValue](sorted(formula.outputs)),
+        "optional": list[JsonValue](sorted(formula.optional)),
+    }
+    return sha256_of(interface)
 
 
 class Registry:
@@ -284,3 +309,37 @@ formula = DEFAULT_REGISTRY.formula
 relation = DEFAULT_REGISTRY.relation
 precondition = DEFAULT_REGISTRY.precondition
 postcondition = DEFAULT_REGISTRY.postcondition
+
+
+def main(argv: Sequence[str] | None = None) -> int:
+    """Run the command line: ``fingerprint <model.json> <slug>`` prints a formula's fingerprint.
+
+    Args:
+        argv: Arguments; ``None`` means ``sys.argv[1:]``.
+
+    Returns:
+        The exit code: 0, or 2 if the model cannot be loaded or has no such formula.
+    """
+    parser = argparse.ArgumentParser(prog="python -m aero_kernel.registry")
+    commands = parser.add_subparsers(dest="command", required=True)
+    fingerprint = commands.add_parser("fingerprint", help="print a formula's interface fingerprint")
+    fingerprint.add_argument("model", help="path of a canon model JSON file")
+    fingerprint.add_argument("slug", help="formula slug, bare or '<namespace>:<slug>'")
+    arguments = parser.parse_args(argv)
+    model_path = Path(str(arguments.model))
+    slug = str(arguments.slug)
+    try:
+        model = load_canon_model(model_path)
+    except CanonLoadError as error:
+        print(error.error.message, file=sys.stderr)
+        return 2
+    found = model.formula(slug)
+    if found is None:
+        print(f"the model has no formula {slug}", file=sys.stderr)
+        return 2
+    print(interface_fingerprint(found))
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())
