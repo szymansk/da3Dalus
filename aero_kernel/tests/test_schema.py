@@ -14,6 +14,7 @@ from aero_kernel.schema import (
     QuantityStatus,
     ReasonCode,
     WarningSeverity,
+    dedupe_warnings,
 )
 from pydantic import ValidationError
 
@@ -345,9 +346,37 @@ class TestComputeResult:
             make_quantity(
                 slug="d", status="skipped", value=None, reason=make_reason("long_run_not_included")
             ),
-            make_quantity(slug="e", status="error", value=None, error=make_error()),
+            make_quantity(slug="stall-speed", status="error", value=None, error=make_error()),
         ]
         result = make_compute(quantities=quantities)
         restored = ComputeResult.model_validate_json(result.model_dump_json())
         assert restored == result
         assert {q.status for q in restored.quantities} == set(QuantityStatus)
+
+
+class TestDedupeWarnings:
+    def test_first_occurrence_wins_and_order_is_kept(self) -> None:
+        first = make_warning(message="first")
+        other = make_warning(origin="other")
+        again = make_warning(message="again")
+        assert dedupe_warnings([first, other, again]) == (first, other)
+
+    def test_world_distinguishes_warnings(self) -> None:
+        a, b = make_warning(world="w=1"), make_warning(world="w=2")
+        assert dedupe_warnings([a, b]) == (a, b)
+
+    def test_result_passes_the_quantity_invariant(self) -> None:
+        deduped = dedupe_warnings([make_warning(), make_warning(message="again")])
+        assert len(make_quantity(warnings=deduped).warnings) == 1
+
+
+class TestErrorQuantity:
+    def test_rejects_error_quantity_differing_from_slug(self) -> None:
+        with pytest.raises(ValidationError, match="slug"):
+            make_quantity(slug="other", status="error", value=None, error=make_error())
+
+    def test_accepts_error_without_quantity(self) -> None:
+        error = KernelError(
+            code="missing_input", category=ErrorCategory.INVALID_INPUT, message="m", hint="h"
+        )
+        assert make_quantity(status="error", value=None, error=error).error == error
