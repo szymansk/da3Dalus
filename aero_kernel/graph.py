@@ -9,14 +9,36 @@ assignments speak the public bare slug.
 
 import logging
 
-from aero_kernel.canon.model import CanonModel, CostClass, Formula, WhenTerm
+from aero_kernel.canon.model import (
+    DEFAULT_NAMESPACE,
+    CanonModel,
+    CostClass,
+    Formula,
+    Quantity,
+    WhenTerm,
+)
+from aero_kernel.errors import ErrorCategory, KernelError
 from pydantic import BaseModel, ConfigDict
 
 logger = logging.getLogger(__name__)
 
-__all__ = ["CanonGraph", "GraphModelError", "Node", "NodeId", "Produce", "Read"]
+__all__ = [
+    "CanonGraph",
+    "GraphModelError",
+    "Node",
+    "NodeId",
+    "Produce",
+    "Read",
+    "Resolved",
+    "qualify",
+]
 
 _FROZEN = ConfigDict(extra="forbid", frozen=True)
+
+
+def qualify(slug: str) -> str:
+    """Write a slug in its qualified form; a bare slug belongs to the default namespace."""
+    return slug if ":" in slug else f"{DEFAULT_NAMESPACE}:{slug}"
 
 
 class GraphModelError(Exception):
@@ -98,6 +120,22 @@ class Node(BaseModel):
     worlds: tuple[str, ...]
 
 
+class Resolved(BaseModel):
+    """A requested quantity that a node can produce.
+
+    Attributes:
+        slug: Qualified slug of the quantity.
+        quantity: The quantity's canon entry.
+        producer: The node whose application produces it.
+    """
+
+    model_config = _FROZEN
+
+    slug: str
+    quantity: Quantity
+    producer: NodeId
+
+
 def _node(namespace: str, slug: str, formula: Formula, application_id: str) -> Node:
     """Build the node of one application."""
     application = formula.application(application_id)
@@ -172,3 +210,56 @@ class CanonGraph:
     def node_ids(self) -> tuple[NodeId, ...]:
         """The ids of all nodes of the model."""
         return tuple(self._nodes)
+
+    def resolve(self, slug: str) -> Resolved | KernelError:
+        """Check a requested slug and find its producing node (ch. 6 step 2, Q38).
+
+        Args:
+            slug: Bare or qualified quantity slug, as requested.
+
+        Returns:
+            The resolved quantity, or the per-quantity error the request earns: ``unknown_quantity``,
+            ``not_requestable`` for an input or target, ``non_scalar_result`` for a quantity that
+            is not a scalar (v1).
+
+        Raises:
+            GraphModelError: If the quantity is requestable but no application produces it.
+        """
+        qualified = qualify(slug)
+        quantity = self._model.quantity(qualified)
+        if quantity is None:
+            return _request_error(
+                slug,
+                "unknown_quantity",
+                ErrorCategory.INVALID_INPUT,
+                f"`{slug}` is not a quantity of the canon.",
+                "Use a quantity slug from the canon vocabulary.",
+            )
+        if quantity.role in ("input", "target"):
+            return _request_error(
+                slug,
+                "not_requestable",
+                ErrorCategory.INVALID_INPUT,
+                f"`{slug}` is a {quantity.role}: it is supplied, not computed.",
+                "Pass it in `values` and request a derived or output quantity.",
+            )
+        if quantity.type != "scalar":
+            return _request_error(
+                slug,
+                "non_scalar_result",
+                ErrorCategory.NOT_IMPLEMENTED,
+                f"`{slug}` is a {quantity.type}; v1 returns scalar quantities only.",
+                "Request a scalar quantity.",
+            )
+        producer = self._producers.get(qualified)
+        if producer is None:
+            msg = f"requested {qualified} has no producer"
+            raise GraphModelError(msg)
+        return Resolved(slug=qualified, quantity=quantity, producer=producer)
+
+
+def _request_error(
+    slug: str, code: str, category: ErrorCategory, message: str, hint: str
+) -> KernelError:
+    """Build the error of one rejected requested quantity."""
+    return KernelError(code=code, category=category, quantity=slug, message=message, hint=hint)
