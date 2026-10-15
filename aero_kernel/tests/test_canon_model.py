@@ -1,5 +1,6 @@
 """The canon model: identity, hash and the structural integrity of its references."""
 
+import copy
 import json
 from pathlib import Path
 from typing import Any
@@ -300,3 +301,27 @@ def test_schema_states_the_shared_patterns() -> None:
     text = schema_text()
     for regex in (errors.SLUG_REGEX, errors.WORLD_NAME_REGEX):
         assert json.dumps(f"^{regex}$") in text
+
+
+def test_canon_model_is_frozen() -> None:
+    model = CanonModel.model_validate(base_model())
+    with pytest.raises(ValidationError, match="frozen"):
+        model.importer_version = "9"  # type: ignore[misc]  # the assignment is the thing under test
+
+
+def test_hash_covers_every_namespace() -> None:
+    namespaces = base_namespaces()
+    namespaces["other"] = copy.deepcopy(namespaces["calc"])
+    first = with_hash(namespaces)["content_hash"]
+    namespaces["other"]["quantities"]["gravity"]["default"]["value"] = 9.81
+    assert with_hash(namespaces)["content_hash"] != first
+
+
+@pytest.mark.parametrize(
+    "commit", ["a" * 39, "a" * 41, " " + "a" * 40, "a" * 40 + "\n", "x" + "a" * 39]
+)
+def test_source_commit_is_exactly_forty_hex_characters(commit: str) -> None:
+    raw = base_model()
+    raw["source_commit"] = commit
+    with pytest.raises(ValidationError):
+        CanonModel.model_validate(raw)

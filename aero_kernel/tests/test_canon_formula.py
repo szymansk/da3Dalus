@@ -237,3 +237,32 @@ def test_optional_names_input_parameters() -> None:
 def test_closure_without_embeds_is_rejected() -> None:
     with pytest.raises(ValidationError, match="closure"):
         make_formula(embeds_closure=["calc:x.default"])
+
+
+def test_closure_that_lacks_the_embedded_item_is_rejected() -> None:
+    """A non-empty closure that does not contain the direct embed is a different closure."""
+    with pytest.raises(ValidationError, match="contain them"):
+        make_formula(
+            embeds=["calc:a.default"],
+            variables=["calc:aircraft-mass"],
+            embeds_closure=["calc:b.default"],
+        )
+
+
+def test_every_model_type_is_frozen() -> None:
+    formula = make_formula(preconditions=[{"id": "c", "parameter": "m", "on_violation": "error"}])
+    application = formula.applications[0]
+    targets = [
+        (formula, "kind", "fit"),
+        (application, "id", "other"),
+        (formula.preconditions[0], "id", "other"),
+    ]
+    for target, field, value in targets:
+        with pytest.raises(ValidationError, match="frozen"):
+            setattr(target, field, value)
+
+
+@pytest.mark.parametrize("bad", [float("nan"), float("inf"), float("-inf")])
+def test_const_binding_must_be_finite(bad: float) -> None:
+    with pytest.raises(ValidationError, match="finite"):
+        ConstBinding.model_validate({"const": bad, "source": "s"})
