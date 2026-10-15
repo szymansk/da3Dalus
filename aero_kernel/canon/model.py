@@ -20,7 +20,27 @@ from pydantic import (
     model_validator,
 )
 
-__all__ = ["Default", "Quantity", "QuantityRole", "QuantityType"]
+__all__ = [
+    "DEFAULT_NAMESPACE",
+    "Application",
+    "Binding",
+    "CanonModel",
+    "Check",
+    "ConstBinding",
+    "CostClass",
+    "Default",
+    "Formula",
+    "FormulaKind",
+    "Namespace",
+    "OnViolation",
+    "Quantity",
+    "QuantityRole",
+    "QuantityType",
+    "Tool",
+    "Unit",
+    "WhenTerm",
+    "compute_content_hash",
+]
 
 # Numbers in the model are finite (a model with NaN would not survive its JSON form).
 FiniteNumber = Annotated[float, Field(strict=True, allow_inf_nan=False)]
