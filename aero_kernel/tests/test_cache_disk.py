@@ -1118,3 +1118,88 @@ async def test_a_half_prepared_schema_is_invisible_to_other_connections(
     release.set()
     await task
     assert seen == (0,)
+
+
+class _SlowGeneration(int):
+    """A generation whose comparison yields the GIL, so an unlocked check-then-advance interleaves."""
+
+    def __ne__(self, other: object) -> bool:
+        time.sleep(0.2)
+        return int(self) != int(other)  # type: ignore[call-overload]  # test double, other is an int
+
+    def __eq__(self, other: object) -> bool:
+        time.sleep(0.2)
+        return int(self) == int(other)  # type: ignore[call-overload]  # test double, other is an int
+
+    __hash__ = int.__hash__
+
+
+@pytest.mark.asyncio
+async def test_the_quarantine_check_and_advance_is_atomic(
+    tmp_path: Path, caplog: pytest.LogCaptureFixture
+) -> None:
+    cache = _disk(tmp_path)
+    (tmp_path / DB_NAME).write_bytes(b"not a database" * 100)
+    setattr(cache, "_generation", _SlowGeneration(0))  # noqa: B010 - private state, by name
+    with caplog.at_level(logging.WARNING, logger="aero_kernel.cache"):
+        await asyncio.gather(cache.get("s", "a"), cache.get("s", "b"))
+    assert caplog.text.count("moved aside") == 1
+
+
+def _hold_a_rollback_journal_file(path: Path) -> sqlite3.Connection:
+    """A rollback-journal file whose RESERVED lock makes the WAL pragma return BUSY at once."""
+    blocker = sqlite3.connect(path, isolation_level=None, check_same_thread=False)
+    blocker.execute("CREATE TABLE t (x)")
+    blocker.execute("BEGIN IMMEDIATE")
+    blocker.execute("INSERT INTO t VALUES (1)")
+    return blocker
+
+
+@pytest.mark.asyncio
+async def test_the_wal_retry_polls_at_a_short_bounded_interval(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    blocker = _hold_a_rollback_journal_file(tmp_path / DB_NAME)
+    release = threading.Timer(0.15, lambda: (blocker.execute("ROLLBACK"), blocker.close()))
+    release.start()
+    statements: list[str] = []
+    monkeypatch.setattr(sqlite3, "connect", _traced_connect(statements))
+    cache = _disk(tmp_path, busy_timeout_s=1.0)
+    started = time.perf_counter()
+    await cache.put("s", "k", entry())
+    elapsed = time.perf_counter() - started
+    release.join()
+    assert await cache.get("s", "k") == entry()
+    assert elapsed < 0.4  # a retry interval of 0.5 s would overshoot the release
+    attempts = [text for text in statements if "journal_mode" in text]
+    assert 1 < len(attempts) < 200  # it retried, and did not spin
+
+
+@pytest.mark.asyncio
+async def test_the_wal_retry_gives_up_near_the_timeout(tmp_path: Path) -> None:
+    blocker = _hold_a_rollback_journal_file(tmp_path / DB_NAME)
+    try:
+        cache = _disk(tmp_path, busy_timeout_s=0.2)
+        started = time.perf_counter()
+        await cache.put("s", "k", entry())
+        elapsed = time.perf_counter() - started
+    finally:
+        blocker.execute("ROLLBACK")
+        blocker.close()
+    assert 0.2 <= elapsed < 0.4
+
+
+@pytest.mark.asyncio
+async def test_a_read_only_wal_switch_is_not_retried(tmp_path: Path) -> None:
+    path = tmp_path / DB_NAME
+    with sqlite3.connect(path) as db:
+        db.execute("CREATE TABLE t (x)")
+    path.chmod(0o444)
+    try:
+        cache = _disk(tmp_path, busy_timeout_s=2.0)
+        started = time.perf_counter()
+        assert await cache.get("s", "k") is None
+        elapsed = time.perf_counter() - started
+    finally:
+        path.chmod(0o644)
+    assert elapsed < 0.5
