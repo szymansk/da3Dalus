@@ -13,18 +13,19 @@ from pydantic import JsonValue
 __all__ = ["canonical_json", "sha256_of"]
 
 
-def canonical_json(value: JsonValue) -> str:
+def canonical_json(value: JsonValue) -> bytes:
     """Serialise a JSON value canonically.
 
     Args:
         value: A JSON value; floats must be finite.
 
     Returns:
-        The canonical text: sorted keys, no whitespace, non-ASCII kept, floats via ``repr``.
+        The canonical UTF-8 text: sorted keys, no whitespace, non-ASCII kept, floats via ``repr``.
     """
-    return json.dumps(
+    text = json.dumps(
         value, sort_keys=True, separators=(",", ":"), ensure_ascii=False, allow_nan=False
     )
+    return text.encode("utf-8")
 
 
 def sha256_of(value: JsonValue) -> str:
@@ -36,5 +37,5 @@ def sha256_of(value: JsonValue) -> str:
     Returns:
         The prefixed hex digest.
     """
-    digest = hashlib.sha256(canonical_json(value).encode("utf-8")).hexdigest()
+    digest = hashlib.sha256(canonical_json(value)).hexdigest()
     return f"sha256:{digest}"

@@ -5,9 +5,10 @@ from pathlib import Path
 
 import jsonschema
 import pytest
-from aero_kernel.canon.load import load_model
+from aero_kernel.canon.load import load_canon_model
 from aero_kernel.canon.model import CanonModel, ConstBinding, Formula
 from aero_kernel.canon.schema_file import SCHEMA_PATH
+from aero_kernel.tests.fixtures.build import FIXTURE_PATH, build_flight_canon
 
 FIXTURES = sorted((Path(__file__).parent / "fixtures").glob("*.json"))
 
@@ -16,7 +17,7 @@ FIXTURES = sorted((Path(__file__).parent / "fixtures").glob("*.json"))
 def test_fixture_is_valid_against_schema_and_types(path: Path) -> None:
     document = json.loads(path.read_text(encoding="utf-8"))
     jsonschema.validate(document, json.loads(SCHEMA_PATH.read_text(encoding="utf-8")))
-    assert load_model(path).content_hash == document["content_hash"]
+    assert load_canon_model(path).content_hash == document["content_hash"]
 
 
 def formulas(model: CanonModel) -> dict[str, Formula]:
@@ -74,3 +75,9 @@ def test_flight_canon_has_a_target_default_and_a_const_binding(flight_canon: Can
     n_load = clean.bind["n_load"]
     assert isinstance(n_load, ConstBinding)
     assert n_load.const == 1
+
+
+def test_committed_fixture_equals_the_built_one() -> None:
+    assert FIXTURE_PATH.read_text(encoding="utf-8") == build_flight_canon(), (
+        "flight_canon.json is stale: run `python -m aero_kernel.tests.fixtures.build`"
+    )
