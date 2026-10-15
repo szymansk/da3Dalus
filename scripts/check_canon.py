@@ -654,7 +654,8 @@ def _diff(name: str, prose: set[str], front: set[str]) -> str:
 
 
 def _direct_embeds(e: Entry) -> list[str]:
-    """Embedded formula slugs; an item 'slug.application' selects only postconditions."""
+    """Embedded formula slugs, for the cycle check. An item 'slug.application' embeds that
+    application as written — its bindings and its checks (see _embedded_items)."""
     embeds = e.front.get("embeds") or []
     if not isinstance(embeds, list):
         return []
