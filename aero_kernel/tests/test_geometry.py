@@ -617,6 +617,7 @@ def test_all_pins_the_public_names() -> None:
             "TrailingEdgeDevice",
             "Turbulator",
             "Wing",
+            "WingUnits",
             "WingXSec",
         ]
     )
