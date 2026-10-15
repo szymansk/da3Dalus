@@ -67,8 +67,11 @@ then the code. Epic: #1173.
   warnings, provenance, the canon model, cache entries. `model_config = ConfigDict(extra="forbid")`;
   results and canon-model types also `frozen=True`. `frozen` does not protect `dict` fields or arrays: never
   mutate a model after construction, and never hand the same object to two calls — the cache stores
-  serialised entries and deserialises a fresh object per hit (ARCHITECTURE §8.4). Constraints belong in the model (`Field(gt=0)`,
-  validators), not in scattered `if` checks. No `dict` as an ad-hoc record.
+  serialised entries and deserialises a fresh object per hit (ARCHITECTURE §8.4). **Where constraints live depends on the model:**
+  result and canon-model types carry their invariants in the model (`Field(gt=0)`, validators), not in
+  scattered `if` checks; **input models** (`AircraftInput`, `AirplaneGeometry`, `ComputeRequest`) carry
+  types and structure only — physical admissibility (lengths > 0, finite numbers, ≥ 2 sections, inline
+  airfoils) is `validate.py`'s, so it returns `input_errors` instead of raising (ARCHITECTURE §8.11). No `dict` as an ad-hoc record.
 - **Types everywhere.** Every function, method and attribute is annotated, including return types and
   tests' helpers. Modern syntax (`X | None`, `list[float]`). `Any` only at a documented boundary (e.g. raw
   front matter in the importer), never as a shortcut; `cast` and `# type: ignore` need a comment saying why.

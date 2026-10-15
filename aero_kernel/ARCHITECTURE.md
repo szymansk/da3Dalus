@@ -721,9 +721,23 @@ class ComputeRequest(BaseModel):
   `AirplaneGeometry` is a NACA designation or inline coordinates. A file path is `invalid_input`, code
   `unresolved_airfoil`; resolving paths is the caller's job (the test fleet uses a test helper).
 
-**Units.** Parsing `AirplaneGeometry` normalises the format's documented exceptions (spar dimensions in mm
-etc., AIRPLANE-GEOMETRY.md §2) to SI. That validator is the only place where units are converted; after
-parsing everything is SI.
+**Units.** The format is metres and degrees (AIRPLANE-GEOMETRY.md §2); the spar fields `spare_*` are
+**metres** in the format (millimetres only in the app's database, which the kernel never sees). The
+format's real millimetre fields are `hinge_spacing`, `side_spacing_root` / `side_spacing_tip`,
+`turbulator.height_mm` and every field of `servo`. Parsing `AirplaneGeometry` converts exactly these to
+metres: the JSON key stays the format's (alias), the Python attribute carries the SI unit in its name
+(`height_mm` → `height_m`, `hinge_spacing` → `hinge_spacing_m`). That validator is the only place where
+units are converted; after parsing everything is SI. `AirplaneGeometry` mirrors the format's JSON Schema
+(`docs/geometry-format/airplane-geometry.schema.json`); a test checks that every schema field is
+accepted.
+
+**Input models carry types, not physics.** `AircraftInput`, `AirplaneGeometry` and `ComputeRequest`
+declare structure and types only: `extra="forbid"`, required vs optional, enums, strict numbers (a `bool`
+or a string where a number belongs is a `ValidationError`). They carry **no physical constraint** — no
+`gt=0`, no `allow_inf_nan=False`, no minimum section count — because physically inadmissible but
+well-typed input must come back as `input_errors` with an `input_path` (ch. 8.1), produced by
+`validate.py`, not raised. Result and canon-model types are the opposite: their invariants live in the
+model (ch. 8.3).
 
 **Validation (step 1, physical admissibility only).** Non-finite numbers; lengths that must be positive
 (chord, span, airfoil thickness, fuselage dimensions) ≤ 0; mass ≤ 0; density ≤ 0; a wing with fewer than
