@@ -386,15 +386,22 @@ quantity.
     finding. Embedding is transitive; the importer computes the closure (embedding `max-level-speed`
     brings in its propulsion relations), so a relation the form also names directly is listed again, and
     nothing else needs to be repeated. **An item embeds that application as written** — its bindings
-    (quantities and `{const, source}`, e.g. `stall-speed.landing`: `airplane: airplane-landing`, `n: 1`)
+    (quantities and `{const, source}`, e.g. `stall-speed.landing`: `airplane: airplane-landing`, `n_load: 1`)
     and its checks; a bare slug means the formula's single (default) application. One meaning of
     "application" everywhere, nothing bound twice.
   - **Variables** (`variables:`, a list of quantity slugs on the embedder): the quantities the embedder
-    solves for or sweeps itself (`mass-envelope`: `aircraft-mass` swept, `flight-speed`,
-    `angle-of-attack`, `propeller-speed` solved). Inside the closure a listed quantity is **always** the
+    solves for or sweeps itself **and that the closure reads as quantities** (`mass-envelope`:
+    `variables: [aircraft-mass, flight-speed]` — mass swept, speed solved). Internal decision variables
+    that are no quantity of the closure (α, `n_prop`) are not listed. Inside the closure a listed quantity is **always** the
     embedder's variable, even if the embedder also reads that quantity as an input for another purpose
     (`m_current: aircraft-mass`, the current mass on the sweep). Nothing is implied: a quantity is a
     variable only if listed.
+  - **Not embedding — a varied configuration.** A form that re-solves another formula's problem under a
+    configuration it varies itself (`butterfly-approach`: the stall problem in crow configuration, swept
+    over the mix `s`) cannot embed the fixed application. It states the same guard as its **own**
+    postcondition on its output (`optimum_at_first_cl_peak` on every point of the curve, K32); the check
+    function is shared with `stall-speed`'s (one implementation, ADR 0022). No embed with a varied
+    configuration exists in the format.
   - **Inputs:** every quantity an embedded application binds is a `variables:` entry (then the embedder's
     variable takes its place), produced inside the closure (`propeller-speed`, `thrust-coefficient`), or an
     input of the embedder — that input is the value edge through which it arrives (`airplane_ldg:
