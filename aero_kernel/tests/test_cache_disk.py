@@ -747,3 +747,60 @@ async def test_a_negative_schema_version_resets_the_cache(
     with caplog.at_level(logging.WARNING, logger="aero_kernel.cache"):
         assert await cache.get("s", "k") is None
     assert "schema version -1" in caplog.text
+
+
+@pytest.mark.asyncio
+async def test_the_wal_switch_waits_for_a_lock_held_by_another_connection(tmp_path: Path) -> None:
+    path = tmp_path / DB_NAME
+    sqlite3.connect(path).close()  # a database in rollback-journal mode, switched to WAL below
+    blocker = sqlite3.connect(path, isolation_level=None, check_same_thread=False)
+    blocker.execute("BEGIN EXCLUSIVE")
+    release = threading.Timer(0.2, lambda: blocker.execute("ROLLBACK"))
+    release.start()
+    try:
+        await _disk(tmp_path, busy_timeout_s=3.0).put("s", "k", entry())
+    finally:
+        release.join()
+        blocker.close()
+    assert await _disk(tmp_path).get("s", "k") == entry()
+
+
+@pytest.mark.asyncio
+async def test_the_wal_switch_gives_up_after_the_busy_timeout(
+    tmp_path: Path, caplog: pytest.LogCaptureFixture
+) -> None:
+    path = tmp_path / DB_NAME
+    sqlite3.connect(path).close()
+    blocker = sqlite3.connect(path, isolation_level=None)
+    blocker.execute("BEGIN EXCLUSIVE")
+    try:
+        started = time.perf_counter()
+        with caplog.at_level(logging.WARNING, logger="aero_kernel.cache"):
+            await _disk(tmp_path, busy_timeout_s=0.3).put("s", "k", entry())
+        elapsed = time.perf_counter() - started
+    finally:
+        blocker.execute("ROLLBACK")
+        blocker.close()
+    assert 0.25 <= elapsed < 1.0
+    assert "disk cache unavailable (SQLITE_BUSY)" in caplog.text
+
+
+@pytest.mark.asyncio
+async def test_two_instances_opening_one_fresh_file_together_lose_nothing(
+    tmp_path: Path, caplog: pytest.LogCaptureFixture
+) -> None:
+    with caplog.at_level(logging.WARNING, logger="aero_kernel.cache"):
+        for trial in range(40):
+            path = tmp_path / f"shared{trial}.sqlite"
+            first = DiskCache(path=path, max_bytes=10_000_000)
+            second = DiskCache(path=path, max_bytes=10_000_000)
+            await asyncio.gather(
+                *((first if i % 2 else second).put("s", f"k{i}", entry()) for i in range(24))
+            )
+            hits = await asyncio.gather(*(first.get("s", f"k{i}") for i in range(24)))
+            assert None not in hits
+            with sqlite3.connect(path) as db:
+                stored = dict(db.execute("SELECT scope, bytes FROM totals").fetchall())
+                (actual,) = db.execute("SELECT SUM(size) FROM entries").fetchone()
+            assert stored[""] == actual == stored["s"]
+    assert caplog.text == ""
