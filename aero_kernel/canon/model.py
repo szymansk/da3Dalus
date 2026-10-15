@@ -9,7 +9,9 @@ from collections.abc import Iterator, Mapping
 from typing import Annotated, Literal, Self
 
 from aero_kernel.canonical import sha256_of
+from aero_kernel.errors import WORLD_NAME_REGEX, is_world_name
 from pydantic import (
+    AfterValidator,
     BaseModel,
     ConfigDict,
     Field,
@@ -120,7 +122,21 @@ OnViolation = Literal["warning", "error"]
 # lower-case identifier. A reference is fully qualified: ``<namespace>:<slug>`` (ch. 8.9).
 Parameter = Annotated[str, StringConstraints(pattern=r"^[a-z][a-z0-9]*(_[a-z0-9]+)*$")]
 Identifier = Annotated[str, StringConstraints(pattern=r"^[a-z][a-z0-9]*([_-][a-z0-9]+)*$")]
-WorldName = Annotated[str, StringConstraints(pattern=r"^[a-z][a-z0-9]*(_[a-z0-9]+)*$")]
+
+
+def _check_world_name(text: str) -> str:
+    """Return ``text`` if it is a world name, else raise ``ValueError``."""
+    if not is_world_name(text):
+        msg = f"{text!r} is not a snake_case world name"
+        raise ValueError(msg)
+    return text
+
+
+WorldName = Annotated[
+    str,
+    AfterValidator(_check_world_name),
+    Field(json_schema_extra={"pattern": f"^{WORLD_NAME_REGEX}$"}),
+]
 QualifiedSlug = Annotated[
     str, StringConstraints(pattern=r"^[a-z][a-z0-9_]*:[a-z][a-z0-9]*(-[a-z0-9]+)*$")
 ]
