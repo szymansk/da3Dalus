@@ -4,7 +4,7 @@ Warnings, quantity results, the compute result and provenance. All models are fr
 unknown fields. :class:`KernelError` is re-exported from :mod:`aero_kernel.errors`.
 """
 
-from collections.abc import Mapping
+from collections.abc import Iterable, Mapping
 from enum import StrEnum
 from typing import Literal, Self
 
@@ -72,6 +72,21 @@ class KernelWarning(BaseModel):
             msg = f"code {self.code} has severity {expected.value}, not {self.severity.value}"
             raise ValueError(msg)
         return self
+
+
+def dedupe_warnings(warnings: Iterable[KernelWarning]) -> tuple[KernelWarning, ...]:
+    """Drop repeated warnings by (``code``, ``origin``, ``world``); the first occurrence wins.
+
+    Args:
+        warnings: Warnings of a quantity and its subtree, in collection order.
+
+    Returns:
+        The warnings without repeats, order kept.
+    """
+    unique: dict[tuple[str, str | None, str | None], KernelWarning] = {}
+    for warning in warnings:
+        unique.setdefault((warning.code, warning.origin, warning.world), warning)
+    return tuple(unique.values())
 
 
 class Interval(BaseModel):
@@ -204,6 +219,9 @@ class QuantityResult(BaseModel):
             raise ValueError(msg)
         if self.status is QuantityStatus.ERROR and self.error is None:
             msg = "status error needs an error"
+            raise ValueError(msg)
+        if self.error is not None and self.error.quantity not in (None, self.slug):
+            msg = f"error.quantity {self.error.quantity} must equal slug {self.slug}"
             raise ValueError(msg)
         allowed = _REASONS_BY_STATUS.get(self.status)
         if allowed is None:
