@@ -2,7 +2,7 @@
 
 import logging
 from collections.abc import Callable, Mapping
-from typing import Any, cast
+from typing import cast
 
 import pytest
 from aero_kernel import registry as registry_module
@@ -158,7 +158,7 @@ async def _impl(x: Mapping[str, float], ctx: object) -> dict[str, float]:
 
 def test_a_decorator_made_before_the_freeze_cannot_register_after_it() -> None:
     registry = Registry()
-    decorators: list[Callable[[Any], object]] = [
+    decorators: list[Callable[..., object]] = [
         registry.formula("stall-speed", interface=FINGERPRINT),
         registry.precondition("stall-speed", "rho-ok"),
         registry.postcondition("stall-speed", "rho-ok"),
