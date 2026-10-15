@@ -8,7 +8,7 @@ from collections.abc import Mapping
 from enum import StrEnum
 from typing import Literal, Self
 
-from aero_kernel.errors import KernelError
+from aero_kernel.errors import ErrorCategory, KernelError
 from pydantic import BaseModel, ConfigDict, Field, JsonValue, model_validator
 
 __all__ = ["WARNING_CATALOGUE", "Interval", "KernelError", "KernelWarning", "WarningSeverity"]
@@ -20,6 +20,9 @@ class WarningSeverity(StrEnum):
     PRACTICE = "practice"
     DEFECT = "defect"
 
+
+# The accuracy tiers of the solvers (ch. 8.11), coarsest first.
+Accuracy = Literal["xxsmall", "xsmall", "small", "medium", "large", "xlarge", "xxlarge", "xxxlarge"]
 
 # The closed warning table (ch. 8.2): code -> fixed severity. A new code is added here by the unit
 # that builds its source, never invented at the raise site.
@@ -214,4 +217,79 @@ class QuantityResult(BaseModel):
             if self.error is not None:
                 msg = f"status {self.status.value} must not carry an error"
                 raise ValueError(msg)
+        return self
+
+
+class DefaultUsed(BaseModel):
+    """A canon default the call took (ch. 8.11).
+
+    Attributes:
+        slug: Slug of the quantity whose default was taken.
+        value: The default value, in ``unit``.
+        unit: SI unit of ``value``.
+        source: Where the default comes from.
+    """
+
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    slug: str = Field(min_length=1)
+    value: float
+    unit: str = Field(min_length=1)
+    source: str = Field(min_length=1)
+
+
+class Provenance(BaseModel):
+    """What a result was computed with (ch. 8.4).
+
+    Attributes:
+        kernel_version: ``aero_kernel.__version__``.
+        build_digest: Hash over the code and canon model; identifies the exact build.
+        canon_model_hash: Hash of the canon model.
+        canon_source_commit: Commit of the canon document the model was imported from.
+        tool_versions: Version per tool (aerosandbox, NeuralFoil model, AVL).
+        accuracy: Accuracy tier of the call.
+        solver_settings: Solver settings of the call.
+        defaults_used: Every canon default the call took.
+    """
+
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    kernel_version: str = Field(min_length=1)
+    build_digest: str = Field(min_length=1)
+    canon_model_hash: str = Field(min_length=1)
+    canon_source_commit: str = Field(min_length=1)
+    tool_versions: dict[str, str] = Field(default_factory=dict)
+    accuracy: Accuracy
+    solver_settings: dict[str, JsonValue] = Field(default_factory=dict)
+    defaults_used: tuple[DefaultUsed, ...] = ()
+
+
+class ComputeResult(BaseModel):
+    """The result of one ``compute()`` call (ch. 8.3).
+
+    Attributes:
+        quantities: One result per requested slug, in request order.
+        input_errors: ``invalid_input`` errors from validation; non-empty means nothing was computed.
+        provenance: What the result was computed with.
+    """
+
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    quantities: tuple[QuantityResult, ...] = ()
+    input_errors: tuple[KernelError, ...] = ()
+    provenance: Provenance
+
+    @model_validator(mode="after")
+    def _check_result(self) -> Self:
+        """Enforce the invariants of ch. 8.3."""
+        if any(e.category is not ErrorCategory.INVALID_INPUT for e in self.input_errors):
+            msg = "input_errors may only hold errors of category invalid_input"
+            raise ValueError(msg)
+        if self.input_errors and self.quantities:
+            msg = "non-empty input_errors means nothing was computed: quantities must be empty"
+            raise ValueError(msg)
+        slugs = [q.slug for q in self.quantities]
+        if len(set(slugs)) != len(slugs):
+            msg = "each requested slug appears once: duplicate slug in quantities"
+            raise ValueError(msg)
         return self
