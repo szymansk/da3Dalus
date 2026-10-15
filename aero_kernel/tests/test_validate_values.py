@@ -78,3 +78,23 @@ def test_findings_come_by_slug_and_qualified_slugs_resolve() -> None:
         ("unknown_quantity", "values.ghost"),
         ("not_an_input", "values.weight"),
     ]
+
+
+def test_not_an_input_messages_say_where_the_quantity_comes_from() -> None:
+    errors = {e.input_path: e for e in validate_values({"airplane": 1.0, "weight": 1.0}, model())}
+    assert "`airplane` is given as AircraftInput.airplane, not in values" in (
+        errors["values.airplane"].message
+    )
+    assert "computed by the kernel; values cannot override it" in errors["values.weight"].message
+
+
+def test_other_non_scalar_input_is_not_a_number() -> None:
+    namespaces = base_namespaces()
+    namespaces["calc"]["quantities"]["grid"] = {
+        "symbol": "grid",
+        "unit": "1",
+        "role": "input",
+        "type": "curve",
+    }
+    (error,) = validate_values({"grid": 1.0}, CanonModel.model_validate(with_hash(namespaces)))
+    assert "`grid` is a curve, not a number; values hold numbers only" in error.message
