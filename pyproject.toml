@@ -76,6 +76,7 @@ ruff = "^0.15.10"
 pydeps = "^3.0.3"
 pyright = "^1.1.409"
 pytest-asyncio = "^1.0"
+jsonschema = "^4.26"
 
 [tool.pytest.ini_options]
 # `.claude` and `.worktrees` hold sibling git worktrees from in-flight
