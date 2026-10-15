@@ -783,10 +783,14 @@ supplied value of such a quantity, code `non_positive_value`, `input_path = valu
 input-fact warnings, whose origins §8.11 fixes (`aircraft-mass`, `airplane`). A dict key is the identity of a wing or fuselage (paths use
 it); a differing `name` is a label and no finding. The geometry's `total_mass_kg` is never used, so only its
 finiteness is checked. `detail` carries `{"value": …}`: the number, or `"nan"` / `"inf"` / `"-inf"` as a
-string (free JSON fields stay finite, ch. 8.3). Findings come in document order, then `values` by slug.
+string (free JSON fields stay finite, ch. 8.3). Findings come section by section in document order (within a section in rule order), then `values` by
+slug.
 
 The kernel never reads `control_surface` (a derived projection; role and hinge come from the device,
-angles from `values`), so a disagreement between the two is no finding.
+angles from `values`), so a disagreement between the two is no finding. From a `trailing_edge_device` it
+reads exactly `role`, `rel_chord_root`, `rel_chord_tip` (the hinge line), `symmetric`, `mix_gain_primary`,
+`mix_gain_secondary` (AVL mixing of dual roles), and `deflection_deg` only to report it ignored; its span is
+the segment it sits on. Every other device field is unread and not validated.
 
 `input_path` is a path into `AircraftInput`: attribute names joined by `.`, list indices as `[i]`, dict
 keys as `["…"]` with JSON string escaping (`airplane.wings["Main wing"].x_secs[2].chord`), except that a
