@@ -295,3 +295,11 @@ def test_a_malformed_slug_is_reported_per_quantity_while_the_rest_resolves(
     subtree = CanonGraph(flight_canon).subtree(["stall_speed", "stall-speed"])
     assert [(e.code, e.quantity) for e in subtree.errors] == [("unknown_quantity", "stall_speed")]
     assert [r.requested for r in subtree.requested] == ["stall-speed"]
+
+
+def test_a_rejected_request_echoes_the_raw_spelling_with_its_namespace(
+    flight_canon: CanonModel,
+) -> None:
+    error = CanonGraph(flight_canon).resolve("calc:no-such-thing")
+    assert isinstance(error, KernelError)
+    assert error.quantity == "calc:no-such-thing"
