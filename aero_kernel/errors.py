@@ -11,7 +11,15 @@ from collections.abc import Mapping, Sequence
 from enum import StrEnum
 from typing import Self, cast
 
-from pydantic import BaseModel, ConfigDict, Field, JsonValue, model_validator
+from pydantic import (
+    BaseModel,
+    ConfigDict,
+    Field,
+    JsonValue,
+    TypeAdapter,
+    ValidationError,
+    model_validator,
+)
 from pydantic.config import JsonDict
 
 logger = logging.getLogger(__name__)
@@ -77,6 +85,9 @@ _FORMULA_CATEGORIES = frozenset(
         ErrorCategory.TOOL_UNAVAILABLE,
     }
 )
+
+
+_DETAIL_ADAPTER: TypeAdapter[dict[str, JsonValue]] = TypeAdapter(dict[str, JsonValue])
 
 
 def _check_code(code: str, category: ErrorCategory) -> None:
@@ -238,18 +249,28 @@ class FormulaError(Exception):
 
         Raises:
             ValueError: If the category belongs to the engine (timeout, upstream_failed,
-                not_implemented, internal) or the code is not catalogued under the category.
+                not_implemented, internal), the code is not catalogued under the category,
+                the message or hint is empty, or the detail is not valid JSON data.
         """
         if category not in _FORMULA_CATEGORIES:
             msg = f"category {category.value} belongs to the engine; a formula cannot raise it"
             raise ValueError(msg)
         _check_code(code, category)
+        for name, text in (("message", message), ("hint", hint)):
+            if not text:
+                msg = f"FormulaError {name} must not be empty"
+                raise ValueError(msg)
+        try:
+            checked_detail = _DETAIL_ADAPTER.validate_python(detail or {})
+        except ValidationError as error:
+            msg = f"FormulaError detail must be JSON-serialisable: {error}"
+            raise ValueError(msg) from error
         super().__init__(message)
         self.category = category
         self.code = code
         self.message = message
         self.hint = hint
-        self.detail: dict[str, JsonValue] = dict(detail) if detail else {}
+        self.detail: dict[str, JsonValue] = checked_detail
         self.input_path = input_path
 
     def to_kernel_error(
