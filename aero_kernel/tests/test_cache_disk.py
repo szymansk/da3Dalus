@@ -172,7 +172,7 @@ async def test_a_locked_database_degrades_get_and_put_with_a_warning(
     finally:
         blocker.execute("ROLLBACK")
         blocker.close()
-    assert caplog.text.count("database locked") == 2
+    assert caplog.text.count("disk cache unavailable") == 2
     assert await cache.get("s", "new") is None
 
 
@@ -316,3 +316,41 @@ async def test_concurrent_calls_on_a_corrupt_file_move_it_aside_once(
         results = await asyncio.gather(cache.get("s", "150"), cache.get("s", "150"))
     assert results == [None, None]
     assert caplog.text.count("moved aside") == 1
+
+
+@pytest.fixture
+def unwritable_parent(tmp_path: Path) -> Path:
+    """A database path whose parent directory cannot be created (it is a file)."""
+    (tmp_path / "file").write_text("x")
+    return tmp_path / "file" / DB_NAME
+
+
+@pytest.mark.asyncio
+async def test_a_failing_mkdir_makes_get_a_miss_with_a_warning(
+    unwritable_parent: Path, caplog: pytest.LogCaptureFixture
+) -> None:
+    cache = DiskCache(path=unwritable_parent, max_bytes=1000)
+    with caplog.at_level(logging.WARNING, logger="aero_kernel.cache"):
+        assert await cache.get("s", "k") is None
+    assert "disk cache unavailable" in caplog.text
+
+
+@pytest.mark.asyncio
+async def test_a_failing_mkdir_makes_put_a_skipped_write_with_a_warning(
+    unwritable_parent: Path, caplog: pytest.LogCaptureFixture
+) -> None:
+    cache = DiskCache(path=unwritable_parent, max_bytes=1000)
+    with caplog.at_level(logging.WARNING, logger="aero_kernel.cache"):
+        await cache.put("s", "k", entry())
+    assert "disk cache unavailable" in caplog.text
+
+
+@pytest.mark.asyncio
+async def test_a_failing_mkdir_makes_drop_scope_a_store_error_without_the_path(
+    unwritable_parent: Path,
+) -> None:
+    cache = DiskCache(path=unwritable_parent, max_bytes=1000)
+    with pytest.raises(StoreError) as caught:
+        await cache.drop_scope("s")
+    assert str(caught.value) == ("the cache could not delete scope s; the store is unavailable")
+    assert isinstance(caught.value.__cause__, OSError)

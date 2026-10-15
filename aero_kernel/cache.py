@@ -282,8 +282,10 @@ class MemoryCache:
         logger.debug("cache evict %s", _short(key), extra={"scope": scope})
 
 
-def _is_corrupt(exc: sqlite3.DatabaseError) -> bool:
+def _is_corrupt(exc: Exception) -> bool:
     """Whether SQLite reports a damaged file (``SQLITE_CORRUPT``) or no database at all."""
+    if not isinstance(exc, sqlite3.DatabaseError):
+        return False
     primary = exc.sqlite_errorcode & 0xFF
     return primary in (sqlite3.SQLITE_CORRUPT, sqlite3.SQLITE_NOTADB)
 
@@ -342,10 +344,10 @@ class DiskCache:
         _check_scope(scope)
         try:
             found = await self._guard(self._read, scope, key)
-        except sqlite3.DatabaseError as exc:
+        except (sqlite3.DatabaseError, OSError) as exc:
             if not _is_corrupt(exc):  # a corrupt file was already moved aside and warned about
                 logger.warning(
-                    "disk cache database locked, %s treated as a miss",
+                    "disk cache unavailable, %s treated as a miss",
                     _short(key),
                     extra={"scope": scope},
                 )
@@ -369,10 +371,10 @@ class DiskCache:
             return
         try:
             await self._guard(self._write, scope, key, text, size)
-        except sqlite3.DatabaseError as exc:
+        except (sqlite3.DatabaseError, OSError) as exc:
             if not _is_corrupt(exc):
                 logger.warning(
-                    "disk cache database locked, %s not stored",
+                    "disk cache unavailable, %s not stored",
                     _short(key),
                     extra={"scope": scope},
                 )
@@ -386,16 +388,19 @@ class DiskCache:
         _check_scope(scope)
         try:
             await self._guard(self._drop, scope)
-        except sqlite3.DatabaseError as exc:
+        except (sqlite3.DatabaseError, OSError) as exc:
             if _is_corrupt(exc):  # the file, and with it the scope, was moved aside
                 logger.debug("cache scope dropped with the corrupt file", extra={"scope": scope})
                 return
             logger.warning(
-                "disk cache database locked, scope not dropped",
+                "disk cache unavailable, scope not dropped",
                 exc_info=exc,
                 extra={"scope": scope},
             )
-            msg = f"the cache could not delete scope {scope}; the store is busy, retry later"
+            reason = (
+                "busy, retry later" if isinstance(exc, sqlite3.OperationalError) else "unavailable"
+            )
+            msg = f"the cache could not delete scope {scope}; the store is {reason}"
             raise StoreError(msg) from exc
         logger.debug("cache scope dropped", extra={"scope": scope})
 
