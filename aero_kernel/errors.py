@@ -12,6 +12,7 @@ from enum import StrEnum
 from typing import Self, cast
 
 from pydantic import BaseModel, ConfigDict, Field, JsonValue, model_validator
+from pydantic.config import JsonDict
 
 logger = logging.getLogger(__name__)
 
@@ -107,6 +108,22 @@ def flags_for(category: ErrorCategory) -> tuple[bool, bool]:
     return _FLAGS[category]
 
 
+def _flags_required_in_schema(schema: JsonDict) -> None:
+    """Advertise ``retryable`` and ``escalate`` as required, without the placeholder default.
+
+    The fields default to ``False`` only so the type checker accepts omitting them; the validator
+    fills the real value from the category (or requires it for ``upstream_failed``).
+    """
+    properties = schema.get("properties")
+    required = schema.setdefault("required", [])
+    for name in ("retryable", "escalate"):
+        field = properties.get(name) if isinstance(properties, dict) else None
+        if isinstance(field, dict):
+            field.pop("default", None)
+        if isinstance(required, list) and name not in required:
+            required.append(name)
+
+
 class KernelError(BaseModel):
     """A computational failure: no value (ch. 8.1).
 
@@ -130,7 +147,9 @@ class KernelError(BaseModel):
         detail: Structured data about the failure.
     """
 
-    model_config = ConfigDict(extra="forbid", frozen=True)
+    model_config = ConfigDict(
+        extra="forbid", frozen=True, json_schema_extra=_flags_required_in_schema
+    )
 
     code: str = Field(min_length=1)
     category: ErrorCategory

@@ -533,3 +533,10 @@ def test_internal_error_hides_the_exception_text_everywhere() -> None:
     assert "/secret/path" not in error.message
     assert "/secret/path" not in error.hint
     assert "/secret/path" not in json.dumps(error.detail)
+
+
+def test_json_schema_marks_flags_as_required_without_a_default() -> None:
+    schema = KernelError.model_json_schema()
+    assert {"retryable", "escalate"} <= set(schema["required"])
+    assert "default" not in schema["properties"]["retryable"]
+    assert "default" not in schema["properties"]["escalate"]
