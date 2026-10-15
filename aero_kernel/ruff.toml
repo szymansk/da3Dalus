@@ -30,3 +30,7 @@ convention = "google"
 
 [lint.per-file-ignores]
 "tests/**" = ["D", "ANN"]
+# The repository root carries a tracked __init__.py, so ruff derives the module name of
+# aero_kernel/__init__.py from the checkout directory (e.g. "cad-modelling-service"), which
+# is not a valid identifier locally. Not a property of this package.
+"**/__init__.py" = ["N999"]
