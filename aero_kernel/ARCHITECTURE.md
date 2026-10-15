@@ -639,7 +639,11 @@ later `sizing:…`), and a bare slug in a request means `calc:`.
   model is fully qualified** (`calc:stall-speed`, embeds items `calc:stall-speed.clean`); application ids
   and parameter names stay bare. Every `embeds` and `embeds_closure` item is normalised to
   `<ns>:<slug>.<application-id>` (a single-application formula as `.default`); a bare item does not load.
-  Absent `when`, `given` and check `applications` are stored as `null` (= always / all). Only a request's bare slug means `calc:`.
+  Absent `when`, `given` and check `applications` are stored as `null` (= always / all). Only a request's bare slug means `calc:`. **Outside the model** — results, errors (`formula`,
+  `quantity`), messages and world assignments — a `calc:` slug is written bare, a slug of any other
+  namespace qualified. World assignments key formulas by bare slug, so two uncertain formulas of the same
+  bare slug in different namespaces are a model error (`GraphModelError`) until a second namespace needs
+  them.
 - **`schema_version`** is the integer `1` (`Literal[1]`), raised on every change of the model's shape. The
   loader reads it **before** type validation, so a newer model reports its version, not a cascade of
   unknown fields; any other version is `internal`, escalate. The loader raises `CanonLoadError` carrying
