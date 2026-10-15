@@ -1,0 +1,170 @@
+"""Registry: checks, relations, freezing and the default registry (ARCHITECTURE ch. 8.12)."""
+
+import logging
+from collections.abc import Mapping
+
+import pytest
+from aero_kernel import registry as registry_module
+from aero_kernel.registry import CheckResult, Registry, RegistryError
+
+FINGERPRINT = "sha256:" + "0" * 64
+HELD = CheckResult(state="held", message="ok")
+
+
+def pre(x: Mapping[str, float]) -> CheckResult:
+    return HELD
+
+
+def post(x: Mapping[str, float], y: Mapping[str, float]) -> CheckResult:
+    return HELD
+
+
+def test_check_result_holds_state_and_message() -> None:
+    result = CheckResult(state="violated", message="rho is off")
+    assert (result.state, result.message) == ("violated", "rho is off")
+
+
+@pytest.mark.parametrize(
+    "kwargs",
+    [
+        {"state": "ok", "message": "m"},
+        {"state": "held", "message": ""},
+        {"state": "held", "message": "m", "extra": 1},
+    ],
+)
+def test_check_result_rejects_bad_state_empty_message_and_unknown_fields(
+    kwargs: dict[str, object],
+) -> None:
+    with pytest.raises(ValueError, match="validation error"):
+        CheckResult(**kwargs)  # pyright: ignore[reportArgumentType]  # deliberately malformed
+
+
+def test_check_result_is_frozen() -> None:
+    with pytest.raises(ValueError, match="frozen"):
+        HELD.message = "other"
+
+
+def test_precondition_and_postcondition_are_registered_per_kind() -> None:
+    registry = Registry()
+    assert registry.precondition("stall-speed", "rho-ok")(pre) is pre
+    assert registry.postcondition("stall-speed", "rho-ok")(post) is post
+    assert registry.checks("stall-speed", "pre") == {"rho-ok": pre}
+    assert registry.checks("calc:stall-speed", "post") == {"rho-ok": post}
+
+
+def test_unregistered_checks_are_an_empty_mapping() -> None:
+    assert dict(Registry().checks("stall-speed", "pre")) == {}
+
+
+def test_stacked_decorators_share_one_function_across_formulas() -> None:
+    registry = Registry()
+    registry.postcondition("stall-speed", "first-peak")(
+        registry.postcondition("butterfly-approach", "first-peak")(post)
+    )
+    assert registry.checks("stall-speed", "post")["first-peak"] is post
+    assert registry.checks("butterfly-approach", "post")["first-peak"] is post
+
+
+def test_duplicate_check_is_an_error_even_for_the_same_function() -> None:
+    registry = Registry()
+    registry.precondition("stall-speed", "rho-ok")(pre)
+    with pytest.raises(RegistryError, match=r"rho-ok.*calc:stall-speed.*already"):
+        registry.precondition("stall-speed", "rho-ok")(pre)
+
+
+@pytest.mark.parametrize("check_id", ["", "Rho", "rho ok", "-rho", "rho_", "rho--ok"])
+def test_malformed_check_id_is_rejected(check_id: str) -> None:
+    with pytest.raises(RegistryError, match="check id"):
+        Registry().precondition("stall-speed", check_id)(pre)
+
+
+def test_precondition_must_take_exactly_x() -> None:
+    with pytest.raises(RegistryError, match="exactly 1"):
+        Registry().precondition("stall-speed", "rho-ok")(post)
+
+
+def test_postcondition_must_take_exactly_x_and_y() -> None:
+    with pytest.raises(RegistryError, match="exactly 2"):
+        Registry().postcondition("stall-speed", "rho-ok")(pre)
+
+
+def test_check_must_be_a_plain_function() -> None:
+    async def coroutine_check(x: Mapping[str, float]) -> CheckResult:
+        return HELD
+
+    with pytest.raises(RegistryError, match="plain function"):
+        Registry().precondition("stall-speed", "rho-ok")(
+            coroutine_check  # pyright: ignore[reportArgumentType]  # deliberately async
+        )
+
+
+def relation(a: float, b: float) -> float:
+    return a + b
+
+
+def test_relation_is_registered_once_per_formula() -> None:
+    registry = Registry()
+    assert registry.relation("thrust-at-airspeed")(relation) is relation
+    assert registry.relation_function("calc:thrust-at-airspeed") is relation
+    assert registry.relation_function("stall-speed") is None
+    with pytest.raises(RegistryError, match="already"):
+        registry.relation("thrust-at-airspeed")(relation)
+
+
+def test_freeze_blocks_every_registration() -> None:
+    registry = Registry()
+    assert not registry.frozen
+    registry.freeze()
+    assert registry.frozen
+    for register in (
+        lambda: registry.formula("a", interface=FINGERPRINT),
+        lambda: registry.relation("a"),
+        lambda: registry.precondition("a", "b"),
+        lambda: registry.postcondition("a", "b"),
+    ):
+        with pytest.raises(RegistryError, match="frozen"):
+            register()
+
+
+def test_freeze_logs_the_counts_once(caplog: pytest.LogCaptureFixture) -> None:
+    registry = Registry()
+
+    async def impl(x: Mapping[str, float], ctx: object) -> dict[str, float]:
+        return {}
+
+    registry.formula("stall-speed", interface=FINGERPRINT)(impl)
+    registry.precondition("stall-speed", "rho-ok")(pre)
+    registry.postcondition("stall-speed", "rho-ok")(post)
+    with caplog.at_level(logging.INFO, logger="aero_kernel.registry"):
+        registry.freeze()
+        registry.freeze()
+    assert [r.getMessage() for r in caplog.records] == ["registry frozen: 1 formulas, 2 checks"]
+
+
+def test_registrations_are_logged_at_debug(caplog: pytest.LogCaptureFixture) -> None:
+    registry = Registry()
+    with caplog.at_level(logging.DEBUG, logger="aero_kernel.registry"):
+        registry.precondition("stall-speed", "rho-ok")(pre)
+        registry.relation("stall-speed")(relation)
+    messages = [r.getMessage() for r in caplog.records]
+    assert messages == [
+        "registered precondition calc:stall-speed/rho-ok",
+        "registered relation calc:stall-speed",
+    ]
+
+
+def test_module_level_decorators_belong_to_the_default_registry() -> None:
+    default = registry_module.DEFAULT_REGISTRY
+    assert isinstance(default, Registry)
+    assert registry_module.formula.__self__ is default  # pyright: ignore[reportFunctionMemberAccess]  # bound method
+    assert registry_module.relation.__self__ is default  # pyright: ignore[reportFunctionMemberAccess]
+    assert registry_module.precondition.__self__ is default  # pyright: ignore[reportFunctionMemberAccess]
+    assert registry_module.postcondition.__self__ is default  # pyright: ignore[reportFunctionMemberAccess]
+
+
+def test_a_decorator_made_before_the_freeze_cannot_register_after_it() -> None:
+    registry = Registry()
+    decorator = registry.precondition("stall-speed", "rho-ok")
+    registry.freeze()
+    with pytest.raises(RegistryError, match="frozen"):
+        decorator(pre)
