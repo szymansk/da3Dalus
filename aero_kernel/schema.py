@@ -98,6 +98,14 @@ class KernelWarning(BaseModel):
         return self
 
 
+_WarningKey = tuple[str, str | None, str | None]
+
+
+def _warning_key(warning: KernelWarning) -> _WarningKey:
+    """Return the identity of a warning within a quantity: (code, origin, world), ch. 8.2."""
+    return (warning.code, warning.origin, warning.world)
+
+
 def dedupe_warnings(warnings: Iterable[KernelWarning]) -> tuple[KernelWarning, ...]:
     """Drop repeated warnings by (``code``, ``origin``, ``world``); the first occurrence wins.
 
@@ -107,9 +115,9 @@ def dedupe_warnings(warnings: Iterable[KernelWarning]) -> tuple[KernelWarning, .
     Returns:
         The warnings without repeats, order kept.
     """
-    unique: dict[tuple[str, str | None, str | None], KernelWarning] = {}
+    unique: dict[_WarningKey, KernelWarning] = {}
     for warning in warnings:
-        unique.setdefault((warning.code, warning.origin, warning.world), warning)
+        unique.setdefault(_warning_key(warning), warning)
     return tuple(unique.values())
 
 
@@ -133,8 +141,10 @@ class Interval(BaseModel):
     @model_validator(mode="after")
     def _check_worlds(self) -> Self:
         """Require canonical world keys, and min and max to be the extremes of the values."""
-        for key in self.worlds:
-            parse_world_assignment(key)
+        formula_sets = {frozenset(parse_world_assignment(key)) for key in self.worlds}
+        if len(formula_sets) != 1:
+            msg = "every world assignment must assign the same formulas (Cartesian product)"
+            raise ValueError(msg)
         if self.min != min(self.worlds.values()) or self.max != max(self.worlds.values()):
             msg = "interval min and max must equal the smallest and largest world value"
             raise ValueError(msg)
@@ -213,7 +223,7 @@ class QuantityResult(BaseModel):
     model_config = ConfigDict(extra="forbid", frozen=True)
 
     slug: str = Field(min_length=1)
-    unit: str
+    unit: str = Field(min_length=1)
     status: QuantityStatus
     reason: Reason | None = None
     value: FiniteFloat | None = None
@@ -228,9 +238,12 @@ class QuantityResult(BaseModel):
     @model_validator(mode="after")
     def _check_status(self) -> Self:
         """Enforce the status invariants of ch. 8.3."""
-        keys = [(w.code, w.origin, w.world) for w in self.warnings]
+        keys = [_warning_key(w) for w in self.warnings]
         if len(set(keys)) != len(keys):
             msg = "duplicate warning: (code, origin, world) must be unique within a quantity"
+            raise ValueError(msg)
+        if self.from_cache and self.status is not QuantityStatus.OK:
+            msg = f"from_cache requires status ok, not {self.status.value}: only ok is stored"
             raise ValueError(msg)
         has_result = self.value is not None or self.interval is not None
         if self.status is QuantityStatus.OK:
