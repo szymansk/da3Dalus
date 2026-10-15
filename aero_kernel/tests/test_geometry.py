@@ -5,6 +5,7 @@ docs/geometry-format/airplane-geometry.schema.json as types, with no physical co
 """
 
 import math
+import re
 from typing import Any
 
 import pytest
@@ -629,7 +630,9 @@ def test_all_pins_the_public_names() -> None:
 def test_docstring_documents_every_attribute(name: str) -> None:
     model = getattr(geometry, name)
     doc = model.__doc__ or ""
-    undocumented = [f for f in model.model_fields if f"{f}:" not in doc]
+    undocumented = [
+        f for f in model.model_fields if not re.search(rf"^\s+{re.escape(f)}:", doc, re.MULTILINE)
+    ]
     assert undocumented == []
 
 
