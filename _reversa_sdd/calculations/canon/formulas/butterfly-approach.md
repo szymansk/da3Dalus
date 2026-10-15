@@ -34,6 +34,8 @@ applications:
   - id: crow
     bind: {airplane: airplane-landing}
     when: has_separate_flap_and_aileron
+postconditions:
+  - {id: optimum_at_first_cl_peak, parameter: v_s0_curve, on_violation: error}
 ---
 
 # Butterfly (crow) in the approach — how far it may be mixed in
@@ -72,6 +74,11 @@ from it (maintainer, 2026-10-02):
 
 **Exists only if the geometry has camber flaps and ailerons** (as A3 for the flap
 configurations): crow needs both.
+
+**The stall optimum at every `s` lies at the first `C_L` peak** — postcondition
+`optimum_at_first_cl_peak`, checked at every s; same check as stall-speed (K32), one shared
+implementation, not a copy (architect, 2026-10-15). Not an embed: a form that re-solves another
+formula's problem under a configuration it varies itself is not an embed (ARCHITECTURE §8.5).
 
 **Declared limit — approval needs a comparison.** Crow flaps deflect 45–80°; the flow on the
 flap is separated there. AeroBuildup has no flap model of its own, and NeuralFoil never sees the deflected surface: AeroSandbox evaluates the clean airfoil at `α_eff = α + τ·δ`, `τ = 1 − x_hinge^2.7514` (a δ-independent fit to an XFoil study), and multiplies the drag by a factor fitted to Hoerner, *Fluid Dynamic Drag*, p. 13-13 Fig. 32 (`aerosandbox/geometry/airfoil/kulfan_airfoil.py:211-255`, reached from `aero_buildup.py:784-801`; AeroSandbox 4.2.9 / NeuralFoil 0.3.2). There is no flap separation: the effectiveness is over-predicted at large δ until the clean section stalls, and the δ range of the τ fit is unknown. At crow deflections the flap

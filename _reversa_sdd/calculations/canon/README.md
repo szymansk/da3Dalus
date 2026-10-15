@@ -523,6 +523,8 @@ applications:
   - id: crow
     bind: {airplane: airplane-landing}
     when: has_separate_flap_and_aileron
+postconditions:
+  - {id: optimum_at_first_cl_peak, parameter: v_s0_curve, on_violation: error}
 ```
 
 An **optimization** with several applications, sourced constants, a precondition on an input and

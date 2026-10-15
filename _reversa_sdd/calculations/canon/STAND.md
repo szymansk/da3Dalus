@@ -571,3 +571,5 @@ Maintainer; `check_canon.py` meldet es als *open*.
 
 **Butterfly-Grundkonfiguration (Maintainer, 15.10.2026, E2/Option C):** `s = 0` ist die Landekonfiguration; die Krähenwinkel sind absolute Endausschläge: δ_f(s) = δ_f,landing + s·(δ_f,crow − δ_f,landing), δ_a(s) = s·δ_a,crow. Die Anwendung `crow` bindet `airplane-landing` und liest `flap-deflection-landing`; V_app(s) wird mit V_S0(0) desselben Sweeps normiert — die Mischung aus Reiseflug- und Landekonfiguration entfällt, der Eingang `stall-speed-landing` damit auch.
 
+**Delta-Review F2 (Architekt, 15.10.2026):** `butterfly-approach` trägt die Nachbedingung `optimum_at_first_cl_peak` auf `v_s0_curve` — bei jedem s geprüft, dieselbe Prüfung wie in `stall-speed` (K32), eine gemeinsame Implementierung. Kein `embeds`: eine Form, die das Problem einer anderen Formel unter einer selbst variierten Konfiguration neu löst, ist keine Einbettung (ARCHITECTURE §8.5).
+
