@@ -399,3 +399,108 @@ async def test_a_hit_survives_a_failing_recency_update(
         path.chmod(0o644)
     assert "recency not updated" in caplog.text
     assert "WARNING" not in caplog.text
+
+
+def _totals(tmp_path: Path) -> tuple[dict[str, int], dict[str, int]]:
+    """The stored running totals and the sums they must equal, per scope plus ``""`` for all."""
+    with sqlite3.connect(tmp_path / DB_NAME) as db:
+        stored = dict(db.execute("SELECT scope, bytes FROM totals").fetchall())
+        actual = dict(db.execute("SELECT scope, SUM(size) FROM entries GROUP BY scope").fetchall())
+        (everything,) = db.execute("SELECT COALESCE(SUM(size), 0) FROM entries").fetchone()
+    actual[""] = everything
+    return stored, actual
+
+
+def _agree(tmp_path: Path) -> None:
+    stored, actual = _totals(tmp_path)
+    assert {scope: total for scope, total in stored.items() if total} == {
+        scope: total for scope, total in actual.items() if total
+    }
+
+
+@pytest.mark.asyncio
+async def test_running_totals_equal_the_sums_after_mixed_operations(tmp_path: Path) -> None:
+    cache = _disk(tmp_path, max_bytes=40 * _size(), max_bytes_per_scope=25 * _size())
+    for index in range(30):
+        await cache.put("a", str(index), entry(float(index)))
+    for index in range(30):
+        await cache.put("b", str(index), entry(float(index)))
+    await cache.put("a", "3", BIG)
+    await cache.put("a", "3", entry(1.0))
+    await cache.get("a", "7")
+    await cache.drop_scope("b")
+    await cache.put("c", "x", entry())
+    _agree(tmp_path)
+
+
+@pytest.mark.asyncio
+async def test_totals_follow_the_deletion_of_an_unreadable_entry(tmp_path: Path) -> None:
+    cache = _disk(tmp_path)
+    await cache.put("s", "k", entry())
+    await cache.put("s", "j", entry())
+    with sqlite3.connect(tmp_path / DB_NAME) as db:
+        db.execute("UPDATE entries SET value = 'not json' WHERE key = 'k'")
+    assert await cache.get("s", "k") is None
+    _agree(tmp_path)
+
+
+@pytest.mark.asyncio
+async def test_an_eviction_of_many_rows_runs_in_chunks(tmp_path: Path) -> None:
+    cache = _disk(tmp_path, max_bytes=300 * _size())
+    for index in range(300):
+        await cache.put("s", str(index), entry())
+    big_limit = DiskCache(path=tmp_path / DB_NAME, max_bytes=10 * _size())
+    await big_limit.put("s", "last", entry())
+    _agree(tmp_path)
+    assert await big_limit.get("s", "last") == entry()
+    assert await big_limit.get("s", "0") is None
+
+
+@pytest.mark.asyncio
+async def test_a_put_that_needs_no_eviction_scans_nothing(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    cache = _disk(tmp_path, max_bytes=10_000_000, max_bytes_per_scope=5_000_000)
+    for index in range(50):
+        await cache.put("s", str(index), entry())
+    statements: list[str] = []
+    real_connect = sqlite3.connect
+
+    def tracing_connect(*args: Any, **kwargs: Any) -> sqlite3.Connection:
+        connection = real_connect(*args, **kwargs)
+        connection.set_trace_callback(statements.append)
+        return connection
+
+    monkeypatch.setattr(sqlite3, "connect", tracing_connect)
+    await cache.put("s", "new", entry())
+    assert statements
+    scanning = [text for text in statements if "SUM(size)" in text or "ORDER BY" in text]
+    assert scanning == []
+
+
+@pytest.mark.asyncio
+async def test_drifted_totals_are_rebuilt_with_a_warning(
+    tmp_path: Path, caplog: pytest.LogCaptureFixture
+) -> None:
+    cache = _disk(tmp_path, max_bytes=5 * _size())
+    await cache.put("s", "a", entry())
+    with sqlite3.connect(tmp_path / DB_NAME) as db:
+        db.execute("UPDATE totals SET bytes = 10 * 1000 * 1000")
+    with caplog.at_level(logging.WARNING, logger="aero_kernel.cache"):
+        await cache.put("s", "b", entry())
+    assert "totals" in caplog.text
+    _agree(tmp_path)
+    await cache.put("s", "c", entry())
+    assert await cache.get("s", "c") == entry()
+    _agree(tmp_path)
+
+
+@pytest.mark.asyncio
+async def test_a_schema_reset_rebuilds_the_totals(tmp_path: Path) -> None:
+    cache = _disk(tmp_path)
+    await cache.put("s", "k", entry())
+    with sqlite3.connect(tmp_path / DB_NAME) as db:
+        db.execute("PRAGMA user_version = 1")
+    await cache.put("s", "j", entry())
+    _agree(tmp_path)
+    assert await cache.get("s", "k") is None
