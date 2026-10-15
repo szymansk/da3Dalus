@@ -538,3 +538,15 @@ def test_json_schema_marks_flags_as_required_without_a_default() -> None:
     assert {"retryable", "escalate"} <= set(schema["required"])
     assert "default" not in schema["properties"]["retryable"]
     assert "default" not in schema["properties"]["escalate"]
+
+
+def test_catalogue_holds_exactly_the_codes_the_architecture_names() -> None:
+    """The table is closed: a warning code or a new code must not slip in."""
+    assert set(CODE_CATALOGUE) == {category.value for category in ErrorCategory} | {
+        "missing_input",
+        "unresolved_airfoil",
+        "target_above_method_maximum",
+        "precondition_violated",
+        "postcondition_violated",
+        "continuous_uncertainty",
+    }
