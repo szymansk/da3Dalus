@@ -767,16 +767,18 @@ one code, one test:
 | `non_positive_length` | a chord ≤ 0; fuselage semi-axes `a`, `b` ≤ 0; a wing whose span — the summed Euclidean length of its `xyz_le` chain — is 0 (path: its `x_secs`) |
 | `non_positive_exponent` | a fuselage super-ellipse exponent `n` or `n_lower` ≤ 0 |
 | `non_positive_thickness` | an airfoil of thickness ≤ 0 (inline contour, or NACA thickness digits `00`) |
-| `non_positive_mass` | `values.aircraft-mass` ≤ 0 |
-| `non_positive_density` | `values.sea-level-air-density` ≤ 0 |
-| `non_positive_gravity` | `values.gravity` ≤ 0 |
 | `too_few_sections` | a wing or a fuselage with fewer than two `x_secs` |
 | `invalid_airfoil_contour` | inline coordinates with fewer than 3 points, or whose first and last point do not both lie at the contour's largest `x` (a blunt trailing edge is allowed; no tolerance is invented) |
 | `unresolved_airfoil` | an airfoil string that is not a NACA 4-digit designation (`^naca\d{4}$`, case-insensitive, no spaces): the only kind a solver builds without loading data; a 5-digit or 6-series section is passed inline |
 | `segment_on_last_section` | the last `x_sec` carries a `trailing_edge_device`, `spare_list` or `turbulator`: there is no segment for it, so the kernel would silently drop it |
 | `control_surface_without_device` | a `control_surface` without the `trailing_edge_device` it is a projection of: its role would be unknown |
 
-Other `values` are checked for finiteness only. A dict key is the identity of a wing or fuselage (paths use
+`values` are checked here for finiteness only. **Their admissibility comes from the canon model, never
+from a slug written in code:** a quantity entry may declare `positive: true` (strictly > 0 by definition —
+a mass, a density, gravity; a fact, not a design judgement, A10), and the canon-loader unit checks every
+supplied value of such a quantity, code `non_positive_value`, `input_path = values.<slug>`, together with
+`unknown_quantity` and `not_an_input`. `validate_aircraft` names no quantity slug except in the two
+input-fact warnings, whose origins §8.11 fixes (`aircraft-mass`, `airplane`). A dict key is the identity of a wing or fuselage (paths use
 it); a differing `name` is a label and no finding. The geometry's `total_mass_kg` is never used, so only its
 finiteness is checked. `detail` carries `{"value": …}`: the number, or `"nan"` / `"inf"` / `"-inf"` as a
 string (free JSON fields stay finite, ch. 8.3). Findings come in document order, then `values` by slug.
