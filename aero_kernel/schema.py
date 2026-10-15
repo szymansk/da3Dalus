@@ -65,6 +65,10 @@ WARNING_CATALOGUE: Mapping[str, WarningSeverity] = {
     "precondition_violated": WarningSeverity.DEFECT,
     "postcondition_unchecked": WarningSeverity.PRACTICE,
     "postcondition_violated": WarningSeverity.DEFECT,
+    "reynolds_outside_band": WarningSeverity.DEFECT,
+    "reynolds_bubble_sensitive": WarningSeverity.PRACTICE,
+    "mach_above_limit": WarningSeverity.PRACTICE,
+    "mach_beyond_validity": WarningSeverity.DEFECT,
 }
 
 
