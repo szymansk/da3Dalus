@@ -67,3 +67,15 @@ def test_formula_and_application_are_not_concatenated() -> None:
 def test_non_finite_input_raises() -> None:
     with pytest.raises(ValueError, match="Out of range"):
         _key(inputs={"x": math.nan})
+
+
+def test_provider_content_changes_the_key() -> None:
+    assert _key(provider_hashes={"kat": "sha256:aa"}) != _key(provider_hashes={"kat": "sha256:bb"})
+
+
+def test_tool_version_text_changes_the_key() -> None:
+    assert _key(tool_versions={"avl": "3.36"}) != _key(tool_versions={"avl": "3.40"})
+
+
+def test_the_sign_of_a_float_changes_the_key() -> None:
+    assert _key(inputs={"mass": -2.5, "area": 0.4}) != _key()

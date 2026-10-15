@@ -135,3 +135,21 @@ async def test_a_scope_emptied_by_global_eviction_can_be_filled_again() -> None:
     assert await cache.get("a", "k") is None
     await cache.put("a", "k", entry(3.0))
     assert await cache.get("a", "k") == entry(3.0)
+
+
+def test_the_size_limit_has_no_default() -> None:
+    with pytest.raises(TypeError):
+        MemoryCache()  # type: ignore[call-arg]  # the point of the test: no default size
+
+
+@pytest.mark.asyncio
+async def test_every_log_record_carries_the_scope(caplog: pytest.LogCaptureFixture) -> None:
+    cache = MemoryCache(max_entries=1)
+    with caplog.at_level(logging.DEBUG, logger="aero_kernel.cache"):
+        await cache.get("s", "k")
+        await cache.put("s", "k", entry())
+        await cache.get("s", "k")
+        await cache.put("s", "j", entry())
+        await cache.drop_scope("s")
+    assert len(caplog.records) == 4
+    assert all(getattr(record, "scope", None) == "s" for record in caplog.records)
