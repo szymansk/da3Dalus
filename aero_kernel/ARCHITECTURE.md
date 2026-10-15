@@ -828,8 +828,8 @@ sampled grid and no `-static` chain.
   deterministic. **This format is binding** wherever a world appears (`Interval.worlds` keys, the `world`
   of a warning or error): non-empty `<formula-slug>=<world>` pairs, slug kebab-case, world snake_case as in
   the canon's `worlds:`, unique slugs, sorted by slug, joined by `,` without spaces. A single formula's
-  world is one pair (`neutral-point=avl`), never a bare world name. One parse/format helper in `schema.py`
-  validates it. The engine runs the **Cartesian product** over the
+  world is one pair (`neutral-point=avl`), never a bare world name. One parse/format helper in `errors.py`
+  (which imports no other kernel module) validates it; `schema.py` imports it from there. The engine runs the **Cartesian product** over the
   uncertain formulas in a quantity's subtree (A11 rule 3); a node outside an uncertain formula's subtree
   runs once and is shared by all assignments.
 - The interval of a quantity is min and max over its assignments; `worlds` lists every assignment with its
