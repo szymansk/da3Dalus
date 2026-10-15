@@ -10,7 +10,8 @@ def test_keys_are_sorted_and_separators_compact() -> None:
 
 
 def test_unicode_is_not_escaped() -> None:
-    assert canonical_json({"k": "α—ü"}) == '{"k":"α—ü"}'
+    text = "\u03b1\u2014\u00fc"
+    assert canonical_json({"k": text}) == f'{{"k":"{text}"}}'
 
 
 def test_floats_use_repr() -> None:
@@ -22,5 +23,5 @@ def test_nested_order_is_independent_of_insertion() -> None:
 
 
 def test_sha256_of_is_prefixed_hash_of_utf8_canonical_json() -> None:
-    digest = hashlib.sha256('{"a":1}'.encode()).hexdigest()
+    digest = hashlib.sha256(b'{"a":1}').hexdigest()
     assert sha256_of({"a": 1}) == f"sha256:{digest}"
