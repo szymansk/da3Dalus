@@ -504,3 +504,37 @@ async def test_a_schema_reset_rebuilds_the_totals(tmp_path: Path) -> None:
     await cache.put("s", "j", entry())
     _agree(tmp_path)
     assert await cache.get("s", "k") is None
+
+
+@pytest.fixture(params=[sqlite3.DatabaseError, sqlite3.ProgrammingError, sqlite3.InterfaceError])
+def codeless_error(
+    request: pytest.FixtureRequest, monkeypatch: pytest.MonkeyPatch
+) -> type[Exception]:
+    """Make every connection attempt raise an sqlite3 error that carries no error code."""
+    error: type[Exception] = request.param
+
+    def failing_connect(*_args: Any, **_kwargs: Any) -> sqlite3.Connection:
+        raise error("no code attached")
+
+    monkeypatch.setattr(sqlite3, "connect", failing_connect)
+    return error
+
+
+@pytest.mark.asyncio
+async def test_an_sqlite_error_without_a_code_degrades_get_and_put(
+    tmp_path: Path, codeless_error: type[Exception], caplog: pytest.LogCaptureFixture
+) -> None:
+    cache = _disk(tmp_path)
+    with caplog.at_level(logging.WARNING, logger="aero_kernel.cache"):
+        assert await cache.get("s", "k") is None
+        await cache.put("s", "k", entry())
+    assert caplog.text.count(f"disk cache unavailable ({codeless_error.__name__})") == 2
+
+
+@pytest.mark.asyncio
+async def test_an_sqlite_error_without_a_code_is_an_unavailable_store(
+    tmp_path: Path, codeless_error: type[Exception]
+) -> None:
+    with pytest.raises(StoreError, match="the store is unavailable") as caught:
+        await _disk(tmp_path).drop_scope("s")
+    assert isinstance(caught.value.__cause__, codeless_error)
