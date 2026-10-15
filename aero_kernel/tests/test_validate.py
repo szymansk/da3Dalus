@@ -1,6 +1,7 @@
 """Tests of the physical-admissibility validation (ARCHITECTURE ch. 8.11)."""
 
 import copy
+import logging
 import math
 from typing import Any
 
@@ -152,6 +153,13 @@ class TestWingSections:
         assert _paths(errors) == ['airplane.wings["Main wing"].x_secs']
         assert _codes(errors) == ["non_positive_length"]
         assert errors[0].detail == {"value": 0.0}
+
+    @pytest.mark.parametrize("tip", [[0.5, 0.0, 0.0], [0.0, 0.0, 0.5], [0.0, 0.5, 0.0]])
+    def test_a_chain_along_any_single_axis_has_span(self, tip: list[float]) -> None:
+        """A vertical fin changes only in z; a swept-back root-to-tip only in x."""
+        document = _document()
+        document["airplane"]["wings"]["Main wing"]["x_secs"][1]["xyz_le"] = tip
+        assert _validate(document) == ()
 
     def test_a_zero_length_segment_is_no_finding(self) -> None:
         document = _document()
@@ -316,6 +324,52 @@ class TestFuselage:
         assert _codes(errors) == ["non_positive_length"]
 
 
+class TestNotFindings:
+    """Fields the kernel does not read or judge never produce an error (ch. 8.11)."""
+
+    @pytest.mark.parametrize(("positive", "negative"), [(0.0, 0.0), (0.0, -5.0), (-3.0, 7.0)])
+    def test_odd_but_finite_stops_are_no_finding(self, positive: float, negative: float) -> None:
+        document = _document()
+        x_sec = document["airplane"]["wings"]["Main wing"]["x_secs"][0]
+        x_sec["trailing_edge_device"] = {
+            "positive_deflection_deg": positive,
+            "negative_deflection_deg": negative,
+        }
+        result = _result(document)
+        assert result.errors == ()
+        assert result.warnings == ()
+
+    @pytest.mark.parametrize("mass", [0.0, -1.0])
+    def test_non_positive_geometry_mass_is_no_finding(self, mass: float) -> None:
+        document = _document()
+        document["airplane"]["total_mass_kg"] = mass
+        assert _validate(document) == ()
+
+    @pytest.mark.parametrize("count", [0, -2])
+    def test_number_interpolation_points_is_not_validated(self, count: int) -> None:
+        document = _document()
+        document["airplane"]["wings"]["Main wing"]["x_secs"][0]["number_interpolation_points"] = (
+            count
+        )
+        assert _validate(document) == ()
+
+    def test_device_and_control_surface_may_disagree(self) -> None:
+        document = _document()
+        x_sec = document["airplane"]["wings"]["Main wing"]["x_secs"][0]
+        x_sec["trailing_edge_device"] = {"role": "aileron", "symmetric": False}
+        x_sec["control_surface"] = {"name": "flap", "deflection": 0.0, "symmetric": True}
+        result = _result(document)
+        assert result.errors == ()
+        assert result.warnings == ()
+
+    def test_disagreeing_deflections_are_no_error(self) -> None:
+        document = _document()
+        x_sec = document["airplane"]["wings"]["Main wing"]["x_secs"][0]
+        x_sec["trailing_edge_device"] = {"deflection_deg": 5.0}
+        x_sec["control_surface"] = {"name": "aileron", "deflection": -3.0}
+        assert _validate(document) == ()
+
+
 class TestFuselageExponent:
     @pytest.mark.parametrize("field", ["n", "n_lower"])
     @pytest.mark.parametrize("exponent", [0.0, -2.0])
@@ -458,6 +512,20 @@ class TestInlineAirfoil:
         errors = _validate(_with_airfoil({"coordinates": from_leading_edge}))
         assert _codes(errors) == ["invalid_airfoil_contour"]
 
+    def test_two_identical_points_fail_the_point_count_rule_alone(self) -> None:
+        """First and last point are both at the largest x here, so only the count can reject it."""
+        errors = _validate(_with_airfoil({"coordinates": [[1.0, 0.0], [1.0, 0.0]]}))
+        assert _codes(errors) == ["invalid_airfoil_contour"]
+
+    @pytest.mark.parametrize("which", [0, -1])
+    def test_an_end_point_one_ulp_short_of_the_largest_x_is_rejected(self, which: int) -> None:
+        """The comparison is exact: no tolerance is invented."""
+        coordinates = [list(point) for point in DIAMOND]
+        coordinates[which][0] = math.nextafter(1.0, 0.0)
+        coordinates[-1 - which][0] = 1.0
+        errors = _validate(_with_airfoil({"coordinates": coordinates}))
+        assert _codes(errors) == ["invalid_airfoil_contour"]
+
     def test_blunt_trailing_edge_is_accepted(self) -> None:
         blunt = [[1.0, 0.01], [0.5, 0.06], [0.0, 0.0], [0.5, -0.06], [1.0, -0.01]]
         assert _validate(_with_airfoil({"coordinates": blunt})) == ()
@@ -519,7 +587,7 @@ class TestConflictingMass:
 
     def test_the_comparison_is_exact(self) -> None:
         document = _document()
-        document["airplane"]["total_mass_kg"] = 1.5 + 1e-12
+        document["airplane"]["total_mass_kg"] = math.nextafter(1.5, 2.0)
         assert _codes_of_warnings(_result(document)) == ["conflicting_mass"]
 
     def test_a_missing_mass_on_either_side_does_not_warn(self) -> None:
@@ -539,6 +607,18 @@ class TestConflictingMass:
 
 def _codes_of_warnings(result: Validation) -> list[str]:
     return [warning.code for warning in result.warnings]
+
+
+class TestPassedMassNonFinite:
+    @pytest.mark.parametrize("bad", [math.nan, math.inf])
+    def test_a_non_finite_passed_mass_is_an_error_and_no_warning(self, bad: float) -> None:
+        document = _document()
+        document["airplane"]["total_mass_kg"] = 2.0
+        document["values"]["aircraft-mass"] = bad
+        result = _result(document)
+        assert _paths(result.errors) == ["values.aircraft-mass"]
+        assert _codes(result.errors) == ["non_finite_number"]
+        assert result.warnings == ()
 
 
 class TestGeometryDeflectionIgnored:
@@ -613,3 +693,47 @@ class TestOrder:
             "values.a-value",
             "values.b-value",
         ]
+
+
+class TestSeveralDevices:
+    def test_two_devices_in_one_wing_give_two_warnings(self) -> None:
+        document = _document()
+        wing = document["airplane"]["wings"]["Main wing"]
+        wing["x_secs"].append(_xsec(1.0))
+        wing["x_secs"][0]["trailing_edge_device"] = {"deflection_deg": 4.0}
+        wing["x_secs"][1]["trailing_edge_device"] = {"deflection_deg": -4.0}
+        warnings = _result(document).warnings
+        assert [w.detail["device"] for w in warnings] == [
+            'airplane.wings["Main wing"].x_secs[0].trailing_edge_device',
+            'airplane.wings["Main wing"].x_secs[1].trailing_edge_device',
+        ]
+
+    def test_devices_on_two_wings_give_two_warnings(self) -> None:
+        document = _document()
+        other = copy.deepcopy(document["airplane"]["wings"]["Main wing"])
+        other["name"] = "Tail"
+        document["airplane"]["wings"]["Tail"] = other
+        for wing in document["airplane"]["wings"].values():
+            wing["x_secs"][0]["trailing_edge_device"] = {"deflection_deg": 4.0}
+        warnings = _result(document).warnings
+        assert [w.detail["device"] for w in warnings] == [
+            'airplane.wings["Main wing"].x_secs[0].trailing_edge_device',
+            'airplane.wings["Tail"].x_secs[0].trailing_edge_device',
+        ]
+
+
+class TestLogging:
+    def test_findings_are_results_not_log_events(self, caplog: pytest.LogCaptureFixture) -> None:
+        document = _document()
+        document["airplane"]["total_mass_kg"] = 2.0
+        document["airplane"]["wings"]["Main wing"]["x_secs"][0]["chord"] = -1.0
+        document["airplane"]["wings"]["Main wing"]["x_secs"][0]["trailing_edge_device"] = {
+            "deflection_deg": 3.0
+        }
+        with caplog.at_level(logging.DEBUG, logger="aero_kernel"):
+            result = _result(document)
+        assert result.errors
+        assert result.warnings
+        records = [r for r in caplog.records if r.name == "aero_kernel.validate"]
+        assert records
+        assert {r.levelno for r in records} == {logging.DEBUG}
