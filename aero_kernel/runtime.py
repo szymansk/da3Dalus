@@ -195,8 +195,9 @@ class SolverRuntime:
     async def aclose(self) -> None:
         """Shut down the pool this runtime created and wait for its workers; idempotent.
 
-        Workers still running are waited for, so no process outlives the call. A pool the caller
-        injected is left alone.
+        Workers still running are waited for, so no process outlives the call; their calls
+        return normally. Calls that have not reached a worker yet (waiting for a slot, or queued
+        in the pool) raise ``RuntimeError``. A pool the caller injected is left alone.
         """
         self._closed = True
         pool, self._pool = self._pool, None
@@ -216,7 +217,8 @@ class SolverRuntime:
         return self._slots
 
     def _executor(self) -> Executor:
-        """Return the pool, creating it on first use."""
+        """Return the pool, creating it on first use; never after the runtime is closed."""
+        self._check_open()
         if self._pool is None:
             self._pool = ProcessPoolExecutor(
                 max_workers=self._max_workers,
@@ -259,12 +261,21 @@ class SolverRuntime:
         """
         self._check_open()
         async with self._slot_limit():
+            self._check_open()
             loop = asyncio.get_running_loop()
             try:
                 result = cast(
                     "object",  # widened on purpose: the contract check below is a runtime guard
                     await loop.run_in_executor(self._executor(), run_in_worker, fn, args),
                 )
+            except asyncio.CancelledError:
+                # ``aclose`` cancels the futures still queued in the pool. The caller did not
+                # cancel, so for them this is a refusal, not a cancellation.
+                task = asyncio.current_task()
+                if self._closed and task is not None and task.cancelling() == 0:
+                    msg = "the solver runtime is closed"
+                    raise RuntimeError(msg) from None
+                raise
             except BrokenProcessPool:
                 logger.warning("a process-pool worker died while running %s", fn)
                 self._discard_broken_pool()
@@ -308,6 +319,7 @@ class SolverRuntime:
         """
         self._check_open()
         async with self._slot_limit():
+            self._check_open()
             return await run_process(
                 files, commands, executable=executable, args=args, collect=collect
             )
