@@ -368,7 +368,9 @@ class TestDedupeWarnings:
         first = make_warning()
         other = make_warning(origin="other")
         again = make_warning()
-        assert dedupe_warnings([first, other, again]) == (first, other)
+        result = dedupe_warnings([first, other, again])
+        assert result == (first, other)
+        assert result[0] is first
 
     def test_world_distinguishes_warnings(self) -> None:
         a, b = make_warning(world="w=x"), make_warning(world="w=y")
