@@ -599,22 +599,33 @@ class TestRulings:
     def test_value_accepts_int(self) -> None:
         assert make_quantity(value=3).value == 3
 
-    @pytest.mark.parametrize("bad", [True, "0.3"])
+    @pytest.mark.parametrize("bad", [True, "1.0"])
     def test_interval_numbers_are_strict(self, bad: object) -> None:
+        # 1.0 is what ``bad`` would coerce to, so only strictness can reject it.
         with pytest.raises(ValidationError):
-            Interval.model_validate({"min": bad, "max": 0.3, "worlds": {"a=x": 0.3}})
+            Interval.model_validate({"min": bad, "max": 1.0, "worlds": {"a=x": 1.0}})
         with pytest.raises(ValidationError):
-            Interval.model_validate({"min": 0.3, "max": 0.3, "worlds": {"a=x": bad}})
+            Interval.model_validate({"min": 1.0, "max": bad, "worlds": {"a=x": 1.0}})
+        with pytest.raises(ValidationError):
+            Interval.model_validate({"min": 1.0, "max": 1.0, "worlds": {"a=x": bad}})
+
+    def test_interval_rejects_nan_in_a_later_world(self) -> None:
+        # min() and max() skip a NaN that is not first, so only the field rule rejects it.
+        with pytest.raises(ValidationError):
+            Interval.model_validate(
+                {"min": 1.0, "max": 1.0, "worlds": {"a=y": 1.0, "a=z": float("nan")}}
+            )
 
     @pytest.mark.parametrize("bad", [True, "9.8"])
     def test_default_used_value_is_strict(self, bad: object) -> None:
         with pytest.raises(ValidationError):
             DefaultUsed.model_validate({"slug": "g", "value": bad, "unit": "u", "source": "s"})
 
+    @pytest.mark.parametrize("empty", [None, ""])
     @pytest.mark.parametrize("field", ["tool", "application"])
-    def test_ok_requires_tool_and_application(self, field: str) -> None:
+    def test_ok_requires_tool_and_application(self, field: str, empty: str | None) -> None:
         with pytest.raises(ValidationError, match=field):
-            make_quantity(**{field: None})
+            make_quantity(**{field: empty})
 
     def test_non_ok_needs_no_tool(self) -> None:
         result = make_quantity(
