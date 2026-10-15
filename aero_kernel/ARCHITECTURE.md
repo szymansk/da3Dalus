@@ -594,6 +594,11 @@ caller's responsibility.
     control surface: NeuralFoil's `analysis_confidence` at `α_eff` of the deflected strips as a value, and
     "δ range of the τ fit unknown" (`practice`). A reference point a specific entry cites (Sadraey's
     20–25°) is emitted by that formula via `ctx.warn`, `practice`, and stated in the entry text.
+  - **The ATM tool is an adapter too** (`solvers/atmosphere.py`): `asb.Atmosphere(altitude=h,
+    method="isa")`, the canonical model the maintainer fixed (O5, 2026-10-05; ASB first). There is no
+    second, hand-written ISA in the kernel. Its `requirements` include aerosandbox, so a missing ASB is
+    `tool_unavailable`; fast-tier tests stub the adapter, the hand-computed COESA check runs against the
+    real adapter in the `aero` tier.
   - **#1175 adds the domain methods** (`aerobuildup.sweep`, `avl.stability`, `opti.solve` …), each built on
     the base, alongside the first formula that needs it.
   - Adapters know no canon names. They return warnings without `quantity`; the engine sets `origin` to
