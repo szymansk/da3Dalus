@@ -929,8 +929,30 @@ async def stall_speed(x: Inputs, ctx: Context) -> dict[str, Value]:
   Evaluated as a whole, the handle runs the postconditions on every call; built into an outer problem,
   the embedder passes the solved values to the handle's `check(...)`. The traceability test (Q11) checks that every `embeds:` item has that function and that the
   embedder requests each listed item through `ctx.embedded` (static check).
-- **Registration** is by decorator at import of `aero_kernel.formulas`. The traceability test (Q11) checks
-  that each implementation's parameter names equal the canon model's.
+- **Registration** is by decorator at import of `aero_kernel.formulas`.
+  - **Shape.** `registry.Registry` holds, per qualified formula slug, one implementation, its embeddable
+    relation if any, and per `(slug, kind, check id)` one check function. The decorators `formula`,
+    `relation`, `precondition` and `postcondition` are methods of a registry; the module-level names are
+    those of the **default registry**, which `aero_kernel.formulas` fills at import and then **freezes**
+    (any later registration raises). A frozen registry is a static table of code, not call state, so the
+    stateless rule (ch. 8.4) holds; the engine takes the registry as a parameter (default: the frozen
+    default), and tests build their own `Registry()` instead of touching the default.
+  - **Signatures.** `@formula(slug, interface="sha256:…")` on an `async def f(x, ctx) -> dict`;
+    `@relation(slug)` on the module-level relation function (ch. 8.5); `@precondition(slug, id)` on a
+    plain `def check(x) -> CheckResult`, `@postcondition(slug, id)` on `def check(x, y) -> CheckResult`
+    (`CheckResult`: `held | violated | unchecked` plus a message). Decorators stack, so one check function
+    serves several `(slug, id)` pairs — one implementation per check (`optimum_at_first_cl_peak` for
+    `stall-speed` and `butterfly-approach`). A duplicate registration or a non-coroutine `formula` is a
+    `RegistryError` at import — a programming error, never a result.
+  - **Parameter names are not repeated in code** (precedence note at the top). The decorator carries the
+    formula's **interface fingerprint** instead: `sha256_of` the formula's sorted input names, output names
+    and `optional` in the canon model. The traceability check computes it from the loaded model and compares
+    (Q11): a changed parameter fails it until the implementation is updated and its fingerprint with it. It
+    also checks that every registered slug and check id exists in the model, that every embedded item has
+    a registered relation, and that every embedder requests each of its items through `ctx.embedded`
+    (static check). It runs as a test in CI and once when a kernel is built; at runtime a formula whose
+    fingerprint does not match is `internal`, code `stale_implementation`, escalate, for its quantities
+    only. A model formula without an implementation is `not_implemented` (Q1).
 
 ### 8.13 Graph semantics
 
