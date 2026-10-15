@@ -6,7 +6,7 @@ unknown fields. :class:`KernelError` is re-exported from :mod:`aero_kernel.error
 
 from collections.abc import Mapping
 from enum import StrEnum
-from typing import Self
+from typing import Literal, Self
 
 from aero_kernel.errors import KernelError
 from pydantic import BaseModel, ConfigDict, Field, JsonValue, model_validator
@@ -94,4 +94,124 @@ class Interval(BaseModel):
         if self.min != min(self.worlds.values()) or self.max != max(self.worlds.values()):
             msg = "interval min and max must equal the smallest and largest world value"
             raise ValueError(msg)
+        return self
+
+
+class QuantityStatus(StrEnum):
+    """The outcome class of a quantity (ch. 8.3)."""
+
+    OK = "ok"
+    NOT_APPLICABLE = "not_applicable"
+    SKIPPED = "skipped"
+    ERROR = "error"
+
+
+class ReasonCode(StrEnum):
+    """Why a quantity is ``not_applicable`` or ``skipped`` (ch. 8.3).
+
+    Separate from the error codes: these are expected outcomes, not failures.
+    """
+
+    CONDITION_NOT_MET = "condition_not_met"
+    NOT_GIVEN = "not_given"
+    DEPENDS_ON_NOT_APPLICABLE = "depends_on_not_applicable"
+    LONG_RUN_NOT_INCLUDED = "long_run_not_included"
+    DEPENDS_ON_SKIPPED = "depends_on_skipped"
+
+
+# Which reason codes fit which non-ok status (ch. 8.3).
+_REASONS_BY_STATUS: Mapping[QuantityStatus, frozenset[ReasonCode]] = {
+    QuantityStatus.NOT_APPLICABLE: frozenset(
+        {
+            ReasonCode.CONDITION_NOT_MET,
+            ReasonCode.NOT_GIVEN,
+            ReasonCode.DEPENDS_ON_NOT_APPLICABLE,
+        }
+    ),
+    QuantityStatus.SKIPPED: frozenset(
+        {ReasonCode.LONG_RUN_NOT_INCLUDED, ReasonCode.DEPENDS_ON_SKIPPED}
+    ),
+}
+
+
+class Reason(BaseModel):
+    """Machine-readable code plus natural-language message for a non-ok status.
+
+    Attributes:
+        code: The reason code.
+        message: The reason, in natural language.
+    """
+
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    code: ReasonCode
+    message: str = Field(min_length=1)
+
+
+class QuantityResult(BaseModel):
+    """The result for one requested quantity (ch. 8.3).
+
+    Attributes:
+        slug: Canon slug of the quantity.
+        unit: SI unit of ``value`` and ``interval``.
+        status: Outcome class.
+        reason: Why the quantity is ``not_applicable`` or ``skipped``.
+        value: The value (floats only in v1).
+        interval: The spread over method worlds, for an uncertain quantity.
+        tool: Tool that produced the value.
+        application: Id of the application that produced the value.
+        validated: Always ``False``: no value is validated against flight data (A11).
+        warnings: Caveats of this quantity and its subtree.
+        error: Why there is no value, for status ``error``.
+        from_cache: Whether the value was served from the cache.
+    """
+
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    slug: str = Field(min_length=1)
+    unit: str
+    status: QuantityStatus
+    reason: Reason | None = None
+    value: float | None = None
+    interval: Interval | None = None
+    tool: str | None = None
+    application: str | None = None
+    validated: Literal[False] = False
+    warnings: tuple[KernelWarning, ...] = ()
+    error: KernelError | None = None
+    from_cache: bool = False
+
+    @model_validator(mode="after")
+    def _check_status(self) -> Self:
+        """Enforce the status invariants of ch. 8.3."""
+        keys = [(w.code, w.origin, w.world) for w in self.warnings]
+        if len(set(keys)) != len(keys):
+            msg = "duplicate warning: (code, origin, world) must be unique within a quantity"
+            raise ValueError(msg)
+        has_result = self.value is not None or self.interval is not None
+        if self.status is QuantityStatus.OK:
+            if (self.value is None) == (self.interval is None):
+                msg = "status ok needs exactly one of value and interval"
+                raise ValueError(msg)
+            if self.error is not None:
+                msg = "status ok must not carry an error"
+                raise ValueError(msg)
+        elif has_result:
+            msg = f"status {self.status.value} must not carry a value or interval"
+            raise ValueError(msg)
+        if self.status is QuantityStatus.ERROR and self.error is None:
+            msg = "status error needs an error"
+            raise ValueError(msg)
+        allowed = _REASONS_BY_STATUS.get(self.status)
+        if allowed is None:
+            if self.reason is not None:
+                msg = f"status {self.status.value} must not carry a reason"
+                raise ValueError(msg)
+        else:
+            if self.reason is None or self.reason.code not in allowed:
+                msg = f"status {self.status.value} needs a reason with a fitting code"
+                raise ValueError(msg)
+            if self.error is not None:
+                msg = f"status {self.status.value} must not carry an error"
+                raise ValueError(msg)
         return self
