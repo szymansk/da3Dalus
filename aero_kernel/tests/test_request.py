@@ -1,5 +1,6 @@
 """Tests for ComputeRequest (ARCHITECTURE ch. 8.11)."""
 
+import inspect
 from typing import get_args
 
 import pytest
@@ -39,6 +40,9 @@ class TestComputeRequestStrictness:
     def test_accuracy_is_the_alias_of_the_result_types(self) -> None:
         """One definition of the tiers: a redefined Literal could drift from Provenance."""
         assert ComputeRequest.model_fields["accuracy"].annotation is schema.Accuracy
+        # typing caches Literal objects, so an identical redefinition would pass the identity
+        # check above: the source must name the alias
+        assert "accuracy: Accuracy" in inspect.getsource(ComputeRequest)
         assert Provenance.model_fields["accuracy"].annotation is schema.Accuracy
 
     def test_accuracy_is_the_shared_literal(self) -> None:
