@@ -92,6 +92,14 @@ EXTRA_BRANCHES: dict[tuple[str, str], frozenset[Any]] = {
 Signature = frozenset[Any]
 
 
+def union_of(signatures: list[Signature]) -> Signature:
+    """Return the union of several signatures."""
+    merged: set[Any] = set()
+    for signature in signatures:
+        merged |= signature
+    return frozenset(merged)
+
+
 def type_signature(node: dict[str, Any], defs: dict[str, Any]) -> Signature:
     """Reduce a JSON Schema node to the set of type branches it admits.
 
@@ -108,7 +116,7 @@ def type_signature(node: dict[str, Any], defs: dict[str, Any]) -> Signature:
             return frozenset({("ref", name)})
         return type_signature(target, defs)
     if "anyOf" in node:
-        return frozenset().union(*(type_signature(b, defs) for b in node["anyOf"]))
+        return union_of([type_signature(b, defs) for b in node["anyOf"]])
     if "const" in node:
         return frozenset({("enum", frozenset({node["const"]}))})
     if "enum" in node:
@@ -117,8 +125,9 @@ def type_signature(node: dict[str, Any], defs: dict[str, Any]) -> Signature:
         if None in values:
             branches.add("null")
         return frozenset(branches)
-    kinds = node["type"] if isinstance(node["type"], list) else [node["type"]]
-    return frozenset().union(*(kind_signature(kind, node, defs) for kind in kinds))
+    declared: str | list[str] = node["type"]
+    kinds = declared if isinstance(declared, list) else [declared]
+    return union_of([kind_signature(kind, node, defs) for kind in kinds])
 
 
 def kind_signature(kind: str, node: dict[str, Any], defs: dict[str, Any]) -> Signature:
