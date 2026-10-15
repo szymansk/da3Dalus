@@ -70,6 +70,7 @@ class TestNonFinite:
         assert _codes(errors) == ["non_finite_number"]
         assert errors[0].category is ErrorCategory.INVALID_INPUT
         assert errors[0].quantity is None
+        assert errors[0].detail == {"value": str(bad)}
 
     def test_non_finite_tuple_element_gets_an_index(self) -> None:
         document = _document()
@@ -116,27 +117,16 @@ class TestPositiveQuantities:
         document["airplane"]["wings"]["Main wing"]["x_secs"][1]["chord"] = 1e-6
         assert _validate(document) == ()
 
-    @pytest.mark.parametrize("mass", [0.0, -2.0])
-    def test_non_positive_mass_is_rejected(self, mass: float) -> None:
+    def test_values_are_checked_for_finiteness_only(self) -> None:
+        # admissibility of a value (mass > 0, ...) comes from the canon model, not from here
         document = _document()
-        document["values"]["aircraft-mass"] = mass
-        errors = _validate(document)
-        assert _paths(errors) == ["values.aircraft-mass"]
-        assert _codes(errors) == ["non_positive_mass"]
-
-    @pytest.mark.parametrize("density", [0.0, -1.225])
-    def test_non_positive_density_is_rejected(self, density: float) -> None:
-        document = _document()
-        document["values"]["sea-level-air-density"] = density
-        errors = _validate(document)
-        assert _paths(errors) == ["values.sea-level-air-density"]
-        assert _codes(errors) == ["non_positive_density"]
-
-    def test_absent_mass_and_density_are_not_a_finding(self) -> None:
-        # a missing value is `missing_input` in the engine (Q24), not a validation finding
-        document = _document()
-        document["values"] = {}
+        document["values"] = {"aircraft-mass": -2.0, "sea-level-air-density": 0.0, "gravity": 0.0}
         assert _validate(document) == ()
+
+    def test_non_positive_detail_carries_the_value(self) -> None:
+        document = _document()
+        document["airplane"]["wings"]["Main wing"]["x_secs"][1]["chord"] = -0.1
+        assert _validate(document)[0].detail == {"value": -0.1}
 
 
 class TestWingSections:
@@ -154,6 +144,29 @@ class TestWingSections:
 
     def test_two_sections_are_accepted(self) -> None:
         assert _validate(_document()) == ()
+
+    def test_a_wing_without_span_is_rejected(self) -> None:
+        document = _document()
+        document["airplane"]["wings"]["Main wing"]["x_secs"][1]["xyz_le"] = [0.0, 0.0, 0.0]
+        errors = _validate(document)
+        assert _paths(errors) == ['airplane.wings["Main wing"].x_secs']
+        assert _codes(errors) == ["non_positive_length"]
+        assert errors[0].detail == {"value": 0.0}
+
+    def test_a_zero_length_segment_is_no_finding(self) -> None:
+        document = _document()
+        wing = document["airplane"]["wings"]["Main wing"]
+        wing["x_secs"].insert(1, _xsec(0.0))
+        assert _validate(document) == ()
+
+    def test_span_is_the_summed_length_of_the_chain(self) -> None:
+        # out and back: the end points coincide, the chain is 1.0 m long
+        document = _document()
+        wing = document["airplane"]["wings"]["Main wing"]
+        wing["x_secs"].append(_xsec(0.0))
+        assert _validate(document) == ()
+        wing["x_secs"][1]["xyz_le"] = [0.0, 0.0, 0.0]
+        assert _codes(_validate(document)) == ["non_positive_length"]
 
 
 class TestPaths:
@@ -248,20 +261,40 @@ class TestFuselage:
         assert _codes(errors) == ["non_positive_length"]
 
 
+class TestFuselageExponent:
+    @pytest.mark.parametrize("field", ["n", "n_lower"])
+    @pytest.mark.parametrize("exponent", [0.0, -2.0])
+    def test_non_positive_exponent_is_rejected(self, field: str, exponent: float) -> None:
+        document = _document()
+        document["airplane"]["fuselages"]["Body"]["x_secs"][0][field] = exponent
+        errors = _validate(document)
+        assert _paths(errors) == [f'airplane.fuselages["Body"].x_secs[0].{field}']
+        assert _codes(errors) == ["non_positive_exponent"]
+        assert errors[0].detail == {"value": exponent}
+
+    def test_positive_exponents_are_accepted(self) -> None:
+        document = _document()
+        document["airplane"]["fuselages"]["Body"]["x_secs"][0]["n_lower"] = 1.04
+        assert _validate(document) == ()
+
+
+class TestFuselageSections:
+    @pytest.mark.parametrize("count", [0, 1])
+    def test_fewer_than_two_sections_are_rejected(self, count: int) -> None:
+        document = _document()
+        sections = document["airplane"]["fuselages"]["Body"]["x_secs"]
+        del sections[count:]
+        errors = _validate(document)
+        assert _paths(errors) == ['airplane.fuselages["Body"].x_secs']
+        assert _codes(errors) == ["too_few_sections"]
+
+
 class TestNames:
-    def test_wing_name_must_equal_its_key(self) -> None:
+    def test_a_differing_name_is_a_label_and_no_finding(self) -> None:
         document = _document()
         document["airplane"]["wings"]["Main wing"]["name"] = "Other"
-        errors = _validate(document)
-        assert _paths(errors) == ['airplane.wings["Main wing"].name']
-        assert _codes(errors) == ["name_mismatch"]
-
-    def test_fuselage_name_must_equal_its_key(self) -> None:
-        document = _document()
         document["airplane"]["fuselages"]["Body"]["name"] = "Other"
-        errors = _validate(document)
-        assert _paths(errors) == ['airplane.fuselages["Body"].name']
-        assert _codes(errors) == ["name_mismatch"]
+        assert _validate(document) == ()
 
 
 class TestSegmentDetails:
@@ -320,13 +353,22 @@ _AIRFOIL_PATH = 'airplane.wings["Main wing"].x_secs[1].airfoil'
 
 
 class TestAirfoilDesignation:
-    @pytest.mark.parametrize("name", ["naca2412", "NACA2412", "NaCa23012", "naca0012"])
+    @pytest.mark.parametrize("name", ["naca2412", "NACA2412", "NaCa0012"])
     def test_naca_designations_are_accepted(self, name: str) -> None:
         assert _validate(_with_airfoil(name)) == ()
 
     @pytest.mark.parametrize(
         "name",
-        ["airfoils/e387.dat", "NACA 2412", "naca241", "naca241255", "2412", "", "naca63-412"],
+        [
+            "airfoils/e387.dat",
+            "NACA 2412",
+            "naca241",
+            "naca23012",
+            "2412",
+            "",
+            "naca63-412",
+            " naca2412",
+        ],
     )
     def test_anything_else_is_unresolved(self, name: str) -> None:
         errors = _validate(_with_airfoil(name))
@@ -334,7 +376,7 @@ class TestAirfoilDesignation:
         assert _codes(errors) == ["unresolved_airfoil"]
         assert errors[0].category is ErrorCategory.INVALID_INPUT
 
-    @pytest.mark.parametrize("name", ["naca0000", "NACA23000"])
+    @pytest.mark.parametrize("name", ["naca0000", "NACA2400"])
     def test_zero_thickness_digits_are_rejected(self, name: str) -> None:
         errors = _validate(_with_airfoil(name))
         assert _paths(errors) == [_AIRFOIL_PATH]
@@ -345,16 +387,28 @@ class TestInlineAirfoil:
     def test_closed_contour_with_thickness_is_accepted(self) -> None:
         assert _validate(_with_airfoil({"coordinates": DIAMOND})) == ()
 
-    def test_open_contour_is_rejected(self) -> None:
-        errors = _validate(_with_airfoil({"coordinates": [*DIAMOND[:-1], [0.99, 0.0]]}))
+    @pytest.mark.parametrize("which", [0, -1])
+    def test_end_point_short_of_the_largest_x_is_rejected(self, which: int) -> None:
+        coordinates = [list(point) for point in DIAMOND]
+        coordinates[which][0] = 0.99
+        errors = _validate(_with_airfoil({"coordinates": coordinates}))
         assert _paths(errors) == [f"{_AIRFOIL_PATH}.coordinates"]
-        assert _codes(errors) == ["open_airfoil_contour"]
+        assert _codes(errors) == ["invalid_airfoil_contour"]
+
+    def test_blunt_trailing_edge_is_accepted(self) -> None:
+        blunt = [[1.0, 0.01], [0.5, 0.06], [0.0, 0.0], [0.5, -0.06], [1.0, -0.01]]
+        assert _validate(_with_airfoil({"coordinates": blunt})) == ()
+
+    def test_interior_point_beyond_the_end_points_is_rejected(self) -> None:
+        coordinates = [[0.9, 0.0], [1.0, 0.06], [0.0, 0.0], [0.5, -0.06], [0.9, 0.0]]
+        errors = _validate(_with_airfoil({"coordinates": coordinates}))
+        assert _codes(errors) == ["invalid_airfoil_contour"]
 
     @pytest.mark.parametrize("count", [0, 1, 2])
     def test_fewer_than_three_points_are_rejected(self, count: int) -> None:
         coordinates = [[1.0, 0.0], [0.0, 0.0], [1.0, 0.0]][:count]
         errors = _validate(_with_airfoil({"coordinates": coordinates}))
-        assert _codes(errors) == ["open_airfoil_contour"]
+        assert _codes(errors) == ["invalid_airfoil_contour"]
 
     def test_three_points_closed_with_zero_thickness_are_rejected(self) -> None:
         errors = _validate(_with_airfoil({"coordinates": [[1.0, 0.0], [0.0, 0.0], [1.0, 0.0]]}))
@@ -469,3 +523,24 @@ class TestGeometryDeflectionIgnored:
         result = _result(document)
         assert _codes(result.errors) == ["non_finite_number"]
         assert result.warnings == ()
+
+
+class TestOrder:
+    def test_findings_follow_the_document_then_values_by_slug(self) -> None:
+        document = _document()
+        document["airplane"]["total_mass_kg"] = math.nan
+        wing = document["airplane"]["wings"]["Main wing"]
+        wing["x_secs"][0]["chord"] = 0.0
+        wing["x_secs"][0]["airfoil"] = "e387.dat"
+        wing["x_secs"][1]["xyz_le"][2] = math.inf
+        document["airplane"]["fuselages"]["Body"]["x_secs"][0]["b"] = 0.0
+        document["values"] = {"b-value": math.nan, "a-value": math.nan}
+        assert _paths(_validate(document)) == [
+            "airplane.total_mass_kg",
+            'airplane.wings["Main wing"].x_secs[0].chord',
+            'airplane.wings["Main wing"].x_secs[0].airfoil',
+            'airplane.wings["Main wing"].x_secs[1].xyz_le[2]',
+            'airplane.fuselages["Body"].x_secs[0].b',
+            "values.a-value",
+            "values.b-value",
+        ]
