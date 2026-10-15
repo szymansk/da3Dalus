@@ -943,7 +943,7 @@ async def stall_speed(x: Inputs, ctx: Context) -> dict[str, Value]:
     (`CheckResult`: `held | violated | unchecked` plus a message). Decorators stack, so one check function
     serves several `(slug, id)` pairs — one implementation per check (`optimum_at_first_cl_peak` for
     `stall-speed` and `butterfly-approach`). A duplicate registration or a non-coroutine `formula` is a
-    `RegistrationError` at import — a programming error, never a result.
+    `RegistryError` at import — a programming error, never a result.
   - **Parameter names are not repeated in code** (precedence note at the top). Considered and rejected,
     because each is a second, hand-kept copy of what the model owns: names in the decorator
     (`inputs=…, outputs=…`), a typed `Inputs` model per formula, keyword parameters in the signature; and an
