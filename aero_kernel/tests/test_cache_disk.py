@@ -172,7 +172,7 @@ async def test_a_locked_database_degrades_get_and_put_with_a_warning(
     finally:
         blocker.execute("ROLLBACK")
         blocker.close()
-    assert caplog.text.count("disk cache unavailable") == 2
+    assert caplog.text.count("disk cache unavailable (SQLITE_BUSY)") == 2
     assert await cache.get("s", "new") is None
 
 
@@ -332,7 +332,7 @@ async def test_a_failing_mkdir_makes_get_a_miss_with_a_warning(
     cache = DiskCache(path=unwritable_parent, max_bytes=1000)
     with caplog.at_level(logging.WARNING, logger="aero_kernel.cache"):
         assert await cache.get("s", "k") is None
-    assert "disk cache unavailable" in caplog.text
+    assert "disk cache unavailable (FileExistsError)" in caplog.text
 
 
 @pytest.mark.asyncio
@@ -354,3 +354,29 @@ async def test_a_failing_mkdir_makes_drop_scope_a_store_error_without_the_path(
         await cache.drop_scope("s")
     assert str(caught.value) == ("the cache could not delete scope s; the store is unavailable")
     assert isinstance(caught.value.__cause__, OSError)
+
+
+@pytest.fixture
+def directory_as_database(tmp_path: Path) -> DiskCache:
+    """A cache whose database path is a directory (SQLite cannot open it)."""
+    (tmp_path / DB_NAME).mkdir()
+    return _disk(tmp_path)
+
+
+@pytest.mark.asyncio
+async def test_the_warning_names_the_sqlite_error(
+    directory_as_database: DiskCache, caplog: pytest.LogCaptureFixture
+) -> None:
+    with caplog.at_level(logging.WARNING, logger="aero_kernel.cache"):
+        assert await directory_as_database.get("s", "k") is None
+        await directory_as_database.put("s", "k", entry())
+    assert caplog.text.count("disk cache unavailable (SQLITE_CANTOPEN)") == 2
+
+
+@pytest.mark.asyncio
+async def test_an_error_that_is_not_a_lock_is_not_called_busy(
+    directory_as_database: DiskCache,
+) -> None:
+    with pytest.raises(StoreError) as caught:
+        await directory_as_database.drop_scope("s")
+    assert str(caught.value) == "the cache could not delete scope s; the store is unavailable"
