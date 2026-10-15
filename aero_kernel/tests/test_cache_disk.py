@@ -4,10 +4,12 @@ import asyncio
 import logging
 import math
 import sqlite3
+import threading
 from pathlib import Path
+from typing import Any
 
 import pytest
-from aero_kernel.cache import DiskCache, StoreError
+from aero_kernel.cache import DiskCache, Entry, StoreError
 
 from .cache_builders import entry
 
@@ -239,46 +241,6 @@ async def test_concurrent_calls_on_one_cache_agree(tmp_path: Path) -> None:
 
 
 @pytest.mark.asyncio
-async def test_repair_by_another_thread_is_used_without_moving_the_file(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    cache = _disk(tmp_path)
-    # The repair race cannot be provoked from outside, so the private method is patched by name.
-    real_open = getattr(cache, "_open")  # noqa: B009 - a string keeps the type checker out of it
-    calls: list[int] = []
-
-    def flaky_open() -> sqlite3.Connection:
-        calls.append(1)
-        if len(calls) == 1:
-            raise sqlite3.DatabaseError("file is not a database")
-        return real_open()
-
-    monkeypatch.setattr(cache, "_open", flaky_open)
-    await cache.put("s", "k", entry())
-    assert len(calls) == 2
-    assert not (tmp_path / f"{DB_NAME}.corrupt").exists()
-
-
-@pytest.mark.asyncio
-async def test_a_lock_during_the_repair_retry_raises_and_keeps_the_file(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    cache = _disk(tmp_path)
-    (tmp_path / DB_NAME).write_bytes(b"precious")
-    outcomes: list[Exception] = [
-        sqlite3.DatabaseError("file is not a database"),
-        sqlite3.OperationalError("database is locked"),
-    ]
-
-    def failing_open() -> sqlite3.Connection:
-        raise outcomes.pop(0)
-
-    monkeypatch.setattr(cache, "_open", failing_open)
-    assert await cache.get("s", "k") is None
-    assert (tmp_path / DB_NAME).read_bytes() == b"precious"
-
-
-@pytest.mark.asyncio
 async def test_concurrent_first_opens_drop_no_put(
     tmp_path: Path, caplog: pytest.LogCaptureFixture
 ) -> None:
@@ -289,3 +251,68 @@ async def test_concurrent_first_opens_drop_no_put(
             hits = await asyncio.gather(*(cache.get("s", f"k{i}") for i in range(30)))
             assert None not in hits
     assert caplog.text == ""
+
+
+BIG = Entry(outputs={"v": [float(i) for i in range(400)]}, warnings=())
+
+
+async def _corrupt_body(tmp_path: Path) -> DiskCache:
+    """A cache with 200 entries whose b-tree pages are trashed after the third page."""
+    cache = _disk(tmp_path)
+    for index in range(200):
+        await cache.put("s", str(index), BIG)
+    path = tmp_path / DB_NAME
+    data = bytearray(path.read_bytes())
+    for offset in range(4096 * 3, len(data) - 4096, 4096):
+        data[offset : offset + 16] = b"\xff" * 16
+    path.write_bytes(bytes(data))
+    return cache
+
+
+@pytest.mark.asyncio
+async def test_a_corrupt_page_makes_get_a_miss_and_moves_the_file_aside(
+    tmp_path: Path, caplog: pytest.LogCaptureFixture
+) -> None:
+    cache = await _corrupt_body(tmp_path)
+    with caplog.at_level(logging.WARNING, logger="aero_kernel.cache"):
+        assert await cache.get("s", "150") is None
+    assert (tmp_path / f"{DB_NAME}.corrupt").is_file()
+    assert "moved aside" in caplog.text
+    await cache.put("s", "150", entry(2.0))
+    assert await cache.get("s", "150") == entry(2.0)
+
+
+@pytest.mark.asyncio
+async def test_a_corrupt_page_makes_put_a_skipped_write(tmp_path: Path) -> None:
+    cache = await _corrupt_body(tmp_path)
+    await cache.put("s", "new", entry(3.0))
+    assert (tmp_path / f"{DB_NAME}.corrupt").is_file()
+    await cache.put("s", "new", entry(3.0))
+    assert await cache.get("s", "new") == entry(3.0)
+
+
+@pytest.mark.asyncio
+async def test_a_corrupt_page_is_deleted_with_the_file_by_drop_scope(tmp_path: Path) -> None:
+    cache = await _corrupt_body(tmp_path)
+    await cache.drop_scope("s")
+    assert (tmp_path / f"{DB_NAME}.corrupt").is_file()
+    assert await cache.get("s", "150") is None
+
+
+@pytest.mark.asyncio
+async def test_concurrent_calls_on_a_corrupt_file_move_it_aside_once(
+    tmp_path: Path, caplog: pytest.LogCaptureFixture, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    cache = await _corrupt_body(tmp_path)
+    barrier = threading.Barrier(2, timeout=10)
+    real_connect = sqlite3.connect
+
+    def meeting_connect(*args: Any, **kwargs: Any) -> sqlite3.Connection:
+        barrier.wait()
+        return real_connect(*args, **kwargs)
+
+    monkeypatch.setattr(sqlite3, "connect", meeting_connect)
+    with caplog.at_level(logging.WARNING, logger="aero_kernel.cache"):
+        results = await asyncio.gather(cache.get("s", "150"), cache.get("s", "150"))
+    assert results == [None, None]
+    assert caplog.text.count("moved aside") == 1

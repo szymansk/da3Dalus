@@ -12,10 +12,10 @@ import math
 import sqlite3
 import threading
 from collections import OrderedDict
-from collections.abc import Mapping
+from collections.abc import Callable, Mapping
 from contextlib import closing
 from pathlib import Path
-from typing import Protocol, Self, runtime_checkable
+from typing import Protocol, Self, TypeVar, runtime_checkable
 
 from aero_kernel.canonical import sha256_of
 from aero_kernel.errors import check_finite_json
@@ -33,6 +33,8 @@ __all__ = [
 ]
 
 logger = logging.getLogger(__name__)
+
+_T = TypeVar("_T")
 
 _SCHEMA_VERSION = 1
 _PACKAGE_ROOT = Path(__file__).resolve().parent
@@ -280,6 +282,12 @@ class MemoryCache:
         logger.debug("cache evict %s", _short(key), extra={"scope": scope})
 
 
+def _is_corrupt(exc: sqlite3.DatabaseError) -> bool:
+    """Whether SQLite reports a damaged file (``SQLITE_CORRUPT``) or no database at all."""
+    primary = exc.sqlite_errorcode & 0xFF
+    return primary in (sqlite3.SQLITE_CORRUPT, sqlite3.SQLITE_NOTADB)
+
+
 class DiskCache:
     """A persistent store: one SQLite file, values as JSON text, never pickle (ch. 8.4).
 
@@ -325,20 +333,22 @@ class DiskCache:
         self._path = path
         self._max_bytes = max_bytes
         self._max_per_scope = max_bytes_per_scope
-        self._lock = threading.RLock()
+        self._lock = threading.Lock()
         self._wal_set = False
+        self._generation = 0
 
     async def get(self, scope: str, key: str) -> Entry | None:
         """Return a fresh entry and mark it most recently used; a miss on any read problem."""
         _check_scope(scope)
         try:
-            found = await asyncio.to_thread(self._read, scope, key)
-        except sqlite3.OperationalError:
-            logger.warning(
-                "disk cache database locked, %s treated as a miss",
-                _short(key),
-                extra={"scope": scope},
-            )
+            found = await self._guard(self._read, scope, key)
+        except sqlite3.DatabaseError as exc:
+            if not _is_corrupt(exc):  # a corrupt file was already moved aside and warned about
+                logger.warning(
+                    "disk cache database locked, %s treated as a miss",
+                    _short(key),
+                    extra={"scope": scope},
+                )
             return None
         logger.debug("cache %s %s", "hit" if found else "miss", _short(key), extra={"scope": scope})
         return found
@@ -358,11 +368,14 @@ class DiskCache:
             )
             return
         try:
-            await asyncio.to_thread(self._write, scope, key, text, size)
-        except sqlite3.OperationalError:
-            logger.warning(
-                "disk cache database locked, %s not stored", _short(key), extra={"scope": scope}
-            )
+            await self._guard(self._write, scope, key, text, size)
+        except sqlite3.DatabaseError as exc:
+            if not _is_corrupt(exc):
+                logger.warning(
+                    "disk cache database locked, %s not stored",
+                    _short(key),
+                    extra={"scope": scope},
+                )
 
     async def drop_scope(self, scope: str) -> None:
         """Delete every entry of ``scope``.
@@ -372,8 +385,11 @@ class DiskCache:
         """
         _check_scope(scope)
         try:
-            await asyncio.to_thread(self._drop, scope)
-        except sqlite3.OperationalError as exc:
+            await self._guard(self._drop, scope)
+        except sqlite3.DatabaseError as exc:
+            if _is_corrupt(exc):  # the file, and with it the scope, was moved aside
+                logger.debug("cache scope dropped with the corrupt file", extra={"scope": scope})
+                return
             logger.warning(
                 "disk cache database locked, scope not dropped",
                 exc_info=exc,
@@ -385,7 +401,7 @@ class DiskCache:
 
     def _read(self, scope: str, key: str) -> Entry | None:
         """Look the entry up (worker thread); delete and warn about an unreadable row."""
-        with closing(self._connect()) as db, db:
+        with closing(self._open()) as db, db:
             row = db.execute(
                 "SELECT value FROM entries WHERE scope = ? AND key = ?", (scope, key)
             ).fetchone()
@@ -410,7 +426,7 @@ class DiskCache:
 
     def _write(self, scope: str, key: str, text: str, size: int) -> None:
         """Insert the row and evict in one transaction (worker thread)."""
-        with closing(self._connect()) as db, db:
+        with closing(self._open()) as db, db:
             db.execute(
                 "INSERT OR REPLACE INTO entries (scope, key, value, size, tick)"
                 " VALUES (?, ?, ?, ?, (SELECT COALESCE(MAX(tick), 0) + 1 FROM entries))",
@@ -422,7 +438,7 @@ class DiskCache:
 
     def _drop(self, scope: str) -> None:
         """Delete the rows of ``scope`` (worker thread)."""
-        with closing(self._connect()) as db, db:
+        with closing(self._open()) as db, db:
             db.execute("DELETE FROM entries WHERE scope = ?", (scope,))
 
     @staticmethod
@@ -445,26 +461,19 @@ class DiskCache:
             total -= size
             logger.debug("cache evict %s", _short(key), extra={"scope": scope})
 
-    def _connect(self) -> sqlite3.Connection:
-        """Open the database, creating it, or moving a file that is no database aside."""
-        self._path.parent.mkdir(parents=True, exist_ok=True)
+    async def _guard(self, function: Callable[..., _T], *args: object) -> _T:
+        """Run ``function`` in a worker thread; a corrupt file is moved aside before re-raising."""
+        generation = self._generation
         try:
-            return self._open()
-        except sqlite3.OperationalError:
+            return await asyncio.to_thread(function, *args)
+        except sqlite3.DatabaseError as exc:
+            if _is_corrupt(exc):
+                await asyncio.to_thread(self._quarantine, generation)
             raise
-        except sqlite3.DatabaseError:
-            pass
-        with self._lock:  # one thread repairs; another may already have
-            try:
-                return self._open()
-            except sqlite3.OperationalError:
-                raise
-            except sqlite3.DatabaseError:
-                self._move_aside()
-        return self._open()
 
     def _open(self) -> sqlite3.Connection:
         """Open a connection and make sure the schema is current."""
+        self._path.parent.mkdir(parents=True, exist_ok=True)
         db = sqlite3.connect(self._path, timeout=self._busy_timeout_s)
         try:
             with self._lock:  # switching to WAL needs the file to itself; once per instance
@@ -491,11 +500,19 @@ class DiskCache:
             raise
         return db
 
-    def _move_aside(self) -> None:
-        """Rename the unusable file to ``<name>.corrupt``, replacing an older one."""
-        aside = self._path.with_name(f"{self._path.name}.corrupt")
-        logger.warning("disk cache file is no database, moved aside to %s", aside.name)
-        self._path.replace(aside)
-        self._wal_set = False
-        for suffix in ("-wal", "-shm"):
-            self._path.with_name(f"{self._path.name}{suffix}").unlink(missing_ok=True)
+    def _quarantine(self, generation: int) -> None:
+        """Rename the unusable file to ``<name>.corrupt``, replacing an older one.
+
+        Only the first of several calls that saw the same file does it; a call that saw an older
+        file than the current one finds the generation changed and leaves the new file alone.
+        """
+        with self._lock:
+            if generation != self._generation:
+                return
+            self._generation += 1
+            self._wal_set = False
+            aside = self._path.with_name(f"{self._path.name}.corrupt")
+            logger.warning("disk cache file is corrupt, moved aside to %s", aside.name)
+            self._path.replace(aside)
+            for suffix in ("-wal", "-shm"):
+                self._path.with_name(f"{self._path.name}{suffix}").unlink(missing_ok=True)
