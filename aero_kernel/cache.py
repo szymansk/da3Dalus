@@ -9,12 +9,14 @@ import hashlib
 import logging
 from collections.abc import Mapping
 from pathlib import Path
+from typing import Self
 
 from aero_kernel.canonical import sha256_of
-from aero_kernel.schema import Accuracy
-from pydantic import JsonValue
+from aero_kernel.errors import check_finite_json
+from aero_kernel.schema import Accuracy, KernelWarning
+from pydantic import BaseModel, ConfigDict, JsonValue, model_validator
 
-__all__ = ["build_digest", "cache_key"]
+__all__ = ["Entry", "build_digest", "cache_key"]
 
 logger = logging.getLogger(__name__)
 
@@ -102,3 +104,46 @@ def cache_key(
             "provider_hashes": dict(provider_hashes),
         }
     )
+
+
+class Entry(BaseModel):
+    """What the cache stores for one node: its outputs and its own warnings (ch. 8.4).
+
+    There is no status or error field: errors, ``skipped`` and ``not_applicable`` are never stored.
+    The JSON form keeps every float exactly (``-0.0`` included), so a hit is bit-identical to the
+    computed value; only cache *keys* normalise ``-0.0``.
+
+    Attributes:
+        outputs: Output parameter name to JSON value, for every output of the application.
+        warnings: The node's warnings, pre- and postcondition warnings included, as received.
+    """
+
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    outputs: dict[str, JsonValue]
+    warnings: tuple[KernelWarning, ...]
+
+    @model_validator(mode="after")
+    def _check_finite(self) -> Self:
+        """Reject NaN and infinity, which would serialise as ``null``."""
+        check_finite_json(self.outputs, "outputs")
+        return self
+
+    def to_json(self) -> str:
+        """Serialise to the JSON text a store keeps."""
+        return self.model_dump_json()
+
+    @classmethod
+    def from_json(cls, text: str) -> Self:
+        """Build a fresh entry from stored JSON text.
+
+        Args:
+            text: Text produced by :meth:`to_json`.
+
+        Returns:
+            A new object that shares nothing with any other.
+
+        Raises:
+            ValueError: If the text is not a valid entry.
+        """
+        return cls.model_validate_json(text)
