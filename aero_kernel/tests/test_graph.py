@@ -207,3 +207,13 @@ def test_producer_of_an_unrequested_quantity_is_a_key_error(flight_canon: CanonM
     for slug in ("approach-speed", "polar-stall"):
         with pytest.raises(KeyError):
             subtree.producer_of(slug)
+
+
+def test_a_parameter_declared_optional_is_an_optional_read(flight_canon: CanonModel) -> None:
+    node = CanonGraph(flight_canon).node(
+        NodeId(formula="calc:airplane-configuration", application="default")
+    )
+    assert {read.parameter: read.optional for read in node.reads} == {
+        "airplane": False,
+        "flap_deflection": True,
+    }
