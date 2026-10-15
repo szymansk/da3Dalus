@@ -358,7 +358,7 @@ class FormulaError(Exception):
             quantity: Slug of the quantity being computed.
             formula: Slug of the raising formula.
             application: Id of the application.
-            world: Label of the method world.
+            world: Canonical world assignment string (``neutral-point=avl``), ch. 8.13.
 
         Returns:
             The error with the flags of its category.
@@ -398,7 +398,7 @@ def internal_error_from_exception(
         quantity: Slug of the quantity being computed.
         formula: Slug of the raising formula.
         application: Id of the application.
-        world: Label of the method world.
+        world: Canonical world assignment string (``neutral-point=avl``), ch. 8.13.
         call_id: Short id of the ``compute()`` call, for the log.
         scope: Cache scope of the call, for the log.
 
@@ -485,7 +485,7 @@ def aggregate_upstream(
         quantity: Slug of the quantity that cannot be computed.
         formula: Slug of its formula.
         application: Id of its application.
-        world: Label of its method world.
+        world: Canonical world assignment string (``neutral-point=avl``), ch. 8.13.
 
     Returns:
         The ``upstream_failed`` error.
