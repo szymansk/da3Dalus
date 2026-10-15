@@ -3,6 +3,7 @@
 import hashlib
 
 from aero_kernel.canonical import canonical_json, sha256_of
+from pydantic import JsonValue
 
 
 def test_keys_are_sorted_and_separators_compact() -> None:
@@ -25,3 +26,13 @@ def test_nested_order_is_independent_of_insertion() -> None:
 def test_sha256_of_is_prefixed_hash_of_utf8_canonical_json() -> None:
     digest = hashlib.sha256(b'{"a":1}').hexdigest()
     assert sha256_of({"a": 1}) == f"sha256:{digest}"
+
+
+def test_negative_zero_is_canonicalised_to_zero() -> None:
+    assert canonical_json({"a": -0.0}) == canonical_json({"a": 0.0}) == b'{"a":0.0}'
+
+
+def test_negative_zero_is_canonicalised_in_nested_values() -> None:
+    nested: JsonValue = {"a": [1.5, {"b": -0.0, "c": [-0.0]}], "d": -1.0}
+    assert canonical_json(nested) == b'{"a":[1.5,{"b":0.0,"c":[0.0]}],"d":-1.0}'
+    assert sha256_of({"x": [-0.0]}) == sha256_of({"x": [0.0]})
