@@ -415,6 +415,38 @@ class TestPoolLifetime:
         assert context.get_start_method() == "spawn"
         assert kwargs["initializer"] is silence_worker_logging
 
+    async def test_a_caller_cancelling_a_queued_call_during_close_still_sees_cancellation(
+        self,
+    ) -> None:
+        runtime = SolverRuntime(max_workers=1, max_concurrency=8)
+        await runtime.run_cpu(workers.square, 1)
+        calls = [asyncio.create_task(runtime.run_cpu(workers.nap, 0.5)) for _ in range(5)]
+        await asyncio.sleep(0.3)
+        closing = asyncio.create_task(runtime.aclose())
+        await asyncio.sleep(0)  # aclose has begun
+        victim = calls[-1]
+        victim.cancel()
+        results = await asyncio.gather(*calls, return_exceptions=True)
+        await closing
+        assert victim.cancelled()
+        assert isinstance(results[-1], asyncio.CancelledError)
+        assert all(isinstance(r, (tuple, RuntimeError)) for r in results[:-1])
+
+    async def test_a_call_after_close_does_not_wait_for_a_slot(self) -> None:
+        executor = ProcessPoolExecutor(
+            max_workers=1, mp_context=multiprocessing.get_context("spawn")
+        )
+        try:
+            runtime = SolverRuntime(executor=executor, max_concurrency=1)
+            holder = asyncio.create_task(runtime.run_cpu(workers.nap, 1.0))
+            await asyncio.sleep(0.3)  # the holder owns the only slot
+            await runtime.aclose()  # an injected executor is not waited for
+            with pytest.raises(RuntimeError, match="closed"):
+                await asyncio.wait_for(runtime.run_cpu(workers.square, 1), timeout=0.3)
+            await holder
+        finally:
+            executor.shutdown(wait=True)
+
     async def test_aclose_is_idempotent_and_blocks_further_use(self) -> None:
         runtime = SolverRuntime(max_workers=1)
         await runtime.aclose()
@@ -482,6 +514,27 @@ class TestTrampoline:
         with pytest.raises(RuntimeError, match="UnpicklableError: odd") as caught:
             run_in_worker(workers.raise_unpicklable, ())
         assert isinstance(caught.value.__cause__, workers.UnpicklableError)
+
+    async def test_a_failure_keeps_every_field_of_the_formula_error(self) -> None:
+        failure = run_in_worker(workers.raise_formula_with_path, ())
+        assert isinstance(failure, WorkerFailure)
+        assert failure.category is ErrorCategory.INVALID_INPUT
+        assert failure.code == "missing_input"
+        assert failure.message == "worker lacks an input"
+        assert failure.hint == "pass it"
+        assert failure.detail == {"span_mm": 0}
+        assert failure.input_path == "geometry.wings[0].span"
+        error = failure.to_formula_error()
+        assert (error.message, error.hint, error.detail) == (
+            "worker lacks an input",
+            "pass it",
+            {"span_mm": 0},
+        )
+
+    async def test_a_failure_reports_the_measured_duration(self) -> None:
+        failure = run_in_worker(workers.slow_formula_failure, (0.02,))
+        assert isinstance(failure, WorkerFailure)
+        assert 0.02 <= failure.diagnostics.duration_s < 5
 
     async def test_a_failure_keeps_the_input_path(self) -> None:
         failure = run_in_worker(workers.raise_formula_with_path, ())

@@ -87,8 +87,15 @@ def raise_formula_with_path() -> WorkerOutcome[int]:
         "missing_input",
         "worker lacks an input",
         "pass it",
+        detail={"span_mm": 0},
         input_path="geometry.wings[0].span",
     )
+
+
+def slow_formula_failure(seconds: float) -> WorkerOutcome[int]:
+    """Do measurable work, then raise ``FormulaError``."""
+    time.sleep(seconds)
+    raise FormulaError(ErrorCategory.NOT_CONVERGED, "not_converged", "slow failure", "retry")
 
 
 def parent_test_module_is_loaded() -> WorkerOutcome[bool]:
