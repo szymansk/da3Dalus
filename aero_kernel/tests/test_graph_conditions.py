@@ -14,6 +14,7 @@ from aero_kernel.graph import (
     unmet_condition,
 )
 from aero_kernel.schema import ReasonCode
+from aero_kernel.tests.graph_builders import formula, model_of, quantity
 
 AILERON_ROLES = ("aileron", "flaperon", "elevon")
 
@@ -264,3 +265,15 @@ def test_sweep_does_not_count_towards_the_planform_area() -> None:
     assert (
         facts({"swept": swept, "straight": straight, "fin": fin(0.25)}).has_vertical_tail is False
     )
+
+
+def test_a_missing_given_of_another_namespace_is_written_qualified() -> None:
+    model = model_of(
+        {"t": quantity("target"), "r": quantity("derived")},
+        {"f": formula({"p": "t"}, {"y": "r"}, namespace="other", given=["other:t"])},
+        namespace="other",
+    )
+    node = CanonGraph(model).node(NodeId(formula="other:f", application="default"))
+    reason = unmet_condition(node, NONE, set())
+    assert reason is not None
+    assert "`other:t`" in reason.message

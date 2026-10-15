@@ -14,7 +14,6 @@ from collections.abc import Collection, Mapping, Sequence
 from typing import Self
 
 from aero_kernel.canon.model import (
-    DEFAULT_NAMESPACE,
     CanonModel,
     CostClass,
     Formula,
@@ -25,7 +24,9 @@ from aero_kernel.errors import (
     ErrorCategory,
     KernelError,
     aggregate_upstream,
+    display_slug,
     format_world_assignment,
+    qualify,
 )
 from aero_kernel.geometry import AirplaneGeometry, Wing
 from aero_kernel.schema import QuantityStatus, Reason, ReasonCode
@@ -47,16 +48,10 @@ __all__ = [
     "Subtree",
     "WhenFacts",
     "facts_from_geometry",
-    "qualify",
     "unmet_condition",
 ]
 
 _FROZEN = ConfigDict(extra="forbid", frozen=True)
-
-
-def qualify(slug: str) -> str:
-    """Write a slug in its qualified form; a bare slug belongs to the default namespace."""
-    return slug if ":" in slug else f"{DEFAULT_NAMESPACE}:{slug}"
 
 
 class GraphModelError(Exception):
@@ -148,6 +143,7 @@ class Resolved(BaseModel):
 
     Attributes:
         slug: Qualified slug of the quantity.
+        requested: The request's exact spelling of the slug; results and errors echo it.
         quantity: The quantity's canon entry.
         producer: The node whose application produces it.
     """
@@ -155,6 +151,7 @@ class Resolved(BaseModel):
     model_config = _FROZEN
 
     slug: str
+    requested: str
     quantity: Quantity
     producer: NodeId
 
@@ -293,7 +290,7 @@ class Subtree(BaseModel):
             error = aggregate_upstream(
                 causes,
                 quantity=quantity,
-                formula=node.formula_slug,
+                formula=display_slug(node.formula),
                 application=node.application,
                 world=world,
             )
@@ -303,7 +300,7 @@ class Subtree(BaseModel):
             (QuantityStatus.NOT_APPLICABLE, ReasonCode.DEPENDS_ON_NOT_APPLICABLE, "not applicable"),
         ):
             names = [
-                f"`{edge.quantity.partition(':')[2]}`"
+                f"`{display_slug(edge.quantity)}`"
                 for edge in self.edges[node]
                 if outcomes[edge.predecessor].status is status
             ]
@@ -628,9 +625,9 @@ class CanonGraph:
         Raises:
             GraphModelError: If the quantity is requestable but no application produces it.
         """
-        qualified = qualify(slug)
-        quantity = self._model.quantity(qualified)
-        if quantity is None:
+        qualified = _try_qualify(slug)
+        quantity = None if qualified is None else self._model.quantity(qualified)
+        if qualified is None or quantity is None:
             return _request_error(
                 slug,
                 "unknown_quantity",
@@ -658,7 +655,15 @@ class CanonGraph:
         if producer is None:
             msg = f"requested {qualified} has no producer"
             raise GraphModelError(msg)
-        return Resolved(slug=qualified, quantity=quantity, producer=producer)
+        return Resolved(slug=qualified, requested=slug, quantity=quantity, producer=producer)
+
+
+def _try_qualify(slug: str) -> str | None:
+    """Qualify a slug; a malformed one names no quantity, so ``None``."""
+    try:
+        return qualify(slug)
+    except ValueError:
+        return None
 
 
 def _request_error(
@@ -801,6 +806,6 @@ def unmet_condition(node: Node, facts: WhenFacts, supplied: Collection[str]) -> 
     given = {qualify(slug) for slug in supplied}
     missing = [slug for slug in node.given if slug not in given]
     if missing:
-        names = ", ".join(f"`{slug.partition(':')[2]}`" for slug in missing)
+        names = ", ".join(f"`{display_slug(slug)}`" for slug in missing)
         return Reason(code=ReasonCode.NOT_GIVEN, message=f"{names} was not supplied.")
     return None

@@ -17,11 +17,12 @@ def formula(
     writes: dict[str, str],
     *,
     application: str = "default",
+    namespace: str = "calc",
     **extra: Any,
 ) -> dict[str, Any]:
-    """A one-application formula reading and writing quantities (bare slugs, parameter -> slug)."""
-    bind = {parameter: f"calc:{slug}" for parameter, slug in reads.items()}
-    produce = {parameter: f"calc:{slug}" for parameter, slug in writes.items()}
+    """A one-application formula reading and writing quantities (bare slugs, parameter -> slug) in ``namespace``."""
+    bind = {parameter: f"{namespace}:{slug}" for parameter, slug in reads.items()}
+    produce = {parameter: f"{namespace}:{slug}" for parameter, slug in writes.items()}
     app_extra = {key: extra.pop(key) for key in ("when", "given") if key in extra}
     return {
         "kind": "law",
@@ -35,8 +36,10 @@ def formula(
 
 
 def model_of(
-    quantities: dict[str, dict[str, Any]], formulas: dict[str, dict[str, Any]]
+    quantities: dict[str, dict[str, Any]],
+    formulas: dict[str, dict[str, Any]],
+    namespace: str = "calc",
 ) -> CanonModel:
     """Validate a one-namespace model of the given quantities and formulas."""
-    namespaces = {"calc": {"quantities": quantities, "formulas": formulas}}
+    namespaces = {namespace: {"quantities": quantities, "formulas": formulas}}
     return CanonModel.model_validate(with_hash(namespaces))
