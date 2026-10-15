@@ -615,3 +615,11 @@ def test_all_pins_the_public_names() -> None:
     )
     for name in geometry.__all__:
         assert hasattr(geometry, name)
+
+
+@pytest.mark.parametrize("name", [n for n in geometry.__all__ if n != "Airfoil"])
+def test_docstring_documents_every_attribute(name: str) -> None:
+    model = getattr(geometry, name)
+    doc = model.__doc__ or ""
+    undocumented = [f for f in model.model_fields if f"{f}:" not in doc]
+    assert undocumented == []
