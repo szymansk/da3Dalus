@@ -87,3 +87,11 @@ def test_quantity_is_frozen() -> None:
     quantity = make_quantity()
     with pytest.raises(ValidationError, match="frozen"):
         quantity.symbol = "x"  # type: ignore[misc]  # the assignment is the thing under test
+
+
+@pytest.mark.parametrize("type_", ["airplane", "curve", "polar", "curve_pair"])
+@pytest.mark.parametrize("role", ["input", "target"])
+def test_positive_only_on_scalars(role: str, type_: str) -> None:
+    """Positivity is a property of one number; a curve or the airplane has no ``> 0``."""
+    with pytest.raises(ValidationError, match="scalar"):
+        make_quantity(role=role, type=type_, positive=True)

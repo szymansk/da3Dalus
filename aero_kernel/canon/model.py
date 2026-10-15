@@ -118,11 +118,14 @@ class Quantity(BaseModel):
 
     @model_validator(mode="after")
     def _check_positive(self) -> Self:
-        """Allow ``positive`` only on supplied quantities, and only with a positive default."""
+        """Allow ``positive`` only on supplied scalars, and only with a positive default."""
         if self.positive is None:
             return self
         if self.role not in ("input", "target"):
             msg = f"positive is only allowed on role input or target, not {self.role}"
+            raise ValueError(msg)
+        if self.type != "scalar":
+            msg = f"positive is only allowed on a scalar quantity, not {self.type}"
             raise ValueError(msg)
         if self.default is not None and self.default.value <= 0:
             msg = f"default {self.default.value} of a positive quantity must be > 0"
