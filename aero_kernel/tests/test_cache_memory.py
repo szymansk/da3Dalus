@@ -85,3 +85,43 @@ async def test_hit_miss_and_eviction_are_logged_at_debug(caplog: pytest.LogCaptu
     assert "cache hit" in caplog.text
     assert "cache evict" in caplog.text
     assert "0123456789abcdef" not in caplog.text
+
+
+class _CountingScope(str):
+    """A scope name that counts how often it is compared, to show eviction does not scan."""
+
+    comparisons = 0
+
+    def __eq__(self, other: object) -> bool:
+        type(self).comparisons += 1
+        return str.__eq__(self, other)
+
+    def __hash__(self) -> int:
+        return str.__hash__(self)
+
+
+@pytest.mark.asyncio
+async def test_per_scope_eviction_does_not_scan_other_scopes() -> None:
+    cache = MemoryCache(max_entries=10_000, max_entries_per_scope=2)
+    for index in range(500):
+        await cache.put(f"scope-{index}", "k", entry())
+    scope = _CountingScope("busy")
+    for name in "abc":
+        _CountingScope.comparisons = 0
+        await cache.put(scope, name, entry())
+    assert _CountingScope.comparisons < 20
+
+
+@pytest.mark.asyncio
+async def test_lru_order_holds_across_scopes_and_limits() -> None:
+    cache = MemoryCache(max_entries=3, max_entries_per_scope=2)
+    await cache.put("a", "1", entry(1.0))
+    await cache.put("b", "1", entry(2.0))
+    await cache.put("a", "2", entry(3.0))
+    await cache.get("a", "1")
+    await cache.put("b", "2", entry(4.0))
+    assert await cache.get("b", "1") is None
+    await cache.put("a", "3", entry(5.0))
+    assert await cache.get("a", "2") is None
+    assert await cache.get("a", "1") == entry(1.0)
+    assert await cache.get("b", "2") == entry(4.0)
