@@ -835,6 +835,12 @@ def check_structure(canon: Canon) -> list[Finding]:
                 add(slug, "positive", f"must be true (omit the field otherwise): {pos!r}")
             elif e.front.get("role") not in ("input", "target"):
                 add(slug, "positive", "allowed only on a quantity with role input or target")
+            elif e.front.get("type") != "scalar":
+                add(
+                    slug,
+                    "positive",
+                    "allowed only on type scalar: positivity is a property of a number",
+                )
             else:
                 d = e.front.get("default")
                 value = d.get("value") if isinstance(d, dict) else None

@@ -865,6 +865,19 @@ def test_a_positive_quantity_with_a_non_positive_default_is_reported(tmp_path, t
     assert any("speed-a default" in m and "> 0" in m for m in msgs), msgs
 
 
+def test_positive_on_a_non_scalar_quantity_is_reported(tmp_path):
+    """Positivity is a property of a number: only `type: scalar` may carry it."""
+    root = _real_canon_copy(tmp_path)
+    _edit_front(
+        root,
+        "quantities/butterfly-stall-speed-curve.md",
+        "role: output",
+        "role: input\npositive: true",
+    )
+    msgs = _messages(_errors(root))
+    assert any("butterfly-stall-speed-curve positive" in m and "scalar" in m for m in msgs), msgs
+
+
 # --- command line ----------------------------------------------------------------------------
 
 
