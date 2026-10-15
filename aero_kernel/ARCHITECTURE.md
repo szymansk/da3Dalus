@@ -793,7 +793,7 @@ async def stall_speed(x: Inputs, ctx: Context) -> dict[str, Value]:
 
 - **One coroutine per formula.** `x` maps the formula's **parameter names** (canon `inputs:`) to values, as
   bound by the application; the formula never sees which application or quantity it serves. It returns a
-  dict over its **output parameter names**, every one of them. Values are floats in SI or instances of
+  dict over its **output parameter names**, every one of them. Values are floats in the quantity's canon unit (ch. 8.11) or instances of
   the structured types in `schema.py`, one per quantity `type` of the canon `README.md`: `scalar` → `float`,
   `airplane` → `AirplaneGeometry`, `curve` → `Curve`, `curve_pair` → `CurvePair`, `polar` → `Polar`. A new
   type is a canon decision first, then a type here.
