@@ -3,6 +3,7 @@
 import json
 import logging
 
+import numpy as np
 import pytest
 from aero_kernel.errors import (
     CODE_CATALOGUE,
@@ -550,3 +551,29 @@ def test_catalogue_holds_exactly_the_codes_the_architecture_names() -> None:
         "postcondition_violated",
         "continuous_uncertainty",
     }
+
+
+@pytest.mark.parametrize("field", ["message", "hint"])
+def test_formula_error_rejects_empty_message_or_hint_at_the_raise_site(field: str) -> None:
+    message, hint = ("" if field == "message" else "m"), ("" if field == "hint" else "h")
+    with pytest.raises(ValueError, match=field):
+        FormulaError(ErrorCategory.NOT_CONVERGED, "not_converged", message, hint)
+
+
+def test_formula_error_rejects_non_json_detail_at_the_raise_site() -> None:
+    """A numpy scalar is not JSON; it must fail in __init__, not later in to_kernel_error."""
+    with pytest.raises(ValueError, match="detail"):
+        FormulaError(
+            ErrorCategory.NOT_CONVERGED,
+            "not_converged",
+            "m",
+            "h",
+            {"v": np.int64(3)},  # pyright: ignore[reportArgumentType]  # the wrong type is the point
+        )
+
+
+def test_formula_error_accepts_json_detail() -> None:
+    exc = FormulaError(
+        ErrorCategory.NOT_CONVERGED, "not_converged", "m", "h", {"v": [1, 2.5, None, "x"]}
+    )
+    assert exc.to_kernel_error(quantity="q").detail == {"v": [1, 2.5, None, "x"]}
