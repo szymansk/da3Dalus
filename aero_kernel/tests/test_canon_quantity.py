@@ -75,3 +75,15 @@ def test_positive_false_is_an_error_on_every_role(role: str) -> None:
     """README: ``positive`` is ``true`` or omitted; ``false`` is one spelling too many."""
     with pytest.raises(ValidationError):
         make_quantity(role=role, positive=False)
+
+
+@pytest.mark.parametrize("bad", [float("nan"), float("inf"), float("-inf")])
+def test_default_must_be_finite(bad: float) -> None:
+    with pytest.raises(ValidationError, match="finite"):
+        make_quantity(default={"value": bad, "source": "s"})
+
+
+def test_quantity_is_frozen() -> None:
+    quantity = make_quantity()
+    with pytest.raises(ValidationError, match="frozen"):
+        quantity.symbol = "x"  # type: ignore[misc]  # the assignment is the thing under test
