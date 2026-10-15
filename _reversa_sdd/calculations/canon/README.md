@@ -386,7 +386,7 @@ The existing fields (`canon`, `entry`, `kind`, `tool`, `shape`, `status`, `outpu
 | `preconditions` | only where the entry states them | a list of `{id, parameter, on_violation}` with an optional `applications: [<id>, …]`: `parameter` names an **input** parameter (the check runs before the call), `on_violation` is `warning` or `error`, `applications` names the applications the check belongs to (absent: all of them — preconditions belong to the binding) |
 | `postconditions` | only where the entry states a check on a result | the same shape as `preconditions`, but `parameter` names an **output** parameter: the check runs after the call, on the inputs and all outputs — also those an application writes as `null` |
 | `embeds` | only where the canonical form evaluates another canon relation inside itself | formulas whose relation the canonical form evaluates inside itself, listed directly as `<slug>`, or `<slug>.<application-id>` per application whose checks apply when the formula has several applications; transitive (the importer computes the closure); an item embeds that application as written — its bindings (quantities and constants) and its checks; a bare slug is the single default application. Every quantity the embedded applications bind is a `variables` entry, produced inside the closure, or an input of the embedder; constants are never re-bound; the embedded formula's postconditions run on every embedded evaluation, its preconditions do not; no formula with `uncertainty: interval` in the closure. Not a value edge — nothing is read from them. Tools are named by `tool:` |
-| `variables` | required with `embeds` | quantity slugs the embedder solves for or sweeps itself (or fixes in its own canonical form); inside the closure they are always the embedder's variables, also if the embedder binds the same quantity as an input |
+| `variables` | required with `embeds`, forbidden without | quantity slugs the embedder solves for or sweeps itself (or fixes in its own canonical form); inside the closure they are always the embedder's variables, also if the embedder binds the same quantity as an input |
 | `optional` | only where the entry picks its route by data | a list of input parameter names that may arrive as `None` when neither a value nor a default exists; what follows is stated per route in the entry (below) |
 | `uncertainty` | only where the entry already says `interval` | `interval` (A11) |
 | `worlds` | with `uncertainty: interval` | the method worlds, as the entry names them, in snake_case |
@@ -558,6 +558,53 @@ postconditions:
   - {id: optimum_at_first_cl_trough, parameter: cl_max, on_violation: error, applications: [inverted]}
 ```
 
+An **optimization** that embeds other formulas — per application where the embedded formula has several —
+with its own variables, a long run (`mass-envelope`):
+
+```yaml
+kind: optimization
+tool: OPT
+output: speed-range-over-mass, climb-rate-over-mass, max-mass-level-flight, max-mass-lift-off, cg-envelope-over-mass
+inputs:
+  airplane: airplane
+  m_current: aircraft-mass
+  g: gravity
+  rho: air-density
+  v_s_to: stall-speed-takeoff
+  v_to: takeoff-speed
+  x_np: neutral-point
+  k_v: motor-voltage-constant
+  i_0: motor-no-load-current
+  r_m: motor-circuit-resistance
+  u_bat: battery-voltage
+  p_mot_max: motor-max-power
+  d_prop: propeller-diameter
+  eta_mot: motor-efficiency
+  airplane_to: airplane-takeoff
+  airplane_ldg: airplane-landing
+  delta_e_up: elevator-deflection-up
+  delta_e_down: elevator-deflection-down
+outputs:
+  speed_range: speed-range-over-mass
+  roc_curve: climb-rate-over-mass
+  m_max_level: max-mass-level-flight
+  m_max_to: max-mass-lift-off
+  cg_envelope: cg-envelope-over-mass
+embeds:
+  - stall-speed.clean
+  - stall-speed.landing
+  - stall-speed.takeoff
+  - max-level-speed
+  - best-rate-of-climb
+  - motor-propeller-equilibrium
+  - advance-ratio-from-speed
+  - propeller-table-lookup
+  - thrust-at-airspeed-from-coefficient
+variables: [aircraft-mass, flight-speed]
+optional: [r_m]
+cost: minutes
+```
+
 A **fit** (`parabolic-polar-fit`):
 
 ```yaml
@@ -627,8 +674,10 @@ default: {value: 1.225, source: "U.S. Standard Atmosphere 1976 (NOAA-S/T 76-1562
   `uncertainty: interval`; `cost` is one of the three classes;
 - `embeds` items resolve to a formula or `formula.application`, and a formula with several
   applications is named per application; the closure is acyclic, holds no formula with
-  `uncertainty: interval`, and satisfies the input rule; `variables` is present with `embeds`, and
-  every variable is read somewhere in the closure; `optional` names input parameters;
+  `uncertainty: interval`, and satisfies the input rule; `variables` is present with `embeds` and only
+  there, and every variable is read somewhere in the closure; a scalar input or target without a default
+  that the closure binds through an embedder input but `variables` does not list is reported as an open
+  warning (it may be swept or solved), never as an error; `optional` names input parameters;
 - every quantity has a `type` from the set above; a `default` carries a source;
 - no plain key or value is a YAML 1.1 boolean; an `# ESCALATED:` comment states its reason;
 - every example above equals the front matter of the entry it names, so the examples cannot drift.

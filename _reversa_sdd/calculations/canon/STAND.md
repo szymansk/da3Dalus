@@ -573,3 +573,5 @@ Maintainer; `check_canon.py` meldet es als *open*.
 
 **Delta-Review F2 (Architekt, 15.10.2026):** `butterfly-approach` trägt die Nachbedingung `optimum_at_first_cl_peak` auf `v_s0_curve` — bei jedem s geprüft, dieselbe Prüfung wie in `stall-speed` (K32), eine gemeinsame Implementierung. Kein `embeds`: eine Form, die das Problem einer anderen Formel unter einer selbst variierten Konfiguration neu löst, ist keine Einbettung (ARCHITECTURE §8.5).
 
+**Delta-Review F5 (Architekt, 15.10.2026):** `variables` ohne `embeds` ist ein Fehler. `variables` gehört zu den Schlüsseln, die README-Beispiele vollständig wiedergeben müssen; neues Beispiel `mass-envelope` (Einbettung je Anwendung, Variablen, Eingänge mit `m_current` und `airplane_ldg`). Neue offene Warnung (lässt den Lauf nicht scheitern): eine Skalargröße mit Rolle `input`/`target` ohne Vorgabe, die der Abschluss über einen Eingang des Einbettenden bindet und die nicht in `variables` steht. Der reale Kanon erzeugt keine solche Warnung.
+

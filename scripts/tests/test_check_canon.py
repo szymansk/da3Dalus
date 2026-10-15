@@ -968,6 +968,64 @@ def test_yaml_1_1_booleans_are_found_in_keys_and_values():
     assert check_canon.yaml11_booleans(raw) == ["on", "yes", "n"]
 
 
+def _real_canon_copy(tmp_path):
+    import shutil
+
+    root = tmp_path / "canon"
+    shutil.copytree(REAL_CANON, root, ignore=shutil.ignore_patterns("*.pdf", "*.html"))
+    return root
+
+
+def _edit_front(root, rel, old, new):
+    path = root / rel
+    text = path.read_text(encoding="utf-8")
+    assert text.count(old) == 1, (rel, old)
+    path.write_text(text.replace(old, new), encoding="utf-8")
+
+
+def test_variables_without_embeds_are_an_error(tmp_path):
+    """Delta review F5a: `variables` belongs to an embedder."""
+    root = _real_canon_copy(tmp_path)
+    _edit_front(
+        root, "formulas/wing-loading.md", "outputs: {", "variables: [aircraft-mass]\noutputs: {"
+    )
+    msgs = _messages(_errors(root))
+    assert any("wing-loading variables" in m and "embeds" in m for m in msgs), msgs
+
+
+def test_a_readme_example_missing_variables_is_reported(tmp_path):
+    """Delta review F5b: `variables` is a machine-readable key the examples must reproduce."""
+    root = _real_canon_copy(tmp_path)
+    _edit_front(root, "README.md", "variables: [aircraft-mass, flight-speed]\n", "")
+    msgs = _messages(_errors(root))
+    assert any("README" in m and "mass-envelope" in m and "variables" in m for m in msgs), msgs
+
+
+def test_an_undeclared_swept_input_of_an_embedder_is_an_open_warning(tmp_path):
+    """Delta review F5c: aircraft-mass reaches the closure only through m_current."""
+    root = _real_canon_copy(tmp_path)
+    for rel in ("formulas/mass-envelope.md", "README.md"):  # the README example mirrors the entry
+        _edit_front(
+            root, rel, "variables: [aircraft-mass, flight-speed]", "variables: [flight-speed]"
+        )
+    findings = _findings(root)
+    assert [f for f in findings if not f.open] == [], _messages(findings)
+    warnings = [f for f in findings if f.open]
+    expected = (
+        "closure binds aircraft-mass via embedder input m_current; if the form sweeps or solves "
+        "it, list it in `variables`"
+    )
+    assert any(f.entry == "mass-envelope" and f.message == expected for f in warnings), _messages(
+        warnings
+    )
+
+
+def test_the_real_canon_has_no_open_findings():
+    """No escalation is pending and no embedder warning fires on the real canon."""
+    opened = [f for f in _findings(REAL_CANON) if f.open]
+    assert opened == [], "\n".join(_messages(opened))
+
+
 def test_every_real_entry_carries_the_fields():
     canon = check_canon.load_canon(REAL_CANON)
     assert len(canon.formulas) == 57

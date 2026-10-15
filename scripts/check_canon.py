@@ -285,6 +285,7 @@ EXAMPLE_KEYS_FORMULA = (
     "preconditions",
     "postconditions",
     "embeds",
+    "variables",
     "optional",
     "uncertainty",
     "worlds",
@@ -606,6 +607,8 @@ def _check_formula(e: Entry, canon: Canon, add, gap) -> tuple[set[str], set[str]
                     "embeds",
                     f"{slug!r} has several applications: name one as {slug}.<application>",
                 )
+    if "variables" in e.front and not embeds:
+        add(e.slug, "variables", "variables without embeds: only an embedder declares variables")
     if embeds and not isinstance(e.front.get("variables"), list):
         add(
             e.slug,
@@ -676,7 +679,9 @@ def _embedded_items(e: Entry, canon: Canon) -> list[tuple[str, str | None]]:
     return out
 
 
-def _check_embeds(canon: Canon, reads_of: dict, writes_of: dict, per_app_of: dict, add) -> None:
+def _check_embeds(
+    canon: Canon, reads_of: dict, writes_of: dict, per_app_of: dict, add, warn
+) -> None:
     """The embeds closure: acyclic, no worlds inside, every embedded input accounted for.
 
     An item embeds that application as written — its bindings and its checks — so the input
@@ -736,6 +741,30 @@ def _check_embeds(canon: Canon, reads_of: dict, writes_of: dict, per_app_of: dic
         read_inside = set().union(*(rw(*x)[0] for x in inner))
         for v in sorted(variables - read_inside):
             add(slug, "variables", f"{v!r} is read by no formula in the embeds closure")
+        # a swept or solved quantity that only arrives through an embedder input looks like an
+        # undeclared variable: report it (open), never fail on it
+        embedder = canon.formulas[slug].front
+        params: dict[str, str] = {}
+        for name, value in (embedder.get("inputs") or {}).items():
+            if isinstance(value, str):
+                params.setdefault(value, name)
+        for app in embedder.get("applications") or []:
+            for name, value in ((app or {}).get("bind") or {}).items():
+                if isinstance(value, str):
+                    params.setdefault(value, name)
+        for qslug in sorted((read_inside & reads_of[slug]) - variables - produced):
+            qf = canon.quantities[qslug].front
+            if (
+                qf.get("type") == "scalar"
+                and qf.get("role") in ("input", "target")
+                and qf.get("default") is None
+            ):
+                warn(
+                    slug,
+                    "variables",
+                    f"closure binds {qslug} via embedder input {params.get(qslug, '?')}; if the "
+                    "form sweeps or solves it, list it in `variables`",
+                )
         for x, app in inner:
             if canon.formulas[x].front.get("uncertainty") == "interval":
                 add(slug, "embeds", f"{x} has uncertainty: interval and may not be embedded")
@@ -771,7 +800,11 @@ def check_structure(canon: Canon) -> list[Finding]:
             used_by[r].add(slug)
         for w in writes:
             produced_by[w].add(slug)
-    _check_embeds(canon, reads_of, writes_of, per_app_of, add)
+
+    def warn(entry: str, field: str, message: str) -> None:
+        findings.append(Finding(entry, field, message, open=True))
+
+    _check_embeds(canon, reads_of, writes_of, per_app_of, add, warn)
 
     for e in [*canon.formulas.values(), *canon.quantities.values()]:
         booleans = yaml11_booleans(e.raw_front)
@@ -832,9 +865,9 @@ def cli(argv: list[str]) -> int:
     opened = [f for f in findings if f.open]
     print(
         f"structural check over {len(canon.formulas)} formulas and "
-        f"{len(canon.quantities)} quantities: {len(errors)} errors, {len(opened)} open (escalated)"
+        f"{len(canon.quantities)} quantities: {len(errors)} errors, {len(opened)} open (escalated or warning)"
     )
-    for title, group in (("errors", errors), ("open (escalated)", opened)):
+    for title, group in (("errors", errors), ("open (escalated or warning)", opened)):
         if group:
             print(f"\n  {title}:")
         for f in group:
