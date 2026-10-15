@@ -7,7 +7,7 @@ they are canon-model types, not input types.
 
 from typing import Annotated, Literal, Self
 
-from pydantic import BaseModel, ConfigDict, Field, model_validator
+from pydantic import BaseModel, ConfigDict, Field, StringConstraints, model_validator
 
 __all__ = ["Default", "Quantity", "QuantityRole", "QuantityType"]
 
@@ -95,5 +95,219 @@ class Quantity(BaseModel):
             raise ValueError(msg)
         if self.default is not None and self.default.value <= 0:
             msg = f"default {self.default.value} of a positive quantity must be > 0"
+            raise ValueError(msg)
+        return self
+
+
+# --- formulas -------------------------------------------------------------------------------
+
+FormulaKind = Literal["law", "procedure", "optimization", "fit", "rating"]
+Tool = Literal["APP", "ATM", "GEO", "AB", "AVL", "OPT", "KAT", "APC"]
+CostClass = Literal["instant", "seconds", "minutes"]
+WhenTerm = Literal["has_aileron", "has_separate_flap_and_aileron", "has_vertical_tail"]
+OnViolation = Literal["warning", "error"]
+
+# A parameter is local to its formula and snake_case; an application, check or world name is a
+# lower-case identifier. A reference is fully qualified: ``<namespace>:<slug>`` (ch. 8.9).
+Parameter = Annotated[str, StringConstraints(pattern=r"^[a-z][a-z0-9]*(_[a-z0-9]+)*$")]
+Identifier = Annotated[str, StringConstraints(pattern=r"^[a-z][a-z0-9]*([_-][a-z0-9]+)*$")]
+WorldName = Annotated[str, StringConstraints(pattern=r"^[a-z][a-z0-9]*(_[a-z0-9]+)*$")]
+QualifiedSlug = Annotated[
+    str, StringConstraints(pattern=r"^[a-z][a-z0-9_]*:[a-z][a-z0-9]*(-[a-z0-9]+)*$")
+]
+# An embedded application: ``<namespace>:<slug>.<application-id>``; never a bare formula slug.
+QualifiedApplication = Annotated[
+    str,
+    StringConstraints(
+        pattern=r"^[a-z][a-z0-9_]*:[a-z][a-z0-9]*(-[a-z0-9]+)*\.[a-z][a-z0-9]*([_-][a-z0-9]+)*$"
+    ),
+]
+
+
+class ConstBinding(BaseModel):
+    """A constant bound to an input parameter, with its source (ADR 0028).
+
+    Attributes:
+        const: The value, in the parameter's unit.
+        source: Citation of where the constant comes from.
+    """
+
+    model_config = _MODEL_CONFIG
+
+    const: FiniteNumber
+    source: str = Field(min_length=1)
+
+
+Binding = QualifiedSlug | ConstBinding
+
+
+class Application(BaseModel):
+    """A formula applied to concrete quantities, written out completely (ch. 8.5).
+
+    ``bind`` and ``produce`` hold the merged result of the formula's defaults and the application's
+    own overrides, so every input parameter is bound and every output parameter is produced.
+
+    Attributes:
+        id: Name of the application, unique within its formula; ``default`` for the implicit one.
+        bind: Quantity or constant per input parameter.
+        produce: Quantity per output parameter; ``None`` = the application does not expose it.
+        when: Condition over the geometry; ``None`` = always.
+        given: Quantities that must be supplied for the application to exist; ``None`` = always.
+    """
+
+    model_config = _MODEL_CONFIG
+
+    id: Identifier
+    bind: dict[Parameter, Binding]
+    produce: dict[Parameter, QualifiedSlug | None]
+    when: WhenTerm | None = None
+    given: Annotated[tuple[QualifiedSlug, ...], Field(min_length=1)] | None = None
+
+    @model_validator(mode="after")
+    def _check_given_is_bound(self) -> Self:
+        """Require every ``given`` slug to be bound by this application."""
+        bound = {value for value in self.bind.values() if isinstance(value, str)}
+        for slug in self.given or ():
+            if slug not in bound:
+                msg = f"application {self.id}: given {slug} is not bound by the application"
+                raise ValueError(msg)
+        return self
+
+
+class Check(BaseModel):
+    """A pre- or postcondition of a formula (ch. 8.5).
+
+    Attributes:
+        id: Name of the check, unique among the formula's checks of its kind.
+        parameter: The input (precondition) or output (postcondition) parameter it concerns.
+        on_violation: ``error`` withholds the value, ``warning`` returns it with a defect warning.
+        applications: Ids of the applications it belongs to; ``None`` = all of them.
+    """
+
+    model_config = _MODEL_CONFIG
+
+    id: Identifier
+    parameter: Parameter
+    on_violation: OnViolation
+    applications: Annotated[tuple[Identifier, ...], Field(min_length=1)] | None = None
+
+
+class Formula(BaseModel):
+    """A canon formula with its applications, checks, worlds and embeds (ch. 8.5, 8.13).
+
+    Attributes:
+        kind: The formula's kind.
+        tool: The tool that evaluates it.
+        cost: Cost class: declared in the canon, otherwise derived from ``tool`` (ch. 8.7).
+        inputs: Default quantity per input parameter; ``None`` = bound per application.
+        outputs: Default quantity per output parameter; ``None`` = produced per application.
+        optional: Input parameters that may arrive as ``None``.
+        applications: The applications, at least one.
+        preconditions: Checks on inputs, run before the call.
+        postconditions: Checks on outputs, run after the call.
+        uncertainty: ``interval`` where the formula has method worlds.
+        worlds: The method worlds, exactly with ``uncertainty``.
+        embeds: Directly embedded applications, ``<ns>:<slug>.<application-id>``.
+        variables: Quantities the embedder solves for or sweeps itself, exactly with ``embeds``.
+        embeds_closure: Sorted, unique embeds reachable through ``embeds``, direct ones included.
+    """
+
+    model_config = _MODEL_CONFIG
+
+    kind: FormulaKind
+    tool: Tool
+    cost: CostClass
+    inputs: dict[Parameter, QualifiedSlug | None]
+    outputs: dict[Parameter, QualifiedSlug | None]
+    optional: tuple[Parameter, ...] = ()
+    applications: Annotated[tuple[Application, ...], Field(min_length=1)]
+    preconditions: tuple[Check, ...] = ()
+    postconditions: tuple[Check, ...] = ()
+    uncertainty: Literal["interval"] | None = None
+    worlds: tuple[WorldName, ...] = ()
+    embeds: tuple[QualifiedApplication, ...] = ()
+    variables: tuple[QualifiedSlug, ...] = ()
+    embeds_closure: tuple[QualifiedApplication, ...] = ()
+
+    def application(self, application_id: str) -> Application:
+        """Return the application with the given id.
+
+        Args:
+            application_id: Id of the application.
+
+        Returns:
+            The application.
+
+        Raises:
+            KeyError: If the formula has no such application.
+        """
+        for application in self.applications:
+            if application.id == application_id:
+                return application
+        raise KeyError(application_id)
+
+    @model_validator(mode="after")
+    def _check_applications(self) -> Self:
+        """Require unique ids, and every input bound and every output produced, nothing else."""
+        ids = [application.id for application in self.applications]
+        if len(set(ids)) != len(ids):
+            msg = "application ids must be unique"
+            raise ValueError(msg)
+        for application in self.applications:
+            if application.bind.keys() != self.inputs.keys():
+                msg = f"application {application.id}: bind must name exactly the input parameters"
+                raise ValueError(msg)
+            if application.produce.keys() != self.outputs.keys():
+                msg = (
+                    f"application {application.id}: produce must name exactly the output parameters"
+                )
+                raise ValueError(msg)
+        unknown = set(self.optional) - self.inputs.keys()
+        if unknown:
+            msg = f"optional names parameters that are no input: {sorted(unknown)}"
+            raise ValueError(msg)
+        return self
+
+    @model_validator(mode="after")
+    def _check_checks(self) -> Self:
+        """Require preconditions on inputs, postconditions on outputs, unique ids, known scopes."""
+        ids = {application.id for application in self.applications}
+        for label, checks, side in (
+            ("precondition", self.preconditions, self.inputs),
+            ("postcondition", self.postconditions, self.outputs),
+        ):
+            check_ids = [check.id for check in checks]
+            if len(set(check_ids)) != len(check_ids):
+                msg = f"{label} ids must be unique"
+                raise ValueError(msg)
+            for check in checks:
+                if check.parameter not in side:
+                    msg = f"{label} {check.id} names {check.parameter}, which is not on its side"
+                    raise ValueError(msg)
+                for application_id in check.applications or ():
+                    if application_id not in ids:
+                        msg = f"{label} {check.id} names unknown application {application_id}"
+                        raise ValueError(msg)
+        return self
+
+    @model_validator(mode="after")
+    def _check_worlds_and_embeds(self) -> Self:
+        """Tie worlds to interval uncertainty, variables to embeds, and embeds to their closure."""
+        if (self.uncertainty == "interval") != bool(self.worlds):
+            msg = "worlds are required exactly with uncertainty: interval"
+            raise ValueError(msg)
+        if self.worlds and (len(self.worlds) < 2 or len(set(self.worlds)) != len(self.worlds)):
+            msg = "worlds must be at least two and unique"
+            raise ValueError(msg)
+        if bool(self.variables) != bool(self.embeds):
+            msg = "variables are required exactly with embeds"
+            raise ValueError(msg)
+        if bool(self.embeds_closure) != bool(self.embeds) or not set(self.embeds) <= set(
+            self.embeds_closure
+        ):
+            msg = "embeds_closure must exist exactly with embeds and contain them"
+            raise ValueError(msg)
+        if list(self.embeds_closure) != sorted(set(self.embeds_closure)):
+            msg = "embeds_closure must be sorted and unique"
             raise ValueError(msg)
         return self
