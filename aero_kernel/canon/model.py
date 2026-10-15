@@ -9,7 +9,14 @@ from collections.abc import Iterator, Mapping
 from typing import Annotated, Literal, Self
 
 from aero_kernel.canonical import sha256_of
-from pydantic import BaseModel, ConfigDict, Field, StringConstraints, model_validator
+from pydantic import (
+    BaseModel,
+    ConfigDict,
+    Field,
+    StringConstraints,
+    field_validator,
+    model_validator,
+)
 
 __all__ = ["Default", "Quantity", "QuantityRole", "QuantityType"]
 
@@ -399,6 +406,15 @@ class CanonModel(BaseModel):
     source_commit: Annotated[str, StringConstraints(pattern=r"^[0-9a-f]{40}$")]
     importer_version: str = Field(min_length=1)
     namespaces: Annotated[dict[NamespaceKey, Namespace], Field(min_length=1)]
+
+    @field_validator("schema_version", mode="before")
+    @classmethod
+    def _reject_bool_version(cls, value: object) -> object:
+        """Reject ``true``: Python reads it as ``1``, JSON Schema does not."""
+        if isinstance(value, bool):
+            msg = "schema_version must be the integer 1, not a boolean"
+            raise ValueError(msg)
+        return value
 
     def quantity(self, reference: str) -> Quantity | None:
         """Look a quantity up by slug.
