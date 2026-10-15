@@ -127,3 +127,28 @@ def test_rejects_non_physical_arguments(kwargs: dict[str, object]) -> None:
     arguments.update(kwargs)
     with pytest.raises(ValueError, match="must be"):
         regime(**arguments)  # pyright: ignore[reportArgumentType]  # parametrised bad values
+
+
+def test_mach_uses_the_given_speed_of_sound() -> None:
+    # 100 m/s is Mach 0.29 at 340 m/s but Mach 0.33 at 300 m/s; Re kept in band by viscosity
+    assert regime([1.0], 100.0, 340.0, 100.0 / 5e5) == []
+    (warning,) = regime([1.0], 100.0, 300.0, 100.0 / 5e5)
+    assert warning.code == "mach_above_limit"
+    assert math.isclose(detail_number(warning, "mach"), 100.0 / 300.0)
+
+
+def test_the_bubble_chord_need_not_be_the_largest() -> None:
+    # Re of 0.04 m is 53333 (bubble), of 0.3 m is 4e5 (fine)
+    (warning,) = regime([0.3, 0.04], 20.0, SPEED_OF_SOUND, NU)
+    assert warning.code == "reynolds_bubble_sensitive"
+    assert math.isclose(detail_number(warning, "re_min"), 20.0 * 0.04 / NU)
+    assert math.isclose(detail_number(warning, "re_max"), 20.0 * 0.3 / NU)
+
+
+def test_two_bubble_chords_give_one_warning() -> None:
+    warnings = regime([0.04, 0.05], 20.0, SPEED_OF_SOUND, NU)
+    assert codes(warnings) == ["reynolds_bubble_sensitive"]
+
+
+def test_zero_airspeed_is_accepted() -> None:
+    assert codes(regime([0.3], 0.0, SPEED_OF_SOUND, NU)) == ["reynolds_outside_band"]

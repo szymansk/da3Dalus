@@ -15,10 +15,11 @@ from aero_kernel.solvers.base import SolverAdapter
 
 
 class PresentAdapter(SolverAdapter):
-    """Fake adapter whose tool (pydantic) is installed."""
+    """Fake adapter whose tool (pytest) is installed."""
 
     tool: ClassVar[str] = "fake-present"
-    requirements: ClassVar[Mapping[str, str]] = {"pydantic": "pydantic"}
+    # the distribution name (pytest) differs from the module name (_pytest) on purpose
+    requirements: ClassVar[Mapping[str, str]] = {"pytest": "_pytest"}
 
 
 class MissingAdapter(SolverAdapter):
@@ -26,7 +27,7 @@ class MissingAdapter(SolverAdapter):
 
     tool: ClassVar[str] = "fake-missing"
     requirements: ClassVar[Mapping[str, str]] = {
-        "pydantic": "pydantic",
+        "pytest": "_pytest",
         "no-such-distribution": "no_such_module_xyz",
     }
 
@@ -44,13 +45,13 @@ def test_adapter_holds_the_runtime_it_was_given() -> None:
 def test_an_installed_tool_is_available_and_reports_its_version() -> None:
     adapter = PresentAdapter(SolverRuntime())
     assert adapter.available() is True
-    assert adapter.tool_versions() == {"pydantic": importlib.metadata.version("pydantic")}
+    assert adapter.tool_versions() == {"pytest": importlib.metadata.version("pytest")}
 
 
 def test_a_missing_tool_is_not_available_and_not_in_the_versions() -> None:
     adapter = MissingAdapter(SolverRuntime())
     assert adapter.available() is False
-    assert adapter.tool_versions() == {"pydantic": importlib.metadata.version("pydantic")}
+    assert adapter.tool_versions() == {"pytest": importlib.metadata.version("pytest")}
 
 
 def test_a_dotted_module_name_is_rejected_when_the_class_is_defined() -> None:
@@ -75,7 +76,7 @@ def test_a_find_spec_failure_means_unavailable_with_a_warning(
         with pytest.raises(FormulaError) as caught:
             adapter.require_available()
     assert caught.value.code == "tool_unavailable"
-    assert any("pydantic" in r.getMessage() and "find" in r.getMessage() for r in caplog.records)
+    assert any("_pytest" in r.getMessage() and "find" in r.getMessage() for r in caplog.records)
 
 
 def test_versions_are_read_once() -> None:
@@ -117,3 +118,17 @@ def test_importing_the_package_does_not_import_a_solver_library() -> None:
     )
     done = subprocess.run([sys.executable, "-c", code], capture_output=True, text=True, check=False)
     assert done.returncode == 0, done.stderr
+
+
+def test_checking_availability_imports_nothing() -> None:
+    assert "pydoc_data" not in sys.modules
+    modules_before = set(sys.modules)
+
+    class Harmless(SolverAdapter):
+        tool: ClassVar[str] = "fake-harmless"
+        requirements: ClassVar[Mapping[str, str]] = {"pydoc-data": "pydoc_data"}
+
+    adapter = Harmless(SolverRuntime())
+    assert adapter.available() is True
+    adapter.require_available()
+    assert set(sys.modules) == modules_before
