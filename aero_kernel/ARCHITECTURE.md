@@ -603,8 +603,13 @@ apart; the importer's JSON Schema is written against that section. What the impo
 
 **The model** (`canon_model.json`, JSON Schema `canon_model.schema.json`) holds, per namespace, `quantities`
 and `formulas` with **every field the canon README section "Machine-readable fields" defines, 1:1**, same
-names and nesting — this document does not re-list them, so a new field cannot be forgotten here. Only
-prose-oriented fields the README keeps for readers (`tags`, `tex`, `source_status`, …) are dropped.
+names and nesting — this document does not re-list them, so a new field cannot be forgotten here. The
+fields the README keeps for readers and for approval are dropped, and this is the **complete** list —
+any other README field is carried: `canon` (it becomes the dict key, the slug), `entry` and the quantity's
+`kind: quantity` (document-structure markers; the container says which it is), `output` (a readable copy
+of `outputs` / `produce`, checked equal by `check_canon.py`), `status` (the approval state; it changes no
+value, every result is `validated: false`), `shape` (an approval classification), `tags`, `tex`,
+`source_status` and `dimensional_check`. A new README field is carried unless this list is extended.
 Normalisation adds nothing but: `bind` values become a quantity reference or `{const, source}`; absent
 optional fields get their stated default (`when`/`given` absent = always, precondition `applications`
 absent = all, `cost` derived, ch. 8.7); the default application is written out explicitly; the `embeds`
