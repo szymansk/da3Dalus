@@ -7,16 +7,17 @@ every hit builds a fresh object, so no caller can corrupt another caller's resul
 
 import hashlib
 import logging
+from collections import OrderedDict
 from collections.abc import Mapping
 from pathlib import Path
-from typing import Self
+from typing import Protocol, Self, runtime_checkable
 
 from aero_kernel.canonical import sha256_of
 from aero_kernel.errors import check_finite_json
 from aero_kernel.schema import Accuracy, KernelWarning
 from pydantic import BaseModel, ConfigDict, JsonValue, model_validator
 
-__all__ = ["Entry", "build_digest", "cache_key"]
+__all__ = ["Entry", "MemoryCache", "NodeStore", "build_digest", "cache_key"]
 
 logger = logging.getLogger(__name__)
 
@@ -147,3 +148,104 @@ class Entry(BaseModel):
             ValueError: If the text is not a valid entry.
         """
         return cls.model_validate_json(text)
+
+
+_KEY_PREFIX = 12
+
+
+def _check_scope(scope: str) -> None:
+    """Raise ``ValueError`` for an empty scope (a programming error, ch. 8.4)."""
+    if not scope:
+        msg = "scope must be a non-empty string"
+        raise ValueError(msg)
+
+
+def _short(key: str) -> str:
+    """The key prefix that is logged instead of the whole key."""
+    return key[:_KEY_PREFIX]
+
+
+@runtime_checkable
+class NodeStore(Protocol):
+    """Where the node cache keeps its entries (ch. 8.4); a caller may supply its own.
+
+    Implementations are safe for concurrent use, keep entries serialised and return a fresh
+    :class:`Entry` on every hit. A hit never crosses scopes.
+    """
+
+    async def get(self, scope: str, key: str) -> Entry | None:
+        """Return a fresh copy of the entry of ``key`` in ``scope``, or ``None`` on a miss."""
+        ...
+
+    async def put(self, scope: str, key: str, entry: Entry) -> None:
+        """Store ``entry`` under ``key`` in ``scope``, replacing an earlier one."""
+        ...
+
+    async def drop_scope(self, scope: str) -> None:
+        """Remove every entry of ``scope``; other scopes are untouched."""
+        ...
+
+
+class MemoryCache:
+    """An in-process LRU store: one global limit and an optional limit per scope (ch. 8.4).
+
+    The methods are coroutines for protocol compatibility only; none awaits inside its critical
+    section, so on one event loop no lock is needed.
+    """
+
+    def __init__(self, *, max_entries: int, max_entries_per_scope: int | None = None) -> None:
+        """Create an empty cache.
+
+        Args:
+            max_entries: Entries kept over all scopes; the least recently used one is evicted.
+            max_entries_per_scope: Optional limit per scope; evicts that scope's least recently
+                used entry, so one scope cannot push out the others.
+
+        Raises:
+            ValueError: If a limit is below 1.
+        """
+        if max_entries < 1 or (max_entries_per_scope is not None and max_entries_per_scope < 1):
+            msg = "cache limits must be at least 1"
+            raise ValueError(msg)
+        self._max_entries = max_entries
+        self._max_per_scope = max_entries_per_scope
+        self._entries: OrderedDict[tuple[str, str], str] = OrderedDict()
+
+    async def get(self, scope: str, key: str) -> Entry | None:
+        """Return a fresh copy of the entry, marking it most recently used."""
+        _check_scope(scope)
+        text = self._entries.get((scope, key))
+        if text is None:
+            logger.debug("cache miss %s", _short(key), extra={"scope": scope})
+            return None
+        self._entries.move_to_end((scope, key))
+        logger.debug("cache hit %s", _short(key), extra={"scope": scope})
+        return Entry.from_json(text)
+
+    async def put(self, scope: str, key: str, entry: Entry) -> None:
+        """Store the serialised entry and evict by the limits."""
+        _check_scope(scope)
+        self._entries[(scope, key)] = entry.to_json()
+        self._entries.move_to_end((scope, key))
+        if self._max_per_scope is not None:
+            self._evict_scope(scope, self._max_per_scope)
+        while len(self._entries) > self._max_entries:
+            self._evict(next(iter(self._entries)))
+
+    async def drop_scope(self, scope: str) -> None:
+        """Remove every entry of ``scope``."""
+        _check_scope(scope)
+        for stored in [item for item in self._entries if item[0] == scope]:
+            del self._entries[stored]
+        logger.debug("cache scope dropped", extra={"scope": scope})
+
+    def _evict_scope(self, scope: str, limit: int) -> None:
+        """Evict the least recently used entries of ``scope`` until it holds ``limit``."""
+        members = [item for item in self._entries if item[0] == scope]
+        for stored in members[: max(0, len(members) - limit)]:
+            self._evict(stored)
+
+    def _evict(self, stored: tuple[str, str]) -> None:
+        """Remove one entry and log it."""
+        del self._entries[stored]
+        logger.debug("cache evict %s", _short(stored[1]), extra={"scope": stored[0]})
