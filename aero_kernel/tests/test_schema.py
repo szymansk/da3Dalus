@@ -65,6 +65,7 @@ class TestKernelWarning:
             "conflicting_mass": WarningSeverity.PRACTICE,
             "default_target_used": WarningSeverity.PRACTICE,
             "deflection_without_flap": WarningSeverity.PRACTICE,
+            "geometry_deflection_ignored": WarningSeverity.PRACTICE,
             "precondition_unchecked": WarningSeverity.PRACTICE,
             "precondition_violated": WarningSeverity.DEFECT,
             "postcondition_unchecked": WarningSeverity.PRACTICE,
