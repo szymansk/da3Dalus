@@ -5,13 +5,56 @@ values; converting typed results to and from JSON is the engine's job. Entries a
 every hit builds a fresh object, so no caller can corrupt another caller's result.
 """
 
+import hashlib
+import logging
 from collections.abc import Mapping
+from pathlib import Path
 
 from aero_kernel.canonical import sha256_of
 from aero_kernel.schema import Accuracy
 from pydantic import JsonValue
 
-__all__ = ["cache_key"]
+__all__ = ["build_digest", "cache_key"]
+
+logger = logging.getLogger(__name__)
+
+_PACKAGE_ROOT = Path(__file__).resolve().parent
+_EXCLUDED_DIRECTORIES = frozenset({"tests", "tools", "importer"})
+_CANON_MODEL = "canon/canon_model.json"
+
+
+def _file_hash(path: Path) -> str:
+    """Return the hex SHA-256 of the bytes of ``path``."""
+    return hashlib.sha256(path.read_bytes()).hexdigest()
+
+
+def build_digest(root: Path | None = None) -> str:
+    """Hash the code and the canon model, so any change invalidates every cache entry (ch. 8.4).
+
+    Covers every ``.py`` file of the package except those under ``tests/``, ``tools/`` and
+    ``importer/`` at the package top level, plus ``canon/canon_model.json``. A missing canon model is
+    a defined state (hash ``null``), not an error. The function is pure; the owner memoises it.
+
+    Args:
+        root: The package directory; ``None`` means the installed ``aero_kernel`` package.
+
+    Returns:
+        ``"sha256:"`` plus the hex digest.
+    """
+    base = _PACKAGE_ROOT if root is None else root
+    files: list[JsonValue] = []
+    for path in sorted(base.rglob("*.py")):
+        relative = path.relative_to(base)
+        if relative.parts[0] in _EXCLUDED_DIRECTORIES and len(relative.parts) > 1:
+            continue
+        files.append({"path": relative.as_posix(), "sha256": _file_hash(path)})
+    canon = base / _CANON_MODEL
+    if canon.is_file():
+        files.append({"path": _CANON_MODEL, "sha256": _file_hash(canon)})
+    else:
+        logger.debug("canon model absent from the build digest: %s", _CANON_MODEL)
+        files.append({"path": _CANON_MODEL, "sha256": None})
+    return sha256_of(files)
 
 
 def cache_key(
