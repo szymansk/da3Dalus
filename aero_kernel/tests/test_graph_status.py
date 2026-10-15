@@ -201,3 +201,46 @@ def test_an_error_propagates_through_an_optional_read() -> None:
     assert propagated.status is QuantityStatus.ERROR
     assert propagated.error is not None
     assert propagated.error.category is ErrorCategory.UPSTREAM_FAILED
+
+
+def other_chain() -> Subtree:
+    """The diamond of the status tests, in the namespace ``other``."""
+    model = model_of(
+        {s: quantity("input" if s == "a" else "derived") for s in "abcd"},
+        {
+            "f-b": formula({"x": "a"}, {"y": "b"}, namespace="other"),
+            "f-c": formula({"x": "a"}, {"y": "c"}, namespace="other"),
+            "f-d": formula({"p": "b", "q": "c"}, {"y": "d"}, namespace="other"),
+        },
+        namespace="other",
+    )
+    return CanonGraph(model).subtree(["other:d"])
+
+
+def other_id(slug: str) -> NodeId:
+    return NodeId(formula=f"other:{slug}", application="default")
+
+
+def test_a_slug_of_another_namespace_is_written_qualified_in_messages_and_errors() -> None:
+    subtree = other_chain()
+    skipped = subtree.propagate(
+        other_id("f-d"), {other_id("f-b"): SKIPPED, other_id("f-c"): OK}, quantity="other:d"
+    )
+    assert skipped is not None
+    assert skipped.reason is not None
+    assert "`other:b`" in skipped.reason.message
+    errored = subtree.propagate(
+        other_id("f-d"),
+        {other_id("f-b"): failed("other:b"), other_id("f-c"): OK},
+        quantity="other:d",
+    )
+    assert errored is not None
+    assert errored.error is not None
+    assert errored.error.formula == "other:f-d"
+
+
+def test_a_calc_slug_is_written_bare_in_messages_and_errors() -> None:
+    propagated = run(failed("b"), OK)
+    assert propagated is not None
+    assert propagated.error is not None
+    assert propagated.error.formula == "f-d"

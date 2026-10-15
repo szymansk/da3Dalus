@@ -9,12 +9,12 @@ from collections.abc import Iterable, Mapping
 from enum import StrEnum
 from typing import Annotated, Literal, Self
 
-from aero_kernel.canon.model import DEFAULT_NAMESPACE
 from aero_kernel.errors import (
     ErrorCategory,
     KernelError,
     check_finite_json,
     parse_world_assignment,
+    qualify,
 )
 from aero_kernel.geometry import AirplaneGeometry
 from pydantic import BaseModel, ConfigDict, Field, JsonValue, model_validator
@@ -421,7 +421,7 @@ class ComputeRequest(BaseModel):
         """Reject a quantity requested twice, also in two spellings (bare means ``calc:``)."""
         seen: dict[str, str] = {}
         for slug in self.quantities:
-            qualified = slug if ":" in slug else f"{DEFAULT_NAMESPACE}:{slug}"
+            qualified = qualify(slug)
             if qualified in seen:
                 first = seen[qualified]
                 msg = f"duplicate quantity in request: {slug}" + (

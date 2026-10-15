@@ -266,6 +266,24 @@ def test_public_names_of_graph_are_pinned() -> None:
         "Subtree",
         "WhenFacts",
         "facts_from_geometry",
-        "qualify",
         "unmet_condition",
     ]
+
+
+@pytest.mark.parametrize("request_slug", ["stall-speed", "calc:stall-speed"])
+def test_the_resolved_quantity_keeps_the_spelling_of_the_request(
+    flight_canon: CanonModel, request_slug: str
+) -> None:
+    resolved = CanonGraph(flight_canon).resolve(request_slug)
+    assert isinstance(resolved, Resolved)
+    assert resolved.requested == request_slug
+    subtree = CanonGraph(flight_canon).subtree([request_slug])
+    assert subtree.requested[0].requested == request_slug
+
+
+def test_a_malformed_slug_is_an_unknown_quantity_with_the_raw_spelling(
+    flight_canon: CanonModel,
+) -> None:
+    error = CanonGraph(flight_canon).resolve("Not A Slug")
+    assert isinstance(error, KernelError)
+    assert (error.code, error.quantity) == ("unknown_quantity", "Not A Slug")
