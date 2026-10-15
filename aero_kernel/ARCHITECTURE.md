@@ -408,6 +408,17 @@ quantity.
     "a flap is every surface that acts like a flap"): `has_aileron` holds for a surface acting as aileron,
     flaperon or elevon; the butterfly condition needs a flap-acting surface **and a distinct**
     aileron-acting one, because crow deflects both at once (a flaperon alone cannot). Without ailerons the roll quantities are `not_applicable`, code `condition_not_met`.
+    **Evaluation** (`graph.facts_from_geometry`), from `trailing_edge_device.role` only (never
+    `control_surface`, never a name); a device is one `(wing key, x_sec index)`:
+    - `has_aileron`: some device has role `aileron`, `flaperon` or `elevon`.
+    - `has_separate_flap_and_aileron`: some device A has role `flap` or `flaperon` and some **other**
+      device B ≠ A has role `aileron`, `flaperon` or `elevon`.
+    - `has_vertical_tail` (**provisional, D9: awaiting the maintainer's confirmation**): the main wing is
+      the symmetric wing with the largest planform area; a vertical tail is another wing that is not
+      symmetric (a fin) or carries a device of role `rudder` or `ruddervator` (a V-tail), and whose root
+      leading edge lies behind the main wing's root trailing edge (`x_le + chord` of its first section).
+      Winglets are sections of the main wing, a centre fin of a tailless wing overlaps its root chord: both
+      do not count. No angle threshold is used.
   - `given`: a list of input quantities (`role: input` or `target`, no `default`). The application exists
     only if every one of them is supplied in `AircraftInput.values`. A target the designer did not set is
     not a missing input but no requirement (ch. 8.11).
