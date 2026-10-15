@@ -16,6 +16,7 @@ from aero_kernel.errors import (
     format_world_assignment,
     internal_error_from_exception,
     is_slug,
+    is_world_name,
     parse_world_assignment,
 )
 from pydantic import JsonValue, ValidationError
@@ -732,3 +733,15 @@ def test_is_slug_accepts_kebab_case(text: str) -> None:
 )
 def test_is_slug_rejects_everything_else(text: str) -> None:
     assert not is_slug(text)
+
+
+@pytest.mark.parametrize("text", ["avl", "textbook", "aero_buildup", "w1_x2"])
+def test_is_world_name_accepts_snake_case(text: str) -> None:
+    assert is_world_name(text)
+
+
+@pytest.mark.parametrize(
+    "text", ["", "Avl", "aero-buildup", "_a", "a_", "a__b", "1a", "a b", "a\n"]
+)
+def test_is_world_name_rejects_everything_else(text: str) -> None:
+    assert not is_world_name(text)

@@ -28,6 +28,7 @@ logger = logging.getLogger(__name__)
 
 __all__ = [
     "CODE_CATALOGUE",
+    "WORLD_NAME_REGEX",
     "ErrorCategory",
     "FormulaError",
     "KernelError",
@@ -37,6 +38,7 @@ __all__ = [
     "format_world_assignment",
     "internal_error_from_exception",
     "is_slug",
+    "is_world_name",
     "parse_world_assignment",
 ]
 
@@ -151,12 +153,19 @@ def is_slug(text: str) -> bool:
     return _SLUG_PATTERN.fullmatch(text) is not None
 
 
-_WORLD_PATTERN = re.compile(r"[a-z][a-z0-9]*(_[a-z0-9]+)*")
+# The regular expression of a world name, public so the canon model's JSON Schema states the same.
+WORLD_NAME_REGEX = r"[a-z][a-z0-9]*(_[a-z0-9]+)*"
+_WORLD_PATTERN = re.compile(WORLD_NAME_REGEX)
+
+
+def is_world_name(text: str) -> bool:
+    """Tell whether ``text`` is a method-world name: snake_case, e.g. ``aero_buildup``."""
+    return _WORLD_PATTERN.fullmatch(text) is not None
 
 
 def _check_world_pair(slug: str, world: str) -> None:
     """Raise ``ValueError`` unless ``slug`` is kebab-case and ``world`` snake_case."""
-    if not is_slug(slug) or not _WORLD_PATTERN.fullmatch(world):
+    if not is_slug(slug) or not is_world_name(world):
         msg = f"world assignment has a malformed pair {slug}={world}"
         raise ValueError(msg)
 

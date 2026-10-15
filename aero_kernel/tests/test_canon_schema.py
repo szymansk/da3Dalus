@@ -79,3 +79,13 @@ def test_schema_and_types_reject_the_same_documents(
         CanonModel.model_validate(raw)
     with pytest.raises(jsonschema.ValidationError):
         jsonschema.validate(raw, load_schema())
+
+
+def test_schema_and_types_agree_on_world_names() -> None:
+    raw = base_model()
+    formula = raw["namespaces"]["calc"]["formulas"]["weight-from-mass"]
+    formula.update(uncertainty="interval", worlds=["avl", "Bad World"])
+    with pytest.raises(ValidationError):
+        CanonModel.model_validate(raw)
+    with pytest.raises(jsonschema.ValidationError):
+        jsonschema.validate(raw, load_schema())
