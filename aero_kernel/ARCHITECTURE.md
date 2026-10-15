@@ -126,7 +126,7 @@ aero_kernel/
   importer/         parse.py · normalise.py · validate.py · diff.py · write.py · __main__.py
                     external canon document → canon model (ch. 8.9); not imported at runtime
   graph.py          subtree, order, world expansion, upstream_failed
-  registry.py       @formula(slug), @precondition(slug, id) — implementations ↔ canon model (ch. 8.12)
+  registry.py       @formula(slug), @precondition(slug, id), @postcondition(slug, id) — implementations ↔ canon model (ch. 8.12)
   formulas/         one file per canon formula (file name = slug, with underscores)
   solvers/          aerobuildup.py · avl.py · opti.py · atmosphere.py · data.py (KAT, APC providers)
   cache.py          NodeStore protocol; MemoryCache (LRU), DiskCache
@@ -925,18 +925,19 @@ They are the first thing a developer or an agent reads to check a change and to 
 | Q32 | Embedding | `importer --check` rejects an embedding cycle, an embedded formula with worlds, and an embedded input that is neither bound, produced in the closure nor generic; the traceability test fails when an embedder does not call the embedded relation function; `mass-envelope` with `neutral-point` in three worlds runs three times and returns `cg-envelope-over-mass` as a pointwise interval |
 | Q33 | Flap deflection: beyond the stop, flapless, missing | `flap-deflection-landing` larger than the flap's `positive_deflection_deg`: `airplane-landing` carries exactly the given deflection, `stall-speed-landing` computes, no error, no clamp and no warning about the stop. Flapless, no deflection given: `airplane-landing` is the unchanged aircraft, `stall-speed-landing` equals `stall-speed`, no warning, one `INFO` line. Flapless with a deflection: same values plus `deflection_without_flap`. Flaps, no deflection: `stall-speed-landing` is `missing_input` (`values.flap-deflection-landing`), `approach-speed` `upstream_failed`; `stall-speed` still computes |
 | Q34 | Angles, not stops | `roll-rate-approach` at a given `aileron-deflection` beyond the aileron's stop computes, no stop warning; `aileron-deflection-required-approach` for a target above the AeroBuildup maximum: that world fails with `unsupported_configuration`, code `target_above_method_maximum` (maximum roll rate and its δ_a in `detail`), the AVL world computes, the quantity is `error` with the AVL value in `detail.worlds_ok` — no clipped angle, no narrowed interval. AVL at `|p·b/2V| > 0.10` carries the `defect` warning from the adapter |
-| Q35 | Roll without ailerons, scaled crow | an aircraft without a surface acting as aileron, flaperon or elevon: `roll-rate-approach` and `aileron-deflection-required-approach` are `not_applicable` (`condition_not_met`), no `missing_input` for `aileron-deflection`; a flaperon-only wing has `has_aileron` but not the butterfly condition (crow needs a flap-acting and a distinct aileron-acting surface at once), so the butterfly quantities are `not_applicable`; the butterfly curves at mix `s` use `s · crow-flap-deflection` and `s · crow-aileron-deflection`, independent of the stops |
+| Q35 | Roll without ailerons; crow from the landing configuration | an aircraft without a surface acting as aileron, flaperon or elevon: `roll-rate-approach` and `aileron-deflection-required-approach` are `not_applicable` (`condition_not_met`), no `missing_input` for `aileron-deflection`; a flaperon-only wing has `has_aileron` but not the butterfly condition (crow needs a flap-acting and a distinct aileron-acting surface at once), so the butterfly quantities are `not_applicable`; with separate flaps and ailerons the butterfly curves start from `airplane-landing` (maintainer E2, 2026-10-15): at mix `s` the flap is at `flap-deflection-landing + s · (crow-flap-deflection − flap-deflection-landing)` and the aileron at `s · crow-aileron-deflection` (absolute end angles at `s = 1`, independent of the stops); at `s = 0` the stall speed agrees with `stall-speed-landing` to solver tolerance and `butterfly-approach-speed-curve(0)` equals `approach-speed` exactly (normalised by `V_S0(0)` of the same sweep) |
 | Q36 | Embedded postcondition and variables | a stub `stall-speed` whose optimum is not the first C_L peak at one sweep mass: `mass-envelope` is `error`, `postcondition_violated`, `detail.embedded = stall-speed.clean` with that mass; with `m_current` set, the embedded `m` still takes every sweep value (`variables:`), never the current mass; the importer rejects a bare `stall-speed` in `embeds:` and a closure input that is neither variable, input nor produced |
+| Q37 | Postcondition on a curve | a stub stall solve that lands on the post-stall peak at one mix `s`: `butterfly-approach` is `error`, `postcondition_violated` (`optimum_at_first_cl_peak`, the failing `s` in `detail`); all four butterfly outputs are discarded, none returned; the check function is the one `stall-speed` uses |
 
 ## 11. Risks and technical debt
 
 | Risk | Consequence | Handling |
 |---|---|---|
-| **The canon is not yet machine-readable.** Applications, preconditions and parameter names exist only in prose. | The importer cannot be built against the real canon. | **Decided** (maintainer, 2026-10-14): extend the format for all entries first, #1181. Until then #1174 builds and tests loader, graph and engine against small hand-written fixture models in `tests/fixtures/`; the importer follows #1181. |
+| **The canon format is new.** #1181 made every entry machine-readable (PR #1182); the importer is the first program to read it in full. | Format gaps surface only when the importer runs against the real canon. | The importer is built and tested against the real canon document (`importer --check` in CI); its findings are fixed in the canon (ch. 8.9). Loader, graph and engine unit tests keep small hand-written fixture models in `tests/fixtures/`, validated against `canon_model.schema.json`. No entry carries an `# ESCALATED` field any more. |
 | 55 of 57 canon entries are `draft` | Tests run against unapproved entries | Intended (Epic #1173); golden values are called "regression" |
 | CI has no aero dependencies | Solver formulas are untested in the fast tier | Mock the adapters; job `aero-kernel-aero` (#1177) |
 | Solver convergence (stall plateau, bounds) | `not_converged` occurs often | Robustness run (#1178), K32 procedure |
-| The `stall-speed` application table uses old register names (`v_stall_clean_mps`) instead of canon slugs | Names do not match the canon model | Becomes canon slugs in #1181 |
+| The `stall-speed` prose still carries register-era context (implementation tables, conflict notes) next to the structured fields | A reader may take the prose for the binding | Resolved by #1181 for the importer: the applications are front-matter fields with canon slugs, and the importer never reads prose (ch. 8.9). The prose is for approval only. |
 
 ## 12. Glossary
 
@@ -944,9 +945,11 @@ They are the first thing a developer or an agent reads to check a change and to 
 |---|---|---|
 | **Quantity** | named physical quantity with unit and role (`input`, `derived`, `output`, `target`) | Größe |
 | **Formula** | one relation between quantities; `kind`: law, procedure, optimization, fit, rating | Formel |
-| **Application** | a formula with bound inputs and a condition; produces one or more named quantities | Anwendung |
+| **Application** | a formula with bound inputs and a condition (`when`, `given`); produces one or more named quantities | Anwendung |
 | **Binding** | which quantity is bound to an input of a formula | Bindung |
-| **Precondition** | what must hold for the inputs so that the application means what it claims | Vorbedingung |
+| **Precondition** | what must hold for the inputs so that the application means what it claims; checked before the call | Vorbedingung |
+| **Postcondition** | what a computed output must satisfy to mean what it claims; checked after the call, also inside an embedder (ch. 8.5) | Nachbedingung |
+| **Embedding** | a formula evaluating another formula's relation inside itself, over its own `variables` (`embeds:`, ch. 8.5); not a value edge | Einbettung |
 | **World** | one method that runs through the whole chain for an uncertain quantity (A11) | Welt |
 | **Probe** | a second path to a quantity, only as a check (A7) | Probe |
 | **Canon document** | the human-readable canon in `_reversa_sdd/calculations/canon/` (external source) | Rechenkanon |
@@ -1035,4 +1038,5 @@ model (part of `IMPORT_REPORT.md`).
 *57 entries; core chain 27, probes 6, later 24. `airplane-configuration` added, `inverted-max-lift-coefficient` removed (its output is `stall-speed`'s `inverted` application).*
 
 **Finding from the mapping.** All 57 entries fit the model (five `kind`s, eight tools, three `shape`s,
-worlds, cost classes). What is missing is not a concept but **machine-readability** in the canon (#1181).
+worlds, cost classes). The missing piece was not a concept but **machine-readability** in the canon; #1181
+delivered it (PR #1182), so the importer generates this table from now on.

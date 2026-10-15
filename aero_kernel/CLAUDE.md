@@ -15,8 +15,9 @@ then the code. Epic: #1173.
 - **Formula contract (ARCHITECTURE §8.12).** A formula is a cheap coroutine over its canon parameter names,
   returns every output parameter, and raises `FormulaError` instead of returning a substitute. Heavy work
   only through a solver adapter. It never sees the application, the request or the cache.
-- **Until #1181 is merged** the canon document is not machine-readable: build and test against hand-written
-  fixture models in `tests/fixtures/`, never against a hand-written `canon/canon_model.json`.
+- **The canon is machine-readable (#1181).** The importer is built and tested against the real canon
+  document; loader, graph and engine unit tests use small hand-written fixture models in `tests/fixtures/`
+  (validated against `canon_model.schema.json`), never a hand-written `canon/canon_model.json`.
 - **Canon changes only through the import** (`python -m aero_kernel.importer`, ARCHITECTURE §8.9). Never
   edit `canon_model.json` by hand, and never read `_reversa_sdd/` at runtime. A canon finding is fixed in
   the canon document, then re-imported. A breaking diff means: update the affected implementations and
