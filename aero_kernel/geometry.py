@@ -300,6 +300,13 @@ class WingXSec(_Frozen):
         twist: Cumulative twist against the x axis, degrees.
         dihedral: Dihedral increment at this rib (absolute on the root rib), degrees.
         airfoil: Designation or inline coordinates.
+        x_sec_type: Role of the segment starting at this rib.
+        tip_type: How the outboard end is closed; meaningful on a ``tip`` segment.
+        number_interpolation_points: Intermediate profiles used when lofting the segment.
+        control_surface: Aerodynamic view of the control surface on the segment.
+        spare_list: Spars of the segment, in order; the index carries meaning (ch. 5).
+        trailing_edge_device: Construction definition of the movable surface on the segment.
+        turbulator: Upper-surface turbulator strip on the segment.
     """
 
     xyz_le: Point3
