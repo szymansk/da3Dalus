@@ -268,7 +268,10 @@ The A11 "not validated" marker is the field `QuantityResult.validated`, not a wa
   otherwise. `value` is a float in the quantity's SI unit, or a structured value of the quantity's `type`
   (ch. 8.12). **v1 returns floats only**; the union widens with the first non-scalar formula, no placeholder
   type before that (ADR 0021). Numbers are **strict and finite**: `value`, the interval bounds and world
-  values accept an `int` or `float`, never a `bool` or a numeric string, and never NaN or ±inf.
+  values accept an `int` or `float`, never a `bool` or a numeric string, and never NaN or ±inf. The same holds inside every free JSON field
+  (`detail` of errors and warnings, `solver_settings`): a non-finite number anywhere in the tree is
+  rejected — one shared recursive check in `errors.py` — because JSON would silently turn it into `null`
+  (ADR 0020).
 - `ok` requires `tool` and `application` (Q3: every value leads back to its application and tool). A **requested** quantity whose `type` is not `scalar` (`polar-stall`,
   `airplane-landing`, a `curve`) is therefore, per quantity, `error` with category `not_implemented`, code
   `non_scalar_result`, decided at request time before anything is computed; the rest of the request is
