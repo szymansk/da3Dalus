@@ -6,6 +6,7 @@ Adapters know no canon names. They return warnings without ``origin``; the engin
 import importlib.metadata
 import importlib.util
 import logging
+import math
 from collections.abc import Mapping, Sequence
 from typing import ClassVar
 
@@ -143,11 +144,20 @@ def regime(
         (M > 0.6), as applicable.
 
     Raises:
-        ValueError: If an argument is not physical.
+        ValueError: If an argument is not finite or not physical.
     """
     if not chords_m:
         msg = "chords_m must be non-empty"
         raise ValueError(msg)
+    for name, value in (
+        *(("chord", chord) for chord in chords_m),
+        ("v_ms", v_ms),
+        ("speed_of_sound_ms", speed_of_sound_ms),
+        ("kinematic_viscosity_m2s", kinematic_viscosity_m2s),
+    ):
+        if not math.isfinite(value):
+            msg = f"{name} must be finite, got {value}"
+            raise ValueError(msg)
     for chord in chords_m:
         _require_positive("chord", chord)
     if v_ms < 0.0:

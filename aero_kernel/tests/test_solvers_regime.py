@@ -48,6 +48,7 @@ def test_bubble_sensitive_between_the_band_start_and_70000() -> None:
 @pytest.mark.parametrize(
     ("re_value", "expected"),
     [
+        (20_000.0, ["reynolds_outside_band"]),
         (29_999.0, ["reynolds_outside_band"]),
         (30_000.0, ["reynolds_bubble_sensitive"]),
         (69_999.0, ["reynolds_bubble_sensitive"]),
@@ -108,6 +109,12 @@ def test_mach_detail_and_severity() -> None:
         {"v_ms": -1.0},
         {"speed_of_sound_ms": 0.0},
         {"kinematic_viscosity_m2s": 0.0},
+        *(
+            {name: value}
+            for name in ("v_ms", "speed_of_sound_ms", "kinematic_viscosity_m2s")
+            for value in (math.nan, math.inf, -math.inf)
+        ),
+        *({"chords_m": [0.3, value]} for value in (math.nan, math.inf, -math.inf)),
     ],
 )
 def test_rejects_non_physical_arguments(kwargs: dict[str, object]) -> None:
