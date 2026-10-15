@@ -7,6 +7,7 @@ This module is independent of the result types: ``schema.py`` re-exports :class:
 """
 
 import logging
+import math
 import re
 from collections.abc import Mapping, Sequence
 from enum import StrEnum
@@ -31,6 +32,7 @@ __all__ = [
     "FormulaError",
     "KernelError",
     "aggregate_upstream",
+    "check_finite_json",
     "flags_for",
     "format_world_assignment",
     "internal_error_from_exception",
@@ -92,6 +94,30 @@ _FORMULA_CATEGORIES = frozenset(
 
 
 _DETAIL_ADAPTER: TypeAdapter[dict[str, JsonValue]] = TypeAdapter(dict[str, JsonValue])
+
+
+def check_finite_json(value: JsonValue, path: str) -> None:
+    """Raise ``ValueError`` if a JSON tree holds NaN or infinity (ch. 8.3).
+
+    They would serialise as ``null`` and fail re-validation.
+
+    Args:
+        value: A JSON value: dicts and lists are walked recursively.
+        path: Where ``value`` sits, for the message (``detail``); extended while walking.
+
+    Raises:
+        ValueError: Naming the path of the first non-finite float.
+    """
+    if isinstance(value, float):
+        if not math.isfinite(value):
+            msg = f"{path} must be finite, got {value}"
+            raise ValueError(msg)
+    elif isinstance(value, dict):
+        for key, item in value.items():
+            check_finite_json(item, f"{path}.{key}")
+    elif isinstance(value, list):
+        for index, item in enumerate(value):
+            check_finite_json(item, f"{path}[{index}]")
 
 
 def _check_code(code: str, category: ErrorCategory) -> None:
@@ -271,6 +297,7 @@ class KernelError(BaseModel):
         _check_code(self.code, self.category)
         if self.world is not None:
             parse_world_assignment(self.world)
+        check_finite_json(self.detail, "detail")
         if self.category is _UPSTREAM:
             expected = _root_flags(_roots(self))
         else:
@@ -336,6 +363,7 @@ class FormulaError(Exception):
         except ValidationError as error:
             msg = f"FormulaError detail must be JSON-serialisable: {error}"
             raise ValueError(msg) from error
+        check_finite_json(checked_detail, "FormulaError detail")
         super().__init__(message)
         self.category = category
         self.code = code

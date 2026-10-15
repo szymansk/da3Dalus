@@ -11,6 +11,7 @@ from typing import Annotated, Literal, Self
 from aero_kernel.errors import (
     ErrorCategory,
     KernelError,
+    check_finite_json,
     parse_world_assignment,
 )
 from pydantic import BaseModel, ConfigDict, Field, JsonValue, model_validator
@@ -89,6 +90,7 @@ class KernelWarning(BaseModel):
         """Reject codes outside the table, contradicting severities and a malformed world."""
         if self.world is not None:
             parse_world_assignment(self.world)
+        check_finite_json(self.detail, "detail")
         expected = WARNING_CATALOGUE.get(self.code)
         if expected is None:
             msg = f"code {self.code} is not in the warning catalogue; add it to WARNING_CATALOGUE"
@@ -326,6 +328,12 @@ class Provenance(BaseModel):
     accuracy: Accuracy
     solver_settings: dict[str, JsonValue] = Field(default_factory=dict)
     defaults_used: tuple[DefaultUsed, ...] = ()
+
+    @model_validator(mode="after")
+    def _check_solver_settings(self) -> Self:
+        """Reject NaN and infinity anywhere in the solver settings."""
+        check_finite_json(self.solver_settings, "solver_settings")
+        return self
 
 
 class ComputeResult(BaseModel):

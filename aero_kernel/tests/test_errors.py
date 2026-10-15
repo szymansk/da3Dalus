@@ -11,6 +11,7 @@ from aero_kernel.errors import (
     FormulaError,
     KernelError,
     aggregate_upstream,
+    check_finite_json,
     flags_for,
     format_world_assignment,
     internal_error_from_exception,
@@ -650,3 +651,60 @@ def test_kernel_error_rejects_malformed_world(world: str) -> None:
 def test_world_helpers_live_in_errors() -> None:
     assert parse_world_assignment("a-b=c_d") == {"a-b": "c_d"}
     assert format_world_assignment({"z": "y", "a": "b"}) == "a=b,z=y"
+
+
+# ---- finite JSON (ch. 8.3) ----------------------------------------------------------------
+
+_NON_FINITE = [float("nan"), float("inf"), float("-inf")]
+
+
+def _nested(bad: float, shape: str) -> dict[str, JsonValue]:
+    if shape == "top":
+        return {"x": bad}
+    if shape == "dict":
+        return {"outer": {"x": bad}}
+    return {"outer": [1.0, {"x": [bad]}]}
+
+
+@pytest.mark.parametrize("shape", ["top", "dict", "list"])
+@pytest.mark.parametrize("bad", _NON_FINITE)
+class TestNonFiniteDetail:
+    def test_kernel_error_rejects(self, bad: float, shape: str) -> None:
+        with pytest.raises(ValidationError, match="finite"):
+            KernelError(
+                code="not_converged",
+                category=ErrorCategory.NOT_CONVERGED,
+                message="m",
+                hint="h",
+                detail=_nested(bad, shape),
+            )
+
+    def test_formula_error_rejects(self, bad: float, shape: str) -> None:
+        with pytest.raises(ValueError, match="finite"):
+            FormulaError(
+                ErrorCategory.NOT_CONVERGED, "not_converged", "m", "h", detail=_nested(bad, shape)
+            )
+
+    def test_check_names_the_path(self, bad: float, shape: str) -> None:
+        with pytest.raises(ValueError, match="detail"):
+            check_finite_json(_nested(bad, shape), "detail")
+
+
+def test_finite_json_values_pass() -> None:
+    detail: dict[str, JsonValue] = {
+        "f": 1.5,
+        "i": 2,
+        "b": True,
+        "n": None,
+        "s": "text",
+        "l": [0.0, {"k": -3.0}],
+    }
+    check_finite_json(detail, "detail")
+    error = KernelError(
+        code="not_converged",
+        category=ErrorCategory.NOT_CONVERGED,
+        message="m",
+        hint="h",
+        detail=detail,
+    )
+    assert error.detail == detail

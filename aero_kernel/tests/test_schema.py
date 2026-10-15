@@ -20,7 +20,7 @@ from aero_kernel.schema import (
     WarningSeverity,
     dedupe_warnings,
 )
-from pydantic import ValidationError
+from pydantic import JsonValue, ValidationError
 
 
 def make_warning(**overrides: object) -> KernelWarning:
@@ -657,3 +657,30 @@ class TestRulings:
 def test_tool_versions_keys_must_be_non_empty() -> None:
     with pytest.raises(ValidationError):
         make_provenance(tool_versions={"": "1.0"})
+
+
+@pytest.mark.parametrize("bad", NON_FINITE)
+@pytest.mark.parametrize("shape", ["top", "dict", "list"])
+class TestNonFiniteJsonFields:
+    @staticmethod
+    def nested(bad: float, shape: str) -> dict[str, JsonValue]:
+        shapes: dict[str, dict[str, JsonValue]] = {
+            "top": {"x": bad},
+            "dict": {"outer": {"x": bad}},
+            "list": {"outer": [1.0, {"x": [bad]}]},
+        }
+        return shapes[shape]
+
+    def test_warning_detail_rejects(self, bad: float, shape: str) -> None:
+        with pytest.raises(ValidationError, match="finite"):
+            make_warning(detail=self.nested(bad, shape))
+
+    def test_solver_settings_reject(self, bad: float, shape: str) -> None:
+        with pytest.raises(ValidationError, match="finite"):
+            make_provenance(solver_settings=self.nested(bad, shape))
+
+
+def test_finite_json_passes_in_warning_detail_and_solver_settings() -> None:
+    value = {"f": 1.5, "i": 2, "b": True, "n": None, "s": "t", "l": [0.0, {"k": -3.0}]}
+    assert make_warning(detail=value).detail == value
+    assert make_provenance(solver_settings=value).solver_settings == value
