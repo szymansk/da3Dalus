@@ -15,6 +15,18 @@ tags:
   - shape/law
   - kind/procedure
   - status/draft
+inputs:
+  airplane: airplane
+  m: aircraft-mass
+  g: gravity
+  rho: air-density
+  e_bat: battery-capacity
+  eta: propulsive-efficiency
+  v_cruise_target: cruise-speed-target
+outputs: {t_cruise: endurance-at-cruise-target, r_cruise: range-at-cruise-target}
+applications:
+  - id: at_cruise_speed_target
+    given: [cruise-speed-target]
 ---
 
 # Endurance and range at the mission's cruise speed

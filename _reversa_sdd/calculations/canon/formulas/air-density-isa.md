@@ -15,6 +15,8 @@ tags:
   - shape/law
   - kind/law
   - status/approved
+inputs: {h: altitude}
+outputs: {rho: air-density}
 ---
 
 # ISA air density at altitude

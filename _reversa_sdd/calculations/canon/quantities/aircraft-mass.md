@@ -8,6 +8,8 @@ status: approved
 tags:
   - canon/quantity
   - role/input
+type: scalar
+positive: true
 ---
 
 # Aircraft design mass · `m`
@@ -16,4 +18,4 @@ Take-off mass of the aircraft. **An input of the canon** (maintainer, 2026-10-02
 
 **Unit.** `kg`
 
-**Used by.** [[aileron-throw-fraction]] · [[best-angle-of-climb]] · [[best-rate-of-climb]] · [[butterfly-approach]] · [[cruise-target-performance]] · [[dive-speed]] · [[endurance-and-range]] · [[lateral-static-stability-app]] · [[lateral-static-stability-md]] · [[lift-coefficient-required]] · [[maneuvering-speed]] · [[max-level-speed]] · [[max-mass-structure]] · [[max-roll-rate-cruise-target]] · [[max-roll-rate]] · [[max-sustained-turn-rate]] · [[min-sustained-turn-radius]] · [[minimum-drag-speed-from-polar]] · [[minimum-sink-speed-from-polar]] · [[neutral-point]] · [[parabolic-polar-fit]] · [[spar-break-load-factor]] · [[stall-speed]] · [[static-margin-probe]] · [[weight-from-mass]] · [[wing-loading]]
+**Used by.** [[aileron-deflection-required]] · [[best-angle-of-climb]] · [[best-rate-of-climb]] · [[butterfly-approach]] · [[cruise-target-performance]] · [[dive-speed]] · [[endurance-and-range]] · [[lateral-static-stability-app]] · [[lateral-static-stability-md]] · [[lift-coefficient-required]] · [[maneuvering-speed]] · [[mass-envelope]] · [[max-level-speed]] · [[max-mass-structure]] · [[max-sustained-turn-rate]] · [[min-sustained-turn-radius]] · [[minimum-drag-speed-from-polar]] · [[minimum-sink-speed-from-polar]] · [[neutral-point]] · [[parabolic-polar-fit]] · [[roll-rate-cruise-target]] · [[roll-rate]] · [[spar-break-load-factor]] · [[spiral-parameter]] · [[stall-speed]] · [[static-margin-probe]] · [[weight-from-mass]] · [[wing-loading]]

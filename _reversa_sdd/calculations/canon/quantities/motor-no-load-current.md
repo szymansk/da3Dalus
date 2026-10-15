@@ -8,6 +8,7 @@ status: draft
 tags:
   - canon/quantity
   - role/derived
+type: scalar
 ---
 
 # Motor no-load current · `I_0`
@@ -18,4 +19,4 @@ No-load current of the fitted motor, from the parts catalogue. Missing for 18 of
 
 **Produced by.** [[airplane-components]]
 
-**Used by.** [[motor-propeller-equilibrium]]
+**Used by.** [[best-angle-of-climb]] · [[best-rate-of-climb]] · [[dive-speed]] · [[mass-envelope]] · [[max-level-speed]] · [[max-sustained-turn-rate]] · [[min-sustained-turn-radius]] · [[motor-propeller-equilibrium]] · [[static-thrust-to-weight]]

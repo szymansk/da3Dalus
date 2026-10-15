@@ -16,6 +16,22 @@ tags:
   - kind/optimization
   - status/draft
 tex: \begin{aligned}V_{max} = \max_{V,\,\alpha,\,n_{prop}}\; & V \\ \text{u.d.N.}\; & L(V,\alpha) = m\,g \\ & T(V,n_{prop}) \ge D(V,\alpha) \\ & Q_m(n_{prop}) = Q_p(V,n_{prop})\end{aligned}
+inputs:
+  airplane: airplane
+  m: aircraft-mass
+  g: gravity
+  rho: air-density
+  k_v: motor-voltage-constant
+  i_0: motor-no-load-current
+  r_m: motor-circuit-resistance
+  u_bat: battery-voltage
+  p_mot_max: motor-max-power
+  d_prop: propeller-diameter
+  eta_mot: motor-efficiency
+outputs: {v_max: max-level-speed}
+embeds: [motor-propeller-equilibrium, advance-ratio-from-speed, propeller-table-lookup, thrust-at-airspeed-from-coefficient]
+variables: [flight-speed]
+optional: [r_m]
 ---
 
 # Maximum level speed at full throttle
@@ -29,7 +45,7 @@ subject to:   L(V, alpha) = m * g
               motor-propeller torque balance at (V, n_prop)
 ```
 
-**Produces** [[max-level-speed]]  ·  **from** [[airplane]] · [[aircraft-mass]] · [[gravity]] · [[air-density]] · [[thrust-at-airspeed]]
+**Produces** [[max-level-speed]]  ·  **from** [[airplane]] · [[aircraft-mass]] · [[gravity]] · [[air-density]] · [[motor-voltage-constant]] · [[motor-no-load-current]] · [[motor-circuit-resistance]] · [[battery-voltage]] · [[motor-max-power]] · [[propeller-diameter]] · [[motor-efficiency]]
 
 **Kind: an optimisation problem**, the same shape as climb and turn: the highest speed at which full-throttle thrust still equals drag in level flight. Thrust and rpm from [[motor-propeller-equilibrium]] (route declared, `Q-PT-6`).
 

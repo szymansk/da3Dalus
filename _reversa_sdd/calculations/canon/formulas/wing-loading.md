@@ -15,6 +15,8 @@ tags:
   - shape/law
   - kind/law
   - status/draft
+inputs: {m: aircraft-mass, g: gravity, s_ref: wing-reference-area}
+outputs: {w_s: wing-loading}
 ---
 
 # Wing loading

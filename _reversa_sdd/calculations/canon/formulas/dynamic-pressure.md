@@ -15,6 +15,8 @@ tags:
   - shape/law
   - kind/law
   - status/draft
+inputs: {rho: air-density, v: flight-speed}
+outputs: {q: dynamic-pressure}
 ---
 
 # Dynamic pressure

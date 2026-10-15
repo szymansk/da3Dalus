@@ -5,7 +5,7 @@ kind: optimization
 tool: OPT
 shape: law
 status: draft
-output: stall-speed, max-lift-coefficient, stall-speed-landing, stall-speed-takeoff
+output: stall-speed, max-lift-coefficient, angle-of-attack-stall, polar-stall, inverted-max-lift-coefficient, stall-speed-landing, stall-speed-takeoff, max-lift-coefficient-landing, max-lift-coefficient-takeoff
 source_status: SOURCED
 dimensional_check: PROCEDURAL
 tags:
@@ -17,6 +17,28 @@ tags:
   - status/draft
   - flag/conflict
 tex: \begin{aligned}V_S = \min_{V,\,\alpha}\; & V \\ \text{u.d.N.}\; & L(V,\alpha) = n\,m\,g\end{aligned}
+inputs: {airplane: airplane, m: aircraft-mass, g: gravity, n_load: null, rho: air-density}
+outputs: {v_s: null, cl_max: null, alpha_s: null, polar: null}
+applications:
+  - id: clean
+    bind: {n_load: {const: 1, source: "definition of the load factor n = L/W (as stated in max-mass-structure); straight level flight means L = W"}}
+    produce: {v_s: stall-speed, cl_max: max-lift-coefficient, alpha_s: angle-of-attack-stall, polar: polar-stall}
+  - id: takeoff
+    bind: {airplane: airplane-takeoff, n_load: {const: 1, source: "definition of the load factor n = L/W (as stated in max-mass-structure); straight level flight means L = W"}}
+    produce: {v_s: stall-speed-takeoff, cl_max: max-lift-coefficient-takeoff, alpha_s: null, polar: null}
+  - id: landing
+    bind: {airplane: airplane-landing, n_load: {const: 1, source: "definition of the load factor n = L/W (as stated in max-mass-structure); straight level flight means L = W"}}
+    produce: {v_s: stall-speed-landing, cl_max: max-lift-coefficient-landing, alpha_s: null, polar: null}
+  - id: inverted
+    bind: {n_load: {const: -1, source: "definition of the load factor n = L/W (as stated in max-mass-structure); inverted level flight means L = −W"}}
+    produce: {v_s: null, cl_max: inverted-max-lift-coefficient, alpha_s: null, polar: null}
+preconditions:
+  - {id: rho_at_evaluation_altitude, parameter: rho, on_violation: warning}
+postconditions:
+  - {id: cl_max_at_stall_reynolds_number, parameter: cl_max, on_violation: error}
+  - {id: alpha_range_past_inverted_stall, parameter: polar, on_violation: error, applications: [inverted]}
+  - {id: optimum_at_first_cl_peak, parameter: cl_max, on_violation: error, applications: [clean, takeoff, landing]}
+  - {id: optimum_at_first_cl_trough, parameter: cl_max, on_violation: error, applications: [inverted]}
 ---
 
 # Stall speed from the lift balance at C_L,max
@@ -28,7 +50,7 @@ minimize over V, alpha:   V
 subject to:               L(V, alpha) = n * m * g
 ```
 
-**Produces** [[stall-speed]] · [[max-lift-coefficient]] · [[stall-speed-landing]] · [[stall-speed-takeoff]]  ·  **from** [[airplane]] · [[aircraft-mass]] · [[gravity]] · [[load-factor]] · [[air-density]]
+**Produces** [[stall-speed]] · [[max-lift-coefficient]] · [[angle-of-attack-stall]] · [[polar-stall]] · [[inverted-max-lift-coefficient]] · [[stall-speed-landing]] · [[stall-speed-takeoff]] · [[max-lift-coefficient-landing]] · [[max-lift-coefficient-takeoff]]  ·  **from** [[airplane]] · [[airplane-takeoff]] · [[airplane-landing]] · [[aircraft-mass]] · [[gravity]] · [[air-density]]
 
 **One relation, two directions.** This entry is the lift balance solved for the speed at the named condition C_L = C_L,max. [[lift-coefficient-required]] is the same relation, `n·m·g = ½·ρ·V²·S_ref·C_L`, solved the other way. Every time the sources solve it for a speed, the C_L belongs to a named condition (Sadraey Eq. 4.30, 4.55, 4.85; Scholz Eq. 5.30, 5.40) — there is no generic lift-balance speed, which is why `lift-balance-speed` was deleted on 2026-10-01.
 
@@ -61,13 +83,28 @@ of `C_L` (BRYAN: 1.26 at 12° and 1.07 at 23°). IPOPT from a generic start foun
 not catch it. The canonical evaluation therefore first locates the first `C_L` maximum by an α
 sweep (re-evaluated at the resulting `V_S` for the Reynolds number) and restricts `α` to the
 pre-stall branch. Approval adds: **the optimum must be the first `C_L` peak**, checked against the
-sweep.
+sweep. Since #1181 the check also runs per evaluation (postcondition `optimum_at_first_cl_peak`, and
+`optimum_at_first_cl_trough` for the inverted application), from K32: without it a wrong-branch value
+would be returned silently (ADR 0020).
+
+**Third output: `α_S`, the stall angle** (maintainer, 2026-10-14, D2) — the optimum α at the first
+`C_L` peak, clean application. α is a decision variable of this optimisation, so the stall angle comes
+from the nonlinear polar at the correct Reynolds number; a second producer would violate one authority
+per quantity (ADR 0022).
 
 **Second output: `C_L,max,stall`.** The lift coefficient at the optimum *is* the maximum
 lift coefficient at the stall condition — exactly the quantity the precondition below
 asks for, and exactly what A2 says its name must carry. It replaces `clmax-from-polar`,
 which took a maximum over a velocity grid and so returned the value at the wrong speed.
 One authority for C_L,max.
+
+**Fourth output: `polar-stall`, the published sweep** (maintainer, 2026-10-14, D4). The α sweep that
+brackets the first `C_L` peak (K32: sweep, then IPOPT restricted to the pre-stall branch) is **published**,
+not only an internal step: the sampled whole-aircraft polar (α, `C_L`, `C_D`, `C_m`; the solver's drag, not
+the parabola — ADR 0026) at the clean stall condition `V_S`, `n = 1`. [[stall-onset-detection]] reads it,
+so the sweep must run far enough past the peak for that scan. Take-off, landing and inverted return their
+sweeps without exposing them (`polar: null`), and their stall angle the same way (`alpha_s: null`): no
+quantity nobody reads (architect, 2026-10-14).
 
 **Verified** on a 1.5 kg trainer (NACA 2412, 1.4 m span): optimiser 8.4888 m/s at
 alpha = 15.8°, C_L = 1.191; fixed-point iteration 8.4891 m/s after three sweeps —
@@ -89,20 +126,55 @@ multiplicative flap factor `C_L,max,cfg = f · C_L,max,clean` (`high-lift-clmax`
 
 (c) THE REAL ONE — the configuration fallback. field_length_service:367-368 and operating_point_generator_service:355-356 substitute the clean V_S when the per-configuration value is absent, asserting C_L,max,LDG := C_L,max,clean. Seven lines earlier, at field_length_service:361, the same function multiplies C_L,max by up to 1.6 for that same configuration. One function assumes the flaps work and do not work at once; on the fallback branch the approach speed is up to 26 % too high while the landing distance is computed with the raised C_L,max. Verified.
 
-The applications above dissolve (c) structurally rather than by correction: v_stall_landing_mps does not exist when there is no flap, and when there is one it comes from this law with cl_max_landing bound. What remains to decide is only (a): which density.
+The applications above dissolve (c) structurally rather than by correction: `stall-speed-landing` always exists and comes from this problem with the airplane in its landing configuration ([[airplane-landing]]); without flaps that configuration is the same aircraft, so it equals the clean stall speed by definition, not by a fallback (maintainer, 2026-10-14). What remains to decide is only (a): which density.
 
 > Two or more implementations use **genuinely different laws** for this quantity.
 > This is the entry that must be decided, not merely read.
 
-## Applications (3)
+## Inverted application — `C_L,min` (maintainer, 2026-10-14, D4)
+
+The same problem at `n = −1` (inverted level flight, `L = −m·g`): its lift coefficient at the optimum is
+the negative maximum lift coefficient [[inverted-max-lift-coefficient]], the mirror of `C_L,max,stall`.
+It replaces the former formula entry `inverted-max-lift-coefficient`, which read the trough off a sampled
+polar and would have been a second producer of the same quantity (A7, ADR 0022).
+
+**Bracketing — K32 mirrored.** The α sweep runs to the **first negative-`C_L` trough** before IPOPT, and
+`α` is restricted to that branch. The trough must lie strictly inside the sampled range: the default
+sweep starts at −15°, and a cambered section can stall inverted beyond that; a range chosen for the
+upright polar is not automatically sufficient for the inverted one (postcondition
+`alpha_range_past_inverted_stall`). If the trough sits on the boundary, there is **no value** — a
+boundary sample is never passed off as `C_L,min` (ADR 0020). Two sweeps for two named conditions are not
+two authorities for one polar.
+
+**What it replaced, and why (decided 2026-09-30).** `C_L,min = −0.8 · C_L,max` is gone, for two reasons,
+either sufficient. *No source:* searched Scholz, Sadraey, Anderson, Lennon, the RC-Network Wiki and
+rcplanedesigner; 14 CFR 23.337 fixes a negative **load factor**, not a negative lift coefficient, and
+nothing gives −0.8 or any other fixed ratio. *No camber dependence:* a symmetric aerobatic section flies
+inverted at nearly the same magnitude (ratio ≈ 1.0), a strongly cambered trainer or glider section far
+below 0.8 — both inside 0.5–15 kg. The optimisation carries the camber, because the polar is computed
+for **this** section.
+
+**Naming (A2).** Like the positive branch, the value belongs to an evaluation condition and its
+Reynolds number; the quantity name `inverted-max-lift-coefficient` does not carry it yet (finding,
+STAND §10).
+
+## Applications (4)
 
 One law, bound differently. Each application is approved separately, **after** the formula.
 
-| application | binds | exists when | implementations |
-|---|---|---|---|
-| `v_stall_clean_mps` | `cl_max` = [[cl_max_clean]], `rho` = [[air_density_at_altitude]] | always | [[fe_v_stall]] · [[v-stall]] |
-| `v_stall_takeoff_mps` | `cl_max` = [[cl_max_takeoff]], `rho` = [[air_density_at_altitude]] | the wing carries a flap | [[v-stall-to-fl]] |
-| `v_stall_landing_mps` | `cl_max` = [[cl_max_landing]], `rho` = [[air_density_at_altitude]] | the wing carries a flap | [[v-stall-ldg-fl]] |
+| application | binds | produces | exists when | implementations |
+|---|---|---|---|---|
+| `clean` | `airplane` = [[airplane]], `rho` = [[air-density]] | [[stall-speed]] · [[max-lift-coefficient]] · [[angle-of-attack-stall]] · [[polar-stall]] | always | [[fe_v_stall]] · [[v-stall]] |
+| `takeoff` | `airplane` = [[airplane-takeoff]], `rho` = [[air-density]] | [[stall-speed-takeoff]] · [[max-lift-coefficient-takeoff]] | always — without flaps equal to the clean stall speed | [[v-stall-to-fl]] |
+| `landing` | `airplane` = [[airplane-landing]], `rho` = [[air-density]] | [[stall-speed-landing]] · [[max-lift-coefficient-landing]] | always — without flaps equal to the clean stall speed | [[v-stall-ldg-fl]] |
+| `inverted` | `n` = −1, `rho` = [[air-density]] | [[inverted-max-lift-coefficient]] | always | — |
+
+Since the rebuild of 2026-10-01 `C_L,max` is an output of the problem, so the applications bind
+the **configured airplane** ([[airplane-configuration]]), not a `C_L,max` (#1181, architect
+2026-10-14). Take-off and landing are **configurations, not flight phases**: their stall speeds always
+exist and feed the speeds that use them — approach and touchdown from `V_S0`, take-off from `V_S,TO`;
+without flaps the configured airplane is the same aircraft, so they equal the clean stall speed
+(maintainer, 2026-10-14).
 
 ## Preconditions on the bindings
 
@@ -110,7 +182,7 @@ The formula is exact. These are the conditions its **inputs** must satisfy for a
 application of it to mean what it claims. A violated precondition is a defect of the
 path, not of the law.
 
-### `cl_max` — ⚪
+### `cl_max` — ⚪ (a postcondition since #1181: `cl_max` is an output of the problem)
 
 **Requirement.** Evaluated at the Reynolds number of the stall condition itself, not at cruise and not from a 2D table at Re ~ 1e6.
 

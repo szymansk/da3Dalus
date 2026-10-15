@@ -8,6 +8,7 @@ status: draft
 tags:
   - canon/quantity
   - role/output
+type: scalar
 ---
 
 # Weathercock stability at the minimum-drag speed · `C_n_beta,md`

@@ -8,6 +8,8 @@ status: draft
 tags:
   - canon/quantity
   - role/target
+type: scalar
+positive: true
 ---
 
 # Cruise-speed target · `V_cruise,target`
@@ -16,4 +18,4 @@ Mission requirement (mostly UAV): the speed the aircraft must cruise at. Optiona
 
 **Unit.** `m/s`
 
-**Used by.** [[aileron-throw-fraction]] · [[cruise-target-performance]] · [[max-roll-rate-cruise-target]]
+**Used by.** [[aileron-deflection-required]] · [[cruise-target-performance]] · [[roll-rate-cruise-target]]

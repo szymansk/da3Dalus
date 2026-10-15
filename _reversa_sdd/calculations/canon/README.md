@@ -32,7 +32,8 @@ X does not compute approved formula Y", which is a check.
 The duplicates come in two kinds, and one register would hide the second.
 
 **`quantities/`** — the vocabulary. Symbol, unit, meaning, and a role: `input`
-(supplied from outside the chain), `derived`, or `output` (reaches the user).
+(supplied from outside the chain), `derived`, `output` (reaches the user), or `target` (a
+requirement the result is measured against, A9). The set is closed.
 Nine definitions of `ρ₀` are a *quantity* duplicate.
 
 **`formulas/`** — the physics. A relation between canonical quantities, in symbols,
@@ -52,32 +53,37 @@ A formula can be applied more than once with different inputs. That is not dupli
 and it is not a conflict — it is the normal shape of a design calculation, and the canon
 has to say so, or it cannot tell the two apart.
 
-**Stall speed is the worked example.** There is one law:
+**Stall speed is the worked example.** There is one problem — the smallest speed at which the
+aircraft carries `n · m · g` — whose optimality condition is the familiar law
 
 ```
 v_stall = sqrt(2 · m · g / (rho · S_ref · cl_max))
 ```
 
-and three **applications** of it, differing only in which `cl_max` is bound:
+with `cl_max` an **output**: the lift coefficient at the optimum, at its own Reynolds number. The
+canon applies it four times, differing in the configured airplane and the load factor they bind:
 
-| application | binds `cl_max` | exists when |
-|---|---|---|
-| `v_stall_clean_mps` | `cl_max_clean` | always |
-| `v_stall_takeoff_mps` | `cl_max_takeoff` | the wing has a flap |
-| `v_stall_landing_mps` | `cl_max_landing` | the wing has a flap |
+| application | binds | produces | exists when |
+|---|---|---|---|
+| `clean` | `airplane`, `n = 1` | `stall-speed`, `max-lift-coefficient` | always |
+| `takeoff` | `airplane-takeoff`, `n = 1` | `stall-speed-takeoff`, `max-lift-coefficient-takeoff` | always — without flaps equal to the clean values |
+| `landing` | `airplane-landing`, `n = 1` | `stall-speed-landing`, `max-lift-coefficient-landing` | always — without flaps equal to the clean values |
+| `inverted` | `airplane`, `n = −1` | `inverted-max-lift-coefficient` | always |
 
-Three **quantities** — they have different values. One **formula**. Three
-**applications** binding one input differently.
+Separate **quantities** — they are different conditions, with different values (or, without flaps,
+the same value by definition). One **formula**. Four **applications** binding it differently.
 
 Two consequences follow, and both are mechanical:
 
-**In the code there should be three calls to one function**, not three implementations of
-one law. Three separate implementations where the canon declares one formula is
+**In the code there should be one function, called once per application**, not one
+implementation per application. Separate implementations where the canon declares one formula is
 duplication, and it can be detected by a join rather than by reading.
 
 **A configuration that does not exist is not computed.** The application carries a
-condition. A wing with no flap has one stall speed, not three identical ones — and
-certainly not three that disagree because one of them fell back to the clean value.
+condition: an aircraft without a separate flap and aileron has no crow curve
+(`butterfly-approach`). Where the configuration exists by definition, it is computed, and never
+falls back silently to another one — a wing without flaps has a landing stall speed equal to the
+clean one because its landing configuration is the same aircraft (maintainer, 2026-10-14).
 
 ### Two axes, not one
 
@@ -356,6 +362,338 @@ unremarkable: every individual line is right, and only the path shows the error.
 Otherwise approval rests on unapproved ground. That is what makes the traversal run
 from the input parameters to the outputs, and it gives the only honest progress
 measure — *what fraction of the paths reaching a user-visible number is approved*.
+
+## Machine-readable fields
+
+Every entry carries its structure in the YAML front matter; the prose explains it. A program
+that reads the canon — the `aero_kernel` importer (#1174), `scripts/check_canon.py` — reads
+**only these fields, never the prose**. This section is the definition of the fields;
+`aero_kernel/ARCHITECTURE.md` §8.9 cites it. The fields were added to all entries in #1181.
+
+**Two rules hold for every field.** Field names, ids and vocabulary terms are English. And the
+fields **state what the entry already says** — no value, source, world, condition or
+precondition appears here that the entry does not state, and none of them is a threshold or a
+pass/fail limit: the canon computes, it does not judge (A10).
+
+Keys and values avoid YAML 1.1 booleans (`on`, `off`, `yes`, `no`, `y`, `n`), so a YAML 1.1 and a
+YAML 1.2 reader see the same front matter. A parameter is never named `n` (the load factor's parameter is
+`n_load`); a unit or symbol that is one of them — the newton `N`, the load factor `n` — is quoted.
+
+### Formula entries
+
+The existing fields (`canon`, `entry`, `kind`, `tool`, `shape`, `status`, `output`, `tags`,
+`tex`, …) stay. Added:
+
+| field | required | what it holds |
+|---|---|---|
+| `inputs` | always | parameter → default quantity slug, one key per input of the formula; `null` where the quantity is bound per application |
+| `outputs` | always | parameter → default quantity slug, one key per output; `null` where it is produced per application |
+| `applications` | only for several applications, a condition, or a constant binding | a list; each item has `id`, optional `bind` (parameter → quantity slug or `{const: <value>, source: "<citation>"}`), optional `produce` (parameter → quantity slug), optional `when` (a term of the vocabulary below; absent = always) and optional `given` (a list of quantity slugs; see below) |
+| `preconditions` | only where the entry states them | a list of `{id, parameter, on_violation}` with an optional `applications: [<id>, …]`: `parameter` names an **input** parameter (the check runs before the call), `on_violation` is `warning` or `error`, `applications` names the applications the check belongs to (absent: all of them — preconditions belong to the binding) |
+| `postconditions` | only where the entry states a check on a result | the same shape as `preconditions`, but `parameter` names an **output** parameter: the check runs after the call, on the inputs and all outputs — also those an application writes as `null` |
+| `embeds` | only where the canonical form evaluates another canon relation inside itself | formulas whose relation the canonical form evaluates inside itself, listed directly as `<slug>`, or `<slug>.<application-id>` per application whose checks apply when the formula has several applications; transitive (the importer computes the closure); an item embeds that application as written — its bindings (quantities and constants) and its checks; a bare slug is the single default application. Every quantity the embedded applications bind is a `variables` entry, produced inside the closure, or an input of the embedder; constants are never re-bound; the embedded formula's postconditions run on every embedded evaluation, its preconditions do not; no formula with `uncertainty: interval` in the closure. Not a value edge — nothing is read from them. Tools are named by `tool:` |
+| `variables` | required with `embeds`, forbidden without | quantity slugs the embedder solves for or sweeps itself (or fixes in its own canonical form); inside the closure they are always the embedder's variables, also if the embedder binds the same quantity as an input |
+| `optional` | only where the entry picks its route by data | a list of input parameter names that may arrive as `None` when neither a value nor a default exists; what follows is stated per route in the entry (below) |
+| `uncertainty` | only where the entry already says `interval` | `interval` (A11) |
+| `worlds` | with `uncertainty: interval` | the method worlds, as the entry names them, in snake_case |
+| `cost` | optional, interim (O14 question 3 is open) | `instant`, `seconds` or `minutes`; set only where the entry says the computation takes minutes. Without it the importer derives `instant` or `seconds` from `tool` (ARCHITECTURE §8.7) |
+
+**Parameters.** A parameter name is snake_case and local to the formula (`cl_max`, `rho`,
+`v_s_cfg`), taken from the canonical form's symbols where it has them. Quantity slugs are
+kebab-case and appear only as binding targets. Every input and every output of the formula has
+exactly one parameter.
+
+**Applications.** An entry without `applications:` has exactly one application: every
+parameter bound to its default, condition "always". An application starts from the defaults
+and overrides them with its `bind` and `produce`; after that, every input parameter must be
+bound — to a quantity or to a constant with its source — and every output parameter must be
+produced: bound to a quantity, or explicitly to `null` (the implementation still returns it; the
+application does not expose it). An output parameter absent from the merged `produce` is an error. One formula, several applications is the shape described in "One formula, several
+applications" above; the preconditions belong to the binding, as described in "Preconditions
+belong to the binding".
+
+**`embeds`** lists **direct** embeds only. Embedding is transitive, and the importer computes the
+closure. **Input rule:** every quantity the embedded applications bind (after defaults) is a `variables`
+entry, an input of the embedder, or produced inside the closure (for example `propeller-speed`, `thrust-coefficient`,
+`advance-ratio`). No formula with `uncertainty: interval` is in the closure.
+
+**`optional`** — an absent optional parameter leads to one of three outcomes, and the entry states which
+one per route: (1) a **declared method limitation** — the formula takes the route that needs no value
+and a `practice` warning names the route (ADR 0020); (2) the **canon's own definition** — the absent
+value means something stated, and there is no warning; (3) the value **is needed after all** — no
+value, `missing_input`.
+
+**`given`** — an application that exists only when the caller supplies certain values lists them:
+`given: [<slug>, …]`. Each slug has role `input` or `target`, has no `default`, and is bound by that
+application. The application exists only if all of them are supplied; otherwise it is not computed —
+not computed differently. `when` speaks about the geometry, `given` about what was supplied.
+
+**`on_violation`** says what the entry says happens when the pre- or postcondition is violated: a value
+that is unsafe or must not be used → `error`; a caveat → `warning`. Where the entry does not say,
+the field is `warning` and the gap is listed in `STAND.md`.
+
+**Escalated fields.** Where the entry text does not decide a field — an ambiguous binding, a
+constant without a stated source, a condition the text implies but does not state — the field is
+left out and the front matter carries a comment `# ESCALATED: <reason>`. The question is with the
+maintainer; `check_canon.py` reports the gap of a parameter the reason names as *open*, not as an
+error. Every other gap of the entry stays an error. The importer (#1174)
+cannot import such an entry until it is decided.
+
+#### Vocabulary of `when`
+
+Closed. Each term is a predicate over facts of the aircraft geometry; a new term needs a canon
+entry that states the condition.
+
+| term | holds when |
+|---|---|
+| `has_aileron` | the geometry has at least one control surface that acts as an aileron: trailing-edge devices with `role` `aileron`, `flaperon` or `elevon`. Without it the roll quantities are `not_applicable` (`roll-rate`, `roll-rate-cruise-target`, `aileron-deflection-required`) |
+| `has_separate_flap_and_aileron` | the geometry has at least one device acting as a flap (`role` `flap` or `flaperon`) and at least one **other** device acting as an aileron (`role` `aileron`, `flaperon` or `elevon`): crow deflects flaps down and ailerons up at the same time, which one surface cannot do (`butterfly-approach`) |
+| `has_vertical_tail` | the aircraft has a fin or a V-tail behind the main wing; winglets or a centre fin on a tailless wing do not count (`spiral-parameter`, `vertical-tail-volume`) |
+
+### Quantity entries
+
+The existing fields (`canon`, `kind`, `symbol`, `unit`, `role`, `status`, `uncertainty`, `tags`)
+stay. Added:
+
+| field | required | what it holds |
+|---|---|---|
+| `type` | always | the kind of value, from the closed set below |
+| `default` | only where the canon states a value with its source | `{value: <value>, source: "<citation>"}` |
+| `positive` | optional, only on `type: scalar` with role `input` or `target` (positivity is a property of a number) | `true` when the quantity is strictly greater than zero **by its definition**; omit otherwise (`false` is an error — one spelling). A `default` on such a quantity must be > 0 (a mass, a density, gravity) — a fact about the quantity, not a design judgement (A10). A supplied value ≤ 0 is rejected. Not set where zero or a negative value is meaningful (angles, deflections, altitude, a speed that may be 0). Example: `aircraft-mass` carries `positive: true` |
+
+#### Quantity types
+
+Closed. The unit is the unit of the values. A dimensionless quantity is written `unit: 1` — one spelling
+for the whole canon (#1181); the `airplane` types carry `—` (not a number). A `polar` has a unit per
+column: α in `deg`, the coefficients `C_L`, `C_D`, `C_m` in `1`; its `unit` field says `1`.
+
+| type | what the value is |
+|---|---|
+| `scalar` | one number in the declared unit (an interval over worlds when the producer has `uncertainty: interval`) |
+| `airplane` | the aircraft model: geometry, sections, airfoils, components — not a number |
+| `curve` | one value per point of a swept variable (the crow mix `s`, the mass `m`), named in the symbol |
+| `polar` | the sampled whole-aircraft coefficients over angle of attack — α, C_L, C_D, C_m, of equal length — at one evaluation condition, which the slug names (A2) |
+| `curve_pair` | two curves over the same swept variable that bound a range — a lower and an upper edge |
+
+### One example per kind
+
+A **law** with preconditions and the single default application (`glide-distance-from-ratio`):
+
+```yaml
+kind: law
+tool: APP
+output: glide-distance
+inputs: {e: lift-to-drag-ratio, h: altitude}
+outputs: {r_glide: glide-distance}
+preconditions:
+  - {id: lift_to_drag_of_flown_configuration, parameter: e, on_violation: warning}
+  - {id: propeller_drag_not_in_polar, parameter: e, on_violation: warning}
+```
+
+A **procedure** with declared uncertainty (`neutral-point`):
+
+```yaml
+kind: procedure
+uncertainty: interval
+tool: AVL
+output: neutral-point
+inputs:
+  airplane: airplane
+  m: aircraft-mass
+  g: gravity
+  rho: air-density
+  v_md: minimum-drag-speed
+outputs: {x_np: neutral-point}
+worlds: [textbook, pappas, avl]
+```
+
+An **optimization** that exists only under a condition (`butterfly-approach`):
+
+```yaml
+kind: optimization
+tool: OPT
+output: butterfly-stall-speed-curve, butterfly-approach-speed-curve, butterfly-glide-angle-curve, butterfly-max-mix
+inputs:
+  airplane: null
+  m: aircraft-mass
+  g: gravity
+  rho: air-density
+  v_app: approach-speed
+  delta_f_ldg: flap-deflection-landing
+  delta_f_crow: crow-flap-deflection
+  delta_a_crow: crow-aileron-deflection
+outputs:
+  v_s0_curve: butterfly-stall-speed-curve
+  v_app_curve: butterfly-approach-speed-curve
+  gamma_curve: butterfly-glide-angle-curve
+  s_max: butterfly-max-mix
+applications:
+  - id: crow
+    bind: {airplane: airplane-landing}
+    when: has_separate_flap_and_aileron
+postconditions:
+  - {id: optimum_at_first_cl_peak, parameter: v_s0_curve, on_violation: error}
+```
+
+An **optimization** with several applications, sourced constants, a precondition on an input and
+postconditions on outputs, some of them scoped to applications (`stall-speed`):
+
+```yaml
+kind: optimization
+tool: OPT
+output: stall-speed, max-lift-coefficient, angle-of-attack-stall, polar-stall, inverted-max-lift-coefficient, stall-speed-landing, stall-speed-takeoff, max-lift-coefficient-landing, max-lift-coefficient-takeoff
+inputs: {airplane: airplane, m: aircraft-mass, g: gravity, n_load: null, rho: air-density}
+outputs: {v_s: null, cl_max: null, alpha_s: null, polar: null}
+applications:
+  - id: clean
+    bind: {n_load: {const: 1, source: "definition of the load factor n = L/W (as stated in max-mass-structure); straight level flight means L = W"}}
+    produce: {v_s: stall-speed, cl_max: max-lift-coefficient, alpha_s: angle-of-attack-stall, polar: polar-stall}
+  - id: takeoff
+    bind: {airplane: airplane-takeoff, n_load: {const: 1, source: "definition of the load factor n = L/W (as stated in max-mass-structure); straight level flight means L = W"}}
+    produce: {v_s: stall-speed-takeoff, cl_max: max-lift-coefficient-takeoff, alpha_s: null, polar: null}
+  - id: landing
+    bind: {airplane: airplane-landing, n_load: {const: 1, source: "definition of the load factor n = L/W (as stated in max-mass-structure); straight level flight means L = W"}}
+    produce: {v_s: stall-speed-landing, cl_max: max-lift-coefficient-landing, alpha_s: null, polar: null}
+  - id: inverted
+    bind: {n_load: {const: -1, source: "definition of the load factor n = L/W (as stated in max-mass-structure); inverted level flight means L = −W"}}
+    produce: {v_s: null, cl_max: inverted-max-lift-coefficient, alpha_s: null, polar: null}
+preconditions:
+  - {id: rho_at_evaluation_altitude, parameter: rho, on_violation: warning}
+postconditions:
+  - {id: cl_max_at_stall_reynolds_number, parameter: cl_max, on_violation: error}
+  - {id: alpha_range_past_inverted_stall, parameter: polar, on_violation: error, applications: [inverted]}
+  - {id: optimum_at_first_cl_peak, parameter: cl_max, on_violation: error, applications: [clean, takeoff, landing]}
+  - {id: optimum_at_first_cl_trough, parameter: cl_max, on_violation: error, applications: [inverted]}
+```
+
+An **optimization** that embeds other formulas — per application where the embedded formula has several —
+with its own variables, a long run (`mass-envelope`):
+
+```yaml
+kind: optimization
+tool: OPT
+output: speed-range-over-mass, climb-rate-over-mass, max-mass-level-flight, max-mass-lift-off, cg-envelope-over-mass
+inputs:
+  airplane: airplane
+  m_current: aircraft-mass
+  g: gravity
+  rho: air-density
+  v_s_to: stall-speed-takeoff
+  v_to: takeoff-speed
+  x_np: neutral-point
+  k_v: motor-voltage-constant
+  i_0: motor-no-load-current
+  r_m: motor-circuit-resistance
+  u_bat: battery-voltage
+  p_mot_max: motor-max-power
+  d_prop: propeller-diameter
+  eta_mot: motor-efficiency
+  airplane_to: airplane-takeoff
+  airplane_ldg: airplane-landing
+  delta_e_up: elevator-deflection-up
+  delta_e_down: elevator-deflection-down
+outputs:
+  speed_range: speed-range-over-mass
+  roc_curve: climb-rate-over-mass
+  m_max_level: max-mass-level-flight
+  m_max_to: max-mass-lift-off
+  cg_envelope: cg-envelope-over-mass
+embeds:
+  - stall-speed.clean
+  - stall-speed.landing
+  - stall-speed.takeoff
+  - max-level-speed
+  - best-rate-of-climb
+  - motor-propeller-equilibrium
+  - advance-ratio-from-speed
+  - propeller-table-lookup
+  - thrust-at-airspeed-from-coefficient
+variables: [aircraft-mass, flight-speed]
+optional: [r_m]
+cost: minutes
+```
+
+A **fit** (`parabolic-polar-fit`):
+
+```yaml
+kind: fit
+tool: OPT
+output: zero-lift-drag-coefficient, oswald-efficiency
+inputs:
+  airplane: airplane
+  m: aircraft-mass
+  g: gravity
+  rho: air-density
+  ar: aspect-ratio
+  cl_max: max-lift-coefficient
+outputs: {cd0: zero-lift-drag-coefficient, e_osw: oswald-efficiency}
+```
+
+A **rating** with three applications of one formula (`speed-from-stall-margin`); each binds its
+margin `k_S` to a target quantity whose `default` carries the source (a constant would be written
+`k_s: {const: <value>, source: "<citation>"}`):
+
+```yaml
+kind: rating
+tool: APP
+output: approach-speed, touchdown-speed, takeoff-speed
+inputs: {v_s_cfg: null, k_s: null}
+outputs: {v: null}
+applications:
+  - id: approach
+    bind: {v_s_cfg: stall-speed-landing, k_s: approach-speed-margin-target}
+    produce: {v: approach-speed}
+  - id: touchdown
+    bind: {v_s_cfg: stall-speed-landing, k_s: touchdown-speed-margin-target}
+    produce: {v: touchdown-speed}
+  - id: takeoff
+    bind: {v_s_cfg: stall-speed-takeoff, k_s: takeoff-speed-margin-target}
+    produce: {v: takeoff-speed}
+```
+
+A **quantity** with a stated default (`sea-level-air-density`):
+
+```yaml
+kind: quantity
+symbol: rho_0
+unit: kg/m^3
+role: input
+type: scalar
+positive: true
+default: {value: 1.225, source: "U.S. Standard Atmosphere 1976 (NOAA-S/T 76-1562), sea-level density; cited in formulas/air-density-isa"}
+```
+
+### What `check_canon.py` checks
+
+`poetry run python scripts/check_canon.py` (default: this directory) runs the dimensional check
+(informational) and the structural check, which fails on any error:
+
+- `inputs` / `outputs` are mappings with snake_case keys; every bound slug exists;
+- the quantities bound in `inputs` and `bind` equal the **from** line; those in `outputs` and
+  `produce` equal the **Produces** line and the `output` field;
+- every quantity's **Used by** / **Produced by** line names exactly the formulas that read / write it;
+- every application binds every input and produces every output — to a quantity or explicitly to
+  `null` (open, not an error, when an `# ESCALATED:` reason names the parameter); `bind` / `produce` keys are parameters; constants carry a source; `when`
+  terms are in the vocabulary above; `given` slugs exist, are inputs or targets without a default, and
+  are bound by their application;
+- preconditions name an input parameter, postconditions an output parameter; both say `warning` or
+  `error`, and their `applications` name existing application ids of that formula; `worlds` exist exactly with
+  `uncertainty: interval`; `cost` is one of the three classes;
+- `embeds` items resolve to a formula or `formula.application`, and a formula with several
+  applications is named per application; the closure is acyclic, holds no formula with
+  `uncertainty: interval`, and satisfies the input rule; `variables` is present with `embeds` and only
+  there, and every variable is read somewhere in the closure; a scalar input or target without a default
+  that the closure binds through an embedder input but `variables` does not list is reported as an open
+  warning (it may be swept or solved), never as an error; `optional` names input parameters;
+- every quantity has a `role` from the closed set and a `type` from the set above; a `default` carries a source; `positive` is `true`
+  (never `false`), only on `type: scalar` with role `input` or `target`, and a default of a positive
+  quantity is > 0;
+- no plain key or value is a YAML 1.1 boolean; an `# ESCALATED:` comment states its reason;
+- every example above equals the front matter of the entry it names, so the examples cannot drift;
+- every entry's `canon` slug equals its file name, and no two entries share a slug.
+
+The vocabulary and the type set are read from the two tables above — this README is their only
+definition.
 
 ## The paths
 

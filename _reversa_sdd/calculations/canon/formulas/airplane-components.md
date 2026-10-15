@@ -15,6 +15,17 @@ tags:
   - shape/law
   - kind/procedure
   - status/draft
+inputs: {airplane: airplane}
+outputs:
+  m_bat: battery-mass
+  e_bat: battery-capacity
+  e_star: battery-specific-energy
+  eta_total: propulsive-efficiency
+  k_v: motor-voltage-constant
+  i_0: motor-no-load-current
+  r_m: motor-circuit-resistance
+  u_bat: battery-voltage
+  p_mot_max: motor-max-power
 ---
 
 # Component properties of the airplane

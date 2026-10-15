@@ -8,6 +8,9 @@ status: draft
 tags:
   - canon/quantity
   - role/input
+type: scalar
+positive: true
+default: {value: 1.225, source: "U.S. Standard Atmosphere 1976 (NOAA-S/T 76-1562), sea-level density; cited in formulas/air-density-isa"}
 ---
 
 # Sea-level air density · `rho_0`

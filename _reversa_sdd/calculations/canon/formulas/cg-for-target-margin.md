@@ -16,6 +16,8 @@ tags:
   - kind/law
   - status/draft
 tex: x_{CG,SM} = x_{NP} - SM_{target}\,c_{MAC}
+inputs: {x_np: neutral-point, sm_target: static-margin-target, c_mac: mean-aerodynamic-chord}
+outputs: {x_cg_sm: cg-for-target-margin}
 ---
 
 # Centre of gravity that gives the target static margin

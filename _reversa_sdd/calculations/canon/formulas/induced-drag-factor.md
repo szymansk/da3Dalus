@@ -15,6 +15,8 @@ tags:
   - shape/law
   - kind/law
   - status/draft
+inputs: {e_osw: oswald-efficiency, ar: aspect-ratio}
+outputs: {k: induced-drag-factor}
 ---
 
 # Induced-drag factor of the parabolic polar

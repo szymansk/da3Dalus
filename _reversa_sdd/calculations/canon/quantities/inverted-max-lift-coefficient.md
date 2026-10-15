@@ -2,18 +2,19 @@
 canon: inverted-max-lift-coefficient
 kind: quantity
 symbol: C_L,min
-unit: dimensionless
+unit: 1
 role: output
 status: draft
 tags:
   - canon/quantity
   - role/output
+type: scalar
 ---
 
 # Negative maximum lift coefficient · `C_L,min`
 
-Peak lift coefficient in inverted flight, bounding the negative branch of the V-n envelope.
+Peak lift coefficient in inverted flight, bounding the negative branch of the V-n envelope — the lift coefficient at the optimum of the `inverted` application of [[stall-speed]] (`n = −1`; maintainer, 2026-10-14, D4).
 
-**Unit.** `dimensionless`
+**Unit.** `1`
 
-**Produced by.** [[inverted-max-lift-coefficient]]
+**Produced by.** [[stall-speed]]

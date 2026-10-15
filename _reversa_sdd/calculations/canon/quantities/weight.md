@@ -2,12 +2,13 @@
 canon: weight
 kind: quantity
 symbol: W
-unit: N
+unit: "N"
 role: derived
 status: approved
 tags:
   - canon/quantity
   - role/derived
+type: scalar
 ---
 
 # Aircraft weight · `W`

@@ -8,6 +8,7 @@ status: draft
 tags:
   - canon/quantity
   - role/output
+type: scalar
 ---
 
 # Largest mass that still climbs out of the lift-off · `m_max,TO`

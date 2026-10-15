@@ -8,6 +8,7 @@ status: draft
 tags:
   - canon/quantity
   - role/output
+type: curve
 ---
 
 # Stall speed over the crow mix · `V_S0(s)`

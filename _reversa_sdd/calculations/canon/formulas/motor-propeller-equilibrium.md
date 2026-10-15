@@ -15,6 +15,19 @@ tags:
   - shape/route
   - kind/procedure
   - status/draft
+inputs:
+  airplane: airplane
+  v: flight-speed
+  rho: air-density
+  k_v: motor-voltage-constant
+  i_0: motor-no-load-current
+  r_m: motor-circuit-resistance
+  u_bat: battery-voltage
+  p_mot_max: motor-max-power
+  d_prop: propeller-diameter
+  eta_mot: motor-efficiency
+outputs: {n_prop: propeller-speed}
+optional: [r_m]
 ---
 
 # Propeller speed from the motor–propeller torque balance
@@ -27,7 +40,7 @@ route B (R_m known):  (I(n_prop) - I_0) / K_v' = C_P(J) * rho * n_prop^2 * D_pro
 route A (R_m absent): n_prop = min( K_v * U_bat / 60 ,  n_prop  with  C_P(J) * rho * n_prop^3 * D_prop^5 = eta_mot * P_mot,max )
 ```
 
-**Produces** [[propeller-speed]]  ·  **from** [[airplane]] · [[flight-speed]] · [[air-density]] · [[motor-voltage-constant]] · [[motor-no-load-current]] · [[motor-circuit-resistance]] · [[battery-voltage]] · [[motor-max-power]] · [[propeller-diameter]]
+**Produces** [[propeller-speed]]  ·  **from** [[airplane]] · [[flight-speed]] · [[air-density]] · [[motor-voltage-constant]] · [[motor-no-load-current]] · [[motor-circuit-resistance]] · [[battery-voltage]] · [[motor-max-power]] · [[propeller-diameter]] · [[motor-efficiency]]
 
 **Kind: a procedure with two routes, selected by data.** `K_v'` is the speed constant in rad/s per volt.
 
@@ -37,9 +50,9 @@ route A (R_m absent): n_prop = min( K_v * U_bat / 60 ,  n_prop  with  C_P(J) * r
 
 *Why the limit.* Route A as built (gh-615, BR-PT14) computes thrust at free-run rpm and clips only the **reported** shaft power. On BRYAN (Pulsar Micro 1510, 45 W, APC 6x4E, 2S) the propeller then asks 75–82 W of a 45 W motor; limited, static thrust falls from 489 g to 307 g. The code also cannot read `max_power_w` — it knows only currents. Ticketed as #1150.
 
-*What it still ignores.* The rpm drop under load below the power ceiling — measured on a D-Power AL 28-13 with APC 6x4E: loaded 8 973 vs free-run 10 064 rpm, about 25 % too much thrust. And `eta_mot` is the default 0.85 (BR-PM3) unless the catalogue carries an efficiency — a constant without a model-scale source (ADR 0023), declared.
+*What it still ignores.* The rpm drop under load below the power ceiling — measured on a D-Power AL 28-13 with APC 6x4E: loaded 8 973 vs free-run 10 064 rpm, about 25 % too much thrust. And `eta_mot` is the input [[motor-efficiency]] (maintainer, 2026-10-15, E1): default 0.75 from the Roxxy Motoren-Fibel, Ch. 3 (band 75–85 %), the lower bound because route A applies it at `P_mot,max`, above the peak-efficiency point; taking the default is visible (INFO, `provenance.defaults_used`). The canon reads no efficiency from catalogue data — [[airplane-components]] does not produce one; a caller with a catalogue value passes it as the [[motor-efficiency]] input. Ist: BR-PM3 uses 0.85. Whether the catalogue's power rating is electrical or shaft power is open — the source does not say; [[motor-max-power]] reads it as electrical, 🟡 INFERRED (STAND §10, E1).
 
-**Already decided — `Q-PT-6`** (maintainer, 2026-08-14). The route is chosen by data availability, and the result **declares which route ran** (ADR 0020). `R_m` is sourced only where a manufacturer publishes it and **never synthesised** from `K_v` and `I_0`. Today no catalogue motor carries it, so every number comes from route A until #1149 fills the data.
+**Already decided — `Q-PT-6`** (maintainer, 2026-08-14). The route is chosen by data availability, and the result **declares which route ran** (ADR 0020). `R_m` is sourced only where a manufacturer publishes it and **never synthesised** from `K_v` and `I_0`. Today no catalogue motor carries it, so every number comes from route A until #1149 fills the data. `r_m` is therefore `optional`: route A without `R_m` is a **declared method limitation**, and a `practice` warning names the route (`Q-PT-6`).
 
 **Why not constant power.** Sadraey's propeller relation `T = eta_P · P / V` with constant `P` (Eq. 8.2, 4.84; `eta_P` 0.5–0.6 in climb, §4.3.5.2) is stated there as "sufficient for preliminary sizing". A voltage-fed motor on a fixed-pitch propeller does not deliver constant power, the relation diverges at `V = 0`, and it still needs the rpm to read `eta_P(J)`. It stays out of the canon.
 

@@ -15,6 +15,12 @@ tags:
   - shape/law
   - kind/procedure
   - status/draft
+inputs: {airplane: airplane}
+outputs:
+  s_ref: wing-reference-area
+  b_ref: wing-span
+  c_mac: mean-aerodynamic-chord
+  d_prop: propeller-diameter
 ---
 
 # Geometric properties of the airplane

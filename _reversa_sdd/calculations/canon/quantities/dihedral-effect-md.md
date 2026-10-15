@@ -8,6 +8,7 @@ status: draft
 tags:
   - canon/quantity
   - role/output
+type: scalar
 ---
 
 # Dihedral effect at the minimum-drag speed · `C_l_beta,md`

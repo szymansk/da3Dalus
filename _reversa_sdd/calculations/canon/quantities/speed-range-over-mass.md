@@ -8,6 +8,7 @@ status: draft
 tags:
   - canon/quantity
   - role/output
+type: curve_pair
 ---
 
 # Speed range over the mass · `V_S(m), V_max(m)`

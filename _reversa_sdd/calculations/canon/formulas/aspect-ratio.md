@@ -15,6 +15,8 @@ tags:
   - shape/law
   - kind/law
   - status/draft
+inputs: {b_ref: wing-span, s_ref: wing-reference-area}
+outputs: {ar: aspect-ratio}
 ---
 
 # Aspect ratio from span and area

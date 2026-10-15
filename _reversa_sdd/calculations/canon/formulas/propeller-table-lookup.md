@@ -15,6 +15,8 @@ tags:
   - shape/law
   - kind/procedure
   - status/draft
+inputs: {airplane: airplane, j: advance-ratio}
+outputs: {c_t: thrust-coefficient}
 ---
 
 # Thrust coefficient from the measured propeller table

@@ -2,18 +2,19 @@
 canon: max-lift-to-drag-probe
 kind: quantity
 symbol: E_max,probe
-unit: dimensionless
+unit: 1
 role: output
 status: draft
 tags:
   - canon/quantity
   - role/output
+type: scalar
 ---
 
 # Maximum lift-to-drag ratio, parabolic Probe · `E_max,probe`
 
 The parabolic closed form ½·√(π·AR·e/C_D0), kept only to check [[max-lift-to-drag-ratio]] (ADR 0026).
 
-**Unit.** `dimensionless`
+**Unit.** `1`
 
 **Produced by.** [[max-lift-to-drag-parabolic]]

@@ -15,7 +15,27 @@ tags:
   - shape/law
   - kind/optimization
   - status/draft
-tex: \begin{aligned}V_{S0}(s) &= \min_{V,\,\alpha} V \;\;\text{u.d.N.}\;\; L(V,\alpha;\,s) = m\,g \\ V_{app}(s) &= V_{app}\,\frac{V_{S0}(s)}{V_{S0}} \\ s_{max}&:\; V_{S0}(s_{max}) = V_{app}\end{aligned}
+tex: \begin{aligned}V_{S0}(s) &= \min_{V,\,\alpha} V \;\;\text{u.d.N.}\;\; L(V,\alpha;\,s) = m\,g \\ V_{app}(s) &= V_{app}\,\frac{V_{S0}(s)}{V_{S0}(0)} \\ s_{max}&:\; V_{S0}(s_{max}) = V_{app}\end{aligned}
+inputs:
+  airplane: null
+  m: aircraft-mass
+  g: gravity
+  rho: air-density
+  v_app: approach-speed
+  delta_f_ldg: flap-deflection-landing
+  delta_f_crow: crow-flap-deflection
+  delta_a_crow: crow-aileron-deflection
+outputs:
+  v_s0_curve: butterfly-stall-speed-curve
+  v_app_curve: butterfly-approach-speed-curve
+  gamma_curve: butterfly-glide-angle-curve
+  s_max: butterfly-max-mix
+applications:
+  - id: crow
+    bind: {airplane: airplane-landing}
+    when: has_separate_flap_and_aileron
+postconditions:
+  - {id: optimum_at_first_cl_peak, parameter: v_s0_curve, on_violation: error}
 ---
 
 # Butterfly (crow) in the approach — how far it may be mixed in
@@ -23,14 +43,21 @@ tex: \begin{aligned}V_{S0}(s) &= \min_{V,\,\alpha} V \;\;\text{u.d.N.}\;\; L(V,\
 **Canonical form**
 
 ```
-for the crow mix s in [0, 1]  (flaps down, ailerons up, as constructed, scaled by s):
+for the crow mix s in [0, 1], starting from the landing configuration (s = 0):
+  delta_f(s) = delta_f,landing + s * (delta_f,crow - delta_f,landing)      flaps down
+  delta_a(s) = s * delta_a,crow                                           ailerons up
   minimize over V, alpha:  V      subject to:  L(V, alpha; s) = m * g        ->  V_S0(s)
-  V_app(s)  = V_app * V_S0(s) / V_S0                 (same reserve k_S as without crow)
+  V_app(s)  = V_app * V_S0(s) / V_S0(0)              (same reserve k_S as without crow; V_S0(0) from this sweep)
   gamma(s)  = glide angle at V_app(s), configuration s
   s_max     : V_S0(s_max) = V_app                    (stall reaches the approach speed flown without crow)
 ```
 
-**Produces** [[butterfly-stall-speed-curve]] · [[butterfly-approach-speed-curve]] · [[butterfly-glide-angle-curve]] · [[butterfly-max-mix]]  ·  **from** [[airplane]] · [[aircraft-mass]] · [[gravity]] · [[air-density]] · [[stall-speed-landing]] · [[approach-speed]]
+**Produces** [[butterfly-stall-speed-curve]] · [[butterfly-approach-speed-curve]] · [[butterfly-glide-angle-curve]] · [[butterfly-max-mix]]  ·  **from** [[airplane-landing]] · [[aircraft-mass]] · [[gravity]] · [[air-density]] · [[approach-speed]] · [[flap-deflection-landing]] · [[crow-flap-deflection]] · [[crow-aileron-deflection]]
+
+**Base configuration (maintainer, 2026-10-15, E2).** `s = 0` is the landing configuration
+([[airplane-landing]]); the crow angles are absolute end deflections: the flaps run from
+`δ_f,landing` to `δ_f,crow`, the ailerons from 0 to `δ_a,crow` (up). `V_app(s)` is normalised with
+`V_S0(0)` of the same sweep, so clean and landing stall speeds are not mixed.
 
 **Kind: an optimisation problem** — the [[stall-speed]] problem with the airplane in crow
 configuration, swept over the mix `s`. The core is the curve `V_S0(s)`; two readings follow
@@ -48,10 +75,14 @@ from it (maintainer, 2026-10-02):
 **Exists only if the geometry has camber flaps and ailerons** (as A3 for the flap
 configurations): crow needs both.
 
+**The stall optimum at every `s` lies at the first `C_L` peak** — postcondition
+`optimum_at_first_cl_peak`, checked at every s; same check as stall-speed (K32), one shared
+implementation, not a copy (architect, 2026-10-15). Not an embed: a form that re-solves another
+formula's problem under a configuration it varies itself is not an embed (ARCHITECTURE §8.5).
+
 **Declared limit — approval needs a comparison.** Crow flaps deflect 45–80°; the flow on the
-flap is separated there. NeuralFoil's flap model, on which AeroBuildup builds, is not made for
-such deflections — the result is reliable for moderate flap angles (up to about 20–30°), not
-yet for true landing settings. Approval requires a check against measured or plan values of a
+flap is separated there. AeroBuildup has no flap model of its own, and NeuralFoil never sees the deflected surface: AeroSandbox evaluates the clean airfoil at `α_eff = α + τ·δ`, `τ = 1 − x_hinge^2.7514` (a δ-independent fit to an XFoil study), and multiplies the drag by a factor fitted to Hoerner, *Fluid Dynamic Drag*, p. 13-13 Fig. 32 (`aerosandbox/geometry/airfoil/kulfan_airfoil.py:211-255`, reached from `aero_buildup.py:784-801`; AeroSandbox 4.2.9 / NeuralFoil 0.3.2). There is no flap separation: the effectiveness is over-predicted at large δ until the clean section stalls, and the δ range of the τ fit is unknown. At crow deflections the flap
+effect is therefore over-predicted. Approval requires a check against measured or plan values of a
 glider in the reference fleet.
 
 **Source.** 🟡 PARTIAL — the stall relation as in [[stall-speed]]; crow as the dominant landing

@@ -16,6 +16,16 @@ tags:
   - kind/procedure
   - status/draft
 tex: t_{max} = \frac{3600\,E_{bat}\,\eta}{D(V_{mp})\,V_{mp}}, \qquad R_{max} = \frac{3600\,E_{bat}\,\eta}{D(V_{md})}
+inputs:
+  airplane: airplane
+  m: aircraft-mass
+  g: gravity
+  rho: air-density
+  e_bat: battery-capacity
+  eta: propulsive-efficiency
+  v_mp: minimum-sink-speed
+  v_md: minimum-drag-speed
+outputs: {t_max: max-endurance, r_max: max-range}
 ---
 
 # Greatest endurance and greatest range — the two cruise closures

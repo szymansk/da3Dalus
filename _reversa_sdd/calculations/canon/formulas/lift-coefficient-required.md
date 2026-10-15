@@ -15,6 +15,13 @@ tags:
   - shape/law
   - kind/law
   - status/draft
+inputs:
+  m: aircraft-mass
+  g: gravity
+  n_load: load-factor
+  q: dynamic-pressure
+  s_ref: wing-reference-area
+outputs: {cl_req: lift-coefficient}
 ---
 
 # Lift coefficient demanded by the level-flight balance at a load factor

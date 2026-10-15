@@ -15,6 +15,8 @@ tags:
   - shape/law
   - kind/law
   - status/draft
+inputs: {m_bat_pred: predicted-battery-mass, m_bat: battery-mass}
+outputs: {dev: battery-mass-deviation}
 ---
 
 # Relative deviation between predicted and entered battery mass

@@ -15,6 +15,16 @@ tags:
   - shape/law
   - kind/law
   - status/draft
+inputs:
+  airplane: airplane
+  m: aircraft-mass
+  g: gravity
+  rho: air-density
+  v_md: minimum-drag-speed
+outputs: {b_spiral: spiral-parameter}
+applications:
+  - id: with_vertical_tail
+    when: has_vertical_tail
 ---
 
 # Spiral parameter (Drela's B)

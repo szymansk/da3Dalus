@@ -2,12 +2,13 @@
 canon: lift-force
 kind: quantity
 symbol: L
-unit: N
+unit: "N"
 role: derived
 status: draft
 tags:
   - canon/quantity
   - role/derived
+type: scalar
 ---
 
 # Lift force · `L`

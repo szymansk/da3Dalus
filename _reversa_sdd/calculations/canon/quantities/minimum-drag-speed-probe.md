@@ -8,6 +8,7 @@ status: draft
 tags:
   - canon/quantity
   - role/output
+type: scalar
 ---
 
 # Minimum-drag speed, closed-form Probe · `V_md,probe`

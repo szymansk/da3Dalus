@@ -15,6 +15,11 @@ tags:
   - shape/law
   - kind/law
   - status/draft
+inputs: {rho_0: sea-level-air-density, v_s_target: stall-speed-target, cl_max: max-lift-coefficient}
+outputs: {ws_max_stall: wing-loading-limit-stall}
+applications:
+  - id: at_stall_speed_target
+    given: [stall-speed-target]
 ---
 
 # Maximum wing loading permitted by a stall-speed requirement

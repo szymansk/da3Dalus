@@ -8,6 +8,7 @@ status: draft
 tags:
   - canon/quantity
   - role/output
+type: curve
 ---
 
 # Glide angle over the crow mix · `gamma(s)`

@@ -2,19 +2,20 @@
 canon: propulsive-efficiency
 kind: quantity
 symbol: eta_total
-unit: dimensionless
+unit: 1
 role: derived
 status: draft
 tags:
   - canon/quantity
   - role/derived
+type: scalar
 ---
 
 # Total powertrain efficiency · `eta_total`
 
 Battery-to-thrust chain efficiency converting aerodynamic power into electrical power.
 
-**Unit.** `dimensionless`
+**Unit.** `1`
 
 **Produced by.** [[airplane-components]]
 

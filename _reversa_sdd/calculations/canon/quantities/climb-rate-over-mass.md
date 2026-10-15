@@ -8,6 +8,7 @@ status: draft
 tags:
   - canon/quantity
   - role/output
+type: curve
 ---
 
 # Best climb rate over the mass · `ROC_max(m)`

@@ -8,6 +8,7 @@ status: draft
 tags:
   - canon/quantity
   - role/input
+type: scalar
 ---
 
 # Angle of attack · `alpha`
@@ -16,4 +17,4 @@ Independent variable of the aerodynamic sweep.
 
 **Unit.** `deg`
 
-**Used by.** [[aerobuildup-evaluation]] · [[inverted-max-lift-coefficient]] · [[stall-onset-detection]]
+**Used by.** [[aerobuildup-evaluation]]

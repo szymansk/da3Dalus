@@ -8,6 +8,7 @@ status: draft
 tags:
   - canon/quantity
   - role/output
+type: scalar
 ---
 
 # Spiral criterion at the minimum-drag speed · `E_spiral,md`

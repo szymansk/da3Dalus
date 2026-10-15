@@ -5,7 +5,7 @@ kind: law
 tool: APP
 shape: law
 status: draft
-output: characteristic-angle-of-attack
+output: angle-of-attack-best-glide-probe, angle-of-attack-minimum-sink-probe
 source_status: SOURCED
 dimensional_check: PROCEDURAL
 tags:
@@ -15,6 +15,15 @@ tags:
   - shape/law
   - kind/law
   - status/draft
+inputs: {cl: null, cl_alpha: lift-curve-slope, alpha_0: zero-lift-angle}
+outputs: {alpha: null}
+applications:
+  - id: best_glide
+    bind: {cl: lift-coefficient-best-glide}
+    produce: {alpha: angle-of-attack-best-glide-probe}
+  - id: minimum_sink
+    bind: {cl: lift-coefficient-minimum-sink}
+    produce: {alpha: angle-of-attack-minimum-sink-probe}
 ---
 
 # Angle of attack from lift coefficient via the linear lift curve
@@ -25,7 +34,14 @@ tags:
 alpha = alpha_0 + C_L / C_Lalpha   (converted to degrees)
 ```
 
-**Produces** [[characteristic-angle-of-attack]]  ·  **from** [[lift-coefficient]] · [[lift-curve-slope]] · [[zero-lift-angle]]
+**Produces** [[angle-of-attack-best-glide-probe]] · [[angle-of-attack-minimum-sink-probe]]  ·  **from** [[lift-coefficient-best-glide]] · [[lift-coefficient-minimum-sink]] · [[lift-curve-slope]] · [[zero-lift-angle]]
+
+**A Probe since 2026-10-14 (maintainer, D2; A7).** The angles of attack at best glide and minimum sink
+come from their optimisations ([[minimum-drag-speed-from-polar]], [[minimum-sink-speed-from-polar]]), where α
+is a decision variable on the nonlinear polar at the right Reynolds number. This entry inverts the linear
+lift curve at the `C_L` of each optimum and must agree with the optimum α; in the linear range a mismatch
+measures the quality of the lift-curve fit. Its former stall application is deleted: it is wrong by
+construction (see the 🔴 block below), and its α duplicated the stall optimum α of [[stall-speed]].
 
 **Kind: a law.** A closed-form relation. Approval asks for its **source** and its **validity in the RC/UAV regime (ADR 0028)**.
 

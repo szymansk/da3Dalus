@@ -8,6 +8,7 @@ status: draft
 tags:
   - canon/quantity
   - role/derived
+type: scalar
 ---
 
 # Stall speed, landing configuration · `V_S0`
@@ -18,4 +19,4 @@ Stall speed with the airplane in its landing configuration — flaps as construc
 
 **Produced by.** [[stall-speed]]
 
-**Used by.** [[butterfly-approach]] · [[speed-from-stall-margin]]
+**Used by.** [[speed-from-stall-margin]]

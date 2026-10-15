@@ -15,6 +15,8 @@ tags:
   - shape/law
   - kind/law
   - status/draft
+inputs: {e_bat: battery-capacity, e_star: battery-specific-energy}
+outputs: {m_bat_pred: predicted-battery-mass}
 ---
 
 # Battery mass implied by capacity and specific energy

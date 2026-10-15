@@ -8,6 +8,7 @@ status: draft
 tags:
   - canon/quantity
   - role/target
+type: scalar
 ---
 
 # Target roll rate at cruise · `p_target,cruise`
@@ -16,4 +17,4 @@ Mission/character requirement: the roll rate the model must reach at cruise spee
 
 **Unit.** `deg/s`
 
-**Used by.** [[aileron-throw-fraction]]
+**Used by.** [[aileron-deflection-required]]

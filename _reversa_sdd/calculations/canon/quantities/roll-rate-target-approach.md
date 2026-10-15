@@ -8,6 +8,7 @@ status: draft
 tags:
   - canon/quantity
   - role/target
+type: scalar
 ---
 
 # Target roll rate on approach · `p_target,app`
@@ -16,4 +17,4 @@ Mission requirement: the roll rate the model must still reach on approach — co
 
 **Unit.** `deg/s`
 
-**Used by.** [[aileron-throw-fraction]]
+**Used by.** [[aileron-deflection-required]]

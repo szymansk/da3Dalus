@@ -16,6 +16,8 @@ tags:
   - kind/procedure
   - status/draft
 tex: n_{break,\pm} = \min_{y}\; \frac{M_{cap,\pm}(y)}{\lvert M_{1g,\pm}(y) \rvert}
+inputs: {airplane: airplane, m: aircraft-mass, g: gravity}
+outputs: {n_break_pos: break-load-factor-positive, n_break_neg: break-load-factor-negative}
 ---
 
 # Break load factor of the spar, upward and downward

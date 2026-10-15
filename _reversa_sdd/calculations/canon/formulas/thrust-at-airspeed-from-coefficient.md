@@ -15,6 +15,12 @@ tags:
   - shape/law
   - kind/law
   - status/draft
+inputs:
+  c_t: thrust-coefficient
+  rho: air-density
+  n_prop: propeller-speed
+  d_prop: propeller-diameter
+outputs: {t: thrust-at-airspeed}
 ---
 
 # Thrust at airspeed from the thrust coefficient

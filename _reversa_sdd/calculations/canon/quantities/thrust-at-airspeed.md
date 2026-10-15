@@ -2,22 +2,22 @@
 canon: thrust-at-airspeed
 kind: quantity
 symbol: T
-unit: N
-role: derived
+unit: "N"
+role: output
 status: draft
 tags:
   - canon/quantity
-  - role/derived
+  - role/output
+type: scalar
 ---
 
 # Thrust at airspeed · `T(V)`
 
 The thrust a chosen propeller actually delivers at the speed currently flown — not the
 bench number. Propeller thrust falls with airspeed, because motor and propeller are
-roughly constant-power devices at high throttle.
+roughly constant-power devices at high throttle. Evaluated at the given flight-speed; the
+optimisers embed the same relation over their own V (`embeds:`).
 
 **Unit.** `N`
 
 **Produced by.** [[thrust-at-airspeed-from-coefficient]]
-
-**Used by.** [[best-angle-of-climb]] · [[best-rate-of-climb]] · [[dive-speed]] · [[mass-envelope]] · [[max-level-speed]] · [[max-sustained-turn-rate]] · [[min-sustained-turn-radius]] · [[static-thrust-to-weight]]
