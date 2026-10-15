@@ -8,7 +8,7 @@ escalates: the kernel has no canon to compute with.
 import json
 import logging
 from pathlib import Path
-from typing import cast
+from typing import cast, get_args
 
 from aero_kernel.canon.model import CanonModel
 from aero_kernel.errors import ErrorCategory, KernelError
@@ -25,7 +25,7 @@ def default_model_path() -> Path:
 
 
 # The one model shape this build understands; raised on every change of the types.
-SUPPORTED_SCHEMA_VERSION = 1
+SUPPORTED_SCHEMA_VERSION: int = get_args(CanonModel.model_fields["schema_version"].annotation)[0]
 
 # How many validation findings go into the error detail.
 _MAX_FINDINGS = 10
@@ -48,8 +48,14 @@ class CanonLoadError(Exception):
         self.error = error
 
 
-def _failure(reason: str, detail: dict[str, JsonValue] | None = None) -> CanonLoadError:
-    """Build, log and return the load failure. No file path enters the message (ADR 0019)."""
+def _failure(
+    reason: str, detail: dict[str, JsonValue] | None = None, cause: BaseException | None = None
+) -> CanonLoadError:
+    """Build, log and return the load failure.
+
+    No file path enters the message (ADR 0019). The log carries the cause with its traceback and
+    the validation findings.
+    """
     error = KernelError(
         code=ErrorCategory.INTERNAL.value,
         category=ErrorCategory.INTERNAL,
@@ -58,7 +64,9 @@ def _failure(reason: str, detail: dict[str, JsonValue] | None = None) -> CanonLo
         "package; report this if it persists.",
         detail=detail or {},
     )
-    logger.error("canon model not loaded: %s", reason)
+    logger.error(
+        "canon model not loaded: %s", reason, exc_info=cause, extra={"findings": detail or {}}
+    )
     return CanonLoadError(error)
 
 
@@ -94,9 +102,11 @@ def load_canon_model(path: Path | None = None) -> CanonModel:
     try:
         raw: object = json.loads(target.read_text(encoding="utf-8"))
     except OSError as exc:
-        raise _failure(f"the file cannot be read ({type(exc).__name__})") from exc
+        raise _failure(f"the file cannot be read ({type(exc).__name__})", cause=exc) from exc
     except ValueError as exc:  # json.JSONDecodeError and UnicodeDecodeError
-        raise _failure(f"the file is not valid JSON ({type(exc).__name__})") from exc
+        raise _failure(f"the file is not valid JSON ({type(exc).__name__})", cause=exc) from exc
+    except RecursionError as exc:
+        raise _failure("the JSON is nested too deeply", cause=exc) from exc
     if not isinstance(raw, dict):
         raise _failure("the file does not hold a JSON object")
     document = cast("dict[str, object]", raw)  # a JSON object always has string keys
@@ -111,7 +121,7 @@ def load_canon_model(path: Path | None = None) -> CanonModel:
     try:
         model = CanonModel.model_validate(document)
     except ValidationError as exc:
-        raise _failure("the model is invalid", _findings(exc)) from exc
+        raise _failure("the model is invalid", _findings(exc), cause=exc) from exc
     logger.info(
         "canon model loaded: %s, source commit %s, importer %s",
         model.content_hash,
