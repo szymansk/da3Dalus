@@ -572,9 +572,10 @@ caller's responsibility.
 
 - Tools: APP (pure), ATM, GEO, AB, AVL, OPT.
 - **Solver adapters** (`solvers/`) are split between two tickets:
-  - **#1174 builds the base**: `SolverAdapter(runtime)` with `available() -> bool` and `version() -> str`
-    (capability check → `tool_unavailable`, Q10) and `tool_versions() -> {distribution: version}` (what
-    `Provenance.tool_versions` and the cache key take); `runtime.SolverRuntime` owns the spawn-context pool
+  - **#1174 builds the base**: `SolverAdapter(runtime)` declaring its `tool` and `requirements` (distribution →
+    module), with `available() -> bool` (capability check → `tool_unavailable`, Q10) and
+    `tool_versions() -> {distribution: version}` (what `Provenance.tool_versions` and the cache key take;
+    it replaces a single `version()`); `runtime.SolverRuntime` owns the spawn-context pool
     and the concurrency limit and offers `run_cpu(fn, *args)` and `run_process(files, commands, …)` (an
     async subprocess in its own process group and temp dir, killed and cleaned up on cancellation or
     timeout, Q17; the AVL adapter is its first user); and `regime(chords_m, v, speed_of_sound,
