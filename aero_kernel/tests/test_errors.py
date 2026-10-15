@@ -502,13 +502,22 @@ def test_internal_error_logs_the_exception_text_at_error_level(
     """The text and traceback go to the log only, with the call context in ``extra``."""
     exc = ZeroDivisionError("/secret/path")
     with caplog.at_level(logging.ERROR, logger="aero_kernel.errors"):
-        internal_error_from_exception(exc, quantity="q", formula="f", application="a", world="w")
+        internal_error_from_exception(
+            exc,
+            quantity="q",
+            formula="f",
+            application="a",
+            world="w",
+            call_id="c1",
+            scope="tenant",
+        )
     records = [r for r in caplog.records if r.levelno == logging.ERROR]
     assert len(records) == 1
     record = records[0]
     assert "/secret/path" in record.getMessage()
     assert record.exc_info is not None
     assert record.exc_info[1] is exc
+    assert (record.call_id, record.scope) == ("c1", "tenant")  # type: ignore[attr-defined]  # ``extra`` attributes are set dynamically on the record
     assert (record.quantity, record.formula, record.application, record.world) == (  # type: ignore[attr-defined]  # ``extra`` attributes are set dynamically on the record
         "q",
         "f",
