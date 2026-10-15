@@ -33,8 +33,12 @@ class TestComputeRequestQuantities:
     def test_two_spellings_of_one_quantity_are_a_duplicate(
         self, quantities: tuple[str, str]
     ) -> None:
-        with pytest.raises(ValidationError, match=r"duplicate quantity in request.*stall-speed"):
+        with pytest.raises(ValidationError) as excinfo:
             ComputeRequest(quantities=quantities)
+        first, second = quantities
+        assert f"duplicate quantity in request: {second} (the same quantity as {first})" in str(
+            excinfo.value
+        )
 
     @pytest.mark.parametrize("slug", ["Stall Speed", "stall_speed", "calc:", "a:b:c"])
     def test_a_malformed_slug_stays_a_per_quantity_matter(self, slug: str) -> None:

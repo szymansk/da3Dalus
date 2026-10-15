@@ -19,10 +19,12 @@ from aero_kernel.tests.graph_builders import formula, model_of, quantity
 AILERON_ROLES = ("aileron", "flaperon", "elevon")
 
 
-def sec(x: float, y: float, chord: float, role: str | None = None) -> dict[str, Any]:
+def sec(
+    x: float, y: float, chord: float, role: str | None = None, z: float = 0.0
+) -> dict[str, Any]:
     """A rib at (x, y) with a chord, carrying a device of the given role if any."""
     rib: dict[str, Any] = {
-        "xyz_le": [x, y, 0.0],
+        "xyz_le": [x, y, z],
         "chord": chord,
         "twist": 0.0,
         "airfoil": "naca2412",
@@ -277,3 +279,10 @@ def test_a_missing_given_of_another_namespace_is_written_qualified() -> None:
     reason = unmet_condition(node, NONE, set())
     assert reason is not None
     assert "`other:t`" in reason.message
+
+
+def test_dihedral_counts_towards_the_planform_area() -> None:
+    flat = wing(sec(0, 0, 0.2), sec(0, 0.5, 0.2))  # area .1, trailing edge .2
+    dihedral = wing(sec(0, 0, 0.3), sec(0, 0.1, 0.3, z=0.5))  # y-z area .153, by y alone .03
+    held = facts({"flat": flat, "dihedral": dihedral, "fin": fin(0.25)})
+    assert held.has_vertical_tail is False  # the dihedral wing is main, its trailing edge .3
