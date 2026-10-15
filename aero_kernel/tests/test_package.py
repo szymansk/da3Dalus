@@ -153,6 +153,24 @@ def test_executing_the_package_twice_adds_one_null_handler() -> None:
     ]
 
 
+def test_caller_handler_before_import_still_gets_one_null_handler(package_root: Path) -> None:
+    """gh-1185: a handler the caller attached first does not suppress, or double, the NullHandler."""
+    code = (
+        "import logging;"
+        "lg = logging.getLogger('aero_kernel'); lg.addHandler(logging.StreamHandler());"
+        "import aero_kernel;"
+        "print(sum(isinstance(h, logging.NullHandler) for h in lg.handlers))"
+    )
+    out = subprocess.run(
+        [sys.executable, "-c", code],
+        capture_output=True,
+        text=True,
+        check=True,
+        cwd=package_root.parent,
+    ).stdout.strip()
+    assert out == "1"
+
+
 def test_version_constant() -> None:
     """The package exposes a plain version string and an empty public API for now."""
     package = importlib.import_module(PACKAGE_NAME)
