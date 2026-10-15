@@ -537,6 +537,17 @@ class TestInlineAirfoil:
         blunt_nose = [[1, 0], [0.5, 0.05], [0, 0.01], [0, -0.01], [0.5, -0.05], [1, 0]]
         assert _validate(_with_airfoil({"coordinates": blunt_nose})) == ()
 
+    def test_the_point_count_is_reported_even_when_a_coordinate_is_not_finite(self) -> None:
+        """The count is its own cause; only the checks that need finite values are skipped."""
+        errors = _validate(_with_airfoil({"coordinates": [[1.0, 0.0], [0.0, math.nan]]}))
+        assert sorted(_codes(errors)) == ["invalid_airfoil_contour", "non_finite_number"]
+
+    def test_non_finite_values_skip_the_end_point_rule_and_the_measure(self) -> None:
+        coordinates = [[0.0, math.nan], [0.5, 0.06], [1.0, 0.0], [0.5, -0.06], [0.0, 0.0]]
+        assert _codes(_validate(_with_airfoil({"coordinates": coordinates}))) == [
+            "non_finite_number"
+        ]
+
     def test_blunt_trailing_edge_is_accepted(self) -> None:
         blunt = [[1.0, 0.01], [0.5, 0.06], [0.0, 0.0], [0.5, -0.06], [1.0, -0.01]]
         assert _validate(_with_airfoil({"coordinates": blunt})) == ()

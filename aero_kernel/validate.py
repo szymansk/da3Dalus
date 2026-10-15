@@ -204,7 +204,8 @@ def _airfoil_findings(airfoil: geometry.Airfoil, path: str) -> list[KernelError]
     coordinates_path = f"{path}.coordinates"
     findings: list[KernelError] = []
     finite = all(math.isfinite(c) for point in points for c in point)
-    # a non-finite contour is reported as such by the walk, so it is neither judged nor measured
+    # the point count is its own cause and is judged whatever the values; the end-point rule and
+    # the thickness need finite coordinates and are skipped otherwise (the walk reports those)
     trailing_edge = (
         finite and len(points) >= 3 and points[0][0] == points[-1][0] == max(x for x, _ in points)
     )
