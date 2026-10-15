@@ -483,3 +483,31 @@ def test_all_pins_the_public_names() -> None:
     )
     for name in schema.__all__:
         assert hasattr(schema, name)
+
+
+class TestMinorInvariants:
+    def test_interval_worlds_must_assign_the_same_formulas(self) -> None:
+        with pytest.raises(ValidationError, match="formulas"):
+            Interval(min=1.0, max=2.0, worlds={"a=x": 1.0, "b=y": 2.0})
+
+    def test_interval_accepts_multi_formula_product(self) -> None:
+        worlds = {"a=x,b=y": 1.0, "a=x,b=z": 2.0, "a=w,b=y": 3.0}
+        assert Interval(min=1.0, max=3.0, worlds=worlds).max == 3.0
+
+    @pytest.mark.parametrize("status", ["not_applicable", "skipped", "error"])
+    def test_from_cache_requires_ok(self, status: str) -> None:
+        extra: dict[str, object] = {
+            "not_applicable": {"reason": make_reason("not_given")},
+            "skipped": {"reason": make_reason("depends_on_skipped")},
+            "error": {"error": make_error()},
+        }[status]  # pyright: ignore[reportAssignmentType]  # literal mapping of raw fields
+        with pytest.raises(ValidationError, match="from_cache"):
+            make_quantity(status=status, value=None, from_cache=True, **extra)
+
+    def test_from_cache_ok_is_accepted(self) -> None:
+        assert make_quantity(from_cache=True).from_cache is True
+
+    @pytest.mark.parametrize("field", ["slug", "unit"])
+    def test_quantity_rejects_empty_slug_and_unit(self, field: str) -> None:
+        with pytest.raises(ValidationError):
+            make_quantity(**{field: ""})
