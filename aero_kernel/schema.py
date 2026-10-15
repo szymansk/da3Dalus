@@ -19,6 +19,7 @@ from pydantic import BaseModel, ConfigDict, Field, JsonValue, model_validator
 __all__ = [
     "WARNING_CATALOGUE",
     "Accuracy",
+    "ComputeRequest",
     "ComputeResult",
     "DefaultUsed",
     "Interval",
@@ -364,4 +365,33 @@ class ComputeResult(BaseModel):
         if len(set(slugs)) != len(slugs):
             msg = "each requested slug appears once: duplicate slug in quantities"
             raise ValueError(msg)
+        return self
+
+
+class ComputeRequest(BaseModel):
+    """What to compute (ch. 8.11): quantities by canon slug, plus the call's solver settings.
+
+    Attributes:
+        quantities: Canon quantity slugs (not formula slugs), each once.
+        include_long_runs: Whether quantities of cost class ``long`` run (ch. 8.7).
+        time_budget_s: Wall-clock budget of the call in seconds; ``None`` means unlimited (ch. 8.10).
+        accuracy: NeuralFoil model size, a solver setting (A3, O10).
+    """
+
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    quantities: tuple[str, ...]
+    include_long_runs: bool = False
+    time_budget_s: float | None = None
+    accuracy: Accuracy = "xxxlarge"
+
+    @model_validator(mode="after")
+    def _check_unique_quantities(self) -> Self:
+        """Reject a slug requested twice: each requested slug appears once in the result."""
+        seen: set[str] = set()
+        for slug in self.quantities:
+            if slug in seen:
+                msg = f"duplicate quantity in request: {slug}"
+                raise ValueError(msg)
+            seen.add(slug)
         return self

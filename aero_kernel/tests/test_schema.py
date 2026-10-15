@@ -493,6 +493,7 @@ def test_all_pins_the_public_names() -> None:
     assert sorted(schema.__all__) == sorted(
         [
             "Accuracy",
+            "ComputeRequest",
             "ComputeResult",
             "DefaultUsed",
             "Interval",
