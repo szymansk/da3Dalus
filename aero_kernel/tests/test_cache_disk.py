@@ -2,6 +2,7 @@
 
 import asyncio
 import logging
+import math
 import sqlite3
 from pathlib import Path
 
@@ -199,7 +200,7 @@ async def test_drop_scope_on_a_locked_database_raises_store_error(
     assert await cache.get("s", "k") == entry()
 
 
-@pytest.mark.parametrize("bad", [0.0, -1.0])
+@pytest.mark.parametrize("bad", [0.0, -1.0, math.nan, math.inf])
 def test_busy_timeout_must_be_positive(tmp_path: Path, bad: float) -> None:
     with pytest.raises(ValueError, match="busy_timeout_s"):
         DiskCache(path=tmp_path / DB_NAME, max_bytes=10, busy_timeout_s=bad)
