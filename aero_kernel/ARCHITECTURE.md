@@ -641,7 +641,10 @@ later `sizing:…`), and a bare slug in a request means `calc:`.
   `<ns>:<slug>.<application-id>` (a single-application formula as `.default`); a bare item does not load.
   Absent `when`, `given` and check `applications` are stored as `null` (= always / all). Only a request's bare slug means `calc:`. **Outside the model** — results, errors (`formula`,
   `quantity`), messages and world assignments — a `calc:` slug is written bare, a slug of any other
-  namespace qualified. World assignments key formulas by bare slug, so two uncertain formulas of the same
+  namespace qualified — except a requested quantity's own slug (`QuantityResult.slug` and its error's
+  `quantity`), which echoes the request's spelling exactly, so the caller can match it (an unknown slug
+  cannot be normalised anyway). Two request entries that name the same quantity in different spellings
+  (`stall-speed`, `calc:stall-speed`) are a duplicate, rejected like any other. World assignments key formulas by bare slug, so two uncertain formulas of the same
   bare slug in different namespaces are a model error (`GraphModelError`) until a second namespace needs
   them.
 - **`schema_version`** is the integer `1` (`Literal[1]`), raised on every change of the model's shape. The
