@@ -17,6 +17,34 @@ FiniteNumber = Annotated[float, Field(strict=True, allow_inf_nan=False)]
 QuantityRole = Literal["input", "target", "derived", "output"]
 QuantityType = Literal["scalar", "airplane", "curve", "polar", "curve_pair"]
 
+# The canon's unit symbols after normalisation (ch. 8.9 stage 2); ``1`` is dimensionless and also
+# stands for the not-a-number ``airplane`` types. A new unit is a model change.
+Unit = Literal[
+    "1",
+    "m",
+    "m^2",
+    "kg",
+    "s",
+    "deg",
+    "deg/s",
+    "m/s",
+    "m/s^2",
+    "1/s",
+    "1/rad",
+    "1/rad^2",
+    "N",
+    "N/m^2",
+    "Pa",
+    "kg/m^3",
+    "W",
+    "V",
+    "A",
+    "ohm",
+    "Wh",
+    "Wh/kg",
+    "rpm/V",
+]
+
 _MODEL_CONFIG = ConfigDict(extra="forbid", frozen=True)
 
 
@@ -50,7 +78,7 @@ class Quantity(BaseModel):
     model_config = _MODEL_CONFIG
 
     symbol: str = Field(min_length=1)
-    unit: str = Field(min_length=1)
+    unit: Unit
     role: QuantityRole
     type: QuantityType
     uncertainty: Literal["interval"] | None = None

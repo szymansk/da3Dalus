@@ -57,3 +57,14 @@ def test_unknown_type_is_rejected() -> None:
 def test_extra_field_is_rejected() -> None:
     with pytest.raises(ValidationError):
         make_quantity(tags=["x"])
+
+
+@pytest.mark.parametrize("unit", ["1", "m/s", "kg/m^3", "rpm/V", "1/rad^2", "deg/s", "Wh/kg"])
+def test_canon_units_are_accepted(unit: str) -> None:
+    assert make_quantity(unit=unit).unit == unit
+
+
+@pytest.mark.parametrize("unit", ["—", "furlong", "", "M"])
+def test_unit_outside_the_closed_set_is_rejected(unit: str) -> None:
+    with pytest.raises(ValidationError):
+        make_quantity(unit=unit)
