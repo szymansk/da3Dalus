@@ -152,9 +152,12 @@ _NACA = re.compile(r"naca(?P<digits>[0-9]{4})", re.IGNORECASE)
 
 
 def _interpolate(curve: list[tuple[float, float]], x: float) -> float:
-    """Linearly interpolate ``y`` at ``x`` on a curve sorted by x; constant outside its range."""
+    """Linearly interpolate ``y`` at ``x`` on a curve sorted by x.
+
+    ``x`` must lie within the curve's x range; the caller guarantees it through the end-point
+    rule (the lower surface spans the leading edge to the largest x). No extrapolation.
+    """
     xs = [point[0] for point in curve]
-    x = min(x, xs[-1])
     index = bisect_left(xs, x)
     if index == 0:
         return curve[0][1]
