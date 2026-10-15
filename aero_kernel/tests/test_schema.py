@@ -256,7 +256,7 @@ class TestQuantityResultInvariants:
 
     def test_rejects_duplicate_warning_key(self) -> None:
         with pytest.raises(ValidationError, match="duplicate"):
-            make_quantity(warnings=[make_warning(), make_warning(message="again")])
+            make_quantity(warnings=[make_warning(), make_warning()])
 
     def test_same_code_and_origin_in_different_worlds_is_kept(self) -> None:
         result = make_quantity(
@@ -365,9 +365,9 @@ class TestComputeResult:
 
 class TestDedupeWarnings:
     def test_first_occurrence_wins_and_order_is_kept(self) -> None:
-        first = make_warning(message="first")
+        first = make_warning()
         other = make_warning(origin="other")
-        again = make_warning(message="again")
+        again = make_warning()
         assert dedupe_warnings([first, other, again]) == (first, other)
 
     def test_world_distinguishes_warnings(self) -> None:
@@ -375,8 +375,24 @@ class TestDedupeWarnings:
         assert dedupe_warnings([a, b]) == (a, b)
 
     def test_result_passes_the_quantity_invariant(self) -> None:
-        deduped = dedupe_warnings([make_warning(), make_warning(message="again")])
+        deduped = dedupe_warnings([make_warning(), make_warning()])
         assert len(make_quantity(warnings=deduped).warnings) == 1
+
+    def test_the_key_is_the_full_content(self) -> None:
+        """Two devices with the same code, origin and world are two warnings (ch. 8.2)."""
+        fields = {"code": "geometry_deflection_ignored", "origin": "airplane"}
+        left = make_warning(**fields, detail={"device": "left", "deflection_deg": 5.0})
+        right = make_warning(**fields, detail={"device": "right", "deflection_deg": 5.0})
+        other_text = make_warning(**fields, message="other text", detail=left.detail)
+        assert dedupe_warnings([left, right, other_text]) == (left, right, other_text)
+        assert len(make_quantity(warnings=[left, right, other_text]).warnings) == 3
+
+    def test_detail_key_order_does_not_matter(self) -> None:
+        a = make_warning(detail={"x": 1.0, "y": 2.0})
+        b = make_warning(detail={"y": 2.0, "x": 1.0})
+        assert dedupe_warnings([a, b]) == (a,)
+        with pytest.raises(ValidationError, match="duplicate"):
+            make_quantity(warnings=[a, b])
 
 
 class TestErrorQuantity:
