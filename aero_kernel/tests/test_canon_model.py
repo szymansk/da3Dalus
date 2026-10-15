@@ -240,3 +240,13 @@ def test_error_message_names_formula() -> None:
 def test_dump_round_trips() -> None:
     model = CanonModel.model_validate(base_model())
     assert CanonModel.model_validate(model.model_dump(mode="json")) == model
+
+
+def test_given_must_resolve_to_a_quantity() -> None:
+    namespaces = with_given(base_namespaces())
+    formula = namespaces["calc"]["formulas"]["weight-from-mass"]
+    formula["inputs"]["x"] = "calc:ghost"
+    formula["applications"][0]["bind"]["x"] = "calc:ghost"
+    formula["applications"][0]["given"] = ["calc:ghost"]
+    with pytest.raises(ValidationError, match="unknown quantity calc:ghost"):
+        build(namespaces)
