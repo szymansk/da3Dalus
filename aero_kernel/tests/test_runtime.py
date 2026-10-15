@@ -255,6 +255,52 @@ class TestPoolLifetime:
         await runtime.aclose()
         assert multiprocessing.active_children() == before
 
+    async def test_close_refuses_a_call_waiting_for_a_slot_and_creates_no_pool(self) -> None:
+        before = multiprocessing.active_children()
+        runtime = SolverRuntime(max_workers=1, max_concurrency=1)
+        await runtime.run_cpu(workers.square, 1)  # warm: the pool exists
+        running = asyncio.create_task(runtime.run_cpu(workers.nap, 0.6))
+        await asyncio.sleep(0.2)
+        waiting = asyncio.create_task(runtime.run_cpu(workers.nap, 0.1))
+        await asyncio.sleep(0.1)
+        await runtime.aclose()
+        assert multiprocessing.active_children() == before
+        results = await asyncio.gather(running, waiting, return_exceptions=True)
+        assert isinstance(results[0], tuple)  # the call already running finished
+        assert isinstance(results[1], RuntimeError)
+        assert "closed" in str(results[1])
+        assert multiprocessing.active_children() == before
+
+    async def test_close_turns_queued_pool_calls_into_closed_errors_not_cancellation(
+        self,
+    ) -> None:
+        runtime = SolverRuntime(max_workers=1, max_concurrency=8)
+        await runtime.run_cpu(workers.square, 1)
+        calls = [asyncio.create_task(runtime.run_cpu(workers.nap, 0.5)) for _ in range(6)]
+        await asyncio.sleep(0.3)
+        await runtime.aclose()
+        results = await asyncio.gather(*calls, return_exceptions=True)
+        # the pool hands one extra call to its worker queue, so a second call may still run
+        assert isinstance(results[0], tuple)
+        refused = [r for r in results if isinstance(r, RuntimeError)]
+        assert len(refused) >= 4
+        assert all("closed" in str(r) for r in refused)
+        assert all(isinstance(r, (tuple, RuntimeError)) for r in results)
+        assert not any(call.cancelled() for call in calls)
+
+    async def test_a_real_cancellation_of_a_queued_call_still_raises_cancelled_error(
+        self,
+    ) -> None:
+        async with SolverRuntime(max_workers=1, max_concurrency=8) as runtime:
+            await runtime.run_cpu(workers.square, 1)
+            running = asyncio.create_task(runtime.run_cpu(workers.nap, 0.5))
+            queued = asyncio.create_task(runtime.run_cpu(workers.nap, 0.5))
+            await asyncio.sleep(0.2)
+            queued.cancel()
+            with pytest.raises(asyncio.CancelledError):
+                await queued
+            await running
+
     async def test_aclose_is_idempotent_and_blocks_further_use(self) -> None:
         runtime = SolverRuntime(max_workers=1)
         await runtime.aclose()
