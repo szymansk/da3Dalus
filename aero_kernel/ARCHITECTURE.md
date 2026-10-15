@@ -384,6 +384,12 @@ await kernel.drop_scope("aircraft/3f2c…")                          # e.g. the 
   that evicts the least recently used entry **of that scope**.
 - **`DiskCache`:** one SQLite file (stdlib `sqlite3`) at `path`; values as JSON, never pickle; limits
   `max_bytes` and optional `max_bytes_per_scope`, evicting by last access time.
+- **Entries are lossless; keys are canonical.** The canonicalisation above (`-0.0` → `0.0`, sorted keys)
+  builds **keys** only. A stored value round-trips exactly, `-0.0` included, so a hit is bit-identical to a
+  recomputation (Q7). The store knows only JSON values; converting structured outputs (polar, airplane,
+  curves) to JSON and back by the quantity's `type` is the engine's. A backend failure (locked database,
+  unreadable entry, corrupt file moved aside) degrades to a miss or a dropped write with one `WARNING`
+  log line, never a wrong value and never a result error (ADR 0020: the log declares it).
 - **One pool for all scopes.** One `CachedKernel` serves many scopes with one process pool, so no per-aircraft
   kernel objects are needed.
 - **The caller assigns scopes.** What a scope stands for (aircraft, user, version snapshot K28, or `shared`)
