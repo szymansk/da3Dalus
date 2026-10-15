@@ -28,6 +28,7 @@ logger = logging.getLogger(__name__)
 
 __all__ = [
     "CODE_CATALOGUE",
+    "DEFAULT_NAMESPACE",
     "IDENTIFIER_REGEX",
     "NAMESPACE_REGEX",
     "SLUG_REGEX",
@@ -162,8 +163,8 @@ def is_slug(text: str) -> bool:
     return _SLUG_PATTERN.fullmatch(text) is not None
 
 
-# The namespace a bare slug belongs to (the canon model's ``DEFAULT_NAMESPACE``, pinned by a test).
-_DEFAULT_NAMESPACE = "calc"
+# The namespace a bare slug belongs to; the canon model re-exports it.
+DEFAULT_NAMESPACE = "calc"
 
 
 def qualify(slug: str) -> str:
@@ -180,7 +181,7 @@ def qualify(slug: str) -> str:
     """
     namespace, separator, name = slug.rpartition(":")
     if not separator:
-        namespace = _DEFAULT_NAMESPACE
+        namespace = DEFAULT_NAMESPACE
     if re.fullmatch(NAMESPACE_REGEX, namespace) is None or not is_slug(name):
         msg = f"malformed slug {slug!r}: expected <slug> or <namespace>:<slug>"
         raise ValueError(msg)
@@ -197,7 +198,7 @@ def display_slug(qualified: str) -> str:
         The slug as results, errors and messages write it.
     """
     namespace, _, name = qualified.partition(":")
-    return name if namespace == _DEFAULT_NAMESPACE else qualified
+    return name if namespace == DEFAULT_NAMESPACE else qualified
 
 
 # The regular expression of a world name, public so the canon model's JSON Schema states the same.

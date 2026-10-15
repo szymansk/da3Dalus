@@ -758,6 +758,7 @@ def test_public_names_of_errors_are_pinned() -> None:
     assert sorted(errors.__all__) == sorted(
         [
             "CODE_CATALOGUE",
+            "DEFAULT_NAMESPACE",
             "IDENTIFIER_REGEX",
             "NAMESPACE_REGEX",
             "SLUG_REGEX",
@@ -813,8 +814,13 @@ def test_qualify_rejects_a_malformed_slug(slug: str) -> None:
         qualify(slug)
 
 
-def test_the_default_namespace_of_qualify_is_the_canon_models() -> None:
-    assert qualify("x") == f"{DEFAULT_NAMESPACE}:x"
+def test_the_default_namespace_is_defined_once_in_errors() -> None:
+    """The canon model re-exports the name; it carries no literal definition of its own."""
+    assert errors.DEFAULT_NAMESPACE == "calc"
+    assert DEFAULT_NAMESPACE is errors.DEFAULT_NAMESPACE
+    assert qualify("x") == f"{errors.DEFAULT_NAMESPACE}:x"
+    source = (Path(errors.__file__).parent / "canon" / "model.py").read_text(encoding="utf-8")
+    assert '"calc"' not in source
 
 
 def test_display_slug_writes_calc_bare_and_other_namespaces_qualified() -> None:

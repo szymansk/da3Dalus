@@ -9,7 +9,13 @@ from collections.abc import Iterator, Mapping
 from typing import Annotated, Literal, Self
 
 from aero_kernel.canonical import sha256_of
-from aero_kernel.errors import IDENTIFIER_REGEX, NAMESPACE_REGEX, SLUG_REGEX, WORLD_NAME_REGEX
+from aero_kernel.errors import (
+    DEFAULT_NAMESPACE,
+    IDENTIFIER_REGEX,
+    NAMESPACE_REGEX,
+    SLUG_REGEX,
+    WORLD_NAME_REGEX,
+)
 from pydantic import (
     BaseModel,
     ConfigDict,
@@ -357,8 +363,6 @@ class Formula(BaseModel):
 # Dict keys inside a namespace are bare slugs; namespace names are lower-case identifiers.
 SlugKey = Annotated[str, _anchored(SLUG_REGEX)]
 NamespaceKey = Annotated[str, _anchored(NAMESPACE_REGEX)]
-
-DEFAULT_NAMESPACE = "calc"
 
 
 class Namespace(BaseModel):
