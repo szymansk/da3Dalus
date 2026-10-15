@@ -4,6 +4,7 @@ Warnings, quantity results, the compute result and provenance. All models are fr
 unknown fields. :class:`KernelError` is re-exported from :mod:`aero_kernel.errors`.
 """
 
+import json
 from collections.abc import Iterable, Mapping
 from enum import StrEnum
 from typing import Annotated, Literal, Self
@@ -106,16 +107,17 @@ class KernelWarning(BaseModel):
         return self
 
 
-_WarningKey = tuple[str, str | None, str | None]
+def _warning_key(warning: KernelWarning) -> str:
+    """Return the identity of a warning: its full content, canonically serialised (ch. 8.2).
 
-
-def _warning_key(warning: KernelWarning) -> _WarningKey:
-    """Return the identity of a warning within a quantity: (code, origin, world), ch. 8.2."""
-    return (warning.code, warning.origin, warning.world)
+    Two warnings are the same only if code, origin, world, message and detail all agree, so the
+    same warning reaching a quantity along several paths collapses while two devices stay two.
+    """
+    return json.dumps(warning.model_dump(mode="json"), sort_keys=True)
 
 
 def dedupe_warnings(warnings: Iterable[KernelWarning]) -> tuple[KernelWarning, ...]:
-    """Drop repeated warnings by (``code``, ``origin``, ``world``); the first occurrence wins.
+    """Drop repeated warnings, those equal in every field; the first occurrence wins.
 
     Args:
         warnings: Warnings of a quantity and its subtree, in collection order.
@@ -123,7 +125,7 @@ def dedupe_warnings(warnings: Iterable[KernelWarning]) -> tuple[KernelWarning, .
     Returns:
         The warnings without repeats, order kept.
     """
-    unique: dict[_WarningKey, KernelWarning] = {}
+    unique: dict[str, KernelWarning] = {}
     for warning in warnings:
         unique.setdefault(_warning_key(warning), warning)
     return tuple(unique.values())
@@ -248,7 +250,7 @@ class QuantityResult(BaseModel):
         """Enforce the status invariants of ch. 8.3."""
         keys = [_warning_key(w) for w in self.warnings]
         if len(set(keys)) != len(keys):
-            msg = "duplicate warning: (code, origin, world) must be unique within a quantity"
+            msg = "duplicate warning: identical warnings must be collapsed within a quantity"
             raise ValueError(msg)
         if self.from_cache and self.status is not QuantityStatus.OK:
             msg = f"from_cache requires status ok, not {self.status.value}: only ok is stored"
