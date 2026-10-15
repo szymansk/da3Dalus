@@ -395,7 +395,7 @@ class ComputeRequest(BaseModel):
 
     Attributes:
         quantities: Canon quantity slugs (not formula slugs); at least one, each once.
-        include_long_runs: Whether quantities of cost class ``long`` run (ch. 8.7).
+        include_long_runs: Whether quantities of cost class ``minutes`` run (ch. 8.7).
         time_budget_s: Wall-clock budget of the call in seconds; ``None`` means unlimited (ch. 8.10).
         accuracy: NeuralFoil model size, a solver setting (A3, O10).
     """
