@@ -21,11 +21,18 @@ from aero_kernel.errors import check_finite_json
 from aero_kernel.schema import Accuracy, KernelWarning
 from pydantic import BaseModel, ConfigDict, JsonValue, model_validator
 
-__all__ = ["DiskCache", "Entry", "MemoryCache", "NodeStore", "build_digest", "cache_key"]
+__all__ = [
+    "DiskCache",
+    "Entry",
+    "MemoryCache",
+    "NodeStore",
+    "StoreError",
+    "build_digest",
+    "cache_key",
+]
 
 logger = logging.getLogger(__name__)
 
-_BUSY_TIMEOUT_S = 5.0
 _SCHEMA_VERSION = 1
 _PACKAGE_ROOT = Path(__file__).resolve().parent
 _EXCLUDED_DIRECTORIES = frozenset({"tests", "tools", "importer"})
@@ -171,12 +178,21 @@ def _short(key: str) -> str:
     return key[:_KEY_PREFIX]
 
 
+class StoreError(Exception):
+    """A store could not do what the caller relies on (ADR 0019: no SQL, path or backend text).
+
+    Raised by ``drop_scope`` only, because a deletion cannot degrade to a no-op; reads and writes
+    degrade to a miss or a skipped write instead.
+    """
+
+
 @runtime_checkable
 class NodeStore(Protocol):
     """Where the node cache keeps its entries (ch. 8.4); a caller may supply its own.
 
     Implementations are safe for concurrent use, keep entries serialised and return a fresh
-    :class:`Entry` on every hit. A hit never crosses scopes.
+    :class:`Entry` on every hit. A hit never crosses scopes. The one error ``drop_scope`` may raise,
+    in a custom store too, is :class:`StoreError`; ``get`` and ``put`` degrade instead of raising.
     """
 
     async def get(self, scope: str, key: str) -> Entry | None:
@@ -273,7 +289,12 @@ class DiskCache:
     """
 
     def __init__(
-        self, *, path: Path, max_bytes: int, max_bytes_per_scope: int | None = None
+        self,
+        *,
+        path: Path,
+        max_bytes: int,
+        max_bytes_per_scope: int | None = None,
+        busy_timeout_s: float = 5.0,
     ) -> None:
         """Remember the settings; nothing is created until the first call.
 
@@ -281,13 +302,19 @@ class DiskCache:
             path: The SQLite file; its parent directory is created on first use.
             max_bytes: Payload bytes kept over all scopes.
             max_bytes_per_scope: Optional payload bytes kept per scope.
+            busy_timeout_s: Seconds to wait for a lock held by another connection. Unlike the
+                limits this is infrastructure, not an engineering decision, so it has a default.
 
         Raises:
-            ValueError: If a limit is below 1.
+            ValueError: If a limit is below 1 or ``busy_timeout_s`` is not positive.
         """
         if max_bytes < 1 or (max_bytes_per_scope is not None and max_bytes_per_scope < 1):
             msg = "cache limits must be at least 1"
             raise ValueError(msg)
+        if busy_timeout_s <= 0:
+            msg = "busy_timeout_s must be positive"
+            raise ValueError(msg)
+        self._busy_timeout_s = busy_timeout_s
         self._path = path
         self._max_bytes = max_bytes
         self._max_per_scope = max_bytes_per_scope
@@ -333,10 +360,19 @@ class DiskCache:
         """Delete every entry of ``scope``.
 
         Raises:
-            sqlite3.OperationalError: If the database stays locked past the busy timeout.
+            StoreError: If the database stays locked past the busy timeout; no retry follows.
         """
         _check_scope(scope)
-        await asyncio.to_thread(self._drop, scope)
+        try:
+            await asyncio.to_thread(self._drop, scope)
+        except sqlite3.OperationalError as exc:
+            logger.warning(
+                "disk cache database locked, scope not dropped",
+                exc_info=exc,
+                extra={"scope": scope},
+            )
+            msg = f"the cache could not delete scope {scope}; the store is busy, retry later"
+            raise StoreError(msg) from exc
         logger.debug("cache scope dropped", extra={"scope": scope})
 
     def _read(self, scope: str, key: str) -> Entry | None:
@@ -421,7 +457,7 @@ class DiskCache:
 
     def _open(self) -> sqlite3.Connection:
         """Open a connection and make sure the schema is current."""
-        db = sqlite3.connect(self._path, timeout=_BUSY_TIMEOUT_S)
+        db = sqlite3.connect(self._path, timeout=self._busy_timeout_s)
         try:
             db.execute("PRAGMA journal_mode = WAL")
             (version,) = db.execute("PRAGMA user_version").fetchone()
