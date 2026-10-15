@@ -285,7 +285,12 @@ class Turbulator(_Frozen):
     """
 
     form: Literal["zigzag", "dots", "thread"] = "zigzag"
-    height_m: Millimetres = Field(default=_mm_to_m(0.3), validation_alias="height_mm")
+    height_m: Millimetres = Field(
+        default=_mm_to_m(0.3),
+        validation_alias="height_mm",
+        # the published JSON Schema speaks the format: millimetres under the format's key
+        json_schema_extra={"default": 0.3},
+    )
     position_root: Num
     position_tip: Num | None = None
     enabled: Flag = True
