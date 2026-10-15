@@ -556,6 +556,7 @@ def test_catalogue_holds_exactly_the_codes_the_architecture_names() -> None:
         "precondition_violated",
         "postcondition_violated",
         "continuous_uncertainty",
+        "non_scalar_result",
     }
 
 
