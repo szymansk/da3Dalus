@@ -8,6 +8,7 @@ assignments speak the public bare slug.
 """
 
 import logging
+from collections.abc import Sequence
 
 from aero_kernel.canon.model import (
     DEFAULT_NAMESPACE,
@@ -136,6 +137,102 @@ class Resolved(BaseModel):
     producer: NodeId
 
 
+class Edge(BaseModel):
+    """A value edge: a node reads a quantity that another node produces.
+
+    Attributes:
+        predecessor: The producing node.
+        quantity: Qualified slug of the quantity that flows.
+        parameter: The reader's input parameter it is bound to.
+    """
+
+    model_config = _FROZEN
+
+    predecessor: NodeId
+    quantity: str
+    parameter: str
+
+
+class Subtree(BaseModel):
+    """The part of the graph one request needs (ch. 6 steps 2 and 3, K29).
+
+    Attributes:
+        requested: The requested quantities that resolved, each once, in request order.
+        errors: The errors of the rejected requested quantities, in request order.
+        nodes: The needed nodes in topological order (``layers`` flattened).
+        edges: Per node, the value edges it reads through; only what it actually reads.
+        leaf_inputs: Qualified slugs of the supplied quantities the nodes read, sorted.
+        layers: Nodes grouped so that every node's predecessors lie in earlier layers; the nodes
+            of one layer are independent and may run concurrently. Sorted by formula, application.
+    """
+
+    model_config = _FROZEN
+
+    requested: tuple[Resolved, ...]
+    errors: tuple[KernelError, ...]
+    nodes: tuple[Node, ...]
+    edges: dict[NodeId, tuple[Edge, ...]]
+    leaf_inputs: tuple[str, ...]
+    layers: tuple[tuple[NodeId, ...], ...]
+
+    def producer_of(self, slug: str) -> NodeId:
+        """Return the node that produces a requested quantity.
+
+        Args:
+            slug: Bare or qualified slug of a quantity in ``requested``.
+
+        Returns:
+            The producing node.
+
+        Raises:
+            KeyError: If the quantity was not requested (or was rejected).
+        """
+        qualified = qualify(slug)
+        for resolved in self.requested:
+            if resolved.slug == qualified:
+                return resolved.producer
+        raise KeyError(slug)
+
+
+def _sort_key(node: NodeId) -> tuple[str, str]:
+    """Order nodes by formula slug, then application id."""
+    return node.formula, node.application
+
+
+def _layers(edges: dict[NodeId, tuple[Edge, ...]]) -> tuple[tuple[NodeId, ...], ...]:
+    """Group nodes into layers of independent nodes (Kahn's algorithm, deterministic).
+
+    Raises:
+        GraphModelError: If the nodes contain a cycle.
+    """
+    predecessors = {node: {edge.predecessor for edge in held} for node, held in edges.items()}
+    layers: list[tuple[NodeId, ...]] = []
+    placed: set[NodeId] = set()
+    remaining = set(edges)
+    while remaining:
+        ready = sorted((n for n in remaining if predecessors[n] <= placed), key=_sort_key)
+        if not ready:
+            raise GraphModelError(_cycle_message(predecessors, remaining))
+        layers.append(tuple(ready))
+        placed.update(ready)
+        remaining.difference_update(ready)
+    return tuple(layers)
+
+
+def _cycle_message(predecessors: dict[NodeId, set[NodeId]], remaining: set[NodeId]) -> str:
+    """Name one cycle among the nodes Kahn's algorithm could not place, in data-flow direction."""
+    path = [min(remaining, key=_sort_key)]
+    while True:
+        # every unplaced node has an unplaced predecessor, otherwise it would have been placed
+        following = min((p for p in predecessors[path[-1]] if p in remaining), key=_sort_key)
+        if following in path:
+            cycle = path[path.index(following) :]
+            break
+        path.append(following)
+    flow = [cycle[0], *reversed(cycle[1:]), cycle[0]]
+    return "cycle: " + " -> ".join(_label(node) for node in flow)
+
+
 def _node(namespace: str, slug: str, formula: Formula, application_id: str) -> Node:
     """Build the node of one application."""
     application = formula.application(application_id)
@@ -210,6 +307,73 @@ class CanonGraph:
     def node_ids(self) -> tuple[NodeId, ...]:
         """The ids of all nodes of the model."""
         return tuple(self._nodes)
+
+    def subtree(self, quantities: Sequence[str]) -> Subtree:
+        """Find the nodes a request needs and order them (ch. 6 steps 2 and 3).
+
+        Only the requested quantities and what they read, back to the supplied leaves, are
+        included (K29). Requests that do not resolve are reported in ``errors`` and add no node.
+
+        Args:
+            quantities: Requested quantity slugs, bare or qualified.
+
+        Returns:
+            The subtree.
+
+        Raises:
+            GraphModelError: If the needed nodes contain a cycle, or a requested quantity has no
+                producer.
+        """
+        requested: list[Resolved] = []
+        errors: list[KernelError] = []
+        for slug in quantities:
+            resolved = self.resolve(slug)
+            if isinstance(resolved, KernelError):
+                errors.append(resolved)
+            elif all(resolved.slug != other.slug for other in requested):
+                requested.append(resolved)
+        edges = self._edges_back_from([r.producer for r in requested])
+        layers = _layers(edges)
+        leaves = {
+            read.quantity
+            for node in edges
+            for read in self._nodes[node].reads
+            if read.quantity not in self._producers
+        }
+        logger.debug(
+            "subtree of %d quantities: %d nodes in %d layers",
+            len(requested),
+            len(edges),
+            len(layers),
+        )
+        return Subtree(
+            requested=tuple(requested),
+            errors=tuple(errors),
+            nodes=tuple(self._nodes[node] for layer in layers for node in layer),
+            edges=edges,
+            leaf_inputs=tuple(sorted(leaves)),
+            layers=layers,
+        )
+
+    def _edges_back_from(self, roots: Sequence[NodeId]) -> dict[NodeId, tuple[Edge, ...]]:
+        """Walk the value edges back from the roots; return the edges read per reached node."""
+        edges: dict[NodeId, tuple[Edge, ...]] = {}
+        pending = list(roots)
+        while pending:
+            node = pending.pop()
+            if node in edges:
+                continue
+            edges[node] = tuple(
+                Edge(
+                    predecessor=self._producers[read.quantity],
+                    quantity=read.quantity,
+                    parameter=read.parameter,
+                )
+                for read in self._nodes[node].reads
+                if read.quantity in self._producers
+            )
+            pending.extend(edge.predecessor for edge in edges[node])
+        return edges
 
     def resolve(self, slug: str) -> Resolved | KernelError:
         """Check a requested slug and find its producing node (ch. 6 step 2, Q38).
