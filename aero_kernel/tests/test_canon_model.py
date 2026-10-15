@@ -250,3 +250,33 @@ def test_given_must_resolve_to_a_quantity() -> None:
     formula["applications"][0]["given"] = ["calc:ghost"]
     with pytest.raises(ValidationError, match="unknown quantity calc:ghost"):
         build(namespaces)
+
+
+def test_public_names_of_the_model_are_pinned() -> None:
+    from aero_kernel.canon import model
+
+    assert sorted(model.__all__) == sorted(
+        [
+            "DEFAULT_NAMESPACE",
+            "Application",
+            "Binding",
+            "CanonModel",
+            "Check",
+            "ConstBinding",
+            "CostClass",
+            "Default",
+            "Formula",
+            "FormulaKind",
+            "Namespace",
+            "OnViolation",
+            "Quantity",
+            "QuantityRole",
+            "QuantityType",
+            "Tool",
+            "Unit",
+            "WhenTerm",
+            "compute_content_hash",
+        ]
+    )
+    for name in model.__all__:
+        assert hasattr(model, name)
