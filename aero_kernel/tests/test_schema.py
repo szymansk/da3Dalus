@@ -15,6 +15,8 @@ from aero_kernel.schema import (
     ReasonCode,
     WarningSeverity,
     dedupe_warnings,
+    format_world_assignment,
+    parse_world_assignment,
 )
 from pydantic import ValidationError
 
@@ -380,3 +382,54 @@ class TestErrorQuantity:
             code="missing_input", category=ErrorCategory.INVALID_INPUT, message="m", hint="h"
         )
         assert make_quantity(status="error", value=None, error=error).error == error
+
+
+class TestWorldAssignment:
+    def test_format_sorts_by_slug(self) -> None:
+        text = format_world_assignment({"roll-rate": "aerobuildup", "neutral-point": "avl"})
+        assert text == "neutral-point=avl,roll-rate=aerobuildup"
+
+    def test_parse_inverts_format(self) -> None:
+        text = "neutral-point=textbook_pappas,roll-rate=aerobuildup"
+        assert format_world_assignment(parse_world_assignment(text)) == text
+
+    def test_single_pair(self) -> None:
+        assert parse_world_assignment("neutral-point=avl") == {"neutral-point": "avl"}
+
+    @pytest.mark.parametrize(
+        "text",
+        [
+            "",
+            "avl",
+            "neutral-point=",
+            "=avl",
+            "neutral-point=avl,",
+            "neutral-point=avl, roll-rate=aerobuildup",
+            "roll-rate=aerobuildup,neutral-point=avl",
+            "neutral-point=avl,neutral-point=avl",
+            "Neutral-Point=avl",
+            "neutral_point=avl",
+            "neutral-point=Avl",
+            "neutral-point=a-b",
+            "a=b=c",
+        ],
+    )
+    def test_parse_rejects_malformed(self, text: str) -> None:
+        with pytest.raises(ValueError, match="world"):
+            parse_world_assignment(text)
+
+    def test_format_rejects_malformed_pair(self) -> None:
+        with pytest.raises(ValueError, match="world"):
+            format_world_assignment({"Bad": "avl"})
+
+    def test_format_rejects_empty(self) -> None:
+        with pytest.raises(ValueError, match="world"):
+            format_world_assignment({})
+
+    def test_interval_rejects_malformed_world_key(self) -> None:
+        with pytest.raises(ValidationError, match="world"):
+            Interval(min=0.3, max=0.3, worlds={"bad key": 0.3})
+
+    def test_warning_rejects_malformed_world(self) -> None:
+        with pytest.raises(ValidationError, match="world"):
+            make_warning(world="avl")
