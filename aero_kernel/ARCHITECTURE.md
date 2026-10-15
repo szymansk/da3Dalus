@@ -752,11 +752,37 @@ well-typed input must come back as `input_errors` with an `input_path` (ch. 8.1)
 `validate.py`, not raised. Result and canon-model types are the opposite: their invariants live in the
 model (ch. 8.3).
 
-**Validation (step 1, physical admissibility only).** Non-finite numbers; lengths that must be positive
-(chord, span, airfoil thickness, fuselage dimensions) ≤ 0; mass ≤ 0; density ≤ 0; a wing with fewer than
-two sections; airfoil coordinates that are not a closed contour. Each rule lives in `validate.py` with one test.
-`input_path` is a dotted path into `AircraftInput` with keys and indices in brackets, e.g.
-`airplane.wings["Main wing"].x_secs[2].chord` or `values.aircraft-mass`. Regime is not validated (ch. 8.2).
+**Validation (step 1, physical admissibility only).** `validate.validate_aircraft(aircraft: AircraftInput) ->
+Validation` returns `errors` (`KernelError`s of category `invalid_input`, all of them, not the first) and
+`warnings` (input facts the engine attaches to every dependent: `conflicting_mass`, origin
+`aircraft-mass`; `geometry_deflection_ignored`, origin `airplane`). It needs no canon model; the checks
+of `values` slugs against the canon (`unknown_quantity`, `not_an_input`) are a second function added with
+the canon loader, not a stub now (ADR 0021). **A rule exists only for a field the kernel reads**;
+CAD-only fields (`number_interpolation_points`, servo geometry, step paths) are not validated. One rule,
+one code, one test:
+
+| code | rule |
+|---|---|
+| `non_finite_number` | NaN or ±inf anywhere in the geometry or in `values` |
+| `non_positive_length` | chord, fuselage semi-axes `a`, `b` ≤ 0 |
+| `non_positive_thickness` | airfoil thickness ≤ 0 (inline contour, or the NACA thickness digits) |
+| `non_positive_mass` | `values.aircraft-mass` ≤ 0 |
+| `non_positive_density` | `values.sea-level-air-density` ≤ 0 |
+| `too_few_sections` | a wing with fewer than two `x_secs` |
+| `open_airfoil_contour` | inline coordinates that are not a closed contour |
+| `unresolved_airfoil` | an airfoil string that is not a NACA designation (`^naca\d{4,5}$`, case-insensitive) |
+| `segment_on_last_section` | the last `x_sec` carries segment details (`trailing_edge_device`, `spare_list`, `turbulator`) |
+| `name_mismatch` | a wing or fuselage whose `name` differs from its dict key |
+| `control_surface_without_device` | a `control_surface` without the `trailing_edge_device` it is a projection of: its role would be unknown |
+
+The kernel never reads `control_surface` (a derived projection; role and hinge come from the device,
+angles from `values`), so a disagreement between the two is no finding.
+
+`input_path` is a path into `AircraftInput`: attribute names joined by `.`, list indices as `[i]`, dict
+keys as `["…"]` with JSON string escaping (`airplane.wings["Main wing"].x_secs[2].chord`), except that a
+`values` key matching the slug pattern is written dotted (`values.aircraft-mass`) and any other `values`
+key bracketed. Paths use the **format's** field names (the JSON keys, e.g. `hinge_spacing`), not the SI
+attribute names, so the caller can find the field in its document. Regime is not validated (ch. 8.2).
 
 **Control devices are angles; stops are not limits** (maintainer, 2026-10-14). For **every** control device
 — flap, aileron, elevator, rudder, crow — the canon works with deflection **angles in degrees**, given as
