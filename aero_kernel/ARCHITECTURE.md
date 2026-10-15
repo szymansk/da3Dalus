@@ -117,8 +117,9 @@ aero_kernel/
   cached.py         CachedKernel — the cached facade (owns cache, in-flight deduplication, resources)
   engine.py         walks the graph; takes an optional NodeStore (none = stateless)
   runtime.py        executor, concurrency limit, cancellation
-  schema.py         AircraftInput, ComputeRequest, ComputeResult, QuantityResult, AirplaneGeometry, Polar,
-                    KernelWarning, Provenance (Pydantic, extra="forbid"); re-exports KernelError
+  geometry.py       AirplaneGeometry and its sub-models (format mirror, mm → m at parse, ch. 8.11)
+  schema.py         AircraftInput, ComputeRequest, ComputeResult, QuantityResult, Polar, KernelWarning,
+                    Provenance (Pydantic, extra="forbid"); re-exports AirplaneGeometry and KernelError
   canon/            canon_model.json         the interpreted canon (versioned, committed)
                     canon_model.schema.json  JSON Schema of the canon model
                     IMPORT_REPORT.md         report of the last import (source commit, diff, findings)
@@ -726,7 +727,8 @@ class ComputeRequest(BaseModel):
 format's real millimetre fields are `hinge_spacing`, `side_spacing_root` / `side_spacing_tip`,
 `turbulator.height_mm` and every field of `servo`. Parsing `AirplaneGeometry` converts exactly these to
 metres: the JSON key stays the format's (alias), the Python attribute carries the SI unit in its name
-(`height_mm` → `height_m`, `hinge_spacing` → `hinge_spacing_m`). That validator is the only place where
+(`height_mm` → `height_m`, `hinge_spacing` → `hinge_spacing_m`); the format key is a `validation_alias` only, so a dumped
+model has SI keys that a re-parse rejects (`extra="forbid"`) instead of scaling a second time. That validator is the only place where
 units are converted; after parsing everything is SI. `AirplaneGeometry` mirrors the format's JSON Schema
 (`docs/geometry-format/airplane-geometry.schema.json`); a test checks that every schema field is
 accepted.
