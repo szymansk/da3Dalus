@@ -1,13 +1,12 @@
 """Registry of formula implementations and checks (ARCHITECTURE ch. 8.12).
 
 Implementations and checks are linked to the canon model by decorator: ``@formula(slug,
-interface=...)``, ``@relation(slug)``, ``@precondition(slug, id)`` and ``@postcondition(slug, id)``.
+interface=...)``, ``@precondition(slug, id)`` and ``@postcondition(slug, id)``.
 The registry holds code only, never call state: it is filled at import of ``aero_kernel.formulas``
 and then frozen.
 """
 
 import argparse
-import ast
 import inspect
 import logging
 import re
@@ -29,16 +28,15 @@ __all__ = [
     "DEFAULT_REGISTRY",
     "CheckResult",
     "Implementation",
+    "RegistrationError",
     "Registry",
-    "RegistryError",
     "RegistryFinding",
-    "check_registry",
+    "TraceabilityReport",
     "formula",
     "interface_fingerprint",
     "main",
     "postcondition",
     "precondition",
-    "relation",
 ]
 
 
@@ -69,11 +67,54 @@ _CHECK_ID_PATTERN = re.compile(r"[a-z][a-z0-9]*([_-][a-z0-9]+)*")
 _FINGERPRINT_PATTERN = re.compile(r"sha256:[0-9a-f]{64}")
 
 
-class RegistryError(Exception):
+class RegistrationError(Exception):
     """A programming error at registration: duplicate, non-coroutine, malformed name, frozen.
 
     Raised at import; it never becomes a computation result.
     """
+
+
+FindingKind = Literal[
+    "unknown_formula", "unknown_check", "check_kind_mismatch", "stale_implementation"
+]
+
+
+class RegistryFinding(BaseModel):
+    """A mismatch between the registry and the canon model; a test or CI finding, not a result error.
+
+    Attributes:
+        kind: What is wrong.
+        slug: Qualified slug of the formula concerned.
+        check_id: Id of the check concerned, if any.
+        message: The mismatch, in natural language.
+    """
+
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    kind: FindingKind
+    slug: str
+    check_id: str | None = None
+    message: str = Field(min_length=1)
+
+
+class TraceabilityReport(BaseModel):
+    """The result of checking a registry against a canon model (tests Q1, Q11).
+
+    Attributes:
+        findings: The mismatches, sorted by slug, kind and check id.
+        not_implemented: Qualified slugs of the model formulas without implementation, sorted. They
+            are no findings: the engine answers ``not_implemented`` for them (Q1).
+    """
+
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    findings: tuple[RegistryFinding, ...]
+    not_implemented: tuple[str, ...]
+
+    @property
+    def ok(self) -> bool:
+        """Whether the registry matches the model: there are no findings."""
+        return not self.findings
 
 
 @dataclass(frozen=True)
@@ -96,7 +137,7 @@ def _qualify(slug: str) -> str:
     match = _SLUG_PATTERN.fullmatch(slug)
     if match is None:
         msg = f"malformed formula slug {slug!r}: expected '[<namespace>:]<kebab-case-slug>'"
-        raise RegistryError(msg)
+        raise RegistrationError(msg)
     return f"{match['namespace'] or DEFAULT_NAMESPACE}:{match['slug']}"
 
 
@@ -124,7 +165,6 @@ class Registry:
     def __init__(self) -> None:
         """Create an empty registry."""
         self._implementations: dict[str, Implementation] = {}
-        self._relations: dict[str, Callable[..., object]] = {}
         self._checks: dict[tuple[str, CheckKind], dict[str, Callable[..., CheckResult]]] = {}
         self._frozen = False
 
@@ -134,7 +174,7 @@ class Registry:
         return self._frozen
 
     def freeze(self) -> None:
-        """Freeze the registry: any later registration raises ``RegistryError``.
+        """Freeze the registry: any later registration raises ``RegistrationError``.
 
         Called by ``aero_kernel.formulas`` once every formula module is imported. Freezing again
         does nothing.
@@ -149,12 +189,12 @@ class Registry:
         )
 
     def _ensure_open(self) -> None:
-        """Raise ``RegistryError`` if the registry is frozen."""
+        """Raise ``RegistrationError`` if the registry is frozen."""
         if self._frozen:
             msg = (
                 "the registry is frozen; formulas are registered at import of aero_kernel.formulas"
             )
-            raise RegistryError(msg)
+            raise RegistrationError(msg)
 
     def formula(self, slug: str, interface: str) -> Callable[[_FormulaT], _FormulaT]:
         """Register the decorated coroutine as the one implementation of a formula.
@@ -167,22 +207,25 @@ class Registry:
             The decorator; it returns the function unchanged.
 
         Raises:
-            RegistryError: If the slug or fingerprint is malformed.
+            RegistrationError: If the slug or fingerprint is malformed.
         """
         self._ensure_open()
         qualified = _qualify(slug)
         if _FINGERPRINT_PATTERN.fullmatch(interface) is None:
             msg = f"malformed interface fingerprint {interface!r} for {qualified}"
-            raise RegistryError(msg)
+            raise RegistrationError(msg)
 
         def register(func: _FormulaT) -> _FormulaT:
             self._ensure_open()
             if not inspect.iscoroutinefunction(func):
                 msg = f"implementation of {qualified} must be a coroutine function (async def)"
-                raise RegistryError(msg)
+                raise RegistrationError(msg)
+            if len(inspect.signature(func).parameters) != 2:
+                msg = f"implementation of {qualified} must take exactly 2 parameters (x, ctx)"
+                raise RegistrationError(msg)
             if qualified in self._implementations:
                 msg = f"formula {qualified} already has an implementation"
-                raise RegistryError(msg)
+                raise RegistrationError(msg)
             self._implementations[qualified] = Implementation(qualified, func, interface)
             logger.debug("registered formula %s", qualified)
             return func
@@ -191,9 +234,7 @@ class Registry:
 
     def slugs(self) -> frozenset[str]:
         """Return the qualified slugs of every formula with any registration."""
-        return frozenset(
-            [*self._implementations, *self._relations, *(slug for slug, _ in self._checks)]
-        )
+        return frozenset([*self._implementations, *(slug for slug, _ in self._checks)])
 
     def implementation(self, slug: str) -> Implementation | None:
         """Look the implementation of a formula up.
@@ -205,43 +246,6 @@ class Registry:
             The implementation, or ``None`` (the engine answers ``not_implemented``).
         """
         return self._implementations.get(_qualify(slug))
-
-    def relation(self, slug: str) -> Callable[[_FunctionT], _FunctionT]:
-        """Register the decorated function as the embeddable relation of a formula (ch. 8.5).
-
-        Args:
-            slug: Formula slug; bare means the ``calc`` namespace.
-
-        Returns:
-            The decorator; it returns the function unchanged.
-
-        Raises:
-            RegistryError: If the slug is malformed or the registry is frozen.
-        """
-        self._ensure_open()
-        qualified = _qualify(slug)
-
-        def register(func: _FunctionT) -> _FunctionT:
-            self._ensure_open()
-            if qualified in self._relations:
-                msg = f"formula {qualified} already has a relation"
-                raise RegistryError(msg)
-            self._relations[qualified] = func
-            logger.debug("registered relation %s", qualified)
-            return func
-
-        return register
-
-    def relation_function(self, slug: str) -> Callable[..., object] | None:
-        """Look the embeddable relation of a formula up.
-
-        Args:
-            slug: Formula slug; bare means the ``calc`` namespace.
-
-        Returns:
-            The relation function, or ``None``.
-        """
-        return self._relations.get(_qualify(slug))
 
     def precondition(self, slug: str, check_id: str) -> Callable[[_CheckT], _CheckT]:
         """Register a check on the formula's inputs, run before the implementation.
@@ -281,6 +285,83 @@ class Registry:
         """
         return dict(self._checks.get((_qualify(slug), kind), {}))
 
+    def check_traceability(self, model: CanonModel) -> TraceabilityReport:
+        """Check the registry against the canon model (traceability, tests Q1 and Q11).
+
+        Reports a registered slug the model does not have, a check id the formula does not have
+        (or has on the other side), and an implementation written against another interface.
+
+        Args:
+            model: The canon model.
+
+        Returns:
+            The findings, and the model formulas that have no implementation.
+        """
+        findings: list[RegistryFinding] = []
+        for slug in sorted(self.slugs()):
+            formula = model.formula(slug)
+            if formula is None:
+                findings.append(
+                    RegistryFinding(
+                        kind="unknown_formula",
+                        slug=slug,
+                        message=f"the model has no formula {slug}",
+                    )
+                )
+                continue
+            findings.extend(self._check_checks(slug, formula))
+            implementation = self.implementation(slug)
+            if implementation is not None and implementation.interface != interface_fingerprint(
+                formula
+            ):
+                msg = f"the implementation of {slug} was written against another interface than the model's"
+                findings.append(
+                    RegistryFinding(kind="stale_implementation", slug=slug, message=msg)
+                )
+        not_implemented = sorted(
+            f"{namespace}:{slug}"
+            for namespace, content in model.namespaces.items()
+            for slug in content.formulas
+            if self.implementation(f"{namespace}:{slug}") is None
+        )
+        findings.sort(key=lambda f: (f.slug, f.kind, f.check_id or ""))
+        return TraceabilityReport(findings=tuple(findings), not_implemented=tuple(not_implemented))
+
+    def _check_checks(self, slug: str, formula: Formula) -> list[RegistryFinding]:
+        """Find the registered checks of a formula that the model does not have on that side."""
+        findings: list[RegistryFinding] = []
+        sides: tuple[tuple[CheckKind, str, str, tuple[Check, ...], tuple[Check, ...]], ...] = (
+            ("pre", "precondition", "postcondition", formula.preconditions, formula.postconditions),
+            (
+                "post",
+                "postcondition",
+                "precondition",
+                formula.postconditions,
+                formula.preconditions,
+            ),
+        )
+        for kind, label, other_label, own, other in sides:
+            own_ids = {check.id for check in own}
+            other_ids = {check.id for check in other}
+            for check_id in sorted(self.checks(slug, kind)):
+                if check_id in own_ids:
+                    continue
+                if check_id in other_ids:
+                    msg = f"{slug} has {check_id} as a {other_label}, not as a {label}"
+                    findings.append(
+                        RegistryFinding(
+                            kind="check_kind_mismatch", slug=slug, check_id=check_id, message=msg
+                        )
+                    )
+                else:
+                    msg = f"{slug} has no {label} {check_id}"
+                    findings.append(
+                        RegistryFinding(
+                            kind="unknown_check", slug=slug, check_id=check_id, message=msg
+                        )
+                    )
+        return findings
+
     def _check_decorator(
         self, slug: str, kind: CheckKind, check_id: str, *, arity: int
     ) -> Callable[[_CheckT], _CheckT]:
@@ -289,21 +370,21 @@ class Registry:
         qualified = _qualify(slug)
         if _CHECK_ID_PATTERN.fullmatch(check_id) is None:
             msg = f"malformed check id {check_id!r} for {qualified}: expected kebab- or snake-case"
-            raise RegistryError(msg)
+            raise RegistrationError(msg)
         label = "precondition" if kind == "pre" else "postcondition"
 
         def register(func: _CheckT) -> _CheckT:
             self._ensure_open()
             if inspect.iscoroutinefunction(func):
                 msg = f"{label} {qualified}/{check_id} must be a plain function, not a coroutine"
-                raise RegistryError(msg)
+                raise RegistrationError(msg)
             if len(inspect.signature(func).parameters) != arity:
                 msg = f"{label} {qualified}/{check_id} must take exactly {arity} parameter(s)"
-                raise RegistryError(msg)
+                raise RegistrationError(msg)
             registered = self._checks.setdefault((qualified, kind), {})
             if check_id in registered:
                 msg = f"{label} {check_id} of {qualified} is already registered"
-                raise RegistryError(msg)
+                raise RegistrationError(msg)
             registered[check_id] = func
             logger.debug("registered %s %s/%s", label, qualified, check_id)
             return func
@@ -315,133 +396,8 @@ DEFAULT_REGISTRY = Registry()
 """The registry ``aero_kernel.formulas`` fills at import and then freezes."""
 
 formula = DEFAULT_REGISTRY.formula
-relation = DEFAULT_REGISTRY.relation
 precondition = DEFAULT_REGISTRY.precondition
 postcondition = DEFAULT_REGISTRY.postcondition
-
-
-FindingCode = Literal[
-    "unknown_formula",
-    "unknown_check",
-    "stale_implementation",
-    "missing_relation",
-    "embedded_item_not_requested",
-]
-
-
-class RegistryFinding(BaseModel):
-    """A mismatch between the registry and the canon model; a test or CI finding, not a result error.
-
-    Attributes:
-        code: What is wrong.
-        slug: Qualified slug of the formula concerned.
-        check_id: Id of the check concerned, if any.
-        message: The mismatch, in natural language.
-    """
-
-    model_config = ConfigDict(extra="forbid", frozen=True)
-
-    code: FindingCode
-    slug: str
-    check_id: str | None = None
-    message: str = Field(min_length=1)
-
-
-def _requested_items(func: Callable[..., object]) -> set[str] | None:
-    """Return the qualified items a module requests via ``ctx.embedded("...")``, or ``None``.
-
-    The scan covers the whole module of ``func``, so a helper of the formula may make the call.
-    ``None`` means the module's source is not available.
-    """
-    try:
-        source = inspect.getsource(inspect.getmodule(func) or func)
-    except (OSError, TypeError):
-        return None
-    items: set[str] = set()
-    for node in ast.walk(ast.parse(source)):
-        if (
-            isinstance(node, ast.Call)
-            and isinstance(node.func, ast.Attribute)
-            and node.func.attr == "embedded"
-            and node.args
-            and isinstance(node.args[0], ast.Constant)
-            and isinstance(node.args[0].value, str)
-        ):
-            reference, _, application = node.args[0].value.rpartition(".")
-            try:
-                items.add(f"{_qualify(reference)}.{application}")
-            except RegistryError:
-                continue  # not a reference at all; it cannot match an ``embeds`` item
-    return items
-
-
-def _finding(
-    code: FindingCode, slug: str, message: str, check_id: str | None = None
-) -> RegistryFinding:
-    """Build a finding."""
-    return RegistryFinding(code=code, slug=slug, check_id=check_id, message=message)
-
-
-def _check_embeds(
-    registry: Registry, model: CanonModel, slug: str, implementation: Implementation
-) -> list[RegistryFinding]:
-    """Check the embeds of an implemented formula: relations registered, items requested."""
-    formula = model.formula(slug)
-    if formula is None or not formula.embeds:
-        return []
-    findings: list[RegistryFinding] = []
-    for item in sorted({item.rpartition(".")[0] for item in formula.embeds_closure}):
-        if registry.relation_function(item) is None:
-            msg = f"{slug} embeds {item}, which has no registered relation"
-            findings.append(_finding("missing_relation", slug, msg))
-    requested = _requested_items(implementation.func)
-    for item in formula.embeds:
-        if requested is None or item not in requested:
-            reason = "its module source is not available" if requested is None else "not requested"
-            msg = f"{slug} embeds {item}, but its implementation does not request it via ctx.embedded ({reason})"
-            findings.append(_finding("embedded_item_not_requested", slug, msg))
-    return findings
-
-
-def check_registry(registry: Registry, model: CanonModel) -> tuple[RegistryFinding, ...]:
-    """Check the registry against the canon model (traceability, tests Q1 and Q11).
-
-    Reports a registered slug or check id the model does not have, an implementation written
-    against another interface, and, for an implemented embedder, an embedded formula without a
-    registered relation or an embedded item the module never requests through ``ctx.embedded``.
-    A model formula without implementation is no finding: the engine answers ``not_implemented``.
-
-    Args:
-        registry: The registry to check.
-        model: The canon model.
-
-    Returns:
-        The findings, sorted by slug, code and check id; empty if the registry is consistent.
-    """
-    findings: list[RegistryFinding] = []
-    for slug in sorted(registry.slugs()):
-        formula = model.formula(slug)
-        if formula is None:
-            findings.append(_finding("unknown_formula", slug, f"the model has no formula {slug}"))
-            continue
-        sides: tuple[tuple[CheckKind, str, tuple[Check, ...]], ...] = (
-            ("pre", "precondition", formula.preconditions),
-            ("post", "postcondition", formula.postconditions),
-        )
-        for kind, label, known in sides:
-            known_ids = {check.id for check in known}
-            for check_id in sorted(registry.checks(slug, kind)):
-                if check_id not in known_ids:
-                    msg = f"{slug} has no {label} {check_id}"
-                    findings.append(_finding("unknown_check", slug, msg, check_id))
-        implementation = registry.implementation(slug)
-        if implementation is None:
-            continue
-        if implementation.interface != interface_fingerprint(formula):
-            msg = f"the implementation of {slug} was written against another interface than the model's"
-            findings.append(_finding("stale_implementation", slug, msg))
-        findings.extend(_check_embeds(registry, model, slug, implementation))
-    return tuple(sorted(findings, key=lambda f: (f.slug, f.code, f.check_id or "")))
 
 
 def main(argv: Sequence[str] | None = None) -> int:
