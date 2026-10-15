@@ -176,7 +176,9 @@ await compute(aircraft, request)
 
 A Python library inside the same repository (package `aero_kernel/`), imported in-process by its callers;
 no server, no process of its own. AVL runs as a subprocess in a temporary
-directory.
+directory. **POSIX only** (macOS, Linux, the Linux containers): external processes run in their own
+session and are killed as a process group (`os.killpg`). Windows is not supported; there is no untested
+fallback path (ADR 0021).
 
 ## 8. Cross-cutting concepts
 
@@ -581,7 +583,8 @@ caller's responsibility.
     timeout, Q17; the AVL adapter is its first user); and `regime(chords_m, v, speed_of_sound,
     kinematic_viscosity) -> list[KernelWarning]` (ADR 0028 check, ch. 8.2; the atmosphere values come from
     the caller, the ISA is the ATM formula's). Regime codes: `reynolds_outside_band` (defect, Re < 3·10⁴
-    or > 10⁶), `reynolds_bubble_sensitive` (practice, Re < 7·10⁴), `mach_above_limit` (practice,
+    or > 10⁶), `reynolds_bubble_sensitive` (practice, 3·10⁴ ≤ Re < 7·10⁴; below the band `reynolds_outside_band`
+    alone applies), `mach_above_limit` (practice,
     0.3 < M ≤ 0.6), `mach_beyond_validity` (defect, M > 0.6). A worker function returns a `WorkerOutcome`
     (value plus diagnostics, logged by the parent at `DEBUG`) or a `WorkerFailure` the parent re-raises as
     `FormulaError`; a dead worker discards the pool and becomes `internal`. Tested with a stub solver.
@@ -743,7 +746,10 @@ caller's event loop, it can be cancelled, and it limits its own resource use.
     solver call and shuts it down before returning, so it stays free of state. Spawning costs about a
     second; callers that compute often pass an executor or use `CachedKernel`.
   - **`CachedKernel`** owns one pool and one limit for its lifetime. They are created lazily and closed by
-    `async with` or `aclose()`. Closing waits for the workers (off the loop, `asyncio.to_thread`) and
+    `async with` or `aclose()`. Once closing has begun, a runtime refuses work: a call not yet running in
+    the pool — waiting for a slot, or queued and cancelled by the shutdown — fails with
+    `RuntimeError("… closed")`, never with a `CancelledError` nobody asked for, and no new pool is ever
+    created. Calls already running in a worker finish and return. Closing waits for the workers (off the loop, `asyncio.to_thread`) and
     cancels pending futures, so nothing remains after `compute()` returns (Q20); an injected executor is
     the caller's and is never shut down.
   - Nothing starts at import. Resources are not results: they never change a value.
