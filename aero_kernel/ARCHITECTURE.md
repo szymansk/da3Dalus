@@ -118,7 +118,7 @@ aero_kernel/
   engine.py         walks the graph; takes an optional NodeStore (none = stateless)
   runtime.py        executor, concurrency limit, cancellation
   schema.py         AircraftInput, ComputeRequest, ComputeResult, QuantityResult, AirplaneGeometry, Polar,
-                    Warning, Provenance (Pydantic, extra="forbid"); re-exports KernelError
+                    KernelWarning, Provenance (Pydantic, extra="forbid"); re-exports KernelError
   canon/            canon_model.json         the interpreted canon (versioned, committed)
                     canon_model.schema.json  JSON Schema of the canon model
                     IMPORT_REPORT.md         report of the last import (source commit, diff, findings)
@@ -225,12 +225,16 @@ nothing failed. The category enum holds only the eight rows above.
 
 ### 8.2 Warnings
 
-Same shape as `DesignWarning` (ADR 0020): `severity` (`practice` | `defect`), `code`, `message`,
-`quantity`.
+`KernelWarning` (not `Warning`, which would shadow the builtin), the `DesignWarning` shape of ADR 0020:
+`severity` (`practice` | `defect`), `code`, `message`, plus `origin` (the quantity where it arose; `None`
+until the engine sets it, since adapters know no canon names), `world` (the method world it arose in, or
+`None`) and `detail` (the values it carries, e.g. the default taken or NeuralFoil's confidence). There is
+no separate `quantity` field: the reporting quantity is the `QuantityResult` that lists it.
 
-Each warning also carries `origin`: the quantity where it arose. A quantity's result lists its own
-warnings and those of its subtree, deduplicated by (`code`, `origin`). A V_S evaluated at Re 2·10⁴ thus
-warns on V_S and on everything computed from it.
+Warning codes are a **closed table** like error codes (ch. 8.1), each with its fixed severity; a source
+adds its codes when it is built. A quantity's result lists its own warnings and those of its subtree,
+deduplicated by (`code`, `origin`, `world`) — the engine collects and deduplicates, the result type only
+rejects duplicates. A V_S evaluated at Re 2·10⁴ thus warns on V_S and on everything computed from it.
 
 Sources:
 - the regime (ADR 0028): chord Re band 3·10⁴–1·10⁶, "bubble-sensitive" below 7·10⁴, Mach ≤ 0.3, warned up
@@ -242,7 +246,8 @@ Sources:
 - the route an `optional:` parameter selected (ch. 8.5)
 - tool validity conditions, raised in the adapters (ch. 8.8), and reference points an entry cites
 - active bounds in the optimiser
-- the "not validated" marker of A11
+
+The A11 "not validated" marker is the field `QuantityResult.validated`, not a warning.
 
 ### 8.3 Result contract
 
@@ -259,8 +264,12 @@ Sources:
 - `reason` for every status other than `ok`: machine-readable `code` plus natural-language `message`
   (`not_applicable`: `condition_not_met`, `not_given` or `depends_on_not_applicable`, ch. 8.5; `skipped`: `long_run_not_included` or
   `depends_on_skipped`; `error`: see `error`)
-- `value` **or** `interval {min, max, worlds{assignment: value}}` (ch. 8.13). `value` is a float in the
-  quantity's SI unit, or a structured value of the quantity's `type` (ch. 8.12).
+- `value` **or** `interval {min, max, worlds{assignment: value}}` (ch. 8.13), exactly one when `ok`, neither
+  otherwise. `value` is a float in the quantity's SI unit, or a structured value of the quantity's `type`
+  (ch. 8.12). **v1 has floats only**; the union widens with the first non-scalar formula, no placeholder
+  type before that (ADR 0021).
+- `reason` codes are a closed enum of their own, separate from error codes; `ok` has neither `reason` nor
+  `error`, `error` has `error` and no `reason`, the other two have `reason` and no `error`.
 - `tool` and `application`
 - `validated`: `false` — no value is validated against flight data (canon A11: "not validated")
 - `warnings[]` and `error`
