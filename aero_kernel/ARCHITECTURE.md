@@ -753,7 +753,9 @@ caller's event loop, it can be cancelled, and it limits its own resource use.
     gated by a second semaphore equal to the pool's worker count, so every submitted item has a free
     worker and nothing sits in the pool's own call queue. An **injected** executor's worker count is
     unknown, so there up to one queued call may still start after closing began (CPython keeps one extra
-    call queued per pool); `aclose()` still waits for it. An injected executor that its owner shuts down
+    call queued per pool). **`aclose()` means the same for every executor: when it returns, no work of
+    this runtime is running** — it waits for the runtime's own in-flight calls (tracked by the runtime, not
+    by shutting the executor down; an injected executor is never shut down). An injected executor that its owner shuts down
     while the runtime is open makes the affected calls fail with `RuntimeError("the injected executor was
     shut down")` — a programming error of the injector, never a bare `CancelledError`. Closing waits for the workers (off the loop, `asyncio.to_thread`) and
     cancels pending futures, so nothing remains after `compute()` returns (Q20); an injected executor is
