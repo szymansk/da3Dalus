@@ -4,13 +4,14 @@ Warnings, quantity results, the compute result and provenance. All models are fr
 unknown fields. :class:`KernelError` is re-exported from :mod:`aero_kernel.errors`.
 """
 
+from collections.abc import Mapping
 from enum import StrEnum
 from typing import Self
 
 from aero_kernel.errors import KernelError
-from pydantic import BaseModel, ConfigDict, Field, model_validator
+from pydantic import BaseModel, ConfigDict, Field, JsonValue, model_validator
 
-__all__ = ["DesignWarning", "Interval", "KernelError", "WarningSeverity"]
+__all__ = ["WARNING_CATALOGUE", "Interval", "KernelError", "KernelWarning", "WarningSeverity"]
 
 
 class WarningSeverity(StrEnum):
@@ -20,15 +21,32 @@ class WarningSeverity(StrEnum):
     DEFECT = "defect"
 
 
-class DesignWarning(BaseModel):
-    """A value with a caveat (ch. 8.2); the shape of ``DesignWarning`` of ADR 0020.
+# The closed warning table (ch. 8.2): code -> fixed severity. A new code is added here by the unit
+# that builds its source, never invented at the raise site.
+WARNING_CATALOGUE: Mapping[str, WarningSeverity] = {
+    "conflicting_mass": WarningSeverity.PRACTICE,
+    "default_target_used": WarningSeverity.PRACTICE,
+    "deflection_without_flap": WarningSeverity.PRACTICE,
+    "precondition_unchecked": WarningSeverity.PRACTICE,
+    "precondition_violated": WarningSeverity.DEFECT,
+    "postcondition_unchecked": WarningSeverity.PRACTICE,
+    "postcondition_violated": WarningSeverity.DEFECT,
+}
+
+
+class KernelWarning(BaseModel):
+    """A value with a caveat (ch. 8.2); the ``DesignWarning`` shape of ADR 0020.
+
+    The quantity a warning is reported on is the result that lists it, so there is no
+    ``quantity`` field.
 
     Attributes:
-        severity: ``practice`` (domain practice) or ``defect``.
-        code: Machine-readable warning code.
+        severity: ``practice`` (domain practice) or ``defect``; fixed by the code.
+        code: Machine-readable code from :data:`WARNING_CATALOGUE`.
         message: The caveat, in natural language.
-        quantity: Slug of the quantity the warning is reported on.
-        origin: Slug of the quantity where the warning arose.
+        origin: Slug of the quantity where the warning arose; ``None`` until the engine sets it.
+        world: Method world the warning arose in (ch. 8.13).
+        detail: Structured values the warning carries.
     """
 
     model_config = ConfigDict(extra="forbid", frozen=True)
@@ -36,8 +54,21 @@ class DesignWarning(BaseModel):
     severity: WarningSeverity
     code: str = Field(min_length=1)
     message: str = Field(min_length=1)
-    quantity: str | None = None
-    origin: str = Field(min_length=1)
+    origin: str | None = Field(default=None, min_length=1)
+    world: str | None = None
+    detail: dict[str, JsonValue] = Field(default_factory=dict)
+
+    @model_validator(mode="after")
+    def _check_code(self) -> Self:
+        """Reject codes outside the table and severities that contradict it."""
+        expected = WARNING_CATALOGUE.get(self.code)
+        if expected is None:
+            msg = f"code {self.code} is not in the warning catalogue; add it to WARNING_CATALOGUE"
+            raise ValueError(msg)
+        if expected is not self.severity:
+            msg = f"code {self.code} has severity {expected.value}, not {self.severity.value}"
+            raise ValueError(msg)
+        return self
 
 
 class Interval(BaseModel):
