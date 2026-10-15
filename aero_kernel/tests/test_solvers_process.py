@@ -195,3 +195,54 @@ async def test_a_failed_cleanup_is_logged_and_does_not_mask_the_result(
     assert "temp directory of external process not removed" in message
     assert "aero_kernel_" in message
     assert str(scratch) not in message
+
+
+@pytest.fixture
+def failing_cleanup(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
+) -> pytest.LogCaptureFixture:
+    """Make every temp-directory removal fail; temp dirs are created below ``tmp_path``."""
+    scratch = tmp_path / "scratch"
+    scratch.mkdir()
+    monkeypatch.setattr(tempfile, "tempdir", str(scratch))
+
+    def failing_rmtree(path: Path) -> None:
+        msg = "busy"
+        raise PermissionError(msg)
+
+    monkeypatch.setattr(shutil, "rmtree", failing_rmtree)
+    caplog.set_level(logging.WARNING, logger="aero_kernel.solvers.process")
+    return caplog
+
+
+def _cleanup_warnings(caplog: pytest.LogCaptureFixture) -> list[str]:
+    return [
+        r.getMessage()
+        for r in caplog.records
+        if "temp directory of external process not removed" in r.getMessage()
+    ]
+
+
+async def test_failed_cleanup_during_cancel_is_logged_and_cancelled_error_propagates(
+    tmp_path: Path, failing_cleanup: pytest.LogCaptureFixture
+) -> None:
+    task, pid, _, _ = await _start_sleeper(tmp_path)
+    task.cancel()
+    with pytest.raises(asyncio.CancelledError):
+        await task
+    assert await _wait_dead(pid)
+    assert len(_cleanup_warnings(failing_cleanup)) == 1
+
+
+async def test_failed_cleanup_during_timeout_is_logged_and_timeout_error_propagates(
+    tmp_path: Path, failing_cleanup: pytest.LogCaptureFixture
+) -> None:
+    sleeper = tmp_path / "sleeper.py"
+    sleeper.write_text(SLEEP_SCRIPT)
+    marker = tmp_path / "marker.txt"
+    with pytest.raises(TimeoutError):
+        async with asyncio.timeout(1.0):
+            await run_process({}, "", executable=sys.executable, args=[str(sleeper), str(marker)])
+    pid, _, _ = _read_marker(marker)
+    assert await _wait_dead(pid)
+    assert len(_cleanup_warnings(failing_cleanup)) == 1
