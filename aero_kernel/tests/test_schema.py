@@ -641,3 +641,8 @@ class TestRulings:
     def test_first_character_must_be_a_letter(self, text: str) -> None:
         with pytest.raises(ValueError, match="malformed pair"):
             parse_world_assignment(text)
+
+
+def test_tool_versions_keys_must_be_non_empty() -> None:
+    with pytest.raises(ValidationError):
+        make_provenance(tool_versions={"": "1.0"})
