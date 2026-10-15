@@ -831,10 +831,17 @@ def check_structure(canon: Canon) -> list[Finding]:
     for slug, e in canon.quantities.items():
         if "positive" in e.front:
             pos = e.front["positive"]
-            if not isinstance(pos, bool):
-                add(slug, "positive", f"must be a boolean (true / false): {pos!r}")
+            if pos is not True:
+                add(slug, "positive", f"must be true (omit the field otherwise): {pos!r}")
             elif e.front.get("role") not in ("input", "target"):
                 add(slug, "positive", "allowed only on a quantity with role input or target")
+            else:
+                d = e.front.get("default")
+                value = d.get("value") if isinstance(d, dict) else None
+                if isinstance(value, int | float) and not isinstance(value, bool) and value <= 0:
+                    add(
+                        slug, "default", f"a positive quantity needs a default value > 0: {value!r}"
+                    )
         unc = e.front.get("uncertainty")
         if unc is not None and unc not in UNCERTAINTY:
             add(slug, "uncertainty", f"{unc!r} is not one of {sorted(UNCERTAINTY)}")

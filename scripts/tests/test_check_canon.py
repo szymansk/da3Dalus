@@ -835,16 +835,34 @@ def test_positive_true_on_an_input_is_accepted(tmp_path, typed_quantities):
     assert _findings(_canon(tmp_path, quantities=q)) == []
 
 
-def test_positive_must_be_a_boolean(tmp_path, typed_quantities):
+def test_positive_with_a_non_boolean_value_is_reported(tmp_path, typed_quantities):
     q = _set(typed_quantities, "speed-a", "role: derived", "role: input\npositive: maybe")
     msgs = _messages(_errors(_canon(tmp_path, quantities=q)))
-    assert any("speed-a positive" in m and "boolean" in m for m in msgs), msgs
+    assert any("speed-a positive" in m and "true" in m for m in msgs), msgs
 
 
 def test_positive_on_a_derived_quantity_is_reported(tmp_path, typed_quantities):
     q = _set(typed_quantities, "speed-v", "role: derived", "role: derived\npositive: true")
     msgs = _messages(_errors(_canon(tmp_path, quantities=q)))
     assert any("speed-v positive" in m and "input" in m for m in msgs), msgs
+
+
+def test_positive_false_is_reported(tmp_path, typed_quantities):
+    """One spelling: `positive: true`, or omit the field."""
+    q = _set(typed_quantities, "speed-a", "role: derived", "role: input\npositive: false")
+    msgs = _messages(_errors(_canon(tmp_path, quantities=q)))
+    assert any("speed-a positive" in m and "true" in m for m in msgs), msgs
+
+
+def test_a_positive_quantity_with_a_non_positive_default_is_reported(tmp_path, typed_quantities):
+    q = _set(
+        typed_quantities,
+        "speed-a",
+        "role: derived",
+        'role: input\npositive: true\ndefault: {value: 0, source: "x"}',
+    )
+    msgs = _messages(_errors(_canon(tmp_path, quantities=q)))
+    assert any("speed-a default" in m and "> 0" in m for m in msgs), msgs
 
 
 # --- command line ----------------------------------------------------------------------------
