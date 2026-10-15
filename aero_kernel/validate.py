@@ -81,20 +81,32 @@ def _values_path(slug: str) -> str:
     return _key_path("values", slug)
 
 
-def _finding(code: str, path: str, message: str, hint: str) -> KernelError:
-    """Build an ``invalid_input`` error at ``path``."""
+def _number(value: float) -> JsonValue:
+    """Encode a number for a free JSON field: a float, or ``"nan"`` / ``"inf"`` / ``"-inf"``."""
+    return value if math.isfinite(value) else str(value)
+
+
+def _finding(
+    code: str, path: str, message: str, hint: str, value: float | None = None
+) -> KernelError:
+    """Build an ``invalid_input`` error at ``path``; ``value`` goes to ``detail`` if given."""
     logger.debug("finding %s at %s", code, path)
+    detail: dict[str, JsonValue] = {} if value is None else {"value": _number(value)}
     return KernelError(
         code=code,
         category=ErrorCategory.INVALID_INPUT,
         input_path=path,
         message=message,
         hint=hint,
+        detail=detail,
     )
 
 
-def _non_finite(node: object, path: str) -> list[KernelError]:
-    """Find every NaN or infinite number below ``node`` that the kernel reads."""
+def _non_finite(node: object, path: str, skip: frozenset[str] = frozenset()) -> list[KernelError]:
+    """Find every NaN or infinite number below ``node`` (models and tuples) that the kernel reads.
+
+    ``skip`` names fields of ``node`` itself that the caller checks separately.
+    """
     if isinstance(node, float):
         if math.isfinite(node):
             return []
@@ -104,20 +116,17 @@ def _non_finite(node: object, path: str) -> list[KernelError]:
                 path,
                 f"Value at {path} is {node}; it must be a finite number.",
                 f"Give {path} a finite value.",
+                node,
             )
         ]
     findings: list[KernelError] = []
     if isinstance(node, BaseModel):
-        unread = UNREAD_FIELDS.get(type(node), frozenset())
+        unread = UNREAD_FIELDS.get(type(node), frozenset()) | skip
         for name in type(node).model_fields:
             if name not in unread:
                 findings += _non_finite(getattr(node, name), f"{path}.{name}")
-    elif isinstance(node, dict):
-        # isinstance narrows a generic dict to dict[Unknown, Unknown]; only its keys' text is used
-        for key, item in cast("dict[object, object]", node).items():
-            findings += _non_finite(item, _key_path(path, str(key)))
     elif isinstance(node, tuple):
-        # same narrowing as for dict above
+        # isinstance narrows a generic tuple to tuple[Unknown, ...]
         for index, item in enumerate(cast("tuple[object, ...]", node)):
             findings += _non_finite(item, f"{path}[{index}]")
     return findings
@@ -129,19 +138,11 @@ def _not_positive(
     """Report ``value`` if it is finite and ``<= 0`` (a non-finite value is reported elsewhere)."""
     if not math.isfinite(value) or value > 0:
         return []
-    message = f"{what} at {path} is {value} {unit}; it must be > 0."
-    return [_finding(code, path, message, hint)]
+    message = f"{what} at {path} is {f'{value} {unit}'.rstrip()}; it must be > 0."
+    return [_finding(code, path, message, hint, value)]
 
 
-def _name_mismatch(kind: str, key: str, name: str, path: str) -> list[KernelError]:
-    """Report a ``name`` that differs from the dict key it is stored under."""
-    if name == key:
-        return []
-    message = f"The name {name!r} of {kind} {key!r} differs from its key; the key is the identity."
-    return [_finding("name_mismatch", f"{path}.name", message, f"Rename it to {key!r}.")]
-
-
-_NACA = re.compile(r"naca(?P<digits>\d{4,5})", re.IGNORECASE)
+_NACA = re.compile(r"naca(?P<digits>\d{4})", re.IGNORECASE)
 
 
 def _interpolate(curve: list[tuple[float, float]], x: float) -> float:
@@ -168,7 +169,7 @@ def _contour_thickness(points: tuple[tuple[float, float], ...]) -> float:
 
 
 def _airfoil_findings(airfoil: geometry.Airfoil, path: str) -> list[KernelError]:
-    """Check an airfoil: a resolvable designation or a closed contour with positive thickness."""
+    """Check an airfoil: a NACA 4-digit designation or a valid contour with positive thickness."""
     if isinstance(airfoil, str):
         match = _NACA.fullmatch(airfoil)
         if match is None:
@@ -176,8 +177,8 @@ def _airfoil_findings(airfoil: geometry.Airfoil, path: str) -> list[KernelError]
                 _finding(
                     "unresolved_airfoil",
                     path,
-                    f"Airfoil {airfoil!r} is not a NACA 4- or 5-digit designation and the "
-                    "kernel loads no files.",
+                    f"Airfoil {airfoil!r} is not a NACA 4-digit designation and the kernel "
+                    "loads no files.",
                     "Pass a designation such as 'naca2412', or inline coordinates.",
                 )
             ]
@@ -188,23 +189,27 @@ def _airfoil_findings(airfoil: geometry.Airfoil, path: str) -> list[KernelError]
                     path,
                     f"Airfoil {airfoil!r} has a thickness of 0 chord fractions; it must be > 0.",
                     "Use a designation with a thickness above 00.",
+                    0.0,
                 )
             ]
         return []
     points = airfoil.coordinates
     coordinates_path = f"{path}.coordinates"
     findings: list[KernelError] = []
-    if len(points) < 3 or points[0] != points[-1]:
+    finite = all(math.isfinite(c) for point in points for c in point)
+    if len(points) < 3 or (
+        finite and not (points[0][0] == points[-1][0] == max(x for x, _ in points))
+    ):
         findings.append(
             _finding(
-                "open_airfoil_contour",
+                "invalid_airfoil_contour",
                 coordinates_path,
-                f"The airfoil contour at {coordinates_path} has {len(points)} point(s) and "
-                "its first and last point differ; it must be closed with at least 3 points.",
-                "End the contour on its first point (Selig order, trailing edge to trailing edge).",
+                f"The airfoil contour at {coordinates_path} has {len(points)} point(s); it "
+                "needs at least 3, and its first and last point must lie at the largest x.",
+                "Start and end the contour at the trailing edge (Selig order).",
             )
         )
-    if len(points) >= 3 and all(math.isfinite(c) for point in points for c in point):
+    if len(points) >= 3 and finite:
         thickness = _contour_thickness(points)
         if thickness <= 0:
             findings.append(
@@ -214,14 +219,16 @@ def _airfoil_findings(airfoil: geometry.Airfoil, path: str) -> list[KernelError]
                     f"The airfoil at {coordinates_path} has a maximum thickness of {thickness} "
                     "chord fractions; it must be > 0.",
                     "Give the upper surface (first half of the contour) above the lower one.",
+                    thickness,
                 )
             )
     return findings
 
 
 def _section_findings(x_sec: geometry.WingXSec, path: str, *, is_last: bool) -> list[KernelError]:
-    """Check one rib: positive chord, no segment details on the last, no orphan control surface."""
-    findings = _not_positive(
+    """Check one rib: finiteness, chord, airfoil, segment details on the last, control surface."""
+    findings = _non_finite(x_sec, path)
+    findings += _not_positive(
         x_sec.chord,
         f"{path}.chord",
         "non_positive_length",
@@ -260,63 +267,81 @@ def _section_findings(x_sec: geometry.WingXSec, path: str, *, is_last: bool) -> 
     return findings
 
 
+def _too_few_sections(kind: str, key: str, count: int, path: str) -> list[KernelError]:
+    """Report a wing or fuselage with fewer than two sections."""
+    if count >= 2:
+        return []
+    return [
+        _finding(
+            "too_few_sections",
+            f"{path}.x_secs",
+            f"{kind} {key!r} has {count} section(s); it needs at least 2.",
+            "Give it at least two sections.",
+            float(count),
+        )
+    ]
+
+
+def _span_findings(wing: Wing, path: str) -> list[KernelError]:
+    """Report a wing whose ``xyz_le`` chain has length 0 (needs finite points and 2+ sections)."""
+    points = [x_sec.xyz_le for x_sec in wing.x_secs]
+    if len(points) < 2 or not all(math.isfinite(c) for point in points for c in point):
+        return []
+    span = sum(math.dist(start, end) for start, end in pairwise(points))
+    if span > 0:
+        return []
+    return [
+        _finding(
+            "non_positive_length",
+            f"{path}.x_secs",
+            f"The span of the wing at {path} is {span} m; it must be > 0.",
+            "Give the sections different leading-edge points.",
+            span,
+        )
+    ]
+
+
 def _wing_findings(wings: Mapping[str, Wing]) -> list[KernelError]:
-    """Check the wings: name, section count and each section."""
+    """Check the wings: section count, span and each section."""
     findings: list[KernelError] = []
     for key, wing in wings.items():
-        wing_path = _key_path("airplane.wings", key)
-        findings += _name_mismatch("wing", key, wing.name, wing_path)
-        if len(wing.x_secs) < 2:
-            findings.append(
-                _finding(
-                    "too_few_sections",
-                    f"{wing_path}.x_secs",
-                    f"Wing {key!r} has {len(wing.x_secs)} section(s); a wing needs at least 2.",
-                    "Give the wing a root and a tip section.",
-                )
-            )
+        path = _key_path("airplane.wings", key)
+        findings += _too_few_sections("Wing", key, len(wing.x_secs), path)
+        findings += _span_findings(wing, path)
         last = len(wing.x_secs) - 1
         for index, x_sec in enumerate(wing.x_secs):
-            findings += _section_findings(
-                x_sec, f"{wing_path}.x_secs[{index}]", is_last=index == last
-            )
+            findings += _section_findings(x_sec, f"{path}.x_secs[{index}]", is_last=index == last)
     return findings
 
 
 def _fuselage_findings(fuselages: Mapping[str, geometry.Fuselage]) -> list[KernelError]:
-    """Check the fuselages: name and positive semi-axes."""
+    """Check the fuselages: section count, positive semi-axes and exponents."""
     findings: list[KernelError] = []
     for key, fuselage in fuselages.items():
         path = _key_path("airplane.fuselages", key)
-        findings += _name_mismatch("fuselage", key, fuselage.name, path)
+        findings += _too_few_sections("Fuselage", key, len(fuselage.x_secs), path)
         for index, x_sec in enumerate(fuselage.x_secs):
+            section = f"{path}.x_secs[{index}]"
+            findings += _non_finite(x_sec, section)
             for axis, size in (("a", x_sec.a), ("b", x_sec.b)):
                 findings += _not_positive(
                     size,
-                    f"{path}.x_secs[{index}].{axis}",
+                    f"{section}.{axis}",
                     "non_positive_length",
                     "Semi-axis",
                     "m",
                     "Give the semi-axis a length > 0.",
                 )
-    return findings
-
-
-# slug -> (code, quantity name, unit) of the values that must be positive (ch. 8.11)
-_POSITIVE_VALUES: Mapping[str, tuple[str, str, str]] = {
-    "aircraft-mass": ("non_positive_mass", "Mass", "kg"),
-    "sea-level-air-density": ("non_positive_density", "Density", "kg/m^3"),
-}
-
-
-def _value_findings(values: Mapping[str, float]) -> list[KernelError]:
-    """Check the passed values: mass and density must be positive."""
-    findings: list[KernelError] = []
-    for slug, (code, what, unit) in _POSITIVE_VALUES.items():
-        if slug in values:
-            findings += _not_positive(
-                values[slug], _values_path(slug), code, what, unit, f"Give {slug} a value > 0."
-            )
+            for name, exponent in (("n", x_sec.n), ("n_lower", x_sec.n_lower)):
+                if exponent is not None:
+                    findings += _not_positive(
+                        exponent,
+                        f"{section}.{name}",
+                        "non_positive_exponent",
+                        "Exponent",
+                        "",
+                        "Give the super-ellipse exponent a value > 0.",
+                    )
     return findings
 
 
@@ -377,7 +402,8 @@ def validate_aircraft(aircraft: AircraftInput) -> Validation:
     """Report every physically inadmissible value of an aircraft input, and the input's caveats.
 
     Pure and I/O free; collects all findings instead of stopping at the first. Empty ``errors``
-    means the input is admissible.
+    means the input is admissible. Findings follow the document, then ``values`` by slug.
+    ``values`` are checked for finiteness only: their admissibility comes from the canon model.
 
     Args:
         aircraft: The parsed input; geometry in metres and degrees, ``values`` in canon units.
@@ -386,12 +412,12 @@ def validate_aircraft(aircraft: AircraftInput) -> Validation:
         The ``invalid_input`` errors (each with the dotted ``input_path`` of the offending
         value) and the warnings about the input.
     """
-    errors = _non_finite(aircraft.airplane, "airplane")
+    airplane = aircraft.airplane
+    errors = _non_finite(airplane, "airplane", skip=frozenset({"wings", "fuselages"}))
+    errors += _wing_findings(airplane.wings or {})
+    errors += _fuselage_findings(airplane.fuselages or {})
     for slug in sorted(aircraft.values):
         errors += _non_finite(aircraft.values[slug], _values_path(slug))
-    errors += _wing_findings(aircraft.airplane.wings or {})
-    errors += _fuselage_findings(aircraft.airplane.fuselages or {})
-    errors += _value_findings(aircraft.values)
-    logger.debug("validation done: %d errors", len(errors))
-    warnings = _mass_warnings(aircraft) + _deflection_warnings(aircraft.airplane.wings or {})
+    warnings = _mass_warnings(aircraft) + _deflection_warnings(airplane.wings or {})
+    logger.debug("validation done: %d errors, %d warnings", len(errors), len(warnings))
     return Validation(errors=tuple(errors), warnings=tuple(warnings))
