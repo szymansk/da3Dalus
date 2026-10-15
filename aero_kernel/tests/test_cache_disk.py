@@ -297,7 +297,6 @@ async def test_a_corrupt_page_makes_put_a_skipped_write(tmp_path: Path) -> None:
 async def test_a_corrupt_page_is_deleted_with_the_file_by_drop_scope(tmp_path: Path) -> None:
     cache = await _corrupt_body(tmp_path)
     await cache.drop_scope("s")
-    assert (tmp_path / f"{DB_NAME}.corrupt").is_file()
     assert await cache.get("s", "150") is None
 
 
@@ -559,3 +558,53 @@ async def test_totals_subtract_only_what_was_deleted_when_another_connection_evi
     assert await cache.get("s", "k") is None
     _agree(tmp_path)
     assert await cache.get("s", "newer") == entry(2.0)
+
+
+@pytest.mark.asyncio
+async def test_drop_scope_removes_a_file_quarantined_by_an_earlier_get(tmp_path: Path) -> None:
+    cache = await _corrupt_body(tmp_path)
+    assert await cache.get("s", "150") is None
+    aside = tmp_path / f"{DB_NAME}.corrupt"
+    assert aside.is_file()
+    await cache.drop_scope("s")
+    assert not aside.exists()
+
+
+@pytest.mark.asyncio
+async def test_drop_scope_on_a_corrupt_file_leaves_no_corrupt_file_behind(tmp_path: Path) -> None:
+    cache = await _corrupt_body(tmp_path)
+    await cache.drop_scope("s")
+    assert not (tmp_path / f"{DB_NAME}.corrupt").exists()
+
+
+@pytest.mark.asyncio
+async def test_drop_scope_without_a_corrupt_file_needs_none(tmp_path: Path) -> None:
+    cache = _disk(tmp_path)
+    await cache.put("s", "k", entry())
+    await cache.drop_scope("s")
+    assert await cache.get("s", "k") is None
+
+
+@pytest.mark.asyncio
+async def test_drop_scope_that_cannot_remove_the_corrupt_file_is_a_store_error(
+    tmp_path: Path,
+) -> None:
+    cache = _disk(tmp_path)
+    aside = tmp_path / f"{DB_NAME}.corrupt"
+    aside.mkdir()
+    (aside / "kept").write_text("x")
+    with pytest.raises(StoreError) as caught:
+        await cache.drop_scope("s")
+    assert str(caught.value) == "the cache could not delete scope s; the store is unavailable"
+    assert str(tmp_path) not in str(caught.value)
+
+
+@pytest.mark.asyncio
+async def test_a_stale_quarantine_leaves_the_fresh_file_alone(tmp_path: Path) -> None:
+    cache = await _corrupt_body(tmp_path)
+    assert await cache.get("s", "150") is None
+    await cache.put("s", "fresh", entry(7.0))
+    # A call that saw the file before the first quarantine reports it late (generation 0).
+    await asyncio.to_thread(getattr(cache, "_quarantine"), 0)  # noqa: B009 - private by design
+    assert await cache.get("s", "fresh") == entry(7.0)
+    assert (tmp_path / f"{DB_NAME}.corrupt").is_file()
