@@ -3,7 +3,7 @@
 from collections.abc import Mapping
 
 import pytest
-from aero_kernel.registry import Implementation, Registry, RegistryError
+from aero_kernel.registry import Implementation, RegistrationError, Registry
 
 FINGERPRINT = "sha256:" + "0" * 64
 
@@ -40,14 +40,14 @@ def test_unregistered_formula_has_no_implementation() -> None:
 def test_duplicate_formula_is_an_error_even_for_the_same_function() -> None:
     registry = Registry()
     registry.formula("stall-speed", interface=FINGERPRINT)(_impl)
-    with pytest.raises(RegistryError, match="calc:stall-speed"):
+    with pytest.raises(RegistrationError, match="calc:stall-speed"):
         registry.formula("stall-speed", interface=FINGERPRINT)(_impl)
 
 
 def test_bare_and_qualified_spelling_collide() -> None:
     registry = Registry()
     registry.formula("stall-speed", interface=FINGERPRINT)(_impl)
-    with pytest.raises(RegistryError, match="already"):
+    with pytest.raises(RegistrationError, match="already"):
         registry.formula("calc:stall-speed", interface=FINGERPRINT)(_impl)
 
 
@@ -55,7 +55,7 @@ def test_non_coroutine_formula_is_rejected() -> None:
     def sync(x: Mapping[str, float], ctx: object) -> dict[str, float]:
         return {}
 
-    with pytest.raises(RegistryError, match="coroutine"):
+    with pytest.raises(RegistrationError, match="coroutine"):
         Registry().formula("stall-speed", interface=FINGERPRINT)(
             sync  # pyright: ignore[reportArgumentType]  # deliberately not a coroutine function
         )
@@ -65,11 +65,23 @@ def test_non_coroutine_formula_is_rejected() -> None:
     "slug", ["", "Stall_Speed", "calc:", ":stall-speed", "a:b:c", "stall speed"]
 )
 def test_malformed_slug_is_rejected(slug: str) -> None:
-    with pytest.raises(RegistryError, match="slug"):
+    with pytest.raises(RegistrationError, match="slug"):
         Registry().formula(slug, interface=FINGERPRINT)(_impl)
 
 
 @pytest.mark.parametrize("interface", ["", "abc", "sha256:xyz", "sha256:" + "0" * 63])
 def test_malformed_interface_fingerprint_is_rejected(interface: str) -> None:
-    with pytest.raises(RegistryError, match="interface"):
+    with pytest.raises(RegistrationError, match="interface"):
         Registry().formula("stall-speed", interface=interface)(_impl)
+
+
+def test_formula_must_take_exactly_x_and_ctx() -> None:
+    async def one(x: Mapping[str, float]) -> dict[str, float]:
+        return {}
+
+    async def three(x: Mapping[str, float], ctx: object, extra: object) -> dict[str, float]:
+        return {}
+
+    for func in (one, three):
+        with pytest.raises(RegistrationError, match="exactly 2"):
+            Registry().formula("stall-speed", interface=FINGERPRINT)(func)
