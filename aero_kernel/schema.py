@@ -112,12 +112,17 @@ def _warning_key(warning: KernelWarning) -> str:
 
     Two warnings are the same only if code, origin, world, message and detail all agree, so the
     same warning reaching a quantity along several paths collapses while two devices stay two.
+    The key is the exact JSON content: ``1`` and ``1.0`` in ``detail``, and ``-0.0`` and ``0.0``,
+    count as different.
     """
     return json.dumps(warning.model_dump(mode="json"), sort_keys=True)
 
 
 def dedupe_warnings(warnings: Iterable[KernelWarning]) -> tuple[KernelWarning, ...]:
     """Drop repeated warnings, those equal in every field; the first occurrence wins.
+
+    Equality is that of the exact JSON content (see :func:`_warning_key`): ``1`` vs ``1.0`` and
+    ``-0.0`` vs ``0.0`` in ``detail`` are different warnings.
 
     Args:
         warnings: Warnings of a quantity and its subtree, in collection order.
