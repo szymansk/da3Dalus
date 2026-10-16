@@ -5,7 +5,7 @@ kind: procedure
 tool: GEO
 shape: law
 status: draft
-output: wing-reference-area, wing-span, mean-aerodynamic-chord, propeller-diameter
+output: wing-reference-area, wing-span, mean-aerodynamic-chord
 source_status: SOURCED
 dimensional_check: PROCEDURAL
 tags:
@@ -20,7 +20,6 @@ outputs:
   s_ref: wing-reference-area
   b_ref: wing-span
   c_mac: mean-aerodynamic-chord
-  d_prop: propeller-diameter
 ---
 
 # Geometric properties of the airplane
@@ -28,15 +27,14 @@ outputs:
 **Canonical form**
 
 ```
-S_ref, b_ref, c_MAC, D_prop := geometry of the airplane model
+S_ref, b_ref, c_MAC := geometry of the airplane model
 ```
 
-**Produces** [[wing-reference-area]] · [[wing-span]] · [[mean-aerodynamic-chord]] · [[propeller-diameter]]  ·  **from** [[airplane]]
+**Produces** [[wing-reference-area]] · [[wing-span]] · [[mean-aerodynamic-chord]]  ·  **from** [[airplane]]
 
 **Kind: a procedure — an evaluation of the model.** These are properties of the aircraft, read or
 integrated from its geometry: reference area and span from the main wing, the mean
-aerodynamic chord as `(2/S)·∫c(y)² dy`, the propeller diameter from the chosen propeller,
-the flap factor from the flap type. AeroSandbox provides the wing values directly
+aerodynamic chord as `(2/S)·∫c(y)² dy`, the flap factor from the flap type. AeroSandbox provides the wing values directly
 (`Wing.area()`, `Wing.span()`, `Wing.mean_aerodynamic_chord()`).
 
 **Why this entry exists.** These quantities used to stand as free inputs. They are not: a
