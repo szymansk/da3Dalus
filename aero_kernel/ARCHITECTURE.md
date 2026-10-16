@@ -131,7 +131,7 @@ aero_kernel/
   graph.py          subtree, order, world expansion, upstream_failed
   registry.py       @formula(slug), @precondition(slug, id), @postcondition(slug, id) — implementations ↔ canon model (ch. 8.12)
   formulas/         one file per canon formula (file name = slug, with underscores)
-  solvers/          aerobuildup.py · avl.py · opti.py · atmosphere.py · data.py (KAT, APC providers)
+  solvers/          aerobuildup.py · avl.py · opti.py · atmosphere.py
   cache.py          NodeStore protocol; MemoryCache (LRU), DiskCache
   validate.py       physical admissibility of the input and `values` against the canon (ch. 8.11)
   canonical.py      canonical JSON and the SHA-256 helper, shared by the canon model hash and the cache keys
@@ -317,8 +317,9 @@ No internal paths or mechanisms in any field (ADR 0019).
   `tests/`, `tools/` and `importer/`, plus `canon_model.json`; computed lazily on first use. Any code or canon change invalidates every entry. That wastes hits after an
   upgrade but can never serve a stale value; no hand-maintained implementation version exists that could be
   forgotten.
-- the tool versions (aerosandbox, NeuralFoil model, AVL), the accuracy tier, and the `content_hash()` of every
-  provider the node reads (ch. 8.8). There are no other solver settings in v1; one that is added later
+- the tool versions (aerosandbox, NeuralFoil model, AVL) and the accuracy tier. Every datum a node reads —
+  components and propeller tables included — is part of its direct input values, so nothing else enters
+  the key (ch. 8.11, D14). There are no other solver settings in v1; one that is added later
   goes into `ComputeRequest`, the key and the provenance together.
 
 **Canonicalisation:** sorted keys; floats as their exact shortest round-trip representation (`repr`),
@@ -608,13 +609,9 @@ caller's responsibility.
     the base, alongside the first formula that needs it.
   - Adapters know no canon names. They return warnings without `quantity`; the engine sets `origin` to
     the quantity of the node whose call produced them.
-- Data: KAT (component catalogue) and APC (propeller tables).
-- Data comes **from the caller**, either inline in the input or as a provider with a content hash. The
-  kernel loads nothing on its own.
-- A provider is an async protocol in `solvers/data.py`: `content_hash() -> str` (part of the cache key of
-  every node that reads it) and one lookup method per source. The lookup signatures are defined with the
-  first formula that uses them (the probes `airplane-components`, `propeller-table-lookup`); the core chain
-  reads no provider.
+- Data: KAT (the fitted components) and APC (the fitted propeller's measured table) are **plain reads of
+  `AircraftInput.components`** (ch. 8.11), like GEO reads the geometry. The tool codes classify the
+  formulas; they are no data sources. The kernel loads nothing on its own and calls nothing back (D14).
 
 ### 8.9 Canon import — from the canon document to the canon model
 
@@ -786,9 +783,14 @@ caller's event loop, it can be cancelled, and it limits its own resource use.
 
 ### 8.11 Input and request
 
+**Everything is pushed** (maintainer D14, 2026-10-16): *the kernel is given all the data it needs, then it
+computes; if something is missing, that was the caller's mistake or intent.* There is no runtime callback out
+of the kernel of any kind — no provider, no lookup, no database access, no file read.
+
 ```python
 class AircraftInput(BaseModel):          # extra="forbid"
     airplane: AirplaneGeometry           # docs/geometry-format/airplane-geometry.schema.json
+    components: Components | None = None # the fitted components, a contract of its own (below)
     values: dict[str, float]             # canon slug → value in the quantity's canon unit
 
 class ComputeRequest(BaseModel):
@@ -799,9 +801,26 @@ class ComputeRequest(BaseModel):
                                          # NeuralFoil model size; A3 / O10: a solver setting
 ```
 
-**Providers** (KAT, APC; ch. 8.8) are runtime objects, not data, and therefore **not** part of
-`AircraftInput`: they are passed as `compute(aircraft, request, providers={"KAT": …})`. `AircraftInput` and
-`ComputeRequest` stay pure data with a JSON form and a JSON Schema.
+`AircraftInput` and `ComputeRequest` are pure data with a JSON form and a JSON Schema.
+
+**`Components` — the fitted parts, pushed** (D14). The app resolves the parts fitted to the aircraft from
+its component tree and catalogue and passes them as data; selecting a part from the catalogue is the app's
+(or a later design canon's), never the kernel's. Rules:
+1. **A contract of its own**, separate from the geometry format (which has no components, D11), with its own
+   JSON Schema and `schema_version`; the kernel accepts only the version it was built for.
+2. **The full measured propeller table**: the fitted propeller's diameter plus `C_T(J)` **and** `C_P(J)`
+   for **every** RPM block of the APC data, because the propeller speed is a solver variable (torque
+   balance, the thrust optimisers) and is interpolated across blocks; never a single reduced curve.
+3. **Absence survives the push**: a value the catalogue does not have (e.g. the motor resistance `R_m`,
+   #1149) arrives **absent**, never filled, estimated or defaulted by the app. Route selection by data
+   (`optional:`, Q-PT-6) and the warning that declares the route depend on it (ADR 0020).
+4. **The cache key comes from the input only**: the components are direct input values of the nodes that
+   read them (ch. 8.4); no provider hash exists.
+5. **KAT and APC are plain input reads** (ch. 8.8): `airplane-components` and `propeller-table-lookup` read
+   `AircraftInput.components` as `airplane-geometry` reads the geometry.
+The canon quantity `airplane` (type `airplane`: "geometry, sections, airfoils, components") is the pair
+`AircraftInput.airplane` + `AircraftInput.components`. Its exact field list is defined with the first KAT /
+APC formula, not before (ADR 0021); `components: None` makes those formulas `missing_input`.
 
 **Binding of canon input quantities to the input:**
 - **Units.** A value is given, and a result returned, in the unit the canon model declares for the
