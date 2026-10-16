@@ -90,7 +90,6 @@ def cache_key(
     build_digest: str,
     tool_versions: Mapping[str, str],
     accuracy: Accuracy,
-    provider_hashes: Mapping[str, str],
 ) -> str:
     """Compute the cache key of one node (ch. 8.4): SHA-256 over the canonical JSON of everything.
 
@@ -105,7 +104,6 @@ def cache_key(
         build_digest: Hash over the code and canon model (see :func:`build_digest`).
         tool_versions: Versions of the tools the node uses.
         accuracy: Accuracy tier of the call.
-        provider_hashes: ``content_hash()`` of every provider the node reads, by provider name.
 
     Returns:
         ``"sha256:"`` plus the hex digest.
@@ -122,7 +120,6 @@ def cache_key(
             "build_digest": build_digest,
             "tool_versions": dict(tool_versions),
             "accuracy": accuracy,
-            "provider_hashes": dict(provider_hashes),
         }
     )
 
