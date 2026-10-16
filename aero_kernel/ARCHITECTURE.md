@@ -748,28 +748,22 @@ caller's event loop, it can be cancelled, and it limits its own resource use.
 - **Concurrency from the graph.** Independent nodes of the subtree and world assignments (A11) run
   concurrently (`asyncio.TaskGroup`). The dependency graph decides what may run in parallel, never the
   formula code.
-- **Bounded.** Execution resources are passed in, never global:
-  - an executor (process pool) and a concurrency limit.
-  - The **stateless `compute()`** takes them as optional keyword arguments (`executor=`,
-    `max_concurrency=`, default `os.cpu_count()`). The limit counts concurrent **solver calls** (pool tasks
-    and AVL subprocesses); graph nodes waiting on them cost nothing. Without an executor it creates a pool on the first
-    solver call and shuts it down before returning, so it stays free of state. Spawning costs about a
-    second; callers that compute often pass an executor or use `CachedKernel`.
+- **Bounded.** Execution resources are never global. The kernel always **owns** its process pool (maintainer
+  D12, 2026-10-16: no injected executor; restorable from `a2825d72` if the app ever needs one):
+  - The **stateless `compute()`** takes one optional keyword argument, `max_concurrency=` (default
+    `os.cpu_count()`). The limit counts concurrent **solver calls** (pool tasks and AVL subprocesses); graph
+    nodes waiting on them cost nothing. It creates its pool on the first solver call and shuts it down before
+    returning, so it stays free of state (Q20). Spawning costs about a second; callers that compute often
+    use `CachedKernel`.
   - **`CachedKernel`** owns one pool and one limit for its lifetime. They are created lazily and closed by
-    `async with` or `aclose()`. Once closing has begun, a runtime refuses work: a call not yet running in
-    the pool — waiting for a slot, or queued and cancelled by the shutdown — fails with
-    `RuntimeError("… closed")`, never with a `CancelledError` nobody asked for, and no new pool is ever
-    created. Calls already running in a worker finish and return. For an **owned** pool this holds exactly: submissions are
-    gated by a second semaphore equal to the pool's worker count, so every submitted item has a free
-    worker and nothing sits in the pool's own call queue. An **injected** executor's worker count is
-    unknown, so there up to one queued call may still start after closing began (CPython keeps one extra
-    call queued per pool). **`aclose()` means the same for every executor: when it returns, no work of
-    this runtime is running** — it waits for the runtime's own in-flight calls (tracked by the runtime, not
-    by shutting the executor down; an injected executor is never shut down). An injected executor that its owner shuts down
-    while the runtime is open makes the affected calls fail with `RuntimeError("the injected executor was
-    shut down")` — a programming error of the injector, never a bare `CancelledError`. Closing waits for the workers (off the loop, `asyncio.to_thread`) and
-    cancels pending futures, so nothing remains after `compute()` returns (Q20); an injected executor is
-    the caller's and is never shut down.
+    `async with` or `aclose()`.
+  - **Submissions are gated** by a second semaphore equal to the pool's resolved worker count, so every
+    submitted item has a free worker and nothing waits in the pool's own call queue.
+  - **Closing.** Once `aclose()` has begun, the runtime refuses work: a call not yet running in a worker
+    fails with `RuntimeError("… closed")`, never with a `CancelledError` nobody asked for, and no new pool is
+    ever created; no call starts after closing began. `aclose()` drains this runtime's running jobs off the
+    loop, then shuts the pool down in `asyncio.to_thread` (waiting for the workers, cancelling what is
+    pending): when it returns, no work of this runtime is running.
   - Nothing starts at import. Resources are not results: they never change a value.
 - **Cancellation.**
   - Cancelling the `compute()` task cancels all child tasks.
