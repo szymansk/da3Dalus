@@ -112,3 +112,12 @@ def logging_is_disabled() -> WorkerOutcome[bool]:
     """Report whether logging is switched off in the worker process."""
     disabled = not logging.getLogger("aero_kernel.worker_probe").isEnabledFor(logging.CRITICAL)
     return WorkerOutcome(value=disabled, diagnostics=WorkerDiagnostics(duration_s=0.0))
+
+
+class Payload:
+    """A result object that supports weak references, to see whether anything keeps it alive."""
+
+
+def make_payload() -> WorkerOutcome[Payload]:
+    """Return a fresh :class:`Payload`."""
+    return WorkerOutcome(value=Payload(), diagnostics=WorkerDiagnostics(duration_s=0.0))
