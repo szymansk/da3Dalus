@@ -8,6 +8,7 @@ leave the pool and any subprocess in a clean state.
 """
 
 import asyncio
+import concurrent.futures
 import contextlib
 import logging
 import multiprocessing
@@ -205,6 +206,10 @@ class SolverRuntime:
         self._slots: asyncio.Semaphore | None = None
         self._worker_slots: asyncio.Semaphore | None = None
         self._closed = False
+        # This runtime's own calls: pool jobs (cancelling the caller does not stop a running worker)
+        # and subprocess tasks. ``aclose`` drains both, whoever owns the executor.
+        self._pool_jobs: set[concurrent.futures.Future[object]] = set()
+        self._process_tasks: set[asyncio.Task[ProcessRun]] = set()
 
     async def __aenter__(self) -> Self:
         """Enter the ``async with`` block."""
@@ -215,15 +220,21 @@ class SolverRuntime:
         await self.aclose()
 
     async def aclose(self) -> None:
-        """Shut down the pool this runtime created and wait for its workers; idempotent.
+        """Wait for this runtime's own running calls, then close the pool it created; idempotent.
 
-        Workers still running are waited for, so no process outlives the call; their calls
-        return normally. An owned pool is gated by its worker count, so nothing waits in its own
-        queue: every other call (waiting for a slot or a worker) raises ``RuntimeError``. A pool
-        the caller injected is left alone and has no such gate, so up to one call queued in it
-        before closing began still starts and returns.
+        When this returns, no work of this runtime is running, whoever owns the executor: pool
+        jobs (also those whose caller was cancelled) and subprocess calls are waited for, off the
+        event loop, and their callers get their results. A pool the runtime created is then shut
+        down; an injected executor is never shut down. Calls that have not reached a worker
+        (waiting for a slot or for a free worker) raise ``RuntimeError``. An owned pool is gated by
+        its worker count, so nothing waits in its own queue; an injected one has no such gate, so
+        up to one call queued in it before closing began still starts, and is waited for.
         """
         self._closed = True
+        if self._process_tasks:
+            await asyncio.wait(list(self._process_tasks))
+        if self._pool_jobs:
+            await asyncio.to_thread(concurrent.futures.wait, list(self._pool_jobs))
         pool, self._pool = self._pool, None
         if pool is not None and self._owns_pool:
             await asyncio.to_thread(pool.shutdown, wait=True, cancel_futures=True)
@@ -301,11 +312,15 @@ class SolverRuntime:
         self._check_open()
         async with self._slot_limit(), self._free_worker():
             self._check_open()
-            loop = asyncio.get_running_loop()
             try:
+                job = self._executor().submit(run_in_worker, fn, args)
+                # Future is invariant; the set only waits on and discards jobs, never reads them.
+                tracked = cast("concurrent.futures.Future[object]", job)
+                self._pool_jobs.add(tracked)
+                tracked.add_done_callback(self._pool_jobs.discard)
                 result = cast(
                     "object",  # widened on purpose: the contract check below is a runtime guard
-                    await loop.run_in_executor(self._executor(), run_in_worker, fn, args),
+                    await asyncio.wrap_future(job),
                 )
             except asyncio.CancelledError:
                 # Only the injector can cancel a pool future behind our back (an owned pool never
@@ -359,6 +374,9 @@ class SolverRuntime:
         self._check_open()
         async with self._slot_limit():
             self._check_open()
-            return await run_process(
-                files, commands, executable=executable, args=args, collect=collect
+            task = asyncio.ensure_future(
+                run_process(files, commands, executable=executable, args=args, collect=collect)
             )
+            self._process_tasks.add(task)
+            task.add_done_callback(self._process_tasks.discard)
+            return await task
