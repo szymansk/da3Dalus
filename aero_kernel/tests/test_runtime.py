@@ -423,18 +423,23 @@ class TestPoolLifetime:
             max_workers=1, mp_context=multiprocessing.get_context("spawn")
         )
         try:
-            runtime = SolverRuntime(executor=executor, max_concurrency=2)
+            # max_workers is ignored for an injected pool: its size is the injector's business
+            runtime = SolverRuntime(executor=executor, max_workers=1, max_concurrency=2)
             await runtime.run_cpu(workers.square, 1)
             running = asyncio.create_task(runtime.run_cpu(workers.nap, 0.5))
             queued = asyncio.create_task(runtime.run_cpu(workers.nap, 0.1))
             waiting = asyncio.create_task(runtime.run_cpu(workers.nap, 0.1))
             await asyncio.sleep(0.3)
             await runtime.aclose()
+            closed_at = time.time()
             results = await asyncio.gather(running, queued, waiting, return_exceptions=True)
         finally:
             executor.shutdown(wait=True)
         assert isinstance(results[0], tuple)
         assert isinstance(results[1], tuple)  # queued in the pool before closing: still starts
+        # aclose waited for the calls already in the pool, the late one included
+        assert results[0][1] <= closed_at
+        assert results[1][1] <= closed_at
         assert isinstance(results[2], RuntimeError)  # still waiting for a slot: refused
         assert "closed" in str(results[2])
 
@@ -461,6 +466,38 @@ class TestPoolLifetime:
         assert all("the injected executor was shut down" in str(r) for r in affected)
         assert all(isinstance(r, (tuple, RuntimeError)) for r in results[:-1])
 
+    async def test_the_worker_gate_is_released_on_every_path(self) -> None:
+        """One worker, one gate slot: a leaked slot would hang the next call."""
+        async with SolverRuntime(max_workers=1, max_concurrency=8) as runtime, asyncio.timeout(30):
+            assert await runtime.run_cpu(workers.square, 1) == 1
+            with pytest.raises(FormulaError):
+                await runtime.run_cpu(workers.expected_failure)
+            with pytest.raises(ValueError, match="worker exploded"):
+                await runtime.run_cpu(workers.boom)
+            with pytest.raises(TypeError):
+                await runtime.run_cpu(workers.plain, 1)  # pyright: ignore[reportArgumentType]  # contract violation under test
+            running = asyncio.create_task(runtime.run_cpu(workers.nap, 0.4))
+            await asyncio.sleep(0.2)
+            running.cancel()
+            with pytest.raises(asyncio.CancelledError):
+                await running
+            async with asyncio.timeout(10):
+                assert await runtime.run_cpu(workers.square, 2) == 4
+                with pytest.raises(BrokenProcessPool):
+                    await runtime.run_cpu(workers.die)
+                assert await runtime.run_cpu(workers.square, 3) == 9
+
+    async def test_the_gate_follows_the_given_worker_count_not_the_concurrency_limit(
+        self,
+    ) -> None:
+        """With 2 workers and a limit of 8, two calls run at once and a third waits."""
+        async with SolverRuntime(max_workers=2, max_concurrency=8) as runtime:
+            await asyncio.gather(
+                runtime.run_cpu(workers.square, 1), runtime.run_cpu(workers.square, 2)
+            )
+            results = await asyncio.gather(*(runtime.run_cpu(workers.nap, 0.3) for _ in range(4)))
+        assert max_overlap(results) == 2
+
     async def test_a_caller_cancelling_a_queued_call_while_close_runs_still_sees_cancellation(
         self,
     ) -> None:
@@ -479,6 +516,85 @@ class TestPoolLifetime:
         assert isinstance(results[-1], asyncio.CancelledError)
         assert isinstance(results[0], tuple)  # the running call finished
         assert all(isinstance(r, RuntimeError) and "closed" in str(r) for r in results[1:-1])
+
+    async def test_aclose_waits_for_running_calls_on_an_injected_executor(self) -> None:
+        executor = ProcessPoolExecutor(
+            max_workers=1, mp_context=multiprocessing.get_context("spawn")
+        )
+        try:
+            runtime = SolverRuntime(executor=executor)
+            await runtime.run_cpu(workers.square, 1)
+            call = asyncio.create_task(runtime.run_cpu(workers.nap, 0.6))
+            await asyncio.sleep(0.2)
+            await runtime.aclose()
+            closed_at = time.time()
+            _, end = await call  # the caller got its result
+            assert end <= closed_at
+            # the executor is still the owner's to use
+            assert executor.submit(workers.square, 5).result(timeout=30).value == 25
+        finally:
+            executor.shutdown(wait=True)
+
+    async def test_aclose_also_waits_for_a_worker_whose_caller_was_cancelled(self) -> None:
+        executor = ProcessPoolExecutor(
+            max_workers=1, mp_context=multiprocessing.get_context("spawn")
+        )
+        try:
+            runtime = SolverRuntime(executor=executor)
+            await runtime.run_cpu(workers.square, 1)
+            started = time.perf_counter()
+            call = asyncio.create_task(runtime.run_cpu(workers.nap, 0.8))
+            await asyncio.sleep(0.2)
+            call.cancel()
+            with pytest.raises(asyncio.CancelledError):
+                await call
+            await runtime.aclose()
+            assert time.perf_counter() - started >= 0.75  # the worker was still running
+        finally:
+            executor.shutdown(wait=True)
+
+    async def test_the_loop_stays_free_while_aclose_waits_on_an_injected_executor(self) -> None:
+        executor = ProcessPoolExecutor(
+            max_workers=1, mp_context=multiprocessing.get_context("spawn")
+        )
+        try:
+            runtime = SolverRuntime(executor=executor)
+            await runtime.run_cpu(workers.square, 1)
+            call = asyncio.create_task(runtime.run_cpu(workers.nap, 0.8))
+            await asyncio.sleep(0.2)
+            worst_delay = 0.0
+            stop = asyncio.Event()
+
+            async def ticker() -> None:
+                nonlocal worst_delay
+                while not stop.is_set():
+                    before = time.perf_counter()
+                    await asyncio.sleep(0.01)
+                    worst_delay = max(worst_delay, time.perf_counter() - before - 0.01)
+
+            ticking = asyncio.create_task(ticker())
+            await asyncio.sleep(0)
+            await runtime.aclose()
+            stop.set()
+            await ticking
+            await call
+            assert worst_delay < 0.05
+        finally:
+            executor.shutdown(wait=True)
+
+    async def test_aclose_waits_for_a_running_subprocess_call(self, tmp_path: Path) -> None:
+        script = tmp_path / "stamp.py"
+        script.write_text(STAMP_SCRIPT)
+        runtime = SolverRuntime(max_workers=1)
+        call = asyncio.create_task(
+            runtime.run_process({}, "", executable=sys.executable, args=[str(script)])
+        )
+        await asyncio.sleep(0.15)
+        await runtime.aclose()
+        closed_at = time.time()
+        run = await call  # not killed: it finished
+        assert run.returncode == 0
+        assert float(run.stdout.split()[1]) <= closed_at
 
     async def test_a_call_after_close_does_not_wait_for_a_slot(self) -> None:
         executor = ProcessPoolExecutor(
