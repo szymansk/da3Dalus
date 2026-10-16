@@ -1252,9 +1252,9 @@ model (part of `IMPORT_REPORT.md`).
 | `aerobuildup-evaluation` | procedure | AB | law | 4 → 4 | 1 | – | – | seconds | core chain |
 | `aileron-deflection-required` | procedure | OPT | law | 8 → 2 | 1 | – | A11 | seconds | core chain |
 | `air-density-isa` | law | ATM | law | 1 → 1 | 1 | – | – | instant | core chain |
-| `airplane-components` | procedure | KAT | law | 1 → 9 | 1 | – | – | instant | probe |
+| `airplane-components` | procedure | KAT | law | 1 → 10 | 1 | – | – | instant | probe |
 | `airplane-configuration` | procedure | GEO | law | 2 → 1 | 2 | – | – | instant | core chain |
-| `airplane-geometry` | procedure | GEO | law | 1 → 4 | 1 | – | – | instant | core chain |
+| `airplane-geometry` | procedure | GEO | law | 1 → 3 | 1 | – | – | instant | core chain |
 | `aspect-ratio` | law | APP | law | 2 → 1 | 1 | – | – | instant | core chain |
 | `battery-mass-from-capacity` | law | APP | law | 2 → 1 | 1 | – | – | instant | later |
 | `best-angle-of-climb` | optimization | OPT | law | 5 → 2 | 1 | – | – | seconds | later |
