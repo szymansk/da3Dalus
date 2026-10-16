@@ -5,6 +5,7 @@ from typing import Any
 
 import pytest
 from aero_kernel.cache import cache_key
+from aero_kernel.canonical import sha256_of
 from pydantic import JsonValue
 
 
@@ -19,7 +20,6 @@ def _key(**overrides: Any) -> str:
         "build_digest": "sha256:aa",
         "tool_versions": {"aerosandbox": "4.2.8"},
         "accuracy": "medium",
-        "provider_hashes": {},
     }
     args.update(overrides)
     return cache_key(**args)
@@ -53,7 +53,6 @@ def test_negative_zero_equals_zero_in_the_key() -> None:
         {"build_digest": "sha256:bb"},
         {"tool_versions": {"aerosandbox": "4.2.9"}},
         {"accuracy": "large"},
-        {"provider_hashes": {"kat": "sha256:cc"}},
     ],
 )
 def test_every_component_changes_the_key(override: dict[str, JsonValue]) -> None:
@@ -69,8 +68,24 @@ def test_non_finite_input_raises() -> None:
         _key(inputs={"x": math.nan})
 
 
-def test_provider_content_changes_the_key() -> None:
-    assert _key(provider_hashes={"kat": "sha256:aa"}) != _key(provider_hashes={"kat": "sha256:bb"})
+def test_the_key_document_has_exactly_these_fields() -> None:
+    """Pins the document: everything the kernel uses is in its input, so no provider hashes."""
+    assert _key() == sha256_of(
+        {
+            "scope": "shared",
+            "application": {"formula": "flight:stall-speed", "application": "default"},
+            "world": None,
+            "inputs": {"mass": 2.5, "area": 0.4},
+            "build_digest": "sha256:aa",
+            "tool_versions": {"aerosandbox": "4.2.8"},
+            "accuracy": "medium",
+        }
+    )
+
+
+def test_provider_hashes_are_no_longer_a_parameter() -> None:
+    with pytest.raises(TypeError, match="provider_hashes"):
+        _key(provider_hashes={"kat": "sha256:aa"})
 
 
 def test_tool_version_text_changes_the_key() -> None:
