@@ -49,13 +49,15 @@ REST endpoint, no HTTP and no server process. It offers **two interfaces** with 
 result types:
 
 ```python
-from aero_kernel import compute, CachedKernel, MemoryCache, AircraftInput, ComputeRequest
+from aero_kernel import compute, load_build, CachedKernel, MemoryCache, AircraftInput, ComputeRequest
+
+build = load_build()   # the shipped canon model + build digest + checked registry; raises CanonLoadError
 
 # 1. stateless: a pure function, no cache, no state between calls
-result = await compute(AircraftInput(...), ComputeRequest(quantities=["stall-speed"]))
+result = await compute(AircraftInput(...), ComputeRequest(quantities=["stall-speed"]), build)
 
 # 2. cached: a facade object that holds a cache and puts it in front of the same computation
-kernel = CachedKernel(cache=MemoryCache(max_entries=10_000))     # or DiskCache(path=...)
+kernel = CachedKernel(build, cache=MemoryCache(max_entries=10_000))
 async with kernel:
     result = await kernel.compute(AircraftInput(...), ComputeRequest(quantities=["stall-speed"]))
 ```
@@ -110,11 +112,25 @@ and the existing `app/api/v2` and MCP layers stay where they are (ADR 0019, ADR 
 6. **Solvers behind thin adapters.** Formulas talk to adapters, never to AeroSandbox or AVL directly. That
    keeps them mockable in the fast tier, and capability errors arise in one place.
 
+### 4.1 Build order — a vertical slice first (maintainer, 2026-10-16)
+
+"A good slice first, then broaden by KISS." Each step adds only what its formulas need:
+1. **Slice:** `weight-from-mass`, `air-density-isa` (the ATM adapter), `dynamic-pressure` — importer on the
+   real canon, the `Build`, a lean engine, an end-to-end test against hand-computed values (`aero` tier).
+2. **Geometry:** `wing-loading` via `airplane-geometry` (`S_ref`).
+3. **Solver path:** `stall-speed` — AeroBuildup/Opti adapters, applications, `when`, postconditions,
+   configured airplanes, polar values.
+4. **Method worlds:** `neutral-point` (A11 intervals, AVL).
+5. **Embedding:** the propulsion relations and the optimisers; `mass-envelope` last (embedding, worlds and
+   long runs together).
+Engine features named "built with the first embedder" (or with a later step) are specified here but not
+built before that step (ADR 0021). Appendix A's last column predates this order.
+
 ## 5. Building blocks
 
 ```
 aero_kernel/
-  api.py            async compute() — the stateless interface (pure function)
+  api.py            load_build() and async compute(aircraft, request, build) — the stateless interface
   cached.py         CachedKernel — the cached facade (owns cache, in-flight deduplication, resources)
   engine.py         walks the graph; takes an optional NodeStore (none = stateless)
   runtime.py        executor, concurrency limit, cancellation
@@ -155,7 +171,7 @@ aero_kernel/
 ## 6. Runtime view — one call
 
 ```
-await compute(aircraft, request)
+await compute(aircraft, request, build)
  1 validate(aircraft)                      → any finding: ComputeResult with input_errors, nothing computed
  2 resolve request.quantities              → unknown slug: that quantity error invalid_input, rest goes on
  3 canon_model.subtree(quantities)         → applications, topologically sorted (ch. 8.13)
@@ -198,7 +214,7 @@ An error means **no value**. A value with a caveat is a **warning** (8.2), not a
 | `invalid_input` | no | no | input is physically inadmissible | "Chord at `wings.W.x_secs[2].chord` must be > 0." |
 | `unsupported_configuration` | no | no | the method does not cover this layout, or a target lies above what the method itself can reach (code `target_above_method_maximum`, `detail` = the maximum reached and the input at which it occurs, e.g. the roll rate and δ_a) | "The textbook neutral-point formula needs a horizontal tail." |
 | `not_implemented` | no | no | the canon formula has no implementation yet | "`max-sustained-turn-rate` is in the canon, not in the kernel." |
-| `not_converged` | yes | no | the solver found no solution | "Raise the accuracy tier or change the start value." |
+| `not_converged` | yes | no | the solver found no solution | "Change the start value or the operating point." |
 | `timeout` | yes | no | the time budget was exceeded | "Raise the budget or request it as a long run." |
 | `tool_unavailable` | no | yes | a tool is missing (AeroSandbox, AVL) | "Use an environment with the aero dependencies." |
 | `upstream_failed` | as predecessor | as predecessor | a predecessor quantity has no value | "Fix `stall-speed` first." |
@@ -299,13 +315,12 @@ No internal paths or mechanisms in any field (ADR 0019).
 ### 8.4 Provenance, cache key and the two interfaces
 
 `Provenance`:
-- kernel version (`aero_kernel.__version__`, a constant bumped by hand: the repository is not an installed
-  package) **and the build digest** (below), which identifies the exact code even when nobody bumped the
-  version (Q3)
+- the **build digest** (below), which identifies the exact code and canon model file (Q3); there is no
+  hand-bumped version (the repository is not an installed package)
 - canon model hash and its source commit (the canon state)
 - tool versions (aerosandbox, NeuralFoil model, AVL): one non-empty version string per tool **the call actually
   used**; empty when only pure formulas ran
-- accuracy tier (A3) and solver settings
+- solver settings (e.g. the NeuralFoil model size the adapters use, fixed to the largest in v1)
 - `defaults_used`: every canon default the call took, as `{slug, value, unit, source}` (ch. 8.11)
 
 **Cache key** = SHA-256 over the canonical JSON of:
@@ -314,13 +329,15 @@ No internal paths or mechanisms in any field (ADR 0019).
   predecessors or the caller's input values. A node's key thus changes exactly when something in its
   subtree changes value (A1), without tracking leaf inputs.
 - the **build digest**: one hash over the `.py` files of the installed `aero_kernel` package except
-  `tests/`, `tools/` and `importer/`, plus `canon_model.json`; computed lazily on first use. Any code or canon change invalidates every entry. That wastes hits after an
+  `tests/`, `tools/` and `importer/`, plus `canon_model.json`; computed once by `load_build()`. Any code or canon change invalidates every entry. That wastes hits after an
   upgrade but can never serve a stale value; no hand-maintained implementation version exists that could be
   forgotten.
-- the tool versions (aerosandbox, NeuralFoil model, AVL) and the accuracy tier. Every datum a node reads —
+- the tool versions (aerosandbox, NeuralFoil model, AVL). Every datum a node reads —
   components and propeller tables included — is part of its direct input values, so nothing else enters
-  the key (ch. 8.11, D14). There are no other solver settings in v1; one that is added later
-  goes into `ComputeRequest`, the key and the provenance together.
+  the key (ch. 8.11, D14). There are no request-level solver settings in v1 (no accuracy knob, S10:
+  A3 asks for one declared level per quantity, not per request, and the NeuralFoil size names are an
+  implementation detail, ADR 0019); one that is added later goes into `ComputeRequest`, the key and the
+  provenance together.
 
 **Canonicalisation:** sorted keys; floats as their exact shortest round-trip representation (`repr`),
 `-0.0` as `0.0`; NaN and infinity cannot occur because validation rejects them. Numbers are **not**
@@ -342,8 +359,14 @@ need not be hashable.
 
 **Two interfaces, one engine.**
 
-- **`compute()`, stateless.** A pure function. It keeps nothing between calls: no cache and no
-  deduplication. Two calls with the same input compute twice.
+- **The `Build`** (S1/S14 of the 2026-10-16 review): a frozen value of the validated canon model, the build
+  digest and the registry with its traceability report, made by the public `load_build()`. Loading is the
+  **caller's** step, outside `compute()` — like constructing `AircraftInput` — and a broken or missing
+  model raises `CanonLoadError` there (a `KernelError` carrier). The kernel is given its own model like any
+  other data (D14); nothing is loaded, memoised or checked inside a call. The engine takes the `Build` as a
+  required argument; there is no default registry seam.
+- **`compute(aircraft, request, build)`, stateless.** A pure function. It keeps nothing between calls: no
+  cache and no deduplication. Two calls with the same input compute twice.
 - **`CachedKernel`, stateful facade.** An object that owns a `NodeStore` (`MemoryCache` or `DiskCache`) and
   the in-flight deduplication.
   - Its `compute()` has the same signature and the same result type.
@@ -353,14 +376,9 @@ need not be hashable.
   wrapping the whole call. Seen from outside it is still a facade: a separate object, put in front of the
   same computation, with no influence on the values.
 
-**Per call on the facade:** `await kernel.compute(aircraft, request, cache="use" | "refresh")`.
-
-| Mode | Reads | Writes | In-flight dedup | Use |
-|---|---|---|---|---|
-| `use` (default) | yes | yes | yes | normal operation |
-| `refresh` | no | yes | no | force a recomputation and replace the stored entries, e.g. after a tool upgrade |
-
-A call without the cache is simply the stateless `compute()`, so the facade needs no "off" mode.
+**Per call on the facade:** `await kernel.compute(aircraft, request)` — one mode: read, write, in-flight
+deduplication. There is no `refresh`: every reason to recompute (tool versions, build digest) is already in
+the key, and errors are never stored. A forced recomputation is the stateless `compute()`.
 
 Cache settings (size, disk location) are passed when the facade is created, never read from the environment.
 Each `QuantityResult` reports `from_cache`, which is always `false` from the stateless interface.
@@ -486,7 +504,7 @@ quantity.
     above; every `variables:` entry is read somewhere in the closure; no formula in the closure has
     `uncertainty: interval` (worlds are per node, ch. 8.13; an uncertain embedded relation needs a decision
     first).
-  - **Engine:** an embedded formula is no node — no cache entry and no preconditions of its own (its inputs
+  - **Engine** (built with the first embedder, like `@relation`): an embedded formula is no node — no cache entry and no preconditions of its own (its inputs
     are the embedder's variables or inputs; the embedder's preconditions apply). **Its postconditions do
     run**, on every embedded evaluation — they guard what the relation returns (e.g. `stall-speed`'s
     `optimum_at_first_cl_peak` at each mass of the sweep, K32): the unscoped ones always, a scoped one when
@@ -503,9 +521,10 @@ quantity.
   - **the canon's own definition for that data** → no warning. Example: `flap_deflection` of
     `airplane-configuration` on an aircraft without flaps: there is no configuration, the aircraft is
     unchanged (stall-speed, 2026-10-02); this is not a substitute.
-  - **the value is needed after all** → the formula raises `FormulaError(invalid_input, missing_input)`
-    with `input_path = values.<slug>`, exactly as the engine would (ch. 8.11). Example: `flap_deflection` absent
-    on an aircraft that has flaps.
+  - **the value is needed after all** → the formula raises `FormulaError(invalid_input, missing_input,
+    parameter=<name>)`; the **engine** fills `input_path = values.<slug>` from the application's binding, so
+    the formula never sees a slug (ch. 8.12). Example: `flap_deflection` absent on an aircraft that has
+    flaps.
   Every absent optional parameter is logged at `INFO` with the route (ch. 8.14).
 - An entry without `applications:` has exactly one application: every parameter bound to its default
   quantity from `inputs:` / `outputs:`, condition "always".
@@ -538,9 +557,9 @@ Both kinds return one of three states:
 - Units consistent across bindings (A4); dimensional check of law entries (later, report-only).
 - **One home per rule.** The importer is the authority for model validity: every **structural** rule
   (front-matter fields, vocabularies, references, the rules above) lives in the importer, which ports them
-  from `scripts/check_canon.py` (it may not import `scripts/`). Until `importer --check` runs in CI
-  (#1177, unit 13) the two copies exist on purpose and a differential test keeps them agreeing; then the
-  structural rules are **deleted from `check_canon.py`** and the differential test with them (ADR 0021).
+  from `scripts/check_canon.py` (it may not import `scripts/`). Porting and deleting happen in **one**
+  change (S13): the importer unit adds `importer --check` and its CI step and deletes the structural rules
+  from `check_canon.py` in the same change; there is never a second copy, so no differential test exists.
   `check_canon.py` keeps only the **prose/authoring checks** the importer never does, because it never
   reads prose — the "Produces / from" and "Used by" lines and the README examples — as the canon
   document's own authoring check.
@@ -720,9 +739,10 @@ Rules:
 - **The model is never edited by hand.** It is only produced by the importer, so model and document cannot
   drift apart unnoticed.
 - **Idempotent.** Importing the same canon document twice yields a byte-identical model.
-- **`--check`** writes nothing and reports whether the committed model still matches the canon document.
-  CI runs it and reports drift; whether drift fails the build follows #1177. The canon is still `draft`,
-  so drift is expected.
+- **`--check`** runs stages 1–3, writes nothing, and reports the findings and whether the committed model
+  still matches the canon document. CI runs it from the importer unit on (S13); canon authors run it instead
+  of the structural part of `check_canon.py`. Whether drift fails the build follows #1177; the canon is still
+  `draft`, so drift is expected.
 - **A breaking change** in the diff requires the affected implementations and golden values to be updated in
   the same change set (the traceability test, Q11, enforces it).
 - **Schema version.** `canon_model.json` carries the schema version. The kernel refuses to load a model with
@@ -797,8 +817,6 @@ class ComputeRequest(BaseModel):
     quantities: list[str]                # canon quantity slugs, not formula slugs
     include_long_runs: bool = False      # ch. 8.7
     time_budget_s: float | None = None   # ch. 8.10
-    accuracy: Literal["xxsmall", "xsmall", "small", "medium", "large", "xlarge", "xxlarge", "xxxlarge"] = "xxxlarge"
-                                         # NeuralFoil model size; A3 / O10: a solver setting
 ```
 
 `AircraftInput` and `ComputeRequest` are pure data with a JSON form and a JSON Schema.
@@ -981,15 +999,16 @@ async def stall_speed(x: Inputs, ctx: Context) -> dict[str, Value]:
   `airplane` → `AirplaneGeometry`, `curve` → `Curve`, `curve_pair` → `CurvePair`, `polar` → `Polar`. A new
   type is a canon decision first, then a type here.
 - **`ctx`** carries: `solvers` (the adapters), `world` (the active world of this formula, if it has
-  worlds), `accuracy`, `warn(code, message, severity)` and `embedded(item)` (ch. 8.5, below). Nothing else:
-  no cache, no request, no global.
+  worlds), `warn(code, message, detail=None)` — the severity follows from the closed warning table, as an
+  error's flags follow from its category — and `embedded(item)` (built with the first embedder). Nothing
+  else: no cache, no request, no global.
 - **Formula code is cheap.** It runs on the event loop. Anything heavy goes through an adapter; adapters
   run CPU work in the process pool and AVL as an async subprocess (ch. 8.10).
 - **Picklability** concerns only adapters: what they send to the pool is a module-level function and plain
   data. Formulas themselves never cross a process boundary.
-- **Failure.** Raise `FormulaError(category, code, message, hint, detail=None, input_path=None)` for an
+- **Failure.** Raise `FormulaError(category, code, message, hint, detail=None, parameter=None)` for an
   expected failure. Formulas and adapters may raise only `invalid_input` (e.g. `missing_input` for an
-  optional parameter that is needed after all, with `input_path`), `unsupported_configuration`,
+  optional parameter that is needed after all, naming its `parameter`; the engine derives `input_path`), `unsupported_configuration`,
   `not_converged` and `tool_unavailable`; `timeout`, `upstream_failed`, `not_implemented` and `internal`
   belong to the engine. The engine turns a `FormulaError` into a `KernelError`, adding `quantity`,
   `formula`, `application`, `world` and `retryable`/`escalate` from the category. Any other exception
@@ -999,7 +1018,7 @@ async def stall_speed(x: Inputs, ctx: Context) -> dict[str, Value]:
   `x` and returning `held | violated | unchecked` with a message. **Postconditions**,
   `@postcondition("stall-speed", "<check-id>")`, take `x` and the implementation's full return dict `y`
   and return the same three states.
-- **Embedded relations** (ch. 8.5). The module of an embedded formula exposes its relation as a plain,
+- **Embedded relations** (ch. 8.5; built with the first embedder). The module of an embedded formula exposes its relation as a plain,
   module-level function over parameter names (numpy- and CasADi-compatible where an OPT formula embeds
   it); its `@formula` coroutine and every embedder call that one function, so there is one implementation
   per relation (ADR 0022). For an embedded optimisation the function is its problem (built into a given
@@ -1008,17 +1027,18 @@ async def stall_speed(x: Inputs, ctx: Context) -> dict[str, Value]:
   returns the relation with that application's constants and quantity bindings already applied (the values
   arrive through the embedder's inputs) and its postconditions; the embedder passes only its `variables:`.
   Evaluated as a whole, the handle runs the postconditions on every call; built into an outer problem,
-  the embedder passes the solved values to the handle's `check(...)`. The traceability test (Q11) checks that every `embeds:` item has that function and that the
-  embedder requests each listed item through `ctx.embedded` (static check).
+  the embedder passes the solved values to the handle's `check(...)`. The engine **records** the items each
+  run requests through `ctx.embedded`; the embedding tests assert that they equal the formula's `embeds`
+  (S7: no static source scan).
 - **Registration** is by decorator at import of `aero_kernel.formulas`.
   - **Shape.** `registry.Registry` holds, per qualified formula slug, one implementation, its embeddable
     relation if any, and per `(slug, kind, check id)` one check function. The decorators `formula`,
     `relation`, `precondition` and `postcondition` are methods of a registry; the module-level names are
     those of the **default registry**, which `aero_kernel.formulas` fills at import and then **freezes**
     (any later registration raises). A frozen registry is a static table of code, not call state, so the
-    stateless rule (ch. 8.4) holds; the engine takes the registry as a parameter (default: the frozen
-    default), and tests build their own `Registry()` instead of touching the default.
-  - **Signatures.** `@formula(slug, interface="sha256:…")` on an `async def f(x, ctx) -> dict`;
+    stateless rule (ch. 8.4) holds; `load_build()` puts the frozen default into the `Build`, and tests build
+    their own `Registry()` and `Build` instead of touching the default.
+  - **Signatures.** `@formula(slug)` on an `async def f(x, ctx) -> dict`;
     `@relation(slug)` on the module-level relation function (ch. 8.5); `@precondition(slug, id)` on a
     plain `def check(x) -> CheckResult`, `@postcondition(slug, id)` on `def check(x, y) -> CheckResult`
     (`CheckResult`: `held | violated | unchecked` plus a message). Decorators stack, so one check function
@@ -1028,19 +1048,18 @@ async def stall_speed(x: Inputs, ctx: Context) -> dict[str, Value]:
   - **Parameter names are not repeated in code** (precedence note at the top). Considered and rejected,
     because each is a second, hand-kept copy of what the model owns: names in the decorator
     (`inputs=…, outputs=…`), a typed `Inputs` model per formula, keyword parameters in the signature; and an
-    AST scan of `x["…"]`, which is fragile. The body still *reads* `x["name"]` — use, not a declaration. The decorator carries the
-    formula's **interface fingerprint** instead: `sha256_of` the formula's sorted input names, output names
-    and `optional` in the canon model. The traceability check computes it from the loaded model and compares
-    (Q11): a changed parameter fails it until the implementation is updated and its fingerprint with it. It
-    also checks that every registered slug and check id exists in the model, that every embedded item has
-    a registered relation, and that every embedder requests each of its items through `ctx.embedded`
-    (static check). `@relation`, the relation check and the static check arrive with the first embedded
-    formula, not before (ADR 0021); a working version exists in commit `13dde61b` to restore from.
-    The check is `Registry.check_traceability(model) -> TraceabilityReport(findings, not_implemented, ok)`;
-    the formulas unit asserts `DEFAULT_REGISTRY.check_traceability(load_canon_model()).ok`. A registered check whose id exists in the model only on the other
-    side is a finding (`check_kind_mismatch`). It runs as a test in CI and once when a kernel is built; at runtime a formula whose
-    fingerprint does not match is `internal`, code `stale_implementation`, escalate, for its quantities
-    only. A model formula without an implementation is `not_implemented` (Q1).
+    AST scan of `x["…"]`, which is fragile; and a hand-kept interface fingerprint (S6), which could only
+    fire if CI was bypassed, since model and code ship together. The body still *reads* `x["name"]` — use,
+    not a declaration. **Q11 instead:** every formula's unit test builds `x` **from the model** (a test
+    helper maps the bound quantities' values to the formula's parameter names), so a renamed or added
+    parameter fails that test; the engine's check that an implementation returns exactly the output
+    parameters (otherwise `internal`) covers the output side.
+  - **Traceability.** `Registry.check_traceability(model) -> TraceabilityReport(findings, not_implemented,
+    ok)` reports a registered slug or check id the model does not have (`unknown_formula`,
+    `unknown_check`) and a check registered on the wrong side (`check_kind_mismatch`); `load_build()` runs it
+    and the formulas unit asserts it is `ok` on the shipped model. A model formula without an implementation
+    is no finding but `not_implemented` at runtime (Q1). `@relation` and the embedding checks arrive with the
+    first embedded formula (ADR 0021); a working version exists in commit `13dde61b` to restore from.
 
 ### 8.13 Graph semantics
 
@@ -1186,11 +1205,11 @@ They are the first thing a developer or an agent reads to check a change and to 
 | Q4 | The solver does not converge | `not_converged`; successors `upstream_failed`; other quantities still compute |
 | Q5 | Layout without a separate flap and aileron | `butterfly-max-mix` is `not_applicable`, code `condition_not_met`: no error, no substitute value. `stall-speed-landing` computes and equals `stall-speed` (no configuration, not a fallback) |
 | Q6 | Every error category | Serialises to JSON with `message` and `hint` |
-| Q7 | Second identical call | `CachedKernel` (`use`): no formula call, `from_cache` true; `refresh` and stateless `compute()`: formula called; values bit-identical across all three |
+| Q7 | Second identical call | `CachedKernel`: no formula call, `from_cache` true; stateless `compute()`: formula called; values bit-identical across both |
 | Q8 | Input mass ≤ 0 | `invalid_input` with `input_path`; Re < 3·10⁴ only warns |
 | Q9 | Boundary to `app/` | Test: no import from `app/`, `cad_designer/`, `scripts/` |
 | Q10 | No AeroSandbox installed | `tool_unavailable`, no ImportError |
-| Q11 | A canon change with a changed input of an implemented formula | the import diff marks it breaking; the traceability test fails until the implementation is updated |
+| Q11 | A canon change with a changed input of an implemented formula | the import diff marks it breaking; that formula's unit test, which builds `x` from the model, fails until the implementation is updated |
 | Q12 | Runtime independence | `compute()` works with `_reversa_sdd/` absent; only `canon/canon_model.json` is read |
 | Q13 | Import twice | byte-identical `canon_model.json` |
 | Q14 | A canon entry with an unknown unit | the import fails at stage 2 with file and field; no model written |
@@ -1211,11 +1230,11 @@ They are the first thing a developer or an agent reads to check a change and to 
 | Q29 | Target not set | `roll-rate-cruise` (`given: [cruise-speed-target]`) is `not_applicable`, code `not_given`; a quantity reading `cruise-speed-target` without `given` gets `missing_input` |
 | Q30 | Embedded relation and optional parameter | with `flight-speed` = 0, `thrust-at-airspeed` equals the thrust inside `static-thrust-to-weight` bit for bit (one relation function); without `motor-circuit-resistance` both run route A with a `practice` warning naming the route, no `missing_input` |
 | Q31 | Defaults taken | without `gravity` and without `approach-speed-margin-target`: `approach-speed` computes; `provenance.defaults_used` lists both with value and source; `caplog` has one `INFO` line for `gravity` and one `WARNING` line for the target, each with `call_id`, also on a second, cached call; the result carries `default_target_used` (`practice`) on `approach-speed` and its dependents, and no warning for `gravity` |
-| Q32 | Embedding | `importer --check` rejects an embedding cycle, an embedded formula with worlds, and an embedded input that is neither bound, produced in the closure nor generic; the traceability test fails when an embedder does not call the embedded relation function; `mass-envelope` with `neutral-point` in three worlds runs three times and returns `cg-envelope-over-mass` as a pointwise interval |
+| Q32 | Embedding (engine half built with the first embedder) | `importer --check` rejects an embedding cycle, an embedded formula with worlds, and an embedded input that is neither bound, produced in the closure nor generic; the traceability test fails when an embedder does not call the embedded relation function; `mass-envelope` with `neutral-point` in three worlds runs three times and returns `cg-envelope-over-mass` as a pointwise interval |
 | Q33 | Flap deflection: beyond the stop, flapless, missing | `flap-deflection-landing` larger than the flap's `positive_deflection_deg`: `airplane-landing` carries exactly the given deflection, `stall-speed-landing` computes, no error, no clamp and no warning about the stop. Flapless, no deflection given: `airplane-landing` is the unchanged aircraft, `stall-speed-landing` equals `stall-speed`, no warning, one `INFO` line. Flapless with a deflection: same values plus `deflection_without_flap`. Flaps, no deflection: `stall-speed-landing` is `missing_input` (`values.flap-deflection-landing`), `approach-speed` `upstream_failed`; `stall-speed` still computes |
 | Q34 | Angles, not stops | `roll-rate-approach` at a given `aileron-deflection` beyond the aileron's stop computes, no stop warning; `aileron-deflection-required-approach` for a target above the AeroBuildup maximum: that world fails with `unsupported_configuration`, code `target_above_method_maximum` (maximum roll rate and its δ_a in `detail`), the AVL world computes, the quantity is `error` with the AVL value in `detail.worlds_ok` — no clipped angle, no narrowed interval. AVL at `|p·b/2V| > 0.10` carries the `defect` warning from the adapter |
 | Q35 | Roll without ailerons; crow from the landing configuration | an aircraft without a surface acting as aileron, flaperon or elevon: `roll-rate-approach` and `aileron-deflection-required-approach` are `not_applicable` (`condition_not_met`), no `missing_input` for `aileron-deflection`; a wing whose only device is one flaperon (on one segment) has `has_aileron` but not the butterfly condition; two flaperon devices on different segments do have it (one acts as flap, the other as aileron), as the README's "other device" says (crow needs a flap-acting and a distinct aileron-acting surface at once), so the butterfly quantities are `not_applicable`; with separate flaps and ailerons the butterfly curves start from `airplane-landing` (maintainer E2, 2026-10-15): at mix `s` the flap is at `flap-deflection-landing + s · (crow-flap-deflection − flap-deflection-landing)` and the aileron at `s · crow-aileron-deflection` (absolute end angles at `s = 1`, independent of the stops); at `s = 0` the stall speed agrees with `stall-speed-landing` to solver tolerance and `butterfly-approach-speed-curve(0)` equals `approach-speed` exactly (normalised by `V_S0(0)` of the same sweep) |
-| Q36 | Embedded postcondition and variables | a stub `stall-speed` whose optimum is not the first C_L peak at one sweep mass: `mass-envelope` is `error`, `postcondition_violated`, `detail.embedded = stall-speed.clean` with that mass; with `m_current` set, the embedded `m` still takes every sweep value (`variables:`), never the current mass; the importer rejects a bare `stall-speed` in `embeds:` and a closure input that is neither variable, input nor produced |
+| Q36 | Embedded postcondition and variables (engine half built with the first embedder) | a stub `stall-speed` whose optimum is not the first C_L peak at one sweep mass: `mass-envelope` is `error`, `postcondition_violated`, `detail.embedded = stall-speed.clean` with that mass; with `m_current` set, the embedded `m` still takes every sweep value (`variables:`), never the current mass; the importer rejects a bare `stall-speed` in `embeds:` and a closure input that is neither variable, input nor produced |
 | Q37 | Postcondition on a curve | a stub stall solve that lands on the post-stall peak at one mix `s`: `butterfly-approach` is `error`, `postcondition_violated` (`optimum_at_first_cl_peak`, the failing `s` in `detail`); all four butterfly outputs are discarded, none returned; the check function is the one `stall-speed` uses |
 | Q38 | Non-scalar quantity requested in v1 | requesting `polar-stall` together with `stall-speed`: `polar-stall` is `error`, `not_implemented`, code `non_scalar_result`, no formula called for it; `stall-speed` computes and its formula, which also returns the polar internally, runs once |
 
