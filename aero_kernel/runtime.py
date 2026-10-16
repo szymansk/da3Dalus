@@ -16,7 +16,7 @@ import os
 import pickle
 import time
 from collections.abc import AsyncGenerator, Callable, Mapping, Sequence
-from concurrent.futures import Executor, ProcessPoolExecutor
+from concurrent.futures import ProcessPoolExecutor
 from concurrent.futures.process import BrokenProcessPool
 from dataclasses import dataclass
 from pathlib import Path
@@ -184,14 +184,12 @@ class SolverRuntime:
         *,
         max_workers: int | None = None,
         max_concurrency: int | None = None,
-        executor: Executor | None = None,
     ) -> None:
         """Create the runtime; nothing starts yet.
 
         Args:
             max_workers: Pool size when the runtime creates the pool; default ``os.cpu_count()``.
             max_concurrency: Concurrent solver calls; default ``os.cpu_count()``.
-            executor: A pool owned by the caller. It is used as it is and never shut down here.
 
         Raises:
             ValueError: If ``max_concurrency`` is below 1.
@@ -201,13 +199,12 @@ class SolverRuntime:
             raise ValueError(msg)
         self.max_concurrency = max_concurrency or os.cpu_count() or 1
         self._max_workers = max_workers
-        self._pool: Executor | None = executor
-        self._owns_pool = executor is None
+        self._pool: ProcessPoolExecutor | None = None
         self._slots: asyncio.Semaphore | None = None
         self._worker_slots: asyncio.Semaphore | None = None
         self._closed = False
         # This runtime's own calls: pool jobs (cancelling the caller does not stop a running worker)
-        # and subprocess tasks. ``aclose`` drains both, whoever owns the executor.
+        # and subprocess tasks. ``aclose`` drains both.
         self._pool_jobs: set[concurrent.futures.Future[object]] = set()
         self._process_tasks: set[asyncio.Task[ProcessRun]] = set()
 
@@ -222,13 +219,11 @@ class SolverRuntime:
     async def aclose(self) -> None:
         """Wait for this runtime's own running calls, then close the pool it created; idempotent.
 
-        When this returns, no work of this runtime is running, whoever owns the executor: pool
-        jobs (also those whose caller was cancelled) and subprocess calls are waited for, off the
-        event loop, and their callers get their results. A pool the runtime created is then shut
-        down; an injected executor is never shut down. Calls that have not reached a worker
-        (waiting for a slot or for a free worker) raise ``RuntimeError``. An owned pool is gated by
-        its worker count, so nothing waits in its own queue; an injected one has no such gate, so
-        up to one call queued in it before closing began still starts, and is waited for.
+        When this returns, no work of this runtime is running: pool jobs (also those whose caller
+        was cancelled) and subprocess calls are waited for, off the event loop, and their callers
+        get their results. The pool is then shut down. Calls that have not reached a worker
+        (waiting for a slot or for a free worker) raise ``RuntimeError``. The pool is gated by its
+        worker count, so nothing waits in its own queue and no call starts after closing began.
         """
         self._closed = True
         if self._process_tasks:
@@ -236,7 +231,7 @@ class SolverRuntime:
         if self._pool_jobs:
             await asyncio.to_thread(concurrent.futures.wait, list(self._pool_jobs))
         pool, self._pool = self._pool, None
-        if pool is not None and self._owns_pool:
+        if pool is not None:
             await asyncio.to_thread(pool.shutdown, wait=True, cancel_futures=True)
 
     def _check_open(self) -> None:
@@ -253,19 +248,13 @@ class SolverRuntime:
 
     @contextlib.asynccontextmanager
     async def _free_worker(self) -> AsyncGenerator[None]:
-        """Hold one worker of an owned pool, so no submission waits in the pool's own queue.
-
-        An injected executor has an unknown worker count and gets no gate (ch. 8.10).
-        """
-        if not self._owns_pool:
-            yield
-            return
+        """Hold one worker of the pool, so no submission waits in the pool's own queue (ch. 8.10)."""
         if self._worker_slots is None:
             self._worker_slots = asyncio.Semaphore(self._max_workers or os.cpu_count() or 1)
         async with self._worker_slots:
             yield
 
-    def _executor(self) -> Executor:
+    def _executor(self) -> ProcessPoolExecutor:
         """Return the pool, creating it on first use; never after the runtime is closed."""
         self._check_open()
         if self._pool is None:
@@ -277,11 +266,8 @@ class SolverRuntime:
         return self._pool
 
     def _discard_broken_pool(self) -> None:
-        """Drop a pool whose worker died, so the next call creates a fresh one.
-
-        An injected pool is the caller's: it stays and keeps reporting the failure.
-        """
-        if self._owns_pool and self._pool is not None:
+        """Drop a pool whose worker died, so the next call creates a fresh one."""
+        if self._pool is not None:
             self._pool.shutdown(wait=False, cancel_futures=True)
             self._pool = None
 
@@ -322,14 +308,6 @@ class SolverRuntime:
                     "object",  # widened on purpose: the contract check below is a runtime guard
                     await asyncio.wrap_future(job),
                 )
-            except asyncio.CancelledError:
-                # Only the injector can cancel a pool future behind our back (an owned pool never
-                # queues, see ``_free_worker``). The caller did not cancel: a programming error.
-                task = asyncio.current_task()
-                if task is not None and task.cancelling() == 0:
-                    msg = "the injected executor was shut down"
-                    raise RuntimeError(msg) from None
-                raise
             except BrokenProcessPool:
                 logger.warning("a process-pool worker died while running %s", fn)
                 self._discard_broken_pool()
