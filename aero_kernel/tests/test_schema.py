@@ -1,13 +1,10 @@
 """Tests for the result types (ARCHITECTURE ch. 5, 8.2, 8.3, 8.4; scenarios Q3, Q15, Q23, Q26, Q31)."""
 
-from typing import get_args
-
 import pytest
 from aero_kernel import schema
 from aero_kernel.errors import ErrorCategory, format_world_assignment, parse_world_assignment
 from aero_kernel.schema import (
     WARNING_CATALOGUE,
-    Accuracy,
     ComputeResult,
     DefaultUsed,
     Interval,
@@ -276,12 +273,10 @@ class TestQuantityResultInvariants:
 def make_provenance(**overrides: object) -> Provenance:
     """Build a valid provenance, with fields overridden."""
     fields: dict[str, object] = {
-        "kernel_version": "0.1.0",
         "build_digest": "ab" * 32,
         "canon_model_hash": "cd" * 32,
         "canon_source_commit": "3a86f54c",
         "tool_versions": {"aerosandbox": "4.2.9"},
-        "accuracy": "xxxlarge",
         "solver_settings": {},
         "defaults_used": [
             {"slug": "gravity", "value": 9.80665, "unit": "m/s^2", "source": "ISO 80000-3"}
@@ -303,16 +298,10 @@ class TestProvenance:
         with pytest.raises(ValidationError):
             make_provenance(defaults_used=[entry])
 
-    @pytest.mark.parametrize(
-        "field", ["kernel_version", "build_digest", "canon_model_hash", "canon_source_commit"]
-    )
+    @pytest.mark.parametrize("field", ["build_digest", "canon_model_hash", "canon_source_commit"])
     def test_rejects_empty_identifier(self, field: str) -> None:
         with pytest.raises(ValidationError):
             make_provenance(**{field: ""})
-
-    def test_rejects_unknown_accuracy(self) -> None:
-        with pytest.raises(ValidationError):
-            make_provenance(accuracy="huge")
 
 
 def make_compute(**overrides: object) -> ComputeResult:
@@ -515,7 +504,6 @@ class TestFiniteFloats:
 def test_all_pins_the_public_names() -> None:
     assert sorted(schema.__all__) == sorted(
         [
-            "Accuracy",
             "AircraftInput",
             "AirplaneGeometry",
             "ComputeRequest",
@@ -595,18 +583,6 @@ class TestSurvivingMutants:
     def test_value_rejects_non_float(self, bad: object) -> None:
         with pytest.raises(ValidationError):
             make_quantity(value=bad)
-
-    def test_accuracy_has_the_eight_levels(self) -> None:
-        assert get_args(Accuracy) == (
-            "xxsmall",
-            "xsmall",
-            "small",
-            "medium",
-            "large",
-            "xlarge",
-            "xxlarge",
-            "xxxlarge",
-        )
 
     def test_mixed_input_errors_are_rejected(self) -> None:
         timeout = KernelError(
