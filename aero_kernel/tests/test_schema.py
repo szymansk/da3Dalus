@@ -58,12 +58,15 @@ class TestKernelWarning:
             make_warning(severity="defect")
 
     def test_of_derives_the_severity_from_the_catalogue(self) -> None:
-        warning = KernelWarning.of("precondition_violated", "x", origin="q", detail={"a": 1})
+        warning = KernelWarning.of(
+            "precondition_violated", "x", origin="q", world="neutral-point=avl", detail={"a": 1}
+        )
         assert warning.severity is WarningSeverity.DEFECT
-        assert (warning.code, warning.message, warning.origin, warning.detail) == (
+        assert (warning.code, warning.message, warning.origin, warning.world, warning.detail) == (
             "precondition_violated",
             "x",
             "q",
+            "neutral-point=avl",
             {"a": 1},
         )
 
