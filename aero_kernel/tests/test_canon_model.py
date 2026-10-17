@@ -234,9 +234,10 @@ def test_a_default_needs_a_source_and_a_regime(field: str) -> None:
         build(with_defaults(base_namespaces(), gravity=GRAVITY_DEFAULT | {field: ""}))
 
 
-def test_a_default_value_must_be_finite() -> None:
-    with pytest.raises(ValidationError):
-        build(with_defaults(base_namespaces(), gravity=GRAVITY_DEFAULT | {"value": float("nan")}))
+@pytest.mark.parametrize("bad", [float("nan"), float("inf"), float("-inf")])
+def test_a_default_value_must_be_finite(bad: float) -> None:
+    with pytest.raises(ValidationError, match="finite"):
+        build(with_defaults(base_namespaces(), gravity=GRAVITY_DEFAULT | {"value": bad}))
 
 
 def test_a_given_quantity_must_not_have_a_default() -> None:
