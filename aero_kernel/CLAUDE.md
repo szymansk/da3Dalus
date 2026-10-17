@@ -98,9 +98,8 @@ failure.
   `errors.internal_error_from_exception` (`logger.error(..., exc_info=exc)`: it receives the exception
   outside an `except` block, so `logger.exception` does not apply).
 - **Every default taken is logged** (maintainer, 2026-10-14), once per call and slug, with slug, value,
-  unit, source and `call_id`: physical constants (`role: input`) at `INFO`, design targets
-  (`role: target`) at `WARNING`. A target default is also a `default_target_used` practice warning in the
-  result; every default is in `provenance.defaults_used`. An absent `optional:` parameter: `INFO` line
+  unit, source and `call_id`, always at `INFO` (maintainer, 2026-10-17). A target default is declared by
+  the `default_target_used` practice warning in the result; every default is in `provenance.defaults_used`. An absent `optional:` parameter: `INFO` line
   with the route taken.
 - Other domain warnings and expected outcomes (`not_applicable`, `skipped`, `not_converged`) are in the
   result, not at `WARNING` level.

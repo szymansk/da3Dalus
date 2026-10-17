@@ -254,7 +254,10 @@ until the engine sets it, since adapters know no canon names), `world` (the meth
 no separate `quantity` field: the reporting quantity is the `QuantityResult` that lists it.
 
 Warning codes are a **closed table** like error codes (ch. 8.1), each with its fixed severity; a source
-adds its codes when it is built. A quantity's result lists its own warnings and those of its subtree,
+adds its codes when it is built. `severity` stays a **required** field, so the public JSON schema and every
+dump always carry it (ADR 0019); code builds warnings through the named constructor
+`KernelWarning.of(code, message, …)`, which takes the severity from the table, and a given severity that
+contradicts the table is rejected. A quantity's result lists its own warnings and those of its subtree,
 deduplicated by their **full content** (`code`, `origin`, `world`, `message`, `detail`): a warning that
 reaches a quantity along several subtree paths is one warning, while two warnings that differ only in
 `detail` (`geometry_deflection_ignored` for two devices, both with origin `airplane`) stay two. The engine
@@ -437,6 +440,8 @@ quantity.
       - `tandem_wing` — `S_ref` still from the main wing only (the tandem rule is a later domain question);
       - `winglet` — only when modelled as a separate wing (winglet sections of the main wing stay part of it).
     - `has_horizontal_tail`: some wing has `surface_type` `horizontal_tail` or `v_tail`.
+    - A vocabulary term whose fact is not computed yet (e.g. `has_horizontal_tail` until #1187) makes its
+      applications a declared `not_implemented`, never a `KeyError`.
     - `has_vertical_tail`: some wing has `surface_type` `vertical_tail` or `v_tail`.
     - **Ontology rule** (maintainer, 2026-10-17): terms that describe the aircraft's ontology — the surface
       types and the facts derived from them — are defined complete whether or not a canon entry uses them
