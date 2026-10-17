@@ -252,7 +252,7 @@ def _embeds(content: Namespace, members: dict[str, str]) -> list[Finding]:
                         message=f"{_PREFIX}{target} has uncertainty: interval and may not be embedded",
                     )
                 )
-            for quantity in sorted(_bound(application) - supplied):
+            for quantity in _bound(application) - supplied:  # check_model sorts the findings
                 findings.append(
                     Finding(
                         file=_formula_file(slug),
