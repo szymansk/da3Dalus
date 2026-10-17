@@ -793,7 +793,11 @@ caller's event loop, it can be cancelled, and it limits its own resource use.
   - Nothing starts at import. Resources are not results: they never change a value.
 - **Cancellation.**
   - Cancelling the `compute()` task cancels all child tasks.
-  - It kills running AVL subprocesses and removes their temporary directories.
+  - It kills running AVL subprocesses (their whole process group) and removes their temporary directories.
+    The kernel creates the child's pipes itself (`os.pipe`, read and written through the public
+    `connect_read_pipe` / `connect_write_pipe`, every descriptor closed in a `finally`), so a start that fails
+    after the spawn leaks no descriptor and cannot hang; the start is shielded and awaited to its end on a
+    cancel, so a spawned child is never orphaned (#1188).
   - Work already running in the process pool is allowed to finish but its result is discarded, because
     pool workers cannot be interrupted safely.
   - `asyncio.CancelledError` is always re-raised, never turned into a result.
