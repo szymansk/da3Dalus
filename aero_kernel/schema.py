@@ -75,7 +75,8 @@ class KernelWarning(BaseModel):
     ``quantity`` field.
 
     Attributes:
-        severity: ``practice`` (domain practice) or ``defect``; fixed by the code.
+        severity: ``practice`` (domain practice) or ``defect``; fixed by the code. Omit it and it
+            is taken from :data:`WARNING_CATALOGUE`; if given, it must match the catalogue.
         code: Machine-readable code from :data:`WARNING_CATALOGUE`.
         message: The caveat, in natural language.
         origin: Slug of the quantity where the warning arose; ``None`` until the engine sets it.
@@ -85,7 +86,7 @@ class KernelWarning(BaseModel):
 
     model_config = ConfigDict(extra="forbid", frozen=True)
 
-    severity: WarningSeverity
+    severity: WarningSeverity | None = None
     code: str = Field(min_length=1)
     message: str = Field(min_length=1)
     origin: str | None = Field(default=None, min_length=1)
@@ -94,7 +95,7 @@ class KernelWarning(BaseModel):
 
     @model_validator(mode="after")
     def _check_code(self) -> Self:
-        """Reject codes outside the table, contradicting severities and a malformed world."""
+        """Derive the severity, reject codes outside the table, a contradicting severity and a bad world."""
         if self.world is not None:
             parse_world_assignment(self.world)
         check_finite_json(self.detail, "detail")
@@ -102,7 +103,10 @@ class KernelWarning(BaseModel):
         if expected is None:
             msg = f"code {self.code} is not in the warning catalogue; add it to WARNING_CATALOGUE"
             raise ValueError(msg)
-        if expected is not self.severity:
+        if self.severity is None:
+            # The model is frozen for callers; the validator fills the one derived field.
+            object.__setattr__(self, "severity", expected)
+        elif self.severity is not expected:
             msg = f"code {self.code} has severity {expected.value}, not {self.severity.value}"
             raise ValueError(msg)
         return self
