@@ -16,8 +16,6 @@ from aero_kernel.importer.findings import Finding
 from aero_kernel.importer.yamlvalue import (
     DuplicateKeyError,
     as_mapping,
-    is_number,
-    is_text,
     load_unique,
     scan_tokens,
 )
@@ -59,7 +57,6 @@ FORMULA_DROPPED = frozenset(
 )
 QUANTITY_CARRIED = frozenset({"symbol", "unit", "role", "type", "positive", "uncertainty"})
 QUANTITY_DROPPED = frozenset({"canon", "kind", "status", "tags"})
-DEFAULT_KEYS = ("value", "unit", "source", "regime")
 
 # Container type of each field: str, mapping or list. Required fields are listed apart.
 _FORMULA_SHAPE = {
@@ -317,47 +314,33 @@ def _read_entries(canon_dir: Path, sub: str, parsed: ParsedCanon) -> None:
         target[slug] = Entry(file=file, slug=slug, front=front)
 
 
-def _check_default(slug: str, value: object, parsed: ParsedCanon) -> None:
-    """Check one ``defaults.yaml`` entry and keep it."""
-    file = "defaults.yaml"
+def _keep_default(slug: str, value: object, parsed: ParsedCanon) -> None:
+    """Keep one ``defaults.yaml`` entry; the model types check its content."""
     entry = as_mapping(value)
     if entry is None:
         parsed.findings.append(
             Finding(
-                file=file, field=slug, message="must be a mapping {value, unit, source, regime}"
+                file="defaults.yaml",
+                field=slug,
+                message="must be a mapping {value, unit, source, regime}",
             )
         )
         return
-    fields: dict[str, object] = {}
-    for key, item in entry.items():
-        if key in DEFAULT_KEYS:
-            fields[key] = item
-        else:
-            parsed.findings.append(
-                Finding(file=file, field=f"{slug}.{key}", message="unknown field")
-            )
-    for key in DEFAULT_KEYS:
-        if key not in fields or fields[key] is None:
-            parsed.findings.append(
-                Finding(file=file, field=f"{slug}.{key}", message="missing, but required")
-            )
-    if "value" in fields and fields["value"] is not None and not is_number(fields["value"]):
-        parsed.findings.append(
-            Finding(file=file, field=f"{slug}.value", message="must be a number")
-        )
-    for key in ("source", "regime"):
-        if fields.get(key) is not None and not is_text(fields[key]):
-            parsed.findings.append(
-                Finding(file=file, field=f"{slug}.{key}", message="must be a non-empty string")
-            )
-    parsed.defaults[slug] = fields
+    parsed.defaults[slug] = {str(key): item for key, item in entry.items()}
 
 
 def _read_defaults(canon_dir: Path, parsed: ParsedCanon) -> None:
-    """Read ``defaults.yaml``; a canon without one has no defaults."""
+    """Read ``defaults.yaml``; an empty file or ``{}`` means no defaults, a missing file is a finding."""
     path = canon_dir / "defaults.yaml"
     file = "defaults.yaml"
     if not path.is_file():
+        parsed.findings.append(
+            Finding(
+                file=file,
+                field="document",
+                message="missing: an empty file or {} means no defaults",
+            )
+        )
         return
     try:
         text = path.read_text(encoding="utf-8")
@@ -387,7 +370,7 @@ def _read_defaults(canon_dir: Path, parsed: ParsedCanon) -> None:
         return
     for key, value in mapping.items():
         if isinstance(key, str):
-            _check_default(key, value, parsed)
+            _keep_default(key, value, parsed)
         else:
             parsed.findings.append(
                 Finding(file=file, field=str(key), message="a slug must be a string")

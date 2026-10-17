@@ -1,8 +1,11 @@
 """Importer stage 2 (normalise): one test per finding class, and the normalised shape."""
 
 from pathlib import Path
+from typing import get_args
 
 import pytest
+from aero_kernel.canon.model import Tool
+from aero_kernel.importer.normalise import DERIVED_COST
 from aero_kernel.importer.pipeline import ImportResult, import_canon
 from aero_kernel.tests.importer_builders import MINI_CANON, SOURCE_COMMIT, write_canon
 
@@ -29,80 +32,80 @@ STAGE_2_CASES = {
         mutate(GRAVITY, "unit: m/s^2", "unit: !!bool true"),
         GRAVITY,
         "unit",
-        "unknown unit",
+        "got True",
     ),
     "constant with an empty source": (
         mutate(WEIGHING, "source: test source", "source: ''"),
         WEIGHING,
-        "applications[flapped].bind.g",
-        "non-empty source",
+        "applications[1].bind.g.source",
+        "at least 1 character",
     ),
     "constant with an extra key": (
         mutate(WEIGHING, "source: test source}", "source: test source, unit: kg}"),
         WEIGHING,
-        "applications[flapped].bind.g",
-        "exactly the keys",
+        "applications[1].bind.g.unit",
+        "Extra inputs",
     ),
     "bind is no mapping": (
         mutate(WEIGHING, "bind: {g: {const: 9.81, source: test source}}", "bind: [g]"),
         WEIGHING,
-        "applications[flapped].bind",
-        "mapping",
+        "applications[1].bind",
+        "valid dictionary",
     ),
     "application is no mapping": (
         mutate(WEIGHING, "applications:\n", "applications:\n  - plain\n"),
         WEIGHING,
         "applications[0]",
-        "mapping",
+        "valid dictionary",
     ),
     "application id is no identifier": (
-        mutate(WEIGHING, "id: clean", "id: Clean"),
+        mutate(WEIGHING, "id: flapped", "id: Flapped"),
         WEIGHING,
-        "applications[0].id",
-        "identifier",
+        "applications[1].id",
+        "should match pattern",
     ),
     "empty given": (
         mutate(WEIGHING, "given: [aircraft-mass]", "given: []"),
         WEIGHING,
-        "applications[flapped].given",
-        "non-empty list",
+        "applications[1].given",
+        "at least 1 item",
     ),
     "check is no mapping": (
         mutate(FROM_MASS, "preconditions:\n  - {", "preconditions:\n  - plain\n  - {"),
         FROM_MASS,
         "preconditions[0]",
-        "mapping",
+        "valid dictionary",
     ),
     "check id is no identifier": (
         mutate(FROM_MASS, "{id: m_checked,", "{id: M-Checked,"),
         FROM_MASS,
         "preconditions[0].id",
-        "identifier",
+        "should match pattern",
     ),
     "check applications empty": (
         mutate(WEIGHING, "applications: [clean]}", "applications: []}"),
         WEIGHING,
-        "postconditions[clean_only].applications",
-        "non-empty list",
+        "postconditions[0].applications",
+        "at least 1 item",
     ),
     "check applications not ids": (
         mutate(WEIGHING, "applications: [clean]}", "applications: [Clean]}"),
         WEIGHING,
-        "postconditions[clean_only].applications",
-        "application id",
+        "postconditions[0].applications[0]",
+        "should match pattern",
     ),
     "optional is no parameter name": (
         mutate(TWICE, "variables:", "optional: [Mass]\nvariables:"),
         TWICE,
         "optional[0]",
-        "snake_case",
+        "should match pattern",
     ),
     "unknown unit": (mutate(GRAVITY, "unit: m/s^2", "unit: furlong"), GRAVITY, "unit", "furlong"),
     "unit is no string or 1": (
         mutate(GRAVITY, "unit: m/s^2", "unit: [m]"),
         GRAVITY,
         "unit",
-        "unit",
+        "Input should be",
     ),
     "unknown role": (mutate(GRAVITY, "role: input", "role: boss"), GRAVITY, "role", "boss"),
     "unknown type": (mutate(GRAVITY, "type: scalar", "type: blob"), GRAVITY, "type", "blob"),
@@ -116,7 +119,7 @@ STAGE_2_CASES = {
         mutate(GRAVITY, "positive: true", "positive: false"),
         GRAVITY,
         "positive",
-        "true",
+        "Input should be True",
     ),
     "positive on a derived quantity": (
         mutate(WEIGHT, "type: scalar\n", "type: scalar\npositive: true\n"),
@@ -142,99 +145,99 @@ STAGE_2_CASES = {
         mutate(WEIGHING, "inputs: {m: aircraft-mass,", "inputs: {m: 5,"),
         WEIGHING,
         "inputs.m",
-        "quantity slug",
+        "valid string",
     ),
     "parameter is no snake_case name": (
         mutate(WEIGHING, "inputs: {m: aircraft-mass,", "inputs: {Mass: aircraft-mass,"),
         WEIGHING,
-        "inputs.Mass",
-        "parameter",
+        "inputs.Mass.[key]",
+        "should match pattern",
     ),
     "unknown when": (
         mutate(WEIGHING, "when: has_aileron", "when: has_wings"),
         WEIGHING,
-        "applications[flapped].when",
+        "applications[1].when",
         "has_wings",
     ),
     "unknown on_violation": (
         mutate(FROM_MASS, "on_violation: warning", "on_violation: panic"),
         FROM_MASS,
-        "preconditions[m_checked].on_violation",
+        "preconditions[0].on_violation",
         "panic",
     ),
     "check without id": (
         mutate(FROM_MASS, "{id: m_checked, parameter: m,", "{parameter: m,"),
         FROM_MASS,
         "preconditions[0].id",
-        "missing",
+        "Field required",
     ),
     "unknown check field": (
         mutate(FROM_MASS, "{id: m_checked, parameter: m,", "{id: m_checked, parameter: m, x: 1,"),
         FROM_MASS,
-        "preconditions[m_checked].x",
-        "unknown field",
+        "preconditions[0].x",
+        "Extra inputs",
     ),
     "bind of an unknown parameter": (
         mutate(WEIGHING, "bind: {g: {const", "bind: {zz: {const"),
         WEIGHING,
-        "applications[flapped].bind.zz",
-        "no input parameter",
+        "entry",
+        "bind must name exactly the input parameters",
     ),
     "produce of an unknown parameter": (
         mutate(WEIGHING, "produce: {w: weight-flapped}", "produce: {zz: weight-flapped}"),
         WEIGHING,
-        "applications[flapped].produce.zz",
-        "no output parameter",
+        "entry",
+        "produce must name exactly the output parameters",
     ),
     "constant without a source": (
         mutate(WEIGHING, "{const: 9.81, source: test source}", "{const: 9.81}"),
         WEIGHING,
-        "applications[flapped].bind.g",
-        "source",
+        "applications[1].bind.g.source",
+        "Field required",
     ),
     "boolean constant": (
         mutate(WEIGHING, "const: 9.81", "const: !!bool true"),
         WEIGHING,
-        "applications[flapped].bind.g",
-        "number",
+        "applications[1].bind.g.const",
+        "valid number",
     ),
     "bind value is a number": (
         mutate(WEIGHING, "bind: {g: {const: 9.81, source: test source}}", "bind: {g: 3}"),
         WEIGHING,
-        "applications[flapped].bind.g",
-        "quantity slug",
+        "applications[1].bind.g",
+        "valid string",
     ),
     "application without an id": (
-        mutate(WEIGHING, "  - id: clean\n    produce", "  - produce"),
+        mutate(WEIGHING, "  - id: flapped\n    bind", "  - bind"),
         WEIGHING,
-        "applications[0].id",
-        "missing",
+        "applications[1].id",
+        "Field required",
     ),
     "unknown application field": (
         mutate(WEIGHING, "    when: has_aileron\n", "    when: has_aileron\n    colour: red\n"),
         WEIGHING,
-        "applications[flapped].colour",
-        "unknown field",
+        "applications[1].colour",
+        "Extra inputs",
     ),
     "output left unproduced": (
         mutate(WEIGHING, "  - id: clean\n    produce: {w: weight-weighed}\n", "  - id: clean\n"),
         WEIGHING,
-        "applications",
-        "output parameter w",
+        "entry",
+        "produce must name exactly the output parameters",
     ),
     "unbound input": (
         mutate(WEIGHING, "inputs: {m: aircraft-mass, g: gravity}", "inputs: {m: null, g: gravity}"),
         WEIGHING,
-        "applications",
-        "input parameter m",
+        "applications[0].bind.m",
+        "not bound",
     ),
     "unbound input of an implicit application": (
         mutate(
             FROM_MASS, "inputs: {m: aircraft-mass, g: gravity}", "inputs: {m: null, g: gravity}"
         ),
         FROM_MASS,
-        "applications",
-        "input parameter m",
+        "applications[0].bind.m",
+        "not bound",
     ),
     "bare embed of a multi-application formula": (
         mutate(TWICE, "weighing.clean", "weighing"),
@@ -430,6 +433,64 @@ def test_integer_numbers_become_floats(tmp_path: Path) -> None:
     assert result.model is not None
     assert result.model.namespaces["calc"].defaults["gravity"].value == 10.0
     assert '"const": 10.0' in (result.model_json or "")
+
+
+@pytest.mark.parametrize(
+    ("tool", "cost"),
+    [
+        ("APP", "instant"),
+        ("ATM", "instant"),
+        ("GEO", "instant"),
+        ("KAT", "instant"),
+        ("APC", "instant"),
+        ("AB", "seconds"),
+        ("AVL", "seconds"),
+        ("OPT", "seconds"),
+    ],
+)
+def test_cost_is_derived_from_every_tool_as_in_8_7(tmp_path: Path, tool: str, cost: str) -> None:
+    result = run(tmp_path, mutate(FROM_MASS, "tool: APP", f"tool: {tool}"))
+    assert result.model is not None
+    formula = result.model.formula("weight-from-mass")
+    assert formula is not None
+    assert formula.cost == cost
+
+
+def test_the_cost_table_covers_exactly_the_tools_of_the_model() -> None:
+    assert set(DERIVED_COST) == set(get_args(Tool))
+
+
+def test_a_declared_cost_wins_over_the_derived_one(tmp_path: Path) -> None:
+    result = run(tmp_path, mutate(FROM_MASS, "tool: APP\n", "tool: APP\ncost: seconds\n"))
+    assert result.model is not None
+    formula = result.model.formula("weight-from-mass")
+    assert formula is not None
+    assert formula.cost == "seconds"
+
+
+def test_an_embed_listed_twice_is_a_finding(tmp_path: Path) -> None:
+    result = run(
+        tmp_path, mutate(TWICE, "weight-from-mass,", "weight-from-mass, weight-from-mass,")
+    )
+    assert any(
+        f.file == TWICE and f.field == "embeds" and "listed twice" in f.message
+        for f in result.findings
+    )
+
+
+def test_a_bare_embed_of_a_single_explicit_application_names_that_application(
+    tmp_path: Path,
+) -> None:
+    """T4: the only application's id, whatever it is called."""
+    only = MINI_CANON[FROM_MASS].replace(
+        "preconditions:",
+        "applications:\n  - id: only\npreconditions:",
+    )
+    result = run(tmp_path, {FROM_MASS: only})
+    assert result.model is not None
+    twice = result.model.formula("weigh-twice")
+    assert twice is not None
+    assert "calc:weight-from-mass.only" in twice.embeds
 
 
 def test_a_bare_embed_of_a_single_application_formula_names_its_application(

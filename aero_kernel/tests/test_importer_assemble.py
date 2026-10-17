@@ -1,7 +1,9 @@
 """Importer stage 3 (assemble): model errors become findings with file and field."""
 
-from aero_kernel.importer.assemble import assemble
+import pytest
+from aero_kernel.importer.assemble import assemble, findings_of
 from aero_kernel.tests.importer_builders import SOURCE_COMMIT
+from pydantic import BaseModel, ValidationError, model_validator
 
 
 def namespace(**formula_overrides: object) -> dict[str, object]:
@@ -59,7 +61,24 @@ def test_a_list_index_in_the_location_is_rendered_in_brackets() -> None:
     )
 
 
-def test_an_error_outside_the_namespaces_names_the_canon_model() -> None:
+def test_a_field_of_the_model_itself_is_named_by_its_own_name() -> None:
     model, findings = assemble(namespace(), "not-a-commit")
     assert model is None
-    assert [(f.file, f.field) for f in findings] == [("canon model", "model")]
+    assert [(f.file, f.field) for f in findings] == [("canon model", "source_commit")]
+
+
+def test_a_whole_model_rule_the_mapping_does_not_know_still_becomes_a_finding() -> None:
+    """A rule added to the model later must not vanish: it is reported against the model."""
+
+    class Odd(BaseModel):
+        @model_validator(mode="after")
+        def _always(self) -> "Odd":
+            msg = "something new"
+            raise ValueError(msg)
+
+    with pytest.raises(ValidationError) as raised:
+        Odd()
+    findings = findings_of(raised.value)
+    assert [(f.file, f.field, f.message) for f in findings] == [
+        ("canon model", "model", "something new")
+    ]

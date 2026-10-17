@@ -1,21 +1,29 @@
 """Stage 3 of the import: validate the normalised namespace against the canon model (ch. 8.9).
 
-The model types check themselves: vocabularies, structural integrity, references, defaults and the
-content hash. A violation is translated into a finding that names the canon file and field.
+The model types check themselves: vocabularies, names, structural integrity, references, defaults
+and the content hash. :func:`findings_of` is the one function that turns a validation error of the
+model into findings that name the canon file and field.
 """
 
 import re
 
 from aero_kernel.canon.model import CanonModel, Namespace, compute_content_hash
-from aero_kernel.errors import DEFAULT_NAMESPACE
+from aero_kernel.errors import DEFAULT_NAMESPACE, SLUG_REGEX
 from aero_kernel.importer import IMPORTER_VERSION
 from aero_kernel.importer.findings import Finding
 from pydantic import ValidationError
 
-__all__ = ["assemble"]
+__all__ = ["assemble", "findings_of"]
 
-_QUALIFIED = re.compile(rf"{DEFAULT_NAMESPACE}:([a-z0-9-]+)")
+_QUALIFIED = re.compile(rf"{DEFAULT_NAMESPACE}:({SLUG_REGEX})")
+_REFERENCE_PROBLEM = re.compile(rf"{DEFAULT_NAMESPACE}:({SLUG_REGEX}): (.*)")
 _VALUE_ERROR = "Value error, "
+
+# The branches of the model's ``Binding`` union (a slug or a ``{const, source}`` constant), as pydantic
+# names them in a location. Of the two reports only the one of the branch that fits the written
+# value is kept.
+_BINDING_BRANCHES = frozenset({"constrained-str", "ConstBinding"})
+_SCALARS = (str, int, float, bool, type(None))
 
 
 def _file_of(section: str, slug: str) -> str:
@@ -31,36 +39,81 @@ def _path(parts: tuple[int | str, ...]) -> str:
     return text
 
 
-def _translate(error: ValidationError) -> list[Finding]:
-    """Turn a validation error of the model into findings with file, field and message."""
+def _is_other_binding_branch(location: tuple[int | str, ...], value: object) -> bool:
+    """Whether an error belongs to the branch of a binding that the written value does not fit.
+
+    A slug is reported by the string branch; a constant by the errors below ``ConstBinding``. The
+    ``ConstBinding`` report at the branch itself only says "not a mapping", which the string
+    branch already says.
+    """
+    tags = [index for index, part in enumerate(location) if part in _BINDING_BRANCHES]
+    if not tags:
+        return False
+    index = tags[0]
+    if location[index] == "ConstBinding":
+        return index == len(location) - 1
+    return isinstance(value, dict)
+
+
+def findings_of(error: ValidationError) -> list[Finding]:
+    """Turn a validation error of the canon model into findings with file, field and message.
+
+    A location below ``quantities``, ``formulas`` or ``defaults`` names the entry (a default is
+    named by its slug); a rule of the whole model names the entry its message cites. The error of
+    a parent whose child is reported is dropped, and of the two branches of a binding only the one
+    that fits the written value is kept.
+
+    Args:
+        error: The error ``Namespace`` or ``CanonModel`` validation raised.
+
+    Returns:
+        One finding per distinct problem.
+    """
+    entries = error.errors(include_url=False, include_context=False, include_input=True)
+    locations = [entry["loc"] for entry in entries]
     findings: list[Finding] = []
-    for entry in error.errors(include_url=False, include_context=False, include_input=False):
+    for entry in entries:
         location = entry["loc"]
+        if any(other[: len(location)] == location and other != location for other in locations):
+            continue  # a child of this location is reported with the real cause
+        if _is_other_binding_branch(location, entry["input"]):
+            continue
+        location = tuple(part for part in location if part not in _BINDING_BRANCHES)
         message = entry["msg"].removeprefix(_VALUE_ERROR)
+        if isinstance(entry["input"], _SCALARS):
+            message = (
+                "the input parameter is not bound by the application"
+                if entry["input"] is None and "bind" in location
+                else f"{message} (got {entry['input']!r})"
+            )
         if len(location) >= 2 and location[0] in ("quantities", "formulas", "defaults"):
+            slug = str(location[1])
+            rest = (slug, *location[2:]) if location[0] == "defaults" else location[2:]
             findings.append(
                 Finding(
-                    file=_file_of(str(location[0]), str(location[1])),
-                    field=_path(location[2:]) or "entry",
+                    file=_file_of(str(location[0]), slug),
+                    field=_path(tuple(rest)) or "entry",
                     message=message,
                 )
             )
-            continue
-        findings.extend(_model_level(message))
-    return findings
+        elif location:
+            findings.append(Finding(file="canon model", field=_path(location), message=message))
+        else:
+            findings.extend(_model_level(message))
+    return list(dict.fromkeys(findings))
 
 
 def _model_level(message: str) -> list[Finding]:
-    """Split a model-level message into one finding per problem."""
+    """Split a message of a whole-model rule into one finding per problem."""
     findings: list[Finding] = []
     for problem in message.split("; "):
-        reference = re.match(rf"{DEFAULT_NAMESPACE}:([a-z0-9-]+): (.*)", problem)
+        reference = _REFERENCE_PROBLEM.match(problem)
         if reference is not None:
             findings.append(
                 Finding(
                     file=_file_of("formulas", reference.group(1)),
                     field="references",
-                    message=reference.group(2),
+                    message=reference.group(len(reference.groups())),
                 )
             )
         elif problem.startswith("default of"):
@@ -102,5 +155,5 @@ def assemble(
             }
         )
     except ValidationError as exc:
-        return None, _translate(exc)
+        return None, findings_of(exc)
     return model, []

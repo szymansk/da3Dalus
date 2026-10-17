@@ -12,8 +12,6 @@ __all__ = [
     "DuplicateKeyError",
     "as_list",
     "as_mapping",
-    "is_number",
-    "is_text",
     "load_unique",
     "scan_tokens",
 ]
@@ -33,16 +31,6 @@ def as_list(value: object) -> list[object] | None:
     if isinstance(value, list):
         return cast("list[object]", value)  # safe_load builds lists of plain values
     return None
-
-
-def is_text(value: object) -> bool:
-    """Whether ``value`` is a string with some content."""
-    return isinstance(value, str) and value.strip() != ""
-
-
-def is_number(value: object) -> bool:
-    """Whether ``value`` is a number; a YAML boolean is not one."""
-    return isinstance(value, int | float) and not isinstance(value, bool)
 
 
 def scan_tokens(raw: str) -> list[yaml.Token]:

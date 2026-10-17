@@ -180,7 +180,7 @@ STAGE_1_CASES = {
         },
         "defaults.yaml",
         "gravity.regime",
-        "missing",
+        "Field required",
     ),
     "default with an empty source": (
         {
@@ -188,7 +188,23 @@ STAGE_1_CASES = {
         },
         "defaults.yaml",
         "gravity.source",
-        "non-empty",
+        "at least 1 character",
+    ),
+    "default value is infinite": (
+        {
+            "defaults.yaml": "gravity:\n  value: .inf\n  unit: m/s^2\n  source: s\n  regime: r\n",
+        },
+        "defaults.yaml",
+        "gravity.value",
+        "finite",
+    ),
+    "default with a blank regime": (
+        {
+            "defaults.yaml": "gravity:\n  value: 9.8\n  unit: m/s^2\n  source: s\n  regime: '  '\n",
+        },
+        "defaults.yaml",
+        "gravity.regime",
+        "should match pattern",
     ),
     "default value is no number": (
         {
@@ -212,7 +228,7 @@ STAGE_1_CASES = {
         },
         "defaults.yaml",
         "gravity.note",
-        "unknown field",
+        "Extra inputs",
     ),
 }
 
@@ -284,8 +300,17 @@ def test_an_empty_defaults_file_means_no_defaults(tmp_path: Path) -> None:
     assert result.model.namespaces["calc"].defaults == {}
 
 
-def test_a_canon_without_defaults_file_has_no_defaults(tmp_path: Path) -> None:
+def test_a_missing_defaults_file_is_a_finding(tmp_path: Path) -> None:
+    """A canon without defaults says so with an empty file, never by leaving it out (T3)."""
     result = run(tmp_path, {"defaults.yaml": None})
+    assert result.model is None
+    assert [(f.file, f.field, f.message) for f in result.findings] == [
+        ("defaults.yaml", "document", "missing: an empty file or {} means no defaults")
+    ]
+
+
+def test_an_empty_mapping_in_the_defaults_file_means_no_defaults(tmp_path: Path) -> None:
+    result = run(tmp_path, {"defaults.yaml": "{}\n"})
     assert result.model is not None
     assert result.model.namespaces["calc"].defaults == {}
 
@@ -356,3 +381,15 @@ def test_a_file_that_is_not_a_markdown_entry_is_a_finding(tmp_path: Path) -> Non
         f.file == "formulas/Extra.MD" and f.field == "file" and ".md" in f.message
         for f in result.findings
     )
+
+
+def test_an_unhashable_mapping_key_is_a_finding(tmp_path: Path) -> None:
+    result = run(tmp_path, mutate(GRAVITY, "type: scalar\n", "type: scalar\n? [a, b]\n: x\n"))
+    assert any(f.file == GRAVITY and "unhashable" in f.message for f in result.findings)
+
+
+def test_hidden_files_and_subdirectories_are_ignored(tmp_path: Path) -> None:
+    canon = write_canon(tmp_path)
+    (canon / "formulas" / ".DS_Store").write_bytes(b"\x00")
+    (canon / "quantities" / "drafts").mkdir()
+    assert import_canon(canon, SOURCE_COMMIT).findings == ()
