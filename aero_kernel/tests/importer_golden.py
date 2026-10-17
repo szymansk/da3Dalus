@@ -20,7 +20,8 @@ def regenerate() -> None:
     with tempfile.TemporaryDirectory() as work:
         canon = write_canon(Path(work))
         status = main([str(canon), "--out", str(GOLDEN_DIR), "--source-commit", SOURCE_COMMIT])
-    assert status == 0, "the mini canon must import without a finding"
+    if status != 0:
+        raise SystemExit(status)
 
 
 if __name__ == "__main__":

@@ -1,6 +1,8 @@
 """The source-commit gate: the commit a packaged model names is on main and matches the canon (A2)."""
 
+import runpy
 import subprocess
+import sys
 from pathlib import Path
 
 import pytest
@@ -176,3 +178,81 @@ def test_git_missing_is_a_finding(
     monkeypatch.setattr(subprocess, "run", no_git)
     assert setup.run() == 1
     assert capsys.readouterr().out.strip() == "git is not available"
+
+
+# --- CI runs the module with ``python -m``; that entry point must really run -------------------------------------
+
+
+def run_as_module(
+    monkeypatch: pytest.MonkeyPatch, module: str, *arguments: str
+) -> int | str | None:
+    """Run ``python -m <module> <arguments>`` in-process, as CI does, and return the exit code."""
+    monkeypatch.setattr("sys.argv", [module, *arguments])
+    loaded = sys.modules.get(module)
+    if loaded is not None and not hasattr(loaded, "__path__"):
+        # A plain module is re-executed as __main__; never drop a package (its submodules hang off it).
+        monkeypatch.delitem(sys.modules, module)
+    with pytest.raises(SystemExit) as raised:
+        runpy.run_module(module, run_name="__main__")
+    return raised.value.code
+
+
+def test_run_as_a_module_a_failing_gate_exits_1(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    code = run_as_module(
+        monkeypatch,
+        "aero_kernel.importer.gate",
+        str(tmp_path / "nonexistent"),
+        "--model",
+        str(tmp_path / "nonexistent.json"),
+    )
+    assert code == 1
+    assert capsys.readouterr().out.startswith("nonexistent.json cannot be loaded")
+
+
+def test_run_as_a_module_a_passing_gate_exits_0(
+    setup: Setup, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    code = run_as_module(
+        monkeypatch,
+        "aero_kernel.importer.gate",
+        str(setup.canon),
+        "--model",
+        str(setup.model_dir / "canon_model.json"),
+    )
+    assert code == 0
+
+
+def test_run_as_a_module_the_import_check_exits_1_on_a_stale_model(
+    setup: Setup, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    (setup.canon / "defaults.yaml").write_text(
+        MINI_CANON["defaults.yaml"].replace("9.80665", "9.8"), encoding="utf-8"
+    )
+    code = run_as_module(
+        monkeypatch,
+        "aero_kernel.importer",
+        str(setup.canon),
+        "--out",
+        str(setup.model_dir),
+        "--check",
+    )
+    assert code == 1
+
+
+def test_a_failing_shallow_probe_is_a_finding_not_a_pass(
+    setup: Setup, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    real = subprocess.run
+
+    def failing(command: list[str], **kwargs: object) -> subprocess.CompletedProcess[str]:
+        if "--is-shallow-repository" in command:
+            return subprocess.CompletedProcess(command, 129, "", "usage: git rev-parse")
+        return real(command, **kwargs)  # type: ignore[call-overload,no-any-return]
+
+    monkeypatch.setattr(subprocess, "run", failing)
+    assert setup.run() == 1
+    assert capsys.readouterr().out.strip() == (
+        "git rev-parse --is-shallow-repository failed (exit 129): usage: git rev-parse"
+    )

@@ -429,3 +429,18 @@ def test_the_dimensional_check_runs_from_an_extraction_json(tmp_path, capsys):
     out = capsys.readouterr().out
     assert "dimensional check over 8 canonical formulas" in out
     assert "MISMATCH" in out
+
+
+def test_run_as_a_script_the_authoring_check_exits_1_on_a_finding(tmp_path):
+    """CI runs ``python scripts/check_canon.py``; the entry point must exit with the result."""
+    import subprocess
+
+    root = _canon(tmp_path, inputs_line=("speed-a",))
+    done = subprocess.run(
+        [sys.executable, str(SCRIPTS / "check_canon.py"), str(root)],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    assert done.returncode == 1
+    assert "speed-b" in done.stdout

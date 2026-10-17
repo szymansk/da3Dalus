@@ -378,5 +378,6 @@ def test_regenerating_the_golden_files_fails_loudly_on_a_failing_import(
         return 1
 
     monkeypatch.setattr(importer_golden, "main", failing)
-    with pytest.raises(AssertionError):
+    with pytest.raises(SystemExit) as raised:
         importer_golden.regenerate()
+    assert raised.value.code == 1
