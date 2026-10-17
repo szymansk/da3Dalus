@@ -170,10 +170,10 @@ def test_caller_handler_before_import_still_gets_one_null_handler(package_root: 
     assert out == "1"
 
 
-def test_public_api_is_empty() -> None:
-    """The package exposes an empty public API for now."""
+def test_public_api_is_compute_only() -> None:
+    """The package exposes ``compute``; the build and the engine seam stay internal."""
     package = importlib.import_module(PACKAGE_NAME)
-    assert package.__all__ == []
+    assert package.__all__ == ["compute"]
 
 
 def test_import_pulls_in_no_application_module(package_root: Path) -> None:

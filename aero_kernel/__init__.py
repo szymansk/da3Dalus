@@ -11,10 +11,12 @@ ch. 8.14).
 
 import logging
 
+from aero_kernel.api import compute
+
 # The logger is process-global but the package can be executed more than once (a reload, or
 # coverage importing it and dropping it from ``sys.modules``), so attach the handler only once.
 _logger = logging.getLogger("aero_kernel")
 if not any(isinstance(handler, logging.NullHandler) for handler in _logger.handlers):
     _logger.addHandler(logging.NullHandler())
 
-__all__: list[str] = []
+__all__ = ["compute"]
