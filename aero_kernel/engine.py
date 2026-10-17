@@ -403,7 +403,8 @@ class _Call:
     def _take_defaults(self, bound: Sequence[_Defaulted]) -> list[KernelWarning]:
         """Record the defaults a node that is about to run takes; return their warnings.
 
-        Each default is logged once per call and slug. A target default is a substitution and gives
+        Each default is logged once per call and slug, as its own INFO line, in the order the
+        node binds them: the formula's parameter order. A target default is a substitution and gives
         the ``default_target_used`` warning, which this node's quantity and everything computed
         from it inherit; a constant's default gives none (ch. 8.11).
         """

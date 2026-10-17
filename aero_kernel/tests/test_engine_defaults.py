@@ -379,3 +379,30 @@ async def test_a_not_applicable_and_a_skipped_result_carry_no_input_warning() ->
         QuantityStatus.SKIPPED,
     ]
     assert [q.warnings for q in result.quantities] == [(), ()]
+
+
+async def test_node_warnings_follow_the_subtree_in_topological_order() -> None:
+    async def weight(x: Inputs, ctx: Context) -> Mapping[str, object]:
+        ctx.warn("precondition_unchecked", "from weight")
+        return {"w": 1.0}
+
+    async def double(x: Inputs, ctx: Context) -> Mapping[str, object]:
+        ctx.warn("postcondition_unchecked", "from double")
+        return {"d": 2.0}
+
+    result = await go("double-weight", overrides={"weight": weight, "double": double})
+    assert [(w.origin, w.message) for w in result.quantities[0].warnings] == [
+        ("weight", "from weight"),
+        ("double-weight", "from double"),
+    ]
+
+
+async def test_the_default_lines_of_one_node_follow_its_parameter_order(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    with caplog.at_level(logging.INFO, logger="aero_kernel"):
+        await go("both-q")
+    assert [r.getMessage() for r in default_lines(caplog)] == [
+        "default used: air-density = 1.225 kg/m^3 (us standard atmosphere)",
+        "default used: margin-target = 1.3 1 (test margin)",
+    ]
