@@ -219,8 +219,11 @@ async def run_process(
             )
         )
         try:
-            # shielded: a cancel during the start must not abort it (see _await_start)
-            started = await asyncio.shield(start)
+            # asyncio.wait never cancels what it waits on: a cancel during the start must not
+            # abort it (see _await_start). Unlike asyncio.shield it logs nothing (3.14) when the
+            # start then fails; start.result() re-raises the start's own exception below.
+            await asyncio.wait([start])
+            started = start.result()
         except asyncio.CancelledError:
             process = await _await_start(start)
             if process is None and not start.cancelled():

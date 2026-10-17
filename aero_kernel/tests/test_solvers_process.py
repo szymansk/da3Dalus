@@ -8,16 +8,16 @@ import logging
 import os
 import shutil
 import signal
+import subprocess
 import sys
 import tempfile
 import textwrap
 import time
-from asyncio import unix_events
+from asyncio import base_subprocess, unix_events
 from pathlib import Path
 
 import pytest
 from aero_kernel.errors import ErrorCategory, FormulaError
-from aero_kernel.solvers import process as process_module
 from aero_kernel.solvers.process import run_process
 
 pytestmark = pytest.mark.asyncio
@@ -344,9 +344,11 @@ async def test_a_cancel_followed_by_a_failing_start_still_warns_and_stays_a_canc
         with pytest.raises(asyncio.CancelledError):
             async with asyncio.timeout(3):
                 await task
-    # asyncio (3.14) logs the shielded start's exception on its own logger; ours is the one asked
-    ours = [r for r in caplog.records if r.name == process_module.logger.name]
-    assert [r.getMessage() for r in ours if r.levelno >= logging.WARNING] == [START_FAILED_WARNING]
+    assert [r.getMessage() for r in caplog.records if r.levelno >= logging.WARNING] == [
+        START_FAILED_WARNING
+    ]
+    # an expected outcome is no ERROR: asyncio.shield on 3.14 would log "exception in shielded future"
+    assert [r for r in caplog.records if r.levelno >= logging.ERROR] == []
 
 
 async def test_the_binarys_own_refusal_logs_no_warning(
@@ -391,10 +393,7 @@ async def test_a_failing_child_watcher_registration_does_not_hang_and_warns(
         for pid in spawned:
             with contextlib.suppress(ProcessLookupError):
                 os.killpg(pid, signal.SIGKILL)
-            with contextlib.suppress(ChildProcessError):
-                await asyncio.to_thread(
-                    os.waitpid, pid, 0
-                )  # reaped, so the orphaned Popen object has nothing to warn of
+            _finish_orphan(pid)
 
 
 async def test_a_single_failure_of_the_run_keeps_its_chained_cause(
@@ -471,6 +470,21 @@ async def test_a_start_cancelled_with_its_caller_leaves_a_plain_cancel(
         async with asyncio.timeout(3):
             await task
     assert _entries(scratch) == []
+
+
+def _finish_orphan(pid: int) -> None:
+    """Close the orphaned Popen and transport of a killed child (no ResourceWarning).
+
+    asyncio never got the process back from the failed start, so nobody waits on its Popen or
+    closes its transport.
+    """
+    for candidate in gc.get_objects():
+        if isinstance(candidate, subprocess.Popen) and candidate.pid == pid:  # pyright: ignore[reportUnknownMemberType]  # gc yields objects
+            candidate.wait(timeout=5)  # the child is dead: this returns at once
+        elif isinstance(candidate, base_subprocess.BaseSubprocessTransport) and (
+            candidate.get_pid() == pid
+        ):
+            candidate.close()
 
 
 def _open_descriptors() -> int:
