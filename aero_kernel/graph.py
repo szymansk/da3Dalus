@@ -35,6 +35,7 @@ from pydantic import BaseModel, ConfigDict, model_validator
 logger = logging.getLogger(__name__)
 
 __all__ = [
+    "PENDING_WHEN_TERMS",
     "CanonGraph",
     "Edge",
     "GraphModelError",
@@ -700,7 +701,14 @@ class WhenFacts(BaseModel):
 
         Returns:
             Its fact.
+
+        Raises:
+            ValueError: If the term is in :data:`PENDING_WHEN_TERMS`; it has no fact yet and
+                :func:`unmet_condition` reports it as a ``not_implemented`` error instead.
         """
+        if term in PENDING_WHEN_TERMS:
+            msg = f"the when-term {term} has no fact yet ({PENDING_WHEN_TERMS[term]})"
+            raise ValueError(msg)
         return {
             "has_aileron": self.has_aileron,
             "has_separate_flap_and_aileron": self.has_separate_flap_and_aileron,
@@ -708,6 +716,8 @@ class WhenFacts(BaseModel):
         }[term]
 
 
+# Terms of the closed vocabulary whose fact is not implemented yet, with the ticket that brings it.
+PENDING_WHEN_TERMS: Mapping[str, str] = {"has_horizontal_tail": "#1187"}
 _AILERON_ROLES = frozenset({"aileron", "flaperon", "elevon"})
 # A butterfly layout (D10) needs a flap and a distinct aileron or elevon; a flaperon is neither.
 _BUTTERFLY_FLAP_ROLES = frozenset({"flap"})
@@ -791,7 +801,9 @@ def facts_from_geometry(airplane: AirplaneGeometry) -> WhenFacts:
     )
 
 
-def unmet_condition(node: Node, facts: WhenFacts, supplied: Collection[str]) -> Reason | None:
+def unmet_condition(
+    node: Node, facts: WhenFacts, supplied: Collection[str]
+) -> Reason | KernelError | None:
     """Check a node's ``when`` and ``given`` conditions; ``when`` first.
 
     Args:
@@ -801,8 +813,18 @@ def unmet_condition(node: Node, facts: WhenFacts, supplied: Collection[str]) -> 
 
     Returns:
         ``condition_not_met`` or ``not_given`` with a message naming the term or the missing
-        slugs, or ``None`` if the application exists.
+        slugs; a ``not_implemented`` error if the ``when`` term has no fact yet
+        (:data:`PENDING_WHEN_TERMS`); or ``None`` if the application exists.
     """
+    if node.when is not None and node.when in PENDING_WHEN_TERMS:
+        return KernelError(
+            code=ErrorCategory.NOT_IMPLEMENTED.value,
+            category=ErrorCategory.NOT_IMPLEMENTED,
+            formula=node.id.formula,
+            application=node.id.application,
+            message=f"The condition `{node.when}` cannot be evaluated yet.",
+            hint=f"Its fact is not implemented ({PENDING_WHEN_TERMS[node.when]}).",
+        )
     if node.when is not None and not facts.holds(node.when):
         return Reason(
             code=ReasonCode.CONDITION_NOT_MET,
