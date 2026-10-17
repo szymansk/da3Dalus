@@ -549,9 +549,11 @@ Both kinds return one of three states:
 
 - One producer per quantity; a second path only as a probe (A7).
 - Unique symbols and slugs (A8).
-- Targets only as `role: target` (A9): a slug ends in `-target` exactly when its role is `target`, with the
-  one exception A9 names (`limit-load-factor`, role `target` under its own name); no input or target slug
-  contains `requirement`, `goal` or `req`; and an input or target quantity is produced by no formula.
+- Targets only as `role: target` (A9, as its text says): every `role: target` quantity has a `target` kebab
+  segment in its slug (anywhere: `stall-speed-target`, `roll-rate-target-approach`), except the one A9 names
+  (`limit-load-factor`); no input or target slug contains `requirement`, `goal` or `req`; and an input or
+  target quantity is produced by no formula. The reverse — a `target` segment implies role `target` — is
+  not a rule: outputs computed at a target (`range-at-cruise-target`) are named after it.
 - Units consistent across bindings (A4); dimensional check of law entries (later, report-only).
 - **One home per rule.** The importer is the authority for model validity: every **structural** rule
   (front-matter fields, vocabularies, references, the rules above) lives in the importer, which ports them
