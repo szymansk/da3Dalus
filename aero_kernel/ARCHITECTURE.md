@@ -1139,19 +1139,28 @@ sampled grid and no `-static` chain.
   (rule 4) are declared in the canon model but not in v1: such a formula returns `not_implemented`, code
   `continuous_uncertainty`. The core chain has only method worlds.
 
-**Status propagation.** A node whose predecessors are not all `ok` takes the status by precedence:
+**Status of a node — one order** (2026-10-17, replacing the predecessor-only table). A node takes the
+**first** status that applies:
 
-| Predecessors (any of) | Node | reason / category |
-|---|---|---|
-| `error` | `error` | `upstream_failed` (ch. 8.1 for retryable/escalate) |
-| `skipped`, none `error` | `skipped` | `depends_on_skipped` |
-| `not_applicable`, none of the above | `not_applicable` | `depends_on_not_applicable` |
+| # | Applies when | Node | reason / code |
+|---|---|---|---|
+| 1 | its own `when` / `given` is unmet | `not_applicable` | `condition_not_met` / `not_given` |
+| 2 | a read predecessor is `not_applicable` | `not_applicable` | `depends_on_not_applicable` |
+| 3 | it has no implementation, or its `when` term has no fact yet | `error` | `not_implemented` |
+| 4 | a read predecessor is `error` | `error` | `upstream_failed` (ch. 8.1 for retryable/escalate) |
+| 5 | a read input has no value and no default | `error` | `missing_input` |
+| 6 | it is a `minutes` formula and `include_long_runs` is off | `skipped` | `long_run_not_included` |
+| 7 | a read predecessor is `skipped` | `skipped` | `depends_on_skipped` |
+
+The principle: report first what **no change by the caller would alter**. A quantity that does not exist
+for this aircraft (1, 2) is not applicable whatever else fails; a kernel gap (3) remains even if the
+caller supplies more; a failure (4, 5) is what the caller can fix; a skip (6, 7) is only the caller's
+choice, and reporting it first would promise a value that turning long runs on would not deliver.
 
 Every error propagates the same way, `missing_input` included: the quantity that reads the missing value
-directly gets `missing_input`, its dependents `upstream_failed` with the cause in `detail.causes`.
-
-An error dominates: computing the long run would not help a node whose other input failed. A predecessor
-counts only if the node actually needs it; an unused output of a multi-output formula does not propagate.
+directly gets `missing_input`, its dependents `upstream_failed` with the cause in `detail.causes`. A
+predecessor counts only if the node actually reads it; an unused output of a multi-output formula does not
+propagate. `Subtree.propagate` is the one home of rows 2, 4 and 7; the engine applies the order.
 
 ### 8.14 Logging
 
@@ -1172,7 +1181,7 @@ They are the first thing a developer or an agent reads to check a change and to 
 | Level | What | Examples |
 |---|---|---|
 | `DEBUG` | every step of the engine, to check the code runs as intended | subtree and order; per node: start, end, duration, status; cache hit/miss with key prefix; world assignment; solver call with its settings and duration; precondition result |
-| `INFO` | one line per `compute()` call and per import | request (slugs, `include_long_runs`, budget), result counts per status, total duration, cache hits; importer: entries added/changed/removed |
+| `INFO` | one line per `compute()` call and per import | request (slugs, `include_long_runs`), result counts per status, total duration, cache hits; importer: entries added/changed/removed |
 | `WARNING` | the kernel ran, but in a degraded way an operator should know about | tool unavailable, time budget exceeded, a process-pool worker died |
 | `ERROR` | a programming error | every `internal` error with its traceback, logged exactly once where it is translated (`internal_error_from_exception`, `exc_info=exc`); the exception text goes only here, never into the result (ADR 0019) |
 
