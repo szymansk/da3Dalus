@@ -281,51 +281,52 @@ class Subtree(BaseModel):
         outcomes: Mapping[NodeId, NodeOutcome],
         *,
         quantity: str,
+        status: QuantityStatus,
         world: str | None = None,
-        skip_long_run: bool = False,
     ) -> Propagated | None:
-        """Give a node the status its predecessors and its own cost class force on it (ch. 8.13).
+        """Ask whether a node inherits a status from the predecessors it reads (ch. 8.13).
 
-        Only the predecessors the node reads count. Precedence: an inherited ``error``, the node's
-        own long-run skip, an inherited ``skipped``, an inherited ``not_applicable``. A computed
-        predecessor propagates the same way into an ``optional`` parameter; ``optional`` only
-        covers an absent supplied value. The causes of an error name the quantities the node
-        reads (one per value edge), not the quantity its predecessor's own error was reported for.
+        The graph owns the inheritance (rows 2, 4 and 7 of the status order); the engine owns the
+        order between all rows and calls this once per row. Only the predecessors the node reads
+        count, an ``optional`` read included: ``optional`` only covers an absent supplied value. The
+        causes of an error name the quantities the node reads (one per value edge), not the
+        quantity its predecessor's own error was reported for.
 
         Args:
             node: The node.
             outcomes: The outcome of each of its predecessors (others are ignored).
             quantity: Slug of the quantity the status is reported for, used in an error or reason;
                 :meth:`Propagated.addressed_to` rewords it for another quantity of the node.
+            status: The status asked for: ``error`` (``upstream_failed``), ``skipped``
+                (``depends_on_skipped``) or ``not_applicable`` (``depends_on_not_applicable``).
             world: Canonical world assignment string of the evaluation, if any.
-            skip_long_run: Whether the node is a long run that the request does not include.
 
         Returns:
-            The forced status, or ``None`` if every read predecessor is ``ok`` (or there is none)
-            and the node is not skipped.
+            The inherited status, or ``None`` if no read predecessor has it.
 
         Raises:
             KeyError: If a read predecessor has no outcome.
+            ValueError: If ``status`` is ``ok``, which nothing inherits.
         """
+        if status is QuantityStatus.OK:
+            msg = "status ok is not inherited"
+            raise ValueError(msg)
         edges = self.edges[node]
         causes = [
             error.model_copy(update={"quantity": display_slug(edge.quantity)})
             for edge in edges
             if (error := outcomes[edge.predecessor].error) is not None
         ]
-        skipped = [
-            e.quantity for e in edges if outcomes[e.predecessor].status is QuantityStatus.SKIPPED
-        ]
-        not_applicable = [
-            e.quantity
-            for e in edges
-            if outcomes[e.predecessor].status is QuantityStatus.NOT_APPLICABLE
-        ]
-        if not (causes or skip_long_run or skipped or not_applicable):
+        read = [e.quantity for e in edges if outcomes[e.predecessor].status is status]
+        if not (causes if status is QuantityStatus.ERROR else read):
             return None
+        code = ReasonCode.DEPENDS_ON_SKIPPED
+        wording = "skipped"
+        if status is QuantityStatus.NOT_APPLICABLE:
+            code, wording = ReasonCode.DEPENDS_ON_NOT_APPLICABLE, "not applicable"
 
         def build(name: str) -> Propagated:
-            if causes:
+            if status is QuantityStatus.ERROR:
                 error = aggregate_upstream(
                     causes,
                     quantity=name,
@@ -333,27 +334,12 @@ class Subtree(BaseModel):
                     application=node.application,
                     world=world,
                 )
-                return Propagated(status=QuantityStatus.ERROR, error=error, reword=build)
-            elif skip_long_run:
-                message = f"`{name}` is a long run and the request does not include long runs."
-                reason = Reason(code=ReasonCode.LONG_RUN_NOT_INCLUDED, message=message)
-                return Propagated(status=QuantityStatus.SKIPPED, reason=reason, reword=build)
-            else:
-                status, code, wording, read = (
-                    (QuantityStatus.SKIPPED, ReasonCode.DEPENDS_ON_SKIPPED, "skipped", skipped)
-                    if skipped
-                    else (
-                        QuantityStatus.NOT_APPLICABLE,
-                        ReasonCode.DEPENDS_ON_NOT_APPLICABLE,
-                        "not applicable",
-                        not_applicable,
-                    )
-                )
-                names = ", ".join(dict.fromkeys(f"`{display_slug(slug)}`" for slug in read))
-                message = f"`{name}` reads {names}, which is {wording}."
-                return Propagated(
-                    status=status, reason=Reason(code=code, message=message), reword=build
-                )
+                return Propagated(status=status, error=error, reword=build)
+            names = ", ".join(dict.fromkeys(f"`{display_slug(slug)}`" for slug in read))
+            message = f"`{name}` reads {names}, which is {wording}."
+            return Propagated(
+                status=status, reason=Reason(code=code, message=message), reword=build
+            )
 
         return build(quantity)
 

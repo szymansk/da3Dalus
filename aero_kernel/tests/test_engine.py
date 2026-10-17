@@ -18,9 +18,11 @@ from aero_kernel.schema import (
     ReasonCode,
 )
 from aero_kernel.tests.engine_builders import (
+    STANDARD,
     Impl,
     aileron_wing,
     aircraft,
+    fixture_model,
     make_build,
     num,
     registry_with,
@@ -458,24 +460,540 @@ async def test_an_unmet_given_is_not_applicable_not_given() -> None:
 # --- status precedence, Q26 ---------------------------------------------------------------------
 
 
-async def test_q26_error_beats_not_applicable_beats_nothing() -> None:
+async def test_q26_not_applicable_beats_a_failed_predecessor() -> None:
     error = FormulaError(ErrorCategory.NOT_CONVERGED, "not_converged", "No solution.", "Retry.")
-    failed = await run("mix-q", overrides={"weight": failing(error)})
-    assert failed.quantities[0].error is not None
-    assert failed.quantities[0].error.category is ErrorCategory.UPSTREAM_FAILED
-    assert failed.quantities[0].error.detail == {
-        "causes": [{"quantity": "weight", "code": "not_converged"}]
-    }
-    only_na = await run("mix-na-q")
-    assert only_na.quantities[0].reason is not None
-    assert only_na.quantities[0].reason.code is ReasonCode.DEPENDS_ON_NOT_APPLICABLE
+    mixed = await run("mix-q", overrides={"weight": failing(error)})
+    assert mixed.quantities[0].status is QuantityStatus.NOT_APPLICABLE
+    assert mixed.quantities[0].reason is not None
+    assert mixed.quantities[0].reason.code is ReasonCode.DEPENDS_ON_NOT_APPLICABLE
+    assert mixed.quantities[0].reason.message == "`mix-q` reads `roll-q`, which is not applicable."
+    alone = await run("double-weight", overrides={"weight": failing(error)})
+    assert alone.quantities[0].error is not None
+    assert alone.quantities[0].error.category is ErrorCategory.UPSTREAM_FAILED
 
 
-async def test_q26_skipped_beats_not_applicable() -> None:
+async def test_q26_not_applicable_beats_a_skipped_predecessor() -> None:
     result = await run("mix-skip-q")
+    assert result.quantities[0].reason is not None
+    assert result.quantities[0].reason.code is ReasonCode.DEPENDS_ON_NOT_APPLICABLE
+    assert result.quantities[0].status is QuantityStatus.NOT_APPLICABLE
+
+
+async def test_a_skipped_predecessor_alone_skips_its_reader() -> None:
+    result = await run("after-long-q")
     assert result.quantities[0].status is QuantityStatus.SKIPPED
     assert result.quantities[0].reason is not None
     assert result.quantities[0].reason.code is ReasonCode.DEPENDS_ON_SKIPPED
+    assert result.quantities[0].reason.message == "`after-long-q` reads `long-q`, which is skipped."
+
+
+# --- the one status order (ch. 8.13): 1 unmet condition, 2 not applicable predecessor,
+# --- 3 not implemented, 4 failed predecessor, 5 missing input, 6 long run, 7 skipped predecessor --
+
+
+async def first(*slugs: str, **kwargs: Any) -> QuantityResult:
+    result = await run(*slugs, **kwargs)
+    return result.quantities[0]
+
+
+def failure() -> FormulaError:
+    return FormulaError(ErrorCategory.NOT_CONVERGED, "not_converged", "No solution.", "Retry.")
+
+
+async def test_order_1_an_unmet_condition_beats_a_not_applicable_predecessor() -> None:
+    quantity = await first("na-when-q")
+    assert quantity.reason is not None
+    assert quantity.reason.code is ReasonCode.CONDITION_NOT_MET
+
+
+async def test_order_1_an_unmet_condition_beats_a_failed_predecessor() -> None:
+    quantity = await first("when-after-weight-q", overrides={"weight": failing(failure())})
+    assert quantity.status is QuantityStatus.NOT_APPLICABLE
+    assert quantity.reason is not None
+    assert quantity.reason.code is ReasonCode.CONDITION_NOT_MET
+
+
+async def test_order_2_a_not_applicable_predecessor_beats_no_implementation() -> None:
+    quantity = await first("after-roll-q", drop=("after-roll",))
+    assert quantity.reason is not None
+    assert quantity.reason.code is ReasonCode.DEPENDS_ON_NOT_APPLICABLE
+
+
+async def test_order_3_no_implementation_beats_a_failed_predecessor() -> None:
+    quantity = await first(
+        "double-weight", drop=("double",), overrides={"weight": failing(failure())}
+    )
+    assert quantity.error is not None
+    assert quantity.error.category is ErrorCategory.NOT_IMPLEMENTED
+
+
+async def test_order_3_no_implementation_beats_a_missing_input() -> None:
+    no_mass = AircraftInput.model_validate({"airplane": {"name": "t"}, "values": {}})
+    result = await evaluate(
+        make_build(registry_with(drop=("unimplemented",))), no_mass, request("unimpl-q")
+    )
+    assert result.quantities[0].error is not None
+    assert result.quantities[0].error.category is ErrorCategory.NOT_IMPLEMENTED
+
+
+async def test_order_3_a_pending_when_term_beats_a_failed_predecessor() -> None:
+    model_with_failing_reader = await first("tail-q", overrides={"tail": failing(failure())})
+    assert model_with_failing_reader.error is not None
+    assert model_with_failing_reader.error.category is ErrorCategory.NOT_IMPLEMENTED
+
+
+async def test_order_3_an_unsupported_read_beats_a_missing_input() -> None:
+    no_mass = AircraftInput.model_validate({"airplane": {"name": "t"}, "values": {}})
+    result = await evaluate(make_build(), no_mass, request("needs-components-q"))
+    assert result.quantities[0].error is not None
+    assert result.quantities[0].error.code == "unsupported_value_type"
+
+
+async def test_order_4_a_failed_predecessor_beats_a_missing_input() -> None:
+    quantity = await first("err-missing-q", overrides={"weight": failing(failure())})
+    assert quantity.error is not None
+    assert quantity.error.category is ErrorCategory.UPSTREAM_FAILED
+
+
+async def test_order_5_a_missing_input_beats_a_long_run_skip() -> None:
+    quantity = await first("long-needs-t-q")
+    assert quantity.error is not None
+    assert quantity.error.code == "missing_input"
+    assert quantity.error.input_path == "values.target-t"
+
+
+async def test_order_6_a_long_run_beats_a_skipped_predecessor() -> None:
+    quantity = await first("long-after-long-q")
+    assert quantity.status is QuantityStatus.SKIPPED
+    assert quantity.reason is not None
+    assert quantity.reason.code is ReasonCode.LONG_RUN_NOT_INCLUDED
+    assert quantity.reason.message == (
+        "`long-after-long-q` is a long run and the request does not include long runs."
+    )
+
+
+async def test_x05_a_long_run_with_a_not_applicable_predecessor_is_not_applicable() -> None:
+    quantity = await first("long-after-roll-q")
+    assert quantity.status is QuantityStatus.NOT_APPLICABLE
+    assert quantity.reason is not None
+    assert quantity.reason.code is ReasonCode.DEPENDS_ON_NOT_APPLICABLE
+
+
+async def test_a_long_run_with_a_failed_predecessor_is_upstream_failed() -> None:
+    quantity = await first("long-after-weight-q", overrides={"weight": failing(failure())})
+    assert quantity.error is not None
+    assert quantity.error.category is ErrorCategory.UPSTREAM_FAILED
+
+
+# --- exported outputs of a type v1 cannot carry (amendment 1.1, Q38) ----------------------------
+
+
+async def test_a_polar_is_discarded_and_its_scalar_sibling_is_produced_once() -> None:
+    calls: list[str] = []
+
+    async def polar_twin(x: Inputs, ctx: Context) -> Mapping[str, object]:
+        calls.append("called")
+        return {"pol": object(), "s": 5.0}
+
+    result = await run("polar-q", "polar-scalar-q", overrides={"polar-twin": polar_twin})
+    polar, scalar = result.quantities
+    assert polar.error is not None
+    assert polar.error.code == "non_scalar_result"
+    assert (scalar.status, scalar.value) == (QuantityStatus.OK, 5.0)
+    assert calls == ["called"]
+
+
+async def test_a_missing_polar_key_is_internal() -> None:
+    async def no_polar(x: Inputs, ctx: Context) -> Mapping[str, object]:
+        return {"s": 5.0}
+
+    quantity = await first("polar-scalar-q", overrides={"polar-twin": no_polar})
+    assert quantity.error is not None
+    assert quantity.error.category is ErrorCategory.INTERNAL
+
+
+async def test_a_reader_of_a_polar_is_not_implemented() -> None:
+    quantity = await first("polar-read-q")
+    assert quantity.error is not None
+    assert (quantity.error.category, quantity.error.code) == (
+        ErrorCategory.NOT_IMPLEMENTED,
+        "unsupported_value_type",
+    )
+    assert quantity.error.message == (
+        "`polar-read-q` reads `polar-q` (a polar), which the kernel cannot carry yet."
+    )
+
+
+async def test_a_requested_polar_is_non_scalar_result() -> None:
+    quantity = await first("polar-q")
+    assert quantity.error is not None
+    assert quantity.error.code == "non_scalar_result"
+
+
+# --- exact fields of every engine-built error ---------------------------------------------------
+
+REPORT = "Report it; attach input and provenance."
+
+
+async def test_the_exact_fields_of_every_engine_built_error() -> None:
+    cases: list[tuple[str, QuantityResult, tuple[str, str, str, str, str, str | None]]] = []
+    boom = await first("weight", overrides={"weight": _boom})
+    cases.append(
+        (
+            "exception",
+            boom,
+            (
+                "weight",
+                "weight",
+                "default",
+                "Internal error (RuntimeError) while computing `weight`.",
+                REPORT,
+                None,
+            ),
+        )
+    )
+    formula_error = FormulaError(
+        ErrorCategory.INVALID_INPUT,
+        "missing_input",
+        "gravity is needed.",
+        "Pass gravity.",
+        parameter="g",
+    )
+    raised = await first("weight", overrides={"weight": failing(formula_error)})
+    cases.append(
+        (
+            "formula error",
+            raised,
+            (
+                "weight",
+                "weight",
+                "default",
+                "gravity is needed.",
+                "Pass gravity.",
+                "values.gravity",
+            ),
+        )
+    )
+    no_g = AircraftInput.model_validate(
+        {"airplane": {"name": "t"}, "values": {"aircraft-mass": 2.0}}
+    )
+    missing = (await evaluate(make_build(), no_g, request("weight"))).quantities[0]
+    cases.append(
+        (
+            "missing input",
+            missing,
+            (
+                "weight",
+                "weight",
+                "default",
+                "`weight` needs `gravity`, which was not supplied.",
+                "Supply `gravity` in `values`.",
+                "values.gravity",
+            ),
+        )
+    )
+    cases.append(
+        (
+            "not implemented",
+            await first("unimpl-q"),
+            (
+                "unimpl-q",
+                "unimplemented",
+                "default",
+                "`unimplemented` is in the canon, not in the kernel yet.",
+                "Request a quantity whose formula is implemented.",
+                None,
+            ),
+        )
+    )
+    cases.append(
+        (
+            "pending term",
+            await first("tail-q"),
+            (
+                "tail-q",
+                "tail",
+                "default",
+                "The condition `has_horizontal_tail` cannot be evaluated yet.",
+                "Its fact is not implemented (#1187).",
+                None,
+            ),
+        )
+    )
+    upstream = await first("double-weight", overrides={"weight": failing(failure())})
+    cases.append(
+        (
+            "upstream failed",
+            upstream,
+            (
+                "double-weight",
+                "double",
+                "default",
+                "`double-weight` has no value because `weight` failed.",
+                "Fix `weight` first.",
+                None,
+            ),
+        )
+    )
+    cases.append(
+        (
+            "unsupported value type",
+            await first("curve-read-q"),
+            (
+                "curve-read-q",
+                "curve-reader",
+                "default",
+                "`curve-read-q` reads `curve-q` (a curve), which the kernel cannot carry yet.",
+                "Request a quantity that reads scalars and the airplane only.",
+                None,
+            ),
+        )
+    )
+    for name, quantity, expected in cases:
+        error = quantity.error
+        assert error is not None, name
+        actual = (
+            error.quantity,
+            error.formula,
+            error.application,
+            error.message,
+            error.hint,
+            error.input_path,
+        )
+        assert actual == expected, name
+
+
+# --- requested spelling (Q-C / R4) --------------------------------------------------------------
+
+
+async def test_a_crash_names_only_the_requested_sibling_and_the_log_carries_it(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    with caplog.at_level(logging.DEBUG, logger="aero_kernel"):
+        quantity = await first("twin-b", overrides={"twin": _boom})
+    assert quantity.error is not None
+    assert quantity.error.quantity == "twin-b"
+    assert quantity.error.message == "Internal error (RuntimeError) while computing `twin-b`."
+    (record,) = [r for r in caplog.records if r.levelno >= logging.ERROR]
+    assert (record.quantity, record.formula, record.application) == (  # type: ignore[attr-defined]  # logging extra
+        "twin-b",
+        "twin",
+        "default",
+    )
+    assert isinstance(getattr(record, "call_id", None), str)
+
+
+async def test_an_upstream_message_names_the_requested_sibling() -> None:
+    quantity = await first("after-b", overrides={"twin": failing(failure())})
+    assert quantity.error is not None
+    assert quantity.error.message == "`after-b` has no value because `twin-b` failed."
+
+
+async def test_a_skip_reason_names_the_requested_spelling() -> None:
+    quantity = await first("calc:long-q")
+    assert quantity.slug == "calc:long-q"
+    assert quantity.reason is not None
+    assert quantity.reason.message == (
+        "`calc:long-q` is a long run and the request does not include long runs."
+    )
+
+
+async def test_long_run_twins_requested_in_two_spellings_name_themselves() -> None:
+    result = await run("long-twin-a", "calc:long-twin-b")
+    assert result.quantities[0].reason is not None
+    assert result.quantities[0].reason.message == (
+        "`long-twin-a` is a long run and the request does not include long runs."
+    )
+    assert result.quantities[1].reason is not None
+    assert result.quantities[1].reason.message == (
+        "`calc:long-twin-b` is a long run and the request does not include long runs."
+    )
+
+
+# --- values and validation of outputs -----------------------------------------------------------
+
+
+async def test_every_output_of_a_node_carries_its_own_value() -> None:
+    result = await run("twin-a", "twin-b", "after-a", "after-b")
+    assert [q.value for q in result.quantities] == [2.0, 4.0, 3.0, 5.0]
+
+
+async def test_a_non_finite_second_output_makes_that_quantity_internal_and_logs_once(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    async def nan_b(x: Inputs, ctx: Context) -> Mapping[str, object]:
+        return {"a": 1.0, "b": math.nan}
+
+    with caplog.at_level(logging.DEBUG, logger="aero_kernel"):
+        quantity = await first("twin-b", overrides={"twin": nan_b})
+    assert quantity.error is not None
+    assert quantity.error.category is ErrorCategory.INTERNAL
+    assert len([r for r in caplog.records if r.levelno >= logging.ERROR]) == 1
+
+
+async def test_a_formula_that_omits_an_unexposed_output_is_internal() -> None:
+    async def omit(x: Inputs, ctx: Context) -> Mapping[str, object]:
+        return {"r": 1.0}
+
+    internal = await first("unexposed-q", overrides={"unexposed": omit})
+    assert internal.error is not None
+    assert internal.error.category is ErrorCategory.INTERNAL
+    complete = await first("unexposed-q")
+    assert (complete.status, complete.value) == (QuantityStatus.OK, 1.0)
+
+
+async def test_zero_is_a_value() -> None:
+    quantity = await first("weight", values={"gravity": 0.0})
+    assert (quantity.status, quantity.value) == (QuantityStatus.OK, 0.0)
+
+
+# --- several missing inputs, exact wording ------------------------------------------------------
+
+
+async def test_several_missing_inputs_name_every_display_name_in_message_and_hint() -> None:
+    nothing = AircraftInput.model_validate({"airplane": {"name": "t"}, "values": {}})
+    result = await evaluate(make_build(), nothing, request("weight"))
+    error = result.quantities[0].error
+    assert error is not None
+    assert error.hint == "Supply `aircraft-mass` and `gravity` in `values`."
+    assert "calc:" not in f"{error.message} {error.hint}"
+
+
+async def test_three_missing_inputs_read_as_a_list() -> None:
+    nothing = AircraftInput.model_validate({"airplane": {"name": "t"}, "values": {}})
+    result = await evaluate(make_build(), nothing, request("long-needs-t-q"))
+    error = result.quantities[0].error
+    assert error is not None
+    assert error.message == (
+        "`long-needs-t-q` needs `aircraft-mass` and `target-t`, which were not supplied."
+    )
+
+
+# --- input_path of a formula error blaming a target ---------------------------------------------
+
+
+async def test_a_formula_error_blaming_a_target_binding_points_into_values() -> None:
+    error = FormulaError(ErrorCategory.INVALID_INPUT, "invalid_input", "m", "h", parameter="t")
+    quantity = await first(
+        "given-q", values={"target-t": 1.0}, overrides={"given-only": failing(error)}
+    )
+    assert quantity.error is not None
+    assert quantity.error.input_path == "values.target-t"
+
+
+# --- causes per edge ----------------------------------------------------------------------------
+
+
+async def test_a_node_reading_both_siblings_lists_both_causes() -> None:
+    quantity = await first("after-both-q", overrides={"twin": failing(failure())})
+    assert quantity.error is not None
+    assert quantity.error.detail == {
+        "causes": [
+            {"quantity": "twin-a", "code": "not_converged"},
+            {"quantity": "twin-b", "code": "not_converged"},
+        ]
+    }
+
+
+# --- logging ------------------------------------------------------------------------------------
+
+
+async def test_the_info_line_carries_slugs_flag_and_exact_counts(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    with caplog.at_level(logging.INFO, logger="aero_kernel"):
+        await run("weight", "double-weight", "nonsense", "roll-q", long_runs=True)
+    (info,) = [r for r in caplog.records if r.levelno == logging.INFO]
+    assert info.getMessage().startswith(
+        "compute: [weight, double-weight, nonsense, roll-q] include_long_runs=True, "
+        "4 quantities (error=1, not_applicable=1, ok=2), 0 input errors, "
+    )
+    assert isinstance(getattr(info, "call_id", None), str)
+
+
+async def test_the_input_errors_path_logs_exactly_one_info_line(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    with caplog.at_level(logging.DEBUG, logger="aero_kernel"):
+        await run("weight", values={"aircraft-mass": 0.0})
+    (info,) = [r for r in caplog.records if r.levelno == logging.INFO]
+    assert info.getMessage().startswith(
+        "compute: [weight] include_long_runs=False, 0 quantities (none), 1 input errors, "
+    )
+    assert isinstance(getattr(info, "call_id", None), str)
+
+
+async def test_an_absent_optional_input_adds_no_info_line(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    only_mass = AircraftInput.model_validate(
+        {"airplane": {"name": "t"}, "values": {"aircraft-mass": 2.0}}
+    )
+    with caplog.at_level(logging.INFO, logger="aero_kernel"):
+        await evaluate(make_build(), only_mass, request("opt-q"))
+    assert len([r for r in caplog.records if r.levelno == logging.INFO]) == 1
+
+
+async def test_every_debug_line_of_a_node_carries_formula_and_application(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    with caplog.at_level(logging.DEBUG, logger="aero_kernel.engine"):
+        await run("weight")
+    node_lines = [r for r in caplog.records if r.levelno == logging.DEBUG]
+    assert [r.getMessage().split(":")[0] for r in node_lines] == ["node started", "node finished"]
+    for record in node_lines:
+        assert (record.formula, record.application) == ("weight", "default")  # type: ignore[attr-defined]  # logging extra
+
+
+# --- provenance and the shared input dict -------------------------------------------------------
+
+
+async def test_provenance_equals_the_builds() -> None:
+    build = make_build()
+    result = await evaluate(build, aircraft(), request("weight"))
+    assert result.provenance.canon_model_hash == build.model.content_hash
+    assert result.provenance.canon_source_commit == build.model.source_commit
+    assert result.provenance.build_digest == build.digest
+    refused = await evaluate(build, aircraft({"aircraft-mass": 0.0}), request("weight"))
+    assert refused.provenance == result.provenance
+
+
+async def test_every_node_gets_exactly_the_parameters_of_its_formula() -> None:
+    seen: dict[str, set[str]] = {}
+    model = fixture_model()
+
+    def spying(slug: str, original: Impl) -> Impl:
+        async def spy(x: Inputs, ctx: Context) -> Mapping[str, object]:
+            seen[slug] = set(x)
+            return await original(x, ctx)
+
+        return spy
+
+    registry = registry_with({slug: spying(slug, impl) for slug, impl in STANDARD.items()})
+    result = await evaluate(
+        make_build(registry, model),
+        aircraft({"target-t": 1.0}, wings=aileron_wing()),
+        request(
+            "weight",
+            "scaled-q",
+            "opt-q",
+            "span-q",
+            "twin-a",
+            "given-q",
+            "after-roll-q",
+            "cfg-span-q",
+            "after-both-q",
+            "double-weight",
+            "independent-q",
+            "unexposed-q",
+        ),
+    )
+    assert all(q.status is QuantityStatus.OK for q in result.quantities)
+    assert len(seen) >= 10
+    for slug, parameters in seen.items():
+        formula = model.formula(slug)
+        assert formula is not None
+        assert parameters == set(formula.inputs), slug
 
 
 # --- long runs, Q15 -----------------------------------------------------------------------------
@@ -566,7 +1084,14 @@ async def test_one_info_line_per_call_and_debug_per_node_all_with_the_same_call_
     (call_id,) = ids
     assert isinstance(call_id, str)
     assert len(call_id) >= 6
-    assert info[0].getMessage().startswith("compute: 2 quantities (ok=2), 0 input errors, ")
+    assert (
+        info[0]
+        .getMessage()
+        .startswith(
+            "compute: [weight, double-weight] include_long_runs=False, "
+            "2 quantities (ok=2), 0 input errors, "
+        )
+    )
 
 
 async def test_each_call_has_its_own_call_id(caplog: pytest.LogCaptureFixture) -> None:

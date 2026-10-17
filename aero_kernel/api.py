@@ -56,8 +56,11 @@ async def compute(aircraft: AircraftInput, request: ComputeRequest) -> ComputeRe
             for slug in request.quantities
         )
         logger.info(
-            "compute failed: %d quantities internal, the shipped canon model is not loaded "
-            "(%.1f ms)",
+            "compute: [%s] include_long_runs=%s, %d quantities (error=%d), 0 input errors, %.1f ms; "
+            "the shipped canon model is not loaded",
+            ", ".join(request.quantities),
+            request.include_long_runs,
+            len(quantities),
             len(quantities),
             (time.perf_counter() - started) * 1000,
             extra={"call_id": call_id},

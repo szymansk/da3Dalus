@@ -46,6 +46,7 @@ from aero_kernel.schema import (
     QuantityResult,
     QuantityStatus,
     Reason,
+    ReasonCode,
     dedupe_warnings,
 )
 from aero_kernel.validate import validate_aircraft, validate_values
@@ -195,7 +196,12 @@ class _Call:
         return _NodeRun(outcome=NodeOutcome(status=status), anchor=anchor, reason_for=reason_for)
 
     async def _evaluate_node(self, node: Node) -> _NodeRun:
-        """The decision chain of one node (ch. 6 steps 4 and 5)."""
+        """The status order of ch. 8.13, row by row; the first row that applies decides.
+
+        1 an unmet condition, 2 a not applicable predecessor, 3 a kernel gap (no implementation,
+        a ``when`` term without a fact, a value v1 cannot carry), 4 a failed predecessor, 5 a
+        missing input, 6 a long run the request does not include, 7 a skipped predecessor.
+        """
         formula, formula_slug = self._formula(node)
         anchor = self._anchor(node)
         application = node.id.application
@@ -207,6 +213,12 @@ class _Call:
             return self._without_value(
                 anchor, QuantityStatus.NOT_APPLICABLE, lambda slug, reason=condition: reason
             )
+        inherited = self._inherit(node, anchor, QuantityStatus.NOT_APPLICABLE)
+        if inherited is not None:
+            return inherited
+
+        implementation = self.build.registry.implementation(node.id.formula)
+        unsupported = self._unsupported_reads(node)
         if isinstance(condition, KernelError):
             return self._failed(
                 anchor,
@@ -214,28 +226,6 @@ class _Call:
                     update={"quantity": slug, "formula": formula_slug}
                 ),
             )
-
-        propagated = self.subtree.propagate(
-            node.id,
-            {node_id: run.outcome for node_id, run in self.runs.items()},
-            quantity=anchor,
-            skip_long_run=node.cost == "minutes" and not self.request.include_long_runs,
-        )
-        if propagated is not None:
-            return self._propagated(anchor, propagated)
-
-        unsupported = self._unsupported_reads(node)
-        if unsupported:
-            return self._failed(
-                anchor,
-                lambda slug: self._unsupported_error(node, slug, formula_slug, unsupported),
-            )
-        inputs, missing = self._inputs(node, formula)
-        if missing:
-            return self._failed(
-                anchor, lambda slug: self._missing_input(node, slug, formula_slug, missing)
-            )
-        implementation = self.build.registry.implementation(node.id.formula)
         if implementation is None:
             return self._failed(
                 anchor,
@@ -249,6 +239,32 @@ class _Call:
                     hint="Request a quantity whose formula is implemented.",
                 ),
             )
+        if unsupported:
+            return self._failed(
+                anchor,
+                lambda slug: self._unsupported_error(node, slug, formula_slug, unsupported),
+            )
+
+        inherited = self._inherit(node, anchor, QuantityStatus.ERROR)
+        if inherited is not None:
+            return inherited
+        inputs, missing = self._inputs(node, formula)
+        if missing:
+            return self._failed(
+                anchor, lambda slug: self._missing_input(node, slug, formula_slug, missing)
+            )
+        if node.cost == "minutes" and not self.request.include_long_runs:
+            return self._without_value(
+                anchor,
+                QuantityStatus.SKIPPED,
+                lambda slug: Reason(
+                    code=ReasonCode.LONG_RUN_NOT_INCLUDED,
+                    message=f"`{slug}` is a long run and the request does not include long runs.",
+                ),
+            )
+        inherited = self._inherit(node, anchor, QuantityStatus.SKIPPED)
+        if inherited is not None:
+            return inherited
 
         warner = Context(origin=display_slug(node.produces[0].quantity))
         try:
@@ -268,6 +284,16 @@ class _Call:
             outputs=returned,
             warnings=warner.warnings,
         )
+
+    def _inherit(self, node: Node, anchor: str, status: QuantityStatus) -> _NodeRun | None:
+        """The run of a node that inherits ``status`` from a predecessor it reads, if it does."""
+        propagated = self.subtree.propagate(
+            node.id,
+            {node_id: run.outcome for node_id, run in self.runs.items()},
+            quantity=anchor,
+            status=status,
+        )
+        return None if propagated is None else self._propagated(anchor, propagated)
 
     def _propagated(self, anchor: str, propagated: Propagated) -> _NodeRun:
         """A node whose status its predecessors or its cost class force on it."""
@@ -327,6 +353,8 @@ class _Call:
             value = self._read(node, binding)
             if value is not None:
                 bound[parameter] = value
+            elif any(edge.quantity == binding for edge in self.subtree.edges[node.id]):
+                continue  # a predecessor has no value: that is its status (row 7), not a missing input
             elif parameter in formula.optional:
                 bound[parameter] = None
             else:
@@ -390,8 +418,10 @@ class _Call:
     def _check_outputs(self, node: Node, formula: Formula, returned: Mapping[str, object]) -> None:
         """Require exactly the output parameters, and a value of its type for each carried output.
 
-        Outputs of a type v1 cannot carry are not carried: whoever reads one is
-        ``not_implemented`` (``unsupported_value_type``).
+        The key of an output whose type v1 cannot carry (curve, polar, ...) must be present, but its
+        value is neither carried nor type-checked: the engine discards it, and whoever reads it is
+        ``not_implemented`` (``unsupported_value_type``). The type check for each such type arrives
+        with the unit that adds it to ``Value``.
 
         Raises:
             ValueError: If the formula returned other parameters than the canon declares.
@@ -474,11 +504,15 @@ def _provenance(build: Build) -> Provenance:
     )
 
 
-def _log_summary(call_id: str, result: ComputeResult, started: float) -> None:
+def _log_summary(
+    call_id: str, request: ComputeRequest, result: ComputeResult, started: float
+) -> None:
     """The one ``INFO`` line of a call (ch. 8.14)."""
     counts = Counter(q.status.value for q in result.quantities)
     logger.info(
-        "compute: %d quantities (%s), %d input errors, %.1f ms",
+        "compute: [%s] include_long_runs=%s, %d quantities (%s), %d input errors, %.1f ms",
+        ", ".join(request.quantities),
+        request.include_long_runs,
         len(result.quantities),
         ", ".join(f"{status}={n}" for status, n in sorted(counts.items())) or "none",
         len(result.input_errors),
@@ -504,7 +538,7 @@ async def evaluate(build: Build, aircraft: AircraftInput, request: ComputeReques
     errors = validate_aircraft(aircraft).errors + validate_values(aircraft.values, build.model)
     if errors:
         result = ComputeResult(input_errors=errors, provenance=_provenance(build))
-        _log_summary(call_id, result, started)
+        _log_summary(call_id, request, result, started)
         return result
     subtree = build.graph.subtree(request.quantities)
     call = _Call(build, aircraft, request, subtree, call_id)
@@ -523,5 +557,5 @@ async def evaluate(build: Build, aircraft: AircraftInput, request: ComputeReques
         quantities=tuple(results[slug] for slug in request.quantities),
         provenance=_provenance(build),
     )
-    _log_summary(call_id, result, started)
+    _log_summary(call_id, request, result, started)
     return result

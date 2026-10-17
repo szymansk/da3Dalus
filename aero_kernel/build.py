@@ -85,7 +85,7 @@ def load_build(path: Path | None = None, registry: Registry | None = None) -> Bu
     except GraphModelError as exc:
         raise load_failure("the model is not a well-formed graph") from exc
     build = Build(model=model, graph=graph, digest=build_digest(), registry=used, report=report)
-    logger.info(
+    logger.debug(
         "build ready: %d formulas, %d without implementation",
         sum(len(content.formulas) for content in model.namespaces.values()),
         len(report.not_implemented),

@@ -52,6 +52,17 @@ def fixture_model() -> CanonModel:
         "target-t": quantity("target"),
         "curve-q": quantity("output", type="curve"),
         "components": quantity("input", type="components"),
+        "polar-q": quantity("derived", type="polar"),
+        "polar-scalar-q": quantity("output"),
+        "polar-read-q": quantity("output"),
+        "na-when-q": quantity("output"),
+        "long-after-long-q": quantity("output"),
+        "long-needs-t-q": quantity("output"),
+        "long-after-roll-q": quantity("output"),
+        "when-after-weight-q": quantity("output"),
+        "err-missing-q": quantity("output"),
+        "after-both-q": quantity("output"),
+        "unexposed-q": quantity("output"),
         "curve-read-q": quantity("output"),
         "needs-components-q": quantity("output"),
         "long-after-weight-q": quantity("output"),
@@ -67,6 +78,9 @@ def fixture_model() -> CanonModel:
     scaled = formula({"m": "aircraft-mass"}, {"r": "scaled-q"})
     scaled["inputs"]["k"] = None
     scaled["applications"][0]["bind"]["k"] = {"const": 3.0, "source": "test constant"}
+    unexposed = formula({"m": "aircraft-mass"}, {"r": "unexposed-q"})
+    unexposed["outputs"]["u"] = None
+    unexposed["applications"][0]["produce"]["u"] = None
     formulas: dict[str, dict[str, Any]] = {
         "weight": formula({"m": "aircraft-mass", "g": "gravity"}, {"w": "weight"}),
         "double": formula({"w": "weight"}, {"d": "double-weight"}),
@@ -101,6 +115,20 @@ def fixture_model() -> CanonModel:
             {"m": "aircraft-mass"}, {"a": "long-twin-a", "b": "long-twin-b"}, cost="minutes"
         ),
         "dep-twin": formula({"w": "weight"}, {"a": "dep-twin-a", "b": "dep-twin-b"}),
+        "polar-twin": formula({"m": "aircraft-mass"}, {"pol": "polar-q", "s": "polar-scalar-q"}),
+        "polar-reader": formula({"pol": "polar-q"}, {"r": "polar-read-q"}),
+        "na-when": formula({"p": "roll-q"}, {"r": "na-when-q"}, when="has_aileron"),
+        "long-after-long": formula({"l": "long-q"}, {"r": "long-after-long-q"}, cost="minutes"),
+        "long-needs-t": formula(
+            {"m": "aircraft-mass", "t": "target-t"}, {"r": "long-needs-t-q"}, cost="minutes"
+        ),
+        "long-after-roll": formula({"p": "roll-q"}, {"r": "long-after-roll-q"}, cost="minutes"),
+        "when-after-weight": formula(
+            {"w": "weight"}, {"r": "when-after-weight-q"}, when="has_aileron"
+        ),
+        "err-missing": formula({"w": "weight", "t": "target-t"}, {"r": "err-missing-q"}),
+        "after-both": formula({"a": "twin-a", "b": "twin-b"}, {"r": "after-both-q"}),
+        "unexposed": unexposed,
         "configure": formula({"a": "airplane"}, {"c": "airplane-cfg"}),
         "cfg-span": formula({"a": "airplane-cfg"}, {"s": "cfg-span-q"}),
         "curve-producer": formula({"m": "aircraft-mass"}, {"c": "curve-q"}),
@@ -188,6 +216,14 @@ async def _one(x: Inputs, ctx: Context) -> Mapping[str, object]:
     return {"r": 1.0}
 
 
+async def _polar_twin(x: Inputs, ctx: Context) -> Mapping[str, object]:
+    return {"pol": "not a value v1 carries", "s": 5.0}
+
+
+async def _unexposed(x: Inputs, ctx: Context) -> Mapping[str, object]:
+    return {"r": 1.0, "u": 99.0}
+
+
 async def _configure(x: Inputs, ctx: Context) -> Mapping[str, object]:
     return {"c": x["a"]}
 
@@ -226,6 +262,16 @@ STANDARD: Mapping[str, Impl] = {
     "na-twin": _pair,
     "long-twin": _pair,
     "dep-twin": _pair,
+    "polar-twin": _polar_twin,
+    "polar-reader": _one,
+    "na-when": _one,
+    "long-after-long": _one,
+    "long-needs-t": _one,
+    "long-after-roll": _one,
+    "when-after-weight": _one,
+    "err-missing": _one,
+    "after-both": _one,
+    "unexposed": _unexposed,
     "configure": _configure,
     "cfg-span": _cfg_span,
     "curve-producer": _curve,

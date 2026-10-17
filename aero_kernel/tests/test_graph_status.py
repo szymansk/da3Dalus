@@ -8,6 +8,9 @@ from aero_kernel.schema import QuantityStatus, ReasonCode
 from aero_kernel.tests.graph_builders import formula, model_of, quantity
 from pydantic import ValidationError
 
+ERR = QuantityStatus.ERROR
+SKP = QuantityStatus.SKIPPED
+NA = QuantityStatus.NOT_APPLICABLE
 OK = NodeOutcome(status=QuantityStatus.OK)
 SKIPPED = NodeOutcome(status=QuantityStatus.SKIPPED)
 NOT_APPLICABLE = NodeOutcome(status=QuantityStatus.NOT_APPLICABLE)
@@ -37,9 +40,11 @@ def diamond() -> Subtree:
     return CanonGraph(model).subtree(["d"])
 
 
-def run(b: NodeOutcome, c: NodeOutcome, world: str | None = None) -> Propagated | None:
+def run(
+    b: NodeOutcome, c: NodeOutcome, status: QuantityStatus, world: str | None = None
+) -> Propagated | None:
     outcomes = {node_id("f-b"): b, node_id("f-c"): c}
-    return diamond().propagate(node_id("f-d"), outcomes, quantity="d", world=world)
+    return diamond().propagate(node_id("f-d"), outcomes, quantity="d", status=status, world=world)
 
 
 def test_an_outcome_carries_an_error_exactly_with_status_error() -> None:
@@ -50,16 +55,23 @@ def test_an_outcome_carries_an_error_exactly_with_status_error() -> None:
         NodeOutcome(status=QuantityStatus.OK, error=error)
 
 
-def test_all_predecessors_ok_means_no_propagation() -> None:
-    assert run(OK, OK) is None
+@pytest.mark.parametrize("status", [ERR, SKP, NA])
+def test_all_predecessors_ok_means_no_propagation(status: QuantityStatus) -> None:
+    assert run(OK, OK, status) is None
 
 
-def test_a_node_without_predecessors_never_propagates() -> None:
-    assert diamond().propagate(node_id("f-b"), {}, quantity="b") is None
+@pytest.mark.parametrize("status", [ERR, SKP, NA])
+def test_a_node_without_predecessors_never_propagates(status: QuantityStatus) -> None:
+    assert diamond().propagate(node_id("f-b"), {}, quantity="b", status=status) is None
+
+
+def test_ok_is_no_status_to_inherit() -> None:
+    with pytest.raises(ValueError, match="ok"):
+        run(OK, OK, QuantityStatus.OK)
 
 
 def test_an_error_gives_upstream_failed_with_the_cause() -> None:
-    propagated = run(failed("b"), OK, world="u1=a")
+    propagated = run(failed("b"), OK, ERR, world="u1=a")
     assert propagated is not None
     assert propagated.status is QuantityStatus.ERROR
     assert propagated.reason is None
@@ -77,7 +89,7 @@ def test_an_error_gives_upstream_failed_with_the_cause() -> None:
 
 
 def test_two_failed_predecessors_list_both_causes() -> None:
-    propagated = run(failed("b"), failed("c", "tool_unavailable"))
+    propagated = run(failed("b"), failed("c", "tool_unavailable"), ERR)
     assert propagated is not None
     assert propagated.error is not None
     assert propagated.error.detail["causes"] == [
@@ -87,41 +99,48 @@ def test_two_failed_predecessors_list_both_causes() -> None:
     assert propagated.error.retryable is False
 
 
-@pytest.mark.parametrize("other", [OK, SKIPPED, NOT_APPLICABLE])
-def test_an_error_dominates_every_other_status(other: NodeOutcome) -> None:
-    propagated = run(other, failed("c"))
+@pytest.mark.parametrize(
+    ("status", "other"),
+    [(ERR, SKIPPED), (ERR, NOT_APPLICABLE), (SKP, failed("c")), (NA, failed("c"))],
+)
+def test_each_status_is_asked_for_alone(status: QuantityStatus, other: NodeOutcome) -> None:
+    """The order between statuses is the engine's (ch. 8.13); a query sees only its own status."""
+    own = {ERR: failed("b"), SKP: SKIPPED, NA: NOT_APPLICABLE}[status]
+    propagated = run(own, other, status)
     assert propagated is not None
-    assert propagated.status is QuantityStatus.ERROR
+    assert propagated.status is status
+    if status is not ERR:
+        assert propagated.reason is not None
+        assert "`b`" in propagated.reason.message
+        assert "`c`" not in propagated.reason.message
 
 
-@pytest.mark.parametrize("other", [OK, SKIPPED, NOT_APPLICABLE])
-def test_skipped_dominates_not_applicable_and_ok(other: NodeOutcome) -> None:
-    propagated = run(SKIPPED, other)
+def test_skipped_gives_depends_on_skipped() -> None:
+    propagated = run(SKIPPED, OK, SKP)
     assert propagated is not None
-    assert propagated.status is QuantityStatus.SKIPPED
     assert propagated.reason is not None
     assert propagated.reason.code is ReasonCode.DEPENDS_ON_SKIPPED
     assert propagated.error is None
-    assert "`b`" in propagated.reason.message
+    assert propagated.reason.message == "`d` reads `b`, which is skipped."
 
 
-def test_not_applicable_propagates_when_nothing_stronger_is_there() -> None:
-    propagated = run(OK, NOT_APPLICABLE)
+def test_not_applicable_gives_depends_on_not_applicable() -> None:
+    propagated = run(OK, NOT_APPLICABLE, NA)
     assert propagated is not None
-    assert propagated.status is QuantityStatus.NOT_APPLICABLE
     assert propagated.reason is not None
     assert propagated.reason.code is ReasonCode.DEPENDS_ON_NOT_APPLICABLE
-    assert "`c`" in propagated.reason.message
+    assert propagated.reason.message == "`d` reads `c`, which is not applicable."
 
 
 def test_a_predecessor_the_node_does_not_read_does_not_propagate() -> None:
     outcomes = {node_id("f-b"): OK, node_id("f-c"): OK, node_id("f-x"): failed("x")}
-    assert diamond().propagate(node_id("f-d"), outcomes, quantity="d") is None
+    assert diamond().propagate(node_id("f-d"), outcomes, quantity="d", status=ERR) is None
 
 
-def test_a_missing_outcome_of_a_read_predecessor_is_a_key_error() -> None:
+@pytest.mark.parametrize("status", [ERR, SKP, NA])
+def test_a_missing_outcome_of_a_read_predecessor_is_a_key_error(status: QuantityStatus) -> None:
     with pytest.raises(KeyError):
-        diamond().propagate(node_id("f-d"), {node_id("f-b"): OK}, quantity="d")
+        diamond().propagate(node_id("f-d"), {node_id("f-b"): OK}, quantity="d", status=status)
 
 
 def test_an_optional_read_of_a_computed_quantity_propagates_like_any_other() -> None:
@@ -133,7 +152,9 @@ def test_an_optional_read_of_a_computed_quantity_propagates_like_any_other() -> 
         },
     )
     subtree = CanonGraph(model).subtree(["c"])
-    propagated = subtree.propagate(node_id("f-c"), {node_id("f-b"): NOT_APPLICABLE}, quantity="c")
+    propagated = subtree.propagate(
+        node_id("f-c"), {node_id("f-b"): NOT_APPLICABLE}, quantity="c", status=NA
+    )
     assert propagated is not None
     assert propagated.status is QuantityStatus.NOT_APPLICABLE
 
@@ -143,7 +164,7 @@ def test_the_fixture_chain_propagates_from_the_landing_stall(flight_canon: Canon
     landing = NodeId(formula="calc:stall-speed", application="landing")
     approach = NodeId(formula="calc:speed-from-stall-margin", application="approach")
     propagated = subtree.propagate(
-        approach, {landing: failed("stall-speed-landing")}, quantity="approach-speed"
+        approach, {landing: failed("stall-speed-landing")}, quantity="approach-speed", status=ERR
     )
     assert propagated is not None
     assert propagated.error is not None
@@ -176,7 +197,7 @@ def test_a_nested_upstream_failure_reports_the_root_cause_only() -> None:
     propagated = (
         CanonGraph(model)
         .subtree(["d"])
-        .propagate(node_id("f-d"), {node_id("f-b"): upstream}, quantity="d")
+        .propagate(node_id("f-d"), {node_id("f-b"): upstream}, quantity="d", status=ERR)
     )
     assert propagated is not None
     assert propagated.error is not None
@@ -195,7 +216,7 @@ def test_an_error_propagates_through_an_optional_read() -> None:
     propagated = (
         CanonGraph(model)
         .subtree(["c"])
-        .propagate(node_id("f-c"), {node_id("f-b"): failed("b")}, quantity="c")
+        .propagate(node_id("f-c"), {node_id("f-b"): failed("b")}, quantity="c", status=ERR)
     )
     assert propagated is not None
     assert propagated.status is QuantityStatus.ERROR
@@ -224,7 +245,10 @@ def other_id(slug: str) -> NodeId:
 def test_a_slug_of_another_namespace_is_written_qualified_in_messages_and_errors() -> None:
     subtree = other_chain()
     skipped = subtree.propagate(
-        other_id("f-d"), {other_id("f-b"): SKIPPED, other_id("f-c"): OK}, quantity="other:d"
+        other_id("f-d"),
+        {other_id("f-b"): SKIPPED, other_id("f-c"): OK},
+        quantity="other:d",
+        status=SKP,
     )
     assert skipped is not None
     assert skipped.reason is not None
@@ -233,6 +257,7 @@ def test_a_slug_of_another_namespace_is_written_qualified_in_messages_and_errors
         other_id("f-d"),
         {other_id("f-b"): failed("other:b"), other_id("f-c"): OK},
         quantity="other:d",
+        status=ERR,
     )
     assert errored is not None
     assert errored.error is not None
@@ -240,7 +265,7 @@ def test_a_slug_of_another_namespace_is_written_qualified_in_messages_and_errors
 
 
 def test_a_calc_slug_is_written_bare_in_messages_and_errors() -> None:
-    propagated = run(failed("b"), OK)
+    propagated = run(failed("b"), OK, ERR)
     assert propagated is not None
     assert propagated.error is not None
     assert propagated.error.formula == "f-d"
@@ -259,7 +284,7 @@ def two_outputs() -> Subtree:
 
 def test_the_causes_name_the_quantities_the_node_reads_not_the_node_error_quantity() -> None:
     outcomes = {node_id("f-two"): failed("p")}
-    propagated = two_outputs().propagate(node_id("f-d"), outcomes, quantity="d")
+    propagated = two_outputs().propagate(node_id("f-d"), outcomes, quantity="d", status=ERR)
     assert propagated is not None
     assert propagated.error is not None
     assert propagated.error.detail["causes"] == [
@@ -277,69 +302,34 @@ def test_a_dependent_of_one_output_is_told_that_output() -> None:
         },
     )
     subtree = CanonGraph(model).subtree(["d"])
-    propagated = subtree.propagate(node_id("f-d"), {node_id("f-two"): failed("p")}, quantity="d")
+    propagated = subtree.propagate(
+        node_id("f-d"), {node_id("f-two"): failed("p")}, quantity="d", status=ERR
+    )
     assert propagated is not None
     assert propagated.error is not None
     assert propagated.error.detail["causes"] == [{"quantity": "q", "code": "not_converged"}]
 
 
-def test_an_own_long_run_skip_is_skipped_with_its_reason() -> None:
-    propagated = diamond().propagate(
-        node_id("f-d"), {node_id("f-b"): OK, node_id("f-c"): OK}, quantity="d", skip_long_run=True
-    )
-    assert propagated is not None
-    assert propagated.status is QuantityStatus.SKIPPED
-    assert propagated.reason is not None
-    assert propagated.reason.code is ReasonCode.LONG_RUN_NOT_INCLUDED
-
-
-def test_precedence_is_error_then_own_skip_then_skipped_then_not_applicable() -> None:
-    subtree = diamond()
-
-    def status(b: NodeOutcome, c: NodeOutcome, *, skip: bool) -> Propagated | None:
-        outcomes = {node_id("f-b"): b, node_id("f-c"): c}
-        return subtree.propagate(node_id("f-d"), outcomes, quantity="d", skip_long_run=skip)
-
-    errored = status(failed("b"), OK, skip=True)
-    assert errored is not None
-    assert errored.status is QuantityStatus.ERROR
-    own = status(NOT_APPLICABLE, OK, skip=True)
-    assert own is not None
-    assert own.reason is not None
-    assert own.reason.code is ReasonCode.LONG_RUN_NOT_INCLUDED
-    inherited = status(SKIPPED, NOT_APPLICABLE, skip=False)
-    assert inherited is not None
-    assert inherited.reason is not None
-    assert inherited.reason.code is ReasonCode.DEPENDS_ON_SKIPPED
-
-
 @pytest.mark.parametrize(
-    ("b", "skip"),
-    [
-        (failed("b"), False),
-        (SKIPPED, False),
-        (NOT_APPLICABLE, False),
-        (OK, True),
-    ],
-    ids=["error", "skipped", "not-applicable", "long-run"],
+    ("b", "status"),
+    [(failed("b"), ERR), (SKIPPED, SKP), (NOT_APPLICABLE, NA)],
+    ids=["error", "skipped", "not-applicable"],
 )
-def test_a_propagation_can_be_addressed_to_another_quantity(b: NodeOutcome, skip: bool) -> None:
-    outcomes = {node_id("f-b"): b, node_id("f-c"): OK}
-    propagated = diamond().propagate(node_id("f-d"), outcomes, quantity="d", skip_long_run=skip)
+def test_a_propagation_can_be_addressed_to_another_quantity(
+    b: NodeOutcome, status: QuantityStatus
+) -> None:
+    propagated = run(b, OK, status)
     assert propagated is not None
     other = propagated.addressed_to("sibling")
-    texts = [
-        other.error.message if other.error else "",
-        other.reason.message if other.reason else "",
-    ]
-    assert any("`sibling`" in text for text in texts)
-    assert not any("`d`" in text for text in texts)
     assert other.status is propagated.status
-    first = [
-        propagated.error.message if propagated.error else "",
-        propagated.reason.message if propagated.reason else "",
-    ]
-    assert any("`d`" in text for text in first)
     if other.error is not None:
+        assert propagated.error is not None
         assert other.error.quantity == "sibling"
-        assert other.error.detail == propagated.error.detail  # type: ignore[union-attr]  # same causes
+        assert other.error.message == propagated.error.message.replace("`d`", "`sibling`")
+        assert other.error.detail == propagated.error.detail
+    else:
+        assert propagated.reason is not None
+        assert other.reason is not None
+        assert other.reason.code is propagated.reason.code
+        assert other.reason.message == propagated.reason.message.replace("`d`", "`sibling`")
+    assert propagated.addressed_to("d").status is propagated.status
