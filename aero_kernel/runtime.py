@@ -83,7 +83,7 @@ class WorkerFailure(BaseModel):
         message: The cause, in natural language.
         hint: What to do.
         detail: Structured data about the failure.
-        input_path: Path of the offending input value, if any.
+        parameter: Name of the formula parameter at fault, if any.
         diagnostics: The worker's report.
     """
 
@@ -94,7 +94,7 @@ class WorkerFailure(BaseModel):
     message: str
     hint: str
     detail: dict[str, JsonValue] = Field(default_factory=dict)
-    input_path: str | None = None
+    parameter: str | None = None
     diagnostics: WorkerDiagnostics
 
     def to_formula_error(self) -> FormulaError:
@@ -105,7 +105,7 @@ class WorkerFailure(BaseModel):
             self.message,
             self.hint,
             self.detail,
-            self.input_path,
+            self.parameter,
         )
 
 
@@ -136,7 +136,7 @@ def run_in_worker(
             message=error.message,
             hint=error.hint,
             detail=error.detail,
-            input_path=error.input_path,
+            parameter=error.parameter,
             diagnostics=WorkerDiagnostics(duration_s=time.perf_counter() - started),
         )
     except Exception as error:
