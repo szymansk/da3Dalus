@@ -241,6 +241,30 @@ class Check(BaseModel):
     applications: Annotated[tuple[Identifier, ...], Field(min_length=1)] | None = None
 
 
+def _parameter_problems(
+    application_id: str,
+    side: str,
+    written: Mapping[str, object],
+    declared: Mapping[str, object],
+    how: str,
+) -> list[str]:
+    """Name every parameter an application binds or produces wrongly, application included."""
+    where = f"application `{application_id}`"
+    fault = "bound" if how == "bind" else "produced"
+    problems = [
+        f"{where}: {side} parameter `{name}` is not {fault}"
+        + (" (write null to leave it unexposed)" if how == "produce" else "")
+        for name in declared
+        if name not in written
+    ]
+    problems.extend(
+        f"{where}: parameter `{name}` is not an {side} of the formula"
+        for name in written
+        if name not in declared
+    )
+    return problems
+
+
 class Formula(BaseModel):
     """A canon formula with its applications, checks, worlds and embeds (ch. 8.5, 8.13).
 
@@ -303,14 +327,16 @@ class Formula(BaseModel):
             msg = "application ids must be unique"
             raise ValueError(msg)
         for application in self.applications:
-            if application.bind.keys() != self.inputs.keys():
-                msg = f"application {application.id}: bind must name exactly the input parameters"
-                raise ValueError(msg)
-            if application.produce.keys() != self.outputs.keys():
-                msg = (
-                    f"application {application.id}: produce must name exactly the output parameters"
-                )
-                raise ValueError(msg)
+            problems = [
+                *_parameter_problems(
+                    application.id, "input", application.bind, self.inputs, "bind"
+                ),
+                *_parameter_problems(
+                    application.id, "output", application.produce, self.outputs, "produce"
+                ),
+            ]
+            if problems:
+                raise ValueError("; ".join(problems))
         unknown = set(self.optional) - self.inputs.keys()
         if unknown:
             msg = f"optional names parameters that are no input: {sorted(unknown)}"

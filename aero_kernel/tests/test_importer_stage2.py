@@ -1,5 +1,6 @@
 """Importer stage 2 (normalise): one test per finding class, and the normalised shape."""
 
+import re
 from pathlib import Path
 from typing import get_args
 
@@ -56,7 +57,7 @@ STAGE_2_CASES = {
         mutate(WEIGHING, "applications:\n", "applications:\n  - plain\n"),
         WEIGHING,
         "applications[0]",
-        "valid dictionary",
+        "must be a mapping",
     ),
     "application id is no identifier": (
         mutate(WEIGHING, "id: flapped", "id: Flapped"),
@@ -68,7 +69,7 @@ STAGE_2_CASES = {
         mutate(WEIGHING, "given: [aircraft-mass]", "given: []"),
         WEIGHING,
         "applications[1].given",
-        "at least 1 item",
+        "must not be empty",
     ),
     "check is no mapping": (
         mutate(FROM_MASS, "preconditions:\n  - {", "preconditions:\n  - plain\n  - {"),
@@ -86,7 +87,7 @@ STAGE_2_CASES = {
         mutate(WEIGHING, "applications: [clean]}", "applications: []}"),
         WEIGHING,
         "postconditions[0].applications",
-        "at least 1 item",
+        "must not be empty",
     ),
     "check applications not ids": (
         mutate(WEIGHING, "applications: [clean]}", "applications: [Clean]}"),
@@ -105,7 +106,7 @@ STAGE_2_CASES = {
         mutate(GRAVITY, "unit: m/s^2", "unit: [m]"),
         GRAVITY,
         "unit",
-        "Input should be",
+        "(got ['m'])",
     ),
     "unknown role": (mutate(GRAVITY, "role: input", "role: boss"), GRAVITY, "role", "boss"),
     "unknown type": (mutate(GRAVITY, "type: scalar", "type: blob"), GRAVITY, "type", "blob"),
@@ -181,13 +182,13 @@ STAGE_2_CASES = {
         mutate(WEIGHING, "bind: {g: {const", "bind: {zz: {const"),
         WEIGHING,
         "entry",
-        "bind must name exactly the input parameters",
+        "application `flapped`: parameter `zz` is not an input of the formula",
     ),
     "produce of an unknown parameter": (
         mutate(WEIGHING, "produce: {w: weight-flapped}", "produce: {zz: weight-flapped}"),
         WEIGHING,
         "entry",
-        "produce must name exactly the output parameters",
+        "application `flapped`: parameter `zz` is not an output of the formula",
     ),
     "constant without a source": (
         mutate(WEIGHING, "{const: 9.81, source: test source}", "{const: 9.81}"),
@@ -211,7 +212,7 @@ STAGE_2_CASES = {
         mutate(WEIGHING, "  - id: flapped\n    bind", "  - bind"),
         WEIGHING,
         "applications[1].id",
-        "Field required",
+        "missing, but required",
     ),
     "unknown application field": (
         mutate(WEIGHING, "    when: has_aileron\n", "    when: has_aileron\n    colour: red\n"),
@@ -223,7 +224,27 @@ STAGE_2_CASES = {
         mutate(WEIGHING, "  - id: clean\n    produce: {w: weight-weighed}\n", "  - id: clean\n"),
         WEIGHING,
         "entry",
-        "produce must name exactly the output parameters",
+        "application `clean`: output parameter `w` is not produced",
+    ),
+    "empty applications list": (
+        {
+            WEIGHING: re.sub(
+                r"applications:\n(?:  .*\n)+", "applications: []\n", MINI_CANON[WEIGHING]
+            )
+        },
+        WEIGHING,
+        "applications",
+        "must not be empty; omit the field for the implicit application",
+    ),
+    "second application omits a binding": (
+        mutate(
+            WEIGHING,
+            "inputs: {m: aircraft-mass, g: gravity}\noutputs: {w: null}\napplications:\n  - id: clean\n",
+            "inputs: {m: null, g: gravity}\noutputs: {w: null}\napplications:\n  - id: clean\n    bind: {m: aircraft-mass}\n",
+        ),
+        WEIGHING,
+        "applications[1].bind.m",
+        "the input parameter is not bound by the application",
     ),
     "unbound input": (
         mutate(WEIGHING, "inputs: {m: aircraft-mass, g: gravity}", "inputs: {m: null, g: gravity}"),
@@ -499,3 +520,22 @@ def test_a_bare_embed_of_a_single_application_formula_names_its_application(
     result = run(tmp_path, mutate(TWICE, "weight-from-mass,", "weight-from-mass.default,"))
     assert result.model is not None
     assert result.model.formula("weigh-twice") is not None
+
+
+def test_an_embedder_of_a_formula_with_no_applications_adds_no_cascade(tmp_path: Path) -> None:
+    empty = re.sub(r"applications:\n(?:  .*\n)+", "applications: []\n", MINI_CANON[WEIGHING])
+    result = run(tmp_path, {WEIGHING: empty})
+    assert [(f.file, f.field) for f in result.findings] == [(WEIGHING, "applications")]
+
+
+def test_an_embedder_of_a_formula_with_an_unreadable_application_adds_no_cascade(
+    tmp_path: Path,
+) -> None:
+    broken = mutate(WEIGHING, "  - id: clean\n    produce", "  - produce")
+    result = run(tmp_path, broken)
+    assert [(f.file, f.field) for f in result.findings] == [(WEIGHING, "applications[0].id")]
+
+
+def test_an_embedder_of_a_formula_with_another_fault_adds_no_cascade(tmp_path: Path) -> None:
+    result = run(tmp_path, mutate(WEIGHING, "kind: procedure", "kind: rite"))
+    assert [(f.file, f.field) for f in result.findings] == [(WEIGHING, "kind")]

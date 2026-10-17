@@ -11,6 +11,7 @@ from aero_kernel.canon.model import CanonModel, Namespace, compute_content_hash
 from aero_kernel.errors import DEFAULT_NAMESPACE, SLUG_REGEX
 from aero_kernel.importer import IMPORTER_VERSION
 from aero_kernel.importer.findings import Finding
+from aero_kernel.importer.yamlvalue import as_list
 from pydantic import ValidationError
 
 __all__ = ["assemble", "findings_of"]
@@ -24,6 +25,7 @@ _VALUE_ERROR = "Value error, "
 # value is kept.
 _BINDING_BRANCHES = frozenset({"constrained-str", "ConstBinding"})
 _SCALARS = (str, int, float, bool, type(None))
+_SHORT = 60  # a written value longer than this is not repeated in a finding
 
 
 def _file_of(section: str, slug: str) -> str:
@@ -37,6 +39,20 @@ def _path(parts: tuple[int | str, ...]) -> str:
     for part in parts:
         text += f"[{part}]" if isinstance(part, int) else f"{'.' if text else ''}{part}"
     return text
+
+
+def _is_shown(value: object) -> bool:
+    """Whether the written value is short enough to be named in a finding."""
+    return isinstance(value, _SCALARS) or (
+        (items := as_list(value)) is not None and len(repr(items)) <= _SHORT
+    )
+
+
+def _message(kind: str, text: str, context: dict[str, object] | None) -> str:
+    """Return the message of a validation error in the importer's words."""
+    if kind == "too_short" and context is not None and context.get("min_length") == 1:
+        return "must not be empty"
+    return text.removeprefix(_VALUE_ERROR)
 
 
 def _is_other_binding_branch(location: tuple[int | str, ...], value: object) -> bool:
@@ -69,7 +85,7 @@ def findings_of(error: ValidationError) -> list[Finding]:
     Returns:
         One finding per distinct problem.
     """
-    entries = error.errors(include_url=False, include_context=False, include_input=True)
+    entries = error.errors(include_url=False, include_context=True, include_input=True)
     locations = [entry["loc"] for entry in entries]
     findings: list[Finding] = []
     for entry in entries:
@@ -79,13 +95,12 @@ def findings_of(error: ValidationError) -> list[Finding]:
         if _is_other_binding_branch(location, entry["input"]):
             continue
         location = tuple(part for part in location if part not in _BINDING_BRANCHES)
-        message = entry["msg"].removeprefix(_VALUE_ERROR)
-        if isinstance(entry["input"], _SCALARS):
-            message = (
-                "the input parameter is not bound by the application"
-                if entry["input"] is None and "bind" in location
-                else f"{message} (got {entry['input']!r})"
-            )
+        message = _message(entry["type"], entry["msg"], entry.get("ctx"))
+        value = entry["input"]
+        if value is None and "bind" in location:
+            message = "the input parameter is not bound by the application"
+        elif entry["type"] != "missing" and _is_shown(value):
+            message = f"{message} (got {value!r})"
         if len(location) >= 2 and location[0] in ("quantities", "formulas", "defaults"):
             slug = str(location[1])
             rest = (slug, *location[2:]) if location[0] == "defaults" else location[2:]

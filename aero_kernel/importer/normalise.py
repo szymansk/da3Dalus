@@ -1,6 +1,6 @@
 """Stage 2 of the import: normalise the parsed entries into the shape of the canon model (ch. 8.9).
 
-Only what the model cannot do for itself happens here: numbers become floats, the unit spellings
+Only what the model cannot do for itself happens here: the unit spellings
 ``1`` and ``—`` fold into ``1``, the cost is derived from the tool, every reference is qualified
 ``calc:<slug>``, the defaults of ``bind`` and ``produce`` are merged into every application (the
 implicit one is written out as ``default``), embeds are resolved and their closure computed.
@@ -11,7 +11,6 @@ rule, ch. 8.6).
 
 import re
 from collections.abc import Callable
-from typing import cast
 
 from aero_kernel.canon.model import CostClass, Tool
 from aero_kernel.errors import DEFAULT_NAMESPACE, IDENTIFIER_REGEX, SLUG_REGEX
@@ -42,16 +41,6 @@ JsonDict = dict[str, object]
 def _qualified(value: object) -> object:
     """Qualify a slug as ``calc:<slug>``; any other value stays for the model to reject."""
     return f"{DEFAULT_NAMESPACE}:{value}" if isinstance(value, str) else value
-
-
-def _float(value: object) -> object:
-    """Return a YAML number as a float (the model's numbers are strict floats).
-
-    A boolean stays a boolean, so the model rejects it.
-    """
-    if isinstance(value, int | float) and not isinstance(value, bool):
-        return float(value)
-    return value
 
 
 def _unit(value: object) -> object:
@@ -87,22 +76,19 @@ def _quantity(entry: Entry) -> JsonDict:
 
 
 def _default(raw: dict[str, object]) -> JsonDict:
-    """Normalise one ``defaults.yaml`` entry: the value becomes a float, the unit folds."""
-    return {
-        name: _float(value) if name == "value" else _unit(value) if name == "unit" else value
-        for name, value in raw.items()
-    }
+    """Normalise one ``defaults.yaml`` entry: the unit folds, the rest is carried as written."""
+    return {name: _unit(value) if name == "unit" else value for name, value in raw.items()}
 
 
 # --- formulas ---------------------------------------------------------------------------------
 
 
 def _binding(raw: object) -> object:
-    """Normalise one ``bind`` value: a slug is qualified, a constant's number becomes a float."""
+    """Normalise one ``bind`` value: a slug is qualified, a constant is carried as written."""
     mapping = as_mapping(raw)
     if mapping is None:
         return _qualified(raw)
-    return {key: _float(value) if key == "const" else value for key, value in mapping.items()}
+    return dict(mapping)
 
 
 def _merged(defaults: object, overrides: object, convert: Callable[[object], object]) -> object:
@@ -139,25 +125,64 @@ def _application(item: object, inputs: object, outputs: object) -> object:
     }
 
 
-def _applications(entry: Entry, inputs: object, outputs: object) -> list[object]:
-    """Return the merged applications; an entry without any has the implicit ``default``."""
+def _applications(
+    entry: Entry, inputs: object, outputs: object, findings: list[Finding]
+) -> tuple[list[object], list[str] | None]:
+    """Return the merged applications and their ids; the ids are ``None`` if they cannot be read.
+
+    An entry without ``applications`` has the implicit ``default``. Embed resolution needs every
+    application to be a mapping with a string ``id``; that is checked here, the rest by the model.
+    """
     raw = entry.front.get("applications")
-    items = [{"id": "default"}] if raw is None else (as_list(raw) or [])
-    return [_application(item, inputs, outputs) for item in items]
+    items = [{"id": "default"}] if raw is None else as_list(raw)
+    if items is None:  # stage 1 guarantees a list; kept for the type
+        return [], None
+    if not items:
+        findings.append(
+            Finding(
+                file=entry.file,
+                field="applications",
+                message="must not be empty; omit the field for the implicit application",
+            )
+        )
+        return [], None
+    ids: list[str] | None = []
+    for index, item in enumerate(items):
+        mapping = as_mapping(item)
+        identifier = None if mapping is None else mapping.get("id")
+        problem = (
+            "must be a mapping"
+            if mapping is None
+            else "missing, but required"
+            if identifier is None
+            else None
+            if isinstance(identifier, str)
+            else "must be a string"
+        )
+        if problem is not None:
+            field = f"applications[{index}]" + ("" if mapping is None else ".id")
+            findings.append(Finding(file=entry.file, field=field, message=problem))
+            ids = None
+        elif ids is not None:
+            ids.append(str(identifier))
+    return [_application(item, inputs, outputs) for item in items], ids
 
 
-def _formula(entry: Entry, applications_of: dict[str, list[str]]) -> tuple[JsonDict, list[object]]:
+def _formula(
+    entry: Entry, findings: list[Finding]
+) -> tuple[JsonDict, list[object], list[str] | None]:
     """Normalise one formula entry except for its embeds; return it with its raw embeds items."""
     front = entry.front
     tool = front["tool"]
     inputs = _qualified_map(front["inputs"])
     outputs = _qualified_map(front["outputs"])
+    applications, ids = _applications(entry, inputs, outputs, findings)
     doc: JsonDict = {
         "kind": front["kind"],
         "tool": tool,
         "inputs": inputs,
         "outputs": outputs,
-        "applications": _applications(entry, inputs, outputs),
+        "applications": applications,
     }
     if "cost" in front:
         doc["cost"] = front["cost"]
@@ -168,28 +193,29 @@ def _formula(entry: Entry, applications_of: dict[str, list[str]]) -> tuple[JsonD
             doc[name] = front[name]
     if "variables" in front:
         doc["variables"] = _qualified_list(front["variables"])
-    applications_of[entry.slug] = [
-        str(mapping["id"])
-        for item in cast("list[object]", doc["applications"])
-        if (mapping := as_mapping(item)) is not None and "id" in mapping
-    ]
-    return doc, as_list(front.get("embeds")) or []
+    return doc, as_list(front.get("embeds")) or [], ids
 
 
 # --- embeds -----------------------------------------------------------------------------------
 
 
 def _resolve_embed(
-    item: object, applications_of: dict[str, list[str]]
+    item: object, applications_of: dict[str, list[str] | None]
 ) -> tuple[str | None, str | None]:
-    """Normalise one embeds item to ``calc:<slug>.<application-id>``; return it or why not."""
+    """Normalise one embeds item to ``calc:<slug>.<application-id>``; return it or why not.
+
+    An embed of a formula whose applications cannot be read returns neither: that formula has its
+    own finding, and a second one about the embed would only be a cascade.
+    """
     match = _EMBED_ITEM.fullmatch(item) if isinstance(item, str) else None
     if match is None:
         return None, f"{item!r} is not <slug> or <slug>.<application-id>"
     slug, application = match.group("slug"), match.group("application")
-    applications = applications_of.get(slug)
-    if applications is None:
+    if slug not in applications_of:
         return None, f"embeds {item}, but there is no formula {slug}"
+    applications = applications_of[slug]
+    if applications is None:
+        return None, None
     if application is None:
         if len(applications) != 1:
             return None, (
@@ -226,11 +252,11 @@ def normalise(parsed: ParsedCanon) -> tuple[JsonDict, list[Finding]]:
         findings about embeds; the dict is only meaningful if there is no finding.
     """
     findings: list[Finding] = []
-    applications_of: dict[str, list[str]] = {}
+    applications_of: dict[str, list[str] | None] = {}
     documents: dict[str, JsonDict] = {}
     raw_embeds: dict[str, list[object]] = {}
     for slug, entry in parsed.formulas.items():
-        documents[slug], raw_embeds[slug] = _formula(entry, applications_of)
+        documents[slug], raw_embeds[slug], applications_of[slug] = _formula(entry, findings)
     direct: dict[str, list[str]] = {}
     for slug, items in raw_embeds.items():
         direct[slug] = []

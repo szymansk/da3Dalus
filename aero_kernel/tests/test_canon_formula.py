@@ -87,26 +87,49 @@ def test_parameter_names_are_snake_case() -> None:
         Formula.model_validate(fields)
 
 
+def application_id(fields: dict[str, Any]) -> str:
+    """Return the id of the first application of the fixture formula."""
+    return str(fields["applications"][0]["id"])
+
+
 def test_application_must_bind_every_input_and_nothing_else() -> None:
+    """The finding names the application and the parameter."""
     fields = formula_fields()
     del fields["applications"][0]["bind"]["g"]
-    with pytest.raises(ValidationError, match="bind"):
+    with pytest.raises(ValidationError) as missing:
         Formula.model_validate(fields)
+    assert f"application `{application_id(fields)}`: input parameter `g` is not bound" in str(
+        missing.value
+    )
     fields = formula_fields()
     fields["applications"][0]["bind"]["extra"] = "calc:gravity"
-    with pytest.raises(ValidationError, match="bind"):
+    with pytest.raises(ValidationError) as extra:
         Formula.model_validate(fields)
+    assert (
+        f"application `{application_id(fields)}`: parameter `extra` is not an input of the formula"
+        in str(extra.value)
+    )
 
 
 def test_application_must_produce_every_output_and_nothing_else() -> None:
+    """The finding names the application and the parameter."""
     fields = formula_fields()
+    output = next(iter(fields["outputs"]))
     fields["applications"][0]["produce"] = {}
-    with pytest.raises(ValidationError, match="produce"):
+    with pytest.raises(ValidationError) as missing:
         Formula.model_validate(fields)
+    assert (
+        f"application `{application_id(fields)}`: output parameter `{output}` is not produced"
+        " (write null to leave it unexposed)" in str(missing.value)
+    )
     fields = formula_fields()
     fields["applications"][0]["produce"]["extra"] = None
-    with pytest.raises(ValidationError, match="produce"):
+    with pytest.raises(ValidationError) as extra:
         Formula.model_validate(fields)
+    assert (
+        f"application `{application_id(fields)}`: parameter `extra` is not an output of the formula"
+        in str(extra.value)
+    )
 
 
 def test_unexposed_output_is_null() -> None:
