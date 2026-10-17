@@ -681,7 +681,8 @@ class WhenFacts(BaseModel):
 
     Attributes:
         has_aileron: A device acts as aileron, flaperon or elevon.
-        has_separate_flap_and_aileron: A flap-acting and a distinct aileron-acting device exist.
+        has_separate_flap_and_aileron: A flap and a distinct aileron or elevon exist; a flaperon
+            counts as neither (D10).
         has_vertical_tail: The aircraft has a vertical tail (provisional rule, see below).
     """
 
@@ -708,7 +709,9 @@ class WhenFacts(BaseModel):
 
 
 _AILERON_ROLES = frozenset({"aileron", "flaperon", "elevon"})
-_FLAP_ROLES = frozenset({"flap", "flaperon"})
+# A butterfly layout (D10) needs a flap and a distinct aileron or elevon; a flaperon is neither.
+_BUTTERFLY_FLAP_ROLES = frozenset({"flap"})
+_BUTTERFLY_AILERON_ROLES = frozenset({"aileron", "elevon"})
 _RUDDER_ROLES = frozenset({"rudder", "ruddervator"})
 
 
@@ -778,7 +781,9 @@ def facts_from_geometry(airplane: AirplaneGeometry) -> WhenFacts:
     return WhenFacts(
         has_aileron=any(role in _AILERON_ROLES for _, role in devices),
         has_separate_flap_and_aileron=any(
-            flap_role in _FLAP_ROLES and aileron_role in _AILERON_ROLES and flap != aileron
+            flap_role in _BUTTERFLY_FLAP_ROLES
+            and aileron_role in _BUTTERFLY_AILERON_ROLES
+            and flap != aileron
             for flap, flap_role in devices
             for aileron, aileron_role in devices
         ),

@@ -143,7 +143,9 @@ class Quantity(BaseModel):
 FormulaKind = Literal["law", "procedure", "optimization", "fit", "rating"]
 Tool = Literal["APP", "ATM", "GEO", "AB", "AVL", "OPT", "KAT", "APC"]
 CostClass = Literal["instant", "seconds", "minutes"]
-WhenTerm = Literal["has_aileron", "has_separate_flap_and_aileron", "has_vertical_tail"]
+WhenTerm = Literal[
+    "has_aileron", "has_horizontal_tail", "has_separate_flap_and_aileron", "has_vertical_tail"
+]
 OnViolation = Literal["warning", "error"]
 
 # The slug, world-name, namespace and identifier patterns are defined once, in ``errors.py``; every other pattern here

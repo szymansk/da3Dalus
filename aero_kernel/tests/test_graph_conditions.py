@@ -87,9 +87,9 @@ def test_a_control_surface_name_is_not_a_role() -> None:
     [
         (("flap", "aileron"), True),
         (("flap", "elevon"), True),
-        (("flaperon", "aileron"), True),
-        (("flap", "flaperon"), True),
-        (("flaperon", "flaperon"), True),
+        (("flaperon", "aileron"), False),
+        (("flap", "flaperon"), False),
+        (("flaperon", "flaperon"), False),
         (("flaperon",), False),
         (("flap",), False),
         (("aileron", "aileron"), False),
@@ -107,8 +107,8 @@ def test_separate_flap_and_aileron_needs_two_distinct_devices(
 def test_devices_on_different_wings_are_distinct() -> None:
     held = facts(
         {
-            "a": wing(sec(0, 0, 0.2, "flaperon"), sec(0, 0.5, 0.2)),
-            "b": wing(sec(0, 0, 0.2, "flaperon"), sec(0, 0.5, 0.2)),
+            "a": wing(sec(0, 0, 0.2, "flap"), sec(0, 0.5, 0.2)),
+            "b": wing(sec(0, 0, 0.2, "aileron"), sec(0, 0.5, 0.2)),
         }
     )
     assert held.has_separate_flap_and_aileron is True
@@ -230,11 +230,12 @@ def test_one_flaperon_is_an_aileron_but_no_butterfly_layout() -> None:
     assert (held.has_aileron, held.has_separate_flap_and_aileron) == (True, False)
 
 
-def test_two_flaperons_on_different_ribs_are_a_butterfly_layout() -> None:
+def test_flaperons_never_make_a_butterfly_layout() -> None:
+    """D10: butterfly needs a flap and a distinct aileron or elevon; a flaperon is neither."""
     held = facts(
         {"w": wing(sec(0, 0, 0.2, "flaperon"), sec(0, 0.3, 0.2, "flaperon"), sec(0, 0.6, 0.2))}
     )
-    assert (held.has_aileron, held.has_separate_flap_and_aileron) == (True, True)
+    assert (held.has_aileron, held.has_separate_flap_and_aileron) == (True, False)
 
 
 def test_the_main_wing_is_chosen_by_area_not_by_span() -> None:
