@@ -510,6 +510,9 @@ async def test_a_given_up_start_that_succeeds_later_has_its_group_killed(
         async with asyncio.timeout(3):
             await task
     assert len(keep) == 1
+    # Garbage that earlier tests left behind is finalised here, outside the recorded block: a
+    # collection inside it would blame this test for their unclosed files (test order, -n 4).
+    gc.collect()
     with warnings.catch_warnings(record=True) as caught:
         warnings.simplefilter("always")
         release.set()  # the start succeeds now: a real process nobody owns
@@ -518,7 +521,13 @@ async def test_a_given_up_start_that_succeeds_later_has_its_group_killed(
         assert await _wait_dead(grandchild)
         assert keep == set()
         gc.collect()
-    assert [w for w in caught if issubclass(w.category, ResourceWarning)] == []
+    # only this test's own process: its transport names the pid, foreign garbage does not
+    own = [
+        str(w.message)
+        for w in caught
+        if issubclass(w.category, ResourceWarning) and f"pid={pid}" in str(w.message)
+    ]
+    assert own == []
 
 
 async def test_the_runtime_forwards_the_call_id_to_the_process_log(
