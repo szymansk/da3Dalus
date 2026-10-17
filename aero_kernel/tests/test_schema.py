@@ -57,6 +57,20 @@ class TestKernelWarning:
         with pytest.raises(ValidationError, match="severity"):
             make_warning(severity="defect")
 
+    def test_severity_is_derived_from_the_catalogue_when_omitted(self) -> None:
+        warning = KernelWarning(code="precondition_violated", message="x")
+        assert warning.severity is WarningSeverity.DEFECT
+
+    def test_a_matching_severity_is_accepted(self) -> None:
+        warning = KernelWarning(
+            severity=WarningSeverity.DEFECT, code="precondition_violated", message="x"
+        )
+        assert warning.severity is WarningSeverity.DEFECT
+
+    def test_derived_severity_survives_a_json_round_trip(self) -> None:
+        warning = KernelWarning(code="mach_beyond_validity", message="x")
+        assert KernelWarning.model_validate_json(warning.model_dump_json()) == warning
+
     def test_catalogue_holds_the_initial_codes(self) -> None:
         assert WARNING_CATALOGUE == {
             "conflicting_mass": WarningSeverity.PRACTICE,

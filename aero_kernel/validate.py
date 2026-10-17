@@ -24,7 +24,7 @@ from aero_kernel import geometry
 from aero_kernel.canon.model import CanonModel
 from aero_kernel.errors import ErrorCategory, KernelError, is_slug
 from aero_kernel.geometry import Wing
-from aero_kernel.schema import WARNING_CATALOGUE, AircraftInput, KernelWarning
+from aero_kernel.schema import AircraftInput, KernelWarning
 from pydantic import BaseModel, ConfigDict, JsonValue
 
 logger = logging.getLogger(__name__)
@@ -369,9 +369,7 @@ def _fuselage_findings(fuselages: Mapping[str, geometry.Fuselage]) -> list[Kerne
 def _warning(code: str, origin: str, message: str, detail: dict[str, JsonValue]) -> KernelWarning:
     """Build a practice warning from the catalogue (the severity follows from the code)."""
     logger.debug("warning %s at %s", code, origin)
-    return KernelWarning(
-        severity=WARNING_CATALOGUE[code], code=code, message=message, origin=origin, detail=detail
-    )
+    return KernelWarning(code=code, message=message, origin=origin, detail=detail)
 
 
 def _mass_warnings(aircraft: AircraftInput) -> list[KernelWarning]:
