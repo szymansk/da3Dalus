@@ -33,7 +33,7 @@ S_ref, b_ref, c_MAC := geometry of the airplane model
 **Produces** [[wing-reference-area]] · [[wing-span]] · [[mean-aerodynamic-chord]]  ·  **from** [[airplane]]
 
 **Kind: a procedure — an evaluation of the model.** These are properties of the aircraft, read or
-integrated from its geometry: reference area and span from the main wing, the mean
+integrated from its geometry: reference area and span from the main wing (the wing with surface_type main_wing, #1187), the mean
 aerodynamic chord as `(2/S)·∫c(y)² dy`, the flap factor from the flap type. AeroSandbox provides the wing values directly
 (`Wing.area()`, `Wing.span()`, `Wing.mean_aerodynamic_chord()`).
 

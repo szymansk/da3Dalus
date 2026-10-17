@@ -582,3 +582,5 @@ Maintainer; `check_canon.py` meldet es als *open*.
 
 **Defaults nach `defaults.yaml` (#1174 S5, Maintainer 17.10.2026):** die sieben `default:`-Felder stehen jetzt in `defaults.yaml` als `{value, unit, source, regime}`; `check_canon.py` liest die Datei und lehnt `default:` im Frontmatter ab. Aufsetzreserve 1,1 (physisches Aufsetzen nach dem Abfangen; Sadraey §4.3.2, §9.3.10); Lennons 1,2 ist eine Landegeschwindigkeit mit Sicherheitsreserve, die der Anflug mit 1,3 abdeckt.
 
+**D9 (maintainer 2026-10-17):** every lifting surface carries an explicit required `surface_type` (main_wing — exactly one, supplies S_ref/b_ref/c_MAC; horizontal_tail; vertical_tail — type follows function, incl. tip/centre fins with rudder or directional-stability role; v_tail — counts as vertical and horizontal tail; canard; tandem_wing — S_ref from main wing only; winglet — only as a separate wing). Never inferred from geometry or names. Biplanes out of v1. Soll: #1187.
+
