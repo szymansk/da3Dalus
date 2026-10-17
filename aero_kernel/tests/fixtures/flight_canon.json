@@ -1,8 +1,28 @@
 {
-  "content_hash": "sha256:c5e24ad825ab074abccbc2d8308ef7f40aaa228a9c8df5e8b31fc41ae57fb180",
+  "content_hash": "sha256:5c2445001c33fff1abc6ac260b524082bac5dae9edb9d4dbee1cbc6eadeba9db",
   "importer_version": "0.0.0-fixture",
   "namespaces": {
     "calc": {
+      "defaults": {
+        "air-density": {
+          "regime": "RC and UAV, sea level",
+          "source": "U.S. Standard Atmosphere 1976, sea-level density",
+          "unit": "kg/m^3",
+          "value": 1.225
+        },
+        "approach-speed-margin-target": {
+          "regime": "RC and UAV, fixture value",
+          "source": "Sadraey 2013, ch. 10: approach speed 1.3 V_S (fixture value)",
+          "unit": "1",
+          "value": 1.3
+        },
+        "gravity": {
+          "regime": "RC and UAV, sea level",
+          "source": "ISO 80000-3, standard acceleration of gravity",
+          "unit": "m/s^2",
+          "value": 9.80665
+        }
+      },
       "formulas": {
         "airplane-configuration": {
           "applications": [
@@ -372,10 +392,6 @@
       },
       "quantities": {
         "air-density": {
-          "default": {
-            "source": "U.S. Standard Atmosphere 1976, sea-level density",
-            "value": 1.225
-          },
           "positive": true,
           "role": "input",
           "symbol": "rho",
@@ -384,7 +400,6 @@
           "unit": "kg/m^3"
         },
         "aircraft-mass": {
-          "default": null,
           "positive": true,
           "role": "input",
           "symbol": "m",
@@ -393,7 +408,6 @@
           "unit": "kg"
         },
         "airplane": {
-          "default": null,
           "positive": null,
           "role": "input",
           "symbol": "airplane",
@@ -402,7 +416,6 @@
           "unit": "1"
         },
         "airplane-landing": {
-          "default": null,
           "positive": null,
           "role": "derived",
           "symbol": "airplane_ldg",
@@ -411,7 +424,6 @@
           "unit": "1"
         },
         "approach-speed": {
-          "default": null,
           "positive": null,
           "role": "output",
           "symbol": "V_app",
@@ -420,10 +432,6 @@
           "unit": "m/s"
         },
         "approach-speed-margin-target": {
-          "default": {
-            "source": "Sadraey 2013, ch. 10: approach speed 1.3 V_S (fixture value)",
-            "value": 1.3
-          },
           "positive": null,
           "role": "target",
           "symbol": "k_S_app",
@@ -432,7 +440,6 @@
           "unit": "1"
         },
         "butterfly-speed-range": {
-          "default": null,
           "positive": null,
           "role": "output",
           "symbol": "V_range",
@@ -441,7 +448,6 @@
           "unit": "m/s"
         },
         "butterfly-stall-speed-curve": {
-          "default": null,
           "positive": null,
           "role": "output",
           "symbol": "V_S0(s)",
@@ -450,7 +456,6 @@
           "unit": "m/s"
         },
         "cruise-speed-target": {
-          "default": null,
           "positive": true,
           "role": "target",
           "symbol": "V_c",
@@ -459,7 +464,6 @@
           "unit": "m/s"
         },
         "flap-deflection-landing": {
-          "default": null,
           "positive": null,
           "role": "input",
           "symbol": "delta_f_ldg",
@@ -468,10 +472,6 @@
           "unit": "deg"
         },
         "gravity": {
-          "default": {
-            "source": "ISO 80000-3, standard acceleration of gravity",
-            "value": 9.80665
-          },
           "positive": true,
           "role": "input",
           "symbol": "g",
@@ -480,7 +480,6 @@
           "unit": "m/s^2"
         },
         "inverted-max-lift-coefficient": {
-          "default": null,
           "positive": null,
           "role": "derived",
           "symbol": "C_L_max_inv",
@@ -489,7 +488,6 @@
           "unit": "1"
         },
         "max-lift-coefficient": {
-          "default": null,
           "positive": null,
           "role": "derived",
           "symbol": "C_L_max",
@@ -498,7 +496,6 @@
           "unit": "1"
         },
         "max-lift-coefficient-landing": {
-          "default": null,
           "positive": null,
           "role": "derived",
           "symbol": "C_L_max_ldg",
@@ -507,7 +504,6 @@
           "unit": "1"
         },
         "max-mass-level-flight": {
-          "default": null,
           "positive": null,
           "role": "output",
           "symbol": "m_max_level",
@@ -516,7 +512,6 @@
           "unit": "kg"
         },
         "neutral-point": {
-          "default": null,
           "positive": null,
           "role": "output",
           "symbol": "x_np",
@@ -525,7 +520,6 @@
           "unit": "m"
         },
         "polar-stall": {
-          "default": null,
           "positive": null,
           "role": "output",
           "symbol": "polar_S",
@@ -534,7 +528,6 @@
           "unit": "1"
         },
         "roll-rate-cruise": {
-          "default": null,
           "positive": null,
           "role": "output",
           "symbol": "p_c",
@@ -543,7 +536,6 @@
           "unit": "deg/s"
         },
         "stall-speed": {
-          "default": null,
           "positive": null,
           "role": "output",
           "symbol": "V_S",
@@ -552,7 +544,6 @@
           "unit": "m/s"
         },
         "stall-speed-landing": {
-          "default": null,
           "positive": null,
           "role": "output",
           "symbol": "V_S_ldg",

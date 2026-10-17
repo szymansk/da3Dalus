@@ -85,17 +85,21 @@ _MODEL_CONFIG = ConfigDict(extra="forbid", frozen=True)
 
 
 class Default(BaseModel):
-    """A value the canon states for a quantity, with its source.
+    """A value the canon states for a supplied quantity, with its unit, source and regime.
 
     Attributes:
-        value: The value, in the quantity's unit.
+        value: The value, in ``unit``.
+        unit: The unit of ``value``; it must equal the unit of the quantity.
         source: Citation of where the value comes from (ADR 0028).
+        regime: The flight regime the value is valid for (ADR 0028).
     """
 
     model_config = _MODEL_CONFIG
 
     value: FiniteNumber
+    unit: Unit
     source: str = Field(min_length=1)
+    regime: str = Field(min_length=1)
 
 
 class Quantity(BaseModel):
@@ -107,7 +111,6 @@ class Quantity(BaseModel):
         role: ``input`` and ``target`` are supplied by the caller, ``derived`` and ``output`` computed.
         type: The kind of value.
         uncertainty: ``interval`` where the producer declares method worlds.
-        default: The stated default, only where the canon states one.
         positive: ``True`` where the quantity is strictly greater than zero by its definition,
             otherwise omitted (``None``); ``false`` is no spelling of the canon.
     """
@@ -119,12 +122,11 @@ class Quantity(BaseModel):
     role: QuantityRole
     type: QuantityType
     uncertainty: Literal["interval"] | None = None
-    default: Default | None = None
     positive: Literal[True] | None = None
 
     @model_validator(mode="after")
     def _check_positive(self) -> Self:
-        """Allow ``positive`` only on supplied scalars, and only with a positive default."""
+        """Allow ``positive`` only on supplied scalars."""
         if self.positive is None:
             return self
         if self.role not in ("input", "target"):
@@ -132,9 +134,6 @@ class Quantity(BaseModel):
             raise ValueError(msg)
         if self.type != "scalar":
             msg = f"positive is only allowed on a scalar quantity, not {self.type}"
-            raise ValueError(msg)
-        if self.default is not None and self.default.value <= 0:
-            msg = f"default {self.default.value} of a positive quantity must be > 0"
             raise ValueError(msg)
         return self
 
@@ -371,12 +370,14 @@ class Namespace(BaseModel):
     Attributes:
         quantities: The quantity vocabulary.
         formulas: The formulas.
+        defaults: The stated default per supplied scalar quantity; absent = the caller must supply it.
     """
 
     model_config = _MODEL_CONFIG
 
     quantities: dict[SlugKey, Quantity]
     formulas: dict[SlugKey, Formula]
+    defaults: dict[SlugKey, Default] = {}
 
 
 def compute_content_hash(namespaces: Mapping[str, Namespace]) -> str:
@@ -500,9 +501,38 @@ class CanonModel(BaseModel):
         quantity = self.quantity(reference)
         if quantity is None:
             return f"unknown quantity {reference}"
-        if quantity.role not in ("input", "target") or quantity.default is not None:
+        namespace, slug = _split(reference)
+        if quantity.role not in ("input", "target") or slug in self.namespaces[namespace].defaults:
             return f"given {reference} must be an input or target without default"
         return None
+
+    @model_validator(mode="after")
+    def _check_defaults(self) -> Self:
+        """Require every default to belong to a supplied scalar of the same unit, > 0 if positive."""
+        problems: list[str] = []
+        for namespace, content in self.namespaces.items():
+            for slug, default in content.defaults.items():
+                quantity = content.quantities.get(slug)
+                where = f"{namespace}:{slug}"
+                if quantity is None:
+                    problems.append(f"default of unknown quantity {where}")
+                elif quantity.role not in ("input", "target"):
+                    problems.append(
+                        f"default of {where}: role must be input or target, not {quantity.role}"
+                    )
+                elif quantity.type != "scalar":
+                    problems.append(
+                        f"default of {where}: quantity must be a scalar, not {quantity.type}"
+                    )
+                elif default.unit != quantity.unit:
+                    problems.append(
+                        f"default of {where}: unit {default.unit} differs from the quantity's {quantity.unit}"
+                    )
+                elif quantity.positive and default.value <= 0:
+                    problems.append(f"default of positive quantity {where} must be > 0")
+        if problems:
+            raise ValueError("; ".join(problems))
+        return self
 
     @model_validator(mode="after")
     def _check_references(self) -> Self:

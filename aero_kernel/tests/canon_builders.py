@@ -31,9 +31,16 @@ def base_namespaces() -> dict[str, Any]:
                     "role": "input",
                     "type": "scalar",
                     "positive": True,
-                    "default": {"value": 9.80665, "source": "ISO 80000-3"},
                 },
                 "weight": {"symbol": "W", "unit": "N", "role": "output", "type": "scalar"},
+            },
+            "defaults": {
+                "gravity": {
+                    "value": 9.80665,
+                    "unit": "m/s^2",
+                    "source": "ISO 80000-3",
+                    "regime": "RC and UAV, sea level",
+                }
             },
             "formulas": {
                 "weight-from-mass": {

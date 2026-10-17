@@ -73,7 +73,7 @@ def test_flight_canon_has_a_target_default_and_a_const_binding(flight_canon: Can
     target = flight_canon.quantity("approach-speed-margin-target")
     assert target is not None
     assert target.role == "target"
-    assert target.default is not None
+    assert "approach-speed-margin-target" in flight_canon.namespaces["calc"].defaults
     clean = formulas(flight_canon)["stall-speed"].application("clean")
     n_load = clean.bind["n_load"]
     assert isinstance(n_load, ConstBinding)
