@@ -487,3 +487,37 @@ def test_a_full_clone_is_not_shallow(repo: tuple[Path, Path], tmp_path: Path) ->
         ["git", "clone", "-q", root.as_uri(), str(clone)], check=True, capture_output=True
     )
     assert run(clone / "canon", tmp_path / "out") == 0
+
+
+# --- S3 (b) amendment 5 ------------------------------------------------------------------------------------------
+
+
+def test_a_failing_shallow_probe_is_a_finding(
+    repo: tuple[Path, Path],
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    canon, _ = repo
+    monkeypatch.setattr(
+        subprocess,
+        "run",
+        fake_run({"--is-shallow-repository": completed(129, err="usage: git rev-parse")}),
+    )
+    assert run(canon, tmp_path / "out") == 1
+    assert (
+        ".: source_commit: git rev-parse --is-shallow-repository failed (exit 129): usage: git rev-parse"
+        in capsys.readouterr().out.splitlines()
+    )
+
+
+def test_a_source_commit_finding_is_labelled_dot_source_commit(
+    repo: tuple[Path, Path], tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    canon, _ = repo
+    (canon / GRAVITY).write_text(MINI_CANON[GRAVITY] + "more\n", encoding="utf-8")
+    assert run(canon, tmp_path / "out") == 1
+    first = capsys.readouterr().out.splitlines()[0]
+    assert first.startswith(
+        ".: source_commit: uncommitted changes under the canon directory (commit them first): "
+    )

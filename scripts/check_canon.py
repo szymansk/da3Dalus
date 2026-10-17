@@ -300,9 +300,10 @@ class Finding:
 def _read_entry(path: pathlib.Path) -> Entry:
     """An entry's front matter and prose; an unreadable front matter is left empty (the importer
     reports it)."""
-    parts = path.read_text(encoding="utf-8").split("---", 2)
+    text = path.read_text(encoding="utf-8")
+    parts = text.split("---", 2)
     if len(parts) < 3:  # no front matter between '---' lines: the importer reports it
-        return Entry(slug=path.stem, front={}, body=parts[0])
+        return Entry(slug=path.stem, front={}, body=text)
     _, raw, body = parts
     try:
         front = yaml.safe_load(raw)

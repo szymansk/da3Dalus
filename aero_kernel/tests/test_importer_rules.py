@@ -564,3 +564,52 @@ def test_findings_of_two_rules_in_one_file_are_ordered_by_field(tmp_path: Path) 
         "quantities/weight-flapped.md: role: quantity calc:weight-flapped has role derived but no "
         "formula produces it",
     ]
+
+
+# --- S3 (b) amendment 5 ------------------------------------------------------------------------------------------
+
+
+def test_a_formula_that_reaches_a_cycle_only_through_a_chain_gets_no_embeds_finding(
+    tmp_path: Path,
+) -> None:
+    """top -> mid -> (weighing <-> weigh-twice): the skip is by closure, not by direct embed."""
+    mid = formula(
+        "mid",
+        "kind: law\ntool: APP\ninputs: {m: aircraft-mass}\noutputs: {w: weight-mid}\n"
+        "embeds: [weigh-twice]\nvariables: [aircraft-mass]\n",
+    )
+    top = formula(
+        "top",
+        "kind: law\ntool: APP\ninputs: {m: aircraft-mass}\noutputs: {w: weight-top}\n"
+        "embeds: [mid]\nvariables: [airplane]\n",
+    )
+    files = {
+        **two_application_cycle(),
+        "formulas/mid.md": mid,
+        "formulas/top.md": top,
+        "quantities/weight-mid.md": quantity("weight-mid", "W_m", "N", "derived"),
+        "quantities/weight-top.md": quantity("weight-top", "W_t", "N", "derived"),
+    }
+    findings = shown(run(tmp_path, files))
+    assert not any(line.startswith(("formulas/top.md", "formulas/mid.md")) for line in findings), (
+        findings
+    )
+    assert len(findings) == 2  # only the two members of the cycle
+
+
+def test_findings_in_one_file_come_out_by_field_and_then_by_message(tmp_path: Path) -> None:
+    files = with_area_user(
+        ", t: wing-span", {"quantities/wing-span.md": quantity("wing-span", "b", "m", "input")}
+    )
+    files[TWICE] = (files[TWICE] or "").replace(
+        "variables: [aircraft-mass]", "variables: [airplane]"
+    )
+    sentence = "of embedded calc:area-user.default is neither a variable of calc:weigh-twice, an input of it, nor produced inside the closure"
+    twice = [
+        line for line in shown(run(tmp_path, files)) if line.startswith("formulas/weigh-twice.md")
+    ]
+    assert twice == [
+        f"formulas/weigh-twice.md: embeds: input calc:wing-area {sentence}",
+        f"formulas/weigh-twice.md: embeds: input calc:wing-span {sentence}",
+        "formulas/weigh-twice.md: variables[0]: calc:airplane is read by no formula in the embeds closure",
+    ]

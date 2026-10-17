@@ -444,3 +444,55 @@ def test_run_as_a_script_the_authoring_check_exits_1_on_a_finding(tmp_path):
     )
     assert done.returncode == 1
     assert "speed-b" in done.stdout
+
+
+def test_a_file_with_exactly_one_separator_does_not_crash_and_keeps_its_prose(
+    tmp_path, typed_quantities
+):
+    """A lone ``---`` is no front matter (the importer reports it); the prose is still read."""
+    root = _canon(tmp_path, quantities=typed_quantities)
+    path = root / "quantities" / "speed-b.md"
+    path.write_text(
+        "---\ncanon: speed-b\n\nonly one separator\n**Used by.** [[f]]\n", encoding="utf-8"
+    )
+    entry = check_canon.load_canon(root).quantities["speed-b"]
+    assert entry.front == {}
+    assert "**Used by.** [[f]]" in entry.body
+    assert _errors(root) == []
+
+
+def test_a_file_without_front_matter_keeps_its_prose(tmp_path, typed_quantities):
+    root = _canon(tmp_path, quantities=typed_quantities)
+    (root / "quantities" / "speed-b.md").write_text("prose\n**Used by.** [[f]]\n", encoding="utf-8")
+    entry = check_canon.load_canon(root).quantities["speed-b"]
+    assert entry.front == {}
+    assert entry.body == "prose\n**Used by.** [[f]]\n"
+    assert _errors(root) == []
+
+
+def test_the_cli_runs_the_dimensional_check_over_a_canon_directory(tmp_path, capsys):
+    root = _dimensional_canon(tmp_path)
+    (root / "README.md").write_text("# Canon\n", encoding="utf-8")
+    check_canon.cli([str(root)])
+    out = capsys.readouterr().out
+    assert "dimensional check over 8 canonical formulas" in out
+    assert "MISMATCH" in out
+    assert "ADDS_UNLIKE" in out
+
+
+def test_the_procedural_pattern_decides_before_the_dimensions_are_compared(tmp_path):
+    """Without the pattern these forms would be reported as unlike sums or wrong dimensions."""
+    root = _dimensional_canon(tmp_path)
+    for slug, form in (
+        ("where", "d = d + t  where t is measured"),
+        ("solve", "V_s = d * t, solve for d"),
+        ("table", "V_s = d * t from a table"),
+    ):
+        (root / "formulas" / f"{slug}.md").write_text(
+            f"---\ncanon: {slug}\noutput: speed\nkind: law\n---\n\n"
+            f"**Canonical form**\n\n```\n{form}\n```\n",
+            encoding="utf-8",
+        )
+    rows = check_canon.dimensional_rows(check_canon.build_canon_json(root))
+    verdicts = {f["slug"]: verdict for verdict, f, *_ in rows}
+    assert {verdicts[slug] for slug in ("where", "solve", "table")} == {"PROCEDURAL"}
