@@ -830,9 +830,12 @@ its component tree and catalogue and passes them as data; selecting a part from 
    read them (ch. 8.4); no provider hash exists.
 5. **KAT and APC are plain input reads** (ch. 8.8): `airplane-components` and `propeller-table-lookup` read
    `AircraftInput.components` as `airplane-geometry` reads the geometry.
-The canon quantity `airplane` (type `airplane`: "geometry, sections, airfoils, components") is the pair
-`AircraftInput.airplane` + `AircraftInput.components`. Its exact field list is defined with the first KAT /
-APC formula, not before (ADR 0021); `components: None` makes those formulas `missing_input`.
+The canon quantity `airplane` (type `airplane`) is **geometry only**: `AircraftInput.airplane`. The fitted
+parts are the separate canon input quantity **`components`** (type `components`, S15, on the canon's main
+since `84599128`), bound to `AircraftInput.components`; only the formulas that read parts bind it, so a
+change of parts expires only their subtree (A1). A missing `components` is the ordinary `missing_input` of
+that one quantity (ch. 8.11, 8.13). Its exact field list is defined with the first KAT / APC formula
+implementation, not before (ADR 0021).
 
 **Binding of canon input quantities to the input:**
 - **Units.** A value is given, and a result returned, in the unit the canon model declares for the
