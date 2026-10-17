@@ -323,6 +323,21 @@ def make_provenance(**overrides: object) -> Provenance:
 
 
 class TestProvenance:
+    def test_the_fields_are_exactly_these(self) -> None:
+        assert sorted(Provenance.model_fields) == [
+            "build_digest",
+            "canon_model_hash",
+            "canon_source_commit",
+            "defaults_used",
+            "solver_settings",
+            "tool_versions",
+        ]
+
+    @pytest.mark.parametrize("field", ["kernel_version", "accuracy"])
+    def test_removed_fields_are_rejected(self, field: str) -> None:
+        with pytest.raises(ValidationError, match="extra_forbidden"):
+            make_provenance(**{field: "x"})
+
     def test_accepts_valid_provenance_with_defaults_used(self) -> None:
         provenance = make_provenance()
         assert provenance.defaults_used == (
