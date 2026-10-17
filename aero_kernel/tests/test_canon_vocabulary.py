@@ -68,3 +68,16 @@ def test_uncertainty_accepts_only_interval(value: str) -> None:
         model.Quantity.model_validate({**quantity, "uncertainty": value})
     with pytest.raises(ValidationError):
         make_formula(uncertainty=value, worlds=["a", "b"])
+
+
+@pytest.mark.parametrize("blank", ["", " ", "\t\n"])
+def test_text_the_canon_must_state_is_not_blank(blank: str) -> None:
+    """A source, regime or symbol of whitespace states nothing (ADR 0028)."""
+    with pytest.raises(ValidationError):
+        model.ConstBinding(const=1.0, source=blank)
+    with pytest.raises(ValidationError):
+        model.Default(value=1.0, unit="1", source=blank, regime="r")
+    with pytest.raises(ValidationError):
+        model.Default(value=1.0, unit="1", source="s", regime=blank)
+    with pytest.raises(ValidationError):
+        model.Quantity(symbol=blank, unit="1", role="input", type="scalar")

@@ -145,6 +145,7 @@
         },
         "source": {
           "minLength": 1,
+          "pattern": "\\S",
           "title": "Source",
           "type": "string"
         }
@@ -162,11 +163,13 @@
       "properties": {
         "regime": {
           "minLength": 1,
+          "pattern": "\\S",
           "title": "Regime",
           "type": "string"
         },
         "source": {
           "minLength": 1,
+          "pattern": "\\S",
           "title": "Source",
           "type": "string"
         },
@@ -448,6 +451,7 @@
         },
         "symbol": {
           "minLength": 1,
+          "pattern": "\\S",
           "title": "Symbol",
           "type": "string"
         },

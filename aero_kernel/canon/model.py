@@ -47,6 +47,9 @@ __all__ = [
     "compute_content_hash",
 ]
 
+# Text the canon must state (a symbol, a source, a regime): at least one non-blank character.
+NonBlank = Annotated[str, StringConstraints(min_length=1, pattern=r"\S")]
+
 # Numbers in the model are finite (a model with NaN would not survive its JSON form).
 FiniteNumber = Annotated[float, Field(strict=True, allow_inf_nan=False)]
 
@@ -98,8 +101,8 @@ class Default(BaseModel):
 
     value: FiniteNumber
     unit: Unit
-    source: str = Field(min_length=1)
-    regime: str = Field(min_length=1)
+    source: NonBlank
+    regime: NonBlank
 
 
 class Quantity(BaseModel):
@@ -117,7 +120,7 @@ class Quantity(BaseModel):
 
     model_config = _MODEL_CONFIG
 
-    symbol: str = Field(min_length=1)
+    symbol: NonBlank
     unit: Unit
     role: QuantityRole
     type: QuantityType
@@ -181,7 +184,7 @@ class ConstBinding(BaseModel):
     model_config = _MODEL_CONFIG
 
     const: FiniteNumber
-    source: str = Field(min_length=1)
+    source: NonBlank
 
 
 Binding = QualifiedSlug | ConstBinding
