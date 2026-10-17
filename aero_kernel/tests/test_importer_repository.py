@@ -96,3 +96,48 @@ def test_replacing_the_shared_pattern_changes_both_users(
     assert commit_format_finding("not-a-sha") is None
     result = import_canon(write_canon(tmp_path), "zz")
     assert [f for f in result.findings if f.file == "command line"] == []
+
+
+# --- S3 (b) amendment 2: S1 and A2, two more gates in the fast job ----------------------------------------------
+
+
+def fast_steps() -> list[dict[str, object]]:
+    """The steps of the ``fast`` job."""
+    jobs = cast("dict[str, dict[str, list[dict[str, object]]]]", workflow()["jobs"])
+    return jobs["fast"]["steps"]
+
+
+def runs() -> list[str]:
+    """The ``run`` command of every step of the ``fast`` job (empty for a step that has none)."""
+    return [str(step.get("run", "")) for step in fast_steps()]
+
+
+def test_the_fast_job_runs_the_authoring_checks_after_the_import_check() -> None:
+    commands = runs()
+    check = "poetry run python scripts/check_canon.py"
+    assert check in commands
+    assert commands.index(check) > commands.index(
+        "poetry run python -m aero_kernel.importer _reversa_sdd/calculations/canon --check"
+    )
+
+
+def test_a_scripts_change_triggers_the_backend_filter() -> None:
+    jobs = cast("dict[str, dict[str, list[dict[str, dict[str, str]]]]]", workflow()["jobs"])
+    filters = next(
+        step["with"]["filters"]
+        for step in jobs["changes"]["steps"]
+        if "with" in step and "filters" in step["with"]
+    )
+    assert "scripts/**" in cast("dict[str, list[str]]", yaml.safe_load(filters))["backend"]
+
+
+def test_the_fast_job_checks_the_source_commit_against_a_full_history() -> None:
+    command = (
+        "poetry run python -m aero_kernel.importer.gate _reversa_sdd/calculations/canon "
+        "--upstream origin/main"
+    )
+    assert command in runs()
+    checkout = next(
+        step for step in fast_steps() if str(step.get("uses", "")).startswith("actions/checkout")
+    )
+    assert cast("dict[str, object]", checkout["with"])["fetch-depth"] == 0
