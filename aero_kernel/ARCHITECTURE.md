@@ -877,7 +877,12 @@ implementation, not before (ADR 0021).
     `namespaces.calc.defaults: {<slug>: {value, unit, source, regime}}`. There is no second file and no
     second loader: the defaults load, hash and check with the model (`content_hash`, the build digest,
     `importer --check`), and the model's own validators cover them (ch. 8.9).
-  - **Reporting.** Every default taken is in `provenance.defaults_used` (`{slug, value, unit, source}`) and
+  - **When a default counts as taken:** a node whose implementation is actually **called** binds a supplied
+    input or target that has no value but a default (an absent `optional:` parameter with a default takes
+    the default, not `None`). A node that stops at rows 1–7 of ch. 8.13 — not applicable, an error, or
+    skipped — takes none: provenance never claims a value for a result that was not computed.
+  - **Reporting.** Every default taken is in `provenance.defaults_used` (`{slug, value, unit, source}`,
+    sorted by display slug) and
     logged once per call at `INFO` (ch. 8.14). A **target** default additionally gives the `practice`
     warning `default_target_used` (`origin` = the target slug), inherited by every quantity that reads it
     (ch. 8.2); a physical-constant default (`role: input`, e.g. `gravity`) gives none.
@@ -1181,12 +1186,12 @@ They are the first thing a developer or an agent reads to check a change and to 
 | Level | What | Examples |
 |---|---|---|
 | `DEBUG` | every step of the engine, to check the code runs as intended | subtree and order; per node: start, end, duration, status; cache hit/miss with key prefix; world assignment; solver call with its settings and duration; precondition result |
-| `INFO` | one line per `compute()` call and per import | request (slugs, `include_long_runs`), result counts per status, total duration, cache hits; importer: entries added/changed/removed |
+| `INFO` | one summary line per `compute()` call and per import, plus one line per default taken (S5) | request (slugs, `include_long_runs`), result counts per status, total duration, cache hits; importer: entries added/changed/removed |
 | `WARNING` | the kernel ran, but in a degraded way an operator should know about | tool unavailable, time budget exceeded, a process-pool worker died |
 | `ERROR` | a programming error | every `internal` error with its traceback, logged exactly once where it is translated (`internal_error_from_exception`, `exc_info=exc`); the exception text goes only here, never into the result (ADR 0019) |
 
-- **Every default taken is logged** (maintainer, 2026-10-14), once per `compute()` call and slug, when
-  the input is resolved, so also on a full cache hit: `"default used: %s = %s %s (%s)"` with slug, value,
+- **Every default taken is logged** (maintainer, 2026-10-14), once per `compute()` call and slug, as its
+  own `INFO` line in addition to the summary line, so also on a full cache hit: `"default used: %s = %s %s (%s)"` with slug, value,
   unit and source, `extra` = `call_id`, `quantity` (the slug), `role`. Always `INFO` (maintainer,
   2026-10-17), whatever the role (ch. 8.11). The same applies to an `optional:` parameter that
   is absent: one `INFO` line per call and parameter, `"optional input absent: %s.%s, route %s"` (formula,
