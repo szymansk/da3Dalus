@@ -54,9 +54,8 @@ then the code. Epic: #1173.
   temp dirs on cancellation.
 - **Two interfaces, one engine (ARCHITECTURE §8.4).** `compute()` is stateless (the one exception is the memoised shipped `Build` in `build.py`, an immutable package artefact): no cache, no module-level
   mutable state, no global pool. `CachedKernel` is the stateful facade that owns the cache, in-flight
-  dedup and resources, and injects its `NodeStore` into the same engine. Never add state to `compute()`;
-  never let the cache change a value. Cache scopes (`scope=`, `drop_scope`) isolate tenants; a hit
-  must never cross scopes.
+  dedup and resources, and injects its `MemoryCache` into the same engine. Never add state to `compute()`;
+  never let the cache change a value. There is one in-memory cache, no scopes, no disk cache (ARCHITECTURE §8.4).
 
 ## Code style, types and linters
 
@@ -105,7 +104,7 @@ failure.
   with the route taken.
 - Other domain warnings and expected outcomes (`not_applicable`, `skipped`, `not_converged`) are in the
   result, not at `WARNING` level.
-- Context in `extra` (`call_id`, `quantity`, `formula`, `world`, `scope`); lazy `%s` formatting; English;
+- Context in `extra` (`call_id`, `quantity`, `formula`, `world`); lazy `%s` formatting; English;
   never full geometry or polars, only hashes and the values that matter.
 - Pool workers do not log; they return diagnostics and the adapter logs them.
 - To see what your code did: `poetry run pytest aero_kernel/tests -k <test> -o log_cli=true --log-cli-level=DEBUG`.
