@@ -16,7 +16,7 @@ from pydantic import BaseModel, ConfigDict
 
 logger = logging.getLogger(__name__)
 
-__all__ = ["ProcessRun", "run_process"]
+__all__ = ["ProcessRun", "Start", "run_process"]
 
 
 class ProcessRun(BaseModel):
@@ -83,35 +83,34 @@ _START_SETTLE_S = 5.0
 
 
 Start = asyncio.Future[asyncio.subprocess.Process]
+"""A process start running as a task of its own (see :func:`run_process`, ``keep``)."""
 
 
-def _adopt(start: Start, keep: set[Start] | None) -> None:
+def _adopt(start: Start, keep: set[Start]) -> None:
     """Take over a start that was given up on: hold it, and clean up after it if it ends well.
 
     The holder belongs to the caller (``keep``), because the owner of a resource holds it, not a
-    module (ch. 8.10). A direct call without one keeps nothing: the start stays alive through the
-    future it awaits. If the start succeeds after all, nobody owns the process it made, so its
-    whole group is killed and its transport closed; its failure is consumed.
+    module (ch. 8.10), and a pending start that only its own frame references would be collected
+    mid-flight. If the start succeeds after all, nobody owns the process it made, so its whole
+    group is killed; asyncio then closes the transport itself once the process has exited and
+    every pipe is at EOF. A descendant that left the group with a session of its own is outside
+    this contract. A failed start's outcome is consumed.
     """
-    if keep is not None:
-        keep.add(start)
+    keep.add(start)
 
     def release(done: Start) -> None:
-        if keep is not None:
-            keep.discard(done)
+        keep.discard(done)
         if done.cancelled() or done.exception() is not None:
             return
         process = done.result()
         _kill_group(process)
-        # the transport is asyncio's internal handle; it must be closed or it warns when collected
-        process._transport.close()  # type: ignore[attr-defined]  # pyright: ignore[reportPrivateUsage]  # no public way to close it
         logger.debug("killed external process %s of a start that ended late", process.pid)
 
     start.add_done_callback(release)
 
 
 async def _settle_start(
-    start: Start, tool: str, call_id: str | None, keep: set[Start] | None
+    start: Start, tool: str, call_id: str | None, keep: set[Start]
 ) -> asyncio.subprocess.Process | None:
     """Wait, within a bound, for a process start that a cancellation interrupted.
 
@@ -130,7 +129,7 @@ async def _settle_start(
         start: The start, running as a task of its own.
         tool: Base name of the executable, for the log.
         call_id: Id of the ``compute()`` call, for the log.
-        keep: The caller's holder for starts that are given up on, if it has one.
+        keep: The caller's holder for starts that are given up on.
 
     Returns:
         The started process, or ``None`` if the start failed, hung or was cancelled itself.
@@ -169,7 +168,7 @@ async def run_process(
     args: Sequence[str] = (),
     collect: Sequence[str] = (),
     call_id: str | None = None,
-    keep: set[Start] | None = None,
+    keep: set[Start],
 ) -> ProcessRun:
     """Run an external binary in a fresh temp directory and return its output.
 
@@ -189,9 +188,10 @@ async def run_process(
         collect: Names of output files to read back; files the tool did not write are absent
             from the result.
         call_id: Id of the ``compute()`` call, for the log lines of this run (ch. 8.14).
-        keep: A set that holds a process start this call had to give up on (a start that hung
-            while the call was cancelled) until it ends, so the owner (``SolverRuntime``) can
-            count what is still pending at close. Without one, nothing is held.
+        keep: The caller's set for a process start this call had to give up on (a start that
+            hung while the call was cancelled): it holds the start until it ends, so that it is
+            not collected while pending and its owner (``SolverRuntime``) can count what is still
+            pending at close. Required: nothing else would hold such a start.
 
     Returns:
         The exit code, the output streams and the collected files.

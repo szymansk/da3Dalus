@@ -13,15 +13,40 @@ import textwrap
 import time
 import warnings
 from asyncio import unix_events
+from collections.abc import Mapping, Sequence
 from pathlib import Path
 
 import pytest
 from aero_kernel.errors import ErrorCategory, FormulaError
 from aero_kernel.runtime import SolverRuntime
 from aero_kernel.solvers import process as process_module
-from aero_kernel.solvers.process import run_process
+from aero_kernel.solvers.process import ProcessRun, Start
+from aero_kernel.solvers.process import run_process as _run_process
 
 pytestmark = pytest.mark.asyncio
+
+
+async def run_process(
+    files: Mapping[str, str | bytes],
+    commands: str,
+    *,
+    executable: str | Path,
+    args: Sequence[str] = (),
+    collect: Sequence[str] = (),
+    call_id: str | None = None,
+    keep: set[Start] | None = None,
+) -> ProcessRun:
+    """``run_process`` with a keeper of the test's own, unless the test brings one."""
+    return await _run_process(
+        files,
+        commands,
+        executable=executable,
+        args=args,
+        collect=collect,
+        call_id=call_id,
+        keep=set() if keep is None else keep,
+    )
+
 
 # A fake external command: echoes stdin, writes an output file, exits with the code in argv[1].
 ECHO_SCRIPT = textwrap.dedent(
@@ -411,20 +436,9 @@ def _stubborn_start(release: asyncio.Event, *, real: bool = False) -> object:
     return stubborn
 
 
-async def test_a_direct_call_without_a_keeper_still_gives_up(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    monkeypatch.setattr(process_module, "_START_SETTLE_S", 0.2)
-    release = asyncio.Event()
-    monkeypatch.setattr(asyncio, "create_subprocess_exec", _stubborn_start(release))
-    task: asyncio.Task[object] = asyncio.create_task(run_process({}, "", executable=sys.executable))
-    await asyncio.sleep(0.05)
-    task.cancel()
-    with pytest.raises(asyncio.CancelledError):
-        async with asyncio.timeout(3):
-            await task
-    release.set()
-    await asyncio.sleep(0.05)
+async def test_the_keeper_is_required() -> None:
+    with pytest.raises(TypeError, match="keep"):
+        await _run_process({}, "", executable=sys.executable)  # type: ignore[call-arg]  # the missing argument is the point
 
 
 async def test_the_runtime_holds_a_given_up_start_and_releases_it_when_it_ends(
