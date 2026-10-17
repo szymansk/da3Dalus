@@ -197,3 +197,22 @@ def test_a_missing_git_executable_is_a_finding(
     monkeypatch.setattr(subprocess, "run", no_git)
     assert main([str(write_canon(tmp_path)), "--out", str(tmp_path / "out")]) == 1
     assert "--source-commit" in capsys.readouterr().out
+
+
+@pytest.mark.parametrize("existing", [False, True])
+def test_the_outputs_have_normal_permissions_under_the_umask(
+    tmp_path: Path, existing: bool
+) -> None:
+    """mkstemp makes 0600 files; the committed model must be 0666 minus the umask (S6)."""
+    out = tmp_path / "out"
+    previous = os.umask(0o022)
+    try:
+        canon = write_canon(tmp_path)
+        if existing:
+            import_to(canon, out)
+            (out / MODEL).chmod(0o600)
+        import_to(canon, out)
+    finally:
+        os.umask(previous)
+    for name in (MODEL, REPORT):
+        assert (out / name).stat().st_mode & 0o777 == 0o644

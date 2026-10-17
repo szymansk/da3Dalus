@@ -11,8 +11,10 @@ __all__ = ["write_outputs"]
 def write_outputs(out_dir: Path, files: dict[str, str]) -> None:
     """Write ``files`` into ``out_dir``: every file to a temporary name first, then renamed.
 
-    Nothing is renamed until every file is written, and a failure removes the temporary files,
-    so a failed write leaves the previous outputs untouched.
+    Each file is replaced atomically; the pair is not. Nothing is renamed until every file is
+    written, and a failure while writing removes the temporary files, so a failed write leaves the
+    previous outputs untouched. A rename that fails after the first one leaves the first file new
+    and the second old. The files get the permissions of a normal file under the umask.
 
     Args:
         out_dir: Target directory; created if missing.
@@ -22,6 +24,8 @@ def write_outputs(out_dir: Path, files: dict[str, str]) -> None:
         OSError: If a file cannot be written or renamed.
     """
     out_dir.mkdir(parents=True, exist_ok=True)
+    umask = os.umask(0)  # read the umask; the only way is to set it
+    os.umask(umask)
     pending: dict[str, Path] = {}
     try:
         for name, text in files.items():
@@ -29,6 +33,7 @@ def write_outputs(out_dir: Path, files: dict[str, str]) -> None:
             pending[name] = Path(temporary)
             with os.fdopen(handle, "wb") as stream:
                 stream.write(text.encode("utf-8"))
+            os.chmod(temporary, 0o666 & ~umask)  # mkstemp makes the file private (0600)
         for name, temporary in list(pending.items()):
             os.replace(temporary, out_dir / name)
             del pending[name]
