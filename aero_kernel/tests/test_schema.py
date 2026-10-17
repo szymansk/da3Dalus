@@ -217,8 +217,10 @@ class TestQuantityResultUnit:
         )
 
     def test_empty_unit_is_rejected(self) -> None:
-        with pytest.raises(ValidationError):
+        with pytest.raises(ValidationError, match="unit"):
             make_quantity(unit="")
+        with pytest.raises(ValidationError, match="unit"):
+            QuantityResult(slug="x", unit="", status=QuantityStatus.ERROR, error=make_error())
 
 
 class TestQuantityResultError:

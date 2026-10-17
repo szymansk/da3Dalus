@@ -6,11 +6,13 @@ import subprocess
 import sys
 from collections.abc import Iterator
 from pathlib import Path
+from typing import Any
 
 import pytest
 from aero_kernel import build as build_module
 from aero_kernel.build import Build, load_build, shipped_build
-from aero_kernel.canon.load import CanonLoadError
+from aero_kernel.cache import build_digest
+from aero_kernel.canon.load import CanonLoadError, load_canon_model
 from aero_kernel.canon.model import CanonModel
 from aero_kernel.errors import ErrorCategory
 from aero_kernel.graph import CanonGraph
@@ -73,6 +75,10 @@ def test_a_traceability_finding_is_a_load_failure(caplog: pytest.LogCaptureFixtu
     error = caught.value.error
     assert error.category is ErrorCategory.INTERNAL
     assert error.hint == "Report it; attach input and provenance."
+    assert error.message == (
+        "The canon model could not be loaded: the implementations do not match the model."
+    )
+    assert error.detail["finding_count"] == 1
     assert error.detail["findings"] == [
         {"kind": "unknown_formula", "slug": "no-such-formula", "check_id": None}
     ]
@@ -115,17 +121,17 @@ def test_the_default_registry_is_used_when_none_is_given() -> None:
 
 
 def test_the_shipped_build_loads_once(monkeypatch: pytest.MonkeyPatch) -> None:
-    calls: list[int] = []
+    calls: list[tuple[tuple[object, ...], dict[str, object]]] = []
     original = build_module.load_build
 
-    def counting() -> Build:
-        calls.append(1)
+    def counting(*args: Any, **kwargs: Any) -> Build:
+        calls.append((args, kwargs))
         return original(FIXTURE, Registry())
 
     monkeypatch.setattr(build_module, "load_build", counting)
     first = shipped_build()
     assert shipped_build() is first
-    assert len(calls) == 1
+    assert calls == [((), {})]
 
 
 def test_a_failed_shipped_load_is_not_memoised(
@@ -158,3 +164,15 @@ def test_importing_the_package_reads_no_model_file() -> None:
         [sys.executable, "-c", script], capture_output=True, text=True, check=False
     )
     assert done.returncode == 0, done.stderr
+
+
+def test_the_digest_is_the_package_digest_and_the_hash_the_models() -> None:
+    build = load_build(FIXTURE, Registry())
+    assert build.digest == build_digest()
+    assert build.model.content_hash == load_canon_model(FIXTURE).content_hash
+    assert build.report == Registry().check_traceability(build.model)
+
+
+def test_a_given_registry_is_used_even_when_it_is_empty() -> None:
+    empty = Registry()
+    assert load_build(FIXTURE, empty).registry is empty

@@ -1,14 +1,18 @@
 """Tests of the public ``compute`` (ARCHITECTURE ch. 6, 8.1, 8.4)."""
 
 import logging
+import sys
 from collections.abc import Iterator
 from pathlib import Path
+from typing import Any
 
 import aero_kernel
 import pytest
+from aero_kernel import api as api_module
 from aero_kernel import build as build_module
 from aero_kernel.api import compute
 from aero_kernel.build import Build, shipped_build
+from aero_kernel.cache import build_digest
 from aero_kernel.canon import load as load_module
 from aero_kernel.canon.load import load_canon_model
 from aero_kernel.errors import ErrorCategory
@@ -95,17 +99,17 @@ async def test_the_failing_path_logs_one_info_line_with_a_call_id(
 
 async def test_the_memo_loads_once_across_two_calls(monkeypatch: pytest.MonkeyPatch) -> None:
     use_model(monkeypatch, FIXTURE)
-    calls: list[int] = []
+    calls: list[tuple[tuple[object, ...], dict[str, object]]] = []
     original = build_module.load_build
 
-    def counting() -> Build:
-        calls.append(1)
-        return original()
+    def counting(*args: Any, **kwargs: Any) -> Build:
+        calls.append((args, kwargs))
+        return original(*args, **kwargs)
 
     monkeypatch.setattr(build_module, "load_build", counting)
     await compute(aircraft({"air-density": 1.225}), request("stall-speed"))
     await compute(aircraft({"air-density": 1.225}), request("stall-speed"))
-    assert len(calls) == 1
+    assert calls == [((), {})]
 
 
 async def test_a_failed_load_recovers_without_a_restart(
@@ -119,3 +123,86 @@ async def test_a_failed_load_recovers_without_a_restart(
     fixed = await compute(aircraft({"air-density": 1.225}), request("stall-speed"))
     assert fixed.quantities[0].error is not None
     assert fixed.quantities[0].error.category is ErrorCategory.NOT_IMPLEMENTED
+
+
+async def test_a_failed_build_reports_the_exact_load_error(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    use_model(monkeypatch, tmp_path / "absent.json")
+    result = await compute(aircraft(), request("stall-speed"))
+    error = result.quantities[0].error
+    assert error is not None
+    assert (
+        error.message
+        == "The canon model could not be loaded: the file cannot be read (FileNotFoundError)."
+    )
+    assert error.hint == "Report it; attach input and provenance."
+    assert (error.code, error.quantity, error.formula, error.application) == (
+        "internal",
+        "stall-speed",
+        None,
+        None,
+    )
+    assert error.retryable is False
+    assert error.escalate is True
+
+
+async def test_the_digest_of_a_failed_build_is_the_package_digest(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    use_model(monkeypatch, tmp_path / "absent.json")
+    result = await compute(aircraft(), request("stall-speed"))
+    assert result.provenance.build_digest == build_digest()
+
+
+async def test_two_failing_calls_log_two_errors(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path, caplog: pytest.LogCaptureFixture
+) -> None:
+    use_model(monkeypatch, tmp_path / "absent.json")
+    with caplog.at_level(logging.DEBUG, logger="aero_kernel"):
+        await compute(aircraft(), request("stall-speed"))
+        await compute(aircraft(), request("stall-speed"))
+    errors = [r for r in caplog.records if r.levelno >= logging.ERROR]
+    assert len(errors) == 2
+    assert errors[0].call_id != errors[1].call_id  # type: ignore[attr-defined]  # logging extra
+
+
+async def test_the_failing_call_logs_its_request_in_the_info_line(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path, caplog: pytest.LogCaptureFixture
+) -> None:
+    use_model(monkeypatch, tmp_path / "absent.json")
+    with caplog.at_level(logging.INFO, logger="aero_kernel.api"):
+        await compute(aircraft(), request("stall-speed", "nonsense", long_runs=True))
+    (info,) = [r for r in caplog.records if r.levelno == logging.INFO]
+    assert info.getMessage().startswith(
+        "compute: [stall-speed, nonsense] include_long_runs=True, 2 quantities (error=2), "
+        "0 input errors, "
+    )
+
+
+async def test_compute_hands_the_identical_objects_to_the_engine(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    use_model(monkeypatch, FIXTURE)
+    seen: list[tuple[object, object, object]] = []
+    original = api_module.evaluate
+
+    async def spy(build: Build, aircraft_: object, request_: object) -> object:
+        seen.append((build, aircraft_, request_))
+        return await original(build, aircraft_, request_)  # type: ignore[arg-type]  # pass-through spy
+
+    monkeypatch.setattr(api_module, "evaluate", spy)
+    the_aircraft, the_request = aircraft({"air-density": 1.225}), request("stall-speed")
+    await compute(the_aircraft, the_request)
+    ((build, got_aircraft, got_request),) = seen
+    assert got_aircraft is the_aircraft
+    assert got_request is the_request
+    assert build is shipped_build()
+
+
+async def test_the_formulas_package_is_not_imported_by_a_call(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    use_model(monkeypatch, FIXTURE)
+    await compute(aircraft({"air-density": 1.225}), request("stall-speed"))
+    assert "aero_kernel.formulas" not in sys.modules
