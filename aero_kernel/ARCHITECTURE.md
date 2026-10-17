@@ -425,9 +425,19 @@ quantity.
     - `has_separate_flap_and_aileron`: some device has role `flap` and some device has role `aileron` or
       `elevon`. Flaperons are ignored for it; a mixed set (flaps, ailerons and flaperons) needs no special
       rule (KISS, D10).
-    - `has_vertical_tail` (maintainer, 2026-10-17, D9 = C): read from each wing's explicit **surface
-      type** in the geometry, the required field `surface_type` (enumeration pending the maintainer; the
-      geometry-format change gets its own ticket): it holds when some wing has a vertical-tail type. No geometric inference (the provisional planform rule is dropped).
+    - **Surface terms** (maintainer, 2026-10-17, D9 = C) read each wing's required **`surface_type`** —
+      never a geometric inference (the provisional planform rule is dropped); the geometry-format change
+      gets its own ticket. The type follows the **function**, not the position:
+      - `main_wing` — exactly one (biplanes are out of v1; a second `main_wing` is `main_wing_count`);
+        `S_ref`, `b_ref`, `c_MAC` come from it alone;
+      - `horizontal_tail`;
+      - `vertical_tail` — also tip fins and centre fins that carry a rudder or serve directional stability;
+      - `v_tail` — counts as **both** a horizontal and a vertical tail;
+      - `canard`;
+      - `tandem_wing` — `S_ref` still from the main wing only (the tandem rule is a later domain question);
+      - `winglet` — only when modelled as a separate wing (winglet sections of the main wing stay part of it).
+    - `has_horizontal_tail`: some wing has `surface_type` `horizontal_tail` or `v_tail`.
+    - `has_vertical_tail`: some wing has `surface_type` `vertical_tail` or `v_tail`.
   - `given`: a list of input quantities (`role: input` or `target`, without an entry in `defaults.yaml`). The application exists
     only if every one of them is supplied in `AircraftInput.values`. A target the designer did not set is
     not a missing input but no requirement (ch. 8.11).
