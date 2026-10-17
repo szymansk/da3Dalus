@@ -381,7 +381,7 @@
     },
     "Namespace": {
       "additionalProperties": false,
-      "description": "One canon of the model: its quantities and formulas, keyed by bare slug.\n\nAttributes:\n    quantities: The quantity vocabulary.\n    formulas: The formulas.\n    defaults: The stated default per supplied scalar quantity; absent = the caller must supply it.",
+      "description": "One canon of the model: its quantities, formulas and defaults, keyed by bare slug.\n\nAttributes:\n    quantities: The quantity vocabulary.\n    formulas: The formulas.\n    defaults: The stated default per supplied scalar quantity; absent = the caller must supply it.",
       "properties": {
         "defaults": {
           "default": {},
