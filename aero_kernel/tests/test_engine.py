@@ -1322,3 +1322,30 @@ async def test_one_predecessor_read_twice_is_named_once() -> None:
     quantity = await first("twice-na-q")
     assert quantity.reason is not None
     assert quantity.reason.message == "`twice-na-q` reads `roll-q`, which is not applicable."
+
+
+# --- inside row 3: pending when term, then uncarried read, then no implementation ---------------
+
+PENDING_MESSAGE = "The condition `has_horizontal_tail` cannot be evaluated yet."
+UNSUPPORTED_MESSAGE = "`curve-read-q` reads `curve-q` (a curve), which the kernel cannot carry yet."
+
+
+async def test_row_3_a_pending_term_beats_an_uncarried_read() -> None:
+    quantity = await first("pending-curve-q")
+    assert quantity.error is not None
+    assert (quantity.error.code, quantity.error.message) == ("not_implemented", PENDING_MESSAGE)
+
+
+async def test_row_3_an_uncarried_read_beats_no_implementation() -> None:
+    quantity = await first("curve-read-q", drop=("curve-reader",))
+    assert quantity.error is not None
+    assert (quantity.error.code, quantity.error.message) == (
+        "unsupported_value_type",
+        UNSUPPORTED_MESSAGE,
+    )
+
+
+async def test_row_3_a_pending_term_beats_no_implementation() -> None:
+    quantity = await first("tail-q", drop=("tail",))
+    assert quantity.error is not None
+    assert (quantity.error.code, quantity.error.message) == ("not_implemented", PENDING_MESSAGE)

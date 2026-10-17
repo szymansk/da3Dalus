@@ -219,12 +219,18 @@ class _Call:
 
         implementation = self.build.registry.implementation(node.id.formula)
         unsupported = self._unsupported_reads(node)
+        # row 3, inner order: a condition without a fact, a read v1 cannot carry, no implementation
         if isinstance(condition, KernelError):
             return self._failed(
                 anchor,
                 lambda slug, error=condition: error.model_copy(
                     update={"quantity": slug, "formula": formula_slug}
                 ),
+            )
+        if unsupported:
+            return self._failed(
+                anchor,
+                lambda slug: self._unsupported_error(node, slug, formula_slug, unsupported),
             )
         if implementation is None:
             return self._failed(
@@ -238,11 +244,6 @@ class _Call:
                     message=f"`{formula_slug}` is in the canon, not in the kernel yet.",
                     hint="Request a quantity whose formula is implemented.",
                 ),
-            )
-        if unsupported:
-            return self._failed(
-                anchor,
-                lambda slug: self._unsupported_error(node, slug, formula_slug, unsupported),
             )
 
         inherited = self._inherit(node, anchor, QuantityStatus.ERROR)

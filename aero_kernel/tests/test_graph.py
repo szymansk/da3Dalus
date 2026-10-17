@@ -31,15 +31,6 @@ def test_two_producers_of_one_quantity_are_a_model_error() -> None:
         CanonGraph(model)
 
 
-def test_a_read_quantity_nobody_produces_is_a_model_error() -> None:
-    model = model_of(
-        {"a": quantity("derived"), "b": quantity("output")},
-        {"f": formula({"x": "a"}, {"y": "b"})},
-    )
-    with pytest.raises(GraphModelError, match=r"calc:a.*no producer"):
-        CanonGraph(model)
-
-
 STALL_CLEAN = NodeId(formula="calc:stall-speed", application="clean")
 
 

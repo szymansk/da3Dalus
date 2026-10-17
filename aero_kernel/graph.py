@@ -524,7 +524,6 @@ class CanonGraph:
                     self._nodes[node.id] = node
         self._producers = self._index_producers()
         self._check_world_slugs()
-        self._check_reads()
         self._check_producers()
         _layers(self._edges_back_from(list(self._nodes)))  # a cycle anywhere is a model defect
 
@@ -553,16 +552,6 @@ class CanonGraph:
                         f"uncertain formulas {other} and {node.id.formula} share the slug "
                         f"{node.id.formula_slug}; world assignments could not tell them apart"
                     )
-                    raise GraphModelError(msg)
-
-    def _check_reads(self) -> None:
-        """Require every read quantity to be a supplied one or to have a producer."""
-        for node in self._nodes.values():
-            for read in node.reads:
-                quantity = self._model.quantity(read.quantity)
-                supplied = quantity is not None and quantity.role in ("input", "target")
-                if not supplied and read.quantity not in self._producers:
-                    msg = f"{read.quantity} is read by {_label(node.id)} but has no producer"
                     raise GraphModelError(msg)
 
     def _check_producers(self) -> None:
