@@ -57,7 +57,7 @@ def assert_internal(error: CanonLoadError) -> None:
     assert kernel_error.escalate is True
     assert kernel_error.retryable is False
     assert kernel_error.message
-    assert kernel_error.hint
+    assert kernel_error.hint == "Report it; attach input and provenance."
 
 
 @pytest.mark.parametrize("version", [2, 0, "1", True, None])
@@ -124,15 +124,16 @@ def test_hash_mismatch_is_internal(tmp_path: Path) -> None:
     assert_internal(caught.value)
 
 
-def test_load_failure_is_logged_once_at_error(
+def test_the_loader_does_not_log_a_failure(
     tmp_path: Path, caplog: pytest.LogCaptureFixture
 ) -> None:
+    """The caller logs the one ERROR of a call, with its call id (ch. 8.14)."""
     with (
         caplog.at_level(logging.DEBUG, logger="aero_kernel.canon.load"),
         pytest.raises(CanonLoadError),
     ):
         load_canon_model(tmp_path / "absent.json")
-    assert [r.levelno for r in caplog.records if r.levelno >= logging.INFO] == [logging.ERROR]
+    assert [r for r in caplog.records if r.levelno >= logging.WARNING] == []
 
 
 def test_loader_opens_only_the_model_file(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -210,42 +211,17 @@ def test_deeply_nested_json_is_a_load_error(tmp_path: Path) -> None:
     assert "nested" in caught.value.error.message
 
 
-def test_error_log_carries_the_cause_and_the_findings_but_no_path(
-    tmp_path: Path, caplog: pytest.LogCaptureFixture
-) -> None:
-    invalid = write_model(tmp_path, dict(base_model(), source_commit="xyz"))
-    with (
-        caplog.at_level(logging.ERROR, logger="aero_kernel.canon.load"),
-        pytest.raises(CanonLoadError),
-    ):
-        load_canon_model(invalid)
-    with (
-        caplog.at_level(logging.ERROR, logger="aero_kernel.canon.load"),
-        pytest.raises(CanonLoadError),
-    ):
+def test_the_cause_travels_on_the_exception_not_in_the_error(tmp_path: Path) -> None:
+    with pytest.raises(CanonLoadError) as missing:
         load_canon_model(tmp_path / "absent.json")
-    findings, missing = caplog.records
-    assert findings.exc_info is not None
-    assert findings.findings["error_count"] == 1  # type: ignore[attr-defined]  # logging extra
-    assert missing.exc_info is not None
-    assert all(str(tmp_path) not in r.getMessage() for r in caplog.records)
+    assert isinstance(missing.value.__cause__, FileNotFoundError)
+    assert str(tmp_path) not in f"{missing.value.error.message} {missing.value.error.detail}"
+    invalid = write_model(tmp_path, dict(base_model(), source_commit="xyz"))
+    with pytest.raises(CanonLoadError) as bad:
+        load_canon_model(invalid)
+    assert bad.value.error.detail["error_count"] == 1
 
 
 def test_supported_schema_version_is_the_models_literal() -> None:
     literal = get_args(CanonModel.model_fields["schema_version"].annotation)
     assert literal == (load.SUPPORTED_SCHEMA_VERSION,)
-
-
-@pytest.mark.parametrize("content", ["{not json", "[" * 200_000], ids=["json", "nested"])
-def test_json_and_nesting_failures_log_their_cause(
-    tmp_path: Path, caplog: pytest.LogCaptureFixture, content: str
-) -> None:
-    path = tmp_path / "bad.json"
-    path.write_text(content, encoding="utf-8")
-    with (
-        caplog.at_level(logging.ERROR, logger="aero_kernel.canon.load"),
-        pytest.raises(CanonLoadError),
-    ):
-        load_canon_model(path)
-    (record,) = caplog.records
-    assert record.exc_info is not None

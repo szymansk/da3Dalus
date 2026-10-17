@@ -539,6 +539,8 @@ class CanonGraph:
         self._producers = self._index_producers()
         self._check_world_slugs()
         self._check_reads()
+        self._check_producers()
+        _layers(self._edges_back_from(list(self._nodes)))  # a cycle anywhere is a model defect
 
     def _index_producers(self) -> dict[str, NodeId]:
         """Map every produced quantity to its one producing node."""
@@ -577,6 +579,15 @@ class CanonGraph:
                     msg = f"{read.quantity} is read by {_label(node.id)} but has no producer"
                     raise GraphModelError(msg)
 
+    def _check_producers(self) -> None:
+        """Require every computed quantity (role ``derived`` or ``output``) to have a producer."""
+        for namespace, content in self._model.namespaces.items():
+            for slug, quantity in content.quantities.items():
+                qualified = f"{namespace}:{slug}"
+                if quantity.role in ("derived", "output") and qualified not in self._producers:
+                    msg = f"{qualified} is computed but has no producer"
+                    raise GraphModelError(msg)
+
     @property
     def node_ids(self) -> tuple[NodeId, ...]:
         """The ids of all nodes of the model."""
@@ -602,9 +613,6 @@ class CanonGraph:
         Returns:
             The subtree.
 
-        Raises:
-            GraphModelError: If the needed nodes contain a cycle, or a requested quantity has no
-                producer.
         """
         requested: list[Resolved] = []
         errors: list[KernelError] = []
@@ -668,8 +676,6 @@ class CanonGraph:
             ``not_requestable`` for an input or target, ``non_scalar_result`` for a quantity that
             is not a scalar (v1).
 
-        Raises:
-            GraphModelError: If the quantity is requestable but no application produces it.
         """
         qualified = _try_qualify(slug)
         quantity = None if qualified is None else self._model.quantity(qualified)
@@ -697,10 +703,8 @@ class CanonGraph:
                 f"`{slug}` is a {quantity.type}; v1 returns scalar quantities only.",
                 "Request a scalar quantity.",
             )
-        producer = self._producers.get(qualified)
-        if producer is None:
-            msg = f"requested {qualified} has no producer"
-            raise GraphModelError(msg)
+        # every computed quantity has a producer: the constructor checked it
+        producer = self._producers[qualified]
         return Resolved(slug=qualified, requested=slug, quantity=quantity, producer=producer)
 
 

@@ -1,8 +1,10 @@
 """Tests of the ``Build`` and its loaders (ARCHITECTURE ch. 8.4)."""
 
+import json
 import logging
 import subprocess
 import sys
+from collections.abc import Iterator
 from pathlib import Path
 
 import pytest
@@ -11,14 +13,18 @@ from aero_kernel.build import Build, load_build, shipped_build
 from aero_kernel.canon.load import CanonLoadError
 from aero_kernel.canon.model import CanonModel
 from aero_kernel.errors import ErrorCategory
-from aero_kernel.graph import CanonGraph, GraphModelError
-from aero_kernel.registry import Registry
+from aero_kernel.graph import CanonGraph
+from aero_kernel.registry import DEFAULT_REGISTRY, Registry
+from aero_kernel.tests.canon_builders import with_hash
+from aero_kernel.tests.graph_builders import formula, quantity
 
 FIXTURE = Path(__file__).resolve().parent / "fixtures" / "flight_canon.json"
 
 
 @pytest.fixture(autouse=True)
-def fresh_memo() -> None:
+def fresh_memo() -> Iterator[None]:
+    shipped_build.cache_clear()
+    yield
     shipped_build.cache_clear()
 
 
@@ -66,34 +72,45 @@ def test_a_traceability_finding_is_a_load_failure(caplog: pytest.LogCaptureFixtu
         load_build(FIXTURE, registry)
     error = caught.value.error
     assert error.category is ErrorCategory.INTERNAL
-    assert "no-such-formula" in str(error.detail)
+    assert error.hint == "Report it; attach input and provenance."
+    assert error.detail["findings"] == [
+        {"kind": "unknown_formula", "slug": "no-such-formula", "check_id": None}
+    ]
     assert str(FIXTURE) not in f"{error.message} {error.hint} {error.detail}"
-    logged = [r for r in caplog.records if r.levelno >= logging.ERROR]
-    assert len(logged) == 1
+    assert [r for r in caplog.records if r.levelno >= logging.WARNING] == []
 
 
-def test_a_graph_defect_is_a_load_failure(
-    monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
-) -> None:
-    def broken(model: CanonModel) -> CanonGraph:
-        msg = "cycle: a -> b -> a"
-        raise GraphModelError(msg)
-
-    monkeypatch.setattr(build_module, "CanonGraph", broken)
+def test_a_cyclic_model_is_a_load_failure(tmp_path: Path, caplog: pytest.LogCaptureFixture) -> None:
+    namespaces = {
+        "calc": {
+            "quantities": {"a": quantity("derived"), "b": quantity("derived")},
+            "formulas": {
+                "f-a": formula({"x": "b"}, {"y": "a"}),
+                "f-b": formula({"x": "a"}, {"y": "b"}),
+            },
+        }
+    }
+    path = tmp_path / "cyclic.json"
+    path.write_text(json.dumps(with_hash(namespaces)), encoding="utf-8")
     with (
         caplog.at_level(logging.DEBUG, logger="aero_kernel"),
         pytest.raises(CanonLoadError) as caught,
     ):
-        load_build(FIXTURE, Registry())
+        load_build(path, Registry())
     assert "cycle" not in caught.value.error.message
-    logged = [r for r in caplog.records if r.levelno >= logging.ERROR]
-    assert len(logged) == 1
-    assert logged[0].exc_info is not None
+    assert caught.value.error.hint == "Report it; attach input and provenance."
+    assert [r for r in caplog.records if r.levelno >= logging.WARNING] == []
 
 
-def test_the_default_registry_is_used_when_none_is_given(monkeypatch: pytest.MonkeyPatch) -> None:
-    from aero_kernel.registry import DEFAULT_REGISTRY
+def test_a_model_with_an_unproduced_computed_quantity_is_a_load_failure(tmp_path: Path) -> None:
+    namespaces = {"calc": {"quantities": {"a": quantity("output")}, "formulas": {}}}
+    path = tmp_path / "unproduced.json"
+    path.write_text(json.dumps(with_hash(namespaces)), encoding="utf-8")
+    with pytest.raises(CanonLoadError):
+        load_build(path, Registry())
 
+
+def test_the_default_registry_is_used_when_none_is_given() -> None:
     assert load_build(FIXTURE).registry is DEFAULT_REGISTRY
 
 

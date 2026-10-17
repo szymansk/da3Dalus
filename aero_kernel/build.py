@@ -2,7 +2,8 @@
 
 ``canon_model.json`` ships with the package, so the kernel loads it itself, once, on first use
 (``shipped_build``) and never at import. A missing or broken shipped model is our defect: it
-raises :class:`CanonLoadError`, and ``compute`` answers every quantity ``internal``.
+raises :class:`CanonLoadError`, and ``compute`` answers every quantity ``internal`` and logs the
+one ERROR of the call. Nothing here logs a failure.
 """
 
 import functools
@@ -11,9 +12,9 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from aero_kernel.cache import build_digest
-from aero_kernel.canon.load import CanonLoadError, load_canon_model
+from aero_kernel.canon.load import load_canon_model, load_failure
 from aero_kernel.canon.model import CanonModel
-from aero_kernel.errors import ErrorCategory, KernelError
+from aero_kernel.errors import display_slug
 from aero_kernel.graph import CanonGraph, GraphModelError
 from aero_kernel.registry import DEFAULT_REGISTRY, Registry, TraceabilityReport
 from pydantic import JsonValue
@@ -48,22 +49,6 @@ class Build:
     report: TraceabilityReport
 
 
-def _failure(
-    reason: str, detail: dict[str, JsonValue], cause: BaseException | None = None
-) -> CanonLoadError:
-    """Build, log and return the load failure; no file path or exception text enters the error."""
-    error = KernelError(
-        code=ErrorCategory.INTERNAL.value,
-        category=ErrorCategory.INTERNAL,
-        message=f"The canon model could not be loaded: {reason}.",
-        hint="Re-import the canon with `python -m aero_kernel.importer` or reinstall the "
-        "package; report this if it persists.",
-        detail=detail,
-    )
-    logger.error("build not loaded: %s", reason, exc_info=cause, extra={"findings": detail})
-    return CanonLoadError(error)
-
-
 def load_build(path: Path | None = None, registry: Registry | None = None) -> Build:
     """Load a canon model and assemble its build.
 
@@ -76,24 +61,29 @@ def load_build(path: Path | None = None, registry: Registry | None = None) -> Bu
 
     Raises:
         CanonLoadError: If the model cannot be loaded, the registry does not match it, or its
-            graph is not well formed. The error is ``internal`` and escalates.
+            graph is not well formed (a cycle, a computed quantity nobody produces). The error
+            is ``internal`` and escalates.
     """
     model = load_canon_model(path)
     used = DEFAULT_REGISTRY if registry is None else registry
     report = used.check_traceability(model)
     if not report.ok:
         findings: list[JsonValue] = [
-            {"kind": finding.kind, "slug": finding.slug, "check_id": finding.check_id}
+            {
+                "kind": finding.kind,
+                "slug": display_slug(finding.slug),
+                "check_id": finding.check_id,
+            }
             for finding in report.findings[:_MAX_FINDINGS]
         ]
-        raise _failure(
+        raise load_failure(
             "the implementations do not match the model",
             {"finding_count": len(report.findings), "findings": findings},
         )
     try:
         graph = CanonGraph(model)
     except GraphModelError as exc:
-        raise _failure("the model is not a well-formed graph", {}, cause=exc) from exc
+        raise load_failure("the model is not a well-formed graph") from exc
     build = Build(model=model, graph=graph, digest=build_digest(), registry=used, report=report)
     logger.info(
         "build ready: %d formulas, %d without implementation",

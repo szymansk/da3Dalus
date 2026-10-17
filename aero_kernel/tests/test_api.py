@@ -10,7 +10,9 @@ from aero_kernel import build as build_module
 from aero_kernel.api import compute
 from aero_kernel.build import Build, shipped_build
 from aero_kernel.canon import load as load_module
+from aero_kernel.canon.load import load_canon_model
 from aero_kernel.errors import ErrorCategory
+from aero_kernel.registry import Registry
 from aero_kernel.schema import QuantityStatus
 from aero_kernel.tests.engine_builders import aircraft, request
 
@@ -28,7 +30,9 @@ def fresh_memo() -> Iterator[None]:
 
 
 def use_model(monkeypatch: pytest.MonkeyPatch, path: Path) -> None:
+    """Point the shipped build at a fixture model and an empty registry (no formulas yet)."""
     monkeypatch.setattr(load_module, "default_model_path", lambda: path)
+    monkeypatch.setattr(build_module, "DEFAULT_REGISTRY", Registry())
 
 
 async def test_compute_is_exported_and_no_build_is() -> None:
@@ -45,8 +49,9 @@ async def test_compute_runs_on_the_shipped_build(monkeypatch: pytest.MonkeyPatch
     assert quantity.status is QuantityStatus.ERROR
     assert quantity.error is not None
     assert quantity.error.category is ErrorCategory.NOT_IMPLEMENTED  # no formulas yet, Q1
-    assert result.provenance.canon_model_hash is not None
-    assert result.provenance.canon_source_commit == "0123456789abcdef0123456789abcdef01234567"
+    fixture = load_canon_model(FIXTURE)
+    assert result.provenance.canon_model_hash == fixture.content_hash
+    assert result.provenance.canon_source_commit == fixture.source_commit
 
 
 async def test_no_packaged_model_makes_every_quantity_internal_and_never_raises(
@@ -71,6 +76,10 @@ async def test_no_packaged_model_makes_every_quantity_internal_and_never_raises(
     logged = [r for r in caplog.records if r.levelno >= logging.ERROR]
     assert len(logged) == 1
     assert logged[0].exc_info is not None
+    assert isinstance(getattr(logged[0], "call_id", None), str)
+    assert "python -m aero_kernel.importer" in logged[0].getMessage()
+    assert "importer" not in str([q.error for q in result.quantities if q.error is not None])
+    assert str(tmp_path) not in logged[0].getMessage()
 
 
 async def test_the_failing_path_logs_one_info_line_with_a_call_id(

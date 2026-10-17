@@ -16,7 +16,13 @@ from pydantic import JsonValue, ValidationError
 
 logger = logging.getLogger(__name__)
 
-__all__ = ["SUPPORTED_SCHEMA_VERSION", "CanonLoadError", "default_model_path", "load_canon_model"]
+__all__ = [
+    "SUPPORTED_SCHEMA_VERSION",
+    "CanonLoadError",
+    "default_model_path",
+    "load_canon_model",
+    "load_failure",
+]
 
 
 def default_model_path() -> Path:
@@ -48,24 +54,26 @@ class CanonLoadError(Exception):
         self.error = error
 
 
-def _failure(
-    reason: str, detail: dict[str, JsonValue] | None = None, cause: BaseException | None = None
-) -> CanonLoadError:
-    """Build, log and return the load failure.
+def load_failure(reason: str, detail: dict[str, JsonValue] | None = None) -> CanonLoadError:
+    """Build the load failure of a canon model or build: ``internal``, escalating.
 
-    No file path enters the message (ADR 0019). The log carries the cause with its traceback and
-    the validation findings.
+    The one producer of the error text. No file path or exception text enters it (ADR 0019) and
+    nothing is logged: the caller that answers the request logs the one ERROR of the call. The
+    cause travels on the exception chain.
+
+    Args:
+        reason: Why the model could not be loaded, without paths or exception text.
+        detail: Structured findings, public data only.
+
+    Returns:
+        The exception to raise.
     """
     error = KernelError(
         code=ErrorCategory.INTERNAL.value,
         category=ErrorCategory.INTERNAL,
         message=f"The canon model could not be loaded: {reason}.",
-        hint="Re-import the canon with `python -m aero_kernel.importer` or reinstall the "
-        "package; report this if it persists.",
+        hint="Report it; attach input and provenance.",
         detail=detail or {},
-    )
-    logger.error(
-        "canon model not loaded: %s", reason, exc_info=cause, extra={"findings": detail or {}}
     )
     return CanonLoadError(error)
 
@@ -102,18 +110,18 @@ def load_canon_model(path: Path | None = None) -> CanonModel:
     try:
         raw: object = json.loads(target.read_text(encoding="utf-8"))
     except OSError as exc:
-        raise _failure(f"the file cannot be read ({type(exc).__name__})", cause=exc) from exc
+        raise load_failure(f"the file cannot be read ({type(exc).__name__})") from exc
     except ValueError as exc:  # json.JSONDecodeError and UnicodeDecodeError
-        raise _failure(f"the file is not valid JSON ({type(exc).__name__})", cause=exc) from exc
+        raise load_failure(f"the file is not valid JSON ({type(exc).__name__})") from exc
     except RecursionError as exc:
-        raise _failure("the JSON is nested too deeply", cause=exc) from exc
+        raise load_failure("the JSON is nested too deeply") from exc
     if not isinstance(raw, dict):
-        raise _failure("the file does not hold a JSON object")
+        raise load_failure("the file does not hold a JSON object")
     document = cast("dict[str, object]", raw)  # a JSON object always has string keys
     version = document.get("schema_version")
     if type(version) is not int or version != SUPPORTED_SCHEMA_VERSION:
         shown: JsonValue = version if isinstance(version, int | str) else None
-        raise _failure(
+        raise load_failure(
             f"schema_version {shown!r} is not supported (this build reads "
             f"{SUPPORTED_SCHEMA_VERSION})",
             {"schema_version": shown, "supported": SUPPORTED_SCHEMA_VERSION},
@@ -121,7 +129,7 @@ def load_canon_model(path: Path | None = None) -> CanonModel:
     try:
         model = CanonModel.model_validate(document)
     except ValidationError as exc:
-        raise _failure("the model is invalid", _findings(exc), cause=exc) from exc
+        raise load_failure("the model is invalid", _findings(exc)) from exc
     logger.info(
         "canon model loaded: %s, source commit %s, importer %s",
         model.content_hash,

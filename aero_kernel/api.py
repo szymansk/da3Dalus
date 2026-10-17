@@ -41,6 +41,12 @@ async def compute(aircraft: AircraftInput, request: ComputeRequest) -> ComputeRe
         build = shipped_build()
     except CanonLoadError as exc:
         call_id = secrets.token_hex(4)
+        logger.error(
+            "the shipped canon model is not loaded; re-import it with `python -m aero_kernel.importer` "
+            "or reinstall the package",
+            exc_info=exc,
+            extra={"call_id": call_id},
+        )
         quantities = tuple(
             QuantityResult(
                 slug=slug,

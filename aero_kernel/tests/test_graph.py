@@ -77,10 +77,10 @@ def test_a_non_scalar_quantity_is_non_scalar_result(flight_canon: CanonModel, sl
     assert error.quantity == slug
 
 
-def test_a_requestable_quantity_nobody_produces_is_a_model_error() -> None:
-    graph = CanonGraph(model_of({"a": quantity("derived")}, {}))
+@pytest.mark.parametrize("role", ["derived", "output"])
+def test_a_computed_quantity_nobody_produces_is_a_model_error_at_construction(role: str) -> None:
     with pytest.raises(GraphModelError, match=r"calc:a.*no producer"):
-        graph.resolve("a")
+        CanonGraph(model_of({"a": quantity(role)}, {}))
 
 
 def ids(subtree: Subtree) -> list[str]:
@@ -194,13 +194,13 @@ def test_a_cycle_is_a_model_error_naming_its_path() -> None:
         GraphModelError,
         match=r"cycle: calc:f-a.default -> calc:f-b.default -> calc:f-c.default -> calc:f-a.default",
     ):
-        CanonGraph(model).subtree(["a"])
+        CanonGraph(model)
 
 
 def test_a_node_reading_its_own_output_is_a_cycle() -> None:
     model = model_of({"a": quantity("derived")}, {"f": formula({"x": "a"}, {"y": "a"})})
     with pytest.raises(GraphModelError, match=r"cycle: calc:f.default -> calc:f.default"):
-        CanonGraph(model).subtree(["a"])
+        CanonGraph(model)
 
 
 def test_producer_of_an_unrequested_quantity_is_a_key_error(flight_canon: CanonModel) -> None:
