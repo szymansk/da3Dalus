@@ -207,6 +207,8 @@ class SolverRuntime:
         # and subprocess tasks. ``aclose`` drains both.
         self._pool_jobs: set[concurrent.futures.Future[object]] = set()
         self._process_tasks: set[asyncio.Task[ProcessRun]] = set()
+        # process starts a cancelled call had to give up on, until they end (solvers/process.py)
+        self._given_up: set[asyncio.Future[asyncio.subprocess.Process]] = set()
 
     async def __aenter__(self) -> Self:
         """Enter the ``async with`` block."""
@@ -228,6 +230,10 @@ class SolverRuntime:
         self._closed = True
         if self._process_tasks:
             await asyncio.wait(list(self._process_tasks))
+        if self._given_up:
+            logger.warning(
+                "%d given-up process starts are still pending at close", len(self._given_up)
+            )
         if self._pool_jobs:
             await asyncio.to_thread(concurrent.futures.wait, list(self._pool_jobs))
         pool, self._pool = self._pool, None
@@ -362,6 +368,7 @@ class SolverRuntime:
                     args=args,
                     collect=collect,
                     call_id=call_id,
+                    keep=self._given_up,
                 )
             )
             self._process_tasks.add(task)

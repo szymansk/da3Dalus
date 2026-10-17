@@ -3,6 +3,7 @@
 import asyncio
 import contextlib
 import errno
+import gc
 import logging
 import os
 import shutil
@@ -10,6 +11,7 @@ import sys
 import tempfile
 import textwrap
 import time
+import warnings
 from asyncio import unix_events
 from pathlib import Path
 
@@ -350,7 +352,7 @@ async def test_a_start_stuck_in_the_connect_wait_is_cancelled_again_and_ends(
         "process start did not settle within 0.3 s; its process group could not be killed"
     )
     assert record.call_id == "slow01"  # type: ignore[attr-defined]  # logging extra
-    assert set() == process_module._GIVEN_UP_STARTS  # type: ignore[attr-defined]  # module state read by the test
+    assert not hasattr(process_module, "_GIVEN_UP_STARTS")  # no module-level state (CLAUDE.md)
 
 
 async def test_a_start_that_ignores_every_cancel_is_given_up_after_twice_the_bound(
@@ -361,16 +363,10 @@ async def test_a_start_that_ignores_every_cancel_is_given_up_after_twice_the_bou
     scratch.mkdir()
     monkeypatch.setattr(tempfile, "tempdir", str(scratch))
     release = asyncio.Event()
-
-    async def stubborn(*args: object, **kwargs: object) -> object:
-        while not release.is_set():
-            with contextlib.suppress(asyncio.CancelledError):
-                await release.wait()
-        raise OSError(errno.EMFILE, "released")
-
-    monkeypatch.setattr(asyncio, "create_subprocess_exec", stubborn)
+    monkeypatch.setattr(asyncio, "create_subprocess_exec", _stubborn_start(release))
+    keep: set[asyncio.Future[asyncio.subprocess.Process]] = set()
     task: asyncio.Task[object] = asyncio.create_task(
-        run_process({}, "", executable=sys.executable, call_id="stub01")
+        run_process({}, "", executable=sys.executable, call_id="stub01", keep=keep)
     )
     await asyncio.sleep(0.05)
     began = time.monotonic()
@@ -387,11 +383,128 @@ async def test_a_start_that_ignores_every_cancel_is_given_up_after_twice_the_bou
         "not be killed and the start may still be running"
     )
     assert record.call_id == "stub01"  # type: ignore[attr-defined]  # logging extra
-    (kept,) = process_module._GIVEN_UP_STARTS  # type: ignore[attr-defined]  # module state read by the test
+    (kept,) = keep  # the caller's keeper holds it, no module does
     assert not kept.done()
+    assert not hasattr(process_module, "_GIVEN_UP_STARTS")
     release.set()  # the stuck start ends at last: it is released and its outcome consumed
     await asyncio.sleep(0.05)
-    assert set() == process_module._GIVEN_UP_STARTS  # type: ignore[attr-defined]  # as above
+    assert keep == set()
+
+
+def _stubborn_start(release: asyncio.Event, *, real: bool = False) -> object:
+    """A stand-in for ``create_subprocess_exec`` that ignores cancels until ``release`` is set.
+
+    Then it fails (``real=False``), or hands over the sleeping fake tool it really started at the
+    beginning (``real=True``): a start that is only slow, whose process nobody owns by then.
+    """
+    original = asyncio.create_subprocess_exec
+
+    async def stubborn(*args: object, **kwargs: object) -> object:
+        process = await original(*args, **kwargs) if real else None  # type: ignore[arg-type]  # same call as run_process makes
+        while not release.is_set():
+            with contextlib.suppress(asyncio.CancelledError):
+                await release.wait()
+        if process is None:
+            raise OSError(errno.EMFILE, "released")
+        return process
+
+    return stubborn
+
+
+async def test_a_direct_call_without_a_keeper_still_gives_up(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(process_module, "_START_SETTLE_S", 0.2)
+    release = asyncio.Event()
+    monkeypatch.setattr(asyncio, "create_subprocess_exec", _stubborn_start(release))
+    task: asyncio.Task[object] = asyncio.create_task(run_process({}, "", executable=sys.executable))
+    await asyncio.sleep(0.05)
+    task.cancel()
+    with pytest.raises(asyncio.CancelledError):
+        async with asyncio.timeout(3):
+            await task
+    release.set()
+    await asyncio.sleep(0.05)
+
+
+async def test_the_runtime_holds_a_given_up_start_and_releases_it_when_it_ends(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(process_module, "_START_SETTLE_S", 0.2)
+    release = asyncio.Event()
+    monkeypatch.setattr(asyncio, "create_subprocess_exec", _stubborn_start(release))
+    async with SolverRuntime() as runtime:
+        task: asyncio.Task[object] = asyncio.create_task(
+            runtime.run_process({}, "", executable=sys.executable)
+        )
+        await asyncio.sleep(0.05)
+        task.cancel()
+        with pytest.raises(asyncio.CancelledError):
+            async with asyncio.timeout(3):
+                await task
+        assert len(runtime._given_up) == 1  # type: ignore[attr-defined]  # the owner's holder, read by the test
+        release.set()
+        await asyncio.sleep(0.05)
+        assert runtime._given_up == set()  # type: ignore[attr-defined]  # as above
+
+
+async def test_closing_the_runtime_reports_the_starts_still_given_up(
+    monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
+) -> None:
+    monkeypatch.setattr(process_module, "_START_SETTLE_S", 0.2)
+    release = asyncio.Event()
+    monkeypatch.setattr(asyncio, "create_subprocess_exec", _stubborn_start(release))
+    runtime = SolverRuntime()
+    task: asyncio.Task[object] = asyncio.create_task(
+        runtime.run_process({}, "", executable=sys.executable)
+    )
+    await asyncio.sleep(0.05)
+    try:
+        task.cancel()
+        with pytest.raises(asyncio.CancelledError):
+            async with asyncio.timeout(3):
+                await task
+        with caplog.at_level(logging.DEBUG, logger="aero_kernel"):
+            await runtime.aclose()
+        closing = [r for r in caplog.records if r.levelno >= logging.WARNING]
+        assert [r.getMessage() for r in closing] == [
+            "process start did not settle within 0.2 s and was given up; its process group "
+            "could not be killed and the start may still be running",
+            "1 given-up process starts are still pending at close",
+        ]
+    finally:
+        release.set()  # a stuck stub would otherwise outlive the test and block the loop's end
+        await asyncio.sleep(0.05)
+
+
+async def test_a_given_up_start_that_succeeds_later_has_its_group_killed(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(process_module, "_START_SETTLE_S", 0.2)
+    sleeper = tmp_path / "sleeper.py"
+    sleeper.write_text(SLEEP_SCRIPT)
+    marker = tmp_path / "marker.txt"
+    release = asyncio.Event()
+    monkeypatch.setattr(asyncio, "create_subprocess_exec", _stubborn_start(release, real=True))
+    keep: set[asyncio.Future[asyncio.subprocess.Process]] = set()
+    task: asyncio.Task[object] = asyncio.create_task(
+        run_process({}, "", executable=sys.executable, args=[str(sleeper), str(marker)], keep=keep)
+    )
+    await asyncio.sleep(0.05)
+    task.cancel()
+    with pytest.raises(asyncio.CancelledError):
+        async with asyncio.timeout(3):
+            await task
+    assert len(keep) == 1
+    with warnings.catch_warnings(record=True) as caught:
+        warnings.simplefilter("always")
+        release.set()  # the start succeeds now: a real process nobody owns
+        pid, grandchild, _ = await asyncio.to_thread(_read_marker, marker)
+        assert await _wait_dead(pid)
+        assert await _wait_dead(grandchild)
+        assert keep == set()
+        gc.collect()
+    assert [w for w in caught if issubclass(w.category, ResourceWarning)] == []
 
 
 async def test_the_runtime_forwards_the_call_id_to_the_process_log(

@@ -82,26 +82,36 @@ def _remove_directory(directory: Path) -> None:
 _START_SETTLE_S = 5.0
 
 
-# Starts that were given up on while still pending. asyncio keeps only weak references to tasks,
-# so without this set the event loop could collect such a task mid-flight; the done-callback
-# removes it as soon as it ends. Not call state: it only holds the tasks nobody awaits any more.
-_GIVEN_UP_STARTS: set[asyncio.Future[asyncio.subprocess.Process]] = set()
+Start = asyncio.Future[asyncio.subprocess.Process]
 
 
-def _keep_until_done(start: asyncio.Future[asyncio.subprocess.Process]) -> None:
-    """Hold a start that was given up on until it ends, and consume its outcome."""
-    _GIVEN_UP_STARTS.add(start)
+def _adopt(start: Start, keep: set[Start] | None) -> None:
+    """Take over a start that was given up on: hold it, and clean up after it if it ends well.
 
-    def release(done: asyncio.Future[asyncio.subprocess.Process]) -> None:
-        _GIVEN_UP_STARTS.discard(done)
-        if not done.cancelled():
-            done.exception()  # retrieved: nobody else will ask
+    The holder belongs to the caller (``keep``), because the owner of a resource holds it, not a
+    module (ch. 8.10). A direct call without one keeps nothing: the start stays alive through the
+    future it awaits. If the start succeeds after all, nobody owns the process it made, so its
+    whole group is killed and its transport closed; its failure is consumed.
+    """
+    if keep is not None:
+        keep.add(start)
+
+    def release(done: Start) -> None:
+        if keep is not None:
+            keep.discard(done)
+        if done.cancelled() or done.exception() is not None:
+            return
+        process = done.result()
+        _kill_group(process)
+        # the transport is asyncio's internal handle; it must be closed or it warns when collected
+        process._transport.close()  # type: ignore[attr-defined]  # pyright: ignore[reportPrivateUsage]  # no public way to close it
+        logger.debug("killed external process %s of a start that ended late", process.pid)
 
     start.add_done_callback(release)
 
 
 async def _settle_start(
-    start: asyncio.Future[asyncio.subprocess.Process], tool: str, call_id: str | None
+    start: Start, tool: str, call_id: str | None, keep: set[Start] | None
 ) -> asyncio.subprocess.Process | None:
     """Wait, within a bound, for a process start that a cancellation interrupted.
 
@@ -113,13 +123,14 @@ async def _settle_start(
     A start that fails or stalls after the spawn never ends on its own (asyncio waits for pipes
     that never connect). Past ``_START_SETTLE_S`` it is cancelled again on every pass, because a
     second cancel interrupts the wait that the first one lands in. Past twice the bound the start
-    is given up on and kept alive in ``_GIVEN_UP_STARTS``. Either way its process group is lost,
+    is given up on and handed to ``keep`` (see :func:`_adopt`). Either way its process group is lost,
     and the operator is told once with a ``WARNING`` (ch. 8.14).
 
     Args:
         start: The start, running as a task of its own.
         tool: Base name of the executable, for the log.
         call_id: Id of the ``compute()`` call, for the log.
+        keep: The caller's holder for starts that are given up on, if it has one.
 
     Returns:
         The started process, or ``None`` if the start failed, hung or was cancelled itself.
@@ -136,7 +147,7 @@ async def _settle_start(
             await asyncio.wait([start], timeout=_START_SETTLE_S / 10)
     given_up = not start.done()
     if given_up:
-        _keep_until_done(start)
+        _adopt(start, keep)
     if hung:
         logger.warning(
             "process start did not settle within %.1f s%s; its process group could not be killed%s",
@@ -158,6 +169,7 @@ async def run_process(
     args: Sequence[str] = (),
     collect: Sequence[str] = (),
     call_id: str | None = None,
+    keep: set[Start] | None = None,
 ) -> ProcessRun:
     """Run an external binary in a fresh temp directory and return its output.
 
@@ -177,6 +189,9 @@ async def run_process(
         collect: Names of output files to read back; files the tool did not write are absent
             from the result.
         call_id: Id of the ``compute()`` call, for the log lines of this run (ch. 8.14).
+        keep: A set that holds a process start this call had to give up on (a start that hung
+            while the call was cancelled) until it ends, so the owner (``SolverRuntime``) can
+            count what is still pending at close. Without one, nothing is held.
 
     Returns:
         The exit code, the output streams and the collected files.
@@ -211,7 +226,7 @@ async def run_process(
             # shielded: a cancel during the start must not abort it (see _settle_start)
             started = await asyncio.shield(start)
         except asyncio.CancelledError:
-            process = await _settle_start(start, Path(executable).name, call_id)
+            process = await _settle_start(start, Path(executable).name, call_id, keep)
             raise
         except OSError as error:
             if (
