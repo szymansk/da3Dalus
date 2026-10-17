@@ -41,26 +41,16 @@ quantities = {
         "m/s^2",
         "input",
         positive=True,
-        default={"value": 9.80665, "source": "ISO 80000-3, standard acceleration of gravity"},
     ),
     "air-density": q(
         "rho",
         "kg/m^3",
         "input",
         positive=True,
-        default={"value": 1.225, "source": "U.S. Standard Atmosphere 1976, sea-level density"},
     ),
     "flap-deflection-landing": q("delta_f_ldg", "deg", "input"),
     "cruise-speed-target": q("V_c", "m/s", "target", positive=True),
-    "approach-speed-margin-target": q(
-        "k_S_app",
-        "1",
-        "target",
-        default={
-            "value": 1.3,
-            "source": "Sadraey 2013, ch. 10: approach speed 1.3 V_S (fixture value)",
-        },
-    ),
+    "approach-speed-margin-target": q("k_S_app", "1", "target"),
     "airplane-landing": q("airplane_ldg", "1", "derived", "airplane"),
     "stall-speed": q("V_S", "m/s", "output"),
     "stall-speed-landing": q("V_S_ldg", "m/s", "output"),
@@ -74,6 +64,27 @@ quantities = {
     "max-mass-level-flight": q("m_max_level", "kg", "output"),
     "butterfly-stall-speed-curve": q("V_S0(s)", "m/s", "output", "curve"),
     "butterfly-speed-range": q("V_range", "m/s", "output", "curve_pair"),
+}
+
+defaults = {
+    "gravity": {
+        "value": 9.80665,
+        "unit": "m/s^2",
+        "source": "ISO 80000-3, standard acceleration of gravity",
+        "regime": "RC and UAV, sea level",
+    },
+    "air-density": {
+        "value": 1.225,
+        "unit": "kg/m^3",
+        "source": "U.S. Standard Atmosphere 1976, sea-level density",
+        "regime": "RC and UAV, sea level",
+    },
+    "approach-speed-margin-target": {
+        "value": 1.3,
+        "unit": "1",
+        "source": "Sadraey 2013, ch. 10: approach speed 1.3 V_S (fixture value)",
+        "regime": "RC and UAV, fixture value",
+    },
 }
 
 
@@ -296,7 +307,9 @@ formulas = {
 
 def build_flight_canon() -> str:
     """Return the text of ``flight_canon.json``: sorted keys, two-space indent, final newline."""
-    namespaces: dict[str, Any] = {"calc": {"quantities": quantities, "formulas": formulas}}
+    namespaces: dict[str, Any] = {
+        "calc": {"quantities": quantities, "formulas": formulas, "defaults": defaults}
+    }
     parsed = TypeAdapter(dict[str, Namespace]).validate_python(namespaces)
     # The model file holds the normalised form: every absent optional field is written out.
     normalised = {name: namespace.model_dump(mode="json") for name, namespace in parsed.items()}

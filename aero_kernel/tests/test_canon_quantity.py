@@ -19,34 +19,24 @@ def make_quantity(**overrides: object) -> Quantity:
 
 def test_minimal_quantity_defaults() -> None:
     quantity = make_quantity()
-    assert quantity.default is None
     assert quantity.positive is None
     assert quantity.uncertainty is None
 
 
-def test_positive_quantity_with_default() -> None:
-    quantity = make_quantity(
-        positive=True, default={"value": 1.225, "source": "U.S. Standard Atmosphere 1976"}
-    )
-    assert quantity.positive is True
-    assert quantity.default is not None
-    assert quantity.default.value == 1.225
+def test_a_quantity_carries_no_default() -> None:
+    """The defaults live in the namespace table (S5)."""
+    with pytest.raises(ValidationError, match="default"):
+        make_quantity(default={"value": 1.0, "unit": "kg", "source": "s", "regime": "r"})
+
+
+def test_positive_quantity() -> None:
+    assert make_quantity(positive=True).positive is True
 
 
 @pytest.mark.parametrize("role", ["derived", "output"])
 def test_positive_only_on_input_or_target(role: str) -> None:
     with pytest.raises(ValidationError, match="positive"):
         make_quantity(role=role, positive=True)
-
-
-def test_default_of_positive_quantity_must_be_positive() -> None:
-    with pytest.raises(ValidationError, match="default"):
-        make_quantity(positive=True, default={"value": 0.0, "source": "s"})
-
-
-def test_default_needs_a_source() -> None:
-    with pytest.raises(ValidationError):
-        make_quantity(default={"value": 1.0, "source": ""})
 
 
 def test_unknown_type_is_rejected() -> None:
@@ -75,12 +65,6 @@ def test_positive_false_is_an_error_on_every_role(role: str) -> None:
     """README: ``positive`` is ``true`` or omitted; ``false`` is one spelling too many."""
     with pytest.raises(ValidationError):
         make_quantity(role=role, positive=False)
-
-
-@pytest.mark.parametrize("bad", [float("nan"), float("inf"), float("-inf")])
-def test_default_must_be_finite(bad: float) -> None:
-    with pytest.raises(ValidationError, match="finite"):
-        make_quantity(default={"value": bad, "source": "s"})
 
 
 def test_quantity_is_frozen() -> None:

@@ -40,7 +40,7 @@ def test_only_schema_version_one(version: object) -> None:
 
 def test_hash_must_match_the_namespaces() -> None:
     raw = base_model()
-    raw["namespaces"]["calc"]["quantities"]["gravity"]["default"]["value"] = 9.81
+    raw["namespaces"]["calc"]["defaults"]["gravity"]["value"] = 9.81
     with pytest.raises(ValidationError, match="content_hash"):
         CanonModel.model_validate(raw)
 
@@ -158,12 +158,91 @@ def test_given_may_be_a_target_without_default() -> None:
     [
         {"role": "derived"},
         {"role": "output"},
-        {"default": {"value": 1.0, "source": "s"}},
     ],
 )
 def test_given_must_be_supplied_input_or_target_without_default(quantity: dict[str, Any]) -> None:
     with pytest.raises(ValidationError, match="given"):
         build(with_given(base_namespaces(), **quantity))
+
+
+GRAVITY_DEFAULT: dict[str, Any] = {
+    "value": 9.80665,
+    "unit": "m/s^2",
+    "source": "ISO 80000-3",
+    "regime": "RC and UAV, sea level",
+}
+
+
+def with_defaults(namespaces: dict[str, Any], **defaults: Any) -> dict[str, Any]:
+    """Put ``defaults`` (slug to entry) into the ``calc`` namespace."""
+    namespaces["calc"]["defaults"] = defaults
+    return namespaces
+
+
+def test_a_default_lives_in_the_namespace_and_resolves_to_its_quantity() -> None:
+    model = build(with_defaults(base_namespaces(), gravity=GRAVITY_DEFAULT))
+    default = model.namespaces["calc"].defaults["gravity"]
+    assert (default.value, default.unit, default.regime) == (
+        9.80665,
+        "m/s^2",
+        "RC and UAV, sea level",
+    )
+
+
+def test_a_namespace_without_defaults_has_an_empty_table() -> None:
+    namespaces = base_namespaces()
+    del namespaces["calc"]["defaults"]
+    assert build(namespaces).namespaces["calc"].defaults == {}
+
+
+def test_a_default_of_an_unknown_quantity_is_rejected() -> None:
+    with pytest.raises(ValidationError, match="ghost"):
+        build(with_defaults(base_namespaces(), ghost=GRAVITY_DEFAULT))
+
+
+def test_a_default_on_a_computed_quantity_is_rejected() -> None:
+    with pytest.raises(ValidationError, match="role"):
+        build(with_defaults(base_namespaces(), weight=GRAVITY_DEFAULT | {"unit": "N"}))
+
+
+def test_a_default_on_a_non_scalar_quantity_is_rejected() -> None:
+    namespaces = base_namespaces()
+    namespaces["calc"]["quantities"]["shape"] = {
+        "symbol": "S",
+        "unit": "1",
+        "role": "input",
+        "type": "curve",
+    }
+    with pytest.raises(ValidationError, match="scalar"):
+        build(with_defaults(namespaces, shape=GRAVITY_DEFAULT | {"unit": "1"}))
+
+
+def test_a_default_unit_must_equal_the_quantity_unit() -> None:
+    with pytest.raises(ValidationError, match="unit"):
+        build(with_defaults(base_namespaces(), gravity=GRAVITY_DEFAULT | {"unit": "N"}))
+
+
+@pytest.mark.parametrize("value", [0.0, -1.0])
+def test_the_default_of_a_positive_quantity_must_be_positive(value: float) -> None:
+    with pytest.raises(ValidationError, match="positive"):
+        build(with_defaults(base_namespaces(), gravity=GRAVITY_DEFAULT | {"value": value}))
+
+
+@pytest.mark.parametrize("field", ["source", "regime"])
+def test_a_default_needs_a_source_and_a_regime(field: str) -> None:
+    with pytest.raises(ValidationError):
+        build(with_defaults(base_namespaces(), gravity=GRAVITY_DEFAULT | {field: ""}))
+
+
+def test_a_default_value_must_be_finite() -> None:
+    with pytest.raises(ValidationError):
+        build(with_defaults(base_namespaces(), gravity=GRAVITY_DEFAULT | {"value": float("nan")}))
+
+
+def test_a_given_quantity_must_not_have_a_default() -> None:
+    namespaces = with_given(base_namespaces(), role="input")
+    with pytest.raises(ValidationError, match="given"):
+        build(with_defaults(namespaces, extra=GRAVITY_DEFAULT | {"unit": "1"}))
 
 
 def embedding_namespaces() -> dict[str, Any]:
@@ -313,7 +392,7 @@ def test_hash_covers_every_namespace() -> None:
     namespaces = base_namespaces()
     namespaces["other"] = copy.deepcopy(namespaces["calc"])
     first = with_hash(namespaces)["content_hash"]
-    namespaces["other"]["quantities"]["gravity"]["default"]["value"] = 9.81
+    namespaces["other"]["defaults"]["gravity"]["value"] = 9.81
     assert with_hash(namespaces)["content_hash"] != first
 
 

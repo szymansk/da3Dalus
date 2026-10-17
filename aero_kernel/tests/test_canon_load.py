@@ -118,7 +118,7 @@ def test_invalid_model_lists_the_findings(tmp_path: Path) -> None:
 
 def test_hash_mismatch_is_internal(tmp_path: Path) -> None:
     raw = base_model()
-    raw["namespaces"]["calc"]["quantities"]["gravity"]["default"]["value"] = 9.81
+    raw["namespaces"]["calc"]["defaults"]["gravity"]["value"] = 9.81
     with pytest.raises(CanonLoadError) as caught:
         load_canon_model(write_model(tmp_path, raw))
     assert_internal(caught.value)

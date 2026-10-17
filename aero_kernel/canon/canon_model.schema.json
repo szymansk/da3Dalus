@@ -157,11 +157,45 @@
     },
     "Default": {
       "additionalProperties": false,
-      "description": "A value the canon states for a quantity, with its source.\n\nAttributes:\n    value: The value, in the quantity's unit.\n    source: Citation of where the value comes from (ADR 0028).",
+      "description": "A value the canon states for a supplied quantity, with its unit, source and regime.\n\nAttributes:\n    value: The value, in ``unit``.\n    unit: The unit of ``value``; it must equal the unit of the quantity.\n    source: Citation of where the value comes from (ADR 0028).\n    regime: The flight regime the value is valid for (ADR 0028).",
       "properties": {
+        "regime": {
+          "minLength": 1,
+          "title": "Regime",
+          "type": "string"
+        },
         "source": {
           "minLength": 1,
           "title": "Source",
+          "type": "string"
+        },
+        "unit": {
+          "enum": [
+            "1",
+            "m",
+            "m^2",
+            "kg",
+            "s",
+            "deg",
+            "deg/s",
+            "m/s",
+            "m/s^2",
+            "1/s",
+            "1/rad",
+            "1/rad^2",
+            "N",
+            "N/m^2",
+            "Pa",
+            "kg/m^3",
+            "W",
+            "V",
+            "A",
+            "ohm",
+            "Wh",
+            "Wh/kg",
+            "rpm/V"
+          ],
+          "title": "Unit",
           "type": "string"
         },
         "value": {
@@ -171,7 +205,9 @@
       },
       "required": [
         "value",
-        "source"
+        "unit",
+        "source",
+        "regime"
       ],
       "title": "Default",
       "type": "object"
@@ -344,8 +380,18 @@
     },
     "Namespace": {
       "additionalProperties": false,
-      "description": "One canon of the model: its quantities and formulas, keyed by bare slug.\n\nAttributes:\n    quantities: The quantity vocabulary.\n    formulas: The formulas.",
+      "description": "One canon of the model: its quantities and formulas, keyed by bare slug.\n\nAttributes:\n    quantities: The quantity vocabulary.\n    formulas: The formulas.\n    defaults: The stated default per supplied scalar quantity; absent = the caller must supply it.",
       "properties": {
+        "defaults": {
+          "default": {},
+          "patternProperties": {
+            "^[a-z][a-z0-9]*(-[a-z0-9]+)*$": {
+              "$ref": "#/$defs/Default"
+            }
+          },
+          "title": "Defaults",
+          "type": "object"
+        },
         "formulas": {
           "patternProperties": {
             "^[a-z][a-z0-9]*(-[a-z0-9]+)*$": {
@@ -374,19 +420,8 @@
     },
     "Quantity": {
       "additionalProperties": false,
-      "description": "A quantity of the canon vocabulary.\n\nAttributes:\n    symbol: The quantity's symbol.\n    unit: The unit of its values; ``1`` is dimensionless.\n    role: ``input`` and ``target`` are supplied by the caller, ``derived`` and ``output`` computed.\n    type: The kind of value.\n    uncertainty: ``interval`` where the producer declares method worlds.\n    default: The stated default, only where the canon states one.\n    positive: ``True`` where the quantity is strictly greater than zero by its definition,\n        otherwise omitted (``None``); ``false`` is no spelling of the canon.",
+      "description": "A quantity of the canon vocabulary.\n\nAttributes:\n    symbol: The quantity's symbol.\n    unit: The unit of its values; ``1`` is dimensionless.\n    role: ``input`` and ``target`` are supplied by the caller, ``derived`` and ``output`` computed.\n    type: The kind of value.\n    uncertainty: ``interval`` where the producer declares method worlds.\n    positive: ``True`` where the quantity is strictly greater than zero by its definition,\n        otherwise omitted (``None``); ``false`` is no spelling of the canon.",
       "properties": {
-        "default": {
-          "anyOf": [
-            {
-              "$ref": "#/$defs/Default"
-            },
-            {
-              "type": "null"
-            }
-          ],
-          "default": null
-        },
         "positive": {
           "anyOf": [
             {
