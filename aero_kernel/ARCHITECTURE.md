@@ -796,8 +796,8 @@ caller's event loop, it can be cancelled, and it limits its own resource use.
   - It kills running AVL subprocesses (their whole process group) and removes their temporary directories.
     The kernel creates the child's pipes itself (`os.pipe`, read and written through the public
     `connect_read_pipe` / `connect_write_pipe`, every descriptor closed in a `finally`), so a start that fails
-    after the spawn leaks no descriptor and cannot hang; the start is shielded and awaited to its end on a
-    cancel, so a spawned child is never orphaned (#1188) — except when asyncio's child-watcher registration
+    after the spawn leaks no descriptor and cannot hang; a cancel never interrupts the start; the start is
+    awaited to its end, so a spawned child is never orphaned (#1188) — except when asyncio's child-watcher registration
     fails after the spawn (no pid is returned): that start is `internal`, and one `WARNING` log line says a
     child may have been left running (ADR 0020).
   - Work already running in the process pool is allowed to finish but its result is discarded, because
