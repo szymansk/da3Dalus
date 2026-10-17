@@ -733,10 +733,14 @@ Rules:
 - **The model is never edited by hand.** It is only produced by the importer, so model and document cannot
   drift apart unnoticed.
 - **Idempotent.** Importing the same canon document twice yields a byte-identical model.
-- **`--check`** runs stages 1–3, writes nothing, and reports the findings and whether the committed model
-  still matches the canon document. CI runs it from the importer unit on (S13); canon authors run it instead
-  of the structural part of `check_canon.py`. Whether drift fails the build follows #1177; the canon is still
-  `draft`, so drift is expected.
+- **`--check`** runs stages 1–3 in memory, writes nothing, needs no git, and compares the result with the
+  committed model by `content_hash`, `schema_version` and `importer_version` (not `source_commit`, which
+  moves with every commit). A finding **or** a mismatch exits 1, and the CI step **fails the build**: the
+  shipped model is the kernel's own artefact (ch. 8.4), so a canon change re-imports the model in the same
+  change. Canon authors run it instead of the structural part of `check_canon.py`.
+- **Vocabulary drift.** The canon README defines the `when` vocabulary and the quantity types; the model's
+  Literals copy them. An importer test reads those two README tables and fails when they differ from the
+  Literals, so the two cannot drift apart unnoticed.
 - **A breaking change** in the diff requires the affected implementations and golden values to be updated in
   the same change set (the traceability test, Q11, enforces it).
 - **Schema version.** `canon_model.json` carries the schema version. The kernel refuses to load a model with
