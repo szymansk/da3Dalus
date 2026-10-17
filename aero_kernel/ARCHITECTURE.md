@@ -1146,7 +1146,7 @@ sampled grid and no `-static` chain.
 |---|---|---|---|
 | 1 | its own `when` / `given` is unmet | `not_applicable` | `condition_not_met` / `not_given` |
 | 2 | a read predecessor is `not_applicable` | `not_applicable` | `depends_on_not_applicable` |
-| 3 | it has no implementation, or its `when` term has no fact yet | `error` | `not_implemented` |
+| 3 | it has no implementation, its `when` term has no fact yet, or it reads a value whose type v1 cannot carry | `error` | `not_implemented` (`unsupported_value_type` for the last) |
 | 4 | a read predecessor is `error` | `error` | `upstream_failed` (ch. 8.1 for retryable/escalate) |
 | 5 | a read input has no value and no default | `error` | `missing_input` |
 | 6 | it is a `minutes` formula and `include_long_runs` is off | `skipped` | `long_run_not_included` |
