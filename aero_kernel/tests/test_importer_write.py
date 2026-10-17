@@ -2,6 +2,7 @@
 
 import json
 import os
+import re
 import subprocess
 from pathlib import Path
 
@@ -10,6 +11,7 @@ from aero_kernel.canon.load import load_canon_model
 from aero_kernel.importer import IMPORTER_VERSION
 from aero_kernel.importer.cli import main
 from aero_kernel.tests.importer_builders import MINI_CANON, SOURCE_COMMIT, write_canon
+from aero_kernel.tests.importer_golden import GOLDEN_DIR
 
 MODEL = "canon_model.json"
 REPORT = "IMPORT_REPORT.md"
@@ -216,3 +218,123 @@ def test_the_outputs_have_normal_permissions_under_the_umask(
         os.umask(previous)
     for name in (MODEL, REPORT):
         assert (out / name).stat().st_mode & 0o777 == 0o644
+
+
+# --- golden outputs (S9, S16) ---------------------------------------------------------------------
+
+
+@pytest.mark.parametrize("name", [MODEL, REPORT])
+def test_the_outputs_match_the_golden_files_byte_for_byte(tmp_path: Path, name: str) -> None:
+    """Pins every byte: values, key order, separators, trailing newline, row order.
+
+    Regenerate with ``python -m aero_kernel.tests.importer_golden`` after a deliberate change.
+    """
+    out = tmp_path / "out"
+    assert import_to(write_canon(tmp_path), out) == 0
+    assert (out / name).read_bytes() == (GOLDEN_DIR / name).read_bytes()
+
+
+def test_a_non_ascii_symbol_is_written_raw(tmp_path: Path) -> None:
+    density = MINI_CANON["quantities/gravity.md"].replace("symbol: g", "symbol: ρ")
+    out = tmp_path / "out"
+    assert import_to(write_canon(tmp_path, {"quantities/gravity.md": density}), out) == 0
+    text = (out / MODEL).read_text(encoding="utf-8")
+    assert '"symbol": "ρ"' in text
+    assert "\\u03c1" not in text
+
+
+def test_the_report_carries_no_date(tmp_path: Path) -> None:
+    out = tmp_path / "out"
+    import_to(write_canon(tmp_path), out)
+    assert (
+        re.search(r"\d{4}-\d{2}-\d{2}|\d{2}:\d{2}", (out / REPORT).read_text(encoding="utf-8"))
+        is None
+    )
+
+
+# --- where and how the files are written (S17, S18) ----------------------------------------------
+
+
+def test_a_nested_output_directory_is_created(tmp_path: Path) -> None:
+    out = tmp_path / "a" / "b" / "out"
+    assert import_to(write_canon(tmp_path), out) == 0
+    assert (out / MODEL).is_file()
+
+
+def test_the_temporary_file_is_next_to_its_target(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A rename within one directory stays on one filesystem, hence atomic."""
+    out = tmp_path / "out"
+    seen: list[tuple[Path, Path]] = []
+    real = os.replace
+
+    def spy(source: str | Path, target: str | Path) -> None:
+        seen.append((Path(source), Path(target)))
+        real(source, target)
+
+    monkeypatch.setattr(os, "replace", spy)
+    import_to(write_canon(tmp_path), out)
+    assert sorted(target.name for _, target in seen) == [REPORT, MODEL]
+    assert all(source.parent == out == target.parent for source, target in seen)
+
+
+def test_the_default_output_directory_is_the_packaged_model_directory(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    package = tmp_path / "package"
+    monkeypatch.setattr("aero_kernel.importer.cli.default_model_path", lambda: package / MODEL)
+    canon = write_canon(tmp_path)
+    assert main([str(canon), "--source-commit", SOURCE_COMMIT]) == 0
+    assert (package / MODEL).is_file()
+    assert (package / REPORT).is_file()
+
+
+# --- a failure after the first rename (H3) ---------------------------------------------------------
+
+
+def test_a_failure_after_the_first_rename_says_which_file_was_written(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    out = tmp_path / "out"
+    canon = write_canon(tmp_path)
+    import_to(canon, out)
+    old_report = (out / REPORT).read_bytes()
+    changed = write_canon(
+        tmp_path / "changed",
+        {"defaults.yaml": MINI_CANON["defaults.yaml"].replace("9.80665", "9.8")},
+    )
+    real = os.replace
+    calls: list[str] = []
+
+    def second_fails(source: str | Path, target: str | Path) -> None:
+        calls.append(str(target))
+        if len(calls) == 2:
+            msg = "disk full"
+            raise OSError(msg)
+        real(source, target)
+
+    monkeypatch.setattr(os, "replace", second_fails)
+    assert import_to(changed, out) == 1
+    captured = capsys.readouterr()
+    printed = captured.out + captured.err
+    assert "IMPORT_REPORT.md was not written" in printed
+    assert "canon_model.json was written" in printed or "canon_model.json was replaced" in printed
+    assert "nothing written" not in printed
+    assert "disk full" in printed
+    assert (out / REPORT).read_bytes() == old_report
+    assert sorted(path.name for path in out.iterdir()) == [REPORT, MODEL]
+
+
+def test_a_failure_of_the_first_rename_says_nothing_was_written(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    def refuse(*_: object) -> None:
+        msg = "disk full"
+        raise OSError(msg)
+
+    monkeypatch.setattr(os, "replace", refuse)
+    assert import_to(write_canon(tmp_path), tmp_path / "out") == 1
+    printed = capsys.readouterr()
+    assert "nothing written" in printed.err
+    assert "disk full" in printed.out

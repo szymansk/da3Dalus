@@ -9,7 +9,7 @@ from aero_kernel.canon.load import default_model_path
 from aero_kernel.importer.findings import Finding
 from aero_kernel.importer.pipeline import import_canon
 from aero_kernel.importer.source import resolve_source
-from aero_kernel.importer.write import write_outputs
+from aero_kernel.importer.write import PartialWriteError, write_outputs
 
 __all__ = ["main"]
 
@@ -43,6 +43,15 @@ def main(argv: list[str] | None = None) -> int:
         return _report(result.findings)
     try:
         write_outputs(arguments.out, {MODEL_NAME: result.model_json, REPORT_NAME: result.report})
+    except PartialWriteError as exc:
+        print(f"{MODEL_NAME}: write: {exc}")
+        print(
+            f"partly written: {', '.join(exc.written)} was written, "
+            f"{', '.join(exc.unwritten)} was not written and still holds the previous import; "
+            "run the import again",
+            file=sys.stderr,
+        )
+        return 1
     except OSError as exc:
         return _report([Finding(file=MODEL_NAME, field="write", message=str(exc))])
     print(f"imported {MODEL_NAME} ({result.model.content_hash}) into {arguments.out}")

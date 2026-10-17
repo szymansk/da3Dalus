@@ -2,6 +2,8 @@
 
 import ast
 import runpy
+import subprocess
+import sys
 from pathlib import Path
 
 import pytest
@@ -89,3 +91,32 @@ def test_python_m_aero_kernel_importer_runs_the_command_line(
         runpy.run_module("aero_kernel.importer", run_name="__main__")
     assert exit_info.value.code == 0
     assert (out / "canon_model.json").is_file()
+
+
+def test_importing_every_runtime_module_loads_neither_the_importer_nor_yaml() -> None:
+    """Q12 at run time: also catches relative imports and ``importlib`` forms the AST scan cannot."""
+    modules: list[str] = []
+    for path in sorted(PACKAGE.rglob("*.py")):
+        relative = path.relative_to(PACKAGE).parts
+        if relative[0] in ("importer", "tests") or path.name == "__main__.py":
+            continue
+        parts = ["aero_kernel", *relative[:-1]]
+        if path.name != "__init__.py":
+            parts.append(path.stem)
+        modules.append(".".join(parts))
+    code = (
+        "import importlib, sys\n"
+        "for name in sys.argv[1:]:\n"
+        "    importlib.import_module(name)\n"
+        "print([n for n in sys.modules if n.split('.')[0] == 'yaml' "
+        "or n.startswith('aero_kernel.importer')])\n"
+    )
+    done = subprocess.run(
+        [sys.executable, "-c", code, *modules],
+        cwd=REPO_ROOT,
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+    assert done.stdout.strip() == "[]"
+    assert "aero_kernel.solvers.process" in modules  # the scan really covers subpackages

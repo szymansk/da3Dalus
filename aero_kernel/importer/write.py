@@ -5,7 +5,28 @@ import os
 import tempfile
 from pathlib import Path
 
-__all__ = ["write_outputs"]
+__all__ = ["PartialWriteError", "write_outputs"]
+
+
+class PartialWriteError(OSError):
+    """A rename failed after an earlier file had already been replaced.
+
+    Attributes:
+        written: Names of the files that now hold the new content.
+        unwritten: Names of the files that still hold the previous content.
+    """
+
+    def __init__(self, cause: OSError, written: list[str], unwritten: list[str]) -> None:
+        """Create the error.
+
+        Args:
+            cause: The failing rename.
+            written: Names of the files that were replaced.
+            unwritten: Names of the files that were not.
+        """
+        super().__init__(str(cause))
+        self.written = tuple(written)
+        self.unwritten = tuple(unwritten)
 
 
 def write_outputs(out_dir: Path, files: dict[str, str]) -> None:
@@ -21,7 +42,8 @@ def write_outputs(out_dir: Path, files: dict[str, str]) -> None:
         files: File name to text.
 
     Raises:
-        OSError: If a file cannot be written or renamed.
+        PartialWriteError: If a rename fails after another file was already replaced.
+        OSError: If a file cannot be written or the first rename fails; nothing was replaced.
     """
     out_dir.mkdir(parents=True, exist_ok=True)
     umask = os.umask(0)  # read the umask; the only way is to set it
@@ -35,7 +57,13 @@ def write_outputs(out_dir: Path, files: dict[str, str]) -> None:
                 stream.write(text.encode("utf-8"))
             os.chmod(temporary, 0o666 & ~umask)  # mkstemp makes the file private (0600)
         for name, temporary in list(pending.items()):
-            os.replace(temporary, out_dir / name)
+            try:
+                os.replace(temporary, out_dir / name)
+            except OSError as exc:
+                done = [other for other in files if other not in pending]
+                if done:
+                    raise PartialWriteError(exc, done, list(pending)) from exc
+                raise
             del pending[name]
     finally:
         for temporary in pending.values():

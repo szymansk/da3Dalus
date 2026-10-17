@@ -75,7 +75,13 @@ _FORMULA_SHAPE = {
     "cost": "string",
 }
 _FORMULA_REQUIRED = ("kind", "tool", "inputs", "outputs")
-_QUANTITY_SHAPE = {"symbol": "string", "role": "string", "type": "string", "uncertainty": "string"}
+_QUANTITY_SHAPE = {
+    "symbol": "string",
+    "role": "string",
+    "type": "string",
+    "uncertainty": "string",
+    "positive": "boolean",
+}
 _QUANTITY_REQUIRED = ("symbol", "unit", "role", "type")
 
 _FRONT_MATTER = re.compile(r"\A---[ \t]*\n(.*?)\n---[ \t]*(?:\n|\Z)", re.DOTALL)
@@ -129,6 +135,7 @@ def _shape_problem(value: object, shape: str) -> str | None:
         "string": isinstance(value, str),
         "mapping": isinstance(value, dict),
         "list": isinstance(value, list),
+        "boolean": isinstance(value, bool),
     }[shape]
     return None if ok else f"must be a {shape}, not {type(value).__name__}"
 
@@ -272,6 +279,11 @@ def _read_entries(canon_dir: Path, sub: str, parsed: ParsedCanon) -> None:
         return
     for path in sorted(directory.iterdir()):
         file = f"{sub}/{path.name}"
+        if path.is_dir() and path.suffix == ".md":
+            parsed.findings.append(
+                Finding(file=file, field="file", message="is a directory, not an entry file")
+            )
+            continue
         if path.name.startswith(".") or not path.is_file():
             continue
         if path.suffix != ".md":

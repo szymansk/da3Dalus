@@ -152,3 +152,25 @@ def test_outside_git_without_a_commit_is_a_finding(
 ) -> None:
     assert run(write_canon(tmp_path), tmp_path / "out") == 1
     assert "--source-commit" in capsys.readouterr().out
+
+
+def test_a_change_outside_the_canon_directory_does_not_matter(
+    repo: tuple[Path, Path], tmp_path: Path
+) -> None:
+    """The dirty check is scoped to the canon directory."""
+    _, root = repo
+    canon = root / "canon"
+    (root / "elsewhere.txt").write_text("untracked\n", encoding="utf-8")
+    (root / ".gitignore").write_text("ignored\n", encoding="utf-8")
+    assert run(canon, tmp_path / "out") == 0
+
+
+def test_the_dirty_finding_does_not_advertise_the_explicit_commit_as_a_way_out(
+    repo: tuple[Path, Path], tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    canon, _ = repo
+    (canon / GRAVITY).write_text(MINI_CANON[GRAVITY] + "more\n", encoding="utf-8")
+    assert run(canon, tmp_path / "out") == 1
+    printed = capsys.readouterr().out
+    assert "uncommitted" in printed
+    assert "--source-commit" not in printed
