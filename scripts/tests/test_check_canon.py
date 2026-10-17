@@ -315,3 +315,117 @@ def test_an_entry_without_front_matter_does_not_crash_the_checker(tmp_path, type
     assert check_canon.load_canon(root).quantities["speed-b"].front == {}
     msgs = _messages(_errors(root))
     assert any("speed-b" in m for m in msgs), msgs
+
+
+# --- the kept authoring checks, boundaries -----------------------------------------------------------------------
+
+
+def test_a_formula_without_the_produces_from_line_is_reported(tmp_path, typed_quantities):
+    root = _canon(tmp_path, quantities=typed_quantities)
+    path = root / "formulas" / "f.md"
+    text = path.read_text(encoding="utf-8")
+    path.write_text(text[: text.index("**Produces**")], encoding="utf-8")
+    assert _messages(_errors(root)) == ["f body: no '**Produces** … **from** …' line"]
+
+
+def test_a_constant_binding_is_not_read(tmp_path, typed_quantities):
+    front = """
+inputs: {a: speed-a, b: null}
+outputs: {v: speed-v}
+applications:
+  - id: one
+    bind: {b: {const: 3, source: x}}
+"""
+    typed_quantities["speed-b"] = _with_type({"speed-b": _quantity("speed-b")})["speed-b"]
+    root = _canon(tmp_path, front=front, quantities=typed_quantities, inputs_line=("speed-a",))
+    assert _messages(_errors(root)) == []
+
+
+def test_a_name_that_is_no_quantity_is_not_read(tmp_path, typed_quantities):
+    front = "inputs: {a: speed-a, b: not-a-quantity}\noutputs: {v: speed-v}\n"
+    typed_quantities["speed-b"] = _with_type({"speed-b": _quantity("speed-b")})["speed-b"]
+    root = _canon(tmp_path, front=front, quantities=typed_quantities, inputs_line=("speed-a",))
+    assert _messages(_errors(root)) == []
+
+
+def test_a_readme_example_for_a_quantity_compares_the_quantity_keys(tmp_path, typed_quantities):
+    typed_quantities["speed-a"] = typed_quantities["speed-a"].replace(
+        "type: scalar", "type: scalar\npositive: true"
+    )
+    root = _canon(tmp_path / "full", quantities=typed_quantities)
+    _readme_with_example(root, "speed-a", "type: scalar\npositive: true\n")
+    assert _errors(root) == []
+    root = _canon(tmp_path / "short", quantities=typed_quantities)
+    _readme_with_example(root, "speed-a", "type: scalar\n")
+    assert _messages(_errors(root)) == [
+        "README examples: speed-a: positive differs from the entry's front matter"
+    ]
+
+
+def test_a_readme_example_of_the_wrong_quantity_type_is_reported(tmp_path, typed_quantities):
+    root = _canon(tmp_path, quantities=typed_quantities)
+    _readme_with_example(root, "speed-a", "type: airplane\n")
+    assert _messages(_errors(root)) == [
+        "README examples: speed-a: type differs from the entry's front matter"
+    ]
+
+
+# --- the dimensional check ---------------------------------------------------------------------------------------
+
+
+def _dimensional_canon(tmp_path):
+    root = tmp_path / "dim"
+    (root / "quantities").mkdir(parents=True)
+    (root / "formulas").mkdir()
+    for slug, symbol, unit in (
+        ("distance", "d", "m"),
+        ("duration", "t", "s"),
+        ("speed", "V_s", "m/s"),
+        ("accel", "a", "m/s^2"),
+    ):
+        (root / "quantities" / f"{slug}.md").write_text(
+            f"---\ncanon: {slug}\nsymbol: {symbol}\nunit: {unit}\n---\n", encoding="utf-8"
+        )
+    forms = {
+        "ratio": ("speed", "V_s = d / t"),
+        "root": ("speed", "V_s = sqrt(a * d)"),
+        "qualified": ("speed", "V_s = d_max / t_clean"),
+        "named": ("distance", "d = V_s * t"),
+        "unlike": ("distance", "d = d + t"),
+        "wrong": ("speed", "V_s = d * t"),
+        "procedure": ("speed", "minimize over V:  d"),
+        "stranger": ("speed", "V_s = zz / t"),
+    }
+    for slug, (output, form) in forms.items():
+        (root / "formulas" / f"{slug}.md").write_text(
+            f"---\ncanon: {slug}\noutput: {output}\nkind: law\n---\n\n"
+            f"**Canonical form**\n\n```\n{form}\n```\n",
+            encoding="utf-8",
+        )
+    return root
+
+
+def test_the_dimensional_check_classifies_each_canonical_form(tmp_path):
+    rows = check_canon.dimensional_rows(check_canon.build_canon_json(_dimensional_canon(tmp_path)))
+    assert {f["slug"]: verdict for verdict, f, *_ in rows} == {
+        "ratio": "BALANCES",
+        "root": "BALANCES",
+        "qualified": "BALANCES",
+        "named": "BALANCES",
+        "unlike": "ADDS_UNLIKE",
+        "wrong": "MISMATCH",
+        "procedure": "PROCEDURAL",
+        "stranger": "UNKNOWN_SYMBOL",
+    }
+
+
+def test_the_dimensional_check_runs_from_an_extraction_json(tmp_path, capsys):
+    import json
+
+    root = _dimensional_canon(tmp_path)
+    extraction = tmp_path / "canon.json"
+    extraction.write_text(json.dumps(check_canon.build_canon_json(root)), encoding="utf-8")
+    assert check_canon.cli([str(extraction)]) == 0
+    out = capsys.readouterr().out
+    assert "dimensional check over 8 canonical formulas" in out
+    assert "MISMATCH" in out

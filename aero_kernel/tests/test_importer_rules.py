@@ -407,3 +407,160 @@ def test_a_formula_embedding_a_cycle_gets_no_derived_embeds_findings(tmp_path: P
     outer = MINI_CANON[OUTER].replace("variables: [aircraft-mass]", "variables: [airplane]")
     findings = shown(run(tmp_path, {**two_application_cycle(), OUTER: outer}))
     assert not any(line.startswith("formulas/outer.md") for line in findings), findings
+
+
+# --- S3 (b) amendment 3: boundaries the mutation run found ------------------------------------------------------
+
+
+@pytest.mark.parametrize("slug", ["targeting-speed", "retarget-x", "targets-mass"])
+def test_a_substring_is_not_a_target_segment(tmp_path: Path, slug: str) -> None:
+    extra = quantity(slug, "V_t", "kg", "target")
+    assert shown(run(tmp_path, {f"quantities/{slug}.md": extra})) == [
+        f"quantities/{slug}.md: canon: a quantity of role target needs a target segment in its "
+        "name (A9)"
+    ]
+
+
+def test_a_cycle_through_the_second_application_is_found(tmp_path: Path) -> None:
+    weighing = MINI_CANON[WEIGHING].replace(
+        "postconditions:", "embeds: [weigh-twice]\nvariables: [aircraft-mass]\npostconditions:"
+    )
+    twice = MINI_CANON[TWICE].replace(
+        "embeds: [weight-from-mass, weighing.clean]", "embeds: [weight-from-mass, weighing.flapped]"
+    )
+    assert shown(run(tmp_path, {WEIGHING: weighing, TWICE: twice})) == [
+        "formulas/weigh-twice.md: embeds: calc:weigh-twice.default is in its own embeds closure (a cycle)",
+        "formulas/weighing.md: embeds: calc:weighing.flapped is in its own embeds closure (a cycle)",
+    ]
+
+
+def test_a_formula_on_a_cycle_gets_no_embeds_findings_of_its_own(tmp_path: Path) -> None:
+    files = two_application_cycle()
+    files[TWICE] = (files[TWICE] or "").replace(
+        "variables: [aircraft-mass]", "variables: [airplane]"
+    )
+    assert shown(run(tmp_path, files)) == [
+        "formulas/weigh-twice.md: embeds: calc:weigh-twice.default is in its own embeds closure (a cycle)",
+        "formulas/weighing.md: embeds: calc:weighing.clean is in its own embeds closure (a cycle)",
+    ]
+
+
+def test_the_second_unread_variable_is_variables_1(tmp_path: Path) -> None:
+    result = run(
+        tmp_path,
+        mutate(TWICE, "variables: [aircraft-mass]", "variables: [aircraft-mass, airplane]"),
+    )
+    assert shown(result) == [
+        "formulas/weigh-twice.md: variables[1]: calc:airplane is read by no formula in the embeds closure"
+    ]
+
+
+def test_an_interval_formula_embedded_transitively_is_found(tmp_path: Path) -> None:
+    twice = MINI_CANON[TWICE].replace(
+        "embeds: [weight-from-mass, weighing.clean]",
+        "embeds: [weight-from-mass, weighing.clean, estimate]",
+    )
+    message = "embeds: calc:estimate has uncertainty: interval and may not be embedded"
+    assert shown(run(tmp_path, {TWICE: twice})) == [
+        f"formulas/outer.md: {message}",
+        f"formulas/weigh-twice.md: {message}",
+    ]
+
+
+def with_area_user(
+    extra_inputs: str, extra_quantities: dict[str, str | None]
+) -> dict[str, str | None]:
+    """A formula ``area-user`` reading ``wing-area`` (and what ``extra_inputs`` adds), embedded by weigh-twice."""
+    user = formula(
+        "area-user",
+        f"kind: law\ntool: APP\ninputs: {{s: wing-area{extra_inputs}}}\noutputs: {{a: area-result}}\n",
+    )
+    twice = MINI_CANON[TWICE].replace(
+        "embeds: [weight-from-mass, weighing.clean]",
+        "embeds: [weight-from-mass, weighing.clean, area-user]",
+    )
+    return {
+        "quantities/wing-area.md": quantity("wing-area", "S", "m^2", "input"),
+        "quantities/area-result.md": quantity("area-result", "A", "m^2", "derived"),
+        "formulas/area-user.md": user,
+        TWICE: twice,
+        **extra_quantities,
+    }
+
+
+def test_several_missing_embedded_inputs_are_all_reported_in_order(tmp_path: Path) -> None:
+    files = with_area_user(
+        ", t: wing-span", {"quantities/wing-span.md": quantity("wing-span", "b", "m", "input")}
+    )
+    sentence = "of embedded calc:area-user.default is neither a variable of calc:{who}, an input of it, nor produced inside the closure"
+    assert shown(run(tmp_path, files)) == [
+        f"formulas/outer.md: embeds: input calc:wing-area {sentence.format(who='outer')}",
+        f"formulas/outer.md: embeds: input calc:wing-span {sentence.format(who='outer')}",
+        f"formulas/weigh-twice.md: embeds: input calc:wing-area {sentence.format(who='weigh-twice')}",
+        f"formulas/weigh-twice.md: embeds: input calc:wing-span {sentence.format(who='weigh-twice')}",
+    ]
+
+
+def test_the_second_application_of_the_embedder_may_bind_the_embedded_input(tmp_path: Path) -> None:
+    host = formula(
+        "host",
+        "kind: law\ntool: APP\ninputs: {s: null, t: wing-span}\noutputs: {a: null}\n"
+        "applications:\n  - id: first\n    bind: {s: ref-area}\n    produce: {a: host-result}\n"
+        "  - id: second\n    bind: {s: wing-area}\n    produce: {a: host-result-b}\n"
+        "embeds: [area-user]\nvariables: [wing-span]\n",
+    )
+    files = with_area_user(
+        ", t: wing-span",
+        {
+            "quantities/wing-span.md": quantity("wing-span", "b", "m", "input"),
+            "quantities/ref-area.md": quantity("ref-area", "S_r", "m^2", "input"),
+            "quantities/host-result.md": quantity("host-result", "H", "m^2", "derived"),
+            "quantities/host-result-b.md": quantity("host-result-b", "H_b", "m^2", "derived"),
+            "formulas/host.md": host,
+        },
+    )
+    files[TWICE] = MINI_CANON[TWICE]  # only host embeds area-user here
+    files[OUTER] = MINI_CANON[OUTER]
+    assert shown(run(tmp_path, files)) == []
+
+
+def test_two_applications_of_one_interval_formula_give_one_finding(tmp_path: Path) -> None:
+    """The final de-duplication is reachable: both embeds produce the identical message."""
+    estimate = MINI_CANON[ESTIMATE].replace(
+        "outputs: {w: weight-estimate}\n",
+        "outputs: {w: null}\napplications:\n  - id: a\n    produce: {w: weight-estimate}\n"
+        "  - id: b\n    produce: {w: weight-estimate-b}\n",
+    )
+    outer = MINI_CANON[OUTER].replace(
+        "embeds: [weigh-twice]", "embeds: [weigh-twice, estimate.a, estimate.b]"
+    )
+    files = {
+        ESTIMATE: estimate,
+        OUTER: outer,
+        "quantities/weight-estimate-b.md": quantity("weight-estimate-b", "W_eb", "N", "derived"),
+    }
+    assert shown(run(tmp_path, files)) == [
+        "formulas/outer.md: embeds: calc:estimate has uncertainty: interval and may not be embedded"
+    ]
+
+
+def test_findings_of_two_rules_in_one_file_are_ordered_by_field(tmp_path: Path) -> None:
+    """A7 (produce) is found before A4 (bind), but the output is sorted by field."""
+    area = quantity("wing-area", "S", "m^2", "input")
+    text = (
+        MINI_CANON[WEIGHING]
+        .replace("    given: [aircraft-mass]\n", "")
+        .replace("produce: {w: weight-flapped}", "produce: {w: weight-weighed}")
+        .replace(
+            "bind: {g: {const: 9.81, source: test source}}",
+            "bind: {g: {const: 9.81, source: test source}, m: wing-area}",
+        )
+    )
+    assert shown(run(tmp_path, {"quantities/wing-area.md": area, WEIGHING: text})) == [
+        "formulas/weighing.md: applications[1].bind.m: parameter m is calc:wing-area (m^2) here but "
+        "calc:aircraft-mass (kg) in application clean (A4)",
+        "formulas/weighing.md: applications[1].produce.w: quantity calc:weight-weighed is already "
+        "produced by calc:weighing.clean (A7)",
+        "quantities/weight-flapped.md: role: quantity calc:weight-flapped has role derived but no "
+        "formula produces it",
+    ]
