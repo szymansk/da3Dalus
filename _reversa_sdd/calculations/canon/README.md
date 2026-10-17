@@ -424,7 +424,7 @@ value means something stated, and there is no warning; (3) the value **is needed
 value, `missing_input`.
 
 **`given`** — an application that exists only when the caller supplies certain values lists them:
-`given: [<slug>, …]`. Each slug has role `input` or `target`, has no `default`, and is bound by that
+`given: [<slug>, …]`. Each slug has role `input` or `target`, has no default in `defaults.yaml`, and is bound by that
 application. The application exists only if all of them are supplied; otherwise it is not computed —
 not computed differently. `when` speaks about the geometry, `given` about what was supplied.
 
@@ -458,8 +458,21 @@ stay. Added:
 | field | required | what it holds |
 |---|---|---|
 | `type` | always | the kind of value, from the closed set below |
-| `default` | only where the canon states a value with its source | `{value: <value>, source: "<citation>"}` |
-| `positive` | optional, only on `type: scalar` with role `input` or `target` (positivity is a property of a number) | `true` when the quantity is strictly greater than zero **by its definition**; omit otherwise (`false` is an error — one spelling). A `default` on such a quantity must be > 0 (a mass, a density, gravity) — a fact about the quantity, not a design judgement (A10). A supplied value ≤ 0 is rejected. Not set where zero or a negative value is meaningful (angles, deflections, altitude, a speed that may be 0). Example: `aircraft-mass` carries `positive: true` |
+| `positive` | optional, only on `type: scalar` with role `input` or `target` (positivity is a property of a number) | `true` when the quantity is strictly greater than zero **by its definition**; omit otherwise (`false` is an error — one spelling). A default of such a quantity (`defaults.yaml`) must be > 0 (a mass, a density, gravity) — a fact about the quantity, not a design judgement (A10). A supplied value ≤ 0 is rejected. Not set where zero or a negative value is meaningful (angles, deflections, altitude, a speed that may be 0). Example: `aircraft-mass` carries `positive: true` |
+
+#### Defaults — `defaults.yaml`
+
+Defaults do not live in the quantity entries. They live in one file, `defaults.yaml` in the canon root,
+as a mapping `<slug>: {value, unit, source, regime}` (maintainer, 2026-10-17, #1174):
+
+- `value` — in the quantity's canon unit;
+- `unit` — that unit, repeated so the file reads on its own;
+- `source` — the citation;
+- `regime` — the ADR 0028 check of why the value holds for RC/UAV (chord Re 3·10⁴–1·10⁶, Mach ≤ 0.3,
+  no wheel brakes), or `regime-independent`.
+
+Only a value the canon states with its source gets an entry. Taking a default is visible
+(INFO, `provenance.defaults_used`).
 
 #### Quantity types
 
@@ -632,7 +645,7 @@ outputs: {cd0: zero-lift-drag-coefficient, e_osw: oswald-efficiency}
 ```
 
 A **rating** with three applications of one formula (`speed-from-stall-margin`); each binds its
-margin `k_S` to a target quantity whose `default` carries the source (a constant would be written
+margin `k_S` to a target quantity whose default in `defaults.yaml` carries the source (a constant would be written
 `k_s: {const: <value>, source: "<citation>"}`):
 
 ```yaml
@@ -653,7 +666,7 @@ applications:
     produce: {v: takeoff-speed}
 ```
 
-A **quantity** with a stated default (`sea-level-air-density`):
+A **quantity** (`sea-level-air-density`) — its default is in `defaults.yaml`:
 
 ```yaml
 kind: quantity
@@ -662,7 +675,6 @@ unit: kg/m^3
 role: input
 type: scalar
 positive: true
-default: {value: 1.225, source: "U.S. Standard Atmosphere 1976 (NOAA-S/T 76-1562), sea-level density; cited in formulas/air-density-isa"}
 ```
 
 ### What `check_canon.py` checks
@@ -676,7 +688,7 @@ default: {value: 1.225, source: "U.S. Standard Atmosphere 1976 (NOAA-S/T 76-1562
 - every quantity's **Used by** / **Produced by** line names exactly the formulas that read / write it;
 - every application binds every input and produces every output — to a quantity or explicitly to
   `null` (open, not an error, when an `# ESCALATED:` reason names the parameter); `bind` / `produce` keys are parameters; constants carry a source; `when`
-  terms are in the vocabulary above; `given` slugs exist, are inputs or targets without a default, and
+  terms are in the vocabulary above; `given` slugs exist, are inputs or targets without a default in `defaults.yaml`, and
   are bound by their application;
 - preconditions name an input parameter, postconditions an output parameter; both say `warning` or
   `error`, and their `applications` name existing application ids of that formula; `worlds` exist exactly with
@@ -685,11 +697,14 @@ default: {value: 1.225, source: "U.S. Standard Atmosphere 1976 (NOAA-S/T 76-1562
   applications is named per application; the closure is acyclic, holds no formula with
   `uncertainty: interval`, and satisfies the input rule; `variables` is present with `embeds` and only
   there, and every variable is read somewhere in the closure; a scalar input or target without a default
-  that the closure binds through an embedder input but `variables` does not list is reported as an open
+  in `defaults.yaml` that the closure binds through an embedder input but `variables` does not list is reported as an open
   warning (it may be swept or solved), never as an error; `optional` names input parameters;
-- every quantity has a `role` from the closed set and a `type` from the set above; a `default` carries a source; `positive` is `true`
-  (never `false`), only on `type: scalar` with role `input` or `target`, and a default of a positive
-  quantity is > 0;
+- every quantity has a `role` from the closed set and a `type` from the set above, and no `default:`
+  in its front matter; `positive` is `true` (never `false`), only on `type: scalar` with role `input`
+  or `target`, and its default in `defaults.yaml`, if any, is a number > 0;
+- every `defaults.yaml` entry names an existing quantity with role `input` or `target`, carries
+  non-empty `value`, `unit`, `source` and `regime`, repeats the quantity's unit, and no slug appears
+  twice;
 - no plain key or value is a YAML 1.1 boolean; an `# ESCALATED:` comment states its reason;
 - every example above equals the front matter of the entry it names, so the examples cannot drift;
 - every entry's `canon` slug equals its file name, and no two entries share a slug.

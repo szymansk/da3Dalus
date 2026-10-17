@@ -138,6 +138,16 @@ def _findings(root):
     return check_canon.check_structure(check_canon.load_canon(root))
 
 
+def _defaults(root, text):
+    """Write the canon's defaults.yaml (#1174: defaults live there, not in the entries)."""
+    (root / "defaults.yaml").write_text(text, encoding="utf-8")
+    return root
+
+
+def _default_entry(slug, value="1.0", unit="m/s", source='"x"', regime='"regime-independent"'):
+    return f"{slug}:\n  value: {value}\n  unit: {unit}\n  source: {source}\n  regime: {regime}\n"
+
+
 def _errors(root):
     return [f for f in _findings(root) if not f.open]
 
@@ -383,11 +393,10 @@ def test_given_slug_must_be_an_input_or_target(tmp_path, typed_quantities):
 
 def test_given_slug_must_have_no_default(tmp_path, typed_quantities):
     quantities = _as_target(typed_quantities, "speed-b")
-    quantities["speed-b"] = quantities["speed-b"].replace(
-        "type: scalar", 'type: scalar\ndefault: {value: 1.0, source: "x"}'
-    )
-    msgs = _messages(_errors(_canon(tmp_path, front=GIVEN_FRONT, quantities=quantities)))
-    assert any("given" in m and "default" in m for m in msgs), msgs
+    root = _canon(tmp_path, front=GIVEN_FRONT, quantities=quantities)
+    _defaults(root, _default_entry("speed-b"))
+    msgs = _messages(_errors(root))
+    assert any("given 'speed-b' has a default" in m for m in msgs), msgs
 
 
 def test_given_slug_must_be_bound_by_the_application(tmp_path, typed_quantities):
@@ -813,19 +822,75 @@ def test_quantity_type_outside_the_set_is_reported(tmp_path, typed_quantities):
     assert any("tensor" in m for m in msgs), msgs
 
 
-def test_quantity_default_needs_a_source(tmp_path, typed_quantities):
-    typed_quantities["speed-a"] = typed_quantities["speed-a"].replace(
-        "type: scalar", "type: scalar\ndefault: {value: 1.225}"
+def _input_a(typed_quantities):
+    return _set(typed_quantities, "speed-a", "role: derived", "role: input")
+
+
+def test_defaults_are_loaded_from_defaults_yaml(tmp_path, typed_quantities):
+    root = _defaults(
+        _canon(tmp_path, quantities=_input_a(typed_quantities)), _default_entry("speed-a")
     )
-    msgs = _messages(_errors(_canon(tmp_path, quantities=typed_quantities)))
-    assert any("speed-a default" in m for m in msgs), msgs
+    assert check_canon.load_canon(root).defaults["speed-a"]["value"] == 1.0
 
 
-def test_quantity_default_with_a_source_is_accepted(tmp_path, typed_quantities):
+def test_a_complete_default_is_accepted(tmp_path, typed_quantities):
+    root = _defaults(
+        _canon(tmp_path, quantities=_input_a(typed_quantities)), _default_entry("speed-a")
+    )
+    assert _findings(root) == []
+
+
+def test_quantity_default_needs_a_source(tmp_path, typed_quantities):
+    root = _canon(tmp_path, quantities=_input_a(typed_quantities))
+    _defaults(root, _default_entry("speed-a", source='""'))
+    msgs = _messages(_errors(root))
+    assert any("speed-a default: 'source' is missing or empty" in m for m in msgs), msgs
+
+
+def test_a_default_without_a_regime_is_reported(tmp_path, typed_quantities):
+    root = _canon(tmp_path, quantities=_input_a(typed_quantities))
+    _defaults(root, "speed-a:\n  value: 1.0\n  unit: m/s\n  source: x\n")
+    msgs = _messages(_errors(root))
+    assert any("speed-a default: 'regime' is missing or empty" in m for m in msgs), msgs
+
+
+def test_a_default_for_an_unknown_quantity_is_reported(tmp_path, typed_quantities):
+    root = _defaults(_canon(tmp_path, quantities=typed_quantities), _default_entry("no-such"))
+    msgs = _messages(_errors(root))
+    assert any("defaults.yaml default: unknown quantity 'no-such'" in m for m in msgs), msgs
+
+
+def test_a_default_on_a_derived_quantity_is_reported(tmp_path, typed_quantities):
+    root = _defaults(_canon(tmp_path, quantities=typed_quantities), _default_entry("speed-v"))
+    msgs = _messages(_errors(root))
+    assert any("speed-v default: only a quantity with role input or target" in m for m in msgs), (
+        msgs
+    )
+
+
+def test_a_default_in_another_unit_is_reported(tmp_path, typed_quantities):
+    root = _canon(tmp_path, quantities=_input_a(typed_quantities))
+    _defaults(root, _default_entry("speed-a", unit="km/h"))
+    msgs = _messages(_errors(root))
+    assert any(
+        "speed-a default: unit 'km/h' is not the quantity's unit 'm/s'" in m for m in msgs
+    ), msgs
+
+
+def test_a_duplicate_slug_in_defaults_yaml_is_reported(tmp_path, typed_quantities):
+    root = _canon(tmp_path, quantities=_input_a(typed_quantities))
+    _defaults(root, _default_entry("speed-a") + _default_entry("speed-a"))
+    msgs = _messages(_errors(root))
+    assert any("defaults.yaml default: duplicate slug 'speed-a'" in m for m in msgs), msgs
+
+
+def test_a_default_in_the_front_matter_is_reported(tmp_path, typed_quantities):
+    """Defaults moved to defaults.yaml (#1174); a front-matter `default:` may not come back."""
     typed_quantities["speed-a"] = typed_quantities["speed-a"].replace(
         "type: scalar", 'type: scalar\ndefault: {value: 1.225, source: "ISA"}'
     )
-    assert _findings(_canon(tmp_path, quantities=typed_quantities)) == []
+    msgs = _messages(_errors(_canon(tmp_path, quantities=typed_quantities)))
+    assert any("speed-a default: belongs in defaults.yaml" in m for m in msgs), msgs
 
 
 # --- quantity field `positive` ------------------------------------------------------------------
@@ -861,13 +926,9 @@ def test_positive_false_is_reported(tmp_path, typed_quantities):
 
 
 def test_a_positive_quantity_with_a_non_positive_default_is_reported(tmp_path, typed_quantities):
-    q = _set(
-        typed_quantities,
-        "speed-a",
-        "role: derived",
-        'role: input\npositive: true\ndefault: {value: 0, source: "x"}',
-    )
-    msgs = _messages(_errors(_canon(tmp_path, quantities=q)))
+    q = _set(typed_quantities, "speed-a", "role: derived", "role: input\npositive: true")
+    root = _defaults(_canon(tmp_path, quantities=q), _default_entry("speed-a", value="0"))
+    msgs = _messages(_errors(root))
     assert any("speed-a default" in m and "> 0" in m for m in msgs), msgs
 
 
@@ -1012,13 +1073,9 @@ def test_an_unknown_role_is_reported(tmp_path, typed_quantities):
 
 
 def test_a_positive_quantity_with_a_non_numeric_default_is_reported(tmp_path, typed_quantities):
-    q = _set(
-        typed_quantities,
-        "speed-a",
-        "role: derived",
-        'role: input\npositive: true\ndefault: {value: "-9.8", source: "x"}',
-    )
-    msgs = _messages(_errors(_canon(tmp_path, quantities=q)))
+    q = _set(typed_quantities, "speed-a", "role: derived", "role: input\npositive: true")
+    root = _defaults(_canon(tmp_path, quantities=q), _default_entry("speed-a", value='"-9.8"'))
+    msgs = _messages(_errors(root))
     assert any("speed-a default" in m and "number" in m for m in msgs), msgs
 
 

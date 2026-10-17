@@ -10,7 +10,6 @@ tags:
   - role/target
 type: scalar
 positive: true
-default: {value: 1.1, source: "Sadraey, Aircraft Design (2013), §4.3.4: V_TO = 1.1–1.3 V_s (lower edge)"}
 ---
 
 # Take-off-speed margin target · `k_S,TO`

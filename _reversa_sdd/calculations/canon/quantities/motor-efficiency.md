@@ -10,7 +10,6 @@ tags:
   - role/input
 type: scalar
 positive: true
-default: {value: 0.75, source: "Roxxy Motoren-Fibel, Ch. 3: efficiency band 75–85 %; the lower bound, because route A applies it at P_max, above the peak-efficiency point"}
 ---
 
 # Motor efficiency · `eta_mot`

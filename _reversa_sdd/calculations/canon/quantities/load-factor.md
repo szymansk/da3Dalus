@@ -9,7 +9,6 @@ tags:
   - canon/quantity
   - role/input
 type: scalar
-default: {value: 1, source: "definition of the load factor n = L/W (as stated in max-mass-structure); straight level flight means L = W"}
 ---
 
 # Load factor · `n`

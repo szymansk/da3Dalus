@@ -76,13 +76,14 @@ configuration:
 
 **The factors are targets with sourced defaults** (maintainer, 2026-10-14): approach 1.3 — CS 25.125
 is the transport-category regulation, carried to RC by Lennon (Ch. 20, FAR 23 reasoning scaled);
-touchdown 1.2 — Lennon's 20 % safety margin (Ch. 4, Ch. 14); take-off 1.1 — Sadraey §4.3.4,
+touchdown 1.1 — the physical touchdown after the flare, Sadraey §4.3.2 (1.1–1.3 V_s) and §9.3.10 (maintainer, 2026-10-17; defaults in `defaults.yaml`); take-off 1.1 — Sadraey §4.3.4,
 `V_TO = 1.1–1.3·V_s`, the lower edge. (Corrected 2026-10-14: an earlier note gave a landing band "1.2–1.25"; no source
 gives 1.25, and "1.3 from regulation" is the transport-category CS 25.125, not an RC rule.) The
 designer may override each. **Physical meaning:** at `k·V_S` the load-factor margin to the stall is
-`n = k²` — 1.1 → 1.21, 1.2 → 1.44, 1.3 → 1.69. **The touchdown sources disagree:** Lennon flies the
-touchdown at 1.2·V_S, RC-Network (*Abfangen*) touches down at about the minimum speed after the
-flare. The canon states both and judges neither (A10).
+`n = k²` — 1.1 → 1.21, 1.2 → 1.44, 1.3 → 1.69. **The touchdown sources disagreed:** Lennon flies the
+touchdown at 1.2·V_S (a landing speed with a safety margin), RC-Network (*Abfangen*) touches down at
+about the minimum speed after the flare. The maintainer chose the physical touchdown, 1.1
+(2026-10-17); Lennon's margin is the approach's.
 
 **The cruise-speed floor is gone.** It came only from the two climb bindings
 (`max(1.35·V_S1, 0.85·V_cruise)`, `max(1.50·V_S1, 0.95·V_cruise)`), and the source note

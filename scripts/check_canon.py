@@ -291,7 +291,9 @@ EXAMPLE_KEYS_FORMULA = (
     "worlds",
     "cost",
 )
-EXAMPLE_KEYS_QUANTITY = ("type", "default", "uncertainty", "positive")
+EXAMPLE_KEYS_QUANTITY = ("type", "uncertainty", "positive")
+#: the fields of a defaults.yaml entry (#1174)
+DEFAULT_KEYS = ("value", "unit", "source", "regime")
 
 
 @dataclasses.dataclass(frozen=True)
@@ -321,6 +323,8 @@ class Canon:
     examples: list = dataclasses.field(default_factory=list)
     #: (file, message) problems found while reading the entries: duplicate or misnamed slugs
     load_errors: list = dataclasses.field(default_factory=list)
+    #: defaults.yaml: slug -> {value, unit, source, regime}
+    defaults: dict = dataclasses.field(default_factory=dict)
 
 
 @dataclasses.dataclass(frozen=True)
@@ -388,6 +392,14 @@ def load_canon(canon_dir: pathlib.Path) -> Canon:
 
     formulas = read_all("formulas")
     quantities = read_all("quantities")
+    defaults: dict = {}
+    if (root / "defaults.yaml").exists():
+        text = (root / "defaults.yaml").read_text(encoding="utf-8")
+        node = yaml.compose(text)
+        seen = [k.value for k, _ in node.value] if isinstance(node, yaml.MappingNode) else []
+        for slug in sorted({s for s in seen if seen.count(s) > 1}):
+            load_errors.append(("defaults.yaml", f"duplicate slug {slug!r}"))
+        defaults = yaml.safe_load(text) or {}
     return Canon(
         formulas=formulas,
         quantities=quantities,
@@ -395,6 +407,7 @@ def load_canon(canon_dir: pathlib.Path) -> Canon:
         types=_table_terms(readme, "Quantity types"),
         examples=_readme_examples(readme),
         load_errors=load_errors,
+        defaults=defaults,
     )
 
 
@@ -532,7 +545,7 @@ def _check_formula(e: Entry, canon: Canon, add, gap) -> tuple[set[str], set[str]
                     f"{where}: given {slug!r} has role "
                     f"{q[slug].front.get('role')!r}, not input or target",
                 )
-            if q[slug].front.get("default") is not None:
+            if slug in canon.defaults:
                 add(e.slug, "applications", f"{where}: given {slug!r} has a default")
             if slug not in bound:
                 add(e.slug, "applications", f"{where}: given {slug!r} is not bound by it")
@@ -775,7 +788,7 @@ def _check_embeds(
             if (
                 qf.get("type") == "scalar"
                 and qf.get("role") in ("input", "target")
-                and qf.get("default") is None
+                and qslug not in canon.defaults
             ):
                 warn(
                     slug,
@@ -847,7 +860,24 @@ def check_structure(canon: Canon) -> list[Finding]:
                 add("README", "examples", f"{slug}: {key} differs from the entry's front matter")
 
     for file, message in canon.load_errors:
-        add(file, "canon", message)
+        add(file, "default" if file == "defaults.yaml" else "canon", message)
+    for slug, d in canon.defaults.items():
+        qe = canon.quantities.get(slug)
+        if qe is None:
+            add("defaults.yaml", "default", f"unknown quantity {slug!r}")
+            continue
+        if qe.front.get("role") not in ("input", "target"):
+            add(slug, "default", "only a quantity with role input or target has a default")
+        d = d if isinstance(d, dict) else {}
+        for key in DEFAULT_KEYS:
+            if d.get(key) is None or str(d[key]).strip() == "":
+                add(slug, "default", f"{key!r} is missing or empty")
+        if d.get("unit") is not None and str(d["unit"]) != str(qe.front.get("unit")):
+            add(
+                slug,
+                "default",
+                f"unit {d['unit']!r} is not the quantity's unit {str(qe.front.get('unit'))!r}",
+            )
 
     for slug, e in canon.quantities.items():
         if e.front.get("role") not in ROLES:
@@ -865,7 +895,7 @@ def check_structure(canon: Canon) -> list[Finding]:
                     "allowed only on type scalar: positivity is a property of a number",
                 )
             else:
-                d = e.front.get("default")
+                d = canon.defaults.get(slug)
                 value = d.get("value") if isinstance(d, dict) else None
                 is_number = isinstance(value, int | float) and not isinstance(value, bool)
                 if d is not None and not is_number:
@@ -884,12 +914,8 @@ def check_structure(canon: Canon) -> list[Finding]:
             add(slug, "type", "missing")
         elif t not in canon.types:
             add(slug, "type", f"{t!r} is not in the type set of the README")
-        if "default" in e.front and e.front["default"] is not None:
-            d = e.front["default"]
-            if not isinstance(d, dict) or set(d) != {"value", "source"}:
-                add(slug, "default", f"must be {{value, source}}: {d!r}")
-            elif not isinstance(d["source"], str) or not d["source"].strip():
-                add(slug, "default", "has no source")
+        if "default" in e.front:
+            add(slug, "default", "belongs in defaults.yaml, not in the front matter (#1174)")
         for label, field, actual in (
             ("Used by.", "used_by", used_by[slug]),
             ("Produced by.", "produced_by", produced_by[slug]),

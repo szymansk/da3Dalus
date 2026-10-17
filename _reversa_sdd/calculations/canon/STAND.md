@@ -579,3 +579,6 @@ Maintainer; `check_canon.py` meldet es als *open*.
 
 
 **S15 und D10 (Maintainer, 17.10.2026, #1174):** Neuer Typ und neue Eingangsgröße `components` (Dokument der eingebauten Komponenten: Motor, Akku, Propeller mit APC-Tabelle; keine Vorgabe); `airplane` ist nur noch Geometrie. `airplane-components`, `propeller-table-lookup` und `motor-propeller-equilibrium` lesen `components` statt `airplane` (letzteres nutzt keine Geometrie); die acht Einbettenden lesen zusätzlich `components`. D10: `has_separate_flap_and_aileron` = reine Klappe (`flap`) und querruderwirkende Fläche (`aileron`/`elevon`), Flaperons zählen nicht — „Man hat entweder Flaperons oder Ailerons und Flaps.“
+
+**Defaults nach `defaults.yaml` (#1174 S5, Maintainer 17.10.2026):** die sieben `default:`-Felder stehen jetzt in `defaults.yaml` als `{value, unit, source, regime}`; `check_canon.py` liest die Datei und lehnt `default:` im Frontmatter ab. Aufsetzreserve 1,1 (physisches Aufsetzen nach dem Abfangen; Sadraey §4.3.2, §9.3.10); Lennons 1,2 ist eine Landegeschwindigkeit mit Sicherheitsreserve, die der Anflug mit 1,3 abdeckt.
+
