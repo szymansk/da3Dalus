@@ -13,14 +13,14 @@ from pathlib import Path
 from aero_kernel.canon.model import SOURCE_COMMIT_REGEX
 from aero_kernel.importer.findings import Finding
 
-__all__ = ["commit_format_finding", "resolve_source"]
+__all__ = ["COMMIT_PATTERN", "commit_format_finding", "resolve_source"]
 
-_COMMIT = re.compile(SOURCE_COMMIT_REGEX)
+COMMIT_PATTERN = re.compile(SOURCE_COMMIT_REGEX)
 
 
 def commit_format_finding(commit: str) -> Finding | None:
     """Return the finding for a commit that is not 40 lower-case hex digits, or ``None``."""
-    if _COMMIT.fullmatch(commit) is not None:
+    if COMMIT_PATTERN.fullmatch(commit) is not None:
         return None
     return Finding(
         file="command line",

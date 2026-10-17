@@ -893,3 +893,121 @@ def test_a_comment_line_between_does_not_mislead_the_slug(tmp_path: Path) -> Non
     assert shown(run(tmp_path, {"defaults.yaml": text})) == [
         "defaults.yaml: gravity.value: duplicate key 'value' (line 9)"
     ]
+
+
+# --- S3 amendment 5: what the merged-copy suppression must keep, and the one-home test --------------------------
+
+NO_GIVEN = "    given: [aircraft-mass]\n"
+
+
+def weighing_without_given(old: str, new: str) -> str:
+    """The mini weighing formula without its ``given``, with ``old`` replaced by ``new``."""
+    text = MINI_CANON[WEIGHING].replace(NO_GIVEN, "")
+    assert old in text
+    return text.replace(old, new, 1)
+
+
+def test_a_faulty_default_of_another_formula_does_not_suppress_my_override(tmp_path: Path) -> None:
+    """N1: the suppression key carries the formula slug."""
+    other = mutate(
+        FROM_MASS, "inputs: {m: aircraft-mass, g: gravity}", "inputs: {m: nothing, g: gravity}"
+    )
+    mine = weighing_without_given("  - id: clean\n", "  - id: clean\n    bind: {m: nothing}\n")
+    result = run(tmp_path, {**other, WEIGHING: mine})
+    assert sorted(shown(result)) == sorted(
+        [
+            f"{FROM_MASS}: inputs.m: unknown quantity calc:nothing",
+            f"{WEIGHING}: applications[0].bind.m: unknown quantity calc:nothing",
+        ]
+    )
+
+
+def test_an_override_of_another_parameter_is_reported_next_to_the_faulty_default(
+    tmp_path: Path,
+) -> None:
+    """N2: the parameter is part of the suppression key."""
+    text = weighing_without_given(
+        "inputs: {m: aircraft-mass, g: gravity}", "inputs: {m: nothing, g: gravity}"
+    ).replace("  - id: clean\n", "  - id: clean\n    bind: {g: nothing}\n")
+    assert shown(run(tmp_path, {WEIGHING: text})) == [
+        f"{WEIGHING}: inputs.m: unknown quantity calc:nothing",
+        f"{WEIGHING}: applications[0].bind.g: unknown quantity calc:nothing",
+    ]
+
+
+def test_an_override_with_another_unknown_quantity_is_reported_next_to_the_default(
+    tmp_path: Path,
+) -> None:
+    """N3: the text of the problem is part of the suppression key."""
+    text = weighing_without_given(
+        "inputs: {m: aircraft-mass, g: gravity}", "inputs: {m: nothing, g: gravity}"
+    ).replace("  - id: clean\n", "  - id: clean\n    bind: {m: ghost}\n")
+    assert shown(run(tmp_path, {WEIGHING: text})) == [
+        f"{WEIGHING}: inputs.m: unknown quantity calc:nothing",
+        f"{WEIGHING}: applications[0].bind.m: unknown quantity calc:ghost",
+    ]
+
+
+def test_a_parameter_name_error_keeps_its_key_marker_in_the_field(tmp_path: Path) -> None:
+    """N7: ``.[key]`` is how a bad dictionary key is located."""
+    text = MINI_CANON[WEIGHING].replace(
+        "bind: {g: {const: 9.81, source: test source}}",
+        "bind: {g: {const: 9.81, source: test source}, Mass: x}",
+    )
+    (first, *rest) = shown(run(tmp_path, {WEIGHING: text}))
+    assert first.startswith(
+        f"{WEIGHING}: applications[1].bind.Mass.[key]: String should match pattern"
+    )
+    assert first.endswith("(got 'Mass')")
+    assert all("Mass" not in other for other in rest) or rest == []
+
+
+def test_a_parameter_called_const_is_not_mistaken_for_the_constant_tag(tmp_path: Path) -> None:
+    """N8: only the tag position is stripped, whatever the parameter is called."""
+    text = (
+        MINI_CANON[FROM_MASS]
+        .replace(
+            "inputs: {m: aircraft-mass, g: gravity}",
+            "inputs: {m: aircraft-mass, g: gravity, const: gravity}",
+        )
+        .replace(
+            "preconditions:", "applications:\n  - id: only\n    bind: {const: 7}\npreconditions:"
+        )
+    )
+    assert shown(run(tmp_path, {FROM_MASS: text})) == [
+        f"{FROM_MASS}: applications[0].bind.const: Input should be a valid string (got 7)"
+    ]
+
+
+def test_the_commit_format_is_defined_once_structurally() -> None:
+    """N5: the importer reuses the model's pattern object; no module compiles its own 40-hex."""
+    import ast
+
+    from aero_kernel.canon import model
+    from aero_kernel.importer import pipeline, source
+
+    assert source.COMMIT_PATTERN.pattern is model.SOURCE_COMMIT_REGEX
+    field = model.CanonModel.model_fields["source_commit"]
+    assert any(
+        getattr(meta, "pattern", None) == f"^{model.SOURCE_COMMIT_REGEX}$"
+        for meta in field.metadata
+    )
+    for module in (source, pipeline):
+        assert module.__file__ is not None
+        tree = ast.parse(Path(module.__file__).read_text(encoding="utf-8"))
+        for node in ast.walk(tree):
+            if isinstance(node, ast.Constant) and isinstance(node.value, str):
+                assert not re.search(r"\{\s*40\s*\}|\{40,|\{0,40", node.value), (
+                    f"{module.__name__} writes its own 40-character pattern: {node.value!r}"
+                )
+            if (
+                isinstance(node, ast.Call)
+                and isinstance(node.func, ast.Attribute)
+                and node.func.attr in ("compile", "match", "fullmatch", "search")
+                and isinstance(node.func.value, ast.Name)
+                and node.func.value.id == "re"
+            ):
+                first = node.args[0] if node.args else None
+                assert not isinstance(first, ast.Constant), (
+                    f"{module.__name__} calls re.{node.func.attr} with a literal pattern"
+                )
