@@ -131,7 +131,7 @@ aero_kernel/
   api.py            async compute(aircraft, request) — the stateless interface
   build.py          the internal Build (shipped model + digest + checked registry), loaded once on first use
   cached.py         CachedKernel — the cached facade (owns cache, in-flight deduplication, resources)
-  engine.py         walks the graph; takes an optional NodeStore (none = stateless)
+  engine.py         walks the graph; takes an optional MemoryCache (none = stateless)
   runtime.py        executor, concurrency limit, cancellation
   geometry.py       AirplaneGeometry and its sub-models (format mirror, mm → m at parse, ch. 8.11)
   schema.py         AircraftInput, ComputeRequest, ComputeResult, QuantityResult, Polar, KernelWarning,
@@ -147,7 +147,7 @@ aero_kernel/
   registry.py       @formula(slug), @precondition(slug, id), @postcondition(slug, id) — implementations ↔ canon model (ch. 8.12)
   formulas/         one file per canon formula (file name = slug, with underscores)
   solvers/          aerobuildup.py · avl.py · opti.py · atmosphere.py
-  cache.py          NodeStore protocol; MemoryCache (LRU), DiskCache
+  cache.py          MemoryCache (LRU), Entry, cache_key, build_digest
   validate.py       physical admissibility of the input and `values` against the canon (ch. 8.11)
   canonical.py      canonical JSON and the SHA-256 helper, shared by the canon model hash and the cache keys
   errors.py         error catalogue (ch. 8.1): `ErrorCategory`, `KernelError`, the closed code table
@@ -324,7 +324,7 @@ No internal paths or mechanisms in any field (ADR 0019).
 - `defaults_used`: every canon default the call took, as `{slug, value, unit, source}` (ch. 8.11)
 
 **Cache key** = SHA-256 over the canonical JSON of:
-- the scope (see below), the application id and the world assignment
+- the application id and the world assignment
 - the **direct input values** of the node: the values bound to its parameters, i.e. the outputs of its
   predecessors or the caller's input values. A node's key thus changes exactly when something in its
   subtree changes value (A1), without tracking leaf inputs.
@@ -372,7 +372,7 @@ need not be hashable.
   still ours, never passed in by the caller.
 - **`compute(aircraft, request)`, stateless.** A pure function. It keeps nothing between calls: no
   cache and no deduplication. Two calls with the same input compute twice.
-- **`CachedKernel`, stateful facade.** An object that owns a `NodeStore` (`MemoryCache` or `DiskCache`) and
+- **`CachedKernel`, stateful facade.** An object that owns a `MemoryCache` and
   the in-flight deduplication.
   - Its `compute()` has the same signature and the same result type.
   - It delegates to the same engine and passes in its store.
@@ -385,48 +385,18 @@ need not be hashable.
 deduplication. There is no `refresh`: every reason to recompute (tool versions, build digest) is already in
 the key, and errors are never stored. A forced recomputation is the stateless `compute()`.
 
-Cache settings (size, disk location) are passed when the facade is created, never read from the environment.
+Cache settings (the size) are passed when the facade is created, never read from the environment.
 Each `QuantityResult` reports `from_cache`, which is always `false` from the stateless interface.
 
-**Cache scopes (multi-user callers).** A caller serving several users or aircraft can partition the cache.
-
-```python
-await kernel.compute(aircraft, request, scope="aircraft/3f2c…")   # default: scope="shared"
-await kernel.drop_scope("aircraft/3f2c…")                          # e.g. the aircraft was deleted
-```
-
-- **Correctness never depends on scopes.** Keys are content hashes over everything that affects a value, so a
-  hit can never return a value for different inputs. That holds in every scope, including `shared`.
-- **Isolation.**
-  - The scope is part of the key. An entry in one scope is never visible from another.
-  - In-flight deduplication works only within a scope, so there is no cross-scope timing side channel.
-- **Deletion.** `drop_scope(scope)` removes every entry of a scope, in memory and on disk.
-- **Limits.** `MemoryCache` and `DiskCache` accept an optional limit per scope in addition to the global one,
-  so one scope cannot evict the others.
-- **Pluggable store.** `NodeStore` is an **async** protocol: `await get(scope, key) -> Entry | None`,
-  `await put(scope, key, entry)`, `await drop_scope(scope)`. `Entry` is the JSON form of the stored outputs and
-  warnings. A caller may supply its own store, e.g. a database or Redis per tenant.
-- **`MemoryCache`:** one LRU over all scopes (`max_entries`), plus an optional `max_entries_per_scope`
-  that evicts the least recently used entry **of that scope**.
-- **`DiskCache`:** one SQLite file (stdlib `sqlite3`) at `path`; values as JSON, never pickle; limits
-  `max_bytes` and optional `max_bytes_per_scope`, evicting by last access time.
+**One in-memory cache, no scopes, no persistence** (maintainer, 2026-10-17: S2 = b, D13). `MemoryCache` is
+one LRU over all entries (`max_entries`). There are no cache scopes, no per-scope limits, no `drop_scope`,
+no pluggable store and no disk cache: correctness never depended on them (keys are content hashes), and no
+caller needs them before the register epic. All of it is restorable from `2dc55f19`.
 - **Entries are lossless; keys are canonical.** The canonicalisation above (`-0.0` → `0.0`, sorted keys)
   builds **keys** only. A stored value round-trips exactly, `-0.0` included, so a hit is bit-identical to a
   recomputation (Q7). The store knows only JSON values; converting structured outputs (polar, airplane,
-  curves) to JSON and back by the quantity's `type` is the engine's. A backend failure (locked database,
-  unreadable entry, corrupt file moved aside) degrades to a miss or a dropped write with one `WARNING`
-  log line, never a wrong value and never a result error (ADR 0020: the log declares it). The one exception is
-  `drop_scope`: the caller relies on the deletion (e.g. an aircraft was deleted), so a store that cannot
-  delete raises `cache.StoreError` — a typed error of the `NodeStore` contract with a plain message and no
-  backend internals (ADR 0019) — after the backend's own wait (busy timeout); no further retry. Because a quarantined `<name>.corrupt` file may still
-  hold rows of any scope, **`drop_scope` deletes an existing `.corrupt` file** as part of the deletion (it
-  is unreadable anyway); a quarantine triggered by `get` or `put` still renames, so the file is kept for
-  diagnosis until the next `drop_scope`.
-- **One pool for all scopes.** One `CachedKernel` serves many scopes with one process pool, so no per-aircraft
-  kernel objects are needed.
-- **The caller assigns scopes.** What a scope stands for (aircraft, user, version snapshot K28, or `shared`)
-  is the caller's decision. The kernel knows neither users nor aircraft; it only separates by name.
-- **Not in the stateless `compute()`.** It has no cache and therefore no scope.
+  curves) to JSON and back by the quantity's `type` is the engine's. Every hit
+  deserialises a fresh object (no object is shared between calls).
 
 ### 8.5 Applications and preconditions
 
@@ -444,21 +414,18 @@ quantity.
     `has_aileron`, …). The canon `README.md` defines the vocabulary; each term is implemented once in
     `graph.py`. Terms over control devices go by the **role** a surface acts in, not by its name (maintainer:
     "a flap is every surface that acts like a flap"): `has_aileron` holds for a surface acting as aileron,
-    flaperon or elevon; the butterfly condition needs a flap-acting surface **and a distinct**
-    aileron-acting one, because crow deflects both at once (a flaperon alone cannot). Without ailerons the roll quantities are `not_applicable`, code `condition_not_met`.
+    flaperon or elevon; the butterfly condition needs a **pure flap** (role `flap`) **and** an aileron-acting
+    surface (role `aileron` or `elevon`) — flaperons never count toward it (maintainer, 2026-10-17, D10). Without ailerons the roll quantities are `not_applicable`, code `condition_not_met`.
     **Evaluation** (`graph.facts_from_geometry`), from `trailing_edge_device.role` only (never
     `control_surface`, never a name); a device is one `(wing key, x_sec index)`:
     - `has_aileron`: some device has role `aileron`, `flaperon` or `elevon`.
-    - `has_separate_flap_and_aileron`: some device A has role `flap` or `flaperon` and some **other**
-      device B ≠ A has role `aileron`, `flaperon` or `elevon`.
-    - `has_vertical_tail` (**provisional, D9: awaiting the maintainer's confirmation**): the main wing is
-      the symmetric wing with the largest planform area (Σ mean chord × segment span measured in the
-      y–z plane, so sweep does not count, as in AeroSandbox's planform area); a vertical tail is another wing that is not
-      symmetric (a fin) or carries a device of role `rudder` or `ruddervator` (a V-tail), and whose root
-      leading edge lies at or behind (`≥`) the main wing's root trailing edge (`x_le + chord` of its first section).
-      Winglets are sections of the main wing, a centre fin of a tailless wing overlaps its root chord: both
-      do not count. No angle threshold is used.
-  - `given`: a list of input quantities (`role: input` or `target`, no `default`). The application exists
+    - `has_separate_flap_and_aileron`: some device has role `flap` and some device has role `aileron` or
+      `elevon`. Flaperons are ignored for it; a mixed set (flaps, ailerons and flaperons) needs no special
+      rule (KISS, D10).
+    - `has_vertical_tail` (maintainer, 2026-10-17, D9 = C): read from each wing's explicit **surface
+      type** in the geometry (proposed enumeration pending the maintainer): it holds when some wing has
+      type `vertical_tail` or `v_tail`. No geometric inference (the provisional planform rule is dropped).
+  - `given`: a list of input quantities (`role: input` or `target`, without an entry in `defaults.yaml`). The application exists
     only if every one of them is supplied in `AircraftInput.values`. A target the designer did not set is
     not a missing input but no requirement (ch. 8.11).
   Unmet, the application's outputs are `not_applicable` with `reason.code` `condition_not_met` (`when`) or
@@ -865,17 +832,27 @@ APC formula, not before (ADR 0021); `components: None` makes those formulas `mis
   `-landing`, `aileron-deflection`, `elevator-deflection-up` / `-down`, `crow-flap-deflection` /
   `crow-aileron-deflection`; deg, geometry sign convention, no default) and the `*-target` quantities. Assumptions are values like any
   other (R1); whether a value is assumed or measured is not the kernel's concern.
-- A missing value falls back to the quantity's `default` in the canon model. Every default taken is
-  listed in `provenance.defaults_used` and **logged** (maintainer, 2026-10-14; ch. 8.14). Whether it is
-  also a result warning depends on the role:
-  - **`role: input`** (physical constants such as `gravity` 9.80665 m/s², `sea-level-air-density`; A5):
-    no warning. The constant is the value, sourced in the canon, not a substitute for a caller's choice.
-    Logged at `INFO`.
-  - **`role: target`** (e.g. the stall margins `approach-/touchdown-/takeoff-speed-margin-target`): a
-    `practice` warning `default_target_used`, `origin` = the target slug, message with value and source,
-    inherited by every quantity whose subtree reads it (ch. 8.2). A target is the designer's decision; a
-    default stands in for one the designer did not make, which is a declared substitution in the sense of
-    ADR 0020, and domain practice because it carries a source. Logged at `WARNING`.
+- **Defaults** (maintainer, 2026-10-17, S5). A missing value is computed with its **default**, and the
+  caller can set or override every value. Defaults are never hard-coded and never in a quantity entry:
+  - **One settings file in the canon document**, `_reversa_sdd/calculations/canon/defaults.yaml`: a mapping
+    `<quantity slug>: {value, source, regime}` — `value` in the quantity's canon unit, `source` the citation,
+    `regime` the RC/UAV check (ADR 0028: why the value holds for chord Re 3·10⁴–1·10⁶ and Mach ≤ 0.3, or
+    that it is regime-independent, e.g. standard gravity). The quantity entries carry no `default:` field.
+  - **The importer** validates it (stage 3: every slug exists, has role `input` or `target` and type
+    `scalar`; `value` finite and, for a `positive` quantity, > 0; `source` and `regime` non-empty; no slug
+    twice) and writes the package artefact **`aero_kernel/canon/canon_defaults.json`** (canonical JSON,
+    `schema_version`, `content_hash`, `source_commit`, `defaults`). Like `canon_model.json` it is the
+    kernel's own: loaded with the shipped `Build` (ch. 8.4), covered by the build digest and checked by
+    `importer --check`.
+  - **Reporting.** Every default taken is in `provenance.defaults_used` (`{slug, value, unit, source}`) and
+    logged once per call at `INFO` (ch. 8.14). A **target** default additionally gives the `practice`
+    warning `default_target_used` (`origin` = the target slug), inherited by every quantity that reads it
+    (ch. 8.2); a physical-constant default (`role: input`, e.g. `gravity`) gives none.
+  - **ADR 0020.** A target default stands in for a decision the designer did not make, so it is a
+    substitution; the `practice` warning declares it (domain practice, because it is sourced and
+    regime-checked). A constant's default is the constant's value, not a substitution, so the provenance
+    entry is its declaration. The log level is not the declaration: ADR 0020 asks for the result warning,
+    which exists; `INFO` only keeps the operator log free of design choices.
   Without a default, the quantities that need it get `invalid_input`, code `missing_input`, with
   `input_path = values.<slug>`; the rest of the request is computed. **Exception:** an application whose
   `given` names the missing slug does not exist, so its outputs are `not_applicable`, code `not_given`
@@ -1153,7 +1130,7 @@ They are the first thing a developer or an agent reads to check a change and to 
   calls `basicConfig`; that is the caller's job (app, pytest, scripts).
 - Messages are English (ADR 0029), lazily formatted (`logger.debug("cache hit %s", key)`), and carry the
   context as `extra`: `call_id` (a short id per `compute()` call), `quantity`, `formula`, `application`,
-  `world`, `scope`. With `call_id` the lines of one call can be followed through concurrent tasks.
+  `world`. With `call_id` the lines of one call can be followed through concurrent tasks.
 
 **Levels.**
 
@@ -1161,13 +1138,13 @@ They are the first thing a developer or an agent reads to check a change and to 
 |---|---|---|
 | `DEBUG` | every step of the engine, to check the code runs as intended | subtree and order; per node: start, end, duration, status; cache hit/miss with key prefix; world assignment; solver call with its settings and duration; precondition result |
 | `INFO` | one line per `compute()` call and per import | request (slugs, `include_long_runs`, budget), result counts per status, total duration, cache hits; importer: entries added/changed/removed |
-| `WARNING` | the kernel ran, but in a degraded way an operator should know about, or it decided something on the designer's behalf | tool unavailable, time budget exceeded, a process-pool worker died, a disk-cache entry unreadable and recomputed; **a design target taken from its default** |
+| `WARNING` | the kernel ran, but in a degraded way an operator should know about | tool unavailable, time budget exceeded, a process-pool worker died |
 | `ERROR` | a programming error | every `internal` error with its traceback, logged exactly once where it is translated (`internal_error_from_exception`, `exc_info=exc`); the exception text goes only here, never into the result (ADR 0019) |
 
 - **Every default taken is logged** (maintainer, 2026-10-14), once per `compute()` call and slug, when
   the input is resolved, so also on a full cache hit: `"default used: %s = %s %s (%s)"` with slug, value,
-  unit and source, `extra` = `call_id`, `quantity` (the slug), `role`. Level by role: `input` (physical
-  constants) → `INFO`, `target` → `WARNING` (ch. 8.11). The same applies to an `optional:` parameter that
+  unit and source, `extra` = `call_id`, `quantity` (the slug), `role`. Always `INFO` (maintainer,
+  2026-10-17), whatever the role (ch. 8.11). The same applies to an `optional:` parameter that
   is absent: one `INFO` line per call and parameter, `"optional input absent: %s.%s, route %s"` (formula,
   parameter, route), alongside its result warning (ch. 8.5).
 - **Otherwise not logged as `WARNING`:** domain warnings (regime, preconditions, `conflicting_mass`) and
@@ -1224,7 +1201,7 @@ They are the first thing a developer or an agent reads to check a change and to 
 | Q18 | In-flight deduplication | on one `CachedKernel`, two concurrent identical requests cause exactly one formula call |
 | Q19 | Time budget | budget exceeded → open quantities `timeout`, finished ones returned |
 | Q20 | Stateless interface leaves no state | after `compute()` returns, no cache entry, pool or other object created by it remains; a second call computes again |
-| Q21 | Cache scopes | an entry written in scope A is never a hit in scope B; `drop_scope(A)` leaves B untouched; a per-scope limit evicts only within its scope |
+| Q21 | — | removed with the cache scopes (S2 = b, 2026-10-17); the number is kept so the others stay stable |
 | Q22 | Multi-output formula | requesting two outputs of one application calls the implementation once |
 | Q23 | One world fails | the quantity is `error` with `detail.worlds_ok`; no narrowed interval |
 | Q24 | Missing input value | only the quantities needing it get `missing_input`; the rest compute |
@@ -1234,11 +1211,11 @@ They are the first thing a developer or an agent reads to check a change and to 
 | Q28 | Mass differs from the geometry's `total_mass_kg` | computed with the passed mass; `conflicting_mass` warning on every quantity that depends on the mass, none on the others |
 | Q29 | Target not set | `roll-rate-cruise` (`given: [cruise-speed-target]`) is `not_applicable`, code `not_given`; a quantity reading `cruise-speed-target` without `given` gets `missing_input` |
 | Q30 | Embedded relation and optional parameter | with `flight-speed` = 0, `thrust-at-airspeed` equals the thrust inside `static-thrust-to-weight` bit for bit (one relation function); without `motor-circuit-resistance` both run route A with a `practice` warning naming the route, no `missing_input` |
-| Q31 | Defaults taken | without `gravity` and without `approach-speed-margin-target`: `approach-speed` computes; `provenance.defaults_used` lists both with value and source; `caplog` has one `INFO` line for `gravity` and one `WARNING` line for the target, each with `call_id`, also on a second, cached call; the result carries `default_target_used` (`practice`) on `approach-speed` and its dependents, and no warning for `gravity` |
+| Q31 | Defaults taken | without `gravity` and without `approach-speed-margin-target`: `approach-speed` computes; `provenance.defaults_used` lists both with value and source; `caplog` has one `INFO` line for `gravity` and one `INFO` line for the target, each with `call_id`, also on a second, cached call; the result carries `default_target_used` (`practice`) on `approach-speed` and its dependents, and no warning for `gravity` |
 | Q32 | Embedding (engine half built with the first embedder) | `importer --check` rejects an embedding cycle, an embedded formula with worlds, and an embedded input that is neither bound, produced in the closure nor generic; the traceability test fails when an embedder does not call the embedded relation function; `mass-envelope` with `neutral-point` in three worlds runs three times and returns `cg-envelope-over-mass` as a pointwise interval |
 | Q33 | Flap deflection: beyond the stop, flapless, missing | `flap-deflection-landing` larger than the flap's `positive_deflection_deg`: `airplane-landing` carries exactly the given deflection, `stall-speed-landing` computes, no error, no clamp and no warning about the stop. Flapless, no deflection given: `airplane-landing` is the unchanged aircraft, `stall-speed-landing` equals `stall-speed`, no warning, one `INFO` line. Flapless with a deflection: same values plus `deflection_without_flap`. Flaps, no deflection: `stall-speed-landing` is `missing_input` (`values.flap-deflection-landing`), `approach-speed` `upstream_failed`; `stall-speed` still computes |
 | Q34 | Angles, not stops | `roll-rate-approach` at a given `aileron-deflection` beyond the aileron's stop computes, no stop warning; `aileron-deflection-required-approach` for a target above the AeroBuildup maximum: that world fails with `unsupported_configuration`, code `target_above_method_maximum` (maximum roll rate and its δ_a in `detail`), the AVL world computes, the quantity is `error` with the AVL value in `detail.worlds_ok` — no clipped angle, no narrowed interval. AVL at `|p·b/2V| > 0.10` carries the `defect` warning from the adapter |
-| Q35 | Roll without ailerons; crow from the landing configuration | an aircraft without a surface acting as aileron, flaperon or elevon: `roll-rate-approach` and `aileron-deflection-required-approach` are `not_applicable` (`condition_not_met`), no `missing_input` for `aileron-deflection`; a wing whose only device is one flaperon (on one segment) has `has_aileron` but not the butterfly condition; two flaperon devices on different segments do have it (one acts as flap, the other as aileron), as the README's "other device" says (crow needs a flap-acting and a distinct aileron-acting surface at once), so the butterfly quantities are `not_applicable`; with separate flaps and ailerons the butterfly curves start from `airplane-landing` (maintainer E2, 2026-10-15): at mix `s` the flap is at `flap-deflection-landing + s · (crow-flap-deflection − flap-deflection-landing)` and the aileron at `s · crow-aileron-deflection` (absolute end angles at `s = 1`, independent of the stops); at `s = 0` the stall speed agrees with `stall-speed-landing` to solver tolerance and `butterfly-approach-speed-curve(0)` equals `approach-speed` exactly (normalised by `V_S0(0)` of the same sweep) |
+| Q35 | Roll without ailerons; crow from the landing configuration | an aircraft without a surface acting as aileron, flaperon or elevon: `roll-rate-approach` and `aileron-deflection-required-approach` are `not_applicable` (`condition_not_met`), no `missing_input` for `aileron-deflection`; a wing whose devices are flaperons only has `has_aileron` but not the butterfly condition — flaperons never count toward it (D10), with one flaperon or several; butterfly needs a device of role `flap` and one of role `aileron` or `elevon`, otherwise the butterfly quantities are `not_applicable`; with separate flaps and ailerons the butterfly curves start from `airplane-landing` (maintainer E2, 2026-10-15): at mix `s` the flap is at `flap-deflection-landing + s · (crow-flap-deflection − flap-deflection-landing)` and the aileron at `s · crow-aileron-deflection` (absolute end angles at `s = 1`, independent of the stops); at `s = 0` the stall speed agrees with `stall-speed-landing` to solver tolerance and `butterfly-approach-speed-curve(0)` equals `approach-speed` exactly (normalised by `V_S0(0)` of the same sweep) |
 | Q36 | Embedded postcondition and variables (engine half built with the first embedder) | a stub `stall-speed` whose optimum is not the first C_L peak at one sweep mass: `mass-envelope` is `error`, `postcondition_violated`, `detail.embedded = stall-speed.clean` with that mass; with `m_current` set, the embedded `m` still takes every sweep value (`variables:`), never the current mass; the importer rejects a bare `stall-speed` in `embeds:` and a closure input that is neither variable, input nor produced |
 | Q37 | Postcondition on a curve | a stub stall solve that lands on the post-stall peak at one mix `s`: `butterfly-approach` is `error`, `postcondition_violated` (`optimum_at_first_cl_peak`, the failing `s` in `detail`); all four butterfly outputs are discarded, none returned; the check function is the one `stall-speed` uses |
 | Q38 | Non-scalar quantity requested in v1 | requesting `polar-stall` together with `stall-speed`: `polar-stall` is `error`, `not_implemented`, code `non_scalar_result`, no formula called for it; `stall-speed` computes and its formula, which also returns the polar internally, runs once |
