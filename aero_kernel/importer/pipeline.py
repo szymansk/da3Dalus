@@ -10,6 +10,7 @@ from aero_kernel.importer.findings import Finding
 from aero_kernel.importer.normalise import normalise
 from aero_kernel.importer.parse import parse_canon
 from aero_kernel.importer.report import model_text, report_text
+from aero_kernel.importer.rules import check_model
 from aero_kernel.importer.source import commit_format_finding
 from pydantic import BaseModel, ConfigDict
 
@@ -68,6 +69,9 @@ def import_canon(
         return ImportResult(findings=tuple(findings))
     model, findings = assemble(namespace, source_commit)
     if model is None:
+        return ImportResult(findings=tuple(findings))
+    findings = check_model(model)
+    if findings:
         return ImportResult(findings=tuple(findings))
     logger.info(
         "canon imported: %d formulas, %d quantities, hash %s",

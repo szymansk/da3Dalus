@@ -43,7 +43,7 @@ MINI_CANON: dict[str, str] = {
     "quantities/weight-weighed.md": _quantity("weight-weighed", "W_w", "N", "derived"),
     "quantities/weight-flapped.md": _quantity("weight-flapped", "W_f", "N", "derived"),
     "quantities/airplane.md": _quantity("airplane", "airplane", "—", "input", type_="airplane"),
-    "quantities/ratio.md": _quantity("ratio", "r", "1", "derived"),
+    "quantities/ratio.md": _quantity("ratio", "r", "1", "input"),
     "formulas/weight-from-mass.md": _formula(
         "weight-from-mass",
         "kind: law\ntool: APP\ninputs: {m: aircraft-mass, g: gravity}\noutputs: {w: weight}\n"

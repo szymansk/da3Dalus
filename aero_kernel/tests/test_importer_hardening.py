@@ -9,6 +9,7 @@ import signal
 from collections.abc import Generator, Iterator
 from contextlib import contextmanager
 from pathlib import Path
+from typing import cast
 
 import pytest
 from aero_kernel.importer.pipeline import ImportResult, import_canon
@@ -391,33 +392,32 @@ def test_an_explicit_default_embed_equals_the_bare_one(tmp_path: Path) -> None:
     assert bare.model_dump() == explicit.model_dump()
 
 
-def self_embedding(tmp_path: Path) -> ImportResult:
-    text = MINI_CANON["formulas/outer.md"].replace("embeds: [weigh-twice]", "embeds: [outer]")
-    return run(tmp_path, {"formulas/outer.md": text})
+def closure_of(tmp_path: Path, overrides: dict[str, str | None]) -> dict[str, tuple[str, ...]]:
+    """Run stages 1 and 2 only and return the embeds closure per formula (a cycle is stage 3's)."""
+    from aero_kernel.importer.normalise import normalise
+    from aero_kernel.importer.parse import parse_canon
+
+    document, findings = normalise(parse_canon(write_canon(tmp_path, overrides)))
+    assert findings == []
+    formulas = cast("dict[str, dict[str, list[str]]]", document["formulas"])
+    return {slug: tuple(entry["embeds_closure"]) for slug, entry in formulas.items()}
 
 
 def test_a_self_embed_terminates_with_a_finite_sorted_closure(tmp_path: Path) -> None:
+    text = MINI_CANON["formulas/outer.md"].replace("embeds: [weigh-twice]", "embeds: [outer]")
     with time_limit(20):
-        model = self_embedding(tmp_path).model
-    assert model is not None
-    outer = model.formula("outer")
-    assert outer is not None
-    assert outer.embeds_closure == ("calc:outer.default",)
+        closures = closure_of(tmp_path, {"formulas/outer.md": text})
+    assert closures["outer"] == ("calc:outer.default",)
 
 
 def test_a_cycle_between_two_formulas_terminates_with_a_finite_sorted_closure(
     tmp_path: Path,
 ) -> None:
-    one = MINI_CANON["formulas/outer.md"].replace("embeds: [weigh-twice]", "embeds: [weigh-twice]")
     two = MINI_CANON[TWICE].replace("embeds: [weight-from-mass, weighing.clean]", "embeds: [outer]")
     with time_limit(20):
-        model = run(tmp_path, {"formulas/outer.md": one, TWICE: two}).model
-    assert model is not None
-    outer, twice = model.formula("outer"), model.formula("weigh-twice")
-    assert outer is not None
-    assert twice is not None
-    assert outer.embeds_closure == ("calc:outer.default", "calc:weigh-twice.default")
-    assert twice.embeds_closure == ("calc:outer.default", "calc:weigh-twice.default")
+        closures = closure_of(tmp_path, {TWICE: two})
+    assert closures["outer"] == ("calc:outer.default", "calc:weigh-twice.default")
+    assert closures["weigh-twice"] == ("calc:outer.default", "calc:weigh-twice.default")
 
 
 # --- S14: the source commit pattern, with stage-1 findings --------------------------------------------

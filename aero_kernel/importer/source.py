@@ -73,13 +73,20 @@ def _check_tree(canon_dir: Path, given: str | None) -> tuple[str | None, list[Fi
             _finding(f"uncommitted changes under the canon directory (commit them first): {shown}")
         )
     if given is None:
-        head = _git(canon_dir, "rev-parse", "HEAD")
-        if head is None or head.returncode != 0:
+        # The last commit that touched the canon, not the branch head: it stays checkable on main
+        # after a rebase or squash merge of the branch (ARCHITECTURE ch. 8.9).
+        last = _git(canon_dir, "log", "-1", "--format=%H", "--", ".")
+        if last is None or last.returncode != 0:
             return None, [
                 *findings,
-                _failed("rev-parse HEAD", head) if head else _finding("git is not available"),
+                _failed("log", last) if last else _finding("git is not available"),
             ]
-        return head.stdout.strip(), findings
+        if not last.stdout.strip():
+            return None, [
+                *findings,
+                _finding("no commit has touched the canon directory (commit it first)"),
+            ]
+        return last.stdout.strip(), findings
     exists = _git(canon_dir, "cat-file", "-e", f"{given}^{{commit}}")
     if exists is None or exists.returncode != 0:
         detail = "" if exists is None else f" (git cat-file exit {exists.returncode})"
