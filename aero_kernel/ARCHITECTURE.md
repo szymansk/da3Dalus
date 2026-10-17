@@ -436,9 +436,11 @@ quantity.
       - `canard`;
       - `tandem_wing` — `S_ref` still from the main wing only (the tandem rule is a later domain question);
       - `winglet` — only when modelled as a separate wing (winglet sections of the main wing stay part of it).
-    - A horizontal-tail term (`horizontal_tail` | `v_tail`, a V-tail counting as horizontal tail) is added with the
-      first canon entry that states it (ADR 0021: no term without a user).
+    - `has_horizontal_tail`: some wing has `surface_type` `horizontal_tail` or `v_tail`.
     - `has_vertical_tail`: some wing has `surface_type` `vertical_tail` or `v_tail`.
+    - **Ontology rule** (maintainer, 2026-10-17): terms that describe the aircraft's ontology — the surface
+      types and the facts derived from them — are defined complete whether or not a canon entry uses them
+      yet; ADR 0021 applies to mechanisms, not to the domain vocabulary.
   - `given`: a list of input quantities (`role: input` or `target`, without an entry in `defaults.yaml`). The application exists
     only if every one of them is supplied in `AircraftInput.values`. A target the designer did not set is
     not a missing input but no requirement (ch. 8.11).
