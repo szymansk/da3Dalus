@@ -108,6 +108,20 @@ def test_an_input_that_a_formula_produces(tmp_path: Path) -> None:
     ]
 
 
+def test_a_target_that_a_formula_produces(tmp_path: Path) -> None:
+    extra = quantity("speed-target", "V_t", "kg", "target")
+    files = {
+        "quantities/speed-target.md": extra,
+        **mutate(ESTIMATE, "outputs: {w: weight-estimate}", "outputs: {w: speed-target}"),
+    }
+    assert shown(run(tmp_path, files)) == [
+        "formulas/estimate.md: applications[0].produce.w: calc:speed-target has role target: the "
+        "caller supplies it, no formula may produce it (A9)",
+        "quantities/weight-estimate.md: role: quantity calc:weight-estimate has role derived "
+        "but no formula produces it",
+    ]
+
+
 def test_a_target_needs_a_target_segment_in_its_name(tmp_path: Path) -> None:
     extra = quantity("wing-loading", "q", "kg", "target")
     assert shown(run(tmp_path, {"quantities/wing-loading.md": extra})) == [
