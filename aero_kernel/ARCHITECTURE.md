@@ -49,15 +49,13 @@ REST endpoint, no HTTP and no server process. It offers **two interfaces** with 
 result types:
 
 ```python
-from aero_kernel import compute, load_build, CachedKernel, MemoryCache, AircraftInput, ComputeRequest
-
-build = load_build()   # the shipped canon model + build digest + checked registry; raises CanonLoadError
+from aero_kernel import compute, CachedKernel, MemoryCache, AircraftInput, ComputeRequest
 
 # 1. stateless: a pure function, no cache, no state between calls
-result = await compute(AircraftInput(...), ComputeRequest(quantities=["stall-speed"]), build)
+result = await compute(AircraftInput(...), ComputeRequest(quantities=["stall-speed"]))
 
 # 2. cached: a facade object that holds a cache and puts it in front of the same computation
-kernel = CachedKernel(build, cache=MemoryCache(max_entries=10_000))
+kernel = CachedKernel(cache=MemoryCache(max_entries=10_000))
 async with kernel:
     result = await kernel.compute(AircraftInput(...), ComputeRequest(quantities=["stall-speed"]))
 ```
@@ -130,7 +128,8 @@ built before that step (ADR 0021). Appendix A's last column predates this order.
 
 ```
 aero_kernel/
-  api.py            load_build() and async compute(aircraft, request, build) — the stateless interface
+  api.py            async compute(aircraft, request) — the stateless interface
+  build.py          the internal Build (shipped model + digest + checked registry), loaded once on first use
   cached.py         CachedKernel — the cached facade (owns cache, in-flight deduplication, resources)
   engine.py         walks the graph; takes an optional NodeStore (none = stateless)
   runtime.py        executor, concurrency limit, cancellation
@@ -171,7 +170,8 @@ aero_kernel/
 ## 6. Runtime view — one call
 
 ```
-await compute(aircraft, request, build)
+await compute(aircraft, request)
+ 0 the shipped Build (loaded once on first use) → missing or broken: every quantity internal, escalate
  1 validate(aircraft)                      → any finding: ComputeResult with input_errors, nothing computed
  2 resolve request.quantities              → unknown slug: that quantity error invalid_input, rest goes on
  3 canon_model.subtree(quantities)         → applications, topologically sorted (ch. 8.13)
@@ -329,7 +329,7 @@ No internal paths or mechanisms in any field (ADR 0019).
   predecessors or the caller's input values. A node's key thus changes exactly when something in its
   subtree changes value (A1), without tracking leaf inputs.
 - the **build digest**: one hash over the `.py` files of the installed `aero_kernel` package except
-  `tests/`, `tools/` and `importer/`, plus `canon_model.json`; computed once by `load_build()`. Any code or canon change invalidates every entry. That wastes hits after an
+  `tests/`, `tools/` and `importer/`, plus `canon_model.json`; computed once, with the `Build`. Any code or canon change invalidates every entry. That wastes hits after an
   upgrade but can never serve a stale value; no hand-maintained implementation version exists that could be
   forgotten.
 - the tool versions (aerosandbox, NeuralFoil model, AVL). Every datum a node reads —
@@ -359,13 +359,18 @@ need not be hashable.
 
 **Two interfaces, one engine.**
 
-- **The `Build`** (S1/S14 of the 2026-10-16 review): a frozen value of the validated canon model, the build
-  digest and the registry with its traceability report, made by the public `load_build()`. Loading is the
-  **caller's** step, outside `compute()` — like constructing `AircraftInput` — and a broken or missing
-  model raises `CanonLoadError` there (a `KernelError` carrier). The kernel is given its own model like any
-  other data (D14); nothing is loaded, memoised or checked inside a call. The engine takes the `Build` as a
-  required argument; there is no default registry seam.
-- **`compute(aircraft, request, build)`, stateless.** A pure function. It keeps nothing between calls: no
+- **The `Build`** — a frozen value of the validated canon model, the build digest and the registry with its
+  traceability report — is **the kernel's own responsibility** (maintainer, 2026-10-17): `canon_model.json`
+  is a package artefact, not caller data, so D14 (external data is pushed) does not apply to it. The kernel
+  loads its shipped Build **itself, once, lazily on first use**, memoised in `build.py` — never at import.
+  This one memo is an immutable package artefact, not call state, so the stateless rule holds. A missing or
+  broken shipped model is **our** defect: every requested quantity is `internal`, escalate, and the memo
+  stores only a successful load. Prevention lives in CI, not at runtime: the packaged model loads and
+  matches the canon (`importer --check`), and a packaging test checks that the file ships. Internally the
+  engine keeps an explicit seam, `evaluate(build, aircraft, request)`, which tests use with small test
+  canons; it is not exported. A second canon (K31) will be a second shipped model selected by namespace —
+  still ours, never passed in by the caller.
+- **`compute(aircraft, request)`, stateless.** A pure function. It keeps nothing between calls: no
   cache and no deduplication. Two calls with the same input compute twice.
 - **`CachedKernel`, stateful facade.** An object that owns a `NodeStore` (`MemoryCache` or `DiskCache`) and
   the in-flight deduplication.
@@ -1036,8 +1041,8 @@ async def stall_speed(x: Inputs, ctx: Context) -> dict[str, Value]:
     `relation`, `precondition` and `postcondition` are methods of a registry; the module-level names are
     those of the **default registry**, which `aero_kernel.formulas` fills at import and then **freezes**
     (any later registration raises). A frozen registry is a static table of code, not call state, so the
-    stateless rule (ch. 8.4) holds; `load_build()` puts the frozen default into the `Build`, and tests build
-    their own `Registry()` and `Build` instead of touching the default.
+    stateless rule (ch. 8.4) holds; the shipped `Build` holds the frozen default, and tests build their own
+    `Registry()` and `Build` for `evaluate` instead of touching the default.
   - **Signatures.** `@formula(slug)` on an `async def f(x, ctx) -> dict`;
     `@relation(slug)` on the module-level relation function (ch. 8.5); `@precondition(slug, id)` on a
     plain `def check(x) -> CheckResult`, `@postcondition(slug, id)` on `def check(x, y) -> CheckResult`
@@ -1056,8 +1061,8 @@ async def stall_speed(x: Inputs, ctx: Context) -> dict[str, Value]:
     parameters (otherwise `internal`) covers the output side.
   - **Traceability.** `Registry.check_traceability(model) -> TraceabilityReport(findings, not_implemented,
     ok)` reports a registered slug or check id the model does not have (`unknown_formula`,
-    `unknown_check`) and a check registered on the wrong side (`check_kind_mismatch`); `load_build()` runs it
-    and the formulas unit asserts it is `ok` on the shipped model. A model formula without an implementation
+    `unknown_check`) and a check registered on the wrong side (`check_kind_mismatch`); loading the `Build`
+    runs it, and the formulas unit asserts it is `ok` on the shipped model. A model formula without an implementation
     is no finding but `not_implemented` at runtime (Q1). `@relation` and the embedding checks arrive with the
     first embedded formula (ADR 0021); a working version exists in commit `13dde61b` to restore from.
 
