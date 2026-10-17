@@ -286,7 +286,8 @@ The A11 "not validated" marker is the field `QuantityResult.validated`, not a wa
 - `provenance` (ch. 8.4).
 
 `QuantityResult` fields:
-- `slug` and `unit` (the quantity's canon unit, ch. 8.11)
+- `slug` and `unit` (the quantity's canon unit, ch. 8.11); `unit` is `None` exactly when the kernel knows no
+  quantity of that slug (an unknown or malformed slug, or no loadable model) — required whenever `status` is `ok`
 - `status`: `ok`, `not_applicable`, `skipped` or `error`
 - `reason` for every status other than `ok`: machine-readable `code` plus natural-language `message`
   (`not_applicable`: `condition_not_met`, `not_given` or `depends_on_not_applicable`, ch. 8.5; `skipped`: `long_run_not_included` or
@@ -320,7 +321,8 @@ No internal paths or mechanisms in any field (ADR 0019).
 `Provenance`:
 - the **build digest** (below), which identifies the exact code and canon model file (Q3); there is no
   hand-bumped version (the repository is not an installed package)
-- canon model hash and its source commit (the canon state)
+- canon model hash and its source commit (the canon state); `None` only when the shipped model could not be
+  loaded (every quantity is then `internal`)
 - tool versions (aerosandbox, NeuralFoil model, AVL): one non-empty version string per tool **the call actually
   used**; empty when only pure formulas ran
 - solver settings (e.g. the NeuralFoil model size the adapters use, fixed to the largest in v1)
@@ -362,7 +364,8 @@ need not be hashable.
 
 **Two interfaces, one engine.**
 
-- **The `Build`** — a frozen value of the validated canon model, the build digest and the registry with its
+- **The `Build`** — a frozen value of the validated canon model, its `CanonGraph` (built once; a
+  `GraphModelError` is a load failure), the build digest and the registry with its
   traceability report — is **the kernel's own responsibility** (maintainer, 2026-10-17): `canon_model.json`
   is a package artefact, not caller data, so D14 (external data is pushed) does not apply to it. The kernel
   loads its shipped Build **itself, once, lazily on first use**, memoised in `build.py` — never at import.
@@ -786,7 +789,8 @@ caller's event loop, it can be cancelled, and it limits its own resource use.
   - Work already running in the process pool is allowed to finish but its result is discarded, because
     pool workers cannot be interrupted safely.
   - `asyncio.CancelledError` is always re-raised, never turned into a result.
-- **Time budget.** `ComputeRequest.time_budget_s` (default `None` = no budget) is one wall-clock budget for
+- **Time budget** (built with the solver path, the first step whose formulas can be slow; until then
+  `ComputeRequest` has no `time_budget_s` field — no field without behaviour, ADR 0021). `ComputeRequest.time_budget_s` (default `None` = no budget) is one wall-clock budget for
   the whole request, enforced with `asyncio.timeout`. Quantities still open when it expires get
   `error.category = timeout`; quantities already finished are returned.
 - **Cache under concurrency (`CachedKernel` only).** The cache is used from the event loop only, so it needs no lock. **In-flight
@@ -814,7 +818,7 @@ class AircraftInput(BaseModel):          # extra="forbid"
 class ComputeRequest(BaseModel):
     quantities: list[str]                # canon quantity slugs, not formula slugs
     include_long_runs: bool = False      # ch. 8.7
-    time_budget_s: float | None = None   # ch. 8.10
+    # time_budget_s: added with the solver path (ch. 8.10)
 ```
 
 `AircraftInput` and `ComputeRequest` are pure data with a JSON form and a JSON Schema.
@@ -1230,7 +1234,7 @@ They are the first thing a developer or an agent reads to check a change and to 
 | Q16 | Event loop stays responsive | while a `seconds` computation runs, a concurrent `asyncio.sleep(0.01)` task is delayed by < 50 ms |
 | Q17 | Cancellation | cancelling `compute()` during an AVL run kills the subprocess and leaves no temp directory; `CancelledError` propagates |
 | Q18 | In-flight deduplication | on one `CachedKernel`, two concurrent identical requests cause exactly one formula call |
-| Q19 | Time budget | budget exceeded → open quantities `timeout`, finished ones returned |
+| Q19 | Time budget (with the solver path) | budget exceeded → open quantities `timeout`, finished ones returned |
 | Q20 | Stateless interface leaves no state | after `compute()` returns, no cache entry, pool or other object created by it remains; a second call computes again |
 | Q21 | — | removed with the cache scopes (S2 = b, 2026-10-17); the number is kept so the others stay stable |
 | Q22 | Multi-output formula | requesting two outputs of one application calls the implementation once |
