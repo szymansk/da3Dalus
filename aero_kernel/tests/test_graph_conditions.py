@@ -1,11 +1,13 @@
 """Application conditions: the closed `when` vocabulary and `given` (ARCHITECTURE ch. 8.5)."""
 
-from typing import Any
+from typing import Any, get_args
 
 import pytest
-from aero_kernel.canon.model import CanonModel
+from aero_kernel.canon.model import CanonModel, WhenTerm
+from aero_kernel.errors import ErrorCategory, KernelError
 from aero_kernel.geometry import AirplaneGeometry
 from aero_kernel.graph import (
+    PENDING_WHEN_TERMS,
     CanonGraph,
     Node,
     NodeId,
@@ -287,3 +289,26 @@ def test_dihedral_counts_towards_the_planform_area() -> None:
     dihedral = wing(sec(0, 0, 0.3), sec(0, 0.1, 0.3, z=0.5))  # y-z area .153, by y alone .03
     held = facts({"flat": flat, "dihedral": dihedral, "fin": fin(0.25)})
     assert held.has_vertical_tail is False  # the dihedral wing is main, its trailing edge .3
+
+
+def test_a_pending_term_is_a_declared_not_implemented_error(flight_canon: CanonModel) -> None:
+    node = node_of(flight_canon, "roll-rate-cruise", "cruise").model_copy(
+        update={"when": "has_horizontal_tail"}
+    )
+    outcome = unmet_condition(node, ALL, {"cruise-speed-target"})
+    assert isinstance(outcome, KernelError)
+    assert (outcome.code, outcome.category) == ("not_implemented", ErrorCategory.NOT_IMPLEMENTED)
+    assert "has_horizontal_tail" in outcome.message
+    assert "#1187" in outcome.hint
+    assert (outcome.formula, outcome.application) == ("calc:roll-rate-cruise", "cruise")
+
+
+def test_every_when_term_has_a_fact_or_is_pending() -> None:
+    """The next term added to the vocabulary cannot fall into the gap unannounced."""
+    vocabulary = set(get_args(WhenTerm))
+    implemented = set(WhenFacts.model_fields)
+    assert PENDING_WHEN_TERMS == {"has_horizontal_tail": "#1187"}
+    assert not implemented & PENDING_WHEN_TERMS.keys()
+    assert vocabulary == implemented | PENDING_WHEN_TERMS.keys()
+    for term in implemented:
+        assert isinstance(ALL.holds(term), bool)  # type: ignore[arg-type]  # term is a Literal value

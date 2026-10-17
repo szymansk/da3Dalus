@@ -260,6 +260,7 @@ def test_public_names_of_graph_are_pinned() -> None:
         "NodeId",
         "NodeOutcome",
         "Produce",
+        "PENDING_WHEN_TERMS",
         "Propagated",
         "Read",
         "Resolved",
