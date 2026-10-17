@@ -352,7 +352,7 @@ recomputed next time.
 **No object is shared between calls.** `frozen=True` stops attribute assignment, not in-place mutation of
 a `dict` field (`Interval.worlds`, `detail`) or of an array inside a structured value; that is a Pydantic
 limit, accepted rather than worked around with custom immutable types. The guarantee is structural
-instead: a store keeps entries in a **serialised form** (canonical JSON / bytes) and every hit
+instead: the cache keeps entries in a **serialised form** (canonical JSON / bytes) and every hit
 deserialises a fresh object, and every `compute()` builds a fresh `ComputeResult`. A caller who mutates
 its result can corrupt only its own copy. Kernel code never mutates a model after construction; results
 need not be hashable.
@@ -364,20 +364,21 @@ need not be hashable.
   is a package artefact, not caller data, so D14 (external data is pushed) does not apply to it. The kernel
   loads its shipped Build **itself, once, lazily on first use**, memoised in `build.py` — never at import.
   This one memo is an immutable package artefact, not call state, so the stateless rule holds. A missing or
-  broken shipped model is **our** defect: every requested quantity is `internal`, escalate, and the memo
-  stores only a successful load. Prevention lives in CI, not at runtime: the packaged model loads and
+  broken shipped model is **our** defect: every requested quantity is `internal`, escalate. The memo stores
+  only a successful load, so a failed load is retried on every call — **deliberately**: after the file is
+  fixed the kernel recovers without a restart. Each failing call logs one `ERROR` (with `exc_info`). Prevention lives in CI, not at runtime: the packaged model loads and
   matches the canon (`importer --check`), and a packaging test checks that the file ships. Internally the
   engine keeps an explicit seam, `evaluate(build, aircraft, request)`, which tests use with small test
-  canons; it is not exported. A second canon (K31) will be a second shipped model selected by namespace —
+  canons; it is not exported. A second canon (K31) will be a second namespace of the same shipped model —
   still ours, never passed in by the caller.
 - **`compute(aircraft, request)`, stateless.** A pure function. It keeps nothing between calls: no
   cache and no deduplication. Two calls with the same input compute twice.
 - **`CachedKernel`, stateful facade.** An object that owns a `MemoryCache` and
   the in-flight deduplication.
   - Its `compute()` has the same signature and the same result type.
-  - It delegates to the same engine and passes in its store.
+  - It delegates to the same engine and passes in its cache.
 - **Why node level.** Caching happens **per graph node**, not per whole request. That way, a change to one
-  input expires only its subtree (A1). The facade therefore injects the store into the engine instead of
+  input expires only its subtree (A1). The facade therefore injects the cache into the engine instead of
   wrapping the whole call. Seen from outside it is still a facade: a separate object, put in front of the
   same computation, with no influence on the values.
 
@@ -391,10 +392,12 @@ Each `QuantityResult` reports `from_cache`, which is always `false` from the sta
 **One in-memory cache, no scopes, no persistence** (maintainer, 2026-10-17: S2 = b, D13). `MemoryCache` is
 one LRU over all entries (`max_entries`). There are no cache scopes, no per-scope limits, no `drop_scope`,
 no pluggable store and no disk cache: correctness never depended on them (keys are content hashes), and no
-caller needs them before the register epic. All of it is restorable from `2dc55f19`.
+caller needs them before the register epic. All of it is restorable from `2dc55f19`. `MemoryCache.get`
+and `put` are plain synchronous methods (no awaits, no I/O); the in-flight deduplication lives in
+`CachedKernel`, with `asyncio` futures keyed by the cache key.
 - **Entries are lossless; keys are canonical.** The canonicalisation above (`-0.0` → `0.0`, sorted keys)
   builds **keys** only. A stored value round-trips exactly, `-0.0` included, so a hit is bit-identical to a
-  recomputation (Q7). The store knows only JSON values; converting structured outputs (polar, airplane,
+  recomputation (Q7). The cache knows only JSON values; converting structured outputs (polar, airplane,
   curves) to JSON and back by the quantity's `type` is the engine's. Every hit
   deserialises a fresh object (no object is shared between calls).
 
@@ -423,8 +426,8 @@ quantity.
       `elevon`. Flaperons are ignored for it; a mixed set (flaps, ailerons and flaperons) needs no special
       rule (KISS, D10).
     - `has_vertical_tail` (maintainer, 2026-10-17, D9 = C): read from each wing's explicit **surface
-      type** in the geometry (proposed enumeration pending the maintainer): it holds when some wing has
-      type `vertical_tail` or `v_tail`. No geometric inference (the provisional planform rule is dropped).
+      type** in the geometry, the required field `surface_type` (enumeration pending the maintainer; the
+      geometry-format change gets its own ticket): it holds when some wing has a vertical-tail type. No geometric inference (the provisional planform rule is dropped).
   - `given`: a list of input quantities (`role: input` or `target`, without an entry in `defaults.yaml`). The application exists
     only if every one of them is supplied in `AircraftInput.values`. A target the designer did not set is
     not a missing input but no requirement (ch. 8.11).
@@ -691,7 +694,8 @@ later `sizing:…`), and a bare slug in a request means `calc:`.
   every reference resolves; every application binds every input and produces every output (`null` =
   unexposed); a precondition names an input, a postcondition an output; `worlds` (≥ 2, unique, snake_case)
   exactly with `uncertainty: interval`; `given` slugs are bound by their application, role input/target,
-  without default; `positive` only on input/target, a default then > 0; `variables` exactly with `embeds`;
+  and have no entry in `defaults`; `positive` only on input/target, and for a `positive` quantity its
+  default is > 0; `variables` exactly with `embeds`;
   `embeds` ⊆ `embeds_closure` and every closure item resolves. **Cross-formula rules stay with the
   importer** (ch. 8.6): one producer per quantity, unit consistency, closure correctness and acyclicity,
   cost derivation. The implicit application is written out with id `default`.
@@ -763,7 +767,7 @@ caller's event loop, it can be cancelled, and it limits its own resource use.
 - **Time budget.** `ComputeRequest.time_budget_s` (default `None` = no budget) is one wall-clock budget for
   the whole request, enforced with `asyncio.timeout`. Quantities still open when it expires get
   `error.category = timeout`; quantities already finished are returned.
-- **Cache under concurrency (`CachedKernel` only).** The store is safe for concurrent use. **In-flight
+- **Cache under concurrency (`CachedKernel` only).** The cache is used from the event loop only, so it needs no lock. **In-flight
   deduplication** (mode `use`): when two concurrent requests need the same key, the second awaits the first
   one's future instead of computing it again.
 - **No hidden loop.** The kernel never calls `asyncio.run`, never creates or closes the caller's loop and
@@ -840,10 +844,10 @@ APC formula, not before (ADR 0021); `components: None` makes those formulas `mis
     that it is regime-independent, e.g. standard gravity). The quantity entries carry no `default:` field.
   - **The importer** validates it (stage 3: every slug exists, has role `input` or `target` and type
     `scalar`; `value` finite and, for a `positive` quantity, > 0; `source` and `regime` non-empty; no slug
-    twice) and writes the package artefact **`aero_kernel/canon/canon_defaults.json`** (canonical JSON,
-    `schema_version`, `content_hash`, `source_commit`, `defaults`). Like `canon_model.json` it is the
-    kernel's own: loaded with the shipped `Build` (ch. 8.4), covered by the build digest and checked by
-    `importer --check`.
+    twice) and writes it **into the one model artefact**, `canon_model.json`, as
+    `namespaces.calc.defaults: {<slug>: {value, unit, source, regime}}`. There is no second file and no
+    second loader: the defaults load, hash and check with the model (`content_hash`, the build digest,
+    `importer --check`), and the model's own validators cover them (ch. 8.9).
   - **Reporting.** Every default taken is in `provenance.defaults_used` (`{slug, value, unit, source}`) and
     logged once per call at `INFO` (ch. 8.14). A **target** default additionally gives the `practice`
     warning `default_target_used` (`origin` = the target slug), inherited by every quantity that reads it
@@ -906,6 +910,8 @@ one code, one test:
 | `invalid_airfoil_contour` | inline coordinates with fewer than 3 points, or whose first and last point do not both lie at the contour's largest `x` (a blunt trailing edge is allowed; no tolerance is invented) |
 | `unresolved_airfoil` | an airfoil string that is not a NACA 4-digit designation (`^naca\d{4}$`, case-insensitive, no spaces): the only kind a solver builds without loading data; a 5-digit or 6-series section is passed inline |
 | `segment_on_last_section` | the last `x_sec` carries a `trailing_edge_device`, `spare_list` or `turbulator`: there is no segment for it, so the kernel would silently drop it |
+| `missing_surface_type` | a wing without its `surface_type` (D9: required, never inferred) |
+| `main_wing_count` | not exactly one wing of `surface_type` `main_wing` |
 | `control_surface_without_device` | a `control_surface` without the `trailing_edge_device` it is a projection of: its role would be unknown |
 
 `values` are checked here for finiteness only. **Their admissibility comes from the canon model, never
