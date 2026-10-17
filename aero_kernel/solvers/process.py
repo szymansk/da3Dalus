@@ -58,6 +58,24 @@ def _unavailable(executable: str | Path) -> FormulaError:
     )
 
 
+def _is_refusal(error: BaseException) -> bool:
+    """Whether an error of the start is Popen's own refusal of the binary (``tool_unavailable``)."""
+    return isinstance(error, FileNotFoundError | PermissionError) or (
+        isinstance(error, OSError) and error.errno == errno.ENOEXEC
+    )
+
+
+def _warn_start_failed(executable: str | Path) -> None:
+    """Tell the operator that a failed start may have left a child running (ch. 8.10, ADR 0020).
+
+    asyncio registers its child watcher after the spawn; if that fails, the start raises and no
+    pid reaches us, so the child cannot be killed. The failure itself is ``internal``.
+    """
+    logger.warning(
+        "process start failed; a child may have been left running (%s)", Path(executable).name
+    )
+
+
 def _kill_group(process: asyncio.subprocess.Process) -> None:
     """Kill the process and everything it started (own session, see :func:`run_process`)."""
     with contextlib.suppress(ProcessLookupError):
@@ -162,8 +180,11 @@ async def run_process(
         ValueError: If a file name is not a plain file name.
         FormulaError: ``tool_unavailable`` if the binary cannot be started because it does not
             exist, may not be executed or is not an executable format.
-        OSError: Any other failure to start the process (no file descriptors, no memory): an
-            internal defect of the environment, which the engine reports as ``internal``.
+        OSError: Any other failure to start the process (no file descriptors, no memory), and
+            ``RuntimeError`` or the like when asyncio's child-watcher registration fails after the
+            spawn: an internal defect of the environment, which the engine reports as
+            ``internal``. One ``WARNING`` then says that a child may have been left running, since
+            no pid reached the caller (ch. 8.10).
     """
     for name in (*files, *collect):
         _check_file_name(name)
@@ -202,14 +223,16 @@ async def run_process(
             started = await asyncio.shield(start)
         except asyncio.CancelledError:
             process = await _await_start(start)
+            if process is None and not start.cancelled():
+                failure = start.exception()
+                if failure is not None and not _is_refusal(failure):
+                    _warn_start_failed(executable)
             raise
-        except OSError as error:
-            if (
-                isinstance(error, FileNotFoundError | PermissionError)
-                or error.errno == errno.ENOEXEC
-            ):
+        except Exception as error:
+            if _is_refusal(error):
                 raise _unavailable(executable) from error
-            raise  # not Popen's own refusal of the binary: the environment failed (internal)
+            _warn_start_failed(executable)
+            raise  # the environment failed, not the binary: internal
         process = started
         # the child's ends are the child's now: closing ours is what lets the reads see EOF
         for end in (stdin_read, stdout_write, stderr_write):
@@ -222,7 +245,8 @@ async def run_process(
                 returncode_task = group.create_task(process.wait())
         except BaseExceptionGroup as failures:
             if len(failures.exceptions) == 1:
-                raise failures.exceptions[0] from None
+                only = failures.exceptions[0]
+                raise only from only.__cause__
             raise
         outputs = {
             name: (directory / name).read_bytes()

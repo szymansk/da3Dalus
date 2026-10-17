@@ -1,11 +1,13 @@
 """The async subprocess helper (ch. 8.8, 8.10; Q17, Q19)."""
 
 import asyncio
+import contextlib
 import errno
 import gc
 import logging
 import os
 import shutil
+import signal
 import sys
 import tempfile
 import textwrap
@@ -277,6 +279,149 @@ async def test_a_start_that_fails_without_a_cancel_is_not_tool_unavailable(
     finally:
         gc.enable()
     assert _entries(scratch) == []
+
+
+START_FAILED_WARNING = "process start failed; a child may have been left running (python-tool)"
+
+
+async def test_a_start_that_raises_something_else_is_internal_and_warns(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
+) -> None:
+    """E.g. asyncio's child-watcher registration fails after the spawn: no pid, a child may run."""
+
+    async def broken(*args: object, **kwargs: object) -> object:
+        msg = "can't start new thread"
+        raise RuntimeError(msg)
+
+    tool = tmp_path / "python-tool"
+    monkeypatch.setattr(asyncio, "create_subprocess_exec", broken)
+    with (
+        caplog.at_level(logging.DEBUG, logger="aero_kernel"),
+        pytest.raises(RuntimeError, match="can't start new thread"),
+    ):
+        async with asyncio.timeout(5):
+            await run_process({}, "", executable=tool)
+    (record,) = [r for r in caplog.records if r.levelno >= logging.WARNING]
+    assert record.getMessage() == START_FAILED_WARNING
+    assert str(tmp_path) not in record.getMessage()
+
+
+async def test_a_start_error_that_is_not_the_binarys_refusal_warns_too(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
+) -> None:
+    async def refuse(*args: object, **kwargs: object) -> object:
+        raise OSError(errno.EMFILE, "Too many open files")
+
+    monkeypatch.setattr(asyncio, "create_subprocess_exec", refuse)
+    with (
+        caplog.at_level(logging.DEBUG, logger="aero_kernel"),
+        pytest.raises(OSError, match="Too many open files"),
+    ):
+        await run_process({}, "", executable=tmp_path / "python-tool")
+    assert [r.getMessage() for r in caplog.records if r.levelno >= logging.WARNING] == [
+        START_FAILED_WARNING
+    ]
+
+
+async def test_a_cancel_followed_by_a_failing_start_still_warns_and_stays_a_cancel(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
+) -> None:
+    release = asyncio.Event()
+
+    async def late_failure(*args: object, **kwargs: object) -> object:
+        await release.wait()
+        msg = "can't start new thread"
+        raise RuntimeError(msg)
+
+    monkeypatch.setattr(asyncio, "create_subprocess_exec", late_failure)
+    task = asyncio.create_task(run_process({}, "", executable=tmp_path / "python-tool"))
+    await asyncio.sleep(0.05)
+    with caplog.at_level(logging.DEBUG, logger="aero_kernel"):
+        task.cancel()
+        await asyncio.sleep(0.05)
+        release.set()
+        with pytest.raises(asyncio.CancelledError):
+            async with asyncio.timeout(3):
+                await task
+    assert [r.getMessage() for r in caplog.records if r.levelno >= logging.WARNING] == [
+        START_FAILED_WARNING
+    ]
+
+
+async def test_the_binarys_own_refusal_logs_no_warning(
+    tmp_path: Path, caplog: pytest.LogCaptureFixture
+) -> None:
+    with caplog.at_level(logging.DEBUG, logger="aero_kernel"), pytest.raises(FormulaError):
+        await run_process({}, "", executable=tmp_path / "no_such_tool")
+    assert [r for r in caplog.records if r.levelno >= logging.WARNING] == []
+
+
+@pytest.mark.skipif(
+    not hasattr(unix_events, "ThreadedChildWatcher") or sys.version_info >= (3, 14),
+    reason="the child-watcher registration only exists before Python 3.14",
+)
+async def test_a_failing_child_watcher_registration_does_not_hang_and_warns(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
+) -> None:
+    spawned: list[int] = []
+
+    def failing(self: object, pid: int, callback: object, *args: object) -> None:
+        spawned.append(pid)
+        msg = "can't start new thread"
+        raise RuntimeError(msg)
+
+    monkeypatch.setattr(unix_events.ThreadedChildWatcher, "add_child_handler", failing)
+    tool = tmp_path / "python-tool"
+    tool.symlink_to(sys.executable)
+    try:
+        with (
+            caplog.at_level(logging.DEBUG, logger="aero_kernel"),
+            pytest.raises(RuntimeError, match="can't start new thread"),
+        ):
+            async with asyncio.timeout(5):
+                await run_process(
+                    {}, "", executable=tool, args=["-c", "import time; time.sleep(20)"]
+                )
+        assert [r.getMessage() for r in caplog.records if r.levelno >= logging.WARNING] == [
+            START_FAILED_WARNING
+        ]
+        assert len(spawned) == 1  # the child exists and nobody holds its pid: the warning says so
+    finally:
+        for pid in spawned:
+            with contextlib.suppress(ProcessLookupError):
+                os.killpg(pid, signal.SIGKILL)
+            with contextlib.suppress(ChildProcessError):
+                await asyncio.to_thread(
+                    os.waitpid, pid, 0
+                )  # reaped, so the orphaned Popen object has nothing to warn of
+
+
+async def test_a_single_failure_of_the_run_keeps_its_chained_cause(
+    script: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    cause = ValueError("the underlying cause")
+
+    async def broken(self: asyncio.AbstractEventLoop, factory: object, pipe: object) -> object:
+        try:
+            raise cause
+        except ValueError as inner:
+            msg = "pipe failed"
+            raise OSError(errno.EMFILE, msg) from inner
+
+    loop_type = type(asyncio.get_running_loop())
+    original = loop_type.connect_read_pipe
+    calls: list[int] = []
+
+    async def first_only(self: asyncio.AbstractEventLoop, factory: object, pipe: object) -> object:
+        calls.append(1)
+        if len(calls) == 1:
+            return await broken(self, factory, pipe)
+        return await original(self, factory, pipe)  # type: ignore[arg-type]  # same call as run_process makes
+
+    monkeypatch.setattr(loop_type, "connect_read_pipe", first_only)
+    with pytest.raises(OSError, match="pipe failed") as caught:
+        await run_process({}, "", executable=sys.executable, args=[str(script), "0"])
+    assert caught.value.__cause__ is cause
 
 
 async def test_a_binary_that_may_not_run_is_tool_unavailable(tmp_path: Path) -> None:
