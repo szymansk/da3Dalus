@@ -73,6 +73,22 @@ def _check_tree(canon_dir: Path, given: str | None) -> tuple[str | None, list[Fi
             _finding(f"uncommitted changes under the canon directory (commit them first): {shown}")
         )
     if given is None:
+        shallow = _git(canon_dir, "rev-parse", "--is-shallow-repository")
+        if shallow is None or shallow.returncode != 0:
+            return None, [
+                *findings,
+                _failed("rev-parse --is-shallow-repository", shallow)
+                if shallow
+                else _finding("git is not available"),
+            ]
+        if shallow.stdout.strip() == "true":
+            return None, [
+                *findings,
+                _finding(
+                    "shallow clone: fetch the full history (git fetch --unshallow) to determine "
+                    "the source commit"
+                ),
+            ]
         # The last commit that touched the canon, not the branch head: it stays checkable on main
         # after a rebase or squash merge of the branch (ARCHITECTURE ch. 8.9).
         last = _git(canon_dir, "log", "-1", "--format=%H", "--", ".")

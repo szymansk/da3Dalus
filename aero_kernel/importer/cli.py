@@ -35,11 +35,12 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument(
         "--out", type=Path, default=default_model_path().parent, help="output directory"
     )
-    parser.add_argument(
+    mode = parser.add_mutually_exclusive_group()
+    mode.add_argument(
         "--source-commit",
         help="commit of the canon document (default: the last commit that touched it)",
     )
-    parser.add_argument(
+    mode.add_argument(
         "--check",
         action="store_true",
         help="write nothing; fail on a finding or if the committed model is stale",

@@ -12,8 +12,9 @@ from aero_kernel.importer.findings import Finding
 
 __all__ = ["A9_TARGET_NAME_EXCEPTIONS", "FORBIDDEN_NAME_SEGMENTS", "check_model"]
 
-# A9 (maintainer, 2026-10-02): a target is called <name>-target, with the symbol index ``target``. The one
-# exception A9 names is the limit load factor, which keeps its technical symbol.
+# A9 (maintainer, 2026-10-02): a target carries ``target`` as a kebab segment of its name (``stall-speed-target``,
+# ``roll-rate-target-cruise``). The one exception A9 names is the limit load factor, which keeps its
+# technical symbol.
 A9_TARGET_NAME_EXCEPTIONS = frozenset({"limit-load-factor"})
 # A9: an input or target is what the design asks for; these words are requirements language, not names
 # of quantities. Whole kebab segments only: ``required`` is a different word.
@@ -178,21 +179,28 @@ def _units(content: Namespace) -> list[Finding]:
 # --- the embeds closure --------------------------------------------------------------------------------------
 
 
-def _cycles(content: Namespace) -> list[Finding]:
-    """No application of a formula is in its own embeds closure."""
-    findings: list[Finding] = []
+def _cycle_members(content: Namespace) -> dict[str, str]:
+    """Return the formulas with an application in their own embeds closure, and one such item each."""
+    members: dict[str, str] = {}
     for slug, formula in sorted(content.formulas.items()):
         for application in formula.applications:
             item = f"{_PREFIX}{slug}.{application.id}"
             if item in formula.embeds_closure:
-                findings.append(
-                    Finding(
-                        file=_formula_file(slug),
-                        field="embeds",
-                        message=f"{item} is in its own embeds closure (a cycle)",
-                    )
-                )
-    return findings
+                members[slug] = item
+                break
+    return members
+
+
+def _cycles(members: dict[str, str]) -> list[Finding]:
+    """No application of a formula is in its own embeds closure; reported once per member formula."""
+    return [
+        Finding(
+            file=_formula_file(slug),
+            field="embeds",
+            message=f"{item} is in its own embeds closure (a cycle)",
+        )
+        for slug, item in members.items()
+    ]
 
 
 def _closure_applications(content: Namespace, formula: Formula) -> list[tuple[str, Application]]:
@@ -204,11 +212,17 @@ def _closure_applications(content: Namespace, formula: Formula) -> list[tuple[st
     return result
 
 
-def _embeds(content: Namespace) -> list[Finding]:
-    """Variables are read in the closure; no interval formula is embedded; every input is accounted for."""
+def _embeds(content: Namespace, members: dict[str, str]) -> list[Finding]:
+    """Variables are read in the closure; no interval formula is embedded; every input is accounted for.
+
+    A formula whose closure contains a cycle member has no defined closure and is skipped; the cycle
+    itself is the finding.
+    """
     findings: list[Finding] = []
     for slug, formula in sorted(content.formulas.items()):
         if not formula.embeds:
+            continue
+        if any(_item(reference)[0] in members for reference in formula.embeds_closure):
             continue
         inside = _closure_applications(content, formula)
         read_inside = set[str]().union(*(_bound(application) for _, application in inside))
@@ -265,9 +279,8 @@ def check_model(model: CanonModel) -> list[Finding]:
         findings.extend(_names(content))
         findings.extend(_symbols(content))
         findings.extend(_units(content))
-        cycles = _cycles(content)
-        findings.extend(cycles)
-        if not cycles:  # a closure over a cycle is not defined
-            findings.extend(_embeds(content))
+        members = _cycle_members(content)
+        findings.extend(_cycles(members))
+        findings.extend(_embeds(content, members))
     unique = dict.fromkeys(findings)
     return sorted(unique, key=lambda finding: (finding.file, finding.field, finding.message))

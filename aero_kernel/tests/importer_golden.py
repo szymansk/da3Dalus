@@ -19,7 +19,8 @@ def regenerate() -> None:
     """Import the mini canon and store the two outputs as the golden files."""
     with tempfile.TemporaryDirectory() as work:
         canon = write_canon(Path(work))
-        main([str(canon), "--out", str(GOLDEN_DIR), "--source-commit", SOURCE_COMMIT])
+        status = main([str(canon), "--out", str(GOLDEN_DIR), "--source-commit", SOURCE_COMMIT])
+    assert status == 0, "the mini canon must import without a finding"
 
 
 if __name__ == "__main__":

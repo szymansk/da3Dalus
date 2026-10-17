@@ -452,3 +452,38 @@ def test_a_canon_no_commit_ever_touched_is_a_finding(
     printed = capsys.readouterr().out
     assert "uncommitted" in printed
     assert "no commit has touched the canon directory" in printed
+
+
+# --- S3 (b) amendment 2: a shallow clone cannot tell the last canon commit ---------------------------------------
+
+
+def test_a_shallow_clone_is_a_finding_not_a_wrong_commit(
+    repo: tuple[Path, Path], tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """In a depth-1 clone ``git log -1 -- .`` returns HEAD, whatever touched the canon."""
+    _, root = repo
+    (root / "unrelated.txt").write_text("x\n", encoding="utf-8")
+    git(root, "add", "unrelated.txt")
+    git(root, "commit", "-q", "-m", "unrelated")
+    clone = tmp_path / "clone"
+    subprocess.run(
+        ["git", "clone", "-q", "--depth", "1", root.as_uri(), str(clone)],
+        check=True,
+        capture_output=True,
+    )
+    assert git(clone, "rev-parse", "--is-shallow-repository") == "true"
+    assert run(clone / "canon", tmp_path / "out") == 1
+    assert (
+        "shallow clone: fetch the full history (git fetch --unshallow) to determine the source commit"
+        in capsys.readouterr().out
+    )
+    assert not (tmp_path / "out").exists()
+
+
+def test_a_full_clone_is_not_shallow(repo: tuple[Path, Path], tmp_path: Path) -> None:
+    _, root = repo
+    clone = tmp_path / "full"
+    subprocess.run(
+        ["git", "clone", "-q", root.as_uri(), str(clone)], check=True, capture_output=True
+    )
+    assert run(clone / "canon", tmp_path / "out") == 0

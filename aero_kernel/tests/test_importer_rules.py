@@ -358,3 +358,52 @@ def test_a_default_states_its_source_and_regime(tmp_path: Path, field: str) -> N
     text = defaults("gravity", "9.8", "m/s^2", **kwargs)
     result = run(tmp_path, {"defaults.yaml": text})
     assert [(f.file, f.field) for f in result.findings] == [("defaults.yaml", f"gravity.{field}")]
+
+
+# --- S3 (b) amendment 2: cycles ---------------------------------------------------------------------------------
+
+
+def two_application_cycle() -> dict[str, str | None]:
+    """``weighing`` (two applications) and ``weigh-twice`` embed each other's applications."""
+    weighing = MINI_CANON[WEIGHING].replace(
+        "postconditions:", "embeds: [weigh-twice]\nvariables: [aircraft-mass]\npostconditions:"
+    )
+    twice = MINI_CANON[TWICE].replace(
+        "embeds: [weight-from-mass, weighing.clean]",
+        "embeds: [weight-from-mass, weighing.clean, weighing.flapped]",
+    )
+    return {WEIGHING: weighing, TWICE: twice}
+
+
+def test_a_cycle_is_reported_once_per_member_formula_not_once_per_application(
+    tmp_path: Path,
+) -> None:
+    findings = shown(run(tmp_path, two_application_cycle()))
+    assert findings == [
+        "formulas/weigh-twice.md: embeds: calc:weigh-twice.default is in its own embeds closure (a cycle)",
+        "formulas/weighing.md: embeds: calc:weighing.clean is in its own embeds closure (a cycle)",
+    ]
+
+
+def test_one_cycle_does_not_hide_the_embeds_faults_of_unrelated_formulas(tmp_path: Path) -> None:
+    other = formula(
+        "other",
+        "kind: law\ntool: APP\ninputs: {m: aircraft-mass}\noutputs: {w: weight-other}\n"
+        "embeds: [weight-from-mass]\nvariables: [airplane]\n",
+    )
+    files = {
+        **two_application_cycle(),
+        "formulas/other.md": other,
+        "quantities/weight-other.md": quantity("weight-other", "W_x", "N", "derived"),
+    }
+    assert (
+        "formulas/other.md: variables[0]: calc:airplane is read by no formula in the embeds closure"
+        in shown(run(tmp_path, files))
+    )
+
+
+def test_a_formula_embedding_a_cycle_gets_no_derived_embeds_findings(tmp_path: Path) -> None:
+    """``outer`` embeds the cycle: its own closure is not defined, only the cycle is reported."""
+    outer = MINI_CANON[OUTER].replace("variables: [aircraft-mass]", "variables: [airplane]")
+    findings = shown(run(tmp_path, {**two_application_cycle(), OUTER: outer}))
+    assert not any(line.startswith("formulas/outer.md") for line in findings), findings

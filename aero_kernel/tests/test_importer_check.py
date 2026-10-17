@@ -148,3 +148,9 @@ def test_the_report_file_is_not_compared(tmp_path: Path) -> None:
     import_to(canon, out)
     (out / REPORT).write_text("edited\n", encoding="utf-8")
     assert check(canon, out) == 0
+
+
+def test_check_and_source_commit_exclude_each_other(tmp_path: Path) -> None:
+    with pytest.raises(SystemExit) as raised:
+        main([str(write_canon(tmp_path)), "--check", "--source-commit", SOURCE_COMMIT])
+    assert raised.value.code == 2

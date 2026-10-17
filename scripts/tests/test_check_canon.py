@@ -304,3 +304,14 @@ def test_cli_exits_non_zero_on_an_authoring_error(tmp_path, capsys):
 def test_the_real_canon_has_no_authoring_errors():
     errors = _findings(REAL_CANON)
     assert errors == [], "\n".join(_messages(errors))
+
+
+def test_an_entry_without_front_matter_does_not_crash_the_checker(tmp_path, typed_quantities):
+    """The importer reports it; the authoring check just has nothing to read."""
+    root = _canon(tmp_path, quantities=typed_quantities)
+    (root / "quantities" / "speed-b.md").write_text(
+        "just prose, no front matter\n", encoding="utf-8"
+    )
+    assert check_canon.load_canon(root).quantities["speed-b"].front == {}
+    msgs = _messages(_errors(root))
+    assert any("speed-b" in m for m in msgs), msgs

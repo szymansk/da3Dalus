@@ -367,3 +367,16 @@ def test_imports_leave_nothing_in_the_system_temp_directory(
         patch.setattr(os, "replace", refuse)
         assert import_to(good, tmp_path / "out-failing") == 1
     assert list(system_temp.iterdir()) == []
+
+
+def test_regenerating_the_golden_files_fails_loudly_on_a_failing_import(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from aero_kernel.tests import importer_golden
+
+    def failing(_: list[str]) -> int:
+        return 1
+
+    monkeypatch.setattr(importer_golden, "main", failing)
+    with pytest.raises(AssertionError):
+        importer_golden.regenerate()
