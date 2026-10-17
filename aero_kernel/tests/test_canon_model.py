@@ -200,9 +200,43 @@ def test_a_default_of_an_unknown_quantity_is_rejected() -> None:
         build(with_defaults(base_namespaces(), ghost=GRAVITY_DEFAULT))
 
 
-def test_a_default_on_a_computed_quantity_is_rejected() -> None:
+@pytest.mark.parametrize("role", ["derived", "output"])
+def test_a_default_on_a_computed_quantity_is_rejected(role: str) -> None:
+    namespaces = base_namespaces()
+    namespaces["calc"]["quantities"]["computed"] = {
+        "symbol": "c",
+        "unit": "N",
+        "role": role,
+        "type": "scalar",
+    }
     with pytest.raises(ValidationError, match="role"):
-        build(with_defaults(base_namespaces(), weight=GRAVITY_DEFAULT | {"unit": "N"}))
+        build(with_defaults(namespaces, computed=GRAVITY_DEFAULT | {"unit": "N"}))
+
+
+def test_a_negative_default_is_accepted_on_a_quantity_that_is_not_positive() -> None:
+    namespaces = base_namespaces()
+    namespaces["calc"]["quantities"]["offset"] = {
+        "symbol": "dx",
+        "unit": "m",
+        "role": "input",
+        "type": "scalar",
+    }
+    model = build(
+        with_defaults(
+            namespaces,
+            gravity=GRAVITY_DEFAULT,
+            offset=GRAVITY_DEFAULT | {"unit": "m", "value": -1.0},
+        )
+    )
+    assert model.namespaces["calc"].defaults["offset"].value == -1.0
+
+
+def test_defaults_are_checked_in_every_namespace() -> None:
+    namespaces = with_defaults(base_namespaces(), gravity=GRAVITY_DEFAULT)
+    namespaces["other"] = copy.deepcopy(namespaces["calc"])
+    namespaces["other"]["defaults"]["gravity"]["unit"] = "N"
+    with pytest.raises(ValidationError, match="other:gravity"):
+        build(namespaces)
 
 
 def test_a_default_on_a_non_scalar_quantity_is_rejected() -> None:

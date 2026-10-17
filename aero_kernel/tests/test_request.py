@@ -135,3 +135,16 @@ class TestAircraftInput:
         )
         assert aircraft.airplane.total_mass_kg == 3.0
         assert aircraft.values["aircraft-mass"] == 2.0
+
+
+class TestComputeRequestFields:
+    def test_the_fields_are_exactly_these(self) -> None:
+        assert sorted(ComputeRequest.model_fields) == [
+            "include_long_runs",
+            "quantities",
+            "time_budget_s",
+        ]
+
+    def test_accuracy_is_no_field_any_more(self) -> None:
+        with pytest.raises(ValidationError, match="extra_forbidden"):
+            ComputeRequest.model_validate({"quantities": ["a"], "accuracy": "medium"})
