@@ -4,6 +4,7 @@ import json
 import os
 import re
 import subprocess
+import tempfile
 from pathlib import Path
 
 import pytest
@@ -339,3 +340,29 @@ def test_a_failure_of_the_first_rename_says_nothing_was_written(
     printed = capsys.readouterr()
     assert "nothing written" in printed.err
     assert "disk full" in printed.out
+
+
+def test_imports_leave_nothing_in_the_system_temp_directory(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A run, a failing run and a failing write create nothing under ``tempfile.gettempdir()``.
+
+    The system temp directory is redirected to an empty directory of this test, so a stray
+    ``mkdtemp`` or ``TemporaryDirectory`` of the importer would show up in it.
+    """
+    system_temp = tmp_path / "system-temp"
+    system_temp.mkdir()
+    monkeypatch.setattr(tempfile, "tempdir", str(system_temp))
+    good = write_canon(tmp_path / "good")
+    bad = write_canon(tmp_path / "bad", {"quantities/gravity.md": "no front matter\n"})
+    assert import_to(good, tmp_path / "out") == 0
+    assert import_to(bad, tmp_path / "out-bad") == 1
+    with monkeypatch.context() as patch:
+
+        def refuse(*_: object) -> None:
+            msg = "disk full"
+            raise OSError(msg)
+
+        patch.setattr(os, "replace", refuse)
+        assert import_to(good, tmp_path / "out-failing") == 1
+    assert list(system_temp.iterdir()) == []
