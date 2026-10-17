@@ -613,3 +613,26 @@ def test_findings_in_one_file_come_out_by_field_and_then_by_message(tmp_path: Pa
         f"formulas/weigh-twice.md: embeds: input calc:wing-span {sentence}",
         "formulas/weigh-twice.md: variables[0]: calc:airplane is read by no formula in the embeds closure",
     ]
+
+
+def test_findings_with_the_same_file_and_field_are_ordered_by_message_whatever_the_rule_order(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The tie-break is the message. The input is a list in REVERSE message order, so the result
+    cannot come out right by insertion order or by the hash seed of a set."""
+    from aero_kernel.canon.model import Namespace
+    from aero_kernel.importer import rules
+    from aero_kernel.importer.findings import Finding
+
+    model = import_canon(write_canon(tmp_path), SOURCE_COMMIT).model
+    assert model is not None
+    reverse = [
+        Finding(file="formulas/outer.md", field="embeds", message=message)
+        for message in ("zeta", "mu", "alpha")
+    ]
+
+    def reversed_symbols(_: Namespace) -> list[Finding]:
+        return reverse
+
+    monkeypatch.setattr(rules, "_symbols", reversed_symbols)
+    assert [finding.message for finding in rules.check_model(model)] == ["alpha", "mu", "zeta"]

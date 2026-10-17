@@ -382,6 +382,7 @@ def _dimensional_canon(tmp_path):
         ("duration", "t", "s"),
         ("speed", "V_s", "m/s"),
         ("accel", "a", "m/s^2"),
+        ("volume", "Vol", "m^3"),
     ):
         (root / "quantities" / f"{slug}.md").write_text(
             f"---\ncanon: {slug}\nsymbol: {symbol}\nunit: {unit}\n---\n", encoding="utf-8"
@@ -393,6 +394,7 @@ def _dimensional_canon(tmp_path):
         "named": ("distance", "d = V_s * t"),
         "unlike": ("distance", "d = d + t"),
         "wrong": ("speed", "V_s = d * t"),
+        "cuberoot": ("distance", "d = cbrt(Vol)"),
         "procedure": ("speed", "minimize over V:  d"),
         "stranger": ("speed", "V_s = zz / t"),
     }
@@ -410,6 +412,7 @@ def test_the_dimensional_check_classifies_each_canonical_form(tmp_path):
     assert {f["slug"]: verdict for verdict, f, *_ in rows} == {
         "ratio": "BALANCES",
         "root": "BALANCES",
+        "cuberoot": "BALANCES",
         "qualified": "BALANCES",
         "named": "BALANCES",
         "unlike": "ADDS_UNLIKE",
@@ -427,7 +430,7 @@ def test_the_dimensional_check_runs_from_an_extraction_json(tmp_path, capsys):
     extraction.write_text(json.dumps(check_canon.build_canon_json(root)), encoding="utf-8")
     assert check_canon.cli([str(extraction)]) == 0
     out = capsys.readouterr().out
-    assert "dimensional check over 8 canonical formulas" in out
+    assert "dimensional check over 9 canonical formulas" in out
     assert "MISMATCH" in out
 
 
@@ -475,7 +478,7 @@ def test_the_cli_runs_the_dimensional_check_over_a_canon_directory(tmp_path, cap
     (root / "README.md").write_text("# Canon\n", encoding="utf-8")
     check_canon.cli([str(root)])
     out = capsys.readouterr().out
-    assert "dimensional check over 8 canonical formulas" in out
+    assert "dimensional check over 9 canonical formulas" in out
     assert "MISMATCH" in out
     assert "ADDS_UNLIKE" in out
 
@@ -487,6 +490,9 @@ def test_the_procedural_pattern_decides_before_the_dimensions_are_compared(tmp_p
         ("where", "d = d + t  where t is measured"),
         ("solve", "V_s = d * t, solve for d"),
         ("table", "V_s = d * t from a table"),
+        ("maximize", "d = d + t, maximize d"),
+        ("maximise", "d = d + t, maximise d"),
+        ("minimise", "d = d + t, minimise d"),
     ):
         (root / "formulas" / f"{slug}.md").write_text(
             f"---\ncanon: {slug}\noutput: speed\nkind: law\n---\n\n"
@@ -495,4 +501,5 @@ def test_the_procedural_pattern_decides_before_the_dimensions_are_compared(tmp_p
         )
     rows = check_canon.dimensional_rows(check_canon.build_canon_json(root))
     verdicts = {f["slug"]: verdict for verdict, f, *_ in rows}
-    assert {verdicts[slug] for slug in ("where", "solve", "table")} == {"PROCEDURAL"}
+    decided = ("where", "solve", "table", "maximize", "maximise", "minimise")
+    assert {verdicts[slug] for slug in decided} == {"PROCEDURAL"}
