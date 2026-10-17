@@ -15,7 +15,7 @@ from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass
 
 from aero_kernel.build import Build
-from aero_kernel.canon.model import ConstBinding, Formula
+from aero_kernel.canon.model import ConstBinding, Default, Formula
 from aero_kernel.context import Context, Inputs, Value
 from aero_kernel.errors import (
     ErrorCategory,
@@ -42,6 +42,7 @@ from aero_kernel.schema import (
     AircraftInput,
     ComputeRequest,
     ComputeResult,
+    DefaultUsed,
     KernelWarning,
     Provenance,
     QuantityResult,
@@ -103,12 +104,16 @@ class _Call:
         request: ComputeRequest,
         subtree: Subtree,
         call_id: str,
+        input_warnings: Sequence[KernelWarning],
     ) -> None:
         self.build = build
         self.aircraft = aircraft
         self.request = request
         self.subtree = subtree
         self.call_id = call_id
+        self.input_warnings = input_warnings
+        # the defaults taken so far, by qualified slug: only nodes that run take one (ch. 8.11)
+        self.taken: dict[str, Default] = {}
         self.nodes: dict[NodeId, Node] = {node.id: node for node in subtree.nodes}
         self.values = {qualify(slug): value for slug, value in aircraft.values.items()}
         self.runs: dict[NodeId, _NodeRun] = {}
@@ -250,7 +255,7 @@ class _Call:
         inherited = self._inherit(node, anchor, QuantityStatus.ERROR)
         if inherited is not None:
             return inherited
-        inputs, missing = self._inputs(node, formula)
+        inputs, missing, defaults = self._inputs(node, formula)
         if missing:
             return self._failed(
                 anchor, lambda slug: self._missing_input(node, slug, formula_slug, missing)
@@ -269,6 +274,7 @@ class _Call:
             return inherited
 
         warner = Context(origin=display_slug(node.produces[0].quantity))
+        default_warnings = self._take_defaults(defaults)
         try:
             returned = await implementation.func(inputs, warner)
         except FormulaError as exc:
@@ -284,7 +290,7 @@ class _Call:
             outcome=NodeOutcome(status=QuantityStatus.OK),
             anchor=anchor,
             outputs=returned,
-            warnings=warner.warnings,
+            warnings=(*default_warnings, *warner.warnings),
         )
 
     def _inherit(self, node: Node, anchor: str, status: QuantityStatus) -> _NodeRun | None:
@@ -343,25 +349,87 @@ class _Call:
             detail={"quantities": list[JsonValue](display_slug(slug) for slug, _ in unsupported)},
         )
 
-    def _inputs(self, node: Node, formula: Formula) -> tuple[Inputs, list[str]]:
-        """Bind the formula's parameters: ``x`` and the qualified slugs of missing inputs."""
+    def _inputs(self, node: Node, formula: Formula) -> tuple[Inputs, list[str], list[str]]:
+        """Bind the formula's parameters.
+
+        Returns:
+            ``x``, the qualified slugs of the missing inputs, and the qualified slugs whose
+            default was bound (taken only if the formula is then called).
+        """
         application = formula.application(node.id.application)
         bound: dict[str, Value | None] = {}
         missing: list[str] = []
+        defaulted: list[str] = []
         for parameter, binding in application.bind.items():
             if isinstance(binding, ConstBinding):
                 bound[parameter] = binding.const
                 continue
             value = self._read(node, binding)
+            default = self._default_of(binding)
             if value is not None:
                 bound[parameter] = value
             elif any(edge.quantity == binding for edge in self.subtree.edges[node.id]):
                 continue  # a predecessor has no value: that is its status (row 7), not a missing input
+            elif default is not None:
+                bound[parameter] = default.value
+                defaulted.append(binding)
             elif parameter in formula.optional:
                 bound[parameter] = None
             else:
                 missing.append(binding)
-        return bound, missing
+        return bound, missing, defaulted
+
+    def _default_of(self, slug: str) -> Default | None:
+        """The canon default of a supplied quantity, if the model states one."""
+        namespace, _, name = slug.partition(":")
+        return self.build.model.namespaces[namespace].defaults.get(name)
+
+    def _take_defaults(self, slugs: Sequence[str]) -> list[KernelWarning]:
+        """Record the defaults a node that is about to run takes; return their warnings.
+
+        Each default is logged once per call and slug. A target default is a substitution and gives
+        the ``default_target_used`` warning, which this node's quantity and everything computed
+        from it inherits; a constant's default gives none (ch. 8.11).
+        """
+        warnings: list[KernelWarning] = []
+        for slug in slugs:
+            default = self._default_of(slug)
+            quantity = self.build.model.quantity(slug)
+            assert default is not None  # bound from this default
+            assert quantity is not None
+            shown = display_slug(slug)
+            if slug not in self.taken:
+                self.taken[slug] = default
+                logger.info(
+                    "default used: %s = %s %s (%s)",
+                    shown,
+                    default.value,
+                    default.unit,
+                    default.source,
+                    extra={"call_id": self.call_id, "quantity": shown, "role": quantity.role},
+                )
+            if quantity.role == "target":
+                warnings.append(
+                    KernelWarning.of(
+                        "default_target_used",
+                        f"`{shown}` was not set; the canon default {default.value} "
+                        f"{default.unit} is used ({default.source}).",
+                        origin=shown,
+                        detail={
+                            "value": default.value,
+                            "unit": default.unit,
+                            "source": default.source,
+                        },
+                    )
+                )
+        return warnings
+
+    def defaults_used(self) -> tuple[DefaultUsed, ...]:
+        """The defaults taken by nodes that ran, sorted by display slug."""
+        return tuple(
+            DefaultUsed(slug=shown, value=d.value, unit=d.unit, source=d.source)
+            for shown, d in sorted((display_slug(slug), d) for slug, d in self.taken.items())
+        )
 
     def _read(self, node: Node, slug: str) -> Value | None:
         """The value of a bound quantity: a predecessor's output or a supplied input."""
@@ -463,10 +531,17 @@ class _Call:
         formula, _ = self._formula(node)
         value = None if run.outputs is None else run.outputs[parameter]
         assert isinstance(value, float)  # checked by _check_outputs for a scalar
+        subtree_nodes = self.subtree.nodes_for(resolved.slug)
+        read = {r.quantity for node_id in subtree_nodes for r in self.nodes[node_id].reads}
         warnings = dedupe_warnings(
-            warning
-            for node_id in self.subtree.nodes_for(resolved.slug)
-            for warning in self.runs[node_id].warnings
+            [
+                *(w for node_id in subtree_nodes for w in self.runs[node_id].warnings),
+                *(
+                    w
+                    for w in self.input_warnings
+                    if w.origin is not None and qualify(w.origin) in read
+                ),
+            ]
         )
         return QuantityResult(
             slug=slug,
@@ -491,9 +566,10 @@ def _reason_of(propagated: Propagated) -> Reason:
     return propagated.reason
 
 
-def _provenance(build: Build) -> Provenance:
+def _provenance(build: Build, defaults: tuple[DefaultUsed, ...] = ()) -> Provenance:
     """The provenance of a call on a loaded build."""
     return Provenance(
+        defaults_used=defaults,
         build_digest=build.digest,
         canon_model_hash=build.model.content_hash,
         canon_source_commit=build.model.source_commit,
@@ -544,13 +620,14 @@ async def evaluate(build: Build, aircraft: AircraftInput, request: ComputeReques
     """
     call_id = secrets.token_hex(4)
     started = time.perf_counter()
-    errors = validate_aircraft(aircraft).errors + validate_values(aircraft.values, build.model)
+    validation = validate_aircraft(aircraft)
+    errors = validation.errors + validate_values(aircraft.values, build.model)
     if errors:
         result = ComputeResult(input_errors=errors, provenance=_provenance(build))
         log_call(call_id, request, result, started)
         return result
     subtree = build.graph.subtree(request.quantities)
-    call = _Call(build, aircraft, request, subtree, call_id)
+    call = _Call(build, aircraft, request, subtree, call_id, validation.warnings)
     await call.run()
     results: dict[str, QuantityResult] = {}
     for error in subtree.errors:
@@ -564,7 +641,7 @@ async def evaluate(build: Build, aircraft: AircraftInput, request: ComputeReques
     results.update({r.requested: call.result_of(r) for r in subtree.requested})
     result = ComputeResult(
         quantities=tuple(results[slug] for slug in request.quantities),
-        provenance=_provenance(build),
+        provenance=_provenance(build, call.defaults_used()),
     )
     log_call(call_id, request, result, started)
     return result

@@ -169,7 +169,7 @@ class Registry:
         if self._frozen:
             return
         self._frozen = True
-        logger.info(
+        logger.debug(
             "registry frozen: %s formulas, %s checks",
             len(self._implementations),
             sum(len(checks) for checks in self._checks.values()),

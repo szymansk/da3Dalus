@@ -122,12 +122,14 @@ def test_freeze_logs_the_counts_once(caplog: pytest.LogCaptureFixture) -> None:
     registry.precondition("stall-speed", "rho-ok")(pre)
     registry.postcondition("stall-speed", "rho-ok")(post)
     registry.postcondition("stall-speed", "other-ok")(post)
-    with caplog.at_level(logging.INFO, logger="aero_kernel.registry"):
+    with caplog.at_level(logging.DEBUG, logger="aero_kernel.registry"):
         registry.freeze()
         registry.freeze()
-    assert [(r.levelno, r.getMessage()) for r in caplog.records] == [
-        (logging.INFO, "registry frozen: 1 formulas, 3 checks")
+    frozen = [r for r in caplog.records if r.getMessage().startswith("registry frozen")]
+    assert [(r.levelno, r.getMessage()) for r in frozen] == [
+        (logging.DEBUG, "registry frozen: 1 formulas, 3 checks")
     ]
+    assert [r for r in caplog.records if r.levelno >= logging.INFO] == []
 
 
 def test_registrations_are_logged_at_debug(caplog: pytest.LogCaptureFixture) -> None:

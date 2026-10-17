@@ -23,6 +23,22 @@ def num(x: Inputs, name: str) -> float:
     return value
 
 
+DEFAULTS: dict[str, dict[str, Any]] = {
+    "air-density": {
+        "value": 1.225,
+        "unit": "kg/m^3",
+        "source": "ISA sea level",
+        "regime": "RC and UAV, sea level",
+    },
+    "margin-target": {
+        "value": 1.3,
+        "unit": "1",
+        "source": "test margin",
+        "regime": "RC and UAV, test value",
+    },
+}
+
+
 def fixture_model() -> CanonModel:
     """A small canon model that exercises every engine path."""
     quantities: dict[str, dict[str, Any]] = {
@@ -52,6 +68,17 @@ def fixture_model() -> CanonModel:
         "target-t": quantity("target"),
         "curve-q": quantity("output", type="curve"),
         "components": quantity("input", type="components"),
+        "air-density": quantity("input", unit="kg/m^3", positive=True),
+        "margin-target": quantity("target"),
+        "density-q": quantity("output"),
+        "margin-q": quantity("output"),
+        "both-q": quantity("output"),
+        "density-again-q": quantity("output"),
+        "long-density-q": quantity("output"),
+        "optional-density-q": quantity("output"),
+        "fail-density-q": quantity("output"),
+        "gravity-only-q": quantity("output"),
+        "after-margin-q": quantity("output"),
         "two-uncarried-q": quantity("output"),
         "three-uncarried-q": quantity("output"),
         "target-u": quantity("target"),
@@ -171,11 +198,24 @@ def fixture_model() -> CanonModel:
         "three-uncarried": formula(
             {"c": "curve-q", "p": "polar-q", "k": "components"}, {"r": "three-uncarried-q"}
         ),
+        "density-user": formula({"rho": "air-density"}, {"r": "density-q"}),
+        "margin-user": formula({"k": "margin-target"}, {"r": "margin-q"}),
+        "both-user": formula({"rho": "air-density", "k": "margin-target"}, {"r": "both-q"}),
+        "density-again": formula({"rho": "air-density"}, {"r": "density-again-q"}),
+        "long-density": formula({"rho": "air-density"}, {"r": "long-density-q"}, cost="minutes"),
+        "optional-density": formula(
+            {"m": "aircraft-mass", "rho": "air-density"},
+            {"r": "optional-density-q"},
+            optional=["rho"],
+        ),
+        "fail-density": formula({"w": "weight", "rho": "air-density"}, {"r": "fail-density-q"}),
+        "gravity-only": formula({"g": "gravity"}, {"r": "gravity-only-q"}),
+        "after-margin": formula({"q": "margin-q"}, {"r": "after-margin-q"}),
         "configure": formula({"a": "airplane"}, {"c": "airplane-cfg"}),
         "cfg-span": formula({"a": "airplane-cfg"}, {"s": "cfg-span-q"}),
         "curve-producer": formula({"m": "aircraft-mass"}, {"c": "curve-q"}),
     }
-    return model_of(quantities, formulas)
+    return model_of(quantities, formulas, defaults=DEFAULTS)
 
 
 async def _weight(x: Inputs, ctx: Context) -> Mapping[str, object]:
@@ -324,6 +364,15 @@ STANDARD: Mapping[str, Impl] = {
     "two-givens": _one,
     "two-uncarried": _one,
     "three-uncarried": _one,
+    "density-user": _one,
+    "margin-user": _one,
+    "both-user": _one,
+    "density-again": _one,
+    "long-density": _one,
+    "optional-density": _one,
+    "fail-density": _one,
+    "gravity-only": _one,
+    "after-margin": _one,
     "configure": _configure,
     "cfg-span": _cfg_span,
     "curve-producer": _curve,
@@ -356,10 +405,14 @@ def make_build(registry: Registry | None = None, model: CanonModel | None = None
 
 
 def aircraft(
-    values: Mapping[str, float] | None = None, wings: dict[str, Any] | None = None
+    values: Mapping[str, float] | None = None,
+    wings: dict[str, Any] | None = None,
+    geometry_mass_kg: float | None = None,
 ) -> AircraftInput:
     """A wingless aircraft of mass 2 kg and gravity 9.81 m/s^2, with the given values and wings."""
     document: dict[str, Any] = {"name": "t"}
+    if geometry_mass_kg is not None:
+        document["total_mass_kg"] = geometry_mass_kg
     if wings is not None:
         document["wings"] = wings
     given = {"aircraft-mass": 2.0, "gravity": 9.81, **(values or {})}
@@ -384,3 +437,10 @@ def aileron_wing() -> dict[str, Any]:
         {"xyz_le": [0.0, 0.5, 0.0], "chord": 0.2, "twist": 0.0, "airfoil": "naca2412"},
     ]
     return {"Main": {"name": "Main", "symmetric": True, "x_secs": sections}}
+
+
+def deflected_wing() -> dict[str, Any]:
+    """A wing whose device carries a non-zero deflection, which the kernel ignores and reports."""
+    wings = aileron_wing()
+    wings["Main"]["x_secs"][0]["trailing_edge_device"]["deflection_deg"] = 5.0
+    return wings
