@@ -51,6 +51,16 @@ def fixture_model() -> CanonModel:
         "given-q": quantity("output"),
         "target-t": quantity("target"),
         "curve-q": quantity("output", type="curve"),
+        "components": quantity("input", type="components"),
+        "curve-read-q": quantity("output"),
+        "needs-components-q": quantity("output"),
+        "long-after-weight-q": quantity("output"),
+        "na-twin-a": quantity("output"),
+        "na-twin-b": quantity("output"),
+        "long-twin-a": quantity("output"),
+        "long-twin-b": quantity("output"),
+        "dep-twin-a": quantity("output"),
+        "dep-twin-b": quantity("output"),
         "airplane-cfg": quantity("derived", type="airplane"),
         "cfg-span-q": quantity("output", unit="m"),
     }
@@ -81,6 +91,16 @@ def fixture_model() -> CanonModel:
         "given-only": formula(
             {"m": "aircraft-mass", "t": "target-t"}, {"r": "given-q"}, given=["calc:target-t"]
         ),
+        "curve-reader": formula({"c": "curve-q"}, {"r": "curve-read-q"}),
+        "needs-components": formula(
+            {"m": "aircraft-mass", "c": "components"}, {"r": "needs-components-q"}
+        ),
+        "long-after-weight": formula({"w": "weight"}, {"r": "long-after-weight-q"}, cost="minutes"),
+        "na-twin": formula({"p": "roll-q"}, {"a": "na-twin-a", "b": "na-twin-b"}),
+        "long-twin": formula(
+            {"m": "aircraft-mass"}, {"a": "long-twin-a", "b": "long-twin-b"}, cost="minutes"
+        ),
+        "dep-twin": formula({"w": "weight"}, {"a": "dep-twin-a", "b": "dep-twin-b"}),
         "configure": formula({"a": "airplane"}, {"c": "airplane-cfg"}),
         "cfg-span": formula({"a": "airplane-cfg"}, {"s": "cfg-span-q"}),
         "curve-producer": formula({"m": "aircraft-mass"}, {"c": "curve-q"}),
@@ -160,6 +180,14 @@ async def _given(x: Inputs, ctx: Context) -> Mapping[str, object]:
     return {"r": num(x, "m") + num(x, "t")}
 
 
+async def _pair(x: Inputs, ctx: Context) -> Mapping[str, object]:
+    return {"a": 1.0, "b": 2.0}
+
+
+async def _one(x: Inputs, ctx: Context) -> Mapping[str, object]:
+    return {"r": 1.0}
+
+
 async def _configure(x: Inputs, ctx: Context) -> Mapping[str, object]:
     return {"c": x["a"]}
 
@@ -192,6 +220,12 @@ STANDARD: Mapping[str, Impl] = {
     "optional-g": _optional_g,
     "scaled": _scaled,
     "given-only": _given,
+    "curve-reader": _one,
+    "needs-components": _one,
+    "long-after-weight": _one,
+    "na-twin": _pair,
+    "long-twin": _pair,
+    "dep-twin": _pair,
     "configure": _configure,
     "cfg-span": _cfg_span,
     "curve-producer": _curve,

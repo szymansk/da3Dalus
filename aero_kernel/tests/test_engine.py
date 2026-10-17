@@ -10,13 +10,17 @@ import pytest
 from aero_kernel.context import Context, Inputs
 from aero_kernel.engine import evaluate
 from aero_kernel.errors import ErrorCategory, FormulaError, KernelError
-from aero_kernel.graph import GraphModelError
-from aero_kernel.schema import ComputeResult, QuantityResult, QuantityStatus, ReasonCode
+from aero_kernel.schema import (
+    AircraftInput,
+    ComputeResult,
+    QuantityResult,
+    QuantityStatus,
+    ReasonCode,
+)
 from aero_kernel.tests.engine_builders import (
     Impl,
     aileron_wing,
     aircraft,
-    fixture_model,
     make_build,
     num,
     registry_with,
@@ -110,8 +114,6 @@ async def test_an_absent_optional_input_arrives_as_none() -> None:
     values = {"aircraft-mass": 2.0}
     registry = registry_with({"optional-g": optional})
     build = make_build(registry)
-    from aero_kernel.schema import AircraftInput
-
     only_mass = AircraftInput.model_validate({"airplane": {"name": "t"}, "values": values})
     result = await evaluate(build, only_mass, request("opt-q"))
     assert result.quantities[0].status is QuantityStatus.OK
@@ -363,8 +365,6 @@ async def test_a_non_finite_value_is_an_input_error() -> None:
 
 
 async def test_q24_a_missing_value_fails_only_its_dependents() -> None:
-    from aero_kernel.schema import AircraftInput
-
     no_gravity = AircraftInput.model_validate(
         {"airplane": {"name": "t"}, "values": {"aircraft-mass": 2.0}}
     )
@@ -504,14 +504,11 @@ async def test_q15_a_long_run_is_skipped_unless_requested_and_dependents_follow(
 
 async def test_an_upstream_error_beats_a_long_run_skip() -> None:
     error = FormulaError(ErrorCategory.NOT_CONVERGED, "not_converged", "No solution.", "Retry.")
-    model = fixture_model()
-    assert model.formula("long-run") is not None
-    # mix-skip reads roll-q (not applicable) and long-q (skipped); give long-run an own failure
-    result = await run(
-        "long-q", "mix-skip-q", long_runs=True, overrides={"long-run": failing(error)}
-    )
-    assert result.quantities[1].error is not None
-    assert result.quantities[1].error.category is ErrorCategory.UPSTREAM_FAILED
+    result = await run("long-after-weight-q", overrides={"weight": failing(error)})
+    downstream = result.quantities[0].error
+    assert result.quantities[0].status is QuantityStatus.ERROR
+    assert downstream is not None
+    assert downstream.category is ErrorCategory.UPSTREAM_FAILED
 
 
 # --- warnings -----------------------------------------------------------------------------------
@@ -552,32 +549,6 @@ async def test_an_unknown_warning_code_is_internal() -> None:
     assert result.quantities[0].error.category is ErrorCategory.INTERNAL
 
 
-# --- model defects ------------------------------------------------------------------------------
-
-
-async def test_a_graph_defect_makes_every_requested_quantity_internal_logged_once(
-    monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
-) -> None:
-    build = make_build()
-
-    def broken(slugs: object) -> object:
-        msg = "cycle: a -> b -> a"
-        raise GraphModelError(msg)
-
-    monkeypatch.setattr(build.graph, "subtree", broken)
-    with caplog.at_level(logging.DEBUG, logger="aero_kernel"):
-        result = await evaluate(build, aircraft(), request("weight", "nonsense"))
-    errors = [q.error for q in result.quantities]
-    assert all(e is not None and e.category is ErrorCategory.INTERNAL for e in errors)
-    assert all(e is not None and e.escalate for e in errors)
-    assert result.quantities[0].unit == "N"
-    assert result.quantities[1].unit is None
-    assert "cycle" not in str([e.message for e in errors if e is not None])
-    logged = [r for r in caplog.records if r.levelno >= logging.ERROR]
-    assert len(logged) == 1
-    assert logged[0].exc_info is not None
-
-
 # --- logging ------------------------------------------------------------------------------------
 
 
@@ -595,9 +566,7 @@ async def test_one_info_line_per_call_and_debug_per_node_all_with_the_same_call_
     (call_id,) = ids
     assert isinstance(call_id, str)
     assert len(call_id) >= 6
-    message = info[0].getMessage()
-    assert "2" in message
-    assert "ok" in message
+    assert info[0].getMessage().startswith("compute: 2 quantities (ok=2), 0 input errors, ")
 
 
 async def test_each_call_has_its_own_call_id(caplog: pytest.LogCaptureFixture) -> None:
@@ -607,3 +576,153 @@ async def test_each_call_has_its_own_call_id(caplog: pytest.LogCaptureFixture) -
     ids = [getattr(r, "call_id", None) for r in caplog.records]
     assert len(ids) == 2
     assert ids[0] != ids[1]
+
+
+# --- one status per node, worded for each requested quantity (R4) -------------------------------
+
+
+async def test_a_not_applicable_sibling_names_its_own_slug() -> None:
+    result = await run("na-twin-a", "na-twin-b")
+    for quantity in result.quantities:
+        assert quantity.reason is not None
+        assert quantity.reason.code is ReasonCode.DEPENDS_ON_NOT_APPLICABLE
+        assert f"`{quantity.slug}`" in quantity.reason.message
+    assert "`na-twin-a`" not in result.quantities[1].reason.message  # type: ignore[union-attr]
+
+
+async def test_a_long_run_skipped_sibling_names_its_own_slug() -> None:
+    result = await run("long-twin-a", "long-twin-b")
+    for quantity in result.quantities:
+        assert quantity.status is QuantityStatus.SKIPPED
+        assert quantity.reason is not None
+        assert quantity.reason.code is ReasonCode.LONG_RUN_NOT_INCLUDED
+        assert f"`{quantity.slug}`" in quantity.reason.message
+
+
+async def test_an_upstream_failed_sibling_names_its_own_slug() -> None:
+    error = FormulaError(ErrorCategory.NOT_CONVERGED, "not_converged", "No solution.", "Retry.")
+    result = await run("dep-twin-a", "dep-twin-b", overrides={"weight": failing(error)})
+    for quantity in result.quantities:
+        assert quantity.error is not None
+        assert quantity.error.quantity == quantity.slug
+        assert f"`{quantity.slug}`" in quantity.error.message
+
+
+async def test_a_missing_input_sibling_names_its_own_slug() -> None:
+    no_mass = AircraftInput.model_validate({"airplane": {"name": "t"}, "values": {}})
+    result = await evaluate(make_build(), no_mass, request("twin-a", "twin-b"))
+    for quantity in result.quantities:
+        assert quantity.error is not None
+        assert quantity.error.code == "missing_input"
+        assert f"`{quantity.slug}`" in quantity.error.message
+
+
+async def test_a_not_implemented_sibling_names_its_own_slug() -> None:
+    result = await run("twin-a", "twin-b", drop=("twin",))
+    for quantity in result.quantities:
+        assert quantity.error is not None
+        assert quantity.error.category is ErrorCategory.NOT_IMPLEMENTED
+        assert quantity.error.quantity == quantity.slug
+
+
+async def test_a_formula_authored_text_is_never_rewritten() -> None:
+    error = FormulaError(
+        ErrorCategory.INVALID_INPUT,
+        "invalid_input",
+        "`twin-a` exceeds `twin-b`.",
+        "Lower `twin-a` or raise `twin-b`.",
+    )
+    result = await run("twin-a", "twin-b", overrides={"twin": failing(error)})
+    for quantity in result.quantities:
+        assert quantity.error is not None
+        assert quantity.error.quantity == quantity.slug
+        assert quantity.error.message == "`twin-a` exceeds `twin-b`."
+        assert quantity.error.hint == "Lower `twin-a` or raise `twin-b`."
+
+
+async def test_a_crash_logs_once_and_each_sibling_names_its_own_slug(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    with caplog.at_level(logging.DEBUG, logger="aero_kernel"):
+        result = await run("twin-a", "twin-b", overrides={"twin": _boom})
+    assert len([r for r in caplog.records if r.levelno >= logging.ERROR]) == 1
+    for quantity in result.quantities:
+        assert quantity.error is not None
+        assert f"`{quantity.slug}`" in quantity.error.message
+        assert quantity.error.quantity == quantity.slug
+
+
+# --- values the kernel cannot carry yet (R2) ----------------------------------------------------
+
+
+async def test_reading_a_curve_is_not_implemented_with_its_own_code() -> None:
+    result = await run("curve-read-q")
+    error = result.quantities[0].error
+    assert error is not None
+    assert (error.category, error.code) == (
+        ErrorCategory.NOT_IMPLEMENTED,
+        "unsupported_value_type",
+    )
+    assert "`curve-q`" in error.message
+    assert "curve" in error.message
+    assert error.quantity == "curve-read-q"
+
+
+async def test_reading_the_components_input_is_not_implemented_never_missing_input() -> None:
+    result = await run("needs-components-q")
+    error = result.quantities[0].error
+    assert error is not None
+    assert error.code == "unsupported_value_type"
+    assert "`components`" in error.message
+    assert error.input_path is None
+
+
+async def test_an_unsupported_read_fails_only_its_reader() -> None:
+    result = await run("curve-read-q", "independent-q")
+    assert result.quantities[1].status is QuantityStatus.OK
+
+
+# --- several missing inputs (N7) ----------------------------------------------------------------
+
+
+async def test_several_missing_inputs_are_one_error_with_the_first_as_input_path() -> None:
+    nothing = AircraftInput.model_validate({"airplane": {"name": "t"}, "values": {}})
+    result = await evaluate(make_build(), nothing, request("weight"))
+    error = result.quantities[0].error
+    assert error is not None
+    assert error.input_path == "values.aircraft-mass"
+    assert error.detail == {"inputs": ["aircraft-mass", "gravity"]}
+    assert error.message == "`weight` needs `aircraft-mass` and `gravity`, which were not supplied."
+
+
+async def test_one_missing_input_reads_in_the_singular() -> None:
+    only_mass = AircraftInput.model_validate(
+        {"airplane": {"name": "t"}, "values": {"aircraft-mass": 2.0}}
+    )
+    result = await evaluate(make_build(), only_mass, request("weight"))
+    assert result.quantities[0].error is not None
+    assert result.quantities[0].error.message == "`weight` needs `gravity`, which was not supplied."
+
+
+# --- a failing node does not cancel its layer (S9) ----------------------------------------------
+
+
+async def test_a_failing_node_leaves_its_in_flight_sibling_of_the_layer_alone() -> None:
+    barrier = asyncio.Barrier(2)
+    error = FormulaError(ErrorCategory.NOT_CONVERGED, "not_converged", "No solution.", "Retry.")
+
+    async def raiser(x: Inputs, ctx: Context) -> Mapping[str, object]:
+        async with asyncio.timeout(2):
+            await barrier.wait()
+        raise error
+
+    async def slow(x: Inputs, ctx: Context) -> Mapping[str, object]:
+        async with asyncio.timeout(2):
+            await barrier.wait()
+        await asyncio.sleep(0.01)
+        return {"r": 7.0}
+
+    result = await run("weight", "independent-q", overrides={"weight": raiser, "independent": slow})
+    assert result.quantities[0].status is QuantityStatus.ERROR
+    assert result.quantities[1].status is QuantityStatus.OK
+    assert result.quantities[1].value == 7.0

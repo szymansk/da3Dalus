@@ -99,7 +99,9 @@ def shipped_build() -> Build:
 
     The memo is an immutable package artefact, not call state. ``functools.cache`` stores only a
     returned value, never a raised exception, so a failed load is retried on every call and the
-    kernel recovers after the file is fixed without a restart.
+    kernel recovers after the file is fixed without a restart. The first call parses the
+    model on the calling thread; ch. 8.10 forbids blocking on solver work, and parsing one JSON
+    file is not that.
 
     Returns:
         The shipped build.

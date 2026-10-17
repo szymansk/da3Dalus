@@ -18,6 +18,7 @@ from aero_kernel.errors import (
     display_slug,
     flags_for,
     format_world_assignment,
+    internal_error,
     internal_error_from_exception,
     is_slug,
     is_world_name,
@@ -829,3 +830,15 @@ def test_the_default_namespace_is_defined_once_in_errors() -> None:
 def test_display_slug_writes_calc_bare_and_other_namespaces_qualified() -> None:
     assert display_slug("calc:stall-speed") == "stall-speed"
     assert display_slug("other:stall-speed") == "other:stall-speed"
+
+
+def test_internal_error_builds_the_same_error_without_logging(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    exc = RuntimeError("secret /tmp/x")
+    with caplog.at_level(logging.DEBUG, logger="aero_kernel"):
+        quiet = internal_error(exc, quantity="q", formula="f", application="a")
+    assert caplog.records == []
+    loud = internal_error_from_exception(exc, quantity="q", formula="f", application="a")
+    assert quiet == loud
+    assert "secret" not in quiet.message

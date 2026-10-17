@@ -11,7 +11,7 @@ import math
 import secrets
 import time
 from collections import Counter
-from collections.abc import Mapping, Sequence
+from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass
 
 from aero_kernel.build import Build
@@ -21,17 +21,17 @@ from aero_kernel.errors import (
     ErrorCategory,
     FormulaError,
     KernelError,
-    aggregate_upstream,
     display_slug,
+    internal_error,
     internal_error_from_exception,
     qualify,
 )
 from aero_kernel.geometry import AirplaneGeometry
 from aero_kernel.graph import (
-    GraphModelError,
     Node,
     NodeId,
     NodeOutcome,
+    Propagated,
     Resolved,
     Subtree,
     facts_from_geometry,
@@ -46,10 +46,10 @@ from aero_kernel.schema import (
     QuantityResult,
     QuantityStatus,
     Reason,
-    ReasonCode,
     dedupe_warnings,
 )
 from aero_kernel.validate import validate_aircraft, validate_values
+from pydantic import JsonValue
 
 logger = logging.getLogger(__name__)
 
@@ -60,32 +60,25 @@ __all__ = ["evaluate"]
 class _NodeRun:
     """What happened to one node: its outcome for the successors and what its results need.
 
+    A node has one status but may serve several requested quantities. The engine-authored texts
+    (reasons and the engine's own errors) are therefore built per quantity from the record, never
+    rewritten; a formula-authored message is kept as the formula wrote it.
+
     Attributes:
-        outcome: The status (and error) the successors see.
-        reason: Why the node is ``not_applicable`` or ``skipped``.
-        anchor: The name its error and messages use for the node's quantity.
+        outcome: The status (and error) the successors see, worded for ``anchor``.
+        anchor: The name the outcome's texts use for the node's quantity.
+        reason_for: Builds the reason of a ``not_applicable`` or ``skipped`` node for a quantity.
+        error_for: Builds the error of an ``error`` node for a quantity.
         outputs: The returned value per output parameter, for status ``ok``.
         warnings: The warnings the node's formula reported.
     """
 
     outcome: NodeOutcome
     anchor: str
-    reason: Reason | None = None
+    reason_for: Callable[[str], Reason] | None = None
+    error_for: Callable[[str], KernelError] | None = None
     outputs: Mapping[str, object] | None = None
     warnings: tuple[KernelWarning, ...] = ()
-
-
-def _rename(error: KernelError, old: str, new: str) -> KernelError:
-    """Re-address a node's error to another quantity the node produces (the requested spelling)."""
-    if old == new:
-        return error
-    return error.model_copy(
-        update={
-            "quantity": new,
-            "message": error.message.replace(f"`{old}`", f"`{new}`"),
-            "hint": error.hint.replace(f"`{old}`", f"`{new}`"),
-        }
-    )
 
 
 def _unit_of(build: Build, slug: str) -> str | None:
@@ -94,15 +87,8 @@ def _unit_of(build: Build, slug: str) -> str | None:
     return None if quantity is None else quantity.unit
 
 
-def _internal(slug: str) -> KernelError:
-    """The ``internal`` error of a defect that is not tied to one exception."""
-    return KernelError(
-        code=ErrorCategory.INTERNAL.value,
-        category=ErrorCategory.INTERNAL,
-        quantity=slug,
-        message=f"Internal error while computing `{slug}`.",
-        hint="Report it; attach input and provenance.",
-    )
+# The quantity types a value of v1 can carry between nodes (``Value``).
+_CARRIED_TYPES = frozenset({"scalar", "airplane"})
 
 
 class _Call:
@@ -124,10 +110,6 @@ class _Call:
         self.nodes: dict[NodeId, Node] = {node.id: node for node in subtree.nodes}
         self.values = {qualify(slug): value for slug, value in aircraft.values.items()}
         self.runs: dict[NodeId, _NodeRun] = {}
-        facts = facts_from_geometry(aircraft.airplane)
-        self.conditions = {
-            node.id: unmet_condition(node, facts, aircraft.values.keys()) for node in subtree.nodes
-        }
         # the first requested spelling of a node's quantities names the node in its messages
         self.requested_by_node: dict[NodeId, str] = {}
         for resolved in subtree.requested:
@@ -167,14 +149,25 @@ class _Call:
             run = await self._evaluate_node(node)
         except Exception as exc:  # a node never raises out of the call (ch. 8.1)
             anchor = self._anchor(node)
-            error = internal_error_from_exception(
+            formula = display_slug(node.id.formula)
+            # logged once for the crash, however many quantities of the node are requested
+            logged = internal_error_from_exception(
                 exc,
                 quantity=anchor,
-                formula=display_slug(node.id.formula),
+                formula=formula,
                 application=node.id.application,
                 call_id=self.call_id,
             )
-            run = self._failed(anchor, error)
+            run = self._failed(
+                anchor,
+                lambda slug, crash=exc: internal_error(
+                    crash,
+                    quantity=slug,
+                    formula=formula,
+                    application=node.id.application,
+                ),
+                logged,
+            )
         logger.debug(
             "node finished: %s in %.1f ms",
             run.outcome.status.value,
@@ -184,70 +177,74 @@ class _Call:
         return run
 
     @staticmethod
-    def _failed(anchor: str, error: KernelError) -> _NodeRun:
+    def _failed(
+        anchor: str, error_for: Callable[[str], KernelError], error: KernelError | None = None
+    ) -> _NodeRun:
+        """A node that failed; ``error`` is its error worded for the anchor, if already built."""
         return _NodeRun(
-            outcome=NodeOutcome(status=QuantityStatus.ERROR, error=error), anchor=anchor
+            outcome=NodeOutcome(status=QuantityStatus.ERROR, error=error or error_for(anchor)),
+            anchor=anchor,
+            error_for=error_for,
         )
 
     @staticmethod
-    def _without_value(anchor: str, status: QuantityStatus, reason: Reason) -> _NodeRun:
-        return _NodeRun(outcome=NodeOutcome(status=status), anchor=anchor, reason=reason)
+    def _without_value(
+        anchor: str, status: QuantityStatus, reason_for: Callable[[str], Reason]
+    ) -> _NodeRun:
+        """A node that is ``not_applicable`` or ``skipped``."""
+        return _NodeRun(outcome=NodeOutcome(status=status), anchor=anchor, reason_for=reason_for)
 
     async def _evaluate_node(self, node: Node) -> _NodeRun:
         """The decision chain of one node (ch. 6 steps 4 and 5)."""
         formula, formula_slug = self._formula(node)
         anchor = self._anchor(node)
-        context = {"quantity": anchor, "formula": formula_slug, "application": node.id.application}
+        application = node.id.application
 
-        condition = self.conditions[node.id]
+        condition = unmet_condition(
+            node, facts_from_geometry(self.aircraft.airplane), self.aircraft.values.keys()
+        )
         if isinstance(condition, Reason):
-            return self._without_value(anchor, QuantityStatus.NOT_APPLICABLE, condition)
+            return self._without_value(
+                anchor, QuantityStatus.NOT_APPLICABLE, lambda slug, reason=condition: reason
+            )
         if isinstance(condition, KernelError):
-            return self._failed(anchor, condition.model_copy(update=context))
-
-        causes = [
-            error.model_copy(update={"quantity": display_slug(edge.quantity)})
-            for edge in self.subtree.edges[node.id]
-            if (error := self.runs[edge.predecessor].outcome.error) is not None
-        ]
-        if causes:
             return self._failed(
                 anchor,
-                aggregate_upstream(
-                    causes,
-                    quantity=anchor,
-                    formula=formula_slug,
-                    application=node.id.application,
+                lambda slug, error=condition: error.model_copy(
+                    update={"quantity": slug, "formula": formula_slug}
                 ),
             )
-        if node.cost == "minutes" and not self.request.include_long_runs:
-            return self._without_value(
-                anchor,
-                QuantityStatus.SKIPPED,
-                Reason(
-                    code=ReasonCode.LONG_RUN_NOT_INCLUDED,
-                    message=f"`{anchor}` is a long run and the request does not include long runs.",
-                ),
-            )
-        propagated = self.subtree.propagate(
-            node.id, {k: v.outcome for k, v in self.runs.items()}, quantity=anchor
-        )
-        if propagated is not None and propagated.reason is not None:
-            return self._without_value(anchor, propagated.status, propagated.reason)
 
+        propagated = self.subtree.propagate(
+            node.id,
+            {node_id: run.outcome for node_id, run in self.runs.items()},
+            quantity=anchor,
+            skip_long_run=node.cost == "minutes" and not self.request.include_long_runs,
+        )
+        if propagated is not None:
+            return self._propagated(anchor, propagated)
+
+        unsupported = self._unsupported_reads(node)
+        if unsupported:
+            return self._failed(
+                anchor,
+                lambda slug: self._unsupported_error(node, slug, formula_slug, unsupported),
+            )
         inputs, missing = self._inputs(node, formula)
         if missing:
-            return self._failed(anchor, self._missing_input(node, anchor, formula_slug, missing))
+            return self._failed(
+                anchor, lambda slug: self._missing_input(node, slug, formula_slug, missing)
+            )
         implementation = self.build.registry.implementation(node.id.formula)
         if implementation is None:
             return self._failed(
                 anchor,
-                KernelError(
+                lambda slug: KernelError(
                     code=ErrorCategory.NOT_IMPLEMENTED.value,
                     category=ErrorCategory.NOT_IMPLEMENTED,
-                    quantity=anchor,
+                    quantity=slug,
                     formula=formula_slug,
-                    application=node.id.application,
+                    application=application,
                     message=f"`{formula_slug}` is in the canon, not in the kernel yet.",
                     hint="Request a quantity whose formula is implemented.",
                 ),
@@ -257,10 +254,11 @@ class _Call:
         try:
             returned = await implementation.func(inputs, warner)
         except FormulaError as exc:
+            path = self._input_path(node, formula, exc.parameter)
             return self._failed(
                 anchor,
-                exc.to_kernel_error(
-                    **context, input_path=self._input_path(node, formula, exc.parameter)
+                lambda slug, raised=exc: raised.to_kernel_error(
+                    quantity=slug, formula=formula_slug, application=application, input_path=path
                 ),
             )
         self._check_outputs(node, formula, returned)
@@ -271,7 +269,51 @@ class _Call:
             warnings=warner.warnings,
         )
 
+    def _propagated(self, anchor: str, propagated: Propagated) -> _NodeRun:
+        """A node whose status its predecessors or its cost class force on it."""
+        if propagated.error is not None:
+            return self._failed(
+                anchor,
+                lambda slug: _error_of(propagated.addressed_to(slug)),
+                propagated.error,
+            )
+        return self._without_value(
+            anchor, propagated.status, lambda slug: _reason_of(propagated.addressed_to(slug))
+        )
+
     # --- inputs ----------------------------------------------------------------------------
+
+    def _unsupported_reads(self, node: Node) -> list[tuple[str, str]]:
+        """The ``(slug, type)`` of every bound quantity whose value v1 cannot carry."""
+        found: list[tuple[str, str]] = []
+        for binding in self._bound_quantities(node):
+            quantity = self.build.model.quantity(binding)
+            if quantity is not None and quantity.type not in _CARRIED_TYPES:
+                found.append((binding, quantity.type))
+        return found
+
+    def _bound_quantities(self, node: Node) -> list[str]:
+        """The qualified slugs the node's application binds, in the formula's parameter order."""
+        formula, _ = self._formula(node)
+        application = formula.application(node.id.application)
+        return [b for b in application.bind.values() if isinstance(b, str)]
+
+    @staticmethod
+    def _unsupported_error(
+        node: Node, quantity: str, formula_slug: str, unsupported: Sequence[tuple[str, str]]
+    ) -> KernelError:
+        """The ``not_implemented`` error of a node that reads values v1 cannot carry."""
+        names = _enumerate([f"`{display_slug(slug)}` (a {kind})" for slug, kind in unsupported])
+        return KernelError(
+            code="unsupported_value_type",
+            category=ErrorCategory.NOT_IMPLEMENTED,
+            quantity=quantity,
+            formula=formula_slug,
+            application=node.id.application,
+            message=f"`{quantity}` reads {names}, which the kernel cannot carry yet.",
+            hint="Request a quantity that reads scalars and the airplane only.",
+            detail={"quantities": list[JsonValue](display_slug(slug) for slug, _ in unsupported)},
+        )
 
     def _inputs(self, node: Node, formula: Formula) -> tuple[Inputs, list[str]]:
         """Bind the formula's parameters: ``x`` and the qualified slugs of missing inputs."""
@@ -305,27 +347,28 @@ class _Call:
             return self.aircraft.airplane
         return self.values.get(slug) if quantity is not None and quantity.type == "scalar" else None
 
+    @staticmethod
     def _missing_input(
-        self, node: Node, anchor: str, formula_slug: str, missing: Sequence[str]
+        node: Node, quantity: str, formula_slug: str, missing: Sequence[str]
     ) -> KernelError:
-        """The ``missing_input`` error of a node that reads values nobody supplied."""
-        names = ", ".join(f"`{display_slug(slug)}`" for slug in missing)
-        first = self.build.model.quantity(missing[0])
-        path = (
-            f"values.{display_slug(missing[0])}"
-            if first is not None and first.type == "scalar"
-            else None
-        )
+        """The ``missing_input`` error of a node that reads values nobody supplied.
+
+        One error for all of them; its ``input_path`` is the first missing input in the formula's
+        parameter order (every other one is in ``detail.inputs``).
+        """
+        shown = [display_slug(slug) for slug in missing]
+        verb = "was" if len(shown) == 1 else "were"
         return KernelError(
             code="missing_input",
             category=ErrorCategory.INVALID_INPUT,
-            quantity=anchor,
+            quantity=quantity,
             formula=formula_slug,
             application=node.id.application,
-            input_path=path,
-            message=f"`{anchor}` needs {names}, which was not supplied.",
-            hint=f"Supply {names}.",
-            detail={"inputs": [display_slug(slug) for slug in missing]},
+            input_path=f"values.{shown[0]}",
+            message=f"`{quantity}` needs {_enumerate([f'`{n}`' for n in shown])}, "
+            f"which {verb} not supplied.",
+            hint=f"Supply {_enumerate([f'`{n}`' for n in shown])} in `values`.",
+            detail={"inputs": list[JsonValue](shown)},
         )
 
     def _input_path(self, node: Node, formula: Formula, parameter: str | None) -> str | None:
@@ -345,11 +388,14 @@ class _Call:
     # --- outputs ---------------------------------------------------------------------------
 
     def _check_outputs(self, node: Node, formula: Formula, returned: Mapping[str, object]) -> None:
-        """Require exactly the output parameters, and a finite float for each exposed scalar.
+        """Require exactly the output parameters, and a value of its type for each carried output.
+
+        Outputs of a type v1 cannot carry are not carried: whoever reads one is
+        ``not_implemented`` (``unsupported_value_type``).
 
         Raises:
             ValueError: If the formula returned other parameters than the canon declares.
-            TypeError: If an exposed output is not a value of its quantity's type.
+            TypeError: If an exposed scalar or airplane output is not a value of its type.
         """
         expected = set(formula.application(node.id.application).produce)
         if set(returned) != expected:
@@ -376,13 +422,11 @@ class _Call:
         slug, unit = resolved.requested, resolved.quantity.unit
         status = run.outcome.status
         if status is QuantityStatus.ERROR:
-            error = run.outcome.error
-            assert error is not None  # NodeOutcome: an error exactly with status error
-            return QuantityResult(
-                slug=slug, unit=unit, status=status, error=_rename(error, run.anchor, slug)
-            )
+            assert run.error_for is not None  # set with every error outcome
+            return QuantityResult(slug=slug, unit=unit, status=status, error=run.error_for(slug))
         if status is not QuantityStatus.OK:
-            return QuantityResult(slug=slug, unit=unit, status=status, reason=run.reason)
+            assert run.reason_for is not None  # set with every skipped or not_applicable outcome
+            return QuantityResult(slug=slug, unit=unit, status=status, reason=run.reason_for(slug))
         node = self.nodes[resolved.producer]
         parameter = next(p.parameter for p in node.produces if p.quantity == resolved.slug)
         formula, _ = self._formula(node)
@@ -402,6 +446,23 @@ class _Call:
             application=node.id.application,
             warnings=warnings,
         )
+
+
+def _enumerate(names: Sequence[str]) -> str:
+    """Write names as a list in prose: ``a``, ``a and b``, ``a, b and c``."""
+    return names[0] if len(names) == 1 else f"{', '.join(names[:-1])} and {names[-1]}"
+
+
+def _error_of(propagated: Propagated) -> KernelError:
+    """The error of a propagation that forces status ``error``."""
+    assert propagated.error is not None
+    return propagated.error
+
+
+def _reason_of(propagated: Propagated) -> Reason:
+    """The reason of a propagation that forces status ``skipped`` or ``not_applicable``."""
+    assert propagated.reason is not None
+    return propagated.reason
 
 
 def _provenance(build: Build) -> Provenance:
@@ -426,25 +487,6 @@ def _log_summary(call_id: str, result: ComputeResult, started: float) -> None:
     )
 
 
-def _graph_defect(
-    build: Build, request: ComputeRequest, exc: GraphModelError, call_id: str
-) -> ComputeResult:
-    """Every requested quantity is ``internal``: the model's graph cannot serve the request."""
-    logger.error(
-        "the canon graph cannot serve the request", exc_info=exc, extra={"call_id": call_id}
-    )
-    quantities = tuple(
-        QuantityResult(
-            slug=slug,
-            unit=_unit_of(build, slug),
-            status=QuantityStatus.ERROR,
-            error=_internal(slug),
-        )
-        for slug in request.quantities
-    )
-    return ComputeResult(quantities=quantities, provenance=_provenance(build))
-
-
 async def evaluate(build: Build, aircraft: AircraftInput, request: ComputeRequest) -> ComputeResult:
     """Compute a request on a build (ch. 6); the internal seam under ``compute``.
 
@@ -464,24 +506,18 @@ async def evaluate(build: Build, aircraft: AircraftInput, request: ComputeReques
         result = ComputeResult(input_errors=errors, provenance=_provenance(build))
         _log_summary(call_id, result, started)
         return result
-    try:
-        subtree = build.graph.subtree(request.quantities)
-    except GraphModelError as exc:
-        result = _graph_defect(build, request, exc, call_id)
-        _log_summary(call_id, result, started)
-        return result
+    subtree = build.graph.subtree(request.quantities)
     call = _Call(build, aircraft, request, subtree, call_id)
     await call.run()
-    results: dict[str, QuantityResult] = {
-        error.quantity: QuantityResult(
+    results: dict[str, QuantityResult] = {}
+    for error in subtree.errors:
+        assert error.quantity is not None  # the graph words a rejection for the requested slug
+        results[error.quantity] = QuantityResult(
             slug=error.quantity,
             unit=_unit_of(build, error.quantity),
             status=QuantityStatus.ERROR,
             error=error,
         )
-        for error in subtree.errors
-        if error.quantity is not None
-    }
     results.update({r.requested: call.result_of(r) for r in subtree.requested})
     result = ComputeResult(
         quantities=tuple(results[slug] for slug in request.quantities),

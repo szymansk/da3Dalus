@@ -491,6 +491,43 @@ class FormulaError(Exception):
         )
 
 
+def internal_error(
+    exc: BaseException,
+    *,
+    quantity: str,
+    formula: str | None = None,
+    application: str | None = None,
+    world: str | None = None,
+) -> KernelError:
+    """Build the ``internal`` error of an unexpected exception, without logging.
+
+    Only the exception type enters the error: its text can carry file paths and internals
+    (ADR 0019). This is the one producer of the wording; :func:`internal_error_from_exception`
+    adds the log line. A caller that reports one crash for several quantities logs once and builds
+    the other errors here.
+
+    Args:
+        exc: The unexpected exception.
+        quantity: Slug of the quantity the error is reported for.
+        formula: Slug of the raising formula.
+        application: Id of the application.
+        world: Canonical world assignment string (``neutral-point=avl``), ch. 8.13.
+
+    Returns:
+        An ``internal`` error.
+    """
+    return KernelError(
+        code=ErrorCategory.INTERNAL.value,
+        category=ErrorCategory.INTERNAL,
+        quantity=quantity,
+        formula=formula,
+        application=application,
+        world=world,
+        message=f"Internal error ({type(exc).__name__}) while computing `{quantity}`.",
+        hint="Report it; attach input and provenance.",
+    )
+
+
 def internal_error_from_exception(
     exc: BaseException,
     *,
@@ -530,15 +567,8 @@ def internal_error_from_exception(
             "world": world,
         },
     )
-    return KernelError(
-        code=ErrorCategory.INTERNAL.value,
-        category=ErrorCategory.INTERNAL,
-        quantity=quantity,
-        formula=formula,
-        application=application,
-        world=world,
-        message=f"Internal error ({type(exc).__name__}) while computing `{quantity}`.",
-        hint="Report it; attach input and provenance.",
+    return internal_error(
+        exc, quantity=quantity, formula=formula, application=application, world=world
     )
 
 

@@ -21,20 +21,14 @@ Inputs = Mapping[str, Value | None]
 
 
 class Context:
-    """The context of one formula call.
+    """The context of one formula call."""
 
-    Attributes:
-        world: The method world of this call; ``None`` while no formula has worlds.
-    """
-
-    def __init__(self, *, origin: str, world: str | None = None) -> None:
+    def __init__(self, *, origin: str) -> None:
         """Create the context of one node.
 
         Args:
             origin: Slug of the quantity that warnings of this call are reported against.
-            world: The method world of this call, if any.
         """
-        self.world = world
         self._origin = origin
         self._warnings: list[KernelWarning] = []
 
@@ -49,9 +43,7 @@ class Context:
         Raises:
             ValueError: If the code is not in the catalogue (the engine reports it as ``internal``).
         """
-        self._warnings.append(
-            KernelWarning.of(code, message, origin=self._origin, world=None, detail=detail)
-        )
+        self._warnings.append(KernelWarning.of(code, message, origin=self._origin, detail=detail))
 
     @property
     def warnings(self) -> tuple[KernelWarning, ...]:
