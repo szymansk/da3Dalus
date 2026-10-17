@@ -312,3 +312,8 @@ def test_every_when_term_has_a_fact_or_is_pending() -> None:
     assert vocabulary == implemented | PENDING_WHEN_TERMS.keys()
     for term in implemented:
         assert isinstance(ALL.holds(term), bool)  # type: ignore[arg-type]  # term is a Literal value
+
+
+def test_holds_refuses_a_pending_term_and_names_the_ticket() -> None:
+    with pytest.raises(ValueError, match="#1187"):
+        ALL.holds("has_horizontal_tail")
