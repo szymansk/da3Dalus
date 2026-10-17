@@ -367,7 +367,7 @@ NamespaceKey = Annotated[str, _anchored(NAMESPACE_REGEX)]
 
 
 class Namespace(BaseModel):
-    """One canon of the model: its quantities and formulas, keyed by bare slug.
+    """One canon of the model: its quantities, formulas and defaults, keyed by bare slug.
 
     Attributes:
         quantities: The quantity vocabulary.
