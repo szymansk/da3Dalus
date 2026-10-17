@@ -367,13 +367,13 @@ def test_formula_error_is_an_exception_carrying_its_fields() -> None:
         ErrorCategory.NOT_CONVERGED,
         "not_converged",
         "No solution.",
-        "Raise the accuracy tier.",
+        "Raise the iteration limit.",
         {"iterations": 50},
     )
     assert isinstance(exc, Exception)
     assert str(exc) == "No solution."
     assert exc.category is ErrorCategory.NOT_CONVERGED
-    assert exc.hint == "Raise the accuracy tier."
+    assert exc.hint == "Raise the iteration limit."
     assert exc.detail == {"iterations": 50}
 
 

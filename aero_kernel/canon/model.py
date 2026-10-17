@@ -316,7 +316,7 @@ class Formula(BaseModel):
 
     @model_validator(mode="after")
     def _check_checks(self) -> Self:
-        """Require preconditions on inputs, postconditions on outputs, unique ids, known scopes."""
+        """Require preconditions on inputs, postconditions on outputs, unique ids, known applications."""
         ids = {application.id for application in self.applications}
         for label, checks, side in (
             ("precondition", self.preconditions, self.inputs),
