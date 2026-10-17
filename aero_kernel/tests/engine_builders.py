@@ -52,6 +52,8 @@ def fixture_model() -> CanonModel:
         "target-t": quantity("target"),
         "curve-q": quantity("output", type="curve"),
         "components": quantity("input", type="components"),
+        "two-uncarried-q": quantity("output"),
+        "three-uncarried-q": quantity("output"),
         "target-u": quantity("target"),
         "two-givens-q": quantity("output"),
         "pending-curve-q": quantity("output"),
@@ -164,6 +166,10 @@ def fixture_model() -> CanonModel:
             {"m": "aircraft-mass", "t": "target-t", "u": "target-u"},
             {"r": "two-givens-q"},
             given=["calc:target-t", "calc:target-u"],
+        ),
+        "two-uncarried": formula({"c": "curve-q", "p": "polar-q"}, {"r": "two-uncarried-q"}),
+        "three-uncarried": formula(
+            {"c": "curve-q", "p": "polar-q", "k": "components"}, {"r": "three-uncarried-q"}
         ),
         "configure": formula({"a": "airplane"}, {"c": "airplane-cfg"}),
         "cfg-span": formula({"a": "airplane-cfg"}, {"s": "cfg-span-q"}),
@@ -316,6 +322,8 @@ STANDARD: Mapping[str, Impl] = {
     "twice-na": _one,
     "pending-curve": _one,
     "two-givens": _one,
+    "two-uncarried": _one,
+    "three-uncarried": _one,
     "configure": _configure,
     "cfg-span": _cfg_span,
     "curve-producer": _curve,

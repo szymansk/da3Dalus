@@ -1373,3 +1373,24 @@ async def test_a_normal_call_logs_one_info_line_that_ends_with_the_timing(
         r"0 input errors, \d+\.\d ms",
         info.getMessage(),
     )
+
+
+async def test_two_uncarried_reads_are_both_named_with_and() -> None:
+    quantity = await first("two-uncarried-q")
+    assert quantity.error is not None
+    assert quantity.error.code == "unsupported_value_type"
+    assert quantity.error.message == (
+        "`two-uncarried-q` reads `curve-q` (a curve) and `polar-q` (a polar), "
+        "which the kernel cannot carry yet."
+    )
+    assert quantity.error.detail == {"quantities": ["curve-q", "polar-q"]}
+
+
+async def test_three_uncarried_reads_are_listed_as_a_b_and_c() -> None:
+    quantity = await first("three-uncarried-q")
+    assert quantity.error is not None
+    assert quantity.error.message == (
+        "`three-uncarried-q` reads `curve-q` (a curve), `polar-q` (a polar) and "
+        "`components` (a components), which the kernel cannot carry yet."
+    )
+    assert quantity.error.detail == {"quantities": ["curve-q", "polar-q", "components"]}
