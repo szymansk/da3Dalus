@@ -447,7 +447,7 @@ entry that states the condition.
 | term | holds when |
 |---|---|
 | `has_aileron` | the geometry has at least one control surface that acts as an aileron: trailing-edge devices with `role` `aileron`, `flaperon` or `elevon`. Without it the roll quantities are `not_applicable` (`roll-rate`, `roll-rate-cruise-target`, `aileron-deflection-required`) |
-| `has_separate_flap_and_aileron` | the geometry has at least one device acting as a flap (`role` `flap` or `flaperon`) and at least one **other** device acting as an aileron (`role` `aileron`, `flaperon` or `elevon`): crow deflects flaps down and ailerons up at the same time, which one surface cannot do (`butterfly-approach`) |
+| `has_separate_flap_and_aileron` | a pure flap (`role` `flap`) and an aileron-acting surface (`role` `aileron` or `elevon`); flaperons do not count — "Man hat entweder Flaperons oder Ailerons und Flaps" (maintainer, 2026-10-17, D10) (`butterfly-approach`) |
 | `has_vertical_tail` | the aircraft has a fin or a V-tail behind the main wing; winglets or a centre fin on a tailless wing do not count (`spiral-parameter`, `vertical-tail-volume`) |
 
 ### Quantity entries
@@ -464,13 +464,14 @@ stay. Added:
 #### Quantity types
 
 Closed. The unit is the unit of the values. A dimensionless quantity is written `unit: 1` — one spelling
-for the whole canon (#1181); the `airplane` types carry `—` (not a number). A `polar` has a unit per
+for the whole canon (#1181); the `airplane` and `components` types carry `—` (not a number). A `polar` has a unit per
 column: α in `deg`, the coefficients `C_L`, `C_D`, `C_m` in `1`; its `unit` field says `1`.
 
 | type | what the value is |
 |---|---|
 | `scalar` | one number in the declared unit (an interval over worlds when the producer has `uncertainty: interval`) |
-| `airplane` | the aircraft model: geometry, sections, airfoils, components — not a number |
+| `airplane` | the aircraft geometry: geometry, sections, airfoils — not a number |
+| `components` | the fitted-components document: motor, battery, propeller with its APC table — not a number |
 | `curve` | one value per point of a swept variable (the crow mix `s`, the mass `m`), named in the symbol |
 | `polar` | the sampled whole-aircraft coefficients over angle of attack — α, C_L, C_D, C_m, of equal length — at one evaluation condition, which the slug names (A2) |
 | `curve_pair` | two curves over the same swept variable that bound a range — a lower and an upper edge |
@@ -575,6 +576,7 @@ tool: OPT
 output: speed-range-over-mass, climb-rate-over-mass, max-mass-level-flight, max-mass-lift-off, cg-envelope-over-mass
 inputs:
   airplane: airplane
+  components: components
   m_current: aircraft-mass
   g: gravity
   rho: air-density

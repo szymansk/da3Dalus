@@ -1229,7 +1229,7 @@ def test_the_real_canon_has_no_open_findings():
 def test_every_real_entry_carries_the_fields():
     canon = check_canon.load_canon(REAL_CANON)
     assert len(canon.formulas) == 57
-    assert len(canon.quantities) == 138
+    assert len(canon.quantities) == 139
     assert all("inputs" in f.front and "outputs" in f.front for f in canon.formulas.values())
     assert all("type" in q.front for q in canon.quantities.values())
 

@@ -16,7 +16,7 @@ tags:
   - kind/procedure
   - status/draft
 inputs:
-  airplane: airplane
+  components: components
   v: flight-speed
   rho: air-density
   k_v: motor-voltage-constant
@@ -40,7 +40,7 @@ route B (R_m known):  (I(n_prop) - I_0) / K_v' = C_P(J) * rho * n_prop^2 * D_pro
 route A (R_m absent): n_prop = min( K_v * U_bat / 60 ,  n_prop  with  C_P(J) * rho * n_prop^3 * D_prop^5 = eta_mot * P_mot,max )
 ```
 
-**Produces** [[propeller-speed]]  ·  **from** [[airplane]] · [[flight-speed]] · [[air-density]] · [[motor-voltage-constant]] · [[motor-no-load-current]] · [[motor-circuit-resistance]] · [[battery-voltage]] · [[motor-max-power]] · [[propeller-diameter]] · [[motor-efficiency]]
+**Produces** [[propeller-speed]]  ·  **from** [[components]] · [[flight-speed]] · [[air-density]] · [[motor-voltage-constant]] · [[motor-no-load-current]] · [[motor-circuit-resistance]] · [[battery-voltage]] · [[motor-max-power]] · [[propeller-diameter]] · [[motor-efficiency]]
 
 **Kind: a procedure with two routes, selected by data.** `K_v'` is the speed constant in rad/s per volt.
 

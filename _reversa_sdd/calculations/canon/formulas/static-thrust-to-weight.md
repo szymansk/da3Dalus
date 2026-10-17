@@ -19,6 +19,7 @@ tex: \frac{T_0}{W} = \frac{T(V = 0)}{W}
 inputs:
   w: weight
   airplane: airplane
+  components: components
   rho: air-density
   k_v: motor-voltage-constant
   i_0: motor-no-load-current
@@ -41,7 +42,7 @@ optional: [r_m]
 T_0/W = T / W
 ```
 
-**Produces** [[static-thrust-to-weight]]  ·  **from** [[weight]] · [[airplane]] · [[air-density]] · [[motor-voltage-constant]] · [[motor-no-load-current]] · [[motor-circuit-resistance]] · [[battery-voltage]] · [[motor-max-power]] · [[propeller-diameter]] · [[motor-efficiency]]
+**Produces** [[static-thrust-to-weight]]  ·  **from** [[weight]] · [[airplane]] · [[components]] · [[air-density]] · [[motor-voltage-constant]] · [[motor-no-load-current]] · [[motor-circuit-resistance]] · [[battery-voltage]] · [[motor-max-power]] · [[propeller-diameter]] · [[motor-efficiency]]
 
 **Kind: a law.** `T` is the static thrust, evaluated inside this entry at `V = 0`: it embeds the
 motor-propeller balance and the measured propeller table (`embeds:`) and reads no thrust value — the

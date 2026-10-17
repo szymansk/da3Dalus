@@ -15,7 +15,7 @@ tags:
   - shape/law
   - kind/procedure
   - status/draft
-inputs: {airplane: airplane}
+inputs: {components: components}
 outputs:
   m_bat: battery-mass
   e_bat: battery-capacity
@@ -37,7 +37,7 @@ outputs:
 m_bat, E_bat, E_star, eta_total, K_v, I_0, R_m, U_bat, P_mot,max, D_prop := components of the airplane
 ```
 
-**Produces** [[battery-mass]] · [[battery-capacity]] · [[battery-specific-energy]] · [[propulsive-efficiency]] · [[motor-voltage-constant]] · [[motor-no-load-current]] · [[motor-circuit-resistance]] · [[battery-voltage]] · [[motor-max-power]] · [[propeller-diameter]]  ·  **from** [[airplane]]
+**Produces** [[battery-mass]] · [[battery-capacity]] · [[battery-specific-energy]] · [[propulsive-efficiency]] · [[motor-voltage-constant]] · [[motor-no-load-current]] · [[motor-circuit-resistance]] · [[battery-voltage]] · [[motor-max-power]] · [[propeller-diameter]]  ·  **from** [[components]]
 
 **Kind: a procedure — an evaluation of the model.** Battery data, static thrust and the
 drive-train efficiency belong to the components the aircraft is built from — motor,

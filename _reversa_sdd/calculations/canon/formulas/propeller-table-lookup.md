@@ -15,7 +15,7 @@ tags:
   - shape/law
   - kind/procedure
   - status/draft
-inputs: {airplane: airplane, j: advance-ratio}
+inputs: {components: components, j: advance-ratio}
 outputs: {c_t: thrust-coefficient}
 ---
 
@@ -27,7 +27,7 @@ outputs: {c_t: thrust-coefficient}
 C_T := interp( table of the chosen propeller, J )
 ```
 
-**Produces** [[thrust-coefficient]]  ·  **from** [[airplane]] · [[advance-ratio]]
+**Produces** [[thrust-coefficient]]  ·  **from** [[components]] · [[advance-ratio]]
 
 **Kind: a procedure — a table lookup.** The thrust coefficient of the propeller fitted to the
 airplane, interpolated at the advance ratio. 454 APC propellers with 300 187 measured
