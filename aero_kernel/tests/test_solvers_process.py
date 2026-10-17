@@ -17,6 +17,7 @@ from pathlib import Path
 
 import pytest
 from aero_kernel.errors import ErrorCategory, FormulaError
+from aero_kernel.solvers import process as process_module
 from aero_kernel.solvers.process import run_process
 
 pytestmark = pytest.mark.asyncio
@@ -343,9 +344,9 @@ async def test_a_cancel_followed_by_a_failing_start_still_warns_and_stays_a_canc
         with pytest.raises(asyncio.CancelledError):
             async with asyncio.timeout(3):
                 await task
-    assert [r.getMessage() for r in caplog.records if r.levelno >= logging.WARNING] == [
-        START_FAILED_WARNING
-    ]
+    # asyncio (3.14) logs the shielded start's exception on its own logger; ours is the one asked
+    ours = [r for r in caplog.records if r.name == process_module.logger.name]
+    assert [r.getMessage() for r in ours if r.levelno >= logging.WARNING] == [START_FAILED_WARNING]
 
 
 async def test_the_binarys_own_refusal_logs_no_warning(
