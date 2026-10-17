@@ -22,6 +22,7 @@ from aero_kernel.errors import (
     internal_error_from_exception,
     is_slug,
     is_world_name,
+    join_names,
     parse_world_assignment,
     qualify,
 )
@@ -842,3 +843,11 @@ def test_internal_error_builds_the_same_error_without_logging(
     loud = internal_error_from_exception(exc, quantity="q", formula="f", application="a")
     assert quiet == loud
     assert "secret" not in quiet.message
+
+
+@pytest.mark.parametrize(
+    ("names", "expected"),
+    [(["a"], "a"), (["a", "b"], "a and b"), (["a", "b", "c"], "a, b and c")],
+)
+def test_join_names_writes_a_list_in_prose(names: list[str], expected: str) -> None:
+    assert join_names(names) == expected

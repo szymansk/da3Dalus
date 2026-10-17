@@ -1,5 +1,6 @@
 """Tests of the ``Build`` and its loaders (ARCHITECTURE ch. 8.4)."""
 
+import asyncio
 import json
 import logging
 import subprocess
@@ -240,3 +241,44 @@ def test_the_default_registry_is_traced_by_identity(monkeypatch: pytest.MonkeyPa
     fresh = Registry()
     monkeypatch.setattr(build_module, "DEFAULT_REGISTRY", fresh)
     assert load_build(FIXTURE).registry is fresh
+
+
+@pytest.mark.parametrize(
+    "failure", [RuntimeError("x"), ValueError("x"), OSError("x")], ids=lambda e: type(e).__name__
+)
+def test_every_exception_of_the_digest_is_wrapped_with_its_cause(
+    monkeypatch: pytest.MonkeyPatch, failure: Exception
+) -> None:
+    def broken(*args: object, **kwargs: object) -> str:
+        raise failure
+
+    monkeypatch.setattr(build_module, "build_digest", broken)
+    with pytest.raises(CanonLoadError) as caught:
+        load_build(FIXTURE, Registry())
+    assert caught.value.__cause__ is failure
+    assert caught.value.error.message == (
+        "The canon model could not be loaded: the build could not be assembled."
+    )
+
+
+def test_an_exception_of_the_traceability_check_is_wrapped_with_its_cause(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    failure = KeyError("slug")
+
+    def broken(self: Registry, model: CanonModel) -> object:
+        raise failure
+
+    monkeypatch.setattr(Registry, "check_traceability", broken)
+    with pytest.raises(CanonLoadError) as caught:
+        load_build(FIXTURE, Registry())
+    assert caught.value.__cause__ is failure
+
+
+def test_cancellation_is_not_a_load_failure(monkeypatch: pytest.MonkeyPatch) -> None:
+    def cancelled(*args: object, **kwargs: object) -> str:
+        raise asyncio.CancelledError
+
+    monkeypatch.setattr(build_module, "build_digest", cancelled)
+    with pytest.raises(asyncio.CancelledError):
+        load_build(FIXTURE, Registry())

@@ -1,6 +1,8 @@
 """Tests of the public ``compute`` (ARCHITECTURE ch. 6, 8.1, 8.4)."""
 
+import asyncio
 import logging
+import re
 import sys
 from collections.abc import Iterator
 from pathlib import Path
@@ -236,3 +238,50 @@ async def test_a_failure_while_assembling_the_build_never_raises(
     assert error.category is ErrorCategory.INTERNAL
     assert error.escalate is True
     assert "disk gone" not in error.message
+
+
+async def test_the_failing_build_line_ends_with_the_timing_then_the_reason(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path, caplog: pytest.LogCaptureFixture
+) -> None:
+    use_model(monkeypatch, tmp_path / "absent.json")
+    with caplog.at_level(logging.INFO, logger="aero_kernel"):
+        await compute(aircraft(), request("stall-speed"))
+    (info,) = [r for r in caplog.records if r.levelno == logging.INFO]
+    found = re.fullmatch(
+        r"compute: \[stall-speed\] include_long_runs=False, 1 quantities \(error=1\), "
+        r"0 input errors, (\d+\.\d) ms; the shipped canon model is not loaded",
+        info.getMessage(),
+    )
+    assert found is not None
+    assert float(found.group(1)) < 60_000
+
+
+@pytest.mark.parametrize(
+    "failure", [RuntimeError("x"), ValueError("x"), KeyError("x")], ids=lambda e: type(e).__name__
+)
+async def test_every_exception_of_the_assembly_gives_internal_for_every_quantity(
+    monkeypatch: pytest.MonkeyPatch, failure: Exception
+) -> None:
+    use_model(monkeypatch, FIXTURE)
+
+    def broken(*args: object, **kwargs: object) -> Any:
+        raise failure
+
+    monkeypatch.setattr(build_module, "build_digest", broken)
+    result = await compute(aircraft(), request("stall-speed", "calc:nonsense"))
+    assert [q.slug for q in result.quantities] == ["stall-speed", "calc:nonsense"]
+    for quantity in result.quantities:
+        assert quantity.error is not None
+        assert quantity.error.category is ErrorCategory.INTERNAL
+        assert quantity.error.escalate is True
+
+
+async def test_cancellation_passes_through_compute(monkeypatch: pytest.MonkeyPatch) -> None:
+    use_model(monkeypatch, FIXTURE)
+
+    def cancelled(*args: object, **kwargs: object) -> Any:
+        raise asyncio.CancelledError
+
+    monkeypatch.setattr(build_module, "build_digest", cancelled)
+    with pytest.raises(asyncio.CancelledError):
+        await compute(aircraft(), request("stall-speed"))

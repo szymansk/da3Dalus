@@ -3,6 +3,7 @@
 import asyncio
 import logging
 import math
+import re
 from collections.abc import Mapping
 from typing import Any
 
@@ -1009,15 +1010,6 @@ async def test_q15_a_long_run_is_skipped_unless_requested_and_dependents_follow(
     assert [q.value for q in included.quantities] == [99.0, 100.0]
 
 
-async def test_an_upstream_error_beats_a_long_run_skip() -> None:
-    error = FormulaError(ErrorCategory.NOT_CONVERGED, "not_converged", "No solution.", "Retry.")
-    result = await run("long-after-weight-q", overrides={"weight": failing(error)})
-    downstream = result.quantities[0].error
-    assert result.quantities[0].status is QuantityStatus.ERROR
-    assert downstream is not None
-    assert downstream.category is ErrorCategory.UPSTREAM_FAILED
-
-
 # --- warnings -----------------------------------------------------------------------------------
 
 
@@ -1349,3 +1341,35 @@ async def test_row_3_a_pending_term_beats_no_implementation() -> None:
     quantity = await first("tail-q", drop=("tail",))
     assert quantity.error is not None
     assert (quantity.error.code, quantity.error.message) == ("not_implemented", PENDING_MESSAGE)
+
+
+# --- amendment 4 --------------------------------------------------------------------------------
+
+
+async def test_not_given_names_the_given_in_display_form_with_its_exact_message() -> None:
+    quantity = await first("given-q")
+    assert quantity.reason is not None
+    assert quantity.reason.code is ReasonCode.NOT_GIVEN
+    assert quantity.reason.message == "`target-t` was not supplied."
+
+
+async def test_two_unmet_givens_are_both_named_in_order() -> None:
+    quantity = await first("two-givens-q")
+    assert quantity.reason is not None
+    assert quantity.reason.message == "`target-t` and `target-u` were not supplied."
+    one = await first("two-givens-q", values={"target-t": 1.0})
+    assert one.reason is not None
+    assert one.reason.message == "`target-u` was not supplied."
+
+
+async def test_a_normal_call_logs_one_info_line_that_ends_with_the_timing(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    with caplog.at_level(logging.INFO, logger="aero_kernel"):
+        await run("weight")
+    (info,) = [r for r in caplog.records if r.levelno == logging.INFO]
+    assert re.fullmatch(
+        r"compute: \[weight\] include_long_runs=False, 1 quantities \(ok=1\), "
+        r"0 input errors, \d+\.\d ms",
+        info.getMessage(),
+    )

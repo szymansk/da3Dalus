@@ -188,6 +188,18 @@ def qualify(slug: str) -> str:
     return f"{namespace}:{name}"
 
 
+def join_names(names: Sequence[str]) -> str:
+    """Write names as a list in prose: ``a``, ``a and b``, ``a, b and c``.
+
+    Args:
+        names: At least one name, already formatted.
+
+    Returns:
+        The names as one phrase; the one rule every message that lists names uses.
+    """
+    return names[0] if len(names) == 1 else f"{', '.join(names[:-1])} and {names[-1]}"
+
+
 def display_slug(qualified: str) -> str:
     """Write a qualified slug as the public form: ``calc:x`` bare, any other namespace qualified.
 

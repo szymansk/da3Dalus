@@ -52,6 +52,8 @@ def fixture_model() -> CanonModel:
         "target-t": quantity("target"),
         "curve-q": quantity("output", type="curve"),
         "components": quantity("input", type="components"),
+        "target-u": quantity("target"),
+        "two-givens-q": quantity("output"),
         "pending-curve-q": quantity("output"),
         "three-q": quantity("output"),
         "tail-twin-a": quantity("output"),
@@ -157,6 +159,11 @@ def fixture_model() -> CanonModel:
         "twice-na": formula({"p": "roll-q", "q": "roll-q"}, {"r": "twice-na-q"}),
         "pending-curve": formula(
             {"c": "curve-q"}, {"r": "pending-curve-q"}, when="has_horizontal_tail"
+        ),
+        "two-givens": formula(
+            {"m": "aircraft-mass", "t": "target-t", "u": "target-u"},
+            {"r": "two-givens-q"},
+            given=["calc:target-t", "calc:target-u"],
         ),
         "configure": formula({"a": "airplane"}, {"c": "airplane-cfg"}),
         "cfg-span": formula({"a": "airplane-cfg"}, {"s": "cfg-span-q"}),
@@ -308,6 +315,7 @@ STANDARD: Mapping[str, Impl] = {
     "two-na": _one,
     "twice-na": _one,
     "pending-curve": _one,
+    "two-givens": _one,
     "configure": _configure,
     "cfg-span": _cfg_span,
     "curve-producer": _curve,

@@ -26,6 +26,7 @@ from aero_kernel.errors import (
     aggregate_upstream,
     display_slug,
     format_world_assignment,
+    join_names,
     qualify,
 )
 from aero_kernel.geometry import AirplaneGeometry, Wing
@@ -844,7 +845,7 @@ def unmet_condition(
         slugs; a ``not_implemented`` error if the ``when`` term has no fact yet
         (:data:`PENDING_WHEN_TERMS`); or ``None`` if the application exists.
     """
-    pending = node.when is not None and node.when in PENDING_WHEN_TERMS
+    pending = node.when in PENDING_WHEN_TERMS
     if node.when is not None and not pending and not facts.holds(node.when):
         return Reason(
             code=ReasonCode.CONDITION_NOT_MET,
@@ -853,8 +854,9 @@ def unmet_condition(
     given = {qualify(slug) for slug in supplied}
     missing = [slug for slug in node.given if slug not in given]
     if missing:
-        names = ", ".join(f"`{display_slug(slug)}`" for slug in missing)
-        return Reason(code=ReasonCode.NOT_GIVEN, message=f"{names} was not supplied.")
+        names = join_names([f"`{display_slug(slug)}`" for slug in missing])
+        verb = "was" if len(missing) == 1 else "were"
+        return Reason(code=ReasonCode.NOT_GIVEN, message=f"{names} {verb} not supplied.")
     if node.when is not None and pending:
         return KernelError(
             code=ErrorCategory.NOT_IMPLEMENTED.value,

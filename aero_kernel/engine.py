@@ -24,6 +24,7 @@ from aero_kernel.errors import (
     display_slug,
     internal_error,
     internal_error_from_exception,
+    join_names,
     qualify,
 )
 from aero_kernel.geometry import AirplaneGeometry
@@ -330,7 +331,7 @@ class _Call:
         node: Node, quantity: str, formula_slug: str, unsupported: Sequence[tuple[str, str]]
     ) -> KernelError:
         """The ``not_implemented`` error of a node that reads values v1 cannot carry."""
-        names = _enumerate([f"`{display_slug(slug)}` (a {kind})" for slug, kind in unsupported])
+        names = join_names([f"`{display_slug(slug)}` (a {kind})" for slug, kind in unsupported])
         return KernelError(
             code="unsupported_value_type",
             category=ErrorCategory.NOT_IMPLEMENTED,
@@ -394,9 +395,9 @@ class _Call:
             formula=formula_slug,
             application=node.id.application,
             input_path=f"values.{shown[0]}",
-            message=f"`{quantity}` needs {_enumerate([f'`{n}`' for n in shown])}, "
+            message=f"`{quantity}` needs {join_names([f'`{n}`' for n in shown])}, "
             f"which {verb} not supplied.",
-            hint=f"Supply {_enumerate([f'`{n}`' for n in shown])} in `values`.",
+            hint=f"Supply {join_names([f'`{n}`' for n in shown])} in `values`.",
             detail={"inputs": list[JsonValue](shown)},
         )
 
@@ -476,11 +477,6 @@ class _Call:
             application=node.id.application,
             warnings=warnings,
         )
-
-
-def _enumerate(names: Sequence[str]) -> str:
-    """Write names as a list in prose: ``a``, ``a and b``, ``a, b and c``."""
-    return names[0] if len(names) == 1 else f"{', '.join(names[:-1])} and {names[-1]}"
 
 
 def _error_of(propagated: Propagated) -> KernelError:
