@@ -288,3 +288,71 @@ def test_a_canon_without_defaults_file_has_no_defaults(tmp_path: Path) -> None:
     result = run(tmp_path, {"defaults.yaml": None})
     assert result.model is not None
     assert result.model.namespaces["calc"].defaults == {}
+
+
+# --- duplicate keys at every depth (a repeated key is never silently last-wins) -------------------
+
+
+DUPLICATE_KEY_CASES = {
+    "top level of an entry": mutate(WEIGHING, "tool: AB\n", "tool: AB\ntool: APP\n"),
+    "inside a flow mapping": mutate(
+        WEIGHING,
+        "inputs: {m: aircraft-mass, g: gravity}",
+        "inputs: {m: aircraft-mass, m: gravity, g: gravity}",
+    ),
+    "inside a block mapping of an application": mutate(
+        WEIGHING, "    when: has_aileron\n", "    when: has_aileron\n    when: null\n"
+    ),
+    "inside a default": {
+        "defaults.yaml": "gravity:\n  value: 9.8\n  value: 9.9\n  unit: m/s^2\n  source: s\n  regime: r\n"
+    },
+}
+
+
+@pytest.mark.parametrize("overrides", DUPLICATE_KEY_CASES.values(), ids=DUPLICATE_KEY_CASES.keys())
+def test_a_duplicate_key_is_a_finding_with_key_and_line(
+    tmp_path: Path, overrides: dict[str, str | None]
+) -> None:
+    result = run(tmp_path, overrides)
+    assert result.model is None
+    assert any(
+        "duplicate key" in finding.message and "line " in finding.message
+        for finding in result.findings
+    ), [str(finding) for finding in result.findings]
+
+
+def test_the_line_of_a_duplicate_key_counts_from_the_top_of_the_file(tmp_path: Path) -> None:
+    text = "---\ncanon: gravity\ncanon: gravity\n---\n"
+    result = run(tmp_path, {GRAVITY: text})
+    assert any("duplicate key 'canon' (line 3)" in f.message for f in result.findings)
+
+
+# --- defaults.yaml is scanned like an entry -------------------------------------------------------
+
+
+def test_defaults_with_an_escalated_comment_are_a_finding(tmp_path: Path) -> None:
+    text = MINI_CANON["defaults.yaml"].replace("gravity:", "gravity:  # ESCALATED: undecided", 1)
+    result = run(tmp_path, {"defaults.yaml": text})
+    assert any(f.file == "defaults.yaml" and f.field == "ESCALATED" for f in result.findings)
+
+
+def test_defaults_with_a_yaml_boolean_are_a_finding(tmp_path: Path) -> None:
+    text = MINI_CANON["defaults.yaml"].replace("regime-independent", "yes")
+    result = run(tmp_path, {"defaults.yaml": text})
+    assert any(f.file == "defaults.yaml" and f.field == "yaml" for f in result.findings)
+
+
+@pytest.mark.parametrize("spelling", ["on", "off", "yes", "no", "y", "n"])
+def test_every_yaml_1_1_boolean_spelling_is_a_finding(tmp_path: Path, spelling: str) -> None:
+    result = run(tmp_path, mutate(GRAVITY, "positive: true\n", f"positive: {spelling}\n"))
+    (finding,) = [f for f in result.findings if f.field == "yaml"]
+    assert spelling in finding.message
+    assert "true or false" in finding.message  # a boolean field is not fixed by quoting
+
+
+def test_a_file_that_is_not_a_markdown_entry_is_a_finding(tmp_path: Path) -> None:
+    result = run(tmp_path, {"formulas/Extra.MD": MINI_CANON[WEIGHING]})
+    assert any(
+        f.file == "formulas/Extra.MD" and f.field == "file" and ".md" in f.message
+        for f in result.findings
+    )

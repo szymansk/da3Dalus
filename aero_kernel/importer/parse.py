@@ -14,10 +14,11 @@ from pathlib import Path
 import yaml
 from aero_kernel.importer.findings import Finding
 from aero_kernel.importer.yamlvalue import (
+    DuplicateKeyError,
     as_mapping,
-    compose_node,
     is_number,
     is_text,
+    load_unique,
     scan_tokens,
 )
 
@@ -159,7 +160,8 @@ def _scan_front_matter(raw: str, file: str, findings: list[Finding]) -> None:
             Finding(
                 file=file,
                 field="yaml",
-                message=f"YAML 1.1 booleans as plain keys or values: {booleans}; quote them",
+                message=f"YAML 1.1 reads {booleans} as booleans; write true or false for a "
+                'boolean field, and quote a string such as the newton unit ("N")',
             )
         )
 
@@ -181,7 +183,17 @@ def _read_front(path: Path, file: str, findings: list[Finding]) -> dict[str, obj
         return None
     raw = match.group(1)
     try:
-        parsed: object = yaml.safe_load(raw)
+        parsed: object = load_unique(raw)
+    except DuplicateKeyError as exc:
+        # The front matter starts on line 2, below the opening '---'.
+        findings.append(
+            Finding(
+                file=file,
+                field="front matter",
+                message=f"duplicate key {exc.key!r} (line {exc.line + 1})",
+            )
+        )
+        return None
     except yaml.YAMLError as exc:
         findings.append(
             Finding(file=file, field="front matter", message=f"invalid YAML: {_one_line(exc)}")
@@ -261,8 +273,15 @@ def _read_entries(canon_dir: Path, sub: str, parsed: ParsedCanon) -> None:
             Finding(file=sub, field="directory", message=f"{directory} is not a directory")
         )
         return
-    for path in sorted(directory.glob("*.md")):
+    for path in sorted(directory.iterdir()):
         file = f"{sub}/{path.name}"
+        if path.name.startswith(".") or not path.is_file():
+            continue
+        if path.suffix != ".md":
+            parsed.findings.append(
+                Finding(file=file, field="file", message="not a .md entry; rename or remove it")
+            )
+            continue
         front = _read_front(path, file, parsed.findings)
         if front is None:
             continue
@@ -342,29 +361,30 @@ def _read_defaults(canon_dir: Path, parsed: ParsedCanon) -> None:
         return
     try:
         text = path.read_text(encoding="utf-8")
-        node = compose_node(text)
-        document: object = yaml.safe_load(text)
+        document: object = load_unique(text)
+    except DuplicateKeyError as exc:
+        parsed.findings.append(
+            Finding(
+                file=file,
+                field=str(exc.key),
+                message=f"duplicate key {exc.key!r} (line {exc.line})",
+            )
+        )
+        return
     except (OSError, UnicodeDecodeError, yaml.YAMLError) as exc:
         parsed.findings.append(
             Finding(file=file, field="document", message=f"invalid YAML: {_one_line(exc)}")
         )
         return
+    _scan_front_matter(text, file, parsed.findings)
     if document is None:
         return
     mapping = as_mapping(document)
-    if mapping is None or not isinstance(node, yaml.MappingNode):
+    if mapping is None:
         parsed.findings.append(
             Finding(file=file, field="document", message="must be a mapping <slug>: {...}")
         )
         return
-    seen: set[object] = set()
-    for key_node, _ in node.value:
-        key: object = key_node.value if isinstance(key_node, yaml.ScalarNode) else None
-        if key in seen:
-            parsed.findings.append(
-                Finding(file=file, field=str(key), message=f"duplicate slug {key!r}")
-            )
-        seen.add(key)
     for key, value in mapping.items():
         if isinstance(key, str):
             _check_default(key, value, parsed)

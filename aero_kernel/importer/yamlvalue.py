@@ -8,7 +8,15 @@ from typing import cast
 
 import yaml
 
-__all__ = ["as_list", "as_mapping", "compose_node", "is_number", "is_text", "scan_tokens"]
+__all__ = [
+    "DuplicateKeyError",
+    "as_list",
+    "as_mapping",
+    "is_number",
+    "is_text",
+    "load_unique",
+    "scan_tokens",
+]
 
 
 def as_mapping(value: object) -> dict[object, object] | None:
@@ -47,11 +55,59 @@ def scan_tokens(raw: str) -> list[yaml.Token]:
     return list(yaml.scan(raw))  # pyright: ignore[reportUnknownMemberType, reportUnknownArgumentType]
 
 
-def compose_node(text: str) -> yaml.Node | None:
-    """Return the YAML node tree of ``text`` (keeps duplicate keys), or ``None`` if it is empty.
+class DuplicateKeyError(yaml.YAMLError):
+    """A mapping repeats a key; YAML would silently keep the last value.
+
+    Attributes:
+        key: The repeated key.
+        line: Its line within the parsed text, counted from 1.
+    """
+
+    def __init__(self, key: object, line: int) -> None:
+        """Create the error.
+
+        Args:
+            key: The repeated key.
+            line: Its line within the parsed text, counted from 1.
+        """
+        super().__init__(f"duplicate key {key!r}")
+        self.key = key
+        self.line = line
+
+
+class _UniqueKeyLoader(yaml.SafeLoader):
+    """A safe loader that rejects a repeated key at every depth."""
+
+    def construct_mapping(  # pyright: ignore[reportIncompatibleMethodOverride]
+        self, node: yaml.MappingNode, deep: bool = False
+    ) -> dict[object, object]:
+        """Construct a mapping, raising :class:`DuplicateKeyError` on a repeated key."""
+        seen: set[object] = set()
+        for key_node, _ in node.value:
+            key = cast("object", self.construct_object(key_node, deep=deep))  # pyright: ignore[reportUnknownMemberType]
+            try:
+                repeated = key in seen
+                seen.add(key)
+            except TypeError:  # an unhashable key is reported by the base class
+                continue
+            if repeated:
+                raise DuplicateKeyError(key, key_node.start_mark.line + 1)
+        # The base class returns dict[Hashable, Any]; the stages treat every value as ``object``.
+        return cast("dict[object, object]", super().construct_mapping(node, deep))  # pyright: ignore[reportUnknownMemberType]
+
+
+def load_unique(text: str) -> object:
+    """Parse YAML safely, rejecting a repeated mapping key at every depth.
+
+    Args:
+        text: The YAML text.
+
+    Returns:
+        The parsed value.
 
     Raises:
+        DuplicateKeyError: If a mapping repeats a key.
         yaml.YAMLError: If ``text`` is not valid YAML.
     """
-    # Same untyped stub parameter as in scan_tokens.
-    return yaml.compose(text)  # pyright: ignore[reportUnknownMemberType, reportUnknownVariableType]
+    # Subclass of SafeLoader: no arbitrary object construction.
+    return yaml.load(text, Loader=_UniqueKeyLoader)
