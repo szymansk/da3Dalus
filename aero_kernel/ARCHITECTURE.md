@@ -880,7 +880,8 @@ implementation, not before (ADR 0021).
   - **When a default counts as taken:** a node whose implementation is actually **called** binds a supplied
     input or target that has no value but a default (an absent `optional:` parameter with a default takes
     the default, not `None`). A node that stops at rows 1–7 of ch. 8.13 — not applicable, an error, or
-    skipped — takes none: provenance never claims a value for a result that was not computed.
+    skipped — takes none: provenance never claims a default for a result whose formula was not called. A
+    called formula that then fails still took it (it may be the cause of the failure, ADR 0020).
   - **Reporting.** Every default taken is in `provenance.defaults_used` (`{slug, value, unit, source}`,
     sorted by display slug) and
     logged once per call at `INFO` (ch. 8.14). A **target** default additionally gives the `practice`
