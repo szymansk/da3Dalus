@@ -1,6 +1,7 @@
 """The async subprocess helper (ch. 8.8, 8.10; Q17, Q19)."""
 
 import asyncio
+import contextlib
 import errno
 import logging
 import os
@@ -14,6 +15,7 @@ from pathlib import Path
 
 import pytest
 from aero_kernel.errors import ErrorCategory, FormulaError
+from aero_kernel.runtime import SolverRuntime
 from aero_kernel.solvers import process as process_module
 from aero_kernel.solvers.process import run_process
 
@@ -311,6 +313,108 @@ async def test_a_budget_that_expires_during_a_hung_start_ends_within_the_bound(
     assert budget.expired()
     assert not guard.expired()
     assert _entries(scratch) == []
+
+
+async def test_a_start_stuck_in_the_connect_wait_is_cancelled_again_and_ends(
+    tmp_path: Path,
+    held_start: asyncio.Event,
+    monkeypatch: pytest.MonkeyPatch,
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    """The first cancel lands in asyncio's wait for pipes that never connect; the second ends it."""
+    monkeypatch.setattr(process_module, "_START_SETTLE_S", 0.3)
+    scratch = tmp_path / "scratch"
+    scratch.mkdir()
+    monkeypatch.setattr(tempfile, "tempdir", str(scratch))
+    task: asyncio.Task[object] = asyncio.create_task(
+        run_process(
+            {},
+            "",
+            executable=sys.executable,
+            args=["-c", "import time; time.sleep(20)"],
+            call_id="slow01",
+        )
+    )
+    await asyncio.sleep(0.1)
+    began = time.monotonic()
+    with caplog.at_level(logging.DEBUG, logger="aero_kernel"):
+        task.cancel()
+        with pytest.raises(asyncio.CancelledError):
+            async with asyncio.timeout(3):
+                await task
+    assert time.monotonic() - began < 0.3 * 2 + 0.5  # twice the bound, plus scheduling slack
+    held_start.set()  # let the held transport task end
+    assert _entries(scratch) == []
+    (record,) = [r for r in caplog.records if r.levelno >= logging.WARNING]
+    assert record.getMessage() == (
+        "process start did not settle within 0.3 s; its process group could not be killed"
+    )
+    assert record.call_id == "slow01"  # type: ignore[attr-defined]  # logging extra
+    assert set() == process_module._GIVEN_UP_STARTS  # type: ignore[attr-defined]  # module state read by the test
+
+
+async def test_a_start_that_ignores_every_cancel_is_given_up_after_twice_the_bound(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
+) -> None:
+    monkeypatch.setattr(process_module, "_START_SETTLE_S", 0.2)
+    scratch = tmp_path / "scratch"
+    scratch.mkdir()
+    monkeypatch.setattr(tempfile, "tempdir", str(scratch))
+    release = asyncio.Event()
+
+    async def stubborn(*args: object, **kwargs: object) -> object:
+        while not release.is_set():
+            with contextlib.suppress(asyncio.CancelledError):
+                await release.wait()
+        raise OSError(errno.EMFILE, "released")
+
+    monkeypatch.setattr(asyncio, "create_subprocess_exec", stubborn)
+    task: asyncio.Task[object] = asyncio.create_task(
+        run_process({}, "", executable=sys.executable, call_id="stub01")
+    )
+    await asyncio.sleep(0.05)
+    began = time.monotonic()
+    with caplog.at_level(logging.DEBUG, logger="aero_kernel"):
+        task.cancel()
+        with pytest.raises(asyncio.CancelledError):
+            async with asyncio.timeout(3):
+                await task
+    assert 0.2 * 2 <= time.monotonic() - began < 0.2 * 2 + 0.5
+    assert _entries(scratch) == []
+    (record,) = [r for r in caplog.records if r.levelno >= logging.WARNING]
+    assert record.getMessage() == (
+        "process start did not settle within 0.2 s and was given up; its process group could "
+        "not be killed and the start may still be running"
+    )
+    assert record.call_id == "stub01"  # type: ignore[attr-defined]  # logging extra
+    (kept,) = process_module._GIVEN_UP_STARTS  # type: ignore[attr-defined]  # module state read by the test
+    assert not kept.done()
+    release.set()  # the stuck start ends at last: it is released and its outcome consumed
+    await asyncio.sleep(0.05)
+    assert set() == process_module._GIVEN_UP_STARTS  # type: ignore[attr-defined]  # as above
+
+
+async def test_the_runtime_forwards_the_call_id_to_the_process_log(
+    tmp_path: Path,
+    start_fails_after_the_spawn: None,
+    monkeypatch: pytest.MonkeyPatch,
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    monkeypatch.setattr(process_module, "_START_SETTLE_S", 0.2)
+    async with SolverRuntime() as runtime:
+        task: asyncio.Task[object] = asyncio.create_task(
+            runtime.run_process(
+                {}, "", executable=sys.executable, args=["-c", "pass"], call_id="rt7"
+            )
+        )
+        await asyncio.sleep(0.1)
+        with caplog.at_level(logging.DEBUG, logger="aero_kernel"):
+            task.cancel()
+            with pytest.raises(asyncio.CancelledError):
+                async with asyncio.timeout(3):
+                    await task
+    (record,) = [r for r in caplog.records if r.levelno >= logging.WARNING]
+    assert record.call_id == "rt7"  # type: ignore[attr-defined]  # logging extra
 
 
 async def test_a_start_that_fails_without_a_cancel_is_not_tool_unavailable(

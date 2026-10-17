@@ -331,6 +331,7 @@ class SolverRuntime:
         executable: str | Path,
         args: Sequence[str] = (),
         collect: Sequence[str] = (),
+        call_id: str | None = None,
     ) -> ProcessRun:
         """Run an external binary within the limit; see :func:`solvers.process.run_process`.
 
@@ -342,6 +343,7 @@ class SolverRuntime:
             executable: The binary to start.
             args: Its command-line arguments.
             collect: Names of output files to read back.
+            call_id: Id of the ``compute()`` call, for the log lines of this run.
 
         Returns:
             The exit code, the output streams and the collected files.
@@ -353,7 +355,14 @@ class SolverRuntime:
         async with self._slot_limit():
             self._check_open()
             task = asyncio.ensure_future(
-                run_process(files, commands, executable=executable, args=args, collect=collect)
+                run_process(
+                    files,
+                    commands,
+                    executable=executable,
+                    args=args,
+                    collect=collect,
+                    call_id=call_id,
+                )
             )
             self._process_tasks.add(task)
             task.add_done_callback(self._process_tasks.discard)

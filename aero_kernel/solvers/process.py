@@ -82,6 +82,24 @@ def _remove_directory(directory: Path) -> None:
 _START_SETTLE_S = 5.0
 
 
+# Starts that were given up on while still pending. asyncio keeps only weak references to tasks,
+# so without this set the event loop could collect such a task mid-flight; the done-callback
+# removes it as soon as it ends. Not call state: it only holds the tasks nobody awaits any more.
+_GIVEN_UP_STARTS: set[asyncio.Future[asyncio.subprocess.Process]] = set()
+
+
+def _keep_until_done(start: asyncio.Future[asyncio.subprocess.Process]) -> None:
+    """Hold a start that was given up on until it ends, and consume its outcome."""
+    _GIVEN_UP_STARTS.add(start)
+
+    def release(done: asyncio.Future[asyncio.subprocess.Process]) -> None:
+        _GIVEN_UP_STARTS.discard(done)
+        if not done.cancelled():
+            done.exception()  # retrieved: nobody else will ask
+
+    start.add_done_callback(release)
+
+
 async def _settle_start(
     start: asyncio.Future[asyncio.subprocess.Process], tool: str, call_id: str | None
 ) -> asyncio.subprocess.Process | None:
@@ -90,10 +108,13 @@ async def _settle_start(
     ``create_subprocess_exec`` must not be cancelled half way: asyncio then kills only the direct
     child and waits for the pipes of its descendants, and the caller never gets the process whose
     group it has to kill (GH #1188). A normal start is short, so it is awaited to its end here,
-    shielded from further cancellations, which the caller re-raises once the group is dead. A
-    start that fails after the spawn never ends (asyncio waits for pipes that never connect), so
-    past ``_START_SETTLE_S`` it is cancelled, which interrupts that wait; its process group is
-    then lost, and the operator is told with a ``WARNING`` (ch. 8.14).
+    shielded from further cancellations, which the caller re-raises once the group is dead.
+
+    A start that fails or stalls after the spawn never ends on its own (asyncio waits for pipes
+    that never connect). Past ``_START_SETTLE_S`` it is cancelled again on every pass, because a
+    second cancel interrupts the wait that the first one lands in. Past twice the bound the start
+    is given up on and kept alive in ``_GIVEN_UP_STARTS``. Either way its process group is lost,
+    and the operator is told once with a ``WARNING`` (ch. 8.14).
 
     Args:
         start: The start, running as a task of its own.
@@ -104,21 +125,27 @@ async def _settle_start(
         The started process, or ``None`` if the start failed, hung or was cancelled itself.
     """
     loop = asyncio.get_running_loop()
-    deadline = loop.time() + _START_SETTLE_S
-    while not start.done() and loop.time() < deadline:
+    began = loop.time()
+    while not start.done() and loop.time() < began + _START_SETTLE_S:
         with contextlib.suppress(asyncio.CancelledError):
-            await asyncio.wait([start], timeout=deadline - loop.time())
-    if not start.done():
+            await asyncio.wait([start], timeout=began + _START_SETTLE_S - loop.time())
+    hung = not start.done()
+    while not start.done() and loop.time() < began + 2 * _START_SETTLE_S:
+        start.cancel()
+        with contextlib.suppress(asyncio.CancelledError):
+            await asyncio.wait([start], timeout=_START_SETTLE_S / 10)
+    given_up = not start.done()
+    if given_up:
+        _keep_until_done(start)
+    if hung:
         logger.warning(
-            "process start did not settle within %.1f s; its process group could not be killed",
+            "process start did not settle within %.1f s%s; its process group could not be killed%s",
             _START_SETTLE_S,
+            " and was given up" if given_up else "",
+            " and the start may still be running" if given_up else "",
             extra={"call_id": call_id, "tool": tool},
         )
-        start.cancel()
-        while not start.done():
-            with contextlib.suppress(asyncio.CancelledError):
-                await asyncio.wait([start], timeout=_START_SETTLE_S)
-    if start.cancelled() or start.exception() is not None:
+    if given_up or start.cancelled() or start.exception() is not None:
         return None
     return start.result()
 
