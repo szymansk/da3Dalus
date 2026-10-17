@@ -438,3 +438,38 @@ def test_every_defaults_rule_of_the_model_is_mapped_to_the_defaults_file(
 ) -> None:
     result = run(tmp_path, {"defaults.yaml": defaults_text(slug, value, unit)})
     assert shown(result) == [f"defaults.yaml: {slug}: {message}"]
+
+
+# --- G1: the YAML loader is a safe loader; a tag that would build an object is a finding ------------
+
+UNSAFE_TAGS = [
+    "!!python/object/apply:os.getcwd []",
+    "!!python/name:os.getcwd",
+    "!!python/object/new:os.getcwd []",
+]
+
+
+@pytest.mark.parametrize("tag", UNSAFE_TAGS)
+def test_a_python_tag_in_front_matter_is_an_invalid_yaml_finding_and_runs_nothing(
+    tmp_path: Path, tag: str
+) -> None:
+    result = run(tmp_path, mutate(WEIGHING, "tool: AB\n", f"tool: {tag}\n"))
+    assert [(f.file, f.field) for f in result.findings] == [(WEIGHING, "front matter")]
+    assert result.findings[0].message.startswith("invalid YAML: ")
+    assert "could not determine a constructor" in result.findings[0].message
+
+
+def test_a_python_tag_that_would_execute_code_does_not_execute(tmp_path: Path) -> None:
+    marker = tmp_path / "executed"
+    payload = f"!!python/object/apply:os.mkdir [{marker}]"
+    result = run(tmp_path, mutate(WEIGHING, "tool: AB\n", f"tool: {payload}\n"))
+    assert not marker.exists()  # os.mkdir did not run
+    assert [(f.file, f.field) for f in result.findings] == [(WEIGHING, "front matter")]
+
+
+@pytest.mark.parametrize("tag", UNSAFE_TAGS)
+def test_a_python_tag_in_defaults_is_an_invalid_yaml_finding(tmp_path: Path, tag: str) -> None:
+    text = MINI_CANON["defaults.yaml"].replace("standard gravity", tag)
+    result = run(tmp_path, {"defaults.yaml": text})
+    assert [(f.file, f.field) for f in result.findings] == [("defaults.yaml", "document")]
+    assert "could not determine a constructor" in result.findings[0].message
