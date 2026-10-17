@@ -550,3 +550,27 @@ def test_a_short_list_value_is_named_and_a_long_one_is_not(tmp_path: Path) -> No
     assert short.findings[0].message.endswith("(got ['a'])")
     assert "(got" not in long.findings[0].message
     assert len(long.findings) == 1
+
+
+# --- G7: a duplicate key names its place exactly -------------------------------------------------------
+
+
+def test_a_duplicate_key_in_front_matter_is_one_exact_finding(tmp_path: Path) -> None:
+    text = "---\ncanon: gravity\ncanon: gravity\n---\n"
+    assert shown(run(tmp_path, {GRAVITY: text})) == [
+        f"{GRAVITY}: front matter: duplicate key 'canon' (line 3)"
+    ]
+
+
+def test_a_duplicate_key_inside_a_default_names_the_slug(tmp_path: Path) -> None:
+    text = "gravity:\n  value: 9.8\n  value: 9.9\n  unit: m/s^2\n  source: s\n  regime: r\n"
+    assert shown(run(tmp_path, {"defaults.yaml": text})) == [
+        "defaults.yaml: gravity.value: duplicate key 'value' (line 3)"
+    ]
+
+
+def test_a_duplicate_slug_in_defaults_is_named_by_the_slug(tmp_path: Path) -> None:
+    text = MINI_CANON["defaults.yaml"] * 2
+    assert shown(run(tmp_path, {"defaults.yaml": text})) == [
+        "defaults.yaml: gravity: duplicate key 'gravity' (line 6)"
+    ]

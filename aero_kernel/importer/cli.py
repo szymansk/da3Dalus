@@ -44,7 +44,7 @@ def main(argv: list[str] | None = None) -> int:
     try:
         write_outputs(arguments.out, {MODEL_NAME: result.model_json, REPORT_NAME: result.report})
     except PartialWriteError as exc:
-        print(f"{MODEL_NAME}: write: {exc}")
+        print(f"{exc.unwritten[0]}: write: {exc}")
         print(
             f"partly written: {', '.join(exc.written)} was written, "
             f"{', '.join(exc.unwritten)} was not written and still holds the previous import; "

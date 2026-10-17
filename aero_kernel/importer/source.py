@@ -5,6 +5,8 @@ directory must be clean and, for a given commit, identical to it. Outside git th
 given and is taken as it is. A git command that fails is a finding, never a silent pass.
 """
 
+import os
+import re
 import subprocess
 from pathlib import Path
 
@@ -12,7 +14,7 @@ from aero_kernel.importer.findings import Finding
 
 __all__ = ["resolve_source"]
 
-_NOT_A_REPOSITORY = "not a git repository"
+_COMMIT = re.compile(r"[0-9a-f]{40}")
 
 
 def _finding(message: str) -> Finding:
@@ -21,10 +23,17 @@ def _finding(message: str) -> Finding:
 
 
 def _git(canon_dir: Path, *args: str) -> subprocess.CompletedProcess[str] | None:
-    """Run git in the canon directory; ``None`` if git cannot be started."""
+    """Run git in the canon directory; ``None`` if git cannot be started.
+
+    Git runs in the C locale, and nothing here depends on its message text: only on exit codes.
+    """
     try:
         return subprocess.run(
-            ["git", "-C", str(canon_dir), *args], check=False, capture_output=True, text=True
+            ["git", "-C", str(canon_dir), *args],
+            check=False,
+            capture_output=True,
+            text=True,
+            env={**os.environ, "LC_ALL": "C", "LANGUAGE": ""},
         )
     except OSError:
         return None
@@ -61,7 +70,8 @@ def _check_tree(canon_dir: Path, given: str | None) -> tuple[str | None, list[Fi
         return head.stdout.strip(), findings
     exists = _git(canon_dir, "cat-file", "-e", f"{given}^{{commit}}")
     if exists is None or exists.returncode != 0:
-        return given, [*findings, _finding(f"{given} is not a commit of this repository")]
+        detail = "" if exists is None else f" (git cat-file exit {exists.returncode})"
+        return given, [*findings, _finding(f"{given} is not a commit of this repository{detail}")]
     same = _git(canon_dir, "diff", "--quiet", given, "--", ".")
     if same is None or same.returncode not in (0, 1):
         return given, [
@@ -76,6 +86,9 @@ def _check_tree(canon_dir: Path, given: str | None) -> tuple[str | None, list[Fi
 def resolve_source(canon_dir: Path, given: str | None) -> tuple[str | None, list[Finding]]:
     """Resolve and check the commit a canon document is imported from.
 
+    Whether the canon is in a git work tree is decided by git's exit code and, when git fails, by
+    a ``.git`` entry in a parent directory; never by git's message text, which is localised.
+
     Args:
         canon_dir: The canon document directory.
         given: The ``--source-commit`` value, or ``None``.
@@ -83,13 +96,26 @@ def resolve_source(canon_dir: Path, given: str | None) -> tuple[str | None, list
     Returns:
         The commit (``None`` if there is none) and the findings; with a finding nothing is written.
     """
+    if given is not None and _COMMIT.fullmatch(given) is None:
+        return None, [
+            Finding(
+                file="command line",
+                field="source_commit",
+                message=f"{given!r} is not a 40-character lower-case hex git commit",
+            )
+        ]
     inside = _git(canon_dir, "rev-parse", "--is-inside-work-tree")
+    in_repository = _has_git_directory(canon_dir)
     if inside is None:
-        if _has_git_directory(canon_dir):
+        if in_repository:
             return given, [_finding("git is not available, but the canon is in a git repository")]
-    elif inside.returncode == 0 and inside.stdout.strip() == "true":
-        return _check_tree(canon_dir, given)
-    elif _NOT_A_REPOSITORY not in inside.stderr:
+    elif inside.returncode == 0:
+        if inside.stdout.strip() == "true":
+            return _check_tree(canon_dir, given)
+        return given, [
+            _finding("the canon directory is inside a git directory, not in a work tree")
+        ]
+    elif in_repository:
         return given, [_failed("rev-parse --is-inside-work-tree", inside)]
     if given is None:
         return None, [_finding("the canon is not in a git repository; pass --source-commit <sha>")]

@@ -320,6 +320,7 @@ def test_a_failure_after_the_first_rename_says_which_file_was_written(
     assert import_to(changed, out) == 1
     captured = capsys.readouterr()
     printed = captured.out + captured.err
+    assert "IMPORT_REPORT.md: write: disk full" in printed  # the label names the file that failed
     assert "IMPORT_REPORT.md was not written" in printed
     assert "canon_model.json was written" in printed or "canon_model.json was replaced" in printed
     assert "nothing written" not in printed
