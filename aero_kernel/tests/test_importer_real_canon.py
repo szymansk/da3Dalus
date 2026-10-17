@@ -120,3 +120,15 @@ def test_importing_every_runtime_module_loads_neither_the_importer_nor_yaml() ->
     )
     assert done.stdout.strip() == "[]"
     assert "aero_kernel.solvers.process" in modules  # the scan really covers subpackages
+
+
+def test_the_committed_model_is_current_with_the_real_canon(
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """What CI runs: ``importer <canon> --check`` against the packaged model."""
+    from aero_kernel.importer.cli import main
+
+    assert main([str(CANON), "--check"]) == 0, capsys.readouterr().out
+    committed = load_canon_model().namespaces["calc"]
+    assert len(committed.formulas) == len(list((CANON / "formulas").glob("*.md")))
+    assert len(committed.quantities) == len(list((CANON / "quantities").glob("*.md")))
