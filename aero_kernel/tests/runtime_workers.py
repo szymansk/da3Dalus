@@ -88,7 +88,7 @@ def raise_formula_with_path() -> WorkerOutcome[int]:
         "worker lacks an input",
         "pass it",
         detail={"span_mm": 0},
-        parameter="geometry.wings[0].span",
+        parameter="span",
     )
 
 
