@@ -404,7 +404,8 @@ class FormulaError(Exception):
         message: The cause, in natural language.
         hint: What to do.
         detail: Structured data about the failure.
-        input_path: Path of the offending input value.
+        parameter: Name of the formula parameter that is at fault, if any; the engine maps it to
+            an ``input_path``.
     """
 
     def __init__(
@@ -414,7 +415,7 @@ class FormulaError(Exception):
         message: str,
         hint: str,
         detail: Mapping[str, JsonValue] | None = None,
-        input_path: str | None = None,
+        parameter: str | None = None,
     ) -> None:
         """Create the error.
 
@@ -424,7 +425,7 @@ class FormulaError(Exception):
             message: The cause, in natural language.
             hint: What to do.
             detail: Structured data about the failure.
-            input_path: Path of the offending input value.
+            parameter: Name of the formula parameter that is at fault, if any.
 
         Raises:
             ValueError: If the category belongs to the engine (timeout, upstream_failed,
@@ -451,7 +452,7 @@ class FormulaError(Exception):
         self.message = message
         self.hint = hint
         self.detail: dict[str, JsonValue] = checked_detail
-        self.input_path = input_path
+        self.parameter = parameter
 
     def to_kernel_error(
         self,
@@ -460,6 +461,7 @@ class FormulaError(Exception):
         formula: str | None = None,
         application: str | None = None,
         world: str | None = None,
+        input_path: str | None = None,
     ) -> KernelError:
         """Translate into a :class:`KernelError`, adding the context the engine knows.
 
@@ -468,6 +470,8 @@ class FormulaError(Exception):
             formula: Slug of the raising formula.
             application: Id of the application.
             world: Canonical world assignment string (``neutral-point=avl``), ch. 8.13.
+            input_path: Path of the offending input value, which the engine derives from the
+                parameter; a formula knows no paths.
 
         Returns:
             The error with the flags of its category.
@@ -479,7 +483,7 @@ class FormulaError(Exception):
             formula=formula,
             application=application,
             world=world,
-            input_path=self.input_path,
+            input_path=input_path,
             message=self.message,
             hint=self.hint,
             detail=self.detail,

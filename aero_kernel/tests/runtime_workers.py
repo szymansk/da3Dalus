@@ -81,14 +81,14 @@ def raise_unpicklable() -> WorkerOutcome[int]:
 
 
 def raise_formula_with_path() -> WorkerOutcome[int]:
-    """Raise ``FormulaError`` carrying an ``input_path``."""
+    """Raise ``FormulaError`` carrying a ``parameter``."""
     raise FormulaError(
         ErrorCategory.INVALID_INPUT,
         "missing_input",
         "worker lacks an input",
         "pass it",
         detail={"span_mm": 0},
-        input_path="geometry.wings[0].span",
+        parameter="geometry.wings[0].span",
     )
 
 

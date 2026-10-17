@@ -409,15 +409,19 @@ def test_formula_error_accepts_formula_categories(category: ErrorCategory) -> No
     assert FormulaError(category, category.value, "m", "h").category is category
 
 
-def test_formula_error_carries_input_path_into_the_kernel_error() -> None:
+def test_formula_error_names_the_parameter_and_the_engine_passes_the_input_path() -> None:
     exc = FormulaError(
-        ErrorCategory.INVALID_INPUT,
-        "missing_input",
-        "m",
-        "h",
-        input_path="values.flap-deflection-landing",
+        ErrorCategory.INVALID_INPUT, "missing_input", "m", "h", parameter="flap_deflection"
     )
-    assert exc.to_kernel_error(quantity="q").input_path == "values.flap-deflection-landing"
+    assert exc.parameter == "flap_deflection"
+    error = exc.to_kernel_error(quantity="q", input_path="values.flap-deflection-landing")
+    assert error.input_path == "values.flap-deflection-landing"
+
+
+def test_formula_error_has_no_input_path_of_its_own() -> None:
+    exc = FormulaError(ErrorCategory.INVALID_INPUT, "missing_input", "m", "h", parameter="p")
+    assert exc.to_kernel_error(quantity="q").input_path is None
+    assert not hasattr(exc, "input_path")
 
 
 def test_formula_error_translates_with_context() -> None:

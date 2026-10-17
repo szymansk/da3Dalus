@@ -232,12 +232,12 @@ class TestRunCpu:
         text = "".join(traceback.format_exception(caught.value))
         assert "failure_site" in text
 
-    async def test_input_path_survives_the_process_boundary(
+    async def test_parameter_survives_the_process_boundary(
         self, shared_runtime: SolverRuntime
     ) -> None:
         with pytest.raises(FormulaError) as caught:
             await shared_runtime.run_cpu(workers.raise_formula_with_path)
-        assert caught.value.input_path == "geometry.wings[0].span"
+        assert caught.value.parameter == "geometry.wings[0].span"
 
     async def test_workers_are_spawned_not_forked(self, shared_runtime: SolverRuntime) -> None:
         # a forked worker inherits the parent's test module; a spawned one starts clean
@@ -742,7 +742,7 @@ class TestTrampoline:
         assert failure.message == "worker lacks an input"
         assert failure.hint == "pass it"
         assert failure.detail == {"span_mm": 0}
-        assert failure.input_path == "geometry.wings[0].span"
+        assert failure.parameter == "geometry.wings[0].span"
         error = failure.to_formula_error()
         assert (error.message, error.hint, error.detail) == (
             "worker lacks an input",
@@ -755,8 +755,8 @@ class TestTrampoline:
         assert isinstance(failure, WorkerFailure)
         assert 0.02 <= failure.diagnostics.duration_s < 5
 
-    async def test_a_failure_keeps_the_input_path(self) -> None:
+    async def test_a_failure_keeps_the_parameter(self) -> None:
         failure = run_in_worker(workers.raise_formula_with_path, ())
         assert isinstance(failure, WorkerFailure)
-        assert failure.input_path == "geometry.wings[0].span"
-        assert failure.to_formula_error().input_path == "geometry.wings[0].span"
+        assert failure.parameter == "geometry.wings[0].span"
+        assert failure.to_formula_error().parameter == "geometry.wings[0].span"
