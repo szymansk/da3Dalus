@@ -127,7 +127,7 @@ class Entry(BaseModel):
         return self
 
     def to_json(self) -> str:
-        """Serialise to the JSON text a store keeps."""
+        """Serialise to the JSON text the cache keeps."""
         return self.model_dump_json()
 
     @classmethod
@@ -157,8 +157,8 @@ def _short(key: str) -> str:
 class MemoryCache:
     """An in-process LRU cache with one global limit (ch. 8.4).
 
-    The methods are plain synchronous methods; none awaits or yields inside its critical section, so
-    on one event loop no lock is needed.
+    The methods are plain synchronous calls that run to completion, so on one event loop no lock
+    is needed.
     """
 
     def __init__(self, *, max_entries: int) -> None:
@@ -171,7 +171,7 @@ class MemoryCache:
             ValueError: If the limit is below 1.
         """
         if max_entries < 1:
-            msg = "cache limits must be at least 1"
+            msg = "max_entries must be at least 1"
             raise ValueError(msg)
         self._max_entries = max_entries
         self._texts: OrderedDict[str, str] = OrderedDict()
