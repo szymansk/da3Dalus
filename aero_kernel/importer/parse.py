@@ -301,15 +301,13 @@ def _read_entries(canon_dir: Path, sub: str, parsed: ParsedCanon) -> None:
         if front is None:
             continue
         slug = front.get("canon")
-        if slug is None:
-            parsed.findings.append(
-                Finding(
-                    file=file, field="canon", message="missing: the entry needs a 'canon:' slug"
-                )
-            )
-            continue
         if not isinstance(slug, str):
-            parsed.findings.append(Finding(file=file, field="canon", message="must be a string"))
+            problem = (
+                "missing: the entry needs a 'canon:' slug" if slug is None else "must be a string"
+            )
+            parsed.findings.append(Finding(file=file, field="canon", message=problem))
+            # The entry cannot be registered, but its other faults are still reported.
+            _check_entry(front, file, is_formula=is_formula, findings=parsed.findings)
             continue
         if slug != path.stem:
             parsed.findings.append(

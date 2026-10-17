@@ -3,11 +3,34 @@
 Each test names the rule it pins; it asserts the exact file, field and decisive message text.
 """
 
+import os
+import re
+import signal
+from collections.abc import Generator, Iterator
+from contextlib import contextmanager
 from pathlib import Path
 
 import pytest
 from aero_kernel.importer.pipeline import ImportResult, import_canon
 from aero_kernel.tests.importer_builders import MINI_CANON, SOURCE_COMMIT, write_canon
+
+
+@contextmanager
+def time_limit(seconds: int) -> Generator[None]:
+    """Fail with TimeoutError instead of hanging if the body takes longer (POSIX only)."""
+
+    def expired(*_: object) -> None:
+        msg = f"took longer than {seconds} s"
+        raise TimeoutError(msg)
+
+    previous = signal.signal(signal.SIGALRM, expired)
+    signal.alarm(seconds)
+    try:
+        yield
+    finally:
+        signal.alarm(0)
+        signal.signal(signal.SIGALRM, previous)
+
 
 GRAVITY = "quantities/gravity.md"
 WEIGHT = "quantities/weight.md"
@@ -574,3 +597,177 @@ def test_a_duplicate_slug_in_defaults_is_named_by_the_slug(tmp_path: Path) -> No
     assert shown(run(tmp_path, {"defaults.yaml": text})) == [
         "defaults.yaml: gravity: duplicate key 'gravity' (line 6)"
     ]
+
+
+# --- G10-G17 -------------------------------------------------------------------------------------------
+
+
+@pytest.mark.skipif(os.geteuid() == 0, reason="root reads files whatever their mode")
+@pytest.mark.parametrize("name", [GRAVITY, "defaults.yaml"])
+def test_an_unreadable_file_is_a_finding_not_a_traceback(tmp_path: Path, name: str) -> None:
+    canon = write_canon(tmp_path)
+    (canon / name).chmod(0)
+    try:
+        result = import_canon(canon, SOURCE_COMMIT)
+    finally:
+        (canon / name).chmod(0o644)
+    (finding,) = result.findings
+    assert (finding.file, finding.field) == (
+        name,
+        "front matter" if name == GRAVITY else "document",
+    )
+    assert finding.message.startswith("unreadable: ")
+
+
+EFFICIENCY = "quantities/efficiency.md"
+EFFICIENCY_ENTRY = (
+    "---\ncanon: efficiency\nkind: quantity\nsymbol: eta\nunit: {unit}\nrole: input\nstatus: draft\n"
+    "tags: []\ntype: scalar\n---\n"
+)
+
+
+@pytest.mark.parametrize("quantity_unit", ["1", "—"])
+@pytest.mark.parametrize("default_unit", ["1", "—"])
+def test_a_dimensionless_default_is_folded_and_accepted(
+    tmp_path: Path, quantity_unit: str, default_unit: str
+) -> None:
+    entry = EFFICIENCY_ENTRY.format(unit=quantity_unit)
+    defaults = MINI_CANON["defaults.yaml"] + (
+        f"efficiency:\n  value: 0.75\n  unit: '{default_unit}'\n  source: s\n  regime: r\n"
+    )
+    result = run(tmp_path, {EFFICIENCY: entry, "defaults.yaml": defaults})
+    assert result.model is not None, shown(result)
+    assert result.model.namespaces["calc"].defaults["efficiency"].unit == "1"
+
+
+def test_given_null_means_always(tmp_path: Path) -> None:
+    result = run(tmp_path, mutate(WEIGHING, "given: [aircraft-mass]", "given: null"))
+    assert result.model is not None
+    weighing = result.model.formula("weighing")
+    assert weighing is not None
+    assert weighing.applications[1].given is None
+
+
+def test_given_must_be_a_list(tmp_path: Path) -> None:
+    result = run(tmp_path, mutate(WEIGHING, "given: [aircraft-mass]", "given: x"))
+    assert shown(result) == [
+        f"{WEIGHING}: applications[1].given: Input should be a valid tuple (got 'x')"
+    ]
+
+
+def test_a_non_markdown_file_is_one_finding_and_is_not_read_as_an_entry(tmp_path: Path) -> None:
+    result = run(tmp_path, {"formulas/notes.txt": MINI_CANON[WEIGHING]})
+    assert shown(result) == ["formulas/notes.txt: file: not a .md entry; rename or remove it"]
+
+
+def test_a_missing_canon_does_not_hide_the_other_faults_of_the_file(tmp_path: Path) -> None:
+    text = MINI_CANON[GRAVITY].replace("canon: gravity\n", "").replace("symbol: g\n", "")
+    text = text.replace("type: scalar\n", "type: scalar\ncolour: red\n")
+    assert shown(run(tmp_path, {GRAVITY: text})) == [
+        f"{GRAVITY}: canon: missing: the entry needs a 'canon:' slug",
+        f"{GRAVITY}: colour: unknown field: the README does not define it",
+        f"{GRAVITY}: symbol: missing, but required",
+    ]
+
+
+def test_a_non_string_canon_does_not_hide_the_other_faults_of_the_file(tmp_path: Path) -> None:
+    text = (
+        MINI_CANON[GRAVITY].replace("canon: gravity\n", "canon: 5\n").replace("unit: m/s^2\n", "")
+    )
+    assert shown(run(tmp_path, {GRAVITY: text})) == [
+        f"{GRAVITY}: canon: must be a string",
+        f"{GRAVITY}: unit: missing, but required",
+    ]
+
+
+def test_two_missing_required_fields_are_both_reported(tmp_path: Path) -> None:
+    text = MINI_CANON[GRAVITY].replace("symbol: g\n", "").replace("unit: m/s^2\n", "")
+    assert shown(run(tmp_path, {GRAVITY: text})) == [
+        f"{GRAVITY}: symbol: missing, but required",
+        f"{GRAVITY}: unit: missing, but required",
+    ]
+
+
+def test_a_missing_canon_directory_is_one_finding(tmp_path: Path) -> None:
+    result = import_canon(tmp_path / "missing", SOURCE_COMMIT)
+    assert [(f.file, f.field) for f in result.findings] == [(".", "canon directory")]
+    assert result.findings[0].message.endswith("missing is not a directory")
+
+
+def test_an_empty_applications_list_and_a_separate_bad_embed_are_both_reported(
+    tmp_path: Path,
+) -> None:
+    empty = re.sub(r"applications:\n(?:  .*\n)+", "applications: []\n", MINI_CANON[WEIGHING])
+    outer = MINI_CANON["formulas/outer.md"].replace("embeds: [weigh-twice]", "embeds: [nowhere.x]")
+    result = run(tmp_path, {WEIGHING: empty, "formulas/outer.md": outer})
+    assert sorted((f.file, f.field) for f in result.findings) == [
+        ("formulas/outer.md", "embeds"),
+        (WEIGHING, "applications"),
+    ]
+
+
+def test_no_source_commit_is_a_finding_never_silence(tmp_path: Path) -> None:
+    result = import_canon(write_canon(tmp_path), None)
+    assert result.model is None
+    assert shown(result) == ["command line: source_commit: no source commit given"]
+
+
+def test_findings_of_two_bad_files_are_sorted_whatever_the_directory_listing_order(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    overrides = {**mutate(WEIGHT, "symbol: W\n", ""), **mutate(GRAVITY, "symbol: g\n", "")}
+    canon = write_canon(tmp_path, overrides)
+    real = Path.iterdir
+
+    def reversed_listing(self: Path) -> Iterator[Path]:
+        return iter(reversed(list(real(self))))
+
+    monkeypatch.setattr(Path, "iterdir", reversed_listing)
+    assert [f.file for f in import_canon(canon, SOURCE_COMMIT).findings] == [GRAVITY, WEIGHT]
+
+
+# --- the embeds closure of a diamond chain is computed once per formula ---------------------------------
+
+
+def diamond_chain(depth: int) -> dict[str, str | None]:
+    """A chain of diamonds: formula ``a<i>`` embeds ``b<i>`` and ``c<i>``, both embed ``a<i+1>``."""
+    files: dict[str, str | None] = {}
+
+    def entry(slug: str, embeds: list[str], out: str) -> str:
+        body = f"kind: law\ntool: APP\ninputs: {{m: aircraft-mass}}\noutputs: {{w: {out}}}\n"
+        if embeds:
+            body += f"embeds: [{', '.join(embeds)}]\nvariables: [aircraft-mass]\n"
+        return (
+            f"---\ncanon: {slug}\nentry: formula\nstatus: draft\nshape: law\noutput: {out}\n"
+            f"source_status: SOURCED\ndimensional_check: OK\ntags: []\ntex: x\n{body}---\n"
+        )
+
+    for index in range(depth):
+        for slug, embeds in (
+            (f"a{index}", [f"b{index}", f"c{index}"]),
+            (f"b{index}", [f"a{index + 1}"]),
+            (f"c{index}", [f"a{index + 1}"]),
+        ):
+            files[f"formulas/{slug}.md"] = entry(slug, embeds, f"q-{slug}")
+            files[f"quantities/q-{slug}.md"] = (
+                f"---\ncanon: q-{slug}\nkind: quantity\nsymbol: S_{slug}\nunit: kg\nrole: derived\n"
+                "status: draft\ntags: []\ntype: scalar\n---\n"
+            )
+    files[f"formulas/a{depth}.md"] = entry(f"a{depth}", [], f"q-a{depth}")
+    files[f"quantities/q-a{depth}.md"] = (
+        f"---\ncanon: q-a{depth}\nkind: quantity\nsymbol: S_a{depth}\nunit: kg\nrole: derived\n"
+        "status: draft\ntags: []\ntype: scalar\n---\n"
+    )
+    return files
+
+
+def test_a_deep_diamond_chain_closes_in_linear_time(tmp_path: Path) -> None:
+    depth = 40
+    with time_limit(20):
+        result = run(tmp_path, diamond_chain(depth))
+    assert result.model is not None, shown(result)
+    first = result.model.formula("a0")
+    assert first is not None
+    assert (
+        len(first.embeds_closure) == 3 * depth
+    )  # b<i>, c<i> and a<i+1> for each level... deduplicated

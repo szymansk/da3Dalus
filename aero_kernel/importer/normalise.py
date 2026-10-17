@@ -231,16 +231,22 @@ def _resolve_embed(
     return f"{DEFAULT_NAMESPACE}:{slug}.{application}", None
 
 
-def _closure(
-    slug: str, direct: dict[str, list[str]], visiting: frozenset[str] = frozenset()
-) -> set[str]:
-    """Return every embed reachable from a formula through ``embeds``, direct ones included."""
+def _closure(slug: str, direct: dict[str, list[str]]) -> set[str]:
+    """Return every embed reachable from a formula through ``embeds``, direct ones included.
+
+    Each formula is expanded once, so a chain of diamonds costs linear time, and a cycle (a
+    finding of checkpoint (b)) still ends: the closure of a cycle holds its members.
+    """
     reached: set[str] = set()
-    for item in direct.get(slug, []):
-        reached.add(item)
-        target = item.removeprefix(f"{DEFAULT_NAMESPACE}:").rpartition(".")[0]
-        if target not in visiting and target != slug:
-            reached |= _closure(target, direct, visiting | {slug})
+    expanded = {slug}
+    pending = [slug]
+    while pending:
+        for item in direct.get(pending.pop(), []):
+            reached.add(item)
+            target = item.removeprefix(f"{DEFAULT_NAMESPACE}:").rpartition(".")[0]
+            if target not in expanded:
+                expanded.add(target)
+                pending.append(target)
     return reached
 
 
