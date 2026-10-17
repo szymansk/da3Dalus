@@ -436,7 +436,8 @@ quantity.
       - `canard`;
       - `tandem_wing` — `S_ref` still from the main wing only (the tandem rule is a later domain question);
       - `winglet` — only when modelled as a separate wing (winglet sections of the main wing stay part of it).
-    - `has_horizontal_tail`: some wing has `surface_type` `horizontal_tail` or `v_tail`.
+    - A horizontal-tail term (`horizontal_tail` | `v_tail`, a V-tail counting as horizontal tail) is added with the
+      first canon entry that states it (ADR 0021: no term without a user).
     - `has_vertical_tail`: some wing has `surface_type` `vertical_tail` or `v_tail`.
   - `given`: a list of input quantities (`role: input` or `target`, without an entry in `defaults.yaml`). The application exists
     only if every one of them is supplied in `AircraftInput.values`. A target the designer did not set is
