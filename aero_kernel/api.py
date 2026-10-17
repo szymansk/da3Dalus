@@ -7,7 +7,7 @@ import time
 from aero_kernel.build import shipped_build
 from aero_kernel.cache import build_digest
 from aero_kernel.canon.load import CanonLoadError
-from aero_kernel.engine import evaluate
+from aero_kernel.engine import evaluate, log_call
 from aero_kernel.schema import (
     AircraftInput,
     ComputeRequest,
@@ -55,17 +55,9 @@ async def compute(aircraft: AircraftInput, request: ComputeRequest) -> ComputeRe
             )
             for slug in request.quantities
         )
-        logger.info(
-            "compute: [%s] include_long_runs=%s, %d quantities (error=%d), 0 input errors, %.1f ms; "
-            "the shipped canon model is not loaded",
-            ", ".join(request.quantities),
-            request.include_long_runs,
-            len(quantities),
-            len(quantities),
-            (time.perf_counter() - started) * 1000,
-            extra={"call_id": call_id},
-        )
-        return ComputeResult(
+        result = ComputeResult(
             quantities=quantities, provenance=Provenance(build_digest=build_digest())
         )
+        log_call(call_id, request, result, started, "the shipped canon model is not loaded")
+        return result
     return await evaluate(build, aircraft, request)

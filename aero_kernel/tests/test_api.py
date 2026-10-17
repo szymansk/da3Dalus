@@ -90,7 +90,7 @@ async def test_the_failing_path_logs_one_info_line_with_a_call_id(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path, caplog: pytest.LogCaptureFixture
 ) -> None:
     use_model(monkeypatch, tmp_path / "absent.json")
-    with caplog.at_level(logging.INFO, logger="aero_kernel.api"):
+    with caplog.at_level(logging.INFO, logger="aero_kernel"):
         await compute(aircraft({"air-density": 1.225}), request("stall-speed"))
     info = [r for r in caplog.records if r.levelno == logging.INFO]
     assert len(info) == 1
@@ -171,13 +171,14 @@ async def test_the_failing_call_logs_its_request_in_the_info_line(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path, caplog: pytest.LogCaptureFixture
 ) -> None:
     use_model(monkeypatch, tmp_path / "absent.json")
-    with caplog.at_level(logging.INFO, logger="aero_kernel.api"):
+    with caplog.at_level(logging.INFO, logger="aero_kernel"):
         await compute(aircraft(), request("stall-speed", "nonsense", long_runs=True))
     (info,) = [r for r in caplog.records if r.levelno == logging.INFO]
     assert info.getMessage().startswith(
         "compute: [stall-speed, nonsense] include_long_runs=True, 2 quantities (error=2), "
         "0 input errors, "
     )
+    assert info.getMessage().endswith("; the shipped canon model is not loaded")
 
 
 async def test_compute_hands_the_identical_objects_to_the_engine(
@@ -206,3 +207,32 @@ async def test_the_formulas_package_is_not_imported_by_a_call(
     use_model(monkeypatch, FIXTURE)
     await compute(aircraft({"air-density": 1.225}), request("stall-speed"))
     assert "aero_kernel.formulas" not in sys.modules
+
+
+async def test_the_first_compute_emits_exactly_one_info_record(
+    monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
+) -> None:
+    use_model(monkeypatch, FIXTURE)
+    with caplog.at_level(logging.DEBUG, logger="aero_kernel"):
+        await compute(aircraft({"air-density": 1.225}), request("stall-speed"))
+    infos = [r for r in caplog.records if r.levelno == logging.INFO]
+    assert len(infos) == 1
+    assert infos[0].name == "aero_kernel.engine"
+
+
+async def test_a_failure_while_assembling_the_build_never_raises(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    use_model(monkeypatch, FIXTURE)
+
+    def broken(root: object = None) -> str:
+        msg = "disk gone"
+        raise OSError(msg)
+
+    monkeypatch.setattr(build_module, "build_digest", broken)
+    result = await compute(aircraft(), request("stall-speed"))
+    error = result.quantities[0].error
+    assert error is not None
+    assert error.category is ErrorCategory.INTERNAL
+    assert error.escalate is True
+    assert "disk gone" not in error.message

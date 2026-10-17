@@ -12,7 +12,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from aero_kernel.cache import build_digest
-from aero_kernel.canon.load import load_canon_model, load_failure
+from aero_kernel.canon.load import CanonLoadError, load_canon_model, load_failure
 from aero_kernel.canon.model import CanonModel
 from aero_kernel.errors import display_slug
 from aero_kernel.graph import CanonGraph, GraphModelError
@@ -60,10 +60,21 @@ def load_build(path: Path | None = None, registry: Registry | None = None) -> Bu
         The build.
 
     Raises:
-        CanonLoadError: If the model cannot be loaded, the registry does not match it, or its
-            graph is not well formed (a cycle, a computed quantity nobody produces). The error
-            is ``internal`` and escalates.
+        CanonLoadError: If the model cannot be loaded, the registry does not match it, its
+            graph is not well formed (a cycle, a computed quantity nobody produces), or anything
+            else goes wrong while assembling (chained as the cause). The error is ``internal``
+            and escalates. Only cancellation passes through.
     """
+    try:
+        return _assemble(path, registry)
+    except CanonLoadError:
+        raise
+    except Exception as exc:  # any defect of the shipped artefact is a load failure (ch. 8.4)
+        raise load_failure("the build could not be assembled") from exc
+
+
+def _assemble(path: Path | None, registry: Registry | None) -> Build:
+    """Load the model, trace the registry against it and build the graph and the digest."""
     model = load_canon_model(path)
     used = DEFAULT_REGISTRY if registry is None else registry
     report = used.check_traceability(model)

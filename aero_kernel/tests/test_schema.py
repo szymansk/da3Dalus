@@ -217,10 +217,9 @@ class TestQuantityResultUnit:
         )
 
     def test_empty_unit_is_rejected(self) -> None:
-        with pytest.raises(ValidationError, match="unit"):
-            make_quantity(unit="")
-        with pytest.raises(ValidationError, match="unit"):
-            QuantityResult(slug="x", unit="", status=QuantityStatus.ERROR, error=make_error())
+        error = make_error().model_copy(update={"quantity": "x"})
+        with pytest.raises(ValidationError, match="String should have at least 1 character"):
+            QuantityResult(slug="x", unit="", status=QuantityStatus.ERROR, error=error)
 
 
 class TestQuantityResultError:

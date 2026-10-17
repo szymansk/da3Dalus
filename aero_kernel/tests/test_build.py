@@ -12,11 +12,12 @@ import pytest
 from aero_kernel import build as build_module
 from aero_kernel.build import Build, load_build, shipped_build
 from aero_kernel.cache import build_digest
+from aero_kernel.canon import load as load_module
 from aero_kernel.canon.load import CanonLoadError, load_canon_model
 from aero_kernel.canon.model import CanonModel
 from aero_kernel.errors import ErrorCategory
-from aero_kernel.graph import CanonGraph
-from aero_kernel.registry import DEFAULT_REGISTRY, Registry
+from aero_kernel.graph import CanonGraph, GraphModelError
+from aero_kernel.registry import Registry
 from aero_kernel.tests.canon_builders import with_hash
 from aero_kernel.tests.graph_builders import formula, quantity
 
@@ -116,10 +117,6 @@ def test_a_model_with_an_unproduced_computed_quantity_is_a_load_failure(tmp_path
         load_build(path, Registry())
 
 
-def test_the_default_registry_is_used_when_none_is_given() -> None:
-    assert load_build(FIXTURE).registry is DEFAULT_REGISTRY
-
-
 def test_the_shipped_build_loads_once(monkeypatch: pytest.MonkeyPatch) -> None:
     calls: list[tuple[tuple[object, ...], dict[str, object]]] = []
     original = build_module.load_build
@@ -137,8 +134,6 @@ def test_the_shipped_build_loads_once(monkeypatch: pytest.MonkeyPatch) -> None:
 def test_a_failed_shipped_load_is_not_memoised(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:
-    from aero_kernel.canon import load as load_module
-
     monkeypatch.setattr(load_module, "default_model_path", lambda: tmp_path / "absent.json")
     with pytest.raises(CanonLoadError):
         shipped_build()
@@ -176,3 +171,72 @@ def test_the_digest_is_the_package_digest_and_the_hash_the_models() -> None:
 def test_a_given_registry_is_used_even_when_it_is_empty() -> None:
     empty = Registry()
     assert load_build(FIXTURE, empty).registry is empty
+
+
+def test_a_graph_defect_keeps_its_cause_and_says_so(tmp_path: Path) -> None:
+    namespaces = {
+        "calc": {
+            "quantities": {"a": quantity("derived"), "b": quantity("derived")},
+            "formulas": {
+                "f-a": formula({"x": "b"}, {"y": "a"}),
+                "f-b": formula({"x": "a"}, {"y": "b"}),
+            },
+        }
+    }
+    path = tmp_path / "cyclic.json"
+    path.write_text(json.dumps(with_hash(namespaces)), encoding="utf-8")
+    with pytest.raises(CanonLoadError) as caught:
+        load_build(path, Registry())
+    assert isinstance(caught.value.__cause__, GraphModelError)
+    assert caught.value.error.message == (
+        "The canon model could not be loaded: the model is not a well-formed graph."
+    )
+
+
+def test_a_successful_load_logs_one_debug_line_and_nothing_louder(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    with caplog.at_level(logging.DEBUG, logger="aero_kernel"):
+        build = load_build(FIXTURE, Registry())
+    assert [r for r in caplog.records if r.levelno >= logging.INFO] == []
+    ready = [r for r in caplog.records if r.getMessage().startswith("build ready")]
+    formulas = sum(len(c.formulas) for c in build.model.namespaces.values())
+    assert [r.getMessage() for r in ready] == [
+        f"build ready: {formulas} formulas, {len(build.report.not_implemented)} without implementation"
+    ]
+    assert all(r.levelno == logging.DEBUG for r in ready)
+
+
+class SilentRegistry(Registry):
+    """A registry that is falsy, as a container with nothing in it would be."""
+
+    def __len__(self) -> int:
+        return 0
+
+
+def test_a_falsy_registry_is_used_as_given() -> None:
+    registry = SilentRegistry()
+    assert not registry
+    assert load_build(FIXTURE, registry).registry is registry
+
+
+def test_any_exception_while_assembling_is_a_load_failure_with_its_cause(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    def broken(root: object = None) -> str:
+        msg = "disk gone"
+        raise OSError(msg)
+
+    monkeypatch.setattr(build_module, "build_digest", broken)
+    with pytest.raises(CanonLoadError) as caught:
+        load_build(FIXTURE, Registry())
+    assert isinstance(caught.value.__cause__, OSError)
+    assert caught.value.error.category is ErrorCategory.INTERNAL
+    assert caught.value.error.escalate is True
+    assert "disk gone" not in caught.value.error.message
+
+
+def test_the_default_registry_is_traced_by_identity(monkeypatch: pytest.MonkeyPatch) -> None:
+    fresh = Registry()
+    monkeypatch.setattr(build_module, "DEFAULT_REGISTRY", fresh)
+    assert load_build(FIXTURE).registry is fresh

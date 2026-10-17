@@ -250,17 +250,6 @@ async def test_a_non_formula_exception_is_internal_logged_once_and_not_leaked(
     assert downstream.detail == {"causes": [{"quantity": "weight", "code": "internal"}]}
 
 
-async def test_two_requested_siblings_of_a_crashed_formula_log_one_error(
-    caplog: pytest.LogCaptureFixture,
-) -> None:
-    with caplog.at_level(logging.DEBUG, logger="aero_kernel"):
-        result = await run("twin-a", "twin-b", overrides={"twin": _boom})
-    assert len([r for r in caplog.records if r.levelno >= logging.ERROR]) == 1
-    messages = [q.error.message for q in result.quantities if q.error is not None]
-    assert "`twin-a`" in messages[0]
-    assert "`twin-b`" in messages[1]
-
-
 @pytest.mark.parametrize(
     "returned",
     [{}, {"w": 1.0, "extra": 2.0}, {"x": 1.0}],
@@ -1251,3 +1240,85 @@ async def test_a_failing_node_leaves_its_in_flight_sibling_of_the_layer_alone() 
     assert result.quantities[0].status is QuantityStatus.ERROR
     assert result.quantities[1].status is QuantityStatus.OK
     assert result.quantities[1].value == 7.0
+
+
+# --- amendment 3 --------------------------------------------------------------------------------
+
+
+async def test_a_pending_when_term_does_not_mask_an_unmet_given() -> None:
+    quantity = await first("pending-given-q")
+    assert quantity.status is QuantityStatus.NOT_APPLICABLE
+    assert quantity.reason is not None
+    assert quantity.reason.code is ReasonCode.NOT_GIVEN
+    supplied = await first("pending-given-q", values={"target-t": 1.0})
+    assert supplied.error is not None
+    assert supplied.error.category is ErrorCategory.NOT_IMPLEMENTED
+
+
+async def test_the_unsupported_value_type_detail_names_the_quantity_in_display_form() -> None:
+    quantity = await first("curve-read-q")
+    assert quantity.error is not None
+    assert quantity.error.detail == {"quantities": ["curve-q"]}
+
+
+@pytest.mark.parametrize(
+    ("first_slug", "second_slug", "message"),
+    [
+        (
+            "tail-twin-a",
+            "tail-twin-b",
+            "The condition `has_horizontal_tail` cannot be evaluated yet.",
+        ),
+        (
+            "curve-twin-a",
+            "curve-twin-b",
+            "`{slug}` reads `curve-q` (a curve), which the kernel cannot carry yet.",
+        ),
+    ],
+    ids=["pending-term", "unsupported-read"],
+)
+async def test_siblings_of_a_kernel_gap_each_name_themselves(
+    first_slug: str, second_slug: str, message: str
+) -> None:
+    result = await run(first_slug, second_slug)
+    for quantity in result.quantities:
+        assert quantity.error is not None
+        assert quantity.error.category is ErrorCategory.NOT_IMPLEMENTED
+        assert quantity.error.quantity == quantity.slug
+        assert quantity.error.message == message.format(slug=quantity.slug)
+
+
+async def test_a_crash_is_logged_against_the_first_requested_spelling(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    with caplog.at_level(logging.DEBUG, logger="aero_kernel"):
+        result = await run("twin-b", "twin-a", overrides={"twin": _boom})
+    (record,) = [r for r in caplog.records if r.levelno >= logging.ERROR]
+    assert record.quantity == "twin-b"  # type: ignore[attr-defined]  # logging extra
+    assert [q.error.quantity for q in result.quantities if q.error] == ["twin-b", "twin-a"]
+
+
+async def test_three_missing_inputs_read_as_a_list_with_and() -> None:
+    nothing = AircraftInput.model_validate({"airplane": {"name": "t"}, "values": {}})
+    result = await evaluate(make_build(), nothing, request("three-q"))
+    error = result.quantities[0].error
+    assert error is not None
+    assert error.message == (
+        "`three-q` needs `aircraft-mass`, `gravity` and `target-t`, which were not supplied."
+    )
+    assert error.hint == "Supply `aircraft-mass`, `gravity` and `target-t` in `values`."
+    assert error.detail == {"inputs": ["aircraft-mass", "gravity", "target-t"]}
+
+
+async def test_two_not_applicable_predecessors_are_both_named() -> None:
+    quantity = await first("two-na-q")
+    assert quantity.reason is not None
+    assert quantity.reason.message == (
+        "`two-na-q` reads `roll-q`, `na-when-q`, which is not applicable."
+    )
+
+
+async def test_one_predecessor_read_twice_is_named_once() -> None:
+    quantity = await first("twice-na-q")
+    assert quantity.reason is not None
+    assert quantity.reason.message == "`twice-na-q` reads `roll-q`, which is not applicable."

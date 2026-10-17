@@ -15,7 +15,7 @@ from aero_kernel.graph import (
     facts_from_geometry,
     unmet_condition,
 )
-from aero_kernel.schema import ReasonCode
+from aero_kernel.schema import Reason, ReasonCode
 from aero_kernel.tests.graph_builders import formula, model_of, quantity
 
 AILERON_ROLES = ("aileron", "flaperon", "elevon")
@@ -317,3 +317,17 @@ def test_every_when_term_has_a_fact_or_is_pending() -> None:
 def test_holds_refuses_a_pending_term_and_names_the_ticket() -> None:
     with pytest.raises(ValueError, match="#1187"):
         ALL.holds("has_horizontal_tail")
+
+
+def test_a_pending_when_term_does_not_mask_an_unmet_given() -> None:
+    model = model_of(
+        {"a": quantity("input"), "b": quantity("output")},
+        {"f": formula({"x": "a"}, {"y": "b"}, when="has_horizontal_tail", given=["calc:a"])},
+    )
+    node = CanonGraph(model).node(NodeId(formula="calc:f", application="default"))
+    unmet = unmet_condition(node, facts(None), [])
+    assert isinstance(unmet, Reason)
+    assert unmet.code is ReasonCode.NOT_GIVEN
+    pending = unmet_condition(node, facts(None), ["a"])
+    assert isinstance(pending, KernelError)
+    assert pending.category is ErrorCategory.NOT_IMPLEMENTED

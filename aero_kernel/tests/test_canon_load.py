@@ -40,13 +40,15 @@ def test_no_path_loads_the_default(tmp_path: Path, monkeypatch: pytest.MonkeyPat
     assert load_canon_model().content_hash == base_model()["content_hash"]
 
 
-def test_loading_logs_one_info_line(tmp_path: Path, caplog: pytest.LogCaptureFixture) -> None:
+def test_loading_logs_one_debug_line_and_no_info(
+    tmp_path: Path, caplog: pytest.LogCaptureFixture
+) -> None:
+    """The one INFO line of the first call is the call's own (ch. 8.14), not the loader's."""
     path = write_model(tmp_path, base_model())
     with caplog.at_level(logging.DEBUG, logger="aero_kernel.canon.load"):
         load_canon_model(path)
-    records = [r for r in caplog.records if r.levelno >= logging.INFO]
-    assert [r.levelno for r in records] == [logging.INFO]
-    assert base_model()["content_hash"] in records[0].getMessage()
+    assert [r.levelno for r in caplog.records] == [logging.DEBUG]
+    assert base_model()["content_hash"] in caplog.records[0].getMessage()
 
 
 def assert_internal(error: CanonLoadError) -> None:

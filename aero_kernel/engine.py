@@ -54,7 +54,7 @@ from pydantic import JsonValue
 
 logger = logging.getLogger(__name__)
 
-__all__ = ["evaluate"]
+__all__ = ["evaluate", "log_call"]
 
 
 @dataclass(frozen=True)
@@ -296,7 +296,7 @@ class _Call:
         return None if propagated is None else self._propagated(anchor, propagated)
 
     def _propagated(self, anchor: str, propagated: Propagated) -> _NodeRun:
-        """A node whose status its predecessors or its cost class force on it."""
+        """A node that inherits its status from a predecessor it reads."""
         if propagated.error is not None:
             return self._failed(
                 anchor,
@@ -409,9 +409,8 @@ class _Call:
         quantity = self.build.model.quantity(binding)
         if quantity is None or quantity.role not in ("input", "target"):
             return None
-        if quantity.type == "airplane":
-            return "airplane"
-        return f"values.{display_slug(binding)}" if quantity.type == "scalar" else None
+        # an input of another type is a kernel gap before any formula runs (row 3)
+        return "airplane" if quantity.type == "airplane" else f"values.{display_slug(binding)}"
 
     # --- outputs ---------------------------------------------------------------------------
 
@@ -504,19 +503,32 @@ def _provenance(build: Build) -> Provenance:
     )
 
 
-def _log_summary(
-    call_id: str, request: ComputeRequest, result: ComputeResult, started: float
+def log_call(
+    call_id: str,
+    request: ComputeRequest,
+    result: ComputeResult,
+    started: float,
+    note: str | None = None,
 ) -> None:
-    """The one ``INFO`` line of a call (ch. 8.14)."""
+    """The one ``INFO`` line of a call (ch. 8.14); also used by the failing-build path of ``compute``.
+
+    Args:
+        call_id: Short id of the call.
+        request: The request.
+        result: The result of the call.
+        started: ``time.perf_counter()`` at the start of the call.
+        note: What else to say about the call, appended after the timing.
+    """
     counts = Counter(q.status.value for q in result.quantities)
     logger.info(
-        "compute: [%s] include_long_runs=%s, %d quantities (%s), %d input errors, %.1f ms",
+        "compute: [%s] include_long_runs=%s, %d quantities (%s), %d input errors, %.1f ms%s",
         ", ".join(request.quantities),
         request.include_long_runs,
         len(result.quantities),
         ", ".join(f"{status}={n}" for status, n in sorted(counts.items())) or "none",
         len(result.input_errors),
         (time.perf_counter() - started) * 1000,
+        "" if note is None else f"; {note}",
         extra={"call_id": call_id},
     )
 
@@ -538,7 +550,7 @@ async def evaluate(build: Build, aircraft: AircraftInput, request: ComputeReques
     errors = validate_aircraft(aircraft).errors + validate_values(aircraft.values, build.model)
     if errors:
         result = ComputeResult(input_errors=errors, provenance=_provenance(build))
-        _log_summary(call_id, request, result, started)
+        log_call(call_id, request, result, started)
         return result
     subtree = build.graph.subtree(request.quantities)
     call = _Call(build, aircraft, request, subtree, call_id)
@@ -557,5 +569,5 @@ async def evaluate(build: Build, aircraft: AircraftInput, request: ComputeReques
         quantities=tuple(results[slug] for slug in request.quantities),
         provenance=_provenance(build),
     )
-    _log_summary(call_id, request, result, started)
+    log_call(call_id, request, result, started)
     return result

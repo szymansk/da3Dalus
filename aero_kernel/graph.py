@@ -196,7 +196,7 @@ class NodeOutcome(BaseModel):
 
 
 class Propagated(BaseModel):
-    """The status a node takes from its predecessors or its own cost class (ch. 8.13).
+    """The status a node inherits from the predecessors it reads (ch. 8.13).
 
     Attributes:
         status: ``error``, ``skipped`` or ``not_applicable``.
@@ -210,7 +210,7 @@ class Propagated(BaseModel):
     status: QuantityStatus
     reason: Reason | None = None
     error: KernelError | None = None
-    reword: Callable[[str], "Propagated"] | None = Field(default=None, exclude=True, repr=False)
+    reword: Callable[[str], "Propagated"] = Field(exclude=True, repr=False)
 
     def addressed_to(self, quantity: str) -> "Propagated":
         """Return the same propagation worded for another quantity of the same node.
@@ -224,7 +224,7 @@ class Propagated(BaseModel):
         Returns:
             The propagation with ``quantity`` in the error and the reason.
         """
-        return self if self.reword is None else self.reword(quantity)
+        return self.reword(quantity)
 
 
 class Subtree(BaseModel):
@@ -839,7 +839,11 @@ def facts_from_geometry(airplane: AirplaneGeometry) -> WhenFacts:
 def unmet_condition(
     node: Node, facts: WhenFacts, supplied: Collection[str]
 ) -> Reason | KernelError | None:
-    """Check a node's ``when`` and ``given`` conditions; ``when`` first.
+    """Check a node's ``when`` and ``given`` conditions (row 1 of the status order, ch. 8.13).
+
+    A ``when`` term that has facts is checked first, then ``given``; a ``when`` term without a fact
+    yet comes last, because an unmet ``given`` makes the application not exist whatever that fact
+    would say.
 
     Args:
         node: The application's node.
@@ -851,16 +855,8 @@ def unmet_condition(
         slugs; a ``not_implemented`` error if the ``when`` term has no fact yet
         (:data:`PENDING_WHEN_TERMS`); or ``None`` if the application exists.
     """
-    if node.when is not None and node.when in PENDING_WHEN_TERMS:
-        return KernelError(
-            code=ErrorCategory.NOT_IMPLEMENTED.value,
-            category=ErrorCategory.NOT_IMPLEMENTED,
-            formula=node.id.formula,
-            application=node.id.application,
-            message=f"The condition `{node.when}` cannot be evaluated yet.",
-            hint=f"Its fact is not implemented ({PENDING_WHEN_TERMS[node.when]}).",
-        )
-    if node.when is not None and not facts.holds(node.when):
+    pending = node.when is not None and node.when in PENDING_WHEN_TERMS
+    if node.when is not None and not pending and not facts.holds(node.when):
         return Reason(
             code=ReasonCode.CONDITION_NOT_MET,
             message=f"The aircraft does not satisfy `{node.when}`.",
@@ -870,4 +866,13 @@ def unmet_condition(
     if missing:
         names = ", ".join(f"`{display_slug(slug)}`" for slug in missing)
         return Reason(code=ReasonCode.NOT_GIVEN, message=f"{names} was not supplied.")
+    if node.when is not None and pending:
+        return KernelError(
+            code=ErrorCategory.NOT_IMPLEMENTED.value,
+            category=ErrorCategory.NOT_IMPLEMENTED,
+            formula=node.id.formula,
+            application=node.id.application,
+            message=f"The condition `{node.when}` cannot be evaluated yet.",
+            hint=f"Its fact is not implemented ({PENDING_WHEN_TERMS[node.when]}).",
+        )
     return None
