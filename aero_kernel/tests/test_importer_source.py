@@ -290,7 +290,7 @@ def test_an_empty_repository_without_a_head_is_a_finding(
     canon = write_canon(root)
     assert run(canon, tmp_path / "out") == 1
     printed = capsys.readouterr().out
-    assert "git rev-parse HEAD failed" in printed
+    assert "git log failed" in printed
     assert "uncommitted" in printed  # both are reported
 
 
@@ -405,3 +405,50 @@ def test_a_commit_git_does_not_know_names_the_cat_file_exit_code(
         f"{'a' * 40} is not a commit of this repository (git cat-file exit 128)"
         in capsys.readouterr().out
     )
+
+
+# --- S3 (b) Q13: the default source commit is the last commit that touched the canon -------------------------
+
+
+def test_the_default_commit_is_the_last_one_that_touched_the_canon_not_the_head(
+    repo: tuple[Path, Path], tmp_path: Path
+) -> None:
+    canon, root = repo
+    canon_commit = git(root, "rev-parse", "HEAD")
+    (root / "unrelated.txt").write_text("x\n", encoding="utf-8")
+    git(root, "add", "unrelated.txt")
+    git(root, "commit", "-q", "-m", "unrelated")
+    assert git(root, "rev-parse", "HEAD") != canon_commit
+    assert run(canon, tmp_path / "out") == 0
+    assert load_canon_model(tmp_path / "out" / "canon_model.json").source_commit == canon_commit
+
+
+def test_the_default_commit_moves_with_a_canon_change(
+    repo: tuple[Path, Path], tmp_path: Path
+) -> None:
+    canon, root = repo
+    (canon / "defaults.yaml").write_text(
+        MINI_CANON["defaults.yaml"].replace("9.80665", "9.8"), encoding="utf-8"
+    )
+    git(root, "commit", "-q", "-am", "canon change")
+    changed = git(root, "rev-parse", "HEAD")
+    assert run(canon, tmp_path / "out") == 0
+    assert load_canon_model(tmp_path / "out" / "canon_model.json").source_commit == changed
+
+
+def test_a_canon_no_commit_ever_touched_is_a_finding(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    root = tmp_path / "other"
+    root.mkdir()
+    git(root, "init", "-q")
+    (root / "readme.txt").write_text("x\n", encoding="utf-8")
+    git(root, "add", ".")
+    git(root, "commit", "-q", "-m", "first")
+    canon = write_canon(root)
+    git(root, "add", ".")
+    # staged, not committed: the canon is dirty and no commit has touched it
+    assert run(canon, tmp_path / "out") == 1
+    printed = capsys.readouterr().out
+    assert "uncommitted" in printed
+    assert "no commit has touched the canon directory" in printed
