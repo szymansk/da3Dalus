@@ -584,3 +584,5 @@ Maintainer; `check_canon.py` meldet es als *open*.
 
 **D9 (maintainer 2026-10-17):** every lifting surface carries an explicit required `surface_type` (main_wing — exactly one, supplies S_ref/b_ref/c_MAC; horizontal_tail; vertical_tail — type follows function, incl. tip/centre fins with rudder or directional-stability role; v_tail — counts as vertical and horizontal tail; canard; tandem_wing — S_ref from main wing only; winglet — only as a separate wing). Never inferred from geometry or names. Biplanes out of v1. Soll: #1187.
 
+**`has_horizontal_tail` (Maintainer 17.10.2026):** neuer Begriff im Bedingungsvokabular — eine Fläche horizontal_tail oder v_tail (surface_type, #1187); ein V-Leitwerk zählt als Höhenleitwerk. Begriffe über die Flächentyp-Ontologie sind vollständig definiert, auch ohne nutzenden Eintrag („Das ist doch eine klare Ontologie … gilt nicht als unbenötigter Code“); die README-Regel „ein neuer Begriff braucht einen Eintrag, der die Bedingung nennt“ bleibt und hat dafür eine Ausnahme.
+
