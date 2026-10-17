@@ -196,6 +196,31 @@ def make_error() -> KernelError:
     )
 
 
+class TestQuantityResultUnit:
+    def test_ok_requires_a_unit(self) -> None:
+        with pytest.raises(ValidationError, match="unit"):
+            make_quantity(unit=None)
+
+    def test_a_quantity_the_kernel_does_not_know_has_no_unit(self) -> None:
+        error = make_error().model_copy(update={"quantity": "nonsense"})
+        result = QuantityResult(
+            slug="nonsense", unit=None, status=QuantityStatus.ERROR, error=error
+        )
+        assert result.unit is None
+
+    def test_a_known_non_ok_quantity_keeps_its_unit(self) -> None:
+        assert (
+            make_quantity(
+                status="error", value=None, tool=None, application=None, error=make_error()
+            ).unit
+            == "m/s"
+        )
+
+    def test_empty_unit_is_rejected(self) -> None:
+        with pytest.raises(ValidationError):
+            make_quantity(unit="")
+
+
 class TestQuantityResultError:
     def test_error_with_error_and_no_value(self) -> None:
         result = make_quantity(status="error", value=None, error=make_error())
@@ -357,6 +382,14 @@ class TestProvenance:
     def test_rejects_empty_identifier(self, field: str) -> None:
         with pytest.raises(ValidationError):
             make_provenance(**{field: ""})
+
+    @pytest.mark.parametrize("field", ["canon_model_hash", "canon_source_commit"])
+    def test_canon_state_is_none_without_a_model(self, field: str) -> None:
+        assert getattr(make_provenance(**{field: None}), field) is None
+
+    def test_build_digest_stays_required(self) -> None:
+        with pytest.raises(ValidationError):
+            make_provenance(build_digest=None)
 
 
 def make_compute(**overrides: object) -> ComputeResult:

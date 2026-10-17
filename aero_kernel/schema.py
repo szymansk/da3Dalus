@@ -262,7 +262,8 @@ class QuantityResult(BaseModel):
 
     Attributes:
         slug: Canon slug of the quantity.
-        unit: SI unit of ``value`` and ``interval``.
+        unit: SI unit of ``value`` and ``interval``; ``None`` exactly when the kernel knows no
+            quantity of that slug (unknown or malformed slug, or no loadable model), required for ``ok``.
         status: Outcome class.
         reason: Why the quantity is ``not_applicable`` or ``skipped``.
         value: The value (floats only in v1).
@@ -278,7 +279,7 @@ class QuantityResult(BaseModel):
     model_config = ConfigDict(extra="forbid", frozen=True)
 
     slug: str = Field(min_length=1)
-    unit: str = Field(min_length=1)
+    unit: str | None = Field(default=None, min_length=1)
     status: QuantityStatus
     reason: Reason | None = None
     value: FiniteFloat | None = None
@@ -308,7 +309,11 @@ class QuantityResult(BaseModel):
             if self.error is not None:
                 msg = "status ok must not carry an error"
                 raise ValueError(msg)
-            for name, text in (("tool", self.tool), ("application", self.application)):
+            for name, text in (
+                ("unit", self.unit),
+                ("tool", self.tool),
+                ("application", self.application),
+            ):
                 if not text:
                     msg = f"status ok needs {name}: every value leads back to its application and tool"
                     raise ValueError(msg)
@@ -359,8 +364,10 @@ class Provenance(BaseModel):
 
     Attributes:
         build_digest: Hash over the code and canon model; identifies the exact build.
-        canon_model_hash: Hash of the canon model.
-        canon_source_commit: Commit of the canon document the model was imported from.
+        canon_model_hash: Hash of the canon model; ``None`` only when the shipped model could
+            not be loaded.
+        canon_source_commit: Commit of the canon document the model was imported from; ``None``
+            only when the shipped model could not be loaded.
         tool_versions: Version per tool (aerosandbox, NeuralFoil model, AVL).
         solver_settings: Solver settings of the call.
         defaults_used: Every canon default the call took.
@@ -369,8 +376,8 @@ class Provenance(BaseModel):
     model_config = ConfigDict(extra="forbid", frozen=True)
 
     build_digest: str = Field(min_length=1)
-    canon_model_hash: str = Field(min_length=1)
-    canon_source_commit: str = Field(min_length=1)
+    canon_model_hash: str | None = Field(default=None, min_length=1)
+    canon_source_commit: str | None = Field(default=None, min_length=1)
     tool_versions: dict[
         Annotated[str, Field(min_length=1)], Annotated[str, Field(min_length=1)]
     ] = Field(default_factory=dict)
@@ -440,14 +447,12 @@ class ComputeRequest(BaseModel):
     Attributes:
         quantities: Canon quantity slugs (not formula slugs); at least one, each once.
         include_long_runs: Whether quantities of cost class ``minutes`` run (ch. 8.7).
-        time_budget_s: Wall-clock budget of the call in seconds; ``None`` means unlimited (ch. 8.10).
     """
 
     model_config = ConfigDict(extra="forbid", frozen=True)
 
     quantities: tuple[Annotated[str, Field(min_length=1)], ...] = Field(min_length=1)
     include_long_runs: bool = Field(default=False, strict=True)
-    time_budget_s: float | None = Field(default=None, strict=True, gt=0, allow_inf_nan=False)
 
     @model_validator(mode="after")
     def _check_unique_quantities(self) -> Self:
