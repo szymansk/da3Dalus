@@ -1,22 +1,16 @@
-"""Node cache: the cache key, the build digest, ``Entry``, the ``NodeStore`` protocol and its stores (ch. 8.4).
+"""Node cache: the cache key, the build digest, ``Entry`` and the in-memory LRU cache (ch. 8.4).
 
 The cache maps keys to a node's outputs and warnings and never changes a value. It knows only JSON
 values; converting typed results to and from JSON is the engine's job. Entries are kept serialised and
 every hit builds a fresh object, so no caller can corrupt another caller's result.
 """
 
-import asyncio
 import hashlib
 import logging
-import math
-import sqlite3
-import threading
-import time
 from collections import OrderedDict
-from collections.abc import Callable, Generator, Mapping
-from contextlib import closing, contextmanager
+from collections.abc import Mapping
 from pathlib import Path
-from typing import Protocol, Self, TypeVar, runtime_checkable
+from typing import Self
 
 from aero_kernel.canonical import sha256_of
 from aero_kernel.errors import check_finite_json
@@ -24,23 +18,14 @@ from aero_kernel.schema import Accuracy, KernelWarning
 from pydantic import BaseModel, ConfigDict, JsonValue, model_validator
 
 __all__ = [
-    "DiskCache",
     "Entry",
     "MemoryCache",
-    "NodeStore",
-    "StoreError",
     "build_digest",
     "cache_key",
 ]
 
 logger = logging.getLogger(__name__)
 
-_T = TypeVar("_T")
-
-_SCHEMA_VERSION = 2
-_ALL_SCOPES = ""  # the totals row for all scopes; a real scope is never empty
-_EVICTION_CHUNK = 64
-_WAL_RETRY_S = 0.005
 _PACKAGE_ROOT = Path(__file__).resolve().parent
 _EXCLUDED_DIRECTORIES = frozenset({"tests", "tools", "importer"})
 _CANON_MODEL = "canon/canon_model.json"
@@ -82,7 +67,6 @@ def build_digest(root: Path | None = None) -> str:
 
 def cache_key(
     *,
-    scope: str,
     formula: str,
     application: str,
     world: str | None,
@@ -96,7 +80,6 @@ def cache_key(
     Floats are hashed exactly (``repr``), never rounded; ``-0.0`` counts as ``0.0``.
 
     Args:
-        scope: Cache scope of the call.
         formula: Qualified formula slug of the node.
         application: Application id within the formula.
         world: Canonical world assignment, or ``None`` for a certain node.
@@ -113,7 +96,6 @@ def cache_key(
     """
     return sha256_of(
         {
-            "scope": scope,
             "application": {"formula": formula, "application": application},
             "world": world,
             "inputs": dict(inputs),
@@ -170,512 +152,48 @@ class Entry(BaseModel):
 _KEY_PREFIX = 12
 
 
-def _check_scope(scope: str) -> None:
-    """Raise ``ValueError`` for an empty scope (a programming error, ch. 8.4)."""
-    if not scope:
-        msg = "scope must be a non-empty string"
-        raise ValueError(msg)
-
-
 def _short(key: str) -> str:
     """The key prefix that is logged instead of the whole key."""
     return key[:_KEY_PREFIX]
 
 
-class StoreError(Exception):
-    """A store could not do what the caller relies on (ADR 0019: no SQL, path or backend text).
-
-    Raised by ``drop_scope`` only, because a deletion cannot degrade to a no-op; reads and writes
-    degrade to a miss or a skipped write instead.
-    """
-
-
-@runtime_checkable
-class NodeStore(Protocol):
-    """Where the node cache keeps its entries (ch. 8.4); a caller may supply its own.
-
-    Implementations are safe for concurrent use, keep entries serialised and return a fresh
-    :class:`Entry` on every hit. A hit never crosses scopes. The one error ``drop_scope`` may raise,
-    in a custom store too, is :class:`StoreError`; ``get`` and ``put`` degrade instead of raising.
-    """
-
-    async def get(self, scope: str, key: str) -> Entry | None:
-        """Return a fresh copy of the entry of ``key`` in ``scope``, or ``None`` on a miss."""
-        ...
-
-    async def put(self, scope: str, key: str, entry: Entry) -> None:
-        """Store ``entry`` under ``key`` in ``scope``, replacing an earlier one."""
-        ...
-
-    async def drop_scope(self, scope: str) -> None:
-        """Remove every entry of ``scope``; other scopes are untouched."""
-        ...
-
-
 class MemoryCache:
-    """An in-process LRU store: one global limit and an optional limit per scope (ch. 8.4).
+    """An in-process LRU cache with one global limit (ch. 8.4).
 
-    The methods are coroutines for protocol compatibility only; none awaits inside its critical
-    section, so on one event loop no lock is needed.
+    The methods are plain synchronous methods; none awaits or yields inside its critical section, so
+    on one event loop no lock is needed.
     """
 
-    def __init__(self, *, max_entries: int, max_entries_per_scope: int | None = None) -> None:
+    def __init__(self, *, max_entries: int) -> None:
         """Create an empty cache.
 
         Args:
-            max_entries: Entries kept over all scopes; the least recently used one is evicted.
-            max_entries_per_scope: Optional limit per scope; evicts that scope's least recently
-                used entry, so one scope cannot push out the others.
+            max_entries: Entries kept; the least recently used one is evicted.
 
         Raises:
-            ValueError: If a limit is below 1.
+            ValueError: If the limit is below 1.
         """
-        if max_entries < 1 or (max_entries_per_scope is not None and max_entries_per_scope < 1):
+        if max_entries < 1:
             msg = "cache limits must be at least 1"
             raise ValueError(msg)
         self._max_entries = max_entries
-        self._max_per_scope = max_entries_per_scope
-        # Texts by scope then key, each in recency order, and the global recency order beside them:
-        # both kinds of eviction pop the oldest entry of an OrderedDict, so neither scans.
-        self._scopes: dict[str, OrderedDict[str, str]] = {}
-        self._recency: OrderedDict[tuple[str, str], None] = OrderedDict()
+        self._texts: OrderedDict[str, str] = OrderedDict()
 
-    async def get(self, scope: str, key: str) -> Entry | None:
+    def get(self, key: str) -> Entry | None:
         """Return a fresh copy of the entry, marking it most recently used."""
-        _check_scope(scope)
-        text = self._scopes.get(scope, {}).get(key)
+        text = self._texts.get(key)
         if text is None:
-            logger.debug("cache miss %s", _short(key), extra={"scope": scope})
+            logger.debug("cache miss %s", _short(key))
             return None
-        self._scopes[scope].move_to_end(key)
-        self._recency.move_to_end((scope, key))
-        logger.debug("cache hit %s", _short(key), extra={"scope": scope})
+        self._texts.move_to_end(key)
+        logger.debug("cache hit %s", _short(key))
         return Entry.from_json(text)
 
-    async def put(self, scope: str, key: str, entry: Entry) -> None:
-        """Store the serialised entry and evict by the limits."""
-        _check_scope(scope)
-        members = self._scopes.setdefault(scope, OrderedDict())
-        members[key] = entry.to_json()
-        members.move_to_end(key)
-        self._recency[(scope, key)] = None
-        self._recency.move_to_end((scope, key))
-        if self._max_per_scope is not None and len(members) > self._max_per_scope:
-            self._evict(scope, next(iter(members)))
-        if len(self._recency) > self._max_entries:
-            oldest_scope, oldest_key = next(iter(self._recency))
-            self._evict(oldest_scope, oldest_key)
-
-    async def drop_scope(self, scope: str) -> None:
-        """Remove every entry of ``scope``."""
-        _check_scope(scope)
-        for key in self._scopes.pop(scope, {}):
-            del self._recency[(scope, key)]
-        logger.debug("cache scope dropped", extra={"scope": scope})
-
-    def _evict(self, scope: str, key: str) -> None:
-        """Remove one entry and log it."""
-        members = self._scopes[scope]
-        del members[key]
-        if not members:
-            del self._scopes[scope]
-        del self._recency[(scope, key)]
-        logger.debug("cache evict %s", _short(key), extra={"scope": scope})
-
-
-@contextmanager
-def _transaction(db: sqlite3.Connection) -> Generator[None]:
-    """A write transaction that takes the write lock at once; an error rolls back on close."""
-    db.execute("BEGIN IMMEDIATE")
-    yield
-    db.execute("COMMIT")
-
-
-def _primary_code(exc: Exception) -> int | None:
-    """The primary SQLite result code, or ``None`` for an error that carries none."""
-    code: int | None = getattr(exc, "sqlite_errorcode", None)
-    return None if code is None else code & 0xFF
-
-
-def _error_name(exc: Exception) -> str:
-    """The SQLite error name (``SQLITE_BUSY``) or the exception type, for the logs only."""
-    name: str = getattr(exc, "sqlite_errorname", type(exc).__name__)
-    return name
-
-
-def _is_busy(exc: Exception) -> bool:
-    """Whether another connection holds a lock (``SQLITE_BUSY`` or ``SQLITE_LOCKED``)."""
-    return _primary_code(exc) in (sqlite3.SQLITE_BUSY, sqlite3.SQLITE_LOCKED)
-
-
-def _is_corrupt(exc: Exception) -> bool:
-    """Whether SQLite reports a damaged file (``SQLITE_CORRUPT``) or no database at all."""
-    return _primary_code(exc) in (sqlite3.SQLITE_CORRUPT, sqlite3.SQLITE_NOTADB)
-
-
-class DiskCache:
-    """A persistent store: one SQLite file, values as JSON text, never pickle (ch. 8.4).
-
-    Limits count payload bytes (the JSON text), not SQLite overhead, and evict by access order
-    (least recently read or written first). Every call opens its own connection in a worker thread,
-    so the cache is thread-safe and several processes may share the file through SQLite's locking;
-    writers of one key write the same content, so the last writer winning is harmless.
-
-    Degraded operation is declared with a ``WARNING`` log (ADR 0020, ch. 8.14): an unreadable entry
-    is a miss and is deleted, a non-database file is moved aside as ``<name>.corrupt``, an unknown
-    schema version resets the cache, and a locked database makes ``get`` a miss and ``put`` a no-op.
-    ``drop_scope`` is a deletion the caller relies on, so a locked database raises there. The file
-    does not shrink after evictions or ``drop_scope`` (no ``VACUUM``).
-
-    The switch of a fresh file to WAL holds the instance lock while it waits for a competing
-    switch. If the file stays locked, concurrent callers on one instance therefore wait one after
-    another, each up to ``busy_timeout_s``: about N times ``busy_timeout_s`` for N callers.
-
-    The guard that moves a damaged file aside only once works per instance (a generation counter);
-    two instances on one file may each move aside what they see, which costs cache content, never
-    correctness.
-    """
-
-    def __init__(
-        self,
-        *,
-        path: Path,
-        max_bytes: int,
-        max_bytes_per_scope: int | None = None,
-        busy_timeout_s: float = 5.0,
-    ) -> None:
-        """Remember the settings; nothing is created until the first call.
-
-        Args:
-            path: The SQLite file; its parent directory is created on first use.
-            max_bytes: Payload bytes kept over all scopes.
-            max_bytes_per_scope: Optional payload bytes kept per scope.
-            busy_timeout_s: Seconds to wait for a lock held by another connection. Unlike the
-                limits this is infrastructure, not an engineering decision, so it has a default.
-
-        Raises:
-            ValueError: If a limit is below 1 or ``busy_timeout_s`` is not positive and finite.
-        """
-        if max_bytes < 1 or (max_bytes_per_scope is not None and max_bytes_per_scope < 1):
-            msg = "cache limits must be at least 1"
-            raise ValueError(msg)
-        if not (0 < busy_timeout_s < math.inf):
-            msg = "busy_timeout_s must be positive and finite"
-            raise ValueError(msg)
-        self._busy_timeout_s = busy_timeout_s
-        self._path = path
-        self._max_bytes = max_bytes
-        self._max_per_scope = max_bytes_per_scope
-        self._lock = threading.Lock()
-        self._wal_set = False
-        self._generation = 0
-
-    async def get(self, scope: str, key: str) -> Entry | None:
-        """Return a fresh entry and mark it most recently used; a miss on any read problem."""
-        _check_scope(scope)
-        try:
-            found = await self._guard(self._read, scope, key)
-        except (sqlite3.Error, OSError) as exc:
-            if not _is_corrupt(exc):  # a corrupt file was already moved aside and warned about
-                logger.warning(
-                    "disk cache unavailable (%s), %s treated as a miss",
-                    _error_name(exc),
-                    _short(key),
-                    extra={"scope": scope},
-                )
-            return None
-        logger.debug("cache %s %s", "hit" if found else "miss", _short(key), extra={"scope": scope})
-        return found
-
-    async def put(self, scope: str, key: str, entry: Entry) -> None:
-        """Store the entry and evict by the limits; skipped if it alone exceeds a limit."""
-        _check_scope(scope)
-        text = entry.to_json()
-        size = len(text.encode())
-        if size > self._max_bytes or (
-            self._max_per_scope is not None and size > self._max_per_scope
-        ):
-            logger.debug(
-                "entry too large for the disk cache, not stored: %s",
-                _short(key),
-                extra={"scope": scope},
-            )
-            return
-        try:
-            await self._guard(self._write, scope, key, text, size)
-        except (sqlite3.Error, OSError) as exc:
-            if not _is_corrupt(exc):
-                logger.warning(
-                    "disk cache unavailable (%s), %s not stored",
-                    _error_name(exc),
-                    _short(key),
-                    extra={"scope": scope},
-                )
-
-    async def drop_scope(self, scope: str) -> None:
-        """Delete every entry of ``scope``, and with it any quarantined ``<name>.corrupt`` file.
-
-        The quarantined file may hold rows of the scope, and a deletion must be complete. A
-        ``get`` or ``put`` that quarantined a file keeps it for diagnosis until the next call here.
-
-        Raises:
-            StoreError: If the database stays locked past the busy timeout (no retry follows), or
-                the file system refuses, or the quarantined file cannot be removed.
-        """
-        _check_scope(scope)
-        try:
-            await self._guard(self._drop, scope)
-        except (sqlite3.Error, OSError) as exc:
-            if not _is_corrupt(exc):
-                raise self._store_error(scope, exc) from exc
-            logger.debug("cache scope dropped with the corrupt file", extra={"scope": scope})
-        try:
-            await asyncio.to_thread(self._discard_quarantined)
-        except OSError as exc:
-            raise self._store_error(scope, exc) from exc
-        logger.debug("cache scope dropped", extra={"scope": scope})
-
-    @staticmethod
-    def _store_error(scope: str, exc: Exception) -> StoreError:
-        """Log the failure with its traceback and build the plain error for the caller (ADR 0019)."""
-        logger.warning(
-            "disk cache unavailable (%s), scope not dropped",
-            _error_name(exc),
-            exc_info=exc,
-            extra={"scope": scope},
-        )
-        reason = "busy, retry later" if _is_busy(exc) else "unavailable"
-        return StoreError(f"the cache could not delete scope {scope}; the store is {reason}")
-
-    def _discard_quarantined(self) -> None:
-        """Remove ``<name>.corrupt`` if it exists (worker thread)."""
-        self._path.with_name(f"{self._path.name}.corrupt").unlink(missing_ok=True)
-
-    def _read(self, scope: str, key: str) -> Entry | None:
-        """Look the entry up (worker thread); delete and warn about an unreadable row.
-
-        The recency update is best effort and runs in its own short transaction after the read: a
-        read-only file or a lock costs only the eviction order, never the hit.
-        """
-        with closing(self._open()) as db:
-            with db:
-                row = db.execute(
-                    "SELECT value FROM entries WHERE scope = ? AND key = ?", (scope, key)
-                ).fetchone()
-            if row is None:
-                return None
-            try:
-                found = Entry.from_json(row[0])
-            except ValueError:
-                with _transaction(db):
-                    # Another connection may have evicted the row since the read: subtract only
-                    # what this statement actually deleted (RETURNING, SQLite 3.35 or newer).
-                    deleted = db.execute(
-                        "DELETE FROM entries WHERE scope = ? AND key = ? RETURNING size",
-                        (scope, key),
-                    ).fetchall()
-                    self._add_to_totals(db, {scope: -sum(size for (size,) in deleted)})
-                logger.warning(
-                    "disk cache entry unreadable and recomputed: %s",
-                    _short(key),
-                    extra={"scope": scope},
-                )
-                return None
-            try:
-                with db:
-                    db.execute(
-                        "UPDATE entries SET tick = (SELECT MAX(tick) + 1 FROM entries)"
-                        " WHERE scope = ? AND key = ?",
-                        (scope, key),
-                    )
-            except sqlite3.Error as exc:
-                logger.debug(
-                    "disk cache recency not updated (%s): %s",
-                    _error_name(exc),
-                    _short(key),
-                    extra={"scope": scope},
-                )
-            return found
-
-    def _write(self, scope: str, key: str, text: str, size: int) -> None:
-        """Insert the row, update the totals and evict, in one transaction (worker thread)."""
-        with closing(self._open()) as db, _transaction(db):
-            previous = db.execute(
-                "SELECT size FROM entries WHERE scope = ? AND key = ?", (scope, key)
-            ).fetchone()
-            db.execute(
-                "INSERT OR REPLACE INTO entries (scope, key, value, size, tick)"
-                " VALUES (?, ?, ?, ?, (SELECT COALESCE(MAX(tick), 0) + 1 FROM entries))",
-                (scope, key, text, size),
-            )
-            grown = size - (0 if previous is None else previous[0])
-            self._add_to_totals(db, {scope: grown})
-            if self._max_per_scope is not None:
-                self._trim(db, scope, self._max_per_scope)
-            self._trim(db, None, self._max_bytes)
-
-    def _drop(self, scope: str) -> None:
-        """Delete the rows of ``scope`` and its totals (worker thread)."""
-        with closing(self._open()) as db, _transaction(db):
-            freed = self._total(db, scope)
-            db.execute("DELETE FROM entries WHERE scope = ?", (scope,))
-            db.execute("DELETE FROM totals WHERE scope = ?", (scope,))
-            self._add_to_totals(db, {_ALL_SCOPES: -freed})
-
-    @staticmethod
-    def _total(db: sqlite3.Connection, scope: str) -> int:
-        """The running payload total of ``scope`` (:data:`_ALL_SCOPES` for everything)."""
-        row = db.execute("SELECT bytes FROM totals WHERE scope = ?", (scope,)).fetchone()
-        return 0 if row is None else row[0]
-
-    @staticmethod
-    def _add_to_totals(db: sqlite3.Connection, changes: dict[str, int]) -> None:
-        """Add ``changes`` per scope to the totals; the all-scopes row follows the sum."""
-        for scope, change in changes.items():
-            db.execute(
-                "INSERT INTO totals (scope, bytes) VALUES (?, ?)"
-                " ON CONFLICT (scope) DO UPDATE SET bytes = bytes + excluded.bytes",
-                (scope, change),
-            )
-        if _ALL_SCOPES not in changes:
-            db.execute(
-                "INSERT INTO totals (scope, bytes) VALUES (?, ?)"
-                " ON CONFLICT (scope) DO UPDATE SET bytes = bytes + excluded.bytes",
-                (_ALL_SCOPES, sum(changes.values())),
-            )
-
-    def _delete_rows(self, db: sqlite3.Connection, rows: list[tuple[str, str, int]]) -> None:
-        """Delete ``(scope, key, size)`` rows with one statement and subtract them from the totals."""
-        db.executemany("DELETE FROM entries WHERE scope = ? AND key = ?", [r[:2] for r in rows])
-        freed: dict[str, int] = {}
-        for scope, _key, size in rows:
-            freed[scope] = freed.get(scope, 0) - size
-        self._add_to_totals(db, freed)
-
-    def _trim(self, db: sqlite3.Connection, scope: str | None, limit: int) -> None:
-        """Evict least recently used rows, in chunks, until the total fits ``limit``.
-
-        ``scope`` limits the eviction to one scope; ``None`` means over all scopes. Nothing is
-        read from ``entries`` while the running total is within the limit.
-        """
-        total = self._total(db, _ALL_SCOPES if scope is None else scope)
-        while total > limit:
-            where = "" if scope is None else "WHERE scope = ?"  # constant clause, no caller data
-            rows = db.execute(
-                f"SELECT scope, key, size FROM entries {where} ORDER BY tick LIMIT ?",
-                (_EVICTION_CHUNK,) if scope is None else (scope, _EVICTION_CHUNK),
-            ).fetchall()
-            if not rows:
-                logger.warning("disk cache totals drifted from the entries, rebuilding them")
-                self._rebuild_totals(db)
-                return
-            doomed: list[tuple[str, str, int]] = []
-            for row_scope, key, size in rows:
-                if total <= limit:
-                    break
-                doomed.append((row_scope, key, size))
-                total -= size
-                logger.debug("cache evict %s", _short(key), extra={"scope": row_scope})
-            self._delete_rows(db, doomed)
-
-    @staticmethod
-    def _rebuild_totals(db: sqlite3.Connection) -> None:
-        """Recompute the running totals from the entries."""
-        db.execute("DELETE FROM totals")
-        db.execute(
-            "INSERT INTO totals (scope, bytes) SELECT scope, SUM(size) FROM entries GROUP BY scope"
-        )
-        db.execute(
-            "INSERT INTO totals (scope, bytes) SELECT ?, COALESCE(SUM(size), 0) FROM entries",
-            (_ALL_SCOPES,),
-        )
-
-    async def _guard(self, function: Callable[..., _T], *args: object) -> _T:
-        """Run ``function`` in a worker thread; a corrupt file is moved aside before re-raising."""
-        generation = self._generation
-        try:
-            return await asyncio.to_thread(function, *args)
-        except sqlite3.DatabaseError as exc:
-            if _is_corrupt(exc):
-                await asyncio.to_thread(self._quarantine, generation)
-            raise
-
-    def _open(self) -> sqlite3.Connection:
-        """Open a connection in autocommit mode and make sure the schema is current."""
-        self._path.parent.mkdir(parents=True, exist_ok=True)
-        db = sqlite3.connect(self._path, timeout=self._busy_timeout_s, isolation_level=None)
-        try:
-            with self._lock:  # switching to WAL needs the file to itself; once per instance
-                if not self._wal_set:
-                    self._enable_wal(db)
-                    self._wal_set = True
-            (version,) = db.execute("PRAGMA user_version").fetchone()
-            if version != _SCHEMA_VERSION:
-                with self._lock:
-                    self._prepare(db)
-        except BaseException:
-            db.close()
-            raise
-        return db
-
-    def _enable_wal(self, db: sqlite3.Connection) -> None:
-        """Switch the file to WAL, waiting up to the busy timeout for a competing switch.
-
-        SQLite returns ``SQLITE_BUSY`` from this pragma at once, without calling the busy handler,
-        when another process switches the same fresh file, so the wait is done here.
-        """
-        deadline = time.monotonic() + self._busy_timeout_s
-        while True:
-            try:
-                db.execute("PRAGMA journal_mode = WAL")
-            except sqlite3.OperationalError as exc:
-                if not _is_busy(exc) or time.monotonic() >= deadline:
-                    raise
-                time.sleep(_WAL_RETRY_S)
-            else:
-                return
-
-    @staticmethod
-    def _prepare(db: sqlite3.Connection) -> None:
-        """Create the schema, or reset it if its version is unknown (worker thread, under the lock).
-
-        One transaction: another process preparing the same file, or writers that already see the
-        current schema, never observe or collide with half of it. Running it again is harmless.
-        """
-        with _transaction(db):
-            (version,) = db.execute("PRAGMA user_version").fetchone()
-            if version not in (0, _SCHEMA_VERSION):
-                logger.warning(
-                    "disk cache schema version %s is unknown, resetting the cache", version
-                )
-                db.execute("DROP TABLE IF EXISTS entries")
-                db.execute("DROP TABLE IF EXISTS totals")
-            db.execute(
-                "CREATE TABLE IF NOT EXISTS entries (scope TEXT NOT NULL, key TEXT NOT NULL,"
-                " value TEXT NOT NULL, size INTEGER NOT NULL, tick INTEGER NOT NULL,"
-                " PRIMARY KEY (scope, key))"
-            )
-            db.execute("CREATE INDEX IF NOT EXISTS entries_tick ON entries (tick)")
-            db.execute("CREATE INDEX IF NOT EXISTS entries_scope_tick ON entries (scope, tick)")
-            db.execute(
-                "CREATE TABLE IF NOT EXISTS totals (scope TEXT PRIMARY KEY, bytes INTEGER NOT NULL)"
-            )
-            DiskCache._rebuild_totals(db)
-            db.execute(f"PRAGMA user_version = {_SCHEMA_VERSION}")
-
-    def _quarantine(self, generation: int) -> None:
-        """Rename the unusable file to ``<name>.corrupt``, replacing an older one.
-
-        Only the first of several calls that saw the same file does it; a call that saw an older
-        file than the current one finds the generation changed and leaves the new file alone.
-        """
-        with self._lock:
-            if generation != self._generation:
-                return
-            self._generation += 1
-            self._wal_set = False
-            aside = self._path.with_name(f"{self._path.name}.corrupt")
-            logger.warning("disk cache file is corrupt, moved aside to %s", aside.name)
-            self._path.replace(aside)
-            for suffix in ("-wal", "-shm"):
-                self._path.with_name(f"{self._path.name}{suffix}").unlink(missing_ok=True)
+    def put(self, key: str, entry: Entry) -> None:
+        """Store the serialised entry and evict the least recently used ones over the limit."""
+        self._texts[key] = entry.to_json()
+        self._texts.move_to_end(key)
+        while len(self._texts) > self._max_entries:
+            oldest = next(iter(self._texts))
+            del self._texts[oldest]
+            logger.debug("cache evict %s", _short(oldest))

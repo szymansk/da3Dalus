@@ -520,7 +520,6 @@ def test_internal_error_logs_the_exception_text_at_error_level(
             application="a",
             world="f=w",
             call_id="c1",
-            scope="tenant",
         )
     records = [r for r in caplog.records if r.levelno == logging.ERROR]
     assert len(records) == 1
@@ -528,7 +527,7 @@ def test_internal_error_logs_the_exception_text_at_error_level(
     assert "/secret/path" in record.getMessage()
     assert record.exc_info is not None
     assert record.exc_info[1] is exc
-    assert (record.call_id, record.scope) == ("c1", "tenant")  # type: ignore[attr-defined]  # ``extra`` attributes are set dynamically on the record
+    assert record.call_id == "c1"  # type: ignore[attr-defined]  # ``extra`` attributes are set dynamically on the record
     assert (record.quantity, record.formula, record.application, record.world) == (  # type: ignore[attr-defined]  # ``extra`` attributes are set dynamically on the record
         "q",
         "f",

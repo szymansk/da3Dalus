@@ -12,7 +12,6 @@ from pydantic import JsonValue
 def _key(**overrides: Any) -> str:
     """Key of a base node with ``overrides`` applied."""
     args: dict[str, Any] = {
-        "scope": "shared",
         "formula": "flight:stall-speed",
         "application": "default",
         "world": None,
@@ -46,7 +45,6 @@ def test_negative_zero_equals_zero_in_the_key() -> None:
 @pytest.mark.parametrize(
     "override",
     [
-        {"scope": "aircraft/1"},
         {"formula": "flight:other"},
         {"application": "alt"},
         {"world": "neutral-point=avl"},
@@ -72,7 +70,6 @@ def test_the_key_document_has_exactly_these_fields() -> None:
     """Pins the document: everything the kernel uses is in its input, so no provider hashes."""
     assert _key() == sha256_of(
         {
-            "scope": "shared",
             "application": {"formula": "flight:stall-speed", "application": "default"},
             "world": None,
             "inputs": {"mass": 2.5, "area": 0.4},

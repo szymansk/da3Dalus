@@ -495,7 +495,6 @@ def internal_error_from_exception(
     application: str | None = None,
     world: str | None = None,
     call_id: str | None = None,
-    scope: str | None = None,
 ) -> KernelError:
     """Translate any exception that is not a :class:`FormulaError` into an ``internal`` error.
 
@@ -510,7 +509,6 @@ def internal_error_from_exception(
         application: Id of the application.
         world: Canonical world assignment string (``neutral-point=avl``), ch. 8.13.
         call_id: Short id of the ``compute()`` call, for the log.
-        scope: Cache scope of the call, for the log.
 
     Returns:
         An ``internal`` error.
@@ -526,7 +524,6 @@ def internal_error_from_exception(
             "formula": formula,
             "application": application,
             "world": world,
-            "scope": scope,
         },
     )
     return KernelError(
