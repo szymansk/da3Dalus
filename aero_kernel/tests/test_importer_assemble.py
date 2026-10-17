@@ -82,3 +82,12 @@ def test_a_whole_model_rule_the_mapping_does_not_know_still_becomes_a_finding() 
     assert [(f.file, f.field, f.message) for f in findings] == [
         ("canon model", "model", "something new")
     ]
+
+
+def test_a_one_element_location_names_the_section_of_the_model() -> None:
+    bad: dict[str, object] = {"quantities": {}, "formulas": 5, "defaults": {}}
+    model, findings = assemble(bad, SOURCE_COMMIT)
+    assert model is None
+    assert [(f.file, f.field, f.message) for f in findings] == [
+        ("canon model", "formulas", "Input should be a valid dictionary (got 5)")
+    ]

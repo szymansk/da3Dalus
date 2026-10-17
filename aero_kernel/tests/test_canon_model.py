@@ -354,6 +354,61 @@ def test_error_message_names_formula() -> None:
         build(namespaces)
 
 
+def problems_of(error: ValidationError) -> list[dict[str, Any]]:
+    """Return the structured problems a whole-model rule carries in its error context."""
+    (entry,) = error.errors(include_url=False, include_input=False)
+    assert entry["type"] == "canon_problems"
+    return list(entry["ctx"]["problems"])  # type: ignore[index,no-any-return]  # pydantic types ctx loosely
+
+
+def test_unresolved_references_are_structured_problems_with_the_precise_field() -> None:
+    namespaces = with_given(base_namespaces())
+    formula = namespaces["calc"]["formulas"]["weight-from-mass"]
+    formula["inputs"]["x"] = "calc:ghost"
+    formula["applications"][0]["bind"]["x"] = "calc:ghost"
+    formula["applications"][0]["given"] = ["calc:ghost"]
+    with pytest.raises(ValidationError) as raised:
+        build(namespaces)
+    assert problems_of(raised.value) == [
+        {
+            "namespace": "calc",
+            "section": "formulas",
+            "slug": "weight-from-mass",
+            "field": field,
+            "text": "unknown quantity calc:ghost",
+        }
+        for field in ("inputs.x", "applications[0].bind.x", "applications[0].given[0]")
+    ]
+
+
+def test_a_bad_default_is_a_structured_problem_of_the_defaults_section() -> None:
+    namespaces = with_defaults(base_namespaces(), ghost=GRAVITY_DEFAULT)
+    with pytest.raises(ValidationError) as raised:
+        build(namespaces)
+    assert problems_of(raised.value) == [
+        {
+            "namespace": "calc",
+            "section": "defaults",
+            "slug": "ghost",
+            "field": "",
+            "text": "default of unknown quantity calc:ghost",
+        }
+    ]
+
+
+def test_a_binding_error_location_uses_our_own_tags() -> None:
+    """The union of a slug and a constant names its branch ``slug`` or ``const``, nothing else."""
+    from aero_kernel.canon.model import BINDING_TAGS, Application
+
+    with pytest.raises(ValidationError) as slug:
+        Application.model_validate({"id": "default", "bind": {"m": "Not A Slug"}, "produce": {}})
+    with pytest.raises(ValidationError) as const:
+        Application.model_validate({"id": "default", "bind": {"m": {"const": 1.0}}, "produce": {}})
+    assert [e["loc"] for e in slug.value.errors()] == [("bind", "m", "slug")]
+    assert [e["loc"] for e in const.value.errors()] == [("bind", "m", "const", "source")]
+    assert BINDING_TAGS == ("slug", "const")
+
+
 def test_dump_round_trips() -> None:
     model = CanonModel.model_validate(base_model())
     assert CanonModel.model_validate(model.model_dump(mode="json")) == model
@@ -374,10 +429,12 @@ def test_public_names_of_the_model_are_pinned() -> None:
 
     assert sorted(model.__all__) == sorted(
         [
+            "BINDING_TAGS",
             "DEFAULT_NAMESPACE",
             "Application",
             "Binding",
             "CanonModel",
+            "CanonProblem",
             "Check",
             "ConstBinding",
             "CostClass",

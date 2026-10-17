@@ -84,3 +84,13 @@ def test_positive_only_on_scalars(role: str, type_: str) -> None:
     """Positivity is a property of one number; a curve or the airplane has no ``> 0``."""
     with pytest.raises(ValidationError, match="scalar"):
         make_quantity(role=role, type=type_, positive=True)
+
+
+@pytest.mark.parametrize("value", [1, 1.0, "true", 0, False])
+def test_positive_is_the_boolean_true_and_nothing_that_reads_as_true(value: object) -> None:
+    with pytest.raises(ValidationError):
+        make_quantity(positive=value)
+
+
+def test_positive_true_is_accepted() -> None:
+    assert make_quantity(positive=True).positive is True

@@ -106,11 +106,20 @@ def test_a_missing_quantity_marker_is_a_finding(tmp_path: Path) -> None:
     assert shown(result) == [f"{GRAVITY}: kind: must be 'quantity' (found None)"]
 
 
-@pytest.mark.parametrize("value", ["1", "null", '"true"', "false", "0"])
-def test_positive_must_be_true_or_absent(tmp_path: Path, value: str) -> None:
+@pytest.mark.parametrize(
+    ("value", "message"),
+    [
+        ("1", "positive must be the boolean true (got 1)"),
+        ("0", "positive must be the boolean true (got 0)"),
+        ("1.0", "positive must be the boolean true (got 1.0)"),
+        ('"true"', "positive must be the boolean true (got 'true')"),
+        ("false", "Input should be True (got False)"),
+        ("null", "must be true; omit the field for a quantity that is not positive"),
+    ],
+)
+def test_positive_must_be_true_or_absent(tmp_path: Path, value: str, message: str) -> None:
     result = run(tmp_path, mutate(GRAVITY, "positive: true\n", f"positive: {value}\n"))
-    assert result.model is None
-    assert any(f.file == GRAVITY and f.field == "positive" for f in result.findings), shown(result)
+    assert shown(result) == [f"{GRAVITY}: positive: {message}"]
 
 
 # --- S4: every YAML 1.1 boolean spelling, as a value and as a key -------------------------------
@@ -329,8 +338,10 @@ def test_two_unknown_references_in_one_formula_are_two_findings(tmp_path: Path) 
         "inputs: {m: nothing-one, g: nothing-two}\noutputs: {w: weight}",
     )
     result = run(tmp_path, {FROM_MASS: text})
-    messages = sorted(f.message for f in result.findings if f.field == "references")
-    assert messages == ["unknown quantity calc:nothing-one", "unknown quantity calc:nothing-two"]
+    assert shown(result) == [
+        f"{FROM_MASS}: inputs.m: unknown quantity calc:nothing-one",
+        f"{FROM_MASS}: inputs.g: unknown quantity calc:nothing-two",
+    ]
 
 
 def test_findings_of_two_bad_files_come_in_sorted_file_order(tmp_path: Path) -> None:
@@ -473,3 +484,69 @@ def test_a_python_tag_in_defaults_is_an_invalid_yaml_finding(tmp_path: Path, tag
     result = run(tmp_path, {"defaults.yaml": text})
     assert [(f.file, f.field) for f in result.findings] == [("defaults.yaml", "document")]
     assert "could not determine a constructor" in result.findings[0].message
+
+
+# --- G2, N1: one fault, one finding; a null constant is not "unbound" -------------------------------
+
+
+def test_a_bad_default_input_is_reported_once_at_its_source(tmp_path: Path) -> None:
+    result = run(
+        tmp_path,
+        mutate(WEIGHING, "inputs: {m: aircraft-mass, g: gravity}", "inputs: {m: 5, g: gravity}"),
+    )
+    assert shown(result) == [f"{WEIGHING}: inputs.m: Input should be a valid string (got 5)"]
+
+
+def test_a_bad_default_output_is_reported_once_at_its_source(tmp_path: Path) -> None:
+    result = run(tmp_path, mutate(FROM_MASS, "outputs: {w: weight}", "outputs: {w: 5}"))
+    assert shown(result) == [f"{FROM_MASS}: outputs.w: Input should be a valid string (got 5)"]
+
+
+def test_an_application_that_overrides_the_faulty_default_is_reported_separately(
+    tmp_path: Path,
+) -> None:
+    text = (
+        MINI_CANON[WEIGHING]
+        .replace("inputs: {m: aircraft-mass, g: gravity}", "inputs: {m: 5, g: gravity}")
+        .replace("  - id: clean\n", "  - id: clean\n    bind: {m: 7}\n")
+    )
+    assert shown(run(tmp_path, {WEIGHING: text})) == [
+        f"{WEIGHING}: inputs.m: Input should be a valid string (got 5)",
+        f"{WEIGHING}: applications[0].bind.m: Input should be a valid string (got 7)",
+    ]
+
+
+def test_every_application_invalid_yields_no_empty_applications_finding(tmp_path: Path) -> None:
+    text = (
+        MINI_CANON[WEIGHING]
+        .replace("  - id: clean\n", "  - id: clean\n    bind: {m: 7}\n")
+        .replace(
+            "bind: {g: {const: 9.81, source: test source}}",
+            "bind: {g: {const: 9.81, source: test source}, m: 8}",
+        )
+    )
+    assert shown(run(tmp_path, {WEIGHING: text})) == [
+        f"{WEIGHING}: applications[0].bind.m: Input should be a valid string (got 7)",
+        f"{WEIGHING}: applications[1].bind.m: Input should be a valid string (got 8)",
+    ]
+
+
+def test_a_null_constant_is_a_bad_number_not_an_unbound_input(tmp_path: Path) -> None:
+    result = run(
+        tmp_path, mutate(WEIGHING, "{const: 9.81, source: test source}", "{const: null, source: s}")
+    )
+    assert shown(result) == [
+        f"{WEIGHING}: applications[1].bind.g.const: Input should be a valid number (got None)"
+    ]
+
+
+# --- G8: a long written value is not repeated in a finding -------------------------------------------
+
+
+def test_a_short_list_value_is_named_and_a_long_one_is_not(tmp_path: Path) -> None:
+    short = run(tmp_path / "short", mutate(GRAVITY, "unit: m/s^2", "unit: [a]"))
+    long_value = ", ".join(["aaaaaaaaaa"] * 8)
+    long = run(tmp_path / "long", mutate(GRAVITY, "unit: m/s^2", f"unit: [{long_value}]"))
+    assert short.findings[0].message.endswith("(got ['a'])")
+    assert "(got" not in long.findings[0].message
+    assert len(long.findings) == 1

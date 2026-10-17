@@ -243,22 +243,22 @@ STAGE_2_CASES = {
             "inputs: {m: null, g: gravity}\noutputs: {w: null}\napplications:\n  - id: clean\n    bind: {m: aircraft-mass}\n",
         ),
         WEIGHING,
-        "applications[1].bind.m",
-        "the input parameter is not bound by the application",
+        "entry",
+        "application `flapped`: input parameter `m` is not bound",
     ),
     "unbound input": (
         mutate(WEIGHING, "inputs: {m: aircraft-mass, g: gravity}", "inputs: {m: null, g: gravity}"),
         WEIGHING,
-        "applications[0].bind.m",
-        "not bound",
+        "entry",
+        "application `clean`: input parameter `m` is not bound",
     ),
     "unbound input of an implicit application": (
         mutate(
             FROM_MASS, "inputs: {m: aircraft-mass, g: gravity}", "inputs: {m: null, g: gravity}"
         ),
         FROM_MASS,
-        "applications[0].bind.m",
-        "not bound",
+        "entry",
+        "application `default`: input parameter `m` is not bound",
     ),
     "bare embed of a multi-application formula": (
         mutate(TWICE, "weighing.clean", "weighing"),
@@ -295,7 +295,7 @@ STAGE_2_CASES = {
     "reference to an unknown quantity": (
         mutate(FROM_MASS, "outputs: {w: weight}", "outputs: {w: nothing}"),
         FROM_MASS,
-        "references",
+        "outputs.w",
         "unknown quantity calc:nothing",
     ),
     "default of an unknown quantity": (

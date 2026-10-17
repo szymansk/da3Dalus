@@ -11,6 +11,7 @@ rule, ch. 8.6).
 
 import re
 from collections.abc import Callable
+from typing import cast
 
 from aero_kernel.canon.model import CostClass, Tool
 from aero_kernel.errors import DEFAULT_NAMESPACE, IDENTIFIER_REGEX, SLUG_REGEX
@@ -108,6 +109,13 @@ def _merged(defaults: object, overrides: object, convert: Callable[[object], obj
     return merged
 
 
+def _non_null(parameters: object) -> dict[object, object]:
+    """Return the parameters that have a default quantity; the others are bound per application."""
+    return {
+        key: value for key, value in (as_mapping(parameters) or {}).items() if value is not None
+    }
+
+
 def _application(item: object, inputs: object, outputs: object) -> object:
     """Merge one application over the formula's defaults; the model rejects what does not fit."""
     mapping = as_mapping(item)
@@ -115,12 +123,8 @@ def _application(item: object, inputs: object, outputs: object) -> object:
         return item
     return {
         **mapping,
-        "bind": _merged(inputs, mapping.get("bind"), _binding),
-        "produce": _merged(
-            {key: value for key, value in (as_mapping(outputs) or {}).items() if value is not None},
-            mapping.get("produce"),
-            _qualified,
-        ),
+        "bind": _merged(_non_null(inputs), mapping.get("bind"), _binding),
+        "produce": _merged(_non_null(outputs), mapping.get("produce"), _qualified),
         **({"given": _qualified_list(mapping["given"])} if "given" in mapping else {}),
     }
 
@@ -134,9 +138,8 @@ def _applications(
     application to be a mapping with a string ``id``; that is checked here, the rest by the model.
     """
     raw = entry.front.get("applications")
-    items = [{"id": "default"}] if raw is None else as_list(raw)
-    if items is None:  # stage 1 guarantees a list; kept for the type
-        return [], None
+    # Stage 1 guarantees that a present ``applications`` is a list.
+    items = [{"id": "default"}] if raw is None else cast("list[object]", raw)
     if not items:
         findings.append(
             Finding(

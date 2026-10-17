@@ -6,7 +6,7 @@ they are canon-model types, not input types.
 """
 
 from collections.abc import Iterator, Mapping
-from typing import Annotated, Literal, Self
+from typing import Annotated, Literal, Self, TypedDict
 
 from aero_kernel.canonical import sha256_of
 from aero_kernel.errors import (
@@ -19,17 +19,22 @@ from aero_kernel.errors import (
 from pydantic import (
     BaseModel,
     ConfigDict,
+    Discriminator,
     Field,
     StringConstraints,
+    Tag,
     field_validator,
     model_validator,
 )
+from pydantic_core import PydanticCustomError
 
 __all__ = [
+    "BINDING_TAGS",
     "DEFAULT_NAMESPACE",
     "Application",
     "Binding",
     "CanonModel",
+    "CanonProblem",
     "Check",
     "ConstBinding",
     "CostClass",
@@ -127,6 +132,15 @@ class Quantity(BaseModel):
     uncertainty: Literal["interval"] | None = None
     positive: Literal[True] | None = None
 
+    @field_validator("positive", mode="before")
+    @classmethod
+    def _positive_is_the_boolean(cls, value: object) -> object:
+        """Reject 1, 1.0 and "true": Python and pydantic read them as ``True``, JSON Schema does not."""
+        if value is not None and not isinstance(value, bool):
+            msg = "positive must be the boolean true"
+            raise ValueError(msg)
+        return value
+
     @model_validator(mode="after")
     def _check_positive(self) -> Self:
         """Allow ``positive`` only on supplied scalars."""
@@ -187,7 +201,20 @@ class ConstBinding(BaseModel):
     source: NonBlank
 
 
-Binding = QualifiedSlug | ConstBinding
+# A binding is a quantity slug or a ``{const, source}`` constant. The tags are ours, so a validation
+# location names the branch with a word of this module (``BINDING_TAGS``) and not with a pydantic name.
+BINDING_TAGS = ("slug", "const")
+
+
+def _binding_tag(value: object) -> str:
+    """Tell the two kinds of binding apart: a mapping or a constant is ``const``, all else ``slug``."""
+    return "const" if isinstance(value, dict | ConstBinding) else "slug"
+
+
+Binding = Annotated[
+    Annotated[QualifiedSlug, Tag("slug")] | Annotated[ConstBinding, Tag("const")],
+    Discriminator(_binding_tag),
+]
 
 
 class Application(BaseModel):
@@ -211,16 +238,6 @@ class Application(BaseModel):
     produce: dict[Parameter, QualifiedSlug | None]
     when: WhenTerm | None = None
     given: Annotated[tuple[QualifiedSlug, ...], Field(min_length=1)] | None = None
-
-    @model_validator(mode="after")
-    def _check_given_is_bound(self) -> Self:
-        """Require every ``given`` slug to be bound by this application."""
-        bound = {value for value in self.bind.values() if isinstance(value, str)}
-        for slug in self.given or ():
-            if slug not in bound:
-                msg = f"application {self.id}: given {slug} is not bound by the application"
-                raise ValueError(msg)
-        return self
 
 
 class Check(BaseModel):
@@ -326,8 +343,9 @@ class Formula(BaseModel):
         if len(set(ids)) != len(ids):
             msg = "application ids must be unique"
             raise ValueError(msg)
+        problems: list[str] = []
         for application in self.applications:
-            problems = [
+            found = [
                 *_parameter_problems(
                     application.id, "input", application.bind, self.inputs, "bind"
                 ),
@@ -335,8 +353,16 @@ class Formula(BaseModel):
                     application.id, "output", application.produce, self.outputs, "produce"
                 ),
             ]
-            if problems:
-                raise ValueError("; ".join(problems))
+            if not found:  # a given slug is judged only once the bindings themselves are complete
+                bound = {value for value in application.bind.values() if isinstance(value, str)}
+                found = [
+                    f"application `{application.id}`: given {slug} is not bound by the application"
+                    for slug in application.given or ()
+                    if slug not in bound
+                ]
+            problems.extend(found)
+        if problems:
+            raise ValueError("; ".join(problems))
         unknown = set(self.optional) - self.inputs.keys()
         if unknown:
             msg = f"optional names parameters that are no input: {sorted(unknown)}"
@@ -434,24 +460,60 @@ def _split(reference: str) -> tuple[str, str]:
     return namespace, slug
 
 
-def _references(formula: Formula) -> Iterator[tuple[str, str]]:
-    """Yield every ``(kind, reference)`` the formula holds: ``quantity``, ``given`` or ``embed``."""
-    for default in (*formula.inputs.values(), *formula.outputs.values()):
-        if default is not None:
-            yield "quantity", default
-    for application in formula.applications:
-        for binding in application.bind.values():
+class CanonProblem(TypedDict):
+    """One problem of a whole-model rule, located for the importer (carried in the error context).
+
+    Attributes:
+        namespace: Namespace of the entry.
+        section: ``formulas`` or ``defaults``.
+        slug: Slug of the entry.
+        field: Field of the entry, e.g. ``applications[1].bind.m``; empty for the whole entry.
+        text: What is wrong.
+    """
+
+    namespace: str
+    section: Literal["formulas", "defaults"]
+    slug: str
+    field: str
+    text: str
+
+
+def _describe(problem: CanonProblem) -> str:
+    """Render a problem as the one-line message a plain ``str(error)`` shows."""
+    if problem["section"] == "defaults":
+        return problem["text"]
+    return f"{problem['namespace']}:{problem['slug']}: {problem['text']}"
+
+
+def _canon_error(problems: list[CanonProblem]) -> PydanticCustomError:
+    """Build the validation error of a whole-model rule; the problems travel in its context."""
+    summary = "; ".join(_describe(problem) for problem in problems)
+    return PydanticCustomError(
+        "canon_problems", "{summary}", {"summary": summary, "problems": problems}
+    )
+
+
+def _references(formula: Formula) -> Iterator[tuple[str, str, str]]:
+    """Yield every ``(field, kind, reference)`` the formula holds: ``quantity``, ``given`` or ``embed``."""
+    for side, parameters in (("inputs", formula.inputs), ("outputs", formula.outputs)):
+        for name, default in parameters.items():
+            if default is not None:
+                yield f"{side}.{name}", "quantity", default
+    for index, application in enumerate(formula.applications):
+        where = f"applications[{index}]"
+        for name, binding in application.bind.items():
             if isinstance(binding, str):
-                yield "quantity", binding
-        for produced in application.produce.values():
+                yield f"{where}.bind.{name}", "quantity", binding
+        for name, produced in application.produce.items():
             if produced is not None:
-                yield "quantity", produced
-        for slug in application.given or ():
-            yield "given", slug
-    for slug in formula.variables:
-        yield "quantity", slug
-    for item in (*formula.embeds, *formula.embeds_closure):
-        yield "embed", item
+                yield f"{where}.produce.{name}", "quantity", produced
+        for position, slug in enumerate(application.given or ()):
+            yield f"{where}.given[{position}]", "given", slug
+    for position, slug in enumerate(formula.variables):
+        yield f"variables[{position}]", "quantity", slug
+    for name, items in (("embeds", formula.embeds), ("embeds_closure", formula.embeds_closure)):
+        for position, item in enumerate(items):
+            yield f"{name}[{position}]", "embed", item
 
 
 class CanonModel(BaseModel):
@@ -540,48 +602,55 @@ class CanonModel(BaseModel):
     @model_validator(mode="after")
     def _check_defaults(self) -> Self:
         """Require every default to belong to a supplied scalar of the same unit, > 0 if positive."""
-        problems: list[str] = []
+        problems: list[CanonProblem] = []
         for namespace, content in self.namespaces.items():
             for slug, default in content.defaults.items():
                 quantity = content.quantities.get(slug)
                 where = f"{namespace}:{slug}"
+                text = None
                 if quantity is None:
-                    problems.append(f"default of unknown quantity {where}")
+                    text = f"default of unknown quantity {where}"
                 elif quantity.role not in ("input", "target"):
-                    problems.append(
-                        f"default of {where}: role must be input or target, not {quantity.role}"
-                    )
+                    text = f"default of {where}: role must be input or target, not {quantity.role}"
                 elif quantity.type != "scalar":
-                    problems.append(
-                        f"default of {where}: quantity must be a scalar, not {quantity.type}"
-                    )
+                    text = f"default of {where}: quantity must be a scalar, not {quantity.type}"
                 elif default.unit != quantity.unit:
-                    problems.append(
-                        f"default of {where}: unit {default.unit} differs from the quantity's {quantity.unit}"
-                    )
+                    text = f"default of {where}: unit {default.unit} differs from the quantity's {quantity.unit}"
                 elif quantity.positive and default.value <= 0:
-                    problems.append(f"default of positive quantity {where} must be > 0")
+                    text = f"default of positive quantity {where} must be > 0"
+                if text is not None:
+                    problems.append(
+                        CanonProblem(
+                            namespace=namespace, section="defaults", slug=slug, field="", text=text
+                        )
+                    )
         if problems:
-            raise ValueError("; ".join(problems))
+            raise _canon_error(problems)
         return self
 
     @model_validator(mode="after")
     def _check_references(self) -> Self:
         """Require every reference of every formula to resolve."""
-        problems: list[str] = []
+        problems: list[CanonProblem] = []
         for namespace, content in self.namespaces.items():
             for slug, formula in content.formulas.items():
-                for kind, reference in _references(formula):
+                for field, kind, reference in _references(formula):
                     if kind == "embed":
-                        problem = self._check_embed(reference)
+                        text = self._check_embed(reference)
                     elif kind == "given":
-                        problem = self._check_given(reference)
+                        text = self._check_given(reference)
                     else:
-                        problem = (
-                            None if self.quantity(reference) else f"unknown quantity {reference}"
+                        text = None if self.quantity(reference) else f"unknown quantity {reference}"
+                    if text is not None:
+                        problems.append(
+                            CanonProblem(
+                                namespace=namespace,
+                                section="formulas",
+                                slug=slug,
+                                field=field,
+                                text=text,
+                            )
                         )
-                    if problem is not None:
-                        problems.append(f"{namespace}:{slug}: {problem}")
         if problems:
-            raise ValueError("; ".join(dict.fromkeys(problems)))
+            raise _canon_error(problems)
         return self

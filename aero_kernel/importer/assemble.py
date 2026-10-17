@@ -2,35 +2,40 @@
 
 The model types check themselves: vocabularies, names, structural integrity, references, defaults
 and the content hash. :func:`findings_of` is the one function that turns a validation error of the
-model into findings that name the canon file and field.
+model into findings that name the canon file and field; it reads the structured context of the
+whole-model rules and never parses message text.
 """
 
 import re
 
-from aero_kernel.canon.model import CanonModel, Namespace, compute_content_hash
-from aero_kernel.errors import DEFAULT_NAMESPACE, SLUG_REGEX
+from aero_kernel.canon.model import (
+    BINDING_TAGS,
+    CanonModel,
+    CanonProblem,
+    Namespace,
+    compute_content_hash,
+)
+from aero_kernel.errors import DEFAULT_NAMESPACE
 from aero_kernel.importer import IMPORTER_VERSION
 from aero_kernel.importer.findings import Finding
 from aero_kernel.importer.yamlvalue import as_list
 from pydantic import ValidationError
+from pydantic_core import ErrorDetails
 
 __all__ = ["assemble", "findings_of"]
 
-_QUALIFIED = re.compile(rf"{DEFAULT_NAMESPACE}:({SLUG_REGEX})")
-_REFERENCE_PROBLEM = re.compile(rf"{DEFAULT_NAMESPACE}:({SLUG_REGEX}): (.*)")
 _VALUE_ERROR = "Value error, "
-
-# The branches of the model's ``Binding`` union (a slug or a ``{const, source}`` constant), as pydantic
-# names them in a location. Of the two reports only the one of the branch that fits the written
-# value is kept.
-_BINDING_BRANCHES = frozenset({"constrained-str", "ConstBinding"})
 _SCALARS = (str, int, float, bool, type(None))
 _SHORT = 60  # a written value longer than this is not repeated in a finding
+_SECTIONS = ("quantities", "formulas", "defaults")
 
 
-def _file_of(section: str, slug: str) -> str:
+def _file_of(section: str, slug: str, namespace: str = DEFAULT_NAMESPACE) -> str:
     """Return the canon file a section/slug of the model comes from."""
-    return "defaults.yaml" if section == "defaults" else f"{section}/{slug}.md"
+    if section == "defaults":
+        return "defaults.yaml"
+    prefix = "" if namespace == DEFAULT_NAMESPACE else f"{namespace}/"
+    return f"{prefix}{section}/{slug}.md"
 
 
 def _path(parts: tuple[int | str, ...]) -> str:
@@ -48,100 +53,127 @@ def _is_shown(value: object) -> bool:
     )
 
 
-def _message(kind: str, text: str, context: dict[str, object] | None) -> str:
-    """Return the message of a validation error in the importer's words."""
-    if kind == "too_short" and context is not None and context.get("min_length") == 1:
+def _message(entry: ErrorDetails) -> str:
+    """Return the message of a validation error in the importer's words, with the written value."""
+    context = entry.get("ctx")
+    if entry["type"] == "too_short" and context is not None and context.get("min_length") == 1:
         return "must not be empty"
-    return text.removeprefix(_VALUE_ERROR)
+    message = entry["msg"].removeprefix(_VALUE_ERROR)
+    if entry["type"] != "missing" and _is_shown(entry["input"]):
+        message = f"{message} (got {entry['input']!r})"
+    return message
 
 
-def _is_other_binding_branch(location: tuple[int | str, ...], value: object) -> bool:
-    """Whether an error belongs to the branch of a binding that the written value does not fit.
+def _without_binding_tag(location: tuple[int | str, ...]) -> tuple[int | str, ...]:
+    """Drop the branch tag the model's ``Binding`` union puts after the parameter name."""
+    if "bind" in location:
+        tag = location.index("bind") + 2
+        if len(location) > tag and location[tag] in BINDING_TAGS:
+            return location[:tag] + location[tag + 1 :]
+    return location
 
-    A slug is reported by the string branch; a constant by the errors below ``ConstBinding``. The
-    ``ConstBinding`` report at the branch itself only says "not a mapping", which the string
-    branch already says.
-    """
-    tags = [index for index, part in enumerate(location) if part in _BINDING_BRANCHES]
-    if not tags:
+
+def _source_key(entry: ErrorDetails) -> tuple[str, str, str, str, str] | None:
+    """Key a fault of a formula's ``inputs``/``outputs``; its merged copies carry the same key."""
+    location = entry["loc"]
+    if len(location) >= 4 and location[0] == "formulas" and location[2] in ("inputs", "outputs"):
+        return (
+            str(location[1]),
+            str(location[2]),
+            str(location[3]),
+            entry["type"],
+            repr(entry["input"]),
+        )
+    return None
+
+
+def _copy_key(
+    entry: ErrorDetails, location: tuple[int | str, ...]
+) -> tuple[str, str, str, str, str] | None:
+    """Key of the formula-level fault an application-level fault would merely repeat."""
+    if len(location) >= 6 and location[0] == "formulas" and location[2] == "applications":
+        side = {"bind": "inputs", "produce": "outputs"}.get(str(location[4]))
+        if side is not None:
+            return (str(location[1]), side, str(location[5]), entry["type"], repr(entry["input"]))
+    return None
+
+
+_COPY_SIDES = {"bind": "inputs", "produce": "outputs"}
+_COPY_FIELD = re.compile(r"applications\[\d+\]\.(bind|produce)\.(.+)")
+
+
+def _is_merged_copy(problem: CanonProblem, written: set[tuple[str, str, str]]) -> bool:
+    """Whether an application-level problem merely repeats one of the formula's own defaults."""
+    copy = _COPY_FIELD.fullmatch(problem["field"])
+    if copy is None:
         return False
-    index = tags[0]
-    if location[index] == "ConstBinding":
-        return index == len(location) - 1
-    return isinstance(value, dict)
+    return (
+        problem["slug"],
+        f"{_COPY_SIDES[copy.group(1)]}.{copy.group(2)}",
+        problem["text"],
+    ) in written
+
+
+def _problem_finding(problem: CanonProblem) -> Finding:
+    """Turn one located problem of a whole-model rule into a finding."""
+    section, slug = problem["section"], problem["slug"]
+    field = slug if section == "defaults" else problem["field"] or "entry"
+    return Finding(
+        file=_file_of(section, slug, problem["namespace"]), field=field, message=problem["text"]
+    )
+
+
+def _finding(entry: ErrorDetails, location: tuple[int | str, ...]) -> Finding:
+    """Turn one validation error into a finding."""
+    message = _message(entry)
+    if len(location) >= 2 and location[0] in _SECTIONS:
+        slug = str(location[1])
+        rest = (slug, *location[2:]) if location[0] == "defaults" else location[2:]
+        return Finding(
+            file=_file_of(str(location[0]), slug),
+            field=_path(tuple(rest)) or "entry",
+            message=message,
+        )
+    if location:
+        return Finding(file="canon model", field=_path(location), message=message)
+    return Finding(file="canon model", field="model", message=message)
 
 
 def findings_of(error: ValidationError) -> list[Finding]:
     """Turn a validation error of the canon model into findings with file, field and message.
 
     A location below ``quantities``, ``formulas`` or ``defaults`` names the entry (a default is
-    named by its slug); a rule of the whole model names the entry its message cites. The error of
-    a parent whose child is reported is dropped, and of the two branches of a binding only the one
-    that fits the written value is kept.
+    named by its slug). A whole-model rule carries its located problems in the error context. The
+    error of a parent whose child is reported is dropped, and so is the copy of a formula-level
+    fault that the default merge repeated in an application: one fault, one finding.
 
     Args:
         error: The error ``Namespace`` or ``CanonModel`` validation raised.
 
     Returns:
-        One finding per distinct problem.
+        One finding per problem.
     """
     entries = error.errors(include_url=False, include_context=True, include_input=True)
-    locations = [entry["loc"] for entry in entries]
+    locations = [_without_binding_tag(entry["loc"]) for entry in entries]
+    sources = {key for entry in entries if (key := _source_key(entry)) is not None}
     findings: list[Finding] = []
     for entry in entries:
-        location = entry["loc"]
+        context = entry.get("ctx")
+        if entry["type"] == "canon_problems" and context is not None:
+            problems: list[CanonProblem] = context["problems"]
+            written = {(p["slug"], p["field"], p["text"]) for p in problems}
+            findings.extend(
+                _problem_finding(problem)
+                for problem in problems
+                if not _is_merged_copy(problem, written)
+            )
+            continue
+        location = _without_binding_tag(entry["loc"])
         if any(other[: len(location)] == location and other != location for other in locations):
             continue  # a child of this location is reported with the real cause
-        if _is_other_binding_branch(location, entry["input"]):
+        if _copy_key(entry, location) in sources:
             continue
-        location = tuple(part for part in location if part not in _BINDING_BRANCHES)
-        message = _message(entry["type"], entry["msg"], entry.get("ctx"))
-        value = entry["input"]
-        if value is None and "bind" in location:
-            message = "the input parameter is not bound by the application"
-        elif entry["type"] != "missing" and _is_shown(value):
-            message = f"{message} (got {value!r})"
-        if len(location) >= 2 and location[0] in ("quantities", "formulas", "defaults"):
-            slug = str(location[1])
-            rest = (slug, *location[2:]) if location[0] == "defaults" else location[2:]
-            findings.append(
-                Finding(
-                    file=_file_of(str(location[0]), slug),
-                    field=_path(tuple(rest)) or "entry",
-                    message=message,
-                )
-            )
-        elif location:
-            findings.append(Finding(file="canon model", field=_path(location), message=message))
-        else:
-            findings.extend(_model_level(message))
-    return list(dict.fromkeys(findings))
-
-
-def _model_level(message: str) -> list[Finding]:
-    """Split a message of a whole-model rule into one finding per problem."""
-    findings: list[Finding] = []
-    for problem in message.split("; "):
-        reference = _REFERENCE_PROBLEM.match(problem)
-        if reference is not None:
-            findings.append(
-                Finding(
-                    file=_file_of("formulas", reference.group(1)),
-                    field="references",
-                    message=reference.group(len(reference.groups())),
-                )
-            )
-        elif problem.startswith("default of"):
-            slug = _QUALIFIED.search(problem)
-            findings.append(
-                Finding(
-                    file="defaults.yaml",
-                    field=slug.group(1) if slug else "defaults",
-                    message=problem,
-                )
-            )
-        else:
-            findings.append(Finding(file="canon model", field="model", message=problem))
+        findings.append(_finding(entry, location))
     return findings
 
 

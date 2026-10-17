@@ -80,7 +80,6 @@ _QUANTITY_SHAPE = {
     "role": "string",
     "type": "string",
     "uncertainty": "string",
-    "positive": "boolean",
 }
 _QUANTITY_REQUIRED = ("symbol", "unit", "role", "type")
 
@@ -135,7 +134,6 @@ def _shape_problem(value: object, shape: str) -> str | None:
         "string": isinstance(value, str),
         "mapping": isinstance(value, dict),
         "list": isinstance(value, list),
-        "boolean": isinstance(value, bool),
     }[shape]
     return None if ok else f"must be a {shape}, not {type(value).__name__}"
 
@@ -262,6 +260,14 @@ def _check_entry(
             )
         elif name in shape and (problem := _shape_problem(value, shape[name])):
             findings.append(Finding(file=file, field=name, message=problem))
+    if "positive" in front and front["positive"] is None:
+        findings.append(
+            Finding(
+                file=file,
+                field="positive",
+                message="must be true; omit the field for a quantity that is not positive",
+            )
+        )
     for name in required:
         if name not in front:
             findings.append(Finding(file=file, field=name, message="missing, but required"))

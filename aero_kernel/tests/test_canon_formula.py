@@ -4,7 +4,7 @@ import copy
 from typing import Any
 
 import pytest
-from aero_kernel.canon.model import Application, ConstBinding, Formula
+from aero_kernel.canon.model import ConstBinding, Formula
 from pydantic import ValidationError
 
 
@@ -166,13 +166,16 @@ def test_when_vocabulary_is_closed() -> None:
 def test_given_is_non_empty_and_bound_by_the_application() -> None:
     fields = formula_fields()
     fields["applications"][0]["given"] = ["calc:gravity"]
-    assert Application.model_validate(fields["applications"][0]).given == ("calc:gravity",)
+    assert Formula.model_validate(fields).applications[0].given == ("calc:gravity",)
     fields["applications"][0]["given"] = []
     with pytest.raises(ValidationError):
         Formula.model_validate(fields)
     fields["applications"][0]["given"] = ["calc:wingspan"]
-    with pytest.raises(ValidationError, match="given"):
+    with pytest.raises(ValidationError) as unbound:
         Formula.model_validate(fields)
+    assert "application `default`: given calc:wingspan is not bound by the application" in str(
+        unbound.value
+    )
 
 
 def test_checks_name_parameters_of_the_right_side() -> None:
