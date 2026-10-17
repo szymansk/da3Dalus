@@ -369,7 +369,7 @@ def _fuselage_findings(fuselages: Mapping[str, geometry.Fuselage]) -> list[Kerne
 def _warning(code: str, origin: str, message: str, detail: dict[str, JsonValue]) -> KernelWarning:
     """Build a practice warning from the catalogue (the severity follows from the code)."""
     logger.debug("warning %s at %s", code, origin)
-    return KernelWarning(code=code, message=message, origin=origin, detail=detail)
+    return KernelWarning.of(code, message, origin=origin, detail=detail)
 
 
 def _mass_warnings(aircraft: AircraftInput) -> list[KernelWarning]:
