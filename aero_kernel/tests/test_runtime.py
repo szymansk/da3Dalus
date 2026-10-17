@@ -69,12 +69,11 @@ class BoundedRuntime(SolverRuntime):
         executable: str | Path,
         args: Sequence[str] = (),
         collect: Sequence[str] = (),
-        call_id: str | None = None,
     ) -> ProcessRun:
         """Run ``SolverRuntime.run_process`` within the bound."""
         async with asyncio.timeout(CALL_BOUND_S):
             return await super().run_process(
-                files, commands, executable=executable, args=args, collect=collect, call_id=call_id
+                files, commands, executable=executable, args=args, collect=collect
             )
 
     async def assert_gates_full(self) -> None:

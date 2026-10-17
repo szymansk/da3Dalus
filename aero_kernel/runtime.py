@@ -207,8 +207,6 @@ class SolverRuntime:
         # and subprocess tasks. ``aclose`` drains both.
         self._pool_jobs: set[concurrent.futures.Future[object]] = set()
         self._process_tasks: set[asyncio.Task[ProcessRun]] = set()
-        # process starts a cancelled call had to give up on, until they end (solvers/process.py)
-        self._given_up: set[asyncio.Future[asyncio.subprocess.Process]] = set()
 
     async def __aenter__(self) -> Self:
         """Enter the ``async with`` block."""
@@ -230,10 +228,6 @@ class SolverRuntime:
         self._closed = True
         if self._process_tasks:
             await asyncio.wait(list(self._process_tasks))
-        if self._given_up:
-            logger.warning(
-                "%d given-up process starts are still pending at close", len(self._given_up)
-            )
         if self._pool_jobs:
             await asyncio.to_thread(concurrent.futures.wait, list(self._pool_jobs))
         pool, self._pool = self._pool, None
@@ -337,7 +331,6 @@ class SolverRuntime:
         executable: str | Path,
         args: Sequence[str] = (),
         collect: Sequence[str] = (),
-        call_id: str | None = None,
     ) -> ProcessRun:
         """Run an external binary within the limit; see :func:`solvers.process.run_process`.
 
@@ -349,7 +342,6 @@ class SolverRuntime:
             executable: The binary to start.
             args: Its command-line arguments.
             collect: Names of output files to read back.
-            call_id: Id of the ``compute()`` call, for the log lines of this run.
 
         Returns:
             The exit code, the output streams and the collected files.
@@ -361,15 +353,7 @@ class SolverRuntime:
         async with self._slot_limit():
             self._check_open()
             task = asyncio.ensure_future(
-                run_process(
-                    files,
-                    commands,
-                    executable=executable,
-                    args=args,
-                    collect=collect,
-                    call_id=call_id,
-                    keep=self._given_up,
-                )
+                run_process(files, commands, executable=executable, args=args, collect=collect)
             )
             self._process_tasks.add(task)
             task.add_done_callback(self._process_tasks.discard)
