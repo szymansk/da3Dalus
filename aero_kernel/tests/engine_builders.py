@@ -27,7 +27,7 @@ DEFAULTS: dict[str, dict[str, Any]] = {
     "air-density": {
         "value": 1.225,
         "unit": "kg/m^3",
-        "source": "ISA sea level",
+        "source": "us standard atmosphere",
         "regime": "RC and UAV, sea level",
     },
     "margin-target": {
@@ -79,6 +79,14 @@ def fixture_model() -> CanonModel:
         "fail-density-q": quantity("output"),
         "gravity-only-q": quantity("output"),
         "after-margin-q": quantity("output"),
+        "density-when-q": quantity("output"),
+        "density-after-roll-q": quantity("output"),
+        "density-pending-q": quantity("output"),
+        "density-needs-t-q": quantity("output"),
+        "density-after-long-q": quantity("output"),
+        "margin-and-after-q": quantity("output"),
+        "density-after-margin-q": quantity("output"),
+        "mass-airplane-q": quantity("output"),
         "two-uncarried-q": quantity("output"),
         "three-uncarried-q": quantity("output"),
         "target-u": quantity("target"),
@@ -211,6 +219,28 @@ def fixture_model() -> CanonModel:
         "fail-density": formula({"w": "weight", "rho": "air-density"}, {"r": "fail-density-q"}),
         "gravity-only": formula({"g": "gravity"}, {"r": "gravity-only-q"}),
         "after-margin": formula({"q": "margin-q"}, {"r": "after-margin-q"}),
+        "density-when": formula(
+            {"rho": "air-density"}, {"r": "density-when-q"}, when="has_aileron"
+        ),
+        "density-after-roll": formula(
+            {"rho": "air-density", "p": "roll-q"}, {"r": "density-after-roll-q"}
+        ),
+        "density-pending": formula(
+            {"rho": "air-density"}, {"r": "density-pending-q"}, when="has_horizontal_tail"
+        ),
+        "density-needs-t": formula(
+            {"rho": "air-density", "t": "target-t"}, {"r": "density-needs-t-q"}
+        ),
+        "density-after-long": formula(
+            {"rho": "air-density", "l": "long-q"}, {"r": "density-after-long-q"}
+        ),
+        "margin-and-after": formula(
+            {"q": "margin-q", "k": "margin-target"}, {"r": "margin-and-after-q"}
+        ),
+        "density-after-margin": formula(
+            {"q": "margin-q", "rho": "air-density"}, {"r": "density-after-margin-q"}
+        ),
+        "mass-airplane": formula({"m": "aircraft-mass", "a": "airplane"}, {"r": "mass-airplane-q"}),
         "configure": formula({"a": "airplane"}, {"c": "airplane-cfg"}),
         "cfg-span": formula({"a": "airplane-cfg"}, {"s": "cfg-span-q"}),
         "curve-producer": formula({"m": "aircraft-mass"}, {"c": "curve-q"}),
@@ -373,6 +403,14 @@ STANDARD: Mapping[str, Impl] = {
     "fail-density": _one,
     "gravity-only": _one,
     "after-margin": _one,
+    "density-when": _one,
+    "density-after-roll": _one,
+    "density-pending": _one,
+    "density-needs-t": _one,
+    "density-after-long": _one,
+    "margin-and-after": _one,
+    "density-after-margin": _one,
+    "mass-airplane": _one,
     "configure": _configure,
     "cfg-span": _cfg_span,
     "curve-producer": _curve,
@@ -444,3 +482,22 @@ def deflected_wing() -> dict[str, Any]:
     wings = aileron_wing()
     wings["Main"]["x_secs"][0]["trailing_edge_device"]["deflection_deg"] = 5.0
     return wings
+
+
+def two_deflected_wing() -> dict[str, Any]:
+    """A wing with a deflected device on each of its first two ribs."""
+    sections = [
+        {
+            "xyz_le": [0.0, y, 0.0],
+            "chord": 0.2,
+            "twist": 0.0,
+            "airfoil": "naca2412",
+            **(
+                {"trailing_edge_device": {"role": "aileron", "deflection_deg": 5.0 + y}}
+                if y < 1.0
+                else {}
+            ),
+        }
+        for y in (0.0, 0.5, 1.0)
+    ]
+    return {"Main": {"name": "Main", "symmetric": True, "x_secs": sections}}

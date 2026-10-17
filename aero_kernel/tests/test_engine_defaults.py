@@ -2,6 +2,7 @@
 
 import logging
 from collections.abc import Mapping
+from typing import Any
 
 import pytest
 from aero_kernel.context import Context, Inputs
@@ -16,11 +17,14 @@ from aero_kernel.tests.engine_builders import (
     make_build,
     registry_with,
     request,
+    two_deflected_wing,
 )
 
 pytestmark = pytest.mark.asyncio
 
-DENSITY = DefaultUsed(slug="air-density", value=1.225, unit="kg/m^3", source="ISA sea level")
+DENSITY = DefaultUsed(
+    slug="air-density", value=1.225, unit="kg/m^3", source="us standard atmosphere"
+)
 MARGIN = DefaultUsed(slug="margin-target", value=1.3, unit="1", source="test margin")
 
 
@@ -30,11 +34,11 @@ async def go(
     long_runs: bool = False,
     overrides: Mapping[str, Impl] | None = None,
     geometry_mass_kg: float | None = None,
-    wings: dict[str, object] | None = None,
+    wings: dict[str, Any] | None = None,
 ) -> ComputeResult:
     return await evaluate(
         make_build(registry_with(overrides)),
-        aircraft(values, wings, geometry_mass_kg),  # type: ignore[arg-type]  # test wings
+        aircraft(values, wings, geometry_mass_kg),
         request(*slugs, long_runs=long_runs),
     )
 
@@ -56,7 +60,7 @@ async def test_an_input_default_is_taken_declared_in_provenance_and_the_log(
     assert result.provenance.defaults_used == (DENSITY,)
     (line,) = default_lines(caplog)
     assert line.levelno == logging.INFO
-    assert line.getMessage() == "default used: air-density = 1.225 kg/m^3 (ISA sea level)"
+    assert line.getMessage() == "default used: air-density = 1.225 kg/m^3 (us standard atmosphere)"
     assert (line.quantity, line.role) == ("air-density", "input")  # type: ignore[attr-defined]  # logging extra
     assert isinstance(getattr(line, "call_id", None), str)
 
@@ -81,7 +85,7 @@ async def test_a_supplied_value_wins_and_no_default_is_taken(
     assert default_lines(caplog) == []
 
 
-async def test_a_call_with_one_default_has_the_default_line_and_the_summary(
+async def test_a_call_with_two_defaults_has_two_default_lines_then_the_summary(
     caplog: pytest.LogCaptureFixture,
 ) -> None:
     with caplog.at_level(logging.INFO, logger="aero_kernel"):
@@ -131,8 +135,6 @@ async def test_an_absent_optional_input_with_a_default_takes_the_default() -> No
 
 
 async def test_a_value_without_a_default_is_still_missing() -> None:
-    result = await go("weight", values={"gravity": 9.81}, geometry_mass_kg=None)
-    assert result.quantities[0].status is QuantityStatus.OK
     nothing = await evaluate(
         make_build(),
         aircraft().model_copy(update={"values": {}}),
@@ -174,9 +176,46 @@ async def test_a_default_read_only_by_a_node_that_fails_upstream_is_not_taken(
     assert default_lines(caplog) == []
 
 
-async def test_a_default_read_by_a_not_applicable_node_is_not_taken() -> None:
-    result = await go("tail-q")  # not implemented: row 3, never calls anything
+@pytest.mark.parametrize(
+    ("slug", "drop", "row"),
+    [
+        ("density-when-q", (), "row 1: the condition is unmet"),
+        ("density-after-roll-q", (), "row 2: a predecessor is not applicable"),
+        ("density-q", ("density-user",), "row 3: no implementation"),
+        ("density-pending-q", (), "row 3: a pending term"),
+    ],
+)
+async def test_a_node_that_stops_at_rows_1_to_3_takes_no_default(
+    slug: str, drop: tuple[str, ...], row: str, caplog: pytest.LogCaptureFixture
+) -> None:
+    registry = registry_with(drop=drop)
+    with caplog.at_level(logging.INFO, logger="aero_kernel"):
+        result = await evaluate(make_build(registry), aircraft(), request(slug))
+    assert result.quantities[0].status is not QuantityStatus.OK, row
+    assert result.provenance.defaults_used == (), row
+    assert default_lines(caplog) == [], row
+
+
+async def test_a_node_that_stops_at_a_missing_input_takes_no_default(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    with caplog.at_level(logging.INFO, logger="aero_kernel"):
+        result = await go("density-needs-t-q")
+    assert result.quantities[0].error is not None
+    assert result.quantities[0].error.code == "missing_input"
     assert result.provenance.defaults_used == ()
+    assert default_lines(caplog) == []
+
+
+async def test_a_node_that_stops_at_a_skipped_predecessor_takes_no_default(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    with caplog.at_level(logging.INFO, logger="aero_kernel"):
+        result = await go("density-after-long-q")
+    assert result.quantities[0].reason is not None
+    assert result.quantities[0].reason.code.value == "depends_on_skipped"
+    assert result.provenance.defaults_used == ()
+    assert default_lines(caplog) == []
 
 
 async def test_a_default_is_taken_when_the_formula_is_called_even_if_it_then_fails() -> None:
@@ -274,3 +313,69 @@ async def test_a_failed_quantity_carries_no_input_warning() -> None:
     result = await go("weight", overrides={"weight": failing}, geometry_mass_kg=3.0)
     assert result.quantities[0].status is QuantityStatus.ERROR
     assert result.quantities[0].warnings == ()
+
+
+# --- more pins (b, amendment 1) -----------------------------------------------------------------
+
+
+async def test_a_target_default_bound_by_two_running_nodes_warns_and_logs_once(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    with caplog.at_level(logging.INFO, logger="aero_kernel"):
+        result = await go("margin-and-after-q")
+    quantity = result.quantities[0]
+    assert [w.code for w in quantity.warnings] == ["default_target_used"]
+    assert len(default_lines(caplog)) == 1
+    assert result.provenance.defaults_used == (MARGIN,)
+
+
+async def test_the_info_line_of_a_target_default_has_its_exact_text_and_role(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    with caplog.at_level(logging.INFO, logger="aero_kernel"):
+        await go("margin-q")
+    (line,) = default_lines(caplog)
+    assert line.getMessage() == "default used: margin-target = 1.3 1 (test margin)"
+    assert line.role == "target"  # type: ignore[attr-defined]  # logging extra
+
+
+async def test_the_provenance_is_sorted_by_slug_not_by_when_or_by_source() -> None:
+    """margin-target is taken a layer earlier, and its source sorts before density's."""
+    result = await go("density-after-margin-q")
+    assert result.provenance.defaults_used == (DENSITY, MARGIN)
+    assert MARGIN.source < DENSITY.source
+
+
+async def test_the_default_warning_comes_before_the_formulas_own_warnings() -> None:
+    async def warn(x: Inputs, ctx: Context) -> Mapping[str, object]:
+        ctx.warn("precondition_unchecked", "not checked")
+        return {"r": 1.0}
+
+    result = await go("margin-q", overrides={"margin-user": warn})
+    assert [w.code for w in result.quantities[0].warnings] == [
+        "default_target_used",
+        "precondition_unchecked",
+    ]
+
+
+async def test_every_input_warning_is_inherited_in_validation_order() -> None:
+    result = await go("mass-airplane-q", geometry_mass_kg=3.0, wings=two_deflected_wing())
+    warnings = result.quantities[0].warnings
+    assert [(w.code, w.origin) for w in warnings] == [
+        ("conflicting_mass", "aircraft-mass"),
+        ("geometry_deflection_ignored", "airplane"),
+        ("geometry_deflection_ignored", "airplane"),
+    ]
+    assert [w.detail.get("device") for w in warnings[1:]] == [
+        'airplane.wings["Main"].x_secs[0].trailing_edge_device',
+        'airplane.wings["Main"].x_secs[1].trailing_edge_device',
+    ]
+
+
+async def test_a_not_applicable_and_a_skipped_result_carry_no_input_warning() -> None:
+    result = await go("roll-q", "long-q", geometry_mass_kg=3.0)
+    assert [q.status for q in result.quantities] == [
+        QuantityStatus.NOT_APPLICABLE,
+        QuantityStatus.SKIPPED,
+    ]
+    assert [q.warnings for q in result.quantities] == [(), ()]

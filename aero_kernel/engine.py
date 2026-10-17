@@ -60,6 +60,21 @@ __all__ = ["evaluate", "log_call"]
 
 
 @dataclass(frozen=True)
+class _Defaulted:
+    """A supplied input or target whose canon default a node bound.
+
+    Attributes:
+        slug: Qualified slug of the quantity.
+        default: The canon default.
+        role: The quantity's role, ``input`` or ``target``.
+    """
+
+    slug: str
+    default: Default
+    role: str
+
+
+@dataclass(frozen=True)
 class _NodeRun:
     """What happened to one node: its outcome for the successors and what its results need.
 
@@ -349,30 +364,31 @@ class _Call:
             detail={"quantities": list[JsonValue](display_slug(slug) for slug, _ in unsupported)},
         )
 
-    def _inputs(self, node: Node, formula: Formula) -> tuple[Inputs, list[str], list[str]]:
+    def _inputs(self, node: Node, formula: Formula) -> tuple[Inputs, list[str], list[_Defaulted]]:
         """Bind the formula's parameters.
 
         Returns:
-            ``x``, the qualified slugs of the missing inputs, and the qualified slugs whose
-            default was bound (taken only if the formula is then called).
+            ``x``, the qualified slugs of the missing inputs, and the defaults that were bound
+            (taken only if the formula is then called).
         """
         application = formula.application(node.id.application)
         bound: dict[str, Value | None] = {}
         missing: list[str] = []
-        defaulted: list[str] = []
+        defaulted: list[_Defaulted] = []
         for parameter, binding in application.bind.items():
             if isinstance(binding, ConstBinding):
                 bound[parameter] = binding.const
                 continue
             value = self._read(node, binding)
-            default = self._default_of(binding)
             if value is not None:
                 bound[parameter] = value
             elif any(edge.quantity == binding for edge in self.subtree.edges[node.id]):
                 continue  # a predecessor has no value: that is its status (row 7), not a missing input
-            elif default is not None:
+            elif (default := self._default_of(binding)) is not None:
                 bound[parameter] = default.value
-                defaulted.append(binding)
+                role = self.build.model.quantity(binding)
+                assert role is not None  # a default belongs to a quantity of the model
+                defaulted.append(_Defaulted(binding, default, role.role))
             elif parameter in formula.optional:
                 bound[parameter] = None
             else:
@@ -384,31 +400,27 @@ class _Call:
         namespace, _, name = slug.partition(":")
         return self.build.model.namespaces[namespace].defaults.get(name)
 
-    def _take_defaults(self, slugs: Sequence[str]) -> list[KernelWarning]:
+    def _take_defaults(self, bound: Sequence[_Defaulted]) -> list[KernelWarning]:
         """Record the defaults a node that is about to run takes; return their warnings.
 
         Each default is logged once per call and slug. A target default is a substitution and gives
         the ``default_target_used`` warning, which this node's quantity and everything computed
-        from it inherits; a constant's default gives none (ch. 8.11).
+        from it inherit; a constant's default gives none (ch. 8.11).
         """
         warnings: list[KernelWarning] = []
-        for slug in slugs:
-            default = self._default_of(slug)
-            quantity = self.build.model.quantity(slug)
-            assert default is not None  # bound from this default
-            assert quantity is not None
-            shown = display_slug(slug)
-            if slug not in self.taken:
-                self.taken[slug] = default
+        for taken in bound:
+            default, shown = taken.default, display_slug(taken.slug)
+            if taken.slug not in self.taken:
+                self.taken[taken.slug] = default
                 logger.info(
                     "default used: %s = %s %s (%s)",
                     shown,
                     default.value,
                     default.unit,
                     default.source,
-                    extra={"call_id": self.call_id, "quantity": shown, "role": quantity.role},
+                    extra={"call_id": self.call_id, "quantity": shown, "role": taken.role},
                 )
-            if quantity.role == "target":
+            if taken.role == "target":
                 warnings.append(
                     KernelWarning.of(
                         "default_target_used",
@@ -516,7 +528,13 @@ class _Call:
     # --- results ---------------------------------------------------------------------------
 
     def result_of(self, resolved: Resolved) -> QuantityResult:
-        """The result of one requested quantity."""
+        """The result of one requested quantity.
+
+        An ``ok`` quantity lists, deduplicated by content and in this order: the warnings of the
+        nodes of its subtree in topological order (within a node, the defaults taken before the
+        formula's own warnings), then the validation warnings whose origin the subtree reads, in
+        validation order.
+        """
         run = self.runs[resolved.producer]
         slug, unit = resolved.requested, resolved.quantity.unit
         status = run.outcome.status
@@ -533,15 +551,13 @@ class _Call:
         assert isinstance(value, float)  # checked by _check_outputs for a scalar
         subtree_nodes = self.subtree.nodes_for(resolved.slug)
         read = {r.quantity for node_id in subtree_nodes for r in self.nodes[node_id].reads}
+        inherited: list[KernelWarning] = []
+        for warning in self.input_warnings:
+            assert warning.origin is not None  # validation names the origin of every warning
+            if qualify(warning.origin) in read:
+                inherited.append(warning)
         warnings = dedupe_warnings(
-            [
-                *(w for node_id in subtree_nodes for w in self.runs[node_id].warnings),
-                *(
-                    w
-                    for w in self.input_warnings
-                    if w.origin is not None and qualify(w.origin) in read
-                ),
-            ]
+            [*(w for node_id in subtree_nodes for w in self.runs[node_id].warnings), *inherited]
         )
         return QuantityResult(
             slug=slug,
