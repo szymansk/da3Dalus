@@ -73,7 +73,12 @@ def test_quantity_is_frozen() -> None:
         quantity.symbol = "x"  # type: ignore[misc]  # the assignment is the thing under test
 
 
-@pytest.mark.parametrize("type_", ["airplane", "curve", "polar", "curve_pair"])
+def test_components_is_a_quantity_type() -> None:
+    """The fitted-components document is a quantity of its own (S15)."""
+    assert make_quantity(unit="1", type="components").type == "components"
+
+
+@pytest.mark.parametrize("type_", ["airplane", "components", "curve", "polar", "curve_pair"])
 @pytest.mark.parametrize("role", ["input", "target"])
 def test_positive_only_on_scalars(role: str, type_: str) -> None:
     """Positivity is a property of one number; a curve or the airplane has no ``> 0``."""

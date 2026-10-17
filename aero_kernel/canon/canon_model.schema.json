@@ -455,6 +455,7 @@
           "enum": [
             "scalar",
             "airplane",
+            "components",
             "curve",
             "polar",
             "curve_pair"

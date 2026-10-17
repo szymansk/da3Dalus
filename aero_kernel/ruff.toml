@@ -34,3 +34,4 @@ convention = "google"
 # aero_kernel/__init__.py from the checkout directory (e.g. "cad-modelling-service"), which
 # is not a valid identifier locally. Not a property of this package.
 "**/__init__.py" = ["N999"]
+"**/__main__.py" = ["N999"]  # same reason: the entry point of ``python -m aero_kernel.importer``

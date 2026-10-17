@@ -41,7 +41,7 @@ VOCABULARIES = {
     "FormulaKind": ["law", "procedure", "optimization", "fit", "rating"],
     "Tool": ["APP", "ATM", "GEO", "AB", "AVL", "OPT", "KAT", "APC"],
     "QuantityRole": ["input", "target", "derived", "output"],
-    "QuantityType": ["scalar", "airplane", "curve", "polar", "curve_pair"],
+    "QuantityType": ["scalar", "airplane", "components", "curve", "polar", "curve_pair"],
     "WhenTerm": [
         "has_aileron",
         "has_horizontal_tail",
