@@ -21,7 +21,6 @@ from pydantic import BaseModel, ConfigDict, Field, JsonValue, model_validator
 
 __all__ = [
     "WARNING_CATALOGUE",
-    "Accuracy",
     "AircraftInput",
     "AirplaneGeometry",
     "ComputeRequest",
@@ -50,9 +49,6 @@ class WarningSeverity(StrEnum):
 # Numbers in a result are strict (an int or float, never a bool or a string) and finite (ch. 8.3):
 # NaN and infinity do not survive a JSON round trip.
 FiniteFloat = Annotated[float, Field(strict=True, allow_inf_nan=False)]
-
-# The accuracy tiers of the solvers (ch. 8.11), coarsest first.
-Accuracy = Literal["xxsmall", "xsmall", "small", "medium", "large", "xlarge", "xxlarge", "xxxlarge"]
 
 # The closed warning table (ch. 8.2): code -> fixed severity. A new code is added here by the unit
 # that builds its source, never invented at the raise site.
@@ -323,26 +319,22 @@ class Provenance(BaseModel):
     """What a result was computed with (ch. 8.4).
 
     Attributes:
-        kernel_version: ``aero_kernel.__version__``.
         build_digest: Hash over the code and canon model; identifies the exact build.
         canon_model_hash: Hash of the canon model.
         canon_source_commit: Commit of the canon document the model was imported from.
         tool_versions: Version per tool (aerosandbox, NeuralFoil model, AVL).
-        accuracy: Accuracy tier of the call.
         solver_settings: Solver settings of the call.
         defaults_used: Every canon default the call took.
     """
 
     model_config = ConfigDict(extra="forbid", frozen=True)
 
-    kernel_version: str = Field(min_length=1)
     build_digest: str = Field(min_length=1)
     canon_model_hash: str = Field(min_length=1)
     canon_source_commit: str = Field(min_length=1)
     tool_versions: dict[
         Annotated[str, Field(min_length=1)], Annotated[str, Field(min_length=1)]
     ] = Field(default_factory=dict)
-    accuracy: Accuracy
     solver_settings: dict[str, JsonValue] = Field(default_factory=dict)
     defaults_used: tuple[DefaultUsed, ...] = ()
 
@@ -410,7 +402,6 @@ class ComputeRequest(BaseModel):
         quantities: Canon quantity slugs (not formula slugs); at least one, each once.
         include_long_runs: Whether quantities of cost class ``minutes`` run (ch. 8.7).
         time_budget_s: Wall-clock budget of the call in seconds; ``None`` means unlimited (ch. 8.10).
-        accuracy: NeuralFoil model size, a solver setting (A3, O10).
     """
 
     model_config = ConfigDict(extra="forbid", frozen=True)
@@ -418,7 +409,6 @@ class ComputeRequest(BaseModel):
     quantities: tuple[Annotated[str, Field(min_length=1)], ...] = Field(min_length=1)
     include_long_runs: bool = Field(default=False, strict=True)
     time_budget_s: float | None = Field(default=None, strict=True, gt=0, allow_inf_nan=False)
-    accuracy: Accuracy = "xxxlarge"
 
     @model_validator(mode="after")
     def _check_unique_quantities(self) -> Self:

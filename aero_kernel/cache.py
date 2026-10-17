@@ -14,7 +14,7 @@ from typing import Self
 
 from aero_kernel.canonical import sha256_of
 from aero_kernel.errors import check_finite_json
-from aero_kernel.schema import Accuracy, KernelWarning
+from aero_kernel.schema import KernelWarning
 from pydantic import BaseModel, ConfigDict, JsonValue, model_validator
 
 __all__ = [
@@ -73,7 +73,6 @@ def cache_key(
     inputs: Mapping[str, JsonValue],
     build_digest: str,
     tool_versions: Mapping[str, str],
-    accuracy: Accuracy,
 ) -> str:
     """Compute the cache key of one node (ch. 8.4): SHA-256 over the canonical JSON of everything.
 
@@ -86,7 +85,6 @@ def cache_key(
         inputs: Direct input values by parameter name.
         build_digest: Hash over the code and canon model (see :func:`build_digest`).
         tool_versions: Versions of the tools the node uses.
-        accuracy: Accuracy tier of the call.
 
     Returns:
         ``"sha256:"`` plus the hex digest.
@@ -101,7 +99,6 @@ def cache_key(
             "inputs": dict(inputs),
             "build_digest": build_digest,
             "tool_versions": dict(tool_versions),
-            "accuracy": accuracy,
         }
     )
 
