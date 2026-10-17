@@ -75,8 +75,8 @@ class KernelWarning(BaseModel):
     ``quantity`` field.
 
     Attributes:
-        severity: ``practice`` (domain practice) or ``defect``; fixed by the code. Omit it and it
-            is taken from :data:`WARNING_CATALOGUE`; if given, it must match the catalogue.
+        severity: ``practice`` (domain practice) or ``defect``; fixed by the code, so it must match
+            :data:`WARNING_CATALOGUE`. :meth:`of` takes it from there.
         code: Machine-readable code from :data:`WARNING_CATALOGUE`.
         message: The caveat, in natural language.
         origin: Slug of the quantity where the warning arose; ``None`` until the engine sets it.
@@ -86,16 +86,54 @@ class KernelWarning(BaseModel):
 
     model_config = ConfigDict(extra="forbid", frozen=True)
 
-    severity: WarningSeverity | None = None
+    severity: WarningSeverity
     code: str = Field(min_length=1)
     message: str = Field(min_length=1)
     origin: str | None = Field(default=None, min_length=1)
     world: str | None = None
     detail: dict[str, JsonValue] = Field(default_factory=dict)
 
+    @classmethod
+    def of(
+        cls,
+        code: str,
+        message: str,
+        *,
+        origin: str | None = None,
+        world: str | None = None,
+        detail: dict[str, JsonValue] | None = None,
+    ) -> Self:
+        """Build a warning whose severity is the catalogue's for ``code``.
+
+        Args:
+            code: Code from :data:`WARNING_CATALOGUE`.
+            message: The caveat, in natural language.
+            origin: Slug of the quantity where the warning arose, if known.
+            world: Method world the warning arose in.
+            detail: Structured values the warning carries.
+
+        Returns:
+            The warning.
+
+        Raises:
+            ValueError: If the code is not in the catalogue, or the other fields are invalid.
+        """
+        severity = WARNING_CATALOGUE.get(code)
+        if severity is None:
+            msg = f"code {code} is not in the warning catalogue; add it to WARNING_CATALOGUE"
+            raise ValueError(msg)
+        return cls(
+            severity=severity,
+            code=code,
+            message=message,
+            origin=origin,
+            world=world,
+            detail=detail or {},
+        )
+
     @model_validator(mode="after")
     def _check_code(self) -> Self:
-        """Derive the severity, reject codes outside the table, a contradicting severity and a bad world."""
+        """Reject codes outside the table, a contradicting severity and a malformed world."""
         if self.world is not None:
             parse_world_assignment(self.world)
         check_finite_json(self.detail, "detail")
@@ -103,10 +141,7 @@ class KernelWarning(BaseModel):
         if expected is None:
             msg = f"code {self.code} is not in the warning catalogue; add it to WARNING_CATALOGUE"
             raise ValueError(msg)
-        if self.severity is None:
-            # The model is frozen for callers; the validator fills the one derived field.
-            object.__setattr__(self, "severity", expected)
-        elif self.severity is not expected:
+        if self.severity is not expected:
             msg = f"code {self.code} has severity {expected.value}, not {self.severity.value}"
             raise ValueError(msg)
         return self

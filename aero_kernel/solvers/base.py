@@ -195,7 +195,7 @@ def regime(
     detail: dict[str, JsonValue] = {"re_min": re_min, "re_max": re_max, "mach": mach}
     if re_min < _RE_BAND_MIN or re_max > _RE_BAND_MAX:
         warnings.append(
-            KernelWarning(
+            KernelWarning.of(
                 code="reynolds_outside_band",
                 message=(
                     f"chord Reynolds number {re_min:.0f}..{re_max:.0f} leaves the validated "
@@ -206,7 +206,7 @@ def regime(
         )
     if any(_RE_BAND_MIN <= re < _RE_BUBBLE_MAX for re in reynolds):
         warnings.append(
-            KernelWarning(
+            KernelWarning.of(
                 code="reynolds_bubble_sensitive",
                 message=(
                     f"chord Reynolds number below {_RE_BUBBLE_MAX:.0f}: laminar separation "
@@ -217,7 +217,7 @@ def regime(
         )
     if mach > _MACH_VALIDITY:
         warnings.append(
-            KernelWarning(
+            KernelWarning.of(
                 code="mach_beyond_validity",
                 message=f"Mach {mach:.2f} is beyond {_MACH_VALIDITY}: compressibility not modelled",
                 detail=detail,
@@ -225,7 +225,7 @@ def regime(
         )
     elif mach > _MACH_LIMIT:
         warnings.append(
-            KernelWarning(
+            KernelWarning.of(
                 code="mach_above_limit",
                 message=f"Mach {mach:.2f} is above {_MACH_LIMIT}: compressibility is neglected",
                 detail=detail,

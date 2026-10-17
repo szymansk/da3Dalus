@@ -57,9 +57,23 @@ class TestKernelWarning:
         with pytest.raises(ValidationError, match="severity"):
             make_warning(severity="defect")
 
-    def test_severity_is_derived_from_the_catalogue_when_omitted(self) -> None:
-        warning = KernelWarning(code="precondition_violated", message="x")
+    def test_of_derives_the_severity_from_the_catalogue(self) -> None:
+        warning = KernelWarning.of("precondition_violated", "x", origin="q", detail={"a": 1})
         assert warning.severity is WarningSeverity.DEFECT
+        assert (warning.code, warning.message, warning.origin, warning.detail) == (
+            "precondition_violated",
+            "x",
+            "q",
+            {"a": 1},
+        )
+
+    def test_of_rejects_an_unknown_code(self) -> None:
+        with pytest.raises(ValueError, match="catalogue"):
+            KernelWarning.of("invented_code", "x")
+
+    def test_severity_is_required_in_the_constructor(self) -> None:
+        with pytest.raises(ValidationError, match="severity"):
+            KernelWarning.model_validate({"code": "mach_beyond_validity", "message": "x"})
 
     def test_a_matching_severity_is_accepted(self) -> None:
         warning = KernelWarning(
@@ -67,9 +81,18 @@ class TestKernelWarning:
         )
         assert warning.severity is WarningSeverity.DEFECT
 
-    def test_derived_severity_survives_a_json_round_trip(self) -> None:
-        warning = KernelWarning(code="mach_beyond_validity", message="x")
+    def test_severity_is_set_so_exclude_unset_keeps_it(self) -> None:
+        warning = KernelWarning.of("mach_beyond_validity", "x")
+        assert warning.model_dump(exclude_unset=True)["severity"] == "defect"
+
+    def test_severity_survives_a_json_round_trip(self) -> None:
+        warning = KernelWarning.of("mach_beyond_validity", "x")
         assert KernelWarning.model_validate_json(warning.model_dump_json()) == warning
+
+    def test_the_json_schema_does_not_mark_severity_nullable(self) -> None:
+        schema = KernelWarning.model_json_schema()
+        assert "severity" in schema["required"]
+        assert "anyOf" not in schema["properties"]["severity"]
 
     def test_catalogue_holds_the_initial_codes(self) -> None:
         assert WARNING_CATALOGUE == {
