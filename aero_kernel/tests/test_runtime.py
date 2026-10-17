@@ -320,6 +320,21 @@ class TestConcurrencyLimit:
         spans = [tuple(float(x) for x in run.stdout.split()) for run in runs]
         assert max_overlap([(a, b) for a, b in spans]) == 1  # pyright: ignore[reportUnknownVariableType]
 
+    async def test_a_subprocess_takes_no_worker_gate_slot(self, tmp_path: Path) -> None:
+        """The worker gate belongs to pool submissions; a subprocess counts only against the limit."""
+        script = tmp_path / "stamp.py"
+        script.write_text(STAMP_SCRIPT)
+        async with BoundedRuntime(max_workers=1, max_concurrency=2) as runtime:
+            await runtime.run_cpu(workers.square, 1)  # warm: the pool is up
+            process, outcome = await asyncio.gather(
+                runtime.run_process({}, "", executable=sys.executable, args=[str(script)]),
+                runtime.run_cpu(workers.nap, 0.5),
+            )
+        start, end = (float(x) for x in process.stdout.split())
+        assert max_overlap([(start, end), outcome]) == 2
+        # not just touching: they ran side by side for a clear stretch
+        assert min(end, outcome[1]) - max(start, outcome[0]) > 0.15
+
     async def test_pool_work_and_subprocesses_count_together(self, tmp_path: Path) -> None:
         script = tmp_path / "stamp.py"
         script.write_text(STAMP_SCRIPT)
