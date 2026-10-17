@@ -8,6 +8,7 @@ import sys
 import tempfile
 import textwrap
 import time
+from asyncio import unix_events
 from pathlib import Path
 
 import pytest
@@ -161,6 +162,93 @@ async def test_cancel_kills_the_process_group_and_removes_the_temp_dir(tmp_path:
     assert not _is_dir(cwd)
     assert await _wait_dead(pid)
     assert await _wait_dead(grandchild)
+
+
+@pytest.fixture
+def held_start(monkeypatch: pytest.MonkeyPatch) -> asyncio.Event:
+    """Hold every subprocess start open after the child exists, until the event is set.
+
+    The child is already running and writing, but ``create_subprocess_exec`` has not returned:
+    the window in which a loaded machine lets a cancel arrive (GH #1188). Deterministic, so the
+    test does not depend on CPU starvation.
+    """
+    gate = asyncio.Event()
+    original = unix_events._UnixSubprocessTransport._connect_pipes  # type: ignore[attr-defined]  # asyncio internal, patched to hold the start open
+
+    async def held(self: object, waiter: asyncio.Future[None]) -> None:
+        await gate.wait()
+        await original(self, waiter)  # type: ignore[arg-type]  # same call as asyncio's own
+
+    monkeypatch.setattr(unix_events._UnixSubprocessTransport, "_connect_pipes", held)  # type: ignore[attr-defined]  # as above
+    return gate
+
+
+async def test_cancel_during_the_start_kills_the_group_and_removes_the_temp_dir(
+    tmp_path: Path, held_start: asyncio.Event
+) -> None:
+    """GH #1188: the cancel arrives while ``create_subprocess_exec`` is still waiting.
+
+    ``process`` is not assigned yet then, so the group was neither killed nor the cancel prompt:
+    asyncio itself kills only the direct child and waits for the pipes the grandchild holds open.
+    """
+    task, pid, grandchild, cwd = await _start_sleeper(tmp_path)
+    assert _is_dir(cwd)
+    task.cancel()
+    held_start.set()  # the start may now finish, but the cancel is already on its way
+    with pytest.raises(asyncio.CancelledError):
+        async with asyncio.timeout(5):
+            await task
+    assert not _is_dir(cwd)
+    assert await _wait_dead(pid)
+    assert await _wait_dead(grandchild)
+
+
+async def test_a_second_cancel_while_the_start_is_settling_changes_nothing(
+    tmp_path: Path, held_start: asyncio.Event
+) -> None:
+    task, pid, grandchild, cwd = await _start_sleeper(tmp_path)
+    task.cancel()
+    await asyncio.sleep(0.05)  # the task is now waiting for the held start to end
+    task.cancel()
+    held_start.set()
+    with pytest.raises(asyncio.CancelledError):
+        async with asyncio.timeout(5):
+            await task
+    assert not _is_dir(cwd)
+    assert await _wait_dead(pid)
+    assert await _wait_dead(grandchild)
+
+
+async def test_a_budget_that_expires_during_the_start_kills_the_group(
+    tmp_path: Path, held_start: asyncio.Event
+) -> None:
+    sleeper = tmp_path / "sleeper.py"
+    sleeper.write_text(SLEEP_SCRIPT)
+    marker = tmp_path / "marker.txt"
+    asyncio.get_running_loop().call_later(0.5, held_start.set)
+    budget = asyncio.timeout(0.2)
+    with pytest.raises(TimeoutError):
+        async with budget:
+            await run_process({}, "", executable=sys.executable, args=[str(sleeper), str(marker)])
+    assert budget.expired()
+    pid, grandchild, cwd = _read_marker(marker)
+    assert not _is_dir(cwd)
+    assert await _wait_dead(pid)
+    assert await _wait_dead(grandchild)
+
+
+async def test_a_cancel_before_a_failing_start_ends_is_still_a_cancel_and_leaves_no_directory(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    scratch = tmp_path / "scratch"
+    scratch.mkdir()
+    monkeypatch.setattr(tempfile, "tempdir", str(scratch))
+    task = asyncio.create_task(run_process({}, "", executable=str(tmp_path / "no_such_tool")))
+    await asyncio.sleep(0)  # the task waits for the start; the start has not run yet
+    task.cancel()
+    with pytest.raises(asyncio.CancelledError):
+        await task
+    assert _entries(scratch) == []
 
 
 async def test_expired_budget_kills_the_process_and_removes_the_temp_dir(tmp_path: Path) -> None:

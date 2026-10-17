@@ -61,6 +61,31 @@ def _remove_directory(directory: Path) -> None:
         logger.warning("temp directory of external process not removed: %s", directory.name)
 
 
+async def _settle_start(
+    start: asyncio.Future[asyncio.subprocess.Process],
+) -> asyncio.subprocess.Process | None:
+    """Wait for a process start that a cancellation interrupted, and return what it made.
+
+    ``create_subprocess_exec`` must not be cancelled half way: asyncio then kills only the direct
+    child and waits for the pipes of its descendants, and the caller never gets the process whose
+    group it has to kill (GH #1188). The start itself is short (spawn and connect), so it is
+    awaited to its end here, shielded from further cancellations, which are re-raised by the
+    caller once the group is dead.
+
+    Args:
+        start: The start, running as a task of its own.
+
+    Returns:
+        The started process, or ``None`` if the start failed or was cancelled itself.
+    """
+    while not start.done():
+        with contextlib.suppress(asyncio.CancelledError):
+            await asyncio.wait([start])
+    if start.cancelled() or start.exception() is not None:
+        return None
+    return start.result()
+
+
 async def run_process(
     files: Mapping[str, str | bytes],
     commands: str,
@@ -102,8 +127,8 @@ async def run_process(
         for name, content in files.items():
             data = content.encode() if isinstance(content, str) else content
             (directory / name).write_bytes(data)
-        try:
-            process = await asyncio.create_subprocess_exec(
+        start = asyncio.ensure_future(
+            asyncio.create_subprocess_exec(
                 executable,
                 *args,
                 cwd=directory,
@@ -112,6 +137,13 @@ async def run_process(
                 stderr=asyncio.subprocess.PIPE,
                 start_new_session=True,
             )
+        )
+        try:
+            # shielded: a cancel during the start must not abort it (see _settle_start)
+            started = await asyncio.shield(start)
+        except asyncio.CancelledError:
+            process = await _settle_start(start)
+            raise
         except OSError as error:
             name = Path(executable).name
             raise FormulaError(
@@ -121,6 +153,7 @@ async def run_process(
                 "install the tool or check that it is executable",
                 detail={"executable": name},
             ) from error
+        process = started
         stdout, stderr = await process.communicate(commands.encode())
         returncode = await process.wait()
         outputs = {
