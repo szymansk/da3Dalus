@@ -549,7 +549,9 @@ Both kinds return one of three states:
 
 - One producer per quantity; a second path only as a probe (A7).
 - Unique symbols and slugs (A8).
-- Targets only as `role: target` (A9).
+- Targets only as `role: target` (A9): a slug ends in `-target` exactly when its role is `target`, with the
+  one exception A9 names (`limit-load-factor`, role `target` under its own name); no input or target slug
+  contains `requirement`, `goal` or `req`; and an input or target quantity is produced by no formula.
 - Units consistent across bindings (A4); dimensional check of law entries (later, report-only).
 - **One home per rule.** The importer is the authority for model validity: every **structural** rule
   (front-matter fields, vocabularies, references, the rules above) lives in the importer, which ports them
@@ -700,7 +702,11 @@ later `sizing:…`), and a bare slug in a request means `calc:`.
   loader reads it **before** type validation, so a newer model reports its version, not a cascade of
   unknown fields; any other version is `internal`, escalate. The loader raises `CanonLoadError` carrying
   that `KernelError`; turning it into per-quantity results is the api's job (`compute()` never raises,
-  ch. 8.1). `source_commit` is a 40-hex git SHA, `importer_version` a non-empty string.
+  ch. 8.1). `source_commit` is a 40-hex git SHA, `importer_version` a non-empty string. **`source_commit`
+  names the last commit that touched the canon document** (`git log -1 -- <canon-dir>`), not the branch
+  head, so it stays checkable on `main` after the kernel branch is rebased or squash-merged; canon changes
+  therefore reach `main` through their own canon change first. The final import runs after the branch's
+  last rebase; CI's `--check` (which ignores `source_commit`) guards the content in between.
 - **`content_hash`** is `"sha256:" + hex` of the canonical JSON of `namespaces` only — the canon's content,
   not its provenance (`source_commit`, `importer_version` and the hash itself are outside it), so two
   imports of identical content from different commits hash alike. Canonical JSON is the one used for
