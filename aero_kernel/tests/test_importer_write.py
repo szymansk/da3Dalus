@@ -235,11 +235,12 @@ def test_the_outputs_match_the_golden_files_byte_for_byte(tmp_path: Path, name: 
 
 
 def test_a_non_ascii_symbol_is_written_raw(tmp_path: Path) -> None:
-    density = MINI_CANON["quantities/gravity.md"].replace("symbol: g", "symbol: ρ")
+    rho = "\N{GREEK SMALL LETTER RHO}"
+    density = MINI_CANON["quantities/gravity.md"].replace("symbol: g", f"symbol: {rho}")
     out = tmp_path / "out"
     assert import_to(write_canon(tmp_path, {"quantities/gravity.md": density}), out) == 0
     text = (out / MODEL).read_text(encoding="utf-8")
-    assert '"symbol": "ρ"' in text
+    assert f'"symbol": "{rho}"' in text
     assert "\\u03c1" not in text
 
 

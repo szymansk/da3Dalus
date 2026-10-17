@@ -3,7 +3,6 @@
 Each test names the rule it pins; it asserts the exact file, field and decisive message text.
 """
 
-import re
 from pathlib import Path
 
 import pytest
@@ -230,13 +229,25 @@ def test_a_non_finite_default_names_the_slug(tmp_path: Path, value: str) -> None
 # --- S8: unit spellings that are not units --------------------------------------------------------
 
 
-@pytest.mark.parametrize("unit", ["1.0", '"-"', '"–"', '""', "0", "true"])
-def test_a_spelling_that_is_no_unit_is_a_finding(tmp_path: Path, unit: str) -> None:
-    result = run(tmp_path, mutate(GRAVITY, "unit: m/s^2", f"unit: {unit}"))
+@pytest.mark.parametrize(
+    ("written", "shown_as"),
+    [
+        ("1.0", "1.0"),
+        ('"-"', "'-'"),
+        ('"\N{EN DASH}"', "'\N{EN DASH}'"),
+        ('""', "''"),
+        ("0", "0"),
+        ("true", "True"),
+    ],
+)
+def test_a_spelling_that_is_no_unit_is_a_finding(
+    tmp_path: Path, written: str, shown_as: str
+) -> None:
+    result = run(tmp_path, mutate(GRAVITY, "unit: m/s^2", f"unit: {written}"))
     assert len(result.findings) == 1
     finding = result.findings[0]
     assert (finding.file, finding.field) == (GRAVITY, "unit")
-    assert finding.message.endswith(f"(got {eval(unit.replace('true', 'True'))!r})")  # noqa: S307
+    assert finding.message.endswith(f"(got {shown_as})")
 
 
 # --- S10, S11: constants and application rules ----------------------------------------------------
