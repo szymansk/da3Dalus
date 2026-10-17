@@ -42,7 +42,12 @@ VOCABULARIES = {
     "Tool": ["APP", "ATM", "GEO", "AB", "AVL", "OPT", "KAT", "APC"],
     "QuantityRole": ["input", "target", "derived", "output"],
     "QuantityType": ["scalar", "airplane", "curve", "polar", "curve_pair"],
-    "WhenTerm": ["has_aileron", "has_separate_flap_and_aileron", "has_vertical_tail"],
+    "WhenTerm": [
+        "has_aileron",
+        "has_horizontal_tail",
+        "has_separate_flap_and_aileron",
+        "has_vertical_tail",
+    ],
     "CostClass": ["instant", "seconds", "minutes"],
     "OnViolation": ["warning", "error"],
 }
