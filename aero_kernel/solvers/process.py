@@ -2,6 +2,7 @@
 
 import asyncio
 import contextlib
+import errno
 import logging
 import os
 import shutil
@@ -44,6 +45,18 @@ def _check_file_name(name: str) -> None:
         raise ValueError(msg)
 
 
+def _unavailable(executable: str | Path) -> FormulaError:
+    """The ``tool_unavailable`` error of a binary that cannot be started."""
+    name = Path(executable).name
+    return FormulaError(
+        ErrorCategory.TOOL_UNAVAILABLE,
+        "tool_unavailable",
+        f"external tool {name} could not be started",
+        "install the tool or check that it is executable",
+        detail={"executable": name},
+    )
+
+
 def _kill_group(process: asyncio.subprocess.Process) -> None:
     """Kill the process and everything it started (own session, see :func:`run_process`)."""
     with contextlib.suppress(ProcessLookupError):
@@ -61,26 +74,50 @@ def _remove_directory(directory: Path) -> None:
         logger.warning("temp directory of external process not removed: %s", directory.name)
 
 
+# How long a cancelled process start may take to settle before it counts as hung. A normal start
+# (spawn and connect the pipes) took a median of 1.6 ms and at most 6.8 ms over 40 starts on the
+# development machine (macOS, 11 cores; recorded by test_a_normal_start_is_far_below_the_bound),
+# so 5 s separates "done" from "hung" by about three orders of magnitude. Not configurable: it is
+# no tuning knob of a computation, it only bounds the cleanup of a cancel.
+_START_SETTLE_S = 5.0
+
+
 async def _settle_start(
-    start: asyncio.Future[asyncio.subprocess.Process],
+    start: asyncio.Future[asyncio.subprocess.Process], tool: str, call_id: str | None
 ) -> asyncio.subprocess.Process | None:
-    """Wait for a process start that a cancellation interrupted, and return what it made.
+    """Wait, within a bound, for a process start that a cancellation interrupted.
 
     ``create_subprocess_exec`` must not be cancelled half way: asyncio then kills only the direct
     child and waits for the pipes of its descendants, and the caller never gets the process whose
-    group it has to kill (GH #1188). The start itself is short (spawn and connect), so it is
-    awaited to its end here, shielded from further cancellations, which are re-raised by the
-    caller once the group is dead.
+    group it has to kill (GH #1188). A normal start is short, so it is awaited to its end here,
+    shielded from further cancellations, which the caller re-raises once the group is dead. A
+    start that fails after the spawn never ends (asyncio waits for pipes that never connect), so
+    past ``_START_SETTLE_S`` it is cancelled, which interrupts that wait; its process group is
+    then lost, and the operator is told with a ``WARNING`` (ch. 8.14).
 
     Args:
         start: The start, running as a task of its own.
+        tool: Base name of the executable, for the log.
+        call_id: Id of the ``compute()`` call, for the log.
 
     Returns:
-        The started process, or ``None`` if the start failed or was cancelled itself.
+        The started process, or ``None`` if the start failed, hung or was cancelled itself.
     """
-    while not start.done():
+    loop = asyncio.get_running_loop()
+    deadline = loop.time() + _START_SETTLE_S
+    while not start.done() and loop.time() < deadline:
         with contextlib.suppress(asyncio.CancelledError):
-            await asyncio.wait([start])
+            await asyncio.wait([start], timeout=deadline - loop.time())
+    if not start.done():
+        logger.warning(
+            "process start did not settle within %.1f s; its process group could not be killed",
+            _START_SETTLE_S,
+            extra={"call_id": call_id, "tool": tool},
+        )
+        start.cancel()
+        while not start.done():
+            with contextlib.suppress(asyncio.CancelledError):
+                await asyncio.wait([start], timeout=_START_SETTLE_S)
     if start.cancelled() or start.exception() is not None:
         return None
     return start.result()
@@ -93,6 +130,7 @@ async def run_process(
     executable: str | Path,
     args: Sequence[str] = (),
     collect: Sequence[str] = (),
+    call_id: str | None = None,
 ) -> ProcessRun:
     """Run an external binary in a fresh temp directory and return its output.
 
@@ -111,13 +149,17 @@ async def run_process(
         args: Its command-line arguments.
         collect: Names of output files to read back; files the tool did not write are absent
             from the result.
+        call_id: Id of the ``compute()`` call, for the log lines of this run (ch. 8.14).
 
     Returns:
         The exit code, the output streams and the collected files.
 
     Raises:
         ValueError: If a file name is not a plain file name.
-        FormulaError: ``tool_unavailable`` if the binary cannot be started.
+        FormulaError: ``tool_unavailable`` if the binary cannot be started because it does not
+            exist, may not be executed or is not an executable format.
+        OSError: Any other failure to start the process (no file descriptors, no memory): an
+            internal defect of the environment, which the engine reports as ``internal``.
     """
     for name in (*files, *collect):
         _check_file_name(name)
@@ -142,17 +184,15 @@ async def run_process(
             # shielded: a cancel during the start must not abort it (see _settle_start)
             started = await asyncio.shield(start)
         except asyncio.CancelledError:
-            process = await _settle_start(start)
+            process = await _settle_start(start, Path(executable).name, call_id)
             raise
         except OSError as error:
-            name = Path(executable).name
-            raise FormulaError(
-                ErrorCategory.TOOL_UNAVAILABLE,
-                "tool_unavailable",
-                f"external tool {name} could not be started",
-                "install the tool or check that it is executable",
-                detail={"executable": name},
-            ) from error
+            if (
+                isinstance(error, FileNotFoundError | PermissionError)
+                or error.errno == errno.ENOEXEC
+            ):
+                raise _unavailable(executable) from error
+            raise  # not Popen's own refusal of the binary: the environment failed (internal)
         process = started
         stdout, stderr = await process.communicate(commands.encode())
         returncode = await process.wait()

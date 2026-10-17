@@ -1,6 +1,7 @@
 """The async subprocess helper (ch. 8.8, 8.10; Q17, Q19)."""
 
 import asyncio
+import errno
 import logging
 import os
 import shutil
@@ -13,6 +14,7 @@ from pathlib import Path
 
 import pytest
 from aero_kernel.errors import ErrorCategory, FormulaError
+from aero_kernel.solvers import process as process_module
 from aero_kernel.solvers.process import run_process
 
 pytestmark = pytest.mark.asyncio
@@ -249,6 +251,152 @@ async def test_a_cancel_before_a_failing_start_ends_is_still_a_cancel_and_leaves
     with pytest.raises(asyncio.CancelledError):
         await task
     assert _entries(scratch) == []
+
+
+@pytest.fixture
+def start_fails_after_the_spawn(monkeypatch: pytest.MonkeyPatch) -> None:
+    """The child exists, then the pipe set-up fails (e.g. no file descriptors left).
+
+    asyncio then waits for pipes that never connect, so the start never ends on its own.
+    """
+
+    async def failing(self: object, waiter: asyncio.Future[None]) -> None:
+        waiter.set_exception(OSError(errno.EMFILE, "simulated pipe registration failure"))
+
+    monkeypatch.setattr(unix_events._UnixSubprocessTransport, "_connect_pipes", failing)  # type: ignore[attr-defined]  # asyncio internal, patched to fail the start
+
+
+async def test_a_cancel_during_a_start_that_hangs_is_bounded_and_reported(
+    tmp_path: Path,
+    start_fails_after_the_spawn: None,
+    monkeypatch: pytest.MonkeyPatch,
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    """Without the process object the group cannot be killed; the cancel must still end in time."""
+    monkeypatch.setattr(process_module, "_START_SETTLE_S", 0.3)
+    scratch = tmp_path / "scratch"
+    scratch.mkdir()
+    monkeypatch.setattr(tempfile, "tempdir", str(scratch))
+    task: asyncio.Task[object] = asyncio.create_task(
+        run_process({}, "", executable=sys.executable, args=["-c", "pass"], call_id="c4ll1d")
+    )
+    await asyncio.sleep(0.1)  # the child exists and the start is stuck
+    with caplog.at_level(logging.DEBUG, logger="aero_kernel"):
+        task.cancel()
+        with pytest.raises(asyncio.CancelledError):
+            async with asyncio.timeout(3):
+                await task
+    assert _entries(scratch) == []
+    (record,) = [r for r in caplog.records if r.levelno >= logging.WARNING]
+    assert record.levelno == logging.WARNING
+    assert record.getMessage() == (
+        "process start did not settle within 0.3 s; its process group could not be killed"
+    )
+    assert (record.call_id, record.tool) == ("c4ll1d", Path(sys.executable).name)  # type: ignore[attr-defined]  # logging extra
+    assert str(tmp_path) not in record.getMessage()
+
+
+async def test_a_budget_that_expires_during_a_hung_start_ends_within_the_bound(
+    tmp_path: Path, start_fails_after_the_spawn: None, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(process_module, "_START_SETTLE_S", 0.3)
+    scratch = tmp_path / "scratch"
+    scratch.mkdir()
+    monkeypatch.setattr(tempfile, "tempdir", str(scratch))
+    guard = asyncio.timeout(4)
+    budget = asyncio.timeout(0.2)
+    with pytest.raises(TimeoutError):
+        async with guard, budget:
+            await run_process({}, "", executable=sys.executable, args=["-c", "pass"])
+    assert budget.expired()
+    assert not guard.expired()
+    assert _entries(scratch) == []
+
+
+async def test_a_start_that_fails_without_a_cancel_is_not_tool_unavailable(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    scratch = tmp_path / "scratch"
+    scratch.mkdir()
+    monkeypatch.setattr(tempfile, "tempdir", str(scratch))
+
+    async def refuse(*args: object, **kwargs: object) -> object:
+        raise OSError(errno.EMFILE, "Too many open files")
+
+    monkeypatch.setattr(asyncio, "create_subprocess_exec", refuse)
+    with pytest.raises(OSError, match="Too many open files") as caught:
+        await run_process({}, "", executable=sys.executable)
+    assert not isinstance(caught.value, FormulaError)
+    assert caught.value.errno == errno.EMFILE
+    assert _entries(scratch) == []
+
+
+async def test_a_binary_that_may_not_run_is_tool_unavailable(tmp_path: Path) -> None:
+    plain = tmp_path / "plain.txt"
+    plain.write_text("not executable")
+    plain.chmod(0o644)
+    with pytest.raises(FormulaError) as caught:
+        await run_process({}, "", executable=plain)
+    assert caught.value.code == "tool_unavailable"
+    assert caught.value.detail == {"executable": "plain.txt"}
+
+
+async def test_a_binary_in_no_executable_format_is_tool_unavailable(tmp_path: Path) -> None:
+    junk = tmp_path / "junk"
+    junk.write_bytes(b"\x00\x01 not a program")
+    junk.chmod(0o755)
+    with pytest.raises(FormulaError) as caught:
+        await run_process({}, "", executable=junk)
+    assert caught.value.code == "tool_unavailable"
+    assert caught.value.detail == {"executable": "junk"}
+
+
+async def test_a_start_cancelled_with_its_caller_leaves_a_plain_cancel(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Loop shutdown cancels every task, the start included: nothing was started."""
+    scratch = tmp_path / "scratch"
+    scratch.mkdir()
+    monkeypatch.setattr(tempfile, "tempdir", str(scratch))
+    never = asyncio.Event()
+
+    async def stalled(*args: object, **kwargs: object) -> object:
+        await never.wait()
+        raise AssertionError
+
+    monkeypatch.setattr(asyncio, "create_subprocess_exec", stalled)
+    task = asyncio.create_task(run_process({}, "", executable=sys.executable))
+    await asyncio.sleep(0)
+    await asyncio.sleep(0)
+    others = [t for t in asyncio.all_tasks() if t is not task and t is not asyncio.current_task()]
+    assert len(others) >= 1  # the start task
+    for other in others:
+        other.cancel()
+    task.cancel()
+    with pytest.raises(asyncio.CancelledError):
+        async with asyncio.timeout(3):
+            await task
+    assert _entries(scratch) == []
+
+
+async def test_a_normal_start_is_far_below_the_settle_bound() -> None:
+    """The measurement behind ``_START_SETTLE_S`` (see the comment there): median of 20 starts."""
+    latencies: list[float] = []
+    for _ in range(20):
+        began = time.perf_counter()
+        child = await asyncio.create_subprocess_exec(
+            sys.executable,
+            "-c",
+            "pass",
+            stdin=asyncio.subprocess.PIPE,
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE,
+            start_new_session=True,
+        )
+        latencies.append(time.perf_counter() - began)
+        await child.communicate(b"")
+    latencies.sort()
+    assert latencies[len(latencies) // 2] < process_module._START_SETTLE_S / 100  # type: ignore[attr-defined]  # module constant read by the test
 
 
 async def test_expired_budget_kills_the_process_and_removes_the_temp_dir(tmp_path: Path) -> None:
