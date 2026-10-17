@@ -244,3 +244,102 @@ def test_a_calc_slug_is_written_bare_in_messages_and_errors() -> None:
     assert propagated is not None
     assert propagated.error is not None
     assert propagated.error.formula == "f-d"
+
+
+def two_outputs() -> Subtree:
+    model = model_of(
+        {s: quantity("input" if s == "a" else "derived") for s in ("a", "p", "q", "d")},
+        {
+            "f-two": formula({"x": "a"}, {"y": "p", "z": "q"}),
+            "f-d": formula({"u": "p", "v": "q"}, {"y": "d"}),
+        },
+    )
+    return CanonGraph(model).subtree(["d"])
+
+
+def test_the_causes_name_the_quantities_the_node_reads_not_the_node_error_quantity() -> None:
+    outcomes = {node_id("f-two"): failed("p")}
+    propagated = two_outputs().propagate(node_id("f-d"), outcomes, quantity="d")
+    assert propagated is not None
+    assert propagated.error is not None
+    assert propagated.error.detail["causes"] == [
+        {"quantity": "p", "code": "not_converged"},
+        {"quantity": "q", "code": "not_converged"},
+    ]
+
+
+def test_a_dependent_of_one_output_is_told_that_output() -> None:
+    model = model_of(
+        {s: quantity("input" if s == "a" else "derived") for s in ("a", "p", "q", "d")},
+        {
+            "f-two": formula({"x": "a"}, {"y": "p", "z": "q"}),
+            "f-d": formula({"v": "q"}, {"y": "d"}),
+        },
+    )
+    subtree = CanonGraph(model).subtree(["d"])
+    propagated = subtree.propagate(node_id("f-d"), {node_id("f-two"): failed("p")}, quantity="d")
+    assert propagated is not None
+    assert propagated.error is not None
+    assert propagated.error.detail["causes"] == [{"quantity": "q", "code": "not_converged"}]
+
+
+def test_an_own_long_run_skip_is_skipped_with_its_reason() -> None:
+    propagated = diamond().propagate(
+        node_id("f-d"), {node_id("f-b"): OK, node_id("f-c"): OK}, quantity="d", skip_long_run=True
+    )
+    assert propagated is not None
+    assert propagated.status is QuantityStatus.SKIPPED
+    assert propagated.reason is not None
+    assert propagated.reason.code is ReasonCode.LONG_RUN_NOT_INCLUDED
+
+
+def test_precedence_is_error_then_own_skip_then_skipped_then_not_applicable() -> None:
+    subtree = diamond()
+
+    def status(b: NodeOutcome, c: NodeOutcome, *, skip: bool) -> Propagated | None:
+        outcomes = {node_id("f-b"): b, node_id("f-c"): c}
+        return subtree.propagate(node_id("f-d"), outcomes, quantity="d", skip_long_run=skip)
+
+    errored = status(failed("b"), OK, skip=True)
+    assert errored is not None
+    assert errored.status is QuantityStatus.ERROR
+    own = status(NOT_APPLICABLE, OK, skip=True)
+    assert own is not None
+    assert own.reason is not None
+    assert own.reason.code is ReasonCode.LONG_RUN_NOT_INCLUDED
+    inherited = status(SKIPPED, NOT_APPLICABLE, skip=False)
+    assert inherited is not None
+    assert inherited.reason is not None
+    assert inherited.reason.code is ReasonCode.DEPENDS_ON_SKIPPED
+
+
+@pytest.mark.parametrize(
+    ("b", "skip"),
+    [
+        (failed("b"), False),
+        (SKIPPED, False),
+        (NOT_APPLICABLE, False),
+        (OK, True),
+    ],
+    ids=["error", "skipped", "not-applicable", "long-run"],
+)
+def test_a_propagation_can_be_addressed_to_another_quantity(b: NodeOutcome, skip: bool) -> None:
+    outcomes = {node_id("f-b"): b, node_id("f-c"): OK}
+    propagated = diamond().propagate(node_id("f-d"), outcomes, quantity="d", skip_long_run=skip)
+    assert propagated is not None
+    other = propagated.addressed_to("sibling")
+    texts = [
+        other.error.message if other.error else "",
+        other.reason.message if other.reason else "",
+    ]
+    assert any("`sibling`" in text for text in texts)
+    assert not any("`d`" in text for text in texts)
+    assert other.status is propagated.status
+    first = [
+        propagated.error.message if propagated.error else "",
+        propagated.reason.message if propagated.reason else "",
+    ]
+    assert any("`d`" in text for text in first)
+    if other.error is not None:
+        assert other.error.quantity == "sibling"
+        assert other.error.detail == propagated.error.detail  # type: ignore[union-attr]  # same causes

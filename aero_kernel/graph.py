@@ -10,7 +10,7 @@ assignments speak the public bare slug.
 import itertools
 import logging
 import math
-from collections.abc import Collection, Mapping, Sequence
+from collections.abc import Callable, Collection, Mapping, Sequence
 from typing import Self
 
 from aero_kernel.canon.model import (
@@ -30,7 +30,7 @@ from aero_kernel.errors import (
 )
 from aero_kernel.geometry import AirplaneGeometry, Wing
 from aero_kernel.schema import QuantityStatus, Reason, ReasonCode
-from pydantic import BaseModel, ConfigDict, model_validator
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 logger = logging.getLogger(__name__)
 
@@ -196,12 +196,13 @@ class NodeOutcome(BaseModel):
 
 
 class Propagated(BaseModel):
-    """The status a node takes from its predecessors (ch. 8.13).
+    """The status a node takes from its predecessors or its own cost class (ch. 8.13).
 
     Attributes:
         status: ``error``, ``skipped`` or ``not_applicable``.
         reason: Why, for ``skipped`` and ``not_applicable``.
         error: The ``upstream_failed`` error, for ``error``.
+        reword: Builds the same propagation for another quantity; see :meth:`addressed_to`.
     """
 
     model_config = _FROZEN
@@ -209,6 +210,21 @@ class Propagated(BaseModel):
     status: QuantityStatus
     reason: Reason | None = None
     error: KernelError | None = None
+    reword: Callable[[str], "Propagated"] | None = Field(default=None, exclude=True, repr=False)
+
+    def addressed_to(self, quantity: str) -> "Propagated":
+        """Return the same propagation worded for another quantity of the same node.
+
+        A node that produces several requested quantities has one status; each of them is told
+        in its own name.
+
+        Args:
+            quantity: Slug of the quantity the message is reported for.
+
+        Returns:
+            The propagation with ``quantity`` in the error and the reason.
+        """
+        return self if self.reword is None else self.reword(quantity)
 
 
 class Subtree(BaseModel):
@@ -266,51 +282,80 @@ class Subtree(BaseModel):
         *,
         quantity: str,
         world: str | None = None,
+        skip_long_run: bool = False,
     ) -> Propagated | None:
-        """Give a node the status its predecessors force on it (ch. 8.13 table).
+        """Give a node the status its predecessors and its own cost class force on it (ch. 8.13).
 
-        Only the predecessors the node reads count. Precedence: ``error`` over ``skipped`` over
-        ``not_applicable``. A computed predecessor propagates the same way into an ``optional``
-        parameter; ``optional`` only covers an absent supplied value.
+        Only the predecessors the node reads count. Precedence: an inherited ``error``, the node's
+        own long-run skip, an inherited ``skipped``, an inherited ``not_applicable``. A computed
+        predecessor propagates the same way into an ``optional`` parameter; ``optional`` only
+        covers an absent supplied value. The causes of an error name the quantities the node
+        reads (one per value edge), not the quantity its predecessor's own error was reported for.
 
         Args:
             node: The node.
             outcomes: The outcome of each of its predecessors (others are ignored).
-            quantity: Slug of the quantity the status is reported for, used in an error.
+            quantity: Slug of the quantity the status is reported for, used in an error or reason;
+                :meth:`Propagated.addressed_to` rewords it for another quantity of the node.
             world: Canonical world assignment string of the evaluation, if any.
+            skip_long_run: Whether the node is a long run that the request does not include.
 
         Returns:
-            The forced status, or ``None`` if every read predecessor is ``ok`` (or there is none).
+            The forced status, or ``None`` if every read predecessor is ``ok`` (or there is none)
+            and the node is not skipped.
 
         Raises:
             KeyError: If a read predecessor has no outcome.
         """
-        read = list(dict.fromkeys(edge.predecessor for edge in self.edges[node]))
-        causes = [e for p in read if (e := outcomes[p].error) is not None]
-        if causes:
-            error = aggregate_upstream(
-                causes,
-                quantity=quantity,
-                formula=display_slug(node.formula),
-                application=node.application,
-                world=world,
-            )
-            return Propagated(status=QuantityStatus.ERROR, error=error)
-        for status, code, wording in (
-            (QuantityStatus.SKIPPED, ReasonCode.DEPENDS_ON_SKIPPED, "skipped"),
-            (QuantityStatus.NOT_APPLICABLE, ReasonCode.DEPENDS_ON_NOT_APPLICABLE, "not applicable"),
-        ):
-            names = [
-                f"`{display_slug(edge.quantity)}`"
-                for edge in self.edges[node]
-                if outcomes[edge.predecessor].status is status
-            ]
-            if names:
-                message = (
-                    f"`{quantity}` reads {', '.join(dict.fromkeys(names))}, which is {wording}."
+        edges = self.edges[node]
+        causes = [
+            error.model_copy(update={"quantity": display_slug(edge.quantity)})
+            for edge in edges
+            if (error := outcomes[edge.predecessor].error) is not None
+        ]
+        skipped = [
+            e.quantity for e in edges if outcomes[e.predecessor].status is QuantityStatus.SKIPPED
+        ]
+        not_applicable = [
+            e.quantity
+            for e in edges
+            if outcomes[e.predecessor].status is QuantityStatus.NOT_APPLICABLE
+        ]
+        if not (causes or skip_long_run or skipped or not_applicable):
+            return None
+
+        def build(name: str) -> Propagated:
+            if causes:
+                error = aggregate_upstream(
+                    causes,
+                    quantity=name,
+                    formula=display_slug(node.formula),
+                    application=node.application,
+                    world=world,
                 )
-                return Propagated(status=status, reason=Reason(code=code, message=message))
-        return None
+                return Propagated(status=QuantityStatus.ERROR, error=error, reword=build)
+            elif skip_long_run:
+                message = f"`{name}` is a long run and the request does not include long runs."
+                reason = Reason(code=ReasonCode.LONG_RUN_NOT_INCLUDED, message=message)
+                return Propagated(status=QuantityStatus.SKIPPED, reason=reason, reword=build)
+            else:
+                status, code, wording, read = (
+                    (QuantityStatus.SKIPPED, ReasonCode.DEPENDS_ON_SKIPPED, "skipped", skipped)
+                    if skipped
+                    else (
+                        QuantityStatus.NOT_APPLICABLE,
+                        ReasonCode.DEPENDS_ON_NOT_APPLICABLE,
+                        "not applicable",
+                        not_applicable,
+                    )
+                )
+                names = ", ".join(dict.fromkeys(f"`{display_slug(slug)}`" for slug in read))
+                message = f"`{name}` reads {names}, which is {wording}."
+                return Propagated(
+                    status=status, reason=Reason(code=code, message=message), reword=build
+                )
+
+        return build(quantity)
 
     def nodes_for(self, slug: str) -> tuple[NodeId, ...]:
         """Return the nodes a requested quantity needs, in topological order.
