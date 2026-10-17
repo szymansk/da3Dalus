@@ -685,7 +685,7 @@ later `sizing:…`), and a bare slug in a request means `calc:`.
   {quantities: {<slug>: …}, formulas: {<slug>: …}}}}`, dict keys bare slugs. **Every reference inside the
   model is fully qualified** (`calc:stall-speed`, embeds items `calc:stall-speed.clean`); application ids
   and parameter names stay bare. Every `embeds` and `embeds_closure` item is normalised to
-  `<ns>:<slug>.<application-id>` (a single-application formula as `.default`); a bare item does not load.
+  `<ns>:<slug>.<application-id>` (a bare slug of a single-application formula as that application's id, `.default` when it is the implicit one); a bare item does not load.
   Absent `when`, `given` and check `applications` are stored as `null` (= always / all). Only a request's bare slug means `calc:`. **Outside the model** — results, errors (`formula`,
   `quantity`), messages and world assignments — a `calc:` slug is written bare, a slug of any other
   namespace qualified — except a requested quantity's own slug (`QuantityResult.slug` and its error's
