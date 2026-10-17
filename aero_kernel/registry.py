@@ -1,26 +1,20 @@
 """Registry of formula implementations and checks (ARCHITECTURE ch. 8.12).
 
-Implementations and checks are linked to the canon model by decorator: ``@formula(slug,
-interface=...)``, ``@precondition(slug, id)`` and ``@postcondition(slug, id)``.
+Implementations and checks are linked to the canon model by decorator: ``@formula(slug)``, ``@precondition(slug, id)`` and ``@postcondition(slug, id)``.
 The registry holds code only, never call state: it is filled at import of ``aero_kernel.formulas``
 and then frozen.
 """
 
-import argparse
 import inspect
 import logging
 import re
-import sys
-from collections.abc import Callable, Coroutine, Mapping, Sequence
+from collections.abc import Callable, Coroutine, Mapping
 from dataclasses import dataclass
-from pathlib import Path
 from typing import Literal, TypeVar
 
-from aero_kernel.canon.load import CanonLoadError, load_canon_model
 from aero_kernel.canon.model import DEFAULT_NAMESPACE, CanonModel, Check, Formula
-from aero_kernel.canonical import sha256_of
 from aero_kernel.errors import IDENTIFIER_REGEX, NAMESPACE_REGEX, SLUG_REGEX
-from pydantic import BaseModel, ConfigDict, Field, JsonValue
+from pydantic import BaseModel, ConfigDict, Field
 
 logger = logging.getLogger(__name__)
 
@@ -33,8 +27,6 @@ __all__ = [
     "RegistryFinding",
     "TraceabilityReport",
     "formula",
-    "interface_fingerprint",
-    "main",
     "postcondition",
     "precondition",
 ]
@@ -64,7 +56,6 @@ CheckKind = Literal["pre", "post"]
 
 _SLUG_PATTERN = re.compile(rf"(?:(?P<namespace>{NAMESPACE_REGEX}):)?(?P<slug>{SLUG_REGEX})")
 _CHECK_ID_PATTERN = re.compile(IDENTIFIER_REGEX)
-_FINGERPRINT_PATTERN = re.compile(r"sha256:[0-9a-f]{64}")
 
 
 class RegistryError(Exception):
@@ -74,9 +65,7 @@ class RegistryError(Exception):
     """
 
 
-FindingKind = Literal[
-    "unknown_formula", "unknown_check", "check_kind_mismatch", "stale_implementation"
-]
+FindingKind = Literal["unknown_formula", "unknown_check", "check_kind_mismatch"]
 
 
 class RegistryFinding(BaseModel):
@@ -127,12 +116,10 @@ class Implementation:
     Attributes:
         slug: Qualified formula slug, ``<namespace>:<slug>``.
         func: The coroutine ``f(x, ctx) -> dict``.
-        interface: Interface fingerprint of the canon formula the code was written against.
     """
 
     slug: str
     func: FormulaFunction
-    interface: str
 
 
 def _qualify(slug: str) -> str:
@@ -142,24 +129,6 @@ def _qualify(slug: str) -> str:
         msg = f"malformed formula slug {slug!r}: expected '[<namespace>:]<kebab-case-slug>'"
         raise RegistryError(msg)
     return f"{match['namespace'] or DEFAULT_NAMESPACE}:{match['slug']}"
-
-
-def interface_fingerprint(formula: Formula) -> str:
-    """Fingerprint the interface of a canon formula: what an implementation is written against.
-
-    Args:
-        formula: A formula of the canon model.
-
-    Returns:
-        ``"sha256:"`` plus the hex digest of the sorted input names, output names and ``optional``
-        parameters. The value goes into ``@formula(slug, interface=...)``.
-    """
-    interface: dict[str, JsonValue] = {
-        "inputs": list[JsonValue](sorted(formula.inputs)),
-        "outputs": list[JsonValue](sorted(formula.outputs)),
-        "optional": list[JsonValue](sorted(formula.optional)),
-    }
-    return sha256_of(interface)
 
 
 def _require_positional_arity(func: Callable[..., object], arity: int, what: str) -> None:
@@ -214,24 +183,20 @@ class Registry:
             )
             raise RegistryError(msg)
 
-    def formula(self, slug: str, interface: str) -> Callable[[_FormulaT], _FormulaT]:
+    def formula(self, slug: str) -> Callable[[_FormulaT], _FormulaT]:
         """Register the decorated coroutine as the one implementation of a formula.
 
         Args:
             slug: Formula slug; bare means the ``calc`` namespace.
-            interface: Interface fingerprint of the canon formula (see ``interface_fingerprint``).
 
         Returns:
             The decorator; it returns the function unchanged.
 
         Raises:
-            RegistryError: If the slug or fingerprint is malformed.
+            RegistryError: If the slug is malformed.
         """
         self._ensure_open()
         qualified = _qualify(slug)
-        if _FINGERPRINT_PATTERN.fullmatch(interface) is None:
-            msg = f"malformed interface fingerprint {interface!r} for {qualified}"
-            raise RegistryError(msg)
 
         def register(func: _FormulaT) -> _FormulaT:
             self._ensure_open()
@@ -242,7 +207,7 @@ class Registry:
             if qualified in self._implementations:
                 msg = f"formula {qualified} already has an implementation"
                 raise RegistryError(msg)
-            self._implementations[qualified] = Implementation(qualified, func, interface)
+            self._implementations[qualified] = Implementation(qualified, func)
             logger.debug("registered formula %s", qualified)
             return func
 
@@ -305,7 +270,7 @@ class Registry:
         """Check the registry against the canon model (traceability, tests Q1 and Q11).
 
         Reports a registered slug the model does not have, a check id the formula does not have
-        (or has on the other side), and an implementation written against another interface.
+        (or has on the other side).
 
         Args:
             model: The canon model.
@@ -326,14 +291,6 @@ class Registry:
                 )
                 continue
             findings.extend(self._check_checks(slug, formula))
-            implementation = self.implementation(slug)
-            if implementation is not None and implementation.interface != interface_fingerprint(
-                formula
-            ):
-                msg = f"the implementation of {slug} was written against another interface than the model's"
-                findings.append(
-                    RegistryFinding(kind="stale_implementation", slug=slug, message=msg)
-                )
         not_implemented = sorted(
             f"{namespace}:{slug}"
             for namespace, content in model.namespaces.items()
@@ -412,37 +369,3 @@ DEFAULT_REGISTRY = Registry()
 formula = DEFAULT_REGISTRY.formula
 precondition = DEFAULT_REGISTRY.precondition
 postcondition = DEFAULT_REGISTRY.postcondition
-
-
-def main(argv: Sequence[str] | None = None) -> int:
-    """Run the command line: ``fingerprint <model.json> <slug>`` prints a formula's fingerprint.
-
-    Args:
-        argv: Arguments; ``None`` means ``sys.argv[1:]``.
-
-    Returns:
-        The exit code: 0, or 2 if the model cannot be loaded or has no such formula.
-    """
-    parser = argparse.ArgumentParser(prog="python -m aero_kernel.registry")
-    commands = parser.add_subparsers(dest="command", required=True)
-    fingerprint = commands.add_parser("fingerprint", help="print a formula's interface fingerprint")
-    fingerprint.add_argument("model", help="path of a canon model JSON file")
-    fingerprint.add_argument("slug", help="formula slug, bare or '<namespace>:<slug>'")
-    arguments = parser.parse_args(argv)
-    model_path = Path(str(arguments.model))
-    slug = str(arguments.slug)
-    try:
-        model = load_canon_model(model_path)
-    except CanonLoadError as error:
-        print(error.error.message, file=sys.stderr)
-        return 2
-    found = model.formula(slug)
-    if found is None:
-        print(f"the model has no formula {slug}", file=sys.stderr)
-        return 2
-    print(interface_fingerprint(found))
-    return 0
-
-
-if __name__ == "__main__":
-    sys.exit(main())

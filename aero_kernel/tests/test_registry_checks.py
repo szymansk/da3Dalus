@@ -8,7 +8,6 @@ import pytest
 from aero_kernel import registry as registry_module
 from aero_kernel.registry import CheckResult, Registry, RegistryError
 
-FINGERPRINT = "sha256:" + "0" * 64
 HELD = CheckResult(state="held", message="ok")
 
 
@@ -105,7 +104,7 @@ def test_freeze_blocks_every_registration() -> None:
     registry.freeze()
     assert registry.frozen
     for register in (
-        lambda: registry.formula("a", interface=FINGERPRINT),
+        lambda: registry.formula("a"),
         lambda: registry.precondition("a", "b"),
         lambda: registry.postcondition("a", "b"),
     ):
@@ -119,7 +118,7 @@ def test_freeze_logs_the_counts_once(caplog: pytest.LogCaptureFixture) -> None:
     async def impl(x: Mapping[str, float], ctx: object) -> dict[str, float]:
         return {}
 
-    registry.formula("stall-speed", interface=FINGERPRINT)(impl)
+    registry.formula("stall-speed")(impl)
     registry.precondition("stall-speed", "rho-ok")(pre)
     registry.postcondition("stall-speed", "rho-ok")(post)
     registry.postcondition("stall-speed", "other-ok")(post)
@@ -134,7 +133,7 @@ def test_freeze_logs_the_counts_once(caplog: pytest.LogCaptureFixture) -> None:
 def test_registrations_are_logged_at_debug(caplog: pytest.LogCaptureFixture) -> None:
     registry = Registry()
     with caplog.at_level(logging.DEBUG, logger="aero_kernel.registry"):
-        registry.formula("stall-speed", interface=FINGERPRINT)(_impl)
+        registry.formula("stall-speed")(_impl)
         registry.precondition("stall-speed", "rho-ok")(pre)
         registry.postcondition("stall-speed", "rho-ok")(post)
     assert [(r.levelno, r.getMessage()) for r in caplog.records] == [
@@ -159,7 +158,7 @@ async def _impl(x: Mapping[str, float], ctx: object) -> dict[str, float]:
 def test_a_decorator_made_before_the_freeze_cannot_register_after_it() -> None:
     registry = Registry()
     decorators: list[Callable[..., object]] = [
-        registry.formula("stall-speed", interface=FINGERPRINT),
+        registry.formula("stall-speed"),
         registry.precondition("stall-speed", "rho-ok"),
         registry.postcondition("stall-speed", "rho-ok"),
     ]

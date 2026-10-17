@@ -9,7 +9,6 @@ from aero_kernel.registry import (
     Registry,
     RegistryFinding,
     TraceabilityReport,
-    interface_fingerprint,
 )
 
 HELD = CheckResult(state="held", message="ok")
@@ -36,12 +35,6 @@ async def impl(x: Mapping[str, float], ctx: object) -> dict[str, float]:
     return {}
 
 
-def fingerprint_of(model: CanonModel, slug: str) -> str:
-    formula = model.formula(slug)
-    assert formula is not None
-    return interface_fingerprint(formula)
-
-
 def codes(report: TraceabilityReport) -> list[tuple[str, str, str | None]]:
     return [(f.kind, f.slug, f.check_id) for f in report.findings]
 
@@ -60,7 +53,7 @@ def test_a_matching_registry_is_ok_and_lists_the_rest_as_not_implemented(
     flight_canon: CanonModel,
 ) -> None:
     registry = Registry()
-    registry.formula("stall-speed", interface=fingerprint_of(flight_canon, "stall-speed"))(impl)
+    registry.formula("stall-speed")(impl)
     registry.precondition("stall-speed", "rho_at_evaluation_altitude")(pre)
     registry.postcondition("stall-speed", "optimum_at_first_cl_peak")(post)
     registry.postcondition("butterfly-approach", "optimum_at_first_cl_peak")(post)
@@ -71,7 +64,7 @@ def test_a_matching_registry_is_ok_and_lists_the_rest_as_not_implemented(
 
 def test_a_slug_the_model_does_not_have_is_unknown(flight_canon: CanonModel) -> None:
     registry = Registry()
-    registry.formula("no-such-formula", interface="sha256:" + "1" * 64)(impl)
+    registry.formula("no-such-formula")(impl)
     registry.precondition("no-such-check", "a")(pre)
     registry.postcondition("other:stall-speed", "a")(post)
     report = registry.check_traceability(flight_canon)
@@ -128,14 +121,6 @@ def test_a_check_registered_on_the_wrong_side_is_a_kind_mismatch(
     assert codes(report) == [("check_kind_mismatch", "calc:stall-speed", check_id)]
     assert "precondition" in report.findings[0].message
     assert "postcondition" in report.findings[0].message
-
-
-def test_a_changed_interface_is_a_stale_implementation(flight_canon: CanonModel) -> None:
-    registry = Registry()
-    registry.formula("stall-speed", interface=fingerprint_of(flight_canon, "neutral-point"))(impl)
-    report = registry.check_traceability(flight_canon)
-    assert codes(report) == [("stale_implementation", "calc:stall-speed", None)]
-    assert "calc:stall-speed" not in report.not_implemented
 
 
 def test_findings_are_sorted_by_slug_then_kind_then_check_id(flight_canon: CanonModel) -> None:
