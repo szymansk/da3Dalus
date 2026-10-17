@@ -6,7 +6,7 @@ they are canon-model types, not input types.
 """
 
 from collections.abc import Iterator, Mapping
-from typing import Annotated, Literal, Self, TypedDict
+from typing import Annotated, Literal, NamedTuple, Self, TypedDict
 
 from aero_kernel.canonical import sha256_of
 from aero_kernel.errors import (
@@ -31,6 +31,7 @@ from pydantic_core import PydanticCustomError
 __all__ = [
     "BINDING_TAGS",
     "DEFAULT_NAMESPACE",
+    "SOURCE_COMMIT_REGEX",
     "Application",
     "Binding",
     "CanonModel",
@@ -54,6 +55,9 @@ __all__ = [
 
 # Text the canon must state (a symbol, a source, a regime): at least one non-blank character.
 NonBlank = Annotated[str, StringConstraints(min_length=1, pattern=r"\S")]
+
+# The one definition of a source commit: 40 lower-case hex digits (the importer pre-checks with it).
+SOURCE_COMMIT_REGEX = r"[0-9a-f]{40}"
 
 # Numbers in the model are finite (a model with NaN would not survive its JSON form).
 FiniteNumber = Annotated[float, Field(strict=True, allow_inf_nan=False)]
@@ -229,6 +233,10 @@ class Application(BaseModel):
         produce: Quantity per output parameter; ``None`` = the application does not expose it.
         when: Condition over the geometry; ``None`` = always.
         given: Quantities that must be supplied for the application to exist; ``None`` = always.
+            Each must be bound by the application, but ``Formula`` checks that, not this type: an
+            ``Application`` alone does not guarantee ``given`` is a subset of its bindings. The
+            check runs after the bindings and the field rules, so a ``given`` fault of a formula
+            that has other faults is deferred to the next run; it is never hidden.
     """
 
     model_config = _MODEL_CONFIG
@@ -468,6 +476,10 @@ class CanonProblem(TypedDict):
         section: ``formulas`` or ``defaults``.
         slug: Slug of the entry.
         field: Field of the entry, e.g. ``applications[1].bind.m``; empty for the whole entry.
+        side: ``inputs`` or ``outputs`` for a formula-level default, ``bind`` or ``produce`` for an
+            application's binding; ``None`` elsewhere.
+        application: Index of the application for ``bind`` and ``produce``; ``None`` elsewhere.
+        parameter: The parameter for ``side``; ``None`` elsewhere.
         text: What is wrong.
     """
 
@@ -475,6 +487,9 @@ class CanonProblem(TypedDict):
     section: Literal["formulas", "defaults"]
     slug: str
     field: str
+    side: Literal["inputs", "outputs", "bind", "produce"] | None
+    application: int | None
+    parameter: str | None
     text: str
 
 
@@ -493,27 +508,42 @@ def _canon_error(problems: list[CanonProblem]) -> PydanticCustomError:
     )
 
 
-def _references(formula: Formula) -> Iterator[tuple[str, str, str]]:
-    """Yield every ``(field, kind, reference)`` the formula holds: ``quantity``, ``given`` or ``embed``."""
-    for side, parameters in (("inputs", formula.inputs), ("outputs", formula.outputs)):
-        for name, default in parameters.items():
-            if default is not None:
-                yield f"{side}.{name}", "quantity", default
+class _Reference(NamedTuple):
+    """One reference a formula holds, with where it is written."""
+
+    field: str
+    kind: str
+    reference: str
+    side: Literal["inputs", "outputs", "bind", "produce"] | None = None
+    application: int | None = None
+    parameter: str | None = None
+
+
+def _references(formula: Formula) -> Iterator[_Reference]:
+    """Yield every reference the formula holds: ``quantity``, ``given`` or ``embed``."""
+    for name, default in formula.inputs.items():
+        if default is not None:
+            yield _Reference(f"inputs.{name}", "quantity", default, "inputs", None, name)
+    for name, default in formula.outputs.items():
+        if default is not None:
+            yield _Reference(f"outputs.{name}", "quantity", default, "outputs", None, name)
     for index, application in enumerate(formula.applications):
         where = f"applications[{index}]"
         for name, binding in application.bind.items():
             if isinstance(binding, str):
-                yield f"{where}.bind.{name}", "quantity", binding
+                yield _Reference(f"{where}.bind.{name}", "quantity", binding, "bind", index, name)
         for name, produced in application.produce.items():
             if produced is not None:
-                yield f"{where}.produce.{name}", "quantity", produced
+                yield _Reference(
+                    f"{where}.produce.{name}", "quantity", produced, "produce", index, name
+                )
         for position, slug in enumerate(application.given or ()):
-            yield f"{where}.given[{position}]", "given", slug
+            yield _Reference(f"{where}.given[{position}]", "given", slug)
     for position, slug in enumerate(formula.variables):
-        yield f"variables[{position}]", "quantity", slug
+        yield _Reference(f"variables[{position}]", "quantity", slug)
     for name, items in (("embeds", formula.embeds), ("embeds_closure", formula.embeds_closure)):
         for position, item in enumerate(items):
-            yield f"{name}[{position}]", "embed", item
+            yield _Reference(f"{name}[{position}]", "embed", item)
 
 
 class CanonModel(BaseModel):
@@ -531,7 +561,7 @@ class CanonModel(BaseModel):
 
     schema_version: Literal[1]
     content_hash: Annotated[str, StringConstraints(pattern=r"^sha256:[0-9a-f]{64}$")]
-    source_commit: Annotated[str, StringConstraints(pattern=r"^[0-9a-f]{40}$")]
+    source_commit: Annotated[str, _anchored(SOURCE_COMMIT_REGEX)]
     importer_version: str = Field(min_length=1)
     namespaces: Annotated[dict[NamespaceKey, Namespace], Field(min_length=1)]
 
@@ -621,7 +651,14 @@ class CanonModel(BaseModel):
                 if text is not None:
                     problems.append(
                         CanonProblem(
-                            namespace=namespace, section="defaults", slug=slug, field="", text=text
+                            namespace=namespace,
+                            section="defaults",
+                            slug=slug,
+                            field="",
+                            side=None,
+                            application=None,
+                            parameter=None,
+                            text=text,
                         )
                     )
         if problems:
@@ -634,10 +671,11 @@ class CanonModel(BaseModel):
         problems: list[CanonProblem] = []
         for namespace, content in self.namespaces.items():
             for slug, formula in content.formulas.items():
-                for field, kind, reference in _references(formula):
-                    if kind == "embed":
+                for found in _references(formula):
+                    reference = found.reference
+                    if found.kind == "embed":
                         text = self._check_embed(reference)
-                    elif kind == "given":
+                    elif found.kind == "given":
                         text = self._check_given(reference)
                     else:
                         text = None if self.quantity(reference) else f"unknown quantity {reference}"
@@ -647,7 +685,10 @@ class CanonModel(BaseModel):
                                 namespace=namespace,
                                 section="formulas",
                                 slug=slug,
-                                field=field,
+                                field=found.field,
+                                side=found.side,
+                                application=found.application,
+                                parameter=found.parameter,
                                 text=text,
                             )
                         )

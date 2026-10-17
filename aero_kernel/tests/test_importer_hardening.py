@@ -397,7 +397,8 @@ def self_embedding(tmp_path: Path) -> ImportResult:
 
 
 def test_a_self_embed_terminates_with_a_finite_sorted_closure(tmp_path: Path) -> None:
-    model = self_embedding(tmp_path).model
+    with time_limit(20):
+        model = self_embedding(tmp_path).model
     assert model is not None
     outer = model.formula("outer")
     assert outer is not None
@@ -409,7 +410,8 @@ def test_a_cycle_between_two_formulas_terminates_with_a_finite_sorted_closure(
 ) -> None:
     one = MINI_CANON["formulas/outer.md"].replace("embeds: [weigh-twice]", "embeds: [weigh-twice]")
     two = MINI_CANON[TWICE].replace("embeds: [weight-from-mass, weighing.clean]", "embeds: [outer]")
-    model = run(tmp_path, {"formulas/outer.md": one, TWICE: two}).model
+    with time_limit(20):
+        model = run(tmp_path, {"formulas/outer.md": one, TWICE: two}).model
     assert model is not None
     outer, twice = model.formula("outer"), model.formula("weigh-twice")
     assert outer is not None
@@ -771,3 +773,123 @@ def test_a_deep_diamond_chain_closes_in_linear_time(tmp_path: Path) -> None:
     assert (
         len(first.embeds_closure) == 3 * depth
     )  # b<i>, c<i> and a<i+1> for each level... deduplicated
+
+
+# --- S3 amendment 4 ---------------------------------------------------------------------------------------------
+
+
+def test_an_unknown_output_default_is_reported_once_at_outputs(tmp_path: Path) -> None:
+    result = run(tmp_path, mutate(FROM_MASS, "outputs: {w: weight}", "outputs: {w: nothing}"))
+    assert shown(result) == [f"{FROM_MASS}: outputs.w: unknown quantity calc:nothing"]
+
+
+@pytest.mark.parametrize("index", [0, 1])
+def test_an_application_override_of_an_unknown_quantity_is_still_reported(
+    tmp_path: Path, index: int
+) -> None:
+    text = MINI_CANON[WEIGHING].replace("    given: [aircraft-mass]\n", "")
+    marker = ("  - id: clean\n", "  - id: flapped\n")[index]
+    text = text.replace(marker, f"{marker}    bind: {{m: nothing}}\n" if index == 0 else marker)
+    if index == 1:
+        text = text.replace(
+            "bind: {g: {const: 9.81, source: test source}}",
+            "bind: {g: {const: 9.81, source: test source}, m: nothing}",
+        )
+    assert shown(run(tmp_path, {WEIGHING: text})) == [
+        f"{WEIGHING}: applications[{index}].bind.m: unknown quantity calc:nothing"
+    ]
+
+
+def test_an_unknown_quantity_in_a_produce_override_names_the_application_and_parameter(
+    tmp_path: Path,
+) -> None:
+    result = run(
+        tmp_path, mutate(WEIGHING, "produce: {w: weight-flapped}", "produce: {w: nothing}")
+    )
+    assert shown(result) == [
+        f"{WEIGHING}: applications[1].produce.w: unknown quantity calc:nothing"
+    ]
+
+
+def test_an_unknown_variable_names_its_position(tmp_path: Path) -> None:
+    result = run(tmp_path, mutate(TWICE, "variables: [aircraft-mass]", "variables: [nothing]"))
+    assert shown(result) == [f"{TWICE}: variables[0]: unknown quantity calc:nothing"]
+
+
+@pytest.mark.parametrize(
+    "commit", ["A" * 40, "a" * 39, "a" * 41, "x" + "a" * 40, "a" * 40 + "x", "a" * 40 + "\n"]
+)
+def test_a_malformed_commit_is_exactly_one_finding(tmp_path: Path, commit: str) -> None:
+    result = import_canon(write_canon(tmp_path), commit)
+    assert [(f.file, f.field) for f in result.findings] == [("command line", "source_commit")]
+    assert result.findings[0].message == (
+        f"{commit!r} is not a 40-character lower-case hex git commit"
+    )
+
+
+# 60 characters is the longest written value a finding repeats.
+@pytest.mark.parametrize(("letters", "named"), [(56, True), (57, False)])
+def test_the_value_suffix_stops_after_sixty_characters(
+    tmp_path: Path, letters: int, named: bool
+) -> None:
+    value = "a" * letters
+    assert len(repr([value])) == letters + 4
+    (finding,) = run(tmp_path, mutate(GRAVITY, "unit: m/s^2", f"unit: [{value}]")).findings
+    assert ("(got" in finding.message) is named
+
+
+def test_a_formula_called_bind_reports_its_binding_faults_at_the_right_place(
+    tmp_path: Path,
+) -> None:
+    quantity = MINI_CANON["quantities/weight.md"].replace("canon: weight", "canon: weight-bind")
+    text = (
+        MINI_CANON[FROM_MASS]
+        .replace("canon: weight-from-mass", "canon: bind")
+        .replace("outputs: {w: weight}", "outputs: {w: weight-bind}")
+        .replace(
+            "preconditions:",
+            "applications:\n  - id: only\n    bind: {g: {const: 9.81}}\npreconditions:",
+        )
+    )
+    result = run(tmp_path, {"formulas/bind.md": text, "quantities/weight-bind.md": quantity})
+    assert shown(result) == ["formulas/bind.md: applications[0].bind.g.source: Field required"]
+
+
+# --- S11, D1: a duplicate key inside a default names the right slug ----------------------------------------------
+
+DEFAULT_ENTRY = "  value: 9.8\n  unit: m/s^2\n  source: s\n  regime: r\n"
+
+
+def test_a_duplicate_in_the_second_default_names_the_second_slug(tmp_path: Path) -> None:
+    text = (
+        MINI_CANON["defaults.yaml"]
+        + "wing-area:\n  value: 1.0\n  value: 2.0\n  unit: m\n  source: s\n  regime: r\n"
+    )
+    assert shown(run(tmp_path, {"defaults.yaml": text})) == [
+        "defaults.yaml: wing-area.value: duplicate key 'value' (line 8)"
+    ]
+
+
+def test_a_duplicate_in_a_flow_style_default_names_the_slug(tmp_path: Path) -> None:
+    text = "gravity: {value: 1, value: 2, unit: m/s^2, source: s, regime: r}\n"
+    assert shown(run(tmp_path, {"defaults.yaml": text})) == [
+        "defaults.yaml: gravity.value: duplicate key 'value' (line 1)"
+    ]
+
+
+def test_a_quoted_slug_gives_no_quotes_in_the_field(tmp_path: Path) -> None:
+    text = '"gravity":\n  value: 1\n  value: 2\n  unit: m/s^2\n  source: s\n  regime: r\n'
+    assert shown(run(tmp_path, {"defaults.yaml": text})) == [
+        "defaults.yaml: gravity.value: duplicate key 'value' (line 3)"
+    ]
+
+
+def test_a_comment_line_between_does_not_mislead_the_slug(tmp_path: Path) -> None:
+    text = (
+        "other:\n"
+        + DEFAULT_ENTRY
+        + "# gravity:\ngravity:\n  value: 1\n  value: 2\n  unit: m/s^2\n  source: s\n  regime: r\n"
+    )
+    assert shown(run(tmp_path, {"defaults.yaml": text})) == [
+        "defaults.yaml: gravity.value: duplicate key 'value' (line 9)"
+    ]

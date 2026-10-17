@@ -1,7 +1,6 @@
 """The import pipeline: stages 1 to 3 over a canon directory, producing the texts to write."""
 
 import logging
-import re
 from collections.abc import Sequence
 from pathlib import Path
 
@@ -11,13 +10,12 @@ from aero_kernel.importer.findings import Finding
 from aero_kernel.importer.normalise import normalise
 from aero_kernel.importer.parse import parse_canon
 from aero_kernel.importer.report import model_text, report_text
+from aero_kernel.importer.source import commit_format_finding
 from pydantic import BaseModel, ConfigDict
 
 logger = logging.getLogger(__name__)
 
 __all__ = ["ImportResult", "import_canon"]
-
-_COMMIT = re.compile(r"[0-9a-f]{40}")
 
 
 class ImportResult(BaseModel):
@@ -55,14 +53,8 @@ def import_canon(
         The result; it holds either findings or the model and the texts to write.
     """
     findings: list[Finding] = list(source_findings)
-    if source_commit is not None and _COMMIT.fullmatch(source_commit) is None:
-        findings.append(
-            Finding(
-                file="command line",
-                field="source_commit",
-                message=f"{source_commit!r} is not a 40-character lower-case hex git commit",
-            )
-        )
+    if source_commit is not None and (malformed := commit_format_finding(source_commit)):
+        findings.append(malformed)
     if source_commit is None and not findings:
         findings.append(
             Finding(file="command line", field="source_commit", message="no source commit given")

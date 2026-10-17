@@ -312,3 +312,96 @@ def test_a_tree_is_not_a_commit(
     tree = git(root, "rev-parse", "HEAD^{tree}")
     assert run(canon, tmp_path / "out", "--source-commit", tree) == 1
     assert "not a commit of this repository" in capsys.readouterr().out
+
+
+# --- S3 amendment 4: S7, S9, S10 -----------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize("commit", ["A" * 40, "a" * 39, "a" * 41, "x" + "a" * 40, "a" * 40 + "x"])
+def test_a_malformed_commit_through_the_cli_is_one_finding_and_no_git_call(
+    repo: tuple[Path, Path],
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+    commit: str,
+) -> None:
+    canon, _ = repo
+    calls: list[list[str]] = []
+    real = subprocess.run
+
+    def spy(command: list[str], **kwargs: object) -> subprocess.CompletedProcess[str]:
+        calls.append(command)
+        return real(command, **kwargs)  # type: ignore[call-overload,no-any-return]
+
+    monkeypatch.setattr(subprocess, "run", spy)
+    assert run(canon, tmp_path / "out", "--source-commit", commit) == 1
+    assert calls == []
+    printed = capsys.readouterr().out.strip().splitlines()
+    assert printed == [
+        f"command line: source_commit: {commit!r} is not a 40-character lower-case hex git commit"
+    ]
+
+
+def test_the_commit_format_has_one_definition() -> None:
+    from aero_kernel.canon.model import SOURCE_COMMIT_REGEX
+    from aero_kernel.importer import pipeline, source
+
+    assert "[0-9a-f]{40}" not in (Path(pipeline.__file__).read_text(encoding="utf-8"))
+    assert "[0-9a-f]{40}" not in (Path(source.__file__).read_text(encoding="utf-8"))
+    assert SOURCE_COMMIT_REGEX == "[0-9a-f]{40}"
+
+
+@pytest.fixture
+def worktree_canon(tmp_path: Path) -> Path:
+    """A canon directory whose parent has a ``.git`` FILE, as in a git worktree."""
+    root = tmp_path / "worktree"
+    root.mkdir()
+    (root / ".git").write_text("gitdir: /elsewhere/.git/worktrees/w\n", encoding="utf-8")
+    return write_canon(root)
+
+
+def test_a_worktree_canon_with_git_unavailable_is_in_a_repository(
+    worktree_canon: Path,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    def no_git(*_: object, **__: object) -> None:
+        raise FileNotFoundError
+
+    monkeypatch.setattr(subprocess, "run", no_git)
+    assert run(worktree_canon, tmp_path / "out", "--source-commit", "a" * 40) == 1
+    assert "git is not available, but the canon is in a git repository" in capsys.readouterr().out
+
+
+def test_a_worktree_canon_with_a_failing_git_is_in_a_repository(
+    worktree_canon: Path,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    monkeypatch.setattr(
+        subprocess, "run", fake_run({"--is-inside-work-tree": completed(128, err="fatal: boom")})
+    )
+    assert run(worktree_canon, tmp_path / "out", "--source-commit", "a" * 40) == 1
+    assert (
+        "git rev-parse --is-inside-work-tree failed (exit 128): fatal: boom"
+        in capsys.readouterr().out
+    )
+
+
+def test_a_commit_git_does_not_know_names_the_cat_file_exit_code(
+    repo: tuple[Path, Path],
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    canon, _ = repo
+    monkeypatch.setattr(
+        subprocess, "run", fake_run({"cat-file": completed(128, err="fatal: Not a valid object")})
+    )
+    assert run(canon, tmp_path / "out", "--source-commit", "a" * 40) == 1
+    assert (
+        f"{'a' * 40} is not a commit of this repository (git cat-file exit 128)"
+        in capsys.readouterr().out
+    )

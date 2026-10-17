@@ -6,8 +6,6 @@ model into findings that name the canon file and field; it reads the structured 
 whole-model rules and never parses message text.
 """
 
-import re
-
 from aero_kernel.canon.model import (
     BINDING_TAGS,
     CanonModel,
@@ -65,11 +63,18 @@ def _message(entry: ErrorDetails) -> str:
 
 
 def _without_binding_tag(location: tuple[int | str, ...]) -> tuple[int | str, ...]:
-    """Drop the branch tag the model's ``Binding`` union puts after the parameter name."""
-    if "bind" in location:
-        tag = location.index("bind") + 2
-        if len(location) > tag and location[tag] in BINDING_TAGS:
-            return location[:tag] + location[tag + 1 :]
+    """Drop the branch tag the model's ``Binding`` union puts after the parameter name.
+
+    The tag has one fixed place: ``formulas / <slug> / applications / <i> / bind / <parameter> / tag``.
+    """
+    if (
+        len(location) > 6
+        and location[0] == "formulas"
+        and location[2] == "applications"
+        and location[4] == "bind"
+        and location[6] in BINDING_TAGS
+    ):
+        return location[:6] + location[7:]
     return location
 
 
@@ -98,20 +103,15 @@ def _copy_key(
     return None
 
 
-_COPY_SIDES = {"bind": "inputs", "produce": "outputs"}
-_COPY_FIELD = re.compile(r"applications\[\d+\]\.(bind|produce)\.(.+)")
+_DEFAULT_SIDE = {"bind": "inputs", "produce": "outputs"}
 
 
-def _is_merged_copy(problem: CanonProblem, written: set[tuple[str, str, str]]) -> bool:
+def _is_merged_copy(problem: CanonProblem, written: set[tuple[str, str, str, str]]) -> bool:
     """Whether an application-level problem merely repeats one of the formula's own defaults."""
-    copy = _COPY_FIELD.fullmatch(problem["field"])
-    if copy is None:
+    side, parameter = problem["side"], problem["parameter"]
+    if side not in _DEFAULT_SIDE or parameter is None:
         return False
-    return (
-        problem["slug"],
-        f"{_COPY_SIDES[copy.group(1)]}.{copy.group(2)}",
-        problem["text"],
-    ) in written
+    return (problem["slug"], _DEFAULT_SIDE[side], parameter, problem["text"]) in written
 
 
 def _problem_finding(problem: CanonProblem) -> Finding:
@@ -161,7 +161,11 @@ def findings_of(error: ValidationError) -> list[Finding]:
         context = entry.get("ctx")
         if entry["type"] == "canon_problems" and context is not None:
             problems: list[CanonProblem] = context["problems"]
-            written = {(p["slug"], p["field"], p["text"]) for p in problems}
+            written = {
+                (p["slug"], p["side"], p["parameter"], p["text"])
+                for p in problems
+                if p["side"] in ("inputs", "outputs") and p["parameter"] is not None
+            }
             findings.extend(
                 _problem_finding(problem)
                 for problem in problems

@@ -375,9 +375,16 @@ def test_unresolved_references_are_structured_problems_with_the_precise_field() 
             "section": "formulas",
             "slug": "weight-from-mass",
             "field": field,
+            "side": side,
+            "application": application,
+            "parameter": parameter,
             "text": "unknown quantity calc:ghost",
         }
-        for field in ("inputs.x", "applications[0].bind.x", "applications[0].given[0]")
+        for field, side, application, parameter in (
+            ("inputs.x", "inputs", None, "x"),
+            ("applications[0].bind.x", "bind", 0, "x"),
+            ("applications[0].given[0]", None, None, None),
+        )
     ]
 
 
@@ -391,6 +398,9 @@ def test_a_bad_default_is_a_structured_problem_of_the_defaults_section() -> None
             "section": "defaults",
             "slug": "ghost",
             "field": "",
+            "side": None,
+            "application": None,
+            "parameter": None,
             "text": "default of unknown quantity calc:ghost",
         }
     ]
@@ -430,6 +440,7 @@ def test_public_names_of_the_model_are_pinned() -> None:
     assert sorted(model.__all__) == sorted(
         [
             "BINDING_TAGS",
+            "SOURCE_COMMIT_REGEX",
             "DEFAULT_NAMESPACE",
             "Application",
             "Binding",
@@ -496,3 +507,43 @@ def test_source_commit_is_exactly_forty_hex_characters(commit: str) -> None:
     raw["source_commit"] = commit
     with pytest.raises(ValidationError):
         CanonModel.model_validate(raw)
+
+
+def test_an_unknown_embed_is_a_problem_of_the_embeds_field() -> None:
+    namespaces = embedding_namespaces()
+    formula = namespaces["calc"]["formulas"]["limit"]
+    formula["embeds"] = ["calc:ghost.default"]
+    formula["embeds_closure"] = ["calc:ghost.default"]
+    with pytest.raises(ValidationError) as raised:
+        build(namespaces)
+    fields = [problem["field"] for problem in problems_of(raised.value)]
+    assert fields == ["embeds[0]", "embeds_closure[0]"]
+
+
+def test_a_python_built_constant_binding_validates_without_warnings() -> None:
+    import warnings
+
+    from aero_kernel.canon.model import Application, ConstBinding
+
+    with warnings.catch_warnings():
+        warnings.simplefilter("error")
+        application = Application(
+            id="default",
+            bind={"m": ConstBinding(const=1.0, source="s")},
+            produce={},
+        )
+    assert application.bind["m"] == ConstBinding(const=1.0, source="s")
+
+
+def test_given_names_the_unbound_slug_only() -> None:
+    namespaces = with_given(base_namespaces())
+    formula = namespaces["calc"]["formulas"]["weight-from-mass"]
+    formula["applications"][0]["given"] = ["calc:aircraft-mass", "calc:gravity-ghost"]
+    namespaces["calc"]["quantities"]["gravity-ghost"] = dict(
+        namespaces["calc"]["quantities"]["gravity"]
+    )
+    with pytest.raises(ValidationError) as raised:
+        build(namespaces)
+    message = str(raised.value)
+    assert "given calc:gravity-ghost is not bound by the application" in message
+    assert "given calc:aircraft-mass is not bound" not in message

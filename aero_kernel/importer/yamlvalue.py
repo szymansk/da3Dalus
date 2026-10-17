@@ -49,18 +49,23 @@ class DuplicateKeyError(yaml.YAMLError):
     Attributes:
         key: The repeated key.
         line: Its line within the parsed text, counted from 1.
+        index: Character offset of the repeated key in the parsed text.
+        path: The keys of the mappings that contain the repeated key, outermost first.
     """
 
-    def __init__(self, key: object, line: int) -> None:
+    def __init__(self, key: object, line: int, index: int) -> None:
         """Create the error.
 
         Args:
             key: The repeated key.
             line: Its line within the parsed text, counted from 1.
+            index: Character offset of the repeated key in the parsed text.
         """
         super().__init__(f"duplicate key {key!r}")
         self.key = key
         self.line = line
+        self.index = index
+        self.path: tuple[str, ...] = ()
 
 
 class _UniqueKeyLoader(yaml.SafeLoader):
@@ -79,9 +84,29 @@ class _UniqueKeyLoader(yaml.SafeLoader):
             except TypeError:  # an unhashable key is reported by the base class
                 continue
             if repeated:
-                raise DuplicateKeyError(key, key_node.start_mark.line + 1)
+                raise DuplicateKeyError(
+                    key, key_node.start_mark.line + 1, key_node.start_mark.index
+                )
         # The base class returns dict[Hashable, Any]; the stages treat every value as ``object``.
         return cast("dict[object, object]", super().construct_mapping(node, deep))  # pyright: ignore[reportUnknownMemberType]
+
+
+def _trail_to(node: yaml.Node, index: int, trail: tuple[str, ...]) -> tuple[str, ...] | None:
+    """Return the keys leading to the mapping that holds the key written at ``index``."""
+    if isinstance(node, yaml.MappingNode):
+        for key_node, value_node in node.value:
+            if key_node.start_mark.index == index:
+                return trail
+            name = str(key_node.value) if isinstance(key_node, yaml.ScalarNode) else "?"
+            found = _trail_to(value_node, index, (*trail, name))
+            if found is not None:
+                return found
+    elif isinstance(node, yaml.SequenceNode):
+        for item in node.value:
+            found = _trail_to(item, index, trail)
+            if found is not None:
+                return found
+    return None
 
 
 def load_unique(text: str) -> object:
@@ -94,8 +119,18 @@ def load_unique(text: str) -> object:
         The parsed value.
 
     Raises:
-        DuplicateKeyError: If a mapping repeats a key.
+        DuplicateKeyError: If a mapping repeats a key; ``path`` names the mappings around it.
         yaml.YAMLError: If ``text`` is not valid YAML.
     """
-    # Subclass of SafeLoader: no arbitrary object construction.
-    return yaml.load(text, Loader=_UniqueKeyLoader)
+    try:
+        # Subclass of SafeLoader: no arbitrary object construction.
+        return yaml.load(text, Loader=_UniqueKeyLoader)
+    except DuplicateKeyError as error:
+        # Composing builds the node tree only; it constructs nothing and so repeats no check.
+        root = cast(
+            "yaml.Node | None",
+            yaml.compose(text, Loader=_UniqueKeyLoader),  # pyright: ignore[reportUnknownMemberType]
+        )
+        if root is not None:
+            error.path = _trail_to(root, error.index, ()) or ()
+        raise

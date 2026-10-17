@@ -345,21 +345,6 @@ def _keep_default(slug: str, value: object, parsed: ParsedCanon) -> None:
     parsed.defaults[slug] = {str(key): item for key, item in entry.items()}
 
 
-_TOP_LEVEL_KEY = re.compile(r"([^\s#][^:]*):")
-
-
-def _default_field(text: str, error: DuplicateKeyError) -> str:
-    """Name where a repeated key is: ``<slug>.<key>``, or the key itself at the top level."""
-    lines = text.splitlines()
-    if error.line - 1 < len(lines) and _TOP_LEVEL_KEY.match(lines[error.line - 1]):
-        return str(error.key)
-    for line in reversed(lines[: error.line - 1]):
-        top = _TOP_LEVEL_KEY.match(line)
-        if top is not None:
-            return f"{top.group(1)}.{error.key}"
-    return str(error.key)
-
-
 def _read_defaults(canon_dir: Path, parsed: ParsedCanon) -> None:
     """Read ``defaults.yaml``; an empty file or ``{}`` means no defaults, a missing file is a finding."""
     path = canon_dir / "defaults.yaml"
@@ -386,7 +371,7 @@ def _read_defaults(canon_dir: Path, parsed: ParsedCanon) -> None:
         parsed.findings.append(
             Finding(
                 file=file,
-                field=_default_field(text, exc),
+                field=".".join((*exc.path, str(exc.key))),
                 message=f"duplicate key {exc.key!r} (line {exc.line})",
             )
         )

@@ -10,11 +10,23 @@ import re
 import subprocess
 from pathlib import Path
 
+from aero_kernel.canon.model import SOURCE_COMMIT_REGEX
 from aero_kernel.importer.findings import Finding
 
-__all__ = ["resolve_source"]
+__all__ = ["commit_format_finding", "resolve_source"]
 
-_COMMIT = re.compile(r"[0-9a-f]{40}")
+_COMMIT = re.compile(SOURCE_COMMIT_REGEX)
+
+
+def commit_format_finding(commit: str) -> Finding | None:
+    """Return the finding for a commit that is not 40 lower-case hex digits, or ``None``."""
+    if _COMMIT.fullmatch(commit) is not None:
+        return None
+    return Finding(
+        file="command line",
+        field="source_commit",
+        message=f"{commit!r} is not a 40-character lower-case hex git commit",
+    )
 
 
 def _finding(message: str) -> Finding:
@@ -96,14 +108,8 @@ def resolve_source(canon_dir: Path, given: str | None) -> tuple[str | None, list
     Returns:
         The commit (``None`` if there is none) and the findings; with a finding nothing is written.
     """
-    if given is not None and _COMMIT.fullmatch(given) is None:
-        return None, [
-            Finding(
-                file="command line",
-                field="source_commit",
-                message=f"{given!r} is not a 40-character lower-case hex git commit",
-            )
-        ]
+    if given is not None and (malformed := commit_format_finding(given)) is not None:
+        return None, [malformed]
     inside = _git(canon_dir, "rev-parse", "--is-inside-work-tree")
     in_repository = _has_git_directory(canon_dir)
     if inside is None:
