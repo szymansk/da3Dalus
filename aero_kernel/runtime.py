@@ -239,8 +239,10 @@ class SolverRuntime:
         pool, self._pool = self._pool, None
         if pool is not None:
             await asyncio.to_thread(pool.shutdown, wait=True, cancel_futures=True)
-        # Every subprocess call has ended above and reaped its thread (or said it could not); a
-        # thread stuck on a descendant that left the process group must not block closing.
+        # Every subprocess call has ended above and reaped its thread (or said it could not).
+        # wait=False: a thread stuck in ``communicate`` on a descendant that left the process
+        # group does not block closing. It does block interpreter exit, though (concurrent.futures
+        # joins its threads in an atexit hook) until that descendant exits.
         self._threads.shutdown(wait=False, cancel_futures=True)
 
     def _check_open(self) -> None:
