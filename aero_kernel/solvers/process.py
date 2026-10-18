@@ -1,16 +1,18 @@
 """Async subprocess helper for external binaries such as AVL (ARCHITECTURE ch. 8.8, 8.10)."""
 
 import asyncio
+import concurrent.futures
 import contextlib
 import errno
 import logging
 import os
 import shutil
 import signal
+import subprocess
 import tempfile
+import time
 from collections.abc import Mapping, Sequence
 from pathlib import Path
-from typing import BinaryIO
 
 from aero_kernel.errors import ErrorCategory, FormulaError
 from pydantic import BaseModel, ConfigDict
@@ -65,18 +67,14 @@ def _is_refusal(error: BaseException) -> bool:
     )
 
 
-def _warn_start_failed(executable: str | Path) -> None:
-    """Tell the operator that a failed start may have left a child running (ch. 8.10, ADR 0020).
-
-    asyncio registers its child watcher after the spawn; if that fails, the start raises and no
-    pid reaches us, so the child cannot be killed. The failure itself is ``internal``.
-    """
-    logger.warning(
-        "process start failed; a child may have been left running (%s)", Path(executable).name
-    )
+# How long a cancelled run waits for the killed process to be reaped (``communicate`` returning in
+# its pool thread) before it gives up and tells the operator. A killed group is reaped within
+# milliseconds; only a descendant that left the group with a session of its own keeps the pipes
+# open and the thread blocked.
+_REAP_BOUND_S = 5.0
 
 
-def _kill_group(process: asyncio.subprocess.Process) -> None:
+def _kill_group(process: subprocess.Popen[bytes]) -> None:
     """Kill the process and everything it started (own session, see :func:`run_process`)."""
     with contextlib.suppress(ProcessLookupError):
         os.killpg(process.pid, signal.SIGKILL)
@@ -93,53 +91,24 @@ def _remove_directory(directory: Path) -> None:
         logger.warning("temp directory of external process not removed: %s", directory.name)
 
 
-async def _await_start(
-    start: asyncio.Future[asyncio.subprocess.Process],
-) -> asyncio.subprocess.Process | None:
-    """Wait for a process start to its end after a cancellation interrupted the caller.
+async def _reap(
+    pending: concurrent.futures.Future[tuple[bytes, bytes]],
+    process: subprocess.Popen[bytes],
+    tool: str,
+) -> None:
+    """Kill the process group, then wait, within a bound, for ``communicate`` to return.
 
-    ``create_subprocess_exec`` must not be cancelled half way: asyncio then kills only the direct
-    child and the caller never gets the process whose group it has to kill (GH #1188). With the
-    pipes created by :func:`run_process` itself asyncio has none to wait for, so the start
-    provably ends; it is awaited to its end here, shielded from further cancellations, which the
-    caller re-raises once the group is dead.
-
-    Args:
-        start: The start, running as a task of its own.
-
-    Returns:
-        The started process, or ``None`` if the start failed or was cancelled itself.
+    Cancellations that arrive during the wait are swallowed (the caller re-raises the original
+    one afterwards). Past the bound the thread is left to finish by itself and the operator is
+    told (ADR 0020).
     """
-    while not start.done():
+    _kill_group(process)
+    deadline = time.monotonic() + _REAP_BOUND_S
+    while not pending.done() and time.monotonic() < deadline:
         with contextlib.suppress(asyncio.CancelledError):
-            await asyncio.wait([start])
-    if start.cancelled() or start.exception() is not None:
-        return None
-    return start.result()
-
-
-async def _read_all(pipe: BinaryIO, close: list[asyncio.BaseTransport]) -> bytes:
-    """Read a pipe to EOF through asyncio's public pipe API; the transport is registered to close."""
-    loop = asyncio.get_running_loop()
-    reader = asyncio.StreamReader()
-    transport, _ = await loop.connect_read_pipe(lambda: asyncio.StreamReaderProtocol(reader), pipe)
-    close.append(transport)
-    return await reader.read()
-
-
-async def _feed(pipe: BinaryIO, data: bytes, close: list[asyncio.BaseTransport]) -> None:
-    """Write ``data`` to a pipe and close it; a child that stopped reading is not an error."""
-    loop = asyncio.get_running_loop()
-    protocol = asyncio.StreamReaderProtocol(asyncio.StreamReader())
-    transport, _ = await loop.connect_write_pipe(lambda: protocol, pipe)
-    close.append(transport)
-    writer = asyncio.StreamWriter(transport, protocol, None, loop)
-    with contextlib.suppress(BrokenPipeError, ConnectionResetError):
-        writer.write(data)
-        await writer.drain()
-    writer.close()
-    with contextlib.suppress(BrokenPipeError, ConnectionResetError):
-        await writer.wait_closed()
+            await asyncio.wait([asyncio.wrap_future(pending)], timeout=deadline - time.monotonic())
+    if not pending.done():
+        logger.warning("process not reaped (%s)", tool)
 
 
 async def run_process(
@@ -149,6 +118,7 @@ async def run_process(
     executable: str | Path,
     args: Sequence[str] = (),
     collect: Sequence[str] = (),
+    executor: concurrent.futures.Executor,
 ) -> ProcessRun:
     """Run an external binary in a fresh temp directory and return its output.
 
@@ -157,10 +127,11 @@ async def run_process(
     and everything it started, removes the directory and re-raises (Q17, ch. 8.10). Never blocks
     the event loop for the run itself.
 
-    The pipes of the child are created here (``os.pipe``) and read and written through
-    ``connect_read_pipe`` / ``connect_write_pipe``; every descriptor is closed in the ``finally``.
-    So a start that fails after the spawn leaks no descriptor and cannot hang, and a cancel
-    arriving during the start waits for it to end and then kills the group (GH #1188).
+    The process is started with ``subprocess.Popen`` on the calling thread and
+    ``Popen.communicate`` runs in a thread of ``executor``, so nothing of asyncio's subprocess
+    machinery (child watcher, pipe transports) is involved: cancelling every task of a loop
+    (``asyncio.run`` shutdown) cannot leave the run hanging (GH #1188). After a cancel the group
+    is killed and the run waits at most ``_REAP_BOUND_S`` for the thread to return.
 
     POSIX only (macOS, Linux and the Linux containers, ARCHITECTURE ch. 7): the process group is
     killed with ``os.killpg``, and there is no Windows fallback.
@@ -172,6 +143,8 @@ async def run_process(
         args: Its command-line arguments.
         collect: Names of output files to read back; files the tool did not write are absent
             from the result.
+        executor: The thread pool that runs ``communicate``; the runtime's own, never asyncio's
+            default executor.
 
     Returns:
         The exit code, the output streams and the collected files.
@@ -180,98 +153,47 @@ async def run_process(
         ValueError: If a file name is not a plain file name.
         FormulaError: ``tool_unavailable`` if the binary cannot be started because it does not
             exist, may not be executed or is not an executable format.
-        OSError: Any other failure to start the process (no file descriptors, no memory), and
-            ``RuntimeError`` or the like when asyncio's child-watcher registration fails after the
-            spawn: an internal defect of the environment, which the engine reports as
-            ``internal``. One ``WARNING`` then says that a child may have been left running, since
-            no pid reached the caller (ch. 8.10).
+        OSError: Any other failure to start the process (no file descriptors, no memory): an
+            internal defect of the environment, which the engine reports as ``internal``.
     """
     for name in (*files, *collect):
         _check_file_name(name)
     directory = Path(tempfile.mkdtemp(prefix="aero_kernel_"))
-    process: asyncio.subprocess.Process | None = None
-    # every descriptor of this run: wrapped at creation, so closing is idempotent and one place
-    owned: list[BinaryIO] = []
-    transports: list[asyncio.BaseTransport] = []
-
-    def pipe() -> tuple[BinaryIO, BinaryIO]:
-        read, write = os.pipe()
-        ends = (os.fdopen(read, "rb", buffering=0), os.fdopen(write, "wb", buffering=0))
-        owned.extend(ends)
-        return ends
-
+    process: subprocess.Popen[bytes] | None = None
+    pending: concurrent.futures.Future[tuple[bytes, bytes]] | None = None
     try:
         for name, content in files.items():
             data = content.encode() if isinstance(content, str) else content
             (directory / name).write_bytes(data)
-        stdin_read, stdin_write = pipe()
-        stdout_read, stdout_write = pipe()
-        stderr_read, stderr_write = pipe()
-        start = asyncio.ensure_future(
-            asyncio.create_subprocess_exec(
-                executable,
-                *args,
+        try:
+            process = subprocess.Popen(  # noqa: ASYNC220  # spawning is millisecond work, done on the loop thread by design (GH #1188)
+                [str(executable), *args],
+                stdin=subprocess.PIPE,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
                 cwd=directory,
-                stdin=stdin_read,
-                stdout=stdout_write,
-                stderr=stderr_write,
                 start_new_session=True,
             )
-        )
-        try:
-            # asyncio.wait never cancels what it waits on: a cancel during the start must not
-            # abort it (see _await_start). Unlike asyncio.shield it logs nothing (3.14) when the
-            # start then fails; start.result() re-raises the start's own exception below.
-            await asyncio.wait([start])
-            started = start.result()
-        except asyncio.CancelledError:
-            process = await _await_start(start)
-            if process is None and not start.cancelled():
-                failure = start.exception()
-                if failure is not None and not _is_refusal(failure):
-                    _warn_start_failed(executable)
-            raise
-        except Exception as error:
+        except OSError as error:
             if _is_refusal(error):
                 raise _unavailable(executable) from error
-            _warn_start_failed(executable)
-            raise  # the environment failed, not the binary: internal
-        process = started
-        # the child's ends are the child's now: closing ours is what lets the reads see EOF
-        for end in (stdin_read, stdout_write, stderr_write):
-            end.close()
-        try:
-            async with asyncio.TaskGroup() as group:
-                stdout_task = group.create_task(_read_all(stdout_read, transports))
-                stderr_task = group.create_task(_read_all(stderr_read, transports))
-                group.create_task(_feed(stdin_write, commands.encode(), transports))
-                returncode_task = group.create_task(process.wait())
-        except BaseExceptionGroup as failures:
-            if len(failures.exceptions) == 1:
-                only = failures.exceptions[0]
-                raise only from only.__cause__
-            raise
+            raise  # not Popen's own refusal of the binary: the environment failed (internal)
+        pending = executor.submit(process.communicate, commands.encode())
+        stdout, stderr = await asyncio.wrap_future(pending)
         outputs = {
             name: (directory / name).read_bytes()
             for name in collect
             if (directory / name).is_file()
         }
         return ProcessRun(
-            returncode=returncode_task.result(),
-            stdout=stdout_task.result().decode(errors="replace"),
-            stderr=stderr_task.result().decode(errors="replace"),
+            returncode=process.returncode,
+            stdout=stdout.decode(errors="replace"),
+            stderr=stderr.decode(errors="replace"),
             files=outputs,
         )
     finally:
         # Cancelled, timed out or finished: the process is gone and the directory removed before
         # the exception continues. Kill first so rmtree never races a writer.
-        if process is not None and process.returncode is None:
-            _kill_group(process)
-            logger.debug("killed external process %s", process.pid)
-        for transport in transports:
-            transport.close()
-        for end in owned:
-            end.close()
+        if process is not None and pending is not None and process.returncode is None:
+            await _reap(pending, process, Path(executable).name)
         _remove_directory(directory)
-        if process is not None and process.returncode is None:
-            await process.wait()

@@ -16,7 +16,7 @@ import os
 import pickle
 import time
 from collections.abc import AsyncGenerator, Callable, Mapping, Sequence
-from concurrent.futures import ProcessPoolExecutor
+from concurrent.futures import ProcessPoolExecutor, ThreadPoolExecutor
 from concurrent.futures.process import BrokenProcessPool
 from dataclasses import dataclass
 from pathlib import Path
@@ -200,6 +200,12 @@ class SolverRuntime:
         self.max_concurrency = max_concurrency or os.cpu_count() or 1
         self._max_workers = max_workers
         self._pool: ProcessPoolExecutor | None = None
+        # The threads that run ``Popen.communicate`` (one per concurrent subprocess, so the limit
+        # above is also their size). Owned like the process pool, never asyncio's default executor;
+        # threads start on first use.
+        self._threads = ThreadPoolExecutor(
+            max_workers=self.max_concurrency, thread_name_prefix="aero_kernel_process"
+        )
         self._slots: asyncio.Semaphore | None = None
         self._worker_slots: asyncio.Semaphore | None = None
         self._closed = False
@@ -233,6 +239,9 @@ class SolverRuntime:
         pool, self._pool = self._pool, None
         if pool is not None:
             await asyncio.to_thread(pool.shutdown, wait=True, cancel_futures=True)
+        # Every subprocess call has ended above and reaped its thread (or said it could not); a
+        # thread stuck on a descendant that left the process group must not block closing.
+        self._threads.shutdown(wait=False, cancel_futures=True)
 
     def _check_open(self) -> None:
         """Raise ``RuntimeError`` once the runtime is closed."""
@@ -353,7 +362,14 @@ class SolverRuntime:
         async with self._slot_limit():
             self._check_open()
             task = asyncio.ensure_future(
-                run_process(files, commands, executable=executable, args=args, collect=collect)
+                run_process(
+                    files,
+                    commands,
+                    executable=executable,
+                    args=args,
+                    collect=collect,
+                    executor=self._threads,
+                )
             )
             self._process_tasks.add(task)
             task.add_done_callback(self._process_tasks.discard)

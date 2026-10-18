@@ -1,7 +1,7 @@
 """The async subprocess helper (ch. 8.8, 8.10; Q17, Q19)."""
 
 import asyncio
-import contextlib
+import concurrent.futures
 import errno
 import gc
 import logging
@@ -12,15 +12,38 @@ import subprocess
 import sys
 import tempfile
 import textwrap
+import threading
 import time
-from asyncio import base_subprocess, unix_events
+from collections.abc import Mapping, Sequence
 from pathlib import Path
+from typing import NoReturn
 
 import pytest
 from aero_kernel.errors import ErrorCategory, FormulaError
-from aero_kernel.solvers.process import run_process
+from aero_kernel.runtime import SolverRuntime
+from aero_kernel.solvers import process as process_module
+from aero_kernel.solvers.process import ProcessRun
+from aero_kernel.solvers.process import run_process as _run_process
 
 pytestmark = pytest.mark.asyncio
+
+# The pool that runs ``communicate``: the runtime's own in production, one per test module here.
+# Threads start on first use, so creating it at import costs nothing.
+POOL = concurrent.futures.ThreadPoolExecutor(max_workers=16, thread_name_prefix="test_process")
+
+
+async def run_process(
+    files: Mapping[str, str | bytes],
+    commands: str,
+    *,
+    executable: str | Path,
+    args: Sequence[str] = (),
+    collect: Sequence[str] = (),
+) -> ProcessRun:
+    """``run_process`` on the test pool."""
+    return await _run_process(
+        files, commands, executable=executable, args=args, collect=collect, executor=POOL
+    )
 
 
 # A fake external command: echoes stdin, writes an output file, exits with the code in argv[1].
@@ -171,260 +194,6 @@ async def test_cancel_kills_the_process_group_and_removes_the_temp_dir(tmp_path:
     assert await _wait_dead(grandchild)
 
 
-@pytest.fixture
-def held_start(monkeypatch: pytest.MonkeyPatch) -> asyncio.Event:
-    """Hold every subprocess start open after the child exists, until the event is set.
-
-    The child is already running and writing, but ``create_subprocess_exec`` has not returned:
-    the window in which a loaded machine lets a cancel arrive (GH #1188). Deterministic, so the
-    test does not depend on CPU starvation.
-    """
-    gate = asyncio.Event()
-    original = unix_events._UnixSubprocessTransport._connect_pipes  # type: ignore[attr-defined]  # asyncio internal, patched to hold the start open
-
-    async def held(self: object, waiter: asyncio.Future[None]) -> None:
-        await gate.wait()
-        await original(self, waiter)  # type: ignore[arg-type]  # same call as asyncio's own
-
-    monkeypatch.setattr(unix_events._UnixSubprocessTransport, "_connect_pipes", held)  # type: ignore[attr-defined]  # as above
-    return gate
-
-
-async def test_cancel_during_the_start_kills_the_group_and_removes_the_temp_dir(
-    tmp_path: Path, held_start: asyncio.Event
-) -> None:
-    """GH #1188: the cancel arrives while ``create_subprocess_exec`` is still waiting.
-
-    ``process`` is not assigned yet then, so the group was neither killed nor the cancel prompt:
-    asyncio itself kills only the direct child and waits for the pipes the grandchild holds open.
-    """
-    task, pid, grandchild, cwd = await _start_sleeper(tmp_path)
-    assert _is_dir(cwd)
-    task.cancel()
-    held_start.set()  # the start may now finish, but the cancel is already on its way
-    with pytest.raises(asyncio.CancelledError):
-        async with asyncio.timeout(5):
-            await task
-    assert not _is_dir(cwd)
-    assert await _wait_dead(pid)
-    assert await _wait_dead(grandchild)
-
-
-async def test_a_second_cancel_while_the_start_is_settling_changes_nothing(
-    tmp_path: Path, held_start: asyncio.Event
-) -> None:
-    task, pid, grandchild, cwd = await _start_sleeper(tmp_path)
-    task.cancel()
-    await asyncio.sleep(0.05)  # the task is now waiting for the held start to end
-    task.cancel()
-    held_start.set()
-    with pytest.raises(asyncio.CancelledError):
-        async with asyncio.timeout(5):
-            await task
-    assert not _is_dir(cwd)
-    assert await _wait_dead(pid)
-    assert await _wait_dead(grandchild)
-
-
-async def test_a_budget_that_expires_during_the_start_kills_the_group(
-    tmp_path: Path, held_start: asyncio.Event
-) -> None:
-    sleeper = tmp_path / "sleeper.py"
-    sleeper.write_text(SLEEP_SCRIPT)
-    marker = tmp_path / "marker.txt"
-    asyncio.get_running_loop().call_later(0.5, held_start.set)
-    budget = asyncio.timeout(0.2)
-    with pytest.raises(TimeoutError):
-        async with budget:
-            await run_process({}, "", executable=sys.executable, args=[str(sleeper), str(marker)])
-    assert budget.expired()
-    pid, grandchild, cwd = _read_marker(marker)
-    assert not _is_dir(cwd)
-    assert await _wait_dead(pid)
-    assert await _wait_dead(grandchild)
-
-
-async def test_a_cancel_before_a_failing_start_ends_is_still_a_cancel_and_leaves_no_directory(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    scratch = tmp_path / "scratch"
-    scratch.mkdir()
-    monkeypatch.setattr(tempfile, "tempdir", str(scratch))
-    task = asyncio.create_task(run_process({}, "", executable=str(tmp_path / "no_such_tool")))
-    await asyncio.sleep(0)  # the task waits for the start; the start has not run yet
-    task.cancel()
-    with pytest.raises(asyncio.CancelledError):
-        await task
-    assert _entries(scratch) == []
-
-
-async def test_a_start_that_fails_without_a_cancel_is_not_tool_unavailable(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    scratch = tmp_path / "scratch"
-    scratch.mkdir()
-    monkeypatch.setattr(tempfile, "tempdir", str(scratch))
-
-    async def refuse(*args: object, **kwargs: object) -> object:
-        raise OSError(errno.EMFILE, "Too many open files")
-
-    monkeypatch.setattr(asyncio, "create_subprocess_exec", refuse)
-    gc.disable()  # the count below must hold WITHOUT a collection
-    try:
-        before = _open_descriptors()
-        for _ in range(5):
-            with pytest.raises(OSError, match="Too many open files") as caught:
-                await run_process({}, "", executable=sys.executable)
-            assert not isinstance(caught.value, FormulaError)
-            assert caught.value.errno == errno.EMFILE
-        assert _open_descriptors() == before
-    finally:
-        gc.enable()
-    assert _entries(scratch) == []
-
-
-START_FAILED_WARNING = "process start failed; a child may have been left running (python-tool)"
-
-
-async def test_a_start_that_raises_something_else_is_internal_and_warns(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
-) -> None:
-    """E.g. asyncio's child-watcher registration fails after the spawn: no pid, a child may run."""
-
-    async def broken(*args: object, **kwargs: object) -> object:
-        msg = "can't start new thread"
-        raise RuntimeError(msg)
-
-    tool = tmp_path / "python-tool"
-    monkeypatch.setattr(asyncio, "create_subprocess_exec", broken)
-    with (
-        caplog.at_level(logging.DEBUG, logger="aero_kernel"),
-        pytest.raises(RuntimeError, match="can't start new thread"),
-    ):
-        async with asyncio.timeout(5):
-            await run_process({}, "", executable=tool)
-    (record,) = [r for r in caplog.records if r.levelno >= logging.WARNING]
-    assert record.getMessage() == START_FAILED_WARNING
-    assert str(tmp_path) not in record.getMessage()
-
-
-async def test_a_start_error_that_is_not_the_binarys_refusal_warns_too(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
-) -> None:
-    async def refuse(*args: object, **kwargs: object) -> object:
-        raise OSError(errno.EMFILE, "Too many open files")
-
-    monkeypatch.setattr(asyncio, "create_subprocess_exec", refuse)
-    with (
-        caplog.at_level(logging.DEBUG, logger="aero_kernel"),
-        pytest.raises(OSError, match="Too many open files"),
-    ):
-        await run_process({}, "", executable=tmp_path / "python-tool")
-    assert [r.getMessage() for r in caplog.records if r.levelno >= logging.WARNING] == [
-        START_FAILED_WARNING
-    ]
-
-
-async def test_a_cancel_followed_by_a_failing_start_still_warns_and_stays_a_cancel(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
-) -> None:
-    release = asyncio.Event()
-
-    async def late_failure(*args: object, **kwargs: object) -> object:
-        await release.wait()
-        msg = "can't start new thread"
-        raise RuntimeError(msg)
-
-    monkeypatch.setattr(asyncio, "create_subprocess_exec", late_failure)
-    task = asyncio.create_task(run_process({}, "", executable=tmp_path / "python-tool"))
-    await asyncio.sleep(0.05)
-    with caplog.at_level(logging.DEBUG, logger="aero_kernel"):
-        task.cancel()
-        await asyncio.sleep(0.05)
-        release.set()
-        with pytest.raises(asyncio.CancelledError):
-            async with asyncio.timeout(3):
-                await task
-    assert [r.getMessage() for r in caplog.records if r.levelno >= logging.WARNING] == [
-        START_FAILED_WARNING
-    ]
-    # an expected outcome is no ERROR: asyncio.shield on 3.14 would log "exception in shielded future"
-    assert [r for r in caplog.records if r.levelno >= logging.ERROR] == []
-
-
-async def test_the_binarys_own_refusal_logs_no_warning(
-    tmp_path: Path, caplog: pytest.LogCaptureFixture
-) -> None:
-    with caplog.at_level(logging.DEBUG, logger="aero_kernel"), pytest.raises(FormulaError):
-        await run_process({}, "", executable=tmp_path / "no_such_tool")
-    assert [r for r in caplog.records if r.levelno >= logging.WARNING] == []
-
-
-@pytest.mark.skipif(
-    not hasattr(unix_events, "ThreadedChildWatcher") or sys.version_info >= (3, 14),
-    reason="the child-watcher registration only exists before Python 3.14",
-)
-async def test_a_failing_child_watcher_registration_does_not_hang_and_warns(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
-) -> None:
-    spawned: list[int] = []
-
-    def failing(self: object, pid: int, callback: object, *args: object) -> None:
-        spawned.append(pid)
-        msg = "can't start new thread"
-        raise RuntimeError(msg)
-
-    monkeypatch.setattr(unix_events.ThreadedChildWatcher, "add_child_handler", failing)
-    tool = tmp_path / "python-tool"
-    tool.symlink_to(sys.executable)
-    try:
-        with (
-            caplog.at_level(logging.DEBUG, logger="aero_kernel"),
-            pytest.raises(RuntimeError, match="can't start new thread"),
-        ):
-            async with asyncio.timeout(5):
-                await run_process(
-                    {}, "", executable=tool, args=["-c", "import time; time.sleep(20)"]
-                )
-        assert [r.getMessage() for r in caplog.records if r.levelno >= logging.WARNING] == [
-            START_FAILED_WARNING
-        ]
-        assert len(spawned) == 1  # the child exists and nobody holds its pid: the warning says so
-    finally:
-        for pid in spawned:
-            with contextlib.suppress(ProcessLookupError):
-                os.killpg(pid, signal.SIGKILL)
-            _finish_orphan(pid)
-
-
-async def test_a_single_failure_of_the_run_keeps_its_chained_cause(
-    script: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    cause = ValueError("the underlying cause")
-
-    async def broken(self: asyncio.AbstractEventLoop, factory: object, pipe: object) -> object:
-        try:
-            raise cause
-        except ValueError as inner:
-            msg = "pipe failed"
-            raise OSError(errno.EMFILE, msg) from inner
-
-    loop_type = type(asyncio.get_running_loop())
-    original = loop_type.connect_read_pipe
-    calls: list[int] = []
-
-    async def first_only(self: asyncio.AbstractEventLoop, factory: object, pipe: object) -> object:
-        calls.append(1)
-        if len(calls) == 1:
-            return await broken(self, factory, pipe)
-        return await original(self, factory, pipe)  # type: ignore[arg-type]  # same call as run_process makes
-
-    monkeypatch.setattr(loop_type, "connect_read_pipe", first_only)
-    with pytest.raises(OSError, match="pipe failed") as caught:
-        await run_process({}, "", executable=sys.executable, args=[str(script), "0"])
-    assert caught.value.__cause__ is cause
-
-
 async def test_a_binary_that_may_not_run_is_tool_unavailable(tmp_path: Path) -> None:
     plain = tmp_path / "plain.txt"
     plain.write_text("not executable")
@@ -449,73 +218,9 @@ async def test_a_binary_in_no_executable_format_is_tool_unavailable(tmp_path: Pa
     assert cause.errno == errno.ENOEXEC
 
 
-async def test_a_start_cancelled_with_its_caller_leaves_a_plain_cancel(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    """Loop shutdown cancels every task, the start included: nothing was started."""
-    scratch = tmp_path / "scratch"
-    scratch.mkdir()
-    monkeypatch.setattr(tempfile, "tempdir", str(scratch))
-    never = asyncio.Event()
-
-    async def stalled(*args: object, **kwargs: object) -> object:
-        await never.wait()
-        raise AssertionError
-
-    monkeypatch.setattr(asyncio, "create_subprocess_exec", stalled)
-    task = asyncio.create_task(run_process({}, "", executable=sys.executable))
-    await asyncio.sleep(0)
-    await asyncio.sleep(0)
-    others = [t for t in asyncio.all_tasks() if t is not task and t is not asyncio.current_task()]
-    assert len(others) >= 1  # the start task
-    for other in others:
-        other.cancel()
-    task.cancel()
-    with pytest.raises(asyncio.CancelledError):
-        async with asyncio.timeout(3):
-            await task
-    assert _entries(scratch) == []
-
-
-def _finish_orphan(pid: int) -> None:
-    """Close the orphaned Popen and transport of a killed child (no ResourceWarning).
-
-    asyncio never got the process back from the failed start, so nobody waits on its Popen or
-    closes its transport.
-    """
-    for candidate in gc.get_objects():
-        if isinstance(candidate, subprocess.Popen) and candidate.pid == pid:  # pyright: ignore[reportUnknownMemberType]  # gc yields objects
-            candidate.wait(timeout=5)  # the child is dead: this returns at once
-        elif isinstance(candidate, base_subprocess.BaseSubprocessTransport) and (
-            candidate.get_pid() == pid
-        ):
-            candidate.close()
-
-
 def _open_descriptors() -> int:
     """The number of descriptors this process holds right now (POSIX: macOS and Linux)."""
     return len(os.listdir("/dev/fd"))
-
-
-async def test_a_cancel_during_the_start_leaves_no_descriptor_and_no_process(
-    tmp_path: Path, held_start: asyncio.Event
-) -> None:
-    gc.disable()
-    try:
-        before = _open_descriptors()
-        task, pid, grandchild, cwd = await _start_sleeper(tmp_path)
-        task.cancel()
-        held_start.set()
-        with pytest.raises(asyncio.CancelledError):
-            async with asyncio.timeout(5):
-                await task
-        assert not _is_dir(cwd)
-        assert await _wait_dead(pid)
-        assert await _wait_dead(grandchild)
-        await asyncio.sleep(0.05)  # the loop closes the pipe transports on its next turns
-        assert _open_descriptors() == before
-    finally:
-        gc.enable()
 
 
 async def test_a_normal_run_and_a_cancelled_run_return_every_descriptor(
@@ -541,35 +246,145 @@ async def test_a_normal_run_and_a_cancelled_run_return_every_descriptor(
         gc.enable()
 
 
-@pytest.mark.parametrize("failing_calls", [1, 2], ids=["one pipe", "two pipes"])
-async def test_a_pipe_that_cannot_be_connected_fails_the_run_and_leaks_nothing(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, failing_calls: int
+@pytest.fixture
+def spawned(monkeypatch: pytest.MonkeyPatch) -> list[int]:
+    """The pids of every process the run starts, recorded without changing how it starts."""
+    pids: list[int] = []
+    original = subprocess.Popen
+
+    class Recording(original):  # type: ignore[type-arg,misc]  # a recording Popen
+        def __init__(self, *args: object, **kwargs: object) -> None:
+            super().__init__(*args, **kwargs)  # type: ignore[call-overload]  # as Popen's own
+            pids.append(self.pid)
+
+    monkeypatch.setattr(subprocess, "Popen", Recording)
+    return pids
+
+
+@pytest.mark.parametrize("steps", [1, 2, 3, 4])
+async def test_cancelling_every_task_ends_the_run_and_kills_the_group(
+    steps: int, spawned: list[int], tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """GH #1188 / CPython gh-103847: an ``asyncio.run`` shutdown cancels every task at once."""
+    scratch = tmp_path / "scratch"
+    scratch.mkdir()
+    monkeypatch.setattr(tempfile, "tempdir", str(scratch))
+    task = asyncio.create_task(
+        run_process({}, "", executable=sys.executable, args=["-c", "import time; time.sleep(30)"])
+    )
+    for _ in range(steps):
+        await asyncio.sleep(0)
+    current = asyncio.current_task()
+    for other in asyncio.all_tasks():
+        if other is not current:
+            other.cancel()
+    done, _ = await asyncio.wait([task], timeout=5)
+    assert done, "run_process is still running 5 s after every task was cancelled"
+    assert task.cancelled()
+    assert _entries(scratch) == []
+    assert len(spawned) == 1
+    assert await _wait_dead(spawned[0])
+
+
+class _Killer:
+    """A stand-in for the ``os`` module of ``solvers/process.py`` that controls ``killpg``."""
+
+    def __init__(self, delay: float | None) -> None:
+        self.delay = delay
+        self.calls: list[int] = []
+
+    def killpg(self, pgid: int, sig: int) -> None:
+        self.calls.append(pgid)
+        if self.delay is not None:
+            threading.Timer(self.delay, os.killpg, args=(pgid, sig)).start()
+
+
+async def test_a_second_cancel_during_the_reaping_wait_changes_nothing(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    killer = _Killer(delay=0.3)  # the group dies only after the second cancel has arrived
+    monkeypatch.setattr(process_module, "os", killer)
+    task, pid, grandchild, cwd = await _start_sleeper(tmp_path)
+    task.cancel()
+    await asyncio.sleep(0.05)
+    task.cancel()
+    with pytest.raises(asyncio.CancelledError):
+        async with asyncio.timeout(5):
+            await task
+    assert killer.calls == [pid]
+    assert not _is_dir(cwd)
+    assert await _wait_dead(pid)
+    assert await _wait_dead(grandchild)
+
+
+async def test_a_process_that_is_not_reaped_in_time_is_reported_once_and_the_cancel_ends(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
+) -> None:
+    monkeypatch.setattr(process_module, "_REAP_BOUND_S", 0.3)
+    killer = _Killer(delay=None)  # the kill never happens: the child survives
+    monkeypatch.setattr(process_module, "os", killer)
+    task, pid, grandchild, _ = await _start_sleeper(tmp_path)
+    began = time.monotonic()
+    try:
+        with caplog.at_level(logging.DEBUG, logger="aero_kernel"):
+            task.cancel()
+            with pytest.raises(asyncio.CancelledError):
+                async with asyncio.timeout(5):
+                    await task
+        assert time.monotonic() - began < 0.3 + 2
+        assert [r.getMessage() for r in caplog.records if r.levelno >= logging.WARNING] == [
+            f"process not reaped ({Path(sys.executable).name})"
+        ]
+    finally:
+        os.killpg(pid, signal.SIGKILL)  # the test cleans up what the run was told not to kill
+    assert await _wait_dead(pid)
+    assert await _wait_dead(grandchild)
+
+
+async def test_a_start_that_fails_for_another_reason_propagates_and_leaks_nothing(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     scratch = tmp_path / "scratch"
     scratch.mkdir()
     monkeypatch.setattr(tempfile, "tempdir", str(scratch))
-    loop_type = type(asyncio.get_running_loop())
-    original = loop_type.connect_read_pipe
-    calls: list[int] = []
 
-    async def flaky(self: asyncio.AbstractEventLoop, factory: object, pipe: object) -> object:
-        calls.append(1)
-        if len(calls) <= failing_calls:
-            raise OSError(errno.EMFILE, "Too many open files")
-        return await original(self, factory, pipe)  # type: ignore[arg-type]  # same call as run_process makes
+    def refuse(*args: object, **kwargs: object) -> object:
+        raise OSError(errno.EMFILE, "Too many open files")
 
-    monkeypatch.setattr(loop_type, "connect_read_pipe", flaky)
+    monkeypatch.setattr(subprocess, "Popen", refuse)
     gc.disable()
     try:
         before = _open_descriptors()
-        expected = OSError if failing_calls == 1 else ExceptionGroup
-        with pytest.raises(expected):
-            await run_process({}, "", executable=sys.executable, args=["-c", "pass"])
-        await asyncio.sleep(0.05)
+        for _ in range(5):
+            with pytest.raises(OSError, match="Too many open files") as caught:
+                await run_process({}, "", executable=sys.executable)
+            assert not isinstance(caught.value, FormulaError)
+            assert caught.value.errno == errno.EMFILE
         assert _open_descriptors() == before
     finally:
         gc.enable()
     assert _entries(scratch) == []
+
+
+class _NoDefaultExecutor(concurrent.futures.ThreadPoolExecutor):
+    """An executor that fails the test when anything runs on it."""
+
+    def submit(self, fn: object, /, *args: object, **kwargs: object) -> NoReturn:  # type: ignore[override]  # the point is to fail
+        msg = "the default executor must not be used"
+        raise AssertionError(msg)
+
+
+async def test_the_runtime_runs_processes_on_its_own_pool_and_closes_it(script: Path) -> None:
+    asyncio.get_running_loop().set_default_executor(_NoDefaultExecutor())
+    runtime = SolverRuntime(max_concurrency=2)
+    async with asyncio.timeout(10):
+        run = await runtime.run_process(
+            {"in.txt": "abc"}, "go\n", executable=sys.executable, args=[str(script), "0"]
+        )
+        assert run.stdout == "cwd-files=in.txt\nstdin=go\n"
+        await runtime.aclose()
+    with pytest.raises(RuntimeError, match="shutdown"):
+        runtime._threads.submit(int)  # type: ignore[attr-defined]  # the owner's pool, read by the test
 
 
 async def test_a_tool_that_stops_reading_its_input_is_not_an_error(tmp_path: Path) -> None:
@@ -668,7 +483,8 @@ async def test_failed_cleanup_during_cancel_is_logged_and_cancelled_error_propag
     task, pid, _, _ = await _start_sleeper(tmp_path)
     task.cancel()
     with pytest.raises(asyncio.CancelledError):
-        await task
+        async with asyncio.timeout(5):
+            await task
     assert await _wait_dead(pid)
     assert len(_cleanup_warnings(failing_cleanup)) == 1
 
