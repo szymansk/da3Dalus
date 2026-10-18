@@ -801,7 +801,10 @@ caller's event loop, it can be cancelled, and it limits its own resource use.
     The spawn is synchronous, so there is no start to interrupt. On a cancel or timeout the kernel sends
     `SIGKILL` to the group (`os.killpg`), then waits a bounded 5 s for `communicate()` to reap the child,
     ignoring further cancels during that wait only, and re-raises. Past the bound, one `WARNING`
-    `process not reaped (<tool>)` (ADR 0020). The pid-reuse race between exit and `killpg` is not closed
+    `process not reaped (<tool>)` (ADR 0020); the stuck `communicate()` thread then holds one slot of the
+    runtime's thread pool for the rest of its life, and `aclose()` still returns (`shutdown(wait=False)`),
+    but if a descendant escaped the process group, interpreter exit waits until it exits, because
+    `concurrent.futures` joins its workers at exit (AVL forks nothing: rare, accepted). The pid-reuse race between exit and `killpg` is not closed
     (no `WNOWAIT`; KISS).
   - Work already running in the process pool is allowed to finish but its result is discarded, because
     pool workers cannot be interrupted safely.
