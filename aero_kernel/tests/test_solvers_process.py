@@ -104,6 +104,7 @@ async def test_missing_executable_is_tool_unavailable(tmp_path: Path) -> None:
     assert caught.value.code == "tool_unavailable"
     assert caught.value.detail == {"executable": "no_such_tool"}
     assert str(tmp_path) not in caught.value.message
+    assert isinstance(caught.value.__cause__, FileNotFoundError)
 
 
 async def _start_sleeper(
@@ -432,6 +433,7 @@ async def test_a_binary_that_may_not_run_is_tool_unavailable(tmp_path: Path) -> 
         await run_process({}, "", executable=plain)
     assert caught.value.code == "tool_unavailable"
     assert caught.value.detail == {"executable": "plain.txt"}
+    assert isinstance(caught.value.__cause__, PermissionError)
 
 
 async def test_a_binary_in_no_executable_format_is_tool_unavailable(tmp_path: Path) -> None:
@@ -442,6 +444,9 @@ async def test_a_binary_in_no_executable_format_is_tool_unavailable(tmp_path: Pa
         await run_process({}, "", executable=junk)
     assert caught.value.code == "tool_unavailable"
     assert caught.value.detail == {"executable": "junk"}
+    cause = caught.value.__cause__
+    assert isinstance(cause, OSError)
+    assert cause.errno == errno.ENOEXEC
 
 
 async def test_a_start_cancelled_with_its_caller_leaves_a_plain_cancel(
