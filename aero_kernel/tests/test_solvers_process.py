@@ -2,6 +2,7 @@
 
 import asyncio
 import concurrent.futures
+import contextlib
 import errno
 import gc
 import logging
@@ -419,6 +420,76 @@ async def test_a_run_cancelled_while_communicate_is_still_queued_reaps_and_close
     assert process.stdin.closed
     assert process.stdout.closed
     assert process.stderr.closed
+
+
+async def test_a_second_cancel_while_a_queued_run_waits_for_its_child_changes_nothing(
+    tmp_path: Path,
+    popens: list[subprocess.Popen[bytes]],
+    one_busy_thread: concurrent.futures.ThreadPoolExecutor,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(process_module, "os", _Killer(delay=0.3))  # the child dies 0.3 s later
+    task = asyncio.create_task(
+        _run_process(
+            {},
+            "",
+            executable=sys.executable,
+            args=["-c", "import time; time.sleep(30)"],
+            executor=one_busy_thread,
+        )
+    )
+    await asyncio.sleep(0.1)
+    task.cancel()
+    await asyncio.sleep(0.05)  # the run is polling for its child now
+    task.cancel()
+    with pytest.raises(asyncio.CancelledError):
+        async with asyncio.timeout(5):
+            await task
+    (process,) = popens
+    assert process.returncode is not None  # the second cancel did not cut the wait short
+    assert await _wait_dead(process.pid)
+    assert process.stdin is not None
+    assert process.stdout is not None
+    assert process.stderr is not None
+    assert process.stdin.closed
+    assert process.stdout.closed
+    assert process.stderr.closed
+
+
+async def test_a_child_that_cannot_be_polled_dead_is_reported_once(
+    tmp_path: Path,
+    popens: list[subprocess.Popen[bytes]],
+    one_busy_thread: concurrent.futures.ThreadPoolExecutor,
+    monkeypatch: pytest.MonkeyPatch,
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    monkeypatch.setattr(process_module, "_REAP_BOUND_S", 0.1)
+
+    def never_dead(self: object) -> None:
+        return None
+
+    monkeypatch.setattr(subprocess.Popen, "poll", never_dead)
+    try:
+        with (
+            caplog.at_level(logging.DEBUG, logger="aero_kernel"),
+            pytest.raises(TimeoutError),
+        ):
+            async with asyncio.timeout(0.5):
+                await _run_process(
+                    {},
+                    "",
+                    executable=sys.executable,
+                    args=["-c", "import time; time.sleep(30)"],
+                    executor=one_busy_thread,
+                )
+        assert [r.getMessage() for r in caplog.records if r.levelno >= logging.WARNING] == [
+            f"process not reaped ({Path(sys.executable).name})"
+        ]
+    finally:
+        (process,) = popens
+        with contextlib.suppress(ProcessLookupError, PermissionError):  # EPERM: zombie on macOS
+            os.killpg(process.pid, signal.SIGKILL)
+        await asyncio.to_thread(process.wait, 5)  # the test reaps what the run did not
 
 
 async def test_a_pool_that_refuses_the_work_still_reaps_the_child_and_closes_its_pipes(
