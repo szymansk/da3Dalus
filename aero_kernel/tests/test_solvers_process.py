@@ -180,16 +180,25 @@ async def _wait_dead(pid: int) -> bool:
     return False
 
 
-async def test_cancel_kills_the_process_group_and_removes_the_temp_dir(tmp_path: Path) -> None:
+async def test_cancel_kills_the_process_group_and_removes_the_temp_dir(
+    tmp_path: Path,
+    popens: list[subprocess.Popen[bytes]],
+    caplog: pytest.LogCaptureFixture,
+) -> None:
     task, pid, grandchild, cwd = await _start_sleeper(tmp_path)
     assert _is_dir(cwd)
-    task.cancel()
-    # Bounded: a kill that spares the grandchild leaves the pipes open and asyncio waits ~60 s.
-    # Hitting the bound raises TimeoutError, which is not the CancelledError expected here.
-    with pytest.raises(asyncio.CancelledError):
-        async with asyncio.timeout(5):
-            await task
+    with caplog.at_level(logging.WARNING, logger="aero_kernel"):
+        task.cancel()
+        # Bounded: a kill that spares the grandchild leaves the pipes open and the reap waits.
+        # Hitting the bound raises TimeoutError, which is not the CancelledError expected here.
+        with pytest.raises(asyncio.CancelledError):
+            async with asyncio.timeout(5):
+                await task
     assert not _is_dir(cwd)
+    # a normal cancel reaps the child before it returns and has nothing to report
+    (process,) = popens
+    assert process.returncode is not None
+    assert [r for r in caplog.records if r.levelno >= logging.WARNING] == []
     assert await _wait_dead(pid)
     assert await _wait_dead(grandchild)
 
@@ -320,6 +329,7 @@ async def test_a_second_cancel_during_the_reaping_wait_changes_nothing(
 async def test_a_process_that_is_not_reaped_in_time_is_reported_once_and_the_cancel_ends(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
 ) -> None:
+    assert process_module._REAP_BOUND_S == 5.0  # pyright: ignore[reportPrivateUsage]  # pins the production bound; the test shrinks it below
     monkeypatch.setattr(process_module, "_REAP_BOUND_S", 0.3)
     killer = _Killer(delay=None)  # the kill never happens: the child survives
     monkeypatch.setattr(process_module, "os", killer)
@@ -464,18 +474,26 @@ async def test_a_tool_that_stops_reading_its_input_is_not_an_error(tmp_path: Pat
     assert run.returncode == 0
 
 
-async def test_expired_budget_kills_the_process_and_removes_the_temp_dir(tmp_path: Path) -> None:
+async def test_expired_budget_kills_the_process_and_removes_the_temp_dir(
+    tmp_path: Path,
+    popens: list[subprocess.Popen[bytes]],
+    caplog: pytest.LogCaptureFixture,
+) -> None:
     sleeper = tmp_path / "sleeper.py"
     sleeper.write_text(SLEEP_SCRIPT)
     marker = tmp_path / "marker.txt"
     # The outer bound only guards against a hang; the budget itself must be what expired.
     guard = asyncio.timeout(6)
     budget = asyncio.timeout(1.0)
-    with pytest.raises(TimeoutError):
+    with caplog.at_level(logging.WARNING, logger="aero_kernel"), pytest.raises(TimeoutError):
         async with guard, budget:
             await run_process({}, "", executable=sys.executable, args=[str(sleeper), str(marker)])
     assert budget.expired()
     assert not guard.expired()
+    # a normal timeout reaps the child before it returns and has nothing to report
+    (process,) = popens
+    assert process.returncode is not None
+    assert [r for r in caplog.records if r.levelno >= logging.WARNING] == []
     pid, grandchild, cwd = _read_marker(marker)
     assert not _is_dir(cwd)
     assert await _wait_dead(pid)
