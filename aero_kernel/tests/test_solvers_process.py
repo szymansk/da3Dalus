@@ -386,6 +386,31 @@ async def test_a_timeout_before_the_reap_of_an_exited_child_still_ends_as_a_time
     assert _entries(scratch) == []
 
 
+async def test_a_run_cancelled_while_communicate_is_still_queued_reaps_and_closes_everything(
+    tmp_path: Path,
+    popens: list[subprocess.Popen[bytes]],
+    one_busy_thread: concurrent.futures.ThreadPoolExecutor,
+) -> None:
+    with pytest.raises(TimeoutError):
+        async with asyncio.timeout(0.5):
+            await _run_process(
+                {},
+                "",
+                executable=sys.executable,
+                args=["-c", "import time; time.sleep(30)"],
+                executor=one_busy_thread,
+            )
+    (process,) = popens
+    assert process.returncode is not None  # reaped, not left a zombie
+    assert await _wait_dead(process.pid)
+    assert process.stdin is not None
+    assert process.stdout is not None
+    assert process.stderr is not None
+    assert process.stdin.closed
+    assert process.stdout.closed
+    assert process.stderr.closed
+
+
 async def test_a_start_that_fails_for_another_reason_propagates_and_leaks_nothing(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:

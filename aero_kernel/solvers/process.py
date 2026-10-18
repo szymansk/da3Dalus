@@ -97,18 +97,33 @@ async def _reap(
     process: subprocess.Popen[bytes],
     tool: str,
 ) -> None:
-    """Kill the process group, then wait, within a bound, for ``communicate`` to return.
+    """Kill the process group, then wait, within a bound, until the process is reaped.
 
-    Cancellations that arrive during the wait are swallowed (the caller re-raises the original
-    one afterwards). Past the bound the thread is left to finish by itself and the operator is
-    told (ADR 0020).
+    Normally ``communicate`` runs in a pool thread and returns once the group is dead. If the
+    run was cancelled while ``communicate`` was still queued (the pool was busy), cancelling the
+    waiting future also cancelled it: it never runs, so the pipes are closed and the process
+    polled here instead. Cancellations that arrive during the wait are swallowed (the caller
+    re-raises the original one afterwards). Past the bound the process is left to finish by
+    itself and the operator is told (ADR 0020).
     """
     _kill_group(process)
     deadline = time.monotonic() + _REAP_BOUND_S
-    while not pending.done() and time.monotonic() < deadline:
-        with contextlib.suppress(asyncio.CancelledError):
-            await asyncio.wait([asyncio.wrap_future(pending)], timeout=deadline - time.monotonic())
-    if not pending.done():
+    if pending.cancelled():
+        for pipe in (process.stdin, process.stdout, process.stderr):
+            if pipe is not None:
+                pipe.close()
+        while process.poll() is None and time.monotonic() < deadline:
+            with contextlib.suppress(asyncio.CancelledError):
+                await asyncio.sleep(0.01)
+        reaped = process.returncode is not None
+    else:
+        while not pending.done() and time.monotonic() < deadline:
+            with contextlib.suppress(asyncio.CancelledError):
+                await asyncio.wait(
+                    [asyncio.wrap_future(pending)], timeout=deadline - time.monotonic()
+                )
+        reaped = pending.done()
+    if not reaped:
         logger.warning("process not reaped (%s)", tool)
 
 
