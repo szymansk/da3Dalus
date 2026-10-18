@@ -138,7 +138,7 @@ aero_kernel/
                     Provenance (Pydantic, extra="forbid"); re-exports AirplaneGeometry and KernelError
   canon/            canon_model.json         the interpreted canon (versioned, committed)
                     canon_model.schema.json  JSON Schema of the canon model
-                    IMPORT_REPORT.md         report of the last import (source commit, diff, findings)
+                    IMPORT_REPORT.md         report of the last import (content hash, findings, the formula table)
                     model.py                 the canon-model types (Pydantic; the schema is generated from them)
                     load.py                  load + schema/version and reference check at runtime
   importer/         parse.py · normalise.py · validate.py · diff.py · write.py · __main__.py
@@ -321,8 +321,9 @@ No internal paths or mechanisms in any field (ADR 0019).
 `Provenance`:
 - the **build digest** (below), which identifies the exact code and canon model file (Q3); there is no
   hand-bumped version (the repository is not an installed package)
-- canon model hash and its source commit (the canon state); `None` only when the shipped model could not be
-  loaded (every quantity is then `internal`)
+- the canon model hash (the canon state; the commit that shipped it is found with
+  `git log -S <content_hash> -- aero_kernel/canon/canon_model.json`); `None` only when the shipped model
+  could not be loaded (every quantity is then `internal`)
 - tool versions (aerosandbox, NeuralFoil model, AVL): one non-empty version string per tool **the call actually
   used**; empty when only pure formulas ran
 - solver settings (e.g. the NeuralFoil model size the adapters use, fixed to the largest in v1)
@@ -647,7 +648,7 @@ python -m aero_kernel.importer <canon-document-dir> [--check]
 | 2 Normalise | slugs, unit spellings to one closed symbol set (`1` for dimensionless, `—` folded into it), roles, kinds, tools to closed vocabularies; resolves `[[…]]` references | an unknown unit, kind, tool or role |
 | 3 Validate | JSON Schema of the canon model; consistency rules (ch. 8.6); dimensional check | any rule is violated |
 | 4 Diff | compares with the committed canon model: entries added, removed or changed; marks **breaking** changes (inputs, units, outputs, applications) and lists the affected implementations and golden tests | — (only reports) |
-| 5 Write | writes `canon_model.json` (sorted, stable formatting), its content hash, the source commit of the canon document and the importer version; writes `IMPORT_REPORT.md` (diff, findings, Appendix A table) | — |
+| 5 Write | writes `canon_model.json` (sorted, stable formatting), its content hash and the importer version; writes `IMPORT_REPORT.md` (diff, findings, Appendix A table) | — |
 
 **What the importer reads (maintainer decision 2026-10-14, migration in #1181).** Every entry carries its
 structure in the front matter; the prose explains, the importer never reads it. **The definition of the
@@ -677,15 +678,14 @@ optional fields get their stated default (`when`/`given` absent = always, precon
 absent = all, `cost` derived, ch. 8.7); the default application is written out explicitly; the `embeds`
 closure (ch. 8.5) is stored alongside the listed embeds. Fixture models in
 `tests/fixtures/` follow exactly this shape and are validated against `canon_model.schema.json`. The model
-also holds `schema_version`, `content_hash`, `source_commit` and
-`importer_version`. References are slugs; namespaces are written `<namespace>:<slug>` (`calc:stall-speed`,
+also holds `schema_version`, `content_hash` and `importer_version`. References are slugs; namespaces are written `<namespace>:<slug>` (`calc:stall-speed`,
 later `sizing:…`), and a bare slug in a request means `calc:`.
 
 **Shape and identity of the model file** (decided for #1174, unit 6):
 - **Types first, schema generated.** `canon/model.py` holds the Pydantic types (frozen, `extra="forbid"`,
   invariants in the model, ch. 8.11). `canon_model.schema.json` is generated from them (`python -m aero_kernel.canon.schema_file [path]`) and committed; a
   test fails when the committed schema differs from the generated one. Never hand-written.
-- **Layout.** `{schema_version, content_hash, source_commit, importer_version, namespaces: {"calc":
+- **Layout.** `{schema_version, content_hash, importer_version, namespaces: {"calc":
   {quantities: {<slug>: …}, formulas: {<slug>: …}}}}`, dict keys bare slugs. **Every reference inside the
   model is fully qualified** (`calc:stall-speed`, embeds items `calc:stall-speed.clean`); application ids
   and parameter names stay bare. Every `embeds` and `embeds_closure` item is normalised to
@@ -704,14 +704,14 @@ later `sizing:…`), and a bare slug in a request means `calc:`.
   loader reads it **before** type validation, so a newer model reports its version, not a cascade of
   unknown fields; any other version is `internal`, escalate. The loader raises `CanonLoadError` carrying
   that `KernelError`; turning it into per-quantity results is the api's job (`compute()` never raises,
-  ch. 8.1). `source_commit` is a 40-hex git SHA, `importer_version` a non-empty string. **`source_commit`
-  names the last commit that touched the canon document** (`git log -1 -- <canon-dir>`), not the branch
-  head, so it stays checkable on `main` after the kernel branch is rebased or squash-merged; canon changes
-  therefore reach `main` through their own canon change first. The final import runs after the branch's
-  last rebase; CI's `--check` (which ignores `source_commit`) guards the content in between.
+  ch. 8.1). `importer_version` is a non-empty string. **There is no source-commit pointer** (maintainer,
+  2026-10-18, decision e): the model names no git commit, and the importer runs no git at all. Which commit
+  shipped a model is found from its content: `git log -S <content_hash> --
+  aero_kernel/canon/canon_model.json`. The blocking `--check` keeps model and canon in step, whatever merge
+  strategy lands them.
 - **`content_hash`** is `"sha256:" + hex` of the canonical JSON of `namespaces` only — the canon's content,
-  not its provenance (`source_commit`, `importer_version` and the hash itself are outside it), so two
-  imports of identical content from different commits hash alike. Canonical JSON is the one used for
+  not its provenance (`importer_version` and the hash itself are outside it), so two imports of identical
+  content from different commits hash alike. Canonical JSON is the one used for
   cache keys (ch. 8.4): sorted keys, separators `,` `:`, UTF-8 without ASCII escaping, floats as `repr`;
   one helper in `canonical.py`, shared with the cache. The model's validator recomputes it: a hand-edited model does not
   load.
@@ -745,8 +745,7 @@ Rules:
   drift apart unnoticed.
 - **Idempotent.** Importing the same canon document twice yields a byte-identical model.
 - **`--check`** runs stages 1–3 in memory, writes nothing, needs no git, and compares the result with the
-  committed model by `content_hash`, `schema_version` and `importer_version` (not `source_commit`, which
-  moves with every commit). A finding **or** a mismatch exits 1, and the CI step **fails the build**: the
+  committed model by `content_hash`, `schema_version` and `importer_version`. A finding **or** a mismatch exits 1, and the CI step **fails the build**: the
   shipped model is the kernel's own artefact (ch. 8.4), so a canon change re-imports the model in the same
   change. Canon authors run it instead of the structural part of `check_canon.py`.
 - **Vocabulary drift.** The canon README defines the `when` vocabulary and the quantity types; the model's
@@ -1247,7 +1246,7 @@ They are the first thing a developer or an agent reads to check a change and to 
 |---|---|---|
 | Q1 | A new canon formula without implementation | The request returns `not_implemented` with the slug; no code changed |
 | Q2 | All 57 canon entries mapped onto the model | Appendix A complete; the import succeeds without a schema change |
-| Q3 | Every value is traceable | The result carries slug, application, tool, canon model hash and source commit |
+| Q3 | Every value is traceable | The result carries slug, application, tool and canon model hash; the shipping commit follows from the hash (`git log -S`) |
 | Q4 | The solver does not converge | `not_converged`; successors `upstream_failed`; other quantities still compute |
 | Q5 | Layout without a separate flap and aileron | `butterfly-max-mix` is `not_applicable`, code `condition_not_met`: no error, no substitute value. `stall-speed-landing` computes and equals `stall-speed` (no configuration, not a fallback) |
 | Q6 | Every error category | Serialises to JSON with `message` and `hint` |
