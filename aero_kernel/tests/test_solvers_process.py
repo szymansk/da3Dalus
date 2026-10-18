@@ -322,6 +322,7 @@ async def test_a_second_cancel_during_the_reaping_wait_changes_nothing(
         async with asyncio.timeout(5):
             await task
     assert killer.calls == [pid]
+    assert not _alive(pid)  # reaped already: the second cancel must not end the wait early
     assert not _is_dir(cwd)
     assert await _wait_dead(pid)
     assert await _wait_dead(grandchild)
@@ -594,6 +595,47 @@ async def test_a_communicate_that_raises_during_the_reaping_wait_leaves_no_zombi
     assert process.stderr.closed
     assert _entries(scratch) == []
     assert [r for r in caplog.records if r.levelno >= logging.WARNING] == []
+
+
+async def test_the_poll_step_shares_the_deadline_of_the_communicate_wait(
+    tmp_path: Path,
+    popens: list[subprocess.Popen[bytes]],
+    monkeypatch: pytest.MonkeyPatch,
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    """One bound covers both steps: ~0.5 s from the cancel, not 0.4 s (wait) plus 0.5 s (poll)."""
+    monkeypatch.setattr(process_module, "_REAP_BOUND_S", 0.5)
+
+    def failing_later(self: object, input: object = None, timeout: object = None) -> object:  # noqa: A002  # Popen's signature
+        time.sleep(0.4)
+        raise OSError(errno.EIO, "Input/output error")
+
+    def never_dead(self: object) -> None:
+        return None
+
+    monkeypatch.setattr(subprocess.Popen, "communicate", failing_later)
+    monkeypatch.setattr(subprocess.Popen, "poll", never_dead)
+    task = asyncio.create_task(
+        run_process({}, "", executable=sys.executable, args=["-c", "import time; time.sleep(30)"])
+    )
+    await asyncio.sleep(0.05)  # communicate is running in its thread
+    try:
+        with caplog.at_level(logging.DEBUG, logger="aero_kernel"):
+            began = time.monotonic()
+            task.cancel()
+            with pytest.raises(asyncio.CancelledError):
+                async with asyncio.timeout(10):
+                    await task
+            elapsed = time.monotonic() - began
+        assert 0.4 <= elapsed < 0.75
+        assert [r.getMessage() for r in caplog.records if r.levelno >= logging.WARNING] == [
+            f"process not reaped ({Path(sys.executable).name})"
+        ]
+    finally:
+        (process,) = popens
+        with contextlib.suppress(ProcessLookupError, PermissionError):  # EPERM: zombie on macOS
+            os.killpg(process.pid, signal.SIGKILL)
+        await asyncio.to_thread(process.wait, 5)  # the test reaps what the run did not
 
 
 async def test_a_start_that_fails_for_another_reason_propagates_and_leaks_nothing(
